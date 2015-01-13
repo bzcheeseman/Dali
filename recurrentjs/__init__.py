@@ -190,7 +190,7 @@ class Graph(object):
     
     def eltmul(self, matrix1, matrix2):
         """
-        Element multply two matrices
+        Element multiply two matrices
         """
         assert(matrix1.n == matrix2.n and matrix1.d == matrix2.d)
         out = Mat(matrix1.n, matrix1.d, matrix1.w * matrix2.w)

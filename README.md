@@ -6,7 +6,7 @@ Following in the footsteps of [Andrej Kaparthy](http://cs.stanford.edu/people/ka
 
 While Python has great automatic differentiation libraries, a no-compile version is lacking. In particular recurrentJS makes great use of callbacks and garbage collection to enable backprop through time. In this implementation the goal is to reduce reliance on these abstractions and have a simple backprop step class. Finally if this is easily feasible, then ultimately we will implement a C++ version that will make the majority of the computation steps fast except for some intermediary allocations of backprop steps, but that do not make up the bulk of the computation, and keep the API and the syntax clear.
 
-### Planned pxtensions to Javascript version
+### Planned extensions to Javascript version
 
 In this implementation the goal is simple:
 

@@ -14,8 +14,12 @@ In this implementation the goal is simple:
 * Enable batch processing (through masked losses, tensors, and advanced indexing when plucking rows from matrices)
 * Form a baseline for implementation in non-scripting languages
 
-
 ### Usage
+
+Simple:
+
+    pip install recurrent-js-python
+
 
 Below we follow the same steps as in the character generation demo, and we import the same text for character model learning. Perplexity drops quickly to around 7-8, (mirroring the behavior found in the Javascript version).
 

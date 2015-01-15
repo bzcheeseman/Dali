@@ -65,6 +65,52 @@ def RandMat(n, d, std):
     """
     return Mat(n, d, np.random.standard_normal([n, d]) * std)
 
+class BackwardEltMul(object):
+    __slots__ = ["matrix1", "matrix2", "out"]
+    def __init__(self, matrix1, matrix2, out):
+        self.matrix1 = matrix1
+        self.matrix2 = matrix2
+        self.out = out
+    def __call__(self):
+        self.matrix1.dw += self.matrix2.w * self.out.dw
+        self.matrix2.dw += self.matrix1.w * self.out.dw
+
+class BackwardMul(BackwardEltMul):
+    def __call__(self):
+        self.matrix1.dw += self.out.dw.dot(self.matrix2.w.T)
+        self.matrix2.dw += self.matrix1.w.T.dot(self.out.dw)
+
+class Backward(object):
+    __slots__ = ["matrix", "out"]
+    def __init__(self, matrix, out):
+        self.matrix = matrix
+        self.out = out
+
+    def __call__(self):
+        self.matrix.dw += self.out.dw
+
+class BackwardSigmoid(Backward):
+    def __call__(self):
+        self.matrix.dw += self.out.w * (1. - self.out.w) * self.out.dw
+
+class BackwardTanh(Backward):
+    def __call__(self):
+        self.matrix.dw += (1. - (self.out.w ** 2)) * self.out.dw
+
+class BackwardRelu(Backward):
+    def __call__(self):
+        self.matrix.dw += np.sign(self.out.w) * self.out.dw
+
+class BackwardRowPluck(object):
+    __slots__ = ["matrix", "out", "ix"]
+    def __init__(self, matrix, ix, out):
+        self.matrix = matrix
+        self.out = out
+        self.ix = ix
+
+    def __call__(self):
+        self.matrix.dw[self.ix,:] += self.out.dw[:,0]
+
 class Graph(object):
     """
     Graph holding the computation backprop steps.
@@ -106,10 +152,7 @@ class Graph(object):
         out.w[:,0] = matrix.w[ix]
         
         if self.needs_backprop:
-            def backward():
-                matrix.dw[ix,:] += out.dw[:,0]
-                
-            self.backprop.append(backward)
+            self.backprop.append(BackwardRowPluck(matrix, ix, out))
         
         return out
     
@@ -123,9 +166,7 @@ class Graph(object):
         out = Mat(matrix.n, matrix.d, np.tanh(matrix.w))
         
         if self.needs_backprop:
-            def backward():
-                matrix.dw += (1. - (out.w ** 2)) * out.dw
-            self.backprop.append(backward)
+            self.backprop.append(BackwardTanh(matrix, out))
             
         return out
     
@@ -139,9 +180,7 @@ class Graph(object):
         out = Mat(matrix.n, matrix.d, sigmoid(matrix.w))
         
         if self.needs_backprop:
-            def backward():
-                matrix.dw += out.w * (1. - out.w) * out.dw
-            self.backprop.append(backward)
+            self.backprop.append(BackwardSigmoid(matrix, out))
             
         return out
     
@@ -154,9 +193,7 @@ class Graph(object):
         """
         out = Mat(matrix.n, matrix.d, np.fmax(0, matrix.w))
         if self.needs_backprop:
-            def backward():
-                matrix.dw += np.sign(out.w) * out.dw 
-            self.backprop.append(backward)
+            self.backprop.append(BackwardRelu(matrix, out))
             
         return out
     
@@ -168,10 +205,7 @@ class Graph(object):
         out = Mat(matrix1.n, matrix2.d, matrix1.w.dot(matrix2.w))
         
         if self.needs_backprop:
-            def backward():
-                matrix1.dw += out.dw.dot(matrix2.w.T)
-                matrix2.dw += matrix1.w.T.dot(out.dw)
-            self.backprop.append(backward)
+            self.backprop.append(BackwardMul(matrix1, matrix2, out))
         return out
     
     def add(self, matrix1, matrix2):
@@ -182,10 +216,8 @@ class Graph(object):
         out = Mat(matrix1.n, matrix1.d, matrix1.w + matrix2.w)
         
         if self.needs_backprop:
-            def backward():
-                matrix1.dw += out.dw
-                matrix2.dw += out.dw
-            self.backprop.append(backward)
+            self.backprop.append(Backward(matrix1, out))
+            self.backprop.append(Backward(matrix2, out))
         return out
     
     def eltmul(self, matrix1, matrix2):
@@ -195,10 +227,7 @@ class Graph(object):
         assert(matrix1.n == matrix2.n and matrix1.d == matrix2.d)
         out = Mat(matrix1.n, matrix1.d, matrix1.w * matrix2.w)
         if self.needs_backprop:
-            def backward():
-                matrix1.dw += matrix2.dw * out.dw
-                matrix2.dw += matrix1.dw * out.dw
-            self.backprop.append(backward)
+            self.backprop.append(BackwardEltMul(matrix1, matrix2, out))
         return out
     
 def softmax(matrix):
@@ -491,6 +520,7 @@ __all__ = [
     "Mat",
     "RandMat",
     "Graph",
+    "Solver",
     "softmax",
     "initLSTM",
     "forwardLSTM",

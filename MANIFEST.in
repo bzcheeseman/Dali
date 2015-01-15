@@ -1,2 +1,1 @@
-include README.md
-include paulgraham_text.txt
+include README.md paulgraham_text.txt

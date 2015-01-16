@@ -13,42 +13,48 @@ That's it.
 
 ### Usage
 
-is dead simple:
+is dead simple (except for the crazy use of `std::shared_ptr`, that's
+because C++ is antsy and really desperately wants to kill these matrices,
+on the plus side: free garbage collection ;).
 
 	typedef double REAL_t;
 
 	// build blank matrix of double type:
-    Mat<REAL_t> A(3, 5);
-    A.w = (A.w.array() + 1.2).matrix();
+    std::shared_ptr< Mat<REAL_t> > A(new Mat<REAL_t>(3, 5) );
+    A->w = (A->w.array() + 1.2).matrix();
 
     // build random matrix of double type with standard deviation 2:
-    Mat<REAL_t> B = Mat<REAL_t>::RandMat(A.n, A.d, 2.0);
-    Mat<REAL_t> C = Mat<REAL_t>::RandMat(A.d, 4, 2.0);
+    std::shared_ptr< Mat<REAL_t> > B(new Mat<REAL_t>(A->n, A->d, 2.0));
+    std::shared_ptr< Mat<REAL_t> > C(new Mat<REAL_t>(A->d, 4, 2.0));
 
-    A.print();
-    B.print();
+    A->print();
+    B->print();
 
     Graph<REAL_t> graph;
-	Mat<REAL_t> A_plus_B     = graph.add(A, B);
-	Mat<REAL_t> A_times_B    = graph.eltmul(A, B);
-	Mat<REAL_t> A_plus_B_sig = graph.sigmoid(A_plus_B);
-	Mat<REAL_t> A_dot_C      = graph.mul(A, C);
+    std::shared_ptr< Mat<REAL_t> > A_plus_B     = graph.add(A, B);
+    std::shared_ptr< Mat<REAL_t> > A_times_B    = graph.eltmul(A, B);
+    std::shared_ptr< Mat<REAL_t> > A_plus_B_sig = graph.sigmoid(A_plus_B);
+    std::shared_ptr< Mat<REAL_t> > A_dot_C      = graph.mul(A, C);
 
-    Mat<REAL_t> A_dot_C_tanh = graph.tanh(A_dot_C);
+    std::shared_ptr< Mat<REAL_t> > A_dot_C_tanh( graph.tanh(A_dot_C) );
 
-    A_plus_B    .print();
-    A_times_B   .print();
-    A_plus_B_sig.print();
-    A_dot_C     .print();
+    A_plus_B    ->print();
+    A_times_B   ->print();
+    A_plus_B_sig->print();
+    A_dot_C     ->print();
 
-    Mat<REAL_t> A_plucked = graph.row_pluck(A, 2);
-    A_plucked.print();
+    std::shared_ptr< Mat<REAL_t> > A_plucked(graph.row_pluck(A, 2));
+    A_plucked->print();
+    forward_model(graph, A, C);
+
+    std::shared_ptr< Mat<REAL_t> > prod(graph.mul(A, C));
+    std::shared_ptr< Mat<REAL_t> > activ(graph.tanh(prod));
 
     // add some random singularity and use exponential
     // normalization:
-    A_plucked.w(2,0) += 3.0;
-    Mat<REAL_t> A_plucked_normed = softmax(A_plucked);
-    A_plucked_normed.print();
+    A_plucked->w(2,0) += 3.0;
+    std::shared_ptr< Mat<REAL_t> > A_plucked_normed(softmax(A_plucked));
+    A_plucked_normed->print();
 
     // backpropagate to A and B
     graph.backward();
@@ -58,7 +64,13 @@ Just as in the Javascript / Python versions the backward step takes care of all 
 Safety / Memory
 ---------------
 
-In the future used of shared pointers might be a better way of moving matrices around, but until then it appears that no segfaults have occured during the runtime. There is possibly an issue with Backward classes holding on to matrices that the original scope removed. If this is the case then shared pointers should be introduced inside backwards to notify of the ownership of this memory.
+Zealous use of `std::shared_ptr` appears to be the way of the future for managing
+both the backpropagation `Backward` classes that keep track of previous memory use in other steps, and the overall forward structure of the operations.
+
+### Multithreading
+
+One potential area of concern is during multithreaded code where shared_ptr will need to keep track of updates across threads. If this is the case, then perhaps some better bookkeeping will need to happen to ensure that shared memory across threads isn't garbage collected by other threads. Hopefully this won't happen since the `std:shared_ptr`s will only be scoped outside the main threading loop.
+
 
 Future steps
 ------------

@@ -7,16 +7,12 @@ template<typename T> class Mat {
 		Matrix<T, Dynamic, Dynamic> w;
 		Matrix<T, Dynamic, Dynamic> dw;
 
-		Mat (int n, int d) {
-			this->n = n;
-			this->d = d;
+		Mat (int _n, int _d) : n(_n), d(_d) {
 			this->w = Matrix<T, Dynamic, Dynamic>::Zero(n,d);
 			this->dw = Matrix<T, Dynamic, Dynamic>::Zero(n,d);
 		}
 
-		Mat (int n, int d, bool empty) {
-			this->n = n;
-			this->d = d;
+		Mat (int _n, int _d, bool empty) : n(_n), d(_d) {
 			if (empty) {
 				this->w = Matrix<T, Dynamic, Dynamic>(n,d);
 				this->dw = Matrix<T, Dynamic, Dynamic>(n,d);
@@ -26,19 +22,16 @@ template<typename T> class Mat {
 			}
 		}
 
-		Mat (int n, int d, T* w) {
-			this->n = n;
-			this->d = d;
+		Mat (int _n, int _d, T* w) : n(_n), d(_d) {
 			this->w = w;
 			this->dw = Matrix<T, Dynamic, Dynamic>::Zero(n,d);
 		}
-		void print () {std::cout << this->w << std::endl;}
-		~Mat() {
+		void print () {
+			utils::print_matrix(this->n, this->d, &(this->w(0)));// std::cout << this->w << std::endl;
 		}
+		~Mat() {}
 		// random matrices:
-		Mat (int n, int d, T std) {
-			this->n = n;
-			this->d = d;
+		Mat (int _n, int _d, T std) : n(_n), d(_d) {
 			std::default_random_engine generator;
 			std::normal_distribution<T> distribution(0.0, std);
 			std::random_device rd;
@@ -69,26 +62,37 @@ template<typename T> class Mat {
 };
 
 template<typename T> class Backward {
-	Mat<T> * matrix1;
-	Mat<T> * matrix2;
-	Mat<T> * out;
+	std::shared_ptr< Mat<T> > matrix1;
+	std::shared_ptr< Mat<T> > matrix2;
+	std::shared_ptr< Mat<T> > out;
 	int ix;
 	uint type;
 	public:
-		Backward (Mat<T> * matrix1, Mat<T> * out, uint type) {
+		Backward (
+			std::shared_ptr< Mat<T> > matrix1,
+			std::shared_ptr< Mat<T> > out,
+			uint type) {
 			this->matrix1 = matrix1;
 			this->matrix2 = NULL;
 			this->out = out;
 			this->type = type;
 		}
-		Backward (Mat<T> * matrix1, Mat<T> * out, int index, uint type) {
+		Backward (
+			std::shared_ptr< Mat<T> > matrix1,
+			std::shared_ptr< Mat<T> > out,
+			int index,
+			uint type) {
 			this->matrix1 = matrix1;
 			this->matrix2 = NULL;
 			this->out = out;
 			this->type = type;
 			this->ix = index;
 		}
-		Backward (Mat<T> * matrix1, Mat<T> * matrix2, Mat<T> * out, uint type) {
+		Backward (
+			std::shared_ptr< Mat<T> > matrix1,
+			std::shared_ptr< Mat<T> > matrix2,
+			std::shared_ptr< Mat<T> > out,
+			uint type) {
 			this->matrix1 = matrix1;
 			this->matrix2 = matrix2;
 			this->out = out;
@@ -174,12 +178,15 @@ template<typename T> class Backward {
 };
 
 template<typename T>
-Mat<T> softmax(Mat<T>& matrix) {
-	T layer_max = matrix.w.array().maxCoeff();
-	Array<T, Dynamic, Dynamic> exped_distributions = (matrix.w.array() - layer_max).unaryExpr(utils::exp_operator<T>());
+std::shared_ptr< Mat<T> > softmax(std::shared_ptr< Mat<T> > matrix) {
+	T layer_max = matrix->w.array().maxCoeff();
+	Array<T, Dynamic, Dynamic> exped_distributions = (matrix->w.array() - layer_max).unaryExpr(utils::exp_operator<T>());
 	T total_distribution = exped_distributions.sum();
-	Mat<T> out = Mat<T>::Empty(matrix.n, matrix.d);
-	out.w = (exped_distributions / total_distribution).matrix();
+	std::shared_ptr< Mat<T> > out(new Mat<T>(
+		matrix->n,
+		matrix->d,
+		true));
+	out->w = (exped_distributions / total_distribution).matrix();
 	return out;
 }
 
@@ -191,91 +198,106 @@ template<typename T> class Graph {
 		Graph (bool needs_backprop) {this->needs_backprop = needs_backprop;}
 		Graph () {this->needs_backprop = true;}
 		void backward () {
-			// std::cout << "myvector contains (reverse):\n";
+			std::cout << "myvector contains (reverse):\n";
 			for (typename std::vector<Backward<T> >::reverse_iterator it = this->backprop.rbegin(); it != this->backprop.rend(); ++it) {
-				// std::cout << ' ' << *it << "\n";
+				std::cout << ' ' << *it << "\n";
 				(*it)();
 			}
 			std::cout << '\n';
 		}
-		Mat<T> eltmul(Mat<T>& matrix1, Mat<T>& matrix2) {
-			if (matrix1.n != matrix2.n || matrix1.d != matrix2.d) {
+		std::shared_ptr< Mat<T> > eltmul(
+			std::shared_ptr< Mat<T> > matrix1,
+			std::shared_ptr< Mat<T> > matrix2) {
+			if (matrix1->n != matrix2->n || matrix1->d != matrix2->d) {
 				throw std::invalid_argument("Matrices cannot be element-wise multiplied, they do not have the same dimensions.");
 			}
-			Mat<T> out = Mat<T>::Empty(
-				matrix1.n,
-				matrix1.d);
-			out.w = (matrix1.w.array() * matrix2.w.array()).matrix();
+			std::shared_ptr< Mat<T> > out( new Mat<T>(
+				matrix1->n,
+				matrix1->d,
+				true));
+			out->w = (matrix1->w.array() * matrix2->w.array()).matrix();
 			if (this->needs_backprop) {
 				// allocates a new backward element in the vector using these arguments:
-				this->backprop.emplace_back(&matrix1, &matrix2, &out, utils::ops::eltmul);
+				this->backprop.emplace_back(matrix1, matrix2, out, utils::ops::eltmul);
 			}
 			return out;
 		}
-		Mat<T> add(Mat<T>& matrix1, Mat<T>& matrix2) {
-			if (matrix1.n != matrix2.n || matrix1.d != matrix2.d) {
+		std::shared_ptr< Mat<T> > add(
+				std::shared_ptr< Mat<T> > matrix1,
+				std::shared_ptr< Mat<T> > matrix2) {
+			if (matrix1->n != matrix2->n || matrix1->d != matrix2->d) {
 				throw std::invalid_argument("Matrices cannot be added, they do not have the same dimensions.");
 			}
-			Mat<T> out = Mat<T>::Empty(
-				matrix1.n,
-				matrix1.d);
-			out.w = matrix1.w + matrix2.w;
+			std::shared_ptr< Mat<T> > out(new Mat<T>(
+				matrix1->n,
+				matrix1->d,
+				true));
+			out->w = matrix1->w + matrix2->w;
 			if (this->needs_backprop) {
 				// allocates a new backward element in the vector using these arguments:
-				this->backprop.emplace_back(&matrix1, &matrix2, &out, utils::ops::add);
+				this->backprop.emplace_back(matrix1, matrix2, out, utils::ops::add);
 			}
 			return out;
 		}
-		Mat<T> sigmoid(Mat<T>& matrix1) {
-			Mat<T> out = Mat<T>::Empty(matrix1.n, matrix1.d);
-			out.w = matrix1.w.unaryExpr(utils::sigmoid_operator<T>());
+		std::shared_ptr< Mat<T> > sigmoid(std::shared_ptr< Mat<T> > matrix1) {
+			std::shared_ptr< Mat<T> > out(new Mat<T>(matrix1->n, matrix1->d, true));
+			out->w = matrix1->w.unaryExpr(utils::sigmoid_operator<T>());
 			if (this->needs_backprop) {
 				// allocates a new backward element in the vector using these arguments:
-				this->backprop.emplace_back(&matrix1, &out, utils::ops::sigmoid);
+				this->backprop.emplace_back(matrix1, out, utils::ops::sigmoid);
 			}
 			return out;
 		}
-		Mat<T> tanh(Mat<T>& matrix1) {
-			Mat<T> out = Mat<T>::Empty(matrix1.n, matrix1.d);
-			out.w = matrix1.w.unaryExpr(utils::tanh_operator<T>());
+		std::shared_ptr< Mat<T> > tanh(std::shared_ptr< Mat<T> > matrix1) {
+			std::shared_ptr< Mat<T> > out(new Mat<T>(matrix1->n, matrix1->d, true));
+			out->w = matrix1->w.unaryExpr(utils::tanh_operator<T>());
 			if (this->needs_backprop) {
 				// allocates a new backward element in the vector using these arguments:
-				this->backprop.emplace_back(&matrix1, &out, utils::ops::tanh);
+				this->backprop.emplace_back(matrix1, out, utils::ops::tanh);
 			}
 			return out;
 		}
-		Mat<T> relu(Mat<T>& matrix1) {
-			Mat<T> out = Mat<T>::Empty(matrix1.n, matrix1.d);
-			out.w = matrix1.w.unaryExpr(utils::relu_operator<T>());
+		std::shared_ptr< Mat<T> > relu(std::shared_ptr< Mat<T> > matrix1) {
+			std::shared_ptr< Mat<T> > out(new Mat<T>(
+				matrix1->n,
+				matrix1->d,
+				true));
+			out->w = matrix1.w.unaryExpr(utils::relu_operator<T>());
 			if (this->needs_backprop) {
 				// allocates a new backward element in the vector using these arguments:
-				this->backprop.emplace_back(&matrix1, &out, utils::ops::relu);
+				this->backprop.emplace_back(matrix1, out, utils::ops::relu);
 			}
 			return out;
 		}
-		Mat<T> mul(Mat<T>& matrix1, Mat<T>& matrix2) {
-			if (matrix1.d != matrix2.n) {
+		std::shared_ptr< Mat<T> > mul(
+			std::shared_ptr< Mat<T> > matrix1,
+			std::shared_ptr< Mat<T> > matrix2) {
+			if (matrix1->d != matrix2->n) {
 				throw std::invalid_argument("matmul dimensions misaligned.");
 			}
-			Mat<T> out = Mat<T>::Empty(
-				matrix1.n,
-				matrix2.d);
-			out.w = matrix1.w * matrix2.w;
+			std::shared_ptr< Mat<T> > out(new Mat<T>(
+				matrix1->n,
+				matrix2->d,
+				true));
+			out->w = matrix1->w * matrix2->w;
 			if (this->needs_backprop) {
 				// allocates a new backward element in the vector using these arguments:
-				this->backprop.emplace_back(&matrix1, &matrix2, &out, utils::ops::mul);
+				this->backprop.emplace_back(matrix1, matrix2, out, utils::ops::mul);
 			}
 			return out;
 		}
-		Mat<T> row_pluck(Mat<T>& matrix1, int ix) {
+		std::shared_ptr< Mat<T> > row_pluck(
+			std::shared_ptr< Mat<T> > matrix1,
+			int ix) {
         
-			Mat<T> out = Mat<T>::Empty(
-				matrix1.d,
-				1);
-			out.w = matrix1.w.row(ix).transpose();
+			std::shared_ptr< Mat<T> > out( new Mat<T>(
+				matrix1->d,
+				1,
+				true));
+			out->w = matrix1->w.row(ix).transpose();
 			if (this->needs_backprop) {
 				// allocates a new backward element in the vector using these arguments:
-				this->backprop.emplace_back(&matrix1, &out, ix, utils::ops::row_pluck);
+				this->backprop.emplace_back(matrix1, out, ix, utils::ops::row_pluck);
 			}
 			return out;
 		}
@@ -283,39 +305,51 @@ template<typename T> class Graph {
 
 typedef double REAL_t;
 
+template<typename T>
+void forward_model(Graph<T>& graph,
+	std::shared_ptr< Mat<T> > input,
+	std::shared_ptr< Mat<T> > classifier) {
+	std::shared_ptr< Mat<T> > prod( graph.mul(input, classifier) );
+	std::shared_ptr< Mat<T> > activ( graph.tanh(prod) );
+}
+
 int main() {
 	// build blank matrix of double type:
-    Mat<REAL_t> A(3, 5);
-    A.w = (A.w.array() + 1.2).matrix();
+    std::shared_ptr< Mat<REAL_t>> A(new Mat<REAL_t>(3, 5) );
+    A->w = (A->w.array() + 1.2).matrix();
 
     // build random matrix of double type with standard deviation 2:
-    Mat<REAL_t> B = Mat<REAL_t>::RandMat(A.n, A.d, 2.0);
-    Mat<REAL_t> C = Mat<REAL_t>::RandMat(A.d, 4, 2.0);
+    std::shared_ptr< Mat<REAL_t> > B(new Mat<REAL_t>(A->n, A->d, 2.0));
+    std::shared_ptr< Mat<REAL_t> > C(new Mat<REAL_t>(A->d, 4, 2.0));
 
-    A.print();
-    B.print();
+    A->print();
+    B->print();
 
     Graph<REAL_t> graph;
-	Mat<REAL_t> A_plus_B     = graph.add(A, B);
-	Mat<REAL_t> A_times_B    = graph.eltmul(A, B);
-	Mat<REAL_t> A_plus_B_sig = graph.sigmoid(A_plus_B);
-	Mat<REAL_t> A_dot_C      = graph.mul(A, C);
+	std::shared_ptr< Mat<REAL_t> > A_plus_B     = graph.add(A, B);
+	std::shared_ptr< Mat<REAL_t> > A_times_B    = graph.eltmul(A, B);
+	std::shared_ptr< Mat<REAL_t> > A_plus_B_sig = graph.sigmoid(A_plus_B);
+	std::shared_ptr< Mat<REAL_t> > A_dot_C      = graph.mul(A, C);
 
-    Mat<REAL_t> A_dot_C_tanh = graph.tanh(A_dot_C);
+    std::shared_ptr< Mat<REAL_t> > A_dot_C_tanh( graph.tanh(A_dot_C) );
 
-    A_plus_B    .print();
-    A_times_B   .print();
-    A_plus_B_sig.print();
-    A_dot_C     .print();
+    A_plus_B    ->print();
+    A_times_B   ->print();
+    A_plus_B_sig->print();
+    A_dot_C     ->print();
 
-    Mat<REAL_t> A_plucked = graph.row_pluck(A, 2);
-    A_plucked.print();
+    std::shared_ptr< Mat<REAL_t> > A_plucked(graph.row_pluck(A, 2));
+    A_plucked->print();
+    forward_model(graph, A, C);
+
+    std::shared_ptr< Mat<REAL_t> > prod(graph.mul(A, C));
+	std::shared_ptr< Mat<REAL_t> > activ(graph.tanh(prod));
 
     // add some random singularity and use exponential
     // normalization:
-    A_plucked.w(2,0) += 3.0;
-    Mat<REAL_t> A_plucked_normed = softmax(A_plucked);
-    A_plucked_normed.print();
+    A_plucked->w(2,0) += 3.0;
+    std::shared_ptr< Mat<REAL_t> > A_plucked_normed(softmax(A_plucked));
+    A_plucked_normed->print();
 
     // backpropagate to A and B
     graph.backward();

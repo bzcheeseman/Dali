@@ -23,12 +23,10 @@ namespace utils {
 	struct dtanh_operator {
 		T operator() (T x) const { return 1.0 - x*x; }
 	};
-
 	template<typename T>
 	struct exp_operator {
 		T operator() (T x) const { return std::exp(x); }
 	};
-	
 	template<typename T> void print_matrix(int n, int d, T * ptr) {
 		T * end = ptr + n * d;
 		int i = 0;
@@ -50,46 +48,6 @@ namespace utils {
 			}
 			ptr++;
 		}
-	}
-	
-	template<typename T> void fill_random(int n, T std, T * ptr) {
-		std::default_random_engine generator;
-		std::random_device rd;
-		generator.seed(rd());
-		std::normal_distribution<T> distribution(0.0,std);
-		for (T * end = ptr + n; ptr != end;ptr++) *ptr = distribution(generator);
-	}
-
-	template<typename T> T* element_sum(int n, T* ptr1, T* ptr2) {
-		T* out_array = (T * ) malloc(n * sizeof(T));
-		T* iter = out_array;
-		for (T* end = ptr1 + n; ptr1 != end; ptr1++, ptr2++, iter++) *iter = (*ptr1) + (*ptr2);
-		return out_array;
-	}
-	template<typename T> void element_sum(int n, T* ptr1, T* ptr2, T* out_array) {
-		T* iter = out_array;
-		for (T* end = ptr1 + n; ptr1 != end; ptr1++, ptr2++, iter++) *iter = (*ptr1) + (*ptr2);
-		return out_array;
-	}
-	template<typename T> T* element_mult(int n, T* ptr1, T* ptr2, T* out_array) {
-		T* iter = out_array;
-		for (T* end = ptr1 + n; ptr1 != end; ptr1++, ptr2++, iter++) *iter = (*ptr1) * (*ptr2);
-		return out_array;
-	}
-	template<typename T> void element_mult_add(int n, T* ptr1, T* ptr2, T* out_array) {
-		T* iter = out_array;
-		for (T* end = ptr1 + n; ptr1 != end; ptr1++, ptr2++, iter++) *iter += (*ptr1) * (*ptr2);
-	}
-	template<typename T> void add_inplace(int n, T* ptr1, T* ptr2) {
-		// add ptr1 to ptr2
-		T* iter = ptr2;
-		for (T* end = ptr1 + n; ptr1 != end; ptr1++, iter++) *iter += (*ptr1);
-	}
-	template<typename T> T* element_mult(int n, T* ptr1, T* ptr2) {
-		T* out_array = (T * ) malloc(n * sizeof(T));
-		T* iter = out_array;
-		for (T* end = ptr1 + n; ptr1 != end; ptr1++, ptr2++, iter++) *iter = (*ptr1) * (*ptr2);
-		return out_array;
 	}
 	namespace ops {
 		static const uint add     = 0;

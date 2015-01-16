@@ -23,8 +23,8 @@
 *.gem
 *.pem
 
-recurrentjs_cpp/Eigen
-recurrentjs_cpp/prog.o
+cpp/Eigen
+cpp/prog.o
 
 # Saves #
 #########

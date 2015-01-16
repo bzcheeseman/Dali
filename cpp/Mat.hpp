@@ -29,7 +29,18 @@ template<typename T> class Mat {
 			this->dw = eigen_mat::Zero(n,d);
 		}
 		void print () {
-			utils::print_matrix(this->n, this->d, &(this->w(0)));// std::cout << this->w << std::endl;
+			for (int i = 0; i < n ; ++i) {
+				std::cout << (i == 0 ? "[" : " ");
+				for (int j = 0; j < d; ++j) {
+					std::cout << std::fixed
+					          << std::setw( 7 ) // keep 7 digits
+					          << std::setprecision( 3 ) // use 3 decimals
+					          << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
+					          << this->w(i,j) << " ";
+				}
+				std::cout << (i == n-1 ? "]" : "\n");
+			}
+			std::cout << std::endl;
 		}
 		~Mat() {}
 		// random matrices:
@@ -156,6 +167,12 @@ template<typename T> class Backward {
 				case utils::ops::row_pluck:
 					return "row_pluck";
 					break;
+				case utils::ops::add_broadcast:
+					return "add_broadcast";
+					break;
+				case utils::ops::eltmul_broadcast:
+					return "eltmul_broadcast";
+					break;
 				default:
 					return "?";
 					break;
@@ -167,9 +184,17 @@ template<typename T> class Backward {
 					this->matrix1->dw += this->out->dw;
 					this->matrix2->dw += this->out->dw;
 					break;
+				case utils::ops::add_broadcast:
+					this->matrix1->dw += this->out->dw;
+					this->matrix2->dw += this->out->dw.rowwise().sum();
+					break;
 				case utils::ops::eltmul:
 					this->matrix1->dw += ((this->matrix2->w).array() * (this->out->dw).array()).matrix();
 					this->matrix2->dw += ((this->matrix1->w).array() * (this->out->dw).array()).matrix();
+					break;
+				case utils::ops::eltmul_broadcast:
+					this->matrix1->dw += ((this->out->dw).array().colwise() * (this->matrix2->w).col(0).array()).matrix();
+					this->matrix2->dw += ((this->matrix1->w).array() * (this->out->dw).array()).matrix().rowwise().sum();
 					break;
 				case utils::ops::sigmoid:
 					this->matrix1->dw += (((this->out->w).array() * (1.0 - this->out->w.array())) * this->out->dw.array()).matrix();
@@ -188,7 +213,10 @@ template<typename T> class Backward {
 					this->matrix1->dw.row(this->ix) += (this->out->w.array() * this->out->dw.array()).matrix().col(0).transpose();
 					break;
 				default:
-					throw std::invalid_argument("NotImplemented: Do not know how to backpropagate for this type");
+					std::stringstream error_msg;
+					error_msg << "NotImplemented: Do not know how to backpropagate for this type => "
+					   << op_type() << " (" << this->type << ")";
+					throw std::invalid_argument(error_msg.str());
 					break;
 			}
 		}
@@ -197,7 +225,7 @@ template<typename T> class Backward {
 template<typename T>
 std::shared_ptr<Mat<T>> softmax(std::shared_ptr<Mat<T>> matrix) {
 	T layer_max = matrix->w.array().maxCoeff();
-	Array<T, Dynamic, Dynamic> exped_distributions = (matrix->w.array() - layer_max).unaryExpr(utils::exp_operator<T>());
+	Array<T, Dynamic, Dynamic> exped_distributions = (matrix->w.array() - layer_max).exp();
 	T total_distribution = exped_distributions.sum();
 	auto out = std::make_shared<Mat<T>>(
 		matrix->n,
@@ -222,9 +250,30 @@ template<typename T> class Graph {
 				(*it)();
 			}
 		}
+		shared_mat eltmul_broadcast(
+			shared_mat matrix1,
+			shared_mat matrix2) {
+			if (matrix1->n != matrix2->n || matrix2->d != 1)
+				throw std::invalid_argument("Matrices cannot be element multiplied with broadcast, they do not have the same dimensions.");
+			auto out = std::make_shared<mat>(
+				matrix1->n,
+				matrix1->d,
+				true);
+			out->w = (matrix1->w.array().colwise() * matrix2->w.col(0).array()).matrix();
+			if (this->needs_backprop)
+				// allocates a new backward element in the vector using these arguments:
+				this->backprop.emplace_back(matrix1, matrix2, out, utils::ops::eltmul_broadcast);
+			return out;
+		}
 		shared_mat eltmul(
 			shared_mat matrix1,
 			shared_mat matrix2) {
+			if (matrix1->d != matrix2->d && (matrix1->d == 1 || matrix2->d == 1)) {
+				if (matrix1->d == 1) {
+					return eltmul_broadcast(matrix2, matrix1);
+				}
+				return eltmul_broadcast(matrix1, matrix2);
+			}
 			if (matrix1->n != matrix2->n || matrix1->d != matrix2->d)
 				throw std::invalid_argument("Matrices cannot be element-wise multiplied, they do not have the same dimensions.");
 			auto out = std::make_shared<mat>(
@@ -237,9 +286,28 @@ template<typename T> class Graph {
 				this->backprop.emplace_back(matrix1, matrix2, out, utils::ops::eltmul);
 			return out;
 		}
+		shared_mat add_broadcast(shared_mat matrix1, shared_mat matrix2) {
+			// broadcast matrix 2:
+			if (matrix1->n != matrix2->n || matrix2->d != 1)
+				throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
+			auto out = std::make_shared<Mat<T>>(
+				matrix1->n,
+				matrix1->d,
+				true);
+			out->w = (matrix1->w.colwise() + matrix2->w.col(0)).matrix();
+			if (this->needs_backprop)
+				this->backprop.emplace_back(matrix1, matrix2, out, utils::ops::add_broadcast);
+			return out;
+		}
 		shared_mat add(
 				shared_mat matrix1,
 				shared_mat matrix2) {
+			if (matrix1->d != matrix2->d && (matrix1->d == 1 || matrix2->d == 1)) {
+				if (matrix1->d == 1) {
+					return add_broadcast(matrix2, matrix1);
+				}
+				return add_broadcast(matrix1, matrix2);
+			}
 			if (matrix1->n != matrix2->n || matrix1->d != matrix2->d)
 				throw std::invalid_argument("Matrices cannot be added, they do not have the same dimensions.");
 			auto out = std::make_shared<Mat<T>>(
@@ -298,6 +366,21 @@ template<typename T> class Graph {
 			if (this->needs_backprop)
 				// allocates a new backward element in the vector using these arguments:
 				this->backprop.emplace_back(matrix1, matrix2, out, utils::ops::mul);
+			return out;
+		}
+		shared_mat rows_pluck(
+			shared_mat matrix1,
+			std::vector<int> indices
+			) {
+			auto out = std::make_shared<mat>(
+				matrix1->d,
+				indices.size(),
+				true);
+			int offset = 0;
+			for (auto& i : indices) {
+				out->w.col(offset) = matrix1->w.row(i).transpose();
+				++offset;
+			}
 			return out;
 		}
 		shared_mat row_pluck(

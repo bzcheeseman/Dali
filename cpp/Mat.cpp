@@ -2,15 +2,6 @@
 #include "Mat.hpp"
 
 template<typename T>
-void forward_model(
-	Graph<T>& graph,
-	std::shared_ptr<Mat<T>> input,
-	std::shared_ptr<Mat<T>> classifier) {
-	std::shared_ptr<Mat<T>> prod( graph.mul(input, classifier) );
-	std::shared_ptr<Mat<T>> activ( graph.tanh(prod) );
-}
-
-template<typename T>
 class LSTM {
     /*
     Initialize LSTM Layer à la Andrej Kaparthy.
@@ -54,21 +45,22 @@ class LSTM {
 
     void create_variables() {
         using std::make_shared;
+        T std = 0.08;
         // initialize the parameters:
-        Wix = make_shared<mat>(hidden_size, input_size, 0.08);
-        Wih = make_shared<mat>(hidden_size, hidden_size, 0.08);
+        Wix = make_shared<mat>(hidden_size, input_size, std);
+        Wih = make_shared<mat>(hidden_size, hidden_size, std);
         bi  = make_shared<mat>(hidden_size, 1);
 
-        Wfx = make_shared<mat>(hidden_size, input_size, 0.08);
-        Wfh = make_shared<mat>(hidden_size, hidden_size, 0.08);
+        Wfx = make_shared<mat>(hidden_size, input_size, std);
+        Wfh = make_shared<mat>(hidden_size, hidden_size, std);
         bf  = make_shared<mat>(hidden_size, 1);
 
-        Wox = make_shared<mat>(hidden_size, input_size, 0.08);
-        Woh = make_shared<mat>(hidden_size, hidden_size, 0.08);
+        Wox = make_shared<mat>(hidden_size, input_size, std);
+        Woh = make_shared<mat>(hidden_size, hidden_size, std);
         bo  = make_shared<mat>(hidden_size, 1);
 
-        Wcx = make_shared<mat>(hidden_size, input_size, 0.08);
-        Wch = make_shared<mat>(hidden_size, hidden_size, 0.08);
+        Wcx = make_shared<mat>(hidden_size, input_size, std);
+        Wch = make_shared<mat>(hidden_size, hidden_size, std);
         bc  = make_shared<mat>(hidden_size, 1);
     }
 
@@ -91,22 +83,22 @@ class LSTM {
             // input gate:
             auto h0 = G.mul(Wix, input_vector);
             auto h1 = G.mul(Wih, hidden_prev);
-            auto input_gate = G.sigmoid( G.add( G.add(h0, h1), bi));
+            auto input_gate = G.sigmoid( G.add_broadcast( G.add(h0, h1), bi));
 
             // forget gate
             auto h2 = G.mul(Wfx, input_vector);
             auto h3 = G.mul(Wfh, hidden_prev);
-            auto forget_gate = G.sigmoid( G.add( G.add(h2, h3), bf));
+            auto forget_gate = G.sigmoid( G.add_broadcast( G.add(h2, h3), bf));
 
             // output gate
             auto h4 = G.mul(Wox, input_vector);
             auto h5 = G.mul(Woh, hidden_prev);
-            auto output_gate = G.sigmoid( G.add( G.add(h4, h5), bo));
+            auto output_gate = G.sigmoid( G.add_broadcast( G.add(h4, h5), bo));
 
             // write operation on cells
             auto h6 = G.mul(Wcx, input_vector);
             auto h7 = G.mul(Wch, hidden_prev);
-            auto cell_write = G.tanh( G.add( G.add(h6, h7), bc));
+            auto cell_write = G.tanh( G.add_broadcast( G.add(h6, h7), bc));
 
             // compute new cell activation
             auto retain_cell = G.eltmul(forget_gate, cell_prev); // what do we keep from cell
@@ -122,17 +114,21 @@ class LSTM {
 
 int main() {
     using std::make_shared;
-	typedef double REAL_t;
+    using std::cout;
+    using std::endl;
+	typedef float REAL_t;
 	typedef Mat<REAL_t> mat;
 
 	// build blank matrix of double type:
     auto A = make_shared<mat>(3, 5);
-    A->w = (A->w.array() + 1.2).matrix();
+    A->w = (A->w.array() + ((REAL_t) 1.2)).matrix();
     // build random matrix of double type with standard deviation 2:
-    auto B = make_shared<mat>(A->n, A->d, 2.0);
-    auto C = make_shared<mat>(A->d, 4,    2.0);
+    auto B = make_shared<mat>(A->n, A->d, (REAL_t) 2.0);
+    auto C = make_shared<mat>(A->d, 4,    (REAL_t) 2.0);
 
+    cout << "A                = " << endl;
     A->print();
+    cout << "B                = " << endl;
     B->print();
 
     Graph<REAL_t>       graph;
@@ -141,50 +137,65 @@ int main() {
     auto A_dot_C_tanh = graph.tanh( graph.mul(A, C) );
     auto A_plucked    = graph.row_pluck(A, 2);
     
+    cout << "A * B            =" << endl;
     A_times_B   ->print();
+    cout << "sigmoid( A + B ) =" << endl;
     A_plus_B_sig->print();
+    cout << "tanh( A dot C )  =" << endl;
     A_dot_C_tanh->print();
+    cout << "A[2,:]           =" << endl;
     A_plucked   ->print();
-    
-    forward_model(graph, A, C);
 
     auto prod  = graph.mul(A, C);
 	auto activ = graph.tanh(prod);
 
     // add some random singularity and use exponential
     // normalization:
-    A_plucked->w(2,0) += 3.0;
+    A_plucked->w(2,0) += (REAL_t) 3.0;
     auto A_plucked_normed = softmax(A_plucked);
+    cout << "softmax(A[2,:]) + eps =" << endl;
     A_plucked_normed->print();
-
-    // backpropagate to A and B
-    graph.backward();
 
     REAL_t regc = 0.000001; //L2 regularization strength
     REAL_t learning_rate = 0.01;// learning rate
     REAL_t clipval = 5.0;//
 
-    Solver<REAL_t> solver(0.95, 1e-6, clipval);
-
+    Solver<REAL_t> solver((REAL_t) 0.95, (REAL_t) 1e-6, clipval);
     auto model = std::vector<std::shared_ptr<mat>>();
 
     model.push_back(A);
     model.push_back(B);
-
     solver.step(model, learning_rate, regc);
+    // ======== END BASICS =========
 
+    // ======== ENTER LSTM =========
     LSTM<REAL_t> lstm(20, 30);
+    int batchsize = 25;
 
-    auto input_vector = make_shared<mat>(lstm.input_size,  1, 2.0);
+
+    // words we care about (their indices:)
+    std::vector<int> indices = {0, 1, 5, 2, 1, 2, 3};
+
+    // some embedding matrix (hopefully one day)
+    auto input_embed  = make_shared<mat>(1000, lstm.input_size, (REAL_t) 2.0);
+
+    // what we've extracted so far:
+    auto plucked = graph.rows_pluck(input_embed, indices);
+
+    // pass this into the meatgrinder:
     auto cell_prev    = make_shared<mat>(lstm.hidden_size, 1);
     auto hidden_prev  = make_shared<mat>(lstm.hidden_size, 1);
+    // while initially the cell_prev and hidden_prev are vectors
+    // they get broadcasted down the pipe into the right sizes
+    auto cell_hidden  = lstm.forward(graph, plucked, cell_prev, hidden_prev);
 
-    // to use more input vectors need to fix broadcast pattern
-    // on vectors summed to matrices.
-    
-    auto cell_hidden  = lstm.forward(graph, input_vector, cell_prev, hidden_prev);
-
+    cout << "LSTM of plucked rows =>" << endl;
     cell_hidden.first->print();
+
+    // backpropagate
+    graph.backward();
+
+    // ========  END LSTM  =========
 
     return 0;
 }

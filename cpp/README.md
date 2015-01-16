@@ -3,6 +3,15 @@ RecurrentJS in C++
 
 This is an reimagination of [Andrej Kaparthy](http://cs.stanford.edu/people/karpathy/)'s recurrentjs in C++. It has the same API names and structure (so far), but the backbones are using **Eigen** and C++11's standard library. Callbacks are gone (following the Python implementation of the same idea), leaving a one stop shop for all backprop operations handled by `Backward`.
 
+
+### Features
+
+* Automatic differentiation
+* Matrix Broadcasting (elementwise multiply, elementwise product)
+* Multiple index slicing
+* Speed
+* Clarity of API
+
 ### Installation
 	
 Grad hold of the latest copy of **Eigen** (no linking, installation, or nothing, just download and you're ready to go). Then:

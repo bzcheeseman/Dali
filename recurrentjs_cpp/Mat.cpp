@@ -1,40 +1,63 @@
 #include "utils.hpp"
-// Matrix class (with random initializer):
-
+#include <Eigen>
+using namespace Eigen;
 template<typename T> class Mat {
 	public:
-		int n;
-		int d;
-		T * w;
-		T * dw;
+		int n; int d;
+		Matrix<T, Dynamic, Dynamic> w;
+		Matrix<T, Dynamic, Dynamic> dw;
 
 		Mat (int n, int d) {
 			this->n = n;
 			this->d = d;
-			this->w = (T *) calloc(n * d, sizeof(T));
-			this->dw = (T *) calloc(n * d, sizeof(T));
+			this->w = Matrix<T, Dynamic, Dynamic>::Zero(n,d);
+			this->dw = Matrix<T, Dynamic, Dynamic>::Zero(n,d);
 		}
+
+		Mat (int n, int d, bool empty) {
+			this->n = n;
+			this->d = d;
+			if (empty) {
+				this->w = Matrix<T, Dynamic, Dynamic>(n,d);
+				this->dw = Matrix<T, Dynamic, Dynamic>(n,d);
+			} else {
+				this->w = Matrix<T, Dynamic, Dynamic>::Zero(n,d);
+				this->dw = Matrix<T, Dynamic, Dynamic>::Zero(n,d);
+			}
+		}
+
 		Mat (int n, int d, T* w) {
 			this->n = n;
 			this->d = d;
 			this->w = w;
-			this->dw = (T *) calloc(n * d, sizeof(T));
+			this->dw = Matrix<T, Dynamic, Dynamic>::Zero(n,d);
 		}
-		void print () {utils::print_matrix(this->n, this->d, this->w);}
+		void print () {std::cout << this->w << std::endl;}
 		~Mat() {
-			free(this->w);
-			free(this->dw);
 		}
 		// random matrices:
 		Mat (int n, int d, T std) {
 			this->n = n;
 			this->d = d;
-			this->w = (T *) malloc(n * d * sizeof(T));
-			utils::fill_random(n * d, std, this->w);
-			this->dw = (T *) calloc(n * d, sizeof(T));
+			std::default_random_engine generator;
+			std::normal_distribution<T> distribution(0.0, std);
+			std::random_device rd;
+			generator.seed(rd());
+			auto randn = [&] (int) {return distribution(generator);};
+			this->w = Matrix<T, Dynamic, Dynamic>::NullaryExpr(n,d, randn);
+			this->dw = Matrix<T, Dynamic, Dynamic>(n,d);
 		}
 		static Mat RandMat(int n, int d, T std) {
+			// is in fact using C++ 11 's rvalue, move operator,
+			// so no copy is made.
 			return Mat(n, d, std);
+		}
+
+		static Mat Empty(int n, int d) {
+			// use an empty matrix and modify
+			// it so as to not incur the filling
+			// with zeros cost.
+			return Mat(n, d, true);
 		}
 
 		friend std::ostream& operator<<(std::ostream& strm, const Mat& a) {
@@ -45,19 +68,25 @@ template<typename T> class Mat {
 		}
 };
 
-
-
 template<typename T> class Backward {
 	Mat<T> * matrix1;
 	Mat<T> * matrix2;
 	Mat<T> * out;
+	int ix;
 	uint type;
 	public:
-
 		Backward (Mat<T> * matrix1, Mat<T> * out, uint type) {
 			this->matrix1 = matrix1;
+			this->matrix2 = NULL;
 			this->out = out;
 			this->type = type;
+		}
+		Backward (Mat<T> * matrix1, Mat<T> * out, int index, uint type) {
+			this->matrix1 = matrix1;
+			this->matrix2 = NULL;
+			this->out = out;
+			this->type = type;
+			this->ix = index;
 		}
 		Backward (Mat<T> * matrix1, Mat<T> * matrix2, Mat<T> * out, uint type) {
 			this->matrix1 = matrix1;
@@ -67,93 +96,187 @@ template<typename T> class Backward {
 		}
 
 		friend std::ostream& operator<<(std::ostream& strm, const Backward<T>& a) {
-			return strm << "<#Backward matrix = " << *(a.matrix1) << ", out = " << *(a.out) << ">";
+			if (a.matrix2 != NULL) {
+				return strm << "<#Backward matrix1 = " << *(a.matrix1) << ", matrix2 = " << *(a.matrix2) << ", out = " << *(a.out) << ", type = "<< a.op_type() << ">";
+			} else {
+				return strm << "<#Backward matrix = " << *(a.matrix1) << ", out = " << *(a.out) << ", type = "<< a.op_type() << ">";
+			}
+			
 		}
 		operator std::string() const {
-			return "<#Backward matrix = " << *(this->matrix1) << ", out = " << *(this->out) << ">";
+			if (this->matrix2 != NULL) {
+				return "<#Backward matrix = " << *(this->matrix1) << ", matrix2 = " << *(this->matrix2) << ", out = " << *(this->out) << ", type = "<< this->op_type() << ">";
+			} else {
+				return "<#Backward matrix = " << *(this->matrix1) << ", out = " << *(this->out) << ", type = "<< this->op_type() << ">";
+			}
+		}
+
+		std::string op_type () const {
+			switch(this->type) {
+				case utils::ops::add:
+					return "add";
+					break;
+				case utils::ops::eltmul:
+					return "eltmul";
+					break;
+				case utils::ops::tanh:
+					return "tanh";
+					break;
+				case utils::ops::sigmoid:
+					return "sigmoid";
+					break;
+				case utils::ops::relu:
+					return "relu";
+					break;
+				case utils::ops::mul:
+					return "mul";
+					break;
+				case utils::ops::row_pluck:
+					return "row_pluck";
+					break;
+				default:
+					return "?";
+					break;
+			}
+		}
+
+		void operator ()() {
+			switch(this->type) {
+				case utils::ops::add:
+					this->matrix1->dw += this->out->dw;
+					this->matrix2->dw += this->out->dw;
+				    break;
+				case utils::ops::eltmul:
+					this->matrix1->dw += ((this->matrix2->w).array() * (this->out->dw).array()).matrix();
+					this->matrix2->dw += ((this->matrix1->w).array() * (this->out->dw).array()).matrix();
+				    break;
+				case utils::ops::sigmoid:
+					this->matrix1->dw += (((this->out->w).array() * (1.0 - this->out->w.array())) * this->out->dw.array()).matrix();
+					break;
+				case utils::ops::mul:
+					this->matrix1->dw += (this->out->dw) * ((this->matrix2->w).transpose());
+					this->matrix2->dw += this->matrix1->w.transpose() * (this->out->dw);
+					break;
+				case utils::ops::relu:
+					this->matrix1->dw += (this->out->w.unaryExpr(utils::sign_operator<T>()).array() * this->out->dw.array()).matrix();
+					break;
+				case utils::ops::tanh:
+					this->matrix1->dw += (this->out->w.unaryExpr(utils::dtanh_operator<T>()).array() * this->out->dw.array()).matrix();
+					break;
+				case utils::ops::row_pluck:
+					this->matrix1->dw.row(this->ix) += (this->out->w.array() * this->out->dw.array()).matrix().col(0).transpose();
+					break;
+				default:
+					throw std::invalid_argument("NotImplemented: Do not know how to backpropagate for this type");
+					break;
+			}
 		}
 };
+
+template<typename T>
+Mat<T> softmax(Mat<T>& matrix) {
+	T layer_max = matrix.w.array().maxCoeff();
+	Array<T, Dynamic, Dynamic> exped_distributions = (matrix.w.array() - layer_max).unaryExpr(utils::exp_operator<T>());
+	T total_distribution = exped_distributions.sum();
+	Mat<T> out = Mat<T>::Empty(matrix.n, matrix.d);
+	out.w = (exped_distributions / total_distribution).matrix();
+	return out;
+}
 
 template<typename T> class Graph {
 	bool needs_backprop;
 	std::vector<Backward<T> > backprop;
 
 	public:
-
-		Graph (bool needs_backprop) {
-			this->needs_backprop = needs_backprop;
-		}
-		Graph () {
-			this->needs_backprop = true;
-		}
+		Graph (bool needs_backprop) {this->needs_backprop = needs_backprop;}
+		Graph () {this->needs_backprop = true;}
 		void backward () {
-			// std::vector<int> myvector;
-			// for (int i=1; i<=5; i++) myvector.push_back(i);
-			std::cout << "myvector contains (reverse):";
+			// std::cout << "myvector contains (reverse):\n";
 			for (typename std::vector<Backward<T> >::reverse_iterator it = this->backprop.rbegin(); it != this->backprop.rend(); ++it) {
-				std::cout << ' ' << *it;
+				// std::cout << ' ' << *it << "\n";
+				(*it)();
 			}
 			std::cout << '\n';
 		}
-		Mat<T>* eltmul(Mat<T>& matrix1, Mat<T>& matrix2) {
+		Mat<T> eltmul(Mat<T>& matrix1, Mat<T>& matrix2) {
 			if (matrix1.n != matrix2.n || matrix1.d != matrix2.d) {
 				throw std::invalid_argument("Matrices cannot be element-wise multiplied, they do not have the same dimensions.");
 			}
-			Mat<T>* out = new Mat<T>(
+			Mat<T> out = Mat<T>::Empty(
 				matrix1.n,
-				matrix1.d,
-				utils::element_mult(
-					matrix1.n * matrix1.d,
-					matrix1.w,
-					matrix2.w)
-				);
-
+				matrix1.d);
+			out.w = (matrix1.w.array() * matrix2.w.array()).matrix();
 			if (this->needs_backprop) {
 				// allocates a new backward element in the vector using these arguments:
-				this->backprop.emplace_back(&matrix1, &matrix2, out, utils::ops::eltmul);
+				this->backprop.emplace_back(&matrix1, &matrix2, &out, utils::ops::eltmul);
 			}
+			return out;
 		}
-		Mat<T>* add(Mat<T>& matrix1, Mat<T>& matrix2) {
+		Mat<T> add(Mat<T>& matrix1, Mat<T>& matrix2) {
 			if (matrix1.n != matrix2.n || matrix1.d != matrix2.d) {
 				throw std::invalid_argument("Matrices cannot be added, they do not have the same dimensions.");
 			}
-			Mat<T>* out = new Mat<T>(
+			Mat<T> out = Mat<T>::Empty(
 				matrix1.n,
-				matrix1.d,
-				utils::element_sum(
-					matrix1.n * matrix1.d,
-					matrix1.w,
-					matrix2.w)
-				);
-
+				matrix1.d);
+			out.w = matrix1.w + matrix2.w;
 			if (this->needs_backprop) {
 				// allocates a new backward element in the vector using these arguments:
-				this->backprop.emplace_back(&matrix1, out, utils::ops::add);
-				this->backprop.emplace_back(&matrix2, out, utils::ops::add);
+				this->backprop.emplace_back(&matrix1, &matrix2, &out, utils::ops::add);
 			}
-
 			return out;
 		}
-
-		Mat<T>* mul(Mat<T>& matrix1, Mat<T>& matrix2) {
+		Mat<T> sigmoid(Mat<T>& matrix1) {
+			Mat<T> out = Mat<T>::Empty(matrix1.n, matrix1.d);
+			out.w = matrix1.w.unaryExpr(utils::sigmoid_operator<T>());
+			if (this->needs_backprop) {
+				// allocates a new backward element in the vector using these arguments:
+				this->backprop.emplace_back(&matrix1, &out, utils::ops::sigmoid);
+			}
+			return out;
+		}
+		Mat<T> tanh(Mat<T>& matrix1) {
+			Mat<T> out = Mat<T>::Empty(matrix1.n, matrix1.d);
+			out.w = matrix1.w.unaryExpr(utils::tanh_operator<T>());
+			if (this->needs_backprop) {
+				// allocates a new backward element in the vector using these arguments:
+				this->backprop.emplace_back(&matrix1, &out, utils::ops::tanh);
+			}
+			return out;
+		}
+		Mat<T> relu(Mat<T>& matrix1) {
+			Mat<T> out = Mat<T>::Empty(matrix1.n, matrix1.d);
+			out.w = matrix1.w.unaryExpr(utils::relu_operator<T>());
+			if (this->needs_backprop) {
+				// allocates a new backward element in the vector using these arguments:
+				this->backprop.emplace_back(&matrix1, &out, utils::ops::relu);
+			}
+			return out;
+		}
+		Mat<T> mul(Mat<T>& matrix1, Mat<T>& matrix2) {
 			if (matrix1.d != matrix2.n) {
 				throw std::invalid_argument("matmul dimensions misaligned.");
 			}
-			// TODO: use eigen for these matrix operations:
-			Mat<T>* out = new Mat<T>(
+			Mat<T> out = Mat<T>::Empty(
 				matrix1.n,
-				matrix1.d,
-				utils::matrix_dot_product(
-					matrix1.n * matrix1.d,
-					matrix1.w,
-					matrix2.w)
-				);
-
+				matrix2.d);
+			out.w = matrix1.w * matrix2.w;
 			if (this->needs_backprop) {
 				// allocates a new backward element in the vector using these arguments:
-				this->backprop.emplace_back(&matrix1, &matrix2, out, utils::ops::mul);
+				this->backprop.emplace_back(&matrix1, &matrix2, &out, utils::ops::mul);
 			}
-
+			return out;
+		}
+		Mat<T> row_pluck(Mat<T>& matrix1, int ix) {
+        
+			Mat<T> out = Mat<T>::Empty(
+				matrix1.d,
+				1);
+			out.w = matrix1.w.row(ix).transpose();
+			if (this->needs_backprop) {
+				// allocates a new backward element in the vector using these arguments:
+				this->backprop.emplace_back(&matrix1, &out, ix, utils::ops::row_pluck);
+			}
 			return out;
 		}
 };
@@ -162,19 +285,40 @@ typedef double REAL_t;
 
 int main() {
 	// build blank matrix of double type:
-    Mat<REAL_t> mymatrix(3,5);
-    // build random matrix of REAL_t type with standard deviation 2:
-    Mat<REAL_t> mymatrix2 = Mat<REAL_t>::RandMat(3, 5, 2.0);
-    mymatrix2.print();
-    mymatrix.print();
+    Mat<REAL_t> A(3, 5);
+    A.w = (A.w.array() + 1.2).matrix();
 
-    Graph<REAL_t> mygraph;
+    // build random matrix of double type with standard deviation 2:
+    Mat<REAL_t> B = Mat<REAL_t>::RandMat(A.n, A.d, 2.0);
+    Mat<REAL_t> C = Mat<REAL_t>::RandMat(A.d, 4, 2.0);
 
-    std::unique_ptr< Mat<REAL_t> > thesum( mygraph.add(mymatrix, mymatrix2) );
+    A.print();
+    B.print();
 
-    thesum->print();
+    Graph<REAL_t> graph;
+	Mat<REAL_t> A_plus_B     = graph.add(A, B);
+	Mat<REAL_t> A_times_B    = graph.eltmul(A, B);
+	Mat<REAL_t> A_plus_B_sig = graph.sigmoid(A_plus_B);
+	Mat<REAL_t> A_dot_C      = graph.mul(A, C);
 
-    mygraph.backward();
+    Mat<REAL_t> A_dot_C_tanh = graph.tanh(A_dot_C);
+
+    A_plus_B    .print();
+    A_times_B   .print();
+    A_plus_B_sig.print();
+    A_dot_C     .print();
+
+    Mat<REAL_t> A_plucked = graph.row_pluck(A, 2);
+    A_plucked.print();
+
+    // add some random singularity and use exponential
+    // normalization:
+    A_plucked.w(2,0) += 3.0;
+    Mat<REAL_t> A_plucked_normed = softmax(A_plucked);
+    A_plucked_normed.print();
+
+    // backpropagate to A and B
+    graph.backward();
 
     return 0;
 }

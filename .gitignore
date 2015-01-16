@@ -23,6 +23,9 @@
 *.gem
 *.pem
 
+recurrentjs_cpp/Eigen
+recurrentjs_cpp/prog
+
 # Saves #
 #########
 saves/*

@@ -2,8 +2,33 @@
 #include <iomanip>
 #include <random>
 
-namespace utils
-{
+namespace utils {
+	template<typename T>
+	struct sigmoid_operator {
+		double operator() (T x) const { return 1.0 / (1.0 + exp(-x)); }
+	};
+	template<typename T>
+	struct tanh_operator {
+		double operator() (T x) const { return std::tanh(x); }
+	};
+	template<typename T>
+	struct relu_operator {
+		double operator() (T x) const { return std::max(x, 0.0); }
+	};
+	template<typename T>
+	struct sign_operator {
+		T operator() (T x) const { return x > 0.0 ? 1.0 : 0.0; }
+	};
+	template<typename T>
+	struct dtanh_operator {
+		T operator() (T x) const { return 1.0 - x*x; }
+	};
+
+	template<typename T>
+	struct exp_operator {
+		T operator() (T x) const { return std::exp(x); }
+	};
+	
 	template<typename T> void print_matrix(int n, int d, T * ptr) {
 		T * end = ptr + n * d;
 		int i = 0;
@@ -26,6 +51,7 @@ namespace utils
 			ptr++;
 		}
 	}
+	
 	template<typename T> void fill_random(int n, T std, T * ptr) {
 		std::default_random_engine generator;
 		std::random_device rd;
@@ -40,6 +66,25 @@ namespace utils
 		for (T* end = ptr1 + n; ptr1 != end; ptr1++, ptr2++, iter++) *iter = (*ptr1) + (*ptr2);
 		return out_array;
 	}
+	template<typename T> void element_sum(int n, T* ptr1, T* ptr2, T* out_array) {
+		T* iter = out_array;
+		for (T* end = ptr1 + n; ptr1 != end; ptr1++, ptr2++, iter++) *iter = (*ptr1) + (*ptr2);
+		return out_array;
+	}
+	template<typename T> T* element_mult(int n, T* ptr1, T* ptr2, T* out_array) {
+		T* iter = out_array;
+		for (T* end = ptr1 + n; ptr1 != end; ptr1++, ptr2++, iter++) *iter = (*ptr1) * (*ptr2);
+		return out_array;
+	}
+	template<typename T> void element_mult_add(int n, T* ptr1, T* ptr2, T* out_array) {
+		T* iter = out_array;
+		for (T* end = ptr1 + n; ptr1 != end; ptr1++, ptr2++, iter++) *iter += (*ptr1) * (*ptr2);
+	}
+	template<typename T> void add_inplace(int n, T* ptr1, T* ptr2) {
+		// add ptr1 to ptr2
+		T* iter = ptr2;
+		for (T* end = ptr1 + n; ptr1 != end; ptr1++, iter++) *iter += (*ptr1);
+	}
 	template<typename T> T* element_mult(int n, T* ptr1, T* ptr2) {
 		T* out_array = (T * ) malloc(n * sizeof(T));
 		T* iter = out_array;
@@ -52,5 +97,7 @@ namespace utils
 		static const uint sigmoid = 2;
 		static const uint tanh    = 3;
 		static const uint mul     = 4;
+		static const uint relu    = 5;
+		static const uint row_pluck = 6;
 	}
 }

@@ -24,7 +24,7 @@
 *.pem
 
 recurrentjs_cpp/Eigen
-recurrentjs_cpp/prog
+recurrentjs_cpp/prog.o
 
 # Saves #
 #########

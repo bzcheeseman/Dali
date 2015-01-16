@@ -1,6 +1,10 @@
+#ifndef RECURRENT_MAT_UTILS_H
+#define RECURRENT_MAT_UTILS_H
+
 #include <iostream>
 #include <iomanip>
 #include <random>
+// #include <time>
 namespace utils {
 	template<typename T>
 	struct sigmoid_operator {
@@ -26,6 +30,31 @@ namespace utils {
 	struct exp_operator {
 		T operator() (T x) const { return std::exp(x); }
 	};
+	template<typename T>
+	struct squared_operator {
+		T operator() (T x) const { return x * x; }
+	};
+	template<typename T>
+	struct clip_operator {
+		T min;
+		T max;
+		clip_operator(T _min, T _max) : min(_min), max(_max) {};
+		T operator() (T x) const { return (x < min) ? min : (x > max ? max : x); }
+	};
+	template <class T> inline void hash_combine(std::size_t & seed, const T & v) {
+	  std::hash<T> hasher;
+	  seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+	}
+	std::size_t get_random_id() {
+		std::size_t seed = 0;
+		std::default_random_engine generator;
+		std::random_device rd;
+		std::uniform_int_distribution<long> randint(0, std::numeric_limits<long>::max());
+		generator.seed(rd());
+		hash_combine(seed, randint(generator));
+		hash_combine(seed, std::time(NULL));
+		return seed;
+	}
 	template<typename T> void print_matrix(int n, int d, T * ptr) {
 		T * end = ptr + n * d;
 		int i = 0;
@@ -57,3 +86,4 @@ namespace utils {
 		static const uint row_pluck = 6;
 	}
 }
+#endif

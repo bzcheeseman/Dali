@@ -71,6 +71,6 @@ One potential area of concern is during multithreaded code where shared_ptr will
 Future steps
 ------------
 
-* Working LSTM example, doing character reading from the same Paul Graham startup wisdom corpus. 
+* Make LSTM do character reading from the same Paul Graham startup wisdom corpus. 
 * parallelized code
 * Adagrad / Adadelta

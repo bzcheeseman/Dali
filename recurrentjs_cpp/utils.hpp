@@ -1,7 +1,6 @@
 #include <iostream>
 #include <iomanip>
 #include <random>
-
 namespace utils {
 	template<typename T>
 	struct sigmoid_operator {
@@ -43,9 +42,8 @@ namespace utils {
 			} else {
 				std::cout << " "; // or add a space between numbers
 			}
-			if (i % d == 0 && i < n * d) {
+			if (i % d == 0 && i < n * d)
 				std::cout << "\n "; // skip a line between rows
-			}
 			ptr++;
 		}
 	}

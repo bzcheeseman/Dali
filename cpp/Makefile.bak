@@ -9,4 +9,4 @@ all:
 	$(CC) -o app.o main.o utils.o Mat.o Layers.o
 
 program:
-	$(CC) -I Eigen -std=c++11 main.cpp -o main.o utils.o Mat.o Layers.o
+	$(CC) -I Eigen -std=c++11 main.cpp -o main.o utils.o Mat.o Layers.o# DO NOT DELETE

@@ -1,22 +1,19 @@
-#ifndef RECURRENT_MAT_UTILS_H
-#define RECURRENT_MAT_UTILS_H
-
 #include <iostream>
 #include <iomanip>
 #include <random>
-// #include <time>
+
 namespace utils {
 	template<typename T>
 	struct sigmoid_operator {
-		double operator() (T x) const { return 1.0 / (1.0 + exp(-x)); }
+		T operator() (T x) const { return 1.0 / (1.0 + exp(-x)); }
 	};
 	template<typename T>
 	struct tanh_operator {
-		double operator() (T x) const { return std::tanh(x); }
+		T operator() (T x) const { return std::tanh(x); }
 	};
 	template<typename T>
 	struct relu_operator {
-		double operator() (T x) const { return std::max(x, 0.0); }
+		T operator() (T x) const { return std::max(x, (T) 0.0); }
 	};
 	template<typename T>
 	struct sign_operator {
@@ -62,5 +59,21 @@ namespace utils {
 		static const uint add_broadcast    = 7;
 		static const uint eltmul_broadcast = 8;
 	}
+
+	template struct sigmoid_operator<float>;
+	template struct tanh_operator<float>;
+	template struct relu_operator<float>;
+	template struct sign_operator<float>;
+	template struct dtanh_operator<float>;
+	template struct squared_operator<float>;
+	template struct clip_operator<float>;
+
+	template struct sigmoid_operator<double>;
+	template struct tanh_operator<double>;
+	template struct relu_operator<double>;
+	template struct sign_operator<double>;
+	template struct dtanh_operator<double>;
+	template struct squared_operator<double>;
+	template struct clip_operator<double>;
 }
-#endif
+

@@ -76,7 +76,6 @@ both the backpropagation `Backward` classes that keep track of previous memory u
 
 One potential area of concern is during multithreaded code where shared_ptr will need to keep track of updates across threads. If this is the case, then perhaps some better bookkeeping will need to happen to ensure that shared memory across threads isn't garbage collected by other threads. Hopefully this won't happen since the `std:shared_ptr`s will only be scoped outside the main threading loop.
 
-
 Future steps
 ------------
 

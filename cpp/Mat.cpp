@@ -163,36 +163,36 @@ template<typename T>
 void Backward<T>::operator ()() {
 	switch(this->type) {
 		case utils::ops::add:
-			this->matrix1->dw += this->out->dw;
-			this->matrix2->dw += this->out->dw;
+			this->matrix1->dw.noalias() += this->out->dw;
+			this->matrix2->dw.noalias() += this->out->dw;
 			break;
 		case utils::ops::add_broadcast:
-			this->matrix1->dw += this->out->dw;
-			this->matrix2->dw += this->out->dw.rowwise().sum();
+			this->matrix1->dw.noalias() += this->out->dw;
+			this->matrix2->dw.noalias() += this->out->dw.rowwise().sum();
 			break;
 		case utils::ops::eltmul:
-			this->matrix1->dw += ((this->matrix2->w).array() * (this->out->dw).array()).matrix();
-			this->matrix2->dw += ((this->matrix1->w).array() * (this->out->dw).array()).matrix();
+			this->matrix1->dw.noalias() += ((this->matrix2->w).array() * (this->out->dw).array()).matrix();
+			this->matrix2->dw.noalias() += ((this->matrix1->w).array() * (this->out->dw).array()).matrix();
 			break;
 		case utils::ops::eltmul_broadcast:
-			this->matrix1->dw += ((this->out->dw).array().colwise() * (this->matrix2->w).col(0).array()).matrix();
-			this->matrix2->dw += ((this->matrix1->w).array() * (this->out->dw).array()).matrix().rowwise().sum();
+			this->matrix1->dw.noalias() += ((this->out->dw).array().colwise() * (this->matrix2->w).col(0).array()).matrix();
+			this->matrix2->dw.noalias() += ((this->matrix1->w).array() * (this->out->dw).array()).matrix().rowwise().sum();
 			break;
 		case utils::ops::sigmoid:
-			this->matrix1->dw += (((this->out->w).array() * (1.0 - this->out->w.array())) * this->out->dw.array()).matrix();
+			this->matrix1->dw.noalias() += (((this->out->w).array() * (1.0 - this->out->w.array())) * this->out->dw.array()).matrix();
 			break;
 		case utils::ops::mul:
-			this->matrix1->dw += (this->out->dw) * ((this->matrix2->w).transpose());
-			this->matrix2->dw += this->matrix1->w.transpose() * (this->out->dw);
+			this->matrix1->dw.noalias() += (this->out->dw) * ((this->matrix2->w).transpose());
+			this->matrix2->dw.noalias() += this->matrix1->w.transpose() * (this->out->dw);
 			break;
 		case utils::ops::relu:
-			this->matrix1->dw += (this->out->w.unaryExpr(utils::sign_operator<T>()).array() * this->out->dw.array()).matrix();
+			this->matrix1->dw.noalias() += (this->out->w.unaryExpr(utils::sign_operator<T>()).array() * this->out->dw.array()).matrix();
 			break;
 		case utils::ops::tanh:
-			this->matrix1->dw += (this->out->w.unaryExpr(utils::dtanh_operator<T>()).array() * this->out->dw.array()).matrix();
+			this->matrix1->dw.noalias() += (this->out->w.unaryExpr(utils::dtanh_operator<T>()).array() * this->out->dw.array()).matrix();
 			break;
 		case utils::ops::row_pluck:
-			this->matrix1->dw.row(this->ix) += (this->out->w.array() * this->out->dw.array()).matrix().col(0).transpose();
+			this->matrix1->dw.row(this->ix).noalias() += (this->out->w.array() * this->out->dw.array()).matrix().col(0).transpose();
 			break;
 		default:
 			std::stringstream error_msg;

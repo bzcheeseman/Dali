@@ -1,6 +1,7 @@
 #ifndef RECURRENT_MAT_H
 #define RECURRENT_MAT_H
 
+
 #include "utils.h"
 #include <Eigen>
 

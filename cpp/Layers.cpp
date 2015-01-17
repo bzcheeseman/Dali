@@ -94,14 +94,45 @@ std::pair<typename LSTM<T>::shared_mat, typename LSTM<T>::shared_mat> LSTM<T>::a
     return std::pair<shared_mat,shared_mat>(cell_d, hidden_d);
 }
 
+template<typename T>
+std::pair< std::vector<typename LSTM<T>::shared_mat >, std::vector<typename LSTM<T>::shared_mat > > LSTM<T>::initial_states(std::vector<int>& hidden_sizes) {
+    std::pair< std::vector<typename LSTM<T>::shared_mat >, std::vector<typename LSTM<T>::shared_mat > > initial_state;
+    for (auto& size : hidden_sizes) {
+        initial_state.first.emplace_back(std::make_shared<typename LSTM<T>::mat>(size, 1));
+        initial_state.second.emplace_back(std::make_shared<typename LSTM<T>::mat>(size, 1));
+    }
+    return initial_state;
+}
+
+
+template<typename celltype>
+std::vector<celltype> StackedCells(const int& input_size, const std::vector<int>& hidden_sizes) {
+    std::vector<celltype> cells;
+    int prev_size = input_size;
+    for (auto& size : hidden_sizes) {
+        cells.emplace_back(prev_size, size);
+        prev_size = size;
+    }
+    return cells;
+}
+
 template class Layer<float>;
 template class Layer<double>;
 
 template class RNN<float>;
 template class RNN<double>;
 
+template std::vector<RNN<float>> StackedCells <RNN<float>>(const int&, const std::vector<int>&);
+template std::vector<RNN<double>> StackedCells <RNN<double>>(const int&, const std::vector<int>&);
+
 template class GatedInput<float>;
 template class GatedInput<double>;
 
+template std::vector<GatedInput<float>> StackedCells <GatedInput<float>>(const int&, const std::vector<int>&);
+template std::vector<GatedInput<double>> StackedCells <GatedInput<double>>(const int&, const std::vector<int>&);
+
 template class LSTM<float>;
 template class LSTM<double>;
+
+template std::vector<LSTM<float>> StackedCells <LSTM<float>>(const int&, const std::vector<int>&);
+template std::vector<LSTM<double>> StackedCells <LSTM<double>>(const int&, const std::vector<int>&);

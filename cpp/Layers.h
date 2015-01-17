@@ -12,10 +12,11 @@ class Layer {
         > y = A * x + b
 
     */
-    typedef Mat<T>                      mat;
-    typedef std::shared_ptr<mat> shared_mat;
+    
     void create_variables();
     public:
+        typedef Mat<T>                      mat;
+        typedef std::shared_ptr<mat> shared_mat;
         shared_mat W;
         shared_mat b;
         const int hidden_size;
@@ -33,11 +34,10 @@ class RNN {
         > y = A * [x, h] + b
 
     */
-    typedef Mat<T>                      mat;
-    typedef std::shared_ptr<mat> shared_mat;
-
     void create_variables();
     public:
+        typedef Mat<T>                      mat;
+        typedef std::shared_ptr<mat> shared_mat;
         shared_mat Wx;
         shared_mat Wh;
         shared_mat b;
@@ -51,10 +51,10 @@ class RNN {
 
 template<typename T>
 class GatedInput {
-    typedef Mat<T>                      mat;
-    typedef std::shared_ptr<mat> shared_mat;
-    typedef RNN<T>               layer_type;
+    typedef RNN<T>                   layer_type;
     public:
+        typedef Mat<T>                      mat;
+        typedef std::shared_ptr<mat> shared_mat;
         layer_type in_gate;
         GatedInput (int, int);
         shared_mat activate(Graph<T>&, shared_mat, shared_mat);
@@ -70,10 +70,10 @@ class LSTM {
 
     See `Mat`, `HiddenLayer`
     */
-    typedef Mat<T>                               mat;
-    typedef std::shared_ptr<mat>          shared_mat;
     typedef RNN<T>                        layer_type;
     public:
+        typedef Mat<T>                               mat;
+        typedef std::shared_ptr<mat>          shared_mat;
         // cell input modulation:
         layer_type input_layer;
         // cell forget gate:
@@ -86,10 +86,15 @@ class LSTM {
         const int input_size;
         LSTM (int, int);
         LSTM (int&, int&);
+        static std::pair<std::vector<shared_mat>, std::vector<shared_mat>> initial_states(std::vector<int>&);
         std::pair<shared_mat, shared_mat> activate(
             Graph<T>&,
             shared_mat,
             shared_mat,
             shared_mat);
 };
+
+template<typename celltype>
+std::vector<celltype> StackedCells(const int&, const std::vector<int>&);
+
 #endif

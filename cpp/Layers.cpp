@@ -100,6 +100,8 @@ std::pair<typename LSTM<T>::shared_mat, typename LSTM<T>::shared_mat> LSTM<T>::a
 template<typename T>
 std::pair< std::vector<typename LSTM<T>::shared_mat >, std::vector<typename LSTM<T>::shared_mat > > LSTM<T>::initial_states(std::vector<int>& hidden_sizes) {
     std::pair< std::vector<typename LSTM<T>::shared_mat >, std::vector<typename LSTM<T>::shared_mat > > initial_state;
+    initial_state.first.reserve(hidden_sizes.size());
+    initial_state.second.reserve(hidden_sizes.size());
     for (auto& size : hidden_sizes) {
         initial_state.first.emplace_back(std::make_shared<typename LSTM<T>::mat>(size, 1));
         initial_state.second.emplace_back(std::make_shared<typename LSTM<T>::mat>(size, 1));
@@ -111,6 +113,7 @@ std::pair< std::vector<typename LSTM<T>::shared_mat >, std::vector<typename LSTM
 template<typename celltype>
 std::vector<celltype> StackedCells(const int& input_size, const std::vector<int>& hidden_sizes) {
     std::vector<celltype> cells;
+    cells.reserve(hidden_sizes.size());
     int prev_size = input_size;
     for (auto& size : hidden_sizes) {
         cells.emplace_back(prev_size, size);

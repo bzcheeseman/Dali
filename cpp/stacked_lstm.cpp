@@ -30,6 +30,8 @@ paired_cell_outputs forward_lstms(
 	auto hidden_iter = previous_state_hiddens.begin();
 
 	paired_cell_outputs out_state;
+	out_state.first.reserve(cells.size());
+	out_state.second.reserve(cells.size());
 
 	auto layer_input = input_vector;
 

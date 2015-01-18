@@ -122,6 +122,46 @@ std::vector<celltype> StackedCells(const int& input_size, const std::vector<int>
     return cells;
 }
 
+using std::pair;
+using std::vector;
+using std::shared_ptr;
+
+template<typename T>
+pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> forward_LSTMs(Graph<T>& G,
+    shared_ptr<Mat<T>> input_vector,
+    pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>>& previous_state,
+    vector<LSTM<T>>& cells) {
+
+
+
+    auto previous_state_cells = previous_state.first;
+    auto previous_state_hiddens = previous_state.second;
+
+    auto cell_iter = previous_state_cells.begin();
+    auto hidden_iter = previous_state_hiddens.begin();
+
+    pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> out_state;
+    out_state.first.reserve(cells.size());
+    out_state.second.reserve(cells.size());
+
+    auto layer_input = input_vector;
+
+    for (auto& layer : cells) {
+
+        auto layer_out = layer.activate(G, layer_input, *cell_iter, *hidden_iter);
+
+        out_state.first.push_back(layer_out.first);
+        out_state.second.push_back(layer_out.second);
+
+        ++cell_iter;
+        ++hidden_iter;
+
+        layer_input = layer_out.second;
+    }
+
+    return out_state;
+}
+
 template class Layer<float>;
 template class Layer<double>;
 
@@ -142,3 +182,13 @@ template class LSTM<double>;
 
 template std::vector<LSTM<float>> StackedCells <LSTM<float>>(const int&, const std::vector<int>&);
 template std::vector<LSTM<double>> StackedCells <LSTM<double>>(const int&, const std::vector<int>&);
+
+template pair<vector<shared_ptr<Mat<double>>>, vector<shared_ptr<Mat<double>>>> forward_LSTMs(Graph<double>&,
+    shared_ptr<Mat<double>>,
+    pair<vector<shared_ptr<Mat<double>>>, vector<shared_ptr<Mat<double>>>>&,
+    vector<LSTM<double>>&);
+
+template pair<vector<shared_ptr<Mat<float>>>, vector<shared_ptr<Mat<float>>>> forward_LSTMs(Graph<float>&,
+    shared_ptr<Mat<float>>,
+    pair<vector<shared_ptr<Mat<float>>>, vector<shared_ptr<Mat<float>>>>&,
+    vector<LSTM<float>>&);

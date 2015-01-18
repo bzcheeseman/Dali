@@ -13,43 +13,6 @@ typedef float REAL_t;
 typedef LSTM<REAL_t> lstm;
 typedef Graph<REAL_t> graph_t;
 typedef Mat<REAL_t> mat;
-typedef shared_ptr<mat> shared_mat;
-typedef vector<shared_mat> cell_outputs;
-typedef pair<cell_outputs, cell_outputs> paired_cell_outputs;
-
-paired_cell_outputs forward_lstms(
-	graph_t& G,
-	shared_mat input_vector,
-	paired_cell_outputs& previous_state,
-	vector<lstm>& cells) {
-
-	auto previous_state_cells = previous_state.first;
-	auto previous_state_hiddens = previous_state.second;
-
-	auto cell_iter = previous_state_cells.begin();
-	auto hidden_iter = previous_state_hiddens.begin();
-
-	paired_cell_outputs out_state;
-	out_state.first.reserve(cells.size());
-	out_state.second.reserve(cells.size());
-
-	auto layer_input = input_vector;
-
-	for (auto& layer : cells) {
-
-		auto layer_out = layer.activate(G, layer_input, *cell_iter, *hidden_iter);
-
-		out_state.first.push_back(layer_out.first);
-		out_state.second.push_back(layer_out.second);
-
-		++cell_iter;
-		++hidden_iter;
-
-		layer_input = layer_out.second;
-	}
-
-	return out_state;
-}
 
 template<typename T>
 void assign_cli_argument(char * source, T& target, T default_val, std::string variable_name ) {
@@ -81,13 +44,13 @@ int main (int argc, char *argv[]) {
 	if (argc > 7) assign_cli_argument(argv[7], hidden_sizes[2], hidden_sizes[2], "hidden size 3");
 	
 	auto cells = StackedCells<lstm>(input_size, hidden_sizes);
-	paired_cell_outputs initial_state = lstm::initial_states(hidden_sizes);
+	auto initial_state = lstm::initial_states(hidden_sizes);
 	graph_t G;
 
 	auto input_vector = make_shared<mat>(input_size, batch_size, std);
 
 	for (auto i = 0; i < timesteps; ++i)
-		initial_state = forward_lstms(G, input_vector, initial_state, cells);
+		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
 	
 	// backpropagate
 	G.backward();

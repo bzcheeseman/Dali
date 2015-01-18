@@ -64,16 +64,16 @@ void assign_cli_argument(char * source, T& target, T default_val, std::string va
 }
 
 int main (int argc, char *argv[]) {
-	auto batch_size          = 100;
+	auto batch_size          = 2;
 	auto input_size          = 50;
 	auto timesteps           = 2;
 	REAL_t std               = 2.0;
 	vector<int> hidden_sizes = {100, 100, 100};
 
 	if (argc > 1) assign_cli_argument(argv[1], timesteps,       timesteps,       "timesteps");
-	if (argc > 2) assign_cli_argument(argv[2], batch_size,      batch_size,      "batch_size");
-	if (argc > 3) assign_cli_argument(argv[3], input_size,      input_size,      "input_size");
-	if (argc > 4) assign_cli_argument(argv[4], std,             std,             "standard_deviation");
+	if (argc > 2) assign_cli_argument(argv[2], batch_size,      batch_size,      "batch size");
+	if (argc > 3) assign_cli_argument(argv[3], input_size,      input_size,      "input size");
+	if (argc > 4) assign_cli_argument(argv[4], std,             std,             "standard deviation");
 	if (argc > 5) assign_cli_argument(argv[5], hidden_sizes[0], hidden_sizes[0], "hidden size 1");
 	if (argc > 6) assign_cli_argument(argv[6], hidden_sizes[1], hidden_sizes[1], "hidden size 2");
 	if (argc > 7) assign_cli_argument(argv[7], hidden_sizes[2], hidden_sizes[2], "hidden size 3");

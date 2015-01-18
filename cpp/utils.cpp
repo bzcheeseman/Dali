@@ -48,17 +48,6 @@ namespace utils {
 		hash_combine(seed, std::time(NULL));
 		return seed;
 	}
-	namespace ops {
-		static const uint add              = 0;
-		static const uint eltmul           = 1;
-		static const uint sigmoid          = 2;
-		static const uint tanh             = 3;
-		static const uint mul              = 4;
-		static const uint relu             = 5;
-		static const uint row_pluck        = 6;
-		static const uint add_broadcast    = 7;
-		static const uint eltmul_broadcast = 8;
-	}
 
 	template struct sigmoid_operator<float>;
 	template struct tanh_operator<float>;

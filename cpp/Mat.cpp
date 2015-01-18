@@ -86,6 +86,9 @@ template<typename T> Backward<T>::Backward (
 	uint type) {
 	this->matrix1 = matrix1;
 	this->matrix2 = NULL;
+	this->matrix3 = NULL;
+	this->matrix4 = NULL;
+	this->matrix5 = NULL;
 	this->out = out;
 	this->type = type;
 }
@@ -97,6 +100,9 @@ template<typename T> Backward<T>::Backward (
 	uint type) {
 	this->matrix1 = matrix1;
 	this->matrix2 = NULL;
+	this->matrix3 = NULL;
+	this->matrix4 = NULL;
+	this->matrix5 = NULL;
 	this->out = out;
 	this->type = type;
 	this->ix = index;
@@ -108,6 +114,57 @@ template<typename T> Backward<T>::Backward (
 	uint type) {
 	this->matrix1 = matrix1;
 	this->matrix2 = matrix2;
+	this->matrix3 = NULL;
+	this->matrix4 = NULL;
+	this->matrix5 = NULL;
+	this->out = out;
+	this->type = type;
+}
+
+template<typename T> Backward<T>::Backward (
+	shared_mat matrix1,
+	shared_mat matrix2,
+	shared_mat matrix3,
+	shared_mat out,
+	uint type) {
+	this->matrix1 = matrix1;
+	this->matrix2 = matrix2;
+	this->matrix3 = matrix3;
+	this->matrix4 = NULL;
+	this->matrix5 = NULL;
+	this->out = out;
+	this->type = type;
+}
+
+template<typename T> Backward<T>::Backward (
+	shared_mat matrix1,
+	shared_mat matrix2,
+	shared_mat matrix3,
+	shared_mat matrix4,
+	shared_mat out,
+	uint type) {
+	this->matrix1 = matrix1;
+	this->matrix2 = matrix2;
+	this->matrix3 = matrix3;
+	this->matrix4 = matrix4;
+	this->matrix5 = NULL;
+	this->out = out;
+	this->type = type;
+}
+
+template<typename T> Backward<T>::Backward (
+	shared_mat matrix1,
+	shared_mat matrix2,
+	shared_mat matrix3,
+	shared_mat matrix4,
+	shared_mat matrix5,
+	shared_mat out,
+	uint type) {
+	this->matrix1 = matrix1;
+	this->matrix2 = matrix2;
+	this->matrix3 = matrix3;
+	this->matrix4 = matrix4;
+	this->matrix5 = matrix5;
 	this->out = out;
 	this->type = type;
 }
@@ -128,31 +185,28 @@ std::string Backward<T>::op_type () const {
 	switch(this->type) {
 		case utils::ops::add:
 			return "add";
-			break;
 		case utils::ops::eltmul:
 			return "eltmul";
-			break;
 		case utils::ops::tanh:
 			return "tanh";
-			break;
 		case utils::ops::sigmoid:
 			return "sigmoid";
-			break;
 		case utils::ops::relu:
 			return "relu";
-			break;
 		case utils::ops::mul:
 			return "mul";
-			break;
 		case utils::ops::row_pluck:
 			return "row_pluck";
-			break;
 		case utils::ops::add_broadcast:
 			return "add_broadcast";
-			break;
 		case utils::ops::eltmul_broadcast:
 			return "eltmul_broadcast";
-			break;
+		case utils::ops::mul_with_bias:
+			return "mul_with_bias";
+		case utils::ops::mul_add_mul_with_bias:
+			return "mul_add_mul_with_bias";
+		case utils::ops::mul_add_broadcast_mul_with_bias:
+			return "mul_add_broadcast_mul_with_bias";
 		default:
 			return "?";
 			break;
@@ -194,6 +248,33 @@ void Backward<T>::operator ()() {
 		case utils::ops::row_pluck:
 			this->matrix1->dw.row(this->ix).noalias() += (this->out->w.array() * this->out->dw.array()).matrix().col(0).transpose();
 			break;
+		case utils::ops::mul_with_bias:
+			this->matrix1->dw.noalias() += (this->out->dw) * ((this->matrix2->w).transpose());
+			this->matrix2->dw.noalias() += this->matrix1->w.transpose() * (this->out->dw);
+			this->matrix3->dw.noalias() += this->out->dw.rowwise().sum();
+			break;
+		case utils::ops::mul_add_mul_with_bias:
+			// first multiply:
+			this->matrix1->dw.noalias() += (this->out->dw) * ((this->matrix2->w).transpose());
+			this->matrix2->dw.noalias() += this->matrix1->w.transpose() * (this->out->dw);
+			// second multiply:
+			this->matrix3->dw.noalias() += (this->out->dw) * ((this->matrix4->w).transpose());
+			this->matrix4->dw.noalias() += this->matrix3->w.transpose() * (this->out->dw);
+			// bias vector:
+			this->matrix5->dw.noalias() += this->out->dw.rowwise().sum();
+			break;
+		case utils::ops::mul_add_broadcast_mul_with_bias:
+			// first multiply:
+			// broadcasting input means taking outer product here:
+			this->matrix1->dw += ((this->out->dw).rowwise().sum() * ((this->matrix2->w).transpose()));
+			// broadcasting output means sum after the reverse product here:
+			this->matrix2->dw.noalias() += (this->matrix1->w * (this->out->dw)).rowwise().sum();
+			// second multiply:
+			this->matrix3->dw.noalias() += (this->out->dw) * ((this->matrix4->w).transpose());
+			this->matrix4->dw.noalias() += this->matrix3->w.transpose() * (this->out->dw);
+			// bias vector:
+			this->matrix5->dw.noalias() += this->out->dw.rowwise().sum();
+			break;
 		default:
 			std::stringstream error_msg;
 			error_msg << "NotImplemented: Do not know how to backpropagate for this type => "
@@ -223,9 +304,9 @@ Graph<T>::Graph () : needs_backprop(true) {}
 
 template<typename T>
 void Graph<T>::backward () {
-	std::cout << "Graph backprop vector contains (in reverse):\n";
+	// std::cout << "Graph backprop vector contains (in reverse):\n";
 	for (auto it = this->backprop.rbegin(); it != this->backprop.rend(); ++it) {
-		std::cout << ' ' << *it << "\n";
+		// std::cout << ' ' << *it << "\n";
 		(*it)();
 	}
 }
@@ -309,7 +390,6 @@ typename Graph<T>::shared_mat Graph<T>::add(
 	return out;
 }
 
-
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::sigmoid(shared_mat matrix1) {
 	auto out = std::make_shared<mat>(
@@ -363,6 +443,99 @@ typename Graph<T>::shared_mat Graph<T>::mul(
 	if (this->needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
 		this->backprop.emplace_back(matrix1, matrix2, out, utils::ops::mul);
+	return out;
+}
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::mul_with_bias(
+	shared_mat matrix1,
+	shared_mat matrix2,
+	shared_mat bias) {
+	if (matrix1->d != matrix2->n)
+		throw std::invalid_argument("matmul dimensions misaligned.");
+	if (matrix1->n != bias->n || bias->d != 1)
+		throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
+	auto out = std::make_shared<mat>(
+		matrix1->n,
+		matrix2->d,
+		true);
+	out->w = ((matrix1->w * matrix2->w).colwise() + bias->w.col(0)).matrix();
+	if (this->needs_backprop)
+		// allocates a new backward element in the vector using these arguments:
+		this->backprop.emplace_back(matrix1, matrix2, bias, out, utils::ops::mul);
+	return out;
+}
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::mul_add_broadcast_mul_with_bias(
+	shared_mat matrix1,
+	shared_mat input_to_1,
+	shared_mat matrix2,
+	shared_mat input_to_2,
+	shared_mat bias) {
+	if (matrix1->d != input_to_1->n)
+		throw std::invalid_argument("matmul 1 dimensions misaligned.");
+	if (matrix2->d != input_to_2->n)
+		throw std::invalid_argument("matmul 2 dimensions misaligned.");
+	if (matrix2->n != bias->n || matrix1->n != bias->n || input_to_1->d != 1 || bias->d != 1)
+		throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
+	auto out = std::make_shared<mat>(
+		matrix1->n,
+		input_to_2->d,
+		true);
+	// both input to 1 and bias are columns,
+	// so we add both of those before adding the true matrix
+	// product in broadcasted form
+	out->w = (
+		          (
+		              ( 
+		                  (matrix2->w * input_to_2->w)
+		              )
+		          ).colwise() + (bias->w + (matrix1->w * input_to_1->w)).col(0)
+		      ).matrix();
+	if (this->needs_backprop)
+		// allocates a new backward element in the vector using these arguments:
+		this->backprop.emplace_back(matrix1, input_to_1, matrix2, input_to_2, bias, out, utils::ops::mul_add_broadcast_mul_with_bias);
+	return out;
+}
+
+
+// operation of the form (A * x + B * y) + C, called with mul_add_mul_with_bias(A, x, B, y, C)
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::mul_add_mul_with_bias(
+	shared_mat matrix1,
+	shared_mat input_to_1,
+	shared_mat matrix2,
+	shared_mat input_to_2,
+	shared_mat bias) {
+	if (matrix1->d != input_to_1->n)
+		throw std::invalid_argument("matmul 1 dimensions misaligned.");
+	if (matrix2->d != input_to_2->n)
+		throw std::invalid_argument("matmul 2 dimensions misaligned.");
+	if (matrix2->n != bias->n || matrix1->n != bias->n || bias->d != 1)
+		throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
+	if (input_to_1->d != input_to_2->d) {
+		if (input_to_1->d == 1) {
+			return mul_add_broadcast_mul_with_bias(matrix1, input_to_1, matrix2, input_to_2, bias);
+		}
+		return mul_add_broadcast_mul_with_bias(matrix2, input_to_2, matrix1, input_to_1, bias);
+	}
+	auto out = std::make_shared<mat>(
+		matrix1->n,
+		input_to_1->d,
+		true);
+	out->w = (
+		          (
+		              ( 
+		                  
+                          (matrix1->w * input_to_1->w) + 
+                          (matrix2->w * input_to_2->w)
+		              )
+		          ).colwise() + bias->w.col(0)
+		      ).matrix();
+	if (this->needs_backprop)
+		// allocates a new backward element in the vector using these arguments:
+		this->backprop.emplace_back(matrix1, input_to_1, matrix2, input_to_2, bias, out, utils::ops::mul_add_mul_with_bias);
 	return out;
 }
 

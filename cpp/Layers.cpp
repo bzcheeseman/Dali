@@ -14,7 +14,7 @@ Layer<T>::Layer (int _input_size, int _hidden_size) : hidden_size(_hidden_size),
 
 template<typename T>
 typename Layer<T>::shared_mat Layer<T>::activate(Graph<T>& G, typename Layer<T>::shared_mat input_vector) {
-    return G.add_broadcast( G.mul(W, input_vector), b);
+    return G.mul_with_bias(W, input_vector, b);
 }
 
 template<typename T>
@@ -38,7 +38,10 @@ RNN<T>::RNN (int _input_size, int _hidden_size, int _output_size) : hidden_size(
 
 template<typename T>
 typename RNN<T>::shared_mat RNN<T>::activate(Graph<T>& G, typename RNN<T>::shared_mat input_vector, typename RNN<T>::shared_mat prev_hidden) {
-    return G.add_broadcast( G.add(G.mul(Wx, input_vector), G.mul(Wh, prev_hidden)), b);
+    // takes 5% less time to run operations when grouping them (no big gains then)
+    // 1.118s with explicit (& temporaries) vs 1.020s with grouped expression & backprop
+    // return G.add(G.mul(Wx, input_vector), G.mul_with_bias(Wh, prev_hidden, b));
+    return G.mul_add_mul_with_bias(Wx, input_vector, Wh, prev_hidden, b);
 }
 
 template<typename T>

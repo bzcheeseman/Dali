@@ -17,11 +17,13 @@ optimized:
 	$(CC) -o app.o -O3 main.o utils.o Mat.o Layers.o
 
 layers:
-	$(CC) -I Eigen -c -std=c++11 Layers.cpp
-	$(CC) -o app.o main.o utils.o Mat.o Layers.o
+	$(CC) -I Eigen -O3 -c -std=c++11 Layers.cpp
 
 program:
 	$(CC) -I Eigen -std=c++11 main.cpp -o main.o utils.o Mat.o Layers.o
 
 stacked_lstm:
 	$(CC) -I Eigen -O3 -std=c++11 stacked_lstm.cpp -o stacked_lstm.o utils.o Mat.o Layers.o
+
+maps:
+	$(CC) -I Eigen -O3 -std=c++11 maps.cpp -o maps.o utils.o Mat.o Layers.o

@@ -47,10 +47,16 @@ template<typename T> class Backward {
 	public:
 		shared_mat matrix1;
 		shared_mat matrix2;
+		shared_mat matrix3;
+		shared_mat matrix4;
+		shared_mat matrix5;
 		shared_mat out;
 		Backward(shared_mat, shared_mat, uint);
 		Backward(shared_mat, shared_mat, int, uint);
 		Backward(shared_mat, shared_mat, shared_mat, uint);
+		Backward(shared_mat, shared_mat, shared_mat, shared_mat, uint);
+		Backward(shared_mat, shared_mat, shared_mat, shared_mat, shared_mat, uint);
+		Backward(shared_mat, shared_mat, shared_mat, shared_mat, shared_mat, shared_mat, uint);
 		
 		operator std::string() const;
 		std::string op_type () const;
@@ -73,6 +79,12 @@ template<typename T> class Graph {
 		void backward ();
 		shared_mat eltmul_broadcast(shared_mat, shared_mat);
 		shared_mat eltmul(shared_mat, shared_mat);
+		shared_mat mul_with_bias(shared_mat, shared_mat, shared_mat);
+		// operation of the form (A * x + B * y) + C, called with mul_add_mul_with_bias(A, x, B, y, C)
+		shared_mat mul_add_mul_with_bias(shared_mat, shared_mat, shared_mat, shared_mat, shared_mat);
+		// operation of the form (A * x + B * y) + C, called with mul_add_mul_with_bias(A, x, B, y, C)
+		// and with caveat that x is actually a column, and should be broadcasted
+		shared_mat mul_add_broadcast_mul_with_bias(shared_mat, shared_mat, shared_mat, shared_mat, shared_mat);
 		shared_mat add_broadcast(shared_mat, shared_mat);
 		shared_mat add(shared_mat, shared_mat);
 		shared_mat sigmoid(shared_mat);

@@ -21,6 +21,7 @@ class Layer {
         shared_mat b;
         const int hidden_size;
         const int input_size;
+        std::vector<shared_mat> parameters();
         Layer (int, int);
         shared_mat activate(Graph<T>&, shared_mat);
 };
@@ -44,6 +45,7 @@ class RNN {
         const int hidden_size;
         const int input_size;
         const int output_size;
+        std::vector<shared_mat> parameters();
         RNN (int, int);
         RNN (int, int, int);
         shared_mat activate(Graph<T>&, shared_mat, shared_mat);
@@ -55,6 +57,7 @@ class GatedInput {
     public:
         typedef Mat<T>                      mat;
         typedef std::shared_ptr<mat> shared_mat;
+        std::vector<shared_mat> parameters();
         layer_type in_gate;
         GatedInput (int, int);
         shared_mat activate(Graph<T>&, shared_mat, shared_mat);
@@ -86,6 +89,7 @@ class LSTM {
         const int input_size;
         LSTM (int, int);
         LSTM (int&, int&);
+        std::vector<shared_mat> parameters();
         static std::pair<std::vector<shared_mat>, std::vector<shared_mat>> initial_states(std::vector<int>&);
         std::pair<shared_mat, shared_mat> activate(
             Graph<T>&,

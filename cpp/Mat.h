@@ -41,18 +41,22 @@ static bool operator==(const Mat<T>&, const Mat<T>&);
 
 template<typename T> class Backward {
 	int ix;
+	std::vector<int>* indices;
 	uint type;
 	typedef Mat<T> mat;
 	typedef std::shared_ptr<mat> shared_mat;
+	void backward_rows_pluck();
 	public:
 		shared_mat matrix1;
 		shared_mat matrix2;
 		shared_mat matrix3;
 		shared_mat matrix4;
 		shared_mat matrix5;
+
 		shared_mat out;
 		Backward(shared_mat, shared_mat, uint);
 		Backward(shared_mat, shared_mat, int, uint);
+		Backward(shared_mat, shared_mat, std::vector<int>&, uint);
 		Backward(shared_mat, shared_mat, shared_mat, uint);
 		Backward(shared_mat, shared_mat, shared_mat, shared_mat, uint);
 		Backward(shared_mat, shared_mat, shared_mat, shared_mat, shared_mat, uint);
@@ -108,7 +112,9 @@ template<typename T> class Solver {
 	utils::squared_operator<T> square_values;
 	public:
 		Solver (T decay_rate= 0.999, T smooth_eps =1e-8, T clipval = 5.0);
+		Solver (std::vector<shared_mat>&, T decay_rate= 0.999, T smooth_eps =1e-8, T clipval = 5.0);
 		void step( std::vector<shared_mat>&, T, T);
+		void create_gradient_caches(std::vector<shared_mat>&);
 		~Solver ();
 };
 

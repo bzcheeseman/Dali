@@ -18,12 +18,22 @@ typename Layer<T>::shared_mat Layer<T>::activate(Graph<T>& G, typename Layer<T>:
 }
 
 template<typename T>
+std::vector<typename Layer<T>::shared_mat> Layer<T>::parameters() {
+    return std::vector<typename Layer<T>::shared_mat>({W, b});
+}
+
+template<typename T>
 void RNN<T>::create_variables() {
     using std::make_shared;
     T std = 0.08;
     Wx = make_shared<mat>(output_size, input_size,  std);
     Wh = make_shared<mat>(output_size, hidden_size, std);
     b  = make_shared<mat>(output_size, 1);
+}
+
+template<typename T>
+std::vector<typename RNN<T>::shared_mat> RNN<T>::parameters() {
+    return std::vector<typename RNN<T>::shared_mat>({Wx, Wh, b});
 }
 
 template<typename T>
@@ -85,7 +95,7 @@ std::pair<typename LSTM<T>::shared_mat, typename LSTM<T>::shared_mat> LSTM<T>::a
     // output gate
     auto output_gate = G.sigmoid(output_layer.activate(G, input_vector, hidden_prev));
     // write operation on cells
-    auto cell_write  = G.tanh(output_layer.activate(G, input_vector, hidden_prev));
+    auto cell_write  = G.tanh(cell_layer.activate(G, input_vector, hidden_prev));
 
     // compute new cell activation
     auto retain_cell = G.eltmul(forget_gate, cell_prev); // what do we keep from cell
@@ -95,6 +105,23 @@ std::pair<typename LSTM<T>::shared_mat, typename LSTM<T>::shared_mat> LSTM<T>::a
     // compute hidden state as gated, saturated cell activations
     auto hidden_d    = G.eltmul(output_gate, G.tanh(cell_d));
     return std::pair<shared_mat,shared_mat>(cell_d, hidden_d);
+}
+
+template<typename T>
+std::vector<typename LSTM<T>::shared_mat> LSTM<T>::parameters() {
+    std::vector<typename LSTM<T>::shared_mat> parameters;
+
+    auto input_layer_params  = input_layer.parameters();
+    auto forget_layer_params = forget_layer.parameters();
+    auto output_layer_params = output_layer.parameters();
+    auto cell_layer_params   = cell_layer.parameters();
+
+    parameters.insert( parameters.end(), input_layer_params.begin(),  input_layer_params.end() );
+    parameters.insert( parameters.end(), forget_layer_params.begin(), forget_layer_params.end() );
+    parameters.insert( parameters.end(), output_layer_params.begin(), output_layer_params.end() );
+    parameters.insert( parameters.end(), cell_layer_params.begin(),   cell_layer_params.end() );
+
+    return parameters;
 }
 
 template<typename T>

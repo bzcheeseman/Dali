@@ -54,21 +54,8 @@ We now collect the model parameters into one vector for optimization:
     vector<shared_mat> parameters;
 
     for (auto& layer : cells) {
-        parameters.push_back( cells.input_layer.Wh )
-        parameters.push_back( cells.input_layer.Wx )
-        parameters.push_back( cells.input_layer.b )
-
-        parameters.push_back( cells.forget_layer.Wh )
-        parameters.push_back( cells.forget_layer.Wx )
-        parameters.push_back( cells.forget_layer.b )
-
-        parameters.push_back( cells.output_layer.Wh )
-        parameters.push_back( cells.output_layer.Wx )
-        parameters.push_back( cells.output_layer.b )
-
-        parameters.push_back( cells.cell_layer.Wh )
-        parameters.push_back( cells.cell_layer.Wx )
-        parameters.push_back( cells.cell_layer.b )
+        auto layer_params = layer.parameters();
+        parameters.insert(parameters.end(), layer_params.begin(), layer_params.end());
     }
 
 For backpropagation we need a `Graph`:
@@ -136,6 +123,58 @@ And we can now run this network forward:
 
 The input_vector isn't changing, but this is just an example. We could have instead used indices and plucked rows from an embedding matrix, or taken audio or video inputs.
 
+### Character model extension:
+
+Suppose we want to assign error using a prediction with a additional decoding layer that gets exponentially normalized via a *Softmax*:
+    
+    auto vocab_size = 300;
+    typedef Layer<REAL_t> classifier_t;
+    classifier_t classifier(hidden_sizes[hidden_sizes.size() - 1], vocab_size);
+
+Each character gets a vector in an embedding:
+    
+    auto embedding = make_shared<mat>(vocab_size, input_size, 0.08);
+
+Then our forward function can be changed to:
+
+    REAL_t cost_fun(
+        graph_t& G, // the graph for the computation
+        vector<int>& hidden_sizes, // re-initialize the hidden cell states at each new sentence
+        vector<lstm>& cells,  // the LSTMs
+        shared_mat embedding, // the embedding matrix
+        classifier_t& classifier, // the classifier we just defined
+        vector<int>& indices // the indices in a sentence whose perplexity we'd like to reduce
+        ) {
+        // construct hidden cell states:
+        auto initial_state = lstm::initial_states(hidden_sizes);
+        auto num_hidden_sizes = hidden_sizes.size();
+
+        shared_mat input_vector;
+        shared_mat logprobs;
+        shared_mat probs;
+
+        REAL_t cost = 0.0;
+        auto n = indices.size();
+
+        for (int i = 0; i < n-1; ++i) {
+            // pick this letter from the embedding
+            input_vector  = G.row_pluck(embedding, indices[i]);
+            // pass this letter to the LSTM for processing
+            initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
+            // classifier takes as input the final hidden layer's activation:
+            logprobs      = classifier.activate(G, initial_state.second[num_hidden_sizes-1]);
+            // compute the softmax probabilities
+            probs         = softmax(logprobs);
+            // accumulate base 2 log prob and do smoothing
+            cost         -= std::log(probs->w(indices[i+1],0));
+            // write gradients into log probabilities
+            logprobs->dw  = probs->w;
+            logprobs->dw(indices[i+1], 0) -= 1;
+        }
+        return cost / (n-1);
+    }
+
+
 #### Training
 
 Now that we've built up this computation graph we should assign errors in the outputs we can about, and backpropagate it:
@@ -150,6 +189,67 @@ Now that we've built up this computation graph we should assign errors in the ou
 Now at every minibatch we can call `step` on the solver to reduce the error (here using a learning rate of 0.01, and an L2 penalty of 1e-7):
 
     solver.step(parameters, 0.01, 1e-7)
+
+This would look like the following. First we load the sentences using `fstream`:
+
+    auto sentences = get_character_sequences("../paulgraham_text.txt", prepad, postpad, vocab_size);
+
+Get a random number generator to uniformly sample from these sentences:
+
+    static std::random_device rd;
+    static std::mt19937 seed(rd());
+    static std::uniform_int_distribution<> uniform(0, sentences.size() - 1);
+
+Then we train by looping through the sentences:
+
+    // Main training loop:
+    for (auto i = 0; i < epochs; ++i) {
+        auto G = graph_t(true);      // create a new graph for each loop
+        auto cost = cost_fun(
+            G,                       // to keep track of computation
+            hidden_sizes,            // to construct initial states
+            cells,                   // LSTMs
+            embedding,               // character embedding
+            classifier,              // decoder for LSTM final hidden layer
+            sentences[uniform(seed)] // the sequence to predict
+        );
+        G.backward();                // backpropagate
+        // progress by one step
+        solver.step(parameters, 0.01, 0.0);
+        if (i % report_frequency == 0)
+            std::cout << "epoch (" << i << ") perplexity = " << cost << std::endl;
+    }
+
+### Loading the file of characters:
+
+To get the character sequence we can use this simple function and point it at the Paul Graham text:
+
+    vector<vector<int>> get_character_sequences(const char* filename, int& prepad, int& postpad, int& vocab_size) {
+        char ch;
+        char linebreak = '\n';
+        fstream file;
+        file.open(filename);
+        vector<vector<int>> lines;
+        lines.emplace_back(2);
+        vector<int>* line = &lines[0];
+        line->push_back(prepad);
+        while(file) {
+            ch = file.get();
+            if (ch == linebreak) {
+                line->push_back(postpad);
+                lines.emplace_back(2);
+                line = &(lines.back());
+                line->push_back(prepad);
+                continue;
+            }
+            if (ch == EOF) {
+                break;
+            }
+            // make sure no character is higher than the vocab size:
+            line->push_back(std::min(vocab_size-1, (int)ch));
+        }
+        return lines;
+    }
 
 ### Usage in Python
 

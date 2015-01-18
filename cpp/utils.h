@@ -4,6 +4,7 @@
 #include <iostream>
 #include <iomanip>
 #include <random>
+#include <sstream>
 
 namespace utils {
 	template<typename T>
@@ -37,6 +38,13 @@ namespace utils {
 		clip_operator(T, T);
 		T operator() (T) const;
 	};
+
+	template<typename T>
+	void assign_cli_argument(char *, T&, T, std::string);
+
+	template<typename T>
+	void assign_cli_argument(char *, T&, std::string);
+
 	template <class T> inline void hash_combine(std::size_t &, const T &);
 	std::size_t get_random_id();
 	namespace ops {
@@ -52,6 +60,7 @@ namespace utils {
 		static const uint mul_with_bias         = 9;
 		static const uint mul_add_mul_with_bias = 10;
 		static const uint mul_add_broadcast_mul_with_bias = 11;
+		static const uint rows_pluck = 12;
 	}
 }
 #endif

@@ -25,5 +25,8 @@ program:
 stacked_lstm:
 	$(CC) -I Eigen -O3 -std=c++11 stacked_lstm.cpp -o stacked_lstm.o utils.o Mat.o Layers.o
 
+character_predict:
+	$(CC) -I Eigen -O3 -std=c++11 character_prediction.cpp -o character_prediction.o utils.o Mat.o Layers.o
+
 maps:
 	$(CC) -I Eigen -O3 -std=c++11 maps.cpp -o maps.o utils.o Mat.o Layers.o

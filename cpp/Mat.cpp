@@ -107,6 +107,23 @@ template<typename T> Backward<T>::Backward (
 	this->type = type;
 	this->ix = index;
 }
+
+template<typename T> Backward<T>::Backward (
+	shared_mat matrix1,
+	shared_mat out,
+	std::vector<int>& indices,
+	uint type) {
+	this->matrix1 = matrix1;
+	this->matrix2 = NULL;
+	this->matrix3 = NULL;
+	this->matrix4 = NULL;
+	this->matrix5 = NULL;
+	this->out = out;
+	this->type = type;
+	this->indices = &indices;
+}
+
+
 template<typename T> Backward<T>::Backward (
 	shared_mat matrix1,
 	shared_mat matrix2,
@@ -197,6 +214,8 @@ std::string Backward<T>::op_type () const {
 			return "mul";
 		case utils::ops::row_pluck:
 			return "row_pluck";
+		case utils::ops::rows_pluck:
+			return "rows_pluck";
 		case utils::ops::add_broadcast:
 			return "add_broadcast";
 		case utils::ops::eltmul_broadcast:
@@ -211,6 +230,14 @@ std::string Backward<T>::op_type () const {
 			return "?";
 			break;
 	}
+}
+
+template<typename T>
+void Backward<T>::backward_rows_pluck() {
+	int ind_len = indices->size();
+	for (int i = 0; i < ind_len; ++i)
+		// for each row do the same operation as for row_pluck:
+		matrix1->dw.row((*indices)[i]).noalias() += out->dw.col(i).transpose();
 }
 
 template<typename T> 
@@ -246,7 +273,11 @@ void Backward<T>::operator ()() {
 			this->matrix1->dw.noalias() += (this->out->w.unaryExpr(utils::dtanh_operator<T>()).array() * this->out->dw.array()).matrix();
 			break;
 		case utils::ops::row_pluck:
-			this->matrix1->dw.row(this->ix).noalias() += (this->out->w.array() * this->out->dw.array()).matrix().col(0).transpose();
+			this->matrix1->dw.row(this->ix).noalias() += this->out->dw.col(0).transpose();
+			break;
+		case utils::ops::rows_pluck:
+			// number of rows:
+			backward_rows_pluck();
 			break;
 		case utils::ops::mul_with_bias:
 			this->matrix1->dw.noalias() += (this->out->dw) * ((this->matrix2->w).transpose());
@@ -553,6 +584,9 @@ typename Graph<T>::shared_mat Graph<T>::rows_pluck(
 		out->w.col(offset) = matrix1->w.row(i).transpose();
 		++offset;
 	}
+	if (this->needs_backprop)
+		// allocates a new backward element in the vector using these arguments:
+		this->backprop.emplace_back(matrix1, out, indices, utils::ops::row_pluck);
 	return out;
 }
 
@@ -582,15 +616,25 @@ Solver<T>::Solver (
         clip_values(-_clipval, _clipval) {};
 
 template<typename T>
+Solver<T>::Solver (
+			std::vector<shared_mat>& parameters,
+            T _decay_rate,
+            T _smooth_eps,
+            T _clipval) :
+        decay_rate(_decay_rate),
+        smooth_eps(_smooth_eps),
+        clipval(_clipval),
+        clip_values(-_clipval, _clipval) {
+    create_gradient_caches(parameters);
+};
+
+template<typename T>
 Solver<T>::~Solver () {};
 
 template<typename T>
-void Solver<T>::step(
-	std::vector<shared_mat>& model,
-	T step_size,
-	T regc
-	) {
-	for (auto& param : model) {
+void Solver<T>::create_gradient_caches(
+	std::vector<shared_mat>& parameters) {
+	for (auto& param : parameters) {
 		// this operation should be run once unless
 		// we expect the parameters of the model
 		// to change online (probably not the case)
@@ -602,17 +646,28 @@ void Solver<T>::step(
 			// initialize values for step cache to zero:
 			new_cache.first->second.fill(0);
 		}
+	}
+}
+
+template<typename T>
+void Solver<T>::step(
+	std::vector<shared_mat>& parameters,
+	T step_size,
+	T regc
+	) {
+	for (auto& param : parameters) {
 		auto& s = this->step_cache[*param];
 		// update gradient cache using decay rule:
 		s = s * this->decay_rate + (1.0 - this->decay_rate) * param->dw.unaryExpr(this->square_values);
 		// clip the gradient to prevent explosions:
 		param->dw = (param->dw).array().unaryExpr(this->clip_values).matrix();
 		// update gradient using RMSprop rule
-		param->w += step_size * (param->dw.array() / (s.array() + this->smooth_eps).sqrt() ).matrix()  - (regc * param->w);
+		param->w -= step_size * (param->dw.array() / (s.array() + this->smooth_eps).sqrt() ).matrix()  - (regc * param->w);
 		// reset gradient
 		param->dw.fill(0);
 	}
 }
+
 template class Mat<float>;
 template class Mat<double>;
 
@@ -624,3 +679,6 @@ template class Graph<double>;
 
 template class Solver<float>;
 template class Solver<double>;
+
+template std::shared_ptr<Mat<float>> softmax(std::shared_ptr<Mat<float>>);
+template std::shared_ptr<Mat<double>> softmax(std::shared_ptr<Mat<double>>);

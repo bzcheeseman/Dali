@@ -71,6 +71,7 @@ template<typename T>
 std::ostream& operator<<(std::ostream&, const Backward<T>&);
 
 template<typename T> std::shared_ptr<Mat<T>> softmax(std::shared_ptr<Mat<T>>);
+template<typename T> T cross_entropy(std::shared_ptr<Mat<T>>, int&);
 
 template<typename T> class Graph {
 	bool                     needs_backprop;

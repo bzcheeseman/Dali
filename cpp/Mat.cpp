@@ -329,6 +329,17 @@ std::shared_ptr<Mat<T>> softmax(std::shared_ptr<Mat<T>> matrix) {
 }
 
 template<typename T>
+T cross_entropy(std::shared_ptr<Mat<T>> logprobs, int& target) {
+	std::shared_ptr<Mat<T>> probs = softmax(logprobs);
+	T cost = -std::log(probs->w(target,0));
+	// accumulate base 2 log prob and do smoothing
+	logprobs->dw = probs->w;
+	// write gradients into log probabilities
+	logprobs->dw(target, 0) -= 1;
+	return cost;
+}
+
+template<typename T>
 Graph<T>::Graph (bool _needs_backprop) : needs_backprop(_needs_backprop) {}
 template<typename T>
 Graph<T>::Graph () : needs_backprop(true) {}
@@ -682,3 +693,6 @@ template class Solver<double>;
 
 template std::shared_ptr<Mat<float>> softmax(std::shared_ptr<Mat<float>>);
 template std::shared_ptr<Mat<double>> softmax(std::shared_ptr<Mat<double>>);
+
+template float cross_entropy(std::shared_ptr<Mat<float>>, int&);
+template double cross_entropy(std::shared_ptr<Mat<double>>, int&);

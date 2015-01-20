@@ -67,13 +67,7 @@ REAL_t cost_fun(
 		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
 		// classifier takes as input the final hidden layer's activation:
 		logprobs      = classifier.activate(G, initial_state.second[num_hidden_sizes-1]);
-		// compute the softmax probabilities
-		probs         = softmax(logprobs);
-		// accumulate base 2 log prob and do smoothing
-        cost         -= std::log(probs->w(indices[i+1],0));
-        // write gradients into log probabilities
-        logprobs->dw  = probs->w;
-        logprobs->dw(indices[i+1], 0) -= 1;
+		cost -= cross_entropy(logprobs, indices[i+1]);
 	}
 	return cost / (n-1);
 }
@@ -81,7 +75,7 @@ REAL_t cost_fun(
 
 
 int main (int argc, char *argv[]) {
-	auto epochs              = 30;
+	auto epochs              = 101;
 	auto input_size          = 5;
 	auto report_frequency    = 100;
 	REAL_t std               = 0.1;
@@ -136,4 +130,7 @@ int main (int argc, char *argv[]) {
 		if (i % report_frequency == 0)
 			std::cout << "epoch (" << i << ") perplexity = " << cost << std::endl;
 	}
+	// outputs:
+	//> epoch (0) perplexity = -5.70376
+	//> epoch (100) perplexity = -2.54203
 }

@@ -1,8 +1,12 @@
 #ifndef RECURRENT_MAT_H
 #define RECURRENT_MAT_H
 
-
 #include "utils.h"
+
+#define EIGEN_USE_MKL_VML
+#define EIGEN_USE_BLAS
+// doesnt work, but its also not useful for now
+// #define EIGEN_USE_LAPACKE
 #include <Eigen>
 
 template<typename T> class Mat {
@@ -109,8 +113,6 @@ template<typename T> class Solver {
 	typedef std::shared_ptr<mat> shared_mat;
 	typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
 	std::unordered_map<mat, eigen_mat> step_cache;
-	utils::clip_operator<T> clip_values;
-	utils::squared_operator<T> square_values;
 	public:
 		Solver (T decay_rate= 0.999, T smooth_eps =1e-8, T clipval = 5.0);
 		Solver (std::vector<shared_mat>&, T decay_rate= 0.999, T smooth_eps =1e-8, T clipval = 5.0);

@@ -21,14 +21,11 @@ namespace utils {
 	template<typename T>
 	T dtanh_operator<T>::operator() (T x) const { return 1.0 - x*x; }
 
-	template<typename T>
-	T squared_operator<T>::operator() (T x) const { return x * x; }
+	// template<typename T>
+	// clip_operator<T>::clip_operator(T _min, T _max) : min(_min), max(_max) {};
 
-	template<typename T>
-	clip_operator<T>::clip_operator(T _min, T _max) : min(_min), max(_max) {};
-
-	template<typename T>
-	T clip_operator<T>::operator() (T x) const { return (x < min) ? min : (x > max ? max : x); }
+	// template<typename T>
+	// T clip_operator<T>::operator() (T x) const { return (x < min) ? min : (x > max ? max : x); }
 
 	template <class T> inline void hash_combine(std::size_t & seed, const T & v) {
 	  std::hash<T> hasher;
@@ -84,8 +81,7 @@ namespace utils {
 	template struct relu_operator<float>;
 	template struct sign_operator<float>;
 	template struct dtanh_operator<float>;
-	template struct squared_operator<float>;
-	template struct clip_operator<float>;
+	// template struct clip_operator<float>;
 
 	template void assign_cli_argument<int>(char*,int&,int,std::string);
 	template void assign_cli_argument<float>(char*,float&,float,std::string);
@@ -106,7 +102,6 @@ namespace utils {
 	template struct relu_operator<double>;
 	template struct sign_operator<double>;
 	template struct dtanh_operator<double>;
-	template struct squared_operator<double>;
-	template struct clip_operator<double>;
+	// template struct clip_operator<double>;
 }
 

@@ -623,8 +623,7 @@ Solver<T>::Solver (
             T _clipval) :
         decay_rate(_decay_rate),
         smooth_eps(_smooth_eps),
-        clipval(_clipval),
-        clip_values(-_clipval, _clipval) {};
+        clipval(_clipval) {};
 
 template<typename T>
 Solver<T>::Solver (
@@ -634,8 +633,8 @@ Solver<T>::Solver (
             T _clipval) :
         decay_rate(_decay_rate),
         smooth_eps(_smooth_eps),
-        clipval(_clipval),
-        clip_values(-_clipval, _clipval) {
+        clipval(_clipval)
+        {
     create_gradient_caches(parameters);
 };
 
@@ -669,9 +668,9 @@ void Solver<T>::step(
 	for (auto& param : parameters) {
 		auto& s = this->step_cache[*param];
 		// update gradient cache using decay rule:
-		s = s * this->decay_rate + (1.0 - this->decay_rate) * param->dw.unaryExpr(this->square_values);
+		s = s * this->decay_rate + (1.0 - this->decay_rate) * param->dw.array().square().matrix();
 		// clip the gradient to prevent explosions:
-		param->dw = (param->dw).array().unaryExpr(this->clip_values).matrix();
+		param->dw = (param->dw).array().min(clipval).max(-clipval).matrix();
 		// update gradient using RMSprop rule
 		param->w -= step_size * (param->dw.array() / (s.array() + this->smooth_eps).sqrt() ).matrix()  - (regc * param->w);
 		// reset gradient

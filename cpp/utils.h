@@ -27,17 +27,13 @@ namespace utils {
 	struct dtanh_operator {
 		T operator() (T) const;
 	};
-	template<typename T>
-	struct squared_operator {
-		T operator() (T) const;
-	};
-	template<typename T>
-	struct clip_operator {
-		T min;
-		T max;
-		clip_operator(T, T);
-		T operator() (T) const;
-	};
+	// template<typename T>
+	// struct clip_operator {
+	// 	T min;
+	// 	T max;
+	// 	clip_operator(T, T);
+	// 	T operator() (T) const;
+	// };
 
 	template<typename T>
 	void assign_cli_argument(char *, T&, T, std::string);

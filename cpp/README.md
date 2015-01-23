@@ -14,11 +14,19 @@ This is an reimagination of [Andrej Kaparthy](http://cs.stanford.edu/people/karp
 
 ### Installation
 	
-Grad hold of the latest copy of **Eigen** (no linking, installation, or nothing, just download and you're ready to go). Then:
+Grad hold of the latest copy of **[Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)** ([Download Link](http://bitbucket.org/eigen/eigen/get/3.2.4.tar.bz2)) Place the downloaded Eigen header folder in the `cpp` directory of this repo. Then:
 
 	> make
 
 That's it.
+
+Or for optimizations turned on (slower compilation 3x result):
+
+    > make optimized
+
+and to do character recognition as was done in Javascript:
+
+    > make character_predict
 
 ### Usage
 
@@ -79,6 +87,5 @@ One potential area of concern is during multithreaded code where shared_ptr will
 Future steps
 ------------
 
-* Make LSTM do character reading from the same Paul Graham startup wisdom corpus. 
 * parallelized code
 * Adagrad / Adadelta

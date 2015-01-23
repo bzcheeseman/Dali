@@ -15,9 +15,19 @@ In Python use of a specialized `Backward` class wraps backpropagation steps, whi
 
 #### Installation
 
-Go into the `cpp` folder and:
+Get **[Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)** ([Download Link](http://bitbucket.org/eigen/eigen/get/3.2.4.tar.bz2)) and place the downloaded Eigen header folder in the `cpp` folder of this repo, then go into the `cpp` folder and:
 
     > make
+
+That's it.
+
+Or for optimizations turned on (slower compilation 3x result):
+
+    > make optimized
+
+and to do character recognition as was done in Javascript:
+
+    > make character_predict
 
 #### Stacked LSTMs
 

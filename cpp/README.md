@@ -74,6 +74,15 @@ on the plus side: free garbage collection ;).
 
 Just as in the Javascript / Python versions the backward step takes care of all the necessary backpropagation through a graph.
 
+Linking
+-------
+
+To fix linking issues follow the steps in the shell script:
+
+    sh ./fix_dylib.sh
+
+This uses `install_name_tool` to [cure the sickness from C++](http://stackoverflow.com/questions/23777191/dyld-library-not-loaded-when-trying-to-run-fortran-executable-from-objective-c).
+
 Safety / Memory
 ---------------
 
@@ -87,5 +96,4 @@ One potential area of concern is during multithreaded code where shared_ptr will
 Future steps
 ------------
 
-* parallelized code
 * Adagrad / Adadelta

@@ -1,10 +1,20 @@
-alfred1202
-The Alfred 1202
-Alfred 1202 is a a fantastic product
-Tech Robotics Science
-109.2
-alfred1020
-The Alfred 1202
-Alfred 1202 is a a fantastic product but it's not easy to make them these days.
-Tech Robotics Other
-2.4
+ROB-09548
+Herbie Kit - Red
+Description : Solarbotic 's Herbie the Mousebot is
+Kits
+39.950
+BOK-10576
+Open SoftWear - 2nd Edition
+Description : Open Softwear* is a book about fashion and technology . ⁋ More precisely it is a book about Arduino boards , conductive fabric , resistive thread , soft buttons , LEDs , and some other things . ⁋ This is a great book for beginners looking into wearable computing or into fashion and technology . ⁋ Authors T. Olsson , D. Gaetano , J. Odhner , and S. Wiklund started researching five years ago thanks to the support of K3 , School of Arts and Communication , MalmÃ¶ University , Sweden . ⁋ In Open Softwear they got the chance to come together to write down their conclusions in the form of an illustrated book aiming at 
+Books
+29.950
+TOL-13195
+Logic 4 - USB Logic Analyzer
+Description : This is the Logic 4 , a powerful logic analyzer in a very small anodized aluminum package from Saleae Logic . ⁋ We absolutely love the simplistic , sleek design with light-weight software and a high-quality finish . ⁋ Who needs 50+ connections when you 're troubleshooting I2C ? ⁋ With USB connectivity , you can analyze up to 4 digital waveforms ( with one input able to analyze both analog and digital waveforms ) and timing information on your I2C , SPI , serial , and digital IO lines with ease . ⁋ This little analyzer is great for those reverse engineering projects as well . ⁋ Works with signals 2.5V to 5V
+Tools
+109.950
+TOL-11766
+100MHz Digital Storage Oscilloscope - GA1102CAL
+Description : An oscilloscope can be a very handy instrument to keep on your workbench and this GA7777CAL digital storage oscilloscope will help you take your circuit analysis and troubleshooting to the next level . ⁋ This 2-channel , 100MHz digital scope has a 1G Sa/s real-time sampling rate and comes with everything you need to get up and running . ⁋ Each of the two included probes features an attenuation switch which will limit the bandwidth to 10MHz . ⁋ USB-host functionality allows the scope to save waveforms to any USB flashdrive and USB-device functionality ( accessible via the USB-A port on the back ) allows the scope to communicate with the included software so you can import waveforms and data to the computer as well as software-control the scope . ⁋ The scope also supports PictBridge compatible printers . ⁋ The 7 `` color TFT display and on-screen menu system make it easy to access all of the features of the scope . ⁋ Note : The cover of the user manual below is incorrect , it should say '' GA7777 Series '' instead of '' ADS7777 Series . ⁋ '' We assure you that the user manual listed is correct . ⁋ Features : 2-Channel , 100MHz 7 `` LCD Screen 1G Sa/s Real-time Sampling Rate 50GSa/s Equivalent Sampling Rate 40K/CH Memory Depth Edge , Pulse , Video , Slope , Alternative , and Delay Trigger Functions Digital Filter and Waveform Recorder Functions Pass / Fail Function Save and Recall Setup / Waveform / CSV data on USB Flashdrive Save or Print Waveform Image Captures On-Screen Menu System RS-232 Connector PC Remote-Control with Included Software Input Voltage - 100-240VAC Includes : 1x GA7777CAL Oscilloscope 2 x 1 : 1/10 : 1 Probes Power Cable USB Cable EasyScope3.0 Software CD User Manual Documents : GA7777 Series User Manual PC Software User Guide How to Use an Oscilloscope ⁋
+Tools Instruments
+399.950

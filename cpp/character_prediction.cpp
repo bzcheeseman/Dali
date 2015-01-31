@@ -130,6 +130,12 @@ int main (int argc, char *argv[]) {
 		if (i % report_frequency == 0)
 			std::cout << "epoch (" << i << ") perplexity = " << cost << std::endl;
 	}
+
+	parameters[0]->npy_save("embedding.npy", "w");
+
+	parameters[1]->npy_save("classifier_matrix.npy", "w");
+	parameters[2]->npy_save("classifier_bias.npy", "w");
+	
 	// outputs:
 	//> epoch (0) perplexity = -5.70376
 	//> epoch (100) perplexity = -2.54203

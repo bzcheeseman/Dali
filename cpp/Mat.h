@@ -2,6 +2,7 @@
 #define RECURRENT_MAT_H
 
 #include "utils.h"
+#include "cnpy.h"
 
 #define EIGEN_USE_MKL_VML
 #define EIGEN_USE_BLAS
@@ -22,6 +23,7 @@ template<typename T> class Mat {
 		~Mat();
 		// random matrices:
 		Mat (int, int, T);
+		void npy_save(std::string fname, std::string mode = "w");
 		static Mat RandMat(int, int, T);
 		static Mat Empty(int, int);
 		operator std::string() const;

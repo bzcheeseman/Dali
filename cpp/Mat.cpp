@@ -31,6 +31,12 @@ void Mat<T>::print () {
 }
 
 template<typename T>
+void Mat<T>::npy_save (std::string fname, std::string mode) {
+	const unsigned int shape[] = {(unsigned int) n,(unsigned int) d};
+	cnpy::npy_save(fname, w.data(), shape, 2, mode);
+}
+
+template<typename T>
 Mat<T>::~Mat() {}
 
 template<typename T>

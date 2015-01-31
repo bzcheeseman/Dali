@@ -5,8 +5,33 @@
 #include <iomanip>
 #include <random>
 #include <sstream>
+#include <unordered_map>
+
+std::ostream& operator<<(std::ostream&, const std::vector<std::string>&);
+
+template<typename T>
+std::ostream& operator<<(std::ostream&, const std::vector<T>&);
 
 namespace utils {
+
+	const auto end_symbol          = "**END**";
+	const auto unknown_word_symbol = "**UNKNOWN**";
+
+	class Vocab {
+		typedef uint ind_t;
+		private:
+			void construct_word2index ();
+			void add_unknown_word();
+		public:
+			ind_t unknown_word;
+			std::unordered_map<std::string, ind_t> word2index;
+			std::vector<std::string> index2word;
+			Vocab();
+			Vocab(std::vector<std::string>&);
+			Vocab(std::vector<std::string>&, bool);
+	};
+
+	bool is_gzip(const std::string&);
 	template<typename T>
 	struct sigmoid_operator {
 		T operator() (T) const;
@@ -27,13 +52,9 @@ namespace utils {
 	struct dtanh_operator {
 		T operator() (T) const;
 	};
-	// template<typename T>
-	// struct clip_operator {
-	// 	T min;
-	// 	T max;
-	// 	clip_operator(T, T);
-	// 	T operator() (T) const;
-	// };
+
+	template <typename T>
+	std::vector<size_t> argsort(const std::vector<T> &);
 
 	template<typename T>
 	void assign_cli_argument(char *, T&, T, std::string);

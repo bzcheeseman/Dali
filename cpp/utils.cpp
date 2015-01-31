@@ -1,11 +1,94 @@
 #include "utils.h"
 #include <iostream>
+#include <fstream>
 #include <iomanip>
 #include <random>
+#include <unordered_map>
 
+using std::vector;
+using std::string;
 
+std::ostream &operator <<(std::ostream &os, const vector<string> &v) {
+   if (v.size() == 0) return os << "[]";
+   os << "[\"";
+   std::copy(v.begin(), v.end() - 1, std::ostream_iterator<string>(os, "\", \""));
+   return os << v.back() << "\"]";
+}
+
+template<typename T>
+std::ostream& operator<<(std::ostream& os, const vector<T>& v) {
+	if (v.size() == 0) return os << "[]";
+	os << "[";
+	for (auto& f : v) 
+		os << std::fixed
+			          << std::setw( 7 ) // keep 7 digits
+			          << std::setprecision( 3 ) // use 3 decimals
+			          << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
+			          << f << " ";
+	return os << "]";
+}
+
+template std::ostream& operator<< <double>(std::ostream& strm, const vector<double>& a);
+template std::ostream& operator<< <float>(std::ostream& strm, const vector<float>& a);
+template std::ostream& operator<< <uint>(std::ostream& strm, const vector<uint>& a);
+template std::ostream& operator<< <int>(std::ostream& strm, const vector<int>& a);
 
 namespace utils {
+
+	void Vocab::construct_word2index() {
+		uint i = 0;
+		for (auto& s : index2word) word2index[s] = i++;
+	}
+	void Vocab::add_unknown_word() {
+		index2word.emplace_back(unknown_word_symbol);
+		word2index[unknown_word_symbol] = index2word.size() - 1;
+		unknown_word = index2word.size() - 1;
+	}
+	Vocab::Vocab() : unknown_word(-1) {};
+	Vocab::Vocab(vector<string>& _index2word) : index2word(_index2word), unknown_word(-1) {
+		construct_word2index();
+	}
+	Vocab::Vocab(vector<string>& _index2word, bool unknown_word) : index2word(_index2word), unknown_word(-1) {
+		construct_word2index();
+		if (unknown_word) add_unknown_word();
+	}
+
+	bool is_gzip(const std::string& filename) {
+		const unsigned char gzip_code = 0x1f;
+		const unsigned char gzip_code2 = 0x8b;
+		unsigned char ch;
+		std::ifstream file;
+		file.open(filename);
+		if (!file) return false;
+		file.read(reinterpret_cast<char*>(&ch), 1);
+		if (ch != gzip_code)
+			return false;
+		if (!file) return false;
+		file.read(reinterpret_cast<char*>(&ch), 1);
+		if (ch != gzip_code2)
+			return false;
+		return true;
+	}
+
+	template <typename T>
+	vector<size_t> argsort(const vector<T> &v) {
+		// initialize original index locations
+		vector<size_t> idx(v.size());
+		for (size_t i = 0; i != idx.size(); ++i) idx[i] = i;
+
+		// sort indexes based on comparing values in v
+		sort(idx.begin(), idx.end(),
+		   [&v](size_t i1, size_t i2) {return v[i1] < v[i2];});
+
+		return idx;
+	}
+	template vector<size_t> argsort(const vector<size_t>&v);
+	template vector<size_t> argsort(const vector<float>&v);
+	template vector<size_t> argsort(const vector<double>&v);
+	template vector<size_t> argsort(const vector<int>&v);
+	template vector<size_t> argsort(const vector<uint>&v);
+	template vector<size_t> argsort(const vector<std::string>&v);
+
 	template<typename T>
 	T sigmoid_operator<T>::operator () (T x) const { return 1.0 / (1.0 + exp(-x)); }
 
@@ -20,12 +103,6 @@ namespace utils {
 
 	template<typename T>
 	T dtanh_operator<T>::operator() (T x) const { return 1.0 - x*x; }
-
-	// template<typename T>
-	// clip_operator<T>::clip_operator(T _min, T _max) : min(_min), max(_max) {};
-
-	// template<typename T>
-	// T clip_operator<T>::operator() (T x) const { return (x < min) ? min : (x > max ? max : x); }
 
 	template <class T> inline void hash_combine(std::size_t & seed, const T & v) {
 	  std::hash<T> hasher;

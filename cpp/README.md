@@ -96,4 +96,4 @@ One potential area of concern is during multithreaded code where shared_ptr will
 Future steps
 ------------
 
-* Adagrad / Adadelta
+* Who knows ?

@@ -111,7 +111,7 @@ int main (int argc, char *argv[]) {
     static std::uniform_int_distribution<> uniform(0, sentences.size() - 1);
 
 	//Gradient descent optimizer:
-	Solver<REAL_t> solver(parameters, 0.999, 1e-9, 5.0);
+	Solver::RMSProp<REAL_t> solver(parameters, 0.999, 1e-9, 5.0);
 	
 	// Main training loop:
 	for (auto i = 0; i < epochs; ++i) {

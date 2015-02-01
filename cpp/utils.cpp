@@ -8,12 +8,26 @@
 using std::vector;
 using std::string;
 
+const char* utils::end_symbol          = "**END**";
+const char* utils::unknown_word_symbol = "**UNKNOWN**";
+
 std::ostream &operator <<(std::ostream &os, const vector<string> &v) {
    if (v.size() == 0) return os << "[]";
    os << "[\"";
    std::copy(v.begin(), v.end() - 1, std::ostream_iterator<string>(os, "\", \""));
    return os << v.back() << "\"]";
 }
+
+std::ostream &operator <<(std::ostream &os, const std::unordered_map<string, uint> &v) {
+   if (v.size() == 0) return os << "{}";
+   os << "{\n";
+   for (auto& kv : v) {
+       os << "\"" << kv.first << "\" => " << kv.second << ",\n";
+   }
+   return os << "}";
+}
+
+
 
 template<typename T>
 std::ostream& operator<<(std::ostream& os, const vector<T>& v) {
@@ -44,14 +58,29 @@ namespace utils {
 		word2index[unknown_word_symbol] = index2word.size() - 1;
 		unknown_word = index2word.size() - 1;
 	}
-	Vocab::Vocab() : unknown_word(-1) {};
+	Vocab::Vocab() : unknown_word(-1) {add_unknown_word();};
 	Vocab::Vocab(vector<string>& _index2word) : index2word(_index2word), unknown_word(-1) {
 		construct_word2index();
+		add_unknown_word();
 	}
-	Vocab::Vocab(vector<string>& _index2word, bool unknown_word) : index2word(_index2word), unknown_word(-1) {
+	Vocab::Vocab(vector<string>& _index2word, bool _unknown_word) : index2word(_index2word), unknown_word(-1) {
 		construct_word2index();
-		if (unknown_word) add_unknown_word();
+		if (_unknown_word) add_unknown_word();
 	}
+
+	template<typename T>
+    T from_string(const std::string& s) {
+	    std::istringstream stream (s);
+	    T t;
+	    stream >> t;
+	    return t;
+	}
+
+	template float from_string<float>(const std::string& s);
+	template int from_string<int>(const std::string& s);
+	template uint from_string<uint>(const std::string& s);
+	template double from_string<double>(const std::string& s);
+	template long from_string<long>(const std::string& s);
 
 	bool is_gzip(const std::string& filename) {
 		const unsigned char gzip_code = 0x1f;

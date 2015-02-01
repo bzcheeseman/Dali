@@ -8,14 +8,15 @@
 #include <unordered_map>
 
 std::ostream& operator<<(std::ostream&, const std::vector<std::string>&);
+std::ostream& operator<<(std::ostream&, const std::unordered_map<std::string, uint>&);
 
 template<typename T>
 std::ostream& operator<<(std::ostream&, const std::vector<T>&);
 
 namespace utils {
 
-	const auto end_symbol          = "**END**";
-	const auto unknown_word_symbol = "**UNKNOWN**";
+	extern const char* end_symbol;
+	extern const char* unknown_word_symbol;
 
 	class Vocab {
 		typedef uint ind_t;
@@ -53,6 +54,9 @@ namespace utils {
 		T operator() (T) const;
 	};
 
+	template<typename T>
+    T from_string(const std::string&);
+
 	template <typename T>
 	std::vector<size_t> argsort(const std::vector<T> &);
 
@@ -65,19 +69,22 @@ namespace utils {
 	template <class T> inline void hash_combine(std::size_t &, const T &);
 	std::size_t get_random_id();
 	namespace ops {
-		static const uint add                   = 0;
-		static const uint eltmul                = 1;
-		static const uint sigmoid               = 2;
-		static const uint tanh                  = 3;
-		static const uint mul                   = 4;
-		static const uint relu                  = 5;
-		static const uint row_pluck             = 6;
-		static const uint add_broadcast         = 7;
-		static const uint eltmul_broadcast      = 8;
-		static const uint mul_with_bias         = 9;
-		static const uint mul_add_mul_with_bias = 10;
+		static const uint add                             = 0;
+		static const uint eltmul                          = 1;
+		static const uint sigmoid                         = 2;
+		static const uint tanh                            = 3;
+		static const uint mul                             = 4;
+		static const uint relu                            = 5;
+		static const uint row_pluck                       = 6;
+		static const uint add_broadcast                   = 7;
+		static const uint eltmul_broadcast                = 8;
+		static const uint mul_with_bias                   = 9;
+		static const uint mul_add_mul_with_bias           = 10;
 		static const uint mul_add_broadcast_mul_with_bias = 11;
-		static const uint rows_pluck = 12;
+		static const uint rows_pluck                      = 12;
+		static const uint transpose                       = 13;
+		static const uint eltmul_broadcast_rowwise        = 14;
+		static const uint eltmul_rowwise                  = 15;
 	}
 }
 #endif

@@ -3,8 +3,8 @@
 template<typename T>
 void Layer<T>::create_variables() {
     using std::make_shared;
-    T std = 0.08;
-    W = make_shared<mat>(hidden_size, input_size, std);
+    T upper = 1. / sqrt(input_size);
+    W = make_shared<mat>(hidden_size, input_size, -upper, upper);
     b = make_shared<mat>(hidden_size, 1);
 }
 template<typename T>
@@ -25,9 +25,10 @@ std::vector<typename Layer<T>::shared_mat> Layer<T>::parameters() {
 template<typename T>
 void RNN<T>::create_variables() {
     using std::make_shared;
-    T std = 0.08;
-    Wx = make_shared<mat>(output_size, input_size,  std);
-    Wh = make_shared<mat>(output_size, hidden_size, std);
+    T upper = 1. / sqrt(input_size);
+    Wx = make_shared<mat>(output_size, input_size,  -upper, upper);
+    upper = 1. / sqrt(hidden_size);
+    Wh = make_shared<mat>(output_size, hidden_size, -upper, upper);
     b  = make_shared<mat>(output_size, 1);
 }
 
@@ -47,7 +48,10 @@ RNN<T>::RNN (int _input_size, int _hidden_size, int _output_size) : hidden_size(
 }
 
 template<typename T>
-typename RNN<T>::shared_mat RNN<T>::activate(Graph<T>& G, typename RNN<T>::shared_mat input_vector, typename RNN<T>::shared_mat prev_hidden) {
+typename RNN<T>::shared_mat RNN<T>::activate(
+    Graph<T>& G,
+    typename RNN<T>::shared_mat input_vector,
+    typename RNN<T>::shared_mat prev_hidden) {
     // takes 5% less time to run operations when grouping them (no big gains then)
     // 1.118s with explicit (& temporaries) vs 1.020s with grouped expression & backprop
     // return G.add(G.mul(Wx, input_vector), G.mul_with_bias(Wh, prev_hidden, b));
@@ -57,6 +61,11 @@ typename RNN<T>::shared_mat RNN<T>::activate(Graph<T>& G, typename RNN<T>::share
 template<typename T>
 GatedInput<T>::GatedInput (int _input_size, int _hidden_size) : in_gate(_input_size, _hidden_size, 1) {}
 
+
+template<typename T>
+std::vector<typename GatedInput<T>::shared_mat> GatedInput<T>::parameters () {
+    return in_gate.parameters();
+}
 
 template<typename T>
 typename GatedInput<T>::shared_mat GatedInput<T>::activate(Graph<T>& G, typename GatedInput<T>::shared_mat input_vector, typename GatedInput<T>::shared_mat prev_hidden) {
@@ -70,7 +79,11 @@ LSTM<T>::LSTM (int _input_size, int _hidden_size) :
     input_layer(_input_size, _hidden_size),
     forget_layer(_input_size, _hidden_size),
     output_layer(_input_size, _hidden_size),
-    cell_layer(_input_size, _hidden_size) {}
+    cell_layer(_input_size, _hidden_size) {
+
+        forget_layer.b->w(0) = 1000;
+
+    }
 
 template<typename T>
 LSTM<T>::LSTM (int& _input_size, int& _hidden_size) :
@@ -79,7 +92,12 @@ LSTM<T>::LSTM (int& _input_size, int& _hidden_size) :
     input_layer(_input_size, _hidden_size),
     forget_layer(_input_size, _hidden_size),
     output_layer(_input_size, _hidden_size),
-    cell_layer(_input_size, _hidden_size) {}
+    cell_layer(_input_size, _hidden_size) {
+        // Alex Graves recommends initializing with
+        // forget gate at high value
+        forget_layer.b->w(0) = 1000;
+
+    }
 
 template<typename T>
 std::pair<typename LSTM<T>::shared_mat, typename LSTM<T>::shared_mat> LSTM<T>::activate (

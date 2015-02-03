@@ -25,6 +25,7 @@
 
 cpp/Eigen
 cpp/prog.o
+cpp/mygreatfolder
 
 # Saves #
 #########

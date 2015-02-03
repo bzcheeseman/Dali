@@ -5,8 +5,16 @@
 #include <iomanip>
 #include <random>
 #include <sstream>
+#include <string>
+#include <vector>
+#include <fstream>
+#include <sstream>
 #include <unordered_map>
 #include <sys/stat.h>
+#include <algorithm> 
+#include <functional> 
+#include <cctype>
+#include <locale>
 // Default writing mode useful for default argument to
 // makedirs
 #define DEFAULT_MODE S_IRWXU | S_IRGRP |  S_IXGRP | S_IROTH | S_IXOTH
@@ -27,7 +35,7 @@ namespace utils {
 	class Vocab {
 		typedef uint ind_t;
 		private:
-			void construct_word2index ();
+			void construct_word2index();
 			void add_unknown_word();
 		public:
 			ind_t unknown_word;
@@ -38,9 +46,15 @@ namespace utils {
 			Vocab(std::vector<std::string>&, bool);
 	};
 
+	std::string& trim(std::string&);
+	std::string& ltrim(std::string&);
+	std::string& rtrim(std::string&);
+
 	void map_to_file(const std::unordered_map<std::string, std::vector<std::string>>&, const std::string&);
 
 	void ensure_directory(std::string&);
+
+	std::vector<std::string> split_str(const std::string&, const std::string&);
 
 	std::unordered_map<std::string, std::vector<std::string>> text_to_map(const std::string&);
 

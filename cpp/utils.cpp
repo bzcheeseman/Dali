@@ -77,6 +77,45 @@ namespace utils {
 	template void assert_map_has_key(std::unordered_map<string, string>&, const string&);
 	template void assert_map_has_key(std::unordered_map<string, vector<string>>&, const string&);
 
+	vector<string> split_str(const string& original, const string& delimiter) {
+		std::vector<std::string> tokens;
+		auto delimiter_ptr = delimiter.begin();
+		stringstream ss(original);
+		int inside = 0;
+		std::vector<char> token;
+		char ch;
+		while (ss) {
+			ch = ss.get();
+			if (ch == *delimiter_ptr) {
+				delimiter_ptr++;
+				inside++;
+				if (delimiter_ptr == delimiter.end()) {
+					tokens.emplace_back(token.begin(), token.end());
+					token.clear();
+					inside = 0;
+					delimiter_ptr = delimiter.begin();
+				}
+			} else {
+				if (inside > 0) {
+					token.insert(token.end(), delimiter.begin(), delimiter_ptr);
+					delimiter_ptr = delimiter.begin();
+					inside = 0;
+				} else {
+					token.push_back(ch);
+				}
+			}
+		}
+		if (inside > 0) {
+			token.insert(token.end(), delimiter.begin(), delimiter_ptr);
+			tokens.emplace_back(token.begin(), token.end());
+			token.clear();
+		} else {
+			if (token.size() > 0)
+				tokens.emplace_back(token.begin(), token.end()-1);
+		}
+		return tokens;
+	}
+
 	/**
 	Text To Map
 	-----------
@@ -124,8 +163,27 @@ namespace utils {
 				fp << " " << v;
 			fp << "\n";
 		}
+	}	
+
+	// Trimming text from StackOverflow:
+	// http://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
+
+	// trim from start
+	std::string &ltrim(std::string &s) {
+	        s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
+	        return s;
 	}
 
+	// trim from end
+	std::string &rtrim(std::string &s) {
+	        s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
+	        return s;
+	}
+
+	// trim from both ends
+	std::string &trim(std::string &s) {
+	        return ltrim(rtrim(s));
+	}
 
 	
 

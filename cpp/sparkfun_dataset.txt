@@ -1,20 +1,30 @@
-ROB-09548
-Herbie Kit - Red
-Description : Solarbotic 's Herbie the Mousebot is
-Kits
-39.950
-BOK-10576
-Open SoftWear - 2nd Edition
-Description : Open Softwear* is a book about fashion and technology . ⁋ More precisely it is a book about Arduino boards , conductive fabric , resistive thread , soft buttons , LEDs , and some other things . ⁋ This is a great book for beginners looking into wearable computing or into fashion and technology . ⁋ Authors T. Olsson , D. Gaetano , J. Odhner , and S. Wiklund started researching five years ago thanks to the support of K3 , School of Arts and Communication , MalmÃ¶ University , Sweden . ⁋ In Open Softwear they got the chance to come together to write down their conclusions in the form of an illustrated book aiming at 
-Books
-29.950
-TOL-13195
-Logic 4 - USB Logic Analyzer
-Description : This is the Logic 4 , a powerful logic analyzer in a very small anodized aluminum package from Saleae Logic . ⁋ We absolutely love the simplistic , sleek design with light-weight software and a high-quality finish . ⁋ Who needs 50+ connections when you 're troubleshooting I2C ? ⁋ With USB connectivity , you can analyze up to 4 digital waveforms ( with one input able to analyze both analog and digital waveforms ) and timing information on your I2C , SPI , serial , and digital IO lines with ease . ⁋ This little analyzer is great for those reverse engineering projects as well . ⁋ Works with signals 2.5V to 5V
-Tools
-109.950
-TOL-11766
-100MHz Digital Storage Oscilloscope - GA1102CAL
-Description : An oscilloscope can be a very handy instrument to keep on your workbench and this GA7777CAL digital storage oscilloscope will help you take your circuit analysis and troubleshooting to the next level . ⁋ This 2-channel , 100MHz digital scope has a 1G Sa/s real-time sampling rate and comes with everything you need to get up and running . ⁋ Each of the two included probes features an attenuation switch which will limit the bandwidth to 10MHz . ⁋ USB-host functionality allows the scope to save waveforms to any USB flashdrive and USB-device functionality ( accessible via the USB-A port on the back ) allows the scope to communicate with the included software so you can import waveforms and data to the computer as well as software-control the scope . ⁋ The scope also supports PictBridge compatible printers . ⁋ The 7 `` color TFT display and
-Tools Instruments
-399.950
+APPLE-IPHONE
+Apple iPhone
+A combination mobile phone , multimedia player , and wireless Internet device from Apple Inc. Instead of a physical keyboard or keypad , the iPhone includes a touchscreen and virtual keyboard and buttons . The iPhone uses the iOS operating system and many of the same apps as the iPad and iPod touch . For more information , see the iPhone webpage .
+Apple Computer
+499.99
+JB-FANTASIA
+Jelly Bean Fantasia
+Jelly Bean Jelly Beans Jelly Beans are forever . Eat some Jelly Beans !
+Candy Food
+0.99
+FANTASIA-FANTASIA
+Jelly Beans 2
+Eat good jelly beans Jelly Beans ! Jelly Beans ! Some good jelly beans , kit kats , cool beans .
+Candy Food
+1.29
+SAMSUNG-PHONE
+Samsung super phone
+Samsung G3S Nexus Thing phone device multimedia player made by Samsung the electronic company maker of Samsung devices buttons devices . Competitor to Apple but is not them .
+Computer
+399.99
+JOKER-JOKER
+Batmobile Joker
+Joker batmobile racing on batmobiles with Batman and Robin and Poison Ivy Batman racing toys gaming fun ! Bring the fun to the game . Batman 
+Games Toys
+12.99
+LEGO-TOYS
+Lego Super Copter
+Lego build an incredible super powerful giant of bricks . Plastic bricks to build things . The power of your imagination . Fight the powers of good and evil in this great game of fun and enjoyment . Lego super toys for enjoyment .
+Toys
+49.99

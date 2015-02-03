@@ -74,6 +74,33 @@ on the plus side: free garbage collection ;).
 
 Just as in the Javascript / Python versions the backward step takes care of all the necessary backpropagation through a graph.
 
+
+#### Utils
+
+In the utilities namespace you will find several tools to make data processing and saving easier.
+
+To create folders similar to how `os.makedirs` works in Python, you can do:
+
+
+    utils::makedirs("folder/subfolder/");
+
+Random integer between 0 and 2 (included):
+
+
+    utils::randint(0, 2);
+
+Check whether a file is gzipped:
+
+
+    utils::is_gzip("folder/suspicious.gz");
+
+Sort the arguments of a list `np.argsort` style:
+
+
+    auto sorted_lengths = utils::argsort(lengths);
+
+
+
 Linking
 -------
 

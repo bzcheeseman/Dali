@@ -1,16 +1,13 @@
-#include "Layers.h"
 #include <fstream>
-#include <random>
 #include <iterator>
 #include <algorithm>
 #include <Eigen>
 #include "gzstream.h"
+#include "StackedGatedModel.h"
 #include "OptionParser/OptionParser.h"
-// test file for character prediction
 using std::vector;
 using std::make_shared;
 using std::shared_ptr;
-using utils::assign_cli_argument;
 using std::ifstream;
 using std::istringstream;
 using std::string;
@@ -244,103 +241,10 @@ vector<Product> get_products(const string& filename) {
 	return products;
 }
 
-std::tuple<REAL_t, REAL_t> cost_fun(
-	graph_t& G,
-	vector<int>& hidden_sizes,
-    vector<lstm>& cells,
-    shared_mat embedding,
-    gate_t& gate,
-    REAL_t& memory_penalty,
-    classifier_t& classifier,
-    Databatch& minibatch,
-    Vocab& word_vocab) {
-
-	auto initial_state = lstm::initial_states(hidden_sizes);
-	auto num_hidden_sizes = hidden_sizes.size();
-
-	shared_mat input_vector;
-	shared_mat memory;
-	shared_mat logprobs;
-	// shared_mat probs;
-	std::tuple<REAL_t, REAL_t> cost(0.0, 0.0);
-
-	auto n = minibatch.data->cols();
-	for (uint i = 0; i < n-1; ++i) {
-		// pick this letter from the embedding
-		input_vector = G.rows_pluck(embedding, minibatch.data->col(i));
-		memory = gate.activate(G, input_vector, initial_state.second[0]);
-		input_vector = G.eltmul_broadcast_rowwise(input_vector, memory);
-		// pass this letter to the LSTM for processing
-		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
-		// classifier takes as input the final hidden layer's activation:
-		logprobs      = classifier.activate(G, initial_state.second[num_hidden_sizes-1]);
-		std::get<0>(cost) += masked_cross_entropy(
-			logprobs,
-			i,
-			minibatch.start_loss,
-			minibatch.codelens,
-			(minibatch.data->col(i+1).array() - word_vocab.index2word.size()).matrix());
-
-		std::get<1>(cost) += masked_sum(memory, i, minibatch.start_loss, minibatch.codelens, memory_penalty);
-	}
-	return cost;
-}
-
-template<typename T>
-std::vector<int> reconstruct_fun(
-	vector<int>& hidden_sizes,
-    vector<lstm>& cells,
-    shared_mat embedding,
-    gate_t& gate,
-    classifier_t& classifier,
-    T example,
-    Vocab& word_vocab,
-    Vocab& category_vocab,
-    int eval_steps) {
-
-	graph_t G(false);
-	shared_mat input_vector;
-	shared_mat memory;
-	auto initial_state = lstm::initial_states(hidden_sizes);
-	auto num_hidden_sizes = hidden_sizes.size();
-	auto n = example.cols();
-	for (uint i = 0; i < n; ++i) {
-		// pick this letter from the embedding
-		input_vector = G.row_pluck(embedding, example(i));
-		memory = gate.activate(G, input_vector, initial_state.second[0]);
-		input_vector = G.eltmul_broadcast_rowwise(input_vector, memory);
-		// pass this letter to the LSTM for processing
-		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
-		// classifier takes as input the final hidden layer's activation:
-	}
-	vector<int> outputs;
-	auto last_symbol = argmax(classifier.activate(G, initial_state.second[num_hidden_sizes-1]));
-	outputs.emplace_back(last_symbol);
-	last_symbol += word_vocab.index2word.size();
-	for (uint j = 0; j < eval_steps - 1; j++) {
-		input_vector = G.row_pluck(embedding, last_symbol);
-		memory = gate.activate(G, input_vector, initial_state.second[0]);
-		input_vector = G.eltmul_broadcast_rowwise(input_vector, memory);
-		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
-		last_symbol = argmax(classifier.activate(G, initial_state.second[num_hidden_sizes-1]));
-		outputs.emplace_back(last_symbol);
-		last_symbol += word_vocab.index2word.size();
-	}
-	return outputs;
-}
-
 template<typename T>
 void tuple_sum(std::tuple<T, T>& A, std::tuple<T, T> B) {
 	std::get<0>(A) += std::get<0>(B);
 	std::get<1>(A) += std::get<1>(B);
-}
-
-int randint(int lower, int upper) {
-	std::default_random_engine generator;
-	std::uniform_int_distribution<int> distribution(lower, upper);
-	std::random_device rd;
-	generator.seed(rd());
-	return distribution(generator);
 }
 
 int main(int argc, char *argv[]) {
@@ -397,15 +301,23 @@ int main(int argc, char *argv[]) {
 	parser
 		.add_option("-decay", "--decay_rate")
 		.help("What decay rate should RMSProp use ?").metavar("FLOAT");
-	parser.set_defaults("rho", "0.1");
+	parser.set_defaults("rho", "0.95");
 	parser
-		.add_option("-rho", "--rho")
+		.add_option("--rho")
 		.help("What rho / learning rate should the Solver use ?").metavar("FLOAT");
 
 	parser.set_defaults("memory_penalty", "0.3");
 	parser
-		.add_option("-mem", "--memory_penalty")
+		.add_option("--memory_penalty")
 		.help("L1 Penalty on Input Gate activation.").metavar("FLOAT");
+
+	parser.set_defaults("save", "");
+	parser.add_option("--save")
+		.help("Where to save the model to ?").metavar("FOLDER");
+
+	parser.set_defaults("load", "");
+	parser.add_option("--load")
+		.help("Where to load the model from ?").metavar("FOLDER");
 
 	optparse::Values& options = parser.parse_args(argc, argv);
 
@@ -419,7 +331,9 @@ int main(int argc, char *argv[]) {
 	REAL_t rho           = from_string<REAL_t>(options["rho"]);
 	REAL_t decay_rate    = from_string<REAL_t>(options["decay_rate"]);
 	REAL_t memory_penalty = from_string<REAL_t>(options["memory_penalty"]);
+	std::string load_location(options["load"]);
 	std::string dataset_path(options["dataset"]);
+	std::string save_destination(options["save"]);
 	if (min_occurence <= 0) min_occurence = 1;
 	if (stack_size <= 0)    stack_size = 1;
 
@@ -430,92 +344,133 @@ int main(int argc, char *argv[]) {
 	Vocab word_vocab(index2word);
 	Vocab category_vocab(index2category, false);
 	auto dataset = create_labeled_dataset(products, category_vocab, word_vocab, subsets);
+	
+	memory_penalty = memory_penalty / dataset[0].data->cols();
 
 	std::cout << "Loaded Dataset"                                    << std::endl;
-	std::cout << "Vocabulary size       = " << index2word.size()     << std::endl;
-	std::cout << "Category size         = " << index2category.size() << std::endl;
-	std::cout << "Number of Products    = " << products.size()       << std::endl;
-	std::cout << "Number of Minibatches = " << dataset.size()        << std::endl;
+	std::cout << "Load location         = " << ((load_location != "") ? load_location : "N/A") << std::endl;
+	std::cout << "Save location         = " << ((save_destination != "") ? save_destination : "N/A") << std::endl;
 
 	// Construct the model
-	vector<int> hidden_sizes;
-	for (int i = 0; i < stack_size;i++)
-		hidden_sizes.emplace_back(hidden_size);
 	auto vocab_size = word_vocab.index2word.size() + index2category.size() + 1;
-	
-	gate_t gate(input_size, hidden_sizes[0]);
+	auto output_size = index2category.size() + 1;
+	auto model = (load_location != "") ?
+		StackedGatedModel<REAL_t>::load(load_location) :
+		StackedGatedModel<REAL_t>(
+			vocab_size,
+			input_size,
+			hidden_size,
+			stack_size,
+			output_size,
+			memory_penalty);
+	if (load_location != "") {
+		std::cout << "Loaded Model" << std::endl;
+	} else {
+		std::cout << "Vocabulary size       = " << index2word.size()     << std::endl;
+		std::cout << "Category size         = " << index2category.size() << std::endl;
+		std::cout << "Number of Products    = " << products.size()       << std::endl;
+		std::cout << "Number of Minibatches = " << dataset.size()        << std::endl;
+		std::cout << "Rho                   = " << rho                   << std::endl;
+		std::cout << "Memory Penalty        = " << memory_penalty        << std::endl;
 
-	gate.in_gate.b->w(0) = 100;
-
-	auto cells = StackedCells<lstm>(input_size, hidden_sizes);
-	classifier_t decoder(hidden_sizes[hidden_sizes.size() - 1], index2category.size() + 1);
-	auto embedding = make_shared<mat>(vocab_size, input_size, (REAL_t) 0.05);
-	// Done constructing model;
-	std::cout << "Constructed Stacked LSTMs" << std::endl;
+		std::cout << "Constructed Stacked LSTMs" << std::endl;
+	}
 
 	// Store all parameters in a vector:
-	vector<shared_mat> parameters;
-	parameters.push_back(embedding);
+	auto parameters = model.parameters();
 
-	auto gate_params = gate.parameters();
-	parameters.insert(parameters.end(), gate_params.begin(), gate_params.end());
-
-	auto decoder_params = decoder.parameters();
-	parameters.insert(parameters.end(), decoder_params.begin(), decoder_params.end());
-	for (auto& cell : cells) {
-		auto cell_params = cell.parameters();
-		parameters.insert(parameters.end(), cell_params.begin(), cell_params.end());
-	}
-	
 	//Gradient descent optimizer:
 	Solver::AdaDelta<REAL_t> solver(parameters, rho, 1e-9, 5.0);
+	// Solver::SGD<REAL_t> solver(5.0);
 
 	// Main training loop:
-
-	// 4. Use L2 norm to penalize price predictions
 	for (auto i = 0; i < epochs; ++i) {
 		std::tuple<REAL_t, REAL_t> cost(0.0, 0.0);
 		for (auto& minibatch : dataset) {
 			auto G = graph_t(true);      // create a new graph for each loop
-			tuple_sum(cost, cost_fun(
-				G,                       // to keep track of computation
-				hidden_sizes,            // to construct initial states
-				cells,                   // LSTMs
-				embedding,               // word embedding
-				gate,                    // input gate.
-				memory_penalty,          // sparsity penalty on Input Gate
-				decoder,                 // decoder for LSTM final hidden layer
-				minibatch,               // the sequence to predict
-				word_vocab
+			tuple_sum(cost, model.cost_fun(
+				G,
+				minibatch.data,               // the sequence to predict
+				minibatch.start_loss,
+				minibatch.codelens,
+				word_vocab.index2word.size()
 			));
-			G.backward();                // backpropagate
+			// backpropagate
+			G.backward();
 			// solve it.
 			solver.step(parameters, 0.0);
+			// solver.step(parameters, rho, 0.0);
 		}
 		if (i % report_frequency == 0) {
-			std::cout << "epoch (" << i << ") KL error = " << std::get<0>(cost) << ", Memory cost = " << std::get<1>(cost) << std::endl;
-			auto& random_batch = dataset[randint(0, std::min(3, (int) dataset.size() - 1))]; 
-			auto random_example_index = randint(0, random_batch.data->rows() - 1);
-			auto reconstruction = reconstruct_fun(
-				hidden_sizes,
-				cells,
-				embedding,               // word embedding
-				gate,                    // input gate.
-				decoder,                 // decoder for LSTM final hidden layer
-				random_batch.data->row(random_example_index).head((*random_batch.start_loss)(random_example_index)),          // the sequence to predict
-				word_vocab,
+			std::cout << "epoch (" << i << ") KL error = " << std::get<0>(cost)
+			                         << ", Memory cost = " << std::get<1>(cost) << std::endl;
+
+			auto& random_batch = dataset[utils::randint(0, std::min(3, (int) dataset.size() - 1))]; 
+			auto random_example_index = utils::randint(0, random_batch.data->rows() - 1);
+			auto reconstruction = model.reconstruct_fun(
+				random_batch.data->row(random_example_index).head((*random_batch.start_loss)(random_example_index) + 1),
 				category_vocab,
-				(*random_batch.codelens)(random_example_index));
+				(*random_batch.codelens)(random_example_index),
+				word_vocab.index2word.size());
+
 			std::cout << "Reconstruction \"";
 			for (int j = 0; j < (*random_batch.start_loss)(random_example_index); j++) {
 				std::cout << word_vocab.index2word[(*random_batch.data)(random_example_index, j)] << " ";
 			}
 			std::cout << "\"\n => ";
 			for (auto& cat : reconstruction) {
-				std::cout << ((cat < category_vocab.index2word.size()) ? category_vocab.index2word[cat] : "??") << ", ";
+				std::cout << (
+					(cat < category_vocab.index2word.size()) ?
+						category_vocab.index2word[cat] :
+						(
+							(cat == category_vocab.index2word.size()) ?
+								"**END**" :
+								"??"
+						)
+					) << ", ";
 			}
 			std::cout << std::endl;
 		}
 	}
+
+	if (save_destination != "") {
+		model.save(save_destination);
+		std::cout << "Saved Model in \"" << save_destination << "\"" << std::endl;
+	}
+
+	std::cout <<"\n"
+	          << "Final Results\n"
+	          << "=============\n" << std::endl;
+	for (auto& minibatch : dataset) {
+		for (int i = 0; i < minibatch.data->rows(); i++) {
+
+			auto reconstruction = model.reconstruct_fun(
+				minibatch.data->row(i).head((*minibatch.start_loss)(i) + 1),
+				category_vocab,
+				(*minibatch.codelens)(i),
+				word_vocab.index2word.size());
+
+			std::cout << "Reconstruction \"";
+			for (int j = 0; j < (*minibatch.start_loss)(i); j++) {
+				std::cout << word_vocab.index2word[(*minibatch.data)(i, j)] << " ";
+			}
+			std::cout << "\"\n => ";
+			for (auto& cat : reconstruction) {
+				std::cout << (
+					(cat < category_vocab.index2word.size()) ?
+						category_vocab.index2word[cat] :
+						(
+							(cat == category_vocab.index2word.size()) ?
+								"**END**" :
+								"??"
+						)
+					) << ", ";
+			}
+			std::cout << std::endl;
+		}
+
+	}
+
+
 	return 0;
 }

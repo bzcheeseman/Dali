@@ -1,4 +1,5 @@
 #include "Layers.h"
+#include "Softmax.h"
 
 // Test file for LSTM
 int main () {
@@ -63,6 +64,8 @@ int main () {
 
     // backpropagate to A and B
     G.backward();
+    auto params = lstm.parameters();
+    utils::save_matrices(params, "lstm_params");
 
 	return 0;
 }

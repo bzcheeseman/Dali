@@ -1,4 +1,5 @@
 #include "Layers.h"
+#include "Softmax.h"
 #include <fstream>
 #include  <random>
 #include  <iterator>

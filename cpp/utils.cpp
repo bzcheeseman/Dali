@@ -4,12 +4,16 @@
 #include <iomanip>
 #include <random>
 #include <unordered_map>
+#include <errno.h>
 
 using std::vector;
 using std::string;
+using std::ifstream;
+using std::stringstream;
+using std::ofstream;
 
 const char* utils::end_symbol          = "**END**";
-const char* utils::unknown_word_symbol = "**UNKNOWN**";
+const char* utils::unknown_word_symbol = "███████";
 
 std::ostream &operator <<(std::ostream &os, const vector<string> &v) {
    if (v.size() == 0) return os << "[]";
@@ -26,8 +30,6 @@ std::ostream &operator <<(std::ostream &os, const std::unordered_map<string, uin
    }
    return os << "}";
 }
-
-
 
 template<typename T>
 std::ostream& operator<<(std::ostream& os, const vector<T>& v) {
@@ -48,6 +50,125 @@ template std::ostream& operator<< <uint>(std::ostream& strm, const vector<uint>&
 template std::ostream& operator<< <int>(std::ostream& strm, const vector<int>& a);
 
 namespace utils {
+
+	void ensure_directory (std::string& dirname) {
+		if (dirname.back() != '/') dirname += "/";
+	}
+
+	vector<string> split(const std::string &s, char delim) {
+		std::vector<std::string> elems;
+	    std::stringstream ss(s);
+	    string item;
+	    while (std::getline(ss, item, delim))
+	    	if (item != "")
+	        	elems.push_back(item);
+	    return elems;
+	}
+
+	template<typename T>
+	void assert_map_has_key(std::unordered_map<string, T>& map, const string& key) {
+		if (map.count(key) < 1) {
+			stringstream error_msg;
+			error_msg << "Map is missing the following key : \"" << key << "\".";
+			throw std::runtime_error(error_msg.str());
+		}
+	}
+
+	template void assert_map_has_key(std::unordered_map<string, string>&, const string&);
+	template void assert_map_has_key(std::unordered_map<string, vector<string>>&, const string&);
+
+	/**
+	Text To Map
+	-----------
+
+	Read a text file, extract all key value pairs and
+	ignore markdown decoration characters such as =, -,
+	and #
+
+	Inputs
+	------
+
+	std::string fname : the file to read
+
+	Outputs
+	-------
+
+	std::unordered_map<string, std::vector<string> > map : the extracted key value pairs.
+
+	**/
+	std::unordered_map<string, std::vector<string>> text_to_map(const string& fname) {
+		ifstream infile(fname);
+		string line;
+		const char space = ' ';
+		std::unordered_map<string, std::vector<string>> map;
+		while (std::getline(infile, line)) {
+			if (*line.begin() != '=' && *line.begin() != '-' && *line.begin() != '#') {
+				const auto tokens = utils::split(line, space);
+				if (tokens.size() > 1) {
+					auto ptr = tokens.begin() + 1;
+					while( ptr != tokens.end()) {
+						map[tokens[0]].emplace_back(*(ptr++));
+					}
+				}
+			}
+		}
+		return map;
+	}
+
+	void map_to_file(const std::unordered_map<string, std::vector<string>>& map, const string& fname) {
+		ofstream fp;
+		fp.open(fname.c_str(), std::ios::out);
+		for (auto& kv : map) {
+			fp << kv.first;
+			for (auto& v: kv.second)
+				fp << " " << v;
+			fp << "\n";
+		}
+	}
+
+
+	
+
+	// From this StackOverflow:
+	// http://stackoverflow.com/questions/675039/how-can-i-create-directory-tree-in-c-linux
+	bool makedirs(const char* path, mode_t mode) {
+	  // const cast for hack
+	  char* p = const_cast<char*>(path);
+
+	  // Do mkdir for each slash until end of string or error
+	  while (*p != '\0') {
+	    // Skip first character
+	    p++;
+
+	    // Find first slash or end
+	    while(*p != '\0' && *p != '/') p++;
+
+	    // Remember value from p
+	    char v = *p;
+
+	    // Write end of string at p
+	    *p = '\0';
+
+	    // Create folder from path to '\0' inserted at p
+	    if(mkdir(path, mode) == -1 && errno != EEXIST) {
+	      *p = v;
+	      return false;
+	    }
+
+	    // Restore path to it's former glory
+	    *p = v;
+	  }
+
+	  return true;
+	}
+
+	int randint(int lower, int upper) {
+		std::default_random_engine generator;
+		std::uniform_int_distribution<int> distribution(lower, upper);
+		std::random_device rd;
+		generator.seed(rd());
+		return distribution(generator);
+	}
 
 	void Vocab::construct_word2index() {
 		uint i = 0;

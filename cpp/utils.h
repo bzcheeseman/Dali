@@ -6,6 +6,10 @@
 #include <random>
 #include <sstream>
 #include <unordered_map>
+#include <sys/stat.h>
+// Default writing mode useful for default argument to
+// makedirs
+#define DEFAULT_MODE S_IRWXU | S_IRGRP |  S_IXGRP | S_IROTH | S_IXOTH
 
 std::ostream& operator<<(std::ostream&, const std::vector<std::string>&);
 std::ostream& operator<<(std::ostream&, const std::unordered_map<std::string, uint>&);
@@ -14,6 +18,8 @@ template<typename T>
 std::ostream& operator<<(std::ostream&, const std::vector<T>&);
 
 namespace utils {
+	/** Utility function to create directory tree */
+	bool makedirs(const char* path, mode_t mode = DEFAULT_MODE);
 
 	extern const char* end_symbol;
 	extern const char* unknown_word_symbol;
@@ -31,6 +37,14 @@ namespace utils {
 			Vocab(std::vector<std::string>&);
 			Vocab(std::vector<std::string>&, bool);
 	};
+
+	void map_to_file(const std::unordered_map<std::string, std::vector<std::string>>&, const std::string&);
+
+	void ensure_directory(std::string&);
+
+	std::unordered_map<std::string, std::vector<std::string>> text_to_map(const std::string&);
+
+	int randint(int, int);
 
 	bool is_gzip(const std::string&);
 	template<typename T>
@@ -56,6 +70,11 @@ namespace utils {
 
 	template<typename T>
     T from_string(const std::string&);
+
+    template<typename T>
+    void assert_map_has_key(std::unordered_map<std::string, T>&, const std::string&);
+
+    std::vector<std::string> split(const std::string &, char);
 
 	template <typename T>
 	std::vector<size_t> argsort(const std::vector<T> &);

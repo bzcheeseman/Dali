@@ -9,6 +9,22 @@ using std::make_shared;
 using std::ofstream;
 using std::to_string;
 
+/**
+Parameters
+----------
+
+Create a vector of shared pointers to the underlying matrices
+of the model. Useful for saving, loading parameters all at once
+and for telling Solvers which parameters should be updated
+during each training loop.
+
+Outputs
+-------
+
+std::vector<std::shared_ptr<Mat<T>>> parameters : vector of model parameters
+
+**/
+
 template<typename T>
 vector<typename StackedGatedModel<T>::shared_mat> StackedGatedModel<T>::parameters() {
 	vector<shared_mat> parameters;
@@ -25,6 +41,23 @@ vector<typename StackedGatedModel<T>::shared_mat> StackedGatedModel<T>::paramete
 	}
 	return parameters;
 }
+
+/**
+Configuration
+-------------
+
+Return a map with keys corresponding to hyperparameters for
+the model and where values are vectors of strings containing
+the assignments to each hyperparameter for the loaded model.
+
+Useful for saving the model to file and reloading it later.
+
+Outputs
+-------
+
+std::unordered_map<std::string, std::vector< std::string >> config : configuration map
+
+**/
 
 template<typename T>
 typename StackedGatedModel<T>::config_t StackedGatedModel<T>::configuration() {
@@ -189,6 +222,21 @@ StackedGatedModel<T>::StackedGatedModel (int _vocabulary_size, int _input_size, 
 
 using utils::from_string;
 
+/**
+StackedGatedModel Constructor from configuration map
+----------------------------------------------------
+
+Construct a model from a map of configuration parameters.
+Useful for reinitializing a model that was saved to a file
+using the `utils::file_to_map` function to obtain a map of
+configurations.
+
+Inputs
+------
+
+std::unordered_map<std::string, std::vector<std::string>& config : model hyperparameters
+
+**/
 template<typename T>
 StackedGatedModel<T>::StackedGatedModel (
 	const typename StackedGatedModel<T>::config_t& config)

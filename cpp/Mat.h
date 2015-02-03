@@ -16,7 +16,6 @@ typedef std::shared_ptr<eigen_index_vector> shared_eigen_index_vector;
 typedef Eigen::MatrixWrapper<
 	Eigen::CwiseUnaryOp< Eigen::internal::scalar_add_op<unsigned int>, Eigen::ArrayWrapper<eigen_index_block> const > const > eigen_index_block_scalar;
 typedef std::vector<uint> index_std_vector;
-// typedef Eigen::MatrixWrapper<Eigen::CwiseUnaryOp<Eigen::internal::scalar_add_op<unsigned int>, Eigen::ArrayWrapper<Eigen::Block<Eigen::Matrix<unsigned int, -1, -1, 0, -1, -1>, -1, 1, true> >>> eigen_scalar_add_block_wrapper;
 
 template<typename T> class Mat {
 	typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
@@ -24,15 +23,20 @@ template<typename T> class Mat {
 		int n; int d;
 		eigen_mat w;
 		eigen_mat dw;
+		std::shared_ptr<std::string> name;
 		const std::size_t random_id;
 		Mat (int, int);
 		Mat (int, int, bool);
 		void print();
 		~Mat();
+		void set_name(std::string&);
+		void set_name(char*);
+		void set_name(const char*);
 		// random matrices:
 		Mat (int, int, T);
 		Mat (int, int, T, T);
 		void npy_save(std::string fname, std::string mode = "w");
+		void npy_load(std::string fname);
 		Mat (std::string fname);
 		static Mat RandMat(int, int, T);
 		static Mat Empty(int, int);
@@ -47,6 +51,14 @@ namespace std {
 	template <typename T> struct hash<Mat<T>> {
 		std::size_t operator()(const Mat<T>&) const;
 	};
+}
+
+namespace utils {
+	template<typename T>
+    void save_matrices(std::vector<std::shared_ptr<Mat<T>>>&, std::string);
+
+    template<typename T>
+    void load_matrices(std::vector<std::shared_ptr<Mat<T>>>&, std::string);
 }
 
 template <typename T>
@@ -91,20 +103,6 @@ int argmax(std::shared_ptr<Mat<T>>);
 template<typename T>
 std::ostream& operator<<(std::ostream&, const Backward<T>&);
 
-template<typename T> std::shared_ptr<Mat<T>> softmax(std::shared_ptr<Mat<T>>);
-template<typename T> T cross_entropy(std::shared_ptr<Mat<T>>, int&);
-template<typename T, typename M> T cross_entropy(std::shared_ptr<Mat<T>>, const M);
-
-template<typename T, typename M, typename K, typename F> T masked_cross_entropy(std::shared_ptr<Mat<T>>, uint&, const K&, const F&, const M);
-template<typename T, typename M, typename K> T masked_cross_entropy(std::shared_ptr<Mat<T>>, uint&, const K&, shared_eigen_index_vector, const M);
-template<typename T, typename M, typename F> T masked_cross_entropy(std::shared_ptr<Mat<T>>, uint&, shared_eigen_index_vector, const F&, const M);
-template<typename T, typename M> T masked_cross_entropy(std::shared_ptr<Mat<T>>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const M);
-
-template<typename T, typename K, typename F> T masked_sum(std::shared_ptr<Mat<T>>, uint&, const K&, const F&, T);
-template<typename T, typename K> T masked_sum(std::shared_ptr<Mat<T>>, uint&, const K&, shared_eigen_index_vector, T);
-template<typename T, typename F> T masked_sum(std::shared_ptr<Mat<T>>, uint&, shared_eigen_index_vector, const F&, T);
-template<typename T> T masked_sum(std::shared_ptr<Mat<T>>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, T);
-
 template<typename T> class Graph {
 	bool                     needs_backprop;
 	std::vector<Backward<T>>       backprop;
@@ -135,7 +133,10 @@ template<typename T> class Graph {
 		shared_mat rows_pluck(shared_mat, eigen_index_block);
 		shared_mat row_pluck(shared_mat, int);
 };
+
+
 #include <unordered_map>
+
 namespace Solver {
 
 	template<typename T> class RMSProp {

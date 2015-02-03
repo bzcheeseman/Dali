@@ -2,16 +2,34 @@
 #include "utils.h"
 
 using namespace Eigen;
+using std::vector;
+using std::string;
+using std::stringstream;
 
 template<typename T>
-Mat<T>::Mat (int _n, int _d) : n(_n), d(_d), random_id(utils::get_random_id()) {
+Mat<T>::Mat (int _n, int _d) : name(NULL), n(_n), d(_d), random_id(utils::get_random_id()) {
     w = eigen_mat::Zero(n,d);
     dw = eigen_mat::Zero(n,d);
 }
 template<typename T>
-Mat<T>::Mat (int _n, int _d, bool empty) : n(_n), d(_d), random_id(utils::get_random_id()) {
+Mat<T>::Mat (int _n, int _d, bool empty) : name(NULL), n(_n), d(_d), random_id(utils::get_random_id()) {
 	w  = empty ? eigen_mat(n,d) : eigen_mat::Zero(n,d);
 	dw = eigen_mat::Zero(n,d);
+}
+
+template<typename T>
+void Mat<T>::set_name(string& _name) {
+	name = std::make_shared<string>(_name);
+}
+
+template<typename T>
+void Mat<T>::set_name(char * _name) {
+	name = std::make_shared<string>(_name);
+}
+
+template<typename T>
+void Mat<T>::set_name(const char * _name) {
+	name = std::make_shared<string>(_name);
 }
 
 template<typename T>
@@ -31,13 +49,47 @@ void Mat<T>::print () {
 }
 
 template<typename T>
-void Mat<T>::npy_save (std::string fname, std::string mode) {
+void Mat<T>::npy_save (string fname, string mode) {
 	const unsigned int shape[] = {(unsigned int) n,(unsigned int) d};
 	cnpy::npy_save(fname, w.data(), shape, 2, mode);
 }
 
 template<typename T>
-Mat<T>::Mat (std::string fname) : random_id(utils::get_random_id()) {
+void Mat<T>::npy_load(string fname) {
+	auto arr = cnpy::npy_load(fname);
+
+	n = arr.shape[0];
+	d = arr.shape.size() > 1 ? arr.shape[1] : 1;
+
+	if (arr.word_size == sizeof(double)) {
+		double* loaded_data_double = reinterpret_cast<double*>(arr.data);
+		if (arr.fortran_order) {
+			Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_double_ft(loaded_data_double, n, d);
+			w = wrapped_mat_double_ft.cast<T>();
+		} else {
+			Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_double(loaded_data_double, n, d);
+			w = wrapped_mat_double.cast<T>();
+		}
+	} else if (arr.word_size == sizeof(float)) {
+		float* loaded_data_float = reinterpret_cast<float*>(arr.data);
+		if (arr.fortran_order) {
+			Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_float_ft(loaded_data_float, n, d);
+			w = wrapped_mat_float_ft.cast<T>();
+		} else {
+			Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_float(loaded_data_float, n, d);
+			w = wrapped_mat_float.cast<T>();
+		}
+	} else {
+		stringstream error_msg;
+		error_msg << "Could not load numpy matrix : \""
+		   << fname << "\". File dtype (" << arr.word_size << ") not recognized as float or double.";
+		throw std::invalid_argument(error_msg.str());
+	}
+	arr.destruct();
+}
+
+template<typename T>
+Mat<T>::Mat (string fname) : random_id(utils::get_random_id()) {
 	auto arr = cnpy::npy_load(fname);
 
 	n = arr.shape[0];
@@ -65,7 +117,7 @@ Mat<T>::Mat (std::string fname) : random_id(utils::get_random_id()) {
 			w = wrapped_mat_float.cast<T>();
 		}
 	} else {
-		std::stringstream error_msg;
+		stringstream error_msg;
 		error_msg << "Could not load numpy matrix : \""
 		   << fname << "\". File dtype (" << arr.word_size << ") not recognized as float or double.";
 		throw std::invalid_argument(error_msg.str());
@@ -77,7 +129,7 @@ template<typename T>
 Mat<T>::~Mat() {}
 
 template<typename T>
-Mat<T>::Mat (int _n, int _d, T std) : n(_n), d(_d), random_id(utils::get_random_id()) {
+Mat<T>::Mat (int _n, int _d, T std) : name(NULL), n(_n), d(_d), random_id(utils::get_random_id()) {
 	std::default_random_engine generator;
 	std::normal_distribution<T> distribution(0.0, std);
 	std::random_device rd;
@@ -88,7 +140,7 @@ Mat<T>::Mat (int _n, int _d, T std) : n(_n), d(_d), random_id(utils::get_random_
 }
 
 template<typename T>
-Mat<T>::Mat (int _n, int _d, T lower, T upper) : n(_n), d(_d), random_id(utils::get_random_id()) {
+Mat<T>::Mat (int _n, int _d, T lower, T upper) : name(NULL), n(_n), d(_d), random_id(utils::get_random_id()) {
 	std::default_random_engine generator;
 	std::uniform_real_distribution<T> distribution(lower, upper);
 	std::random_device rd;
@@ -115,7 +167,11 @@ Mat<T> Mat<T>::Empty(int n, int d) {
 
 template<typename T>
 std::ostream& operator<<(std::ostream& strm, const Mat<T>& a) {
-	return strm << "<#Mat n=" << a.n << ", d=" << a.d << ">";
+	if (a.name != NULL) {
+		return strm << "<#Mat name=\"" << *a.name<< "\" n=" << a.n << ", d=" << a.d << ">";
+	} else {
+		return strm << "<#Mat n=" << a.n << ", d=" << a.d << ">";
+	}
 }
 
 template std::ostream& operator<< <double>(std::ostream& strm, const Mat<double>& a);
@@ -234,7 +290,7 @@ template std::ostream& operator<< <double>(std::ostream& strm, const Backward<do
 template std::ostream& operator<< <float>(std::ostream& strm, const Backward<float>& a);
 
 template<typename T> 
-std::string Backward<T>::op_type () const {
+string Backward<T>::op_type () const {
 	switch(this->type) {
 		case utils::ops::add:
 			return "add";
@@ -308,11 +364,11 @@ void Backward<T>::operator ()() {
 			matrix2->dw.noalias() += ((matrix1->w).array() * (out->dw).array()).matrix().rowwise().sum();
 			break;
 		case utils::ops::eltmul_broadcast_rowwise:
-			// matrix1->dw.noalias() += ((out->dw).array().rowwise() * (matrix2->w).row(0).array()).matrix();
-			// matrix2->dw.noalias() += ((matrix1->w).array() * (out->dw).array()).matrix().colwise().sum();
+			matrix1->dw.noalias() += ((out->dw).array().rowwise() * (matrix2->w).row(0).array()).matrix();
+			matrix2->dw.noalias() += (((matrix1->w).array() * (out->dw).array()).matrix().colwise().sum()).matrix();
 			break;
 		case utils::ops::sigmoid:
-			matrix1->dw.noalias() += (((out->w).array() * (1.0 - out->w.array())) * out->dw.array()).matrix();
+			matrix1->dw.noalias() += (((out->w).array() - out->w.array().square()).max(1e-9) * out->dw.array()).matrix();
 			break;
 		case utils::ops::mul:
 			matrix1->dw.noalias() += (out->dw) * ((matrix2->w).transpose());
@@ -334,7 +390,7 @@ void Backward<T>::operator ()() {
 		case utils::ops::mul_with_bias:
 			matrix1->dw.noalias() += (out->dw) * ((matrix2->w).transpose());
 			matrix2->dw.noalias() += matrix1->w.transpose() * (out->dw);
-			matrix3->dw.noalias() += out->dw.rowwise().sum();
+			matrix3->dw.noalias() += out->dw.rowwise().sum().matrix();
 			break;
 		case utils::ops::mul_add_mul_with_bias:
 			// first multiply:
@@ -363,300 +419,13 @@ void Backward<T>::operator ()() {
 			matrix1->dw.noalias() += (out->dw).transpose();
 			break;
 		default:
-			std::stringstream error_msg;
+			stringstream error_msg;
 			error_msg << "NotImplemented: Do not know how to backpropagate for this type => "
 			   << op_type() << " (" << type << ")";
 			throw std::invalid_argument(error_msg.str());
 			break;
 	}
 }
-
-template<typename T>
-std::shared_ptr<Mat<T>> softmax(std::shared_ptr<Mat<T>> matrix) {
-	auto layer_max = matrix->w.rowwise().maxCoeff().array().matrix();
-	auto exped_distributions = (matrix->w.colwise() - layer_max.col(0)).array().exp().matrix();
-	
-	auto out = std::make_shared<Mat<T>>(
-		matrix->n,
-		matrix->d,
-		false);
-
-	auto total_distribution = exped_distributions.rowwise().sum().array().matrix();
-	out->w = (exped_distributions.array().colwise() / total_distribution.col(0).array());
-	return out;
-}
-
-template<typename T>
-T cross_entropy(std::shared_ptr<Mat<T>> logprobs, int& target) {
-	std::shared_ptr<Mat<T>> probs = softmax(logprobs);
-	T cost = -std::log(probs->w(target,0));
-
-	logprobs->dw = probs->w;
-	// write gradients into log probabilities
-	logprobs->dw(target, 0) -= 1;
-	return cost;
-}
-
-template<typename T, typename M>
-T cross_entropy(std::shared_ptr<Mat<T>> logprobs, const M targets) {
-	std::shared_ptr<Mat<T>> probs = softmax(logprobs);
-	T cost = 0.0;
-
-	logprobs->dw = probs->w;
-	// get cost for each pair of target and datastream:
-	for (size_t i = 0; i < targets.rows(); i++) {
-		cost -= std::log(probs->w(targets(i),i));
-		logprobs->dw(targets(i), i) -= 1;
-	}
-
-	return cost;
-}
-
-template<typename Z, typename M, typename K, typename F>
-Z masked_cross_entropy(std::shared_ptr<Mat<Z>> logprobs,
-	uint& T,
-	const K& loss_start,
-	const F& codelens,
-	const M targets) {
-	std::shared_ptr<Mat<Z>> probs = softmax(logprobs);
-	Z cost = 0.0;
-	logprobs->dw = probs->w;
-	// get cost for each pair of target and datastream:
-	for (size_t i = 0; i < targets.rows(); i++) {
-		if (T >= loss_start(i) && (T < loss_start(i) - codelens(i) )) {
-			cost -= std::log(probs->w(targets(i),i));
-			logprobs->dw(targets(i), i) -= 1;
-		}
-	}
-	return cost;
-}
-
-template<typename Z, typename M, typename F>
-Z masked_cross_entropy(std::shared_ptr<Mat<Z>> logprobs,
-	uint& T,
-	shared_eigen_index_vector loss_start,
-	const F& codelens,
-	const M targets) {
-	std::shared_ptr<Mat<Z>> probs = softmax(logprobs);
-	Z cost = 0.0;
-	logprobs->dw = probs->w;
-	// get cost for each pair of target and datastream:
-	for (size_t i = 0; i < targets.rows(); i++) {
-		if (T >= (*loss_start)(i) && (T < (*loss_start)(i) - codelens(i) )) {
-			cost -= std::log(probs->w(targets(i),i));
-			logprobs->dw(targets(i), i) -= 1;
-		}
-	}
-	return cost;
-}
-
-template<typename Z, typename M, typename K>
-Z masked_cross_entropy(std::shared_ptr<Mat<Z>> logprobs,
-	uint& T,
-	const K& loss_start,
-	shared_eigen_index_vector codelens,
-	const M targets) {
-	std::shared_ptr<Mat<Z>> probs = softmax(logprobs);
-	Z cost = 0.0;
-	logprobs->dw = probs->w;
-	// get cost for each pair of target and datastream:
-	for (size_t i = 0; i < targets.rows(); i++) {
-		if (T >= loss_start(i) && (T < loss_start(i) - (*codelens)(i) )) {
-			cost -= std::log(probs->w(targets(i),i));
-			logprobs->dw(targets(i), i) -= 1;
-		}
-	}
-	return cost;
-}
-/**
-Masked Cross Entropy Loss
--------------------------
-
-Given a probability distribution p at a time T, for k channels,
-and k different targets, apply KL Divergence loss
-on the channels that are have T >= loss_start[k] and
-T < loss_start[k] + codelens[k] (so from T to T+codelen error
-will be picked up by channel k).
-
-Inputs
-------
-
-std::shared_ptr<Mat<Z>> logprobs : the log probabilities (unnormalized)
-uint& T : the log probabilities (unnormalized)
-shared_eigen_index_vector loss_start : where to start picking up errors for channel k
-shared_eigen_index_vector codelens : how long does channel k pick up errors
-const M targets : the labels at time T
-
-Outputs
--------
-
-Z cost : the total KL divergence at this time step for
-         the relevant channels
-
-*/
-template<typename Z, typename M>
-Z masked_cross_entropy(std::shared_ptr<Mat<Z>> logprobs,
-	uint& T,
-	shared_eigen_index_vector loss_start,
-	shared_eigen_index_vector codelens,
-	const M targets) {
-	std::shared_ptr<Mat<Z>> probs = softmax(logprobs);
-	Z cost = 0.0;
-	logprobs->dw = probs->w;
-	// get cost for each pair of target and datastream:
-	for (size_t i = 0; i < targets.rows(); i++) {
-		if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + (*codelens)(i) )) {
-			cost -= std::log(probs->w(targets(i),i));
-			logprobs->dw(targets(i), i) -= 1;
-		}
-	}
-	return cost;
-}
-
-template float  cross_entropy(std::shared_ptr<Mat<float>>, eigen_index_block);
-template double cross_entropy(std::shared_ptr<Mat<double>>, eigen_index_block);
-template float  cross_entropy(std::shared_ptr<Mat<float>>, eigen_index_block_scalar);
-template double cross_entropy(std::shared_ptr<Mat<double>>, eigen_index_block_scalar);
-
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, const eigen_index_block&, const eigen_index_block&, const eigen_index_block);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, const eigen_index_vector&, const eigen_index_vector&, const eigen_index_block);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, const eigen_index_block&, const eigen_index_vector&, const eigen_index_block);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, const eigen_index_vector&, const eigen_index_block&, const eigen_index_block);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, shared_eigen_index_vector, const eigen_index_block&, const eigen_index_block);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, const eigen_index_vector&, shared_eigen_index_vector, const eigen_index_block);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const eigen_index_block);
-
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, const eigen_index_block&, const eigen_index_block&, const eigen_index_block);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, const eigen_index_vector&, const eigen_index_vector&, const eigen_index_block);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, const eigen_index_block&, const eigen_index_vector&, const eigen_index_block);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, const eigen_index_vector&, const eigen_index_block&, const eigen_index_block);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, shared_eigen_index_vector, const eigen_index_block&, const eigen_index_block);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, const eigen_index_vector&, shared_eigen_index_vector, const eigen_index_block);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const eigen_index_block);
-
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, const eigen_index_block&, const eigen_index_block&, const eigen_index_block_scalar);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, const eigen_index_vector&, const eigen_index_vector&, const eigen_index_block_scalar);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, const eigen_index_block&, const eigen_index_vector&, const eigen_index_block_scalar);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, const eigen_index_vector&, const eigen_index_block&, const eigen_index_block_scalar);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, shared_eigen_index_vector, const eigen_index_block&, const eigen_index_block_scalar);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, const eigen_index_vector&, shared_eigen_index_vector, const eigen_index_block_scalar);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const eigen_index_block_scalar);
-
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, const eigen_index_block&, const eigen_index_block&, const eigen_index_block_scalar);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, const eigen_index_vector&, const eigen_index_vector&, const eigen_index_block_scalar);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, const eigen_index_block&, const eigen_index_vector&, const eigen_index_block_scalar);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, const eigen_index_vector&, const eigen_index_block&, const eigen_index_block_scalar);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, shared_eigen_index_vector, const eigen_index_block&, const eigen_index_block_scalar);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, const eigen_index_vector&, shared_eigen_index_vector, const eigen_index_block_scalar);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const eigen_index_block_scalar);
-
-/**
-Masked Sum
-----------
-
-Sum values[k] if timestep T
-if within [loss_start[k], loss_start[k] + codelens[k]),
-gradient is columnwise vector of 1s.
-
-Inputs:
--------
-
-std::shared_ptr<Mat<Z>> values : the data columns subject to summing.
-uint& T : the log probabilities (unnormalized)
-shared_eigen_index_vector loss_start : where to start picking up errors for channel k
-shared_eigen_index_vector codelens : how long does channel k pick up errors
-
-Outputs:
---------
-
-Z cost : the total sum along the non-masked columns of values.
-
-*/
-template<typename Z>
-Z masked_sum(std::shared_ptr<Mat<Z>> values,
-	uint& T,
-	shared_eigen_index_vector loss_start,
-	shared_eigen_index_vector codelens,
-	Z gparent) {
-
-	Z cost = 0.0;
-	// get cost for each pair of target and datastream:
-	for (size_t i = 0; i < values->d; i++) {
-		if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + (*codelens)(i) )) {
-			cost += values->w.col(i).sum() * gparent;
-			values->dw.col(i).fill(gparent);
-		}
-	}
-	return cost;
-}
-
-template<typename Z, typename K, typename F>
-Z masked_sum(std::shared_ptr<Mat<Z>> values,
-	uint& T,
-	const K& loss_start,
-	const F& codelens,
-	Z gparent) {
-	Z cost = 0.0;
-	// get cost for each pair of target and datastream:
-	for (size_t i = 0; i < values->d; i++) {
-		if (T >= loss_start(i) && (T < loss_start(i) + codelens(i) )) {
-			cost += values->w.col(i).sum() * gparent;
-			values->dw.col(i).fill(gparent);
-		}
-	}
-	return cost;
-}
-
-template<typename Z, typename K>
-Z masked_sum(std::shared_ptr<Mat<Z>> values,
-	uint& T,
-	const K& loss_start,
-	shared_eigen_index_vector codelens,
-	Z gparent) {
-	Z cost = 0.0;
-	// get cost for each pair of target and datastream:
-	for (size_t i = 0; i < values->d; i++) {
-		if (T >= loss_start(i) && (T < loss_start(i) + (*codelens)(i) )) {
-			cost += values->w.col(i).sum() * gparent;
-			values->dw.col(i).fill(gparent);
-		}
-	}
-	return cost;
-}
-
-template<typename Z, typename F>
-Z masked_sum(std::shared_ptr<Mat<Z>> values,
-	uint& T,
-	shared_eigen_index_vector loss_start,
-	const F& codelens,
-	Z gparent) {
-	Z cost = 0.0;
-	// get cost for each pair of target and datastream:
-	for (size_t i = 0; i < values->d; i++) {
-		if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens(i) )) {
-			cost += values->w.col(i).sum() * gparent;
-			values->dw.col(i).fill(gparent);
-		}
-	}
-	return cost;
-}
-
-template double masked_sum(std::shared_ptr<Mat<double>>, uint&, const eigen_index_block&, const eigen_index_block&, double);
-template double masked_sum(std::shared_ptr<Mat<double>>, uint&, const eigen_index_vector&, const eigen_index_vector&, double);
-template double masked_sum(std::shared_ptr<Mat<double>>, uint&, const eigen_index_block&, const eigen_index_vector&, double);
-template double masked_sum(std::shared_ptr<Mat<double>>, uint&, const eigen_index_vector&, const eigen_index_block&, double);
-template double masked_sum(std::shared_ptr<Mat<double>>, uint&, shared_eigen_index_vector, const eigen_index_block&, double);
-template double masked_sum(std::shared_ptr<Mat<double>>, uint&, const eigen_index_vector&, shared_eigen_index_vector, double);
-template double masked_sum(std::shared_ptr<Mat<double>>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, double);
-
-template float masked_sum(std::shared_ptr<Mat<float>>, uint&, const eigen_index_block&, const eigen_index_block&, float);
-template float masked_sum(std::shared_ptr<Mat<float>>, uint&, const eigen_index_vector&, const eigen_index_vector&, float);
-template float masked_sum(std::shared_ptr<Mat<float>>, uint&, const eigen_index_block&, const eigen_index_vector&, float);
-template float masked_sum(std::shared_ptr<Mat<float>>, uint&, const eigen_index_vector&, const eigen_index_block&, float);
-template float masked_sum(std::shared_ptr<Mat<float>>, uint&, shared_eigen_index_vector, const eigen_index_block&, float);
-template float masked_sum(std::shared_ptr<Mat<float>>, uint&, const eigen_index_vector&, shared_eigen_index_vector, float);
-template float masked_sum(std::shared_ptr<Mat<float>>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, float);
-
 
 template<typename T>
 Graph<T>::Graph (bool _needs_backprop) : needs_backprop(_needs_backprop) {}
@@ -680,9 +449,9 @@ typename Graph<T>::shared_mat Graph<T>::eltmul_broadcast(
 		matrix1->d,
 		true);
 	out->w = (matrix1->w.array().colwise() * matrix2->w.col(0).array()).matrix();
-	if (this->needs_backprop)
+	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		this->backprop.emplace_back(matrix1, matrix2, out, utils::ops::eltmul_broadcast);
+		backprop.emplace_back(matrix1, matrix2, out, utils::ops::eltmul_broadcast);
 	return out;
 }
 
@@ -703,9 +472,9 @@ typename Graph<T>::shared_mat Graph<T>::eltmul(
 		matrix1->d,
 		true);
 	out->w = (matrix1->w.array() * matrix2->w.array()).matrix();
-	if (this->needs_backprop)
+	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		this->backprop.emplace_back(matrix1, matrix2, out, utils::ops::eltmul);
+		backprop.emplace_back(matrix1, matrix2, out, utils::ops::eltmul);
 	return out;
 }
 
@@ -742,9 +511,9 @@ typename Graph<T>::shared_mat Graph<T>::eltmul_broadcast_rowwise(
 		matrix1->d,
 		true);
 	out->w = (matrix1->w.array().rowwise() * row_vector->w.row(0).array()).matrix();
-	if (this->needs_backprop)
+	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		this->backprop.emplace_back(matrix1, row_vector, out, utils::ops::eltmul_broadcast_rowwise);
+		backprop.emplace_back(matrix1, row_vector, out, utils::ops::eltmul_broadcast_rowwise);
 	return out;
 }
 
@@ -781,9 +550,9 @@ typename Graph<T>::shared_mat Graph<T>::eltmul_rowwise(
 		matrix1->d,
 		true);
 	out->w = (matrix1->w.array() * matrix2->w.transpose().array()).matrix();
-	if (this->needs_backprop)
+	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		this->backprop.emplace_back(matrix1, matrix2, out, utils::ops::eltmul_rowwise);
+		backprop.emplace_back(matrix1, matrix2, out, utils::ops::eltmul_rowwise);
 	return out;
 }
 
@@ -797,8 +566,8 @@ typename Graph<T>::shared_mat Graph<T>::add_broadcast(shared_mat matrix1, shared
 		matrix1->d,
 		true);
 	out->w = (matrix1->w.colwise() + matrix2->w.col(0)).matrix();
-	if (this->needs_backprop)
-		this->backprop.emplace_back(matrix1, matrix2, out, utils::ops::add_broadcast);
+	if (needs_backprop)
+		backprop.emplace_back(matrix1, matrix2, out, utils::ops::add_broadcast);
 	return out;
 }
 
@@ -818,9 +587,9 @@ typename Graph<T>::shared_mat Graph<T>::add(
 		matrix1->d,
 		true);
 	out->w = matrix1->w + matrix2->w;
-	if (this->needs_backprop)
+	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		this->backprop.emplace_back(matrix1, matrix2, out, utils::ops::add);
+		backprop.emplace_back(matrix1, matrix2, out, utils::ops::add);
 	return out;
 }
 
@@ -831,9 +600,9 @@ typename Graph<T>::shared_mat Graph<T>::sigmoid(shared_mat matrix1) {
 		matrix1->d,
 		true);
 	out->w = matrix1->w.unaryExpr(utils::sigmoid_operator<T>());
-	if (this->needs_backprop)
+	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		this->backprop.emplace_back(matrix1, out, utils::ops::sigmoid);
+		backprop.emplace_back(matrix1, out, utils::ops::sigmoid);
 	return out;
 }
 
@@ -844,9 +613,9 @@ typename Graph<T>::shared_mat Graph<T>::transpose(shared_mat matrix1) {
 		matrix1->n,
 		true);
 	out->w = matrix1->w.transpose();
-	if (this->needs_backprop)
+	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		this->backprop.emplace_back(matrix1, out, utils::ops::transpose);
+		backprop.emplace_back(matrix1, out, utils::ops::transpose);
 	return out;
 }
 
@@ -857,9 +626,9 @@ typename Graph<T>::shared_mat Graph<T>::tanh(shared_mat matrix1) {
 		matrix1->d,
 		true);
 	out->w = matrix1->w.unaryExpr(utils::tanh_operator<T>());
-	if (this->needs_backprop)
+	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		this->backprop.emplace_back(matrix1, out, utils::ops::tanh);
+		backprop.emplace_back(matrix1, out, utils::ops::tanh);
 	return out;
 }
 
@@ -870,7 +639,7 @@ typename Graph<T>::shared_mat Graph<T>::relu(shared_mat matrix1) {
 		matrix1->d,
 		true);
 	out->w = matrix1->w.unaryExpr(utils::relu_operator<T>());
-	if (this->needs_backprop)
+	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
 		this->backprop.emplace_back(matrix1, out, utils::ops::relu);
 	return out;
@@ -887,9 +656,9 @@ typename Graph<T>::shared_mat Graph<T>::mul(
 		matrix2->d,
 		true);
 	out->w = matrix1->w * matrix2->w;
-	if (this->needs_backprop)
+	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		this->backprop.emplace_back(matrix1, matrix2, out, utils::ops::mul);
+		backprop.emplace_back(matrix1, matrix2, out, utils::ops::mul);
 	return out;
 }
 
@@ -907,9 +676,9 @@ typename Graph<T>::shared_mat Graph<T>::mul_with_bias(
 		matrix2->d,
 		true);
 	out->w = ((matrix1->w * matrix2->w).colwise() + bias->w.col(0)).matrix();
-	if (this->needs_backprop)
+	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		this->backprop.emplace_back(matrix1, matrix2, bias, out, utils::ops::mul);
+		backprop.emplace_back(matrix1, matrix2, bias, out, utils::ops::mul_with_bias);
 	return out;
 }
 
@@ -940,9 +709,9 @@ typename Graph<T>::shared_mat Graph<T>::mul_add_broadcast_mul_with_bias(
 		              )
 		          ).colwise() + (bias->w + (matrix1->w * input_to_1->w)).col(0)
 		      ).matrix();
-	if (this->needs_backprop)
+	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		this->backprop.emplace_back(matrix1, input_to_1, matrix2, input_to_2, bias, out, utils::ops::mul_add_broadcast_mul_with_bias);
+		backprop.emplace_back(matrix1, input_to_1, matrix2, input_to_2, bias, out, utils::ops::mul_add_broadcast_mul_with_bias);
 	return out;
 }
 
@@ -980,9 +749,9 @@ typename Graph<T>::shared_mat Graph<T>::mul_add_mul_with_bias(
 		              )
 		          ).colwise() + bias->w.col(0)
 		      ).matrix();
-	if (this->needs_backprop)
+	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		this->backprop.emplace_back(matrix1, input_to_1, matrix2, input_to_2, bias, out, utils::ops::mul_add_mul_with_bias);
+		backprop.emplace_back(matrix1, input_to_1, matrix2, input_to_2, bias, out, utils::ops::mul_add_mul_with_bias);
 	return out;
 }
 
@@ -1000,7 +769,7 @@ typename Graph<T>::shared_mat Graph<T>::rows_pluck(
 		out->w.col(offset) = matrix1->w.row(i).transpose();
 		++offset;
 	}
-	if (this->needs_backprop)
+	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
 		this->backprop.emplace_back(matrix1, out, indices, utils::ops::rows_pluck);
 	return out;
@@ -1018,9 +787,9 @@ typename Graph<T>::shared_mat Graph<T>::rows_pluck(
 	for (int offset = 0; offset < indices.rows(); ++offset) {
 		out->w.col(offset) = matrix1->w.row(indices(offset)).transpose();
 	}
-	if (this->needs_backprop)
+	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		this->backprop.emplace_back(matrix1, out, indices, utils::ops::rows_pluck);
+		backprop.emplace_back(matrix1, out, indices, utils::ops::rows_pluck);
 	return out;
 }
 
@@ -1033,27 +802,31 @@ typename Graph<T>::shared_mat Graph<T>::row_pluck(
 		1,
 		true);
 	out->w = matrix1->w.row(ix).transpose();
-	if (this->needs_backprop)
+	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		this->backprop.emplace_back(matrix1, out, ix, utils::ops::row_pluck);
+		backprop.emplace_back(matrix1, out, ix, utils::ops::row_pluck);
 	return out;
 }
-
 
 template<typename T>
 Solver::SGD<T>::SGD (T _clipval) :
         clipval(_clipval) {};
 
 template<typename T>
-void Solver::SGD<T>::step (std::vector<typename Solver::SGD<T>::shared_mat>& parameters,
+void Solver::SGD<T>::step (vector<typename Solver::SGD<T>::shared_mat>& parameters,
 	T step_size,
 	T regc
 	) {
 	for (auto& param : parameters) {
 		// clip the gradient to prevent explosions:
-		param->dw = (param->dw).array().min(clipval).max(-clipval).matrix();
+		// param->dw = (param->dw);
 		// update gradient using SGD rule
-		param->w -= (step_size * param->dw.array()).matrix()  - (regc * param->w);
+		// std::cout << "param( " << *param <<" )->dw.sum() = " << param->dw.array().square().sum() << std::endl;
+		if (regc > 0) {
+			param->w = param->w - (step_size * param->dw.array().min(clipval).max(-clipval)).matrix() - (regc * param->w);
+		} else {
+			param->w = param->w - (step_size * param->dw.array().min(clipval).max(-clipval)).matrix();
+		}
 		// reset gradient
 		param->dw.fill(0);
 	}
@@ -1070,7 +843,7 @@ Solver::AdaDelta<T>::AdaDelta (
 
 template<typename T>
 Solver::AdaDelta<T>::AdaDelta (
-	std::vector<typename Solver::AdaDelta<T>::shared_mat>& parameters,
+	vector<typename Solver::AdaDelta<T>::shared_mat>& parameters,
 	T _rho,
 	T _smooth_eps,
 	T _clipval) :
@@ -1082,7 +855,7 @@ Solver::AdaDelta<T>::AdaDelta (
 
 template<typename T>
 void Solver::AdaDelta<T>::create_gradient_caches(
-	std::vector<typename Solver::AdaDelta<T>::shared_mat>& parameters) {
+	vector<typename Solver::AdaDelta<T>::shared_mat>& parameters) {
 	for (auto& param : parameters) {
 		// this operation should be run once unless
 		// we expect the parameters of the model
@@ -1106,21 +879,25 @@ void Solver::AdaDelta<T>::create_gradient_caches(
 }
 
 template<typename T>
-void Solver::AdaDelta<T>::step (std::vector<typename Solver::AdaDelta<T>::shared_mat>& parameters, T regc) {
+void Solver::AdaDelta<T>::step (vector<typename Solver::AdaDelta<T>::shared_mat>& parameters, T regc) {
 	for (auto& param : parameters) {
 
 		auto& gsum = gsums[*param];
 		auto& xsum = xsums[*param];
 
 		// clip the gradient to prevent explosions:
-		param->dw = (param->dw).array().min(clipval).max(-clipval).matrix() + (regc * param->w);
-		
+		// 
+		if (regc > 0) {
+			param->dw = (param->dw).array().min(clipval).max(-clipval).matrix() + (regc * param->w);
+		} else {
+			// param->dw = (param->dw).array().min(clipval).max(-clipval).matrix();
+		}
 		// update gradient cache using decay rule:
-		gsum = gsum * rho + (1.0 - rho) * param->dw.array().square().matrix();
+		gsum = (gsum * rho) + ((1.0 - rho) * (param->dw.array().square()).matrix());
 
-		auto dparam = -(((xsum.array() + smooth_eps) / (gsum.array() + smooth_eps).sqrt()) * param->dw.array()).matrix();
+		auto dparam = -(((xsum.array() + smooth_eps) / (gsum.array() + smooth_eps)).sqrt() * param->dw.array()).matrix();
 
-		xsum = xsum * rho + (1.0 - rho) * (dparam.array().square().matrix());
+		xsum = (xsum * rho) + ((1.0 - rho) * (dparam.array().square())).matrix();
 		// update gradient using AdaDelta rule
 		param->w += dparam;
 		// reset gradient
@@ -1150,7 +927,7 @@ template<typename T>
 Solver::AdaGrad<T>::AdaGrad (T _smooth_eps, T _clipval) : smooth_eps(_smooth_eps), clipval(_clipval) {}
 
 template<typename T>
-Solver::AdaGrad<T>::AdaGrad (std::vector<typename Solver::AdaGrad<T>::shared_mat>& parameters,
+Solver::AdaGrad<T>::AdaGrad (vector<typename Solver::AdaGrad<T>::shared_mat>& parameters,
 	T _smooth_eps,
 	T _clipval) : smooth_eps(_smooth_eps), clipval(_clipval) {
 	create_gradient_caches(parameters);
@@ -1158,7 +935,7 @@ Solver::AdaGrad<T>::AdaGrad (std::vector<typename Solver::AdaGrad<T>::shared_mat
 
 template<typename T>
 void Solver::AdaGrad<T>::step(
-	std::vector<typename Solver::AdaGrad<T>::shared_mat>& parameters,
+	vector<typename Solver::AdaGrad<T>::shared_mat>& parameters,
 	T step_size,
 	T regc
 	) {
@@ -1178,7 +955,7 @@ void Solver::AdaGrad<T>::step(
 
 template<typename T>
 void Solver::AdaGrad<T>::reset_caches(
-	std::vector<typename Solver::AdaGrad<T>::shared_mat>& parameters) {
+	vector<typename Solver::AdaGrad<T>::shared_mat>& parameters) {
 	for (auto& param : parameters) {
 		auto& s = gsums[*param];
 		s.fill(0);
@@ -1187,7 +964,7 @@ void Solver::AdaGrad<T>::reset_caches(
 
 template<typename T>
 void Solver::AdaGrad<T>::create_gradient_caches(
-	std::vector<typename Solver::AdaGrad<T>::shared_mat>& parameters) {
+	vector<typename Solver::AdaGrad<T>::shared_mat>& parameters) {
 	for (auto& param : parameters) {
 		// this operation should be run once unless
 		// we expect the parameters of the model
@@ -1214,7 +991,7 @@ Solver::RMSProp<T>::RMSProp (
 
 template<typename T>
 Solver::RMSProp<T>::RMSProp (
-			std::vector<typename Solver::RMSProp<T>::shared_mat>& parameters,
+			vector<typename Solver::RMSProp<T>::shared_mat>& parameters,
             T _decay_rate,
             T _smooth_eps,
             T _clipval) :
@@ -1227,7 +1004,7 @@ Solver::RMSProp<T>::RMSProp (
 
 template<typename T>
 void Solver::RMSProp<T>::create_gradient_caches(
-	std::vector<typename Solver::RMSProp<T>::shared_mat>& parameters) {
+	vector<typename Solver::RMSProp<T>::shared_mat>& parameters) {
 	for (auto& param : parameters) {
 		// this operation should be run once unless
 		// we expect the parameters of the model
@@ -1245,7 +1022,7 @@ void Solver::RMSProp<T>::create_gradient_caches(
 
 template<typename T>
 void Solver::RMSProp<T>::step(
-	std::vector<typename Solver::RMSProp<T>::shared_mat>& parameters,
+	vector<typename Solver::RMSProp<T>::shared_mat>& parameters,
 	T step_size,
 	T regc
 	) {
@@ -1261,6 +1038,37 @@ void Solver::RMSProp<T>::step(
 		param->dw.fill(0);
 	}
 }
+
+template<typename T>
+void utils::save_matrices(vector< std::shared_ptr<Mat<T>> >& parameters, string dirname) {
+	utils::ensure_directory(dirname);
+	const char * c_dirname = dirname.c_str();
+	utils::makedirs(c_dirname);
+	int i = 0;
+	for (auto& param : parameters) {
+		stringstream param_location;
+		param_location << dirname << "/param_" << i << ".npy";
+		param->npy_save(param_location.str());
+		i++;
+	}
+}
+
+template<typename T>
+void utils::load_matrices(vector< std::shared_ptr<Mat<T>> >& parameters, string dirname) {
+	utils::ensure_directory(dirname);
+	int i = 0;
+	for (auto& param : parameters) {
+		stringstream param_location;
+		param_location << dirname << "/param_" << i << ".npy";
+		param->npy_load(param_location.str());
+		i++;
+	}
+}
+
+template void utils::save_matrices(vector< std::shared_ptr<Mat<float>> >&, string);
+template void utils::save_matrices(vector< std::shared_ptr<Mat<double>> >&, string);
+template void utils::load_matrices(vector< std::shared_ptr<Mat<float>> >&, string);
+template void utils::load_matrices(vector< std::shared_ptr<Mat<double>> >&, string);
 
 template class Mat<float>;
 template class Mat<double>;
@@ -1282,9 +1090,3 @@ template class Solver::AdaDelta<double>;
 
 template class Solver::RMSProp<float>;
 template class Solver::RMSProp<double>;
-
-template std::shared_ptr<Mat<float>> softmax(std::shared_ptr<Mat<float>>);
-template std::shared_ptr<Mat<double>> softmax(std::shared_ptr<Mat<double>>);
-
-template float cross_entropy(std::shared_ptr<Mat<float>>, int&);
-template double cross_entropy(std::shared_ptr<Mat<double>>, int&);

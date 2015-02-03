@@ -1,0 +1,37 @@
+nil->sport->racket_sport
+     sport->individual_sport
+            individual_sport->tennis
+            individual_sport->ping_pong
+
+     sport->team_sport
+            team_sport->football
+            team_sport->baseball
+            team_sport->rugby
+            team_sport->polo
+        
+        tennis<-ball_sport
+        tennis<-racket_sport
+        
+        ping_pong<-ball_sport
+        ping_pong<-racket_sport
+
+        badminton<-racket_sport
+        badminton<-ball_sport
+
+        sport->ball_sport
+               ball_sport->football
+               ball_sport->baseball
+               ball_sport->rugby
+               ball_sport->polo
+               ball_sport->waterpolo
+
+        sport->watersport
+               watersport->waterpolo
+        
+
+nil->animal_kingdown->mammals
+                      mammals->whale
+
+     animal_kingdown->reptiles
+                      reptiles->frog
+                      reptiles->alligator

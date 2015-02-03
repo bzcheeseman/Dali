@@ -58,5 +58,7 @@ sparkfun_prediction:
 	$(FIX_DYLIBS)
 
 lattice_prediction:
+	$(CC) -O3 -c -std=c++11 OptionParser/OptionParser.cpp -o OptionParser/OptionParser.o
+	$(CC) $(INC) -O3 -c -std=c++11 utils.cpp
 	$(CC) -O3 -c -std=c++11 examples/lattice_prediction.cpp -o examples/lattice_prediction.o
-	$(CC) -O3 -std=c++11 examples/test_lattice.cpp -o examples/test_lattice.o examples/lattice_prediction.o
+	$(CC) -O3 -std=c++11 examples/test_lattice.cpp -o examples/test_lattice.o examples/lattice_prediction.o utils.o OptionParser/OptionParser.o

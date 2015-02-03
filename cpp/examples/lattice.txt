@@ -1,0 +1,15 @@
+root 3->root
+        root->Joe
+	    root->Jane
+	    root->Bob
+	    root->Goodwin
+	    root->Max
+root 3->root 2->Joe
+	    root 2->Jane
+	    root 2->Bob
+	    root 2->Goodwin
+	    root 2->Max	
+
+Mary<-root 2
+Mary<-root 4
+Mary<-root

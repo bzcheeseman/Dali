@@ -8,7 +8,7 @@ INTEL_COMP_DIR=$(INTEL_DIR)composer_xe_2015.1.108/
 MKL_DIR=$(INTEL_COMP_DIR)mkl/
 INC=-IEigen -I$(MKL_DIR)include -IEigen/src/Core/util/
 LLOC=-L$(MKL_DIR)lib/ -L$(INTEL_COMP_DIR)compiler/lib/
-OBJECTS=utils.o Mat.o Layers.o cnpy.o OptionParser/OptionParser.o
+OBJECTS=utils.o Mat.o Layers.o cnpy.o OptionParser/OptionParser.o CrossEntropy.o Softmax.o StackedGatedModel.o
 LIBS=-lblas -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -headerpad_max_install_names
 FIX_DYLIBS=sudo sh fix_dylib.sh
 all:
@@ -18,7 +18,10 @@ all:
 	$(CC) $(INC) -c -std=c++11 Mat.cpp
 	$(CC) $(INC) -c -std=c++11 Layers.cpp
 	$(CC) $(INC) -c -std=c++11 cnpy.cpp
-	$(CC) $(LLOC) -lblas -o app.o main.o $(OBJECTS) -lm 
+	$(CC) $(INC) -c -std=c++11 Softmax.cpp
+	$(CC) $(INC) -c -std=c++11 CrossEntropy.cpp
+	$(CC) $(INC) -c -std=c++11 StackedGatedModel.cpp
+	$(CC) $(LLOC) -lblas -o app.o main.o $(OBJECTS) -lm
 	$(FIX_DYLIBS)
 
 optimized:
@@ -28,7 +31,18 @@ optimized:
 	$(CC) $(INC) -O3 -c -std=c++11 Mat.cpp
 	$(CC) $(INC) -O3 -c -std=c++11 Layers.cpp
 	$(CC) $(INC) -O3 -c -std=c++11 cnpy.cpp
+	$(CC) $(INC) -O3 -c -std=c++11 Softmax.cpp
+	$(CC) $(INC) -O3 -c -std=c++11 CrossEntropy.cpp
+	$(CC) $(INC) -O3 -c -std=c++11 StackedGatedModel.cpp
 	$(CC) $(LLOC) $(LIBS) -o app.o -O3 main.o $(OBJECTS)
+	$(FIX_DYLIBS)
+
+softmax:
+	$(CC) $(INC) -O3 -c -std=c++11 Softmax.cpp
+	$(FIX_DYLIBS)
+
+entropy:
+	$(CC) $(INC) -O3 -c -std=c++11 CrossEntropy.cpp
 	$(FIX_DYLIBS)
 
 stacked_lstm:

@@ -21,9 +21,9 @@ class Layer {
         shared_mat b;
         const int hidden_size;
         const int input_size;
-        std::vector<shared_mat> parameters();
+        std::vector<shared_mat> parameters() const;
         Layer (int, int);
-        shared_mat activate(Graph<T>&, shared_mat);
+        shared_mat activate(Graph<T>&, shared_mat) const;
 };
 
 template<typename T>
@@ -45,10 +45,10 @@ class RNN {
         const int hidden_size;
         const int input_size;
         const int output_size;
-        std::vector<shared_mat> parameters();
+        std::vector<shared_mat> parameters() const;
         RNN (int, int);
         RNN (int, int, int);
-        shared_mat activate(Graph<T>&, shared_mat, shared_mat);
+        shared_mat activate(Graph<T>&, shared_mat, shared_mat) const;
 };
 
 template<typename T>
@@ -57,10 +57,10 @@ class GatedInput {
     public:
         typedef Mat<T>                      mat;
         typedef std::shared_ptr<mat> shared_mat;
-        std::vector<shared_mat> parameters();
+        std::vector<shared_mat> parameters() const;
         layer_type in_gate;
         GatedInput (int, int);
-        shared_mat activate(Graph<T>&, shared_mat, shared_mat);
+        shared_mat activate(Graph<T>&, shared_mat, shared_mat) const;
 };
 
 template<typename T>
@@ -74,6 +74,7 @@ class LSTM {
     See `Mat`, `HiddenLayer`
     */
     typedef RNN<T>                        layer_type;
+    void name_internal_layers();
     public:
         typedef Mat<T>                               mat;
         typedef std::shared_ptr<mat>          shared_mat;
@@ -89,13 +90,13 @@ class LSTM {
         const int input_size;
         LSTM (int, int);
         LSTM (int&, int&);
-        std::vector<shared_mat> parameters();
+        std::vector<shared_mat> parameters() const;
         static std::pair<std::vector<shared_mat>, std::vector<shared_mat>> initial_states(std::vector<int>&);
         std::pair<shared_mat, shared_mat> activate(
             Graph<T>&,
             shared_mat,
             shared_mat,
-            shared_mat);
+            shared_mat) const;
 };
 
 template<typename celltype>

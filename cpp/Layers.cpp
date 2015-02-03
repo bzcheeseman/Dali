@@ -13,12 +13,12 @@ Layer<T>::Layer (int _input_size, int _hidden_size) : hidden_size(_hidden_size),
 }
 
 template<typename T>
-typename Layer<T>::shared_mat Layer<T>::activate(Graph<T>& G, typename Layer<T>::shared_mat input_vector) {
+typename Layer<T>::shared_mat Layer<T>::activate(Graph<T>& G, typename Layer<T>::shared_mat input_vector) const {
     return G.mul_with_bias(W, input_vector, b);
 }
 
 template<typename T>
-std::vector<typename Layer<T>::shared_mat> Layer<T>::parameters() {
+std::vector<typename Layer<T>::shared_mat> Layer<T>::parameters() const{
     return std::vector<typename Layer<T>::shared_mat>({W, b});
 }
 
@@ -33,7 +33,7 @@ void RNN<T>::create_variables() {
 }
 
 template<typename T>
-std::vector<typename RNN<T>::shared_mat> RNN<T>::parameters() {
+std::vector<typename RNN<T>::shared_mat> RNN<T>::parameters() const {
     return std::vector<typename RNN<T>::shared_mat>({Wx, Wh, b});
 }
 
@@ -51,7 +51,7 @@ template<typename T>
 typename RNN<T>::shared_mat RNN<T>::activate(
     Graph<T>& G,
     typename RNN<T>::shared_mat input_vector,
-    typename RNN<T>::shared_mat prev_hidden) {
+    typename RNN<T>::shared_mat prev_hidden) const {
     // takes 5% less time to run operations when grouping them (no big gains then)
     // 1.118s with explicit (& temporaries) vs 1.020s with grouped expression & backprop
     // return G.add(G.mul(Wx, input_vector), G.mul_with_bias(Wh, prev_hidden, b));
@@ -59,17 +59,42 @@ typename RNN<T>::shared_mat RNN<T>::activate(
 }
 
 template<typename T>
-GatedInput<T>::GatedInput (int _input_size, int _hidden_size) : in_gate(_input_size, _hidden_size, 1) {}
+GatedInput<T>::GatedInput (int _input_size, int _hidden_size) : in_gate(_input_size, _hidden_size, 1) {
+    in_gate.b->set_name("Gated Input bias");
+    in_gate.Wx->set_name("Gated Input Wx");
+    in_gate.Wh->set_name("Gated Input Wx");
+}
 
 
 template<typename T>
-std::vector<typename GatedInput<T>::shared_mat> GatedInput<T>::parameters () {
+std::vector<typename GatedInput<T>::shared_mat> GatedInput<T>::parameters () const {
     return in_gate.parameters();
 }
 
 template<typename T>
-typename GatedInput<T>::shared_mat GatedInput<T>::activate(Graph<T>& G, typename GatedInput<T>::shared_mat input_vector, typename GatedInput<T>::shared_mat prev_hidden) {
-    return G.sigmoid(in_gate.activate(G, input_vector, prev_hidden) );
+typename GatedInput<T>::shared_mat GatedInput<T>::activate(Graph<T>& G, typename GatedInput<T>::shared_mat input_vector, typename GatedInput<T>::shared_mat prev_hidden) const {
+    auto unsigmoided_gate = in_gate.activate(G, input_vector, prev_hidden);
+    unsigmoided_gate->set_name("unsigmoided_gate");
+    return G.sigmoid( unsigmoided_gate );
+}
+
+template<typename T>
+void LSTM<T>::name_internal_layers() {
+    forget_layer.b->set_name("LSTM Forget bias");
+    forget_layer.Wx->set_name("LSTM Forget Wx");
+    forget_layer.Wh->set_name("LSTM Forget Wh");
+
+    input_layer.b->set_name("LSTM Input bias");
+    input_layer.Wx->set_name("LSTM Input Wx");
+    input_layer.Wh->set_name("LSTM Input Wh");
+
+    output_layer.b->set_name("LSTM Output bias");
+    output_layer.Wx->set_name("LSTM Output Wx");
+    output_layer.Wh->set_name("LSTM Output Wh");
+
+    cell_layer.b->set_name("LSTM Cell bias");
+    cell_layer.Wx->set_name("LSTM Cell Wx");
+    cell_layer.Wh->set_name("LSTM Cell Wh");
 }
 
 template<typename T>
@@ -80,10 +105,12 @@ LSTM<T>::LSTM (int _input_size, int _hidden_size) :
     forget_layer(_input_size, _hidden_size),
     output_layer(_input_size, _hidden_size),
     cell_layer(_input_size, _hidden_size) {
-
-        forget_layer.b->w(0) = 1000;
-
-    }
+    // Ilya Sutskever recommends initializing with
+    // forget gate at high value
+    // http://yyue.blogspot.fr/2015/01/a-brief-overview-of-deep-learning.html
+    forget_layer.b->w(0) = 100;
+    name_internal_layers();
+}
 
 template<typename T>
 LSTM<T>::LSTM (int& _input_size, int& _hidden_size) :
@@ -93,18 +120,19 @@ LSTM<T>::LSTM (int& _input_size, int& _hidden_size) :
     forget_layer(_input_size, _hidden_size),
     output_layer(_input_size, _hidden_size),
     cell_layer(_input_size, _hidden_size) {
-        // Alex Graves recommends initializing with
-        // forget gate at high value
-        forget_layer.b->w(0) = 1000;
-
-    }
+    // Ilya Sutskever recommends initializing with
+    // forget gate at high value
+    // http://yyue.blogspot.fr/2015/01/a-brief-overview-of-deep-learning.html
+    forget_layer.b->w(0) = 100;
+    name_internal_layers();
+}
 
 template<typename T>
 std::pair<typename LSTM<T>::shared_mat, typename LSTM<T>::shared_mat> LSTM<T>::activate (
     Graph<T>& G,
     typename LSTM<T>::shared_mat input_vector,
     typename LSTM<T>::shared_mat cell_prev,
-    typename LSTM<T>::shared_mat hidden_prev) {
+    typename LSTM<T>::shared_mat hidden_prev) const {
 
     // input gate:
     auto input_gate  = G.sigmoid(input_layer.activate(G, input_vector, hidden_prev));
@@ -126,7 +154,7 @@ std::pair<typename LSTM<T>::shared_mat, typename LSTM<T>::shared_mat> LSTM<T>::a
 }
 
 template<typename T>
-std::vector<typename LSTM<T>::shared_mat> LSTM<T>::parameters() {
+std::vector<typename LSTM<T>::shared_mat> LSTM<T>::parameters() const {
     std::vector<typename LSTM<T>::shared_mat> parameters;
 
     auto input_layer_params  = input_layer.parameters();
@@ -154,10 +182,13 @@ std::pair< std::vector<typename LSTM<T>::shared_mat >, std::vector<typename LSTM
     return initial_state;
 }
 
+using std::pair;
+using std::vector;
+using std::shared_ptr;
 
 template<typename celltype>
-std::vector<celltype> StackedCells(const int& input_size, const std::vector<int>& hidden_sizes) {
-    std::vector<celltype> cells;
+vector<celltype> StackedCells(const int& input_size, const vector<int>& hidden_sizes) {
+    vector<celltype> cells;
     cells.reserve(hidden_sizes.size());
     int prev_size = input_size;
     for (auto& size : hidden_sizes) {
@@ -167,17 +198,11 @@ std::vector<celltype> StackedCells(const int& input_size, const std::vector<int>
     return cells;
 }
 
-using std::pair;
-using std::vector;
-using std::shared_ptr;
-
 template<typename T>
 pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> forward_LSTMs(Graph<T>& G,
     shared_ptr<Mat<T>> input_vector,
     pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>>& previous_state,
     vector<LSTM<T>>& cells) {
-
-
 
     auto previous_state_cells = previous_state.first;
     auto previous_state_hiddens = previous_state.second;

@@ -1,8 +1,9 @@
-#include "lattice_prediction.h"
+#include "../utils.h"
 #include "../OptionParser/OptionParser.h"
 using std::vector;
 using std::string;
 using std::make_shared;
+using utils::OntologyBranch;
 
 void show_tree(std::vector<std::shared_ptr<OntologyBranch>> tree) {
 	for (auto& r : tree)
@@ -62,9 +63,16 @@ int main (int argc, char *argv[]) {
 	optparse::Values& options = parser.parse_args(argc, argv);
 	vector<string> args = parser.args();
 
-	if (args.size() > 0)
+	if (args.size() > 0) {
 		show_tree(OntologyBranch::load(args[0]));
-	else test_lattice();
+		if (args.size() > 1) {
+			std::cout << "Loading labeled corpus pairs" << std::endl;
+			auto corpus = utils::load_labeled_corpus(args[1]);
+			std::cout << "Found " << corpus.size() << " labeled pairs:" << std::endl;
+			for (auto& v : corpus)
+				std::cout << "\"" << v.first << "\" => \"" << v.second << "\""<< std::endl;
+		}
+	} else test_lattice();
 
 	return 0;
 }

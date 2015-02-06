@@ -49,16 +49,23 @@ stacked_lstm:
 	$(CC) $(INC) $(LLOC) $(LIBS) -O3 -std=c++11 stacked_lstm.cpp -o stacked_lstm.o $(OBJECTS) 
 	$(FIX_DYLIBS)
 
+utils:
+	$(CC) $(INC) -O3 -c -std=c++11 utils.cpp
+	$(FIX_DYLIBS)
+
 character_prediction:
-	$(CC) $(INC) $(LLOC) $(LIBS) -O3 -std=c++11 character_prediction.cpp -o character_prediction.o $(OBJECTS) 
+	$(CC) $(INC) $(LLOC) $(LIBS) -O3 -std=c++11 examples/character_prediction.cpp -o character_prediction.o $(OBJECTS)
 	$(FIX_DYLIBS)
 
 sparkfun_prediction:
-	$(CC) $(INC) -lblas -lz -O3 -std=c++11 sparkfun_prediction.cpp -o sparkfun_prediction.o $(OBJECTS) 
+	$(CC) $(INC) -lblas -lz -O3 -std=c++11 examples/sparkfun_prediction.cpp -o examples/sparkfun_prediction.o $(OBJECTS)
 	$(FIX_DYLIBS)
 
-lattice_prediction:
+test_lattice:
 	$(CC) -O3 -c -std=c++11 OptionParser/OptionParser.cpp -o OptionParser/OptionParser.o
 	$(CC) $(INC) -O3 -c -std=c++11 utils.cpp
-	$(CC) -O3 -c -std=c++11 examples/lattice_prediction.cpp -o examples/lattice_prediction.o
-	$(CC) -O3 -std=c++11 examples/test_lattice.cpp -o examples/test_lattice.o examples/lattice_prediction.o utils.o OptionParser/OptionParser.o
+	$(CC) -O3 -std=c++11 examples/test_lattice.cpp -o examples/test_lattice.o utils.o OptionParser/OptionParser.o
+
+lattice_prediction:
+	$(CC) $(INC) -lblas -lz -O3 -std=c++11 examples/lattice_prediction.cpp -o examples/lattice_prediction.o $(OBJECTS)
+	$(FIX_DYLIBS)

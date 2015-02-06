@@ -1,16 +1,12 @@
 #include "utils.h"
-#include <iostream>
-#include <fstream>
-#include <iomanip>
-#include <random>
-#include <unordered_map>
-#include <errno.h>
 
 using std::vector;
 using std::string;
 using std::ifstream;
 using std::stringstream;
 using std::ofstream;
+using std::set;
+using std::make_shared;
 
 const char* utils::end_symbol          = "**END**";
 const char* utils::unknown_word_symbol = "███████";
@@ -64,6 +60,17 @@ namespace utils {
 	        	elems.push_back(item);
 	    return elems;
 	}
+
+	template<typename T>
+	void tuple_sum(std::tuple<T, T>& A, std::tuple<T, T> B) {
+		std::get<0>(A) += std::get<0>(B);
+		std::get<1>(A) += std::get<1>(B);
+	}
+
+	template void tuple_sum(std::tuple<float, float>&, std::tuple<float, float>);
+	template void tuple_sum(std::tuple<double, double>&, std::tuple<double, double>);
+	template void tuple_sum(std::tuple<int, int>&, std::tuple<int, int>);
+	template void tuple_sum(std::tuple<uint, uint>&, std::tuple<uint, uint>);
 
 	template<typename T>
 	void assert_map_has_key(std::unordered_map<string, T>& map, const string& key) {
@@ -163,7 +170,98 @@ namespace utils {
 				fp << " " << v;
 			fp << "\n";
 		}
-	}	
+	}
+
+	/**	
+	Load Labeled Corpus
+	-------------------
+
+	Read text file line by line and extract pairs of labeled text
+	by splitting on the first space character. Whatever is before
+	the first space is the label and is stored second in the returned
+	pairs, and after the space is the example, and this is returned
+	first in the pairs.
+
+	Inputs
+	------
+
+	const std::string& fname : labeled corpus file
+
+	Outputs
+	-------
+
+	std::vector<std::pair<std::string, std::string>> pairs : labeled corpus pairs
+
+	**/
+	vector<std::pair<string, string>> load_labeled_corpus(const string& fname) {
+		ifstream fp(fname.c_str());
+		string l;
+		const char space = ' ';
+		vector<std::pair<string, string>> pairs;
+		string::size_type n;
+		while (std::getline(fp, l)) {
+			n = l.find(space);
+			pairs.emplace_back(std::piecewise_construct,
+				std::forward_as_tuple(l.begin() + n + 1, l.end()),
+				std::forward_as_tuple(l.begin(), l.begin() + n)
+			);
+		}
+		return pairs;
+	}
+
+	vector<string> tokenize(const string& s) {
+		stringstream ss(s);
+		std::istream_iterator<string> begin(ss);
+		std::istream_iterator<string> end;
+		return vector<string>(begin, end);
+	}
+
+	vector<std::pair<vector<string>, string>> load_tokenized_labeled_corpus(const string& fname) {
+		ifstream fp(fname.c_str());
+		string l;
+		const char space = ' ';
+		vector<std::pair<vector<string>, string>> pairs;
+		string::size_type n;
+		while (std::getline(fp, l)) {
+			n = l.find(space);
+			pairs.emplace_back(std::piecewise_construct,
+				std::forward_as_tuple(tokenize(string(l.begin() + n + 1, l.end()))),
+				std::forward_as_tuple(l.begin(), l.begin() + n)
+			);
+		}
+		return pairs;
+
+	}
+
+	vector<string> get_vocabulary(const tokenized_labeled_dataset& examples, int min_occurence) {
+		std::unordered_map<string, uint> word_occurences;
+		string word;
+		for (auto& example : examples)
+			for (auto& word : example.first) word_occurences[word] += 1;
+		vector<string> list;
+		for (auto& key_val : word_occurences)
+			if (key_val.second >= min_occurence)
+				list.emplace_back(key_val.first);
+		list.emplace_back(utils::end_symbol);
+		return list;
+	}
+
+	vector<string> get_label_vocabulary(const tokenized_labeled_dataset& examples) {
+		std::set<string> labels;
+		string word;
+		for (auto& example : examples)
+			labels.insert(example.second);
+		return vector<string>(labels.begin(), labels.end());
+	}
+
+	std::vector<string> get_lattice_vocabulary(const OntologyBranch::shared_branch lattice) {
+		std::vector<std::string> index2label;
+		index2label.emplace_back(end_symbol);
+		for (auto& kv : *lattice->lookup_table)
+			index2label.emplace_back(kv.first);
+		return index2label;
+	}
+
 
 	// Trimming text from StackOverflow:
 	// http://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
@@ -184,8 +282,6 @@ namespace utils {
 	std::string &trim(std::string &s) {
 	        return ltrim(rtrim(s));
 	}
-
-	
 
 	// From this StackOverflow:
 	// http://stackoverflow.com/questions/675039/how-can-i-create-directory-tree-in-c-linux
@@ -216,11 +312,29 @@ namespace utils {
 	    // Restore path to it's former glory
 	    *p = v;
 	  }
-
 	  return true;
 	}
 
+	/**
+	randint
+	-------
+
+	Sample integers from a uniform distribution between (and including)
+	lower and upper int values.
+
+	Inputs
+	------
+	int lower
+	int upper
+
+	Outputs
+	-------
+
+	int sample
+
+	**/
 	int randint(int lower, int upper) {
+		if (lower == upper) return lower;
 		std::default_random_engine generator;
 		std::uniform_int_distribution<int> distribution(lower, upper);
 		std::random_device rd;
@@ -230,7 +344,8 @@ namespace utils {
 
 	void Vocab::construct_word2index() {
 		uint i = 0;
-		for (auto& s : index2word) word2index[s] = i++;
+		for (auto& s : index2word)
+			word2index[s] = i++;
 	}
 	void Vocab::add_unknown_word() {
 		index2word.emplace_back(unknown_word_symbol);
@@ -387,6 +502,182 @@ namespace utils {
 	template struct relu_operator<double>;
 	template struct sign_operator<double>;
 	template struct dtanh_operator<double>;
-	// template struct clip_operator<double>;
+
+	void OntologyBranch::save(string fname, std::ios_base::openmode mode) {
+		auto hasher = std::hash<OntologyBranch>();
+		set<size_t> visited_list;
+		vector<shared_branch> open_list;
+
+		ofstream fp;
+		fp.open(fname.c_str(), mode);
+		open_list.push_back(shared_from_this());
+
+		while (open_list.size() > 0) {
+			auto el = open_list[0];
+			open_list.erase(open_list.begin());
+			if (visited_list.count(hasher(*el)) == 0) {
+				visited_list.insert(hasher(*el));
+				for (auto& child : el->children) {
+					fp << el->name << "->" << child->name << "\n";
+					open_list.emplace_back(child);
+				}
+				for (auto& parent : el->parents)
+					open_list.emplace_back(parent.lock());
+			}
+		}
+	}
+
+	void OntologyBranch::compute_max_depth() {
+		_max_depth = 0;
+		for (auto&v : children)
+			if (v->max_depth() + 1 > _max_depth)
+				_max_depth = v->max_depth() + 1;
+	}
+
+	int& OntologyBranch::max_depth() {
+		if (_max_depth > -1) return _max_depth;
+		else {
+			compute_max_depth();
+			return _max_depth;
+		}
+	}
+
+	std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> OntologyBranch::random_path_to_root(const string& nodename) {
+		auto node = lookup_table->at(nodename);
+		auto up_node = node;
+		uint direction;
+		std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> path_pair;
+		// path_pair.first = vector<OntologyBranch::shared_branch>();
+		while ( &(*up_node) != this) {
+			direction = randint(0, up_node->parents.size()-1);
+			path_pair.first.emplace_back(up_node);
+			path_pair.second.emplace_back(direction);
+			up_node = up_node->parents[direction].lock();
+		}
+		return path_pair;
+	}
+
+	std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> OntologyBranch::random_path_to_root(const string& nodename, const int offset) {
+		auto node = lookup_table->at(nodename);
+		auto up_node = node;
+		uint direction;
+		std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> path_pair;
+		// path_pair.first = vector<OntologyBranch::shared_branch>();
+		while ( &(*up_node) != this) {
+			direction = randint(0, up_node->parents.size()-1);
+			path_pair.first.emplace_back(up_node);
+			path_pair.second.emplace_back(direction + offset);
+			up_node = up_node->parents[direction].lock();
+		}
+		return path_pair;
+	}
+
+
+	std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> OntologyBranch::random_path_from_root(const string& nodename) {
+		auto node = lookup_table->at(nodename);
+		auto up_node = node;
+		uint direction;
+		std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> path_pair;
+		// path_pair.first = vector<OntologyBranch::shared_branch>();
+		while ( &(*up_node) != this) {
+			direction = randint(0, up_node->parents.size()-1);
+			path_pair.first.emplace(path_pair.first.begin(), up_node);
+			path_pair.second.emplace(path_pair.second.begin(), direction);
+			up_node = up_node->parents[direction].lock();
+		}
+		return path_pair;
+	}
+
+	std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> OntologyBranch::random_path_from_root(const string& nodename, const int offset) {
+		auto node = lookup_table->at(nodename);
+		auto up_node = node;
+		uint direction;
+		std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> path_pair;
+		// path_pair.first = vector<OntologyBranch::shared_branch>();
+		while ( &(*up_node) != this) {
+			direction = randint(0, up_node->parents.size()-1);
+			path_pair.first.emplace(path_pair.first.begin(), up_node);
+			path_pair.second.emplace(path_pair.second.begin(), direction + offset);
+			up_node = up_node->parents[direction].lock();
+		}
+		return path_pair;
+	}
+
+	void OntologyBranch::add_lattice_edge(
+		const std::string& parent,
+		const std::string& child,
+		std::shared_ptr<std::map<std::string, OntologyBranch::shared_branch>>& map,
+		std::vector<OntologyBranch::shared_branch>& parentless) {
+		if (map->count(child) == 0)
+			(*map)[child] = make_shared<OntologyBranch>(child);
+
+		if (map->count(parent) == 0) {
+			(*map)[parent] = make_shared<OntologyBranch>(parent);
+			parentless.emplace_back((*map)[parent]);
+		}
+		(*map)[child]->add_parent((*map)[parent]);
+	}
+
+	std::vector<OntologyBranch::shared_branch> OntologyBranch::load(string fname) {
+		auto branch_map = make_shared<std::map<std::string, OntologyBranch::shared_branch>>();
+		std::vector<OntologyBranch::shared_branch> roots;
+		std::vector<OntologyBranch::shared_branch> parentless;
+
+		ifstream fp;
+		fp.open(fname.c_str(), std::ios::in);
+		const string right_arrow = "->";
+		const string left_arrow = "<-";
+		string line;
+
+		while (std::getline(fp, line)) {
+			auto tokens = utils::split_str(line, right_arrow);
+			if (tokens.size() >= 2) {
+				for (int i = 0; i < tokens.size()-1; i++)
+					add_lattice_edge(trim(tokens[i]), trim(tokens[i+1]), branch_map, parentless);
+			} else {
+				tokens = utils::split_str(line, left_arrow);
+				if (tokens.size() >= 2)
+					for (int i = 0; i < tokens.size()-1; i++)
+						add_lattice_edge(trim(tokens[i+1]), trim(tokens[i]), branch_map, parentless);
+			}
+		}
+
+		for (auto& k : parentless)
+			if (k->parents.size() == 0) {
+				roots.emplace_back(k);
+				k->lookup_table = branch_map;
+			}
+
+		return roots;
+	}
+
+	OntologyBranch::OntologyBranch(const string& _name) : name(_name), _max_depth(-1) {}
+
+	void OntologyBranch::add_parent(OntologyBranch::shared_branch parent) {
+		parents.emplace_back(parent);
+		parent->add_child(shared_from_this());
+	}
+
+	void OntologyBranch::add_child(OntologyBranch::shared_branch child) {
+		children.emplace_back(child);
+	}
+}
+
+std::ostream& operator<<(std::ostream& strm, const utils::OntologyBranch& a) {
+	strm << "<#OntologyBranch name=\"" << a.name << "\"";
+	if (a.children.size() > 0) {
+		strm << " children={ ";
+		for (auto& v : a.children)
+			strm  << *v << ", ";
+		strm << "}";
+	}
+	return strm << ">";
+}
+
+std::size_t std::hash<utils::OntologyBranch>::operator()(const utils::OntologyBranch& k) const {
+	size_t seed = 0;
+	std::hash<std::string> str_hasher;
+	seed ^= str_hasher(k.name) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+	return seed;
 }
 

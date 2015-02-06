@@ -1,20 +1,26 @@
 #ifndef RECURRENT_MAT_UTILS_H
 #define RECURRENT_MAT_UTILS_H
 
-#include <iostream>
+
 #include <iomanip>
 #include <random>
 #include <sstream>
+#include <iostream>
+#include <fstream>
+#include <ostream>
+#include <sstream>
 #include <string>
 #include <vector>
-#include <fstream>
-#include <sstream>
 #include <unordered_map>
+#include <map>
+#include <set>
 #include <sys/stat.h>
 #include <algorithm> 
 #include <functional> 
 #include <cctype>
 #include <locale>
+#include <memory>
+#include <errno.h>
 // Default writing mode useful for default argument to
 // makedirs
 #define DEFAULT_MODE S_IRWXU | S_IRGRP |  S_IXGRP | S_IROTH | S_IXOTH
@@ -28,6 +34,7 @@ std::ostream& operator<<(std::ostream&, const std::vector<T>&);
 namespace utils {
 	/** Utility function to create directory tree */
 	bool makedirs(const char* path, mode_t mode = DEFAULT_MODE);
+	typedef std::vector< std::pair< std::vector< std::string >, std::string > > tokenized_labeled_dataset;
 
 	extern const char* end_symbol;
 	extern const char* unknown_word_symbol;
@@ -45,6 +52,51 @@ namespace utils {
 			Vocab(std::vector<std::string>&);
 			Vocab(std::vector<std::string>&, bool);
 	};
+
+	template<typename T>
+	void tuple_sum(std::tuple<T, T>&, std::tuple<T,T>);
+
+	/**
+	Ontology Branch
+	---------------
+
+	Small utility class for dealing with lattices with circular
+	references. Useful for loading in ontologies and lattices.
+
+	**/
+	class OntologyBranch : public std::enable_shared_from_this<OntologyBranch> {
+		int _max_depth;
+		void compute_max_depth();
+		public:
+			typedef std::shared_ptr<OntologyBranch> shared_branch;
+			typedef std::weak_ptr<OntologyBranch> shared_weak_branch;
+			typedef std::shared_ptr<std::map<std::string, shared_branch>> lookup_t;
+			
+			std::vector<shared_weak_branch> parents;
+			std::vector<shared_branch> children;
+			lookup_t lookup_table;
+			std::string name;
+			int& max_depth();
+			void save(std::string, std::ios_base::openmode = std::ios::out);
+			static std::vector<shared_branch> load(std::string);
+			static void add_lattice_edge(const std::string&, const std::string&,
+				std::shared_ptr<std::map<std::string, shared_branch>>&, std::vector<shared_branch>& parentless);
+			OntologyBranch(const std::string&);
+			void add_child(shared_branch);
+			void add_parent(shared_branch);
+			std::pair<std::vector<std::shared_ptr<OntologyBranch>>, std::vector<uint>> random_path_to_root(const std::string&);
+			std::pair<std::vector<std::shared_ptr<OntologyBranch>>, std::vector<uint>> random_path_to_root(const std::string&, const int);
+			std::pair<std::vector<std::shared_ptr<OntologyBranch>>, std::vector<uint>> random_path_from_root(const std::string&);
+			std::pair<std::vector<std::shared_ptr<OntologyBranch>>, std::vector<uint>> random_path_from_root(const std::string&, const int);
+			static std::vector<std::string> split_str(const std::string&, const std::string&);
+	};
+
+	std::vector<std::pair<std::string, std::string>> load_labeled_corpus(const std::string&);
+	tokenized_labeled_dataset load_tokenized_labeled_corpus(const std::string&);
+	std::vector<std::string> tokenize(const std::string&);
+	std::vector<std::string> get_vocabulary(const tokenized_labeled_dataset&, int);
+	std::vector<std::string> get_lattice_vocabulary(const OntologyBranch::shared_branch);
+	std::vector<std::string> get_label_vocabulary(const tokenized_labeled_dataset&);
 
 	std::string& trim(std::string&);
 	std::string& ltrim(std::string&);
@@ -120,4 +172,12 @@ namespace utils {
 		static const uint eltmul_rowwise                  = 15;
 	}
 }
+
+// define hash code for OntologyBranch
+namespace std {
+	template <> struct hash<utils::OntologyBranch> {
+		std::size_t operator()(const utils::OntologyBranch&) const;
+	};
+}
+std::ostream& operator<<(std::ostream&, const utils::OntologyBranch&);
 #endif

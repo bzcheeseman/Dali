@@ -2,9 +2,11 @@
 #include <iterator>
 #include <algorithm>
 #include <Eigen>
-#include "gzstream.h"
-#include "StackedGatedModel.h"
-#include "OptionParser/OptionParser.h"
+#include <set>
+#include "../utils.h"
+#include "../gzstream.h"
+#include "../StackedGatedModel.h"
+#include "../OptionParser/OptionParser.h"
 using std::vector;
 using std::make_shared;
 using std::shared_ptr;
@@ -16,12 +18,8 @@ using utils::Vocab;
 using utils::from_string;
 
 typedef float REAL_t;
-typedef LSTM<REAL_t> lstm;
 typedef Graph<REAL_t> graph_t;
-typedef Layer<REAL_t> classifier_t;
-typedef GatedInput<REAL_t> gate_t;
 typedef Mat<REAL_t> mat;
-typedef shared_ptr<mat> shared_mat;
 typedef float price_t;
 typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
 typedef Eigen::Matrix<REAL_t, Eigen::Dynamic, 1> float_vector;
@@ -161,8 +159,6 @@ vector<Databatch> create_labeled_dataset(vector<Product>& products,
 	}
 	return dataset;
 }
-
-#include <set>
 vector<string> get_category_vocabulary(vector<Product>& products) {
 	std::set<string> categories;
 	string word;
@@ -241,12 +237,6 @@ vector<Product> get_products(const string& filename) {
 	return products;
 }
 
-template<typename T>
-void tuple_sum(std::tuple<T, T>& A, std::tuple<T, T> B) {
-	std::get<0>(A) += std::get<0>(B);
-	std::get<1>(A) += std::get<1>(B);
-}
-
 int main(int argc, char *argv[]) {
 	auto parser = optparse::OptionParser()
 	    .usage("usage: %prog [dataset_path] [min_occurence] [subsets] [input_size] [epochs] [stack_size] [report_frequency]")
@@ -284,7 +274,7 @@ int main(int argc, char *argv[]) {
 	parser
 		.add_option("-r", "--report_frequency")
 		.help("How often (in epochs) to print the error to standard out during training.").metavar("INT");
-	parser.set_defaults("dataset", "sparkfun_dataset.txt");
+	parser.set_defaults("dataset", "examples/sparkfun_dataset.txt");
 	parser
 		.add_option("-d", "--dataset")
 		.help("Where to fetch the product data . "
@@ -347,7 +337,7 @@ int main(int argc, char *argv[]) {
 	
 	memory_penalty = memory_penalty / dataset[0].data->cols();
 
-	std::cout << "Loaded Dataset"                                    << std::endl;
+	std::cout << "Loaded Dataset" << std::endl;
 	std::cout << "Load location         = " << ((load_location != "") ? load_location : "N/A") << std::endl;
 	std::cout << "Save location         = " << ((save_destination != "") ? save_destination : "N/A") << std::endl;
 
@@ -388,7 +378,7 @@ int main(int argc, char *argv[]) {
 		std::tuple<REAL_t, REAL_t> cost(0.0, 0.0);
 		for (auto& minibatch : dataset) {
 			auto G = graph_t(true);      // create a new graph for each loop
-			tuple_sum(cost, model.cost_fun(
+			utils::tuple_sum(cost, model.cost_fun(
 				G,
 				minibatch.data,               // the sequence to predict
 				minibatch.start_loss,
@@ -405,7 +395,7 @@ int main(int argc, char *argv[]) {
 			std::cout << "epoch (" << i << ") KL error = " << std::get<0>(cost)
 			                         << ", Memory cost = " << std::get<1>(cost) << std::endl;
 
-			auto& random_batch = dataset[utils::randint(0, std::min(3, (int) dataset.size() - 1))]; 
+			auto& random_batch = dataset[utils::randint(0, std::min(3, dataset.size() - 1))]; 
 			auto random_example_index = utils::randint(0, random_batch.data->rows() - 1);
 			auto reconstruction = model.reconstruct_fun(
 				random_batch.data->row(random_example_index).head((*random_batch.start_loss)(random_example_index) + 1),
@@ -414,9 +404,8 @@ int main(int argc, char *argv[]) {
 				word_vocab.index2word.size());
 
 			std::cout << "Reconstruction \"";
-			for (int j = 0; j < (*random_batch.start_loss)(random_example_index); j++) {
+			for (int j = 0; j < (*random_batch.start_loss)(random_example_index); j++)
 				std::cout << word_vocab.index2word[(*random_batch.data)(random_example_index, j)] << " ";
-			}
 			std::cout << "\"\n => ";
 			for (auto& cat : reconstruction) {
 				std::cout << (
@@ -468,9 +457,6 @@ int main(int argc, char *argv[]) {
 			}
 			std::cout << std::endl;
 		}
-
 	}
-
-
 	return 0;
 }

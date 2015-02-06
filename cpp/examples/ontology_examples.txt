@@ -1,0 +1,104 @@
+nil . . .
+nil is .
+nil from .
+nil of
+nil the
+nil stuff
+waterpolo Waterpolo is a great sport .
+ping_pong Ping Pong is a great sport .
+tennis Tennis is a great sport .
+football Football is a great sport .
+baseball Baseball is a great sport .
+polo Polo is a great sport .
+ping_pong Japan has won the Ping Pong olympics three years in a row
+waterpolo Water Polo is a great water sport
+tennis Raphael Nadal has won the grand schlem many times
+tennis Federer and Nadal will be playing in the finals
+ping_pong Ping Pong tournament in Paris
+tennis Rollang Garros tournament in Paris
+tennis Wimbledon won by Federer
+football Zidane and Ronaldo are great team players
+baseball the Oackland As won the game
+baseball great home run by the Giants
+baseball MLB 's final taking place next week
+baseball MLB best player of the year
+baseball Oakland As won the MLB
+tennis Austrian Open won by Federer
+baseball Oakland As used statistics to gain an edge
+baseball Babe Ruth is an american favorite
+tennis when McEnroe plays there is a lot more than brute force
+football Zlatan is not a very talkative football player
+waterpolo Water Polo is a team water sport
+waterpolo water polo is a water sport
+waterpolo Williams Wilson invented the first rules for water polo
+racket_sport badminton and tennis are played using rackets
+waterpolo Water Polo is a great water sport .
+tennis Raphael Nadal has won the grand schlem many times .
+tennis Federer and Nadal will be playing in the finals .
+ping_pong Ping Pong tournament in Paris .
+tennis Rollang Garros tournament in Paris .
+tennis Wimbledon won by Federer .
+football Zidane and Ronaldo are great team players .
+baseball the Oackland As won the game .
+baseball great home run by the Giants .
+baseball MLB 's final taking place next week .
+baseball MLB best player of the year .
+baseball Oakland As won the MLB .
+tennis Austrian Open won by Federer .
+baseball Oakland As used statistics to gain an edge .
+baseball Babe Ruth is an american favorite .
+tennis when McEnroe plays there is a lot more than brute force .
+football Zlatan is not a very talkative football player .
+waterpolo Water Polo is a team water sport .
+waterpolo water polo is a water sport .
+waterpolo Williams Wilson invented the first rules for water polo .
+racket_sport badminton and tennis are played using rackets .
+rugby 14 teams qualify for the 2013 Rugby League World Cup : Australia , England , New Zealand , Samoa , Wales , Fiji , France , Papua New Guinea , Ireland , Scotland , Tonga , Cook Islands , Italy and United States of America .
+rugby New Zealand defeat France 8–7 at Eden Park , Auckland , in the seventh rugby union World Cup , held in New Zealand .
+rugby in 1969 Rugby league finally gains recognition as a sport in British universities and colleges .
+football A player takes a free kick , while the opposition form a " wall " to try to block the ball
+football In the late 1990s and early 2000s , the IFAB experimented with ways of creating a winner without requiring a penalty shootout , which was often seen as an undesirable way to end a match .
+football Association football has been played by women since at least the time of the first recorded women 's games in the late 19th century
+football Today , football is played at a professional level all over the world . Millions of people regularly go to football stadiums to follow their favourite teams , while billions more watch the game on television or on the internet
+tennis Roger Federer is now considered by many observers to have the most " complete " game in modern tennis . He has won 17 grand slam titles and 6 world tour finals , the most for any male player . 
+tennis McEnroe exacted revenge two months later , beating Borg in the five-set final of the 1980 US Open .
+polo The recent surge of excitement in south-east Asia around the game has resulted in its popularity in cities such as Pattaya , Kuala Lumpur and Jakarta .
+polo The mounts used are called ' polo ponies ' , although the term pony is purely traditional and the mount is actually a full-sized horse
+polo James Gordon Bennett , Jr. on 6 May 1876 organized what was billed as the first polo match in the United States at Dickel's Riding Academy at 39th Street and Fifth Avenue in New York City .
+whale The bareback whale can stay under water for several hours
+mammals Lions are a pack animal
+reptiles Lizards can look in one direction while using their tongue in another
+reptiles most frogs can jump several times their body length
+reptiles it is currently believed that dinosaurs are the ancestors of chicken
+mammals cow milk has only recently been collected by humans
+reptiles the Komodo dragon is not only poisonous but also very fast
+tennis in tennis reflexes are critical
+rugby most rugby players are not as muscular as football players
+baseball Baseball grew in popularity during the second world war in the United States 
+polo In Argentina polo is very popular unlike in most other southern American countries
+mammals Dogs and cats are mammals
+mammals Dog is man 's best friend
+mammals Cats do not usually get along with dogs
+whale All whales, dolphins and porpoises are descendants of land-living mammals , most likely of the Artiodactyl order . They entered the water roughly 50 million years ago .
+whale The baleen whales are characterized by baleen , a sieve-like structure in the upper jaw made of keratin , which they use to filter plankton from the water . They are the largest species of whale .
+whale Like all mammals , whales breathe air into lungs , are warm-blooded , feed their young milk from mammary glands , and have some (although very little ) hair .
+whale A young scientist , Eric Alexander Ivanov , in 1911 , was the first to discover that the whale 's ancestors lived on land , and  that whales have adapted to a fully aquatic life .
+alligator Alligators are characterized by a broader snout and eyes more dorsally located than their crocodile cousins .
+alligator According to the Everglades National Park website , the largest alligator ever recorded in Florida was 17 feet 5 inches long ( 5.3 meters ) .
+alligator There are only two countries on earth that have alligators : the United States and China .
+alligator Although alligators have heavy bodies and slow metabolisms , they are capable of short bursts of speed that can exceed 30 miles per hour though this could more properly be classified as a short fast lunge rather than a dash . Alligators ' main prey are smaller animals that they can kill and eat with a single bite .
+alligator Alligators may kill larger prey by grabbing it and dragging it in the water to drown .
+alligator Alligators consume food that cannot be eaten in one bite by allowing it to rot or by biting and then spinning or convulsing wildly until bite size pieces are torn off . This is referred to as the " death roll . "
+frog Adult frogs are characterised by long hind legs , a short body , webbed digits , protruding eyes and the absence of a tail . 
+frog Most frogs have a semi-aquatic lifestyle , but move easily on land by jumping or climbing .
+whale The baleen whales are characterized by baleen , a sieve-like structure in the upper jaw made of keratin , which they use to filter plankton from the water . They are the largest species of whale
+whale Like all mammals , whales breathe air into lungs , are warm-blooded , feed their young milk from mammary glands , and have some (although very little ) hair
+whale A young scientist , Eric Alexander Ivanov , in 1911 , was the first to discover that the whale 's ancestors lived on land , and  that whales have adapted to a fully aquatic life
+alligator Alligators are characterized by a broader snout and eyes more dorsally located than their crocodile cousins
+alligator According to the Everglades National Park website , the largest alligator ever recorded in Florida was 17 feet 5 inches long ( 5.3 meters )
+alligator There are only two countries on earth that have alligators : the United States and China
+alligator Although alligators have heavy bodies and slow metabolisms , they are capable of short bursts of speed that can exceed 30 miles per hour though this could more properly be classified as a short fast lunge rather than a dash . Alligators ' main prey are smaller animals that they can kill and eat with a single bite
+alligator Alligators may kill larger prey by grabbing it and dragging it in the water to drown
+alligator Alligators consume food that cannot be eaten in one bite by allowing it to rot or by biting and then spinning or convulsing wildly until bite size pieces are torn off . This is referred to as the " death roll .
+frog Adult frogs are characterised by long hind legs , a short body , webbed digits , protruding eyes and the absence of a tail 
+frog Most frogs have a semi-aquatic lifestyle , but move easily on land by jumping or climbing

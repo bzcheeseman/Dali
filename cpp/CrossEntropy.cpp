@@ -125,7 +125,7 @@ Z masked_cross_entropy(std::shared_ptr<Mat<Z>> logprobs,
 			cost -= std::log(probs->w(targets(i),i));
 			logprobs->dw.col(i) = probs->w.col(i);
 			logprobs->dw(targets(i), i) -= 1;
-			// std::cout << "-- (" << i << ")\n";
+			// std::cout << "-- (" << T << ")\n";
 			// for (int k = 0 ; k < logprobs->dw.rows(); k++) {
 			// 	for (int j = 0; j < logprobs->dw.cols(); j++) {
 			// 		if (k == targets(i) && i == j) {

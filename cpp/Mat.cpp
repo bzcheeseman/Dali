@@ -920,8 +920,25 @@ int argmax(std::shared_ptr<Mat<T>> A) {
 	return i;
 }
 
+template<typename T>
+int argmax_slice(std::shared_ptr<Mat<T>> A, int min, int max) {
+	int i = 0;
+	T current_max = -std::numeric_limits<T>::infinity();
+	auto ptr = A->w.data();
+	for (int j = min; j < max; j++) {
+		if (*ptr > current_max) {
+			current_max = *ptr;
+			i = j;
+		}
+		ptr++;
+	}
+	return i;
+}
+
 template int argmax(std::shared_ptr<Mat<float>>);
 template int argmax(std::shared_ptr<Mat<double>>);
+template int argmax_slice(std::shared_ptr<Mat<float>>, int, int);
+template int argmax_slice(std::shared_ptr<Mat<double>>, int, int);
 
 template<typename T>
 Solver::AdaGrad<T>::AdaGrad (T _smooth_eps, T _clipval) : smooth_eps(_smooth_eps), clipval(_clipval) {}

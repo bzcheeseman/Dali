@@ -101,6 +101,9 @@ template<typename T>
 int argmax(std::shared_ptr<Mat<T>>);
 
 template<typename T>
+int argmax_slice(std::shared_ptr<Mat<T>>, int, int);
+
+template<typename T>
 std::ostream& operator<<(std::ostream&, const Backward<T>&);
 
 template<typename T> class Graph {

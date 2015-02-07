@@ -237,6 +237,56 @@ vector<Product> get_products(const string& filename) {
 	return products;
 }
 
+void reconstruct(
+	StackedGatedModel<REAL_t>& model,
+	Databatch& minibatch,
+	int& i,
+	const Vocab& word_vocab,
+	const Vocab& category_vocab) {
+	std::cout << "Reconstruction \"";
+	for (int j = 0; j < (*minibatch.start_loss)(i); j++)
+		std::cout << word_vocab.index2word[(*minibatch.data)(i, j)] << " ";
+	std::cout << "\"\n => ";
+	std::cout << model.reconstruct_string(
+		minibatch.data->row(i).head((*minibatch.start_loss)(i) + 1),
+		category_vocab,
+		(*minibatch.codelens)(i),
+		word_vocab.index2word.size()) << std::endl;
+}
+
+template<typename T, typename S>
+void training_loop(StackedGatedModel<T>& model,
+	vector<Databatch>& dataset,
+	const Vocab& word_vocab,
+	const Vocab& category_vocab,
+	S& solver,
+	vector<shared_ptr<mat>>& parameters,
+	int& report_frequency,
+	int& epoch) {
+	std::tuple<REAL_t, REAL_t> cost(0.0, 0.0);
+	for (auto& minibatch : dataset) {
+		auto G = graph_t(true);      // create a new graph for each loop
+		utils::tuple_sum(cost, model.masked_predict_cost(
+			G,
+			minibatch.data, // the sequence to draw from
+			minibatch.data, // what to predict
+			minibatch.start_loss,
+			minibatch.codelens,
+			word_vocab.index2word.size()
+		));
+		G.backward(); // backpropagate
+		solver.step(parameters, 0.0); // One step of gradient descent
+	}
+	if (epoch % report_frequency == 0) {
+		std::cout << "epoch (" << epoch << ") KL error = " << std::get<0>(cost)
+		                         << ", Memory cost = " << std::get<1>(cost) << std::endl;
+		auto& random_batch = dataset[utils::randint(0, std::min(3, (int)dataset.size() - 1))]; 
+		auto random_example_index = utils::randint(0, random_batch.data->rows() - 1);
+
+		reconstruct(model, random_batch, random_example_index, word_vocab, category_vocab);
+	}
+}
+
 int main(int argc, char *argv[]) {
 	auto parser = optparse::OptionParser()
 	    .usage("usage: %prog [dataset_path] [min_occurence] [subsets] [input_size] [epochs] [stack_size] [report_frequency]")
@@ -253,210 +303,43 @@ int main(int argc, char *argv[]) {
 	    	" @author Jonathan Raiman\n"
 	    	" @date January 31st 2015"
 	    	);
-	parser.set_defaults("subsets", "10");
-	parser
-		.add_option("-s", "--subsets")
-		.help("Break up dataset into how many minibatches ? \n(Note: reduces batch sparsity)").metavar("INT");
-	parser.set_defaults("min_occurence", "2");
-	parser
-		.add_option("-m", "--min_occurence")
-		.help("How often a word must appear to be included in the Vocabulary \n"
-			"(Note: other words replaced by special **UNKNONW** word)").metavar("INT");
-	parser.set_defaults("epochs", "5");
-	parser
-		.add_option("-e", "--epochs")
-		.help("How many training loops through the full dataset ?").metavar("INT");
-	parser.set_defaults("input_size", "100");
-	parser
-		.add_option("-i", "--input_size")
-		.help("Size of the word vectors").metavar("INT");
-	parser.set_defaults("report_frequency", "1");
-	parser
-		.add_option("-r", "--report_frequency")
-		.help("How often (in epochs) to print the error to standard out during training.").metavar("INT");
+	StackedGatedModel<REAL_t>::add_options_to_CLI(parser);
+	utils::training_corpus_to_CLI(parser);
 	parser.set_defaults("dataset", "examples/sparkfun_dataset.txt");
-	parser
-		.add_option("-d", "--dataset")
-		.help("Where to fetch the product data . "
-			"\n(Note: Data format is:\nsku\nname\ndescription\ncategories\nprice)").metavar("FILE");
-	parser.set_defaults("stack_size", "4");
-	parser
-		.add_option("-stack", "--stack_size")
-		.help("How many LSTMs should I stack ?").metavar("INT");
-	parser.set_defaults("hidden", "100");
-	parser
-		.add_option("-h", "--hidden")
-		.help("How many Cells and Hidden Units should each LSTM have ?").metavar("INT");
-	parser.set_defaults("decay_rate", "0.95");
-	parser
-		.add_option("-decay", "--decay_rate")
-		.help("What decay rate should RMSProp use ?").metavar("FLOAT");
-	parser.set_defaults("rho", "0.95");
-	parser
-		.add_option("--rho")
-		.help("What rho / learning rate should the Solver use ?").metavar("FLOAT");
-
-	parser.set_defaults("memory_penalty", "0.3");
-	parser
-		.add_option("--memory_penalty")
-		.help("L1 Penalty on Input Gate activation.").metavar("FLOAT");
-
-	parser.set_defaults("save", "");
-	parser.add_option("--save")
-		.help("Where to save the model to ?").metavar("FOLDER");
-
-	parser.set_defaults("load", "");
-	parser.add_option("--load")
-		.help("Where to load the model from ?").metavar("FOLDER");
-
 	optparse::Values& options = parser.parse_args(argc, argv);
 
-	int min_occurence    = from_string<int>(options["min_occurence"]);
-	int stack_size       = from_string<int>(options["stack_size"]);
-	int subsets          = from_string<int>(options["subsets"]);
-	int input_size       = from_string<int>(options["input_size"]);
 	int epochs           = from_string<int>(options["epochs"]);
 	int report_frequency = from_string<int>(options["report_frequency"]);
-	int hidden_size      = from_string<int>(options["hidden"]);
 	REAL_t rho           = from_string<REAL_t>(options["rho"]);
-	REAL_t decay_rate    = from_string<REAL_t>(options["decay_rate"]);
-	REAL_t memory_penalty = from_string<REAL_t>(options["memory_penalty"]);
-	std::string load_location(options["load"]);
 	std::string dataset_path(options["dataset"]);
 	std::string save_destination(options["save"]);
-	if (min_occurence <= 0) min_occurence = 1;
-	if (stack_size <= 0)    stack_size = 1;
-
 	// Collect Dataset from File:
 	auto products       = get_products(dataset_path);
-	auto index2word     = get_vocabulary(products, min_occurence);
+	auto index2word     = get_vocabulary(products, from_string<int>(options["min_occurence"]) < 1 ? 1 : from_string<int>(options["min_occurence"]));
 	auto index2category = get_category_vocabulary(products);
 	Vocab word_vocab(index2word);
 	Vocab category_vocab(index2category, false);
-	auto dataset = create_labeled_dataset(products, category_vocab, word_vocab, subsets);
-	
-	memory_penalty = memory_penalty / dataset[0].data->cols();
-
+	auto dataset = create_labeled_dataset(products, category_vocab, word_vocab, from_string<int>(options["subsets"]));
 	std::cout << "Loaded Dataset" << std::endl;
-	std::cout << "Load location         = " << ((load_location != "") ? load_location : "N/A") << std::endl;
-	std::cout << "Save location         = " << ((save_destination != "") ? save_destination : "N/A") << std::endl;
-
-	// Construct the model
 	auto vocab_size = word_vocab.index2word.size() + index2category.size() + 1;
-	auto output_size = index2category.size() + 1;
-	auto model = (load_location != "") ?
-		StackedGatedModel<REAL_t>::load(load_location) :
-		StackedGatedModel<REAL_t>(
-			vocab_size,
-			input_size,
-			hidden_size,
-			stack_size,
-			output_size,
-			memory_penalty);
-	if (load_location != "") {
-		std::cout << "Loaded Model" << std::endl;
-	} else {
-		std::cout << "Vocabulary size       = " << index2word.size()     << std::endl;
-		std::cout << "Category size         = " << index2category.size() << std::endl;
-		std::cout << "Number of Products    = " << products.size()       << std::endl;
-		std::cout << "Number of Minibatches = " << dataset.size()        << std::endl;
-		std::cout << "Rho                   = " << rho                   << std::endl;
-		std::cout << "Memory Penalty        = " << memory_penalty        << std::endl;
-
-		std::cout << "Constructed Stacked LSTMs" << std::endl;
-	}
-
+	auto model = StackedGatedModel<REAL_t>::build_from_CLI(options, vocab_size, index2category.size() + 1, true);
+	auto memory_penalty = from_string<REAL_t>(options["memory_penalty"]);
+	model.memory_penalty = memory_penalty / dataset[0].data->cols();
+	std::cout << "Save location         = " << ((save_destination != "") ? save_destination : "N/A") << std::endl;
 	// Store all parameters in a vector:
 	auto parameters = model.parameters();
-
 	//Gradient descent optimizer:
 	Solver::AdaDelta<REAL_t> solver(parameters, rho, 1e-9, 5.0);
-	// Solver::SGD<REAL_t> solver(5.0);
-
 	// Main training loop:
-	for (auto i = 0; i < epochs; ++i) {
-		std::tuple<REAL_t, REAL_t> cost(0.0, 0.0);
-		for (auto& minibatch : dataset) {
-			auto G = graph_t(true);      // create a new graph for each loop
-			utils::tuple_sum(cost, model.cost_fun(
-				G,
-				minibatch.data,               // the sequence to predict
-				minibatch.start_loss,
-				minibatch.codelens,
-				word_vocab.index2word.size()
-			));
-			// backpropagate
-			G.backward();
-			// solve it.
-			solver.step(parameters, 0.0);
-			// solver.step(parameters, rho, 0.0);
-		}
-		if (i % report_frequency == 0) {
-			std::cout << "epoch (" << i << ") KL error = " << std::get<0>(cost)
-			                         << ", Memory cost = " << std::get<1>(cost) << std::endl;
-
-			auto& random_batch = dataset[utils::randint(0, std::min(3, dataset.size() - 1))]; 
-			auto random_example_index = utils::randint(0, random_batch.data->rows() - 1);
-			auto reconstruction = model.reconstruct_fun(
-				random_batch.data->row(random_example_index).head((*random_batch.start_loss)(random_example_index) + 1),
-				category_vocab,
-				(*random_batch.codelens)(random_example_index),
-				word_vocab.index2word.size());
-
-			std::cout << "Reconstruction \"";
-			for (int j = 0; j < (*random_batch.start_loss)(random_example_index); j++)
-				std::cout << word_vocab.index2word[(*random_batch.data)(random_example_index, j)] << " ";
-			std::cout << "\"\n => ";
-			for (auto& cat : reconstruction) {
-				std::cout << (
-					(cat < category_vocab.index2word.size()) ?
-						category_vocab.index2word[cat] :
-						(
-							(cat == category_vocab.index2word.size()) ?
-								"**END**" :
-								"??"
-						)
-					) << ", ";
-			}
-			std::cout << std::endl;
-		}
-	}
-
+	for (int i = 0; i < epochs; ++i)
+		training_loop(model, dataset, word_vocab, category_vocab, solver, parameters, report_frequency, i);
 	if (save_destination != "") {
 		model.save(save_destination);
 		std::cout << "Saved Model in \"" << save_destination << "\"" << std::endl;
 	}
-
-	std::cout <<"\n"
-	          << "Final Results\n"
-	          << "=============\n" << std::endl;
-	for (auto& minibatch : dataset) {
-		for (int i = 0; i < minibatch.data->rows(); i++) {
-
-			auto reconstruction = model.reconstruct_fun(
-				minibatch.data->row(i).head((*minibatch.start_loss)(i) + 1),
-				category_vocab,
-				(*minibatch.codelens)(i),
-				word_vocab.index2word.size());
-
-			std::cout << "Reconstruction \"";
-			for (int j = 0; j < (*minibatch.start_loss)(i); j++) {
-				std::cout << word_vocab.index2word[(*minibatch.data)(i, j)] << " ";
-			}
-			std::cout << "\"\n => ";
-			for (auto& cat : reconstruction) {
-				std::cout << (
-					(cat < category_vocab.index2word.size()) ?
-						category_vocab.index2word[cat] :
-						(
-							(cat == category_vocab.index2word.size()) ?
-								"**END**" :
-								"??"
-						)
-					) << ", ";
-			}
-			std::cout << std::endl;
-		}
-	}
+	std::cout <<"\nFinal Results\n=============\n" << std::endl;
+	for (auto& minibatch : dataset)
+		for (int i = 0; i < minibatch.data->rows(); i++)
+			reconstruct(model, minibatch, i, word_vocab, category_vocab);
 	return 0;
 }

@@ -29,7 +29,7 @@ typedef OntologyBranch lattice_t;
 typedef std::shared_ptr<lattice_t> shared_lattice_t;
 
 class Databatch {
-	typedef shared_ptr< index_mat > shared_index_mat;
+	typedef shared_ptr<index_mat> shared_index_mat;
 	public:
 		shared_index_mat data;
 		shared_index_mat target_data;
@@ -137,9 +137,58 @@ vector<Databatch> create_labeled_dataset(
 	return dataset;
 }
 
+void reconstruct(
+	StackedGatedModel<REAL_t>& model,
+	Databatch& minibatch,
+	int& i,
+	const Vocab& word_vocab,
+	shared_lattice_t lattice) {
+	std::cout << "Reconstruction \"";
+	for (int j = 0; j < (*minibatch.start_loss)(i); j++)
+		std::cout << word_vocab.index2word[(*minibatch.data)(i, j)] << " ";
+	std::cout << "\"\n => ";
+	std::cout << model.reconstruct_lattice_string(
+		minibatch.data->row(i).head((*minibatch.start_loss)(i) + 1),
+		lattice,
+		(*minibatch.codelens)(i)) << std::endl;
+}
+
+template<typename T, typename S>
+void training_loop(StackedGatedModel<T>& model,
+	vector<Databatch>& dataset,
+	const Vocab& word_vocab,
+	shared_lattice_t lattice,
+	S& solver,
+	vector<shared_ptr<mat>>& parameters,
+	int& report_frequency,
+	int& epoch,
+	std::tuple<T, T>& cost) {
+	for (auto& minibatch : dataset) {
+		auto G = graph_t(true);      // create a new graph for each loop
+		utils::tuple_sum(cost, model.masked_predict_cost(
+			G,
+			minibatch.data, // the sequence to draw from
+			minibatch.target_data, // what to predict (the path down the lattice)
+			minibatch.start_loss,
+			minibatch.codelens,
+			0
+		));
+		G.backward(); // backpropagate
+		solver.step(parameters, 0.0); // One step of gradient descent
+	}
+	if (epoch % report_frequency == 0) {
+		std::cout << "epoch (" << epoch << ") KL error = " << std::get<0>(cost)
+		                         << ", Memory cost = " << std::get<1>(cost) << std::endl;
+		auto& random_batch = dataset[utils::randint(0, dataset.size() - 1)]; 
+		auto random_example_index = utils::randint(0, random_batch.data->rows() - 1);
+
+		reconstruct(model, random_batch, random_example_index, word_vocab, lattice);
+	}
+}
+
 int main( int argc, char* argv[]) {
 	auto parser = optparse::OptionParser()
-	    .usage("usage: [lattice_path] [corpus_path] -s [# of minibatches]")
+	    .usage("usage: --lattice [lattice_path] --dataset [corpus_path] -s [# of minibatches]")
 	    .description(
 	    	"Lattice Prediction\n"
 	    	"------------\n"
@@ -149,37 +198,81 @@ int main( int argc, char* argv[]) {
 	    	" @author Jonathan Raiman\n"
 	    	" @date February 4th 2015"
 	    	);
-	parser.set_defaults("subsets", "10");
+	
+	
+	StackedGatedModel<REAL_t>::add_options_to_CLI(parser);
+	utils::training_corpus_to_CLI(parser);
+	// parser.set_defaults("lattice", "");
 	parser
-		.add_option("-s", "--subsets")
-		.help("Break up dataset into how many minibatches ? \n(Note: reduces batch sparsity)").metavar("INT");
-	parser.set_defaults("min_occurence", "2");
+		.add_option("-lt", "--lattice")
+		.help("Where to load a lattice / Ontology from ?").metavar("FILE");
+	parser.set_defaults("memory_rampup", "1000");
 	parser
-		.add_option("-m", "--min_occurence")
-		.help("How often a word must appear to be included in the Vocabulary \n"
-			"(Note: other words replaced by special **UNKNONW** word)").metavar("INT");
+		.add_option("--memory_rampup")
+		.help("Over how many epochs should the memory grow ?").metavar("INT");
+	parser.set_defaults("cutoff", "10.0");
+	parser
+		.add_option("-ct", "--cutoff")
+		.help("KL Divergence error where stopping is acceptable").metavar("FILE");
 	optparse::Values& options = parser.parse_args(argc, argv);
 	vector<string> args = parser.args();
+	if (options["lattice"] == "")
+		utils::exit_with_message("Error: Lattice (--lattice) keyword argument requires a value.");
+	if (options["dataset"] == "")
+		utils::exit_with_message("Error: Dataset (--dataset) keyword argument requires a value.");
+	auto lattice     = OntologyBranch::load(options["lattice"])[0];
+	auto examples    = utils::load_tokenized_labeled_corpus(options["dataset"]);
+	auto index2word  = utils::get_vocabulary(examples, from_string<int>(options["min_occurence"]));
+	auto index2label = utils::get_lattice_vocabulary(lattice);
+	Vocab word_vocab(index2word);
+	Vocab lattice_vocab(index2label, false);
+	utils::assign_lattice_ids(lattice->lookup_table, lattice_vocab, word_vocab.index2word.size());
+	auto dataset = create_labeled_dataset(
+		examples,
+		lattice_vocab,
+		word_vocab,
+		lattice,
+		from_string<int>(options["subsets"]));
+	auto max_branching_factor = lattice->max_branching_factor();
+	auto vocab_size = word_vocab.index2word.size() + lattice_vocab.index2word.size();
+	auto model = StackedGatedModel<REAL_t>::build_from_CLI(options, vocab_size, max_branching_factor + 1, true);
+	auto memory_penalty = from_string<REAL_t>(options["memory_penalty"]);
+	auto save_destination = options["save"];
+	auto report_frequency = from_string<int>(options["report_frequency"]);
+	auto rho = from_string<REAL_t>(options["rho"]);
+	auto epochs = from_string<int>(options["epochs"]);
+	auto cutoff = from_string<REAL_t>(options["cutoff"]);
+	auto memory_rampup = from_string<int>(options["memory_rampup"]);
+	// with a rampup model we start with zero memory penalty and gradually increase the memory
+	// L1 penalty until it reaches the desired level.
+	// this allows early exploration, but only later forces sparsity on the model 
+	model.memory_penalty = 0.0;
+	std::cout << "Save location         = " << ((save_destination != "") ? save_destination : "N/A") << std::endl;
+	// Store all parameters in a vector:
+	auto parameters = model.parameters();
 
-	int subpieces     = from_string<int>(options["subsets"]);
-	int min_occurence = from_string<int>(options["min_occurence"]);
-
-	if (args.size() > 1) {
-		auto lattice    = OntologyBranch::load(args[0])[0];
-		auto examples   = utils::load_tokenized_labeled_corpus(args[1]);
-		auto index2word = utils::get_vocabulary(examples, min_occurence);
-		auto index2label = utils::get_lattice_vocabulary(lattice);
-		Vocab word_vocab(index2word);
-		Vocab lattice_vocab(index2label, false);
-		auto dataset = create_labeled_dataset(
-			examples,
-			lattice_vocab,
-			word_vocab,
-			lattice,
-			subpieces);
-
-
-	} else {
-		std::cout << "usage: [lattice_path] [corpus_path]" << std::endl;
+	//Gradient descent optimizer:
+	Solver::AdaDelta<REAL_t> solver(parameters, rho, 1e-9, 5.0);
+	// Main training loop:
+	std::tuple<REAL_t,REAL_t> cost(std::numeric_limits<REAL_t>::infinity(), std::numeric_limits<REAL_t>::infinity());
+	int i = 0;
+	std::cout << "Max training epochs = " << epochs << std::endl;
+	std::cout << "Training cutoff     = " << cutoff << std::endl;
+	while (std::get<0>(cost) > cutoff && i < epochs) {
+		std::get<0>(cost) = 0.0;
+		std::get<1>(cost) = 0.0;
+		model.memory_penalty = (memory_penalty / dataset[0].data->cols()) * std::min((REAL_t)1.0, ((REAL_t) (i*i) / ((REAL_t) memory_rampup * memory_rampup)));
+		training_loop(model, dataset, word_vocab, lattice, solver, parameters, report_frequency, i, cost);
+		i++;
 	}
+	if (save_destination != "") {
+		model.save(save_destination);
+		std::cout << "Saved Model in \"" << save_destination << "\"" << std::endl;
+	}
+	std::cout <<"\nFinal Results\n=============\n" << std::endl;
+	for (auto& minibatch : dataset)
+		for (int i = 0; i < minibatch.data->rows(); i++)
+			reconstruct(model, minibatch, i, word_vocab, lattice);
+	return 0;
+
 }

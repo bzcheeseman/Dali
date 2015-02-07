@@ -37,6 +37,14 @@ optimized:
 	$(CC) $(LLOC) $(LIBS) -o app.o -O3 main.o $(OBJECTS)
 	$(FIX_DYLIBS)
 
+mat:
+	$(CC) $(INC) -O3 -c -std=c++11 Mat.cpp
+	$(FIX_DYLIBS)
+
+stacked_gated_model:
+	$(CC) $(INC) -O3 -c -std=c++11 StackedGatedModel.cpp
+	$(FIX_DYLIBS)
+
 softmax:
 	$(CC) $(INC) -O3 -c -std=c++11 Softmax.cpp
 	$(FIX_DYLIBS)

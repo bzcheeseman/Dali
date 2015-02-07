@@ -21,6 +21,7 @@
 #include <locale>
 #include <memory>
 #include <errno.h>
+#include "OptionParser/OptionParser.h"
 // Default writing mode useful for default argument to
 // makedirs
 #define DEFAULT_MODE S_IRWXU | S_IRGRP |  S_IXGRP | S_IROTH | S_IXOTH
@@ -34,7 +35,7 @@ std::ostream& operator<<(std::ostream&, const std::vector<T>&);
 namespace utils {
 	/** Utility function to create directory tree */
 	bool makedirs(const char* path, mode_t mode = DEFAULT_MODE);
-	typedef std::vector< std::pair< std::vector< std::string >, std::string > > tokenized_labeled_dataset;
+	typedef std::vector<std::pair<std::vector<std::string>, std::string>> tokenized_labeled_dataset;
 
 	extern const char* end_symbol;
 	extern const char* unknown_word_symbol;
@@ -71,12 +72,14 @@ namespace utils {
 			typedef std::shared_ptr<OntologyBranch> shared_branch;
 			typedef std::weak_ptr<OntologyBranch> shared_weak_branch;
 			typedef std::shared_ptr<std::map<std::string, shared_branch>> lookup_t;
-			
+
 			std::vector<shared_weak_branch> parents;
 			std::vector<shared_branch> children;
 			lookup_t lookup_table;
 			std::string name;
 			int& max_depth();
+			int id;
+			int max_branching_factor() const;
 			void save(std::string, std::ios_base::openmode = std::ios::out);
 			static std::vector<shared_branch> load(std::string);
 			static void add_lattice_edge(const std::string&, const std::string&,
@@ -84,6 +87,7 @@ namespace utils {
 			OntologyBranch(const std::string&);
 			void add_child(shared_branch);
 			void add_parent(shared_branch);
+			int get_index_of(shared_branch) const;
 			std::pair<std::vector<std::shared_ptr<OntologyBranch>>, std::vector<uint>> random_path_to_root(const std::string&);
 			std::pair<std::vector<std::shared_ptr<OntologyBranch>>, std::vector<uint>> random_path_to_root(const std::string&, const int);
 			std::pair<std::vector<std::shared_ptr<OntologyBranch>>, std::vector<uint>> random_path_from_root(const std::string&);
@@ -97,6 +101,7 @@ namespace utils {
 	std::vector<std::string> get_vocabulary(const tokenized_labeled_dataset&, int);
 	std::vector<std::string> get_lattice_vocabulary(const OntologyBranch::shared_branch);
 	std::vector<std::string> get_label_vocabulary(const tokenized_labeled_dataset&);
+	void assign_lattice_ids(OntologyBranch::lookup_t, Vocab&, int offset = 0);
 
 	std::string& trim(std::string&);
 	std::string& ltrim(std::string&);
@@ -151,6 +156,8 @@ namespace utils {
 	template<typename T>
 	void assign_cli_argument(char *, T&, std::string);
 
+	void training_corpus_to_CLI(optparse::OptionParser&);
+
 	template <class T> inline void hash_combine(std::size_t &, const T &);
 	std::size_t get_random_id();
 	namespace ops {
@@ -171,6 +178,8 @@ namespace utils {
 		static const uint eltmul_broadcast_rowwise        = 14;
 		static const uint eltmul_rowwise                  = 15;
 	}
+
+	void exit_with_message(const std::string&, int error_code = 1);
 }
 
 // define hash code for OntologyBranch

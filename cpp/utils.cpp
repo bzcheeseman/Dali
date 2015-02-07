@@ -262,7 +262,11 @@ namespace utils {
 		return index2label;
 	}
 
-
+	void assign_lattice_ids(OntologyBranch::lookup_t lookup_table, Vocab& lattice_vocab, int offset) {
+		for(auto& kv : *lookup_table)
+			kv.second->id = lattice_vocab.word2index.at(kv.first) + offset;
+	}
+	
 	// Trimming text from StackOverflow:
 	// http://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
 
@@ -341,7 +345,6 @@ namespace utils {
 		generator.seed(rd());
 		return distribution(generator);
 	}
-
 	void Vocab::construct_word2index() {
 		uint i = 0;
 		for (auto& s : index2word)
@@ -376,12 +379,29 @@ namespace utils {
 	template double from_string<double>(const std::string& s);
 	template long from_string<long>(const std::string& s);
 
-	bool is_gzip(const std::string& filename) {
+	/**
+	Is Gzip ?
+	---------
+
+	Check whether a file has the header information for a GZIP
+	file or not.
+	
+	Inputs
+	------
+	std::string& fname : potential gzip file's path
+
+	Outputs
+	-------
+
+	bool gzip? : whether header matches gzip header
+
+	**/
+	bool is_gzip(const std::string& fname) {
 		const unsigned char gzip_code = 0x1f;
 		const unsigned char gzip_code2 = 0x8b;
 		unsigned char ch;
 		std::ifstream file;
-		file.open(filename);
+		file.open(fname);
 		if (!file) return false;
 		file.read(reinterpret_cast<char*>(&ch), 1);
 		if (ch != gzip_code)
@@ -432,6 +452,19 @@ namespace utils {
 	  seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 	}
 
+	/**
+	Get Random ID
+	-------------
+
+	Get a super random number using both time, device default engine,
+	and hash combinations between each.
+
+	Outputs
+	-------
+
+	int seed : hopefully collision free random number as an ID
+
+	**/
 	std::size_t get_random_id() {
 		std::size_t seed = 0;
 		std::default_random_engine generator;
@@ -503,6 +536,20 @@ namespace utils {
 	template struct sign_operator<double>;
 	template struct dtanh_operator<double>;
 
+	/**
+	OntologyBranch::save
+	--------------------
+
+	Serialize a lattice to a file by saving each edge on a separate line.
+
+	Inputs
+	------
+
+	std::string fname : file to saved the lattice to
+	std::ios_base::openmode mode : what file open mode to use (defaults to write,
+								   but append can also be useful).
+
+	**/
 	void OntologyBranch::save(string fname, std::ios_base::openmode mode) {
 		auto hasher = std::hash<OntologyBranch>();
 		set<size_t> visited_list;
@@ -527,6 +574,13 @@ namespace utils {
 		}
 	}
 
+	/**
+	OntologyBranch::compute_max_depth
+	---------------------------------
+
+	Memoization computation for `OntologyBranch::max_depth`
+
+	**/
 	void OntologyBranch::compute_max_depth() {
 		_max_depth = 0;
 		for (auto&v : children)
@@ -534,6 +588,19 @@ namespace utils {
 				_max_depth = v->max_depth() + 1;
 	}
 
+	/**
+	OntologyBranch::max_depth
+	-------------------------
+
+	A memoized value for the deepest leaf's distance from the OntologyBranch
+	that called the method. A leaf returns 0, a branch returns the max of its
+	children's values + 1.
+	
+	Outputs
+	-------
+	int max_depth : Maximum number of nodes needed to traverse to reach a leaf.
+
+	**/
 	int& OntologyBranch::max_depth() {
 		if (_max_depth > -1) return _max_depth;
 		else {
@@ -574,31 +641,47 @@ namespace utils {
 
 
 	std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> OntologyBranch::random_path_from_root(const string& nodename) {
-		auto node = lookup_table->at(nodename);
-		auto up_node = node;
+		auto up_node = lookup_table->at(nodename);
+		auto parent = up_node;
 		uint direction;
 		std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> path_pair;
 		// path_pair.first = vector<OntologyBranch::shared_branch>();
 		while ( &(*up_node) != this) {
+			// find the parent:
 			direction = randint(0, up_node->parents.size()-1);
-			path_pair.first.emplace(path_pair.first.begin(), up_node);
+			parent = up_node->parents[direction].lock();
+			direction = parent->get_index_of(up_node);
+			// assign an replace current with parent:
 			path_pair.second.emplace(path_pair.second.begin(), direction);
-			up_node = up_node->parents[direction].lock();
+			path_pair.first.emplace(path_pair.first.begin(), up_node);
+			up_node = parent;
 		}
 		return path_pair;
 	}
 
+	int OntologyBranch::get_index_of(OntologyBranch::shared_branch node) const {
+		int i = 0;
+		auto ptr = &(*node);
+		for (auto& child : children)
+			if (&(*child) == ptr) return i;
+			else i++;
+		return -1;
+	}
+
 	std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> OntologyBranch::random_path_from_root(const string& nodename, const int offset) {
-		auto node = lookup_table->at(nodename);
-		auto up_node = node;
+		auto up_node = lookup_table->at(nodename);
+		auto parent = up_node;
 		uint direction;
 		std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> path_pair;
-		// path_pair.first = vector<OntologyBranch::shared_branch>();
 		while ( &(*up_node) != this) {
+			// find the parent:
 			direction = randint(0, up_node->parents.size()-1);
-			path_pair.first.emplace(path_pair.first.begin(), up_node);
+			parent = up_node->parents[direction].lock();
+			direction = parent->get_index_of(up_node);
+			// assign an replace current with parent:
 			path_pair.second.emplace(path_pair.second.begin(), direction + offset);
-			up_node = up_node->parents[direction].lock();
+			path_pair.first.emplace(path_pair.first.begin(), up_node);
+			up_node = parent;
 		}
 		return path_pair;
 	}
@@ -660,6 +743,70 @@ namespace utils {
 
 	void OntologyBranch::add_child(OntologyBranch::shared_branch child) {
 		children.emplace_back(child);
+	}
+
+	int OntologyBranch::max_branching_factor() const {
+		if (children.size() == 0) return 0;
+		std::vector<int> child_maxes(children.size());
+		auto child_factors = [](const int& a, const shared_branch b) { return b->max_branching_factor(); };
+		std::transform (child_maxes.begin(), child_maxes.end(), children.begin(), child_maxes.begin(), child_factors);
+		return std::max((int)children.size(), *std::max_element(child_maxes.begin(), child_maxes.end()));
+	}
+
+	/** 
+	Training Corpus to CLI
+	----------------------
+
+	Add options to Option Parser
+	for:
+
+	* Number of subsets
+	* Minimum Word Occurrence
+	* Epochs
+	* Report Frequency
+	* Dataset Path
+
+	**/
+	void training_corpus_to_CLI(optparse::OptionParser& parser) {
+		parser.set_defaults("subsets", "10");
+		parser
+			.add_option("-s", "--subsets")
+			.help("Break up dataset into how many minibatches ? \n(Note: reduces batch sparsity)").metavar("INT");
+		parser.set_defaults("min_occurence", "2");
+		parser
+			.add_option("-m", "--min_occurence")
+			.help("How often a word must appear to be included in the Vocabulary \n"
+				"(Note: other words replaced by special **UNKNONW** word)").metavar("INT");
+		parser.set_defaults("epochs", "5");
+		parser
+			.add_option("-e", "--epochs")
+			.help("How many training loops through the full dataset ?").metavar("INT");
+		parser.set_defaults("report_frequency", "1");
+		parser
+			.add_option("-r", "--report_frequency")
+			.help("How often (in epochs) to print the error to standard out during training.").metavar("INT");
+		parser.set_defaults("dataset", "");
+		parser
+			.add_option("-d", "--dataset")
+			.help("Where to fetch the data from . ").metavar("FILE");
+	}
+
+	/**
+	Exit With Message
+	-----------------
+
+	Exit the program with a message printed to std::cerr
+
+	Inputs
+	------
+
+	std::string& message : error message
+	int error_code : code for the error, defaults to 1
+
+	**/
+	void exit_with_message(const std::string& message, int error_code) {
+		std::cerr << message << std::endl;
+		exit(error_code);
 	}
 }
 

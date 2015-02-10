@@ -8,8 +8,8 @@ INTEL_COMP_DIR=$(INTEL_DIR)composer_xe_2015.1.108/
 MKL_DIR=$(INTEL_COMP_DIR)mkl/
 INC=-IEigen -I$(MKL_DIR)include -IEigen/src/Core/util/
 LLOC=-L$(MKL_DIR)lib/ -L$(INTEL_COMP_DIR)compiler/lib/
-OBJECTS=utils.o Mat.o Layers.o cnpy.o OptionParser/OptionParser.o CrossEntropy.o Softmax.o StackedGatedModel.o
-LIBS=-lblas -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -headerpad_max_install_names
+OBJECTS=utils.o Mat.o Layers.o cnpy.o OptionParser/OptionParser.o CrossEntropy.o Softmax.o StackedGatedModel.o examples/protobuff/corpus.pb.o
+LIBS=-lblas -lz -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -headerpad_max_install_names
 FIX_DYLIBS=sudo sh fix_dylib.sh
 all:
 	$(CC) -c -std=c++11 OptionParser/OptionParser.cpp -o OptionParser/OptionParser.o
@@ -21,6 +21,7 @@ all:
 	$(CC) $(INC) -c -std=c++11 Softmax.cpp
 	$(CC) $(INC) -c -std=c++11 CrossEntropy.cpp
 	$(CC) $(INC) -c -std=c++11 StackedGatedModel.cpp
+	$(CC) -c -std=c++11 examples/protobuff/corpus.pb.cc -o examples/protobuff/corpus.pb.o
 	$(CC) $(LLOC) -lblas -o app.o main.o $(OBJECTS) -lm
 	$(FIX_DYLIBS)
 
@@ -34,6 +35,7 @@ optimized:
 	$(CC) $(INC) -O3 -c -std=c++11 Softmax.cpp
 	$(CC) $(INC) -O3 -c -std=c++11 CrossEntropy.cpp
 	$(CC) $(INC) -O3 -c -std=c++11 StackedGatedModel.cpp
+	$(CC) -O3 -c -std=c++11 examples/protobuff/corpus.pb.cc -o examples/protobuff/corpus.pb.o
 	$(CC) $(LLOC) $(LIBS) -o app.o -O3 main.o $(OBJECTS)
 	$(FIX_DYLIBS)
 
@@ -72,8 +74,12 @@ sparkfun_prediction:
 test_lattice:
 	$(CC) -O3 -c -std=c++11 OptionParser/OptionParser.cpp -o OptionParser/OptionParser.o
 	$(CC) $(INC) -O3 -c -std=c++11 utils.cpp
-	$(CC) -O3 -std=c++11 examples/test_lattice.cpp -o examples/test_lattice.o utils.o OptionParser/OptionParser.o
+	$(CC) -O3 -lz -std=c++11 examples/test_lattice.cpp -o examples/test_lattice.o utils.o OptionParser/OptionParser.o
 
 lattice_prediction:
 	$(CC) $(INC) -lblas -lz -O3 -std=c++11 examples/lattice_prediction.cpp -o examples/lattice_prediction.o $(OBJECTS)
+	$(FIX_DYLIBS)
+
+lattice_prediction_protobuff:
+	$(CC) $(INC) -lblas -lprotobuf -lz -O3 -std=c++11 examples/lattice_prediction_from_protobuff.cpp -o examples/lattice_prediction_from_protobuff.o $(OBJECTS)
 	$(FIX_DYLIBS)

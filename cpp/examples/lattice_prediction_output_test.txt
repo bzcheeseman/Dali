@@ -1,0 +1,619 @@
+examples/lattice_prediction.o --lattice examples/mini_wiki.txt --dataset examples/ontology_examples.txt -e 10000 --report_frequency 10 --subsets 3 --stack_size 3 -e 10000 --cutoff 10 --report_frequency 10 --min_occurence 2 --memory_penalty 0.3 --memory_rampup 2000
+Load location         = N/A
+Constructed Stacked LSTMs
+Vocabulary size       = 315
+Input size            = 100
+Output size           = 9
+Stack size            = 3
+Memory Penalty        = 0.3
+Save location         = N/A
+Max training epochs = 10000
+Training cutoff     = 10
+epoch (0) KL error = 852.336, Memory cost = 0
+Reconstruction "Water Polo is a great water sport . "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (10) KL error = 646.111, Memory cost = 0.000499681
+Reconstruction "Oakland As won the MLB . "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (20) KL error = 619.488, Memory cost = 0.00210415
+Reconstruction "███████ football has been played by women ███████ at ███████ the ███████ of the first recorded women 's ███████ in the late ███████ ███████ "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (30) KL error = 599.794, Memory cost = 0.00532692
+Reconstruction "great home run by the Giants . "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (40) KL error = 586.988, Memory cost = 0.0113992
+Reconstruction "MLB 's final taking place next week "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (50) KL error = 562.737, Memory cost = 0.0188599
+Reconstruction "the ███████ ███████ is not only ███████ but ███████ very fast "
+ => animal_kingdown, reptiles, alligator, 
+epoch (60) KL error = 532.29, Memory cost = 0.0273551
+Reconstruction "Raphael Nadal has won the grand schlem many times . "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (70) KL error = 513.308, Memory cost = 0.0376155
+Reconstruction "Although alligators have heavy bodies and slow metabolisms , they are capable of short bursts of speed that can exceed 30 miles per hour though this could more properly be classified as a short fast lunge rather than a dash . Alligators ' main prey are smaller animals that they can kill and eat with a single bite . "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (80) KL error = 500.407, Memory cost = 0.0489854
+Reconstruction "The ███████ whale can ███████ ███████ water for several ███████ "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (90) KL error = 499.407, Memory cost = 0.0617243
+Reconstruction "Federer and Nadal will be playing in the finals "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (100) KL error = 471.137, Memory cost = 0.0764003
+Reconstruction "The ███████ whale can ███████ ███████ water for several ███████ "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (110) KL error = 459.173, Memory cost = 0.0925996
+Reconstruction "Like all mammals , whales breathe air into lungs , are warm-blooded , feed their young milk from mammary glands , and have some (although very little ) hair "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (120) KL error = 471.998, Memory cost = 0.109166
+Reconstruction "There are only two countries on earth that have alligators : the United States and China . "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (130) KL error = 438.548, Memory cost = 0.128779
+Reconstruction "when McEnroe plays there is a lot more than brute force "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (140) KL error = 424.904, Memory cost = 0.148754
+Reconstruction "is . "
+ => sport, 
+epoch (150) KL error = 407.65, Memory cost = 0.168407
+Reconstruction "███████ ███████ ███████ , ███████ on 6 ███████ ███████ ███████ ███████ was ███████ as the first polo match in the United States at ███████ ███████ ███████ at ███████ ███████ and ███████ ███████ in New ███████ ███████ . "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (160) KL error = 402.58, Memory cost = 0.191728
+Reconstruction "Rollang Garros tournament in Paris "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (170) KL error = 382.243, Memory cost = 0.211765
+Reconstruction "Rollang Garros tournament in Paris "
+ => sport, racket_sport, ping_pong, ⟲, 
+epoch (180) KL error = 374.977, Memory cost = 0.235925
+Reconstruction "it is ███████ ███████ that ███████ are the ancestors of ███████ "
+ => animal_kingdown, reptiles, alligator, 
+epoch (190) KL error = 394.797, Memory cost = 0.261749
+Reconstruction "Although alligators have heavy bodies and slow metabolisms , they are capable of short bursts of speed that can exceed 30 miles per hour though this could more properly be classified as a short fast lunge rather than a dash . Alligators ' main prey are smaller animals that they can kill and eat with a single bite "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (200) KL error = 350.137, Memory cost = 0.284787
+Reconstruction "███████ "
+ => sport, 
+epoch (210) KL error = 322.938, Memory cost = 0.310241
+Reconstruction "Alligators are characterized by a broader snout and eyes more dorsally located than their crocodile cousins . "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (220) KL error = 329.381, Memory cost = 0.336193
+Reconstruction "Alligators may kill larger prey by grabbing it and dragging it in the water to drown "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (230) KL error = 308.223, Memory cost = 0.365341
+Reconstruction "The baleen whales are characterized by baleen , a sieve-like structure in the upper jaw made of keratin , which they use to filter plankton from the water . They are the largest species of whale "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (240) KL error = 284.288, Memory cost = 0.401496
+Reconstruction "badminton and tennis are played using rackets "
+ => sport, racket_sport, ⟲, 
+epoch (250) KL error = 242.179, Memory cost = 0.424336
+Reconstruction "Alligators are characterized by a broader snout and eyes more dorsally located than their crocodile cousins . "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (260) KL error = 225.232, Memory cost = 0.457475
+Reconstruction "McEnroe ███████ ███████ two ███████ ███████ , ███████ ███████ in the ███████ final of the ███████ ███████ Open . "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (270) KL error = 212.648, Memory cost = 0.492005
+Reconstruction "███████ Federer is ███████ ███████ by many ███████ to have the most " ███████ " game in ███████ tennis . ███████ has won 17 grand ███████ ███████ and 6 world ███████ finals , the most for ███████ ███████ player . "
+ => sport, individual_sport, tennis, ⟲, 
+epoch (280) KL error = 201.612, Memory cost = 0.52724
+Reconstruction "███████ is a great sport . "
+ => sport, ball_sport, tennis, ⟲, 
+epoch (290) KL error = 192.984, Memory cost = 0.561972
+Reconstruction "Adult frogs are characterised by long hind legs , a short body , webbed digits , protruding eyes and the absence of a tail "
+ => animal_kingdown, reptiles, frog, ⟲, 
+epoch (300) KL error = 184.761, Memory cost = 0.599586
+Reconstruction "Zidane and Ronaldo are great team players "
+ => sport, team_sport, football, ⟲, 
+epoch (310) KL error = 174.23, Memory cost = 0.639985
+Reconstruction "water polo is a water sport . "
+ => sport, watersport, waterpolo, ⟲, 
+epoch (320) KL error = 167.009, Memory cost = 0.681903
+Reconstruction "Ping Pong tournament in Paris . "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (330) KL error = 165.693, Memory cost = 0.72289
+Reconstruction "Federer and Nadal will be playing in the finals . "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (340) KL error = 159.692, Memory cost = 0.765303
+Reconstruction "A player ███████ a ███████ ███████ , while the ███████ ███████ a " ███████ " to ███████ to ███████ the ███████ "
+ => sport, ball_sport, football, ⟲, 
+epoch (350) KL error = 143.988, Memory cost = 0.816312
+Reconstruction "Ping Pong tournament in Paris "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (360) KL error = 141.066, Memory cost = 0.861987
+Reconstruction "███████ , football is played at a ███████ ███████ all ███████ the world . ███████ of ███████ ███████ ███████ to football ███████ to ███████ their ███████ teams , while ███████ more ███████ the game on ███████ or on the ███████ "
+ => sport, ball_sport, football, ⟲, 
+epoch (370) KL error = 135.417, Memory cost = 0.910526
+Reconstruction "A young scientist , Eric Alexander Ivanov , in 1911 , was the first to discover that the whale 's ancestors lived on land , and that whales have adapted to a fully aquatic life . "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (380) KL error = 130.048, Memory cost = 0.960827
+Reconstruction "Zlatan is not a very talkative football player . "
+ => sport, ball_sport, tennis, ⟲, 
+epoch (390) KL error = 125.207, Memory cost = 1.0119
+Reconstruction "Raphael Nadal has won the grand schlem many times "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (400) KL error = 120.777, Memory cost = 1.06475
+Reconstruction "Wimbledon won by Federer . "
+ => sport, individual_sport, tennis, ⟲, 
+epoch (410) KL error = 116.52, Memory cost = 1.11876
+Reconstruction "███████ is a great sport . "
+ => sport, ball_sport, tennis, ⟲, 
+epoch (420) KL error = 111.333, Memory cost = 1.17486
+Reconstruction "███████ , football is played at a ███████ ███████ all ███████ the world . ███████ of ███████ ███████ ███████ to football ███████ to ███████ their ███████ teams , while ███████ more ███████ the game on ███████ or on the ███████ "
+ => sport, ball_sport, football, ⟲, 
+epoch (430) KL error = 109.106, Memory cost = 1.23092
+Reconstruction "███████ are a ███████ ███████ "
+ => animal_kingdown, mammals, ⟲, 
+epoch (440) KL error = 100.16, Memory cost = 1.29363
+Reconstruction "███████ teams ███████ for the ███████ Rugby ███████ World Cup : ███████ , ███████ , New Zealand , ███████ , ███████ , ███████ , France , ███████ New ███████ , ███████ , ███████ , ███████ , ███████ ███████ , ███████ and United States of ███████ . "
+ => sport, ball_sport, football, ⟲, 
+epoch (450) KL error = 96.0961, Memory cost = 1.35551
+Reconstruction "███████ are a ███████ ███████ "
+ => animal_kingdown, mammals, ⟲, 
+epoch (460) KL error = 93.69, Memory cost = 1.41949
+Reconstruction "Federer and Nadal will be playing in the finals . "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (470) KL error = 89.5247, Memory cost = 1.47904
+Reconstruction "███████ football has been played by women ███████ at ███████ the ███████ of the first recorded women 's ███████ in the late ███████ ███████ "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (480) KL error = 87.3844, Memory cost = 1.54383
+Reconstruction "A player ███████ a ███████ ███████ , while the ███████ ███████ a " ███████ " to ███████ to ███████ the ███████ "
+ => sport, ball_sport, football, ⟲, 
+epoch (490) KL error = 83.9979, Memory cost = 1.60722
+Reconstruction "Ping Pong tournament in Paris "
+ => sport, ball_sport, football, ⟲, 
+epoch (500) KL error = 81.3945, Memory cost = 1.66747
+Reconstruction "Austrian Open won by Federer "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (510) KL error = 79.2321, Memory cost = 1.73366
+Reconstruction "The baleen whales are characterized by baleen , a sieve-like structure in the upper jaw made of keratin , which they use to filter plankton from the water . They are the largest species of whale "
+ => animal_kingdown, mammals, whale, ⟲, 
+epoch (520) KL error = 79.0891, Memory cost = 1.79437
+Reconstruction "Wimbledon won by Federer . "
+ => sport, individual_sport, tennis, ⟲, 
+epoch (530) KL error = 73.2464, Memory cost = 1.8685
+Reconstruction "Alligators are characterized by a broader snout and eyes more dorsally located than their crocodile cousins "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (540) KL error = 71.2768, Memory cost = 1.93791
+Reconstruction "Water Polo is a great water sport "
+ => sport, watersport, waterpolo, ⟲, 
+epoch (550) KL error = 68.8764, Memory cost = 2.00876
+Reconstruction "███████ has won the Ping Pong ███████ ███████ years in a ███████ "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (560) KL error = 66.7421, Memory cost = 2.07926
+Reconstruction "Alligators may kill larger prey by grabbing it and dragging it in the water to drown "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (570) KL error = 64.7086, Memory cost = 2.15246
+Reconstruction "███████ ███████ ███████ and ███████ are ███████ of ███████ mammals , most ███████ of the ███████ ███████ . They ███████ the water ███████ ███████ ███████ years ███████ . "
+ => sport, racket_sport, ⟲, ⟲, 
+epoch (580) KL error = 62.453, Memory cost = 2.23077
+Reconstruction "the Oackland As won the game "
+ => sport, ball_sport, baseball, ⟲, 
+epoch (590) KL error = 61.3669, Memory cost = 2.31012
+Reconstruction "Raphael Nadal has won the grand schlem many times . "
+ => sport, individual_sport, tennis, ⟲, 
+epoch (600) KL error = 58.9832, Memory cost = 2.38212
+Reconstruction "Baseball is a great sport . "
+ => sport, team_sport, baseball, ⟲, 
+epoch (610) KL error = 56.8166, Memory cost = 2.45914
+Reconstruction "The ███████ ███████ of ███████ in ███████ ███████ ███████ the game has ███████ in ███████ popularity in ███████ ███████ as ███████ , ███████ ███████ and ███████ . "
+ => sport, ball_sport, football, ⟲, 
+epoch (620) KL error = 55.0098, Memory cost = 2.54076
+Reconstruction "There are only two countries on earth that have alligators : the United States and China . "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (630) KL error = 64.0294, Memory cost = 2.64499
+Reconstruction "Zlatan is not a very talkative football player . "
+ => sport, team_sport, football, ⟲, 
+epoch (640) KL error = 52.1328, Memory cost = 2.70651
+Reconstruction "Austrian Open won by Federer . "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (650) KL error = 50.5773, Memory cost = 2.79076
+Reconstruction "In the late ███████ and ███████ ███████ , the ███████ ███████ with ███████ of ███████ a ███████ ███████ ███████ a ███████ ███████ , which was ███████ ███████ as an ███████ ███████ to ███████ a match . "
+ => sport, ball_sport, football, ⟲, 
+epoch (660) KL error = 49.1715, Memory cost = 2.87758
+Reconstruction "great home run by the Giants . "
+ => sport, team_sport, baseball, ⟲, 
+epoch (670) KL error = 48.1797, Memory cost = 2.95892
+Reconstruction "Wimbledon won by Federer "
+ => sport, individual_sport, tennis, ⟲, 
+epoch (680) KL error = 46.0917, Memory cost = 3.04649
+Reconstruction "in tennis ███████ are ███████ "
+ => sport, racket_sport, ⟲, ⟲, 
+epoch (690) KL error = 44.3811, Memory cost = 3.13421
+Reconstruction "███████ has won the Ping Pong ███████ ███████ years in a ███████ "
+ => sport, racket_sport, ping_pong, ⟲, 
+epoch (700) KL error = 48.9421, Memory cost = 3.24165
+Reconstruction "███████ are a ███████ ███████ "
+ => animal_kingdown, mammals, ⟲, 
+epoch (710) KL error = 41.5997, Memory cost = 3.30872
+Reconstruction "According to the Everglades National Park website , the largest alligator ever recorded in Florida was 17 feet 5 inches long ( 5.3 meters ) "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (720) KL error = 40.137, Memory cost = 3.40058
+Reconstruction "Babe Ruth is an american favorite "
+ => sport, team_sport, baseball, ⟲, 
+epoch (730) KL error = 40.4769, Memory cost = 3.50381
+Reconstruction "Most frogs have a semi-aquatic lifestyle , but move easily on land by jumping or climbing "
+ => animal_kingdown, reptiles, frog, ⟲, 
+epoch (740) KL error = 37.6332, Memory cost = 3.59402
+Reconstruction "███████ , football is played at a ███████ ███████ all ███████ the world . ███████ of ███████ ███████ ███████ to football ███████ to ███████ their ███████ teams , while ███████ more ███████ the game on ███████ or on the ███████ "
+ => sport, ball_sport, football, ⟲, 
+epoch (750) KL error = 36.4862, Memory cost = 3.68995
+Reconstruction "Alligators are characterized by a broader snout and eyes more dorsally located than their crocodile cousins "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (760) KL error = 41.8974, Memory cost = 3.7658
+Reconstruction "Alligators are characterized by a broader snout and eyes more dorsally located than their crocodile cousins "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (770) KL error = 34.3048, Memory cost = 3.88186
+Reconstruction "Polo is a great sport . "
+ => sport, ball_sport, polo, ⟲, 
+epoch (780) KL error = 33.3403, Memory cost = 3.98199
+Reconstruction "in ███████ Rugby ███████ ███████ ███████ ███████ as a sport in ███████ ███████ and ███████ . "
+ => sport, ball_sport, rugby, ⟲, 
+epoch (790) KL error = 39.1072, Memory cost = 4.0919
+Reconstruction "New Zealand ███████ France ███████ at ███████ Park , ███████ , in the ███████ rugby ███████ World Cup , ███████ in New Zealand . "
+ => sport, ball_sport, rugby, ⟲, 
+epoch (800) KL error = 31.2339, Memory cost = 4.18376
+Reconstruction "the Oackland As won the game "
+ => sport, ball_sport, baseball, ⟲, 
+epoch (810) KL error = 30.2652, Memory cost = 4.28801
+Reconstruction "Water Polo is a great water sport "
+ => sport, watersport, waterpolo, ⟲, 
+epoch (820) KL error = 41.2984, Memory cost = 4.37434
+Reconstruction "The ███████ whale can ███████ ███████ water for several ███████ "
+ => animal_kingdown, mammals, whale, ⟲, 
+epoch (830) KL error = 28.5987, Memory cost = 4.50215
+Reconstruction "badminton and tennis are played using rackets "
+ => sport, racket_sport, ⟲, 
+epoch (840) KL error = 27.6884, Memory cost = 4.60938
+Reconstruction "Zlatan is not a very talkative football player . "
+ => sport, team_sport, football, ⟲, 
+epoch (850) KL error = 27.7131, Memory cost = 4.71794
+Reconstruction "Austrian Open won by Federer "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (860) KL error = 26.1504, Memory cost = 4.8194
+Reconstruction "███████ teams ███████ for the ███████ Rugby ███████ World Cup : ███████ , ███████ , New Zealand , ███████ , ███████ , ███████ , France , ███████ New ███████ , ███████ , ███████ , ███████ , ███████ ███████ , ███████ and United States of ███████ . "
+ => sport, ball_sport, rugby, ⟲, 
+epoch (870) KL error = 28.346, Memory cost = 4.92404
+Reconstruction "when McEnroe plays there is a lot more than brute force . "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (880) KL error = 24.653, Memory cost = 5.03269
+Reconstruction "Zlatan is not a very talkative football player "
+ => sport, ball_sport, football, ⟲, 
+epoch (890) KL error = 23.953, Memory cost = 5.14317
+Reconstruction "███████ milk has only ███████ been ███████ by ███████ "
+ => animal_kingdown, mammals, ⟲, 
+epoch (900) KL error = 23.932, Memory cost = 5.26021
+Reconstruction "in tennis ███████ are ███████ "
+ => sport, individual_sport, tennis, ⟲, 
+epoch (910) KL error = 23.6481, Memory cost = 5.37223
+Reconstruction "Alligators consume food that cannot be eaten in one bite by allowing it to rot or by biting and then spinning or convulsing wildly until bite size pieces are torn off . This is referred to as the " death roll . "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (920) KL error = 22.1937, Memory cost = 5.4693
+Reconstruction "Ping Pong tournament in Paris "
+ => sport, ball_sport, ping_pong, ⟲, 
+epoch (930) KL error = 21.4697, Memory cost = 5.5828
+Reconstruction "badminton and tennis are played using rackets "
+ => sport, racket_sport, ⟲, 
+epoch (940) KL error = 20.9158, Memory cost = 5.69654
+Reconstruction "most rugby players are not as ███████ as football players "
+ => sport, ball_sport, rugby, ⟲, 
+epoch (950) KL error = 32.1798, Memory cost = 5.7831
+Reconstruction "There are only two countries on earth that have alligators : the United States and China "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (960) KL error = 19.7659, Memory cost = 5.92012
+Reconstruction "A young scientist , Eric Alexander Ivanov , in 1911 , was the first to discover that the whale 's ancestors lived on land , and that whales have adapted to a fully aquatic life "
+ => animal_kingdown, mammals, whale, ⟲, 
+epoch (970) KL error = 19.2097, Memory cost = 6.0358
+Reconstruction "the "
+ => ⟲, 
+epoch (980) KL error = 18.8209, Memory cost = 6.15915
+Reconstruction "███████ are a ███████ ███████ "
+ => animal_kingdown, mammals, ⟲, 
+epoch (990) KL error = 18.2806, Memory cost = 6.29726
+Reconstruction "Wimbledon won by Federer "
+ => sport, individual_sport, tennis, ⟲, 
+epoch (1000) KL error = 17.8011, Memory cost = 6.41628
+Reconstruction "Babe Ruth is an american favorite . "
+ => sport, ball_sport, baseball, ⟲, 
+epoch (1010) KL error = 18.0729, Memory cost = 6.5288
+Reconstruction "Austrian Open won by Federer "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (1020) KL error = 17.1792, Memory cost = 6.64324
+Reconstruction "Zidane and Ronaldo are great team players "
+ => sport, team_sport, football, ⟲, 
+epoch (1030) KL error = 16.5611, Memory cost = 6.77202
+Reconstruction "in tennis ███████ are ███████ "
+ => sport, individual_sport, tennis, ⟲, 
+epoch (1040) KL error = 16.5116, Memory cost = 6.89441
+Reconstruction "Although alligators have heavy bodies and slow metabolisms , they are capable of short bursts of speed that can exceed 30 miles per hour though this could more properly be classified as a short fast lunge rather than a dash . Alligators ' main prey are smaller animals that they can kill and eat with a single bite . "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (1050) KL error = 15.9329, Memory cost = 7.00441
+Reconstruction "great home run by the Giants . "
+ => sport, team_sport, baseball, ⟲, 
+epoch (1060) KL error = 48.1189, Memory cost = 7.13338
+Reconstruction "A young scientist , Eric Alexander Ivanov , in 1911 , was the first to discover that the whale 's ancestors lived on land , and that whales have adapted to a fully aquatic life . "
+ => sport, individual_sport, tennis, ⟲, 
+epoch (1070) KL error = 15.4122, Memory cost = 7.28001
+Reconstruction "great home run by the Giants . "
+ => sport, team_sport, baseball, ⟲, 
+epoch (1080) KL error = 14.9845, Memory cost = 7.40475
+Reconstruction "Ping Pong tournament in Paris "
+ => sport, ball_sport, ping_pong, ⟲, 
+epoch (1090) KL error = 14.674, Memory cost = 7.52846
+Reconstruction "Polo is a great sport . "
+ => sport, ball_sport, polo, ⟲, 
+epoch (1100) KL error = 19.2846, Memory cost = 7.66104
+Reconstruction "There are only two countries on earth that have alligators : the United States and China "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (1110) KL error = 14.1446, Memory cost = 7.76916
+Reconstruction "███████ can ███████ in one ███████ while using their ███████ in ███████ "
+ => animal_kingdown, reptiles, ⟲, 
+epoch (1120) KL error = 13.9878, Memory cost = 7.8888
+Reconstruction "Water Polo is a great water sport . "
+ => sport, watersport, waterpolo, ⟲, 
+epoch (1130) KL error = 13.7938, Memory cost = 7.99856
+Reconstruction "the Oackland As won the game . "
+ => sport, team_sport, baseball, ⟲, 
+epoch (1140) KL error = 13.4685, Memory cost = 8.13481
+Reconstruction "Oakland As won the MLB . "
+ => sport, team_sport, baseball, ⟲, 
+epoch (1150) KL error = 12.9989, Memory cost = 8.25753
+Reconstruction "███████ , football is played at a ███████ ███████ all ███████ the world . ███████ of ███████ ███████ ███████ to football ███████ to ███████ their ███████ teams , while ███████ more ███████ the game on ███████ or on the ███████ "
+ => sport, ball_sport, football, ⟲, 
+epoch (1160) KL error = 14.6077, Memory cost = 8.40071
+Reconstruction "Federer and Nadal will be playing in the finals "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (1170) KL error = 12.554, Memory cost = 8.53109
+Reconstruction "Raphael Nadal has won the grand schlem many times . "
+ => sport, individual_sport, tennis, ⟲, 
+epoch (1180) KL error = 12.3461, Memory cost = 8.66067
+Reconstruction "███████ is a great sport . "
+ => sport, team_sport, football, ⟲, 
+epoch (1190) KL error = 12.2629, Memory cost = 8.77835
+Reconstruction "the ███████ ███████ is not only ███████ but ███████ very fast "
+ => animal_kingdown, reptiles, ⟲, 
+epoch (1200) KL error = 65.1272, Memory cost = 8.83936
+Reconstruction "Alligators are characterized by a broader snout and eyes more dorsally located than their crocodile cousins "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (1210) KL error = 12.7144, Memory cost = 9.06575
+Reconstruction "The ███████ whale can ███████ ███████ water for several ███████ "
+ => animal_kingdown, mammals, whale, ⟲, 
+epoch (1220) KL error = 12.1019, Memory cost = 9.20843
+Reconstruction "███████ has won the Ping Pong ███████ ███████ years in a ███████ "
+ => sport, racket_sport, ping_pong, ⟲, 
+epoch (1230) KL error = 11.7781, Memory cost = 9.35155
+Reconstruction "Raphael Nadal has won the grand schlem many times . "
+ => sport, individual_sport, tennis, ⟲, 
+epoch (1240) KL error = 11.6432, Memory cost = 9.48711
+Reconstruction "Austrian Open won by Federer . "
+ => sport, racket_sport, tennis, ⟲, 
+epoch (1250) KL error = 16.6471, Memory cost = 9.57788
+Reconstruction "it is ███████ ███████ that ███████ are the ancestors of ███████ "
+ => animal_kingdown, reptiles, ⟲, 
+epoch (1260) KL error = 11.0571, Memory cost = 9.75869
+Reconstruction "Although alligators have heavy bodies and slow metabolisms , they are capable of short bursts of speed that can exceed 30 miles per hour though this could more properly be classified as a short fast lunge rather than a dash . Alligators ' main prey are smaller animals that they can kill and eat with a single bite . "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (1270) KL error = 10.878, Memory cost = 9.89056
+Reconstruction "Alligators consume food that cannot be eaten in one bite by allowing it to rot or by biting and then spinning or convulsing wildly until bite size pieces are torn off . This is referred to as the " death roll . " "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+epoch (1280) KL error = 14.262, Memory cost = 10.0291
+Reconstruction "The baleen whales are characterized by baleen , a sieve-like structure in the upper jaw made of keratin , which they use to filter plankton from the water . They are the largest species of whale "
+ => animal_kingdown, mammals, whale, ⟲, 
+epoch (1290) KL error = 10.456, Memory cost = 10.1203
+Reconstruction "water polo is a water sport . "
+ => sport, watersport, waterpolo, ⟲, 
+epoch (1300) KL error = 14.1386, Memory cost = 10.2982
+Reconstruction "Babe Ruth is an american favorite "
+ => sport, team_sport, baseball, ⟲, 
+epoch (1310) KL error = 10.0698, Memory cost = 10.4036
+Reconstruction "███████ "
+ => ⟲, 
+
+Final Results
+=============
+
+Reconstruction "of "
+ => ⟲, 
+Reconstruction "the "
+ => ⟲, 
+Reconstruction "███████ "
+ => ⟲, 
+Reconstruction "is . "
+ => ⟲, 
+Reconstruction "from . "
+ => ⟲, 
+Reconstruction ". . . "
+ => ⟲, 
+Reconstruction "Wimbledon won by Federer "
+ => sport, individual_sport, tennis, ⟲, 
+Reconstruction "███████ and ███████ are mammals "
+ => animal_kingdown, mammals, ⟲, 
+Reconstruction "in tennis ███████ are ███████ "
+ => sport, individual_sport, tennis, ⟲, 
+Reconstruction "███████ are a ███████ ███████ "
+ => animal_kingdown, mammals, ⟲, 
+Reconstruction "Ping Pong tournament in Paris "
+ => sport, ball_sport, ping_pong, ⟲, 
+Reconstruction "Rollang Garros tournament in Paris "
+ => sport, individual_sport, tennis, ⟲, 
+Reconstruction "Wimbledon won by Federer . "
+ => sport, individual_sport, tennis, ⟲, 
+Reconstruction "Oakland As won the MLB "
+ => sport, team_sport, baseball, ⟲, 
+Reconstruction "Austrian Open won by Federer "
+ => sport, racket_sport, tennis, ⟲, 
+Reconstruction "███████ is a great sport . "
+ => sport, team_sport, football, ⟲, 
+Reconstruction "███████ is ███████ 's best ███████ "
+ => animal_kingdown, mammals, ⟲, 
+Reconstruction "███████ is a great sport . "
+ => sport, team_sport, football, ⟲, 
+Reconstruction "███████ is a great sport . "
+ => sport, team_sport, football, ⟲, 
+Reconstruction "Baseball is a great sport . "
+ => sport, team_sport, baseball, ⟲, 
+Reconstruction "Polo is a great sport . "
+ => sport, ball_sport, polo, ⟲, 
+Reconstruction "Austrian Open won by Federer . "
+ => sport, racket_sport, tennis, ⟲, 
+Reconstruction "Oakland As won the MLB . "
+ => sport, team_sport, baseball, ⟲, 
+Reconstruction "the Oackland As won the game "
+ => sport, ball_sport, baseball, ⟲, 
+Reconstruction "great home run by the Giants "
+ => sport, team_sport, baseball, ⟲, 
+Reconstruction "MLB best player of the year "
+ => sport, team_sport, baseball, ⟲, 
+Reconstruction "Rollang Garros tournament in Paris . "
+ => sport, individual_sport, tennis, ⟲, 
+Reconstruction "Babe Ruth is an american favorite "
+ => sport, team_sport, baseball, ⟲, 
+Reconstruction "Ping Pong tournament in Paris . "
+ => sport, ball_sport, ping_pong, ⟲, 
+Reconstruction "water polo is a water sport "
+ => sport, watersport, waterpolo, ⟲, 
+Reconstruction "Water Polo is a team water sport "
+ => sport, ball_sport, waterpolo, ⟲, 
+Reconstruction "badminton and tennis are played using rackets "
+ => sport, racket_sport, ⟲, 
+Reconstruction "Ping Pong is a great sport . "
+ => sport, individual_sport, ping_pong, ⟲, 
+Reconstruction "Water Polo is a great water sport "
+ => sport, watersport, waterpolo, ⟲, 
+Reconstruction "MLB 's final taking place next week "
+ => sport, team_sport, baseball, ⟲, 
+Reconstruction "the Oackland As won the game . "
+ => sport, team_sport, baseball, ⟲, 
+Reconstruction "great home run by the Giants . "
+ => sport, team_sport, baseball, ⟲, 
+Reconstruction "MLB best player of the year . "
+ => sport, ball_sport, baseball, ⟲, 
+Reconstruction "Zidane and Ronaldo are great team players "
+ => sport, team_sport, football, ⟲, 
+Reconstruction "Babe Ruth is an american favorite . "
+ => sport, ball_sport, baseball, ⟲, 
+Reconstruction "water polo is a water sport . "
+ => sport, watersport, waterpolo, ⟲, 
+Reconstruction "Zlatan is not a very talkative football player "
+ => sport, ball_sport, football, ⟲, 
+Reconstruction "Water Polo is a great water sport . "
+ => sport, watersport, waterpolo, ⟲, 
+Reconstruction "███████ ███████ not ███████ ███████ ███████ with ███████ "
+ => animal_kingdown, mammals, ⟲, 
+Reconstruction "Oakland As used statistics to gain an edge "
+ => sport, ball_sport, baseball, ⟲, 
+Reconstruction "Zidane and Ronaldo are great team players . "
+ => sport, team_sport, football, ⟲, 
+Reconstruction "MLB 's final taking place next week . "
+ => sport, ball_sport, baseball, ⟲, 
+Reconstruction "Water Polo is a team water sport . "
+ => sport, watersport, waterpolo, ⟲, 
+Reconstruction "badminton and tennis are played using rackets . "
+ => sport, racket_sport, ⟲, 
+Reconstruction "Williams Wilson invented the first rules for water polo "
+ => sport, watersport, waterpolo, ⟲, 
+Reconstruction "Federer and Nadal will be playing in the finals "
+ => sport, racket_sport, tennis, ⟲, 
+Reconstruction "Oakland As used statistics to gain an edge . "
+ => sport, team_sport, baseball, ⟲, 
+Reconstruction "███████ milk has only ███████ been ███████ by ███████ "
+ => animal_kingdown, mammals, ⟲, 
+Reconstruction "Zlatan is not a very talkative football player . "
+ => sport, team_sport, football, ⟲, 
+Reconstruction "most frogs can ███████ several times their body ███████ "
+ => animal_kingdown, reptiles, frog, ⟲, 
+Reconstruction "Raphael Nadal has won the grand schlem many times "
+ => sport, racket_sport, tennis, ⟲, 
+Reconstruction "The ███████ whale can ███████ ███████ water for several ███████ "
+ => animal_kingdown, mammals, whale, ⟲, 
+Reconstruction "Raphael Nadal has won the grand schlem many times . "
+ => sport, individual_sport, tennis, ⟲, 
+Reconstruction "Federer and Nadal will be playing in the finals . "
+ => sport, racket_sport, tennis, ⟲, 
+Reconstruction "most rugby players are not as ███████ as football players "
+ => sport, ball_sport, rugby, ⟲, 
+Reconstruction "Williams Wilson invented the first rules for water polo . "
+ => sport, ball_sport, waterpolo, ⟲, 
+Reconstruction "when McEnroe plays there is a lot more than brute force "
+ => sport, racket_sport, tennis, ⟲, 
+Reconstruction "the ███████ ███████ is not only ███████ but ███████ very fast "
+ => animal_kingdown, reptiles, ⟲, 
+Reconstruction "it is ███████ ███████ that ███████ are the ancestors of ███████ "
+ => animal_kingdown, reptiles, ⟲, 
+Reconstruction "███████ has won the Ping Pong ███████ ███████ years in a ███████ "
+ => sport, racket_sport, ping_pong, ⟲, 
+Reconstruction "when McEnroe plays there is a lot more than brute force . "
+ => sport, racket_sport, tennis, ⟲, 
+Reconstruction "███████ can ███████ in one ███████ while using their ███████ in ███████ "
+ => animal_kingdown, reptiles, ⟲, 
+Reconstruction "In ███████ polo is very ███████ ███████ in most ███████ ███████ ███████ countries "
+ => sport, ball_sport, polo, ⟲, 
+Reconstruction "Baseball ███████ in popularity ███████ the ███████ world ███████ in the United States "
+ => sport, team_sport, baseball, ⟲, 
+Reconstruction "in ███████ Rugby ███████ ███████ ███████ ███████ as a sport in ███████ ███████ and ███████ . "
+ => sport, ball_sport, rugby, ⟲, 
+Reconstruction "Most frogs have a semi-aquatic lifestyle , but move easily on land by jumping or climbing "
+ => animal_kingdown, reptiles, frog, ⟲, 
+Reconstruction "Alligators may kill larger prey by grabbing it and dragging it in the water to drown "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+Reconstruction "There are only two countries on earth that have alligators : the United States and China "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+Reconstruction "Alligators are characterized by a broader snout and eyes more dorsally located than their crocodile cousins "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+Reconstruction "There are only two countries on earth that have alligators : the United States and China . "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+Reconstruction "Alligators are characterized by a broader snout and eyes more dorsally located than their crocodile cousins . "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+Reconstruction "Alligators may kill larger prey by grabbing it and dragging it in the water to drown . "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+Reconstruction "Most frogs have a semi-aquatic lifestyle , but move easily on land by jumping or climbing . "
+ => animal_kingdown, reptiles, frog, ⟲, 
+Reconstruction "McEnroe ███████ ███████ two ███████ ███████ , ███████ ███████ in the ███████ final of the ███████ ███████ Open . "
+ => sport, racket_sport, tennis, ⟲, 
+Reconstruction "A player ███████ a ███████ ███████ , while the ███████ ███████ a " ███████ " to ███████ to ███████ the ███████ "
+ => sport, ball_sport, football, ⟲, 
+Reconstruction "███████ football has been played by women ███████ at ███████ the ███████ of the first recorded women 's ███████ in the late ███████ ███████ "
+ => sport, team_sport, football, ⟲, 
+Reconstruction "Adult frogs are characterised by long hind legs , a short body , webbed digits , protruding eyes and the absence of a tail "
+ => animal_kingdown, reptiles, frog, ⟲, 
+Reconstruction "New Zealand ███████ France ███████ at ███████ Park , ███████ , in the ███████ rugby ███████ World Cup , ███████ in New Zealand . "
+ => sport, ball_sport, rugby, ⟲, 
+Reconstruction "Adult frogs are characterised by long hind legs , a short body , webbed digits , protruding eyes and the absence of a tail . "
+ => animal_kingdown, reptiles, frog, ⟲, 
+Reconstruction "According to the Everglades National Park website , the largest alligator ever recorded in Florida was 17 feet 5 inches long ( 5.3 meters ) "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+Reconstruction "The ███████ used are ███████ ' polo ███████ ' , ███████ the ███████ ███████ is ███████ ███████ and the ███████ is ███████ a ███████ ███████ "
+ => sport, ball_sport, polo, ⟲, 
+Reconstruction "According to the Everglades National Park website , the largest alligator ever recorded in Florida was 17 feet 5 inches long ( 5.3 meters ) . "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+Reconstruction "The ███████ ███████ of ███████ in ███████ ███████ ███████ the game has ███████ in ███████ popularity in ███████ ███████ as ███████ , ███████ ███████ and ███████ . "
+ => sport, team_sport, polo, ⟲, 
+Reconstruction "███████ ███████ ███████ and ███████ are ███████ of ███████ mammals , most ███████ of the ███████ ███████ . They ███████ the water ███████ ███████ ███████ years ███████ . "
+ => animal_kingdown, mammals, whale, ⟲, 
+Reconstruction "Like all mammals , whales breathe air into lungs , are warm-blooded , feed their young milk from mammary glands , and have some (although very little ) hair "
+ => animal_kingdown, mammals, whale, ⟲, 
+Reconstruction "Like all mammals , whales breathe air into lungs , are warm-blooded , feed their young milk from mammary glands , and have some (although very little ) hair . "
+ => animal_kingdown, mammals, whale, ⟲, 
+Reconstruction "A young scientist , Eric Alexander Ivanov , in 1911 , was the first to discover that the whale 's ancestors lived on land , and that whales have adapted to a fully aquatic life "
+ => animal_kingdown, mammals, whale, ⟲, 
+Reconstruction "In the late ███████ and ███████ ███████ , the ███████ ███████ with ███████ of ███████ a ███████ ███████ ███████ a ███████ ███████ , which was ███████ ███████ as an ███████ ███████ to ███████ a match . "
+ => sport, ball_sport, football, ⟲, 
+Reconstruction "A young scientist , Eric Alexander Ivanov , in 1911 , was the first to discover that the whale 's ancestors lived on land , and that whales have adapted to a fully aquatic life . "
+ => animal_kingdown, mammals, whale, ⟲, 
+Reconstruction "The baleen whales are characterized by baleen , a sieve-like structure in the upper jaw made of keratin , which they use to filter plankton from the water . They are the largest species of whale "
+ => animal_kingdown, mammals, whale, ⟲, 
+Reconstruction "The baleen whales are characterized by baleen , a sieve-like structure in the upper jaw made of keratin , which they use to filter plankton from the water . They are the largest species of whale . "
+ => animal_kingdown, mammals, whale, ⟲, 
+Reconstruction "███████ ███████ ███████ , ███████ on 6 ███████ ███████ ███████ ███████ was ███████ as the first polo match in the United States at ███████ ███████ ███████ at ███████ ███████ and ███████ ███████ in New ███████ ███████ . "
+ => sport, team_sport, polo, ⟲, 
+Reconstruction "███████ Federer is ███████ ███████ by many ███████ to have the most " ███████ " game in ███████ tennis . ███████ has won 17 grand ███████ ███████ and 6 world ███████ finals , the most for ███████ ███████ player . "
+ => sport, individual_sport, tennis, ⟲, 
+Reconstruction "███████ , football is played at a ███████ ███████ all ███████ the world . ███████ of ███████ ███████ ███████ to football ███████ to ███████ their ███████ teams , while ███████ more ███████ the game on ███████ or on the ███████ "
+ => sport, ball_sport, football, ⟲, 
+Reconstruction "Alligators consume food that cannot be eaten in one bite by allowing it to rot or by biting and then spinning or convulsing wildly until bite size pieces are torn off . This is referred to as the " death roll . "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+Reconstruction "Alligators consume food that cannot be eaten in one bite by allowing it to rot or by biting and then spinning or convulsing wildly until bite size pieces are torn off . This is referred to as the " death roll . " "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+Reconstruction "███████ teams ███████ for the ███████ Rugby ███████ World Cup : ███████ , ███████ , New Zealand , ███████ , ███████ , ███████ , France , ███████ New ███████ , ███████ , ███████ , ███████ , ███████ ███████ , ███████ and United States of ███████ . "
+ => sport, ball_sport, rugby, ⟲, 
+Reconstruction "Although alligators have heavy bodies and slow metabolisms , they are capable of short bursts of speed that can exceed 30 miles per hour though this could more properly be classified as a short fast lunge rather than a dash . Alligators ' main prey are smaller animals that they can kill and eat with a single bite "
+ => animal_kingdown, reptiles, alligator, ⟲, 
+Reconstruction "Although alligators have heavy bodies and slow metabolisms , they are capable of short bursts of speed that can exceed 30 miles per hour though this could more properly be classified as a short fast lunge rather than a dash . Alligators ' main prey are smaller animals that they can kill and eat with a single bite . "
+ => animal_kingdown, reptiles, alligator, ⟲,

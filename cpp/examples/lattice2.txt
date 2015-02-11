@@ -1,12 +1,12 @@
-root->Joe
-root->Bob
-root->Max
-root->Mary
-root->Jane
-root->Goodwin
-root 2->Joe
-root 2->Bob
-root 2->Max
-root 2->Mary
-root 2->Jane
-root 2->Goodwin
+root<-Joe
+Bob
+Max
+Mary
+Jane
+Goodwin
+root 2<-Joe
+Bob
+Max
+Mary
+Jane
+Goodwin

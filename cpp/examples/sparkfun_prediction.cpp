@@ -172,7 +172,7 @@ vector<string> get_category_vocabulary(vector<Product>& products) {
 }
 
 vector<string> get_vocabulary(vector<Product>& products, int min_occurence) {
-	std::unordered_map<string, uint> word_occurences;
+	std::map<string, uint> word_occurences;
 	string word;
 	for (auto& product : products)
 		for (auto& word : product.description) word_occurences[word] += 1;

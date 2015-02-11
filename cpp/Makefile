@@ -9,7 +9,7 @@ MKL_DIR=$(INTEL_COMP_DIR)mkl/
 INC=-IEigen -I$(MKL_DIR)include -IEigen/src/Core/util/
 LLOC=-L$(MKL_DIR)lib/ -L$(INTEL_COMP_DIR)compiler/lib/
 OBJECTS=utils.o Mat.o Layers.o cnpy.o OptionParser/OptionParser.o CrossEntropy.o Softmax.o StackedGatedModel.o examples/protobuff/corpus.pb.o
-LIBS=-lblas -lz -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -headerpad_max_install_names
+LIBS=-lblas -lz -lprotobuf -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -headerpad_max_install_names
 FIX_DYLIBS=sudo sh fix_dylib.sh
 all:
 	$(CC) -c -std=c++11 OptionParser/OptionParser.cpp -o OptionParser/OptionParser.o
@@ -22,7 +22,7 @@ all:
 	$(CC) $(INC) -c -std=c++11 CrossEntropy.cpp
 	$(CC) $(INC) -c -std=c++11 StackedGatedModel.cpp
 	$(CC) -c -std=c++11 examples/protobuff/corpus.pb.cc -o examples/protobuff/corpus.pb.o
-	$(CC) $(LLOC) -lblas -o app.o main.o $(OBJECTS) -lm
+	$(CC) $(LLOC) $(LIBS) -o app.o main.o $(OBJECTS) -lm
 	$(FIX_DYLIBS)
 
 optimized:

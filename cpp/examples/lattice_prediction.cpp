@@ -213,7 +213,7 @@ int main( int argc, char* argv[]) {
 	parser.set_defaults("cutoff", "10.0");
 	parser
 		.add_option("-ct", "--cutoff")
-		.help("KL Divergence error where stopping is acceptable").metavar("FILE");
+		.help("KL Divergence error where stopping is acceptable").metavar("FLOAT");
 	optparse::Values& options = parser.parse_args(argc, argv);
 	vector<string> args = parser.args();
 	if (options["lattice"] == "")

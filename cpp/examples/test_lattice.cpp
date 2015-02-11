@@ -35,11 +35,27 @@ void test_lattice () {
 	std::cout << "Saving a lattice to \"examples/lattice2.txt\""     << std::endl;
 	// Test saving a lattice file
 	root->save("examples/lattice2.txt");
+	// Test saving a gzipped file:
+	root->save("examples/lattice2.txt.gz");
 
 
 	std::cout << "Load a lattice from \"examples/lattice.txt\"" << std::endl;
 	// Test loading a lattice in from a text file:
-	show_tree(OntologyBranch::load("examples/lattice.txt"));
+	auto loaded_tree = OntologyBranch::load("examples/lattice.txt");
+	show_tree(loaded_tree);
+
+	OntologyBranch::shared_branch root2_loaded = loaded_tree[0]->lookup_table->at("root 2");
+
+	int found = 0;
+	for (auto& child : root->children) {
+		for (auto& subchild : root2_loaded->children) {
+			if (subchild->name == child->name) {
+				found += 1;
+				break;
+			}
+		}
+	}
+	std::cout << "Found " << found << "/" << root->children.size() << " children in loaded root 2 " << std::endl;
 }
 
 int main (int argc, char *argv[]) {

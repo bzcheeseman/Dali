@@ -7,12 +7,12 @@ using std::string;
 using std::stringstream;
 
 template<typename T>
-Mat<T>::Mat (int _n, int _d) : name(NULL), n(_n), d(_d), random_id(utils::get_random_id()) {
+Mat<T>::Mat (int _n, int _d) : sparse_row_keys(NULL), sparse(false), name(NULL), n(_n), d(_d), random_id(utils::get_random_id()) {
     w = eigen_mat::Zero(n,d);
     dw = eigen_mat::Zero(n,d);
 }
 template<typename T>
-Mat<T>::Mat (int _n, int _d, bool empty) : name(NULL), n(_n), d(_d), random_id(utils::get_random_id()) {
+Mat<T>::Mat (int _n, int _d, bool empty) : sparse_row_keys(NULL), sparse(false), name(NULL), n(_n), d(_d), random_id(utils::get_random_id()) {
 	w  = empty ? eigen_mat(n,d) : eigen_mat::Zero(n,d);
 	dw = eigen_mat::Zero(n,d);
 }
@@ -89,7 +89,7 @@ void Mat<T>::npy_load(string fname) {
 }
 
 template<typename T>
-Mat<T>::Mat (string fname) : random_id(utils::get_random_id()) {
+Mat<T>::Mat (string fname) : sparse_row_keys(NULL), sparse(false), random_id(utils::get_random_id()) {
 	auto arr = cnpy::npy_load(fname);
 
 	n = arr.shape[0];
@@ -129,7 +129,7 @@ template<typename T>
 Mat<T>::~Mat() {}
 
 template<typename T>
-Mat<T>::Mat (int _n, int _d, T std) : name(NULL), n(_n), d(_d), random_id(utils::get_random_id()) {
+Mat<T>::Mat (int _n, int _d, T std) : sparse_row_keys(NULL), sparse(false), name(NULL), n(_n), d(_d), random_id(utils::get_random_id()) {
 	std::default_random_engine generator;
 	std::normal_distribution<T> distribution(0.0, std);
 	std::random_device rd;
@@ -140,7 +140,7 @@ Mat<T>::Mat (int _n, int _d, T std) : name(NULL), n(_n), d(_d), random_id(utils:
 }
 
 template<typename T>
-Mat<T>::Mat (int _n, int _d, T lower, T upper) : name(NULL), n(_n), d(_d), random_id(utils::get_random_id()) {
+Mat<T>::Mat (int _n, int _d, T lower, T upper) : sparse_row_keys(NULL), sparse(false), name(NULL), n(_n), d(_d), random_id(utils::get_random_id()) {
 	std::default_random_engine generator;
 	std::uniform_real_distribution<T> distribution(lower, upper);
 	std::random_device rd;
@@ -189,7 +189,6 @@ static bool operator!=(const Mat<T>& matrix1, const Mat<T>& matrix2) {
 
 template <typename T>
 static bool operator==(const Mat<T>& matrix1, const Mat<T>& matrix2) {
-
     return matrix2.random_id == matrix1.random_id;
 }
 
@@ -810,7 +809,7 @@ typename Graph<T>::shared_mat Graph<T>::row_pluck(
 
 template<typename T>
 Solver::SGD<T>::SGD (T _clipval) :
-        clipval(_clipval) {};
+        clipval(_clipval) {}; 
 
 template<typename T>
 void Solver::SGD<T>::step (vector<typename Solver::SGD<T>::shared_mat>& parameters,
@@ -818,17 +817,25 @@ void Solver::SGD<T>::step (vector<typename Solver::SGD<T>::shared_mat>& paramete
 	T regc
 	) {
 	for (auto& param : parameters) {
-		// clip the gradient to prevent explosions:
-		// param->dw = (param->dw);
-		// update gradient using SGD rule
-		// std::cout << "param( " << *param <<" )->dw.sum() = " << param->dw.array().square().sum() << std::endl;
-		if (regc > 0) {
-			param->w = param->w - (step_size * param->dw.array().min(clipval).max(-clipval)).matrix() - (regc * param->w);
+		if (param->sparse) {
+			for (auto& i : *(param->sparse_row_keys)) {
+				if (regc > 0) {
+					param->w.row(i) -= (step_size * param->dw.row(i).array().min(clipval).max(-clipval)).matrix() - (regc * param->w.row(i));
+				} else {
+					param->w.row(i) -= (step_size * param->dw.row(i).array().min(clipval).max(-clipval)).matrix();
+				}
+				// reset gradient
+				param->dw.row(i).fill(0);
+			}
 		} else {
-			param->w = param->w - (step_size * param->dw.array().min(clipval).max(-clipval)).matrix();
+			if (regc > 0) {
+				param->w -= (step_size * param->dw.array().min(clipval).max(-clipval)).matrix() - (regc * param->w);
+			} else {
+				param->w -= (step_size * param->dw.array().min(clipval).max(-clipval)).matrix();
+			}
+			// reset gradient
+			param->dw.fill(0);
 		}
-		// reset gradient
-		param->dw.fill(0);
 	}
 }
 
@@ -881,27 +888,43 @@ void Solver::AdaDelta<T>::create_gradient_caches(
 template<typename T>
 void Solver::AdaDelta<T>::step (vector<typename Solver::AdaDelta<T>::shared_mat>& parameters, T regc) {
 	for (auto& param : parameters) {
-
 		auto& gsum = gsums[*param];
 		auto& xsum = xsums[*param];
+		if (param->sparse) {
+			for (auto& i : *(param->sparse_row_keys)) {
+				if (regc > 0) {
+					param->dw.row(i) = param->dw.row(i).array().min(clipval).max(-clipval).matrix() + (regc * param->w.row(i));
+				} else {
+					// param->dw = param->dw.array().min(clipval).max(-clipval).matrix();
+				}
+				// update gradient cache using decay rule:
+				gsum.row(i) = (gsum.row(i) * rho) + ((1.0 - rho) * (param->dw.row(i).array().square()).matrix());
 
-		// clip the gradient to prevent explosions:
-		// 
-		if (regc > 0) {
-			param->dw = (param->dw).array().min(clipval).max(-clipval).matrix() + (regc * param->w);
+				auto dparam = -(((xsum.row(i).array() + smooth_eps) / (gsum.row(i).array() + smooth_eps)).sqrt() * param->dw.row(i).array()).matrix();
+
+				xsum.row(i) = (xsum.row(i) * rho) + ((1.0 - rho) * (dparam.array().square())).matrix();
+				// update gradient using AdaDelta rule
+				param->w.row(i) += dparam;
+				// reset gradient
+				param->dw.row(i).fill(0);
+			}
 		} else {
-			// param->dw = (param->dw).array().min(clipval).max(-clipval).matrix();
+			if (regc > 0) {
+				param->dw = param->dw.array().min(clipval).max(-clipval).matrix() + (regc * param->w);
+			} else {
+				// param->dw = param->dw.array().min(clipval).max(-clipval).matrix();
+			}
+			// update gradient cache using decay rule:
+			gsum = (gsum * rho) + ((1.0 - rho) * (param->dw.array().square()).matrix());
+
+			auto dparam = -(((xsum.array() + smooth_eps) / (gsum.array() + smooth_eps)).sqrt() * param->dw.array()).matrix();
+
+			xsum = (xsum * rho) + ((1.0 - rho) * (dparam.array().square())).matrix();
+			// update gradient using AdaDelta rule
+			param->w += dparam;
+			// reset gradient
+			param->dw.fill(0);
 		}
-		// update gradient cache using decay rule:
-		gsum = (gsum * rho) + ((1.0 - rho) * (param->dw.array().square()).matrix());
-
-		auto dparam = -(((xsum.array() + smooth_eps) / (gsum.array() + smooth_eps)).sqrt() * param->dw.array()).matrix();
-
-		xsum = (xsum * rho) + ((1.0 - rho) * (dparam.array().square())).matrix();
-		// update gradient using AdaDelta rule
-		param->w += dparam;
-		// reset gradient
-		param->dw.fill(0);
 	}
 }
 
@@ -941,7 +964,7 @@ template int argmax_slice(std::shared_ptr<Mat<float>>, int, int);
 template int argmax_slice(std::shared_ptr<Mat<double>>, int, int);
 
 template<typename T>
-Solver::AdaGrad<T>::AdaGrad (T _smooth_eps, T _clipval) : smooth_eps(_smooth_eps), clipval(_clipval) {}
+Solver::AdaGrad<T>::AdaGrad(T _smooth_eps, T _clipval) : smooth_eps(_smooth_eps), clipval(_clipval) {}
 
 template<typename T>
 Solver::AdaGrad<T>::AdaGrad (vector<typename Solver::AdaGrad<T>::shared_mat>& parameters,
@@ -958,15 +981,27 @@ void Solver::AdaGrad<T>::step(
 	) {
 	for (auto& param : parameters) {
 		auto& s = gsums[*param];
-
-		param->dw = (param->dw).array().min(clipval).max(-clipval).matrix() + (regc * param->w);
-		// update gradient cache using decay rule:
-		s += (param->dw).array().square().matrix();
-		// clip the gradient to prevent explosions:
-		// update gradient using RMSprop rule
-		param->w -= step_size * (param->dw.array() / (s.array() + this->smooth_eps).sqrt() ).matrix();
-		// reset gradient
-		param->dw.fill(0);
+		if (param->sparse) {
+			for (auto& i : *(param->sparse_row_keys)) {
+				param->dw.row(i) = param->dw.row(i).array().min(clipval).max(-clipval).matrix() + (regc * param->w.row(i));
+				// update gradient cache using decay rule:
+				s.row(i) += param->dw.row(i).array().square().matrix();
+				// clip the gradient to prevent explosions:
+				// update gradient using RMSprop rule
+				param->w.row(i) -= step_size * (param->dw.row(i).array() / (s.row(i).array() + smooth_eps).sqrt() ).matrix();
+				// reset gradient
+				param->dw.row(i).fill(0);
+			}
+		} else {
+			param->dw = param->dw.array().min(clipval).max(-clipval).matrix() + (regc * param->w);
+			// update gradient cache using decay rule:
+			s += param->dw.array().square().matrix();
+			// clip the gradient to prevent explosions:
+			// update gradient using RMSprop rule
+			param->w -= step_size * (param->dw.array() / (s.array() + smooth_eps).sqrt() ).matrix();
+			// reset gradient
+			param->dw.fill(0);
+		}
 	}
 }
 
@@ -1045,19 +1080,30 @@ void Solver::RMSProp<T>::step(
 	) {
 	for (auto& param : parameters) {
 		auto& s = gsums[*param];
-		// update gradient cache using decay rule:
-		s = s * this->decay_rate + (1.0 - this->decay_rate) * param->dw.array().square().matrix();
-		// clip the gradient to prevent explosions:
-		param->dw = (param->dw).array().min(clipval).max(-clipval).matrix();
-		// update gradient using RMSprop rule
-		param->w -= step_size * (param->dw.array() / (s.array() + this->smooth_eps).sqrt() ).matrix()  - (regc * param->w);
-		// reset gradient
-		param->dw.fill(0);
+		if (param->sparse) {
+			for (auto& i : *(param->sparse_row_keys)) {
+				s.row(i) = s.row(i) * decay_rate + (1.0 - decay_rate) * param->dw.row(i).array().square().matrix();
+				// clip the gradient to prevent explosions:
+				param->dw.row(i) = param->dw.row(i).array().min(clipval).max(-clipval).matrix();
+				// update gradient using RMSprop rule
+				param->w.row(i) -= step_size * (param->dw.row(i).array() / (s.row(i).array() + smooth_eps).sqrt() ).matrix()  - (regc * param->w.row(i));
+				// reset gradient
+				param->dw.row(i).fill(0);
+			}
+		} else {
+			s = s * decay_rate + (1.0 - decay_rate) * param->dw.array().square().matrix();
+			// clip the gradient to prevent explosions:
+			param->dw = param->dw.array().min(clipval).max(-clipval).matrix();
+			// update gradient using RMSprop rule
+			param->w -= step_size * (param->dw.array() / (s.array() + smooth_eps).sqrt() ).matrix()  - (regc * param->w);
+			// reset gradient
+			param->dw.fill(0);
+		}
 	}
 }
 
 template<typename T>
-void utils::save_matrices(vector< std::shared_ptr<Mat<T>> >& parameters, string dirname) {
+void utils::save_matrices(vector<std::shared_ptr<Mat<T>>>& parameters, string dirname) {
 	utils::ensure_directory(dirname);
 	const char * c_dirname = dirname.c_str();
 	utils::makedirs(c_dirname);

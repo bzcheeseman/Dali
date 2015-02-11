@@ -22,6 +22,8 @@ template<typename T> class Mat {
 	public:
 		int n; int d;
 		eigen_mat w;
+		bool sparse;
+		std::shared_ptr<std::vector<uint>> sparse_row_keys;
 		eigen_mat dw;
 		std::shared_ptr<std::string> name;
 		const std::size_t random_id;

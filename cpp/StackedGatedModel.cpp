@@ -54,7 +54,7 @@ Useful for saving the model to file and reloading it later.
 Outputs
 -------
 
-std::unordered_map<std::string, std::vector< std::string >> config : configuration map
+std::map<std::string, std::vector< std::string >> config : configuration map
 
 **/
 
@@ -294,7 +294,7 @@ configurations.
 Inputs
 ------
 
-std::unordered_map<std::string, std::vector<std::string>& config : model hyperparameters
+std::map<std::string, std::vector<std::string>& config : model hyperparameters
 
 **/
 template<typename T>

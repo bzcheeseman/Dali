@@ -5,6 +5,8 @@
 #include <fstream>
 #include <sstream>
 #include "utils.h"
+#include <map>
+#include <unordered_map>
 #include "Mat.h"
 #include "Layers.h"
 #include "Softmax.h"
@@ -34,7 +36,7 @@ class StackedGatedModel {
 	typedef std::shared_ptr<mat> shared_mat;
 	typedef Graph<T>                graph_t;
 	typedef GatedInput<T>            gate_t;
-	typedef std::unordered_map<std::string, std::vector<std::string>> config_t;
+	typedef std::map<std::string, std::vector<std::string>> config_t;
 
 	std::vector<lstm> cells;
 	shared_mat    embedding;

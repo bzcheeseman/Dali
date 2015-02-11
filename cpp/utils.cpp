@@ -18,7 +18,7 @@ std::ostream &operator <<(std::ostream &os, const vector<string> &v) {
    return os << v.back() << "\"]";
 }
 
-std::ostream &operator <<(std::ostream &os, const std::unordered_map<string, uint> &v) {
+std::ostream &operator <<(std::ostream &os, const std::map<string, uint> &v) {
    if (v.size() == 0) return os << "{}";
    os << "{\n";
    for (auto& kv : v) {
@@ -61,6 +61,18 @@ namespace utils {
 	    return elems;
 	}
 
+	Corpus load_corpus_protobuff(const std::string& path) {
+		Corpus corpus;
+		if (is_gzip(path)) {
+			igzstream fpgz(path.c_str(), std::ios::in | std::ios::binary);
+			corpus.ParseFromIstream(&fpgz);
+		} else {
+			std::fstream fp(path, std::ios::in | std::ios::binary);
+			corpus.ParseFromIstream(&fp);
+		}
+		return corpus;
+	}
+
 	template<typename T>
 	void tuple_sum(std::tuple<T, T>& A, std::tuple<T, T> B) {
 		std::get<0>(A) += std::get<0>(B);
@@ -73,7 +85,7 @@ namespace utils {
 	template void tuple_sum(std::tuple<uint, uint>&, std::tuple<uint, uint>);
 
 	template<typename T>
-	void assert_map_has_key(std::unordered_map<string, T>& map, const string& key) {
+	void assert_map_has_key(std::map<string, T>& map, const string& key) {
 		if (map.count(key) < 1) {
 			stringstream error_msg;
 			error_msg << "Map is missing the following key : \"" << key << "\".";
@@ -81,8 +93,26 @@ namespace utils {
 		}
 	}
 
-	template void assert_map_has_key(std::unordered_map<string, string>&, const string&);
-	template void assert_map_has_key(std::unordered_map<string, vector<string>>&, const string&);
+	template void assert_map_has_key(std::map<string, string>&, const string&);
+	template void assert_map_has_key(std::map<string, vector<string>>&, const string&);
+
+	vector<string> listdir(const string& folder) {
+		vector<string> filenames;
+		DIR *dp;
+	    struct dirent *dirp;
+	    if ((dp  = opendir(folder.c_str())) == NULL) {
+	    	stringstream error_msg;
+			error_msg << "Error: could not open directory \"" << folder << "\"";
+			throw std::runtime_error(error_msg.str());
+	    }
+	    // list all contents of directory:
+	    while ((dirp = readdir(dp)) != NULL)
+	    	// exclude "current directory" (.) and "parent directory" (..)
+	    	if (std::strcmp(dirp->d_name, ".") != 0 && std::strcmp(dirp->d_name, "..") != 0)
+	        	filenames.emplace_back(dirp->d_name);
+	    closedir(dp);
+	    return filenames;
+	}
 
 	vector<string> split_str(const string& original, const string& delimiter) {
 		std::vector<std::string> tokens;
@@ -139,14 +169,14 @@ namespace utils {
 	Outputs
 	-------
 
-	std::unordered_map<string, std::vector<string> > map : the extracted key value pairs.
+	std::map<string, std::vector<string> > map : the extracted key value pairs.
 
 	**/
-	std::unordered_map<string, std::vector<string>> text_to_map(const string& fname) {
+	std::map<string, std::vector<string>> text_to_map(const string& fname) {
 		ifstream infile(fname);
 		string line;
 		const char space = ' ';
-		std::unordered_map<string, std::vector<string>> map;
+		std::map<string, std::vector<string>> map;
 		while (std::getline(infile, line)) {
 			if (*line.begin() != '=' && *line.begin() != '-' && *line.begin() != '#') {
 				const auto tokens = utils::split(line, space);
@@ -161,7 +191,56 @@ namespace utils {
 		return map;
 	}
 
-	void map_to_file(const std::unordered_map<string, std::vector<string>>& map, const string& fname) {
+	template<typename T, typename K>
+	void stream_to_hashmap(T& infile, std::map<string, K>& map) {
+		string line;
+		const char space = ' ';
+		while (std::getline(infile, line)) {
+			const auto tokens = utils::split(line, space);
+			if (tokens.size() > 1)
+				map[tokens[0]] = from_string<K>(tokens[1]);
+		}
+	}
+
+	template<typename T>
+	std::map<string, T> text_to_hashmap(const string& fname) {
+		std::map<string, T> map;
+		if (is_gzip(fname)) {
+			igzstream fpgz(fname.c_str(), std::ios::in | std::ios::binary);
+			stream_to_hashmap(fpgz, map);
+		} else {
+			std::fstream fp(fname, std::ios::in | std::ios::binary);
+			stream_to_hashmap(fp, map);
+		}
+		return map;
+	}
+
+	template<typename T>
+	void stream_to_list(T& fp, vector<string>& list) {
+		string line;
+		while (std::getline(fp, line))
+			list.emplace_back(line);
+	}
+
+	vector<string> load_list(const string& fname) {
+		vector<string> list;
+		if (is_gzip(fname)) {
+			igzstream fpgz(fname.c_str(), std::ios::in | std::ios::binary);
+			stream_to_list(fpgz, list);
+		} else {
+			std::fstream fp(fname, std::ios::in | std::ios::binary);
+			stream_to_list(fp, list);
+		}
+		return list;
+	}
+
+	template std::map<string, string> text_to_hashmap(const string&);
+	template std::map<string, int>    text_to_hashmap(const string&);
+	template std::map<string, float>  text_to_hashmap(const string&);
+	template std::map<string, double> text_to_hashmap(const string&);
+	template std::map<string, uint>   text_to_hashmap(const string&);
+
+	void map_to_file(const std::map<string, std::vector<string>>& map, const string& fname) {
 		ofstream fp;
 		fp.open(fname.c_str(), std::ios::out);
 		for (auto& kv : map) {
@@ -209,6 +288,73 @@ namespace utils {
 		return pairs;
 	}
 
+	/**
+	Convert Triggers To Vector
+	--------------------------
+
+	Convert triggers from an example to their
+	string representation using an index2label
+	string vector.
+
+	Inputs
+	------
+
+	const google::protobuf::RepeatedPtrField<Example::Trigger>& triggers : list of Trigger protobuff objects
+	const vector<string>& index2target : mapping from numerical to string representation
+
+	Outputs
+	-------
+
+	std::vector<std::string> data : the strings corresponding to the trigger targets
+
+	**/
+	vector<string> triggers_to_strings(const google::protobuf::RepeatedPtrField<Example::Trigger>& triggers, const vector<string>& index2target) {
+		vector<string> data;
+		data.reserve(triggers.size());
+		for (auto& trig : triggers)
+			if (trig.id() < index2target.size())
+				data.emplace_back(index2target[trig.id()]);
+		return data;
+	}
+
+	/**
+	Load Protobuff Dataset
+	----------------------
+
+	Load a set of protocol buffer serialized files from ordinary
+	or gzipped files, and conver their labels from an index
+	to their string representation using an index2label mapping.
+
+	Inputs
+	------
+
+	std::string directory : where the protocol buffer files are stored
+	const std::vector<std::string>& index2label : mapping from numericals to
+	                                              string labels
+
+	Outputs
+	-------
+
+	utils::tokenized_multilabeled_dataset dataset : pairs of tokenized strings
+	                                                and vector of string labels
+
+	**/
+	tokenized_multilabeled_dataset load_protobuff_dataset(string directory, const vector<string>& index2label) {
+		ensure_directory(directory);
+		auto files = listdir(directory);
+		tokenized_multilabeled_dataset dataset;
+		for (auto& file : files) {
+			auto corpus = load_corpus_protobuff(directory + file);
+			for (auto& example : corpus.example()) {
+				dataset.emplace_back(std::piecewise_construct,
+					std::forward_as_tuple(example.words().begin(), example.words().end()),
+					std::forward_as_tuple(triggers_to_strings(example.trigger(), index2label))
+				);
+			}
+		}
+	    return dataset;
+	}
+
 	vector<string> tokenize(const string& s) {
 		stringstream ss(s);
 		std::istream_iterator<string> begin(ss);
@@ -234,7 +380,20 @@ namespace utils {
 	}
 
 	vector<string> get_vocabulary(const tokenized_labeled_dataset& examples, int min_occurence) {
-		std::unordered_map<string, uint> word_occurences;
+		std::map<string, uint> word_occurences;
+		string word;
+		for (auto& example : examples)
+			for (auto& word : example.first) word_occurences[word] += 1;
+		vector<string> list;
+		for (auto& key_val : word_occurences)
+			if (key_val.second >= min_occurence)
+				list.emplace_back(key_val.first);
+		list.emplace_back(utils::end_symbol);
+		return list;
+	}
+
+	vector<string> get_vocabulary(const tokenized_multilabeled_dataset& examples, int min_occurence) {
+		std::map<string, uint> word_occurences;
 		string word;
 		for (auto& example : examples)
 			for (auto& word : example.first) word_occurences[word] += 1;
@@ -251,6 +410,14 @@ namespace utils {
 		string word;
 		for (auto& example : examples)
 			labels.insert(example.second);
+		return vector<string>(labels.begin(), labels.end());
+	}
+
+	vector<string> get_label_vocabulary(const tokenized_multilabeled_dataset& examples) {
+		std::set<string> labels;
+		string word;
+		for (auto& example : examples)
+			labels.insert(example.second.begin(), example.second.end());
 		return vector<string>(labels.begin(), labels.end());
 	}
 
@@ -550,27 +717,45 @@ namespace utils {
 								   but append can also be useful).
 
 	**/
-	void OntologyBranch::save(string fname, std::ios_base::openmode mode) {
+	
+	template<typename T>
+	void OntologyBranch::save_to_stream(T& fp) {
 		auto hasher = std::hash<OntologyBranch>();
 		set<size_t> visited_list;
 		vector<shared_branch> open_list;
-
-		ofstream fp;
-		fp.open(fname.c_str(), mode);
 		open_list.push_back(shared_from_this());
-
 		while (open_list.size() > 0) {
 			auto el = open_list[0];
 			open_list.erase(open_list.begin());
 			if (visited_list.count(hasher(*el)) == 0) {
 				visited_list.insert(hasher(*el));
-				for (auto& child : el->children) {
-					fp << el->name << "->" << child->name << "\n";
-					open_list.emplace_back(child);
+				if (el->children.size() > 1) {
+					auto child_ptr = el->children.begin();
+					open_list.emplace_back(*child_ptr);
+					fp << el->name << "<-" << (*(child_ptr++))->name << "\n";
+					while (child_ptr != el->children.end()) {
+						open_list.emplace_back(*child_ptr);
+						fp << (*(child_ptr++))->name << "\n";
+					}
+				} else {
+					for (auto& child : el->children) {
+						fp << el->name << "->" << child->name << "\n";
+						open_list.emplace_back(child);
+					}
 				}
 				for (auto& parent : el->parents)
 					open_list.emplace_back(parent.lock());
 			}
+		}
+	}
+	
+	void OntologyBranch::save(string fname, std::ios_base::openmode mode) {
+		if (endswith(fname, ".gz")) {
+			ogzstream fpgz(fname.c_str(), mode);
+			save_to_stream(fpgz);
+		} else {
+			ofstream fp(fname.c_str(), mode);
+			save_to_stream(fp);
 		}
 	}
 
@@ -686,7 +871,7 @@ namespace utils {
 		return path_pair;
 	}
 
-	void OntologyBranch::add_lattice_edge(
+	std::pair<OntologyBranch::shared_branch, OntologyBranch::shared_branch> OntologyBranch::add_lattice_edge(
 		const std::string& parent,
 		const std::string& child,
 		std::shared_ptr<std::map<std::string, OntologyBranch::shared_branch>>& map,
@@ -699,29 +884,67 @@ namespace utils {
 			parentless.emplace_back((*map)[parent]);
 		}
 		(*map)[child]->add_parent((*map)[parent]);
+		return std::pair<OntologyBranch::shared_branch, OntologyBranch::shared_branch>((*map)[parent], (*map)[child]);
 	}
 
-	std::vector<OntologyBranch::shared_branch> OntologyBranch::load(string fname) {
-		auto branch_map = make_shared<std::map<std::string, OntologyBranch::shared_branch>>();
-		std::vector<OntologyBranch::shared_branch> roots;
-		std::vector<OntologyBranch::shared_branch> parentless;
+	std::pair<OntologyBranch::shared_branch, OntologyBranch::shared_branch> OntologyBranch::add_lattice_edge(
+		OntologyBranch::shared_branch parent,
+		const std::string& child,
+		std::shared_ptr<std::map<std::string, OntologyBranch::shared_branch>>& map,
+		std::vector<OntologyBranch::shared_branch>& parentless) {
+		if (map->count(child) == 0)
+			(*map)[child] = make_shared<OntologyBranch>(child);
+		(*map)[child]->add_parent(parent);
 
-		ifstream fp;
-		fp.open(fname.c_str(), std::ios::in);
+		return std::pair<OntologyBranch::shared_branch, OntologyBranch::shared_branch>(parent, (*map)[child]);
+	}
+
+	std::pair<OntologyBranch::shared_branch, OntologyBranch::shared_branch> OntologyBranch::add_lattice_edge(
+		const std::string& parent,
+		OntologyBranch::shared_branch child,
+		std::shared_ptr<std::map<std::string, OntologyBranch::shared_branch>>& map,
+		std::vector<OntologyBranch::shared_branch>& parentless) {
+		if (map->count(parent) == 0) {
+			(*map)[parent] = make_shared<OntologyBranch>(parent);
+			parentless.emplace_back((*map)[parent]);
+		}
+		child->add_parent((*map)[parent]);
+		return std::pair<OntologyBranch::shared_branch, OntologyBranch::shared_branch>((*map)[parent], child);
+	}
+
+	template<typename T>
+	void OntologyBranch::load_branches_from_stream(T& fp,
+		std::vector<OntologyBranch::shared_branch>& roots) {
+
+		std::vector<OntologyBranch::shared_branch> parentless;
+		auto branch_map = make_shared<std::map<std::string, OntologyBranch::shared_branch>>();
 		const string right_arrow = "->";
-		const string left_arrow = "<-";
+		const string left_arrow  = "<-";
 		string line;
+
+		OntologyBranch::shared_branch marked_branch = NULL;
+		bool last_edge_is_right_arrow = true;
 
 		while (std::getline(fp, line)) {
 			auto tokens = utils::split_str(line, right_arrow);
 			if (tokens.size() >= 2) {
-				for (int i = 0; i < tokens.size()-1; i++)
-					add_lattice_edge(trim(tokens[i]), trim(tokens[i+1]), branch_map, parentless);
+				for (int i = 0; i < tokens.size()-1; i++) {
+					marked_branch = add_lattice_edge(trim(tokens[i]), trim(tokens[i+1]), branch_map, parentless).first;
+					last_edge_is_right_arrow = true;
+				}
 			} else {
 				tokens = utils::split_str(line, left_arrow);
 				if (tokens.size() >= 2)
-					for (int i = 0; i < tokens.size()-1; i++)
-						add_lattice_edge(trim(tokens[i+1]), trim(tokens[i]), branch_map, parentless);
+					for (int i = 0; i < tokens.size()-1; i++) {
+						marked_branch = add_lattice_edge(trim(tokens[i+1]), trim(tokens[i]), branch_map, parentless).second;
+						last_edge_is_right_arrow = false;
+					}
+				else if (marked_branch != NULL) {
+					if (last_edge_is_right_arrow)
+						add_lattice_edge(marked_branch, trim(tokens[0]), branch_map, parentless);
+					else
+						add_lattice_edge(trim(tokens[0]), marked_branch, branch_map, parentless);
+				}
 			}
 		}
 
@@ -730,6 +953,18 @@ namespace utils {
 				roots.emplace_back(k);
 				k->lookup_table = branch_map;
 			}
+	}
+
+	std::vector<OntologyBranch::shared_branch> OntologyBranch::load(string fname) {
+		std::vector<OntologyBranch::shared_branch> roots;
+
+		if (utils::is_gzip(fname)) {
+			igzstream fpgz(fname.c_str());
+			load_branches_from_stream(fpgz, roots);
+		} else {
+			ifstream fp(fname);
+			load_branches_from_stream(fp, roots);
+		}
 
 		return roots;
 	}
@@ -807,6 +1042,58 @@ namespace utils {
 	void exit_with_message(const std::string& message, int error_code) {
 		std::cerr << message << std::endl;
 		exit(error_code);
+	}
+
+	/**
+	Ends With
+	---------
+
+	Check whether a string ends with the same contents as another.
+
+	Inputs
+	------
+
+	std::string const& full: where to look
+	std::string const& ending: what to look for
+	
+	Outputs
+	-------
+
+	bool endswith : whether the second string ends the first.
+
+	*/
+	bool endswith(std::string const & full, std::string const & ending) {
+	    if (full.length() >= ending.length()) {
+	        return (0 == full.compare(full.length() - ending.length(), ending.length(), ending));
+	    } else {
+	        return false;
+	    }
+	}
+
+	/**
+	Ends With
+	---------
+
+	Check whether a string ends with the same contents as another.
+
+	Inputs
+	------
+
+	std::string const& full: where to look
+	std::string const& ending: what to look for
+	
+	Outputs
+	-------
+
+	bool endswith : whether the second string ends the first.
+
+	*/
+	bool startswith(std::string const & full, std::string const & beginning) {
+	    if (full.length() >= beginning.length()) {
+	        return (0 == full.compare(0, beginning.length(), beginning));
+	    } else {
+	        return false;
+	    }
 	}
 }
 

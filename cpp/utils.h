@@ -1,7 +1,6 @@
 #ifndef RECURRENT_MAT_UTILS_H
 #define RECURRENT_MAT_UTILS_H
 
-
 #include <iomanip>
 #include <random>
 #include <sstream>
@@ -10,8 +9,8 @@
 #include <ostream>
 #include <sstream>
 #include <string>
+#include <cstring>
 #include <vector>
-#include <unordered_map>
 #include <map>
 #include <set>
 #include <sys/stat.h>
@@ -20,14 +19,17 @@
 #include <cctype>
 #include <locale>
 #include <memory>
+#include "gzstream.h"
 #include <errno.h>
+#include <dirent.h>
+#include "examples/protobuff/corpus.pb.h"
 #include "OptionParser/OptionParser.h"
 // Default writing mode useful for default argument to
 // makedirs
 #define DEFAULT_MODE S_IRWXU | S_IRGRP |  S_IXGRP | S_IROTH | S_IXOTH
 
 std::ostream& operator<<(std::ostream&, const std::vector<std::string>&);
-std::ostream& operator<<(std::ostream&, const std::unordered_map<std::string, uint>&);
+std::ostream& operator<<(std::ostream&, const std::map<std::string, uint>&);
 
 template<typename T>
 std::ostream& operator<<(std::ostream&, const std::vector<T>&);
@@ -35,7 +37,10 @@ std::ostream& operator<<(std::ostream&, const std::vector<T>&);
 namespace utils {
 	/** Utility function to create directory tree */
 	bool makedirs(const char* path, mode_t mode = DEFAULT_MODE);
-	typedef std::vector<std::pair<std::vector<std::string>, std::string>> tokenized_labeled_dataset;
+	typedef std::vector<std::string> str_sequence;
+
+	typedef std::vector<std::pair<str_sequence, std::string>> tokenized_labeled_dataset;
+	typedef std::vector<std::pair<str_sequence, str_sequence>> tokenized_multilabeled_dataset;
 
 	extern const char* end_symbol;
 	extern const char* unknown_word_symbol;
@@ -47,15 +52,18 @@ namespace utils {
 			void add_unknown_word();
 		public:
 			ind_t unknown_word;
-			std::unordered_map<std::string, ind_t> word2index;
-			std::vector<std::string> index2word;
+			std::map<std::string, ind_t> word2index;
+			str_sequence index2word;
 			Vocab();
-			Vocab(std::vector<std::string>&);
-			Vocab(std::vector<std::string>&, bool);
+			Vocab(str_sequence&);
+			Vocab(str_sequence&, bool);
 	};
 
 	template<typename T>
 	void tuple_sum(std::tuple<T, T>&, std::tuple<T,T>);
+
+	bool endswith(const std::string&, const std::string&);
+	bool startswith(const std::string&, const std::string&);
 
 	/**
 	Ontology Branch
@@ -81,8 +89,16 @@ namespace utils {
 			int id;
 			int max_branching_factor() const;
 			void save(std::string, std::ios_base::openmode = std::ios::out);
+			template<typename T>
+			void save_to_stream(T&);
 			static std::vector<shared_branch> load(std::string);
-			static void add_lattice_edge(const std::string&, const std::string&,
+			template<typename T>
+			static void load_branches_from_stream(T&, std::vector<shared_branch>&);
+			static std::pair<shared_branch, shared_branch> add_lattice_edge(const std::string&, const std::string&,
+				std::shared_ptr<std::map<std::string, shared_branch>>&, std::vector<shared_branch>& parentless);
+			static std::pair<shared_branch, shared_branch> add_lattice_edge(shared_branch, const std::string&,
+				std::shared_ptr<std::map<std::string, shared_branch>>&, std::vector<shared_branch>& parentless);
+			static std::pair<shared_branch, shared_branch> add_lattice_edge(const std::string&, shared_branch,
 				std::shared_ptr<std::map<std::string, shared_branch>>&, std::vector<shared_branch>& parentless);
 			OntologyBranch(const std::string&);
 			void add_child(shared_branch);
@@ -97,23 +113,37 @@ namespace utils {
 
 	std::vector<std::pair<std::string, std::string>> load_labeled_corpus(const std::string&);
 	tokenized_labeled_dataset load_tokenized_labeled_corpus(const std::string&);
-	std::vector<std::string> tokenize(const std::string&);
-	std::vector<std::string> get_vocabulary(const tokenized_labeled_dataset&, int);
-	std::vector<std::string> get_lattice_vocabulary(const OntologyBranch::shared_branch);
-	std::vector<std::string> get_label_vocabulary(const tokenized_labeled_dataset&);
+	str_sequence tokenize(const std::string&);
+	str_sequence get_vocabulary(const tokenized_labeled_dataset&, int);
+	str_sequence get_vocabulary(const tokenized_multilabeled_dataset&, int);
+	str_sequence get_lattice_vocabulary(const OntologyBranch::shared_branch);
+	str_sequence get_label_vocabulary(const tokenized_labeled_dataset&);
+	str_sequence get_label_vocabulary(const tokenized_multilabeled_dataset&);
 	void assign_lattice_ids(OntologyBranch::lookup_t, Vocab&, int offset = 0);
+
+	Corpus load_corpus_protobuff(const std::string&);
+	tokenized_multilabeled_dataset load_protobuff_dataset(std::string, const std::vector<std::string>&);
 
 	std::string& trim(std::string&);
 	std::string& ltrim(std::string&);
 	std::string& rtrim(std::string&);
 
-	void map_to_file(const std::unordered_map<std::string, std::vector<std::string>>&, const std::string&);
+	void map_to_file(const std::map<std::string, str_sequence>&, const std::string&);
 
 	void ensure_directory(std::string&);
 
 	std::vector<std::string> split_str(const std::string&, const std::string&);
 
-	std::unordered_map<std::string, std::vector<std::string>> text_to_map(const std::string&);
+	std::map<std::string, str_sequence> text_to_map(const std::string&);
+	template<typename T, typename K>
+	void stream_to_hashmap(T&, std::map<std::string, K>&);
+	template<typename T>
+	std::map<std::string, T> text_to_hashmap(const std::string&);
+
+	template<typename T>
+	void stream_to_list(T&, str_sequence&);
+	
+	str_sequence load_list(const std::string&);
 
 	int randint(int, int);
 
@@ -143,12 +173,16 @@ namespace utils {
     T from_string(const std::string&);
 
     template<typename T>
-    void assert_map_has_key(std::unordered_map<std::string, T>&, const std::string&);
+    void assert_map_has_key(std::map<std::string, T>&, const std::string&);
 
-    std::vector<std::string> split(const std::string &, char);
+    str_sequence split(const std::string &, char);
+
+    str_sequence triggers_to_strings(const google::protobuf::RepeatedPtrField<Example::Trigger>&, const str_sequence&);
 
 	template <typename T>
 	std::vector<size_t> argsort(const std::vector<T> &);
+
+	str_sequence listdir(const std::string&);
 
 	template<typename T>
 	void assign_cli_argument(char *, T&, T, std::string);

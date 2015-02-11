@@ -3,7 +3,6 @@
 
 // Test file for LSTM
 int main () {
-
 	typedef double REAL_t;
 	typedef Mat<REAL_t> mat;
 	using std::make_shared;
@@ -28,12 +27,9 @@ int main () {
 	// print it
 	numpy_mat->print();
 	// take softmax
-
 	auto softmaxed = softmax(numpy_mat);
 	// print softmax:
-
 	softmaxed->print();
-
 
 	auto A = std::make_shared<mat>(3, 5);
     A->w = (A->w.array() + 1.2).matrix();

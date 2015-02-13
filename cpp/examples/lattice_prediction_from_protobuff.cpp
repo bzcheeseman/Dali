@@ -75,20 +75,30 @@ int main( int argc, char* argv[]) {
 	std::cout << "Loading Lattice" << std::endl;
 	auto lattice_roots = OntologyBranch::load(options["lattice"]);
 
-	std::cout << "Lattice has " << lattice_roots.size() << " roots" << std::endl;
-	std::cout << "Lattice root 0 has lookup table with " << lattice_roots[0]->lookup_table->size() << " elements" << std::endl;
-
+	
 	int num_fixpoints = 0;
 	int num_concepts = 0;
+	double mean_fixpoint_degree = 0.0;
+	double mean_concept_indegree = 0.0;
 	for (auto& kv : *lattice_roots[0]->lookup_table) {
 		if (utils::startswith(kv.first, "fp:")) {
 			num_fixpoints++;
+			mean_fixpoint_degree += kv.second->children.size();
 		} else {
 			num_concepts++;
+			mean_concept_indegree += kv.second->parents.size();
 		}
 	}
-
-	std::cout << "There are "<< num_fixpoints << " fixpoints, and " << num_concepts << " concepts." << std::endl;
+	mean_fixpoint_degree /= num_fixpoints;
+	mean_concept_indegree /= num_concepts;
+	std::cout << "Lattice Statistics\n"
+			  << "------------------\n\n"
+			  << "    Number of lattice roots : " << lattice_roots.size() << "\n"
+	          << " Number of nodes in lattice : " << lattice_roots[0]->lookup_table->size() << "\n"
+	          << "Number of lattice fixpoints : " << num_fixpoints        << "\n"
+	          << " Number of lattice concepts : " << num_concepts         << "\n"
+	          << "   Mean degree of fixpoints : " << mean_fixpoint_degree << "\n"
+	          << " Mean in-degree of concepts : " << mean_concept_indegree << std::endl;
 	// TODO: bug with certain concepts not being exported
 	// from Neo4j and there might be a similar issue with fixpoints.
 	return 0;

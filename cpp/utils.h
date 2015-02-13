@@ -20,6 +20,7 @@
 #include <locale>
 #include <memory>
 #include "gzstream.h"
+#include <sys/stat.h>
 #include <errno.h>
 #include <dirent.h>
 #include "examples/protobuff/corpus.pb.h"
@@ -212,6 +213,8 @@ namespace utils {
 		static const uint eltmul_broadcast_rowwise        = 14;
 		static const uint eltmul_rowwise                  = 15;
 	}
+
+	bool file_exists(const std::string&);
 
 	void exit_with_message(const std::string&, int error_code = 1);
 }

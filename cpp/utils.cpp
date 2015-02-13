@@ -1095,6 +1095,11 @@ namespace utils {
 	        return false;
 	    }
 	}
+
+	bool file_exists (const std::string& fname) {
+		struct stat buffer;   
+		return (stat (fname.c_str(), &buffer) == 0); 
+	}
 }
 
 std::ostream& operator<<(std::ostream& strm, const utils::OntologyBranch& a) {

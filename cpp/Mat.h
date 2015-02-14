@@ -38,7 +38,10 @@ template<typename T> class Mat {
 		Mat (int, int, T);
 		Mat (int, int, T, T);
 		void npy_save(std::string fname, std::string mode = "w");
+		void npy_save(FILE*);
 		void npy_load(std::string fname);
+		void npy_load(FILE*);
+		void npy_load(cnpy::NpyArray&);
 		Mat (std::string fname);
 		static Mat RandMat(int, int, T);
 		static Mat Empty(int, int);

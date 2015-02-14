@@ -55,9 +55,14 @@ void Mat<T>::npy_save (string fname, string mode) {
 }
 
 template<typename T>
-void Mat<T>::npy_load(string fname) {
-	auto arr = cnpy::npy_load(fname);
+void Mat<T>::npy_save (FILE * fp) {
+	const unsigned int shape[] = {(unsigned int) n,(unsigned int) d};
+	std::vector<char> header = cnpy::create_npy_header(w.data(),shape,2);
+    fwrite(&header[0],sizeof(char),header.size(),fp);
+}
 
+template<typename T>
+void Mat<T>::npy_load(NpyArray& arr) {
 	n = arr.shape[0];
 	d = arr.shape.size() > 1 ? arr.shape[1] : 1;
 
@@ -68,7 +73,7 @@ void Mat<T>::npy_load(string fname) {
 			w = wrapped_mat_double_ft.cast<T>();
 		} else {
 			Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_double(loaded_data_double, n, d);
-			w = wrapped_mat_double.cast<T>();
+			w = w rapped_mat_double.cast<T>();
 		}
 	} else if (arr.word_size == sizeof(float)) {
 		float* loaded_data_float = reinterpret_cast<float*>(arr.data);
@@ -85,6 +90,19 @@ void Mat<T>::npy_load(string fname) {
 		   << fname << "\". File dtype (" << arr.word_size << ") not recognized as float or double.";
 		throw std::invalid_argument(error_msg.str());
 	}
+}
+
+template<typename T>
+void Mat<T>::npy_load(FILE * fp) {
+	auto arr = cnpy::load_the_npy_file(fp);
+	npy_load(arr);
+	arr.destruct();
+}
+
+template<typename T>
+void Mat<T>::npy_load(string fname) {
+	auto arr = cnpy::npy_load(fname);
+	npy_load(arr);
 	arr.destruct();
 }
 

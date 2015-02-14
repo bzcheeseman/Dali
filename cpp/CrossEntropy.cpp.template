@@ -420,57 +420,22 @@ Z masked_sum(std::shared_ptr<Mat<Z>> values,
 template float cross_entropy(std::shared_ptr<Mat<float>>, int&);
 template double cross_entropy(std::shared_ptr<Mat<double>>, int&);
 
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const eigen_index_block);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const eigen_index_block_scalar);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, shared_eigen_index_vector, uint, const eigen_index_block);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, shared_eigen_index_vector, uint, const eigen_index_block_scalar);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, shared_eigen_index_vector, int, const eigen_index_block);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, shared_eigen_index_vector, int, const eigen_index_block_scalar);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, uint, shared_eigen_index_vector, const eigen_index_block);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, uint, shared_eigen_index_vector, const eigen_index_block_scalar);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, uint, uint, const eigen_index_block);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, uint, uint, const eigen_index_block_scalar);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, uint, int, const eigen_index_block);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, uint, int, const eigen_index_block_scalar);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, int, shared_eigen_index_vector, const eigen_index_block);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, int, shared_eigen_index_vector, const eigen_index_block_scalar);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, int, uint, const eigen_index_block);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, int, uint, const eigen_index_block_scalar);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, int, int, const eigen_index_block);
-template float masked_cross_entropy(std::shared_ptr<Mat<float>>, uint&, int, int, const eigen_index_block_scalar);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const eigen_index_block);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const eigen_index_block_scalar);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, shared_eigen_index_vector, uint, const eigen_index_block);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, shared_eigen_index_vector, uint, const eigen_index_block_scalar);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, shared_eigen_index_vector, int, const eigen_index_block);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, shared_eigen_index_vector, int, const eigen_index_block_scalar);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, uint, shared_eigen_index_vector, const eigen_index_block);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, uint, shared_eigen_index_vector, const eigen_index_block_scalar);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, uint, uint, const eigen_index_block);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, uint, uint, const eigen_index_block_scalar);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, uint, int, const eigen_index_block);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, uint, int, const eigen_index_block_scalar);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, int, shared_eigen_index_vector, const eigen_index_block);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, int, shared_eigen_index_vector, const eigen_index_block_scalar);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, int, uint, const eigen_index_block);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, int, uint, const eigen_index_block_scalar);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, int, int, const eigen_index_block);
-template double masked_cross_entropy(std::shared_ptr<Mat<double>>, uint&, int, int, const eigen_index_block_scalar);
-template float masked_sum(std::shared_ptr<Mat<float>>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const float&);
-template float masked_sum(std::shared_ptr<Mat<float>>, uint&, shared_eigen_index_vector, uint, const float&);
-template float masked_sum(std::shared_ptr<Mat<float>>, uint&, shared_eigen_index_vector, int, const float&);
-template float masked_sum(std::shared_ptr<Mat<float>>, uint&, uint, shared_eigen_index_vector, const float&);
-template float masked_sum(std::shared_ptr<Mat<float>>, uint&, uint, uint, const float&);
-template float masked_sum(std::shared_ptr<Mat<float>>, uint&, uint, int, const float&);
-template float masked_sum(std::shared_ptr<Mat<float>>, uint&, int, shared_eigen_index_vector, const float&);
-template float masked_sum(std::shared_ptr<Mat<float>>, uint&, int, uint, const float&);
-template float masked_sum(std::shared_ptr<Mat<float>>, uint&, int, int, const float&);
-template double masked_sum(std::shared_ptr<Mat<double>>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const double&);
-template double masked_sum(std::shared_ptr<Mat<double>>, uint&, shared_eigen_index_vector, uint, const double&);
-template double masked_sum(std::shared_ptr<Mat<double>>, uint&, shared_eigen_index_vector, int, const double&);
-template double masked_sum(std::shared_ptr<Mat<double>>, uint&, uint, shared_eigen_index_vector, const double&);
-template double masked_sum(std::shared_ptr<Mat<double>>, uint&, uint, uint, const double&);
-template double masked_sum(std::shared_ptr<Mat<double>>, uint&, uint, int, const double&);
-template double masked_sum(std::shared_ptr<Mat<double>>, uint&, int, shared_eigen_index_vector, const double&);
-template double masked_sum(std::shared_ptr<Mat<double>>, uint&, int, uint, const double&);
-template double masked_sum(std::shared_ptr<Mat<double>>, uint&, int, int, const double&);
+// BEGIN TEMPLATE SPECIALIZATIONS
+
+// TEMPLATE 
+// [float, double] masked_cross_entropy
+// [std::shared_ptr<Mat<RETURN_TYPE>>]
+// [uint&]
+// [shared_eigen_index_vector, uint, int]
+// [shared_eigen_index_vector, uint, int]
+// [const eigen_index_block, const eigen_index_block_scalar]
+
+// TEMPLATE
+// [float, double] masked_sum
+// [std::shared_ptr<Mat<RETURN_TYPE>>]
+// [uint&]
+// [shared_eigen_index_vector, uint, int]
+// [shared_eigen_index_vector, uint, int]
+// [const RETURN_TYPE&]
+
+// END TEMPLATE SPECIALIZATIONS

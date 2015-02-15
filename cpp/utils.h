@@ -41,6 +41,7 @@ namespace utils {
 	typedef std::vector<std::string> str_sequence;
 
 	typedef std::vector<std::pair<str_sequence, std::string>> tokenized_labeled_dataset;
+	typedef std::vector<std::pair<str_sequence, uint>> tokenized_uint_labeled_dataset;
 	typedef std::vector<std::pair<str_sequence, str_sequence>> tokenized_multilabeled_dataset;
 
 	extern const char* end_symbol;
@@ -117,6 +118,7 @@ namespace utils {
 	str_sequence tokenize(const std::string&);
 	str_sequence get_vocabulary(const tokenized_labeled_dataset&, int);
 	str_sequence get_vocabulary(const tokenized_multilabeled_dataset&, int);
+	str_sequence get_vocabulary(const tokenized_uint_labeled_dataset&, int);
 	str_sequence get_lattice_vocabulary(const OntologyBranch::shared_branch);
 	str_sequence get_label_vocabulary(const tokenized_labeled_dataset&);
 	str_sequence get_label_vocabulary(const tokenized_multilabeled_dataset&);

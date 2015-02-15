@@ -76,29 +76,62 @@ int main( int argc, char* argv[]) {
 	auto lattice_roots = OntologyBranch::load(options["lattice"]);
 
 	
-	int num_fixpoints = 0;
-	int num_concepts = 0;
-	double mean_fixpoint_degree = 0.0;
+	int num_fixpoints            = 0;
+	int num_concepts             = 0;
+	double mean_fixpoint_degree  = 0.0;
 	double mean_concept_indegree = 0.0;
+	int min_concept_indegree     = std::numeric_limits<int>::infinity();
+	int max_concept_indegree     = 0;
+	int min_fixpoint_degree      = std::numeric_limits<int>::infinity();
+	int max_fixpoint_degree      = 0;
+	string max_fixpoint;
+	string max_concept;
+	int num_disconnected_concepts = 0;
+	vector<string> disconnected;
 	for (auto& kv : *lattice_roots[0]->lookup_table) {
+		if (kv.first == "__ROOT__") continue;
 		if (utils::startswith(kv.first, "fp:")) {
 			num_fixpoints++;
 			mean_fixpoint_degree += kv.second->children.size();
+			if (kv.second->children.size() < min_fixpoint_degree) min_fixpoint_degree = kv.second->children.size();
+			if (kv.second->children.size() > max_fixpoint_degree) {
+				max_fixpoint_degree = kv.second->children.size();
+				max_fixpoint = kv.first;
+			}
 		} else {
 			num_concepts++;
 			mean_concept_indegree += kv.second->parents.size();
+			if (kv.second->parents.size() < min_concept_indegree) {
+				min_concept_indegree = kv.second->parents.size();
+			}
+			if (kv.second->parents.size() == 0) {
+				num_disconnected_concepts++;
+				disconnected.emplace_back(kv.first);
+			}
+			if (kv.second->parents.size() > max_concept_indegree) {
+				max_concept_indegree = kv.second->parents.size();
+				max_concept = kv.first;
+			}
 		}
 	}
 	mean_fixpoint_degree /= num_fixpoints;
 	mean_concept_indegree /= num_concepts;
 	std::cout << "Lattice Statistics\n"
 			  << "------------------\n\n"
-			  << "    Number of lattice roots : " << lattice_roots.size() << "\n"
+			  << "    Number of lattice roots : " << lattice_roots.size()  << "\n"
 	          << " Number of nodes in lattice : " << lattice_roots[0]->lookup_table->size() << "\n"
-	          << "Number of lattice fixpoints : " << num_fixpoints        << "\n"
-	          << " Number of lattice concepts : " << num_concepts         << "\n"
-	          << "   Mean degree of fixpoints : " << mean_fixpoint_degree << "\n"
-	          << " Mean in-degree of concepts : " << mean_concept_indegree << std::endl;
+	          << "Number of lattice fixpoints : " << num_fixpoints         << "\n"
+	          << " Number of lattice concepts : " << num_concepts          << "\n"
+	          << " Mean in-degree of concepts : " << mean_concept_indegree << "\n"
+	          << "  Max in-degree of concepts : " << max_concept_indegree  << " (\"" << max_concept << "\")\n"
+	          << "  Min in-degree of concepts : " << min_concept_indegree  << "\n"
+	          << "   Mean degree of fixpoints : " << mean_fixpoint_degree  << "\n"
+	          << "    Max degree of fixpoints : " << max_fixpoint_degree   << " (\"" << max_fixpoint << "\")\n"
+	          << "    Min degree of fixpoints : " << min_fixpoint_degree   << std::endl;
+
+	std::cout << "Disconnected Concepts (" << num_disconnected_concepts << ")\n"
+			  << "---------------------\n"
+			  << disconnected << std::endl;
 	// TODO: bug with certain concepts not being exported
 	// from Neo4j and there might be a similar issue with fixpoints.
 	return 0;

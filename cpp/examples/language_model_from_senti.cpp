@@ -34,6 +34,16 @@ typedef std::pair<vector<string>, uint> labeled_pair;
 
 const string START = "**START**";
 
+/**
+Databatch
+---------
+
+Datastructure handling the storage of training
+data, length of each example in a minibatch,
+and total number of prediction instances
+within a single minibatch.
+
+**/
 class Databatch {
     typedef shared_ptr<index_mat> shared_index_mat;
     public:
@@ -116,19 +126,61 @@ vector<Databatch> create_labeled_dataset(
     return dataset;
 }
 
+/**
+get word vocab
+--------------
+
+Collect a mapping from words to unique indices
+from a collection of Annnotate Parse Trees
+from the Stanford Sentiment Treebank, and only
+keep words ocurring more than some threshold
+number of times `min_occurence`
+
+Inputs
+------
+
+std::vector<SST::AnnotatedParseTree::shared_tree>& trees : Stanford Sentiment Treebank trees
+                                       int min_occurence : cutoff appearance of words to include
+                                                           in vocabulary.
+
+
+Outputs
+-------
+
+Vocab vocab : the vocabulary extracted from the trees with the
+              addition of a special "**START**" word.
+
+**/
 Vocab get_word_vocab(vector<SST::AnnotatedParseTree::shared_tree>& trees, int min_occurence) {
     tokenized_uint_labeled_dataset examples;
     for (auto& tree : trees)
         examples.emplace_back(tree->to_labeled_pair());
     auto index2word  = utils::get_vocabulary(examples, min_occurence);
     Vocab vocab(index2word);
-
     vocab.word2index[START] = vocab.index2word.size();
     vocab.index2word.emplace_back(START);
-
     return vocab;
 }
 
+/**
+Reconstruct
+-----------
+
+Condition on the special "**START**" word, generate
+a sentence from the language model and output it
+to standard out.
+
+Inputs
+------
+               StackedModel<T>& model : language model to query
+           const Databatch& minibatch : where to pull the sample from
+                         const int& i : what row to use from the databatch
+              const Vocab& word_vocab : the word vocabulary with a lookup table
+                                        mapping unique words to an index and
+                                        vice-versa.                        
+
+
+**/
 void reconstruct(
     StackedModel<REAL_t>& model,
     const Databatch& minibatch,
@@ -145,6 +197,40 @@ void reconstruct(
         0) << std::endl;
 }
 
+/**
+Training Loop
+-------------
+
+Go through a single epoch of training by updating
+parameters once for each minibatch in the dataset.
+Takes an optimizer, model, and dataset and performs
+several steps of gradient descent.
+Moreover every `report_frequency` epochs this will
+output the current training error and perform
+a sentence reconstruction from the current model.
+
+See `reconstruct`
+
+Inputs
+------
+               StackedModel<T>& model : language model to train
+     const vector<Databatch>& dataset : sentences broken into minibatches to
+                                        train model on.
+              const Vocab& word_vocab : the word vocabulary with a lookup table
+                                        mapping unique words to an index and
+                                        vice-versa.
+                         const T& rho : rho parameter to control Adadelta decay rate
+                            S& Solver : Solver handling updates to parameters using
+                                        a specific regimen (SGD, Adadelta, AdaGrad, etc.)
+std::vector<std::shared_ptr<Mat<T>>>& : references to model parameters.
+          const int& report_frequency : how often to reconstruct a sentence and display
+                                        training progress (KL divergence w.r.t. training
+                                        data)
+                     const int& epoch : how many epochs of training has been done so far.
+                              T& cost : store the KL divergence w.r.t. training data here.
+                     const int& label : label from where the examples originated from.
+
+**/
 template<typename T, typename S>
 void training_loop(StackedModel<T>& model,
     const vector<Databatch>& dataset,
@@ -183,17 +269,53 @@ void training_loop(StackedModel<T>& model,
     }
 }
 
+
+/**
+Train Model
+-----------
+
+Train a single language model on a corpus of minibatches of sentences
+predicting the next word given the current sequence. Stops training
+when max number of epochs is reached, training stops decreasing error
+for 5 epochs, or cost dips below the cutoff.
+
+Inputs
+------
+
+       optparse::Values& options : CLI arguments controling input size,
+                                   hidden size, and number of stacked LSTMs
+const vector<Databatch>& dataset : sentences broken into minibatches to
+                                   train model on.
+         const Vocab& word_vocab : the word vocabulary with a lookup table
+                                   mapping unique words to an index and
+                                   vice-versa.
+                    const T& rho : rho parameter to control Adadelta decay rate
+     const int& report_frequency : how often to reconstruct a sentence and display
+                                   training progress (KL divergence w.r.t. training
+                                   data)
+               const int& epochs : maximum number of epochs to train for.
+     const string& save_location : where to save the model after training.
+                       int label : label from where the examples originated from.
+
+**/
 template<typename T, class S>
-void training(StackedModel<T>& model,
+void train_model(
+    optparse::Values& options, 
     const vector<Databatch>& dataset,
     const Vocab& word_vocab,
-    vector<shared_ptr<mat>>& parameters,
     const T& rho,
     const int& report_frequency,
     const T& cutoff,
     const int& epochs,
     const string& save_location,
     int label) {
+    // Build Model:
+    StackedModel<T> model(word_vocab.index2word.size(),
+            from_string<int>(options["input_size"]),
+            from_string<int>(options["hidden"]),
+            from_string<int>(options["stack_size"]) < 1 ? 1 : from_string<int>(options["stack_size"]),
+            word_vocab.index2word.size());
+    auto parameters = model.parameters();
     S solver(parameters, rho, 1e-9, 5.0);
     int i = 0;
     auto cost = std::numeric_limits<REAL_t>::infinity();
@@ -206,8 +328,12 @@ void training(StackedModel<T>& model,
         cost = new_cost;
         i++;
     }
-    if (save_location != "")
-        model.save(save_location + "_" + std::to_string(i));
+    if (save_location != "") {
+        std::cout << "Saving model with label "
+                  << label << " to \""
+                  << save_location << "_" << label << "/\"" << std::endl;
+        model.save(save_location + "_" + std::to_string(label));
+    }
 }
 
 int main( int argc, char* argv[]) {
@@ -273,30 +399,15 @@ int main( int argc, char* argv[]) {
     for (auto& tree_type : tree_types)
         datasets[i++] = create_labeled_dataset(tree_type, word_vocab, from_string<int>(options["minibatch"]));
 
-
-    // Build Model:
-    vector<StackedModel<REAL_t>> models;
-    vector<vector<std::shared_ptr<mat>>> parameters;
-    for (i = 0; i < 5; i++) {
-        models.emplace_back(vocab_size,
-            from_string<int>(options["input_size"]),
-            from_string<int>(options["hidden"]),
-            from_string<int>(options["stack_size"]) < 1 ? 1 : from_string<int>(options["stack_size"]),
-            vocab_size);
-        parameters.emplace_back( models[i].parameters() );
-    }
-
-    std::cout << "Built all the models" << std::endl;
     std::cout << "Max training epochs = " << epochs << std::endl;
     std::cout << "Training cutoff     = " << cutoff << std::endl;
 
     vector<thread> workers;
-    for (i = 0; i < models.size(); i++)
-        workers.emplace_back(thread(training<REAL_t, Solver::AdaDelta<REAL_t>>,
-            ref(models[i]),
+    for (i = 0; i < 5; i++)
+        workers.emplace_back(thread(train_model<REAL_t, Solver::AdaDelta<REAL_t>>,
+            ref(options),
             ref(datasets[i]),
             ref(word_vocab),
-            ref(parameters[i]),
             ref(rho),
             ref(report_frequency),
             ref(cutoff),

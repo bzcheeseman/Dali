@@ -25,6 +25,8 @@ namespace cnpy {
         bool fortran_order;
         void destruct() {delete[] data;}
     };
+
+    NpyArray load_the_npy_file(FILE*);
     
     struct npz_t : public std::map<std::string, NpyArray>
     {

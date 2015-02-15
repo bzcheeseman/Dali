@@ -122,7 +122,7 @@ void cnpy::parse_zip_footer(FILE* fp, unsigned short& nrecs, unsigned int& globa
     assert(comment_len == 0);
 }
 
-cnpy::NpyArray load_the_npy_file(FILE* fp) {
+cnpy::NpyArray cnpy::load_the_npy_file(FILE* fp) {
     unsigned int* shape;
     unsigned int ndims, word_size;
     bool fortran_order;

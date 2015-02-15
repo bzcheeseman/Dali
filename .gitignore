@@ -26,6 +26,7 @@
 cpp/Eigen
 cpp/prog.o
 cpp/mygreatfolder
+cpp/examples/sentiment_models
 
 # Saves #
 #########

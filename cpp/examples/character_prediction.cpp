@@ -1,8 +1,11 @@
-#include "Layers.h"
-#include "Softmax.h"
+#include "../Layers.h"
+#include "../Softmax.h"
+#include "../CrossEntropy.h"
 #include <fstream>
-#include  <random>
-#include  <iterator>
+#include <random>
+#include <iostream>
+#include <cstdio>
+#include <iterator>
 // test file for character prediction
 using std::vector;
 using std::make_shared;
@@ -76,20 +79,26 @@ REAL_t cost_fun(
 
 
 int main (int argc, char *argv[]) {
+	// Do not sync with stdio when using C++
+	std::ios_base::sync_with_stdio(0);
+
 	auto epochs              = 101;
 	auto input_size          = 5;
 	auto report_frequency    = 100;
 	REAL_t std               = 0.1;
 	vector<int> hidden_sizes = {20, 20};
+	auto vocab_size = 300;
+
+
+
 
 	if (argc > 1) assign_cli_argument(argv[1], epochs,          "epochs");
 	if (argc > 2) assign_cli_argument(argv[2], input_size,      "input size");
 	if (argc > 3) assign_cli_argument(argv[3], std,             "standard deviation");
 	if (argc > 4) assign_cli_argument(argv[4], hidden_sizes[0], "hidden size 1");
 	if (argc > 5) assign_cli_argument(argv[5], hidden_sizes[1], "hidden size 2");
+	if (argc > 6) assign_cli_argument(argv[6], vocab_size,      "vocab_size");
 
-
-	auto vocab_size = 300;
 	auto cells = StackedCells<lstm>(input_size, hidden_sizes);
 	classifier_t classifier(hidden_sizes[hidden_sizes.size() - 1], vocab_size);
 	auto embedding = make_shared<mat>(vocab_size, input_size, std);
@@ -101,6 +110,10 @@ int main (int argc, char *argv[]) {
 	for (auto& cell : cells) {
 		auto cell_params = cell.parameters();
 		parameters.insert(parameters.end(), cell_params.begin(), cell_params.end());
+	}
+
+	for (auto& param : parameters) {
+		param->npy_load(stdin);
 	}
 
 	auto prepad = 0;
@@ -115,9 +128,10 @@ int main (int argc, char *argv[]) {
 	Solver::RMSProp<REAL_t> solver(parameters, 0.999, 1e-9, 5.0);
 	
 	// Main training loop:
+	REAL_t cost = 0.0;
 	for (auto i = 0; i < epochs; ++i) {
 		auto G = graph_t(true);      // create a new graph for each loop
-		auto cost = cost_fun(
+		cost = cost_fun(
 			G,                       // to keep track of computation
 			hidden_sizes,            // to construct initial states
 			cells,                   // LSTMs
@@ -128,14 +142,21 @@ int main (int argc, char *argv[]) {
 		G.backward();                // backpropagate
 		// solve it.
 		solver.step(parameters, 0.01, 0.0);
-		if (i % report_frequency == 0)
-			std::cout << "epoch (" << i << ") perplexity = " << cost << std::endl;
+		/*if (i % report_frequency == 0)
+			std::cout << "epoch (" << i << ") perplexity = "
+								  << std::fixed
+                                  << std::setw( 5 ) // keep 7 digits
+                                  << std::setprecision( 3 ) // use 3 decimals
+                                  << std::setfill( ' ' ) << cost << std::endl;*/
+
 	}
+	std::cout << cost << std::endl;
 
-	parameters[0]->npy_save("embedding.npy", "w");
-
-	parameters[1]->npy_save("classifier_matrix.npy", "w");
-	parameters[2]->npy_save("classifier_bias.npy", "w");
+	for (auto& param : parameters) {
+		param->npy_save(stdout);
+	}
+	
+	// utils::save_matrices(parameters, "paul_graham_params");
 	
 	// outputs:
 	//> epoch (0) perplexity = -5.70376

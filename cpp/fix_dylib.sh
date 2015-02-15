@@ -1,6 +1,16 @@
+#!/bin/bash
+
+# stop script on error and print it
+set -e
+# inform me of undefined variables
+set -u
+# handle cascading failures well
+set -o pipefail
+
 INTEL_THREAD_FILE=/opt/intel/mkl/lib/libmkl_intel_thread.dylib
 IOMP5_FILE=/opt/intel/composer_xe_2015.1.108/compiler/lib/libiomp5.dylib
-for file in *.o
+
+for file in *.o */*.o
 do
 	echo "Fixing \"$file\""
 	if [ -f $file ];

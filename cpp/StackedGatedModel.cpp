@@ -247,6 +247,45 @@ std::tuple<T, T> StackedGatedModel<T>::masked_predict_cost(
 	return cost;
 }
 
+template<typename T>
+std::tuple<T, T> StackedGatedModel<T>::masked_predict_cost(
+	graph_t& G,
+	shared_index_mat data,
+	shared_index_mat target_data,
+	uint start_loss,
+	shared_eigen_index_vector codelens,
+	uint offset) {
+
+	auto initial_state    = lstm::initial_states(hidden_sizes);
+	auto num_hidden_sizes = hidden_sizes.size();
+
+	shared_mat input_vector;
+	shared_mat memory;
+	shared_mat logprobs;
+	// shared_mat probs;
+	std::tuple<T, T> cost(0.0, 0.0);
+
+	auto n = data->cols();
+	for (uint i = 0; i < n-1; ++i) {
+		// pick this letter from the embedding
+		input_vector = G.rows_pluck(embedding, data->col(i));
+		memory = gate.activate(G, input_vector, initial_state.second[0]);
+		input_vector = G.eltmul_broadcast_rowwise(input_vector, memory);
+		// pass this letter to the LSTM for processing
+		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
+		// classifier takes as input the final hidden layer's activation:
+		logprobs      = decoder.activate(G, initial_state.second[num_hidden_sizes-1]);
+		std::get<0>(cost) += masked_cross_entropy(
+			logprobs,
+			i,
+			start_loss,
+			codelens,
+			(target_data->col(i+1).array() - offset).matrix());
+		std::get<1>(cost) += masked_sum(memory, i, 0, start_loss, memory_penalty);
+	}
+	return cost;
+}
+
 // Private method that names the parameters
 // For better debugging and reference
 template<typename T>

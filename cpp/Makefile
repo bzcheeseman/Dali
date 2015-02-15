@@ -8,9 +8,10 @@ INTEL_COMP_DIR=$(INTEL_DIR)composer_xe_2015.1.108/
 MKL_DIR=$(INTEL_COMP_DIR)mkl/
 INC=-IEigen -I$(MKL_DIR)include -IEigen/src/Core/util/
 LLOC=-L$(MKL_DIR)lib/ -L$(INTEL_COMP_DIR)compiler/lib/
-OBJECTS=utils.o Mat.o Layers.o cnpy.o OptionParser/OptionParser.o CrossEntropy.o Softmax.o StackedGatedModel.o examples/protobuff/corpus.pb.o SST.o
+OBJECTS=utils.o Mat.o Layers.o cnpy.o OptionParser/OptionParser.o CrossEntropy.o Softmax.o StackedModel.o StackedGatedModel.o examples/protobuff/corpus.pb.o SST.o
 LIBS=-lblas -lz -lprotobuf -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -headerpad_max_install_names
 FIX_DYLIBS=sudo sh fix_dylib.sh
+INSTANTIATOR=python3 template_instantiator.py CrossEntropy.cpp.template
 all:
 	$(CC) -c -std=c++11 OptionParser/OptionParser.cpp -o OptionParser/OptionParser.o
 	$(CC) $(INC) -c -std=c++11 main.cpp
@@ -20,7 +21,9 @@ all:
 	$(CC) $(INC) -c -std=c++11 Layers.cpp
 	$(CC) $(INC) -c -std=c++11 cnpy.cpp
 	$(CC) $(INC) -c -std=c++11 Softmax.cpp
+	$(INSTANTIATOR)
 	$(CC) $(INC) -c -std=c++11 CrossEntropy.cpp
+	$(CC) $(INC) -c -std=c++11 StackedModel.cpp
 	$(CC) $(INC) -c -std=c++11 StackedGatedModel.cpp
 	$(CC) -c -std=c++11 examples/protobuff/corpus.pb.cc -o examples/protobuff/corpus.pb.o
 	$(CC) $(LLOC) $(LIBS) -o app.o main.o $(OBJECTS) -lm
@@ -35,7 +38,9 @@ optimized:
 	$(CC) $(INC) -O3 -c -std=c++11 Layers.cpp
 	$(CC) $(INC) -O3 -c -std=c++11 cnpy.cpp
 	$(CC) $(INC) -O3 -c -std=c++11 Softmax.cpp
+	$(INSTANTIATOR)
 	$(CC) $(INC) -O3 -c -std=c++11 CrossEntropy.cpp
+	$(CC) $(INC) -O3 -c -std=c++11 StackedModel.cpp
 	$(CC) $(INC) -O3 -c -std=c++11 StackedGatedModel.cpp
 	$(CC) -O3 -c -std=c++11 examples/protobuff/corpus.pb.cc -o examples/protobuff/corpus.pb.o
 	$(CC) $(LLOC) $(LIBS) -o app.o -O3 main.o $(OBJECTS)
@@ -54,6 +59,7 @@ softmax:
 	$(FIX_DYLIBS)
 
 entropy:
+	$(INSTANTIATOR)
 	$(CC) $(INC) -O3 -c -std=c++11 CrossEntropy.cpp
 	$(FIX_DYLIBS)
 
@@ -70,7 +76,7 @@ SST:
 	$(FIX_DYLIBS)
 
 character_prediction:
-	$(CC) $(INC) $(LLOC) $(LIBS) -O3 -std=c++11 examples/character_prediction.cpp -o character_prediction.o $(OBJECTS)
+	$(CC) $(INC) $(LLOC) $(LIBS) -O3 -std=c++11 examples/character_prediction.cpp -o examples/character_prediction.o $(OBJECTS)
 	$(FIX_DYLIBS)
 
 sparkfun_prediction:

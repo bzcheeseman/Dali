@@ -15,6 +15,26 @@ namespace SST {
             if (c == target) c = replacement;
     }
 
+    void AnnotatedParseTree::add_general_child(AnnotatedParseTree::shared_tree child) {
+        general_children.emplace_back(child);
+    }
+
+    void AnnotatedParseTree::add_words_to_vector(vector<string>& list) const {
+        if (children.size() == 0) {
+            list.emplace_back(sentence);
+        } else {
+            for (auto& child : children)
+                child->add_words_to_vector(list);
+        }
+    }
+
+    std::pair<vector<string>, uint> AnnotatedParseTree::to_labeled_pair() const {
+        std::pair<vector<string>, uint> pair;
+        pair.second = label;
+        add_words_to_vector(pair.first);
+        return pair;
+    }
+
     AnnotatedParseTree::shared_tree create_tree_from_string(const string& line) {
         int depth = 0;
         bool awaiting_num = false;
@@ -30,7 +50,7 @@ namespace SST {
         while (ss) {
             ch = ss.get();
             if (awaiting_num) {
-                current_node->label = (uint) (ch - '0');
+                current_node->label = (uint)((int) (ch - '0'));
                 awaiting_num = false;
             } else {
                 if (ch == left_parenthesis) {
@@ -38,10 +58,9 @@ namespace SST {
                         // replace current head node by this node:
                         current_node->children.emplace_back(make_shared<AnnotatedParseTree>(depth, current_node));
                         current_node = current_node->children.back();
-                        //root.add_general_child(child);
+                        root->add_general_child(current_node);
                     } else {
                         root = make_shared<AnnotatedParseTree>(depth);
-                        //root.add_general_child(root);
                         current_node = root;
                     }
                     awaiting_num = true;

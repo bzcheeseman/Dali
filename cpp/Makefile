@@ -94,7 +94,7 @@ language_sentiment:
 	$(FIX_DYLIBS)
 
 language_model:
-	$(CC) $(INC) -lblas -lprotobuf -lz -O3 -std=c++11 examples/language_model.cpp -o examples/language_model.o $(OBJECTS)
+	$(CC) $(INC) $(BLAS_AND_MKL_LIBS) -lprotobuf -lz -O3 -std=c++11 examples/language_model.cpp -o examples/language_model.o $(OBJECTS)
 	$(FIX_DYLIBS)
 
 test_lattice:

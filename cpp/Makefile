@@ -50,7 +50,8 @@ mat:
 	$(CC) $(INC) -O3 -c -std=c++11 Mat.cpp
 	$(FIX_DYLIBS)
 
-stacked_gated_model:
+stacked_gated:
+	$(CC) $(INC) -O3 -c -std=c++11 StackedModel.cpp
 	$(CC) $(INC) -O3 -c -std=c++11 StackedGatedModel.cpp
 	$(FIX_DYLIBS)
 
@@ -85,6 +86,10 @@ sparkfun_prediction:
 
 language_sentiment:
 	$(CC) $(INC) -lblas -lprotobuf -lz -O3 -std=c++11 examples/language_model_from_senti.cpp -o examples/language_model_from_senti.o $(OBJECTS)
+	$(FIX_DYLIBS)
+
+language_model:
+	$(CC) $(INC) -lblas -lprotobuf -lz -O3 -std=c++11 examples/language_model.cpp -o examples/language_model.o $(OBJECTS)
 	$(FIX_DYLIBS)
 
 test_lattice:

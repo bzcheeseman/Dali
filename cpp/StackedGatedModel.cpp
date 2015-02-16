@@ -236,13 +236,31 @@ std::tuple<T, T> StackedGatedModel<T>::masked_predict_cost(
 		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
 		// classifier takes as input the final hidden layer's activation:
 		logprobs      = decoder.activate(G, initial_state.second[num_hidden_sizes-1]);
-		std::get<0>(cost) += masked_cross_entropy(
-			logprobs,
-			i,
-			start_loss,
-			codelens,
-			(target_data->col(i+1).array() - offset).matrix());
-		std::get<1>(cost) += masked_sum(memory, i, 0, start_loss, memory_penalty);
+
+		std::get<0>(cost) += G.needs_backprop ? masked_cross_entropy(
+										logprobs,
+										i,
+										start_loss,
+										codelens,
+										(target_data->col(i+1).array() - offset).matrix()) :
+								  masked_cross_entropy_no_grad(
+										logprobs,
+										i,
+										start_loss,
+										codelens,
+										(target_data->col(i+1).array() - offset).matrix());
+		std::get<1>(cost) += G.needs_backprop ? masked_sum(
+													memory,
+													i,
+													0,
+													start_loss,
+													memory_penalty) :
+												masked_sum_no_grad(
+													memory,
+													i,
+													0,
+													start_loss,
+													memory_penalty);
 	}
 	return cost;
 }
@@ -275,13 +293,30 @@ std::tuple<T, T> StackedGatedModel<T>::masked_predict_cost(
 		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
 		// classifier takes as input the final hidden layer's activation:
 		logprobs      = decoder.activate(G, initial_state.second[num_hidden_sizes-1]);
-		std::get<0>(cost) += masked_cross_entropy(
-			logprobs,
-			i,
-			start_loss,
-			codelens,
-			(target_data->col(i+1).array() - offset).matrix());
-		std::get<1>(cost) += masked_sum(memory, i, 0, start_loss, memory_penalty);
+		std::get<0>(cost) += G.needs_backprop ? masked_cross_entropy(
+										logprobs,
+										i,
+										start_loss,
+										codelens,
+										(target_data->col(i+1).array() - offset).matrix()) :
+								  masked_cross_entropy_no_grad(
+										logprobs,
+										i,
+										start_loss,
+										codelens,
+										(target_data->col(i+1).array() - offset).matrix());
+		std::get<1>(cost) += G.needs_backprop ? masked_sum(
+													memory,
+													i,
+													0,
+													start_loss,
+													memory_penalty) :
+												masked_sum_no_grad(
+													memory,
+													i,
+													0,
+													start_loss,
+													memory_penalty);
 	}
 	return cost;
 }

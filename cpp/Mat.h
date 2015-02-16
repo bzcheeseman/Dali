@@ -112,11 +112,12 @@ template<typename T>
 std::ostream& operator<<(std::ostream&, const Backward<T>&);
 
 template<typename T> class Graph {
-	bool                     needs_backprop;
+	
 	std::vector<Backward<T>>       backprop;
 	typedef Mat<T>                      mat;
 	typedef std::shared_ptr<mat> shared_mat;
 	public:
+		bool                 needs_backprop;
 		Graph (bool);
 		Graph ();
 		void backward ();

@@ -39,12 +39,12 @@ class StackedGatedModel {
 	typedef std::map<std::string, std::vector<std::string>> config_t;
 
 	std::vector<lstm> cells;
-	shared_mat    embedding;
 
 	inline void name_parameters();
 	inline void construct_LSTM_cells();
 
 	public:
+		shared_mat    embedding;
 		typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
 		typedef std::shared_ptr< index_mat > shared_index_mat;
 		

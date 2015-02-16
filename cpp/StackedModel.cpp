@@ -223,12 +223,18 @@ T StackedModel<T>::masked_predict_cost(
 		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
 		// classifier takes as input the final hidden layer's activation:
 		logprobs      = decoder.activate(G, initial_state.second[num_hidden_sizes-1]);
-		cost += masked_cross_entropy(
-			logprobs,
-			i,
-			start_loss,
-			codelens,
-			(target_data->col(i+1).array() - offset).matrix());
+		cost += G.needs_backprop ? masked_cross_entropy(
+										logprobs,
+										i,
+										start_loss,
+										codelens,
+										(target_data->col(i+1).array() - offset).matrix()) :
+								  masked_cross_entropy_no_grad(
+										logprobs,
+										i,
+										start_loss,
+										codelens,
+										(target_data->col(i+1).array() - offset).matrix());
 	}
 	return cost;
 }
@@ -259,12 +265,18 @@ T StackedModel<T>::masked_predict_cost(
 		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
 		// classifier takes as input the final hidden layer's activation:
 		logprobs      = decoder.activate(G, initial_state.second[num_hidden_sizes-1]);
-		cost += masked_cross_entropy(
-			logprobs,
-			i,
-			start_loss,
-			codelens,
-			(target_data->col(i+1).array() - offset).matrix());
+		cost += G.needs_backprop ? masked_cross_entropy(
+										logprobs,
+										i,
+										start_loss,
+										codelens,
+										(target_data->col(i+1).array() - offset).matrix()) :
+								  masked_cross_entropy_no_grad(
+										logprobs,
+										i,
+										start_loss,
+										codelens,
+										(target_data->col(i+1).array() - offset).matrix());
 	}
 	return cost;
 }

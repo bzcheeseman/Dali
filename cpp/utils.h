@@ -67,6 +67,9 @@ namespace utils {
 	bool endswith(const std::string&, const std::string&);
 	bool startswith(const std::string&, const std::string&);
 
+	template<typename T>
+	bool add_to_set(std::vector<T>&, T&);
+
 	/**
 	Ontology Branch
 	---------------
@@ -115,8 +118,10 @@ namespace utils {
 
 	std::vector<std::pair<std::string, std::string>> load_labeled_corpus(const std::string&);
 	tokenized_labeled_dataset load_tokenized_labeled_corpus(const std::string&);
+	std::vector<str_sequence> load_tokenized_unlabeled_corpus(const std::string&);
 	str_sequence tokenize(const std::string&);
 	str_sequence get_vocabulary(const tokenized_labeled_dataset&, int);
+	str_sequence get_vocabulary(const std::vector<str_sequence>&, int);
 	str_sequence get_vocabulary(const tokenized_multilabeled_dataset&, int);
 	str_sequence get_vocabulary(const tokenized_uint_labeled_dataset&, int);
 	str_sequence get_lattice_vocabulary(const OntologyBranch::shared_branch);
@@ -194,6 +199,8 @@ namespace utils {
 	void assign_cli_argument(char *, T&, std::string);
 
 	void training_corpus_to_CLI(optparse::OptionParser&);
+
+	std::vector<size_t> random_arange(size_t);
 
 	template <class T> inline void hash_combine(std::size_t &, const T &);
 	std::size_t get_random_id();

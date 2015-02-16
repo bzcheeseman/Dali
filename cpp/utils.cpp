@@ -47,6 +47,13 @@ template std::ostream& operator<< <int>(std::ostream& strm, const vector<int>& a
 
 namespace utils {
 
+	vector<size_t> random_arange(size_t size) {
+		vector<size_t> indices(size);
+		for (size_t i=0; i < size;i++) indices[i] = i;
+		std::random_shuffle( indices.begin(), indices.end() );
+		return indices;
+	}
+
 	void ensure_directory (std::string& dirname) {
 		if (dirname.back() != '/') dirname += "/";
 	}
@@ -72,6 +79,20 @@ namespace utils {
 		}
 		return corpus;
 	}
+
+	template<typename T>
+	bool add_to_set(vector<T>& set, T& el) {
+		if(std::find(set.begin(), set.end(), el) != set.end()) {
+			return false;
+		} else {
+			set.emplace_back(el);
+			return true;
+		}
+	}
+
+	template bool add_to_set(vector<int>&,    int&);
+	template bool add_to_set(vector<uint>&,   uint&);
+	template bool add_to_set(vector<string>&, string&);
 
 	template<typename T>
 	void tuple_sum(std::tuple<T, T>& A, std::tuple<T, T> B) {
@@ -376,7 +397,15 @@ namespace utils {
 			);
 		}
 		return pairs;
+	}
 
+	vector<vector<string>> load_tokenized_unlabeled_corpus(const string& fname) {
+		ifstream fp(fname.c_str());
+		string l;
+		vector<vector<string>> list;
+		while (std::getline(fp, l))
+			list.emplace_back(tokenize(string(l.begin(), l.end())));
+		return list;
 	}
 
 	vector<string> get_vocabulary(const tokenized_labeled_dataset& examples, int min_occurence) {
@@ -384,6 +413,19 @@ namespace utils {
 		string word;
 		for (auto& example : examples)
 			for (auto& word : example.first) word_occurences[word] += 1;
+		vector<string> list;
+		for (auto& key_val : word_occurences)
+			if (key_val.second >= min_occurence)
+				list.emplace_back(key_val.first);
+		list.emplace_back(utils::end_symbol);
+		return list;
+	}
+
+	vector<string> get_vocabulary(const vector<vector<string>>& examples, int min_occurence) {
+		std::map<string, uint> word_occurences;
+		string word;
+		for (auto& example : examples)
+			for (auto& word : example) word_occurences[word] += 1;
 		vector<string> list;
 		for (auto& key_val : word_occurences)
 			if (key_val.second >= min_occurence)

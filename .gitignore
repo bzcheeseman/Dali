@@ -28,6 +28,8 @@ cpp/prog.o
 cpp/mygreatfolder
 cpp/examples/sentiment_models
 
+.ipynb_checkpoints/
+
 # Saves #
 #########
 saves/*

@@ -243,7 +243,9 @@ void training_loop(StackedModel<T>& model,
     const int& label,
     const int& patience) {
     int full_code_size = 0;
-    for (auto& minibatch : dataset) {
+    auto random_batch_order = utils::random_arange(dataset.size());
+    for (auto& j : random_batch_order) {
+        auto& minibatch = dataset[j];
         auto G = graph_t(true);      // create a new graph for each loop
         cost += model.masked_predict_cost(
             G,
@@ -338,7 +340,7 @@ void train_model(
 
 int main( int argc, char* argv[]) {
     auto parser = optparse::OptionParser()
-        .usage("usage: --dataset [corpus_directory] -s --index2target [index2target_file] [# of minibatches]")
+        .usage("usage: --dataset [corpus_directory] --minibatch [minibatch size]")
         .description(
             "Sentiment Analysis as Competition amongst Language Models\n"
             "---------------------------------------------------------\n"

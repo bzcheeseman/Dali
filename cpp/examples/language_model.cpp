@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <Eigen>
 #include <thread>
+#include <atomic>
+#include <algorithm>
 #include "../utils.h"
 #include "../SST.h"
 #include "../gzstream.h"
@@ -22,6 +24,7 @@ using utils::Vocab;
 using utils::from_string;
 using utils::OntologyBranch;
 using utils::tokenized_uint_labeled_dataset;
+using std::atomic;
 
 
 typedef float REAL_t;
@@ -198,26 +201,46 @@ void reconstruct(
 }
 
 template<typename T>
+void cost_update(
+    StackedModel<T>& model,
+    graph_t& G,
+    const Databatch& minibatch,
+    T& cost) {
+    cost = model.masked_predict_cost(
+        G,
+        minibatch.data, // the sequence to draw from
+        minibatch.data, // what to predict (the words offset by 1)
+        1,
+        minibatch.codelens,
+        0
+    );
+}
+
+template<typename T>
 T average_error(StackedModel<T>& model,
-    const vector<Databatch>& dataset,
-    const Vocab& word_vocab) {
+    const vector<Databatch>& dataset) {
 	T cost = 0.0;
-	int full_code_size = 0;
-	auto G = graph_t(false); // create a new graph for each loop
-	for (auto& minibatch : dataset) {
-    	cost += model.masked_predict_cost(
-            G,
-            minibatch.data, // the sequence to draw from
-            minibatch.data, // what to predict (the words offset by 1)
-            1,
-            minibatch.codelens,
-            0
-        );
-        model.embedding->sparse_row_keys = minibatch.row_keys;
-        full_code_size += minibatch.total_codes;
+	auto G = graph_t(false); // create a new graph for each loop)
+    int full_code_size(0);
+	vector<thread> workers;
+    vector<T> costs(dataset.size());
+    for (int i = 0; i < dataset.size(); i++) {
+        workers.emplace_back(
+            cost_update<REAL_t>,
+            ref(model),
+            ref(G),
+            ref(dataset[i]),
+            ref(cost)
+            );
+        full_code_size += dataset[i].total_codes;
     }
+    for (auto& worker : workers)
+        worker.join();
+    for (auto& v : costs) cost += v;
     return cost / full_code_size;
 }
+
+template REAL_t average_error(StackedModel<REAL_t>&, const vector<Databatch>&);
 
 /**
 Training Loop
@@ -353,7 +376,7 @@ void train_model(
     while (cost > cutoff && i < epochs && patience < 5) {
         new_cost = 0.0;
         training_loop(model, dataset, word_vocab, solver, parameters, report_frequency, i, new_cost, patience);
-        new_cost = average_error(model, validation_set, word_vocab);
+        new_cost = average_error<T>(model, validation_set);
         if (new_cost >= cost) patience++;
         cost = new_cost;
         i++;

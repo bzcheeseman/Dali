@@ -4,8 +4,8 @@
 #include "utils.h"
 #include "cnpy.h"
 
-#define EIGEN_USE_MKL_VML
-#define EIGEN_USE_BLAS
+// #define EIGEN_USE_MKL_VML
+// #define EIGEN_USE_BLAS
 // doesnt work, but its also not useful for now
 // #define EIGEN_USE_LAPACKE
 #include <Eigen>
@@ -96,7 +96,7 @@ template<typename T> class Backward {
 		Backward(shared_mat, shared_mat, shared_mat, shared_mat, uint);
 		Backward(shared_mat, shared_mat, shared_mat, shared_mat, shared_mat, uint);
 		Backward(shared_mat, shared_mat, shared_mat, shared_mat, shared_mat, shared_mat, uint);
-		
+
 		operator std::string() const;
 		std::string op_type () const;
 		void operator ()();
@@ -112,7 +112,7 @@ template<typename T>
 std::ostream& operator<<(std::ostream&, const Backward<T>&);
 
 template<typename T> class Graph {
-	
+
 	std::vector<Backward<T>>       backprop;
 	typedef Mat<T>                      mat;
 	typedef std::shared_ptr<mat> shared_mat;

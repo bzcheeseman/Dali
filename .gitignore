@@ -8,6 +8,11 @@
 *.o
 *.so
 
+# Compiled protobuffs #
+*.pb.cc
+*.pb.h
+*_pb2.py
+
 # Packages #
 ############
 # it's better to unpack these files and commit the raw source

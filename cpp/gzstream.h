@@ -21,8 +21,8 @@
 // Revision      : $Revision: 1.5 $
 // Revision_date : $Date: 2002/04/26 23:30:15 $
 // Author(s)     : Deepak Bandyopadhyay, Lutz Kettner
-// 
-// Standard streambuf implementation following Nicolai Josuttis, "The 
+//
+// Standard streambuf implementation following Nicolai Josuttis, "The
 // Standard C++ Library".
 // ============================================================================
 
@@ -34,6 +34,7 @@
 #include <fstream>
 #include <zlib.h>
 #include <string>
+#include <cstring>
 
 #ifdef GZSTREAM_NAMESPACE
 namespace GZSTREAM_NAMESPACE {
@@ -53,7 +54,7 @@ private:
     char             opened;             // open/close state of stream
     int              mode;               // I/O mode
 
-    
+
     int flush_buffer() {
         // Separate the writing of the buffer from overflow() and
         // sync() operation.
@@ -68,7 +69,7 @@ public:
         setp( buffer, buffer + (bufferSize-1));
         setg( buffer + 4,     // beginning of putback area
               buffer + 4,     // read position
-              buffer + 4);    // end position      
+              buffer + 4);    // end position
         // ASSERT: both input & output capabilities will not be used together
     }
     int is_open() { return opened; }
@@ -96,7 +97,7 @@ public:
         opened = 1;
         return this;
     }
-    
+
     gzstreambuf * close() {
         if ( is_open()) {
             sync();
@@ -106,32 +107,32 @@ public:
         }
         return (gzstreambuf*)0;
     }
-    
+
     virtual int underflow() { // used for input buffer only
         if ( gptr() && ( gptr() < egptr()))
             return * reinterpret_cast<unsigned char *>( gptr());
-        
+
         if ( ! (mode & std::ios::in) || ! opened)
             return EOF;
         // Josuttis' implementation of inbuf
         int n_putback = gptr() - eback();
         if ( n_putback > 4)
             n_putback = 4;
-        memcpy( buffer + (4 - n_putback), gptr() - n_putback, n_putback);
-        
+        memcpy((buffer + (4 - n_putback)), gptr() - n_putback, n_putback);
+
         int num = gzread( file, buffer+4, bufferSize-4);
         if (num <= 0) // ERROR or EOF
             return EOF;
-        
+
         // reset buffer pointers
         setg( buffer + (4 - n_putback),   // beginning of putback area
              buffer + 4,                 // read position
              buffer + 4 + num);          // end of buffer
-        
+
         // return next character
-        return * reinterpret_cast<unsigned char *>( gptr());    
+        return * reinterpret_cast<unsigned char *>( gptr());
     }
-    
+
     virtual int overflow( int c=EOF) { // used for output buffer only
         if ( ! ( mode & std::ios::out) || ! opened)
             return EOF;
@@ -143,7 +144,7 @@ public:
             return EOF;
         return c;
     }
-    
+
     virtual int sync() {
         // Changed to use flush_buffer() instead of overflow( EOF)
         // which caused improper behavior with std::endl and flush(),
@@ -153,14 +154,14 @@ public:
                 return -1;
         }
         return 0;
-    }    
+    }
 };
 
 class gzstreambase : virtual public std::ios {
 protected:
     gzstreambuf buf;
 public:
-    
+
     gzstreambase() { init(&buf); }
     gzstreambase( const char* name, int mode) {
         init( &buf);
@@ -173,7 +174,7 @@ public:
         if ( ! buf.open( name, open_mode))
             clear( rdstate() | std::ios::badbit);
     }
-    
+
     void close() {
         if ( buf.is_open())
             if ( ! buf.close())
@@ -184,15 +185,15 @@ public:
 
 // ----------------------------------------------------------------------------
 // User classes. Use igzstream and ogzstream analogously to ifstream and
-// ofstream respectively. They read and write files based on the gz* 
+// ofstream respectively. They read and write files based on the gz*
 // function interface of the zlib. Files are compatible with gzip compression.
 // ----------------------------------------------------------------------------
 
 class igzstream : public gzstreambase, public std::istream {
 public:
-    igzstream() : std::istream( &buf) {} 
+    igzstream() : std::istream( &buf) {}
     igzstream( const char* name, int open_mode = std::ios::in)
-        : gzstreambase( name, open_mode), std::istream( &buf) {}  
+        : gzstreambase( name, open_mode), std::istream( &buf) {}
     gzstreambuf* rdbuf() { return gzstreambase::rdbuf(); }
     void open( const char* name, int open_mode = std::ios::in) {
         gzstreambase::open( name, open_mode);
@@ -203,7 +204,7 @@ class ogzstream : public gzstreambase, public std::ostream {
 public:
     ogzstream() : std::ostream( &buf) {}
     ogzstream( const char* name, int mode = std::ios::out)
-        : gzstreambase( name, mode), std::ostream( &buf) {}  
+        : gzstreambase( name, mode), std::ostream( &buf) {}
     gzstreambuf* rdbuf() { return gzstreambase::rdbuf(); }
     void open( const char* name, int open_mode = std::ios::out) {
         gzstreambase::open( name, open_mode);

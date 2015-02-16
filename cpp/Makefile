@@ -1,18 +1,23 @@
-# better to do in the future: 
+# better to do in the future:
 # clang++ -I Eigen -O3 -std=c++11 Mat.cpp -o prog.o
 # cuts time by 3 for stacked lstms
 
 CC = clang++
+INCLUDE_DIR=/usr/include/
 INTEL_DIR=/opt/intel/
 INTEL_COMP_DIR=$(INTEL_DIR)composer_xe_2015.1.108/
 MKL_DIR=$(INTEL_COMP_DIR)mkl/
-INC=-IEigen -I$(MKL_DIR)include -IEigen/src/Core/util/
+INC=-I$(INCLUDE_DIR)eigen3/Eigen -I$(MKL_DIR)include -I$(INCLUDE_DIR)eigen3/Eigen/src/Core/util/
 LLOC=-L$(MKL_DIR)lib/ -L$(INTEL_COMP_DIR)compiler/lib/
 OBJECTS=utils.o Mat.o Layers.o cnpy.o OptionParser/OptionParser.o CrossEntropy.o Softmax.o StackedModel.o StackedGatedModel.o examples/protobuff/corpus.pb.o SST.o
-LIBS=-lblas -lz -lprotobuf -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -headerpad_max_install_names
-FIX_DYLIBS=sudo sh fix_dylib.sh
+BLAS_AND_MKL_LIBS="$(shell [ -d $(INTEL_COMP_DIR) ] && echo "-lblas -lmkl_intel_thread -lmkl_core -liomp5")"
+LIBS=$(BLAS_AND_MKL_LIBS) -lz -lprotobuf -lpthread -lm -headerpad_max_install_names
+FIX_DYLIBS=$(shell [ -d $(INTEL_COMP_DIR) ] && sudo ./fix_dylib.sh)
 INSTANTIATOR=python3 template_instantiator.py CrossEntropy.cpp.template
+PROTO_DIR=examples/protobuff/
+PROTO_COMPILE=protoc --cpp_out=. --python_out=.
 all:
+	echo $(shell pushd $(PROTO_DIR) && $(PROTO_COMPILE) corpus.proto && popd)
 	$(CC) -c -std=c++11 OptionParser/OptionParser.cpp -o OptionParser/OptionParser.o
 	$(CC) $(INC) -c -std=c++11 main.cpp
 	$(CC) $(INC) -c -std=c++11 utils.cpp
@@ -65,7 +70,7 @@ entropy:
 	$(FIX_DYLIBS)
 
 stacked_lstm:
-	$(CC) $(INC) $(LLOC) $(LIBS) -O3 -std=c++11 stacked_lstm.cpp -o stacked_lstm.o $(OBJECTS) 
+	$(CC) $(INC) $(LLOC) $(LIBS) -O3 -std=c++11 stacked_lstm.cpp -o stacked_lstm.o $(OBJECTS)
 	$(FIX_DYLIBS)
 
 utils:

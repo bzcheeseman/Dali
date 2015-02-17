@@ -22,6 +22,9 @@ typedef Layer<REAL_t> classifier_t;
 typedef Mat<REAL_t> mat;
 typedef shared_ptr<mat> shared_mat;
 
+extern thread_local int utils::thread_id;
+
+
 vector<vector<int>> get_character_sequences(const char* filename, int& prepad, int& postpad, int& vocab_size) {
 	char ch;
 	char linebreak = '\n';
@@ -150,6 +153,7 @@ int main (int argc, char *argv[]) {
 		auto cell_params = cell.parameters();
 		parameters.insert(parameters.end(), cell_params.begin(), cell_params.end());
 	}
+
 /*
 	for (auto& param : parameters) {
 		param->npy_load(stdin);
@@ -167,8 +171,6 @@ int main (int argc, char *argv[]) {
     static std::mt19937 seed(rd());
     static std::uniform_int_distribution<> uniform(0, train_set.size() - 1);
 
-	//Gradient descent optimizer:
-	Solver::RMSProp<REAL_t> solver(parameters, 0.999, 1e-9, 5.0);
 
 	// Main training loop:
 	REAL_t cost = 0.0;
@@ -176,9 +178,18 @@ int main (int argc, char *argv[]) {
 
 	int total_epochs = 0;
 
+
 	for (int t=0; t<num_threads; ++t) {
+
 		ts.emplace_back([&](int thread_id) {
+			utils::thread_id = thread_id;
+			// This wonderful comments comes at a courtesy of Jonathan Raphaello Ray man:
+			// Gradient descent optimizer:
+
+			Solver::RMSProp<REAL_t> solver(parameters, 0.999, 1e-9, 5.0);
+
 			for (auto i = 0; i < epochs / num_threads; ++i) {
+
 				auto G = graph_t(true);      // create a new graph for each loop
 				cost_fun(
 					G,                       // to keep track of computation
@@ -189,6 +200,7 @@ int main (int argc, char *argv[]) {
 					train_set[uniform(seed)] // the sequence to predict
 				);
 				G.backward();                // backpropagate
+
 				// solve it.
 				solver.step(parameters, 0.01, 0.0);
 

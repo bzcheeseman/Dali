@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "Mat.h"
 #include "utils.h"
 
@@ -7,14 +9,19 @@ using std::string;
 using std::stringstream;
 
 template<typename T>
-Mat<T>::Mat (int _n, int _d) : sparse_row_keys(NULL), sparse(false), name(NULL), n(_n), d(_d), random_id(utils::get_random_id()) {
-    w = eigen_mat::Zero(n,d);
-    dw = eigen_mat::Zero(n,d);
+Mat<T>::Mat (int _n, int _d) : sparse_row_keys(NULL), sparse(false), name(NULL), w(NULL, _n, _d), dw(NULL, _n, _d),  n(_n), d(_d), random_id(utils::get_random_id()) {
+    _w = eigen_mat::Zero(n,d);
+    _dw = eigen_mat::Zero(n,d);
+	new (&w) eigen_mat_view(_w.data(), n, d);
+	new (&dw) eigen_mat_view(_dw.data(), n, d);
+
 }
 template<typename T>
-Mat<T>::Mat (int _n, int _d, bool empty) : sparse_row_keys(NULL), sparse(false), name(NULL), n(_n), d(_d), random_id(utils::get_random_id()) {
-	w  = empty ? eigen_mat(n,d) : eigen_mat::Zero(n,d);
-	dw = eigen_mat::Zero(n,d);
+Mat<T>::Mat (int _n, int _d, bool empty) : sparse_row_keys(NULL), sparse(false), name(NULL), w(NULL, _n, _d), dw(NULL, _n, _d), n(_n), d(_d), random_id(utils::get_random_id()) {
+	_w  = empty ? eigen_mat(n,d) : eigen_mat::Zero(n,d);
+	_dw = eigen_mat::Zero(n,d);
+	new (&w) eigen_mat_view(_w.data(), n, d);
+	new (&dw) eigen_mat_view(_dw.data(), n, d);
 }
 
 template<typename T>
@@ -30,6 +37,24 @@ void Mat<T>::set_name(char * _name) {
 template<typename T>
 void Mat<T>::set_name(const char * _name) {
 	name = std::make_shared<string>(_name);
+}
+
+template<typename T>
+Mat<T>::Mat (const Mat<T>& m, bool copy_w, bool copy_dw) : sparse_row_keys(NULL), sparse(false), name(NULL), w(NULL, m.n, m.d), dw(NULL, m.n, m.d), n(m.n), d(m.d), random_id(m.random_id) {
+	if (copy_w) {
+		_w = m.w;
+		new (&w) eigen_mat_view(_w.data(), n, d);
+	} else {
+		new (&w) eigen_mat_view(m.w.data(), n, d);
+	}
+
+	if (copy_dw) {
+		_dw = m.dw;
+		new (&dw) eigen_mat_view(_dw.data(), n, d);
+	} else {
+		new (&dw) eigen_mat_view(m.dw.data(), n, d);
+	}
+
 }
 
 template<typename T>
@@ -105,32 +130,33 @@ void Mat<T>::npy_load(string fname) {
 }
 
 template<typename T>
-Mat<T>::Mat (string fname) : sparse_row_keys(NULL), sparse(false), random_id(utils::get_random_id()) {
+Mat<T>::Mat (string fname) : sparse_row_keys(NULL), sparse(false), w(NULL, 0, 0), dw(NULL, 0, 0), random_id(utils::get_random_id()) {
+
 	auto arr = cnpy::npy_load(fname);
 
 	n = arr.shape[0];
 	d = arr.shape.size() > 1 ? arr.shape[1] : 1;
 
-	w  = eigen_mat(n,d);
-    dw = eigen_mat::Zero(n,d);
+	_w  = eigen_mat(n,d);
+    _dw = eigen_mat::Zero(n,d);
 
 	if (arr.word_size == sizeof(double)) {
 		double* loaded_data_double = reinterpret_cast<double*>(arr.data);
 		if (arr.fortran_order) {
 			Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_double_ft(loaded_data_double, n, d);
-			w = wrapped_mat_double_ft.cast<T>();
+			_w = wrapped_mat_double_ft.cast<T>();
 		} else {
 			Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_double(loaded_data_double, n, d);
-			w = wrapped_mat_double.cast<T>();
+			_w = wrapped_mat_double.cast<T>();
 		}
 	} else if (arr.word_size == sizeof(float)) {
 		float* loaded_data_float = reinterpret_cast<float*>(arr.data);
 		if (arr.fortran_order) {
 			Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_float_ft(loaded_data_float, n, d);
-			w = wrapped_mat_float_ft.cast<T>();
+			_w = wrapped_mat_float_ft.cast<T>();
 		} else {
 			Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_float(loaded_data_float, n, d);
-			w = wrapped_mat_float.cast<T>();
+			_w = wrapped_mat_float.cast<T>();
 		}
 	} else {
 		stringstream error_msg;
@@ -139,31 +165,41 @@ Mat<T>::Mat (string fname) : sparse_row_keys(NULL), sparse(false), random_id(uti
 		throw std::invalid_argument(error_msg.str());
 	}
 	arr.destruct();
+	new (&w) eigen_mat_view(_w.data(), n, d);
+	new (&dw) eigen_mat_view(_dw.data(), n, d);
+
 }
 
 template<typename T>
 Mat<T>::~Mat() {}
 
 template<typename T>
-Mat<T>::Mat (int _n, int _d, T std) : sparse_row_keys(NULL), sparse(false), name(NULL), n(_n), d(_d), random_id(utils::get_random_id()) {
+Mat<T>::Mat (int _n, int _d, T std) : sparse_row_keys(NULL), sparse(false), name(NULL), w(NULL, _n, _d), dw(NULL, _n, _d), n(_n), d(_d), random_id(utils::get_random_id()) {
 	std::default_random_engine generator;
 	std::normal_distribution<T> distribution(0.0, std);
 	std::random_device rd;
 	generator.seed(rd());
 	auto randn = [&] (int) {return distribution(generator);};
-	this->w = eigen_mat::NullaryExpr(n,d, randn);
-	this->dw = eigen_mat::Zero(n,d);
+	_w = eigen_mat::NullaryExpr(n,d, randn);
+	_dw = eigen_mat::Zero(n,d);
+	new (&w) eigen_mat_view(_w.data(), n, d);
+	new (&dw) eigen_mat_view(_dw.data(), n, d);
+
 }
 
 template<typename T>
-Mat<T>::Mat (int _n, int _d, T lower, T upper) : sparse_row_keys(NULL), sparse(false), name(NULL), n(_n), d(_d), random_id(utils::get_random_id()) {
+Mat<T>::Mat (int _n, int _d, T lower, T upper) : sparse_row_keys(NULL), sparse(false), name(NULL), w(NULL, _n, _d), dw(NULL, _n, _d), n(_n), d(_d), random_id(utils::get_random_id()) {
 	std::default_random_engine generator;
 	std::uniform_real_distribution<T> distribution(lower, upper);
 	std::random_device rd;
 	generator.seed(rd());
 	auto randn = [&] (int) {return distribution(generator);};
-	this->w = eigen_mat::NullaryExpr(n,d, randn);
-	this->dw = eigen_mat::Zero(n,d);
+	_w = eigen_mat::NullaryExpr(n,d, randn);
+	_dw = eigen_mat::Zero(n,d);
+	//w = eigen_mat_view(_w.data(), n, d);
+	//dw = eigen_mat_view(_dw.data(), n, d);
+	new (&w) eigen_mat_view(_w.data(), n, d);
+	new (&dw) eigen_mat_view(_dw.data(), n, d);
 }
 
 template<typename T>
@@ -304,7 +340,7 @@ std::ostream& operator<<(std::ostream& strm, const Backward<T>& a) {
 template std::ostream& operator<< <double>(std::ostream& strm, const Backward<double>& a);
 template std::ostream& operator<< <float>(std::ostream& strm, const Backward<float>& a);
 
-template<typename T> 
+template<typename T>
 string Backward<T>::op_type () const {
 	switch(this->type) {
 		case utils::ops::add:
@@ -355,7 +391,7 @@ void Backward<T>::backward_rows_pluck() {
 	}
 }
 
-template<typename T> 
+template<typename T>
 void Backward<T>::operator ()() {
 	switch(this->type) {
 		case utils::ops::add:
@@ -557,7 +593,7 @@ template<typename T>
 typename Graph<T>::shared_mat Graph<T>::eltmul_rowwise(
 	shared_mat matrix1,
 	shared_mat matrix2) {
-	
+
 	if (matrix1->n != matrix2->d || matrix1->d != matrix2->n)
 		throw std::invalid_argument("Matrices A and B^T cannot be element-wise multiplied, they do not have the same dimensions.");
 	auto out = std::make_shared<mat>(
@@ -719,7 +755,7 @@ typename Graph<T>::shared_mat Graph<T>::mul_add_broadcast_mul_with_bias(
 	// product in broadcasted form
 	out->w = (
 		          (
-		              ( 
+		              (
 		                  (matrix2->w * input_to_2->w)
 		              )
 		          ).colwise() + (bias->w + (matrix1->w * input_to_1->w)).col(0)
@@ -757,9 +793,9 @@ typename Graph<T>::shared_mat Graph<T>::mul_add_mul_with_bias(
 		true);
 	out->w = (
 		          (
-		              ( 
-		                  
-                          (matrix1->w * input_to_1->w) + 
+		              (
+
+                          (matrix1->w * input_to_1->w) +
                           (matrix2->w * input_to_2->w)
 		              )
 		          ).colwise() + bias->w.col(0)
@@ -825,7 +861,7 @@ typename Graph<T>::shared_mat Graph<T>::row_pluck(
 
 template<typename T>
 Solver::SGD<T>::SGD (T _clipval) :
-        clipval(_clipval) {}; 
+        clipval(_clipval) {};
 
 template<typename T>
 void Solver::SGD<T>::step (vector<typename Solver::SGD<T>::shared_mat>& parameters,
@@ -883,17 +919,17 @@ void Solver::AdaDelta<T>::create_gradient_caches(
 		// this operation should be run once unless
 		// we expect the parameters of the model
 		// to change online (probably not the case)
-		if (!(gsums.count(*param) > 0)) {
+		if (!(gsums.count(param->random_id) > 0)) {
 			auto new_cache = this->gsums.emplace(
 				std::piecewise_construct,
-	              std::forward_as_tuple(*param),
+	              std::forward_as_tuple(param->random_id),
 	              std::forward_as_tuple(param->n, param->d));
 			// initialize values for step cache to zero:
 			new_cache.first->second.fill(0);
 
 			new_cache = this->xsums.emplace(
 				std::piecewise_construct,
-	              std::forward_as_tuple(*param),
+	              std::forward_as_tuple(param->random_id),
 	              std::forward_as_tuple(param->n, param->d));
 			// initialize values for step cache to zero:
 			new_cache.first->second.fill(0);
@@ -904,8 +940,8 @@ void Solver::AdaDelta<T>::create_gradient_caches(
 template<typename T>
 void Solver::AdaDelta<T>::step (vector<typename Solver::AdaDelta<T>::shared_mat>& parameters, T regc) {
 	for (auto& param : parameters) {
-		auto& gsum = gsums[*param];
-		auto& xsum = xsums[*param];
+		auto& gsum = gsums[param->random_id];
+		auto& xsum = xsums[param->random_id];
 		if (param->sparse) {
 			for (auto& i : *(param->sparse_row_keys)) {
 				if (regc > 0) {
@@ -996,7 +1032,7 @@ void Solver::AdaGrad<T>::step(
 	T regc
 	) {
 	for (auto& param : parameters) {
-		auto& s = gsums[*param];
+		auto& s = gsums[param->random_id];
 		if (param->sparse) {
 			for (auto& i : *(param->sparse_row_keys)) {
 				param->dw.row(i) = param->dw.row(i).array().min(clipval).max(-clipval).matrix() + (regc * param->w.row(i));
@@ -1025,7 +1061,7 @@ template<typename T>
 void Solver::AdaGrad<T>::reset_caches(
 	vector<typename Solver::AdaGrad<T>::shared_mat>& parameters) {
 	for (auto& param : parameters) {
-		auto& s = gsums[*param];
+		auto& s = gsums[param->random_id];
 		s.fill(0);
 	}
 }
@@ -1037,10 +1073,10 @@ void Solver::AdaGrad<T>::create_gradient_caches(
 		// this operation should be run once unless
 		// we expect the parameters of the model
 		// to change online (probably not the case)
-		if (!(gsums.count(*param) > 0)) {
+		if (!(gsums.count(param->random_id) > 0)) {
 			auto new_cache = this->gsums.emplace(
 				std::piecewise_construct,
-	              std::forward_as_tuple(*param),
+	              std::forward_as_tuple(param->random_id),
 	              std::forward_as_tuple(param->n, param->d));
 			// initialize values for step cache to zero:
 			new_cache.first->second.fill(0);
@@ -1077,10 +1113,10 @@ void Solver::RMSProp<T>::create_gradient_caches(
 		// this operation should be run once unless
 		// we expect the parameters of the model
 		// to change online (probably not the case)
-		if (!(gsums.count(*param) > 0)) {
+		if (!(gsums.count(param->random_id) > 0)) {
 			auto new_cache = this->gsums.emplace(
 				std::piecewise_construct,
-	              std::forward_as_tuple(*param),
+	              std::forward_as_tuple(param->random_id),
 	              std::forward_as_tuple(param->n, param->d));
 			// initialize values for step cache to zero:
 			new_cache.first->second.fill(0);
@@ -1095,8 +1131,9 @@ void Solver::RMSProp<T>::step(
 	T regc
 	) {
 	for (auto& param : parameters) {
-		auto& s = gsums[*param];
+		auto& s = gsums[param->random_id];
 		if (param->sparse) {
+
 			for (auto& i : *(param->sparse_row_keys)) {
 				s.row(i) = s.row(i) * decay_rate + (1.0 - decay_rate) * param->dw.row(i).array().square().matrix();
 				// clip the gradient to prevent explosions:
@@ -1106,6 +1143,7 @@ void Solver::RMSProp<T>::step(
 				// reset gradient
 				param->dw.row(i).fill(0);
 			}
+
 		} else {
 			s = s * decay_rate + (1.0 - decay_rate) * param->dw.array().square().matrix();
 			// clip the gradient to prevent explosions:
@@ -1116,6 +1154,7 @@ void Solver::RMSProp<T>::step(
 			param->dw.fill(0);
 		}
 	}
+
 }
 
 template<typename T>

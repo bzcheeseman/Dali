@@ -16,19 +16,25 @@ typedef std::shared_ptr<eigen_index_vector> shared_eigen_index_vector;
 typedef Eigen::MatrixWrapper<
 	Eigen::CwiseUnaryOp< Eigen::internal::scalar_add_op<unsigned int>, Eigen::ArrayWrapper<eigen_index_block> const > const > eigen_index_block_scalar;
 typedef std::vector<uint> index_std_vector;
+typedef std::size_t random_t;
 
 template<typename T> class Mat {
-	typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
-	public:
+ 	private:
+		typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
+		typedef Eigen::Map<eigen_mat> eigen_mat_view;
+		eigen_mat _w;
+		eigen_mat _dw;
+ 	public:
 		int n; int d;
-		eigen_mat w;
+		mutable eigen_mat_view w;
 		bool sparse;
 		std::shared_ptr<std::vector<uint>> sparse_row_keys;
-		eigen_mat dw;
+		mutable eigen_mat_view dw;
 		std::shared_ptr<std::string> name;
-		const std::size_t random_id;
+		const random_t random_id;
 		Mat (int, int);
 		Mat (int, int, bool);
+        Mat (const Mat<T>& m, bool copy_w=true, bool copy_dw=true);
 		void print();
 		~Mat();
 		void set_name(std::string&);
@@ -155,7 +161,7 @@ namespace Solver {
 		typedef Mat<T>                      mat;
 		typedef std::shared_ptr<mat> shared_mat;
 		typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
-		std::unordered_map<mat, eigen_mat> gsums;
+		std::unordered_map<random_t, eigen_mat> gsums;
 		public:
 			RMSProp (T decay_rate= 0.999, T smooth_eps =1e-8, T clipval = 5.0);
 			RMSProp (std::vector<shared_mat>&, T decay_rate= 0.999, T smooth_eps =1e-8, T clipval = 5.0);
@@ -170,8 +176,8 @@ namespace Solver {
 		typedef Mat<T>                      mat;
 		typedef std::shared_ptr<mat> shared_mat;
 		typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
-		std::unordered_map<mat, eigen_mat> gsums;
-		std::unordered_map<mat, eigen_mat> xsums;
+		std::unordered_map<random_t, eigen_mat> gsums;
+		std::unordered_map<random_t, eigen_mat> xsums;
 		public:
 			AdaDelta (T rho= 0.95, T smooth_eps =1e-8, T clipval = 5.0);
 			AdaDelta (std::vector<shared_mat>&, T rho= 0.95, T smooth_eps =1e-8, T clipval = 5.0);
@@ -185,7 +191,7 @@ namespace Solver {
 		typedef Mat<T>                      mat;
 		typedef std::shared_ptr<mat> shared_mat;
 		typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
-		std::unordered_map<mat, eigen_mat> gsums;
+		std::unordered_map<random_t, eigen_mat> gsums;
 		public:
 			AdaGrad (T smooth_eps =1e-8, T clipval = 5.0);
 			AdaGrad (std::vector<shared_mat>&, T smooth_eps =1e-8, T clipval = 5.0);

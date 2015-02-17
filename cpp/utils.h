@@ -14,8 +14,8 @@
 #include <map>
 #include <set>
 #include <sys/stat.h>
-#include <algorithm> 
-#include <functional> 
+#include <algorithm>
+#include <functional>
 #include <cctype>
 #include <locale>
 #include <memory>
@@ -43,6 +43,11 @@ namespace utils {
 	typedef std::vector<std::pair<str_sequence, std::string>> tokenized_labeled_dataset;
 	typedef std::vector<std::pair<str_sequence, uint>> tokenized_uint_labeled_dataset;
 	typedef std::vector<std::pair<str_sequence, str_sequence>> tokenized_multilabeled_dataset;
+
+	// This is a convenience variable so that we don't need to pass around thread_id param.
+	// Each time a thread is created in this library first operation should set this variable.
+	// First person to create threads within thread should rewrite this to be a stack.
+	extern thread_local int thread_id;
 
 	extern const char* end_symbol;
 	extern const char* unknown_word_symbol;
@@ -150,7 +155,7 @@ namespace utils {
 
 	template<typename T>
 	void stream_to_list(T&, str_sequence&);
-	
+
 	str_sequence load_list(const std::string&);
 
 	int randint(int, int);

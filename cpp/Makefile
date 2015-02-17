@@ -81,7 +81,7 @@ SST:
 	$(CC) $(INC) -c -std=c++11 SST.cpp
 	$(FIX_DYLIBS)
 
-character_prediction:
+character_prediction: utils mat
 	$(CC) $(INC) $(LLOC) $(LIBS) -O3 -std=c++11 examples/character_prediction.cpp -o examples/character_prediction.o $(OBJECTS)
 	$(FIX_DYLIBS)
 

@@ -8,6 +8,9 @@ using std::ofstream;
 using std::set;
 using std::make_shared;
 
+
+thread_local int utils::thread_id = -1;
+
 const char* utils::end_symbol          = "**END**";
 const char* utils::unknown_word_symbol = "███████";
 
@@ -31,7 +34,7 @@ template<typename T>
 std::ostream& operator<<(std::ostream& os, const vector<T>& v) {
 	if (v.size() == 0) return os << "[]";
 	os << "[";
-	for (auto& f : v) 
+	for (auto& f : v)
 		os << std::fixed
 			          << std::setw( 7 ) // keep 7 digits
 			          << std::setprecision( 3 ) // use 3 decimals
@@ -272,7 +275,7 @@ namespace utils {
 		}
 	}
 
-	/**	
+	/**
 	Load Labeled Corpus
 	-------------------
 
@@ -488,7 +491,7 @@ namespace utils {
 		for(auto& kv : *lookup_table)
 			kv.second->id = lattice_vocab.word2index.at(kv.first) + offset;
 	}
-	
+
 	// Trimming text from StackOverflow:
 	// http://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
 
@@ -607,7 +610,7 @@ namespace utils {
 
 	Check whether a file has the header information for a GZIP
 	file or not.
-	
+
 	Inputs
 	------
 	std::string& fname : potential gzip file's path
@@ -772,7 +775,7 @@ namespace utils {
 								   but append can also be useful).
 
 	**/
-	
+
 	template<typename T>
 	void OntologyBranch::save_to_stream(T& fp) {
 		auto hasher = std::hash<OntologyBranch>();
@@ -803,7 +806,7 @@ namespace utils {
 			}
 		}
 	}
-	
+
 	void OntologyBranch::save(string fname, std::ios_base::openmode mode) {
 		if (endswith(fname, ".gz")) {
 			ogzstream fpgz(fname.c_str(), mode);
@@ -835,7 +838,7 @@ namespace utils {
 	A memoized value for the deepest leaf's distance from the OntologyBranch
 	that called the method. A leaf returns 0, a branch returns the max of its
 	children's values + 1.
-	
+
 	Outputs
 	-------
 	int max_depth : Maximum number of nodes needed to traverse to reach a leaf.
@@ -1043,7 +1046,7 @@ namespace utils {
 		return std::max((int)children.size(), *std::max_element(child_maxes.begin(), child_maxes.end()));
 	}
 
-	/** 
+	/**
 	Training Corpus to CLI
 	----------------------
 
@@ -1110,7 +1113,7 @@ namespace utils {
 
 	std::string const& full: where to look
 	std::string const& ending: what to look for
-	
+
 	Outputs
 	-------
 
@@ -1136,7 +1139,7 @@ namespace utils {
 
 	std::string const& full: where to look
 	std::string const& ending: what to look for
-	
+
 	Outputs
 	-------
 
@@ -1152,8 +1155,8 @@ namespace utils {
 	}
 
 	bool file_exists (const std::string& fname) {
-		struct stat buffer;   
-		return (stat (fname.c_str(), &buffer) == 0); 
+		struct stat buffer;
+		return (stat (fname.c_str(), &buffer) == 0);
 	}
 }
 

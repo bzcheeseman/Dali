@@ -1,14 +1,10 @@
-#include <iostream>
-
 #include "CrossEntropy.h"
 
 template<typename T>
 T cross_entropy(std::shared_ptr<Mat<T>> logprobs, int& target) {
 	std::shared_ptr<Mat<T>> probs = softmax(logprobs);
 	T cost = -std::log(probs->w(target,0));
-
 	logprobs->dw = probs->w;
-
 	// write gradients into log probabilities
 	logprobs->dw(target, 0) -= 1;
 	return cost;
@@ -18,9 +14,7 @@ template<typename T, typename M>
 T cross_entropy(std::shared_ptr<Mat<T>> logprobs, const M targets) {
 	std::shared_ptr<Mat<T>> probs = softmax(logprobs);
 	T cost = 0.0;
-
 	logprobs->dw = probs->w;
-
 	// get cost for each pair of target and datastream:
 	for (size_t i = 0; i < targets.rows(); i++) {
 		cost -= std::log(probs->w(targets(i),i));
@@ -73,7 +67,7 @@ Z masked_cross_entropy(std::shared_ptr<Mat<Z>> logprobs,
 			logprobs->dw(targets(i), i) -= 1;
 
 			#ifdef VERBOSE_CROSS_ENTROPY
-
+			
 			std::cout << "-- (" << T << ")\n";
 			for (int k = 0 ; k < logprobs->dw.rows(); k++) {
 				for (int j = 0; j < logprobs->dw.cols(); j++) {
@@ -89,12 +83,12 @@ Z masked_cross_entropy(std::shared_ptr<Mat<Z>> logprobs,
 						          << std::setprecision( 3 ) // use 3 decimals
 						          << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
 						          << logprobs->dw(k,j) << "   ";
-					}
+					}	
 				}
 				std::cout << "\n";
 			}
 			std::cout << std::endl << "--" << std::endl;
-
+			
 			#endif
 		}
 	}

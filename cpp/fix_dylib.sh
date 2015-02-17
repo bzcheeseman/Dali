@@ -15,33 +15,33 @@ reset=`tput sgr0`
 
 for file in *.o */*.o
 do
-	echo "Fixing \"$file\""
-	if [ -f $file ];
-	then
-		for lib in libmkl_intel_lp64.dylib libmkl_intel_thread.dylib libmkl_core.dylib 
-		do
-			install_name_tool -change $lib /opt/intel/mkl/lib/$lib $file
-		done
-		install_name_tool -change libiomp5.dylib $IOMP5_FILE $file
+    echo "Fixing \"$file\""
+    if [ -f $file ];
+    then
+        for lib in libmkl_intel_lp64.dylib libmkl_intel_thread.dylib libmkl_core.dylib 
+        do
+            install_name_tool -change $lib /opt/intel/mkl/lib/$lib $file
+        done
+        install_name_tool -change libiomp5.dylib $IOMP5_FILE $file
     else
-    	echo "install_name_tool can't find \"$file\""
+        echo "install_name_tool can't find \"$file\""
     fi
 done
 if [ -w "$INTEL_THREAD_FILE" ]
 then
-	install_name_tool -change libiomp5.dylib $IOMP5_FILE $INTEL_THREAD_FILE
-	echo "${green}"
-	echo "    ┌───────────────────────┐"
+    install_name_tool -change libiomp5.dylib $IOMP5_FILE $INTEL_THREAD_FILE
+    echo "${green}"
+    echo "    ┌───────────────────────┐"
     echo "    │Achievement Unlocked !!│"
     echo "    └───────────────────────┘"
     echo "${reset}"
     echo " -> Linking fixed on all files"
 else
-	echo "${red}"
-	echo "    ┌────────┐"
+    echo "${red}"
+    echo "    ┌────────┐"
     echo "    │FAILURE!│"
     echo "    └────────┘"
     echo "${reset}"
-	echo " -> Could not fix linking for $INTEL_THREAD_FILE"
-	echo "    rerun with 'sudo'"
+    echo " -> Could not fix linking for $INTEL_THREAD_FILE"
+    echo "    rerun with 'sudo'"
 fi

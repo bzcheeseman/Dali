@@ -1,5 +1,3 @@
-#include <iostream>
-
 #include "Mat.h"
 #include "utils.h"
 
@@ -989,6 +987,8 @@ typename Graph<T>::shared_mat Graph<T>::row_pluck(
 	return out;
 }
 
+#define PARAM_KEY_FOR_LOOKUP_TABLE *param
+
 template<typename T>
 Solver::SGD<T>::SGD (T _clipval) :
         clipval(_clipval) {};
@@ -1049,17 +1049,17 @@ void Solver::AdaDelta<T>::create_gradient_caches(
 		// this operation should be run once unless
 		// we expect the parameters of the model
 		// to change online (probably not the case)
-		if (!(gsums.count(param->random_id) > 0)) {
+		if (!(gsums.count(PARAM_KEY_FOR_LOOKUP_TABLE) > 0)) {
 			auto new_cache = this->gsums.emplace(
 				std::piecewise_construct,
-	              std::forward_as_tuple(param->random_id),
+	              std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
 	              std::forward_as_tuple(param->n, param->d));
 			// initialize values for step cache to zero:
 			new_cache.first->second.fill(0);
 
 			new_cache = this->xsums.emplace(
 				std::piecewise_construct,
-	              std::forward_as_tuple(param->random_id),
+	              std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
 	              std::forward_as_tuple(param->n, param->d));
 			// initialize values for step cache to zero:
 			new_cache.first->second.fill(0);
@@ -1070,8 +1070,8 @@ void Solver::AdaDelta<T>::create_gradient_caches(
 template<typename T>
 void Solver::AdaDelta<T>::step (vector<typename Solver::AdaDelta<T>::shared_mat>& parameters, T regc) {
 	for (auto& param : parameters) {
-		auto& gsum = gsums[param->random_id];
-		auto& xsum = xsums[param->random_id];
+		auto& gsum = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+		auto& xsum = xsums[PARAM_KEY_FOR_LOOKUP_TABLE];
 		if (param->sparse) {
 			for (auto& i : *(param->sparse_row_keys)) {
 				if (regc > 0) {
@@ -1162,7 +1162,7 @@ void Solver::AdaGrad<T>::step(
 	T regc
 	) {
 	for (auto& param : parameters) {
-		auto& s = gsums[param->random_id];
+		auto& s = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
 		if (param->sparse) {
 			for (auto& i : *(param->sparse_row_keys)) {
 				param->dw.row(i) = param->dw.row(i).array().min(clipval).max(-clipval).matrix() + (regc * param->w.row(i));
@@ -1191,7 +1191,7 @@ template<typename T>
 void Solver::AdaGrad<T>::reset_caches(
 	vector<typename Solver::AdaGrad<T>::shared_mat>& parameters) {
 	for (auto& param : parameters) {
-		auto& s = gsums[param->random_id];
+		auto& s = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
 		s.fill(0);
 	}
 }
@@ -1203,10 +1203,10 @@ void Solver::AdaGrad<T>::create_gradient_caches(
 		// this operation should be run once unless
 		// we expect the parameters of the model
 		// to change online (probably not the case)
-		if (!(gsums.count(param->random_id) > 0)) {
+		if (!(gsums.count(PARAM_KEY_FOR_LOOKUP_TABLE) > 0)) {
 			auto new_cache = this->gsums.emplace(
 				std::piecewise_construct,
-	              std::forward_as_tuple(param->random_id),
+	              std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
 	              std::forward_as_tuple(param->n, param->d));
 			// initialize values for step cache to zero:
 			new_cache.first->second.fill(0);
@@ -1243,10 +1243,10 @@ void Solver::RMSProp<T>::create_gradient_caches(
 		// this operation should be run once unless
 		// we expect the parameters of the model
 		// to change online (probably not the case)
-		if (!(gsums.count(param->random_id) > 0)) {
+		if (!(gsums.count(PARAM_KEY_FOR_LOOKUP_TABLE) > 0)) {
 			auto new_cache = this->gsums.emplace(
 				std::piecewise_construct,
-	              std::forward_as_tuple(param->random_id),
+	              std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
 	              std::forward_as_tuple(param->n, param->d));
 			// initialize values for step cache to zero:
 			new_cache.first->second.fill(0);
@@ -1261,7 +1261,7 @@ void Solver::RMSProp<T>::step(
 	T regc
 	) {
 	for (auto& param : parameters) {
-		auto& s = gsums[param->random_id];
+		auto& s = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
 		if (param->sparse) {
 
 			for (auto& i : *(param->sparse_row_keys)) {

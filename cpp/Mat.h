@@ -9,6 +9,7 @@
 // doesnt work, but its also not useful for now
 // #define EIGEN_USE_LAPACKE
 #include <Eigen>
+#include <iostream>
 
 typedef Eigen::MatrixBase<Eigen::Matrix<unsigned int, Eigen::Dynamic, Eigen::Dynamic> >::ColXpr eigen_index_block;
 typedef Eigen::Matrix<unsigned int, Eigen::Dynamic, 1> eigen_index_vector;
@@ -162,7 +163,7 @@ namespace Solver {
 		typedef Mat<T>                      mat;
 		typedef std::shared_ptr<mat> shared_mat;
 		typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
-		std::unordered_map<random_t, eigen_mat> gsums;
+		std::unordered_map<mat, eigen_mat> gsums;
 		public:
 			RMSProp (T decay_rate= 0.999, T smooth_eps =1e-8, T clipval = 5.0);
 			RMSProp (std::vector<shared_mat>&, T decay_rate= 0.999, T smooth_eps =1e-8, T clipval = 5.0);
@@ -177,8 +178,8 @@ namespace Solver {
 		typedef Mat<T>                      mat;
 		typedef std::shared_ptr<mat> shared_mat;
 		typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
-		std::unordered_map<random_t, eigen_mat> gsums;
-		std::unordered_map<random_t, eigen_mat> xsums;
+		std::unordered_map<mat, eigen_mat> gsums;
+		std::unordered_map<mat, eigen_mat> xsums;
 		public:
 			AdaDelta (T rho= 0.95, T smooth_eps =1e-8, T clipval = 5.0);
 			AdaDelta (std::vector<shared_mat>&, T rho= 0.95, T smooth_eps =1e-8, T clipval = 5.0);
@@ -192,7 +193,7 @@ namespace Solver {
 		typedef Mat<T>                      mat;
 		typedef std::shared_ptr<mat> shared_mat;
 		typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
-		std::unordered_map<random_t, eigen_mat> gsums;
+		std::unordered_map<mat, eigen_mat> gsums;
 		public:
 			AdaGrad (T smooth_eps =1e-8, T clipval = 5.0);
 			AdaGrad (std::vector<shared_mat>&, T smooth_eps =1e-8, T clipval = 5.0);

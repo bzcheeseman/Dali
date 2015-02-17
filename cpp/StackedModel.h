@@ -72,6 +72,8 @@ class StackedModel {
 
 		template<typename K>
 		std::string reconstruct_lattice_string(K, utils::OntologyBranch::shared_branch, int);
+
+		StackedModel shallow_copy() const;
 };
 
 #endif

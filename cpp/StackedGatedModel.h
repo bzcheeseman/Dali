@@ -79,6 +79,8 @@ class StackedGatedModel {
 
 		template<typename K>
 		std::string reconstruct_lattice_string(K, utils::OntologyBranch::shared_branch, int);
+
+		StackedGatedModel shallow_copy() const;
 };
 
 #endif

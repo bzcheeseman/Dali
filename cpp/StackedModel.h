@@ -36,6 +36,7 @@ class StackedModel {
 
 	inline void name_parameters();
 	inline void construct_LSTM_cells();
+	inline void construct_LSTM_cells(const std::vector<LSTM<T>>&, bool, bool);
 
 	public:
 		std::vector<lstm> cells;
@@ -58,6 +59,7 @@ class StackedModel {
 		StackedModel(int, int, int, int, int);
 		StackedModel(int, int, int, std::vector<int>&);
 		StackedModel(const config_t&);
+		StackedModel(const StackedModel<T>&, bool, bool);
 		static void add_options_to_CLI(optparse::OptionParser&);
 		T masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, shared_eigen_index_vector, shared_eigen_index_vector, uint offset=0);
 		T masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, uint, shared_eigen_index_vector, uint offset=0);
@@ -73,7 +75,7 @@ class StackedModel {
 		template<typename K>
 		std::string reconstruct_lattice_string(K, utils::OntologyBranch::shared_branch, int);
 
-		StackedModel shallow_copy() const;
+		StackedModel<T> shallow_copy() const;
 };
 
 #endif

@@ -290,10 +290,38 @@ void StackedModel<T>::name_parameters() {
 	decoder.b->set_name("Decoder Bias");
 }
 
-// Private method for building lstm cells:
+/**
+Construct LSTM Cells (private)
+------------------------------
+
+Construct LSTM cells using the provided hidden sizes and
+the input size to the Stacked LSTMs.
+
+**/
 template<typename T>
 void StackedModel<T>::construct_LSTM_cells() {
 	cells = StackedCells<lstm>(input_size, hidden_sizes);
+}
+
+/**
+Construct LSTM Cells (private)
+------------------------------
+
+Constructs cells using either deep or shallow copies from
+other cells.
+
+Inputs
+------
+
+const std::vector<LSTM<T>>& cells : cells for copy
+                      bool copy_w : should each LSTM copy the parameters or share them
+                     bool copy_dw : should each LSTM copy the gradient memory `dw` or share it.
+
+
+**/
+template<typename T>
+void StackedModel<T>::construct_LSTM_cells(const vector<StackedModel<T>::lstm>& _cells, bool copy_w, bool copy_dw) {
+	cells = StackedCells<lstm>(_cells, copy_w, copy_dw);
 }
 
 template<typename T>
@@ -362,6 +390,79 @@ StackedModel<T>::StackedModel (int _vocabulary_size, int _input_size, int _outpu
 	embedding = make_shared<mat>(vocabulary_size, input_size, (T) -0.05, (T) 0.05);
 	construct_LSTM_cells();
 	name_parameters();
+}
+
+/**
+StackedModel<T>::StackedModel
+-----------------------------
+
+Copy constructor with option to make a shallow
+or deep copy of the underlying parameters.
+
+If the copy is shallow then the parameters are shared
+but separate gradients `dw` are used for each of 
+thread StackedModel<T>.
+
+Shallow copies are useful for Hogwild and multithreaded
+training
+
+See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`,
+`StackedModel<T>::shallow_copy`
+
+Inputs
+------
+
+      StackedModel<T> l : StackedModel from which to source parameters and dw
+            bool copy_w : whether parameters for new StackedModel should be copies
+                          or shared
+           bool copy_dw : whether gradients for new StackedModel should be copies
+                          shared (Note: sharing `dw` should be used with
+                          caution and can lead to unpredictable behavior
+                          during optimization).
+
+Outputs
+-------
+
+StackedModel<T> out : the copied StackedModel with deep or shallow copy of parameters
+
+**/
+template<typename T>
+StackedModel<T>::StackedModel (const StackedModel<T>& model, bool copy_w, bool copy_dw) : 
+    input_size(model.input_size),
+	output_size(model.output_size),
+	vocabulary_size(model.vocabulary_size),
+	stack_size(model.stack_size),
+	hidden_sizes(model.hidden_sizes),
+	decoder(model.decoder, copy_w, copy_dw)
+    {
+    embedding = make_shared<mat>(*model.embedding, copy_w, copy_dw);
+    construct_LSTM_cells(model.cells, copy_w, copy_dw);
+    name_parameters();
+}
+
+/**
+Shallow Copy
+------------
+
+Perform a shallow copy of a StackedModel<T> that has
+the same parameters but separate gradients `dw`
+for each of its parameters.
+
+Shallow copies are useful for Hogwild and multithreaded
+training
+
+See `StackedModel<T>::shallow_copy`, `examples/character_prediction.cpp`.
+
+Outputs
+-------
+
+StackedModel<T> out : the copied layer with sharing parameters,
+                           but with separate gradients `dw`
+
+**/
+template<typename T>
+StackedModel<T> StackedModel<T>::shallow_copy() const {
+    return StackedModel<T>(*this, false, true);
 }
 
 // Nested Templates !!

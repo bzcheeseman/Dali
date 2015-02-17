@@ -330,10 +330,38 @@ void StackedGatedModel<T>::name_parameters() {
 	decoder.b->set_name("Decoder Bias");
 }
 
-// Private method for building lstm cells:
+/**
+Construct LSTM Cells (private)
+------------------------------
+
+Construct LSTM cells using the provided hidden sizes and
+the input size to the Stacked LSTMs.
+
+**/
 template<typename T>
 void StackedGatedModel<T>::construct_LSTM_cells() {
 	cells = StackedCells<lstm>(input_size, hidden_sizes);
+}
+
+/**
+Construct LSTM Cells (private)
+------------------------------
+
+Constructs cells using either deep or shallow copies from
+other cells.
+
+Inputs
+------
+
+const std::vector<LSTM<T>>& cells : cells for copy
+                      bool copy_w : should each LSTM copy the parameters or share them
+                     bool copy_dw : should each LSTM copy the gradient memory `dw` or share it.
+
+
+**/
+template<typename T>
+void StackedGatedModel<T>::construct_LSTM_cells(const vector<StackedGatedModel<T>::lstm>& _cells, bool copy_w, bool copy_dw) {
+	cells = StackedCells<lstm>(_cells, copy_w, copy_dw);
 }
 
 template<typename T>
@@ -406,10 +434,84 @@ StackedGatedModel<T>::StackedGatedModel (int _vocabulary_size, int _input_size, 
 	hidden_sizes(_hidden_sizes),
 	gate(_input_size, _hidden_sizes[0]),
 	decoder(_hidden_sizes[_hidden_sizes.size()-1], _output_size) {
-
 	embedding = make_shared<mat>(vocabulary_size, input_size, (T) -0.05, (T) 0.05);
 	construct_LSTM_cells();
 	name_parameters();
+}
+
+/**
+StackedGatedModel<T>::StackedGatedModel
+-------------
+
+Copy constructor with option to make a shallow
+or deep copy of the underlying parameters.
+
+If the copy is shallow then the parameters are shared
+but separate gradients `dw` are used for each of 
+thread StackedGatedModel<T>.
+
+Shallow copies are useful for Hogwild and multithreaded
+training
+
+See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`,
+`StackedGatedModel<T>::shallow_copy`
+
+Inputs
+------
+
+      StackedGatedModel<T> l : StackedGatedModel from which to source parameters and dw
+    bool copy_w : whether parameters for new StackedGatedModel should be copies
+                  or shared
+   bool copy_dw : whether gradients for new StackedGatedModel should be copies
+                  shared (Note: sharing `dw` should be used with
+                  caution and can lead to unpredictable behavior
+                  during optimization).
+
+Outputs
+-------
+
+StackedGatedModel<T> out : the copied StackedGatedModel with deep or shallow copy of parameters
+
+**/
+template<typename T>
+StackedGatedModel<T>::StackedGatedModel (const StackedGatedModel<T>& model, bool copy_w, bool copy_dw) : 
+    input_size(model.input_size),
+	output_size(model.output_size),
+	vocabulary_size(model.vocabulary_size),
+	memory_penalty(model.memory_penalty),
+	stack_size(model.stack_size),
+	hidden_sizes(model.hidden_sizes),
+	gate(model.gate, copy_w, copy_dw),
+	decoder(model.decoder, copy_w, copy_dw)
+    {
+    embedding = make_shared<mat>(*model.embedding, copy_w, copy_dw);
+    construct_LSTM_cells(model.cells, copy_w, copy_dw);
+    name_parameters();
+}
+
+/**
+Shallow Copy
+------------
+
+Perform a shallow copy of a StackedGatedModel<T> that has
+the same parameters but separate gradients `dw`
+for each of its parameters.
+
+Shallow copies are useful for Hogwild and multithreaded
+training
+
+See `StackedGatedModel<T>::shallow_copy`, `examples/character_prediction.cpp`.
+
+Outputs
+-------
+
+StackedGatedModel<T> out : the copied layer with sharing parameters,
+                           but with separate gradients `dw`
+
+**/
+template<typename T>
+StackedGatedModel<T> StackedGatedModel<T>::shallow_copy() const {
+    return StackedGatedModel<T>(*this, false, true);
 }
 
 // Nested Templates !!

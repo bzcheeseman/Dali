@@ -38,12 +38,14 @@ class StackedGatedModel {
 	typedef GatedInput<T>            gate_t;
 	typedef std::map<std::string, std::vector<std::string>> config_t;
 
-	std::vector<lstm> cells;
+	
 
 	inline void name_parameters();
 	inline void construct_LSTM_cells();
+	inline void construct_LSTM_cells(const std::vector<lstm>&, bool, bool);
 
 	public:
+		std::vector<lstm> cells;
 		shared_mat    embedding;
 		typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
 		typedef std::shared_ptr< index_mat > shared_index_mat;
@@ -65,6 +67,7 @@ class StackedGatedModel {
 		StackedGatedModel(int, int, int, int, int, T _memory_penalty = 0.3);
 		StackedGatedModel(int, int, int, std::vector<int>&, T _memory_penalty = 0.3);
 		StackedGatedModel(const config_t&);
+		StackedGatedModel(const StackedGatedModel<T>&, bool, bool);
 		static void add_options_to_CLI(optparse::OptionParser&);
 		std::tuple<T, T> masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, shared_eigen_index_vector, shared_eigen_index_vector, uint offset=0);
 		std::tuple<T, T> masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, uint, shared_eigen_index_vector, uint offset=0);
@@ -80,7 +83,8 @@ class StackedGatedModel {
 		template<typename K>
 		std::string reconstruct_lattice_string(K, utils::OntologyBranch::shared_branch, int);
 
-		StackedGatedModel shallow_copy() const;
+		StackedGatedModel<T> shallow_copy() const;
+
 };
 
 #endif

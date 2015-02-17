@@ -109,6 +109,9 @@ class LSTM {
 template<typename celltype>
 std::vector<celltype> StackedCells(const int&, const std::vector<int>&);
 
+template<typename celltype>
+std::vector<celltype> StackedCells(const std::vector<celltype>&, bool, bool);
+
 template<typename T>
 std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>> forward_LSTMs(Graph<T>&,
     std::shared_ptr<Mat<T>>,

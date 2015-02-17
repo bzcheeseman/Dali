@@ -464,6 +464,15 @@ vector<celltype> StackedCells(const int& input_size, const vector<int>& hidden_s
     return cells;
 }
 
+template<typename celltype>
+vector<celltype> StackedCells(const vector<celltype>& source_cells, bool copy_w, bool copy_dw) {
+    vector<celltype> cells;
+    cells.reserve(source_cells.size());
+    for (const auto& cell : source_cells)
+        cells.emplace_back(cell, copy_w, copy_dw);
+    return cells;
+}
+
 template<typename T>
 pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> forward_LSTMs(Graph<T>& G,
     shared_ptr<Mat<T>> input_vector,
@@ -518,6 +527,10 @@ template class LSTM<double>;
 
 template std::vector<LSTM<float>> StackedCells <LSTM<float>>(const int&, const std::vector<int>&);
 template std::vector<LSTM<double>> StackedCells <LSTM<double>>(const int&, const std::vector<int>&);
+
+
+template std::vector<LSTM<float>> StackedCells <LSTM<float>>(const std::vector<LSTM<float>>&, bool, bool);
+template std::vector<LSTM<double>> StackedCells <LSTM<double>>(const std::vector<LSTM<double>>&, bool, bool);
 
 template pair<vector<shared_ptr<Mat<double>>>, vector<shared_ptr<Mat<double>>>> forward_LSTMs(Graph<double>&,
     shared_ptr<Mat<double>>,

@@ -17,6 +17,71 @@ typename Layer<T>::shared_mat Layer<T>::activate(Graph<T>& G, typename Layer<T>:
     return G.mul_with_bias(W, input_vector, b);
 }
 
+/**
+Layer<T>::Layer
+---------------
+
+Copy constructor with option to make a shallow
+or deep copy of the underlying parameters.
+
+If the copy is shallow then the parameters are shared
+but separate gradients `dw` are used for each of 
+thread Layer<T>.
+
+Shallow copies are useful for Hogwild and multithreaded
+training
+
+See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`,
+`Layer<T>::shallow_copy`
+
+Inputs
+------
+
+  Layer<T> l : layer from which to source parameters and dw
+ bool copy_w : whether parameters for new layer should be copies
+               or shared
+bool copy_dw : whether gradients for new layer should be copies
+               shared (Note: sharing `dw` should be used with
+               caution and can lead to unpredictable behavior
+               during optimization).
+
+Outputs
+-------
+
+Layer<T> out : the copied layer with deep or shallow copy
+
+**/
+template<typename T>
+Layer<T>::Layer (const Layer<T>& layer, bool copy_w, bool copy_dw) : hidden_size(layer.hidden_size), input_size(layer.input_size) {
+    W = make_shared<mat>(layer.W, copy_w, copy_dw);
+    b = make_shared<mat>(layer.b, copy_w, copy_dw);
+}
+
+/**
+Shallow Copy
+------------
+
+Perform a shallow copy of a Layer<T> that has
+the same parameters but separate gradients `dw`
+for each of its parameters.
+
+Shallow copies are useful for Hogwild and multithreaded
+training
+
+See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`.
+
+Outputs
+-------
+
+Layer<T> out : the copied layer with sharing parameters,
+               but with separate gradients `dw`
+
+**/
+template<typename T>
+Layer<T> Layer<T>::shallow_copy() const {
+    return Layer(*this, false, true);
+}
+
 template<typename T>
 std::vector<typename Layer<T>::shared_mat> Layer<T>::parameters() const{
     return std::vector<typename Layer<T>::shared_mat>({W, b});

@@ -8,9 +8,6 @@ using std::ofstream;
 using std::set;
 using std::make_shared;
 
-
-thread_local int utils::thread_id = -1;
-
 const char* utils::end_symbol          = "**END**";
 const char* utils::unknown_word_symbol = "███████";
 

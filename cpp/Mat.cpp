@@ -25,18 +25,116 @@ Mat<T>::Mat (int _n, int _d, bool empty) : sparse_row_keys(NULL), sparse(false),
 }
 
 template<typename T>
-void Mat<T>::set_name(string& _name) {
-	name = std::make_shared<string>(_name);
+Mat<T>::Mat (string fname) : sparse_row_keys(NULL), sparse(false), w(NULL, 0, 0), dw(NULL, 0, 0), random_id(utils::get_random_id()) {
+	auto arr = cnpy::npy_load(fname);
+	n = arr.shape[0];
+	d = arr.shape.size() > 1 ? arr.shape[1] : 1;
+
+	_w  = eigen_mat(n,d);
+    _dw = eigen_mat::Zero(n,d);
+
+	if (arr.word_size == sizeof(double)) {
+		double* loaded_data_double = reinterpret_cast<double*>(arr.data);
+		if (arr.fortran_order) {
+			Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_double_ft(loaded_data_double, n, d);
+			_w = wrapped_mat_double_ft.cast<T>();
+		} else {
+			Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_double(loaded_data_double, n, d);
+			_w = wrapped_mat_double.cast<T>();
+		}
+	} else if (arr.word_size == sizeof(float)) {
+		float* loaded_data_float = reinterpret_cast<float*>(arr.data);
+		if (arr.fortran_order) {
+			Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_float_ft(loaded_data_float, n, d);
+			_w = wrapped_mat_float_ft.cast<T>();
+		} else {
+			Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_float(loaded_data_float, n, d);
+			_w = wrapped_mat_float.cast<T>();
+		}
+	} else {
+		stringstream error_msg;
+		error_msg << "Could not load numpy matrix : \""
+		   << fname << "\". File dtype (" << arr.word_size << ") not recognized as float or double.";
+		throw std::invalid_argument(error_msg.str());
+	}
+	arr.destruct();
+	new (&w) eigen_mat_view(_w.data(), n, d);
+	new (&dw) eigen_mat_view(_dw.data(), n, d);
+
 }
 
+/*
+Mat<T>::Mat<T>
+--------------
+
+Matrix constructor using a zero mean
+normal distribution with a user provided 
+standard deviation.
+
+Inputs
+------
+
+int _n : number of rows
+int _d : number of columns
+ T std : standard deviation for normal distribution
+
+Outputs
+-------
+
+Mat<T> out : the matrix filled with random numbers from ~ N(0, std^2)
+
+See `Mat<T>::Mat(int, int, T, T)` for uniform distribution (below).
+
+*/
 template<typename T>
-void Mat<T>::set_name(char * _name) {
-	name = std::make_shared<string>(_name);
+Mat<T>::Mat (int _n, int _d, T std) : sparse_row_keys(NULL), sparse(false), name(NULL), w(NULL, _n, _d), dw(NULL, _n, _d), n(_n), d(_d), random_id(utils::get_random_id()) {
+	std::default_random_engine generator;
+	std::normal_distribution<T> distribution(0.0, std);
+	std::random_device rd;
+	generator.seed(rd());
+	auto randn = [&] (int) {return distribution(generator);};
+	_w = eigen_mat::NullaryExpr(n,d, randn);
+	_dw = eigen_mat::Zero(n,d);
+	new (&w) eigen_mat_view(_w.data(), n, d);
+	new (&dw) eigen_mat_view(_dw.data(), n, d);
 }
 
+/*
+Mat<T>::Mat<T>
+--------------
+
+Matrix constructor using a uniform
+distribution with user defined min
+and max support.
+
+Inputs
+------
+
+  int _n : number of rows
+  int _d : number of columns
+ T lower : minimum of uniform distribution
+ T upper : maximum of uniform distribution
+
+Outputs
+-------
+
+Mat<T> out : the matrix filled with random numbers from ~U(lower, upper)
+
+See `Mat<T>::Mat(int, int, T)` for normal distribution (above)
+*/
 template<typename T>
-void Mat<T>::set_name(const char * _name) {
-	name = std::make_shared<string>(_name);
+Mat<T>::Mat (int _n, int _d, T lower, T upper) : sparse_row_keys(NULL), sparse(false), name(NULL), w(NULL, _n, _d), dw(NULL, _n, _d), n(_n), d(_d), random_id(utils::get_random_id()) {
+	std::default_random_engine generator;
+	std::uniform_real_distribution<T> distribution(lower, upper);
+	std::random_device rd;
+	generator.seed(rd());
+	auto randn = [&] (int) {return distribution(generator);};
+	_w = eigen_mat::NullaryExpr(n,d, randn);
+	_dw = eigen_mat::Zero(n,d);
+	//w = eigen_mat_view(_w.data(), n, d);
+	//dw = eigen_mat_view(_dw.data(), n, d);
+	new (&w) eigen_mat_view(_w.data(), n, d);
+	new (&dw) eigen_mat_view(_dw.data(), n, d);
 }
 
 /**
@@ -114,9 +212,49 @@ Outputs
 Mat<T> out : shallow copy of m
 
 **/
+
 template<typename T>
 Mat<T> Mat<T>::shallow_copy(const Mat<T>& m) {
 	return Mat(m, false, true);
+}
+
+/*
+Set Name
+--------
+
+Used for giving names to matrices for debugging or convenience purposes,
+but the names have no bearing on computation or identification in
+lookup tables;
+
+Inputs
+------
+
+std::string& name : name the Mat should take on
+
+*/
+
+template<typename T>
+void Mat<T>::set_name(string& _name) {
+	name = std::make_shared<string>(_name);
+}
+
+/*
+Set Name
+--------
+See `Mat<T>::set_name` above
+*/
+template<typename T>
+void Mat<T>::set_name(char * _name) {
+	name = std::make_shared<string>(_name);
+}
+/*
+Set Name
+--------
+See `Mat<T>::set_name` above
+*/
+template<typename T>
+void Mat<T>::set_name(const char * _name) {
+	name = std::make_shared<string>(_name);
 }
 
 template<typename T>
@@ -192,77 +330,7 @@ void Mat<T>::npy_load(string fname) {
 }
 
 template<typename T>
-Mat<T>::Mat (string fname) : sparse_row_keys(NULL), sparse(false), w(NULL, 0, 0), dw(NULL, 0, 0), random_id(utils::get_random_id()) {
-
-	auto arr = cnpy::npy_load(fname);
-
-	n = arr.shape[0];
-	d = arr.shape.size() > 1 ? arr.shape[1] : 1;
-
-	_w  = eigen_mat(n,d);
-    _dw = eigen_mat::Zero(n,d);
-
-	if (arr.word_size == sizeof(double)) {
-		double* loaded_data_double = reinterpret_cast<double*>(arr.data);
-		if (arr.fortran_order) {
-			Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_double_ft(loaded_data_double, n, d);
-			_w = wrapped_mat_double_ft.cast<T>();
-		} else {
-			Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_double(loaded_data_double, n, d);
-			_w = wrapped_mat_double.cast<T>();
-		}
-	} else if (arr.word_size == sizeof(float)) {
-		float* loaded_data_float = reinterpret_cast<float*>(arr.data);
-		if (arr.fortran_order) {
-			Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_float_ft(loaded_data_float, n, d);
-			_w = wrapped_mat_float_ft.cast<T>();
-		} else {
-			Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_float(loaded_data_float, n, d);
-			_w = wrapped_mat_float.cast<T>();
-		}
-	} else {
-		stringstream error_msg;
-		error_msg << "Could not load numpy matrix : \""
-		   << fname << "\". File dtype (" << arr.word_size << ") not recognized as float or double.";
-		throw std::invalid_argument(error_msg.str());
-	}
-	arr.destruct();
-	new (&w) eigen_mat_view(_w.data(), n, d);
-	new (&dw) eigen_mat_view(_dw.data(), n, d);
-
-}
-
-template<typename T>
 Mat<T>::~Mat() {}
-
-template<typename T>
-Mat<T>::Mat (int _n, int _d, T std) : sparse_row_keys(NULL), sparse(false), name(NULL), w(NULL, _n, _d), dw(NULL, _n, _d), n(_n), d(_d), random_id(utils::get_random_id()) {
-	std::default_random_engine generator;
-	std::normal_distribution<T> distribution(0.0, std);
-	std::random_device rd;
-	generator.seed(rd());
-	auto randn = [&] (int) {return distribution(generator);};
-	_w = eigen_mat::NullaryExpr(n,d, randn);
-	_dw = eigen_mat::Zero(n,d);
-	new (&w) eigen_mat_view(_w.data(), n, d);
-	new (&dw) eigen_mat_view(_dw.data(), n, d);
-
-}
-
-template<typename T>
-Mat<T>::Mat (int _n, int _d, T lower, T upper) : sparse_row_keys(NULL), sparse(false), name(NULL), w(NULL, _n, _d), dw(NULL, _n, _d), n(_n), d(_d), random_id(utils::get_random_id()) {
-	std::default_random_engine generator;
-	std::uniform_real_distribution<T> distribution(lower, upper);
-	std::random_device rd;
-	generator.seed(rd());
-	auto randn = [&] (int) {return distribution(generator);};
-	_w = eigen_mat::NullaryExpr(n,d, randn);
-	_dw = eigen_mat::Zero(n,d);
-	//w = eigen_mat_view(_w.data(), n, d);
-	//dw = eigen_mat_view(_dw.data(), n, d);
-	new (&w) eigen_mat_view(_w.data(), n, d);
-	new (&dw) eigen_mat_view(_dw.data(), n, d);
-}
 
 template<typename T>
 Mat<T> Mat<T>::RandMat(int n, int d, T std) {

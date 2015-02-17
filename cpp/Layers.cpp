@@ -79,7 +79,7 @@ Layer<T> out : the copied layer with sharing parameters,
 **/
 template<typename T>
 Layer<T> Layer<T>::shallow_copy() const {
-    return Layer(*this, false, true);
+    return Layer<T>(*this, false, true);
 }
 
 template<typename T>
@@ -112,6 +112,72 @@ RNN<T>::RNN (int _input_size, int _hidden_size, int _output_size) : hidden_size(
     create_variables();
 }
 
+/**
+RNN<T>::RNN
+---------------
+
+Copy constructor with option to make a shallow
+or deep copy of the underlying parameters.
+
+If the copy is shallow then the parameters are shared
+but separate gradients `dw` are used for each of 
+thread RNN<T>.
+
+Shallow copies are useful for Hogwild and multithreaded
+training
+
+See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`,
+`RNN<T>::shallow_copy`
+
+Inputs
+------
+
+    RNN<T> l : RNN from which to source parameters and dw
+ bool copy_w : whether parameters for new RNN should be copies
+               or shared
+bool copy_dw : whether gradients for new RNN should be copies
+               shared (Note: sharing `dw` should be used with
+               caution and can lead to unpredictable behavior
+               during optimization).
+
+Outputs
+-------
+
+RNN<T> out : the copied RNN with deep or shallow copy of parameters
+
+**/
+template<typename T>
+RNN<T>::RNN (const RNN<T>& rnn, bool copy_w, bool copy_dw) : hidden_size(rnn.hidden_size), input_size(rnn.input_size), output_size(rnn.output_size) {
+    Wx = make_shared<mat>(rnn.Wx, copy_w, copy_dw);
+    Wh = make_shared<mat>(rnn.Wh, copy_w, copy_dw);
+    b = make_shared<mat>(rnn.b, copy_w, copy_dw);
+}
+
+/**
+Shallow Copy
+------------
+
+Perform a shallow copy of a RNN<T> that has
+the same parameters but separate gradients `dw`
+for each of its parameters.
+
+Shallow copies are useful for Hogwild and multithreaded
+training
+
+See `RNN<T>::shallow_copy`, `examples/character_prediction.cpp`.
+
+Outputs
+-------
+
+RNN<T> out : the copied layer with sharing parameters,
+               but with separate gradients `dw`
+
+**/
+template<typename T>
+RNN<T> RNN<T>::shallow_copy() const {
+    return RNN<T>(*this, false, true);
+}
+
 template<typename T>
 typename RNN<T>::shared_mat RNN<T>::activate(
     Graph<T>& G,
@@ -130,6 +196,71 @@ GatedInput<T>::GatedInput (int _input_size, int _hidden_size) : in_gate(_input_s
     in_gate.Wh->set_name("Gated Input Wx");
 }
 
+/**
+GatedInput<T>::GatedInput
+-------------------------
+
+Copy constructor with option to make a shallow
+or deep copy of the underlying parameters.
+
+If the copy is shallow then the parameters are shared
+but separate gradients `dw` are used for each of 
+thread GatedInput<T>.
+
+Shallow copies are useful for Hogwild and multithreaded
+training
+
+See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`,
+`GatedInput<T>::shallow_copy`
+
+Inputs
+------
+
+    GatedInput<T> l : GatedInput from which to source parameters and dw
+        bool copy_w : whether parameters for new GatedInput should be copies
+                      or shared
+       bool copy_dw : whether gradients for new GatedInput should be copies
+                      shared (Note: sharing `dw` should be used with
+                      caution and can lead to unpredictable behavior
+                      during optimization).
+
+Outputs
+-------
+
+GatedInput<T> out : the copied GatedInput with deep or shallow copy of parameters
+
+**/
+template<typename T>
+GatedInput<T>::GatedInput (const GatedInput<T>& gate, bool copy_w, bool copy_dw) : in_gate(gate.in_gate, copy_w, copy_dw) {
+    in_gate.b->set_name("Gated Input bias");
+    in_gate.Wx->set_name("Gated Input Wx");
+    in_gate.Wh->set_name("Gated Input Wx");
+}
+
+/**
+Shallow Copy
+------------
+
+Perform a shallow copy of a GatedInput<T> that has
+the same parameters but separate gradients `dw`
+for each of its parameters.
+
+Shallow copies are useful for Hogwild and multithreaded
+training
+
+See `GatedInput<T>::shallow_copy`, `examples/character_prediction.cpp`.
+
+Outputs
+-------
+
+GatedInput<T> out : the copied layer with sharing parameters,
+                    but with separate gradients `dw`
+
+**/
+template<typename T>
+GatedInput<T> GatedInput<T>::shallow_copy() const {
+    return GatedInput<T>(*this, false, true);
+}
 
 template<typename T>
 std::vector<typename GatedInput<T>::shared_mat> GatedInput<T>::parameters () const {
@@ -139,7 +270,6 @@ std::vector<typename GatedInput<T>::shared_mat> GatedInput<T>::parameters () con
 template<typename T>
 typename GatedInput<T>::shared_mat GatedInput<T>::activate(Graph<T>& G, typename GatedInput<T>::shared_mat input_vector, typename GatedInput<T>::shared_mat prev_hidden) const {
     auto unsigmoided_gate = in_gate.activate(G, input_vector, prev_hidden);
-    unsigmoided_gate->set_name("unsigmoided_gate");
     return G.sigmoid( unsigmoided_gate );
 }
 
@@ -190,6 +320,77 @@ LSTM<T>::LSTM (int& _input_size, int& _hidden_size) :
     // http://yyue.blogspot.fr/2015/01/a-brief-overview-of-deep-learning.html
     forget_layer.b->w(0) = 100;
     name_internal_layers();
+}
+
+/**
+LSTM<T>::LSTM
+-------------
+
+Copy constructor with option to make a shallow
+or deep copy of the underlying parameters.
+
+If the copy is shallow then the parameters are shared
+but separate gradients `dw` are used for each of 
+thread LSTM<T>.
+
+Shallow copies are useful for Hogwild and multithreaded
+training
+
+See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`,
+`LSTM<T>::shallow_copy`
+
+Inputs
+------
+
+      LSTM<T> l : LSTM from which to source parameters and dw
+    bool copy_w : whether parameters for new LSTM should be copies
+                  or shared
+   bool copy_dw : whether gradients for new LSTM should be copies
+                  shared (Note: sharing `dw` should be used with
+                  caution and can lead to unpredictable behavior
+                  during optimization).
+
+Outputs
+-------
+
+LSTM<T> out : the copied LSTM with deep or shallow copy of parameters
+
+**/
+template<typename T>
+LSTM<T>::LSTM (const LSTM<T>& lstm, bool copy_w, bool copy_dw) : 
+    hidden_size(lstm.hidden_size),
+    input_size(lstm.input_size),
+    input_layer(lstm.input_layer, copy_w, copy_dw),
+    forget_layer(lstm.forget_layer, copy_w, copy_dw),
+    output_layer(lstm.output_layer, copy_w, copy_dw),
+    cell_layer(lstm.cell_layer, copy_w, copy_dw)
+    {
+    name_internal_layers();
+}
+
+/**
+Shallow Copy
+------------
+
+Perform a shallow copy of a LSTM<T> that has
+the same parameters but separate gradients `dw`
+for each of its parameters.
+
+Shallow copies are useful for Hogwild and multithreaded
+training
+
+See `LSTM<T>::shallow_copy`, `examples/character_prediction.cpp`.
+
+Outputs
+-------
+
+LSTM<T> out : the copied layer with sharing parameters,
+                    but with separate gradients `dw`
+
+**/
+template<typename T>
+LSTM<T> LSTM<T>::shallow_copy() const {
+    return LSTM<T>(*this, false, true);
 }
 
 template<typename T>

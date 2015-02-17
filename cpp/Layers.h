@@ -23,8 +23,9 @@ class Layer {
         const int input_size;
         std::vector<shared_mat> parameters() const;
         Layer (int, int);
+        Layer (const Layer&, bool, bool);
         shared_mat activate(Graph<T>&, shared_mat) const;
-        Layer shallow_copy() const;
+        Layer<T> shallow_copy() const;
 };
 
 template<typename T>
@@ -49,8 +50,9 @@ class RNN {
         std::vector<shared_mat> parameters() const;
         RNN (int, int);
         RNN (int, int, int);
+        RNN (const RNN&, bool, bool);
         shared_mat activate(Graph<T>&, shared_mat, shared_mat) const;
-        RNN shallow_copy() const;
+        RNN<T> shallow_copy() const;
 };
 
 template<typename T>
@@ -62,8 +64,9 @@ class GatedInput {
         std::vector<shared_mat> parameters() const;
         layer_type in_gate;
         GatedInput (int, int);
+        GatedInput (const GatedInput&, bool, bool);
         shared_mat activate(Graph<T>&, shared_mat, shared_mat) const;
-        GatedInput shallow_copy() const;
+        GatedInput<T> shallow_copy() const;
 };
 
 template<typename T>
@@ -93,6 +96,7 @@ class LSTM {
         const int input_size;
         LSTM (int, int);
         LSTM (int&, int&);
+        LSTM (const LSTM&, bool, bool);
         std::vector<shared_mat> parameters() const;
         static std::pair<std::vector<shared_mat>, std::vector<shared_mat>> initial_states(std::vector<int>&);
         std::pair<shared_mat, shared_mat> activate(
@@ -100,7 +104,7 @@ class LSTM {
             shared_mat,
             shared_mat,
             shared_mat) const;
-        GatedInput shallow_copy() const;
+        LSTM<T> shallow_copy() const;
 };
 
 template<typename celltype>

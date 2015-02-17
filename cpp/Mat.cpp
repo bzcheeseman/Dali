@@ -9,6 +9,12 @@ using std::string;
 using std::stringstream;
 
 template<typename T>
+void Mat<T>::encapsulate(const Mat<T>& w_source) {
+	_w.resize(0, 0);
+	new (&w) eigen_mat_view(w_source.w.data(), n, d);
+}
+
+template<typename T>
 Mat<T>::Mat (int _n, int _d) : sparse_row_keys(NULL), sparse(false), name(NULL), w(NULL, _n, _d), dw(NULL, _n, _d),  n(_n), d(_d), random_id(utils::get_random_id()) {
     _w = eigen_mat::Zero(n,d);
     _dw = eigen_mat::Zero(n,d);

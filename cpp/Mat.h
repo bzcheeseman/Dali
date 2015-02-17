@@ -52,6 +52,9 @@ template<typename T> class Mat {
 		static Mat RandMat(int, int, T);
 		static Mat Empty(int, int);
 		operator std::string() const;
+
+		// TODO: get the hell out of there
+		void encapsulate(const Mat<T>&);
 };
 
 template<typename T>

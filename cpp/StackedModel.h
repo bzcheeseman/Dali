@@ -33,16 +33,16 @@ class StackedModel {
 	typedef Graph<T>                graph_t;
 	typedef std::map<std::string, std::vector<std::string>> config_t;
 
-	std::vector<lstm> cells;
 
 	inline void name_parameters();
 	inline void construct_LSTM_cells();
 
 	public:
+		std::vector<lstm> cells;
 		shared_mat    embedding;
 		typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
 		typedef std::shared_ptr< index_mat > shared_index_mat;
-		
+
 		int vocabulary_size;
 		const int output_size;
 		const int stack_size;

@@ -7,6 +7,9 @@
 #include <cstdio>
 #include <thread>
 #include <iterator>
+
+#include "../StackedModel.h"
+
 // test file for character prediction
 using std::vector;
 using std::make_shared;
@@ -55,7 +58,7 @@ REAL_t validation_error(
 	vector<int>& hidden_sizes,
     vector<lstm>& cells,
     shared_mat embedding,
-    classifier_t& classifier,
+    const classifier_t& classifier,
     vector<vector<int>>& data_set) {
 	graph_t G(false);
 
@@ -92,7 +95,7 @@ REAL_t cost_fun(
 	vector<int>& hidden_sizes,
     vector<lstm>& cells,
     shared_mat embedding,
-    classifier_t& classifier,
+    const classifier_t& classifier,
     vector<int>& indices) {
 
 	auto initial_state = lstm::initial_states(hidden_sizes);
@@ -125,11 +128,12 @@ int main (int argc, char *argv[]) {
 
 	auto epochs              = 2000;
 	auto input_size          = 5;
-	auto report_frequency    = 100;
+	auto report_frequency    = 5;
 	REAL_t std               = 0.1;
 	vector<int> hidden_sizes = {20, 20};
 	auto vocab_size = 300;
 	auto num_threads = 5;
+	auto minibatch_size = 20;
 
 
 
@@ -141,18 +145,8 @@ int main (int argc, char *argv[]) {
 	if (argc > 6) assign_cli_argument(argv[6], hidden_sizes[1], "hidden size 2");
 	if (argc > 7) assign_cli_argument(argv[7], vocab_size,      "vocab_size");
 
-	auto cells = StackedCells<lstm>(input_size, hidden_sizes);
-	classifier_t classifier(hidden_sizes[hidden_sizes.size() - 1], vocab_size);
-	auto embedding = make_shared<mat>(vocab_size, input_size, std);
-	vector<shared_mat> parameters;
-	parameters.push_back(embedding);
-	auto classifier_params = classifier.parameters();
-	parameters.insert(parameters.end(), classifier_params.begin(), classifier_params.end());
-
-	for (auto& cell : cells) {
-		auto cell_params = cell.parameters();
-		parameters.insert(parameters.end(), cell_params.begin(), cell_params.end());
-	}
+	auto model = StackedModel<REAL_t>(vocab_size, input_size, vocab_size, hidden_sizes);
+	auto parameters = model.parameters();
 
 /*
 	for (auto& param : parameters) {
@@ -185,27 +179,44 @@ int main (int argc, char *argv[]) {
 			utils::thread_id = thread_id;
 			// This wonderful comments comes at a courtesy of Jonathan Raphaello Ray man:
 			// Gradient descent optimizer:
+			auto thread_model = StackedModel<REAL_t>(vocab_size, input_size, vocab_size, hidden_sizes);
+			auto thread_parameters = thread_model.parameters();
+			auto thread_params_ptr = thread_parameters.begin();
+			for (auto& param : parameters) {
+				// make a fresh copy of dw, but use common w
+				(*thread_params_ptr)->encapsulate(*param);
+				thread_params_ptr++;
+			}
 
-			Solver::RMSProp<REAL_t> solver(parameters, 0.999, 1e-9, 5.0);
 
-			for (auto i = 0; i < epochs / num_threads; ++i) {
 
+			// Solver::RMSProp<REAL_t> solver(thread_parameters, 0.999, 1e-9, 5.0);
+			Solver::AdaDelta<REAL_t> solver(thread_parameters);
+			//Solver::SGD<REAL_t> solver;
+
+
+			for (auto i = 0; i < epochs / num_threads / minibatch_size; ++i) {
 				auto G = graph_t(true);      // create a new graph for each loop
-				cost_fun(
-					G,                       // to keep track of computation
-					hidden_sizes,            // to construct initial states
-					cells,                   // LSTMs
-					embedding,               // character embedding
-					classifier,              // decoder for LSTM final hidden layer
-					train_set[uniform(seed)] // the sequence to predict
-				);
+				for (auto mb = 0; mb < minibatch_size; ++mb)
+					cost_fun(
+						G,                       // to keep track of computation
+						hidden_sizes,            // to construct initial states
+						thread_model.cells,                   // LSTMs
+						thread_model.embedding,               // character embedding
+						thread_model.decoder,              // decoder for LSTM final hidden layer
+						train_set[uniform(seed)] // the sequence to predict
+					);
 				G.backward();                // backpropagate
 
 				// solve it.
-				solver.step(parameters, 0.01, 0.0);
-
+				// RMS prop
+				//solver.step(thread_parameters, 0.01, 0.0);
+				// AdaDelta
+				solver.step(thread_parameters, 0.0);
+				// SGD
+				// solver.step(thread_parameters, 0.3/minibatch_size, 0.0);
 				if (++total_epochs % report_frequency == 0) {
-					cost = validation_error(hidden_sizes, cells, embedding, classifier, valid_set);
+					cost = validation_error(hidden_sizes, model.cells, model.embedding, model.decoder, valid_set);
 
 					std::cout << "epoch (" << total_epochs << ") perplexity = "
 										  << std::fixed

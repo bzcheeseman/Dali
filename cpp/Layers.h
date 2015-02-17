@@ -12,7 +12,6 @@ class Layer {
         > y = A * x + b
 
     */
-    
     void create_variables();
     public:
         typedef Mat<T>                      mat;

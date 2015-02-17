@@ -1,8 +1,9 @@
 #include "Layers.h"
 
+using std::make_shared;
+
 template<typename T>
 void Layer<T>::create_variables() {
-    using std::make_shared;
     T upper = 1. / sqrt(input_size);
     W = make_shared<mat>(hidden_size, input_size, -upper, upper);
     b = make_shared<mat>(hidden_size, 1);
@@ -53,8 +54,8 @@ Layer<T> out : the copied layer with deep or shallow copy
 **/
 template<typename T>
 Layer<T>::Layer (const Layer<T>& layer, bool copy_w, bool copy_dw) : hidden_size(layer.hidden_size), input_size(layer.input_size) {
-    W = make_shared<mat>(layer.W, copy_w, copy_dw);
-    b = make_shared<mat>(layer.b, copy_w, copy_dw);
+    W = make_shared<mat>(*layer.W, copy_w, copy_dw);
+    b = make_shared<mat>(*layer.b, copy_w, copy_dw);
 }
 
 /**
@@ -89,7 +90,6 @@ std::vector<typename Layer<T>::shared_mat> Layer<T>::parameters() const{
 
 template<typename T>
 void RNN<T>::create_variables() {
-    using std::make_shared;
     T upper = 1. / sqrt(input_size);
     Wx = make_shared<mat>(output_size, input_size,  -upper, upper);
     upper = 1. / sqrt(hidden_size);
@@ -148,9 +148,9 @@ RNN<T> out : the copied RNN with deep or shallow copy of parameters
 **/
 template<typename T>
 RNN<T>::RNN (const RNN<T>& rnn, bool copy_w, bool copy_dw) : hidden_size(rnn.hidden_size), input_size(rnn.input_size), output_size(rnn.output_size) {
-    Wx = make_shared<mat>(rnn.Wx, copy_w, copy_dw);
-    Wh = make_shared<mat>(rnn.Wh, copy_w, copy_dw);
-    b = make_shared<mat>(rnn.b, copy_w, copy_dw);
+    Wx = make_shared<mat>(*rnn.Wx, copy_w, copy_dw);
+    Wh = make_shared<mat>(*rnn.Wh, copy_w, copy_dw);
+    b = make_shared<mat>(*rnn.b, copy_w, copy_dw);
 }
 
 /**

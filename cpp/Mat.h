@@ -31,10 +31,10 @@ template<typename T> class Mat {
 		std::shared_ptr<std::vector<uint>> sparse_row_keys;
 		mutable eigen_mat_view dw;
 		std::shared_ptr<std::string> name;
-		const random_t random_id;
+		const random_t random_id; 
 		Mat (int, int);
 		Mat (int, int, bool);
-        Mat (const Mat<T>& m, bool copy_w=true, bool copy_dw=true);
+        Mat (const Mat<T>& m, bool copy_w, bool copy_dw);
 		void print();
 		~Mat();
 		void set_name(std::string&);
@@ -51,10 +51,8 @@ template<typename T> class Mat {
 		Mat (std::string fname);
 		static Mat RandMat(int, int, T);
 		static Mat Empty(int, int);
+		static Mat shallow_copy(const Mat&);
 		operator std::string() const;
-
-		// TODO: get the hell out of there
-		void encapsulate(const Mat<T>&);
 };
 
 template<typename T>

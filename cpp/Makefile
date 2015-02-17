@@ -10,9 +10,9 @@ MKL_DIR=$(INTEL_COMP_DIR)mkl/
 INC=-I$(INCLUDE_DIR)eigen3/Eigen -I$(MKL_DIR)include -I$(INCLUDE_DIR)eigen3/Eigen/src/Core/util/
 LLOC=-L$(MKL_DIR)lib/ -L$(INTEL_COMP_DIR)compiler/lib/
 OBJECTS=utils.o Mat.o Layers.o cnpy.o OptionParser/OptionParser.o CrossEntropy.o Softmax.o StackedModel.o StackedGatedModel.o examples/protobuff/corpus.pb.o SST.o
-BLAS_AND_MKL_LIBS="$(shell [ -d $(INTEL_COMP_DIR) ] && echo "-lblas -lmkl_intel_thread -lmkl_core -liomp5")"
+BLAS_AND_MKL_LIBS="$(shell [ -d $(INTEL_COMP_DIR) ] && echo -lblas -lmkl_intel_thread -lmkl_core -liomp5)"
 LIBS=$(BLAS_AND_MKL_LIBS) -lz -lprotobuf -lpthread -lm -headerpad_max_install_names
-FIX_DYLIBS=$(shell [ -d $(INTEL_COMP_DIR) ] && sudo ./fix_dylib.sh)
+FIX_DYLIBS=$(shell [ -d $(INTEL_COMP_DIR) ] && echo sudo sh fix_dylib.sh)
 INSTANTIATOR=python3 template_instantiator.py CrossEntropy.cpp.template
 PROTO_DIR=examples/protobuff/
 PROTO_COMPILE=protoc --cpp_out=. --python_out=.
@@ -30,11 +30,12 @@ all:
 	$(CC) $(INC) -c -std=c++11 CrossEntropy.cpp
 	$(CC) $(INC) -c -std=c++11 StackedModel.cpp
 	$(CC) $(INC) -c -std=c++11 StackedGatedModel.cpp
-	$(CC) -c -std=c++11 examples/protobuff/corpus.pb.cc -o examples/protobuff/corpus.pb.o
+	$(CC) -c -std=c++11 $(PROTO_DIR)corpus.pb.cc -o $(PROTO_DIR)corpus.pb.o
 	$(CC) $(LLOC) $(LIBS) -o app.o main.o $(OBJECTS) -lm
 	$(FIX_DYLIBS)
 
 optimized:
+	echo $(shell pushd $(PROTO_DIR) && $(PROTO_COMPILE) corpus.proto && popd)
 	$(CC) -O3 -c -std=c++11 OptionParser/OptionParser.cpp -o OptionParser/OptionParser.o
 	$(CC) $(INC) -O3 -c -std=c++11 main.cpp
 	$(CC) $(INC) -O3 -c -std=c++11 utils.cpp
@@ -47,7 +48,7 @@ optimized:
 	$(CC) $(INC) -O3 -c -std=c++11 CrossEntropy.cpp
 	$(CC) $(INC) -O3 -c -std=c++11 StackedModel.cpp
 	$(CC) $(INC) -O3 -c -std=c++11 StackedGatedModel.cpp
-	$(CC) -O3 -c -std=c++11 examples/protobuff/corpus.pb.cc -o examples/protobuff/corpus.pb.o
+	$(CC) -O3 -c -std=c++11 $(PROTO_DIR)corpus.pb.cc -o $(PROTO_DIR)corpus.pb.o
 	$(CC) $(LLOC) $(LIBS) -o app.o -O3 main.o $(OBJECTS)
 	$(FIX_DYLIBS)
 

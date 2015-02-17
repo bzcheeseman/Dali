@@ -127,8 +127,6 @@ int main (int argc, char *argv[]) {
 	int  stack_size       = 2;
 	auto minibatch_size   = 20;
 
-
-
 	if (argc > 1) assign_cli_argument(argv[1], num_threads,     "num_threads");
 	if (argc > 2) assign_cli_argument(argv[2], minibatch_size,  "minibatch_size");
 	if (argc > 2) assign_cli_argument(argv[3], epochs,          "epochs");
@@ -170,16 +168,17 @@ int main (int argc, char *argv[]) {
 
 
 	for (int t=0; t<num_threads; ++t) {
-
 		ts.emplace_back([&](int thread_id) {
 			auto thread_model = model.shallow_copy();
+
 			auto thread_parameters = thread_model.parameters();
 
-			
+
 
 
 			for (auto i = 0; i < epochs / num_threads / minibatch_size; ++i) {
 				auto G = graph_t(true);      // create a new graph for each loop
+
 				for (auto mb = 0; mb < minibatch_size; ++mb)
 					cost_fun(
 						G,                       // to keep track of computation
@@ -206,6 +205,7 @@ int main (int argc, char *argv[]) {
 		        }
 		    }
 		}, t);
+
 	}
 
 	for(auto& t: ts) t.join();

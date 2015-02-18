@@ -9,10 +9,7 @@
 
 DEFINE_int32(num_threads, 5, "How many threads to run ?");
 DEFINE_int32(minibatch_size, 20, "How big is the minibatch ?");
-DEFINE_int32(epochs, 2000, "How many runs through the data ?");
-DEFINE_int32(input_size, 5, "Number of embedding dimensions for each character");
 DEFINE_int32(hidden_size, 20, "How many hidden states and cells should network use?");
-DEFINE_int32(stack_size, 2, "How many LSTMs should be stacked at each timestep ?");
 DEFINE_int32(vocab_size, 300, "How many characters should be modeled in the embedding.");
 
 // test file for character prediction

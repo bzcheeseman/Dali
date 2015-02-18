@@ -4,8 +4,8 @@
 #include "utils.h"
 #include "cnpy.h"
 
-// #define EIGEN_USE_MKL_VML
-// #define EIGEN_USE_BLAS
+#define EIGEN_USE_MKL_VML
+#define EIGEN_USE_BLAS
 // doesnt work, but its also not useful for now
 // #define EIGEN_USE_LAPACKE
 #include <Eigen/Eigen>

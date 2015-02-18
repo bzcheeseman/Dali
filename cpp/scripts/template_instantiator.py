@@ -25,6 +25,7 @@ EXAMPLE:
 // END TEMPLATE SPECIALIZATIONS
 """
 import hashlib
+import os
 import sys
 
 from itertools import product
@@ -111,8 +112,9 @@ if __name__ == "__main__":
     output_content = '\n'.join(output_lines)
     output_content_hash = hashlib.md5(output_content.encode('utf-8')).hexdigest()
     output_file_hash = None
-    with open(output_file, "rt") as f:
-        output_file_hash = hashlib.md5(f.read().encode('utf-8')).hexdigest()
+    if os.path.exists(output_file):
+        with open(output_file, "rt") as f:
+            output_file_hash = hashlib.md5(f.read().encode('utf-8')).hexdigest()
 
     # only update file if contents changed
     if output_file_hash != output_content_hash:

@@ -7,13 +7,16 @@ set -u
 # handle cascading failures well
 set -o pipefail
 
+SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+PROJECT_DIR=$( dirname $SCRIPT_DIR )
+
 INTEL_THREAD_FILE=/opt/intel/mkl/lib/libmkl_intel_thread.dylib
 IOMP5_FILE=/opt/intel/composer_xe_2015.1.108/compiler/lib/libiomp5.dylib
 red=`tput setaf 1`
 green=`tput setaf 2`
 reset=`tput sgr0`
 
-for file in *.o */*.o
+for file in $(find $PROJECT_DIR/build -type f -perm +111)
 do
     echo "Fixing \"$file\""
     if [ -f $file ];

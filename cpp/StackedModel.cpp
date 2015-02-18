@@ -465,6 +465,24 @@ StackedModel<T> StackedModel<T>::shallow_copy() const {
     return StackedModel<T>(*this, false, true);
 }
 
+template<typename T>
+template<typename K>
+typename StackedModel<T>::lstm_activation_t StackedModel<T>::get_final_activation(
+	graph_t& G,
+	const K& example) {
+	shared_mat input_vector;
+	auto initial_state = lstm::initial_states(hidden_sizes);
+	auto n = example.cols() * example.rows();
+	for (uint i = 0; i < n; ++i) {
+		// pick this letter from the embedding
+		input_vector  = G.row_pluck(embedding, example(i));
+		// pass this letter to the LSTM for processing
+		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
+		// decoder takes as input the final hidden layer's activation:
+	}
+	return initial_state;
+}
+
 // Nested Templates !!
 template<typename T>
 template<typename K>
@@ -472,6 +490,159 @@ std::vector<int> StackedModel<T>::reconstruct(
     K example,
     int eval_steps,
     int symbol_offset) {
+
+	graph_t G(false);
+	auto initial_state = get_final_activation(G, example);
+	vector<int> outputs;
+	auto last_symbol = argmax(decoder.activate(G, initial_state.second[stack_size-1]));
+	outputs.emplace_back(last_symbol);
+	last_symbol += symbol_offset;
+
+	shared_mat input_vector;
+
+	for (uint j = 0; j < eval_steps - 1; j++) {
+		input_vector  = G.row_pluck(embedding, last_symbol);
+		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
+		last_symbol   = argmax(decoder.activate(G, initial_state.second[stack_size-1]));
+		outputs.emplace_back(last_symbol);
+		last_symbol += symbol_offset;
+	}
+	return outputs;
+}
+
+/**
+Activate
+--------
+
+Run Stacked Model by 1 timestep by observing
+the element from embedding with index `index`
+and report the activation, cell, and hidden
+states
+
+Inputs
+------
+
+Graph<T>& G : computation graph
+std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>>& : previous state
+uint index : embedding observation
+
+Outputs
+-------
+
+std::pair<std::pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>>, shared_ptr<Mat<T>> > out :
+    pair of LSTM hidden and cell states, and probabilities from the decoder.
+
+**/
+template<typename T>
+typename StackedModel<T>::activation_t StackedModel<T>::activate(
+	graph_t& G,
+	lstm_activation_t& previous_state,
+	const uint& index) {
+	activation_t out;
+	out.first =  forward_LSTMs(G, G.row_pluck(embedding, index), previous_state, cells);
+	out.second = softmax(decoder.activate(G, out.first.second[stack_size-1]));
+
+	return out;
+}
+
+/*
+template<typename T>
+std::pair<std::pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>>, std::vector<std::pair<uint, T>>>  vector< > StackedModel<T>::beam_search_with_indices(
+	graph_t& G,
+	std::pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>>& previous_state,
+	uint index,
+	int k,
+	T prob) const {
+
+	auto out_state_and_prob = activate(G, previous_state, index);
+
+	std::pair<std::pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>>, std::vector<std::pair<uint, T>>> out;
+
+	out.first = out_state_and_prob.first;
+
+	vector<T> probabilities(out.second->w.data(), out.second->w.data() + output_size);
+
+	auto sorted_probs = utils::argsort(probabilities);
+}
+*/
+
+/*
+def beam_search_with_indices(model, indices, size, prob = 1.):
+    probs = model.predict_fun([indices])[0,-1]
+    
+    
+    top_outputs = probs.argsort()[::-1][:size]
+    top_probs = probs[top_outputs] * prob
+    
+    return top_outputs, top_probs
+*/
+
+/*
+template<typename T>
+template<typename K>
+std::vector<int> StackedModel<T>::beam_search(
+    K example,
+    int eval_steps,
+    int symbol_offset,
+    int k) {
+
+	typedef std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>> stacked_states;
+
+	graph_t G(false);
+	auto initial_state = get_final_activation(G, K);
+
+	// we start off with k different options:
+	vector< std::tuple<vector<uint>,T, stacked_states > > open_list;
+
+	auto outs_probs = beam_search_with_indices(G, example, k, 1.0);
+
+	for (auto& out_prob : outs_probs) {
+		open_list.emplace_back(std:: )
+	}
+
+	
+	def beam_search(model, word2index, code2path, sentence, n, max_steps = 10):
+	    indices = encode_into_indices(word2index, sentence.split() if type(sentence) is str else sentence)
+	    vocab_size = model.vocabulary_size.get_value()
+	    end_seq = vocab_size + model.max_branching_factor
+	    end_pred = end_seq + 1
+	    # we start off with n different options:
+	    open_list = []
+	    top_outs, top_probs = beam_search_with_indices(model, indices, n, prob=1.)
+	    for candidate, prob in zip(top_outs, top_probs):
+	        open_list.append((indices + [candidate + vocab_size], prob))
+	    
+	    # for each option we expand another n options forward:
+	    i = 0
+	    while True:
+	        stops = 0
+	        
+	        options = [op for op in open_list]
+	        open_list = []
+	        
+	        for candidate, prob in options:
+	            if candidate[-1] == end_pred:
+	                stops += 1
+	                open_list.append((candidate, prob))
+	                continue
+	            else:
+	                # if out is not the end sequence token
+	                new_candidates, new_probs = beam_search_with_indices(model, candidate, n, prob=prob)
+	                for new_candidate, new_prob in zip(new_candidates, new_probs):
+	                    open_list.append((candidate + [new_candidate + vocab_size], new_prob))
+	                
+	        open_list.sort(key=lambda x: -x[1])
+	        open_list = open_list[:n]
+	        i += 1
+	        if i == max_steps:
+	            break
+	        if stops == n:
+	            break
+	            
+	    open_list = [(decode_from_indices(model.max_branching_factor, code2path, code[len(indices):-1] - vocab_size), prob) for code, prob in open_list]
+	            
+	    return open_list
+	
 
 	graph_t G(false);
 	shared_mat input_vector;
@@ -498,6 +669,9 @@ std::vector<int> StackedModel<T>::reconstruct(
 	}
 	return outputs;
 }
+*/
+
+
 
 template<typename T>
 template<typename K>

@@ -287,12 +287,12 @@ std::tuple<T, T> StackedGatedModel<T>::masked_predict_cost(
 	for (uint i = 0; i < n-1; ++i) {
 		// pick this letter from the embedding
 		input_vector = G.rows_pluck(embedding, data->col(i));
-		memory = gate.activate(G, input_vector, initial_state.second[0]);
+		memory = gate.activate(G, input_vector, initial_state.second[stack_size-1]);
 		input_vector = G.eltmul_broadcast_rowwise(input_vector, memory);
 		// pass this letter to the LSTM for processing
 		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
 		// classifier takes as input the final hidden layer's activation:
-		logprobs      = decoder.activate(G, initial_state.second[num_hidden_sizes-1]);
+		logprobs      = decoder.activate(G, initial_state.second[stack_size-1]);
 		std::get<0>(cost) += G.needs_backprop ? masked_cross_entropy(
 										logprobs,
 										i,
@@ -514,15 +514,11 @@ StackedGatedModel<T> StackedGatedModel<T>::shallow_copy() const {
     return StackedGatedModel<T>(*this, false, true);
 }
 
-// Nested Templates !!
 template<typename T>
 template<typename K>
-std::vector<int> StackedGatedModel<T>::reconstruct(
-    K example,
-    int eval_steps,
-    int symbol_offset) {
-
-	graph_t G(false);
+typename StackedGatedModel<T>::lstm_activation_t StackedGatedModel<T>::get_final_activation(
+	graph_t& G,
+	const K& example) {
 	shared_mat input_vector;
 	shared_mat memory;
 	auto initial_state = lstm::initial_states(hidden_sizes);
@@ -536,13 +532,70 @@ std::vector<int> StackedGatedModel<T>::reconstruct(
 		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
 		// decoder takes as input the final hidden layer's activation:
 	}
+	return initial_state;
+}
+
+/**
+Activate
+--------
+
+Run Stacked Gated Model by 1 timestep by observing
+the element from embedding with index `index`
+and report the activation, cell, and hidden
+states
+
+Inputs
+------
+
+Graph<T>& G : computation graph
+std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>>& : previous state
+uint index : embedding observation
+
+Outputs
+-------
+
+std::tuple<std::pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>>, shared_ptr<Mat<T>>, T> out :
+    pair of LSTM hidden and cell states, and probabilities from the decoder, and memory usage.
+
+**/
+template<typename T>
+typename StackedGatedModel<T>::activation_t StackedGatedModel<T>::activate(
+	graph_t& G,
+	lstm_activation_t& previous_state,
+	const uint& index) {
+	activation_t out;
+
+	auto input_vector = G.row_pluck(embedding, index);
+	auto memory       = gate.activate(G, input_vector, previous_state.second[stack_size-1]);
+	input_vector  = G.eltmul_broadcast_rowwise(input_vector, memory);
+
+	std::get<0>(out) = forward_LSTMs(G, input_vector, previous_state, cells);
+	std::get<1>(out) = softmax(decoder.activate(G, std::get<0>(out).second[stack_size-1]));
+	std::get<2>(out) = memory->w(0);
+
+	return out;
+}
+
+// Nested Templates !!
+template<typename T>
+template<typename K>
+std::vector<int> StackedGatedModel<T>::reconstruct(
+    K example,
+    int eval_steps,
+    int symbol_offset) {
+
+	graph_t G(false);
+	auto initial_state = get_final_activation(G, example);
+
+	shared_mat input_vector;
+	shared_mat memory;
 	vector<int> outputs;
 	auto last_symbol = argmax(decoder.activate(G, initial_state.second[stack_size-1]));
 	outputs.emplace_back(last_symbol);
 	last_symbol += symbol_offset;
 	for (uint j = 0; j < eval_steps - 1; j++) {
 		input_vector  = G.row_pluck(embedding, last_symbol);
-		memory        = gate.activate(G, input_vector, initial_state.second[0]);
+		memory        = gate.activate(G, input_vector, initial_state.second[stack_size-1]);
 		input_vector  = G.eltmul_broadcast_rowwise(input_vector, memory);
 		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
 		last_symbol   = argmax(decoder.activate(G, initial_state.second[stack_size-1]));

@@ -45,6 +45,10 @@ class StackedGatedModel {
 	inline void construct_LSTM_cells(const std::vector<lstm>&, bool, bool);
 
 	public:
+
+		typedef std::pair<std::vector<shared_mat>, std::vector<shared_mat>> lstm_activation_t;
+		typedef std::tuple<lstm_activation_t, shared_mat, T> activation_t;
+
 		std::vector<lstm> cells;
 		shared_mat    embedding;
 		typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
@@ -75,7 +79,12 @@ class StackedGatedModel {
 		std::vector<int> reconstruct(K, int, int symbol_offset = 0);
 
 		template<typename K>
-		std::string reconstruct_string(K, const utils::Vocab&, int, int symbol_offset = 0);
+		std::string reconstruct_string(K, const utils::Vocab&, int, int symbol_offset = 0);	
+
+		template<typename K>
+		lstm_activation_t get_final_activation(graph_t&, const K&);
+
+		activation_t activate(graph_t&, lstm_activation_t&, const uint&);
 
 		template<typename K>
 		std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(K, utils::OntologyBranch::shared_branch, int);

@@ -33,12 +33,19 @@ class StackedModel {
 	typedef Graph<T>                graph_t;
 	typedef std::map<std::string, std::vector<std::string>> config_t;
 
+	
+
 
 	inline void name_parameters();
 	inline void construct_LSTM_cells();
 	inline void construct_LSTM_cells(const std::vector<LSTM<T>>&, bool, bool);
 
 	public:
+
+		typedef std::pair<std::vector<shared_mat>, std::vector<shared_mat>> lstm_activation_t;
+		typedef std::pair<lstm_activation_t, shared_mat > activation_t;
+
+		
 		std::vector<lstm> cells;
 		shared_mat    embedding;
 		typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
@@ -65,6 +72,11 @@ class StackedModel {
 		T masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, uint, shared_eigen_index_vector, uint offset=0);
 		template<typename K>
 		std::vector<int> reconstruct(K, int, int symbol_offset = 0);
+
+		template<typename K>
+		lstm_activation_t get_final_activation(graph_t&, const K&);
+
+		activation_t activate(graph_t&, lstm_activation_t&, const uint& );
 
 		template<typename K>
 		std::string reconstruct_string(K, const utils::Vocab&, int, int symbol_offset = 0);

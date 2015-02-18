@@ -5,15 +5,21 @@ project("recurrentjs")
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
+set(MKL_MULTI_THREADED "1")
+
 # PACKAGES
 find_package(Eigen3 REQUIRED)
 find_package(ZLIB REQUIRED)
+find_package(BLAS REQUIRED)
+
+find_package(MKL REQUIRED)
 
 # COMPILER SETUP
 SET (CMAKE_CXX_COMPILER             "/usr/bin/clang++")
 SET (CMAKE_CXX_FLAGS                "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
 
 # INCLUDES
+include_directories(${MKL_INCLUDE_DIR})
 include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(${PROJECT_SOURCE_DIR})
 

@@ -1,4 +1,5 @@
 set(EXAMPLES_DIR ${PROJECT_SOURCE_DIR}/examples)
+set(EXAMPLES_BUILD_DIR ${PROJECT_SOURCE_DIR}/build/examples)
 set(EXAMPLE_PROGRAMS character_prediction
                      stacked_lstm
                      sparkfun_prediction
@@ -14,7 +15,7 @@ foreach(program ${EXAMPLE_PROGRAMS})
     target_link_libraries(${program} core)
     if (MKL_FOUND AND BLAS_FOUND)
         add_custom_command(TARGET ${program}
-            COMMAND /bin/sh ${PROJECT_SOURCE_DIR}/scripts/fix_dylib.sh ${program}
+            COMMAND sh ${PROJECT_SOURCE_DIR}/scripts/fix_dylib.sh ${EXAMPLES_BUILD_DIR}/${program}
             WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/build)
     endif (MKL_FOUND AND BLAS_FOUND)
 endforeach(program)

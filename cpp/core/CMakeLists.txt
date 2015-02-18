@@ -4,11 +4,6 @@ file(GLOB CoreHeaders "${CoreDir}/*.h")
 file(GLOB CoreSources "${CoreDir}/*.cpp")
 file(GLOB CoreTemplates "${CoreDir}/*.cpp.template")
 
-if (BLAS_FOUND AND MKL_FOUND)
-    add_definitions(-DEIGEN_USE_MKL_VML
-                    -DEIGEN_USE_BLAS)
-endif (BLAS_FOUND AND MKL_FOUND)
-
 foreach(header ${CoreTemplates})
     message(STATUS "Template instantiator will run for ${header}")
     ADD_CUSTOM_TARGET(core_templates
@@ -22,6 +17,16 @@ add_library(core
         ${CoreHeaders}
 )
 
+add_custom_target(fix_libiomp5
+	COMMAND sudo sh ${PROJECT_SOURCE_DIR}/scripts/fix_libiomp5.sh
+)
+
 add_dependencies(core core_templates proto)
+
+if (BLAS_FOUND AND MKL_FOUND)
+    add_definitions(-DEIGEN_USE_MKL_VML
+                    -DEIGEN_USE_BLAS)
+    add_dependencies(core fix_libiomp5)
+endif (BLAS_FOUND AND MKL_FOUND)
 
 target_link_libraries(core ${ZLIB_LIBRARIES} proto ${BLAS_LIBRARIES} ${MKL_LIBRARIES} ${GFLAGS_LIBRARIES})

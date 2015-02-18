@@ -22,22 +22,6 @@ DEFINE_int32(patience, 5, "How many unimproving epochs to wait through before wi
 static bool dummy1 = gflags::RegisterFlagValidator(&FLAGS_validation,
                                                    &utils::validate_flag_nonempty);
 
-// defined in StackedGatedModel
-DECLARE_int32(stack_size);
-DECLARE_int32(input_size);
-DECLARE_int32(hidden);
-DECLARE_double(decay_rate);
-DECLARE_double(rho);
-DECLARE_string(save);
-DECLARE_string(load);
-
-// defined in utils
-DECLARE_int32(subsets);
-DECLARE_int32(min_occurence);
-DECLARE_int32(epochs);
-DECLARE_int32(report_frequency);
-DECLARE_string(dataset);
-
 
 using std::vector;
 using std::make_shared;
@@ -459,6 +443,7 @@ int main( int argc, char* argv[]) {
 
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+// Not sure if this correct thing to do for all versions of clang compiler
     auto report_frequency   = FLAGS_report_frequency;
     auto rho                = FLAGS_rho;
     auto epochs             = FLAGS_epochs;

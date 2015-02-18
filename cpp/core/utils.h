@@ -27,6 +27,12 @@
 
 #include "protobuf/corpus.pb.h"
 
+DECLARE_int32(subsets);
+DECLARE_int32(min_occurence);
+DECLARE_int32(epochs);
+DECLARE_int32(report_frequency);
+DECLARE_string(dataset);
+
 // Default writing mode useful for default argument to
 // makedirs
 #define DEFAULT_MODE S_IRWXU | S_IRGRP |  S_IXGRP | S_IROTH | S_IXOTH

@@ -1,7 +1,5 @@
 #include "StackedModel.h"
 
-#include <gflags/gflags.h>
-
 DEFINE_int32(stack_size, 4, "How many LSTMs should I stack ?");
 DEFINE_int32(input_size, 100, "Size of the word vectors");
 DEFINE_int32(hidden, 100, "How many Cells and Hidden Units should each LSTM have ?");
@@ -107,9 +105,9 @@ void StackedModel<T>::save(std::string dirname) {
 }
 
 template<typename T>
-StackedModel<T> StackedModel<T>::build_from_CLI(optparse::Values& options, int vocab_size, int output_size, bool verbose) {
+StackedModel<T> StackedModel<T>::build_from_CLI(int vocab_size, int output_size, bool verbose) {
 	using utils::from_string;
-	string load_location = options["load"];
+	string load_location = FLAGS_load;
 	if (verbose)
 		std::cout << "Load location         = " << ((load_location == "") ? "N/A" : load_location)       << std::endl;
 	// Load or Construct the model
@@ -117,9 +115,9 @@ StackedModel<T> StackedModel<T>::build_from_CLI(optparse::Values& options, int v
 		StackedModel<T>::load(load_location) :
 		StackedModel<T>(
 			vocab_size,
-			from_string<int>(options["input_size"]),
-			from_string<int>(options["hidden"]),
-			from_string<int>(options["stack_size"]) < 1 ? 1 : from_string<int>(options["stack_size"]),
+			FLAGS_input_size,
+			FLAGS_hidden,
+			FLAGS_stack_size < 1 ? 1 : FLAGS_stack_size,
 			output_size);
 	if (verbose) {
 		std::cout << ((load_location == "") ? "Constructed Stacked LSTMs" : "Loaded Model") << std::endl;

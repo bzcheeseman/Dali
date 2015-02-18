@@ -8,7 +8,6 @@
 #include "core/SST.h"
 #include "core/gzstream.h"
 #include "core/StackedModel.h"
-#include "OptionParser/OptionParser.h"
 
 using std::vector;
 using std::make_shared;
@@ -35,6 +34,10 @@ typedef Eigen::Matrix<REAL_t, Eigen::Dynamic, 1> float_vector;
 typedef std::pair<vector<string>, uint> labeled_pair;
 
 const string START = "**START**";
+
+
+DEFINE_int32(minibatch, 100, "What size should be used for the minibatches ?");
+DEFINE_double(cutoff, 2.0, "KL Divergence error where stopping is acceptable");
 
 /**
 Databatch
@@ -286,8 +289,6 @@ for 5 epochs, or cost dips below the cutoff.
 Inputs
 ------
 
-       optparse::Values& options : CLI arguments controling input size,
-                                   hidden size, and number of stacked LSTMs
 const vector<Databatch>& dataset : sentences broken into minibatches to
                                    train model on.
          const Vocab& word_vocab : the word vocabulary with a lookup table
@@ -304,7 +305,6 @@ const vector<Databatch>& dataset : sentences broken into minibatches to
 **/
 template<typename T, class S>
 void train_model(
-    optparse::Values& options,
     const vector<Databatch>& dataset,
     const Vocab& word_vocab,
     const T& rho,
@@ -315,9 +315,9 @@ void train_model(
     int label) {
     // Build Model:
     StackedModel<T> model(word_vocab.index2word.size(),
-            from_string<int>(options["input_size"]),
-            from_string<int>(options["hidden"]),
-            from_string<int>(options["stack_size"]) < 1 ? 1 : from_string<int>(options["stack_size"]),
+            FLAGS_input_size,
+            FLAGS_hidden,
+            FLAGS_stack_size < 1 ? 1 : FLAGS_stack_size,
             word_vocab.index2word.size());
     auto parameters = model.parameters();
     S solver(parameters, rho, 1e-9, 5.0);
@@ -341,41 +341,30 @@ void train_model(
 }
 
 int main( int argc, char* argv[]) {
-    auto parser = optparse::OptionParser()
-        .usage("usage: --dataset [corpus_directory] --minibatch [minibatch size]")
-        .description(
-            "Sentiment Analysis as Competition amongst Language Models\n"
-            "---------------------------------------------------------\n"
-            "\n"
-            "We present a dual formulation of the word sequence classification\n"
-            "task: we treat each label’s examples as originating from different\n"
-            "languages and we train language models for each label; at test\n"
-            "time we compare the likelihood of a sequence under each label’s\n"
-            "language model to find the most likely assignment.\n"
-            "\n"
-            " @author Jonathan Raiman\n"
-            " @date February 13th 2015"
-            );
-    // Command Line Setup:
-    StackedModel<REAL_t>::add_options_to_CLI(parser);
-    utils::training_corpus_to_CLI(parser);
-    parser.set_defaults("minibatch", "100");
-    parser
-        .add_option("--minibatch")
-        .help("What size should be used for the minibatches ?").metavar("INT");
-    parser.set_defaults("cutoff", "2.0");
-    parser
-        .add_option("-ct", "--cutoff")
-        .help("KL Divergence error where stopping is acceptable").metavar("FLOAT");
-    auto& options = parser.parse_args(argc, argv);
-    auto args = parser.args();
-    if (options["dataset"] == "") utils::exit_with_message("Error: Dataset (--dataset) keyword argument requires a value.");
-    auto report_frequency   = from_string<int>(options["report_frequency"]);
-    auto rho                = from_string<REAL_t>(options["rho"]);
-    auto epochs             = from_string<int>(options["epochs"]);
-    auto cutoff             = from_string<REAL_t>(options["cutoff"]);
-    auto sentiment_treebank = SST::load(options["dataset"]);
-    auto word_vocab         = get_word_vocab(sentiment_treebank, from_string<int>(options["min_occurence"]));
+    gflags::SetUsageMessage(
+        "\n"
+        "Sentiment Analysis as Competition amongst Language Models\n"
+        "---------------------------------------------------------\n"
+        "\n"
+        "We present a dual formulation of the word sequence classification\n"
+        "task: we treat each label’s examples as originating from different\n"
+        "languages and we train language models for each label; at test\n"
+        "time we compare the likelihood of a sequence under each label’s\n"
+        "language model to find the most likely assignment.\n"
+        "\n"
+        " @author Jonathan Raiman\n"
+        " @date February 13th 2015"
+    );
+
+
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+    auto report_frequency   = FLAGS_report_frequency;
+    auto rho                = FLAGS_rho;
+    auto epochs             = FLAGS_epochs;
+    auto cutoff             = FLAGS_cutoff;
+    auto sentiment_treebank = SST::load(FLAGS_dataset);
+    auto word_vocab         = get_word_vocab(sentiment_treebank, FLAGS_min_occurence);
     auto vocab_size         = word_vocab.index2word.size();
 
     // Load Dataset of Trees:
@@ -401,7 +390,7 @@ int main( int argc, char* argv[]) {
     vector<vector<Databatch>> datasets(tree_types.size());
     i = 0;
     for (auto& tree_type : tree_types)
-        datasets[i++] = create_labeled_dataset(tree_type, word_vocab, from_string<int>(options["minibatch"]));
+        datasets[i++] = create_labeled_dataset(tree_type, word_vocab, FLAGS_minibatch);
 
     std::cout << "Max training epochs = " << epochs << std::endl;
     std::cout << "Training cutoff     = " << cutoff << std::endl;
@@ -409,14 +398,13 @@ int main( int argc, char* argv[]) {
     vector<thread> workers;
     for (i = 0; i < 5; i++)
         workers.emplace_back(thread(train_model<REAL_t, Solver::AdaDelta<REAL_t>>,
-            ref(options),
             ref(datasets[i]),
             ref(word_vocab),
             ref(rho),
             ref(report_frequency),
             ref(cutoff),
             ref(epochs),
-            ref(options["save"]),
+            ref(FLAGS_save),
             i));
     for (auto& worker : workers)
         worker.join();

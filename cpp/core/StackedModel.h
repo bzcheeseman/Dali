@@ -1,17 +1,18 @@
 #ifndef STACKED_MAT_H
 #define STACKED_MAT_H
 
-#include <iostream>
 #include <fstream>
-#include <sstream>
-#include "utils.h"
+#include <gflags/gflags.h>
+#include <iostream>
 #include <map>
+#include <sstream>
 #include <unordered_map>
-#include "Mat.h"
-#include "Layers.h"
-#include "Softmax.h"
+
 #include "CrossEntropy.h"
-#include "OptionParser/OptionParser.h"
+#include "Layers.h"
+#include "Mat.h"
+#include "Softmax.h"
+#include "utils.h"
 /**
 StackedModel
 -----------------
@@ -24,6 +25,16 @@ The objective function is built using masked cross entropy (only certain
 input channels collect error over small intervals).
 
 **/
+
+DECLARE_int32(stack_size);
+DECLARE_int32(input_size);
+DECLARE_int32(hidden);
+DECLARE_double(decay_rate);
+DECLARE_double(rho);
+DECLARE_string(save);
+DECLARE_string(load);
+
+
 template<typename T>
 class StackedModel {
 	typedef LSTM<T>                    lstm;
@@ -33,7 +44,7 @@ class StackedModel {
 	typedef Graph<T>                graph_t;
 	typedef std::map<std::string, std::vector<std::string>> config_t;
 
-	
+
 
 
 	inline void name_parameters();
@@ -45,7 +56,7 @@ class StackedModel {
 		typedef std::pair<std::vector<shared_mat>, std::vector<shared_mat>> lstm_activation_t;
 		typedef std::pair<lstm_activation_t, shared_mat > activation_t;
 
-		
+
 		std::vector<lstm> cells;
 		shared_mat    embedding;
 		typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
@@ -62,12 +73,11 @@ class StackedModel {
 		void save_configuration(std::string);
 		void save(std::string);
 		static StackedModel<T> load(std::string);
-		static StackedModel<T> build_from_CLI(optparse::Values&, int, int, bool verbose=true);
+		static StackedModel<T> build_from_CLI(int, int, bool verbose=true);
 		StackedModel(int, int, int, int, int);
 		StackedModel(int, int, int, std::vector<int>&);
 		StackedModel(const config_t&);
 		StackedModel(const StackedModel<T>&, bool, bool);
-		static void add_options_to_CLI(optparse::OptionParser&);
 		T masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, shared_eigen_index_vector, shared_eigen_index_vector, uint offset=0);
 		T masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, uint, shared_eigen_index_vector, uint offset=0);
 		template<typename K>

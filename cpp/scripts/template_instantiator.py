@@ -13,7 +13,7 @@ EXAMPLE:
 // [const eigen_index_block&, const eigen_index_vector&, shared_eigen_index_vector, uint, int, const uint&, const int&]
 // [const eigen_index_block&, const eigen_index_vector&, shared_eigen_index_vector, uint, int, const uint&, const int&]
 // [const eigen_index_block, const eigen_index_block_scalar]
-// 
+//
 // TEMPLATE
 // [float, double] masked_sum
 // [std::shared_ptr<Mat<RETURN_TYPE>>]
@@ -24,8 +24,9 @@ EXAMPLE:
 //
 // END TEMPLATE SPECIALIZATIONS
 """
-
+import hashlib
 import sys
+
 from itertools import product
 
 
@@ -107,5 +108,16 @@ if __name__ == "__main__":
                     output_lines.append(line[:-1])
 
     output_file = '.'.join(source.split('.')[:-1])
-    with open(output_file, "wt") as f:
-        f.writelines(['%s\n' % (line,) for line in output_lines])
+    output_content = '\n'.join(output_lines)
+    output_content_hash = hashlib.md5(output_content.encode('utf-8')).hexdigest()
+    output_file_hash = None
+    with open(output_file, "rt") as f:
+        output_file_hash = hashlib.md5(f.read().encode('utf-8')).hexdigest()
+
+    # only update file if contents changed
+    if output_file_hash != output_content_hash:
+        print("Reinstantiated template for %s" % (source,))
+        with open(output_file, "wt") as f:
+            f.write(output_content)
+    else:
+        print("Template instantiation not needed for %s" % (source,))

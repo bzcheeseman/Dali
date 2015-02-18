@@ -1,11 +1,14 @@
 #include <fstream>
 #include <iterator>
 #include <algorithm>
+
 #include <Eigen/Eigen>
-#include "../utils.h"
-#include "../gzstream.h"
-#include "../StackedGatedModel.h"
-#include "../OptionParser/OptionParser.h"
+
+#include "core/utils.h"
+#include "core/gzstream.h"
+#include "core/StackedGatedModel.h"
+#include "OptionParser/OptionParser.h"
+
 using std::vector;
 using std::make_shared;
 using std::shared_ptr;
@@ -179,7 +182,7 @@ void training_loop(StackedGatedModel<T>& model,
 	if (epoch % report_frequency == 0) {
 		std::cout << "epoch (" << epoch << ") KL error = " << std::get<0>(cost)
 		                         << ", Memory cost = " << std::get<1>(cost) << std::endl;
-		auto& random_batch = dataset[utils::randint(0, dataset.size() - 1)]; 
+		auto& random_batch = dataset[utils::randint(0, dataset.size() - 1)];
 		auto random_example_index = utils::randint(0, random_batch.data->rows() - 1);
 
 		reconstruct(model, random_batch, random_example_index, word_vocab, lattice);
@@ -198,8 +201,8 @@ int main( int argc, char* argv[]) {
 	    	" @author Jonathan Raiman\n"
 	    	" @date February 4th 2015"
 	    	);
-	
-	
+
+
 	StackedGatedModel<REAL_t>::add_options_to_CLI(parser);
 	utils::training_corpus_to_CLI(parser);
 	// parser.set_defaults("lattice", "");
@@ -245,7 +248,7 @@ int main( int argc, char* argv[]) {
 	auto memory_rampup = from_string<int>(options["memory_rampup"]);
 	// with a rampup model we start with zero memory penalty and gradually increase the memory
 	// L1 penalty until it reaches the desired level.
-	// this allows early exploration, but only later forces sparsity on the model 
+	// this allows early exploration, but only later forces sparsity on the model
 	model.memory_penalty = 0.0;
 	std::cout << "Save location         = " << ((save_destination != "") ? save_destination : "N/A") << std::endl;
 	// Store all parameters in a vector:

@@ -1,5 +1,5 @@
-#include "../utils.h"
-#include "../OptionParser/OptionParser.h"
+#include "core/utils.h"
+#include "OptionParser/OptionParser.h"
 using std::vector;
 using std::string;
 using std::make_shared;
@@ -22,7 +22,7 @@ void test_lattice () {
 
 	for (auto& child : root->children)
 		child->add_parent(root2);
-	
+
 	// Visualize root 1's children
 	std::cout << *root << std::endl;
 	// Visualize root 2's children

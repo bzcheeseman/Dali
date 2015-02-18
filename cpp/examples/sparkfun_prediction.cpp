@@ -3,10 +3,10 @@
 #include <algorithm>
 #include <Eigen/Eigen>
 #include <set>
-#include "../utils.h"
-#include "../gzstream.h"
-#include "../StackedGatedModel.h"
-#include "../OptionParser/OptionParser.h"
+#include "core/utils.h"
+#include "core/gzstream.h"
+#include "core/StackedGatedModel.h"
+#include "OptionParser/OptionParser.h"
 using std::vector;
 using std::make_shared;
 using std::shared_ptr;
@@ -65,7 +65,7 @@ class Databatch {
 			shared_eigen_index_vector _start_loss,
 			shared_float_vector _prices) :
 				prices(_prices),
-				start_loss(_start_loss), 
+				start_loss(_start_loss),
 				data(_data),
 				codelens(_codelens) {};
 };
@@ -280,7 +280,7 @@ void training_loop(StackedGatedModel<T>& model,
 	if (epoch % report_frequency == 0) {
 		std::cout << "epoch (" << epoch << ") KL error = " << std::get<0>(cost)
 		                         << ", Memory cost = " << std::get<1>(cost) << std::endl;
-		auto& random_batch = dataset[utils::randint(0, std::min(3, (int)dataset.size() - 1))]; 
+		auto& random_batch = dataset[utils::randint(0, std::min(3, (int)dataset.size() - 1))];
 		auto random_example_index = utils::randint(0, random_batch.data->rows() - 1);
 
 		reconstruct(model, random_batch, random_example_index, word_vocab, category_vocab);

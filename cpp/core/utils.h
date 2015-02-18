@@ -23,7 +23,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <dirent.h>
-#include "examples/protobuff/corpus.pb.h"
+#include "protobuf/corpus.pb.h"
 #include "OptionParser/OptionParser.h"
 // Default writing mode useful for default argument to
 // makedirs

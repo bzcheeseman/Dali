@@ -1,5 +1,5 @@
-#include "Layers.h"
-#include "Softmax.h"
+#include "core/Layers.h"
+#include "core/Softmax.h"
 
 // Test file for LSTM
 int main () {
@@ -44,7 +44,7 @@ int main () {
     auto A_plus_B_sig = G.sigmoid(G.add(A, B));
     auto A_dot_C_tanh = G.tanh( G.mul(A, C) );
     auto A_plucked    = G.row_pluck(A, 2);
-    
+
     A_times_B   ->print();
     A_plus_B_sig->print();
     A_dot_C_tanh->print();

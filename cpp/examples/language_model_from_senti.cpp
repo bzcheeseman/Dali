@@ -3,11 +3,13 @@
 #include <algorithm>
 #include <Eigen/Eigen>
 #include <thread>
-#include "../utils.h"
-#include "../SST.h"
-#include "../gzstream.h"
-#include "../StackedModel.h"
-#include "../OptionParser/OptionParser.h"
+
+#include "core/utils.h"
+#include "core/SST.h"
+#include "core/gzstream.h"
+#include "core/StackedModel.h"
+#include "OptionParser/OptionParser.h"
+
 using std::vector;
 using std::make_shared;
 using std::shared_ptr;
@@ -177,7 +179,7 @@ Inputs
                          const int& i : what row to use from the databatch
               const Vocab& word_vocab : the word vocabulary with a lookup table
                                         mapping unique words to an index and
-                                        vice-versa.                        
+                                        vice-versa.
 
 
 **/
@@ -265,7 +267,7 @@ void training_loop(StackedModel<T>& model,
                                   << std::setw( 5 ) // keep 7 digits
                                   << std::setprecision( 3 ) // use 3 decimals
                                   << std::setfill( ' ' ) << cost / full_code_size << " patience = " << patience << std::endl;
-        auto& random_batch = dataset[utils::randint(0, dataset.size() - 1)]; 
+        auto& random_batch = dataset[utils::randint(0, dataset.size() - 1)];
         auto random_example_index = utils::randint(0, random_batch.data->rows() - 1);
         reconstruct(model, random_batch, random_example_index, word_vocab);
     }
@@ -302,7 +304,7 @@ const vector<Databatch>& dataset : sentences broken into minibatches to
 **/
 template<typename T, class S>
 void train_model(
-    optparse::Values& options, 
+    optparse::Values& options,
     const vector<Databatch>& dataset,
     const Vocab& word_vocab,
     const T& rho,

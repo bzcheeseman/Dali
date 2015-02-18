@@ -4,12 +4,14 @@
 #include <Eigen/Eigen>
 #include <thread>
 #include <algorithm>
-#include "../utils.h"
-#include "../SST.h"
-#include "../gzstream.h"
-#include "../StackedModel.h"
-#include "../OptionParser/OptionParser.h"
-#include "../third_party/concurrentqueue.h"
+
+#include "core/utils.h"
+#include "core/SST.h"
+#include "core/gzstream.h"
+#include "core/StackedModel.h"
+#include "OptionParser/OptionParser.h"
+#include "third_party/concurrentqueue.h"
+
 using std::vector;
 using std::make_shared;
 using std::shared_ptr;
@@ -181,7 +183,7 @@ Inputs
                          const int& i : what row to use from the databatch
               const Vocab& word_vocab : the word vocabulary with a lookup table
                                         mapping unique words to an index and
-                                        vice-versa.                        
+                                        vice-versa.
 
 
 **/
@@ -271,11 +273,12 @@ void training_loop(StackedModel<T>& model,
     const int& epoch,
     const int& patience,
     const int& num_threads) {
-    
+
     T cost = 0.0;
 
     // Create jobs:
     auto random_batch_order = utils::random_arange(dataset.size());
+
     int total_jobs = random_batch_order.size();
     ConcurrentQueue<size_t> q(total_jobs);
     q.enqueue_bulk(random_batch_order.begin(), total_jobs);
@@ -344,7 +347,7 @@ const vector<Databatch>& dataset : sentences broken into minibatches to
 **/
 template<typename T, class S>
 void train_model(
-    optparse::Values& options, 
+    optparse::Values& options,
     const vector<Databatch>& dataset,
     const vector<Databatch>& validation_set,
     const Vocab& word_vocab,
@@ -383,7 +386,7 @@ void train_model(
                                       << std::setw( 5 ) // keep 7 digits
                                       << std::setprecision( 3 ) // use 3 decimals
                                       << std::setfill( ' ' ) << new_cost << " patience = " << patience << std::endl;
-            auto& random_batch = dataset[utils::randint(0, dataset.size() - 1)]; 
+            auto& random_batch = dataset[utils::randint(0, dataset.size() - 1)];
             auto random_example_index = utils::randint(0, random_batch.data->rows() - 1);
             reconstruct(model, random_batch, random_example_index, word_vocab);
         }

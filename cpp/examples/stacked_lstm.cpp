@@ -1,4 +1,4 @@
-#include "Layers.h"
+#include "core/Layers.h"
 
 // test file for stacked LSTM cells:
 using std::vector;
@@ -24,7 +24,7 @@ int main (int argc, char *argv[]) {
 	if (argc > 5) assign_cli_argument(argv[5], hidden_sizes[0], "hidden size 1");
 	if (argc > 6) assign_cli_argument(argv[6], hidden_sizes[1], "hidden size 2");
 	if (argc > 7) assign_cli_argument(argv[7], hidden_sizes[2], "hidden size 3");
-	
+
 	auto cells = StackedCells<lstm>(input_size, hidden_sizes);
 	auto initial_state = lstm::initial_states(hidden_sizes);
 	graph_t G;
@@ -33,7 +33,7 @@ int main (int argc, char *argv[]) {
 
 	for (auto i = 0; i < timesteps; ++i)
 		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
-	
+
 	// backpropagate
 	G.backward();
 }

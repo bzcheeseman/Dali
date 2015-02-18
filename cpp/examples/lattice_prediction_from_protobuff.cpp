@@ -1,11 +1,14 @@
 #include <fstream>
 #include <iterator>
 #include <algorithm>
+
 #include <Eigen/Eigen>
-#include "../utils.h"
-#include "../gzstream.h"
-#include "../StackedGatedModel.h"
-#include "../OptionParser/OptionParser.h"
+
+#include "core/utils.h"
+#include "core/gzstream.h"
+#include "core/StackedGatedModel.h"
+#include "OptionParser/OptionParser.h"
+
 using std::vector;
 using std::make_shared;
 using std::shared_ptr;
@@ -38,7 +41,7 @@ int main( int argc, char* argv[]) {
 	    	" @author Jonathan Raiman\n"
 	    	" @date February 10th 2015"
 	    	);
-	
+
 	utils::training_corpus_to_CLI(parser);
 	parser.set_defaults("index2target", "");
 	parser
@@ -75,7 +78,7 @@ int main( int argc, char* argv[]) {
 	std::cout << "Loading Lattice" << std::endl;
 	auto lattice_roots = OntologyBranch::load(options["lattice"]);
 
-	
+
 	int num_fixpoints            = 0;
 	int num_concepts             = 0;
 	double mean_fixpoint_degree  = 0.0;

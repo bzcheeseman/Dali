@@ -1,13 +1,10 @@
-#include "../Layers.h"
-#include "../Softmax.h"
-#include "../CrossEntropy.h"
 #include <fstream>
 #include <random>
 #include <iostream>
 #include <cstdio>
 #include <thread>
 #include <iterator>
-#include "../StackedModel.h"
+#include "core/StackedModel.h"
 
 // test file for character prediction
 using std::vector;

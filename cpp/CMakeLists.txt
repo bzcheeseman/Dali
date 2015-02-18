@@ -14,7 +14,7 @@ SET (CMAKE_CXX_COMPILER             "/usr/bin/clang++")
 SET (CMAKE_CXX_FLAGS                "${CMAKE_CXX_FLAGS} -Wall -std=c++11 -O3")
 
 # INCLUDES
-include_directories(${EIGEN3_INCLUDE_DIR}/Eigen)
+include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(${PROJECT_SOURCE_DIR})
 
 # ADDING DIRECTORIES WITH THEIR OWN CMAKELISTS FILES

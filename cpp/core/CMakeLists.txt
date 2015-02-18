@@ -4,6 +4,10 @@ file(GLOB CoreHeaders "${CoreDir}/*.h")
 file(GLOB CoreSources "${CoreDir}/*.cpp")
 file(GLOB CoreTemplates "${CoreDir}/*.cpp.template")
 
+if (BLAS_FOUND AND MKL_FOUND)
+    add_definitions(-DEIGEN_USE_MKL_VML
+                    -DEIGEN_USE_BLAS)
+endif (BLAS_FOUND AND MKL_FOUND)
 
 foreach(header ${CoreTemplates})
     message(STATUS "Template instantiator will run for ${header}")

@@ -43,6 +43,9 @@
 #include <array>
 #include <thread>		// for __WINPTHREADS_VERSION if on MinGW-w64 w/ POSIX threading
 
+using namespace google::protobuf::internal;
+using namespace std;
+
 // Platform-specific definitions of a numeric thread ID type and an invalid value
 #if defined(_WIN32) || defined(__WINDOWS__) || defined(__WIN32__)
 // No sense pulling in windows.h in a header, we'll manually declare the function
@@ -360,9 +363,9 @@ namespace details
 	}
 
 #if defined(__APPLE__) || !defined(__GNUC__) || __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 8)
-	template<typename T> struct is_trivially_destructible : google::protobuf::internal::is_trivially_destructible<T> { };
+	template<typename T> struct is_trivially_destructible : is_trivially_destructible<T> { };
 #else
-	template<typename T> struct is_trivially_destructible : google::protobuf::internal::has_trivial_destructor<T> { };
+	template<typename T> struct is_trivially_destructible : has_trivial_destructor<T> { };
 #endif
 
 #ifdef MOODYCAMEL_CPP11_THREAD_LOCAL_SUPPORTED

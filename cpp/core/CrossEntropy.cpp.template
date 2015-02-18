@@ -67,7 +67,7 @@ Z masked_cross_entropy(std::shared_ptr<Mat<Z>> logprobs,
 			logprobs->dw(targets(i), i) -= 1;
 
 			#ifdef VERBOSE_CROSS_ENTROPY
-			
+
 			std::cout << "-- (" << T << ")\n";
 			for (int k = 0 ; k < logprobs->dw.rows(); k++) {
 				for (int j = 0; j < logprobs->dw.cols(); j++) {
@@ -83,12 +83,12 @@ Z masked_cross_entropy(std::shared_ptr<Mat<Z>> logprobs,
 						          << std::setprecision( 3 ) // use 3 decimals
 						          << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
 						          << logprobs->dw(k,j) << "   ";
-					}	
+					}
 				}
 				std::cout << "\n";
 			}
 			std::cout << std::endl << "--" << std::endl;
-			
+
 			#endif
 		}
 	}
@@ -695,7 +695,7 @@ template double cross_entropy(std::shared_ptr<Mat<double>>, int&);
 
 // BEGIN TEMPLATE SPECIALIZATIONS
 
-// TEMPLATE 
+// TEMPLATE
 // [float, double] masked_cross_entropy
 // [std::shared_ptr<Mat<RETURN_TYPE>>]
 // [uint&]
@@ -703,7 +703,7 @@ template double cross_entropy(std::shared_ptr<Mat<double>>, int&);
 // [shared_eigen_index_vector, uint, int]
 // [const eigen_index_block, const eigen_index_block_scalar]
 
-// TEMPLATE 
+// TEMPLATE
 // [float, double] masked_cross_entropy_no_grad
 // [std::shared_ptr<Mat<RETURN_TYPE>>]
 // [uint&]

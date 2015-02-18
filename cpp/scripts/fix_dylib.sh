@@ -16,20 +16,25 @@ red=`tput setaf 1`
 green=`tput setaf 2`
 reset=`tput sgr0`
 
-for file in $(find $PROJECT_DIR/build -type f -perm +111)
-do
-    echo "Fixing \"$file\""
-    if [ -f $file ];
-    then
-        for lib in libmkl_intel_lp64.dylib libmkl_intel_thread.dylib libmkl_core.dylib 
-        do
-            install_name_tool -change $lib /opt/intel/mkl/lib/$lib $file
-        done
-        install_name_tool -change libiomp5.dylib $IOMP5_FILE $file
-    else
-        echo "install_name_tool can't find \"$file\""
-    fi
-done
+file=${1:-}
+if [[ -z "$file" ]]
+then
+    echo "Usage $0 FILE"
+    exit 1
+fi
+
+echo "Fixing \"$file\""
+if [ -f $file ];
+then
+    for lib in libmkl_intel_lp64.dylib libmkl_intel_thread.dylib libmkl_core.dylib
+    do
+        install_name_tool -change $lib /opt/intel/mkl/lib/$lib $file
+    done
+    install_name_tool -change libiomp5.dylib $IOMP5_FILE $file
+else
+    echo "install_name_tool can't find \"$file\""
+fi
+
 if [ -w "$INTEL_THREAD_FILE" ]
 then
     install_name_tool -change libiomp5.dylib $IOMP5_FILE $INTEL_THREAD_FILE
@@ -47,4 +52,5 @@ else
     echo "${reset}"
     echo " -> Could not fix linking for $INTEL_THREAD_FILE"
     echo "    rerun with 'sudo'"
+    exit 1
 fi

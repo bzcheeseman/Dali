@@ -10,9 +10,18 @@ set(MKL_MULTI_THREADED "1")
 # PACKAGES
 find_package(Eigen3 REQUIRED)
 find_package(ZLIB REQUIRED)
-find_package(BLAS REQUIRED)
+find_package(BLAS)
+find_package(MKL)
 
-find_package(MKL REQUIRED)
+# CLEANING UP AFTER FINDERS
+# some library list variables are FALSE by default if libs are not found,
+# but it is much more useful to keep it empty.
+set(LIBVARS_TO_FIX MKL_LIBRARIES BLAS_LIBRARIES)
+foreach(libvar ${LIBVARS_TO_FIX})
+    if (NOT ${libvar})
+        set(${libvar} "")
+    endif (NOT ${libvar})
+endforeach(libvar)
 
 # COMPILER SETUP
 SET (CMAKE_CXX_COMPILER             "/usr/bin/clang++")

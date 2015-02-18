@@ -18,14 +18,6 @@ add_library(core
         ${CoreHeaders}
 )
 
-ADD_CUSTOM_TARGET(fix
-    COMMAND sudo sh ${PROJECT_SOURCE_DIR}/scripts/fix_dylib.sh WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/build
-)
-
-message("here are the libraries you were looking for => " ${MKL_LIBRARIES})
-message("here are the BLAS libraries you were looking for => " ${BLAS_LIBRARIES} ${BLAS_LINKER_FLAGS})
-
 add_dependencies(core core_templates)
 
-message("linking to " ${MKL_LIBRARIES})
 target_link_libraries(core ${ZLIB_LIBRARIES} proto ${BLAS_LIBRARIES} ${MKL_LIBRARIES})

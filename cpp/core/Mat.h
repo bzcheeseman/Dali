@@ -4,8 +4,8 @@
 #include "utils.h"
 #include "cnpy.h"
 
-#define EIGEN_USE_MKL_VML
-#define EIGEN_USE_BLAS
+// #define EIGEN_USE_MKL_VML
+// #define EIGEN_USE_BLAS
 // doesnt work, but its also not useful for now
 // #define EIGEN_USE_LAPACKE
 #include <Eigen/Eigen>
@@ -32,7 +32,7 @@ template<typename T> class Mat {
 		std::shared_ptr<std::vector<uint>> sparse_row_keys;
 		mutable eigen_mat_view dw;
 		std::shared_ptr<std::string> name;
-		const random_t random_id; 
+		const random_t random_id;
 		Mat (int, int);
 		Mat (int, int, bool);
         Mat (const Mat<T>& m, bool copy_w, bool copy_dw);

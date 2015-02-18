@@ -359,6 +359,9 @@ namespace details
 		return *it;
 	}
 
+// Not sure if this correct thing to do for all versions of clang compiler
+// If you are using older version of clang, and this check fails, consider
+// updating the code so that it check for version number.
 #if defined(__clang__) || defined(__APPLE__) || !defined(__GNUC__) || __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINER__ >= 8)
 	template<typename T> struct is_trivially_destructible : std::is_trivially_destructible<T> { };
 #else

@@ -23,8 +23,10 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <dirent.h>
+#include <gflags/gflags.h>
+
 #include "protobuf/corpus.pb.h"
-#include "OptionParser/OptionParser.h"
+
 // Default writing mode useful for default argument to
 // makedirs
 #define DEFAULT_MODE S_IRWXU | S_IRGRP |  S_IXGRP | S_IROTH | S_IXOTH
@@ -198,8 +200,6 @@ namespace utils {
 	template<typename T>
 	void assign_cli_argument(char *, T&, std::string);
 
-	void training_corpus_to_CLI(optparse::OptionParser&);
-
 	std::vector<size_t> random_arange(size_t);
 
 	template <class T> inline void hash_combine(std::size_t &, const T &);
@@ -226,6 +226,8 @@ namespace utils {
 	bool file_exists(const std::string&);
 
 	void exit_with_message(const std::string&, int error_code = 1);
+
+	bool validate_flag_nonempty(const char* flagname, const std::string& value);
 }
 
 // define hash code for OntologyBranch

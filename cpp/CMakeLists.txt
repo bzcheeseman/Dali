@@ -7,9 +7,12 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 set(MKL_MULTI_THREADED "1")
 
-# PACKAGES
+# REQUIRED PACKAGES
 find_package(Eigen3 REQUIRED)
 find_package(ZLIB REQUIRED)
+find_package(Gflags REQUIRED)
+
+# OPTIONAL PACAKGES
 find_package(BLAS)
 find_package(MKL)
 
@@ -31,6 +34,7 @@ SET (CMAKE_CXX_FLAGS                "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
 include_directories(${MKL_INCLUDE_DIR})
 include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(${PROJECT_SOURCE_DIR})
+include_directories(${GFLAGS_INCLUDE_DIRS})
 
 # ADDING DIRECTORIES WITH THEIR OWN CMAKELISTS FILES
 add_subdirectory(${PROJECT_SOURCE_DIR}/protobuf)

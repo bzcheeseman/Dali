@@ -1,5 +1,15 @@
 #include "utils.h"
 
+DEFINE_int32(subsets, 10, "Break up dataset into how many minibatches ? \n(Note: reduces batch sparsity)");
+DEFINE_int32(min_occurence, 2, "How often a word must appear to be included in the Vocabulary \n"
+								"(Note: other words replaced by special **UNKNONW** word)");
+DEFINE_int32(epochs, 5, "How many training loops through the full dataset ?");
+DEFINE_int32(report_frequency, 1, "How often (in epochs) to print the error to standard out during training.");
+DEFINE_string(dataset, "", "Where to fetch the data from . ");
+
+static bool dummy = gflags::RegisterFlagValidator(&FLAGS_dataset,
+                                          &utils::validate_flag_nonempty);
+
 using std::vector;
 using std::string;
 using std::ifstream;
@@ -1044,44 +1054,6 @@ namespace utils {
 	}
 
 	/**
-	Training Corpus to CLI
-	----------------------
-
-	Add options to Option Parser
-	for:
-
-	* Number of subsets
-	* Minimum Word Occurrence
-	* Epochs
-	* Report Frequency
-	* Dataset Path
-
-	**/
-	void training_corpus_to_CLI(optparse::OptionParser& parser) {
-		parser.set_defaults("subsets", "10");
-		parser
-			.add_option("-s", "--subsets")
-			.help("Break up dataset into how many minibatches ? \n(Note: reduces batch sparsity)").metavar("INT");
-		parser.set_defaults("min_occurence", "2");
-		parser
-			.add_option("-m", "--min_occurence")
-			.help("How often a word must appear to be included in the Vocabulary \n"
-				"(Note: other words replaced by special **UNKNONW** word)").metavar("INT");
-		parser.set_defaults("epochs", "5");
-		parser
-			.add_option("-e", "--epochs")
-			.help("How many training loops through the full dataset ?").metavar("INT");
-		parser.set_defaults("report_frequency", "1");
-		parser
-			.add_option("-r", "--report_frequency")
-			.help("How often (in epochs) to print the error to standard out during training.").metavar("INT");
-		parser.set_defaults("dataset", "");
-		parser
-			.add_option("-d", "--dataset")
-			.help("Where to fetch the data from . ").metavar("FILE");
-	}
-
-	/**
 	Exit With Message
 	-----------------
 
@@ -1154,6 +1126,14 @@ namespace utils {
 	bool file_exists (const std::string& fname) {
 		struct stat buffer;
 		return (stat (fname.c_str(), &buffer) == 0);
+	}
+
+
+	bool validate_flag_nonempty(const char* flagname, const std::string& value) {
+		if (value.empty()) {
+			std::cout << "Invalid value for --" << flagname << " (can't be empty)" << std::endl;
+		}
+		return not value.empty();
 	}
 }
 

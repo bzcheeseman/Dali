@@ -22,6 +22,6 @@ add_library(core
         ${CoreHeaders}
 )
 
-add_dependencies(core core_templates)
+add_dependencies(core core_templates proto)
 
-target_link_libraries(core ${ZLIB_LIBRARIES} proto ${BLAS_LIBRARIES} ${MKL_LIBRARIES})
+target_link_libraries(core ${ZLIB_LIBRARIES} proto ${BLAS_LIBRARIES} ${MKL_LIBRARIES} ${GFLAGS_LIBRARIES})

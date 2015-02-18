@@ -1,16 +1,43 @@
-#include <fstream>
-#include <iterator>
 #include <algorithm>
 #include <Eigen/Eigen>
+#include <fstream>
+#include <gflags/gflags.h>
+#include <gflags/gflags_completions.h>
+#include <iterator>
 #include <thread>
-#include <algorithm>
 
 #include "core/utils.h"
 #include "core/SST.h"
 #include "core/gzstream.h"
 #include "core/StackedModel.h"
-#include "OptionParser/OptionParser.h"
 #include "third_party/concurrentqueue.h"
+
+DEFINE_int32(minibatch, 100, "What size should be used for the minibatches ?");
+DEFINE_string(validation, "", "Location of the validation dataset");
+DEFINE_bool(sparse, true, "Use sparse embedding");
+DEFINE_double(cutoff, 2.0, "KL Divergence error where stopping is acceptable");
+DEFINE_int32(j, 1, "How many threads should be used ?");
+DEFINE_int32(patience, 5, "How many unimproving epochs to wait through before witnessing progress ?");
+
+static bool dummy1 = gflags::RegisterFlagValidator(&FLAGS_validation,
+                                                   &utils::validate_flag_nonempty);
+
+// defined in StackedGatedModel
+DECLARE_int32(stack_size);
+DECLARE_int32(input_size);
+DECLARE_int32(hidden);
+DECLARE_double(decay_rate);
+DECLARE_double(rho);
+DECLARE_string(save);
+DECLARE_string(load);
+
+// defined in utils
+DECLARE_int32(subsets);
+DECLARE_int32(min_occurence);
+DECLARE_int32(epochs);
+DECLARE_int32(report_frequency);
+DECLARE_string(dataset);
+
 
 using std::vector;
 using std::make_shared;
@@ -23,12 +50,10 @@ using std::min;
 using std::thread;
 using std::ref;
 using utils::Vocab;
-using utils::from_string;
 using utils::OntologyBranch;
 using utils::tokenized_uint_labeled_dataset;
 using std::atomic;
 using moodycamel::ConcurrentQueue;
-
 
 typedef float REAL_t;
 typedef Graph<REAL_t> graph_t;
@@ -39,6 +64,7 @@ typedef Eigen::Matrix<REAL_t, Eigen::Dynamic, 1> float_vector;
 typedef std::pair<vector<string>, uint> labeled_pair;
 
 const string START = "**START**";
+
 
 /**
 Databatch
@@ -339,8 +365,6 @@ for 5 epochs, or cost dips below the cutoff.
 Inputs
 ------
 
-       optparse::Values& options : CLI arguments controling input size,
-                                   hidden size, and number of stacked LSTMs
 const vector<Databatch>& dataset : sentences broken into minibatches to
                                    train model on.
          const Vocab& word_vocab : the word vocabulary with a lookup table
@@ -356,7 +380,6 @@ const vector<Databatch>& dataset : sentences broken into minibatches to
 **/
 template<typename T, class S>
 void train_model(
-    optparse::Values& options,
     const vector<Databatch>& dataset,
     const vector<Databatch>& validation_set,
     const Vocab& word_vocab,
@@ -370,11 +393,11 @@ void train_model(
     ) {
     // Build Model:
     StackedModel<T> model(word_vocab.index2word.size(),
-            from_string<int>(options["input_size"]),
-            from_string<int>(options["hidden"]),
-            from_string<int>(options["stack_size"]) < 1 ? 1 : from_string<int>(options["stack_size"]),
+            FLAGS_input_size,
+            FLAGS_hidden,
+            FLAGS_stack_size < 1 ? 1 : FLAGS_stack_size,
             word_vocab.index2word.size());
-    model.embedding->sparse = from_string<int>(options["sparse"]) > 0;
+    model.embedding->sparse = FLAGS_sparse > 0;
     auto parameters = model.parameters();
     S solver(parameters, rho, 1e-9, 5.0);
     int i = 0;
@@ -422,67 +445,40 @@ vector<Databatch> load_dataset_with_vocabulary(const string& fname, Vocab& vocab
 }
 
 int main( int argc, char* argv[]) {
-    auto parser = optparse::OptionParser()
-        .usage("usage: --dataset [corpus_directory] --minibatch [minibatch size]")
-        .description(
-            "RNN Language Model using Stacked LSTMs\n"
-            "--------------------------------------\n"
-            "\n"
-            "Predict next word in sentence using Stacked LSTMs.\n"
-            "\n"
-            " @author Jonathan Raiman\n"
-            " @date February 15th 2015"
-            );
-    // Command Line Setup:
-    StackedModel<REAL_t>::add_options_to_CLI(parser);
-    utils::training_corpus_to_CLI(parser);
-    parser.set_defaults("minibatch", "100");
-    parser
-        .add_option("--minibatch")
-        .help("What size should be used for the minibatches ?").metavar("INT");
-    parser.set_defaults("validation", "");
-    parser
-        .add_option("--validation")
-        .help("Location of the validation dataset").metavar("FILE");
-    parser.set_defaults("sparse", "1");
-    parser
-        .add_option("--sparse")
-        .help("Use sparse embedding").metavar("INT");
-    parser.set_defaults("cutoff", "2.0");
-    parser
-        .add_option("-ct", "--cutoff")
-        .help("KL Divergence error where stopping is acceptable").metavar("FLOAT");
-    parser.set_defaults("j", "1");
-    parser
-        .add_option("-j")
-        .help("How many threads should be used ?").metavar("INT");
-    parser.set_defaults("patience", "5");
-    parser
-        .add_option("--patience")
-        .help("How many unimproving epochs to wait through before witnessing progress ?").metavar("INT");
-    auto& options = parser.parse_args(argc, argv);
-    auto args = parser.args();
-    if (options["dataset"] == "")    utils::exit_with_message("Error: Dataset (--dataset) keyword argument requires a value.");
-    if (options["validation"] == "") utils::exit_with_message("Error: Validation (--validation) keyword argument requires a value.");
-    auto report_frequency   = from_string<int>(options["report_frequency"]);
-    auto rho                = from_string<REAL_t>(options["rho"]);
-    auto epochs             = from_string<int>(options["epochs"]);
-    auto cutoff             = from_string<REAL_t>(options["cutoff"]);
-    auto minibatch_size     = from_string<int>(options["minibatch"]);
-    auto patience           = from_string<int>(options["patience"]);
+    gflags::SetUsageMessage(
+        "\n"
+        "RNN Language Model using Stacked LSTMs\n"
+        "--------------------------------------\n"
+        "\n"
+        "Predict next word in sentence using Stacked LSTMs.\n"
+        "\n"
+        " @author Jonathan Raiman\n"
+        " @date February 15th 2015"
+    );
+
+
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+    auto report_frequency   = FLAGS_report_frequency;
+    auto rho                = FLAGS_rho;
+    auto epochs             = FLAGS_epochs;
+    auto cutoff             = FLAGS_cutoff;
+    auto minibatch_size     = FLAGS_minibatch;
+    auto patience           = FLAGS_patience;
     auto dataset_vocab      = load_dataset_and_vocabulary(
-    	options["dataset"],
-    	from_string<int>(options["min_occurence"]),
+    	FLAGS_dataset,
+    	FLAGS_min_occurence,
     	minibatch_size);
 
     auto validation_set     = load_dataset_with_vocabulary(
-    	options["validation"],
+    	FLAGS_validation,
     	dataset_vocab.first,
     	minibatch_size);
     auto vocab_size = dataset_vocab.first.index2word.size();
-    auto num_threads = from_string<int>(options["j"]);
+    auto num_threads = FLAGS_j;
 
-    std::cout << "    Vocabulary size = " << vocab_size << " (occuring more than " << from_string<int>(options["min_occurence"]) << ")" << std::endl;
+
+    std::cout << "    Vocabulary size = " << vocab_size << " (occuring more than " << FLAGS_min_occurence << ")" << std::endl;
     std::cout << "Max training epochs = " << epochs           << std::endl;
     std::cout << "    Training cutoff = " << cutoff           << std::endl;
     std::cout << "  Number of threads = " << num_threads      << std::endl;
@@ -491,7 +487,6 @@ int main( int argc, char* argv[]) {
     std::cout << "       max_patience = " << patience         << std::endl;
 
     train_model<REAL_t, Solver::AdaDelta<REAL_t>>(
-        options,
         dataset_vocab.second,
         validation_set,
         dataset_vocab.first,
@@ -499,7 +494,7 @@ int main( int argc, char* argv[]) {
         report_frequency,
         cutoff,
         epochs,
-        options["save"],
+        FLAGS_save,
         num_threads,
         patience);
 

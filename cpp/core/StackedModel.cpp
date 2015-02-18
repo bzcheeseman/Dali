@@ -1,5 +1,15 @@
 #include "StackedModel.h"
 
+#include <gflags/gflags.h>
+
+DEFINE_int32(stack_size, 4, "How many LSTMs should I stack ?");
+DEFINE_int32(input_size, 100, "Size of the word vectors");
+DEFINE_int32(hidden, 100, "How many Cells and Hidden Units should each LSTM have ?");
+DEFINE_double(decay_rate, 0.95, "What decay rate should RMSProp use ?");
+DEFINE_double(rho, 0.95, "What rho / learning rate should the Solver use ?");
+DEFINE_string(save, "", "Where to save the model to ?");
+DEFINE_string(load, "", "Where to load the model from ?");
+
 using std::shared_ptr;
 using std::vector;
 using std::make_shared;
@@ -81,7 +91,7 @@ std::string fname : where to save the configuration
 **/
 template<typename T>
 void StackedModel<T>::save_configuration(std::string fname) {
-	
+
 	auto config = configuration();
 	utils::map_to_file(config, fname);
 }
@@ -94,38 +104,6 @@ void StackedModel<T>::save(std::string dirname) {
 	utils::save_matrices(params, dirname);
 	dirname += "config.md";
 	save_configuration(dirname);
-}
-
-template<typename T>
-void StackedModel<T>::add_options_to_CLI(optparse::OptionParser& parser) {
-	parser.set_defaults("stack_size", "4");
-	parser
-		.add_option("-stack", "--stack_size")
-		.help("How many LSTMs should I stack ?").metavar("INT");
-	parser.set_defaults("input_size", "100");
-	parser
-		.add_option("-i", "--input_size")
-		.help("Size of the word vectors").metavar("INT");
-	parser.set_defaults("hidden", "100");
-	parser
-		.add_option("-h", "--hidden")
-		.help("How many Cells and Hidden Units should each LSTM have ?").metavar("INT");
-	parser.set_defaults("decay_rate", "0.95");
-	parser
-		.add_option("-decay", "--decay_rate")
-		.help("What decay rate should RMSProp use ?").metavar("FLOAT");
-	parser.set_defaults("rho", "0.95");
-	parser
-		.add_option("--rho")
-		.help("What rho / learning rate should the Solver use ?").metavar("FLOAT");
-
-	parser.set_defaults("save", "");
-	parser.add_option("--save")
-		.help("Where to save the model to ?").metavar("FOLDER");
-
-	parser.set_defaults("load", "");
-	parser.add_option("--load")
-		.help("Where to load the model from ?").metavar("FOLDER");
 }
 
 template<typename T>
@@ -400,7 +378,7 @@ Copy constructor with option to make a shallow
 or deep copy of the underlying parameters.
 
 If the copy is shallow then the parameters are shared
-but separate gradients `dw` are used for each of 
+but separate gradients `dw` are used for each of
 thread StackedModel<T>.
 
 Shallow copies are useful for Hogwild and multithreaded
@@ -427,7 +405,7 @@ StackedModel<T> out : the copied StackedModel with deep or shallow copy of param
 
 **/
 template<typename T>
-StackedModel<T>::StackedModel (const StackedModel<T>& model, bool copy_w, bool copy_dw) : 
+StackedModel<T>::StackedModel (const StackedModel<T>& model, bool copy_w, bool copy_dw) :
     input_size(model.input_size),
 	output_size(model.output_size),
 	vocabulary_size(model.vocabulary_size),
@@ -569,11 +547,11 @@ std::pair<std::pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>>, std
 /*
 def beam_search_with_indices(model, indices, size, prob = 1.):
     probs = model.predict_fun([indices])[0,-1]
-    
-    
+
+
     top_outputs = probs.argsort()[::-1][:size]
     top_probs = probs[top_outputs] * prob
-    
+
     return top_outputs, top_probs
 */
 
@@ -600,7 +578,7 @@ std::vector<int> StackedModel<T>::beam_search(
 		open_list.emplace_back(std:: )
 	}
 
-	
+
 	def beam_search(model, word2index, code2path, sentence, n, max_steps = 10):
 	    indices = encode_into_indices(word2index, sentence.split() if type(sentence) is str else sentence)
 	    vocab_size = model.vocabulary_size.get_value()
@@ -611,15 +589,15 @@ std::vector<int> StackedModel<T>::beam_search(
 	    top_outs, top_probs = beam_search_with_indices(model, indices, n, prob=1.)
 	    for candidate, prob in zip(top_outs, top_probs):
 	        open_list.append((indices + [candidate + vocab_size], prob))
-	    
+
 	    # for each option we expand another n options forward:
 	    i = 0
 	    while True:
 	        stops = 0
-	        
+
 	        options = [op for op in open_list]
 	        open_list = []
-	        
+
 	        for candidate, prob in options:
 	            if candidate[-1] == end_pred:
 	                stops += 1
@@ -630,7 +608,7 @@ std::vector<int> StackedModel<T>::beam_search(
 	                new_candidates, new_probs = beam_search_with_indices(model, candidate, n, prob=prob)
 	                for new_candidate, new_prob in zip(new_candidates, new_probs):
 	                    open_list.append((candidate + [new_candidate + vocab_size], new_prob))
-	                
+
 	        open_list.sort(key=lambda x: -x[1])
 	        open_list = open_list[:n]
 	        i += 1
@@ -638,11 +616,11 @@ std::vector<int> StackedModel<T>::beam_search(
 	            break
 	        if stops == n:
 	            break
-	            
+
 	    open_list = [(decode_from_indices(model.max_branching_factor, code2path, code[len(indices):-1] - vocab_size), prob) for code, prob in open_list]
-	            
+
 	    return open_list
-	
+
 
 	graph_t G(false);
 	shared_mat input_vector;

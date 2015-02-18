@@ -167,7 +167,7 @@ Mat<T> out : deep or shallow copy of m
 
 **/
 template<typename T>
-Mat<T>::Mat (const Mat<T>& m, bool copy_w, bool copy_dw) : sparse_row_keys(NULL), sparse(false), name(NULL), w(NULL, m.n, m.d), dw(NULL, m.n, m.d), n(m.n), d(m.d), random_id(copy_w ? utils::get_random_id() : m.random_id) {
+Mat<T>::Mat (const Mat<T>& m, bool copy_w, bool copy_dw) : sparse_row_keys(NULL), sparse(m.sparse), name(m.name), w(NULL, m.n, m.d), dw(NULL, m.n, m.d), n(m.n), d(m.d), random_id(copy_w ? utils::get_random_id() : m.random_id) {
 	if (copy_w) {
 		_w = m.w;
 		new (&w) eigen_mat_view(_w.data(), n, d);

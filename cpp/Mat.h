@@ -8,7 +8,7 @@
 // #define EIGEN_USE_BLAS
 // doesnt work, but its also not useful for now
 // #define EIGEN_USE_LAPACKE
-#include <Eigen>
+#include <Eigen/Eigen>
 #include <iostream>
 
 typedef Eigen::MatrixBase<Eigen::Matrix<unsigned int, Eigen::Dynamic, Eigen::Dynamic> >::ColXpr eigen_index_block;

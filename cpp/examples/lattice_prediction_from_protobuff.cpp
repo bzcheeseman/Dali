@@ -11,9 +11,9 @@
 DEFINE_string(index2target, "", "Location of Index2Target file with mapping from integer to target name.");
 DEFINE_string(lattice, "", "Where to load a lattice / Ontology from ?");
 
-static bool dummy1 = gflags::RegisterFlagValidator(&FLAGS_lattice,
+static bool dummy1 = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_lattice,
                                            		   &utils::validate_flag_nonempty);
-static bool dummy2 = gflags::RegisterFlagValidator(&FLAGS_index2target,
+static bool dummy2 = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_index2target,
                                                    &utils::validate_flag_nonempty);
 
 using std::vector;
@@ -38,7 +38,7 @@ typedef OntologyBranch lattice_t;
 typedef std::shared_ptr<lattice_t> shared_lattice_t;
 
 int main( int argc, char* argv[]) {
-    gflags::SetUsageMessage(
+    GFLAGS_NAMESPACE::SetUsageMessage(
         "\n"
     	"Lattice Prediction from Protobuff\n"
     	"---------------------------------\n"
@@ -47,7 +47,7 @@ int main( int argc, char* argv[]) {
     	" @date February 10th 2015"
     );
 
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
+    GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
 	auto index2concept = utils::load_list(FLAGS_index2target);
 	std::cout << "Loaded " << index2concept.size() << " unique concept names " << std::endl;

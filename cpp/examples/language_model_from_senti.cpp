@@ -341,7 +341,7 @@ void train_model(
 }
 
 int main( int argc, char* argv[]) {
-    gflags::SetUsageMessage(
+    GFLAGS_NAMESPACE::SetUsageMessage(
         "\n"
         "Sentiment Analysis as Competition amongst Language Models\n"
         "---------------------------------------------------------\n"
@@ -357,7 +357,7 @@ int main( int argc, char* argv[]) {
     );
 
 
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
+    GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
     auto report_frequency   = FLAGS_report_frequency;
     auto rho                = FLAGS_rho;

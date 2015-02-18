@@ -287,7 +287,7 @@ void training_loop(StackedGatedModel<T>& model,
 }
 
 int main(int argc, char *argv[]) {
-    gflags::SetUsageMessage(
+    GFLAGS_NAMESPACE::SetUsageMessage(
         "\n"
     	"Sparkfun Dataset Prediction\n"
     	"---------------------------\n"
@@ -303,7 +303,7 @@ int main(int argc, char *argv[]) {
     );
 
 
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
+    GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
 	// TODO(sidor): Here dataset should defaults to: examples/sparkfun_dataset.txt
 

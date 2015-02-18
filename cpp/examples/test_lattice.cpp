@@ -64,7 +64,7 @@ void test_lattice () {
 }
 
 int main (int argc, char *argv[]) {
-	gflags::SetUsageMessage(
+	GFLAGS_NAMESPACE::SetUsageMessage(
         "\n"
     	"Test Lattice\n"
     	"------------\n"
@@ -81,7 +81,7 @@ int main (int argc, char *argv[]) {
     );
 
 
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
+    GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
 
 	if (!FLAGS_input_path.empty()) {

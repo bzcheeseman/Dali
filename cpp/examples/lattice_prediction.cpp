@@ -12,7 +12,7 @@
 
 DEFINE_string(lattice, "", "Where to load a lattice / Ontology from ?");
 
-static bool dummy1 = gflags::RegisterFlagValidator(&FLAGS_lattice,
+static bool dummy1 = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_lattice,
                                                &utils::validate_flag_nonempty);
 
 DEFINE_int32(memory_rampup, 1000, "Over how many epochs should the memory grow ?");
@@ -198,7 +198,7 @@ void training_loop(StackedGatedModel<T>& model,
 }
 
 int main( int argc, char* argv[]) {
-    gflags::SetUsageMessage(
+    GFLAGS_NAMESPACE::SetUsageMessage(
         "\n"
 		"Lattice Prediction\n"
     	"------------\n"
@@ -209,7 +209,7 @@ int main( int argc, char* argv[]) {
     	" @date February 4th 2015"
     );
 
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
+    GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
 
 	auto lattice     = OntologyBranch::load(FLAGS_lattice)[0];

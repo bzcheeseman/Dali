@@ -19,7 +19,7 @@ DEFINE_double(cutoff, 2.0, "KL Divergence error where stopping is acceptable");
 DEFINE_int32(j, 1, "How many threads should be used ?");
 DEFINE_int32(patience, 5, "How many unimproving epochs to wait through before witnessing progress ?");
 
-static bool dummy1 = gflags::RegisterFlagValidator(&FLAGS_validation,
+static bool dummy1 = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_validation,
                                                    &utils::validate_flag_nonempty);
 
 
@@ -429,8 +429,7 @@ vector<Databatch> load_dataset_with_vocabulary(const string& fname, Vocab& vocab
 }
 
 int main( int argc, char* argv[]) {
-    std::cout<< "siema" << std::endl;
-    gflags::SetUsageMessage(
+    GFLAGS_NAMESPACE::SetUsageMessage(
         "\n"
         "RNN Language Model using Stacked LSTMs\n"
         "--------------------------------------\n"
@@ -442,7 +441,7 @@ int main( int argc, char* argv[]) {
     );
 
 
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
+    GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
 // Not sure if this correct thing to do for all versions of clang compiler
     auto report_frequency   = FLAGS_report_frequency;

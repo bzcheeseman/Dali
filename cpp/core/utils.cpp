@@ -7,8 +7,9 @@ DEFINE_int32(epochs, 5, "How many training loops through the full dataset ?");
 DEFINE_int32(report_frequency, 1, "How often (in epochs) to print the error to standard out during training.");
 DEFINE_string(dataset, "", "Where to fetch the data from . ");
 
-static bool dummy = gflags::RegisterFlagValidator(&FLAGS_dataset,
-                                          &utils::validate_flag_nonempty);
+
+static bool dummy = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_dataset,
+                                                            &utils::validate_flag_nonempty);
 
 using std::vector;
 using std::string;

@@ -20,7 +20,7 @@ DEFINE_int32(hidden_size, 100, "How big is the hidden size ?");
 DEFINE_int32(stack_size, 3, "How many LSTMs are stacked at each time step ?");
 
 int main (int argc, char *argv[]) {
-    gflags::SetUsageMessage(
+    GFLAGS_NAMESPACE::SetUsageMessage(
         "\n"
     	"Backprop stacked LSTMs\n"
     	"----------------------\n"
@@ -29,7 +29,7 @@ int main (int argc, char *argv[]) {
     	" @author Jonathan Raiman\n"
     	" @date February 18th 2015\n"
     );
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
+    GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
     vector<int> hidden_sizes;
     for (int i=0; i < FLAGS_stack_size; ++i) hidden_sizes.emplace_back(FLAGS_hidden_size);

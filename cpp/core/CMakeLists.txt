@@ -19,7 +19,7 @@ add_library(core
 )
 
 ADD_CUSTOM_TARGET(fix
-    COMMAND /bin/sh ${PROJECT_SOURCE_DIR}/scripts/fix_dylib.sh WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/build
+    COMMAND sudo sh ${PROJECT_SOURCE_DIR}/scripts/fix_dylib.sh WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/build
 )
 
 message("here are the libraries you were looking for => " ${MKL_LIBRARIES})

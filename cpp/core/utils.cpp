@@ -715,20 +715,6 @@ namespace utils {
 	template struct dtanh_operator<float>;
 	// template struct clip_operator<float>;
 
-	template void assign_cli_argument<int>(char*,int&,int,std::string);
-	template void assign_cli_argument<float>(char*,float&,float,std::string);
-	template void assign_cli_argument<double>(char*,double&,double,std::string);
-	template void assign_cli_argument<long>(char*,long&,long,std::string);
-	template void assign_cli_argument<uint>(char*,uint&,uint,std::string);
-	template void assign_cli_argument<std::string>(char*,std::string&, std::string, std::string);
-
-	template void assign_cli_argument<int>(char*,int&,std::string);
-	template void assign_cli_argument<float>(char*,float&,std::string);
-	template void assign_cli_argument<double>(char*,double&,std::string);
-	template void assign_cli_argument<long>(char*,long&,std::string);
-	template void assign_cli_argument<uint>(char*,uint&,std::string);
-	template void assign_cli_argument<std::string>(char*,std::string&,std::string);
-
 	template struct sigmoid_operator<double>;
 	template struct tanh_operator<double>;
 	template struct relu_operator<double>;

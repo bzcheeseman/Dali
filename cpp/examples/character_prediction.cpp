@@ -3,14 +3,22 @@
 #include <iostream>
 #include <cstdio>
 #include <thread>
+#include <gflags/gflags.h>
 #include <iterator>
 #include "core/StackedModel.h"
+
+DEFINE_int32(num_threads, 5, "How many threads to run ?");
+DEFINE_int32(minibatch_size, 20, "How big is the minibatch ?");
+DEFINE_int32(epochs, 2000, "How many runs through the data ?");
+DEFINE_int32(input_size, 5, "Number of embedding dimensions for each character");
+DEFINE_int32(hidden_size, 20, "How many hidden states and cells should network use?");
+DEFINE_int32(stack_size, 2, "How many LSTMs should be stacked at each timestep ?");
+DEFINE_int32(vocab_size, 300, "How many characters should be modeled in the embedding.");
 
 // test file for character prediction
 using std::vector;
 using std::make_shared;
 using std::shared_ptr;
-using utils::assign_cli_argument;
 using std::fstream;
 using std::thread;
 
@@ -114,25 +122,11 @@ int main (int argc, char *argv[]) {
 	// Do not sync with stdio when using C++
 	std::ios_base::sync_with_stdio(0);
 
-	auto epochs           = 2000;
-	auto input_size       = 5;
-	auto report_frequency = 5;
-	REAL_t std            = 0.1;
-	auto hidden_size      = 20;
-	auto vocab_size       = 300;
-	auto num_threads      = 5;
-	int  stack_size       = 2;
-	auto minibatch_size   = 20;
-
-	if (argc > 1) assign_cli_argument(argv[1], num_threads,     "num_threads");
-	if (argc > 2) assign_cli_argument(argv[2], minibatch_size,  "minibatch_size");
-	if (argc > 2) assign_cli_argument(argv[3], epochs,          "epochs");
-	if (argc > 3) assign_cli_argument(argv[4], input_size,      "input size");
-	if (argc > 5) assign_cli_argument(argv[5], hidden_size,     "hidden size");
-	if (argc > 6) assign_cli_argument(argv[6], stack_size,      "stack size");
-	if (argc > 7) assign_cli_argument(argv[7], vocab_size,      "vocab_size");
-
-	auto model = StackedModel<REAL_t>(vocab_size, input_size, hidden_size, stack_size, vocab_size);
+	auto model = StackedModel<REAL_t>(FLAGS_vocab_size,
+									  FLAGS_input_size,
+									  FLAGS_hidden_size,
+									  FLAGS_stack_size,
+									  FLAGS_vocab_size);
 	auto parameters = model.parameters();
 
 /*
@@ -141,8 +135,8 @@ int main (int argc, char *argv[]) {
 	}
 */
 	auto prepad = 0;
-	auto postpad = vocab_size-1;
-	auto sentences = get_character_sequences("../paulgraham_text.txt", prepad, postpad, vocab_size);
+	auto postpad = FLAGS_vocab_size-1;
+	auto sentences = get_character_sequences("../paulgraham_text.txt", prepad, postpad, FLAGS_vocab_size);
 	int train_size = (int)(sentences.size() * 0.9);
 	int valid_size = sentences.size() - train_size;
 	vector<vector<int>> train_set(sentences.begin(), sentences.begin() + train_size);
@@ -164,19 +158,16 @@ int main (int argc, char *argv[]) {
 	// Solver::SGD<REAL_t> solver;
 
 
-	for (int t=0; t<num_threads; ++t) {
+	for (int t=0; t<FLAGS_num_threads; ++t) {
 		ts.emplace_back([&](int thread_id) {
 			auto thread_model = model.shallow_copy();
 
 			auto thread_parameters = thread_model.parameters();
 
-
-
-
-			for (auto i = 0; i < epochs / num_threads / minibatch_size; ++i) {
+			for (auto i = 0; i < FLAGS_epochs / FLAGS_num_threads / FLAGS_minibatch_size; ++i) {
 				auto G = graph_t(true);      // create a new graph for each loop
 
-				for (auto mb = 0; mb < minibatch_size; ++mb)
+				for (auto mb = 0; mb < FLAGS_minibatch_size; ++mb)
 					cost_fun(
 						G,                       // to keep track of computation
 						thread_model,            // what model should collect errors
@@ -191,7 +182,7 @@ int main (int argc, char *argv[]) {
 				solver.step(thread_parameters, 0.0);
 				// SGD
 				// solver.step(thread_parameters, 0.3/minibatch_size, 0.0);
-				if (++total_epochs % report_frequency == 0) {
+				if (++total_epochs % FLAGS_report_frequency == 0) {
 					cost = validation_error(model, valid_set);
 
 					std::cout << "epoch (" << total_epochs << ") perplexity = "

@@ -2,9 +2,8 @@
 
 #include "core/utils.h"
 
-DEFINE_string(input_path, "", "TODO(Jonathan): what is that ?");
-DEFINE_string(corpus_path, "", "TODO(Jonathan): what is that ?");
-
+DEFINE_string(input_path, "", "Path to test tree (optional)");
+DEFINE_string(corpus_path, "", "Path to labeled pairs (optional)");
 
 using std::vector;
 using std::string;

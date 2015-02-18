@@ -205,27 +205,36 @@ void reconstruct(
 
 template<typename T>
 T average_error(StackedModel<T>& model,
-    const vector<Databatch>& dataset) {
+    const vector<Databatch>& dataset, const int& num_threads) {
 	T cost = 0.0;
 	auto G = graph_t(false); // create a new graph for each loop)
     int full_code_size(0);
-	vector<thread> workers;
-    vector<T> costs(dataset.size());
-    for (int i = 0; i < dataset.size(); i++) {
-        workers.emplace_back([&dataset, &model, &costs, &G](int thread_id){
-            costs[thread_id] = model.masked_predict_cost(
-                G,
-                dataset[thread_id].data, // the sequence to draw from
-                dataset[thread_id].data, // what to predict (the words offset by 1)
-                1,
-                dataset[thread_id].codelens,
-                0
-            );
-        }, i);
+    vector<size_t> indices(dataset.size());
+    for (size_t i = 0; i < dataset.size();i++) {
+        indices[i] = i;
         full_code_size += dataset[i].total_codes;
     }
-    for (auto& worker : workers)
-        worker.join();
+    ConcurrentQueue<size_t> jobs(indices.size());
+    jobs.enqueue_bulk(indices.begin(), indices.size());
+	vector<thread> workers;
+    vector<T> costs(num_threads);
+    for (int t = 0; t < num_threads; t++) {
+        workers.emplace_back([&costs, &dataset, &model, &G, &jobs](int thread_id) {
+            size_t job;
+            costs[thread_id] = 0.0;
+            while (jobs.try_dequeue(job)) {
+                costs[thread_id] += model.masked_predict_cost(
+                    G,
+                    dataset[job].data, // the sequence to draw from
+                    dataset[job].data, // what to predict (the words offset by 1)
+                    1,
+                    dataset[job].codelens,
+                    0
+                );
+            }
+        }, t);
+    }
+    for (auto& worker : workers) worker.join();
     for (auto& v : costs) cost += v;
     return cost / full_code_size;
 }
@@ -288,7 +297,7 @@ void training_loop(StackedModel<T>& model,
     int full_code_size = 0;
 
     for (int t=0; t < num_threads; ++t)
-        workers.emplace_back([&](int thread_id) {
+        workers.emplace_back([&model, &q, &dataset, &solver, &epoch, &total_jobs, &full_code_size, &cost](int thread_id) {
             auto thread_model = model.shallow_copy();
             auto thread_parameters = thread_model.parameters();
 
@@ -375,7 +384,7 @@ void train_model(
     while (cost > cutoff && i < epochs && patience < max_patience) {
         new_cost = 0.0;
         training_loop(model, dataset, word_vocab, solver, parameters, report_frequency, i, patience, num_threads);
-        new_cost = average_error<T>(model, validation_set);
+        new_cost = average_error<T>(model, validation_set, num_threads);
         if (new_cost >= cost) patience++;
         else {patience = 0;}
         cost = new_cost;

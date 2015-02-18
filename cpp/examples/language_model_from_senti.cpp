@@ -1,7 +1,7 @@
 #include <fstream>
 #include <iterator>
 #include <algorithm>
-#include <Eigen>
+#include <Eigen/Eigen>
 #include <thread>
 #include "../utils.h"
 #include "../SST.h"

@@ -7,7 +7,6 @@
 #include <cstdio>
 #include <thread>
 #include <iterator>
-
 #include "../StackedModel.h"
 
 // test file for character prediction

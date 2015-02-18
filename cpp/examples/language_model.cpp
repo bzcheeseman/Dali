@@ -1,15 +1,15 @@
 #include <fstream>
 #include <iterator>
 #include <algorithm>
-#include <Eigen>
+#include <Eigen/Eigen>
 #include <thread>
-#include <atomic>
 #include <algorithm>
 #include "../utils.h"
 #include "../SST.h"
 #include "../gzstream.h"
 #include "../StackedModel.h"
 #include "../OptionParser/OptionParser.h"
+#include "../third_party/concurrentqueue.h"
 using std::vector;
 using std::make_shared;
 using std::shared_ptr;
@@ -25,6 +25,7 @@ using utils::from_string;
 using utils::OntologyBranch;
 using utils::tokenized_uint_labeled_dataset;
 using std::atomic;
+using moodycamel::ConcurrentQueue;
 
 
 typedef float REAL_t;
@@ -190,30 +191,14 @@ void reconstruct(
     const int& i,
     const Vocab& word_vocab) {
     std::cout << "Reconstruction \"";
-    for (int j = 0; j < 1; j++)
+    for (int j = 0; j < 3; j++)
         std::cout << word_vocab.index2word[(*minibatch.data)(i, j)] << " ";
     std::cout << "\"\n => ";
     std::cout << model.reconstruct_string(
-        minibatch.data->row(i).head(1),
+        minibatch.data->row(i).head(3),
         word_vocab,
-        (*minibatch.codelens)(i),
+        (*minibatch.codelens)(i) - 2,
         0) << std::endl;
-}
-
-template<typename T>
-void cost_update(
-    StackedModel<T>& model,
-    graph_t& G,
-    const Databatch& minibatch,
-    T& cost) {
-    cost = model.masked_predict_cost(
-        G,
-        minibatch.data, // the sequence to draw from
-        minibatch.data, // what to predict (the words offset by 1)
-        1,
-        minibatch.codelens,
-        0
-    );
 }
 
 template<typename T>
@@ -225,13 +210,16 @@ T average_error(StackedModel<T>& model,
 	vector<thread> workers;
     vector<T> costs(dataset.size());
     for (int i = 0; i < dataset.size(); i++) {
-        workers.emplace_back(
-            cost_update<REAL_t>,
-            ref(model),
-            ref(G),
-            ref(dataset[i]),
-            ref(cost)
+        workers.emplace_back([&dataset, &model, &costs, &G](int thread_id){
+            costs[thread_id] = model.masked_predict_cost(
+                G,
+                dataset[thread_id].data, // the sequence to draw from
+                dataset[thread_id].data, // what to predict (the words offset by 1)
+                1,
+                dataset[thread_id].codelens,
+                0
             );
+        }, i);
         full_code_size += dataset[i].total_codes;
     }
     for (auto& worker : workers)
@@ -239,8 +227,6 @@ T average_error(StackedModel<T>& model,
     for (auto& v : costs) cost += v;
     return cost / full_code_size;
 }
-
-template REAL_t average_error(StackedModel<REAL_t>&, const vector<Databatch>&);
 
 /**
 Training Loop
@@ -272,7 +258,7 @@ std::vector<std::shared_ptr<Mat<T>>>& : references to model parameters.
                                         training progress (KL divergence w.r.t. training
                                         data)
                      const int& epoch : how many epochs of training has been done so far.
-                              T& cost : store the KL divergence w.r.t. training data here.
+               const int& num_threads : how many threads to use
 
 **/
 template<typename T, typename S>
@@ -283,44 +269,51 @@ void training_loop(StackedModel<T>& model,
     vector<shared_ptr<mat>>& parameters,
     const int& report_frequency,
     const int& epoch,
-    T& cost,
-    const int& patience) {
-    int full_code_size = 0;
-    int i = 0;
+    const int& patience,
+    const int& num_threads) {
+    
+    T cost = 0.0;
+
+    // Create jobs:
     auto random_batch_order = utils::random_arange(dataset.size());
-    for (auto& j : random_batch_order) {
-    	auto& minibatch = dataset[j];
-    	auto G = graph_t(true);      // create a new graph for each loop
-        cost += model.masked_predict_cost(
-            G,
-            minibatch.data, // the sequence to draw from
-            minibatch.data, // what to predict (the words offset by 1)
-            1,
-            minibatch.codelens,
-            0
-        );
-        model.embedding->sparse_row_keys = minibatch.row_keys;
-        full_code_size += minibatch.total_codes;
-        G.backward(); // backpropagate
-        solver.step(parameters, 0.0); // One step of gradient descent
+    int total_jobs = random_batch_order.size();
+    ConcurrentQueue<size_t> q(total_jobs);
+    q.enqueue_bulk(random_batch_order.begin(), total_jobs);
 
-        std::cout << "epoch (" << epoch << "." << i++ << ") KL error = " << std::fixed
-                                  << std::setw( 5 ) // keep 7 digits
-                                  << std::setprecision( 3 ) // use 3 decimals
-                                  << std::setfill( ' ' ) << cost / full_code_size << "\r" << std::flush;
-    }
-    if (epoch % report_frequency == 0) {
-        std::cout << "epoch (" << epoch << ") KL error = "
-                                  << std::fixed
-                                  << std::setw( 5 ) // keep 7 digits
-                                  << std::setprecision( 3 ) // use 3 decimals
-                                  << std::setfill( ' ' ) << cost / full_code_size << " patience = " << patience << std::endl;
-        auto& random_batch = dataset[utils::randint(0, dataset.size() - 1)]; 
-        auto random_example_index = utils::randint(0, random_batch.data->rows() - 1);
-        reconstruct(model, random_batch, random_example_index, word_vocab);
-    }
+    // Creater workers:
+    vector<thread> workers;
+    int full_code_size = 0;
+
+    for (int t=0; t < num_threads; ++t)
+        workers.emplace_back([&](int thread_id) {
+            auto thread_model = model.shallow_copy();
+            auto thread_parameters = thread_model.parameters();
+
+            size_t job;
+            int i = 0;
+            while (q.try_dequeue(job)) {
+                auto& minibatch = dataset[job];
+                auto G = graph_t(true);
+                cost += thread_model.masked_predict_cost(
+                    G,
+                    minibatch.data, // the sequence to draw from
+                    minibatch.data, // what to predict (the words offset by 1)
+                    1,
+                    minibatch.codelens,
+                    0
+                );
+                thread_model.embedding->sparse_row_keys = minibatch.row_keys;
+                full_code_size += minibatch.total_codes;
+                G.backward(); // backpropagate
+                solver.step(thread_parameters, 0.0);
+                std::cout << "epoch (" << epoch << " - " << 100.0 * ((1.0 - (double) q.size_approx() / total_jobs)) << "%) KL error = " << std::fixed
+                                      << std::setw( 5 ) // keep 7 digits
+                                      << std::setprecision( 3 ) // use 3 decimals
+                                      << std::setfill( ' ' ) << cost / full_code_size << "\r" << std::flush;
+            }
+        }, t);
+    for(auto& worker: workers) worker.join();
 }
-
 
 /**
 Train Model
@@ -359,7 +352,10 @@ void train_model(
     const int& report_frequency,
     const T& cutoff,
     const int& epochs,
-    const string& save_location) {
+    const string& save_location,
+    const int& num_threads,
+    const int& max_patience
+    ) {
     // Build Model:
     StackedModel<T> model(word_vocab.index2word.size(),
             from_string<int>(options["input_size"]),
@@ -373,13 +369,25 @@ void train_model(
     auto cost = std::numeric_limits<REAL_t>::infinity();
     T new_cost = 0.0;
     int patience = 0;
-    while (cost > cutoff && i < epochs && patience < 5) {
+    while (cost > cutoff && i < epochs && patience < max_patience) {
         new_cost = 0.0;
-        training_loop(model, dataset, word_vocab, solver, parameters, report_frequency, i, new_cost, patience);
+        training_loop(model, dataset, word_vocab, solver, parameters, report_frequency, i, patience, num_threads);
         new_cost = average_error<T>(model, validation_set);
         if (new_cost >= cost) patience++;
+        else {patience = 0;}
         cost = new_cost;
         i++;
+        if (i % report_frequency == 0) {
+            std::cout << "epoch (" << i << ") KL error = "
+                                      << std::fixed
+                                      << std::setw( 5 ) // keep 7 digits
+                                      << std::setprecision( 3 ) // use 3 decimals
+                                      << std::setfill( ' ' ) << new_cost << " patience = " << patience << std::endl;
+            auto& random_batch = dataset[utils::randint(0, dataset.size() - 1)]; 
+            auto random_example_index = utils::randint(0, random_batch.data->rows() - 1);
+            reconstruct(model, random_batch, random_example_index, word_vocab);
+        }
+
     }
     if (save_location != "") {
         std::cout << "Saving model to \""
@@ -432,6 +440,14 @@ int main( int argc, char* argv[]) {
     parser
         .add_option("-ct", "--cutoff")
         .help("KL Divergence error where stopping is acceptable").metavar("FLOAT");
+    parser.set_defaults("j", "1");
+    parser
+        .add_option("-j")
+        .help("How many threads should be used ?").metavar("INT");
+    parser.set_defaults("patience", "5");
+    parser
+        .add_option("--patience")
+        .help("How many unimproving epochs to wait through before witnessing progress ?").metavar("INT");
     auto& options = parser.parse_args(argc, argv);
     auto args = parser.args();
     if (options["dataset"] == "")    utils::exit_with_message("Error: Dataset (--dataset) keyword argument requires a value.");
@@ -440,21 +456,40 @@ int main( int argc, char* argv[]) {
     auto rho                = from_string<REAL_t>(options["rho"]);
     auto epochs             = from_string<int>(options["epochs"]);
     auto cutoff             = from_string<REAL_t>(options["cutoff"]);
+    auto minibatch_size     = from_string<int>(options["minibatch"]);
+    auto patience           = from_string<int>(options["patience"]);
     auto dataset_vocab      = load_dataset_and_vocabulary(
     	options["dataset"],
     	from_string<int>(options["min_occurence"]),
-    	from_string<int>(options["minibatch"]));
+    	minibatch_size);
+
     auto validation_set     = load_dataset_with_vocabulary(
     	options["validation"],
     	dataset_vocab.first,
-    	from_string<int>(options["minibatch"]));
+    	minibatch_size);
     auto vocab_size = dataset_vocab.first.index2word.size();
+    auto num_threads = from_string<int>(options["j"]);
 
     std::cout << "    Vocabulary size = " << vocab_size << " (occuring more than " << from_string<int>(options["min_occurence"]) << ")" << std::endl;
-    std::cout << "Max training epochs = " << epochs << std::endl;
-    std::cout << "    Training cutoff = " << cutoff << std::endl;
+    std::cout << "Max training epochs = " << epochs           << std::endl;
+    std::cout << "    Training cutoff = " << cutoff           << std::endl;
+    std::cout << "  Number of threads = " << num_threads      << std::endl;
+    std::cout << "   report_frequency = " << report_frequency << std::endl;
+    std::cout << "     minibatch size = " << minibatch_size   << std::endl;
+    std::cout << "       max_patience = " << patience         << std::endl;
 
-    train_model<REAL_t, Solver::AdaDelta<REAL_t>>(options, dataset_vocab.second, validation_set, dataset_vocab.first, rho, report_frequency, cutoff, epochs, options["save"]);
+    train_model<REAL_t, Solver::AdaDelta<REAL_t>>(
+        options,
+        dataset_vocab.second,
+        validation_set,
+        dataset_vocab.first,
+        rho,
+        report_frequency,
+        cutoff,
+        epochs,
+        options["save"],
+        num_threads,
+        patience);
 
     return 0;
 }

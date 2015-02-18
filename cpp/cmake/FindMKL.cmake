@@ -1,5 +1,6 @@
 # - Find the MKL libraries
 # from the beautiful land of http://sourceforge.net/p/gadgetron/gadgetron/ci/master/tree/cmake/FindMKL.cmake
+# and also: https://github.com/Eyescale/CMake/blob/master/FindMKL.cmake
 # Modified from Armadillo's ARMA_FindMKL.cmake
 # This module defines
 #  MKL_INCLUDE_DIR, the directory for the MKL headers
@@ -62,11 +63,13 @@ if (MKL_FOUND)
                     set(MKL_LIBRARIES ${MKL_LIBRARIES} mkl_intel_ilp64)
                 endif (WIN32)
         else ( USE_MKL_64BIT_LIB )
-                if (WIN32)
-                    set(MKL_LIBRARIES ${MKL_LIBRARIES} mkl_intel_lp64)
-                else (WIN32)
-                    set(MKL_LIBRARIES ${MKL_LIBRARIES} mkl_intel_lp64)
-                endif (WIN32)
+            find_library(MKL_LP64_LIBRARY
+              mkl_intel_lp64
+              PATHS
+                ${MKL_LIB_DIR}
+                ${MKL_COMPILER_LIB_DIR}
+            )
+            set(MKL_LIBRARIES ${MKL_LIBRARIES} ${MKL_LP64_LIBRARY})
         endif ( USE_MKL_64BIT_LIB )
     else ( USE_MKL_64BIT )
         set(MKL_LIB_DIR "${MKLROOT_PATH}/mkl/lib/ia32")
@@ -80,9 +83,27 @@ if (MKL_FOUND)
     endif ( USE_MKL_64BIT )
 
     if (BLA_VENDOR STREQUAL "Intel10_32" OR BLA_VENDOR STREQUAL "All")
-        SET(MKL_LIBRARIES ${MKL_LIBRARIES} mkl_intel_thread)
-        SET(MKL_LIBRARIES ${MKL_LIBRARIES} mkl_core)
-        SET(MKL_LIBRARIES ${MKL_LIBRARIES} iomp5)
+        find_library(MKL_INTELTHREAD_LIBRARY
+          mkl_intel_thread
+          PATHS
+            ${MKL_LIB_DIR}
+            ${MKL_COMPILER_LIB_DIR}
+        )
+        find_library(MKL_CORE_LIBRARY
+          mkl_core
+          PATHS
+            ${MKL_LIB_DIR}
+            ${MKL_COMPILER_LIB_DIR}
+        )
+        find_library(MKL_IOMP5_LIBRARY
+          iomp5
+          PATHS
+            ${MKL_LIB_DIR}
+            ${MKL_COMPILER_LIB_DIR}
+        )
+        SET(MKL_LIBRARIES ${MKL_LIBRARIES} ${MKL_INTELTHREAD_LIBRARY})
+        SET(MKL_LIBRARIES ${MKL_LIBRARIES} ${MKL_CORE_LIBRARY})
+        SET(MKL_LIBRARIES ${MKL_LIBRARIES} ${MKL_IOMP5_LIBRARY})
     else (BLA_VENDOR STREQUAL "Intel10_32" OR BLA_VENDOR STREQUAL "All")
         SET(MKL_LIBRARIES ${MKL_LIBRARIES} mkl_gnu_thread)
         SET(MKL_LIBRARIES ${MKL_LIBRARIES} mkl_core)

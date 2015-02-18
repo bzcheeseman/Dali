@@ -27,4 +27,5 @@ message("here are the BLAS libraries you were looking for => " ${BLAS_LIBRARIES}
 
 add_dependencies(core core_templates)
 
+message("linking to " ${MKL_LIBRARIES})
 target_link_libraries(core ${ZLIB_LIBRARIES} proto ${BLAS_LIBRARIES} ${MKL_LIBRARIES})

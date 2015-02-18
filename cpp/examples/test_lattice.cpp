@@ -1,5 +1,11 @@
+#include <gflags/gflags.h>
+
 #include "core/utils.h"
-#include "OptionParser/OptionParser.h"
+
+DEFINE_string(input_path, "", "TODO(Jonathan): what is that ?");
+DEFINE_string(corpus_path, "", "TODO(Jonathan): what is that ?");
+
+
 using std::vector;
 using std::string;
 using std::make_shared;
@@ -59,31 +65,31 @@ void test_lattice () {
 }
 
 int main (int argc, char *argv[]) {
-	auto parser = optparse::OptionParser()
-	    .usage("usage: [input_path]")
-	    .description(
-	    	"Test Lattice\n"
-	    	"------------\n"
-	    	"Visualize a lattice (or generalized ontology)"
-	    	" by loading it into using this parser. "
-	    	" Format for a lattice is one edge declared per"
-	    	" line, with relationships of the form \"A\"->\"B\""
-	    	" meaning \"A\" is the parent of \"B\"."
-	    	" As a lattice, \"B\" may have multiple parents, and \"A\""
-	    	" can of course have multiple children. "
-	    	"\n"
-	    	" @author Jonathan Raiman\n"
-	    	" @date February 3rd 2015"
-	    	);
+	gflags::SetUsageMessage(
+        "\n"
+    	"Test Lattice\n"
+    	"------------\n"
+    	"Visualize a lattice (or generalized ontology)"
+    	" by loading it into using this parser. "
+    	" Format for a lattice is one edge declared per"
+    	" line, with relationships of the form \"A\"->\"B\""
+    	" meaning \"A\" is the parent of \"B\"."
+    	" As a lattice, \"B\" may have multiple parents, and \"A\""
+    	" can of course have multiple children. "
+    	"\n"
+    	" @author Jonathan Raiman\n"
+    	" @date February 3rd 2015"
+    );
 
-	optparse::Values& options = parser.parse_args(argc, argv);
-	vector<string> args = parser.args();
 
-	if (args.size() > 0) {
-		show_tree(OntologyBranch::load(args[0]));
-		if (args.size() > 1) {
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+
+	if (!FLAGS_input_path.empty()) {
+		show_tree(OntologyBranch::load(FLAGS_input_path));
+		if (!FLAGS_corpus_path.empty()) {
 			std::cout << "Loading labeled corpus pairs" << std::endl;
-			auto corpus = utils::load_labeled_corpus(args[1]);
+			auto corpus = utils::load_labeled_corpus(FLAGS_corpus_path);
 			std::cout << "Found " << corpus.size() << " labeled pairs:" << std::endl;
 			for (auto& v : corpus)
 				std::cout << "\"" << v.first << "\" => \"" << v.second << "\""<< std::endl;

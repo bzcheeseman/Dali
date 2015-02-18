@@ -6,7 +6,7 @@
 #include "core/utils.h"
 #include "core/gzstream.h"
 #include "core/StackedGatedModel.h"
-#include "OptionParser/OptionParser.h"
+
 using std::vector;
 using std::make_shared;
 using std::shared_ptr;
@@ -15,7 +15,6 @@ using std::istringstream;
 using std::string;
 using std::min;
 using utils::Vocab;
-using utils::from_string;
 
 typedef float REAL_t;
 typedef Graph<REAL_t> graph_t;
@@ -288,42 +287,44 @@ void training_loop(StackedGatedModel<T>& model,
 }
 
 int main(int argc, char *argv[]) {
-	auto parser = optparse::OptionParser()
-	    .usage("usage: %prog [dataset_path] [min_occurence] [subsets] [input_size] [epochs] [stack_size] [report_frequency]")
-	    .description(
-	    	"Sparkfun Dataset Prediction\n"
-	    	"---------------------------\n"
-	    	"Use StackedLSTMs to predict SparkFun categories in"
-	    	" sequential fashion. Moreover, use an Multi Layer Perceptron "
-	    	" reading hidden LSTM activations to predict pricing."
-	    	" Final network can read product description and predict it's category"
-	    	" and price, or provide a topology for the products on SparkFun's website:\n"
-	    	" > https://www.sparkfun.com "
-	    	"\n"
-	    	" @author Jonathan Raiman\n"
-	    	" @date January 31st 2015"
-	    	);
-	StackedGatedModel<REAL_t>::add_options_to_CLI(parser);
-	utils::training_corpus_to_CLI(parser);
-	parser.set_defaults("dataset", "examples/sparkfun_dataset.txt");
-	optparse::Values& options = parser.parse_args(argc, argv);
+    gflags::SetUsageMessage(
+        "\n"
+    	"Sparkfun Dataset Prediction\n"
+    	"---------------------------\n"
+    	"Use StackedLSTMs to predict SparkFun categories in"
+    	" sequential fashion. Moreover, use an Multi Layer Perceptron "
+    	" reading hidden LSTM activations to predict pricing."
+    	" Final network can read product description and predict it's category"
+    	" and price, or provide a topology for the products on SparkFun's website:\n"
+    	" > https://www.sparkfun.com "
+    	"\n"
+    	" @author Jonathan Raiman\n"
+    	" @date January 31st 2015"
+    );
 
-	int epochs           = from_string<int>(options["epochs"]);
-	int report_frequency = from_string<int>(options["report_frequency"]);
-	REAL_t rho           = from_string<REAL_t>(options["rho"]);
-	std::string dataset_path(options["dataset"]);
-	std::string save_destination(options["save"]);
+
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+	// TODO(sidor): Here dataset should defaults to: examples/sparkfun_dataset.txt
+
+	int epochs           = FLAGS_epochs;
+	int report_frequency = FLAGS_report_frequency;
+	REAL_t rho           = FLAGS_rho;
+	std::string dataset_path(FLAGS_dataset);
+	std::string save_destination(FLAGS_save);
+
 	// Collect Dataset from File:
 	auto products       = get_products(dataset_path);
-	auto index2word     = get_vocabulary(products, from_string<int>(options["min_occurence"]) < 1 ? 1 : from_string<int>(options["min_occurence"]));
+	auto index2word     = get_vocabulary(products, FLAGS_min_occurence < 1 ? 1 : FLAGS_min_occurence);
 	auto index2category = get_category_vocabulary(products);
 	Vocab word_vocab(index2word);
 	Vocab category_vocab(index2category, false);
-	auto dataset = create_labeled_dataset(products, category_vocab, word_vocab, from_string<int>(options["subsets"]));
+	auto dataset = create_labeled_dataset(products, category_vocab, word_vocab, FLAGS_subsets);
 	std::cout << "Loaded Dataset" << std::endl;
 	auto vocab_size = word_vocab.index2word.size() + index2category.size() + 1;
-	auto model = StackedGatedModel<REAL_t>::build_from_CLI(options, vocab_size, index2category.size() + 1, true);
-	auto memory_penalty = from_string<REAL_t>(options["memory_penalty"]);
+	// TODO: renable
+	auto model = StackedGatedModel<REAL_t>::build_from_CLI(vocab_size, index2category.size() + 1, true);
+	auto memory_penalty = FLAGS_memory_penalty;
 	model.memory_penalty = memory_penalty / dataset[0].data->cols();
 	std::cout << "Save location         = " << ((save_destination != "") ? save_destination : "N/A") << std::endl;
 	// Store all parameters in a vector:

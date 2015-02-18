@@ -708,39 +708,6 @@ namespace utils {
 		return seed;
 	}
 
-	template<typename T>
-	void assign_cli_argument(char * source, T& target, T default_val, std::string variable_name ) {
-		using std::cerr;
-		using std::istringstream;
-		// Takes an input, a default value, and tries to extract from a character sequence
-		// an assignment. If it fails it notifies the user and switches back to the default.
-		// Default is copied so a copy is an original is always available
-		// for fallback (even if target and default originated from the same place).
-		istringstream ss(source);
-		if (!(ss >> target)) {
-		    cerr << "Invalid " << variable_name << " => \""<< source << "\"\n"
-		         << "Using default (" << default_val << ") instead\n";
-		    target = default_val;
-		}
-	}
-
-	template<typename T>
-	void assign_cli_argument(char * source, T& target, std::string variable_name ) {
-		using std::cerr;
-		using std::istringstream;
-		T default_val = target;
-		// Takes an input, a default value, and tries to extract from a character sequence
-		// an assignment. If it fails it notifies the user and switches back to the default.
-		// Default is copied so a copy is an original is always available
-		// for fallback (even if target and default originated from the same place).
-		istringstream ss(source);
-		if (!(ss >> target)) {
-		    cerr << "Invalid " << variable_name << " => \""<< source << "\"\n"
-		         << "Using default (" << default_val << ") instead\n";
-		    target = default_val;
-		}
-	}
-
 	template struct sigmoid_operator<float>;
 	template struct tanh_operator<float>;
 	template struct relu_operator<float>;

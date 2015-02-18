@@ -200,12 +200,6 @@ namespace utils {
 
 	str_sequence listdir(const std::string&);
 
-	template<typename T>
-	void assign_cli_argument(char *, T&, T, std::string);
-
-	template<typename T>
-	void assign_cli_argument(char *, T&, std::string);
-
 	std::vector<size_t> random_arange(size_t);
 
 	template <class T> inline void hash_combine(std::size_t &, const T &);

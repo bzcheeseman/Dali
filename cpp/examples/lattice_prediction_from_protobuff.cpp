@@ -1,13 +1,20 @@
 #include <fstream>
 #include <iterator>
 #include <algorithm>
-
 #include <Eigen/Eigen>
+#include <gflags/gflags.h>
 
 #include "core/utils.h"
 #include "core/gzstream.h"
 #include "core/StackedGatedModel.h"
-#include "OptionParser/OptionParser.h"
+
+DEFINE_string(index2target, "", "Location of Index2Target file with mapping from integer to target name.");
+DEFINE_string(lattice, "", "Where to load a lattice / Ontology from ?");
+
+static bool dummy1 = gflags::RegisterFlagValidator(&FLAGS_lattice,
+                                           		   &utils::validate_flag_nonempty);
+static bool dummy2 = gflags::RegisterFlagValidator(&FLAGS_index2target,
+                                                   &utils::validate_flag_nonempty);
 
 using std::vector;
 using std::make_shared;
@@ -17,7 +24,6 @@ using std::istringstream;
 using std::string;
 using std::min;
 using utils::Vocab;
-using utils::from_string;
 using utils::OntologyBranch;
 using utils::tokenized_labeled_dataset;
 
@@ -32,42 +38,25 @@ typedef OntologyBranch lattice_t;
 typedef std::shared_ptr<lattice_t> shared_lattice_t;
 
 int main( int argc, char* argv[]) {
-	auto parser = optparse::OptionParser()
-	    .usage("usage: --dataset [corpus_directory] -s --index2target [index2target_file] [# of minibatches]")
-	    .description(
-	    	"Lattice Prediction from Protobuff\n"
-	    	"---------------------------------\n"
-	    	"Load a labeled corpus from Protocol Buffers\n"
-	    	" @author Jonathan Raiman\n"
-	    	" @date February 10th 2015"
-	    	);
+    gflags::SetUsageMessage(
+        "\n"
+    	"Lattice Prediction from Protobuff\n"
+    	"---------------------------------\n"
+    	"Load a labeled corpus from Protocol Buffers\n"
+    	" @author Jonathan Raiman\n"
+    	" @date February 10th 2015"
+    );
 
-	utils::training_corpus_to_CLI(parser);
-	parser.set_defaults("index2target", "");
-	parser
-		.add_option("--index2target")
-		.help("Location of Index2Target file with mapping from integer to target name.").metavar("FILE");
-	parser
-		.add_option("-lt", "--lattice")
-		.help("Where to load a lattice / Ontology from ?").metavar("FILE");
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-	auto& options = parser.parse_args(argc, argv);
-	auto args = parser.args();
-	if (options["dataset"] == "")
-		utils::exit_with_message("Error: Dataset (--dataset) keyword argument requires a value.");
-	if (options["lattice"] == "")
-		utils::exit_with_message("Error: Lattice (--lattice) keyword argument requires a value.");
-	if (options["index2target"] == "")
-		utils::exit_with_message("Error: Index2Target (--index2target) keyword argument requires a value.");
-
-	auto index2concept = utils::load_list(options["index2target"]);
+	auto index2concept = utils::load_list(FLAGS_index2target);
 	std::cout << "Loaded " << index2concept.size() << " unique concept names " << std::endl;
-	auto examples      = utils::load_protobuff_dataset(options["dataset"], index2concept);
+	auto examples      = utils::load_protobuff_dataset(FLAGS_dataset, index2concept);
 	std::cout << "Loaded " << examples.size() << " examples,";
-	auto index2word    = utils::get_vocabulary(examples, from_string<int>(options["min_occurence"]));
+	auto index2word    = utils::get_vocabulary(examples, FLAGS_min_occurence);
 	Vocab word_vocab(index2word);
 	std::cout <<" with a total vocabulary of " << word_vocab.index2word.size()
-	          <<" words (occuring more than "  << from_string<int>(options["min_occurence"]) << " times)"<< std::endl << std::endl;
+	          <<" words (occuring more than "  << FLAGS_min_occurence << " times)"<< std::endl << std::endl;
 	std::cout <<"First examples:" << std::endl;
 	std::cout <<"---------------" << std::endl;
 	for (int i = 0; i < 5 ; i++) {
@@ -76,7 +65,7 @@ int main( int argc, char* argv[]) {
 		std::cout << std::endl;
 	}
 	std::cout << "Loading Lattice" << std::endl;
-	auto lattice_roots = OntologyBranch::load(options["lattice"]);
+	auto lattice_roots = OntologyBranch::load(FLAGS_lattice);
 
 
 	int num_fixpoints            = 0;

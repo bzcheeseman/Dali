@@ -11,7 +11,11 @@
 #include "Layers.h"
 #include "Softmax.h"
 #include "CrossEntropy.h"
-#include "OptionParser/OptionParser.h"
+#include "StackedModel.h"
+
+
+DECLARE_double(memory_penalty);
+
 /**
 StackedGatedModel
 -----------------
@@ -28,6 +32,8 @@ input channels collect error over small intervals), and L1 loss on the
 total memory used (the input gate's total activation).
 
 **/
+
+
 template<typename T>
 class StackedGatedModel {
 	typedef LSTM<T>                    lstm;
@@ -38,7 +44,7 @@ class StackedGatedModel {
 	typedef GatedInput<T>            gate_t;
 	typedef std::map<std::string, std::vector<std::string>> config_t;
 
-	
+
 
 	inline void name_parameters();
 	inline void construct_LSTM_cells();
@@ -53,7 +59,7 @@ class StackedGatedModel {
 		shared_mat    embedding;
 		typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
 		typedef std::shared_ptr< index_mat > shared_index_mat;
-		
+
 		int vocabulary_size;
 		const int output_size;
 		const int stack_size;
@@ -67,19 +73,18 @@ class StackedGatedModel {
 		void save_configuration(std::string);
 		void save(std::string);
 		static StackedGatedModel<T> load(std::string);
-		static StackedGatedModel<T> build_from_CLI(optparse::Values&, int, int, bool verbose=true);
+		static StackedGatedModel<T> build_from_CLI(int, int, bool verbose=true);
 		StackedGatedModel(int, int, int, int, int, T _memory_penalty = 0.3);
 		StackedGatedModel(int, int, int, std::vector<int>&, T _memory_penalty = 0.3);
 		StackedGatedModel(const config_t&);
 		StackedGatedModel(const StackedGatedModel<T>&, bool, bool);
-		static void add_options_to_CLI(optparse::OptionParser&);
 		std::tuple<T, T> masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, shared_eigen_index_vector, shared_eigen_index_vector, uint offset=0);
 		std::tuple<T, T> masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, uint, shared_eigen_index_vector, uint offset=0);
 		template<typename K>
 		std::vector<int> reconstruct(K, int, int symbol_offset = 0);
 
 		template<typename K>
-		std::string reconstruct_string(K, const utils::Vocab&, int, int symbol_offset = 0);	
+		std::string reconstruct_string(K, const utils::Vocab&, int, int symbol_offset = 0);
 
 		template<typename K>
 		lstm_activation_t get_final_activation(graph_t&, const K&);

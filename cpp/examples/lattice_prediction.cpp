@@ -1,13 +1,22 @@
 #include <fstream>
 #include <iterator>
 #include <algorithm>
+#include <gflags/gflags.h>
 
 #include <Eigen/Eigen>
 
 #include "core/utils.h"
 #include "core/gzstream.h"
 #include "core/StackedGatedModel.h"
-#include "OptionParser/OptionParser.h"
+
+
+DEFINE_string(lattice, "", "Where to load a lattice / Ontology from ?");
+
+static bool dummy1 = gflags::RegisterFlagValidator(&FLAGS_lattice,
+                                               &utils::validate_flag_nonempty);
+
+DEFINE_int32(memory_rampup, 1000, "Over how many epochs should the memory grow ?");
+DEFINE_double(cutoff, 10.0, "KL Divergence error where stopping is acceptable");
 
 using std::vector;
 using std::make_shared;
@@ -17,7 +26,6 @@ using std::istringstream;
 using std::string;
 using std::min;
 using utils::Vocab;
-using utils::from_string;
 using utils::OntologyBranch;
 using utils::tokenized_labeled_dataset;
 
@@ -190,42 +198,23 @@ void training_loop(StackedGatedModel<T>& model,
 }
 
 int main( int argc, char* argv[]) {
-	auto parser = optparse::OptionParser()
-	    .usage("usage: --lattice [lattice_path] --dataset [corpus_path] -s [# of minibatches]")
-	    .description(
-	    	"Lattice Prediction\n"
-	    	"------------\n"
-	    	"Teach a network to navigate a lattice "
-	    	" from text examples and lattice positions."
-	    	"\n"
-	    	" @author Jonathan Raiman\n"
-	    	" @date February 4th 2015"
-	    	);
+    gflags::SetUsageMessage(
+        "\n"
+		"Lattice Prediction\n"
+    	"------------\n"
+    	"Teach a network to navigate a lattice "
+    	" from text examples and lattice positions."
+    	"\n"
+    	" @author Jonathan Raiman\n"
+    	" @date February 4th 2015"
+    );
+
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
 
 
-	StackedGatedModel<REAL_t>::add_options_to_CLI(parser);
-	utils::training_corpus_to_CLI(parser);
-	// parser.set_defaults("lattice", "");
-	parser
-		.add_option("-lt", "--lattice")
-		.help("Where to load a lattice / Ontology from ?").metavar("FILE");
-	parser.set_defaults("memory_rampup", "1000");
-	parser
-		.add_option("--memory_rampup")
-		.help("Over how many epochs should the memory grow ?").metavar("INT");
-	parser.set_defaults("cutoff", "10.0");
-	parser
-		.add_option("-ct", "--cutoff")
-		.help("KL Divergence error where stopping is acceptable").metavar("FLOAT");
-	optparse::Values& options = parser.parse_args(argc, argv);
-	vector<string> args = parser.args();
-	if (options["lattice"] == "")
-		utils::exit_with_message("Error: Lattice (--lattice) keyword argument requires a value.");
-	if (options["dataset"] == "")
-		utils::exit_with_message("Error: Dataset (--dataset) keyword argument requires a value.");
-	auto lattice     = OntologyBranch::load(options["lattice"])[0];
-	auto examples    = utils::load_tokenized_labeled_corpus(options["dataset"]);
-	auto index2word  = utils::get_vocabulary(examples, from_string<int>(options["min_occurence"]));
+	auto lattice     = OntologyBranch::load(FLAGS_lattice)[0];
+	auto examples    = utils::load_tokenized_labeled_corpus(FLAGS_dataset);
+	auto index2word  = utils::get_vocabulary(examples, FLAGS_min_occurence);
 	auto index2label = utils::get_lattice_vocabulary(lattice);
 	Vocab word_vocab(index2word);
 	Vocab lattice_vocab(index2label, false);
@@ -235,17 +224,17 @@ int main( int argc, char* argv[]) {
 		lattice_vocab,
 		word_vocab,
 		lattice,
-		from_string<int>(options["subsets"]));
+		FLAGS_subsets);
 	auto max_branching_factor = lattice->max_branching_factor();
 	auto vocab_size = word_vocab.index2word.size() + lattice_vocab.index2word.size();
-	auto model = StackedGatedModel<REAL_t>::build_from_CLI(options, vocab_size, max_branching_factor + 1, true);
-	auto memory_penalty = from_string<REAL_t>(options["memory_penalty"]);
-	auto save_destination = options["save"];
-	auto report_frequency = from_string<int>(options["report_frequency"]);
-	auto rho = from_string<REAL_t>(options["rho"]);
-	auto epochs = from_string<int>(options["epochs"]);
-	auto cutoff = from_string<REAL_t>(options["cutoff"]);
-	auto memory_rampup = from_string<int>(options["memory_rampup"]);
+	auto model = StackedGatedModel<REAL_t>::build_from_CLI(vocab_size, max_branching_factor + 1, true);
+	auto memory_penalty = FLAGS_memory_penalty;
+	auto save_destination = FLAGS_save;
+	auto report_frequency = FLAGS_report_frequency;
+	auto rho = FLAGS_rho;
+	auto epochs = FLAGS_epochs;
+	auto cutoff = FLAGS_cutoff;
+	auto memory_rampup = FLAGS_memory_rampup;
 	// with a rampup model we start with zero memory penalty and gradually increase the memory
 	// L1 penalty until it reaches the desired level.
 	// this allows early exploration, but only later forces sparsity on the model

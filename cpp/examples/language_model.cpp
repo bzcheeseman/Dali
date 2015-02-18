@@ -429,6 +429,7 @@ vector<Databatch> load_dataset_with_vocabulary(const string& fname, Vocab& vocab
 }
 
 int main( int argc, char* argv[]) {
+    std::cout<< "siema" << std::endl;
     gflags::SetUsageMessage(
         "\n"
         "RNN Language Model using Stacked LSTMs\n"

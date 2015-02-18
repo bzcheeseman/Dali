@@ -1,5 +1,7 @@
 #include "StackedGatedModel.h"
 
+DEFINE_double(memory_penalty, 0.3, "L1 Penalty on Input Gate activation.");
+
 using std::shared_ptr;
 using std::vector;
 using std::make_shared;
@@ -85,7 +87,7 @@ std::string fname : where to save the configuration
 **/
 template<typename T>
 void StackedGatedModel<T>::save_configuration(std::string fname) {
-	
+
 	auto config = configuration();
 	utils::map_to_file(config, fname);
 }
@@ -101,45 +103,9 @@ void StackedGatedModel<T>::save(std::string dirname) {
 }
 
 template<typename T>
-void StackedGatedModel<T>::add_options_to_CLI(optparse::OptionParser& parser) {
-	parser.set_defaults("stack_size", "4");
-	parser
-		.add_option("-stack", "--stack_size")
-		.help("How many LSTMs should I stack ?").metavar("INT");
-	parser.set_defaults("input_size", "100");
-	parser
-		.add_option("-i", "--input_size")
-		.help("Size of the word vectors").metavar("INT");
-	parser.set_defaults("hidden", "100");
-	parser
-		.add_option("-h", "--hidden")
-		.help("How many Cells and Hidden Units should each LSTM have ?").metavar("INT");
-	parser.set_defaults("decay_rate", "0.95");
-	parser
-		.add_option("-decay", "--decay_rate")
-		.help("What decay rate should RMSProp use ?").metavar("FLOAT");
-	parser.set_defaults("rho", "0.95");
-	parser
-		.add_option("--rho")
-		.help("What rho / learning rate should the Solver use ?").metavar("FLOAT");
-	parser.set_defaults("memory_penalty", "0.3");
-	parser
-		.add_option("--memory_penalty")
-		.help("L1 Penalty on Input Gate activation.").metavar("FLOAT");
-
-	parser.set_defaults("save", "");
-	parser.add_option("--save")
-		.help("Where to save the model to ?").metavar("FOLDER");
-
-	parser.set_defaults("load", "");
-	parser.add_option("--load")
-		.help("Where to load the model from ?").metavar("FOLDER");
-}
-
-template<typename T>
-StackedGatedModel<T> StackedGatedModel<T>::build_from_CLI(optparse::Values& options, int vocab_size, int output_size, bool verbose) {
+StackedGatedModel<T> StackedGatedModel<T>::build_from_CLI(int vocab_size, int output_size, bool verbose) {
 	using utils::from_string;
-	string load_location = options["load"];
+	string load_location = FLAGS_load;
 	if (verbose)
 		std::cout << "Load location         = " << ((load_location == "") ? "N/A" : load_location)       << std::endl;
 	// Load or Construct the model
@@ -147,11 +113,11 @@ StackedGatedModel<T> StackedGatedModel<T>::build_from_CLI(optparse::Values& opti
 		StackedGatedModel<T>::load(load_location) :
 		StackedGatedModel<T>(
 			vocab_size,
-			from_string<int>(options["input_size"]),
-			from_string<int>(options["hidden"]),
-			from_string<int>(options["stack_size"]) < 1 ? 1 : from_string<int>(options["stack_size"]),
+			FLAGS_input_size,
+			FLAGS_hidden,
+			FLAGS_stack_size < 1 ? 1 : FLAGS_stack_size,
 			output_size,
-			from_string<T>(options["memory_penalty"]));
+			FLAGS_memory_penalty);
 	if (verbose) {
 		std::cout << ((load_location == "") ? "Constructed Stacked LSTMs" : "Loaded Model") << std::endl;
 		std::cout << "Vocabulary size       = " << model.embedding->n      << std::endl;
@@ -447,7 +413,7 @@ Copy constructor with option to make a shallow
 or deep copy of the underlying parameters.
 
 If the copy is shallow then the parameters are shared
-but separate gradients `dw` are used for each of 
+but separate gradients `dw` are used for each of
 thread StackedGatedModel<T>.
 
 Shallow copies are useful for Hogwild and multithreaded
@@ -474,7 +440,7 @@ StackedGatedModel<T> out : the copied StackedGatedModel with deep or shallow cop
 
 **/
 template<typename T>
-StackedGatedModel<T>::StackedGatedModel (const StackedGatedModel<T>& model, bool copy_w, bool copy_dw) : 
+StackedGatedModel<T>::StackedGatedModel (const StackedGatedModel<T>& model, bool copy_w, bool copy_dw) :
     input_size(model.input_size),
 	output_size(model.output_size),
 	vocabulary_size(model.vocabulary_size),

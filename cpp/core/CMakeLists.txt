@@ -29,4 +29,9 @@ if (BLAS_FOUND AND MKL_FOUND)
     add_dependencies(core fix_libiomp5)
 endif (BLAS_FOUND AND MKL_FOUND)
 
-target_link_libraries(core ${ZLIB_LIBRARIES} proto ${BLAS_LIBRARIES} ${MKL_LIBRARIES} ${GFLAGS_LIBRARIES})
+target_link_libraries(core ${ZLIB_LIBRARIES}
+                           proto
+                           ${BLAS_LIBRARIES}
+                           ${MKL_LIBRARIES}
+                           ${GFLAGS_LIBRARIES}
+                           ${Tcmalloc_LIBRARIES})

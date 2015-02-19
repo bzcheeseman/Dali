@@ -13,8 +13,15 @@ find_package(ZLIB REQUIRED)
 find_package(Gflags REQUIRED)
 
 # OPTIONAL PACAKGES
+find_package(Tcmalloc)
 find_package(BLAS)
 find_package(MKL)
+
+if (NOT Tcmalloc_LIBRARIES)
+    message("WARNING: consider installing tcmalloc for better multithreaded performance.")
+endif(NOT Tcmalloc_LIBRARIES)
+
+message("TCmalloc libs => " ${Tcmalloc_LIBRARIES})
 
 # CLEANING UP AFTER FINDERS
 # some library list variables are FALSE by default if libs are not found,

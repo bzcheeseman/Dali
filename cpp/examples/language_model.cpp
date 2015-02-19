@@ -5,12 +5,14 @@
 #include <gflags/gflags_completions.h>
 #include <iterator>
 #include <thread>
+#include <deque>
+#include <mutex>
+
 
 #include "core/utils.h"
 #include "core/SST.h"
 #include "core/gzstream.h"
 #include "core/StackedModel.h"
-#include "third_party/concurrentqueue.h"
 
 DEFINE_int32(minibatch, 100, "What size should be used for the minibatches ?");
 DEFINE_string(validation, "", "Location of the validation dataset");
@@ -22,7 +24,7 @@ DEFINE_int32(patience, 5, "How many unimproving epochs to wait through before wi
 static bool dummy1 = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_validation,
                                                    &utils::validate_flag_nonempty);
 
-
+using std::deque;
 using std::vector;
 using std::make_shared;
 using std::shared_ptr;
@@ -36,8 +38,6 @@ using std::ref;
 using utils::Vocab;
 using utils::OntologyBranch;
 using utils::tokenized_uint_labeled_dataset;
-using std::atomic;
-using moodycamel::ConcurrentQueue;
 
 typedef float REAL_t;
 typedef Graph<REAL_t> graph_t;
@@ -224,15 +224,24 @@ T average_error(StackedModel<T>& model,
         indices[i] = i;
         full_code_size += dataset[i].total_codes;
     }
-    ConcurrentQueue<size_t> jobs(indices.size());
-    jobs.enqueue_bulk(indices.begin(), indices.size());
+    std::deque<size_t> jobs(indices.begin(), indices.end());
 	vector<thread> workers;
+
+    std::mutex queue_mutex;
+
     vector<T> costs(num_threads);
     for (int t = 0; t < num_threads; t++) {
-        workers.emplace_back([&costs, &dataset, &model, &G, &jobs](int thread_id) {
+        workers.emplace_back([&costs, &dataset, &model, &G, &jobs, &queue_mutex](int thread_id) {
             size_t job;
             costs[thread_id] = 0.0;
-            while (jobs.try_dequeue(job)) {
+            while (true) {
+                {
+                    std::lock_guard<decltype(queue_mutex)> lock(queue_mutex);
+                    if (jobs.empty()) break;
+                    job = jobs.front();
+                    jobs.pop_front();
+                }
+
                 costs[thread_id] += model.masked_predict_cost(
                     G,
                     dataset[job].data, // the sequence to draw from
@@ -299,21 +308,31 @@ void training_loop(StackedModel<T>& model,
     auto random_batch_order = utils::random_arange(dataset.size());
 
     int total_jobs = random_batch_order.size();
-    ConcurrentQueue<size_t> q(total_jobs);
-    q.enqueue_bulk(random_batch_order.begin(), total_jobs);
+    deque<size_t> q(random_batch_order.begin(), random_batch_order.end());
+
+    std::mutex queue_mutex;
 
     // Creater workers:
     vector<thread> workers;
     int full_code_size = 0;
 
+
+
     for (int t=0; t < num_threads; ++t)
-        workers.emplace_back([&model, &q, &dataset, &solver, &epoch, &total_jobs, &full_code_size, &cost](int thread_id) {
+        workers.emplace_back([&model, &queue_mutex, &q, &dataset, &solver, &epoch, &total_jobs, &full_code_size, &cost](int thread_id) {
             auto thread_model = model.shallow_copy();
             auto thread_parameters = thread_model.parameters();
 
             size_t job;
             int i = 0;
-            while (q.try_dequeue(job)) {
+            while (true) {
+                {
+                    std::lock_guard<decltype(queue_mutex)> lock(queue_mutex);
+                    if (q.empty()) break;
+                    job = q.front();
+                    q.pop_front();
+                }
+
                 auto& minibatch = dataset[job];
                 auto G = graph_t(true);
                 cost += thread_model.masked_predict_cost(
@@ -328,7 +347,7 @@ void training_loop(StackedModel<T>& model,
                 full_code_size += minibatch.total_codes;
                 G.backward(); // backpropagate
                 solver.step(thread_parameters, 0.0);
-                std::cout << "epoch (" << epoch << " - " << 100.0 * ((1.0 - (double) q.size_approx() / total_jobs)) << "%) KL error = " << std::fixed
+                std::cout << "epoch (" << epoch << " - " << 100.0 * ((1.0 - (double) q.size() / total_jobs)) << "%) KL error = " << std::fixed
                                       << std::setw( 5 ) // keep 7 digits
                                       << std::setprecision( 3 ) // use 3 decimals
                                       << std::setfill( ' ' ) << cost / full_code_size << "\r" << std::flush;

@@ -316,12 +316,15 @@ void training_loop(StackedModel<T>& model,
     vector<thread> workers;
     int full_code_size = 0;
 
+    auto engine = std::default_random_engine{};
+
 
 
     for (int t=0; t < num_threads; ++t)
-        workers.emplace_back([&model, &queue_mutex, &q, &dataset, &solver, &epoch, &total_jobs, &full_code_size, &cost](int thread_id) {
+        workers.emplace_back([&engine, &model, &queue_mutex, &q, &dataset, &solver, &epoch, &total_jobs, &full_code_size, &cost](int thread_id) {
             auto thread_model = model.shallow_copy();
             auto thread_parameters = thread_model.parameters();
+            std::shuffle(thread_parameters.begin(), thread_parameters.end(), engine);
 
             size_t job;
             int i = 0;
@@ -339,7 +342,7 @@ void training_loop(StackedModel<T>& model,
                     G,
                     minibatch.data, // the sequence to draw from
                     minibatch.data, // what to predict (the words offset by 1)
-                    1,
+                    0,
                     minibatch.codelens,
                     0
                 );

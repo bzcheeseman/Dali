@@ -1,23 +1,23 @@
 #include <algorithm>
 #include <Eigen/Eigen>
 #include <fstream>
+#include <deque>
+#include <mutex>
 #include <gflags/gflags.h>
 #include <gflags/gflags_completions.h>
 #include <iterator>
 #include <thread>
-#include "../third_party/concurrentqueue.h"
-
 #include "core/utils.h"
 #include "core/SST.h"
 #include "core/gzstream.h"
 #include "core/StackedModel.h"
 
-DEFINE_int32(minibatch, 100, "What size should be used for the minibatches ?");
-DEFINE_string(validation, "", "Location of the validation dataset");
-DEFINE_bool(sparse, true, "Use sparse embedding");
-DEFINE_double(cutoff, 2.0, "KL Divergence error where stopping is acceptable");
-DEFINE_int32(j, 1, "How many threads should be used ?");
-DEFINE_int32(patience, 5, "How many unimproving epochs to wait through before witnessing progress ?");
+DEFINE_int32(minibatch,   100,  "What size should be used for the minibatches ?");
+DEFINE_string(validation, "",   "Location of the validation dataset");
+DEFINE_bool(sparse,       true, "Use sparse embedding");
+DEFINE_double(cutoff,     2.0,  "KL Divergence error where stopping is acceptable");
+DEFINE_int32(j,           1,    "How many threads should be used ?");
+DEFINE_int32(patience,    5,    "How many unimproving epochs to wait through before witnessing progress ?");
 
 static bool dummy1 = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_validation,
                                                    &utils::validate_flag_nonempty);
@@ -34,7 +34,6 @@ using std::ref;
 using utils::Vocab;
 using utils::OntologyBranch;
 using utils::tokenized_uint_labeled_dataset;
-using moodycamel::ConcurrentQueue;
 
 typedef float REAL_t;
 typedef Graph<REAL_t> graph_t;
@@ -222,19 +221,25 @@ T average_error(StackedModel<T>& model,
         full_code_size += dataset[i].total_codes;
     }
 
-    ConcurrentQueue<size_t> jobs(indices.size());
-    jobs.enqueue_bulk(indices.begin(), indices.size());
+    // ConcurrentQueue<size_t> jobs(indices.size());
+    // jobs.enqueue_bulk(indices.begin(), indices.size());
+    std::deque<size_t> jobs(indices.begin(), indices.end());
 	vector<thread> workers;
 
-    std::mutex queue_mutex;
+    std::mutex thread_mutex;
 
     vector<T> costs(num_threads);
     for (int t = 0; t < num_threads; t++) {
-        workers.emplace_back([&costs, &dataset, &model, &G, &jobs, &queue_mutex](int thread_id) {
+        workers.emplace_back([&costs, &dataset, &model, &G, &jobs, &thread_mutex](int thread_id) {
             size_t job;
             costs[thread_id] = 0.0;
-            while (jobs.try_dequeue(job)) {
-
+            while (true) {
+                {
+                    std::lock_guard<std::mutex> thread_lock(thread_mutex);
+                    if (jobs.empty()) break;
+                    job = jobs.front();
+                    jobs.pop_front();
+                }
                 costs[thread_id] += model.masked_predict_cost(
                     G,
                     dataset[job].data, // the sequence to draw from
@@ -302,25 +307,30 @@ void training_loop(StackedModel<T>& model,
 
     int total_jobs = random_batch_order.size();
 
-    ConcurrentQueue<size_t> jobs(random_batch_order.size());
-    jobs.enqueue_bulk(std::begin(random_batch_order), random_batch_order.size());
+    std::deque<size_t> jobs(random_batch_order.begin(), random_batch_order.end());
 
     // Creater workers:
     vector<thread> workers;
     int full_code_size = 0;
+    std::mutex thread_mutex;
 
     auto engine = std::default_random_engine{};
 
     for (int t=0; t < num_threads; ++t)
-        workers.emplace_back([&engine, &model, &jobs, &dataset, &solver, &epoch, &total_jobs, &full_code_size, &cost](int thread_id) {
+        workers.emplace_back([&engine, &model, &jobs, &dataset, &solver, &epoch, &total_jobs, &full_code_size, &cost, &thread_mutex](int thread_id) {
             auto thread_model = model.shallow_copy();
             auto thread_parameters = thread_model.parameters();
             std::shuffle(std::begin(thread_parameters), std::end(thread_parameters), engine);
 
             size_t job;
             int i = 0;
-            while (jobs.try_dequeue(job)) {
-
+            while (true) {
+                {
+                    std::lock_guard<std::mutex> thread_lock(thread_mutex);
+                    if (jobs.empty()) break;
+                    job = jobs.front();
+                    jobs.pop_front();
+                }
                 auto& minibatch = dataset[job];
                 auto G = graph_t(true);
                 cost += thread_model.masked_predict_cost(
@@ -335,13 +345,14 @@ void training_loop(StackedModel<T>& model,
                 full_code_size += minibatch.total_codes;
                 G.backward(); // backpropagate
                 solver.step(thread_parameters, 0.0);
-                std::cout << "epoch (" << epoch << " - " << 100.0 * ((1.0 - (double) jobs.size_approx() / total_jobs)) << "%) KL error = " << std::fixed
-                                      << std::setw( 5 ) // keep 7 digits
-                                      << std::setprecision( 3 ) // use 3 decimals
-                                      << std::setfill( ' ' ) << cost / full_code_size << "\r" << std::flush;
+                printf("epoch (%d - %.2f%%) KL error = %.3f\r",
+                    epoch,
+                    100.0 * ((1.0 - (double) jobs.size() / total_jobs)),
+                    cost / full_code_size);
+                fflush(stdout);
             }
         }, t);
-    for(auto& worker: workers) worker.join();
+    for (auto& worker: workers) worker.join();
 }
 
 /**
@@ -449,9 +460,9 @@ int main( int argc, char* argv[]) {
 
 
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
-    // Eigen::initParallel();
+    // Eigen::initParallel(); // might slow down entire computation
 
-// Not sure if this correct thing to do for all versions of clang compiler
+    // Not sure if this correct thing to do for all versions of clang compiler
     auto report_frequency   = FLAGS_report_frequency;
     auto rho                = FLAGS_rho;
     auto epochs             = FLAGS_epochs;

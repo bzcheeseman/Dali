@@ -1,0 +1,13 @@
+HIGH PRIORITY:
+-> showing something to Brian
+-> rethink memory organization
+-> split core (maybe if we understand c++ while doing so, we will manage to catch some bugs?)
+
+LOWER_PRIOTITY:
+-> add timers
+-> add tests
+-> add memory leak tests
+-> add performance test
+-> bash completion for gflags
+-> cleaning up crazy python scripts living all over the place
+-> rethink directory structure

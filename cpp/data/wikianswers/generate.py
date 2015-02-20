@@ -1,21 +1,26 @@
-import subprocess
+import random
 import sys
 
 from os import listdir
-from os.path import isdir, isfile, join
-
+from os.path import isdir, isfile, join, dirname, realpath
 from xml_cleaner import to_raw_text_markupless
 
-TARBALL1 = 'http://www.ark.cs.cmu.edu/QA-data/data/Question_Answer_Dataset_v1.2.tar.gz'
-TARBALL2 = 'http://www.ark.cs.cmu.edu/QA-data/data/Question_Answer_Dataset_v1.1.tar.gz'
+# add data to path
+DATA_DIR = dirname(dirname(realpath(__file__)))
+sys.path.append(DATA_DIR)
+from utils import print_progress, execute_bash
 
-TARBALL = TARBALL1
 
-OUTPUT_FILE = 'wikianswer_dataset.txt'
 
+# important
+TARBALL = 'http://www.ark.cs.cmu.edu/QA-data/data/Question_Answer_Dataset_v1.2.tar.gz'
+TRAIN_FILE = 'wikianswer_train.txt'
+VALIDATE_FILE = 'wikianswer_validate.txt'
+VALIDATION_SIZE = 0.1
+
+# not so important
 DATASET_DIR = 'Question_Answer_Dataset'
 DATASET_FILE = 'question_answer_pairs.txt'
-
 MIN_ANSWER_LENGTH = 1
 
 # Who does that?
@@ -23,20 +28,6 @@ WINDOWS_ENCODING = 'latin-1'
 
 def cleanup():
     execute_bash('rm -rf wikianswer.tar.gz %s*' % (DATASET_DIR,))
-
-
-def execute_bash(command):
-    """Executes bash command, prints output and throws an exception on failure."""
-    #print(subprocess.check_output(command.split(' '), shell=True))
-    process = subprocess.Popen(command,
-                               shell=True,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT,
-                               universal_newlines=True)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
-    assert process.returncode == 0
 
 
 if __name__ == '__main__':
@@ -78,12 +69,38 @@ if __name__ == '__main__':
                     num_too_short += 1
                     continue
 
-                output_content.append('%s\t%s\n' % (question, answer))
+                output_content.append((question, answer))
 
     print("Generated %d question answer pairs" % (len(output_content) ))
     print("Skipped %d pairs because of answer shorter than %d words" % (num_too_short, MIN_ANSWER_LENGTH))
     print("Skipped %d because of encoding issues." % (num_nonascii,))
-    with open(OUTPUT_FILE, 'wt') as f:
-        f.writelines(output_content)
 
+    num_valid = 0
+    num_train = 0
+
+    with open(VALIDATE_FILE, 'wt') as fvalid:
+        with open(TRAIN_FILE, 'wt') as ftrain:
+
+            for i, qa in enumerate(output_content):
+                question, answer = qa
+                print_progress(i, len(output_content))
+                question_tokens = []
+                answer_tokens = []
+                for line in to_raw_text_markupless(question):
+                    question_tokens.extend(line)
+                for line in to_raw_text_markupless(answer):
+                    answer_tokens.extend(line)
+
+                output_line = '%s\t%s\n' % (' '.join(question_tokens), ' '.join(answer_tokens))
+                if random.random() < VALIDATION_SIZE:
+                    fvalid.write(output_line)
+                    num_valid += 1
+                else:
+                    ftrain.write(output_line)
+                    num_train += 1
+
+
+
+    print("Saved %d pairs in %s" % (num_train, TRAIN_FILE))
+    print("Saved %d pairs in %s" % (num_valid, VALIDATE_FILE))
     cleanup()

@@ -5,6 +5,7 @@ set(EXAMPLE_PROGRAMS character_prediction
                      sparkfun_prediction
                      language_model_from_senti
                      language_model
+                     main
                      test_lattice
                      lattice_prediction
                      lattice_prediction_from_protobuff

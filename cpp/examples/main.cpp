@@ -5,6 +5,7 @@
 int main () {
 	typedef double REAL_t;
 	typedef Mat<REAL_t> mat;
+    typedef std::shared_ptr<mat> shared_mat;
 	using std::make_shared;
 
 	LSTM<REAL_t> lstm(30, 50);
@@ -22,7 +23,14 @@ int main () {
 	out.first->print();
 
 	// load numpy matrix from file:
-	auto numpy_mat = make_shared<mat>("numpy_test.npy");
+    shared_mat numpy_mat;
+    if (utils::file_exists("numpy_test.npy")) {
+        numpy_mat = make_shared<mat>("numpy_test.npy");
+    } else {
+        numpy_mat = make_shared<mat>(3, 3);
+        for (int i = 0; i < 9; i++) numpy_mat->w(i) = i;
+        numpy_mat->npy_save("numpy_test.npy");
+    }
 
 	// print it
 	numpy_mat->print();

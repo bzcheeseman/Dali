@@ -2,6 +2,7 @@
 #define RECURRENT_LAYERS_H
 
 #include "Mat.h"
+#include "Graph.h"
 
 template<typename T>
 class Layer {

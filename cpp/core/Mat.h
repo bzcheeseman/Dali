@@ -11,6 +11,7 @@
 // #define EIGEN_USE_LAPACKE
 #include <Eigen/Eigen>
 #include <iostream>
+#include <unordered_map>
 
 typedef Eigen::MatrixBase<Eigen::Matrix<unsigned int, Eigen::Dynamic, Eigen::Dynamic> >::ColXpr eigen_index_block;
 typedef Eigen::Matrix<unsigned int, Eigen::Dynamic, 1> eigen_index_vector;
@@ -32,7 +33,7 @@ template<typename T> class Mat {
 		bool sparse;
 		std::shared_ptr<std::vector<uint>> sparse_row_keys;
 		mutable eigen_mat_view dw;
-		std::shared_ptr<std::string> name;
+		std::shared_ptr<std::string> name = NULL;
 		const random_t random_id;
 		Mat (int, int);
 		Mat (int, int, bool);
@@ -81,75 +82,11 @@ static bool operator!=(const Mat<T>&, const Mat<T>&);
 template <typename T>
 static bool operator==(const Mat<T>&, const Mat<T>&);
 
-template<typename T> class Backward {
-	int ix;
-	uint* indices;
-	int num_indices;
-	uint type;
-	typedef Mat<T> mat;
-	typedef std::shared_ptr<mat> shared_mat;
-	void backward_rows_pluck();
-	void backward_mul_add_mul_with_bias();
-	public:
-		std::vector<shared_mat> matrices;
-
-		shared_mat out;
-		Backward(shared_mat, shared_mat, uint);
-		Backward(shared_mat, shared_mat, int, uint);
-		Backward(shared_mat, shared_mat, index_std_vector&, uint);
-		Backward(shared_mat, shared_mat, eigen_index_block, uint);
-		Backward(std::initializer_list<shared_mat>, shared_mat, uint);
-
-		operator std::string() const;
-		std::string op_type () const;
-		void operator ()();
-};
-
 template<typename T>
 int argmax(std::shared_ptr<Mat<T>>);
 
 template<typename T>
 int argmax_slice(std::shared_ptr<Mat<T>>, int, int);
-
-template<typename T>
-std::ostream& operator<<(std::ostream&, const Backward<T>&);
-
-template<typename T> class Graph {
-
-	std::vector<Backward<T>>       backprop;
-	typedef Mat<T>                      mat;
-	typedef std::shared_ptr<mat> shared_mat;
-	public:
-		bool                 needs_backprop;
-		Graph (bool);
-		Graph ();
-		void backward ();
-		shared_mat eltmul_broadcast(shared_mat, shared_mat);
-		shared_mat eltmul(shared_mat, shared_mat);
-		shared_mat eltmul_broadcast_rowwise(shared_mat, shared_mat);
-		shared_mat eltmul_rowwise(shared_mat, shared_mat);
-		shared_mat mul_with_bias(shared_mat, shared_mat, shared_mat);
-		// operation of the form (A * x + B * y) + C, called with mul_add_mul_with_bias(A, x, B, y, C)
-		shared_mat mul_add_mul_with_bias(shared_mat, shared_mat, shared_mat, shared_mat, shared_mat);
-		shared_mat mul_add_mul_with_bias(std::initializer_list<shared_mat>);
-		// operation of the form (A * x + B * y) + C, called with mul_add_mul_with_bias(A, x, B, y, C)
-		// and with caveat that x is actually a column, and should be broadcasted
-		shared_mat mul_add_broadcast_mul_with_bias(shared_mat, shared_mat, shared_mat, shared_mat, shared_mat);
-		shared_mat add_broadcast(shared_mat, shared_mat);
-		shared_mat add(shared_mat, shared_mat);
-		shared_mat add(std::initializer_list<shared_mat>);
-		shared_mat sigmoid(shared_mat);
-		shared_mat transpose(shared_mat);
-		shared_mat tanh(shared_mat);
-		shared_mat relu(shared_mat);
-		shared_mat mul(shared_mat, shared_mat);
-		shared_mat rows_pluck(shared_mat, index_std_vector&);
-		shared_mat rows_pluck(shared_mat, eigen_index_block);
-		shared_mat row_pluck(shared_mat, int);
-};
-
-
-#include <unordered_map>
 
 namespace Solver {
 

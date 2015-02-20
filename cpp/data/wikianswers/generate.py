@@ -4,6 +4,7 @@ import sys
 from os import listdir
 from os.path import isdir, isfile, join
 
+from xml_cleaner import to_raw_text_markupless
 
 TARBALL1 = 'http://www.ark.cs.cmu.edu/QA-data/data/Question_Answer_Dataset_v1.2.tar.gz'
 TARBALL2 = 'http://www.ark.cs.cmu.edu/QA-data/data/Question_Answer_Dataset_v1.1.tar.gz'

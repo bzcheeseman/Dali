@@ -6,6 +6,8 @@ using std::vector;
 using std::string;
 using std::stringstream;
 
+DEFINE_bool(eigen_parallel, true, "Use Eigen's InitParallel Mode ?");
+
 template<typename T>
 Mat<T>::Mat (int _n, int _d) : sparse_row_keys(NULL), sparse(false), name(NULL), w(NULL, _n, _d), dw(NULL, _n, _d),  n(_n), d(_d), random_id(utils::get_random_id()) {
     _w = eigen_mat::Zero(n,d);
@@ -61,29 +63,6 @@ Mat<T>::Mat (string fname) : sparse_row_keys(NULL), sparse(false), w(NULL, 0, 0)
 
 }
 
-/*
-Mat<T>::Mat<T>
---------------
-
-Matrix constructor using a zero mean
-normal distribution with a user provided 
-standard deviation.
-
-Inputs
-------
-
-int _n : number of rows
-int _d : number of columns
- T std : standard deviation for normal distribution
-
-Outputs
--------
-
-Mat<T> out : the matrix filled with random numbers from ~ N(0, std^2)
-
-See `Mat<T>::Mat(int, int, T, T)` for uniform distribution (below).
-
-*/
 template<typename T>
 Mat<T>::Mat (int _n, int _d, T std) : sparse_row_keys(NULL), sparse(false), name(NULL), w(NULL, _n, _d), dw(NULL, _n, _d), n(_n), d(_d), random_id(utils::get_random_id()) {
 	std::default_random_engine generator;
@@ -97,29 +76,6 @@ Mat<T>::Mat (int _n, int _d, T std) : sparse_row_keys(NULL), sparse(false), name
 	new (&dw) eigen_mat_view(_dw.data(), n, d);
 }
 
-/*
-Mat<T>::Mat<T>
---------------
-
-Matrix constructor using a uniform
-distribution with user defined min
-and max support.
-
-Inputs
-------
-
-  int _n : number of rows
-  int _d : number of columns
- T lower : minimum of uniform distribution
- T upper : maximum of uniform distribution
-
-Outputs
--------
-
-Mat<T> out : the matrix filled with random numbers from ~U(lower, upper)
-
-See `Mat<T>::Mat(int, int, T)` for normal distribution (above)
-*/
 template<typename T>
 Mat<T>::Mat (int _n, int _d, T lower, T upper) : sparse_row_keys(NULL), sparse(false), name(NULL), w(NULL, _n, _d), dw(NULL, _n, _d), n(_n), d(_d), random_id(utils::get_random_id()) {
 	std::default_random_engine generator;
@@ -135,37 +91,6 @@ Mat<T>::Mat (int _n, int _d, T lower, T upper) : sparse_row_keys(NULL), sparse(f
 	new (&dw) eigen_mat_view(_dw.data(), n, d);
 }
 
-/**
-Mat<T>::Mat<T>
---------------
-
-A copy constructor that perform shallow and deep
-copies of a Mat.
-
-Key usage is for Hogwild style training of parameters
-where different computation threads share memory for
-the parameters but each compute their own gradients.
-The gradients are kept in separate `dw` memory buffers
-but `w` buffers are shared amongst threads.
-
-For usage see `Solver::Adadelta`, `examples/character_prediction.cpp`
-
-Inputs
-------
-
-const Mat<T>& m : matrix to copy or point to
-    bool copy_w : whether matrix parameters should be copied over, or shared
-                  between matrices
-   bool copy_dw : whether matrix gradient parameters should be copied over,
-                  or shared (Note: it is unclear when `dw` should be shared,
-                  proceed with caution).
-
-Outputs
--------
-
-Mat<T> out : deep or shallow copy of m
-
-**/
 template<typename T>
 Mat<T>::Mat (const Mat<T>& m, bool copy_w, bool copy_dw) : sparse_row_keys(NULL), sparse(m.sparse), name(m.name), w(NULL, m.n, m.d), dw(NULL, m.n, m.d), n(m.n), d(m.d), random_id(copy_w ? utils::get_random_id() : m.random_id) {
 	if (copy_w) {
@@ -183,73 +108,19 @@ Mat<T>::Mat (const Mat<T>& m, bool copy_w, bool copy_dw) : sparse_row_keys(NULL)
 	}
 }
 
-
-/**
-Shallow Copy
-------------
-
-A copy constructor that perform shallow copies of a Mat.
-
-Key usage is for Hogwild style training of parameters
-where different computation threads share memory for
-the parameters but each compute their own gradients.
-The gradients are kept in separate `dw` memory buffers
-but `w` buffers are shared amongst threads.
-
-For usage see `Mat<T>::Mat<T>(const Mat&, bool, bool)`, `examples/character_prediction.cpp`
-
-Inputs
-------
-
-const Mat<T>& m : matrix that will own the underlying memory
-                  for `w`  
-
-Outputs
--------
-
-Mat<T> out : shallow copy of m
-
-**/
-
 template<typename T>
 Mat<T> Mat<T>::shallow_copy(const Mat<T>& m) {
 	return Mat(m, false, true);
 }
 
-/*
-Set Name
---------
-
-Used for giving names to matrices for debugging or convenience purposes,
-but the names have no bearing on computation or identification in
-lookup tables;
-
-Inputs
-------
-
-std::string& name : name the Mat should take on
-
-*/
-
 template<typename T>
 void Mat<T>::set_name(string& _name) {
 	name = std::make_shared<string>(_name);
 }
-
-/*
-Set Name
---------
-See `Mat<T>::set_name` above
-*/
 template<typename T>
 void Mat<T>::set_name(char * _name) {
 	name = std::make_shared<string>(_name);
 }
-/*
-Set Name
---------
-See `Mat<T>::set_name` above
-*/
 template<typename T>
 void Mat<T>::set_name(const char * _name) {
 	name = std::make_shared<string>(_name);

@@ -1,12 +1,12 @@
-#include "StackedModel.h"
+#include "StackedShortcutModel.h"
 
-DEFINE_int32(stack_size, 4, "How many LSTMs should I stack ?");
-DEFINE_int32(input_size, 100, "Size of the word vectors");
-DEFINE_int32(hidden, 100, "How many Cells and Hidden Units should each LSTM have ?");
+DEFINE_int32(stack_size,  4,    "How many LSTMs should I stack ?");
+DEFINE_int32(input_size,  100,  "Size of the word vectors");
+DEFINE_int32(hidden,      100,  "How many Cells and Hidden Units should each LSTM have ?");
 DEFINE_double(decay_rate, 0.95, "What decay rate should RMSProp use ?");
-DEFINE_double(rho, 0.95, "What rho / learning rate should the Solver use ?");
-DEFINE_string(save, "", "Where to save the model to ?");
-DEFINE_string(load, "", "Where to load the model from ?");
+DEFINE_double(rho,        0.95, "What rho / learning rate should the Solver use ?");
+DEFINE_string(save,       "",   "Where to save the model to ?");
+DEFINE_string(load,       "",   "Where to load the model from ?");
 
 using std::shared_ptr;
 using std::vector;
@@ -18,7 +18,7 @@ using std::string;
 using utils::from_string;
 
 template<typename T>
-vector<typename StackedModel<T>::shared_mat> StackedModel<T>::parameters() {
+vector<typename StackedShortcutModel<T>::shared_mat> StackedShortcutModel<T>::parameters() {
 	vector<shared_mat> parameters;
 	parameters.push_back(embedding);
 
@@ -32,7 +32,7 @@ vector<typename StackedModel<T>::shared_mat> StackedModel<T>::parameters() {
 }
 
 template<typename T>
-typename StackedModel<T>::config_t StackedModel<T>::configuration() {
+typename StackedShortcutModel<T>::config_t StackedShortcutModel<T>::configuration() {
 	config_t config;
 	config["output_size"].emplace_back(to_string(output_size));
 	config["input_size"].emplace_back(to_string(input_size));
@@ -43,14 +43,14 @@ typename StackedModel<T>::config_t StackedModel<T>::configuration() {
 }
 
 template<typename T>
-void StackedModel<T>::save_configuration(std::string fname) {
+void StackedShortcutModel<T>::save_configuration(std::string fname) {
 
 	auto config = configuration();
 	utils::map_to_file(config, fname);
 }
 
 template<typename T>
-void StackedModel<T>::save(std::string dirname) {
+void StackedShortcutModel<T>::save(std::string dirname) {
 	utils::ensure_directory(dirname);
 	// Save the matrices:
 	auto params = parameters();
@@ -60,15 +60,15 @@ void StackedModel<T>::save(std::string dirname) {
 }
 
 template<typename T>
-StackedModel<T> StackedModel<T>::build_from_CLI(int vocab_size, int output_size, bool verbose) {
+StackedShortcutModel<T> StackedShortcutModel<T>::build_from_CLI(int vocab_size, int output_size, bool verbose) {
 	using utils::from_string;
 	string load_location = FLAGS_load;
 	if (verbose)
 		std::cout << "Load location         = " << ((load_location == "") ? "N/A" : load_location)       << std::endl;
 	// Load or Construct the model
 	auto model = (load_location != "") ?
-		StackedModel<T>::load(load_location) :
-		StackedModel<T>(
+		StackedShortcutModel<T>::load(load_location) :
+		StackedShortcutModel<T>(
 			vocab_size,
 			FLAGS_input_size,
 			FLAGS_hidden,
@@ -85,7 +85,7 @@ StackedModel<T> StackedModel<T>::build_from_CLI(int vocab_size, int output_size,
 }
 
 template<typename T>
-StackedModel<T> StackedModel<T>::load(std::string dirname) {
+StackedShortcutModel<T> StackedShortcutModel<T>::load(std::string dirname) {
 	// fname should be a directory:
 	utils::ensure_directory(dirname);
 	// load the configuration file
@@ -99,7 +99,7 @@ StackedModel<T> StackedModel<T>::load(std::string dirname) {
 	utils::assert_map_has_key(config, "output_size");
 
 	// construct the model using the map
-	auto model =  StackedModel<T>(config);
+	auto model =  StackedShortcutModel<T>(config);
 
 	// get the current parameters of the model.
 	auto params = model.parameters();
@@ -111,7 +111,7 @@ StackedModel<T> StackedModel<T>::load(std::string dirname) {
 }
 
 template<typename T>
-T StackedModel<T>::masked_predict_cost(
+T StackedShortcutModel<T>::masked_predict_cost(
 	graph_t& G,
 	shared_index_mat data,
 	shared_index_mat target_data,
@@ -133,7 +133,7 @@ T StackedModel<T>::masked_predict_cost(
 		// pick this letter from the embedding
 		input_vector = G.rows_pluck(embedding, data->col(i));
 		// pass this letter to the LSTM for processing
-		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
+		initial_state = forward_LSTMs(G, input_vector, initial_state, base_cell, cells);
 		// classifier takes as input the final hidden layer's activation:
 		logprobs      = decoder.activate(G, initial_state.second[num_hidden_sizes-1]);
 		cost += G.needs_backprop ? masked_cross_entropy(
@@ -153,14 +153,13 @@ T StackedModel<T>::masked_predict_cost(
 }
 
 template<typename T>
-T StackedModel<T>::masked_predict_cost(
+T StackedShortcutModel<T>::masked_predict_cost(
 	graph_t& G,
 	shared_index_mat data,
 	shared_index_mat target_data,
 	uint start_loss,
 	shared_eigen_index_vector codelens,
 	uint offset) {
-
 	auto initial_state    = lstm::initial_states(hidden_sizes);
 	auto num_hidden_sizes = hidden_sizes.size();
 
@@ -175,7 +174,7 @@ T StackedModel<T>::masked_predict_cost(
 		// pick this letter from the embedding
 		input_vector = G.rows_pluck(embedding, data->col(i));
 		// pass this letter to the LSTM for processing
-		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
+		initial_state = forward_LSTMs(G, input_vector, initial_state, base_cell, cells);
 		// classifier takes as input the final hidden layer's activation:
 		logprobs      = decoder.activate(G, initial_state.second[num_hidden_sizes-1]);
 		cost += G.needs_backprop ? masked_cross_entropy(
@@ -197,24 +196,27 @@ T StackedModel<T>::masked_predict_cost(
 // Private method that names the parameters
 // For better debugging and reference
 template<typename T>
-void StackedModel<T>::name_parameters() {
+void StackedShortcutModel<T>::name_parameters() {
 	embedding->set_name("Embedding");
 	decoder.W->set_name("Decoder W");
 	decoder.b->set_name("Decoder Bias");
 }
 
 template<typename T>
-void StackedModel<T>::construct_LSTM_cells() {
-	cells = StackedCells<lstm>(input_size, hidden_sizes);
+void StackedShortcutModel<T>::construct_LSTM_cells() {
+	auto hidden_sizes_subset = vector<int>(hidden_sizes.begin() + 1, hidden_sizes.end());
+	base_cell(input_size, hidden_sizes[0]);
+	cells = StackedCells<shortcut_lstm>(hidden_sizes[0], input_size, hidden_sizes_subset);
 }
 
 template<typename T>
-void StackedModel<T>::construct_LSTM_cells(const vector<StackedModel<T>::lstm>& _cells, bool copy_w, bool copy_dw) {
+void StackedShortcutModel<T>::construct_LSTM_cells(const lstm& _base_cell, const vector<StackedShortcutModel<T>::shortcut_lstm>& _cells, bool copy_w, bool copy_dw) {
+	base_cell(_base_cell, copy_w, copy_dw);
 	cells = StackedCells<lstm>(_cells, copy_w, copy_dw);
 }
 
 template<typename T>
-StackedModel<T>::StackedModel (int _vocabulary_size, int _input_size, int hidden_size, int _stack_size, int _output_size)
+StackedShortcutModel<T>::StackedShortcutModel (int _vocabulary_size, int _input_size, int hidden_size, int _stack_size, int _output_size)
 	:
 	input_size(_input_size),
 	output_size(_output_size),
@@ -230,8 +232,8 @@ StackedModel<T>::StackedModel (int _vocabulary_size, int _input_size, int hidden
 }
 
 template<typename T>
-StackedModel<T>::StackedModel (
-	const typename StackedModel<T>::config_t& config)
+StackedShortcutModel<T>::StackedShortcutModel (
+	const typename StackedShortcutModel<T>::config_t& config)
 	:
 	vocabulary_size(from_string<int>(config.at("vocabulary_size")[0])),
 	output_size(from_string<int>(config.at("output_size")[0])),
@@ -250,7 +252,7 @@ StackedModel<T>::StackedModel (
 }
 
 template<typename T>
-StackedModel<T>::StackedModel (int _vocabulary_size, int _input_size, int _output_size, std::vector<int>& _hidden_sizes)
+StackedShortcutModel<T>::StackedShortcutModel (int _vocabulary_size, int _input_size, int _output_size, std::vector<int>& _hidden_sizes)
 	:
 	input_size(_input_size),
 	output_size(_output_size),
@@ -265,7 +267,7 @@ StackedModel<T>::StackedModel (int _vocabulary_size, int _input_size, int _outpu
 }
 
 template<typename T>
-StackedModel<T>::StackedModel (const StackedModel<T>& model, bool copy_w, bool copy_dw) :
+StackedShortcutModel<T>::StackedShortcutModel (const StackedShortcutModel<T>& model, bool copy_w, bool copy_dw) :
     input_size(model.input_size),
 	output_size(model.output_size),
 	vocabulary_size(model.vocabulary_size),
@@ -274,18 +276,18 @@ StackedModel<T>::StackedModel (const StackedModel<T>& model, bool copy_w, bool c
 	decoder(model.decoder, copy_w, copy_dw)
     {
     embedding = make_shared<mat>(*model.embedding, copy_w, copy_dw);
-    construct_LSTM_cells(model.cells, copy_w, copy_dw);
+    construct_LSTM_cells(model.base_cell, model.cells, copy_w, copy_dw);
     name_parameters();
 }
 
 template<typename T>
-StackedModel<T> StackedModel<T>::shallow_copy() const {
-    return StackedModel<T>(*this, false, true);
+StackedShortcutModel<T> StackedShortcutModel<T>::shallow_copy() const {
+    return StackedShortcutModel<T>(*this, false, true);
 }
 
 template<typename T>
 template<typename K>
-typename StackedModel<T>::lstm_activation_t StackedModel<T>::get_final_activation(
+typename StackedShortcutModel<T>::lstm_activation_t StackedShortcutModel<T>::get_final_activation(
 	graph_t& G,
 	const K& example) {
 	shared_mat input_vector;
@@ -295,7 +297,7 @@ typename StackedModel<T>::lstm_activation_t StackedModel<T>::get_final_activatio
 		// pick this letter from the embedding
 		input_vector  = G.row_pluck(embedding, example(i));
 		// pass this letter to the LSTM for processing
-		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
+		initial_state = forward_LSTMs(G, input_vector, initial_state, base_cell, cells);
 		// decoder takes as input the final hidden layer's activation:
 	}
 	return initial_state;
@@ -304,7 +306,7 @@ typename StackedModel<T>::lstm_activation_t StackedModel<T>::get_final_activatio
 // Nested Templates !!
 template<typename T>
 template<typename K>
-std::vector<int> StackedModel<T>::reconstruct(
+std::vector<int> StackedShortcutModel<T>::reconstruct(
     K example,
     int eval_steps,
     int symbol_offset) {
@@ -320,7 +322,7 @@ std::vector<int> StackedModel<T>::reconstruct(
 
 	for (uint j = 0; j < eval_steps - 1; j++) {
 		input_vector  = G.row_pluck(embedding, last_symbol);
-		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
+		initial_state = forward_LSTMs(G, input_vector, initial_state, base_cell, cells);
 		last_symbol   = argmax(decoder.activate(G, initial_state.second[stack_size-1]));
 		outputs.emplace_back(last_symbol);
 		last_symbol += symbol_offset;
@@ -329,148 +331,20 @@ std::vector<int> StackedModel<T>::reconstruct(
 }
 
 template<typename T>
-typename StackedModel<T>::activation_t StackedModel<T>::activate(
+typename StackedShortcutModel<T>::activation_t StackedShortcutModel<T>::activate(
 	graph_t& G,
 	lstm_activation_t& previous_state,
 	const uint& index) {
 	activation_t out;
-	out.first =  forward_LSTMs(G, G.row_pluck(embedding, index), previous_state, cells);
+	out.first =  forward_LSTMs(G, G.row_pluck(embedding, index), previous_state, base_cell, cells);
 	out.second = softmax(decoder.activate(G, out.first.second[stack_size-1]));
 
 	return out;
 }
 
-/*
-template<typename T>
-std::pair<std::pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>>, std::vector<std::pair<uint, T>>>  vector< > StackedModel<T>::beam_search_with_indices(
-	graph_t& G,
-	std::pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>>& previous_state,
-	uint index,
-	int k,
-	T prob) const {
-
-	auto out_state_and_prob = activate(G, previous_state, index);
-
-	std::pair<std::pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>>, std::vector<std::pair<uint, T>>> out;
-
-	out.first = out_state_and_prob.first;
-
-	vector<T> probabilities(out.second->w.data(), out.second->w.data() + output_size);
-
-	auto sorted_probs = utils::argsort(probabilities);
-}
-*/
-
-/*
-def beam_search_with_indices(model, indices, size, prob = 1.):
-    probs = model.predict_fun([indices])[0,-1]
-
-
-    top_outputs = probs.argsort()[::-1][:size]
-    top_probs = probs[top_outputs] * prob
-
-    return top_outputs, top_probs
-*/
-
-/*
 template<typename T>
 template<typename K>
-std::vector<int> StackedModel<T>::beam_search(
-    K example,
-    int eval_steps,
-    int symbol_offset,
-    int k) {
-
-	typedef std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>> stacked_states;
-
-	graph_t G(false);
-	auto initial_state = get_final_activation(G, K);
-
-	// we start off with k different options:
-	vector< std::tuple<vector<uint>,T, stacked_states > > open_list;
-
-	auto outs_probs = beam_search_with_indices(G, example, k, 1.0);
-
-	for (auto& out_prob : outs_probs) {
-		open_list.emplace_back(std:: )
-	}
-
-
-	def beam_search(model, word2index, code2path, sentence, n, max_steps = 10):
-	    indices = encode_into_indices(word2index, sentence.split() if type(sentence) is str else sentence)
-	    vocab_size = model.vocabulary_size.get_value()
-	    end_seq = vocab_size + model.max_branching_factor
-	    end_pred = end_seq + 1
-	    # we start off with n different options:
-	    open_list = []
-	    top_outs, top_probs = beam_search_with_indices(model, indices, n, prob=1.)
-	    for candidate, prob in zip(top_outs, top_probs):
-	        open_list.append((indices + [candidate + vocab_size], prob))
-
-	    # for each option we expand another n options forward:
-	    i = 0
-	    while True:
-	        stops = 0
-
-	        options = [op for op in open_list]
-	        open_list = []
-
-	        for candidate, prob in options:
-	            if candidate[-1] == end_pred:
-	                stops += 1
-	                open_list.append((candidate, prob))
-	                continue
-	            else:
-	                # if out is not the end sequence token
-	                new_candidates, new_probs = beam_search_with_indices(model, candidate, n, prob=prob)
-	                for new_candidate, new_prob in zip(new_candidates, new_probs):
-	                    open_list.append((candidate + [new_candidate + vocab_size], new_prob))
-
-	        open_list.sort(key=lambda x: -x[1])
-	        open_list = open_list[:n]
-	        i += 1
-	        if i == max_steps:
-	            break
-	        if stops == n:
-	            break
-
-	    open_list = [(decode_from_indices(model.max_branching_factor, code2path, code[len(indices):-1] - vocab_size), prob) for code, prob in open_list]
-
-	    return open_list
-
-
-	graph_t G(false);
-	shared_mat input_vector;
-	auto initial_state = lstm::initial_states(hidden_sizes);
-	auto n = example.cols() * example.rows();
-	for (uint i = 0; i < n; ++i) {
-		// pick this letter from the embedding
-		input_vector  = G.row_pluck(embedding, example(i));
-		// pass this letter to the LSTM for processing
-		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
-		// decoder takes as input the final hidden layer's activation:
-	}
-	vector<int> outputs;
-	auto last_symbol = argmax(decoder.activate(G, initial_state.second[stack_size-1]));
-	outputs.emplace_back(last_symbol);
-	last_symbol += symbol_offset;
-
-	for (uint j = 0; j < eval_steps - 1; j++) {
-		input_vector  = G.row_pluck(embedding, last_symbol);
-		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
-		last_symbol   = argmax(decoder.activate(G, initial_state.second[stack_size-1]));
-		outputs.emplace_back(last_symbol);
-		last_symbol += symbol_offset;
-	}
-	return outputs;
-}
-*/
-
-
-
-template<typename T>
-template<typename K>
-std::vector<utils::OntologyBranch::shared_branch> StackedModel<T>::reconstruct_lattice(
+std::vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<T>::reconstruct_lattice(
     K example,
     utils::OntologyBranch::shared_branch root,
     int eval_steps) {
@@ -485,7 +359,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedModel<T>::reconstruct_l
 		// pick this letter from the embedding
 		input_vector  = G.row_pluck(embedding, example(i));
 		// pass this letter to the LSTM for processing
-		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
+		initial_state = forward_LSTMs(G, input_vector, initial_state, base_cell, cells);
 		// decoder takes as input the final hidden layer's activation:
 	}
 	vector<utils::OntologyBranch::shared_branch> outputs;
@@ -499,7 +373,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedModel<T>::reconstruct_l
 	outputs.emplace_back(pos);
 	for (uint j = 0; j < eval_steps - 1; j++) {
 		input_vector  = G.row_pluck(embedding, pos->id);
-		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
+		initial_state = forward_LSTMs(G, input_vector, initial_state, base_cell, cells);
 		last_turn     = argmax_slice(decoder.activate(G, initial_state.second[stack_size-1]), 0, pos->children.size() + 1);
 		pos           = (last_turn == 0) ? root : pos->children[last_turn-1];
 		outputs.emplace_back(pos);
@@ -510,7 +384,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedModel<T>::reconstruct_l
 // Nested Templates !!
 template<typename T>
 template<typename K>
-string StackedModel<T>::reconstruct_string(
+string StackedShortcutModel<T>::reconstruct_string(
     K example,
     const utils::Vocab& lookup_table,
     int eval_steps,
@@ -532,7 +406,7 @@ string StackedModel<T>::reconstruct_string(
 // Nested Templates !!
 template<typename T>
 template<typename K>
-string StackedModel<T>::reconstruct_lattice_string(
+string StackedShortcutModel<T>::reconstruct_lattice_string(
     K example,
     utils::OntologyBranch::shared_branch root,
     int eval_steps) {
@@ -549,53 +423,53 @@ typedef Eigen::VectorBlock< index_row, Eigen::Dynamic> sliced_row;
 typedef Eigen::Block< Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic>, Eigen::Dynamic, 1, !Eigen::RowMajor> index_col;
 typedef Eigen::VectorBlock< index_col, Eigen::Dynamic> sliced_col;
 
-template string StackedModel<float>::reconstruct_string(sliced_row, const utils::Vocab&, int, int);
-template string StackedModel<double>::reconstruct_string(sliced_row, const utils::Vocab&, int, int);
+template string StackedShortcutModel<float>::reconstruct_string(sliced_row, const utils::Vocab&, int, int);
+template string StackedShortcutModel<double>::reconstruct_string(sliced_row, const utils::Vocab&, int, int);
 
-template string StackedModel<float>::reconstruct_string(index_row, const utils::Vocab&, int, int);
-template string StackedModel<double>::reconstruct_string(index_row, const utils::Vocab&, int, int);
+template string StackedShortcutModel<float>::reconstruct_string(index_row, const utils::Vocab&, int, int);
+template string StackedShortcutModel<double>::reconstruct_string(index_row, const utils::Vocab&, int, int);
 
-template string StackedModel<float>::reconstruct_string(sliced_col, const utils::Vocab&, int, int);
-template string StackedModel<double>::reconstruct_string(sliced_col, const utils::Vocab&, int, int);
+template string StackedShortcutModel<float>::reconstruct_string(sliced_col, const utils::Vocab&, int, int);
+template string StackedShortcutModel<double>::reconstruct_string(sliced_col, const utils::Vocab&, int, int);
 
-template string StackedModel<float>::reconstruct_string(index_col, const utils::Vocab&, int, int);
-template string StackedModel<double>::reconstruct_string(index_col, const utils::Vocab&, int, int);
+template string StackedShortcutModel<float>::reconstruct_string(index_col, const utils::Vocab&, int, int);
+template string StackedShortcutModel<double>::reconstruct_string(index_col, const utils::Vocab&, int, int);
 
-template vector<int> StackedModel<float>::reconstruct(sliced_row, int, int);
-template vector<int> StackedModel<double>::reconstruct(sliced_row, int, int);
+template vector<int> StackedShortcutModel<float>::reconstruct(sliced_row, int, int);
+template vector<int> StackedShortcutModel<double>::reconstruct(sliced_row, int, int);
 
-template vector<int> StackedModel<float>::reconstruct(index_row, int, int);
-template vector<int> StackedModel<double>::reconstruct(index_row, int, int);
+template vector<int> StackedShortcutModel<float>::reconstruct(index_row, int, int);
+template vector<int> StackedShortcutModel<double>::reconstruct(index_row, int, int);
 
-template vector<int> StackedModel<float>::reconstruct(sliced_col, int, int);
-template vector<int> StackedModel<double>::reconstruct(sliced_col, int, int);
+template vector<int> StackedShortcutModel<float>::reconstruct(sliced_col, int, int);
+template vector<int> StackedShortcutModel<double>::reconstruct(sliced_col, int, int);
 
-template vector<int> StackedModel<float>::reconstruct(index_col, int, int);
-template vector<int> StackedModel<double>::reconstruct(index_col, int, int);
+template vector<int> StackedShortcutModel<float>::reconstruct(index_col, int, int);
+template vector<int> StackedShortcutModel<double>::reconstruct(index_col, int, int);
 
-template vector<utils::OntologyBranch::shared_branch> StackedModel<float>::reconstruct_lattice(sliced_row, utils::OntologyBranch::shared_branch, int);
-template vector<utils::OntologyBranch::shared_branch> StackedModel<double>::reconstruct_lattice(sliced_row, utils::OntologyBranch::shared_branch, int);
+template vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<float>::reconstruct_lattice(sliced_row, utils::OntologyBranch::shared_branch, int);
+template vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<double>::reconstruct_lattice(sliced_row, utils::OntologyBranch::shared_branch, int);
 
-template vector<utils::OntologyBranch::shared_branch> StackedModel<float>::reconstruct_lattice(index_row, utils::OntologyBranch::shared_branch, int);
-template vector<utils::OntologyBranch::shared_branch> StackedModel<double>::reconstruct_lattice(index_row, utils::OntologyBranch::shared_branch, int);
+template vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<float>::reconstruct_lattice(index_row, utils::OntologyBranch::shared_branch, int);
+template vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<double>::reconstruct_lattice(index_row, utils::OntologyBranch::shared_branch, int);
 
-template vector<utils::OntologyBranch::shared_branch> StackedModel<float>::reconstruct_lattice(sliced_col, utils::OntologyBranch::shared_branch, int);
-template vector<utils::OntologyBranch::shared_branch> StackedModel<double>::reconstruct_lattice(sliced_col, utils::OntologyBranch::shared_branch, int);
+template vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<float>::reconstruct_lattice(sliced_col, utils::OntologyBranch::shared_branch, int);
+template vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<double>::reconstruct_lattice(sliced_col, utils::OntologyBranch::shared_branch, int);
 
-template vector<utils::OntologyBranch::shared_branch> StackedModel<float>::reconstruct_lattice(index_col, utils::OntologyBranch::shared_branch, int);
-template vector<utils::OntologyBranch::shared_branch> StackedModel<double>::reconstruct_lattice(index_col, utils::OntologyBranch::shared_branch, int);
+template vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<float>::reconstruct_lattice(index_col, utils::OntologyBranch::shared_branch, int);
+template vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<double>::reconstruct_lattice(index_col, utils::OntologyBranch::shared_branch, int);
 
-template string StackedModel<float>::reconstruct_lattice_string(sliced_row, utils::OntologyBranch::shared_branch, int);
-template string StackedModel<double>::reconstruct_lattice_string(sliced_row, utils::OntologyBranch::shared_branch, int);
+template string StackedShortcutModel<float>::reconstruct_lattice_string(sliced_row, utils::OntologyBranch::shared_branch, int);
+template string StackedShortcutModel<double>::reconstruct_lattice_string(sliced_row, utils::OntologyBranch::shared_branch, int);
 
-template string StackedModel<float>::reconstruct_lattice_string(index_row, utils::OntologyBranch::shared_branch, int);
-template string StackedModel<double>::reconstruct_lattice_string(index_row, utils::OntologyBranch::shared_branch, int);
+template string StackedShortcutModel<float>::reconstruct_lattice_string(index_row, utils::OntologyBranch::shared_branch, int);
+template string StackedShortcutModel<double>::reconstruct_lattice_string(index_row, utils::OntologyBranch::shared_branch, int);
 
-template string StackedModel<float>::reconstruct_lattice_string(sliced_col, utils::OntologyBranch::shared_branch, int);
-template string StackedModel<double>::reconstruct_lattice_string(sliced_col, utils::OntologyBranch::shared_branch, int);
+template string StackedShortcutModel<float>::reconstruct_lattice_string(sliced_col, utils::OntologyBranch::shared_branch, int);
+template string StackedShortcutModel<double>::reconstruct_lattice_string(sliced_col, utils::OntologyBranch::shared_branch, int);
 
-template string StackedModel<float>::reconstruct_lattice_string(index_col, utils::OntologyBranch::shared_branch, int);
-template string StackedModel<double>::reconstruct_lattice_string(index_col, utils::OntologyBranch::shared_branch, int);
+template string StackedShortcutModel<float>::reconstruct_lattice_string(index_col, utils::OntologyBranch::shared_branch, int);
+template string StackedShortcutModel<double>::reconstruct_lattice_string(index_col, utils::OntologyBranch::shared_branch, int);
 
-template class StackedModel<float>;
-template class StackedModel<double>;
+template class StackedShortcutModel<float>;
+template class StackedShortcutModel<double>;

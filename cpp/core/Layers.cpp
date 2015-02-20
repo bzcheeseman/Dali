@@ -18,40 +18,6 @@ typename Layer<T>::shared_mat Layer<T>::activate(Graph<T>& G, typename Layer<T>:
     return G.mul_with_bias(W, input_vector, b);
 }
 
-/**
-Layer<T>::Layer
----------------
-
-Copy constructor with option to make a shallow
-or deep copy of the underlying parameters.
-
-If the copy is shallow then the parameters are shared
-but separate gradients `dw` are used for each of 
-thread Layer<T>.
-
-Shallow copies are useful for Hogwild and multithreaded
-training
-
-See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`,
-`Layer<T>::shallow_copy`
-
-Inputs
-------
-
-  Layer<T> l : layer from which to source parameters and dw
- bool copy_w : whether parameters for new layer should be copies
-               or shared
-bool copy_dw : whether gradients for new layer should be copies
-               shared (Note: sharing `dw` should be used with
-               caution and can lead to unpredictable behavior
-               during optimization).
-
-Outputs
--------
-
-Layer<T> out : the copied layer with deep or shallow copy
-
-**/
 template<typename T>
 Layer<T>::Layer (const Layer<T>& layer, bool copy_w, bool copy_dw) : hidden_size(layer.hidden_size), input_size(layer.input_size) {
     W = make_shared<mat>(*layer.W, copy_w, copy_dw);
@@ -129,12 +95,12 @@ RNN<T>::RNN (int _input_size, int _hidden_size, int _output_size) : hidden_size(
 }
 
 template<typename T>
-ShortcutRNN<T>::ShortcutRNN (int _input_size, int _hidden_size, int _shortcut_size) : hidden_size(_hidden_size), input_size(_input_size), output_size(_hidden_size), shortcut_size(_shortcut_size) {
+ShortcutRNN<T>::ShortcutRNN (int _input_size, int _shortcut_size, int _hidden_size) : hidden_size(_hidden_size), input_size(_input_size), output_size(_hidden_size), shortcut_size(_shortcut_size) {
     create_variables();
 }
 
 template<typename T>
-ShortcutRNN<T>::ShortcutRNN (int _input_size, int _hidden_size, int _shortcut_size, int _output_size) : hidden_size(_hidden_size), input_size(_input_size), shortcut_size(_shortcut_size), output_size(_output_size) {
+ShortcutRNN<T>::ShortcutRNN (int _input_size, int _shortcut_size, int _hidden_size,  int _output_size) : hidden_size(_hidden_size), input_size(_input_size), shortcut_size(_shortcut_size), output_size(_output_size) {
     create_variables();
 }
 
@@ -396,6 +362,24 @@ void LSTM<T>::name_internal_layers() {
     cell_layer.Wx->set_name("LSTM Cell Wx");
     cell_layer.Wh->set_name("LSTM Cell Wh");
 }
+template<typename T>
+void ShortcutLSTM<T>::name_internal_layers() {
+    forget_layer.b->set_name("Shortcut Forget bias");
+    forget_layer.Wx->set_name("Shortcut Forget Wx");
+    forget_layer.Wh->set_name("Shortcut Forget Wh");
+
+    input_layer.b->set_name("Shortcut Input bias");
+    input_layer.Wx->set_name("Shortcut Input Wx");
+    input_layer.Wh->set_name("Shortcut Input Wh");
+
+    output_layer.b->set_name("Shortcut Output bias");
+    output_layer.Wx->set_name("Shortcut Output Wx");
+    output_layer.Wh->set_name("Shortcut Output Wh");
+
+    cell_layer.b->set_name("Shortcut Cell bias");
+    cell_layer.Wx->set_name("Shortcut Cell Wx");
+    cell_layer.Wh->set_name("Shortcut Cell Wh");
+}
 
 template<typename T>
 LSTM<T>::LSTM (int _input_size, int _hidden_size) :
@@ -405,13 +389,24 @@ LSTM<T>::LSTM (int _input_size, int _hidden_size) :
     forget_layer(_input_size, _hidden_size),
     output_layer(_input_size, _hidden_size),
     cell_layer(_input_size, _hidden_size) {
-    // Ilya Sutskever recommends initializing with
+    // Note: Ilya Sutskever recommends initializing with
     // forget gate at high value
     // http://yyue.blogspot.fr/2015/01/a-brief-overview-of-deep-learning.html
     forget_layer.b->w(0) = 100;
     name_internal_layers();
 }
-
+template<typename T>
+ShortcutLSTM<T>::ShortcutLSTM (int _input_size, int _shortcut_size, int _hidden_size) :
+    hidden_size(_hidden_size),
+    input_size(_input_size),
+    shortcut_size(_shortcut_size),
+    input_layer(_input_size, _shortcut_size, _hidden_size),
+    forget_layer(_input_size, _shortcut_size, _hidden_size),
+    output_layer(_input_size, _shortcut_size, _hidden_size),
+    cell_layer(_input_size, _shortcut_size, _hidden_size) {
+    forget_layer.b->w(0) = 100;
+    name_internal_layers();
+}
 template<typename T>
 LSTM<T>::LSTM (int& _input_size, int& _hidden_size) :
     hidden_size(_hidden_size),
@@ -420,9 +415,18 @@ LSTM<T>::LSTM (int& _input_size, int& _hidden_size) :
     forget_layer(_input_size, _hidden_size),
     output_layer(_input_size, _hidden_size),
     cell_layer(_input_size, _hidden_size) {
-    // Ilya Sutskever recommends initializing with
-    // forget gate at high value
-    // http://yyue.blogspot.fr/2015/01/a-brief-overview-of-deep-learning.html
+    forget_layer.b->w(0) = 100;
+    name_internal_layers();
+}
+template<typename T>
+ShortcutLSTM<T>::ShortcutLSTM (int& _input_size, int& _shortcut_size, int& _hidden_size) :
+    hidden_size(_hidden_size),
+    input_size(_input_size),
+    shortcut_size(_shortcut_size),
+    input_layer(_input_size, _shortcut_size, _hidden_size),
+    forget_layer(_input_size, _shortcut_size, _hidden_size),
+    output_layer(_input_size, _shortcut_size, _hidden_size),
+    cell_layer(_input_size, _shortcut_size, _hidden_size) {
     forget_layer.b->w(0) = 100;
     name_internal_layers();
 }
@@ -473,6 +477,19 @@ LSTM<T>::LSTM (const LSTM<T>& lstm, bool copy_w, bool copy_dw) :
     name_internal_layers();
 }
 
+template<typename T>
+ShortcutLSTM<T>::ShortcutLSTM (const ShortcutLSTM<T>& lstm, bool copy_w, bool copy_dw) : 
+    hidden_size(lstm.hidden_size),
+    input_size(lstm.input_size),
+    shortcut_size(lstm.shortcut_size),
+    input_layer(lstm.input_layer, copy_w, copy_dw),
+    forget_layer(lstm.forget_layer, copy_w, copy_dw),
+    output_layer(lstm.output_layer, copy_w, copy_dw),
+    cell_layer(lstm.cell_layer, copy_w, copy_dw)
+    {
+    name_internal_layers();
+}
+
 /**
 Shallow Copy
 ------------
@@ -497,6 +514,10 @@ template<typename T>
 LSTM<T> LSTM<T>::shallow_copy() const {
     return LSTM<T>(*this, false, true);
 }
+template<typename T>
+ShortcutLSTM<T> ShortcutLSTM<T>::shallow_copy() const {
+    return ShortcutLSTM<T>(*this, false, true);
+}
 
 template<typename T>
 std::pair<typename LSTM<T>::shared_mat, typename LSTM<T>::shared_mat> LSTM<T>::activate (
@@ -513,6 +534,32 @@ std::pair<typename LSTM<T>::shared_mat, typename LSTM<T>::shared_mat> LSTM<T>::a
     auto output_gate = G.sigmoid(output_layer.activate(G, input_vector, hidden_prev));
     // write operation on cells
     auto cell_write  = G.tanh(cell_layer.activate(G, input_vector, hidden_prev));
+
+    // compute new cell activation
+    auto retain_cell = G.eltmul(forget_gate, cell_prev); // what do we keep from cell
+    auto write_cell  = G.eltmul(input_gate, cell_write); // what do we write to cell
+    auto cell_d      = G.add(retain_cell, write_cell); // new cell contents
+
+    // compute hidden state as gated, saturated cell activations
+    auto hidden_d    = G.eltmul(output_gate, G.tanh(cell_d));
+    return std::pair<shared_mat,shared_mat>(cell_d, hidden_d);
+}
+
+template<typename T>
+std::pair<typename ShortcutLSTM<T>::shared_mat, typename ShortcutLSTM<T>::shared_mat> ShortcutLSTM<T>::activate (
+    Graph<T>& G,
+    typename ShortcutLSTM<T>::shared_mat input_vector,
+    typename ShortcutLSTM<T>::shared_mat shortcut_vector,
+    typename ShortcutLSTM<T>::shared_mat cell_prev,
+    typename ShortcutLSTM<T>::shared_mat hidden_prev) const {
+    // input gate:
+    auto input_gate  = G.sigmoid(input_layer.activate(G, input_vector, shortcut_vector, hidden_prev));
+    // forget gate
+    auto forget_gate = G.sigmoid(forget_layer.activate(G, input_vector, shortcut_vector, hidden_prev));
+    // output gate
+    auto output_gate = G.sigmoid(output_layer.activate(G, input_vector, shortcut_vector, hidden_prev));
+    // write operation on cells
+    auto cell_write  = G.tanh(cell_layer.activate(G, input_vector, shortcut_vector, hidden_prev));
 
     // compute new cell activation
     auto retain_cell = G.eltmul(forget_gate, cell_prev); // what do we keep from cell
@@ -569,6 +616,43 @@ vector<celltype> StackedCells(const int& input_size, const vector<int>& hidden_s
     return cells;
 }
 
+/**
+StackedCells specialization to StackedLSTM
+------------------------------------------
+
+Static method StackedCells helps construct several
+LSTMs that will be piled up. In a ShortcutLSTM scenario
+the input is provided to all layers not just the
+bottommost layer, so a new construction parameter
+is provided to this **special** LSTM, the "shorcut size",
+e.g. the size of the second input vector coming from father
+below (taking a shortcut upwards).
+
+Inputs
+------
+
+const int& input_size : size of the input at the basest layer
+const vector<int>& hidden_sizes : dimensions of hidden states
+                                  at each stack level.
+
+Outputs
+-------
+
+vector<ShortcutLSTM<T>> cells : constructed shortcutLSTMs
+
+**/
+template <typename T>
+vector<ShortcutLSTM<T>> StackedCells(const int& input_size, const int& shortcut_size, const vector<int>& hidden_sizes) {
+    vector<ShortcutLSTM<T>> cells;
+    cells.reserve(hidden_sizes.size());
+    int prev_size = input_size;
+    for (auto& size : hidden_sizes) {
+        cells.emplace_back(prev_size, shortcut_size, size);
+        prev_size = size;
+    }
+    return cells;
+}
+
 template<typename celltype>
 vector<celltype> StackedCells(const vector<celltype>& source_cells, bool copy_w, bool copy_dw) {
     vector<celltype> cells;
@@ -612,6 +696,51 @@ pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> forward_LSTMs(Graph
     return out_state;
 }
 
+
+template<typename T>
+pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> forward_LSTMs(Graph<T>& G,
+    shared_ptr<Mat<T>> input_vector,
+    pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>>& previous_state,
+    LSTM<T>& base_cell,
+    vector<ShortcutLSTM<T>>& cells) {
+
+    auto previous_state_cells = previous_state.first;
+    auto previous_state_hiddens = previous_state.second;
+
+    auto cell_iter = previous_state_cells.begin();
+    auto hidden_iter = previous_state_hiddens.begin();
+
+    pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> out_state;
+    out_state.first.reserve(cells.size() + 1);
+    out_state.second.reserve(cells.size() + 1);
+
+    auto layer_input = input_vector;
+
+    auto layer_out = base_cell.activate(G, layer_input, *cell_iter, *hidden_iter);
+    out_state.first.push_back(layer_out.first);
+    out_state.second.push_back(layer_out.second);
+
+    layer_input = layer_out.second;
+
+    for (auto& layer : cells) {
+
+        // The next cell up gets both the base input (input_vector)
+        // and the cell below's input activation (layer_input)
+        // => façon Alex Graves
+        layer_out = layer.activate(G, layer_input, input_vector, *cell_iter, *hidden_iter);
+
+        out_state.first.push_back(layer_out.first);
+        out_state.second.push_back(layer_out.second);
+
+        ++cell_iter;
+        ++hidden_iter;
+
+        layer_input = layer_out.second;
+    }
+
+    return out_state;
+}
+
 template class Layer<float>;
 template class Layer<double>;
 
@@ -633,11 +762,20 @@ template std::vector<GatedInput<double>> StackedCells <GatedInput<double>>(const
 template class LSTM<float>;
 template class LSTM<double>;
 
+template class ShortcutLSTM<float>;
+template class ShortcutLSTM<double>;
+
 template std::vector<LSTM<float>> StackedCells <LSTM<float>>(const int&, const std::vector<int>&);
 template std::vector<LSTM<double>> StackedCells <LSTM<double>>(const int&, const std::vector<int>&);
 
 template std::vector<LSTM<float>> StackedCells <LSTM<float>>(const std::vector<LSTM<float>>&, bool, bool);
 template std::vector<LSTM<double>> StackedCells <LSTM<double>>(const std::vector<LSTM<double>>&, bool, bool);
+
+template std::vector<ShortcutLSTM<float>> StackedCells (const int&, const int&, const std::vector<int>&);
+template std::vector<ShortcutLSTM<double>> StackedCells (const int&, const int&, const std::vector<int>&);
+
+template std::vector<ShortcutLSTM<float>> StackedCells <ShortcutLSTM<float>>(const std::vector<ShortcutLSTM<float>>&, bool, bool);
+template std::vector<ShortcutLSTM<double>> StackedCells <ShortcutLSTM<double>>(const std::vector<ShortcutLSTM<double>>&, bool, bool);
 
 template pair<vector<shared_ptr<Mat<double>>>, vector<shared_ptr<Mat<double>>>> forward_LSTMs(Graph<double>&,
     shared_ptr<Mat<double>>,
@@ -648,3 +786,15 @@ template pair<vector<shared_ptr<Mat<float>>>, vector<shared_ptr<Mat<float>>>> fo
     shared_ptr<Mat<float>>,
     pair<vector<shared_ptr<Mat<float>>>, vector<shared_ptr<Mat<float>>>>&,
     vector<LSTM<float>>&);
+
+template pair<vector<shared_ptr<Mat<double>>>, vector<shared_ptr<Mat<double>>>> forward_LSTMs(Graph<double>&,
+    shared_ptr<Mat<double>>,
+    pair<vector<shared_ptr<Mat<double>>>, vector<shared_ptr<Mat<double>>>>&,
+    LSTM<double>&,
+    vector<ShortcutLSTM<double>>&);
+
+template pair<vector<shared_ptr<Mat<float>>>, vector<shared_ptr<Mat<float>>>> forward_LSTMs(Graph<float>&,
+    shared_ptr<Mat<float>>,
+    pair<vector<shared_ptr<Mat<float>>>, vector<shared_ptr<Mat<float>>>>&,
+    LSTM<float>&,
+    vector<ShortcutLSTM<float>>&);

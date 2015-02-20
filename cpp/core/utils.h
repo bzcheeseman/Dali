@@ -71,8 +71,42 @@ namespace utils {
 
 	template<typename T>
 	void tuple_sum(std::tuple<T, T>&, std::tuple<T,T>);
+	/**
+	Ends With
+	---------
 
+	Check whether a string ends with the same contents as another.
+
+	Inputs
+	------
+
+	std::string const& full: where to look
+	std::string const& ending: what to look for
+
+	Outputs
+	-------
+
+	bool endswith : whether the second string ends the first.
+	*/
 	bool endswith(const std::string&, const std::string&);
+	/**
+	Starts With
+	-----------
+
+	Check whether a string ends with the same contents as another.
+
+	Inputs
+	------
+
+	std::string const& full: where to look
+	std::string const& beginning: what to look for
+
+	Outputs
+	-------
+
+	bool startswith : whether the second string starts the first.
+
+	*/
 	bool startswith(const std::string&, const std::string&);
 
 	template<typename T>
@@ -88,6 +122,13 @@ namespace utils {
 	**/
 	class OntologyBranch : public std::enable_shared_from_this<OntologyBranch> {
 		int _max_depth;
+		/**
+		OntologyBranch::compute_max_depth
+		---------------------------------
+
+		Memoization computation for `OntologyBranch::max_depth`
+
+		**/
 		void compute_max_depth();
 		public:
 			typedef std::shared_ptr<OntologyBranch> shared_branch;
@@ -98,9 +139,35 @@ namespace utils {
 			std::vector<shared_branch> children;
 			lookup_t lookup_table;
 			std::string name;
+			/**
+			OntologyBranch::max_depth
+			-------------------------
+
+			A memoized value for the deepest leaf's distance from the OntologyBranch
+			that called the method. A leaf returns 0, a branch returns the max of its
+			children's values + 1.
+
+			Outputs
+			-------
+			int max_depth : Maximum number of nodes needed to traverse to reach a leaf.
+
+			**/
 			int& max_depth();
 			int id;
 			int max_branching_factor() const;
+			/**
+			OntologyBranch::save
+			--------------------
+
+			Serialize a lattice to a file by saving each edge on a separate line.
+
+			Inputs
+			------
+
+			std::string fname : file to saved the lattice to
+			std::ios_base::openmode mode : what file open mode to use (defaults to write,
+										   but append can also be useful).
+			**/
 			void save(std::string, std::ios_base::openmode = std::ios::out);
 			template<typename T>
 			void save_to_stream(T&);
@@ -123,7 +190,27 @@ namespace utils {
 			std::pair<std::vector<std::shared_ptr<OntologyBranch>>, std::vector<uint>> random_path_from_root(const std::string&, const int);
 			static std::vector<std::string> split_str(const std::string&, const std::string&);
 	};
+	/**
+	Load Labeled Corpus
+	-------------------
 
+	Read text file line by line and extract pairs of labeled text
+	by splitting on the first space character. Whatever is before
+	the first space is the label and is stored second in the returned
+	pairs, and after the space is the example, and this is returned
+	first in the pairs.
+
+	Inputs
+	------
+
+	const std::string& fname : labeled corpus file
+
+	Outputs
+	-------
+
+	std::vector<std::pair<std::string, std::string>> pairs : labeled corpus pairs
+
+	**/
 	std::vector<std::pair<std::string, std::string>> load_labeled_corpus(const std::string&);
 	tokenized_labeled_dataset load_tokenized_labeled_corpus(const std::string&);
 	std::vector<str_sequence> load_tokenized_unlabeled_corpus(const std::string&);
@@ -138,6 +225,28 @@ namespace utils {
 	void assign_lattice_ids(OntologyBranch::lookup_t, Vocab&, int offset = 0);
 
 	Corpus load_corpus_protobuff(const std::string&);
+	/**
+	Load Protobuff Dataset
+	----------------------
+
+	Load a set of protocol buffer serialized files from ordinary
+	or gzipped files, and conver their labels from an index
+	to their string representation using an index2label mapping.
+
+	Inputs
+	------
+
+	std::string directory : where the protocol buffer files are stored
+	const std::vector<std::string>& index2label : mapping from numericals to
+	                                              string labels
+
+	Outputs
+	-------
+
+	utils::tokenized_multilabeled_dataset dataset : pairs of tokenized strings
+	                                                and vector of string labels
+
+	**/
 	tokenized_multilabeled_dataset load_protobuff_dataset(std::string, const std::vector<std::string>&);
 
 	std::string& trim(std::string&);
@@ -149,7 +258,25 @@ namespace utils {
 	void ensure_directory(std::string&);
 
 	std::vector<std::string> split_str(const std::string&, const std::string&);
+	/**
+	Text To Map
+	-----------
 
+	Read a text file, extract all key value pairs and
+	ignore markdown decoration characters such as =, -,
+	and #
+
+	Inputs
+	------
+
+	std::string fname : the file to read
+
+	Outputs
+	-------
+
+	std::map<string, std::vector<string> > map : the extracted key value pairs.
+
+	**/
 	std::map<std::string, str_sequence> text_to_map(const std::string&);
 	template<typename T, typename K>
 	void stream_to_hashmap(T&, std::map<std::string, K>&);
@@ -160,9 +287,39 @@ namespace utils {
 	void stream_to_list(T&, str_sequence&);
 
 	str_sequence load_list(const std::string&);
+	/**
+	randint
+	-------
 
+	Sample integers from a uniform distribution between (and including)
+	lower and upper int values.
+
+	Inputs
+	------
+	int lower
+	int upper
+
+	Outputs
+	-------
+	int sample
+	**/
 	int randint(int, int);
+	/**
+	Is Gzip ?
+	---------
 
+	Check whether a file has the header information for a GZIP
+	file or not.
+
+	Inputs
+	------
+	std::string& fname : potential gzip file's path
+
+	Outputs
+	-------
+
+	bool gzip? : whether header matches gzip header
+	**/
 	bool is_gzip(const std::string&);
 	template<typename T>
 	struct sigmoid_operator {
@@ -192,7 +349,25 @@ namespace utils {
     void assert_map_has_key(std::map<std::string, T>&, const std::string&);
 
     str_sequence split(const std::string &, char);
+    /**
+	Triggers To Strings
+	-------------------
 
+	Convert triggers from an example to their
+	string representation using an index2label
+	string vector.
+
+	Inputs
+	------
+
+	const google::protobuf::RepeatedPtrField<Example::Trigger>& triggers : list of Trigger protobuff objects
+	const vector<string>& index2target : mapping from numerical to string representation
+
+	Outputs
+	-------
+
+	std::vector<std::string> data : the strings corresponding to the trigger targets
+	**/
     str_sequence triggers_to_strings(const google::protobuf::RepeatedPtrField<Example::Trigger>&, const str_sequence&);
 
 	template <typename T>
@@ -203,6 +378,18 @@ namespace utils {
 	std::vector<size_t> random_arange(size_t);
 
 	template <class T> inline void hash_combine(std::size_t &, const T &);
+	/**
+	Get Random ID
+	-------------
+
+	Get a super random number using both time, device default engine,
+	and hash combinations between each.
+
+	Outputs
+	-------
+
+	int seed : hopefully collision free random number as an ID
+	**/
 	std::size_t get_random_id();
 	namespace ops {
 		static const uint add                             = 0;
@@ -224,7 +411,19 @@ namespace utils {
 	}
 
 	bool file_exists(const std::string&);
+	/**
+	Exit With Message
+	-----------------
 
+	Exit the program with a message printed to std::cerr
+
+	Inputs
+	------
+
+	std::string& message : error message
+	int error_code : code for the error, defaults to 1
+
+	**/
 	void exit_with_message(const std::string&, int error_code = 1);
 
 	bool validate_flag_nonempty(const char* flagname, const std::string& value);

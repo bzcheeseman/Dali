@@ -67,6 +67,7 @@ template<typename T> class Graph {
 		// operation of the form (A * x + B * y) + C, called with mul_add_mul_with_bias(A, x, B, y, C)
 		shared_mat mul_add_mul_with_bias(shared_mat, shared_mat, shared_mat, shared_mat, shared_mat);
 		shared_mat mul_add_mul_with_bias(std::initializer_list<shared_mat>);
+		shared_mat mul_add_mul_with_bias(const std::vector<shared_mat>&);
 		// operation of the form (A * x + B * y) + C, called with mul_add_mul_with_bias(A, x, B, y, C)
 		// and with caveat that x is actually a column, and should be broadcasted
 		shared_mat mul_add_broadcast_mul_with_bias(shared_mat, shared_mat, shared_mat, shared_mat, shared_mat);

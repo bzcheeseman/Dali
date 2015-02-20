@@ -24,6 +24,7 @@ template<typename T> class Backward {
 		Backward(shared_mat, shared_mat, index_std_vector&, uint);
 		Backward(shared_mat, shared_mat, eigen_index_block, uint);
 		Backward(std::initializer_list<shared_mat>, shared_mat, uint);
+		Backward(const std::vector<shared_mat>&, shared_mat, uint);
 		operator std::string() const;
 		/**
 		Operation Type

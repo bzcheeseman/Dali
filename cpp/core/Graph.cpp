@@ -1,5 +1,6 @@
 #include "Graph.h"
 using std::stringstream;
+using std::vector;
 
 template<typename T>
 Graph<T>::Graph (bool _needs_backprop) : needs_backprop(_needs_backprop) {}
@@ -272,6 +273,24 @@ typename Graph<T>::shared_mat Graph<T>::mul_add_mul_with_bias(std::initializer_l
 	auto out = std::make_shared<mat>(
 		(*matrices.begin())->n,
 		(*(matrices.begin() + 1))->d,
+		true);
+	auto matrices_ptr = matrices.begin();
+	while (matrices_ptr != (matrices.end() - 1)) {
+		out->w += (*matrices_ptr)->w * (*(matrices_ptr + 1))->w;
+		matrices_ptr+=2;
+	}
+	out->w.colwise() += (*(matrices.begin() + matrices.size() - 1))->w.col(0);
+	if (needs_backprop)
+		// allocates a new backward element in the vector using these arguments:
+		backprop.emplace_back(matrices, out, utils::ops::mul_add_mul_with_bias);
+	return out;
+}
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::mul_add_mul_with_bias(const vector<shared_mat>& matrices) {
+	auto out = std::make_shared<mat>(
+		matrices[0]->n,
+		matrices[1]->d,
 		true);
 	auto matrices_ptr = matrices.begin();
 	while (matrices_ptr != (matrices.end() - 1)) {

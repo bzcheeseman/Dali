@@ -1,6 +1,7 @@
 #include "Layers.h"
 
 using std::make_shared;
+using std::vector;
 
 template<typename T>
 void Layer<T>::create_variables() {
@@ -24,26 +25,6 @@ Layer<T>::Layer (const Layer<T>& layer, bool copy_w, bool copy_dw) : hidden_size
     b = make_shared<mat>(*layer.b, copy_w, copy_dw);
 }
 
-/**
-Shallow Copy
-------------
-
-Perform a shallow copy of a Layer<T> that has
-the same parameters but separate gradients `dw`
-for each of its parameters.
-
-Shallow copies are useful for Hogwild and multithreaded
-training
-
-See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`.
-
-Outputs
--------
-
-Layer<T> out : the copied layer with sharing parameters,
-               but with separate gradients `dw`
-
-**/
 template<typename T>
 Layer<T> Layer<T>::shallow_copy() const {
     return Layer<T>(*this, false, true);
@@ -52,6 +33,62 @@ Layer<T> Layer<T>::shallow_copy() const {
 template<typename T>
 std::vector<typename Layer<T>::shared_mat> Layer<T>::parameters() const{
     return std::vector<typename Layer<T>::shared_mat>({W, b});
+}
+
+// StackedInputLayer:
+template<typename T>
+void StackedInputLayer<T>::create_variables() {
+    T upper;
+    matrices.reserve(input_sizes.size());
+    for (auto& input_size : input_sizes) {
+        upper = 1. / sqrt(input_size);
+        matrices.emplace_back(hidden_size, input_size, -upper, upper);
+    }
+    b = make_shared<mat>(hidden_size, 1);
+}
+template<typename T>
+StackedInputLayer<T>::StackedInputLayer (const vector<int>& _input_sizes, int _hidden_size) : hidden_size(_hidden_size), input_sizes(_input_sizes) {
+    create_variables();
+}
+
+template<typename T>
+vector<typename StackedInputLayer<T>::shared_mat> StackedInputLayer<T>::zip_inputs_with_matrices_and_bias(const vector<typename StackedInputLayer<T>::shared_mat>& inputs) const {
+    vector<shared_mat> zipped;
+    zipped.reserve(matrices.size() * 2 + 1);
+    auto input_ptr = inputs.begin();
+    auto mat_ptr = matrices.begin();
+    while (mat_ptr != matrices.end()) {
+        zipped.emplace_back(*mat_ptr++);
+        zipped.emplace_back(*input_ptr++);
+    }
+    zipped.emplace_back(b);
+    return zipped;
+}
+
+template<typename T>
+typename StackedInputLayer<T>::shared_mat StackedInputLayer<T>::activate(Graph<T>& G, const vector<typename StackedInputLayer<T>::shared_mat>& inputs) const {
+    auto zipped = zip_inputs_with_matrices_and_bias(inputs);
+    return G.mul_add_mul_with_bias(zipped);
+}
+
+template<typename T>
+StackedInputLayer<T>::StackedInputLayer (const StackedInputLayer<T>& layer, bool copy_w, bool copy_dw) : hidden_size(layer.hidden_size), input_sizes(layer.input_sizes) {
+    matrices.reserve(layer.matrices.size());
+    for (auto& mat : layer.matrices)
+        matrices.emplace_back(mat, copy_w, copy_dw);
+    b = make_shared<mat>(*layer.b, copy_w, copy_dw);
+}
+
+template<typename T>
+StackedInputLayer<T> StackedInputLayer<T>::shallow_copy() const {
+    return StackedInputLayer<T>(*this, false, true);
+}
+
+template<typename T>
+std::vector<typename StackedInputLayer<T>::shared_mat> StackedInputLayer<T>::parameters() const{
+    auto params = vector<shared_mat>(matrices);
+    params.emplace_back(b);
+    return params;
 }
 
 template<typename T>
@@ -104,40 +141,6 @@ ShortcutRNN<T>::ShortcutRNN (int _input_size, int _shortcut_size, int _hidden_si
     create_variables();
 }
 
-/**
-RNN<T>::RNN
----------------
-
-Copy constructor with option to make a shallow
-or deep copy of the underlying parameters.
-
-If the copy is shallow then the parameters are shared
-but separate gradients `dw` are used for each of 
-thread RNN<T>.
-
-Shallow copies are useful for Hogwild and multithreaded
-training
-
-See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`,
-`RNN<T>::shallow_copy`
-
-Inputs
-------
-
-    RNN<T> l : RNN from which to source parameters and dw
- bool copy_w : whether parameters for new RNN should be copies
-               or shared
-bool copy_dw : whether gradients for new RNN should be copies
-               shared (Note: sharing `dw` should be used with
-               caution and can lead to unpredictable behavior
-               during optimization).
-
-Outputs
--------
-
-RNN<T> out : the copied RNN with deep or shallow copy of parameters
-
-**/
 template<typename T>
 RNN<T>::RNN (const RNN<T>& rnn, bool copy_w, bool copy_dw) : hidden_size(rnn.hidden_size), input_size(rnn.input_size), output_size(rnn.output_size) {
     Wx = make_shared<mat>(*rnn.Wx, copy_w, copy_dw);
@@ -145,40 +148,6 @@ RNN<T>::RNN (const RNN<T>& rnn, bool copy_w, bool copy_dw) : hidden_size(rnn.hid
     b = make_shared<mat>(*rnn.b, copy_w, copy_dw);
 }
 
-/**
-ShortcutRNN<T>::ShortcutRNN
----------------------------
-
-Copy constructor with option to make a shallow
-or deep copy of the underlying parameters.
-
-If the copy is shallow then the parameters are shared
-but separate gradients `dw` are used for each of 
-thread ShortcutRNN<T>.
-
-Shallow copies are useful for Hogwild and multithreaded
-training
-
-See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`,
-`ShortcutRNN<T>::shallow_copy`
-
-Inputs
-------
-
-    ShortcutRNN<T> l : ShortcutRNN from which to source parameters and dw
-         bool copy_w : whether parameters for new ShortcutRNN should be copies
-                       or shared
-        bool copy_dw : whether gradients for new ShortcutRNN should be copies
-                       shared (Note: sharing `dw` should be used with
-                       caution and can lead to unpredictable behavior
-                       during optimization).
-
-Outputs
--------
-
-ShortcutRNN<T> out : the copied ShortcutRNN with deep or shallow copy of parameters
-
-**/
 template<typename T>
 ShortcutRNN<T>::ShortcutRNN (const ShortcutRNN<T>& rnn, bool copy_w, bool copy_dw) : hidden_size(rnn.hidden_size), input_size(rnn.input_size), output_size(rnn.output_size), shortcut_size(rnn.shortcut_size) {
     Wx = make_shared<mat>(*rnn.Wx, copy_w, copy_dw);
@@ -187,51 +156,11 @@ ShortcutRNN<T>::ShortcutRNN (const ShortcutRNN<T>& rnn, bool copy_w, bool copy_d
     b = make_shared<mat>(*rnn.b, copy_w, copy_dw);
 }
 
-/**
-Shallow Copy
-------------
-
-Perform a shallow copy of a RNN<T> that has
-the same parameters but separate gradients `dw`
-for each of its parameters.
-
-Shallow copies are useful for Hogwild and multithreaded
-training
-
-See `RNN<T>::shallow_copy`, `examples/character_prediction.cpp`.
-
-Outputs
--------
-
-RNN<T> out : the copied layer with sharing parameters,
-               but with separate gradients `dw`
-
-**/
 template<typename T>
 RNN<T> RNN<T>::shallow_copy() const {
     return RNN<T>(*this, false, true);
 }
 
-/**
-Shallow Copy
-------------
-
-Perform a shallow copy of a ShortcutRNN<T> that has
-the same parameters but separate gradients `dw`
-for each of its parameters.
-
-Shallow copies are useful for Hogwild and multithreaded
-training
-
-See `ShortcutRNN<T>::shallow_copy`, `examples/character_prediction.cpp`.
-
-Outputs
--------
-
-ShortcutRNN<T> out : the copied layer with sharing parameters,
-                     but with separate gradients `dw`
-
-**/
 template<typename T>
 ShortcutRNN<T> ShortcutRNN<T>::shallow_copy() const {
     return ShortcutRNN<T>(*this, false, true);
@@ -267,40 +196,6 @@ GatedInput<T>::GatedInput (int _input_size, int _hidden_size) : in_gate(_input_s
     in_gate.Wh->set_name("Gated Input Wx");
 }
 
-/**
-GatedInput<T>::GatedInput
--------------------------
-
-Copy constructor with option to make a shallow
-or deep copy of the underlying parameters.
-
-If the copy is shallow then the parameters are shared
-but separate gradients `dw` are used for each of 
-thread GatedInput<T>.
-
-Shallow copies are useful for Hogwild and multithreaded
-training
-
-See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`,
-`GatedInput<T>::shallow_copy`
-
-Inputs
-------
-
-    GatedInput<T> l : GatedInput from which to source parameters and dw
-        bool copy_w : whether parameters for new GatedInput should be copies
-                      or shared
-       bool copy_dw : whether gradients for new GatedInput should be copies
-                      shared (Note: sharing `dw` should be used with
-                      caution and can lead to unpredictable behavior
-                      during optimization).
-
-Outputs
--------
-
-GatedInput<T> out : the copied GatedInput with deep or shallow copy of parameters
-
-**/
 template<typename T>
 GatedInput<T>::GatedInput (const GatedInput<T>& gate, bool copy_w, bool copy_dw) : in_gate(gate.in_gate, copy_w, copy_dw) {
     in_gate.b->set_name("Gated Input bias");
@@ -308,26 +203,6 @@ GatedInput<T>::GatedInput (const GatedInput<T>& gate, bool copy_w, bool copy_dw)
     in_gate.Wh->set_name("Gated Input Wx");
 }
 
-/**
-Shallow Copy
-------------
-
-Perform a shallow copy of a GatedInput<T> that has
-the same parameters but separate gradients `dw`
-for each of its parameters.
-
-Shallow copies are useful for Hogwild and multithreaded
-training
-
-See `GatedInput<T>::shallow_copy`, `examples/character_prediction.cpp`.
-
-Outputs
--------
-
-GatedInput<T> out : the copied layer with sharing parameters,
-                    but with separate gradients `dw`
-
-**/
 template<typename T>
 GatedInput<T> GatedInput<T>::shallow_copy() const {
     return GatedInput<T>(*this, false, true);
@@ -431,40 +306,6 @@ ShortcutLSTM<T>::ShortcutLSTM (int& _input_size, int& _shortcut_size, int& _hidd
     name_internal_layers();
 }
 
-/**
-LSTM<T>::LSTM
--------------
-
-Copy constructor with option to make a shallow
-or deep copy of the underlying parameters.
-
-If the copy is shallow then the parameters are shared
-but separate gradients `dw` are used for each of 
-thread LSTM<T>.
-
-Shallow copies are useful for Hogwild and multithreaded
-training
-
-See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`,
-`LSTM<T>::shallow_copy`
-
-Inputs
-------
-
-      LSTM<T> l : LSTM from which to source parameters and dw
-    bool copy_w : whether parameters for new LSTM should be copies
-                  or shared
-   bool copy_dw : whether gradients for new LSTM should be copies
-                  shared (Note: sharing `dw` should be used with
-                  caution and can lead to unpredictable behavior
-                  during optimization).
-
-Outputs
--------
-
-LSTM<T> out : the copied LSTM with deep or shallow copy of parameters
-
-**/
 template<typename T>
 LSTM<T>::LSTM (const LSTM<T>& lstm, bool copy_w, bool copy_dw) : 
     hidden_size(lstm.hidden_size),
@@ -490,26 +331,6 @@ ShortcutLSTM<T>::ShortcutLSTM (const ShortcutLSTM<T>& lstm, bool copy_w, bool co
     name_internal_layers();
 }
 
-/**
-Shallow Copy
-------------
-
-Perform a shallow copy of a LSTM<T> that has
-the same parameters but separate gradients `dw`
-for each of its parameters.
-
-Shallow copies are useful for Hogwild and multithreaded
-training
-
-See `LSTM<T>::shallow_copy`, `examples/character_prediction.cpp`.
-
-Outputs
--------
-
-LSTM<T> out : the copied layer with sharing parameters,
-                    but with separate gradients `dw`
-
-**/
 template<typename T>
 LSTM<T> LSTM<T>::shallow_copy() const {
     return LSTM<T>(*this, false, true);
@@ -616,31 +437,6 @@ vector<celltype> StackedCells(const int& input_size, const vector<int>& hidden_s
     return cells;
 }
 
-/**
-StackedCells specialization to StackedLSTM
-------------------------------------------
-
-Static method StackedCells helps construct several
-LSTMs that will be piled up. In a ShortcutLSTM scenario
-the input is provided to all layers not just the
-bottommost layer, so a new construction parameter
-is provided to this **special** LSTM, the "shorcut size",
-e.g. the size of the second input vector coming from father
-below (taking a shortcut upwards).
-
-Inputs
-------
-
-const int& input_size : size of the input at the basest layer
-const vector<int>& hidden_sizes : dimensions of hidden states
-                                  at each stack level.
-
-Outputs
--------
-
-vector<ShortcutLSTM<T>> cells : constructed shortcutLSTMs
-
-**/
 template <typename T>
 vector<ShortcutLSTM<T>> StackedCells(const int& input_size, const int& shortcut_size, const vector<int>& hidden_sizes) {
     vector<ShortcutLSTM<T>> cells;

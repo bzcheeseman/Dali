@@ -2,6 +2,7 @@
 
 using std::stringstream;
 using std::string;
+using std::vector;
 
 template<typename T> Backward<T>::Backward (
 	shared_mat x,
@@ -38,6 +39,11 @@ template<typename T> Backward<T>::Backward (
 
 template<typename T> Backward<T>::Backward (
 	std::initializer_list<shared_mat> _matrices,
+	shared_mat _out,
+	uint _type)  : type(_type), matrices(_matrices), out(_out) {}
+
+template<typename T> Backward<T>::Backward (
+	const vector<shared_mat>& _matrices,
 	shared_mat _out,
 	uint _type)  : type(_type), matrices(_matrices), out(_out) {}
 

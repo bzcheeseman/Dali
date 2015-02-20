@@ -3,6 +3,7 @@
 
 #include "utils.h"
 #include "cnpy.h"
+#include <initializer_list>
 
 // #define EIGEN_USE_MKL_VML
 // #define EIGEN_USE_BLAS
@@ -88,22 +89,16 @@ template<typename T> class Backward {
 	typedef Mat<T> mat;
 	typedef std::shared_ptr<mat> shared_mat;
 	void backward_rows_pluck();
+	void backward_mul_add_mul_with_bias();
 	public:
-		shared_mat matrix1;
-		shared_mat matrix2;
-		shared_mat matrix3;
-		shared_mat matrix4;
-		shared_mat matrix5;
+		std::vector<shared_mat> matrices;
 
 		shared_mat out;
 		Backward(shared_mat, shared_mat, uint);
 		Backward(shared_mat, shared_mat, int, uint);
 		Backward(shared_mat, shared_mat, index_std_vector&, uint);
 		Backward(shared_mat, shared_mat, eigen_index_block, uint);
-		Backward(shared_mat, shared_mat, shared_mat, uint);
-		Backward(shared_mat, shared_mat, shared_mat, shared_mat, uint);
-		Backward(shared_mat, shared_mat, shared_mat, shared_mat, shared_mat, uint);
-		Backward(shared_mat, shared_mat, shared_mat, shared_mat, shared_mat, shared_mat, uint);
+		Backward(std::initializer_list<shared_mat>, shared_mat, uint);
 
 		operator std::string() const;
 		std::string op_type () const;
@@ -136,11 +131,13 @@ template<typename T> class Graph {
 		shared_mat mul_with_bias(shared_mat, shared_mat, shared_mat);
 		// operation of the form (A * x + B * y) + C, called with mul_add_mul_with_bias(A, x, B, y, C)
 		shared_mat mul_add_mul_with_bias(shared_mat, shared_mat, shared_mat, shared_mat, shared_mat);
+		shared_mat mul_add_mul_with_bias(std::initializer_list<shared_mat>);
 		// operation of the form (A * x + B * y) + C, called with mul_add_mul_with_bias(A, x, B, y, C)
 		// and with caveat that x is actually a column, and should be broadcasted
 		shared_mat mul_add_broadcast_mul_with_bias(shared_mat, shared_mat, shared_mat, shared_mat, shared_mat);
 		shared_mat add_broadcast(shared_mat, shared_mat);
 		shared_mat add(shared_mat, shared_mat);
+		shared_mat add(std::initializer_list<shared_mat>);
 		shared_mat sigmoid(shared_mat);
 		shared_mat transpose(shared_mat);
 		shared_mat tanh(shared_mat);

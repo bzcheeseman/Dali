@@ -363,106 +363,60 @@ std::size_t std::hash<Mat<T>>::operator()(const Mat<T>& k) const {
 }
 
 template <typename T>
-static bool operator!=(const Mat<T>& matrix1, const Mat<T>& matrix2) {
-    return matrix2.random_id != matrix1.random_id;
+static bool operator!=(const Mat<T>& A, const Mat<T>& B) {
+    return A.random_id != B.random_id;
 }
 
 template <typename T>
-static bool operator==(const Mat<T>& matrix1, const Mat<T>& matrix2) {
-    return matrix2.random_id == matrix1.random_id;
+static bool operator==(const Mat<T>& A, const Mat<T>& B) {
+    return A.random_id == B.random_id;
 }
 
 template<typename T> Backward<T>::Backward (
-	shared_mat _matrix1,
+	shared_mat x,
 	shared_mat _out,
-	uint _type) : type(_type), matrix1(_matrix1), out(_out) {
-	matrix2 = NULL;
-	matrix3 = NULL;
-	matrix4 = NULL;
-	matrix5 = NULL;
+	uint _type) : type(_type), out(_out) {
+	matrices.emplace_back(x);
 }
 
 template<typename T> Backward<T>::Backward (
-	shared_mat _matrix1,
+	shared_mat x,
 	shared_mat _out,
 	int index,
-	uint _type) : type(_type), matrix1(_matrix1), out(_out), ix(index) {
-	matrix2 = NULL;
-	matrix3 = NULL;
-	matrix4 = NULL;
-	matrix5 = NULL;
+	uint _type) : type(_type), out(_out), ix(index) {
+	matrices.emplace_back(x);
 }
 
 template<typename T> Backward<T>::Backward (
-	shared_mat _matrix1,
+	shared_mat x,
 	shared_mat _out,
 	index_std_vector& _indices,
-	uint _type)  : type(_type), matrix1(_matrix1), out(_out), num_indices(_indices.size()) {
-	matrix2 = NULL;
-	matrix3 = NULL;
-	matrix4 = NULL;
-	matrix5 = NULL;
+	uint _type)  : type(_type), out(_out), num_indices(_indices.size()) {
 	indices = _indices.data();
+	matrices.emplace_back(x);
 }
 
 template<typename T> Backward<T>::Backward (
-	shared_mat _matrix1,
+	shared_mat x,
 	shared_mat _out,
 	eigen_index_block _indices,
-	uint _type)  : type(_type), matrix1(_matrix1), out(_out), num_indices(_indices.rows()) {
-	matrix2 = NULL;
-	matrix3 = NULL;
-	matrix4 = NULL;
-	matrix5 = NULL;
+	uint _type)  : type(_type), out(_out), num_indices(_indices.rows()) {
+	matrices.emplace_back(x);
 	indices = _indices.data();
 }
 
-
 template<typename T> Backward<T>::Backward (
-	shared_mat _matrix1,
-	shared_mat _matrix2,
+	std::initializer_list<shared_mat> _matrices,
 	shared_mat _out,
-	uint _type)  : type(_type), matrix1(_matrix1), matrix2(_matrix2), out(_out) {
-	matrix3 = NULL;
-	matrix4 = NULL;
-	matrix5 = NULL;
-}
-
-template<typename T> Backward<T>::Backward (
-	shared_mat _matrix1,
-	shared_mat _matrix2,
-	shared_mat _matrix3,
-	shared_mat _out,
-	uint _type) : type(_type), matrix1(_matrix1), matrix2(_matrix2), matrix3(_matrix3), out(_out){
-	matrix4 = NULL;
-	matrix5 = NULL;
-}
-
-template<typename T> Backward<T>::Backward (
-	shared_mat _matrix1,
-	shared_mat _matrix2,
-	shared_mat _matrix3,
-	shared_mat _matrix4,
-	shared_mat _out,
-	uint _type) : type(_type), matrix1(_matrix1), matrix2(_matrix2), matrix3(_matrix3), matrix4(_matrix4), out(_out){
-	matrix5 = NULL;
-}
-
-template<typename T> Backward<T>::Backward (
-	shared_mat _matrix1,
-	shared_mat _matrix2,
-	shared_mat _matrix3,
-	shared_mat _matrix4,
-	shared_mat _matrix5,
-	shared_mat _out,
-	uint _type) : type(_type), matrix1(_matrix1), matrix2(_matrix2), matrix3(_matrix3), matrix4(_matrix4), matrix5(_matrix5), out(_out) {}
+	uint _type)  : type(_type), matrices(_matrices), out(_out) {}
 
 template<typename T>
 std::ostream& operator<<(std::ostream& strm, const Backward<T>& a) {
-	if (a.matrix2 != NULL) {
-		return strm << "<#Backward matrix1=" << *(a.matrix1) << ", matrix2=" << *(a.matrix2) << ", out=" << *(a.out) << ", type=\""<< a.op_type() << "\">";
+	// TODO make this output the entire vector of matrices:
+	if (a.matrices.size() > 1) {
+		return strm << "<#Backward matrix1=" << *(a.matrices[0]) << ", matrix2=" << *(a.matrices[1]) << ", out=" << *(a.out) << ", type=\""<< a.op_type() << "\">";
 	}
-	return strm << "<#Backward matrix1=" << *(a.matrix1) << ", out=" << *(a.out) << ", type=\""<< a.op_type() << "\">";
+	return strm << "<#Backward matrix1=" << *(a.matrices[1]) << ", out=" << *(a.out) << ", type=\""<< a.op_type() << "\">";
 }
 
 template std::ostream& operator<< <double>(std::ostream& strm, const Backward<double>& a);
@@ -514,88 +468,101 @@ void Backward<T>::backward_rows_pluck() {
 	auto index_ptr = indices;
 	for (int i = 0; i < num_indices; ++i) {
 		// for each row do the same operation as for row_pluck:
-		matrix1->dw.row(*index_ptr).noalias() += out->dw.col(i).transpose();
+		matrices[0]->dw.row(*index_ptr).noalias() += out->dw.col(i).transpose();
 		index_ptr++;
 	}
+}
+
+template<typename T>
+void Backward<T>::backward_mul_add_mul_with_bias() {
+	auto bias = matrices.back();
+	bias->dw.noalias() += out->dw.rowwise().sum();
+	
+	auto matrices_ptr = matrices.begin();
+	while (matrices_ptr != (matrices.end() - 1)) {
+		(*matrices_ptr)->dw.noalias()     += (out->dw) * (*(matrices_ptr+1))->w.transpose();
+		(*(matrices_ptr+1))->dw.noalias() += (*matrices_ptr)->w.transpose() * (out->dw);
+	}
+	/**
+	More explicity we are doing this:
+	// first multiply:
+	matrices[0]->dw.noalias() += (out->dw) * ((matrices[1]->w).transpose());
+	matrices[1]->dw.noalias() += matrices[0]->w.transpose() * (out->dw);
+	// second multiply:
+	matrices[2]->dw.noalias() += (out->dw) * ((matrices[3]->w).transpose());
+	matrices[3]->dw.noalias() += matrices[2]->w.transpose() * (out->dw);
+	**/
 }
 
 template<typename T>
 void Backward<T>::operator ()() {
 	switch(this->type) {
 		case utils::ops::add:
-			matrix1->dw.noalias() += out->dw;
-			matrix2->dw.noalias() += out->dw;
+			for (auto& matrix : matrices) matrix->dw.noalias() += out->dw;
 			break;
 		case utils::ops::add_broadcast:
-			matrix1->dw.noalias() += out->dw;
-			matrix2->dw.noalias() += out->dw.rowwise().sum();
+			matrices[0]->dw.noalias() += out->dw;
+			matrices[1]->dw.noalias() += out->dw.rowwise().sum();
 			break;
 		case utils::ops::eltmul:
-			matrix1->dw.noalias() += ((matrix2->w).array() * (out->dw).array()).matrix();
-			matrix2->dw.noalias() += ((matrix1->w).array() * (out->dw).array()).matrix();
+			matrices[0]->dw.noalias() += ((matrices[1]->w).array() * (out->dw).array()).matrix();
+			matrices[1]->dw.noalias() += ((matrices[0]->w).array() * (out->dw).array()).matrix();
 			break;
 		case utils::ops::eltmul_rowwise:
-			matrix1->dw.noalias() += ((matrix2->w).transpose().array() * (out->dw).array()).matrix();
-			matrix2->dw.noalias() += ((matrix1->w).array() * (out->dw).array()).matrix().transpose();
+			matrices[0]->dw.noalias() += ((matrices[1]->w).transpose().array() * (out->dw).array()).matrix();
+			matrices[1]->dw.noalias() += ((matrices[0]->w).array() * (out->dw).array()).matrix().transpose();
 			break;
 		case utils::ops::eltmul_broadcast:
-			matrix1->dw.noalias() += ((out->dw).array().colwise() * (matrix2->w).col(0).array()).matrix();
-			matrix2->dw.noalias() += ((matrix1->w).array() * (out->dw).array()).matrix().rowwise().sum();
+			matrices[0]->dw.noalias() += ((out->dw).array().colwise() * (matrices[1]->w).col(0).array()).matrix();
+			matrices[1]->dw.noalias() += ((matrices[0]->w).array() * (out->dw).array()).matrix().rowwise().sum();
 			break;
 		case utils::ops::eltmul_broadcast_rowwise:
-			matrix1->dw.noalias() += ((out->dw).array().rowwise() * (matrix2->w).row(0).array()).matrix();
-			matrix2->dw.noalias() += (((matrix1->w).array() * (out->dw).array()).matrix().colwise().sum()).matrix();
+			matrices[0]->dw.noalias() += ((out->dw).array().rowwise() * (matrices[1]->w).row(0).array()).matrix();
+			matrices[1]->dw.noalias() += (((matrices[0]->w).array() * (out->dw).array()).matrix().colwise().sum()).matrix();
 			break;
 		case utils::ops::sigmoid:
-			matrix1->dw.noalias() += (((out->w).array() - out->w.array().square()).max(1e-9) * out->dw.array()).matrix();
+			matrices[0]->dw.noalias() += (((out->w).array() - out->w.array().square()).max(1e-9) * out->dw.array()).matrix();
 			break;
 		case utils::ops::mul:
-			matrix1->dw.noalias() += (out->dw) * ((matrix2->w).transpose());
-			matrix2->dw.noalias() += matrix1->w.transpose() * (out->dw);
+			matrices[0]->dw.noalias() += (out->dw) * ((matrices[1]->w).transpose());
+			matrices[1]->dw.noalias() += matrices[0]->w.transpose() * (out->dw);
 			break;
 		case utils::ops::relu:
-			matrix1->dw.noalias() += (out->w.unaryExpr(utils::sign_operator<T>()).array() * out->dw.array()).matrix();
+			matrices[0]->dw.noalias() += (out->w.unaryExpr(utils::sign_operator<T>()).array() * out->dw.array()).matrix();
 			break;
 		case utils::ops::tanh:
-			matrix1->dw.noalias() += (out->w.unaryExpr(utils::dtanh_operator<T>()).array() * out->dw.array()).matrix();
+			matrices[0]->dw.noalias() += (out->w.unaryExpr(utils::dtanh_operator<T>()).array() * out->dw.array()).matrix();
 			break;
 		case utils::ops::row_pluck:
-			matrix1->dw.row(ix).noalias() += out->dw.col(0).transpose();
+			matrices[0]->dw.row(ix).noalias() += out->dw.col(0).transpose();
 			break;
 		case utils::ops::rows_pluck:
 			// number of rows:
 			backward_rows_pluck();
 			break;
 		case utils::ops::mul_with_bias:
-			matrix1->dw.noalias() += (out->dw) * ((matrix2->w).transpose());
-			matrix2->dw.noalias() += matrix1->w.transpose() * (out->dw);
-			matrix3->dw.noalias() += out->dw.rowwise().sum().matrix();
+			matrices[0]->dw.noalias() += (out->dw) * ((matrices[1]->w).transpose());
+			matrices[1]->dw.noalias() += matrices[0]->w.transpose() * (out->dw);
+			matrices[2]->dw.noalias() += out->dw.rowwise().sum().matrix();
 			break;
 		case utils::ops::mul_add_mul_with_bias:
-			// first multiply:
-			matrix1->dw.noalias() += (out->dw) * ((matrix2->w).transpose());
-			matrix2->dw.noalias() += matrix1->w.transpose() * (out->dw);
-			// second multiply:
-			matrix3->dw.noalias() += (out->dw) * ((matrix4->w).transpose());
-			matrix4->dw.noalias() += matrix3->w.transpose() * (out->dw);
-			// bias vector:
-			matrix5->dw.noalias() += out->dw.rowwise().sum();
+			backward_mul_add_mul_with_bias();
 			break;
 		case utils::ops::mul_add_broadcast_mul_with_bias:
 			// first multiply:
 			// broadcasting input means taking outer product here:
-			matrix1->dw += ((out->dw).rowwise().sum() * ((matrix2->w).transpose()));
+			matrices[0]->dw += ((out->dw).rowwise().sum() * ((matrices[1]->w).transpose()));
 			// broadcasting output means sum after the reverse product here:
-			matrix2->dw.noalias() += (matrix1->w.transpose() * (out->dw)).rowwise().sum();
+			matrices[1]->dw.noalias() += (matrices[0]->w.transpose() * (out->dw)).rowwise().sum();
 			// second multiply:
-			matrix3->dw.noalias() += (out->dw) * ((matrix4->w).transpose());
+			matrices[2]->dw.noalias() += (out->dw) * ((matrices[3]->w).transpose());
 
-			matrix4->dw.noalias() += matrix3->w.transpose() * (out->dw);
+			matrices[3]->dw.noalias() += matrices[2]->w.transpose() * (out->dw);
 			// bias vector:
-			matrix5->dw.noalias() += out->dw.rowwise().sum();
+			matrices[4]->dw.noalias() += out->dw.rowwise().sum();
 			break;
 		case utils::ops::transpose:
-			matrix1->dw.noalias() += (out->dw).transpose();
+			matrices[0]->dw.noalias() += (out->dw).transpose();
 			break;
 		default:
 			stringstream error_msg;
@@ -630,7 +597,7 @@ typename Graph<T>::shared_mat Graph<T>::eltmul_broadcast(
 	out->w = (matrix1->w.array().colwise() * matrix2->w.col(0).array()).matrix();
 	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		backprop.emplace_back(matrix1, matrix2, out, utils::ops::eltmul_broadcast);
+		backprop.emplace_back(std::initializer_list<shared_mat>({matrix1, matrix2}), out, utils::ops::eltmul_broadcast);
 	return out;
 }
 
@@ -653,7 +620,7 @@ typename Graph<T>::shared_mat Graph<T>::eltmul(
 	out->w = (matrix1->w.array() * matrix2->w.array()).matrix();
 	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		backprop.emplace_back(matrix1, matrix2, out, utils::ops::eltmul);
+		backprop.emplace_back(std::initializer_list<shared_mat>({matrix1, matrix2}), out, utils::ops::eltmul);
 	return out;
 }
 
@@ -692,7 +659,7 @@ typename Graph<T>::shared_mat Graph<T>::eltmul_broadcast_rowwise(
 	out->w = (matrix1->w.array().rowwise() * row_vector->w.row(0).array()).matrix();
 	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		backprop.emplace_back(matrix1, row_vector, out, utils::ops::eltmul_broadcast_rowwise);
+		backprop.emplace_back(std::initializer_list<shared_mat>({matrix1, row_vector}), out, utils::ops::eltmul_broadcast_rowwise);
 	return out;
 }
 
@@ -731,25 +698,30 @@ typename Graph<T>::shared_mat Graph<T>::eltmul_rowwise(
 	out->w = (matrix1->w.array() * matrix2->w.transpose().array()).matrix();
 	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		backprop.emplace_back(matrix1, matrix2, out, utils::ops::eltmul_rowwise);
+		backprop.emplace_back(std::initializer_list<shared_mat>({matrix1, matrix2}), out, utils::ops::eltmul_rowwise);
 	return out;
 }
 
-template<typename T>
-typename Graph<T>::shared_mat Graph<T>::add_broadcast(shared_mat matrix1, shared_mat matrix2) {
-	// broadcast matrix 2:
-	if (matrix1->n != matrix2->n || matrix2->d != 1)
-		throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
-	auto out = std::make_shared<Mat<T>>(
-		matrix1->n,
-		matrix1->d,
-		true);
-	out->w = (matrix1->w.colwise() + matrix2->w.col(0)).matrix();
-	if (needs_backprop)
-		backprop.emplace_back(matrix1, matrix2, out, utils::ops::add_broadcast);
-	return out;
-}
+/**
+Graph<T>::add
+-------------
 
+Add a 2 matrices together. Broadcasts the sum if
+one of them is actually a vector (number of
+columns = d = 1)
+
+Inputs
+------
+
+std::shared_ptr<Mat<T>> matrix1 : matrix to add
+std::shared_ptr<Mat<T>> matrix2 : matrix to add
+
+Outputs
+-------
+
+std::shared_ptr<Mat<T>> out : the sum of the matrices
+
+**/
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::add(
 		shared_mat matrix1,
@@ -768,7 +740,53 @@ typename Graph<T>::shared_mat Graph<T>::add(
 	out->w = matrix1->w + matrix2->w;
 	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		backprop.emplace_back(matrix1, matrix2, out, utils::ops::add);
+		backprop.emplace_back(std::initializer_list<shared_mat>({matrix1, matrix2}), out, utils::ops::add);
+	return out;
+}
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::add_broadcast(shared_mat matrix1, shared_mat matrix2) {
+	// broadcast matrix 2:
+	if (matrix1->n != matrix2->n || matrix2->d != 1)
+		throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
+	auto out = std::make_shared<Mat<T>>(
+		matrix1->n,
+		matrix1->d,
+		true);
+	out->w = (matrix1->w.colwise() + matrix2->w.col(0)).matrix();
+	if (needs_backprop)
+		backprop.emplace_back(std::initializer_list<shared_mat>({matrix1, matrix2}), out, utils::ops::add_broadcast);
+	return out;
+}
+
+/**
+Graph<T>::add
+-------------
+
+Add a list of matrices together, but does not perform any
+broadcasting (yet)
+
+Inputs
+------
+
+std::initializer_list<std::shared_ptr<Mat<T>>> matrices : matrices to add
+
+Outputs
+-------
+
+std::shared_ptr<Mat<T>> out : the sum of the matrices
+
+**/
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::add(std::initializer_list<shared_mat> matrices) {
+	auto out = std::make_shared<Mat<T>>(
+		(*matrices.begin())->n,
+		(*matrices.begin())->d,
+		true);
+	for (auto& matrix : matrices) out->w += matrix->w;
+	if (needs_backprop)
+		// allocates a new backward element in the vector using these arguments:
+		backprop.emplace_back(matrices, out, utils::ops::add);
 	return out;
 }
 
@@ -837,7 +855,7 @@ typename Graph<T>::shared_mat Graph<T>::mul(
 	out->w = matrix1->w * matrix2->w;
 	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		backprop.emplace_back(matrix1, matrix2, out, utils::ops::mul);
+		backprop.emplace_back(std::initializer_list<shared_mat>({matrix1, matrix2}), out, utils::ops::mul);
 	return out;
 }
 
@@ -857,7 +875,7 @@ typename Graph<T>::shared_mat Graph<T>::mul_with_bias(
 	out->w = ((matrix1->w * matrix2->w).colwise() + bias->w.col(0)).matrix();
 	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		backprop.emplace_back(matrix1, matrix2, bias, out, utils::ops::mul_with_bias);
+		backprop.emplace_back(std::initializer_list<shared_mat>({matrix1, matrix2, bias}), out, utils::ops::mul_with_bias);
 	return out;
 }
 
@@ -890,10 +908,28 @@ typename Graph<T>::shared_mat Graph<T>::mul_add_broadcast_mul_with_bias(
 		      ).matrix();
 	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		backprop.emplace_back(matrix1, input_to_1, matrix2, input_to_2, bias, out, utils::ops::mul_add_broadcast_mul_with_bias);
+		backprop.emplace_back(std::initializer_list<shared_mat>({matrix1, input_to_1, matrix2, input_to_2, bias}), out, utils::ops::mul_add_broadcast_mul_with_bias);
 	return out;
 }
 
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::mul_add_mul_with_bias(std::initializer_list<shared_mat> matrices) {
+	auto out = std::make_shared<mat>(
+		(*matrices.begin())->n,
+		(*(matrices.begin() + 1))->d,
+		true);
+	auto matrices_ptr = matrices.begin();
+	while (matrices_ptr != (matrices.end() - 1)) {
+		out->w += (*matrices_ptr)->w * (*(matrices_ptr + 1))->w;
+		matrices_ptr+=2;
+	}
+	out->w.colwise() += (*(matrices.begin() + matrices.size() - 1))->w.col(0);
+	if (needs_backprop)
+		// allocates a new backward element in the vector using these arguments:
+		backprop.emplace_back(matrices, out, utils::ops::mul_add_mul_with_bias);
+	return out;
+}
 
 // operation of the form (A * x + B * y) + C, called with mul_add_mul_with_bias(A, x, B, y, C)
 template<typename T>
@@ -930,60 +966,60 @@ typename Graph<T>::shared_mat Graph<T>::mul_add_mul_with_bias(
 		      ).matrix();
 	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		backprop.emplace_back(matrix1, input_to_1, matrix2, input_to_2, bias, out, utils::ops::mul_add_mul_with_bias);
+		backprop.emplace_back(std::initializer_list<shared_mat>({matrix1, input_to_1, matrix2, input_to_2, bias}), out, utils::ops::mul_add_mul_with_bias);
 	return out;
 }
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::rows_pluck(
-	shared_mat matrix1,
+	shared_mat x,
 	index_std_vector& indices
 	) {
 	auto out = std::make_shared<mat>(
-		matrix1->d,
+		x->d,
 		indices.size(),
 		true);
 	int offset = 0;
 	for (auto& i : indices) {
-		out->w.col(offset) = matrix1->w.row(i).transpose();
+		out->w.col(offset) = x->w.row(i).transpose();
 		++offset;
 	}
 	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		this->backprop.emplace_back(matrix1, out, indices, utils::ops::rows_pluck);
+		this->backprop.emplace_back(x, out, indices, utils::ops::rows_pluck);
 	return out;
 }
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::rows_pluck(
-	shared_mat matrix1,
+	shared_mat x,
 	eigen_index_block indices
 	) {
 	auto out = std::make_shared<mat>(
-		matrix1->d,
+		x->d,
 		indices.rows(),
 		true);
 	for (int offset = 0; offset < indices.rows(); ++offset) {
-		out->w.col(offset) = matrix1->w.row(indices(offset)).transpose();
+		out->w.col(offset) = x->w.row(indices(offset)).transpose();
 	}
 	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		backprop.emplace_back(matrix1, out, indices, utils::ops::rows_pluck);
+		backprop.emplace_back(x, out, indices, utils::ops::rows_pluck);
 	return out;
 }
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::row_pluck(
-	shared_mat matrix1,
-	int ix) {
+	shared_mat x,
+	int row) {
 	auto out = std::make_shared<mat>(
-		matrix1->d,
+		x->d,
 		1,
 		true);
-	out->w = matrix1->w.row(ix).transpose();
+	out->w = x->w.row(row).transpose();
 	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
-		backprop.emplace_back(matrix1, out, ix, utils::ops::row_pluck);
+		backprop.emplace_back(x, out, row, utils::ops::row_pluck);
 	return out;
 }
 

@@ -55,6 +55,37 @@ class RNN {
 };
 
 template<typename T>
+class ShortcutRNN {
+    /*
+    Combine the input of a hidden vector, an input vector, and 
+    a second input vector (a shortcut) into a single matrix
+    product sum, and also take an input from another layer as
+    a "shortcut", s:
+
+        > y = A * [x, s, h] + b
+
+    */
+    void create_variables();
+    public:
+        typedef Mat<T>                      mat;
+        typedef std::shared_ptr<mat> shared_mat;
+        shared_mat Wx;
+        shared_mat Wh;
+        shared_mat Ws;
+        shared_mat b;
+        const int hidden_size;
+        const int input_size;
+        const int shortcut_size;
+        const int output_size;
+        std::vector<shared_mat> parameters() const;
+        ShortcutRNN (int, int, int);
+        ShortcutRNN (int, int, int, int);
+        ShortcutRNN (const ShortcutRNN&, bool, bool);
+        shared_mat activate(Graph<T>&, shared_mat, shared_mat, shared_mat) const;
+        ShortcutRNN<T> shallow_copy() const;
+};
+
+template<typename T>
 class GatedInput {
     typedef RNN<T>                   layer_type;
     public:

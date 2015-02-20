@@ -98,8 +98,24 @@ void RNN<T>::create_variables() {
 }
 
 template<typename T>
+void ShortcutRNN<T>::create_variables() {
+    T upper = 1. / sqrt(input_size);
+    Wx = make_shared<mat>(output_size, input_size,  -upper, upper);
+    upper = 1. / sqrt(shortcut_size);
+    Ws = make_shared<mat>(output_size, shortcut_size,  -upper, upper);
+    upper = 1. / sqrt(hidden_size);
+    Wh = make_shared<mat>(output_size, hidden_size, -upper, upper);
+    b  = make_shared<mat>(output_size, 1);
+}
+
+template<typename T>
 std::vector<typename RNN<T>::shared_mat> RNN<T>::parameters() const {
     return std::vector<typename RNN<T>::shared_mat>({Wx, Wh, b});
+}
+
+template<typename T>
+std::vector<typename ShortcutRNN<T>::shared_mat> ShortcutRNN<T>::parameters() const {
+    return std::vector<typename ShortcutRNN<T>::shared_mat>({Wx, Wh, Ws, b});
 }
 
 template<typename T>
@@ -109,6 +125,16 @@ RNN<T>::RNN (int _input_size, int _hidden_size) : hidden_size(_hidden_size), inp
 
 template<typename T>
 RNN<T>::RNN (int _input_size, int _hidden_size, int _output_size) : hidden_size(_hidden_size), input_size(_input_size), output_size(_output_size) {
+    create_variables();
+}
+
+template<typename T>
+ShortcutRNN<T>::ShortcutRNN (int _input_size, int _hidden_size, int _shortcut_size) : hidden_size(_hidden_size), input_size(_input_size), output_size(_hidden_size), shortcut_size(_shortcut_size) {
+    create_variables();
+}
+
+template<typename T>
+ShortcutRNN<T>::ShortcutRNN (int _input_size, int _hidden_size, int _shortcut_size, int _output_size) : hidden_size(_hidden_size), input_size(_input_size), shortcut_size(_shortcut_size), output_size(_output_size) {
     create_variables();
 }
 
@@ -154,6 +180,48 @@ RNN<T>::RNN (const RNN<T>& rnn, bool copy_w, bool copy_dw) : hidden_size(rnn.hid
 }
 
 /**
+ShortcutRNN<T>::ShortcutRNN
+---------------------------
+
+Copy constructor with option to make a shallow
+or deep copy of the underlying parameters.
+
+If the copy is shallow then the parameters are shared
+but separate gradients `dw` are used for each of 
+thread ShortcutRNN<T>.
+
+Shallow copies are useful for Hogwild and multithreaded
+training
+
+See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`,
+`ShortcutRNN<T>::shallow_copy`
+
+Inputs
+------
+
+    ShortcutRNN<T> l : ShortcutRNN from which to source parameters and dw
+         bool copy_w : whether parameters for new ShortcutRNN should be copies
+                       or shared
+        bool copy_dw : whether gradients for new ShortcutRNN should be copies
+                       shared (Note: sharing `dw` should be used with
+                       caution and can lead to unpredictable behavior
+                       during optimization).
+
+Outputs
+-------
+
+ShortcutRNN<T> out : the copied ShortcutRNN with deep or shallow copy of parameters
+
+**/
+template<typename T>
+ShortcutRNN<T>::ShortcutRNN (const ShortcutRNN<T>& rnn, bool copy_w, bool copy_dw) : hidden_size(rnn.hidden_size), input_size(rnn.input_size), output_size(rnn.output_size), shortcut_size(rnn.shortcut_size) {
+    Wx = make_shared<mat>(*rnn.Wx, copy_w, copy_dw);
+    Wh = make_shared<mat>(*rnn.Wh, copy_w, copy_dw);
+    Ws = make_shared<mat>(*rnn.Ws, copy_w, copy_dw);
+    b = make_shared<mat>(*rnn.b, copy_w, copy_dw);
+}
+
+/**
 Shallow Copy
 ------------
 
@@ -178,6 +246,31 @@ RNN<T> RNN<T>::shallow_copy() const {
     return RNN<T>(*this, false, true);
 }
 
+/**
+Shallow Copy
+------------
+
+Perform a shallow copy of a ShortcutRNN<T> that has
+the same parameters but separate gradients `dw`
+for each of its parameters.
+
+Shallow copies are useful for Hogwild and multithreaded
+training
+
+See `ShortcutRNN<T>::shallow_copy`, `examples/character_prediction.cpp`.
+
+Outputs
+-------
+
+ShortcutRNN<T> out : the copied layer with sharing parameters,
+                     but with separate gradients `dw`
+
+**/
+template<typename T>
+ShortcutRNN<T> ShortcutRNN<T>::shallow_copy() const {
+    return ShortcutRNN<T>(*this, false, true);
+}
+
 template<typename T>
 typename RNN<T>::shared_mat RNN<T>::activate(
     Graph<T>& G,
@@ -187,6 +280,18 @@ typename RNN<T>::shared_mat RNN<T>::activate(
     // 1.118s with explicit (& temporaries) vs 1.020s with grouped expression & backprop
     // return G.add(G.mul(Wx, input_vector), G.mul_with_bias(Wh, prev_hidden, b));
     return G.mul_add_mul_with_bias(Wx, input_vector, Wh, prev_hidden, b);
+}
+
+template<typename T>
+typename ShortcutRNN<T>::shared_mat ShortcutRNN<T>::activate(
+    Graph<T>& G,
+    typename ShortcutRNN<T>::shared_mat input_vector,
+    typename ShortcutRNN<T>::shared_mat shortcut_vector,
+    typename ShortcutRNN<T>::shared_mat prev_hidden) const {
+    // takes 5% less time to run operations when grouping them (no big gains then)
+    // 1.118s with explicit (& temporaries) vs 1.020s with grouped expression & backprop
+    // return G.add(G.mul(Wx, input_vector), G.mul_with_bias(Wh, prev_hidden, b));
+    return G.add( G.mul(Ws, shortcut_vector), G.mul_add_mul_with_bias(Wx, input_vector, Wh, prev_hidden, b));
 }
 
 template<typename T>
@@ -513,6 +618,9 @@ template class Layer<double>;
 template class RNN<float>;
 template class RNN<double>;
 
+template class ShortcutRNN<float>;
+template class ShortcutRNN<double>;
+
 template std::vector<RNN<float>> StackedCells <RNN<float>>(const int&, const std::vector<int>&);
 template std::vector<RNN<double>> StackedCells <RNN<double>>(const int&, const std::vector<int>&);
 
@@ -527,7 +635,6 @@ template class LSTM<double>;
 
 template std::vector<LSTM<float>> StackedCells <LSTM<float>>(const int&, const std::vector<int>&);
 template std::vector<LSTM<double>> StackedCells <LSTM<double>>(const int&, const std::vector<int>&);
-
 
 template std::vector<LSTM<float>> StackedCells <LSTM<float>>(const std::vector<LSTM<float>>&, bool, bool);
 template std::vector<LSTM<double>> StackedCells <LSTM<double>>(const std::vector<LSTM<double>>&, bool, bool);

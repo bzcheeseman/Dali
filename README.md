@@ -15,25 +15,26 @@ In Python use of a specialized `Backward` class wraps backpropagation steps, whi
 
 #### Installation
 
-Get **[Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)** ([Download Link](http://bitbucket.org/eigen/eigen/get/3.2.4.tar.bz2)) and place the downloaded Eigen header folder in the `cpp` folder of this repo, then go into the `cpp` folder and:
+Get **[Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)** ([Download Link](http://bitbucket.org/eigen/eigen/get/3.2.4.tar.bz2)) and place the downloaded Eigen header folder in the `cpp` folder of this repo, then go into the `cpp/build` folder and use `cmake` to configure and create the appropriate Makefiles:
 
-    > make
 
-That's it.
+    > cmake ..
 
-Or for optimizations turned on (slower compilation 3x result):
 
-    > make optimized
+The run `make` to compile the code:
 
-and to do character recognition as was done in Javascript:
 
-    > make character_predict
+    > make -j 9
+
+
+That's it. Now built examples will be stored in `cpp/build/examples`.
+For instance a character prediction model using Stacked LSTMs is built under `cpp/build/examples/character_prediction`.
 
 #### Stacked LSTMs
 
 Let's build a stacked LSTM network. We start by including the right header:
 
-    #include "Layers.h"
+    #include "core/Layers.h"
 
 And let's populate our namespace with some goodies:
 
@@ -42,22 +43,19 @@ And let's populate our namespace with some goodies:
     using std::shared_ptr;
     using std::make_shared;
 
-Let's define some types we'll use to simplify notation:
+We also define some types we'll use to simplify notation:
 
-    typedef float REAL_t;
-    typedef LSTM<REAL_t> lstm;
-    typedef Graph<REAL_t> graph_t;
-    typedef Mat<REAL_t> mat;
+    typedef Mat<float> mat;
     typedef shared_ptr<mat> shared_mat;
     typedef vector<shared_mat> cell_outputs;
     typedef pair<cell_outputs, cell_outputs> paired_cell_outputs;
 
-Okay. Let's now build a set of stacked cells inside our main function with 3 layers of 100 hidden units and an input of 50:
+Let's build a set of stacked cells inside our main function: 3 layers of 100 hidden units with an original input of size 50 (Note how we template the static method `StackedCells<T>` to take a `LSTM<float>` -- this is how we create multiple layers of cells with the same type: `LSTM`, `RNN`, `ShortcutRNN`, `GatedInput`, etc..):
 
     auto input_size          = 50;
     vector<int> hidden_sizes = {100, 100, 100};
 
-    auto cells = StackedCells<lstm>(input_size, hidden_sizes);
+    auto cells = StackedCells<LSTM<float>>(input_size, hidden_sizes);
 
 We now collect the model parameters into one vector for optimization:
     
@@ -68,68 +66,35 @@ We now collect the model parameters into one vector for optimization:
         parameters.insert(parameters.end(), layer_params.begin(), layer_params.end());
     }
 
-For backpropagation we need a `Graph`:
+For backpropagation we use a computation `Graph` (this object orchestrates backpropagation computations):
 
-    graph_t G;
+    Graph<float> G;
 
-Let's create some random input, using a gaussian with standard deviation 2, with 100 different examples in this batch:
+Let's create some random input, using a multivariate gaussian with a standard deviation of 2.0, and create a batch of 100 samples from this distribution:
 
     auto batch_size          = 100;
-    REAL_t std               = 2.0;
+    float std                = 2.0;
 
     auto input_vector = make_shared<mat>(input_size, batch_size, std);
 
-To run our network forward in time we'll need some initial states and a propagation function. Let's start with the propagation. This function takes the *graph* to keep track of computations, an *input vector*, and the *previous hidden and cell states* for the LSTM layers, and the *LSTMs* themselves:
+To run our network forward in time we'll need some initial states and a forward propagation function. Let's start with the propagation. This function takes the `Graph` to keep track of computations, an `input_vector`, and the *previous hidden and cell states* for the LSTM layers, and the `LSTM`s themselves:
 
-    paired_cell_outputs forward_lstms(
-        graph_t& G,
-        shared_mat input_vector,
-        paired_cell_outputs& previous_state,
-        vector<lstm>& cells) {
-
-        // in our previous_state pair cells are first
-        auto previous_state_cells = previous_state.first;
-
-        // next we have hidden activations:
-        auto previous_state_hiddens = previous_state.second;
-
-
-        // let's iterate through both as we visit each layer:
-        auto cell_iter = previous_state_cells.begin();
-        auto hidden_iter = previous_state_hiddens.begin();
-
-        // this will be our output states:
-        paired_cell_outputs out_state;
-
-        // this is the current input to the lowest LSTM layer
-        auto layer_input = input_vector;
-
-        for (auto& layer : cells) {
-            auto layer_out = layer.activate(G, layer_input, *cell_iter, *hidden_iter);
-
-            // keep track of cells and their outputs:
-            out_state.first.push_back(layer_out.first);
-            out_state.second.push_back(layer_out.second);
-
-            ++cell_iter;
-            ++hidden_iter;
-
-            // the current layer's hidden activation is passed upwards
-            layer_input = layer_out.second;
-        }
-        return out_state;
-    }
+    pair<vector<shared_ptr<Mat<float>>>, vector<shared_ptr<Mat<float>>>> forward_LSTMs(
+        Graph<float>&,
+        shared_ptr<Mat<float>>,
+        pair<vector<shared_ptr<Mat<float>>>, vector<shared_ptr<Mat<float>>>>&,
+        vector<LSTM<float>>&);
 
 Now that we can propagate our network forward let's run this forward in time, and start off with a blank cell activation and hidden activation for each LSTM, here we use the LSTM class's `initial_states` static method:
 
-    paired_cell_outputs initial_state = lstm::initial_states(hidden_sizes);
+    paired_cell_outputs initial_state = LSTM<float>::initial_states(hidden_sizes);
 
 And we can now run this network forward:
     
     auto timesteps = 20;
 
     for (auto i = 0; i < timesteps; ++i)
-        initial_state = forward_lstms(G, input_vector, initial_state, cells);
+        initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
 
 The input_vector isn't changing, but this is just an example. We could have instead used indices and plucked rows from an embedding matrix, or taken audio or video inputs.
 
@@ -138,8 +103,7 @@ The input_vector isn't changing, but this is just an example. We could have inst
 Suppose we want to assign error using a prediction with a additional decoding layer that gets exponentially normalized via a *Softmax*:
     
     auto vocab_size = 300;
-    typedef Layer<REAL_t> classifier_t;
-    classifier_t classifier(hidden_sizes[hidden_sizes.size() - 1], vocab_size);
+    Layer<float> classifier(hidden_sizes[hidden_sizes.size() - 1], vocab_size);
 
 Each character gets a vector in an embedding:
     
@@ -147,10 +111,10 @@ Each character gets a vector in an embedding:
 
 Then our forward function can be changed to:
 
-    REAL_t cost_fun(
-        graph_t& G, // the graph for the computation
+    float cost_fun(
+        Graph<float>& G, // the graph for the computation
         vector<int>& hidden_sizes, // re-initialize the hidden cell states at each new sentence
-        vector<lstm>& cells,  // the LSTMs
+        vector<LSTM<float>>& cells,  // the LSTMs
         shared_mat embedding, // the embedding matrix
         classifier_t& classifier, // the classifier we just defined
         vector<int>& indices // the indices in a sentence whose perplexity we'd like to reduce
@@ -163,7 +127,7 @@ Then our forward function can be changed to:
         shared_mat logprobs;
         shared_mat probs;
 
-        REAL_t cost = 0.0;
+        float cost = 0.0;
         auto n = indices.size();
 
         for (int i = 0; i < n-1; ++i) {
@@ -194,15 +158,15 @@ Now that we've built up this computation graph we should assign errors in the ou
 `G` tallies all the gradients for each model parameter. We now use a solver to take a gradient step in the direction that reduces the error (here we use RMSprop with a decay rate of 0.95, an epsilon value for numerical stability of 1e-6, and we clip gradients larger than 5. element-wise):
 
 
-    Solver<REAL_t> solver(0.95, 1e-6, 5.0);
+    Solver<float> solver(0.95, 1e-6, 5.0);
 
 Now at every minibatch we can call `step` on the solver to reduce the error (here using a learning rate of 0.01, and an L2 penalty of 1e-7):
 
-    solver.step(parameters, 0.01, 1e-7)
+    solver.step(parameters, 0.01, 1e-7);
 
 This would look like the following. First we load the sentences using `fstream`:
 
-    auto sentences = get_character_sequences("../paulgraham_text.txt", prepad, postpad, vocab_size);
+    auto sentences = get_character_sequences("data/paulgraham_text.txt", prepad, postpad, vocab_size);
 
 Get a random number generator to uniformly sample from these sentences:
 
@@ -214,7 +178,7 @@ Then we train by looping through the sentences:
 
     // Main training loop:
     for (auto i = 0; i < epochs; ++i) {
-        auto G = graph_t(true);      // create a new graph for each loop
+        auto G = Graph<float>(true);      // create a new graph for each loop
         auto cost = cost_fun(
             G,                       // to keep track of computation
             hidden_sizes,            // to construct initial states
@@ -241,22 +205,20 @@ To get the character sequence we can use this simple function and point it at th
         file.open(filename);
         vector<vector<int>> lines;
         lines.emplace_back(2);
-        vector<int>* line = &lines[0];
-        line->push_back(prepad);
+        vector<int>& line = lines[0];
+        line->emplace_back(prepad);
         while(file) {
             ch = file.get();
             if (ch == linebreak) {
-                line->push_back(postpad);
+                line.emplace_back(postpad);
                 lines.emplace_back(2);
-                line = &(lines.back());
-                line->push_back(prepad);
+                line = lines.back();
+                line.emplace_back(prepad);
                 continue;
             }
-            if (ch == EOF) {
-                break;
-            }
+            if (ch == EOF) break;
             // make sure no character is higher than the vocab size:
-            line->push_back(std::min(vocab_size-1, (int)ch));
+            line->push_back(std::min(vocab_size-1, (int) ch));
         }
         return lines;
     }

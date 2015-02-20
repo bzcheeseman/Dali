@@ -52,8 +52,8 @@ We also define some types we'll use to simplify notation:
 
 Let's build a set of stacked cells inside our main function: 3 layers of 100 hidden units with an original input of size 50 (Note how we template the static method `StackedCells<T>` to take a `LSTM<float>` -- this is how we create multiple layers of cells with the same type: `LSTM`, `RNN`, `ShortcutRNN`, `GatedInput`, etc..):
 
-    auto input_size          = 50;
-    vector<int> hidden_sizes = {100, 100, 100};
+    auto input_size   = 50;
+    auto hidden_sizes = {100, 100, 100};
 
     auto cells = StackedCells<LSTM<float>>(input_size, hidden_sizes);
 

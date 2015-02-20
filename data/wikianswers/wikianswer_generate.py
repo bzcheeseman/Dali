@@ -15,6 +15,8 @@ OUTPUT_FILE = 'wikianswer_dataset.txt'
 DATASET_DIR = 'Question_Answer_Dataset'
 DATASET_FILE = 'question_answer_pairs.txt'
 
+MIN_ANSWER_LENGTH = 1
+
 # Who does that?
 WINDOWS_ENCODING = 'latin-1'
 
@@ -48,6 +50,8 @@ if __name__ == '__main__':
 
     assert len(directories) > 0
 
+    num_nonascii = 0
+    num_too_short = 0
     output_content = []
     for d in [join(DATASET_DIR, d) for d in directories]:
         dataset_file = join(d, DATASET_FILE)
@@ -58,11 +62,26 @@ if __name__ == '__main__':
                 if first:
                     first = False
                     continue
+                try:
+                    line.encode('ascii')
+                except Exception:
+                    # ignore windows encoding errors.
+                    num_nonascii += 1
+                    continue
+
                 tokens = line.split('\t')
-                output_content.extend([ tokens[i] +'\n' for i in [1,2]])
+                question = tokens[1].strip()
+                answer = tokens[2].strip()
+                # ignore one word answers
+                if len(answer.split(' ')) <= MIN_ANSWER_LENGTH or '<' in answer + question:
+                    num_too_short += 1
+                    continue
 
-    print("Generated %d question answer pairs" % (len(output_content) / 2,))
+                output_content.append('%s\t%s\n' % (question, answer))
 
+    print("Generated %d question answer pairs" % (len(output_content) ))
+    print("Skipped %d pairs because of answer shorter than %d words" % (num_too_short, MIN_ANSWER_LENGTH))
+    print("Skipped %d because of encoding issues." % (num_nonascii,))
     with open(OUTPUT_FILE, 'wt') as f:
         f.writelines(output_content)
 

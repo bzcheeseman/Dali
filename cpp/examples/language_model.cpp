@@ -7,7 +7,6 @@
 #include <thread>
 #include "../third_party/concurrentqueue.h"
 
-
 #include "core/utils.h"
 #include "core/SST.h"
 #include "core/gzstream.h"
@@ -334,9 +333,7 @@ void training_loop(StackedModel<T>& model,
                 );
                 thread_model.embedding->sparse_row_keys = minibatch.row_keys;
                 full_code_size += minibatch.total_codes;
-                std::cout << "pre backward" << std::endl;
                 G.backward(); // backpropagate
-                std::cout << "got backward"<<std::endl;
                 solver.step(thread_parameters, 0.0);
                 std::cout << "epoch (" << epoch << " - " << 100.0 * ((1.0 - (double) jobs.size_approx() / total_jobs)) << "%) KL error = " << std::fixed
                                       << std::setw( 5 ) // keep 7 digits

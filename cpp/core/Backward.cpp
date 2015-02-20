@@ -113,6 +113,7 @@ void Backward<T>::backward_mul_add_mul_with_bias() {
 	while (matrices_ptr != (matrices.end() - 1)) {
 		(*matrices_ptr)->dw.noalias()     += (out->dw) * (*(matrices_ptr+1))->w.transpose();
 		(*(matrices_ptr+1))->dw.noalias() += (*matrices_ptr)->w.transpose() * (out->dw);
+		matrices_ptr+=2;
 	}
 	/**
 	More explicity we are doing this:
@@ -127,7 +128,6 @@ void Backward<T>::backward_mul_add_mul_with_bias() {
 
 template<typename T>
 void Backward<T>::operator ()() {
-	std::cout << *this << std::endl;
 	switch(this->type) {
 		case utils::ops::add:
 			for (auto& matrix : matrices) matrix->dw.noalias() += out->dw;

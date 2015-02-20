@@ -38,16 +38,16 @@ std::vector<typename Layer<T>::shared_mat> Layer<T>::parameters() const{
 // StackedInputLayer:
 template<typename T>
 void StackedInputLayer<T>::create_variables() {
-    T upper;
+    int total_input_size = 0;
+    for (auto& input_size : input_sizes) total_input_size += input_size;
+    T upper = 1. / sqrt(total_input_size);
     matrices.reserve(input_sizes.size());
-    for (auto& input_size : input_sizes) {
-        upper = 1. / sqrt(input_size);
-        matrices.emplace_back(hidden_size, input_size, -upper, upper);
-    }
+    for (auto& input_size : input_sizes)
+        matrices.emplace_back(make_shared<mat>(hidden_size, input_size, -upper, upper));
     b = make_shared<mat>(hidden_size, 1);
 }
 template<typename T>
-StackedInputLayer<T>::StackedInputLayer (const vector<int>& _input_sizes, int _hidden_size) : hidden_size(_hidden_size), input_sizes(_input_sizes) {
+StackedInputLayer<T>::StackedInputLayer (vector<int> _input_sizes, int _hidden_size) : hidden_size(_hidden_size), input_sizes(_input_sizes) {
     create_variables();
 }
 
@@ -66,16 +66,50 @@ vector<typename StackedInputLayer<T>::shared_mat> StackedInputLayer<T>::zip_inpu
 }
 
 template<typename T>
-typename StackedInputLayer<T>::shared_mat StackedInputLayer<T>::activate(Graph<T>& G, const vector<typename StackedInputLayer<T>::shared_mat>& inputs) const {
+vector<typename StackedInputLayer<T>::shared_mat> StackedInputLayer<T>::zip_inputs_with_matrices_and_bias(
+    typename StackedInputLayer<T>::shared_mat input,
+    const vector<typename StackedInputLayer<T>::shared_mat>& inputs) const {
+    vector<shared_mat> zipped;
+    zipped.reserve(matrices.size() * 2 + 1);
+    auto input_ptr = inputs.begin();
+    auto mat_ptr = matrices.begin();
+
+    // We are provided separately with anoter input vector
+    // that will go first in the zip, while the remainder will
+    // be loaded in "zip" form with the vector of inputs
+    zipped.emplace_back(*mat_ptr++);
+    zipped.emplace_back(input);
+
+    while (mat_ptr != matrices.end()) {
+        zipped.emplace_back(*mat_ptr++);
+        zipped.emplace_back(*input_ptr++);
+    }
+    zipped.emplace_back(b);
+    return zipped;
+}
+
+template<typename T>
+typename StackedInputLayer<T>::shared_mat StackedInputLayer<T>::activate(
+    Graph<T>& G,
+    const vector<typename StackedInputLayer<T>::shared_mat>& inputs) const {
     auto zipped = zip_inputs_with_matrices_and_bias(inputs);
+    return G.mul_add_mul_with_bias(zipped);
+}
+
+template<typename T>
+typename StackedInputLayer<T>::shared_mat StackedInputLayer<T>::activate(
+    Graph<T>& G,
+    typename StackedInputLayer<T>::shared_mat input,
+    const vector<typename StackedInputLayer<T>::shared_mat>& inputs) const {
+    auto zipped = zip_inputs_with_matrices_and_bias(input, inputs);
     return G.mul_add_mul_with_bias(zipped);
 }
 
 template<typename T>
 StackedInputLayer<T>::StackedInputLayer (const StackedInputLayer<T>& layer, bool copy_w, bool copy_dw) : hidden_size(layer.hidden_size), input_sizes(layer.input_sizes) {
     matrices.reserve(layer.matrices.size());
-    for (auto& mat : layer.matrices)
-        matrices.emplace_back(mat, copy_w, copy_dw);
+    for (auto& matrix : layer.matrices)
+        matrices.emplace_back(make_shared<mat>(*matrix, copy_w, copy_dw));
     b = make_shared<mat>(*layer.b, copy_w, copy_dw);
 }
 
@@ -270,31 +304,9 @@ LSTM<T>::LSTM (int _input_size, int _hidden_size) :
     forget_layer.b->w(0) = 100;
     name_internal_layers();
 }
+
 template<typename T>
 ShortcutLSTM<T>::ShortcutLSTM (int _input_size, int _shortcut_size, int _hidden_size) :
-    hidden_size(_hidden_size),
-    input_size(_input_size),
-    shortcut_size(_shortcut_size),
-    input_layer(_input_size, _shortcut_size, _hidden_size),
-    forget_layer(_input_size, _shortcut_size, _hidden_size),
-    output_layer(_input_size, _shortcut_size, _hidden_size),
-    cell_layer(_input_size, _shortcut_size, _hidden_size) {
-    forget_layer.b->w(0) = 100;
-    name_internal_layers();
-}
-template<typename T>
-LSTM<T>::LSTM (int& _input_size, int& _hidden_size) :
-    hidden_size(_hidden_size),
-    input_size(_input_size),
-    input_layer(_input_size, _hidden_size),
-    forget_layer(_input_size, _hidden_size),
-    output_layer(_input_size, _hidden_size),
-    cell_layer(_input_size, _hidden_size) {
-    forget_layer.b->w(0) = 100;
-    name_internal_layers();
-}
-template<typename T>
-ShortcutLSTM<T>::ShortcutLSTM (int& _input_size, int& _shortcut_size, int& _hidden_size) :
     hidden_size(_hidden_size),
     input_size(_input_size),
     shortcut_size(_shortcut_size),
@@ -362,6 +374,7 @@ std::pair<typename LSTM<T>::shared_mat, typename LSTM<T>::shared_mat> LSTM<T>::a
     auto cell_d      = G.add(retain_cell, write_cell); // new cell contents
 
     // compute hidden state as gated, saturated cell activations
+
     auto hidden_d    = G.eltmul(output_gate, G.tanh(cell_d));
     return std::pair<shared_mat,shared_mat>(cell_d, hidden_d);
 }
@@ -373,6 +386,7 @@ std::pair<typename ShortcutLSTM<T>::shared_mat, typename ShortcutLSTM<T>::shared
     typename ShortcutLSTM<T>::shared_mat shortcut_vector,
     typename ShortcutLSTM<T>::shared_mat cell_prev,
     typename ShortcutLSTM<T>::shared_mat hidden_prev) const {
+
     // input gate:
     auto input_gate  = G.sigmoid(input_layer.activate(G, input_vector, shortcut_vector, hidden_prev));
     // forget gate
@@ -388,13 +402,31 @@ std::pair<typename ShortcutLSTM<T>::shared_mat, typename ShortcutLSTM<T>::shared
     auto cell_d      = G.add(retain_cell, write_cell); // new cell contents
 
     // compute hidden state as gated, saturated cell activations
+
     auto hidden_d    = G.eltmul(output_gate, G.tanh(cell_d));
     return std::pair<shared_mat,shared_mat>(cell_d, hidden_d);
 }
 
 template<typename T>
 std::vector<typename LSTM<T>::shared_mat> LSTM<T>::parameters() const {
-    std::vector<typename LSTM<T>::shared_mat> parameters;
+    std::vector<shared_mat> parameters;
+
+    auto input_layer_params  = input_layer.parameters();
+    auto forget_layer_params = forget_layer.parameters();
+    auto output_layer_params = output_layer.parameters();
+    auto cell_layer_params   = cell_layer.parameters();
+
+    parameters.insert( parameters.end(), input_layer_params.begin(),  input_layer_params.end() );
+    parameters.insert( parameters.end(), forget_layer_params.begin(), forget_layer_params.end() );
+    parameters.insert( parameters.end(), output_layer_params.begin(), output_layer_params.end() );
+    parameters.insert( parameters.end(), cell_layer_params.begin(),   cell_layer_params.end() );
+
+    return parameters;
+}
+
+template<typename T>
+std::vector<typename ShortcutLSTM<T>::shared_mat> ShortcutLSTM<T>::parameters() const {
+    std::vector<shared_mat> parameters;
 
     auto input_layer_params  = input_layer.parameters();
     auto forget_layer_params = forget_layer.parameters();
@@ -437,9 +469,31 @@ vector<celltype> StackedCells(const int& input_size, const vector<int>& hidden_s
     return cells;
 }
 
-template <typename T>
-vector<ShortcutLSTM<T>> StackedCells(const int& input_size, const int& shortcut_size, const vector<int>& hidden_sizes) {
-    vector<ShortcutLSTM<T>> cells;
+template <typename celltype>
+vector<celltype> StackedCells(const int& input_size, const int& shortcut_size, const vector<int>& hidden_sizes) {
+    vector<celltype> cells;
+    cells.reserve(hidden_sizes.size());
+    int prev_size = input_size;
+    for (auto& size : hidden_sizes) {
+        cells.emplace_back(prev_size, size);
+        prev_size = size;
+    }
+    return cells;
+}
+
+template<> vector<ShortcutLSTM<float>> StackedCells<ShortcutLSTM<float>>(const int& input_size, const int& shortcut_size, const vector<int>& hidden_sizes) {
+    vector<ShortcutLSTM<float>> cells;
+    cells.reserve(hidden_sizes.size());
+    int prev_size = input_size;
+    for (auto& size : hidden_sizes) {
+        cells.emplace_back(prev_size, shortcut_size, size);
+        prev_size = size;
+    }
+    return cells;
+}
+
+template<> vector<ShortcutLSTM<double>> StackedCells<ShortcutLSTM<double>>(const int& input_size, const int& shortcut_size, const vector<int>& hidden_sizes) {
+    vector<ShortcutLSTM<double>> cells;
     cells.reserve(hidden_sizes.size());
     int prev_size = input_size;
     for (auto& size : hidden_sizes) {
@@ -499,7 +553,7 @@ pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> forward_LSTMs(Graph
     pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>>& previous_state,
     LSTM<T>& base_cell,
     vector<ShortcutLSTM<T>>& cells) {
-
+    
     auto previous_state_cells = previous_state.first;
     auto previous_state_hiddens = previous_state.second;
 
@@ -540,6 +594,9 @@ pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> forward_LSTMs(Graph
 template class Layer<float>;
 template class Layer<double>;
 
+template class StackedInputLayer<float>;
+template class StackedInputLayer<double>;
+
 template class RNN<float>;
 template class RNN<double>;
 
@@ -566,6 +623,9 @@ template std::vector<LSTM<double>> StackedCells <LSTM<double>>(const int&, const
 
 template std::vector<LSTM<float>> StackedCells <LSTM<float>>(const std::vector<LSTM<float>>&, bool, bool);
 template std::vector<LSTM<double>> StackedCells <LSTM<double>>(const std::vector<LSTM<double>>&, bool, bool);
+
+template std::vector<LSTM<float>> StackedCells (const int&, const int&, const std::vector<int>&);
+template std::vector<LSTM<double>> StackedCells (const int&, const int&, const std::vector<int>&);
 
 template std::vector<ShortcutLSTM<float>> StackedCells (const int&, const int&, const std::vector<int>&);
 template std::vector<ShortcutLSTM<double>> StackedCells (const int&, const int&, const std::vector<int>&);

@@ -85,6 +85,33 @@ StackedShortcutModel<T> StackedShortcutModel<T>::build_from_CLI(int vocab_size, 
 }
 
 template<typename T>
+std::vector<int> StackedShortcutModel<T>::decoder_initialization(int input_size, int hidden_size, int stack_size) {
+	vector<int> sizes;
+	sizes.reserve(1 + stack_size);
+	sizes.emplace_back(input_size);
+	for (int i = 0; i < stack_size; i++) sizes.emplace_back(hidden_size);
+	return sizes;
+}
+
+template<typename T>
+vector<int> StackedShortcutModel<T>::decoder_initialization(int input_size, vector<int> hidden_sizes) {
+	vector<int> sizes;
+	sizes.reserve(1 + hidden_sizes.size());
+	sizes.emplace_back(input_size);
+	for (auto& s : hidden_sizes) sizes.emplace_back(s);
+	return sizes;
+}
+
+template<typename T>
+vector<int> StackedShortcutModel<T>::decoder_initialization(int input_size, const vector<string>& hidden_sizes) {
+	vector<int> sizes;
+	sizes.reserve(1 + hidden_sizes.size());
+	sizes.emplace_back(input_size);
+	for (auto& s : hidden_sizes) sizes.emplace_back(from_string<int>(s));
+	return sizes;
+}
+
+template<typename T>
 StackedShortcutModel<T> StackedShortcutModel<T>::load(std::string dirname) {
 	// fname should be a directory:
 	utils::ensure_directory(dirname);
@@ -135,7 +162,7 @@ T StackedShortcutModel<T>::masked_predict_cost(
 		// pass this letter to the LSTM for processing
 		initial_state = forward_LSTMs(G, input_vector, initial_state, base_cell, cells);
 		// classifier takes as input the final hidden layer's activation:
-		logprobs      = decoder.activate(G, initial_state.second[num_hidden_sizes-1]);
+		logprobs      = decoder.activate(G, input_vector, initial_state.second);
 		cost += G.needs_backprop ? masked_cross_entropy(
 										logprobs,
 										i,
@@ -176,7 +203,7 @@ T StackedShortcutModel<T>::masked_predict_cost(
 		// pass this letter to the LSTM for processing
 		initial_state = forward_LSTMs(G, input_vector, initial_state, base_cell, cells);
 		// classifier takes as input the final hidden layer's activation:
-		logprobs      = decoder.activate(G, initial_state.second[num_hidden_sizes-1]);
+		logprobs      = decoder.activate(G, input_vector, initial_state.second);
 		cost += G.needs_backprop ? masked_cross_entropy(
 										logprobs,
 										i,
@@ -198,21 +225,25 @@ T StackedShortcutModel<T>::masked_predict_cost(
 template<typename T>
 void StackedShortcutModel<T>::name_parameters() {
 	embedding->set_name("Embedding");
-	decoder.W->set_name("Decoder W");
+	int i = 1;
+	for (auto& W : decoder.matrices) {
+		string name = "Decoder W_" + std::to_string(i++);
+		W->set_name(name);
+	}
 	decoder.b->set_name("Decoder Bias");
 }
 
 template<typename T>
 void StackedShortcutModel<T>::construct_LSTM_cells() {
 	auto hidden_sizes_subset = vector<int>(hidden_sizes.begin() + 1, hidden_sizes.end());
-	base_cell(input_size, hidden_sizes[0]);
-	cells = StackedCells<shortcut_lstm>(hidden_sizes[0], input_size, hidden_sizes_subset);
+	if (hidden_sizes.size() > 0)
+		cells = StackedCells<shortcut_lstm>(hidden_sizes[0], input_size, hidden_sizes_subset);
 }
 
 template<typename T>
-void StackedShortcutModel<T>::construct_LSTM_cells(const lstm& _base_cell, const vector<StackedShortcutModel<T>::shortcut_lstm>& _cells, bool copy_w, bool copy_dw) {
-	base_cell(_base_cell, copy_w, copy_dw);
-	cells = StackedCells<lstm>(_cells, copy_w, copy_dw);
+void StackedShortcutModel<T>::construct_LSTM_cells(const vector<StackedShortcutModel<T>::shortcut_lstm>& _cells, bool copy_w, bool copy_dw) {
+	if (_cells.size() > 0)
+		cells = StackedCells<shortcut_lstm>(_cells, copy_w, copy_dw);
 }
 
 template<typename T>
@@ -222,7 +253,13 @@ StackedShortcutModel<T>::StackedShortcutModel (int _vocabulary_size, int _input_
 	output_size(_output_size),
 	vocabulary_size(_vocabulary_size),
 	stack_size(_stack_size),
-	decoder(hidden_size, _output_size) {
+	base_cell(_input_size, hidden_size),
+	decoder(
+		decoder_initialization(
+			_input_size,
+			hidden_size,
+			_stack_size
+		), _output_size) {
 
 	embedding = make_shared<mat>(vocabulary_size, input_size, (T) -0.05, (T) 0.05);
 	for (int i = 0; i < stack_size;i++)
@@ -239,9 +276,14 @@ StackedShortcutModel<T>::StackedShortcutModel (
 	output_size(from_string<int>(config.at("output_size")[0])),
 	input_size(from_string<int>(config.at("input_size")[0])),
 	stack_size(config.at("hidden_sizes").size()),
+	base_cell(
+		from_string<int>(config.at("input_size")[0]),
+		from_string<int>(config.at("hidden_sizes")[0])),
 	decoder(
-		from_string<int>(config.at("hidden_sizes")[config.at("hidden_sizes").size()-1]),
-		from_string<int>(config.at("output_size")[0]))
+		decoder_initialization(
+			from_string<int>(config.at("input_size")[0]),
+			config.at("hidden_sizes")
+		), from_string<int>(config.at("output_size")[0]))
 {
 	embedding = make_shared<mat>(vocabulary_size, input_size, (T) -0.05, (T) 0.05);
 	for (auto& v : config.at("hidden_sizes"))
@@ -259,7 +301,12 @@ StackedShortcutModel<T>::StackedShortcutModel (int _vocabulary_size, int _input_
 	vocabulary_size(_vocabulary_size),
 	stack_size(_hidden_sizes.size()),
 	hidden_sizes(_hidden_sizes),
-	decoder(_hidden_sizes[_hidden_sizes.size()-1], _output_size) {
+	base_cell(_input_size, hidden_sizes[0]),
+	decoder(
+		decoder_initialization(
+			_input_size,
+			_hidden_sizes
+		), _output_size) {
 
 	embedding = make_shared<mat>(vocabulary_size, input_size, (T) -0.05, (T) 0.05);
 	construct_LSTM_cells();
@@ -273,10 +320,11 @@ StackedShortcutModel<T>::StackedShortcutModel (const StackedShortcutModel<T>& mo
 	vocabulary_size(model.vocabulary_size),
 	stack_size(model.stack_size),
 	hidden_sizes(model.hidden_sizes),
+	base_cell(model.base_cell, copy_w, copy_dw),
 	decoder(model.decoder, copy_w, copy_dw)
     {
     embedding = make_shared<mat>(*model.embedding, copy_w, copy_dw);
-    construct_LSTM_cells(model.base_cell, model.cells, copy_w, copy_dw);
+    construct_LSTM_cells(model.cells, copy_w, copy_dw);
     name_parameters();
 }
 
@@ -312,18 +360,19 @@ std::vector<int> StackedShortcutModel<T>::reconstruct(
     int symbol_offset) {
 
 	graph_t G(false);
+
 	auto initial_state = get_final_activation(G, example);
 	vector<int> outputs;
-	auto last_symbol = argmax(decoder.activate(G, initial_state.second[stack_size-1]));
+
+	auto input_vector = G.row_pluck(embedding, example(example.cols() * example.rows()-1));
+	auto last_symbol = argmax(decoder.activate(G, input_vector, initial_state.second));
 	outputs.emplace_back(last_symbol);
 	last_symbol += symbol_offset;
-
-	shared_mat input_vector;
 
 	for (uint j = 0; j < eval_steps - 1; j++) {
 		input_vector  = G.row_pluck(embedding, last_symbol);
 		initial_state = forward_LSTMs(G, input_vector, initial_state, base_cell, cells);
-		last_symbol   = argmax(decoder.activate(G, initial_state.second[stack_size-1]));
+		last_symbol   = argmax(decoder.activate(G, input_vector, initial_state.second));
 		outputs.emplace_back(last_symbol);
 		last_symbol += symbol_offset;
 	}
@@ -336,8 +385,9 @@ typename StackedShortcutModel<T>::activation_t StackedShortcutModel<T>::activate
 	lstm_activation_t& previous_state,
 	const uint& index) {
 	activation_t out;
-	out.first =  forward_LSTMs(G, G.row_pluck(embedding, index), previous_state, base_cell, cells);
-	out.second = softmax(decoder.activate(G, out.first.second[stack_size-1]));
+	auto input_vector = G.row_pluck(embedding, index);
+	out.first =  forward_LSTMs(G, input_vector, previous_state, base_cell, cells);
+	out.second = softmax(decoder.activate(G, input_vector, out.first.second));
 
 	return out;
 }
@@ -365,7 +415,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<T>::recon
 	vector<utils::OntologyBranch::shared_branch> outputs;
 	// Take the argmax over the available options (0 for go back to
 	// root, and 1..n for the different children of the current position)
-	auto last_turn = argmax_slice(decoder.activate(G, initial_state.second[stack_size-1]), 0, pos->children.size() + 1);
+	auto last_turn = argmax_slice(decoder.activate(G, input_vector, initial_state.second), 0, pos->children.size() + 1);
 	// if the turn is 0 go back to root, else go to one of the children using
 	// the lattice pointers:
 	pos = (last_turn == 0) ? root : pos->children[last_turn-1];
@@ -374,7 +424,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<T>::recon
 	for (uint j = 0; j < eval_steps - 1; j++) {
 		input_vector  = G.row_pluck(embedding, pos->id);
 		initial_state = forward_LSTMs(G, input_vector, initial_state, base_cell, cells);
-		last_turn     = argmax_slice(decoder.activate(G, initial_state.second[stack_size-1]), 0, pos->children.size() + 1);
+		last_turn     = argmax_slice(decoder.activate(G, input_vector, initial_state.second), 0, pos->children.size() + 1);
 		pos           = (last_turn == 0) ? root : pos->children[last_turn-1];
 		outputs.emplace_back(pos);
 	}

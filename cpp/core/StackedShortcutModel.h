@@ -29,7 +29,6 @@ stacks of the model, thereby allowing "shortcuts" of information upwards
 in the model.
 
 **/
-
 DECLARE_int32(stack_size);
 DECLARE_int32(input_size);
 DECLARE_int32(hidden);
@@ -43,14 +42,11 @@ template<typename T>
 class StackedShortcutModel {
 	typedef LSTM<T>                    lstm;
 	typedef ShortcutLSTM<T>   shortcut_lstm;
-	typedef Layer<T>           classifier_t;
+	typedef StackedInputLayer<T> classifier_t;
 	typedef Mat<T>                      mat;
 	typedef std::shared_ptr<mat> shared_mat;
 	typedef Graph<T>                graph_t;
 	typedef std::map<std::string, std::vector<std::string>> config_t;
-
-
-
 
 	inline void name_parameters();
 	/**
@@ -78,7 +74,7 @@ class StackedShortcutModel {
 	                     bool copy_dw : should each LSTM copy the gradient memory `dw` or share it.
 
 	**/
-	inline void construct_LSTM_cells(const lstm&, const std::vector<shortcut_lstm>&, bool, bool);
+	inline void construct_LSTM_cells(const std::vector<shortcut_lstm>&, bool, bool);
 
 	public:
 		typedef std::pair<std::vector<shared_mat>, std::vector<shared_mat>> lstm_activation_t;
@@ -146,6 +142,54 @@ class StackedShortcutModel {
 		**/
 		void save_configuration(std::string);
 		void save(std::string);
+
+		/**
+		Decoder initialization
+		----------------------
+
+		Prepare sequence of input sizes to
+		parametrize the decoder for this shorcut
+		stacked LSTM model.
+
+		Inputs
+		------
+
+		   int input_size : size of input embedding
+		  int hidden_size : size of internal layers
+		   int stack_size : how many stacked layers
+		                    are used.
+
+		Outputs
+		-------
+
+		std::vector<int> init_list : sizes needed for decoder init.
+
+		**/
+		static std::vector<int> decoder_initialization(int, int, int);
+
+
+		/**
+		Decoder initialization
+		----------------------
+
+		Prepare sequence of input sizes to
+		parametrize the decoder for this shorcut
+		stacked LSTM model.
+
+		Inputs
+		------
+
+		       int input_size : size of input embedding
+std::vector<int> hidden_sizes : size of internal layers
+
+		Outputs
+		-------
+
+		std::vector<int> init_list : sizes needed for decoder init.
+
+		**/
+		static std::vector<int> decoder_initialization(int, std::vector<int>);
+		static std::vector<int> decoder_initialization(int, const std::vector<std::string>&);
 
 		/**
 		Load
@@ -254,7 +298,7 @@ class StackedShortcutModel {
 		    pair of LSTM hidden and cell states, and probabilities from the decoder.
 
 		**/
-		activation_t activate(graph_t&, lstm_activation_t&, const uint& );
+		activation_t activate(graph_t&, lstm_activation_t&, const uint&);
 
 		template<typename K>
 		std::string reconstruct_string(K, const utils::Vocab&, int, int symbol_offset = 0);

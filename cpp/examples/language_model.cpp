@@ -10,7 +10,8 @@
 #include "core/utils.h"
 #include "core/SST.h"
 #include "core/gzstream.h"
-#include "core/StackedModel.h"
+// #include "core/StackedModel.h"
+#include "core/StackedShortcutModel.h"
 
 DEFINE_int32(minibatch,   100,  "What size should be used for the minibatches ?");
 DEFINE_string(validation, "",   "Location of the validation dataset");
@@ -42,6 +43,7 @@ typedef float price_t;
 typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
 typedef Eigen::Matrix<REAL_t, Eigen::Dynamic, 1> float_vector;
 typedef std::pair<vector<string>, uint> labeled_pair;
+
 
 const string START = "**START**";
 
@@ -194,7 +196,7 @@ Inputs
 
 **/
 void reconstruct(
-    StackedModel<REAL_t>& model,
+    StackedShortcutModel<REAL_t>& model,
     const Databatch& minibatch,
     const int& i,
     const Vocab& word_vocab) {
@@ -210,7 +212,7 @@ void reconstruct(
 }
 
 template<typename T>
-T average_error(StackedModel<T>& model,
+T average_error(StackedShortcutModel<T>& model,
     const vector<Databatch>& dataset, const int& num_threads) {
 	T cost = 0.0;
 	auto G = graph_t(false); // create a new graph for each loop)
@@ -290,7 +292,7 @@ std::vector<std::shared_ptr<Mat<T>>>& : references to model parameters.
 
 **/
 template<typename T, typename S>
-void training_loop(StackedModel<T>& model,
+void training_loop(StackedShortcutModel<T>& model,
     const vector<Databatch>& dataset,
     const Vocab& word_vocab,
     S& solver,
@@ -394,11 +396,12 @@ void train_model(
     const int& max_patience
     ) {
     // Build Model:
-    StackedModel<T> model(word_vocab.index2word.size(),
+    StackedShortcutModel<T> model(word_vocab.index2word.size(),
             FLAGS_input_size,
             FLAGS_hidden,
             FLAGS_stack_size < 1 ? 1 : FLAGS_stack_size,
             word_vocab.index2word.size());
+
     model.embedding->sparse = FLAGS_sparse > 0;
     auto parameters = model.parameters();
     S solver(parameters, rho, 1e-9, 5.0);

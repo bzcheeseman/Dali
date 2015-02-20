@@ -95,6 +95,7 @@ class StackedInputLayer {
     */
     void create_variables();
     std::vector<std::shared_ptr<Mat<T>>> zip_inputs_with_matrices_and_bias(const std::vector<std::shared_ptr<Mat<T>>>&) const;
+    std::vector<std::shared_ptr<Mat<T>>> zip_inputs_with_matrices_and_bias(std::shared_ptr<Mat<T>>, const std::vector<std::shared_ptr<Mat<T>>>&) const;
     public:
         typedef Mat<T>                      mat;
         typedef std::shared_ptr<mat> shared_mat;
@@ -104,7 +105,7 @@ class StackedInputLayer {
         const std::vector<int> input_sizes;
         std::vector<shared_mat> parameters() const;
         StackedInputLayer (std::initializer_list<int>, int);
-        StackedInputLayer (const std::vector<int>&, int);
+        StackedInputLayer (std::vector<int>, int);
         /**
         StackedInputLayer<T>::StackedInputLayer
         ---------------------------------------
@@ -140,7 +141,54 @@ class StackedInputLayer {
 
         **/
         StackedInputLayer (const StackedInputLayer&, bool, bool);
+        /**
+        Activate
+        --------
+
+        Activate a Stacked Input Layer by multiplying **in order** each input
+        with a separate matrix transparently acting as if all the vectors
+        were joined into a single input and dotted with a single large matrix.
+
+        Inputs
+        ------
+    
+                                  Graph<T>& G : computation graph, keeps track of
+                                                steps for backpropagation
+        const std::vector<shared_mat>& inputs : vectors to project using this
+                                                layer's matrices and bias.
+
+        Outputs
+        -------
+
+        shared_mat out : projection of the inputs
+        **/
         shared_mat activate(Graph<T>&, const std::vector<shared_mat>&) const;
+        /**
+        Activate
+        --------
+
+        Activate a Stacked Input Layer by multiplying **in order** each input
+        with a separate matrix transparently acting as if all the vectors
+        were joined into a single input and dotted with a single large matrix.
+
+        Inputs
+        ------
+    
+                                  Graph<T>& G : computation graph, keeps track of
+                                                steps for backpropagation
+                                   shared_mat : separate input vector (convenience
+                                                for shortcut stacked LSTMs that
+                                                typically separate their hidden 
+                                                vectors from the inputs)
+        const std::vector<shared_mat>& inputs : other vectors to project using this
+                                                layer's matrices and bias.
+
+        Outputs
+        -------
+
+        shared_mat out : projection of the inputs
+        **/
+        shared_mat activate(Graph<T>&, shared_mat, const std::vector<shared_mat>&) const;
         /**
         Shallow Copy
         ------------
@@ -424,7 +472,6 @@ class LSTM {
         const int hidden_size;
         const int input_size;
         LSTM (int, int);
-        LSTM (int&, int&);
         /**
         LSTM<T>::LSTM
         -------------
@@ -493,7 +540,6 @@ class LSTM {
 template<typename T>
 class ShortcutLSTM {
     /*
-
     ShortcutLSTM layer with forget, output, memory write, and input
     modulate gates, that can remember sequences for long
     periods of time.
@@ -521,7 +567,6 @@ class ShortcutLSTM {
         const int input_size;
         const int shortcut_size;
         ShortcutLSTM (int, int, int);
-        ShortcutLSTM (int&, int&, int&);
         ShortcutLSTM (const ShortcutLSTM&, bool, bool);
         std::vector<shared_mat> parameters() const;
         std::pair<shared_mat, shared_mat> activate(
@@ -561,8 +606,8 @@ Outputs
 vector<ShortcutLSTM<T>> cells : constructed shortcutLSTMs
 
 **/
-template<typename T>
-std::vector<ShortcutLSTM<T>> StackedCells(const int&, const int&, const std::vector<int>&);
+template<typename celltype>
+std::vector<celltype> StackedCells(const int&, const int&, const std::vector<int>&);
 
 template<typename celltype>
 std::vector<celltype> StackedCells(const std::vector<celltype>&, bool, bool);

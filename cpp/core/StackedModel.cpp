@@ -230,8 +230,7 @@ StackedModel<T>::StackedModel (int _vocabulary_size, int _input_size, int hidden
 }
 
 template<typename T>
-StackedModel<T>::StackedModel (
-	const typename StackedModel<T>::config_t& config)
+StackedModel<T>::StackedModel (const typename StackedModel<T>::config_t& config)
 	:
 	vocabulary_size(from_string<int>(config.at("vocabulary_size")[0])),
 	output_size(from_string<int>(config.at("output_size")[0])),
@@ -239,8 +238,7 @@ StackedModel<T>::StackedModel (
 	stack_size(config.at("hidden_sizes").size()),
 	decoder(
 		from_string<int>(config.at("hidden_sizes")[config.at("hidden_sizes").size()-1]),
-		from_string<int>(config.at("output_size")[0]))
-{
+		from_string<int>(config.at("output_size")[0])) {
 	embedding = make_shared<mat>(vocabulary_size, input_size, (T) -0.05, (T) 0.05);
 	for (auto& v : config.at("hidden_sizes"))
 		hidden_sizes.emplace_back(from_string<int>(v));

@@ -333,7 +333,7 @@ void Solver::AdaDelta<T>::step (vector<typename Solver::AdaDelta<T>::shared_mat>
 				if (regc > 0) {
 					param->dw.row(i) = param->dw.row(i).array().min(clipval).max(-clipval).matrix() + (regc * param->w.row(i));
 				} else {
-					// param->dw = param->dw.array().min(clipval).max(-clipval).matrix();
+					param->dw.row(i) = param->dw.row(i).array().min(clipval).max(-clipval).matrix();
 				}
 				// update gradient cache using decay rule:
 				gsum.row(i) = (gsum.row(i) * rho) + ((1.0 - rho) * (param->dw.row(i).array().square()).matrix());
@@ -350,7 +350,7 @@ void Solver::AdaDelta<T>::step (vector<typename Solver::AdaDelta<T>::shared_mat>
 			if (regc > 0) {
 				param->dw = param->dw.array().min(clipval).max(-clipval).matrix() + (regc * param->w);
 			} else {
-				// param->dw = param->dw.array().min(clipval).max(-clipval).matrix();
+				param->dw = param->dw.array().min(clipval).max(-clipval).matrix();
 			}
 			// update gradient cache using decay rule:
 			gsum = (gsum * rho) + ((1.0 - rho) * (param->dw.array().square()).matrix());

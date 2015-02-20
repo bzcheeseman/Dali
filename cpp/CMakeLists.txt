@@ -18,7 +18,7 @@ find_package(BLAS)
 find_package(MKL)
 
 if (NOT Tcmalloc_LIBRARIES)
-    message("WARNING: consider installing tcmalloc for better multithreaded performance.")
+    message("WARNING: consider installing tcmalloc for better multithreaded performance.\n    > brew install gperftools")
 endif(NOT Tcmalloc_LIBRARIES)
 
 message("TCmalloc libs => " ${Tcmalloc_LIBRARIES})

@@ -18,16 +18,39 @@ template<typename T> class Backward {
 	void backward_mul_add_mul_with_bias();
 	public:
 		std::vector<shared_mat> matrices;
-
 		shared_mat out;
 		Backward(shared_mat, shared_mat, uint);
 		Backward(shared_mat, shared_mat, int, uint);
 		Backward(shared_mat, shared_mat, index_std_vector&, uint);
 		Backward(shared_mat, shared_mat, eigen_index_block, uint);
 		Backward(std::initializer_list<shared_mat>, shared_mat, uint);
-
 		operator std::string() const;
+		/**
+		Operation Type
+		--------------
+
+		Returns the name of the mathematical operation that this step
+		of backpropagation is responsible for computing (e.g. sigmoid,
+		tanh, mul, eltmul, etc..)
+
+		Outputs
+		-------
+
+		std::string name : name of operation
+		**/
 		std::string op_type () const;
+		/**
+		Operator()
+		----------
+
+		Perform the backpropagation step taking the gradients from the
+		matrix referenced by `out` and passing those using the adjoint
+		method to the input `matrices`.
+
+		See method definition for specific implementation details, and
+		look at `Graph<T>::backward` for specific usage of
+		`Backward<T>::operator()`.
+		**/
 		void operator ()();
 };
 

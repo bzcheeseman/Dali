@@ -1,5 +1,4 @@
 #include "Graph.h"
-
 using std::stringstream;
 
 template<typename T>
@@ -59,28 +58,6 @@ typename Graph<T>::shared_mat Graph<T>::eltmul(
 	return out;
 }
 
-/**
-Element Multiplication Broadcast Rowwise
-----------------------------------------
-
-To treat the special case of a row vector that must be multiplied
-with a matrix, rowwise, the we ensure that the row_vector has only
-one row, and the number of columns of this row vector is equal to
-the number of rows of matrix1.
-
-Inputs
-------
-
-shared_mat matrix1    : the matrix to multiply row wise
-shared_mat row_vector : the row vector to multiply with each row
-                        of matrix1 individually.
-
-Outputs
--------
-
-shared_mat out : the rowwise multiply of matrix1 with row_vector.
-
-**/
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::eltmul_broadcast_rowwise(
 	shared_mat matrix1,
@@ -98,27 +75,6 @@ typename Graph<T>::shared_mat Graph<T>::eltmul_broadcast_rowwise(
 	return out;
 }
 
-/**
-Element Multiplication Rowwise
-------------------------------
-
-The more general case is the element wise multiplication of two
-matrices A and B, with B transposed:
-
-> out = A * B^T
-
-Inputs
-------
-
-shared_mat matrix1    : the matrix to multiply
-shared_mat matrix2    : the matrix to multiply after transposing
-
-Outputs
--------
-
-shared_mat out : the element wise product of matrix1 and matrix2^T
-
-**/
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::eltmul_rowwise(
 	shared_mat matrix1,
@@ -137,26 +93,6 @@ typename Graph<T>::shared_mat Graph<T>::eltmul_rowwise(
 	return out;
 }
 
-/**
-Graph<T>::add
--------------
-
-Add a 2 matrices together. Broadcasts the sum if
-one of them is actually a vector (number of
-columns = d = 1)
-
-Inputs
-------
-
-std::shared_ptr<Mat<T>> matrix1 : matrix to add
-std::shared_ptr<Mat<T>> matrix2 : matrix to add
-
-Outputs
--------
-
-std::shared_ptr<Mat<T>> out : the sum of the matrices
-
-**/
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::add(
 		shared_mat matrix1,
@@ -195,24 +131,6 @@ typename Graph<T>::shared_mat Graph<T>::add_broadcast(shared_mat matrix1, shared
 	return out;
 }
 
-/**
-Graph<T>::add
--------------
-
-Add a list of matrices together, but does not perform any
-broadcasting (yet)
-
-Inputs
-------
-
-std::initializer_list<std::shared_ptr<Mat<T>>> matrices : matrices to add
-
-Outputs
--------
-
-std::shared_ptr<Mat<T>> out : the sum of the matrices
-
-**/
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::add(std::initializer_list<shared_mat> matrices) {
 	auto out = std::make_shared<Mat<T>>(

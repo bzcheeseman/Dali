@@ -460,7 +460,8 @@ int main( int argc, char* argv[]) {
 
 
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
-    // Eigen::initParallel(); // might slow down entire computation
+    if (FLAGS_eigen_parallel)
+        Eigen::initParallel(); // might slow down entire computation
 
     // Not sure if this correct thing to do for all versions of clang compiler
     auto report_frequency   = FLAGS_report_frequency;

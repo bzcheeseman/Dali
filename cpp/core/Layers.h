@@ -23,6 +23,40 @@ class Layer {
         const int input_size;
         std::vector<shared_mat> parameters() const;
         Layer (int, int);
+        /**
+        Layer<T>::Layer
+        ---------------
+
+        Copy constructor with option to make a shallow
+        or deep copy of the underlying parameters.
+
+        If the copy is shallow then the parameters are shared
+        but separate gradients `dw` are used for each of 
+        thread Layer<T>.
+
+        Shallow copies are useful for Hogwild and multithreaded
+        training
+
+        See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`,
+        `Layer<T>::shallow_copy`
+
+        Inputs
+        ------
+
+          Layer<T> l : layer from which to source parameters and dw
+         bool copy_w : whether parameters for new layer should be copies
+                       or shared
+        bool copy_dw : whether gradients for new layer should be copies
+                       shared (Note: sharing `dw` should be used with
+                       caution and can lead to unpredictable behavior
+                       during optimization).
+
+        Outputs
+        -------
+
+        Layer<T> out : the copied layer with deep or shallow copy
+
+        **/
         Layer (const Layer&, bool, bool);
         shared_mat activate(Graph<T>&, shared_mat) const;
         Layer<T> shallow_copy() const;
@@ -138,8 +172,54 @@ class LSTM {
         LSTM<T> shallow_copy() const;
 };
 
+template<typename T>
+class ShortcutLSTM {
+    /*
+
+    ShortcutLSTM layer with forget, output, memory write, and input
+    modulate gates, that can remember sequences for long
+    periods of time.
+
+    Unlike a traditional LSTM this layer type takes 2 inputs along
+    with its previous hidden state: an input from the layer below,
+    and a "shortcut" input from the base layer (or elsewhere).
+
+    See `Mat`, `HiddenLayer`
+    */
+    typedef ShortcutRNN<T>          layer_type;
+    void name_internal_layers();
+    public:
+        typedef Mat<T>                               mat;
+        typedef std::shared_ptr<mat>          shared_mat;
+        // cell input modulation:
+        layer_type input_layer;
+        // cell forget gate:
+        layer_type forget_layer;
+        // cell output modulation
+        layer_type output_layer;
+        // cell write params
+        layer_type cell_layer;
+        const int hidden_size;
+        const int input_size;
+        const int shortcut_size;
+        ShortcutLSTM (int, int, int);
+        ShortcutLSTM (int&, int&, int&);
+        ShortcutLSTM (const ShortcutLSTM&, bool, bool);
+        std::vector<shared_mat> parameters() const;
+        std::pair<shared_mat, shared_mat> activate(
+            Graph<T>&,
+            shared_mat,
+            shared_mat,
+            shared_mat,
+            shared_mat) const;
+        ShortcutLSTM<T> shallow_copy() const;
+};
+
 template<typename celltype>
 std::vector<celltype> StackedCells(const int&, const std::vector<int>&);
+
+template<typename T>
+std::vector<ShortcutLSTM<T>> StackedCells(const int&, const int&, const std::vector<int>&);
 
 template<typename celltype>
 std::vector<celltype> StackedCells(const std::vector<celltype>&, bool, bool);
@@ -149,5 +229,12 @@ std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<
     std::shared_ptr<Mat<T>>,
     std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>>&,
     std::vector<LSTM<T>>&);
+
+template<typename T>
+std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>> forward_LSTMs(Graph<T>&,
+    std::shared_ptr<Mat<T>>,
+    std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>>&,
+    LSTM<T>&,
+    std::vector<ShortcutLSTM<T>>&);
 
 #endif

@@ -13,6 +13,9 @@
 #include <iostream>
 #include <unordered_map>
 
+
+DECLARE_bool(eigen_parallel);
+
 typedef Eigen::MatrixBase<Eigen::Matrix<unsigned int, Eigen::Dynamic, Eigen::Dynamic> >::ColXpr eigen_index_block;
 typedef Eigen::Matrix<unsigned int, Eigen::Dynamic, 1> eigen_index_vector;
 typedef std::shared_ptr<eigen_index_vector> shared_eigen_index_vector;
@@ -37,14 +40,114 @@ template<typename T> class Mat {
 		const random_t random_id;
 		Mat (int, int);
 		Mat (int, int, bool);
+		/**
+		Mat<T>::Mat<T>
+		--------------
+
+		A copy constructor that perform shallow and deep
+		copies of a Mat.
+
+		Key usage is for Hogwild style training of parameters
+		where different computation threads share memory for
+		the parameters but each compute their own gradients.
+		The gradients are kept in separate `dw` memory buffers
+		but `w` buffers are shared amongst threads.
+
+		For usage see `Solver::Adadelta`,
+		              `examples/character_prediction.cpp`
+
+		Inputs
+		------
+
+		const Mat<T>& m : matrix to copy or point to
+		    bool copy_w : whether matrix parameters should be copied over, or shared
+		                  between matrices
+		   bool copy_dw : whether matrix gradient parameters should be copied over,
+		                  or shared (Note: it is unclear when `dw` should be shared,
+		                  proceed with caution).
+
+		Outputs
+		-------
+
+		Mat<T> out : deep or shallow copy of m
+		**/
         Mat (const Mat<T>& m, bool copy_w, bool copy_dw);
 		void print();
 		~Mat();
+		/*
+		Set Name
+		--------
+
+		Used for giving names to matrices for debugging or convenience purposes,
+		but the names have no bearing on computation or identification in
+		lookup tables;
+
+		Inputs
+		------
+
+		std::string& name : name the Mat should take on
+
+		*/
 		void set_name(std::string&);
+		/*
+		Set Name
+		--------
+		See `Mat<T>::set_name` above
+		*/
 		void set_name(char*);
+		/*
+		Set Name
+		--------
+		See `Mat<T>::set_name` above
+		*/
 		void set_name(const char*);
 		// random matrices:
+		/*
+		Mat<T>::Mat<T>
+		--------------
+
+		Matrix constructor using a zero mean
+		normal distribution with a user provided 
+		standard deviation.
+
+		Inputs
+		------
+
+		int _n : number of rows
+		int _d : number of columns
+		 T std : standard deviation for normal distribution
+
+		Outputs
+		-------
+
+		Mat<T> out : the matrix filled with random numbers from ~ N(0, std^2)
+
+		See `Mat<T>::Mat(int, int, T, T)` for uniform distribution (below).
+		*/
 		Mat (int, int, T);
+		/*
+		Mat<T>::Mat<T>
+		--------------
+
+		Matrix constructor using a uniform
+		distribution with user defined min
+		and max support.
+
+		Inputs
+		------
+
+		  int _n : number of rows
+		  int _d : number of columns
+		 T lower : minimum of uniform distribution
+		 T upper : maximum of uniform distribution
+
+		Outputs
+		-------
+
+		Mat<T> out : the matrix filled with random numbers from ~U(lower, upper)
+
+		See `Mat<T>::Mat(int, int, T)` for normal distribution (above)
+		*/
 		Mat (int, int, T, T);
 		void npy_save(std::string fname, std::string mode = "w");
 		void npy_save(FILE*);
@@ -54,6 +157,31 @@ template<typename T> class Mat {
 		Mat (std::string fname);
 		static Mat RandMat(int, int, T);
 		static Mat Empty(int, int);
+		/**
+		Shallow Copy
+		------------
+
+		A copy constructor that perform shallow copies of a Mat.
+
+		Key usage is for Hogwild style training of parameters
+		where different computation threads share memory for
+		the parameters but each compute their own gradients.
+		The gradients are kept in separate `dw` memory buffers
+		but `w` buffers are shared amongst threads.
+
+		For usage see `Mat<T>::Mat<T>(const Mat&, bool, bool)`, `examples/character_prediction.cpp`
+
+		Inputs
+		------
+
+		const Mat<T>& m : matrix that will own the underlying memory
+		                  for `w`  
+
+		Outputs
+		-------
+
+		Mat<T> out : shallow copy of m
+		**/
 		static Mat shallow_copy(const Mat&);
 		operator std::string() const;
 };

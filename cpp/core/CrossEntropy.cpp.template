@@ -24,33 +24,6 @@ T cross_entropy(std::shared_ptr<Mat<T>> logprobs, const M targets) {
 	return cost;
 }
 
-
-/**
-Masked Cross Entropy Loss
--------------------------
-
-Given a probability distribution p at a time T, for k channels,
-and k different targets, apply KL Divergence loss
-on the channels that are have T >= loss_start[k] and
-T < loss_start[k] + codelens[k] (so from T to T+codelen error
-will be picked up by channel k).
-
-Inputs
-------
-
-std::shared_ptr<Mat<Z>> logprobs : the log probabilities (unnormalized)
-uint& T : the log probabilities (unnormalized)
-shared_eigen_index_vector loss_start : where to start picking up errors for channel k
-shared_eigen_index_vector codelens : how long does channel k pick up errors
-const M targets : the labels at time T
-
-Outputs
--------
-
-Z cost : the total KL divergence at this time step for
-         the relevant channels
-
-*/
 template<typename Z, typename M>
 Z masked_cross_entropy(std::shared_ptr<Mat<Z>> logprobs,
 	uint& T,
@@ -243,15 +216,6 @@ Z masked_cross_entropy(std::shared_ptr<Mat<Z>> logprobs,
 
 // MASKED CROSS ENTROPY NO GRAD
 
-/**
-Masked Cross Entropy Loss
--------------------------
-
-(does not calculate gradient, only reports error)
-
-See `masked_cross_entropy`
-
-*/
 template<typename Z, typename M>
 Z masked_cross_entropy_no_grad(std::shared_ptr<Mat<Z>> logprobs,
 	uint& T,
@@ -386,28 +350,6 @@ template double cross_entropy(std::shared_ptr<Mat<double>>, eigen_index_block);
 template float  cross_entropy(std::shared_ptr<Mat<float>>, eigen_index_block_scalar);
 template double cross_entropy(std::shared_ptr<Mat<double>>, eigen_index_block_scalar);
 
-/**
-Masked Sum No Grad
-------------------
-
-Sum values[k] if timestep T
-if within [loss_start[k], loss_start[k] + codelens[k]),
-gradient is columnwise vector of 1s.
-
-Inputs:
--------
-
-std::shared_ptr<Mat<Z>> values : the data columns subject to summing.
-uint& T : the log probabilities (unnormalized)
-shared_eigen_index_vector loss_start : where to start picking up errors for channel k
-shared_eigen_index_vector codelens : how long does channel k pick up errors
-
-Outputs:
---------
-
-Z cost : the total sum along the non-masked columns of values.
-
-*/
 template<typename Z>
 Z masked_sum(std::shared_ptr<Mat<Z>> values,
 	uint& T,
@@ -559,15 +501,6 @@ Z masked_sum(std::shared_ptr<Mat<Z>> values,
 
 // MASKED SUM NO GRAD
 
-/**
-Masked Sum No Grad
-------------------
-
-(does not calculate gradient, only reports error)
-
-See `masked_sum`
-
-*/
 template<typename Z>
 Z masked_sum_no_grad(std::shared_ptr<Mat<Z>> values,
 	uint& T,

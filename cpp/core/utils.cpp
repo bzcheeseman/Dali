@@ -184,26 +184,6 @@ namespace utils {
 		}
 		return tokens;
 	}
-
-	/**
-	Text To Map
-	-----------
-
-	Read a text file, extract all key value pairs and
-	ignore markdown decoration characters such as =, -,
-	and #
-
-	Inputs
-	------
-
-	std::string fname : the file to read
-
-	Outputs
-	-------
-
-	std::map<string, std::vector<string> > map : the extracted key value pairs.
-
-	**/
 	std::map<string, std::vector<string>> text_to_map(const string& fname) {
 		ifstream infile(fname);
 		string line;
@@ -283,27 +263,6 @@ namespace utils {
 		}
 	}
 
-	/**
-	Load Labeled Corpus
-	-------------------
-
-	Read text file line by line and extract pairs of labeled text
-	by splitting on the first space character. Whatever is before
-	the first space is the label and is stored second in the returned
-	pairs, and after the space is the example, and this is returned
-	first in the pairs.
-
-	Inputs
-	------
-
-	const std::string& fname : labeled corpus file
-
-	Outputs
-	-------
-
-	std::vector<std::pair<std::string, std::string>> pairs : labeled corpus pairs
-
-	**/
 	vector<std::pair<string, string>> load_labeled_corpus(const string& fname) {
 		ifstream fp(fname.c_str());
 		string l;
@@ -320,26 +279,6 @@ namespace utils {
 		return pairs;
 	}
 
-	/**
-	Convert Triggers To Vector
-	--------------------------
-
-	Convert triggers from an example to their
-	string representation using an index2label
-	string vector.
-
-	Inputs
-	------
-
-	const google::protobuf::RepeatedPtrField<Example::Trigger>& triggers : list of Trigger protobuff objects
-	const vector<string>& index2target : mapping from numerical to string representation
-
-	Outputs
-	-------
-
-	std::vector<std::string> data : the strings corresponding to the trigger targets
-
-	**/
 	vector<string> triggers_to_strings(const google::protobuf::RepeatedPtrField<Example::Trigger>& triggers, const vector<string>& index2target) {
 		vector<string> data;
 		data.reserve(triggers.size());
@@ -349,28 +288,6 @@ namespace utils {
 		return data;
 	}
 
-	/**
-	Load Protobuff Dataset
-	----------------------
-
-	Load a set of protocol buffer serialized files from ordinary
-	or gzipped files, and conver their labels from an index
-	to their string representation using an index2label mapping.
-
-	Inputs
-	------
-
-	std::string directory : where the protocol buffer files are stored
-	const std::vector<std::string>& index2label : mapping from numericals to
-	                                              string labels
-
-	Outputs
-	-------
-
-	utils::tokenized_multilabeled_dataset dataset : pairs of tokenized strings
-	                                                and vector of string labels
-
-	**/
 	tokenized_multilabeled_dataset load_protobuff_dataset(string directory, const vector<string>& index2label) {
 		ensure_directory(directory);
 		auto files = listdir(directory);
@@ -552,24 +469,6 @@ namespace utils {
 	  return true;
 	}
 
-	/**
-	randint
-	-------
-
-	Sample integers from a uniform distribution between (and including)
-	lower and upper int values.
-
-	Inputs
-	------
-	int lower
-	int upper
-
-	Outputs
-	-------
-
-	int sample
-
-	**/
 	int randint(int lower, int upper) {
 		if (lower == upper) return lower;
 		std::default_random_engine generator;
@@ -612,23 +511,6 @@ namespace utils {
 	template double from_string<double>(const std::string& s);
 	template long from_string<long>(const std::string& s);
 
-	/**
-	Is Gzip ?
-	---------
-
-	Check whether a file has the header information for a GZIP
-	file or not.
-
-	Inputs
-	------
-	std::string& fname : potential gzip file's path
-
-	Outputs
-	-------
-
-	bool gzip? : whether header matches gzip header
-
-	**/
 	bool is_gzip(const std::string& fname) {
 		const unsigned char gzip_code = 0x1f;
 		const unsigned char gzip_code2 = 0x8b;
@@ -684,20 +566,6 @@ namespace utils {
 	  std::hash<T> hasher;
 	  seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 	}
-
-	/**
-	Get Random ID
-	-------------
-
-	Get a super random number using both time, device default engine,
-	and hash combinations between each.
-
-	Outputs
-	-------
-
-	int seed : hopefully collision free random number as an ID
-
-	**/
 	std::size_t get_random_id() {
 		std::size_t seed = 0;
 		std::default_random_engine generator;
@@ -721,21 +589,6 @@ namespace utils {
 	template struct relu_operator<double>;
 	template struct sign_operator<double>;
 	template struct dtanh_operator<double>;
-
-	/**
-	OntologyBranch::save
-	--------------------
-
-	Serialize a lattice to a file by saving each edge on a separate line.
-
-	Inputs
-	------
-
-	std::string fname : file to saved the lattice to
-	std::ios_base::openmode mode : what file open mode to use (defaults to write,
-								   but append can also be useful).
-
-	**/
 
 	template<typename T>
 	void OntologyBranch::save_to_stream(T& fp) {
@@ -777,14 +630,6 @@ namespace utils {
 			save_to_stream(fp);
 		}
 	}
-
-	/**
-	OntologyBranch::compute_max_depth
-	---------------------------------
-
-	Memoization computation for `OntologyBranch::max_depth`
-
-	**/
 	void OntologyBranch::compute_max_depth() {
 		_max_depth = 0;
 		for (auto&v : children)
@@ -792,19 +637,6 @@ namespace utils {
 				_max_depth = v->max_depth() + 1;
 	}
 
-	/**
-	OntologyBranch::max_depth
-	-------------------------
-
-	A memoized value for the deepest leaf's distance from the OntologyBranch
-	that called the method. A leaf returns 0, a branch returns the max of its
-	children's values + 1.
-
-	Outputs
-	-------
-	int max_depth : Maximum number of nodes needed to traverse to reach a leaf.
-
-	**/
 	int& OntologyBranch::max_depth() {
 		if (_max_depth > -1) return _max_depth;
 		else {
@@ -842,7 +674,6 @@ namespace utils {
 		}
 		return path_pair;
 	}
-
 
 	std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> OntologyBranch::random_path_from_root(const string& nodename) {
 		auto up_node = lookup_table->at(nodename);
@@ -1007,42 +838,11 @@ namespace utils {
 		return std::max((int)children.size(), *std::max_element(child_maxes.begin(), child_maxes.end()));
 	}
 
-	/**
-	Exit With Message
-	-----------------
-
-	Exit the program with a message printed to std::cerr
-
-	Inputs
-	------
-
-	std::string& message : error message
-	int error_code : code for the error, defaults to 1
-
-	**/
 	void exit_with_message(const std::string& message, int error_code) {
 		std::cerr << message << std::endl;
 		exit(error_code);
 	}
 
-	/**
-	Ends With
-	---------
-
-	Check whether a string ends with the same contents as another.
-
-	Inputs
-	------
-
-	std::string const& full: where to look
-	std::string const& ending: what to look for
-
-	Outputs
-	-------
-
-	bool endswith : whether the second string ends the first.
-
-	*/
 	bool endswith(std::string const & full, std::string const & ending) {
 	    if (full.length() >= ending.length()) {
 	        return (0 == full.compare(full.length() - ending.length(), ending.length(), ending));
@@ -1051,24 +851,6 @@ namespace utils {
 	    }
 	}
 
-	/**
-	Ends With
-	---------
-
-	Check whether a string ends with the same contents as another.
-
-	Inputs
-	------
-
-	std::string const& full: where to look
-	std::string const& ending: what to look for
-
-	Outputs
-	-------
-
-	bool endswith : whether the second string ends the first.
-
-	*/
 	bool startswith(std::string const & full, std::string const & beginning) {
 	    if (full.length() >= beginning.length()) {
 	        return (0 == full.compare(0, beginning.length(), beginning));
@@ -1081,7 +863,6 @@ namespace utils {
 		struct stat buffer;
 		return (stat (fname.c_str(), &buffer) == 0);
 	}
-
 
 	bool validate_flag_nonempty(const char* flagname, const std::string& value) {
 		if (value.empty()) {

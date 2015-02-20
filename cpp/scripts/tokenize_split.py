@@ -32,7 +32,7 @@ def tokenize_and_write(file, text, token):
 if __name__ == "__main__":
     total_size = os.stat(args.input).st_size
     i = 0
-    with open(args.validaton, "wt") as fvalid:
+    with open(args.validation, "wt") as fvalid:
         with open(args.train, "wt") as fout:
             with open(args.input, "rb") as fin:
                 text_fin = io.TextIOWrapper(fin, newline='')

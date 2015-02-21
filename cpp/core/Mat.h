@@ -270,7 +270,8 @@ namespace Solver {
 		typedef std::shared_ptr<mat> shared_mat;
 		public:
 			SGD (T clipval = 5.0);
-			void step( std::vector<shared_mat>&, T, T);
+			SGD (std::vector<shared_mat>&, T clipval = 5.0);
+			void step( std::vector<shared_mat>&, T, T = 0.0);
 	};
 }
 #endif

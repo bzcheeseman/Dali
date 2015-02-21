@@ -250,6 +250,10 @@ Solver::SGD<T>::SGD (T _clipval) :
         clipval(_clipval) {};
 
 template<typename T>
+Solver::SGD<T>::SGD (vector<typename Solver::SGD<T>::shared_mat>& parameters, T _clipval) :
+        clipval(_clipval) {};
+
+template<typename T>
 void Solver::SGD<T>::step (vector<typename Solver::SGD<T>::shared_mat>& parameters,
 	T step_size,
 	T regc

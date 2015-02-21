@@ -1,13 +1,5 @@
 #include "StackedShortcutModel.h"
 
-DEFINE_int32(stack_size,  4,    "How many LSTMs should I stack ?");
-DEFINE_int32(input_size,  100,  "Size of the word vectors");
-DEFINE_int32(hidden,      100,  "How many Cells and Hidden Units should each LSTM have ?");
-DEFINE_double(decay_rate, 0.95, "What decay rate should RMSProp use ?");
-DEFINE_double(rho,        0.95, "What rho / learning rate should the Solver use ?");
-DEFINE_string(save,       "",   "Where to save the model to ?");
-DEFINE_string(load,       "",   "Where to load the model from ?");
-
 using std::shared_ptr;
 using std::vector;
 using std::make_shared;
@@ -24,6 +16,8 @@ vector<typename StackedShortcutModel<T>::shared_mat> StackedShortcutModel<T>::pa
 
 	auto decoder_params = decoder.parameters();
 	parameters.insert(parameters.end(), decoder_params.begin(), decoder_params.end());
+	auto base_cell_params = base_cell.parameters();
+	parameters.insert(parameters.end(), base_cell_params.begin(), base_cell_params.end());
 	for (auto& cell : cells) {
 		auto cell_params = cell.parameters();
 		parameters.insert(parameters.end(), cell_params.begin(), cell_params.end());
@@ -364,7 +358,7 @@ std::vector<int> StackedShortcutModel<T>::reconstruct(
 	auto initial_state = get_final_activation(G, example);
 	vector<int> outputs;
 
-	auto input_vector = G.row_pluck(embedding, example(example.cols() * example.rows()-1));
+	auto input_vector = G.row_pluck(embedding, example((example.cols() * example.rows()) -1));
 	auto last_symbol = argmax(decoder.activate(G, input_vector, initial_state.second));
 	outputs.emplace_back(last_symbol);
 	last_symbol += symbol_offset;

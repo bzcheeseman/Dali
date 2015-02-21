@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <atomic>
 #include <Eigen/Eigen>
 #include <fstream>
 #include <deque>
@@ -12,6 +13,7 @@
 #include "core/gzstream.h"
 #include "core/StackedModel.h"
 #include "core/StackedShortcutModel.h"
+#include "core/ThreadPool.h"
 
 DEFINE_int32(minibatch,   100,  "What size should be used for the minibatches ?");
 DEFINE_string(validation, "",   "Location of the validation dataset");
@@ -48,6 +50,7 @@ typedef std::pair<vector<string>, uint> labeled_pair;
 
 const string START = "**START**";
 
+ThreadPool* pool;
 
 /**
 Databatch
@@ -214,48 +217,28 @@ void reconstruct(
 }
 
 template<typename model_t>
-REAL_t average_error(model_t& model,
-    const vector<Databatch>& dataset, const int& num_threads) {
-	REAL_t cost = 0.0;
+REAL_t average_error(model_t& model, const vector<Databatch>& dataset) {
 	auto G = graph_t(false); // create a new graph for each loop)
-    int full_code_size(0);
-    vector<size_t> indices(dataset.size());
-    for (size_t i = 0; i < dataset.size();i++) {
-        indices[i] = i;
+
+    int full_code_size = 0;
+    vector<double> costs(FLAGS_j);
+    for (size_t i = 0; i < dataset.size();i++)
         full_code_size += dataset[i].total_codes;
+    for (size_t batch_id = 0; batch_id < dataset.size(); ++batch_id) {
+        pool->run([&costs, &dataset, &model, &G, &batch_id]() {
+            /*costs[ThreadPool::get_thread_number()] += model.masked_predict_cost(
+                G,
+                dataset[batch_id].data, // the sequence to draw from
+                dataset[batch_id].data, // what to predict (the words offset by 1)
+                1,
+                dataset[batch_id].codelens,
+                0
+            );*/
+        });
     }
+    pool->wait_until_idle();
 
-    // ConcurrentQueue<size_t> jobs(indices.size());
-    // jobs.enqueue_bulk(indices.begin(), indices.size());
-    std::deque<size_t> jobs(indices.begin(), indices.end());
-	vector<thread> workers;
-
-    std::mutex thread_mutex;
-
-    vector<REAL_t> costs(num_threads);
-    for (int t = 0; t < num_threads; t++) {
-        workers.emplace_back([&costs, &dataset, &model, &G, &jobs, &thread_mutex](int thread_id) {
-            size_t job;
-            costs[thread_id] = 0.0;
-            while (true) {
-                {
-                    std::lock_guard<std::mutex> thread_lock(thread_mutex);
-                    if (jobs.empty()) break;
-                    job = jobs.front();
-                    jobs.pop_front();
-                }
-                costs[thread_id] += model.masked_predict_cost(
-                    G,
-                    dataset[job].data, // the sequence to draw from
-                    dataset[job].data, // what to predict (the words offset by 1)
-                    1,
-                    dataset[job].codelens,
-                    0
-                );
-            }
-        }, t);
-    }
-    for (auto& worker : workers) worker.join();
+    REAL_t cost = 0.0;
     for (auto& v : costs) cost += v;
     return cost / full_code_size;
 }
@@ -282,82 +265,58 @@ Inputs
               const Vocab& word_vocab : the word vocabulary with a lookup table
                                         mapping unique words to an index and
                                         vice-versa.
-                         const T& rho : rho parameter to control Adadelta decay rate
                             S& Solver : Solver handling updates to parameters using
                                         a specific regimen (SGD, Adadelta, AdaGrad, etc.)
-std::vector<std::shared_ptr<Mat<T>>>& : references to model parameters.
-          const int& report_frequency : how often to reconstruct a sentence and display
-                                        training progress (KL divergence w.r.t. training
-                                        data)
                      const int& epoch : how many epochs of training has been done so far.
-               const int& num_threads : how many threads to use
 
 **/
-template<typename T, typename model_t, typename S>
+template<typename model_t, typename S>
 void training_loop(model_t& model,
     const vector<Databatch>& dataset,
     const Vocab& word_vocab,
     S& solver,
-    const T& rho,
-    vector<shared_ptr<mat>>& parameters,
-    const int& report_frequency,
-    const int& epoch,
-    const int& patience,
-    const int& num_threads) {
+    const int& epoch) {
 
-    T cost = 0.0;
-
-    // Create jobs:
+    double cost = 0.0;
+    int full_code_size = 0;
     auto random_batch_order = utils::random_arange(dataset.size());
 
-    int total_jobs = random_batch_order.size();
+    vector<model_t> thread_models;
+    for (int i = 0; i <FLAGS_j; ++i)
+        thread_models.push_back(model.shallow_copy());
 
-    std::deque<size_t> jobs(random_batch_order.begin(), random_batch_order.end());
+    std::atomic<int> batches_processed(0);
 
-    // Creater workers:
-    vector<thread> workers;
-    int full_code_size = 0;
-    std::mutex thread_mutex;
+    for (auto batch_id : random_batch_order) {
+        pool->run([&model, &dataset, &solver, &epoch, &full_code_size,
+                   &cost, &thread_models, &batch_id, &random_batch_order,
+                   &batches_processed]() {
 
-    auto engine = std::default_random_engine{};
-
-    for (int t=0; t < num_threads; ++t)
-        workers.emplace_back([&rho, &engine, &model, &jobs, &dataset, &solver, &epoch, &total_jobs, &full_code_size, &cost, &thread_mutex](int thread_id) {
-            auto thread_model = model.shallow_copy();
+            auto& thread_model = thread_models[ThreadPool::get_thread_number()];
             auto thread_parameters = thread_model.parameters();
-            std::shuffle(std::begin(thread_parameters), std::end(thread_parameters), engine);
-
-            size_t job;
-            int i = 0;
-            while (true) {
-                {
-                    std::lock_guard<std::mutex> thread_lock(thread_mutex);
-                    if (jobs.empty()) break;
-                    job = jobs.front();
-                    jobs.pop_front();
-                }
-                auto& minibatch = dataset[job];
-                auto G = graph_t(true);
-                cost += thread_model.masked_predict_cost(
-                    G,
-                    minibatch.data, // the sequence to draw from
-                    minibatch.data, // what to predict (the words offset by 1)
-                    0,
-                    minibatch.codelens,
-                    0
-                );
-                thread_model.embedding->sparse_row_keys = minibatch.row_keys;
-                full_code_size += minibatch.total_codes;
-                G.backward(); // backpropagate
-                solver.step(thread_parameters, rho);
-                printf("epoch (%d - %.2f%%) KL error = %.3f\r",
-                    epoch,
-                    100.0 * ((1.0 - (double) jobs.size() / total_jobs)),
-                    cost / full_code_size);
-                fflush(stdout);
-            }
-        }, t);
-    for (auto& worker: workers) worker.join();
+            auto& minibatch = dataset[batch_id];
+            auto G = graph_t(true);
+            cost += thread_model.masked_predict_cost(
+                G,
+                minibatch.data, // the sequence to draw from
+                minibatch.data, // what to predict (the words offset by 1)
+                0,
+                minibatch.codelens,
+                0
+            );
+            thread_model.embedding->sparse_row_keys = minibatch.row_keys;
+            full_code_size += minibatch.total_codes;
+            G.backward(); // backpropagate
+            solver.step(thread_parameters, FLAGS_rho);
+            batches_processed += 1;
+            printf("epoch (%d - %.2f%%) KL error = %.3f\r",
+                epoch,
+                100.0 * batches_processed / random_batch_order.size() ,
+                cost / full_code_size);
+            fflush(stdout);
+        });
+    }
+    pool->wait_until_idle();
 }
 
 /**
@@ -377,65 +336,51 @@ const vector<Databatch>& dataset : sentences broken into minibatches to
          const Vocab& word_vocab : the word vocabulary with a lookup table
                                    mapping unique words to an index and
                                    vice-versa.
-                    const T& rho : rho parameter to control Adadelta decay rate
-     const int& report_frequency : how often to reconstruct a sentence and display
-                                   training progress (KL divergence w.r.t. training
-                                   data)
-               const int& epochs : maximum number of epochs to train for.
-     const string& save_location : where to save the model after training.
 
 **/
-template<typename T, typename model_t, class S>
-void train_model(
-    const vector<Databatch>& dataset,
+template<typename model_t, class S>
+void train_model(const vector<Databatch>& dataset,
     const vector<Databatch>& validation_set,
-    const Vocab& word_vocab,
-    const T& rho,
-    const int& report_frequency,
-    const T& cutoff,
-    const int& epochs,
-    const string& save_location,
-    const int& num_threads,
-    const int& max_patience
-    ) {
+    const Vocab& word_vocab) {
     // Build Model:
     model_t model(word_vocab.index2word.size(),
             FLAGS_input_size,
             FLAGS_hidden,
             FLAGS_stack_size < 1 ? 1 : FLAGS_stack_size,
             word_vocab.index2word.size());
-
     model.embedding->sparse = FLAGS_sparse > 0;
+
     auto parameters = model.parameters();
-    S solver(parameters, rho, 1e-9, 5.0);
+    S solver(parameters, FLAGS_rho, 1e-9, 5.0);
+
     int i = 0;
     auto cost = std::numeric_limits<REAL_t>::infinity();
-    T new_cost = 0.0;
+    double new_cost = 0.0;
     int patience = 0;
-    while (cost > cutoff && i < epochs && patience < max_patience) {
+
+    while (cost > FLAGS_cutoff && i < FLAGS_epochs && patience < FLAGS_patience) {
         new_cost = 0.0;
-        training_loop(model, dataset, word_vocab, solver, rho, parameters, report_frequency, i, patience, num_threads);
-        new_cost = average_error(model, validation_set, num_threads);
-        if (new_cost >= cost) patience++;
-        else {patience = 0;}
-        cost = new_cost;
-        i++;
-        if (i % report_frequency == 0) {
+        training_loop(model, dataset, word_vocab, solver, i);
+        new_cost = average_error(model, validation_set);
+        patience += (new_cost >= cost) ? 1 : 0;
+
+        if (i % FLAGS_report_frequency == 0) {
             std::cout << "epoch (" << i << ") KL error = "
-                                      << std::fixed
-                                      << std::setw( 5 ) // keep 7 digits
-                                      << std::setprecision( 3 ) // use 3 decimals
-                                      << std::setfill( ' ' ) << new_cost << " patience = " << patience
-                                      << " forget_gate value " << std::setprecision( 3 ) << model.cells[0].forget_layer.b->w.sum() << std::endl;
+                      << std::fixed
+                      << std::setw( 5 ) // keep 7 digits
+                      << std::setprecision( 3 ) // use 3 decimals
+                      << std::setfill( ' ' ) << new_cost << " patience = " << patience
+                      << " forget_gate value " << std::setprecision( 3 )
+                      << model.cells[0].forget_layer.b->w.sum() << std::endl;
             auto& random_batch = dataset[utils::randint(0, dataset.size() - 1)];
             auto random_example_index = utils::randint(0, random_batch.data->rows() - 1);
             reconstruct(model, random_batch, random_example_index, word_vocab);
         }
     }
-    if (save_location != "") {
+    if (FLAGS_save != "") {
         std::cout << "Saving model to \""
-                  << save_location << "/\"" << std::endl;
-        model.save(save_location);
+                  << FLAGS_save << "/\"" << std::endl;
+        model.save(FLAGS_save);
     }
 }
 
@@ -471,25 +416,17 @@ int main( int argc, char* argv[]) {
     // thread safety
     Eigen::initParallel();
 
-
-    // Not sure if this correct thing to do for all versions of clang compiler
-    auto report_frequency   = FLAGS_report_frequency;
-    auto rho                = FLAGS_rho;
-    auto epochs             = FLAGS_epochs;
-    auto cutoff             = FLAGS_cutoff;
-    auto minibatch_size     = FLAGS_minibatch;
-    auto patience           = FLAGS_patience;
     auto dataset_vocab      = load_dataset_and_vocabulary(
-    	FLAGS_dataset,
-    	FLAGS_min_occurence,
-    	minibatch_size);
+        FLAGS_dataset,
+        FLAGS_min_occurence,
+        FLAGS_minibatch);
 
     auto validation_set     = load_dataset_with_vocabulary(
     	FLAGS_validation,
     	dataset_vocab.first,
-    	minibatch_size);
+    	FLAGS_minibatch);
+
     auto vocab_size = dataset_vocab.first.index2word.size();
-    auto num_threads = FLAGS_j;
 
     std::cout << "    Vocabulary size = " << vocab_size << " (occuring more than "
               << FLAGS_min_occurence << ")" << std::endl;
@@ -500,33 +437,18 @@ int main( int argc, char* argv[]) {
     std::cout << "     minibatch size = " << FLAGS_minibatch        << std::endl;
     std::cout << "       max_patience = " << FLAGS_patience         << std::endl;
 
-
-    // train();
+    pool = new ThreadPool(FLAGS_j);
 
     if (FLAGS_shortcut) {
-        train_model<REAL_t, StackedShortcutModel<REAL_t>, Solver::AdaDelta<REAL_t>>(
+        train_model<StackedShortcutModel<REAL_t>, Solver::AdaDelta<REAL_t>>(
             dataset_vocab.second,
             validation_set,
-            dataset_vocab.first,
-            rho,
-            report_frequency,
-            cutoff,
-            epochs,
-            FLAGS_save,
-            num_threads,
-            patience);
+            dataset_vocab.first);
     } else {
-         train_model<REAL_t, StackedModel<REAL_t>, Solver::AdaDelta<REAL_t>>(
+        train_model<StackedModel<REAL_t>, Solver::AdaDelta<REAL_t>>(
             dataset_vocab.second,
             validation_set,
-            dataset_vocab.first,
-            rho,
-            report_frequency,
-            cutoff,
-            epochs,
-            FLAGS_save,
-            num_threads,
-            patience);
+            dataset_vocab.first);
     }
     return 0;
 }

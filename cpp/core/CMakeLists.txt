@@ -4,6 +4,10 @@ file(GLOB CoreHeaders "${CoreDir}/*.h")
 file(GLOB CoreSources "${CoreDir}/*.cpp")
 file(GLOB CoreTemplates "${CoreDir}/*.cpp.template")
 
+# Remove tests from compilation
+file(GLOB CoreTestFile "${CoreDir}/tests.cpp")
+list(REMOVE_ITEM CoreSources ${CoreTestFile})
+
 foreach(header ${CoreTemplates})
     message(STATUS "Template instantiator will run for ${header}")
     ADD_CUSTOM_TARGET(core_templates
@@ -35,3 +39,7 @@ target_link_libraries(core ${ZLIB_LIBRARIES}
                            ${MKL_LIBRARIES}
                            ${GFLAGS_LIBRARIES}
                            ${Tcmalloc_LIBRARIES})
+
+
+
+add_testsuite("test_core" ${CoreTestFile} "core")

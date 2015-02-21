@@ -33,6 +33,10 @@ DECLARE_int32(epochs);
 DECLARE_int32(report_frequency);
 DECLARE_string(dataset);
 
+// MACRO DEFINITIONS
+#define ELOG(EXP) std::cout << #EXP "\t=\t" << (EXP) << std::endl
+#define SELOG(STR,EXP) std::cout << #STR "\t=\t" << (EXP) << std::endl
+
 // Default writing mode useful for default argument to
 // makedirs
 #define DEFAULT_MODE S_IRWXU | S_IRGRP |  S_IXGRP | S_IROTH | S_IXOTH

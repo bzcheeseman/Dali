@@ -21,8 +21,8 @@ DEFINE_int32(j,           1,    "How many threads should be used ?");
 DEFINE_int32(patience,    5,    "How many unimproving epochs to wait through before witnessing progress ?");
 DEFINE_bool(shortcut,     true, "Use a Stacked LSTM with shortcuts");
 
-static bool dummy1 = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_validation,
-                                                   &utils::validate_flag_nonempty);
+DEFINE_validator(validation, utils::validate_flag_nonempty);
+
 using std::vector;
 using std::make_shared;
 using std::shared_ptr;
@@ -464,10 +464,13 @@ int main( int argc, char* argv[]) {
         " @date February 15th 2015"
     );
 
-
+    GFLAGS_NAMESPACE::HandleCommandLineCompletions();
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
-    if (FLAGS_eigen_parallel)
-        Eigen::initParallel(); // might slow down entire computation
+
+    // TODO(jonathan): figure out if this affects performance and/or
+    // thread safety
+    Eigen::initParallel();
+
 
     // Not sure if this correct thing to do for all versions of clang compiler
     auto report_frequency   = FLAGS_report_frequency;
@@ -488,14 +491,17 @@ int main( int argc, char* argv[]) {
     auto vocab_size = dataset_vocab.first.index2word.size();
     auto num_threads = FLAGS_j;
 
+    std::cout << "    Vocabulary size = " << vocab_size << " (occuring more than "
+              << FLAGS_min_occurence << ")" << std::endl;
+    std::cout << "Max training epochs = " << FLAGS_epochs           << std::endl;
+    std::cout << "    Training cutoff = " << FLAGS_cutoff           << std::endl;
+    std::cout << "  Number of threads = " << FLAGS_j                << std::endl;
+    std::cout << "   report_frequency = " << FLAGS_report_frequency << std::endl;
+    std::cout << "     minibatch size = " << FLAGS_minibatch        << std::endl;
+    std::cout << "       max_patience = " << FLAGS_patience         << std::endl;
 
-    std::cout << "    Vocabulary size = " << vocab_size << " (occuring more than " << FLAGS_min_occurence << ")" << std::endl;
-    std::cout << "Max training epochs = " << epochs           << std::endl;
-    std::cout << "    Training cutoff = " << cutoff           << std::endl;
-    std::cout << "  Number of threads = " << num_threads      << std::endl;
-    std::cout << "   report_frequency = " << report_frequency << std::endl;
-    std::cout << "     minibatch size = " << minibatch_size   << std::endl;
-    std::cout << "       max_patience = " << patience         << std::endl;
+
+    // train();
 
     if (FLAGS_shortcut) {
         train_model<REAL_t, StackedShortcutModel<REAL_t>, Solver::AdaDelta<REAL_t>>(

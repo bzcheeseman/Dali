@@ -61,11 +61,12 @@ foreach(libvar ${LIBVARS_TO_FIX})
     endif (NOT ${libvar})
 endforeach(libvar)
 
-# GFLAGS VERSION DEPENDENT NAMESPACE
+# GFLAGS STUFF
 add_definitions(-DGFLAGS_NAMESPACE=${GFLAGS_NAMESPACE})
 
+
 # COMPILER SETUP
-SET (CMAKE_CXX_COMPILER             "/usr/bin/clang++")
+SET (CMAKE_CXX_COMPILER             "clang++")
 SET (CMAKE_CXX_FLAGS                "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
 
 # INCLUDES

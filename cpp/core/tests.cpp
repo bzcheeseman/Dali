@@ -30,7 +30,7 @@ TEST(ThreadPool, wait_until_idle) {
     barrier = false;
 
     // Assert all threads will be done exentually.
-    ASSERT_FALSE(t.wait_until_idle());
+    ASSERT_TRUE(t.wait_until_idle());
 }
 
 TEST(ThreadPool, thread_number) {

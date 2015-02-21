@@ -25,12 +25,12 @@ TEST(ThreadPool, wait_until_idle) {
 
     // Threads are currently waiting for barrier.
     // Ensure that wait until idle returns false..
-    assert(!t.wait_until_idle(milliseconds(1)));
+    ASSERT_FALSE(t.wait_until_idle(milliseconds(1)));
     // Remove barrier and hope they come back.
     barrier = false;
 
     // Assert all threads will be done exentually.
-    assert(t.wait_until_idle());
+    ASSERT_FALSE(t.wait_until_idle());
 }
 
 TEST(ThreadPool, thread_number) {

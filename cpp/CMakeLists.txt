@@ -23,6 +23,23 @@ if (NOT Tcmalloc_LIBRARIES)
     message("WARNING: consider installing tcmalloc for better multithreaded performance.\n    > brew install gperftools")
 endif(NOT Tcmalloc_LIBRARIES)
 
+
+# This monstrosity came to live to alleviate two conditions:
+#      1) ctest ignores colored output
+#      2) make test does not build tests (wtf)
+function(add_testsuite TEST_TARGET TEST_FILE  TEST_DEPENDENCIES)
+    if(GTEST_FOUND)
+        add_executable(${TEST_TARGET} ${TEST_FILE})
+        add_dependencies(${TEST_TARGET} ${TEST_DEPENDENCIES})
+        target_link_libraries(${TEST_TARGET} ${TEST_DEPENDENCIES} ${GTEST_BOTH_LIBRARIES})
+        add_test(${TEST_TARGET} ${TEST_TARGET})
+        add_dependencies(build_tests ${TEST_TARGET})
+
+        add_custom_target(${TEST_TARGET}_run ${TEST_TARGET})
+        add_dependencies(run_tests ${TEST_TARGET}_run)
+    endif(GTEST_FOUND)
+endfunction(add_testsuite)
+
 if(GTEST_FOUND)
     enable_testing()
     set(CTEST_OUTPUT_ON_FAILURE TRUE)
@@ -30,22 +47,6 @@ if(GTEST_FOUND)
     add_custom_target(run_tests true)
     add_custom_target(build_tests)
     add_dependencies(run_tests build_tests)
-
-    # This monstrosity came to live to alleviate two conditions:
-    #      1) ctest ignores colored output
-    #      2) make test does not build tests (wtf)
-    function(add_testsuite TEST_TARGET TEST_FILE  TEST_DEPENDENCIES)
-        if(GTEST_FOUND)
-            add_executable(${TEST_TARGET} ${TEST_FILE})
-            add_dependencies(${TEST_TARGET} ${TEST_DEPENDENCIES})
-            target_link_libraries(${TEST_TARGET} ${TEST_DEPENDENCIES} ${GTEST_BOTH_LIBRARIES})
-            add_test(${TEST_TARGET} ${TEST_TARGET})
-            add_dependencies(build_tests ${TEST_TARGET})
-
-            add_custom_target(${TEST_TARGET}_run ${TEST_TARGET})
-            add_dependencies(run_tests ${TEST_TARGET}_run)
-        endif(GTEST_FOUND)
-    endfunction(add_testsuite)
 else(GTEST_FOUND)
     message("WARNING: GTESTS not found - install gtests to be able to run tests")
 endif(GTEST_FOUND)

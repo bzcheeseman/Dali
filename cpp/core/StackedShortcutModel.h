@@ -13,6 +13,8 @@
 #include "Mat.h"
 #include "Softmax.h"
 #include "utils.h"
+#include "StackedGatedModel.h"
+
 /**
 StackedShortcutModel
 --------------------
@@ -29,14 +31,6 @@ stacks of the model, thereby allowing "shortcuts" of information upwards
 in the model.
 
 **/
-DECLARE_int32(stack_size);
-DECLARE_int32(input_size);
-DECLARE_int32(hidden);
-DECLARE_double(decay_rate);
-DECLARE_double(rho);
-DECLARE_string(save);
-DECLARE_string(load);
-
 
 template<typename T>
 class StackedShortcutModel {

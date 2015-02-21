@@ -10,7 +10,7 @@
 #include "core/utils.h"
 #include "core/SST.h"
 #include "core/gzstream.h"
-// #include "core/StackedModel.h"
+#include "core/StackedModel.h"
 #include "core/StackedShortcutModel.h"
 
 DEFINE_int32(minibatch,   100,  "What size should be used for the minibatches ?");
@@ -19,6 +19,7 @@ DEFINE_bool(sparse,       true, "Use sparse embedding");
 DEFINE_double(cutoff,     2.0,  "KL Divergence error where stopping is acceptable");
 DEFINE_int32(j,           1,    "How many threads should be used ?");
 DEFINE_int32(patience,    5,    "How many unimproving epochs to wait through before witnessing progress ?");
+DEFINE_bool(shortcut,     true, "Use a Stacked LSTM with shortcuts");
 
 static bool dummy1 = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_validation,
                                                    &utils::validate_flag_nonempty);
@@ -195,8 +196,9 @@ Inputs
 
 
 **/
+template<typename model_t>
 void reconstruct(
-    StackedShortcutModel<REAL_t>& model,
+    model_t& model,
     const Databatch& minibatch,
     const int& i,
     const Vocab& word_vocab) {
@@ -211,10 +213,10 @@ void reconstruct(
         0) << std::endl;
 }
 
-template<typename T>
-T average_error(StackedShortcutModel<T>& model,
+template<typename model_t>
+REAL_t average_error(model_t& model,
     const vector<Databatch>& dataset, const int& num_threads) {
-	T cost = 0.0;
+	REAL_t cost = 0.0;
 	auto G = graph_t(false); // create a new graph for each loop)
     int full_code_size(0);
     vector<size_t> indices(dataset.size());
@@ -230,7 +232,7 @@ T average_error(StackedShortcutModel<T>& model,
 
     std::mutex thread_mutex;
 
-    vector<T> costs(num_threads);
+    vector<REAL_t> costs(num_threads);
     for (int t = 0; t < num_threads; t++) {
         workers.emplace_back([&costs, &dataset, &model, &G, &jobs, &thread_mutex](int thread_id) {
             size_t job;
@@ -291,11 +293,12 @@ std::vector<std::shared_ptr<Mat<T>>>& : references to model parameters.
                const int& num_threads : how many threads to use
 
 **/
-template<typename T, typename S>
-void training_loop(StackedShortcutModel<T>& model,
+template<typename T, typename model_t, typename S>
+void training_loop(model_t& model,
     const vector<Databatch>& dataset,
     const Vocab& word_vocab,
     S& solver,
+    const T& rho,
     vector<shared_ptr<mat>>& parameters,
     const int& report_frequency,
     const int& epoch,
@@ -319,7 +322,7 @@ void training_loop(StackedShortcutModel<T>& model,
     auto engine = std::default_random_engine{};
 
     for (int t=0; t < num_threads; ++t)
-        workers.emplace_back([&engine, &model, &jobs, &dataset, &solver, &epoch, &total_jobs, &full_code_size, &cost, &thread_mutex](int thread_id) {
+        workers.emplace_back([&rho, &engine, &model, &jobs, &dataset, &solver, &epoch, &total_jobs, &full_code_size, &cost, &thread_mutex](int thread_id) {
             auto thread_model = model.shallow_copy();
             auto thread_parameters = thread_model.parameters();
             std::shuffle(std::begin(thread_parameters), std::end(thread_parameters), engine);
@@ -346,7 +349,7 @@ void training_loop(StackedShortcutModel<T>& model,
                 thread_model.embedding->sparse_row_keys = minibatch.row_keys;
                 full_code_size += minibatch.total_codes;
                 G.backward(); // backpropagate
-                solver.step(thread_parameters, 0.0);
+                solver.step(thread_parameters, rho);
                 printf("epoch (%d - %.2f%%) KL error = %.3f\r",
                     epoch,
                     100.0 * ((1.0 - (double) jobs.size() / total_jobs)),
@@ -382,7 +385,7 @@ const vector<Databatch>& dataset : sentences broken into minibatches to
      const string& save_location : where to save the model after training.
 
 **/
-template<typename T, class S>
+template<typename T, typename model_t, class S>
 void train_model(
     const vector<Databatch>& dataset,
     const vector<Databatch>& validation_set,
@@ -396,7 +399,7 @@ void train_model(
     const int& max_patience
     ) {
     // Build Model:
-    StackedShortcutModel<T> model(word_vocab.index2word.size(),
+    model_t model(word_vocab.index2word.size(),
             FLAGS_input_size,
             FLAGS_hidden,
             FLAGS_stack_size < 1 ? 1 : FLAGS_stack_size,
@@ -411,8 +414,8 @@ void train_model(
     int patience = 0;
     while (cost > cutoff && i < epochs && patience < max_patience) {
         new_cost = 0.0;
-        training_loop(model, dataset, word_vocab, solver, parameters, report_frequency, i, patience, num_threads);
-        new_cost = average_error<T>(model, validation_set, num_threads);
+        training_loop(model, dataset, word_vocab, solver, rho, parameters, report_frequency, i, patience, num_threads);
+        new_cost = average_error(model, validation_set, num_threads);
         if (new_cost >= cost) patience++;
         else {patience = 0;}
         cost = new_cost;
@@ -422,12 +425,12 @@ void train_model(
                                       << std::fixed
                                       << std::setw( 5 ) // keep 7 digits
                                       << std::setprecision( 3 ) // use 3 decimals
-                                      << std::setfill( ' ' ) << new_cost << " patience = " << patience << std::endl;
+                                      << std::setfill( ' ' ) << new_cost << " patience = " << patience
+                                      << " forget_gate value " << std::setprecision( 3 ) << model.cells[0].forget_layer.b->w.sum() << std::endl;
             auto& random_batch = dataset[utils::randint(0, dataset.size() - 1)];
             auto random_example_index = utils::randint(0, random_batch.data->rows() - 1);
             reconstruct(model, random_batch, random_example_index, word_vocab);
         }
-
     }
     if (save_location != "") {
         std::cout << "Saving model to \""
@@ -494,17 +497,30 @@ int main( int argc, char* argv[]) {
     std::cout << "     minibatch size = " << minibatch_size   << std::endl;
     std::cout << "       max_patience = " << patience         << std::endl;
 
-    train_model<REAL_t, Solver::AdaDelta<REAL_t>>(
-        dataset_vocab.second,
-        validation_set,
-        dataset_vocab.first,
-        rho,
-        report_frequency,
-        cutoff,
-        epochs,
-        FLAGS_save,
-        num_threads,
-        patience);
-
+    if (FLAGS_shortcut) {
+        train_model<REAL_t, StackedShortcutModel<REAL_t>, Solver::AdaDelta<REAL_t>>(
+            dataset_vocab.second,
+            validation_set,
+            dataset_vocab.first,
+            rho,
+            report_frequency,
+            cutoff,
+            epochs,
+            FLAGS_save,
+            num_threads,
+            patience);
+    } else {
+         train_model<REAL_t, StackedModel<REAL_t>, Solver::AdaDelta<REAL_t>>(
+            dataset_vocab.second,
+            validation_set,
+            dataset_vocab.first,
+            rho,
+            report_frequency,
+            cutoff,
+            epochs,
+            FLAGS_save,
+            num_threads,
+            patience);
+    }
     return 0;
 }

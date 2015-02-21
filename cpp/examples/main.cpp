@@ -7,6 +7,7 @@ int main () {
 	typedef Mat<REAL_t> mat;
     typedef std::shared_ptr<mat> shared_mat;
 	using std::make_shared;
+    using std::vector;
 
 	LSTM<REAL_t> lstm(30, 50);
 	Graph<REAL_t> G;
@@ -70,6 +71,22 @@ int main () {
     G.backward();
     auto params = lstm.parameters();
     utils::save_matrices(params, "lstm_params");
+
+
+
+    StackedInputLayer<REAL_t> superclassifier({20, 20, 10, 2}, 5);
+
+
+    vector<shared_mat> inputs;
+    inputs.emplace_back(make_shared<mat>(20, 5, -2.0, 2.0));
+    inputs.emplace_back(make_shared<mat>(20, 5, -2.0, 2.0));
+    inputs.emplace_back(make_shared<mat>(10, 5, -2.0, 2.0));
+    inputs.emplace_back(make_shared<mat>(2,  5, -2.0, 2.0));
+
+    auto out2 = superclassifier.activate(G, inputs);
+
+    out2->print();
+
 
 	return 0;
 }

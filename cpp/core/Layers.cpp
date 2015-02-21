@@ -52,6 +52,11 @@ StackedInputLayer<T>::StackedInputLayer (vector<int> _input_sizes, int _hidden_s
 }
 
 template<typename T>
+StackedInputLayer<T>::StackedInputLayer (std::initializer_list<int> _input_sizes, int _hidden_size) : hidden_size(_hidden_size), input_sizes(_input_sizes) {
+    create_variables();
+}
+
+template<typename T>
 vector<typename StackedInputLayer<T>::shared_mat> StackedInputLayer<T>::zip_inputs_with_matrices_and_bias(const vector<typename StackedInputLayer<T>::shared_mat>& inputs) const {
     vector<shared_mat> zipped;
     zipped.reserve(matrices.size() * 2 + 1);
@@ -131,7 +136,7 @@ void RNN<T>::create_variables() {
     Wx = make_shared<mat>(output_size, input_size,  -upper, upper);
     upper = 1. / sqrt(hidden_size);
     Wh = make_shared<mat>(output_size, hidden_size, -upper, upper);
-    b  = make_shared<mat>(output_size, 1);
+    b  = make_shared<mat>(output_size, 1, -upper, upper);
 }
 
 template<typename T>
@@ -142,7 +147,7 @@ void ShortcutRNN<T>::create_variables() {
     Ws = make_shared<mat>(output_size, shortcut_size,  -upper, upper);
     upper = 1. / sqrt(hidden_size);
     Wh = make_shared<mat>(output_size, hidden_size, -upper, upper);
-    b  = make_shared<mat>(output_size, 1);
+    b  = make_shared<mat>(output_size, 1, -upper, upper);
 }
 
 template<typename T>
@@ -301,7 +306,7 @@ LSTM<T>::LSTM (int _input_size, int _hidden_size) :
     // Note: Ilya Sutskever recommends initializing with
     // forget gate at high value
     // http://yyue.blogspot.fr/2015/01/a-brief-overview-of-deep-learning.html
-    forget_layer.b->w(0) = 100;
+    // forget_layer.b->w.array() += 2;
     name_internal_layers();
 }
 
@@ -314,7 +319,7 @@ ShortcutLSTM<T>::ShortcutLSTM (int _input_size, int _shortcut_size, int _hidden_
     forget_layer(_input_size, _shortcut_size, _hidden_size),
     output_layer(_input_size, _shortcut_size, _hidden_size),
     cell_layer(_input_size, _shortcut_size, _hidden_size) {
-    forget_layer.b->w(0) = 100;
+    // forget_layer.b->w.array() += 2;
     name_internal_layers();
 }
 
@@ -569,6 +574,9 @@ pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> forward_LSTMs(Graph
     auto layer_out = base_cell.activate(G, layer_input, *cell_iter, *hidden_iter);
     out_state.first.push_back(layer_out.first);
     out_state.second.push_back(layer_out.second);
+
+    ++cell_iter;
+    ++hidden_iter;
 
     layer_input = layer_out.second;
 

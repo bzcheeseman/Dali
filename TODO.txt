@@ -2,6 +2,7 @@ HIGH PRIORITY:
 -> showing something to Brian
 -> rethink memory organization
 -> split core (maybe if we understand c++ while doing so, we will manage to catch some bugs?)
+-> debug shortcut model with stack size 1
 
 LOWER_PRIOTITY:
 -> add timers
@@ -11,3 +12,4 @@ LOWER_PRIOTITY:
 -> bash completion for gflags
 -> cleaning up crazy python scripts living all over the place
 -> rethink directory structure
+-> tensors

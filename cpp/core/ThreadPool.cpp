@@ -20,7 +20,7 @@ ThreadPool::ThreadPool(int num_threads, dduration between_queue_checks) :
 
 void ThreadPool::thread_body(int _thread_id) {
     in_thread_pool = true;
-    thread_number = thread_number;
+    thread_number = _thread_id;
     bool am_i_active = false;
 
     while (true) {
@@ -53,6 +53,7 @@ void ThreadPool::thread_body(int _thread_id) {
         } else {
             std::this_thread::sleep_for(between_queue_checks);
         }
+        std::this_thread::yield();
     }
 }
 
@@ -61,19 +62,20 @@ int ThreadPool::active_workers() {
     return active_count;
 }
 
-void ThreadPool::wait_until_idle(dduration timeout) {
+bool ThreadPool::wait_until_idle(dduration timeout) {
     std::unique_lock<decltype(queue_mutex)> lock(queue_mutex);
     is_idle.wait_for(lock, timeout, [this]{
         return active_count == 0 && work.empty();
     });
+    return active_count == 0 && work.empty();
 }
 
-void ThreadPool::wait_until_idle() {
+bool ThreadPool::wait_until_idle() {
     std::unique_lock<decltype(queue_mutex)> lock(queue_mutex);
-
     is_idle.wait(lock, [this]{
         return active_count == 0 && work.empty();
     });
+    return active_count == 0 && work.empty();
 }
 
 void ThreadPool::run(function<void()> f) {
@@ -88,3 +90,6 @@ ThreadPool::~ThreadPool() {
     for(auto& t: pool) t.join();
 }
 
+int ThreadPool::get_thread_number() {
+    return thread_number;
+}

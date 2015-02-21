@@ -32,24 +32,35 @@ class ThreadPool {
         std::deque<function<void()> > work;
         vector<thread> pool;
         dduration between_queue_checks;
-    public:
-        ThreadPool(int num_threads, dduration between_queue_checks=milliseconds(1));
 
         void thread_body(int _thread_id);
+    public:
+        // Creates a thread pool composed of num_threads threads.
+        // threads are started immediately and exit only once ThreadPool
+        // goes out of scope. Threads periodically check for new work
+        // and the frequency of those checks is at minimum between_queue_checks
+        // (it can be higher due to thread scheduling).
+        ThreadPool(int num_threads, dduration between_queue_checks=milliseconds(1));
 
+        // Run a function on a thread in pool.
+        void run(function<void()> f);
+
+        // Wait until queue is empty and all the threads have finished working.
+        // If timeout is specified function waits at most timeout until the
+        // threads are idle. If they indeed become idle returns true.
+        bool wait_until_idle(dduration timeout);
+        bool wait_until_idle();
+
+        // Return number of active busy workers.
         int active_workers();
 
-        void wait_until_idle(dduration timeout);
-
-        void wait_until_idle();
-
-        void run(function<void()> f);
+        // Can be called from within a thread to get a thread number.
+        // the number is unique for each thread in the thread pool and
+        // is between 0 and num_threads-1. If called outside thread_pool returns -1.
+        static int get_thread_number();
 
         ~ThreadPool();
 };
-
-
-
 
 
 #endif

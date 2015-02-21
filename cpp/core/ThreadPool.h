@@ -19,10 +19,10 @@ typedef std::chrono::duration<double> dduration;
 
 class ThreadPool {
     private:
-        static thread_local bool in_thread_pool;
+        static __thread bool in_thread_pool;
         // c++ assigns random id to each thread. This is not a thread_id
         // it's a number inside this thread pool.
-        static thread_local int thread_number;
+        static __thread int thread_number;
 
         bool should_terminate;
         std::mutex queue_mutex;

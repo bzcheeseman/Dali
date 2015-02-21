@@ -2,8 +2,8 @@
 
 #include "gtest/gtest.h"
 
-thread_local bool ThreadPool::in_thread_pool = false;
-thread_local int ThreadPool::thread_number = -1;
+__thread bool ThreadPool::in_thread_pool = false;
+__thread int ThreadPool::thread_number = -1;
 
 ThreadPool::ThreadPool(int num_threads, dduration between_queue_checks) :
         between_queue_checks(between_queue_checks),

@@ -429,14 +429,13 @@ int main( int argc, char* argv[]) {
 
     auto vocab_size = dataset_vocab.first.index2word.size();
 
-    std::cout << "    Vocabulary size = " << vocab_size << " (occuring more than "
-              << FLAGS_min_occurence << ")" << std::endl;
-    std::cout << "Max training epochs = " << FLAGS_epochs           << std::endl;
-    std::cout << "    Training cutoff = " << FLAGS_cutoff           << std::endl;
-    std::cout << "  Number of threads = " << FLAGS_j                << std::endl;
-    std::cout << "   report_frequency = " << FLAGS_report_frequency << std::endl;
-    std::cout << "     minibatch size = " << FLAGS_minibatch        << std::endl;
-    std::cout << "       max_patience = " << FLAGS_patience         << std::endl;
+    std::cout << "    Vocabulary size = " << vocab_size << " (occuring more than " << FLAGS_min_occurence << ")" << std::endl
+              << "Max training epochs = " << FLAGS_epochs           << std::endl
+              << "    Training cutoff = " << FLAGS_cutoff           << std::endl
+              << "  Number of threads = " << FLAGS_j                << std::endl
+              << "   report_frequency = " << FLAGS_report_frequency << std::endl
+              << "     minibatch size = " << FLAGS_minibatch        << std::endl
+              << "       max_patience = " << FLAGS_patience         << std::endl;
 
     pool = new ThreadPool(FLAGS_j);
 

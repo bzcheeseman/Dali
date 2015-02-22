@@ -1,7 +1,5 @@
 #include "ThreadPool.h"
 
-#include "gtest/gtest.h"
-
 __thread bool ThreadPool::in_thread_pool = false;
 __thread int ThreadPool::thread_number = -1;
 

@@ -23,7 +23,8 @@ DEFINE_int32(j,           1,    "How many threads should be used ?");
 DEFINE_int32(patience,    5,    "How many unimproving epochs to wait through before witnessing progress ?");
 DEFINE_bool(shortcut,     true, "Use a Stacked LSTM with shortcuts");
 
-DEFINE_validator(validation, utils::validate_flag_nonempty);
+static bool dummy1 = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_validation,
+                                                            &utils::validate_flag_nonempty);
 
 using std::vector;
 using std::make_shared;
@@ -225,15 +226,15 @@ REAL_t average_error(model_t& model, const vector<Databatch>& dataset) {
     for (size_t i = 0; i < dataset.size();i++)
         full_code_size += dataset[i].total_codes;
     for (size_t batch_id = 0; batch_id < dataset.size(); ++batch_id) {
-        pool->run([&costs, &dataset, &model, &G, &batch_id]() {
-            /*costs[ThreadPool::get_thread_number()] += model.masked_predict_cost(
+        pool->run([&costs, &dataset, &model, &G, batch_id]() {
+            costs[ThreadPool::get_thread_number()] += model.masked_predict_cost(
                 G,
                 dataset[batch_id].data, // the sequence to draw from
                 dataset[batch_id].data, // what to predict (the words offset by 1)
                 1,
                 dataset[batch_id].codelens,
                 0
-            );*/
+            );
         });
     }
     pool->wait_until_idle();

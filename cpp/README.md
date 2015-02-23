@@ -4,29 +4,10 @@ RecurrentJS in C++
 This is an reimagination of [Andrej Kaparthy](http://cs.stanford.edu/people/karpathy/)'s recurrentjs in C++. It has the same API names and structure (so far), but the backbones are using **Eigen** and C++11's standard library. Callbacks are gone (following the Python implementation of the same idea), leaving a one stop shop for all backprop operations handled by `Backward`.
 
 
-### Features
+### What is this readme about?
 
-* Automatic differentiation
-* Matrix Broadcasting (elementwise multiply, elementwise product)
-* Multiple index slicing
-* Speed
-* Clarity of API
+This readme contains technical details about the internal implementation of the C++ code. For high level overview checkout the readme one level above.
 
-### Installation
-	
-Grad hold of the latest copy of **[Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)** ([Download Link](http://bitbucket.org/eigen/eigen/get/3.2.4.tar.bz2)) Place the downloaded Eigen header folder in the `cpp` directory of this repo. Then:
-
-	> make
-
-That's it.
-
-Or for optimizations turned on (slower compilation 3x result):
-
-    > make optimized
-
-and to do character recognition as was done in Javascript:
-
-    > make character_predict
 
 ### Usage
 
@@ -51,12 +32,12 @@ on the plus side: free garbage collection ;).
     auto A_plus_B_sig = graph.sigmoid(graph.add(A, B));
     auto A_dot_C_tanh = graph.tanh( graph.mul(A, C) );
     auto A_plucked    = graph.row_pluck(A, 2);
-    
+
     A_times_B   ->print();
     A_plus_B_sig->print();
     A_dot_C_tanh->print();
     A_plucked   ->print();
-    
+
     forward_model(graph, A, C);
 
     auto prod  = graph.mul(A, C);

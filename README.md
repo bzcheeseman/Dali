@@ -11,6 +11,14 @@ While Python has great automatic differentiation libraries, a no-compile version
 
 In Python use of a specialized `Backward` class wraps backpropagation steps, while C++ uses its own `Backward` class but this time garbage collection and tracking is done using `C++11`'s excellent `std::shared_ptr`.
 
+### Features
+
+* Automatic differentiation
+* Matrix Broadcasting (elementwise multiply, elementwise product)
+* Multiple index slicing
+* Speed
+* Clarity of API
+
 ### Usage in C++
 
 #### Installation
@@ -29,6 +37,20 @@ The run `make` to compile the code:
 
 That's it. Now built examples will be stored in `cpp/build/examples`.
 For instance a character prediction model using Stacked LSTMs is built under `cpp/build/examples/character_prediction`.
+
+#### Run a simple example
+
+Let's run a simple example. We will use data from [Paul Graham's blog](http://paulgraham.com) to train a language model. This way we can generate random pieces of startup wisdom at will! After about 5-10 minutes of training time you should see it generate sentences that sort of make sense. To do this go to cpp/build and execute
+
+    examples/language_model --flagfile ../flags/language_model_simple.flags
+
+That's it. Don't forget to checkout examples/langauge_model.cpp. It's not that scary!
+
+#### MKL Zaziness Problems
+
+On Mac OSX, or more generally when using [Intel's gracious MKL Library](https://software.intel.com/en-us/intel-mkl) you may encounter an interesting bug with [`Eigen`](http://eigen.tuxfamily.org/bz/show_bug.cgi?id=874) where `MKL_BLAS` is shown as undefined during compilation.
+
+To fix this bug (feature?) make the modifications listed [here](https://bitbucket.org/eigen/eigen/pull-request/82/fix-for-mkl_blas-not-defined-in-mkl-112/diff) to your Eigen header files and everything should be back to normal.
 
 #### Stacked LSTMs
 
@@ -58,7 +80,7 @@ Let's build a set of stacked cells inside our main function: 3 layers of 100 hid
     auto cells = StackedCells<LSTM<float>>(input_size, hidden_sizes);
 
 We now collect the model parameters into one vector for optimization:
-    
+
     vector<shared_mat> parameters;
 
     for (auto& layer : cells) {
@@ -90,7 +112,7 @@ Now that we can propagate our network forward let's run this forward in time, an
     paired_cell_outputs initial_state = LSTM<float>::initial_states(hidden_sizes);
 
 And we can now run this network forward:
-    
+
     auto timesteps = 20;
 
     for (auto i = 0; i < timesteps; ++i)
@@ -101,12 +123,12 @@ The input_vector isn't changing, but this is just an example. We could have inst
 ### Character model extension:
 
 Suppose we want to assign error using a prediction with a additional decoding layer that gets exponentially normalized via a *Softmax*:
-    
+
     auto vocab_size = 300;
     Layer<float> classifier(hidden_sizes[hidden_sizes.size() - 1], vocab_size);
 
 Each character gets a vector in an embedding:
-    
+
     auto embedding = make_shared<mat>(vocab_size, input_size, 0.08);
 
 Then our forward function can be changed to:
@@ -294,7 +316,7 @@ Below we follow the same steps as in the character generation demo, and we impor
         if generator == "rnn":
             out_struct = forwardRNN(G, model, hidden_sizes, x, prev)
         else:
-            out_struct = forwardLSTM(G, model, hidden_sizes, x, prev)   
+            out_struct = forwardLSTM(G, model, hidden_sizes, x, prev)
         return out_struct
 
     def initModel():
@@ -362,6 +384,6 @@ Below we follow the same steps as in the character generation demo, and we impor
             median_ppl.append(median)
 
 And the training loop (no fancy prediction and sampling implemented here, but fairly straightforward conversion from the javascript code)
-  
+
     for i in range(1000):
         tick()

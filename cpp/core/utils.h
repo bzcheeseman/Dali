@@ -41,8 +41,8 @@ DECLARE_string(dataset);
 #define SELOG(STR,EXP) std::cout << #STR "\t=\t" << (EXP) << std::endl
 
 #ifdef DEBUG_RECURRENTJS
-	#define DEBUG_ASSERT_POSITIVE(X) assert(((X) >= 0).all())
-	#define DEBUG_ASSERT_NONZERO(X) assert(((X).abs() >= 1e-10).all())
+	#define DEBUG_ASSERT_POSITIVE(X) assert(((X).array() >= 0).all())
+	#define DEBUG_ASSERT_NONZERO(X) assert(((X).array().abs() >= 1e-10).all())
 	#define DEBUG_ASSERT_NOT_NAN(X) assert(((X).array().square().sum() == (X).array().square().sum()))
 #else
 	#define DEBUG_ASSERT_POSITIVE(X)

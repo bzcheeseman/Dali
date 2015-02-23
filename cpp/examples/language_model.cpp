@@ -205,16 +205,40 @@ void reconstruct(
     model_t& model,
     const Databatch& minibatch,
     const int& i,
-    const Vocab& word_vocab) {
+    const Vocab& word_vocab,
+    const int& init_size) {
     std::cout << "Reconstruction \"";
-    for (int j = 0; j < 3; j++)
+    for (int j = 0; j < init_size; j++)
         std::cout << word_vocab.index2word[(*minibatch.data)(i, j)] << " ";
-    std::cout << "\"\n => ";
-    std::cout << model.reconstruct_string(
-        minibatch.data->row(i).head(3),
+    std::cout << "\"\n => "
+              << model.reconstruct_string(
+        minibatch.data->row(i).head(init_size),
         word_vocab,
-        (*minibatch.codelens)(i) - 2,
+        (*minibatch.codelens)(i) - (init_size - 1),
         0) << std::endl;
+}
+
+template<typename model_t>
+void reconstruct_random(
+    model_t& model,
+    const vector<Databatch>& dataset,
+    const Vocab& word_vocab,
+    const int& init_size) {
+    int random_example_index;
+    const Databatch* random_batch;
+    while (true) {
+        random_batch = &dataset[utils::randint(0, dataset.size() - 1)];
+        random_example_index = utils::randint(0, random_batch->data->rows() - 1);
+        if ((*random_batch->codelens)(random_example_index) > init_size) {
+            break;
+        }
+    }
+    reconstruct(
+        model,
+        *random_batch,
+        random_example_index,
+        word_vocab,
+        init_size);
 }
 
 template<typename model_t>
@@ -279,23 +303,24 @@ void training_loop(model_t& model,
     const int& epoch) {
 
     double cost = 0.0;
-    int full_code_size = 0;
+    std::atomic<int> full_code_size(0);
     auto random_batch_order = utils::random_arange(dataset.size());
 
     vector<model_t> thread_models;
     for (int i = 0; i <FLAGS_j; ++i)
-        thread_models.push_back(model.shallow_copy());
+        thread_models.emplace_back(model, false, true);
 
     std::atomic<int> batches_processed(0);
 
     for (auto batch_id : random_batch_order) {
         pool->run([&model, &dataset, &solver, &epoch, &full_code_size,
-                   &cost, &thread_models, &batch_id, &random_batch_order,
+                   &cost, &thread_models, batch_id, &random_batch_order,
                    &batches_processed]() {
 
             auto& thread_model = thread_models[ThreadPool::get_thread_number()];
             auto thread_parameters = thread_model.parameters();
             auto& minibatch = dataset[batch_id];
+
             auto G = graph_t(true);
             cost += thread_model.masked_predict_cost(
                 G,
@@ -307,7 +332,16 @@ void training_loop(model_t& model,
             );
             thread_model.embedding->sparse_row_keys = minibatch.row_keys;
             full_code_size += minibatch.total_codes;
+
             G.backward(); // backpropagate
+            std::unordered_map<string, REAL_t> mass_map;
+
+            for (auto& param : thread_parameters) {
+                mass_map[*param->name] = param->dw.array().square().sum();
+                mass_map[*param->name + "_gsum"] = solver.gsums[*param].array().square().sum();
+                mass_map[*param->name + "_xsum"] = solver.xsums[*param].array().square().sum();
+            }
+            std::cout << mass_map << std::endl;
             solver.step(thread_parameters, FLAGS_rho);
             batches_processed += 1;
             printf("epoch (%d - %.2f%%) KL error = %.3f\r",
@@ -371,12 +405,10 @@ void train_model(const vector<Databatch>& dataset,
                       << std::setw( 5 ) // keep 7 digits
                       << std::setprecision( 3 ) // use 3 decimals
                       << std::setfill( ' ' ) << new_cost << " patience = " << patience
-                      << " forget_gate value " << std::setprecision( 3 )
-                      << model.cells[0].forget_layer.b->w.sum() << std::endl;
-            auto& random_batch = dataset[utils::randint(0, dataset.size() - 1)];
-            auto random_example_index = utils::randint(0, random_batch.data->rows() - 1);
-            reconstruct(model, random_batch, random_example_index, word_vocab);
+                      << std::endl;
+            reconstruct_random(model, dataset, word_vocab, 3);
         }
+        i++;
     }
     if (FLAGS_save != "") {
         std::cout << "Saving model to \""

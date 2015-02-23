@@ -32,11 +32,19 @@ in the model.
 
 **/
 
+#ifndef SHORTCUT_DECODE_ACROSS_LAYERS
+#define SHORTCUT_DECODE_ACROSS_LAYERS
+#endif
+
 template<typename T>
 class StackedShortcutModel {
 	typedef LSTM<T>                    lstm;
 	typedef ShortcutLSTM<T>   shortcut_lstm;
-	typedef StackedInputLayer<T> classifier_t;
+	#ifdef SHORTCUT_DECODE_ACROSS_LAYERS
+		typedef StackedInputLayer<T>  classifier_t;
+	#else
+		typedef Layer<T>              classifier_t;
+	#endif
 	typedef Mat<T>                      mat;
 	typedef std::shared_ptr<mat> shared_mat;
 	typedef Graph<T>                graph_t;

@@ -281,18 +281,22 @@ void ShortcutLSTM<T>::name_internal_layers() {
     forget_layer.b->set_name("Shortcut Forget bias");
     forget_layer.Wx->set_name("Shortcut Forget Wx");
     forget_layer.Wh->set_name("Shortcut Forget Wh");
+    forget_layer.Ws->set_name("Shortcut Forget Ws");
 
     input_layer.b->set_name("Shortcut Input bias");
     input_layer.Wx->set_name("Shortcut Input Wx");
     input_layer.Wh->set_name("Shortcut Input Wh");
+    input_layer.Ws->set_name("Shortcut Input Ws");
 
     output_layer.b->set_name("Shortcut Output bias");
     output_layer.Wx->set_name("Shortcut Output Wx");
     output_layer.Wh->set_name("Shortcut Output Wh");
+    output_layer.Ws->set_name("Shortcut Output Ws");
 
     cell_layer.b->set_name("Shortcut Cell bias");
     cell_layer.Wx->set_name("Shortcut Cell Wx");
     cell_layer.Wh->set_name("Shortcut Cell Wh");
+    cell_layer.Ws->set_name("Shortcut Cell Ws");
 }
 
 template<typename T>

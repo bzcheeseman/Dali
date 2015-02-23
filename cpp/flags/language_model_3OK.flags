@@ -1,0 +1,9 @@
+--dataset=../data/eng_news/eng_news_30K_2007/train.txt
+--epochs=2000
+--input_size=100
+--j=9
+--patience=20
+--save=/home/sidor/tmp/model1.model
+--shortcut
+--stack_size=3
+--validation=../data/eng_news/eng_news_30K_2007/validation.txt

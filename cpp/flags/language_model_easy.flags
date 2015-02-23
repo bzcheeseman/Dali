@@ -1,0 +1,9 @@
+--dataset=../data/paul_graham/train.txt
+--epochs=2000
+--input_size=100
+--j=9
+--patience=20
+--save=paul_graham.model
+--shortcut
+--stack_size=2
+--validation=../data/paul_graham/validation.txt

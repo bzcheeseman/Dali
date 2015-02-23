@@ -353,9 +353,9 @@ StackedShortcutModel<T> StackedShortcutModel<T>::shallow_copy() const {
 
 template<typename T>
 template<typename K>
-typename StackedShortcutModel<T>::lstm_activation_t StackedShortcutModel<T>::get_final_activation(
+typename StackedShortcutModel<T>::state_type StackedShortcutModel<T>::get_final_activation(
 	graph_t& G,
-	const K& example) {
+	const K& example) const {
 	shared_mat input_vector;
 	auto initial_state = lstm::initial_states(hidden_sizes);
 	auto n = example.cols() * example.rows();
@@ -407,8 +407,8 @@ std::vector<int> StackedShortcutModel<T>::reconstruct(
 template<typename T>
 typename StackedShortcutModel<T>::activation_t StackedShortcutModel<T>::activate(
 	graph_t& G,
-	lstm_activation_t& previous_state,
-	const uint& index) {
+	state_type& previous_state,
+	const uint& index) const {
 	activation_t out;
 	auto input_vector = G.row_pluck(embedding, index);
 	out.first =  forward_LSTMs(G, input_vector, previous_state, base_cell, cells);
@@ -534,6 +534,26 @@ template vector<int> StackedShortcutModel<double>::reconstruct(sliced_col, int, 
 
 template vector<int> StackedShortcutModel<float>::reconstruct(index_col, int, int);
 template vector<int> StackedShortcutModel<double>::reconstruct(index_col, int, int);
+
+template StackedShortcutModel<double>::state_type StackedShortcutModel<double>::get_final_activation(Graph<double>&, const index_col&) const;
+template StackedShortcutModel<double>::state_type StackedShortcutModel<double>::get_final_activation(Graph<double>&, const index_row&) const;
+template StackedShortcutModel<double>::state_type StackedShortcutModel<double>::get_final_activation(Graph<double>&, const sliced_row&) const;
+template StackedShortcutModel<double>::state_type StackedShortcutModel<double>::get_final_activation(Graph<double>&, const sliced_col&) const;
+template StackedShortcutModel<double>::state_type StackedShortcutModel<double>::get_final_activation(Graph<double>&, const eigen_index_block_scalar&) const;
+
+template StackedShortcutModel<float>::state_type StackedShortcutModel<float>::get_final_activation(Graph<float>&, const index_col&) const;
+template StackedShortcutModel<float>::state_type StackedShortcutModel<float>::get_final_activation(Graph<float>&, const index_row&) const;
+template StackedShortcutModel<float>::state_type StackedShortcutModel<float>::get_final_activation(Graph<float>&, const sliced_row&) const;
+template StackedShortcutModel<float>::state_type StackedShortcutModel<float>::get_final_activation(Graph<float>&, const sliced_col&) const;
+template StackedShortcutModel<float>::state_type StackedShortcutModel<float>::get_final_activation(Graph<float>&, const eigen_index_block_scalar&) const;
+
+typedef Eigen::VectorBlock< Eigen::Matrix<uint, Eigen::Dynamic, 1>, Eigen::Dynamic> vector_block;
+typedef Eigen::VectorBlock< Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic>, Eigen::Dynamic> submatrix_block;
+
+template StackedShortcutModel<float>::state_type StackedShortcutModel<float>::get_final_activation(Graph<float>&, const vector_block&) const;
+template StackedShortcutModel<double>::state_type StackedShortcutModel<double>::get_final_activation(Graph<double>&, const vector_block&) const;
+template StackedShortcutModel<float>::state_type StackedShortcutModel<float>::get_final_activation(Graph<float>&, const submatrix_block&) const;
+template StackedShortcutModel<double>::state_type StackedShortcutModel<double>::get_final_activation(Graph<double>&, const submatrix_block&) const;
 
 template vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<float>::reconstruct_lattice(sliced_row, utils::OntologyBranch::shared_branch, int);
 template vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<double>::reconstruct_lattice(sliced_row, utils::OntologyBranch::shared_branch, int);

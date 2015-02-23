@@ -16,6 +16,7 @@ class Layer {
     */
     void create_variables();
     public:
+        typedef T value_t;
         typedef Mat<T>                      mat;
         typedef std::shared_ptr<mat> shared_mat;
         shared_mat W;
@@ -97,6 +98,7 @@ class StackedInputLayer {
     std::vector<std::shared_ptr<Mat<T>>> zip_inputs_with_matrices_and_bias(const std::vector<std::shared_ptr<Mat<T>>>&) const;
     std::vector<std::shared_ptr<Mat<T>>> zip_inputs_with_matrices_and_bias(std::shared_ptr<Mat<T>>, const std::vector<std::shared_ptr<Mat<T>>>&) const;
     public:
+        typedef T value_t;
         typedef Mat<T>                      mat;
         typedef std::shared_ptr<mat> shared_mat;
         std::vector<shared_mat> matrices;
@@ -223,6 +225,7 @@ class RNN {
     */
     void create_variables();
     public:
+        typedef T value_t;
         typedef Mat<T>                      mat;
         typedef std::shared_ptr<mat> shared_mat;
         shared_mat Wx;
@@ -306,6 +309,7 @@ class ShortcutRNN {
     */
     void create_variables();
     public:
+        typedef T value_t;
         typedef Mat<T>                      mat;
         typedef std::shared_ptr<mat> shared_mat;
         shared_mat Wx;
@@ -382,6 +386,7 @@ template<typename T>
 class GatedInput {
     typedef RNN<T>                   layer_type;
     public:
+        typedef T value_t;
         typedef Mat<T>                      mat;
         typedef std::shared_ptr<mat> shared_mat;
         std::vector<shared_mat> parameters() const;
@@ -459,6 +464,7 @@ class LSTM {
     typedef RNN<T>                        layer_type;
     void name_internal_layers();
     public:
+        typedef T value_t;
         typedef Mat<T>                               mat;
         typedef std::shared_ptr<mat>          shared_mat;
         // cell input modulation:
@@ -508,7 +514,7 @@ class LSTM {
         **/
         LSTM (const LSTM&, bool, bool);
         std::vector<shared_mat> parameters() const;
-        static std::pair<std::vector<shared_mat>, std::vector<shared_mat>> initial_states(std::vector<int>&);
+        static std::pair<std::vector<shared_mat>, std::vector<shared_mat>> initial_states(const std::vector<int>&);
         std::pair<shared_mat, shared_mat> activate(
             Graph<T>&,
             shared_mat,
@@ -553,6 +559,7 @@ class ShortcutLSTM {
     typedef ShortcutRNN<T>          layer_type;
     void name_internal_layers();
     public:
+        typedef T value_t;
         typedef Mat<T>                               mat;
         typedef std::shared_ptr<mat>          shared_mat;
         // cell input modulation:
@@ -616,13 +623,13 @@ template<typename T>
 std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>> forward_LSTMs(Graph<T>&,
     std::shared_ptr<Mat<T>>,
     std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>>&,
-    std::vector<LSTM<T>>&);
+    const std::vector<LSTM<T>>&);
 
 template<typename T>
 std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>> forward_LSTMs(Graph<T>&,
     std::shared_ptr<Mat<T>>,
     std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>>&,
-    LSTM<T>&,
-    std::vector<ShortcutLSTM<T>>&);
+    const LSTM<T>&,
+    const std::vector<ShortcutLSTM<T>>&);
 
 #endif

@@ -1,5 +1,4 @@
 #include "Mat.h"
-#include "utils.h"
 
 using namespace Eigen;
 using std::vector;

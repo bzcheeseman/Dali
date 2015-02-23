@@ -483,9 +483,9 @@ StackedGatedModel<T> StackedGatedModel<T>::shallow_copy() const {
 
 template<typename T>
 template<typename K>
-typename StackedGatedModel<T>::lstm_activation_t StackedGatedModel<T>::get_final_activation(
+typename StackedGatedModel<T>::state_type StackedGatedModel<T>::get_final_activation(
 	graph_t& G,
-	const K& example) {
+	const K& example) const {
 	shared_mat input_vector;
 	shared_mat memory;
 	auto initial_state = lstm::initial_states(hidden_sizes);
@@ -528,8 +528,8 @@ std::tuple<std::pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>>, sh
 template<typename T>
 typename StackedGatedModel<T>::activation_t StackedGatedModel<T>::activate(
 	graph_t& G,
-	lstm_activation_t& previous_state,
-	const uint& index) {
+	state_type& previous_state,
+	const uint& index) const {
 	activation_t out;
 
 	auto input_vector = G.row_pluck(embedding, index);
@@ -680,6 +680,26 @@ template vector<int> StackedGatedModel<double>::reconstruct(sliced_col, int, int
 
 template vector<int> StackedGatedModel<float>::reconstruct(index_col, int, int);
 template vector<int> StackedGatedModel<double>::reconstruct(index_col, int, int);
+
+template StackedGatedModel<double>::state_type StackedGatedModel<double>::get_final_activation(Graph<double>&, const index_col&) const;
+template StackedGatedModel<double>::state_type StackedGatedModel<double>::get_final_activation(Graph<double>&, const index_row&) const;
+template StackedGatedModel<double>::state_type StackedGatedModel<double>::get_final_activation(Graph<double>&, const sliced_row&) const;
+template StackedGatedModel<double>::state_type StackedGatedModel<double>::get_final_activation(Graph<double>&, const sliced_col&) const;
+template StackedGatedModel<double>::state_type StackedGatedModel<double>::get_final_activation(Graph<double>&, const eigen_index_block_scalar&) const;
+
+template StackedGatedModel<float>::state_type StackedGatedModel<float>::get_final_activation(Graph<float>&, const index_col&) const;
+template StackedGatedModel<float>::state_type StackedGatedModel<float>::get_final_activation(Graph<float>&, const index_row&) const;
+template StackedGatedModel<float>::state_type StackedGatedModel<float>::get_final_activation(Graph<float>&, const sliced_row&) const;
+template StackedGatedModel<float>::state_type StackedGatedModel<float>::get_final_activation(Graph<float>&, const sliced_col&) const;
+template StackedGatedModel<float>::state_type StackedGatedModel<float>::get_final_activation(Graph<float>&, const eigen_index_block_scalar&) const;
+
+typedef Eigen::VectorBlock< Eigen::Matrix<uint, Eigen::Dynamic, 1>, Eigen::Dynamic> vector_block;
+typedef Eigen::VectorBlock< Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic>, Eigen::Dynamic> submatrix_block;
+
+template StackedGatedModel<float>::state_type StackedGatedModel<float>::get_final_activation(Graph<float>&, const vector_block&) const;
+template StackedGatedModel<double>::state_type StackedGatedModel<double>::get_final_activation(Graph<double>&, const vector_block&) const;
+template StackedGatedModel<float>::state_type StackedGatedModel<float>::get_final_activation(Graph<float>&, const submatrix_block&) const;
+template StackedGatedModel<double>::state_type StackedGatedModel<double>::get_final_activation(Graph<double>&, const submatrix_block&) const;
 
 template vector<utils::OntologyBranch::shared_branch> StackedGatedModel<float>::reconstruct_lattice(sliced_row, utils::OntologyBranch::shared_branch, int);
 template vector<utils::OntologyBranch::shared_branch> StackedGatedModel<double>::reconstruct_lattice(sliced_row, utils::OntologyBranch::shared_branch, int);

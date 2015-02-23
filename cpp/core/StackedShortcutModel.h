@@ -82,8 +82,9 @@ class StackedShortcutModel {
 	inline void construct_LSTM_cells(const std::vector<shortcut_lstm>&, bool, bool);
 
 	public:
-		typedef std::pair<std::vector<shared_mat>, std::vector<shared_mat>> lstm_activation_t;
-		typedef std::pair<lstm_activation_t, shared_mat > activation_t;
+		typedef std::pair<std::vector<shared_mat>, std::vector<shared_mat>> state_type;
+		typedef std::pair<state_type, shared_mat > activation_t;
+		typedef T value_t;
 
 		lstm                   base_cell;
 		std::vector<shortcut_lstm> cells;
@@ -282,7 +283,7 @@ std::vector<int> hidden_sizes : size of internal layers
 		std::vector<int> reconstruct(K, int, int symbol_offset = 0);
 
 		template<typename K>
-		lstm_activation_t get_final_activation(graph_t&, const K&);
+		state_type get_final_activation(graph_t&, const K&) const;
 
 		/**
 		Activate
@@ -307,7 +308,7 @@ std::vector<int> hidden_sizes : size of internal layers
 		    pair of LSTM hidden and cell states, and probabilities from the decoder.
 
 		**/
-		activation_t activate(graph_t&, lstm_activation_t&, const uint&);
+		activation_t activate(graph_t&, state_type&, const uint&) const;
 
 		template<typename K>
 		std::string reconstruct_string(K, const utils::Vocab&, int, int symbol_offset = 0);

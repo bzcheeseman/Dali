@@ -1,7 +1,7 @@
 #include "Softmax.h"
 
 template<typename T>
-std::shared_ptr<Mat<T>> softmax_transpose(std::shared_ptr<Mat<T>> matrix) {
+std::shared_ptr<Mat<T>> softmax_transpose(const std::shared_ptr<Mat<T>> matrix) {
 
 	DEBUG_ASSERT_NOT_NAN(matrix->w);
 
@@ -22,7 +22,7 @@ std::shared_ptr<Mat<T>> softmax_transpose(std::shared_ptr<Mat<T>> matrix) {
 }
 
 template<typename T>
-std::shared_ptr<Mat<T>> softmax(std::shared_ptr<Mat<T>> matrix) {
+std::shared_ptr<Mat<T>> softmax(const std::shared_ptr<Mat<T>> matrix) {
 
 	DEBUG_ASSERT_NOT_NAN(matrix->w);
 
@@ -42,8 +42,8 @@ std::shared_ptr<Mat<T>> softmax(std::shared_ptr<Mat<T>> matrix) {
 	return out;
 }
 
-template std::shared_ptr<Mat<float>> softmax(std::shared_ptr<Mat<float>>);
-template std::shared_ptr<Mat<double>> softmax(std::shared_ptr<Mat<double>>);
+template std::shared_ptr<Mat<float>> softmax(const std::shared_ptr<Mat<float>>);
+template std::shared_ptr<Mat<double>> softmax(const std::shared_ptr<Mat<double>>);
 
-template std::shared_ptr<Mat<float>> softmax_transpose(std::shared_ptr<Mat<float>>);
-template std::shared_ptr<Mat<double>> softmax_transpose(std::shared_ptr<Mat<double>>);
+template std::shared_ptr<Mat<float>> softmax_transpose(const std::shared_ptr<Mat<float>>);
+template std::shared_ptr<Mat<double>> softmax_transpose(const std::shared_ptr<Mat<double>>);

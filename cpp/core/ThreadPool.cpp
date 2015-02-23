@@ -3,7 +3,7 @@
 __thread bool ThreadPool::in_thread_pool = false;
 __thread int ThreadPool::thread_number = -1;
 
-ThreadPool::ThreadPool(int num_threads, dduration between_queue_checks) :
+ThreadPool::ThreadPool(int num_threads, Duration between_queue_checks) :
         between_queue_checks(between_queue_checks),
         should_terminate(false),
         active_count(0) {
@@ -60,7 +60,7 @@ int ThreadPool::active_workers() {
     return active_count;
 }
 
-bool ThreadPool::wait_until_idle(dduration timeout) {
+bool ThreadPool::wait_until_idle(Duration timeout) {
     std::unique_lock<decltype(queue_mutex)> lock(queue_mutex);
     is_idle.wait_for(lock, timeout, [this]{
         return active_count == 0 && work.empty();

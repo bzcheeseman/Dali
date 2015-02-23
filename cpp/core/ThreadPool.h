@@ -10,12 +10,12 @@
 #include <thread>
 #include <vector>
 
+
 using std::chrono::milliseconds;
 using std::function;
 using std::vector;
 using std::thread;
-
-typedef std::chrono::duration<double> dduration;
+using Duration = std::chrono::duration<double>;
 
 class ThreadPool {
     private:
@@ -31,7 +31,7 @@ class ThreadPool {
 
         std::deque<function<void()> > work;
         vector<thread> pool;
-        dduration between_queue_checks;
+        Duration between_queue_checks;
 
         void thread_body(int _thread_id);
     public:
@@ -40,7 +40,7 @@ class ThreadPool {
         // goes out of scope. Threads periodically check for new work
         // and the frequency of those checks is at minimum between_queue_checks
         // (it can be higher due to thread scheduling).
-        ThreadPool(int num_threads, dduration between_queue_checks=milliseconds(1));
+        ThreadPool(int num_threads, Duration between_queue_checks=milliseconds(1));
 
         // Run a function on a thread in pool.
         void run(function<void()> f);
@@ -48,7 +48,7 @@ class ThreadPool {
         // Wait until queue is empty and all the threads have finished working.
         // If timeout is specified function waits at most timeout until the
         // threads are idle. If they indeed become idle returns true.
-        bool wait_until_idle(dduration timeout);
+        bool wait_until_idle(Duration timeout);
         bool wait_until_idle();
 
         // Return number of active busy workers.

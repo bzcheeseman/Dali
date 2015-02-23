@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <deque>
 #include <Eigen/Eigen>
 #include <fstream>
@@ -16,6 +17,7 @@
 #include "core/StackedShortcutModel.h"
 #include "core/ThreadPool.h"
 #include "core/utils.h"
+#include "core/Reporting.h"
 
 DEFINE_int32(minibatch,   100,  "What size should be used for the minibatches ?");
 DEFINE_bool(sparse,       true, "Use sparse embedding");
@@ -37,6 +39,7 @@ using std::vector;
 using utils::OntologyBranch;
 using utils::tokenized_uint_labeled_dataset;
 using utils::Vocab;
+using std::chrono::seconds;
 
 typedef float REAL_t;
 typedef Graph<REAL_t> graph_t;
@@ -297,8 +300,7 @@ template<typename model_t, typename S>
 void training_loop(model_t& model,
     const vector<Databatch>& dataset,
     const Vocab& word_vocab,
-    S& solver,
-    const int& epoch) {
+    S& solver) {
 
     double cost = 0.0;
     std::atomic<int> full_code_size(0);
@@ -310,10 +312,12 @@ void training_loop(model_t& model,
 
     std::atomic<int> batches_processed(0);
 
+    ReportProgress r("Training", random_batch_order.size());
+
     for (auto batch_id : random_batch_order) {
-        pool->run([&model, &dataset, &solver, &epoch, &full_code_size,
+        pool->run([&model, &dataset, &solver, &full_code_size,
                    &cost, &thread_models, batch_id, &random_batch_order,
-                   &batches_processed]() {
+                   &batches_processed, &r]() {
 
             auto& thread_model = thread_models[ThreadPool::get_thread_number()];
             auto thread_parameters = thread_model.parameters();
@@ -333,15 +337,12 @@ void training_loop(model_t& model,
 
             G.backward(); // backpropagate
             solver.step(thread_parameters, FLAGS_rho);
-            batches_processed += 1;
-            printf("epoch (%d - %.2f%%) KL error = %.3f\r",
-                epoch,
-                100.0 * batches_processed / random_batch_order.size() ,
-                cost / full_code_size);
-            fflush(stdout);
+
+            r.tick(++batches_processed);
         });
     }
     pool->wait_until_idle();
+    r.done();
 }
 
 /**
@@ -385,20 +386,19 @@ void train_model(const vector<Databatch>& dataset,
 
     while (cost > FLAGS_cutoff && i < FLAGS_epochs && patience < FLAGS_patience) {
         new_cost = 0.0;
-        training_loop(model, dataset, word_vocab, solver, i);
+        training_loop(model, dataset, word_vocab, solver);
         new_cost = average_error(model, validation_set);
         patience += (new_cost >= cost) ? 1 : 0;
         cost = new_cost;
 
-        if (i % FLAGS_report_frequency == 0) {
-            std::cout << "epoch (" << i << ") KL error = "
-                      << std::fixed
-                      << std::setw( 5 ) // keep 7 digits
-                      << std::setprecision( 3 ) // use 3 decimals
-                      << std::setfill( ' ' ) << new_cost << " patience = " << patience
-                      << std::endl;
-            reconstruct_random(model, dataset, word_vocab, 3);
-        }
+
+        std::cout << "epoch (" << i << ") KL error = "
+                  << std::fixed
+                  << std::setw( 5 ) // keep 7 digits
+                  << std::setprecision( 3 ) // use 3 decimals
+                  << std::setfill( ' ' ) << new_cost << " patience = " << patience
+                  << std::endl;
+        reconstruct_random(model, dataset, word_vocab, 3);
         i++;
     }
     if (FLAGS_save != "") {
@@ -459,7 +459,6 @@ int main( int argc, char* argv[]) {
               << "Max training epochs = " << FLAGS_epochs           << std::endl
               << "    Training cutoff = " << FLAGS_cutoff           << std::endl
               << "  Number of threads = " << FLAGS_j                << std::endl
-              << "   report_frequency = " << FLAGS_report_frequency << std::endl
               << "     minibatch size = " << FLAGS_minibatch        << std::endl
               << "       max_patience = " << FLAGS_patience         << std::endl;
 

@@ -10,8 +10,6 @@ DEFINE_int32(min_occurence,      2,
         "(Note: other words replaced by special **UNKNONW** word)");
 DEFINE_int32(epochs,             5,
         "How many training loops through the full dataset ?");
-DEFINE_int32(report_frequency,   1,
-        "How often (in epochs) to print the error to standard out during training.");
 DEFINE_string(train,             "",
         "Training dataset . ");
 DEFINE_int32(j,                  1,

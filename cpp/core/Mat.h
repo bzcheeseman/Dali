@@ -16,6 +16,8 @@
 
 DECLARE_bool(eigen_parallel);
 
+#define SMOOTH_DEFAULT 1e-6
+
 typedef Eigen::MatrixBase<Eigen::Matrix<unsigned int, Eigen::Dynamic, Eigen::Dynamic> >::ColXpr eigen_index_block;
 typedef Eigen::Matrix<unsigned int, Eigen::Dynamic, 1> eigen_index_vector;
 typedef std::shared_ptr<eigen_index_vector> shared_eigen_index_vector;
@@ -205,10 +207,10 @@ namespace utils {
 }
 
 template <typename T>
-static bool operator!=(const Mat<T>&, const Mat<T>&);
+bool operator!=(const Mat<T>&, const Mat<T>&);
 
 template <typename T>
-static bool operator==(const Mat<T>&, const Mat<T>&);
+bool operator==(const Mat<T>&, const Mat<T>&);
 
 template<typename T>
 int argmax(std::shared_ptr<Mat<T>>);
@@ -225,10 +227,11 @@ namespace Solver {
 		typedef Mat<T>                      mat;
 		typedef std::shared_ptr<mat> shared_mat;
 		typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
-		std::unordered_map<mat, eigen_mat> gsums;
+		
 		public:
-			RMSProp (T decay_rate= 0.999, T smooth_eps =1e-8, T clipval = 5.0);
-			RMSProp (std::vector<shared_mat>&, T decay_rate= 0.999, T smooth_eps =1e-8, T clipval = 5.0);
+			std::unordered_map<mat, eigen_mat> gsums;
+			RMSProp (T decay_rate= 0.999, T smooth_eps =SMOOTH_DEFAULT, T clipval = 5.0);
+			RMSProp (std::vector<shared_mat>&, T decay_rate= 0.999, T smooth_eps =SMOOTH_DEFAULT, T clipval = 5.0);
 			void step( std::vector<shared_mat>&, T, T);
 			void create_gradient_caches(std::vector<shared_mat>&);
 	};
@@ -240,11 +243,12 @@ namespace Solver {
 		typedef Mat<T>                      mat;
 		typedef std::shared_ptr<mat> shared_mat;
 		typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
-		std::unordered_map<mat, eigen_mat> gsums;
-		std::unordered_map<mat, eigen_mat> xsums;
+		
 		public:
-			AdaDelta (T rho= 0.95, T smooth_eps =1e-8, T clipval = 5.0);
-			AdaDelta (std::vector<shared_mat>&, T rho= 0.95, T smooth_eps =1e-8, T clipval = 5.0);
+			std::unordered_map<mat, eigen_mat> gsums;
+			std::unordered_map<mat, eigen_mat> xsums;
+			AdaDelta (T rho= 0.95, T smooth_eps =SMOOTH_DEFAULT, T clipval = 5.0);
+			AdaDelta (std::vector<shared_mat>&, T rho= 0.95, T smooth_eps =SMOOTH_DEFAULT, T clipval = 5.0);
 			void step( std::vector<shared_mat>&, T);
 			void create_gradient_caches(std::vector<shared_mat>&);
 	};
@@ -255,10 +259,11 @@ namespace Solver {
 		typedef Mat<T>                      mat;
 		typedef std::shared_ptr<mat> shared_mat;
 		typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
-		std::unordered_map<mat, eigen_mat> gsums;
+		
 		public:
-			AdaGrad (T smooth_eps =1e-8, T clipval = 5.0);
-			AdaGrad (std::vector<shared_mat>&, T smooth_eps =1e-8, T clipval = 5.0);
+			std::unordered_map<mat, eigen_mat> gsums;
+			AdaGrad (T smooth_eps =SMOOTH_DEFAULT, T clipval = 5.0);
+			AdaGrad (std::vector<shared_mat>&, T smooth_eps =SMOOTH_DEFAULT, T clipval = 5.0);
 			void step( std::vector<shared_mat>&, T, T);
 			void reset_caches( std::vector<shared_mat>&);
 			void create_gradient_caches(std::vector<shared_mat>&);

@@ -233,15 +233,24 @@ std::size_t std::hash<Mat<T>>::operator()(const Mat<T>& k) const {
 	return k.random_id;
 }
 
+template std::size_t std::hash<Mat<float>>::operator()(const Mat<float>& k)   const;
+template std::size_t std::hash<Mat<double>>::operator()(const Mat<double>& k) const;
+
 template <typename T>
-static bool operator!=(const Mat<T>& A, const Mat<T>& B) {
+bool operator!=(const Mat<T>& A, const Mat<T>& B) {
     return A.random_id != B.random_id;
 }
 
+template bool operator!=(const Mat<float>&, const Mat<float>&);
+template bool operator!=(const Mat<double>&, const Mat<double>&);
+
 template <typename T>
-static bool operator==(const Mat<T>& A, const Mat<T>& B) {
+bool operator==(const Mat<T>& A, const Mat<T>& B) {
     return A.random_id == B.random_id;
 }
+
+template bool operator==<float>(const Mat<float>&, const Mat<float>&);
+template bool operator==<double>(const Mat<double>&, const Mat<double>&);
 
 #define PARAM_KEY_FOR_LOOKUP_TABLE *param
 
@@ -278,6 +287,7 @@ void Solver::SGD<T>::step (vector<typename Solver::SGD<T>::shared_mat>& paramete
 			// reset gradient
 			param->dw.fill(0);
 		}
+		DEBUG_ASSERT_NOT_NAN(param->w);
 	}
 }
 
@@ -342,6 +352,8 @@ void Solver::AdaDelta<T>::step (vector<typename Solver::AdaDelta<T>::shared_mat>
 				// update gradient cache using decay rule:
 				gsum.row(i) = (gsum.row(i) * rho) + ((1.0 - rho) * (param->dw.row(i).array().square()).matrix());
 
+
+				DEBUG_ASSERT_POSITIVE(((gsum.row(i).array() + smooth_eps)).matrix());
 				auto dparam = -(((xsum.row(i).array() + smooth_eps) / (gsum.row(i).array() + smooth_eps)).sqrt() * param->dw.row(i).array()).matrix();
 
 				xsum.row(i) = (xsum.row(i) * rho) + ((1.0 - rho) * (dparam.array().square())).matrix();
@@ -358,7 +370,7 @@ void Solver::AdaDelta<T>::step (vector<typename Solver::AdaDelta<T>::shared_mat>
 			}
 			// update gradient cache using decay rule:
 			gsum = (gsum * rho) + ((1.0 - rho) * (param->dw.array().square()).matrix());
-
+			DEBUG_ASSERT_POSITIVE((gsum.array() + smooth_eps).matrix());
 			auto dparam = -(((xsum.array() + smooth_eps) / (gsum.array() + smooth_eps)).sqrt() * param->dw.array()).matrix();
 
 			xsum = (xsum * rho) + ((1.0 - rho) * (dparam.array().square())).matrix();
@@ -367,6 +379,7 @@ void Solver::AdaDelta<T>::step (vector<typename Solver::AdaDelta<T>::shared_mat>
 			// reset gradient
 			param->dw.fill(0);
 		}
+		DEBUG_ASSERT_NOT_NAN(param->w);
 	}
 }
 
@@ -430,6 +443,7 @@ void Solver::AdaGrad<T>::step(
 				s.row(i) += param->dw.row(i).array().square().matrix();
 				// clip the gradient to prevent explosions:
 				// update gradient using RMSprop rule
+				DEBUG_ASSERT_POSITIVE((s.row(i).array() + smooth_eps).matrix());
 				param->w.row(i) -= step_size * (param->dw.row(i).array() / (s.row(i).array() + smooth_eps).sqrt() ).matrix();
 				// reset gradient
 				param->dw.row(i).fill(0);
@@ -440,10 +454,12 @@ void Solver::AdaGrad<T>::step(
 			s += param->dw.array().square().matrix();
 			// clip the gradient to prevent explosions:
 			// update gradient using RMSprop rule
+			DEBUG_ASSERT_POSITIVE((s.array() + smooth_eps).matrix());
 			param->w -= step_size * (param->dw.array() / (s.array() + smooth_eps).sqrt() ).matrix();
 			// reset gradient
 			param->dw.fill(0);
 		}
+		DEBUG_ASSERT_NOT_NAN(param->w);
 	}
 }
 
@@ -529,6 +545,7 @@ void Solver::RMSProp<T>::step(
 				// clip the gradient to prevent explosions:
 				param->dw.row(i) = param->dw.row(i).array().min(clipval).max(-clipval).matrix();
 				// update gradient using RMSprop rule
+				DEBUG_ASSERT_POSITIVE((s.row(i).array() + smooth_eps).matrix());
 				param->w.row(i) -= step_size * (param->dw.row(i).array() / (s.row(i).array() + smooth_eps).sqrt() ).matrix()  - (regc * param->w.row(i));
 				// reset gradient
 				param->dw.row(i).fill(0);
@@ -539,10 +556,13 @@ void Solver::RMSProp<T>::step(
 			// clip the gradient to prevent explosions:
 			param->dw = param->dw.array().min(clipval).max(-clipval).matrix();
 			// update gradient using RMSprop rule
+			DEBUG_ASSERT_POSITIVE((s.array() + smooth_eps).matrix());
 			param->w -= step_size * (param->dw.array() / (s.array() + smooth_eps).sqrt() ).matrix()  - (regc * param->w);
 			// reset gradient
 			param->dw.fill(0);
 		}
+
+		DEBUG_ASSERT_NOT_NAN(param->w);
 	}
 
 }

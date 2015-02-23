@@ -4,6 +4,8 @@ using std::stringstream;
 using std::string;
 using std::vector;
 
+#define CLIP(X, V) (X).array().min(V).max(-V).matrix()
+
 template<typename T> Backward<T>::Backward (
 	shared_mat x,
 	shared_mat _out,
@@ -114,11 +116,55 @@ template<typename T>
 void Backward<T>::backward_mul_add_mul_with_bias() {
 	auto bias = matrices.back();
 	bias->dw.noalias() += out->dw.rowwise().sum();
+	if (bias->n > 200) {
+		std::cout << bias->w.col(0).head(20) << std::endl;
+		std::cout << bias->dw.col(0).head(20) << std::endl;
+		std::cout << "clipping the decoder" << std::endl;
+	}
+	if (bias->dw.array().sum() != bias->dw.array().sum()) exit(1);
 	
 	auto matrices_ptr = matrices.begin();
 	while (matrices_ptr != (matrices.end() - 1)) {
 		(*matrices_ptr)->dw.noalias()     += (out->dw) * (*(matrices_ptr+1))->w.transpose();
 		(*(matrices_ptr+1))->dw.noalias() += (*matrices_ptr)->w.transpose() * (out->dw);
+		matrices_ptr+=2;
+	}
+	/**
+	More explicity we are doing this:
+	// first multiply:
+	matrices[0]->dw.noalias() += (out->dw) * ((matrices[1]->w).transpose());
+	matrices[1]->dw.noalias() += matrices[0]->w.transpose() * (out->dw);
+	// second multiply:
+	matrices[2]->dw.noalias() += (out->dw) * ((matrices[3]->w).transpose());
+	matrices[3]->dw.noalias() += matrices[2]->w.transpose() * (out->dw);
+	**/
+}
+
+template<typename T>
+void Backward<T>::backward_rows_pluck(T clip_val) {
+	auto index_ptr = indices;
+	for (int i = 0; i < num_indices; ++i) {
+		// for each row do the same operation as for row_pluck:
+		matrices[0]->dw.row(*index_ptr).noalias() += CLIP(out->dw.col(i).transpose(), clip_val);
+		index_ptr++;
+	}
+}
+
+template<typename T>
+void Backward<T>::backward_mul_add_mul_with_bias(T clip_val) {
+	auto bias = matrices.back();
+	bias->dw.noalias() += CLIP(out->dw.rowwise().sum(), clip_val);
+	if (bias->n > 200) {
+		std::cout << bias->w.col(0).head(20) << std::endl;
+		std::cout << bias->dw.col(0).head(20) << std::endl;
+		std::cout << "clipping the decoder" << std::endl;
+	}
+	if (bias->dw.array().sum() != bias->dw.array().sum()) exit(1);
+	
+	auto matrices_ptr = matrices.begin();
+	while (matrices_ptr != (matrices.end() - 1)) {
+		(*matrices_ptr)->dw.noalias()     += CLIP(((out->dw) * (*(matrices_ptr+1))->w.transpose()), clip_val);
+		(*(matrices_ptr+1))->dw.noalias() += CLIP(((*matrices_ptr)->w.transpose() * (out->dw)), clip_val);
 		matrices_ptr+=2;
 	}
 	/**
@@ -201,6 +247,89 @@ void Backward<T>::operator ()() {
 			break;
 		case utils::ops::transpose:
 			matrices[0]->dw.noalias() += (out->dw).transpose();
+			break;
+		default:
+			stringstream error_msg;
+			error_msg << "NotImplemented: Do not know how to backpropagate for this type => "
+			   << op_type() << " (" << type << ")";
+			throw std::invalid_argument(error_msg.str());
+			break;
+	}
+}
+
+
+/**
+Clipped backpropagation step
+**/
+template<typename T>
+void Backward<T>::operator ()(T clip_val) {
+	switch(this->type) {
+		case utils::ops::add:
+			for (auto& matrix : matrices) matrix->dw.noalias() += CLIP(out->dw, clip_val);
+			break;
+		case utils::ops::add_broadcast:
+			matrices[0]->dw.noalias() += CLIP(out->dw, clip_val);
+			matrices[1]->dw.noalias() += CLIP(out->dw.rowwise().sum(), clip_val);
+			break;
+		case utils::ops::eltmul:
+			matrices[0]->dw.noalias() += CLIP(((matrices[1]->w).array() * (out->dw).array()).matrix(), clip_val);
+			matrices[1]->dw.noalias() += CLIP(((matrices[0]->w).array() * (out->dw).array()).matrix(), clip_val);
+			break;
+		case utils::ops::eltmul_rowwise:
+			matrices[0]->dw.noalias() += CLIP(((matrices[1]->w).transpose().array() * (out->dw).array()).matrix(), clip_val);
+			matrices[1]->dw.noalias() += CLIP((((matrices[0]->w).array() * (out->dw).array()).matrix().transpose()), clip_val);
+			break;
+		case utils::ops::eltmul_broadcast:
+			matrices[0]->dw.noalias() += CLIP(((out->dw).array().colwise() * (matrices[1]->w).col(0).array()).matrix(), clip_val);
+			matrices[1]->dw.noalias() += CLIP(((matrices[0]->w).array() * (out->dw).array()).matrix().rowwise().sum(), clip_val);
+			break;
+		case utils::ops::eltmul_broadcast_rowwise:
+			matrices[0]->dw.noalias() += CLIP(((out->dw).array().rowwise() * (matrices[1]->w).row(0).array()).matrix(), clip_val);
+			matrices[1]->dw.noalias() += CLIP((((matrices[0]->w).array() * (out->dw).array()).matrix().colwise().sum()).matrix(), clip_val);
+			break;
+		case utils::ops::sigmoid:
+			matrices[0]->dw.noalias() += CLIP((((out->w).array() - out->w.array().square()).max(1e-9) * out->dw.array()).matrix(), clip_val);
+			break;
+		case utils::ops::mul:
+			matrices[0]->dw.noalias() += CLIP(((out->dw) * ((matrices[1]->w).transpose())), clip_val);
+			matrices[1]->dw.noalias() += CLIP((matrices[0]->w.transpose() * (out->dw)), clip_val);
+			break;
+		case utils::ops::relu:
+			matrices[0]->dw.noalias() += CLIP((out->w.unaryExpr(utils::sign_operator<T>()).array() * out->dw.array()).matrix(), clip_val);
+			break;
+		case utils::ops::tanh:
+			matrices[0]->dw.noalias() += CLIP((out->w.unaryExpr(utils::dtanh_operator<T>()).array() * out->dw.array()).matrix(), clip_val);
+			break;
+		case utils::ops::row_pluck:
+			matrices[0]->dw.row(ix).noalias() += CLIP(out->dw.col(0).transpose(), clip_val);
+			break;
+		case utils::ops::rows_pluck:
+			// number of rows:
+			backward_rows_pluck(clip_val);
+			break;
+		case utils::ops::mul_with_bias:
+			matrices[0]->dw.noalias() += CLIP((out->dw) * (matrices[1]->w).transpose(), clip_val);
+			matrices[1]->dw.noalias() += CLIP(matrices[0]->w.transpose() * (out->dw), clip_val);
+			matrices[2]->dw.noalias() += CLIP(out->dw.rowwise().sum().matrix(), clip_val);
+			break;
+		case utils::ops::mul_add_mul_with_bias:
+			backward_mul_add_mul_with_bias(clip_val);
+			break;
+		case utils::ops::mul_add_broadcast_mul_with_bias:
+			// first multiply:
+			// broadcasting input means taking outer product here:
+			matrices[0]->dw           += CLIP((out->dw).rowwise().sum() * ((matrices[1]->w).transpose()), clip_val);
+			// broadcasting output means sum after the reverse product here:
+			matrices[1]->dw.noalias() += CLIP((matrices[0]->w.transpose() * (out->dw)).rowwise().sum(), clip_val);
+			// second multiply:
+			matrices[2]->dw.noalias() += CLIP(out->dw * (matrices[3]->w).transpose(), clip_val);
+
+			matrices[3]->dw.noalias() += CLIP(matrices[2]->w.transpose() * (out->dw), clip_val);
+			// bias vector:
+			matrices[4]->dw.noalias() += CLIP(out->dw.rowwise().sum(), clip_val);
+			break;
+		case utils::ops::transpose:
+			matrices[0]->dw.noalias() += CLIP((out->dw).transpose(), clip_val);
 			break;
 		default:
 			stringstream error_msg;

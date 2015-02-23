@@ -1,44 +1,42 @@
 #include <algorithm>
 #include <atomic>
+#include <deque>
 #include <Eigen/Eigen>
 #include <fstream>
-#include <deque>
-#include <mutex>
 #include <gflags/gflags.h>
 #include <gflags/gflags_completions.h>
 #include <iterator>
+#include <mutex>
 #include <thread>
-#include "core/utils.h"
-#include "core/SST.h"
+
 #include "core/gzstream.h"
+#include "core/NlpUtils.h"
+#include "core/SST.h"
 #include "core/StackedModel.h"
 #include "core/StackedShortcutModel.h"
 #include "core/ThreadPool.h"
+#include "core/utils.h"
 
 DEFINE_int32(minibatch,   100,  "What size should be used for the minibatches ?");
-DEFINE_string(validation, "",   "Location of the validation dataset");
 DEFINE_bool(sparse,       true, "Use sparse embedding");
 DEFINE_double(cutoff,     2.0,  "KL Divergence error where stopping is acceptable");
-DEFINE_int32(j,           1,    "How many threads should be used ?");
 DEFINE_int32(patience,    5,    "How many unimproving epochs to wait through before witnessing progress ?");
 DEFINE_bool(shortcut,     true, "Use a Stacked LSTM with shortcuts");
 
-static bool dummy1 = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_validation,
-                                                            &utils::validate_flag_nonempty);
 
-using std::vector;
-using std::make_shared;
-using std::shared_ptr;
 using std::ifstream;
 using std::istringstream;
-using std::stringstream;
-using std::string;
+using std::make_shared;
 using std::min;
-using std::thread;
 using std::ref;
-using utils::Vocab;
+using std::shared_ptr;
+using std::string;
+using std::stringstream;
+using std::thread;
+using std::vector;
 using utils::OntologyBranch;
 using utils::tokenized_uint_labeled_dataset;
+using utils::Vocab;
 
 typedef float REAL_t;
 typedef Graph<REAL_t> graph_t;
@@ -446,7 +444,7 @@ int main( int argc, char* argv[]) {
     Eigen::initParallel();
 
     auto dataset_vocab      = load_dataset_and_vocabulary(
-        FLAGS_dataset,
+        FLAGS_train,
         FLAGS_min_occurence,
         FLAGS_minibatch);
 

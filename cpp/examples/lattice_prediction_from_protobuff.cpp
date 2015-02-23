@@ -1,12 +1,13 @@
-#include <fstream>
-#include <iterator>
 #include <algorithm>
 #include <Eigen/Eigen>
+#include <fstream>
 #include <gflags/gflags.h>
+#include <iterator>
 
-#include "core/utils.h"
 #include "core/gzstream.h"
+#include "core/NlpUtils.h"
 #include "core/StackedGatedModel.h"
+#include "core/utils.h"
 
 DEFINE_string(index2target, "", "Location of Index2Target file with mapping from integer to target name.");
 DEFINE_string(lattice, "", "Where to load a lattice / Ontology from ?");
@@ -16,16 +17,16 @@ static bool dummy1 = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_lattice,
 static bool dummy2 = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_index2target,
                                                    &utils::validate_flag_nonempty);
 
-using std::vector;
-using std::make_shared;
-using std::shared_ptr;
 using std::ifstream;
 using std::istringstream;
-using std::string;
+using std::make_shared;
 using std::min;
-using utils::Vocab;
+using std::shared_ptr;
+using std::string;
+using std::vector;
 using utils::OntologyBranch;
 using utils::tokenized_labeled_dataset;
+using utils::Vocab;
 
 typedef float REAL_t;
 typedef Graph<REAL_t> graph_t;
@@ -51,7 +52,7 @@ int main( int argc, char* argv[]) {
 
 	auto index2concept = utils::load_list(FLAGS_index2target);
 	std::cout << "Loaded " << index2concept.size() << " unique concept names " << std::endl;
-	auto examples      = utils::load_protobuff_dataset(FLAGS_dataset, index2concept);
+	auto examples      = utils::load_protobuff_dataset(FLAGS_train, index2concept);
 	std::cout << "Loaded " << examples.size() << " examples,";
 	auto index2word    = utils::get_vocabulary(examples, FLAGS_min_occurence);
 	Vocab word_vocab(index2word);

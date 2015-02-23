@@ -1,13 +1,13 @@
-#include <fstream>
-#include <iterator>
 #include <algorithm>
-#include <gflags/gflags.h>
-
 #include <Eigen/Eigen>
+#include <fstream>
+#include <gflags/gflags.h>
+#include <iterator>
 
-#include "core/utils.h"
 #include "core/gzstream.h"
+#include "core/NlpUtils.h"
 #include "core/StackedGatedModel.h"
+#include "core/utils.h"
 
 
 DEFINE_string(lattice, "", "Where to load a lattice / Ontology from ?");
@@ -213,7 +213,7 @@ int main( int argc, char* argv[]) {
 
 
 	auto lattice     = OntologyBranch::load(FLAGS_lattice)[0];
-	auto examples    = utils::load_tokenized_labeled_corpus(FLAGS_dataset);
+	auto examples    = utils::load_tokenized_labeled_corpus(FLAGS_train);
 	auto index2word  = utils::get_vocabulary(examples, FLAGS_min_occurence);
 	auto index2label = utils::get_lattice_vocabulary(lattice);
 	Vocab word_vocab(index2word);

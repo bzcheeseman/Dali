@@ -1,10 +1,12 @@
-#include <fstream>
-#include <random>
-#include <iostream>
 #include <cstdio>
-#include <thread>
+#include <fstream>
 #include <gflags/gflags.h>
+#include <iostream>
 #include <iterator>
+#include <random>
+#include <thread>
+
+#include "core/NlpUtils.h"
 #include "core/StackedModel.h"
 
 DEFINE_int32(num_threads, 5, "How many threads to run ?");

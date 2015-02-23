@@ -1,19 +1,21 @@
-#include <fstream>
-#include <iterator>
 #include <algorithm>
 #include <Eigen/Eigen>
+#include <fstream>
+#include <iterator>
 #include <set>
-#include "core/utils.h"
-#include "core/gzstream.h"
-#include "core/StackedGatedModel.h"
 
-using std::vector;
-using std::make_shared;
-using std::shared_ptr;
+#include "core/gzstream.h"
+#include "core/NlpUtils.h"
+#include "core/StackedGatedModel.h"
+#include "core/utils.h"
+
 using std::ifstream;
 using std::istringstream;
-using std::string;
+using std::make_shared;
 using std::min;
+using std::shared_ptr;
+using std::string;
+using std::vector;
 using utils::Vocab;
 
 typedef float REAL_t;
@@ -310,7 +312,7 @@ int main(int argc, char *argv[]) {
 	int epochs           = FLAGS_epochs;
 	int report_frequency = FLAGS_report_frequency;
 	REAL_t rho           = FLAGS_rho;
-	std::string dataset_path(FLAGS_dataset);
+	std::string dataset_path(FLAGS_train);
 	std::string save_destination(FLAGS_save);
 
 	// Collect Dataset from File:

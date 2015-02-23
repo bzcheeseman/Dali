@@ -1,13 +1,14 @@
-#include <fstream>
-#include <iterator>
 #include <algorithm>
 #include <Eigen/Eigen>
+#include <fstream>
+#include <iterator>
 #include <thread>
 
-#include "core/utils.h"
-#include "core/SST.h"
 #include "core/gzstream.h"
+#include "core/NlpUtils.h"
+#include "core/SST.h"
 #include "core/StackedModel.h"
+#include "core/utils.h"
 
 using std::vector;
 using std::make_shared;
@@ -363,7 +364,7 @@ int main( int argc, char* argv[]) {
     auto rho                = FLAGS_rho;
     auto epochs             = FLAGS_epochs;
     auto cutoff             = FLAGS_cutoff;
-    auto sentiment_treebank = SST::load(FLAGS_dataset);
+    auto sentiment_treebank = SST::load(FLAGS_train);
     auto word_vocab         = get_word_vocab(sentiment_treebank, FLAGS_min_occurence);
     auto vocab_size         = word_vocab.index2word.size();
 

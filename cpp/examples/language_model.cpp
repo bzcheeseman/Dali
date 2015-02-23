@@ -334,14 +334,6 @@ void training_loop(model_t& model,
             full_code_size += minibatch.total_codes;
 
             G.backward(); // backpropagate
-            std::unordered_map<string, REAL_t> mass_map;
-
-            for (auto& param : thread_parameters) {
-                mass_map[*param->name] = param->dw.array().square().sum();
-                mass_map[*param->name + "_gsum"] = solver.gsums[*param].array().square().sum();
-                mass_map[*param->name + "_xsum"] = solver.xsums[*param].array().square().sum();
-            }
-            std::cout << mass_map << std::endl;
             solver.step(thread_parameters, FLAGS_rho);
             batches_processed += 1;
             printf("epoch (%d - %.2f%%) KL error = %.3f\r",

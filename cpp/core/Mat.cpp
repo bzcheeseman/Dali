@@ -350,9 +350,10 @@ void Solver::AdaDelta<T>::step (vector<typename Solver::AdaDelta<T>::shared_mat>
 					param->dw.row(i) = param->dw.row(i).array().min(clipval).max(-clipval).matrix();
 				}
 				// update gradient cache using decay rule:
+				DEBUG_ASSERT_POSITIVE(gsum.row(i).matrix());
 				gsum.row(i) = (gsum.row(i) * rho) + ((1.0 - rho) * (param->dw.row(i).array().square()).matrix());
 
-
+				DEBUG_ASSERT_NOT_NAN(((gsum.row(i).array() + smooth_eps).matrix()));
 				DEBUG_ASSERT_POSITIVE(((gsum.row(i).array() + smooth_eps)).matrix());
 				DEBUG_ASSERT_POSITIVE(((xsum.row(i).array() + smooth_eps) / (gsum.row(i).array() + smooth_eps)).matrix());
 				auto dparam = -(((xsum.row(i).array() + smooth_eps) / (gsum.row(i).array() + smooth_eps)).sqrt() * param->dw.row(i).array()).matrix();

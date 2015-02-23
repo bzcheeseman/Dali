@@ -116,13 +116,14 @@ template<typename T>
 void Backward<T>::backward_mul_add_mul_with_bias() {
 	auto bias = matrices.back();
 	bias->dw.noalias() += out->dw.rowwise().sum();
-	if (bias->n > 200) {
-		std::cout << bias->w.col(0).head(20) << std::endl;
-		std::cout << bias->dw.col(0).head(20) << std::endl;
-		std::cout << "clipping the decoder" << std::endl;
-	}
-	if (bias->dw.array().sum() != bias->dw.array().sum()) exit(1);
-	
+	#ifdef DEBUG_RECCURENTJS
+		if (bias->n > 200) {
+			std::cout << bias->w.col(0).head(20) << std::endl;
+			std::cout << bias->dw.col(0).head(20) << std::endl;
+			std::cout << "clipping the decoder" << std::endl;
+		}
+		DEBUG_ASSERT_NOT_NAN(bias->dw);
+	#endif
 	auto matrices_ptr = matrices.begin();
 	while (matrices_ptr != (matrices.end() - 1)) {
 		(*matrices_ptr)->dw.noalias()     += (out->dw) * (*(matrices_ptr+1))->w.transpose();
@@ -154,12 +155,14 @@ template<typename T>
 void Backward<T>::backward_mul_add_mul_with_bias(T clip_val) {
 	auto bias = matrices.back();
 	bias->dw.noalias() += CLIP(out->dw.rowwise().sum(), clip_val);
-	if (bias->n > 200) {
-		std::cout << bias->w.col(0).head(20) << std::endl;
-		std::cout << bias->dw.col(0).head(20) << std::endl;
-		std::cout << "clipping the decoder" << std::endl;
-	}
-	if (bias->dw.array().sum() != bias->dw.array().sum()) exit(1);
+	#ifdef DEBUG_RECCURENTJS
+		if (bias->n > 200) {
+			std::cout << bias->w.col(0).head(20) << std::endl;
+			std::cout << bias->dw.col(0).head(20) << std::endl;
+			std::cout << "clipping the decoder" << std::endl;
+		}
+		DEBUG_ASSERT_NOT_NAN(bias->dw);
+	#endif
 	
 	auto matrices_ptr = matrices.begin();
 	while (matrices_ptr != (matrices.end() - 1)) {

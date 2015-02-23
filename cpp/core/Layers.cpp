@@ -82,12 +82,23 @@ vector<typename StackedInputLayer<T>::shared_mat> StackedInputLayer<T>::zip_inpu
     // We are provided separately with anoter input vector
     // that will go first in the zip, while the remainder will
     // be loaded in "zip" form with the vector of inputs
-    zipped.emplace_back(*mat_ptr++);
+    zipped.emplace_back(*mat_ptr);
     zipped.emplace_back(input);
 
+    mat_ptr++;
+
+    DEBUG_ASSERT_NOT_NAN((*mat_ptr)->w);
+    DEBUG_ASSERT_NOT_NAN(input->w);
+
     while (mat_ptr != matrices.end()) {
-        zipped.emplace_back(*mat_ptr++);
-        zipped.emplace_back(*input_ptr++);
+
+        DEBUG_ASSERT_NOT_NAN((*mat_ptr)->w);
+        DEBUG_ASSERT_NOT_NAN((*input_ptr)->w);
+
+        zipped.emplace_back(*mat_ptr);
+        zipped.emplace_back(*input_ptr);
+        mat_ptr++;
+        input_ptr++;
     }
     zipped.emplace_back(b);
     return zipped;
@@ -107,7 +118,12 @@ typename StackedInputLayer<T>::shared_mat StackedInputLayer<T>::activate(
     typename StackedInputLayer<T>::shared_mat input,
     const vector<typename StackedInputLayer<T>::shared_mat>& inputs) const {
     auto zipped = zip_inputs_with_matrices_and_bias(input, inputs);
-    return G.mul_add_mul_with_bias(zipped);
+
+    auto out = G.mul_add_mul_with_bias(zipped);
+
+    DEBUG_ASSERT_NOT_NAN(out->w);
+
+    return out;
 }
 
 template<typename T>
@@ -385,6 +401,10 @@ std::pair<typename LSTM<T>::shared_mat, typename LSTM<T>::shared_mat> LSTM<T>::a
     // compute hidden state as gated, saturated cell activations
 
     auto hidden_d    = G.eltmul(output_gate, G.tanh(cell_d));
+
+    DEBUG_ASSERT_NOT_NAN(hidden_d->w);
+    DEBUG_ASSERT_NOT_NAN(cell_d->w);
+
     return std::pair<shared_mat,shared_mat>(cell_d, hidden_d);
 }
 
@@ -413,6 +433,10 @@ std::pair<typename ShortcutLSTM<T>::shared_mat, typename ShortcutLSTM<T>::shared
     // compute hidden state as gated, saturated cell activations
 
     auto hidden_d    = G.eltmul(output_gate, G.tanh(cell_d));
+
+    DEBUG_ASSERT_NOT_NAN(hidden_d->w);
+    DEBUG_ASSERT_NOT_NAN(cell_d->w);
+
     return std::pair<shared_mat,shared_mat>(cell_d, hidden_d);
 }
 

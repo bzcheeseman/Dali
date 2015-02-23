@@ -143,7 +143,7 @@ typename Graph<T>::shared_mat Graph<T>::add(std::initializer_list<shared_mat> ma
 	auto out = std::make_shared<Mat<T>>(
 		(*matrices.begin())->n,
 		(*matrices.begin())->d,
-		true);
+		false);
 	for (auto& matrix : matrices) out->w += matrix->w;
 	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
@@ -279,7 +279,7 @@ typename Graph<T>::shared_mat Graph<T>::mul_add_mul_with_bias(std::initializer_l
 	auto out = std::make_shared<mat>(
 		(*matrices.begin())->n,
 		(*(matrices.begin() + 1))->d,
-		true);
+		false);
 	auto matrices_ptr = matrices.begin();
 	while (matrices_ptr != (matrices.end() - 1)) {
 		out->w += (*matrices_ptr)->w * (*(matrices_ptr + 1))->w;
@@ -297,16 +297,22 @@ typename Graph<T>::shared_mat Graph<T>::mul_add_mul_with_bias(const vector<share
 	auto out = std::make_shared<mat>(
 		matrices[0]->n,
 		matrices[1]->d,
-		true);
+		false);
 	auto matrices_ptr = matrices.begin();
 	while (matrices_ptr != (matrices.end() - 1)) {
 		out->w += (*matrices_ptr)->w * (*(matrices_ptr + 1))->w;
+		DEBUG_ASSERT_NOT_NAN((*matrices_ptr)->w);
+		DEBUG_ASSERT_NOT_NAN((*(matrices_ptr + 1))->w);
 		matrices_ptr+=2;
 	}
+
+	DEBUG_ASSERT_NOT_NAN((*(matrices.begin() + matrices.size() - 1))->w);
 	out->w.colwise() += (*(matrices.begin() + matrices.size() - 1))->w.col(0);
 	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
 		backprop.emplace_back(matrices, out, utils::ops::mul_add_mul_with_bias);
+
+	DEBUG_ASSERT_NOT_NAN(out->w);
 	return out;
 }
 

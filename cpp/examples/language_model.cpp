@@ -390,6 +390,7 @@ void train_model(const vector<Databatch>& dataset,
         training_loop(model, dataset, word_vocab, solver, i);
         new_cost = average_error(model, validation_set);
         patience += (new_cost >= cost) ? 1 : 0;
+        cost = new_cost;
 
         if (i % FLAGS_report_frequency == 0) {
             std::cout << "epoch (" << i << ") KL error = "

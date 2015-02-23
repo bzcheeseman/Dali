@@ -12,6 +12,7 @@
 #include <cstring>
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <set>
 #include <sys/stat.h>
 #include <algorithm>
@@ -33,9 +34,21 @@ DECLARE_int32(epochs);
 DECLARE_int32(report_frequency);
 DECLARE_string(dataset);
 
+#define DEBUG_RECURRENTJS
+
 // MACRO DEFINITIONS
 #define ELOG(EXP) std::cout << #EXP "\t=\t" << (EXP) << std::endl
 #define SELOG(STR,EXP) std::cout << #STR "\t=\t" << (EXP) << std::endl
+
+#ifdef DEBUG_RECURRENTJS
+	#define DEBUG_ASSERT_POSITIVE(X) assert(((X) >= 0).all())
+	#define DEBUG_ASSERT_NONZERO(X) assert(((X).abs() >= 1e-10).all())
+	#define DEBUG_ASSERT_NOT_NAN(X) assert(((X).array().square().sum() == (X).array().square().sum()))
+#else
+	#define DEBUG_ASSERT_POSITIVE(X)
+	#define DEBUG_ASSERT_NONZERO(X)
+	#define DEBUG_ASSERT_NOT_NAN(X)
+#endif
 
 // Default writing mode useful for default argument to
 // makedirs
@@ -43,6 +56,11 @@ DECLARE_string(dataset);
 
 std::ostream& operator<<(std::ostream&, const std::vector<std::string>&);
 std::ostream& operator<<(std::ostream&, const std::map<std::string, uint>&);
+std::ostream& operator<<(std::ostream&, const std::map<std::string, float>&);
+std::ostream& operator<<(std::ostream&, const std::map<std::string, double>&);
+std::ostream& operator<<(std::ostream&, const std::unordered_map<std::string, uint>&);
+std::ostream& operator<<(std::ostream&, const std::unordered_map<std::string, float>&);
+std::ostream& operator<<(std::ostream&, const std::unordered_map<std::string, double>&);
 
 template<typename T>
 std::ostream& operator<<(std::ostream&, const std::vector<T>&);

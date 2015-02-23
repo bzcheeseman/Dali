@@ -37,6 +37,47 @@ std::ostream &operator <<(std::ostream &os, const std::map<string, uint> &v) {
    return os << "}";
 }
 
+std::ostream &operator <<(std::ostream &os, const std::unordered_map<string, uint> &v) {
+   if (v.size() == 0) return os << "{}";
+   os << "{\n";
+   for (auto& kv : v) {
+       os << "\"" << kv.first << "\" => " << kv.second << ",\n";
+   }
+   return os << "}";
+}
+std::ostream &operator <<(std::ostream &os, const std::unordered_map<string, float> &v) {
+   if (v.size() == 0) return os << "{}";
+   os << "{\n";
+   for (auto& kv : v) {
+       os << "\"" << kv.first << "\" => " << kv.second << ",\n";
+   }
+   return os << "}";
+}
+std::ostream &operator <<(std::ostream &os, const std::unordered_map<string, double> &v) {
+   if (v.size() == 0) return os << "{}";
+   os << "{\n";
+   for (auto& kv : v) {
+       os << "\"" << kv.first << "\" => " << kv.second << ",\n";
+   }
+   return os << "}";
+}
+std::ostream &operator <<(std::ostream &os, const std::map<string, float> &v) {
+   if (v.size() == 0) return os << "{}";
+   os << "{\n";
+   for (auto& kv : v) {
+       os << "\"" << kv.first << "\" => " << kv.second << ",\n";
+   }
+   return os << "}";
+}
+std::ostream &operator <<(std::ostream &os, const std::map<string, double> &v) {
+   if (v.size() == 0) return os << "{}";
+   os << "{\n";
+   for (auto& kv : v) {
+       os << "\"" << kv.first << "\" => " << kv.second << ",\n";
+   }
+   return os << "}";
+}
+
 template<typename T>
 std::ostream& operator<<(std::ostream& os, const vector<T>& v) {
 	if (v.size() == 0) return os << "[]";

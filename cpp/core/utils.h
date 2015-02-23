@@ -34,8 +34,6 @@ DECLARE_int32(epochs);
 DECLARE_int32(report_frequency);
 DECLARE_string(dataset);
 
-#define DEBUG_RECURRENTJS
-
 // MACRO DEFINITIONS
 #define ELOG(EXP) std::cout << #EXP "\t=\t" << (EXP) << std::endl
 #define SELOG(STR,EXP) std::cout << #STR "\t=\t" << (EXP) << std::endl

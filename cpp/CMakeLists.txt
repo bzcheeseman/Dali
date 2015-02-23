@@ -64,10 +64,24 @@ endforeach(libvar)
 # GFLAGS STUFF
 add_definitions(-DGFLAGS_NAMESPACE=${GFLAGS_NAMESPACE})
 
-
 # COMPILER SETUP
-SET (CMAKE_CXX_COMPILER             "clang++")
-SET (CMAKE_CXX_FLAGS                "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
+if(CMAKE_BUILD_TYPE MATCHES "debug")
+    set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE})
+else(CMAKE_BUILD_TYPE MATCHES "debug")
+    set(CMAKE_BUILD_TYPE "release")
+endif(CMAKE_BUILD_TYPE MATCHES "debug")
+message("=> BUILD_TYPE " ${CMAKE_BUILD_TYPE})
+
+set (CMAKE_CXX_COMPILER             "clang++")
+if(CMAKE_BUILD_TYPE MATCHES "debug")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g")
+    add_definitions(-DDEBUG_RECURRENTJS)
+endif(CMAKE_BUILD_TYPE MATCHES "debug")
+if(CMAKE_BUILD_TYPE MATCHES "release")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
+endif(CMAKE_BUILD_TYPE MATCHES "release")
+
+
 
 # INCLUDES
 include_directories(${MKL_INCLUDE_DIR})

@@ -17,6 +17,7 @@ template<typename T> class Graph {
 		Graph (bool);
 		Graph ();
 		void backward ();
+		void backward (T);
 		shared_mat eltmul_broadcast(shared_mat, shared_mat);
 		shared_mat eltmul(shared_mat, shared_mat);
 		/**

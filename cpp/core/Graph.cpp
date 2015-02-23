@@ -14,6 +14,12 @@ void Graph<T>::backward () {
 }
 
 template<typename T>
+void Graph<T>::backward (T clip_val) {
+	for (auto it = this->backprop.rbegin(); it != this->backprop.rend(); ++it)
+		(*it)(clip_val);
+}
+
+template<typename T>
 typename Graph<T>::shared_mat Graph<T>::eltmul_broadcast(
 	shared_mat matrix1,
 	shared_mat matrix2) {

@@ -37,7 +37,7 @@ void ReportProgress<T>::tick(const double& completed_work, T work) {
         }
         ss << "] " << std::fixed
                    << std::setprecision( 3 ) // use 3 decimals
-                   << std::setfill( ' ' ) <<  completed_work/total_work << "%";
+                   << std::setfill( ' ' ) <<  100.0*completed_work/total_work << "%";
         ss << " " << work;
         std::cout << ss.str();
         std::cout.flush();

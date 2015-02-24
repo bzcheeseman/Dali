@@ -88,6 +88,10 @@ string Backward<T>::op_type () const {
 			return "rows_pluck";
 		case utils::ops::add_broadcast:
 			return "add_broadcast";
+		case utils::ops::sub_broadcast:
+			return "sub_broadcast";
+		case utils::ops::sub_broadcast_reversed:
+			return "sub_broadcast_reversed";
 		case utils::ops::eltmul_broadcast:
 			return "eltmul_broadcast";
 		case utils::ops::eltmul_broadcast_rowwise:
@@ -201,6 +205,14 @@ void Backward<T>::operator ()() {
 			break;
 		case utils::ops::add_broadcast:
 			matrices[0]->dw.noalias() += out->dw;
+			matrices[1]->dw.noalias() += out->dw.rowwise().sum();
+			break;
+		case utils::ops::sub_broadcast:
+			matrices[0]->dw.noalias() += out->dw;
+			matrices[1]->dw.noalias() -= out->dw.rowwise().sum();
+			break;
+		case utils::ops::sub_broadcast_reversed:
+			matrices[0]->dw.noalias() -= out->dw;
 			matrices[1]->dw.noalias() += out->dw.rowwise().sum();
 			break;
 		case utils::ops::eltmul:

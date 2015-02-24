@@ -27,6 +27,7 @@ Core/Model split:
 Put all the backprop code in one place:
     Merge backward and Graph and encapsulate nicely all the operations, so that they definie both forward and backward in one place.
 Operation wrappers:
+    (* add timers)
     * Add class BaseMatrix that is today's mat, should only support very basic operations like it supports now.
     * Add class Matrix which wraps BaseMatrix and has a pointer to graph.
     * Rename graph to problem, add make_matrix (T.shared())

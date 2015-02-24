@@ -5,14 +5,8 @@
 #include "core/Mat.h"
 #include "core/Graph.h"
 
-typedef std::shared_ptr<Mat<double> > shared_mat;
-
-
-/*class RNN {
-    shared_mat activate(Graph<double> G&, shared_mat input, shared output) {
-
-    }
-};*/
+typedef Mat<double> mat;
+typedef std::shared_ptr<mat> shared_mat;
 
 
 int main( int argc, char* argv[]) {
@@ -20,28 +14,52 @@ int main( int argc, char* argv[]) {
     "RNN Kindergarden - Lesson 1 - Learning to add.");
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
-    const int NUM_EXAMPLES = 10;
+    // How many examples to put in dataset
+    const int NUM_EXAMPLES = 100;
+    // How many number to add.
     const int EXAMPLE_SIZE = 3;
-    shared_mat X = std::make_shared<Mat<double> >(NUM_EXAMPLES,
+    // How many iterations of gradient descent to run.
+    const int ITERATIONS = 150;
+    // What is the learning rate.
+    double LR = 0.01;
+
+    // Generate random examples, all the rows sum to number between 0 and 1.
+    shared_mat X = std::make_shared<mat>(NUM_EXAMPLES,
                                                   EXAMPLE_SIZE,
                                                   0.0,
                                                   1.0/EXAMPLE_SIZE);
 
-    shared_mat Y = std::make_shared<Mat<double> >(NUM_EXAMPLES, 1);
-
+    // Compute sums of elements for each example. This is what we would
+    // like the network to output.
+    shared_mat Y = std::make_shared<mat>(NUM_EXAMPLES, 1);
     Y->w = X->w.rowwise().sum().matrix();
 
-    X->print();
-    Y->print();
 
+    // Those are our parameters: y_output = W1*X1 + ... + Wn*Xn
+    // We initialize them to random numbers between 0 and 1.
     shared_mat W = std::make_shared<Mat<double> >(EXAMPLE_SIZE, 1, -1.0, 1.0);
+    W->print();
 
-
-    Graph<double> G(true);
-    shared_mat predY = G.mul(X,W);
-    shared_mat error = G.sum(G.square(G.sub(predY, Y)));
-    error->grad();
-    G.backward();
-
-    //G.
+    for (int i = 0; i < ITERATIONS; ++i) {
+        // Set up G to start recording calculations.
+        Graph<double> G(true);
+        // What the network predicts the output will be.
+        shared_mat predY = G.mul(X,W);
+        // Squared error between desired and actual output
+        // E = sum((Ypred-Y)^2)
+        shared_mat error = G.sum(G.square(G.sub(predY, Y)));
+        // Mark error as what we compute error with respect to.
+        error->grad();
+        // Print error so that we know our progress.
+        error->print();
+        // Perform backpropagation algorithm.
+        G.backward();
+        // Use gradient descent to update network parameters.
+        W->w -= LR * W->dw;
+        // Reset gradients
+        W->dw.fill(0);
+        Y->dw.fill(0);
+    }
+    // Print the weights after we are done. The should all be close to one.
+    W->print();
 }

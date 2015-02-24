@@ -50,23 +50,40 @@ void ReportProgress<T>::done() {
 }
 
 template<typename T>
-void maybe_save_model(const T& model) {
+void maybe_save_model(const T& model,
+                      const string& base_path,
+                      const string& label) {
+    if (base_path.empty() && FLAGS_save.empty()) return;
     if (FLAGS_save != "") {
-        model_save_throttled.maybe_run(seconds(FLAGS_save_frequency_s), [&model]() {
-            std::cout << "Saving model to \""
-                      << FLAGS_save << "/\"" << std::endl;
+        model_save_throttled.maybe_run(seconds(FLAGS_save_frequency_s),
+                [&model,&base_path,&label]() {
             std::stringstream filename;
-            filename << FLAGS_save << "_" << model_snapshot_no * FLAGS_save_frequency_s;
-            model.save(filename.str());
+            if(!base_path.empty()) {
+                filename << base_path;
+            } else if (!FLAGS_save.empty()) {
+                filename << FLAGS_save;
+            }
+            if(!label.empty())
+                filename << "_" << label;
+
+            filename << "_" << model_snapshot_no;
             model_snapshot_no += 1;
+
+            std::cout << "Saving model to \""
+                      << filename.str() << "/\"" << std::endl;
+
+            model.save(filename.str());
         });
     }
 }
 
 template class ReportProgress<double>;
 
-template void maybe_save_model<StackedModel<float> >(const StackedModel<float>&);
-template void maybe_save_model<StackedModel<double> >(const StackedModel<double>&);
+template void maybe_save_model<StackedModel<float> >(const StackedModel<float>&, const string& base_path, const string& label);
+template void maybe_save_model<StackedModel<double> >(const StackedModel<double>&, const string& base_path, const string& label);
 
-template void maybe_save_model<StackedShortcutModel<float> >(const StackedShortcutModel<float>&);
-template void maybe_save_model<StackedShortcutModel<double> >(const StackedShortcutModel<double>&);
+template void maybe_save_model<StackedShortcutModel<float> >(const StackedShortcutModel<float>&, const string& base_path, const string& label);
+template void maybe_save_model<StackedShortcutModel<double> >(const StackedShortcutModel<double>&, const string& base_path, const string& label);
+
+template void maybe_save_model<StackedGatedModel<float> >(const StackedGatedModel<float>&, const string& base_path, const string& label);
+template void maybe_save_model<StackedGatedModel<double> >(const StackedGatedModel<double>&, const string& base_path, const string& label);

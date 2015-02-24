@@ -27,7 +27,7 @@ std::vector<std::shared_ptr<Mat<T>>> parameters : vector of model parameters
 **/
 
 template<typename T>
-vector<typename StackedGatedModel<T>::shared_mat> StackedGatedModel<T>::parameters() {
+vector<typename StackedGatedModel<T>::shared_mat> StackedGatedModel<T>::parameters() const {
 	vector<shared_mat> parameters;
 	parameters.push_back(embedding);
 
@@ -61,7 +61,7 @@ std::map<std::string, std::vector< std::string >> config : configuration map
 **/
 
 template<typename T>
-typename StackedGatedModel<T>::config_t StackedGatedModel<T>::configuration() {
+typename StackedGatedModel<T>::config_t StackedGatedModel<T>::configuration() const  {
 	config_t config;
 	config["output_size"].emplace_back(to_string(output_size));
 	config["input_size"].emplace_back(to_string(input_size));
@@ -86,14 +86,14 @@ std::string fname : where to save the configuration
 
 **/
 template<typename T>
-void StackedGatedModel<T>::save_configuration(std::string fname) {
+void StackedGatedModel<T>::save_configuration(std::string fname) const {
 
 	auto config = configuration();
 	utils::map_to_file(config, fname);
 }
 
 template<typename T>
-void StackedGatedModel<T>::save(std::string dirname) {
+void StackedGatedModel<T>::save(std::string dirname) const {
 	utils::ensure_directory(dirname);
 	// Save the matrices:
 	auto params = parameters();

@@ -6,6 +6,7 @@
 
 #include "core/gzstream.h"
 #include "core/NlpUtils.h"
+#include "core/Reporting.h"
 #include "core/StackedGatedModel.h"
 #include "core/utils.h"
 
@@ -262,7 +263,6 @@ void training_loop(StackedGatedModel<T>& model,
 	const Vocab& category_vocab,
 	S& solver,
 	vector<shared_ptr<mat>>& parameters,
-	int& report_frequency,
 	int& epoch) {
 	std::tuple<REAL_t, REAL_t> cost(0.0, 0.0);
 	for (auto& minibatch : dataset) {
@@ -278,14 +278,13 @@ void training_loop(StackedGatedModel<T>& model,
 		G.backward(); // backpropagate
 		solver.step(parameters, 0.0); // One step of gradient descent
 	}
-	if (epoch % report_frequency == 0) {
-		std::cout << "epoch (" << epoch << ") KL error = " << std::get<0>(cost)
-		                         << ", Memory cost = " << std::get<1>(cost) << std::endl;
-		auto& random_batch = dataset[utils::randint(0, std::min(3, (int)dataset.size() - 1))];
-		auto random_example_index = utils::randint(0, random_batch.data->rows() - 1);
+	std::cout << "epoch (" << epoch << ") KL error = " << std::get<0>(cost)
+	                         << ", Memory cost = " << std::get<1>(cost) << std::endl;
+	auto& random_batch = dataset[utils::randint(0, std::min(3, (int)dataset.size() - 1))];
+	auto random_example_index = utils::randint(0, random_batch.data->rows() - 1);
 
-		reconstruct(model, random_batch, random_example_index, word_vocab, category_vocab);
-	}
+	reconstruct(model, random_batch, random_example_index, word_vocab, category_vocab);
+
 }
 
 int main(int argc, char *argv[]) {
@@ -310,10 +309,8 @@ int main(int argc, char *argv[]) {
 	// TODO(sidor): Here dataset should defaults to: examples/sparkfun_dataset.txt
 
 	int epochs           = FLAGS_epochs;
-	int report_frequency = FLAGS_report_frequency;
 	REAL_t rho           = FLAGS_rho;
 	std::string dataset_path(FLAGS_train);
-	std::string save_destination(FLAGS_save);
 
 	// Collect Dataset from File:
 	auto products       = get_products(dataset_path);
@@ -328,18 +325,14 @@ int main(int argc, char *argv[]) {
 	auto model = StackedGatedModel<REAL_t>::build_from_CLI(vocab_size, index2category.size() + 1, true);
 	auto memory_penalty = FLAGS_memory_penalty;
 	model.memory_penalty = memory_penalty / dataset[0].data->cols();
-	std::cout << "Save location         = " << ((save_destination != "") ? save_destination : "N/A") << std::endl;
 	// Store all parameters in a vector:
 	auto parameters = model.parameters();
 	//Gradient descent optimizer:
 	Solver::AdaDelta<REAL_t> solver(parameters, rho, 1e-9, 5.0);
 	// Main training loop:
 	for (int i = 0; i < epochs; ++i)
-		training_loop(model, dataset, word_vocab, category_vocab, solver, parameters, report_frequency, i);
-	if (save_destination != "") {
-		model.save(save_destination);
-		std::cout << "Saved Model in \"" << save_destination << "\"" << std::endl;
-	}
+		training_loop(model, dataset, word_vocab, category_vocab, solver, parameters, i);
+	maybe_save_model(model);
 	std::cout <<"\nFinal Results\n=============\n" << std::endl;
 	for (auto& minibatch : dataset)
 		for (int i = 0; i < minibatch.data->rows(); i++)

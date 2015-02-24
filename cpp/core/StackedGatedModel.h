@@ -68,10 +68,10 @@ class StackedGatedModel {
 		const classifier_t decoder;
 		std::vector<int> hidden_sizes;
 		T memory_penalty;
-		std::vector<shared_mat> parameters();
-		config_t configuration();
-		void save_configuration(std::string);
-		void save(std::string);
+		std::vector<shared_mat> parameters() const;
+		config_t configuration() const;
+		void save_configuration(std::string) const;
+		void save(std::string) const;
 		static StackedGatedModel<T> load(std::string);
 		static StackedGatedModel<T> build_from_CLI(int, int, bool verbose=true);
 		StackedGatedModel(int, int, int, int, int, T _memory_penalty = 0.3);

@@ -8,6 +8,7 @@
 #include "core/NlpUtils.h"
 #include "core/StackedGatedModel.h"
 #include "core/utils.h"
+#include "core/Reporting.h"
 
 
 DEFINE_string(lattice, "", "Where to load a lattice / Ontology from ?");
@@ -171,7 +172,6 @@ void training_loop(StackedGatedModel<T>& model,
 	shared_lattice_t lattice,
 	S& solver,
 	vector<shared_ptr<mat>>& parameters,
-	int& report_frequency,
 	int& epoch,
 	std::tuple<T, T>& cost) {
 	for (auto& minibatch : dataset) {
@@ -187,14 +187,12 @@ void training_loop(StackedGatedModel<T>& model,
 		G.backward(); // backpropagate
 		solver.step(parameters, 0.0); // One step of gradient descent
 	}
-	if (epoch % report_frequency == 0) {
-		std::cout << "epoch (" << epoch << ") KL error = " << std::get<0>(cost)
-		                         << ", Memory cost = " << std::get<1>(cost) << std::endl;
-		auto& random_batch = dataset[utils::randint(0, dataset.size() - 1)];
-		auto random_example_index = utils::randint(0, random_batch.data->rows() - 1);
+	std::cout << "epoch (" << epoch << ") KL error = " << std::get<0>(cost)
+	                         << ", Memory cost = " << std::get<1>(cost) << std::endl;
+	auto& random_batch = dataset[utils::randint(0, dataset.size() - 1)];
+	auto random_example_index = utils::randint(0, random_batch.data->rows() - 1);
 
-		reconstruct(model, random_batch, random_example_index, word_vocab, lattice);
-	}
+	reconstruct(model, random_batch, random_example_index, word_vocab, lattice);
 }
 
 int main( int argc, char* argv[]) {
@@ -229,8 +227,6 @@ int main( int argc, char* argv[]) {
 	auto vocab_size = word_vocab.index2word.size() + lattice_vocab.index2word.size();
 	auto model = StackedGatedModel<REAL_t>::build_from_CLI(vocab_size, max_branching_factor + 1, true);
 	auto memory_penalty = FLAGS_memory_penalty;
-	auto save_destination = FLAGS_save;
-	auto report_frequency = FLAGS_report_frequency;
 	auto rho = FLAGS_rho;
 	auto epochs = FLAGS_epochs;
 	auto cutoff = FLAGS_cutoff;
@@ -239,7 +235,6 @@ int main( int argc, char* argv[]) {
 	// L1 penalty until it reaches the desired level.
 	// this allows early exploration, but only later forces sparsity on the model
 	model.memory_penalty = 0.0;
-	std::cout << "Save location         = " << ((save_destination != "") ? save_destination : "N/A") << std::endl;
 	// Store all parameters in a vector:
 	auto parameters = model.parameters();
 
@@ -254,13 +249,10 @@ int main( int argc, char* argv[]) {
 		std::get<0>(cost) = 0.0;
 		std::get<1>(cost) = 0.0;
 		model.memory_penalty = (memory_penalty / dataset[0].data->cols()) * std::min((REAL_t)1.0, ((REAL_t) (i*i) / ((REAL_t) memory_rampup * memory_rampup)));
-		training_loop(model, dataset, word_vocab, lattice, solver, parameters, report_frequency, i, cost);
+		training_loop(model, dataset, word_vocab, lattice, solver, parameters, i, cost);
 		i++;
 	}
-	if (save_destination != "") {
-		model.save(save_destination);
-		std::cout << "Saved Model in \"" << save_destination << "\"" << std::endl;
-	}
+	maybe_save_model(model);
 	std::cout <<"\nFinal Results\n=============\n" << std::endl;
 	for (auto& minibatch : dataset)
 		for (int i = 0; i < minibatch.data->rows(); i++)

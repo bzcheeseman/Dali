@@ -56,4 +56,6 @@ class ReportProgress {
 static Throttled model_save_throttled;
 static int model_snapshot_no;
 
-template<typename T> void maybe_save_model(const T& model);
+template<typename T> void maybe_save_model(const T& model,
+                                           const string& base_path="",
+                                           const string& label="");

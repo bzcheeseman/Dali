@@ -181,15 +181,14 @@ int main (int argc, char *argv[]) {
 				solver.step(thread_parameters, 0.0);
 				// SGD
 				// solver.step(thread_parameters, 0.3/minibatch_size, 0.0);
-				if (++total_epochs % FLAGS_report_frequency == 0) {
-					cost = validation_error(model, valid_set);
+				cost = validation_error(model, valid_set);
 
-					std::cout << "epoch (" << total_epochs << ") perplexity = "
-										  << std::fixed
-		                                  << std::setw( 5 ) // keep 7 digits
-		                                  << std::setprecision( 3 ) // use 3 decimals
-		                                  << std::setfill( ' ' ) << cost << std::endl;
-		        }
+				std::cout << "epoch (" << total_epochs << ") perplexity = "
+									  << std::fixed
+	                                  << std::setw( 5 ) // keep 7 digits
+	                                  << std::setprecision( 3 ) // use 3 decimals
+	                                  << std::setfill( ' ' ) << cost << std::endl;
+
 		    }
 		}, t);
 

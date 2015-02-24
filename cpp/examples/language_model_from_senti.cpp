@@ -9,6 +9,7 @@
 #include "core/SST.h"
 #include "core/StackedModel.h"
 #include "core/utils.h"
+#include "core/Reporting.h"
 
 using std::vector;
 using std::make_shared;
@@ -229,9 +230,6 @@ Inputs
                             S& Solver : Solver handling updates to parameters using
                                         a specific regimen (SGD, Adadelta, AdaGrad, etc.)
 std::vector<std::shared_ptr<Mat<T>>>& : references to model parameters.
-          const int& report_frequency : how often to reconstruct a sentence and display
-                                        training progress (KL divergence w.r.t. training
-                                        data)
                      const int& epoch : how many epochs of training has been done so far.
                               T& cost : store the KL divergence w.r.t. training data here.
                      const int& label : label from where the examples originated from.
@@ -243,7 +241,6 @@ void training_loop(StackedModel<T>& model,
     const Vocab& word_vocab,
     S& solver,
     vector<shared_ptr<mat>>& parameters,
-    const int& report_frequency,
     const int& epoch,
     T& cost,
     const int& label,
@@ -265,16 +262,14 @@ void training_loop(StackedModel<T>& model,
         G.backward(); // backpropagate
         solver.step(parameters, 0.0); // One step of gradient descent
     }
-    if (epoch % report_frequency == 0) {
-        std::cout << "[" << label << "] epoch (" << epoch << ") KL error = "
-                                  << std::fixed
-                                  << std::setw( 5 ) // keep 7 digits
-                                  << std::setprecision( 3 ) // use 3 decimals
-                                  << std::setfill( ' ' ) << cost / full_code_size << " patience = " << patience << std::endl;
-        auto& random_batch = dataset[utils::randint(0, dataset.size() - 1)];
-        auto random_example_index = utils::randint(0, random_batch.data->rows() - 1);
-        reconstruct(model, random_batch, random_example_index, word_vocab);
-    }
+    std::cout << "[" << label << "] epoch (" << epoch << ") KL error = "
+                              << std::fixed
+                              << std::setw( 5 ) // keep 7 digits
+                              << std::setprecision( 3 ) // use 3 decimals
+                              << std::setfill( ' ' ) << cost / full_code_size << " patience = " << patience << std::endl;
+    auto& random_batch = dataset[utils::randint(0, dataset.size() - 1)];
+    auto random_example_index = utils::randint(0, random_batch.data->rows() - 1);
+    reconstruct(model, random_batch, random_example_index, word_vocab);
 }
 
 
@@ -296,11 +291,7 @@ const vector<Databatch>& dataset : sentences broken into minibatches to
                                    mapping unique words to an index and
                                    vice-versa.
                     const T& rho : rho parameter to control Adadelta decay rate
-     const int& report_frequency : how often to reconstruct a sentence and display
-                                   training progress (KL divergence w.r.t. training
-                                   data)
                const int& epochs : maximum number of epochs to train for.
-     const string& save_location : where to save the model after training.
                        int label : label from where the examples originated from.
 
 **/
@@ -309,10 +300,8 @@ void train_model(
     const vector<Databatch>& dataset,
     const Vocab& word_vocab,
     const T& rho,
-    const int& report_frequency,
     const T& cutoff,
     const int& epochs,
-    const string& save_location,
     int label) {
     // Build Model:
     StackedModel<T> model(word_vocab.index2word.size(),
@@ -328,17 +317,12 @@ void train_model(
     int patience = 0;
     while (cost > cutoff && i < epochs && patience < 5) {
         new_cost = 0.0;
-        training_loop(model, dataset, word_vocab, solver, parameters, report_frequency, i, new_cost, label, patience);
+        training_loop(model, dataset, word_vocab, solver, parameters, i, new_cost, label, patience);
         if (new_cost >= cost) patience++;
         cost = new_cost;
         i++;
     }
-    if (save_location != "") {
-        std::cout << "Saving model with label "
-                  << label << " to \""
-                  << save_location << "_" << label << "/\"" << std::endl;
-        model.save(save_location + "_" + std::to_string(label));
-    }
+    maybe_save_model(model, "", std::to_string(label));
 }
 
 int main( int argc, char* argv[]) {
@@ -360,7 +344,6 @@ int main( int argc, char* argv[]) {
 
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
-    auto report_frequency   = FLAGS_report_frequency;
     auto rho                = FLAGS_rho;
     auto epochs             = FLAGS_epochs;
     auto cutoff             = FLAGS_cutoff;
@@ -402,10 +385,8 @@ int main( int argc, char* argv[]) {
             ref(datasets[i]),
             ref(word_vocab),
             ref(rho),
-            ref(report_frequency),
             ref(cutoff),
             ref(epochs),
-            ref(FLAGS_save),
             i));
     for (auto& worker : workers)
         worker.join();

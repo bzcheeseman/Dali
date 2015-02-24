@@ -418,16 +418,18 @@ namespace utils {
 		static const uint relu                            = 7;
 		static const uint row_pluck                       = 8;
 		static const uint add_broadcast                   = 9;
-		static const uint eltmul_broadcast                = 10;
-		static const uint mul_with_bias                   = 11;
-		static const uint mul_add_mul_with_bias           = 12;
-		static const uint mul_add_broadcast_mul_with_bias = 13;
-		static const uint rows_pluck                      = 14;
-		static const uint transpose                       = 15;
-		static const uint eltmul_broadcast_rowwise        = 16;
-		static const uint eltmul_rowwise                  = 17;
-		static const uint sum                             = 18;
-		static const uint mean                            = 19;
+		static const uint sub_broadcast                   = 10;
+		static const uint sub_broadcast_reversed          = 11;
+		static const uint eltmul_broadcast                = 12;
+		static const uint mul_with_bias                   = 13;
+		static const uint mul_add_mul_with_bias           = 14;
+		static const uint mul_add_broadcast_mul_with_bias = 15;
+		static const uint rows_pluck                      = 16;
+		static const uint transpose                       = 17;
+		static const uint eltmul_broadcast_rowwise        = 18;
+		static const uint eltmul_rowwise                  = 19;
+		static const uint sum                             = 20;
+		static const uint mean                            = 21;
 	}
 
 	bool file_exists(const std::string&);

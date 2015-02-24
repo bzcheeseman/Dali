@@ -74,7 +74,18 @@ template<typename T> class Mat {
 		Mat<T> out : deep or shallow copy of m
 		**/
         Mat (const Mat<T>& m, bool copy_w, bool copy_dw);
-		void print();
+		void print() const;
+
+		/**
+		Adds 1 to the gradient (`dw`) of every element in this Matrix as long
+		as the matrix is 1x1 (a scalar).
+
+		Useful for computing cross entropy, mean squared error, and other
+		loss functions in vanilla ML fashion.
+
+		**/
+		void grad();
+
 		~Mat();
 		/*
 		Set Name

@@ -127,7 +127,7 @@ void Mat<T>::set_name(const char * _name) {
 }
 
 template<typename T>
-void Mat<T>::print () {
+void Mat<T>::print() const {
 	for (int i = 0; i < n ; ++i) {
 		std::cout << (i == 0 ? "[" : " ");
 		for (int j = 0; j < d; ++j) {
@@ -140,6 +140,14 @@ void Mat<T>::print () {
 		std::cout << (i == n-1 ? "]" : "\n");
 	}
 	std::cout << std::endl;
+}
+
+template<typename T>
+void Mat<T>::grad() {
+	if (n != 1 || d != 1) {
+		throw std::invalid_argument("Grad only works on a \"scalar\" matrix, a 1x1 matrix.");
+	}
+	dw(0) += 1;
 }
 
 template<typename T>

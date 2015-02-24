@@ -2,7 +2,6 @@
 --input_size=100
 --j=9
 --patience=20
---save=paul_graham.model
 --shortcut
 --stack_size=2
 --train=../data/paul_graham/train.txt

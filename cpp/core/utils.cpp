@@ -900,6 +900,7 @@ namespace utils {
 		}
 		return not value.empty();
 	}
+
 }
 
 std::ostream& operator<<(std::ostream& strm, const utils::OntologyBranch& a) {

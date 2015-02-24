@@ -32,6 +32,7 @@
 #define ELOG(EXP) std::cout << #EXP "\t=\t" << (EXP) << std::endl
 #define SELOG(STR,EXP) std::cout << #STR "\t=\t" << (EXP) << std::endl
 
+
 #ifdef DEBUG_RECURRENTJS
 	#define DEBUG_ASSERT_POSITIVE(X) assert(((X).array() >= 0).all())
 	#define DEBUG_ASSERT_NONZERO(X) assert(((X).array().abs() >= 1e-10).all())
@@ -203,6 +204,7 @@ namespace utils {
 			std::pair<std::vector<std::shared_ptr<OntologyBranch>>, std::vector<uint>> random_path_from_root(const std::string&);
 			std::pair<std::vector<std::shared_ptr<OntologyBranch>>, std::vector<uint>> random_path_from_root(const std::string&, const int);
 			static std::vector<std::string> split_str(const std::string&, const std::string&);
+
 	};
 	/**
 	Load Labeled Corpus

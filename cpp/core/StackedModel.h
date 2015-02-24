@@ -31,7 +31,6 @@ DECLARE_int32(input_size);
 DECLARE_int32(hidden);
 DECLARE_double(decay_rate);
 DECLARE_double(rho);
-DECLARE_string(save);
 DECLARE_string(load);
 
 
@@ -104,7 +103,7 @@ class StackedModel {
 		std::vector<std::shared_ptr<Mat<T>>> parameters : vector of model parameters
 
 		**/
-		std::vector<shared_mat> parameters();
+		std::vector<shared_mat> parameters() const;
 		/**
 		Configuration
 		-------------
@@ -121,7 +120,7 @@ class StackedModel {
 		std::map<std::string, std::vector< std::string >> config : configuration map
 
 		**/
-		config_t configuration();
+		config_t configuration() const;
 		/**
 		Save Configuration
 		------------------
@@ -135,8 +134,8 @@ class StackedModel {
 		std::string fname : where to save the configuration
 
 		**/
-		void save_configuration(std::string);
-		void save(std::string);
+		void save_configuration(std::string) const;
+		void save(std::string) const;
 		/**
 		Load
 		----

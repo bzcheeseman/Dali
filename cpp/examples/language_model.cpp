@@ -19,12 +19,12 @@
 #include "core/utils.h"
 #include "core/Reporting.h"
 
-DEFINE_int32(minibatch,   100,  "What size should be used for the minibatches ?");
-DEFINE_bool(sparse,       true, "Use sparse embedding");
-DEFINE_double(cutoff,     2.0,  "KL Divergence error where stopping is acceptable");
-DEFINE_int32(patience,    5,    "How many unimproving epochs to wait through before witnessing progress ?");
-DEFINE_bool(shortcut,     true, "Use a Stacked LSTM with shortcuts");
-
+DEFINE_int32(minibatch,            100,  "What size should be used for the minibatches ?");
+DEFINE_bool(sparse,                true, "Use sparse embedding");
+DEFINE_double(cutoff,              2.0,  "KL Divergence error where stopping is acceptable");
+DEFINE_int32(patience,             5,    "How many unimproving epochs to wait through before witnessing progress ?");
+DEFINE_bool(shortcut,              true, "Use a Stacked LSTM with shortcuts");
+DEFINE_int32(num_reconstrucions,     5,    "How many sentences to demo after each epoch.");
 
 using std::ifstream;
 using std::istringstream;
@@ -208,10 +208,10 @@ void reconstruct(
     const int& i,
     const Vocab& word_vocab,
     const int& init_size) {
-    std::cout << "Reconstruction \"";
+    std::cout << "    Reconstruction \"";
     for (int j = 0; j < init_size; j++)
         std::cout << word_vocab.index2word[(*minibatch.data)(i, j)] << " ";
-    std::cout << "\"\n => "
+    std::cout << "\"\n     => "
               << model.reconstruct_string(
         minibatch.data->row(i).head(init_size),
         word_vocab,
@@ -312,7 +312,7 @@ void training_loop(model_t& model,
 
     std::atomic<int> batches_processed(0);
 
-    ReportProgress r("Training", random_batch_order.size());
+    ReportProgress<double> r("Training", random_batch_order.size());
 
     for (auto batch_id : random_batch_order) {
         pool->run([&model, &dataset, &solver, &full_code_size,
@@ -338,7 +338,7 @@ void training_loop(model_t& model,
             G.backward(); // backpropagate
             solver.step(thread_parameters, FLAGS_rho);
 
-            r.tick(++batches_processed);
+            r.tick(++batches_processed, cost / full_code_size);
         });
     }
     pool->wait_until_idle();
@@ -391,20 +391,15 @@ void train_model(const vector<Databatch>& dataset,
         patience += (new_cost >= cost) ? 1 : 0;
         cost = new_cost;
 
-
         std::cout << "epoch (" << i << ") KL error = "
-                  << std::fixed
-                  << std::setw( 5 ) // keep 7 digits
-                  << std::setprecision( 3 ) // use 3 decimals
-                  << std::setfill( ' ' ) << new_cost << " patience = " << patience
-                  << std::endl;
-        reconstruct_random(model, dataset, word_vocab, 3);
+                  << std::setprecision(3) << std::fixed
+                  << std::setw(5) << std::setfill(' ') << new_cost
+                  << " patience = " << patience << std::endl;
+
+        for (int rr = 0; rr < FLAGS_num_reconstrucions; ++rr)
+            reconstruct_random(model, dataset, word_vocab, 3);
+        maybe_save_model(model);
         i++;
-    }
-    if (FLAGS_save != "") {
-        std::cout << "Saving model to \""
-                  << FLAGS_save << "/\"" << std::endl;
-        model.save(FLAGS_save);
     }
 }
 

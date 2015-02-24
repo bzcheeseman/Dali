@@ -109,7 +109,7 @@ class StackedShortcutModel {
 		std::vector<std::shared_ptr<Mat<T>>> parameters : vector of model parameters
 
 		**/
-		std::vector<shared_mat> parameters();
+		std::vector<shared_mat> parameters() const;
 
 		/**
 		Configuration
@@ -127,7 +127,7 @@ class StackedShortcutModel {
 		std::map<std::string, std::vector< std::string >> config : configuration map
 
 		**/
-		config_t configuration();
+		config_t configuration() const;
 
 		/**
 		Save Configuration
@@ -142,8 +142,8 @@ class StackedShortcutModel {
 		std::string fname : where to save the configuration
 
 		**/
-		void save_configuration(std::string);
-		void save(std::string);
+		void save_configuration(std::string) const;
+		void save(std::string) const;
 
 		/**
 		Decoder initialization
@@ -216,7 +216,7 @@ std::vector<int> hidden_sizes : size of internal layers
 		static StackedShortcutModel<T> build_from_CLI(int, int, bool verbose=true);
 		StackedShortcutModel(int, int, int, int, int);
 		StackedShortcutModel(int, int, int, std::vector<int>&);
-		
+
 		/**
 		StackedShortcutModel Constructor from configuration map
 		----------------------------------------------------

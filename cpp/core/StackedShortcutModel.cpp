@@ -10,7 +10,7 @@ using std::string;
 using utils::from_string;
 
 template<typename T>
-vector<typename StackedShortcutModel<T>::shared_mat> StackedShortcutModel<T>::parameters() {
+vector<typename StackedShortcutModel<T>::shared_mat> StackedShortcutModel<T>::parameters() const {
 	vector<shared_mat> parameters;
 	parameters.push_back(embedding);
 
@@ -26,7 +26,7 @@ vector<typename StackedShortcutModel<T>::shared_mat> StackedShortcutModel<T>::pa
 }
 
 template<typename T>
-typename StackedShortcutModel<T>::config_t StackedShortcutModel<T>::configuration() {
+typename StackedShortcutModel<T>::config_t StackedShortcutModel<T>::configuration() const {
 	config_t config;
 	config["output_size"].emplace_back(to_string(output_size));
 	config["input_size"].emplace_back(to_string(input_size));
@@ -37,14 +37,14 @@ typename StackedShortcutModel<T>::config_t StackedShortcutModel<T>::configuratio
 }
 
 template<typename T>
-void StackedShortcutModel<T>::save_configuration(std::string fname) {
+void StackedShortcutModel<T>::save_configuration(std::string fname) const {
 
 	auto config = configuration();
 	utils::map_to_file(config, fname);
 }
 
 template<typename T>
-void StackedShortcutModel<T>::save(std::string dirname) {
+void StackedShortcutModel<T>::save(std::string dirname) const {
 	utils::ensure_directory(dirname);
 	// Save the matrices:
 	auto params = parameters();

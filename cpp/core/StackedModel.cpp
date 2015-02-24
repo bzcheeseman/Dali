@@ -5,7 +5,6 @@ DEFINE_int32(input_size, 100, "Size of the word vectors");
 DEFINE_int32(hidden, 100, "How many Cells and Hidden Units should each LSTM have ?");
 DEFINE_double(decay_rate, 0.95, "What decay rate should RMSProp use ?");
 DEFINE_double(rho, 0.95, "What rho / learning rate should the Solver use ?");
-DEFINE_string(save, "", "Where to save the model to ?");
 DEFINE_string(load, "", "Where to load the model from ?");
 
 using std::shared_ptr;
@@ -18,7 +17,7 @@ using std::string;
 using utils::from_string;
 
 template<typename T>
-vector<typename StackedModel<T>::shared_mat> StackedModel<T>::parameters() {
+vector<typename StackedModel<T>::shared_mat> StackedModel<T>::parameters() const {
 	vector<shared_mat> parameters;
 	parameters.push_back(embedding);
 
@@ -32,7 +31,7 @@ vector<typename StackedModel<T>::shared_mat> StackedModel<T>::parameters() {
 }
 
 template<typename T>
-typename StackedModel<T>::config_t StackedModel<T>::configuration() {
+typename StackedModel<T>::config_t StackedModel<T>::configuration() const {
 	config_t config;
 	config["output_size"].emplace_back(to_string(output_size));
 	config["input_size"].emplace_back(to_string(input_size));
@@ -43,14 +42,14 @@ typename StackedModel<T>::config_t StackedModel<T>::configuration() {
 }
 
 template<typename T>
-void StackedModel<T>::save_configuration(std::string fname) {
+void StackedModel<T>::save_configuration(std::string fname) const {
 
 	auto config = configuration();
 	utils::map_to_file(config, fname);
 }
 
 template<typename T>
-void StackedModel<T>::save(std::string dirname) {
+void StackedModel<T>::save(std::string dirname) const {
 	utils::ensure_directory(dirname);
 	// Save the matrices:
 	auto params = parameters();

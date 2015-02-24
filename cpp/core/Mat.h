@@ -109,7 +109,7 @@ template<typename T> class Mat {
 		--------------
 
 		Matrix constructor using a zero mean
-		normal distribution with a user provided 
+		normal distribution with a user provided
 		standard deviation.
 
 		Inputs
@@ -177,7 +177,7 @@ template<typename T> class Mat {
 		------
 
 		const Mat<T>& m : matrix that will own the underlying memory
-		                  for `w`  
+		                  for `w`
 
 		Outputs
 		-------
@@ -227,7 +227,7 @@ namespace Solver {
 		typedef Mat<T>                      mat;
 		typedef std::shared_ptr<mat> shared_mat;
 		typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
-		
+
 		public:
 			std::unordered_map<mat, eigen_mat> gsums;
 			RMSProp (T decay_rate= 0.999, T smooth_eps =SMOOTH_DEFAULT, T clipval = 5.0);
@@ -243,7 +243,7 @@ namespace Solver {
 		typedef Mat<T>                      mat;
 		typedef std::shared_ptr<mat> shared_mat;
 		typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
-		
+
 		public:
 			std::unordered_map<mat, eigen_mat> gsums;
 			std::unordered_map<mat, eigen_mat> xsums;
@@ -259,7 +259,7 @@ namespace Solver {
 		typedef Mat<T>                      mat;
 		typedef std::shared_ptr<mat> shared_mat;
 		typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
-		
+
 		public:
 			std::unordered_map<mat, eigen_mat> gsums;
 			AdaGrad (T smooth_eps =SMOOTH_DEFAULT, T clipval = 5.0);

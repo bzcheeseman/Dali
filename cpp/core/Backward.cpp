@@ -100,6 +100,10 @@ string Backward<T>::op_type () const {
 			return "mul_add_broadcast_mul_with_bias";
 		case utils::ops::transpose:
 			return "transpose";
+		case utils::ops::sum:
+			return "sum";
+		case utils::ops::mean:
+			return "mean";
 		default:
 			return "?";
 			break;
@@ -262,6 +266,12 @@ void Backward<T>::operator ()() {
 		case utils::ops::transpose:
 			matrices[0]->dw.noalias() += (out->dw).transpose();
 			break;
+		case utils::ops::sum:
+			matrices[0]->dw.array() += out->dw(0);
+			break;
+		case utils::ops::mean:
+			matrices[0]->dw.array() += (1.0 / (matrices[0]->n * matrices[0]->d)) * out->dw(0);
+			break;
 		default:
 			stringstream error_msg;
 			error_msg << "NotImplemented: Do not know how to backpropagate for this type => "
@@ -344,6 +354,12 @@ void Backward<T>::operator ()(T clip_val) {
 			break;
 		case utils::ops::transpose:
 			matrices[0]->dw.noalias() += CLIP((out->dw).transpose(), clip_val);
+			break;
+		case utils::ops::sum:
+			matrices[0]->dw.array() += out->dw(0);
+			break;
+		case utils::ops::mean:
+			matrices[0]->dw.array() += (1.0 / (matrices[0]->n * matrices[0]->d)) * out->dw(0);
 			break;
 		default:
 			stringstream error_msg;

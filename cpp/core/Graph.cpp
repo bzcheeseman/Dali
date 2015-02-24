@@ -196,6 +196,25 @@ typename Graph<T>::shared_mat Graph<T>::sigmoid(shared_mat matrix1) {
 }
 
 template<typename T>
+typename Graph<T>::shared_mat Graph<T>::sum(shared_mat matrix1) {
+	auto out = std::make_shared<mat>(1,1,true);
+	out->w(0) = matrix1->w.array().sum();
+	if (needs_backprop)
+		// allocates a new backward element in the vector using these arguments:
+		backprop.emplace_back(matrix1, out, utils::ops::sum);
+	return out;
+}
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::mean(shared_mat matrix1) {
+	auto out = std::make_shared<mat>(1,1,true);
+	out->w(0) = matrix1->w.array().mean();
+	if (needs_backprop)
+		// allocates a new backward element in the vector using these arguments:
+		backprop.emplace_back(matrix1, out, utils::ops::mean);
+	return out;
+}
+
+template<typename T>
 typename Graph<T>::shared_mat Graph<T>::transpose(shared_mat matrix1) {
 	auto out = std::make_shared<mat>(
 		matrix1->d,

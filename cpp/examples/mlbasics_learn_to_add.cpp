@@ -39,13 +39,9 @@ int main( int argc, char* argv[]) {
 
     Graph<double> G(true);
     shared_mat predY = G.mul(X,W);
-    shared_mat error = G.square(G.sub(predY, Y));
-
-    double error_sum = 0;
-
+    shared_mat error = G.sum(G.square(G.sub(predY, Y)));
+    error->grad();
     G.backward();
-
-
 
     //G.
 }

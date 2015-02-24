@@ -426,6 +426,8 @@ namespace utils {
 		static const uint transpose                       = 15;
 		static const uint eltmul_broadcast_rowwise        = 16;
 		static const uint eltmul_rowwise                  = 17;
+		static const uint sum                             = 18;
+		static const uint mean                            = 19;
 	}
 
 	bool file_exists(const std::string&);

@@ -145,7 +145,8 @@ void Mat<T>::print() const {
 template<typename T>
 void Mat<T>::grad() {
 	if (n != 1 || d != 1) {
-		throw std::invalid_argument("Grad only works on a \"scalar\" matrix, a 1x1 matrix.");
+		std::cout << *this << std::endl;
+		throw std::invalid_argument("Grad only works on a \"scalar\" matrix, a 1x1 matrix. Call G.sum or G.mean before using grad.");
 	}
 	dw(0) += 1;
 }

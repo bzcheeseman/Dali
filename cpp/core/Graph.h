@@ -116,6 +116,42 @@ template<typename T> class Graph {
 		**/
 		shared_mat add(std::initializer_list<shared_mat>);
 		shared_mat square(shared_mat);
+		/**
+		Graph<T>::sum
+		-------------
+
+		Sum the elements of a matrix into a 1x1 matrix.
+
+		Inputs
+		------
+
+		std::shared_ptr<Mat<T>> matrix1 : matrix to sum
+
+		Outputs
+		-------
+
+		std::shared_ptr<Mat<T>> out : matrix sum
+
+		**/
+		shared_mat sum(shared_mat);
+		/**
+		Graph<T>::mean
+		-------------
+
+		Average the elements of a matrix into a 1x1 matrix.
+
+		Inputs
+		------
+
+		std::shared_ptr<Mat<T>> matrix1 : matrix to average
+
+		Outputs
+		-------
+
+		std::shared_ptr<Mat<T>> out : matrix average
+
+		**/
+		shared_mat mean(shared_mat);
 		shared_mat sigmoid(shared_mat);
 		shared_mat transpose(shared_mat);
 		shared_mat tanh(shared_mat);

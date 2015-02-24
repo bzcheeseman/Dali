@@ -128,13 +128,19 @@ template<typename T>
 typename Graph<T>::shared_mat Graph<T>::sub(
 		shared_mat matrix1,
 		shared_mat matrix2) {
+	if (matrix1->d != matrix2->d && (matrix1->d == 1 || matrix2->d == 1)) {
+		if (matrix1->d == 1) {
+			return sub_broadcast_reversed(matrix2, matrix1);
+		}
+		return sub_broadcast(matrix1, matrix2);
+	}
 	if (matrix1->n != matrix2->n || matrix1->d != matrix2->d)
 		throw std::invalid_argument("Matrices cannot be added, they do not have the same dimensions.");
 	auto out = std::make_shared<Mat<T>>(
 		matrix1->n,
 		matrix1->d,
 		true);
-	out->w = matrix1->w + matrix2->w;
+	out->w = matrix1->w - matrix2->w;
 	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
 		backprop.emplace_back(std::initializer_list<shared_mat>({matrix1, matrix2}), out, utils::ops::sub);
@@ -153,6 +159,36 @@ typename Graph<T>::shared_mat Graph<T>::add_broadcast(shared_mat matrix1, shared
 	out->w = (matrix1->w.colwise() + matrix2->w.col(0)).matrix();
 	if (needs_backprop)
 		backprop.emplace_back(std::initializer_list<shared_mat>({matrix1, matrix2}), out, utils::ops::add_broadcast);
+	return out;
+}
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::sub_broadcast(shared_mat matrix1, shared_mat matrix2) {
+	// broadcast matrix 2:
+	if (matrix1->n != matrix2->n || matrix2->d != 1)
+		throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
+	auto out = std::make_shared<Mat<T>>(
+		matrix1->n,
+		matrix1->d,
+		true);
+	out->w = (matrix1->w.colwise() - matrix2->w.col(0)).matrix();
+	if (needs_backprop)
+		backprop.emplace_back(std::initializer_list<shared_mat>({matrix1, matrix2}), out, utils::ops::sub_broadcast);
+	return out;
+}
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::sub_broadcast_reversed(shared_mat matrix1, shared_mat matrix2) {
+	// broadcast matrix 2:
+	if (matrix1->n != matrix2->n || matrix2->d != 1)
+		throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
+	auto out = std::make_shared<Mat<T>>(
+		matrix1->n,
+		matrix1->d,
+		true);
+	out->w = ((-matrix1->w).colwise() + matrix2->w.col(0)).matrix();
+	if (needs_backprop)
+		backprop.emplace_back(std::initializer_list<shared_mat>({matrix1, matrix2}), out, utils::ops::sub_broadcast_reversed);
 	return out;
 }
 

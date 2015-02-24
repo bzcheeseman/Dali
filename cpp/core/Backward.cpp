@@ -232,7 +232,7 @@ void Backward<T>::operator ()() {
 			matrices[1]->dw.noalias() += (((matrices[0]->w).array() * (out->dw).array()).matrix().colwise().sum()).matrix();
 			break;
 		case utils::ops::square:
-			matrices[0]->dw.noalias() += 2 * out->dw;
+			matrices[0]->dw.noalias() += 2 * ((matrices[0]->w).array() * (out->dw).array()).matrix();
 			break;
 		case utils::ops::sigmoid:
 			matrices[0]->dw.noalias() += (((out->w).array() - out->w.array().square()).max(1e-9) * out->dw.array()).matrix();
@@ -307,6 +307,14 @@ void Backward<T>::operator ()(T clip_val) {
 			matrices[0]->dw.noalias() += CLIP(out->dw, clip_val);
 			matrices[1]->dw.noalias() += CLIP(out->dw.rowwise().sum(), clip_val);
 			break;
+		case utils::ops::sub_broadcast:
+			matrices[0]->dw.noalias() += CLIP(out->dw, clip_val);
+			matrices[1]->dw.noalias() -= CLIP(out->dw.rowwise().sum(), clip_val);
+			break;
+		case utils::ops::sub_broadcast_reversed:
+			matrices[0]->dw.noalias() -= CLIP(out->dw, clip_val);
+			matrices[1]->dw.noalias() += CLIP(out->dw.rowwise().sum(), clip_val);
+			break;
 		case utils::ops::eltmul:
 			matrices[0]->dw.noalias() += CLIP(((matrices[1]->w).array() * (out->dw).array()).matrix(), clip_val);
 			matrices[1]->dw.noalias() += CLIP(((matrices[0]->w).array() * (out->dw).array()).matrix(), clip_val);
@@ -322,6 +330,9 @@ void Backward<T>::operator ()(T clip_val) {
 		case utils::ops::eltmul_broadcast_rowwise:
 			matrices[0]->dw.noalias() += CLIP(((out->dw).array().rowwise() * (matrices[1]->w).row(0).array()).matrix(), clip_val);
 			matrices[1]->dw.noalias() += CLIP((((matrices[0]->w).array() * (out->dw).array()).matrix().colwise().sum()).matrix(), clip_val);
+			break;
+		case utils::ops::square:
+			matrices[0]->dw.noalias() += CLIP(2 * ((matrices[0]->w).array() * (out->dw).array()).matrix(), clip_val);
 			break;
 		case utils::ops::sigmoid:
 			matrices[0]->dw.noalias() += CLIP((((out->w).array() - out->w.array().square()).max(1e-9) * out->dw.array()).matrix(), clip_val);

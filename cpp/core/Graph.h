@@ -95,6 +95,8 @@ template<typename T> class Graph {
 		**/
 		shared_mat add(shared_mat, shared_mat);
 		shared_mat sub(shared_mat, shared_mat);
+		shared_mat sub_broadcast(shared_mat, shared_mat);
+		shared_mat sub_broadcast_reversed(shared_mat, shared_mat);
 
 
 		/**

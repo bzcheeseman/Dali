@@ -123,6 +123,24 @@ typename Graph<T>::shared_mat Graph<T>::add(
 	return out;
 }
 
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::sub(
+		shared_mat matrix1,
+		shared_mat matrix2) {
+	if (matrix1->n != matrix2->n || matrix1->d != matrix2->d)
+		throw std::invalid_argument("Matrices cannot be added, they do not have the same dimensions.");
+	auto out = std::make_shared<Mat<T>>(
+		matrix1->n,
+		matrix1->d,
+		true);
+	out->w = matrix1->w + matrix2->w;
+	if (needs_backprop)
+		// allocates a new backward element in the vector using these arguments:
+		backprop.emplace_back(std::initializer_list<shared_mat>({matrix1, matrix2}), out, utils::ops::sub);
+	return out;
+}
+
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::add_broadcast(shared_mat matrix1, shared_mat matrix2) {
 	// broadcast matrix 2:
@@ -148,6 +166,19 @@ typename Graph<T>::shared_mat Graph<T>::add(std::initializer_list<shared_mat> ma
 	if (needs_backprop)
 		// allocates a new backward element in the vector using these arguments:
 		backprop.emplace_back(matrices, out, utils::ops::add);
+	return out;
+}
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::square(shared_mat matrix) {
+	auto out = std::make_shared<mat>(
+		matrix->n,
+		matrix->d,
+		true);
+	out->w = matrix->w.array().square();
+	if (needs_backprop)
+		// allocates a new backward element in the vector using these arguments:
+		backprop.emplace_back(matrix, out, utils::ops::square);
 	return out;
 }
 

@@ -66,10 +66,14 @@ string Backward<T>::op_type () const {
 	switch(this->type) {
 		case utils::ops::add:
 			return "add";
+		case utils::ops::sub:
+			return "sub";
 		case utils::ops::eltmul:
 			return "eltmul";
 		case utils::ops::eltmul_rowwise:
 			return "eltmul_rowwise";
+		case utils::ops::square:
+			return "square";
 		case utils::ops::tanh:
 			return "tanh";
 		case utils::ops::sigmoid:
@@ -163,7 +167,7 @@ void Backward<T>::backward_mul_add_mul_with_bias(T clip_val) {
 		}
 		DEBUG_ASSERT_NOT_NAN(bias->dw);
 	#endif
-	
+
 	auto matrices_ptr = matrices.begin();
 	while (matrices_ptr != (matrices.end() - 1)) {
 		(*matrices_ptr)->dw.noalias()     += CLIP(((out->dw) * (*(matrices_ptr+1))->w.transpose()), clip_val);
@@ -187,6 +191,10 @@ void Backward<T>::operator ()() {
 		case utils::ops::add:
 			for (auto& matrix : matrices) matrix->dw.noalias() += out->dw;
 			break;
+		case utils::ops::sub:
+			matrices[0]->dw.noalias() += out->dw;
+			matrices[1]->dw.noalias() -= out->dw;
+			break;
 		case utils::ops::add_broadcast:
 			matrices[0]->dw.noalias() += out->dw;
 			matrices[1]->dw.noalias() += out->dw.rowwise().sum();
@@ -206,6 +214,9 @@ void Backward<T>::operator ()() {
 		case utils::ops::eltmul_broadcast_rowwise:
 			matrices[0]->dw.noalias() += ((out->dw).array().rowwise() * (matrices[1]->w).row(0).array()).matrix();
 			matrices[1]->dw.noalias() += (((matrices[0]->w).array() * (out->dw).array()).matrix().colwise().sum()).matrix();
+			break;
+		case utils::ops::square:
+			matrices[0]->dw.noalias() += 2 * out->dw;
 			break;
 		case utils::ops::sigmoid:
 			matrices[0]->dw.noalias() += (((out->w).array() - out->w.array().square()).max(1e-9) * out->dw.array()).matrix();

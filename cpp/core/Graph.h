@@ -94,6 +94,9 @@ template<typename T> class Graph {
 
 		**/
 		shared_mat add(shared_mat, shared_mat);
+		shared_mat sub(shared_mat, shared_mat);
+
+
 		/**
 		Graph<T>::add
 		-------------
@@ -112,6 +115,7 @@ template<typename T> class Graph {
 		std::shared_ptr<Mat<T>> out : the sum of the matrices
 		**/
 		shared_mat add(std::initializer_list<shared_mat>);
+		shared_mat square(shared_mat);
 		shared_mat sigmoid(shared_mat);
 		shared_mat transpose(shared_mat);
 		shared_mat tanh(shared_mat);

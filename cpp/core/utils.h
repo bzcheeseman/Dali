@@ -409,21 +409,23 @@ namespace utils {
 	std::size_t get_random_id();
 	namespace ops {
 		static const uint add                             = 0;
-		static const uint eltmul                          = 1;
-		static const uint sigmoid                         = 2;
-		static const uint tanh                            = 3;
-		static const uint mul                             = 4;
-		static const uint relu                            = 5;
-		static const uint row_pluck                       = 6;
-		static const uint add_broadcast                   = 7;
-		static const uint eltmul_broadcast                = 8;
-		static const uint mul_with_bias                   = 9;
-		static const uint mul_add_mul_with_bias           = 10;
-		static const uint mul_add_broadcast_mul_with_bias = 11;
-		static const uint rows_pluck                      = 12;
-		static const uint transpose                       = 13;
-		static const uint eltmul_broadcast_rowwise        = 14;
-		static const uint eltmul_rowwise                  = 15;
+		static const uint sub							  = 1;
+		static const uint eltmul                          = 2;
+		static const uint square                          = 3;
+		static const uint sigmoid                         = 4;
+		static const uint tanh                            = 5;
+		static const uint mul                             = 6;
+		static const uint relu                            = 7;
+		static const uint row_pluck                       = 8;
+		static const uint add_broadcast                   = 9;
+		static const uint eltmul_broadcast                = 10;
+		static const uint mul_with_bias                   = 11;
+		static const uint mul_add_mul_with_bias           = 12;
+		static const uint mul_add_broadcast_mul_with_bias = 13;
+		static const uint rows_pluck                      = 14;
+		static const uint transpose                       = 15;
+		static const uint eltmul_broadcast_rowwise        = 16;
+		static const uint eltmul_rowwise                  = 17;
 	}
 
 	bool file_exists(const std::string&);

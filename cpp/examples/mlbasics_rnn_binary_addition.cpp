@@ -115,7 +115,7 @@ int main( int argc, char* argv[]) {
     // Biggest number to add.
     const int NUM_BITS = 30;
     // What is the learning rate.
-    double LR = 0.01;
+    double LR = 0.1 ;
 
     const int SEED = 80085;
     const int INPUT_SIZE = 2;
@@ -128,14 +128,12 @@ int main( int argc, char* argv[]) {
 
     // TIP: Since we are doing output = map * input, we put output
     //      dimension first.
-    RnnMap rnn(INPUT_SIZE, HIDDEN_SIZE, MEMORY_SIZE);
-    RnnMap rnn2(HIDDEN_SIZE, OUTPUT_SIZE, MEMORY_SIZE);
+    RnnMap rnn(INPUT_SIZE, OUTPUT_SIZE, MEMORY_SIZE);
 
     vector<shared_mat> params;
     rnn.push_params(params);
-    rnn2.push_params(params);
 
-    Solver::AdaDelta<double> solver(params);
+    // Solver::AdaDelta<double> solver(params);
 
     for (int epoch = 0; epoch <= NUM_EPOCHS; ++epoch) {
         // Cross entropy bit error
@@ -158,7 +156,6 @@ int main( int argc, char* argv[]) {
 
             Graph<double> G(true);
             rnn.reset();
-            rnn2.reset();
 
             shared_mat error = make_shared<mat>(1, 1);
 
@@ -173,8 +170,7 @@ int main( int argc, char* argv[]) {
                 auto expected_output_i = make_shared<mat>(OUTPUT_SIZE, 1);
                 expected_output_i->w(0,0) = res_bits[i];
 
-                shared_mat hidden_i = rnn.f(G, input_i);
-                shared_mat output_i = rnn2.f(G, hidden_i);
+                shared_mat output_i = rnn.f(G, input_i);
 
                 predicted_res_bits[i] = output_i->w(0,0) < 0.5 ? 0 : 1;
 
@@ -196,7 +192,12 @@ int main( int argc, char* argv[]) {
             error->grad();
             G.backward();
         }
-        solver.step(params, 0.0);
+        // solver.step(params, 0.0);
+        for (auto& param: params) {
+            param->w -= (LR / ITERATIONS_PER_EPOCH) * param->dw;
+            param->dw.fill(0);
+        }
+
 
         throttled.maybe_run(seconds(2), [&]() {
             epoch_error /= ITERATIONS_PER_EPOCH;

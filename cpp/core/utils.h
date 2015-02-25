@@ -430,6 +430,7 @@ namespace utils {
 		static const uint eltmul_rowwise                  = 19;
 		static const uint sum                             = 20;
 		static const uint mean                            = 21;
+		static const uint log                             = 22;
 	}
 
 	bool file_exists(const std::string&);

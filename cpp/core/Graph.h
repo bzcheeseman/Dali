@@ -154,6 +154,7 @@ template<typename T> class Graph {
 
 		**/
 		shared_mat mean(shared_mat);
+		shared_mat log(shared_mat);
 		shared_mat sigmoid(shared_mat);
 		shared_mat transpose(shared_mat);
 		shared_mat tanh(shared_mat);

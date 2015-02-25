@@ -108,6 +108,8 @@ string Backward<T>::op_type () const {
 			return "sum";
 		case utils::ops::mean:
 			return "mean";
+		case utils::ops::log:
+			return "log";
 		default:
 			return "?";
 			break;
@@ -284,6 +286,8 @@ void Backward<T>::operator ()() {
 		case utils::ops::mean:
 			matrices[0]->dw.array() += (1.0 / (matrices[0]->n * matrices[0]->d)) * out->dw(0);
 			break;
+		case utils::ops::log:
+			matrices[0]->dw.noalias() += ((1.0 / (matrices[0]->w).array()) * (out->dw).array()).matrix();
 		default:
 			stringstream error_msg;
 			error_msg << "NotImplemented: Do not know how to backpropagate for this type => "

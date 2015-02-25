@@ -322,7 +322,7 @@ int main(int argc, char *argv[]) {
 	std::cout << "Loaded Dataset" << std::endl;
 	auto vocab_size = word_vocab.index2word.size() + index2category.size() + 1;
 	// TODO: renable
-	auto model = StackedGatedModel<REAL_t>::build_from_CLI(vocab_size, index2category.size() + 1, true);
+	auto model = StackedGatedModel<REAL_t>::build_from_CLI(FLAGS_load, vocab_size, index2category.size() + 1, true);
 	auto memory_penalty = FLAGS_memory_penalty;
 	model.memory_penalty = memory_penalty / dataset[0].data->cols();
 	// Store all parameters in a vector:

@@ -225,7 +225,7 @@ int main( int argc, char* argv[]) {
 		FLAGS_subsets);
 	auto max_branching_factor = lattice->max_branching_factor();
 	auto vocab_size = word_vocab.index2word.size() + lattice_vocab.index2word.size();
-	auto model = StackedGatedModel<REAL_t>::build_from_CLI(vocab_size, max_branching_factor + 1, true);
+	auto model = StackedGatedModel<REAL_t>::build_from_CLI(FLAGS_load, vocab_size, max_branching_factor + 1, true);
 	auto memory_penalty = FLAGS_memory_penalty;
 	auto rho = FLAGS_rho;
 	auto epochs = FLAGS_epochs;

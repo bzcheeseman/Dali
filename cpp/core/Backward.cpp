@@ -288,6 +288,7 @@ void Backward<T>::operator ()() {
 			break;
 		case utils::ops::log:
 			matrices[0]->dw.noalias() += ((1.0 / (matrices[0]->w).array()) * (out->dw).array()).matrix();
+			break;
 		default:
 			stringstream error_msg;
 			error_msg << "NotImplemented: Do not know how to backpropagate for this type => "
@@ -391,6 +392,9 @@ void Backward<T>::operator ()(T clip_val) {
 			break;
 		case utils::ops::mean:
 			matrices[0]->dw.array() += (1.0 / (matrices[0]->n * matrices[0]->d)) * out->dw(0);
+			break;
+		case utils::ops::log:
+			matrices[0]->dw.noalias() += CLIP(((1.0 / (matrices[0]->w).array()) * (out->dw).array()).matrix(), clip_val);
 			break;
 		default:
 			stringstream error_msg;

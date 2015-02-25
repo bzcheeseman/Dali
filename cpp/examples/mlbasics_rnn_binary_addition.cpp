@@ -120,12 +120,18 @@ int main( int argc, char* argv[]) {
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
     Throttled throttled;
+    shared_mat one = make_shared<mat>(1, 1);
+    one->w(0,0) = 1.0;
+    shared_mat zero = make_shared<mat>(1, 1);
+    zero->w(0,0) = 0.0;
+    shared_mat eps = make_shared<mat>(1, 1);
+    eps->w(0,0) = 1e-5;
 
     // How many iterations of gradient descent to run.
     const int NUM_EPOCHS = 100000;
     const int ITERATIONS_PER_EPOCH = 30;
     // Biggest number to add.
-    const int MAX_ARGUMENT = 100;
+    const int NUM_BITS = 5;
     // What is the learning rate.
     double LR = 0.01;
 
@@ -154,8 +160,8 @@ int main( int argc, char* argv[]) {
         int a, b, res, predicted_res;
 
         for (int iter = 0; iter < ITERATIONS_PER_EPOCH; ++iter) {
-            a = rand()%MAX_ARGUMENT;
-            b = rand()%MAX_ARGUMENT;
+            a = rand()%(1<<(NUM_BITS-1));
+            b = rand()%(1<<(NUM_BITS-1));
             res = a+b;
 
             int max_bits_in_result = max(bits(a).size(), bits(b).size()) + 1;
@@ -173,7 +179,7 @@ int main( int argc, char* argv[]) {
 
             predicted_res = 0;
 
-            for (int i=0; i<max_bits_in_result; ++i) {
+            for (int i=0; i< max_bits_in_result; ++i) {
                 shared_mat input_i = make_shared<mat>(INPUT_SIZE, 1);
                 input_i->w(0,0) = a_bits[i];
                 input_i->w(1,0) = b_bits[i];
@@ -187,8 +193,16 @@ int main( int argc, char* argv[]) {
                 predicted_res *= 2;
                 predicted_res += interpret_fuzzy_bit(output_i->w(0,0));
 
-                shared_mat partial_error =
-                        G.square(G.square(G.sub(output_i, expected_output_i)));
+                // shared_mat partial_error =
+                //       G.square(G.square(G.sub(output_i, expected_output_i)));
+
+                shared_mat partial_error;
+                if (res_bits[i] == 1) {
+                    partial_error = G.sub(zero, G.log(G.add(eps, output_i)));
+                } else {
+                    assert(res_bits[i] == 0);
+                    partial_error = G.sub(zero, G.log(G.add(eps, G.sub(one, output_i))));
+                }
 
                 error = G.add(error, partial_error);
             }
@@ -197,20 +211,16 @@ int main( int argc, char* argv[]) {
             G.backward();
         }
         solver.step(params, 0.0);
-        // for(auto& param: params) {
-        //     param->w -= LR * param->dw;
-        //     param->dw.fill(0);
-        // }
 
         throttled.maybe_run(seconds(2), [&]() {
             epoch_error /= ITERATIONS_PER_EPOCH;
             std::cout << "Epoch " << epoch << std::endl;
-            std::cout << "        Argument1 " << a << "\t" << bitset<8>(a) << std::endl;
-            std::cout << "        Argument2 " << b << "\t" << bitset<8>(b) << std::endl;
+            std::cout << "        Argument1 " << a << "\t" << bitset<NUM_BITS>(a) << std::endl;
+            std::cout << "        Argument2 " << b << "\t" << bitset<NUM_BITS>(b) << std::endl;
             std::cout << "        Predicted " << predicted_res << "\t"
-                                              << bitset<8>(predicted_res) << std::endl;
+                                              << bitset<NUM_BITS>(predicted_res) << std::endl;
             std::cout << "        Expected  " << res << "\t"
-                                              << bitset<8>(res) << std::endl;
+                                              << bitset<NUM_BITS>(res) << std::endl;
             std::cout << "    Training error: " << epoch_error << std::endl;
         });
     }

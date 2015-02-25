@@ -19,13 +19,20 @@ namespace beam_search {
         auto out_state_and_prob = model.activate(G, previous_state, index);
         std::pair<typename model_t::state_type, std::vector<std::pair<uint,T>>> out;
         out.first = out_state_and_prob.first;
-        std::vector<T> probabilities(out_state_and_prob.second->w.data(), out_state_and_prob.second->w.data() + out_state_and_prob.second->d);
+        std::vector<T> probabilities(out_state_and_prob.second->w.data(), out_state_and_prob.second->w.data() + out_state_and_prob.second->n);
         auto sorted_probs = utils::argsort(probabilities);
 
         // we pass along the new state, and the "winning" k predictions
         // weighed by the conditional probability `prob` passed to the function.
-        for (int i = 0;i < k;i++)
-            out.second.emplace_back(sorted_probs[i], probabilities[sorted_probs[i]] * prob);
+        auto sorted_probs_rbegin = sorted_probs.rbegin();
+        std::cout << "beam_search_with_indices : ";
+            
+        while (sorted_probs_rbegin != sorted_probs.rbegin() + k) {
+            out.second.emplace_back(*sorted_probs_rbegin, probabilities[*sorted_probs_rbegin] * prob);
+            std::cout << probabilities[*sorted_probs_rbegin] * prob << " ";
+            sorted_probs_rbegin++;
+        }
+        std::cout << std::endl;
         return out;
     }
 
@@ -41,7 +48,6 @@ namespace beam_search {
     eigen_index_vector convert_to_eigen_vector(const eigen_index_vector& list) {
         return list;
     }
-
 
     eigen_index_block_scalar convert_to_eigen_vector(const eigen_index_block_scalar& list) {
         return list;
@@ -74,7 +80,7 @@ namespace beam_search {
         std::vector<open_list_t> open_list;
         {
             auto out_beam = beam_search_with_indices(model, G, initial_state, ex(n-1), k, 1.0);
-
+            std::cout << "beam contains : ";
             for (auto& candidate : out_beam.second) {
                 open_list.emplace_back(
                     open_list_t(
@@ -83,7 +89,9 @@ namespace beam_search {
                         out_beam.first                    // the new state
                     )
                 );
+                std::cout << candidate.second << " ";
             }
+            std::cout << std::endl;
         }
         // for each fork in the path we expand another k
         // options forward
@@ -92,32 +100,32 @@ namespace beam_search {
             int stops = 0;
             decltype(open_list) options(open_list);
             open_list.clear();
-            for (auto& candidate : options) {
-                if (std::get<0>(candidate).back() == end_symbol) {
+            for (auto& fork : options) {
+                if (std::get<0>(fork).back() == end_symbol) {
                     // if this path says to stop,
                     // add it back to the open list
                     // and carry on.
                     // if stops == number of k
                     // then we are done
                     stops += 1;
-                    open_list.emplace_back(candidate);
+                    open_list.emplace_back(fork);
                 } else {
-                    // if candidate is not asking to
+                    // if fork is not asking to
                     // end the sequence, then:
-                    auto out_beam = beam_search_with_indices(model, G,
-                        std::get<2>(candidate),        // the internal state going forward
-                        std::get<0>(candidate).back(), // the direction to take
-                        k,                             // size of the beam
-                        std::get<1>(candidate));       // the conditional probability for this
-                                                       // fork in the path
-                    for (auto& candidate : out_beam.second) {
-                        seq_type new_seq(std::get<0>(candidate));
-                        new_seq.emplace_back(candidate.first + symbol_offset);
+                    auto forks_beam = beam_search_with_indices(model, G,
+                        std::get<2>(fork),            // the internal state going forward
+                        std::get<0>(fork).back(),     // the direction to take
+                        k,                            // size of the beam
+                        std::get<1>(fork));           // the conditional probability for this
+                                                      // fork in the path
+                    for (auto& forks_fork : forks_beam.second) {
+                        seq_type new_seq(forks_fork.first);
+                        new_seq.emplace_back(forks_fork.first + symbol_offset);
                         open_list.emplace_back(
                             open_list_t(
-                                new_seq,                // the new candidate state
-                                std::get<1>(candidate), // the new probabilities
-                                out_beam.first          // the new state
+                                new_seq,            // the new candidate state
+                                forks_fork.second,  // the new probabilities
+                                forks_beam.first    // the new state
                             )
                         );
                     }
@@ -130,8 +138,8 @@ namespace beam_search {
                [](open_list_t& A, open_list_t& B) {
                     return std::get<1>(A) > std::get<1>(B);
                 });
-            open_list.resize(k);
             i+=1;
+            open_list.resize(k);
             // if the search takes too long
             // or k paths have reached an endpoint
             // then exit the search

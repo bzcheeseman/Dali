@@ -399,11 +399,6 @@ void train_model(const vector<Databatch>& dataset,
                   << " patience = " << patience << std::endl;
 
         maybe_save_model(model);
-
-        auto beams = beam_search::beam_search(model, std::initializer_list<uint>({word_vocab.word2index.at(START)}), 30, 0, 5, word_vocab.word2index.at(utils::end_symbol));
-        for (auto& beam : beams) {
-            std::cout << std::get<0>(beam) << std::endl;
-        }
         i++;
     }
 }

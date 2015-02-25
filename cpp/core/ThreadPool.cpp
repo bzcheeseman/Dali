@@ -1,5 +1,11 @@
 #include "ThreadPool.h"
 
+using std::chrono::milliseconds;
+using std::function;
+using std::vector;
+using std::thread;
+using Duration = std::chrono::duration<double>;
+
 __thread bool ThreadPool::in_thread_pool = false;
 __thread int ThreadPool::thread_number = -1;
 

@@ -10,15 +10,9 @@
 #include <thread>
 #include <vector>
 
-
-using std::chrono::milliseconds;
-using std::function;
-using std::vector;
-using std::thread;
-using Duration = std::chrono::duration<double>;
-
 class ThreadPool {
     private:
+        typedef std::chrono::duration<double> Duration;
         static __thread bool in_thread_pool;
         // c++ assigns random id to each thread. This is not a thread_id
         // it's a number inside this thread pool.
@@ -29,8 +23,8 @@ class ThreadPool {
         std::condition_variable is_idle;
         int active_count;
 
-        std::deque<function<void()> > work;
-        vector<thread> pool;
+        std::deque<std::function<void()> > work;
+        std::vector<std::thread> pool;
         Duration between_queue_checks;
 
         void thread_body(int _thread_id);
@@ -40,10 +34,10 @@ class ThreadPool {
         // goes out of scope. Threads periodically check for new work
         // and the frequency of those checks is at minimum between_queue_checks
         // (it can be higher due to thread scheduling).
-        ThreadPool(int num_threads, Duration between_queue_checks=milliseconds(1));
+        ThreadPool(int num_threads, Duration between_queue_checks=std::chrono::milliseconds(1));
 
         // Run a function on a thread in pool.
-        void run(function<void()> f);
+        void run(std::function<void()> f);
 
         // Wait until queue is empty and all the threads have finished working.
         // If timeout is specified function waits at most timeout until the

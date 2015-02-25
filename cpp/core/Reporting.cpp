@@ -46,8 +46,10 @@ void ReportProgress<T>::tick(const double& completed_work, T work) {
         }
         ss << "] " << std::fixed
                    << std::setprecision( 3 ) // use 3 decimals
-                   << std::setfill( ' ' ) <<  100.0*completed_work/total_work << "%";
+                   << std::setw(6)
+                   << std::setfill( ' ' ) <<  100.0 * completed_work/total_work << "%";
         ss << " " << work;
+        max_line_length = std::max(ss.str().size(), max_line_length);
         std::cout << ss.str();
         std::cout.flush();
     });
@@ -55,7 +57,14 @@ void ReportProgress<T>::tick(const double& completed_work, T work) {
 
 template<typename T>
 void ReportProgress<T>::done() {
-    std::cout << "\r" << name << " done                          " << std::endl;
+    std::cout << "\r" << name << " done";
+    if (max_line_length > 5 + name.size()) {
+        for (int i = 0; i < std::max((size_t) 0, max_line_length - 5 - name.size()); i++) {
+            std::cout << " ";
+        }
+    }
+    std::cout << std::endl;
+    max_line_length = 0;
 }
 
 template<typename model_t>

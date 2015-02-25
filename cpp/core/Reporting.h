@@ -33,6 +33,7 @@ class ReportProgress {
     Throttled t;
     std::string name;
     double total_work;
+    size_t max_line_length = 0;
     Throttled::Clock::duration report_frequency;
 
     public:

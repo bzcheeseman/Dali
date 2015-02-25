@@ -134,8 +134,8 @@ class StackedModel {
         std::string fname : where to save the configuration
 
         **/
-        void save_configuration(std::string);
-        void save(std::string);
+        void save_configuration(std::string) const;
+        void save(std::string) const;
         /**
         Load
         ----

@@ -1,10 +1,18 @@
 #include "Reporting.h"
 
+typedef Throttled::Clock Clock;
+using std::atomic;
+using std::chrono::milliseconds;
+using std::chrono::seconds;
+using std::mutex;
+using std::pair;
+using std::string;
+using std::unordered_map;
+using std::vector;
+
 DEFINE_string(save, "", "Where to save model to ?");
 DEFINE_string(load, "", "Where to save model to ?");
 DEFINE_int32(save_frequency_s, 60, "How often to save model (in seconds) ?");
-
-
 
 void Throttled::maybe_run(Clock::duration time_between_actions, std::function<void()> f) {
     std::lock_guard<decltype(lock)> lg(lock);
@@ -50,8 +58,8 @@ void ReportProgress<T>::done() {
     std::cout << "\r" << name << " done                          " << std::endl;
 }
 
-template<typename T>
-void maybe_save_model(const T& model,
+template<typename model_t>
+void maybe_save_model(const model_t& model,
                       const string& base_path,
                       const string& label) {
     if (base_path.empty() && FLAGS_save.empty()) return;

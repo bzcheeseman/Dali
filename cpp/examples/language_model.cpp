@@ -184,8 +184,10 @@ Vocab get_word_vocab(const vector<vector<string>>& examples, int min_occurence) 
 }
 
 /**
-Reconstruct
------------
+Reconstruct Random Beams
+------------------------
+
+TODO: rewrite this
 
 Condition on the special "**START**" word, generate
 a sentence from the language model and output it
@@ -202,47 +204,6 @@ Inputs
 
 
 **/
-template<typename model_t>
-void reconstruct(
-    model_t& model,
-    const Databatch& minibatch,
-    const int& i,
-    const Vocab& word_vocab,
-    const int& init_size) {
-    std::cout << "    Reconstruction \"";
-    for (int j = 0; j < init_size; j++)
-        std::cout << word_vocab.index2word[(*minibatch.data)(i, j)] << " ";
-    std::cout << "\"\n     => "
-              << model.reconstruct_string(
-        minibatch.data->row(i).head(init_size),
-        word_vocab,
-        (*minibatch.codelens)(i) - (init_size - 1),
-        0) << std::endl;
-}
-
-template<typename model_t>
-void reconstruct_random(
-    model_t& model,
-    const vector<Databatch>& dataset,
-    const Vocab& word_vocab,
-    const int& init_size) {
-    int random_example_index;
-    const Databatch* random_batch;
-    while (true) {
-        random_batch = &dataset[utils::randint(0, dataset.size() - 1)];
-        random_example_index = utils::randint(0, random_batch->data->rows() - 1);
-        if ((*random_batch->codelens)(random_example_index) > init_size) {
-            break;
-        }
-    }
-    reconstruct(
-        model,
-        *random_batch,
-        random_example_index,
-        word_vocab,
-        init_size);
-}
-
 template<typename model_t>
 void reconstruct_random_beams(
     model_t& model,
@@ -425,9 +386,6 @@ void train_model(const vector<Databatch>& dataset,
     int patience = 0;
 
     while (cost > FLAGS_cutoff && i < FLAGS_epochs && patience < FLAGS_patience) {
-        for (int rr = 0; rr < FLAGS_num_reconstructions; ++rr)
-            reconstruct_random(model, dataset, word_vocab, 3);
-
         new_cost = 0.0;
         training_loop(model, dataset, word_vocab, solver);
         new_cost = average_error(model, validation_set);
@@ -437,17 +395,15 @@ void train_model(const vector<Databatch>& dataset,
             patience = 0;
         }
         cost = new_cost;
-
         std::cout << "epoch (" << i << ") KL error = "
                   << std::setprecision(3) << std::fixed
                   << std::setw(5) << std::setfill(' ') << new_cost
                   << " patience = " << patience << std::endl;
-
         maybe_save_model(model);
         // reconstruct_random(model, dataset, word_vocab, 3);
         reconstruct_random_beams(model, dataset, word_vocab,
             4, // how many elements to use as a primer for beam
-            3, // how many beams
+            FLAGS_num_reconstructions, // how many beams
             20 // max size of a sequence
         );
         i++;

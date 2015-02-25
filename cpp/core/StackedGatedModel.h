@@ -74,7 +74,7 @@ class StackedGatedModel {
 		void save_configuration(std::string) const;
 		void save(std::string) const;
 		static StackedGatedModel<T> load(std::string);
-		static StackedGatedModel<T> build_from_CLI(string load_location,
+		static StackedGatedModel<T> build_from_CLI(std::string load_location,
 				        						   int vocab_size,
 				        						   int output_size,
 				        						   bool verbose);

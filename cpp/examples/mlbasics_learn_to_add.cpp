@@ -25,9 +25,9 @@ int main( int argc, char* argv[]) {
 
     // Generate random examples, all the rows sum to number between 0 and 1.
     shared_mat X = std::make_shared<mat>(NUM_EXAMPLES,
-                                                  EXAMPLE_SIZE,
-                                                  0.0,
-                                                  1.0/EXAMPLE_SIZE);
+                                         EXAMPLE_SIZE,
+                                         0.0,
+                                         1.0/EXAMPLE_SIZE);
 
     // Compute sums of elements for each example. This is what we would
     // like the network to output.
@@ -37,7 +37,7 @@ int main( int argc, char* argv[]) {
 
     // Those are our parameters: y_output = W1*X1 + ... + Wn*Xn
     // We initialize them to random numbers between 0 and 1.
-    shared_mat W = std::make_shared<Mat<double> >(EXAMPLE_SIZE, 1, -1.0, 1.0);
+    shared_mat W = std::make_shared<mat>(EXAMPLE_SIZE, 1, -1.0, 1.0);
     W->print();
 
     for (int i = 0; i < ITERATIONS; ++i) {

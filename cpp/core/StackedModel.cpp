@@ -5,7 +5,6 @@ DEFINE_int32(input_size, 100, "Size of the word vectors");
 DEFINE_int32(hidden, 100, "How many Cells and Hidden Units should each LSTM have ?");
 DEFINE_double(decay_rate, 0.95, "What decay rate should RMSProp use ?");
 DEFINE_double(rho, 0.95, "What rho / learning rate should the Solver use ?");
-DEFINE_string(load, "", "Where to load the model from ?");
 
 using std::shared_ptr;
 using std::vector;
@@ -59,9 +58,10 @@ void StackedModel<T>::save(std::string dirname) const {
 }
 
 template<typename T>
-StackedModel<T> StackedModel<T>::build_from_CLI(int vocab_size, int output_size, bool verbose) {
-	using utils::from_string;
-	string load_location = FLAGS_load;
+StackedModel<T> StackedModel<T>::build_from_CLI(string load_location,
+											    int vocab_size,
+											    int output_size,
+											    bool verbose) {
 	if (verbose)
 		std::cout << "Load location         = " << ((load_location == "") ? "N/A" : load_location)       << std::endl;
 	// Load or Construct the model

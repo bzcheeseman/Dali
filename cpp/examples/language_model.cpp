@@ -24,7 +24,7 @@ DEFINE_bool(sparse,                true, "Use sparse embedding");
 DEFINE_double(cutoff,              2.0,  "KL Divergence error where stopping is acceptable");
 DEFINE_int32(patience,             5,    "How many unimproving epochs to wait through before witnessing progress ?");
 DEFINE_bool(shortcut,              true, "Use a Stacked LSTM with shortcuts");
-DEFINE_int32(num_reconstrucions,     5,    "How many sentences to demo after each epoch.");
+DEFINE_int32(num_reconstructions,  5,    "How many sentences to demo after each epoch.");
 
 using std::ifstream;
 using std::istringstream;
@@ -366,15 +366,13 @@ const vector<Databatch>& dataset : sentences broken into minibatches to
 **/
 template<typename model_t, class S>
 void train_model(const vector<Databatch>& dataset,
-    const vector<Databatch>& validation_set,
-    const Vocab& word_vocab) {
-    // Build Model:
-    model_t model(word_vocab.index2word.size(),
-            FLAGS_input_size,
-            FLAGS_hidden,
-            FLAGS_stack_size < 1 ? 1 : FLAGS_stack_size,
-            word_vocab.index2word.size());
-    model.embedding->sparse = FLAGS_sparse > 0;
+        const vector<Databatch>& validation_set,
+        const Vocab& word_vocab) {
+
+    model_t model = model_t::build_from_CLI(FLAGS_load,
+                                            word_vocab.index2word.size(),
+                                            word_vocab.index2word.size(),
+                                            true);
 
     auto parameters = model.parameters();
     S solver(parameters, FLAGS_rho, 1e-9, 5.0);
@@ -385,6 +383,9 @@ void train_model(const vector<Databatch>& dataset,
     int patience = 0;
 
     while (cost > FLAGS_cutoff && i < FLAGS_epochs && patience < FLAGS_patience) {
+        for (int rr = 0; rr < FLAGS_num_reconstructions; ++rr)
+            reconstruct_random(model, dataset, word_vocab, 3);
+
         new_cost = 0.0;
         training_loop(model, dataset, word_vocab, solver);
         new_cost = average_error(model, validation_set);
@@ -396,8 +397,6 @@ void train_model(const vector<Databatch>& dataset,
                   << std::setw(5) << std::setfill(' ') << new_cost
                   << " patience = " << patience << std::endl;
 
-        for (int rr = 0; rr < FLAGS_num_reconstrucions; ++rr)
-            reconstruct_random(model, dataset, word_vocab, 3);
         maybe_save_model(model);
         i++;
     }

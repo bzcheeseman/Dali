@@ -103,12 +103,15 @@ void StackedGatedModel<T>::save(std::string dirname) const {
 }
 
 template<typename T>
-StackedGatedModel<T> StackedGatedModel<T>::build_from_CLI(int vocab_size, int output_size, bool verbose) {
+StackedGatedModel<T> StackedGatedModel<T>::build_from_CLI(string load_location,
+														  int vocab_size,
+														  int output_size,
+														  bool verbose) {
 	if (verbose)
-		std::cout << "Load location         = " << ((FLAGS_load == "") ? "N/A" : FLAGS_load)  << std::endl;
+		std::cout << "Load location         = " << ((load_location == "") ? "N/A" : load_location)  << std::endl;
 	// Load or Construct the model
-	auto model = (FLAGS_load != "") ?
-		StackedGatedModel<T>::load(FLAGS_load) :
+	auto model = (load_location != "") ?
+		StackedGatedModel<T>::load(load_location) :
 		StackedGatedModel<T>(
 			vocab_size,
 			FLAGS_input_size,
@@ -117,7 +120,7 @@ StackedGatedModel<T> StackedGatedModel<T>::build_from_CLI(int vocab_size, int ou
 			output_size,
 			FLAGS_memory_penalty);
 	if (verbose) {
-		std::cout << ((FLAGS_load == "") ? "Constructed Stacked LSTMs" : "Loaded Model") << std::endl;
+		std::cout << ((load_location == "") ? "Constructed Stacked LSTMs" : "Loaded Model") << std::endl;
 		std::cout << "Vocabulary size       = " << model.embedding->n      << std::endl;
 		std::cout << "Input size            = " << model.input_size        << std::endl;
 		std::cout << "Output size           = " << model.output_size       << std::endl;

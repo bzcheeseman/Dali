@@ -73,7 +73,10 @@ class StackedGatedModel {
 		void save_configuration(std::string) const;
 		void save(std::string) const;
 		static StackedGatedModel<T> load(std::string);
-		static StackedGatedModel<T> build_from_CLI(int, int, bool verbose=true);
+		static StackedGatedModel<T> build_from_CLI(string load_location,
+				        						   int vocab_size,
+				        						   int output_size,
+				        						   bool verbose);
 		StackedGatedModel(int, int, int, int, int, T _memory_penalty = 0.3);
 		StackedGatedModel(int, int, int, std::vector<int>&, T _memory_penalty = 0.3);
 		StackedGatedModel(const config_t&);

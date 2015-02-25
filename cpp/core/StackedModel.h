@@ -13,6 +13,9 @@
 #include "Mat.h"
 #include "Softmax.h"
 #include "utils.h"
+
+using std::string;
+
 /**
 StackedModel
 -----------------
@@ -31,7 +34,6 @@ DECLARE_int32(input_size);
 DECLARE_int32(hidden);
 DECLARE_double(decay_rate);
 DECLARE_double(rho);
-DECLARE_string(load);
 
 
 template<typename T>
@@ -156,7 +158,12 @@ class StackedModel {
 
 		**/
 		static StackedModel<T> load(std::string);
-		static StackedModel<T> build_from_CLI(int, int, bool verbose=true);
+
+		static StackedModel<T> build_from_CLI(string load_location,
+							       		      int vocab_size,
+							       		      int output_size,
+							       		      bool verbose);
+
 		StackedModel(int, int, int, int, int);
 		StackedModel(int, int, int, std::vector<int>&);
 		/**

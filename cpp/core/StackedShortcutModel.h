@@ -15,6 +15,9 @@
 #include "utils.h"
 #include "StackedGatedModel.h"
 
+
+using std::string;
+
 /**
 StackedShortcutModel
 --------------------
@@ -213,7 +216,11 @@ std::vector<int> hidden_sizes : size of internal layers
 
 		**/
 		static StackedShortcutModel<T> load(std::string);
-		static StackedShortcutModel<T> build_from_CLI(int, int, bool verbose=true);
+		static StackedShortcutModel<T> build_from_CLI(string load_location,
+													  int vocab_size,
+													  int output_size,
+													  bool verbose);
+
 		StackedShortcutModel(int, int, int, int, int);
 		StackedShortcutModel(int, int, int, std::vector<int>&);
 

@@ -22,12 +22,12 @@ DEFINE_int32(stack_size, 3, "How many LSTMs are stacked at each time step ?");
 int main (int argc, char *argv[]) {
     GFLAGS_NAMESPACE::SetUsageMessage(
         "\n"
-    	"Backprop stacked LSTMs\n"
-    	"----------------------\n"
-    	"Test backprop on random data.\n"
-    	"\n"
-    	" @author Jonathan Raiman\n"
-    	" @date February 18th 2015\n"
+        "Backprop stacked LSTMs\n"
+        "----------------------\n"
+        "Test backprop on random data.\n"
+        "\n"
+        " @author Jonathan Raiman\n"
+        " @date February 18th 2015\n"
     );
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -35,15 +35,15 @@ int main (int argc, char *argv[]) {
     for (int i=0; i < FLAGS_stack_size; ++i) hidden_sizes.emplace_back(FLAGS_hidden_size);
 
 
-	auto cells = StackedCells<lstm>(FLAGS_input_size, hidden_sizes);
-	auto initial_state = lstm::initial_states(hidden_sizes);
-	graph_t G;
+        auto cells = StackedCells<lstm>(FLAGS_input_size, hidden_sizes);
+        auto initial_state = lstm::initial_states(hidden_sizes);
+        graph_t G;
 
-	auto input_vector = make_shared<mat>(FLAGS_input_size, FLAGS_batch_size, (float)FLAGS_std);
+        auto input_vector = make_shared<mat>(FLAGS_input_size, FLAGS_batch_size, (float)FLAGS_std);
 
-	for (auto i = 0; i < FLAGS_timesteps; ++i)
-		initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
+        for (auto i = 0; i < FLAGS_timesteps; ++i)
+                initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
 
-	// backpropagate
-	G.backward();
+        // backpropagate
+        G.backward();
 }

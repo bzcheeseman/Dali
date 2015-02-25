@@ -49,38 +49,38 @@ void StackedModel<T>::save_configuration(std::string fname) const {
 
 template<typename T>
 void StackedModel<T>::save(std::string dirname) const {
-	utils::ensure_directory(dirname);
-	// Save the matrices:
-	auto params = parameters();
-	utils::save_matrices(params, dirname);
-	dirname += "config.md";
-	save_configuration(dirname);
+        utils::ensure_directory(dirname);
+        // Save the matrices:
+        auto params = parameters();
+        utils::save_matrices(params, dirname);
+        dirname += "config.md";
+        save_configuration(dirname);
 }
 
 template<typename T>
 StackedModel<T> StackedModel<T>::build_from_CLI(string load_location,
-											    int vocab_size,
-											    int output_size,
-											    bool verbose) {
-	if (verbose)
-		std::cout << "Load location         = " << ((load_location == "") ? "N/A" : load_location)       << std::endl;
-	// Load or Construct the model
-	auto model = (load_location != "") ?
-		StackedModel<T>::load(load_location) :
-		StackedModel<T>(
-			vocab_size,
-			FLAGS_input_size,
-			FLAGS_hidden,
-			FLAGS_stack_size < 1 ? 1 : FLAGS_stack_size,
-			output_size);
-	if (verbose) {
-		std::cout << ((load_location == "") ? "Constructed Stacked LSTMs" : "Loaded Model") << std::endl;
-		std::cout << "Vocabulary size       = " << model.embedding->n      << std::endl;
-		std::cout << "Input size            = " << model.input_size        << std::endl;
-		std::cout << "Output size           = " << model.output_size       << std::endl;
-		std::cout << "Stack size            = " << model.stack_size        << std::endl;
-	}
-	return model;
+                                                                                            int vocab_size,
+                                                                                            int output_size,
+                                                                                            bool verbose) {
+        if (verbose)
+                std::cout << "Load location         = " << ((load_location == "") ? "N/A" : load_location)       << std::endl;
+        // Load or Construct the model
+        auto model = (load_location != "") ?
+                StackedModel<T>::load(load_location) :
+                StackedModel<T>(
+                        vocab_size,
+                        FLAGS_input_size,
+                        FLAGS_hidden,
+                        FLAGS_stack_size < 1 ? 1 : FLAGS_stack_size,
+                        output_size);
+        if (verbose) {
+                std::cout << ((load_location == "") ? "Constructed Stacked LSTMs" : "Loaded Model") << std::endl;
+                std::cout << "Vocabulary size       = " << model.embedding->n      << std::endl;
+                std::cout << "Input size            = " << model.input_size        << std::endl;
+                std::cout << "Output size           = " << model.output_size       << std::endl;
+                std::cout << "Stack size            = " << model.stack_size        << std::endl;
+        }
+        return model;
 }
 
 template<typename T>

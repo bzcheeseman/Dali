@@ -36,72 +36,72 @@ total memory used (the input gate's total activation).
 
 template<typename T>
 class StackedGatedModel {
-	typedef LSTM<T>                    lstm;
-	typedef Layer<T>           classifier_t;
-	typedef Mat<T>                      mat;
-	typedef std::shared_ptr<mat> shared_mat;
-	typedef Graph<T>                graph_t;
-	typedef GatedInput<T>            gate_t;
-	typedef std::map<std::string, std::vector<std::string>> config_t;
+        typedef LSTM<T>                    lstm;
+        typedef Layer<T>           classifier_t;
+        typedef Mat<T>                      mat;
+        typedef std::shared_ptr<mat> shared_mat;
+        typedef Graph<T>                graph_t;
+        typedef GatedInput<T>            gate_t;
+        typedef std::map<std::string, std::vector<std::string>> config_t;
 
 
 
-	inline void name_parameters();
-	inline void construct_LSTM_cells();
-	inline void construct_LSTM_cells(const std::vector<lstm>&, bool, bool);
+        inline void name_parameters();
+        inline void construct_LSTM_cells();
+        inline void construct_LSTM_cells(const std::vector<lstm>&, bool, bool);
 
-	public:
+        public:
 
-		typedef std::pair<std::vector<shared_mat>, std::vector<shared_mat>> state_type;
-		typedef std::tuple<state_type, shared_mat, T> activation_t;
-		typedef T value_t;
+                typedef std::pair<std::vector<shared_mat>, std::vector<shared_mat>> state_type;
+                typedef std::tuple<state_type, shared_mat, T> activation_t;
+                typedef T value_t;
 
-		std::vector<lstm> cells;
-		shared_mat    embedding;
-		typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
-		typedef std::shared_ptr< index_mat > shared_index_mat;
+                std::vector<lstm> cells;
+                shared_mat    embedding;
+                typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
+                typedef std::shared_ptr< index_mat > shared_index_mat;
 
-		int vocabulary_size;
-		const int output_size;
-		const int stack_size;
-		const int input_size;
-		const gate_t gate;
-		const classifier_t decoder;
-		std::vector<int> hidden_sizes;
-		T memory_penalty;
-		std::vector<shared_mat> parameters() const;
-		config_t configuration() const;
-		void save_configuration(std::string) const;
-		void save(std::string) const;
-		static StackedGatedModel<T> load(std::string);
-		static StackedGatedModel<T> build_from_CLI(std::string load_location,
-				        						   int vocab_size,
-				        						   int output_size,
-				        						   bool verbose);
-		StackedGatedModel(int, int, int, int, int, T _memory_penalty = 0.3);
-		StackedGatedModel(int, int, int, std::vector<int>&, T _memory_penalty = 0.3);
-		StackedGatedModel(const config_t&);
-		StackedGatedModel(const StackedGatedModel<T>&, bool, bool);
-		std::tuple<T, T> masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, shared_eigen_index_vector, shared_eigen_index_vector, uint offset=0);
-		std::tuple<T, T> masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, uint, shared_eigen_index_vector, uint offset=0);
-		template<typename K>
-		std::vector<int> reconstruct(K, int, int symbol_offset = 0);
+                int vocabulary_size;
+                const int output_size;
+                const int stack_size;
+                const int input_size;
+                const gate_t gate;
+                const classifier_t decoder;
+                std::vector<int> hidden_sizes;
+                T memory_penalty;
+                std::vector<shared_mat> parameters() const;
+                config_t configuration() const;
+                void save_configuration(std::string) const;
+                void save(std::string) const;
+                static StackedGatedModel<T> load(std::string);
+                static StackedGatedModel<T> build_from_CLI(std::string load_location,
+                                                                                           int vocab_size,
+                                                                                           int output_size,
+                                                                                           bool verbose);
+                StackedGatedModel(int, int, int, int, int, T _memory_penalty = 0.3);
+                StackedGatedModel(int, int, int, std::vector<int>&, T _memory_penalty = 0.3);
+                StackedGatedModel(const config_t&);
+                StackedGatedModel(const StackedGatedModel<T>&, bool, bool);
+                std::tuple<T, T> masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, shared_eigen_index_vector, shared_eigen_index_vector, uint offset=0);
+                std::tuple<T, T> masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, uint, shared_eigen_index_vector, uint offset=0);
+                template<typename K>
+                std::vector<int> reconstruct(K, int, int symbol_offset = 0);
 
-		template<typename K>
-		std::string reconstruct_string(K, const utils::Vocab&, int, int symbol_offset = 0);
+                template<typename K>
+                std::string reconstruct_string(K, const utils::Vocab&, int, int symbol_offset = 0);
 
-		template<typename K>
-		state_type get_final_activation(graph_t&, const K&) const;
+                template<typename K>
+                state_type get_final_activation(graph_t&, const K&) const;
 
-		activation_t activate(graph_t&, state_type&, const uint&) const;
+                activation_t activate(graph_t&, state_type&, const uint&) const;
 
-		template<typename K>
-		std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(K, utils::OntologyBranch::shared_branch, int);
+                template<typename K>
+                std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(K, utils::OntologyBranch::shared_branch, int);
 
-		template<typename K>
-		std::string reconstruct_lattice_string(K, utils::OntologyBranch::shared_branch, int);
+                template<typename K>
+                std::string reconstruct_lattice_string(K, utils::OntologyBranch::shared_branch, int);
 
-		StackedGatedModel<T> shallow_copy() const;
+                StackedGatedModel<T> shallow_copy() const;
 
 };
 

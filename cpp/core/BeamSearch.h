@@ -9,7 +9,7 @@ namespace beam_search {
 
     template<typename graph_t, typename model_t, typename T>
     std::pair<typename model_t::state_type, std::vector<std::pair<uint, T>>> beam_search_with_indices(
-    	const model_t& model,
+        const model_t& model,
         graph_t& G,
         typename model_t::state_type& previous_state,
         uint index,
@@ -59,7 +59,7 @@ namespace beam_search {
 
     template<typename model_t, typename K>
     std::vector<std::tuple<std::vector<uint>, typename model_t::value_t, typename model_t::state_type >> beam_search(
-    	const model_t& model,
+        const model_t& model,
         K example,
         int max_steps,
         int symbol_offset,

@@ -3,27 +3,27 @@
 
 // Test file for LSTM
 int main () {
-	typedef double REAL_t;
-	typedef Mat<REAL_t> mat;
+        typedef double REAL_t;
+        typedef Mat<REAL_t> mat;
     typedef std::shared_ptr<mat> shared_mat;
-	using std::make_shared;
+        using std::make_shared;
     using std::vector;
 
-	LSTM<REAL_t> lstm(30, 50);
-	Graph<REAL_t> G;
+        LSTM<REAL_t> lstm(30, 50);
+        Graph<REAL_t> G;
 
-	auto embedding = make_shared<mat>(1000, 30, 2.0);
+        auto embedding = make_shared<mat>(1000, 30, 2.0);
 
-	auto prev_cell = make_shared<mat>(50, 1);
-	auto prev_hidden = make_shared<mat>(50, 1);
+        auto prev_cell = make_shared<mat>(50, 1);
+        auto prev_hidden = make_shared<mat>(50, 1);
 
-	index_std_vector indices = {0, 1, 10, 2, 1, 3};
+        index_std_vector indices = {0, 1, 10, 2, 1, 3};
 
-	auto out = lstm.activate(G, G.rows_pluck(embedding, indices), prev_cell, prev_hidden);
+        auto out = lstm.activate(G, G.rows_pluck(embedding, indices), prev_cell, prev_hidden);
 
-	out.first->print();
+        out.first->print();
 
-	// load numpy matrix from file:
+        // load numpy matrix from file:
     shared_mat numpy_mat;
     if (utils::file_exists("numpy_test.npy")) {
         numpy_mat = make_shared<mat>("numpy_test.npy");
@@ -33,14 +33,14 @@ int main () {
         numpy_mat->npy_save("numpy_test.npy");
     }
 
-	// print it
-	numpy_mat->print();
-	// take softmax
-	auto softmaxed = softmax(numpy_mat);
-	// print softmax:
-	softmaxed->print();
+        // print it
+        numpy_mat->print();
+        // take softmax
+        auto softmaxed = softmax(numpy_mat);
+        // print softmax:
+        softmaxed->print();
 
-	auto A = std::make_shared<mat>(3, 5);
+        auto A = std::make_shared<mat>(3, 5);
     A->w = (A->w.array() + 1.2).matrix();
     // build random matrix of double type with standard deviation 2:
     auto B = std::make_shared<mat>(A->n, A->d, 2.0);
@@ -88,5 +88,5 @@ int main () {
     out2->print();
 
 
-	return 0;
+        return 0;
 }

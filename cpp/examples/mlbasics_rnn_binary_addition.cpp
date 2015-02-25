@@ -211,7 +211,6 @@ int main( int argc, char* argv[]) {
                                               << res_bits << std::endl;
             std::cout << "    Training error: " << epoch_error << std::endl;
             std::cout << "    Average bits flipped: " << epoch_bit_error << std::endl;
-
         });
     }
 }

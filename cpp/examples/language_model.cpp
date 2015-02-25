@@ -247,7 +247,7 @@ void reconstruct_random_beams(
 
 template<typename model_t>
 REAL_t average_error(model_t& model, const vector<Databatch>& dataset) {
-	auto G = graph_t(false); // create a new graph for each loop)
+        auto G = graph_t(false); // create a new graph for each loop)
 
     int full_code_size = 0;
     vector<double> costs(FLAGS_j);
@@ -411,16 +411,16 @@ void train_model(const vector<Databatch>& dataset,
 }
 
 std::pair<Vocab, vector<Databatch>> load_dataset_and_vocabulary(const string& fname, int min_occurence, int minibatch_size) {
-	auto text_corpus        = utils::load_tokenized_unlabeled_corpus(fname);
-	std::pair<Vocab, vector<Databatch>> pair;
-	pair.first = get_word_vocab(text_corpus, min_occurence);
-	pair.second = create_dataset(text_corpus, pair.first, minibatch_size);
-	return pair;
+        auto text_corpus        = utils::load_tokenized_unlabeled_corpus(fname);
+        std::pair<Vocab, vector<Databatch>> pair;
+        pair.first = get_word_vocab(text_corpus, min_occurence);
+        pair.second = create_dataset(text_corpus, pair.first, minibatch_size);
+        return pair;
 }
 
 vector<Databatch> load_dataset_with_vocabulary(const string& fname, Vocab& vocab, int minibatch_size) {
-	auto text_corpus        = utils::load_tokenized_unlabeled_corpus(fname);
-	return create_dataset(text_corpus, vocab, minibatch_size);
+        auto text_corpus        = utils::load_tokenized_unlabeled_corpus(fname);
+        return create_dataset(text_corpus, vocab, minibatch_size);
 }
 
 int main( int argc, char* argv[]) {
@@ -451,9 +451,9 @@ int main( int argc, char* argv[]) {
         FLAGS_minibatch);
 
     auto validation_set     = load_dataset_with_vocabulary(
-    	FLAGS_validation,
-    	dataset_vocab.first,
-    	FLAGS_minibatch);
+        FLAGS_validation,
+        dataset_vocab.first,
+        FLAGS_minibatch);
 
     auto vocab_size = dataset_vocab.first.index2word.size();
 

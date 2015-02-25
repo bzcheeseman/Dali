@@ -10,6 +10,7 @@ set(EXAMPLE_PROGRAMS character_prediction
                      lattice_prediction
                      lattice_prediction_from_protobuff
                      mlbasics_learn_to_add
+                     mlbasics_rnn_binary_addition
                      )
 
 foreach(program ${EXAMPLE_PROGRAMS})

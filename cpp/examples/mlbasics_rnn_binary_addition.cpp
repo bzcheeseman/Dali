@@ -21,24 +21,6 @@ using std::make_shared;
 using std::max;
 using std::vector;
 
-vector<int> bits(int x, int padding=-1) {
-    vector<int> res;
-    while(x) {
-        res.push_back(x%2);
-        x/=2;
-    }
-    assert(padding == -1 || res.size() <= padding);
-    while(padding != -1 && res.size() != padding)
-        res.push_back(0);
-    return res;
-}
-
-// returns 0, 1 depending on which is closer to b.
-int interpret_fuzzy_bit(double b) {
-    if (b*b <= (b-1)*(b-1)) return 0;
-    else return 1;
-}
-
 class AffineMap {
     int input_size;
     int output_size;
@@ -131,7 +113,7 @@ int main( int argc, char* argv[]) {
     const int NUM_EPOCHS = 100000;
     const int ITERATIONS_PER_EPOCH = 30;
     // Biggest number to add.
-    const int NUM_BITS = 5;
+    const int NUM_BITS = 30;
     // What is the learning rate.
     double LR = 0.01;
 
@@ -156,18 +138,23 @@ int main( int argc, char* argv[]) {
     Solver::AdaDelta<double> solver(params);
 
     for (int epoch = 0; epoch <= NUM_EPOCHS; ++epoch) {
+        // Cross entropy bit error
         double epoch_error = 0;
+        // Average number of bits wrong.
+        double epoch_bit_error = 0;
         int a, b, res, predicted_res;
+        bitset<NUM_BITS> a_bits, b_bits, res_bits, predicted_res_bits;
 
         for (int iter = 0; iter < ITERATIONS_PER_EPOCH; ++iter) {
             a = rand()%(1<<(NUM_BITS-1));
             b = rand()%(1<<(NUM_BITS-1));
             res = a+b;
+            predicted_res = 0;
 
-            int max_bits_in_result = max(bits(a).size(), bits(b).size()) + 1;
-            vector<int> a_bits =   bits(a,   max_bits_in_result);
-            vector<int> b_bits =   bits(b,   max_bits_in_result);
-            vector<int> res_bits = bits(res, max_bits_in_result);
+            a_bits =                bitset<NUM_BITS> (a);
+            b_bits =                bitset<NUM_BITS> (b);
+            res_bits =              bitset<NUM_BITS> (res);
+            predicted_res_bits =    bitset<NUM_BITS>(predicted_res);
 
             Graph<double> G(true);
             rnn.reset();
@@ -177,9 +164,8 @@ int main( int argc, char* argv[]) {
 
             error->w.fill(0);
 
-            predicted_res = 0;
 
-            for (int i=0; i< max_bits_in_result; ++i) {
+            for (int i=0; i< NUM_BITS; ++i) {
                 shared_mat input_i = make_shared<mat>(INPUT_SIZE, 1);
                 input_i->w(0,0) = a_bits[i];
                 input_i->w(1,0) = b_bits[i];
@@ -190,11 +176,7 @@ int main( int argc, char* argv[]) {
                 shared_mat hidden_i = rnn.f(G, input_i);
                 shared_mat output_i = rnn2.f(G, hidden_i);
 
-                predicted_res *= 2;
-                predicted_res += interpret_fuzzy_bit(output_i->w(0,0));
-
-                // shared_mat partial_error =
-                //       G.square(G.square(G.sub(output_i, expected_output_i)));
+                predicted_res_bits[i] = output_i->w(0,0) < 0.5 ? 0 : 1;
 
                 shared_mat partial_error;
                 if (res_bits[i] == 1) {
@@ -206,6 +188,10 @@ int main( int argc, char* argv[]) {
 
                 error = G.add(error, partial_error);
             }
+            predicted_res = predicted_res_bits.to_ulong();
+
+            for (int i=0; i<NUM_BITS; ++i)
+                epoch_bit_error += res_bits[i] != predicted_res_bits[i];
             epoch_error += error->w(0,0);
             error->grad();
             G.backward();
@@ -214,14 +200,17 @@ int main( int argc, char* argv[]) {
 
         throttled.maybe_run(seconds(2), [&]() {
             epoch_error /= ITERATIONS_PER_EPOCH;
+            epoch_bit_error /= ITERATIONS_PER_EPOCH;
             std::cout << "Epoch " << epoch << std::endl;
-            std::cout << "        Argument1 " << a << "\t" << bitset<NUM_BITS>(a) << std::endl;
-            std::cout << "        Argument2 " << b << "\t" << bitset<NUM_BITS>(b) << std::endl;
+            std::cout << "        Argument1 " << a << "\t" << a_bits << std::endl;
+            std::cout << "        Argument2 " << b << "\t" << b_bits << std::endl;
             std::cout << "        Predicted " << predicted_res << "\t"
-                                              << bitset<NUM_BITS>(predicted_res) << std::endl;
+                                              << predicted_res_bits << std::endl;
             std::cout << "        Expected  " << res << "\t"
-                                              << bitset<NUM_BITS>(res) << std::endl;
+                                              << res_bits << std::endl;
             std::cout << "    Training error: " << epoch_error << std::endl;
+            std::cout << "    Average bits flipped: " << epoch_bit_error << std::endl;
+
         });
     }
 }

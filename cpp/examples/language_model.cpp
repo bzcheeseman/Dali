@@ -18,7 +18,7 @@
 #include "core/ThreadPool.h"
 #include "core/utils.h"
 #include "core/Reporting.h"
-#include "core/BeamSearch.hpp"
+#include "core/BeamSearch.h"
 
 DEFINE_int32(minibatch,            100,  "What size should be used for the minibatches ?");
 DEFINE_bool(sparse,                true, "Use sparse embedding");
@@ -244,6 +244,47 @@ void reconstruct_random(
 }
 
 template<typename model_t>
+void reconstruct_random_beams(
+    model_t& model,
+    const vector<Databatch>& dataset,
+    const Vocab& word_vocab,
+    const int& init_size,
+    const int& k,
+    const int& max_length) {
+
+    int random_example_index;
+    const Databatch* random_batch;
+    while (true) {
+        random_batch = &dataset[utils::randint(0, dataset.size() - 1)];
+        random_example_index = utils::randint(0, random_batch->data->rows() - 1);
+        if ((*random_batch->codelens)(random_example_index) > init_size) {
+            break;
+        }
+    }
+    auto beams = beam_search::beam_search(model,
+        random_batch->data->row(random_example_index).head(init_size),
+        max_length,
+        0,  // offset symbols that are predicted
+            // before being refed (no = 0)
+        k,
+        word_vocab.word2index.at(utils::end_symbol), // when to stop the sequence
+        word_vocab.unknown_word
+    );
+    std::cout << "Reconstructions: \"";
+    for (int j = 1; j < init_size; j++)
+        std::cout << word_vocab.index2word[(*random_batch->data)(random_example_index, j)] << " ";
+    std::cout << "\"" << std::endl;
+    for (const auto& beam : beams) {
+        std::cout << "=> (" << std::setprecision( 5 ) << std::get<1>(beam) << ") ";
+        for (const auto& word : std::get<0>(beam)) {
+            if (word != word_vocab.word2index.at(utils::end_symbol))
+                std::cout << word_vocab.index2word.at(word) << " ";
+        }
+        std::cout << std::endl;
+    }
+}
+
+template<typename model_t>
 REAL_t average_error(model_t& model, const vector<Databatch>& dataset) {
 	auto G = graph_t(false); // create a new graph for each loop)
 
@@ -390,7 +431,11 @@ void train_model(const vector<Databatch>& dataset,
         new_cost = 0.0;
         training_loop(model, dataset, word_vocab, solver);
         new_cost = average_error(model, validation_set);
-        patience += (new_cost >= cost) ? 1 : 0;
+        if (new_cost >= cost) {
+            patience += 1;
+        } else {
+            patience = 0;
+        }
         cost = new_cost;
 
         std::cout << "epoch (" << i << ") KL error = "
@@ -399,6 +444,12 @@ void train_model(const vector<Databatch>& dataset,
                   << " patience = " << patience << std::endl;
 
         maybe_save_model(model);
+        // reconstruct_random(model, dataset, word_vocab, 3);
+        reconstruct_random_beams(model, dataset, word_vocab,
+            4, // how many elements to use as a primer for beam
+            3, // how many beams
+            20 // max size of a sequence
+        );
         i++;
     }
 }

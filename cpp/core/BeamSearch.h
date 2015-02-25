@@ -14,7 +14,8 @@ namespace beam_search {
         typename model_t::state_type& previous_state,
         uint index,
         int k,
-        T prob) {
+        T prob,
+        uint ignore_symbol = -1) {
 
         auto out_state_and_prob = model.activate(G, previous_state, index);
         std::pair<typename model_t::state_type, std::vector<std::pair<uint,T>>> out;
@@ -25,14 +26,13 @@ namespace beam_search {
         // we pass along the new state, and the "winning" k predictions
         // weighed by the conditional probability `prob` passed to the function.
         auto sorted_probs_rbegin = sorted_probs.rbegin();
-        std::cout << "beam_search_with_indices : ";
-            
-        while (sorted_probs_rbegin != sorted_probs.rbegin() + k) {
-            out.second.emplace_back(*sorted_probs_rbegin, probabilities[*sorted_probs_rbegin] * prob);
-            std::cout << probabilities[*sorted_probs_rbegin] * prob << " ";
+        
+        while (out.second.size() < k) {
+            if (*sorted_probs_rbegin != ignore_symbol) {
+                out.second.emplace_back(*sorted_probs_rbegin, probabilities[*sorted_probs_rbegin] * prob);
+            }
             sorted_probs_rbegin++;
         }
-        std::cout << std::endl;
         return out;
     }
 
@@ -64,10 +64,10 @@ namespace beam_search {
         int max_steps,
         int symbol_offset,
         int k,
-        uint end_symbol) {
+        uint end_symbol,
+        uint ignore_symbol = -1) {
 
         auto ex = convert_to_eigen_vector(example);
-
 
         typedef std::vector<uint> seq_type;
         typedef std::tuple<std::vector<uint>, typename model_t::value_t, typename model_t::state_type > open_list_t;
@@ -75,23 +75,19 @@ namespace beam_search {
         Graph<typename model_t::value_t> G(false);
         int n = ex.cols() * ex.rows();
         auto initial_state = model.get_final_activation(G, ex.head(n - 1));
-
         // we start off with k different options:
         std::vector<open_list_t> open_list;
         {
-            auto out_beam = beam_search_with_indices(model, G, initial_state, ex(n-1), k, 1.0);
-            std::cout << "beam contains : ";
+            auto out_beam = beam_search_with_indices(model, G, initial_state, ex(n-1), k, 1.0, ignore_symbol);
             for (auto& candidate : out_beam.second) {
                 open_list.emplace_back(
                     open_list_t(
-                        {candidate.first + symbol_offset},// the new fork
+                        std::initializer_list<uint>({candidate.first + symbol_offset}),// the new fork
                         candidate.second,                 // the new probabilities
                         out_beam.first                    // the new state
                     )
                 );
-                std::cout << candidate.second << " ";
             }
-            std::cout << std::endl;
         }
         // for each fork in the path we expand another k
         // options forward
@@ -116,10 +112,13 @@ namespace beam_search {
                         std::get<2>(fork),            // the internal state going forward
                         std::get<0>(fork).back(),     // the direction to take
                         k,                            // size of the beam
-                        std::get<1>(fork));           // the conditional probability for this
+                        std::get<1>(fork),            // the conditional probability for this
                                                       // fork in the path
+                        ignore_symbol                 // don't include paths with this direction
+                                                      // in the open-list.
+                        );
                     for (auto& forks_fork : forks_beam.second) {
-                        seq_type new_seq(forks_fork.first);
+                        seq_type new_seq(std::get<0>(fork));
                         new_seq.emplace_back(forks_fork.first + symbol_offset);
                         open_list.emplace_back(
                             open_list_t(
@@ -143,12 +142,12 @@ namespace beam_search {
             // if the search takes too long
             // or k paths have reached an endpoint
             // then exit the search
+
             if (i == max_steps || stops == k)
                 break;
         }
         return open_list;
     }
-
 }
 
 #endif

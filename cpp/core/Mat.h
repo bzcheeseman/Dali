@@ -26,6 +26,32 @@ typedef Eigen::MatrixWrapper<
 typedef std::vector<uint> index_std_vector;
 typedef std::size_t random_t;
 
+/**
+Mat
+---
+
+Main matrix class for this library. The Mat
+class contains two pieces of memory, `w`
+and `dw`. The first is the actual weights or
+values associated with this matrix, and the
+second is the local contribution to the
+objective function (or ∂E/∂Mat). This local
+contribution can then be used in
+backpropagation.
+
+Mat is used almost everywhere in the library
+except in `utils`.
+
+Note: ideally this class would generalize to
+higher and lower dimensions. For instance
+see `Graph::sum` and `Graph::mean`, or
+`Mat::grad` methods to see where a Scalar
+type would be useful (today this is a 1x1
+matrix -- mathematically sound, but this
+is inefficient, and inadequate for good
+broadcasting across other operations).
+
+**/
 template<typename T> class Mat {
         private:
                 typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;

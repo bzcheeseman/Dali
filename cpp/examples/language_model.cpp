@@ -303,7 +303,8 @@ template<typename model_t, typename S>
 void training_loop(model_t& model,
     const vector<Databatch>& dataset,
     const Vocab& word_vocab,
-    S& solver) {
+    S& solver,
+    const int& epoch) {
 
     double cost = 0.0;
     std::atomic<int> full_code_size(0);
@@ -315,7 +316,10 @@ void training_loop(model_t& model,
 
     std::atomic<int> batches_processed(0);
 
-    ReportProgress<double> journalist("Training", random_batch_order.size());
+    stringstream ss;
+    ss << "Training epoch " << epoch;
+
+    ReportProgress<double> journalist(ss.str(), random_batch_order.size());
 
     for (auto batch_id : random_batch_order) {
         pool->run([&model, &dataset, &solver, &full_code_size,
@@ -345,7 +349,8 @@ void training_loop(model_t& model,
         });
     }
     while(!pool->idle()) {
-        std::this_thread::sleep_for(seconds(10));
+        int time_between_reconstructions_s = 10;
+        pool->wait_until_idle(seconds(time_between_reconstructions_s));
 
         // Tell the journalist the news can wait
         journalist.pause();
@@ -392,14 +397,14 @@ void train_model(const vector<Databatch>& dataset,
     auto parameters = model.parameters();
     S solver(parameters, FLAGS_rho, 1e-9, 5.0);
 
-    int i = 0;
+    int epoch = 0;
     auto cost = std::numeric_limits<REAL_t>::infinity();
     double new_cost = 0.0;
     int patience = 0;
 
-    while (cost > FLAGS_cutoff && i < FLAGS_epochs && patience < FLAGS_patience) {
+    while (cost > FLAGS_cutoff && epoch < FLAGS_epochs && patience < FLAGS_patience) {
         new_cost = 0.0;
-        training_loop(model, dataset, word_vocab, solver);
+        training_loop(model, dataset, word_vocab, solver, epoch);
         new_cost = average_error(model, validation_set);
         if (new_cost >= cost) {
             patience += 1;
@@ -407,12 +412,12 @@ void train_model(const vector<Databatch>& dataset,
             patience = 0;
         }
         cost = new_cost;
-        std::cout << "epoch (" << i << ") KL error = "
+        std::cout << "epoch (" << epoch << ") KL error = "
                   << std::setprecision(3) << std::fixed
                   << std::setw(5) << std::setfill(' ') << new_cost
                   << " patience = " << patience << std::endl;
         maybe_save_model(model);
-        i++;
+        epoch++;
     }
 }
 

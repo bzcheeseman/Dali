@@ -10,8 +10,21 @@
 #include "gzstream.h"
 #include "utils.h"
 
+/**
+Stanford Sentiment Treebank
+---------------------------
+
+This namespace contains a dataset wrapper,
+the AnnotatedParseTree, and its assocatiated
+loading / printing methods. Useful for sentiment
+and parse tree based corpuses.
+
+See `examples/language_model_from_senti.cpp` for
+usage.
+
+**/
 namespace SST {
-        class AnnotatedParseTree {
+    class AnnotatedParseTree {
         public:
             typedef std::shared_ptr<AnnotatedParseTree> shared_tree;
             std::vector<shared_tree> children;
@@ -26,14 +39,62 @@ namespace SST {
             AnnotatedParseTree(uint);
             AnnotatedParseTree(uint, shared_tree);
             void add_words_to_vector(std::vector<std::string>&) const;
+            /**
+            To Labeled Pair
+            ---------------
+
+            Convert a tree into all its possible
+            subtrees, with their associated labels.
+
+            Outputs
+            -------
+
+            std::pair<std::vector<std::string>, uint> out :
+                tokenized sequence of words, paired with a label
+                (a uint number).
+
+            **/
             std::pair<std::vector<std::string>, uint> to_labeled_pair() const;
     };
     void replace_char_by_char(std::vector<char>&, const char&, const char&);
-        AnnotatedParseTree::shared_tree create_tree_from_string(const std::string&);
-        template<typename T>
-        void stream_to_sentiment_treebank(T&, std::vector<AnnotatedParseTree::shared_tree>&);
-        std::vector<AnnotatedParseTree::shared_tree> load(const std::string&);
-    
+    /**
+    Create Tree From String
+    -----------------------
+
+    Take a character vector and build up
+    the parse tree representation using
+    a stack based technique to detect
+    the level of nesting.
+
+    Inputs
+    ------
+
+    const std::string& str : input text contains the tree.
+
+    Outputs
+    -------
+
+    AnnotatedParseTree::shared_tree tree : shared pointer to tree
+    **/
+    AnnotatedParseTree::shared_tree create_tree_from_string(const std::string&);
+    /**
+    Stream to Sentiment Treebank
+    ----------------------------
+
+    Allow loading from a file stream given from
+    either a gzip or regular fstream.
+
+    Inputs
+    ------
+
+    T& stream : the stream source
+
+    std::vector<AnnotatedParseTree::shared_tree>& dest :
+        where to place the loaded trees.
+    **/
+    template<typename T>
+    void stream_to_sentiment_treebank(T&, std::vector<AnnotatedParseTree::shared_tree>&);
+    std::vector<AnnotatedParseTree::shared_tree> load(const std::string&);
 }
 
 std::ostream &operator <<(std::ostream &, const SST::AnnotatedParseTree&);

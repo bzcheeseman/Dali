@@ -14,7 +14,7 @@ namespace beam_search {
         typename model_t::state_type& previous_state,
         uint index,
         int k,
-        T prob,
+        T log_prob,
         uint ignore_symbol = -1) {
 
         auto out_state_and_prob = model.activate(G, previous_state, index);
@@ -24,12 +24,12 @@ namespace beam_search {
         auto sorted_probs = utils::argsort(probabilities);
 
         // we pass along the new state, and the "winning" k predictions
-        // weighed by the conditional probability `prob` passed to the function.
+        // weighed by the conditional probability `log_prob` passed to the function.
         auto sorted_probs_rbegin = sorted_probs.rbegin();
-        
+
         while (out.second.size() < k) {
             if (*sorted_probs_rbegin != ignore_symbol) {
-                out.second.emplace_back(*sorted_probs_rbegin, probabilities[*sorted_probs_rbegin] * prob);
+                out.second.emplace_back(*sorted_probs_rbegin, std::log(probabilities[*sorted_probs_rbegin]) + log_prob);
             }
             sorted_probs_rbegin++;
         }
@@ -78,7 +78,7 @@ namespace beam_search {
         // we start off with k different options:
         std::vector<open_list_t> open_list;
         {
-            auto out_beam = beam_search_with_indices(model, G, initial_state, ex(n-1), k, 1.0, ignore_symbol);
+            auto out_beam = beam_search_with_indices(model, G, initial_state, ex(n-1), k, 0.0, ignore_symbol);
             for (auto& candidate : out_beam.second) {
                 open_list.emplace_back(
                     open_list_t(

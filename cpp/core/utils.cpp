@@ -581,6 +581,12 @@ namespace utils {
         T sigmoid_operator<T>::operator () (T x) const { return 1.0 / (1.0 + exp(-x)); }
 
         template<typename T>
+        T steep_sigmoid_operator<T>::operator () (T x) const {return 1.0 / (1.0 + exp( - aggressiveness * x));}
+
+        template<typename T>
+        const T steep_sigmoid_operator<T>::aggressiveness = 3.75;
+
+        template<typename T>
         T tanh_operator<T>::operator() (T x) const { return std::tanh(x); }
 
         template<typename T>
@@ -608,6 +614,7 @@ namespace utils {
         }
 
         template struct sigmoid_operator<float>;
+        template struct steep_sigmoid_operator<float>;
         template struct tanh_operator<float>;
         template struct relu_operator<float>;
         template struct sign_operator<float>;
@@ -615,6 +622,7 @@ namespace utils {
         // template struct clip_operator<float>;
 
         template struct sigmoid_operator<double>;
+        template struct steep_sigmoid_operator<double>;
         template struct tanh_operator<double>;
         template struct relu_operator<double>;
         template struct sign_operator<double>;

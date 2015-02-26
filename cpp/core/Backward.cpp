@@ -78,6 +78,8 @@ string Backward<T>::op_type () const {
                         return "tanh";
                 case utils::ops::sigmoid:
                         return "sigmoid";
+                case utils::ops::steep_sigmoid:
+                        return "steep_sigmoid";
                 case utils::ops::relu:
                         return "relu";
                 case utils::ops::mul:
@@ -237,7 +239,10 @@ void Backward<T>::operator ()() {
                         matrices[0]->dw.noalias() += 2.0 * ((matrices[0]->w).array() * (out->dw).array()).matrix();
                         break;
                 case utils::ops::sigmoid:
-                        matrices[0]->dw.noalias() += (((out->w).array() - out->w.array().square()).max(1e-9) * out->dw.array()).matrix();
+                        matrices[0]->dw.noalias() += (((out->w).array() - out->w.array().square()) * out->dw.array()).matrix();
+                        break;
+                case utils::ops::steep_sigmoid:
+                        matrices[0]->dw.noalias() += (utils::steep_sigmoid_operator<T>::aggressiveness * ((out->w).array() - out->w.array().square()) * out->dw.array()).matrix();
                         break;
                 case utils::ops::mul:
                         matrices[0]->dw.noalias() += (out->dw) * ((matrices[1]->w).transpose());
@@ -345,6 +350,9 @@ void Backward<T>::operator ()(T clip_val) {
                         break;
                 case utils::ops::sigmoid:
                         matrices[0]->dw.noalias() += CLIP((((out->w).array() - out->w.array().square()).max(1e-9) * out->dw.array()).matrix(), clip_val);
+                        break;
+                case utils::ops::steep_sigmoid:
+                        matrices[0]->dw.noalias() += CLIP((utils::steep_sigmoid_operator<T>::aggressiveness * ((out->w).array() - out->w.array().square()) * out->dw.array()).matrix(), clip_val);
                         break;
                 case utils::ops::mul:
                         matrices[0]->dw.noalias() += CLIP(((out->dw) * ((matrices[1]->w).transpose())), clip_val);

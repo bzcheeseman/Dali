@@ -342,6 +342,16 @@ namespace utils {
                 T operator() (T) const;
         };
         template<typename T>
+        struct steep_sigmoid_operator {
+                // Sourced from Indico's Passage library's activations
+                // (Theano Python module)
+                // https://github.com/IndicoDataSolutions/Passage
+                // motivation in this Youtube video:
+                // https://www.youtube.com/watch?v=VINCQghQRuM
+                static const T aggressiveness;
+                T operator() (T) const;
+        };
+        template<typename T>
         struct tanh_operator {
                 T operator() (T) const;
         };
@@ -409,28 +419,29 @@ namespace utils {
         std::size_t get_random_id();
         namespace ops {
                 static const uint add                             = 0;
-                static const uint sub                                                     = 1;
+                static const uint sub                             = 1;
                 static const uint eltmul                          = 2;
                 static const uint square                          = 3;
                 static const uint sigmoid                         = 4;
-                static const uint tanh                            = 5;
-                static const uint mul                             = 6;
-                static const uint relu                            = 7;
-                static const uint row_pluck                       = 8;
-                static const uint add_broadcast                   = 9;
-                static const uint sub_broadcast                   = 10;
-                static const uint sub_broadcast_reversed          = 11;
-                static const uint eltmul_broadcast                = 12;
-                static const uint mul_with_bias                   = 13;
-                static const uint mul_add_mul_with_bias           = 14;
-                static const uint mul_add_broadcast_mul_with_bias = 15;
-                static const uint rows_pluck                      = 16;
-                static const uint transpose                       = 17;
-                static const uint eltmul_broadcast_rowwise        = 18;
-                static const uint eltmul_rowwise                  = 19;
-                static const uint sum                             = 20;
-                static const uint mean                            = 21;
-                static const uint log                             = 22;
+                static const uint steep_sigmoid                   = 5;
+                static const uint tanh                            = 6;
+                static const uint mul                             = 7;
+                static const uint relu                            = 8;
+                static const uint row_pluck                       = 9;
+                static const uint add_broadcast                   = 10;
+                static const uint sub_broadcast                   = 11;
+                static const uint sub_broadcast_reversed          = 12;
+                static const uint eltmul_broadcast                = 13;
+                static const uint mul_with_bias                   = 14;
+                static const uint mul_add_mul_with_bias           = 15;
+                static const uint mul_add_broadcast_mul_with_bias = 16;
+                static const uint rows_pluck                      = 17;
+                static const uint transpose                       = 18;
+                static const uint eltmul_broadcast_rowwise        = 19;
+                static const uint eltmul_rowwise                  = 20;
+                static const uint sum                             = 21;
+                static const uint mean                            = 22;
+                static const uint log                             = 23;
         }
 
         bool file_exists(const std::string&);

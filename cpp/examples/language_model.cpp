@@ -355,7 +355,7 @@ void training_loop(model_t& model,
         // Tell the journalist the news can wait
         journalist.pause();
         reconstruct_random_beams(model, dataset, word_vocab,
-            4, // how many elements to use as a primer for beam
+            utils::randint(1, 6), // how many elements to use as a primer for beam
             FLAGS_num_reconstructions, // how many beams
             20 // max size of a sequence
         );

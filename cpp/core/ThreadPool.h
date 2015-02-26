@@ -45,6 +45,8 @@ class ThreadPool {
         bool wait_until_idle(Duration timeout);
         bool wait_until_idle();
 
+        // Retruns true if all the work is done.
+        bool idle() const;
         // Return number of active busy workers.
         int active_workers();
 

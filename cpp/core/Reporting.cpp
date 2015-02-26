@@ -33,39 +33,59 @@ ReportProgress<T>::ReportProgress(string name,
 
 template<typename T>
 void ReportProgress<T>::tick(const double& completed_work, T work) {
-    t.maybe_run(report_frequency, [this, &completed_work, &work]() {
-        int active_bars = RESOLUTION * completed_work/total_work;
-        std::stringstream ss;
-        ss << "\r" << name << " [";
-        for (int i = 0; i < RESOLUTION; ++i) {
-            if (i < active_bars) {
-                ss << "█";
-            } else {
-                ss << " ";
+    if (printing_on) {
+        t.maybe_run(report_frequency, [this, &completed_work, &work]() {
+            int active_bars = RESOLUTION * completed_work/total_work;
+            std::stringstream ss;
+            ss << "\r" << name << " [";
+            for (int i = 0; i < RESOLUTION; ++i) {
+                if (i < active_bars) {
+                    ss << "█";
+                } else {
+                    ss << " ";
+                }
             }
-        }
-        ss << "] " << std::fixed
-                   << std::setprecision( 3 ) // use 3 decimals
-                   << std::setw(6)
-                   << std::setfill( ' ' ) <<  100.0 * completed_work/total_work << "%";
-        ss << " " << work;
-        max_line_length = std::max(ss.str().size(), max_line_length);
-        std::cout << ss.str();
-        std::cout.flush();
-    });
+            ss << "] " << std::fixed
+                       << std::setprecision( 3 ) // use 3 decimals
+                       << std::setw(6)
+                       << std::setfill( ' ' ) <<  100.0 * completed_work/total_work << "%";
+            ss << " " << work;
+            max_line_length = std::max(ss.str().size(), max_line_length);
+            std::cout << ss.str();
+            std::cout.flush();
+        });
+    }
 }
 
 template<typename T>
-void ReportProgress<T>::done() {
-    std::cout << "\r" << name << " done";
-    if (max_line_length > 5 + name.size()) {
-        for (int i = 0; i < std::max((size_t) 0, max_line_length - 5 - name.size()); i++) {
+void ReportProgress<T>::finish_line(const string& text) {
+    std::cout << "\r" << name << ' ' <<  text;
+    if (max_line_length > text.size() + 1 + name.size()) {
+        for (int i = 0; i < std::max((size_t) 0, max_line_length - text.size() - 1 - name.size()); i++) {
             std::cout << " ";
         }
     }
     std::cout << std::endl;
     max_line_length = 0;
 }
+
+template<typename T>
+void ReportProgress<T>::done() {
+    finish_line("done");
+}
+
+template<typename T>
+void ReportProgress<T>::pause() {
+    finish_line("");
+    std::cout << "\r" << std::flush;
+    printing_on = false;
+}
+
+template<typename T>
+void ReportProgress<T>::resume() {
+    printing_on = true;
+}
+
 
 template<typename model_t>
 void maybe_save_model(const model_t& model,

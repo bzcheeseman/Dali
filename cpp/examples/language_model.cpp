@@ -315,12 +315,12 @@ void training_loop(model_t& model,
 
     std::atomic<int> batches_processed(0);
 
-    ReportProgress<double> r("Training", random_batch_order.size());
+    ReportProgress<double> journalist("Training", random_batch_order.size());
 
     for (auto batch_id : random_batch_order) {
         pool->run([&model, &dataset, &solver, &full_code_size,
                    &cost, &thread_models, batch_id, &random_batch_order,
-                   &batches_processed, &r]() {
+                   &batches_processed, &journalist]() {
 
             auto& thread_model = thread_models[ThreadPool::get_thread_number()];
             auto thread_parameters = thread_model.parameters();
@@ -341,11 +341,23 @@ void training_loop(model_t& model,
             G.backward(); // backpropagate
             solver.step(thread_parameters, FLAGS_rho);
 
-            r.tick(++batches_processed, cost / full_code_size);
+            journalist.tick(++batches_processed, cost / full_code_size);
         });
     }
-    pool->wait_until_idle();
-    r.done();
+    while(!pool->idle()) {
+        std::this_thread::sleep_for(seconds(10));
+
+        // Tell the journalist the news can wait
+        journalist.pause();
+        reconstruct_random_beams(model, dataset, word_vocab,
+            4, // how many elements to use as a primer for beam
+            FLAGS_num_reconstructions, // how many beams
+            20 // max size of a sequence
+        );
+        journalist.resume();
+    }
+    // Thank you for your service
+    journalist.done();
 }
 
 /**
@@ -400,12 +412,6 @@ void train_model(const vector<Databatch>& dataset,
                   << std::setw(5) << std::setfill(' ') << new_cost
                   << " patience = " << patience << std::endl;
         maybe_save_model(model);
-        // reconstruct_random(model, dataset, word_vocab, 3);
-        reconstruct_random_beams(model, dataset, word_vocab,
-            4, // how many elements to use as a primer for beam
-            FLAGS_num_reconstructions, // how many beams
-            20 // max size of a sequence
-        );
         i++;
     }
 }

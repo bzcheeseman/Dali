@@ -71,7 +71,7 @@ bool ThreadPool::wait_until_idle(Duration timeout) {
     is_idle.wait_for(lock, timeout, [this]{
         return active_count == 0 && work.empty();
     });
-    return active_count == 0 && work.empty();
+    return idle();
 }
 
 bool ThreadPool::wait_until_idle() {
@@ -79,6 +79,10 @@ bool ThreadPool::wait_until_idle() {
     is_idle.wait(lock, [this]{
         return active_count == 0 && work.empty();
     });
+    return idle();
+}
+
+bool ThreadPool::idle() const {
     return active_count == 0 && work.empty();
 }
 

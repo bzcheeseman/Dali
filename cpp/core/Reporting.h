@@ -35,13 +35,17 @@ class ReportProgress {
     double total_work;
     size_t max_line_length = 0;
     Throttled::Clock::duration report_frequency;
+    bool printing_on = true;
 
+    void finish_line(const std::string& text);
     public:
         ReportProgress(std::string name,
                        const double& total_work,
                        Throttled::Clock::duration report_frequency=std::chrono::milliseconds(250));
 
         void tick(const double& completed_work, T work);
+        void pause();
+        void resume();
         void done();
 };
 

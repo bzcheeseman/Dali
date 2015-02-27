@@ -655,7 +655,7 @@ namespace utils {
                                 if (el->children.size() > 1) {
                                         auto child_ptr = el->children.begin();
                                         open_list.emplace_back(*child_ptr);
-                                        fp << el->name << "<-" << (*(child_ptr++))->name << "\n";
+                                        fp << el->name << "->" << (*(child_ptr++))->name << "\n";
                                         while (child_ptr != el->children.end()) {
                                                 open_list.emplace_back(*child_ptr);
                                                 fp << (*(child_ptr++))->name << "\n";

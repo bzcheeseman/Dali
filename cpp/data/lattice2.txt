@@ -1,10 +1,10 @@
-root<-Joe
+root->Joe
 Bob
 Max
 Mary
 Jane
 Goodwin
-root 2<-Joe
+root 2->Joe
 Bob
 Max
 Mary

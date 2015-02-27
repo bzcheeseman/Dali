@@ -413,8 +413,9 @@ typename Graph<T>::shared_mat Graph<T>::mul_add_mul_with_bias(const vector<share
         auto matrices_ptr = matrices.begin();
         while (matrices_ptr != (matrices.end() - 1)) {
                 out->w += (*matrices_ptr)->w * (*(matrices_ptr + 1))->w;
-                DEBUG_ASSERT_NOT_NAN((*matrices_ptr)->w);
-                DEBUG_ASSERT_NOT_NAN((*(matrices_ptr + 1))->w);
+                DEBUG_ASSERT_MAT_NOT_NAN(out);
+                DEBUG_ASSERT_MAT_NOT_NAN((*matrices_ptr));
+                DEBUG_ASSERT_MAT_NOT_NAN((*(matrices_ptr + 1)));
                 matrices_ptr+=2;
         }
 

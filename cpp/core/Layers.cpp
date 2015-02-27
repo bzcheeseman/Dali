@@ -42,8 +42,10 @@ void StackedInputLayer<T>::create_variables() {
     for (auto& input_size : input_sizes) total_input_size += input_size;
     T upper = 1. / sqrt(total_input_size);
     matrices.reserve(input_sizes.size());
-    for (auto& input_size : input_sizes)
+    for (auto& input_size : input_sizes) {
         matrices.emplace_back(make_shared<mat>(hidden_size, input_size, -upper, upper));
+        DEBUG_ASSERT_MAT_NOT_NAN(matrices[matrices.size() -1]);
+    }
     b = make_shared<mat>(hidden_size, 1);
 }
 template<typename T>
@@ -87,13 +89,13 @@ vector<typename StackedInputLayer<T>::shared_mat> StackedInputLayer<T>::zip_inpu
 
     mat_ptr++;
 
-    DEBUG_ASSERT_NOT_NAN((*mat_ptr)->w);
-    DEBUG_ASSERT_NOT_NAN(input->w);
+    DEBUG_ASSERT_MAT_NOT_NAN((*mat_ptr));
+    DEBUG_ASSERT_MAT_NOT_NAN(input);
 
     while (mat_ptr != matrices.end()) {
 
-        DEBUG_ASSERT_NOT_NAN((*mat_ptr)->w);
-        DEBUG_ASSERT_NOT_NAN((*input_ptr)->w);
+        DEBUG_ASSERT_MAT_NOT_NAN((*mat_ptr));
+        DEBUG_ASSERT_MAT_NOT_NAN((*input_ptr));
 
         zipped.emplace_back(*mat_ptr);
         zipped.emplace_back(*input_ptr);
@@ -117,11 +119,12 @@ typename StackedInputLayer<T>::shared_mat StackedInputLayer<T>::activate(
     Graph<T>& G,
     typename StackedInputLayer<T>::shared_mat input,
     const vector<typename StackedInputLayer<T>::shared_mat>& inputs) const {
+    DEBUG_ASSERT_MAT_NOT_NAN(input);
     auto zipped = zip_inputs_with_matrices_and_bias(input, inputs);
 
     auto out = G.mul_add_mul_with_bias(zipped);
 
-    DEBUG_ASSERT_NOT_NAN(out->w);
+    DEBUG_ASSERT_MAT_NOT_NAN(out);
 
     return out;
 }
@@ -229,6 +232,11 @@ typename RNN<T>::shared_mat RNN<T>::activate(
     // takes 5% less time to run operations when grouping them (no big gains then)
     // 1.118s with explicit (& temporaries) vs 1.020s with grouped expression & backprop
     // return G.add(G.mul(Wx, input_vector), G.mul_with_bias(Wh, prev_hidden, b));
+    DEBUG_ASSERT_NOT_NAN(Wx->w);
+    DEBUG_ASSERT_NOT_NAN(input_vector->w);
+    DEBUG_ASSERT_NOT_NAN(Wh->w);
+    DEBUG_ASSERT_NOT_NAN(prev_hidden->w);
+    DEBUG_ASSERT_NOT_NAN(b->w);
     return G.mul_add_mul_with_bias(Wx, input_vector, Wh, prev_hidden, b);
 }
 
@@ -241,6 +249,11 @@ typename ShortcutRNN<T>::shared_mat ShortcutRNN<T>::activate(
     // takes 5% less time to run operations when grouping them (no big gains then)
     // 1.118s with explicit (& temporaries) vs 1.020s with grouped expression & backprop
     // return G.add(G.mul(Wx, input_vector), G.mul_with_bias(Wh, prev_hidden, b));
+    DEBUG_ASSERT_NOT_NAN(Wx->w);
+    DEBUG_ASSERT_NOT_NAN(input_vector->w);
+    DEBUG_ASSERT_NOT_NAN(Wh->w);
+    DEBUG_ASSERT_NOT_NAN(prev_hidden->w);
+    DEBUG_ASSERT_NOT_NAN(b->w);
     return G.add( G.mul(Ws, shortcut_vector), G.mul_add_mul_with_bias(Wx, input_vector, Wh, prev_hidden, b));
 }
 
@@ -344,7 +357,7 @@ ShortcutLSTM<T>::ShortcutLSTM (int _input_size, int _shortcut_size, int _hidden_
 }
 
 template<typename T>
-LSTM<T>::LSTM (const LSTM<T>& lstm, bool copy_w, bool copy_dw) : 
+LSTM<T>::LSTM (const LSTM<T>& lstm, bool copy_w, bool copy_dw) :
     hidden_size(lstm.hidden_size),
     input_size(lstm.input_size),
     input_layer(lstm.input_layer, copy_w, copy_dw),
@@ -356,7 +369,7 @@ LSTM<T>::LSTM (const LSTM<T>& lstm, bool copy_w, bool copy_dw) :
 }
 
 template<typename T>
-ShortcutLSTM<T>::ShortcutLSTM (const ShortcutLSTM<T>& lstm, bool copy_w, bool copy_dw) : 
+ShortcutLSTM<T>::ShortcutLSTM (const ShortcutLSTM<T>& lstm, bool copy_w, bool copy_dw) :
     hidden_size(lstm.hidden_size),
     input_size(lstm.input_size),
     shortcut_size(lstm.shortcut_size),
@@ -586,7 +599,7 @@ pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> forward_LSTMs(Graph
     pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>>& previous_state,
     const LSTM<T>& base_cell,
     const vector<ShortcutLSTM<T>>& cells) {
-    
+
     auto previous_state_cells = previous_state.first;
     auto previous_state_hiddens = previous_state.second;
 

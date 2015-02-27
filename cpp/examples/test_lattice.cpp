@@ -10,6 +10,7 @@ using std::vector;
 using std::string;
 using std::make_shared;
 using utils::OntologyBranch;
+using std::stringstream;
 
 void show_tree(std::vector<std::shared_ptr<OntologyBranch>> tree) {
         for (auto& r : tree)
@@ -17,6 +18,18 @@ void show_tree(std::vector<std::shared_ptr<OntologyBranch>> tree) {
 }
 
 void test_lattice () {
+        string data_folder;
+        {
+            auto file_path_split = utils::split(__FILE__, '/');
+            stringstream ss;
+            ss << "/";
+            for (int i = 0; i < file_path_split.size() - 2; i++) {
+                ss << file_path_split[i] << "/";
+            }
+            ss << "data/";
+            data_folder = ss.str();
+        }
+
         std::cout << "Constructing a new lattice" << std::endl;
 
         auto root = make_shared<OntologyBranch>("root");
@@ -38,28 +51,33 @@ void test_lattice () {
         for (auto& par : root->children[2]->parents)
                 std::cout << "parent name => \"" << par.lock()->name << "\"" << std::endl;
 
-        std::cout << "Saving a lattice to \"examples/lattice2.txt\""     << std::endl;
+        std::cout << "Saving a lattice to \"" << data_folder << "lattice2.txt\""     << std::endl;
+
         // Test saving a lattice file
-        root->save("examples/lattice2.txt");
+        root->save(data_folder + "lattice2.txt");
         // Test saving a gzipped file:
-        root->save("examples/lattice2.txt.gz");
+        root->save(data_folder + "lattice2.txt.gz");
 
 
-        std::cout << "Load a lattice from \"examples/lattice.txt\"" << std::endl;
+        std::cout << "Load a lattice from \"" << data_folder << "lattice.txt\"" << std::endl;
         // Test loading a lattice in from a text file:
-        auto loaded_tree = OntologyBranch::load("examples/lattice.txt");
+        auto loaded_tree = OntologyBranch::load(data_folder + "lattice.txt");
+        std::cout << data_folder + "lattice.txt" << std::endl;
         show_tree(loaded_tree);
+
+        assert(loaded_tree.size() > 0);
+        assert(loaded_tree[0]->lookup_table->find("root 2") != loaded_tree[0]->lookup_table->end());
 
         OntologyBranch::shared_branch root2_loaded = loaded_tree[0]->lookup_table->at("root 2");
 
         int found = 0;
         for (auto& child : root->children) {
-                for (auto& subchild : root2_loaded->children) {
-                        if (subchild->name == child->name) {
-                                found += 1;
-                                break;
-                        }
+            for (auto& subchild : root2_loaded->children) {
+                if (subchild->name == child->name) {
+                    found += 1;
+                    break;
                 }
+            }
         }
         std::cout << "Found " << found << "/" << root->children.size() << " children in loaded root 2 " << std::endl;
 }
@@ -80,7 +98,6 @@ int main (int argc, char *argv[]) {
         " @author Jonathan Raiman\n"
         " @date February 3rd 2015"
     );
-
 
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 

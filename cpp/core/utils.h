@@ -32,15 +32,16 @@
 #define ELOG(EXP) std::cout << #EXP "\t=\t" << (EXP) << std::endl
 #define SELOG(STR,EXP) std::cout << #STR "\t=\t" << (EXP) << std::endl
 
-
 #ifdef DEBUG_RECURRENTJS
-        #define DEBUG_ASSERT_POSITIVE(X) assert(((X).array() >= 0).all())
-        #define DEBUG_ASSERT_NONZERO(X) assert(((X).array().abs() >= 1e-10).all())
-        #define DEBUG_ASSERT_NOT_NAN(X) assert(((X).array().square().sum() == (X).array().square().sum()))
+    #define DEBUG_ASSERT_POSITIVE(X) assert(((X).array() >= 0).all())
+    #define DEBUG_ASSERT_NONZERO(X) assert(((X).array().abs() >= 1e-10).all())
+    #define DEBUG_ASSERT_NOT_NAN(X) assert(!utils::contains_NaN(((X).array().square().sum())))
+    #define DEBUG_ASSERT_MAT_NOT_NAN(X) if ( utils::contains_NaN((X)->w.array().square().sum())) throw std::runtime_error(utils::explain_mat_bug(*(X)->name, __FILE__,  __LINE__))
 #else
-        #define DEBUG_ASSERT_POSITIVE(X)
-        #define DEBUG_ASSERT_NONZERO(X)
-        #define DEBUG_ASSERT_NOT_NAN(X)
+    #define DEBUG_ASSERT_POSITIVE(X)
+    #define DEBUG_ASSERT_NONZERO(X)
+    #define DEBUG_ASSERT_NOT_NAN(X)
+    #define DEBUG_ASSERT_MAT_NOT_NAN(X)
 #endif
 
 // Default writing mode useful for default argument to
@@ -59,6 +60,13 @@ template<typename T>
 std::ostream& operator<<(std::ostream&, const std::vector<T>&);
 
 namespace utils {
+
+        #ifdef DEBUG_RECURRENTJS
+            std::string explain_mat_bug(const std::string&, const char*, const int&);
+            template<typename T>
+            bool contains_NaN(T);
+        #endif
+
         /** Utility function to create directory tree */
         bool makedirs(const char* path, mode_t mode = DEFAULT_MODE);
         typedef std::vector<std::string> str_sequence;
@@ -374,26 +382,55 @@ namespace utils {
     template<typename T>
     void assert_map_has_key(std::map<std::string, T>&, const std::string&);
 
-    str_sequence split(const std::string &, char);
     /**
-        Triggers To Strings
-        -------------------
+    Split
+    -----
 
-        Convert triggers from an example to their
-        string representation using an index2label
-        string vector.
+    Split a string at a character into a vector of strings.
+    Optionally choose to keep empty strings, e.g.:
 
-        Inputs
-        ------
+        > utils::split("//hello//world", '/');
 
-        const google::protobuf::RepeatedPtrField<Example::Trigger>& triggers : list of Trigger protobuff objects
-        const vector<string>& index2target : mapping from numerical to string representation
+        => vector<string>({"hello", "world"})
 
-        Outputs
-        -------
+    vs.
 
-        std::vector<std::string> data : the strings corresponding to the trigger targets
-        **/
+        > utils::split("//hello//world", '/', true);
+
+        => vector<string>({"", "", "hello", "", "world", "", ""})
+
+    Inputs
+    ------
+      std::string& text : text to split using char
+                 char c : character used to cut up text
+bool keep_empty_strings : keep empty strings [see above], defaults to false.
+
+    Outputs
+    -------
+
+    std::vector<std::string> split : split string sequence (tokenized)
+
+    **/
+    str_sequence split(const std::string &, char, bool keep_empty_strings = false);
+    /**
+    Triggers To Strings
+    -------------------
+
+    Convert triggers from an example to their
+    string representation using an index2label
+    string vector.
+
+    Inputs
+    ------
+
+    const google::protobuf::RepeatedPtrField<Example::Trigger>& triggers : list of Trigger protobuff objects
+    const vector<string>& index2target : mapping from numerical to string representation
+
+    Outputs
+    -------
+
+    std::vector<std::string> data : the strings corresponding to the trigger targets
+    **/
     str_sequence triggers_to_strings(const google::protobuf::RepeatedPtrField<Example::Trigger>&, const str_sequence&);
 
         template <typename T>
@@ -465,9 +502,9 @@ namespace utils {
 
 // define hash code for OntologyBranch
 namespace std {
-        template <> struct hash<utils::OntologyBranch> {
-                std::size_t operator()(const utils::OntologyBranch&) const;
-        };
+    template <> struct hash<utils::OntologyBranch> {
+        std::size_t operator()(const utils::OntologyBranch&) const;
+    };
 }
 std::ostream& operator<<(std::ostream&, const utils::OntologyBranch&);
 #endif

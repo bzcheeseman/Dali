@@ -110,8 +110,8 @@ int main( int argc, char* argv[]) {
         mean_fixpoint_degree /= num_fixpoints;
         mean_concept_indegree /= num_concepts;
         std::cout << "Lattice Statistics\n"
-                          << "------------------\n\n"
-                          << "    Number of lattice roots : " << lattice_roots.size()  << "\n"
+                  << "------------------\n\n"
+                  << "    Number of lattice roots : " << lattice_roots.size()  << "\n"
                   << " Number of nodes in lattice : " << lattice_roots[0]->lookup_table->size() << "\n"
                   << "Number of lattice fixpoints : " << num_fixpoints         << "\n"
                   << " Number of lattice concepts : " << num_concepts          << "\n"

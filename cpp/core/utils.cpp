@@ -88,6 +88,19 @@ template std::ostream& operator<< <int>(std::ostream& strm, const vector<int>& a
 
 namespace utils {
 
+        #ifdef DEBUG_RECURRENTJS
+        string explain_mat_bug(const string& mat_name, const char* file, const int& line) {
+            stringstream ss;
+            ss << "Matrix \"" << mat_name << "\" has NaNs in file:\"" << file << "\" and line: " << line;
+            return ss.str();
+        }
+        template<typename T>
+        bool contains_NaN(T val) {return !(val == val);}
+
+        template bool contains_NaN(float);
+        template bool contains_NaN(double);
+        #endif
+
         vector<size_t> random_arange(size_t size) {
                 vector<size_t> indices(size);
                 for (size_t i=0; i < size;i++) indices[i] = i;
@@ -99,12 +112,12 @@ namespace utils {
                 if (dirname.back() != '/') dirname += "/";
         }
 
-        vector<string> split(const std::string &s, char delim) {
+        vector<string> split(const std::string &s, char delim, bool keep_empty_strings) {
                 std::vector<std::string> elems;
             std::stringstream ss(s);
             string item;
             while (std::getline(ss, item, delim))
-                if (item != "")
+                if (!item.empty() || keep_empty_strings)
                         elems.push_back(item);
             return elems;
         }

@@ -2,6 +2,7 @@
 #define NLP_UTILS_H
 
 #include "gflags/gflags.h"
+#include "utils.h"
 
 
 DECLARE_int32(subsets);

@@ -1,9 +1,11 @@
+#include <chrono>
 #include <vector>
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 #include "ThreadPool.h"
 
 using std::vector;
+using std::chrono::milliseconds;
 
 TEST(ThreadPool, wait_until_idle) {
     const int NUM_THREADS = 10;

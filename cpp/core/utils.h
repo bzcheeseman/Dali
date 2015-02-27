@@ -12,6 +12,7 @@
 #include <cstring>
 #include <vector>
 #include <map>
+#include <chrono>
 #include <unordered_map>
 #include <set>
 #include <sys/stat.h>
@@ -25,18 +26,22 @@
 #include <errno.h>
 #include <dirent.h>
 #include <gflags/gflags.h>
-
+#include <atomic>
 #include "protobuf/corpus.pb.h"
 
 // MACRO DEFINITIONS
 #define ELOG(EXP) std::cout << #EXP "\t=\t" << (EXP) << std::endl
 #define SELOG(STR,EXP) std::cout << #STR "\t=\t" << (EXP) << std::endl
 
+#define START_RECORD(X) auto ##X_time_token = utils::Timer::get_new_timing_token()
+#define RECORD_TIME(X) utils::Timer::update_time_using_token(#X"", ##X_time_token)
+
 #ifdef DEBUG_RECURRENTJS
     #define DEBUG_ASSERT_POSITIVE(X) assert(((X).array() >= 0).all())
     #define DEBUG_ASSERT_NONZERO(X) assert(((X).array().abs() >= 1e-10).all())
     #define DEBUG_ASSERT_NOT_NAN(X) assert(!utils::contains_NaN(((X).array().square().sum())))
     #define DEBUG_ASSERT_MAT_NOT_NAN(X) if ( utils::contains_NaN((X)->w.array().square().sum())) throw std::runtime_error(utils::explain_mat_bug(*(X)->name, __FILE__,  __LINE__))
+
 #else
     #define DEBUG_ASSERT_POSITIVE(X)
     #define DEBUG_ASSERT_NONZERO(X)
@@ -498,6 +503,16 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
         void exit_with_message(const std::string&, int error_code = 1);
 
         bool validate_flag_nonempty(const char* flagname, const std::string& value);
+
+        class Timer {
+            public:
+                typedef std::chrono::system_clock clock_t;
+                static std::unordered_map<std::string, std::atomic<int>> timers;
+                static std::unordered_map<std::size_t, std::chrono::time_point<clock_t>> active_tokens;
+                static std::size_t get_new_timing_token();
+                static void update_time_using_token(const char* name, const std::size_t& token);
+                static void give_report();
+        };
 }
 
 // define hash code for OntologyBranch

@@ -962,10 +962,10 @@ namespace utils {
         }
 
         bool validate_flag_nonempty(const char* flagname, const std::string& value) {
-                if (value.empty()) {
-                        std::cout << "Invalid value for --" << flagname << " (can't be empty)" << std::endl;
-                }
-                return not value.empty();
+            if (value.empty()) {
+                std::cout << "Invalid value for --" << flagname << " (can't be empty)" << std::endl;
+            }
+            return not value.empty();
         }
 
         std::unordered_map<std::string, std::atomic<int>> Timer::timers = std::unordered_map<std::string, std::atomic<int>>();

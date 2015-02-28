@@ -17,256 +17,256 @@ void Graph<T>::backward () {
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::eltmul_broadcast(
-        shared_mat matrix1,
-        shared_mat matrix2) {
-        if (matrix1->n != matrix2->n || matrix2->d != 1) {
-            stringstream error_msg;
-            error_msg << "Matrices " << *matrix1 << " and "
-                                     << *matrix2
-                      << " cannot be element multiplied with broadcast,"
-                         " they do not have the same dimensions.";
-            throw std::invalid_argument(error_msg.str());
-        }
-        auto out = std::make_shared<mat>(
-            matrix1->n,
-            matrix1->d,
-            true);
-        out->w = (matrix1->w.array().colwise() * matrix2->w.col(0).array()).matrix();
-        if (needs_backprop)
-            // allocates a new backward element in the vector using these arguments:
-            backprop.emplace_back([matrix1, matrix2, out]() {
-                matrix1->dw.noalias() += ((out->dw).array().colwise() * (matrix2->w).col(0).array()).matrix();
-                matrix2->dw.noalias() += ((matrix1->w).array() * (out->dw).array()).matrix().rowwise().sum();
-            });
-        return out;
+    shared_mat matrix1,
+    shared_mat matrix2) {
+    if (matrix1->n != matrix2->n || matrix2->d != 1) {
+        stringstream error_msg;
+        error_msg << "Matrices " << *matrix1 << " and "
+                                 << *matrix2
+                  << " cannot be element multiplied with broadcast,"
+                     " they do not have the same dimensions.";
+        throw std::invalid_argument(error_msg.str());
+    }
+    auto out = std::make_shared<mat>(
+        matrix1->n,
+        matrix1->d,
+        true);
+    out->w = (matrix1->w.array().colwise() * matrix2->w.col(0).array()).matrix();
+    if (needs_backprop)
+        // allocates a new backward element in the vector using these arguments:
+        backprop.emplace_back([matrix1, matrix2, out]() {
+            matrix1->dw.noalias() += ((out->dw).array().colwise() * (matrix2->w).col(0).array()).matrix();
+            matrix2->dw.noalias() += ((matrix1->w).array() * (out->dw).array()).matrix().rowwise().sum();
+        });
+    return out;
 }
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::eltmul(
-        shared_mat matrix1,
-        shared_mat matrix2) {
-        if (matrix1->d != matrix2->d && (matrix1->d == 1 || matrix2->d == 1)) {
-                if (matrix1->d == 1) {
-                        return eltmul_broadcast(matrix2, matrix1);
-                }
-                return eltmul_broadcast(matrix1, matrix2);
+    shared_mat matrix1,
+    shared_mat matrix2) {
+    if (matrix1->d != matrix2->d && (matrix1->d == 1 || matrix2->d == 1)) {
+        if (matrix1->d == 1) {
+            return eltmul_broadcast(matrix2, matrix1);
         }
-        if (matrix1->n != matrix2->n || matrix1->d != matrix2->d)
-                throw std::invalid_argument("Matrices cannot be element-wise multiplied, they do not have the same dimensions.");
-        auto out = std::make_shared<mat>(
-                matrix1->n,
-                matrix1->d,
-                true);
-        out->w = (matrix1->w.array() * matrix2->w.array()).matrix();
-        if (needs_backprop)
-                // allocates a new backward element in the vector using these arguments:
-                backprop.emplace_back([matrix1, matrix2, out]() {
-                    matrix1->dw.noalias() += ((matrix2->w).array() * (out->dw).array()).matrix();
-                    matrix2->dw.noalias() += ((matrix1->w).array() * (out->dw).array()).matrix();
-                });
-        return out;
+        return eltmul_broadcast(matrix1, matrix2);
+    }
+    if (matrix1->n != matrix2->n || matrix1->d != matrix2->d)
+        throw std::invalid_argument("Matrices cannot be element-wise multiplied, they do not have the same dimensions.");
+    auto out = std::make_shared<mat>(
+        matrix1->n,
+        matrix1->d,
+        true);
+    out->w = (matrix1->w.array() * matrix2->w.array()).matrix();
+    if (needs_backprop)
+        // allocates a new backward element in the vector using these arguments:
+        backprop.emplace_back([matrix1, matrix2, out]() {
+            matrix1->dw.noalias() += ((matrix2->w).array() * (out->dw).array()).matrix();
+            matrix2->dw.noalias() += ((matrix1->w).array() * (out->dw).array()).matrix();
+        });
+    return out;
 }
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::eltmul_broadcast_rowwise(
-        shared_mat matrix1,
-        shared_mat row_vector) {
-        if (matrix1->d != row_vector->d || row_vector->n != 1)
-                throw std::invalid_argument("Matrices A and B^T cannot be element multiplied with broadcast, they do not have the same dimensions.");
-        auto out = std::make_shared<mat>(
-                matrix1->n,
-                matrix1->d,
-                true);
-        out->w = (matrix1->w.array().rowwise() * row_vector->w.row(0).array()).matrix();
-        if (needs_backprop)
-                // allocates a new backward element in the vector using these arguments:
-                backprop.emplace_back([matrix1, row_vector, out]() {
-                    matrix1->dw.noalias() += ((out->dw).array().rowwise() * (row_vector->w).row(0).array()).matrix();
-                    row_vector->dw.noalias() += (((matrix1->w).array() * (out->dw).array()).matrix().colwise().sum()).matrix();
-                });
-        return out;
+    shared_mat matrix1,
+    shared_mat row_vector) {
+    if (matrix1->d != row_vector->d || row_vector->n != 1)
+        throw std::invalid_argument("Matrices A and B^T cannot be element multiplied with broadcast, they do not have the same dimensions.");
+    auto out = std::make_shared<mat>(
+            matrix1->n,
+            matrix1->d,
+            true);
+    out->w = (matrix1->w.array().rowwise() * row_vector->w.row(0).array()).matrix();
+    if (needs_backprop)
+        // allocates a new backward element in the vector using these arguments:
+        backprop.emplace_back([matrix1, row_vector, out]() {
+            matrix1->dw.noalias() += ((out->dw).array().rowwise() * (row_vector->w).row(0).array()).matrix();
+            row_vector->dw.noalias() += (((matrix1->w).array() * (out->dw).array()).matrix().colwise().sum()).matrix();
+        });
+    return out;
 }
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::eltmul_rowwise(
-        shared_mat matrix1,
-        shared_mat matrix2) {
+    shared_mat matrix1,
+    shared_mat matrix2) {
 
-        if (matrix1->n != matrix2->d || matrix1->d != matrix2->n)
-                throw std::invalid_argument("Matrices A and B^T cannot be element-wise multiplied, they do not have the same dimensions.");
-        auto out = std::make_shared<mat>(
-                matrix1->n,
-                matrix1->d,
-                true);
-        out->w = (matrix1->w.array() * matrix2->w.transpose().array()).matrix();
-        if (needs_backprop)
-                // allocates a new backward element in the vector using these arguments:
-                backprop.emplace_back([matrix1, matrix2, out]() {
-                    matrix1->dw.noalias() += ((matrix2->w).transpose().array() * (out->dw).array()).matrix();
-                    matrix2->dw.noalias() += ((matrix1->w).array() * (out->dw).array()).matrix().transpose();
-                });
-        return out;
+    if (matrix1->n != matrix2->d || matrix1->d != matrix2->n)
+        throw std::invalid_argument("Matrices A and B^T cannot be element-wise multiplied, they do not have the same dimensions.");
+    auto out = std::make_shared<mat>(
+        matrix1->n,
+        matrix1->d,
+        true);
+    out->w = (matrix1->w.array() * matrix2->w.transpose().array()).matrix();
+    if (needs_backprop)
+        // allocates a new backward element in the vector using these arguments:
+        backprop.emplace_back([matrix1, matrix2, out]() {
+            matrix1->dw.noalias() += ((matrix2->w).transpose().array() * (out->dw).array()).matrix();
+            matrix2->dw.noalias() += ((matrix1->w).array() * (out->dw).array()).matrix().transpose();
+        });
+    return out;
 }
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::add(
-                shared_mat matrix1,
-                shared_mat matrix2) {
-        if (matrix1->d != matrix2->d && (matrix1->d == 1 || matrix2->d == 1)) {
-            if (matrix1->d == 1) {
-                return add_broadcast(matrix2, matrix1);
-            }
-            return add_broadcast(matrix1, matrix2);
+        shared_mat matrix1,
+        shared_mat matrix2) {
+    if (matrix1->d != matrix2->d && (matrix1->d == 1 || matrix2->d == 1)) {
+        if (matrix1->d == 1) {
+            return add_broadcast(matrix2, matrix1);
         }
-        if (matrix1->n != matrix2->n || matrix1->d != matrix2->d)
-            throw std::invalid_argument("Matrices cannot be added, they do not have the same dimensions.");
-        auto out = std::make_shared<Mat<T>>(
-            matrix1->n,
-            matrix1->d,
-            true);
-        out->w = matrix1->w + matrix2->w;
-        if (needs_backprop)
-            // allocates a new backward element in the vector using these arguments:
-            backprop.emplace_back([matrix1, matrix2, out]() {
-                matrix1->dw.noalias() += out->dw;
-                matrix2->dw.noalias() += out->dw;
-            });
-        return out;
+        return add_broadcast(matrix1, matrix2);
+    }
+    if (matrix1->n != matrix2->n || matrix1->d != matrix2->d)
+        throw std::invalid_argument("Matrices cannot be added, they do not have the same dimensions.");
+    auto out = std::make_shared<Mat<T>>(
+        matrix1->n,
+        matrix1->d,
+        true);
+    out->w = matrix1->w + matrix2->w;
+    if (needs_backprop)
+        // allocates a new backward element in the vector using these arguments:
+        backprop.emplace_back([matrix1, matrix2, out]() {
+            matrix1->dw.noalias() += out->dw;
+            matrix2->dw.noalias() += out->dw;
+        });
+    return out;
 }
 
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::sub(
-                shared_mat matrix1,
-                shared_mat matrix2) {
-        if (matrix1->d != matrix2->d && (matrix1->d == 1 || matrix2->d == 1)) {
-            if (matrix1->d == 1) {
-                return sub_broadcast_reversed(matrix2, matrix1);
-            }
-            return sub_broadcast(matrix1, matrix2);
+        shared_mat matrix1,
+        shared_mat matrix2) {
+    if (matrix1->d != matrix2->d && (matrix1->d == 1 || matrix2->d == 1)) {
+        if (matrix1->d == 1) {
+            return sub_broadcast_reversed(matrix2, matrix1);
         }
-        if (matrix1->n != matrix2->n || matrix1->d != matrix2->d)
-            throw std::invalid_argument("Matrices cannot be added, they do not have the same dimensions.");
-        auto out = std::make_shared<Mat<T>>(
-            matrix1->n,
-            matrix1->d,
-            true);
-        out->w = matrix1->w - matrix2->w;
-        if (needs_backprop)
-            // allocates a new backward element in the vector using these arguments:
-            backprop.emplace_back([matrix1, matrix2, out]() {
-                matrix1->dw.noalias() += out->dw;
-                matrix2->dw.noalias() -= out->dw;
-            });
-        return out;
+        return sub_broadcast(matrix1, matrix2);
+    }
+    if (matrix1->n != matrix2->n || matrix1->d != matrix2->d)
+        throw std::invalid_argument("Matrices cannot be added, they do not have the same dimensions.");
+    auto out = std::make_shared<Mat<T>>(
+        matrix1->n,
+        matrix1->d,
+        true);
+    out->w = matrix1->w - matrix2->w;
+    if (needs_backprop)
+        // allocates a new backward element in the vector using these arguments:
+        backprop.emplace_back([matrix1, matrix2, out]() {
+            matrix1->dw.noalias() += out->dw;
+            matrix2->dw.noalias() -= out->dw;
+        });
+    return out;
 }
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::add_broadcast(shared_mat matrix1, shared_mat matrix2) {
-        // broadcast matrix 2:
-        if (matrix1->n != matrix2->n || matrix2->d != 1)
-                throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
-        auto out = std::make_shared<Mat<T>>(
-                matrix1->n,
-                matrix1->d,
-                true);
-        out->w = (matrix1->w.colwise() + matrix2->w.col(0)).matrix();
-        if (needs_backprop)
-            backprop.emplace_back([matrix1, matrix2, out]() {
-                matrix1->dw.noalias() += out->dw;
-                matrix2->dw.noalias() += out->dw.rowwise().sum();
-            });
-        return out;
+    // broadcast matrix 2:
+    if (matrix1->n != matrix2->n || matrix2->d != 1)
+            throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
+    auto out = std::make_shared<Mat<T>>(
+            matrix1->n,
+            matrix1->d,
+            true);
+    out->w = (matrix1->w.colwise() + matrix2->w.col(0)).matrix();
+    if (needs_backprop)
+        backprop.emplace_back([matrix1, matrix2, out]() {
+            matrix1->dw.noalias() += out->dw;
+            matrix2->dw.noalias() += out->dw.rowwise().sum();
+        });
+    return out;
 }
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::sub_broadcast(shared_mat matrix1, shared_mat matrix2) {
-        // broadcast matrix 2:
-        if (matrix1->n != matrix2->n || matrix2->d != 1)
-            throw std::invalid_argument("Matrices cannot be substracted with broadcast, they do not have the same dimensions.");
-        auto out = std::make_shared<Mat<T>>(
-            matrix1->n,
-            matrix1->d,
-            true);
-        out->w = (matrix1->w.colwise() - matrix2->w.col(0)).matrix();
-        if (needs_backprop)
-            backprop.emplace_back([matrix1, matrix2, out]() {
-                matrix1->dw.noalias() += out->dw;
-                matrix2->dw.noalias() -= out->dw.rowwise().sum();
-            });
-        return out;
+    // broadcast matrix 2:
+    if (matrix1->n != matrix2->n || matrix2->d != 1)
+        throw std::invalid_argument("Matrices cannot be substracted with broadcast, they do not have the same dimensions.");
+    auto out = std::make_shared<Mat<T>>(
+        matrix1->n,
+        matrix1->d,
+        true);
+    out->w = (matrix1->w.colwise() - matrix2->w.col(0)).matrix();
+    if (needs_backprop)
+        backprop.emplace_back([matrix1, matrix2, out]() {
+            matrix1->dw.noalias() += out->dw;
+            matrix2->dw.noalias() -= out->dw.rowwise().sum();
+        });
+    return out;
 }
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::sub_broadcast_reversed(shared_mat matrix1, shared_mat matrix2) {
-        // broadcast matrix 2:
-        if (matrix1->n != matrix2->n || matrix2->d != 1)
-                throw std::invalid_argument("Matrices cannot be substracted with broadcast, they do not have the same dimensions.");
-        auto out = std::make_shared<Mat<T>>(
-            matrix1->n,
-            matrix1->d,
-            true);
-        out->w = ((-matrix1->w).colwise() + matrix2->w.col(0)).matrix();
-        if (needs_backprop)
-            backprop.emplace_back([matrix1, matrix2, out] () {
-                matrix1->dw.noalias() -= out->dw;
-                matrix2->dw.noalias() += out->dw.rowwise().sum();
-            });
-        return out;
+    // broadcast matrix 2:
+    if (matrix1->n != matrix2->n || matrix2->d != 1)
+        throw std::invalid_argument("Matrices cannot be substracted with broadcast, they do not have the same dimensions.");
+    auto out = std::make_shared<Mat<T>>(
+        matrix1->n,
+        matrix1->d,
+        true);
+    out->w = ((-matrix1->w).colwise() + matrix2->w.col(0)).matrix();
+    if (needs_backprop)
+        backprop.emplace_back([matrix1, matrix2, out] () {
+            matrix1->dw.noalias() -= out->dw;
+            matrix2->dw.noalias() += out->dw.rowwise().sum();
+        });
+    return out;
 }
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::add(std::initializer_list<shared_mat> matrices) {
-        auto out = std::make_shared<Mat<T>>(
-                (*matrices.begin())->n,
-                (*matrices.begin())->d,
-                false);
-        for (auto& matrix : matrices) out->w += matrix->w;
-        if (needs_backprop)
-            // allocates a new backward element in the vector using these arguments:
-            backprop.emplace_back([matrices, out]() {
-                for (auto& matrix : matrices)
-                    matrix->dw.noalias() += out->dw;
-            });
-        return out;
+    auto out = std::make_shared<Mat<T>>(
+        (*matrices.begin())->n,
+        (*matrices.begin())->d,
+        false);
+    for (auto& matrix : matrices) out->w += matrix->w;
+    if (needs_backprop)
+        // allocates a new backward element in the vector using these arguments:
+        backprop.emplace_back([matrices, out]() {
+            for (auto& matrix : matrices)
+                matrix->dw.noalias() += out->dw;
+        });
+    return out;
 }
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::square(shared_mat matrix) {
-        auto out = std::make_shared<mat>(
-                matrix->n,
-                matrix->d,
-                true);
-        out->w = matrix->w.array().square();
-        if (needs_backprop)
-            // allocates a new backward element in the vector using these arguments:
-            backprop.emplace_back([matrix, out]() {
-                matrix->dw.noalias() += 2.0 * ((matrix->w).array() * (out->dw).array()).matrix();
-            });
-        return out;
+    auto out = std::make_shared<mat>(
+            matrix->n,
+            matrix->d,
+            true);
+    out->w = matrix->w.array().square();
+    if (needs_backprop)
+        // allocates a new backward element in the vector using these arguments:
+        backprop.emplace_back([matrix, out]() {
+            matrix->dw.noalias() += 2.0 * ((matrix->w).array() * (out->dw).array()).matrix();
+        });
+    return out;
 }
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::sigmoid(shared_mat matrix) {
-        auto out = std::make_shared<mat>(
-                matrix->n,
-                matrix->d,
-                true);
-        out->w = matrix->w.unaryExpr(utils::sigmoid_operator<T>());
-        if (needs_backprop)
-            // allocates a new backward element in the vector using these arguments:
-            backprop.emplace_back([matrix, out](){
-                matrix->dw.noalias() += (((out->w).array() - out->w.array().square()) * out->dw.array()).matrix();
-            });
-        return out;
+    auto out = std::make_shared<mat>(
+            matrix->n,
+            matrix->d,
+            true);
+    out->w = matrix->w.unaryExpr(utils::sigmoid_operator<T>());
+    if (needs_backprop)
+        // allocates a new backward element in the vector using these arguments:
+        backprop.emplace_back([matrix, out](){
+            matrix->dw.noalias() += (((out->w).array() - out->w.array().square()) * out->dw.array()).matrix();
+        });
+    return out;
 }
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::steep_sigmoid(shared_mat matrix, T aggressiveness) {
     auto out = std::make_shared<mat>(
-            matrix->n,
-            matrix->d,
-            true);
+        matrix->n,
+        matrix->d,
+        true);
     out->w = matrix->w.unaryExpr(utils::steep_sigmoid_operator<T>(aggressiveness));
     if (needs_backprop)
         // allocates a new backward element in the vector using these arguments:
@@ -278,105 +278,105 @@ typename Graph<T>::shared_mat Graph<T>::steep_sigmoid(shared_mat matrix, T aggre
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::sum(shared_mat matrix) {
-        auto out = std::make_shared<mat>(1,1,true);
-        out->w(0) = matrix->w.array().sum();
-        if (needs_backprop)
-            // allocates a new backward element in the vector using these arguments:
-            backprop.emplace_back([matrix, out]() {
-                matrix->dw.array() += out->dw(0);
-            });
-        return out;
+    auto out = std::make_shared<mat>(1,1,true);
+    out->w(0) = matrix->w.array().sum();
+    if (needs_backprop)
+        // allocates a new backward element in the vector using these arguments:
+        backprop.emplace_back([matrix, out]() {
+            matrix->dw.array() += out->dw(0);
+        });
+    return out;
 }
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::mean(shared_mat matrix) {
-        auto out = std::make_shared<mat>(1,1,true);
-        out->w(0) = matrix->w.array().mean();
-        if (needs_backprop)
-            // allocates a new backward element in the vector using these arguments:
-            backprop.emplace_back([matrix, out](){
-                matrix->dw.array() += (1.0 / (matrix->n * matrix->d)) * out->dw(0);
-            });
-        return out;
+    auto out = std::make_shared<mat>(1,1,true);
+    out->w(0) = matrix->w.array().mean();
+    if (needs_backprop)
+        // allocates a new backward element in the vector using these arguments:
+        backprop.emplace_back([matrix, out](){
+            matrix->dw.array() += (1.0 / (matrix->n * matrix->d)) * out->dw(0);
+        });
+    return out;
 }
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::log(shared_mat matrix) {
-        auto out = std::make_shared<mat>(
-                matrix->n,
-                matrix->d,
-                true);
-        out->w = matrix->w.array().log();
-        if (needs_backprop)
-            // allocates a new backward element in the vector using these arguments:
-            backprop.emplace_back([matrix, out](){
-                matrix->dw.noalias() += ((1.0 / (matrix->w).array()) * (out->dw).array()).matrix();
-            });
-        return out;
+    auto out = std::make_shared<mat>(
+        matrix->n,
+        matrix->d,
+        true);
+    out->w = matrix->w.array().log();
+    if (needs_backprop)
+        // allocates a new backward element in the vector using these arguments:
+        backprop.emplace_back([matrix, out](){
+            matrix->dw.noalias() += ((1.0 / (matrix->w).array()) * (out->dw).array()).matrix();
+        });
+    return out;
 }
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::transpose(shared_mat matrix) {
-        auto out = std::make_shared<mat>(
-                matrix->d,
-                matrix->n,
-                true);
-        out->w = matrix->w.transpose();
-        if (needs_backprop)
-            // allocates a new backward element in the vector using these arguments:
-            backprop.emplace_back([matrix, out](){
-                matrix->dw.noalias() += (out->dw).transpose();
-            });
-        return out;
+    auto out = std::make_shared<mat>(
+        matrix->d,
+        matrix->n,
+        true);
+    out->w = matrix->w.transpose();
+    if (needs_backprop)
+        // allocates a new backward element in the vector using these arguments:
+        backprop.emplace_back([matrix, out](){
+            matrix->dw.noalias() += (out->dw).transpose();
+        });
+    return out;
 }
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::tanh(shared_mat matrix) {
-        auto out = std::make_shared<mat>(
-                matrix->n,
-                matrix->d,
-                true);
-        out->w = matrix->w.unaryExpr(utils::tanh_operator<T>());
-        if (needs_backprop)
-            // allocates a new backward element in the vector using these arguments:
-            backprop.emplace_back([matrix, out](){
-                matrix->dw.noalias() += (out->w.unaryExpr(utils::dtanh_operator<T>()).array() * out->dw.array()).matrix();
-            });
-        return out;
+    auto out = std::make_shared<mat>(
+        matrix->n,
+        matrix->d,
+        true);
+    out->w = matrix->w.unaryExpr(utils::tanh_operator<T>());
+    if (needs_backprop)
+        // allocates a new backward element in the vector using these arguments:
+        backprop.emplace_back([matrix, out](){
+            matrix->dw.noalias() += (out->w.unaryExpr(utils::dtanh_operator<T>()).array() * out->dw.array()).matrix();
+        });
+    return out;
 }
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::relu(shared_mat matrix) {
-        auto out = std::make_shared<mat>(
-                matrix->n,
-                matrix->d,
-                true);
-        out->w = matrix->w.unaryExpr(utils::relu_operator<T>());
-        if (needs_backprop)
-            // allocates a new backward element in the vector using these arguments:
-            this->backprop.emplace_back([matrix, out](){
-                matrix->dw.noalias() += (out->w.unaryExpr(utils::sign_operator<T>()).array() * out->dw.array()).matrix();
-            });
-        return out;
+    auto out = std::make_shared<mat>(
+        matrix->n,
+        matrix->d,
+        true);
+    out->w = matrix->w.unaryExpr(utils::relu_operator<T>());
+    if (needs_backprop)
+        // allocates a new backward element in the vector using these arguments:
+        this->backprop.emplace_back([matrix, out](){
+            matrix->dw.noalias() += (out->w.unaryExpr(utils::sign_operator<T>()).array() * out->dw.array()).matrix();
+        });
+    return out;
 }
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::mul(
-        shared_mat matrix1,
-        shared_mat matrix2) {
-        if (matrix1->d != matrix2->n)
-            throw std::invalid_argument("matmul dimensions misaligned.");
-        auto out = std::make_shared<mat>(
-            matrix1->n,
-            matrix2->d,
-            true);
-        out->w = matrix1->w * matrix2->w;
-        if (needs_backprop)
-            // allocates a new backward element in the vector using these arguments:
-            backprop.emplace_back([matrix1, matrix2, out](){
-                matrix1->dw.noalias() += (out->dw) * ((matrix2->w).transpose());
-                matrix2->dw.noalias() += matrix1->w.transpose() * (out->dw);
-            });
-        return out;
+    shared_mat matrix1,
+    shared_mat matrix2) {
+    if (matrix1->d != matrix2->n)
+        throw std::invalid_argument("matmul dimensions misaligned.");
+    auto out = std::make_shared<mat>(
+        matrix1->n,
+        matrix2->d,
+        true);
+    out->w = matrix1->w * matrix2->w;
+    if (needs_backprop)
+        // allocates a new backward element in the vector using these arguments:
+        backprop.emplace_back([matrix1, matrix2, out](){
+            matrix1->dw.noalias() += (out->dw) * ((matrix2->w).transpose());
+            matrix2->dw.noalias() += matrix1->w.transpose() * (out->dw);
+        });
+    return out;
 }
 
 template<typename T>
@@ -424,12 +424,12 @@ typename Graph<T>::shared_mat Graph<T>::mul_add_broadcast_mul_with_bias(
     // so we add both of those before adding the true matrix
     // product in broadcasted form
     out->w = (
-                      (
-                          (
-                              (matrix2->w * input_to_2->w)
-                          )
-                      ).colwise() + (bias->w + (matrix1->w * input_to_1->w)).col(0)
-                  ).matrix();
+          (
+              (
+                  (matrix2->w * input_to_2->w)
+              )
+          ).colwise() + (bias->w + (matrix1->w * input_to_1->w)).col(0)
+      ).matrix();
     if (needs_backprop)
         // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix1, input_to_1, matrix2, input_to_2, bias, out] () {

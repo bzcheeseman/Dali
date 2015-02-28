@@ -472,8 +472,6 @@ int main( int argc, char* argv[]) {
 
     END_RECORD(dataset_loading);
 
-
-
     auto vocab_size = dataset_vocab.first.index2word.size();
 
     std::cout << "    Vocabulary size = " << vocab_size << " (occuring more than " << FLAGS_min_occurence << ")" << std::endl

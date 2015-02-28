@@ -7,6 +7,7 @@ using std::stringstream;
 using std::ofstream;
 using std::set;
 using std::make_shared;
+using std::function;
 
 const char* utils::end_symbol          = "**END**";
 const char* utils::unknown_word_symbol = "███████";
@@ -88,7 +89,7 @@ template std::ostream& operator<< <int>(std::ostream& strm, const vector<int>& a
 
 namespace utils {
 
-        #ifdef DEBUG_RECURRENTJS
+        #ifndef NDEBUG
         string explain_mat_bug(const string& mat_name, const char* file, const int& line) {
             stringstream ss;
             ss << "Matrix \"" << mat_name << "\" has NaNs in file:\"" << file << "\" and line: " << line;
@@ -122,6 +123,17 @@ namespace utils {
             return elems;
         }
 
+        string join(const vector<string>& vs, const string& in_between) {
+            std::stringstream ss;
+            for (int i = 0; i < vs.size(); ++i) {
+                ss << vs[i];
+                if (i + 1 != vs.size())
+                    ss << in_between;
+            }
+            return ss.str();
+        }
+
+
         Corpus load_corpus_protobuff(const std::string& path) {
                 Corpus corpus;
                 if (is_gzip(path)) {
@@ -147,6 +159,16 @@ namespace utils {
         template bool add_to_set(vector<int>&,    int&);
         template bool add_to_set(vector<uint>&,   uint&);
         template bool add_to_set(vector<string>&, string&);
+
+        template<typename IN, typename OUT>
+        vector<OUT> fmap(vector<IN> in_list, function<OUT(IN)> f) {
+            vector<OUT> out_list;
+            for (IN& in_element: in_list)
+                out_list.push_back(f(in_element));
+            return out_list;
+        }
+
+        template vector<string> fmap(vector<int>, function<string(int)>);
 
         template<typename T>
         void tuple_sum(std::tuple<T, T>& A, std::tuple<T, T> B) {
@@ -913,6 +935,30 @@ namespace utils {
         bool file_exists (const std::string& fname) {
                 struct stat buffer;
                 return (stat (fname.c_str(), &buffer) == 0);
+        }
+
+        std::string dir_parent(const std::string& path, int levels_up) {
+            auto file_path_split = split(__FILE__, '/');
+            assert(levels_up < file_path_split.size());
+            stringstream ss;
+            if (path[0] == '/')
+                ss << '/';
+            for (int i = 0; i < file_path_split.size() - levels_up; ++i) {
+                ss << file_path_split[i];
+                if (i + 1 != file_path_split.size() - levels_up)
+                    ss << '/';
+            }
+            return ss.str();
+        }
+
+        std::string dir_join(const vector<std::string>& paths) {
+            stringstream ss;
+            for (int i = 0; i < paths.size(); ++i) {
+                ss << paths[i];
+                if (i + 1 != paths.size())
+                    ss << '/';
+            }
+            return ss.str();
         }
 
         bool validate_flag_nonempty(const char* flagname, const std::string& value) {

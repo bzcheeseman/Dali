@@ -33,20 +33,21 @@
 #define ELOG(EXP) std::cout << #EXP "\t=\t" << (EXP) << std::endl
 #define SELOG(STR,EXP) std::cout << #STR "\t=\t" << (EXP) << std::endl
 
+
 #define START_RECORD(X) auto X_time_token = utils::Timer::get_new_timing_token()
 #define END_RECORD(X) utils::Timer::update_time_using_token(#X "", X_time_token)
 
-#ifdef DEBUG_RECURRENTJS
+#ifdef NDEBUG
+    #define DEBUG_ASSERT_POSITIVE(X) ;
+    #define DEBUG_ASSERT_NONZERO(X) ;
+    #define DEBUG_ASSERT_NOT_NAN(X) ;
+    #define DEBUG_ASSERT_MAT_NOT_NAN(X) ;
+#else
     #define DEBUG_ASSERT_POSITIVE(X) assert(((X).array() >= 0).all())
     #define DEBUG_ASSERT_NONZERO(X) assert(((X).array().abs() >= 1e-10).all())
     #define DEBUG_ASSERT_NOT_NAN(X) assert(!utils::contains_NaN(((X).array().square().sum())))
-    #define DEBUG_ASSERT_MAT_NOT_NAN(X) if ( utils::contains_NaN((X)->w.array().square().sum())) throw std::runtime_error(utils::explain_mat_bug(*(X)->name, __FILE__,  __LINE__))
-
-#else
-    #define DEBUG_ASSERT_POSITIVE(X)
-    #define DEBUG_ASSERT_NONZERO(X)
-    #define DEBUG_ASSERT_NOT_NAN(X)
-    #define DEBUG_ASSERT_MAT_NOT_NAN(X)
+    #define sDEBUG_ASSERT_MAT_NOT_NAN(X) if ( utils::contains_NaN((X)->w.array().square().sum())) \
+            throw std::runtime_error(utils::explain_mat_bug(*(X)->name, __FILE__,  __LINE__))
 #endif
 
 // Default writing mode useful for default argument to
@@ -66,7 +67,7 @@ std::ostream& operator<<(std::ostream&, const std::vector<T>&);
 
 namespace utils {
 
-        #ifdef DEBUG_RECURRENTJS
+        #ifndef NDEBUG
             std::string explain_mat_bug(const std::string&, const char*, const int&);
             template<typename T>
             bool contains_NaN(T);
@@ -139,6 +140,11 @@ namespace utils {
 
         template<typename T>
         bool add_to_set(std::vector<T>&, T&);
+
+
+        template<typename IN, typename OUT>
+        std::vector<OUT> fmap(std::vector<IN> in_list,
+                              std::function<OUT(IN)> f);
 
         /**
         Ontology Branch
@@ -417,6 +423,10 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
 
     **/
     str_sequence split(const std::string &, char, bool keep_empty_strings = false);
+
+
+    std::string join(const std::vector<std::string>& vs,
+                     const std::string& in_between="");
     /**
     Triggers To Strings
     -------------------
@@ -487,6 +497,10 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
         }
 
         bool file_exists(const std::string&);
+
+        std::string dir_parent(const std::string& path, int levels_up = 1);
+
+        std::string dir_join(const std::vector<std::string>&);
         /**
         Exit With Message
         -----------------

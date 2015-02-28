@@ -1,7 +1,7 @@
 RecurrentJS in C++
 ------------------
 
-This is an reimagination of [Andrej Kaparthy](http://cs.stanford.edu/people/karpathy/)'s recurrentjs in C++. It has the same API names and structure (so far), but the backbones are using **Eigen** and C++11's standard library. Callbacks are gone (following the Python implementation of the same idea), leaving a one stop shop for all backprop operations handled by `Backward`.
+This is an reimagination of [Andrej Kaparthy](http://cs.stanford.edu/people/karpathy/)'s recurrentjs in C++. It has the same API names and structure (so far), but the backbones are using **Eigen** and C++11's standard library. Callbacks are gone (following the Python implementation of the same idea), leaving a one stop shop for all backprop operations handled by `<functional>`'s lambda (anonymous) functions.
 
 
 ### What is this readme about?
@@ -95,7 +95,7 @@ Safety / Memory
 ---------------
 
 Zealous use of `std::shared_ptr` appears to be the way of the future for managing
-both the backpropagation `Backward` classes that keep track of previous memory use in other steps, and the overall forward structure of the operations.
+both the backpropagation; `<functional>`'s lambda functions keep track of previous memory use in other steps, and the overall forward structure of the operations.
 
 ### Multithreading
 

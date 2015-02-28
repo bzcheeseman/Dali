@@ -47,7 +47,7 @@
     #define DEBUG_ASSERT_NONZERO(X) assert(((X).array().abs() >= 1e-10).all())
     #define DEBUG_ASSERT_NOT_NAN(X) assert(!utils::contains_NaN(((X).array().square().sum())))
     #define DEBUG_ASSERT_MAT_NOT_NAN(X) if ( utils::contains_NaN((X)->w.array().square().sum())) \
-            throw std::runtime_error(utils::explain_mat_bug(*(X)->name, __FILE__,  __LINE__))
+        throw std::runtime_error(utils::explain_mat_bug(*(X)->name, __FILE__,  __LINE__))
 #endif
 
 // Default writing mode useful for default argument to
@@ -470,32 +470,6 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
         int seed : hopefully collision free random number as an ID
         **/
         std::size_t get_random_id();
-        namespace ops {
-                static const uint add                             = 0;
-                static const uint sub                             = 1;
-                static const uint eltmul                          = 2;
-                static const uint square                          = 3;
-                static const uint sigmoid                         = 4;
-                static const uint steep_sigmoid                   = 5;
-                static const uint tanh                            = 6;
-                static const uint mul                             = 7;
-                static const uint relu                            = 8;
-                static const uint row_pluck                       = 9;
-                static const uint add_broadcast                   = 10;
-                static const uint sub_broadcast                   = 11;
-                static const uint sub_broadcast_reversed          = 12;
-                static const uint eltmul_broadcast                = 13;
-                static const uint mul_with_bias                   = 14;
-                static const uint mul_add_mul_with_bias           = 15;
-                static const uint mul_add_broadcast_mul_with_bias = 16;
-                static const uint rows_pluck                      = 17;
-                static const uint transpose                       = 18;
-                static const uint eltmul_broadcast_rowwise        = 19;
-                static const uint eltmul_rowwise                  = 20;
-                static const uint sum                             = 21;
-                static const uint mean                            = 22;
-                static const uint log                             = 23;
-        }
 
         bool file_exists(const std::string&);
 

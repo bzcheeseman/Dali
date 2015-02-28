@@ -619,7 +619,7 @@ namespace utils {
         T steep_sigmoid_operator<T>::operator () (T x) const {return 1.0 / (1.0 + exp( - aggressiveness * x));}
 
         template<typename T>
-        steep_sigmoid_operator<T>::steep_sigmoid_operator(T _aggressiveness) : aggressiveness(_aggressiveness) {};
+        steep_sigmoid_operator<T>::steep_sigmoid_operator(T _aggressiveness) : aggressiveness(_aggressiveness) {};
 
         template<typename T>
         T tanh_operator<T>::operator() (T x) const { return std::tanh(x); }

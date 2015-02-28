@@ -9,7 +9,7 @@ The C++ version has an emphasis on clean API and speed, while the Python version
 
 While Python has great automatic differentiation libraries, a no-compile version is lacking. In particular recurrentJS makes great use of callbacks and garbage collection to enable backprop through time. In this implementation the goal is to reduce reliance on these abstractions and have a simple backprop step class.
 
-In Python use of a specialized `Backward` class wraps backpropagation steps, while C++ uses its own `Backward` class but this time garbage collection and tracking is done using `C++11`'s excellent `std::shared_ptr`.
+In Python use of a specialized `Backward` class wraps backpropagation steps, while C++ uses the `<functional>` lambda functions but this time garbage collection and tracking is done using `C++11`'s excellent `std::shared_ptr`.
 
 ### Features
 

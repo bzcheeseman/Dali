@@ -40,6 +40,7 @@ using std::vector;
 using utils::OntologyBranch;
 using utils::tokenized_uint_labeled_dataset;
 using utils::Vocab;
+using utils::Timer;
 using std::chrono::seconds;
 
 typedef float REAL_t;
@@ -248,6 +249,7 @@ void reconstruct_random_beams(
 template<typename model_t>
 REAL_t average_error(model_t& model, const vector<Databatch>& dataset) {
         auto G = graph_t(false); // create a new graph for each loop)
+    Timer t("average_error");
 
     int full_code_size = 0;
     vector<double> costs(FLAGS_j);
@@ -405,9 +407,7 @@ void train_model(const vector<Databatch>& dataset,
     while (cost > FLAGS_cutoff && epoch < FLAGS_epochs && patience < FLAGS_patience) {
         new_cost = 0.0;
         training_loop(model, dataset, word_vocab, solver, epoch);
-        START_RECORD(average_error);
         new_cost = average_error(model, validation_set);
-        END_RECORD(average_error);
         if (new_cost >= cost) {
             patience += 1;
         } else {
@@ -458,19 +458,18 @@ int main( int argc, char* argv[]) {
     // thread safety
     Eigen::initParallel();
 
-    START_RECORD(dataset_loading);
 
-    auto dataset_vocab      = load_dataset_and_vocabulary(
-        FLAGS_train,
-        FLAGS_min_occurence,
-        FLAGS_minibatch);
+    Timer dl_timer("Dataset loading");
+        auto dataset_vocab      = load_dataset_and_vocabulary(
+            FLAGS_train,
+            FLAGS_min_occurence,
+            FLAGS_minibatch);
 
-    auto validation_set     = load_dataset_with_vocabulary(
-        FLAGS_validation,
-        dataset_vocab.first,
-        FLAGS_minibatch);
-
-    END_RECORD(dataset_loading);
+        auto validation_set     = load_dataset_with_vocabulary(
+            FLAGS_validation,
+            dataset_vocab.first,
+            FLAGS_minibatch);
+    dl_timer.stop();
 
     auto vocab_size = dataset_vocab.first.index2word.size();
 

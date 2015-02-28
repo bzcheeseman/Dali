@@ -1,41 +1,40 @@
 #ifndef RECURRENT_MAT_UTILS_H
 #define RECURRENT_MAT_UTILS_H
 
-#include <iomanip>
-#include <random>
-#include <sstream>
-#include <iostream>
+#include <algorithm>
+#include <atomic>
+#include <cctype>
+#include <chrono>
+#include <cstring>
+#include <dirent.h>
+#include <errno.h>
 #include <fstream>
+#include <functional>
+#include <gflags/gflags.h>
+#include <iomanip>
+#include <iostream>
+#include <locale>
+#include <map>
+#include <memory>
+#include <mutex>
 #include <ostream>
+#include <random>
+#include <set>
+#include <sstream>
 #include <sstream>
 #include <string>
-#include <cstring>
-#include <vector>
-#include <map>
-#include <chrono>
+#include <sys/stat.h>
+#include <sys/stat.h>
 #include <unordered_map>
-#include <set>
-#include <sys/stat.h>
-#include <algorithm>
-#include <functional>
-#include <cctype>
-#include <locale>
-#include <memory>
+#include <vector>
+
+
 #include "gzstream.h"
-#include <sys/stat.h>
-#include <errno.h>
-#include <dirent.h>
-#include <gflags/gflags.h>
-#include <atomic>
 #include "protobuf/corpus.pb.h"
 
 // MACRO DEFINITIONS
 #define ELOG(EXP) std::cout << #EXP "\t=\t" << (EXP) << std::endl
 #define SELOG(STR,EXP) std::cout << #STR "\t=\t" << (EXP) << std::endl
-
-
-#define START_RECORD(X) auto X_time_token = utils::Timer::get_new_timing_token()
-#define END_RECORD(X) utils::Timer::update_time_using_token(#X "", X_time_token)
 
 #ifdef NDEBUG
     #define DEBUG_ASSERT_POSITIVE(X) ;
@@ -494,12 +493,23 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
         bool validate_flag_nonempty(const char* flagname, const std::string& value);
 
         class Timer {
+            typedef std::chrono::system_clock clock_t;
+
+            static std::unordered_map<std::string, std::atomic<int>> timers;
+            static std::mutex timers_mutex;
+
+            std::string name;
+            bool stopped;
+            const std::chrono::time_point<clock_t> start_time;
+
             public:
-                typedef std::chrono::system_clock clock_t;
-                static std::unordered_map<std::string, std::atomic<int>> timers;
-                static std::unordered_map<std::size_t, std::chrono::time_point<clock_t>> active_tokens;
-                static std::size_t get_new_timing_token();
-                static void update_time_using_token(const char* name, const std::size_t& token);
+                // creates timer and starts measuring time.
+                Timer(std::string name);
+                // destroys timer and stops counting if the timer was not previously stopped.
+                ~Timer();
+                // explicitly stop the timer
+                void stop();
+
                 static void give_report();
         };
 }

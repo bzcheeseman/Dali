@@ -968,23 +968,40 @@ namespace utils {
             return not value.empty();
         }
 
-        std::unordered_map<std::string, std::atomic<int>> Timer::timers = std::unordered_map<std::string, std::atomic<int>>();
-        std::unordered_map<std::size_t, std::chrono::time_point<Timer::clock_t>> Timer::active_tokens = std::unordered_map<std::size_t, std::chrono::time_point<Timer::clock_t>>();
-        std::size_t Timer::get_new_timing_token() {
-            auto token = utils::get_random_id();
-            active_tokens[token] = clock_t::now();
-            return token;
+        std::unordered_map<std::string, std::atomic<int>> Timer::timers;
+        std::mutex Timer::timers_mutex;
+
+        Timer::Timer(std::string name) : name(name),
+                                         start_time(clock_t::now()),
+                                         stopped(false) {
+            if (timers.find(name) == timers.end()) {
+                std::lock_guard<decltype(timers_mutex)> guard(timers_mutex);
+                if (timers.find(name) == timers.end())
+                    timers[name] = 0;
+            }
         }
-        void Timer::update_time_using_token(const char* name, const std::size_t& token) {
+
+        void Timer::stop() {
             timers[name] += std::chrono::duration_cast< std::chrono::milliseconds >
-                            (clock_t::now() - active_tokens[token]).count();
+                            (clock_t::now() - start_time).count();
+            stopped = true;
         }
+
+        Timer::~Timer() {
+            if(!stopped)
+                stop();
+        }
+
         void Timer::give_report() {
+            std::lock_guard<decltype(timers_mutex)> guard(timers_mutex);
+
             for (auto& kv : timers) {
                 std::cout << "\"" << kv.first << "\" => "
                           << std::fixed << std::setw(5) << std::setprecision(4) << std::setfill(' ')
                           << (double) kv.second / 1000  << "s" << std::endl;
             }
+
+            timers.clear();
         }
 }
 

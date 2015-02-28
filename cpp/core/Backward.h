@@ -1,3 +1,4 @@
+#ifdef BLA_BLA_BLA
 #ifndef BACKWARD_MAT_H
 #define BACKWARD_MAT_H
 
@@ -80,4 +81,5 @@ template<typename T> class Backward {
 template<typename T>
 std::ostream& operator<<(std::ostream&, const Backward<T>&);
 
+#endif
 #endif

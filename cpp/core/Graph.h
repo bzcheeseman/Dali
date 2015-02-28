@@ -2,14 +2,15 @@
 #define GRAPH_MAT_H
 
 #include "Mat.h"
-#include "Backward.h"
+//#include "Backward.h"
 #include <memory>
 #include <sstream>
 #include <string>
+#include <functional>
 
 template<typename T> class Graph {
 
-        std::vector<Backward<T>>       backprop;
+        std::vector<std::function<void()>>  backprop;
         typedef Mat<T>                      mat;
         typedef std::shared_ptr<mat> shared_mat;
         public:
@@ -17,7 +18,6 @@ template<typename T> class Graph {
                 Graph (bool);
                 Graph ();
                 void backward ();
-                void backward (T);
                 shared_mat eltmul_broadcast(shared_mat, shared_mat);
                 shared_mat eltmul(shared_mat, shared_mat);
                 /**
@@ -156,7 +156,7 @@ template<typename T> class Graph {
                 shared_mat mean(shared_mat);
                 shared_mat log(shared_mat);
                 shared_mat sigmoid(shared_mat);
-                shared_mat steep_sigmoid(shared_mat);
+                shared_mat steep_sigmoid(shared_mat matrix, T aggressiveness = 3.75);
                 shared_mat transpose(shared_mat);
                 shared_mat tanh(shared_mat);
                 shared_mat relu(shared_mat);

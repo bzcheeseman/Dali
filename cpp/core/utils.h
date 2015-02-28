@@ -367,7 +367,8 @@ namespace utils {
                 // https://github.com/IndicoDataSolutions/Passage
                 // motivation in this Youtube video:
                 // https://www.youtube.com/watch?v=VINCQghQRuM
-                static const T aggressiveness;
+                const T aggressiveness;
+                steep_sigmoid_operator(T aggressiveness);
                 T operator() (T) const;
         };
         template<typename T>

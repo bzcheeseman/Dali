@@ -494,6 +494,6 @@ int main( int argc, char* argv[]) {
             dataset_vocab.first);
     }
 
-    utils::Timer::give_report();
+    Timer::report();
     return 0;
 }

@@ -64,6 +64,9 @@ std::ostream& operator<<(std::ostream&, const std::unordered_map<std::string, do
 template<typename T>
 std::ostream& operator<<(std::ostream&, const std::vector<T>&);
 
+typedef std::vector<std::string> VS;
+
+
 namespace utils {
 
         #ifndef NDEBUG
@@ -427,6 +430,8 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
 
     std::string join(const std::vector<std::string>& vs,
                      const std::string& in_between="");
+
+    bool vs_equal(const VS& a, const VS& b);
     /**
     Triggers To Strings
     -------------------
@@ -510,8 +515,9 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
                 // explicitly stop the timer
                 void stop();
 
-                static void give_report();
+                static void report();
         };
+
 }
 
 // define hash code for OntologyBranch

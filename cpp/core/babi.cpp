@@ -4,7 +4,6 @@ using std::string;
 using std::vector;
 using std::make_shared;
 
-
 namespace babi {
     void Item::to_stream(std::ostream& str) const {
         assert(NULL == "Item should be subclassed.");
@@ -16,8 +15,8 @@ namespace babi {
         return str;
     }
 
-    QA::QA(const std::vector<std::string> question,
-           const std::vector<std::string> answer,
+    QA::QA(const VS question,
+           const VS answer,
            const std::vector<int> supporting_facts) :
             question(question),
             answer(answer),
@@ -35,7 +34,7 @@ namespace babi {
         str << utils::join(s, " ");
     }
 
-    Fact::Fact(const std::vector<std::string> fact) :
+    Fact::Fact(const VS fact) :
         fact(fact) {
     }
 
@@ -54,7 +53,6 @@ namespace babi {
         // Story story = {f, q};
         // vector<Story> res = { story };
         // return res;
-        std::cout << filename << std::endl;
         std::ifstream file(filename);
         // file exists
         assert(file.good());
@@ -133,7 +131,7 @@ namespace babi {
                                 "data", "babi", "babi" });
     }
 
-    std::vector<std::string> Parser::tasks() {
+    VS Parser::tasks() {
         // TODO read from disk.
         return {
             "qa1_single-supporting-fact",
@@ -144,7 +142,7 @@ namespace babi {
             "qa6_yes-no-questions",
             "qa7_counting",
             "qa8_lists-sets",
-            "qa9_simple-negation"
+            "qa9_simple-negation",
             "qa10_indefinite-knowledge",
             "qa11_basic-coreference",
             "qa12_conjunction",
@@ -163,6 +161,16 @@ namespace babi {
                                         const int& num_questions,
                                         bool shuffled) {
         string filename = utils::join({task, "_train.txt"});
+        string filepath = utils::dir_join({data_dir(),
+                                           shuffled ? "shuffled" : "en",
+                                           filename});
+        return parse_file(filepath, num_questions);
+    }
+
+    vector<Story> Parser::testing_data(const string& task,
+                                       const int& num_questions,
+                                       bool shuffled) {
+        string filename = utils::join({task, "_test.txt"});
         string filepath = utils::dir_join({data_dir(),
                                            shuffled ? "shuffled" : "en",
                                            filename});

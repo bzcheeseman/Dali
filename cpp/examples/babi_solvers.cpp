@@ -1,16 +1,29 @@
 #include <iostream>
+#include <vector>
 
 #include "core/babi.h"
 
+using std::vector;
+using std::string;
+
+class DumbModel: public babi::Model {
+    public:
+
+        void train(vector<babi::Story> data) {
+
+        }
+
+        void new_story() {
+
+        }
+        void fact(const vector<string>& fact) {
+
+        }
+        vector<string> question(const vector<string> quesiton) {
+            return {};
+        }
+};
 
 int main() {
-    for(auto& example: babi::Parser::tasks()) {
-        std::cout << example << std::endl;
-    }
-    auto task1 = babi::Parser::tasks()[17];
-    for(auto& story : babi::Parser::training_data(task1, 10)) {
-        for (auto& item: story) {
-            std::cout << *item << std::endl;
-        }
-    }
+    babi::benchmark<DumbModel>();
 }

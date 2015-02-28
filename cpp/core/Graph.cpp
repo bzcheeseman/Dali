@@ -9,14 +9,18 @@ Graph<T>::Graph () : needs_backprop(true) {}
 
 template<typename T>
 void Graph<T>::backward () {
-        for (auto it = this->backprop.rbegin(); it != this->backprop.rend(); ++it)
-                (*it)();
+    START_RECORD(graph_backward);
+    for (auto it = this->backprop.rbegin(); it != this->backprop.rend(); ++it)
+        (*it)();
+    END_RECORD(graph_backward);
 }
 
 template<typename T>
 void Graph<T>::backward (T clip_val) {
-        for (auto it = this->backprop.rbegin(); it != this->backprop.rend(); ++it)
-                (*it)(clip_val);
+    START_RECORD(graph_backward);
+    for (auto it = this->backprop.rbegin(); it != this->backprop.rend(); ++it)
+        (*it)(clip_val);
+    END_RECORD(graph_backward);
 }
 
 template<typename T>
@@ -473,13 +477,15 @@ typename Graph<T>::shared_mat Graph<T>::rows_pluck(
         shared_mat x,
         index_std_vector& indices
         ) {
+        START_RECORD(ops_rows_pluck);
         auto out = std::make_shared<mat>(
                 x->d,
                 indices.size(),
                 true);
         int offset = 0;
         for (auto& i : indices)
-                out->w.col(offset++) = x->w.row(i).transpose();
+            out->w.col(offset++) = x->w.row(i).transpose();
+        END_RECORD(ops_rows_pluck);
         if (needs_backprop)
                 // allocates a new backward element in the vector using these arguments:
                 this->backprop.emplace_back(x, out, indices, utils::ops::rows_pluck);
@@ -491,12 +497,14 @@ typename Graph<T>::shared_mat Graph<T>::rows_pluck(
         shared_mat x,
         eigen_index_block indices
         ) {
+        START_RECORD(ops_rows_pluck);
         auto out = std::make_shared<mat>(
                 x->d,
                 indices.rows(),
                 true);
         for (int offset = 0; offset < indices.rows(); ++offset)
                 out->w.col(offset) = x->w.row(indices(offset)).transpose();
+        END_RECORD(ops_rows_pluck);
         if (needs_backprop)
                 // allocates a new backward element in the vector using these arguments:
                 backprop.emplace_back(x, out, indices, utils::ops::rows_pluck);

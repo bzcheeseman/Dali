@@ -922,6 +922,24 @@ namespace utils {
                 return not value.empty();
         }
 
+        std::unordered_map<std::string, std::atomic<int>> Timer::timers = std::unordered_map<std::string, std::atomic<int>>();
+        std::unordered_map<std::size_t, std::chrono::time_point<Timer::clock_t>> Timer::active_tokens = std::unordered_map<std::size_t, std::chrono::time_point<Timer::clock_t>>();
+        std::size_t Timer::get_new_timing_token() {
+            auto token = utils::get_random_id();
+            active_tokens[token] = clock_t::now();
+            return token;
+        }
+        void Timer::update_time_using_token(const char* name, const std::size_t& token) {
+            timers[name] += std::chrono::duration_cast< std::chrono::milliseconds >
+                            (clock_t::now() - active_tokens[token]).count();
+        }
+        void Timer::give_report() {
+            for (auto& kv : timers) {
+                std::cout << "\"" << kv.first << "\" => "
+                          << std::fixed << std::setw(5) << std::setprecision(4) << std::setfill(' ')
+                          << (double) kv.second / 1000  << "s" << std::endl;
+            }
+        }
 }
 
 std::ostream& operator<<(std::ostream& strm, const utils::OntologyBranch& a) {

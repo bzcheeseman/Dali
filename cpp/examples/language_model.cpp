@@ -405,7 +405,9 @@ void train_model(const vector<Databatch>& dataset,
     while (cost > FLAGS_cutoff && epoch < FLAGS_epochs && patience < FLAGS_patience) {
         new_cost = 0.0;
         training_loop(model, dataset, word_vocab, solver, epoch);
+        START_RECORD(average_error);
         new_cost = average_error(model, validation_set);
+        END_RECORD(average_error);
         if (new_cost >= cost) {
             patience += 1;
         } else {
@@ -456,6 +458,8 @@ int main( int argc, char* argv[]) {
     // thread safety
     Eigen::initParallel();
 
+    START_RECORD(dataset_loading);
+
     auto dataset_vocab      = load_dataset_and_vocabulary(
         FLAGS_train,
         FLAGS_min_occurence,
@@ -465,6 +469,10 @@ int main( int argc, char* argv[]) {
         FLAGS_validation,
         dataset_vocab.first,
         FLAGS_minibatch);
+
+    END_RECORD(dataset_loading);
+
+
 
     auto vocab_size = dataset_vocab.first.index2word.size();
 
@@ -488,5 +496,7 @@ int main( int argc, char* argv[]) {
             validation_set,
             dataset_vocab.first);
     }
+
+    utils::Timer::give_report();
     return 0;
 }

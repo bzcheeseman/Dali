@@ -33,8 +33,8 @@
 #define ELOG(EXP) std::cout << #EXP "\t=\t" << (EXP) << std::endl
 #define SELOG(STR,EXP) std::cout << #STR "\t=\t" << (EXP) << std::endl
 
-#define START_RECORD(X) auto ##X_time_token = utils::Timer::get_new_timing_token()
-#define RECORD_TIME(X) utils::Timer::update_time_using_token(#X"", ##X_time_token)
+#define START_RECORD(X) auto X_time_token = utils::Timer::get_new_timing_token()
+#define END_RECORD(X) utils::Timer::update_time_using_token(#X "", X_time_token)
 
 #ifdef DEBUG_RECURRENTJS
     #define DEBUG_ASSERT_POSITIVE(X) assert(((X).array() >= 0).all())

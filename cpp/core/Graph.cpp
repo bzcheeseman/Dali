@@ -316,6 +316,199 @@ typename Graph<T>::shared_mat Graph<T>::log(shared_mat matrix) {
 }
 
 template<typename T>
+typename Graph<T>::shared_mat Graph<T>::exp(shared_mat matrix) {
+    auto out = std::make_shared<mat>(
+        matrix->n,
+        matrix->d,
+        true);
+    out->w = matrix->w.array().exp();
+    if (needs_backprop)
+        // allocates a new backward element in the vector using these arguments:
+        backprop.emplace_back([matrix, out](){
+            matrix->dw.noalias() += ((out->w).array() * (out->dw).array()).matrix();
+        });
+    return out;
+}
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::hstack(shared_mat matrix1, shared_mat matrix2) {
+    if (matrix1->n != matrix2->n)
+        throw std::invalid_argument("Matrices cannot be joined -- they do not have the same number of rows.");
+    auto out = std::make_shared<mat>(
+        matrix1->n,
+        matrix1->d + matrix2->d,
+        true
+    );
+    out->w.block(0,0, matrix1->n, matrix1->d) = matrix1->w;
+    out->w.block(0,matrix1->d, matrix2->n, matrix2->d) = matrix2->w;
+    if (needs_backprop)
+        backprop.emplace_back([matrix1, matrix2, out]() {
+            matrix1->dw.noalias() += out->dw.block(0,0, matrix1->n, matrix1->d);
+            matrix2->dw.noalias() += out->dw.block(0,matrix1->d, matrix2->n, matrix2->d);
+        });
+    return out;
+}
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::hstack(std::initializer_list<shared_mat> matrices) {
+    int n = -1;
+    int d_total = 0;
+    for (auto& mat : matrices) {
+        if (n == -1) {
+            n = mat->n;
+        } else {
+            if (mat->n != n) {
+                throw std::invalid_argument("Matrices cannot be joined -- they do not have the same number of rows.");
+            }
+        }
+        d_total+= mat->d;
+    }
+    auto out = std::make_shared<mat>(
+        n,
+        d_total,
+        true
+    );
+    int offset = 0;
+    for (auto& mat : matrices) {
+        out->w.block(0, offset, mat->n, mat->d) = mat->w;
+        offset += mat->d;
+    }
+    if (needs_backprop)
+        backprop.emplace_back([matrices, out]() {
+            int offset = 0;
+            for (auto & mat : matrices) {
+                mat->dw.noalias() += out->dw.block(0, offset, mat->n, mat->d);
+                offset += mat->d;
+            }
+        });
+    return out;
+}
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::hstack(const std::vector<shared_mat>& matrices) {
+    int n = -1;
+    int d_total = 0;
+    for (auto& mat : matrices) {
+        if (n == -1) {
+            n = mat->n;
+        } else {
+            if (mat->n != n) {
+                throw std::invalid_argument("Matrices cannot be joined -- they do not have the same number of rows.");
+            }
+        }
+        d_total+= mat->d;
+    }
+    auto out = std::make_shared<mat>(
+        n,
+        d_total,
+        true
+    );
+    int offset = 0;
+    for (auto& mat : matrices) {
+        out->w.block(0, offset, mat->n, mat->d) = mat->w;
+        offset += mat->d;
+    }
+    if (needs_backprop)
+        backprop.emplace_back([&matrices, out]() {
+            int offset = 0;
+            for (auto & mat : matrices) {
+                mat->dw.noalias() += out->dw.block(0, offset, mat->n, mat->d);
+                offset += mat->d;
+            }
+        });
+    return out;
+}
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::vstack(shared_mat matrix1, shared_mat matrix2) {
+    if (matrix1->d != matrix2->d)
+        throw std::invalid_argument("Matrices cannot be horizontally stacked -- they do not have the same number of cols.");
+    auto out = std::make_shared<mat>(
+        matrix1->n + matrix2->n,
+        matrix1->d,
+        true
+    );
+    out->w.block(0,0, matrix1->n, matrix1->d) = matrix1->w;
+    out->w.block(matrix1->n,0, matrix2->n, matrix2->d) = matrix2->w;
+    if (needs_backprop)
+        backprop.emplace_back([matrix1, matrix2, out]() {
+            matrix1->dw.noalias() += out->dw.block(0,0, matrix1->n, matrix1->d);
+            matrix2->dw.noalias() += out->dw.block(matrix1->n,0, matrix2->n, matrix2->d);
+        });
+    return out;
+}
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::vstack(std::initializer_list<shared_mat> matrices) {
+    int d = -1;
+    int n_total = 0;
+    for (auto& mat : matrices) {
+        if (d == -1) {
+            d = mat->d;
+        } else {
+            if (mat->d != d) {
+                throw std::invalid_argument("Matrices cannot be horizontally stacked -- they do not have the same number of cols.");
+            }
+        }
+        n_total+= mat->n;
+    }
+    auto out = std::make_shared<mat>(
+        n_total,
+        d,
+        true
+    );
+    int offset = 0;
+    for (auto& mat : matrices) {
+        out->w.block(offset, 0, mat->n, mat->d) = mat->w;
+        offset += mat->n;
+    }
+    if (needs_backprop)
+        backprop.emplace_back([matrices, out]() {
+            int offset = 0;
+            for (auto & mat : matrices) {
+                mat->dw.noalias() += out->dw.block(offset,0, mat->n, mat->d);
+                offset += mat->n;
+            }
+        });
+    return out;
+}
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::vstack(const std::vector<shared_mat>& matrices) {
+    int d = -1;
+    int n_total = 0;
+    for (auto& mat : matrices) {
+        if (d == -1) {
+            d = mat->d;
+        } else {
+            if (mat->d != d) {
+                throw std::invalid_argument("Matrices cannot be horizontally stacked -- they do not have the same number of cols.");
+            }
+        }
+        n_total+= mat->n;
+    }
+    auto out = std::make_shared<mat>(
+        n_total,
+        d,
+        true
+    );
+    int offset = 0;
+    for (auto& mat : matrices) {
+        out->w.block(offset, 0, mat->n, mat->d) = mat->w;
+        offset += mat->n;
+    }
+    if (needs_backprop)
+        backprop.emplace_back([&matrices, out]() {
+            int offset = 0;
+            for (auto & mat : matrices) {
+                mat->dw.noalias() += out->dw.block(offset,0, mat->n, mat->d);
+                offset += mat->n;
+            }
+        });
+    return out;
+}
+
+template<typename T>
 typename Graph<T>::shared_mat Graph<T>::transpose(shared_mat matrix) {
     auto out = std::make_shared<mat>(
         matrix->d,

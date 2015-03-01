@@ -3,25 +3,25 @@
 
 // Test file for LSTM
 int main () {
-        typedef double REAL_t;
-        typedef Mat<REAL_t> mat;
+    typedef double REAL_t;
+    typedef Mat<REAL_t> mat;
     typedef std::shared_ptr<mat> shared_mat;
-        using std::make_shared;
+    using std::make_shared;
     using std::vector;
 
-        LSTM<REAL_t> lstm(30, 50);
-        Graph<REAL_t> G;
+    LSTM<REAL_t> lstm(30, 50);
+    Graph<REAL_t> G;
 
-        auto embedding = make_shared<mat>(1000, 30, 2.0);
+    auto embedding = make_shared<mat>(1000, 30, 2.0);
 
-        auto prev_cell = make_shared<mat>(50, 1);
-        auto prev_hidden = make_shared<mat>(50, 1);
+    auto prev_cell = make_shared<mat>(50, 1);
+    auto prev_hidden = make_shared<mat>(50, 1);
 
-        index_std_vector indices = {0, 1, 10, 2, 1, 3};
+    index_std_vector indices = {0, 1, 10, 2, 1, 3};
 
-        auto out = lstm.activate(G, G.rows_pluck(embedding, indices), prev_cell, prev_hidden);
+    auto out = lstm.activate(G, G.rows_pluck(embedding, indices), prev_cell, prev_hidden);
 
-        out.first->print();
+    out.first->print();
 
         // load numpy matrix from file:
     shared_mat numpy_mat;
@@ -33,12 +33,12 @@ int main () {
         numpy_mat->npy_save("numpy_test.npy");
     }
 
-        // print it
-        numpy_mat->print();
-        // take softmax
-        auto softmaxed = softmax(numpy_mat);
-        // print softmax:
-        softmaxed->print();
+    // print it
+    numpy_mat->print();
+    // take softmax
+    auto softmaxed = softmax(numpy_mat);
+    // print softmax:
+    softmaxed->print();
 
         auto A = std::make_shared<mat>(3, 5);
     A->w = (A->w.array() + 1.2).matrix();
@@ -72,8 +72,6 @@ int main () {
     auto params = lstm.parameters();
     utils::save_matrices(params, "lstm_params");
 
-
-
     StackedInputLayer<REAL_t> superclassifier({20, 20, 10, 2}, 5);
 
 
@@ -85,8 +83,26 @@ int main () {
 
     auto out2 = superclassifier.activate(G, inputs);
 
+
+    auto stacked = G.vstack(inputs);
+    auto stacked_a_b = G.vstack(inputs[0], inputs[1]);
+
+    stacked->print();
+    stacked_a_b->print();
+
     out2->print();
 
+    // Now vstacks:
+    auto upper = make_shared<mat>(4, 1, -2.0, 2.0);
+    auto lower = make_shared<mat>(4, 3, -2.0, 2.0);
+    std::cout << "Stacking \"upper\": " << std::endl;
+    upper->print();
+    std::cout << "with \"lower\": " << std::endl;
+    lower->print();
+    std::cout << "using G.hstack(\"upper\", \"lower\") :" << std::endl;
+    G.hstack(upper, lower)->print();
 
-        return 0;
+
+
+    return 0;
 }

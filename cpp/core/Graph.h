@@ -155,6 +155,13 @@ template<typename T> class Graph {
                 **/
                 shared_mat mean(shared_mat);
                 shared_mat log(shared_mat);
+                shared_mat exp(shared_mat);
+                shared_mat hstack(shared_mat, shared_mat);
+                shared_mat hstack(std::initializer_list<shared_mat>);
+                shared_mat hstack(const std::vector<shared_mat>&);
+                shared_mat vstack(shared_mat, shared_mat);
+                shared_mat vstack(std::initializer_list<shared_mat>);
+                shared_mat vstack(const std::vector<shared_mat>&);
                 shared_mat sigmoid(shared_mat);
                 shared_mat steep_sigmoid(shared_mat matrix, T aggressiveness = 3.75);
                 shared_mat transpose(shared_mat);

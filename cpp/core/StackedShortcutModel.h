@@ -42,9 +42,9 @@ class StackedShortcutModel {
         typedef LSTM<T>                    lstm;
         typedef ShortcutLSTM<T>   shortcut_lstm;
         #ifdef SHORTCUT_DECODE_ACROSS_LAYERS
-                typedef StackedInputLayer<T>  classifier_t;
+            typedef StackedInputLayer<T>  classifier_t;
         #else
-                typedef Layer<T>              classifier_t;
+            typedef Layer<T>              classifier_t;
         #endif
         typedef Mat<T>                      mat;
         typedef std::shared_ptr<mat> shared_mat;
@@ -282,6 +282,8 @@ std::vector<int> hidden_sizes : size of internal layers
 
                 template<typename K>
                 state_type get_final_activation(graph_t&, const K&) const;
+
+                state_type initial_states() const;
 
                 /**
                 Activate

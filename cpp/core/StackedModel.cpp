@@ -118,7 +118,7 @@ T StackedModel<T>::masked_predict_cost(
     shared_eigen_index_vector codelens,
     uint offset) {
 
-    auto initial_state    = lstm::initial_states(hidden_sizes);
+    auto initial_state    = initial_states();
     auto num_hidden_sizes = hidden_sizes.size();
 
     shared_mat input_vector;
@@ -160,7 +160,7 @@ T StackedModel<T>::masked_predict_cost(
     shared_eigen_index_vector codelens,
     uint offset) {
 
-    auto initial_state    = lstm::initial_states(hidden_sizes);
+    auto initial_state    = initial_states();
     auto num_hidden_sizes = hidden_sizes.size();
 
     shared_mat input_vector;
@@ -286,7 +286,7 @@ typename StackedModel<T>::state_type StackedModel<T>::get_final_activation(
     graph_t& G,
     const K& example) const {
     shared_mat input_vector;
-    auto initial_state = lstm::initial_states(hidden_sizes);
+    auto initial_state = initial_states();
     auto n = example.cols() * example.rows();
     for (uint i = 0; i < n; ++i) {
         // pick this letter from the embedding
@@ -338,6 +338,11 @@ typename StackedModel<T>::activation_t StackedModel<T>::activate(
 }
 
 template<typename T>
+typename StackedModel<T>::state_type StackedModel<T>::initial_states() const {
+    return lstm::initial_states(hidden_sizes);
+}
+
+template<typename T>
 template<typename K>
 std::vector<utils::OntologyBranch::shared_branch> StackedModel<T>::reconstruct_lattice(
     K example,
@@ -348,7 +353,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedModel<T>::reconstruct_l
     shared_mat input_vector;
     shared_mat memory;
     auto pos = root;
-    auto initial_state = lstm::initial_states(hidden_sizes);
+    auto initial_state = initial_states();
     auto n = example.cols() * example.rows();
     for (uint i = 0; i < n; ++i) {
         // pick this letter from the embedding

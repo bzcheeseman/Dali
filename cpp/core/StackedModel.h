@@ -264,6 +264,8 @@ class StackedModel {
         template<typename K>
         std::string reconstruct_lattice_string(K, utils::OntologyBranch::shared_branch, int);
 
+        state_type initial_states() const;
+
         /**
         Shallow Copy
         ------------

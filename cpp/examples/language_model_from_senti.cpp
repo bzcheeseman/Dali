@@ -1,8 +1,10 @@
 #include <algorithm>
+#include <atomic>
 #include <Eigen/Eigen>
 #include <fstream>
 #include <iterator>
 #include <thread>
+#include <chrono>
 
 #include "core/gzstream.h"
 #include "core/NlpUtils.h"
@@ -10,6 +12,8 @@
 #include "core/StackedModel.h"
 #include "core/utils.h"
 #include "core/Reporting.h"
+#include "core/ThreadPool.h"
+#include "core/SequenceProbability.h"
 
 using std::vector;
 using std::make_shared;
@@ -25,6 +29,8 @@ using utils::Vocab;
 using utils::from_string;
 using utils::OntologyBranch;
 using utils::tokenized_uint_labeled_dataset;
+using std::atomic;
+using std::chrono::seconds;
 
 
 typedef float REAL_t;
@@ -37,9 +43,12 @@ typedef std::pair<vector<string>, uint> labeled_pair;
 
 const string START = "**START**";
 
+ThreadPool* pool;
 
 DEFINE_int32(minibatch, 100, "What size should be used for the minibatches ?");
 DEFINE_double(cutoff, 2.0, "KL Divergence error where stopping is acceptable");
+DEFINE_int32(patience,             5,    "How many unimproving epochs to wait through before witnessing progress ?");
+
 
 /**
 Databatch
@@ -169,161 +178,42 @@ Vocab get_word_vocab(vector<SST::AnnotatedParseTree::shared_tree>& trees, int mi
     return vocab;
 }
 
-/**
-Reconstruct
------------
 
-Condition on the special "**START**" word, generate
-a sentence from the language model and output it
-to standard out.
+template<typename model_t>
+REAL_t average_error(const vector<model_t>& models, const vector<vector<Databatch>>& validation_sets, const int& total_valid_examples) {
+    atomic<int> correct(0);
+    ReportProgress<double> journalist("Average error", total_valid_examples);
+    atomic<int> total(0);
 
-Inputs
-------
-               StackedModel<T>& model : language model to query
-           const Databatch& minibatch : where to pull the sample from
-                         const int& i : what row to use from the databatch
-              const Vocab& word_vocab : the word vocabulary with a lookup table
-                                        mapping unique words to an index and
-                                        vice-versa.
-
-
-**/
-void reconstruct(
-    StackedModel<REAL_t>& model,
-    const Databatch& minibatch,
-    const int& i,
-    const Vocab& word_vocab) {
-    std::cout << "Reconstruction \"";
-    for (int j = 0; j < 1; j++)
-        std::cout << word_vocab.index2word[(*minibatch.data)(i, j)] << " ";
-    std::cout << "\"\n => ";
-    std::cout << model.reconstruct_string(
-        minibatch.data->row(i).head(1),
-        word_vocab,
-        (*minibatch.codelens)(i),
-        0) << std::endl;
-}
-
-/**
-Training Loop
--------------
-
-Go through a single epoch of training by updating
-parameters once for each minibatch in the dataset.
-Takes an optimizer, model, and dataset and performs
-several steps of gradient descent.
-Moreover every `report_frequency` epochs this will
-output the current training error and perform
-a sentence reconstruction from the current model.
-
-See `reconstruct`
-
-Inputs
-------
-               StackedModel<T>& model : language model to train
-     const vector<Databatch>& dataset : sentences broken into minibatches to
-                                        train model on.
-              const Vocab& word_vocab : the word vocabulary with a lookup table
-                                        mapping unique words to an index and
-                                        vice-versa.
-                         const T& rho : rho parameter to control Adadelta decay rate
-                            S& Solver : Solver handling updates to parameters using
-                                        a specific regimen (SGD, Adadelta, AdaGrad, etc.)
-std::vector<std::shared_ptr<Mat<T>>>& : references to model parameters.
-                     const int& epoch : how many epochs of training has been done so far.
-                              T& cost : store the KL divergence w.r.t. training data here.
-                     const int& label : label from where the examples originated from.
-
-**/
-template<typename T, typename S>
-void training_loop(StackedModel<T>& model,
-    const vector<Databatch>& dataset,
-    const Vocab& word_vocab,
-    S& solver,
-    vector<shared_ptr<mat>>& parameters,
-    const int& epoch,
-    T& cost,
-    const int& label,
-    const int& patience) {
-    int full_code_size = 0;
-    auto random_batch_order = utils::random_arange(dataset.size());
-    for (auto& j : random_batch_order) {
-        auto& minibatch = dataset[j];
-        auto G = graph_t(true);      // create a new graph for each loop
-        cost += model.masked_predict_cost(
-            G,
-            minibatch.data, // the sequence to draw from
-            minibatch.data, // what to predict (the words offset by 1)
-            1,
-            minibatch.codelens,
-            0
-        );
-        full_code_size += minibatch.total_codes;
-        G.backward(); // backpropagate
-        solver.step(parameters, 0.0); // One step of gradient descent
+    for (int validation_set_num = 0; validation_set_num < validation_sets.size(); validation_set_num++) {
+        for (int minibatch_num =0 ; minibatch_num < validation_sets[validation_set_num].size(); minibatch_num++) {
+            for (int row_num = 0; row_num < validation_sets[validation_set_num][minibatch_num].data->rows(); row_num++) {
+                pool->run([&journalist, &models, &correct, &total, &validation_sets, validation_set_num, minibatch_num, row_num] {
+                    int best_model = -1;
+                    auto& valid_set = validation_sets[validation_set_num][minibatch_num];
+                    REAL_t best_prob = -std::numeric_limits<REAL_t>::infinity();
+                    for (int k = 0; k < models.size();k++) {
+                        auto log_prob = sequence_probability::sequence_probability(
+                            models[k],
+                            valid_set.data->row(row_num).head((*valid_set.codelens)(row_num)));
+                        if (log_prob > best_prob) {
+                            best_prob = log_prob;
+                            best_model = k;
+                        }
+                    }
+                    if (best_model == (*valid_set.targets)(row_num)) {
+                        correct ++;
+                    }
+                    total++;
+                    journalist.tick(total, (REAL_t) correct / (REAL_t) total);
+                });
+            }
+        }
     }
-    std::cout << "[" << label << "] epoch (" << epoch << ") KL error = "
-                              << std::fixed
-                              << std::setw( 5 ) // keep 7 digits
-                              << std::setprecision( 3 ) // use 3 decimals
-                              << std::setfill( ' ' ) << cost / full_code_size << " patience = " << patience << std::endl;
-    auto& random_batch = dataset[utils::randint(0, dataset.size() - 1)];
-    auto random_example_index = utils::randint(0, random_batch.data->rows() - 1);
-    reconstruct(model, random_batch, random_example_index, word_vocab);
-}
+    pool->wait_until_idle();
+    return ((REAL_t) 100.0 * correct / (REAL_t) total_valid_examples);
+};
 
-
-/**
-Train Model
------------
-
-Train a single language model on a corpus of minibatches of sentences
-predicting the next word given the current sequence. Stops training
-when max number of epochs is reached, training stops decreasing error
-for 5 epochs, or cost dips below the cutoff.
-
-Inputs
-------
-
-const vector<Databatch>& dataset : sentences broken into minibatches to
-                                   train model on.
-         const Vocab& word_vocab : the word vocabulary with a lookup table
-                                   mapping unique words to an index and
-                                   vice-versa.
-                    const T& rho : rho parameter to control Adadelta decay rate
-               const int& epochs : maximum number of epochs to train for.
-                       int label : label from where the examples originated from.
-
-**/
-template<typename T, class S>
-void train_model(
-    const vector<Databatch>& dataset,
-    const Vocab& word_vocab,
-    const T& rho,
-    const T& cutoff,
-    const int& epochs,
-    int label) {
-    // Build Model:
-    StackedModel<T> model(word_vocab.index2word.size(),
-            FLAGS_input_size,
-            FLAGS_hidden,
-            FLAGS_stack_size < 1 ? 1 : FLAGS_stack_size,
-            word_vocab.index2word.size());
-    auto parameters = model.parameters();
-    S solver(parameters, rho, 1e-9, 5.0);
-    int i = 0;
-    auto cost = std::numeric_limits<REAL_t>::infinity();
-    T new_cost = 0.0;
-    int patience = 0;
-    while (cost > cutoff && i < epochs && patience < 5) {
-        new_cost = 0.0;
-        training_loop(model, dataset, word_vocab, solver, parameters, i, new_cost, label, patience);
-        if (new_cost >= cost) patience++;
-        cost = new_cost;
-        i++;
-    }
-    maybe_save_model(model, "", std::to_string(label));
-}
 
 int main( int argc, char* argv[]) {
     GFLAGS_NAMESPACE::SetUsageMessage(
@@ -344,12 +234,11 @@ int main( int argc, char* argv[]) {
 
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
-    auto rho                = FLAGS_rho;
-    auto epochs             = FLAGS_epochs;
-    auto cutoff             = FLAGS_cutoff;
-    auto sentiment_treebank = SST::load(FLAGS_train);
-    auto word_vocab         = get_word_vocab(sentiment_treebank, FLAGS_min_occurence);
-    auto vocab_size         = word_vocab.index2word.size();
+    auto epochs              = FLAGS_epochs;
+    auto sentiment_treebank  = SST::load(FLAGS_train);
+
+    auto word_vocab          = get_word_vocab(sentiment_treebank, FLAGS_min_occurence);
+    auto vocab_size          = word_vocab.index2word.size();
 
     // Load Dataset of Trees:
     std::cout << "Unique Treees Loaded : " << sentiment_treebank.size() << std::endl
@@ -357,39 +246,138 @@ int main( int argc, char* argv[]) {
               << "     Vocabulary size : " << vocab_size << std::endl;
 
     // Put trees into matrices:
-    vector<tokenized_uint_labeled_dataset> tree_types(5);
-    for (auto& tree : sentiment_treebank) {
-        if (((int) tree->label) > 4)
-            utils::exit_with_message("Error: One of the trees has a label other than 0-4");
-        tree_types[tree->label].emplace_back(tree->to_labeled_pair());
-        for (auto& child : tree->general_children) {
-            if (((int)child->label) > 4)
-                utils::exit_with_message("Error: One of the trees's children has a label other than 0-4");
-            tree_types[(int) child->label].emplace_back(child->to_labeled_pair());
+    int total_valid_examples = 0;
+    const int NUM_SENTIMENTS = 5;
+    const int BATCHES_PER_EPOCH = 30;
+    vector<vector<Databatch>> datasets(NUM_SENTIMENTS);
+    vector<vector<Databatch>> validation_sets(NUM_SENTIMENTS);
+
+    {
+        vector<tokenized_uint_labeled_dataset> tree_types(NUM_SENTIMENTS);
+        vector<tokenized_uint_labeled_dataset> validation_tree_types(NUM_SENTIMENTS);
+
+        for (auto& tree : sentiment_treebank) {
+            if (((int) tree->label) > 4)
+                utils::exit_with_message("Error: One of the trees has a label other than 0-4");
+            tree_types[tree->label].emplace_back(tree->to_labeled_pair());
+            for (auto& child : tree->general_children) {
+                if (((int)child->label) > 4)
+                    utils::exit_with_message("Error: One of the trees's children has a label other than 0-4");
+                tree_types[(int) child->label].emplace_back(child->to_labeled_pair());
+            }
         }
+        auto validation_treebank = SST::load(FLAGS_validation);
+        for (auto& tree : validation_treebank) {
+            if (((int) tree->label) > 4)
+                utils::exit_with_message("Error: One of the trees has a label other than 0-4");
+            validation_tree_types[tree->label].emplace_back(tree->to_labeled_pair());
+            for (auto& child : tree->general_children) {
+                if (((int)child->label) > 4)
+                    utils::exit_with_message("Error: One of the trees's children has a label other than 0-4");
+                validation_tree_types[(int) child->label].emplace_back(child->to_labeled_pair());
+            }
+        }
+        int i = 0;
+        for (auto& tree_type : tree_types)
+            std::cout << "Label type " << i++ << " has " << tree_type.size() << " different examples" << std::endl;
+        i = 0;
+
+        for (auto& tree_type : validation_tree_types) {
+            std::cout << "Label type " << i++ << " has " << tree_type.size() << " validation examples" << std::endl;
+            total_valid_examples += tree_type.size();
+        }
+
+        i = 0;
+        for (auto& tree_type : tree_types)
+            datasets[i++] = create_labeled_dataset(tree_type, word_vocab, FLAGS_minibatch);
+        i = 0;
+        for (auto& tree_type : validation_tree_types)
+            validation_sets[i++] = create_labeled_dataset(tree_type, word_vocab, FLAGS_minibatch);
     }
-    int i = 0;
-    for (auto& tree_type : tree_types)
-        std::cout << "Label type " << i++ << " has " << tree_type.size() << " different examples" << std::endl;
-    vector<vector<Databatch>> datasets(tree_types.size());
-    i = 0;
-    for (auto& tree_type : tree_types)
-        datasets[i++] = create_labeled_dataset(tree_type, word_vocab, FLAGS_minibatch);
 
-    std::cout << "Max training epochs = " << epochs << std::endl;
-    std::cout << "Training cutoff     = " << cutoff << std::endl;
+    std::cout << "Max training epochs = " << FLAGS_epochs << std::endl;
+    std::cout << "Training cutoff     = " << FLAGS_cutoff << std::endl;
 
-    vector<thread> workers;
-    for (i = 0; i < 5; i++)
-        workers.emplace_back(thread(train_model<REAL_t, Solver::AdaDelta<REAL_t>>,
-            ref(datasets[i]),
-            ref(word_vocab),
-            ref(rho),
-            ref(cutoff),
-            ref(epochs),
-            i));
-    for (auto& worker : workers)
-        worker.join();
+    pool = new ThreadPool(FLAGS_j);
+
+    int patience = 0;
+
+    std::vector<StackedShortcutModel<REAL_t>> models;
+
+    vector<vector<StackedShortcutModel<REAL_t>>> thread_models;
+    vector<Solver::AdaDelta<REAL_t>> solvers;
+
+
+    for (int sentiment = 0; sentiment < NUM_SENTIMENTS; sentiment++) {
+        models.emplace_back(
+            word_vocab.index2word.size(),
+            FLAGS_input_size,
+            FLAGS_hidden,
+            FLAGS_stack_size < 1 ? 1 : FLAGS_stack_size,
+            word_vocab.index2word.size()
+        );
+        thread_models.emplace_back();
+        for (int thread_no = 0; thread_no < FLAGS_j; ++thread_no) {
+            thread_models[sentiment].push_back(models[sentiment].shallow_copy());
+        }
+        auto params = models[sentiment].parameters();
+        solvers.emplace_back(params, FLAGS_rho, 1e-9, 5.0);
+    }
+    int epoch = 0;
+    auto cost = std::numeric_limits<REAL_t>::infinity();
+    REAL_t new_cost;
+    while (cost > FLAGS_cutoff && patience < FLAGS_patience) {
+        stringstream ss;
+        ss << "Epoch " << ++epoch;
+        atomic<int> batches_processed(0);
+
+        ReportProgress<double> journalist(ss.str(), NUM_SENTIMENTS * BATCHES_PER_EPOCH);
+
+        for (int sentiment = 0; sentiment < NUM_SENTIMENTS; sentiment++) {
+            for (int batch_id = 0; batch_id < BATCHES_PER_EPOCH; ++batch_id) {
+                pool->run([&thread_models, &journalist, &solvers, &datasets, sentiment, &cost, &batches_processed]() {
+                    auto& thread_model = thread_models[sentiment][ThreadPool::get_thread_number()];
+                    auto& solver = solvers[sentiment];
+
+                    auto thread_parameters = thread_model.parameters();
+                    auto& minibatch = datasets[sentiment][utils::randint(0, datasets[sentiment].size()-1)];
+
+                    auto G = graph_t(true);      // create a new graph for each loop
+                    cost += thread_model.masked_predict_cost(
+                        G,
+                        minibatch.data, // the sequence to draw from
+                        minibatch.data, // what to predict (the words offset by 1)
+                        1,
+                        minibatch.codelens,
+                        0
+                    );
+                    G.backward(); // backpropagate
+                    solver.step(thread_parameters, 0.0); // One step of gradient descent
+
+                    journalist.tick(++batches_processed, cost);
+                });
+            }
+        }
+
+        while(true) {
+            journalist.pause();
+            std::cout << "Here be reconstructions" << std::endl;
+            journalist.resume();
+            // TODO(jonathan): reconstructions go here..
+            if (pool->wait_until_idle(seconds(5)))
+                break;
+        }
+
+        journalist.done();
+        new_cost = average_error(models, validation_sets, total_valid_examples);
+
+        if (new_cost > cost) {
+            patience +=1;
+        } else {
+            patience = 0;
+        }
+        cost = new_cost;
+    }
 
     return 0;
 }

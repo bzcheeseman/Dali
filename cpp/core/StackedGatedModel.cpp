@@ -184,7 +184,7 @@ std::tuple<T, T> StackedGatedModel<T>::masked_predict_cost(
         shared_eigen_index_vector codelens,
         uint offset) {
 
-        auto initial_state    = lstm::initial_states(hidden_sizes);
+        auto initial_state    = initial_states();
         auto num_hidden_sizes = hidden_sizes.size();
 
         shared_mat input_vector;
@@ -241,7 +241,7 @@ std::tuple<T, T> StackedGatedModel<T>::masked_predict_cost(
         shared_eigen_index_vector codelens,
         uint offset) {
 
-        auto initial_state    = lstm::initial_states(hidden_sizes);
+        auto initial_state    = initial_states();
         auto num_hidden_sizes = hidden_sizes.size();
 
         shared_mat input_vector;
@@ -488,7 +488,7 @@ typename StackedGatedModel<T>::state_type StackedGatedModel<T>::get_final_activa
         const K& example) const {
         shared_mat input_vector;
         shared_mat memory;
-        auto initial_state = lstm::initial_states(hidden_sizes);
+        auto initial_state = initial_states();
         auto n = example.cols() * example.rows();
         for (uint i = 0; i < n; ++i) {
                 // pick this letter from the embedding
@@ -572,6 +572,12 @@ std::vector<int> StackedGatedModel<T>::reconstruct(
         return outputs;
 }
 
+
+template<typename T>
+typename StackedGatedModel<T>::state_type StackedGatedModel<T>::initial_states() const {
+    return lstm::initial_states(hidden_sizes);
+}
+
 template<typename T>
 template<typename K>
 std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<T>::reconstruct_lattice(
@@ -583,7 +589,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<T>::reconstr
         shared_mat input_vector;
         shared_mat memory;
         auto pos = root;
-        auto initial_state = lstm::initial_states(hidden_sizes);
+        auto initial_state = initial_states();
         auto n = example.cols() * example.rows();
         for (uint i = 0; i < n; ++i) {
                 // pick this letter from the embedding

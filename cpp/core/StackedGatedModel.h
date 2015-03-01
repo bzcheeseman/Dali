@@ -93,6 +93,8 @@ class StackedGatedModel {
                 template<typename K>
                 state_type get_final_activation(graph_t&, const K&) const;
 
+                state_type initial_states() const;
+
                 activation_t activate(graph_t&, state_type&, const uint&) const;
 
                 template<typename K>

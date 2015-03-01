@@ -141,7 +141,7 @@ T StackedShortcutModel<T>::masked_predict_cost(
         shared_eigen_index_vector codelens,
         uint offset) {
 
-        auto initial_state    = lstm::initial_states(hidden_sizes);
+        auto initial_state    = initial_states();
         auto num_hidden_sizes = hidden_sizes.size();
 
         shared_mat input_vector;
@@ -178,6 +178,11 @@ T StackedShortcutModel<T>::masked_predict_cost(
 }
 
 template<typename T>
+typename StackedShortcutModel<T>::state_type StackedShortcutModel<T>::initial_states() const {
+    return lstm::initial_states(hidden_sizes);
+}
+
+template<typename T>
 T StackedShortcutModel<T>::masked_predict_cost(
         graph_t& G,
         shared_index_mat data,
@@ -185,7 +190,7 @@ T StackedShortcutModel<T>::masked_predict_cost(
         uint start_loss,
         shared_eigen_index_vector codelens,
         uint offset) {
-        auto initial_state    = lstm::initial_states(hidden_sizes);
+        auto initial_state    = initial_states();
         auto num_hidden_sizes = hidden_sizes.size();
 
         shared_mat input_vector;
@@ -357,7 +362,7 @@ typename StackedShortcutModel<T>::state_type StackedShortcutModel<T>::get_final_
         graph_t& G,
         const K& example) const {
         shared_mat input_vector;
-        auto initial_state = lstm::initial_states(hidden_sizes);
+        auto initial_state = initial_states();
         auto n = example.cols() * example.rows();
         for (uint i = 0; i < n; ++i) {
                 // pick this letter from the embedding
@@ -433,7 +438,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<T>::recon
         shared_mat input_vector;
         shared_mat memory;
         auto pos = root;
-        auto initial_state = lstm::initial_states(hidden_sizes);
+        auto initial_state = initial_states();
         auto n = example.cols() * example.rows();
         for (uint i = 0; i < n; ++i) {
                 // pick this letter from the embedding

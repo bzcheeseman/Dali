@@ -1,0 +1,8 @@
+--input_size=100
+--hidden=100
+--j=9
+--patience=5
+--shortcut
+--stack_size=2
+--train=../data/sentiment/train.txt
+--validation=../data/sentiment/dev.txt

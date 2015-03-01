@@ -4,9 +4,10 @@
 #include <string>
 #include <vector>
 
-#include "core/utils.h"
-#include "core/Mat.h"
 #include "core/Graph.h"
+#include "core/Mat.h"
+#include "core/Seq.h"
+#include "core/utils.h"
 
 #define MAT Mat<REAL_t>
 #define SHARED_MAT std::shared_ptr<MAT>
@@ -23,7 +24,6 @@ namespace model {
 
             virtual SHARED_MAT operator() (GRAPH& G, SHARED_MAT input);
 
-
             // Save to file.
             void save(std::string path) const;
 
@@ -33,9 +33,13 @@ namespace model {
 
     template <typename REAL_t>
     class RecurrentModel: public Model<REAL_t> {
-        // Must call parent first.
-        virtual void reset() = 0;
+        public:
+            // Must call parent first.
+            virtual void reset() = 0;
 
+            Seq<SHARED_MAT> operator() (GRAPH& G, const Seq<SHARED_MAT>& seq);
+
+            virtual Seq<SHARED_MAT> activate_sequence(GRAPH& G, const Seq<SHARED_MAT>& seq);
     };
 }
 #endif

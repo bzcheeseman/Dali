@@ -3,6 +3,8 @@
 using std::make_shared;
 using std::vector;
 
+/* RNN - Recurrent Neural Network */
+
 namespace model {
     template<typename REAL_t>
     RNN<REAL_t>::RNN(int input_size,
@@ -23,6 +25,8 @@ namespace model {
         prev_memory = first_memory;
     }
 
+    // TODO(szymon): implement activate_internal(input, hidden),
+    // to give use more control.
     // output is in range 0, 1
     template<typename REAL_t>
     SHARED_MAT RNN<REAL_t>::activate(GRAPH& G, SHARED_MAT input) {

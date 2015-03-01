@@ -12,6 +12,7 @@
 #include "core/Mat.h"
 #include "core/Reporting.h"
 #include "core/model/Recurrent.h"
+#include "core/Error.h"
 
 typedef double REAL_t;
 typedef Mat<double> mat;
@@ -30,12 +31,6 @@ int main( int argc, char* argv[]) {
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
     Throttled throttled;
-    shared_mat one = make_shared<mat>(1, 1);
-    one->w(0,0) = 1.0;
-    shared_mat zero = make_shared<mat>(1, 1);
-    zero->w(0,0) = 0.0;
-    shared_mat eps = make_shared<mat>(1, 1);
-    eps->w(0,0) = 1e-5;
 
     // How many iterations of gradient descent to run.
     const int NUM_EPOCHS = 100000;
@@ -80,51 +75,42 @@ int main( int argc, char* argv[]) {
             res_bits =              bitset<NUM_BITS> (res);
             predicted_res_bits =    bitset<NUM_BITS>(predicted_res);
 
-            Graph<double> G(true);
-
-            rnn.reset();
-
-            shared_mat error = make_shared<mat>(1, 1);
-
-            error->w.fill(0);
-
+            Seq<shared_mat> input;
+            Seq<shared_mat> expected_output;
 
             for (int i=0; i< NUM_BITS; ++i) {
                 shared_mat input_i = make_shared<mat>(INPUT_SIZE, 1);
                 input_i->w(0,0) = a_bits[i];
                 input_i->w(1,0) = b_bits[i];
+                input.push_back(input_i);
 
                 auto expected_output_i = make_shared<mat>(OUTPUT_SIZE, 1);
                 expected_output_i->w(0,0) = res_bits[i];
-
-                shared_mat output_i = rnn(G, input_i);
-
-                predicted_res_bits[i] = output_i->w(0,0) < 0.5 ? 0 : 1;
-
-                shared_mat partial_error;
-                if (res_bits[i] == 1) {
-                    partial_error = G.sub(zero, G.log(G.add(eps, output_i)));
-                } else {
-                    assert(res_bits[i] == 0);
-                    partial_error = G.sub(zero, G.log(G.add(eps, G.sub(one, output_i))));
-                }
-
-                error = G.add(error, partial_error);
+                expected_output.push_back(expected_output_i);
             }
+
+            Graph<double> G(true);
+            Seq<shared_mat> output = rnn(G, input);
+
+            for (int i=0; i< NUM_BITS; ++i)
+                predicted_res_bits[i] = output[i]->w(0,0) < 0.5 ? 0 : 1;
             predicted_res = predicted_res_bits.to_ulong();
 
             for (int i=0; i<NUM_BITS; ++i)
                 epoch_bit_error += res_bits[i] != predicted_res_bits[i];
+
+            shared_mat error = Error<double>::cross_entropy(G, expected_output, output);
+
             epoch_error += error->w(0,0);
             error->grad();
             G.backward();
         }
+
         // solver.step(params, 0.0);
         for (auto& param: params) {
             param->w -= (LR / ITERATIONS_PER_EPOCH) * param->dw;
             param->dw.fill(0);
         }
-
 
         throttled.maybe_run(seconds(2), [&]() {
             epoch_error /= ITERATIONS_PER_EPOCH;

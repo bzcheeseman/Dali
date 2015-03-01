@@ -28,12 +28,12 @@ namespace model {
                 int memory_size,
                 double bound=0.2);
 
-            void reset();
+            virtual void reset() override;
 
             // output is in range 0, 1
-            SHARED_MAT activate(GRAPH& G, SHARED_MAT input);
+            virtual SHARED_MAT activate(GRAPH& G, SHARED_MAT input) override;
 
-            std::vector<SHARED_MAT> parameters() const;
+            virtual std::vector<SHARED_MAT> parameters() const override;
     };
 }
 

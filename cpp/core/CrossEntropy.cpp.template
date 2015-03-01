@@ -1,7 +1,7 @@
 #include "CrossEntropy.h"
 
 template<typename T>
-T cross_entropy(std::shared_ptr<Mat<T>> logprobs, int& target) {
+T cross_entropy(std::shared_ptr<Mat<T>> logprobs, uint& target) {
     std::shared_ptr<Mat<T>> probs = softmax(logprobs);
     T cost = -std::log(probs->w(target,0));
     logprobs->dw = probs->w;
@@ -633,8 +633,8 @@ Z masked_sum_no_grad(std::shared_ptr<Mat<Z>> values,
     return cost;
 }
 
-template float cross_entropy(std::shared_ptr<Mat<float>>, int&);
-template double cross_entropy(std::shared_ptr<Mat<double>>, int&);
+template float cross_entropy(std::shared_ptr<Mat<float>>, uint&);
+template double cross_entropy(std::shared_ptr<Mat<double>>, uint&);
 
 // BEGIN TEMPLATE SPECIALIZATIONS
 

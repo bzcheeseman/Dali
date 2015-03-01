@@ -558,6 +558,20 @@ namespace utils {
                 word2index[unknown_word_symbol] = index2word.size() - 1;
                 unknown_word = index2word.size() - 1;
         }
+
+        vector<typename Vocab::ind_t> Vocab::transform(const str_sequence& words) const {
+            vector<ind_t> result;
+            std::transform(words.begin(), words.end(),
+                           std::back_inserter(result), [this](const string& word) {
+                if (word2index.find(word) == word2index.end()) {
+                    return unknown_word;
+                } else {
+                    return word2index.at(word);
+                }
+            });
+            return result;
+        }
+
         Vocab::Vocab() : unknown_word(-1) {add_unknown_word();};
         Vocab::Vocab(vector<string>& _index2word) : index2word(_index2word), unknown_word(-1) {
                 construct_word2index();

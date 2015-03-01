@@ -67,12 +67,12 @@ namespace babi {
     class Model {
         public:
             // training
-            virtual void train(std::vector<Story> data) = 0;
+            virtual void train(const std::vector<Story>& data) = 0;
 
             // testing
             virtual void new_story() = 0;
             virtual void fact(const VS& fact) = 0;
-            virtual VS question(const VS quesiton) = 0;
+            virtual VS question(const VS& quesiton) = 0;
     };
 
     template<typename T>
@@ -110,7 +110,7 @@ namespace babi {
                 }
             }
             test_timer.stop();
-            std::cout << (double)correct_questions/total_questions << std::endl;
+            std::cout << 100.0*(double)correct_questions/total_questions << "%" << std::endl;
             if (verbose) {
                 utils::Timer::report();
             }

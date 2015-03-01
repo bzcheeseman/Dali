@@ -3,7 +3,7 @@
 
 #include "Softmax.h"
 
-template<typename T>                         T cross_entropy(std::shared_ptr<Mat<T>>, int&);
+template<typename T>                         T cross_entropy(std::shared_ptr<Mat<T>>, uint&);
 template<typename T, typename M>             T cross_entropy(std::shared_ptr<Mat<T>>, const M);
 
 

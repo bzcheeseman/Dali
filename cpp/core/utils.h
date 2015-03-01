@@ -95,6 +95,8 @@ namespace utils {
                         ind_t unknown_word;
                         std::map<std::string, ind_t> word2index;
                         str_sequence index2word;
+
+                        std::vector<ind_t> transform(const str_sequence& words) const;
                         Vocab();
                         Vocab(str_sequence&);
                         Vocab(str_sequence&, bool);

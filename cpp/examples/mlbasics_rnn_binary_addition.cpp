@@ -54,8 +54,6 @@ int main( int argc, char* argv[]) {
     model::RNN<double> rnn(INPUT_SIZE, OUTPUT_SIZE, MEMORY_SIZE);
     vector<shared_mat> params = rnn.parameters();
 
-    // Solver::AdaDelta<double> solver(params);
-
     for (int epoch = 0; epoch <= NUM_EPOCHS; ++epoch) {
         // Cross entropy bit error
         double epoch_error = 0;
@@ -106,7 +104,6 @@ int main( int argc, char* argv[]) {
             G.backward();
         }
 
-        // solver.step(params, 0.0);
         for (auto& param: params) {
             param->w -= (LR / ITERATIONS_PER_EPOCH) * param->dw;
             param->dw.fill(0);

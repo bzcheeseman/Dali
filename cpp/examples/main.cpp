@@ -17,9 +17,7 @@ int main () {
     auto prev_cell = make_shared<mat>(50, 1);
     auto prev_hidden = make_shared<mat>(50, 1);
 
-    index_std_vector indices = {0, 1, 10, 2, 1, 3};
-
-    auto out = lstm.activate(G, G.rows_pluck(embedding, indices), prev_cell, prev_hidden);
+    auto out = lstm.activate(G, G.rows_pluck(embedding, {0, 1, 10, 2, 1, 3} ), prev_cell, prev_hidden);
 
     out.first->print();
 
@@ -40,7 +38,7 @@ int main () {
     // print softmax:
     softmaxed->print();
 
-        auto A = std::make_shared<mat>(3, 5);
+    auto A = std::make_shared<mat>(3, 5);
     A->w = (A->w.array() + 1.2).matrix();
     // build random matrix of double type with standard deviation 2:
     auto B = std::make_shared<mat>(A->n, A->d, 2.0);
@@ -68,12 +66,10 @@ int main () {
     A_plucked_normed_t->print();
 
     // backpropagate to A and B
-    G.backward();
     auto params = lstm.parameters();
     utils::save_matrices(params, "lstm_params");
 
     StackedInputLayer<REAL_t> superclassifier({20, 20, 10, 2}, 5);
-
 
     vector<shared_mat> inputs;
     inputs.emplace_back(make_shared<mat>(20, 5, -2.0, 2.0));
@@ -102,7 +98,22 @@ int main () {
     std::cout << "using G.hstack(\"upper\", \"lower\") :" << std::endl;
     G.hstack(upper, lower)->print();
 
+    inputs[0]->w.fill(3);
+    inputs[0]->w.row(1).fill(1);
+    inputs[0]->w.row(2).fill(2);
+    inputs[0]->w.row(3).fill(3);
 
+    Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> bob_indices = Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic>::Zero(3,3);
+
+    bob_indices(0,0) = 1;
+    bob_indices(1,0) = 2;
+    bob_indices(2,0) = 3;
+
+    auto bob = G.rows_pluck(inputs[0], bob_indices.col(0) );
+
+    bob->print();
+
+    G.backward();
 
     return 0;
 }

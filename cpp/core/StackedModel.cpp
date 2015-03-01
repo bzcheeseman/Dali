@@ -338,6 +338,19 @@ typename StackedModel<T>::activation_t StackedModel<T>::activate(
 }
 
 template<typename T>
+typename StackedModel<T>::activation_t StackedModel<T>::activate(
+    graph_t& G,
+    state_type& previous_state,
+    const eigen_index_block indices) const {
+    activation_t out;
+
+    out.first =  forward_LSTMs(G, G.rows_pluck(embedding, indices), previous_state, cells);
+    out.second = softmax(decoder.activate(G, out.first.second[stack_size-1]));
+
+    return out;
+}
+
+template<typename T>
 typename StackedModel<T>::state_type StackedModel<T>::initial_states() const {
     return lstm::initial_states(hidden_sizes);
 }

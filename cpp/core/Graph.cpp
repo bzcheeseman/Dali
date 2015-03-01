@@ -757,57 +757,160 @@ typename Graph<T>::shared_mat Graph<T>::mul_add_mul_with_bias(
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::rows_pluck(
         shared_mat matrix,
-        index_std_vector& indices
+        Indexing::Index indices
         ) {
     Timer rp_timer("ops_rows_pluck");
-        auto out = std::make_shared<mat>(
-                matrix->d,
-                indices.size(),
-                true);
-        int offset = 0;
-        for (auto& i : indices)
-            out->w.col(offset++) = matrix->w.row(i).transpose();
+    auto out = std::make_shared<mat>(
+        matrix->d,
+        indices.size(),
+        true);
+
+    for (std::size_t offset = 0; offset < indices.size(); ++offset) {
+        out->w.col(offset) = matrix->w.row(indices[offset]).transpose();
+    }
     rp_timer.stop();
-    if (needs_backprop)
+    if (needs_backprop) {
         // allocates a new backward element in the vector using these arguments:
-        this->backprop.emplace_back([matrix, out, &indices](){
-            auto index_ptr = indices.begin();
-            for (int i = 0; i < indices.size(); ++i) {
+        backprop.emplace_back([matrix, out, indices](){
+            auto index_ptr = indices.data();
+            for (std::size_t i = 0; i < out->d; ++i) {
                 // for each row do the same operation as for row_pluck:
                 matrix->dw.row(*index_ptr).noalias() += out->dw.col(i).transpose();
                 index_ptr++;
             }
         });
+    }
     return out;
 }
 
 template<typename T>
-typename Graph<T>::shared_mat Graph<T>::rows_pluck(
+typename Graph<T>::shared_mat Graph<T>::rows_cols_pluck(
         shared_mat matrix,
-        eigen_index_block indices
-        ) {
+        Indexing::Index row_indices,
+        Indexing::Index col_indices) {
+    if (row_indices.size() != col_indices.size())
+        throw std::invalid_argument("Cannot pluck column row pairs, not the same amount of row and column indices.");
     Timer rp_timer("ops_rows_pluck");
         auto out = std::make_shared<mat>(
-            matrix->d,
-            indices.rows(),
+            1,
+            row_indices.size(),
             true);
-        for (int offset = 0; offset < indices.rows(); ++offset)
-            out->w.col(offset) = matrix->w.row(indices(offset)).transpose();
+        for (int offset = 0; offset < row_indices.size(); ++offset)
+            out->w(offset) = matrix->w(row_indices[offset], col_indices[offset]);
     rp_timer.stop();
     if (needs_backprop) {
-        auto index_ptr = indices.data();
         // allocates a new backward element in the vector using these arguments:
-        backprop.emplace_back([matrix, out, index_ptr](){
-            auto copied_index_ptr = index_ptr;
+        backprop.emplace_back([matrix, out, row_indices, col_indices](){
+            auto row_index_ptr = row_indices.data();
+            auto col_index_ptr = col_indices.data();
             for (int i = 0; i < out->d; ++i) {
                 // for each row do the same operation as for row_pluck:
-                matrix->dw.row(*copied_index_ptr).noalias() += out->dw.col(i).transpose();
-                copied_index_ptr++;
+                matrix->dw(*row_index_ptr, *col_index_ptr) += out->dw(i);
+                row_index_ptr++;
+                col_index_ptr++;
             }
         });
     }
     return out;
 }
+
+// template<typename T>
+// typename Graph<T>::shared_mat Graph<T>::rows_cols_pluck(
+//         shared_mat matrix,
+//         index_std_vector& row_indices,
+//         index_std_vector& col_indices
+//         ) {
+//     if (row_indices.size() != col_indices.size())
+//         throw std::invalid_argument("Cannot pluck column row pairs, not the same amount of row and column indices.");
+//     Timer rp_timer("ops_rows_pluck");
+//         auto out = std::make_shared<mat>(
+//             1,
+//             row_indices.size(),
+//             true);
+//         for (int offset = 0; offset < row_indices.size(); ++offset)
+//             out->w(offset) = matrix->w(row_indices[offset], col_indices[offset]);
+//     rp_timer.stop();
+//     if (needs_backprop) {
+//         // allocates a new backward element in the vector using these arguments:
+//         backprop.emplace_back([matrix, out, &row_indices, &col_indices](){
+//             auto copied_row_index_ptr = row_indices.begin();
+//             auto copied_col_index_ptr = col_indices.begin();
+//             for (int i = 0; i < out->d; ++i) {
+//                 // for each row do the same operation as for row_pluck:
+//                 matrix->dw(*copied_row_index_ptr, *copied_col_index_ptr) += out->dw(i);
+//                 copied_row_index_ptr++;
+//                 copied_col_index_ptr++;
+//             }
+//         });
+//     }
+//     return out;
+// }
+
+// template<typename T>
+// typename Graph<T>::shared_mat Graph<T>::rows_cols_pluck(
+//         shared_mat matrix,
+//         index_std_vector& row_indices,
+//         eigen_index_block col_indices
+//         ) {
+//     if (row_indices.size() != col_indices.rows())
+//         throw std::invalid_argument("Cannot pluck column row pairs, not the same amount of row and column indices.");
+//     Timer rp_timer("ops_rows_pluck");
+//         auto out = std::make_shared<mat>(
+//             1,
+//             row_indices.size(),
+//             true);
+//         for (int offset = 0; offset < row_indices.size(); ++offset)
+//             out->w(offset) = matrix->w(row_indices[offset], col_indices(offset));
+//     rp_timer.stop();
+//     if (needs_backprop) {
+//         // allocates a new backward element in the vector using these arguments:
+//         auto col_index_ptr = col_indices.data();
+//         backprop.emplace_back([matrix, out, &row_indices, col_index_ptr](){
+//             auto copied_row_index_ptr = row_indices.begin();
+//             auto copied_col_index_ptr = col_index_ptr;
+//             for (int i = 0; i < out->d; ++i) {
+//                 // for each row do the same operation as for row_pluck:
+//                 matrix->dw(*copied_row_index_ptr, *copied_col_index_ptr) += out->dw(i);
+//                 copied_row_index_ptr++;
+//                 copied_col_index_ptr++;
+//             }
+//         });
+//     }
+//     return out;
+// }
+
+// template<typename T>
+// typename Graph<T>::shared_mat Graph<T>::rows_cols_pluck(
+//         shared_mat matrix,
+//         eigen_index_block row_indices,
+//         index_std_vector& col_indices
+//         ) {
+//     if (row_indices.rows() != col_indices.size())
+//         throw std::invalid_argument("Cannot pluck column row pairs, not the same amount of row and column indices.");
+//     Timer rp_timer("ops_rows_pluck");
+//         auto out = std::make_shared<mat>(
+//             1,
+//             row_indices.rows(),
+//             true);
+//         for (int offset = 0; offset < row_indices.rows(); ++offset)
+//             out->w(offset) = matrix->w(row_indices(offset), col_indices[offset]);
+//     rp_timer.stop();
+//     if (needs_backprop) {
+//         // allocates a new backward element in the vector using these arguments:
+//         auto row_index_ptr = row_indices.data();
+//         backprop.emplace_back([matrix, out, &col_indices, row_index_ptr](){
+//             auto copied_col_index_ptr = col_indices.begin();
+//             auto copied_row_index_ptr = row_index_ptr;
+//             for (int i = 0; i < out->d; ++i) {
+//                 // for each row do the same operation as for row_pluck:
+//                 matrix->dw(*copied_row_index_ptr, *copied_col_index_ptr) += out->dw(i);
+//                 copied_row_index_ptr++;
+//                 copied_col_index_ptr++;
+//             }
+//         });
+//     }
+//     return out;
+// }
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::row_pluck(

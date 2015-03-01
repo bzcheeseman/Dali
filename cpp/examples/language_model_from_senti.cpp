@@ -13,6 +13,7 @@
 #include "core/utils.h"
 #include "core/Reporting.h"
 #include "core/ThreadPool.h"
+#include "core/BeamSearch.h"
 #include "core/SequenceProbability.h"
 
 using std::vector;
@@ -36,19 +37,22 @@ using std::chrono::seconds;
 typedef float REAL_t;
 typedef Graph<REAL_t> graph_t;
 typedef Mat<REAL_t> mat;
+typedef std::shared_ptr<mat> shared_mat;
 typedef float price_t;
 typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
 typedef Eigen::Matrix<REAL_t, Eigen::Dynamic, 1> float_vector;
 typedef std::pair<vector<string>, uint> labeled_pair;
 
 const string START = "**START**";
+const string label_names[] = {"--", "-", "=", "+", "++"};
 
 ThreadPool* pool;
 
 DEFINE_int32(minibatch, 100, "What size should be used for the minibatches ?");
-DEFINE_double(cutoff, 2.0, "KL Divergence error where stopping is acceptable");
-DEFINE_int32(patience,             5,    "How many unimproving epochs to wait through before witnessing progress ?");
-
+DEFINE_double(cutoff, 2.0,   "KL Divergence error where stopping is acceptable");
+DEFINE_int32(patience, 5,    "How many unimproving epochs to wait through before witnessing progress ?");
+DEFINE_int32(epoch_batches, 3, "How many minibatches should each label's model do before doing cross-validation?");
+DEFINE_int32(num_reconstructions,  1,    "How many sentences to demo after each epoch.");
 
 /**
 Databatch
@@ -178,6 +182,51 @@ Vocab get_word_vocab(vector<SST::AnnotatedParseTree::shared_tree>& trees, int mi
     return vocab;
 }
 
+template<typename model_t>
+void reconstruct_random_beams(
+    vector<model_t>& models,
+    const vector<vector<Databatch>>& datasets,
+    const Vocab& word_vocab,
+    const int& init_size,
+    const int& k,
+    const int& max_length) {
+
+    int random_example_index;
+    const Databatch* random_batch;
+    while (true) {
+        const vector<Databatch>& dataset = datasets[utils::randint(0, datasets.size() - 1)];
+        random_batch = &dataset[utils::randint(0, dataset.size() - 1)];
+        random_example_index = utils::randint(0, random_batch->data->rows() - 1);
+        if ((*random_batch->codelens)(random_example_index) > init_size) {
+            break;
+        }
+    }
+    std::cout << "Reconstructions: \"";
+    for (int j = 1; j < init_size; j++)
+        std::cout << word_vocab.index2word[(*random_batch->data)(random_example_index, j)] << " ";
+    std::cout << "\"" << std::endl;
+    size_t name_num = 0;
+    for (auto& model : models) {
+        std::cout << "(" << label_names[name_num++] << ") ";
+        auto beams = beam_search::beam_search(model,
+            random_batch->data->row(random_example_index).head(init_size),
+            max_length,
+            0,  // offset symbols that are predicted
+                // before being refed (no = 0)
+            k,
+            word_vocab.word2index.at(utils::end_symbol), // when to stop the sequence
+            word_vocab.unknown_word
+        );
+        for (const auto& beam : beams) {
+            std::cout << "=> (" << std::setprecision( 5 ) << std::get<1>(beam) << ") ";
+            for (const auto& word : std::get<0>(beam)) {
+                if (word != word_vocab.word2index.at(utils::end_symbol))
+                    std::cout << word_vocab.index2word.at(word) << " ";
+            }
+            std::cout << std::endl;
+        }
+    }
+}
 
 template<typename model_t>
 REAL_t average_error(const vector<model_t>& models, const vector<vector<Databatch>>& validation_sets, const int& total_valid_examples) {
@@ -187,27 +236,33 @@ REAL_t average_error(const vector<model_t>& models, const vector<vector<Databatc
 
     for (int validation_set_num = 0; validation_set_num < validation_sets.size(); validation_set_num++) {
         for (int minibatch_num =0 ; minibatch_num < validation_sets[validation_set_num].size(); minibatch_num++) {
-            for (int row_num = 0; row_num < validation_sets[validation_set_num][minibatch_num].data->rows(); row_num++) {
-                pool->run([&journalist, &models, &correct, &total, &validation_sets, validation_set_num, minibatch_num, row_num] {
+            pool->run([&journalist, &models, &correct, &total, &validation_sets, validation_set_num, minibatch_num] {
+                auto& valid_set = validation_sets[validation_set_num][minibatch_num];
+                vector<shared_mat> probs;
+                for (int k = 0; k < models.size();k++) {
+                    probs.emplace_back(sequence_probability::sequence_probabilities(
+                        models[k],
+                        *valid_set.data,
+                        *valid_set.codelens));
+                }
+
+                for (int row_num = 0; row_num < valid_set.data->rows(); ++row_num) {
                     int best_model = -1;
-                    auto& valid_set = validation_sets[validation_set_num][minibatch_num];
-                    REAL_t best_prob = -std::numeric_limits<REAL_t>::infinity();
+                    double best_prob = -std::numeric_limits<REAL_t>::infinity();
                     for (int k = 0; k < models.size();k++) {
-                        auto log_prob = sequence_probability::sequence_probability(
-                            models[k],
-                            valid_set.data->row(row_num).head((*valid_set.codelens)(row_num)));
-                        if (log_prob > best_prob) {
-                            best_prob = log_prob;
+                        auto prob = probs[k]->w(row_num);
+                        if (prob > best_prob) {
+                            best_prob = prob;
                             best_model = k;
                         }
                     }
                     if (best_model == (*valid_set.targets)(row_num)) {
-                        correct ++;
+                        correct++;
                     }
-                    total++;
-                    journalist.tick(total, (REAL_t) correct / (REAL_t) total);
-                });
-            }
+                }
+                total+= valid_set.codelens->rows();
+                journalist.tick(total, (REAL_t) 100.0 * correct / (REAL_t) total);
+            });
         }
     }
     pool->wait_until_idle();
@@ -248,7 +303,6 @@ int main( int argc, char* argv[]) {
     // Put trees into matrices:
     int total_valid_examples = 0;
     const int NUM_SENTIMENTS = 5;
-    const int BATCHES_PER_EPOCH = 30;
     vector<vector<Databatch>> datasets(NUM_SENTIMENTS);
     vector<vector<Databatch>> validation_sets(NUM_SENTIMENTS);
 
@@ -295,8 +349,9 @@ int main( int argc, char* argv[]) {
             validation_sets[i++] = create_labeled_dataset(tree_type, word_vocab, FLAGS_minibatch);
     }
 
-    std::cout << "Max training epochs = " << FLAGS_epochs << std::endl;
-    std::cout << "Training cutoff     = " << FLAGS_cutoff << std::endl;
+    std::cout << "    Max training epochs = " << FLAGS_epochs << std::endl;
+    std::cout << "    Training cutoff     = " << FLAGS_cutoff << std::endl;
+    std::cout << "Minibatches/label/x-val = " << FLAGS_epoch_batches << std::endl;
 
     pool = new ThreadPool(FLAGS_j);
 
@@ -326,15 +381,16 @@ int main( int argc, char* argv[]) {
     int epoch = 0;
     auto cost = std::numeric_limits<REAL_t>::infinity();
     REAL_t new_cost;
+    Throttled t;
     while (cost > FLAGS_cutoff && patience < FLAGS_patience) {
         stringstream ss;
         ss << "Epoch " << ++epoch;
         atomic<int> batches_processed(0);
 
-        ReportProgress<double> journalist(ss.str(), NUM_SENTIMENTS * BATCHES_PER_EPOCH);
+        ReportProgress<double> journalist(ss.str(), NUM_SENTIMENTS * FLAGS_epoch_batches);
 
         for (int sentiment = 0; sentiment < NUM_SENTIMENTS; sentiment++) {
-            for (int batch_id = 0; batch_id < BATCHES_PER_EPOCH; ++batch_id) {
+            for (int batch_id = 0; batch_id < FLAGS_epoch_batches; ++batch_id) {
                 pool->run([&thread_models, &journalist, &solvers, &datasets, sentiment, &cost, &batches_processed]() {
                     auto& thread_model = thread_models[sentiment][ThreadPool::get_thread_number()];
                     auto& solver = solvers[sentiment];
@@ -343,7 +399,7 @@ int main( int argc, char* argv[]) {
                     auto& minibatch = datasets[sentiment][utils::randint(0, datasets[sentiment].size()-1)];
 
                     auto G = graph_t(true);      // create a new graph for each loop
-                    cost += thread_model.masked_predict_cost(
+                    thread_model.masked_predict_cost(
                         G,
                         minibatch.data, // the sequence to draw from
                         minibatch.data, // what to predict (the words offset by 1)
@@ -361,10 +417,14 @@ int main( int argc, char* argv[]) {
 
         while(true) {
             journalist.pause();
-            std::cout << "Here be reconstructions" << std::endl;
+            reconstruct_random_beams(models, datasets, word_vocab,
+                utils::randint(2, 6), // how many elements to use as a primer for beam
+                FLAGS_num_reconstructions, // how many beams
+                20 // max size of a sequence
+            );
             journalist.resume();
             // TODO(jonathan): reconstructions go here..
-            if (pool->wait_until_idle(seconds(5)))
+            if (pool->wait_until_idle(seconds(20)))
                 break;
         }
 
@@ -377,6 +437,14 @@ int main( int argc, char* argv[]) {
             patience = 0;
         }
         cost = new_cost;
+
+        t.maybe_run(seconds(600), [&models]() {
+            int i = 0;
+            for (auto& model : models) {
+                model.save(FLAGS_save + std::to_string(i));
+                i++;
+            }
+        });
     }
 
     return 0;

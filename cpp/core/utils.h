@@ -460,6 +460,8 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
 
         std::vector<size_t> random_arange(size_t);
 
+        std::vector<uint> arange(uint, uint);
+
         template <class T> inline void hash_combine(std::size_t &, const T &);
         /**
         Get Random ID

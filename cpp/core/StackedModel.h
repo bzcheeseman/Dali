@@ -254,6 +254,8 @@ class StackedModel {
 
         **/
         activation_t activate(graph_t&, state_type&, const uint& ) const;
+        activation_t activate(graph_t&, state_type&, const eigen_index_block ) const;
+
 
         template<typename K>
         std::string reconstruct_string(K, const utils::Vocab&, int, int symbol_offset = 0);

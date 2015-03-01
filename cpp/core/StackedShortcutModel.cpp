@@ -212,17 +212,17 @@ T StackedShortcutModel<T>::masked_predict_cost(
                         logprobs      = decoder.activate(G, initial_state.second[initial_state.second.size() - 1]);
                 #endif
                 cost += G.needs_backprop ? masked_cross_entropy(
-                                                                                logprobs,
-                                                                                i,
-                                                                                start_loss,
-                                                                                codelens,
-                                                                                (target_data->col(i+1).array() - offset).matrix()) :
-                                                                  masked_cross_entropy_no_grad(
-                                                                                logprobs,
-                                                                                i,
-                                                                                start_loss,
-                                                                                codelens,
-                                                                                (target_data->col(i+1).array() - offset).matrix());
+                                                                logprobs,
+                                                                i,
+                                                                start_loss,
+                                                                codelens,
+                                                                (target_data->col(i+1).array() - offset).matrix()) :
+                                           masked_cross_entropy_no_grad(
+                                                                logprobs,
+                                                                i,
+                                                                start_loss,
+                                                                codelens,
+                                                                (target_data->col(i+1).array() - offset).matrix());
         }
         return cost;
 }
@@ -411,20 +411,38 @@ std::vector<int> StackedShortcutModel<T>::reconstruct(
 
 template<typename T>
 typename StackedShortcutModel<T>::activation_t StackedShortcutModel<T>::activate(
-        graph_t& G,
-        state_type& previous_state,
-        const uint& index) const {
-        activation_t out;
-        auto input_vector = G.row_pluck(embedding, index);
-        out.first =  forward_LSTMs(G, input_vector, previous_state, base_cell, cells);
+    graph_t& G,
+    state_type& previous_state,
+    const uint& index) const {
+    activation_t out;
+    auto input_vector = G.row_pluck(embedding, index);
+    out.first = forward_LSTMs(G, input_vector, previous_state, base_cell, cells);
 
-        #ifdef SHORTCUT_DECODE_ACROSS_LAYERS
-                out.second = softmax(decoder.activate(G, input_vector, out.first.second));
-        #else
-                out.second = softmax(decoder.activate(G, out.first.second[out.first.second.size() - 1] ));
-        #endif
+    #ifdef SHORTCUT_DECODE_ACROSS_LAYERS
+        out.second = softmax(decoder.activate(G, input_vector, out.first.second));
+    #else
+        out.second = softmax(decoder.activate(G, out.first.second[out.first.second.size() - 1] ));
+    #endif
 
-        return out;
+    return out;
+}
+
+template<typename T>
+typename StackedShortcutModel<T>::activation_t StackedShortcutModel<T>::activate(
+    graph_t& G,
+    state_type& previous_state,
+    const eigen_index_block indices) const {
+    activation_t out;
+    auto input_vector = G.rows_pluck(embedding, indices);
+    out.first = forward_LSTMs(G, input_vector, previous_state, base_cell, cells);
+
+    #ifdef SHORTCUT_DECODE_ACROSS_LAYERS
+        out.second = softmax(decoder.activate(G, input_vector, out.first.second));
+    #else
+        out.second = softmax(decoder.activate(G, out.first.second[out.first.second.size() - 1] ));
+    #endif
+
+    return out;
 }
 
 template<typename T>

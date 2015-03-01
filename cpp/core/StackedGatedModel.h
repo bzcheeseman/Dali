@@ -53,7 +53,7 @@ class StackedGatedModel {
         public:
 
                 typedef std::pair<std::vector<shared_mat>, std::vector<shared_mat>> state_type;
-                typedef std::tuple<state_type, shared_mat, T> activation_t;
+                typedef std::tuple<state_type, shared_mat, shared_mat> activation_t;
                 typedef T value_t;
 
                 std::vector<lstm> cells;
@@ -96,6 +96,7 @@ class StackedGatedModel {
                 state_type initial_states() const;
 
                 activation_t activate(graph_t&, state_type&, const uint&) const;
+                activation_t activate(graph_t&, state_type&, const eigen_index_block) const;
 
                 template<typename K>
                 std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(K, utils::OntologyBranch::shared_branch, int);

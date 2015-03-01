@@ -1,8 +1,8 @@
 #ifndef RECURRENT_MAT_H
 #define RECURRENT_MAT_H
 
-#include "utils.h"
-#include "cnpy.h"
+#include "core/utils.h"
+#include "core/cnpy.h"
 #include <initializer_list>
 
 // #define EIGEN_USE_MKL_VML
@@ -18,12 +18,14 @@ DECLARE_bool(eigen_parallel);
 
 #define SMOOTH_DEFAULT 1e-6
 
-typedef Eigen::MatrixBase<Eigen::Matrix<unsigned int, Eigen::Dynamic, Eigen::Dynamic> >::ColXpr eigen_index_block;
-typedef Eigen::Matrix<unsigned int, Eigen::Dynamic, 1> eigen_index_vector;
-typedef std::shared_ptr<eigen_index_vector> shared_eigen_index_vector;
-typedef Eigen::MatrixWrapper<
-        Eigen::CwiseUnaryOp< Eigen::internal::scalar_add_op<unsigned int>, Eigen::ArrayWrapper<eigen_index_block> const > const > eigen_index_block_scalar;
-typedef std::vector<uint> index_std_vector;
+// typedef Eigen::MatrixBase<Eigen::Matrix<unsigned int, Eigen::Dynamic, Eigen::Dynamic> >::ColXpr eigen_index_block;
+// typedef Eigen::Matrix<unsigned int, Eigen::Dynamic, 1> eigen_index_vector;
+// typedef Eigen::MatrixWrapper<
+//         Eigen::CwiseUnaryOp< Eigen::internal::scalar_add_op<unsigned int>, Eigen::ArrayWrapper<eigen_index_block> const > const > eigen_index_block_scalar;
+// typedef std::vector<uint> index_std_vector;
+
+#include "core/Index.h"
+
 typedef std::size_t random_t;
 
 /**
@@ -66,8 +68,8 @@ template<typename T> class Mat {
                 mutable eigen_mat_view dw;
                 std::shared_ptr<std::string> name = NULL;
                 const random_t random_id;
-                Mat (int, int);
-                Mat (int, int, bool);
+                Mat (int n, int d);
+                Mat (int n, int d, bool empty);
                 /**
                 Mat<T>::Mat<T>
                 --------------
@@ -127,19 +129,19 @@ template<typename T> class Mat {
                 std::string& name : name the Mat should take on
 
                 */
-                void set_name(std::string&);
+                void set_name(std::string& newname);
                 /*
                 Set Name
                 --------
                 See `Mat<T>::set_name` above
                 */
-                void set_name(char*);
+                void set_name(char* newname);
                 /*
                 Set Name
                 --------
                 See `Mat<T>::set_name` above
                 */
-                void set_name(const char*);
+                void set_name(const char* newname);
                 // random matrices:
                 /*
                 Mat<T>::Mat<T>
@@ -163,7 +165,7 @@ template<typename T> class Mat {
 
                 See `Mat<T>::Mat(int, int, T, T)` for uniform distribution (below).
                 */
-                Mat (int, int, T);
+                Mat (int n, int d, T std);
                 /*
                 Mat<T>::Mat<T>
                 --------------
@@ -187,15 +189,15 @@ template<typename T> class Mat {
 
                 See `Mat<T>::Mat(int, int, T)` for normal distribution (above)
                 */
-                Mat (int, int, T, T);
+                Mat (int n, int d, T lower, T upper);
                 void npy_save(std::string fname, std::string mode = "w");
                 void npy_save(FILE*);
                 void npy_load(std::string fname);
                 void npy_load(FILE*);
                 void npy_load(cnpy::NpyArray&);
                 Mat (std::string fname);
-                static Mat RandMat(int, int, T);
-                static Mat Empty(int, int);
+                static Mat RandMat(int n, int d, T std);
+                static Mat Empty(int n, int d);
                 /**
                 Shallow Copy
                 ------------

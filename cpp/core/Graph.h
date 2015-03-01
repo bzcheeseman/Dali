@@ -168,8 +168,8 @@ template<typename T> class Graph {
                 shared_mat tanh(shared_mat);
                 shared_mat relu(shared_mat);
                 shared_mat mul(shared_mat, shared_mat);
-                shared_mat rows_pluck(shared_mat, index_std_vector&);
-                shared_mat rows_pluck(shared_mat, eigen_index_block);
+                shared_mat rows_pluck(shared_mat, Indexing::Index);
+                shared_mat rows_cols_pluck(shared_mat, Indexing::Index, Indexing::Index);
                 shared_mat row_pluck(shared_mat, int);
 };
 

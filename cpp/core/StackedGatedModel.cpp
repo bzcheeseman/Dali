@@ -538,9 +538,26 @@ typename StackedGatedModel<T>::activation_t StackedGatedModel<T>::activate(
 
         std::get<0>(out) = forward_LSTMs(G, input_vector, previous_state, cells);
         std::get<1>(out) = softmax(decoder.activate(G, std::get<0>(out).second[stack_size-1]));
-        std::get<2>(out) = memory->w(0);
+        std::get<2>(out) = memory;
 
         return out;
+}
+
+template<typename T>
+typename StackedGatedModel<T>::activation_t StackedGatedModel<T>::activate(
+    graph_t& G,
+    state_type& previous_state,
+    const eigen_index_block indices) const {
+    activation_t out;
+    auto input_vector = G.rows_pluck(embedding, indices);
+    auto memory       = gate.activate(G, input_vector, previous_state.second[stack_size-1]);
+    input_vector      = G.eltmul_broadcast_rowwise(input_vector, memory);
+
+    std::get<0>(out) = forward_LSTMs(G, input_vector, previous_state, cells);
+    std::get<1>(out) = softmax(decoder.activate(G, std::get<0>(out).second[stack_size-1]));
+    std::get<2>(out) = memory;
+
+    return out;
 }
 
 // Nested Templates !!

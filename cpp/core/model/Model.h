@@ -1,5 +1,5 @@
-#ifndef MODEL_H
-#define MODEL_H
+#ifndef CORE_MODEL_MODEL_H
+#define CORE_MODEL_MODEL_H
 
 #include <string>
 #include <vector>
@@ -8,20 +8,21 @@
 #include "core/Mat.h"
 #include "core/Graph.h"
 
-
+#define MAT Mat<REAL_t>
+#define SHARED_MAT std::shared_ptr<MAT>
+#define GRAPH Graph<REAL_t>
 
 namespace model {
     template<typename REAL_t>
     class Model {
         public:
-            typedef Mat<REAL_t> mat;
-            typedef std::shared_ptr<mat> shared_mat;
-            typedef Graph<REAL_t> graph_t;
-
             // Should append to parent parameters.
-            virtual std::vector<shared_mat> parameters() const = 0;
+            virtual std::vector<SHARED_MAT> parameters() const = 0;
 
-            virtual shared_mat activate(graph_t& G, shared_mat input) = 0;
+            virtual SHARED_MAT activate(GRAPH& G, SHARED_MAT input) = 0;
+
+            virtual SHARED_MAT operator() (GRAPH& G, SHARED_MAT input);
+
 
             // Save to file.
             void save(std::string path) const;
@@ -30,10 +31,11 @@ namespace model {
             void load(std::string path);
     };
 
-    /*class RecursiveModel {
+    template <typename REAL_t>
+    class RecurrentModel: public Model<REAL_t> {
         // Must call parent first.
-        void reset() = 0;
-    };*/
+        virtual void reset() = 0;
 
+    };
 }
 #endif

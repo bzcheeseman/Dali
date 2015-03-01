@@ -11,7 +11,7 @@
 #include "core/Graph.h"
 #include "core/Mat.h"
 #include "core/Reporting.h"
-#include "core/model/Map.h"
+#include "core/model/Recurrent.h"
 
 typedef double REAL_t;
 typedef Mat<double> mat;
@@ -22,60 +22,6 @@ using std::chrono::seconds;
 using std::make_shared;
 using std::max;
 using std::vector;
-
-class RnnMap {
-    int input_size;
-    int output_size;
-    int memory_size;
-
-    model::Layer<REAL_t> input_map;
-    model::Layer<REAL_t> output_map;
-    model::Layer<REAL_t> memory_map;
-    shared_mat first_memory;
-
-    shared_mat prev_memory;
-
-    public:
-        RnnMap(int input_size, int output_size, int memory_size, double bound=0.2) :
-                input_size(input_size),
-                output_size(output_size),
-                memory_size(memory_size),
-                input_map(input_size, memory_size, bound),
-                output_map(memory_size, output_size, bound),
-                memory_map(memory_size, memory_size, bound) {
-            first_memory = make_shared<mat>(memory_size, 1, -bound/2.0, bound/2.0);
-            reset();
-        }
-
-        void reset() {
-            prev_memory = first_memory;
-        }
-
-        // output is in range 0, 1
-        shared_mat f(Graph<double>& G, shared_mat input) {
-            shared_mat memory_in;
-            memory_in = memory_map(G, prev_memory);
-            shared_mat input_in = input_map(G, input);
-
-            shared_mat memory = G.tanh(G.add(input_in, memory_in));
-
-            prev_memory = memory;
-
-            return G.sigmoid(output_map(G, memory));
-        }
-
-        vector<shared_mat> parameters() const {
-            vector<shared_mat> res;
-
-            for(const model::Layer<REAL_t>& affine_map: {input_map, memory_map, output_map}) {
-                const auto& params = affine_map.parameters();
-                res.insert(res.end(), params.begin(), params.end());
-            }
-
-            return res;
-        }
-
-};
 
 
 int main( int argc, char* argv[]) {
@@ -110,8 +56,7 @@ int main( int argc, char* argv[]) {
 
     // TIP: Since we are doing output = map * input, we put output
     //      dimension first.
-    RnnMap rnn(INPUT_SIZE, OUTPUT_SIZE, MEMORY_SIZE);
-
+    model::RNN<double> rnn(INPUT_SIZE, OUTPUT_SIZE, MEMORY_SIZE);
     vector<shared_mat> params = rnn.parameters();
 
     // Solver::AdaDelta<double> solver(params);
@@ -136,6 +81,7 @@ int main( int argc, char* argv[]) {
             predicted_res_bits =    bitset<NUM_BITS>(predicted_res);
 
             Graph<double> G(true);
+
             rnn.reset();
 
             shared_mat error = make_shared<mat>(1, 1);
@@ -151,7 +97,7 @@ int main( int argc, char* argv[]) {
                 auto expected_output_i = make_shared<mat>(OUTPUT_SIZE, 1);
                 expected_output_i->w(0,0) = res_bits[i];
 
-                shared_mat output_i = rnn.f(G, input_i);
+                shared_mat output_i = rnn(G, input_i);
 
                 predicted_res_bits[i] = output_i->w(0,0) < 0.5 ? 0 : 1;
 

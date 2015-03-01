@@ -236,7 +236,7 @@ namespace std {
 }
 
 namespace utils {
-        template<typename T>
+    template<typename T>
     void save_matrices(std::vector<std::shared_ptr<Mat<T>>>&, std::string);
 
     template<typename T>

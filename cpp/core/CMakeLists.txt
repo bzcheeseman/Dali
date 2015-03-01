@@ -1,8 +1,8 @@
 set(CoreDir "${PROJECT_SOURCE_DIR}/core")
 
-file(GLOB CoreHeaders "${CoreDir}/*.h")
-file(GLOB CoreSources "${CoreDir}/*.cpp")
-file(GLOB CoreTemplates "${CoreDir}/*.cpp.template")
+file(GLOB_RECURSE CoreHeaders "${CoreDir}/*.h")
+file(GLOB_RECURSE CoreSources "${CoreDir}/*.cpp")
+file(GLOB_RECURSE CoreTemplates "${CoreDir}/*.cpp.template")
 
 # Remove tests from compilation
 file(GLOB CoreTestFile "${CoreDir}/tests.cpp")

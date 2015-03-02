@@ -379,8 +379,8 @@ int main( int argc, char* argv[]) {
         solvers.emplace_back(params, FLAGS_rho, 1e-9, 5.0);
     }
     int epoch = 0;
-    auto cost = std::numeric_limits<REAL_t>::infinity();
-    REAL_t new_cost;
+    REAL_t accuracy = 0.0;
+    REAL_t new_accuracy;
     Throttled t;
     while (cost > FLAGS_cutoff && patience < FLAGS_patience) {
         stringstream ss;
@@ -391,7 +391,7 @@ int main( int argc, char* argv[]) {
 
         for (int sentiment = 0; sentiment < NUM_SENTIMENTS; sentiment++) {
             for (int batch_id = 0; batch_id < FLAGS_epoch_batches; ++batch_id) {
-                pool->run([&thread_models, &journalist, &solvers, &datasets, sentiment, &cost, &batches_processed]() {
+                pool->run([&thread_models, &journalist, &solvers, &datasets, sentiment, &accuracy, &batches_processed]() {
                     auto& thread_model = thread_models[sentiment][ThreadPool::get_thread_number()];
                     auto& solver = solvers[sentiment];
 
@@ -410,7 +410,7 @@ int main( int argc, char* argv[]) {
                     G.backward(); // backpropagate
                     solver.step(thread_parameters, 0.0); // One step of gradient descent
 
-                    journalist.tick(++batches_processed, cost);
+                    journalist.tick(++batches_processed, accuracy);
                 });
             }
         }
@@ -429,14 +429,14 @@ int main( int argc, char* argv[]) {
         }
 
         journalist.done();
-        new_cost = average_error(models, validation_sets, total_valid_examples);
+        new_accuracy = average_error(models, validation_sets, total_valid_examples);
 
-        if (new_cost > cost) {
+        if (new_accuracy < accuracy) {
             patience +=1;
         } else {
             patience = 0;
         }
-        cost = new_cost;
+        accuracy = new_accuracy;
 
         t.maybe_run(seconds(600), [&models]() {
             int i = 0;

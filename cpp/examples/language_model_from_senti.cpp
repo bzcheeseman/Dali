@@ -49,7 +49,7 @@ const string label_names[] = {"--", "-", "=", "+", "++"};
 ThreadPool* pool;
 
 DEFINE_int32(minibatch, 100, "What size should be used for the minibatches ?");
-DEFINE_double(cutoff, 2.0,   "KL Divergence error where stopping is acceptable");
+DEFINE_double(cutoff, 91.0,   "KL Divergence error where stopping is acceptable");
 DEFINE_int32(patience, 5,    "How many unimproving epochs to wait through before witnessing progress ?");
 DEFINE_int32(epoch_batches, 3, "How many minibatches should each label's model do before doing cross-validation?");
 DEFINE_int32(num_reconstructions,  1,    "How many sentences to demo after each epoch.");
@@ -382,7 +382,7 @@ int main( int argc, char* argv[]) {
     REAL_t accuracy = 0.0;
     REAL_t new_accuracy;
     Throttled t;
-    while (cost > FLAGS_cutoff && patience < FLAGS_patience) {
+    while (accuracy < FLAGS_cutoff && patience < FLAGS_patience) {
         stringstream ss;
         ss << "Epoch " << ++epoch;
         atomic<int> batches_processed(0);

@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "core/babi.h"
+#include "core/Solver.h"
 #include "core/CrossEntropy.h"
 #include "core/Reporting.h"
 #include "core/StackedShortcutModel.h"

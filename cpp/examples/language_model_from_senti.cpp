@@ -15,6 +15,7 @@
 #include "core/ThreadPool.h"
 #include "core/BeamSearch.h"
 #include "core/SequenceProbability.h"
+#include "core/Solver.h"
 
 using std::vector;
 using std::make_shared;

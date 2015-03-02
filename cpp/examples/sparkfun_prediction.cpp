@@ -9,6 +9,7 @@
 #include "core/Reporting.h"
 #include "core/StackedGatedModel.h"
 #include "core/utils.h"
+#include "core/Solver.h"
 
 using std::ifstream;
 using std::istringstream;

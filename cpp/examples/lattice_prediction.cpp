@@ -9,6 +9,7 @@
 #include "core/StackedGatedModel.h"
 #include "core/utils.h"
 #include "core/Reporting.h"
+#include "core/Solver.h"
 
 
 DEFINE_string(lattice, "", "Where to load a lattice / Ontology from ?");

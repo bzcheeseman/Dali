@@ -19,6 +19,7 @@
 #include "core/utils.h"
 #include "core/Reporting.h"
 #include "core/BeamSearch.h"
+#include "core/Solver.h"
 
 DEFINE_int32(minibatch,            100,  "What size should be used for the minibatches ?");
 DEFINE_bool(sparse,                true, "Use sparse embedding");

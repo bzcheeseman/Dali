@@ -409,7 +409,7 @@ typename Graph<T>::shared_mat Graph<T>::hstack(const std::vector<shared_mat>& ma
         offset += mat->d;
     }
     if (needs_backprop)
-        backprop.emplace_back([&matrices, out]() {
+        backprop.emplace_back([matrices, out]() {
             int offset = 0;
             for (auto & mat : matrices) {
                 mat->dw.noalias() += out->dw.block(0, offset, mat->n, mat->d);
@@ -475,17 +475,14 @@ typename Graph<T>::shared_mat Graph<T>::vstack(std::initializer_list<shared_mat>
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::vstack(const std::vector<shared_mat>& matrices) {
-    int d = -1;
+    assert(matrices.size() > 0);
+    int d = matrices[0]->d;
     int n_total = 0;
     for (auto& mat : matrices) {
-        if (d == -1) {
-            d = mat->d;
-        } else {
-            if (mat->d != d) {
-                throw std::invalid_argument("Matrices cannot be horizontally stacked -- they do not have the same number of cols.");
-            }
+        if (mat->d != d) {
+            throw std::invalid_argument("Matrices cannot be horizontally stacked -- they do not have the same number of cols.");
         }
-        n_total+= mat->n;
+        n_total += mat->n;
     }
     auto out = std::make_shared<mat>(
         n_total,
@@ -498,7 +495,7 @@ typename Graph<T>::shared_mat Graph<T>::vstack(const std::vector<shared_mat>& ma
         offset += mat->n;
     }
     if (needs_backprop)
-        backprop.emplace_back([&matrices, out]() {
+        backprop.emplace_back([matrices, out]() {
             int offset = 0;
             for (auto & mat : matrices) {
                 mat->dw.noalias() += out->dw.block(offset,0, mat->n, mat->d);

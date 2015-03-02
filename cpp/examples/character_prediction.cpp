@@ -28,14 +28,14 @@ typedef Layer<REAL_t> classifier_t;
 typedef Mat<REAL_t> mat;
 typedef shared_ptr<mat> shared_mat;
 
-vector<vector<int>> get_character_sequences(const char* filename, int& prepad, int& postpad, int& vocab_size) {
+vector<vector<uint>> get_character_sequences(const char* filename, uint& prepad, uint& postpad, uint& vocab_size) {
         char ch;
         char linebreak = '\n';
         fstream file;
         file.open(filename);
-        vector<vector<int>> lines;
+        vector<vector<uint>> lines;
         lines.emplace_back(2);
-        vector<int>* line = &lines[0];
+        vector<uint>* line = &lines[0];
         line->push_back(prepad);
         while(file) {
                 ch = file.get();
@@ -49,7 +49,7 @@ vector<vector<int>> get_character_sequences(const char* filename, int& prepad, i
                 if (ch == EOF) {
                         break;
                 }
-                line->push_back(std::min(vocab_size-1, (int)ch));
+                line->push_back(std::min(vocab_size-1, (uint)ch));
         }
         return lines;
 }
@@ -57,7 +57,7 @@ vector<vector<int>> get_character_sequences(const char* filename, int& prepad, i
 template<typename T>
 T validation_error(
         StackedModel<T>& model,
-    vector<vector<int>>& data_set) {
+        vector<vector<uint>>& data_set) {
         Graph<T> G(false);
 
         auto initial_state = lstm::initial_states(model.hidden_sizes);
@@ -91,7 +91,7 @@ template<typename T>
 T cost_fun(
         Graph<T>& G,
         StackedModel<T>& model,
-    vector<int>& indices) {
+        vector<uint>& indices) {
 
         auto initial_state = lstm::initial_states(model.hidden_sizes);
         auto num_hidden_sizes = model.hidden_sizes.size();
@@ -133,17 +133,18 @@ int main (int argc, char *argv[]) {
                 param->npy_load(stdin);
         }
 */
-        auto prepad = 0;
-        auto postpad = FLAGS_vocab_size-1;
-        auto sentences = get_character_sequences("../paulgraham_text.txt", prepad, postpad, FLAGS_vocab_size);
+        uint prepad = 0;
+        uint postpad = FLAGS_vocab_size-1;
+        uint vocab_size = FLAGS_vocab_size;
+        auto sentences = get_character_sequences("../paulgraham_text.txt", prepad, postpad, vocab_size);
         int train_size = (int)(sentences.size() * 0.9);
         int valid_size = sentences.size() - train_size;
-        vector<vector<int>> train_set(sentences.begin(), sentences.begin() + train_size);
-        vector<vector<int>> valid_set(sentences.begin() + train_size, sentences.end());
+        vector<vector<uint>> train_set(sentences.begin(), sentences.begin() + train_size);
+        vector<vector<uint>> valid_set(sentences.begin() + train_size, sentences.end());
 
         static std::random_device rd;
-    static std::mt19937 seed(rd());
-    static std::uniform_int_distribution<> uniform(0, train_set.size() - 1);
+        static std::mt19937 seed(rd());
+        static std::uniform_int_distribution<> uniform(0, train_set.size() - 1);
 
 
         // Main training loop:

@@ -3,19 +3,21 @@
 #include <vector>
 
 #include "core/babi.h"
-#include "core/StackedShortcutModel.h"
 #include "core/CrossEntropy.h"
+#include "core/Reporting.h"
+#include "core/StackedShortcutModel.h"
 
-using std::vector;
-using std::string;
-using std::set;
-using utils::Vocab;
-using std::shared_ptr;
-using std::make_shared;
+using babi::Fact;
 using babi::Item;
 using babi::QA;
-using babi::Fact;
 using babi::Story;
+using std::make_shared;
+using std::set;
+using std::shared_ptr;
+using std::string;
+using std::vector;
+using utils::Timer;
+using utils::Vocab;
 
 class DumbModel: public babi::Model {
     set<string> tokens;
@@ -58,7 +60,7 @@ class MarginallyLessDumbModel: public babi::Model {
 
     const int TEXT_STACK_SIZE =      1;
     const int TEXT_HIDDEN_SIZE =    20;
-    const int HL_STACK_SIZE =      1;
+    const int HL_STACK_SIZE =      2;
     const int HL_HIDDEN_SIZE =    20;
     const int EMBEDDING_SIZE = 20;
 
@@ -127,12 +129,12 @@ class MarginallyLessDumbModel: public babi::Model {
             // TODO(szymon): Implement G.join method, so that we can join all the hidden
             // from different levels of stacks.
             // return G.join(out_state.second);
-            return G.hstack(out_state.second);
+            return G.vstack(out_state.second);
         }
 
         shared_mat activate_story(graph_t& G, const vector<shared_mat>& facts, shared_mat question) {
             auto state = story_model->initial_states();
-
+            utils::Timer a_timer("Forward");
             for (auto& fact: facts) {
                 state = forward_LSTMs(G,
                                       fact,
@@ -182,6 +184,7 @@ class MarginallyLessDumbModel: public babi::Model {
             shared_mat log_probs = predict_answer_distribution(G, facts, qa);
 
             uint answer_idx = vocab->word2index.at(qa->answer[0]);
+
             return cross_entropy(log_probs, answer_idx);
         }
 
@@ -192,30 +195,50 @@ class MarginallyLessDumbModel: public babi::Model {
             auto params = parameters();
 
             vector<Fact*> facts_so_far;
+
             Solver::AdaDelta<REAL_t> solver(params, 0.95, 1e-9, 5.0);
             for (auto& story : data) {
                 for(auto& item_ptr : story) {
                     if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
                         facts_so_far.push_back(f);
                     } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
-                        Graph<REAL_t> G;
+                        Graph<REAL_t> G(true);
                         error(G, facts_so_far, qa);
                         G.backward();
                     }
                 }
-                solver.step(params, 0.0);
+                facts_so_far.clear();
+                {
+                    utils::Timer t("solver_time");
+                    solver.step(params, 0.0);
+                }
             }
         }
 
-        void new_story() {
+        vector<vector<string>> story_so_far;
 
+        void new_story() {
+            story_so_far.clear();
         }
 
         void fact(const vector<string>& fact) {
-
+            story_so_far.push_back(fact);
         }
         vector<string> question(const vector<string>& question) {
-            return {};
+            graph_t G(false);
+            vector<shared_mat> fact_hiddens;
+
+            for (auto& fact: story_so_far) {
+                fact_hiddens.emplace_back(activate_words(G, *fact_model, fact));
+            }
+
+            shared_mat question_hidden = activate_words(G, *question_model, question);
+
+            shared_mat story_activation = activate_story(G, fact_hiddens, question_hidden);
+
+            int word_idx = argmax(story_activation);
+
+            return {vocab->index2word[word_idx]};
         }
 
 

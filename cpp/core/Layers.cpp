@@ -562,7 +562,8 @@ template<typename T>
 pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> forward_LSTMs(Graph<T>& G,
     shared_ptr<Mat<T>> input_vector,
     pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>>& previous_state,
-    const vector<LSTM<T>>& cells) {
+    const vector<LSTM<T>>& cells,
+    T drop_prob) {
 
     auto previous_state_cells = previous_state.first;
     auto previous_state_hiddens = previous_state.second;
@@ -578,7 +579,10 @@ pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> forward_LSTMs(Graph
 
     for (auto& layer : cells) {
 
-        auto layer_out = layer.activate(G, layer_input, *cell_iter, *hidden_iter);
+        auto layer_out = layer.activate(G,
+                                        G.dropout_normalized(layer_input, drop_prob),
+                                        *cell_iter,
+                                        *hidden_iter);
 
         out_state.first.push_back(layer_out.first);
         out_state.second.push_back(layer_out.second);
@@ -598,7 +602,8 @@ pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> forward_LSTMs(Graph
     shared_ptr<Mat<T>> input_vector,
     pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>>& previous_state,
     const LSTM<T>& base_cell,
-    const vector<ShortcutLSTM<T>>& cells) {
+    const vector<ShortcutLSTM<T>>& cells,
+    T drop_prob) {
 
     auto previous_state_cells = previous_state.first;
     auto previous_state_hiddens = previous_state.second;
@@ -626,7 +631,11 @@ pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> forward_LSTMs(Graph
         // The next cell up gets both the base input (input_vector)
         // and the cell below's input activation (layer_input)
         // => façon Alex Graves
-        layer_out = layer.activate(G, layer_input, input_vector, *cell_iter, *hidden_iter);
+        layer_out = layer.activate(G,
+                                   G.dropout_normalized(layer_input, drop_prob),
+                                   G.dropout_normalized(input_vector, drop_prob),
+                                   *cell_iter,
+                                   *hidden_iter);
 
         out_state.first.push_back(layer_out.first);
         out_state.second.push_back(layer_out.second);
@@ -685,21 +694,25 @@ template std::vector<ShortcutLSTM<double>> StackedCells <ShortcutLSTM<double>>(c
 template pair<vector<shared_ptr<Mat<double>>>, vector<shared_ptr<Mat<double>>>> forward_LSTMs(Graph<double>&,
     shared_ptr<Mat<double>>,
     pair<vector<shared_ptr<Mat<double>>>, vector<shared_ptr<Mat<double>>>>&,
-    const vector<LSTM<double>>&);
+    const vector<LSTM<double>>&,
+    double);
 
 template pair<vector<shared_ptr<Mat<float>>>, vector<shared_ptr<Mat<float>>>> forward_LSTMs(Graph<float>&,
     shared_ptr<Mat<float>>,
     pair<vector<shared_ptr<Mat<float>>>, vector<shared_ptr<Mat<float>>>>&,
-    const vector<LSTM<float>>&);
+    const vector<LSTM<float>>&,
+    float);
 
 template pair<vector<shared_ptr<Mat<double>>>, vector<shared_ptr<Mat<double>>>> forward_LSTMs(Graph<double>&,
     shared_ptr<Mat<double>>,
     pair<vector<shared_ptr<Mat<double>>>, vector<shared_ptr<Mat<double>>>>&,
     const LSTM<double>&,
-    const vector<ShortcutLSTM<double>>&);
+    const vector<ShortcutLSTM<double>>&,
+    double);
 
 template pair<vector<shared_ptr<Mat<float>>>, vector<shared_ptr<Mat<float>>>> forward_LSTMs(Graph<float>&,
     shared_ptr<Mat<float>>,
     pair<vector<shared_ptr<Mat<float>>>, vector<shared_ptr<Mat<float>>>>&,
     const LSTM<float>&,
-    const vector<ShortcutLSTM<float>>&);
+    const vector<ShortcutLSTM<float>>&,
+    float);

@@ -208,6 +208,8 @@ template<typename T> class Graph {
 
                 **/
                 shared_mat dropout(shared_mat, T);
+                shared_mat dropout_normalized(shared_mat, T);
+
                 /**
                 Fast Dropout
                 ------------

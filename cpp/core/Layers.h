@@ -33,7 +33,7 @@ class Layer {
         or deep copy of the underlying parameters.
 
         If the copy is shallow then the parameters are shared
-        but separate gradients `dw` are used for each of 
+        but separate gradients `dw` are used for each of
         thread Layer<T>.
 
         Shallow copies are useful for Hogwild and multithreaded
@@ -116,7 +116,7 @@ class StackedInputLayer {
         or deep copy of the underlying parameters.
 
         If the copy is shallow then the parameters are shared
-        but separate gradients `dw` are used for each of 
+        but separate gradients `dw` are used for each of
         thread StackedInputLayer<T>.
 
         Shallow copies are useful for Hogwild and multithreaded
@@ -153,7 +153,7 @@ class StackedInputLayer {
 
         Inputs
         ------
-    
+
                                   Graph<T>& G : computation graph, keeps track of
                                                 steps for backpropagation
         const std::vector<shared_mat>& inputs : vectors to project using this
@@ -175,12 +175,12 @@ class StackedInputLayer {
 
         Inputs
         ------
-    
+
                                   Graph<T>& G : computation graph, keeps track of
                                                 steps for backpropagation
                                    shared_mat : separate input vector (convenience
                                                 for shortcut stacked LSTMs that
-                                                typically separate their hidden 
+                                                typically separate their hidden
                                                 vectors from the inputs)
         const std::vector<shared_mat>& inputs : other vectors to project using this
                                                 layer's matrices and bias.
@@ -245,7 +245,7 @@ class RNN {
         or deep copy of the underlying parameters.
 
         If the copy is shallow then the parameters are shared
-        but separate gradients `dw` are used for each of 
+        but separate gradients `dw` are used for each of
         thread RNN<T>.
 
         Shallow copies are useful for Hogwild and multithreaded
@@ -299,7 +299,7 @@ class RNN {
 template<typename T>
 class ShortcutRNN {
     /*
-    Combine the input of a hidden vector, an input vector, and 
+    Combine the input of a hidden vector, an input vector, and
     a second input vector (a shortcut) into a single matrix
     product sum, and also take an input from another layer as
     a "shortcut", s:
@@ -331,7 +331,7 @@ class ShortcutRNN {
         or deep copy of the underlying parameters.
 
         If the copy is shallow then the parameters are shared
-        but separate gradients `dw` are used for each of 
+        but separate gradients `dw` are used for each of
         thread ShortcutRNN<T>.
 
         Shallow copies are useful for Hogwild and multithreaded
@@ -400,7 +400,7 @@ class GatedInput {
         or deep copy of the underlying parameters.
 
         If the copy is shallow then the parameters are shared
-        but separate gradients `dw` are used for each of 
+        but separate gradients `dw` are used for each of
         thread GatedInput<T>.
 
         Shallow copies are useful for Hogwild and multithreaded
@@ -486,7 +486,7 @@ class LSTM {
         or deep copy of the underlying parameters.
 
         If the copy is shallow then the parameters are shared
-        but separate gradients `dw` are used for each of 
+        but separate gradients `dw` are used for each of
         thread LSTM<T>.
 
         Shallow copies are useful for Hogwild and multithreaded
@@ -623,13 +623,15 @@ template<typename T>
 std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>> forward_LSTMs(Graph<T>&,
     std::shared_ptr<Mat<T>>,
     std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>>&,
-    const std::vector<LSTM<T>>&);
+    const std::vector<LSTM<T>>&,
+    T drop_prob=0.0);
 
 template<typename T>
 std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>> forward_LSTMs(Graph<T>&,
     std::shared_ptr<Mat<T>>,
     std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>>&,
     const LSTM<T>&,
-    const std::vector<ShortcutLSTM<T>>&);
+    const std::vector<ShortcutLSTM<T>>&,
+    T drop_prob=0.0);
 
 #endif

@@ -761,6 +761,12 @@ typename Graph<T>::shared_mat Graph<T>::dropout(
     shared_mat matrix,
     T drop_prob) {
 
+    assert(0.0 <= drop_prob && drop_prob <= 1.0);
+
+    // no dropout happens.
+    if (drop_prob < 1e-6)
+        return matrix;
+
     auto out = std::make_shared<mat>(
         matrix->n,
         matrix->d,
@@ -779,6 +785,50 @@ typename Graph<T>::shared_mat Graph<T>::dropout(
 
     for (int i = 0; i < matrix->n * matrix->d;++i) {
         (*bool_ptr) = distribution(generator) ? 1.0 : 0.0;
+        (*out_ptr) = (*bool_ptr) > 0 ? *data_ptr : 0.0;
+        out_ptr++;
+        data_ptr++;
+        bool_ptr++;
+    }
+
+    if (needs_backprop) {
+        backprop.emplace_back([matrix, out, bool_mat](){
+            matrix->dw += (out->dw.array() * (*bool_mat).array()).matrix();
+        });
+    }
+    return out;
+}
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::dropout_normalized(
+    shared_mat matrix,
+    T drop_prob) {
+
+    assert(0.0 <= drop_prob && drop_prob <= 1.0);
+
+    // no dropout happens.
+    if (drop_prob < 1e-6)
+        return matrix;
+
+    auto out = std::make_shared<mat>(
+        matrix->n,
+        matrix->d,
+        true);
+
+    auto bool_mat = std::make_shared<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>(matrix->n, matrix->d);
+
+    std::default_random_engine generator;
+    std::bernoulli_distribution distribution(1.0 - drop_prob);
+    std::random_device rd;
+    generator.seed(rd());
+
+    auto data_ptr = matrix->w.data();
+    auto out_ptr  = out->w.data();
+    auto bool_ptr = bool_mat->data();
+
+    T normalized_drop_prob = 1.0 / (1.0 - drop_prob);
+    for (int i = 0; i < matrix->n * matrix->d;++i) {
+        (*bool_ptr) = distribution(generator) ? normalized_drop_prob : 0.0;
         (*out_ptr) = (*bool_ptr) > 0 ? *data_ptr : 0.0;
         out_ptr++;
         data_ptr++;

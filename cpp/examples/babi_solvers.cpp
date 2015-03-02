@@ -64,9 +64,13 @@ class MarginallyLessDumbModel: public babi::Model {
     typedef StackedShortcutModel<REAL_t> model_t;
 
     const int TEXT_STACK_SIZE =      2;
-    const int TEXT_HIDDEN_SIZE =    15;
+    const int TEXT_HIDDEN_SIZE =    30;
+    const REAL_t TEXT_DROPOUT = 0.2;
+
     const int HL_STACK_SIZE =      4;
-    const int HL_HIDDEN_SIZE =    10;
+    const int HL_HIDDEN_SIZE =    20;
+    const REAL_t HL_DROPOUT = 0.5;
+
     const int EMBEDDING_SIZE = 30;
 
     shared_ptr<Vocab> vocab;
@@ -145,20 +149,23 @@ class MarginallyLessDumbModel: public babi::Model {
                                       fact,
                                       state,
                                       story_model->base_cell,
-                                      story_model->cells);
+                                      story_model->cells,
+                                      TEXT_DROPOUT);
             }
 
             state = forward_LSTMs(G,
                                   question,
                                   state,
                                   story_model->base_cell,
-                                  story_model->cells);
+                                  story_model->cells,
+                                  TEXT_DROPOUT);
 
             state = forward_LSTMs(G,
                                   start_prediction,
                                   state,
                                   story_model->base_cell,
-                                  story_model->cells);
+                                  story_model->cells,
+                                  HL_DROPOUT);
 
             auto log_probs = story_model->decoder.activate(G,
                                                            start_prediction,

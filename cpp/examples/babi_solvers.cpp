@@ -63,10 +63,10 @@ class MarginallyLessDumbModel: public babi::Model {
     typedef StackedShortcutModel<REAL_t> model_t;
 
     const int TEXT_STACK_SIZE =      2;
-    const int TEXT_HIDDEN_SIZE =    50;
-    const int HL_STACK_SIZE =      3;
-    const int HL_HIDDEN_SIZE =    50;
-    const int EMBEDDING_SIZE = 20;
+    const int TEXT_HIDDEN_SIZE =    15;
+    const int HL_STACK_SIZE =      4;
+    const int HL_HIDDEN_SIZE =    10;
+    const int EMBEDDING_SIZE = 30;
 
     shared_ptr<Vocab> vocab;
 
@@ -224,7 +224,7 @@ class MarginallyLessDumbModel: public babi::Model {
 
         void train(const vector<babi::Story>& data) {
             const float TRAINING_FRAC = 0.9;
-            const float IMPROVE_EPS = 0.002; // good one: 0.003
+            const float IMPROVE_EPS = 0.0001; // good one: 0.003
             vocab_from_training(data);
             int training_size = (int)(TRAINING_FRAC * data.size());
             std::vector<babi::Story> train(data.begin(), data.begin() + training_size);

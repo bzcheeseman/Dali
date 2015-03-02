@@ -75,6 +75,13 @@ namespace Indexing {
         w = make_shared<EigenIndexBlockIndex>(vec);
     }
 
+    Index::Index(eigen_segment vec) {
+        w = make_shared<EigenIndexBlockIndex>(vec);
+    }
+    Index::Index(eigen_segment_scalar vec) {
+        w = make_shared<EigenIndexBlockIndex>(vec);
+    }
+
     Index Index::arange(uint start, uint end_non_inclusive) {
         assert(start < end_non_inclusive);
         auto internal = make_shared<OwnershipVectorIndex>(std::initializer_list<uint>({}));
@@ -144,6 +151,7 @@ namespace Indexing {
     EigenIndexVectorIndex::EigenIndexVectorIndex(eigen_index_vector& vec) : w(vec) {
     }
 
+
     const ind_t* EigenIndexBlockIndex::data() const {
         return w.data();
     }
@@ -163,6 +171,10 @@ namespace Indexing {
     EigenIndexBlockIndex::EigenIndexBlockIndex(eigen_index_block_scalar vec) : w(vec) {
     }
     EigenIndexBlockIndex::EigenIndexBlockIndex(eigen_index_block vec) : w(vec) {
+    }
+    EigenIndexBlockIndex::EigenIndexBlockIndex(eigen_segment vec) : w(vec) {
+    }
+    EigenIndexBlockIndex::EigenIndexBlockIndex(eigen_segment_scalar vec) : w(vec) {
     }
 
 }

@@ -32,7 +32,6 @@ typename Seq<T>::SeqIter Seq<T>::end() {
     return seq.end();
 }
 
-
 template<typename T>
 typename Seq<T>::SeqConstIter Seq<T>::begin() const {
     return seq.begin();

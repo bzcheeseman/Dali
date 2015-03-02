@@ -482,17 +482,16 @@ StackedGatedModel<T> StackedGatedModel<T>::shallow_copy() const {
 }
 
 template<typename T>
-template<typename K>
 typename StackedGatedModel<T>::state_type StackedGatedModel<T>::get_final_activation(
         graph_t& G,
-        const K& example) const {
+        Indexing::Index example) const {
         shared_mat input_vector;
         shared_mat memory;
         auto initial_state = initial_states();
-        auto n = example.cols() * example.rows();
+        auto n = example.size();
         for (uint i = 0; i < n; ++i) {
                 // pick this letter from the embedding
-                input_vector  = G.row_pluck(embedding, example(i));
+                input_vector  = G.row_pluck(embedding, example[i]);
                 memory        = gate.activate(G, input_vector, initial_state.second[0]);
                 input_vector  = G.eltmul_broadcast_rowwise(input_vector, memory);
                 // pass this letter to the LSTM for processing
@@ -562,9 +561,8 @@ typename StackedGatedModel<T>::activation_t StackedGatedModel<T>::activate(
 
 // Nested Templates !!
 template<typename T>
-template<typename K>
 std::vector<int> StackedGatedModel<T>::reconstruct(
-    K example,
+    Indexing::Index example,
     int eval_steps,
     int symbol_offset) {
 
@@ -596,21 +594,19 @@ typename StackedGatedModel<T>::state_type StackedGatedModel<T>::initial_states()
 }
 
 template<typename T>
-template<typename K>
 std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<T>::reconstruct_lattice(
-    K example,
+    Indexing::Index example,
     utils::OntologyBranch::shared_branch root,
     int eval_steps) {
-
         graph_t G(false);
         shared_mat input_vector;
         shared_mat memory;
         auto pos = root;
         auto initial_state = initial_states();
-        auto n = example.cols() * example.rows();
+        auto n = example.size();
         for (uint i = 0; i < n; ++i) {
                 // pick this letter from the embedding
-                input_vector  = G.row_pluck(embedding, example(i));
+                input_vector  = G.row_pluck(embedding, example[i]);
                 memory        = gate.activate(G, input_vector, initial_state.second[0]);
                 input_vector  = G.eltmul_broadcast_rowwise(input_vector, memory);
                 // pass this letter to the LSTM for processing
@@ -640,113 +636,37 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<T>::reconstr
 
 // Nested Templates !!
 template<typename T>
-template<typename K>
 string StackedGatedModel<T>::reconstruct_string(
-    K example,
+    Indexing::Index example,
     const utils::Vocab& lookup_table,
     int eval_steps,
     int symbol_offset) {
         auto reconstruction = reconstruct(example, eval_steps, symbol_offset);
         stringstream rec;
         for (auto& cat : reconstruction) {
-                rec << (
-                        (cat < lookup_table.index2word.size()) ?
-                                lookup_table.index2word.at(cat) :
-                                (
-                                        cat == lookup_table.index2word.size() ? "**END**" : "??"
-                                )
-                        ) << ", ";
+            rec << (
+                (cat < lookup_table.index2word.size()) ?
+                    lookup_table.index2word.at(cat) :
+                    (
+                        cat == lookup_table.index2word.size() ? "**END**" : "??"
+                    )
+                ) << ", ";
         }
         return rec.str();
 }
 
 // Nested Templates !!
 template<typename T>
-template<typename K>
 string StackedGatedModel<T>::reconstruct_lattice_string(
-    K example,
+    Indexing::Index example,
     utils::OntologyBranch::shared_branch root,
     int eval_steps) {
         auto reconstruction = reconstruct_lattice(example, root, eval_steps);
         stringstream rec;
         for (auto& cat : reconstruction)
-                rec << ((&(*cat) == &(*root)) ? "⟲" : cat->name) << ", ";
+            rec << ((&(*cat) == &(*root)) ? "⟲" : cat->name) << ", ";
         return rec.str();
 }
-
-typedef Eigen::Block< Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic>, 1, Eigen::Dynamic, !Eigen::RowMajor> index_row;
-typedef Eigen::VectorBlock< index_row, Eigen::Dynamic> sliced_row;
-
-typedef Eigen::Block< Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic>, Eigen::Dynamic, 1, !Eigen::RowMajor> index_col;
-typedef Eigen::VectorBlock< index_col, Eigen::Dynamic> sliced_col;
-
-template string StackedGatedModel<float>::reconstruct_string(sliced_row, const utils::Vocab&, int, int);
-template string StackedGatedModel<double>::reconstruct_string(sliced_row, const utils::Vocab&, int, int);
-
-template string StackedGatedModel<float>::reconstruct_string(index_row, const utils::Vocab&, int, int);
-template string StackedGatedModel<double>::reconstruct_string(index_row, const utils::Vocab&, int, int);
-
-template string StackedGatedModel<float>::reconstruct_string(sliced_col, const utils::Vocab&, int, int);
-template string StackedGatedModel<double>::reconstruct_string(sliced_col, const utils::Vocab&, int, int);
-
-template string StackedGatedModel<float>::reconstruct_string(index_col, const utils::Vocab&, int, int);
-template string StackedGatedModel<double>::reconstruct_string(index_col, const utils::Vocab&, int, int);
-
-template vector<int> StackedGatedModel<float>::reconstruct(sliced_row, int, int);
-template vector<int> StackedGatedModel<double>::reconstruct(sliced_row, int, int);
-
-template vector<int> StackedGatedModel<float>::reconstruct(index_row, int, int);
-template vector<int> StackedGatedModel<double>::reconstruct(index_row, int, int);
-
-template vector<int> StackedGatedModel<float>::reconstruct(sliced_col, int, int);
-template vector<int> StackedGatedModel<double>::reconstruct(sliced_col, int, int);
-
-template vector<int> StackedGatedModel<float>::reconstruct(index_col, int, int);
-template vector<int> StackedGatedModel<double>::reconstruct(index_col, int, int);
-
-template StackedGatedModel<double>::state_type StackedGatedModel<double>::get_final_activation(Graph<double>&, const index_col&) const;
-template StackedGatedModel<double>::state_type StackedGatedModel<double>::get_final_activation(Graph<double>&, const index_row&) const;
-template StackedGatedModel<double>::state_type StackedGatedModel<double>::get_final_activation(Graph<double>&, const sliced_row&) const;
-template StackedGatedModel<double>::state_type StackedGatedModel<double>::get_final_activation(Graph<double>&, const sliced_col&) const;
-template StackedGatedModel<double>::state_type StackedGatedModel<double>::get_final_activation(Graph<double>&, const eigen_index_block_scalar&) const;
-
-template StackedGatedModel<float>::state_type StackedGatedModel<float>::get_final_activation(Graph<float>&, const index_col&) const;
-template StackedGatedModel<float>::state_type StackedGatedModel<float>::get_final_activation(Graph<float>&, const index_row&) const;
-template StackedGatedModel<float>::state_type StackedGatedModel<float>::get_final_activation(Graph<float>&, const sliced_row&) const;
-template StackedGatedModel<float>::state_type StackedGatedModel<float>::get_final_activation(Graph<float>&, const sliced_col&) const;
-template StackedGatedModel<float>::state_type StackedGatedModel<float>::get_final_activation(Graph<float>&, const eigen_index_block_scalar&) const;
-
-typedef Eigen::VectorBlock< Eigen::Matrix<uint, Eigen::Dynamic, 1>, Eigen::Dynamic> vector_block;
-typedef Eigen::VectorBlock< Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic>, Eigen::Dynamic> submatrix_block;
-
-template StackedGatedModel<float>::state_type StackedGatedModel<float>::get_final_activation(Graph<float>&, const vector_block&) const;
-template StackedGatedModel<double>::state_type StackedGatedModel<double>::get_final_activation(Graph<double>&, const vector_block&) const;
-template StackedGatedModel<float>::state_type StackedGatedModel<float>::get_final_activation(Graph<float>&, const submatrix_block&) const;
-template StackedGatedModel<double>::state_type StackedGatedModel<double>::get_final_activation(Graph<double>&, const submatrix_block&) const;
-
-template vector<utils::OntologyBranch::shared_branch> StackedGatedModel<float>::reconstruct_lattice(sliced_row, utils::OntologyBranch::shared_branch, int);
-template vector<utils::OntologyBranch::shared_branch> StackedGatedModel<double>::reconstruct_lattice(sliced_row, utils::OntologyBranch::shared_branch, int);
-
-template vector<utils::OntologyBranch::shared_branch> StackedGatedModel<float>::reconstruct_lattice(index_row, utils::OntologyBranch::shared_branch, int);
-template vector<utils::OntologyBranch::shared_branch> StackedGatedModel<double>::reconstruct_lattice(index_row, utils::OntologyBranch::shared_branch, int);
-
-template vector<utils::OntologyBranch::shared_branch> StackedGatedModel<float>::reconstruct_lattice(sliced_col, utils::OntologyBranch::shared_branch, int);
-template vector<utils::OntologyBranch::shared_branch> StackedGatedModel<double>::reconstruct_lattice(sliced_col, utils::OntologyBranch::shared_branch, int);
-
-template vector<utils::OntologyBranch::shared_branch> StackedGatedModel<float>::reconstruct_lattice(index_col, utils::OntologyBranch::shared_branch, int);
-template vector<utils::OntologyBranch::shared_branch> StackedGatedModel<double>::reconstruct_lattice(index_col, utils::OntologyBranch::shared_branch, int);
-
-template string StackedGatedModel<float>::reconstruct_lattice_string(sliced_row, utils::OntologyBranch::shared_branch, int);
-template string StackedGatedModel<double>::reconstruct_lattice_string(sliced_row, utils::OntologyBranch::shared_branch, int);
-
-template string StackedGatedModel<float>::reconstruct_lattice_string(index_row, utils::OntologyBranch::shared_branch, int);
-template string StackedGatedModel<double>::reconstruct_lattice_string(index_row, utils::OntologyBranch::shared_branch, int);
-
-template string StackedGatedModel<float>::reconstruct_lattice_string(sliced_col, utils::OntologyBranch::shared_branch, int);
-template string StackedGatedModel<double>::reconstruct_lattice_string(sliced_col, utils::OntologyBranch::shared_branch, int);
-
-template string StackedGatedModel<float>::reconstruct_lattice_string(index_col, utils::OntologyBranch::shared_branch, int);
-template string StackedGatedModel<double>::reconstruct_lattice_string(index_col, utils::OntologyBranch::shared_branch, int);
 
 template class StackedGatedModel<float>;
 template class StackedGatedModel<double>;

@@ -357,27 +357,24 @@ StackedShortcutModel<T> StackedShortcutModel<T>::shallow_copy() const {
 }
 
 template<typename T>
-template<typename K>
 typename StackedShortcutModel<T>::state_type StackedShortcutModel<T>::get_final_activation(
         graph_t& G,
-        const K& example) const {
+        Indexing::Index example) const {
         shared_mat input_vector;
         auto initial_state = initial_states();
-        auto n = example.cols() * example.rows();
+        auto n = example.size();
         for (uint i = 0; i < n; ++i) {
-                // pick this letter from the embedding
-                input_vector  = G.row_pluck(embedding, example(i));
-                // pass this letter to the LSTM for processing
-                initial_state = forward_LSTMs(G, input_vector, initial_state, base_cell, cells);
+            // pick this letter from the embedding
+            input_vector  = G.row_pluck(embedding, example[i]);
+            // pass this letter to the LSTM for processing
+            initial_state = forward_LSTMs(G, input_vector, initial_state, base_cell, cells);
         }
         return initial_state;
 }
 
-// Nested Templates !!
 template<typename T>
-template<typename K>
 std::vector<int> StackedShortcutModel<T>::reconstruct(
-    K example,
+    Indexing::Index example,
     int eval_steps,
     int symbol_offset) {
 
@@ -386,11 +383,11 @@ std::vector<int> StackedShortcutModel<T>::reconstruct(
         auto initial_state = get_final_activation(G, example);
         vector<int> outputs;
 
-        auto input_vector = G.row_pluck(embedding, example((example.cols() * example.rows()) -1));
+        auto input_vector = G.row_pluck(embedding, example[example.size() -1]);
         #ifdef SHORTCUT_DECODE_ACROSS_LAYERS
-                auto last_symbol = argmax(decoder.activate(G, input_vector, initial_state.second));
+            auto last_symbol = argmax(decoder.activate(G, input_vector, initial_state.second));
         #else
-                auto last_symbol = argmax(decoder.activate(G, initial_state.second[initial_state.second.size()-1] ));
+            auto last_symbol = argmax(decoder.activate(G, initial_state.second[initial_state.second.size()-1] ));
         #endif
         outputs.emplace_back(last_symbol);
         last_symbol += symbol_offset;
@@ -446,9 +443,8 @@ typename StackedShortcutModel<T>::activation_t StackedShortcutModel<T>::activate
 }
 
 template<typename T>
-template<typename K>
 std::vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<T>::reconstruct_lattice(
-    K example,
+    Indexing::Index example,
     utils::OntologyBranch::shared_branch root,
     int eval_steps) {
 
@@ -457,13 +453,13 @@ std::vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<T>::recon
         shared_mat memory;
         auto pos = root;
         auto initial_state = initial_states();
-        auto n = example.cols() * example.rows();
+        auto n = example.size();
         for (uint i = 0; i < n; ++i) {
-                // pick this letter from the embedding
-                input_vector  = G.row_pluck(embedding, example(i));
-                // pass this letter to the LSTM for processing
-                initial_state = forward_LSTMs(G, input_vector, initial_state, base_cell, cells);
-                // decoder takes as input the final hidden layer's activation:
+            // pick this letter from the embedding
+            input_vector  = G.row_pluck(embedding, example[i]);
+            // pass this letter to the LSTM for processing
+            initial_state = forward_LSTMs(G, input_vector, initial_state, base_cell, cells);
+            // decoder takes as input the final hidden layer's activation:
         }
         vector<utils::OntologyBranch::shared_branch> outputs;
         // Take the argmax over the available options (0 for go back to
@@ -479,46 +475,42 @@ std::vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<T>::recon
         // add this decision to the output :
         outputs.emplace_back(pos);
         for (uint j = 0; j < eval_steps - 1; j++) {
-                input_vector  = G.row_pluck(embedding, pos->id);
-                initial_state = forward_LSTMs(G, input_vector, initial_state, base_cell, cells);
-                #ifdef SHORTCUT_DECODE_ACROSS_LAYERS
-                        last_turn     = argmax_slice(decoder.activate(G, input_vector, initial_state.second), 0, pos->children.size() + 1);
-                #else
-                        last_turn     = argmax_slice(decoder.activate(G, initial_state.second[initial_state.second.size() - 1] ), 0, pos->children.size() + 1);
-                #endif
-                pos           = (last_turn == 0) ? root : pos->children[last_turn-1];
-                outputs.emplace_back(pos);
+            input_vector  = G.row_pluck(embedding, pos->id);
+            initial_state = forward_LSTMs(G, input_vector, initial_state, base_cell, cells);
+            #ifdef SHORTCUT_DECODE_ACROSS_LAYERS
+                last_turn = argmax_slice(decoder.activate(G, input_vector, initial_state.second), 0, pos->children.size() + 1);
+            #else
+                last_turn = argmax_slice(decoder.activate(G, initial_state.second[initial_state.second.size() - 1] ), 0, pos->children.size() + 1);
+            #endif
+            pos = (last_turn == 0) ? root : pos->children[last_turn-1];
+            outputs.emplace_back(pos);
         }
         return outputs;
 }
 
-// Nested Templates !!
 template<typename T>
-template<typename K>
 string StackedShortcutModel<T>::reconstruct_string(
-    K example,
+    Indexing::Index example,
     const utils::Vocab& lookup_table,
     int eval_steps,
     int symbol_offset) {
         auto reconstruction = reconstruct(example, eval_steps, symbol_offset);
         stringstream rec;
         for (auto& cat : reconstruction) {
-                rec << (
-                        (cat < lookup_table.index2word.size()) ?
-                                lookup_table.index2word.at(cat) :
-                                (
-                                        cat == lookup_table.index2word.size() ? "**END**" : "??"
-                                )
-                        ) << ", ";
+            rec << (
+                (cat < lookup_table.index2word.size()) ?
+                        lookup_table.index2word.at(cat) :
+                        (
+                            cat == lookup_table.index2word.size() ? "**END**" : "??"
+                        )
+                ) << ", ";
         }
         return rec.str();
 }
 
-// Nested Templates !!
 template<typename T>
-template<typename K>
 string StackedShortcutModel<T>::reconstruct_lattice_string(
-    K example,
+    Indexing::Index example,
     utils::OntologyBranch::shared_branch root,
     int eval_steps) {
         auto reconstruction = reconstruct_lattice(example, root, eval_steps);
@@ -527,80 +519,6 @@ string StackedShortcutModel<T>::reconstruct_lattice_string(
                 rec << ((&(*cat) == &(*root)) ? "⟲" : cat->name) << ", ";
         return rec.str();
 }
-
-typedef Eigen::Block< Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic>, 1, Eigen::Dynamic, !Eigen::RowMajor> index_row;
-typedef Eigen::VectorBlock< index_row, Eigen::Dynamic> sliced_row;
-
-typedef Eigen::Block< Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic>, Eigen::Dynamic, 1, !Eigen::RowMajor> index_col;
-typedef Eigen::VectorBlock< index_col, Eigen::Dynamic> sliced_col;
-
-template string StackedShortcutModel<float>::reconstruct_string(sliced_row, const utils::Vocab&, int, int);
-template string StackedShortcutModel<double>::reconstruct_string(sliced_row, const utils::Vocab&, int, int);
-
-template string StackedShortcutModel<float>::reconstruct_string(index_row, const utils::Vocab&, int, int);
-template string StackedShortcutModel<double>::reconstruct_string(index_row, const utils::Vocab&, int, int);
-
-template string StackedShortcutModel<float>::reconstruct_string(sliced_col, const utils::Vocab&, int, int);
-template string StackedShortcutModel<double>::reconstruct_string(sliced_col, const utils::Vocab&, int, int);
-
-template string StackedShortcutModel<float>::reconstruct_string(index_col, const utils::Vocab&, int, int);
-template string StackedShortcutModel<double>::reconstruct_string(index_col, const utils::Vocab&, int, int);
-
-template vector<int> StackedShortcutModel<float>::reconstruct(sliced_row, int, int);
-template vector<int> StackedShortcutModel<double>::reconstruct(sliced_row, int, int);
-
-template vector<int> StackedShortcutModel<float>::reconstruct(index_row, int, int);
-template vector<int> StackedShortcutModel<double>::reconstruct(index_row, int, int);
-
-template vector<int> StackedShortcutModel<float>::reconstruct(sliced_col, int, int);
-template vector<int> StackedShortcutModel<double>::reconstruct(sliced_col, int, int);
-
-template vector<int> StackedShortcutModel<float>::reconstruct(index_col, int, int);
-template vector<int> StackedShortcutModel<double>::reconstruct(index_col, int, int);
-
-template StackedShortcutModel<double>::state_type StackedShortcutModel<double>::get_final_activation(Graph<double>&, const index_col&) const;
-template StackedShortcutModel<double>::state_type StackedShortcutModel<double>::get_final_activation(Graph<double>&, const index_row&) const;
-template StackedShortcutModel<double>::state_type StackedShortcutModel<double>::get_final_activation(Graph<double>&, const sliced_row&) const;
-template StackedShortcutModel<double>::state_type StackedShortcutModel<double>::get_final_activation(Graph<double>&, const sliced_col&) const;
-template StackedShortcutModel<double>::state_type StackedShortcutModel<double>::get_final_activation(Graph<double>&, const eigen_index_block_scalar&) const;
-
-template StackedShortcutModel<float>::state_type StackedShortcutModel<float>::get_final_activation(Graph<float>&, const index_col&) const;
-template StackedShortcutModel<float>::state_type StackedShortcutModel<float>::get_final_activation(Graph<float>&, const index_row&) const;
-template StackedShortcutModel<float>::state_type StackedShortcutModel<float>::get_final_activation(Graph<float>&, const sliced_row&) const;
-template StackedShortcutModel<float>::state_type StackedShortcutModel<float>::get_final_activation(Graph<float>&, const sliced_col&) const;
-template StackedShortcutModel<float>::state_type StackedShortcutModel<float>::get_final_activation(Graph<float>&, const eigen_index_block_scalar&) const;
-
-typedef Eigen::VectorBlock< Eigen::Matrix<uint, Eigen::Dynamic, 1>, Eigen::Dynamic> vector_block;
-typedef Eigen::VectorBlock< Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic>, Eigen::Dynamic> submatrix_block;
-
-template StackedShortcutModel<float>::state_type StackedShortcutModel<float>::get_final_activation(Graph<float>&, const vector_block&) const;
-template StackedShortcutModel<double>::state_type StackedShortcutModel<double>::get_final_activation(Graph<double>&, const vector_block&) const;
-template StackedShortcutModel<float>::state_type StackedShortcutModel<float>::get_final_activation(Graph<float>&, const submatrix_block&) const;
-template StackedShortcutModel<double>::state_type StackedShortcutModel<double>::get_final_activation(Graph<double>&, const submatrix_block&) const;
-
-template vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<float>::reconstruct_lattice(sliced_row, utils::OntologyBranch::shared_branch, int);
-template vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<double>::reconstruct_lattice(sliced_row, utils::OntologyBranch::shared_branch, int);
-
-template vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<float>::reconstruct_lattice(index_row, utils::OntologyBranch::shared_branch, int);
-template vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<double>::reconstruct_lattice(index_row, utils::OntologyBranch::shared_branch, int);
-
-template vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<float>::reconstruct_lattice(sliced_col, utils::OntologyBranch::shared_branch, int);
-template vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<double>::reconstruct_lattice(sliced_col, utils::OntologyBranch::shared_branch, int);
-
-template vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<float>::reconstruct_lattice(index_col, utils::OntologyBranch::shared_branch, int);
-template vector<utils::OntologyBranch::shared_branch> StackedShortcutModel<double>::reconstruct_lattice(index_col, utils::OntologyBranch::shared_branch, int);
-
-template string StackedShortcutModel<float>::reconstruct_lattice_string(sliced_row, utils::OntologyBranch::shared_branch, int);
-template string StackedShortcutModel<double>::reconstruct_lattice_string(sliced_row, utils::OntologyBranch::shared_branch, int);
-
-template string StackedShortcutModel<float>::reconstruct_lattice_string(index_row, utils::OntologyBranch::shared_branch, int);
-template string StackedShortcutModel<double>::reconstruct_lattice_string(index_row, utils::OntologyBranch::shared_branch, int);
-
-template string StackedShortcutModel<float>::reconstruct_lattice_string(sliced_col, utils::OntologyBranch::shared_branch, int);
-template string StackedShortcutModel<double>::reconstruct_lattice_string(sliced_col, utils::OntologyBranch::shared_branch, int);
-
-template string StackedShortcutModel<float>::reconstruct_lattice_string(index_col, utils::OntologyBranch::shared_branch, int);
-template string StackedShortcutModel<double>::reconstruct_lattice_string(index_col, utils::OntologyBranch::shared_branch, int);
 
 template class StackedShortcutModel<float>;
 template class StackedShortcutModel<double>;

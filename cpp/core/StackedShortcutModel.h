@@ -277,11 +277,9 @@ std::vector<int> hidden_sizes : size of internal layers
                 StackedShortcutModel(const StackedShortcutModel<T>&, bool, bool);
                 T masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, shared_eigen_index_vector, shared_eigen_index_vector, uint offset=0);
                 T masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, uint, shared_eigen_index_vector, uint offset=0);
-                template<typename K>
-                std::vector<int> reconstruct(K, int, int symbol_offset = 0);
+                std::vector<int> reconstruct(Indexing::Index, int, int symbol_offset = 0);
 
-                template<typename K>
-                state_type get_final_activation(graph_t&, const K&) const;
+                state_type get_final_activation(graph_t&, Indexing::Index) const;
 
                 state_type initial_states() const;
 
@@ -312,14 +310,11 @@ std::vector<int> hidden_sizes : size of internal layers
 
                 activation_t activate(graph_t&, state_type&, const eigen_index_block) const;
 
-                template<typename K>
-                std::string reconstruct_string(K, const utils::Vocab&, int, int symbol_offset = 0);
+                std::string reconstruct_string(Indexing::Index, const utils::Vocab&, int, int symbol_offset = 0);
 
-                template<typename K>
-                std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(K, utils::OntologyBranch::shared_branch, int);
+                std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(Indexing::Index, utils::OntologyBranch::shared_branch, int);
 
-                template<typename K>
-                std::string reconstruct_lattice_string(K, utils::OntologyBranch::shared_branch, int);
+                std::string reconstruct_lattice_string(Indexing::Index, utils::OntologyBranch::shared_branch, int);
 
                 /**
                 Shallow Copy

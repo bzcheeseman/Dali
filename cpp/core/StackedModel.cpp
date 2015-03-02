@@ -281,16 +281,15 @@ StackedModel<T> StackedModel<T>::shallow_copy() const {
 }
 
 template<typename T>
-template<typename K>
 typename StackedModel<T>::state_type StackedModel<T>::get_final_activation(
     graph_t& G,
-    const K& example) const {
+    Indexing::Index example) const {
     shared_mat input_vector;
     auto initial_state = initial_states();
-    auto n = example.cols() * example.rows();
+    auto n = example.size();
     for (uint i = 0; i < n; ++i) {
         // pick this letter from the embedding
-        input_vector  = G.row_pluck(embedding, example(i));
+        input_vector  = G.row_pluck(embedding, example[i]);
         // pass this letter to the LSTM for processing
         initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
         // decoder takes as input the final hidden layer's activation:
@@ -300,9 +299,8 @@ typename StackedModel<T>::state_type StackedModel<T>::get_final_activation(
 
 // Nested Templates !!
 template<typename T>
-template<typename K>
 std::vector<int> StackedModel<T>::reconstruct(
-    K example,
+    Indexing::Index example,
     int eval_steps,
     int symbol_offset) {
 
@@ -356,9 +354,8 @@ typename StackedModel<T>::state_type StackedModel<T>::initial_states() const {
 }
 
 template<typename T>
-template<typename K>
 std::vector<utils::OntologyBranch::shared_branch> StackedModel<T>::reconstruct_lattice(
-    K example,
+    Indexing::Index example,
     utils::OntologyBranch::shared_branch root,
     int eval_steps) {
 
@@ -367,10 +364,10 @@ std::vector<utils::OntologyBranch::shared_branch> StackedModel<T>::reconstruct_l
     shared_mat memory;
     auto pos = root;
     auto initial_state = initial_states();
-    auto n = example.cols() * example.rows();
+    auto n = example.size();
     for (uint i = 0; i < n; ++i) {
         // pick this letter from the embedding
-        input_vector  = G.row_pluck(embedding, example(i));
+        input_vector  = G.row_pluck(embedding, example[i]);
         // pass this letter to the LSTM for processing
         initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
         // decoder takes as input the final hidden layer's activation:
@@ -396,9 +393,8 @@ std::vector<utils::OntologyBranch::shared_branch> StackedModel<T>::reconstruct_l
 
 // Nested Templates !!
 template<typename T>
-template<typename K>
 string StackedModel<T>::reconstruct_string(
-    K example,
+    Indexing::Index example,
     const utils::Vocab& lookup_table,
     int eval_steps,
     int symbol_offset) {
@@ -418,9 +414,8 @@ string StackedModel<T>::reconstruct_string(
 
 // Nested Templates !!
 template<typename T>
-template<typename K>
 string StackedModel<T>::reconstruct_lattice_string(
-    K example,
+    Indexing::Index example,
     utils::OntologyBranch::shared_branch root,
     int eval_steps) {
     auto reconstruction = reconstruct_lattice(example, root, eval_steps);
@@ -429,80 +424,6 @@ string StackedModel<T>::reconstruct_lattice_string(
         rec << ((&(*cat) == &(*root)) ? "⟲" : cat->name) << ", ";
     return rec.str();
 }
-
-typedef Eigen::Block< Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic>, 1, Eigen::Dynamic, !Eigen::RowMajor> index_row;
-typedef Eigen::VectorBlock< index_row, Eigen::Dynamic> sliced_row;
-
-typedef Eigen::Block< Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic>, Eigen::Dynamic, 1, !Eigen::RowMajor> index_col;
-typedef Eigen::VectorBlock< index_col, Eigen::Dynamic> sliced_col;
-
-template string StackedModel<float>::reconstruct_string(sliced_row, const utils::Vocab&, int, int);
-template string StackedModel<double>::reconstruct_string(sliced_row, const utils::Vocab&, int, int);
-
-template string StackedModel<float>::reconstruct_string(index_row, const utils::Vocab&, int, int);
-template string StackedModel<double>::reconstruct_string(index_row, const utils::Vocab&, int, int);
-
-template string StackedModel<float>::reconstruct_string(sliced_col, const utils::Vocab&, int, int);
-template string StackedModel<double>::reconstruct_string(sliced_col, const utils::Vocab&, int, int);
-
-template string StackedModel<float>::reconstruct_string(index_col, const utils::Vocab&, int, int);
-template string StackedModel<double>::reconstruct_string(index_col, const utils::Vocab&, int, int);
-
-template vector<int> StackedModel<float>::reconstruct(sliced_row, int, int);
-template vector<int> StackedModel<double>::reconstruct(sliced_row, int, int);
-
-template vector<int> StackedModel<float>::reconstruct(index_row, int, int);
-template vector<int> StackedModel<double>::reconstruct(index_row, int, int);
-
-template vector<int> StackedModel<float>::reconstruct(sliced_col, int, int);
-template vector<int> StackedModel<double>::reconstruct(sliced_col, int, int);
-
-template vector<int> StackedModel<float>::reconstruct(index_col, int, int);
-template vector<int> StackedModel<double>::reconstruct(index_col, int, int);
-
-template StackedModel<float>::state_type StackedModel<float>::get_final_activation(Graph<float>&, const index_col&) const;
-template StackedModel<float>::state_type StackedModel<float>::get_final_activation(Graph<float>&, const sliced_col&) const;
-template StackedModel<float>::state_type StackedModel<float>::get_final_activation(Graph<float>&, const sliced_row&) const;
-template StackedModel<float>::state_type StackedModel<float>::get_final_activation(Graph<float>&, const index_row&) const;
-template StackedModel<float>::state_type StackedModel<float>::get_final_activation(Graph<float>&, const eigen_index_block_scalar&) const;
-
-template StackedModel<double>::state_type StackedModel<double>::get_final_activation(Graph<double>&, const index_col&) const;
-template StackedModel<double>::state_type StackedModel<double>::get_final_activation(Graph<double>&, const sliced_col&) const;
-template StackedModel<double>::state_type StackedModel<double>::get_final_activation(Graph<double>&, const sliced_row&) const;
-template StackedModel<double>::state_type StackedModel<double>::get_final_activation(Graph<double>&, const index_row&) const;
-template StackedModel<double>::state_type StackedModel<double>::get_final_activation(Graph<double>&, const eigen_index_block_scalar&) const;
-
-typedef Eigen::VectorBlock< Eigen::Matrix<uint, Eigen::Dynamic, 1>, Eigen::Dynamic> vector_block;
-typedef Eigen::VectorBlock< Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic>, Eigen::Dynamic> submatrix_block;
-
-template StackedModel<float>::state_type StackedModel<float>::get_final_activation(Graph<float>&, const vector_block&) const;
-template StackedModel<double>::state_type StackedModel<double>::get_final_activation(Graph<double>&, const vector_block&) const;
-template StackedModel<float>::state_type StackedModel<float>::get_final_activation(Graph<float>&, const submatrix_block&) const;
-template StackedModel<double>::state_type StackedModel<double>::get_final_activation(Graph<double>&, const submatrix_block&) const;
-
-template vector<utils::OntologyBranch::shared_branch> StackedModel<float>::reconstruct_lattice(sliced_row, utils::OntologyBranch::shared_branch, int);
-template vector<utils::OntologyBranch::shared_branch> StackedModel<double>::reconstruct_lattice(sliced_row, utils::OntologyBranch::shared_branch, int);
-
-template vector<utils::OntologyBranch::shared_branch> StackedModel<float>::reconstruct_lattice(index_row, utils::OntologyBranch::shared_branch, int);
-template vector<utils::OntologyBranch::shared_branch> StackedModel<double>::reconstruct_lattice(index_row, utils::OntologyBranch::shared_branch, int);
-
-template vector<utils::OntologyBranch::shared_branch> StackedModel<float>::reconstruct_lattice(sliced_col, utils::OntologyBranch::shared_branch, int);
-template vector<utils::OntologyBranch::shared_branch> StackedModel<double>::reconstruct_lattice(sliced_col, utils::OntologyBranch::shared_branch, int);
-
-template vector<utils::OntologyBranch::shared_branch> StackedModel<float>::reconstruct_lattice(index_col, utils::OntologyBranch::shared_branch, int);
-template vector<utils::OntologyBranch::shared_branch> StackedModel<double>::reconstruct_lattice(index_col, utils::OntologyBranch::shared_branch, int);
-
-template string StackedModel<float>::reconstruct_lattice_string(sliced_row, utils::OntologyBranch::shared_branch, int);
-template string StackedModel<double>::reconstruct_lattice_string(sliced_row, utils::OntologyBranch::shared_branch, int);
-
-template string StackedModel<float>::reconstruct_lattice_string(index_row, utils::OntologyBranch::shared_branch, int);
-template string StackedModel<double>::reconstruct_lattice_string(index_row, utils::OntologyBranch::shared_branch, int);
-
-template string StackedModel<float>::reconstruct_lattice_string(sliced_col, utils::OntologyBranch::shared_branch, int);
-template string StackedModel<double>::reconstruct_lattice_string(sliced_col, utils::OntologyBranch::shared_branch, int);
-
-template string StackedModel<float>::reconstruct_lattice_string(index_col, utils::OntologyBranch::shared_branch, int);
-template string StackedModel<double>::reconstruct_lattice_string(index_col, utils::OntologyBranch::shared_branch, int);
 
 template class StackedModel<float>;
 template class StackedModel<double>;

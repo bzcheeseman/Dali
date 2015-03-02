@@ -113,6 +113,14 @@ int main () {
 
     bob->print();
 
+    auto dropped_bob = G.dropout(bob, 0.2);
+
+    dropped_bob->print();
+
+    auto fast_dropped_bob = G.fast_dropout(bob);
+
+    fast_dropped_bob->print();
+
     G.backward();
 
     return 0;

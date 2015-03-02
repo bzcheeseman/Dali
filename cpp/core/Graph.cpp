@@ -34,7 +34,6 @@ typename Graph<T>::shared_mat Graph<T>::eltmul_broadcast(
         true);
     out->w = (matrix1->w.array().colwise() * matrix2->w.col(0).array()).matrix();
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix1, matrix2, out]() {
             matrix1->dw.noalias() += ((out->dw).array().colwise() * (matrix2->w).col(0).array()).matrix();
             matrix2->dw.noalias() += ((matrix1->w).array() * (out->dw).array()).matrix().rowwise().sum();
@@ -60,7 +59,6 @@ typename Graph<T>::shared_mat Graph<T>::eltmul(
         true);
     out->w = (matrix1->w.array() * matrix2->w.array()).matrix();
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix1, matrix2, out]() {
             matrix1->dw.noalias() += ((matrix2->w).array() * (out->dw).array()).matrix();
             matrix2->dw.noalias() += ((matrix1->w).array() * (out->dw).array()).matrix();
@@ -80,7 +78,6 @@ typename Graph<T>::shared_mat Graph<T>::eltmul_broadcast_rowwise(
             true);
     out->w = (matrix1->w.array().rowwise() * row_vector->w.row(0).array()).matrix();
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix1, row_vector, out]() {
             matrix1->dw.noalias() += ((out->dw).array().rowwise() * (row_vector->w).row(0).array()).matrix();
             row_vector->dw.noalias() += (((matrix1->w).array() * (out->dw).array()).matrix().colwise().sum()).matrix();
@@ -101,7 +98,6 @@ typename Graph<T>::shared_mat Graph<T>::eltmul_rowwise(
         true);
     out->w = (matrix1->w.array() * matrix2->w.transpose().array()).matrix();
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix1, matrix2, out]() {
             matrix1->dw.noalias() += ((matrix2->w).transpose().array() * (out->dw).array()).matrix();
             matrix2->dw.noalias() += ((matrix1->w).array() * (out->dw).array()).matrix().transpose();
@@ -127,7 +123,6 @@ typename Graph<T>::shared_mat Graph<T>::add(
         true);
     out->w = matrix1->w + matrix2->w;
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix1, matrix2, out]() {
             matrix1->dw.noalias() += out->dw;
             matrix2->dw.noalias() += out->dw;
@@ -154,7 +149,6 @@ typename Graph<T>::shared_mat Graph<T>::sub(
         true);
     out->w = matrix1->w - matrix2->w;
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix1, matrix2, out]() {
             matrix1->dw.noalias() += out->dw;
             matrix2->dw.noalias() -= out->dw;
@@ -224,7 +218,6 @@ typename Graph<T>::shared_mat Graph<T>::add(std::initializer_list<shared_mat> ma
         false);
     for (auto& matrix : matrices) out->w += matrix->w;
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrices, out]() {
             for (auto& matrix : matrices)
                 matrix->dw.noalias() += out->dw;
@@ -240,7 +233,6 @@ typename Graph<T>::shared_mat Graph<T>::square(shared_mat matrix) {
             true);
     out->w = matrix->w.array().square();
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix, out]() {
             matrix->dw.noalias() += 2.0 * ((matrix->w).array() * (out->dw).array()).matrix();
         });
@@ -255,7 +247,6 @@ typename Graph<T>::shared_mat Graph<T>::sigmoid(shared_mat matrix) {
             true);
     out->w = matrix->w.unaryExpr(utils::sigmoid_operator<T>());
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix, out](){
             matrix->dw.noalias() += (((out->w).array() - out->w.array().square()) * out->dw.array()).matrix();
         });
@@ -270,7 +261,6 @@ typename Graph<T>::shared_mat Graph<T>::steep_sigmoid(shared_mat matrix, T aggre
         true);
     out->w = matrix->w.unaryExpr(utils::steep_sigmoid_operator<T>(aggressiveness));
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix, out, aggressiveness](){
             matrix->dw.noalias() += (aggressiveness * ((out->w).array() - out->w.array().square()) * out->dw.array()).matrix();
         });
@@ -282,7 +272,6 @@ typename Graph<T>::shared_mat Graph<T>::sum(shared_mat matrix) {
     auto out = std::make_shared<mat>(1,1,true);
     out->w(0) = matrix->w.array().sum();
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix, out]() {
             matrix->dw.array() += out->dw(0);
         });
@@ -293,7 +282,6 @@ typename Graph<T>::shared_mat Graph<T>::mean(shared_mat matrix) {
     auto out = std::make_shared<mat>(1,1,true);
     out->w(0) = matrix->w.array().mean();
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix, out](){
             matrix->dw.array() += (1.0 / (matrix->n * matrix->d)) * out->dw(0);
         });
@@ -308,7 +296,6 @@ typename Graph<T>::shared_mat Graph<T>::log(shared_mat matrix) {
         true);
     out->w = matrix->w.array().log();
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix, out](){
             matrix->dw.noalias() += ((1.0 / (matrix->w).array()) * (out->dw).array()).matrix();
         });
@@ -323,7 +310,6 @@ typename Graph<T>::shared_mat Graph<T>::exp(shared_mat matrix) {
         true);
     out->w = matrix->w.array().exp();
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix, out](){
             matrix->dw.noalias() += ((out->w).array() * (out->dw).array()).matrix();
         });
@@ -513,7 +499,6 @@ typename Graph<T>::shared_mat Graph<T>::transpose(shared_mat matrix) {
         true);
     out->w = matrix->w.transpose();
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix, out](){
             matrix->dw.noalias() += (out->dw).transpose();
         });
@@ -528,7 +513,6 @@ typename Graph<T>::shared_mat Graph<T>::tanh(shared_mat matrix) {
         true);
     out->w = matrix->w.unaryExpr(utils::tanh_operator<T>());
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix, out](){
             matrix->dw.noalias() += (out->w.unaryExpr(utils::dtanh_operator<T>()).array() * out->dw.array()).matrix();
         });
@@ -543,7 +527,6 @@ typename Graph<T>::shared_mat Graph<T>::relu(shared_mat matrix) {
         true);
     out->w = matrix->w.unaryExpr(utils::relu_operator<T>());
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         this->backprop.emplace_back([matrix, out](){
             matrix->dw.noalias() += (out->w.unaryExpr(utils::sign_operator<T>()).array() * out->dw.array()).matrix();
         });
@@ -562,7 +545,6 @@ typename Graph<T>::shared_mat Graph<T>::mul(
         true);
     out->w = matrix1->w * matrix2->w;
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix1, matrix2, out](){
             matrix1->dw.noalias() += (out->dw) * ((matrix2->w).transpose());
             matrix2->dw.noalias() += matrix1->w.transpose() * (out->dw);
@@ -585,7 +567,6 @@ typename Graph<T>::shared_mat Graph<T>::mul_with_bias(
             true);
     out->w = ((matrix1->w * matrix2->w).colwise() + bias->w.col(0)).matrix();
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix1, matrix2, bias, out]() {
             matrix1->dw.noalias() += (out->dw) * ((matrix2->w).transpose());
             matrix2->dw.noalias() += matrix1->w.transpose() * (out->dw);
@@ -622,7 +603,6 @@ typename Graph<T>::shared_mat Graph<T>::mul_add_broadcast_mul_with_bias(
           ).colwise() + (bias->w + (matrix1->w * input_to_1->w)).col(0)
       ).matrix();
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix1, input_to_1, matrix2, input_to_2, bias, out] () {
             // first multiply:
             // broadcasting input means taking outer product here:
@@ -653,7 +633,6 @@ typename Graph<T>::shared_mat Graph<T>::mul_add_mul_with_bias(std::initializer_l
     }
     out->w.colwise() += (*(matrices.begin() + matrices.size() - 1))->w.col(0);
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrices, out](){
             auto matrices_ptr = matrices.begin();
             while (matrices_ptr != (matrices.end() - 1)) {
@@ -685,7 +664,6 @@ typename Graph<T>::shared_mat Graph<T>::mul_add_mul_with_bias(const vector<share
     DEBUG_ASSERT_NOT_NAN((*(matrices.begin() + matrices.size() - 1))->w);
     out->w.colwise() += (*(matrices.begin() + matrices.size() - 1))->w.col(0);
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrices, out](){
             auto matrices_ptr = matrices.begin();
             while (matrices_ptr != (matrices.end() - 1)) {
@@ -734,7 +712,6 @@ typename Graph<T>::shared_mat Graph<T>::mul_add_mul_with_bias(
               ).colwise() + bias->w.col(0)
           ).matrix();
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix1, input_to_1, matrix2, input_to_2, bias, out](){
             // first multiply:
             // broadcasting input means taking outer product here:
@@ -767,7 +744,6 @@ typename Graph<T>::shared_mat Graph<T>::rows_pluck(
     }
     rp_timer.stop();
     if (needs_backprop) {
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix, out, indices](){
             auto index_ptr = indices.data();
             for (std::size_t i = 0; i < out->d; ++i) {
@@ -775,6 +751,77 @@ typename Graph<T>::shared_mat Graph<T>::rows_pluck(
                 matrix->dw.row(*index_ptr).noalias() += out->dw.col(i).transpose();
                 index_ptr++;
             }
+        });
+    }
+    return out;
+}
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::dropout(
+    shared_mat matrix,
+    T drop_prob) {
+
+    auto out = std::make_shared<mat>(
+        matrix->n,
+        matrix->d,
+        true);
+
+    auto bool_mat = std::make_shared<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>(matrix->n, matrix->d);
+
+    std::default_random_engine generator;
+    std::bernoulli_distribution distribution(1.0 - drop_prob);
+    std::random_device rd;
+    generator.seed(rd());
+
+    auto data_ptr = matrix->w.data();
+    auto out_ptr  = out->w.data();
+    auto bool_ptr = bool_mat->data();
+
+    for (int i = 0; i < matrix->n * matrix->d;++i) {
+        (*bool_ptr) = distribution(generator) ? 1.0 : 0.0;
+        (*out_ptr) = (*bool_ptr) > 0 ? *data_ptr : 0.0;
+        out_ptr++;
+        data_ptr++;
+        bool_ptr++;
+    }
+
+    if (needs_backprop) {
+        backprop.emplace_back([matrix, out, bool_mat](){
+            matrix->dw += (out->dw.array() * (*bool_mat).array()).matrix();
+        });
+    }
+    return out;
+}
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::fast_dropout(shared_mat matrix) {
+    auto out = std::make_shared<mat>(
+        matrix->n,
+        matrix->d,
+        true);
+
+    auto randn_mat = std::make_shared<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>(matrix->n, matrix->d);
+
+    std::default_random_engine generator;
+    std::normal_distribution<T> distribution(1.0, 1.0);
+    std::random_device rd;
+    generator.seed(rd());
+
+    auto data_ptr = matrix->w.data();
+    auto out_ptr  = out->w.data();
+    auto randn_ptr = randn_mat->data();
+
+    for (int i = 0; i < matrix->n * matrix->d;++i) {
+        (*randn_ptr) = distribution(generator);
+        (*out_ptr) = (*randn_ptr) * *data_ptr;
+        out_ptr++;
+        data_ptr++;
+        randn_ptr++;
+    }
+
+    if (needs_backprop) {
+        backprop.emplace_back([matrix, out, randn_mat](){
+            matrix->dw += (out->dw.array() * (*randn_mat).array()).matrix();
         });
     }
     return out;
@@ -796,7 +843,6 @@ typename Graph<T>::shared_mat Graph<T>::rows_cols_pluck(
             out->w(offset) = matrix->w(row_indices[offset], col_indices[offset]);
     rp_timer.stop();
     if (needs_backprop) {
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix, out, row_indices, col_indices](){
             auto row_index_ptr = row_indices.data();
             auto col_index_ptr = col_indices.data();
@@ -811,104 +857,6 @@ typename Graph<T>::shared_mat Graph<T>::rows_cols_pluck(
     return out;
 }
 
-// template<typename T>
-// typename Graph<T>::shared_mat Graph<T>::rows_cols_pluck(
-//         shared_mat matrix,
-//         index_std_vector& row_indices,
-//         index_std_vector& col_indices
-//         ) {
-//     if (row_indices.size() != col_indices.size())
-//         throw std::invalid_argument("Cannot pluck column row pairs, not the same amount of row and column indices.");
-//     Timer rp_timer("ops_rows_pluck");
-//         auto out = std::make_shared<mat>(
-//             1,
-//             row_indices.size(),
-//             true);
-//         for (int offset = 0; offset < row_indices.size(); ++offset)
-//             out->w(offset) = matrix->w(row_indices[offset], col_indices[offset]);
-//     rp_timer.stop();
-//     if (needs_backprop) {
-//         // allocates a new backward element in the vector using these arguments:
-//         backprop.emplace_back([matrix, out, &row_indices, &col_indices](){
-//             auto copied_row_index_ptr = row_indices.begin();
-//             auto copied_col_index_ptr = col_indices.begin();
-//             for (int i = 0; i < out->d; ++i) {
-//                 // for each row do the same operation as for row_pluck:
-//                 matrix->dw(*copied_row_index_ptr, *copied_col_index_ptr) += out->dw(i);
-//                 copied_row_index_ptr++;
-//                 copied_col_index_ptr++;
-//             }
-//         });
-//     }
-//     return out;
-// }
-
-// template<typename T>
-// typename Graph<T>::shared_mat Graph<T>::rows_cols_pluck(
-//         shared_mat matrix,
-//         index_std_vector& row_indices,
-//         eigen_index_block col_indices
-//         ) {
-//     if (row_indices.size() != col_indices.rows())
-//         throw std::invalid_argument("Cannot pluck column row pairs, not the same amount of row and column indices.");
-//     Timer rp_timer("ops_rows_pluck");
-//         auto out = std::make_shared<mat>(
-//             1,
-//             row_indices.size(),
-//             true);
-//         for (int offset = 0; offset < row_indices.size(); ++offset)
-//             out->w(offset) = matrix->w(row_indices[offset], col_indices(offset));
-//     rp_timer.stop();
-//     if (needs_backprop) {
-//         // allocates a new backward element in the vector using these arguments:
-//         auto col_index_ptr = col_indices.data();
-//         backprop.emplace_back([matrix, out, &row_indices, col_index_ptr](){
-//             auto copied_row_index_ptr = row_indices.begin();
-//             auto copied_col_index_ptr = col_index_ptr;
-//             for (int i = 0; i < out->d; ++i) {
-//                 // for each row do the same operation as for row_pluck:
-//                 matrix->dw(*copied_row_index_ptr, *copied_col_index_ptr) += out->dw(i);
-//                 copied_row_index_ptr++;
-//                 copied_col_index_ptr++;
-//             }
-//         });
-//     }
-//     return out;
-// }
-
-// template<typename T>
-// typename Graph<T>::shared_mat Graph<T>::rows_cols_pluck(
-//         shared_mat matrix,
-//         eigen_index_block row_indices,
-//         index_std_vector& col_indices
-//         ) {
-//     if (row_indices.rows() != col_indices.size())
-//         throw std::invalid_argument("Cannot pluck column row pairs, not the same amount of row and column indices.");
-//     Timer rp_timer("ops_rows_pluck");
-//         auto out = std::make_shared<mat>(
-//             1,
-//             row_indices.rows(),
-//             true);
-//         for (int offset = 0; offset < row_indices.rows(); ++offset)
-//             out->w(offset) = matrix->w(row_indices(offset), col_indices[offset]);
-//     rp_timer.stop();
-//     if (needs_backprop) {
-//         // allocates a new backward element in the vector using these arguments:
-//         auto row_index_ptr = row_indices.data();
-//         backprop.emplace_back([matrix, out, &col_indices, row_index_ptr](){
-//             auto copied_col_index_ptr = col_indices.begin();
-//             auto copied_row_index_ptr = row_index_ptr;
-//             for (int i = 0; i < out->d; ++i) {
-//                 // for each row do the same operation as for row_pluck:
-//                 matrix->dw(*copied_row_index_ptr, *copied_col_index_ptr) += out->dw(i);
-//                 copied_row_index_ptr++;
-//                 copied_col_index_ptr++;
-//             }
-//         });
-//     }
-//     return out;
-// }
-
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::row_pluck(
         shared_mat matrix,
@@ -916,7 +864,6 @@ typename Graph<T>::shared_mat Graph<T>::row_pluck(
     auto out = std::make_shared<mat>(matrix->d, 1, true);
     out->w = matrix->w.row(row).transpose();
     if (needs_backprop)
-        // allocates a new backward element in the vector using these arguments:
         backprop.emplace_back([matrix, out, row]() {
             matrix->dw.row(row).noalias() += out->dw.col(0).transpose();
         });

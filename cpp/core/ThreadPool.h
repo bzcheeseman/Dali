@@ -2,11 +2,12 @@
 #define THREAD_POOL_H
 
 #include <cassert>
-#include <deque>
 #include <chrono>
-#include <mutex>
-#include <functional>
 #include <condition_variable>
+#include <deque>
+#include <functional>
+#include <iostream>
+#include <mutex>
 #include <thread>
 #include <vector>
 
@@ -17,6 +18,8 @@ class ThreadPool {
         // c++ assigns random id to each thread. This is not a thread_id
         // it's a number inside this thread pool.
         static __thread int thread_number;
+
+        static std::mutex printing_lock;
 
         bool should_terminate;
         std::mutex queue_mutex;
@@ -54,6 +57,8 @@ class ThreadPool {
         // the number is unique for each thread in the thread pool and
         // is between 0 and num_threads-1. If called outside thread_pool returns -1.
         static int get_thread_number();
+
+        static void print_safely(std::string message);
 
         ~ThreadPool();
 };

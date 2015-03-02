@@ -8,6 +8,8 @@ using Duration = std::chrono::duration<double>;
 
 __thread bool ThreadPool::in_thread_pool = false;
 __thread int ThreadPool::thread_number = -1;
+std::mutex ThreadPool::printing_lock;
+
 
 ThreadPool::ThreadPool(int num_threads, Duration between_queue_checks) :
         between_queue_checks(between_queue_checks),
@@ -100,4 +102,9 @@ ThreadPool::~ThreadPool() {
 
 int ThreadPool::get_thread_number() {
     return thread_number;
+}
+
+void ThreadPool::print_safely(std::string message) {
+    std::lock_guard<decltype(printing_lock)> guard(printing_lock);
+    std::cout << "[thread " << get_thread_number() << "] " << message << std::endl;
 }

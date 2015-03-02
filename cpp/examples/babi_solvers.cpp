@@ -50,7 +50,11 @@ class DumbModel: public babi::Model {
         }
 };
 
-
+// LSTM Model todo:
+// -> add dropout
+// -> add cross validation
+// -> increase performance
+// -> supporting fact gate - add second order term between question and answer.
 template<typename REAL_t>
 class MarginallyLessDumbModel: public babi::Model {
     typedef Mat<REAL_t> mat;
@@ -58,10 +62,10 @@ class MarginallyLessDumbModel: public babi::Model {
     typedef Graph<REAL_t> graph_t;
     typedef StackedShortcutModel<REAL_t> model_t;
 
-    const int TEXT_STACK_SIZE =      1;
-    const int TEXT_HIDDEN_SIZE =    20;
-    const int HL_STACK_SIZE =      2;
-    const int HL_HIDDEN_SIZE =    20;
+    const int TEXT_STACK_SIZE =      2;
+    const int TEXT_HIDDEN_SIZE =    50;
+    const int HL_STACK_SIZE =      3;
+    const int HL_HIDDEN_SIZE =    50;
     const int EMBEDDING_SIZE = 20;
 
     shared_ptr<Vocab> vocab;
@@ -188,30 +192,69 @@ class MarginallyLessDumbModel: public babi::Model {
             return cross_entropy(log_probs, answer_idx);
         }
 
-        void train(const vector<babi::Story>& data) {
-            vocab_from_training(data);
-            construct_model(vocab->index2word.size());
-
+        REAL_t compute_error(const vector<babi::Story>& dataset, bool backprop) {
             auto params = parameters();
 
             vector<Fact*> facts_so_far;
 
             Solver::AdaDelta<REAL_t> solver(params, 0.95, 1e-9, 5.0);
-            for (auto& story : data) {
+
+            REAL_t total_error = 0.0;
+            int num_questions = 0;
+
+            for (auto& story : dataset) {
                 for(auto& item_ptr : story) {
                     if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
                         facts_so_far.push_back(f);
                     } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
-                        Graph<REAL_t> G(true);
-                        error(G, facts_so_far, qa);
-                        G.backward();
+                        Graph<REAL_t> G(backprop);
+                        total_error += error(G, facts_so_far, qa);
+                        num_questions += 1;
+                        if (backprop)
+                            G.backward();
                     }
                 }
                 facts_so_far.clear();
-                {
-                    utils::Timer t("solver_time");
+                if (backprop)
                     solver.step(params, 0.0);
+            }
+
+            return total_error/num_questions;
+        }
+
+        void train(const vector<babi::Story>& data) {
+            const float TRAINING_FRAC = 0.9;
+            const float IMPROVE_EPS = 0.002; // good one: 0.003
+            vocab_from_training(data);
+            int training_size = (int)(TRAINING_FRAC * data.size());
+            std::vector<babi::Story> train(data.begin(), data.begin() + training_size);
+            std::vector<babi::Story> validation(data.begin() + training_size, data.end());
+
+            construct_model(vocab->index2word.size());
+
+
+            double training_error = 0.0;
+            double validation_error = 0.0;
+            double last_validation_error = std::numeric_limits<REAL_t>::infinity();
+
+            int epoch = 0;
+            int epochs_validation_increasing = 0;
+
+            while (epochs_validation_increasing <= 2) {
+                double training_error = compute_error(train, true);
+                double validation_error = compute_error(validation, false);
+                std::stringstream ss;
+                ss << "Epoch " << ++epoch
+                   << " validation: " << validation_error
+                   << " training: " << training_error;
+                ThreadPool::print_safely(ss.str());
+
+                if (validation_error + IMPROVE_EPS > last_validation_error) {
+                    epochs_validation_increasing += 1;
+                } else {
+                    epochs_validation_increasing = 0;
                 }
+                last_validation_error = validation_error;
             }
         }
 
@@ -224,6 +267,7 @@ class MarginallyLessDumbModel: public babi::Model {
         void fact(const vector<string>& fact) {
             story_so_far.push_back(fact);
         }
+
         vector<string> question(const vector<string>& question) {
             graph_t G(false);
             vector<shared_mat> fact_hiddens;
@@ -246,5 +290,5 @@ class MarginallyLessDumbModel: public babi::Model {
 
 
 int main() {
-    babi::benchmark<MarginallyLessDumbModel<double>>(true);
+    babi::benchmark<MarginallyLessDumbModel<double>>(9);
 }

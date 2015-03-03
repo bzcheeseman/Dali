@@ -75,11 +75,15 @@ class MarginallyLessDumbModel: public babi::Model {
 
     const int EMBEDDING_SIZE = 30;
 
-    //
+    // TRAINING_PROCEDURE_PARAMS
 
     const float TRAINING_FRAC = 0.9;
     const float MINIMUM_IMPROVEMENT = 0.003; // good one: 0.003
     const int PATIENCE = 6;
+
+    // FAKE WORDS UTIL WE HAVE MORE
+    // RESUABLE LSTM
+    string fact_coming = "<FACT_COMING>";
 
     shared_ptr<Vocab> vocab;
 
@@ -115,6 +119,10 @@ class MarginallyLessDumbModel: public babi::Model {
             }
         }
         vector<string> vocab_vector(vocab_set.begin(), vocab_set.end());
+
+        // adding special word.
+        vocab_vector.push_back(fact_coming);
+
         vocab = make_shared<Vocab> (vocab_vector);
     }
 
@@ -160,6 +168,14 @@ class MarginallyLessDumbModel: public babi::Model {
                                   bool use_dropout) {
             auto state = story_model->initial_states();
             utils::Timer a_timer("Forward");
+
+            state = forward_LSTMs(G,
+                                  question,
+                                  state,
+                                  story_model->base_cell,
+                                  story_model->cells,
+                                  use_dropout ? HL_DROPOUT : 0.0);
+
             for (auto& fact: facts) {
                 state = forward_LSTMs(G,
                                       fact,
@@ -203,10 +219,18 @@ class MarginallyLessDumbModel: public babi::Model {
                                                bool use_dropout) {
             vector<shared_mat> fact_hiddens;
 
+            vector<string> tokens;
             for (auto& fact: facts) {
-                fact_hiddens.emplace_back(activate_words(G, *fact_model, fact, use_dropout));
+                tokens.clear();
+                tokens.insert(tokens.end(), question.begin(), question.end());
+                tokens.push_back(fact_coming);
+                tokens.insert(tokens.end(), fact.begin(), fact.end());
+                // instead of using end of stream we rely on the fact that
+                // each fact ends with a dot
+                fact_hiddens.emplace_back(activate_words(G, *fact_model, tokens, use_dropout));
             }
 
+            // similarly to above each question ends with a question mark.
             shared_mat question_hidden = activate_words(G, *question_model, question, use_dropout);
 
             shared_mat story_activation = activate_story(G, fact_hiddens, question_hidden, use_dropout);

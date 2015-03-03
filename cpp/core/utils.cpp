@@ -1000,17 +1000,26 @@ namespace utils {
         std::unordered_map<std::string, std::atomic<int>> Timer::timers;
         std::mutex Timer::timers_mutex;
 
-        Timer::Timer(std::string name) : name(name),
-                                         start_time(clock_t::now()),
-                                         stopped(false) {
+        Timer::Timer(std::string name, bool autostart) : name(name),
+                                                         stopped(false),
+                                                         started(false) {
             if (timers.find(name) == timers.end()) {
                 std::lock_guard<decltype(timers_mutex)> guard(timers_mutex);
                 if (timers.find(name) == timers.end())
                     timers[name] = 0;
             }
+            if (autostart)
+                start();
+        }
+
+        void Timer::start() {
+            assert(!started);
+            start_time = clock_t::now();
+            started = true;
         }
 
         void Timer::stop() {
+            assert(!stopped);
             timers[name] += std::chrono::duration_cast< std::chrono::milliseconds >
                             (clock_t::now() - start_time).count();
             stopped = true;

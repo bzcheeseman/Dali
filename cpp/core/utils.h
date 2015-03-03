@@ -509,13 +509,17 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
 
             std::string name;
             bool stopped;
-            const std::chrono::time_point<clock_t> start_time;
+            bool started;
+            std::chrono::time_point<clock_t> start_time;
 
             public:
                 // creates timer and starts measuring time.
-                Timer(std::string name);
+                Timer(std::string name, bool autostart=true);
                 // destroys timer and stops counting if the timer was not previously stopped.
                 ~Timer();
+
+                // explicitly start the timer
+                void start();
                 // explicitly stop the timer
                 void stop();
 

@@ -63,9 +63,11 @@ class MarginallyLessDumbModel: public babi::Model {
     typedef Graph<REAL_t> graph_t;
     typedef StackedShortcutModel<REAL_t> model_t;
 
+    // MODEL PARAMS
+
     const int TEXT_STACK_SIZE =      2;
     const int TEXT_HIDDEN_SIZE =    30;
-    const REAL_t TEXT_DROPOUT = 0.2;
+    const REAL_t TEXT_DROPOUT = 0.4;
 
     const int HL_STACK_SIZE =      4;
     const int HL_HIDDEN_SIZE =    20;
@@ -73,13 +75,20 @@ class MarginallyLessDumbModel: public babi::Model {
 
     const int EMBEDDING_SIZE = 30;
 
+    //
+
+    const float TRAINING_FRAC = 0.9;
+    const float MINIMUM_IMPROVEMENT = 0.003; // good one: 0.003
+    const int PATIENCE = 6;
+
     shared_ptr<Vocab> vocab;
 
     shared_ptr<model_t> question_model;
     shared_ptr<model_t> fact_model;
     shared_ptr<model_t> story_model;
 
-    shared_mat start_prediction;
+    shared_mat please_start_prediction;
+    shared_mat you_will_see_question_soon;
 
     vector<shared_mat> parameters() const {
         vector<shared_mat> res;
@@ -87,7 +96,8 @@ class MarginallyLessDumbModel: public babi::Model {
             auto params = m->parameters();
             res.insert(res.end(), params.begin(), params.end());
         }
-        res.emplace_back(start_prediction);
+        res.emplace_back(please_start_prediction);
+        res.emplace_back(you_will_see_question_soon);
         return res;
     }
 
@@ -127,11 +137,13 @@ class MarginallyLessDumbModel: public babi::Model {
                 HL_HIDDEN_SIZE,
                 HL_STACK_SIZE,
                 vocab_size);
-        start_prediction = make_shared<mat>(TEXT_HIDDEN_SIZE*TEXT_STACK_SIZE, 1);
-
+        please_start_prediction = make_shared<mat>(TEXT_HIDDEN_SIZE*TEXT_STACK_SIZE, 1);
+        you_will_see_question_soon = make_shared<mat>(TEXT_HIDDEN_SIZE*TEXT_STACK_SIZE, 1);
     }
 
     public:
+        // ACTIVATES A sequence of words (fact or question) on an LSTM, returns the output
+        // hidden for that sequence of words.
         shared_mat activate_words(graph_t& G, model_t& model, const VS& words, bool use_dropout) {
             auto ex = vocab->transform(words);
             auto out_state = model.get_final_activation(G, ex, use_dropout ? TEXT_DROPOUT : 0.0);
@@ -141,6 +153,8 @@ class MarginallyLessDumbModel: public babi::Model {
             return G.vstack(out_state.second);
         }
 
+        // Activates a story - takes hiddens for facts and question
+        // and feeds them to an LSTM, to get final activation for that story.
         shared_mat activate_story(graph_t& G, const vector<shared_mat>& facts,
                                   shared_mat question,
                                   bool use_dropout) {
@@ -156,6 +170,13 @@ class MarginallyLessDumbModel: public babi::Model {
             }
 
             state = forward_LSTMs(G,
+                                  you_will_see_question_soon,
+                                  state,
+                                  story_model->base_cell,
+                                  story_model->cells,
+                                  use_dropout ? HL_DROPOUT : 0.0);
+
+            state = forward_LSTMs(G,
                                   question,
                                   state,
                                   story_model->base_cell,
@@ -163,30 +184,30 @@ class MarginallyLessDumbModel: public babi::Model {
                                   use_dropout ? HL_DROPOUT : 0.0);
 
             state = forward_LSTMs(G,
-                                  start_prediction,
+                                  please_start_prediction,
                                   state,
                                   story_model->base_cell,
                                   story_model->cells,
                                   use_dropout ? HL_DROPOUT : 0.0);
 
             auto log_probs = story_model->decoder.activate(G,
-                                                           start_prediction,
+                                                           please_start_prediction,
                                                            state.second);
 
             return log_probs;
         }
 
         shared_mat predict_answer_distribution(graph_t& G,
-                                               const vector<Fact*>& facts,
-                                               QA* qa,
+                                               const vector<vector<string>>& facts,
+                                               const vector<string>& question,
                                                bool use_dropout) {
             vector<shared_mat> fact_hiddens;
 
             for (auto& fact: facts) {
-                fact_hiddens.emplace_back(activate_words(G, *fact_model, fact->fact, use_dropout));
+                fact_hiddens.emplace_back(activate_words(G, *fact_model, fact, use_dropout));
             }
 
-            shared_mat question_hidden = activate_words(G, *question_model, qa->question, use_dropout);
+            shared_mat question_hidden = activate_words(G, *question_model, question, use_dropout);
 
             shared_mat story_activation = activate_story(G, fact_hiddens, question_hidden, use_dropout);
 
@@ -197,7 +218,12 @@ class MarginallyLessDumbModel: public babi::Model {
                      const vector<Fact*>& facts,
                      QA* qa,
                      bool use_dropout) {
-            shared_mat log_probs = predict_answer_distribution(G, facts, qa, use_dropout);
+            vector<vector<string>> facts_as_strings;
+
+            for (auto fact_ptr: facts)
+                facts_as_strings.push_back(fact_ptr->fact);
+
+            shared_mat log_probs = predict_answer_distribution(G, facts_as_strings, qa->question, use_dropout);
 
             uint answer_idx = vocab->word2index.at(qa->answer[0]);
 
@@ -238,8 +264,6 @@ class MarginallyLessDumbModel: public babi::Model {
         }
 
         void train(const vector<babi::Story>& data) {
-            const float TRAINING_FRAC = 0.9;
-            const float IMPROVE_EPS = 0.1; // good one: 0.003
             vocab_from_training(data);
             int training_size = (int)(TRAINING_FRAC * data.size());
             std::vector<babi::Story> train(data.begin(), data.begin() + training_size);
@@ -255,7 +279,7 @@ class MarginallyLessDumbModel: public babi::Model {
             int epoch = 0;
             int epochs_validation_increasing = 0;
 
-            while (epochs_validation_increasing <= 2) {
+            while (epochs_validation_increasing <= PATIENCE) {
                 double training_error = compute_error(train, true);
                 double validation_error = compute_error(validation, false);
                 std::stringstream ss;
@@ -264,12 +288,12 @@ class MarginallyLessDumbModel: public babi::Model {
                    << " training: " << training_error;
                 ThreadPool::print_safely(ss.str());
 
-                if (validation_error + IMPROVE_EPS > last_validation_error) {
-                    epochs_validation_increasing += 1;
-                } else {
+                if (validation_error < last_validation_error - MINIMUM_IMPROVEMENT) {
                     epochs_validation_increasing = 0;
+                    last_validation_error = validation_error;
+                } else {
+                    epochs_validation_increasing += 1;
                 }
-                last_validation_error = validation_error;
             }
         }
 
@@ -285,22 +309,12 @@ class MarginallyLessDumbModel: public babi::Model {
 
         vector<string> question(const vector<string>& question) {
             graph_t G(false);
-            vector<shared_mat> fact_hiddens;
 
-            for (auto& fact: story_so_far) {
-                fact_hiddens.emplace_back(activate_words(G, *fact_model, fact, false));
-            }
-
-            shared_mat question_hidden = activate_words(G, *question_model, question, false);
-
-            shared_mat story_activation = activate_story(G, fact_hiddens, question_hidden, false);
-
-            int word_idx = argmax(story_activation);
+            // Don't use dropout for validation.
+            int word_idx = argmax(predict_answer_distribution(G, story_so_far, question, false));
 
             return {vocab->index2word[word_idx]};
         }
-
-
 };
 
 

@@ -117,7 +117,7 @@ namespace babi {
                 m->train(Parser::training_data(task));
 
                 std::stringstream ss2;
-                ss2 << task << " moving on to validation calculation.";
+                ss2 << task << " moving on to test score calculation.";
                 ThreadPool::print_safely(ss2.str());
 
                 int correct_questions = 0;

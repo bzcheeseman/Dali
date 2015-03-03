@@ -55,6 +55,7 @@ DEFINE_double(cutoff, 91.0,   "KL Divergence error where stopping is acceptable"
 DEFINE_int32(patience, 5,    "How many unimproving epochs to wait through before witnessing progress ?");
 DEFINE_int32(epoch_batches, 3, "How many minibatches should each label's model do before doing cross-validation?");
 DEFINE_int32(num_reconstructions,  1,    "How many sentences to demo after each epoch.");
+DEFINE_double(dropout, 0.3, "How much dropout noise to add to the problem ?");
 
 /**
 Databatch
@@ -452,7 +453,8 @@ int main( int argc, char* argv[]) {
                         minibatch.data, // what to predict (the words offset by 1)
                         1,
                         minibatch.codelens,
-                        0
+                        0,
+                        (REAL_t) FLAGS_dropout
                     );
                     G.backward(); // backpropagate
                     solver.step(thread_parameters, 0.0); // One step of gradient descent

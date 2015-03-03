@@ -1,9 +1,10 @@
 --input_size=100
 --hidden=100
 --j=9
---epoch_batches=2
+--epoch_batches=100
 --patience=5
 --shortcut
+--dropout 0.3
 --stack_size=3
 --train=../data/sentiment/train.txt
 --validation=../data/sentiment/dev.txt

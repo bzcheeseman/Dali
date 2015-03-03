@@ -116,7 +116,8 @@ T StackedModel<T>::masked_predict_cost(
     shared_index_mat target_data,
     shared_eigen_index_vector start_loss,
     shared_eigen_index_vector codelens,
-    uint offset) {
+    uint offset,
+    T drop_prob) {
 
     auto initial_state    = initial_states();
     auto num_hidden_sizes = hidden_sizes.size();
@@ -132,7 +133,7 @@ T StackedModel<T>::masked_predict_cost(
         // pick this letter from the embedding
         input_vector = G.rows_pluck(embedding, data->col(i));
         // pass this letter to the LSTM for processing
-        initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
+        initial_state = forward_LSTMs(G, input_vector, initial_state, cells, drop_prob);
         // classifier takes as input the final hidden layer's activation:
         logprobs      = decoder.activate(G, initial_state.second[num_hidden_sizes-1]);
         cost += G.needs_backprop ? masked_cross_entropy(
@@ -158,7 +159,8 @@ T StackedModel<T>::masked_predict_cost(
     shared_index_mat target_data,
     uint start_loss,
     shared_eigen_index_vector codelens,
-    uint offset) {
+    uint offset,
+    T drop_prob) {
 
     auto initial_state    = initial_states();
     auto num_hidden_sizes = hidden_sizes.size();
@@ -174,7 +176,7 @@ T StackedModel<T>::masked_predict_cost(
         // pick this letter from the embedding
         input_vector = G.rows_pluck(embedding, data->col(i));
         // pass this letter to the LSTM for processing
-        initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
+        initial_state = forward_LSTMs(G, input_vector, initial_state, cells, drop_prob);
         // classifier takes as input the final hidden layer's activation:
         logprobs      = decoder.activate(G, initial_state.second[num_hidden_sizes-1]);
         cost += G.needs_backprop ? masked_cross_entropy(

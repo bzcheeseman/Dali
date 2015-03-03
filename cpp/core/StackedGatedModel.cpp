@@ -182,7 +182,8 @@ std::tuple<T, T> StackedGatedModel<T>::masked_predict_cost(
         shared_index_mat target_data,
         shared_eigen_index_vector start_loss,
         shared_eigen_index_vector codelens,
-        uint offset) {
+        uint offset,
+        T drop_prob) {
 
         auto initial_state    = initial_states();
         auto num_hidden_sizes = hidden_sizes.size();
@@ -200,34 +201,34 @@ std::tuple<T, T> StackedGatedModel<T>::masked_predict_cost(
                 memory = gate.activate(G, input_vector, initial_state.second[0]);
                 input_vector = G.eltmul_broadcast_rowwise(input_vector, memory);
                 // pass this letter to the LSTM for processing
-                initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
+                initial_state = forward_LSTMs(G, input_vector, initial_state, cells, drop_prob);
                 // classifier takes as input the final hidden layer's activation:
                 logprobs      = decoder.activate(G, initial_state.second[num_hidden_sizes-1]);
 
                 std::get<0>(cost) += G.needs_backprop ? masked_cross_entropy(
-                                                                                logprobs,
-                                                                                i,
-                                                                                start_loss,
-                                                                                codelens,
-                                                                                (target_data->col(i+1).array() - offset).matrix()) :
-                                                                  masked_cross_entropy_no_grad(
-                                                                                logprobs,
-                                                                                i,
-                                                                                start_loss,
-                                                                                codelens,
-                                                                                (target_data->col(i+1).array() - offset).matrix());
+                                                                      logprobs,
+                                                                      i,
+                                                                      start_loss,
+                                                                      codelens,
+                                                                      (target_data->col(i+1).array() - offset).matrix()) :
+                                                        masked_cross_entropy_no_grad(
+                                                                      logprobs,
+                                                                      i,
+                                                                      start_loss,
+                                                                      codelens,
+                                                                      (target_data->col(i+1).array() - offset).matrix());
                 std::get<1>(cost) += G.needs_backprop ? masked_sum(
-                                                                                                        memory,
-                                                                                                        i,
-                                                                                                        0,
-                                                                                                        start_loss,
-                                                                                                        memory_penalty) :
-                                                                                                masked_sum_no_grad(
-                                                                                                        memory,
-                                                                                                        i,
-                                                                                                        0,
-                                                                                                        start_loss,
-                                                                                                        memory_penalty);
+                                                                      memory,
+                                                                      i,
+                                                                      0,
+                                                                      start_loss,
+                                                                      memory_penalty) :
+                                                        masked_sum_no_grad(
+                                                                      memory,
+                                                                      i,
+                                                                      0,
+                                                                      start_loss,
+                                                                      memory_penalty);
         }
         return cost;
 }
@@ -239,7 +240,8 @@ std::tuple<T, T> StackedGatedModel<T>::masked_predict_cost(
         shared_index_mat target_data,
         uint start_loss,
         shared_eigen_index_vector codelens,
-        uint offset) {
+        uint offset,
+        T drop_prob) {
 
         auto initial_state    = initial_states();
         auto num_hidden_sizes = hidden_sizes.size();
@@ -257,7 +259,7 @@ std::tuple<T, T> StackedGatedModel<T>::masked_predict_cost(
                 memory = gate.activate(G, input_vector, initial_state.second[stack_size-1]);
                 input_vector = G.eltmul_broadcast_rowwise(input_vector, memory);
                 // pass this letter to the LSTM for processing
-                initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
+                initial_state = forward_LSTMs(G, input_vector, initial_state, cells, drop_prob);
                 // classifier takes as input the final hidden layer's activation:
                 logprobs      = decoder.activate(G, initial_state.second[stack_size-1]);
                 std::get<0>(cost) += G.needs_backprop ? masked_cross_entropy(

@@ -236,7 +236,7 @@ class ConfusionMatrix {
         vector<vector<atomic<int>>> grid;
         vector<atomic<int>> totals;
         const vector<string>& names;
-        ConfusionMatrix(int classes, const vector<string>& _names) : names(_names) {
+        ConfusionMatrix(int classes, const vector<string>& _names) : names(_names), totals(classes) {
             for (int i = 0; i < classes;++i) {
                 grid.emplace_back(classes);
             }
@@ -262,7 +262,7 @@ class ConfusionMatrix {
                               << std::setw(5)
                               << std::setprecision(3)
                               << std::setfill(' ')
-                              << 100.0 * (el / (*totals_ptr))
+                              << ((*totals_ptr) > 0 ? (100.0 * ((double) el / (double)(*totals_ptr))) : 0.0)
                               << "%\t";
                 }
                 std::cout << "\n";
@@ -275,13 +275,19 @@ class ConfusionMatrix {
 template<typename model_t>
 REAL_t average_error(const vector<model_t>& models, const vector<vector<Databatch>>& validation_sets, const int& total_valid_examples) {
     atomic<int> correct(0);
-    ReportProgress<double> journalist("Average error", total_valid_examples);
+    ReportProgress<double> journalist("Average error", validation_sets.size() * 10);
     atomic<int> total(0);
+    atomic<int> seen_minibatches(0);
     auto confusion = ConfusionMatrix(5, label_names);
 
     for (int validation_set_num = 0; validation_set_num < validation_sets.size(); validation_set_num++) {
-        for (int minibatch_num =0 ; minibatch_num < validation_sets[validation_set_num].size(); minibatch_num++) {
-            pool->run([&confusion, &journalist, &models, &correct, &total, &validation_sets, validation_set_num, minibatch_num] {
+
+        auto random_batch_order = utils::random_arange(validation_sets[validation_set_num].size());
+        if (random_batch_order.size() > 10)
+            random_batch_order.resize(10);
+
+        for (auto& minibatch_num : random_batch_order) {
+            pool->run([&confusion, &journalist, &models, &correct,&seen_minibatches,  &total, &validation_sets, validation_set_num, minibatch_num] {
                 auto& valid_set = validation_sets[validation_set_num][minibatch_num];
                 vector<shared_mat> probs;
                 for (int k = 0; k < models.size();k++) {
@@ -306,8 +312,9 @@ REAL_t average_error(const vector<model_t>& models, const vector<vector<Databatc
                         correct++;
                     }
                 }
+                seen_minibatches++;
                 total+= valid_set.codelens->rows();
-                journalist.tick(total, (REAL_t) 100.0 * correct / (REAL_t) total);
+                journalist.tick(seen_minibatches, (REAL_t) 100.0 * correct / (REAL_t) total);
             });
         }
     }

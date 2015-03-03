@@ -229,7 +229,7 @@ class StackedModel {
 
         std::vector<int> reconstruct(Indexing::Index, int, int symbol_offset = 0);
 
-        state_type get_final_activation(graph_t&, Indexing::Index) const;
+        state_type get_final_activation(graph_t&, Indexing::Index, T drop_prob=0.0) const;
         /**
         Activate
         --------

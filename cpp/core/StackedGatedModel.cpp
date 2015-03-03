@@ -484,7 +484,8 @@ StackedGatedModel<T> StackedGatedModel<T>::shallow_copy() const {
 template<typename T>
 typename StackedGatedModel<T>::state_type StackedGatedModel<T>::get_final_activation(
         graph_t& G,
-        Indexing::Index example) const {
+        Indexing::Index example,
+        T drop_prob) const {
         shared_mat input_vector;
         shared_mat memory;
         auto initial_state = initial_states();
@@ -495,7 +496,7 @@ typename StackedGatedModel<T>::state_type StackedGatedModel<T>::get_final_activa
                 memory        = gate.activate(G, input_vector, initial_state.second[0]);
                 input_vector  = G.eltmul_broadcast_rowwise(input_vector, memory);
                 // pass this letter to the LSTM for processing
-                initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
+                initial_state = forward_LSTMs(G, input_vector, initial_state, cells, drop_prob);
                 // decoder takes as input the final hidden layer's activation:
         }
         return initial_state;

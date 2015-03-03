@@ -283,7 +283,8 @@ StackedModel<T> StackedModel<T>::shallow_copy() const {
 template<typename T>
 typename StackedModel<T>::state_type StackedModel<T>::get_final_activation(
     graph_t& G,
-    Indexing::Index example) const {
+    Indexing::Index example,
+    T drop_prob) const {
     shared_mat input_vector;
     auto initial_state = initial_states();
     auto n = example.size();
@@ -291,7 +292,7 @@ typename StackedModel<T>::state_type StackedModel<T>::get_final_activation(
         // pick this letter from the embedding
         input_vector  = G.row_pluck(embedding, example[i]);
         // pass this letter to the LSTM for processing
-        initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
+        initial_state = forward_LSTMs(G, input_vector, initial_state, cells, drop_prob);
         // decoder takes as input the final hidden layer's activation:
     }
     return initial_state;

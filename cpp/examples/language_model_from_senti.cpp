@@ -33,6 +33,7 @@ using utils::OntologyBranch;
 using utils::tokenized_uint_labeled_dataset;
 using std::atomic;
 using std::chrono::seconds;
+using std::array;
 
 
 typedef float REAL_t;
@@ -45,7 +46,7 @@ typedef Eigen::Matrix<REAL_t, Eigen::Dynamic, 1> float_vector;
 typedef std::pair<vector<string>, uint> labeled_pair;
 
 const string START = "**START**";
-const string label_names[] = {"--", "-", "=", "+", "++"};
+const vector<string> label_names = {"--", "-", "=", "+", "++"};
 
 ThreadPool* pool;
 
@@ -229,15 +230,57 @@ void reconstruct_random_beams(
     }
 }
 
+class ConfusionMatrix {
+    public:
+        vector<vector<atomic<int>>> grid;
+        vector<atomic<int>> totals;
+        const vector<string>& names;
+        ConfusionMatrix(int classes, const vector<string>& _names) : names(_names) {
+            for (int i = 0; i < classes;++i) {
+                grid.emplace_back(classes);
+            }
+        }
+        void classified_a_when_b(int a, int b) {
+            // update the misclassification:
+            grid[b][a] += 1;
+            // update the stakes:
+            totals[b]  += 1;
+        };
+        void report() const {
+            std::cout << "\nConfusion Matrix\n\t";
+            for (auto & name : names) {
+                std::cout << name << "\t";
+            }
+            std::cout << "\n";
+            auto names_ptr = names.begin();
+            auto totals_ptr = totals.begin();
+            for (auto& category : grid) {
+                std::cout << *names_ptr << "\t";
+                for (auto & el : category) {
+                    std::cout << std::fixed
+                              << std::setw(5)
+                              << std::setprecision(3)
+                              << std::setfill(' ')
+                              << 100.0 * (el / (*totals_ptr))
+                              << "%\t";
+                }
+                std::cout << "\n";
+                names_ptr++;
+                totals_ptr++;
+            }
+        }
+};
+
 template<typename model_t>
 REAL_t average_error(const vector<model_t>& models, const vector<vector<Databatch>>& validation_sets, const int& total_valid_examples) {
     atomic<int> correct(0);
     ReportProgress<double> journalist("Average error", total_valid_examples);
     atomic<int> total(0);
+    auto confusion = ConfusionMatrix(5, label_names);
 
     for (int validation_set_num = 0; validation_set_num < validation_sets.size(); validation_set_num++) {
         for (int minibatch_num =0 ; minibatch_num < validation_sets[validation_set_num].size(); minibatch_num++) {
-            pool->run([&journalist, &models, &correct, &total, &validation_sets, validation_set_num, minibatch_num] {
+            pool->run([&confusion, &journalist, &models, &correct, &total, &validation_sets, validation_set_num, minibatch_num] {
                 auto& valid_set = validation_sets[validation_set_num][minibatch_num];
                 vector<shared_mat> probs;
                 for (int k = 0; k < models.size();k++) {
@@ -257,6 +300,7 @@ REAL_t average_error(const vector<model_t>& models, const vector<vector<Databatc
                             best_model = k;
                         }
                     }
+                    confusion.classified_a_when_b(best_model, (*valid_set.targets)(row_num));
                     if (best_model == (*valid_set.targets)(row_num)) {
                         correct++;
                     }
@@ -267,6 +311,8 @@ REAL_t average_error(const vector<model_t>& models, const vector<vector<Databatc
         }
     }
     pool->wait_until_idle();
+    confusion.report();
+
     return ((REAL_t) 100.0 * correct / (REAL_t) total_valid_examples);
 };
 

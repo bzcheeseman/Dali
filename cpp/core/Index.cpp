@@ -54,34 +54,30 @@ namespace Indexing {
     Index::Index(index_std_vector& vec) {
         w = make_shared<VectorIndex>(vec);
     }
-
     Index::Index(std::initializer_list<ind_t> vec) {
         w = make_shared<OwnershipVectorIndex>(vec);
     }
-
     Index::Index(std::shared_ptr<OwnershipVectorIndex> internal) {
         w = internal;
     }
-
     Index::Index(eigen_index_vector& vec) {
         w = make_shared<EigenIndexVectorIndex>(vec);
     }
-
     Index::Index(eigen_index_block_scalar vec) {
         w = make_shared<EigenIndexBlockIndex>(vec);
     }
-
     Index::Index(eigen_index_block vec) {
         w = make_shared<EigenIndexBlockIndex>(vec);
     }
-
     Index::Index(eigen_segment vec) {
         w = make_shared<EigenIndexBlockIndex>(vec);
     }
     Index::Index(eigen_segment_scalar vec) {
         w = make_shared<EigenIndexBlockIndex>(vec);
     }
-
+    Index::Index(eigen_index_block_scalar_from_row vec) {
+        w = make_shared<EigenIndexBlockIndex>(vec);
+    }
     Index Index::arange(uint start, uint end_non_inclusive) {
         assert(start < end_non_inclusive);
         auto internal = make_shared<OwnershipVectorIndex>(std::initializer_list<uint>({}));
@@ -168,13 +164,10 @@ namespace Indexing {
         return w[idx];
     }
 
-    EigenIndexBlockIndex::EigenIndexBlockIndex(eigen_index_block_scalar vec) : w(vec) {
-    }
-    EigenIndexBlockIndex::EigenIndexBlockIndex(eigen_index_block vec) : w(vec) {
-    }
-    EigenIndexBlockIndex::EigenIndexBlockIndex(eigen_segment vec) : w(vec) {
-    }
-    EigenIndexBlockIndex::EigenIndexBlockIndex(eigen_segment_scalar vec) : w(vec) {
-    }
+    EigenIndexBlockIndex::EigenIndexBlockIndex(eigen_index_block_scalar vec)          : w(vec) {}
+    EigenIndexBlockIndex::EigenIndexBlockIndex(eigen_index_block vec)                 : w(vec) {}
+    EigenIndexBlockIndex::EigenIndexBlockIndex(eigen_segment vec)                     : w(vec) {}
+    EigenIndexBlockIndex::EigenIndexBlockIndex(eigen_segment_scalar vec)              : w(vec) {}
+    EigenIndexBlockIndex::EigenIndexBlockIndex(eigen_index_block_scalar_from_row vec) : w(vec) {}
 
 }

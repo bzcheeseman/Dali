@@ -132,16 +132,18 @@ class MarginallyLessDumbModel: public babi::Model {
     }
 
     public:
-        shared_mat activate_words(graph_t& G, model_t& model, const VS& words) {
+        shared_mat activate_words(graph_t& G, model_t& model, const VS& words, bool use_dropout) {
             auto ex = vocab->transform(words);
-            auto out_state = model.get_final_activation(G, ex);
+            auto out_state = model.get_final_activation(G, ex, use_dropout ? TEXT_DROPOUT : 0.0);
             // TODO(szymon): Implement G.join method, so that we can join all the hidden
             // from different levels of stacks.
             // return G.join(out_state.second);
             return G.vstack(out_state.second);
         }
 
-        shared_mat activate_story(graph_t& G, const vector<shared_mat>& facts, shared_mat question) {
+        shared_mat activate_story(graph_t& G, const vector<shared_mat>& facts,
+                                  shared_mat question,
+                                  bool use_dropout) {
             auto state = story_model->initial_states();
             utils::Timer a_timer("Forward");
             for (auto& fact: facts) {
@@ -150,7 +152,7 @@ class MarginallyLessDumbModel: public babi::Model {
                                       state,
                                       story_model->base_cell,
                                       story_model->cells,
-                                      TEXT_DROPOUT);
+                                      use_dropout ? HL_DROPOUT : 0.0);
             }
 
             state = forward_LSTMs(G,
@@ -158,14 +160,14 @@ class MarginallyLessDumbModel: public babi::Model {
                                   state,
                                   story_model->base_cell,
                                   story_model->cells,
-                                  TEXT_DROPOUT);
+                                  use_dropout ? HL_DROPOUT : 0.0);
 
             state = forward_LSTMs(G,
                                   start_prediction,
                                   state,
                                   story_model->base_cell,
                                   story_model->cells,
-                                  HL_DROPOUT);
+                                  use_dropout ? HL_DROPOUT : 0.0);
 
             auto log_probs = story_model->decoder.activate(G,
                                                            start_prediction,
@@ -176,31 +178,33 @@ class MarginallyLessDumbModel: public babi::Model {
 
         shared_mat predict_answer_distribution(graph_t& G,
                                                const vector<Fact*>& facts,
-                                               QA* qa) {
+                                               QA* qa,
+                                               bool use_dropout) {
             vector<shared_mat> fact_hiddens;
 
             for (auto& fact: facts) {
-                fact_hiddens.emplace_back(activate_words(G, *fact_model, fact->fact));
+                fact_hiddens.emplace_back(activate_words(G, *fact_model, fact->fact, use_dropout));
             }
 
-            shared_mat question_hidden = activate_words(G, *question_model, qa->question);
+            shared_mat question_hidden = activate_words(G, *question_model, qa->question, use_dropout);
 
-            shared_mat story_activation = activate_story(G, fact_hiddens, question_hidden);
+            shared_mat story_activation = activate_story(G, fact_hiddens, question_hidden, use_dropout);
 
             return story_activation;
         }
 
         REAL_t error(graph_t& G,
                      const vector<Fact*>& facts,
-                     QA* qa) {
-            shared_mat log_probs = predict_answer_distribution(G, facts, qa);
+                     QA* qa,
+                     bool use_dropout) {
+            shared_mat log_probs = predict_answer_distribution(G, facts, qa, use_dropout);
 
             uint answer_idx = vocab->word2index.at(qa->answer[0]);
 
             return cross_entropy(log_probs, answer_idx);
         }
 
-        REAL_t compute_error(const vector<babi::Story>& dataset, bool backprop) {
+        REAL_t compute_error(const vector<babi::Story>& dataset, bool training) {
             auto params = parameters();
 
             vector<Fact*> facts_so_far;
@@ -215,15 +219,18 @@ class MarginallyLessDumbModel: public babi::Model {
                     if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
                         facts_so_far.push_back(f);
                     } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
-                        Graph<REAL_t> G(backprop);
-                        total_error += error(G, facts_so_far, qa);
+                        // When we are training we want to do backprop
+                        Graph<REAL_t> G(training);
+                        // When we are training we want to use dropout
+                        total_error += error(G, facts_so_far, qa, training);
                         num_questions += 1;
-                        if (backprop)
+                        if (training)
                             G.backward();
                     }
                 }
                 facts_so_far.clear();
-                if (backprop)
+                // Only update weights during training.
+                if (training)
                     solver.step(params, 0.0);
             }
 
@@ -232,7 +239,7 @@ class MarginallyLessDumbModel: public babi::Model {
 
         void train(const vector<babi::Story>& data) {
             const float TRAINING_FRAC = 0.9;
-            const float IMPROVE_EPS = 0.0001; // good one: 0.003
+            const float IMPROVE_EPS = 0.1; // good one: 0.003
             vocab_from_training(data);
             int training_size = (int)(TRAINING_FRAC * data.size());
             std::vector<babi::Story> train(data.begin(), data.begin() + training_size);
@@ -281,12 +288,12 @@ class MarginallyLessDumbModel: public babi::Model {
             vector<shared_mat> fact_hiddens;
 
             for (auto& fact: story_so_far) {
-                fact_hiddens.emplace_back(activate_words(G, *fact_model, fact));
+                fact_hiddens.emplace_back(activate_words(G, *fact_model, fact, false));
             }
 
-            shared_mat question_hidden = activate_words(G, *question_model, question);
+            shared_mat question_hidden = activate_words(G, *question_model, question, false);
 
-            shared_mat story_activation = activate_story(G, fact_hiddens, question_hidden);
+            shared_mat story_activation = activate_story(G, fact_hiddens, question_hidden, false);
 
             int word_idx = argmax(story_activation);
 

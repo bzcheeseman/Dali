@@ -359,7 +359,8 @@ StackedShortcutModel<T> StackedShortcutModel<T>::shallow_copy() const {
 template<typename T>
 typename StackedShortcutModel<T>::state_type StackedShortcutModel<T>::get_final_activation(
         graph_t& G,
-        Indexing::Index example) const {
+        Indexing::Index example,
+        T drop_prob) const {
         shared_mat input_vector;
         auto initial_state = initial_states();
         auto n = example.size();
@@ -367,7 +368,7 @@ typename StackedShortcutModel<T>::state_type StackedShortcutModel<T>::get_final_
             // pick this letter from the embedding
             input_vector  = G.row_pluck(embedding, example[i]);
             // pass this letter to the LSTM for processing
-            initial_state = forward_LSTMs(G, input_vector, initial_state, base_cell, cells);
+            initial_state = forward_LSTMs(G, input_vector, initial_state, base_cell, cells, drop_prob);
         }
         return initial_state;
 }

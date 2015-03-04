@@ -105,12 +105,12 @@ class LstmBabiModel {
     // MODEL PARAMS
 
     const int TEXT_STACK_SIZE =      2;
-    const int TEXT_HIDDEN_SIZE =    30;
-    const REAL_t TEXT_DROPOUT = 0.3;
+    const int TEXT_HIDDEN_SIZE =    20;
+    const REAL_t TEXT_DROPOUT = 0.1;
 
     const int HL_STACK_SIZE =      4;
-    const int HL_HIDDEN_SIZE =    20;
-    const REAL_t HL_DROPOUT = 0.5;
+    const int HL_HIDDEN_SIZE =    15;
+    const REAL_t HL_DROPOUT = 0.3;
 
     const int EMBEDDING_SIZE = 30;
 
@@ -148,14 +148,14 @@ class LstmBabiModel {
                 TEXT_STACK_SIZE,
                 TEXT_HIDDEN_SIZE,
                 1,
-                false); // unused output
+                true); // unused output
         fact_model = make_shared<model_t>(
                 vocab_size,
                 EMBEDDING_SIZE,
                 TEXT_STACK_SIZE,
                 TEXT_HIDDEN_SIZE,
                 1,
-                false); // unused output
+                true); // unused output
         story_model = make_shared<model_t>(
                 0,
                 TEXT_STACK_SIZE*TEXT_HIDDEN_SIZE,
@@ -286,7 +286,7 @@ class LstmBabiModelRunner: public babi::Model {
 
     // TRAINING_PROCEDURE_PARAMS
 
-    const float TRAINING_FRAC = 0.9;
+    const float TRAINING_FRAC = 0.8;
     const float MINIMUM_IMPROVEMENT = 0.0001; // good one: 0.003
     const int PATIENCE = 20;
 
@@ -384,12 +384,16 @@ class LstmBabiModelRunner: public babi::Model {
                 std::stringstream ss;
                 ss << "Epoch " << ++epoch
                    << " validation: " << validation_error
-                   << " training: " << training_error;
+                   << " training: " << training_error
+                   << " last validation: " << last_validation_error;
                 ThreadPool::print_safely(ss.str());
 
                 if (validation_error < last_validation_error - MINIMUM_IMPROVEMENT) {
                     epochs_validation_increasing = 0;
-                    last_validation_error = validation_error;
+                    if (std::numeric_limits<double>::infinity() == last_validation_error)
+                          last_validation_error = validation_error;
+                    else
+                          last_validation_error = 0.2*validation_error + 0.8*last_validation_error;
                 } else {
                     epochs_validation_increasing += 1;
                 }

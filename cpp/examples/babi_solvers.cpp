@@ -6,7 +6,7 @@
 #include "core/Solver.h"
 #include "core/CrossEntropy.h"
 #include "core/Reporting.h"
-#include "core/StackedShortcutModel.h"
+#include "core/StackedModel.h"
 
 using babi::Fact;
 using babi::Item;

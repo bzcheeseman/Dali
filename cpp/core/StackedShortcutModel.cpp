@@ -24,16 +24,6 @@ vector<typename StackedShortcutModel<T>::shared_mat> StackedShortcutModel<T>::pa
 }
 
 template<typename T>
-void StackedShortcutModel<T>::save(std::string dirname) const {
-        utils::ensure_directory(dirname);
-        // Save the matrices:
-        auto params = parameters();
-        utils::save_matrices(params, dirname);
-        dirname += "config.md";
-        this->save_configuration(dirname);
-}
-
-template<typename T>
 StackedShortcutModel<T> StackedShortcutModel<T>::build_from_CLI(string load_location,
                                                                 int vocab_size,
                                                                 int output_size,

@@ -28,6 +28,16 @@ string RecurrentEmbeddingModel<T>::reconstruct_string(
 }
 
 template<typename T>
+void RecurrentEmbeddingModel<T>::save(std::string dirname) const {
+    utils::ensure_directory(dirname);
+    // Save the matrices:
+    auto params = parameters();
+    utils::save_matrices(params, dirname);
+    dirname += "config.md";
+    save_configuration(dirname);
+}
+
+template<typename T>
 typename RecurrentEmbeddingModel<T>::state_type RecurrentEmbeddingModel<T>::initial_states() const {
     return LSTM<T>::initial_states(hidden_sizes);
 }

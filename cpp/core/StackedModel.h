@@ -85,7 +85,6 @@ class StackedModel : public RecurrentEmbeddingModel<T>  {
 
         const classifier_t decoder;
         virtual std::vector<shared_mat> parameters() const;
-        void save(std::string) const;
         /**
         Load
         ----
@@ -177,7 +176,7 @@ class StackedModel : public RecurrentEmbeddingModel<T>  {
         T masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, shared_eigen_index_vector, shared_eigen_index_vector, uint offset=0, T drop_prob = 0.0);
         T masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, uint, shared_eigen_index_vector, uint offset=0, T drop_prob = 0.0);
 
-        std::vector<int> reconstruct(Indexing::Index, int, int symbol_offset = 0) const;
+        virtual std::vector<int> reconstruct(Indexing::Index, int, int symbol_offset = 0) const;
 
         state_type get_final_activation(graph_t&, Indexing::Index, T drop_prob=0.0) const;
         /**
@@ -206,7 +205,7 @@ class StackedModel : public RecurrentEmbeddingModel<T>  {
         activation_t activate(graph_t&, state_type&, const uint& ) const;
         activation_t activate(graph_t&, state_type&, const eigen_index_block ) const;
 
-        std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(Indexing::Index, utils::OntologyBranch::shared_branch, int) const;
+        virtual std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(Indexing::Index, utils::OntologyBranch::shared_branch, int) const;
 
         /**
         Shallow Copy

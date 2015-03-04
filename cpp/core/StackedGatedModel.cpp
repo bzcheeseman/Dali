@@ -50,16 +50,6 @@ typename StackedGatedModel<T>::config_t StackedGatedModel<T>::configuration() co
 }
 
 template<typename T>
-void StackedGatedModel<T>::save(std::string dirname) const {
-        utils::ensure_directory(dirname);
-        // Save the matrices:
-        auto params = parameters();
-        utils::save_matrices(params, dirname);
-        dirname += "config.md";
-        this->save_configuration(dirname);
-}
-
-template<typename T>
 StackedGatedModel<T> StackedGatedModel<T>::build_from_CLI(string load_location,
                                                                                                                   int vocab_size,
                                                                                                                   int output_size,

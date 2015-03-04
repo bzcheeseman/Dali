@@ -28,16 +28,6 @@ vector<typename StackedModel<T>::shared_mat> StackedModel<T>::parameters() const
 }
 
 template<typename T>
-void StackedModel<T>::save(std::string dirname) const {
-    utils::ensure_directory(dirname);
-    // Save the matrices:
-    auto params = parameters();
-    utils::save_matrices(params, dirname);
-    dirname += "config.md";
-    this->save_configuration(dirname);
-}
-
-template<typename T>
 StackedModel<T> StackedModel<T>::build_from_CLI(string load_location,
                                                                                             int vocab_size,
                                                                                             int output_size,

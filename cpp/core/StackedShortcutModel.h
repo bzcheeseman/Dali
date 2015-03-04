@@ -93,7 +93,6 @@ class StackedShortcutModel : public RecurrentEmbeddingModel<T> {
 
                 const classifier_t decoder;
                 virtual std::vector<shared_mat> parameters() const;
-                void save(std::string) const;
 
                 /**
                 Decoder initialization
@@ -225,7 +224,7 @@ std::vector<int> hidden_sizes : size of internal layers
                 StackedShortcutModel(const StackedShortcutModel<T>&, bool, bool);
                 T masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, shared_eigen_index_vector, shared_eigen_index_vector, uint offset=0,  T drop_prob = 0.0);
                 T masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, uint, shared_eigen_index_vector, uint offset=0, T drop_prob = 0.0);
-                std::vector<int> reconstruct(Indexing::Index, int, int symbol_offset = 0) const;
+                virtual std::vector<int> reconstruct(Indexing::Index, int, int symbol_offset = 0) const;
 
                 state_type get_final_activation(graph_t&, Indexing::Index, T drop_prob=0.0) const;
 

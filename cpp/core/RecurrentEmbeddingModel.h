@@ -61,6 +61,7 @@ class RecurrentEmbeddingModel {
         **/
         virtual std::vector<shared_mat> parameters() const;
 
+        void save(std::string) const;
 
         typedef std::pair<std::vector<shared_mat>, std::vector<shared_mat>> state_type;
         virtual state_type initial_states() const;

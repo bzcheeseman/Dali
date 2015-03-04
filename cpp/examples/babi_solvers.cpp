@@ -105,11 +105,11 @@ class MarginallyLessDumbModel: public babi::Model {
 
     const int TEXT_STACK_SIZE =      2;
     const int TEXT_HIDDEN_SIZE =    30;
-    const REAL_t TEXT_DROPOUT = 0.4;
+    const REAL_t TEXT_DROPOUT = 0.5;
 
     const int HL_STACK_SIZE =      4;
     const int HL_HIDDEN_SIZE =    20;
-    const REAL_t HL_DROPOUT = 0.3;
+    const REAL_t HL_DROPOUT = 0.5;
 
     const int EMBEDDING_SIZE = 30;
 
@@ -166,14 +166,14 @@ class MarginallyLessDumbModel: public babi::Model {
                 TEXT_STACK_SIZE,
                 TEXT_HIDDEN_SIZE,
                 1,
-                true); // unused output
+                false); // unused output
         fact_model = make_shared<model_t>(
                 vocab_size,
                 EMBEDDING_SIZE,
                 TEXT_STACK_SIZE,
                 TEXT_HIDDEN_SIZE,
                 1,
-                true); // unused output
+                false); // unused output
         story_model = make_shared<model_t>(
                 0,
                 TEXT_STACK_SIZE*TEXT_HIDDEN_SIZE,
@@ -207,9 +207,9 @@ class MarginallyLessDumbModel: public babi::Model {
 
             Seq<shared_mat> sequence;
             sequence.insert(sequence.end(), facts.begin(), facts.end());
-            sequence.push_back(you_will_see_question_soon);
+            // sequence.push_back(you_will_see_question_soon);
             sequence.push_back(question);
-            sequence.push_back(please_start_prediction);
+            // sequence.push_back(please_start_prediction);
 
             state = story_model->stacked_lstm->activate_sequence(G,
                 state,

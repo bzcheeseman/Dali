@@ -13,15 +13,14 @@ find_package(ZLIB REQUIRED)
 find_package(Gflags REQUIRED)
 
 # OPTIONAL PACAKGES
-find_package(Tcmalloc)
+find_package(GooglePerfTools)
 find_package(BLAS)
 find_package(MKL)
 find_package(GTest)
 
-if (NOT Tcmalloc_LIBRARIES)
-    message("WARNING: consider installing tcmalloc for better multithreaded performance.\n    > brew install gperftools")
-endif(NOT Tcmalloc_LIBRARIES)
-
+if (NOT GPERFTOOLS_FOUND)
+    message("WARNING: consider installing gperftools for better multithreaded performance.\n    > brew install gperftools")
+endif(NOT GPERFTOOLS_FOUND)
 
 # This monstrosity came to live to alleviate two conditions:
 #      1) ctest ignores colored output
@@ -82,6 +81,7 @@ include_directories(${MKL_INCLUDE_DIR})
 include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${GFLAGS_INCLUDE_DIRS})
+include_directories(${GPERFTOOLS_INCLUDE_DIR})
 
 # ADDING DIRECTORIES WITH THEIR OWN CMAKELISTS FILES
 add_subdirectory(${PROJECT_SOURCE_DIR}/protobuf)

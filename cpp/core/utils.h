@@ -465,19 +465,6 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
         std::vector<uint> arange(uint, uint);
 
         template <class T> inline void hash_combine(std::size_t &, const T &);
-        /**
-        Get Random ID
-        -------------
-
-        Get a super random number using both time, device default engine,
-        and hash combinations between each.
-
-        Outputs
-        -------
-
-        int seed : hopefully collision free random number as an ID
-        **/
-        std::size_t get_random_id();
 
         bool file_exists(const std::string&);
 

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <set>
 #include <vector>
+#include <gperftools/profiler.h>
 
 #include "core/babi.h"
 #include "core/Solver.h"
@@ -90,7 +91,6 @@ class RandomAnswer: public babi::Model {
 };
 
 // LSTM Model todo:
-// -> add dropout
 // -> add cross validation
 // -> increase performance
 // -> supporting fact gate - add second order term between question and answer.
@@ -104,12 +104,12 @@ class MarginallyLessDumbModel: public babi::Model {
     // MODEL PARAMS
 
     const int TEXT_STACK_SIZE =      2;
-    const int TEXT_HIDDEN_SIZE =    15;
-    const REAL_t TEXT_DROPOUT = 0.0;
+    const int TEXT_HIDDEN_SIZE =    30;
+    const REAL_t TEXT_DROPOUT = 0.4;
 
     const int HL_STACK_SIZE =      4;
-    const int HL_HIDDEN_SIZE =    10;
-    const REAL_t HL_DROPOUT = 0.0;
+    const int HL_HIDDEN_SIZE =    20;
+    const REAL_t HL_DROPOUT = 0.3;
 
     const int EMBEDDING_SIZE = 30;
 
@@ -292,6 +292,7 @@ class MarginallyLessDumbModel: public babi::Model {
                 // Only update weights during training.
                 if (training)
                     solver.step(params, 0.0);
+                ProfilerFlush();
             }
 
             return total_error/num_questions;
@@ -353,7 +354,7 @@ class MarginallyLessDumbModel: public babi::Model {
 
 
 int main() {
+    ProfilerStart("/tmp/babi.prof");
     babi::benchmark_task<MarginallyLessDumbModel<double>>("qa11_basic-coreference");
-
-    babi::benchmark<MostCommonAnswer>(1);
+    ProfilerStop();
 }

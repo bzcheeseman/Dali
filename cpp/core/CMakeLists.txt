@@ -38,7 +38,7 @@ target_link_libraries(core ${ZLIB_LIBRARIES}
                            ${BLAS_LIBRARIES}
                            ${MKL_LIBRARIES}
                            ${GFLAGS_LIBRARIES}
-                           ${Tcmalloc_LIBRARIES})
+                           ${GPERFTOOLS_LIBRARIES})
 
 
 

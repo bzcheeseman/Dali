@@ -7,7 +7,7 @@ using std::vector;
 
 namespace model {
     template<typename REAL_t>
-    SHARED_MAT Model<REAL_t>::operator() (GRAPH& G, SHARED_MAT input) {
+    SHARED_MAT Model<REAL_t>::operator() (GRAPH& G, SHARED_MAT input) const {
         return activate(G, input);
     }
 
@@ -34,13 +34,13 @@ namespace model {
 namespace model {
     template<typename REAL_t>
     Seq<SHARED_MAT> RecurrentModel<REAL_t>::operator() (
-            GRAPH& G, const Seq<SHARED_MAT>& seq) {
+            GRAPH& G, const Seq<SHARED_MAT>& seq)  const {
         return activate_sequence(G, seq);
     }
 
     template<typename REAL_t>
     Seq<SHARED_MAT> RecurrentModel<REAL_t>::activate_sequence(
-            GRAPH& G, const Seq<SHARED_MAT>& seq) {
+            GRAPH& G, const Seq<SHARED_MAT>& seq) const {
         reset();
         Seq<SHARED_MAT> result;
         for (const SHARED_MAT& input: seq) {

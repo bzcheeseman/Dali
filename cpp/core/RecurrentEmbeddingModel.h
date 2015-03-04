@@ -82,6 +82,7 @@ class RecurrentEmbeddingModel {
         std::string reconstruct_lattice_string(Indexing::Index, utils::OntologyBranch::shared_branch, int) const;
         RecurrentEmbeddingModel(int _vocabulary_size, int _input_size, int _hidden_size, int _stack_size, int _output_size);
         RecurrentEmbeddingModel(int _vocabulary_size, int _input_size, const std::vector<int>& _hidden_sizes, int _output_size);
+        RecurrentEmbeddingModel(const RecurrentEmbeddingModel& model, bool copy_w, bool copy_dw);
         RecurrentEmbeddingModel(const config_t&);
 };
 

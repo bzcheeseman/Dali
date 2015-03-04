@@ -16,7 +16,7 @@ namespace model {
     }
 
     template<typename REAL_t>
-    SHARED_MAT Layer<REAL_t>::activate(GRAPH& G, SHARED_MAT input) {
+    SHARED_MAT Layer<REAL_t>::activate(GRAPH& G, SHARED_MAT input) const {
         if (use_bias) {
             return G.mul_with_bias(mult, input, bias);
         } else {

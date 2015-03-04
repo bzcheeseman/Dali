@@ -20,7 +20,7 @@ namespace model {
         Layer<REAL_t> memory_map;
         SHARED_MAT first_memory;
 
-        SHARED_MAT prev_memory;
+        mutable SHARED_MAT prev_memory;
 
         public:
             RNN(int input_size,
@@ -28,10 +28,10 @@ namespace model {
                 int memory_size,
                 double bound=0.2);
 
-            virtual void reset() override;
+            virtual void reset() const override;
 
             // output is in range 0, 1
-            virtual SHARED_MAT activate(GRAPH& G, SHARED_MAT input) override;
+            virtual SHARED_MAT activate(GRAPH& G, SHARED_MAT input) const override;
 
             virtual std::vector<SHARED_MAT> parameters() const override;
     };

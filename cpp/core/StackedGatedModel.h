@@ -12,8 +12,6 @@
 #include "Softmax.h"
 #include "CrossEntropy.h"
 #include "StackedModel.h"
-#include "core/RecurrentEmbeddingModel.h"
-
 
 DECLARE_double(memory_penalty);
 
@@ -36,7 +34,7 @@ total memory used (the input gate's total activation).
 
 
 template<typename T>
-class StackedGatedModel : public RecurrentEmbeddingModel<T> {
+class StackedGatedModel : public StackedModel<T> {
         typedef LSTM<T>                    lstm;
         typedef Layer<T>           classifier_t;
         typedef Mat<T>                      mat;
@@ -45,21 +43,14 @@ class StackedGatedModel : public RecurrentEmbeddingModel<T> {
         typedef GatedInput<T>            gate_t;
         typedef std::map<std::string, std::vector<std::string>> config_t;
 
-        inline void name_parameters();
-        inline void construct_LSTM_cells();
-        inline void construct_LSTM_cells(const std::vector<lstm>&, bool, bool);
-
         public:
                 typedef std::pair<std::vector<shared_mat>, std::vector<shared_mat>> state_type;
                 typedef std::tuple<state_type, shared_mat, shared_mat> activation_t;
                 typedef T value_t;
-
-                std::vector<lstm> cells;
                 typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
                 typedef std::shared_ptr< index_mat > shared_index_mat;
 
                 const gate_t gate;
-                const classifier_t decoder;
                 T memory_penalty;
                 virtual std::vector<shared_mat> parameters() const;
                 virtual config_t configuration() const;

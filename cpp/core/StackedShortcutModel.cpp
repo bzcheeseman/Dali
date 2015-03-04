@@ -17,8 +17,8 @@ vector<typename StackedShortcutModel<T>::shared_mat> StackedShortcutModel<T>::pa
     auto base_cell_params = base_cell.parameters();
     parameters.insert(parameters.end(), base_cell_params.begin(), base_cell_params.end());
     for (auto& cell : cells) {
-            auto cell_params = cell.parameters();
-            parameters.insert(parameters.end(), cell_params.begin(), cell_params.end());
+        auto cell_params = cell.parameters();
+        parameters.insert(parameters.end(), cell_params.begin(), cell_params.end());
     }
     return parameters;
 }
@@ -29,7 +29,7 @@ StackedShortcutModel<T> StackedShortcutModel<T>::build_from_CLI(string load_loca
                                                                 int output_size,
                                                                 bool verbose) {
         if (verbose)
-                std::cout << "Load location         = " << ((load_location == "") ? "N/A" : load_location)       << std::endl;
+            std::cout << "Load location         = " << ((load_location == "") ? "N/A" : load_location)       << std::endl;
         // Load or Construct the model
         auto model = (load_location != "") ?
                 StackedShortcutModel<T>::load(load_location) :
@@ -282,10 +282,9 @@ StackedShortcutModel<T>::StackedShortcutModel (int vocabulary_size, int input_si
 
 template<typename T>
 StackedShortcutModel<T>::StackedShortcutModel (const StackedShortcutModel<T>& model, bool copy_w, bool copy_dw) :
-    RecurrentEmbeddingModel<T>(model.vocabulary_size, model.input_size, model.hidden_sizes, model.output_size),
+    RecurrentEmbeddingModel<T>(model, copy_w, copy_dw),
     base_cell(model.base_cell, copy_w, copy_dw),
-    decoder(model.decoder, copy_w, copy_dw)
-    {
+    decoder(model.decoder, copy_w, copy_dw) {
     construct_LSTM_cells(model.cells, copy_w, copy_dw);
     name_parameters();
 }

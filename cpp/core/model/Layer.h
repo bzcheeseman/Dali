@@ -20,7 +20,7 @@ namespace model {
             // 50 million constructors and the approach scales.
             Layer(int input_size, int output_size, bool use_bias=true, double bound=0.2);
 
-            SHARED_MAT activate(GRAPH& G, SHARED_MAT input) override;
+            SHARED_MAT activate(GRAPH& G, SHARED_MAT input) const override;
 
             std::vector<SHARED_MAT> parameters() const override;
     };

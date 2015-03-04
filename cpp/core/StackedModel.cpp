@@ -209,10 +209,8 @@ StackedModel<T>::StackedModel (int vocabulary_size, int input_size, int output_s
 
 template<typename T>
 StackedModel<T>::StackedModel (const StackedModel<T>& model, bool copy_w, bool copy_dw)
-    : RecurrentEmbeddingModel<T>(model.vocabulary_size, model.input_size, model.hidden_sizes, model.output_size),
-    decoder(model.decoder, copy_w, copy_dw)
-    {
-    this->embedding = make_shared<mat>(*model.embedding, copy_w, copy_dw);
+    : RecurrentEmbeddingModel<T>(model, copy_w, copy_dw),
+    decoder(model.decoder, copy_w, copy_dw) {
     construct_LSTM_cells(model.cells, copy_w, copy_dw);
     name_parameters();
 }

@@ -20,9 +20,9 @@ namespace model {
             // Should append to parent parameters.
             virtual std::vector<SHARED_MAT> parameters() const = 0;
 
-            virtual SHARED_MAT activate(GRAPH& G, SHARED_MAT input) = 0;
+            virtual SHARED_MAT activate(GRAPH& G, SHARED_MAT input) const = 0;
 
-            virtual SHARED_MAT operator() (GRAPH& G, SHARED_MAT input);
+            virtual SHARED_MAT operator() (GRAPH& G, SHARED_MAT input) const;
 
             // Save to file.
             void save(std::string path) const;
@@ -35,11 +35,11 @@ namespace model {
     class RecurrentModel: public Model<REAL_t> {
         public:
             // Must call parent first.
-            virtual void reset() = 0;
+            virtual void reset() const = 0;
 
-            Seq<SHARED_MAT> operator() (GRAPH& G, const Seq<SHARED_MAT>& seq);
+            Seq<SHARED_MAT> operator() (GRAPH& G, const Seq<SHARED_MAT>& seq) const;
 
-            virtual Seq<SHARED_MAT> activate_sequence(GRAPH& G, const Seq<SHARED_MAT>& seq);
+            virtual Seq<SHARED_MAT> activate_sequence(GRAPH& G, const Seq<SHARED_MAT>& seq) const;
     };
 }
 #endif

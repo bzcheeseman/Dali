@@ -21,7 +21,7 @@ namespace model {
     }
 
     template<typename REAL_t>
-    void RNN<REAL_t>::reset() {
+    void RNN<REAL_t>::reset() const {
         prev_memory = first_memory;
     }
 
@@ -29,7 +29,7 @@ namespace model {
     // to give use more control.
     // output is in range 0, 1
     template<typename REAL_t>
-    SHARED_MAT RNN<REAL_t>::activate(GRAPH& G, SHARED_MAT input) {
+    SHARED_MAT RNN<REAL_t>::activate(GRAPH& G, SHARED_MAT input) const {
         SHARED_MAT memory_in;
         memory_in = memory_map(G, prev_memory);
         SHARED_MAT input_in = input_map(G, input);

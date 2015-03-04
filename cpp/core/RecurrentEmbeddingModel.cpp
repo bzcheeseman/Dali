@@ -92,6 +92,16 @@ RecurrentEmbeddingModel<T>::RecurrentEmbeddingModel(
 }
 
 template<typename T>
+RecurrentEmbeddingModel<T>::RecurrentEmbeddingModel(const RecurrentEmbeddingModel& model, bool copy_w, bool copy_dw) :
+    vocabulary_size(model.vocabulary_size),
+    output_size(model.output_size),
+    input_size(model.input_size),
+    stack_size(model.stack_size),
+    hidden_sizes(model.hidden_sizes) {
+    this->embedding = make_shared<mat>(*model.embedding, copy_w, copy_dw);
+}
+
+template<typename T>
 RecurrentEmbeddingModel<T>::RecurrentEmbeddingModel(const typename RecurrentEmbeddingModel<T>::config_t& config) :
     vocabulary_size(from_string<int>(config.at("vocabulary_size")[0])),
     output_size(from_string<int>(config.at("output_size")[0])),

@@ -79,6 +79,49 @@ namespace babi {
     };
 
     template<typename T>
+    double benchmark_task(const std::string& task) {
+        std::stringstream ss;
+        ss << task << " training commenced!";
+        ThreadPool::print_safely(ss.str());
+
+        // It's important to explicitly state time here rather
+        // using auto to ensure we get a compiler error if T
+        // is not a subclass of babi::Model.
+        std::shared_ptr<Model> m = std::make_shared<T>();
+
+        m->train(Parser::training_data(task));
+
+        std::stringstream ss2;
+        ss2 << task << "training finished. Calculating accuracy on test set.";
+        ThreadPool::print_safely(ss2.str());
+
+        int correct_questions = 0;
+        int total_questions = 0;
+        for (auto& story : Parser::testing_data(task)) {
+            m->new_story();
+            for (auto& item_ptr : story) {
+                if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
+                    m->fact(f->fact);
+                } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
+                    VS answer = m->question(qa->question);
+                    if(utils::vs_equal(answer, qa->answer)) {
+                        ++correct_questions;
+                    }
+                    ++total_questions;
+                } else {
+                    assert(NULL == "Unknown subclass of babi::Item");
+                }
+            }
+        }
+
+        double accuracy = 100.0*(double)correct_questions/total_questions;
+        std::stringstream ss3;
+        ss3 << task << " all done - accuracy on test set: "<< accuracy;
+        ThreadPool::print_safely(ss3.str());
+        return accuracy;
+    }
+
+    template<typename T>
     void benchmark(int num_threads=1) {
         VS tasks = Parser::tasks();
 
@@ -103,51 +146,17 @@ namespace babi {
 
         for (int task_id = 0; task_id < tasks.size(); ++task_id) {
             pool.run([&our_results, &tasks, &tasks_remaining, task_id]() {
-                // It's important to explicitly state time here rather
-                // using auto to ensure we get a compiler error if T
-                // is not a subclass of babi::Model.
-                std::shared_ptr<Model> m = std::make_shared<T>();
-
                 const std::string& task = tasks[task_id];
 
-                std::stringstream ss;
-                ss << task << " training commenced!";
-                ThreadPool::print_safely(ss.str());
+                double accuracy = benchmark_task<T>(task);
 
-                m->train(Parser::training_data(task));
-
-                std::stringstream ss2;
-                ss2 << task << " moving on to test score calculation.";
-                ThreadPool::print_safely(ss2.str());
-
-                int correct_questions = 0;
-                int total_questions = 0;
-                for (auto& story : Parser::testing_data(task)) {
-                    m->new_story();
-                    for (auto& item_ptr : story) {
-                        if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
-                            m->fact(f->fact);
-                        } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
-                            VS answer = m->question(qa->question);
-                            if(utils::vs_equal(answer, qa->answer)) {
-                                ++correct_questions;
-                            }
-                            ++total_questions;
-                        } else {
-                            assert(NULL == "Unknown subclass of babi::Item");
-                        }
-                    }
-                }
-                int accuracy = 100.0*(double)correct_questions/total_questions;
-
-                std::cout << task << " " << accuracy << "%" << std::endl;
                 our_results[task_id] = accuracy;
 
                 tasks_remaining += -1;
-                std::stringstream ss3;
-                ss3 << task << " all done (remaining tasks: "<< tasks_remaining << ")";
-                ThreadPool::print_safely(ss3.str());
 
+                std::stringstream ss;
+                ss << task << "Remaining tasks: "<< tasks_remaining;
+                ThreadPool::print_safely(ss.str());
             });
         }
 

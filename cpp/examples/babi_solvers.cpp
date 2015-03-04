@@ -20,11 +20,48 @@ using std::vector;
 using utils::Timer;
 using utils::Vocab;
 
-class DumbModel: public babi::Model {
+class MostCommonAnswer: public babi::Model {
+    vector<string> most_common_answer;
+
+    public:
+
+        void train(const vector<babi::Story>& data) {
+            std::unordered_map<string, int> freq;
+            for (auto& story : data) {
+                for(auto& item_ptr : story) {
+                    if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
+                        // ignore
+                    } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
+                        // When we are training we want to use dropout
+                        freq[utils::join(qa->answer, "|")] += 1;
+                    }
+                }
+            }
+            int max_freq = 0;
+            for (auto& kv: freq) {
+                if (kv.second > max_freq) {
+                    max_freq = kv.second;
+                    most_common_answer = utils::split(kv.first,'|');
+                }
+            }
+        }
+
+        void new_story() {
+        }
+
+        void fact(const vector<string>& fact) {
+        }
+        vector<string> question(const vector<string>& question) {
+            return most_common_answer;
+        }
+};
+
+class RandomAnswer: public babi::Model {
     set<string> tokens;
     public:
 
         void train(const vector<babi::Story>& data) {
+
         }
 
         void new_story() {
@@ -66,24 +103,20 @@ class MarginallyLessDumbModel: public babi::Model {
     // MODEL PARAMS
 
     const int TEXT_STACK_SIZE =      2;
-    const int TEXT_HIDDEN_SIZE =    30;
-    const REAL_t TEXT_DROPOUT = 0.4;
+    const int TEXT_HIDDEN_SIZE =    15;
+    const REAL_t TEXT_DROPOUT = 0.0;
 
     const int HL_STACK_SIZE =      4;
-    const int HL_HIDDEN_SIZE =    20;
-    const REAL_t HL_DROPOUT = 0.5;
+    const int HL_HIDDEN_SIZE =    10;
+    const REAL_t HL_DROPOUT = 0.0;
 
     const int EMBEDDING_SIZE = 30;
 
     // TRAINING_PROCEDURE_PARAMS
 
     const float TRAINING_FRAC = 0.9;
-    const float MINIMUM_IMPROVEMENT = 0.003; // good one: 0.003
-    const int PATIENCE = 6;
-
-    // FAKE WORDS UTIL WE HAVE MORE
-    // RESUABLE LSTM
-    string fact_coming = "<FACT_COMING>";
+    const float MINIMUM_IMPROVEMENT = 0.0001; // good one: 0.003
+    const int PATIENCE = 3;
 
     shared_ptr<Vocab> vocab;
 
@@ -120,8 +153,7 @@ class MarginallyLessDumbModel: public babi::Model {
         }
         vector<string> vocab_vector(vocab_set.begin(), vocab_set.end());
 
-        // adding special word.
-        vocab_vector.push_back(fact_coming);
+
 
         vocab = make_shared<Vocab> (vocab_vector);
     }
@@ -169,12 +201,12 @@ class MarginallyLessDumbModel: public babi::Model {
             auto state = story_model->initial_states();
             utils::Timer a_timer("Forward");
 
-            state = forward_LSTMs(G,
+            /*state = forward_LSTMs(G,
                                   question,
                                   state,
                                   story_model->base_cell,
                                   story_model->cells,
-                                  use_dropout ? HL_DROPOUT : 0.0);
+                                  use_dropout ? HL_DROPOUT : 0.0);*/
 
             for (auto& fact: facts) {
                 state = forward_LSTMs(G,
@@ -222,8 +254,8 @@ class MarginallyLessDumbModel: public babi::Model {
             vector<string> tokens;
             for (auto& fact: facts) {
                 tokens.clear();
-                tokens.insert(tokens.end(), question.begin(), question.end());
-                tokens.push_back(fact_coming);
+                // tokens.insert(tokens.end(), question.begin(), question.end());
+                // don't need fact coming token because question ends with question mark
                 tokens.insert(tokens.end(), fact.begin(), fact.end());
                 // instead of using end of stream we rely on the fact that
                 // each fact ends with a dot
@@ -343,5 +375,7 @@ class MarginallyLessDumbModel: public babi::Model {
 
 
 int main() {
-    babi::benchmark<MarginallyLessDumbModel<double>>(9);
+    babi::benchmark_task<MarginallyLessDumbModel<double>>("qa11_basic-coreference");
+
+    babi::benchmark<MostCommonAnswer>(1);
 }

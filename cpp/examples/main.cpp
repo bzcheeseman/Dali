@@ -1,5 +1,6 @@
 #include "core/Layers.h"
 #include "core/Softmax.h"
+#include "core/StackedGatedModel.h"
 
 // Test file for LSTM
 int main () {
@@ -122,6 +123,20 @@ int main () {
     fast_dropped_bob->print();
 
     G.backward();
+
+
+    auto some_model = StackedGatedModel<REAL_t>(20, 10, 20, 2, 1, false, 0.3);
+
+    some_model.save("some_model");
+
+
+    auto loaded_model = StackedGatedModel<REAL_t>::load("some_model");
+
+    auto some_model2 = StackedModel<REAL_t>(20, 10, 20, 2, 1, false);
+
+    some_model.save("some_model");
+
+    auto loaded_model2 = StackedModel<REAL_t>::load("some_model");
 
     return 0;
 }

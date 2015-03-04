@@ -19,7 +19,7 @@
 #include "core/Solver.h"
 
 
-#define USE_GATES
+// #define USE_GATES
 
 #ifdef USE_GATES
     #define MODEL_USED StackedGatedModel
@@ -455,14 +455,20 @@ int main( int argc, char* argv[]) {
 
 
     for (int sentiment = 0; sentiment < NUM_SENTIMENTS; sentiment++) {
-        models.emplace_back(
-            word_vocab.index2word.size(),
-            FLAGS_input_size,
-            FLAGS_hidden,
-            FLAGS_stack_size < 1 ? 1 : FLAGS_stack_size,
-            word_vocab.index2word.size(),
-            FLAGS_shortcut
-        );
+
+        if (!FLAGS_load.empty()) {
+            std::cout << "Loading model : \"" << FLAGS_load << sentiment << "\"" << std::endl;
+            models.emplace_back(MODEL_USED<REAL_t>::load(FLAGS_load + std::to_string(sentiment)));
+        } else {
+            models.emplace_back(
+                word_vocab.index2word.size(),
+                FLAGS_input_size,
+                FLAGS_hidden,
+                FLAGS_stack_size < 1 ? 1 : FLAGS_stack_size,
+                word_vocab.index2word.size(),
+                FLAGS_shortcut
+            );
+        }
         thread_models.emplace_back();
         for (int thread_no = 0; thread_no < FLAGS_j; ++thread_no) {
             thread_models[sentiment].push_back(models[sentiment].shallow_copy());

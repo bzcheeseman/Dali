@@ -205,6 +205,54 @@ class StackedModel : public RecurrentEmbeddingModel<T>  {
 
         **/
         StackedModel<T> shallow_copy() const;
+
+        /**
+        Decoder initialization
+        ----------------------
+
+        Prepare sequence of input sizes to
+        parametrize the decoder for this shorcut
+        stacked LSTM model.
+
+        Inputs
+        ------
+
+           int input_size : size of input embedding
+          int hidden_size : size of internal layers
+           int stack_size : how many stacked layers
+                            are used.
+
+        Outputs
+        -------
+
+        std::vector<int> init_list : sizes needed for decoder init.
+
+        **/
+        static std::vector<int> decoder_initialization(int, int, int);
+
+
+        /**
+        Decoder initialization
+        ----------------------
+
+        Prepare sequence of input sizes to
+        parametrize the decoder for this shorcut
+        stacked LSTM model.
+
+        Inputs
+        ------
+
+               int input_size : size of input embedding
+std::vector<int> hidden_sizes : size of internal layers
+
+        Outputs
+        -------
+
+        std::vector<int> init_list : sizes needed for decoder init.
+
+        **/
+        static std::vector<int> decoder_initialization(int, std::vector<int>);
+        static std::vector<int> decoder_initialization(int, const std::vector<std::string>&);
 };
 
 #endif

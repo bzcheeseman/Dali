@@ -78,7 +78,7 @@ T validation_error(
                         // pass this letter to the LSTM for processing
                         initial_state = model.stacked_lstm->activate(G, initial_state, input_vector);
                         // classifier takes as input the final hidden layer's activation:
-                        logprobs      = model.decoder.activate(G, initial_state.second[num_hidden_sizes-1]);
+                        logprobs      = model.decoder->activate(G, initial_state.second[num_hidden_sizes-1]);
                         example_cost -= cross_entropy(logprobs, example[i+1]);
 
                 }
@@ -110,7 +110,7 @@ T cost_fun(
                 // pass this letter to the LSTM for processing
                 initial_state = model.stacked_lstm->activate(G, initial_state, input_vector);
                 // classifier takes as input the final hidden layer's activation:
-                logprobs      = model.decoder.activate(G, initial_state.second[num_hidden_sizes-1]);
+                logprobs      = model.decoder->activate(G, initial_state.second[num_hidden_sizes-1]);
                 cost -= cross_entropy(logprobs, indices[i+1]);
         }
         return cost / (n-1);

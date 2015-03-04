@@ -216,7 +216,7 @@ class MarginallyLessDumbModel: public babi::Model {
                 sequence,
                 use_dropout ? HL_DROPOUT : 0.0);
 
-            auto log_probs = story_model->decoder.activate(G,
+            auto log_probs = story_model->decoder->activate(G,
                                                            please_start_prediction,
                                                            state.second);
 

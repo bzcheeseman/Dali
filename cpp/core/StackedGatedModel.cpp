@@ -142,7 +142,7 @@ std::tuple<T, T> StackedGatedModel<T>::masked_predict_cost(
                 // pass this letter to the LSTM for processing
                 initial_state = this->stacked_lstm->activate(G, initial_state, input_vector, drop_prob);
                 // classifier takes as input the final hidden layer's activation:
-                logprobs      = this->decoder.activate(G, initial_state.second[this->stack_size-1]);
+                logprobs      = this->decoder->activate(G, initial_state.second[this->stack_size-1]);
 
                 std::get<0>(cost) += G.needs_backprop ? masked_cross_entropy(
                                                                       logprobs,
@@ -199,7 +199,7 @@ std::tuple<T, T> StackedGatedModel<T>::masked_predict_cost(
                 // pass this letter to the LSTM for processing
                 initial_state = this->stacked_lstm->activate(G, initial_state, input_vector, drop_prob);
                 // classifier takes as input the final hidden layer's activation:
-                logprobs      = this->decoder.activate(G, initial_state.second[this->stack_size-1]);
+                logprobs      = this->decoder->activate(G, initial_state.second[this->stack_size-1]);
                 std::get<0>(cost) += G.needs_backprop ? masked_cross_entropy(
                                                                       logprobs,
                                                                       i,
@@ -389,7 +389,7 @@ typename StackedGatedModel<T>::activation_t StackedGatedModel<T>::activate(
         input_vector      = G.eltmul_broadcast_rowwise(input_vector, memory);
 
         std::get<0>(out) = this->stacked_lstm->activate(G, previous_state, input_vector);
-        std::get<1>(out) = softmax(this->decoder.activate(G, std::get<0>(out).second[this->stack_size-1]));
+        std::get<1>(out) = softmax(this->decoder->activate(G, std::get<0>(out).second[this->stack_size-1]));
         std::get<2>(out) = memory;
         return out;
 }
@@ -405,7 +405,7 @@ typename StackedGatedModel<T>::activation_t StackedGatedModel<T>::activate(
     input_vector      = G.eltmul_broadcast_rowwise(input_vector, memory);
 
     std::get<0>(out) = this->stacked_lstm->activate(G, previous_state, input_vector);
-    std::get<1>(out) = softmax(this->decoder.activate(G, std::get<0>(out).second[this->stack_size-1]));
+    std::get<1>(out) = softmax(this->decoder->activate(G, std::get<0>(out).second[this->stack_size-1]));
     std::get<2>(out) = memory;
 
     return out;
@@ -423,7 +423,7 @@ std::vector<int> StackedGatedModel<T>::reconstruct(
         shared_mat input_vector;
         shared_mat memory;
         vector<int> outputs;
-        auto last_symbol = argmax(this->decoder.activate(G, initial_state.second[this->stack_size-1]));
+        auto last_symbol = argmax(this->decoder->activate(G, initial_state.second[this->stack_size-1]));
         outputs.emplace_back(last_symbol);
         last_symbol += symbol_offset;
         for (uint j = 0; j < eval_steps - 1; j++) {
@@ -431,7 +431,7 @@ std::vector<int> StackedGatedModel<T>::reconstruct(
                 memory        = gate.activate(G, input_vector, initial_state.second[this->stack_size-1]);
                 input_vector  = G.eltmul_broadcast_rowwise(input_vector, memory);
                 initial_state = this->stacked_lstm->activate(G, initial_state, input_vector);
-                last_symbol   = argmax(this->decoder.activate(G, initial_state.second[this->stack_size-1]));
+                last_symbol   = argmax(this->decoder->activate(G, initial_state.second[this->stack_size-1]));
                 outputs.emplace_back(last_symbol);
                 last_symbol += symbol_offset;
         }
@@ -461,7 +461,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<T>::reconstr
         vector<utils::OntologyBranch::shared_branch> outputs;
         // Take the argmax over the available options (0 for go back to
         // root, and 1..n for the different children of the current position)
-        auto last_turn = argmax_slice(this->decoder.activate(G, initial_state.second[this->stack_size-1]), 0, pos->children.size() + 1);
+        auto last_turn = argmax_slice(this->decoder->activate(G, initial_state.second[this->stack_size-1]), 0, pos->children.size() + 1);
         // if the turn is 0 go back to root, else go to one of the children using
         // the lattice pointers:
         pos = (last_turn == 0) ? root : pos->children[last_turn-1];
@@ -472,7 +472,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<T>::reconstr
                 memory        = gate.activate(G, input_vector, initial_state.second[0]);
                 input_vector  = G.eltmul_broadcast_rowwise(input_vector, memory);
                 initial_state = this->stacked_lstm->activate(G, initial_state, input_vector);
-                last_turn     = argmax_slice(this->decoder.activate(G, initial_state.second[this->stack_size-1]), 0, pos->children.size() + 1);
+                last_turn     = argmax_slice(this->decoder->activate(G, initial_state.second[this->stack_size-1]), 0, pos->children.size() + 1);
                 pos           = (last_turn == 0) ? root : pos->children[last_turn-1];
                 outputs.emplace_back(pos);
         }

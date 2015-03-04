@@ -35,6 +35,24 @@ typename StackedModel<T>::config_t StackedModel<T>::configuration() const  {
 }
 
 template<typename T>
+vector<int> StackedModel<T>::decoder_initialization(int input_size, vector<int> hidden_sizes) {
+    vector<int> sizes;
+    sizes.reserve(1 + hidden_sizes.size());
+    sizes.emplace_back(input_size);
+    for (auto& s : hidden_sizes) sizes.emplace_back(s);
+    return sizes;
+}
+
+template<typename T>
+vector<int> StackedModel<T>::decoder_initialization(int input_size, const vector<string>& hidden_sizes) {
+    vector<int> sizes;
+    sizes.reserve(1 + hidden_sizes.size());
+    sizes.emplace_back(input_size);
+    for (auto& s : hidden_sizes) sizes.emplace_back(from_string<int>(s));
+    return sizes;
+}
+
+template<typename T>
 StackedModel<T> StackedModel<T>::build_from_CLI(string load_location,
                                                                                             int vocab_size,
                                                                                             int output_size,
@@ -177,18 +195,27 @@ T StackedModel<T>::masked_predict_cost(
 template<typename T>
 void StackedModel<T>::name_parameters() {
     this->embedding->set_name("Embedding");
-    decoder->W->set_name("Decoder W");
     decoder->b->set_name("Decoder Bias");
+    // TODO: do layer naming!!
+    // if (use_shortcut) {
+    //     decoder->W->set_name("Decoder W");
+    // } else {
+    //     for (auto& mat : decoder->matrices) {
+
+    //     }
+    // }
+
 }
 
 template<typename T>
 StackedModel<T>::StackedModel (int vocabulary_size, int input_size, int hidden_size, int stack_size, int output_size, bool _use_shortcut)
     : RecurrentEmbeddingModel<T>(vocabulary_size, input_size, hidden_size, stack_size, output_size),
     use_shortcut(_use_shortcut) {
-    decoder = make_shared<StackedInputLayer<T>>(hidden_size, output_size);
     if (use_shortcut) {
+        decoder = make_shared<StackedInputLayer<T>>(decoder_initialization(this->input_size, this->hidden_sizes), this->output_size);
         stacked_lstm = make_shared<StackedShortcutLSTM<T>>(this->input_size, this->hidden_sizes);
     } else {
+        decoder = make_shared<Layer<T>>(this->hidden_sizes[this->hidden_sizes.size() - 1], this->output_size);
         stacked_lstm = make_shared<StackedLSTM<T>>(this->input_size, this->hidden_sizes);
     }
     name_parameters();
@@ -200,13 +227,11 @@ StackedModel<T>::StackedModel (const typename StackedModel<T>::config_t& config)
     use_shortcut( config.find("use_shortcut") != config.end() ? (from_string<int>("use_shortcut") > 0) : false ),
     RecurrentEmbeddingModel<T>(config) {
 
-    decoder = make_shared<StackedInputLayer<T>>(
-        from_string<int>(config.at("hidden_sizes")[config.at("hidden_sizes").size()-1]),
-        from_string<int>(config.at("output_size")[0]));
-
     if (use_shortcut) {
+        decoder = make_shared<StackedInputLayer<T>>(decoder_initialization(this->input_size, this->hidden_sizes), this->output_size);
         stacked_lstm = make_shared<StackedShortcutLSTM<T>>(this->input_size, this->hidden_sizes);
     } else {
+        decoder = make_shared<Layer<T>>(this->hidden_sizes[this->hidden_sizes.size() - 1], this->output_size);
         stacked_lstm = make_shared<StackedLSTM<T>>(this->input_size, this->hidden_sizes);
     }
     name_parameters();
@@ -216,10 +241,11 @@ template<typename T>
 StackedModel<T>::StackedModel (int vocabulary_size, int input_size, int output_size, std::vector<int>& hidden_sizes, bool _use_shortcut)
     : RecurrentEmbeddingModel<T>(vocabulary_size, input_size, hidden_sizes, output_size),
     use_shortcut(_use_shortcut) {
-    decoder = make_shared<StackedInputLayer<T>>(hidden_sizes[hidden_sizes.size()-1], output_size);
     if (use_shortcut) {
+        decoder = make_shared<StackedInputLayer<T>>(decoder_initialization(this->input_size, this->hidden_sizes), this->output_size);
         stacked_lstm = make_shared<StackedShortcutLSTM<T>>(this->input_size, this->hidden_sizes);
     } else {
+        decoder = make_shared<Layer<T>>(this->hidden_sizes[this->hidden_sizes.size() - 1], this->output_size);
         stacked_lstm = make_shared<StackedLSTM<T>>(this->input_size, this->hidden_sizes);
     }
     name_parameters();
@@ -229,12 +255,11 @@ template<typename T>
 StackedModel<T>::StackedModel (const StackedModel<T>& model, bool copy_w, bool copy_dw)
     : RecurrentEmbeddingModel<T>(model, copy_w, copy_dw), use_shortcut(model.use_shortcut) {
 
-    decoder = make_shared<StackedInputLayer<T>>(*dynamic_cast<StackedInputLayer<T>*>(model.decoder.get()), copy_w, copy_dw);
-
-    StackedLSTM<T>* casted_model = dynamic_cast<StackedLSTM<T>*>(model.stacked_lstm.get());
     if (use_shortcut) {
+        decoder = make_shared<StackedInputLayer<T>>(*dynamic_cast<StackedInputLayer<T>*>(model.decoder.get()), copy_w, copy_dw);
         stacked_lstm = make_shared<StackedShortcutLSTM<T>>(*dynamic_cast<StackedShortcutLSTM<T>*>(model.stacked_lstm.get()), copy_w, copy_dw);
     } else {
+        decoder = make_shared<Layer<T>>(*dynamic_cast<Layer<T>*>(model.decoder.get()), copy_w, copy_dw);
         stacked_lstm = make_shared<StackedLSTM<T>>(*dynamic_cast<StackedLSTM<T>*>(model.stacked_lstm.get()), copy_w, copy_dw);
     }
 

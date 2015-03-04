@@ -4,17 +4,17 @@ using std::make_shared;
 using std::vector;
 
 template<typename T>
-shared_mat AbstractMultiInputLayer<T>::activate(Graph<T>& G, const std::vector<shared_mat>& inputs) {
+typename AbstractMultiInputLayer<T>::shared_mat AbstractMultiInputLayer<T>::activate(Graph<T>& G, const std::vector<shared_mat>& inputs) const {
     assert(inputs.size() > 0);
-    return activate(inputs[0]);
+    return activate(G, inputs[0]);
 };
 
 template<typename T>
-shared_mat AbstractMultiInputLayer<T>::activate(Graph<T>& G, shared_mat first_input, const std::vector<shared_mat>& inputs) {
+typename AbstractMultiInputLayer<T>::shared_mat AbstractMultiInputLayer<T>::activate(Graph<T>& G, shared_mat first_input, const std::vector<shared_mat>& inputs) const {
     if (inputs.size() > 0) {
-        return activate(activate.back());
-    } else {
-        return activate(first_input);
+        return activate(G, inputs.back());
+    } else {
+        return activate(G, first_input);
     }
 };
 
@@ -22,7 +22,7 @@ template<typename T>
 void Layer<T>::create_variables() {
     T upper = 1. / sqrt(input_size);
     W = make_shared<mat>(hidden_size, input_size, -upper, upper);
-    b = make_shared<mat>(hidden_size, 1);
+    this->b = make_shared<mat>(hidden_size, 1);
 }
 template<typename T>
 Layer<T>::Layer (int _input_size, int _hidden_size) : hidden_size(_hidden_size), input_size(_input_size) {
@@ -31,13 +31,13 @@ Layer<T>::Layer (int _input_size, int _hidden_size) : hidden_size(_hidden_size),
 
 template<typename T>
 typename Layer<T>::shared_mat Layer<T>::activate(Graph<T>& G, typename Layer<T>::shared_mat input_vector) const {
-    return G.mul_with_bias(W, input_vector, b);
+    return G.mul_with_bias(W, input_vector, this->b);
 }
 
 template<typename T>
 Layer<T>::Layer (const Layer<T>& layer, bool copy_w, bool copy_dw) : hidden_size(layer.hidden_size), input_size(layer.input_size) {
     W = make_shared<mat>(*layer.W, copy_w, copy_dw);
-    b = make_shared<mat>(*layer.b, copy_w, copy_dw);
+    this->b = make_shared<mat>(*layer.b, copy_w, copy_dw);
 }
 
 template<typename T>
@@ -47,7 +47,7 @@ Layer<T> Layer<T>::shallow_copy() const {
 
 template<typename T>
 std::vector<typename Layer<T>::shared_mat> Layer<T>::parameters() const{
-    return std::vector<typename Layer<T>::shared_mat>({W, b});
+    return std::vector<typename Layer<T>::shared_mat>({W, this->b});
 }
 
 // StackedInputLayer:
@@ -61,7 +61,7 @@ void StackedInputLayer<T>::create_variables() {
         matrices.emplace_back(make_shared<mat>(hidden_size, input_size, -upper, upper));
         DEBUG_ASSERT_MAT_NOT_NAN(matrices[matrices.size() -1]);
     }
-    b = make_shared<mat>(hidden_size, 1);
+    this->b = make_shared<mat>(hidden_size, 1);
 }
 template<typename T>
 StackedInputLayer<T>::StackedInputLayer (vector<int> _input_sizes, int _hidden_size) : hidden_size(_hidden_size), input_sizes(_input_sizes) {
@@ -83,7 +83,7 @@ vector<typename StackedInputLayer<T>::shared_mat> StackedInputLayer<T>::zip_inpu
         zipped.emplace_back(*mat_ptr++);
         zipped.emplace_back(*input_ptr++);
     }
-    zipped.emplace_back(b);
+    zipped.emplace_back(this->b);
     return zipped;
 }
 
@@ -117,7 +117,7 @@ vector<typename StackedInputLayer<T>::shared_mat> StackedInputLayer<T>::zip_inpu
         mat_ptr++;
         input_ptr++;
     }
-    zipped.emplace_back(b);
+    zipped.emplace_back(this->b);
     return zipped;
 }
 
@@ -134,7 +134,7 @@ typename StackedInputLayer<T>::shared_mat StackedInputLayer<T>::activate(
     Graph<T>& G,
     shared_mat input_vector) const {
     if (matrices.size() == 0) {
-        return G.mul_with_bias(matrices[0], input_vector, b);
+        return G.mul_with_bias(matrices[0], input_vector, this->b);
     } else {
         throw std::runtime_error("Error: Stacked Input Layer parametrized with more than 1 inputs only received 1 input vector.");
     }
@@ -160,7 +160,7 @@ StackedInputLayer<T>::StackedInputLayer (const StackedInputLayer<T>& layer, bool
     matrices.reserve(layer.matrices.size());
     for (auto& matrix : layer.matrices)
         matrices.emplace_back(make_shared<mat>(*matrix, copy_w, copy_dw));
-    b = make_shared<mat>(*layer.b, copy_w, copy_dw);
+    this->b = make_shared<mat>(*layer.b, copy_w, copy_dw);
 }
 
 template<typename T>
@@ -171,7 +171,7 @@ StackedInputLayer<T> StackedInputLayer<T>::shallow_copy() const {
 template<typename T>
 std::vector<typename StackedInputLayer<T>::shared_mat> StackedInputLayer<T>::parameters() const{
     auto params = vector<shared_mat>(matrices);
-    params.emplace_back(b);
+    params.emplace_back(this->b);
     return params;
 }
 

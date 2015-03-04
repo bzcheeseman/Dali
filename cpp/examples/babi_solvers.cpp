@@ -105,12 +105,12 @@ class LstmBabiModel {
     // MODEL PARAMS
 
     const int TEXT_STACK_SIZE =      2;
-    const int TEXT_HIDDEN_SIZE =    50;
-    const REAL_t TEXT_DROPOUT = 0.5;
+    const int TEXT_HIDDEN_SIZE =    30;
+    const REAL_t TEXT_DROPOUT = 0.3;
 
     const int HL_STACK_SIZE =      4;
     const int HL_HIDDEN_SIZE =    20;
-    const REAL_t HL_DROPOUT = 0.8;
+    const REAL_t HL_DROPOUT = 0.5;
 
     const int EMBEDDING_SIZE = 30;
 
@@ -162,7 +162,7 @@ class LstmBabiModel {
                 HL_HIDDEN_SIZE,
                 HL_STACK_SIZE,
                 vocab_size,
-                false);
+                true);
         please_start_prediction = make_shared<mat>(TEXT_HIDDEN_SIZE*TEXT_STACK_SIZE, 1);
         you_will_see_question_soon = make_shared<mat>(TEXT_HIDDEN_SIZE*TEXT_STACK_SIZE, 1);
     }
@@ -287,8 +287,8 @@ class LstmBabiModelRunner: public babi::Model {
     // TRAINING_PROCEDURE_PARAMS
 
     const float TRAINING_FRAC = 0.9;
-    const float MINIMUM_IMPROVEMENT = 0.00001; // good one: 0.003
-    const int PATIENCE = 10;
+    const float MINIMUM_IMPROVEMENT = 0.0001; // good one: 0.003
+    const int PATIENCE = 20;
 
 
     shared_ptr<LstmBabiModel<REAL_t>> model;
@@ -309,7 +309,7 @@ class LstmBabiModelRunner: public babi::Model {
 
             vector<double> thread_error(NUM_THREADS, 0.0);
 
-            const int BATCH_SIZE = std::max( (int)dataset.size() / (2*NUM_THREADS), 5);
+            const int BATCH_SIZE = std::max( (int)dataset.size() / (2*NUM_THREADS), 2);
 
             auto random_order = utils::random_arange(dataset.size());
             vector<vector<int>> batches;
@@ -418,5 +418,6 @@ class LstmBabiModelRunner: public babi::Model {
 
 
 int main() {
-    babi::benchmark_task<LstmBabiModelRunner<double>>("qa11_basic-coreference");
+    //babi::benchmark_task<LstmBabiModelRunner<double>>("qa11_basic-coreference");
+    babi::benchmark<LstmBabiModelRunner<double>>();
 }

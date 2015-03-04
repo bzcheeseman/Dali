@@ -122,7 +122,7 @@ namespace babi {
     }
 
     template<typename T>
-    void benchmark(int num_threads=1) {
+    void benchmark() {
         VS tasks = Parser::tasks();
 
         std::vector<double> facebook_lstm_results = {
@@ -141,11 +141,9 @@ namespace babi {
             15,  18,  15,  17,  18, 49,  57, 33, 63,  43, 16,  17,  15,  17, 21,  23,  48, 53, 0,  36
         };
 
-        ThreadPool pool(num_threads);
         std::atomic<int> tasks_remaining(tasks.size());
 
         for (int task_id = 0; task_id < tasks.size(); ++task_id) {
-            pool.run([&our_results, &tasks, &tasks_remaining, task_id]() {
                 const std::string& task = tasks[task_id];
 
                 double accuracy = benchmark_task<T>(task);
@@ -157,10 +155,8 @@ namespace babi {
                 std::stringstream ss;
                 ss << task << "Remaining tasks: "<< tasks_remaining;
                 ThreadPool::print_safely(ss.str());
-            });
         }
 
-        pool.wait_until_idle();
         std::cout << "Babi Benchmark Results" << std::endl
                   << std::endl
                   << "Columns are (from left): task name, our result," << std::endl

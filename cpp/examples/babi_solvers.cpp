@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <iostream>
 #include <set>
 #include <vector>
@@ -104,11 +105,11 @@ class LstmBabiModel {
     // MODEL PARAMS
 
     const int TEXT_STACK_SIZE =      2;
-    const int TEXT_HIDDEN_SIZE =    15;
+    const int TEXT_HIDDEN_SIZE =    50;
     const REAL_t TEXT_DROPOUT = 0.5;
 
-    const int HL_STACK_SIZE =      3;
-    const int HL_HIDDEN_SIZE =    10;
+    const int HL_STACK_SIZE =      4;
+    const int HL_HIDDEN_SIZE =    20;
     const REAL_t HL_DROPOUT = 0.8;
 
     const int EMBEDDING_SIZE = 30;
@@ -293,7 +294,7 @@ class LstmBabiModelRunner: public babi::Model {
     shared_ptr<LstmBabiModel<REAL_t>> model;
     public:
 
-        REAL_t compute_error(const vector<babi::Story>& dataset, bool training) {
+        REAL_t compute_error(const vector<babi::Story>& dataset, Solver::AdaDelta<REAL_t>& solver, bool training) {
             REAL_t total_error = 0.0;
 
             const int NUM_THREADS = 9;
@@ -303,38 +304,51 @@ class LstmBabiModelRunner: public babi::Model {
             for (int i=0; i<NUM_THREADS; ++i) {
                 thread_models.push_back(model->shallow_copy());
             }
-            auto params = model->parameters();
-            // Solver::AdaDelta<REAL_t> solver(params, 0.95, 1e-9, 5.0);
-            Solver::SGD<REAL_t> solver(params);
+
+            std::atomic<int> num_questions(0);
 
             vector<double> thread_error(NUM_THREADS, 0.0);
 
-            std::atomic<int> num_questions(0);
-            for (auto story : dataset) {
+            const int BATCH_SIZE = std::max( (int)dataset.size() / (2*NUM_THREADS), 5);
 
-                pool.run([story, &thread_models, training, &num_questions, &thread_error, &solver]() {
-                    vector<Fact*> facts_so_far;
+            auto random_order = utils::random_arange(dataset.size());
+            vector<vector<int>> batches;
+            for (int i=0; i<dataset.size(); i+=BATCH_SIZE) {
+                vector<int> batch;
+                for (int j=i; j<std::min(i+BATCH_SIZE, (int)dataset.size()); ++j) {
+                    batch.push_back(random_order[j]);
+                }
+                batches.push_back(batch);
+            }
+
+            for (auto& batch : batches) {
+
+                pool.run([batch, &dataset, &thread_models, training, &num_questions, &thread_error, &solver]() {
                     LstmBabiModel<REAL_t>& thread_model = thread_models[ThreadPool::get_thread_number()];
                     auto params = thread_model.parameters();
+                    for (auto story_id: batch) {
+                        auto& story = dataset[story_id];
+                        vector<Fact*> facts_so_far;
 
-                    for(auto& item_ptr : story) {
-                        if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
-                            facts_so_far.push_back(f);
-                        } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
-                            // When we are training we want to do backprop
-                            Graph<REAL_t> G(training);
-                            // When we are training we want to use dropout
-                            thread_error[ThreadPool::get_thread_number()] +=
-                                    thread_model.error(G, facts_so_far, qa, training);
-                            num_questions += 1;
-                            if (training)
-                                G.backward();
+                        for(auto& item_ptr : story) {
+                            if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
+                                facts_so_far.push_back(f);
+                            } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
+                                // When we are training we want to do backprop
+                                Graph<REAL_t> G(training);
+                                // When we are training we want to use dropout
+                                thread_error[ThreadPool::get_thread_number()] +=
+                                        thread_model.error(G, facts_so_far, qa, training);
+                                num_questions += 1;
+                                if (training)
+                                    G.backward();
+                            }
                         }
+                        facts_so_far.clear();
+                        // Only update weights during training.
                     }
-                    facts_so_far.clear();
-                    // Only update weights during training.
                     if (training)
-                        solver.step(params, 0.01);
+                        solver.step(params, 0.00);
                 });
             }
 
@@ -361,9 +375,12 @@ class LstmBabiModelRunner: public babi::Model {
             int epoch = 0;
             int epochs_validation_increasing = 0;
 
+            auto params = model->parameters();
+            Solver::AdaDelta<REAL_t> solver(params, 0.95, 1e-9, 5.0);
+
             while (epochs_validation_increasing <= PATIENCE) {
-                double training_error = compute_error(train, true);
-                double validation_error = compute_error(validation, false);
+                double training_error = compute_error(train, solver, true);
+                double validation_error = compute_error(validation, solver, false);
                 std::stringstream ss;
                 ss << "Epoch " << ++epoch
                    << " validation: " << validation_error

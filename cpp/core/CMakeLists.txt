@@ -37,9 +37,10 @@ target_link_libraries(core ${ZLIB_LIBRARIES}
                            proto
                            ${BLAS_LIBRARIES}
                            ${MKL_LIBRARIES}
-                           ${GFLAGS_LIBRARIES}
-                           ${GPERFTOOLS_LIBRARIES})
-
+                           ${GFLAGS_LIBRARIES})
+if (GPERFTOOLS_FOUND)
+  target_link_libraries(core ${GPERFTOOLS_LIBRARIES})
+endif (GPERFTOOLS_FOUND)
 
 
 add_testsuite("test_core" ${CoreTestFile} "core")

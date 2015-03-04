@@ -52,7 +52,7 @@ endif(GTEST_FOUND)
 # CLEANING UP AFTER FINDERS
 # some library list variables are FALSE by default if libs are not found,
 # but it is much more useful to keep it empty.
-set(LIBVARS_TO_FIX MKL_LIBRARIES BLAS_LIBRARIES)
+set(LIBVARS_TO_FIX MKL_LIBRARIES BLAS_LIBRARIES GPERFTOOLS_TCMALLOC_AND_PROFILER)
 foreach(libvar ${LIBVARS_TO_FIX})
     if (NOT ${libvar})
         set(${libvar} "")
@@ -81,7 +81,9 @@ include_directories(${MKL_INCLUDE_DIR})
 include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${GFLAGS_INCLUDE_DIRS})
-include_directories(${GPERFTOOLS_INCLUDE_DIR})
+if (GPERFTOOLS_FOUND)
+    include_directories(${GPERFTOOLS_INCLUDE_DIR})
+endif (GPERFTOOLS_FOUND)
 
 # ADDING DIRECTORIES WITH THEIR OWN CMAKELISTS FILES
 add_subdirectory(${PROJECT_SOURCE_DIR}/protobuf)

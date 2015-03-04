@@ -11,18 +11,16 @@ using utils::from_string;
 
 template<typename T>
 vector<typename StackedShortcutModel<T>::shared_mat> StackedShortcutModel<T>::parameters() const {
-        vector<shared_mat> parameters;
-        parameters.push_back(embedding);
-
-        auto decoder_params = decoder.parameters();
-        parameters.insert(parameters.end(), decoder_params.begin(), decoder_params.end());
-        auto base_cell_params = base_cell.parameters();
-        parameters.insert(parameters.end(), base_cell_params.begin(), base_cell_params.end());
-        for (auto& cell : cells) {
-                auto cell_params = cell.parameters();
-                parameters.insert(parameters.end(), cell_params.begin(), cell_params.end());
-        }
-        return parameters;
+    auto parameters = RecurrentEmbeddingModel<T>::parameters();
+    auto decoder_params = decoder.parameters();
+    parameters.insert(parameters.end(), decoder_params.begin(), decoder_params.end());
+    auto base_cell_params = base_cell.parameters();
+    parameters.insert(parameters.end(), base_cell_params.begin(), base_cell_params.end());
+    for (auto& cell : cells) {
+            auto cell_params = cell.parameters();
+            parameters.insert(parameters.end(), cell_params.begin(), cell_params.end());
+    }
+    return parameters;
 }
 
 template<typename T>

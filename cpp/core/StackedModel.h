@@ -84,22 +84,7 @@ class StackedModel : public RecurrentEmbeddingModel<T>  {
         typedef std::shared_ptr< index_mat > shared_index_mat;
 
         const classifier_t decoder;
-        /**
-        Parameters
-        ----------
-
-        Create a vector of shared pointers to the underlying matrices
-        of the model. Useful for saving, loading parameters all at once
-        and for telling Solvers which parameters should be updated
-        during each training loop.
-
-        Outputs
-        -------
-
-        std::vector<std::shared_ptr<Mat<T>>> parameters : vector of model parameters
-
-        **/
-        std::vector<shared_mat> parameters() const;
+        virtual std::vector<shared_mat> parameters() const;
         void save(std::string) const;
         /**
         Load

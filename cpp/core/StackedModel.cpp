@@ -17,9 +17,7 @@ using utils::from_string;
 
 template<typename T>
 vector<typename StackedModel<T>::shared_mat> StackedModel<T>::parameters() const {
-    vector<shared_mat> parameters;
-    parameters.push_back(this->embedding);
-
+    auto parameters = RecurrentEmbeddingModel<T>::parameters();
     auto decoder_params = decoder.parameters();
     parameters.insert(parameters.end(), decoder_params.begin(), decoder_params.end());
     for (auto& cell : cells) {

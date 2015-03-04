@@ -62,7 +62,7 @@ class StackedGatedModel : public RecurrentEmbeddingModel<T> {
                 const gate_t gate;
                 const classifier_t decoder;
                 T memory_penalty;
-                std::vector<shared_mat> parameters() const;
+                virtual std::vector<shared_mat> parameters() const;
                 virtual config_t configuration() const;
                 void save(std::string) const;
                 static StackedGatedModel<T> load(std::string);

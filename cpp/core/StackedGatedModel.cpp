@@ -10,37 +10,19 @@ using std::to_string;
 using std::stringstream;
 using std::string;
 
-/**
-Parameters
-----------
-
-Create a vector of shared pointers to the underlying matrices
-of the model. Useful for saving, loading parameters all at once
-and for telling Solvers which parameters should be updated
-during each training loop.
-
-Outputs
--------
-
-std::vector<std::shared_ptr<Mat<T>>> parameters : vector of model parameters
-
-**/
-
 template<typename T>
 vector<typename StackedGatedModel<T>::shared_mat> StackedGatedModel<T>::parameters() const {
-        vector<shared_mat> parameters;
-        parameters.push_back(this->embedding);
+  auto parameters = RecurrentEmbeddingModel<T>::parameters();
+  auto gate_params = gate.parameters();
+  parameters.insert(parameters.end(), gate_params.begin(), gate_params.end());
 
-        auto gate_params = gate.parameters();
-        parameters.insert(parameters.end(), gate_params.begin(), gate_params.end());
-
-        auto decoder_params = decoder.parameters();
-        parameters.insert(parameters.end(), decoder_params.begin(), decoder_params.end());
-        for (auto& cell : cells) {
-                auto cell_params = cell.parameters();
-                parameters.insert(parameters.end(), cell_params.begin(), cell_params.end());
-        }
-        return parameters;
+  auto decoder_params = decoder.parameters();
+  parameters.insert(parameters.end(), decoder_params.begin(), decoder_params.end());
+  for (auto& cell : cells) {
+          auto cell_params = cell.parameters();
+          parameters.insert(parameters.end(), cell_params.begin(), cell_params.end());
+  }
+  return parameters;
 }
 
 /**

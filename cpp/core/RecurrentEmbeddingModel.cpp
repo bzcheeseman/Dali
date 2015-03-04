@@ -33,6 +33,13 @@ typename RecurrentEmbeddingModel<T>::state_type RecurrentEmbeddingModel<T>::init
 }
 
 template<typename T>
+vector<typename RecurrentEmbeddingModel<T>::shared_mat> RecurrentEmbeddingModel<T>::parameters() const {
+        vector<shared_mat> parameters;
+        parameters.push_back(this->embedding);
+        return parameters;
+}
+
+template<typename T>
 void RecurrentEmbeddingModel<T>::save_configuration(std::string fname) const {
     auto config = configuration();
     utils::map_to_file(config, fname);

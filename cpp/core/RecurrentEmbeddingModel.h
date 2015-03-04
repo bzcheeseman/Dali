@@ -43,6 +43,27 @@ class RecurrentEmbeddingModel {
 
         **/
         virtual config_t configuration() const;
+
+        /**
+        Parameters
+        ----------
+
+        Create a vector of shared pointers to the underlying matrices
+        of the model. Useful for saving, loading parameters all at once
+        and for telling Solvers which parameters should be updated
+        during each training loop.
+
+        Outputs
+        -------
+
+        std::vector<std::shared_ptr<Mat<T>>> parameters : vector of model parameters
+
+        **/
+        virtual std::vector<shared_mat> parameters() const;
+
+
+        typedef std::pair<std::vector<shared_mat>, std::vector<shared_mat>> state_type;
+        virtual state_type initial_states() const;
         /**
         Save Configuration
         ------------------
@@ -55,9 +76,6 @@ class RecurrentEmbeddingModel {
         std::string fname : where to save the configuration
 
         **/
-
-        typedef std::pair<std::vector<shared_mat>, std::vector<shared_mat>> state_type;
-        virtual state_type initial_states() const;
         virtual void save_configuration(std::string fname) const;
         std::string reconstruct_string(Indexing::Index, const utils::Vocab&, int, int symbol_offset = 0) const;
         std::string reconstruct_lattice_string(Indexing::Index, utils::OntologyBranch::shared_branch, int) const;

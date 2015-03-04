@@ -59,8 +59,8 @@ class StackedGatedModel : public StackedModel<T> {
                                                                                            int vocab_size,
                                                                                            int output_size,
                                                                                            bool verbose);
-                StackedGatedModel(int, int, int, int, int, T _memory_penalty = 0.3);
-                StackedGatedModel(int, int, int, std::vector<int>&, T _memory_penalty = 0.3);
+                StackedGatedModel(int, int, int, int, int, bool use_shortcut = false, T _memory_penalty = 0.3);
+                StackedGatedModel(int, int, int, std::vector<int>&, bool use_shortcut = false, T _memory_penalty = 0.3);
                 StackedGatedModel(const config_t&);
                 StackedGatedModel(const StackedGatedModel<T>&, bool, bool);
                 std::tuple<T, T> masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, shared_eigen_index_vector, shared_eigen_index_vector, uint offset=0, T drop_prob = 0.0);

@@ -229,8 +229,8 @@ std::tuple<T, T> StackedGatedModel<T>::masked_predict_cost(
 }
 
 template<typename T>
-StackedGatedModel<T>::StackedGatedModel (int vocabulary_size, int input_size, int hidden_size, int stack_size, int output_size, T _memory_penalty)
-        : StackedModel<T>(vocabulary_size, input_size, hidden_size, stack_size, output_size),
+StackedGatedModel<T>::StackedGatedModel (int vocabulary_size, int input_size, int hidden_size, int stack_size, int output_size, bool use_shortcut, T _memory_penalty)
+        : StackedModel<T>(vocabulary_size, input_size, hidden_size, stack_size, output_size, use_shortcut),
         memory_penalty(_memory_penalty),
         gate(input_size, hidden_size) {}
 
@@ -262,9 +262,9 @@ StackedGatedModel<T>::StackedGatedModel (
             from_string<int>(config.at("hidden_sizes")[config.at("hidden_sizes").size()-1])) {}
 
 template<typename T>
-StackedGatedModel<T>::StackedGatedModel (int vocabulary_size, int input_size, int output_size, std::vector<int>& hidden_sizes, T _memory_penalty)
+StackedGatedModel<T>::StackedGatedModel (int vocabulary_size, int input_size, int output_size, std::vector<int>& hidden_sizes, bool use_shortcut, T _memory_penalty)
         :
-        StackedModel<T>(vocabulary_size, input_size, output_size, hidden_sizes),
+        StackedModel<T>(vocabulary_size, input_size, output_size, hidden_sizes, use_shortcut),
         memory_penalty(_memory_penalty),
         gate(input_size, hidden_sizes[0]) {}
 

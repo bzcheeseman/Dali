@@ -10,10 +10,10 @@
 #include "core/StackedModel.h"
 #include "core/Solver.h"
 
-DEFINE_int32(num_threads, 5, "How many threads to run ?");
+DEFINE_int32(num_threads,     5, "How many threads to run ?");
 DEFINE_int32(minibatch_size, 20, "How big is the minibatch ?");
-DEFINE_int32(hidden_size, 20, "How many hidden states and cells should network use?");
-DEFINE_int32(vocab_size, 300, "How many characters should be modeled in the embedding.");
+DEFINE_int32(hidden_size,    20, "How many hidden states and cells should network use?");
+DEFINE_int32(vocab_size,    300, "How many characters should be modeled in the embedding.");
 
 // test file for character prediction
 using std::vector;

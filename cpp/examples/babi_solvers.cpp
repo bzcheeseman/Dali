@@ -7,6 +7,7 @@
 #include "core/CrossEntropy.h"
 #include "core/Reporting.h"
 #include "core/StackedModel.h"
+#include "core/Seq.h"
 
 using babi::Fact;
 using babi::Item;
@@ -98,7 +99,7 @@ class MarginallyLessDumbModel: public babi::Model {
     typedef Mat<REAL_t> mat;
     typedef shared_ptr<mat> shared_mat;
     typedef Graph<REAL_t> graph_t;
-    typedef StackedShortcutModel<REAL_t> model_t;
+    typedef StackedModel<REAL_t> model_t;
 
     // MODEL PARAMS
 
@@ -164,19 +165,22 @@ class MarginallyLessDumbModel: public babi::Model {
                 EMBEDDING_SIZE,
                 TEXT_STACK_SIZE,
                 TEXT_HIDDEN_SIZE,
-                1); // unused output
+                1,
+                true); // unused output
         fact_model = make_shared<model_t>(
                 vocab_size,
                 EMBEDDING_SIZE,
                 TEXT_STACK_SIZE,
                 TEXT_HIDDEN_SIZE,
-                1); // unused output
+                1,
+                true); // unused output
         story_model = make_shared<model_t>(
                 0,
                 TEXT_STACK_SIZE*TEXT_HIDDEN_SIZE,
                 HL_HIDDEN_SIZE,
                 HL_STACK_SIZE,
-                vocab_size);
+                vocab_size,
+                true);
         please_start_prediction = make_shared<mat>(TEXT_HIDDEN_SIZE*TEXT_STACK_SIZE, 1);
         you_will_see_question_soon = make_shared<mat>(TEXT_HIDDEN_SIZE*TEXT_STACK_SIZE, 1);
     }
@@ -201,42 +205,16 @@ class MarginallyLessDumbModel: public babi::Model {
             auto state = story_model->initial_states();
             utils::Timer a_timer("Forward");
 
-            /*state = forward_LSTMs(G,
-                                  question,
-                                  state,
-                                  story_model->base_cell,
-                                  story_model->cells,
-                                  use_dropout ? HL_DROPOUT : 0.0);*/
+            Seq<shared_mat> sequence;
+            sequence.insert(sequence.end(), facts.begin(), facts.end());
+            sequence.push_back(you_will_see_question_soon);
+            sequence.push_back(question);
+            sequence.push_back(please_start_prediction);
 
-            for (auto& fact: facts) {
-                state = forward_LSTMs(G,
-                                      fact,
-                                      state,
-                                      story_model->base_cell,
-                                      story_model->cells,
-                                      use_dropout ? HL_DROPOUT : 0.0);
-            }
-
-            state = forward_LSTMs(G,
-                                  you_will_see_question_soon,
-                                  state,
-                                  story_model->base_cell,
-                                  story_model->cells,
-                                  use_dropout ? HL_DROPOUT : 0.0);
-
-            state = forward_LSTMs(G,
-                                  question,
-                                  state,
-                                  story_model->base_cell,
-                                  story_model->cells,
-                                  use_dropout ? HL_DROPOUT : 0.0);
-
-            state = forward_LSTMs(G,
-                                  please_start_prediction,
-                                  state,
-                                  story_model->base_cell,
-                                  story_model->cells,
-                                  use_dropout ? HL_DROPOUT : 0.0);
+            state = story_model->stacked_lstm->activate_sequence(G,
+                state,
+                sequence,
+                use_dropout ? HL_DROPOUT : 0.0);
 
             auto log_probs = story_model->decoder.activate(G,
                                                            please_start_prediction,

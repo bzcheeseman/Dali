@@ -4,6 +4,7 @@
 #include "Mat.h"
 #include "Graph.h"
 #include <initializer_list>
+#include "core/Seq.h"
 
 template<typename T>
 class AbstractLayer {
@@ -553,6 +554,11 @@ class AbstractStackedLSTM : public AbstractLayer<T> {
             state_t previous_state,
             shared_mat input_vector,
             T drop_prob = 0.0) const = 0;
+        virtual state_t activate_sequence(
+            Graph<T>& G,
+            state_t initial_state,
+            Seq<shared_mat>& sequence,
+            T drop_prob = 0.0) const;
 };
 
 template<typename T>

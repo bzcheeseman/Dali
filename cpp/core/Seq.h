@@ -29,6 +29,7 @@ class Seq {
         SeqConstIter end() const;
         SeqConstIter cbegin() const;
         SeqConstIter cend() const;
+        void insert(SeqIter where, SeqConstIter begin, SeqConstIter end);
 };
 
 

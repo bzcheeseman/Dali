@@ -14,7 +14,6 @@
 #include "core/NlpUtils.h"
 #include "core/SST.h"
 #include "core/StackedModel.h"
-#include "core/StackedShortcutModel.h"
 #include "core/ThreadPool.h"
 #include "core/utils.h"
 #include "core/Reporting.h"
@@ -25,7 +24,6 @@ DEFINE_int32(minibatch,            100,  "What size should be used for the minib
 DEFINE_bool(sparse,                true, "Use sparse embedding");
 DEFINE_double(cutoff,              2.0,  "KL Divergence error where stopping is acceptable");
 DEFINE_int32(patience,             5,    "How many unimproving epochs to wait through before witnessing progress ?");
-DEFINE_bool(shortcut,              true, "Use a Stacked LSTM with shortcuts");
 DEFINE_int32(num_reconstructions,  5,    "How many sentences to demo after each epoch.");
 
 using std::ifstream;
@@ -483,17 +481,10 @@ int main( int argc, char* argv[]) {
 
     pool = new ThreadPool(FLAGS_j);
 
-    if (FLAGS_shortcut) {
-        train_model<StackedShortcutModel<REAL_t>, Solver::AdaDelta<REAL_t>>(
-            dataset_vocab.second,
-            validation_set,
-            dataset_vocab.first);
-    } else {
-        train_model<StackedModel<REAL_t>, Solver::AdaDelta<REAL_t>>(
-            dataset_vocab.second,
-            validation_set,
-            dataset_vocab.first);
-    }
+    train_model<StackedModel<REAL_t>, Solver::AdaDelta<REAL_t>>(
+        dataset_vocab.second,
+        validation_set,
+        dataset_vocab.first);
 
     Timer::report();
     return 0;

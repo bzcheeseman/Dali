@@ -53,5 +53,10 @@ typename Seq<T>::SeqConstIter Seq<T>::cend() const {
 }
 
 
+template<typename T>
+void Seq<T>::insert(SeqIter where, SeqConstIter begin, SeqConstIter end ) {
+    seq.insert(where, begin, end);
+}
+
 template class Seq<std::shared_ptr<Mat<float>>>;
 template class Seq<std::shared_ptr<Mat<double>>>;

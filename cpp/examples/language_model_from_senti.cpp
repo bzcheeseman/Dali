@@ -57,7 +57,6 @@ DEFINE_int32(patience, 5,    "How many unimproving epochs to wait through before
 DEFINE_int32(epoch_batches, 3, "How many minibatches should each label's model do before doing cross-validation?");
 DEFINE_int32(num_reconstructions,  1,    "How many sentences to demo after each epoch.");
 DEFINE_double(dropout, 0.3, "How much dropout noise to add to the problem ?");
-DEFINE_bool(shortcut,              true, "Use a Stacked LSTM with shortcuts");
 DEFINE_int32(memory_rampup, 30, "Over how many epochs should the memory grow ?");
 
 /**

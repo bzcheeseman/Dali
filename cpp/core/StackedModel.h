@@ -34,6 +34,7 @@ DECLARE_int32(input_size);
 DECLARE_int32(hidden);
 DECLARE_double(decay_rate);
 DECLARE_double(rho);
+DECLARE_bool(shortcut);
 
 
 template<typename T>

@@ -657,6 +657,17 @@ template class LSTM<double>;
 template class ShortcutLSTM<float>;
 template class ShortcutLSTM<double>;
 
+
+template<typename T>
+typename AbstractStackedLSTM<T>::state_t AbstractStackedLSTM<T>::activate_sequence(Graph<T>& G,
+    state_t initial_state,
+    Seq<shared_mat>& sequence,
+    T drop_prob) const {
+    for (auto& input_vector : sequence)
+        initial_state = activate(G, initial_state, input_vector, drop_prob);
+    return initial_state;
+};
+
 template<typename T>
 StackedLSTM<T>::StackedLSTM(const int& input_size, const std::vector<int>& hidden_sizes) {
     cells = StackedCells<lstm_t>(input_size, hidden_sizes);

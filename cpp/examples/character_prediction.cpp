@@ -76,7 +76,7 @@ T validation_error(
                         // pick this letter from the embedding
                         input_vector  = G.row_pluck(model.embedding, example[i]);
                         // pass this letter to the LSTM for processing
-                        initial_state = forward_LSTMs(G, input_vector, initial_state, model.cells);
+                        initial_state = model.stacked_lstm->activate(G, initial_state, input_vector);
                         // classifier takes as input the final hidden layer's activation:
                         logprobs      = model.decoder.activate(G, initial_state.second[num_hidden_sizes-1]);
                         example_cost -= cross_entropy(logprobs, example[i+1]);
@@ -108,7 +108,7 @@ T cost_fun(
                 // pick this letter from the embedding
                 input_vector  = G.row_pluck(model.embedding, indices[i]);
                 // pass this letter to the LSTM for processing
-                initial_state = forward_LSTMs(G, input_vector, initial_state, model.cells);
+                initial_state = model.stacked_lstm->activate(G, initial_state, input_vector);
                 // classifier takes as input the final hidden layer's activation:
                 logprobs      = model.decoder.activate(G, initial_state.second[num_hidden_sizes-1]);
                 cost -= cross_entropy(logprobs, indices[i+1]);

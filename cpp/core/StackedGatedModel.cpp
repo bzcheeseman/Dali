@@ -140,7 +140,7 @@ std::tuple<T, T> StackedGatedModel<T>::masked_predict_cost(
                 memory = gate.activate(G, input_vector, initial_state.second[0]);
                 input_vector = G.eltmul_broadcast_rowwise(input_vector, memory);
                 // pass this letter to the LSTM for processing
-                initial_state = forward_LSTMs(G, input_vector, initial_state, this->cells, drop_prob);
+                initial_state = this->stacked_lstm->activate(G, initial_state, input_vector, drop_prob);
                 // classifier takes as input the final hidden layer's activation:
                 logprobs      = this->decoder.activate(G, initial_state.second[this->stack_size-1]);
 
@@ -197,7 +197,7 @@ std::tuple<T, T> StackedGatedModel<T>::masked_predict_cost(
                 memory = gate.activate(G, input_vector, initial_state.second[this->stack_size-1]);
                 input_vector = G.eltmul_broadcast_rowwise(input_vector, memory);
                 // pass this letter to the LSTM for processing
-                initial_state = forward_LSTMs(G, input_vector, initial_state, this->cells, drop_prob);
+                initial_state = this->stacked_lstm->activate(G, initial_state, input_vector, drop_prob);
                 // classifier takes as input the final hidden layer's activation:
                 logprobs      = this->decoder.activate(G, initial_state.second[this->stack_size-1]);
                 std::get<0>(cost) += G.needs_backprop ? masked_cross_entropy(
@@ -348,7 +348,7 @@ typename StackedGatedModel<T>::state_type StackedGatedModel<T>::get_final_activa
                 memory        = gate.activate(G, input_vector, initial_state.second[0]);
                 input_vector  = G.eltmul_broadcast_rowwise(input_vector, memory);
                 // pass this letter to the LSTM for processing
-                initial_state = forward_LSTMs(G, input_vector, initial_state, this->cells, drop_prob);
+                initial_state = this->stacked_lstm->activate(G, initial_state, input_vector);
                 // decoder takes as input the final hidden layer's activation:
         }
         return initial_state;
@@ -388,7 +388,7 @@ typename StackedGatedModel<T>::activation_t StackedGatedModel<T>::activate(
         auto memory       = gate.activate(G, input_vector, previous_state.second[this->stack_size-1]);
         input_vector      = G.eltmul_broadcast_rowwise(input_vector, memory);
 
-        std::get<0>(out) = forward_LSTMs(G, input_vector, previous_state, this->cells);
+        std::get<0>(out) = this->stacked_lstm->activate(G, previous_state, input_vector);
         std::get<1>(out) = softmax(this->decoder.activate(G, std::get<0>(out).second[this->stack_size-1]));
         std::get<2>(out) = memory;
         return out;
@@ -404,7 +404,7 @@ typename StackedGatedModel<T>::activation_t StackedGatedModel<T>::activate(
     auto memory       = gate.activate(G, input_vector, previous_state.second[this->stack_size-1]);
     input_vector      = G.eltmul_broadcast_rowwise(input_vector, memory);
 
-    std::get<0>(out) = forward_LSTMs(G, input_vector, previous_state, this->cells);
+    std::get<0>(out) = this->stacked_lstm->activate(G, previous_state, input_vector);
     std::get<1>(out) = softmax(this->decoder.activate(G, std::get<0>(out).second[this->stack_size-1]));
     std::get<2>(out) = memory;
 
@@ -430,7 +430,7 @@ std::vector<int> StackedGatedModel<T>::reconstruct(
                 input_vector  = G.row_pluck(this->embedding, last_symbol);
                 memory        = gate.activate(G, input_vector, initial_state.second[this->stack_size-1]);
                 input_vector  = G.eltmul_broadcast_rowwise(input_vector, memory);
-                initial_state = forward_LSTMs(G, input_vector, initial_state, this->cells);
+                initial_state = this->stacked_lstm->activate(G, initial_state, input_vector);
                 last_symbol   = argmax(this->decoder.activate(G, initial_state.second[this->stack_size-1]));
                 outputs.emplace_back(last_symbol);
                 last_symbol += symbol_offset;
@@ -455,7 +455,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<T>::reconstr
                 memory        = gate.activate(G, input_vector, initial_state.second[0]);
                 input_vector  = G.eltmul_broadcast_rowwise(input_vector, memory);
                 // pass this letter to the LSTM for processing
-                initial_state = forward_LSTMs(G, input_vector, initial_state, this->cells);
+                initial_state = this->stacked_lstm->activate(G, initial_state, input_vector);
                 // decoder takes as input the final hidden layer's activation:
         }
         vector<utils::OntologyBranch::shared_branch> outputs;
@@ -471,7 +471,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<T>::reconstr
                 input_vector  = G.row_pluck(this->embedding, pos->id);
                 memory        = gate.activate(G, input_vector, initial_state.second[0]);
                 input_vector  = G.eltmul_broadcast_rowwise(input_vector, memory);
-                initial_state = forward_LSTMs(G, input_vector, initial_state, this->cells);
+                initial_state = this->stacked_lstm->activate(G, initial_state, input_vector);
                 last_turn     = argmax_slice(this->decoder.activate(G, initial_state.second[this->stack_size-1]), 0, pos->children.size() + 1);
                 pos           = (last_turn == 0) ? root : pos->children[last_turn-1];
                 outputs.emplace_back(pos);

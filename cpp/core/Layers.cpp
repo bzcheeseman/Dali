@@ -258,33 +258,14 @@ typename ShortcutRNN<T>::shared_mat ShortcutRNN<T>::activate(
 }
 
 template<typename T>
-GatedInput<T>::GatedInput (int _input_size, int _hidden_size) : in_gate(_input_size, _hidden_size, 1) {
-    in_gate.b->set_name("Gated Input bias");
-    in_gate.Wx->set_name("Gated Input Wx");
-    in_gate.Wh->set_name("Gated Input Wx");
-}
+GatedInput<T>::GatedInput (int _input_size, int _hidden_size) : RNN<T>(_input_size, _hidden_size, 1) {}
 
 template<typename T>
-GatedInput<T>::GatedInput (const GatedInput<T>& gate, bool copy_w, bool copy_dw) : in_gate(gate.in_gate, copy_w, copy_dw) {
-    in_gate.b->set_name("Gated Input bias");
-    in_gate.Wx->set_name("Gated Input Wx");
-    in_gate.Wh->set_name("Gated Input Wx");
-}
+GatedInput<T>::GatedInput (const GatedInput<T>& gate, bool copy_w, bool copy_dw) : RNN<T>(gate, copy_w, copy_dw) {}
 
 template<typename T>
 GatedInput<T> GatedInput<T>::shallow_copy() const {
     return GatedInput<T>(*this, false, true);
-}
-
-template<typename T>
-std::vector<typename GatedInput<T>::shared_mat> GatedInput<T>::parameters () const {
-    return in_gate.parameters();
-}
-
-template<typename T>
-typename GatedInput<T>::shared_mat GatedInput<T>::activate(Graph<T>& G, typename GatedInput<T>::shared_mat input_vector, typename GatedInput<T>::shared_mat prev_hidden) const {
-    auto unsigmoided_gate = in_gate.activate(G, input_vector, prev_hidden);
-    return G.sigmoid( unsigmoided_gate );
 }
 
 template<typename T>
@@ -676,43 +657,121 @@ template class LSTM<double>;
 template class ShortcutLSTM<float>;
 template class ShortcutLSTM<double>;
 
-template std::vector<LSTM<float>> StackedCells <LSTM<float>>(const int&, const std::vector<int>&);
-template std::vector<LSTM<double>> StackedCells <LSTM<double>>(const int&, const std::vector<int>&);
+template<typename T>
+StackedLSTM<T>::StackedLSTM(const int& input_size, const std::vector<int>& hidden_sizes) {
+    cells = StackedCells<lstm_t>(input_size, hidden_sizes);
+};
 
-template std::vector<LSTM<float>> StackedCells <LSTM<float>>(const std::vector<LSTM<float>>&, bool, bool);
-template std::vector<LSTM<double>> StackedCells <LSTM<double>>(const std::vector<LSTM<double>>&, bool, bool);
+template<typename T>
+StackedLSTM<T>::StackedLSTM(const StackedLSTM<T>& model, bool copy_w, bool copy_dw) {
+    cells = StackedCells<lstm_t>(model.cells, copy_w, copy_dw);
+};
 
-template std::vector<LSTM<float>> StackedCells (const int&, const int&, const std::vector<int>&);
-template std::vector<LSTM<double>> StackedCells (const int&, const int&, const std::vector<int>&);
+template<typename T>
+StackedLSTM<T> StackedLSTM<T>::shallow_copy() const {
+    return StackedLSTM<T>(*this, false, true);
+}
 
-template std::vector<ShortcutLSTM<float>> StackedCells (const int&, const int&, const std::vector<int>&);
-template std::vector<ShortcutLSTM<double>> StackedCells (const int&, const int&, const std::vector<int>&);
+template<typename T>
+std::vector<std::shared_ptr<Mat<T>>> StackedLSTM<T>::parameters() const {
+    vector<shared_mat> parameters;
+    for (auto& cell : cells) {
+        auto cell_params = cell.parameters();
+        parameters.insert(parameters.end(), cell_params.begin(), cell_params.end());
+    }
+    return parameters;
+}
 
-template std::vector<ShortcutLSTM<float>> StackedCells <ShortcutLSTM<float>>(const std::vector<ShortcutLSTM<float>>&, bool, bool);
-template std::vector<ShortcutLSTM<double>> StackedCells <ShortcutLSTM<double>>(const std::vector<ShortcutLSTM<double>>&, bool, bool);
+template<typename T>
+typename StackedLSTM<T>::state_t StackedLSTM<T>::activate(
+            Graph<T>& G,
+            state_t previous_state,
+            shared_mat input_vector,
+            T drop_prob) const {
+    return forward_LSTMs(G, input_vector, previous_state, cells, drop_prob);
+};
 
-template pair<vector<shared_ptr<Mat<double>>>, vector<shared_ptr<Mat<double>>>> forward_LSTMs(Graph<double>&,
-    shared_ptr<Mat<double>>,
-    pair<vector<shared_ptr<Mat<double>>>, vector<shared_ptr<Mat<double>>>>&,
-    const vector<LSTM<double>>&,
-    double);
+template class StackedLSTM<float>;
+template class StackedLSTM<double>;
 
-template pair<vector<shared_ptr<Mat<float>>>, vector<shared_ptr<Mat<float>>>> forward_LSTMs(Graph<float>&,
-    shared_ptr<Mat<float>>,
-    pair<vector<shared_ptr<Mat<float>>>, vector<shared_ptr<Mat<float>>>>&,
-    const vector<LSTM<float>>&,
-    float);
+template<typename T>
+StackedShortcutLSTM<T>::StackedShortcutLSTM(const int& input_size, const std::vector<int>& hidden_sizes) :
+    base_cell(input_size, hidden_sizes[0]) {
+    vector<int> sliced_hidden_sizes(hidden_sizes.begin()+1, hidden_sizes.end());
+    // shortcut has size input size (base layer)
+    // while input of shortcut cells is the hidden size:
+    cells = StackedCells<shortcut_lstm_t>(hidden_sizes[0], input_size, sliced_hidden_sizes);
+}
 
-template pair<vector<shared_ptr<Mat<double>>>, vector<shared_ptr<Mat<double>>>> forward_LSTMs(Graph<double>&,
-    shared_ptr<Mat<double>>,
-    pair<vector<shared_ptr<Mat<double>>>, vector<shared_ptr<Mat<double>>>>&,
-    const LSTM<double>&,
-    const vector<ShortcutLSTM<double>>&,
-    double);
+template<typename T>
+StackedShortcutLSTM<T>::StackedShortcutLSTM(const StackedShortcutLSTM<T>& model, bool copy_w, bool copy_dw) :
+    base_cell(model.base_cell),
+    cells(StackedCells(model.cells, copy_w, copy_dw)) {};
 
-template pair<vector<shared_ptr<Mat<float>>>, vector<shared_ptr<Mat<float>>>> forward_LSTMs(Graph<float>&,
-    shared_ptr<Mat<float>>,
-    pair<vector<shared_ptr<Mat<float>>>, vector<shared_ptr<Mat<float>>>>&,
-    const LSTM<float>&,
-    const vector<ShortcutLSTM<float>>&,
-    float);
+template<typename T>
+StackedShortcutLSTM<T> StackedShortcutLSTM<T>::shallow_copy() const {
+    return StackedShortcutLSTM<T>(*this, false, true);
+}
+
+template<typename T>
+std::vector<std::shared_ptr<Mat<T>>> StackedShortcutLSTM<T>::parameters() const {
+    auto parameters = base_cell.parameters();
+    for (auto& cell : cells) {
+        auto cell_params = cell.parameters();
+        parameters.insert(parameters.end(), cell_params.begin(), cell_params.end());
+    }
+    return parameters;
+}
+
+template<typename T>
+typename StackedShortcutLSTM<T>::state_t StackedShortcutLSTM<T>::activate(
+            Graph<T>& G,
+            state_t previous_state,
+            shared_mat input_vector,
+            T drop_prob) const {
+    return forward_LSTMs(G, input_vector, previous_state, base_cell, cells, drop_prob);
+};
+
+template class StackedShortcutLSTM<float>;
+template class StackedShortcutLSTM<double>;
+
+// template std::vector<LSTM<float>> StackedCells <LSTM<float>>(const int&, const std::vector<int>&);
+// template std::vector<LSTM<double>> StackedCells <LSTM<double>>(const int&, const std::vector<int>&);
+
+// template std::vector<LSTM<float>> StackedCells <LSTM<float>>(const std::vector<LSTM<float>>&, bool, bool);
+// template std::vector<LSTM<double>> StackedCells <LSTM<double>>(const std::vector<LSTM<double>>&, bool, bool);
+
+// template std::vector<LSTM<float>> StackedCells (const int&, const int&, const std::vector<int>&);
+// template std::vector<LSTM<double>> StackedCells (const int&, const int&, const std::vector<int>&);
+
+// template std::vector<ShortcutLSTM<float>> StackedCells (const int&, const int&, const std::vector<int>&);
+// template std::vector<ShortcutLSTM<double>> StackedCells (const int&, const int&, const std::vector<int>&);
+
+// template std::vector<ShortcutLSTM<float>> StackedCells <ShortcutLSTM<float>>(const std::vector<ShortcutLSTM<float>>&, bool, bool);
+// template std::vector<ShortcutLSTM<double>> StackedCells <ShortcutLSTM<double>>(const std::vector<ShortcutLSTM<double>>&, bool, bool);
+
+// template pair<vector<shared_ptr<Mat<double>>>, vector<shared_ptr<Mat<double>>>> forward_LSTMs(Graph<double>&,
+//     shared_ptr<Mat<double>>,
+//     pair<vector<shared_ptr<Mat<double>>>, vector<shared_ptr<Mat<double>>>>&,
+//     const vector<LSTM<double>>&,
+//     double);
+
+// template pair<vector<shared_ptr<Mat<float>>>, vector<shared_ptr<Mat<float>>>> forward_LSTMs(Graph<float>&,
+//     shared_ptr<Mat<float>>,
+//     pair<vector<shared_ptr<Mat<float>>>, vector<shared_ptr<Mat<float>>>>&,
+//     const vector<LSTM<float>>&,
+//     float);
+
+// template pair<vector<shared_ptr<Mat<double>>>, vector<shared_ptr<Mat<double>>>> forward_LSTMs(Graph<double>&,
+//     shared_ptr<Mat<double>>,
+//     pair<vector<shared_ptr<Mat<double>>>, vector<shared_ptr<Mat<double>>>>&,
+//     const LSTM<double>&,
+//     const vector<ShortcutLSTM<double>>&,
+//     double);
+
+// template pair<vector<shared_ptr<Mat<float>>>, vector<shared_ptr<Mat<float>>>> forward_LSTMs(Graph<float>&,
+//     shared_ptr<Mat<float>>,
+//     pair<vector<shared_ptr<Mat<float>>>, vector<shared_ptr<Mat<float>>>>&,
+//     const LSTM<float>&,
+//     const vector<ShortcutLSTM<float>>&,
+//     float);

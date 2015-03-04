@@ -20,10 +20,8 @@ vector<typename StackedModel<T>::shared_mat> StackedModel<T>::parameters() const
     auto parameters = RecurrentEmbeddingModel<T>::parameters();
     auto decoder_params = decoder.parameters();
     parameters.insert(parameters.end(), decoder_params.begin(), decoder_params.end());
-    for (auto& cell : cells) {
-        auto cell_params = cell.parameters();
-        parameters.insert(parameters.end(), cell_params.begin(), cell_params.end());
-    }
+    auto stacked_lstm_params = stacked_lstm->parameters();
+    parameters.insert(parameters.end(), stacked_lstm_params.begin(), stacked_lstm_params.end());
     return parameters;
 }
 
@@ -100,7 +98,7 @@ T StackedModel<T>::masked_predict_cost(
         // pick this letter from the embedding
         input_vector = G.rows_pluck(this->embedding, data->col(i));
         // pass this letter to the LSTM for processing
-        initial_state = forward_LSTMs(G, input_vector, initial_state, cells, drop_prob);
+        initial_state = stacked_lstm->activate(G, initial_state, input_vector, drop_prob);
         // classifier takes as input the final hidden layer's activation:
         logprobs      = decoder.activate(G, initial_state.second[this->stack_size-1]);
         cost += G.needs_backprop ? masked_cross_entropy(
@@ -142,7 +140,7 @@ T StackedModel<T>::masked_predict_cost(
         // pick this letter from the embedding
         input_vector = G.rows_pluck(this->embedding, data->col(i));
         // pass this letter to the LSTM for processing
-        initial_state = forward_LSTMs(G, input_vector, initial_state, cells, drop_prob);
+        initial_state = stacked_lstm->activate(G, initial_state, input_vector, drop_prob);
         // classifier takes as input the final hidden layer's activation:
         logprobs      = decoder.activate(G, initial_state.second[this->stack_size-1]);
         cost += G.needs_backprop ? masked_cross_entropy(
@@ -171,20 +169,10 @@ void StackedModel<T>::name_parameters() {
 }
 
 template<typename T>
-void StackedModel<T>::construct_LSTM_cells() {
-    cells = StackedCells<lstm>(this->input_size, this->hidden_sizes);
-}
-
-template<typename T>
-void StackedModel<T>::construct_LSTM_cells(const vector<StackedModel<T>::lstm>& _cells, bool copy_w, bool copy_dw) {
-    cells = StackedCells<lstm>(_cells, copy_w, copy_dw);
-}
-
-template<typename T>
 StackedModel<T>::StackedModel (int vocabulary_size, int input_size, int hidden_size, int stack_size, int output_size)
     : RecurrentEmbeddingModel<T>(vocabulary_size, input_size, hidden_size, stack_size, output_size),
     decoder(hidden_size, output_size) {
-    construct_LSTM_cells();
+    stacked_lstm = make_shared<StackedLSTM<T>>(this->input_size, this->hidden_sizes);
     name_parameters();
 }
 
@@ -195,7 +183,7 @@ StackedModel<T>::StackedModel (const typename StackedModel<T>::config_t& config)
     decoder(
         from_string<int>(config.at("hidden_sizes")[config.at("hidden_sizes").size()-1]),
         from_string<int>(config.at("output_size")[0])) {
-    construct_LSTM_cells();
+    stacked_lstm = make_shared<StackedLSTM<T>>(this->input_size, this->hidden_sizes);
     name_parameters();
 }
 
@@ -203,7 +191,7 @@ template<typename T>
 StackedModel<T>::StackedModel (int vocabulary_size, int input_size, int output_size, std::vector<int>& hidden_sizes)
     : RecurrentEmbeddingModel<T>(vocabulary_size, input_size, hidden_sizes, output_size),
     decoder(hidden_sizes[hidden_sizes.size()-1], output_size) {
-    construct_LSTM_cells();
+    stacked_lstm = make_shared<StackedLSTM<T>>(input_size, hidden_sizes);
     name_parameters();
 }
 
@@ -211,7 +199,10 @@ template<typename T>
 StackedModel<T>::StackedModel (const StackedModel<T>& model, bool copy_w, bool copy_dw)
     : RecurrentEmbeddingModel<T>(model, copy_w, copy_dw),
     decoder(model.decoder, copy_w, copy_dw) {
-    construct_LSTM_cells(model.cells, copy_w, copy_dw);
+
+    StackedLSTM<T>* casted_model = dynamic_cast<StackedLSTM<T>*>(model.stacked_lstm.get());
+    stacked_lstm = make_shared<StackedLSTM<T>>(*casted_model, copy_w, copy_dw);
+
     name_parameters();
 }
 
@@ -232,7 +223,7 @@ typename StackedModel<T>::state_type StackedModel<T>::get_final_activation(
         // pick this letter from the embedding
         input_vector  = G.row_pluck(this->embedding, example[i]);
         // pass this letter to the LSTM for processing
-        initial_state = forward_LSTMs(G, input_vector, initial_state, cells, drop_prob);
+        initial_state = stacked_lstm->activate(G, initial_state, input_vector, drop_prob);
         // decoder takes as input the final hidden layer's activation:
     }
     return initial_state;
@@ -256,7 +247,7 @@ std::vector<int> StackedModel<T>::reconstruct(
 
     for (uint j = 0; j < eval_steps - 1; j++) {
         input_vector  = G.row_pluck(this->embedding, last_symbol);
-        initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
+        initial_state = stacked_lstm->activate(G, initial_state, input_vector);
         last_symbol   = argmax(decoder.activate(G, initial_state.second[this->stack_size-1]));
         outputs.emplace_back(last_symbol);
         last_symbol += symbol_offset;
@@ -270,7 +261,7 @@ typename StackedModel<T>::activation_t StackedModel<T>::activate(
     state_type& previous_state,
     const uint& index) const {
     activation_t out;
-    out.first =  forward_LSTMs(G, G.row_pluck(this->embedding, index), previous_state, cells);
+    out.first  = stacked_lstm->activate(G, previous_state, G.row_pluck(this->embedding, index));
     out.second = softmax(decoder.activate(G, out.first.second[this->stack_size-1]));
 
     return out;
@@ -283,7 +274,7 @@ typename StackedModel<T>::activation_t StackedModel<T>::activate(
     const eigen_index_block indices) const {
     activation_t out;
 
-    out.first =  forward_LSTMs(G, G.rows_pluck(this->embedding, indices), previous_state, cells);
+    out.first  = stacked_lstm->activate(G, previous_state, G.rows_pluck(this->embedding, indices));
     out.second = softmax(decoder.activate(G, out.first.second[this->stack_size-1]));
 
     return out;
@@ -305,7 +296,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedModel<T>::reconstruct_l
         // pick this letter from the embedding
         input_vector  = G.row_pluck(this->embedding, example[i]);
         // pass this letter to the LSTM for processing
-        initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
+        initial_state = stacked_lstm->activate(G, initial_state, input_vector);
         // decoder takes as input the final hidden layer's activation:
     }
     vector<utils::OntologyBranch::shared_branch> outputs;
@@ -319,7 +310,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedModel<T>::reconstruct_l
     outputs.emplace_back(pos);
     for (uint j = 0; j < eval_steps - 1; j++) {
         input_vector  = G.row_pluck(this->embedding, pos->id);
-        initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
+        initial_state = stacked_lstm->activate(G, initial_state, input_vector);
         last_turn     = argmax_slice(decoder.activate(G, initial_state.second[this->stack_size-1]), 0, pos->children.size() + 1);
         pos           = (last_turn == 0) ? root : pos->children[last_turn-1];
         outputs.emplace_back(pos);

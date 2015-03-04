@@ -46,32 +46,6 @@ class StackedModel : public RecurrentEmbeddingModel<T>  {
     typedef std::map<std::string, std::vector<std::string>> config_t;
 
     inline void name_parameters();
-    /**
-    Construct LSTM Cells (private)
-    ------------------------------
-
-    Construct LSTM cells using the provided hidden sizes and
-    the input size to the Stacked LSTMs.
-
-    **/
-    inline void construct_LSTM_cells();
-    /**
-    Construct LSTM Cells (private)
-    ------------------------------
-
-    Constructs cells using either deep or shallow copies from
-    other cells.
-
-    Inputs
-    ------
-
-    const std::vector<LSTM<T>>& cells : cells for copy
-                          bool copy_w : should each LSTM copy the parameters or share them
-                         bool copy_dw : should each LSTM copy the gradient memory `dw` or share it.
-
-
-    **/
-    inline void construct_LSTM_cells(const std::vector<LSTM<T>>&, bool, bool);
 
     public:
 
@@ -79,7 +53,8 @@ class StackedModel : public RecurrentEmbeddingModel<T>  {
         typedef std::pair<state_type, shared_mat > activation_t;
         typedef T value_t;
 
-        std::vector<lstm> cells;
+        std::shared_ptr<AbstractStackedLSTM<T>> stacked_lstm;
+
         typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
         typedef std::shared_ptr< index_mat > shared_index_mat;
 

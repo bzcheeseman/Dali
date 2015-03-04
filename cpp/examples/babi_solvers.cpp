@@ -95,7 +95,7 @@ class RandomAnswer: public babi::Model {
 // -> increase performance
 // -> supporting fact gate - add second order term between question and answer.
 template<typename REAL_t>
-class MarginallyLessDumbModel: public babi::Model {
+class LstmBabiModel {
     typedef Mat<REAL_t> mat;
     typedef shared_ptr<mat> shared_mat;
     typedef Graph<REAL_t> graph_t;
@@ -104,22 +104,15 @@ class MarginallyLessDumbModel: public babi::Model {
     // MODEL PARAMS
 
     const int TEXT_STACK_SIZE =      2;
-    const int TEXT_HIDDEN_SIZE =    30;
+    const int TEXT_HIDDEN_SIZE =    15;
     const REAL_t TEXT_DROPOUT = 0.5;
 
-    const int HL_STACK_SIZE =      4;
-    const int HL_HIDDEN_SIZE =    20;
-    const REAL_t HL_DROPOUT = 0.5;
+    const int HL_STACK_SIZE =      3;
+    const int HL_HIDDEN_SIZE =    10;
+    const REAL_t HL_DROPOUT = 0.8;
 
     const int EMBEDDING_SIZE = 30;
 
-    // TRAINING_PROCEDURE_PARAMS
-
-    const float TRAINING_FRAC = 0.9;
-    const float MINIMUM_IMPROVEMENT = 0.0001; // good one: 0.003
-    const int PATIENCE = 3;
-
-    shared_ptr<Vocab> vocab;
 
     shared_ptr<model_t> question_model;
     shared_ptr<model_t> fact_model;
@@ -127,18 +120,6 @@ class MarginallyLessDumbModel: public babi::Model {
 
     shared_mat please_start_prediction;
     shared_mat you_will_see_question_soon;
-
-    vector<shared_mat> parameters() const {
-        vector<shared_mat> res;
-        for(auto& m: {question_model, fact_model, story_model}) {
-            auto params = m->parameters();
-            res.insert(res.end(), params.begin(), params.end());
-        }
-        res.emplace_back(please_start_prediction);
-        res.emplace_back(you_will_see_question_soon);
-        return res;
-    }
-
 
     void vocab_from_training(const vector<babi::Story>& data) {
         set<string> vocab_set;
@@ -180,12 +161,46 @@ class MarginallyLessDumbModel: public babi::Model {
                 HL_HIDDEN_SIZE,
                 HL_STACK_SIZE,
                 vocab_size,
-                true);
+                false);
         please_start_prediction = make_shared<mat>(TEXT_HIDDEN_SIZE*TEXT_STACK_SIZE, 1);
         you_will_see_question_soon = make_shared<mat>(TEXT_HIDDEN_SIZE*TEXT_STACK_SIZE, 1);
     }
 
     public:
+        shared_ptr<Vocab> vocab;
+
+
+        vector<shared_mat> parameters() {
+            vector<shared_mat> res;
+            for(auto& m: {question_model, fact_model, story_model}) {
+                auto params = m->parameters();
+                res.insert(res.end(), params.begin(), params.end());
+            }
+            res.emplace_back(please_start_prediction);
+            res.emplace_back(you_will_see_question_soon);
+            return res;
+        }
+
+        LstmBabiModel<REAL_t> shallow_copy() {
+            return LstmBabiModel<REAL_t>(*this, false, true);
+        }
+
+        LstmBabiModel(const LstmBabiModel& model, bool copy_w, bool copy_dw) {
+            vocab = model.vocab;
+            question_model = make_shared<model_t>(*model.question_model, copy_w, copy_dw);
+            fact_model = make_shared<model_t>(*model.fact_model, copy_w, copy_dw);
+            story_model = make_shared<model_t>(*model.story_model, copy_w, copy_dw);
+            please_start_prediction = make_shared<mat>(*model.please_start_prediction, copy_w, copy_dw);
+            you_will_see_question_soon = make_shared<mat>(*model.you_will_see_question_soon, copy_w, copy_dw);
+        }
+
+        LstmBabiModel(const vector<babi::Story>& data) {
+            vocab_from_training(data);
+            construct_model(vocab->index2word.size());
+        }
+
+
+
         // ACTIVATES A sequence of words (fact or question) on an LSTM, returns the output
         // hidden for that sequence of words.
         shared_mat activate_words(graph_t& G, model_t& model, const VS& words, bool use_dropout) {
@@ -263,53 +278,85 @@ class MarginallyLessDumbModel: public babi::Model {
 
             return cross_entropy(log_probs, answer_idx);
         }
+};
+
+template<typename REAL_t>
+class LstmBabiModelRunner: public babi::Model {
+
+    // TRAINING_PROCEDURE_PARAMS
+
+    const float TRAINING_FRAC = 0.9;
+    const float MINIMUM_IMPROVEMENT = 0.00001; // good one: 0.003
+    const int PATIENCE = 10;
+
+
+    shared_ptr<LstmBabiModel<REAL_t>> model;
+    public:
 
         REAL_t compute_error(const vector<babi::Story>& dataset, bool training) {
-            auto params = parameters();
-
-            vector<Fact*> facts_so_far;
-
-            Solver::AdaDelta<REAL_t> solver(params, 0.95, 1e-9, 5.0);
-
             REAL_t total_error = 0.0;
-            int num_questions = 0;
 
-            for (auto& story : dataset) {
-                for(auto& item_ptr : story) {
-                    if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
-                        facts_so_far.push_back(f);
-                    } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
-                        // When we are training we want to do backprop
-                        Graph<REAL_t> G(training);
-                        // When we are training we want to use dropout
-                        total_error += error(G, facts_so_far, qa, training);
-                        num_questions += 1;
-                        if (training)
-                            G.backward();
-                    }
-                }
-                facts_so_far.clear();
-                // Only update weights during training.
-                if (training)
-                    solver.step(params, 0.0);
-                ProfilerFlush();
+            const int NUM_THREADS = 9;
+            ThreadPool pool(NUM_THREADS);
+
+            vector<LstmBabiModel<REAL_t>> thread_models;
+            for (int i=0; i<NUM_THREADS; ++i) {
+                thread_models.push_back(model->shallow_copy());
             }
+            auto params = model->parameters();
+            // Solver::AdaDelta<REAL_t> solver(params, 0.95, 1e-9, 5.0);
+            Solver::SGD<REAL_t> solver(params);
+
+            vector<double> thread_error(NUM_THREADS, 0.0);
+
+            std::atomic<int> num_questions(0);
+            for (auto story : dataset) {
+
+                pool.run([story, &thread_models, training, &num_questions, &thread_error, &solver]() {
+                    vector<Fact*> facts_so_far;
+                    LstmBabiModel<REAL_t>& thread_model = thread_models[ThreadPool::get_thread_number()];
+                    auto params = thread_model.parameters();
+
+                    for(auto& item_ptr : story) {
+                        if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
+                            facts_so_far.push_back(f);
+                        } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
+                            // When we are training we want to do backprop
+                            Graph<REAL_t> G(training);
+                            // When we are training we want to use dropout
+                            thread_error[ThreadPool::get_thread_number()] +=
+                                    thread_model.error(G, facts_so_far, qa, training);
+                            num_questions += 1;
+                            if (training)
+                                G.backward();
+                        }
+                    }
+                    facts_so_far.clear();
+                    // Only update weights during training.
+                    if (training)
+                        solver.step(params, 0.01);
+                });
+            }
+
+            pool.wait_until_idle();
+
+            for (int i=0; i<NUM_THREADS; ++i)
+                total_error += thread_error[i];
 
             return total_error/num_questions;
         }
 
+
         void train(const vector<babi::Story>& data) {
-            vocab_from_training(data);
+            model = std::make_shared<LstmBabiModel<REAL_t>>(data);
+
             int training_size = (int)(TRAINING_FRAC * data.size());
             std::vector<babi::Story> train(data.begin(), data.begin() + training_size);
             std::vector<babi::Story> validation(data.begin() + training_size, data.end());
 
-            construct_model(vocab->index2word.size());
-
-
             double training_error = 0.0;
             double validation_error = 0.0;
-            double last_validation_error = std::numeric_limits<REAL_t>::infinity();
+            double last_validation_error = std::numeric_limits<double>::infinity();
 
             int epoch = 0;
             int epochs_validation_increasing = 0;
@@ -343,18 +390,16 @@ class MarginallyLessDumbModel: public babi::Model {
         }
 
         vector<string> question(const vector<string>& question) {
-            graph_t G(false);
+            Graph<REAL_t> G(false);
 
             // Don't use dropout for validation.
-            int word_idx = argmax(predict_answer_distribution(G, story_so_far, question, false));
+            int word_idx = argmax(model->predict_answer_distribution(G, story_so_far, question, false));
 
-            return {vocab->index2word[word_idx]};
+            return {model->vocab->index2word[word_idx]};
         }
 };
 
 
 int main() {
-    ProfilerStart("/tmp/babi.prof");
-    babi::benchmark_task<MarginallyLessDumbModel<double>>("qa11_basic-coreference");
-    ProfilerStop();
+    babi::benchmark_task<LstmBabiModelRunner<double>>("qa11_basic-coreference");
 }

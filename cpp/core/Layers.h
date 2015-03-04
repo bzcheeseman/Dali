@@ -15,7 +15,17 @@ class AbstractLayer {
 };
 
 template<typename T>
-class Layer : public AbstractLayer<T> {
+class AbstractMultiInputLayer : public AbstractLayer<T> {
+    public:
+        typedef Mat<T>                      mat;
+        typedef std::shared_ptr<mat> shared_mat;
+        virtual shared_mat activate(Graph<T>&, shared_mat) const = 0;
+        virtual shared_mat activate(Graph<T>&, const std::vector<shared_mat>&) const;
+        virtual shared_mat activate(Graph<T>&, shared_mat, const std::vector<shared_mat>&) const;
+};
+
+template<typename T>
+class Layer : public AbstractMultiInputLayer<T> {
     /*
     Linear output layer of the form with affine offset bias
     vector b (broadcasted):
@@ -173,7 +183,9 @@ class StackedInputLayer : public AbstractLayer<T> {
 
         shared_mat out : projection of the inputs
         **/
+
         shared_mat activate(Graph<T>&, const std::vector<shared_mat>&) const;
+        shared_mat activate(Graph<T>&, shared_mat) const;
         /**
         Activate
         --------

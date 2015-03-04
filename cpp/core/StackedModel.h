@@ -59,8 +59,7 @@ class StackedModel : public RecurrentEmbeddingModel<T>  {
 
         typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
         typedef std::shared_ptr< index_mat > shared_index_mat;
-
-        const classifier_t decoder;
+        std::shared_ptr<AbstractMultiInputLayer<T>> decoder;
         virtual std::vector<shared_mat> parameters() const;
         /**
         Load

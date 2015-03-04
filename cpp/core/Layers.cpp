@@ -4,6 +4,21 @@ using std::make_shared;
 using std::vector;
 
 template<typename T>
+shared_mat AbstractMultiInputLayer<T>::activate(Graph<T>& G, const std::vector<shared_mat>& inputs) {
+    assert(inputs.size() > 0);
+    return activate(inputs[0]);
+};
+
+template<typename T>
+shared_mat AbstractMultiInputLayer<T>::activate(Graph<T>& G, shared_mat first_input, const std::vector<shared_mat>& inputs) {
+    if (inputs.size() > 0) {
+        return activate(activate.back());
+    } else {
+        return activate(first_input);
+    }
+};
+
+template<typename T>
 void Layer<T>::create_variables() {
     T upper = 1. / sqrt(input_size);
     W = make_shared<mat>(hidden_size, input_size, -upper, upper);
@@ -112,6 +127,17 @@ typename StackedInputLayer<T>::shared_mat StackedInputLayer<T>::activate(
     const vector<typename StackedInputLayer<T>::shared_mat>& inputs) const {
     auto zipped = zip_inputs_with_matrices_and_bias(inputs);
     return G.mul_add_mul_with_bias(zipped);
+}
+
+template<typename T>
+typename StackedInputLayer<T>::shared_mat StackedInputLayer<T>::activate(
+    Graph<T>& G,
+    shared_mat input_vector) const {
+    if (matrices.size() == 0) {
+        return G.mul_with_bias(matrices[0], input_vector, b);
+    } else {
+        throw std::runtime_error("Error: Stacked Input Layer parametrized with more than 1 inputs only received 1 input vector.");
+    }
 }
 
 template<typename T>

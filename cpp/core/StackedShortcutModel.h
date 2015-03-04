@@ -14,6 +14,7 @@
 #include "Softmax.h"
 #include "utils.h"
 #include "StackedGatedModel.h"
+#include "core/RecurrentEmbeddingModel.h"
 
 
 /**
@@ -38,7 +39,7 @@ in the model.
 #endif
 
 template<typename T>
-class StackedShortcutModel {
+class StackedShortcutModel : public RecurrentEmbeddingModel<T> {
         typedef LSTM<T>                    lstm;
         typedef ShortcutLSTM<T>   shortcut_lstm;
         #ifdef SHORTCUT_DECODE_ACROSS_LAYERS
@@ -90,12 +91,7 @@ class StackedShortcutModel {
                 typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
                 typedef std::shared_ptr< index_mat > shared_index_mat;
 
-                int vocabulary_size;
-                const int output_size;
-                const int stack_size;
-                const int input_size;
                 const classifier_t decoder;
-                std::vector<int> hidden_sizes;
                 /**
                 Parameters
                 ----------
@@ -112,39 +108,6 @@ class StackedShortcutModel {
 
                 **/
                 std::vector<shared_mat> parameters() const;
-
-                /**
-                Configuration
-                -------------
-
-                Return a map with keys corresponding to hyperparameters for
-                the model and where values are vectors of strings containing
-                the assignments to each hyperparameter for the loaded model.
-
-                Useful for saving the model to file and reloading it later.
-
-                Outputs
-                -------
-
-                std::map<std::string, std::vector< std::string >> config : configuration map
-
-                **/
-                config_t configuration() const;
-
-                /**
-                Save Configuration
-                ------------------
-
-                Save model configuration as a text file with key value pairs.
-                Values are vectors of string, and keys are known by the model.
-
-                Input
-                -----
-
-                std::string fname : where to save the configuration
-
-                **/
-                void save_configuration(std::string) const;
                 void save(std::string) const;
 
                 /**
@@ -277,11 +240,9 @@ std::vector<int> hidden_sizes : size of internal layers
                 StackedShortcutModel(const StackedShortcutModel<T>&, bool, bool);
                 T masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, shared_eigen_index_vector, shared_eigen_index_vector, uint offset=0,  T drop_prob = 0.0);
                 T masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, uint, shared_eigen_index_vector, uint offset=0, T drop_prob = 0.0);
-                std::vector<int> reconstruct(Indexing::Index, int, int symbol_offset = 0);
+                std::vector<int> reconstruct(Indexing::Index, int, int symbol_offset = 0) const;
 
                 state_type get_final_activation(graph_t&, Indexing::Index, T drop_prob=0.0) const;
-
-                state_type initial_states() const;
 
                 /**
                 Activate
@@ -310,11 +271,7 @@ std::vector<int> hidden_sizes : size of internal layers
 
                 activation_t activate(graph_t&, state_type&, const eigen_index_block) const;
 
-                std::string reconstruct_string(Indexing::Index, const utils::Vocab&, int, int symbol_offset = 0);
-
-                std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(Indexing::Index, utils::OntologyBranch::shared_branch, int);
-
-                std::string reconstruct_lattice_string(Indexing::Index, utils::OntologyBranch::shared_branch, int);
+                std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(Indexing::Index, utils::OntologyBranch::shared_branch, int) const;
 
                 /**
                 Shallow Copy

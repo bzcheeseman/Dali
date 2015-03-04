@@ -10,6 +10,7 @@
 #include "core/NlpUtils.h"
 #include "core/SST.h"
 #include "core/StackedModel.h"
+#include "core/StackedGatedModel.h"
 #include "core/utils.h"
 #include "core/Reporting.h"
 #include "core/ThreadPool.h"
@@ -56,6 +57,8 @@ DEFINE_int32(patience, 5,    "How many unimproving epochs to wait through before
 DEFINE_int32(epoch_batches, 3, "How many minibatches should each label's model do before doing cross-validation?");
 DEFINE_int32(num_reconstructions,  1,    "How many sentences to demo after each epoch.");
 DEFINE_double(dropout, 0.3, "How much dropout noise to add to the problem ?");
+DEFINE_bool(shortcut,              true, "Use a Stacked LSTM with shortcuts");
+DEFINE_int32(memory_rampup, 30, "Over how many epochs should the memory grow ?");
 
 /**
 Databatch
@@ -259,8 +262,8 @@ class ConfusionMatrix {
                 std::cout << *names_ptr << "\t";
                 for (auto & el : category) {
                     std::cout << std::fixed
-                              << std::setw(5)
-                              << std::setprecision(3)
+                              << std::setw(4)
+                              << std::setprecision(2)
                               << std::setfill(' ')
                               << ((*totals_ptr) > 0 ? (100.0 * ((double) el / (double)(*totals_ptr))) : 0.0)
                               << "%\t";
@@ -411,9 +414,11 @@ int main( int argc, char* argv[]) {
     pool = new ThreadPool(FLAGS_j);
 
     int patience = 0;
+    // with a rampup model we start with zero memory penalty and gradually increase the memory
+    // L1 penalty until it reaches the desired level.
+    // this allows early exploration, but only later forces sparsity on the model
 
     std::vector<StackedShortcutModel<REAL_t>> models;
-
     vector<vector<StackedShortcutModel<REAL_t>>> thread_models;
     vector<Solver::AdaDelta<REAL_t>> solvers;
 
@@ -446,12 +451,14 @@ int main( int argc, char* argv[]) {
 
         for (int sentiment = 0; sentiment < NUM_SENTIMENTS; sentiment++) {
             for (int batch_id = 0; batch_id < FLAGS_epoch_batches; ++batch_id) {
-                pool->run([&thread_models, &journalist, &solvers, &datasets, sentiment, &accuracy, &batches_processed]() {
+                pool->run([&thread_models, &journalist, &solvers, &datasets, sentiment, &epoch, &accuracy, &batches_processed]() {
                     auto& thread_model = thread_models[sentiment][ThreadPool::get_thread_number()];
                     auto& solver = solvers[sentiment];
 
                     auto thread_parameters = thread_model.parameters();
                     auto& minibatch = datasets[sentiment][utils::randint(0, datasets[sentiment].size()-1)];
+
+                    // thread_model.memory_penalty = (FLAGS_memory_penalty / minibatch.data->cols()) * std::min((REAL_t)1.0, ((REAL_t) (epoch*epoch) / ((REAL_t) FLAGS_memory_rampup * FLAGS_memory_rampup)));
 
                     auto G = graph_t(true);      // create a new graph for each loop
                     thread_model.masked_predict_cost(

@@ -52,6 +52,7 @@ class StackedModel : public RecurrentEmbeddingModel<T>  {
         typedef std::pair<std::vector<shared_mat>, std::vector<shared_mat>> state_type;
         typedef std::pair<state_type, shared_mat > activation_t;
         typedef T value_t;
+        const bool use_shortcut;
 
         std::shared_ptr<AbstractStackedLSTM<T>> stacked_lstm;
 
@@ -96,8 +97,8 @@ class StackedModel : public RecurrentEmbeddingModel<T>  {
                                               int output_size,
                                               bool verbose = true);
 
-        StackedModel(int, int, int, int, int);
-        StackedModel(int, int, int, std::vector<int>&);
+        StackedModel(int, int, int, int, int, bool use_shortcut = false);
+        StackedModel(int, int, int, std::vector<int>&, bool use_shortcut = false);
         /**StackedModel Constructor from configuration map
         ----------------------------------------------------
 
@@ -112,6 +113,7 @@ class StackedModel : public RecurrentEmbeddingModel<T>  {
         std::map<std::string, std::vector<std::string>& config : model hyperparameters
 
         **/
+        virtual config_t configuration() const;
         StackedModel(const config_t&);
         /**
         StackedModel<T>::StackedModel

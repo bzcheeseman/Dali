@@ -25,6 +25,14 @@ vector<typename StackedModel<T>::shared_mat> StackedModel<T>::parameters() const
     return parameters;
 }
 
+
+template<typename T>
+typename StackedModel<T>::config_t StackedModel<T>::configuration() const  {
+    auto config = StackedModel<T>::configuration();
+    config["use_shortcut"].emplace_back(to_string(use_shortcut ? 1 : 0));
+    return config;
+}
+
 template<typename T>
 StackedModel<T> StackedModel<T>::build_from_CLI(string load_location,
                                                                                             int vocab_size,
@@ -64,6 +72,9 @@ StackedModel<T> StackedModel<T>::load(std::string dirname) {
     utils::assert_map_has_key(config, "hidden_sizes");
     utils::assert_map_has_key(config, "vocabulary_size");
     utils::assert_map_has_key(config, "output_size");
+    if (config.find("use_shortcut") == config.end()) {
+        std::cout << "Warning: Could not find `use_shortcut` parameter, using non shortcut StackedLSTMs" <<std::endl;
+    }
 
     // construct the model using the map
     auto model =  StackedModel<T>(config);
@@ -169,39 +180,58 @@ void StackedModel<T>::name_parameters() {
 }
 
 template<typename T>
-StackedModel<T>::StackedModel (int vocabulary_size, int input_size, int hidden_size, int stack_size, int output_size)
+StackedModel<T>::StackedModel (int vocabulary_size, int input_size, int hidden_size, int stack_size, int output_size, bool _use_shortcut)
     : RecurrentEmbeddingModel<T>(vocabulary_size, input_size, hidden_size, stack_size, output_size),
-    decoder(hidden_size, output_size) {
-    stacked_lstm = make_shared<StackedLSTM<T>>(this->input_size, this->hidden_sizes);
+    decoder(hidden_size, output_size), use_shortcut(_use_shortcut) {
+    if (use_shortcut) {
+        stacked_lstm = make_shared<StackedShortcutLSTM<T>>(this->input_size, this->hidden_sizes);
+    } else {
+        stacked_lstm = make_shared<StackedLSTM<T>>(this->input_size, this->hidden_sizes);
+    }
     name_parameters();
 }
 
 template<typename T>
 StackedModel<T>::StackedModel (const typename StackedModel<T>::config_t& config)
     :
+    use_shortcut( config.find("use_shortcut") != config.end() ? (from_string<int>("use_shortcut") > 0) : false ),
     RecurrentEmbeddingModel<T>(config),
     decoder(
         from_string<int>(config.at("hidden_sizes")[config.at("hidden_sizes").size()-1]),
         from_string<int>(config.at("output_size")[0])) {
-    stacked_lstm = make_shared<StackedLSTM<T>>(this->input_size, this->hidden_sizes);
+    if (use_shortcut) {
+        stacked_lstm = make_shared<StackedShortcutLSTM<T>>(this->input_size, this->hidden_sizes);
+    } else {
+        stacked_lstm = make_shared<StackedLSTM<T>>(this->input_size, this->hidden_sizes);
+    }
     name_parameters();
 }
 
 template<typename T>
-StackedModel<T>::StackedModel (int vocabulary_size, int input_size, int output_size, std::vector<int>& hidden_sizes)
+StackedModel<T>::StackedModel (int vocabulary_size, int input_size, int output_size, std::vector<int>& hidden_sizes, bool _use_shortcut)
     : RecurrentEmbeddingModel<T>(vocabulary_size, input_size, hidden_sizes, output_size),
-    decoder(hidden_sizes[hidden_sizes.size()-1], output_size) {
-    stacked_lstm = make_shared<StackedLSTM<T>>(input_size, hidden_sizes);
+    decoder(hidden_sizes[hidden_sizes.size()-1], output_size), use_shortcut(_use_shortcut) {
+    if (use_shortcut) {
+        stacked_lstm = make_shared<StackedShortcutLSTM<T>>(this->input_size, this->hidden_sizes);
+    } else {
+        stacked_lstm = make_shared<StackedLSTM<T>>(this->input_size, this->hidden_sizes);
+    }
     name_parameters();
 }
 
 template<typename T>
 StackedModel<T>::StackedModel (const StackedModel<T>& model, bool copy_w, bool copy_dw)
     : RecurrentEmbeddingModel<T>(model, copy_w, copy_dw),
-    decoder(model.decoder, copy_w, copy_dw) {
+    decoder(model.decoder, copy_w, copy_dw), use_shortcut(model.use_shortcut) {
+
+
 
     StackedLSTM<T>* casted_model = dynamic_cast<StackedLSTM<T>*>(model.stacked_lstm.get());
-    stacked_lstm = make_shared<StackedLSTM<T>>(*casted_model, copy_w, copy_dw);
+    if (use_shortcut) {
+        stacked_lstm = make_shared<StackedShortcutLSTM<T>>(*dynamic_cast<StackedShortcutLSTM<T>*>(model.stacked_lstm.get()), copy_w, copy_dw);
+    } else {
+        stacked_lstm = make_shared<StackedLSTM<T>>(*dynamic_cast<StackedLSTM<T>*>(model.stacked_lstm.get()), copy_w, copy_dw);
+    }
 
     name_parameters();
 }

@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <vector>
 #include "core/StackedModel.h"
-#include "core/StackedShortcutModel.h"
+#include "core/StackedGatedModel.h"
 
 DECLARE_string(save);
 DECLARE_string(load);

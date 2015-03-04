@@ -418,8 +418,8 @@ int main( int argc, char* argv[]) {
     // L1 penalty until it reaches the desired level.
     // this allows early exploration, but only later forces sparsity on the model
 
-    std::vector<StackedShortcutModel<REAL_t>> models;
-    vector<vector<StackedShortcutModel<REAL_t>>> thread_models;
+    std::vector<StackedModel<REAL_t>> models;
+    vector<vector<StackedModel<REAL_t>>> thread_models;
     vector<Solver::AdaDelta<REAL_t>> solvers;
 
 
@@ -429,7 +429,8 @@ int main( int argc, char* argv[]) {
             FLAGS_input_size,
             FLAGS_hidden,
             FLAGS_stack_size < 1 ? 1 : FLAGS_stack_size,
-            word_vocab.index2word.size()
+            word_vocab.index2word.size(),
+            FLAGS_shortcut
         );
         thread_models.emplace_back();
         for (int thread_no = 0; thread_no < FLAGS_j; ++thread_no) {

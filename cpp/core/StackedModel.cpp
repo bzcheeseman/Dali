@@ -29,7 +29,7 @@ vector<typename StackedModel<T>::shared_mat> StackedModel<T>::parameters() const
 
 template<typename T>
 typename StackedModel<T>::config_t StackedModel<T>::configuration() const  {
-    auto config = StackedModel<T>::configuration();
+    auto config = RecurrentEmbeddingModel<T>::configuration();
     config["use_shortcut"].emplace_back(to_string(use_shortcut ? 1 : 0));
     return config;
 }
@@ -54,9 +54,9 @@ vector<int> StackedModel<T>::decoder_initialization(int input_size, const vector
 
 template<typename T>
 StackedModel<T> StackedModel<T>::build_from_CLI(string load_location,
-                                                                                            int vocab_size,
-                                                                                            int output_size,
-                                                                                            bool verbose) {
+                                                int vocab_size,
+                                                int output_size,
+                                                bool verbose) {
         if (verbose)
                 std::cout << "Load location         = " << ((load_location == "") ? "N/A" : load_location)       << std::endl;
         // Load or Construct the model
@@ -131,7 +131,7 @@ T StackedModel<T>::masked_predict_cost(
         // pass this letter to the LSTM for processing
         initial_state = stacked_lstm->activate(G, initial_state, input_vector, drop_prob);
         // classifier takes as input the final hidden layer's activation:
-        logprobs      = decoder->activate(G, initial_state.second[this->stack_size-1]);
+        logprobs      = decoder->activate(G, input_vector, initial_state.second);
         cost += G.needs_backprop ? masked_cross_entropy(
                                         logprobs,
                                         i,
@@ -173,7 +173,7 @@ T StackedModel<T>::masked_predict_cost(
         // pass this letter to the LSTM for processing
         initial_state = stacked_lstm->activate(G, initial_state, input_vector, drop_prob);
         // classifier takes as input the final hidden layer's activation:
-        logprobs      = decoder->activate(G, initial_state.second[this->stack_size-1]);
+        logprobs      = decoder->activate(G, input_vector, initial_state.second);
         cost += G.needs_backprop ? masked_cross_entropy(
                                         logprobs,
                                         i,
@@ -299,16 +299,17 @@ std::vector<int> StackedModel<T>::reconstruct(
     graph_t G(false);
     auto initial_state = get_final_activation(G, example);
     vector<int> outputs;
-    auto last_symbol = argmax(decoder->activate(G, initial_state.second[this->stack_size-1]));
+    auto input_vector = G.row_pluck(this->embedding, example[example.size() - 1]);
+    auto last_symbol = argmax(decoder->activate(G, input_vector, initial_state.second));
     outputs.emplace_back(last_symbol);
     last_symbol += symbol_offset;
 
-    shared_mat input_vector;
+
 
     for (uint j = 0; j < eval_steps - 1; j++) {
         input_vector  = G.row_pluck(this->embedding, last_symbol);
         initial_state = stacked_lstm->activate(G, initial_state, input_vector);
-        last_symbol   = argmax(decoder->activate(G, initial_state.second[this->stack_size-1]));
+        last_symbol   = argmax(decoder->activate(G, input_vector, initial_state.second));
         outputs.emplace_back(last_symbol);
         last_symbol += symbol_offset;
     }
@@ -321,9 +322,9 @@ typename StackedModel<T>::activation_t StackedModel<T>::activate(
     state_type& previous_state,
     const uint& index) const {
     activation_t out;
-    out.first  = stacked_lstm->activate(G, previous_state, G.row_pluck(this->embedding, index));
-    out.second = softmax(decoder->activate(G, out.first.second[this->stack_size-1]));
-
+    auto input_vector = G.row_pluck(this->embedding, index);
+    std::get<0>(out)  = stacked_lstm->activate(G, previous_state, input_vector);
+    std::get<1>(out)  = softmax(decoder->activate(G, input_vector, std::get<0>(out).second));
     return out;
 }
 
@@ -333,10 +334,9 @@ typename StackedModel<T>::activation_t StackedModel<T>::activate(
     state_type& previous_state,
     const eigen_index_block indices) const {
     activation_t out;
-
-    out.first  = stacked_lstm->activate(G, previous_state, G.rows_pluck(this->embedding, indices));
-    out.second = softmax(decoder->activate(G, out.first.second[this->stack_size-1]));
-
+    auto input_vector = G.rows_pluck(this->embedding, indices);
+    std::get<0>(out)  = stacked_lstm->activate(G, previous_state, input_vector);
+    std::get<1>(out)  = softmax(decoder->activate(G, input_vector, std::get<0>(out).second));
     return out;
 }
 
@@ -362,7 +362,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedModel<T>::reconstruct_l
     vector<utils::OntologyBranch::shared_branch> outputs;
     // Take the argmax over the available options (0 for go back to
     // root, and 1..n for the different children of the current position)
-    auto last_turn = argmax_slice(decoder->activate(G, initial_state.second[this->stack_size-1]), 0, pos->children.size() + 1);
+    auto last_turn = argmax_slice(decoder->activate(G, input_vector, initial_state.second), 0, pos->children.size() + 1);
     // if the turn is 0 go back to root, else go to one of the children using
     // the lattice pointers:
     pos = (last_turn == 0) ? root : pos->children[last_turn-1];
@@ -371,7 +371,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedModel<T>::reconstruct_l
     for (uint j = 0; j < eval_steps - 1; j++) {
         input_vector  = G.row_pluck(this->embedding, pos->id);
         initial_state = stacked_lstm->activate(G, initial_state, input_vector);
-        last_turn     = argmax_slice(decoder->activate(G, initial_state.second[this->stack_size-1]), 0, pos->children.size() + 1);
+        last_turn     = argmax_slice(decoder->activate(G, input_vector, initial_state.second), 0, pos->children.size() + 1);
         pos           = (last_turn == 0) ? root : pos->children[last_turn-1];
         outputs.emplace_back(pos);
     }

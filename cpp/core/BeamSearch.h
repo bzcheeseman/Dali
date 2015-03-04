@@ -7,8 +7,16 @@
 
 namespace beam_search {
 
+    template<typename T>
+    class ProbabilityPair {
+        public:
+            const uint symbol;
+            const T prob;
+            ProbabilityPair(uint _symbol, T _prob) : symbol(_symbol), prob(_prob) {}
+    };
+
     template<typename graph_t, typename model_t, typename T>
-    std::pair<typename model_t::state_type, std::vector<std::pair<uint, T>>> beam_search_with_indices(
+    std::pair<typename model_t::state_type, std::vector<ProbabilityPair<T>>> beam_search_with_indices(
         const model_t& model,
         graph_t& G,
         typename model_t::state_type& previous_state,
@@ -18,9 +26,11 @@ namespace beam_search {
         uint ignore_symbol = -1) {
 
         auto out_state_and_prob = model.activate(G, previous_state, index);
-        std::pair<typename model_t::state_type, std::vector<std::pair<uint,T>>> out;
-        out.first = out_state_and_prob.first;
-        std::vector<T> probabilities(out_state_and_prob.second->w.data(), out_state_and_prob.second->w.data() + out_state_and_prob.second->n);
+        std::pair<typename model_t::state_type, std::vector<ProbabilityPair<T>>> out;
+        out.first = std::get<0>(out_state_and_prob);
+        std::vector<T> probabilities(
+            std::get<1>(out_state_and_prob)->w.data(),
+            std::get<1>(out_state_and_prob)->w.data() + std::get<1>(out_state_and_prob)->n);
         auto sorted_probs = utils::argsort(probabilities);
 
         // we pass along the new state, and the "winning" k predictions
@@ -82,9 +92,9 @@ namespace beam_search {
             for (auto& candidate : out_beam.second) {
                 open_list.emplace_back(
                     open_list_t(
-                        std::initializer_list<uint>({candidate.first + symbol_offset}),// the new fork
-                        candidate.second,                 // the new probabilities
-                        out_beam.first                    // the new state
+                        std::initializer_list<uint>({candidate.symbol + symbol_offset}),// the new fork
+                        candidate.prob,                 // the new probabilities
+                        out_beam.first                  // the new state
                     )
                 );
             }
@@ -117,14 +127,14 @@ namespace beam_search {
                         ignore_symbol                 // don't include paths with this direction
                                                       // in the open-list.
                         );
-                    for (auto& forks_fork : forks_beam.second) {
+                    for (auto& forks_fork : std::get<1>(forks_beam)) {
                         seq_type new_seq(std::get<0>(fork));
-                        new_seq.emplace_back(forks_fork.first + symbol_offset);
+                        new_seq.emplace_back(forks_fork.symbol + symbol_offset);
                         open_list.emplace_back(
                             open_list_t(
-                                new_seq,            // the new candidate state
-                                forks_fork.second,  // the new probabilities
-                                forks_beam.first    // the new state
+                                new_seq,          // the new candidate state
+                                forks_fork.prob,  // the new probabilities
+                                std::get<0>(forks_beam)    // the new state
                             )
                         );
                     }

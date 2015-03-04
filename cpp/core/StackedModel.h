@@ -51,7 +51,7 @@ class StackedModel : public RecurrentEmbeddingModel<T>  {
     public:
 
         typedef std::pair<std::vector<shared_mat>, std::vector<shared_mat>> state_type;
-        typedef std::pair<state_type, shared_mat > activation_t;
+        typedef std::tuple<state_type, shared_mat, shared_mat> activation_t;
         typedef T value_t;
         const bool use_shortcut;
 

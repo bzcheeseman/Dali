@@ -18,6 +18,15 @@
 #include "core/SequenceProbability.h"
 #include "core/Solver.h"
 
+
+#define USE_GATES
+
+#ifdef USE_GATES
+    #define MODEL_USED StackedGatedModel
+#else
+    #define MODEL_USED StackedModel
+#endif
+
 using std::vector;
 using std::make_shared;
 using std::shared_ptr;
@@ -58,6 +67,8 @@ DEFINE_int32(epoch_batches, 3, "How many minibatches should each label's model d
 DEFINE_int32(num_reconstructions,  1,    "How many sentences to demo after each epoch.");
 DEFINE_double(dropout, 0.3, "How much dropout noise to add to the problem ?");
 DEFINE_int32(memory_rampup, 30, "Over how many epochs should the memory grow ?");
+
+DEFINE_bool(use_surprise, true, "Whether to compare choices using log likelihood, or surprise (entropy is the integral of surprise around a circle with prob 0 and 1 on either sides)");
 
 /**
 Databatch
@@ -275,9 +286,10 @@ class ConfusionMatrix {
 };
 
 template<typename model_t>
-REAL_t average_error(const vector<model_t>& models, const vector<vector<Databatch>>& validation_sets, const int& total_valid_examples) {
+REAL_t average_error(const vector<model_t>& models, const vector<vector<Databatch>>& validation_sets) {
     atomic<int> correct(0);
-    ReportProgress<double> journalist("Average error", validation_sets.size() * 10);
+    int set_size = 10;
+    ReportProgress<double> journalist("Average error", validation_sets.size() * set_size);
     atomic<int> total(0);
     atomic<int> seen_minibatches(0);
     auto confusion = ConfusionMatrix(5, label_names);
@@ -285,28 +297,43 @@ REAL_t average_error(const vector<model_t>& models, const vector<vector<Databatc
     for (int validation_set_num = 0; validation_set_num < validation_sets.size(); validation_set_num++) {
 
         auto random_batch_order = utils::random_arange(validation_sets[validation_set_num].size());
-        if (random_batch_order.size() > 10)
-            random_batch_order.resize(10);
+        if (random_batch_order.size() > set_size)
+            random_batch_order.resize(set_size);
 
         for (auto& minibatch_num : random_batch_order) {
             pool->run([&confusion, &journalist, &models, &correct,&seen_minibatches,  &total, &validation_sets, validation_set_num, minibatch_num] {
                 auto& valid_set = validation_sets[validation_set_num][minibatch_num];
                 vector<shared_mat> probs;
                 for (int k = 0; k < models.size();k++) {
-                    probs.emplace_back(sequence_probability::sequence_probabilities(
-                        models[k],
-                        *valid_set.data,
-                        *valid_set.codelens));
+                    probs.emplace_back(FLAGS_use_surprise ?
+                        sequence_probability::sequence_surprises(
+                            models[k],
+                            *valid_set.data,
+                            *valid_set.codelens) :
+                        sequence_probability::sequence_probabilities(
+                            models[k],
+                            *valid_set.data,
+                            *valid_set.codelens));
                 }
 
                 for (int row_num = 0; row_num < valid_set.data->rows(); ++row_num) {
                     int best_model = -1;
-                    double best_prob = -std::numeric_limits<REAL_t>::infinity();
-                    for (int k = 0; k < models.size();k++) {
-                        auto prob = probs[k]->w(row_num);
-                        if (prob > best_prob) {
-                            best_prob = prob;
-                            best_model = k;
+                    double best_prob = (FLAGS_use_surprise ? 1.0 : -1.0) * std::numeric_limits<REAL_t>::infinity();
+                    if (FLAGS_use_surprise) {
+                        for (int k = 0; k < models.size();k++) {
+                            auto prob = probs[k]->w(row_num);
+                            if (prob < best_prob) {
+                                best_prob = prob;
+                                best_model = k;
+                            }
+                        }
+                    } else {
+                        for (int k = 0; k < models.size();k++) {
+                            auto prob = probs[k]->w(row_num);
+                            if (prob > best_prob) {
+                                best_prob = prob;
+                                best_model = k;
+                            }
                         }
                     }
                     confusion.classified_a_when_b(best_model, (*valid_set.targets)(row_num));
@@ -323,7 +350,7 @@ REAL_t average_error(const vector<model_t>& models, const vector<vector<Databatc
     pool->wait_until_idle();
     confusion.report();
 
-    return ((REAL_t) 100.0 * correct / (REAL_t) total_valid_examples);
+    return ((REAL_t) 100.0 * correct / (REAL_t) total);
 };
 
 
@@ -358,7 +385,6 @@ int main( int argc, char* argv[]) {
               << "     Vocabulary size : " << vocab_size << std::endl;
 
     // Put trees into matrices:
-    int total_valid_examples = 0;
     const int NUM_SENTIMENTS = 5;
     vector<vector<Databatch>> datasets(NUM_SENTIMENTS);
     vector<vector<Databatch>> validation_sets(NUM_SENTIMENTS);
@@ -395,7 +421,6 @@ int main( int argc, char* argv[]) {
 
         for (auto& tree_type : validation_tree_types) {
             std::cout << "Label type " << i++ << " has " << tree_type.size() << " validation examples" << std::endl;
-            total_valid_examples += tree_type.size();
         }
 
         i = 0;
@@ -406,9 +431,16 @@ int main( int argc, char* argv[]) {
             validation_sets[i++] = create_labeled_dataset(tree_type, word_vocab, FLAGS_minibatch);
     }
 
-    std::cout << "    Max training epochs = " << FLAGS_epochs << std::endl;
-    std::cout << "    Training cutoff     = " << FLAGS_cutoff << std::endl;
-    std::cout << "Minibatches/label/x-val = " << FLAGS_epoch_batches << std::endl;
+    std::cout     << "    Max training epochs = " << FLAGS_epochs << std::endl;
+    std::cout     << "    Training cutoff     = " << FLAGS_cutoff << std::endl;
+    std::cout     << "Minibatches/label/x-val = " << FLAGS_epoch_batches << std::endl;
+    #ifdef USE_GATES
+        std::cout << "      using gated model = true" << std::endl;
+    #else
+        std::cout << "      using gated model = false" << std::endl;
+    #endif
+    std::cout     << "     Use Shortcut LSTMs = " << (FLAGS_shortcut ? "true" : "false") << std::endl;
+    std::cout     << " Comparing models using = " << (FLAGS_use_surprise ? "surprise" : "log likelihood") << std::endl;
 
     pool = new ThreadPool(FLAGS_j);
 
@@ -417,8 +449,8 @@ int main( int argc, char* argv[]) {
     // L1 penalty until it reaches the desired level.
     // this allows early exploration, but only later forces sparsity on the model
 
-    std::vector<StackedModel<REAL_t>> models;
-    vector<vector<StackedModel<REAL_t>>> thread_models;
+    std::vector<MODEL_USED<REAL_t>> models;
+    vector<vector<MODEL_USED<REAL_t>>> thread_models;
     vector<Solver::AdaDelta<REAL_t>> solvers;
 
 
@@ -458,7 +490,9 @@ int main( int argc, char* argv[]) {
                     auto thread_parameters = thread_model.parameters();
                     auto& minibatch = datasets[sentiment][utils::randint(0, datasets[sentiment].size()-1)];
 
-                    // thread_model.memory_penalty = (FLAGS_memory_penalty / minibatch.data->cols()) * std::min((REAL_t)1.0, ((REAL_t) (epoch*epoch) / ((REAL_t) FLAGS_memory_rampup * FLAGS_memory_rampup)));
+                    #ifdef USE_GATES
+                        thread_model.memory_penalty = (FLAGS_memory_penalty / minibatch.data->cols()) * std::min((REAL_t)1.0, ((REAL_t) (epoch*epoch) / ((REAL_t) FLAGS_memory_rampup * FLAGS_memory_rampup)));
+                    #endif
 
                     auto G = graph_t(true);      // create a new graph for each loop
                     thread_model.masked_predict_cost(
@@ -492,7 +526,7 @@ int main( int argc, char* argv[]) {
         }
 
         journalist.done();
-        new_accuracy = average_error(models, validation_sets, total_valid_examples);
+        new_accuracy = average_error(models, validation_sets);
 
         if (new_accuracy < accuracy) {
             patience +=1;

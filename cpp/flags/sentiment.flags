@@ -1,7 +1,7 @@
 --input_size=100
 --hidden=100
 --j=9
---epoch_batches=100
+--epoch_batches=3
 --patience=5
 --shortcut
 --dropout=0.3

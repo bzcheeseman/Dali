@@ -115,6 +115,10 @@ class LstmBabiModel {
     const int EMBEDDING_SIZE = 30;
 
 
+    // shared_ptr<model_t> question_representation_model;
+    // shared_ptr<model_t> question_fact_gate_model;
+    // shared_ptr<model_t> question_fact_word_gate_model;
+
     shared_ptr<model_t> question_model;
     shared_ptr<model_t> fact_model;
     shared_ptr<model_t> story_model;
@@ -135,8 +139,6 @@ class LstmBabiModel {
             }
         }
         vector<string> vocab_vector(vocab_set.begin(), vocab_set.end());
-
-
 
         vocab = make_shared<Vocab> (vocab_vector);
     }
@@ -207,9 +209,6 @@ class LstmBabiModel {
         shared_mat activate_words(graph_t& G, model_t& model, const VS& words, bool use_dropout) {
             auto ex = vocab->transform(words);
             auto out_state = model.get_final_activation(G, ex, use_dropout ? TEXT_DROPOUT : 0.0);
-            // TODO(szymon): Implement G.join method, so that we can join all the hidden
-            // from different levels of stacks.
-            // return G.join(out_state.second);
             return G.vstack(out_state.second);
         }
 
@@ -245,15 +244,8 @@ class LstmBabiModel {
                                                bool use_dropout) {
             vector<shared_mat> fact_hiddens;
 
-            vector<string> tokens;
             for (auto& fact: facts) {
-                tokens.clear();
-                // tokens.insert(tokens.end(), question.begin(), question.end());
-                // don't need fact coming token because question ends with question mark
-                tokens.insert(tokens.end(), fact.begin(), fact.end());
-                // instead of using end of stream we rely on the fact that
-                // each fact ends with a dot
-                fact_hiddens.emplace_back(activate_words(G, *fact_model, tokens, use_dropout));
+                fact_hiddens.emplace_back(activate_words(G, *fact_model, fact, use_dropout));
             }
 
             // similarly to above each question ends with a question mark.
@@ -288,7 +280,8 @@ class LstmBabiModelRunner: public babi::Model {
 
     const float TRAINING_FRAC = 0.8;
     const float MINIMUM_IMPROVEMENT = 0.0001; // good one: 0.003
-    const int PATIENCE = 20;
+    const double VALIDATION_FORGETTING = 0.1;
+    const int PATIENCE = 5;
 
 
     shared_ptr<LstmBabiModel<REAL_t>> model;
@@ -390,12 +383,15 @@ class LstmBabiModelRunner: public babi::Model {
 
                 if (validation_error < last_validation_error - MINIMUM_IMPROVEMENT) {
                     epochs_validation_increasing = 0;
-                    if (std::numeric_limits<double>::infinity() == last_validation_error)
-                          last_validation_error = validation_error;
-                    else
-                          last_validation_error = 0.2*validation_error + 0.8*last_validation_error;
                 } else {
                     epochs_validation_increasing += 1;
+                }
+
+                if (last_validation_error == std::numeric_limits<double>::infinity()) {
+                    last_validation_error = validation_error;
+                } else {
+                    last_validation_error = VALIDATION_FORGETTING * validation_error +
+                                            (1.0 - VALIDATION_FORGETTING)*last_validation_error;
                 }
             }
         }
@@ -422,6 +418,6 @@ class LstmBabiModelRunner: public babi::Model {
 
 
 int main() {
-    //babi::benchmark_task<LstmBabiModelRunner<double>>("qa11_basic-coreference");
-    babi::benchmark<LstmBabiModelRunner<double>>();
+    babi::benchmark_task<LstmBabiModelRunner<double>>("qa4_two-arg-relations");
+    //babi::benchmark<LstmBabiModelRunner<double>>();
 }

@@ -6,23 +6,23 @@
 #include <initializer_list>
 #include "core/Seq.h"
 
+#define MAT Mat<T>
+#define SHARED_MAT std::shared_ptr<Mat<T>>
+#define GRAPH Graph<T>
+
 template<typename T>
 class AbstractLayer {
     public:
-        typedef Mat<T>                      mat;
-        typedef std::shared_ptr<mat> shared_mat;
-        virtual std::vector<shared_mat> parameters() const = 0;
+        virtual std::vector<SHARED_MAT> parameters() const = 0;
 };
 
 template<typename T>
 class AbstractMultiInputLayer : public AbstractLayer<T> {
     public:
-        typedef Mat<T>                      mat;
-        typedef std::shared_ptr<mat> shared_mat;
-        shared_mat b;
-        virtual shared_mat activate(Graph<T>&, shared_mat) const = 0;
-        virtual shared_mat activate(Graph<T>&, const std::vector<shared_mat>&) const;
-        virtual shared_mat activate(Graph<T>&, shared_mat, const std::vector<shared_mat>&) const;
+        SHARED_MAT b;
+        virtual SHARED_MAT activate(GRAPH&, SHARED_MAT) const = 0;
+        virtual SHARED_MAT activate(GRAPH&, const std::vector<SHARED_MAT>&) const;
+        virtual SHARED_MAT activate(GRAPH&, SHARED_MAT, const std::vector<SHARED_MAT>&) const;
 };
 
 template<typename T>
@@ -37,12 +37,10 @@ class Layer : public AbstractMultiInputLayer<T> {
     void create_variables();
     public:
         typedef T value_t;
-        typedef Mat<T>                      mat;
-        typedef std::shared_ptr<mat> shared_mat;
-        shared_mat W;
+        SHARED_MAT W;
         const int hidden_size;
         const int input_size;
-        virtual std::vector<shared_mat> parameters() const;
+        virtual std::vector<SHARED_MAT> parameters() const;
         Layer (int, int);
         /**
         Layer<T>::Layer
@@ -58,7 +56,7 @@ class Layer : public AbstractMultiInputLayer<T> {
         Shallow copies are useful for Hogwild and multithreaded
         training
 
-        See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`,
+        See `MAT::shallow_copy`, `examples/character_prediction.cpp`,
         `Layer<T>::shallow_copy`
 
         Inputs
@@ -79,7 +77,7 @@ class Layer : public AbstractMultiInputLayer<T> {
 
         **/
         Layer (const Layer&, bool, bool);
-        shared_mat activate(Graph<T>&, shared_mat) const;
+        SHARED_MAT activate(GRAPH&, SHARED_MAT) const;
         /**
         Shallow Copy
         ------------
@@ -91,7 +89,7 @@ class Layer : public AbstractMultiInputLayer<T> {
         Shallow copies are useful for Hogwild and multithreaded
         training
 
-        See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`.
+        See `MAT::shallow_copy`, `examples/character_prediction.cpp`.
 
         Outputs
         -------
@@ -114,16 +112,14 @@ class StackedInputLayer : public AbstractMultiInputLayer<T> {
 
     */
     void create_variables();
-    std::vector<std::shared_ptr<Mat<T>>> zip_inputs_with_matrices_and_bias(const std::vector<std::shared_ptr<Mat<T>>>&) const;
-    std::vector<std::shared_ptr<Mat<T>>> zip_inputs_with_matrices_and_bias(std::shared_ptr<Mat<T>>, const std::vector<std::shared_ptr<Mat<T>>>&) const;
+    std::vector<std::shared_ptr<MAT>> zip_inputs_with_matrices_and_bias(const std::vector<std::shared_ptr<MAT>>&) const;
+    std::vector<std::shared_ptr<MAT>> zip_inputs_with_matrices_and_bias(std::shared_ptr<MAT>, const std::vector<std::shared_ptr<MAT>>&) const;
     public:
         typedef T value_t;
-        typedef Mat<T>                      mat;
-        typedef std::shared_ptr<mat> shared_mat;
-        std::vector<shared_mat> matrices;
+        std::vector<SHARED_MAT> matrices;
         const int hidden_size;
         const std::vector<int> input_sizes;
-        virtual std::vector<shared_mat> parameters() const;
+        virtual std::vector<SHARED_MAT> parameters() const;
         StackedInputLayer (std::initializer_list<int>, int);
         StackedInputLayer (std::vector<int>, int);
         /**
@@ -140,7 +136,7 @@ class StackedInputLayer : public AbstractMultiInputLayer<T> {
         Shallow copies are useful for Hogwild and multithreaded
         training
 
-        See `Mat<T>::shallow_copy`,
+        See `MAT::shallow_copy`,
         `StackedInputLayer<T>::shallow_copy`
 
         Inputs
@@ -172,19 +168,19 @@ class StackedInputLayer : public AbstractMultiInputLayer<T> {
         Inputs
         ------
 
-                                  Graph<T>& G : computation graph, keeps track of
+                                  GRAPH& G : computation graph, keeps track of
                                                 steps for backpropagation
-        const std::vector<shared_mat>& inputs : vectors to project using this
+        const std::vector<SHARED_MAT>& inputs : vectors to project using this
                                                 layer's matrices and bias.
 
         Outputs
         -------
 
-        shared_mat out : projection of the inputs
+        SHARED_MAT out : projection of the inputs
         **/
 
-        shared_mat activate(Graph<T>&, const std::vector<shared_mat>&) const;
-        shared_mat activate(Graph<T>&, shared_mat) const;
+        SHARED_MAT activate(GRAPH&, const std::vector<SHARED_MAT>&) const;
+        SHARED_MAT activate(GRAPH&, SHARED_MAT) const;
         /**
         Activate
         --------
@@ -196,21 +192,21 @@ class StackedInputLayer : public AbstractMultiInputLayer<T> {
         Inputs
         ------
 
-                                  Graph<T>& G : computation graph, keeps track of
+                                  GRAPH& G : computation graph, keeps track of
                                                 steps for backpropagation
-                                   shared_mat : separate input vector (convenience
+                                   SHARED_MAT : separate input vector (convenience
                                                 for shortcut stacked LSTMs that
                                                 typically separate their hidden
                                                 vectors from the inputs)
-        const std::vector<shared_mat>& inputs : other vectors to project using this
+        const std::vector<SHARED_MAT>& inputs : other vectors to project using this
                                                 layer's matrices and bias.
 
         Outputs
         -------
 
-        shared_mat out : projection of the inputs
+        SHARED_MAT out : projection of the inputs
         **/
-        shared_mat activate(Graph<T>&, shared_mat, const std::vector<shared_mat>&) const;
+        SHARED_MAT activate(GRAPH&, SHARED_MAT, const std::vector<SHARED_MAT>&) const;
         /**
         Shallow Copy
         ------------
@@ -222,7 +218,7 @@ class StackedInputLayer : public AbstractMultiInputLayer<T> {
         Shallow copies are useful for Hogwild and multithreaded
         training
 
-        See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`.
+        See `MAT::shallow_copy`, `examples/character_prediction.cpp`.
 
         Outputs
         -------
@@ -246,15 +242,13 @@ class RNN : public AbstractLayer<T> {
     void create_variables();
     public:
         typedef T value_t;
-        typedef Mat<T>                      mat;
-        typedef std::shared_ptr<mat> shared_mat;
-        shared_mat Wx;
-        shared_mat Wh;
-        shared_mat b;
+        SHARED_MAT Wx;
+        SHARED_MAT Wh;
+        SHARED_MAT b;
         const int hidden_size;
         const int input_size;
         const int output_size;
-        virtual std::vector<shared_mat> parameters() const;
+        virtual std::vector<SHARED_MAT> parameters() const;
         /**
         By default the RNN constructor sets the output size
         equal to the hidden size, creating the recurrence
@@ -280,7 +274,7 @@ class RNN : public AbstractLayer<T> {
         Shallow copies are useful for Hogwild and multithreaded
         training
 
-        See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`,
+        See `MAT::shallow_copy`, `examples/character_prediction.cpp`,
         `RNN<T>::shallow_copy`
 
         Inputs
@@ -301,7 +295,7 @@ class RNN : public AbstractLayer<T> {
 
         **/
         RNN (const RNN&, bool, bool);
-        shared_mat activate(Graph<T>& G, shared_mat input_vector, shared_mat prev_hidden) const;
+        SHARED_MAT activate(GRAPH& G, SHARED_MAT input_vector, SHARED_MAT prev_hidden) const;
         /**
         Shallow Copy
         ------------
@@ -326,6 +320,23 @@ class RNN : public AbstractLayer<T> {
 };
 
 template<typename T>
+class DelayedRNN : public AbstractLayer<T> {
+    /*
+        h' = A * [h,x] + b
+        o  = B * [h,x] + d
+    */
+    RNN<T> hidden_rnn;
+    RNN<T> output_rnn;
+    virtual std::vector<SHARED_MAT> parameters() const;
+
+    DelayedRNN (int input_size, int hidden_size, int output_size);
+    DelayedRNN (const DelayedRNN&, bool, bool);
+
+    // output (next_hidden, output)
+    std::pair<SHARED_MAT, SHARED_MAT> activate(GRAPH& G, SHARED_MAT input_vector, SHARED_MAT prev_hidden) const;
+    DelayedRNN<T> shallow_copy() const;
+};
+template<typename T>
 class ShortcutRNN : public AbstractLayer<T> {
     /*
     Combine the input of a hidden vector, an input vector, and
@@ -339,17 +350,15 @@ class ShortcutRNN : public AbstractLayer<T> {
     void create_variables();
     public:
         typedef T value_t;
-        typedef Mat<T>                      mat;
-        typedef std::shared_ptr<mat> shared_mat;
-        shared_mat Wx;
-        shared_mat Wh;
-        shared_mat Ws;
-        shared_mat b;
+        SHARED_MAT Wx;
+        SHARED_MAT Wh;
+        SHARED_MAT Ws;
+        SHARED_MAT b;
         const int hidden_size;
         const int input_size;
         const int shortcut_size;
         const int output_size;
-        virtual std::vector<shared_mat> parameters() const;
+        virtual std::vector<SHARED_MAT> parameters() const;
         ShortcutRNN (int, int, int);
         ShortcutRNN (int, int, int, int);
         /**
@@ -366,7 +375,7 @@ class ShortcutRNN : public AbstractLayer<T> {
         Shallow copies are useful for Hogwild and multithreaded
         training
 
-        See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`,
+        See `MAT::shallow_copy`, `examples/character_prediction.cpp`,
         `ShortcutRNN<T>::shallow_copy`
 
         Inputs
@@ -387,7 +396,7 @@ class ShortcutRNN : public AbstractLayer<T> {
 
         **/
         ShortcutRNN (const ShortcutRNN&, bool, bool);
-        shared_mat activate(Graph<T>&, shared_mat, shared_mat, shared_mat) const;
+        SHARED_MAT activate(GRAPH&, SHARED_MAT, SHARED_MAT, SHARED_MAT) const;
         /**
         Shallow Copy
         ------------
@@ -433,8 +442,6 @@ class LSTM : public AbstractLayer<T> {
     void name_internal_layers();
     public:
         typedef T value_t;
-        typedef Mat<T>                               mat;
-        typedef std::shared_ptr<mat>          shared_mat;
         // cell input modulation:
         layer_type input_layer;
         // cell forget gate:
@@ -460,7 +467,7 @@ class LSTM : public AbstractLayer<T> {
         Shallow copies are useful for Hogwild and multithreaded
         training
 
-        See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`,
+        See `MAT::shallow_copy`, `examples/character_prediction.cpp`,
         `LSTM<T>::shallow_copy`
 
         Inputs
@@ -481,13 +488,13 @@ class LSTM : public AbstractLayer<T> {
 
         **/
         LSTM (const LSTM&, bool, bool);
-        virtual std::vector<shared_mat> parameters() const;
-        static std::pair<std::vector<shared_mat>, std::vector<shared_mat>> initial_states(const std::vector<int>&);
-        std::pair<shared_mat, shared_mat> activate(
-            Graph<T>&,
-            shared_mat,
-            shared_mat,
-            shared_mat) const;
+        virtual std::vector<SHARED_MAT> parameters() const;
+        static std::pair<std::vector<SHARED_MAT>, std::vector<SHARED_MAT>> initial_states(const std::vector<int>&);
+        std::pair<SHARED_MAT, SHARED_MAT> activate(
+            GRAPH&,
+            SHARED_MAT,
+            SHARED_MAT,
+            SHARED_MAT) const;
         /**
         Shallow Copy
         ------------
@@ -528,8 +535,6 @@ class ShortcutLSTM : public AbstractLayer<T> {
     void name_internal_layers();
     public:
         typedef T value_t;
-        typedef Mat<T>                               mat;
-        typedef std::shared_ptr<mat>          shared_mat;
         // cell input modulation:
         layer_type input_layer;
         // cell forget gate:
@@ -543,50 +548,46 @@ class ShortcutLSTM : public AbstractLayer<T> {
         const int shortcut_size;
         ShortcutLSTM (int, int, int);
         ShortcutLSTM (const ShortcutLSTM&, bool, bool);
-        virtual std::vector<shared_mat> parameters() const;
-        std::pair<shared_mat, shared_mat> activate(
-            Graph<T>&,
-            shared_mat,
-            shared_mat,
-            shared_mat,
-            shared_mat) const;
+        virtual std::vector<SHARED_MAT> parameters() const;
+        std::pair<SHARED_MAT, SHARED_MAT> activate(
+            GRAPH&,
+            SHARED_MAT,
+            SHARED_MAT,
+            SHARED_MAT,
+            SHARED_MAT) const;
         ShortcutLSTM<T> shallow_copy() const;
 };
 
 template<typename T>
 class AbstractStackedLSTM : public AbstractLayer<T> {
     public:
-        typedef Mat<T>                      mat;
-        typedef std::shared_ptr<mat> shared_mat;
-        typedef std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>> state_t;
-        virtual std::vector<shared_mat> parameters() const = 0;
+        typedef std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>> state_t;
+        virtual std::vector<SHARED_MAT> parameters() const = 0;
         virtual state_t activate(
-            Graph<T>& G,
+            GRAPH& G,
             state_t previous_state,
-            shared_mat input_vector,
+            SHARED_MAT input_vector,
             T drop_prob = 0.0) const = 0;
         virtual state_t activate_sequence(
-            Graph<T>& G,
+            GRAPH& G,
             state_t initial_state,
-            Seq<shared_mat>& sequence,
+            Seq<SHARED_MAT>& sequence,
             T drop_prob = 0.0) const;
 };
 
 template<typename T>
 class StackedLSTM : public AbstractStackedLSTM<T> {
     public:
-        typedef Mat<T>                      mat;
-        typedef std::shared_ptr<mat> shared_mat;
         typedef LSTM<T> lstm_t;
-        typedef std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>> state_t;
+        typedef std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>> state_t;
 
         std::vector<lstm_t> cells;
         virtual state_t activate(
-            Graph<T>& G,
+            GRAPH& G,
             state_t previous_state,
-            shared_mat input_vector,
+            SHARED_MAT input_vector,
             T drop_prob = 0.0) const;
-        virtual std::vector<shared_mat> parameters() const;
+        virtual std::vector<SHARED_MAT> parameters() const;
         StackedLSTM(const int& input_size, const std::vector<int>& hidden_sizes);
         StackedLSTM(const StackedLSTM<T>& model, bool copy_w, bool copy_dw);
         StackedLSTM<T> shallow_copy() const;
@@ -595,20 +596,18 @@ class StackedLSTM : public AbstractStackedLSTM<T> {
 template<typename T>
 class StackedShortcutLSTM : public AbstractStackedLSTM<T> {
     public:
-        typedef Mat<T>                      mat;
-        typedef std::shared_ptr<mat> shared_mat;
         typedef LSTM<T>                  lstm_t;
         typedef ShortcutLSTM<T> shortcut_lstm_t;
-        typedef std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>> state_t;
+        typedef std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>> state_t;
 
         std::vector<shortcut_lstm_t> cells;
         lstm_t base_cell;
         virtual state_t activate(
-            Graph<T>& G,
+            GRAPH& G,
             state_t previous_state,
-            shared_mat input_vector,
+            SHARED_MAT input_vector,
             T drop_prob = 0.0) const;
-        virtual std::vector<shared_mat> parameters() const;
+        virtual std::vector<SHARED_MAT> parameters() const;
         StackedShortcutLSTM(const int& input_size, const std::vector<int>& hidden_sizes);
         StackedShortcutLSTM(const StackedShortcutLSTM<T>& model, bool copy_w, bool copy_dw);
         StackedShortcutLSTM<T> shallow_copy() const;
@@ -649,16 +648,16 @@ template<typename celltype>
 std::vector<celltype> StackedCells(const std::vector<celltype>&, bool, bool);
 
 template<typename T>
-std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>> forward_LSTMs(Graph<T>&,
-    std::shared_ptr<Mat<T>>,
-    std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>>&,
+std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>> forward_LSTMs(GRAPH&,
+    std::shared_ptr<MAT>,
+    std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>>&,
     const std::vector<LSTM<T>>&,
     T drop_prob=0.0);
 
 template<typename T>
-std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>> forward_LSTMs(Graph<T>&,
-    std::shared_ptr<Mat<T>>,
-    std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>>&,
+std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>> forward_LSTMs(GRAPH&,
+    std::shared_ptr<MAT>,
+    std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>>&,
     const LSTM<T>&,
     const std::vector<ShortcutLSTM<T>>&,
     T drop_prob=0.0);

@@ -224,6 +224,11 @@ Mat<T> Mat<T>::Empty(int n, int d) {
     // with zeros cost.
     return Mat(n, d, true);
 }
+template<typename T>
+std::pair<int,int> Mat<T>::shape() const {
+    return std::pair<int,int>(n,d);
+}
+
 
 template<typename T>
 std::ostream& operator<<(std::ostream& strm, const Mat<T>& a) {

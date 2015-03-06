@@ -22,6 +22,8 @@ T Seq<T>::operator[](std::size_t idx) const {
     return seq[idx];
 }
 
+/* begin, end */
+
 template<typename T>
 typename Seq<T>::SeqIter Seq<T>::begin() {
     return seq.begin();
@@ -42,6 +44,31 @@ typename Seq<T>::SeqConstIter Seq<T>::end() const {
     return seq.end();
 }
 
+/* rbegin, rend */
+
+template<typename T>
+typename Seq<T>::RSeqIter Seq<T>::rbegin() {
+    return seq.rbegin();
+}
+
+template<typename T>
+typename Seq<T>::RSeqIter Seq<T>::rend() {
+    return seq.rend();
+}
+
+template<typename T>
+typename Seq<T>::RSeqConstIter Seq<T>::rbegin() const {
+    return seq.rbegin();
+}
+
+template<typename T>
+typename Seq<T>::RSeqConstIter Seq<T>::rend() const {
+    return seq.rend();
+}
+
+/* cbegin, cend */
+
+
 template<typename T>
 typename Seq<T>::SeqConstIter Seq<T>::cbegin() const {
     return seq.cbegin();
@@ -55,6 +82,11 @@ typename Seq<T>::SeqConstIter Seq<T>::cend() const {
 
 template<typename T>
 void Seq<T>::insert(SeqIter where, SeqConstIter begin, SeqConstIter end ) {
+    seq.insert(where, begin, end);
+}
+
+template<typename T>
+void Seq<T>::insert(SeqIter where, RSeqConstIter begin, RSeqConstIter end ) {
     seq.insert(where, begin, end);
 }
 

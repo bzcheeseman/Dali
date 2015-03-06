@@ -3,6 +3,8 @@
 using std::make_shared;
 using std::vector;
 
+typedef std::pair<int,int> PII;
+
 template<typename T>
 SHARED_MAT AbstractMultiInputLayer<T>::activate(GRAPH& G, const std::vector<SHARED_MAT>& inputs) const {
     assert(inputs.size() > 0);
@@ -220,9 +222,15 @@ template<typename T>
 std::vector<SHARED_MAT> DelayedRNN<T>::parameters() const {
     std::vector<SHARED_MAT> ret;
     for (auto& model: {hidden_rnn, output_rnn}) {
-        ret.push_back(model.parameters());
+        auto params = model.parameters();
+        ret.insert(ret.end(), params.begin(), params.end());
     }
-    return parameters;
+    return ret;
+}
+
+template<typename T>
+SHARED_MAT DelayedRNN<T>::initial_states() const {
+    return make_shared<MAT>(hidden_rnn.hidden_size, 1);
 }
 
 template<typename T>
@@ -230,9 +238,12 @@ std::pair<SHARED_MAT, SHARED_MAT> DelayedRNN<T>::activate(
         GRAPH& G,
         SHARED_MAT input_vector,
         SHARED_MAT prev_hidden) const {
+    assert(input_vector->shape() == PII(hidden_rnn.input_size, 1));
+    assert(prev_hidden->shape() == PII(hidden_rnn.hidden_size, 1));
+
     return std::pair<SHARED_MAT, SHARED_MAT>(
-        hidden_rnn(G, input_vector, prev_hidden),
-        output_rnn(G, input_vector, prev_hidden)
+        hidden_rnn.activate(G, input_vector, prev_hidden),
+        output_rnn.activate(G, input_vector, prev_hidden)
     );
 }
 
@@ -240,6 +251,10 @@ template<typename T>
 DelayedRNN<T> DelayedRNN<T>::shallow_copy() const {
     return DelayedRNN<T>(*this, false, true);
 }
+
+template class DelayedRNN<float>;
+template class DelayedRNN<double>;
+
 
 /* StackedInputLayer */
 
@@ -727,11 +742,28 @@ template class LSTM<double>;
 template class ShortcutLSTM<float>;
 template class ShortcutLSTM<double>;
 
+template<typename T>
+AbstractStackedLSTM<T>::AbstractStackedLSTM(const int& input_size, const std::vector<int>& hidden_sizes) :
+        input_size(input_size),
+        hidden_sizes(hidden_sizes) {
+}
+
+template<typename T>
+AbstractStackedLSTM<T>::AbstractStackedLSTM(const AbstractStackedLSTM<T>& model, bool copy_w, bool copy_dw) :
+        input_size(model.input_size),
+        hidden_sizes(model.hidden_sizes) {
+}
+
+template<typename T>
+typename AbstractStackedLSTM<T>::state_t AbstractStackedLSTM<T>::initial_states() const {
+    return LSTM<T>::initial_states(hidden_sizes);
+}
+
 
 template<typename T>
 typename AbstractStackedLSTM<T>::state_t AbstractStackedLSTM<T>::activate_sequence(GRAPH& G,
     state_t initial_state,
-    Seq<SHARED_MAT>& sequence,
+    const Seq<SHARED_MAT>& sequence,
     T drop_prob) const {
     for (auto& input_vector : sequence)
         initial_state = activate(G, initial_state, input_vector, drop_prob);
@@ -739,12 +771,14 @@ typename AbstractStackedLSTM<T>::state_t AbstractStackedLSTM<T>::activate_sequen
 };
 
 template<typename T>
-StackedLSTM<T>::StackedLSTM(const int& input_size, const std::vector<int>& hidden_sizes) {
+StackedLSTM<T>::StackedLSTM(const int& input_size, const std::vector<int>& hidden_sizes) :
+        AbstractStackedLSTM<T>(input_size, hidden_sizes) {
     cells = StackedCells<lstm_t>(input_size, hidden_sizes);
 };
 
 template<typename T>
-StackedLSTM<T>::StackedLSTM(const StackedLSTM<T>& model, bool copy_w, bool copy_dw) {
+StackedLSTM<T>::StackedLSTM(const StackedLSTM<T>& model, bool copy_w, bool copy_dw) :
+        AbstractStackedLSTM<T>(model, copy_w, copy_dw) {
     cells = StackedCells<lstm_t>(model.cells, copy_w, copy_dw);
 };
 
@@ -777,6 +811,7 @@ template class StackedLSTM<double>;
 
 template<typename T>
 StackedShortcutLSTM<T>::StackedShortcutLSTM(const int& input_size, const std::vector<int>& hidden_sizes) :
+    AbstractStackedLSTM<T>(input_size, hidden_sizes),
     base_cell(input_size, hidden_sizes[0]) {
     vector<int> sliced_hidden_sizes(hidden_sizes.begin()+1, hidden_sizes.end());
     // shortcut has size input size (base layer)
@@ -786,6 +821,7 @@ StackedShortcutLSTM<T>::StackedShortcutLSTM(const int& input_size, const std::ve
 
 template<typename T>
 StackedShortcutLSTM<T>::StackedShortcutLSTM(const StackedShortcutLSTM<T>& model, bool copy_w, bool copy_dw) :
+    AbstractStackedLSTM<T>(model, copy_w, copy_dw),
     base_cell(model.base_cell),
     cells(StackedCells(model.cells, copy_w, copy_dw)) {};
 
@@ -810,8 +846,19 @@ typename StackedShortcutLSTM<T>::state_t StackedShortcutLSTM<T>::activate(
             state_t previous_state,
             SHARED_MAT input_vector,
             T drop_prob) const {
+    assert(input_vector->shape() == PII(this->input_size, 1));
+    // previous state is a pair of vectors of memory and hiddens.
+    // hiddens is a vector of matrices of sizes decribed by hidden sizes
+    for (vector<SHARED_MAT> memory_or_hidden: {previous_state.first,
+                                               previous_state.second}) {
+        assert(memory_or_hidden.size() == this->hidden_sizes.size());
+        for (int i=0; i < this->hidden_sizes.size(); ++i) {
+            assert(memory_or_hidden[i]->shape() == PII(this->hidden_sizes[i], 1));
+        }
+    }
     return forward_LSTMs(G, input_vector, previous_state, base_cell, cells, drop_prob);
 };
 
 template class StackedShortcutLSTM<float>;
 template class StackedShortcutLSTM<double>;
+

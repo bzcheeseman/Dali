@@ -488,6 +488,12 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
 
         bool validate_flag_nonempty(const char* flagname, const std::string& value);
 
+        template<typename T>
+        T vsum(const std::vector<T>& vec);
+
+        template<typename T>
+        std::vector<T> reversed(const std::vector<T>& v);
+
         class Timer {
             typedef std::chrono::system_clock clock_t;
 

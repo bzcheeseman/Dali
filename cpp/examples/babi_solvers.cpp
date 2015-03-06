@@ -5,11 +5,12 @@
 #include <gperftools/profiler.h>
 
 #include "core/babi.h"
-#include "core/Solver.h"
 #include "core/CrossEntropy.h"
 #include "core/Reporting.h"
-#include "core/StackedModel.h"
+#include "core/SaneCrashes.h"
 #include "core/Seq.h"
+#include "core/Solver.h"
+#include "core/StackedModel.h"
 
 using babi::Fact;
 using babi::Item;
@@ -22,6 +23,9 @@ using std::string;
 using std::vector;
 using utils::Timer;
 using utils::Vocab;
+using utils::reversed;
+
+DEFINE_int32(j, 1, "Number of threads");
 
 class MostCommonAnswer: public babi::Model {
     vector<string> most_common_answer;
@@ -95,38 +99,284 @@ class RandomAnswer: public babi::Model {
 // -> add cross validation
 // -> increase performance
 // -> supporting fact gate - add second order term between question and answer.
-template<typename REAL_t>
+template<typename T>
 class LstmBabiModel {
-    typedef Mat<REAL_t> mat;
+    typedef Mat<T> mat;
     typedef shared_ptr<mat> shared_mat;
-    typedef Graph<REAL_t> graph_t;
-    typedef StackedModel<REAL_t> model_t;
+    typedef Graph<T> graph_t;
+    typedef StackedModel<T> model_t;
 
     // MODEL PARAMS
+    const vector<int>   TEXT_REPR_STACKS           =      {30, 30};
+    const int           TEXT_REPR_EMBEDDINGS       =      30;
+    const T             TEXT_REPR_DROPOUT          =      0.3;
 
-    const int TEXT_STACK_SIZE =      2;
-    const int TEXT_HIDDEN_SIZE =    20;
-    const REAL_t TEXT_DROPOUT = 0.1;
+    StackedShortcutLSTM<T> fact_model;
+    shared_mat fact_embeddings;
 
-    const int HL_STACK_SIZE =      4;
-    const int HL_HIDDEN_SIZE =    15;
-    const REAL_t HL_DROPOUT = 0.3;
-
-    const int EMBEDDING_SIZE = 30;
+    StackedShortcutLSTM<T> question_model;
+    shared_mat question_representation_embeddings;
 
 
-    // shared_ptr<model_t> question_representation_model;
-    // shared_ptr<model_t> question_fact_gate_model;
-    // shared_ptr<model_t> question_fact_word_gate_model;
+    const vector<int>   QUESTION_GATE_STACKS              =      {20, 20};
+    const int           QUESTION_GATE_EMBEDDINGS          =      15;
 
-    shared_ptr<model_t> question_model;
-    shared_ptr<model_t> fact_model;
-    shared_ptr<model_t> story_model;
+    const T             QUESTION_GATE_DROPOUT             =      0.3;
+
+    // input here is fact word embedding and question_fact_word_gate_model final hidden.
+    const int           QUESTION_GATE_IN_FACT_WORDS       =      TEXT_REPR_EMBEDDINGS + utils::vsum(QUESTION_GATE_STACKS);
+    // input here is fact_model final hidden and question_fact_word_gate_model final hidden.
+    const int           QUESTION_GATE_IN_FACTS            =      utils::vsum(TEXT_REPR_STACKS) + utils::vsum(QUESTION_GATE_STACKS);
+
+    const int           QUESTION_GATE_HIDDEN              =      30;
+    const int           QUESTION_GATE_OUT                 =      1;
+
+    StackedShortcutLSTM<T> question_fact_gate_model;
+    shared_mat question_fact_gate_embeddings;
+
+    StackedShortcutLSTM<T> question_fact_word_gate_model;
+    shared_mat question_fact_word_gate_embeddings;
+
+    DelayedRNN<T> fact_gate;
+    DelayedRNN<T> fact_word_gate;
+
+
+    const vector<int>   HL_STACKS                  =      {15, 15};
+    const int           HL_INPUT_SIZE              =      utils::vsum(TEXT_REPR_STACKS);
+    const T             HL_DROPOUT                 =      0.5;
+
+    StackedShortcutLSTM<T> hl_model;
 
     shared_mat please_start_prediction;
-    shared_mat you_will_see_question_soon;
 
-    void vocab_from_training(const vector<babi::Story>& data) {
+    const int           DECODER_INPUT              =      utils::vsum(HL_STACKS);
+    const int           DECODER_OUTPUT; // gets initialized to vocabulary size in constructor
+    Layer<T>            decoder;
+
+    // TODO:
+    // -> sparsity on words gates
+    // -> explicit error on fact hidden gates
+    // -> second order (between question and fact) relation for fact word gating
+    // -> consider quadratic form]
+    // -> add multiple answers
+
+    shared_ptr<Vocab> vocab;
+
+    public:
+        vector<shared_mat> parameters() {
+            vector<shared_mat> res;
+            for (auto model: std::vector<AbstractLayer<T>*>({
+                                &question_fact_gate_model,
+                                &question_fact_word_gate_model,
+                                &fact_gate,
+                                &fact_word_gate,
+                                &question_model,
+                                &fact_model,
+                                &hl_model,
+                                &decoder })) {
+                auto params = model->parameters();
+                res.insert(res.end(), params.begin(), params.end());
+            }
+            for (auto& matrix: { question_fact_gate_embeddings,
+                                 question_fact_word_gate_embeddings,
+                                 fact_embeddings,
+                                 question_representation_embeddings,
+                                 please_start_prediction
+                                 }) {
+                res.emplace_back(matrix);
+            }
+
+            return res;
+        }
+
+        LstmBabiModel<T> shallow_copy() {
+            return LstmBabiModel<T>(*this, false, true);
+        }
+
+        LstmBabiModel(const LstmBabiModel& model, bool copy_w, bool copy_dw) :
+                question_fact_gate_model(model.question_fact_gate_model, copy_w, copy_dw),
+                question_fact_word_gate_model(model.question_fact_word_gate_model, copy_w, copy_dw),
+                fact_gate(model.fact_gate, copy_w, copy_dw),
+                fact_word_gate(model.fact_word_gate, copy_w, copy_dw),
+                question_model(model.question_model, copy_w, copy_dw),
+                fact_model(model.fact_model, copy_w, copy_dw),
+                hl_model(model.hl_model, copy_w, copy_dw),
+                DECODER_OUTPUT(model.DECODER_OUTPUT),
+                decoder(model.decoder, copy_w, copy_dw) {
+            vocab = model.vocab;
+            question_fact_gate_embeddings =
+                    make_shared<mat>(*model.question_fact_gate_embeddings, copy_w, copy_dw);
+            question_fact_word_gate_embeddings =
+                    make_shared<mat>(*model.question_fact_word_gate_embeddings, copy_w, copy_dw);
+            fact_embeddings =
+                    make_shared<mat>(*model.fact_embeddings, copy_w, copy_dw);
+            question_representation_embeddings =
+                    make_shared<mat>(*model.question_representation_embeddings, copy_w, copy_dw);
+
+            please_start_prediction =
+                    make_shared<mat>(*model.please_start_prediction, copy_w, copy_dw);
+        }
+
+        LstmBabiModel(shared_ptr<Vocab> vocabulary) :
+                question_fact_gate_model(QUESTION_GATE_EMBEDDINGS, QUESTION_GATE_STACKS),
+                question_fact_word_gate_model(QUESTION_GATE_EMBEDDINGS, QUESTION_GATE_STACKS),
+                fact_gate(QUESTION_GATE_IN_FACTS, QUESTION_GATE_HIDDEN, QUESTION_GATE_OUT),
+                fact_word_gate(QUESTION_GATE_IN_FACT_WORDS, QUESTION_GATE_HIDDEN, QUESTION_GATE_OUT),
+                question_model(TEXT_REPR_EMBEDDINGS, TEXT_REPR_STACKS),
+                fact_model(TEXT_REPR_EMBEDDINGS, TEXT_REPR_STACKS),
+                hl_model(HL_INPUT_SIZE, HL_STACKS),
+                DECODER_OUTPUT(vocabulary->word2index.size()),
+                decoder(DECODER_INPUT, vocabulary->word2index.size()) {
+
+            vocab = vocabulary;
+
+            size_t n_words = vocab->index2word.size();
+            question_fact_gate_embeddings =
+                    make_shared<mat>(n_words, QUESTION_GATE_EMBEDDINGS);
+            question_fact_word_gate_embeddings =
+                    make_shared<mat>(n_words, QUESTION_GATE_EMBEDDINGS);
+            fact_embeddings =
+                    make_shared<mat>(n_words, TEXT_REPR_EMBEDDINGS);
+            question_representation_embeddings =
+                    make_shared<mat>(n_words, TEXT_REPR_EMBEDDINGS);
+
+            please_start_prediction =
+                    make_shared<mat>(HL_INPUT_SIZE, 1);
+
+        }
+
+
+        Seq<shared_mat> get_embeddings(graph_t& G,
+                                       const vector<string>& words,
+                                       shared_mat embeddings) {
+            Seq<shared_mat> seq;
+            for (auto& word: words) {
+                auto question_idx = vocab->word2index.at(word);
+                auto embedding = G.row_pluck(embeddings, question_idx);
+                seq.push_back(embedding);
+                // We don't need explicitly start prediction token because
+                // each question is guaranteed to end with "?" token.
+            }
+            return seq;
+        }
+
+        Seq<shared_mat> apply_gate(graph_t& G,
+                                   Seq<shared_mat> seq,
+                                   const DelayedRNN<T>& gate,
+                                   shared_mat gate_input) {
+            Seq<shared_mat> gated_seq;
+            // By default initialized to zeros.
+            auto prev_hidden = gate.initial_states();
+            for (auto& embedding : seq) {
+                // out_state: next_hidden, output
+                auto out_state = gate.activate(G,
+                                               G.vstack(embedding, gate_input),
+                                               prev_hidden);
+                prev_hidden = out_state.first;
+                // memory - gate activation - how much of that embedding do we keep.
+                auto memory = G.sigmoid(out_state.second);
+                gated_seq.push_back(G.eltmul_broadcast_rowwise(embedding, memory));
+            }
+            return gated_seq;
+        }
+
+
+        shared_mat lstm_final_activation(graph_t& G,
+                                         const Seq<shared_mat>& embeddings,
+                                         const StackedShortcutLSTM<T>& model,
+                                         T dropout_value) {
+            auto out_state = model.activate_sequence(
+                    G, model.initial_states(), embeddings, dropout_value);
+            // out_state.second corresponds to LSTM hidden (as opposed to memory).
+            return G.vstack(out_state.second);
+        }
+
+        shared_mat predict_answer_distribution(graph_t& G,
+                                               const vector<vector<string>>& facts,
+                                               const vector<string>& question,
+                                               bool use_dropout) {
+            auto fact_word_gate_hidden = lstm_final_activation(G,
+                                                               get_embeddings(G, reversed(question), question_fact_word_gate_embeddings),
+                                                               question_fact_word_gate_model,
+                                                               use_dropout ? QUESTION_GATE_DROPOUT : 0.0);
+
+            auto fact_gate_hidden = lstm_final_activation(G,
+                                                          get_embeddings(G, reversed(question), question_fact_gate_embeddings),
+                                                          question_fact_gate_model,
+                                                          use_dropout ? QUESTION_GATE_DROPOUT : 0.0);
+
+            auto question_representation = lstm_final_activation(G,
+                                                                 get_embeddings(G, reversed(question), question_representation_embeddings),
+                                                                 question_model,
+                                                                 use_dropout ? TEXT_REPR_DROPOUT : 0.0);
+
+            Seq<shared_mat> fact_representations;
+
+            for (auto& fact: facts) {
+                auto gated_embeddings = apply_gate(
+                                            G,
+                                            get_embeddings(G, reversed(fact), fact_embeddings),
+                                            fact_word_gate,
+                                            fact_word_gate_hidden
+                                        );
+
+
+                auto fact_repr = lstm_final_activation(G,
+                                                       gated_embeddings,
+                                                       fact_model,
+                                                       use_dropout ? TEXT_REPR_DROPOUT : 0.0);
+                fact_representations.push_back(fact_repr);
+            }
+
+            auto gated_facts = apply_gate(G, fact_representations, fact_gate, fact_gate_hidden);
+
+            // There is probably a better way
+            Seq<shared_mat> hl_input;
+            hl_input.push_back(question_representation);
+            hl_input.insert(hl_input.end(), gated_facts.rbegin(), gated_facts.rend());
+            hl_input.push_back(please_start_prediction);
+
+            auto hl_hidden = lstm_final_activation(G,
+                                                   hl_input,
+                                                   hl_model,
+                                                   use_dropout ? HL_DROPOUT : 0.0);
+
+            auto log_probs = decoder.activate(G, hl_hidden);
+
+            return log_probs;
+        }
+
+        T error(graph_t& G,
+                     const vector<Fact*>& facts,
+                     QA* qa,
+                     bool use_dropout) {
+            vector<vector<string>> facts_as_strings;
+
+            for (auto fact_ptr: facts)
+                facts_as_strings.push_back(fact_ptr->fact);
+
+            shared_mat log_probs = predict_answer_distribution(G,
+                                                               facts_as_strings,
+                                                               qa->question,
+                                                               use_dropout);
+
+            uint answer_idx = vocab->word2index.at(qa->answer[0]);
+
+            return cross_entropy(log_probs, answer_idx);
+        }
+};
+
+template<typename T>
+class LstmBabiModelRunner: public babi::Model {
+
+    // TRAINING_PROCEDURE_PARAMS
+
+    const float TRAINING_FRAC = 0.8;
+    const float MINIMUM_IMPROVEMENT = 0.0001; // good one: 0.003
+    const double VALIDATION_FORGETTING = 0.1;
+    const int PATIENCE = 5;
+
+    vector<string> data_to_vocab(const vector<babi::Story>& data) {
         set<string> vocab_set;
         for (auto& story : data) {
             for(auto& item_ptr : story) {
@@ -138,162 +388,22 @@ class LstmBabiModel {
                 }
             }
         }
-        vector<string> vocab_vector(vocab_set.begin(), vocab_set.end());
-
-        vocab = make_shared<Vocab> (vocab_vector);
+        vector<string> vocab_as_vector;
+        vocab_as_vector.insert(vocab_as_vector.end(), vocab_set.begin(), vocab_set.end());
+        return vocab_as_vector;
     }
 
-    void construct_model(int vocab_size) {
-        question_model = make_shared<model_t>(
-                vocab_size,
-                EMBEDDING_SIZE,
-                TEXT_STACK_SIZE,
-                TEXT_HIDDEN_SIZE,
-                1,
-                true); // unused output
-        fact_model = make_shared<model_t>(
-                vocab_size,
-                EMBEDDING_SIZE,
-                TEXT_STACK_SIZE,
-                TEXT_HIDDEN_SIZE,
-                1,
-                true); // unused output
-        story_model = make_shared<model_t>(
-                0,
-                TEXT_STACK_SIZE*TEXT_HIDDEN_SIZE,
-                HL_HIDDEN_SIZE,
-                HL_STACK_SIZE,
-                vocab_size,
-                true);
-        please_start_prediction = make_shared<mat>(TEXT_HIDDEN_SIZE*TEXT_STACK_SIZE, 1);
-        you_will_see_question_soon = make_shared<mat>(TEXT_HIDDEN_SIZE*TEXT_STACK_SIZE, 1);
-    }
-
-    public:
-        shared_ptr<Vocab> vocab;
-
-
-        vector<shared_mat> parameters() {
-            vector<shared_mat> res;
-            for(auto& m: {question_model, fact_model, story_model}) {
-                auto params = m->parameters();
-                res.insert(res.end(), params.begin(), params.end());
-            }
-            res.emplace_back(please_start_prediction);
-            res.emplace_back(you_will_see_question_soon);
-            return res;
-        }
-
-        LstmBabiModel<REAL_t> shallow_copy() {
-            return LstmBabiModel<REAL_t>(*this, false, true);
-        }
-
-        LstmBabiModel(const LstmBabiModel& model, bool copy_w, bool copy_dw) {
-            vocab = model.vocab;
-            question_model = make_shared<model_t>(*model.question_model, copy_w, copy_dw);
-            fact_model = make_shared<model_t>(*model.fact_model, copy_w, copy_dw);
-            story_model = make_shared<model_t>(*model.story_model, copy_w, copy_dw);
-            please_start_prediction = make_shared<mat>(*model.please_start_prediction, copy_w, copy_dw);
-            you_will_see_question_soon = make_shared<mat>(*model.you_will_see_question_soon, copy_w, copy_dw);
-        }
-
-        LstmBabiModel(const vector<babi::Story>& data) {
-            vocab_from_training(data);
-            construct_model(vocab->index2word.size());
-        }
-
-
-
-        // ACTIVATES A sequence of words (fact or question) on an LSTM, returns the output
-        // hidden for that sequence of words.
-        shared_mat activate_words(graph_t& G, model_t& model, const VS& words, bool use_dropout) {
-            auto ex = vocab->transform(words);
-            auto out_state = model.get_final_activation(G, ex, use_dropout ? TEXT_DROPOUT : 0.0);
-            return G.vstack(out_state.second);
-        }
-
-        // Activates a story - takes hiddens for facts and question
-        // and feeds them to an LSTM, to get final activation for that story.
-        shared_mat activate_story(graph_t& G, const vector<shared_mat>& facts,
-                                  shared_mat question,
-                                  bool use_dropout) {
-            auto state = story_model->initial_states();
-            utils::Timer a_timer("Forward");
-
-            Seq<shared_mat> sequence;
-            sequence.insert(sequence.end(), facts.begin(), facts.end());
-            // sequence.push_back(you_will_see_question_soon);
-            sequence.push_back(question);
-            // sequence.push_back(please_start_prediction);
-
-            state = story_model->stacked_lstm->activate_sequence(G,
-                state,
-                sequence,
-                use_dropout ? HL_DROPOUT : 0.0);
-
-            auto log_probs = story_model->decoder->activate(G,
-                                                           please_start_prediction,
-                                                           state.second);
-
-            return log_probs;
-        }
-
-        shared_mat predict_answer_distribution(graph_t& G,
-                                               const vector<vector<string>>& facts,
-                                               const vector<string>& question,
-                                               bool use_dropout) {
-            vector<shared_mat> fact_hiddens;
-
-            for (auto& fact: facts) {
-                fact_hiddens.emplace_back(activate_words(G, *fact_model, fact, use_dropout));
-            }
-
-            // similarly to above each question ends with a question mark.
-            shared_mat question_hidden = activate_words(G, *question_model, question, use_dropout);
-
-            shared_mat story_activation = activate_story(G, fact_hiddens, question_hidden, use_dropout);
-
-            return story_activation;
-        }
-
-        REAL_t error(graph_t& G,
-                     const vector<Fact*>& facts,
-                     QA* qa,
-                     bool use_dropout) {
-            vector<vector<string>> facts_as_strings;
-
-            for (auto fact_ptr: facts)
-                facts_as_strings.push_back(fact_ptr->fact);
-
-            shared_mat log_probs = predict_answer_distribution(G, facts_as_strings, qa->question, use_dropout);
-
-            uint answer_idx = vocab->word2index.at(qa->answer[0]);
-
-            return cross_entropy(log_probs, answer_idx);
-        }
-};
-
-template<typename REAL_t>
-class LstmBabiModelRunner: public babi::Model {
-
-    // TRAINING_PROCEDURE_PARAMS
-
-    const float TRAINING_FRAC = 0.8;
-    const float MINIMUM_IMPROVEMENT = 0.0001; // good one: 0.003
-    const double VALIDATION_FORGETTING = 0.1;
-    const int PATIENCE = 5;
-
-
-    shared_ptr<LstmBabiModel<REAL_t>> model;
+    shared_ptr<Vocab> vocab;
+    shared_ptr<LstmBabiModel<T>> model;
     public:
 
-        REAL_t compute_error(const vector<babi::Story>& dataset, Solver::AdaDelta<REAL_t>& solver, bool training) {
-            REAL_t total_error = 0.0;
+        T compute_error(const vector<babi::Story>& dataset, Solver::AdaDelta<T>& solver, bool training) {
+            T total_error = 0.0;
 
-            const int NUM_THREADS = 9;
+            const int NUM_THREADS = FLAGS_j;
             ThreadPool pool(NUM_THREADS);
 
-            vector<LstmBabiModel<REAL_t>> thread_models;
+            vector<LstmBabiModel<T>> thread_models;
             for (int i=0; i<NUM_THREADS; ++i) {
                 thread_models.push_back(model->shallow_copy());
             }
@@ -317,7 +427,7 @@ class LstmBabiModelRunner: public babi::Model {
             for (auto& batch : batches) {
 
                 pool.run([batch, &dataset, &thread_models, training, &num_questions, &thread_error, &solver]() {
-                    LstmBabiModel<REAL_t>& thread_model = thread_models[ThreadPool::get_thread_number()];
+                    LstmBabiModel<T>& thread_model = thread_models[ThreadPool::get_thread_number()];
                     auto params = thread_model.parameters();
                     for (auto story_id: batch) {
                         auto& story = dataset[story_id];
@@ -328,7 +438,7 @@ class LstmBabiModelRunner: public babi::Model {
                                 facts_so_far.push_back(f);
                             } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
                                 // When we are training we want to do backprop
-                                Graph<REAL_t> G(training);
+                                Graph<T> G(training);
                                 // When we are training we want to use dropout
                                 thread_error[ThreadPool::get_thread_number()] +=
                                         thread_model.error(G, facts_so_far, qa, training);
@@ -355,7 +465,10 @@ class LstmBabiModelRunner: public babi::Model {
 
 
         void train(const vector<babi::Story>& data) {
-            model = std::make_shared<LstmBabiModel<REAL_t>>(data);
+            auto vocab_vector = data_to_vocab(data);
+            vocab = make_shared<Vocab> (vocab_vector);
+
+            model = std::make_shared<LstmBabiModel<T>>(vocab);
 
             int training_size = (int)(TRAINING_FRAC * data.size());
             std::vector<babi::Story> train(data.begin(), data.begin() + training_size);
@@ -369,7 +482,7 @@ class LstmBabiModelRunner: public babi::Model {
             int epochs_validation_increasing = 0;
 
             auto params = model->parameters();
-            Solver::AdaDelta<REAL_t> solver(params, 0.95, 1e-9, 5.0);
+            Solver::AdaDelta<T> solver(params, 0.95, 1e-9, 5.0);
 
             while (epochs_validation_increasing <= PATIENCE) {
                 double training_error = compute_error(train, solver, true);
@@ -407,17 +520,18 @@ class LstmBabiModelRunner: public babi::Model {
         }
 
         vector<string> question(const vector<string>& question) {
-            Graph<REAL_t> G(false);
+            Graph<T> G(false);
 
             // Don't use dropout for validation.
             int word_idx = argmax(model->predict_answer_distribution(G, story_so_far, question, false));
 
-            return {model->vocab->index2word[word_idx]};
+            return {vocab->index2word[word_idx]};
         }
 };
 
 
 int main() {
+    sane_crashes::activate();
     babi::benchmark_task<LstmBabiModelRunner<double>>("qa4_two-arg-relations");
     //babi::benchmark<LstmBabiModelRunner<double>>();
 }

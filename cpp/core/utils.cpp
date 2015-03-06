@@ -584,463 +584,482 @@ namespace utils {
 
         template<typename T>
     T from_string(const std::string& s) {
-            std::istringstream stream (s);
-            T t;
-            stream >> t;
-            return t;
-        }
+        std::istringstream stream (s);
+        T t;
+        stream >> t;
+        return t;
+    }
 
-        template float from_string<float>(const std::string& s);
-        template int from_string<int>(const std::string& s);
-        template uint from_string<uint>(const std::string& s);
-        template double from_string<double>(const std::string& s);
-        template long from_string<long>(const std::string& s);
+    template float from_string<float>(const std::string& s);
+    template int from_string<int>(const std::string& s);
+    template uint from_string<uint>(const std::string& s);
+    template double from_string<double>(const std::string& s);
+    template long from_string<long>(const std::string& s);
 
-        bool is_gzip(const std::string& fname) {
-                const unsigned char gzip_code = 0x1f;
-                const unsigned char gzip_code2 = 0x8b;
-                unsigned char ch;
-                std::ifstream file;
-                file.open(fname);
-                if (!file) return false;
-                file.read(reinterpret_cast<char*>(&ch), 1);
-                if (ch != gzip_code)
-                        return false;
-                if (!file) return false;
-                file.read(reinterpret_cast<char*>(&ch), 1);
-                if (ch != gzip_code2)
-                        return false;
-                return true;
-        }
-
-        template <typename T>
-        vector<size_t> argsort(const vector<T> &v) {
-                // initialize original index locations
-                vector<size_t> idx(v.size());
-                for (size_t i = 0; i != idx.size(); ++i) idx[i] = i;
-
-                // sort indexes based on comparing values in v
-                sort(idx.begin(), idx.end(),
-                   [&v](size_t i1, size_t i2) {return v[i1] < v[i2];});
-
-                return idx;
-        }
-        template vector<size_t> argsort(const vector<size_t>&v);
-        template vector<size_t> argsort(const vector<float>&v);
-        template vector<size_t> argsort(const vector<double>&v);
-        template vector<size_t> argsort(const vector<int>&v);
-        template vector<size_t> argsort(const vector<uint>&v);
-        template vector<size_t> argsort(const vector<std::string>&v);
-
-        template<typename T>
-        T sigmoid_operator<T>::operator () (T x) const { return 1.0 / (1.0 + exp(-x)); }
-
-        template<typename T>
-        T steep_sigmoid_operator<T>::operator () (T x) const {return 1.0 / (1.0 + exp( - aggressiveness * x));}
-
-        template<typename T>
-        steep_sigmoid_operator<T>::steep_sigmoid_operator(T _aggressiveness) : aggressiveness(_aggressiveness) {};
-
-        template<typename T>
-        T tanh_operator<T>::operator() (T x) const { return std::tanh(x); }
-
-        template<typename T>
-        T relu_operator<T>::operator() (T x) const { return std::max(x, (T) 0.0); }
-
-        template<typename T>
-        T sign_operator<T>::operator() (T x) const { return x > 0.0 ? 1.0 : 0.0; }
-
-        template<typename T>
-        T dtanh_operator<T>::operator() (T x) const { return 1.0 - x*x; }
-
-        template <class T> inline void hash_combine(std::size_t & seed, const T & v) {
-          std::hash<T> hasher;
-          seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-        }
-        std::size_t get_random_id() {
-                std::size_t seed = 0;
-                std::default_random_engine generator;
-                std::random_device rd;
-                std::uniform_int_distribution<long> randint(0, std::numeric_limits<long>::max());
-                generator.seed(rd());
-                hash_combine(seed, randint(generator));
-                hash_combine(seed, std::time(NULL));
-                return seed;
-        }
-
-        template struct sigmoid_operator<float>;
-        template struct steep_sigmoid_operator<float>;
-        template struct tanh_operator<float>;
-        template struct relu_operator<float>;
-        template struct sign_operator<float>;
-        template struct dtanh_operator<float>;
-        // template struct clip_operator<float>;
-
-        template struct sigmoid_operator<double>;
-        template struct steep_sigmoid_operator<double>;
-        template struct tanh_operator<double>;
-        template struct relu_operator<double>;
-        template struct sign_operator<double>;
-        template struct dtanh_operator<double>;
-
-        template<typename T>
-        void OntologyBranch::save_to_stream(T& fp) {
-                auto hasher = std::hash<OntologyBranch>();
-                set<size_t> visited_list;
-                vector<shared_branch> open_list;
-                open_list.push_back(shared_from_this());
-                while (open_list.size() > 0) {
-                        auto el = open_list[0];
-                        open_list.erase(open_list.begin());
-                        if (visited_list.count(hasher(*el)) == 0) {
-                                visited_list.insert(hasher(*el));
-                                if (el->children.size() > 1) {
-                                        auto child_ptr = el->children.begin();
-                                        open_list.emplace_back(*child_ptr);
-                                        fp << el->name << "->" << (*(child_ptr++))->name << "\n";
-                                        while (child_ptr != el->children.end()) {
-                                                open_list.emplace_back(*child_ptr);
-                                                fp << (*(child_ptr++))->name << "\n";
-                                        }
-                                } else {
-                                        for (auto& child : el->children) {
-                                                fp << el->name << "->" << child->name << "\n";
-                                                open_list.emplace_back(child);
-                                        }
-                                }
-                                for (auto& parent : el->parents)
-                                        open_list.emplace_back(parent.lock());
-                        }
-                }
-        }
-
-        void OntologyBranch::save(string fname, std::ios_base::openmode mode) {
-                if (endswith(fname, ".gz")) {
-                        ogzstream fpgz(fname.c_str(), mode);
-                        save_to_stream(fpgz);
-                } else {
-                        ofstream fp(fname.c_str(), mode);
-                        save_to_stream(fp);
-                }
-        }
-        void OntologyBranch::compute_max_depth() {
-                _max_depth = 0;
-                for (auto&v : children)
-                        if (v->max_depth() + 1 > _max_depth)
-                                _max_depth = v->max_depth() + 1;
-        }
-
-        int& OntologyBranch::max_depth() {
-                if (_max_depth > -1) return _max_depth;
-                else {
-                        compute_max_depth();
-                        return _max_depth;
-                }
-        }
-
-        std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> OntologyBranch::random_path_to_root(const string& nodename) {
-                auto node = lookup_table->at(nodename);
-                auto up_node = node;
-                uint direction;
-                std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> path_pair;
-                // path_pair.first = vector<OntologyBranch::shared_branch>();
-                while ( &(*up_node) != this) {
-                        direction = randint(0, up_node->parents.size()-1);
-                        path_pair.first.emplace_back(up_node);
-                        path_pair.second.emplace_back(direction);
-                        up_node = up_node->parents[direction].lock();
-                }
-                return path_pair;
-        }
-
-        std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> OntologyBranch::random_path_to_root(const string& nodename, const int offset) {
-                auto node = lookup_table->at(nodename);
-                auto up_node = node;
-                uint direction;
-                std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> path_pair;
-                // path_pair.first = vector<OntologyBranch::shared_branch>();
-                while ( &(*up_node) != this) {
-                        direction = randint(0, up_node->parents.size()-1);
-                        path_pair.first.emplace_back(up_node);
-                        path_pair.second.emplace_back(direction + offset);
-                        up_node = up_node->parents[direction].lock();
-                }
-                return path_pair;
-        }
-
-        std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> OntologyBranch::random_path_from_root(const string& nodename) {
-                auto up_node = lookup_table->at(nodename);
-                auto parent = up_node;
-                uint direction;
-                std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> path_pair;
-                // path_pair.first = vector<OntologyBranch::shared_branch>();
-                while ( &(*up_node) != this) {
-                        // find the parent:
-                        direction = randint(0, up_node->parents.size()-1);
-                        parent = up_node->parents[direction].lock();
-                        direction = parent->get_index_of(up_node);
-                        // assign an replace current with parent:
-                        path_pair.second.emplace(path_pair.second.begin(), direction);
-                        path_pair.first.emplace(path_pair.first.begin(), up_node);
-                        up_node = parent;
-                }
-                return path_pair;
-        }
-
-        int OntologyBranch::get_index_of(OntologyBranch::shared_branch node) const {
-                int i = 0;
-                auto ptr = &(*node);
-                for (auto& child : children)
-                        if (&(*child) == ptr) return i;
-                        else i++;
-                return -1;
-        }
-
-        std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> OntologyBranch::random_path_from_root(const string& nodename, const int offset) {
-                auto up_node = lookup_table->at(nodename);
-                auto parent = up_node;
-                uint direction;
-                std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> path_pair;
-                while ( &(*up_node) != this) {
-                        // find the parent:
-                        direction = randint(0, up_node->parents.size()-1);
-                        parent = up_node->parents[direction].lock();
-                        direction = parent->get_index_of(up_node);
-                        // assign an replace current with parent:
-                        path_pair.second.emplace(path_pair.second.begin(), direction + offset);
-                        path_pair.first.emplace(path_pair.first.begin(), up_node);
-                        up_node = parent;
-                }
-                return path_pair;
-        }
-
-        std::pair<OntologyBranch::shared_branch, OntologyBranch::shared_branch> OntologyBranch::add_lattice_edge(
-                const std::string& parent,
-                const std::string& child,
-                std::shared_ptr<std::map<std::string, OntologyBranch::shared_branch>>& map,
-                std::vector<OntologyBranch::shared_branch>& parentless) {
-                if (map->count(child) == 0)
-                        (*map)[child] = make_shared<OntologyBranch>(child);
-
-                if (map->count(parent) == 0) {
-                        (*map)[parent] = make_shared<OntologyBranch>(parent);
-                        parentless.emplace_back((*map)[parent]);
-                }
-                (*map)[child]->add_parent((*map)[parent]);
-                return std::pair<OntologyBranch::shared_branch, OntologyBranch::shared_branch>((*map)[parent], (*map)[child]);
-        }
-
-        std::pair<OntologyBranch::shared_branch, OntologyBranch::shared_branch> OntologyBranch::add_lattice_edge(
-                OntologyBranch::shared_branch parent,
-                const std::string& child,
-                std::shared_ptr<std::map<std::string, OntologyBranch::shared_branch>>& map,
-                std::vector<OntologyBranch::shared_branch>& parentless) {
-                if (map->count(child) == 0)
-                        (*map)[child] = make_shared<OntologyBranch>(child);
-                (*map)[child]->add_parent(parent);
-
-                return std::pair<OntologyBranch::shared_branch, OntologyBranch::shared_branch>(parent, (*map)[child]);
-        }
-
-        std::pair<OntologyBranch::shared_branch, OntologyBranch::shared_branch> OntologyBranch::add_lattice_edge(
-                const std::string& parent,
-                OntologyBranch::shared_branch child,
-                std::shared_ptr<std::map<std::string, OntologyBranch::shared_branch>>& map,
-                std::vector<OntologyBranch::shared_branch>& parentless) {
-                if (map->count(parent) == 0) {
-                        (*map)[parent] = make_shared<OntologyBranch>(parent);
-                        parentless.emplace_back((*map)[parent]);
-                }
-                child->add_parent((*map)[parent]);
-                return std::pair<OntologyBranch::shared_branch, OntologyBranch::shared_branch>((*map)[parent], child);
-        }
-
-        template<typename T>
-        void OntologyBranch::load_branches_from_stream(T& fp,
-                std::vector<OntologyBranch::shared_branch>& roots) {
-
-                std::vector<OntologyBranch::shared_branch> parentless;
-                auto branch_map = make_shared<std::map<std::string, OntologyBranch::shared_branch>>();
-                const string right_arrow = "->";
-                const string left_arrow  = "<-";
-                string line;
-
-                OntologyBranch::shared_branch marked_branch = NULL;
-                bool last_edge_is_right_arrow = true;
-
-                while (std::getline(fp, line)) {
-                        auto tokens = utils::split_str(line, right_arrow);
-                        if (tokens.size() >= 2) {
-                                for (int i = 0; i < tokens.size()-1; i++) {
-                                        marked_branch = add_lattice_edge(trim(tokens[i]), trim(tokens[i+1]), branch_map, parentless).first;
-                                        last_edge_is_right_arrow = true;
-                                }
-                        } else {
-                                tokens = utils::split_str(line, left_arrow);
-                                if (tokens.size() >= 2)
-                                        for (int i = 0; i < tokens.size()-1; i++) {
-                                                marked_branch = add_lattice_edge(trim(tokens[i+1]), trim(tokens[i]), branch_map, parentless).second;
-                                                last_edge_is_right_arrow = false;
-                                        }
-                                else if (marked_branch != NULL) {
-                                        if (last_edge_is_right_arrow)
-                                                add_lattice_edge(marked_branch, trim(tokens[0]), branch_map, parentless);
-                                        else
-                                                add_lattice_edge(trim(tokens[0]), marked_branch, branch_map, parentless);
-                                }
-                        }
-                }
-
-                for (auto& k : parentless)
-                        if (k->parents.size() == 0) {
-                                roots.emplace_back(k);
-                                k->lookup_table = branch_map;
-                        }
-        }
-
-        std::vector<OntologyBranch::shared_branch> OntologyBranch::load(string fname) {
-                std::vector<OntologyBranch::shared_branch> roots;
-
-                if (utils::is_gzip(fname)) {
-                        igzstream fpgz(fname.c_str());
-                        load_branches_from_stream(fpgz, roots);
-                } else {
-                        ifstream fp(fname);
-                        load_branches_from_stream(fp, roots);
-                }
-
-                return roots;
-        }
-
-        OntologyBranch::OntologyBranch(const string& _name) : name(_name), _max_depth(-1) {}
-
-        void OntologyBranch::add_parent(OntologyBranch::shared_branch parent) {
-                parents.emplace_back(parent);
-                parent->add_child(shared_from_this());
-        }
-
-        void OntologyBranch::add_child(OntologyBranch::shared_branch child) {
-                children.emplace_back(child);
-        }
-
-        int OntologyBranch::max_branching_factor() const {
-                if (children.size() == 0) return 0;
-                std::vector<int> child_maxes(children.size());
-                auto child_factors = [](const int& a, const shared_branch b) { return b->max_branching_factor(); };
-                std::transform (child_maxes.begin(), child_maxes.end(), children.begin(), child_maxes.begin(), child_factors);
-                return std::max((int)children.size(), *std::max_element(child_maxes.begin(), child_maxes.end()));
-        }
-
-        void exit_with_message(const std::string& message, int error_code) {
-                std::cerr << message << std::endl;
-                exit(error_code);
-        }
-
-        bool endswith(std::string const & full, std::string const & ending) {
-            if (full.length() >= ending.length()) {
-                return (0 == full.compare(full.length() - ending.length(), ending.length(), ending));
-            } else {
-                return false;
-            }
-        }
-
-        bool startswith(std::string const & full, std::string const & beginning) {
-            if (full.length() >= beginning.length()) {
-                return (0 == full.compare(0, beginning.length(), beginning));
-            } else {
-                return false;
-            }
-        }
-
-        bool file_exists (const std::string& fname) {
-                struct stat buffer;
-                return (stat (fname.c_str(), &buffer) == 0);
-        }
-
-        std::string dir_parent(const std::string& path, int levels_up) {
-            auto file_path_split = split(__FILE__, '/');
-            assert(levels_up < file_path_split.size());
-            stringstream ss;
-            if (path[0] == '/')
-                ss << '/';
-            for (int i = 0; i < file_path_split.size() - levels_up; ++i) {
-                ss << file_path_split[i];
-                if (i + 1 != file_path_split.size() - levels_up)
-                    ss << '/';
-            }
-            return ss.str();
-        }
-
-        std::string dir_join(const vector<std::string>& paths) {
-            stringstream ss;
-            for (int i = 0; i < paths.size(); ++i) {
-                ss << paths[i];
-                if (i + 1 != paths.size())
-                    ss << '/';
-            }
-            return ss.str();
-        }
-
-        bool vs_equal(const VS& a, const VS& b) {
-            if (a.size() != b.size()) return false;
-            for (int i=0; i< a.size(); ++i) {
-                if (a[i].compare(b[i]) != 0)
+    bool is_gzip(const std::string& fname) {
+            const unsigned char gzip_code = 0x1f;
+            const unsigned char gzip_code2 = 0x8b;
+            unsigned char ch;
+            std::ifstream file;
+            file.open(fname);
+            if (!file) return false;
+            file.read(reinterpret_cast<char*>(&ch), 1);
+            if (ch != gzip_code)
                     return false;
-            }
+            if (!file) return false;
+            file.read(reinterpret_cast<char*>(&ch), 1);
+            if (ch != gzip_code2)
+                    return false;
             return true;
-        }
+    }
 
-        bool validate_flag_nonempty(const char* flagname, const std::string& value) {
-            if (value.empty()) {
-                std::cout << "Invalid value for --" << flagname << " (can't be empty)" << std::endl;
+    template <typename T>
+    vector<size_t> argsort(const vector<T> &v) {
+            // initialize original index locations
+            vector<size_t> idx(v.size());
+            for (size_t i = 0; i != idx.size(); ++i) idx[i] = i;
+
+            // sort indexes based on comparing values in v
+            sort(idx.begin(), idx.end(),
+               [&v](size_t i1, size_t i2) {return v[i1] < v[i2];});
+
+            return idx;
+    }
+    template vector<size_t> argsort(const vector<size_t>&v);
+    template vector<size_t> argsort(const vector<float>&v);
+    template vector<size_t> argsort(const vector<double>&v);
+    template vector<size_t> argsort(const vector<int>&v);
+    template vector<size_t> argsort(const vector<uint>&v);
+    template vector<size_t> argsort(const vector<std::string>&v);
+
+    template<typename T>
+    T sigmoid_operator<T>::operator () (T x) const { return 1.0 / (1.0 + exp(-x)); }
+
+    template<typename T>
+    T steep_sigmoid_operator<T>::operator () (T x) const {return 1.0 / (1.0 + exp( - aggressiveness * x));}
+
+    template<typename T>
+    steep_sigmoid_operator<T>::steep_sigmoid_operator(T _aggressiveness) : aggressiveness(_aggressiveness) {};
+
+    template<typename T>
+    T tanh_operator<T>::operator() (T x) const { return std::tanh(x); }
+
+    template<typename T>
+    T relu_operator<T>::operator() (T x) const { return std::max(x, (T) 0.0); }
+
+    template<typename T>
+    T sign_operator<T>::operator() (T x) const { return x > 0.0 ? 1.0 : 0.0; }
+
+    template<typename T>
+    T dtanh_operator<T>::operator() (T x) const { return 1.0 - x*x; }
+
+    template <class T> inline void hash_combine(std::size_t & seed, const T & v) {
+      std::hash<T> hasher;
+      seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    }
+
+    template struct sigmoid_operator<float>;
+    template struct steep_sigmoid_operator<float>;
+    template struct tanh_operator<float>;
+    template struct relu_operator<float>;
+    template struct sign_operator<float>;
+    template struct dtanh_operator<float>;
+    // template struct clip_operator<float>;
+
+    template struct sigmoid_operator<double>;
+    template struct steep_sigmoid_operator<double>;
+    template struct tanh_operator<double>;
+    template struct relu_operator<double>;
+    template struct sign_operator<double>;
+    template struct dtanh_operator<double>;
+
+    template<typename T>
+    void OntologyBranch::save_to_stream(T& fp) {
+            auto hasher = std::hash<OntologyBranch>();
+            set<size_t> visited_list;
+            vector<shared_branch> open_list;
+            open_list.push_back(shared_from_this());
+            while (open_list.size() > 0) {
+                    auto el = open_list[0];
+                    open_list.erase(open_list.begin());
+                    if (visited_list.count(hasher(*el)) == 0) {
+                            visited_list.insert(hasher(*el));
+                            if (el->children.size() > 1) {
+                                    auto child_ptr = el->children.begin();
+                                    open_list.emplace_back(*child_ptr);
+                                    fp << el->name << "->" << (*(child_ptr++))->name << "\n";
+                                    while (child_ptr != el->children.end()) {
+                                            open_list.emplace_back(*child_ptr);
+                                            fp << (*(child_ptr++))->name << "\n";
+                                    }
+                            } else {
+                                    for (auto& child : el->children) {
+                                            fp << el->name << "->" << child->name << "\n";
+                                            open_list.emplace_back(child);
+                                    }
+                            }
+                            for (auto& parent : el->parents)
+                                    open_list.emplace_back(parent.lock());
+                    }
             }
-            return not value.empty();
-        }
+    }
 
-        std::unordered_map<std::string, std::atomic<int>> Timer::timers;
-        std::mutex Timer::timers_mutex;
-
-        Timer::Timer(std::string name, bool autostart) : name(name),
-                                                         stopped(false),
-                                                         started(false) {
-            if (timers.find(name) == timers.end()) {
-                std::lock_guard<decltype(timers_mutex)> guard(timers_mutex);
-                if (timers.find(name) == timers.end())
-                    timers[name] = 0;
+    void OntologyBranch::save(string fname, std::ios_base::openmode mode) {
+            if (endswith(fname, ".gz")) {
+                    ogzstream fpgz(fname.c_str(), mode);
+                    save_to_stream(fpgz);
+            } else {
+                    ofstream fp(fname.c_str(), mode);
+                    save_to_stream(fp);
             }
-            if (autostart)
-                start();
-        }
+    }
+    void OntologyBranch::compute_max_depth() {
+            _max_depth = 0;
+            for (auto&v : children)
+                    if (v->max_depth() + 1 > _max_depth)
+                            _max_depth = v->max_depth() + 1;
+    }
 
-        void Timer::start() {
-            assert(!started);
-            start_time = clock_t::now();
-            started = true;
-        }
+    int& OntologyBranch::max_depth() {
+            if (_max_depth > -1) return _max_depth;
+            else {
+                    compute_max_depth();
+                    return _max_depth;
+            }
+    }
 
-        void Timer::stop() {
-            assert(!stopped);
-            timers[name] += std::chrono::duration_cast< std::chrono::milliseconds >
-                            (clock_t::now() - start_time).count();
-            stopped = true;
-        }
+    std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> OntologyBranch::random_path_to_root(const string& nodename) {
+            auto node = lookup_table->at(nodename);
+            auto up_node = node;
+            uint direction;
+            std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> path_pair;
+            // path_pair.first = vector<OntologyBranch::shared_branch>();
+            while ( &(*up_node) != this) {
+                    direction = randint(0, up_node->parents.size()-1);
+                    path_pair.first.emplace_back(up_node);
+                    path_pair.second.emplace_back(direction);
+                    up_node = up_node->parents[direction].lock();
+            }
+            return path_pair;
+    }
 
-        Timer::~Timer() {
-            if(!stopped)
-                stop();
-        }
+    std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> OntologyBranch::random_path_to_root(const string& nodename, const int offset) {
+            auto node = lookup_table->at(nodename);
+            auto up_node = node;
+            uint direction;
+            std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> path_pair;
+            // path_pair.first = vector<OntologyBranch::shared_branch>();
+            while ( &(*up_node) != this) {
+                    direction = randint(0, up_node->parents.size()-1);
+                    path_pair.first.emplace_back(up_node);
+                    path_pair.second.emplace_back(direction + offset);
+                    up_node = up_node->parents[direction].lock();
+            }
+            return path_pair;
+    }
 
-        void Timer::report() {
+    std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> OntologyBranch::random_path_from_root(const string& nodename) {
+            auto up_node = lookup_table->at(nodename);
+            auto parent = up_node;
+            uint direction;
+            std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> path_pair;
+            // path_pair.first = vector<OntologyBranch::shared_branch>();
+            while ( &(*up_node) != this) {
+                    // find the parent:
+                    direction = randint(0, up_node->parents.size()-1);
+                    parent = up_node->parents[direction].lock();
+                    direction = parent->get_index_of(up_node);
+                    // assign an replace current with parent:
+                    path_pair.second.emplace(path_pair.second.begin(), direction);
+                    path_pair.first.emplace(path_pair.first.begin(), up_node);
+                    up_node = parent;
+            }
+            return path_pair;
+    }
+
+    int OntologyBranch::get_index_of(OntologyBranch::shared_branch node) const {
+            int i = 0;
+            auto ptr = &(*node);
+            for (auto& child : children)
+                    if (&(*child) == ptr) return i;
+                    else i++;
+            return -1;
+    }
+
+    std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> OntologyBranch::random_path_from_root(const string& nodename, const int offset) {
+            auto up_node = lookup_table->at(nodename);
+            auto parent = up_node;
+            uint direction;
+            std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> path_pair;
+            while ( &(*up_node) != this) {
+                    // find the parent:
+                    direction = randint(0, up_node->parents.size()-1);
+                    parent = up_node->parents[direction].lock();
+                    direction = parent->get_index_of(up_node);
+                    // assign an replace current with parent:
+                    path_pair.second.emplace(path_pair.second.begin(), direction + offset);
+                    path_pair.first.emplace(path_pair.first.begin(), up_node);
+                    up_node = parent;
+            }
+            return path_pair;
+    }
+
+    std::pair<OntologyBranch::shared_branch, OntologyBranch::shared_branch> OntologyBranch::add_lattice_edge(
+            const std::string& parent,
+            const std::string& child,
+            std::shared_ptr<std::map<std::string, OntologyBranch::shared_branch>>& map,
+            std::vector<OntologyBranch::shared_branch>& parentless) {
+            if (map->count(child) == 0)
+                    (*map)[child] = make_shared<OntologyBranch>(child);
+
+            if (map->count(parent) == 0) {
+                    (*map)[parent] = make_shared<OntologyBranch>(parent);
+                    parentless.emplace_back((*map)[parent]);
+            }
+            (*map)[child]->add_parent((*map)[parent]);
+            return std::pair<OntologyBranch::shared_branch, OntologyBranch::shared_branch>((*map)[parent], (*map)[child]);
+    }
+
+    std::pair<OntologyBranch::shared_branch, OntologyBranch::shared_branch> OntologyBranch::add_lattice_edge(
+            OntologyBranch::shared_branch parent,
+            const std::string& child,
+            std::shared_ptr<std::map<std::string, OntologyBranch::shared_branch>>& map,
+            std::vector<OntologyBranch::shared_branch>& parentless) {
+            if (map->count(child) == 0)
+                    (*map)[child] = make_shared<OntologyBranch>(child);
+            (*map)[child]->add_parent(parent);
+
+            return std::pair<OntologyBranch::shared_branch, OntologyBranch::shared_branch>(parent, (*map)[child]);
+    }
+
+    std::pair<OntologyBranch::shared_branch, OntologyBranch::shared_branch> OntologyBranch::add_lattice_edge(
+            const std::string& parent,
+            OntologyBranch::shared_branch child,
+            std::shared_ptr<std::map<std::string, OntologyBranch::shared_branch>>& map,
+            std::vector<OntologyBranch::shared_branch>& parentless) {
+            if (map->count(parent) == 0) {
+                    (*map)[parent] = make_shared<OntologyBranch>(parent);
+                    parentless.emplace_back((*map)[parent]);
+            }
+            child->add_parent((*map)[parent]);
+            return std::pair<OntologyBranch::shared_branch, OntologyBranch::shared_branch>((*map)[parent], child);
+    }
+
+    template<typename T>
+    void OntologyBranch::load_branches_from_stream(T& fp,
+            std::vector<OntologyBranch::shared_branch>& roots) {
+
+            std::vector<OntologyBranch::shared_branch> parentless;
+            auto branch_map = make_shared<std::map<std::string, OntologyBranch::shared_branch>>();
+            const string right_arrow = "->";
+            const string left_arrow  = "<-";
+            string line;
+
+            OntologyBranch::shared_branch marked_branch = NULL;
+            bool last_edge_is_right_arrow = true;
+
+            while (std::getline(fp, line)) {
+                    auto tokens = utils::split_str(line, right_arrow);
+                    if (tokens.size() >= 2) {
+                            for (int i = 0; i < tokens.size()-1; i++) {
+                                    marked_branch = add_lattice_edge(trim(tokens[i]), trim(tokens[i+1]), branch_map, parentless).first;
+                                    last_edge_is_right_arrow = true;
+                            }
+                    } else {
+                            tokens = utils::split_str(line, left_arrow);
+                            if (tokens.size() >= 2)
+                                    for (int i = 0; i < tokens.size()-1; i++) {
+                                            marked_branch = add_lattice_edge(trim(tokens[i+1]), trim(tokens[i]), branch_map, parentless).second;
+                                            last_edge_is_right_arrow = false;
+                                    }
+                            else if (marked_branch != NULL) {
+                                    if (last_edge_is_right_arrow)
+                                            add_lattice_edge(marked_branch, trim(tokens[0]), branch_map, parentless);
+                                    else
+                                            add_lattice_edge(trim(tokens[0]), marked_branch, branch_map, parentless);
+                            }
+                    }
+            }
+
+            for (auto& k : parentless)
+                    if (k->parents.size() == 0) {
+                            roots.emplace_back(k);
+                            k->lookup_table = branch_map;
+                    }
+    }
+
+    std::vector<OntologyBranch::shared_branch> OntologyBranch::load(string fname) {
+            std::vector<OntologyBranch::shared_branch> roots;
+
+            if (utils::is_gzip(fname)) {
+                    igzstream fpgz(fname.c_str());
+                    load_branches_from_stream(fpgz, roots);
+            } else {
+                    ifstream fp(fname);
+                    load_branches_from_stream(fp, roots);
+            }
+
+            return roots;
+    }
+
+    OntologyBranch::OntologyBranch(const string& _name) : name(_name), _max_depth(-1) {}
+
+    void OntologyBranch::add_parent(OntologyBranch::shared_branch parent) {
+            parents.emplace_back(parent);
+            parent->add_child(shared_from_this());
+    }
+
+    void OntologyBranch::add_child(OntologyBranch::shared_branch child) {
+            children.emplace_back(child);
+    }
+
+    int OntologyBranch::max_branching_factor() const {
+            if (children.size() == 0) return 0;
+            std::vector<int> child_maxes(children.size());
+            auto child_factors = [](const int& a, const shared_branch b) { return b->max_branching_factor(); };
+            std::transform (child_maxes.begin(), child_maxes.end(), children.begin(), child_maxes.begin(), child_factors);
+            return std::max((int)children.size(), *std::max_element(child_maxes.begin(), child_maxes.end()));
+    }
+
+    void exit_with_message(const std::string& message, int error_code) {
+            std::cerr << message << std::endl;
+            exit(error_code);
+    }
+
+    bool endswith(std::string const & full, std::string const & ending) {
+        if (full.length() >= ending.length()) {
+            return (0 == full.compare(full.length() - ending.length(), ending.length(), ending));
+        } else {
+            return false;
+        }
+    }
+
+    bool startswith(std::string const & full, std::string const & beginning) {
+        if (full.length() >= beginning.length()) {
+            return (0 == full.compare(0, beginning.length(), beginning));
+        } else {
+            return false;
+        }
+    }
+
+    bool file_exists (const std::string& fname) {
+            struct stat buffer;
+            return (stat (fname.c_str(), &buffer) == 0);
+    }
+
+    std::string dir_parent(const std::string& path, int levels_up) {
+        auto file_path_split = split(__FILE__, '/');
+        assert(levels_up < file_path_split.size());
+        stringstream ss;
+        if (path[0] == '/')
+            ss << '/';
+        for (int i = 0; i < file_path_split.size() - levels_up; ++i) {
+            ss << file_path_split[i];
+            if (i + 1 != file_path_split.size() - levels_up)
+                ss << '/';
+        }
+        return ss.str();
+    }
+
+    std::string dir_join(const vector<std::string>& paths) {
+        stringstream ss;
+        for (int i = 0; i < paths.size(); ++i) {
+            ss << paths[i];
+            if (i + 1 != paths.size())
+                ss << '/';
+        }
+        return ss.str();
+    }
+
+    bool vs_equal(const VS& a, const VS& b) {
+        if (a.size() != b.size()) return false;
+        for (int i=0; i< a.size(); ++i) {
+            if (a[i].compare(b[i]) != 0)
+                return false;
+        }
+        return true;
+    }
+
+    bool validate_flag_nonempty(const char* flagname, const std::string& value) {
+        if (value.empty()) {
+            std::cout << "Invalid value for --" << flagname << " (can't be empty)" << std::endl;
+        }
+        return not value.empty();
+    }
+
+    template<typename T>
+    T vsum(const vector<T>& vec) {
+        return accumulate(vec.begin(), vec.end(), 0,
+                          [](int a, int b) { return a+b; });
+    }
+
+    template float vsum(const vector<float>& vec);
+    template double vsum(const vector<double>& vec);
+    template int vsum(const vector<int>& vec);
+    template uint vsum(const vector<uint>& vec);
+
+
+
+    template<typename T>
+    vector<T> reversed(const vector<T>& v) {
+        vector<T> ret(v.rbegin(), v.rend());
+        return ret;
+    }
+
+    template vector<float> reversed(const vector<float>& vec);
+    template vector<double> reversed(const vector<double>& vec);
+    template vector<int> reversed(const vector<int>& vec);
+    template vector<uint> reversed(const vector<uint>& vec);
+    template vector<string> reversed(const vector<string>& vec);
+    template vector<vector<string>> reversed(const vector<vector<string>>& vec);
+
+
+    std::unordered_map<std::string, std::atomic<int>> Timer::timers;
+    std::mutex Timer::timers_mutex;
+
+    Timer::Timer(std::string name, bool autostart) : name(name),
+                                                     stopped(false),
+                                                     started(false) {
+        if (timers.find(name) == timers.end()) {
             std::lock_guard<decltype(timers_mutex)> guard(timers_mutex);
-
-            for (auto& kv : timers) {
-                std::cout << "\"" << kv.first << "\" => "
-                          << std::fixed << std::setw(5) << std::setprecision(4) << std::setfill(' ')
-                          << (double) kv.second / 1000  << "s" << std::endl;
-            }
-
-            timers.clear();
+            if (timers.find(name) == timers.end())
+                timers[name] = 0;
         }
+        if (autostart)
+            start();
+    }
+
+    void Timer::start() {
+        assert(!started);
+        start_time = clock_t::now();
+        started = true;
+    }
+
+    void Timer::stop() {
+        assert(!stopped);
+        timers[name] += std::chrono::duration_cast< std::chrono::milliseconds >
+                        (clock_t::now() - start_time).count();
+        stopped = true;
+    }
+
+    Timer::~Timer() {
+        if(!stopped)
+            stop();
+    }
+
+    void Timer::report() {
+        std::lock_guard<decltype(timers_mutex)> guard(timers_mutex);
+
+        for (auto& kv : timers) {
+            std::cout << "\"" << kv.first << "\" => "
+                      << std::fixed << std::setw(5) << std::setprecision(4) << std::setfill(' ')
+                      << (double) kv.second / 1000  << "s" << std::endl;
+        }
+
+        timers.clear();
+    }
+
+
 }
 
 std::ostream& operator<<(std::ostream& strm, const utils::OntologyBranch& a) {

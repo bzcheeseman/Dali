@@ -42,62 +42,10 @@ class Layer : public AbstractMultiInputLayer<T> {
         const int input_size;
         virtual std::vector<SHARED_MAT> parameters() const;
         Layer (int, int);
-        /**
-        Layer<T>::Layer
-        ---------------
 
-        Copy constructor with option to make a shallow
-        or deep copy of the underlying parameters.
-
-        If the copy is shallow then the parameters are shared
-        but separate gradients `dw` are used for each of
-        thread Layer<T>.
-
-        Shallow copies are useful for Hogwild and multithreaded
-        training
-
-        See `MAT::shallow_copy`, `examples/character_prediction.cpp`,
-        `Layer<T>::shallow_copy`
-
-        Inputs
-        ------
-
-          Layer<T> l : layer from which to source parameters and dw
-         bool copy_w : whether parameters for new layer should be copies
-                       or shared
-        bool copy_dw : whether gradients for new layer should be copies
-                       shared (Note: sharing `dw` should be used with
-                       caution and can lead to unpredictable behavior
-                       during optimization).
-
-        Outputs
-        -------
-
-        Layer<T> out : the copied layer with deep or shallow copy
-
-        **/
         Layer (const Layer&, bool, bool);
         SHARED_MAT activate(GRAPH&, SHARED_MAT) const;
-        /**
-        Shallow Copy
-        ------------
 
-        Perform a shallow copy of a Layer<T> that has
-        the same parameters but separate gradients `dw`
-        for each of its parameters.
-
-        Shallow copies are useful for Hogwild and multithreaded
-        training
-
-        See `MAT::shallow_copy`, `examples/character_prediction.cpp`.
-
-        Outputs
-        -------
-
-        Layer<T> out : the copied layer with sharing parameters,
-                       but with separate gradients `dw`
-
-        **/
         Layer<T> shallow_copy() const;
 };
 
@@ -122,111 +70,15 @@ class StackedInputLayer : public AbstractMultiInputLayer<T> {
         virtual std::vector<SHARED_MAT> parameters() const;
         StackedInputLayer (std::initializer_list<int>, int);
         StackedInputLayer (std::vector<int>, int);
-        /**
-        StackedInputLayer<T>::StackedInputLayer
-        ---------------------------------------
 
-        Copy constructor with option to make a shallow
-        or deep copy of the underlying parameters.
-
-        If the copy is shallow then the parameters are shared
-        but separate gradients `dw` are used for each of
-        thread StackedInputLayer<T>.
-
-        Shallow copies are useful for Hogwild and multithreaded
-        training
-
-        See `MAT::shallow_copy`,
-        `StackedInputLayer<T>::shallow_copy`
-
-        Inputs
-        ------
-
-          StackedInputLayer<T> l : layer from which to source parameters and dw
-                     bool copy_w : whether parameters for new layer should be copies
-                                   or shared
-                    bool copy_dw : whether gradients for new layer should be copies
-                                   shared (Note: sharing `dw` should be used with
-                                   caution and can lead to unpredictable behavior
-                                   during optimization).
-
-        Outputs
-        -------
-
-        StackedInputLayer<T> out : the copied layer with deep or shallow copy
-
-        **/
         StackedInputLayer (const StackedInputLayer&, bool, bool);
-        /**
-        Activate
-        --------
 
-        Activate a Stacked Input Layer by multiplying **in order** each input
-        with a separate matrix transparently acting as if all the vectors
-        were joined into a single input and dotted with a single large matrix.
-
-        Inputs
-        ------
-
-                                  GRAPH& G : computation graph, keeps track of
-                                                steps for backpropagation
-        const std::vector<SHARED_MAT>& inputs : vectors to project using this
-                                                layer's matrices and bias.
-
-        Outputs
-        -------
-
-        SHARED_MAT out : projection of the inputs
-        **/
 
         SHARED_MAT activate(GRAPH&, const std::vector<SHARED_MAT>&) const;
         SHARED_MAT activate(GRAPH&, SHARED_MAT) const;
-        /**
-        Activate
-        --------
 
-        Activate a Stacked Input Layer by multiplying **in order** each input
-        with a separate matrix transparently acting as if all the vectors
-        were joined into a single input and dotted with a single large matrix.
-
-        Inputs
-        ------
-
-                                  GRAPH& G : computation graph, keeps track of
-                                                steps for backpropagation
-                                   SHARED_MAT : separate input vector (convenience
-                                                for shortcut stacked LSTMs that
-                                                typically separate their hidden
-                                                vectors from the inputs)
-        const std::vector<SHARED_MAT>& inputs : other vectors to project using this
-                                                layer's matrices and bias.
-
-        Outputs
-        -------
-
-        SHARED_MAT out : projection of the inputs
-        **/
         SHARED_MAT activate(GRAPH&, SHARED_MAT, const std::vector<SHARED_MAT>&) const;
-        /**
-        Shallow Copy
-        ------------
 
-        Perform a shallow copy of a Layer<T> that has
-        the same parameters but separate gradients `dw`
-        for each of its parameters.
-
-        Shallow copies are useful for Hogwild and multithreaded
-        training
-
-        See `MAT::shallow_copy`, `examples/character_prediction.cpp`.
-
-        Outputs
-        -------
-
-        StackedInputLayer<T> out : the copied layer with sharing
-                                   parameters, but with separate
-                                   gradients `dw`
-        **/
         StackedInputLayer<T> shallow_copy() const;
 };
 
@@ -260,62 +112,10 @@ class RNN : public AbstractLayer<T> {
         its inputs and hiddens, e.g. in the case of a gate.
         **/
         RNN (int input_size, int hidden_size, int output_size);
-        /**
-        RNN<T>::RNN
-        ---------------
 
-        Copy constructor with option to make a shallow
-        or deep copy of the underlying parameters.
-
-        If the copy is shallow then the parameters are shared
-        but separate gradients `dw` are used for each of
-        thread RNN<T>.
-
-        Shallow copies are useful for Hogwild and multithreaded
-        training
-
-        See `MAT::shallow_copy`, `examples/character_prediction.cpp`,
-        `RNN<T>::shallow_copy`
-
-        Inputs
-        ------
-
-            RNN<T> l : RNN from which to source parameters and dw
-         bool copy_w : whether parameters for new RNN should be copies
-                       or shared
-        bool copy_dw : whether gradients for new RNN should be copies
-                       shared (Note: sharing `dw` should be used with
-                       caution and can lead to unpredictable behavior
-                       during optimization).
-
-        Outputs
-        -------
-
-        RNN<T> out : the copied RNN with deep or shallow copy of parameters
-
-        **/
         RNN (const RNN&, bool, bool);
         SHARED_MAT activate(GRAPH& G, SHARED_MAT input_vector, SHARED_MAT prev_hidden) const;
-        /**
-        Shallow Copy
-        ------------
 
-        Perform a shallow copy of a RNN<T> that has
-        the same parameters but separate gradients `dw`
-        for each of its parameters.
-
-        Shallow copies are useful for Hogwild and multithreaded
-        training
-
-        See `RNN<T>::shallow_copy`, `examples/character_prediction.cpp`.
-
-        Outputs
-        -------
-
-        RNN<T> out : the copied layer with sharing parameters,
-                       but with separate gradients `dw`
-
-        **/
         RNN<T> shallow_copy() const;
 };
 
@@ -325,17 +125,21 @@ class DelayedRNN : public AbstractLayer<T> {
         h' = A * [h,x] + b
         o  = B * [h,x] + d
     */
-    RNN<T> hidden_rnn;
-    RNN<T> output_rnn;
-    virtual std::vector<SHARED_MAT> parameters() const;
+    public:
+        RNN<T> hidden_rnn;
+        RNN<T> output_rnn;
+        virtual std::vector<SHARED_MAT> parameters() const;
 
-    DelayedRNN (int input_size, int hidden_size, int output_size);
-    DelayedRNN (const DelayedRNN&, bool, bool);
+        DelayedRNN (int input_size, int hidden_size, int output_size);
+        DelayedRNN (const DelayedRNN&, bool, bool);
 
-    // output (next_hidden, output)
-    std::pair<SHARED_MAT, SHARED_MAT> activate(GRAPH& G, SHARED_MAT input_vector, SHARED_MAT prev_hidden) const;
-    DelayedRNN<T> shallow_copy() const;
+        SHARED_MAT initial_states() const;
+
+        // output (next_hidden, output)
+        std::pair<SHARED_MAT, SHARED_MAT> activate(GRAPH& G, SHARED_MAT input_vector, SHARED_MAT prev_hidden) const;
+        DelayedRNN<T> shallow_copy() const;
 };
+
 template<typename T>
 class ShortcutRNN : public AbstractLayer<T> {
     /*
@@ -361,62 +165,10 @@ class ShortcutRNN : public AbstractLayer<T> {
         virtual std::vector<SHARED_MAT> parameters() const;
         ShortcutRNN (int, int, int);
         ShortcutRNN (int, int, int, int);
-        /**
-        ShortcutRNN<T>::ShortcutRNN
-        ---------------------------
 
-        Copy constructor with option to make a shallow
-        or deep copy of the underlying parameters.
-
-        If the copy is shallow then the parameters are shared
-        but separate gradients `dw` are used for each of
-        thread ShortcutRNN<T>.
-
-        Shallow copies are useful for Hogwild and multithreaded
-        training
-
-        See `MAT::shallow_copy`, `examples/character_prediction.cpp`,
-        `ShortcutRNN<T>::shallow_copy`
-
-        Inputs
-        ------
-
-            ShortcutRNN<T> l : ShortcutRNN from which to source parameters and dw
-                 bool copy_w : whether parameters for new ShortcutRNN should be copies
-                               or shared
-                bool copy_dw : whether gradients for new ShortcutRNN should be copies
-                               shared (Note: sharing `dw` should be used with
-                               caution and can lead to unpredictable behavior
-                               during optimization).
-
-        Outputs
-        -------
-
-        ShortcutRNN<T> out : the copied ShortcutRNN with deep or shallow copy of parameters
-
-        **/
         ShortcutRNN (const ShortcutRNN&, bool, bool);
         SHARED_MAT activate(GRAPH&, SHARED_MAT, SHARED_MAT, SHARED_MAT) const;
-        /**
-        Shallow Copy
-        ------------
 
-        Perform a shallow copy of a ShortcutRNN<T> that has
-        the same parameters but separate gradients `dw`
-        for each of its parameters.
-
-        Shallow copies are useful for Hogwild and multithreaded
-        training
-
-        See `ShortcutRNN<T>::shallow_copy`, `examples/character_prediction.cpp`.
-
-        Outputs
-        -------
-
-        ShortcutRNN<T> out : the copied layer with sharing parameters,
-                             but with separate gradients `dw`
-
-        **/
         ShortcutRNN<T> shallow_copy() const;
 };
 
@@ -453,40 +205,7 @@ class LSTM : public AbstractLayer<T> {
         const int hidden_size;
         const int input_size;
         LSTM (int, int);
-        /**
-        LSTM<T>::LSTM
-        -------------
 
-        Copy constructor with option to make a shallow
-        or deep copy of the underlying parameters.
-
-        If the copy is shallow then the parameters are shared
-        but separate gradients `dw` are used for each of
-        thread LSTM<T>.
-
-        Shallow copies are useful for Hogwild and multithreaded
-        training
-
-        See `MAT::shallow_copy`, `examples/character_prediction.cpp`,
-        `LSTM<T>::shallow_copy`
-
-        Inputs
-        ------
-
-              LSTM<T> l : LSTM from which to source parameters and dw
-            bool copy_w : whether parameters for new LSTM should be copies
-                          or shared
-           bool copy_dw : whether gradients for new LSTM should be copies
-                          shared (Note: sharing `dw` should be used with
-                          caution and can lead to unpredictable behavior
-                          during optimization).
-
-        Outputs
-        -------
-
-        LSTM<T> out : the copied LSTM with deep or shallow copy of parameters
-
-        **/
         LSTM (const LSTM&, bool, bool);
         virtual std::vector<SHARED_MAT> parameters() const;
         static std::pair<std::vector<SHARED_MAT>, std::vector<SHARED_MAT>> initial_states(const std::vector<int>&);
@@ -495,26 +214,7 @@ class LSTM : public AbstractLayer<T> {
             SHARED_MAT,
             SHARED_MAT,
             SHARED_MAT) const;
-        /**
-        Shallow Copy
-        ------------
 
-        Perform a shallow copy of a LSTM<T> that has
-        the same parameters but separate gradients `dw`
-        for each of its parameters.
-
-        Shallow copies are useful for Hogwild and multithreaded
-        training
-
-        See `LSTM<T>::shallow_copy`, `examples/character_prediction.cpp`.
-
-        Outputs
-        -------
-
-        LSTM<T> out : the copied layer with sharing parameters,
-                            but with separate gradients `dw`
-
-        **/
         LSTM<T> shallow_copy() const;
 };
 
@@ -562,7 +262,17 @@ template<typename T>
 class AbstractStackedLSTM : public AbstractLayer<T> {
     public:
         typedef std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>> state_t;
+
+        const int input_size;
+        const std::vector<int> hidden_sizes;
+
+        AbstractStackedLSTM(const int& input_size, const std::vector<int>& hidden_sizes);
+        AbstractStackedLSTM(const AbstractStackedLSTM<T>& model, bool copy_w, bool copy_dw);
+
+        virtual state_t initial_states() const;
+
         virtual std::vector<SHARED_MAT> parameters() const = 0;
+
         virtual state_t activate(
             GRAPH& G,
             state_t previous_state,
@@ -571,7 +281,7 @@ class AbstractStackedLSTM : public AbstractLayer<T> {
         virtual state_t activate_sequence(
             GRAPH& G,
             state_t initial_state,
-            Seq<SHARED_MAT>& sequence,
+            const Seq<SHARED_MAT>& sequence,
             T drop_prob = 0.0) const;
 };
 
@@ -602,6 +312,8 @@ class StackedShortcutLSTM : public AbstractStackedLSTM<T> {
 
         std::vector<shortcut_lstm_t> cells;
         lstm_t base_cell;
+
+
         virtual state_t activate(
             GRAPH& G,
             state_t previous_state,

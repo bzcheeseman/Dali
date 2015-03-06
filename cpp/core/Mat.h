@@ -194,6 +194,8 @@ template<typename T> class Mat {
         Mat (std::string fname);
         static Mat RandMat(int n, int d, T std);
         static Mat Empty(int n, int d);
+
+        std::pair<int,int> shape() const;
         /**
         Shallow Copy
         ------------

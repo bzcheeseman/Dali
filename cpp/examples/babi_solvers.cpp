@@ -3,6 +3,7 @@
 #include <set>
 #include <vector>
 #include <gperftools/profiler.h>
+#include <gflags/gflags.h>
 
 #include "core/babi.h"
 #include "core/CrossEntropy.h"
@@ -25,7 +26,7 @@ using utils::Timer;
 using utils::Vocab;
 using utils::reversed;
 
-DEFINE_int32(j, 1, "Number of threads");
+DEFINE_int32(j, 9, "Number of threads");
 
 class MostCommonAnswer: public babi::Model {
     vector<string> most_common_answer;
@@ -95,10 +96,6 @@ class RandomAnswer: public babi::Model {
         }
 };
 
-// LSTM Model todo:
-// -> add cross validation
-// -> increase performance
-// -> supporting fact gate - add second order term between question and answer.
 template<typename T>
 class LstmBabiModel {
     typedef Mat<T> mat;
@@ -530,8 +527,16 @@ class LstmBabiModelRunner: public babi::Model {
 };
 
 
-int main() {
+int main(int argc, char** argv) {
     sane_crashes::activate();
+    GFLAGS_NAMESPACE::SetUsageMessage(
+        "\nBabi!"
+    );
+
+    GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+
+    Eigen::initParallel();
+
     babi::benchmark_task<LstmBabiModelRunner<double>>("qa4_two-arg-relations");
     //babi::benchmark<LstmBabiModelRunner<double>>();
 }

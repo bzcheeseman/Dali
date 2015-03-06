@@ -436,9 +436,6 @@ vector<Databatch> load_dataset_with_vocabulary(const string& fname, Vocab& vocab
 }
 
 int main( int argc, char* argv[]) {
-#ifdef DEBUG_RECURRENTJS
-    std::cout << "We are in debug mode!" << std::endl;
-#endif
     GFLAGS_NAMESPACE::SetUsageMessage(
         "\n"
         "RNN Language Model using Stacked LSTMs\n"

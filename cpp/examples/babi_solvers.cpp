@@ -370,7 +370,7 @@ class LstmBabiModelRunner: public babi::Model {
 
     const float TRAINING_FRAC = 0.8;
     const float MINIMUM_IMPROVEMENT = 0.0001; // good one: 0.003
-    const double VALIDATION_FORGETTING = 0.1;
+    const double VALIDATION_FORGETTING = 0.06;
     const int PATIENCE = 5;
 
     vector<string> data_to_vocab(const vector<babi::Story>& data) {
@@ -496,12 +496,12 @@ class LstmBabiModelRunner: public babi::Model {
                 } else {
                     epochs_validation_increasing += 1;
                 }
-
+                double scaled_forgetting = VALIDATION_FORGETTING / (double)FLAGS_j;
                 if (last_validation_error == std::numeric_limits<double>::infinity()) {
                     last_validation_error = validation_error;
                 } else {
-                    last_validation_error = VALIDATION_FORGETTING * validation_error +
-                                            (1.0 - VALIDATION_FORGETTING)*last_validation_error;
+                    last_validation_error = scaled_forgetting * validation_error +
+                                            (1.0 - scaled_forgetting)*last_validation_error;
                 }
             }
         }

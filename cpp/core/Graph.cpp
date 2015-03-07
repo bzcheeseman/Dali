@@ -66,6 +66,25 @@ typename Graph<T>::shared_mat Graph<T>::eltmul(
     return out;
 }
 
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::eltmul(
+    shared_mat matrix,
+    T alpha) {
+
+    auto out = std::make_shared<mat>(
+        matrix->n,
+        matrix->d,
+        true);
+    out->w = (matrix->w.array() * alpha).matrix();
+    if (needs_backprop)
+        backprop.emplace_back([matrix, alpha, out]() {
+            matrix->dw.noalias() += (alpha * (out->dw).array()).matrix();
+        });
+    return out;
+}
+
+
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::eltmul_broadcast_rowwise(
     shared_mat matrix1,
@@ -277,6 +296,8 @@ typename Graph<T>::shared_mat Graph<T>::sum(shared_mat matrix) {
         });
     return out;
 }
+
+
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::mean(shared_mat matrix) {
     auto out = std::make_shared<mat>(1,1,true);
@@ -287,6 +308,28 @@ typename Graph<T>::shared_mat Graph<T>::mean(shared_mat matrix) {
         });
     return out;
 }
+
+
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::binary_cross_entropy(shared_mat matrix, T target) {
+    assert(0 <= target && target <= 1);
+
+    auto out =  std::make_shared<mat>(
+        matrix->n,
+        matrix->d,
+        true);
+
+    out->w = (target * matrix->w.array().log() + (1.0-target) * (1.0 - matrix->w.array()).log()).matrix();
+
+    if (needs_backprop)
+        backprop.emplace_back([matrix, target, out](){
+            matrix->dw.array() += (matrix->w.array() - target) * out->dw.array();
+        });
+
+    return out;
+}
+
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::log(shared_mat matrix) {

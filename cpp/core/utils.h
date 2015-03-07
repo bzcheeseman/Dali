@@ -145,6 +145,8 @@ namespace utils {
         template<typename T>
         bool add_to_set(std::vector<T>&, T&);
 
+        template<typename T>
+        bool in_vector(const std::vector<T>&, T&);
 
         template<typename IN, typename OUT>
         std::vector<OUT> fmap(std::vector<IN> in_list,

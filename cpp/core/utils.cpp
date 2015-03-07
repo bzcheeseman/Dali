@@ -154,17 +154,27 @@ namespace utils {
 
         template<typename T>
         bool add_to_set(vector<T>& set, T& el) {
-                if(std::find(set.begin(), set.end(), el) != set.end()) {
-                        return false;
-                } else {
-                        set.emplace_back(el);
-                        return true;
-                }
+            if(std::find(set.begin(), set.end(), el) != set.end()) {
+                    return false;
+            } else {
+                    set.emplace_back(el);
+                    return true;
+            }
         }
 
         template bool add_to_set(vector<int>&,    int&);
         template bool add_to_set(vector<uint>&,   uint&);
         template bool add_to_set(vector<string>&, string&);
+
+
+        template<typename T>
+        bool in_vector(const std::vector<T>& set, T& el) {
+            return std::find(set.begin(), set.end(), el) != set.end();
+        }
+
+        template bool in_vector(const vector<int>&,    int&);
+        template bool in_vector(const vector<uint>&,   uint&);
+        template bool in_vector(const vector<string>&, string&);
 
         template<typename IN, typename OUT>
         vector<OUT> fmap(vector<IN> in_list, function<OUT(IN)> f) {

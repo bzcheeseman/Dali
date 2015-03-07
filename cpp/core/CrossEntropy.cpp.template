@@ -1,5 +1,6 @@
 #include "CrossEntropy.h"
 
+
 template<typename T>
 T cross_entropy(std::shared_ptr<Mat<T>> logprobs, uint& target) {
     std::shared_ptr<Mat<T>> probs = softmax(logprobs);

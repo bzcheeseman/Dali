@@ -20,6 +20,8 @@ template<typename T> class Graph {
                 void backward ();
                 shared_mat eltmul_broadcast(shared_mat, shared_mat);
                 shared_mat eltmul(shared_mat, shared_mat);
+                shared_mat eltmul(shared_mat, T);
+
                 /**
                 Element Multiplication Broadcast Rowwise
                 ----------------------------------------
@@ -156,6 +158,7 @@ template<typename T> class Graph {
                 shared_mat mean(shared_mat);
                 shared_mat log(shared_mat);
                 shared_mat exp(shared_mat);
+                shared_mat binary_cross_entropy(shared_mat, T);
                 shared_mat hstack(shared_mat, shared_mat);
                 shared_mat hstack(std::initializer_list<shared_mat>);
                 shared_mat hstack(const std::vector<shared_mat>&);

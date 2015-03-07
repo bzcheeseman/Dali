@@ -25,6 +25,7 @@ using std::vector;
 using utils::Timer;
 using utils::Vocab;
 using utils::reversed;
+using utils::in_vector;
 
 DEFINE_int32(j, 9, "Number of threads");
 
@@ -97,6 +98,25 @@ class RandomAnswer: public babi::Model {
 };
 
 template<typename T>
+struct StoryActivation {
+    typedef shared_ptr<Mat<T>> shared_mat;
+
+    shared_mat word_fact_gate_memory_sum;
+    Seq<shared_mat> fact_gate_memory;
+    shared_mat log_probs;
+
+    StoryActivation(shared_mat word_fact_gate_memory_sum,
+                    Seq<shared_mat> fact_gate_memory,
+                    shared_mat log_probs) :
+            word_fact_gate_memory_sum(word_fact_gate_memory_sum),
+            fact_gate_memory(fact_gate_memory),
+            log_probs(log_probs) {
+    }
+
+};
+
+
+template<typename T>
 class LstmBabiModel {
     typedef Mat<T> mat;
     typedef shared_ptr<mat> shared_mat;
@@ -149,6 +169,10 @@ class LstmBabiModel {
     const int           DECODER_INPUT              =      utils::vsum(HL_STACKS);
     const int           DECODER_OUTPUT; // gets initialized to vocabulary size in constructor
     Layer<T>            decoder;
+
+
+    const T FACT_SELECTION_LAMBDA = 0.1;
+    const T FACT_WORD_SELECTION_LAMBDA = 0.001;
 
     // TODO:
     // -> sparsity on words gates
@@ -299,10 +323,10 @@ class LstmBabiModel {
             return G.vstack(out_state.second);
         }
 
-        shared_mat predict_answer_distribution(graph_t& G,
-                                               const vector<vector<string>>& facts,
-                                               const vector<string>& question,
-                                               bool use_dropout) {
+        StoryActivation<T> activate_story(graph_t& G,
+                                       const vector<vector<string>>& facts,
+                                       const vector<string>& question,
+                                       bool use_dropout) {
             auto fact_word_gate_hidden = lstm_final_activation(G,
                                                                get_embeddings(G, reversed(question), question_fact_word_gate_embeddings),
                                                                question_fact_word_gate_model,
@@ -319,6 +343,7 @@ class LstmBabiModel {
                                                                  use_dropout ? TEXT_REPR_DROPOUT : 0.0);
 
             Seq<shared_mat> fact_representations;
+            auto word_fact_gate_memory_sum = make_shared<Mat<T>>(1,1);
 
             for (auto& fact: facts) {
                 auto this_fact_embeddings = get_embeddings(G, reversed(fact), fact_embeddings);
@@ -327,6 +352,9 @@ class LstmBabiModel {
                                                         fact_word_gate,
                                                         fact_word_gate_hidden
                                                         );
+                for (auto mem: fact_word_gate_memory) {
+                    word_fact_gate_memory_sum = G.add(word_fact_gate_memory_sum, mem);
+                }
 
                 auto gated_embeddings = apply_gate(G, fact_word_gate_memory, this_fact_embeddings);
 
@@ -353,7 +381,9 @@ class LstmBabiModel {
 
             auto log_probs = decoder.activate(G, hl_hidden);
 
-            return log_probs;
+            return StoryActivation<T>(word_fact_gate_memory_sum,
+                                      fact_gate_memory,
+                                      log_probs);
         }
 
         T error(graph_t& G,
@@ -365,14 +395,33 @@ class LstmBabiModel {
             for (auto fact_ptr: facts)
                 facts_as_strings.push_back(fact_ptr->fact);
 
-            shared_mat log_probs = predict_answer_distribution(G,
-                                                               facts_as_strings,
-                                                               qa->question,
-                                                               use_dropout);
+            auto activation = activate_story(G, facts_as_strings, qa->question, use_dropout);
 
             uint answer_idx = vocab->word2index.at(qa->answer[0]);
+            auto prediction_error = cross_entropy(activation.log_probs, answer_idx);
 
-            return cross_entropy(log_probs, answer_idx);
+            auto fact_selection_error = make_shared<Mat<T>>(1,1);
+
+            assert(facts.size() == activation.fact_gate_memory.size());
+            for (int i=0; i<facts.size(); ++i) {
+                auto partial_error = G.binary_cross_entropy(activation.fact_gate_memory[i],
+                                                            in_vector(qa->supporting_facts, i) ? 1.0 : 0.0);
+                fact_selection_error = G.add(fact_selection_error, partial_error);
+            }
+            fact_selection_error = G.eltmul(fact_selection_error, FACT_SELECTION_LAMBDA/facts.size());
+            fact_selection_error->grad();
+
+            int num_words_in_facts = 0;
+            for (Fact* fact: facts) {
+                num_words_in_facts += fact->fact.size();
+            }
+
+            auto word_sparsity = G.eltmul(fact_selection_error, FACT_WORD_SELECTION_LAMBDA/(double)num_words_in_facts);
+            word_sparsity->grad();
+
+
+
+            return prediction_error;
         }
 };
 
@@ -534,7 +583,7 @@ class LstmBabiModelRunner: public babi::Model {
             Graph<T> G(false);
 
             // Don't use dropout for validation.
-            int word_idx = argmax(model->predict_answer_distribution(G, story_so_far, question, false));
+            int word_idx = argmax(model->activate_story(G, story_so_far, question, false).log_probs);
 
             return {vocab->index2word[word_idx]};
         }

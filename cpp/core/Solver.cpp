@@ -282,6 +282,29 @@ void Solver::RMSProp<T>::step(
 
 }
 
+/*updates = []
+        grads = T.grad(cost, params)
+        grads = clip_norms(grads, self.clipnorm)
+        i = theano.shared(floatX(0.))
+        i_t = i + 1.
+        fix1 = 1. - self.b1**(i_t)
+        fix2 = 1. - self.b2**(i_t)
+        lr_t = self.lr * (T.sqrt(fix2) / fix1)
+        for p, g in zip(params, grads):
+            m = theano.shared(p.get_value() * 0.)
+            v = theano.shared(p.get_value() * 0.)
+            m_t = (self.b1 * g) + ((1. - self.b1) * m)
+            v_t = (self.b2 * T.sqr(g)) + ((1. - self.b2) * v)
+            g_t = m_t / (T.sqrt(v_t) + self.e)
+            g_t = self.regularizer.gradient_regularize(p, g_t)
+            p_t = p - (lr_t * g_t)
+            p_t = self.regularizer.weight_regularize(p_t)
+            updates.append((m, m_t))
+            updates.append((v, v_t))
+            updates.append((p, p_t))
+        updates.append((i, i_t))
+        return updates*/
+
 template class Solver::SGD<float>;
 template class Solver::SGD<double>;
 

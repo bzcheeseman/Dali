@@ -451,7 +451,7 @@ int main( int argc, char* argv[]) {
 
     std::vector<MODEL_USED<REAL_t>> models;
     vector<vector<MODEL_USED<REAL_t>>> thread_models;
-    vector<Solver::AdaDelta<REAL_t>> solvers;
+    vector<Solver::Adam<REAL_t>> solvers;
 
 
     for (int sentiment = 0; sentiment < NUM_SENTIMENTS; sentiment++) {
@@ -474,7 +474,8 @@ int main( int argc, char* argv[]) {
             thread_models[sentiment].push_back(models[sentiment].shallow_copy());
         }
         auto params = models[sentiment].parameters();
-        solvers.emplace_back(params, FLAGS_rho, 1e-9, 5.0);
+        //solvers.emplace_back(params, FLAGS_rho);
+        solvers.emplace_back(params, 0.1, 0.001, 1e-9, 5.0);
     }
     int epoch = 0;
     REAL_t accuracy = 0.0;
@@ -511,7 +512,7 @@ int main( int argc, char* argv[]) {
                         (REAL_t) FLAGS_dropout
                     );
                     G.backward(); // backpropagate
-                    solver.step(thread_parameters, 0.0); // One step of gradient descent
+                    solver.step(thread_parameters); // One step of gradient descent
 
                     journalist.tick(++batches_processed, accuracy);
                 });

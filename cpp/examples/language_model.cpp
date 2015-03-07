@@ -344,7 +344,7 @@ void training_loop(model_t& model,
             full_code_size += minibatch.total_codes;
 
             G.backward(); // backpropagate
-            solver.step(thread_parameters, FLAGS_rho);
+            solver.step(thread_parameters);
 
             journalist.tick(++batches_processed, cost / full_code_size);
         });

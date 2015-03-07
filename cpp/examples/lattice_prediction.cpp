@@ -186,7 +186,7 @@ void training_loop(StackedGatedModel<T>& model,
                         0
                 ));
                 G.backward(); // backpropagate
-                solver.step(parameters, 0.0); // One step of gradient descent
+                solver.step(parameters); // One step of gradient descent
         }
         std::cout << "epoch (" << epoch << ") KL error = " << std::get<0>(cost)
                                  << ", Memory cost = " << std::get<1>(cost) << std::endl;

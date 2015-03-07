@@ -277,7 +277,7 @@ void training_loop(StackedGatedModel<T>& model,
                         word_vocab.index2word.size()
                 ));
                 G.backward(); // backpropagate
-                solver.step(parameters, 0.0); // One step of gradient descent
+                solver.step(parameters); // One step of gradient descent
         }
         std::cout << "epoch (" << epoch << ") KL error = " << std::get<0>(cost)
                                  << ", Memory cost = " << std::get<1>(cost) << std::endl;
@@ -310,7 +310,6 @@ int main(int argc, char *argv[]) {
         // TODO(sidor): Here dataset should defaults to: examples/sparkfun_dataset.txt
 
         int epochs           = FLAGS_epochs;
-        REAL_t rho           = FLAGS_rho;
         std::string dataset_path(FLAGS_train);
 
         // Collect Dataset from File:
@@ -329,7 +328,7 @@ int main(int argc, char *argv[]) {
         // Store all parameters in a vector:
         auto parameters = model.parameters();
         //Gradient descent optimizer:
-        Solver::AdaDelta<REAL_t> solver(parameters, rho, 1e-9, 5.0);
+        Solver::AdaDelta<REAL_t> solver(parameters, (REAL_t) FLAGS_rho);
         // Main training loop:
         for (int i = 0; i < epochs; ++i)
                 training_loop(model, dataset, word_vocab, category_vocab, solver, parameters, i);

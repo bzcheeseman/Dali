@@ -846,16 +846,18 @@ typename StackedShortcutLSTM<T>::state_t StackedShortcutLSTM<T>::activate(
             state_t previous_state,
             SHARED_MAT input_vector,
             T drop_prob) const {
-    assert(input_vector->shape() == PII(this->input_size, 1));
     // previous state is a pair of vectors of memory and hiddens.
     // hiddens is a vector of matrices of sizes decribed by hidden sizes
-    for (vector<SHARED_MAT> memory_or_hidden: {previous_state.first,
-                                               previous_state.second}) {
-        assert(memory_or_hidden.size() == this->hidden_sizes.size());
-        for (int i=0; i < this->hidden_sizes.size(); ++i) {
-            assert(memory_or_hidden[i]->shape() == PII(this->hidden_sizes[i], 1));
+    #ifdef NDEBUG
+        assert(input_vector->n == this->input_size);
+        for (auto& memory_or_hidden : {previous_state.first,
+                                                   previous_state.second}) {
+            assert(memory_or_hidden.n == this->hidden_sizes.size());
+            for (int i=0; i < this->hidden_sizes.size(); ++i) {
+                assert(memory_or_hidden[i]->n == this->hidden_sizes[i]);
+            }
         }
-    }
+    #endif
     return forward_LSTMs(G, input_vector, previous_state, base_cell, cells, drop_prob);
 };
 

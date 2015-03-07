@@ -79,7 +79,7 @@ T validation_error(
                         initial_state = model.stacked_lstm->activate(G, initial_state, input_vector);
                         // classifier takes as input the final hidden layer's activation:
                         logprobs      = model.decoder->activate(G, initial_state.second[num_hidden_sizes-1]);
-                        example_cost -= cross_entropy(logprobs, example[i+1]);
+                         example_cost -= cross_entropy(logprobs, example[i+1]);
 
                 }
                 cost += example_cost / (n-1);
@@ -180,7 +180,7 @@ int main (int argc, char *argv[]) {
                                 // RMS prop
                                 //solver.step(thread_parameters, 0.01, 0.0);
                                 // AdaDelta
-                                solver.step(thread_parameters, 0.0);
+                                solver.step(thread_parameters);
                                 // SGD
                                 // solver.step(thread_parameters, 0.3/minibatch_size, 0.0);
                                 cost = validation_error(model, valid_set);

@@ -2,7 +2,6 @@
 #include <iostream>
 #include <set>
 #include <vector>
-#include <gperftools/profiler.h>
 #include <gflags/gflags.h>
 
 #include "core/babi.h"
@@ -511,7 +510,7 @@ class LstmBabiModelRunner: public babi::Model {
                         // Only update weights during training.
                     }
                     if (training)
-                        solver.step(params, 0.00);
+                        solver.step(params);
                 });
             }
 

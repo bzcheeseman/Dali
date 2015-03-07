@@ -257,11 +257,11 @@ class LstmBabiModel {
             return seq;
         }
 
-        Seq<shared_mat> apply_gate(graph_t& G,
+        Seq<shared_mat> gate_memory(graph_t& G,
                                    Seq<shared_mat> seq,
                                    const DelayedRNN<T>& gate,
                                    shared_mat gate_input) {
-            Seq<shared_mat> gated_seq;
+            Seq<shared_mat> memory_seq;
             // By default initialized to zeros.
             auto prev_hidden = gate.initial_states();
             for (auto& embedding : seq) {
@@ -272,7 +272,18 @@ class LstmBabiModel {
                 prev_hidden = out_state.first;
                 // memory - gate activation - how much of that embedding do we keep.
                 auto memory = G.sigmoid(out_state.second);
-                gated_seq.push_back(G.eltmul_broadcast_rowwise(embedding, memory));
+                memory_seq.push_back(memory);
+            }
+            return memory_seq;
+        }
+
+        Seq<shared_mat> apply_gate(graph_t& G,
+                                   Seq<shared_mat> memory,
+                                   Seq<shared_mat> seq) {
+            assert(memory.size() == seq.size());
+            Seq<shared_mat> gated_seq;
+            for(int i=0; i< memory.size(); ++i) {
+                gated_seq.push_back(G.eltmul_broadcast_rowwise(seq[i], memory[i]));
             }
             return gated_seq;
         }
@@ -310,13 +321,14 @@ class LstmBabiModel {
             Seq<shared_mat> fact_representations;
 
             for (auto& fact: facts) {
-                auto gated_embeddings = apply_gate(
-                                            G,
-                                            get_embeddings(G, reversed(fact), fact_embeddings),
-                                            fact_word_gate,
-                                            fact_word_gate_hidden
-                                        );
+                auto this_fact_embeddings = get_embeddings(G, reversed(fact), fact_embeddings);
+                auto fact_word_gate_memory = gate_memory(G,
+                                                        this_fact_embeddings,
+                                                        fact_word_gate,
+                                                        fact_word_gate_hidden
+                                                        );
 
+                auto gated_embeddings = apply_gate(G, fact_word_gate_memory, this_fact_embeddings);
 
                 auto fact_repr = lstm_final_activation(G,
                                                        gated_embeddings,
@@ -325,8 +337,9 @@ class LstmBabiModel {
                 fact_representations.push_back(fact_repr);
             }
 
-            auto gated_facts = apply_gate(G, fact_representations, fact_gate, fact_gate_hidden);
+            auto fact_gate_memory = gate_memory(G, fact_representations, fact_gate, fact_gate_hidden);
 
+            auto gated_facts = apply_gate(G, fact_gate_memory, fact_representations);
             // There is probably a better way
             Seq<shared_mat> hl_input;
             hl_input.push_back(question_representation);
@@ -392,19 +405,21 @@ class LstmBabiModelRunner: public babi::Model {
 
     shared_ptr<Vocab> vocab;
     shared_ptr<LstmBabiModel<T>> model;
-    public:
 
+    vector<LstmBabiModel<T>> thread_models;
+
+    public:
         T compute_error(const vector<babi::Story>& dataset, Solver::AdaDelta<T>& solver, bool training) {
             T total_error = 0.0;
 
             const int NUM_THREADS = FLAGS_j;
             ThreadPool pool(NUM_THREADS);
 
-            vector<LstmBabiModel<T>> thread_models;
-            for (int i=0; i<NUM_THREADS; ++i) {
-                thread_models.push_back(model->shallow_copy());
+            if (thread_models.size() == 0) {
+                for (int i = 0; i < NUM_THREADS; ++i) {
+                    thread_models.push_back(model->shallow_copy());
+                }
             }
-
             std::atomic<int> num_questions(0);
 
             vector<double> thread_error(NUM_THREADS, 0.0);
@@ -422,8 +437,7 @@ class LstmBabiModelRunner: public babi::Model {
             }
 
             for (auto& batch : batches) {
-
-                pool.run([batch, &dataset, &thread_models, training, &num_questions, &thread_error, &solver]() {
+                pool.run([this, batch, &dataset, training, &num_questions, &thread_error, &solver]() {
                     LstmBabiModel<T>& thread_model = thread_models[ThreadPool::get_thread_number()];
                     auto params = thread_model.parameters();
                     for (auto story_id: batch) {

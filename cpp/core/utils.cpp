@@ -213,13 +213,13 @@ namespace utils {
                 vector<string> filenames;
                 DIR *dp;
             struct dirent *dirp;
-            if ((dp  = opendir(folder.c_str())) == NULL) {
+            if ((dp  = opendir(folder.c_str())) == nullptr) {
                 stringstream error_msg;
                         error_msg << "Error: could not open directory \"" << folder << "\"";
                         throw std::runtime_error(error_msg.str());
             }
             // list all contents of directory:
-            while ((dirp = readdir(dp)) != NULL)
+            while ((dirp = readdir(dp)) != nullptr)
                 // exclude "current directory" (.) and "parent directory" (..)
                 if (std::strcmp(dirp->d_name, ".") != 0 && std::strcmp(dirp->d_name, "..") != 0)
                         filenames.emplace_back(dirp->d_name);
@@ -600,6 +600,31 @@ namespace utils {
         return t;
     }
 
+    bool is_number(const std::string& s) {
+        bool is_negative = *s.begin() == '-';
+        bool is_decimal  = false;
+        if (is_negative && s.size() == 1) {
+            return false;
+        }
+        return !s.empty() && std::find_if(s.begin() + (is_negative ? 1 : 0), 
+                s.end(), [&is_decimal](char c) {
+                    if (is_decimal) {
+                        if (c == '.') {
+                            return true;
+                        } else {
+                            return !std::isdigit(c);
+                        }
+                    } else {
+                        if (c == '.') {
+                            is_decimal = true;
+                            return false;
+                        } else {
+                            return !std::isdigit(c);
+                        }
+                    }
+                }) == s.end();
+    }
+
     template float from_string<float>(const std::string& s);
     template int from_string<int>(const std::string& s);
     template uint from_string<uint>(const std::string& s);
@@ -865,7 +890,7 @@ namespace utils {
             const string left_arrow  = "<-";
             string line;
 
-            OntologyBranch::shared_branch marked_branch = NULL;
+            OntologyBranch::shared_branch marked_branch = nullptr;
             bool last_edge_is_right_arrow = true;
 
             while (std::getline(fp, line)) {
@@ -882,7 +907,7 @@ namespace utils {
                                             marked_branch = add_lattice_edge(trim(tokens[i+1]), trim(tokens[i]), branch_map, parentless).second;
                                             last_edge_is_right_arrow = false;
                                     }
-                            else if (marked_branch != NULL) {
+                            else if (marked_branch != nullptr) {
                                     if (last_edge_is_right_arrow)
                                             add_lattice_edge(marked_branch, trim(tokens[0]), branch_map, parentless);
                                     else

@@ -939,6 +939,18 @@ typename Graph<T>::shared_mat Graph<T>::row_pluck(
         });
     return out;
 }
+template<typename T>
+int Graph<T>::backprop_size() const {
+    return backprop.size();
+}
 
 template class Graph<float>;
 template class Graph<double>;
+
+template<typename T>
+std::ostream& operator<<(std::ostream& strm, const Graph<T>& a) {
+    return strm << "<#Graph needs_backprop=" << a.needs_backprop<< ", backprop_size=" << a.backprop_size() << " >";
+}
+
+template std::ostream& operator<< <double>(std::ostream& strm, const Graph<double>& a);
+template std::ostream& operator<< <float>(std::ostream& strm, const Graph<float>& a);

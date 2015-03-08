@@ -399,6 +399,8 @@ namespace utils {
         template<typename T>
     T from_string(const std::string&);
 
+    bool is_number(const std::string&);
+
     template<typename T>
     void assert_map_has_key(std::map<std::string, T>&, const std::string&);
 

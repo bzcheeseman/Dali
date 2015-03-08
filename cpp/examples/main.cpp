@@ -1,7 +1,6 @@
 #include "core/Layers.h"
-#include "core/Softmax.h"
 #include "core/StackedGatedModel.h"
-#include "core/CrossEntropy.h"
+#include <iostream>
 
 // Test file for LSTM
 int main () {
@@ -10,54 +9,48 @@ int main () {
     typedef std::shared_ptr<mat> shared_mat;
     using std::make_shared;
     using std::vector;
-
     LSTM<REAL_t> lstm(30, 50);
     Graph<REAL_t> G;
-
     auto embedding = make_shared<mat>(1000, 30, 2.0);
-
     auto prev_cell = make_shared<mat>(50, 1);
     auto prev_hidden = make_shared<mat>(50, 1);
 
     auto out = lstm.activate(G, G.rows_pluck(embedding, {0, 1, 10, 2, 1, 3} ), prev_cell, prev_hidden);
-
     out.first->print();
 
         // load numpy matrix from file:
+
+    auto name = "numpy_test.npy";
+    std::cout << "loading a numpy matrix \"" << name << "\" from the disk" << std::endl;
     shared_mat numpy_mat;
-    if (utils::file_exists("numpy_test.npy")) {
-        numpy_mat = make_shared<mat>("numpy_test.npy");
+    if (utils::file_exists(name)) {
+        numpy_mat = make_shared<mat>(name);
     } else {
         numpy_mat = make_shared<mat>(3, 3);
         for (int i = 0; i < 9; i++) numpy_mat->w(i) = i;
-        numpy_mat->npy_save("numpy_test.npy");
+        numpy_mat->npy_save(name);
     }
-
+    std::cout << "\"" << name << "\"=" << std::endl;
     // print it
     numpy_mat->print();
     // take softmax
-
-    std::cout << "SOFTMAX JON" << std::endl;
-    auto softmaxed = softmax_transpose(numpy_mat);
+    std::cout << "We now take a softmax of this matrix:" << std::endl;
+    auto softmaxed = G.softmax(numpy_mat);
     softmaxed->print();
 
-    auto softmax_graph = G.softmax(numpy_mat);
-    std::cout << "SOFTMAX SZY" << std::endl;
-    softmax_graph->print();
-
-    std::cout << "CRAZU" << std::endl;
-
     uint idx = 2;
-    auto err_one = cross_entropy(numpy_mat, idx);
+    std::cout << "let us now compute the Kullback-Leibler divergence\n" 
+              << "between each column in this Softmaxed matrix and a\n"
+              << "one-hot distribution peaking at index " << idx + 1 << "." << std::endl;
 
     // print softmax:
+    auto divergence = G.cross_entropy(softmaxed, idx);
+    divergence->print();
 
-
-
-    std::cout << err_one << std::endl;
-
-    auto err_one_graph = G.cross_entropy(softmax_graph, idx);
-    err_one_graph->print();
+    std::cout << "Press Enter to continue" << std::endl;
+    getchar();
+    //std::cin.ignore( std::numeric_limits<std::streamsize>::max(), '\n' );
+    //std::cin.get();
 
     auto A = std::make_shared<mat>(3, 5);
     A->w = (A->w.array() + 1.2).matrix();

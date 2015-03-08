@@ -12,6 +12,7 @@ set(EXAMPLE_PROGRAMS character_prediction
                      mlbasics_learn_to_add
                      mlbasics_rnn_binary_addition
                      babi_solvers
+                     repl
                      )
 
 foreach(program ${EXAMPLE_PROGRAMS})

@@ -17,6 +17,7 @@ template<typename T> class Graph {
                 bool                 needs_backprop;
                 Graph (bool);
                 Graph ();
+                int backprop_size() const;
                 void backward ();
                 shared_mat eltmul_broadcast(shared_mat, shared_mat);
                 shared_mat eltmul(shared_mat, shared_mat);
@@ -259,5 +260,9 @@ template<typename T> class Graph {
                 shared_mat rows_cols_pluck(shared_mat, Indexing::Index, Indexing::Index);
                 shared_mat row_pluck(shared_mat, int);
 };
+
+
+template<typename T>
+std::ostream& operator<<(std::ostream&, const Graph<T>&);
 
 #endif

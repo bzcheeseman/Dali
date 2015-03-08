@@ -62,7 +62,7 @@ template<typename T> class Mat {
         bool sparse;
         std::shared_ptr<std::vector<uint>> sparse_row_keys;
         mutable eigen_mat_view dw;
-        std::shared_ptr<std::string> name = NULL;
+        std::shared_ptr<std::string> name = nullptr;
         const random_t random_id;
         Mat (int n, int d);
         Mat (int n, int d, bool empty);
@@ -97,7 +97,7 @@ template<typename T> class Mat {
 
         Mat<T> out : deep or shallow copy of m
         **/
-    Mat (const Mat<T>& m, bool copy_w, bool copy_dw);
+        Mat (const Mat<T>& m, bool copy_w, bool copy_dw);
         void print() const;
 
         /**

@@ -23,9 +23,12 @@ In Python use of a specialized `Backward` class wraps backpropagation steps, whi
 
 #### Installation
 
-Get **[Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)** ([Download Link](http://bitbucket.org/eigen/eigen/get/3.2.4.tar.bz2)) and place the downloaded Eigen header folder in the `cpp` folder of this repo, then go into the `cpp/build` folder and use `cmake` to configure and create the appropriate Makefiles:
-
-
+Get **[Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)** ([Download Link](http://bitbucket.org/eigen/eigen/get/3.2.4.tar.bz2)), **Clang**, and **protobuf**, then head to the `cpp/build` folder and use `cmake` to configure and create the appropriate Makefiles:
+    
+    > brew install clang
+    > brew install eigen
+    > brew install cmake
+    > HOMEBREW_CC=clang HOMEBREW_CXX=clang++ brew install protobuf
     > cmake ..
 
 

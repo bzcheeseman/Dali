@@ -11,7 +11,7 @@ template<typename T>
 std::atomic<int> Mat<T>::next_matrix(0);
 
 template<typename T>
-Mat<T>::Mat (int _n, int _d) : sparse_row_keys(NULL), sparse(false), name(NULL), w(NULL, _n, _d), dw(NULL, _n, _d),  n(_n), d(_d), random_id(next_matrix++) {
+Mat<T>::Mat (int _n, int _d) : sparse_row_keys(nullptr), sparse(false), name(nullptr), w(NULL, _n, _d), dw(NULL, _n, _d),  n(_n), d(_d), random_id(next_matrix++) {
     _w = eigen_mat::Zero(n,d);
     _dw = eigen_mat::Zero(n,d);
     new (&w) eigen_mat_view(_w.data(), n, d);
@@ -19,7 +19,7 @@ Mat<T>::Mat (int _n, int _d) : sparse_row_keys(NULL), sparse(false), name(NULL),
 
 }
 template<typename T>
-Mat<T>::Mat (int _n, int _d, bool empty) : sparse_row_keys(NULL), sparse(false), name(NULL), w(NULL, _n, _d), dw(NULL, _n, _d), n(_n), d(_d), random_id(next_matrix++) {
+Mat<T>::Mat (int _n, int _d, bool empty) : sparse_row_keys(nullptr), sparse(false), name(nullptr), w(NULL, _n, _d), dw(NULL, _n, _d), n(_n), d(_d), random_id(next_matrix++) {
     _w  = empty ? eigen_mat(n,d) : eigen_mat::Zero(n,d);
     _dw = eigen_mat::Zero(n,d);
     new (&w) eigen_mat_view(_w.data(), n, d);
@@ -27,7 +27,7 @@ Mat<T>::Mat (int _n, int _d, bool empty) : sparse_row_keys(NULL), sparse(false),
 }
 
 template<typename T>
-Mat<T>::Mat (string fname) : sparse_row_keys(NULL), sparse(false), w(NULL, 0, 0), dw(NULL, 0, 0), random_id(next_matrix++) {
+Mat<T>::Mat (string fname) : sparse_row_keys(nullptr), sparse(false), w(NULL, 0, 0), dw(NULL, 0, 0), random_id(next_matrix++) {
     auto arr = cnpy::npy_load(fname);
     n = arr.shape[0];
     d = arr.shape.size() > 1 ? arr.shape[1] : 1;
@@ -64,7 +64,7 @@ Mat<T>::Mat (string fname) : sparse_row_keys(NULL), sparse(false), w(NULL, 0, 0)
 }
 
 template<typename T>
-Mat<T>::Mat (int _n, int _d, T std) : sparse_row_keys(NULL), sparse(false), name(NULL), w(NULL, _n, _d), dw(NULL, _n, _d), n(_n), d(_d), random_id(next_matrix++) {
+Mat<T>::Mat (int _n, int _d, T std) : sparse_row_keys(nullptr), sparse(false), name(nullptr), w(NULL, _n, _d), dw(NULL, _n, _d), n(_n), d(_d), random_id(next_matrix++) {
         std::default_random_engine generator;
         std::normal_distribution<T> distribution(0.0, std);
         std::random_device rd;
@@ -77,7 +77,7 @@ Mat<T>::Mat (int _n, int _d, T std) : sparse_row_keys(NULL), sparse(false), name
 }
 
 template<typename T>
-Mat<T>::Mat (int _n, int _d, T lower, T upper) : sparse_row_keys(NULL), sparse(false), name(NULL), w(NULL, _n, _d), dw(NULL, _n, _d), n(_n), d(_d), random_id(next_matrix++) {
+Mat<T>::Mat (int _n, int _d, T lower, T upper) : sparse_row_keys(nullptr), sparse(false), name(nullptr), w(NULL, _n, _d), dw(NULL, _n, _d), n(_n), d(_d), random_id(next_matrix++) {
         std::default_random_engine generator;
         std::uniform_real_distribution<T> distribution(lower, upper);
         std::random_device rd;
@@ -92,7 +92,7 @@ Mat<T>::Mat (int _n, int _d, T lower, T upper) : sparse_row_keys(NULL), sparse(f
 }
 
 template<typename T>
-Mat<T>::Mat (const Mat<T>& m, bool copy_w, bool copy_dw) : sparse_row_keys(NULL), sparse(m.sparse), name(m.name), w(NULL, m.n, m.d), dw(NULL, m.n, m.d), n(m.n), d(m.d), random_id(copy_w ? next_matrix++ : m.random_id) {
+Mat<T>::Mat (const Mat<T>& m, bool copy_w, bool copy_dw) : sparse_row_keys(nullptr), sparse(m.sparse), name(m.name), w(NULL, m.n, m.d), dw(NULL, m.n, m.d), n(m.n), d(m.d), random_id(copy_w ? next_matrix++ : m.random_id) {
     if (copy_w) {
         _w = m.w;
         new (&w) eigen_mat_view(_w.data(), n, d);
@@ -232,7 +232,7 @@ std::pair<int,int> Mat<T>::shape() const {
 
 template<typename T>
 std::ostream& operator<<(std::ostream& strm, const Mat<T>& a) {
-    if (a.name != NULL) {
+    if (a.name != 0) {
         return strm << "<#Mat name=\"" << *a.name<< "\" n=" << a.n << ", d=" << a.d << ">";
     } else {
         return strm << "<#Mat n=" << a.n << ", d=" << a.d << ">";

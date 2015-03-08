@@ -39,7 +39,7 @@ namespace SST {
         int depth = 0;
         bool awaiting_num = false;
         std::vector<char> current_word;
-        AnnotatedParseTree::shared_tree root = NULL;
+        AnnotatedParseTree::shared_tree root = nullptr;
         auto current_node = root;
         stringstream ss(line);
         char ch;
@@ -80,7 +80,7 @@ namespace SST {
                         current_node = current_node->parent.lock();
                         current_node->udepth = std::max(current_node_udepth+1, current_node->udepth);
                     } else {
-                        current_node = NULL;
+                        current_node = nullptr;
                     }
                 } else if (ch == space) {
                     // ignore spacing

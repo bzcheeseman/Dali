@@ -40,7 +40,6 @@ class Seq {
         SeqConstIter cend() const;
         void insert(SeqIter where, SeqConstIter begin, SeqConstIter end);
         void insert(SeqIter where, RSeqConstIter begin, RSeqConstIter end);
-
 };
 
 

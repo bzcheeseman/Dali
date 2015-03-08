@@ -90,5 +90,6 @@ void Seq<T>::insert(SeqIter where, RSeqConstIter begin, RSeqConstIter end ) {
     seq.insert(where, begin, end);
 }
 
+
 template class Seq<std::shared_ptr<Mat<float>>>;
 template class Seq<std::shared_ptr<Mat<double>>>;

@@ -1,6 +1,7 @@
 #include "core/Layers.h"
 #include "core/Softmax.h"
 #include "core/StackedGatedModel.h"
+#include "core/CrossEntropy.h"
 
 // Test file for LSTM
 int main () {
@@ -35,9 +36,28 @@ int main () {
     // print it
     numpy_mat->print();
     // take softmax
-    auto softmaxed = softmax(numpy_mat);
-    // print softmax:
+
+    std::cout << "SOFTMAX JON" << std::endl;
+    auto softmaxed = softmax_transpose(numpy_mat);
     softmaxed->print();
+
+    auto softmax_graph = G.softmax(numpy_mat);
+    std::cout << "SOFTMAX SZY" << std::endl;
+    softmax_graph->print();
+
+    std::cout << "CRAZU" << std::endl;
+
+    uint idx = 2;
+    auto err_one = cross_entropy(numpy_mat, idx);
+
+    // print softmax:
+
+
+
+    std::cout << err_one << std::endl;
+
+    auto err_one_graph = G.cross_entropy(softmax_graph, idx);
+    err_one_graph->print();
 
     auto A = std::make_shared<mat>(3, 5);
     A->w = (A->w.array() + 1.2).matrix();

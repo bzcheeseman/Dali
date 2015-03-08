@@ -125,7 +125,7 @@ class LstmBabiModel {
     // MODEL PARAMS
     const vector<int>   TEXT_REPR_STACKS           =      {30, 30};
     const int           TEXT_REPR_EMBEDDINGS       =      30;
-    const T             TEXT_REPR_DROPOUT          =      0.3;
+    const T             TEXT_REPR_DROPOUT          =      0.2;
 
     StackedShortcutLSTM<T> fact_model;
     shared_mat fact_embeddings;
@@ -157,7 +157,7 @@ class LstmBabiModel {
     DelayedRNN<T> fact_word_gate;
 
 
-    const vector<int>   HL_STACKS                  =      {15, 15};
+    const vector<int>   HL_STACKS                  =      {20,20,20,20};
     const int           HL_INPUT_SIZE              =      utils::vsum(TEXT_REPR_STACKS);
     const T             HL_DROPOUT                 =      0.5;
 
@@ -168,10 +168,6 @@ class LstmBabiModel {
     const int           DECODER_INPUT              =      utils::vsum(HL_STACKS);
     const int           DECODER_OUTPUT; // gets initialized to vocabulary size in constructor
     Layer<T>            decoder;
-
-
-    const T FACT_SELECTION_LAMBDA = 0.1;
-    const T FACT_WORD_SELECTION_LAMBDA = 0.001;
 
     // TODO:
     // -> sparsity on words gates
@@ -385,10 +381,10 @@ class LstmBabiModel {
                                       log_probs);
         }
 
-        T error(graph_t& G,
-                     const vector<Fact*>& facts,
-                     QA* qa,
-                     bool use_dropout) {
+        vector<shared_mat> errors(graph_t& G,
+                                  const vector<Fact*>& facts,
+                                  QA* qa,
+                                  bool use_dropout) {
             vector<vector<string>> facts_as_strings;
 
             for (auto fact_ptr: facts)
@@ -397,7 +393,8 @@ class LstmBabiModel {
             auto activation = activate_story(G, facts_as_strings, qa->question, use_dropout);
 
             uint answer_idx = vocab->word2index.at(qa->answer[0]);
-            auto prediction_error = cross_entropy(activation.log_probs, answer_idx);
+            auto softmax = G.softmax(activation.log_probs);
+            auto prediction_error = G.cross_entropy(softmax, answer_idx);
 
             auto fact_selection_error = make_shared<Mat<T>>(1,1);
 
@@ -407,32 +404,31 @@ class LstmBabiModel {
                                                             in_vector(qa->supporting_facts, i) ? 1.0 : 0.0);
                 fact_selection_error = G.add(fact_selection_error, partial_error);
             }
-            fact_selection_error = G.eltmul(fact_selection_error, FACT_SELECTION_LAMBDA/facts.size());
-            fact_selection_error->grad();
-
             int num_words_in_facts = 0;
             for (Fact* fact: facts) {
                 num_words_in_facts += fact->fact.size();
             }
 
-            auto word_sparsity = G.eltmul(fact_selection_error, FACT_WORD_SELECTION_LAMBDA/(double)num_words_in_facts);
-            word_sparsity->grad();
-
-
-
-            return prediction_error;
+            return { prediction_error,
+                     fact_selection_error,
+                     activation.word_fact_gate_memory_sum };
         }
 };
 
 template<typename T>
 class LstmBabiModelRunner: public babi::Model {
-
+    typedef shared_ptr<Mat<T>> shared_mat;
     // TRAINING_PROCEDURE_PARAMS
 
     const float TRAINING_FRAC = 0.8;
     const float MINIMUM_IMPROVEMENT = 0.0001; // good one: 0.003
     const double VALIDATION_FORGETTING = 0.06;
     const int PATIENCE = 5;
+
+    const T FACT_SELECTION_LAMBDA_MAX = 0.1;
+    const T FACT_WORD_SELECTION_LAMBDA_MAX = 0.05;
+
+    const int BAKING_EPOCHS = 1000;
 
     vector<string> data_to_vocab(const vector<babi::Story>& data) {
         set<string> vocab_set;
@@ -456,10 +452,21 @@ class LstmBabiModelRunner: public babi::Model {
 
     vector<LstmBabiModel<T>> thread_models;
 
-    public:
-        T compute_error(const vector<babi::Story>& dataset, Solver::AdaDelta<T>& solver, bool training) {
-            T total_error = 0.0;
+    int epoch;
 
+        shared_mat bake_error(Graph<T>& G, vector<shared_mat> errors) {
+            T baking_factor = std::min((T)epoch*epoch/(T)(BAKING_EPOCHS*BAKING_EPOCHS), 1.0);
+
+            return G.add({errors[0],
+                         G.eltmul(errors[1], FACT_SELECTION_LAMBDA_MAX * baking_factor),
+                         G.eltmul(errors[2], FACT_WORD_SELECTION_LAMBDA_MAX * baking_factor)
+                       });
+        }
+
+    public:
+        vector<double> compute_errors(const vector<babi::Story>& dataset,
+                                      Solver::AdaDelta<T>& solver,
+                                      bool training) {
             const int NUM_THREADS = FLAGS_j;
             ThreadPool pool(NUM_THREADS);
 
@@ -470,7 +477,11 @@ class LstmBabiModelRunner: public babi::Model {
             }
             std::atomic<int> num_questions(0);
 
-            vector<double> thread_error(NUM_THREADS, 0.0);
+            vector<vector<double>> thread_error;
+            for (int thread=0; thread<NUM_THREADS; ++thread) {
+                thread_error.emplace_back(vector<double>(3, 0.0));
+            }
+
 
             const int BATCH_SIZE = std::max( (int)dataset.size() / (2*NUM_THREADS), 2);
 
@@ -499,8 +510,16 @@ class LstmBabiModelRunner: public babi::Model {
                                 // When we are training we want to do backprop
                                 Graph<T> G(training);
                                 // When we are training we want to use dropout
-                                thread_error[ThreadPool::get_thread_number()] +=
-                                        thread_model.error(G, facts_so_far, qa, training);
+                                assert(ThreadPool::get_thread_number() < thread_error.size());
+                                auto errors = thread_model.errors(G,
+                                                                  facts_so_far,
+                                                                  qa,
+                                                                  training);
+                                for (int i=0; i<3; ++i)
+                                    thread_error[ThreadPool::get_thread_number()][i] += errors[i]->w(0,0);
+                                auto total_error = bake_error(G, errors);
+                                total_error->grad();
+
                                 num_questions += 1;
                                 if (training)
                                     G.backward();
@@ -516,10 +535,13 @@ class LstmBabiModelRunner: public babi::Model {
 
             pool.wait_until_idle();
 
-            for (int i=0; i<NUM_THREADS; ++i)
-                total_error += thread_error[i];
-
-            return total_error/num_questions;
+            auto total_error = thread_error[0];
+            for (int err=0; err<3; ++err) {
+                for (int i=0; i<NUM_THREADS; ++i)
+                    total_error[err] += thread_error[i][err];
+                total_error[err] /= num_questions;
+            }
+            return total_error;
         }
 
 
@@ -537,22 +559,31 @@ class LstmBabiModelRunner: public babi::Model {
             double validation_error = 0.0;
             double last_validation_error = std::numeric_limits<double>::infinity();
 
-            int epoch = 0;
+            epoch = 0;
             int epochs_validation_increasing = 0;
 
             auto params = model->parameters();
             Solver::AdaDelta<T> solver(params, 0.95, 1e-9, 5.0);
 
             while (epochs_validation_increasing <= PATIENCE) {
-                double training_error = compute_error(train, solver, true);
-                double validation_error = compute_error(validation, solver, false);
-                std::stringstream ss;
-                ss << "Epoch " << ++epoch
-                   << " validation: " << validation_error
-                   << " training: " << training_error
-                   << " last validation: " << last_validation_error;
-                ThreadPool::print_safely(ss.str());
+                auto training_errors = compute_errors(train, solver, true);
+                auto validation_errors = compute_errors(validation, solver, false);
 
+            T baking_factor = std::min((T)epoch*epoch/(T)(BAKING_EPOCHS*BAKING_EPOCHS), 1.0);
+            std::cout << "Epoch " << ++epoch << std::endl;
+
+            std::cout << "BAKING CONSTANTS (baking factor: " << baking_factor << ")" << std::endl
+                      << "    fact selection: " << FACT_SELECTION_LAMBDA_MAX * baking_factor << std::endl
+                      << "    fact word selection " << FACT_WORD_SELECTION_LAMBDA_MAX * baking_factor << std::endl
+                      << "Errors(prob_answer, fact_select, words_sparsity): " << std::endl
+                      << "VALIDATION: " << validation_errors[0] << " "
+                                        << validation_errors[1] << " "
+                                        << validation_errors[2] << std::endl
+                      << "TRAINING: " << training_errors[0] << " "
+                                      << training_errors[1] << " "
+                                      << training_errors[2] << std::endl;
+                // TODO(szymon): line below is incorrect;
+                auto validation_error = validation_errors[0];
                 if (validation_error < last_validation_error - MINIMUM_IMPROVEMENT) {
                     epochs_validation_increasing = 0;
                 } else {

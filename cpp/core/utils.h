@@ -38,11 +38,13 @@
 
 #ifdef NDEBUG
     #define DEBUG_ASSERT_POSITIVE(X) ;
+    #define DEBUG_ASSERT_BOUNDS(X,a,b) ;
     #define DEBUG_ASSERT_NONZERO(X) ;
     #define DEBUG_ASSERT_NOT_NAN(X) ;
     #define DEBUG_ASSERT_MAT_NOT_NAN(X) ;
 #else
     #define DEBUG_ASSERT_POSITIVE(X) assert(((X).array() >= 0).all())
+    #define DEBUG_ASSERT_BOUNDS(X,a,b) assert(((X).array() >= (a)).all()  &&  ((X).array() <=(b)).all())
     #define DEBUG_ASSERT_NONZERO(X) assert(((X).array().abs() >= 1e-10).all())
     #define DEBUG_ASSERT_NOT_NAN(X) assert(!utils::contains_NaN(((X).array().square().sum())))
     #define DEBUG_ASSERT_MAT_NOT_NAN(X) if ( utils::contains_NaN((X)->w.array().square().sum())) \

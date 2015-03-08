@@ -1,5 +1,8 @@
 #include "Graph.h"
 
+#define EPS 1e-9
+
+
 using std::stringstream;
 using std::vector;
 using utils::Timer;
@@ -235,11 +238,14 @@ typename Graph<T>::shared_mat Graph<T>::add(std::initializer_list<shared_mat> ma
         (*matrices.begin())->n,
         (*matrices.begin())->d,
         false);
-    for (auto& matrix : matrices) out->w += matrix->w;
+    auto matrices_vector = vector<shared_mat>(matrices);
+    for (auto& matrix : matrices_vector)
+        out->w += matrix->w;
     if (needs_backprop)
-        backprop.emplace_back([matrices, out]() {
-            for (auto& matrix : matrices)
+        backprop.emplace_back([matrices_vector, out]() {
+            for (auto& matrix : matrices_vector) {
                 matrix->dw.noalias() += out->dw;
+            }
         });
     return out;
 }
@@ -271,6 +277,31 @@ typename Graph<T>::shared_mat Graph<T>::sigmoid(shared_mat matrix) {
         });
     return out;
 }
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::softmax(shared_mat matrix, T temperature) {
+    auto out = std::make_shared<Mat<T>>(
+            matrix->n,
+            matrix->d,
+            false);
+
+    DEBUG_ASSERT_NOT_NAN(matrix->w);
+
+    auto layer_max = matrix->w.colwise().maxCoeff().array().matrix();
+    auto exped_distributions = (matrix->w.rowwise() - layer_max.row(0)).array().exp().matrix();
+
+    auto total_distribution = exped_distributions.colwise().sum().array().matrix();
+    out->w = (exped_distributions.array().rowwise() / total_distribution.row(0).array());
+
+    DEBUG_ASSERT_POSITIVE(out->w);
+
+    if (needs_backprop)
+        backprop.emplace_back([matrix, temperature, out](){
+            matrix->dw.noalias() += (((out->w).array() - out->w.array().square())/temperature * out->dw.array()).matrix();
+        });
+    return out;
+}
+
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::steep_sigmoid(shared_mat matrix, T aggressiveness) {
@@ -312,24 +343,48 @@ typename Graph<T>::shared_mat Graph<T>::mean(shared_mat matrix) {
 
 
 template<typename T>
-typename Graph<T>::shared_mat Graph<T>::binary_cross_entropy(shared_mat matrix, T target) {
-    assert(0 <= target && target <= 1);
-
+typename Graph<T>::shared_mat Graph<T>::binary_cross_entropy(shared_mat matrix, T t) {
+    assert(0 <= t && t <= 1);
+    DEBUG_ASSERT_BOUNDS(matrix->w,0.0,1.0 + EPS);
     auto out =  std::make_shared<mat>(
         matrix->n,
         matrix->d,
         true);
 
-    out->w = (target * matrix->w.array().log() + (1.0-target) * (1.0 - matrix->w.array()).log()).matrix();
+    auto x = matrix->w.array();
+
+    out->w = (-(t * x.log() + (1.0-t) * (1.0 - x).log())).matrix();
+
+    DEBUG_ASSERT_NOT_NAN(out->w);
 
     if (needs_backprop)
-        backprop.emplace_back([matrix, target, out](){
-            matrix->dw.array() += (matrix->w.array() - target) * out->dw.array();
+        backprop.emplace_back([matrix, t, out](){
+            auto x = matrix->w.array();
+            matrix->dw.array() += (t-x) / (x*(x- 1.0) )* out->dw.array();
+            DEBUG_ASSERT_NOT_NAN(matrix->dw);
         });
 
     return out;
 }
 
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::cross_entropy(shared_mat matrix, uint answer_idx) {
+    DEBUG_ASSERT_BOUNDS(matrix->w,0.0,1.0 + EPS);
+    auto out =  std::make_shared<mat>(1, 1, true);
+
+    auto x = matrix->w.array();
+
+    out->w(0,0) = - std::log(x(answer_idx, 0) + EPS);
+
+    DEBUG_ASSERT_NOT_NAN(out->w);
+
+    if (needs_backprop)
+        backprop.emplace_back([matrix, answer_idx, out](){
+            auto x = matrix->w.array();
+            matrix->dw(answer_idx, 0) += -1.0/(x(answer_idx, 0) + EPS) * out->dw(0,0);
+        });
+    return out;
+}
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::log(shared_mat matrix) {
@@ -380,37 +435,8 @@ typename Graph<T>::shared_mat Graph<T>::hstack(shared_mat matrix1, shared_mat ma
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::hstack(std::initializer_list<shared_mat> matrices) {
-    int n = -1;
-    int d_total = 0;
-    for (auto& mat : matrices) {
-        if (n == -1) {
-            n = mat->n;
-        } else {
-            if (mat->n != n) {
-                throw std::invalid_argument("Matrices cannot be joined -- they do not have the same number of rows.");
-            }
-        }
-        d_total+= mat->d;
-    }
-    auto out = std::make_shared<mat>(
-        n,
-        d_total,
-        true
-    );
-    int offset = 0;
-    for (auto& mat : matrices) {
-        out->w.block(0, offset, mat->n, mat->d) = mat->w;
-        offset += mat->d;
-    }
-    if (needs_backprop)
-        backprop.emplace_back([matrices, out]() {
-            int offset = 0;
-            for (auto & mat : matrices) {
-                mat->dw.noalias() += out->dw.block(0, offset, mat->n, mat->d);
-                offset += mat->d;
-            }
-        });
-    return out;
+    vector<shared_mat> matrices_vector(matrices);
+    return hstack(matrices_vector);
 }
 
 template<typename T>
@@ -469,37 +495,8 @@ typename Graph<T>::shared_mat Graph<T>::vstack(shared_mat matrix1, shared_mat ma
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::vstack(std::initializer_list<shared_mat> matrices) {
-    int d = -1;
-    int n_total = 0;
-    for (auto& mat : matrices) {
-        if (d == -1) {
-            d = mat->d;
-        } else {
-            if (mat->d != d) {
-                throw std::invalid_argument("Matrices cannot be horizontally stacked -- they do not have the same number of cols.");
-            }
-        }
-        n_total+= mat->n;
-    }
-    auto out = std::make_shared<mat>(
-        n_total,
-        d,
-        true
-    );
-    int offset = 0;
-    for (auto& mat : matrices) {
-        out->w.block(offset, 0, mat->n, mat->d) = mat->w;
-        offset += mat->n;
-    }
-    if (needs_backprop)
-        backprop.emplace_back([matrices, out]() {
-            int offset = 0;
-            for (auto & mat : matrices) {
-                mat->dw.noalias() += out->dw.block(offset,0, mat->n, mat->d);
-                offset += mat->n;
-            }
-        });
-    return out;
+    vector<shared_mat> matrices_vector(matrices);
+    return vstack(matrices_vector);
 }
 
 template<typename T>
@@ -665,28 +662,8 @@ typename Graph<T>::shared_mat Graph<T>::mul_add_broadcast_mul_with_bias(
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::mul_add_mul_with_bias(std::initializer_list<shared_mat> matrices) {
-    auto out = std::make_shared<mat>(
-        (*matrices.begin())->n,
-        (*(matrices.begin() + 1))->d,
-        false);
-    auto matrices_ptr = matrices.begin();
-    while (matrices_ptr != (matrices.end() - 1)) {
-        out->w += (*matrices_ptr)->w * (*(matrices_ptr + 1))->w;
-        matrices_ptr+=2;
-    }
-    out->w.colwise() += (*(matrices.begin() + matrices.size() - 1))->w.col(0);
-    if (needs_backprop)
-        backprop.emplace_back([matrices, out](){
-            auto matrices_ptr = matrices.begin();
-            while (matrices_ptr != (matrices.end() - 1)) {
-                (*matrices_ptr)->dw.noalias()     += (out->dw) * (*(matrices_ptr+1))->w.transpose();
-                (*(matrices_ptr+1))->dw.noalias() += (*matrices_ptr)->w.transpose() * (out->dw);
-                matrices_ptr+=2;
-            }
-            auto bias = *(matrices.begin() + matrices.size() - 1);
-            bias->dw.noalias() += out->dw.rowwise().sum();
-        });
-    return out;
+    vector<shared_mat> matrices_vector(matrices);
+    return mul_add_mul_with_bias(matrices_vector);
 }
 
 template<typename T>

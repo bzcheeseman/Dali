@@ -367,10 +367,10 @@ Z masked_sum(std::shared_ptr<Mat<Z>> values,
     shared_eigen_index_vector loss_start,
     shared_eigen_index_vector codelens,
     const Z& gparent) {
-
     Z cost = 0.0;
+    assert(values->dims.size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->d; i++) {
+    for (size_t i = 0; i < values->dims[1]; i++) {
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + (*codelens)(i) )) {
             cost += values->w.col(i).sum() * gparent;
             values->dw.col(i).array() += gparent;
@@ -386,8 +386,9 @@ Z masked_sum(std::shared_ptr<Mat<Z>> values,
     int codelens,
     const Z& gparent) {
     Z cost = 0.0;
+    assert(values->dims.size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->d; i++) {
+    for (size_t i = 0; i < values->dims[1]; i++) {
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens )) {
             cost += values->w.col(i).sum() * gparent;
             values->dw.col(i).array() += gparent;
@@ -402,8 +403,9 @@ Z masked_sum(std::shared_ptr<Mat<Z>> values,
     uint codelens,
     const Z& gparent) {
     Z cost = 0.0;
+    assert(values->dims.size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->d; i++) {
+    for (size_t i = 0; i < values->dims[1]; i++) {
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens )) {
             cost += values->w.col(i).sum() * gparent;
             values->dw.col(i).array() += gparent;
@@ -419,8 +421,9 @@ Z masked_sum(std::shared_ptr<Mat<Z>> values,
     shared_eigen_index_vector codelens,
     const Z& gparent) {
     Z cost = 0.0;
+    assert(values->dims.size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->d; i++) {
+    for (size_t i = 0; i < values->dims[1]; i++) {
         if (T >= loss_start && (T < loss_start + (*codelens)(i) )) {
             cost += values->w.col(i).sum() * gparent;
             values->dw.col(i).array() += gparent;
@@ -435,8 +438,9 @@ Z masked_sum(std::shared_ptr<Mat<Z>> values,
     shared_eigen_index_vector codelens,
     const Z& gparent) {
     Z cost = 0.0;
+    assert(values->dims.size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->d; i++) {
+    for (size_t i = 0; i < values->dims[1]; i++) {
         if (T >= loss_start && (T < loss_start + (*codelens)(i) )) {
             cost += values->w.col(i).sum() * gparent;
             values->dw.col(i).array() += gparent;
@@ -452,8 +456,9 @@ Z masked_sum(std::shared_ptr<Mat<Z>> values,
     uint codelens,
     const Z& gparent) {
     Z cost = 0.0;
+    assert(values->dims.size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->d; i++) {
+    for (size_t i = 0; i < values->dims[1]; i++) {
         if (T >= loss_start && (T < loss_start + codelens )) {
             cost += values->w.col(i).sum() * gparent;
             values->dw.col(i).array() += gparent;
@@ -468,8 +473,9 @@ Z masked_sum(std::shared_ptr<Mat<Z>> values,
     int codelens,
     const Z& gparent) {
     Z cost = 0.0;
+    assert(values->dims.size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->d; i++) {
+    for (size_t i = 0; i < values->dims[1]; i++) {
         if (T >= loss_start && (T < loss_start + codelens )) {
             cost += values->w.col(i).sum() * gparent;
             values->dw.col(i).array() += gparent;
@@ -484,8 +490,9 @@ Z masked_sum(std::shared_ptr<Mat<Z>> values,
     int codelens,
     const Z& gparent) {
     Z cost = 0.0;
+    assert(values->dims.size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->d; i++) {
+    for (size_t i = 0; i < values->dims[1]; i++) {
         if (T >= loss_start && (T < loss_start + codelens )) {
             cost += values->w.col(i).sum() * gparent;
             values->dw.col(i).array() += gparent;
@@ -500,8 +507,9 @@ Z masked_sum(std::shared_ptr<Mat<Z>> values,
     uint codelens,
     const Z& gparent) {
     Z cost = 0.0;
+    assert(values->dims.size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->d; i++) {
+    for (size_t i = 0; i < values->dims[1]; i++) {
         if (T >= loss_start && (T < loss_start + codelens )) {
             cost += values->w.col(i).sum() * gparent;
             values->dw.col(i).array() += gparent;
@@ -518,10 +526,10 @@ Z masked_sum_no_grad(std::shared_ptr<Mat<Z>> values,
     shared_eigen_index_vector loss_start,
     shared_eigen_index_vector codelens,
     const Z& gparent) {
-
     Z cost = 0.0;
+    assert(values->dims.size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->d; i++)
+    for (size_t i = 0; i < values->dims[1]; i++)
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + (*codelens)(i) ))
             cost += values->w.col(i).sum() * gparent;
     return cost;
@@ -534,8 +542,9 @@ Z masked_sum_no_grad(std::shared_ptr<Mat<Z>> values,
     int codelens,
     const Z& gparent) {
     Z cost = 0.0;
+    assert(values->dims.size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->d; i++)
+    for (size_t i = 0; i < values->dims[1]; i++)
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens ))
             cost += values->w.col(i).sum() * gparent;
     return cost;
@@ -547,8 +556,9 @@ Z masked_sum_no_grad(std::shared_ptr<Mat<Z>> values,
     uint codelens,
     const Z& gparent) {
     Z cost = 0.0;
+    assert(values->dims.size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->d; i++)
+    for (size_t i = 0; i < values->dims[1]; i++)
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens ))
             cost += values->w.col(i).sum() * gparent;
     return cost;
@@ -561,8 +571,9 @@ Z masked_sum_no_grad(std::shared_ptr<Mat<Z>> values,
     shared_eigen_index_vector codelens,
     const Z& gparent) {
     Z cost = 0.0;
+    assert(values->dims.size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->d; i++)
+    for (size_t i = 0; i < values->dims[1]; i++)
         if (T >= loss_start && (T < loss_start + (*codelens)(i) ))
             cost += values->w.col(i).sum() * gparent;
     return cost;
@@ -574,8 +585,9 @@ Z masked_sum_no_grad(std::shared_ptr<Mat<Z>> values,
     shared_eigen_index_vector codelens,
     const Z& gparent) {
     Z cost = 0.0;
+    assert(values->dims.size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->d; i++)
+    for (size_t i = 0; i < values->dims[1]; i++)
         if (T >= loss_start && (T < loss_start + (*codelens)(i) ))
             cost += values->w.col(i).sum() * gparent;
     return cost;
@@ -588,8 +600,9 @@ Z masked_sum_no_grad(std::shared_ptr<Mat<Z>> values,
     uint codelens,
     const Z& gparent) {
     Z cost = 0.0;
+    assert(values->dims.size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->d; i++)
+    for (size_t i = 0; i < values->dims[1]; i++)
         if (T >= loss_start && (T < loss_start + codelens ))
             cost += values->w.col(i).sum() * gparent;
     return cost;
@@ -601,8 +614,9 @@ Z masked_sum_no_grad(std::shared_ptr<Mat<Z>> values,
     int codelens,
     const Z& gparent) {
     Z cost = 0.0;
+    assert(values->dims.size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->d; i++)
+    for (size_t i = 0; i < values->dims[1]; i++)
         if (T >= loss_start && (T < loss_start + codelens ))
             cost += values->w.col(i).sum() * gparent;
     return cost;
@@ -614,8 +628,9 @@ Z masked_sum_no_grad(std::shared_ptr<Mat<Z>> values,
     int codelens,
     const Z& gparent) {
     Z cost = 0.0;
+    assert(values->dims.size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->d; i++)
+    for (size_t i = 0; i < values->dims[1]; i++)
         if (T >= loss_start && (T < loss_start + codelens ))
             cost += values->w.col(i).sum() * gparent;
     return cost;
@@ -627,8 +642,9 @@ Z masked_sum_no_grad(std::shared_ptr<Mat<Z>> values,
     uint codelens,
     const Z& gparent) {
     Z cost = 0.0;
+    assert(values->dims.size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->d; i++)
+    for (size_t i = 0; i < values->dims[1]; i++)
         if (T >= loss_start && (T < loss_start + codelens ))
             cost += values->w.col(i).sum() * gparent;
     return cost;

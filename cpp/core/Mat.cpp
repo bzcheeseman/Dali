@@ -11,45 +11,43 @@ template<typename T>
 std::atomic<int> Mat<T>::next_matrix(0);
 
 template<typename T>
-Mat<T>::Mat (int _n, int _d) : sparse_row_keys(nullptr), sparse(false), name(nullptr), w(NULL, _n, _d), dw(NULL, _n, _d),  n(_n), d(_d), random_id(next_matrix++) {
-    _w = eigen_mat::Zero(n,d);
-    _dw = eigen_mat::Zero(n,d);
-    new (&w) eigen_mat_view(_w.data(), n, d);
-    new (&dw) eigen_mat_view(_dw.data(), n, d);
-
+Mat<T>::Mat (dim_t _n, dim_t _d) : sparse_row_keys(nullptr), sparse(false), name(nullptr), w(NULL, _n, _d), dw(NULL, _n, _d),  dims({_n, _d}), random_id(next_matrix++) {
+    _w = eigen_mat::Zero(dims[0], dims[1]);
+    _dw = eigen_mat::Zero(dims[0], dims[1]);
+    new (&w) eigen_mat_view(_w.data(), dims[0], dims[1]);
+    new (&dw) eigen_mat_view(_dw.data(), dims[0], dims[1]);
 }
 template<typename T>
-Mat<T>::Mat (int _n, int _d, bool empty) : sparse_row_keys(nullptr), sparse(false), name(nullptr), w(NULL, _n, _d), dw(NULL, _n, _d), n(_n), d(_d), random_id(next_matrix++) {
-    _w  = empty ? eigen_mat(n,d) : eigen_mat::Zero(n,d);
-    _dw = eigen_mat::Zero(n,d);
-    new (&w) eigen_mat_view(_w.data(), n, d);
-    new (&dw) eigen_mat_view(_dw.data(), n, d);
+Mat<T>::Mat (dim_t _n, dim_t _d, bool empty) : sparse_row_keys(nullptr), sparse(false), name(nullptr), w(NULL, _n, _d), dw(NULL, _n, _d), dims({_n, _d}), random_id(next_matrix++) {
+    _w  = empty ? eigen_mat(dims[0], dims[1]) : eigen_mat::Zero(dims[0], dims[1]);
+    _dw = eigen_mat::Zero(dims[0], dims[1]);
+    new (&w) eigen_mat_view(_w.data(), dims[0], dims[1]);
+    new (&dw) eigen_mat_view(_dw.data(), dims[0], dims[1]);
 }
 
 template<typename T>
 Mat<T>::Mat (string fname) : sparse_row_keys(nullptr), sparse(false), w(NULL, 0, 0), dw(NULL, 0, 0), random_id(next_matrix++) {
     auto arr = cnpy::npy_load(fname);
-    n = arr.shape[0];
-    d = arr.shape.size() > 1 ? arr.shape[1] : 1;
-    _w  = eigen_mat(n,d);
-    _dw = eigen_mat::Zero(n,d);
+    dims = {arr.shape[0], arr.shape.size() > 1 ? arr.shape[1] : 1};
+    _w  = eigen_mat(dims[0], dims[1]);
+    _dw = eigen_mat::Zero(dims[0], dims[1]);
 
     if (arr.word_size == sizeof(double)) {
         double* loaded_data_double = reinterpret_cast<double*>(arr.data);
         if (arr.fortran_order) {
-            Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_double_ft(loaded_data_double, n, d);
+            Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_double_ft(loaded_data_double, dims[0], dims[1]);
             _w = wrapped_mat_double_ft.cast<T>();
         } else {
-            Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_double(loaded_data_double, n, d);
+            Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_double(loaded_data_double, dims[0], dims[1]);
             _w = wrapped_mat_double.cast<T>();
         }
     } else if (arr.word_size == sizeof(float)) {
         float* loaded_data_float = reinterpret_cast<float*>(arr.data);
         if (arr.fortran_order) {
-            Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_float_ft(loaded_data_float, n, d);
+            Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_float_ft(loaded_data_float, dims[0], dims[1]);
             _w = wrapped_mat_float_ft.cast<T>();
         } else {
-            Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_float(loaded_data_float, n, d);
+            Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_float(loaded_data_float, dims[0], dims[1]);
             _w = wrapped_mat_float.cast<T>();
         }
     } else {
@@ -59,52 +57,53 @@ Mat<T>::Mat (string fname) : sparse_row_keys(nullptr), sparse(false), w(NULL, 0,
         throw std::invalid_argument(error_msg.str());
     }
     arr.destruct();
-    new (&w) eigen_mat_view(_w.data(), n, d);
-    new (&dw) eigen_mat_view(_dw.data(), n, d);
+    new (&w) eigen_mat_view(_w.data(), dims[0], dims[1]);
+    new (&dw) eigen_mat_view(_dw.data(), dims[0], dims[1]);
 }
 
 template<typename T>
-Mat<T>::Mat (int _n, int _d, T std) : sparse_row_keys(nullptr), sparse(false), name(nullptr), w(NULL, _n, _d), dw(NULL, _n, _d), n(_n), d(_d), random_id(next_matrix++) {
+Mat<T>::Mat (dim_t _n, dim_t _d, T std) : sparse_row_keys(nullptr), sparse(false), name(nullptr), w(NULL, _n, _d), dw(NULL, _n, _d),
+dims({_n, _d}), random_id(next_matrix++) {
         std::default_random_engine generator;
         std::normal_distribution<T> distribution(0.0, std);
         std::random_device rd;
         generator.seed(rd());
         auto randn = [&] (int) {return distribution(generator);};
-        _w = eigen_mat::NullaryExpr(n,d, randn);
-        _dw = eigen_mat::Zero(n,d);
-        new (&w) eigen_mat_view(_w.data(), n, d);
-        new (&dw) eigen_mat_view(_dw.data(), n, d);
+        _w = eigen_mat::NullaryExpr(dims[0], dims[1], randn);
+        _dw = eigen_mat::Zero(dims[0], dims[1]);
+        new (&w) eigen_mat_view(_w.data(), dims[0], dims[1]);
+        new (&dw) eigen_mat_view(_dw.data(), dims[0], dims[1]);
 }
 
 template<typename T>
-Mat<T>::Mat (int _n, int _d, T lower, T upper) : sparse_row_keys(nullptr), sparse(false), name(nullptr), w(NULL, _n, _d), dw(NULL, _n, _d), n(_n), d(_d), random_id(next_matrix++) {
+Mat<T>::Mat (dim_t _n, dim_t _d, T lower, T upper) : sparse_row_keys(nullptr), sparse(false), name(nullptr), w(NULL, _n, _d), dw(NULL, _n, _d), dims({_n, _d}), random_id(next_matrix++) {
         std::default_random_engine generator;
         std::uniform_real_distribution<T> distribution(lower, upper);
         std::random_device rd;
         generator.seed(rd());
         auto randn = [&] (int) {return distribution(generator);};
-        _w = eigen_mat::NullaryExpr(n,d, randn);
-        _dw = eigen_mat::Zero(n,d);
-        //w = eigen_mat_view(_w.data(), n, d);
-        //dw = eigen_mat_view(_dw.data(), n, d);
-        new (&w) eigen_mat_view(_w.data(), n, d);
-        new (&dw) eigen_mat_view(_dw.data(), n, d);
+        _w = eigen_mat::NullaryExpr(dims[0], dims[1], randn);
+        _dw = eigen_mat::Zero(dims[0], dims[1]);
+        //w = eigen_mat_view(_w.data(), dims[0], dims[1]);
+        //dw = eigen_mat_view(_dw.data(), dims[0], dims[1]);
+        new (&w) eigen_mat_view(_w.data(), dims[0], dims[1]);
+        new (&dw) eigen_mat_view(_dw.data(), dims[0], dims[1]);
 }
 
 template<typename T>
-Mat<T>::Mat (const Mat<T>& m, bool copy_w, bool copy_dw) : sparse_row_keys(nullptr), sparse(m.sparse), name(m.name), w(NULL, m.n, m.d), dw(NULL, m.n, m.d), n(m.n), d(m.d), random_id(copy_w ? next_matrix++ : m.random_id) {
+Mat<T>::Mat (const Mat<T>& m, bool copy_w, bool copy_dw) : sparse_row_keys(nullptr), sparse(m.sparse), name(m.name), w(NULL, m.dims[0], m.dims[1]), dw(NULL, m.dims[0], m.dims[1]), dims(m.dims), random_id(copy_w ? next_matrix++ : m.random_id) {
     if (copy_w) {
         _w = m.w;
-        new (&w) eigen_mat_view(_w.data(), n, d);
+        new (&w) eigen_mat_view(_w.data(), dims[0], dims[1]);
     } else {
-        new (&w) eigen_mat_view(m.w.data(), n, d);
+        new (&w) eigen_mat_view(m.w.data(), dims[0], dims[1]);
     }
 
     if (copy_dw) {
         _dw = m.dw;
-        new (&dw) eigen_mat_view(_dw.data(), n, d);
+        new (&dw) eigen_mat_view(_dw.data(), dims[0], dims[1]);
     } else {
-        new (&dw) eigen_mat_view(m.dw.data(), n, d);
+        new (&dw) eigen_mat_view(m.dw.data(), dims[0], dims[1]);
     }
 }
 
@@ -128,23 +127,24 @@ void Mat<T>::set_name(const char * _name) {
 
 template<typename T>
 void Mat<T>::print() const {
-    for (int i = 0; i < n ; ++i) {
+
+    for (int i = 0; i < dims[0] ; ++i) {
             std::cout << (i == 0 ? "[" : " ");
-            for (int j = 0; j < d; ++j) {
+            for (int j = 0; j < dims[1]; ++j) {
                     std::cout << std::fixed
                               << std::setw( 7 ) // keep 7 digits
                               << std::setprecision( 3 ) // use 3 decimals
                               << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
                               << this->w(i,j) << " ";
             }
-            std::cout << (i == n-1 ? "]" : "\n");
+            std::cout << (i == dims[0]-1 ? "]" : "\n");
     }
     std::cout << std::endl;
 }
 
 template<typename T>
 void Mat<T>::grad() {
-    if (n != 1 || d != 1) {
+    if (dims[0] != 1 || dims[1] != 1) {
         std::cout << *this << std::endl;
         throw std::invalid_argument("Grad only works on a \"scalar\" matrix, a 1x1 matrix. Call G.sum or G.mean before using grad.");
     }
@@ -153,39 +153,44 @@ void Mat<T>::grad() {
 
 template<typename T>
 void Mat<T>::npy_save (string fname, string mode) {
-    const unsigned int shape[] = {(unsigned int) n,(unsigned int) d};
-    cnpy::npy_save(fname, w.data(), shape, 2, mode);
+    cnpy::npy_save(fname, w.data(), dims.data(), dims.size(), mode);
+}
+
+template<typename T>
+unsigned int Mat<T>::number_of_elements() const {
+    unsigned int dim = 1;
+    for (auto & n : dims)
+        dim *= n;
+    return dim;
 }
 
 template<typename T>
 void Mat<T>::npy_save (FILE * fp) {
-    const unsigned int shape[] = {(unsigned int) n,(unsigned int) d};
-    std::vector<char> header = cnpy::create_npy_header(w.data(),shape,2);
+    std::vector<char> header = cnpy::create_npy_header(w.data(),dims.data(),dims.size());
     fwrite(&header[0],sizeof(char),header.size(),fp);
-    fwrite(w.data(),sizeof(T),n*d,fp);
+    fwrite(w.data(),sizeof(T), number_of_elements(), fp);
 }
 
 template<typename T>
 void Mat<T>::npy_load(cnpy::NpyArray& arr) {
-    n = arr.shape[0];
-    d = arr.shape.size() > 1 ? arr.shape[1] : 1;
+    dims = {arr.shape[0], arr.shape.size() > 1 ? arr.shape[1] : 1};
 
     if (arr.word_size == sizeof(double)) {
         double* loaded_data_double = reinterpret_cast<double*>(arr.data);
         if (arr.fortran_order) {
-            Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_double_ft(loaded_data_double, n, d);
+            Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_double_ft(loaded_data_double, dims[0], dims[1]);
             w = wrapped_mat_double_ft.cast<T>();
         } else {
-            Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_double(loaded_data_double, n, d);
+            Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_double(loaded_data_double, dims[0], dims[1]);
             w = wrapped_mat_double.cast<T>();
         }
     } else if (arr.word_size == sizeof(float)) {
         float* loaded_data_float = reinterpret_cast<float*>(arr.data);
         if (arr.fortran_order) {
-            Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_float_ft(loaded_data_float, n, d);
+            Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_float_ft(loaded_data_float, dims[0], dims[1]);
             w = wrapped_mat_float_ft.cast<T>();
         } else {
-            Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_float(loaded_data_float, n, d);
+            Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_float(loaded_data_float, dims[0], dims[1]);
             w = wrapped_mat_float.cast<T>();
         }
     } else {
@@ -211,31 +216,26 @@ template<typename T>
 Mat<T>::~Mat() {}
 
 template<typename T>
-Mat<T> Mat<T>::RandMat(int n, int d, T std) {
+Mat<T> Mat<T>::RandMat(dim_t n, dim_t d, T std) {
     // is in fact using C++ 11 's rvalue, move operator,
     // so no copy is made.
     return Mat(n, d, std);
 }
 
 template<typename T>
-Mat<T> Mat<T>::Empty(int n, int d) {
+Mat<T> Mat<T>::Empty(dim_t n, dim_t d) {
     // use an empty matrix and modify
     // it so as to not incur the filling
     // with zeros cost.
     return Mat(n, d, true);
 }
-template<typename T>
-std::pair<int,int> Mat<T>::shape() const {
-    return std::pair<int,int>(n,d);
-}
-
 
 template<typename T>
 std::ostream& operator<<(std::ostream& strm, const Mat<T>& a) {
     if (a.name != 0) {
-        return strm << "<#Mat name=\"" << *a.name<< "\" n=" << a.n << ", d=" << a.d << ">";
+        return strm << "<#Mat name=\"" << *a.name<< "\" n=" << a.dims[0] << ", d=" << a.dims[1] << ">";
     } else {
-        return strm << "<#Mat n=" << a.n << ", d=" << a.d << ">";
+        return strm << "<#Mat n=" << a.dims[0] << ", d=" << a.dims[1] << ">";
     }
 }
 
@@ -268,17 +268,17 @@ template bool operator==<double>(const Mat<double>&, const Mat<double>&);
 
 template<typename T>
 int argmax(std::shared_ptr<Mat<T>> A) {
-        int i = 0;
-        T current_max = -std::numeric_limits<T>::infinity();
-        auto ptr = A->w.data();
-        for (int j = 0; j < A->n * A->d; j++) {
-                if (*ptr > current_max) {
-                        current_max = *ptr;
-                        i = j;
-                }
-                ptr++;
+    int i = 0;
+    T current_max = -std::numeric_limits<T>::infinity();
+    auto ptr = A->w.data();
+    for (int j = 0; j < A->number_of_elements(); j++) {
+        if (*ptr > current_max) {
+            current_max = *ptr;
+            i = j;
         }
-        return i;
+        ptr++;
+    }
+    return i;
 }
 
 template<typename T>

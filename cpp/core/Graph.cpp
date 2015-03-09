@@ -23,7 +23,7 @@ template<typename T>
 typename Graph<T>::shared_mat Graph<T>::eltmul_broadcast(
     shared_mat matrix1,
     shared_mat matrix2) {
-    if (matrix1->n != matrix2->n || matrix2->d != 1) {
+    if (matrix1->dims[0] != matrix2->dims[0] || matrix2->dims[1] != 1) {
         stringstream error_msg;
         error_msg << "Matrices " << *matrix1 << " and "
                                  << *matrix2
@@ -32,8 +32,8 @@ typename Graph<T>::shared_mat Graph<T>::eltmul_broadcast(
         throw std::invalid_argument(error_msg.str());
     }
     auto out = std::make_shared<mat>(
-        matrix1->n,
-        matrix1->d,
+        matrix1->dims[0],
+        matrix1->dims[1],
         true);
     out->w = (matrix1->w.array().colwise() * matrix2->w.col(0).array()).matrix();
     if (needs_backprop)
@@ -48,17 +48,17 @@ template<typename T>
 typename Graph<T>::shared_mat Graph<T>::eltmul(
     shared_mat matrix1,
     shared_mat matrix2) {
-    if (matrix1->d != matrix2->d && (matrix1->d == 1 || matrix2->d == 1)) {
-        if (matrix1->d == 1) {
+    if (matrix1->dims[1] != matrix2->dims[1] && (matrix1->dims[1] == 1 || matrix2->dims[1] == 1)) {
+        if (matrix1->dims[1] == 1) {
             return eltmul_broadcast(matrix2, matrix1);
         }
         return eltmul_broadcast(matrix1, matrix2);
     }
-    if (matrix1->n != matrix2->n || matrix1->d != matrix2->d)
+    if (matrix1->dims[0] != matrix2->dims[0] || matrix1->dims[1] != matrix2->dims[1])
         throw std::invalid_argument("Matrices cannot be element-wise multiplied, they do not have the same dimensions.");
     auto out = std::make_shared<mat>(
-        matrix1->n,
-        matrix1->d,
+        matrix1->dims[0],
+        matrix1->dims[1],
         true);
     out->w = (matrix1->w.array() * matrix2->w.array()).matrix();
     if (needs_backprop)
@@ -76,8 +76,8 @@ typename Graph<T>::shared_mat Graph<T>::eltmul(
     T alpha) {
 
     auto out = std::make_shared<mat>(
-        matrix->n,
-        matrix->d,
+        matrix->dims[0],
+        matrix->dims[1],
         true);
     out->w = (matrix->w.array() * alpha).matrix();
     if (needs_backprop)
@@ -92,11 +92,11 @@ template<typename T>
 typename Graph<T>::shared_mat Graph<T>::eltmul_broadcast_rowwise(
     shared_mat matrix1,
     shared_mat row_vector) {
-    if (matrix1->d != row_vector->d || row_vector->n != 1)
+    if (matrix1->dims[1] != row_vector->dims[1] || row_vector->dims[0] != 1)
         throw std::invalid_argument("Matrices A and B^T cannot be element multiplied with broadcast, they do not have the same dimensions.");
     auto out = std::make_shared<mat>(
-            matrix1->n,
-            matrix1->d,
+            matrix1->dims[0],
+            matrix1->dims[1],
             true);
     out->w = (matrix1->w.array().rowwise() * row_vector->w.row(0).array()).matrix();
     if (needs_backprop)
@@ -112,11 +112,11 @@ typename Graph<T>::shared_mat Graph<T>::eltmul_rowwise(
     shared_mat matrix1,
     shared_mat matrix2) {
 
-    if (matrix1->n != matrix2->d || matrix1->d != matrix2->n)
+    if (matrix1->dims[0] != matrix2->dims[1] || matrix1->dims[1] != matrix2->dims[0])
         throw std::invalid_argument("Matrices A and B^T cannot be element-wise multiplied, they do not have the same dimensions.");
     auto out = std::make_shared<mat>(
-        matrix1->n,
-        matrix1->d,
+        matrix1->dims[0],
+        matrix1->dims[1],
         true);
     out->w = (matrix1->w.array() * matrix2->w.transpose().array()).matrix();
     if (needs_backprop)
@@ -131,17 +131,17 @@ template<typename T>
 typename Graph<T>::shared_mat Graph<T>::add(
         shared_mat matrix1,
         shared_mat matrix2) {
-    if (matrix1->d != matrix2->d && (matrix1->d == 1 || matrix2->d == 1)) {
-        if (matrix1->d == 1) {
+    if (matrix1->dims[1] != matrix2->dims[1] && (matrix1->dims[1] == 1 || matrix2->dims[1] == 1)) {
+        if (matrix1->dims[1] == 1) {
             return add_broadcast(matrix2, matrix1);
         }
         return add_broadcast(matrix1, matrix2);
     }
-    if (matrix1->n != matrix2->n || matrix1->d != matrix2->d)
+    if (matrix1->dims[0] != matrix2->dims[0] || matrix1->dims[1] != matrix2->dims[1])
         throw std::invalid_argument("Matrices cannot be added, they do not have the same dimensions.");
     auto out = std::make_shared<Mat<T>>(
-        matrix1->n,
-        matrix1->d,
+        matrix1->dims[0],
+        matrix1->dims[1],
         true);
     out->w = matrix1->w + matrix2->w;
     if (needs_backprop)
@@ -157,17 +157,17 @@ template<typename T>
 typename Graph<T>::shared_mat Graph<T>::sub(
         shared_mat matrix1,
         shared_mat matrix2) {
-    if (matrix1->d != matrix2->d && (matrix1->d == 1 || matrix2->d == 1)) {
-        if (matrix1->d == 1) {
+    if (matrix1->dims[1] != matrix2->dims[1] && (matrix1->dims[1] == 1 || matrix2->dims[1] == 1)) {
+        if (matrix1->dims[1] == 1) {
             return sub_broadcast_reversed(matrix2, matrix1);
         }
         return sub_broadcast(matrix1, matrix2);
     }
-    if (matrix1->n != matrix2->n || matrix1->d != matrix2->d)
+    if (matrix1->dims[0] != matrix2->dims[0] || matrix1->dims[1] != matrix2->dims[1])
         throw std::invalid_argument("Matrices cannot be added, they do not have the same dimensions.");
     auto out = std::make_shared<Mat<T>>(
-        matrix1->n,
-        matrix1->d,
+        matrix1->dims[0],
+        matrix1->dims[1],
         true);
     out->w = matrix1->w - matrix2->w;
     if (needs_backprop)
@@ -181,11 +181,11 @@ typename Graph<T>::shared_mat Graph<T>::sub(
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::add_broadcast(shared_mat matrix1, shared_mat matrix2) {
     // broadcast matrix 2:
-    if (matrix1->n != matrix2->n || matrix2->d != 1)
+    if (matrix1->dims[0] != matrix2->dims[0] || matrix2->dims[1] != 1)
             throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
     auto out = std::make_shared<Mat<T>>(
-            matrix1->n,
-            matrix1->d,
+            matrix1->dims[0],
+            matrix1->dims[1],
             true);
     out->w = (matrix1->w.colwise() + matrix2->w.col(0)).matrix();
     if (needs_backprop)
@@ -199,11 +199,11 @@ typename Graph<T>::shared_mat Graph<T>::add_broadcast(shared_mat matrix1, shared
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::sub_broadcast(shared_mat matrix1, shared_mat matrix2) {
     // broadcast matrix 2:
-    if (matrix1->n != matrix2->n || matrix2->d != 1)
+    if (matrix1->dims[0] != matrix2->dims[0] || matrix2->dims[1] != 1)
         throw std::invalid_argument("Matrices cannot be substracted with broadcast, they do not have the same dimensions.");
     auto out = std::make_shared<Mat<T>>(
-        matrix1->n,
-        matrix1->d,
+        matrix1->dims[0],
+        matrix1->dims[1],
         true);
     out->w = (matrix1->w.colwise() - matrix2->w.col(0)).matrix();
     if (needs_backprop)
@@ -217,11 +217,11 @@ typename Graph<T>::shared_mat Graph<T>::sub_broadcast(shared_mat matrix1, shared
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::sub_broadcast_reversed(shared_mat matrix1, shared_mat matrix2) {
     // broadcast matrix 2:
-    if (matrix1->n != matrix2->n || matrix2->d != 1)
+    if (matrix1->dims[0] != matrix2->dims[0] || matrix2->dims[1] != 1)
         throw std::invalid_argument("Matrices cannot be substracted with broadcast, they do not have the same dimensions.");
     auto out = std::make_shared<Mat<T>>(
-        matrix1->n,
-        matrix1->d,
+        matrix1->dims[0],
+        matrix1->dims[1],
         true);
     out->w = ((-matrix1->w).colwise() + matrix2->w.col(0)).matrix();
     if (needs_backprop)
@@ -235,8 +235,8 @@ typename Graph<T>::shared_mat Graph<T>::sub_broadcast_reversed(shared_mat matrix
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::add(std::initializer_list<shared_mat> matrices) {
     auto out = std::make_shared<Mat<T>>(
-        (*matrices.begin())->n,
-        (*matrices.begin())->d,
+        (*matrices.begin())->dims[0],
+        (*matrices.begin())->dims[1],
         false);
     auto matrices_vector = vector<shared_mat>(matrices);
     for (auto& matrix : matrices_vector)
@@ -253,8 +253,8 @@ typename Graph<T>::shared_mat Graph<T>::add(std::initializer_list<shared_mat> ma
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::square(shared_mat matrix) {
     auto out = std::make_shared<mat>(
-            matrix->n,
-            matrix->d,
+            matrix->dims[0],
+            matrix->dims[1],
             true);
     out->w = matrix->w.array().square();
     if (needs_backprop)
@@ -267,8 +267,8 @@ typename Graph<T>::shared_mat Graph<T>::square(shared_mat matrix) {
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::sigmoid(shared_mat matrix) {
     auto out = std::make_shared<mat>(
-            matrix->n,
-            matrix->d,
+            matrix->dims[0],
+            matrix->dims[1],
             true);
     out->w = matrix->w.unaryExpr(utils::sigmoid_operator<T>());
     if (needs_backprop)
@@ -281,8 +281,8 @@ typename Graph<T>::shared_mat Graph<T>::sigmoid(shared_mat matrix) {
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::softmax(shared_mat matrix, T temperature) {
     auto out = std::make_shared<Mat<T>>(
-            matrix->n,
-            matrix->d,
+            matrix->dims[0],
+            matrix->dims[1],
             false);
 
     DEBUG_ASSERT_NOT_NAN(matrix->w);
@@ -306,8 +306,8 @@ typename Graph<T>::shared_mat Graph<T>::softmax(shared_mat matrix, T temperature
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::steep_sigmoid(shared_mat matrix, T aggressiveness) {
     auto out = std::make_shared<mat>(
-        matrix->n,
-        matrix->d,
+        matrix->dims[0],
+        matrix->dims[1],
         true);
     out->w = matrix->w.unaryExpr(utils::steep_sigmoid_operator<T>(aggressiveness));
     if (needs_backprop)
@@ -335,7 +335,7 @@ typename Graph<T>::shared_mat Graph<T>::mean(shared_mat matrix) {
     out->w(0) = matrix->w.array().mean();
     if (needs_backprop)
         backprop.emplace_back([matrix, out](){
-            matrix->dw.array() += (1.0 / (matrix->n * matrix->d)) * out->dw(0);
+            matrix->dw.array() += (1.0 / (matrix->number_of_elements())) * out->dw(0);
         });
     return out;
 }
@@ -345,10 +345,11 @@ typename Graph<T>::shared_mat Graph<T>::mean(shared_mat matrix) {
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::sigmoid_binary_cross_entropy(shared_mat matrix, T t) {
     assert(0 <= t && t <= 1);
+    assert(matrix->dims.size() > 1);
     DEBUG_ASSERT_BOUNDS(matrix->w,0.0,1.0 + EPS);
     auto out =  std::make_shared<mat>(
-        matrix->n,
-        matrix->d,
+        matrix->dims[0],
+        matrix->dims[1],
         true);
 
     auto x = matrix->w.array().unaryExpr(utils::sigmoid_operator<T>());
@@ -366,9 +367,10 @@ typename Graph<T>::shared_mat Graph<T>::sigmoid_binary_cross_entropy(shared_mat 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::binary_cross_entropy(shared_mat matrix, T t) {
     assert(0 <= t && t <= 1);
+    assert(matrix->dims.size() > 1);
     auto out =  std::make_shared<mat>(
-        matrix->n,
-        matrix->d,
+        matrix->dims[0],
+        matrix->dims[1],
         true);
 
     auto x = matrix->w.array();
@@ -390,6 +392,7 @@ typename Graph<T>::shared_mat Graph<T>::binary_cross_entropy(shared_mat matrix, 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::cross_entropy(shared_mat matrix, uint answer_idx) {
     DEBUG_ASSERT_BOUNDS(matrix->w,0.0,1.0 + EPS);
+    assert(matrix->dims.size() > 1);
     auto out =  std::make_shared<mat>(1, 1, true);
 
     auto x = matrix->w.array();
@@ -425,9 +428,10 @@ typename Graph<T>::shared_mat Graph<T>::softmax_cross_entropy(shared_mat matrix,
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::log(shared_mat matrix) {
+    assert(matrix->dims.size() > 1);
     auto out = std::make_shared<mat>(
-        matrix->n,
-        matrix->d,
+        matrix->dims[0],
+        matrix->dims[1],
         true);
     out->w = matrix->w.array().log();
     if (needs_backprop)
@@ -439,9 +443,10 @@ typename Graph<T>::shared_mat Graph<T>::log(shared_mat matrix) {
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::exp(shared_mat matrix) {
+    assert(matrix->dims.size() > 1);
     auto out = std::make_shared<mat>(
-        matrix->n,
-        matrix->d,
+        matrix->dims[0],
+        matrix->dims[1],
         true);
     out->w = matrix->w.array().exp();
     if (needs_backprop)
@@ -453,19 +458,19 @@ typename Graph<T>::shared_mat Graph<T>::exp(shared_mat matrix) {
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::hstack(shared_mat matrix1, shared_mat matrix2) {
-    if (matrix1->n != matrix2->n)
+    if (matrix1->dims[0] != matrix2->dims[0])
         throw std::invalid_argument("Matrices cannot be joined -- they do not have the same number of rows.");
     auto out = std::make_shared<mat>(
-        matrix1->n,
-        matrix1->d + matrix2->d,
+        matrix1->dims[0],
+        matrix1->dims[1] + matrix2->dims[1],
         true
     );
-    out->w.block(0,0, matrix1->n, matrix1->d) = matrix1->w;
-    out->w.block(0,matrix1->d, matrix2->n, matrix2->d) = matrix2->w;
+    out->w.block(0,0, matrix1->dims[0], matrix1->dims[1]) = matrix1->w;
+    out->w.block(0,matrix1->dims[1], matrix2->dims[0], matrix2->dims[1]) = matrix2->w;
     if (needs_backprop)
         backprop.emplace_back([matrix1, matrix2, out]() {
-            matrix1->dw.noalias() += out->dw.block(0,0, matrix1->n, matrix1->d);
-            matrix2->dw.noalias() += out->dw.block(0,matrix1->d, matrix2->n, matrix2->d);
+            matrix1->dw.noalias() += out->dw.block(0,0, matrix1->dims[0], matrix1->dims[1]);
+            matrix2->dw.noalias() += out->dw.block(0,matrix1->dims[1], matrix2->dims[0], matrix2->dims[1]);
         });
     return out;
 }
@@ -482,13 +487,13 @@ typename Graph<T>::shared_mat Graph<T>::hstack(const std::vector<shared_mat>& ma
     int d_total = 0;
     for (auto& mat : matrices) {
         if (n == -1) {
-            n = mat->n;
+            n = mat->dims[0];
         } else {
-            if (mat->n != n) {
+            if (mat->dims[0] != n) {
                 throw std::invalid_argument("Matrices cannot be joined -- they do not have the same number of rows.");
             }
         }
-        d_total+= mat->d;
+        d_total+= mat->dims[1];
     }
     auto out = std::make_shared<mat>(
         n,
@@ -497,15 +502,15 @@ typename Graph<T>::shared_mat Graph<T>::hstack(const std::vector<shared_mat>& ma
     );
     int offset = 0;
     for (auto& mat : matrices) {
-        out->w.block(0, offset, mat->n, mat->d) = mat->w;
-        offset += mat->d;
+        out->w.block(0, offset, mat->dims[0], mat->dims[1]) = mat->w;
+        offset += mat->dims[1];
     }
     if (needs_backprop)
         backprop.emplace_back([matrices, out]() {
             int offset = 0;
             for (auto & mat : matrices) {
-                mat->dw.noalias() += out->dw.block(0, offset, mat->n, mat->d);
-                offset += mat->d;
+                mat->dw.noalias() += out->dw.block(0, offset, mat->dims[0], mat->dims[1]);
+                offset += mat->dims[1];
             }
         });
     return out;
@@ -513,19 +518,19 @@ typename Graph<T>::shared_mat Graph<T>::hstack(const std::vector<shared_mat>& ma
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::vstack(shared_mat matrix1, shared_mat matrix2) {
-    if (matrix1->d != matrix2->d)
+    if (matrix1->dims[1] != matrix2->dims[1])
         throw std::invalid_argument("Matrices cannot be horizontally stacked -- they do not have the same number of cols.");
     auto out = std::make_shared<mat>(
-        matrix1->n + matrix2->n,
-        matrix1->d,
+        matrix1->dims[0] + matrix2->dims[0],
+        matrix1->dims[1],
         true
     );
-    out->w.block(0,0, matrix1->n, matrix1->d) = matrix1->w;
-    out->w.block(matrix1->n,0, matrix2->n, matrix2->d) = matrix2->w;
+    out->w.block(0,0, matrix1->dims[0], matrix1->dims[1]) = matrix1->w;
+    out->w.block(matrix1->dims[0],0, matrix2->dims[0], matrix2->dims[1]) = matrix2->w;
     if (needs_backprop)
         backprop.emplace_back([matrix1, matrix2, out]() {
-            matrix1->dw.noalias() += out->dw.block(0,0, matrix1->n, matrix1->d);
-            matrix2->dw.noalias() += out->dw.block(matrix1->n,0, matrix2->n, matrix2->d);
+            matrix1->dw.noalias() += out->dw.block(0,0, matrix1->dims[0], matrix1->dims[1]);
+            matrix2->dw.noalias() += out->dw.block(matrix1->dims[0],0, matrix2->dims[0], matrix2->dims[1]);
         });
     return out;
 }
@@ -539,13 +544,14 @@ typename Graph<T>::shared_mat Graph<T>::vstack(std::initializer_list<shared_mat>
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::vstack(const std::vector<shared_mat>& matrices) {
     assert(matrices.size() > 0);
-    int d = matrices[0]->d;
+    assert(matrices[0]->dims.size() > 1);
+    int d = matrices[0]->dims[1];
     int n_total = 0;
     for (auto& mat : matrices) {
-        if (mat->d != d) {
+        if (mat->dims[1] != d) {
             throw std::invalid_argument("Matrices cannot be horizontally stacked -- they do not have the same number of cols.");
         }
-        n_total += mat->n;
+        n_total += mat->dims[0];
     }
     auto out = std::make_shared<mat>(
         n_total,
@@ -554,15 +560,15 @@ typename Graph<T>::shared_mat Graph<T>::vstack(const std::vector<shared_mat>& ma
     );
     int offset = 0;
     for (auto& mat : matrices) {
-        out->w.block(offset, 0, mat->n, mat->d) = mat->w;
-        offset += mat->n;
+        out->w.block(offset, 0, mat->dims[0], mat->dims[1]) = mat->w;
+        offset += mat->dims[0];
     }
     if (needs_backprop)
         backprop.emplace_back([matrices, out]() {
             int offset = 0;
             for (auto & mat : matrices) {
-                mat->dw.noalias() += out->dw.block(offset,0, mat->n, mat->d);
-                offset += mat->n;
+                mat->dw.noalias() += out->dw.block(offset,0, mat->dims[0], mat->dims[1]);
+                offset += mat->dims[0];
             }
         });
     return out;
@@ -570,9 +576,10 @@ typename Graph<T>::shared_mat Graph<T>::vstack(const std::vector<shared_mat>& ma
 
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::transpose(shared_mat matrix) {
+    assert(matrix->dims.size() > 1);
     auto out = std::make_shared<mat>(
-        matrix->d,
-        matrix->n,
+        matrix->dims[1],
+        matrix->dims[0],
         true);
     out->w = matrix->w.transpose();
     if (needs_backprop)
@@ -585,8 +592,8 @@ typename Graph<T>::shared_mat Graph<T>::transpose(shared_mat matrix) {
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::tanh(shared_mat matrix) {
     auto out = std::make_shared<mat>(
-        matrix->n,
-        matrix->d,
+        matrix->dims[0],
+        matrix->dims[1],
         true);
     out->w = matrix->w.unaryExpr(utils::tanh_operator<T>());
     if (needs_backprop)
@@ -599,8 +606,8 @@ typename Graph<T>::shared_mat Graph<T>::tanh(shared_mat matrix) {
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::relu(shared_mat matrix) {
     auto out = std::make_shared<mat>(
-        matrix->n,
-        matrix->d,
+        matrix->dims[0],
+        matrix->dims[1],
         true);
     out->w = matrix->w.unaryExpr(utils::relu_operator<T>());
     if (needs_backprop)
@@ -614,11 +621,11 @@ template<typename T>
 typename Graph<T>::shared_mat Graph<T>::mul(
     shared_mat matrix1,
     shared_mat matrix2) {
-    if (matrix1->d != matrix2->n)
+    if (matrix1->dims[1] != matrix2->dims[0])
         throw std::invalid_argument("matmul dimensions misaligned.");
     auto out = std::make_shared<mat>(
-        matrix1->n,
-        matrix2->d,
+        matrix1->dims[0],
+        matrix2->dims[1],
         true);
     out->w = matrix1->w * matrix2->w;
     if (needs_backprop)
@@ -634,13 +641,13 @@ typename Graph<T>::shared_mat Graph<T>::mul_with_bias(
     shared_mat matrix1,
     shared_mat matrix2,
     shared_mat bias) {
-    if (matrix1->d != matrix2->n)
+    if (matrix1->dims[1] != matrix2->dims[0])
             throw std::invalid_argument("matmul dimensions misaligned.");
-    if (matrix1->n != bias->n || bias->d != 1)
+    if (matrix1->dims[0] != bias->dims[0] || bias->dims[1] != 1)
             throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
     auto out = std::make_shared<mat>(
-            matrix1->n,
-            matrix2->d,
+            matrix1->dims[0],
+            matrix2->dims[1],
             true);
     out->w = ((matrix1->w * matrix2->w).colwise() + bias->w.col(0)).matrix();
     if (needs_backprop)
@@ -659,15 +666,15 @@ typename Graph<T>::shared_mat Graph<T>::mul_add_broadcast_mul_with_bias(
     shared_mat matrix2,
     shared_mat input_to_2,
     shared_mat bias) {
-    if (matrix1->d != input_to_1->n)
+    if (matrix1->dims[1] != input_to_1->dims[0])
         throw std::invalid_argument("matmul 1 dimensions misaligned.");
-    if (matrix2->d != input_to_2->n)
+    if (matrix2->dims[1] != input_to_2->dims[0])
         throw std::invalid_argument("matmul 2 dimensions misaligned.");
-    if (matrix2->n != bias->n || matrix1->n != bias->n || input_to_1->d != 1 || bias->d != 1)
+    if (matrix2->dims[0] != bias->dims[0] || matrix1->dims[0] != bias->dims[0] || input_to_1->dims[1] != 1 || bias->dims[1] != 1)
         throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
     auto out = std::make_shared<mat>(
-            matrix1->n,
-            input_to_2->d,
+            matrix1->dims[0],
+            input_to_2->dims[1],
             true);
     // both input to 1 and bias are columns,
     // so we add both of those before adding the true matrix
@@ -706,8 +713,8 @@ typename Graph<T>::shared_mat Graph<T>::mul_add_mul_with_bias(std::initializer_l
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::mul_add_mul_with_bias(const vector<shared_mat>& matrices) {
     auto out = std::make_shared<mat>(
-            matrices[0]->n,
-            matrices[1]->d,
+            matrices[0]->dims[0],
+            matrices[1]->dims[1],
             false);
     auto matrices_ptr = matrices.begin();
     while (matrices_ptr != (matrices.end() - 1)) {
@@ -744,21 +751,21 @@ typename Graph<T>::shared_mat Graph<T>::mul_add_mul_with_bias(
     shared_mat matrix2,
     shared_mat input_to_2,
     shared_mat bias) {
-    if (matrix1->d != input_to_1->n)
+    if (matrix1->dims[1] != input_to_1->dims[0])
         throw std::invalid_argument("matmul 1 dimensions misaligned.");
-    if (matrix2->d != input_to_2->n)
+    if (matrix2->dims[1] != input_to_2->dims[0])
         throw std::invalid_argument("matmul 2 dimensions misaligned.");
-    if (matrix2->n != bias->n || matrix1->n != bias->n || bias->d != 1)
+    if (matrix2->dims[0] != bias->dims[0] || matrix1->dims[0] != bias->dims[0] || bias->dims[1] != 1)
         throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
-    if (input_to_1->d != input_to_2->d) {
-        if (input_to_1->d == 1) {
+    if (input_to_1->dims[1] != input_to_2->dims[1]) {
+        if (input_to_1->dims[1] == 1) {
             return mul_add_broadcast_mul_with_bias(matrix1, input_to_1, matrix2, input_to_2, bias);
         }
         return mul_add_broadcast_mul_with_bias(matrix2, input_to_2, matrix1, input_to_1, bias);
     }
     auto out = std::make_shared<mat>(
-            matrix1->n,
-            input_to_1->d,
+            matrix1->dims[0],
+            input_to_1->dims[1],
             true);
     out->w = (
               (
@@ -792,7 +799,7 @@ typename Graph<T>::shared_mat Graph<T>::rows_pluck(
         ) {
     Timer rp_timer("ops_rows_pluck");
     auto out = std::make_shared<mat>(
-        matrix->d,
+        matrix->dims[1],
         indices.size(),
         true);
 
@@ -803,7 +810,7 @@ typename Graph<T>::shared_mat Graph<T>::rows_pluck(
     if (needs_backprop) {
         backprop.emplace_back([matrix, out, indices](){
             auto index_ptr = indices.data();
-            for (std::size_t i = 0; i < out->d; ++i) {
+            for (std::size_t i = 0; i < out->dims[1]; ++i) {
                 // for each row do the same operation as for row_pluck:
                 matrix->dw.row(*index_ptr).noalias() += out->dw.col(i).transpose();
                 index_ptr++;
@@ -825,11 +832,11 @@ typename Graph<T>::shared_mat Graph<T>::dropout(
         return matrix;
 
     auto out = std::make_shared<mat>(
-        matrix->n,
-        matrix->d,
+        matrix->dims[0],
+        matrix->dims[1],
         true);
 
-    auto bool_mat = std::make_shared<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>(matrix->n, matrix->d);
+    auto bool_mat = std::make_shared<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>(matrix->dims[0], matrix->dims[1]);
 
     std::default_random_engine generator;
     std::bernoulli_distribution distribution(1.0 - drop_prob);
@@ -840,7 +847,7 @@ typename Graph<T>::shared_mat Graph<T>::dropout(
     auto out_ptr  = out->w.data();
     auto bool_ptr = bool_mat->data();
 
-    for (int i = 0; i < matrix->n * matrix->d;++i) {
+    for (int i = 0; i < matrix->number_of_elements();++i) {
         (*bool_ptr) = distribution(generator) ? 1.0 : 0.0;
         (*out_ptr) = (*bool_ptr) > 0 ? *data_ptr : 0.0;
         out_ptr++;
@@ -868,11 +875,11 @@ typename Graph<T>::shared_mat Graph<T>::dropout_normalized(
         return matrix;
 
     auto out = std::make_shared<mat>(
-        matrix->n,
-        matrix->d,
+        matrix->dims[0],
+        matrix->dims[1],
         true);
 
-    auto bool_mat = std::make_shared<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>(matrix->n, matrix->d);
+    auto bool_mat = std::make_shared<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>(matrix->dims[0], matrix->dims[1]);
 
     std::default_random_engine generator;
     std::bernoulli_distribution distribution(1.0 - drop_prob);
@@ -884,7 +891,7 @@ typename Graph<T>::shared_mat Graph<T>::dropout_normalized(
     auto bool_ptr = bool_mat->data();
 
     T normalized_drop_prob = 1.0 / (1.0 - drop_prob);
-    for (int i = 0; i < matrix->n * matrix->d;++i) {
+    for (unsigned int i = 0; i < matrix->number_of_elements();++i) {
         (*bool_ptr) = distribution(generator) ? normalized_drop_prob : 0.0;
         (*out_ptr) = (*bool_ptr) > 0 ? *data_ptr : 0.0;
         out_ptr++;
@@ -903,11 +910,11 @@ typename Graph<T>::shared_mat Graph<T>::dropout_normalized(
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::fast_dropout(shared_mat matrix) {
     auto out = std::make_shared<mat>(
-        matrix->n,
-        matrix->d,
+        matrix->dims[0],
+        matrix->dims[1],
         true);
 
-    auto randn_mat = std::make_shared<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>(matrix->n, matrix->d);
+    auto randn_mat = std::make_shared<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>(matrix->dims[0], matrix->dims[1]);
 
     std::default_random_engine generator;
     std::normal_distribution<T> distribution(1.0, 1.0);
@@ -918,7 +925,7 @@ typename Graph<T>::shared_mat Graph<T>::fast_dropout(shared_mat matrix) {
     auto out_ptr  = out->w.data();
     auto randn_ptr = randn_mat->data();
 
-    for (int i = 0; i < matrix->n * matrix->d;++i) {
+    for (unsigned int i = 0; i < matrix->number_of_elements();++i) {
         (*randn_ptr) = distribution(generator);
         (*out_ptr) = (*randn_ptr) * *data_ptr;
         out_ptr++;
@@ -953,7 +960,7 @@ typename Graph<T>::shared_mat Graph<T>::rows_cols_pluck(
         backprop.emplace_back([matrix, out, row_indices, col_indices](){
             auto row_index_ptr = row_indices.data();
             auto col_index_ptr = col_indices.data();
-            for (int i = 0; i < out->d; ++i) {
+            for (int i = 0; i < out->dims[1]; ++i) {
                 // for each row do the same operation as for row_pluck:
                 matrix->dw(*row_index_ptr, *col_index_ptr) += out->dw(i);
                 row_index_ptr++;
@@ -968,7 +975,7 @@ template<typename T>
 typename Graph<T>::shared_mat Graph<T>::row_pluck(
         shared_mat matrix,
         int row) {
-    auto out = std::make_shared<mat>(matrix->d, 1, true);
+    auto out = std::make_shared<mat>(matrix->dims[1], 1, true);
     out->w = matrix->w.row(row).transpose();
     if (needs_backprop)
         backprop.emplace_back([matrix, out, row]() {

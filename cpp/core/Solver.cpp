@@ -87,7 +87,7 @@ namespace Solver {
                 auto new_cache = gsums.emplace(
                     std::piecewise_construct,
                 std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
-                std::forward_as_tuple(param->n, param->d));
+                std::forward_as_tuple(param->dims[0], param->dims[1]));
                 // initialize values for step cache to zero:
                 new_cache.first->second.fill(0);
             }
@@ -246,14 +246,14 @@ namespace Solver {
                 auto new_cache = gsums.emplace(
                     std::piecewise_construct,
                 std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
-                std::forward_as_tuple(param->n, param->d));
+                std::forward_as_tuple(param->dims[0], param->dims[1]));
                 // initialize values for step cache to zero:
                 new_cache.first->second.fill(0);
 
                 new_cache = xsums.emplace(
                     std::piecewise_construct,
                 std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
-                std::forward_as_tuple(param->n, param->d));
+                std::forward_as_tuple(param->dims[0], param->dims[1]));
                 // initialize values for step cache to zero:
                 new_cache.first->second.fill(0);
             }
@@ -354,14 +354,14 @@ namespace Solver {
                 auto new_cache = gsums.emplace(
                     std::piecewise_construct,
                 std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
-                std::forward_as_tuple(param->n, param->d));
+                std::forward_as_tuple(param->dims[0], param->dims[1]));
                 // initialize values for step cache to zero:
                 new_cache.first->second.fill(0);
 
                 new_cache = xsums.emplace(
                     std::piecewise_construct,
                 std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
-                std::forward_as_tuple(param->n, param->d));
+                std::forward_as_tuple(param->dims[0], param->dims[1]));
                 // initialize values for step cache to zero:
                 new_cache.first->second.fill(0);
             }

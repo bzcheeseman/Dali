@@ -61,11 +61,11 @@ StackedGatedModel<T> StackedGatedModel<T>::build_from_CLI(string load_location,
                         FLAGS_memory_penalty);
         if (verbose) {
                 std::cout << ((load_location == "") ? "Constructed Stacked LSTMs" : "Loaded Model") << std::endl;
-                std::cout << "Vocabulary size       = " << model.embedding->n      << std::endl;
-                std::cout << "Input size            = " << model.input_size        << std::endl;
-                std::cout << "Output size           = " << model.output_size       << std::endl;
-                std::cout << "Stack size            = " << model.stack_size        << std::endl;
-                std::cout << "Memory Penalty        = " << model.memory_penalty    << std::endl;
+                std::cout << "Vocabulary size       = " << model.embedding->dims[0] << std::endl;
+                std::cout << "Input size            = " << model.input_size         << std::endl;
+                std::cout << "Output size           = " << model.output_size        << std::endl;
+                std::cout << "Stack size            = " << model.stack_size         << std::endl;
+                std::cout << "Memory Penalty        = " << model.memory_penalty     << std::endl;
         }
         return model;
 }

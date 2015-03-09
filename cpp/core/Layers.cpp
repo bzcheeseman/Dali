@@ -238,8 +238,6 @@ std::pair<SHARED_MAT, SHARED_MAT> DelayedRNN<T>::activate(
         GRAPH& G,
         SHARED_MAT input_vector,
         SHARED_MAT prev_hidden) const {
-    assert(input_vector->shape() == PII(hidden_rnn.input_size, 1));
-    assert(prev_hidden->shape() == PII(hidden_rnn.hidden_size, 1));
 
     return std::pair<SHARED_MAT, SHARED_MAT>(
         hidden_rnn.activate(G, input_vector, prev_hidden),

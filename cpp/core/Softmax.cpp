@@ -9,8 +9,8 @@ std::shared_ptr<Mat<T>> softmax_transpose(const std::shared_ptr<Mat<T>> matrix) 
         auto exped_distributions = (matrix->w.colwise() - layer_max.col(0)).array().exp().matrix();
 
         auto out = std::make_shared<Mat<T>>(
-                matrix->n,
-                matrix->d,
+                matrix->dims[0],
+                matrix->dims[1],
                 false);
 
         auto total_distribution = exped_distributions.rowwise().sum().array().matrix();
@@ -30,8 +30,8 @@ std::shared_ptr<Mat<T>> softmax(const std::shared_ptr<Mat<T>> matrix) {
         auto exped_distributions = (matrix->w.rowwise() - layer_max.row(0)).array().exp().matrix();
 
         auto out = std::make_shared<Mat<T>>(
-                matrix->n,
-                matrix->d,
+                matrix->dims[0],
+                matrix->dims[1],
                 false);
 
         auto total_distribution = exped_distributions.colwise().sum().array().matrix();

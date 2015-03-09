@@ -30,7 +30,7 @@ namespace beam_search {
         out.first = std::get<0>(out_state_and_prob);
         std::vector<T> probabilities(
             std::get<1>(out_state_and_prob)->w.data(),
-            std::get<1>(out_state_and_prob)->w.data() + std::get<1>(out_state_and_prob)->n);
+            std::get<1>(out_state_and_prob)->w.data() + std::get<1>(out_state_and_prob)->dims[0]);
         auto sorted_probs = utils::argsort(probabilities);
 
         // we pass along the new state, and the "winning" k predictions

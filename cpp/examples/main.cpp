@@ -55,8 +55,8 @@ int main () {
     auto A = std::make_shared<mat>(3, 5);
     A->w = (A->w.array() + 1.2).matrix();
     // build random matrix of double type with standard deviation 2:
-    auto B = std::make_shared<mat>(A->n, A->d, 2.0);
-    auto C = std::make_shared<mat>(A->d, 4,    2.0);
+    auto B = std::make_shared<mat>(A->dims[0], A->dims[1], 2.0);
+    auto C = std::make_shared<mat>(A->dims[1], 4,    2.0);
 
     A->print();
     B->print();

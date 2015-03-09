@@ -57,15 +57,17 @@ template<typename T> class Mat {
         eigen_mat _w;
         eigen_mat _dw;
     public:
-        int n; int d;
+        typedef unsigned int dim_t;
+
+        std::vector<dim_t> dims;
         mutable eigen_mat_view w;
         bool sparse;
         std::shared_ptr<std::vector<uint>> sparse_row_keys;
         mutable eigen_mat_view dw;
         std::shared_ptr<std::string> name = nullptr;
         const random_t random_id;
-        Mat (int n, int d);
-        Mat (int n, int d, bool empty);
+        Mat (dim_t n, dim_t d);
+        Mat (dim_t n, dim_t d, bool empty);
         /**
         Mat<T>::Mat<T>
         --------------
@@ -109,6 +111,7 @@ template<typename T> class Mat {
 
         **/
         void grad();
+        unsigned int number_of_elements() const;
 
         ~Mat();
         /*
@@ -161,7 +164,7 @@ template<typename T> class Mat {
 
         See `Mat<T>::Mat(int, int, T, T)` for uniform distribution (below).
         */
-        Mat (int n, int d, T std);
+        Mat (dim_t n, dim_t d, T std);
         /*
         Mat<T>::Mat<T>
         --------------
@@ -185,17 +188,15 @@ template<typename T> class Mat {
 
         See `Mat<T>::Mat(int, int, T)` for normal distribution (above)
         */
-        Mat (int n, int d, T lower, T upper);
+        Mat (dim_t n, dim_t d, T lower, T upper);
         void npy_save(std::string fname, std::string mode = "w");
         void npy_save(FILE*);
         void npy_load(std::string fname);
         void npy_load(FILE*);
         void npy_load(cnpy::NpyArray&);
         Mat (std::string fname);
-        static Mat RandMat(int n, int d, T std);
-        static Mat Empty(int n, int d);
-
-        std::pair<int,int> shape() const;
+        static Mat RandMat(dim_t n, dim_t d, T std);
+        static Mat Empty(dim_t n, dim_t d);
         /**
         Shallow Copy
         ------------

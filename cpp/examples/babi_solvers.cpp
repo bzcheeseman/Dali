@@ -157,7 +157,7 @@ class LstmBabiModel {
     DelayedRNN<T> fact_word_gate;
 
 
-    const vector<int>   HL_STACKS                  =      {20,20,20,20};
+    const vector<int>   HL_STACKS                  =      {20,20}; //,20,20};
     const int           HL_INPUT_SIZE              =      utils::vsum(TEXT_REPR_STACKS);
     const T             HL_DROPOUT                 =      0.5;
 
@@ -393,8 +393,7 @@ class LstmBabiModel {
             auto activation = activate_story(G, facts_as_strings, qa->question, use_dropout);
 
             uint answer_idx = vocab->word2index.at(qa->answer[0]);
-            auto softmax = G.softmax(activation.log_probs);
-            auto prediction_error = G.cross_entropy(softmax, answer_idx);
+            auto prediction_error = G.softmax_cross_entropy(activation.log_probs, answer_idx);
 
             auto fact_selection_error = make_shared<Mat<T>>(1,1);
 
@@ -457,6 +456,7 @@ class LstmBabiModelRunner: public babi::Model {
         shared_mat bake_error(Graph<T>& G, vector<shared_mat> errors) {
             T baking_factor = std::min((T)epoch*epoch/(T)(BAKING_EPOCHS*BAKING_EPOCHS), 1.0);
 
+            return errors[0];
             return G.add({errors[0],
                          G.eltmul(errors[1], FACT_SELECTION_LAMBDA_MAX * baking_factor),
                          G.eltmul(errors[2], FACT_WORD_SELECTION_LAMBDA_MAX * baking_factor)

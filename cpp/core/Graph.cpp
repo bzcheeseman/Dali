@@ -406,6 +406,23 @@ typename Graph<T>::shared_mat Graph<T>::cross_entropy(shared_mat matrix, uint an
     return out;
 }
 
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::softmax_cross_entropy(shared_mat matrix, uint answer_idx) {
+    auto out =  std::make_shared<mat>(1, 1, true);
+
+    shared_mat probs = softmax(matrix);
+    out->w(0,0) = -std::log(probs->w(answer_idx, 0));
+
+    if (needs_backprop)
+        backprop.emplace_back([matrix, probs, answer_idx, out](){
+            matrix->dw += probs->w * out->dw(0,0);
+            // write gradients into log probabilities
+            matrix->dw(answer_idx, 0) -= 1 * out->dw(0,0);
+        });
+    return out;
+}
+
 template<typename T>
 typename Graph<T>::shared_mat Graph<T>::log(shared_mat matrix) {
     auto out = std::make_shared<mat>(

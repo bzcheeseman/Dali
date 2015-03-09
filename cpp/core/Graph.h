@@ -159,9 +159,13 @@ template<typename T> class Graph {
                 shared_mat mean(shared_mat);
                 shared_mat log(shared_mat);
                 shared_mat exp(shared_mat);
-                shared_mat cross_entropy(shared_mat, uint answer_idx);
                 shared_mat binary_cross_entropy(shared_mat, T);
+<<<<<<< HEAD
                 shared_mat sigmoid_binary_cross_entropy(shared_mat, T);
+=======
+                shared_mat cross_entropy(shared_mat, uint answer_idx);
+                shared_mat softmax_cross_entropy(shared_mat matrix, uint answer_idx);
+>>>>>>> Added softmaxed cross entropy
                 shared_mat hstack(shared_mat, shared_mat);
                 shared_mat hstack(std::initializer_list<shared_mat>);
                 shared_mat hstack(const std::vector<shared_mat>&);

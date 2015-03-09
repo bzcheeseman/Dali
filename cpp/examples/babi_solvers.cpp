@@ -134,7 +134,7 @@ class LstmBabiModel {
     shared_mat question_representation_embeddings;
 
 
-    const vector<int>   QUESTION_GATE_STACKS              =      {20, 20};
+    const vector<int>   QUESTION_GATE_STACKS              =      {20, 20, 10};
     const int           QUESTION_GATE_EMBEDDINGS          =      15;
 
     const T             QUESTION_GATE_DROPOUT             =      0.3;
@@ -458,7 +458,7 @@ class LstmBabiModelRunner: public babi::Model {
             T baking_factor = std::min((T)epoch*epoch/(T)(BAKING_EPOCHS*BAKING_EPOCHS), 1.0);
 
             return G.add({errors[0],
-                         errors[1],//G.eltmul(errors[1], FACT_SELECTION_LAMBDA_MAX * baking_factor),
+                         G.eltmul(errors[1], FACT_SELECTION_LAMBDA_MAX * baking_factor),
                          G.eltmul(errors[2], FACT_WORD_SELECTION_LAMBDA_MAX * baking_factor)
                        });
         }

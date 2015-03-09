@@ -125,7 +125,7 @@ class LstmBabiModel {
     // MODEL PARAMS
     const vector<int>   TEXT_REPR_STACKS           =      {30, 30};
     const int           TEXT_REPR_EMBEDDINGS       =      30;
-    const T             TEXT_REPR_DROPOUT          =      0.2;
+    const T             TEXT_REPR_DROPOUT          =      0.3;
 
     StackedShortcutLSTM<T> fact_model;
     shared_mat fact_embeddings;
@@ -157,7 +157,7 @@ class LstmBabiModel {
     DelayedRNN<T> fact_word_gate;
 
 
-    const vector<int>   HL_STACKS                  =      {20,20}; //,20,20};
+    const vector<int>   HL_STACKS                  =      {100,50, 50, 10}; //,20,20};
     const int           HL_INPUT_SIZE              =      utils::vsum(TEXT_REPR_STACKS);
     const T             HL_DROPOUT                 =      0.5;
 
@@ -393,6 +393,7 @@ class LstmBabiModel {
             auto activation = activate_story(G, facts_as_strings, qa->question, use_dropout);
 
             uint answer_idx = vocab->word2index.at(qa->answer[0]);
+
             auto prediction_error = G.softmax_cross_entropy(activation.log_probs, answer_idx);
 
             auto fact_selection_error = make_shared<Mat<T>>(1,1);
@@ -424,8 +425,8 @@ class LstmBabiModelRunner: public babi::Model {
     const double VALIDATION_FORGETTING = 0.06;
     const int PATIENCE = 5;
 
-    const T FACT_SELECTION_LAMBDA_MAX = 0.1;
-    const T FACT_WORD_SELECTION_LAMBDA_MAX = 0.05;
+    const T FACT_SELECTION_LAMBDA_MAX = 0.2;
+    const T FACT_WORD_SELECTION_LAMBDA_MAX = 0.0001;
 
     const int BAKING_EPOCHS = 1000;
 
@@ -456,9 +457,8 @@ class LstmBabiModelRunner: public babi::Model {
         shared_mat bake_error(Graph<T>& G, vector<shared_mat> errors) {
             T baking_factor = std::min((T)epoch*epoch/(T)(BAKING_EPOCHS*BAKING_EPOCHS), 1.0);
 
-            return errors[0];
             return G.add({errors[0],
-                         G.eltmul(errors[1], FACT_SELECTION_LAMBDA_MAX * baking_factor),
+                         errors[1],//G.eltmul(errors[1], FACT_SELECTION_LAMBDA_MAX * baking_factor),
                          G.eltmul(errors[2], FACT_WORD_SELECTION_LAMBDA_MAX * baking_factor)
                        });
         }
@@ -535,7 +535,7 @@ class LstmBabiModelRunner: public babi::Model {
 
             pool.wait_until_idle();
 
-            auto total_error = thread_error[0];
+            vector<double> total_error(3, 0.0);
             for (int err=0; err<3; ++err) {
                 for (int i=0; i<NUM_THREADS; ++i)
                     total_error[err] += thread_error[i][err];
@@ -572,7 +572,7 @@ class LstmBabiModelRunner: public babi::Model {
             T baking_factor = std::min((T)epoch*epoch/(T)(BAKING_EPOCHS*BAKING_EPOCHS), 1.0);
             std::cout << "Epoch " << ++epoch << std::endl;
 
-            std::cout << "BAKING CONSTANTS (baking factor: " << baking_factor << ")" << std::endl
+            std::cout << "BAKING CONSTANTS (as one wise man once said: how baked are we: " <<  baking_factor * 100 << "\%)" << std::endl
                       << "    fact selection: " << FACT_SELECTION_LAMBDA_MAX * baking_factor << std::endl
                       << "    fact word selection " << FACT_WORD_SELECTION_LAMBDA_MAX * baking_factor << std::endl
                       << "Errors(prob_answer, fact_select, words_sparsity): " << std::endl
@@ -629,8 +629,11 @@ int main(int argc, char** argv) {
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
     Eigen::initParallel();
+
+    babi::benchmark_task<LstmBabiModelRunner<double>>("qa4_two-arg-relations");
+
+
     babi::benchmark_task<LstmBabiModelRunner<double>>("qa1_single-supporting-fact");
-    babi::benchmark_task<LstmBabiModelRunner<double>>("qa2_two-supporting-facts");
     babi::benchmark_task<LstmBabiModelRunner<double>>("qa2_two-supporting-facts");
     babi::benchmark_task<LstmBabiModelRunner<double>>("qa3_three-supporting-facts");
     //babi::benchmark<LstmBabiModelRunner<double>>();

@@ -92,8 +92,16 @@ class Expression {
                 static shared_ptr<WrappedCppClass> bool_class;
                 static shared_ptr<WrappedCppClass> int_class;
                 static shared_ptr<WrappedCppClass> float_class;
+                static shared_ptr<WrappedCppClass> lambda_class;
                 WrappedCppClass (string _name, vector<ExpressionConstructor> _constructors, uint type_t) : name(_name), constructors(_constructors), TYPE_T(type_t), to_string(default_to_string) {}
                 WrappedCppClass (string _name, vector<ExpressionConstructor> _constructors, uint type_t, function<string(const Expression&)> to_s) : name(_name), constructors(_constructors), TYPE_T(type_t), to_string(to_s) {}
+
+                void add_method (const string& name, function<shared_ptr<Expression>(Expression&, vector<shared_ptr<Expression>>&)> _call) {
+                    methods.emplace(
+                        std::piecewise_construct,
+                        std::forward_as_tuple(name), 
+                        std::forward_as_tuple(lambda_class, nullptr, _call));
+                }
         };
 
         class ArgumentList {
@@ -150,6 +158,7 @@ class Expression {
                             if (depth > 0) {
                                 tokens.emplace_back(ch);
                             } else {
+                                std::cout << ch << std::endl;
                                 call_tokens.emplace_back(ch);
                             }
                         }
@@ -187,6 +196,10 @@ class Expression {
             return (type == WrappedCppClass::int_class || type == WrappedCppClass::float_class);
         }
 
+        bool is_int() const {
+            return type == WrappedCppClass::int_class;
+        }
+
         bool is_boolean() const {
             return (type == WrappedCppClass::bool_class || type == WrappedCppClass::int_class);
         }
@@ -205,8 +218,8 @@ class Expression {
             return false;
         }
         static bool is_protected_literal( const string& line) {
-            if (line == "true" || line == "false" ||
-                is_number(line) || line == "exit" || line == "type") {
+            if (line == "true"  || line == "false" ||
+                is_number(line) || line == "exit"  || line == "type") {
                 return true;
             }
             return false;
@@ -242,7 +255,7 @@ class Expression {
             }
         }
         REAL_t to_float () const  {
-            if (type == WrappedCppClass::bool_class) {
+            if (type == WrappedCppClass::float_class) {
                 return *reinterpret_cast<REAL_t*>(internal_t.get());
             } else if (type == WrappedCppClass::int_class) {
                 return (REAL_t)*reinterpret_cast<REAL_t*>(internal_t.get());
@@ -306,6 +319,7 @@ shared_ptr<Expression::WrappedCppClass> Expression::WrappedCppClass::int_class =
     ss << (int) *reinterpret_cast<int*>(expr.internal_t.get());
     return ss.str();
 });
+shared_ptr<Expression::WrappedCppClass> Expression::WrappedCppClass::lambda_class = make_shared<WrappedCppClass>("Lambda", vector<Expression::ExpressionConstructor>(), -4);
 
 shared_ptr<Expression> Expression::parseExpression(string _repr, unordered_map<string, std::shared_ptr<Expression>>& locals) {
     if (is_literal(_repr)) {
@@ -496,11 +510,30 @@ shared_ptr<Expression> parseLine (const string& line, unordered_map<string, shar
 }
 
 void declare_classes() {
+
+    /*auto LAMBDA = make_shared<Expression::WrappedCppClass>("Lambda",
+        vector<Expression::ExpressionConstructor>(), (uint) Expression::WrappedCppClass::classes.size())
+
+    Expression::WrappedCppClass::classes.emplace_back(LAMBDA);*/
+
     auto zero_arg = [](const vector<shared_ptr<Expression>>& args) {
         return args.size() == 0;
     };
     auto single_arg_boolean = [](const vector<shared_ptr<Expression>>& args) {
         return (args.size() == 1 && args[0]->is_boolean());
+    };
+    auto two_int_arg = [](const vector<shared_ptr<Expression>>& args) {
+        return (args.size() == 2 && args[0]->is_int() && args[1]->is_int());
+    };
+    auto two_int_arg_and_one_float = [](const vector<shared_ptr<Expression>>& args) {
+        return (args.size() == 3 && args[0]->is_int() && args[1]->is_int()
+                                 && args[2]->is_numeric()
+        );
+    };
+    auto two_int_arg_and_two_floats = [](const vector<shared_ptr<Expression>>& args) {
+        return (args.size() == 4 && args[0]->is_int() && args[1]->is_int()
+                                 && args[2]->is_numeric() && args[3]->is_numeric()
+        );
     };
 
     auto graph_constructors = {
@@ -514,9 +547,27 @@ void declare_classes() {
         return ss.str();
     }));
 
+    auto mat_constructors = {
+        Expression::ExpressionConstructor( two_int_arg, [](vector<shared_ptr<Expression>>& args) {return make_shared<Mat<REAL_t>>(args[0]->to_int(), args[1]->to_int());} ),
+        Expression::ExpressionConstructor( two_int_arg_and_one_float, [](vector<shared_ptr<Expression>>& args) {return make_shared<Mat<REAL_t>>(args[0]->to_int(), args[1]->to_int(), args[2]->to_float());} ),
+        Expression::ExpressionConstructor( two_int_arg_and_two_floats, [](vector<shared_ptr<Expression>>& args) {return make_shared<Mat<REAL_t>>(args[0]->to_int(), args[1]->to_int(), args[2]->to_float(), args[3]->to_float());} )
+    };
 
+    auto MAT = make_shared<Expression::WrappedCppClass>("Mat", mat_constructors, (uint) Expression::WrappedCppClass::classes.size(), [](const Expression& self) {
+        stringstream ss;
+        ss << * reinterpret_cast<Mat<REAL_t>*>(self.internal_t.get());
+        return ss.str();
+    });
 
+    Expression::WrappedCppClass::classes.emplace_back(MAT);
 
+    MAT->add_method("print", [](Expression& expr, vector<shared_ptr<Expression>>& args) -> shared_ptr<Expression> {
+        if (args.size() > 0) {
+            throw std::runtime_error("Error: Wrong number of arguments for method print.");
+        }
+        reinterpret_cast<mat*>(expr.internal_t.get())->print();
+        return nullptr;
+    });
 }
 
 int main () {

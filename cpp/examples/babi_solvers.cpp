@@ -134,7 +134,7 @@ class LstmBabiModel {
     shared_mat question_representation_embeddings;
 
 
-    const vector<int>   QUESTION_GATE_STACKS              =      {20, 20, 10};
+    const vector<int>   QUESTION_GATE_STACKS              =      {20, 20};
     const int           QUESTION_GATE_EMBEDDINGS          =      15;
 
     const T             QUESTION_GATE_DROPOUT             =      0.3;
@@ -157,7 +157,7 @@ class LstmBabiModel {
     DelayedRNN<T> fact_word_gate;
 
 
-    const vector<int>   HL_STACKS                  =      {100,50, 50, 10}; //,20,20};
+    const vector<int>   HL_STACKS                  =      {20,20,20,20}; //,20,20};
     const int           HL_INPUT_SIZE              =      utils::vsum(TEXT_REPR_STACKS);
     const T             HL_DROPOUT                 =      0.5;
 
@@ -422,7 +422,8 @@ class LstmBabiModelRunner: public babi::Model {
 
     const float TRAINING_FRAC = 0.8;
     const float MINIMUM_IMPROVEMENT = 0.0001; // good one: 0.003
-    const double VALIDATION_FORGETTING = 0.06;
+    const double LONG_TERM_VALIDATION = 0.03;
+    const double SHORT_TERM_VALIDATION = 0.2;
     const int PATIENCE = 5;
 
     const T FACT_SELECTION_LAMBDA_MAX = 0.2;
@@ -555,9 +556,9 @@ class LstmBabiModelRunner: public babi::Model {
             std::vector<babi::Story> train(data.begin(), data.begin() + training_size);
             std::vector<babi::Story> validation(data.begin() + training_size, data.end());
 
-            double training_error = 0.0;
-            double validation_error = 0.0;
-            double last_validation_error = std::numeric_limits<double>::infinity();
+            bool first_run = true;
+            double short_term_validation  = std::numeric_limits<double>::infinity();
+            double long_term_validation   = std::numeric_limits<double>::infinity();
 
             epoch = 0;
             int epochs_validation_increasing = 0;
@@ -569,32 +570,38 @@ class LstmBabiModelRunner: public babi::Model {
                 auto training_errors = compute_errors(train, solver, true);
                 auto validation_errors = compute_errors(validation, solver, false);
 
-            T baking_factor = std::min((T)epoch*epoch/(T)(BAKING_EPOCHS*BAKING_EPOCHS), 1.0);
-            std::cout << "Epoch " << ++epoch << std::endl;
+                T baking_factor = std::min((T)epoch*epoch/(T)(BAKING_EPOCHS*BAKING_EPOCHS), 1.0);
+                std::cout << "Epoch " << ++epoch << std::endl;
 
-            std::cout << "BAKING CONSTANTS (as one wise man once said: how baked are we: " <<  baking_factor * 100 << "\%)" << std::endl
-                      << "    fact selection: " << FACT_SELECTION_LAMBDA_MAX * baking_factor << std::endl
-                      << "    fact word selection " << FACT_WORD_SELECTION_LAMBDA_MAX * baking_factor << std::endl
-                      << "Errors(prob_answer, fact_select, words_sparsity): " << std::endl
-                      << "VALIDATION: " << validation_errors[0] << " "
-                                        << validation_errors[1] << " "
-                                        << validation_errors[2] << std::endl
-                      << "TRAINING: " << training_errors[0] << " "
-                                      << training_errors[1] << " "
-                                      << training_errors[2] << std::endl;
+                std::cout << "BAKING CONSTANTS (as one wise man once said: how baked are we: " <<  baking_factor * 100 << "\%)" << std::endl
+                          << "    fact selection: " << FACT_SELECTION_LAMBDA_MAX * baking_factor << std::endl
+                          << "    fact word selection " << FACT_WORD_SELECTION_LAMBDA_MAX * baking_factor << std::endl
+                          << "Validation - short: " << short_term_validation << ", long: " << long_term_validation << std::endl
+
+                          << "Errors(prob_answer, fact_select, words_sparsity): " << std::endl
+                          << "VALIDATION: " << validation_errors[0] << " "
+                                            << validation_errors[1] << " "
+                                            << validation_errors[2] << std::endl
+                          << "TRAINING: " << training_errors[0] << " "
+                                          << training_errors[1] << " "
+                                          << training_errors[2] << std::endl;
                 // TODO(szymon): line below is incorrect;
                 auto validation_error = validation_errors[0];
-                if (validation_error < last_validation_error - MINIMUM_IMPROVEMENT) {
-                    epochs_validation_increasing = 0;
+                if (first_run) {
+                    short_term_validation = validation_error;
+                    long_term_validation = validation_error;
+                    first_run = false;
                 } else {
-                    epochs_validation_increasing += 1;
+                    short_term_validation = SHORT_TERM_VALIDATION * validation_error +
+                                            (1.0 - SHORT_TERM_VALIDATION) * short_term_validation;
+                    long_term_validation =  LONG_TERM_VALIDATION * validation_error +
+                                            (1.0 - LONG_TERM_VALIDATION) * long_term_validation;
                 }
-                double scaled_forgetting = VALIDATION_FORGETTING / (double)FLAGS_j;
-                if (last_validation_error == std::numeric_limits<double>::infinity()) {
-                    last_validation_error = validation_error;
-                } else if (validation_error < last_validation_error) {
-                    last_validation_error = scaled_forgetting * validation_error +
-                                            (1.0 - scaled_forgetting)*last_validation_error;
+
+                if (short_term_validation > long_term_validation) {
+                    ++epochs_validation_increasing;
+                } else {
+                    epochs_validation_increasing = 0;
                 }
             }
         }

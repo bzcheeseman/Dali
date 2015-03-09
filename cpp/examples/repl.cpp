@@ -231,7 +231,7 @@ class Expression {
         string type_name () const {
             return type->name;
         }
-        
+
         bool to_bool() const  {
             if (type == WrappedCppClass::bool_class) {
                 return *reinterpret_cast<bool*>(internal_t.get());
@@ -386,6 +386,72 @@ shared_ptr<Expression> Expression::parseExpression(string _repr, unordered_map<s
                 throw std::runtime_error(ss.str());
             }
         }
+<<<<<<< HEAD
+=======
+        /*
+        if (startswith(_repr, "Graph")) {
+            auto argnum = eval_arguments(_repr, locals);
+            if (argnum.size() == 0) {
+                type = GRAPH_T;
+                internal_t = make_shared<Graph<REAL_t>>();
+            } else if (argnum.size() == 1) {
+                type = GRAPH_T;
+                internal_t = make_shared<Graph<REAL_t>>( argnum[0].to_bool() );
+            } else {
+                throw std::runtime_error("Error: incompatible number or arguments for Graph( bool ): 0 to 1.");
+            }
+        } else if (startswith( _repr, "Mat")) {
+            auto argnum = eval_arguments(_repr, locals);
+
+            if (argnum.size() < 2 || argnum.size() > 5) {
+                throw std::runtime_error("Error: incompatible number or arguments for Mat( int, int ): 2 to 5.");
+            } else if (argnum.size() == 2) {
+                if (argnum[0].type == INT_T && argnum[1].type == INT_T) {
+                    type = MAT_T;
+                    internal_t = make_shared<Mat<REAL_t>>( argnum[0].to_int(), argnum[1].to_int() );
+                } else {
+                    throw std::runtime_error("Error: incompatible arguments for Mat( int, int )");
+                }
+            } else if (argnum.size() == 3) {
+                if (argnum[0].type == INT_T && argnum[1].type == INT_T && argnum[2].type == BOOL_T) {
+                    type = MAT_T;
+                    internal_t = make_shared<Mat<REAL_t>>(
+                        argnum[0].to_int(),
+                        argnum[1].to_int(),
+                        argnum[2].to_bool()
+                    );
+                } else if (argnum[0].type == INT_T && argnum[1].type == INT_T && argnum[2].is_numeric()) {
+                    type = MAT_T;
+                    internal_t = make_shared<Mat<REAL_t>>(
+                        argnum[0].to_int(),
+                        argnum[1].to_int(),
+                        argnum[2].to_float()
+                    );
+                } else {
+                    throw std::runtime_error("Error: incompatible arguments for Mat( int, int, float) / Mat( int, int, bool)");
+                }
+            } else if (argnum.size() == 4) {
+                if (argnum[0].type == INT_T && argnum[1].type == INT_T && argnum[2].is_numeric() && argnum[3].is_numeric()) {
+                    type = MAT_T;
+                    internal_t = make_shared<Mat<REAL_t>>(
+                        argnum[0].to_int(),
+                        argnum[1].to_int(),
+                        argnum[2].to_float(),
+                        argnum[3].to_float()
+                    );
+                } else {
+                    throw std::runtime_error("Error: incompatible arguments for Mat( int, int, float, float)");
+                }
+            } else {
+                throw std::runtime_error("Error: incompatible number or arguments for Mat( int, int ): 2 to 5.");
+            }
+        } else {
+            // deal with method calls now
+            stringstream ss;
+            ss << "Error: Unknown type: \"" << _repr << "\"";
+            throw std::runtime_error(ss.str());
+        }*/
+>>>>>>> long term short term validation
     }
 }
 

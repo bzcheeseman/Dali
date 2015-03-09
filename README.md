@@ -47,7 +47,7 @@ Let's run a simple example. We will use data from [Paul Graham's blog](http://pa
 
     examples/language_model --flagfile ../flags/language_model_simple.flags
 
-That's it. Don't forget to checkout examples/langauge_model.cpp. It's not that scary!
+That's it. Don't forget to checkout `examples/language_model.cpp`. It's not that scary!
 
 #### MKL Zaziness Problems
 

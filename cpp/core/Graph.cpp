@@ -353,14 +353,14 @@ typename Graph<T>::shared_mat Graph<T>::binary_cross_entropy(shared_mat matrix, 
 
     auto x = matrix->w.array();
 
-    out->w = (-(t * x.log() + (1.0-t) * (1.0 - x).log())).matrix();
+    out->w = (-(t * (x + EPS).log() + (1.0-t) * (1.0 - x+EPS).log())).matrix();
 
     DEBUG_ASSERT_NOT_NAN(out->w);
 
     if (needs_backprop)
         backprop.emplace_back([matrix, t, out](){
             auto x = matrix->w.array();
-            matrix->dw.array() += (t-x) / (x*(x- 1.0) )* out->dw.array();
+            matrix->dw.array() += (t-x) / ((x+EPS)*(x- 1.0 + EPS) )* out->dw.array();
             DEBUG_ASSERT_NOT_NAN(matrix->dw);
         });
 

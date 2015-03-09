@@ -592,7 +592,7 @@ class LstmBabiModelRunner: public babi::Model {
                 double scaled_forgetting = VALIDATION_FORGETTING / (double)FLAGS_j;
                 if (last_validation_error == std::numeric_limits<double>::infinity()) {
                     last_validation_error = validation_error;
-                } else {
+                } else if (validation_error < last_validation_error) {
                     last_validation_error = scaled_forgetting * validation_error +
                                             (1.0 - scaled_forgetting)*last_validation_error;
                 }

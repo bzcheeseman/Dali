@@ -183,4 +183,27 @@ namespace babi {
                                            filename});
         return parse_file(filepath, num_questions);
     }
+
+    /* StoryParser */
+
+    StoryParser::StoryParser(const Story* story) : story(story), story_idx(0) {
+    }
+
+    sp_ret_t StoryParser::next() {
+        while (true) {
+            assert(!done());
+            auto& item_ptr = (*story)[story_idx++];
+            if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
+                facts_so_far.push_back(f);
+            } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
+                return sp_ret_t(facts_so_far, qa);
+            }
+        }
+    }
+
+    bool StoryParser::done() {
+        return story_idx < story->size();
+    }
 };
+
+

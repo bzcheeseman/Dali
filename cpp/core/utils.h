@@ -534,6 +534,65 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
             MS& operator<<(T const& VAR) { stream << VAR; return *this; }
     };
 
+    template<typename T> class Generator;
+
+    template<typename T>
+    class Iter {
+        Generator<T>* gen;
+        T next;
+        bool is_done = true;
+
+        void advance() {
+            if (gen->done()) {
+                is_done = true;
+            } else {
+                next = std::move(gen->next());
+            }
+        }
+
+        public:
+            Iter (Generator<T>* gen, bool is_end) : gen(gen) {
+                if (!is_end) {
+                    advance();
+                    is_done = false;
+                } else {
+                    is_done = true;
+                }
+            }
+
+            // this function only compares regular iterators with end iterators...
+            bool operator!= (const Iter& other) const {
+                // assume we comparing regular iterator to end iterator.
+                return is_done != other.is_done;
+            }
+
+            // this method must be defined after the definition of IntVector
+            // since it needs to use it
+            T& operator* () {
+                return next;
+            }
+
+            const Iter& operator++ () {
+                assert(!is_done);
+                advance();
+            }
+    };
+
+    template<typename T>
+    class Generator {
+        public:
+            virtual T next() = 0;
+            virtual bool done() = 0;
+
+            Iter<T> begin() {
+                return Iter<T>(this, false);
+            }
+
+            Iter<T> end() {
+                return Iter<T>(this, true);
+            }
+    };
+
     void assert2(bool condition, std::string message);
 }
 

@@ -188,7 +188,23 @@ namespace babi {
                       << facebook_multitask_results[task_id] << std::endl;
         }
     }
+
+    typedef std::pair<std::vector<Fact*>, QA*> sp_ret_t;
+
+    class StoryParser : public utils::Generator<sp_ret_t> {
+        std::vector<Fact*> facts_so_far;
+        int story_idx;
+        const Story* story;
+
+        public:
+            StoryParser(const Story* story);
+
+            sp_ret_t next();
+
+            bool done();
+    };
 };
+
 
 
 #endif

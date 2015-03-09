@@ -53,6 +53,13 @@ namespace babi {
         // Story story = {f, q};
         // vector<Story> res = { story };
         // return res;
+
+        if (!utils::file_exists(filename)) {
+            std::stringstream error_msg;
+            error_msg << "Error: File \"" << filename << "\" does not exist, cannot parse file.";
+            throw std::runtime_error(error_msg.str());
+        }
+
         std::ifstream file(filename);
         // file exists
         assert(file.good());

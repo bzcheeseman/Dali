@@ -161,6 +161,7 @@ template<typename T> class Graph {
                 shared_mat exp(shared_mat);
                 shared_mat cross_entropy(shared_mat, uint answer_idx);
                 shared_mat binary_cross_entropy(shared_mat, T);
+                shared_mat sigmoid_binary_cross_entropy(shared_mat, T);
                 shared_mat hstack(shared_mat, shared_mat);
                 shared_mat hstack(std::initializer_list<shared_mat>);
                 shared_mat hstack(const std::vector<shared_mat>&);

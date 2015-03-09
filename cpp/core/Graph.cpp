@@ -343,7 +343,7 @@ typename Graph<T>::shared_mat Graph<T>::mean(shared_mat matrix) {
 
 
 template<typename T>
-typename Graph<T>::shared_mat Graph<T>::binary_cross_entropy(shared_mat matrix, T t) {
+typename Graph<T>::shared_mat Graph<T>::sigmoid_binary_cross_entropy(shared_mat matrix, T t) {
     assert(0 <= t && t <= 1);
     DEBUG_ASSERT_BOUNDS(matrix->w,0.0,1.0 + EPS);
     auto out =  std::make_shared<mat>(
@@ -351,16 +351,36 @@ typename Graph<T>::shared_mat Graph<T>::binary_cross_entropy(shared_mat matrix, 
         matrix->d,
         true);
 
+    auto x = matrix->w.array().unaryExpr(utils::sigmoid_operator<T>());
+
+    out->w = (-(t * (x + EPS).log() + (1.0-t) * (1.0 - x + EPS).log())).matrix();
+
+    if (needs_backprop)
+        backprop.emplace_back([matrix, t, out, x](){
+            auto x = matrix->w.array();
+            matrix->dw.array() += (t - x) * out->dw.array();
+        });
+    return out;
+}
+
+template<typename T>
+typename Graph<T>::shared_mat Graph<T>::binary_cross_entropy(shared_mat matrix, T t) {
+    assert(0 <= t && t <= 1);
+    auto out =  std::make_shared<mat>(
+        matrix->n,
+        matrix->d,
+        true);
+
     auto x = matrix->w.array();
 
-    out->w = (-(t * (x + EPS).log() + (1.0-t) * (1.0 - x+EPS).log())).matrix();
+    out->w = (-(t * (x + EPS).log() + (1.0-t) * (1.0 - x + EPS).log())).matrix();
 
     DEBUG_ASSERT_NOT_NAN(out->w);
 
     if (needs_backprop)
         backprop.emplace_back([matrix, t, out](){
             auto x = matrix->w.array();
-            matrix->dw.array() += (t-x) / ((x+EPS)*(x- 1.0 + EPS) )* out->dw.array();
+            matrix->dw.array() += (t-x) / (x*(x- 1.0) + EPS)* out->dw.array();
             DEBUG_ASSERT_NOT_NAN(matrix->dw);
         });
 

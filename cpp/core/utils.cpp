@@ -606,7 +606,7 @@ namespace utils {
         if (is_negative && s.size() == 1) {
             return false;
         }
-        return !s.empty() && std::find_if(s.begin() + (is_negative ? 1 : 0), 
+        return !s.empty() && std::find_if(s.begin() + (is_negative ? 1 : 0),
                 s.end(), [&is_decimal](char c) {
                     if (is_decimal) {
                         if (c == '.') {
@@ -1094,6 +1094,11 @@ namespace utils {
         timers.clear();
     }
 
+    void assert2(bool condition, std::string message) {
+        if (!condition) {
+            throw std::invalid_argument(message);
+        }
+    }
 
 }
 

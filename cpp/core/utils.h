@@ -461,70 +461,80 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
     **/
     str_sequence triggers_to_strings(const google::protobuf::RepeatedPtrField<Example::Trigger>&, const str_sequence&);
 
-        template <typename T>
-        std::vector<size_t> argsort(const std::vector<T> &);
+    template <typename T>
+    std::vector<size_t> argsort(const std::vector<T> &);
 
-        str_sequence listdir(const std::string&);
+    str_sequence listdir(const std::string&);
 
-        std::vector<size_t> random_arange(size_t);
+    std::vector<size_t> random_arange(size_t);
 
-        std::vector<uint> arange(uint, uint);
+    std::vector<uint> arange(uint, uint);
 
-        template <class T> inline void hash_combine(std::size_t &, const T &);
+    template <class T> inline void hash_combine(std::size_t &, const T &);
 
-        bool file_exists(const std::string&);
+    bool file_exists(const std::string&);
 
-        std::string dir_parent(const std::string& path, int levels_up = 1);
+    std::string dir_parent(const std::string& path, int levels_up = 1);
 
-        std::string dir_join(const std::vector<std::string>&);
-        /**
-        Exit With Message
-        -----------------
+    std::string dir_join(const std::vector<std::string>&);
+    /**
+    Exit With Message
+    -----------------
 
-        Exit the program with a message printed to std::cerr
+    Exit the program with a message printed to std::cerr
 
-        Inputs
-        ------
+    Inputs
+    ------
 
-        std::string& message : error message
-        int error_code : code for the error, defaults to 1
+    std::string& message : error message
+    int error_code : code for the error, defaults to 1
 
-        **/
-        void exit_with_message(const std::string&, int error_code = 1);
+    **/
+    void exit_with_message(const std::string&, int error_code = 1);
 
-        bool validate_flag_nonempty(const char* flagname, const std::string& value);
+    bool validate_flag_nonempty(const char* flagname, const std::string& value);
 
-        template<typename T>
-        T vsum(const std::vector<T>& vec);
+    template<typename T>
+    T vsum(const std::vector<T>& vec);
 
-        template<typename T>
-        std::vector<T> reversed(const std::vector<T>& v);
+    template<typename T>
+    std::vector<T> reversed(const std::vector<T>& v);
 
-        class Timer {
-            typedef std::chrono::system_clock clock_t;
+    class Timer {
+        typedef std::chrono::system_clock clock_t;
 
-            static std::unordered_map<std::string, std::atomic<int>> timers;
-            static std::mutex timers_mutex;
+        static std::unordered_map<std::string, std::atomic<int>> timers;
+        static std::mutex timers_mutex;
 
-            std::string name;
-            bool stopped;
-            bool started;
-            std::chrono::time_point<clock_t> start_time;
+        std::string name;
+        bool stopped;
+        bool started;
+        std::chrono::time_point<clock_t> start_time;
 
-            public:
-                // creates timer and starts measuring time.
-                Timer(std::string name, bool autostart=true);
-                // destroys timer and stops counting if the timer was not previously stopped.
-                ~Timer();
+        public:
+            // creates timer and starts measuring time.
+            Timer(std::string name, bool autostart=true);
+            // destroys timer and stops counting if the timer was not previously stopped.
+            ~Timer();
 
-                // explicitly start the timer
-                void start();
-                // explicitly stop the timer
-                void stop();
+            // explicitly start the timer
+            void start();
+            // explicitly stop the timer
+            void stop();
 
-                static void report();
-        };
+            static void report();
+    };
 
+    class MS {
+        public:
+            std::stringstream stream;
+            operator std::string() const { return stream.str(); }
+
+            template<class T>
+            MS& operator<<(T const& VAR) { stream << VAR; return *this; }
+    };
+
+    void assert2(bool condition, std::string message);
 }
 
 // define hash code for OntologyBranch

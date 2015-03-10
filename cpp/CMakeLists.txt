@@ -69,9 +69,9 @@ message("=> BUILD_TYPE " ${CMAKE_BUILD_TYPE})
 
 set (CMAKE_CXX_COMPILER             "clang++")
 if(CMAKE_BUILD_TYPE MATCHES "debug")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -std=c++11 -g")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g")
 else(CMAKE_BUILD_TYPE MATCHES "debug")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -std=c++11 -O3")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
 endif(CMAKE_BUILD_TYPE MATCHES "debug")
 
 

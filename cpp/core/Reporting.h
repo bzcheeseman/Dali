@@ -11,8 +11,8 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
-#include "core/StackedModel.h"
-#include "core/StackedGatedModel.h"
+//#include "core/StackedModel.h"
+//#include "core/StackedGatedModel.h"
 
 DECLARE_string(save);
 DECLARE_string(load);

@@ -1,7 +1,10 @@
 #ifndef CORE_MAT_OPS_H
 #define CORE_MAT_OPS_H
 
-#include "core/Tape.h"
+#include <initializer_list>
+#include <vector>
+
+#include "core/utils.h"
 
 template<typename R> class Mat;
 namespace Indexing {
@@ -12,9 +15,9 @@ namespace Indexing {
 // templates. In principle this should be a namespace.
 template<typename R>
 struct MatOps {
-    Mat<R> eltmul_broadcast(Mat<R>, Mat<R>);
-    Mat<R> eltmul(Mat<R>, Mat<R>);
-    Mat<R> eltmul(Mat<R>, R);
+    static Mat<R> eltmul_broadcast(Mat<R>, Mat<R>);
+    static Mat<R> eltmul(Mat<R>, Mat<R>);
+    static Mat<R> eltmul(Mat<R>, R);
 
     /**
     Element Multiplication Broadcast Rowwise
@@ -37,7 +40,7 @@ struct MatOps {
 
     Mat<R> out : the rowwise multiply of matrix1 with row_vector.
     **/
-    Mat<R> eltmul_broadcast_rowwise(Mat<R>, Mat<R>);
+    static Mat<R> eltmul_broadcast_rowwise(Mat<R>, Mat<R>);
     /**
     Element Multiplication Rowwise
     ------------------------------
@@ -59,7 +62,7 @@ struct MatOps {
     Mat<R> out : the element wise product of matrix1 and matrix2^T
 
     **/
-    Mat<R> eltmul_rowwise(Mat<R>, Mat<R>);
+    static Mat<R> eltmul_rowwise(Mat<R>, Mat<R>);
     static Mat<R> mul_with_bias(Mat<R>, Mat<R>, Mat<R>);
     // operation of the form (A * x + B * y) + C, called with mul_add_mul_with_bias(A, x, B, y, C)
     static Mat<R> mul_add_mul_with_bias(Mat<R>, Mat<R>, Mat<R>, Mat<R>, Mat<R>);
@@ -68,21 +71,21 @@ struct MatOps {
     // operation of the form (A * x + B * y) + C, called with mul_add_mul_with_bias(A, x, B, y, C)
     // and with caveat that x is actually a column, and should be broadcasted
     static Mat<R> mul_add_broadcast_mul_with_bias(Mat<R>, Mat<R>, Mat<R>, Mat<R>, Mat<R>);
-    Mat<R> add_broadcast(Mat<R>, Mat<R>);
+    static Mat<R> add_broadcast(Mat<R>, Mat<R>);
 
-    Mat<R> add(Mat<R>, Mat<R>);
-    Mat<R> sub(Mat<R>, Mat<R>);
-    Mat<R> sub_broadcast(Mat<R>, Mat<R>);
-    Mat<R> sub_broadcast_reversed(Mat<R>, Mat<R>);
+    static Mat<R> add(Mat<R>, Mat<R>);
+    static Mat<R> sub(Mat<R>, Mat<R>);
+    static Mat<R> sub_broadcast(Mat<R>, Mat<R>);
+    static Mat<R> sub_broadcast_reversed(Mat<R>, Mat<R>);
 
     static Mat<R> add(std::initializer_list<Mat<R>>);
-    Mat<R> square(Mat<R>);
+    static Mat<R> square(Mat<R>);
 
-    Mat<R> sum(Mat<R>);
+    static Mat<R> sum(Mat<R>);
 
-    Mat<R> mean(Mat<R>);
-    Mat<R> log(Mat<R>);
-    Mat<R> exp(Mat<R>);
+    static Mat<R> mean(Mat<R>);
+    static Mat<R> log(Mat<R>);
+    static Mat<R> exp(Mat<R>);
 
     static Mat<R> binary_cross_entropy(Mat<R>, R);
 
@@ -96,12 +99,12 @@ struct MatOps {
     static Mat<R> vstack(std::initializer_list<Mat<R>>);
     static Mat<R> vstack(const std::vector<Mat<R>>&);
 
-    Mat<R> sigmoid(Mat<R>);
+    static Mat<R> sigmoid(Mat<R>);
     static Mat<R> softmax(Mat<R>, R temperature=1.0);
-    Mat<R> steep_sigmoid(Mat<R>, R aggressiveness = 3.75);
-    Mat<R> transpose(Mat<R>);
-    Mat<R> tanh(Mat<R>);
-    Mat<R> relu(Mat<R>);
+    static Mat<R> steep_sigmoid(Mat<R>, R aggressiveness = 3.75);
+    static Mat<R> transpose(Mat<R>);
+    static Mat<R> tanh(Mat<R>);
+    static Mat<R> relu(Mat<R>);
     /**
     Dropout
     -------
@@ -184,10 +187,10 @@ struct MatOps {
 
     **/
     static Mat<R> fast_dropout(Mat<R>);
-    Mat<R> mul(Mat<R>, Mat<R>);
-    Mat<R> rows_pluck(Mat<R>, Indexing::Index);
-    Mat<R> rows_cols_pluck(Mat<R>, Indexing::Index, Indexing::Index);
-    Mat<R> row_pluck(Mat<R>, int);
+    static Mat<R> mul(Mat<R>, Mat<R>);
+    static Mat<R> rows_pluck(Mat<R>, Indexing::Index);
+    static Mat<R> rows_cols_pluck(Mat<R>, Indexing::Index, Indexing::Index);
+    static Mat<R> row_pluck(Mat<R>, int);
 };
 
 

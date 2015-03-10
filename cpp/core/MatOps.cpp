@@ -1,7 +1,9 @@
 #include "core/MatOps.h"
 
-#include "core/Mat.h"
 #include "core/Index.h"
+#include "core/Mat.h"
+#include "core/Tape.h"
+
 
 using std::vector;
 using std::string;
@@ -13,7 +15,7 @@ Mat<R> MatOps<R>::eltmul_broadcast(
         Mat<R> matrix1,
         Mat<R> matrix2) {
     assert2(matrix1.dims(0) == matrix2.dims(0) && matrix2.dims(1) == 1,
-            MS() << "Matrices " << *matrix1 << " and " << *matrix2
+            MS() << "Matrices " << matrix1 << " and " << matrix2
                  << " cannot be element multiplied with broadcast,"
                  << " they do not have the same dimensions.");
     Mat<R> out(matrix1.dims(0), matrix1.dims(1), true);
@@ -121,7 +123,7 @@ Mat<R> MatOps<R>::add(
     }
     if (matrix1.dims(0) != matrix2.dims(0) || matrix1.dims(1) != matrix2.dims(1))
         throw std::invalid_argument("Matrices cannot be added, they do not have the same dimensions.");
-    Mat<R> out = std::make_shared<Mat<R>>(
+    Mat<R> out = Mat<R>(
         matrix1.dims(0),
         matrix1.dims(1),
         true);
@@ -147,7 +149,7 @@ Mat<R> MatOps<R>::sub(
     }
     if (matrix1.dims(0) != matrix2.dims(0) || matrix1.dims(1) != matrix2.dims(1))
         throw std::invalid_argument("Matrices cannot be added, they do not have the same dimensions.");
-    Mat<R> out = std::make_shared<Mat<R>>(
+    Mat<R> out = Mat<R>(
         matrix1.dims(0),
         matrix1.dims(1),
         true);
@@ -165,7 +167,7 @@ Mat<R> MatOps<R>::add_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
     // broadcast matrix 2:
     if (matrix1.dims(0) != matrix2.dims(0) || matrix2.dims(1) != 1)
             throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
-    Mat<R> out = std::make_shared<Mat<R>>(
+    Mat<R> out = Mat<R>(
             matrix1.dims(0),
             matrix1.dims(1),
             true);
@@ -183,7 +185,7 @@ Mat<R> MatOps<R>::sub_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
     // broadcast matrix 2:
     if (matrix1.dims(0) != matrix2.dims(0) || matrix2.dims(1) != 1)
         throw std::invalid_argument("Matrices cannot be substracted with broadcast, they do not have the same dimensions.");
-    Mat<R> out = std::make_shared<Mat<R>>(
+    Mat<R> out = Mat<R>(
         matrix1.dims(0),
         matrix1.dims(1),
         true);
@@ -201,7 +203,7 @@ Mat<R> MatOps<R>::sub_broadcast_reversed(Mat<R> matrix1, Mat<R> matrix2) {
     // broadcast matrix 2:
     if (matrix1.dims(0) != matrix2.dims(0) || matrix2.dims(1) != 1)
         throw std::invalid_argument("Matrices cannot be substracted with broadcast, they do not have the same dimensions.");
-    Mat<R> out = std::make_shared<Mat<R>>(
+    Mat<R> out = Mat<R>(
         matrix1.dims(0),
         matrix1.dims(1),
         true);
@@ -216,7 +218,7 @@ Mat<R> MatOps<R>::sub_broadcast_reversed(Mat<R> matrix1, Mat<R> matrix2) {
 
 template<typename R>
 Mat<R> MatOps<R>::add(std::initializer_list<Mat<R>> matrices) {
-    Mat<R> out = std::make_shared<Mat<R>>(
+    Mat<R> out = Mat<R>(
         (*matrices.begin()).dims(0),
         (*matrices.begin()).dims(1),
         false);
@@ -262,7 +264,7 @@ Mat<R> MatOps<R>::sigmoid(Mat<R> matrix) {
 
 template<typename R>
 Mat<R> MatOps<R>::softmax(Mat<R> matrix, R temperature) {
-    Mat<R> out = std::make_shared<Mat<R>>(
+    Mat<R> out = Mat<R>(
             matrix.dims(0),
             matrix.dims(1),
             false);
@@ -317,7 +319,7 @@ Mat<R> MatOps<R>::mean(Mat<R> matrix) {
     out.w(0) = matrix.w.array().mean();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out](){
-            matrix.dw.array() += (1.0 / (matrix->number_of_elements())) * out.dw(0);
+            matrix.dw.array() += (1.0 / (matrix.number_of_elements())) * out.dw(0);
         });
     return out;
 }
@@ -327,9 +329,9 @@ Mat<R> MatOps<R>::mean(Mat<R> matrix) {
 template<typename R>
 Mat<R> MatOps<R>::sigmoid_binary_cross_entropy(Mat<R> matrix, R t) {
     assert(0 <= t && t <= 1);
-    assert(matrix.dims.size() > 1);
+    assert(matrix.dims().size() > 1);
     DEBUG_ASSERT_BOUNDS(matrix.w,0.0,1.0 + EPS);
-    Mat<R> out =  std::make_shared<Mat<R>>(
+    Mat<R> out =  Mat<R>(
         matrix.dims(0),
         matrix.dims(1),
         true);
@@ -349,8 +351,8 @@ Mat<R> MatOps<R>::sigmoid_binary_cross_entropy(Mat<R> matrix, R t) {
 template<typename R>
 Mat<R> MatOps<R>::binary_cross_entropy(Mat<R> matrix, R t) {
     assert(0 <= t && t <= 1);
-    assert(matrix.dims.size() > 1);
-    Mat<R> out =  std::make_shared<Mat<R>>(
+    assert(matrix.dims().size() > 1);
+    Mat<R> out =  Mat<R>(
         matrix.dims(0),
         matrix.dims(1),
         true);
@@ -374,8 +376,8 @@ Mat<R> MatOps<R>::binary_cross_entropy(Mat<R> matrix, R t) {
 template<typename R>
 Mat<R> MatOps<R>::cross_entropy(Mat<R> matrix, uint answer_idx) {
     DEBUG_ASSERT_BOUNDS(matrix.w,0.0,1.0 + EPS);
-    assert(matrix.dims.size() > 1);
-    Mat<R> out =  std::make_shared<Mat<R>>(1, 1, true);
+    assert(matrix.dims().size() > 1);
+    Mat<R> out =  Mat<R>(1, 1, true);
 
     auto x = matrix.w.array();
 
@@ -394,7 +396,7 @@ Mat<R> MatOps<R>::cross_entropy(Mat<R> matrix, uint answer_idx) {
 
 template<typename R>
 Mat<R> MatOps<R>::softmax_cross_entropy(Mat<R> matrix, uint answer_idx) {
-    Mat<R> out =  std::make_shared<Mat<R>>(1, 1, true);
+    Mat<R> out =  Mat<R>(1, 1, true);
 
     Mat<R> probs = softmax(matrix);
     out.w(0,0) = -std::log(probs.w(answer_idx, 0));
@@ -410,7 +412,7 @@ Mat<R> MatOps<R>::softmax_cross_entropy(Mat<R> matrix, uint answer_idx) {
 
 template<typename R>
 Mat<R> MatOps<R>::log(Mat<R> matrix) {
-    assert(matrix.dims.size() > 1);
+    assert(matrix.dims().size() > 1);
     Mat<R> out (
         matrix.dims(0),
         matrix.dims(1),
@@ -425,7 +427,7 @@ Mat<R> MatOps<R>::log(Mat<R> matrix) {
 
 template<typename R>
 Mat<R> MatOps<R>::exp(Mat<R> matrix) {
-    assert(matrix.dims.size() > 1);
+    assert(matrix.dims().size() > 1);
     Mat<R> out (
         matrix.dims(0),
         matrix.dims(1),
@@ -526,7 +528,7 @@ Mat<R> MatOps<R>::vstack(std::initializer_list<Mat<R>> matrices) {
 template<typename R>
 Mat<R> MatOps<R>::vstack(const std::vector<Mat<R>>& matrices) {
     assert(matrices.size() > 0);
-    assert(matrices[0].dims.size() > 1);
+    assert(matrices[0].dims().size() > 1);
     int d = matrices[0].dims(1);
     int n_total = 0;
     for (auto& mat : matrices) {
@@ -558,7 +560,7 @@ Mat<R> MatOps<R>::vstack(const std::vector<Mat<R>>& matrices) {
 
 template<typename R>
 Mat<R> MatOps<R>::transpose(Mat<R> matrix) {
-    assert(matrix.dims.size() > 1);
+    assert(matrix.dims().size() > 1);
     Mat<R> out (
         matrix.dims(1),
         matrix.dims(0),
@@ -593,7 +595,7 @@ Mat<R> MatOps<R>::relu(Mat<R> matrix) {
         true);
     out.w = matrix.w.unaryExpr(utils::relu_operator<R>());
     if (graph::backprop_enabled)
-        this->graph::emplace_back([matrix, out](){
+        graph::emplace_back([matrix, out](){
             matrix.dw.noalias() += (out.w.unaryExpr(utils::sign_operator<R>()).array() * out.dw.array()).matrix();
         });
     return out;
@@ -824,10 +826,10 @@ Mat<R> MatOps<R>::dropout(
     generator.seed(rd());
 
     auto data_ptr = matrix.w.data();
-    Mat<R> out_ptr  = out.w.data();
+    auto out_ptr  = out.w.data();
     auto bool_ptr = bool_mat->data();
 
-    for (int i = 0; i < matrix->number_of_elements();++i) {
+    for (int i = 0; i < matrix.number_of_elements();++i) {
         (*bool_ptr) = distribution(generator) ? 1.0 : 0.0;
         (*out_ptr) = (*bool_ptr) > 0 ? *data_ptr : 0.0;
         out_ptr++;
@@ -867,11 +869,11 @@ Mat<R> MatOps<R>::dropout_normalized(
     generator.seed(rd());
 
     auto data_ptr = matrix.w.data();
-    Mat<R> out_ptr  = out.w.data();
+    auto out_ptr  = out.w.data();
     auto bool_ptr = bool_mat->data();
 
     R normalized_drop_prob = 1.0 / (1.0 - drop_prob);
-    for (unsigned int i = 0; i < matrix->number_of_elements();++i) {
+    for (unsigned int i = 0; i < matrix.number_of_elements();++i) {
         (*bool_ptr) = distribution(generator) ? normalized_drop_prob : 0.0;
         (*out_ptr) = (*bool_ptr) > 0 ? *data_ptr : 0.0;
         out_ptr++;
@@ -902,10 +904,10 @@ Mat<R> MatOps<R>::fast_dropout(Mat<R> matrix) {
     generator.seed(rd());
 
     auto data_ptr = matrix.w.data();
-    Mat<R> out_ptr  = out.w.data();
+    auto out_ptr  = out.w.data();
     auto randn_ptr = randn_mat->data();
 
-    for (unsigned int i = 0; i < matrix->number_of_elements();++i) {
+    for (unsigned int i = 0; i < matrix.number_of_elements();++i) {
         (*randn_ptr) = distribution(generator);
         (*out_ptr) = (*randn_ptr) * *data_ptr;
         out_ptr++;
@@ -961,3 +963,6 @@ Mat<R> MatOps<R>::row_pluck(
         });
     return out;
 }
+
+template class MatOps<float>;
+template class MatOps<double>;

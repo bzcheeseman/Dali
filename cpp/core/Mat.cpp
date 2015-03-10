@@ -7,6 +7,7 @@ using std::vector;
 using std::string;
 using std::stringstream;
 using utils::assert2;
+using std::make_shared;
 
 /* MatInternal */
 
@@ -15,9 +16,9 @@ std::atomic<int> MatInternal<R>::next_matrix(0);
 
 template<typename R>
 MatInternal<R>::MatInternal(dim_t n, dim_t d, bool empty) :
-        w(NULL, n, d),
+        w(n, d),
         dims({n, d}),
-        random_id(next_matrix++) {
+        id(next_matrix++) {
     if (empty) {
         w = eigen_mat::Zero(dims[0], dims[1]);
     }
@@ -33,9 +34,9 @@ MatInternal<R>::MatInternal(const MatInternal<R>& m) :
 
 template<typename R>
 GradInternal<R>::GradInternal(dim_t n, dim_t d, bool empty) :
-        dw(NULL, n, d) {
+        dw(n, d) {
     if (empty) {
-        dw = eigen_mat::Zero(dims[0], dims[1]);
+        dw = eigen_mat::Zero(n, d);
     }
 }
 
@@ -47,24 +48,29 @@ GradInternal<R>::GradInternal(const GradInternal<R>& g) :
 
 /* Mat */
 
+// this does not need to initialize anything once we get rid of w and dw.
 template<typename R>
-void Mat<R>::point_view_to_internal_memory() {
-    // only 2D supported for now.
-    assert(dims.size() == 2);
-    // Szymon did his research:
-    // This is placement new. It does not allocate new memory.
-    // It reuses existing memory in place.
-    new (&w) eigen_mat_view(m->w.data(), dims[0], dims[1]);
-    new (&dw) eigen_mat_view(g->dw.data(), dims[0], dims[1]);
+Mat<R>::Mat() : w(NULL, 0, 0), dw(NULL, 0, 0) {
 }
 
 template<typename R>
-const vector<int>& Mat<R>::dims() const {
+void Mat<R>::point_view_to_internal_memory() {
+    // only 2D supported for now.
+    assert(dims().size() == 2);
+    // Szymon did his research:
+    // This is placement new. It does not allocate new memory.
+    // It reuses existing memory in place.
+    new (&w) eigen_mat_view(m->w.data(), dims(0), dims(1));
+    new (&dw) eigen_mat_view(g->dw.data(), dims(0), dims(1));
+}
+
+template<typename R>
+const vector<dim_t>& Mat<R>::dims() const {
     return m->dims;
 }
 
 template<typename R>
-const int& Mat<R>::dims(int idx) const {
+const dim_t& Mat<R>::dims(int idx) const {
     return m->dims[idx];
 }
 
@@ -74,7 +80,7 @@ const int& Mat<R>::id() const {
 }
 
 template<typename R>
-Mat<R>::Mat (dim_t n, dim_t d, bool empty) : name(nullptr),  {
+Mat<R>::Mat (dim_t n, dim_t d, bool empty) : name(nullptr), w(NULL, 0, 0), dw(NULL, 0, 0)  {
     // sometimes we don't need to reset m
     // (for example if it's about to be assigned).
     m = make_shared<MatInternal<R>>(n, d, empty);
@@ -85,31 +91,31 @@ Mat<R>::Mat (dim_t n, dim_t d, bool empty) : name(nullptr),  {
 }
 
 template<typename R>
-Mat<R>::Mat (string fname) {
+Mat<R>::Mat (string fname) : w(NULL, 0, 0), dw(NULL, 0, 0) {
     // TODO(jonathan): make it work!
 
     auto arr = cnpy::npy_load(fname);
-    dims = {arr.shape[0], arr.shape.size() > 1 ? arr.shape[1] : 1};
-    m = make_shared<MatInternal<R>>(dims[0], dims[1], false);
-    g = make_shared<GradInternal<R>>(dims[0], dims[1], true);
+    vector<uint> npy_dims = {arr.shape[0], arr.shape.size() > 1 ? arr.shape[1] : 1};
+    m = make_shared<MatInternal<R>>(npy_dims[0], npy_dims[1], false);
+    g = make_shared<GradInternal<R>>(npy_dims[0], npy_dims[1], true);
     point_view_to_internal_memory();
 
     if (arr.word_size == sizeof(double)) {
         double* loaded_data_double = reinterpret_cast<double*>(arr.data);
         if (arr.fortran_order) {
-            Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_double_ft(loaded_data_double, dims[0], dims[1]);
+            Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_double_ft(loaded_data_double, dims(0), dims(1));
             w = wrapped_mat_double_ft.cast<R>();
         } else {
-            Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_double(loaded_data_double, dims[0], dims[1]);
+            Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_double(loaded_data_double, dims(0), dims(1));
             w = wrapped_mat_double.cast<R>();
         }
     } else if (arr.word_size == sizeof(float)) {
         float* loaded_data_float = reinterpret_cast<float*>(arr.data);
         if (arr.fortran_order) {
-            Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_float_ft(loaded_data_float, dims[0], dims[1]);
+            Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_float_ft(loaded_data_float, dims(0), dims(1));
             w = wrapped_mat_float_ft.cast<R>();
         } else {
-            Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_float(loaded_data_float, dims[0], dims[1]);
+            Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_float(loaded_data_float, dims(0), dims(1));
             w = wrapped_mat_float.cast<R>();
         }
     } else {
@@ -122,7 +128,7 @@ Mat<R>::Mat (string fname) {
 }
 
 template<typename R>
-Mat<R>::Mat (dim_t _n, dim_t _d, R std) :
+Mat<R>::Mat (dim_t n, dim_t d, R std) :
         Mat<R>(n, d, false) {
     std::default_random_engine generator;
     std::normal_distribution<R> distribution(0.0, std);
@@ -133,29 +139,29 @@ Mat<R>::Mat (dim_t _n, dim_t _d, R std) :
 }
 
 template<typename R>
-Mat<R>::Mat (dim_t _n, dim_t _d, R lower, R upper) :
+Mat<R>::Mat (dim_t n, dim_t d, R lower, R upper) :
          Mat<R>(n, d, false) {
     std::default_random_engine generator;
     std::uniform_real_distribution<R> distribution(lower, upper);
     std::random_device rd;
     generator.seed(rd());
     auto randn = [&] (int) {return distribution(generator);};
-    w = eigen_mat::NullaryExpr(dims[0], dims[1], randn);
+    w = eigen_mat::NullaryExpr(dims(0), dims(1), randn);
 }
 
 template<typename R>
 Mat<R>::Mat (const Mat<R>& other, bool copy_w, bool copy_dw) :
-        name(other.name) {
+        name(other.name), w(NULL, 0, 0), dw(NULL, 0, 0) {
     if (copy_w) {
         // This copies memory using copy constructor
-        m = make_shared<MatInternal<R>>(other.m);
+        m = make_shared<MatInternal<R>>(*other.m);
     } else {
         // This does not. (only shared_ptr is copied).
         m = other.m;
     }
 
     if (copy_dw) {
-        this->g = make_shared<GradInternal<R>>(other.g);
+        this->g = make_shared<GradInternal<R>>(*other.g);
     } else {
         g = other.g;
     }
@@ -184,16 +190,16 @@ void Mat<R>::set_name(const char * _name) {
 
 template<typename R>
 void Mat<R>::print() const {
-    for (int i = 0; i < dims[0] ; ++i) {
+    for (int i = 0; i < dims(0) ; ++i) {
             std::cout << (i == 0 ? "[" : " ");
-            for (int j = 0; j < dims[1]; ++j) {
+            for (int j = 0; j < dims(1); ++j) {
                     std::cout << std::fixed
                               << std::setw( 7 ) // keep 7 digits
                               << std::setprecision( 3 ) // use 3 decimals
                               << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
                               << this->w(i,j) << " ";
             }
-            std::cout << (i == dims[0]-1 ? "]" : "\n");
+            std::cout << (i == dims(0)-1 ? "]" : "\n");
     }
     std::cout << std::endl;
 }
@@ -208,7 +214,7 @@ void Mat<R>::grad() {
 
 template<typename R>
 void Mat<R>::npy_save (string fname, string mode) {
-    cnpy::npy_save(fname, w.data(), dims.data(), dims.size(), mode);
+    cnpy::npy_save(fname, w.data(), dims().data(), dims().size(), mode);
 }
 
 template<typename R>
@@ -223,19 +229,19 @@ unsigned int Mat<R>::number_of_elements() const {
 
 template<typename R>
 Mat<R> Mat<R>::eltmul_broadcast(Mat<R> matrix2) {
-    return MatOps<T>::eltmul_broadcast(*this, matrix2);
+    return MatOps<R>::eltmul_broadcast(*this, matrix2);
 }
 
 template<typename R>
 Mat<R> Mat<R>::eltmul(Mat<R> matrix2) {
-    return MatOps<T>::eltmul(*this, matrix2);
+    return MatOps<R>::eltmul(*this, matrix2);
 
 }
 
 
 template<typename R>
 Mat<R> Mat<R>::eltmul(R alpha) {
-    return MatOps<T>::eltmul(*this, alpha);
+    return MatOps<R>::eltmul(*this, alpha);
 
 }
 
@@ -243,108 +249,108 @@ Mat<R> Mat<R>::eltmul(R alpha) {
 template<typename R>
 Mat<R> Mat<R>::eltmul_broadcast_rowwise(
         Mat<R> row_vector) {
-    return MatOps<T>::eltmul_broadcast_rowwise(*this, row_vector);
+    return MatOps<R>::eltmul_broadcast_rowwise(*this, row_vector);
 
 }
 
 template<typename R>
 Mat<R> Mat<R>::eltmul_rowwise(
         Mat<R> matrix2) {
-    return MatOps<T>::eltmul_rowwise(*this, matrix2);
+    return MatOps<R>::eltmul_rowwise(*this, matrix2);
 
 }
 
 template<typename R>
 Mat<R> Mat<R>::add(
         Mat<R> matrix2) {
-    return MatOps<T>::add(*this, matrix2);
+    return MatOps<R>::add(*this, matrix2);
 }
 
 
 template<typename R>
 Mat<R> Mat<R>::sub(
         Mat<R> matrix2) {
-    return MatOps<T>::sub(*this, matrix2);
+    return MatOps<R>::sub(*this, matrix2);
 
 }
 
 template<typename R>
 Mat<R> Mat<R>::add_broadcast(Mat<R> matrix2) {
-    return MatOps<T>::add_broadcast(*this, matrix2);
+    return MatOps<R>::add_broadcast(*this, matrix2);
 }
 
 template<typename R>
 Mat<R> Mat<R>::sub_broadcast(Mat<R> matrix2) {
-    return MatOps<T>::sub_broadcast(*this, matrix2);
+    return MatOps<R>::sub_broadcast(*this, matrix2);
 }
 
 template<typename R>
 Mat<R> Mat<R>::sub_broadcast_reversed(Mat<R> matrix2) {
-    return MatOps<T>::sub_broadcast_reversed(*this, matrix2);
+    return MatOps<R>::sub_broadcast_reversed(*this, matrix2);
 }
 
 template<typename R>
 Mat<R> Mat<R>::square() {
-    return MatOps<T>::square(*this);
+    return MatOps<R>::square(*this);
 }
 
 template<typename R>
 Mat<R> Mat<R>::sigmoid() {
-    return MatOps<T>::sigmoid(*this);
+    return MatOps<R>::sigmoid(*this);
 }
 
 
 template<typename R>
 Mat<R> Mat<R>::steep_sigmoid(R aggressiveness) {
-    return MatOps<T>::steep_sigmoid(*this, aggressiveness);
+    return MatOps<R>::steep_sigmoid(*this, aggressiveness);
 }
 
 template<typename R>
 Mat<R> Mat<R>::sum() {
-    return MatOps<T>::sum(*this);
+    return MatOps<R>::sum(*this);
 }
 
 
 template<typename R>
 Mat<R> Mat<R>::mean() {
-    return MatOps<T>::mean(*this);
+    return MatOps<R>::mean(*this);
 }
 
 
 template<typename R>
 Mat<R> Mat<R>::log() {
-    return MatOps<T>::log(*this);
+    return MatOps<R>::log(*this);
 }
 
 template<typename R>
 Mat<R> Mat<R>::exp() {
-    return MatOps<T>::exp(*this);
+    return MatOps<R>::exp(*this);
 }
 
 template<typename R>
 Mat<R> Mat<R>::T() {
-    return MatOps<T>::transpose(*this);
+    return MatOps<R>::transpose(*this);
 }
 
 template<typename R>
 Mat<R> Mat<R>::tanh() {
-    return MatOps<T>::tanh(*this);
+    return MatOps<R>::tanh(*this);
 }
 
 template<typename R>
 Mat<R> Mat<R>::relu() {
-    return MatOps<T>::relu(*this);
+    return MatOps<R>::relu(*this);
 }
 
 template<typename R>
-Mat<R> Mat<R>::mul(
-    return MatOps<T>::mul(*this);
+Mat<R> Mat<R>::mul(Mat<R> other) const {
+    return MatOps<R>::mul(*this, other);
 }
 
 template<typename R>
 Mat<R> Mat<R>::rows_pluck(
         Indexing::Index indices) {
-    return MatOps<T>::rows_pluck(*this, indices);
+    return MatOps<R>::rows_pluck(*this, indices);
 
 }
 
@@ -352,18 +358,18 @@ template<typename R>
 Mat<R> Mat<R>::rows_cols_pluck(
         Indexing::Index row_indices,
         Indexing::Index col_indices) {
-    return MatOps<T>::rows_cols_pluck(*this, row_indices, col_indices);
+    return MatOps<R>::rows_cols_pluck(*this, row_indices, col_indices);
 }
 
 template<typename R>
 Mat<R> Mat<R>::row_pluck(
         int row) {
-    return MatOps<T>::row_pluck(*this, row);
+    return MatOps<R>::row_pluck(*this, row);
 }
 
 template<typename R>
 void Mat<R>::npy_save (FILE * fp) {
-    std::vector<char> header = cnpy::create_npy_header(w.data(),dims.data(),dims.size());
+    std::vector<char> header = cnpy::create_npy_header(w.data(),dims().data(),dims().size());
     fwrite(&header[0],sizeof(char),header.size(),fp);
     fwrite(w.data(),sizeof(R), number_of_elements(), fp);
 }
@@ -377,19 +383,19 @@ void Mat<R>::npy_load(cnpy::NpyArray& arr) {
     if (arr.word_size == sizeof(double)) {
         double* loaded_data_double = reinterpret_cast<double*>(arr.data);
         if (arr.fortran_order) {
-            Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_double_ft(loaded_data_double, dims[0], dims[1]);
+            Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_double_ft(loaded_data_double, dims(0), dims(1));
             w = wrapped_mat_double_ft.cast<R>();
         } else {
-            Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_double(loaded_data_double, dims[0], dims[1]);
+            Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_double(loaded_data_double, dims(0), dims(1));
             w = wrapped_mat_double.cast<R>();
         }
     } else if (arr.word_size == sizeof(float)) {
         float* loaded_data_float = reinterpret_cast<float*>(arr.data);
         if (arr.fortran_order) {
-            Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_float_ft(loaded_data_float, dims[0], dims[1]);
+            Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_float_ft(loaded_data_float, dims(0), dims(1));
             w = wrapped_mat_float_ft.cast<R>();
         } else {
-            Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_float(loaded_data_float, dims[0], dims[1]);
+            Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_float(loaded_data_float, dims(0), dims(1));
             w = wrapped_mat_float.cast<R>();
         }
     } else {
@@ -437,9 +443,9 @@ Mat<R> Mat<R>::Empty(dim_t n, dim_t d) {
 template<typename R>
 std::ostream& operator<<(std::ostream& strm, const Mat<R>& a) {
     if (a.name != 0) {
-        return strm << "<#Mat name=\"" << *a.name<< "\" n=" << a.dims[0] << ", d=" << a.dims[1] << ">";
+        return strm << "<#Mat name=\"" << *a.name<< "\" n=" << a.dims(0) << ", d=" << a.dims(1) << ">";
     } else {
-        return strm << "<#Mat n=" << a.dims[0] << ", d=" << a.dims[1] << ">";
+        return strm << "<#Mat n=" << a.dims(0) << ", d=" << a.dims(1) << ">";
     }
 }
 
@@ -448,7 +454,7 @@ template std::ostream& operator<< <float>(std::ostream& strm, const Mat<float>& 
 
 template <typename R>
 std::size_t std::hash<Mat<R>>::operator()(const Mat<R>& k) const {
-    return k.random_id;
+    return k.id();
 }
 
 template std::size_t std::hash<Mat<float>>::operator()(const Mat<float>& k)   const;
@@ -456,7 +462,7 @@ template std::size_t std::hash<Mat<double>>::operator()(const Mat<double>& k) co
 
 template <typename R>
 bool operator!=(const Mat<R>& A, const Mat<R>& B) {
-    return A.random_id != B.random_id;
+    return A.id() != B.id();
 }
 
 template bool operator!=(const Mat<float>&, const Mat<float>&);
@@ -464,7 +470,7 @@ template bool operator!=(const Mat<double>&, const Mat<double>&);
 
 template <typename R>
 bool operator==(const Mat<R>& A, const Mat<R>& B) {
-    return A.random_id == B.random_id;
+    return A.id() == B.id();
 }
 
 template bool operator==<float>(const Mat<float>&, const Mat<float>&);

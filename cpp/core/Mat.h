@@ -12,7 +12,7 @@
 #include "core/Index.h"
 #include "core/Tape.h"
 #include "core/utils.h"
-#include "core/MatOps.h"
+
 
 #define EPS 1e-9
 
@@ -29,7 +29,7 @@ class MatInternal {
         std::vector<dim_t> dims;
         const size_t id;
 
-        MatInternal(int n, int d, bool empty=false);
+        MatInternal(dim_t n, dim_t d, bool empty=false);
         MatInternal(const MatInternal<R>& m);
 
 };
@@ -41,7 +41,7 @@ class GradInternal {
     public:
         eigen_mat dw;
 
-        GradInternal(int n, int d, bool empty=true);
+        GradInternal(dim_t n, dim_t d, bool empty=true);
         GradInternal(const GradInternal<R>& g);
 
 };
@@ -85,11 +85,15 @@ class Mat {
 
         mutable eigen_mat_view w;
         mutable eigen_mat_view dw;
+
+        // TODO(jonathan): wtf!
+        bool sparse = false;
+        std::shared_ptr<std::vector<uint>> sparse_row_keys;
     private:
         void point_view_to_internal_memory();
 
     public:
-
+        Mat();
         // sometimes we don't need to reset m
         // (for example if it's about to be assigned).
         Mat (dim_t n, dim_t d, bool empty=false);
@@ -125,8 +129,8 @@ class Mat {
         void grad();
 
 
-        const std::vector<int>& dims() const;
-        const int& dims(int idx) const;
+        const std::vector<dim_t>& dims() const;
+        const dim_t& dims(int idx) const;
         unsigned int number_of_elements() const;
 
         const int& id() const;
@@ -177,7 +181,7 @@ class Mat {
         Mat<R> T();
         Mat<R> tanh();
         Mat<R> relu();
-        Mat<R> mul(Mat<R>);
+        Mat<R> mul(Mat<R>) const;
         Mat<R> rows_pluck(Indexing::Index);
         Mat<R> rows_cols_pluck(Indexing::Index, Indexing::Index);
         Mat<R> row_pluck(int);

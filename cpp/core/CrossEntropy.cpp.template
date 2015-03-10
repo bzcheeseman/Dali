@@ -2,62 +2,62 @@
 
 
 template<typename T>
-T cross_entropy(std::shared_ptr<Mat<T>> logprobs, uint& target) {
-    std::shared_ptr<Mat<T>> probs = softmax(logprobs);
-    T cost = -std::log(probs->w(target,0));
-    logprobs->dw = probs->w;
+T cross_entropy(Mat<T> logprobs, uint& target) {
+    Mat<T> probs = softmax(logprobs);
+    T cost = -std::log(probs.w(target,0));
+    logprobs.dw = probs.w;
     // write gradients into log probabilities
-    logprobs->dw(target, 0) -= 1;
-    DEBUG_ASSERT_NOT_NAN(logprobs->dw);
+    logprobs.dw(target, 0) -= 1;
+    DEBUG_ASSERT_NOT_NAN(logprobs.dw);
     return cost;
 }
 
 template<typename T, typename M>
-T cross_entropy(std::shared_ptr<Mat<T>> logprobs, const M targets) {
-    std::shared_ptr<Mat<T>> probs = softmax(logprobs);
+T cross_entropy(Mat<T> logprobs, const M targets) {
+    Mat<T> probs = softmax(logprobs);
     T cost = 0.0;
-    logprobs->dw = probs->w;
+    logprobs.dw = probs.w;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
-        cost -= std::log(probs->w(targets(i),i));
-        logprobs->dw(targets(i), i) -= 1;
+        cost -= std::log(probs.w(targets(i),i));
+        logprobs.dw(targets(i), i) -= 1;
     }
-    DEBUG_ASSERT_NOT_NAN(logprobs->dw);
+    DEBUG_ASSERT_NOT_NAN(logprobs.dw);
     return cost;
 }
 
 template<typename Z, typename M>
-Z masked_cross_entropy(std::shared_ptr<Mat<Z>> logprobs,
+Z masked_cross_entropy(Mat<Z> logprobs,
     uint& T,
     shared_eigen_index_vector loss_start,
     shared_eigen_index_vector codelens,
     const M targets) {
-    std::shared_ptr<Mat<Z>> probs = softmax(logprobs);
+    Mat<Z> probs = softmax(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + (*codelens)(i) )) {
-            cost -= std::log(probs->w(targets(i),i));
-            logprobs->dw.col(i) = probs->w.col(i);
-            logprobs->dw(targets(i), i) -= 1;
+            cost -= std::log(probs.w(targets(i),i));
+            logprobs.dw.col(i) = probs.w.col(i);
+            logprobs.dw(targets(i), i) -= 1;
 
             #ifdef VERBOSE_CROSS_ENTROPY
 
             std::cout << "-- (" << T << ")\n";
-            for (int k = 0 ; k < logprobs->dw.rows(); k++) {
-                for (int j = 0; j < logprobs->dw.cols(); j++) {
+            for (int k = 0 ; k < logprobs.dw.rows(); k++) {
+                for (int j = 0; j < logprobs.dw.cols(); j++) {
                     if (k == targets(i) && i == j) {
                         std::cout << " **" << std::fixed
                                   << std::setw( 5 ) // keep 7 digits
                                   << std::setprecision( 3 ) // use 3 decimals
-                                  << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
-                                  << logprobs->dw(k,j) << "** ";
+                                  << std::setfill( ' ' ) // pad values with blanks this.w(i,j)
+                                  << logprobs.dw(k,j) << "** ";
                     } else {
                         std::cout << "   " << std::fixed
                                   << std::setw( 5 ) // keep 7 digits
                                   << std::setprecision( 3 ) // use 3 decimals
-                                  << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
-                                  << logprobs->dw(k,j) << "   ";
+                                  << std::setfill( ' ' ) // pad values with blanks this.w(i,j)
+                                  << logprobs.dw(k,j) << "   ";
                     }
                 }
                 std::cout << "\n";
@@ -67,452 +67,452 @@ Z masked_cross_entropy(std::shared_ptr<Mat<Z>> logprobs,
             #endif
         }
     }
-    DEBUG_ASSERT_NOT_NAN(logprobs->dw);
+    DEBUG_ASSERT_NOT_NAN(logprobs.dw);
     return cost;
 }
 
 template<typename Z, typename M>
-Z masked_cross_entropy(std::shared_ptr<Mat<Z>> logprobs,
+Z masked_cross_entropy(Mat<Z> logprobs,
     uint& T,
     uint loss_start,
     shared_eigen_index_vector codelens,
     const M targets) {
-    std::shared_ptr<Mat<Z>> probs = softmax(logprobs);
+    Mat<Z> probs = softmax(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
         if (T >= loss_start && (T < loss_start + (*codelens)(i) )) {
-            cost -= std::log(probs->w(targets(i),i));
-            logprobs->dw.col(i) = probs->w.col(i);
-            logprobs->dw(targets(i), i) -= 1;
+            cost -= std::log(probs.w(targets(i),i));
+            logprobs.dw.col(i) = probs.w.col(i);
+            logprobs.dw(targets(i), i) -= 1;
         }
     }
-    DEBUG_ASSERT_NOT_NAN(logprobs->dw);
+    DEBUG_ASSERT_NOT_NAN(logprobs.dw);
     return cost;
 }
 template<typename Z, typename M>
-Z masked_cross_entropy(std::shared_ptr<Mat<Z>> logprobs,
+Z masked_cross_entropy(Mat<Z> logprobs,
     uint& T,
     int loss_start,
     shared_eigen_index_vector codelens,
     const M targets) {
-    std::shared_ptr<Mat<Z>> probs = softmax(logprobs);
+    Mat<Z> probs = softmax(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
         if (T >= loss_start && (T < loss_start + (*codelens)(i) )) {
-            cost -= std::log(probs->w(targets(i),i));
-            logprobs->dw.col(i) = probs->w.col(i);
-            logprobs->dw(targets(i), i) -= 1;
+            cost -= std::log(probs.w(targets(i),i));
+            logprobs.dw.col(i) = probs.w.col(i);
+            logprobs.dw(targets(i), i) -= 1;
         }
     }
-    DEBUG_ASSERT_NOT_NAN(logprobs->dw);
+    DEBUG_ASSERT_NOT_NAN(logprobs.dw);
     return cost;
 }
 
 template<typename Z, typename M>
-Z masked_cross_entropy(std::shared_ptr<Mat<Z>> logprobs,
+Z masked_cross_entropy(Mat<Z> logprobs,
     uint& T,
     shared_eigen_index_vector loss_start,
     int codelens,
     const M targets) {
-    std::shared_ptr<Mat<Z>> probs = softmax(logprobs);
+    Mat<Z> probs = softmax(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens)) {
-            cost -= std::log(probs->w(targets(i),i));
-            logprobs->dw.col(i) = probs->w.col(i);
-            logprobs->dw(targets(i), i) -= 1;
+            cost -= std::log(probs.w(targets(i),i));
+            logprobs.dw.col(i) = probs.w.col(i);
+            logprobs.dw(targets(i), i) -= 1;
         }
     }
-    DEBUG_ASSERT_NOT_NAN(logprobs->dw);
+    DEBUG_ASSERT_NOT_NAN(logprobs.dw);
     return cost;
 }
 template<typename Z, typename M>
-Z masked_cross_entropy(std::shared_ptr<Mat<Z>> logprobs,
+Z masked_cross_entropy(Mat<Z> logprobs,
     uint& T,
     shared_eigen_index_vector loss_start,
     uint codelens,
     const M targets) {
-    std::shared_ptr<Mat<Z>> probs = softmax(logprobs);
+    Mat<Z> probs = softmax(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens)) {
-            cost -= std::log(probs->w(targets(i),i));
-            logprobs->dw.col(i) = probs->w.col(i);
-            logprobs->dw(targets(i), i) -= 1;
+            cost -= std::log(probs.w(targets(i),i));
+            logprobs.dw.col(i) = probs.w.col(i);
+            logprobs.dw(targets(i), i) -= 1;
         }
     }
-    DEBUG_ASSERT_NOT_NAN(logprobs->dw);
+    DEBUG_ASSERT_NOT_NAN(logprobs.dw);
     return cost;
 }
 template<typename Z, typename M>
-Z masked_cross_entropy(std::shared_ptr<Mat<Z>> logprobs,
+Z masked_cross_entropy(Mat<Z> logprobs,
     uint& T,
     int loss_start,
     int codelens,
     const M targets) {
-    std::shared_ptr<Mat<Z>> probs = softmax(logprobs);
+    Mat<Z> probs = softmax(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
         if (T >= loss_start && (T < loss_start + codelens)) {
-            cost -= std::log(probs->w(targets(i),i));
-            logprobs->dw.col(i) = probs->w.col(i);
-            logprobs->dw(targets(i), i) -= 1;
+            cost -= std::log(probs.w(targets(i),i));
+            logprobs.dw.col(i) = probs.w.col(i);
+            logprobs.dw(targets(i), i) -= 1;
         }
     }
-    DEBUG_ASSERT_NOT_NAN(logprobs->dw);
+    DEBUG_ASSERT_NOT_NAN(logprobs.dw);
     return cost;
 }
 template<typename Z, typename M>
-Z masked_cross_entropy(std::shared_ptr<Mat<Z>> logprobs,
+Z masked_cross_entropy(Mat<Z> logprobs,
     uint& T,
     uint loss_start,
     uint codelens,
     const M targets) {
-    std::shared_ptr<Mat<Z>> probs = softmax(logprobs);
+    Mat<Z> probs = softmax(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
         if (T >= loss_start && (T < loss_start + codelens)) {
-            cost -= std::log(probs->w(targets(i),i));
-            logprobs->dw.col(i) = probs->w.col(i);
-            logprobs->dw(targets(i), i) -= 1;
+            cost -= std::log(probs.w(targets(i),i));
+            logprobs.dw.col(i) = probs.w.col(i);
+            logprobs.dw(targets(i), i) -= 1;
         }
     }
-    DEBUG_ASSERT_NOT_NAN(logprobs->dw);
+    DEBUG_ASSERT_NOT_NAN(logprobs.dw);
     return cost;
 }
 template<typename Z, typename M>
-Z masked_cross_entropy(std::shared_ptr<Mat<Z>> logprobs,
+Z masked_cross_entropy(Mat<Z> logprobs,
     uint& T,
     int loss_start,
     uint codelens,
     const M targets) {
-    std::shared_ptr<Mat<Z>> probs = softmax(logprobs);
+    Mat<Z> probs = softmax(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
         if (T >= loss_start && (T < loss_start + codelens)) {
-            cost -= std::log(probs->w(targets(i),i));
-            logprobs->dw.col(i) = probs->w.col(i);
-            logprobs->dw(targets(i), i) -= 1;
+            cost -= std::log(probs.w(targets(i),i));
+            logprobs.dw.col(i) = probs.w.col(i);
+            logprobs.dw(targets(i), i) -= 1;
         }
     }
-    DEBUG_ASSERT_NOT_NAN(logprobs->dw);
+    DEBUG_ASSERT_NOT_NAN(logprobs.dw);
     return cost;
 }
 template<typename Z, typename M>
-Z masked_cross_entropy(std::shared_ptr<Mat<Z>> logprobs,
+Z masked_cross_entropy(Mat<Z> logprobs,
     uint& T,
     uint loss_start,
     int codelens,
     const M targets) {
-    std::shared_ptr<Mat<Z>> probs = softmax(logprobs);
+    Mat<Z> probs = softmax(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
         if (T >= loss_start && (T < loss_start + codelens)) {
-            cost -= std::log(probs->w(targets(i),i));
-            logprobs->dw.col(i) = probs->w.col(i);
-            logprobs->dw(targets(i), i) -= 1;
+            cost -= std::log(probs.w(targets(i),i));
+            logprobs.dw.col(i) = probs.w.col(i);
+            logprobs.dw(targets(i), i) -= 1;
         }
     }
-    DEBUG_ASSERT_NOT_NAN(logprobs->dw);
+    DEBUG_ASSERT_NOT_NAN(logprobs.dw);
     return cost;
 }
 
 // MASKED CROSS ENTROPY NO GRAD
 
 template<typename Z, typename M>
-Z masked_cross_entropy_no_grad(std::shared_ptr<Mat<Z>> logprobs,
+Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     uint& T,
     shared_eigen_index_vector loss_start,
     shared_eigen_index_vector codelens,
     const M targets) {
-    std::shared_ptr<Mat<Z>> probs = softmax(logprobs);
+    Mat<Z> probs = softmax(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + (*codelens)(i) ))
-            cost -= std::log(probs->w(targets(i),i));
+            cost -= std::log(probs.w(targets(i),i));
     return cost;
 }
 
 template<typename Z, typename M>
-Z masked_cross_entropy_no_grad(std::shared_ptr<Mat<Z>> logprobs,
+Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     uint& T,
     uint loss_start,
     shared_eigen_index_vector codelens,
     const M targets) {
-    std::shared_ptr<Mat<Z>> probs = softmax(logprobs);
+    Mat<Z> probs = softmax(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
         if (T >= loss_start && (T < loss_start + (*codelens)(i) ))
-            cost -= std::log(probs->w(targets(i),i));
+            cost -= std::log(probs.w(targets(i),i));
     return cost;
 }
 template<typename Z, typename M>
-Z masked_cross_entropy_no_grad(std::shared_ptr<Mat<Z>> logprobs,
+Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     uint& T,
     int loss_start,
     shared_eigen_index_vector codelens,
     const M targets) {
-    std::shared_ptr<Mat<Z>> probs = softmax(logprobs);
+    Mat<Z> probs = softmax(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
         if (T >= loss_start && (T < loss_start + (*codelens)(i) ))
-            cost -= std::log(probs->w(targets(i),i));
+            cost -= std::log(probs.w(targets(i),i));
     return cost;
 }
 
 template<typename Z, typename M>
-Z masked_cross_entropy_no_grad(std::shared_ptr<Mat<Z>> logprobs,
+Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     uint& T,
     shared_eigen_index_vector loss_start,
     int codelens,
     const M targets) {
-    std::shared_ptr<Mat<Z>> probs = softmax(logprobs);
+    Mat<Z> probs = softmax(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens))
-            cost -= std::log(probs->w(targets(i),i));
+            cost -= std::log(probs.w(targets(i),i));
     return cost;
 }
 template<typename Z, typename M>
-Z masked_cross_entropy_no_grad(std::shared_ptr<Mat<Z>> logprobs,
+Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     uint& T,
     shared_eigen_index_vector loss_start,
     uint codelens,
     const M targets) {
-    std::shared_ptr<Mat<Z>> probs = softmax(logprobs);
+    Mat<Z> probs = softmax(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens))
-            cost -= std::log(probs->w(targets(i),i));
+            cost -= std::log(probs.w(targets(i),i));
     return cost;
 }
 template<typename Z, typename M>
-Z masked_cross_entropy_no_grad(std::shared_ptr<Mat<Z>> logprobs,
+Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     uint& T,
     int loss_start,
     int codelens,
     const M targets) {
-    std::shared_ptr<Mat<Z>> probs = softmax(logprobs);
+    Mat<Z> probs = softmax(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
         if (T >= loss_start && (T < loss_start + codelens))
-            cost -= std::log(probs->w(targets(i),i));
+            cost -= std::log(probs.w(targets(i),i));
     return cost;
 }
 template<typename Z, typename M>
-Z masked_cross_entropy_no_grad(std::shared_ptr<Mat<Z>> logprobs,
+Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     uint& T,
     uint loss_start,
     uint codelens,
     const M targets) {
-    std::shared_ptr<Mat<Z>> probs = softmax(logprobs);
+    Mat<Z> probs = softmax(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
         if (T >= loss_start && (T < loss_start + codelens))
-            cost -= std::log(probs->w(targets(i),i));
+            cost -= std::log(probs.w(targets(i),i));
     return cost;
 }
 template<typename Z, typename M>
-Z masked_cross_entropy_no_grad(std::shared_ptr<Mat<Z>> logprobs,
+Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     uint& T,
     int loss_start,
     uint codelens,
     const M targets) {
-    std::shared_ptr<Mat<Z>> probs = softmax(logprobs);
+    Mat<Z> probs = softmax(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
         if (T >= loss_start && (T < loss_start + codelens))
-            cost -= std::log(probs->w(targets(i),i));
+            cost -= std::log(probs.w(targets(i),i));
     return cost;
 }
 template<typename Z, typename M>
-Z masked_cross_entropy_no_grad(std::shared_ptr<Mat<Z>> logprobs,
+Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     uint& T,
     uint loss_start,
     int codelens,
     const M targets) {
-    std::shared_ptr<Mat<Z>> probs = softmax(logprobs);
+    Mat<Z> probs = softmax(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
         if (T >= loss_start && (T < loss_start + codelens))
-            cost -= std::log(probs->w(targets(i),i));
+            cost -= std::log(probs.w(targets(i),i));
     return cost;
 }
 
-template float  cross_entropy(std::shared_ptr<Mat<float>>, eigen_index_block);
-template double cross_entropy(std::shared_ptr<Mat<double>>, eigen_index_block);
-template float  cross_entropy(std::shared_ptr<Mat<float>>, eigen_index_block_scalar);
-template double cross_entropy(std::shared_ptr<Mat<double>>, eigen_index_block_scalar);
+template float  cross_entropy(Mat<float>, eigen_index_block);
+template double cross_entropy(Mat<double>, eigen_index_block);
+template float  cross_entropy(Mat<float>, eigen_index_block_scalar);
+template double cross_entropy(Mat<double>, eigen_index_block_scalar);
 
 template<typename Z>
-Z masked_sum(std::shared_ptr<Mat<Z>> values,
+Z masked_sum(Mat<Z> values,
     uint& T,
     shared_eigen_index_vector loss_start,
     shared_eigen_index_vector codelens,
     const Z& gparent) {
     Z cost = 0.0;
-    assert(values->dims.size() > 1);
+    assert(values.dims().size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->dims[1]; i++) {
+    for (size_t i = 0; i < values.dims(1); i++) {
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + (*codelens)(i) )) {
-            cost += values->w.col(i).sum() * gparent;
-            values->dw.col(i).array() += gparent;
+            cost += values.w.col(i).sum() * gparent;
+            values.dw.col(i).array() += gparent;
         }
     }
     return cost;
 }
 
 template<typename Z>
-Z masked_sum(std::shared_ptr<Mat<Z>> values,
+Z masked_sum(Mat<Z> values,
     uint& T,
     shared_eigen_index_vector loss_start,
     int codelens,
     const Z& gparent) {
     Z cost = 0.0;
-    assert(values->dims.size() > 1);
+    assert(values.dims().size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->dims[1]; i++) {
+    for (size_t i = 0; i < values.dims(1); i++) {
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens )) {
-            cost += values->w.col(i).sum() * gparent;
-            values->dw.col(i).array() += gparent;
+            cost += values.w.col(i).sum() * gparent;
+            values.dw.col(i).array() += gparent;
         }
     }
     return cost;
 }
 template<typename Z>
-Z masked_sum(std::shared_ptr<Mat<Z>> values,
+Z masked_sum(Mat<Z> values,
     uint& T,
     shared_eigen_index_vector loss_start,
     uint codelens,
     const Z& gparent) {
     Z cost = 0.0;
-    assert(values->dims.size() > 1);
+    assert(values.dims().size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->dims[1]; i++) {
+    for (size_t i = 0; i < values.dims(1); i++) {
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens )) {
-            cost += values->w.col(i).sum() * gparent;
-            values->dw.col(i).array() += gparent;
+            cost += values.w.col(i).sum() * gparent;
+            values.dw.col(i).array() += gparent;
         }
     }
     return cost;
 }
 
 template<typename Z>
-Z masked_sum(std::shared_ptr<Mat<Z>> values,
+Z masked_sum(Mat<Z> values,
     uint& T,
     uint loss_start,
     shared_eigen_index_vector codelens,
     const Z& gparent) {
     Z cost = 0.0;
-    assert(values->dims.size() > 1);
+    assert(values.dims().size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->dims[1]; i++) {
+    for (size_t i = 0; i < values.dims(1); i++) {
         if (T >= loss_start && (T < loss_start + (*codelens)(i) )) {
-            cost += values->w.col(i).sum() * gparent;
-            values->dw.col(i).array() += gparent;
+            cost += values.w.col(i).sum() * gparent;
+            values.dw.col(i).array() += gparent;
         }
     }
     return cost;
 }
 template<typename Z>
-Z masked_sum(std::shared_ptr<Mat<Z>> values,
+Z masked_sum(Mat<Z> values,
     uint& T,
     int loss_start,
     shared_eigen_index_vector codelens,
     const Z& gparent) {
     Z cost = 0.0;
-    assert(values->dims.size() > 1);
+    assert(values.dims().size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->dims[1]; i++) {
+    for (size_t i = 0; i < values.dims(1); i++) {
         if (T >= loss_start && (T < loss_start + (*codelens)(i) )) {
-            cost += values->w.col(i).sum() * gparent;
-            values->dw.col(i).array() += gparent;
+            cost += values.w.col(i).sum() * gparent;
+            values.dw.col(i).array() += gparent;
         }
     }
     return cost;
 }
 
 template<typename Z>
-Z masked_sum(std::shared_ptr<Mat<Z>> values,
+Z masked_sum(Mat<Z> values,
     uint& T,
     uint loss_start,
     uint codelens,
     const Z& gparent) {
     Z cost = 0.0;
-    assert(values->dims.size() > 1);
+    assert(values.dims().size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->dims[1]; i++) {
+    for (size_t i = 0; i < values.dims(1); i++) {
         if (T >= loss_start && (T < loss_start + codelens )) {
-            cost += values->w.col(i).sum() * gparent;
-            values->dw.col(i).array() += gparent;
+            cost += values.w.col(i).sum() * gparent;
+            values.dw.col(i).array() += gparent;
         }
     }
     return cost;
 }
 template<typename Z>
-Z masked_sum(std::shared_ptr<Mat<Z>> values,
+Z masked_sum(Mat<Z> values,
     uint& T,
     int loss_start,
     int codelens,
     const Z& gparent) {
     Z cost = 0.0;
-    assert(values->dims.size() > 1);
+    assert(values.dims().size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->dims[1]; i++) {
+    for (size_t i = 0; i < values.dims(1); i++) {
         if (T >= loss_start && (T < loss_start + codelens )) {
-            cost += values->w.col(i).sum() * gparent;
-            values->dw.col(i).array() += gparent;
+            cost += values.w.col(i).sum() * gparent;
+            values.dw.col(i).array() += gparent;
         }
     }
     return cost;
 }
 template<typename Z>
-Z masked_sum(std::shared_ptr<Mat<Z>> values,
+Z masked_sum(Mat<Z> values,
     uint& T,
     uint loss_start,
     int codelens,
     const Z& gparent) {
     Z cost = 0.0;
-    assert(values->dims.size() > 1);
+    assert(values.dims().size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->dims[1]; i++) {
+    for (size_t i = 0; i < values.dims(1); i++) {
         if (T >= loss_start && (T < loss_start + codelens )) {
-            cost += values->w.col(i).sum() * gparent;
-            values->dw.col(i).array() += gparent;
+            cost += values.w.col(i).sum() * gparent;
+            values.dw.col(i).array() += gparent;
         }
     }
     return cost;
 }
 template<typename Z>
-Z masked_sum(std::shared_ptr<Mat<Z>> values,
+Z masked_sum(Mat<Z> values,
     uint& T,
     int loss_start,
     uint codelens,
     const Z& gparent) {
     Z cost = 0.0;
-    assert(values->dims.size() > 1);
+    assert(values.dims().size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->dims[1]; i++) {
+    for (size_t i = 0; i < values.dims(1); i++) {
         if (T >= loss_start && (T < loss_start + codelens )) {
-            cost += values->w.col(i).sum() * gparent;
-            values->dw.col(i).array() += gparent;
+            cost += values.w.col(i).sum() * gparent;
+            values.dw.col(i).array() += gparent;
         }
     }
     return cost;
@@ -521,143 +521,143 @@ Z masked_sum(std::shared_ptr<Mat<Z>> values,
 // MASKED SUM NO GRAD
 
 template<typename Z>
-Z masked_sum_no_grad(std::shared_ptr<Mat<Z>> values,
+Z masked_sum_no_grad(Mat<Z> values,
     uint& T,
     shared_eigen_index_vector loss_start,
     shared_eigen_index_vector codelens,
     const Z& gparent) {
     Z cost = 0.0;
-    assert(values->dims.size() > 1);
+    assert(values.dims().size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->dims[1]; i++)
+    for (size_t i = 0; i < values.dims(1); i++)
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + (*codelens)(i) ))
-            cost += values->w.col(i).sum() * gparent;
+            cost += values.w.col(i).sum() * gparent;
     return cost;
 }
 
 template<typename Z>
-Z masked_sum_no_grad(std::shared_ptr<Mat<Z>> values,
+Z masked_sum_no_grad(Mat<Z> values,
     uint& T,
     shared_eigen_index_vector loss_start,
     int codelens,
     const Z& gparent) {
     Z cost = 0.0;
-    assert(values->dims.size() > 1);
+    assert(values.dims().size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->dims[1]; i++)
+    for (size_t i = 0; i < values.dims(1); i++)
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens ))
-            cost += values->w.col(i).sum() * gparent;
+            cost += values.w.col(i).sum() * gparent;
     return cost;
 }
 template<typename Z>
-Z masked_sum_no_grad(std::shared_ptr<Mat<Z>> values,
+Z masked_sum_no_grad(Mat<Z> values,
     uint& T,
     shared_eigen_index_vector loss_start,
     uint codelens,
     const Z& gparent) {
     Z cost = 0.0;
-    assert(values->dims.size() > 1);
+    assert(values.dims().size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->dims[1]; i++)
+    for (size_t i = 0; i < values.dims(1); i++)
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens ))
-            cost += values->w.col(i).sum() * gparent;
+            cost += values.w.col(i).sum() * gparent;
     return cost;
 }
 
 template<typename Z>
-Z masked_sum_no_grad(std::shared_ptr<Mat<Z>> values,
+Z masked_sum_no_grad(Mat<Z> values,
     uint& T,
     uint loss_start,
     shared_eigen_index_vector codelens,
     const Z& gparent) {
     Z cost = 0.0;
-    assert(values->dims.size() > 1);
+    assert(values.dims().size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->dims[1]; i++)
+    for (size_t i = 0; i < values.dims(1); i++)
         if (T >= loss_start && (T < loss_start + (*codelens)(i) ))
-            cost += values->w.col(i).sum() * gparent;
+            cost += values.w.col(i).sum() * gparent;
     return cost;
 }
 template<typename Z>
-Z masked_sum_no_grad(std::shared_ptr<Mat<Z>> values,
+Z masked_sum_no_grad(Mat<Z> values,
     uint& T,
     int loss_start,
     shared_eigen_index_vector codelens,
     const Z& gparent) {
     Z cost = 0.0;
-    assert(values->dims.size() > 1);
+    assert(values.dims().size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->dims[1]; i++)
+    for (size_t i = 0; i < values.dims(1); i++)
         if (T >= loss_start && (T < loss_start + (*codelens)(i) ))
-            cost += values->w.col(i).sum() * gparent;
+            cost += values.w.col(i).sum() * gparent;
     return cost;
 }
 
 template<typename Z>
-Z masked_sum_no_grad(std::shared_ptr<Mat<Z>> values,
+Z masked_sum_no_grad(Mat<Z> values,
     uint& T,
     uint loss_start,
     uint codelens,
     const Z& gparent) {
     Z cost = 0.0;
-    assert(values->dims.size() > 1);
+    assert(values.dims().size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->dims[1]; i++)
+    for (size_t i = 0; i < values.dims(1); i++)
         if (T >= loss_start && (T < loss_start + codelens ))
-            cost += values->w.col(i).sum() * gparent;
+            cost += values.w.col(i).sum() * gparent;
     return cost;
 }
 template<typename Z>
-Z masked_sum_no_grad(std::shared_ptr<Mat<Z>> values,
+Z masked_sum_no_grad(Mat<Z> values,
     uint& T,
     int loss_start,
     int codelens,
     const Z& gparent) {
     Z cost = 0.0;
-    assert(values->dims.size() > 1);
+    assert(values.dims().size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->dims[1]; i++)
+    for (size_t i = 0; i < values.dims(1); i++)
         if (T >= loss_start && (T < loss_start + codelens ))
-            cost += values->w.col(i).sum() * gparent;
+            cost += values.w.col(i).sum() * gparent;
     return cost;
 }
 template<typename Z>
-Z masked_sum_no_grad(std::shared_ptr<Mat<Z>> values,
+Z masked_sum_no_grad(Mat<Z> values,
     uint& T,
     uint loss_start,
     int codelens,
     const Z& gparent) {
     Z cost = 0.0;
-    assert(values->dims.size() > 1);
+    assert(values.dims().size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->dims[1]; i++)
+    for (size_t i = 0; i < values.dims(1); i++)
         if (T >= loss_start && (T < loss_start + codelens ))
-            cost += values->w.col(i).sum() * gparent;
+            cost += values.w.col(i).sum() * gparent;
     return cost;
 }
 template<typename Z>
-Z masked_sum_no_grad(std::shared_ptr<Mat<Z>> values,
+Z masked_sum_no_grad(Mat<Z> values,
     uint& T,
     int loss_start,
     uint codelens,
     const Z& gparent) {
     Z cost = 0.0;
-    assert(values->dims.size() > 1);
+    assert(values.dims().size() > 1);
     // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values->dims[1]; i++)
+    for (size_t i = 0; i < values.dims(1); i++)
         if (T >= loss_start && (T < loss_start + codelens ))
-            cost += values->w.col(i).sum() * gparent;
+            cost += values.w.col(i).sum() * gparent;
     return cost;
 }
 
-template float cross_entropy(std::shared_ptr<Mat<float>>, uint&);
-template double cross_entropy(std::shared_ptr<Mat<double>>, uint&);
+template float cross_entropy(Mat<float>, uint&);
+template double cross_entropy(Mat<double>, uint&);
 
 // BEGIN TEMPLATE SPECIALIZATIONS
 
 // TEMPLATE
 // [float, double] masked_cross_entropy
-// [std::shared_ptr<Mat<RETURN_TYPE>>]
+// [Mat<RETURN_TYPE>]
 // [uint&]
 // [shared_eigen_index_vector, uint, int]
 // [shared_eigen_index_vector, uint, int]
@@ -665,7 +665,7 @@ template double cross_entropy(std::shared_ptr<Mat<double>>, uint&);
 
 // TEMPLATE
 // [float, double] masked_cross_entropy_no_grad
-// [std::shared_ptr<Mat<RETURN_TYPE>>]
+// [Mat<RETURN_TYPE>]
 // [uint&]
 // [shared_eigen_index_vector, uint, int]
 // [shared_eigen_index_vector, uint, int]
@@ -673,7 +673,7 @@ template double cross_entropy(std::shared_ptr<Mat<double>>, uint&);
 
 // TEMPLATE
 // [float, double] masked_sum
-// [std::shared_ptr<Mat<RETURN_TYPE>>]
+// [Mat<RETURN_TYPE>]
 // [uint&]
 // [shared_eigen_index_vector, uint, int]
 // [shared_eigen_index_vector, uint, int]
@@ -681,7 +681,7 @@ template double cross_entropy(std::shared_ptr<Mat<double>>, uint&);
 
 // TEMPLATE
 // [float, double] masked_sum_no_grad
-// [std::shared_ptr<Mat<RETURN_TYPE>>]
+// [Mat<RETURN_TYPE>]
 // [uint&]
 // [shared_eigen_index_vector, uint, int]
 // [shared_eigen_index_vector, uint, int]

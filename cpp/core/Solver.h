@@ -5,86 +5,84 @@
 
 #define SMOOTH_DEFAULT 1e-9
 
-#define SOLVER_MAT_TYPEDEF_H typedef Mat<T>                      mat; \
-        typedef std::shared_ptr<mat> shared_mat; \
-        typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
+#define SOLVER_MAT_TYPEDEF_H typedef Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
 
 #define SOLVER_MAT_DEFAULT_STEP_SIZE_H 0.035
 
 namespace Solver {
 
-    template<typename T> class AbstractSolver {
+    template<typename R> class AbstractSolver {
         SOLVER_MAT_TYPEDEF_H
         public:
-            T clipval;
-            T smooth_eps;
-            T regc;
+            R clipval;
+            R smooth_eps;
+            R regc;
             AbstractSolver();
-            AbstractSolver(T clipval, T smooth_eps, T regc);
-            virtual void step( std::vector<shared_mat>& ) = 0;
-            virtual void reset_caches( std::vector<shared_mat>&);
+            AbstractSolver(R clipval, R smooth_eps, R regc);
+            virtual void step( std::vector<Mat<R>>& ) = 0;
+            virtual void reset_caches( std::vector<Mat<R>>&);
     };
 
-    template<typename T> class SGD : public AbstractSolver<T> {
+    template<typename R> class SGD : public AbstractSolver<R> {
         SOLVER_MAT_TYPEDEF_H
         public:
-            SGD (T clipval = 5.0, T regc = 0.0);
-            SGD (std::vector<shared_mat>&, T clipval = 5.0, T regc = 0.0);
-            virtual void step( std::vector<shared_mat>&);
-            virtual void step( std::vector<shared_mat>&, T step_size);
+            SGD (R clipval = 5.0, R regc = 0.0);
+            SGD (std::vector<Mat<R>>&, R clipval = 5.0, R regc = 0.0);
+            virtual void step( std::vector<Mat<R>>&);
+            virtual void step( std::vector<Mat<R>>&, R step_size);
     };
 
-    template<typename T> class AdaGrad : public AbstractSolver<T> {
+    template<typename R> class AdaGrad : public AbstractSolver<R> {
         SOLVER_MAT_TYPEDEF_H
         public:
-            std::unordered_map<mat, eigen_mat> gsums;
-            AdaGrad (T smooth_eps = SMOOTH_DEFAULT, T clipval = 5.0, T regc = 0.0);
-            AdaGrad (std::vector<shared_mat>&, T smooth_eps = SMOOTH_DEFAULT, T clipval = 5.0, T regc = 0.0);
-            virtual void step( std::vector<shared_mat>&);
-            virtual void step( std::vector<shared_mat>&, T step_size);
-            virtual void create_gradient_caches(std::vector<shared_mat>&);
-            virtual void reset_caches(std::vector<shared_mat>&);
+            std::unordered_map<Mat<R>, eigen_mat> gsums;
+            AdaGrad (R smooth_eps = SMOOTH_DEFAULT, R clipval = 5.0, R regc = 0.0);
+            AdaGrad (std::vector<Mat<R>>&, R smooth_eps = SMOOTH_DEFAULT, R clipval = 5.0, R regc = 0.0);
+            virtual void step( std::vector<Mat<R>>&);
+            virtual void step( std::vector<Mat<R>>&, R step_size);
+            virtual void create_gradient_caches(std::vector<Mat<R>>&);
+            virtual void reset_caches(std::vector<Mat<R>>&);
     };
 
-    template<typename T> class RMSProp : public AdaGrad<T> {
+    template<typename R> class RMSProp : public AdaGrad<R> {
         SOLVER_MAT_TYPEDEF_H
         public:
-            T decay_rate;
-            std::unordered_map<mat, eigen_mat> gsums;
-            RMSProp (T _decay_rate= 0.999, T smooth_eps = SMOOTH_DEFAULT, T clipval = 5.0, T regc = 0.0);
-            RMSProp (std::vector<shared_mat>&, T _decay_rate= 0.999, T smooth_eps = SMOOTH_DEFAULT, T clipval = 5.0, T regc = 0.0);
-            virtual void step(std::vector<shared_mat>&);
-            virtual void step(std::vector<shared_mat>&, T step_size);
+            R decay_rate;
+            std::unordered_map<Mat<R>, eigen_mat> gsums;
+            RMSProp (R _decay_rate= 0.999, R smooth_eps = SMOOTH_DEFAULT, R clipval = 5.0, R regc = 0.0);
+            RMSProp (std::vector<Mat<R>>&, R _decay_rate= 0.999, R smooth_eps = SMOOTH_DEFAULT, R clipval = 5.0, R regc = 0.0);
+            virtual void step(std::vector<Mat<R>>&);
+            virtual void step(std::vector<Mat<R>>&, R step_size);
     };
 
-    template<typename T> class AdaDelta : public AbstractSolver<T> {
+    template<typename R> class AdaDelta : public AbstractSolver<R> {
         SOLVER_MAT_TYPEDEF_H
         public:
-            T rho;
-            std::unordered_map<mat, eigen_mat> xsums;
-            std::unordered_map<mat, eigen_mat> gsums;
-            AdaDelta (T rho= 0.95, T smooth_eps = SMOOTH_DEFAULT, T clipval = 5.0, T regc = 0.0);
-            AdaDelta (std::vector<shared_mat>&, T rho= 0.95, T smooth_eps =SMOOTH_DEFAULT, T clipval = 5.0, T regc = 0.0);
-            virtual void step(std::vector<shared_mat>&);
-            virtual void create_gradient_caches(std::vector<shared_mat>&);
-            virtual void reset_caches(std::vector<shared_mat>&);
+            R rho;
+            std::unordered_map<Mat<R>, eigen_mat> xsums;
+            std::unordered_map<Mat<R>, eigen_mat> gsums;
+            AdaDelta (R rho= 0.95, R smooth_eps = SMOOTH_DEFAULT, R clipval = 5.0, R regc = 0.0);
+            AdaDelta (std::vector<Mat<R>>&, R rho= 0.95, R smooth_eps =SMOOTH_DEFAULT, R clipval = 5.0, R regc = 0.0);
+            virtual void step(std::vector<Mat<R>>&);
+            virtual void create_gradient_caches(std::vector<Mat<R>>&);
+            virtual void reset_caches(std::vector<Mat<R>>&);
     };
 
-    template<typename T> class Adam : public AbstractSolver<T> {
+    template<typename R> class Adam : public AbstractSolver<R> {
         SOLVER_MAT_TYPEDEF_H
         public:
-            T b1;
-            T b2;
+            R b1;
+            R b2;
             // This is a large integer:
             unsigned long long epoch;
-            std::unordered_map<mat, eigen_mat> xsums;
-            std::unordered_map<mat, eigen_mat> gsums;
-            Adam (T b1 = 0.1, T b2 = 0.001, T smooth_eps = SMOOTH_DEFAULT, T clipval = 5.0, T regc = 0.0);
-            Adam (std::vector<shared_mat>&, T b1 = 0.1, T b2 = 0.001, T smooth_eps = SMOOTH_DEFAULT, T clipval = 5.0, T regc = 0.0);
-            virtual void step(std::vector<shared_mat>&);
-            virtual void step(std::vector<shared_mat>&, T step_size);
-            virtual void create_gradient_caches(std::vector<shared_mat>&);
-            virtual void reset_caches(std::vector<shared_mat>&);
+            std::unordered_map<Mat<R>, eigen_mat> xsums;
+            std::unordered_map<Mat<R>, eigen_mat> gsums;
+            Adam (R b1 = 0.1, R b2 = 0.001, R smooth_eps = SMOOTH_DEFAULT, R clipval = 5.0, R regc = 0.0);
+            Adam (std::vector<Mat<R>>&, R b1 = 0.1, R b2 = 0.001, R smooth_eps = SMOOTH_DEFAULT, R clipval = 5.0, R regc = 0.0);
+            virtual void step(std::vector<Mat<R>>&);
+            virtual void step(std::vector<Mat<R>>&, R step_size);
+            virtual void create_gradient_caches(std::vector<Mat<R>>&);
+            virtual void reset_caches(std::vector<Mat<R>>&);
     };
 }
 #endif

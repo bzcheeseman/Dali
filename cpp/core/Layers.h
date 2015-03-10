@@ -5,20 +5,21 @@
 
 #include "core/Mat.h"
 #include "core/Seq.h"
+#include "core/MatOps.h"
 
 template<typename R>
 class AbstractLayer {
     public:
-        virtual std::vector<SHARED_MAT> parameters() const = 0;
+        virtual std::vector<Mat<R>> parameters() const = 0;
 };
 
 template<typename R>
 class AbstractMultiInputLayer : public AbstractLayer<R> {
     public:
-        SHARED_MAT b;
-        virtual SHARED_MAT activate(SHARED_MAT) const = 0;
-        virtual SHARED_MAT activate(const std::vector<SHARED_MAT>&) const;
-        virtual SHARED_MAT activate(SHARED_MAT, const std::vector<SHARED_MAT>&) const;
+        Mat<R> b;
+        virtual Mat<R> activate(Mat<R>) const = 0;
+        virtual Mat<R> activate(const std::vector<Mat<R>>&) const;
+        virtual Mat<R> activate(Mat<R>, const std::vector<Mat<R>>&) const;
 };
 
 template<typename R>
@@ -33,14 +34,14 @@ class Layer : public AbstractMultiInputLayer<R> {
     void create_variables();
     public:
         typedef R value_t;
-        SHARED_MAT W;
+        Mat<R> W;
         const int hidden_size;
         const int input_size;
-        virtual std::vector<SHARED_MAT> parameters() const;
+        virtual std::vector<Mat<R>> parameters() const;
         Layer (int, int);
 
         Layer (const Layer&, bool, bool);
-        SHARED_MAT activate(SHARED_MAT) const;
+        Mat<R> activate(Mat<R>) const;
 
         Layer<R> shallow_copy() const;
 };
@@ -56,24 +57,24 @@ class StackedInputLayer : public AbstractMultiInputLayer<R> {
 
     */
     void create_variables();
-    std::vector<std::shared_ptr<MAT>> zip_inputs_with_matrices_and_bias(const std::vector<std::shared_ptr<MAT>>&) const;
-    std::vector<std::shared_ptr<MAT>> zip_inputs_with_matrices_and_bias(std::shared_ptr<MAT>, const std::vector<std::shared_ptr<MAT>>&) const;
+    std::vector<Mat<R>> zip_inputs_with_matrices_and_bias(const std::vector<Mat<R>>&) const;
+    std::vector<Mat<R>> zip_inputs_with_matrices_and_bias(Mat<R>, const std::vector<Mat<R>>&) const;
     public:
         typedef R value_t;
-        std::vector<SHARED_MAT> matrices;
+        std::vector<Mat<R>> matrices;
         const int hidden_size;
         const std::vector<int> input_sizes;
-        virtual std::vector<SHARED_MAT> parameters() const;
+        virtual std::vector<Mat<R>> parameters() const;
         StackedInputLayer (std::initializer_list<int>, int);
         StackedInputLayer (std::vector<int>, int);
 
         StackedInputLayer (const StackedInputLayer&, bool, bool);
 
 
-        SHARED_MAT activate(const std::vector<SHARED_MAT>&) const;
-        SHARED_MAT activate(SHARED_MAT) const;
+        Mat<R> activate(const std::vector<Mat<R>>&) const;
+        Mat<R> activate(Mat<R>) const;
 
-        SHARED_MAT activate(SHARED_MAT, const std::vector<SHARED_MAT>&) const;
+        Mat<R> activate(Mat<R>, const std::vector<Mat<R>>&) const;
 
         StackedInputLayer<R> shallow_copy() const;
 };
@@ -90,13 +91,13 @@ class RNN : public AbstractLayer<R> {
     void create_variables();
     public:
         typedef R value_t;
-        SHARED_MAT Wx;
-        SHARED_MAT Wh;
-        SHARED_MAT b;
+        Mat<R> Wx;
+        Mat<R> Wh;
+        Mat<R> b;
         const int hidden_size;
         const int input_size;
         const int output_size;
-        virtual std::vector<SHARED_MAT> parameters() const;
+        virtual std::vector<Mat<R>> parameters() const;
         /**
         By default the RNN constructor sets the output size
         equal to the hidden size, creating the recurrence
@@ -110,7 +111,7 @@ class RNN : public AbstractLayer<R> {
         RNN (int input_size, int hidden_size, int output_size);
 
         RNN (const RNN&, bool, bool);
-        SHARED_MAT activate(SHARED_MAT input_vector, SHARED_MAT prev_hidden) const;
+        Mat<R> activate(Mat<R> input_vector, Mat<R> prev_hidden) const;
 
         RNN<R> shallow_copy() const;
 };
@@ -124,15 +125,15 @@ class DelayedRNN : public AbstractLayer<R> {
     public:
         RNN<R> hidden_rnn;
         RNN<R> output_rnn;
-        virtual std::vector<SHARED_MAT> parameters() const;
+        virtual std::vector<Mat<R>> parameters() const;
 
         DelayedRNN (int input_size, int hidden_size, int output_size);
         DelayedRNN (const DelayedRNN&, bool, bool);
 
-        SHARED_MAT initial_states() const;
+        Mat<R> initial_states() const;
 
         // output (next_hidden, output)
-        std::pair<SHARED_MAT, SHARED_MAT> activate(SHARED_MAT input_vector, SHARED_MAT prev_hidden) const;
+        std::pair<Mat<R>, Mat<R>> activate(Mat<R> input_vector, Mat<R> prev_hidden) const;
         DelayedRNN<R> shallow_copy() const;
 };
 
@@ -150,20 +151,20 @@ class ShortcutRNN : public AbstractLayer<R> {
     void create_variables();
     public:
         typedef R value_t;
-        SHARED_MAT Wx;
-        SHARED_MAT Wh;
-        SHARED_MAT Ws;
-        SHARED_MAT b;
+        Mat<R> Wx;
+        Mat<R> Wh;
+        Mat<R> Ws;
+        Mat<R> b;
         const int hidden_size;
         const int input_size;
         const int shortcut_size;
         const int output_size;
-        virtual std::vector<SHARED_MAT> parameters() const;
+        virtual std::vector<Mat<R>> parameters() const;
         ShortcutRNN (int, int, int);
         ShortcutRNN (int, int, int, int);
 
         ShortcutRNN (const ShortcutRNN&, bool, bool);
-        SHARED_MAT activate(SHARED_MAT, SHARED_MAT, SHARED_MAT) const;
+        Mat<R> activate(Mat<R>, Mat<R>, Mat<R>) const;
 
         ShortcutRNN<R> shallow_copy() const;
 };
@@ -203,13 +204,13 @@ class LSTM : public AbstractLayer<R> {
         LSTM (int, int);
 
         LSTM (const LSTM&, bool, bool);
-        virtual std::vector<SHARED_MAT> parameters() const;
-        static std::pair<std::vector<SHARED_MAT>, std::vector<SHARED_MAT>> initial_states(const std::vector<int>&);
-        std::pair<SHARED_MAT, SHARED_MAT> activate(
+        virtual std::vector<Mat<R>> parameters() const;
+        static std::pair<std::vector<Mat<R>>, std::vector<Mat<R>>> initial_states(const std::vector<int>&);
+        std::pair<Mat<R>, Mat<R>> activate(
 
-            SHARED_MAT,
-            SHARED_MAT,
-            SHARED_MAT) const;
+            Mat<R>,
+            Mat<R>,
+            Mat<R>) const;
 
         LSTM<R> shallow_copy() const;
 };
@@ -244,19 +245,19 @@ class ShortcutLSTM : public AbstractLayer<R> {
         const int shortcut_size;
         ShortcutLSTM (int, int, int);
         ShortcutLSTM (const ShortcutLSTM&, bool, bool);
-        virtual std::vector<SHARED_MAT> parameters() const;
-        std::pair<SHARED_MAT, SHARED_MAT> activate(
-            SHARED_MAT,
-            SHARED_MAT,
-            SHARED_MAT,
-            SHARED_MAT) const;
+        virtual std::vector<Mat<R>> parameters() const;
+        std::pair<Mat<R>, Mat<R>> activate(
+            Mat<R>,
+            Mat<R>,
+            Mat<R>,
+            Mat<R>) const;
         ShortcutLSTM<R> shallow_copy() const;
 };
 
 template<typename R>
 class AbstractStackedLSTM : public AbstractLayer<R> {
     public:
-        typedef std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>> state_t;
+        typedef std::pair<std::vector<Mat<R>>, std::vector<Mat<R>>> state_t;
 
         const int input_size;
         const std::vector<int> hidden_sizes;
@@ -266,15 +267,15 @@ class AbstractStackedLSTM : public AbstractLayer<R> {
 
         virtual state_t initial_states() const;
 
-        virtual std::vector<SHARED_MAT> parameters() const = 0;
+        virtual std::vector<Mat<R>> parameters() const = 0;
 
         virtual state_t activate(
             state_t previous_state,
-            SHARED_MAT input_vector,
+            Mat<R> input_vector,
             R drop_prob = 0.0) const = 0;
         virtual state_t activate_sequence(
             state_t initial_state,
-            const Seq<SHARED_MAT>& sequence,
+            const Seq<Mat<R>>& sequence,
             R drop_prob = 0.0) const;
 };
 
@@ -282,14 +283,14 @@ template<typename R>
 class StackedLSTM : public AbstractStackedLSTM<R> {
     public:
         typedef LSTM<R> lstm_t;
-        typedef std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>> state_t;
+        typedef std::pair<std::vector<Mat<R>>, std::vector<Mat<R>>> state_t;
 
         std::vector<lstm_t> cells;
         virtual state_t activate(
             state_t previous_state,
-            SHARED_MAT input_vector,
+            Mat<R> input_vector,
             R drop_prob = 0.0) const;
-        virtual std::vector<SHARED_MAT> parameters() const;
+        virtual std::vector<Mat<R>> parameters() const;
         StackedLSTM(const int& input_size, const std::vector<int>& hidden_sizes);
         StackedLSTM(const StackedLSTM<R>& model, bool copy_w, bool copy_dw);
         StackedLSTM<R> shallow_copy() const;
@@ -300,7 +301,7 @@ class StackedShortcutLSTM : public AbstractStackedLSTM<R> {
     public:
         typedef LSTM<R>                  lstm_t;
         typedef ShortcutLSTM<R> shortcut_lstm_t;
-        typedef std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>> state_t;
+        typedef std::pair<std::vector<Mat<R>>, std::vector<Mat<R>>> state_t;
 
         std::vector<shortcut_lstm_t> cells;
         lstm_t base_cell;
@@ -308,9 +309,9 @@ class StackedShortcutLSTM : public AbstractStackedLSTM<R> {
 
         virtual state_t activate(
             state_t previous_state,
-            SHARED_MAT input_vector,
+            Mat<R> input_vector,
             R drop_prob = 0.0) const;
-        virtual std::vector<SHARED_MAT> parameters() const;
+        virtual std::vector<Mat<R>> parameters() const;
         StackedShortcutLSTM(const int& input_size, const std::vector<int>& hidden_sizes);
         StackedShortcutLSTM(const StackedShortcutLSTM<R>& model, bool copy_w, bool copy_dw);
         StackedShortcutLSTM<R> shallow_copy() const;
@@ -351,16 +352,16 @@ template<typename celltype>
 std::vector<celltype> StackedCells(const std::vector<celltype>&, bool, bool);
 
 template<typename R>
-std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>> forward_LSTMs(
-    std::shared_ptr<MAT>,
-    std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>>&,
+std::pair<std::vector<Mat<R>>, std::vector<Mat<R>>> forward_LSTMs(
+    Mat<R>,
+    std::pair<std::vector<Mat<R>>, std::vector<Mat<R>>>&,
     const std::vector<LSTM<R>>&,
     R drop_prob=0.0);
 
 template<typename R>
-std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>> forward_LSTMs(
-    std::shared_ptr<MAT>,
-    std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>>&,
+std::pair<std::vector<Mat<R>>, std::vector<Mat<R>>> forward_LSTMs(
+    Mat<R>,
+    std::pair<std::vector<Mat<R>>, std::vector<Mat<R>>>&,
     const LSTM<R>&,
     const std::vector<ShortcutLSTM<R>>&,
     R drop_prob=0.0);

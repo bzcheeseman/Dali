@@ -3,8 +3,8 @@
 
 #include "Softmax.h"
 
-template<typename T>                         T cross_entropy(std::shared_ptr<Mat<T>>, uint&);
-template<typename T, typename M>             T cross_entropy(std::shared_ptr<Mat<T>>, const M);
+template<typename T>                         T cross_entropy(Mat<T>, uint&);
+template<typename T, typename M>             T cross_entropy(Mat<T>, const M);
 
 
 /**
@@ -20,7 +20,7 @@ will be picked up by channel k).
 Inputs
 ------
 
-std::shared_ptr<Mat<Z>> logprobs : the log probabilities (unnormalized)
+Mat<Z> logprobs : the log probabilities (unnormalized)
 uint& T : the log probabilities (unnormalized)
 shared_eigen_index_vector loss_start : where to start picking up errors for channel k
 shared_eigen_index_vector codelens : how long does channel k pick up errors
@@ -32,15 +32,15 @@ Outputs
 Z cost : the total KL divergence at this time step for
          the relevant channels
 */
-template<typename T, typename M>             T masked_cross_entropy(std::shared_ptr<Mat<T>>, uint&, int,  int,  const M);
-template<typename T, typename M>             T masked_cross_entropy(std::shared_ptr<Mat<T>>, uint&, uint, uint, const M);
-template<typename T, typename M>             T masked_cross_entropy(std::shared_ptr<Mat<T>>, uint&, int,  uint, const M);
-template<typename T, typename M>             T masked_cross_entropy(std::shared_ptr<Mat<T>>, uint&, uint, int,  const M);
-template<typename T, typename M>             T masked_cross_entropy(std::shared_ptr<Mat<T>>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const M);
-template<typename T, typename M>             T masked_cross_entropy(std::shared_ptr<Mat<T>>, uint&, shared_eigen_index_vector, int, const M);
-template<typename T, typename M>             T masked_cross_entropy(std::shared_ptr<Mat<T>>, uint&, shared_eigen_index_vector, uint, const M);
-template<typename T, typename M>             T masked_cross_entropy(std::shared_ptr<Mat<T>>, uint&, int, shared_eigen_index_vector, const M);
-template<typename T, typename M>             T masked_cross_entropy(std::shared_ptr<Mat<T>>, uint&, uint, shared_eigen_index_vector, const M);
+template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint&, int,  int,  const M);
+template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint&, uint, uint, const M);
+template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint&, int,  uint, const M);
+template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint&, uint, int,  const M);
+template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const M);
+template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint&, shared_eigen_index_vector, int, const M);
+template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint&, shared_eigen_index_vector, uint, const M);
+template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint&, int, shared_eigen_index_vector, const M);
+template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint&, uint, shared_eigen_index_vector, const M);
 /**
 Masked Cross Entropy Loss
 -------------------------
@@ -49,15 +49,15 @@ Masked Cross Entropy Loss
 
 See `masked_cross_entropy`
 */
-template<typename T, typename M>             T masked_cross_entropy_no_grad(std::shared_ptr<Mat<T>>, uint&, int,  int,  const M);
-template<typename T, typename M>             T masked_cross_entropy_no_grad(std::shared_ptr<Mat<T>>, uint&, uint, uint, const M);
-template<typename T, typename M>             T masked_cross_entropy_no_grad(std::shared_ptr<Mat<T>>, uint&, int,  uint, const M);
-template<typename T, typename M>             T masked_cross_entropy_no_grad(std::shared_ptr<Mat<T>>, uint&, uint, int,  const M);
-template<typename T, typename M>             T masked_cross_entropy_no_grad(std::shared_ptr<Mat<T>>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const M);
-template<typename T, typename M>             T masked_cross_entropy_no_grad(std::shared_ptr<Mat<T>>, uint&, shared_eigen_index_vector, int, const M);
-template<typename T, typename M>             T masked_cross_entropy_no_grad(std::shared_ptr<Mat<T>>, uint&, shared_eigen_index_vector, uint, const M);
-template<typename T, typename M>             T masked_cross_entropy_no_grad(std::shared_ptr<Mat<T>>, uint&, int, shared_eigen_index_vector, const M);
-template<typename T, typename M>             T masked_cross_entropy_no_grad(std::shared_ptr<Mat<T>>, uint&, uint, shared_eigen_index_vector, const M);
+template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<T>, uint&, int,  int,  const M);
+template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<T>, uint&, uint, uint, const M);
+template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<T>, uint&, int,  uint, const M);
+template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<T>, uint&, uint, int,  const M);
+template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<T>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const M);
+template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<T>, uint&, shared_eigen_index_vector, int, const M);
+template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<T>, uint&, shared_eigen_index_vector, uint, const M);
+template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<T>, uint&, int, shared_eigen_index_vector, const M);
+template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<T>, uint&, uint, shared_eigen_index_vector, const M);
 /**
 Masked Sum
 ----------
@@ -69,7 +69,7 @@ gradient is columnwise vector of 1s.
 Inputs:
 -------
 
-std::shared_ptr<Mat<Z>> values : the data columns subject to summing.
+Mat<Z> values : the data columns subject to summing.
 uint& T : the log probabilities (unnormalized)
 shared_eigen_index_vector loss_start : where to start picking up errors for channel k
 shared_eigen_index_vector codelens : how long does channel k pick up errors
@@ -79,15 +79,15 @@ Outputs:
 
 Z cost : the total sum along the non-masked columns of values.
 */
-template<typename T>                         T masked_sum(std::shared_ptr<Mat<T>>, uint&, uint, uint, const T&);
-template<typename T>                         T masked_sum(std::shared_ptr<Mat<T>>, uint&, int,  int, const T&);
-template<typename T>                         T masked_sum(std::shared_ptr<Mat<T>>, uint&, uint, int, const T&);
-template<typename T>                         T masked_sum(std::shared_ptr<Mat<T>>, uint&, int,  uint, const T&);
-template<typename T>                         T masked_sum(std::shared_ptr<Mat<T>>, uint&, int,  shared_eigen_index_vector, const T&);
-template<typename T>                         T masked_sum(std::shared_ptr<Mat<T>>, uint&, uint, shared_eigen_index_vector, const T&);
-template<typename T>                         T masked_sum(std::shared_ptr<Mat<T>>, uint&, shared_eigen_index_vector, uint, const T&);
-template<typename T>                         T masked_sum(std::shared_ptr<Mat<T>>, uint&, shared_eigen_index_vector, int, const T&);
-template<typename T>                         T masked_sum(std::shared_ptr<Mat<T>>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const T&);
+template<typename T>                         T masked_sum(Mat<T>, uint&, uint, uint, const T&);
+template<typename T>                         T masked_sum(Mat<T>, uint&, int,  int, const T&);
+template<typename T>                         T masked_sum(Mat<T>, uint&, uint, int, const T&);
+template<typename T>                         T masked_sum(Mat<T>, uint&, int,  uint, const T&);
+template<typename T>                         T masked_sum(Mat<T>, uint&, int,  shared_eigen_index_vector, const T&);
+template<typename T>                         T masked_sum(Mat<T>, uint&, uint, shared_eigen_index_vector, const T&);
+template<typename T>                         T masked_sum(Mat<T>, uint&, shared_eigen_index_vector, uint, const T&);
+template<typename T>                         T masked_sum(Mat<T>, uint&, shared_eigen_index_vector, int, const T&);
+template<typename T>                         T masked_sum(Mat<T>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const T&);
 
 /**
 Masked Sum No Grad
@@ -97,14 +97,14 @@ Masked Sum No Grad
 
 See `masked_sum`
 */
-template<typename T>                         T masked_sum_no_grad(std::shared_ptr<Mat<T>>, uint&, uint, uint, const T&);
-template<typename T>                         T masked_sum_no_grad(std::shared_ptr<Mat<T>>, uint&, int,  int, const T&);
-template<typename T>                         T masked_sum_no_grad(std::shared_ptr<Mat<T>>, uint&, uint, int, const T&);
-template<typename T>                         T masked_sum_no_grad(std::shared_ptr<Mat<T>>, uint&, int,  uint, const T&);
-template<typename T>                         T masked_sum_no_grad(std::shared_ptr<Mat<T>>, uint&, int,  shared_eigen_index_vector, const T&);
-template<typename T>                         T masked_sum_no_grad(std::shared_ptr<Mat<T>>, uint&, uint, shared_eigen_index_vector, const T&);
-template<typename T>                         T masked_sum_no_grad(std::shared_ptr<Mat<T>>, uint&, shared_eigen_index_vector, uint, const T&);
-template<typename T>                         T masked_sum_no_grad(std::shared_ptr<Mat<T>>, uint&, shared_eigen_index_vector, int, const T&);
-template<typename T>                         T masked_sum_no_grad(std::shared_ptr<Mat<T>>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const T&);
+template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&, uint, uint, const T&);
+template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&, int,  int, const T&);
+template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&, uint, int, const T&);
+template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&, int,  uint, const T&);
+template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&, int,  shared_eigen_index_vector, const T&);
+template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&, uint, shared_eigen_index_vector, const T&);
+template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&, shared_eigen_index_vector, uint, const T&);
+template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&, shared_eigen_index_vector, int, const T&);
+template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const T&);
 
 #endif

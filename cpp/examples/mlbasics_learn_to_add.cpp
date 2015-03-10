@@ -3,7 +3,7 @@
 #include <memory>
 
 #include "core/Mat.h"
-#include "core/Graph.h"
+#include "core/Tape.h"
 
 typedef Mat<double> mat;
 typedef std::shared_ptr<mat> shared_mat;
@@ -41,19 +41,17 @@ int main( int argc, char* argv[]) {
     W->print();
 
     for (int i = 0; i < ITERATIONS; ++i) {
-        // Set up G to start recording calculations.
-        Graph<double> G(true);
         // What the network predicts the output will be.
-        shared_mat predY = G.mul(X,W);
+        shared_mat predY = X->mul(W);
         // Squared error between desired and actual output
         // E = sum((Ypred-Y)^2)
-        shared_mat error = G.sum(G.square(G.sub(predY, Y)));
+        shared_mat error = predY->sub(Y)->square()->sum();
         // Mark error as what we compute error with respect to.
         error->grad();
         // Print error so that we know our progress.
         error->print();
         // Perform backpropagation algorithm.
-        G.backward();
+        graph::backward();
         // Use gradient descent to update network parameters.
         W->w -= LR * W->dw;
         // Reset gradients

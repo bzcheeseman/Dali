@@ -10,9 +10,9 @@ using std::to_string;
 using std::stringstream;
 using std::string;
 
-template<typename T>
-vector<typename StackedGatedModel<T>::shared_mat> StackedGatedModel<T>::parameters() const {
-  auto parameters = StackedModel<T>::parameters();
+template<typename R>
+vector<SHARED_MAT> StackedGatedModel<R>::parameters() const {
+  auto parameters = StackedModel<R>::parameters();
   auto gate_params = gate.parameters();
   parameters.insert(parameters.end(), gate_params.begin(), gate_params.end());
   return parameters;
@@ -35,15 +35,15 @@ std::map<std::string, std::vector< std::string >> config : configuration map
 
 **/
 
-template<typename T>
-typename StackedGatedModel<T>::config_t StackedGatedModel<T>::configuration() const  {
-    auto config = StackedModel<T>::configuration();
+template<typename R>
+typename StackedGatedModel<R>::config_t StackedGatedModel<R>::configuration() const  {
+    auto config = StackedModel<R>::configuration();
     config["memory_penalty"].emplace_back(to_string(memory_penalty));
     return config;
 }
 
-template<typename T>
-StackedGatedModel<T> StackedGatedModel<T>::build_from_CLI(string load_location,
+template<typename R>
+StackedGatedModel<R> StackedGatedModel<R>::build_from_CLI(string load_location,
                                                           int vocab_size,
                                                           int output_size,
                                                           bool verbose) {
@@ -51,8 +51,8 @@ StackedGatedModel<T> StackedGatedModel<T>::build_from_CLI(string load_location,
           std::cout << "Load location         = " << ((load_location == "") ? "N/A" : load_location)  << std::endl;
         // Load or Construct the model
         auto model = (load_location != "") ?
-                StackedGatedModel<T>::load(load_location) :
-                StackedGatedModel<T>(
+                StackedGatedModel<R>::load(load_location) :
+                StackedGatedModel<R>(
                         vocab_size,
                         FLAGS_input_size,
                         FLAGS_hidden,
@@ -85,11 +85,11 @@ std::string dirname : directory where the model is currently saved
 Outputs
 -------
 
-StackedGatedModel<T> model : the saved model
+StackedGatedModel<R> model : the saved model
 
 **/
-template<typename T>
-StackedGatedModel<T> StackedGatedModel<T>::load(std::string dirname) {
+template<typename R>
+StackedGatedModel<R> StackedGatedModel<R>::load(std::string dirname) {
         // fname should be a directory:
         utils::ensure_directory(dirname);
         // load the configuration file
@@ -104,7 +104,7 @@ StackedGatedModel<T> StackedGatedModel<T>::load(std::string dirname) {
         utils::assert_map_has_key(config, "output_size");
 
         // construct the model using the map
-        auto model =  StackedGatedModel<T>(config);
+        auto model =  StackedGatedModel<R>(config);
 
         // get the current parameters of the model.
         auto params = model.parameters();
@@ -115,36 +115,35 @@ StackedGatedModel<T> StackedGatedModel<T>::load(std::string dirname) {
         return model;
 }
 
-template<typename T>
-std::tuple<T, T> StackedGatedModel<T>::masked_predict_cost(
-        graph_t& G,
+template<typename R>
+std::tuple<R, R> StackedGatedModel<R>::masked_predict_cost(
         shared_index_mat data,
         shared_index_mat target_data,
         shared_eigen_index_vector start_loss,
         shared_eigen_index_vector codelens,
         uint offset,
-        T drop_prob) {
+        R drop_prob) {
 
         auto initial_state    = this->initial_states();
 
-        shared_mat input_vector;
-        shared_mat memory;
-        shared_mat logprobs;
-        // shared_mat probs;
-        std::tuple<T, T> cost(0.0, 0.0);
+        SHARED_MAT input_vector;
+        SHARED_MAT memory;
+        SHARED_MAT logprobs;
+        // SHARED_MAT probs;
+        std::tuple<R, R> cost(0.0, 0.0);
 
         auto n = data->cols();
         for (uint i = 0; i < n-1; ++i) {
                 // pick this letter from the embedding
-                input_vector = G.rows_pluck(this->embedding, data->col(i));
-                memory = gate.activate(G, input_vector, initial_state.second[0]);
-                input_vector = G.eltmul_broadcast_rowwise(input_vector, memory);
+                input_vector = this->embedding->rows_pluck(data->col(i));
+                memory = gate.activate(input_vector, initial_state.second[0]);
+                input_vector = input_vector->eltmul_broadcast_rowwise(memory);
                 // pass this letter to the LSTM for processing
-                initial_state = this->stacked_lstm->activate(G, initial_state, input_vector, drop_prob);
+                initial_state = this->stacked_lstm->activate(initial_state, input_vector, drop_prob);
                 // classifier takes as input the final hidden layer's activation:
-                logprobs      = this->decoder->activate(G, input_vector, initial_state.second);
+                logprobs      = this->decoder->activate(input_vector, initial_state.second);
 
-                std::get<0>(cost) += G.needs_backprop ? masked_cross_entropy(
+                std::get<0>(cost) += graph::backprop_enabled ? masked_cross_entropy(
                                                                       logprobs,
                                                                       i,
                                                                       start_loss,
@@ -156,7 +155,7 @@ std::tuple<T, T> StackedGatedModel<T>::masked_predict_cost(
                                                                       start_loss,
                                                                       codelens,
                                                                       (target_data->col(i+1).array() - offset).matrix());
-                std::get<1>(cost) += G.needs_backprop ? masked_sum(
+                std::get<1>(cost) += graph::backprop_enabled ? masked_sum(
                                                                       memory,
                                                                       i,
                                                                       0,
@@ -172,35 +171,34 @@ std::tuple<T, T> StackedGatedModel<T>::masked_predict_cost(
         return cost;
 }
 
-template<typename T>
-std::tuple<T, T> StackedGatedModel<T>::masked_predict_cost(
-        graph_t& G,
+template<typename R>
+std::tuple<R, R> StackedGatedModel<R>::masked_predict_cost(
         shared_index_mat data,
         shared_index_mat target_data,
         uint start_loss,
         shared_eigen_index_vector codelens,
         uint offset,
-        T drop_prob) {
+        R drop_prob) {
 
         auto initial_state    = this->initial_states();
 
-        shared_mat input_vector;
-        shared_mat memory;
-        shared_mat logprobs;
-        // shared_mat probs;
-        std::tuple<T, T> cost(0.0, 0.0);
+        SHARED_MAT input_vector;
+        SHARED_MAT memory;
+        SHARED_MAT logprobs;
+        // SHARED_MAT probs;
+        std::tuple<R, R> cost(0.0, 0.0);
 
         auto n = data->cols();
         for (uint i = 0; i < n-1; ++i) {
                 // pick this letter from the embedding
-                input_vector = G.rows_pluck(this->embedding, data->col(i));
-                memory = gate.activate(G, input_vector, initial_state.second[this->stack_size-1]);
-                input_vector = G.eltmul_broadcast_rowwise(input_vector, memory);
+                input_vector = this->embedding->rows_pluck(data->col(i));
+                memory = gate.activate(input_vector, initial_state.second[this->stack_size-1]);
+                input_vector = input_vector->eltmul_broadcast_rowwise(memory);
                 // pass this letter to the LSTM for processing
-                initial_state = this->stacked_lstm->activate(G, initial_state, input_vector, drop_prob);
+                initial_state = this->stacked_lstm->activate(initial_state, input_vector, drop_prob);
                 // classifier takes as input the final hidden layer's activation:
-                logprobs      = this->decoder->activate(G, input_vector, initial_state.second);
-                std::get<0>(cost) += G.needs_backprop ? masked_cross_entropy(
+                logprobs      = this->decoder->activate(input_vector, initial_state.second);
+                std::get<0>(cost) += graph::backprop_enabled ? masked_cross_entropy(
                                                                       logprobs,
                                                                       i,
                                                                       start_loss,
@@ -212,7 +210,7 @@ std::tuple<T, T> StackedGatedModel<T>::masked_predict_cost(
                                                                       start_loss,
                                                                       codelens,
                                                                       (target_data->col(i+1).array() - offset).matrix());
-                std::get<1>(cost) += G.needs_backprop ? masked_sum(
+                std::get<1>(cost) += graph::backprop_enabled ? masked_sum(
                                                                       memory,
                                                                       i,
                                                                       0,
@@ -228,9 +226,9 @@ std::tuple<T, T> StackedGatedModel<T>::masked_predict_cost(
         return cost;
 }
 
-template<typename T>
-StackedGatedModel<T>::StackedGatedModel (int vocabulary_size, int input_size, int hidden_size, int stack_size, int output_size, bool use_shortcut, T _memory_penalty)
-        : StackedModel<T>(vocabulary_size, input_size, hidden_size, stack_size, output_size, use_shortcut),
+template<typename R>
+StackedGatedModel<R>::StackedGatedModel (int vocabulary_size, int input_size, int hidden_size, int stack_size, int output_size, bool use_shortcut, R _memory_penalty)
+        : StackedModel<R>(vocabulary_size, input_size, hidden_size, stack_size, output_size, use_shortcut),
         memory_penalty(_memory_penalty),
         gate(input_size, hidden_size) {}
 
@@ -251,25 +249,25 @@ Inputs
 std::map<std::string, std::vector<std::string>& config : model hyperparameters
 
 **/
-template<typename T>
-StackedGatedModel<T>::StackedGatedModel (
-        const typename StackedGatedModel<T>::config_t& config)
+template<typename R>
+StackedGatedModel<R>::StackedGatedModel (
+        const typename StackedGatedModel<R>::config_t& config)
         :
-        memory_penalty(from_string<T>(config.at("memory_penalty")[0])),
-        StackedModel<T>(config),
+        memory_penalty(from_string<R>(config.at("memory_penalty")[0])),
+        StackedModel<R>(config),
         gate(
             from_string<int>(config.at("input_size")[0]),
             from_string<int>(config.at("hidden_sizes")[config.at("hidden_sizes").size()-1])) {}
 
-template<typename T>
-StackedGatedModel<T>::StackedGatedModel (int vocabulary_size, int input_size, int output_size, std::vector<int>& hidden_sizes, bool use_shortcut, T _memory_penalty)
+template<typename R>
+StackedGatedModel<R>::StackedGatedModel (int vocabulary_size, int input_size, int output_size, std::vector<int>& hidden_sizes, bool use_shortcut, R _memory_penalty)
         :
-        StackedModel<T>(vocabulary_size, input_size, output_size, hidden_sizes, use_shortcut),
+        StackedModel<R>(vocabulary_size, input_size, output_size, hidden_sizes, use_shortcut),
         memory_penalty(_memory_penalty),
         gate(input_size, hidden_sizes[0]) {}
 
 /**
-StackedGatedModel<T>::StackedGatedModel
+StackedGatedModel<R>::StackedGatedModel
 -------------
 
 Copy constructor with option to make a shallow
@@ -277,18 +275,18 @@ or deep copy of the underlying parameters.
 
 If the copy is shallow then the parameters are shared
 but separate gradients `dw` are used for each of
-thread StackedGatedModel<T>.
+thread StackedGatedModel<R>.
 
 Shallow copies are useful for Hogwild and multithreaded
 training
 
-See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`,
-`StackedGatedModel<T>::shallow_copy`
+See `Mat<R>::shallow_copy`, `examples/character_prediction.cpp`,
+`StackedGatedModel<R>::shallow_copy`
 
 Inputs
 ------
 
-      StackedGatedModel<T> l : StackedGatedModel from which to source parameters and dw
+      StackedGatedModel<R> l : StackedGatedModel from which to source parameters and dw
     bool copy_w : whether parameters for new StackedGatedModel should be copies
                   or shared
    bool copy_dw : whether gradients for new StackedGatedModel should be copies
@@ -299,12 +297,12 @@ Inputs
 Outputs
 -------
 
-StackedGatedModel<T> out : the copied StackedGatedModel with deep or shallow copy of parameters
+StackedGatedModel<R> out : the copied StackedGatedModel with deep or shallow copy of parameters
 
 **/
-template<typename T>
-StackedGatedModel<T>::StackedGatedModel (const StackedGatedModel<T>& model, bool copy_w, bool copy_dw) :
-    StackedModel<T>(model, copy_w, copy_dw),
+template<typename R>
+StackedGatedModel<R>::StackedGatedModel (const StackedGatedModel<R>& model, bool copy_w, bool copy_dw) :
+    StackedModel<R>(model, copy_w, copy_dw),
         memory_penalty(model.memory_penalty),
         gate(model.gate, copy_w, copy_dw) {}
 
@@ -312,43 +310,42 @@ StackedGatedModel<T>::StackedGatedModel (const StackedGatedModel<T>& model, bool
 Shallow Copy
 ------------
 
-Perform a shallow copy of a StackedGatedModel<T> that has
+Perform a shallow copy of a StackedGatedModel<R> that has
 the same parameters but separate gradients `dw`
 for each of its parameters.
 
 Shallow copies are useful for Hogwild and multithreaded
 training
 
-See `StackedGatedModel<T>::shallow_copy`, `examples/character_prediction.cpp`.
+See `StackedGatedModel<R>::shallow_copy`, `examples/character_prediction.cpp`.
 
 Outputs
 -------
 
-StackedGatedModel<T> out : the copied layer with sharing parameters,
+StackedGatedModel<R> out : the copied layer with sharing parameters,
                            but with separate gradients `dw`
 
 **/
-template<typename T>
-StackedGatedModel<T> StackedGatedModel<T>::shallow_copy() const {
-    return StackedGatedModel<T>(*this, false, true);
+template<typename R>
+StackedGatedModel<R> StackedGatedModel<R>::shallow_copy() const {
+    return StackedGatedModel<R>(*this, false, true);
 }
 
-template<typename T>
-typename StackedGatedModel<T>::state_type StackedGatedModel<T>::get_final_activation(
-        graph_t& G,
+template<typename R>
+typename StackedGatedModel<R>::state_type StackedGatedModel<R>::get_final_activation(
         Indexing::Index example,
-        T drop_prob) const {
-        shared_mat input_vector;
-        shared_mat memory;
+        R drop_prob) const {
+        SHARED_MAT input_vector;
+        SHARED_MAT memory;
         auto initial_state = this->initial_states();
         auto n = example.size();
         for (uint i = 0; i < n; ++i) {
                 // pick this letter from the embedding
-                input_vector  = G.row_pluck(this->embedding, example[i]);
-                memory        = gate.activate(G, input_vector, initial_state.second[0]);
-                input_vector  = G.eltmul_broadcast_rowwise(input_vector, memory);
+                input_vector  = this->embedding->row_pluck(example[i]);
+                memory        = gate.activate(input_vector, initial_state.second[0]);
+                input_vector  = input_vector->eltmul_broadcast_rowwise(memory);
                 // pass this letter to the LSTM for processing
-                initial_state = this->stacked_lstm->activate(G, initial_state, input_vector);
+                initial_state = this->stacked_lstm->activate(initial_state, input_vector);
                 // decoder takes as input the final hidden layer's activation:
         }
         return initial_state;
@@ -366,117 +363,114 @@ states
 Inputs
 ------
 
-Graph<T>& G : computation graph
-std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>>& : previous state
+std::pair<std::vector<std::shared_ptr<Mat<R>>>, std::vector<std::shared_ptr<Mat<R>>>>& : previous state
 uint index : embedding observation
 
 Outputs
 -------
 
-std::tuple<std::pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>>, shared_ptr<Mat<T>>, T> out :
+std::tuple<std::pair<vector<shared_ptr<Mat<R>>>, vector<shared_ptr<Mat<R>>>>, shared_ptr<Mat<R>>, R> out :
     pair of LSTM hidden and cell states, and probabilities from the decoder, and memory usage.
 
 **/
-template<typename T>
-typename StackedGatedModel<T>::activation_t StackedGatedModel<T>::activate(
-        graph_t& G,
+template<typename R>
+typename StackedGatedModel<R>::activation_t StackedGatedModel<R>::activate(
         state_type& previous_state,
         const uint& index) const {
-        activation_t out;
+    activation_t out;
 
-        auto input_vector = G.row_pluck(this->embedding, index);
-        auto memory       = gate.activate(G, input_vector, previous_state.second[this->stack_size-1]);
-        input_vector      = G.eltmul_broadcast_rowwise(input_vector, memory);
+    auto input_vector = this->embedding->row_pluck(index);
+    auto memory       = gate.activate(input_vector, previous_state.second[this->stack_size-1]);
+    input_vector      = input_vector->eltmul_broadcast_rowwise(memory);
 
-        std::get<0>(out) = this->stacked_lstm->activate(G, previous_state, input_vector);
-        std::get<1>(out) = softmax(this->decoder->activate(G, input_vector, std::get<0>(out).second));
-        std::get<2>(out) = memory;
-        return out;
+    std::get<0>(out) = this->stacked_lstm->activate(previous_state, input_vector);
+    std::get<1>(out) = softmax(this->decoder->activate(input_vector, std::get<0>(out).second));
+    std::get<2>(out) = memory;
+    return out;
 }
 
-template<typename T>
-typename StackedGatedModel<T>::activation_t StackedGatedModel<T>::activate(
-    graph_t& G,
-    state_type& previous_state,
-    const eigen_index_block indices) const {
+template<typename R>
+typename StackedGatedModel<R>::activation_t StackedGatedModel<R>::activate(
+        state_type& previous_state,
+        const eigen_index_block indices) const {
     activation_t out;
-    auto input_vector = G.rows_pluck(this->embedding, indices);
-    auto memory       = gate.activate(G, input_vector, previous_state.second[this->stack_size-1]);
-    input_vector      = G.eltmul_broadcast_rowwise(input_vector, memory);
+    auto input_vector = this->embedding->rows_pluck(indices);
+    auto memory       = gate.activate(input_vector, previous_state.second[this->stack_size-1]);
+    input_vector      = input_vector->eltmul_broadcast_rowwise(memory);
 
-    std::get<0>(out) = this->stacked_lstm->activate(G, previous_state, input_vector);
-    std::get<1>(out) = softmax(this->decoder->activate(G, input_vector, std::get<0>(out).second));
+    std::get<0>(out) = this->stacked_lstm->activate(previous_state, input_vector);
+    std::get<1>(out) = softmax(this->decoder->activate(input_vector, std::get<0>(out).second));
     std::get<2>(out) = memory;
 
     return out;
 }
 
-template<typename T>
-std::vector<int> StackedGatedModel<T>::reconstruct(
-    Indexing::Index example,
-    int eval_steps,
-    int symbol_offset) const {
+template<typename R>
+std::vector<int> StackedGatedModel<R>::reconstruct(
+        Indexing::Index example,
+        int eval_steps,
+        int symbol_offset) const {
 
-        graph_t G(false);
-        auto initial_state = get_final_activation(G, example);
+    graph::NoBackprop nb;
+    auto initial_state = get_final_activation(example);
 
-        shared_mat input_vector;
-        shared_mat memory;
-        vector<int> outputs;
-        auto last_symbol = argmax(this->decoder->activate(G, input_vector, initial_state.second));
-        outputs.emplace_back(last_symbol);
-        last_symbol += symbol_offset;
-        for (uint j = 0; j < eval_steps - 1; j++) {
-                input_vector  = G.row_pluck(this->embedding, last_symbol);
-                memory        = gate.activate(G, input_vector, initial_state.second[this->stack_size-1]);
-                input_vector  = G.eltmul_broadcast_rowwise(input_vector, memory);
-                initial_state = this->stacked_lstm->activate(G, initial_state, input_vector);
-                last_symbol   = argmax(this->decoder->activate(G, input_vector, initial_state.second));
-                outputs.emplace_back(last_symbol);
-                last_symbol += symbol_offset;
-        }
-        return outputs;
+    SHARED_MAT input_vector;
+    SHARED_MAT memory;
+    vector<int> outputs;
+    auto last_symbol = argmax(this->decoder->activate(input_vector, initial_state.second));
+    outputs.emplace_back(last_symbol);
+    last_symbol += symbol_offset;
+    for (uint j = 0; j < eval_steps - 1; j++) {
+            input_vector  = this->embedding->row_pluck(last_symbol);
+            memory        = gate.activate(input_vector, initial_state.second[this->stack_size-1]);
+            input_vector  = input_vector->eltmul_broadcast_rowwise(memory);
+            initial_state = this->stacked_lstm->activate(initial_state, input_vector);
+            last_symbol   = argmax(this->decoder->activate(input_vector, initial_state.second));
+            outputs.emplace_back(last_symbol);
+            last_symbol += symbol_offset;
+    }
+    return outputs;
 }
 
-template<typename T>
-std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<T>::reconstruct_lattice(
-    Indexing::Index example,
-    utils::OntologyBranch::shared_branch root,
-    int eval_steps) const {
-        graph_t G(false);
-        shared_mat input_vector;
-        shared_mat memory;
-        auto pos = root;
-        auto initial_state = this->initial_states();
-        auto n = example.size();
-        for (uint i = 0; i < n; ++i) {
-                // pick this letter from the embedding
-                input_vector  = G.row_pluck(this->embedding, example[i]);
-                memory        = gate.activate(G, input_vector, initial_state.second[0]);
-                input_vector  = G.eltmul_broadcast_rowwise(input_vector, memory);
-                // pass this letter to the LSTM for processing
-                initial_state = this->stacked_lstm->activate(G, initial_state, input_vector);
-                // decoder takes as input the final hidden layer's activation:
-        }
-        vector<utils::OntologyBranch::shared_branch> outputs;
-        // Take the argmax over the available options (0 for go back to
-        // root, and 1..n for the different children of the current position)
-        auto last_turn = argmax_slice(this->decoder->activate(G, input_vector, initial_state.second), 0, pos->children.size() + 1);
-        // if the turn is 0 go back to root, else go to one of the children using
-        // the lattice pointers:
-        pos = (last_turn == 0) ? root : pos->children[last_turn-1];
-        // add this decision to the output :
-        outputs.emplace_back(pos);
-        for (uint j = 0; j < eval_steps - 1; j++) {
-                input_vector  = G.row_pluck(this->embedding, pos->id);
-                memory        = gate.activate(G, input_vector, initial_state.second[0]);
-                input_vector  = G.eltmul_broadcast_rowwise(input_vector, memory);
-                initial_state = this->stacked_lstm->activate(G, initial_state, input_vector);
-                last_turn     = argmax_slice(this->decoder->activate(G, input_vector, initial_state.second), 0, pos->children.size() + 1);
-                pos           = (last_turn == 0) ? root : pos->children[last_turn-1];
-                outputs.emplace_back(pos);
-        }
-        return outputs;
+template<typename R>
+std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<R>::reconstruct_lattice(
+        Indexing::Index example,
+        utils::OntologyBranch::shared_branch root,
+        int eval_steps) const {
+    graph::NoBackprop nb;
+    SHARED_MAT input_vector;
+    SHARED_MAT memory;
+    auto pos = root;
+    auto initial_state = this->initial_states();
+    auto n = example.size();
+    for (uint i = 0; i < n; ++i) {
+            // pick this letter from the embedding
+            input_vector  = this->embedding->row_pluck(example[i]);
+            memory        = gate.activate(input_vector, initial_state.second[0]);
+            input_vector  = input_vector->eltmul_broadcast_rowwise(memory);
+            // pass this letter to the LSTM for processing
+            initial_state = this->stacked_lstm->activate(initial_state, input_vector);
+            // decoder takes as input the final hidden layer's activation:
+    }
+    vector<utils::OntologyBranch::shared_branch> outputs;
+    // Take the argmax over the available options (0 for go back to
+    // root, and 1..n for the different children of the current position)
+    auto last_turn = argmax_slice(this->decoder->activate(input_vector, initial_state.second), 0, pos->children.size() + 1);
+    // if the turn is 0 go back to root, else go to one of the children using
+    // the lattice pointers:
+    pos = (last_turn == 0) ? root : pos->children[last_turn-1];
+    // add this decision to the output :
+    outputs.emplace_back(pos);
+    for (uint j = 0; j < eval_steps - 1; j++) {
+            input_vector  = this->embedding->row_pluck(pos->id);
+            memory        = gate.activate(input_vector, initial_state.second[0]);
+            input_vector  = input_vector->eltmul_broadcast_rowwise(memory);
+            initial_state = this->stacked_lstm->activate(initial_state, input_vector);
+            last_turn     = argmax_slice(this->decoder->activate(input_vector, initial_state.second), 0, pos->children.size() + 1);
+            pos           = (last_turn == 0) ? root : pos->children[last_turn-1];
+            outputs.emplace_back(pos);
+    }
+    return outputs;
 }
 
 template class StackedGatedModel<float>;

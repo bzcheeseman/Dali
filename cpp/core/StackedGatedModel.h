@@ -1,17 +1,18 @@
-#ifndef STACKEDGATED_MAT_H
-#define STACKEDGATED_MAT_H
+#ifndef CORE_STACKED_GATED_MAT_H
+#define CORE_STACKED_GATED_MAT_H
 
-#include <iostream>
 #include <fstream>
-#include <sstream>
-#include "utils.h"
+#include <iostream>
 #include <map>
+#include <sstream>
 #include <unordered_map>
-#include "Mat.h"
-#include "Layers.h"
-#include "Softmax.h"
-#include "CrossEntropy.h"
-#include "StackedModel.h"
+
+#include "core/CrossEntropy.h"
+#include "core/Layers.h"
+#include "core/Mat.h"
+#include "core/Softmax.h"
+#include "core/StackedModel.h"
+#include "core/utils.h"
 
 DECLARE_double(memory_penalty);
 
@@ -33,48 +34,45 @@ total memory used (the input gate's total activation).
 **/
 
 
-template<typename T>
-class StackedGatedModel : public StackedModel<T> {
-        typedef LSTM<T>                    lstm;
-        typedef Layer<T>           classifier_t;
-        typedef Mat<T>                      mat;
-        typedef std::shared_ptr<mat> shared_mat;
-        typedef Graph<T>                graph_t;
-        typedef GatedInput<T>            gate_t;
+template<typename R>
+class StackedGatedModel : public StackedModel<R> {
+        typedef LSTM<R>                    lstm;
+        typedef Layer<R>           classifier_t;
+        typedef GatedInput<R>            gate_t;
         typedef std::map<std::string, std::vector<std::string>> config_t;
 
         public:
-                typedef std::pair<std::vector<shared_mat>, std::vector<shared_mat>> state_type;
-                typedef std::tuple<state_type, shared_mat, shared_mat> activation_t;
-                typedef T value_t;
+                typedef std::pair<std::vector<SHARED_MAT>, std::vector<SHARED_MAT>> state_type;
+                typedef std::tuple<state_type, SHARED_MAT, SHARED_MAT> activation_t;
+                typedef R value_t;
                 typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
                 typedef std::shared_ptr< index_mat > shared_index_mat;
 
                 const gate_t gate;
-                T memory_penalty;
-                virtual std::vector<shared_mat> parameters() const;
+                R memory_penalty;
+                virtual std::vector<SHARED_MAT> parameters() const;
                 virtual config_t configuration() const;
-                static StackedGatedModel<T> load(std::string);
-                static StackedGatedModel<T> build_from_CLI(std::string load_location,
+                static StackedGatedModel<R> load(std::string);
+                static StackedGatedModel<R> build_from_CLI(std::string load_location,
                                                                                            int vocab_size,
                                                                                            int output_size,
                                                                                            bool verbose);
-                StackedGatedModel(int, int, int, int, int, bool use_shortcut = false, T _memory_penalty = 0.3);
-                StackedGatedModel(int, int, int, std::vector<int>&, bool use_shortcut = false, T _memory_penalty = 0.3);
+                StackedGatedModel(int, int, int, int, int, bool use_shortcut = false, R _memory_penalty = 0.3);
+                StackedGatedModel(int, int, int, std::vector<int>&, bool use_shortcut = false, R _memory_penalty = 0.3);
                 StackedGatedModel(const config_t&);
-                StackedGatedModel(const StackedGatedModel<T>&, bool, bool);
-                std::tuple<T, T> masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, shared_eigen_index_vector, shared_eigen_index_vector, uint offset=0, T drop_prob = 0.0);
-                std::tuple<T, T> masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, uint, shared_eigen_index_vector, uint offset=0, T drop_prob = 0.0);
+                StackedGatedModel(const StackedGatedModel<R>&, bool, bool);
+                std::tuple<R, R> masked_predict_cost(shared_index_mat, shared_index_mat, shared_eigen_index_vector, shared_eigen_index_vector, uint offset=0, R drop_prob = 0.0);
+                std::tuple<R, R> masked_predict_cost(shared_index_mat, shared_index_mat, uint, shared_eigen_index_vector, uint offset=0, R drop_prob = 0.0);
 
                 virtual std::vector<int> reconstruct(Indexing::Index, int, int symbol_offset = 0) const;
-                state_type get_final_activation(graph_t&, Indexing::Index, T drop_prob=0.0) const;
+                state_type get_final_activation(Indexing::Index, R drop_prob=0.0) const;
 
-                activation_t activate(graph_t&, state_type&, const uint&) const;
-                activation_t activate(graph_t&, state_type&, const eigen_index_block) const;
+                activation_t activate(state_type&, const uint&) const;
+                activation_t activate(state_type&, const eigen_index_block) const;
 
                 virtual std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(Indexing::Index, utils::OntologyBranch::shared_branch, int) const;
 
-                StackedGatedModel<T> shallow_copy() const;
+                StackedGatedModel<R> shallow_copy() const;
 
 };
 

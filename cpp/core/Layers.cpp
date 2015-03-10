@@ -331,7 +331,7 @@ SHARED_MAT ShortcutRNN<R>::activate(
     DEBUG_ASSERT_NOT_NAN(Wh->w);
     DEBUG_ASSERT_NOT_NAN(prev_hidden->w);
     DEBUG_ASSERT_NOT_NAN(b->w);
-    return Ws.mul(shortcut_vector).add(MAT::mul_add_mul_with_bias(Wx, input_vector, Wh, prev_hidden, b));
+    return Ws->mul(shortcut_vector)->add(MAT::mul_add_mul_with_bias(Wx, input_vector, Wh, prev_hidden, b));
 }
 
 template<typename R>
@@ -455,22 +455,22 @@ std::pair<SHARED_MAT, SHARED_MAT> LSTM<R>::activate (
     SHARED_MAT hidden_prev) const {
 
     // input gate:
-    auto input_gate  = input_layer.activate(input_vector, hidden_prev).sigmoid();
+    auto input_gate  = input_layer.activate(input_vector, hidden_prev)->sigmoid();
     // forget gate
-    auto forget_gate = forget_layer.activate(input_vector, hidden_prev).sigmoid();
+    auto forget_gate = forget_layer.activate(input_vector, hidden_prev)->sigmoid();
     // output gate
-    auto output_gate = output_layer.activate(input_vector, hidden_prev).sigmoid();
+    auto output_gate = output_layer.activate(input_vector, hidden_prev)->sigmoid();
     // write operation on cells
-    auto cell_write  = cell_layer.activate(input_vector, hidden_prev).tanh();
+    auto cell_write  = cell_layer.activate(input_vector, hidden_prev)->tanh();
 
     // compute new cell activation
-    auto retain_cell = forget_gate.eltmul(cell_prev); // what do we keep from cell
-    auto write_cell  = input_gate.eltmul(cell_write); // what do we write to cell
-    auto cell_d      = retain_cell.add(write_cell); // new cell contents
+    auto retain_cell = forget_gate->eltmul(cell_prev); // what do we keep from cell
+    auto write_cell  = input_gate->eltmul(cell_write); // what do we write to cell
+    auto cell_d      = retain_cell->add(write_cell); // new cell contents
 
     // compute hidden state as gated, saturated cell activations
 
-    auto hidden_d    = output_gate.eltmul(cell_d.tanh());
+    auto hidden_d    = output_gate->eltmul(cell_d->tanh());
 
     DEBUG_ASSERT_NOT_NAN(hidden_d->w);
     DEBUG_ASSERT_NOT_NAN(cell_d->w);
@@ -486,22 +486,22 @@ std::pair<SHARED_MAT, SHARED_MAT> ShortcutLSTM<R>::activate (
     SHARED_MAT hidden_prev) const {
 
     // input gate:
-    auto input_gate  = input_layer.activate(input_vector, shortcut_vector, hidden_prev).sigmoid();
+    auto input_gate  = input_layer.activate(input_vector, shortcut_vector, hidden_prev)->sigmoid();
     // forget gate
-    auto forget_gate = forget_layer.activate(input_vector, shortcut_vector, hidden_prev).sigmoid();
+    auto forget_gate = forget_layer.activate(input_vector, shortcut_vector, hidden_prev)->sigmoid();
     // output gate
-    auto output_gate = output_layer.activate(input_vector, shortcut_vector, hidden_prev).sigmoid();
+    auto output_gate = output_layer.activate(input_vector, shortcut_vector, hidden_prev)->sigmoid();
     // write operation on cells
-    auto cell_write  = cell_layer.activate(input_vector, shortcut_vector, hidden_prev).tanh();
+    auto cell_write  = cell_layer.activate(input_vector, shortcut_vector, hidden_prev)->tanh();
 
     // compute new cell activation
-    auto retain_cell = forget_gate.eltmul(cell_prev); // what do we keep from cell
-    auto write_cell  = input_gate.eltmul(cell_write); // what do we write to cell
-    auto cell_d      = retain_cell.add(write_cell); // new cell contents
+    auto retain_cell = forget_gate->eltmul(cell_prev); // what do we keep from cell
+    auto write_cell  = input_gate->eltmul(cell_write); // what do we write to cell
+    auto cell_d      = retain_cell->add(write_cell); // new cell contents
 
     // compute hidden state as gated, saturated cell activations
 
-    auto hidden_d    = output_gate.eltmul(cell_d.tanh());
+    auto hidden_d    = output_gate->eltmul(cell_d->tanh());
 
     DEBUG_ASSERT_NOT_NAN(hidden_d->w);
     DEBUG_ASSERT_NOT_NAN(cell_d->w);

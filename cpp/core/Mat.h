@@ -18,6 +18,8 @@ DECLARE_bool(eigen_parallel);
 #define MAT Mat<R>
 #define SHARED_MAT std::shared_ptr<MAT>
 
+#define EPS 1e-9
+
 typedef std::size_t random_t;
 
 /**
@@ -49,7 +51,7 @@ broadcasting across other operations).
 
 
 template<typename R>
-class Mat : std::enable_shared_from_this<Mat<R>> {
+class Mat : public std::enable_shared_from_this<Mat<R>> {
     private:
         static std::atomic<int> next_matrix;
         typedef Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
@@ -280,7 +282,7 @@ class Mat : std::enable_shared_from_this<Mat<R>> {
 
         **/
         SHARED_MAT eltmul_rowwise(SHARED_MAT);
-        SHARED_MAT mul_with_bias(SHARED_MAT, SHARED_MAT);
+        static SHARED_MAT mul_with_bias(SHARED_MAT, SHARED_MAT, SHARED_MAT);
         // operation of the form (A * x + B * y) + C, called with mul_add_mul_with_bias(A, x, B, y, C)
         static SHARED_MAT mul_add_mul_with_bias(SHARED_MAT, SHARED_MAT, SHARED_MAT, SHARED_MAT, SHARED_MAT);
         static SHARED_MAT mul_add_mul_with_bias(std::initializer_list<SHARED_MAT>);

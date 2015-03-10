@@ -1,20 +1,20 @@
-#ifndef STACKED_MAT_H
-#define STACKED_MAT_H
+#ifndef CORE_STACKED_MODEL_H
+#define CORE_STACKED_MODEL_H
 
 #include <fstream>
 #include <gflags/gflags.h>
+#include <initializer_list>
 #include <iostream>
 #include <map>
 #include <sstream>
 #include <unordered_map>
-#include <initializer_list>
 
-#include "CrossEntropy.h"
-#include "Layers.h"
-#include "Mat.h"
-#include "Softmax.h"
-#include "utils.h"
+#include "core/CrossEntropy.h"
+#include "core/Layers.h"
+#include "core/Mat.h"
 #include "core/RecurrentEmbeddingModel.h"
+#include "core/Softmax.h"
+#include "core/utils.h"
 
 /**
 StackedModel
@@ -37,30 +37,27 @@ DECLARE_double(rho);
 DECLARE_bool(shortcut);
 
 
-template<typename T>
-class StackedModel : public RecurrentEmbeddingModel<T>  {
-    typedef LSTM<T>                    lstm;
-    typedef Layer<T>           classifier_t;
-    typedef Mat<T>                      mat;
-    typedef std::shared_ptr<mat> shared_mat;
-    typedef Graph<T>                graph_t;
+template<typename R>
+class StackedModel : public RecurrentEmbeddingModel<R>  {
+    typedef LSTM<R>                    lstm;
+    typedef Layer<R>           classifier_t;
     typedef std::map<std::string, std::vector<std::string>> config_t;
 
     inline void name_parameters();
 
     public:
 
-        typedef std::pair<std::vector<shared_mat>, std::vector<shared_mat>> state_type;
-        typedef std::tuple<state_type, shared_mat, shared_mat> activation_t;
-        typedef T value_t;
+        typedef std::pair<std::vector<SHARED_MAT>, std::vector<SHARED_MAT>> state_type;
+        typedef std::tuple<state_type, SHARED_MAT, SHARED_MAT> activation_t;
+        typedef R value_t;
         const bool use_shortcut;
 
-        std::shared_ptr<AbstractStackedLSTM<T>> stacked_lstm;
+        std::shared_ptr<AbstractStackedLSTM<R>> stacked_lstm;
 
         typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
         typedef std::shared_ptr< index_mat > shared_index_mat;
-        std::shared_ptr<AbstractMultiInputLayer<T>> decoder;
-        virtual std::vector<shared_mat> parameters() const;
+        std::shared_ptr<AbstractMultiInputLayer<R>> decoder;
+        virtual std::vector<SHARED_MAT> parameters() const;
         /**
         Load
         ----
@@ -77,7 +74,7 @@ class StackedModel : public RecurrentEmbeddingModel<T>  {
         Outputs
         -------
 
-        StackedModel<T> model : the saved model
+        StackedModel<R> model : the saved model
 
         **/
         /**
@@ -90,9 +87,9 @@ class StackedModel : public RecurrentEmbeddingModel<T>  {
         configurations.
 
         **/
-        static StackedModel<T> load(std::string);
+        static StackedModel<R> load(std::string);
 
-        static StackedModel<T> build_from_CLI(std::string load_location,
+        static StackedModel<R> build_from_CLI(std::string load_location,
                                               int vocab_size,
                                               int output_size,
                                               bool verbose = true);
@@ -116,7 +113,7 @@ class StackedModel : public RecurrentEmbeddingModel<T>  {
         virtual config_t configuration() const;
         StackedModel(const config_t&);
         /**
-        StackedModel<T>::StackedModel
+        StackedModel<R>::StackedModel
         -----------------------------
 
         Copy constructor with option to make a shallow
@@ -124,18 +121,18 @@ class StackedModel : public RecurrentEmbeddingModel<T>  {
 
         If the copy is shallow then the parameters are shared
         but separate gradients `dw` are used for each of
-        thread StackedModel<T>.
+        thread StackedModel<R>.
 
         Shallow copies are useful for Hogwild and multithreaded
         training
 
-        See `Mat<T>::shallow_copy`, `examples/character_prediction.cpp`,
-        `StackedModel<T>::shallow_copy`
+        See `Mat<R>::shallow_copy`, `examples/character_prediction.cpp`,
+        `StackedModel<R>::shallow_copy`
 
         Inputs
         ------
 
-              StackedModel<T> l : StackedModel from which to source parameters and dw
+              StackedModel<R> l : StackedModel from which to source parameters and dw
                     bool copy_w : whether parameters for new StackedModel should be copies
                                   or shared
                    bool copy_dw : whether gradients for new StackedModel should be copies
@@ -146,16 +143,16 @@ class StackedModel : public RecurrentEmbeddingModel<T>  {
         Outputs
         -------
 
-        StackedModel<T> out : the copied StackedModel with deep or shallow copy of parameters
+        StackedModel<R> out : the copied StackedModel with deep or shallow copy of parameters
 
         **/
-        StackedModel(const StackedModel<T>&, bool, bool);
-        T masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, shared_eigen_index_vector, shared_eigen_index_vector, uint offset=0, T drop_prob = 0.0);
-        T masked_predict_cost(graph_t&, shared_index_mat, shared_index_mat, uint, shared_eigen_index_vector, uint offset=0, T drop_prob = 0.0);
+        StackedModel(const StackedModel<R>&, bool, bool);
+        R masked_predict_cost(shared_index_mat, shared_index_mat, shared_eigen_index_vector, shared_eigen_index_vector, uint offset=0, R drop_prob = 0.0);
+        R masked_predict_cost(shared_index_mat, shared_index_mat, uint, shared_eigen_index_vector, uint offset=0, R drop_prob = 0.0);
 
         virtual std::vector<int> reconstruct(Indexing::Index, int, int symbol_offset = 0) const;
 
-        state_type get_final_activation(graph_t&, Indexing::Index, T drop_prob=0.0) const;
+        state_type get_final_activation(Indexing::Index, R drop_prob=0.0) const;
         /**
         Activate
         --------
@@ -168,19 +165,18 @@ class StackedModel : public RecurrentEmbeddingModel<T>  {
         Inputs
         ------
 
-        Graph<T>& G : computation graph
-        std::pair<std::vector<std::shared_ptr<Mat<T>>>, std::vector<std::shared_ptr<Mat<T>>>>& : previous state
+        std::pair<std::vector<std::shared_ptr<Mat<R>>>, std::vector<std::shared_ptr<Mat<R>>>>& : previous state
         uint index : embedding observation
 
         Outputs
         -------
 
-        std::pair<std::pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>>, shared_ptr<Mat<T>> > out :
+        std::pair<std::pair<vector<shared_ptr<Mat<R>>>, vector<shared_ptr<Mat<R>>>>, shared_ptr<Mat<R>> > out :
             pair of LSTM hidden and cell states, and probabilities from the decoder.
 
         **/
-        activation_t activate(graph_t&, state_type&, const uint& ) const;
-        activation_t activate(graph_t&, state_type&, const eigen_index_block ) const;
+        activation_t activate(state_type&, const uint& ) const;
+        activation_t activate(state_type&, const eigen_index_block ) const;
 
         virtual std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(Indexing::Index, utils::OntologyBranch::shared_branch, int) const;
 
@@ -188,23 +184,23 @@ class StackedModel : public RecurrentEmbeddingModel<T>  {
         Shallow Copy
         ------------
 
-        Perform a shallow copy of a StackedModel<T> that has
+        Perform a shallow copy of a StackedModel<R> that has
         the same parameters but separate gradients `dw`
         for each of its parameters.
 
         Shallow copies are useful for Hogwild and multithreaded
         training
 
-        See `StackedModel<T>::shallow_copy`, `examples/character_prediction.cpp`.
+        See `StackedModel<R>::shallow_copy`, `examples/character_prediction.cpp`.
 
         Outputs
         -------
 
-        StackedModel<T> out : the copied layer with sharing parameters,
+        StackedModel<R> out : the copied layer with sharing parameters,
                                    but with separate gradients `dw`
 
         **/
-        StackedModel<T> shallow_copy() const;
+        StackedModel<R> shallow_copy() const;
 
         /**
         Decoder initialization

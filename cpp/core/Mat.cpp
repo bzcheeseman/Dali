@@ -249,7 +249,7 @@ SHARED_MAT Mat<R>::eltmul_broadcast(
         true);
     out->w = (w.array().colwise() * matrix2->w.col(0).array()).matrix();
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, matrix2, out]() {
             self->dw.noalias() += ((out->dw).array().colwise() * (matrix2->w).col(0).array()).matrix();
             matrix2->dw.noalias() += (self->w.array() * (out->dw).array()).matrix().rowwise().sum();
@@ -263,7 +263,7 @@ SHARED_MAT Mat<R>::eltmul(
     SHARED_MAT matrix2) {
     if (dims[1] != matrix2->dims[1] && (dims[1] == 1 || matrix2->dims[1] == 1)) {
         if (dims[1] == 1) {
-            return matrix2->eltmul_broadcast(shared_from_this());
+            return matrix2->eltmul_broadcast(this->shared_from_this());
         }
         return this->eltmul_broadcast(matrix2);
     }
@@ -275,7 +275,7 @@ SHARED_MAT Mat<R>::eltmul(
         true);
     out->w = (w.array() * matrix2->w.array()).matrix();
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, matrix2, out]() {
             self->dw.noalias() += ((matrix2->w).array() * (out->dw).array()).matrix();
             matrix2->dw.noalias() += ((self->w).array() * (out->dw).array()).matrix();
@@ -295,7 +295,7 @@ SHARED_MAT Mat<R>::eltmul(
         true);
     out->w = (w.array() * alpha).matrix();
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, alpha, out]() {
             self->dw.noalias() += (alpha * (out->dw).array()).matrix();
         });
@@ -315,7 +315,7 @@ SHARED_MAT Mat<R>::eltmul_broadcast_rowwise(
             true);
     out->w = (w.array().rowwise() * row_vector->w.row(0).array()).matrix();
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, row_vector, out]() {
             self->dw.noalias() += ((out->dw).array().rowwise() * (row_vector->w).row(0).array()).matrix();
             row_vector->dw.noalias() += (((self->w).array() * (out->dw).array()).matrix().colwise().sum()).matrix();
@@ -336,7 +336,7 @@ SHARED_MAT Mat<R>::eltmul_rowwise(
         true);
     out->w = (w.array() * matrix2->w.transpose().array()).matrix();
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, matrix2, out]() {
             self->dw.noalias() += ((matrix2->w).transpose().array() * (out->dw).array()).matrix();
             matrix2->dw.noalias() += ((self->w).array() * (out->dw).array()).matrix().transpose();
@@ -350,7 +350,7 @@ SHARED_MAT Mat<R>::add(
         SHARED_MAT matrix2) {
     if (dims[1] != matrix2->dims[1] && (dims[1] == 1 || matrix2->dims[1] == 1)) {
         if (dims[1] == 1) {
-            return matrix2->add_broadcast(shared_from_this());
+            return matrix2->add_broadcast(this->shared_from_this());
         }
         return this->add_broadcast(matrix2);
     }
@@ -362,7 +362,7 @@ SHARED_MAT Mat<R>::add(
         true);
     out->w = w + matrix2->w;
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, matrix2, out]() {
             self->dw.noalias() += out->dw;
             matrix2->dw.noalias() += out->dw;
@@ -377,7 +377,7 @@ SHARED_MAT Mat<R>::sub(
         SHARED_MAT matrix2) {
     if (dims[1] != matrix2->dims[1] && (dims[1] == 1 || matrix2->dims[1] == 1)) {
         if (dims[1] == 1) {
-            return matrix->sub_broadcast_reversed(shared_from_this());
+            return matrix2->sub_broadcast_reversed(this->shared_from_this());
         }
         return this->sub_broadcast(matrix2);
     }
@@ -389,7 +389,7 @@ SHARED_MAT Mat<R>::sub(
         true);
     out->w = w - matrix2->w;
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, matrix2, out]() {
             self->dw.noalias() += out->dw;
             matrix2->dw.noalias() -= out->dw;
@@ -409,7 +409,7 @@ SHARED_MAT Mat<R>::add_broadcast(SHARED_MAT matrix2) {
             true);
     out->w = (w.colwise() + matrix2->w.col(0)).matrix();
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, matrix2, out]() {
             self->dw.noalias() += out->dw;
             matrix2->dw.noalias() += out->dw.rowwise().sum();
@@ -429,7 +429,7 @@ SHARED_MAT Mat<R>::sub_broadcast(SHARED_MAT matrix2) {
         true);
     out->w = (w.colwise() - matrix2->w.col(0)).matrix();
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, matrix2, out]() {
             self->dw.noalias() += out->dw;
             matrix2->dw.noalias() -= out->dw.rowwise().sum();
@@ -449,7 +449,7 @@ SHARED_MAT Mat<R>::sub_broadcast_reversed(SHARED_MAT matrix2) {
         true);
     out->w = ((-w).colwise() + matrix2->w.col(0)).matrix();
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, matrix2, out] () {
             self->dw.noalias() -= out->dw;
             matrix2->dw.noalias() += out->dw.rowwise().sum();
@@ -485,7 +485,7 @@ SHARED_MAT Mat<R>::square() {
             true);
     out->w = w.array().square();
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, out]() {
             self->dw.noalias() += 2.0 * ((self->w).array() * (out->dw).array()).matrix();
         });
@@ -501,7 +501,7 @@ SHARED_MAT Mat<R>::sigmoid() {
             true);
     out->w = w.unaryExpr(utils::sigmoid_operator<R>());
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, out](){
             self->dw.noalias() += (((out->w).array() - out->w.array().square()) * out->dw.array()).matrix();
         });
@@ -543,7 +543,7 @@ SHARED_MAT Mat<R>::steep_sigmoid(R aggressiveness) {
         true);
     out->w = w.unaryExpr(utils::steep_sigmoid_operator<R>(aggressiveness));
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, out, aggressiveness](){
             self->dw.noalias() += (aggressiveness * ((out->w).array() - out->w.array().square()) * out->dw.array()).matrix();
         });
@@ -556,7 +556,7 @@ SHARED_MAT Mat<R>::sum() {
     auto out = std::make_shared<MAT>(1,1,true);
     out->w(0) = w.array().sum();
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, out]() {
             self->dw.array() += out->dw(0);
         });
@@ -570,7 +570,7 @@ SHARED_MAT Mat<R>::mean() {
     auto out = std::make_shared<MAT>(1,1,true);
     out->w(0) = w.array().mean();
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, out](){
             self->dw.array() += (1.0 / (self->number_of_elements())) * out->dw(0);
         });
@@ -676,7 +676,7 @@ SHARED_MAT Mat<R>::log() {
         true);
     out->w = w.array().log();
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, out](){
             self->dw.noalias() += ((1.0 / (self->w).array()) * (out->dw).array()).matrix();
         });
@@ -693,7 +693,7 @@ SHARED_MAT Mat<R>::exp() {
         true);
     out->w = w.array().exp();
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, out]() {
             self->dw.noalias() += ((out->w).array() * (out->dw).array()).matrix();
         });
@@ -832,7 +832,7 @@ SHARED_MAT Mat<R>::T() {
         true);
     out->w = w.transpose();
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, out]() {
             self->dw.noalias() += (out->dw).transpose();
         });
@@ -848,7 +848,7 @@ SHARED_MAT Mat<R>::tanh() {
         true);
     out->w = w.unaryExpr(utils::tanh_operator<R>());
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, out](){
             self->dw.noalias() += (out->w.unaryExpr(utils::dtanh_operator<R>()).array() * out->dw.array()).matrix();
         });
@@ -864,8 +864,8 @@ SHARED_MAT Mat<R>::relu() {
         true);
     out->w = w.unaryExpr(utils::relu_operator<R>());
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
-        this->graph::emplace_back([self, out](){
+        SHARED_MAT self = this->shared_from_this();
+        graph::emplace_back([self, out](){
             self->dw.noalias() += (out->w.unaryExpr(utils::sign_operator<R>()).array() * out->dw.array()).matrix();
         });
     }
@@ -883,7 +883,7 @@ SHARED_MAT Mat<R>::mul(
         true);
     out->w = w * matrix2->w;
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, matrix2, out](){
             self->dw.noalias() += (out->dw) * ((matrix2->w).transpose());
             matrix2->dw.noalias() += self->w.transpose() * (out->dw);
@@ -1056,7 +1056,6 @@ template<typename R>
 SHARED_MAT Mat<R>::rows_pluck(
         Indexing::Index indices
         ) {
-    Timer rp_timer("ops_rows_pluck");
     auto out = std::make_shared<MAT>(
         dims[1],
         indices.size(),
@@ -1065,9 +1064,8 @@ SHARED_MAT Mat<R>::rows_pluck(
     for (std::size_t offset = 0; offset < indices.size(); ++offset) {
         out->w.col(offset) = w.row(indices[offset]).transpose();
     }
-    rp_timer.stop();
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, out, indices](){
             auto index_ptr = indices.data();
             for (std::size_t i = 0; i < out->dims[1]; ++i) {
@@ -1214,7 +1212,7 @@ SHARED_MAT Mat<R>::rows_cols_pluck(
     for (int offset = 0; offset < row_indices.size(); ++offset)
         out->w(offset) = w(row_indices[offset], col_indices[offset]);
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, out, row_indices, col_indices](){
             auto row_index_ptr = row_indices.data();
             auto col_index_ptr = col_indices.data();
@@ -1232,10 +1230,10 @@ SHARED_MAT Mat<R>::rows_cols_pluck(
 template<typename R>
 SHARED_MAT Mat<R>::row_pluck(
         int row) {
-    auto out = std::make_shared<MAT>(matrix->dims[1], 1, true);
+    auto out = std::make_shared<MAT>(dims[1], 1, true);
     out->w = w.row(row).transpose();
     if (graph::backprop_enabled) {
-        SHARED_MAT self = shared_from_this();
+        SHARED_MAT self = this->shared_from_this();
         graph::emplace_back([self, out, row]() {
             self->dw.row(row).noalias() += out->dw.col(0).transpose();
         });

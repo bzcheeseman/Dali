@@ -5,59 +5,59 @@ using std::vector;
 
 typedef std::pair<int,int> PII;
 
-template<typename T>
-SHARED_MAT AbstractMultiInputLayer<T>::activate(GRAPH& G, const std::vector<SHARED_MAT>& inputs) const {
+template<typename R>
+SHARED_MAT AbstractMultiInputLayer<R>::activate(const std::vector<SHARED_MAT>& inputs) const {
     assert(inputs.size() > 0);
-    return activate(G, inputs[0]);
+    return activate(inputs[0]);
 };
 
-template<typename T>
-SHARED_MAT AbstractMultiInputLayer<T>::activate(GRAPH& G, SHARED_MAT first_input, const std::vector<SHARED_MAT>& inputs) const {
+template<typename R>
+SHARED_MAT AbstractMultiInputLayer<R>::activate(SHARED_MAT first_input, const std::vector<SHARED_MAT>& inputs) const {
     if (inputs.size() > 0) {
-        return activate(G, inputs.back());
+        return activate(inputs.back());
     } else {
-        return activate(G, first_input);
+        return activate(first_input);
     }
 };
 
-template<typename T>
-void Layer<T>::create_variables() {
-    T upper = 1. / sqrt(input_size);
+template<typename R>
+void Layer<R>::create_variables() {
+    R upper = 1. / sqrt(input_size);
     W = make_shared<MAT>(hidden_size, input_size, -upper, upper);
     this->b = make_shared<MAT>(hidden_size, 1);
 }
-template<typename T>
-Layer<T>::Layer (int _input_size, int _hidden_size) : hidden_size(_hidden_size), input_size(_input_size) {
+template<typename R>
+Layer<R>::Layer (int _input_size, int _hidden_size) : hidden_size(_hidden_size), input_size(_input_size) {
     create_variables();
 }
 
-template<typename T>
-SHARED_MAT Layer<T>::activate(GRAPH& G, SHARED_MAT input_vector) const {
-    return G.mul_with_bias(W, input_vector, this->b);
+template<typename R>
+SHARED_MAT Layer<R>::activate(SHARED_MAT input_vector) const {
+    return MAT::mul_with_bias(W, input_vector, this->b);
 }
 
-template<typename T>
-Layer<T>::Layer (const Layer<T>& layer, bool copy_w, bool copy_dw) : hidden_size(layer.hidden_size), input_size(layer.input_size) {
+template<typename R>
+Layer<R>::Layer (const Layer<R>& layer, bool copy_w, bool copy_dw) : hidden_size(layer.hidden_size), input_size(layer.input_size) {
     W = make_shared<MAT>(*layer.W, copy_w, copy_dw);
     this->b = make_shared<MAT>(*layer.b, copy_w, copy_dw);
 }
 
-template<typename T>
-Layer<T> Layer<T>::shallow_copy() const {
-    return Layer<T>(*this, false, true);
+template<typename R>
+Layer<R> Layer<R>::shallow_copy() const {
+    return Layer<R>(*this, false, true);
 }
 
-template<typename T>
-std::vector<SHARED_MAT> Layer<T>::parameters() const{
+template<typename R>
+std::vector<SHARED_MAT> Layer<R>::parameters() const{
     return std::vector<SHARED_MAT>({W, this->b});
 }
 
 // StackedInputLayer:
-template<typename T>
-void StackedInputLayer<T>::create_variables() {
+template<typename R>
+void StackedInputLayer<R>::create_variables() {
     int total_input_size = 0;
     for (auto& input_size : input_sizes) total_input_size += input_size;
-    T upper = 1. / sqrt(total_input_size);
+    R upper = 1. / sqrt(total_input_size);
     matrices.reserve(input_sizes.size());
     for (auto& input_size : input_sizes) {
         matrices.emplace_back(make_shared<MAT>(hidden_size, input_size, -upper, upper));
@@ -65,18 +65,18 @@ void StackedInputLayer<T>::create_variables() {
     }
     this->b = make_shared<MAT>(hidden_size, 1);
 }
-template<typename T>
-StackedInputLayer<T>::StackedInputLayer (vector<int> _input_sizes, int _hidden_size) : hidden_size(_hidden_size), input_sizes(_input_sizes) {
+template<typename R>
+StackedInputLayer<R>::StackedInputLayer (vector<int> _input_sizes, int _hidden_size) : hidden_size(_hidden_size), input_sizes(_input_sizes) {
     create_variables();
 }
 
-template<typename T>
-StackedInputLayer<T>::StackedInputLayer (std::initializer_list<int> _input_sizes, int _hidden_size) : hidden_size(_hidden_size), input_sizes(_input_sizes) {
+template<typename R>
+StackedInputLayer<R>::StackedInputLayer (std::initializer_list<int> _input_sizes, int _hidden_size) : hidden_size(_hidden_size), input_sizes(_input_sizes) {
     create_variables();
 }
 
-template<typename T>
-vector<SHARED_MAT> StackedInputLayer<T>::zip_inputs_with_matrices_and_bias(const vector<SHARED_MAT>& inputs) const {
+template<typename R>
+vector<SHARED_MAT> StackedInputLayer<R>::zip_inputs_with_matrices_and_bias(const vector<SHARED_MAT>& inputs) const {
     vector<SHARED_MAT> zipped;
     zipped.reserve(matrices.size() * 2 + 1);
     auto input_ptr = inputs.begin();
@@ -89,8 +89,8 @@ vector<SHARED_MAT> StackedInputLayer<T>::zip_inputs_with_matrices_and_bias(const
     return zipped;
 }
 
-template<typename T>
-vector<SHARED_MAT> StackedInputLayer<T>::zip_inputs_with_matrices_and_bias(
+template<typename R>
+vector<SHARED_MAT> StackedInputLayer<R>::zip_inputs_with_matrices_and_bias(
         SHARED_MAT input,
         const vector<SHARED_MAT>& inputs) const {
     vector<SHARED_MAT> zipped;
@@ -123,72 +123,69 @@ vector<SHARED_MAT> StackedInputLayer<T>::zip_inputs_with_matrices_and_bias(
     return zipped;
 }
 
-template<typename T>
-SHARED_MAT StackedInputLayer<T>::activate(
-    GRAPH& G,
+template<typename R>
+SHARED_MAT StackedInputLayer<R>::activate(
     const vector<SHARED_MAT>& inputs) const {
     auto zipped = zip_inputs_with_matrices_and_bias(inputs);
-    return G.mul_add_mul_with_bias(zipped);
+    return MAT::mul_add_mul_with_bias(zipped);
 }
 
-template<typename T>
-SHARED_MAT StackedInputLayer<T>::activate(
-    GRAPH& G,
+template<typename R>
+SHARED_MAT StackedInputLayer<R>::activate(
     SHARED_MAT input_vector) const {
     if (matrices.size() == 0) {
-        return G.mul_with_bias(matrices[0], input_vector, this->b);
+        return MAT::mul_with_bias(matrices[0], input_vector, this->b);
     } else {
         throw std::runtime_error("Error: Stacked Input Layer parametrized with more than 1 inputs only received 1 input vector.");
     }
 }
 
-template<typename T>
-SHARED_MAT StackedInputLayer<T>::activate(
-    GRAPH& G,
+template<typename R>
+SHARED_MAT StackedInputLayer<R>::activate(
     SHARED_MAT input,
     const vector<SHARED_MAT>& inputs) const {
     DEBUG_ASSERT_MAT_NOT_NAN(input);
     auto zipped = zip_inputs_with_matrices_and_bias(input, inputs);
 
-    auto out = G.mul_add_mul_with_bias(zipped);
+    auto out = MAT::mul_add_mul_with_bias(zipped);
 
     DEBUG_ASSERT_MAT_NOT_NAN(out);
 
     return out;
 }
 
-template<typename T>
-StackedInputLayer<T>::StackedInputLayer (const StackedInputLayer<T>& layer, bool copy_w, bool copy_dw) : hidden_size(layer.hidden_size), input_sizes(layer.input_sizes) {
+template<typename R>
+StackedInputLayer<R>::StackedInputLayer (const StackedInputLayer<R>& layer, bool copy_w, bool copy_dw) : hidden_size(layer.hidden_size), input_sizes(layer.input_sizes) {
     matrices.reserve(layer.matrices.size());
     for (auto& matrix : layer.matrices)
         matrices.emplace_back(make_shared<MAT>(*matrix, copy_w, copy_dw));
     this->b = make_shared<MAT>(*layer.b, copy_w, copy_dw);
 }
 
-template<typename T>
-StackedInputLayer<T> StackedInputLayer<T>::shallow_copy() const {
-    return StackedInputLayer<T>(*this, false, true);
+template<typename R>
+StackedInputLayer<R> StackedInputLayer<R>::shallow_copy() const {
+    return StackedInputLayer<R>(*this, false, true);
 }
 
-template<typename T>
-std::vector<SHARED_MAT> StackedInputLayer<T>::parameters() const{
+template<typename R>
+std::vector<SHARED_MAT> StackedInputLayer<R>::parameters() const{
     auto params = vector<SHARED_MAT>(matrices);
     params.emplace_back(this->b);
     return params;
 }
 
-template<typename T>
-void RNN<T>::create_variables() {
-    T upper = 1. / sqrt(input_size);
+template<typename R>
+void RNN<R>::create_variables() {
+    R upper = 1. / sqrt(input_size);
     Wx = make_shared<MAT>(output_size, input_size,  -upper, upper);
     upper = 1. / sqrt(hidden_size);
     Wh = make_shared<MAT>(output_size, hidden_size, -upper, upper);
     b  = make_shared<MAT>(output_size, 1, -upper, upper);
 }
 
-template<typename T>
-void ShortcutRNN<T>::create_variables() {
-    T upper = 1. / sqrt(input_size);
+template<typename R>
+void ShortcutRNN<R>::create_variables() {
+    R upper = 1. / sqrt(input_size);
     Wx = make_shared<MAT>(output_size, input_size,  -upper, upper);
     upper = 1. / sqrt(shortcut_size);
     Ws = make_shared<MAT>(output_size, shortcut_size,  -upper, upper);
@@ -198,28 +195,28 @@ void ShortcutRNN<T>::create_variables() {
 }
 
 
-template<typename T>
-std::vector<SHARED_MAT> RNN<T>::parameters() const {
+template<typename R>
+std::vector<SHARED_MAT> RNN<R>::parameters() const {
     return std::vector<SHARED_MAT>({Wx, Wh, b});
 }
 
 /* DelayedRNN */
 
-template<typename T>
-DelayedRNN<T>::DelayedRNN(int input_size, int hidden_size, int output_size) :
+template<typename R>
+DelayedRNN<R>::DelayedRNN(int input_size, int hidden_size, int output_size) :
         hidden_rnn(input_size, hidden_size),
         output_rnn(input_size, hidden_size, output_size) {
 }
 
-template<typename T>
-DelayedRNN<T>::DelayedRNN (const DelayedRNN<T>& rnn, bool copy_w, bool copy_dw) :
+template<typename R>
+DelayedRNN<R>::DelayedRNN (const DelayedRNN<R>& rnn, bool copy_w, bool copy_dw) :
         hidden_rnn(rnn.hidden_rnn, copy_w, copy_dw),
         output_rnn(rnn.output_rnn, copy_w, copy_dw) {
 }
 
 
-template<typename T>
-std::vector<SHARED_MAT> DelayedRNN<T>::parameters() const {
+template<typename R>
+std::vector<SHARED_MAT> DelayedRNN<R>::parameters() const {
     std::vector<SHARED_MAT> ret;
     for (auto& model: {hidden_rnn, output_rnn}) {
         auto params = model.parameters();
@@ -228,26 +225,25 @@ std::vector<SHARED_MAT> DelayedRNN<T>::parameters() const {
     return ret;
 }
 
-template<typename T>
-SHARED_MAT DelayedRNN<T>::initial_states() const {
+template<typename R>
+SHARED_MAT DelayedRNN<R>::initial_states() const {
     return make_shared<MAT>(hidden_rnn.hidden_size, 1);
 }
 
-template<typename T>
-std::pair<SHARED_MAT, SHARED_MAT> DelayedRNN<T>::activate(
-        GRAPH& G,
+template<typename R>
+std::pair<SHARED_MAT, SHARED_MAT> DelayedRNN<R>::activate(
         SHARED_MAT input_vector,
         SHARED_MAT prev_hidden) const {
 
     return std::pair<SHARED_MAT, SHARED_MAT>(
-        hidden_rnn.activate(G, input_vector, prev_hidden),
-        output_rnn.activate(G, input_vector, prev_hidden)
+        hidden_rnn.activate(input_vector, prev_hidden),
+        output_rnn.activate(input_vector, prev_hidden)
     );
 }
 
-template<typename T>
-DelayedRNN<T> DelayedRNN<T>::shallow_copy() const {
-    return DelayedRNN<T>(*this, false, true);
+template<typename R>
+DelayedRNN<R> DelayedRNN<R>::shallow_copy() const {
+    return DelayedRNN<R>(*this, false, true);
 }
 
 template class DelayedRNN<float>;
@@ -257,59 +253,58 @@ template class DelayedRNN<double>;
 /* StackedInputLayer */
 
 
-template<typename T>
-std::vector<SHARED_MAT> ShortcutRNN<T>::parameters() const {
+template<typename R>
+std::vector<SHARED_MAT> ShortcutRNN<R>::parameters() const {
     return std::vector<SHARED_MAT>({Wx, Wh, Ws, b});
 }
 
-template<typename T>
-RNN<T>::RNN (int _input_size, int _hidden_size) : hidden_size(_hidden_size), input_size(_input_size), output_size(_hidden_size) {
+template<typename R>
+RNN<R>::RNN (int _input_size, int _hidden_size) : hidden_size(_hidden_size), input_size(_input_size), output_size(_hidden_size) {
     create_variables();
 }
 
-template<typename T>
-RNN<T>::RNN (int _input_size, int _hidden_size, int _output_size) : hidden_size(_hidden_size), input_size(_input_size), output_size(_output_size) {
+template<typename R>
+RNN<R>::RNN (int _input_size, int _hidden_size, int _output_size) : hidden_size(_hidden_size), input_size(_input_size), output_size(_output_size) {
     create_variables();
 }
 
-template<typename T>
-ShortcutRNN<T>::ShortcutRNN (int _input_size, int _shortcut_size, int _hidden_size) : hidden_size(_hidden_size), input_size(_input_size), output_size(_hidden_size), shortcut_size(_shortcut_size) {
+template<typename R>
+ShortcutRNN<R>::ShortcutRNN (int _input_size, int _shortcut_size, int _hidden_size) : hidden_size(_hidden_size), input_size(_input_size), output_size(_hidden_size), shortcut_size(_shortcut_size) {
     create_variables();
 }
 
-template<typename T>
-ShortcutRNN<T>::ShortcutRNN (int _input_size, int _shortcut_size, int _hidden_size,  int _output_size) : hidden_size(_hidden_size), input_size(_input_size), shortcut_size(_shortcut_size), output_size(_output_size) {
+template<typename R>
+ShortcutRNN<R>::ShortcutRNN (int _input_size, int _shortcut_size, int _hidden_size,  int _output_size) : hidden_size(_hidden_size), input_size(_input_size), shortcut_size(_shortcut_size), output_size(_output_size) {
     create_variables();
 }
 
-template<typename T>
-RNN<T>::RNN (const RNN<T>& rnn, bool copy_w, bool copy_dw) : hidden_size(rnn.hidden_size), input_size(rnn.input_size), output_size(rnn.output_size) {
+template<typename R>
+RNN<R>::RNN (const RNN<R>& rnn, bool copy_w, bool copy_dw) : hidden_size(rnn.hidden_size), input_size(rnn.input_size), output_size(rnn.output_size) {
     Wx = make_shared<MAT>(*rnn.Wx, copy_w, copy_dw);
     Wh = make_shared<MAT>(*rnn.Wh, copy_w, copy_dw);
     b = make_shared<MAT>(*rnn.b, copy_w, copy_dw);
 }
 
-template<typename T>
-ShortcutRNN<T>::ShortcutRNN (const ShortcutRNN<T>& rnn, bool copy_w, bool copy_dw) : hidden_size(rnn.hidden_size), input_size(rnn.input_size), output_size(rnn.output_size), shortcut_size(rnn.shortcut_size) {
+template<typename R>
+ShortcutRNN<R>::ShortcutRNN (const ShortcutRNN<R>& rnn, bool copy_w, bool copy_dw) : hidden_size(rnn.hidden_size), input_size(rnn.input_size), output_size(rnn.output_size), shortcut_size(rnn.shortcut_size) {
     Wx = make_shared<MAT>(*rnn.Wx, copy_w, copy_dw);
     Wh = make_shared<MAT>(*rnn.Wh, copy_w, copy_dw);
     Ws = make_shared<MAT>(*rnn.Ws, copy_w, copy_dw);
     b = make_shared<MAT>(*rnn.b, copy_w, copy_dw);
 }
 
-template<typename T>
-RNN<T> RNN<T>::shallow_copy() const {
-    return RNN<T>(*this, false, true);
+template<typename R>
+RNN<R> RNN<R>::shallow_copy() const {
+    return RNN<R>(*this, false, true);
 }
 
-template<typename T>
-ShortcutRNN<T> ShortcutRNN<T>::shallow_copy() const {
-    return ShortcutRNN<T>(*this, false, true);
+template<typename R>
+ShortcutRNN<R> ShortcutRNN<R>::shallow_copy() const {
+    return ShortcutRNN<R>(*this, false, true);
 }
 
-template<typename T>
-SHARED_MAT RNN<T>::activate(
-    GRAPH& G,
+template<typename R>
+SHARED_MAT RNN<R>::activate(
     SHARED_MAT input_vector,
     SHARED_MAT prev_hidden) const {
     // takes 5% less time to run operations when grouping them (no big gains then)
@@ -320,12 +315,11 @@ SHARED_MAT RNN<T>::activate(
     DEBUG_ASSERT_NOT_NAN(Wh->w);
     DEBUG_ASSERT_NOT_NAN(prev_hidden->w);
     DEBUG_ASSERT_NOT_NAN(b->w);
-    return G.mul_add_mul_with_bias(Wx, input_vector, Wh, prev_hidden, b);
+    return MAT::mul_add_mul_with_bias(Wx, input_vector, Wh, prev_hidden, b);
 }
 
-template<typename T>
-SHARED_MAT ShortcutRNN<T>::activate(
-    GRAPH& G,
+template<typename R>
+SHARED_MAT ShortcutRNN<R>::activate(
     SHARED_MAT input_vector,
     SHARED_MAT shortcut_vector,
     SHARED_MAT prev_hidden) const {
@@ -337,22 +331,22 @@ SHARED_MAT ShortcutRNN<T>::activate(
     DEBUG_ASSERT_NOT_NAN(Wh->w);
     DEBUG_ASSERT_NOT_NAN(prev_hidden->w);
     DEBUG_ASSERT_NOT_NAN(b->w);
-    return G.add( G.mul(Ws, shortcut_vector), G.mul_add_mul_with_bias(Wx, input_vector, Wh, prev_hidden, b));
+    return Ws.mul(shortcut_vector).add(MAT::mul_add_mul_with_bias(Wx, input_vector, Wh, prev_hidden, b));
 }
 
-template<typename T>
-GatedInput<T>::GatedInput (int _input_size, int _hidden_size) : RNN<T>(_input_size, _hidden_size, 1) {}
+template<typename R>
+GatedInput<R>::GatedInput (int _input_size, int _hidden_size) : RNN<R>(_input_size, _hidden_size, 1) {}
 
-template<typename T>
-GatedInput<T>::GatedInput (const GatedInput<T>& gate, bool copy_w, bool copy_dw) : RNN<T>(gate, copy_w, copy_dw) {}
+template<typename R>
+GatedInput<R>::GatedInput (const GatedInput<R>& gate, bool copy_w, bool copy_dw) : RNN<R>(gate, copy_w, copy_dw) {}
 
-template<typename T>
-GatedInput<T> GatedInput<T>::shallow_copy() const {
-    return GatedInput<T>(*this, false, true);
+template<typename R>
+GatedInput<R> GatedInput<R>::shallow_copy() const {
+    return GatedInput<R>(*this, false, true);
 }
 
-template<typename T>
-void LSTM<T>::name_internal_layers() {
+template<typename R>
+void LSTM<R>::name_internal_layers() {
     forget_layer.b->set_name("LSTM Forget bias");
     forget_layer.Wx->set_name("LSTM Forget Wx");
     forget_layer.Wh->set_name("LSTM Forget Wh");
@@ -369,8 +363,8 @@ void LSTM<T>::name_internal_layers() {
     cell_layer.Wx->set_name("LSTM Cell Wx");
     cell_layer.Wh->set_name("LSTM Cell Wh");
 }
-template<typename T>
-void ShortcutLSTM<T>::name_internal_layers() {
+template<typename R>
+void ShortcutLSTM<R>::name_internal_layers() {
     forget_layer.b->set_name("Shortcut Forget bias");
     forget_layer.Wx->set_name("Shortcut Forget Wx");
     forget_layer.Wh->set_name("Shortcut Forget Wh");
@@ -392,8 +386,8 @@ void ShortcutLSTM<T>::name_internal_layers() {
     cell_layer.Ws->set_name("Shortcut Cell Ws");
 }
 
-template<typename T>
-LSTM<T>::LSTM (int _input_size, int _hidden_size) :
+template<typename R>
+LSTM<R>::LSTM (int _input_size, int _hidden_size) :
     hidden_size(_hidden_size),
     input_size(_input_size),
     input_layer(_input_size, _hidden_size),
@@ -407,8 +401,8 @@ LSTM<T>::LSTM (int _input_size, int _hidden_size) :
     name_internal_layers();
 }
 
-template<typename T>
-ShortcutLSTM<T>::ShortcutLSTM (int _input_size, int _shortcut_size, int _hidden_size) :
+template<typename R>
+ShortcutLSTM<R>::ShortcutLSTM (int _input_size, int _shortcut_size, int _hidden_size) :
     hidden_size(_hidden_size),
     input_size(_input_size),
     shortcut_size(_shortcut_size),
@@ -420,8 +414,8 @@ ShortcutLSTM<T>::ShortcutLSTM (int _input_size, int _shortcut_size, int _hidden_
     name_internal_layers();
 }
 
-template<typename T>
-LSTM<T>::LSTM (const LSTM<T>& lstm, bool copy_w, bool copy_dw) :
+template<typename R>
+LSTM<R>::LSTM (const LSTM<R>& lstm, bool copy_w, bool copy_dw) :
     hidden_size(lstm.hidden_size),
     input_size(lstm.input_size),
     input_layer(lstm.input_layer, copy_w, copy_dw),
@@ -432,8 +426,8 @@ LSTM<T>::LSTM (const LSTM<T>& lstm, bool copy_w, bool copy_dw) :
     name_internal_layers();
 }
 
-template<typename T>
-ShortcutLSTM<T>::ShortcutLSTM (const ShortcutLSTM<T>& lstm, bool copy_w, bool copy_dw) :
+template<typename R>
+ShortcutLSTM<R>::ShortcutLSTM (const ShortcutLSTM<R>& lstm, bool copy_w, bool copy_dw) :
     hidden_size(lstm.hidden_size),
     input_size(lstm.input_size),
     shortcut_size(lstm.shortcut_size),
@@ -445,39 +439,38 @@ ShortcutLSTM<T>::ShortcutLSTM (const ShortcutLSTM<T>& lstm, bool copy_w, bool co
     name_internal_layers();
 }
 
-template<typename T>
-LSTM<T> LSTM<T>::shallow_copy() const {
-    return LSTM<T>(*this, false, true);
+template<typename R>
+LSTM<R> LSTM<R>::shallow_copy() const {
+    return LSTM<R>(*this, false, true);
 }
-template<typename T>
-ShortcutLSTM<T> ShortcutLSTM<T>::shallow_copy() const {
-    return ShortcutLSTM<T>(*this, false, true);
+template<typename R>
+ShortcutLSTM<R> ShortcutLSTM<R>::shallow_copy() const {
+    return ShortcutLSTM<R>(*this, false, true);
 }
 
-template<typename T>
-std::pair<SHARED_MAT, SHARED_MAT> LSTM<T>::activate (
-    GRAPH& G,
+template<typename R>
+std::pair<SHARED_MAT, SHARED_MAT> LSTM<R>::activate (
     SHARED_MAT input_vector,
     SHARED_MAT cell_prev,
     SHARED_MAT hidden_prev) const {
 
     // input gate:
-    auto input_gate  = G.sigmoid(input_layer.activate(G, input_vector, hidden_prev));
+    auto input_gate  = input_layer.activate(input_vector, hidden_prev).sigmoid();
     // forget gate
-    auto forget_gate = G.sigmoid(forget_layer.activate(G, input_vector, hidden_prev));
+    auto forget_gate = forget_layer.activate(input_vector, hidden_prev).sigmoid();
     // output gate
-    auto output_gate = G.sigmoid(output_layer.activate(G, input_vector, hidden_prev));
+    auto output_gate = output_layer.activate(input_vector, hidden_prev).sigmoid();
     // write operation on cells
-    auto cell_write  = G.tanh(cell_layer.activate(G, input_vector, hidden_prev));
+    auto cell_write  = cell_layer.activate(input_vector, hidden_prev).tanh();
 
     // compute new cell activation
-    auto retain_cell = G.eltmul(forget_gate, cell_prev); // what do we keep from cell
-    auto write_cell  = G.eltmul(input_gate, cell_write); // what do we write to cell
-    auto cell_d      = G.add(retain_cell, write_cell); // new cell contents
+    auto retain_cell = forget_gate.eltmul(cell_prev); // what do we keep from cell
+    auto write_cell  = input_gate.eltmul(cell_write); // what do we write to cell
+    auto cell_d      = retain_cell.add(write_cell); // new cell contents
 
     // compute hidden state as gated, saturated cell activations
 
-    auto hidden_d    = G.eltmul(output_gate, G.tanh(cell_d));
+    auto hidden_d    = output_gate.eltmul(cell_d.tanh());
 
     DEBUG_ASSERT_NOT_NAN(hidden_d->w);
     DEBUG_ASSERT_NOT_NAN(cell_d->w);
@@ -485,31 +478,30 @@ std::pair<SHARED_MAT, SHARED_MAT> LSTM<T>::activate (
     return std::pair<SHARED_MAT,SHARED_MAT>(cell_d, hidden_d);
 }
 
-template<typename T>
-std::pair<SHARED_MAT, SHARED_MAT> ShortcutLSTM<T>::activate (
-    GRAPH& G,
+template<typename R>
+std::pair<SHARED_MAT, SHARED_MAT> ShortcutLSTM<R>::activate (
     SHARED_MAT input_vector,
     SHARED_MAT shortcut_vector,
     SHARED_MAT cell_prev,
     SHARED_MAT hidden_prev) const {
 
     // input gate:
-    auto input_gate  = G.sigmoid(input_layer.activate(G, input_vector, shortcut_vector, hidden_prev));
+    auto input_gate  = input_layer.activate(input_vector, shortcut_vector, hidden_prev).sigmoid();
     // forget gate
-    auto forget_gate = G.sigmoid(forget_layer.activate(G, input_vector, shortcut_vector, hidden_prev));
+    auto forget_gate = forget_layer.activate(input_vector, shortcut_vector, hidden_prev).sigmoid();
     // output gate
-    auto output_gate = G.sigmoid(output_layer.activate(G, input_vector, shortcut_vector, hidden_prev));
+    auto output_gate = output_layer.activate(input_vector, shortcut_vector, hidden_prev).sigmoid();
     // write operation on cells
-    auto cell_write  = G.tanh(cell_layer.activate(G, input_vector, shortcut_vector, hidden_prev));
+    auto cell_write  = cell_layer.activate(input_vector, shortcut_vector, hidden_prev).tanh();
 
     // compute new cell activation
-    auto retain_cell = G.eltmul(forget_gate, cell_prev); // what do we keep from cell
-    auto write_cell  = G.eltmul(input_gate, cell_write); // what do we write to cell
-    auto cell_d      = G.add(retain_cell, write_cell); // new cell contents
+    auto retain_cell = forget_gate.eltmul(cell_prev); // what do we keep from cell
+    auto write_cell  = input_gate.eltmul(cell_write); // what do we write to cell
+    auto cell_d      = retain_cell.add(write_cell); // new cell contents
 
     // compute hidden state as gated, saturated cell activations
 
-    auto hidden_d    = G.eltmul(output_gate, G.tanh(cell_d));
+    auto hidden_d    = output_gate.eltmul(cell_d.tanh());
 
     DEBUG_ASSERT_NOT_NAN(hidden_d->w);
     DEBUG_ASSERT_NOT_NAN(cell_d->w);
@@ -517,8 +509,8 @@ std::pair<SHARED_MAT, SHARED_MAT> ShortcutLSTM<T>::activate (
     return std::pair<SHARED_MAT,SHARED_MAT>(cell_d, hidden_d);
 }
 
-template<typename T>
-std::vector<SHARED_MAT> LSTM<T>::parameters() const {
+template<typename R>
+std::vector<SHARED_MAT> LSTM<R>::parameters() const {
     std::vector<SHARED_MAT> parameters;
 
     auto input_layer_params  = input_layer.parameters();
@@ -534,8 +526,8 @@ std::vector<SHARED_MAT> LSTM<T>::parameters() const {
     return parameters;
 }
 
-template<typename T>
-std::vector<SHARED_MAT> ShortcutLSTM<T>::parameters() const {
+template<typename R>
+std::vector<SHARED_MAT> ShortcutLSTM<R>::parameters() const {
     std::vector<SHARED_MAT> parameters;
 
     auto input_layer_params  = input_layer.parameters();
@@ -551,8 +543,8 @@ std::vector<SHARED_MAT> ShortcutLSTM<T>::parameters() const {
     return parameters;
 }
 
-template<typename T>
-std::pair< std::vector<SHARED_MAT>, std::vector<SHARED_MAT> > LSTM<T>::initial_states(const std::vector<int>& hidden_sizes) {
+template<typename R>
+std::pair< std::vector<SHARED_MAT>, std::vector<SHARED_MAT> > LSTM<R>::initial_states(const std::vector<int>& hidden_sizes) {
     std::pair< std::vector<SHARED_MAT>, std::vector<SHARED_MAT> > initial_state;
     initial_state.first.reserve(hidden_sizes.size());
     initial_state.second.reserve(hidden_sizes.size());
@@ -622,12 +614,12 @@ vector<celltype> StackedCells(const vector<celltype>& source_cells, bool copy_w,
     return cells;
 }
 
-template<typename T>
-pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> forward_LSTMs(GRAPH& G,
-    shared_ptr<Mat<T>> input_vector,
-    pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>>& previous_state,
-    const vector<LSTM<T>>& cells,
-    T drop_prob) {
+template<typename R>
+pair<vector<shared_ptr<Mat<R>>>, vector<shared_ptr<Mat<R>>>> forward_LSTMs(
+    shared_ptr<Mat<R>> input_vector,
+    pair<vector<shared_ptr<Mat<R>>>, vector<shared_ptr<Mat<R>>>>& previous_state,
+    const vector<LSTM<R>>& cells,
+    R drop_prob) {
 
     auto previous_state_cells = previous_state.first;
     auto previous_state_hiddens = previous_state.second;
@@ -635,7 +627,7 @@ pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> forward_LSTMs(GRAPH
     auto cell_iter = previous_state_cells.begin();
     auto hidden_iter = previous_state_hiddens.begin();
 
-    pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> out_state;
+    pair<vector<shared_ptr<Mat<R>>>, vector<shared_ptr<Mat<R>>>> out_state;
     out_state.first.reserve(cells.size());
     out_state.second.reserve(cells.size());
 
@@ -643,8 +635,7 @@ pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> forward_LSTMs(GRAPH
 
     for (auto& layer : cells) {
 
-        auto layer_out = layer.activate(G,
-                                        G.dropout_normalized(layer_input, drop_prob),
+        auto layer_out = layer.activate(MAT::dropout_normalized(layer_input, drop_prob),
                                         *cell_iter,
                                         *hidden_iter);
 
@@ -661,13 +652,13 @@ pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> forward_LSTMs(GRAPH
 }
 
 
-template<typename T>
-pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> forward_LSTMs(GRAPH& G,
-    shared_ptr<Mat<T>> input_vector,
-    pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>>& previous_state,
-    const LSTM<T>& base_cell,
-    const vector<ShortcutLSTM<T>>& cells,
-    T drop_prob) {
+template<typename R>
+pair<vector<shared_ptr<Mat<R>>>, vector<shared_ptr<Mat<R>>>> forward_LSTMs(
+    shared_ptr<Mat<R>> input_vector,
+    pair<vector<shared_ptr<Mat<R>>>, vector<shared_ptr<Mat<R>>>>& previous_state,
+    const LSTM<R>& base_cell,
+    const vector<ShortcutLSTM<R>>& cells,
+    R drop_prob) {
 
     auto previous_state_cells = previous_state.first;
     auto previous_state_hiddens = previous_state.second;
@@ -675,13 +666,13 @@ pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> forward_LSTMs(GRAPH
     auto cell_iter = previous_state_cells.begin();
     auto hidden_iter = previous_state_hiddens.begin();
 
-    pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> out_state;
+    pair<vector<shared_ptr<Mat<R>>>, vector<shared_ptr<Mat<R>>>> out_state;
     out_state.first.reserve(cells.size() + 1);
     out_state.second.reserve(cells.size() + 1);
 
     auto layer_input = input_vector;
 
-    auto layer_out = base_cell.activate(G, layer_input, *cell_iter, *hidden_iter);
+    auto layer_out = base_cell.activate(layer_input, *cell_iter, *hidden_iter);
     out_state.first.push_back(layer_out.first);
     out_state.second.push_back(layer_out.second);
 
@@ -692,12 +683,11 @@ pair<vector<shared_ptr<Mat<T>>>, vector<shared_ptr<Mat<T>>>> forward_LSTMs(GRAPH
 
     for (auto& layer : cells) {
 
-        // The next cell up gets both the base input (input_vector)
+        // Rhe next cell up gets both the base input (input_vector)
         // and the cell below's input activation (layer_input)
         // => façon Alex Graves
-        layer_out = layer.activate(G,
-                                   G.dropout_normalized(layer_input, drop_prob),
-                                   G.dropout_normalized(input_vector, drop_prob),
+        layer_out = layer.activate(MAT::dropout_normalized(layer_input, drop_prob),
+                                   MAT::dropout_normalized(input_vector, drop_prob),
                                    *cell_iter,
                                    *hidden_iter);
 
@@ -740,53 +730,53 @@ template class LSTM<double>;
 template class ShortcutLSTM<float>;
 template class ShortcutLSTM<double>;
 
-template<typename T>
-AbstractStackedLSTM<T>::AbstractStackedLSTM(const int& input_size, const std::vector<int>& hidden_sizes) :
+template<typename R>
+AbstractStackedLSTM<R>::AbstractStackedLSTM(const int& input_size, const std::vector<int>& hidden_sizes) :
         input_size(input_size),
         hidden_sizes(hidden_sizes) {
 }
 
-template<typename T>
-AbstractStackedLSTM<T>::AbstractStackedLSTM(const AbstractStackedLSTM<T>& model, bool copy_w, bool copy_dw) :
+template<typename R>
+AbstractStackedLSTM<R>::AbstractStackedLSTM(const AbstractStackedLSTM<R>& model, bool copy_w, bool copy_dw) :
         input_size(model.input_size),
         hidden_sizes(model.hidden_sizes) {
 }
 
-template<typename T>
-typename AbstractStackedLSTM<T>::state_t AbstractStackedLSTM<T>::initial_states() const {
-    return LSTM<T>::initial_states(hidden_sizes);
+template<typename R>
+typename AbstractStackedLSTM<R>::state_t AbstractStackedLSTM<R>::initial_states() const {
+    return LSTM<R>::initial_states(hidden_sizes);
 }
 
 
-template<typename T>
-typename AbstractStackedLSTM<T>::state_t AbstractStackedLSTM<T>::activate_sequence(GRAPH& G,
+template<typename R>
+typename AbstractStackedLSTM<R>::state_t AbstractStackedLSTM<R>::activate_sequence(
     state_t initial_state,
     const Seq<SHARED_MAT>& sequence,
-    T drop_prob) const {
+    R drop_prob) const {
     for (auto& input_vector : sequence)
-        initial_state = activate(G, initial_state, input_vector, drop_prob);
+        initial_state = activate(initial_state, input_vector, drop_prob);
     return initial_state;
 };
 
-template<typename T>
-StackedLSTM<T>::StackedLSTM(const int& input_size, const std::vector<int>& hidden_sizes) :
-        AbstractStackedLSTM<T>(input_size, hidden_sizes) {
+template<typename R>
+StackedLSTM<R>::StackedLSTM(const int& input_size, const std::vector<int>& hidden_sizes) :
+        AbstractStackedLSTM<R>(input_size, hidden_sizes) {
     cells = StackedCells<lstm_t>(input_size, hidden_sizes);
 };
 
-template<typename T>
-StackedLSTM<T>::StackedLSTM(const StackedLSTM<T>& model, bool copy_w, bool copy_dw) :
-        AbstractStackedLSTM<T>(model, copy_w, copy_dw) {
+template<typename R>
+StackedLSTM<R>::StackedLSTM(const StackedLSTM<R>& model, bool copy_w, bool copy_dw) :
+        AbstractStackedLSTM<R>(model, copy_w, copy_dw) {
     cells = StackedCells<lstm_t>(model.cells, copy_w, copy_dw);
 };
 
-template<typename T>
-StackedLSTM<T> StackedLSTM<T>::shallow_copy() const {
-    return StackedLSTM<T>(*this, false, true);
+template<typename R>
+StackedLSTM<R> StackedLSTM<R>::shallow_copy() const {
+    return StackedLSTM<R>(*this, false, true);
 }
 
-template<typename T>
-std::vector<std::shared_ptr<Mat<T>>> StackedLSTM<T>::parameters() const {
+template<typename R>
+std::vector<std::shared_ptr<Mat<R>>> StackedLSTM<R>::parameters() const {
     vector<SHARED_MAT> parameters;
     for (auto& cell : cells) {
         auto cell_params = cell.parameters();
@@ -795,21 +785,20 @@ std::vector<std::shared_ptr<Mat<T>>> StackedLSTM<T>::parameters() const {
     return parameters;
 }
 
-template<typename T>
-typename StackedLSTM<T>::state_t StackedLSTM<T>::activate(
-            GRAPH& G,
+template<typename R>
+typename StackedLSTM<R>::state_t StackedLSTM<R>::activate(
             state_t previous_state,
             SHARED_MAT input_vector,
-            T drop_prob) const {
-    return forward_LSTMs(G, input_vector, previous_state, cells, drop_prob);
+            R drop_prob) const {
+    return forward_LSTMs(input_vector, previous_state, cells, drop_prob);
 };
 
 template class StackedLSTM<float>;
 template class StackedLSTM<double>;
 
-template<typename T>
-StackedShortcutLSTM<T>::StackedShortcutLSTM(const int& input_size, const std::vector<int>& hidden_sizes) :
-    AbstractStackedLSTM<T>(input_size, hidden_sizes),
+template<typename R>
+StackedShortcutLSTM<R>::StackedShortcutLSTM(const int& input_size, const std::vector<int>& hidden_sizes) :
+    AbstractStackedLSTM<R>(input_size, hidden_sizes),
     base_cell(input_size, hidden_sizes[0]) {
     vector<int> sliced_hidden_sizes(hidden_sizes.begin()+1, hidden_sizes.end());
     // shortcut has size input size (base layer)
@@ -817,19 +806,19 @@ StackedShortcutLSTM<T>::StackedShortcutLSTM(const int& input_size, const std::ve
     cells = StackedCells<shortcut_lstm_t>(hidden_sizes[0], input_size, sliced_hidden_sizes);
 }
 
-template<typename T>
-StackedShortcutLSTM<T>::StackedShortcutLSTM(const StackedShortcutLSTM<T>& model, bool copy_w, bool copy_dw) :
-    AbstractStackedLSTM<T>(model, copy_w, copy_dw),
+template<typename R>
+StackedShortcutLSTM<R>::StackedShortcutLSTM(const StackedShortcutLSTM<R>& model, bool copy_w, bool copy_dw) :
+    AbstractStackedLSTM<R>(model, copy_w, copy_dw),
     base_cell(model.base_cell),
     cells(StackedCells(model.cells, copy_w, copy_dw)) {};
 
-template<typename T>
-StackedShortcutLSTM<T> StackedShortcutLSTM<T>::shallow_copy() const {
-    return StackedShortcutLSTM<T>(*this, false, true);
+template<typename R>
+StackedShortcutLSTM<R> StackedShortcutLSTM<R>::shallow_copy() const {
+    return StackedShortcutLSTM<R>(*this, false, true);
 }
 
-template<typename T>
-std::vector<std::shared_ptr<Mat<T>>> StackedShortcutLSTM<T>::parameters() const {
+template<typename R>
+std::vector<std::shared_ptr<Mat<R>>> StackedShortcutLSTM<R>::parameters() const {
     auto parameters = base_cell.parameters();
     for (auto& cell : cells) {
         auto cell_params = cell.parameters();
@@ -838,12 +827,11 @@ std::vector<std::shared_ptr<Mat<T>>> StackedShortcutLSTM<T>::parameters() const 
     return parameters;
 }
 
-template<typename T>
-typename StackedShortcutLSTM<T>::state_t StackedShortcutLSTM<T>::activate(
-            GRAPH& G,
+template<typename R>
+typename StackedShortcutLSTM<R>::state_t StackedShortcutLSTM<R>::activate(
             state_t previous_state,
             SHARED_MAT input_vector,
-            T drop_prob) const {
+            R drop_prob) const {
     // previous state is a pair of vectors of memory and hiddens.
     // hiddens is a vector of matrices of sizes decribed by hidden sizes
     #ifdef NDEBUG
@@ -856,7 +844,7 @@ typename StackedShortcutLSTM<T>::state_t StackedShortcutLSTM<T>::activate(
             }
         }
     #endif
-    return forward_LSTMs(G, input_vector, previous_state, base_cell, cells, drop_prob);
+    return forward_LSTMs(input_vector, previous_state, base_cell, cells, drop_prob);
 };
 
 template class StackedShortcutLSTM<float>;

@@ -9,10 +9,6 @@
 #include "core/Seq.h"
 #include "core/utils.h"
 
-#define MAT Mat<REAL_t>
-#define SHARED_MAT std::shared_ptr<MAT>
-#define GRAPH Graph<REAL_t>
-
 namespace model {
     template<typename REAL_t>
     class Model {

@@ -3,6 +3,8 @@
 
 #include "core/Mat.h"
 
+#define SMOOTH_DEFAULT 1e-9
+
 #define SOLVER_MAT_TYPEDEF_H typedef Mat<T>                      mat; \
         typedef std::shared_ptr<mat> shared_mat; \
         typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;

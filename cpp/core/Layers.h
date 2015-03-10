@@ -1,32 +1,28 @@
-#ifndef RECURRENT_LAYERS_H
-#define RECURRENT_LAYERS_H
+#ifndef CORE_LAYERS_H
+#define CORE_LAYERS_H
 
-#include "Mat.h"
-#include "Graph.h"
 #include <initializer_list>
+
+#include "core/Mat.h"
 #include "core/Seq.h"
 
-#define MAT Mat<T>
-#define SHARED_MAT std::shared_ptr<Mat<T>>
-#define GRAPH Graph<T>
-
-template<typename T>
+template<typename R>
 class AbstractLayer {
     public:
         virtual std::vector<SHARED_MAT> parameters() const = 0;
 };
 
-template<typename T>
-class AbstractMultiInputLayer : public AbstractLayer<T> {
+template<typename R>
+class AbstractMultiInputLayer : public AbstractLayer<R> {
     public:
         SHARED_MAT b;
-        virtual SHARED_MAT activate(GRAPH&, SHARED_MAT) const = 0;
-        virtual SHARED_MAT activate(GRAPH&, const std::vector<SHARED_MAT>&) const;
-        virtual SHARED_MAT activate(GRAPH&, SHARED_MAT, const std::vector<SHARED_MAT>&) const;
+        virtual SHARED_MAT activate(SHARED_MAT) const = 0;
+        virtual SHARED_MAT activate(const std::vector<SHARED_MAT>&) const;
+        virtual SHARED_MAT activate(SHARED_MAT, const std::vector<SHARED_MAT>&) const;
 };
 
-template<typename T>
-class Layer : public AbstractMultiInputLayer<T> {
+template<typename R>
+class Layer : public AbstractMultiInputLayer<R> {
     /*
     Linear output layer of the form with affine offset bias
     vector b (broadcasted):
@@ -36,7 +32,7 @@ class Layer : public AbstractMultiInputLayer<T> {
     */
     void create_variables();
     public:
-        typedef T value_t;
+        typedef R value_t;
         SHARED_MAT W;
         const int hidden_size;
         const int input_size;
@@ -44,13 +40,13 @@ class Layer : public AbstractMultiInputLayer<T> {
         Layer (int, int);
 
         Layer (const Layer&, bool, bool);
-        SHARED_MAT activate(GRAPH&, SHARED_MAT) const;
+        SHARED_MAT activate(SHARED_MAT) const;
 
-        Layer<T> shallow_copy() const;
+        Layer<R> shallow_copy() const;
 };
 
-template<typename T>
-class StackedInputLayer : public AbstractMultiInputLayer<T> {
+template<typename R>
+class StackedInputLayer : public AbstractMultiInputLayer<R> {
     /*
     Linear output layer of the form with affine offset bias
     vector b (broadcasted), taking as inputs many different
@@ -63,7 +59,7 @@ class StackedInputLayer : public AbstractMultiInputLayer<T> {
     std::vector<std::shared_ptr<MAT>> zip_inputs_with_matrices_and_bias(const std::vector<std::shared_ptr<MAT>>&) const;
     std::vector<std::shared_ptr<MAT>> zip_inputs_with_matrices_and_bias(std::shared_ptr<MAT>, const std::vector<std::shared_ptr<MAT>>&) const;
     public:
-        typedef T value_t;
+        typedef R value_t;
         std::vector<SHARED_MAT> matrices;
         const int hidden_size;
         const std::vector<int> input_sizes;
@@ -74,16 +70,16 @@ class StackedInputLayer : public AbstractMultiInputLayer<T> {
         StackedInputLayer (const StackedInputLayer&, bool, bool);
 
 
-        SHARED_MAT activate(GRAPH&, const std::vector<SHARED_MAT>&) const;
-        SHARED_MAT activate(GRAPH&, SHARED_MAT) const;
+        SHARED_MAT activate(const std::vector<SHARED_MAT>&) const;
+        SHARED_MAT activate(SHARED_MAT) const;
 
-        SHARED_MAT activate(GRAPH&, SHARED_MAT, const std::vector<SHARED_MAT>&) const;
+        SHARED_MAT activate(SHARED_MAT, const std::vector<SHARED_MAT>&) const;
 
-        StackedInputLayer<T> shallow_copy() const;
+        StackedInputLayer<R> shallow_copy() const;
 };
 
-template<typename T>
-class RNN : public AbstractLayer<T> {
+template<typename R>
+class RNN : public AbstractLayer<R> {
     /*
     Combine the input of a hidden vector and an input vector
     into a single matrix product sum:
@@ -93,7 +89,7 @@ class RNN : public AbstractLayer<T> {
     */
     void create_variables();
     public:
-        typedef T value_t;
+        typedef R value_t;
         SHARED_MAT Wx;
         SHARED_MAT Wh;
         SHARED_MAT b;
@@ -114,20 +110,20 @@ class RNN : public AbstractLayer<T> {
         RNN (int input_size, int hidden_size, int output_size);
 
         RNN (const RNN&, bool, bool);
-        SHARED_MAT activate(GRAPH& G, SHARED_MAT input_vector, SHARED_MAT prev_hidden) const;
+        SHARED_MAT activate(SHARED_MAT input_vector, SHARED_MAT prev_hidden) const;
 
-        RNN<T> shallow_copy() const;
+        RNN<R> shallow_copy() const;
 };
 
-template<typename T>
-class DelayedRNN : public AbstractLayer<T> {
+template<typename R>
+class DelayedRNN : public AbstractLayer<R> {
     /*
         h' = A * [h,x] + b
         o  = B * [h,x] + d
     */
     public:
-        RNN<T> hidden_rnn;
-        RNN<T> output_rnn;
+        RNN<R> hidden_rnn;
+        RNN<R> output_rnn;
         virtual std::vector<SHARED_MAT> parameters() const;
 
         DelayedRNN (int input_size, int hidden_size, int output_size);
@@ -136,12 +132,12 @@ class DelayedRNN : public AbstractLayer<T> {
         SHARED_MAT initial_states() const;
 
         // output (next_hidden, output)
-        std::pair<SHARED_MAT, SHARED_MAT> activate(GRAPH& G, SHARED_MAT input_vector, SHARED_MAT prev_hidden) const;
-        DelayedRNN<T> shallow_copy() const;
+        std::pair<SHARED_MAT, SHARED_MAT> activate(SHARED_MAT input_vector, SHARED_MAT prev_hidden) const;
+        DelayedRNN<R> shallow_copy() const;
 };
 
-template<typename T>
-class ShortcutRNN : public AbstractLayer<T> {
+template<typename R>
+class ShortcutRNN : public AbstractLayer<R> {
     /*
     Combine the input of a hidden vector, an input vector, and
     a second input vector (a shortcut) into a single matrix
@@ -153,7 +149,7 @@ class ShortcutRNN : public AbstractLayer<T> {
     */
     void create_variables();
     public:
-        typedef T value_t;
+        typedef R value_t;
         SHARED_MAT Wx;
         SHARED_MAT Wh;
         SHARED_MAT Ws;
@@ -167,21 +163,21 @@ class ShortcutRNN : public AbstractLayer<T> {
         ShortcutRNN (int, int, int, int);
 
         ShortcutRNN (const ShortcutRNN&, bool, bool);
-        SHARED_MAT activate(GRAPH&, SHARED_MAT, SHARED_MAT, SHARED_MAT) const;
+        SHARED_MAT activate(SHARED_MAT, SHARED_MAT, SHARED_MAT) const;
 
-        ShortcutRNN<T> shallow_copy() const;
+        ShortcutRNN<R> shallow_copy() const;
 };
 
-template<typename T>
-class GatedInput : public RNN<T> {
+template<typename R>
+class GatedInput : public RNN<R> {
     public:
         GatedInput (int, int);
         GatedInput (const GatedInput&, bool, bool);
-        GatedInput<T> shallow_copy() const;
+        GatedInput<R> shallow_copy() const;
 };
 
-template<typename T>
-class LSTM : public AbstractLayer<T> {
+template<typename R>
+class LSTM : public AbstractLayer<R> {
     /*
 
     LSTM layer with forget, output, memory write, and input
@@ -190,10 +186,10 @@ class LSTM : public AbstractLayer<T> {
 
     See `Mat`, `HiddenLayer`
     */
-    typedef RNN<T>                        layer_type;
+    typedef RNN<R>                        layer_type;
     void name_internal_layers();
     public:
-        typedef T value_t;
+        typedef R value_t;
         // cell input modulation:
         layer_type input_layer;
         // cell forget gate:
@@ -210,16 +206,16 @@ class LSTM : public AbstractLayer<T> {
         virtual std::vector<SHARED_MAT> parameters() const;
         static std::pair<std::vector<SHARED_MAT>, std::vector<SHARED_MAT>> initial_states(const std::vector<int>&);
         std::pair<SHARED_MAT, SHARED_MAT> activate(
-            GRAPH&,
+
             SHARED_MAT,
             SHARED_MAT,
             SHARED_MAT) const;
 
-        LSTM<T> shallow_copy() const;
+        LSTM<R> shallow_copy() const;
 };
 
-template<typename T>
-class ShortcutLSTM : public AbstractLayer<T> {
+template<typename R>
+class ShortcutLSTM : public AbstractLayer<R> {
     /*
     ShortcutLSTM layer with forget, output, memory write, and input
     modulate gates, that can remember sequences for long
@@ -231,10 +227,10 @@ class ShortcutLSTM : public AbstractLayer<T> {
 
     See `Mat`, `HiddenLayer`
     */
-    typedef ShortcutRNN<T>          layer_type;
+    typedef ShortcutRNN<R>          layer_type;
     void name_internal_layers();
     public:
-        typedef T value_t;
+        typedef R value_t;
         // cell input modulation:
         layer_type input_layer;
         // cell forget gate:
@@ -250,16 +246,15 @@ class ShortcutLSTM : public AbstractLayer<T> {
         ShortcutLSTM (const ShortcutLSTM&, bool, bool);
         virtual std::vector<SHARED_MAT> parameters() const;
         std::pair<SHARED_MAT, SHARED_MAT> activate(
-            GRAPH&,
             SHARED_MAT,
             SHARED_MAT,
             SHARED_MAT,
             SHARED_MAT) const;
-        ShortcutLSTM<T> shallow_copy() const;
+        ShortcutLSTM<R> shallow_copy() const;
 };
 
-template<typename T>
-class AbstractStackedLSTM : public AbstractLayer<T> {
+template<typename R>
+class AbstractStackedLSTM : public AbstractLayer<R> {
     public:
         typedef std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>> state_t;
 
@@ -267,47 +262,44 @@ class AbstractStackedLSTM : public AbstractLayer<T> {
         const std::vector<int> hidden_sizes;
 
         AbstractStackedLSTM(const int& input_size, const std::vector<int>& hidden_sizes);
-        AbstractStackedLSTM(const AbstractStackedLSTM<T>& model, bool copy_w, bool copy_dw);
+        AbstractStackedLSTM(const AbstractStackedLSTM<R>& model, bool copy_w, bool copy_dw);
 
         virtual state_t initial_states() const;
 
         virtual std::vector<SHARED_MAT> parameters() const = 0;
 
         virtual state_t activate(
-            GRAPH& G,
             state_t previous_state,
             SHARED_MAT input_vector,
-            T drop_prob = 0.0) const = 0;
+            R drop_prob = 0.0) const = 0;
         virtual state_t activate_sequence(
-            GRAPH& G,
             state_t initial_state,
             const Seq<SHARED_MAT>& sequence,
-            T drop_prob = 0.0) const;
+            R drop_prob = 0.0) const;
 };
 
-template<typename T>
-class StackedLSTM : public AbstractStackedLSTM<T> {
+template<typename R>
+class StackedLSTM : public AbstractStackedLSTM<R> {
     public:
-        typedef LSTM<T> lstm_t;
+        typedef LSTM<R> lstm_t;
         typedef std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>> state_t;
 
         std::vector<lstm_t> cells;
         virtual state_t activate(
-            GRAPH& G,
             state_t previous_state,
             SHARED_MAT input_vector,
-            T drop_prob = 0.0) const;
+            R drop_prob = 0.0) const;
         virtual std::vector<SHARED_MAT> parameters() const;
         StackedLSTM(const int& input_size, const std::vector<int>& hidden_sizes);
-        StackedLSTM(const StackedLSTM<T>& model, bool copy_w, bool copy_dw);
-        StackedLSTM<T> shallow_copy() const;
+        StackedLSTM(const StackedLSTM<R>& model, bool copy_w, bool copy_dw);
+        StackedLSTM<R> shallow_copy() const;
 };
 
-template<typename T>
-class StackedShortcutLSTM : public AbstractStackedLSTM<T> {
+template<typename R>
+class StackedShortcutLSTM : public AbstractStackedLSTM<R> {
     public:
-        typedef LSTM<T>                  lstm_t;
-        typedef ShortcutLSTM<T> shortcut_lstm_t;
+        typedef LSTM<R>                  lstm_t;
+        typedef ShortcutLSTM<R> shortcut_lstm_t;
         typedef std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>> state_t;
 
         std::vector<shortcut_lstm_t> cells;
@@ -315,14 +307,13 @@ class StackedShortcutLSTM : public AbstractStackedLSTM<T> {
 
 
         virtual state_t activate(
-            GRAPH& G,
             state_t previous_state,
             SHARED_MAT input_vector,
-            T drop_prob = 0.0) const;
+            R drop_prob = 0.0) const;
         virtual std::vector<SHARED_MAT> parameters() const;
         StackedShortcutLSTM(const int& input_size, const std::vector<int>& hidden_sizes);
-        StackedShortcutLSTM(const StackedShortcutLSTM<T>& model, bool copy_w, bool copy_dw);
-        StackedShortcutLSTM<T> shallow_copy() const;
+        StackedShortcutLSTM(const StackedShortcutLSTM<R>& model, bool copy_w, bool copy_dw);
+        StackedShortcutLSTM<R> shallow_copy() const;
 };
 
 template<typename celltype>
@@ -350,7 +341,7 @@ const vector<int>& hidden_sizes : dimensions of hidden states
 Outputs
 -------
 
-vector<ShortcutLSTM<T>> cells : constructed shortcutLSTMs
+vector<ShortcutLSTM<R>> cells : constructed shortcutLSTMs
 
 **/
 template<typename celltype>
@@ -359,19 +350,19 @@ std::vector<celltype> StackedCells(const int&, const int&, const std::vector<int
 template<typename celltype>
 std::vector<celltype> StackedCells(const std::vector<celltype>&, bool, bool);
 
-template<typename T>
-std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>> forward_LSTMs(GRAPH&,
+template<typename R>
+std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>> forward_LSTMs(
     std::shared_ptr<MAT>,
     std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>>&,
-    const std::vector<LSTM<T>>&,
-    T drop_prob=0.0);
+    const std::vector<LSTM<R>>&,
+    R drop_prob=0.0);
 
-template<typename T>
-std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>> forward_LSTMs(GRAPH&,
+template<typename R>
+std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>> forward_LSTMs(
     std::shared_ptr<MAT>,
     std::pair<std::vector<std::shared_ptr<MAT>>, std::vector<std::shared_ptr<MAT>>>&,
-    const LSTM<T>&,
-    const std::vector<ShortcutLSTM<T>>&,
-    T drop_prob=0.0);
+    const LSTM<R>&,
+    const std::vector<ShortcutLSTM<R>>&,
+    R drop_prob=0.0);
 
 #endif

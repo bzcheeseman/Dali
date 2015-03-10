@@ -1,7 +1,7 @@
 #include "core/Tape.h"
 
 namespace graph {
-    __thread bool backprop_enabled = true;
+    thread_local bool backprop_enabled = true;
     thread_local Tape tape;
 
     void emplace_back(std::function<void()>&& f) {

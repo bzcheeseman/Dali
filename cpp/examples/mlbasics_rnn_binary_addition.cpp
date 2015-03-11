@@ -18,7 +18,7 @@
 typedef double R;
 
 using std::bitset;
-using std::chrono::seconds;
+using std::chrono::milliseconds;
 using std::make_shared;
 using std::max;
 using std::vector;
@@ -114,7 +114,7 @@ int main( int argc, char* argv[]) {
         }
 
 
-        throttled.maybe_run(seconds(2), [&]() {
+        throttled.maybe_run(milliseconds(500), [&]() {
             epoch_error /= ITERATIONS_PER_EPOCH;
             epoch_bit_error /= ITERATIONS_PER_EPOCH;
             std::cout << "Epoch " << epoch << std::endl;

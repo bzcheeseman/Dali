@@ -33,7 +33,7 @@ std::cout << "SIEMA" << std::endl;
         numpy_mat = Mat<R>(name);
     } else {
         numpy_mat = Mat<R>(3, 3);
-        for (int i = 0; i < 9; i++) numpy_mat.w(i) = i;
+        for (int i = 0; i < 9; i++) numpy_mat.w()(i) = i;
         numpy_mat.npy_save(name);
     }
     std::cout << "\"" << name << "\"=" << std::endl;
@@ -58,7 +58,7 @@ std::cout << "SIEMA" << std::endl;
     //std::cin.get();
 
     Mat<R> A(3, 5);
-    A.w = (A.w.array() + 1.2).matrix();
+    A.w() = (A.w().array() + 1.2).matrix();
     // build random matrix of double type with standard deviation 2:
     Mat<R> B(A.dims(0), A.dims(1), 2.0);
     Mat<R> C(A.dims(1), 4,    2.0);
@@ -66,9 +66,9 @@ std::cout << "SIEMA" << std::endl;
     A.print();
     B.print();
 
-    auto A_times_B    = A.eltmul(B);
-    auto A_plus_B_sig = A.add(B).sigmoid();
-    auto A_dot_C_tanh = A.mul(C).tanh();
+    auto A_times_B    = A * B;
+    auto A_plus_B_sig = (A+B).sigmoid();
+    auto A_dot_C_tanh = A.dot(C).tanh();
     auto A_plucked    = A.row_pluck(2);
 
     A_times_B.print();
@@ -78,7 +78,7 @@ std::cout << "SIEMA" << std::endl;
 
     // add some random singularity and use exponential
     // normalization:
-    A_plucked.w(2,0) += 3.0;
+    A_plucked.w()(2,0) += 3.0;
     auto A_plucked_normed = MatOps<R>::softmax(A_plucked);
     auto A_plucked_normed_t = MatOps<R>::softmax(A_plucked.T());
     A_plucked_normed.print();
@@ -117,10 +117,10 @@ std::cout << "SIEMA" << std::endl;
     std::cout << "using MAT::hstack(\"upper\", \"lower\") :" << std::endl;
     MatOps<R>::hstack(upper, lower).print();
 
-    inputs[0].w.fill(3);
-    inputs[0].w.row(1).fill(1);
-    inputs[0].w.row(2).fill(2);
-    inputs[0].w.row(3).fill(3);
+    inputs[0].w().fill(3);
+    inputs[0].w().row(1).fill(1);
+    inputs[0].w().row(2).fill(2);
+    inputs[0].w().row(3).fill(3);
 
     Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> bob_indices = Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic>::Zero(3,3);
 

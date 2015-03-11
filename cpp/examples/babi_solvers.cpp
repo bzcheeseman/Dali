@@ -444,7 +444,7 @@ class LstmBabiModelRunner: public babi::Model {
 
     public:
         vector<double> compute_errors(const vector<babi::Story>& dataset,
-                                      Solver::AbstractSolver<T>* solver,
+                                      Solver::Adam<T>* solver,
                                       bool training) {
             const int NUM_THREADS = FLAGS_j;
             ThreadPool pool(NUM_THREADS);
@@ -506,7 +506,7 @@ class LstmBabiModelRunner: public babi::Model {
                         // Only update weights during training.
                     }
                     if (training)
-                        solver->step(params);
+                        solver->step(params, 0.001);
                 });
             }
 
@@ -539,7 +539,8 @@ class LstmBabiModelRunner: public babi::Model {
             int epochs_validation_increasing = 0;
 
             auto params = model->parameters();
-            Solver::AdaDelta<T> solver(params, 0.95, 1e-9, 5.0);
+            // Solver::AdaDelta<T> solver(params, 0.95, 1e-9, 5.0);
+            Solver::Adam<T> solver(params);
 
             while (epochs_validation_increasing <= PATIENCE) {
                 auto training_errors = compute_errors(train, &solver, true);

@@ -21,8 +21,10 @@ std::cout << "SIEMA" << std::endl;
     Mat<R> prev_cell(50, 1);
     Mat<R> prev_hidden(50, 1);
 
-    auto out = lstm.activate(embedding.rows_pluck({0, 1, 10, 2, 1, 3}), prev_cell, prev_hidden);
-    out.first.print();
+    Mat<R> hidden, memory;
+
+    std::tie(memory, hidden) = lstm.activate(embedding.rows_pluck({0, 1, 10, 2, 1, 3}), prev_cell, prev_hidden);
+    hidden.print();
 
         // load numpy matrix from file:
 

@@ -2,6 +2,8 @@
 
 using std::make_shared;
 using std::vector;
+using std::make_tuple;
+using std::get;
 
 typedef std::pair<int,int> PII;
 
@@ -487,7 +489,7 @@ ShortcutLSTM<R> ShortcutLSTM<R>::shallow_copy() const {
 }
 
 template<typename R>
-std::pair<Mat<R>, Mat<R>> LSTM<R>::activate (
+std::tuple<Mat<R>, Mat<R>> LSTM<R>::activate (
     Mat<R> input_vector,
     Mat<R> cell_prev,
     Mat<R> hidden_prev) const {
@@ -513,11 +515,11 @@ std::pair<Mat<R>, Mat<R>> LSTM<R>::activate (
     DEBUG_ASSERT_NOT_NAN(hidden_d.w());
     DEBUG_ASSERT_NOT_NAN(cell_d.w());
 
-    return std::pair<Mat<R>,Mat<R>>(cell_d, hidden_d);
+    return make_tuple(cell_d, hidden_d);
 }
 
 template<typename R>
-std::pair<Mat<R>, Mat<R>> ShortcutLSTM<R>::activate (
+std::tuple<Mat<R>, Mat<R>> ShortcutLSTM<R>::activate (
     Mat<R> input_vector,
     Mat<R> shortcut_vector,
     Mat<R> cell_prev,
@@ -544,7 +546,7 @@ std::pair<Mat<R>, Mat<R>> ShortcutLSTM<R>::activate (
     DEBUG_ASSERT_NOT_NAN(hidden_d.w());
     DEBUG_ASSERT_NOT_NAN(cell_d.w());
 
-    return std::pair<Mat<R>,Mat<R>>(cell_d, hidden_d);
+    return make_tuple(cell_d, hidden_d);
 }
 
 template<typename R>
@@ -582,19 +584,18 @@ std::vector<Mat<R>> ShortcutLSTM<R>::parameters() const {
 }
 
 template<typename R>
-std::pair< std::vector<Mat<R>>, std::vector<Mat<R>> > LSTM<R>::initial_states(
+std::tuple< std::vector<Mat<R>>, std::vector<Mat<R>> > LSTM<R>::initial_states(
         const std::vector<int>& hidden_sizes) {
-    std::pair< std::vector<Mat<R>>, std::vector<Mat<R>> > initial_state;
-    initial_state.first.reserve(hidden_sizes.size());
+    std::tuple< std::vector<Mat<R>>, std::vector<Mat<R>> > initial_state;
+    get<0>(initial_state).reserve(hidden_sizes.size());
     std::get<1>(initial_state).reserve(hidden_sizes.size());
     for (auto& size : hidden_sizes) {
-        initial_state.first.emplace_back(Mat<R>(size, 1));
+        get<0>(initial_state).emplace_back(Mat<R>(size, 1));
         std::get<1>(initial_state).emplace_back(Mat<R>(size, 1));
     }
     return initial_state;
 }
 
-using std::pair;
 using std::vector;
 using std::shared_ptr;
 
@@ -664,21 +665,21 @@ vector<celltype> StackedCells(const vector<celltype>& source_cells,
 }
 
 template<typename R>
-pair<vector<Mat<R>>, vector<Mat<R>>> forward_LSTMs(
+std::tuple<vector<Mat<R>>, vector<Mat<R>>> forward_LSTMs(
     Mat<R> input_vector,
-    pair<vector<Mat<R>>, vector<Mat<R>>>& previous_state,
+    std::tuple<vector<Mat<R>>, vector<Mat<R>>>& previous_state,
     const vector<LSTM<R>>& cells,
     R drop_prob) {
 
-    auto previous_state_cells = previous_state.first;
+    auto previous_state_cells = get<0>(previous_state);
     auto previous_state_hiddens = std::get<1>(previous_state);
 
     auto cell_iter = previous_state_cells.begin();
     auto hidden_iter = previous_state_hiddens.begin();
 
-    pair<vector<Mat<R>>, vector<Mat<R>>> out_state;
-    out_state.first.reserve(cells.size());
-    out_state.second.reserve(cells.size());
+    std::tuple<vector<Mat<R>>, vector<Mat<R>>> out_state;
+    get<0>(out_state).reserve(cells.size());
+    get<1>(out_state).reserve(cells.size());
 
     auto layer_input = input_vector;
 
@@ -688,13 +689,13 @@ pair<vector<Mat<R>>, vector<Mat<R>>> forward_LSTMs(
                                         *cell_iter,
                                         *hidden_iter);
 
-        out_state.first.push_back(layer_out.first);
-        out_state.second.push_back(layer_out.second);
+        get<0>(out_state).push_back(get<0>(layer_out));
+        get<1>(out_state).push_back(get<1>(layer_out));
 
         ++cell_iter;
         ++hidden_iter;
 
-        layer_input = layer_out.second;
+        layer_input = get<1>(layer_out);
     }
 
     return out_state;
@@ -702,33 +703,33 @@ pair<vector<Mat<R>>, vector<Mat<R>>> forward_LSTMs(
 
 
 template<typename R>
-pair<vector<Mat<R>>, vector<Mat<R>>> forward_LSTMs(
+std::tuple<vector<Mat<R>>, vector<Mat<R>>> forward_LSTMs(
     Mat<R> input_vector,
-    pair<vector<Mat<R>>, vector<Mat<R>>>& previous_state,
+    std::tuple<vector<Mat<R>>, vector<Mat<R>>>& previous_state,
     const LSTM<R>& base_cell,
     const vector<ShortcutLSTM<R>>& cells,
     R drop_prob) {
 
-    auto previous_state_cells = previous_state.first;
+    auto previous_state_cells = get<0>(previous_state);
     auto previous_state_hiddens = std::get<1>(previous_state);
 
     auto cell_iter = previous_state_cells.begin();
     auto hidden_iter = previous_state_hiddens.begin();
 
-    pair<vector<Mat<R>>, vector<Mat<R>>> out_state;
-    out_state.first.reserve(cells.size() + 1);
-    out_state.second.reserve(cells.size() + 1);
+    std::tuple<vector<Mat<R>>, vector<Mat<R>>> out_state;
+    get<0>(out_state).reserve(cells.size() + 1);
+    get<1>(out_state).reserve(cells.size() + 1);
 
     auto layer_input = input_vector;
 
     auto layer_out = base_cell.activate(layer_input, *cell_iter, *hidden_iter);
-    out_state.first.push_back(layer_out.first);
-    out_state.second.push_back(layer_out.second);
+    get<0>(out_state).push_back(get<0>(layer_out));
+    get<1>(out_state).push_back(get<1>(layer_out));
 
     ++cell_iter;
     ++hidden_iter;
 
-    layer_input = layer_out.second;
+    layer_input = get<1>(layer_out);
 
     for (auto& layer : cells) {
 
@@ -740,13 +741,13 @@ pair<vector<Mat<R>>, vector<Mat<R>>> forward_LSTMs(
                                    *cell_iter,
                                    *hidden_iter);
 
-        out_state.first.push_back(layer_out.first);
-        out_state.second.push_back(layer_out.second);
+        get<0>(out_state).push_back(get<0>(layer_out));
+        get<1>(out_state).push_back(get<1>(layer_out));
 
         ++cell_iter;
         ++hidden_iter;
 
-        layer_input = layer_out.second;
+        layer_input = get<1>(layer_out);
     }
 
     return out_state;
@@ -885,7 +886,7 @@ typename StackedShortcutLSTM<R>::state_t StackedShortcutLSTM<R>::activate(
     // hiddens is a vector of matrices of sizes decribed by hidden sizes
     #ifdef NDEBUG
         assert(input_vector->n == this->input_size);
-        for (auto& memory_or_hidden : {previous_state.first,
+        for (auto& memory_or_hidden : {get<0>(previous_state),
                                                    std::get<1>(previous_state)}) {
             assert(memory_or_hidden.n == this->hidden_sizes.size());
             for (int i=0; i < this->hidden_sizes.size(); ++i) {

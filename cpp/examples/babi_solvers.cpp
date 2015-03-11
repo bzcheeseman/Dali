@@ -294,11 +294,12 @@ class LstmBabiModel {
         Mat<T> lstm_final_activation(const Seq<Mat<T>>& embeddings,
                                      const StackedShortcutLSTM<T>& model,
                                      T dropout_value) {
-            auto out_state = model.activate_sequence(model.initial_states(),
+            vector<Mat<T>> memory, hidden;
+            std::tie(memory, hidden) = model.activate_sequence(model.initial_states(),
                                                      embeddings,
                                                      dropout_value);
             // out_state.second corresponds to LSTM hidden (as opposed to memory).
-            return MatOps<T>::vstack(out_state.second);
+            return MatOps<T>::vstack(hidden);
         }
 
         StoryActivation<T> activate_story(const vector<vector<string>>& facts,

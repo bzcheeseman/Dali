@@ -95,8 +95,10 @@ int main( int argc, char* argv[]) {
                 predicted_res_bits[i] = output_i.w()(0,0) < 0.5 ? 0 : 1;
                 epoch_bit_error += res_bits[i] != predicted_res_bits[i];
 
-                error = error + MatOps<R>::sigmoid_binary_cross_entropy(output_i, (R)res_bits[i]);
-                // error = error + MatOps<R>::binary_cross_entropy(output_i.sigmoid(), (R)res_bits[i]);
+                error = error + MatOps<R>::sigmoid_binary_cross_entropy(
+                                        output_i, (R)res_bits[i]);
+                // error = error + MatOps<R>::binary_cross_entropy(
+                //                      output_i.sigmoid(), (R)res_bits[i]);
                 // error = error + (output_i.sigmoid() - (R)res_bits[i]).square();
             }
             predicted_res = predicted_res_bits.to_ulong();

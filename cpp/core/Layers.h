@@ -205,8 +205,8 @@ class LSTM : public AbstractLayer<R> {
 
         LSTM (const LSTM&, bool, bool);
         virtual std::vector<Mat<R>> parameters() const;
-        static std::pair<std::vector<Mat<R>>, std::vector<Mat<R>>> initial_states(const std::vector<int>&);
-        std::pair<Mat<R>, Mat<R>> activate(
+        static std::tuple<std::vector<Mat<R>>, std::vector<Mat<R>>> initial_states(const std::vector<int>&);
+        std::tuple<Mat<R>, Mat<R>> activate(
 
             Mat<R>,
             Mat<R>,
@@ -246,7 +246,7 @@ class ShortcutLSTM : public AbstractLayer<R> {
         ShortcutLSTM (int, int, int);
         ShortcutLSTM (const ShortcutLSTM&, bool, bool);
         virtual std::vector<Mat<R>> parameters() const;
-        std::pair<Mat<R>, Mat<R>> activate(
+        std::tuple<Mat<R>, Mat<R>> activate(
             Mat<R>,
             Mat<R>,
             Mat<R>,
@@ -257,7 +257,7 @@ class ShortcutLSTM : public AbstractLayer<R> {
 template<typename R>
 class AbstractStackedLSTM : public AbstractLayer<R> {
     public:
-        typedef std::pair<std::vector<Mat<R>>, std::vector<Mat<R>>> state_t;
+        typedef std::tuple<std::vector<Mat<R>>, std::vector<Mat<R>>> state_t;
 
         const int input_size;
         const std::vector<int> hidden_sizes;
@@ -283,7 +283,7 @@ template<typename R>
 class StackedLSTM : public AbstractStackedLSTM<R> {
     public:
         typedef LSTM<R> lstm_t;
-        typedef std::pair<std::vector<Mat<R>>, std::vector<Mat<R>>> state_t;
+        typedef std::tuple<std::vector<Mat<R>>, std::vector<Mat<R>>> state_t;
 
         std::vector<lstm_t> cells;
         virtual state_t activate(
@@ -301,7 +301,7 @@ class StackedShortcutLSTM : public AbstractStackedLSTM<R> {
     public:
         typedef LSTM<R>                  lstm_t;
         typedef ShortcutLSTM<R> shortcut_lstm_t;
-        typedef std::pair<std::vector<Mat<R>>, std::vector<Mat<R>>> state_t;
+        typedef std::tuple<std::vector<Mat<R>>, std::vector<Mat<R>>> state_t;
 
         std::vector<shortcut_lstm_t> cells;
         lstm_t base_cell;
@@ -352,16 +352,16 @@ template<typename celltype>
 std::vector<celltype> StackedCells(const std::vector<celltype>&, bool, bool);
 
 template<typename R>
-std::pair<std::vector<Mat<R>>, std::vector<Mat<R>>> forward_LSTMs(
+std::tuple<std::vector<Mat<R>>, std::vector<Mat<R>>> forward_LSTMs(
     Mat<R>,
-    std::pair<std::vector<Mat<R>>, std::vector<Mat<R>>>&,
+    std::tuple<std::vector<Mat<R>>, std::vector<Mat<R>>>&,
     const std::vector<LSTM<R>>&,
     R drop_prob=0.0);
 
 template<typename R>
-std::pair<std::vector<Mat<R>>, std::vector<Mat<R>>> forward_LSTMs(
+std::tuple<std::vector<Mat<R>>, std::vector<Mat<R>>> forward_LSTMs(
     Mat<R>,
-    std::pair<std::vector<Mat<R>>, std::vector<Mat<R>>>&,
+    std::tuple<std::vector<Mat<R>>, std::vector<Mat<R>>>&,
     const LSTM<R>&,
     const std::vector<ShortcutLSTM<R>>&,
     R drop_prob=0.0);

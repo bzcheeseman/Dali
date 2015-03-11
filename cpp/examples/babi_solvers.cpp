@@ -538,8 +538,7 @@ class LstmBabiModelRunner: public babi::Model {
             int epochs_validation_increasing = 0;
 
             auto params = model->parameters();
-            //Solver::AdaDelta<T> solver(params, 0.95, 1e-9, 5.0);
-            Solver::RMSProp<T> solver(params);
+            Solver::AdaDelta<T> solver(params, 0.95, 1e-9, 5.0);
 
             while (epochs_validation_increasing <= PATIENCE) {
                 auto training_errors = compute_errors(train, &solver, true);
@@ -616,10 +615,10 @@ int main(int argc, char** argv) {
 
     Eigen::initParallel();
 
+    babi::benchmark_task<LstmBabiModelRunner<double>>("qa1_single-supporting-fact");
     babi::benchmark_task<LstmBabiModelRunner<double>>("qa4_two-arg-relations");
 
 
-    babi::benchmark_task<LstmBabiModelRunner<double>>("qa1_single-supporting-fact");
     babi::benchmark_task<LstmBabiModelRunner<double>>("qa2_two-supporting-facts");
     babi::benchmark_task<LstmBabiModelRunner<double>>("qa3_three-supporting-facts");
     //babi::benchmark<LstmBabiModelRunner<double>>();

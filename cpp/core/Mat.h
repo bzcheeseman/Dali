@@ -136,10 +136,10 @@ class Mat {
         eigen_mat& dw() const;
 
         const std::vector<dim_t>& dims() const;
-        const dim_t& dims(int idx) const;
+        const dim_t dims(int idx) const;
         unsigned int number_of_elements() const;
 
-        const int& id() const;
+        const int id() const;
 
         void set_name(std::string& newname);
         void set_name(char* newname);

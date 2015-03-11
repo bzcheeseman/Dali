@@ -1,6 +1,7 @@
 #include "core/Solver.h"
+
 using std::vector;
-#define PARAM_KEY_FOR_LOOKUP_TABLE param
+#define PARAM_KEY_FOR_LOOKUP_TABLE param.id()
 
 namespace Solver {
 
@@ -83,14 +84,19 @@ namespace Solver {
             // this operation should be run once unless
             // we expect the parameters of the model
             // to change online (probably not the case)
-            if (!(gsums.count(PARAM_KEY_FOR_LOOKUP_TABLE) > 0)) {
+
+            if (gsums.count(PARAM_KEY_FOR_LOOKUP_TABLE) == 0) {
                 auto new_cache = gsums.emplace(
                     std::piecewise_construct,
                 std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
                 std::forward_as_tuple(param.dims(0), param.dims(1)));
                 // initialize values for step cache to zero:
                 new_cache.first->second.fill(0);
+            } else {
+                ELOG("something stupid");
             }
+            ELOG(param);
+
         }
     }
 
@@ -175,6 +181,9 @@ namespace Solver {
         ) {
         for (auto& param : parameters) {
             auto& s = this->gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+            std::cout << s.rows() << " " << s.cols() << std::endl;
+            std::cout << param.w().rows() << " " << param.w().cols() << std::endl;
+
             if (param.sparse) {
                 for (auto& i : *(param.sparse_row_keys)) {
                     s.row(i) = s.row(i) * decay_rate + (1.0 - decay_rate) * param.dw().row(i).array().square().matrix();

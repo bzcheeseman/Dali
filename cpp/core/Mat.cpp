@@ -18,7 +18,7 @@ template<typename R>
 MatInternal<R>::MatInternal(dim_t n, dim_t d, bool fill_zeros) :
         w(n, d),
         dims({n, d}),
-        id(next_matrix++) {
+        id(next_matrix.fetch_add(1)) {
     if (fill_zeros) {
         w.fill(0);
     }
@@ -69,12 +69,12 @@ const vector<dim_t>& Mat<R>::dims() const {
 }
 
 template<typename R>
-const dim_t& Mat<R>::dims(int idx) const {
+const dim_t Mat<R>::dims(int idx) const {
     return m->dims[idx];
 }
 
 template<typename R>
-const int& Mat<R>::id() const {
+const int Mat<R>::id() const {
     return m->id;
 }
 

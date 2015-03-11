@@ -1,20 +1,19 @@
 #ifndef RECURRENT_EMBEDDING_MODEL_MAT_H
 #define RECURRENT_EMBEDDING_MODEL_MAT_H
 
-#include "core/Mat.h"
 #include <memory>
 #include <string>
 #include <vector>
 #include <sstream>
 #include "core/utils.h"
+#include "core/Mat.h"
 #include "core/Index.h"
 #include "core/Layers.h"
 
-template<typename T>
+template<typename R>
 class RecurrentEmbeddingModel {
     public:
-        typedef Mat<T>                      mat;
-        typedef std::shared_ptr<mat> shared_mat;
+        typedef Mat<R>                      mat;
         typedef std::map<std::string, std::vector<std::string>> config_t;
 
         int vocabulary_size;
@@ -23,9 +22,15 @@ class RecurrentEmbeddingModel {
         const int input_size;
         std::vector<int> hidden_sizes;
 
-        shared_mat embedding;
-        virtual std::vector<int> reconstruct(Indexing::Index, int, int symbol_offset = 0) const = 0;
-        virtual std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(Indexing::Index, utils::OntologyBranch::shared_branch, int) const = 0;
+        mat embedding;
+        virtual std::vector<int> reconstruct(
+            Indexing::Index,
+            int,
+            int symbol_offset = 0) const = 0;
+        virtual std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(
+            Indexing::Index,
+            utils::OntologyBranch::shared_branch,
+            int) const = 0;
 
         /**
         Configuration
@@ -59,11 +64,11 @@ class RecurrentEmbeddingModel {
         std::vector<std::shared_ptr<Mat<T>>> parameters : vector of model parameters
 
         **/
-        virtual std::vector<shared_mat> parameters() const;
+        virtual std::vector<mat> parameters() const;
 
         void save(std::string) const;
 
-        typedef std::pair<std::vector<shared_mat>, std::vector<shared_mat>> state_type;
+        typedef std::tuple<std::vector<mat>, std::vector<mat>> state_type;
         virtual state_type initial_states() const;
         /**
         Save Configuration
@@ -78,11 +83,29 @@ class RecurrentEmbeddingModel {
 
         **/
         virtual void save_configuration(std::string fname) const;
-        std::string reconstruct_string(Indexing::Index, const utils::Vocab&, int, int symbol_offset = 0) const;
-        std::string reconstruct_lattice_string(Indexing::Index, utils::OntologyBranch::shared_branch, int) const;
-        RecurrentEmbeddingModel(int _vocabulary_size, int _input_size, int _hidden_size, int _stack_size, int _output_size);
-        RecurrentEmbeddingModel(int _vocabulary_size, int _input_size, const std::vector<int>& _hidden_sizes, int _output_size);
-        RecurrentEmbeddingModel(const RecurrentEmbeddingModel& model, bool copy_w, bool copy_dw);
+        std::string reconstruct_string(
+            Indexing::Index,
+            const utils::Vocab&,
+            int,
+            int symbol_offset = 0) const;
+        std::string reconstruct_lattice_string(
+            Indexing::Index,
+            utils::OntologyBranch::shared_branch,
+            int) const;
+        RecurrentEmbeddingModel(
+            int _vocabulary_size,
+            int _input_size,
+            int _hidden_size,
+            int _stack_size,
+            int _output_size);
+        RecurrentEmbeddingModel(
+            int _vocabulary_size,
+            int _input_size,
+            const std::vector<int>& _hidden_sizes,
+            int _output_size);
+        RecurrentEmbeddingModel(const RecurrentEmbeddingModel& model,
+            bool copy_w,
+            bool copy_dw);
         RecurrentEmbeddingModel(const config_t&);
 };
 

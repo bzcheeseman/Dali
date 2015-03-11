@@ -9,6 +9,7 @@
 #include "core/StackedGatedModel.h"
 #include "core/utils.h"
 #include "core/Reporting.h"
+#include "core/Tape.h"
 #include "core/Solver.h"
 
 
@@ -32,7 +33,6 @@ using utils::OntologyBranch;
 using utils::tokenized_labeled_dataset;
 
 typedef float REAL_t;
-typedef Graph<REAL_t> graph_t;
 typedef Mat<REAL_t> mat;
 typedef float price_t;
 typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
@@ -172,20 +172,18 @@ void training_loop(StackedGatedModel<T>& model,
         const Vocab& word_vocab,
         shared_lattice_t lattice,
         S& solver,
-        vector<shared_ptr<mat>>& parameters,
+        vector<mat>& parameters,
         int& epoch,
         std::tuple<T, T>& cost) {
         for (auto& minibatch : dataset) {
-                auto G = graph_t(true);      // create a new graph for each loop
                 utils::tuple_sum(cost, model.masked_predict_cost(
-                        G,
                         minibatch.data, // the sequence to draw from
                         minibatch.target_data, // what to predict (the path down the lattice)
                         minibatch.start_loss,
                         minibatch.codelens,
                         0
                 ));
-                G.backward(); // backpropagate
+                graph::backward(); // backpropagate
                 solver.step(parameters); // One step of gradient descent
         }
         std::cout << "epoch (" << epoch << ") KL error = " << std::get<0>(cost)
@@ -253,7 +251,7 @@ int main( int argc, char* argv[]) {
                 training_loop(model, dataset, word_vocab, lattice, solver, parameters, i, cost);
                 i++;
         }
-        maybe_save_model(model);
+        maybe_save_model(&model);
         std::cout <<"\nFinal Results\n=============\n" << std::endl;
         for (auto& minibatch : dataset)
                 for (int i = 0; i < minibatch.data->rows(); i++)

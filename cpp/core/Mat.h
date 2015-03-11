@@ -189,9 +189,9 @@ class Mat {
         Mat<R> relu();
         Mat<R> mul(Mat<R>) const;
         Mat<R> dot(Mat<R>) const;
-        Mat<R> rows_pluck(Indexing::Index);
-        Mat<R> rows_cols_pluck(Indexing::Index, Indexing::Index);
-        Mat<R> row_pluck(int);
+        Mat<R> rows_pluck(Indexing::Index) const;
+        Mat<R> rows_cols_pluck(Indexing::Index, Indexing::Index) const;
+        Mat<R> row_pluck(int) const;
 
         Mat<R> operator*(Mat<R> other);
         Mat<R> operator*(R alpha);

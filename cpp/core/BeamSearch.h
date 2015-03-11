@@ -2,7 +2,7 @@
 #define BEAM_SEARCH_MAT_H
 
 #include <vector>
-#include "core/Graph.h"
+#include "core/Tape.h"
 #include <algorithm>
 
 namespace beam_search {
@@ -15,22 +15,21 @@ namespace beam_search {
             ProbabilityPair(uint _symbol, T _prob) : symbol(_symbol), prob(_prob) {}
     };
 
-    template<typename graph_t, typename model_t, typename T>
+    template<typename model_t, typename T>
     std::pair<typename model_t::state_type, std::vector<ProbabilityPair<T>>> beam_search_with_indices(
         const model_t& model,
-        graph_t& G,
         typename model_t::state_type& previous_state,
         uint index,
         int k,
         T log_prob,
         uint ignore_symbol = -1) {
 
-        auto out_state_and_prob = model.activate(G, previous_state, index);
+        auto out_state_and_prob = model.activate(previous_state, index);
         std::pair<typename model_t::state_type, std::vector<ProbabilityPair<T>>> out;
         out.first = std::get<0>(out_state_and_prob);
         std::vector<T> probabilities(
-            std::get<1>(out_state_and_prob)->w.data(),
-            std::get<1>(out_state_and_prob)->w.data() + std::get<1>(out_state_and_prob)->dims[0]);
+            std::get<1>(out_state_and_prob).w().data(),
+            std::get<1>(out_state_and_prob).w().data() + std::get<1>(out_state_and_prob).dims(0));
         auto sorted_probs = utils::argsort(probabilities);
 
         // we pass along the new state, and the "winning" k predictions
@@ -82,13 +81,15 @@ namespace beam_search {
         typedef std::vector<uint> seq_type;
         typedef std::tuple<std::vector<uint>, typename model_t::value_t, typename model_t::state_type > open_list_t;
 
-        Graph<typename model_t::value_t> G(false);
+
+        graph::NoBackprop nb;
+
         int n = ex.cols() * ex.rows();
-        auto initial_state = model.get_final_activation(G, ex.head(n - 1));
+        auto initial_state = model.get_final_activation(ex.head(n - 1));
         // we start off with k different options:
         std::vector<open_list_t> open_list;
         {
-            auto out_beam = beam_search_with_indices(model, G, initial_state, ex(n-1), k, 0.0, ignore_symbol);
+            auto out_beam = beam_search_with_indices(model, initial_state, ex(n-1), k, 0.0, ignore_symbol);
             for (auto& candidate : out_beam.second) {
                 open_list.emplace_back(
                     open_list_t(
@@ -118,7 +119,7 @@ namespace beam_search {
                 } else {
                     // if fork is not asking to
                     // end the sequence, then:
-                    auto forks_beam = beam_search_with_indices(model, G,
+                    auto forks_beam = beam_search_with_indices(model,
                         std::get<2>(fork),            // the internal state going forward
                         std::get<0>(fork).back(),     // the direction to take
                         k,                            // size of the beam

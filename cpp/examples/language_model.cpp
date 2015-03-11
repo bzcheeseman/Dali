@@ -19,6 +19,7 @@
 #include "core/Reporting.h"
 #include "core/BeamSearch.h"
 #include "core/Solver.h"
+#include "core/Tape.h"
 
 DEFINE_int32(minibatch,            100,  "What size should be used for the minibatches ?");
 DEFINE_bool(sparse,                true, "Use sparse embedding");
@@ -43,7 +44,6 @@ using utils::Timer;
 using std::chrono::seconds;
 
 typedef float REAL_t;
-typedef Graph<REAL_t> graph_t;
 typedef Mat<REAL_t> mat;
 typedef float price_t;
 typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
@@ -247,7 +247,8 @@ void reconstruct_random_beams(
 
 template<typename model_t>
 REAL_t average_error(model_t& model, const vector<Databatch>& dataset) {
-        auto G = graph_t(false); // create a new graph for each loop)
+    // don't backpropagate from now on in this scope:
+    graph::NoBackprop nb;
     Timer t("average_error");
 
     int full_code_size = 0;
@@ -255,9 +256,8 @@ REAL_t average_error(model_t& model, const vector<Databatch>& dataset) {
     for (size_t i = 0; i < dataset.size();i++)
         full_code_size += dataset[i].total_codes;
     for (size_t batch_id = 0; batch_id < dataset.size(); ++batch_id) {
-        pool->run([&costs, &dataset, &model, &G, batch_id]() {
+        pool->run([&costs, &dataset, &model, batch_id]() {
             costs[ThreadPool::get_thread_number()] += model.masked_predict_cost(
-                G,
                 dataset[batch_id].data, // the sequence to draw from
                 dataset[batch_id].data, // what to predict (the words offset by 1)
                 1,
@@ -269,7 +269,8 @@ REAL_t average_error(model_t& model, const vector<Databatch>& dataset) {
     pool->wait_until_idle();
 
     REAL_t cost = 0.0;
-    for (auto& v : costs) cost += v;
+    for (auto& v : costs)
+        cost += v;
     return cost / full_code_size;
 }
 
@@ -331,19 +332,17 @@ void training_loop(model_t& model,
             auto thread_parameters = thread_model.parameters();
             auto& minibatch = dataset[batch_id];
 
-            auto G = graph_t(true);
             cost += thread_model.masked_predict_cost(
-                G,
                 minibatch.data, // the sequence to draw from
                 minibatch.data, // what to predict (the words offset by 1)
                 0,
                 minibatch.codelens,
                 0
             );
-            thread_model.embedding->sparse_row_keys = minibatch.row_keys;
+            thread_model.embedding.sparse_row_keys = minibatch.row_keys;
             full_code_size += minibatch.total_codes;
 
-            G.backward(); // backpropagate
+            graph::backward(); // backpropagate
             solver.step(thread_parameters);
 
             journalist.tick(++batches_processed, cost / full_code_size);
@@ -417,7 +416,7 @@ void train_model(const vector<Databatch>& dataset,
                   << std::setprecision(3) << std::fixed
                   << std::setw(5) << std::setfill(' ') << new_cost
                   << " patience = " << patience << std::endl;
-        maybe_save_model(model);
+        maybe_save_model(&model);
         epoch++;
     }
 }

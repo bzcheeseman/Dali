@@ -1,15 +1,12 @@
 #include <gflags/gflags.h>
-
 #include "core/Layers.h"
 
 // test file for stacked LSTM cells:
 using std::vector;
-using std::make_shared;
 
 typedef float REAL_t;
 typedef LSTM<REAL_t> lstm;
-typedef Graph<REAL_t> graph_t;
-typedef Mat<REAL_t> mat;
+typedef Mat<REAL_t>   mat;
 
 
 DEFINE_int32(timesteps, 2, "How many steps to run the simulation for ?");
@@ -32,18 +29,17 @@ int main (int argc, char *argv[]) {
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
     vector<int> hidden_sizes;
-    for (int i=0; i < FLAGS_stack_size; ++i) hidden_sizes.emplace_back(FLAGS_hidden_size);
+    for (int i=0; i < FLAGS_stack_size; ++i)
+        hidden_sizes.emplace_back(FLAGS_hidden_size);
 
+    auto cells = StackedCells<lstm>(FLAGS_input_size, hidden_sizes);
+    auto initial_state = lstm::initial_states(hidden_sizes);
 
-        auto cells = StackedCells<lstm>(FLAGS_input_size, hidden_sizes);
-        auto initial_state = lstm::initial_states(hidden_sizes);
-        graph_t G;
+    auto input_vector = mat(FLAGS_input_size, FLAGS_batch_size, (float)FLAGS_std);
 
-        auto input_vector = make_shared<mat>(FLAGS_input_size, FLAGS_batch_size, (float)FLAGS_std);
+    for (auto i = 0; i < FLAGS_timesteps; ++i)
+        initial_state = forward_LSTMs(input_vector, initial_state, cells);
 
-        for (auto i = 0; i < FLAGS_timesteps; ++i)
-                initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
-
-        // backpropagate
-        G.backward();
+    // backpropagate
+    graph::backward();
 }

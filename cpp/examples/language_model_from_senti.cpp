@@ -20,7 +20,6 @@
 
 
 // #define USE_GATES
-
 #ifdef USE_GATES
     #define MODEL_USED StackedGatedModel
 #else
@@ -47,9 +46,7 @@ using std::array;
 
 
 typedef float REAL_t;
-typedef Graph<REAL_t> graph_t;
 typedef Mat<REAL_t> mat;
-typedef std::shared_ptr<mat> shared_mat;
 typedef float price_t;
 typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
 typedef Eigen::Matrix<REAL_t, Eigen::Dynamic, 1> float_vector;
@@ -303,7 +300,7 @@ REAL_t average_error(const vector<model_t>& models, const vector<vector<Databatc
         for (auto& minibatch_num : random_batch_order) {
             pool->run([&confusion, &journalist, &models, &correct,&seen_minibatches,  &total, &validation_sets, validation_set_num, minibatch_num] {
                 auto& valid_set = validation_sets[validation_set_num][minibatch_num];
-                vector<shared_mat> probs;
+                vector<mat> probs;
                 for (int k = 0; k < models.size();k++) {
                     probs.emplace_back(FLAGS_use_surprise ?
                         sequence_probability::sequence_surprises(
@@ -321,7 +318,7 @@ REAL_t average_error(const vector<model_t>& models, const vector<vector<Databatc
                     double best_prob = (FLAGS_use_surprise ? 1.0 : -1.0) * std::numeric_limits<REAL_t>::infinity();
                     if (FLAGS_use_surprise) {
                         for (int k = 0; k < models.size();k++) {
-                            auto prob = probs[k]->w(row_num);
+                            auto prob = probs[k].w()(row_num);
                             if (prob < best_prob) {
                                 best_prob = prob;
                                 best_model = k;
@@ -329,7 +326,7 @@ REAL_t average_error(const vector<model_t>& models, const vector<vector<Databatc
                         }
                     } else {
                         for (int k = 0; k < models.size();k++) {
-                            auto prob = probs[k]->w(row_num);
+                            auto prob = probs[k].w()(row_num);
                             if (prob > best_prob) {
                                 best_prob = prob;
                                 best_model = k;
@@ -501,9 +498,7 @@ int main( int argc, char* argv[]) {
                         thread_model.memory_penalty = (FLAGS_memory_penalty / minibatch.data->cols()) * std::min((REAL_t)1.0, ((REAL_t) (epoch*epoch) / ((REAL_t) FLAGS_memory_rampup * FLAGS_memory_rampup)));
                     #endif
 
-                    auto G = graph_t(true);      // create a new graph for each loop
                     thread_model.masked_predict_cost(
-                        G,
                         minibatch.data, // the sequence to draw from
                         minibatch.data, // what to predict (the words offset by 1)
                         1,
@@ -511,7 +506,7 @@ int main( int argc, char* argv[]) {
                         0,
                         (REAL_t) FLAGS_dropout
                     );
-                    G.backward(); // backpropagate
+                    graph::backward(); // backpropagate
                     solver.step(thread_parameters); // One step of gradient descent
 
                     journalist.tick(++batches_processed, accuracy);

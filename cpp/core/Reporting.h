@@ -11,8 +11,7 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
-//#include "core/StackedModel.h"
-//#include "core/StackedGatedModel.h"
+#include "core/RecurrentEmbeddingModel.h"
 
 DECLARE_string(save);
 DECLARE_string(load);
@@ -52,6 +51,6 @@ class ReportProgress {
 static Throttled model_save_throttled;
 static int model_snapshot_no;
 
-template<typename T> void maybe_save_model(const T& model,
+template<typename R> void maybe_save_model(RecurrentEmbeddingModel<R>* model,
                                            const std::string& base_path="",
                                            const std::string& label="");

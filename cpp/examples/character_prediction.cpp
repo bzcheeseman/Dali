@@ -22,98 +22,96 @@ using std::shared_ptr;
 using std::fstream;
 using std::thread;
 
-typedef float REAL_t;
-typedef LSTM<REAL_t> lstm;
-typedef Graph<REAL_t> graph_t;
+typedef float               REAL_t;
+typedef LSTM<REAL_t>          lstm;
 typedef Layer<REAL_t> classifier_t;
-typedef Mat<REAL_t> mat;
-typedef shared_ptr<mat> shared_mat;
+typedef Mat<REAL_t>            mat;
 
 vector<vector<uint>> get_character_sequences(const char* filename, uint& prepad, uint& postpad, uint& vocab_size) {
-        char ch;
-        char linebreak = '\n';
-        fstream file;
-        file.open(filename);
-        vector<vector<uint>> lines;
-        lines.emplace_back(2);
-        vector<uint>* line = &lines[0];
-        line->push_back(prepad);
-        while(file) {
-                ch = file.get();
-                if (ch == linebreak) {
-                        line->push_back(postpad);
-                        lines.emplace_back(2);
-                        line = &(lines.back());
-                        line->push_back(prepad);
-                        continue;
-                }
-                if (ch == EOF) {
-                        break;
-                }
-                line->push_back(std::min(vocab_size-1, (uint)ch));
+    char ch;
+    char linebreak = '\n';
+    fstream file;
+    file.open(filename);
+    vector<vector<uint>> lines;
+    lines.emplace_back(2);
+    vector<uint>* line = &lines[0];
+    line->push_back(prepad);
+    while(file) {
+        ch = file.get();
+        if (ch == linebreak) {
+            line->push_back(postpad);
+            lines.emplace_back(2);
+            line = &(lines.back());
+            line->push_back(prepad);
+            continue;
         }
-        return lines;
+        if (ch == EOF) {
+            break;
+        }
+        line->push_back(std::min(vocab_size-1, (uint)ch));
+    }
+    return lines;
 }
 
 template<typename T>
 T validation_error(
-        StackedModel<T>& model,
-        vector<vector<uint>>& data_set) {
-        Graph<T> G(false);
+    StackedModel<T>& model,
+    vector<vector<uint>>& data_set) {
 
-        auto initial_state = lstm::initial_states(model.hidden_sizes);
-        auto num_hidden_sizes = model.hidden_sizes.size();
+    graph::NoBackprop nb;
 
-        shared_mat input_vector;
-        shared_mat logprobs;
-        shared_mat probs;
+    auto initial_state = lstm::initial_states(model.hidden_sizes);
+    auto num_hidden_sizes = model.hidden_sizes.size();
 
-        T cost = 0.0;
-        for (auto& example: data_set) {
-                auto n = example.size();
-                REAL_t example_cost = 0.0;
-                for (int i = 0; i < n-1; ++i) {
-                        // pick this letter from the embedding
-                        input_vector  = G.row_pluck(model.embedding, example[i]);
-                        // pass this letter to the LSTM for processing
-                        initial_state = model.stacked_lstm->activate(G, initial_state, input_vector);
-                        // classifier takes as input the final hidden layer's activation:
-                        logprobs      = model.decoder->activate(G, initial_state.second[num_hidden_sizes-1]);
-                         example_cost -= cross_entropy(logprobs, example[i+1]);
+    mat input_vector;
+    mat logprobs;
+    mat probs;
 
-                }
-                cost += example_cost / (n-1);
+    T cost = 0.0;
+    for (auto& example: data_set) {
+        auto n = example.size();
+        REAL_t example_cost = 0.0;
+        for (int i = 0; i < n-1; ++i) {
+            // pick this letter from the embedding
+            input_vector  = model.embedding.row_pluck(example[i]);
+            // pass this letter to the LSTM for processing
+            initial_state = model.stacked_lstm->activate(initial_state, input_vector);
+            // classifier takes as input the final hidden layer's activation:
+            logprobs      = model.decoder->activate(std::get<1>(initial_state)[num_hidden_sizes-1]);
+            example_cost -= cross_entropy(logprobs, example[i+1]);
+
         }
-        return cost / data_set.size();
+        cost += example_cost / (n-1);
+    }
+    return cost / data_set.size();
 }
 
 
 template<typename T>
 T cost_fun(
-        Graph<T>& G,
-        StackedModel<T>& model,
-        vector<uint>& indices) {
+    StackedModel<T>& model,
+    vector<uint>& indices) {
 
-        auto initial_state = lstm::initial_states(model.hidden_sizes);
-        auto num_hidden_sizes = model.hidden_sizes.size();
+    auto initial_state = lstm::initial_states(model.hidden_sizes);
+    auto num_hidden_sizes = model.hidden_sizes.size();
 
-        shared_mat input_vector;
-        shared_mat logprobs;
-        shared_mat probs;
+    mat input_vector;
+    mat logprobs;
+    mat probs;
 
-        T cost = 0.0;
-        auto n = indices.size();
+    T cost = 0.0;
+    auto n = indices.size();
 
-        for (int i = 0; i < n-1; ++i) {
-                // pick this letter from the embedding
-                input_vector  = G.row_pluck(model.embedding, indices[i]);
-                // pass this letter to the LSTM for processing
-                initial_state = model.stacked_lstm->activate(G, initial_state, input_vector);
-                // classifier takes as input the final hidden layer's activation:
-                logprobs      = model.decoder->activate(G, initial_state.second[num_hidden_sizes-1]);
-                cost -= cross_entropy(logprobs, indices[i+1]);
-        }
-        return cost / (n-1);
+    for (int i = 0; i < n-1; ++i) {
+        // pick this letter from the embedding
+        input_vector  = model.embedding.row_pluck(indices[i]);
+        // pass this letter to the LSTM for processing
+        initial_state = model.stacked_lstm->activate(initial_state, input_vector);
+        // classifier takes as input the final hidden layer's activation:
+        logprobs      = model.decoder->activate(std::get<1>(initial_state)[num_hidden_sizes-1]);
+        cost -= cross_entropy(logprobs, indices[i+1]);
+    }
+    return cost / (n-1);
 }
 
 
@@ -123,21 +121,25 @@ int main (int argc, char *argv[]) {
         std::ios_base::sync_with_stdio(0);
 
         auto model = StackedModel<REAL_t>(FLAGS_vocab_size,
-                                                                          FLAGS_input_size,
-                                                                          FLAGS_hidden_size,
-                                                                          FLAGS_stack_size,
-                                                                          FLAGS_vocab_size);
+                                          FLAGS_input_size,
+                                          FLAGS_hidden_size,
+                                          FLAGS_stack_size,
+                                          FLAGS_vocab_size);
         auto parameters = model.parameters();
-
-/*
-        for (auto& param : parameters) {
-                param->npy_load(stdin);
-        }
-*/
+        /*
+            for (auto& param : parameters) {
+                    param->npy_load(stdin);
+            }
+        */
         uint prepad = 0;
         uint postpad = FLAGS_vocab_size-1;
         uint vocab_size = FLAGS_vocab_size;
-        auto sentences = get_character_sequences("../paulgraham_text.txt", prepad, postpad, vocab_size);
+        auto sentences = get_character_sequences(
+            "../paulgraham_text.txt",
+            prepad,
+            postpad,
+            vocab_size
+        );
         int train_size = (int)(sentences.size() * 0.9);
         int valid_size = sentences.size() - train_size;
         vector<vector<uint>> train_set(sentences.begin(), sentences.begin() + train_size);
@@ -155,48 +157,40 @@ int main (int argc, char *argv[]) {
         int total_epochs = 0;
 
         Solver::AdaDelta<REAL_t> solver(parameters);
-        // Solver::RMSProp<REAL_t> solver(thread_parameters, 0.999, 1e-9, 5.0);
-        // Solver::SGD<REAL_t> solver;
-
 
         for (int t=0; t<FLAGS_num_threads; ++t) {
-                ts.emplace_back([&](int thread_id) {
-                        auto thread_model = model.shallow_copy();
+            ts.emplace_back([&](int thread_id) {
+                auto thread_model = model.shallow_copy();
+                auto thread_parameters = thread_model.parameters();
+                for (auto i = 0; i < FLAGS_epochs / FLAGS_num_threads / FLAGS_minibatch_size; ++i) {
+                    for (auto mb = 0; mb < FLAGS_minibatch_size; ++mb)
+                        cost_fun(
+                            thread_model,            // what model should collect errors
+                            train_set[uniform(seed)] // the sequence to predict
+                        );
+                    graph::backward(); // backpropagate
 
-                        auto thread_parameters = thread_model.parameters();
+                    // solve it.
+                    // RMS prop
+                    //solver.step(thread_parameters, 0.01, 0.0);
+                    // AdaDelta
+                    solver.step(thread_parameters);
+                    // SGD
+                    // solver.step(thread_parameters, 0.3/minibatch_size, 0.0);
+                    cost = validation_error(model, valid_set);
 
-                        for (auto i = 0; i < FLAGS_epochs / FLAGS_num_threads / FLAGS_minibatch_size; ++i) {
-                                auto G = graph_t(true);      // create a new graph for each loop
+                    std::cout << "epoch (" << total_epochs << ") perplexity = "
+                                                              << std::fixed
+                              << std::setw( 5 ) // keep 7 digits
+                              << std::setprecision( 3 ) // use 3 decimals
+                              << std::setfill( ' ' ) << cost << std::endl;
 
-                                for (auto mb = 0; mb < FLAGS_minibatch_size; ++mb)
-                                        cost_fun(
-                                                G,                       // to keep track of computation
-                                                thread_model,            // what model should collect errors
-                                                train_set[uniform(seed)] // the sequence to predict
-                                        );
-                                G.backward();                // backpropagate
-
-                                // solve it.
-                                // RMS prop
-                                //solver.step(thread_parameters, 0.01, 0.0);
-                                // AdaDelta
-                                solver.step(thread_parameters);
-                                // SGD
-                                // solver.step(thread_parameters, 0.3/minibatch_size, 0.0);
-                                cost = validation_error(model, valid_set);
-
-                                std::cout << "epoch (" << total_epochs << ") perplexity = "
-                                                                          << std::fixed
-                                          << std::setw( 5 ) // keep 7 digits
-                                          << std::setprecision( 3 ) // use 3 decimals
-                                          << std::setfill( ' ' ) << cost << std::endl;
-
-                    }
-                }, t);
-
+                }
+            }, t);
         }
 
-        for(auto& t: ts) t.join();
+        for(auto& t: ts)
+            t.join();
 /*
         for (auto& param : parameters) {
                 param->npy_save(stdout);

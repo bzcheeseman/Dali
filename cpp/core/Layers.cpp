@@ -586,10 +586,10 @@ std::pair< std::vector<Mat<R>>, std::vector<Mat<R>> > LSTM<R>::initial_states(
         const std::vector<int>& hidden_sizes) {
     std::pair< std::vector<Mat<R>>, std::vector<Mat<R>> > initial_state;
     initial_state.first.reserve(hidden_sizes.size());
-    initial_state.second.reserve(hidden_sizes.size());
+    std::get<1>(initial_state).reserve(hidden_sizes.size());
     for (auto& size : hidden_sizes) {
         initial_state.first.emplace_back(Mat<R>(size, 1));
-        initial_state.second.emplace_back(Mat<R>(size, 1));
+        std::get<1>(initial_state).emplace_back(Mat<R>(size, 1));
     }
     return initial_state;
 }
@@ -671,7 +671,7 @@ pair<vector<Mat<R>>, vector<Mat<R>>> forward_LSTMs(
     R drop_prob) {
 
     auto previous_state_cells = previous_state.first;
-    auto previous_state_hiddens = previous_state.second;
+    auto previous_state_hiddens = std::get<1>(previous_state);
 
     auto cell_iter = previous_state_cells.begin();
     auto hidden_iter = previous_state_hiddens.begin();
@@ -710,7 +710,7 @@ pair<vector<Mat<R>>, vector<Mat<R>>> forward_LSTMs(
     R drop_prob) {
 
     auto previous_state_cells = previous_state.first;
-    auto previous_state_hiddens = previous_state.second;
+    auto previous_state_hiddens = std::get<1>(previous_state);
 
     auto cell_iter = previous_state_cells.begin();
     auto hidden_iter = previous_state_hiddens.begin();
@@ -886,7 +886,7 @@ typename StackedShortcutLSTM<R>::state_t StackedShortcutLSTM<R>::activate(
     #ifdef NDEBUG
         assert(input_vector->n == this->input_size);
         for (auto& memory_or_hidden : {previous_state.first,
-                                                   previous_state.second}) {
+                                                   std::get<1>(previous_state)}) {
             assert(memory_or_hidden.n == this->hidden_sizes.size());
             for (int i=0; i < this->hidden_sizes.size(); ++i) {
                 assert(memory_or_hidden[i]->n == this->hidden_sizes[i]);

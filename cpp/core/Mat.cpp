@@ -356,7 +356,7 @@ Mat<R> Mat<R>::dot(Mat<R> other) const {
 
 template<typename R>
 Mat<R> Mat<R>::rows_pluck(
-        Indexing::Index indices) {
+        Indexing::Index indices) const {
     return MatOps<R>::rows_pluck(*this, indices);
 
 }
@@ -364,13 +364,13 @@ Mat<R> Mat<R>::rows_pluck(
 template<typename R>
 Mat<R> Mat<R>::rows_cols_pluck(
         Indexing::Index row_indices,
-        Indexing::Index col_indices) {
+        Indexing::Index col_indices) const {
     return MatOps<R>::rows_cols_pluck(*this, row_indices, col_indices);
 }
 
 template<typename R>
 Mat<R> Mat<R>::row_pluck(
-        int row) {
+        int row) const {
     return MatOps<R>::row_pluck(*this, row);
 }
 

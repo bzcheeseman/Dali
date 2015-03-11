@@ -29,7 +29,6 @@ using utils::tokenized_labeled_dataset;
 using utils::Vocab;
 
 typedef float REAL_t;
-typedef Graph<REAL_t> graph_t;
 typedef Mat<REAL_t> mat;
 typedef float price_t;
 typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
@@ -82,30 +81,31 @@ int main( int argc, char* argv[]) {
         int num_disconnected_concepts = 0;
         vector<string> disconnected;
         for (auto& kv : *lattice_roots[0]->lookup_table) {
-                if (kv.first == "__ROOT__") continue;
-                if (utils::startswith(kv.first, "fp:")) {
-                        num_fixpoints++;
-                        mean_fixpoint_degree += kv.second->children.size();
-                        if (kv.second->children.size() < min_fixpoint_degree) min_fixpoint_degree = kv.second->children.size();
-                        if (kv.second->children.size() > max_fixpoint_degree) {
-                                max_fixpoint_degree = kv.second->children.size();
-                                max_fixpoint = kv.first;
-                        }
-                } else {
-                        num_concepts++;
-                        mean_concept_indegree += kv.second->parents.size();
-                        if (kv.second->parents.size() < min_concept_indegree) {
-                                min_concept_indegree = kv.second->parents.size();
-                        }
-                        if (kv.second->parents.size() == 0) {
-                                num_disconnected_concepts++;
-                                disconnected.emplace_back(kv.first);
-                        }
-                        if (kv.second->parents.size() > max_concept_indegree) {
-                                max_concept_indegree = kv.second->parents.size();
-                                max_concept = kv.first;
-                        }
+            if (kv.first == "__ROOT__")
+                continue;
+            if (utils::startswith(kv.first, "fp:")) {
+                num_fixpoints++;
+                mean_fixpoint_degree += kv.second->children.size();
+                if (kv.second->children.size() < min_fixpoint_degree) min_fixpoint_degree = kv.second->children.size();
+                if (kv.second->children.size() > max_fixpoint_degree) {
+                        max_fixpoint_degree = kv.second->children.size();
+                        max_fixpoint = kv.first;
                 }
+            } else {
+                num_concepts++;
+                mean_concept_indegree += kv.second->parents.size();
+                if (kv.second->parents.size() < min_concept_indegree) {
+                        min_concept_indegree = kv.second->parents.size();
+                }
+                if (kv.second->parents.size() == 0) {
+                        num_disconnected_concepts++;
+                        disconnected.emplace_back(kv.first);
+                }
+                if (kv.second->parents.size() > max_concept_indegree) {
+                        max_concept_indegree = kv.second->parents.size();
+                        max_concept = kv.first;
+                }
+            }
         }
         mean_fixpoint_degree /= num_fixpoints;
         mean_concept_indegree /= num_concepts;

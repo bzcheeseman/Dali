@@ -7,8 +7,8 @@ using std::make_shared;
 using utils::from_string;
 using std::to_string;
 
-template<typename T>
-string RecurrentEmbeddingModel<T>::reconstruct_string(
+template<typename R>
+string RecurrentEmbeddingModel<R>::reconstruct_string(
     Indexing::Index example,
     const utils::Vocab& lookup_table,
     int eval_steps,
@@ -27,8 +27,8 @@ string RecurrentEmbeddingModel<T>::reconstruct_string(
     return rec.str();
 }
 
-template<typename T>
-void RecurrentEmbeddingModel<T>::save(std::string dirname) const {
+template<typename R>
+void RecurrentEmbeddingModel<R>::save(std::string dirname) const {
     utils::ensure_directory(dirname);
     // Save the matrices:
     auto params = parameters();
@@ -37,26 +37,26 @@ void RecurrentEmbeddingModel<T>::save(std::string dirname) const {
     save_configuration(dirname);
 }
 
-template<typename T>
-typename RecurrentEmbeddingModel<T>::state_type RecurrentEmbeddingModel<T>::initial_states() const {
-    return LSTM<T>::initial_states(hidden_sizes);
+template<typename R>
+typename RecurrentEmbeddingModel<R>::state_type RecurrentEmbeddingModel<R>::initial_states() const {
+    return LSTM<R>::initial_states(hidden_sizes);
 }
 
-template<typename T>
-vector<typename RecurrentEmbeddingModel<T>::shared_mat> RecurrentEmbeddingModel<T>::parameters() const {
-        vector<shared_mat> parameters;
+template<typename R>
+vector<typename RecurrentEmbeddingModel<R>::mat> RecurrentEmbeddingModel<R>::parameters() const {
+        vector<mat> parameters;
         parameters.push_back(this->embedding);
         return parameters;
 }
 
-template<typename T>
-void RecurrentEmbeddingModel<T>::save_configuration(std::string fname) const {
+template<typename R>
+void RecurrentEmbeddingModel<R>::save_configuration(std::string fname) const {
     auto config = configuration();
     utils::map_to_file(config, fname);
 }
 
-template<typename T>
-string RecurrentEmbeddingModel<T>::reconstruct_lattice_string(
+template<typename R>
+string RecurrentEmbeddingModel<R>::reconstruct_lattice_string(
     Indexing::Index example,
     utils::OntologyBranch::shared_branch root,
     int eval_steps) const {
@@ -67,54 +67,56 @@ string RecurrentEmbeddingModel<T>::reconstruct_lattice_string(
     return rec.str();
 }
 
-template<typename T>
-RecurrentEmbeddingModel<T>::RecurrentEmbeddingModel(
+template<typename R>
+RecurrentEmbeddingModel<R>::RecurrentEmbeddingModel(
     int _vocabulary_size, int _input_size, int hidden_size, int _stack_size, int _output_size) :
     input_size(_input_size),
     vocabulary_size(_vocabulary_size),
     stack_size(_stack_size),
     output_size(_output_size) {
 
-    embedding = make_shared<mat>(vocabulary_size, input_size, (T) -0.05, (T) 0.05);
+    embedding = mat(vocabulary_size, input_size, (R) -0.05, (R) 0.05);
     for (int i = 0; i < stack_size;i++)
         hidden_sizes.emplace_back(hidden_size);
 }
 
-template<typename T>
-RecurrentEmbeddingModel<T>::RecurrentEmbeddingModel(
+template<typename R>
+RecurrentEmbeddingModel<R>::RecurrentEmbeddingModel(
     int _vocabulary_size, int _input_size, const std::vector<int>& _hidden_sizes, int _output_size) :
     input_size(_input_size),
     vocabulary_size(_vocabulary_size),
     stack_size(_hidden_sizes.size()),
     output_size(_output_size),
     hidden_sizes(_hidden_sizes) {
-    embedding = make_shared<mat>(vocabulary_size, input_size, (T) -0.05, (T) 0.05);
+    embedding = mat(vocabulary_size, input_size, (R) -0.05, (R) 0.05);
 }
 
-template<typename T>
-RecurrentEmbeddingModel<T>::RecurrentEmbeddingModel(const RecurrentEmbeddingModel& model, bool copy_w, bool copy_dw) :
+template<typename R>
+RecurrentEmbeddingModel<R>::RecurrentEmbeddingModel(const RecurrentEmbeddingModel& model, bool copy_w, bool copy_dw) :
     vocabulary_size(model.vocabulary_size),
     output_size(model.output_size),
     input_size(model.input_size),
     stack_size(model.stack_size),
-    hidden_sizes(model.hidden_sizes) {
-    this->embedding = make_shared<mat>(*model.embedding, copy_w, copy_dw);
+    hidden_sizes(model.hidden_sizes),
+    embedding(model.embedding, copy_w, copy_dw) {
 }
 
-template<typename T>
-RecurrentEmbeddingModel<T>::RecurrentEmbeddingModel(const typename RecurrentEmbeddingModel<T>::config_t& config) :
+template<typename R>
+RecurrentEmbeddingModel<R>::RecurrentEmbeddingModel(const typename RecurrentEmbeddingModel<R>::config_t& config) :
     vocabulary_size(from_string<int>(config.at("vocabulary_size")[0])),
     output_size(from_string<int>(config.at("output_size")[0])),
     input_size(from_string<int>(config.at("input_size")[0])),
-    stack_size(config.at("hidden_sizes").size()) {
-
+    stack_size(config.at("hidden_sizes").size()),
+    embedding(
+        from_string<int>(config.at("vocabulary_size")[0]),
+        from_string<int>(config.at("input_size")[0]),
+        (R) -0.05, (R) 0.05) {
     for (auto& v : config.at("hidden_sizes"))
         hidden_sizes.emplace_back(from_string<int>(v));
-    embedding = make_shared<mat>(vocabulary_size, input_size, (T) -0.05, (T) 0.05);
 }
 
-template<typename T>
-typename RecurrentEmbeddingModel<T>::config_t RecurrentEmbeddingModel<T>::configuration() const  {
+template<typename R>
+typename RecurrentEmbeddingModel<R>::config_t RecurrentEmbeddingModel<R>::configuration() const  {
     config_t config;
     config["output_size"].emplace_back(to_string(output_size));
     config["input_size"].emplace_back(to_string(input_size));

@@ -24,7 +24,7 @@ In Python use of a specialized `Backward` class wraps backpropagation steps, whi
 #### Installation
 
 Get **[Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)** ([Download Link](http://bitbucket.org/eigen/eigen/get/3.2.4.tar.bz2)), **Clang**, and **protobuf**, then head to the `cpp/build` folder and use `cmake` to configure and create the appropriate Makefiles:
-    
+
     > brew install clang
     > brew install eigen
     > brew install cmake
@@ -71,8 +71,7 @@ And let's populate our namespace with some goodies:
 We also define some types we'll use to simplify notation:
 
     typedef Mat<float> mat;
-    typedef shared_ptr<mat> shared_mat;
-    typedef vector<shared_mat> cell_outputs;
+    typedef vector<mat> cell_outputs;
     typedef pair<cell_outputs, cell_outputs> paired_cell_outputs;
 
 Let's build a set of stacked cells inside our main function: 3 layers of 100 hidden units with an original input of size 50 (Note how we template the static method `StackedCells<T>` to take a `LSTM<float>` -- this is how we create multiple layers of cells with the same type: `LSTM`, `RNN`, `ShortcutRNN`, `GatedInput`, etc..):
@@ -84,7 +83,7 @@ Let's build a set of stacked cells inside our main function: 3 layers of 100 hid
 
 We now collect the model parameters into one vector for optimization:
 
-    vector<shared_mat> parameters;
+    vector<mat> parameters;
 
     for (auto& layer : cells) {
         auto layer_params = layer.parameters();
@@ -100,14 +99,14 @@ Let's create some random input, using a multivariate gaussian with a standard de
     auto batch_size          = 100;
     float std                = 2.0;
 
-    auto input_vector = make_shared<mat>(input_size, batch_size, std);
+    auto input_vector = mat(input_size, batch_size, std);
 
 To run our network forward in time we'll need some initial states and a forward propagation function. Let's start with the propagation. This function takes the `Graph` to keep track of computations, an `input_vector`, and the *previous hidden and cell states* for the LSTM layers, and the `LSTM`s themselves:
 
-    pair<vector<shared_ptr<Mat<float>>>, vector<shared_ptr<Mat<float>>>> forward_LSTMs(
+    pair<vector<Mat<float>>, vector<Mat<float>>> forward_LSTMs(
         Graph<float>&,
-        shared_ptr<Mat<float>>,
-        pair<vector<shared_ptr<Mat<float>>>, vector<shared_ptr<Mat<float>>>>&,
+        Mat<float>,
+        pair<vector<Mat<float>>, vector<Mat<float>>>&,
         vector<LSTM<float>>&);
 
 Now that we can propagate our network forward let's run this forward in time, and start off with a blank cell activation and hidden activation for each LSTM, here we use the LSTM class's `initial_states` static method:
@@ -132,7 +131,7 @@ Suppose we want to assign error using a prediction with a additional decoding la
 
 Each character gets a vector in an embedding:
 
-    auto embedding = make_shared<mat>(vocab_size, input_size, 0.08);
+    auto embedding = mat(vocab_size, input_size, 0.08);
 
 Then our forward function can be changed to:
 
@@ -140,7 +139,7 @@ Then our forward function can be changed to:
         Graph<float>& G, // the graph for the computation
         vector<int>& hidden_sizes, // re-initialize the hidden cell states at each new sentence
         vector<LSTM<float>>& cells,  // the LSTMs
-        shared_mat embedding, // the embedding matrix
+        mat embedding, // the embedding matrix
         classifier_t& classifier, // the classifier we just defined
         vector<int>& indices // the indices in a sentence whose perplexity we'd like to reduce
         ) {
@@ -148,27 +147,27 @@ Then our forward function can be changed to:
         auto initial_state = lstm::initial_states(hidden_sizes);
         auto num_hidden_sizes = hidden_sizes.size();
 
-        shared_mat input_vector;
-        shared_mat logprobs;
-        shared_mat probs;
+        mat input_vector;
+        mat logprobs;
+        mat probs;
 
         float cost = 0.0;
         auto n = indices.size();
 
         for (int i = 0; i < n-1; ++i) {
             // pick this letter from the embedding
-            input_vector  = G.row_pluck(embedding, indices[i]);
+            input_vector  = embedding.row_pluck(indices[i]);
             // pass this letter to the LSTM for processing
-            initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
+            initial_state = forward_LSTMs(input_vector, initial_state, cells);
             // classifier takes as input the final hidden layer's activation:
-            logprobs      = classifier.activate(G, initial_state.second[num_hidden_sizes-1]);
+            logprobs      = classifier.activate(std::get<1>(initial_state)[num_hidden_sizes-1]);
             // compute the softmax probabilities
             probs         = softmax(logprobs);
             // accumulate base 2 log prob and do smoothing
-            cost         -= std::log(probs->w(indices[i+1],0));
+            cost         -= std::log(probs.w().(indices[i+1],0));
             // write gradients into log probabilities
-            logprobs->dw  = probs->w;
-            logprobs->dw(indices[i+1], 0) -= 1;
+            logprobs.dw()  = probs.w();
+            logprobs.dw(indices[i+1], 0) -= 1;
         }
         return cost / (n-1);
     }

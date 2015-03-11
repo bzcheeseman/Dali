@@ -46,9 +46,10 @@ class StackedModel : public RecurrentEmbeddingModel<R>  {
     inline void name_parameters();
 
     public:
+        typedef Mat<R> mat;
 
-        typedef std::pair<std::vector<SHARED_MAT>, std::vector<SHARED_MAT>> state_type;
-        typedef std::tuple<state_type, SHARED_MAT, SHARED_MAT> activation_t;
+        typedef std::tuple<std::vector<mat>, std::vector<mat>> state_type;
+        typedef std::tuple<state_type, mat, mat> activation_t;
         typedef R value_t;
         const bool use_shortcut;
 
@@ -57,7 +58,7 @@ class StackedModel : public RecurrentEmbeddingModel<R>  {
         typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
         typedef std::shared_ptr< index_mat > shared_index_mat;
         std::shared_ptr<AbstractMultiInputLayer<R>> decoder;
-        virtual std::vector<SHARED_MAT> parameters() const;
+        virtual std::vector<mat> parameters() const;
         /**
         Load
         ----
@@ -147,12 +148,29 @@ class StackedModel : public RecurrentEmbeddingModel<R>  {
 
         **/
         StackedModel(const StackedModel<R>&, bool, bool);
-        R masked_predict_cost(shared_index_mat, shared_index_mat, shared_eigen_index_vector, shared_eigen_index_vector, uint offset=0, R drop_prob = 0.0);
-        R masked_predict_cost(shared_index_mat, shared_index_mat, uint, shared_eigen_index_vector, uint offset=0, R drop_prob = 0.0);
+        R masked_predict_cost(
+            shared_index_mat,
+            shared_index_mat,
+            shared_eigen_index_vector,
+            shared_eigen_index_vector,
+            uint offset=0,
+            R drop_prob = 0.0);
+        R masked_predict_cost(
+            shared_index_mat,
+            shared_index_mat,
+            uint,
+            shared_eigen_index_vector,
+            uint offset=0,
+            R drop_prob = 0.0);
 
-        virtual std::vector<int> reconstruct(Indexing::Index, int, int symbol_offset = 0) const;
+        virtual std::vector<int> reconstruct(
+            Indexing::Index,
+            int,
+            int symbol_offset = 0) const;
 
-        state_type get_final_activation(Indexing::Index, R drop_prob=0.0) const;
+        state_type get_final_activation(
+            Indexing::Index,
+            R drop_prob=0.0) const;
         /**
         Activate
         --------
@@ -165,20 +183,23 @@ class StackedModel : public RecurrentEmbeddingModel<R>  {
         Inputs
         ------
 
-        std::pair<std::vector<std::shared_ptr<Mat<R>>>, std::vector<std::shared_ptr<Mat<R>>>>& : previous state
+        std::pair<std::vector<Mat<R>>, std::vector<Mat<R>>>& : previous state
         uint index : embedding observation
 
         Outputs
         -------
 
-        std::pair<std::pair<vector<shared_ptr<Mat<R>>>, vector<shared_ptr<Mat<R>>>>, shared_ptr<Mat<R>> > out :
+        std::pair<std::pair<vector<Mat<R>>, vector<Mat<R>>>, Mat<R> > out :
             pair of LSTM hidden and cell states, and probabilities from the decoder.
 
         **/
         activation_t activate(state_type&, const uint& ) const;
         activation_t activate(state_type&, const eigen_index_block ) const;
 
-        virtual std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(Indexing::Index, utils::OntologyBranch::shared_branch, int) const;
+        virtual std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(
+            Indexing::Index,
+            utils::OntologyBranch::shared_branch,
+            int) const;
 
         /**
         Shallow Copy

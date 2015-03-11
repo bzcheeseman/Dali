@@ -2,8 +2,9 @@
 #define SEQUENCE_PROBABILITY_MAT_H
 
 #include <vector>
-#include "core/Graph.h"
 #include "core/utils.h"
+#include "core/Tape.h"
+#include "core/Mat.h"
 
 namespace sequence_probability {
 
@@ -37,16 +38,16 @@ namespace sequence_probability {
         typedef std::vector<uint> seq_type;
         typedef std::tuple<std::vector<uint>, typename model_t::value_t, typename model_t::state_type > open_list_t;
 
-        Graph<typename model_t::value_t> G(false);
+        graph::NoBackprop nb;
         int n = ex.cols() * ex.rows();
 
-        auto initial_state = model.initial_states();
-        auto out_state_and_prob = model.activate(G, initial_state, example(0));
+        auto initial_state      = model.initial_states();
+        auto out_state_and_prob = model.activate(initial_state, example(0));
 
         typename model_t::value_t log_prob = 0.0;
 
         for (int i = 1; i < n; i++) {
-            out_state_and_prob = model.activate(G, std::get<0>(out_state_and_prob), example(i));
+            out_state_and_prob = model.activate(std::get<0>(out_state_and_prob), example(i));
             log_prob += std::log(out_state_and_prob.second->w(example(i))) + log_prob;
         }
         return log_prob;
@@ -55,7 +56,7 @@ namespace sequence_probability {
     // TODO: generalize this to multiple input sequences and output the probability of each example at
     // their end points, a vector of model_t::value_t
     template<typename model_t, typename K, typename C>
-    std::shared_ptr<Mat<typename model_t::value_t>> sequence_probabilities(
+    Mat<typename model_t::value_t> sequence_probabilities(
         const model_t& model,
         K& data,
         C& codelens) {
@@ -63,37 +64,47 @@ namespace sequence_probability {
         typedef std::tuple<std::vector<uint>, typename model_t::value_t, typename model_t::state_type > open_list_t;
         typedef Mat<typename model_t::value_t> mat;
 
-        Graph<typename model_t::value_t> G(false);
+        graph::NoBackprop nb;
 
         auto initial_state      = model.initial_states();
-        auto out_state_and_prob = model.activate(G, initial_state, data.col(0));
-        auto log_prob           = std::make_shared<mat>(data.rows(), data.cols()-1);
+        auto out_state_and_prob = model.activate(initial_state, data.col(0));
+        auto log_prob           = mat(data.rows(), data.cols()-1);
 
         int n = data.cols();
 
         auto data_pluck = Indexing::Index::arange(0, data.rows());
 
-        log_prob->w.col(0) = G.rows_cols_pluck(std::get<1>(out_state_and_prob), data.col(1), data_pluck)->w.row(0).transpose().array().log();
+        log_prob.w().col(0) = std::get<1>(out_state_and_prob).rows_cols_pluck(
+            data.col(1),
+            data_pluck
+        ).w().row(0).transpose().array().log();
 
         for (int i = 1; i < n-1; i++) {
-            out_state_and_prob = model.activate(G, std::get<0>(out_state_and_prob), data.col(i));
-            auto plucked_activations = G.rows_cols_pluck(std::get<1>(out_state_and_prob), data.col(i+1), data_pluck);
-            log_prob->w.col(i).array() += plucked_activations->w.row(0).transpose().array().log() + log_prob->w.col(i-1).array();
+            out_state_and_prob = model.activate(
+                std::get<0>(out_state_and_prob),
+                data.col(i)
+            );
+            auto plucked_activations = std::get<1>(out_state_and_prob).rows_cols_pluck(
+                data.col(i+1),
+                data_pluck
+            );
+            log_prob.w().col(i).array() += plucked_activations.w().row(0).transpose().array().log() + log_prob.w().col(i-1).array();
         }
 
         // inelegant manner of dealing with scalar corrections on codelens:
-        auto relevant_log_prob = G.rows_cols_pluck(log_prob, data_pluck, (codelens.array() - (uint)1).matrix());
+        auto relevant_log_prob = log_prob.rows_cols_pluck(
+            data_pluck,
+            (codelens.array() - (uint)1).matrix()
+        );
 
         return relevant_log_prob;
     }
 
-
     #define LOG1P(X) (((X) + 1).log())
-
     #define SURPRISE(X) -(LOG1P(-(1 - (X).array()).sqrt()) - LOG1P((1 - (X).array()).sqrt()))
 
     template<typename model_t, typename K, typename C>
-    std::shared_ptr<Mat<typename model_t::value_t>> sequence_surprises(
+    Mat<typename model_t::value_t> sequence_surprises(
         const model_t& model,
         K& data,
         C& codelens) {
@@ -101,26 +112,35 @@ namespace sequence_probability {
         typedef std::tuple<std::vector<uint>, typename model_t::value_t, typename model_t::state_type > open_list_t;
         typedef Mat<typename model_t::value_t> mat;
 
-        Graph<typename model_t::value_t> G(false);
+        graph::NoBackprop nb;
 
         auto initial_state      = model.initial_states();
-        auto out_state_and_prob = model.activate(G, initial_state, data.col(0));
-        auto log_prob           = std::make_shared<mat>(data.rows(), data.cols()-1);
+        auto out_state_and_prob = model.activate(initial_state, data.col(0));
+        auto log_prob           = mat(data.rows(), data.cols()-1);
 
         int n = data.cols();
 
         auto data_pluck = Indexing::Index::arange(0, data.rows());
 
-        log_prob->w.col(0) = SURPRISE( G.rows_cols_pluck(std::get<1>(out_state_and_prob), data.col(1), data_pluck)->w.row(0).transpose() );
+        log_prob.w().col(0) = SURPRISE( std::get<1>(out_state_and_prob).rows_cols_pluck(data.col(1), data_pluck).w().row(0).transpose() );
 
         for (int i = 1; i < n-1; i++) {
-            out_state_and_prob = model.activate(G, std::get<0>(out_state_and_prob), data.col(i));
-            auto plucked_activations = G.rows_cols_pluck(std::get<1>(out_state_and_prob), data.col(i+1), data_pluck);
-            log_prob->w.col(i).array() += SURPRISE(plucked_activations->w.row(0).transpose().array()) + log_prob->w.col(i-1).array();
+            out_state_and_prob = model.activate(
+                std::get<0>(out_state_and_prob),
+                data.col(i)
+            );
+            auto plucked_activations = std::get<1>(out_state_and_prob).rows_cols_pluck(
+                data.col(i+1),
+                data_pluck
+            );
+            log_prob.w().col(i).array() += SURPRISE(plucked_activations.w().row(0).transpose().array()) + log_prob.w().col(i-1).array();
         }
 
         // inelegant manner of dealing with scalar corrections on codelens:
-        auto relevant_log_prob = G.rows_cols_pluck(log_prob, data_pluck, (codelens.array() - (uint)1).matrix());
+        auto relevant_log_prob = log_prob.rows_cols_pluck(
+            data_pluck,
+            (codelens.array() - (uint)1).matrix()
+        );
 
         return relevant_log_prob;
     }

@@ -80,6 +80,7 @@ struct MatOps {
     static Mat<R> sub_broadcast_reversed(Mat<R>, Mat<R>);
 
     static Mat<R> add(std::initializer_list<Mat<R>>);
+    static Mat<R> add(const std::vector<Mat<R>>&);
     static Mat<R> square(Mat<R>);
 
     static Mat<R> sum(Mat<R>);
@@ -88,8 +89,13 @@ struct MatOps {
     static Mat<R> log(Mat<R>);
     static Mat<R> exp(Mat<R>);
 
-    static Mat<R> binary_cross_entropy(Mat<R>, R);
+    /**
+    Binary Cross entropy error:
 
+    D_{KL}(p || q) = sum_i { (1-p_i) * log(1 - q_i) -p_i log (q_i) }
+
+    **/
+    static Mat<R> binary_cross_entropy(Mat<R>, R);
     static Mat<R> sigmoid_binary_cross_entropy(Mat<R>, R);
     static Mat<R> cross_entropy(Mat<R>, uint answer_idx);
     static Mat<R> softmax_cross_entropy(Mat<R> matrix, uint answer_idx);

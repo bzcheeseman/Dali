@@ -20,11 +20,13 @@ typedef unsigned int dim_t;
 
 template<typename R>
 class MatInternal {
-    typedef Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
-    typedef Eigen::Map<eigen_mat> eigen_mat_view;
     private:
         static std::atomic<int> next_matrix;
     public:
+        typedef Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
+        typedef Eigen::Map<eigen_mat> eigen_mat_view;
+
+
         eigen_mat w;
         std::vector<dim_t> dims;
         const size_t id;
@@ -36,9 +38,11 @@ class MatInternal {
 
 template<typename R>
 class GradInternal {
-    typedef Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
-    typedef Eigen::Map<eigen_mat> eigen_mat_view;
     public:
+        typedef Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
+        typedef Eigen::Map<eigen_mat> eigen_mat_view;
+
+
         eigen_mat dw;
 
         GradInternal(dim_t n, dim_t d, bool empty=true);
@@ -74,19 +78,22 @@ broadcasting across other operations).
 **/
 template<typename R>
 class Mat {
-    typedef Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
-    typedef Eigen::Map<eigen_mat> eigen_mat_view;
     private:
         std::shared_ptr<MatInternal<R>> m;
         std::shared_ptr<GradInternal<R>> g;
 
     public:
+
+        typedef Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
+        typedef Eigen::Map<eigen_mat> eigen_mat_view;
+
+
         std::shared_ptr<std::string> name = nullptr;
 
         // TODO(jonathan): wtf!
         bool sparse = false;
         std::shared_ptr<std::vector<uint>> sparse_row_keys;
-    public:
+
         Mat();
 
         // Initializes with zeros;

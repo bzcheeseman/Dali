@@ -44,22 +44,23 @@ int main( int argc, char* argv[]) {
     const int SEED = 80085;
     const int INPUT_SIZE = 2;
     const int OUTPUT_SIZE = 1;
-    const int MEMORY_SIZE = 10;
-    const int HIDDEN_SIZE = 5;
+    const int MEMORY_SIZE = 5;
 
     // Initialize random number generator.
     srand(SEED);
 
     // TIP: Since we are doing output = map * input, we put output
     //      dimension first.
-    DelayedRNN<R> rnn(INPUT_SIZE, MEMORY_SIZE, OUTPUT_SIZE);
-    Mat<R> initial_hidden = rnn.initial_states();
+    RNN<R>    rnn(INPUT_SIZE, MEMORY_SIZE);
+    Layer<R>  classifier(MEMORY_SIZE, OUTPUT_SIZE);
+    Mat<R>    rnn_initial(MEMORY_SIZE, 1);
 
-    vector<Mat<R>> params = rnn.parameters();
-
-    params.push_back(initial_hidden);
-
-
+    auto rnn_params = rnn.parameters();
+    auto classifier_params = classifier.parameters();
+    vector<Mat<R>> params;
+    params.push_back(rnn_initial);
+    params.insert(params.end(), rnn_params.begin(), rnn_params.end());
+    params.insert(params.end(), classifier_params.begin(), classifier_params.end());
 
     for (int epoch = 0; epoch <= NUM_EPOCHS; ++epoch) {
         // Cross entropy bit error
@@ -80,18 +81,20 @@ int main( int argc, char* argv[]) {
             res_bits =              bitset<NUM_BITS> (res);
             predicted_res_bits =    bitset<NUM_BITS> (predicted_res);
 
-            Mat<R> prev_hidden = initial_hidden;
-            Mat<R> error(1,1, true);
+            Mat<R> prev_hidden = rnn_initial;
+            Mat<R> error(1,1);
             for (int i=0; i< NUM_BITS; ++i) {
                 Mat<R> input_i(INPUT_SIZE, 1);
                 input_i.w()(0,0) = a_bits[i];
                 input_i.w()(1,0) = b_bits[i];
 
-                Mat<R> output_i;
-                std::tie(prev_hidden, output_i) = rnn.activate(input_i, prev_hidden.tanh());
+                prev_hidden = rnn.activate(input_i, prev_hidden).tanh();
+                Mat<R> output_i = classifier.activate(prev_hidden);
                 predicted_res_bits[i] = output_i.w()(0,0) < 0.5 ? 0 : 1;
                 epoch_bit_error += res_bits[i] != predicted_res_bits[i];
-                error = error + MatOps<R>::sigmoid_binary_cross_entropy(output_i, (R)res_bits[i]);
+
+                // error = error + MatOps<R>::sigmoid_binary_cross_entropy(output_i, (R)res_bits[i]);
+                // error = error + MatOps<R>::binary_cross_entropy(output_i.sigmoid(), (R)res_bits[i]);
                 // error = error + (output_i.sigmoid() - (R)res_bits[i]).square();
             }
             predicted_res = predicted_res_bits.to_ulong();

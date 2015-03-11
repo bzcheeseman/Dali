@@ -234,16 +234,21 @@ Mat<R> MatOps<R>::sub_broadcast_reversed(Mat<R> matrix1, Mat<R> matrix2) {
 
 template<typename R>
 Mat<R> MatOps<R>::add(std::initializer_list<Mat<R>> matrices) {
+    auto matrices_vector = vector<Mat<R>>(matrices);
+    return add(matrices_vector);
+}
+
+template<typename R>
+Mat<R> MatOps<R>::add(const std::vector<Mat<R>>& matrices) {
     Mat<R> out = Mat<R>(
         (*matrices.begin()).dims(0),
         (*matrices.begin()).dims(1),
         false);
-    auto matrices_vector = vector<Mat<R>>(matrices);
-    for (auto& matrix : matrices_vector)
+    for (auto& matrix : matrices)
         out.w() += matrix.w();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrices_vector, out]() {
-            for (auto& matrix : matrices_vector) {
+        graph::emplace_back([matrices, out]() {
+            for (auto& matrix : matrices) {
                 matrix.dw().noalias() += out.dw();
             }
         });
@@ -348,14 +353,18 @@ Mat<R> MatOps<R>::sigmoid_binary_cross_entropy(Mat<R> matrix, R t) {
     assert(matrix.dims().size() > 1);
     Mat<R> out =  Mat<R>(matrix.dims(0), matrix.dims(1), false);
 
-    auto x = matrix.w().array().unaryExpr(utils::sigmoid_operator<R>());
+    auto sigmoided_input = std::make_shared<typename Mat<R>::eigen_mat>(
+        matrix.w().array().unaryExpr(utils::sigmoid_operator<R>())
+    );
 
-    out.w() = (-(t * (x + EPS).log() + (1.0-t) * (1.0 - x + EPS).log())).matrix();
+    out.w() = -(
+                          t  * ( sigmoided_input->array()   + EPS      ).log()
+                + ( 1.0 - t) * ( 1.00000001 - sigmoided_input->array() ).log()
+    ).matrix();
 
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, t, out, x](){
-            auto x = matrix.w().array();
-            matrix.dw().array() += (x - t) * out.dw().array();
+        graph::emplace_back([matrix, t, out, sigmoided_input](){
+            matrix.dw().array() += (sigmoided_input->array() - t) * out.dw().array();
             assert(matrix.dw().array().abs().sum() < 10e25);
             assert(out.dw().array().abs().sum() < 10e25);
 
@@ -788,12 +797,6 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(
             input_to_2.dw().noalias() += matrix2.w().transpose() * (out.dw());
             // bias vector:
             bias.dw().noalias() += out.dw().rowwise().sum();
-            assert(matrix1.dw().array().abs().sum() < 10e25);
-            assert(matrix2.dw().array().abs().sum() < 10e25);
-            assert(input_to_1.dw().array().abs().sum() < 10e25);
-            assert(input_to_2.dw().array().abs().sum() < 10e25);
-            assert(bias.dw().array().abs().sum() < 10e25);
-
         });
     return out;
 }

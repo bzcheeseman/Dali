@@ -183,10 +183,7 @@ std::vector<Mat<R>> StackedInputLayer<R>::parameters() const{
 template<typename R>
 void RNN<R>::create_variables() {
     R upper = 1. / sqrt(input_size);
-    std::cout << "sIEMA " << std::endl;
     Wx = Mat<R>(output_size, input_size,  -upper, upper);
-    std::cout << "sIEMA2 " << std::endl;
-
     upper = 1. / sqrt(hidden_size);
 
     Wh = Mat<R>(output_size, hidden_size, -upper, upper);
@@ -241,11 +238,11 @@ Mat<R> DelayedRNN<R>::initial_states() const {
 }
 
 template<typename R>
-std::pair<Mat<R>, Mat<R>> DelayedRNN<R>::activate(
+std::tuple<Mat<R>,Mat<R>> DelayedRNN<R>::activate(
         Mat<R> input_vector,
         Mat<R> prev_hidden) const {
 
-    return std::pair<Mat<R>, Mat<R>>(
+    return std::make_tuple(
         hidden_rnn.activate(input_vector, prev_hidden),
         output_rnn.activate(input_vector, prev_hidden)
     );

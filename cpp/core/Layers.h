@@ -133,7 +133,7 @@ class DelayedRNN : public AbstractLayer<R> {
         Mat<R> initial_states() const;
 
         // output (next_hidden, output)
-        std::pair<Mat<R>, Mat<R>> activate(Mat<R> input_vector, Mat<R> prev_hidden) const;
+        std::tuple<Mat<R>,Mat<R>> activate(Mat<R> input_vector, Mat<R> prev_hidden) const;
         DelayedRNN<R> shallow_copy() const;
 };
 

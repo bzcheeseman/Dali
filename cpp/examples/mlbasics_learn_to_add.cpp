@@ -38,7 +38,7 @@ int main( int argc, char* argv[]) {
 
     for (int i = 0; i < ITERATIONS; ++i) {
         // What the network predicts the output will be.
-        mat predY = X.mul(W);
+        mat predY = X.dot(W);
         // Squared error between desired and actual output
         // E = sum((Ypred-Y)^2)
         mat error = (predY - Y).square().sum();

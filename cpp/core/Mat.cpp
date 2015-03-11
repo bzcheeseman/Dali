@@ -15,12 +15,12 @@ template<typename R>
 std::atomic<int> MatInternal<R>::next_matrix(0);
 
 template<typename R>
-MatInternal<R>::MatInternal(dim_t n, dim_t d, bool empty) :
+MatInternal<R>::MatInternal(dim_t n, dim_t d, bool fill_zeros) :
         w(n, d),
         dims({n, d}),
         id(next_matrix++) {
-    if (empty) {
-        w = eigen_mat::Zero(dims[0], dims[1]);
+    if (fill_zeros) {
+        w.fill(0);
     }
 }
 template<typename R>
@@ -33,10 +33,10 @@ MatInternal<R>::MatInternal(const MatInternal<R>& m) :
 /* GradInternal */
 
 template<typename R>
-GradInternal<R>::GradInternal(dim_t n, dim_t d, bool empty) :
+GradInternal<R>::GradInternal(dim_t n, dim_t d, bool fill_zeros) :
         dw(n, d) {
-    if (empty) {
-        dw = eigen_mat::Zero(n, d);
+    if (fill_zeros) {
+        dw.fill(0);
     }
 }
 
@@ -79,14 +79,17 @@ const int& Mat<R>::id() const {
 }
 
 template<typename R>
-Mat<R>::Mat (dim_t n, dim_t d, bool empty) : name(nullptr) {
+Mat<R>::Mat (dim_t n, dim_t d) : Mat(n,d, true) {
+}
+
+
+template<typename R>
+Mat<R>::Mat (dim_t n, dim_t d, bool fill_zeros) : name(nullptr) {
     // sometimes we don't need to reset m
     // (for example if it's about to be assigned).
-    m = make_shared<MatInternal<R>>(n, d, empty);
+    m = make_shared<MatInternal<R>>(n, d, fill_zeros);
     // We always reset the grad calculation
     g = make_shared<GradInternal<R>>(n, d, true);
-
-
 }
 
 template<typename R>
@@ -198,7 +201,7 @@ void Mat<R>::print() const {
                               << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
                               << this->w()(i,j) << " ";
             }
-            std::cout << (i == dims(0)-1 ? "]" : "\n");
+            std::cout << (i == dims(0) - 1 ? "]" : "\n");
     }
     std::cout << std::endl;
 }
@@ -436,7 +439,7 @@ Mat<R> Mat<R>::Empty(dim_t n, dim_t d) {
     // use an empty matrix and modify
     // it so as to not incur the filling
     // with zeros cost.
-    return Mat(n, d, true);
+    return Mat(n, d, false);
 }
 
 template<typename R>
@@ -457,6 +460,16 @@ Mat<R> Mat<R>::operator+(Mat<R> other) {
 template<typename R>
 Mat<R> Mat<R>::operator-(Mat<R> other) {
     return MatOps<R>::sub(*this, other);
+}
+
+template<typename R>
+Mat<R> Mat<R>::operator+(R other) {
+    return MatOps<R>::add(*this, other);
+}
+
+template<typename R>
+Mat<R> Mat<R>::operator-(R other) {
+    return MatOps<R>::add(*this, -other);
 }
 
 

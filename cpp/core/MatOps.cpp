@@ -18,7 +18,7 @@ Mat<R> MatOps<R>::eltmul_broadcast(
             MS() << "Matrices " << matrix1 << " and " << matrix2
                  << " cannot be element multiplied with broadcast,"
                  << " they do not have the same dimensions.");
-    Mat<R> out(matrix1.dims(0), matrix1.dims(1), true);
+    Mat<R> out(matrix1.dims(0), matrix1.dims(1), false);
     out.w() = (matrix1.w().array().colwise() * matrix2.w().col(0).array()).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
@@ -43,7 +43,7 @@ Mat<R> MatOps<R>::eltmul(
     Mat<R> out (
         matrix1.dims(0),
         matrix1.dims(1),
-        true);
+        false);
     out.w() = (matrix1.w().array() * matrix2.w().array()).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
@@ -62,7 +62,7 @@ Mat<R> MatOps<R>::eltmul(
     Mat<R> out (
         matrix.dims(0),
         matrix.dims(1),
-        true);
+        false);
     out.w() = (matrix.w().array() * alpha).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, alpha, out]() {
@@ -81,7 +81,7 @@ Mat<R> MatOps<R>::eltmul_broadcast_rowwise(
     Mat<R> out (
             matrix1.dims(0),
             matrix1.dims(1),
-            true);
+            false);
     out.w() = (matrix1.w().array().rowwise() * row_vector.w().row(0).array()).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, row_vector, out]() {
@@ -101,7 +101,7 @@ Mat<R> MatOps<R>::eltmul_rowwise(
     Mat<R> out (
         matrix1.dims(0),
         matrix1.dims(1),
-        true);
+        false);
     out.w() = (matrix1.w().array() * matrix2.w().transpose().array()).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
@@ -126,7 +126,7 @@ Mat<R> MatOps<R>::add(
     Mat<R> out = Mat<R>(
         matrix1.dims(0),
         matrix1.dims(1),
-        true);
+        false);
     out.w() = matrix1.w() + matrix2.w();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
@@ -152,12 +152,28 @@ Mat<R> MatOps<R>::sub(
     Mat<R> out = Mat<R>(
         matrix1.dims(0),
         matrix1.dims(1),
-        true);
+        false);
     out.w() = matrix1.w() - matrix2.w();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
             matrix1.dw().noalias() += out.dw();
             matrix2.dw().noalias() -= out.dw();
+        });
+    return out;
+}
+
+template<typename R>
+Mat<R> MatOps<R>::add(
+        Mat<R> matrix1,
+        R alpha) {
+    Mat<R> out = Mat<R>(
+        matrix1.dims(0),
+        matrix1.dims(1),
+        false);
+    out.w().array() = matrix1.w().array() + alpha;
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix1, out]() {
+            matrix1.dw().noalias() += out.dw();
         });
     return out;
 }
@@ -170,7 +186,7 @@ Mat<R> MatOps<R>::add_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
     Mat<R> out = Mat<R>(
             matrix1.dims(0),
             matrix1.dims(1),
-            true);
+            false);
     out.w() = (matrix1.w().colwise() + matrix2.w().col(0)).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
@@ -188,7 +204,7 @@ Mat<R> MatOps<R>::sub_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
     Mat<R> out = Mat<R>(
         matrix1.dims(0),
         matrix1.dims(1),
-        true);
+        false);
     out.w() = (matrix1.w().colwise() - matrix2.w().col(0)).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
@@ -206,7 +222,7 @@ Mat<R> MatOps<R>::sub_broadcast_reversed(Mat<R> matrix1, Mat<R> matrix2) {
     Mat<R> out = Mat<R>(
         matrix1.dims(0),
         matrix1.dims(1),
-        true);
+        false);
     out.w() = ((-matrix1.w()).colwise() + matrix2.w().col(0)).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out] () {
@@ -239,7 +255,7 @@ Mat<R> MatOps<R>::square(Mat<R> matrix) {
     Mat<R> out (
             matrix.dims(0),
             matrix.dims(1),
-            true);
+            false);
     out.w() = matrix.w().array().square();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out]() {
@@ -253,7 +269,7 @@ Mat<R> MatOps<R>::sigmoid(Mat<R> matrix) {
     Mat<R> out (
             matrix.dims(0),
             matrix.dims(1),
-            true);
+            false);
     out.w() = matrix.w().unaryExpr(utils::sigmoid_operator<R>());
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out](){
@@ -292,7 +308,7 @@ Mat<R> MatOps<R>::steep_sigmoid(Mat<R> matrix, R aggressiveness) {
     Mat<R> out (
         matrix.dims(0),
         matrix.dims(1),
-        true);
+        false);
     out.w() = matrix.w().unaryExpr(utils::steep_sigmoid_operator<R>(aggressiveness));
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out, aggressiveness](){
@@ -303,7 +319,7 @@ Mat<R> MatOps<R>::steep_sigmoid(Mat<R> matrix, R aggressiveness) {
 
 template<typename R>
 Mat<R> MatOps<R>::sum(Mat<R> matrix) {
-    Mat<R> out (1,1,true);
+    Mat<R> out (1,1,false);
     out.w()(0) = matrix.w().array().sum();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out]() {
@@ -315,7 +331,7 @@ Mat<R> MatOps<R>::sum(Mat<R> matrix) {
 
 template<typename R>
 Mat<R> MatOps<R>::mean(Mat<R> matrix) {
-    Mat<R> out (1,1,true);
+    Mat<R> out (1,1,false);
     out.w()(0) = matrix.w().array().mean();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out](){
@@ -330,11 +346,7 @@ template<typename R>
 Mat<R> MatOps<R>::sigmoid_binary_cross_entropy(Mat<R> matrix, R t) {
     assert(0 <= t && t <= 1);
     assert(matrix.dims().size() > 1);
-    DEBUG_ASSERT_BOUNDS(matrix.w(),0.0,1.0 + EPS);
-    Mat<R> out =  Mat<R>(
-        matrix.dims(0),
-        matrix.dims(1),
-        true);
+    Mat<R> out =  Mat<R>(matrix.dims(0), matrix.dims(1), false);
 
     auto x = matrix.w().array().unaryExpr(utils::sigmoid_operator<R>());
 
@@ -343,7 +355,10 @@ Mat<R> MatOps<R>::sigmoid_binary_cross_entropy(Mat<R> matrix, R t) {
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, t, out, x](){
             auto x = matrix.w().array();
-            matrix.dw().array() += (t - x) * out.dw().array();
+            matrix.dw().array() += (x - t) * out.dw().array();
+            assert(matrix.dw().array().abs().sum() < 10e25);
+            assert(out.dw().array().abs().sum() < 10e25);
+
         });
     return out;
 }
@@ -355,7 +370,7 @@ Mat<R> MatOps<R>::binary_cross_entropy(Mat<R> matrix, R t) {
     Mat<R> out =  Mat<R>(
         matrix.dims(0),
         matrix.dims(1),
-        true);
+        false);
 
     auto x = matrix.w().array();
 
@@ -377,7 +392,7 @@ template<typename R>
 Mat<R> MatOps<R>::cross_entropy(Mat<R> matrix, uint answer_idx) {
     DEBUG_ASSERT_BOUNDS(matrix.w(),0.0,1.0 + EPS);
     assert(matrix.dims().size() > 1);
-    Mat<R> out =  Mat<R>(1, 1, true);
+    Mat<R> out =  Mat<R>(1, 1, false);
 
     auto x = matrix.w().array();
 
@@ -396,7 +411,7 @@ Mat<R> MatOps<R>::cross_entropy(Mat<R> matrix, uint answer_idx) {
 
 template<typename R>
 Mat<R> MatOps<R>::softmax_cross_entropy(Mat<R> matrix, uint answer_idx) {
-    Mat<R> out =  Mat<R>(1, 1, true);
+    Mat<R> out =  Mat<R>(1, 1, false);
 
     Mat<R> probs = softmax(matrix);
     out.w()(0,0) = -std::log(probs.w()(answer_idx, 0));
@@ -416,7 +431,7 @@ Mat<R> MatOps<R>::log(Mat<R> matrix) {
     Mat<R> out (
         matrix.dims(0),
         matrix.dims(1),
-        true);
+        false);
     out.w() = matrix.w().array().log();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out](){
@@ -431,7 +446,7 @@ Mat<R> MatOps<R>::exp(Mat<R> matrix) {
     Mat<R> out (
         matrix.dims(0),
         matrix.dims(1),
-        true);
+        false);
     out.w() = matrix.w().array().exp();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out](){
@@ -447,7 +462,7 @@ Mat<R> MatOps<R>::hstack(Mat<R> matrix1, Mat<R> matrix2) {
     Mat<R> out (
         matrix1.dims(0),
         matrix1.dims(1) + matrix2.dims(1),
-        true
+        false
     );
     out.w().block(0,0, matrix1.dims(0), matrix1.dims(1)) = matrix1.w();
     out.w().block(0,matrix1.dims(1), matrix2.dims(0), matrix2.dims(1)) = matrix2.w();
@@ -482,7 +497,7 @@ Mat<R> MatOps<R>::hstack(const std::vector<Mat<R>>& matrices) {
     Mat<R> out (
         n,
         d_total,
-        true
+        false
     );
     int offset = 0;
     for (auto& mat : matrices) {
@@ -507,7 +522,7 @@ Mat<R> MatOps<R>::vstack(Mat<R> matrix1, Mat<R> matrix2) {
     Mat<R> out (
         matrix1.dims(0) + matrix2.dims(0),
         matrix1.dims(1),
-        true
+        false
     );
     out.w().block(0,0, matrix1.dims(0), matrix1.dims(1)) = matrix1.w();
     out.w().block(matrix1.dims(0),0, matrix2.dims(0), matrix2.dims(1)) = matrix2.w();
@@ -540,7 +555,7 @@ Mat<R> MatOps<R>::vstack(const std::vector<Mat<R>>& matrices) {
     Mat<R> out (
         n_total,
         d,
-        true
+        false
     );
     int offset = 0;
     for (auto& mat : matrices) {
@@ -564,7 +579,7 @@ Mat<R> MatOps<R>::transpose(Mat<R> matrix) {
     Mat<R> out (
         matrix.dims(1),
         matrix.dims(0),
-        true);
+        false);
     out.w() = matrix.w().transpose();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out](){
@@ -578,7 +593,7 @@ Mat<R> MatOps<R>::tanh(Mat<R> matrix) {
     Mat<R> out (
         matrix.dims(0),
         matrix.dims(1),
-        true);
+        false);
     out.w() = matrix.w().unaryExpr(utils::tanh_operator<R>());
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out](){
@@ -592,7 +607,7 @@ Mat<R> MatOps<R>::relu(Mat<R> matrix) {
     Mat<R> out (
         matrix.dims(0),
         matrix.dims(1),
-        true);
+        false);
     out.w() = matrix.w().unaryExpr(utils::relu_operator<R>());
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out](){
@@ -610,7 +625,7 @@ Mat<R> MatOps<R>::mul(
     Mat<R> out (
         matrix1.dims(0),
         matrix2.dims(1),
-        true);
+        false);
     out.w() = matrix1.w() * matrix2.w();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out](){
@@ -632,7 +647,7 @@ Mat<R> MatOps<R>::mul_with_bias(
     Mat<R> out (
             matrix1.dims(0),
             matrix2.dims(1),
-            true);
+            false);
     out.w() = ((matrix1.w() * matrix2.w()).colwise() + bias.w().col(0)).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, bias, out]() {
@@ -659,7 +674,7 @@ Mat<R> MatOps<R>::mul_add_broadcast_mul_with_bias(
     Mat<R> out (
             matrix1.dims(0),
             input_to_2.dims(1),
-            true);
+            false);
     // both input to 1 and bias are columns,
     // so we add both of those before adding the true matrix
     // product in broadcasted form
@@ -699,7 +714,7 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(const vector<Mat<R>>& matrices) {
     Mat<R> out (
             matrices[0].dims(0),
             matrices[1].dims(1),
-            false);
+            true);
     auto matrices_ptr = matrices.begin();
     while (matrices_ptr != (matrices.end() - 1)) {
         out.w() += (*matrices_ptr).w()* (*(matrices_ptr + 1)).w();
@@ -735,6 +750,7 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(
     Mat<R> matrix2,
     Mat<R> input_to_2,
     Mat<R> bias) {
+    DEBUG_ASSERT_NOT_NAN(bias.w());
     if (matrix1.dims(1) != input_to_1.dims(0))
         throw std::invalid_argument("matmul 1 dimensions misaligned.");
     if (matrix2.dims(1) != input_to_2.dims(0))
@@ -750,15 +766,15 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(
     Mat<R> out (
             matrix1.dims(0),
             input_to_1.dims(1),
-            true);
+            false);
     out.w() = (
-              (
                   (
-                      (matrix1.w() * input_to_1.w()) +
-                      (matrix2.w() * input_to_2.w())
-                  )
-              ).colwise() + bias.w().col(0)
-          ).matrix();
+                      (
+                          (matrix1.w() * input_to_1.w()) +
+                          (matrix2.w() * input_to_2.w())
+                      )
+                  ).colwise() + bias.w().col(0)
+              ).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, input_to_1, matrix2, input_to_2, bias, out](){
             // first multiply:
@@ -772,6 +788,12 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(
             input_to_2.dw().noalias() += matrix2.w().transpose() * (out.dw());
             // bias vector:
             bias.dw().noalias() += out.dw().rowwise().sum();
+            assert(matrix1.dw().array().abs().sum() < 10e25);
+            assert(matrix2.dw().array().abs().sum() < 10e25);
+            assert(input_to_1.dw().array().abs().sum() < 10e25);
+            assert(input_to_2.dw().array().abs().sum() < 10e25);
+            assert(bias.dw().array().abs().sum() < 10e25);
+
         });
     return out;
 }
@@ -784,7 +806,7 @@ Mat<R> MatOps<R>::rows_pluck(
     Mat<R> out (
         matrix.dims(1),
         indices.size(),
-        true);
+        false);
 
     for (std::size_t offset = 0; offset < indices.size(); ++offset) {
         out.w().col(offset) = matrix.w().row(indices[offset]).transpose();
@@ -816,7 +838,7 @@ Mat<R> MatOps<R>::dropout(
     Mat<R> out (
         matrix.dims(0),
         matrix.dims(1),
-        true);
+        false);
 
     auto bool_mat = std::make_shared<Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>>(matrix.dims(0), matrix.dims(1));
 
@@ -859,7 +881,7 @@ Mat<R> MatOps<R>::dropout_normalized(
     Mat<R> out (
         matrix.dims(0),
         matrix.dims(1),
-        true);
+        false);
 
     auto bool_mat = std::make_shared<Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>>(matrix.dims(0), matrix.dims(1));
 
@@ -894,7 +916,7 @@ Mat<R> MatOps<R>::fast_dropout(Mat<R> matrix) {
     Mat<R> out (
         matrix.dims(0),
         matrix.dims(1),
-        true);
+        false);
 
     auto randn_mat = std::make_shared<Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>>(matrix.dims(0), matrix.dims(1));
 
@@ -933,7 +955,7 @@ Mat<R> MatOps<R>::rows_cols_pluck(
         Mat<R> out (
             1,
             row_indices.size(),
-            true);
+            false);
         for (int offset = 0; offset < row_indices.size(); ++offset)
             out.w()(offset) = matrix.w()(row_indices[offset], col_indices[offset]);
     if (graph::backprop_enabled) {
@@ -955,7 +977,7 @@ template<typename R>
 Mat<R> MatOps<R>::row_pluck(
         Mat<R> matrix,
         int row) {
-    Mat<R> out (matrix.dims(1), 1, true);
+    Mat<R> out (matrix.dims(1), 1, false);
     out.w() = matrix.w().row(row).transpose();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out, row]() {

@@ -8,15 +8,14 @@
 #include <memory>
 #include <vector>
 
-#include "core/Graph.h"
 #include "core/Mat.h"
 #include "core/Reporting.h"
-#include "core/model/Recurrent.h"
-#include "core/Error.h"
+#include "core/Seq.h"
+#include "core/Layers.h"
+#include "core/SaneCrashes.h"
+#include "core/utils.h"
 
-typedef double REAL_t;
-typedef Mat<double> mat;
-typedef std::shared_ptr<mat> shared_mat;
+typedef double R;
 
 using std::bitset;
 using std::chrono::seconds;
@@ -26,6 +25,8 @@ using std::vector;
 
 
 int main( int argc, char* argv[]) {
+    sane_crashes::activate();
+
     GFLAGS_NAMESPACE::SetUsageMessage(
     "RNN Kindergarden - Lesson 2 - RNN learning to add binary numbers.");
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
@@ -51,8 +52,14 @@ int main( int argc, char* argv[]) {
 
     // TIP: Since we are doing output = map * input, we put output
     //      dimension first.
-    model::RNN<double> rnn(INPUT_SIZE, OUTPUT_SIZE, MEMORY_SIZE);
-    vector<shared_mat> params = rnn.parameters();
+    DelayedRNN<R> rnn(INPUT_SIZE, MEMORY_SIZE, OUTPUT_SIZE);
+    Mat<R> initial_hidden = rnn.initial_states();
+
+    vector<Mat<R>> params = rnn.parameters();
+
+    params.push_back(initial_hidden);
+
+
 
     for (int epoch = 0; epoch <= NUM_EPOCHS; ++epoch) {
         // Cross entropy bit error
@@ -71,43 +78,34 @@ int main( int argc, char* argv[]) {
             a_bits =                bitset<NUM_BITS> (a);
             b_bits =                bitset<NUM_BITS> (b);
             res_bits =              bitset<NUM_BITS> (res);
-            predicted_res_bits =    bitset<NUM_BITS>(predicted_res);
+            predicted_res_bits =    bitset<NUM_BITS> (predicted_res);
 
-            Seq<shared_mat> input;
-            Seq<shared_mat> expected_output;
-
+            Mat<R> prev_hidden = initial_hidden;
+            Mat<R> error(1,1, true);
             for (int i=0; i< NUM_BITS; ++i) {
-                shared_mat input_i = make_shared<mat>(INPUT_SIZE, 1);
-                input_i->w(0,0) = a_bits[i];
-                input_i->w(1,0) = b_bits[i];
-                input.push_back(input_i);
+                Mat<R> input_i(INPUT_SIZE, 1);
+                input_i.w()(0,0) = a_bits[i];
+                input_i.w()(1,0) = b_bits[i];
 
-                auto expected_output_i = make_shared<mat>(OUTPUT_SIZE, 1);
-                expected_output_i->w(0,0) = res_bits[i];
-                expected_output.push_back(expected_output_i);
-            }
-
-            Graph<double> G(true);
-            Seq<shared_mat> output = rnn(G, input);
-
-            for (int i=0; i< NUM_BITS; ++i)
-                predicted_res_bits[i] = output[i]->w(0,0) < 0.5 ? 0 : 1;
-            predicted_res = predicted_res_bits.to_ulong();
-
-            for (int i=0; i<NUM_BITS; ++i)
+                Mat<R> output_i;
+                std::tie(prev_hidden, output_i) = rnn.activate(input_i, prev_hidden.tanh());
+                predicted_res_bits[i] = output_i.w()(0,0) < 0.5 ? 0 : 1;
                 epoch_bit_error += res_bits[i] != predicted_res_bits[i];
+                error = error + MatOps<R>::sigmoid_binary_cross_entropy(output_i, (R)res_bits[i]);
+                // error = error + (output_i.sigmoid() - (R)res_bits[i]).square();
+            }
+            predicted_res = predicted_res_bits.to_ulong();
+            epoch_error += error.w()(0,0);
 
-            shared_mat error = Error<double>::cross_entropy(G, expected_output, output);
-
-            epoch_error += error->w(0,0);
-            error->grad();
-            G.backward();
+            error.grad();
+            graph::backward();
         }
 
-        for (auto& param: params) {
-            param->w -= (LR / ITERATIONS_PER_EPOCH) * param->dw;
-            param->dw.fill(0);
+        for (auto param: params) {
+            param.w() -= (LR / ITERATIONS_PER_EPOCH) * param.dw();
+            param.dw().fill(0);
         }
+
 
         throttled.maybe_run(seconds(2), [&]() {
             epoch_error /= ITERATIONS_PER_EPOCH;

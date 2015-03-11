@@ -88,9 +88,12 @@ class Mat {
         std::shared_ptr<std::vector<uint>> sparse_row_keys;
     public:
         Mat();
+
+        // Initializes with zeros;
+        Mat (dim_t n, dim_t d);
         // sometimes we don't need to reset m
         // (for example if it's about to be assigned).
-        Mat (dim_t n, dim_t d, bool empty=false);
+        Mat (dim_t n, dim_t d, bool fill_zeros);
         // Zero mean normal distribution for weights.
         Mat (dim_t n, dim_t d, R std);
         // uniform distribution for weights.
@@ -187,6 +190,8 @@ class Mat {
         Mat<R> operator*(R alpha);
         Mat<R> operator+(Mat<R>);
         Mat<R> operator-(Mat<R>);
+        Mat<R> operator+(R);
+        Mat<R> operator-(R);
 };
 
 template<typename R>

@@ -63,16 +63,14 @@ Let's build a stacked LSTM network. We start by including the right header:
 
 And let's populate our namespace with some goodies:
 
-    using std::pair;
+    using std::tuple;
     using std::vector;
-    using std::shared_ptr;
-    using std::make_shared;
 
 We also define some types we'll use to simplify notation:
 
     typedef Mat<float> mat;
     typedef vector<mat> cell_outputs;
-    typedef pair<cell_outputs, cell_outputs> paired_cell_outputs;
+    typedef tuple<cell_outputs, cell_outputs> paired_cell_outputs;
 
 Let's build a set of stacked cells inside our main function: 3 layers of 100 hidden units with an original input of size 50 (Note how we template the static method `StackedCells<T>` to take a `LSTM<float>` -- this is how we create multiple layers of cells with the same type: `LSTM`, `RNN`, `ShortcutRNN`, `GatedInput`, etc..):
 

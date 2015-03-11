@@ -547,6 +547,7 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
                 is_done = true;
             } else {
                 next = std::move(gen->next());
+
             }
         }
 

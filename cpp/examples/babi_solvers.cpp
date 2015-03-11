@@ -401,9 +401,9 @@ class LstmBabiModelRunner: public babi::Model {
     // TRAINING_PROCEDURE_PARAMS
     const float TRAINING_FRAC = 0.8;
     const float MINIMUM_IMPROVEMENT = 0.0001; // good one: 0.003
-    const double LONG_TERM_VALIDATION = 0.01;
+    const double LONG_TERM_VALIDATION = 0.02;
     const double SHORT_TERM_VALIDATION = 0.1;
-    const int PATIENCE = 5;
+    const int PATIENCE = 100;
 
     const T FACT_SELECTION_LAMBDA_MAX = 0.2;
     const T FACT_WORD_SELECTION_LAMBDA_MAX = 0.0001;
@@ -491,9 +491,9 @@ class LstmBabiModelRunner: public babi::Model {
                         auto story = dataset[story_id];
 
                         babi::StoryParser parser(&story);
-                        while(!parser.done()) {
-                            vector<Fact*> facts_so_far;
-                            QA* qa;
+                        vector<Fact*> facts_so_far;
+                        QA* qa;
+                        while (!parser.done()) {
                             std::tie(facts_so_far, qa) = parser.next();
                             // When we are training we want to do backprop
                             graph::NoBackprop(!training);
@@ -551,7 +551,6 @@ class LstmBabiModelRunner: public babi::Model {
                     auto training_errors = compute_errors(train, &solver, true);
                     auto validation_errors = compute_errors(validation, &solver, false);
 
-                    T baking_factor = std::min((T)epoch*epoch/(T)(BAKING_EPOCHS*BAKING_EPOCHS), 1.0);
                     std::cout << "Epoch " << ++epoch << std::endl;
                     std::cout << (cur_training_mode == GATES ? "Optimizing gates" : "Optimizing prediction") << std::endl;
                     std::cout << "Errors(prob_answer, fact_select, words_sparsity): " << std::endl
@@ -604,11 +603,9 @@ int main(int argc, char** argv) {
 
     Eigen::initParallel();
 
-    babi::benchmark_task<LstmBabiModelRunner<double>>("qa1_single-supporting-fact");
-    babi::benchmark_task<LstmBabiModelRunner<double>>("qa4_two-arg-relations");
-
-
-    babi::benchmark_task<LstmBabiModelRunner<double>>("qa2_two-supporting-facts");
-    babi::benchmark_task<LstmBabiModelRunner<double>>("qa3_three-supporting-facts");
-    //babi::benchmark<LstmBabiModelRunner<double>>();
+    // babi::benchmark_task<LstmBabiModelRunner<double>>("qa1_single-supporting-fact");
+    // babi::benchmark_task<LstmBabiModelRunner<double>>("qa4_two-arg-relations");
+    // babi::benchmark_task<LstmBabiModelRunner<double>>("qa2_two-supporting-facts");
+    // babi::benchmark_task<LstmBabiModelRunner<double>>("qa3_three-supporting-facts");
+    babi::benchmark<LstmBabiModelRunner<double>>();
 }

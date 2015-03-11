@@ -62,6 +62,8 @@ int main( int argc, char* argv[]) {
     params.insert(params.end(), rnn_params.begin(), rnn_params.end());
     params.insert(params.end(), classifier_params.begin(), classifier_params.end());
 
+    uint patience = 0;
+
     for (int epoch = 0; epoch <= NUM_EPOCHS; ++epoch) {
         // Cross entropy bit error
         double epoch_error = 0;
@@ -93,7 +95,7 @@ int main( int argc, char* argv[]) {
                 predicted_res_bits[i] = output_i.w()(0,0) < 0.5 ? 0 : 1;
                 epoch_bit_error += res_bits[i] != predicted_res_bits[i];
 
-                // error = error + MatOps<R>::sigmoid_binary_cross_entropy(output_i, (R)res_bits[i]);
+                error = error + MatOps<R>::sigmoid_binary_cross_entropy(output_i, (R)res_bits[i]);
                 // error = error + MatOps<R>::binary_cross_entropy(output_i.sigmoid(), (R)res_bits[i]);
                 // error = error + (output_i.sigmoid() - (R)res_bits[i]).square();
             }
@@ -122,6 +124,22 @@ int main( int argc, char* argv[]) {
                                               << res_bits << std::endl;
             std::cout << "    Training error: " << epoch_error << std::endl;
             std::cout << "    Average bits flipped: " << epoch_bit_error << std::endl;
+
+            if (epoch_bit_error < 1e-6)
+                patience += 1;
+            else
+                patience = 0; // bad chappie !! bad !!
         });
+
+
+
+        if (patience >= 2) {
+            std::cout << "       Training Complete      \n"
+                         "    ┌───────────────────────┐ \n"
+                         "    │Achievement Unlocked !!│ \n"
+                         "    └───────────────────────┘ \n"
+                         "                              \n";
+            exit(0);
+        }
     }
 }

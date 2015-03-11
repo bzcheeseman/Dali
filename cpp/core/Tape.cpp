@@ -22,13 +22,17 @@ namespace graph {
     }
 
     /* NoBackprop */
+    NoBackprop::NoBackprop() : NoBackprop(true) {
+    }
 
-    NoBackprop::NoBackprop() : old_value(backprop_enabled) {
-        backprop_enabled = false;
+    NoBackprop::NoBackprop(bool condition) : old_value(backprop_enabled), enabled(condition) {
+        if(enabled)
+            backprop_enabled = false;
     }
 
     NoBackprop::~NoBackprop() {
-        backprop_enabled = old_value;
+        if (enabled)
+            backprop_enabled = old_value;
     }
 
 }

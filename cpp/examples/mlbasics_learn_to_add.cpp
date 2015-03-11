@@ -41,7 +41,7 @@ int main( int argc, char* argv[]) {
         mat predY = X.mul(W);
         // Squared error between desired and actual output
         // E = sum((Ypred-Y)^2)
-        mat error = predY.sub(Y).square().sum();
+        mat error = (predY - Y).square().sum();
         // Mark error as what we compute error with respect to.
         error.grad();
         // Print error so that we know our progress.

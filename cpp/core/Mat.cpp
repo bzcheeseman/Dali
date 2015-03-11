@@ -347,6 +347,11 @@ Mat<R> Mat<R>::mul(Mat<R> other) const {
 }
 
 template<typename R>
+Mat<R> Mat<R>::dot(Mat<R> other) const {
+    return MatOps<R>::mul(*this, other);
+}
+
+template<typename R>
 Mat<R> Mat<R>::rows_pluck(
         Indexing::Index indices) {
     return MatOps<R>::rows_pluck(*this, indices);
@@ -432,6 +437,26 @@ Mat<R> Mat<R>::Empty(dim_t n, dim_t d) {
     // it so as to not incur the filling
     // with zeros cost.
     return Mat(n, d, true);
+}
+
+template<typename R>
+Mat<R> Mat<R>::operator*(Mat<R> other) {
+    return MatOps<R>::eltmul(*this, other);
+}
+
+template<typename R>
+Mat<R> Mat<R>::operator*(R alpha) {
+    return MatOps<R>::eltmul(*this, alpha);
+}
+
+template<typename R>
+Mat<R> Mat<R>::operator+(Mat<R> other) {
+    return MatOps<R>::add(*this, other);
+}
+
+template<typename R>
+Mat<R> Mat<R>::operator-(Mat<R> other) {
+    return MatOps<R>::sub(*this, other);
 }
 
 

@@ -492,13 +492,13 @@ class LstmBabiModelRunner: public babi::Model {
 
                         babi::StoryParser parser(&story);
                         while(!parser.done()) {
-                            auto example = parser.next();
+                            vector<Fact*> facts_so_far;
+                            QA* qa;
+                            std::tie(facts_so_far, qa) = parser.next();
                             // When we are training we want to do backprop
                             graph::NoBackprop(!training);
                             // When we are training we want to use dropout
-                            auto errors = thread_model.errors(example.first, // facts_so_far
-                                                              example.second, // QA
-                                                              training);
+                            auto errors = thread_model.errors(facts_so_far, qa, training);
                             for (int i=0; i<3; ++i)
                                 thread_error[ThreadPool::get_thread_number()][i] += errors[i].w()(0,0);
 

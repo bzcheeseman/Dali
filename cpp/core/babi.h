@@ -7,6 +7,7 @@
 #include <functional>
 #include <iostream>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include "core/ThreadPool.h"
@@ -189,7 +190,7 @@ namespace babi {
         }
     }
 
-    typedef std::pair<std::vector<Fact*>, QA*> sp_ret_t;
+    typedef std::tuple<std::vector<Fact*>, QA*> sp_ret_t;
 
     class StoryParser : public utils::Generator<sp_ret_t> {
         std::vector<Fact*> facts_so_far;

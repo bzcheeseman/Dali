@@ -196,13 +196,13 @@ namespace babi {
             if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
                 facts_so_far.push_back(f);
             } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
-                return sp_ret_t(facts_so_far, qa);
+                return std::make_tuple(facts_so_far, qa);
             }
         }
     }
 
     bool StoryParser::done() {
-        return story_idx < story->size();
+        return story_idx >= story->size();
     }
 };
 

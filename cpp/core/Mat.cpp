@@ -297,6 +297,25 @@ Mat<R> Mat<R>::square() {
 }
 
 template<typename R>
+Mat<R> Mat<R>::sqrt() {
+    return MatOps<R>::sqrt(*this);
+}
+
+template<typename R>
+Mat<R> Mat<R>::pow(R power) {
+    return MatOps<R>::pow(*this, power);
+}
+template<typename R>
+Mat<R> Mat<R>::pow(int power) {
+    return MatOps<R>::pow(*this, (R) power);
+}
+
+template<typename R>
+Mat<R> Mat<R>::elt_inv() {
+    return MatOps<R>::elt_inv(*this);
+}
+
+template<typename R>
 Mat<R> Mat<R>::sigmoid() {
     return MatOps<R>::sigmoid(*this);
 }
@@ -472,6 +491,15 @@ Mat<R> Mat<R>::operator-(R other) {
     return MatOps<R>::add(*this, -other);
 }
 
+template<typename R>
+Mat<R> Mat<R>::operator^(R other) {
+    return MatOps<R>::pow(*this, other);
+}
+
+template<typename R>
+Mat<R> Mat<R>::operator^(int other) {
+    return MatOps<R>::pow(*this, (R) other);
+}
 
 template<typename R>
 std::ostream& operator<<(std::ostream& strm, const Mat<R>& a) {

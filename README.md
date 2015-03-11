@@ -32,9 +32,9 @@ Now let's multiply them:
 
     auto C = A * B;
 
-Now's let take the gradient of the sum of this operation:
+Now's let take the gradient of the squared sum of this operation:
 
-    auto error = C.sum();
+    auto error = (C ^ 2).sum();
 
 And get the gradient of error with respect to A and B:
 

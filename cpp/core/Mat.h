@@ -192,6 +192,10 @@ class Mat {
         Mat<R> rows_pluck(Indexing::Index) const;
         Mat<R> rows_cols_pluck(Indexing::Index, Indexing::Index) const;
         Mat<R> row_pluck(int) const;
+        Mat<R> pow(R);
+        Mat<R> pow(int);
+        Mat<R> sqrt();
+        Mat<R> elt_inv();
 
         Mat<R> operator*(Mat<R> other);
         Mat<R> operator*(R alpha);
@@ -199,6 +203,8 @@ class Mat {
         Mat<R> operator-(Mat<R>);
         Mat<R> operator+(R);
         Mat<R> operator-(R);
+        Mat<R> operator^(R);
+        Mat<R> operator^(int);
 };
 
 template<typename R>
@@ -206,9 +212,9 @@ std::ostream& operator<<(std::ostream&, const Mat<R>&);
 
 // define hash code for matrices:
 namespace std {
-        template <typename R> struct hash<Mat<R>> {
-                std::size_t operator()(const Mat<R>&) const;
-        };
+    template <typename R> struct hash<Mat<R>> {
+            std::size_t operator()(const Mat<R>&) const;
+    };
 }
 
 namespace utils {

@@ -4,7 +4,6 @@
 #include "core/Mat.h"
 #include "core/Tape.h"
 
-
 using std::vector;
 using std::string;
 using utils::assert2;
@@ -265,6 +264,69 @@ Mat<R> MatOps<R>::square(Mat<R> matrix) {
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out]() {
             matrix.dw().noalias() += 2.0 * ((matrix.w()).array() * (out.dw()).array()).matrix();
+        });
+    return out;
+}
+
+template<typename R>
+Mat<R> MatOps<R>::sqrt(Mat<R> matrix) {
+    Mat<R> out (
+            matrix.dims(0),
+            matrix.dims(1),
+            false);
+    out.w() = matrix.w().array().sqrt();
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, out]() {
+            matrix.dw().noalias() += 0.5 * ((out.w()).array().inverse() * (out.dw()).array()).matrix();
+        });
+    return out;
+}
+
+template<typename R>
+Mat<R> MatOps<R>::elt_inv(Mat<R> matrix) {
+    Mat<R> out (
+            matrix.dims(0),
+            matrix.dims(1),
+            false);
+    out.w() = matrix.w().array().inverse();
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, out]() {
+            matrix.dw().noalias() += -((out.w()).array().square() * (out.dw()).array()).matrix();
+        });
+    return out;
+}
+
+template<typename R>
+Mat<R> MatOps<R>::fill(Mat<R> matrix, R filler) {
+    Mat<R> out (
+            matrix.dims(0),
+            matrix.dims(1),
+            false);
+    out.w().fill(filler);
+    return out;
+}
+
+template<typename R>
+Mat<R> MatOps<R>::pow(Mat<R> matrix, R other) {
+    if (other == (R) -1.0) {
+        return MatOps<R>::elt_inv(matrix);
+    } else if (other == (R) 0.0){
+        return MatOps<R>::fill(matrix, 1.0);
+    } else if (other == (R)0.5) {
+        return MatOps<R>::sqrt(matrix);
+    } else if (other == (R)1.0) {
+        return matrix;
+    } else if (other == (R)2.0) {
+        return MatOps<R>::square(matrix);
+    }
+    Mat<R> out (
+            matrix.dims(0),
+            matrix.dims(1),
+            false);
+    out.w() = matrix.w().array().pow(other);
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, out, other]() {
+            matrix.dw().noalias() += other * ((matrix.w()).array().pow(other - 1.0) * (out.dw()).array()).matrix();
         });
     return out;
 }

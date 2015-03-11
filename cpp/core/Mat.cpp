@@ -50,18 +50,17 @@ GradInternal<R>::GradInternal(const GradInternal<R>& g) :
 
 // this does not need to initialize anything once we get rid of w and dw.
 template<typename R>
-Mat<R>::Mat() : w(NULL, 0, 0), dw(NULL, 0, 0) {
+Mat<R>::Mat() {
 }
 
 template<typename R>
-void Mat<R>::point_view_to_internal_memory() {
-    // only 2D supported for now.
-    assert(dims().size() == 2);
-    // Szymon did his research:
-    // This is placement new. It does not allocate new memory.
-    // It reuses existing memory in place.
-    new (&w) eigen_mat_view(m->w.data(), dims(0), dims(1));
-    new (&dw) eigen_mat_view(g->dw.data(), dims(0), dims(1));
+typename Mat<R>::eigen_mat& Mat<R>::w() const {
+    return m->w;
+}
+
+template<typename R>
+typename Mat<R>::eigen_mat& Mat<R>::dw() const {
+    return g->dw;
 }
 
 template<typename R>
@@ -80,43 +79,43 @@ const int& Mat<R>::id() const {
 }
 
 template<typename R>
-Mat<R>::Mat (dim_t n, dim_t d, bool empty) : name(nullptr), w(NULL, 0, 0), dw(NULL, 0, 0)  {
+Mat<R>::Mat (dim_t n, dim_t d, bool empty) : name(nullptr) {
     // sometimes we don't need to reset m
     // (for example if it's about to be assigned).
     m = make_shared<MatInternal<R>>(n, d, empty);
     // We always reset the grad calculation
     g = make_shared<GradInternal<R>>(n, d, true);
-    point_view_to_internal_memory();
+
 
 }
 
 template<typename R>
-Mat<R>::Mat (string fname) : w(NULL, 0, 0), dw(NULL, 0, 0) {
+Mat<R>::Mat (string fname) {
     // TODO(jonathan): make it work!
 
     auto arr = cnpy::npy_load(fname);
     vector<uint> npy_dims = {arr.shape[0], arr.shape.size() > 1 ? arr.shape[1] : 1};
     m = make_shared<MatInternal<R>>(npy_dims[0], npy_dims[1], false);
     g = make_shared<GradInternal<R>>(npy_dims[0], npy_dims[1], true);
-    point_view_to_internal_memory();
+
 
     if (arr.word_size == sizeof(double)) {
         double* loaded_data_double = reinterpret_cast<double*>(arr.data);
         if (arr.fortran_order) {
             Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_double_ft(loaded_data_double, dims(0), dims(1));
-            w = wrapped_mat_double_ft.cast<R>();
+            w() = wrapped_mat_double_ft.cast<R>();
         } else {
             Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_double(loaded_data_double, dims(0), dims(1));
-            w = wrapped_mat_double.cast<R>();
+            w() = wrapped_mat_double.cast<R>();
         }
     } else if (arr.word_size == sizeof(float)) {
         float* loaded_data_float = reinterpret_cast<float*>(arr.data);
         if (arr.fortran_order) {
             Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_float_ft(loaded_data_float, dims(0), dims(1));
-            w = wrapped_mat_float_ft.cast<R>();
+            w() = wrapped_mat_float_ft.cast<R>();
         } else {
             Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_float(loaded_data_float, dims(0), dims(1));
-            w = wrapped_mat_float.cast<R>();
+            w() = wrapped_mat_float.cast<R>();
         }
     } else {
         stringstream error_msg;
@@ -135,7 +134,7 @@ Mat<R>::Mat (dim_t n, dim_t d, R std) :
     std::random_device rd;
     generator.seed(rd());
     auto randn = [&] (int) {return distribution(generator);};
-    w = eigen_mat::NullaryExpr(dims(0), dims(1), randn);
+    w() = eigen_mat::NullaryExpr(dims(0), dims(1), randn);
 }
 
 template<typename R>
@@ -146,12 +145,12 @@ Mat<R>::Mat (dim_t n, dim_t d, R lower, R upper) :
     std::random_device rd;
     generator.seed(rd());
     auto randn = [&] (int) {return distribution(generator);};
-    w = eigen_mat::NullaryExpr(dims(0), dims(1), randn);
+    w() = eigen_mat::NullaryExpr(dims(0), dims(1), randn);
 }
 
 template<typename R>
 Mat<R>::Mat (const Mat<R>& other, bool copy_w, bool copy_dw) :
-        name(other.name), w(NULL, 0, 0), dw(NULL, 0, 0) {
+        name(other.name) {
     if (copy_w) {
         // This copies memory using copy constructor
         m = make_shared<MatInternal<R>>(*other.m);
@@ -165,7 +164,7 @@ Mat<R>::Mat (const Mat<R>& other, bool copy_w, bool copy_dw) :
     } else {
         g = other.g;
     }
-    point_view_to_internal_memory();
+
 }
 
 template<typename R>
@@ -197,7 +196,7 @@ void Mat<R>::print() const {
                               << std::setw( 7 ) // keep 7 digits
                               << std::setprecision( 3 ) // use 3 decimals
                               << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
-                              << this->w(i,j) << " ";
+                              << this->w()(i,j) << " ";
             }
             std::cout << (i == dims(0)-1 ? "]" : "\n");
     }
@@ -209,12 +208,12 @@ void Mat<R>::grad() {
     assert2(dims(0) == 1 && dims(1) == 1,
             "Grad only works on a \"scalar\" matrix, a 1x1 matrix. "
             "Call G.sum or G.mean before using grad.");
-    dw(0) += 1;
+    g->dw(0) += 1;
 }
 
 template<typename R>
 void Mat<R>::npy_save (string fname, string mode) {
-    cnpy::npy_save(fname, w.data(), dims().data(), dims().size(), mode);
+    cnpy::npy_save(fname, w().data(), dims().data(), dims().size(), mode);
 }
 
 template<typename R>
@@ -369,34 +368,34 @@ Mat<R> Mat<R>::row_pluck(
 
 template<typename R>
 void Mat<R>::npy_save (FILE * fp) {
-    std::vector<char> header = cnpy::create_npy_header(w.data(),dims().data(),dims().size());
+    std::vector<char> header = cnpy::create_npy_header(w().data(),dims().data(),dims().size());
     fwrite(&header[0],sizeof(char),header.size(),fp);
-    fwrite(w.data(),sizeof(R), number_of_elements(), fp);
+    fwrite(w().data(),sizeof(R), number_of_elements(), fp);
 }
 
 template<typename R>
 void Mat<R>::npy_load(cnpy::NpyArray& arr) {
 
     m = make_shared<MatInternal<R>>(arr.shape[0], arr.shape.size() > 1 ? arr.shape[1] : 1);
-    point_view_to_internal_memory();
+
 
     if (arr.word_size == sizeof(double)) {
         double* loaded_data_double = reinterpret_cast<double*>(arr.data);
         if (arr.fortran_order) {
             Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_double_ft(loaded_data_double, dims(0), dims(1));
-            w = wrapped_mat_double_ft.cast<R>();
+            w() = wrapped_mat_double_ft.cast<R>();
         } else {
             Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_double(loaded_data_double, dims(0), dims(1));
-            w = wrapped_mat_double.cast<R>();
+            w() = wrapped_mat_double.cast<R>();
         }
     } else if (arr.word_size == sizeof(float)) {
         float* loaded_data_float = reinterpret_cast<float*>(arr.data);
         if (arr.fortran_order) {
             Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_float_ft(loaded_data_float, dims(0), dims(1));
-            w = wrapped_mat_float_ft.cast<R>();
+            w() = wrapped_mat_float_ft.cast<R>();
         } else {
             Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_float(loaded_data_float, dims(0), dims(1));
-            w = wrapped_mat_float.cast<R>();
+            w() = wrapped_mat_float.cast<R>();
         }
     } else {
         throw std::invalid_argument("Could not load numpy matrix : not recognized as float or double.");
@@ -436,10 +435,6 @@ Mat<R> Mat<R>::Empty(dim_t n, dim_t d) {
 }
 
 
-
-
-
-
 template<typename R>
 std::ostream& operator<<(std::ostream& strm, const Mat<R>& a) {
     if (a.name != 0) {
@@ -477,11 +472,11 @@ template bool operator==<float>(const Mat<float>&, const Mat<float>&);
 template bool operator==<double>(const Mat<double>&, const Mat<double>&);
 
 template<typename R>
-int argmax(std::shared_ptr<Mat<R>> A) {
+int argmax(Mat<R> A) {
     int i = 0;
     R current_max = -std::numeric_limits<R>::infinity();
-    auto ptr = A->w.data();
-    for (int j = 0; j < A->number_of_elements(); j++) {
+    auto ptr = A.w().data();
+    for (int j = 0; j < A.number_of_elements(); j++) {
         if (*ptr > current_max) {
             current_max = *ptr;
             i = j;
@@ -492,10 +487,10 @@ int argmax(std::shared_ptr<Mat<R>> A) {
 }
 
 template<typename R>
-int argmax_slice(std::shared_ptr<Mat<R>> A, int min, int max) {
+int argmax_slice(Mat<R> A, int min, int max) {
     int i = 0;
     R current_max = -std::numeric_limits<R>::infinity();
-    auto ptr = A->w.data();
+    auto ptr = A.w().data();
     for (int j = min; j < max; j++) {
         if (*ptr > current_max) {
             current_max = *ptr;
@@ -506,13 +501,13 @@ int argmax_slice(std::shared_ptr<Mat<R>> A, int min, int max) {
     return i;
 }
 
-template int argmax(std::shared_ptr<Mat<float>>);
-template int argmax(std::shared_ptr<Mat<double>>);
-template int argmax_slice(std::shared_ptr<Mat<float>>, int, int);
-template int argmax_slice(std::shared_ptr<Mat<double>>, int, int);
+template int argmax(Mat<float>);
+template int argmax(Mat<double>);
+template int argmax_slice(Mat<float>, int, int);
+template int argmax_slice(Mat<double>, int, int);
 
 template<typename R>
-void utils::save_matrices(vector<std::shared_ptr<Mat<R>>>& parameters, string dirname) {
+void utils::save_matrices(vector<Mat<R>> parameters, string dirname) {
     utils::ensure_directory(dirname);
     const char * c_dirname = dirname.c_str();
     utils::makedirs(c_dirname);
@@ -520,27 +515,27 @@ void utils::save_matrices(vector<std::shared_ptr<Mat<R>>>& parameters, string di
     for (auto& param : parameters) {
         stringstream param_location;
         param_location << dirname << "/param_" << i << ".npy";
-        param->npy_save(param_location.str());
+        param.npy_save(param_location.str());
         i++;
     }
 }
 
 template<typename R>
-void utils::load_matrices(vector< std::shared_ptr<Mat<R>> >& parameters, string dirname) {
+void utils::load_matrices(vector<Mat<R>> parameters, string dirname) {
     utils::ensure_directory(dirname);
     int i = 0;
     for (auto& param : parameters) {
         stringstream param_location;
         param_location << dirname << "/param_" << i << ".npy";
-        param->npy_load(param_location.str());
+        param.npy_load(param_location.str());
         i++;
     }
 }
 
-template void utils::save_matrices(vector< std::shared_ptr<Mat<float>> >&, string);
-template void utils::save_matrices(vector< std::shared_ptr<Mat<double>> >&, string);
-template void utils::load_matrices(vector< std::shared_ptr<Mat<float>> >&, string);
-template void utils::load_matrices(vector< std::shared_ptr<Mat<double>> >&, string);
+template void utils::save_matrices(vector<Mat<float> >, string);
+template void utils::save_matrices(vector<Mat<double> >, string);
+template void utils::load_matrices(vector<Mat<float> >, string);
+template void utils::load_matrices(vector<Mat<double> >, string);
 
 template class Mat<float>;
 template class Mat<double>;

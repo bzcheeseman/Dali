@@ -91,5 +91,5 @@ void Seq<T>::insert(SeqIter where, RSeqConstIter begin, RSeqConstIter end ) {
 }
 
 
-template class Seq<std::shared_ptr<Mat<float>>>;
-template class Seq<std::shared_ptr<Mat<double>>>;
+template class Seq<Mat<float>>;
+template class Seq<Mat<double>>;

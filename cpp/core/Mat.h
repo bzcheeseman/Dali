@@ -83,15 +83,9 @@ class Mat {
     public:
         std::shared_ptr<std::string> name = nullptr;
 
-        mutable eigen_mat_view w;
-        mutable eigen_mat_view dw;
-
         // TODO(jonathan): wtf!
         bool sparse = false;
         std::shared_ptr<std::vector<uint>> sparse_row_keys;
-    private:
-        void point_view_to_internal_memory();
-
     public:
         Mat();
         // sometimes we don't need to reset m
@@ -128,6 +122,8 @@ class Mat {
         **/
         void grad();
 
+        eigen_mat& w() const;
+        eigen_mat& dw() const;
 
         const std::vector<dim_t>& dims() const;
         const dim_t& dims(int idx) const;
@@ -199,10 +195,10 @@ namespace std {
 
 namespace utils {
     template<typename R>
-    void save_matrices(std::vector<std::shared_ptr<Mat<R>>>&, std::string);
+    void save_matrices(std::vector<Mat<R>>, std::string);
 
     template<typename R>
-    void load_matrices(std::vector<std::shared_ptr<Mat<R>>>&, std::string);
+    void load_matrices(std::vector<Mat<R>>, std::string);
 }
 
 template <typename R>
@@ -212,9 +208,9 @@ template <typename R>
 bool operator==(const Mat<R>&, const Mat<R>&);
 
 template<typename R>
-int argmax(std::shared_ptr<Mat<R>>);
+int argmax(Mat<R>);
 
 template<typename R>
-int argmax_slice(std::shared_ptr<Mat<R>>, int, int);
+int argmax_slice(Mat<R>, int, int);
 
 #endif

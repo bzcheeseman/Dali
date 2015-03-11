@@ -183,8 +183,12 @@ std::vector<Mat<R>> StackedInputLayer<R>::parameters() const{
 template<typename R>
 void RNN<R>::create_variables() {
     R upper = 1. / sqrt(input_size);
+    std::cout << "sIEMA " << std::endl;
     Wx = Mat<R>(output_size, input_size,  -upper, upper);
+    std::cout << "sIEMA2 " << std::endl;
+
     upper = 1. / sqrt(hidden_size);
+
     Wh = Mat<R>(output_size, hidden_size, -upper, upper);
     b  = Mat<R>(output_size, 1, -upper, upper);
 }
@@ -342,11 +346,11 @@ Mat<R> RNN<R>::activate(
     // takes 5% less time to run operations when grouping them (no big gains then)
     // 1.118s with explicit (& temporaries) vs 1.020s with grouped expression & backprop
     // return G.add(G.mul(Wx, input_vector), G.mul_with_bias(Wh, prev_hidden, b));
-    DEBUG_ASSERT_NOT_NAN(Wx.w);
-    DEBUG_ASSERT_NOT_NAN(input_vector.w);
-    DEBUG_ASSERT_NOT_NAN(Wh.w);
-    DEBUG_ASSERT_NOT_NAN(prev_hidden.w);
-    DEBUG_ASSERT_NOT_NAN(b.w);
+    DEBUG_ASSERT_NOT_NAN(Wx.w());
+    DEBUG_ASSERT_NOT_NAN(input_vector.w());
+    DEBUG_ASSERT_NOT_NAN(Wh.w());
+    DEBUG_ASSERT_NOT_NAN(prev_hidden.w());
+    DEBUG_ASSERT_NOT_NAN(b.w());
     return MatOps<R>::mul_add_mul_with_bias(Wx, input_vector, Wh, prev_hidden, b);
 }
 
@@ -358,11 +362,11 @@ Mat<R> ShortcutRNN<R>::activate(
     // takes 5% less time to run operations when grouping them (no big gains then)
     // 1.118s with explicit (& temporaries) vs 1.020s with grouped expression & backprop
     // return G.add(G.mul(Wx, input_vector), G.mul_with_bias(Wh, prev_hidden, b));
-    DEBUG_ASSERT_NOT_NAN(Wx.w);
-    DEBUG_ASSERT_NOT_NAN(input_vector.w);
-    DEBUG_ASSERT_NOT_NAN(Wh.w);
-    DEBUG_ASSERT_NOT_NAN(prev_hidden.w);
-    DEBUG_ASSERT_NOT_NAN(b.w);
+    DEBUG_ASSERT_NOT_NAN(Wx.w());
+    DEBUG_ASSERT_NOT_NAN(input_vector.w());
+    DEBUG_ASSERT_NOT_NAN(Wh.w());
+    DEBUG_ASSERT_NOT_NAN(prev_hidden.w());
+    DEBUG_ASSERT_NOT_NAN(b.w());
     return Ws.mul(shortcut_vector).add(MatOps<R>::mul_add_mul_with_bias(Wx, input_vector, Wh, prev_hidden, b));
 }
 
@@ -436,7 +440,7 @@ LSTM<R>::LSTM (int _input_size, int _hidden_size) :
     // Note: Ilya Sutskever recommends initializing with
     // forget gate at high value
     // http://yyue.blogspot.fr/2015/01/a-brief-overview-of-deep-learning.html
-    // forget_layer.b.w.array() += 2;
+    // forget_layer.b.w().array() += 2;
     name_internal_layers();
 }
 
@@ -449,7 +453,7 @@ ShortcutLSTM<R>::ShortcutLSTM (int _input_size, int _shortcut_size, int _hidden_
         forget_layer(_input_size, _shortcut_size, _hidden_size),
         output_layer(_input_size, _shortcut_size, _hidden_size),
         cell_layer(_input_size, _shortcut_size, _hidden_size) {
-    // forget_layer.b.w.array() += 2;
+    // forget_layer.b.w().array() += 2;
     name_internal_layers();
 }
 
@@ -509,8 +513,8 @@ std::pair<Mat<R>, Mat<R>> LSTM<R>::activate (
 
     auto hidden_d    = output_gate.eltmul(cell_d.tanh());
 
-    DEBUG_ASSERT_NOT_NAN(hidden_d.w);
-    DEBUG_ASSERT_NOT_NAN(cell_d.w);
+    DEBUG_ASSERT_NOT_NAN(hidden_d.w());
+    DEBUG_ASSERT_NOT_NAN(cell_d.w());
 
     return std::pair<Mat<R>,Mat<R>>(cell_d, hidden_d);
 }
@@ -540,8 +544,8 @@ std::pair<Mat<R>, Mat<R>> ShortcutLSTM<R>::activate (
 
     auto hidden_d    = output_gate.eltmul(cell_d.tanh());
 
-    DEBUG_ASSERT_NOT_NAN(hidden_d.w);
-    DEBUG_ASSERT_NOT_NAN(cell_d.w);
+    DEBUG_ASSERT_NOT_NAN(hidden_d.w());
+    DEBUG_ASSERT_NOT_NAN(cell_d.w());
 
     return std::pair<Mat<R>,Mat<R>>(cell_d, hidden_d);
 }

@@ -4,11 +4,11 @@
 template<typename T>
 T cross_entropy(Mat<T> logprobs, uint& target) {
     Mat<T> probs = softmax(logprobs);
-    T cost = -std::log(probs.w(target,0));
-    logprobs.dw = probs.w;
+    T cost = -std::log(probs.w()(target,0));
+    logprobs.dw() = probs.w();
     // write gradients into log probabilities
-    logprobs.dw(target, 0) -= 1;
-    DEBUG_ASSERT_NOT_NAN(logprobs.dw);
+    logprobs.dw()(target, 0) -= 1;
+    DEBUG_ASSERT_NOT_NAN(logprobs.dw());
     return cost;
 }
 
@@ -16,13 +16,13 @@ template<typename T, typename M>
 T cross_entropy(Mat<T> logprobs, const M targets) {
     Mat<T> probs = softmax(logprobs);
     T cost = 0.0;
-    logprobs.dw = probs.w;
+    logprobs.dw() = probs.w();
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
-        cost -= std::log(probs.w(targets(i),i));
-        logprobs.dw(targets(i), i) -= 1;
+        cost -= std::log(probs.w()(targets(i),i));
+        logprobs.dw()(targets(i), i) -= 1;
     }
-    DEBUG_ASSERT_NOT_NAN(logprobs.dw);
+    DEBUG_ASSERT_NOT_NAN(logprobs.dw());
     return cost;
 }
 
@@ -37,27 +37,27 @@ Z masked_cross_entropy(Mat<Z> logprobs,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + (*codelens)(i) )) {
-            cost -= std::log(probs.w(targets(i),i));
-            logprobs.dw.col(i) = probs.w.col(i);
-            logprobs.dw(targets(i), i) -= 1;
+            cost -= std::log(probs.w()(targets(i),i));
+            logprobs.dw().col(i) = probs.w().col(i);
+            logprobs.dw()(targets(i), i) -= 1;
 
             #ifdef VERBOSE_CROSS_ENTROPY
 
             std::cout << "-- (" << T << ")\n";
-            for (int k = 0 ; k < logprobs.dw.rows(); k++) {
-                for (int j = 0; j < logprobs.dw.cols(); j++) {
+            for (int k = 0 ; k < logprobs.dw().rows(); k++) {
+                for (int j = 0; j < logprobs.dw().cols(); j++) {
                     if (k == targets(i) && i == j) {
                         std::cout << " **" << std::fixed
                                   << std::setw( 5 ) // keep 7 digits
                                   << std::setprecision( 3 ) // use 3 decimals
-                                  << std::setfill( ' ' ) // pad values with blanks this.w(i,j)
-                                  << logprobs.dw(k,j) << "** ";
+                                  << std::setfill( ' ' ) // pad values with blanks this.w()(i,j)
+                                  << logprobs.dw()(k,j) << "** ";
                     } else {
                         std::cout << "   " << std::fixed
                                   << std::setw( 5 ) // keep 7 digits
                                   << std::setprecision( 3 ) // use 3 decimals
-                                  << std::setfill( ' ' ) // pad values with blanks this.w(i,j)
-                                  << logprobs.dw(k,j) << "   ";
+                                  << std::setfill( ' ' ) // pad values with blanks this.w()(i,j)
+                                  << logprobs.dw()(k,j) << "   ";
                     }
                 }
                 std::cout << "\n";
@@ -67,7 +67,7 @@ Z masked_cross_entropy(Mat<Z> logprobs,
             #endif
         }
     }
-    DEBUG_ASSERT_NOT_NAN(logprobs.dw);
+    DEBUG_ASSERT_NOT_NAN(logprobs.dw());
     return cost;
 }
 
@@ -82,12 +82,12 @@ Z masked_cross_entropy(Mat<Z> logprobs,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
         if (T >= loss_start && (T < loss_start + (*codelens)(i) )) {
-            cost -= std::log(probs.w(targets(i),i));
-            logprobs.dw.col(i) = probs.w.col(i);
-            logprobs.dw(targets(i), i) -= 1;
+            cost -= std::log(probs.w()(targets(i),i));
+            logprobs.dw().col(i) = probs.w().col(i);
+            logprobs.dw()(targets(i), i) -= 1;
         }
     }
-    DEBUG_ASSERT_NOT_NAN(logprobs.dw);
+    DEBUG_ASSERT_NOT_NAN(logprobs.dw());
     return cost;
 }
 template<typename Z, typename M>
@@ -101,12 +101,12 @@ Z masked_cross_entropy(Mat<Z> logprobs,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
         if (T >= loss_start && (T < loss_start + (*codelens)(i) )) {
-            cost -= std::log(probs.w(targets(i),i));
-            logprobs.dw.col(i) = probs.w.col(i);
-            logprobs.dw(targets(i), i) -= 1;
+            cost -= std::log(probs.w()(targets(i),i));
+            logprobs.dw().col(i) = probs.w().col(i);
+            logprobs.dw()(targets(i), i) -= 1;
         }
     }
-    DEBUG_ASSERT_NOT_NAN(logprobs.dw);
+    DEBUG_ASSERT_NOT_NAN(logprobs.dw());
     return cost;
 }
 
@@ -121,12 +121,12 @@ Z masked_cross_entropy(Mat<Z> logprobs,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens)) {
-            cost -= std::log(probs.w(targets(i),i));
-            logprobs.dw.col(i) = probs.w.col(i);
-            logprobs.dw(targets(i), i) -= 1;
+            cost -= std::log(probs.w()(targets(i),i));
+            logprobs.dw().col(i) = probs.w().col(i);
+            logprobs.dw()(targets(i), i) -= 1;
         }
     }
-    DEBUG_ASSERT_NOT_NAN(logprobs.dw);
+    DEBUG_ASSERT_NOT_NAN(logprobs.dw());
     return cost;
 }
 template<typename Z, typename M>
@@ -140,12 +140,12 @@ Z masked_cross_entropy(Mat<Z> logprobs,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens)) {
-            cost -= std::log(probs.w(targets(i),i));
-            logprobs.dw.col(i) = probs.w.col(i);
-            logprobs.dw(targets(i), i) -= 1;
+            cost -= std::log(probs.w()(targets(i),i));
+            logprobs.dw().col(i) = probs.w().col(i);
+            logprobs.dw()(targets(i), i) -= 1;
         }
     }
-    DEBUG_ASSERT_NOT_NAN(logprobs.dw);
+    DEBUG_ASSERT_NOT_NAN(logprobs.dw());
     return cost;
 }
 template<typename Z, typename M>
@@ -159,12 +159,12 @@ Z masked_cross_entropy(Mat<Z> logprobs,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
         if (T >= loss_start && (T < loss_start + codelens)) {
-            cost -= std::log(probs.w(targets(i),i));
-            logprobs.dw.col(i) = probs.w.col(i);
-            logprobs.dw(targets(i), i) -= 1;
+            cost -= std::log(probs.w()(targets(i),i));
+            logprobs.dw().col(i) = probs.w().col(i);
+            logprobs.dw()(targets(i), i) -= 1;
         }
     }
-    DEBUG_ASSERT_NOT_NAN(logprobs.dw);
+    DEBUG_ASSERT_NOT_NAN(logprobs.dw());
     return cost;
 }
 template<typename Z, typename M>
@@ -178,12 +178,12 @@ Z masked_cross_entropy(Mat<Z> logprobs,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
         if (T >= loss_start && (T < loss_start + codelens)) {
-            cost -= std::log(probs.w(targets(i),i));
-            logprobs.dw.col(i) = probs.w.col(i);
-            logprobs.dw(targets(i), i) -= 1;
+            cost -= std::log(probs.w()(targets(i),i));
+            logprobs.dw().col(i) = probs.w().col(i);
+            logprobs.dw()(targets(i), i) -= 1;
         }
     }
-    DEBUG_ASSERT_NOT_NAN(logprobs.dw);
+    DEBUG_ASSERT_NOT_NAN(logprobs.dw());
     return cost;
 }
 template<typename Z, typename M>
@@ -197,12 +197,12 @@ Z masked_cross_entropy(Mat<Z> logprobs,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
         if (T >= loss_start && (T < loss_start + codelens)) {
-            cost -= std::log(probs.w(targets(i),i));
-            logprobs.dw.col(i) = probs.w.col(i);
-            logprobs.dw(targets(i), i) -= 1;
+            cost -= std::log(probs.w()(targets(i),i));
+            logprobs.dw().col(i) = probs.w().col(i);
+            logprobs.dw()(targets(i), i) -= 1;
         }
     }
-    DEBUG_ASSERT_NOT_NAN(logprobs.dw);
+    DEBUG_ASSERT_NOT_NAN(logprobs.dw());
     return cost;
 }
 template<typename Z, typename M>
@@ -216,12 +216,12 @@ Z masked_cross_entropy(Mat<Z> logprobs,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
         if (T >= loss_start && (T < loss_start + codelens)) {
-            cost -= std::log(probs.w(targets(i),i));
-            logprobs.dw.col(i) = probs.w.col(i);
-            logprobs.dw(targets(i), i) -= 1;
+            cost -= std::log(probs.w()(targets(i),i));
+            logprobs.dw().col(i) = probs.w().col(i);
+            logprobs.dw()(targets(i), i) -= 1;
         }
     }
-    DEBUG_ASSERT_NOT_NAN(logprobs.dw);
+    DEBUG_ASSERT_NOT_NAN(logprobs.dw());
     return cost;
 }
 
@@ -238,7 +238,7 @@ Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + (*codelens)(i) ))
-            cost -= std::log(probs.w(targets(i),i));
+            cost -= std::log(probs.w()(targets(i),i));
     return cost;
 }
 
@@ -253,7 +253,7 @@ Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
         if (T >= loss_start && (T < loss_start + (*codelens)(i) ))
-            cost -= std::log(probs.w(targets(i),i));
+            cost -= std::log(probs.w()(targets(i),i));
     return cost;
 }
 template<typename Z, typename M>
@@ -267,7 +267,7 @@ Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
         if (T >= loss_start && (T < loss_start + (*codelens)(i) ))
-            cost -= std::log(probs.w(targets(i),i));
+            cost -= std::log(probs.w()(targets(i),i));
     return cost;
 }
 
@@ -282,7 +282,7 @@ Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens))
-            cost -= std::log(probs.w(targets(i),i));
+            cost -= std::log(probs.w()(targets(i),i));
     return cost;
 }
 template<typename Z, typename M>
@@ -296,7 +296,7 @@ Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens))
-            cost -= std::log(probs.w(targets(i),i));
+            cost -= std::log(probs.w()(targets(i),i));
     return cost;
 }
 template<typename Z, typename M>
@@ -310,7 +310,7 @@ Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
         if (T >= loss_start && (T < loss_start + codelens))
-            cost -= std::log(probs.w(targets(i),i));
+            cost -= std::log(probs.w()(targets(i),i));
     return cost;
 }
 template<typename Z, typename M>
@@ -324,7 +324,7 @@ Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
         if (T >= loss_start && (T < loss_start + codelens))
-            cost -= std::log(probs.w(targets(i),i));
+            cost -= std::log(probs.w()(targets(i),i));
     return cost;
 }
 template<typename Z, typename M>
@@ -338,7 +338,7 @@ Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
         if (T >= loss_start && (T < loss_start + codelens))
-            cost -= std::log(probs.w(targets(i),i));
+            cost -= std::log(probs.w()(targets(i),i));
     return cost;
 }
 template<typename Z, typename M>
@@ -352,7 +352,7 @@ Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
         if (T >= loss_start && (T < loss_start + codelens))
-            cost -= std::log(probs.w(targets(i),i));
+            cost -= std::log(probs.w()(targets(i),i));
     return cost;
 }
 
@@ -372,8 +372,8 @@ Z masked_sum(Mat<Z> values,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < values.dims(1); i++) {
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + (*codelens)(i) )) {
-            cost += values.w.col(i).sum() * gparent;
-            values.dw.col(i).array() += gparent;
+            cost += values.w().col(i).sum() * gparent;
+            values.dw().col(i).array() += gparent;
         }
     }
     return cost;
@@ -390,8 +390,8 @@ Z masked_sum(Mat<Z> values,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < values.dims(1); i++) {
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens )) {
-            cost += values.w.col(i).sum() * gparent;
-            values.dw.col(i).array() += gparent;
+            cost += values.w().col(i).sum() * gparent;
+            values.dw().col(i).array() += gparent;
         }
     }
     return cost;
@@ -407,8 +407,8 @@ Z masked_sum(Mat<Z> values,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < values.dims(1); i++) {
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens )) {
-            cost += values.w.col(i).sum() * gparent;
-            values.dw.col(i).array() += gparent;
+            cost += values.w().col(i).sum() * gparent;
+            values.dw().col(i).array() += gparent;
         }
     }
     return cost;
@@ -425,8 +425,8 @@ Z masked_sum(Mat<Z> values,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < values.dims(1); i++) {
         if (T >= loss_start && (T < loss_start + (*codelens)(i) )) {
-            cost += values.w.col(i).sum() * gparent;
-            values.dw.col(i).array() += gparent;
+            cost += values.w().col(i).sum() * gparent;
+            values.dw().col(i).array() += gparent;
         }
     }
     return cost;
@@ -442,8 +442,8 @@ Z masked_sum(Mat<Z> values,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < values.dims(1); i++) {
         if (T >= loss_start && (T < loss_start + (*codelens)(i) )) {
-            cost += values.w.col(i).sum() * gparent;
-            values.dw.col(i).array() += gparent;
+            cost += values.w().col(i).sum() * gparent;
+            values.dw().col(i).array() += gparent;
         }
     }
     return cost;
@@ -460,8 +460,8 @@ Z masked_sum(Mat<Z> values,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < values.dims(1); i++) {
         if (T >= loss_start && (T < loss_start + codelens )) {
-            cost += values.w.col(i).sum() * gparent;
-            values.dw.col(i).array() += gparent;
+            cost += values.w().col(i).sum() * gparent;
+            values.dw().col(i).array() += gparent;
         }
     }
     return cost;
@@ -477,8 +477,8 @@ Z masked_sum(Mat<Z> values,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < values.dims(1); i++) {
         if (T >= loss_start && (T < loss_start + codelens )) {
-            cost += values.w.col(i).sum() * gparent;
-            values.dw.col(i).array() += gparent;
+            cost += values.w().col(i).sum() * gparent;
+            values.dw().col(i).array() += gparent;
         }
     }
     return cost;
@@ -494,8 +494,8 @@ Z masked_sum(Mat<Z> values,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < values.dims(1); i++) {
         if (T >= loss_start && (T < loss_start + codelens )) {
-            cost += values.w.col(i).sum() * gparent;
-            values.dw.col(i).array() += gparent;
+            cost += values.w().col(i).sum() * gparent;
+            values.dw().col(i).array() += gparent;
         }
     }
     return cost;
@@ -511,8 +511,8 @@ Z masked_sum(Mat<Z> values,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < values.dims(1); i++) {
         if (T >= loss_start && (T < loss_start + codelens )) {
-            cost += values.w.col(i).sum() * gparent;
-            values.dw.col(i).array() += gparent;
+            cost += values.w().col(i).sum() * gparent;
+            values.dw().col(i).array() += gparent;
         }
     }
     return cost;
@@ -531,7 +531,7 @@ Z masked_sum_no_grad(Mat<Z> values,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < values.dims(1); i++)
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + (*codelens)(i) ))
-            cost += values.w.col(i).sum() * gparent;
+            cost += values.w().col(i).sum() * gparent;
     return cost;
 }
 
@@ -546,7 +546,7 @@ Z masked_sum_no_grad(Mat<Z> values,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < values.dims(1); i++)
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens ))
-            cost += values.w.col(i).sum() * gparent;
+            cost += values.w().col(i).sum() * gparent;
     return cost;
 }
 template<typename Z>
@@ -560,7 +560,7 @@ Z masked_sum_no_grad(Mat<Z> values,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < values.dims(1); i++)
         if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens ))
-            cost += values.w.col(i).sum() * gparent;
+            cost += values.w().col(i).sum() * gparent;
     return cost;
 }
 
@@ -575,7 +575,7 @@ Z masked_sum_no_grad(Mat<Z> values,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < values.dims(1); i++)
         if (T >= loss_start && (T < loss_start + (*codelens)(i) ))
-            cost += values.w.col(i).sum() * gparent;
+            cost += values.w().col(i).sum() * gparent;
     return cost;
 }
 template<typename Z>
@@ -589,7 +589,7 @@ Z masked_sum_no_grad(Mat<Z> values,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < values.dims(1); i++)
         if (T >= loss_start && (T < loss_start + (*codelens)(i) ))
-            cost += values.w.col(i).sum() * gparent;
+            cost += values.w().col(i).sum() * gparent;
     return cost;
 }
 
@@ -604,7 +604,7 @@ Z masked_sum_no_grad(Mat<Z> values,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < values.dims(1); i++)
         if (T >= loss_start && (T < loss_start + codelens ))
-            cost += values.w.col(i).sum() * gparent;
+            cost += values.w().col(i).sum() * gparent;
     return cost;
 }
 template<typename Z>
@@ -618,7 +618,7 @@ Z masked_sum_no_grad(Mat<Z> values,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < values.dims(1); i++)
         if (T >= loss_start && (T < loss_start + codelens ))
-            cost += values.w.col(i).sum() * gparent;
+            cost += values.w().col(i).sum() * gparent;
     return cost;
 }
 template<typename Z>
@@ -632,7 +632,7 @@ Z masked_sum_no_grad(Mat<Z> values,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < values.dims(1); i++)
         if (T >= loss_start && (T < loss_start + codelens ))
-            cost += values.w.col(i).sum() * gparent;
+            cost += values.w().col(i).sum() * gparent;
     return cost;
 }
 template<typename Z>
@@ -646,7 +646,7 @@ Z masked_sum_no_grad(Mat<Z> values,
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < values.dims(1); i++)
         if (T >= loss_start && (T < loss_start + codelens ))
-            cost += values.w.col(i).sum() * gparent;
+            cost += values.w().col(i).sum() * gparent;
     return cost;
 }
 

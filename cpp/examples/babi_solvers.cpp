@@ -10,6 +10,7 @@
 #include "core/SaneCrashes.h"
 #include "core/Seq.h"
 #include "core/Solver.h"
+#include "core/Training.h"
 
 using babi::Fact;
 using babi::Item;
@@ -400,8 +401,8 @@ class LstmBabiModelRunner: public babi::Model {
     // TRAINING_PROCEDURE_PARAMS
     const float TRAINING_FRAC = 0.8;
     const float MINIMUM_IMPROVEMENT = 0.0001; // good one: 0.003
-    const double LONG_TERM_VALIDATION = 0.03;
-    const double SHORT_TERM_VALIDATION = 0.2;
+    const double LONG_TERM_VALIDATION = 0.01;
+    const double SHORT_TERM_VALIDATION = 0.1;
     const int PATIENCE = 5;
 
     const T FACT_SELECTION_LAMBDA_MAX = 0.2;
@@ -433,14 +434,22 @@ class LstmBabiModelRunner: public babi::Model {
 
     int epoch;
 
-    Mat<T> bake_error(vector<Mat<T>> errors) {
-        T baking_factor = std::min((T)epoch*epoch/(T)(BAKING_EPOCHS*BAKING_EPOCHS), 1.0);
+    enum training_mode_t {
+        GATES = 1,
+        PREDICTION = 2
+    };
 
-        return errors[0];
-               // + errors[1] * FACT_SELECTION_LAMBDA_MAX * baking_factor
-               // + errors[2] * FACT_WORD_SELECTION_LAMBDA_MAX * baking_factor;
 
+    training_mode_t training_mode;
+
+    Mat<T> error_function(vector<Mat<T>> errors) {
+        if (training_mode == GATES) {
+            return errors[1];
+        } else if (training_mode == PREDICTION) {
+            return errors[0] + errors[1] * 1000.0;
+        }
     }
+
 
     public:
         vector<double> compute_errors(const vector<babi::Story>& dataset,
@@ -479,31 +488,27 @@ class LstmBabiModelRunner: public babi::Model {
                     LstmBabiModel<T>& thread_model = thread_models[ThreadPool::get_thread_number()];
                     auto params = thread_model.parameters();
                     for (auto story_id: batch) {
-                        auto& story = dataset[story_id];
-                        vector<Fact*> facts_so_far;
+                        auto story = dataset[story_id];
 
-                        for(auto& item_ptr : story) {
-                            if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
-                                facts_so_far.push_back(f);
-                            } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
-                                // When we are training we want to do backprop
-                                graph::NoBackprop(!training);
-                                // When we are training we want to use dropout
-                                auto errors = thread_model.errors(facts_so_far,
-                                                                  qa,
-                                                                  training);
-                                for (int i=0; i<3; ++i)
-                                    thread_error[ThreadPool::get_thread_number()][i] += errors[i].w()(0,0);
-                                auto total_error = bake_error(errors);
-                                total_error.grad();
+                        babi::StoryParser parser(&story);
+                        while(!parser.done()) {
+                            auto example = parser.next();
+                            // When we are training we want to do backprop
+                            graph::NoBackprop(!training);
+                            // When we are training we want to use dropout
+                            auto errors = thread_model.errors(example.first, // facts_so_far
+                                                              example.second, // QA
+                                                              training);
+                            for (int i=0; i<3; ++i)
+                                thread_error[ThreadPool::get_thread_number()][i] += errors[i].w()(0,0);
 
-                                num_questions += 1;
-                                if (training)
-                                    graph::backward();
-                            }
-                        }
-                        facts_so_far.clear();
-                        // Only update weights during training.
+                            auto total_error = error_function(errors);
+                            total_error.grad();
+
+                            num_questions += 1;
+                            if (training)
+                                graph::backward();
+                         }
                     }
                     if (training)
                         solver->step(params, 0.001);
@@ -531,57 +536,39 @@ class LstmBabiModelRunner: public babi::Model {
             std::vector<babi::Story> train(data.begin(), data.begin() + training_size);
             std::vector<babi::Story> validation(data.begin() + training_size, data.end());
 
-            bool first_run = true;
-            double short_term_validation  = std::numeric_limits<double>::infinity();
-            double long_term_validation   = std::numeric_limits<double>::infinity();
-
             epoch = 0;
-            int epochs_validation_increasing = 0;
 
             auto params = model->parameters();
-            // Solver::AdaDelta<T> solver(params, 0.95, 1e-9, 5.0);
-            Solver::Adam<T> solver(params);
 
-            while (epochs_validation_increasing <= PATIENCE) {
-                auto training_errors = compute_errors(train, &solver, true);
-                auto validation_errors = compute_errors(validation, &solver, false);
+            for (training_mode_t cur_training_mode : { GATES, PREDICTION }) {
+                training_mode = cur_training_mode;
 
-                T baking_factor = std::min((T)epoch*epoch/(T)(BAKING_EPOCHS*BAKING_EPOCHS), 1.0);
-                std::cout << "Epoch " << ++epoch << std::endl;
+                // Solver::AdaDelta<T> solver(params, 0.95, 1e-9, 5.0);
+                Solver::Adam<T> solver(params);
+                LSTV training(SHORT_TERM_VALIDATION, LONG_TERM_VALIDATION, PATIENCE);
 
-                std::cout << "BAKING CONSTANTS (as one wise man once said: how baked are we: "
-                                <<  baking_factor * 100 << "\%)" << std::endl
-                          << "    fact selection: "
-                                << FACT_SELECTION_LAMBDA_MAX * baking_factor << std::endl
-                          << "    fact word selection "
-                                << FACT_WORD_SELECTION_LAMBDA_MAX * baking_factor << std::endl
-                          << "Validation - short: " << short_term_validation
-                                     << ", long: " << long_term_validation << std::endl
+                while (true) {
+                    auto training_errors = compute_errors(train, &solver, true);
+                    auto validation_errors = compute_errors(validation, &solver, false);
 
-                          << "Errors(prob_answer, fact_select, words_sparsity): " << std::endl
-                          << "VALIDATION: " << validation_errors[0] << " "
-                                            << validation_errors[1] << " "
-                                            << validation_errors[2] << std::endl
-                          << "TRAINING: " << training_errors[0] << " "
-                                          << training_errors[1] << " "
-                                          << training_errors[2] << std::endl;
-
-                auto validation_error = validation_errors[0];
-                if (first_run) {
-                    short_term_validation = validation_error;
-                    long_term_validation = validation_error;
-                    first_run = false;
-                } else {
-                    short_term_validation = SHORT_TERM_VALIDATION * validation_error +
-                                            (1.0 - SHORT_TERM_VALIDATION) * short_term_validation;
-                    long_term_validation =  LONG_TERM_VALIDATION * validation_error +
-                                            (1.0 - LONG_TERM_VALIDATION) * long_term_validation;
-                }
-
-                if (short_term_validation > long_term_validation) {
-                    ++epochs_validation_increasing;
-                } else {
-                    epochs_validation_increasing = 0;
+                    T baking_factor = std::min((T)epoch*epoch/(T)(BAKING_EPOCHS*BAKING_EPOCHS), 1.0);
+                    std::cout << "Epoch " << ++epoch << std::endl;
+                    std::cout << (cur_training_mode == GATES ? "Optimizing gates" : "Optimizing prediction") << std::endl;
+                    std::cout << "Errors(prob_answer, fact_select, words_sparsity): " << std::endl
+                              << "VALIDATION: " << validation_errors[0] << " "
+                                                << validation_errors[1] << " "
+                                                << validation_errors[2] << std::endl
+                              << "TRAINING: " << training_errors[0] << " "
+                                              << training_errors[1] << " "
+                                              << training_errors[2] << std::endl;
+                    if (cur_training_mode == GATES &&
+                            training.update(validation_errors[1])) {
+                        break;
+                    } else if (cur_training_mode == PREDICTION  &&
+                            training.update(validation_errors[0])) {
+                        break;
+                    }
+                    training.report();
                 }
             }
         }

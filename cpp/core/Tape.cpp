@@ -1,5 +1,7 @@
 #include "core/Tape.h"
 
+#include <iostream>
+
 namespace graph {
     thread_local bool backprop_enabled = true;
     thread_local Tape tape;

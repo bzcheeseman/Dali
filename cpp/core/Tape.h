@@ -26,10 +26,13 @@ namespace graph {
             const bool old_value;
             // whether the object actually does something (used for condition).
             const bool enabled;
+            NoBackprop(const NoBackprop&) = delete;
+            NoBackprop& operator =(NoBackprop const &) = delete;
+
         public:
-            NoBackprop();
+            explicit NoBackprop();
             // Disable backprop only if condition is true
-            NoBackprop(bool condition);
+            explicit NoBackprop(bool condition);
             ~NoBackprop();
     };
 }

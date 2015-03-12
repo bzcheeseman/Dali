@@ -496,7 +496,7 @@ class LstmBabiModelRunner: public babi::Model {
                         while (!parser.done()) {
                             std::tie(facts_so_far, qa) = parser.next();
                             // When we are training we want to do backprop
-                            graph::NoBackprop(!training);
+                            graph::NoBackprop nb(!training);
                             // When we are training we want to use dropout
                             auto errors = thread_model.errors(facts_so_far, qa, training);
                             for (int i=0; i<3; ++i)
@@ -583,8 +583,7 @@ class LstmBabiModelRunner: public babi::Model {
         }
 
         vector<string> question(const vector<string>& question) {
-            graph::NoBackprop();
-
+            graph::NoBackprop nb;
             // Don't use dropout for validation.
             int word_idx = argmax(model->activate_story(story_so_far, question, false).log_probs);
 

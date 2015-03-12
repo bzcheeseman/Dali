@@ -1,10 +1,9 @@
 #include "CrossEntropy.h"
 
-
-template<typename T>
-T cross_entropy(Mat<T> logprobs, uint& target) {
-    Mat<T> probs = softmax(logprobs);
-    T cost = -std::log(probs.w()(target,0));
+template<typename Z>
+Z cross_entropy(Mat<Z> logprobs, uint& target) {
+    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
+    Z cost = -std::log(probs.w()(target,0));
     logprobs.dw() = probs.w();
     // write gradients into log probabilities
     logprobs.dw()(target, 0) -= 1;
@@ -12,10 +11,10 @@ T cross_entropy(Mat<T> logprobs, uint& target) {
     return cost;
 }
 
-template<typename T, typename M>
-T cross_entropy(Mat<T> logprobs, const M targets) {
-    Mat<T> probs = softmax(logprobs);
-    T cost = 0.0;
+template<typename Z, typename M>
+Z cross_entropy(Mat<Z> logprobs, const M targets) {
+    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
+    Z cost = 0.0;
     logprobs.dw() = probs.w();
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
@@ -32,7 +31,7 @@ Z masked_cross_entropy(Mat<Z> logprobs,
     shared_eigen_index_vector loss_start,
     shared_eigen_index_vector codelens,
     const M targets) {
-    Mat<Z> probs = softmax(logprobs);
+    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
@@ -77,7 +76,7 @@ Z masked_cross_entropy(Mat<Z> logprobs,
     uint loss_start,
     shared_eigen_index_vector codelens,
     const M targets) {
-    Mat<Z> probs = softmax(logprobs);
+    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
@@ -96,7 +95,7 @@ Z masked_cross_entropy(Mat<Z> logprobs,
     int loss_start,
     shared_eigen_index_vector codelens,
     const M targets) {
-    Mat<Z> probs = softmax(logprobs);
+    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
@@ -116,7 +115,7 @@ Z masked_cross_entropy(Mat<Z> logprobs,
     shared_eigen_index_vector loss_start,
     int codelens,
     const M targets) {
-    Mat<Z> probs = softmax(logprobs);
+    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
@@ -135,7 +134,7 @@ Z masked_cross_entropy(Mat<Z> logprobs,
     shared_eigen_index_vector loss_start,
     uint codelens,
     const M targets) {
-    Mat<Z> probs = softmax(logprobs);
+    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
@@ -154,7 +153,7 @@ Z masked_cross_entropy(Mat<Z> logprobs,
     int loss_start,
     int codelens,
     const M targets) {
-    Mat<Z> probs = softmax(logprobs);
+    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
@@ -173,7 +172,7 @@ Z masked_cross_entropy(Mat<Z> logprobs,
     uint loss_start,
     uint codelens,
     const M targets) {
-    Mat<Z> probs = softmax(logprobs);
+    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
@@ -192,7 +191,7 @@ Z masked_cross_entropy(Mat<Z> logprobs,
     int loss_start,
     uint codelens,
     const M targets) {
-    Mat<Z> probs = softmax(logprobs);
+    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
@@ -211,7 +210,7 @@ Z masked_cross_entropy(Mat<Z> logprobs,
     uint loss_start,
     int codelens,
     const M targets) {
-    Mat<Z> probs = softmax(logprobs);
+    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++) {
@@ -233,7 +232,7 @@ Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     shared_eigen_index_vector loss_start,
     shared_eigen_index_vector codelens,
     const M targets) {
-    Mat<Z> probs = softmax(logprobs);
+    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
@@ -248,7 +247,7 @@ Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     uint loss_start,
     shared_eigen_index_vector codelens,
     const M targets) {
-    Mat<Z> probs = softmax(logprobs);
+    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
@@ -262,7 +261,7 @@ Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     int loss_start,
     shared_eigen_index_vector codelens,
     const M targets) {
-    Mat<Z> probs = softmax(logprobs);
+    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
@@ -277,7 +276,7 @@ Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     shared_eigen_index_vector loss_start,
     int codelens,
     const M targets) {
-    Mat<Z> probs = softmax(logprobs);
+    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
@@ -291,7 +290,7 @@ Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     shared_eigen_index_vector loss_start,
     uint codelens,
     const M targets) {
-    Mat<Z> probs = softmax(logprobs);
+    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
@@ -305,7 +304,7 @@ Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     int loss_start,
     int codelens,
     const M targets) {
-    Mat<Z> probs = softmax(logprobs);
+    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
@@ -319,7 +318,7 @@ Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     uint loss_start,
     uint codelens,
     const M targets) {
-    Mat<Z> probs = softmax(logprobs);
+    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
@@ -333,7 +332,7 @@ Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     int loss_start,
     uint codelens,
     const M targets) {
-    Mat<Z> probs = softmax(logprobs);
+    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)
@@ -347,7 +346,7 @@ Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     uint loss_start,
     int codelens,
     const M targets) {
-    Mat<Z> probs = softmax(logprobs);
+    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     Z cost = 0.0;
     // get cost for each pair of target and datastream:
     for (size_t i = 0; i < targets.rows(); i++)

@@ -202,7 +202,7 @@ Then our forward function can be changed to:
             // classifier takes as input the final hidden layer's activation:
             logprobs      = classifier.activate(std::get<1>(initial_state)[num_hidden_sizes-1]);
             // compute the softmax probabilities
-            probs         = softmax(logprobs);
+            probs         = logprobs.softmax_no_grad();
             // accumulate base 2 log prob and do smoothing
             cost         -= std::log(probs.w().(indices[i+1],0));
             // write gradients into log probabilities

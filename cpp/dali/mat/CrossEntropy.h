@@ -1,7 +1,7 @@
 #ifndef CROSSENTROPY_MAT_H
 #define CROSSENTROPY_MAT_H
 
-#include "dali/models/Softmax.h"
+#include "dali/core.h"
 
 template<typename T>                         T cross_entropy(Mat<T>, uint&);
 template<typename T, typename M>             T cross_entropy(Mat<T>, const M);

@@ -59,6 +59,7 @@ std::cout << "SIEMA" << std::endl;
 
     Mat<R> A(3, 5);
     A.w() = (A.w().array() + 1.2).matrix();
+    A = A + Mat<R>(3, 5, -0.5, 0.5);
     // build random matrix of double type with standard deviation 2:
     Mat<R> B(A.dims(0), A.dims(1), 2.0);
     Mat<R> C(A.dims(1), 4,    2.0);
@@ -172,6 +173,11 @@ std::cout << "SIEMA" << std::endl;
     std::cout << "U dimensions = (" << svd.matrixU().cols() << " " << svd.matrixU().rows() << ")" << std::endl;
     std::cout << "V dimensions = (" << svd.matrixV().cols() << " " << svd.matrixV().rows() << ")" << std::endl;
 
+
+    auto A_ptr = A.w().data();
+    auto A_ptr_T = A.w().transpose().data();
+
+    std::cout <<( (A_ptr == A_ptr_T)  ? "t" : "f" ) << std::endl;
 /*
     auto some_model = StackedGatedModel<R>(20, 10, 20, 2, 1, false, 0.3);
 

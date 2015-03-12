@@ -4,6 +4,7 @@
 #include "dali/mat/MatOps.h"
 #include "dali/mat/Seq.h"
 #include "dali/mat/Tape.h"
-
+#include "dali/mat/CrossEntropy.h"
+#include "dali/mat/Softmax.h"
 #include "dali/execution/BeamSearch.h"
 #include "dali/execution/Solver.h"

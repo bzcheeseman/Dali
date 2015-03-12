@@ -345,22 +345,24 @@ Mat<R> MatOps<R>::sigmoid(Mat<R> matrix) {
     return out;
 }
 
+
 template<typename R>
-Mat<R> MatOps<R>::softmax(Mat<R> matrix, R temperature) {
+Mat<R> MatOps<R>::softmax_no_grad(Mat<R> matrix, R temperature) {
     Mat<R> out = Mat<R>(
             matrix.dims(0),
             matrix.dims(1),
             false);
-
-    DEBUG_ASSERT_NOT_NAN(matrix.w());
-
     auto layer_max = matrix.w().colwise().maxCoeff().array().matrix();
     auto exped_distributions = (matrix.w().rowwise() - layer_max.row(0)).array().exp().matrix();
 
     auto total_distribution = exped_distributions.colwise().sum().array().matrix();
     out.w() = (exped_distributions.array().rowwise() / total_distribution.row(0).array());
+    return out;
+}
 
-    DEBUG_ASSERT_POSITIVE(out.w());
+template<typename R>
+Mat<R> MatOps<R>::softmax(Mat<R> matrix, R temperature) {
+    Mat<R> out = MatOps<R>::softmax_no_grad(matrix, temperature);
 
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, temperature, out](){
@@ -368,7 +370,6 @@ Mat<R> MatOps<R>::softmax(Mat<R> matrix, R temperature) {
         });
     return out;
 }
-
 
 template<typename R>
 Mat<R> MatOps<R>::steep_sigmoid(Mat<R> matrix, R aggressiveness) {

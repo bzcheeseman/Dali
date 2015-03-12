@@ -108,6 +108,7 @@ struct MatOps {
 
     static Mat<R> sigmoid(Mat<R>);
     static Mat<R> softmax(Mat<R>, R temperature=1.0);
+    static Mat<R> softmax_no_grad(Mat<R>, R temperature = 1.0);
     static Mat<R> steep_sigmoid(Mat<R>, R aggressiveness = 3.75);
     static Mat<R> transpose(Mat<R>);
     static Mat<R> tanh(Mat<R>);

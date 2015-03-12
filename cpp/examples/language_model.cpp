@@ -10,16 +10,10 @@
 #include <mutex>
 #include <thread>
 
-#include "core/gzstream.h"
-#include "core/NlpUtils.h"
-#include "core/SST.h"
-#include "core/StackedModel.h"
-#include "core/ThreadPool.h"
-#include "core/utils.h"
-#include "core/Reporting.h"
-#include "core/BeamSearch.h"
-#include "core/Solver.h"
-#include "core/Tape.h"
+#include "dali/core.h"
+#include "dali/utils.h"
+#include "dali/data_processing/SST.h"
+#include "dali/models/StackedModel.h"
 
 DEFINE_int32(minibatch,            100,  "What size should be used for the minibatches ?");
 DEFINE_bool(sparse,                true, "Use sparse embedding");

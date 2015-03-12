@@ -1,10 +1,8 @@
 #include <iostream>
 #include <vector>
 
-#include "core/Layers.h"
-#include "core/Mat.h"
-#include "core/Tape.h"
-#include "core/SaneCrashes.cpp"
+#include "dali/core.h"
+#include "dali/utils.h"
 //#include "core/StackedGatedModel.h"
 
 using std::vector;

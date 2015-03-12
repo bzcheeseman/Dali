@@ -4,8 +4,8 @@
 #include <exception>
 #include <sstream>
 #include <functional>
-#include "core/Mat.h"
-#include "core/Graph.h"
+
+#include "dali/core.h"
 
 using std::string;
 using std::unordered_map;
@@ -98,7 +98,7 @@ class Expression {
                 void add_method (const string& name, function<shared_ptr<Expression>(Expression&, vector<shared_ptr<Expression>>&)> _call) {
                     methods.emplace(
                         std::piecewise_construct,
-                        std::forward_as_tuple(name), 
+                        std::forward_as_tuple(name),
                         std::forward_as_tuple(lambda_class, nullptr, _call));
                 }
         };

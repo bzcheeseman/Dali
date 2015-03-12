@@ -4,13 +4,9 @@
 #include <gflags/gflags.h>
 #include <iterator>
 
-#include "core/gzstream.h"
-#include "core/NlpUtils.h"
-#include "core/StackedGatedModel.h"
-#include "core/utils.h"
-#include "core/Reporting.h"
-#include "core/Tape.h"
-#include "core/Solver.h"
+#include "dali/core.h"
+#include "dali/utils.h"
+#include "dali/models/StackedGatedModel.h"
 
 
 DEFINE_string(lattice, "", "Where to load a lattice / Ontology from ?");

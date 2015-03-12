@@ -8,12 +8,8 @@
 #include <memory>
 #include <vector>
 
-#include "core/Mat.h"
-#include "core/Reporting.h"
-#include "core/Seq.h"
-#include "core/Layers.h"
-#include "core/SaneCrashes.h"
-#include "core/utils.h"
+#include "dali/core.h"
+#include "dali/utils.h"
 
 typedef double R;
 

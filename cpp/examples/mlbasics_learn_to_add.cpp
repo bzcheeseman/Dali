@@ -2,8 +2,7 @@
 #include <gflags/gflags.h>
 #include <memory>
 
-#include "core/Mat.h"
-#include "core/Tape.h"
+#include "dali/core.h"
 
 typedef Mat<double> mat;
 

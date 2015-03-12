@@ -4,13 +4,9 @@
 #include <vector>
 #include <gflags/gflags.h>
 
-#include "core/babi.h"
-#include "core/Layers.h"
-#include "core/Reporting.h"
-#include "core/SaneCrashes.h"
-#include "core/Seq.h"
-#include "core/Solver.h"
-#include "core/Training.h"
+#include "dali/data_processing/babi.h"
+#include "dali/core.h"
+#include "dali/utils.h"
 
 using babi::Fact;
 using babi::Item;

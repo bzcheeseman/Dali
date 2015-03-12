@@ -4,12 +4,9 @@
 #include <iterator>
 #include <set>
 
-#include "core/gzstream.h"
-#include "core/NlpUtils.h"
-#include "core/Reporting.h"
-#include "core/StackedGatedModel.h"
-#include "core/utils.h"
-#include "core/Solver.h"
+#include "dali/core.h"
+#include "dali/utils.h"
+#include "dali/models/StackedGatedModel.h"
 
 using std::ifstream;
 using std::istringstream;

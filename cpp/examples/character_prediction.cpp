@@ -6,9 +6,8 @@
 #include <random>
 #include <thread>
 
-#include "core/NlpUtils.h"
-#include "core/StackedModel.h"
-#include "core/Solver.h"
+#include "dali/core.h"
+#include "dali/models/StackedModel.h"
 
 DEFINE_int32(num_threads,     5, "How many threads to run ?");
 DEFINE_int32(minibatch_size, 20, "How big is the minibatch ?");

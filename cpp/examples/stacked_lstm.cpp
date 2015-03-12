@@ -1,5 +1,7 @@
 #include <gflags/gflags.h>
-#include "core/Layers.h"
+
+#include "dali/core.h"
+#include "dali/utils.h"
 
 // test file for stacked LSTM cells:
 using std::vector;

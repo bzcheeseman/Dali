@@ -16,7 +16,7 @@ set(EXAMPLE_PROGRAMS character_prediction
 
 foreach(program ${EXAMPLE_PROGRAMS})
     add_executable(${program} ${EXAMPLES_DIR}/${program}.cpp)
-    target_link_libraries(${program} core)
+    target_link_libraries(${program} dali)
     if (MKL_FOUND AND BLAS_FOUND)
         add_custom_command(TARGET ${program}
             COMMAND sh ${PROJECT_SOURCE_DIR}/scripts/fix_dylib.sh ${EXAMPLES_BUILD_DIR}/${program}

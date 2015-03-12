@@ -6,17 +6,11 @@
 #include <thread>
 #include <chrono>
 
-#include "core/gzstream.h"
-#include "core/NlpUtils.h"
-#include "core/SST.h"
-#include "core/StackedModel.h"
-#include "core/StackedGatedModel.h"
-#include "core/utils.h"
-#include "core/Reporting.h"
-#include "core/ThreadPool.h"
-#include "core/BeamSearch.h"
-#include "core/SequenceProbability.h"
-#include "core/Solver.h"
+#include "dali/core.h"
+#include "dali/utils.h"
+#include "dali/data_processing/SST.h"
+#include "dali/models/StackedModel.h"
+#include "dali/models/StackedGatedModel.h"
 
 
 // #define USE_GATES

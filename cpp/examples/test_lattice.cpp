@@ -1,7 +1,8 @@
 #include <gflags/gflags.h>
 
-#include "core/utils.h"
-#include "core/NlpUtils.h"
+#include "dali/core.h"
+#include "dali/utils.h"
+
 
 DEFINE_string(input_path, "", "Path to test tree (optional)");
 DEFINE_string(corpus_path, "", "Path to labeled pairs (optional)");

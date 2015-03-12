@@ -87,6 +87,6 @@ endif (GPERFTOOLS_FOUND)
 
 # ADDING DIRECTORIES WITH THEIR OWN CMAKELISTS FILES
 add_subdirectory(${PROJECT_SOURCE_DIR}/protobuf)
-add_subdirectory(${PROJECT_SOURCE_DIR}/core)
+add_subdirectory(${PROJECT_SOURCE_DIR}/dali)
 add_subdirectory(${PROJECT_SOURCE_DIR}/examples)
 

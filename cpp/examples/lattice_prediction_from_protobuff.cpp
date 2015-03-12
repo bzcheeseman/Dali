@@ -4,10 +4,9 @@
 #include <gflags/gflags.h>
 #include <iterator>
 
-#include "core/gzstream.h"
-#include "core/NlpUtils.h"
-#include "core/StackedGatedModel.h"
-#include "core/utils.h"
+#include "dali/core.h"
+#include "dali/utils.h"
+#include "dali/models/StackedGatedModel.h"
 
 DEFINE_string(index2target, "", "Location of Index2Target file with mapping from integer to target name.");
 DEFINE_string(lattice, "", "Where to load a lattice / Ontology from ?");

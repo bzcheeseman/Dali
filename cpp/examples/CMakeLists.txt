@@ -1,3 +1,4 @@
+
 set(EXAMPLES_DIR ${PROJECT_SOURCE_DIR}/examples)
 set(EXAMPLES_BUILD_DIR ${PROJECT_SOURCE_DIR}/build/examples)
 set(EXAMPLE_PROGRAMS character_prediction

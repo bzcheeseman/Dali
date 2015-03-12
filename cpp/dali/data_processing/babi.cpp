@@ -134,8 +134,7 @@ namespace babi {
     }
 
     string Parser::data_dir() {
-        return utils::dir_join({ utils::dir_parent(__FILE__, 2),
-                                "data", "babi", "babi" });
+        return utils::dir_join({ STR(DALI_DATA_DIR), "babi", "babi" });
     }
 
     VS Parser::tasks() {

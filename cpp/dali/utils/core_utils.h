@@ -36,6 +36,11 @@
 #define ELOG(EXP) std::cout << #EXP "\t=\t" << (EXP) << std::endl
 #define SELOG(STR,EXP) std::cout << #STR "\t=\t" << (EXP) << std::endl
 
+// Useful for expanding macros. Obviously two levels of macro
+// are needed....
+#define STR(x) __THIS_IS_VERY_ABNOXIOUS(x)
+#define __THIS_IS_VERY_ABNOXIOUS(tok) #tok
+
 #ifdef NDEBUG
     #define DEBUG_ASSERT_POSITIVE(X) ;
     #define DEBUG_ASSERT_BOUNDS(X,a,b) ;

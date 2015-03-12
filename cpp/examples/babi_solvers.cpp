@@ -641,6 +641,7 @@ class LstmBabiModelRunner: public babi::Model {
 
 int main(int argc, char** argv) {
     sane_crashes::activate();
+
     GFLAGS_NAMESPACE::SetUsageMessage(
         "\nBabi!"
     );

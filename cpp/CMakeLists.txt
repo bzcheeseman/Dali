@@ -59,6 +59,9 @@ foreach(libvar ${LIBVARS_TO_FIX})
     endif (NOT ${libvar})
 endforeach(libvar)
 
+# Relative path in C++ are hard. Adding a macro:
+add_definitions(-DDALI_DATA_DIR=${PROJECT_SOURCE_DIR}/data)
+
 # GFLAGS STUFF
 add_definitions(-DGFLAGS_NAMESPACE=${GFLAGS_NAMESPACE})
 

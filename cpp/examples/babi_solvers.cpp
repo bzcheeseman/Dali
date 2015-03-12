@@ -212,7 +212,8 @@ class LstmBabiModel {
     Layer<T>            decoder;
 
     // TODO:
-    // -> mlbasics_binary_add_like gates.
+    // -> we are mostly concerned with gates being on for positive facts.
+    //    some false positives are acceptable.
     // -> second order (between question and fact) relation for fact word gating
     // -> consider quadratic form]
     // -> add multiple answers
@@ -448,7 +449,11 @@ class LstmBabiModelRunner: public babi::Model {
     const float MINIMUM_IMPROVEMENT = 0.0001; // good one: 0.003
     const double LONG_TERM_VALIDATION = 0.02;
     const double SHORT_TERM_VALIDATION = 0.1;
-    const int PATIENCE = 100;
+
+    // gates overfit easily
+    const int GATES_PATIENCE = 10;
+    // prediction haz dropout.
+    const int PREDICTION_PATIENCE = 100;
 
     const T FACT_SELECTION_LAMBDA_MAX = 0.2;
     const T FACT_WORD_SELECTION_LAMBDA_MAX = 0.0001;
@@ -491,7 +496,7 @@ class LstmBabiModelRunner: public babi::Model {
         if (training_mode == GATES) {
             return errors[1];
         } else if (training_mode == PREDICTION) {
-            return errors[0] + errors[1] * 1000.0;
+            return errors[0] + errors[1] * 0.1 + errors[2] * 0.00001;
         }
     }
 
@@ -590,7 +595,8 @@ class LstmBabiModelRunner: public babi::Model {
 
                 // Solver::AdaDelta<T> solver(params, 0.95, 1e-9, 5.0);
                 Solver::Adam<T> solver(params);
-                LSTV training(SHORT_TERM_VALIDATION, LONG_TERM_VALIDATION, PATIENCE);
+                LSTV training(SHORT_TERM_VALIDATION, LONG_TERM_VALIDATION,
+                        (cur_training_mode == GATES ? GATES_PATIENCE : PREDICTION_PATIENCE));
 
                 while (true) {
                     auto training_errors = compute_errors(train, &solver, true);

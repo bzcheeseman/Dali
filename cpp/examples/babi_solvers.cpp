@@ -16,16 +16,20 @@ using babi::Fact;
 using babi::Item;
 using babi::QA;
 using babi::Story;
+using std::get;
 using std::make_shared;
+using std::make_tuple;
 using std::set;
 using std::shared_ptr;
 using std::string;
 using std::tie;
+using std::tuple;
 using std::vector;
 using utils::in_vector;
 using utils::reversed;
 using utils::Timer;
 using utils::Vocab;
+
 
 DEFINE_int32(j, 9, "Number of threads");
 
@@ -112,6 +116,50 @@ struct StoryActivation {
     }
 };
 
+template<typename T>
+class RecurrentGate : public AbstractLayer<T> {
+    const int input_size;
+    const int hidden_size;
+
+    public:
+        RNN<T> recurrent;
+        Layer<T> gate_classifier;
+
+        RecurrentGate(int input_size, int hidden_size) :
+                input_size(input_size),
+                hidden_size(hidden_size),
+                recurrent(input_size, hidden_size),
+                gate_classifier(hidden_size, 1) {
+        }
+
+        RecurrentGate (const RecurrentGate<T>& other, bool copy_w, bool copy_dw) :
+            input_size(other.input_size),
+            hidden_size(other.hidden_size),
+            recurrent(other.recurrent, copy_w, copy_dw),
+            gate_classifier(other.gate_classifier, copy_w, copy_dw) {
+        }
+
+        Mat<T> initial_states() const {
+            return Mat<T>(hidden_size, 1, true);
+        }
+
+        tuple<Mat<T>,Mat<T>> activate(Mat<T> input, Mat<T> prev_hidden) const {
+            auto next_hidden = recurrent.activate(input, prev_hidden).tanh();
+            auto output = gate_classifier.activate(next_hidden).sigmoid();
+            return make_tuple(output, next_hidden);
+        }
+
+        virtual vector<Mat<T>> parameters() const {
+            std::vector<Mat<T>> ret;
+
+            auto rnn_params = recurrent.parameters();
+            auto gc_params = gate_classifier.parameters();
+            ret.insert(ret.end(), rnn_params.begin(), rnn_params.end());
+            ret.insert(ret.end(), gc_params.begin(), gc_params.end());
+            return ret;
+        }
+};
+
 
 template<typename T>
 class LstmBabiModel {
@@ -139,8 +187,7 @@ class LstmBabiModel {
     const int           QUESTION_GATE_IN_FACTS            =
             utils::vsum(TEXT_REPR_STACKS) + utils::vsum(QUESTION_GATE_STACKS);
 
-    const int           QUESTION_GATE_HIDDEN              =      30;
-    const int           QUESTION_GATE_OUT                 =      1;
+    const int           QUESTION_GATE_HIDDEN              =      50;
 
     StackedShortcutLSTM<T> question_fact_gate_model;
     Mat<T> question_fact_gate_embeddings;
@@ -148,8 +195,8 @@ class LstmBabiModel {
     StackedShortcutLSTM<T> question_fact_word_gate_model;
     Mat<T> question_fact_word_gate_embeddings;
 
-    DelayedRNN<T> fact_gate;
-    DelayedRNN<T> fact_word_gate;
+    RecurrentGate<T> fact_gate;
+    RecurrentGate<T> fact_word_gate;
 
 
     const vector<int>   HL_STACKS                  =      {20,20,20,20}; //,20,20};
@@ -229,9 +276,8 @@ class LstmBabiModel {
         LstmBabiModel(shared_ptr<Vocab> vocabulary) :
                 question_fact_gate_model(QUESTION_GATE_EMBEDDINGS, QUESTION_GATE_STACKS),
                 question_fact_word_gate_model(QUESTION_GATE_EMBEDDINGS, QUESTION_GATE_STACKS),
-                fact_gate(QUESTION_GATE_IN_FACTS, QUESTION_GATE_HIDDEN, QUESTION_GATE_OUT),
-                fact_word_gate(
-                        QUESTION_GATE_IN_FACT_WORDS, QUESTION_GATE_HIDDEN, QUESTION_GATE_OUT),
+                fact_gate(QUESTION_GATE_IN_FACTS, QUESTION_GATE_HIDDEN),
+                fact_word_gate(QUESTION_GATE_IN_FACT_WORDS, QUESTION_GATE_HIDDEN),
                 question_model(TEXT_REPR_EMBEDDINGS, TEXT_REPR_STACKS),
                 fact_model(TEXT_REPR_EMBEDDINGS, TEXT_REPR_STACKS),
                 hl_model(HL_INPUT_SIZE, HL_STACKS),
@@ -264,19 +310,18 @@ class LstmBabiModel {
         }
 
         Seq<Mat<T>> gate_memory(Seq<Mat<T>> seq,
-                                const DelayedRNN<T>& gate,
+                                const RecurrentGate<T>& gate,
                                 Mat<T> gate_input) {
             Seq<Mat<T>> memory_seq;
             // By default initialized to zeros.
             auto prev_hidden = gate.initial_states();
+            Mat<T> gate_activation;
             for (auto& embedding : seq) {
                 // out_state: next_hidden, output
-                Mat<T> next_hidden, output;
-                std:tie(prev_hidden, output) = gate.activate(
-                                                    MatOps<T>::vstack(embedding, gate_input),
-                                                    prev_hidden);
+                std:tie(gate_activation, prev_hidden) =
+                        gate.activate(MatOps<T>::vstack(embedding, gate_input), prev_hidden);
                 // memory - gate activation - how much of that embedding do we keep.
-                memory_seq.push_back(output.sigmoid());
+                memory_seq.push_back(gate_activation);
             }
             return memory_seq;
         }

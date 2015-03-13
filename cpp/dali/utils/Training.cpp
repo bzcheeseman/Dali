@@ -25,8 +25,10 @@ bool LSTV::update(double validation_error) {
     } else {
         short_term_validation = short_term_forgetting * validation_error +
                                 (1.0 - short_term_forgetting) * short_term_validation;
-        long_term_validation =  long_term_forgetting * validation_error +
-                                (1.0 - long_term_forgetting) * long_term_validation;
+        if (validation_error <= long_term_validation) {
+            long_term_validation =  long_term_forgetting * validation_error +
+                                    (1.0 - long_term_forgetting) * long_term_validation;
+        }
     }
 
     if (short_term_validation > long_term_validation) {

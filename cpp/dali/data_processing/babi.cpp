@@ -191,9 +191,9 @@ namespace babi {
     sp_ret_t StoryParser::next() {
         while (true) {
             assert(!done());
-            auto& item_ptr = (*story)[story_idx++];
+            auto item_ptr = (*story)[story_idx++];
             if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
-                facts_so_far.push_back(f);
+                facts_so_far.push_back(f->fact);
             } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
                 return std::make_tuple(facts_so_far, qa);
             }

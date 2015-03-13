@@ -187,10 +187,10 @@ namespace babi {
         }
     }
 
-    typedef std::tuple<std::vector<Fact*>, QA*> sp_ret_t;
+    typedef std::tuple<std::vector<std::vector<std::string>>, QA*> sp_ret_t;
 
     class StoryParser : public utils::Generator<sp_ret_t> {
-        std::vector<Fact*> facts_so_far;
+        std::vector<std::vector<std::string>> facts_so_far;
         int story_idx;
         const Story* story;
 

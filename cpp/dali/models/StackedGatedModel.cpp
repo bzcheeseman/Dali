@@ -416,7 +416,7 @@ std::vector<int> StackedGatedModel<R>::reconstruct(
     mat input_vector;
     mat memory;
     vector<int> outputs;
-    auto last_symbol = argmax(this->decoder->activate(input_vector, std::get<1>(initial_state)));
+    auto last_symbol = this->decoder->activate(input_vector, std::get<1>(initial_state)).argmax();
     outputs.emplace_back(last_symbol);
     last_symbol += symbol_offset;
     for (uint j = 0; j < eval_steps - 1; j++) {
@@ -424,7 +424,7 @@ std::vector<int> StackedGatedModel<R>::reconstruct(
             memory        = gate.activate(input_vector, std::get<1>(initial_state)[this->stack_size-1]);
             input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
             initial_state = this->stacked_lstm->activate(initial_state, input_vector);
-            last_symbol   = argmax(this->decoder->activate(input_vector, std::get<1>(initial_state)));
+            last_symbol   = this->decoder->activate(input_vector, std::get<1>(initial_state)).argmax();
             outputs.emplace_back(last_symbol);
             last_symbol += symbol_offset;
     }
@@ -454,7 +454,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<R>::reconstr
     vector<utils::OntologyBranch::shared_branch> outputs;
     // Take the argmax over the available options (0 for go back to
     // root, and 1..n for the different children of the current position)
-    auto last_turn = argmax_slice(this->decoder->activate(input_vector, std::get<1>(initial_state)), 0, pos->children.size() + 1);
+    auto last_turn = this->decoder->activate(input_vector, std::get<1>(initial_state)).argmax_slice(0, pos->children.size() + 1);
     // if the turn is 0 go back to root, else go to one of the children using
     // the lattice pointers:
     pos = (last_turn == 0) ? root : pos->children[last_turn-1];
@@ -465,7 +465,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<R>::reconstr
             memory        = gate.activate(input_vector, std::get<1>(initial_state)[0]);
             input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
             initial_state = this->stacked_lstm->activate(initial_state, input_vector);
-            last_turn     = argmax_slice(this->decoder->activate(input_vector, std::get<1>(initial_state)), 0, pos->children.size() + 1);
+            last_turn     = this->decoder->activate(input_vector, std::get<1>(initial_state)).argmax_slice(0, pos->children.size() + 1);
             pos           = (last_turn == 0) ? root : pos->children[last_turn-1];
             outputs.emplace_back(pos);
     }

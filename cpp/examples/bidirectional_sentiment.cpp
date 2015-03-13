@@ -35,6 +35,115 @@ DEFINE_double(dropout, 0.3, "How much dropout noise to add to the problem ?");
 
 ThreadPool* pool;
 
+template<typename T>
+class BidirectionalLSTM {
+    public:
+
+        Mat<T> embedding;
+        StackedLSTM<T> stacked_lstm;
+        Layer<T> decoder;
+
+        BidirectionalLSTM(int vocabulary_size, int input_size, vector<int> hidden_sizes, int output_size)
+            : embedding(vocabulary_size, input_size, -1.0 / (T) input_size, 1.0 / (T) input_size),
+              stacked_lstm(input_size, hidden_sizes),
+              decoder(hidden_sizes.back(), output_size) {}
+
+        BidirectionalLSTM(const BidirectionalLSTM& model, bool copy_w, bool copy_dw)
+            : embedding(model.embedding, copy_w, copy_dw),
+              stacked_lstm(model.stacked_lstm, copy_w, copy_dw),
+              decoder(model.decoder, copy_w, copy_dw) {}
+
+        BidirectionalLSTM<T> shallow_copy() const {
+            return BidirectionalLSTM(*this, false, true);
+        }
+
+        Mat<T> activate_sequence(Indexing::Index example, T drop_prob = 0.0) {
+            int pass = 0;
+
+            vector<Mat<T>> observation_sequence;
+            for (auto& token : example) {
+                observation_sequence.emplace_back(
+                    MatOps<T>::dropout_normalized(
+                        embedding.row_pluck(token),
+                        drop_prob
+                    )
+                );
+            }
+            Mat<T> memory, hidden;
+            std::tie(memory, hidden) = stacked_lstm.cells[0].initial_states();
+            for (auto& cell : stacked_lstm.cells) {
+                if (pass != 0) {
+                    std::tie(memory, hidden) = cell.initial_states();
+                }
+                if (pass % 2 == 0) {
+                    auto seq_begin = observation_sequence.begin();
+                    for (int i = 0; i < observation_sequence.size(); ++i) {
+                        std::tie(memory, hidden) = cell.activate(
+                            MatOps<T>::dropout_normalized(
+                                observation_sequence[i],
+                                drop_prob
+                            ),
+                            memory,
+                            hidden);
+                        // prepare the observation sequence to be fed to the next
+                        // level up:
+                        observation_sequence[i] = hidden;
+                    }
+                } else {
+                    auto seq_begin = observation_sequence.rbegin();
+                    for (int i = observation_sequence.size() - 1; i > -1; --i) {
+                        std::tie(memory, hidden) = cell.activate(
+                            MatOps<T>::dropout_normalized(
+                                observation_sequence[i],
+                                drop_prob
+                            ),
+                            memory,
+                            hidden);
+                        // prepare the observation sequence to be fed to the next
+                        // level up:
+                        observation_sequence[i] = hidden;
+                    }
+                }
+                pass+=1;
+            }
+            return thread_decoder.activate(hidden);
+        }
+
+        vector<Mat<T>> parameters() const {
+            auto params = stacked_lstm.parameters();
+            auto decoder_params = decoder.parameters();
+            params.insert(params.end(), decoder_params.begin(), decoder_params.end());
+            params.push_back(embedding);
+            return params;
+        }
+    );
+};
+
+REAL_t average_recall(
+    BidirectionalLSTM<REAL_t>& model,
+    std::vector<std::vector<std::pair<std::vector<uint>, uint>>>& dataset) {
+    ReportProgress<REAL_t> journalist("Average recall", dataset.size());
+    atomic<int> seen_minibatches(0);
+    atomic<int> correct(0);
+    atomic<int> total(0);
+    graph::NoBackprop nb;
+    for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
+        pool->run([batch_id, &model, &dataset, &correct, &total, &journalist]() {
+            auto& minibatch = dataset[batch_id];
+            for (auto& example : minibatch) {
+                auto prediction = model.activate_sequence(example.first).argmax();
+                if (prediction == example.second) {
+                    correct += 1;
+                }
+                total += 1;
+            }
+            seen_minibatches += 1;
+            journalist.tick(seen_minibatches, 100.0 *  ((REAL_t) correct / (REAL_t) total));
+        });
+    }
+    return 100.0 * ((REAL_t) correct / (REAL_t) total);
+}
+
 int main (int argc,  char* argv[]) {
     GFLAGS_NAMESPACE::SetUsageMessage(
         "\n"
@@ -59,76 +168,57 @@ int main (int argc,  char* argv[]) {
               << "     Vocabulary size : " << vocab_size << std::endl;
 
     // Put trees into matrices:
-    #ifdef USE_MASKED_LOSS
-        vector<Databatch> dataset = SST::Databatch::create_labeled_dataset(
-            sentiment_treebank,
-            word_vocab,
-            (size_t)FLAGS_minibatch);
-        vector<Databatch> validation_set;
 
-        {
-            auto validation_treebank = SST::load(FLAGS_validation);
-            validation_set = SST::Databatch::create_labeled_dataset(
-                validation_treebank,
-                word_vocab,
-                (size_t)FLAGS_minibatch);
-        }
-    #else
-        std::vector<std::vector<std::pair<std::vector<uint>, uint>>> dataset;
+    std::vector<std::vector<std::pair<std::vector<uint>, uint>>> dataset;
 
-        auto to_index_pair = [&word_vocab](std::pair<std::vector<std::string>, uint>&& pair) {
-            return std::pair<std::vector<uint>, uint>(
-                word_vocab.transform(pair.first, true),
-                pair.second);
-        };
+    auto to_index_pair = [&word_vocab](std::pair<std::vector<std::string>, uint>&& pair) {
+        return std::pair<std::vector<uint>, uint>(
+            word_vocab.transform(pair.first, true),
+            pair.second);
+    };
 
-        auto add_to_dataset_in_minibatches = [&to_index_pair](
-            std::vector<std::vector<std::pair<std::vector<uint>, uint>>>& dataset,
-            std::vector<SST::AnnotatedParseTree::shared_tree>& trees
-            ) {
-            if (dataset.size() == 0)
+    auto add_to_dataset_in_minibatches = [&to_index_pair](
+        std::vector<std::vector<std::pair<std::vector<uint>, uint>>>& dataset,
+        std::vector<SST::AnnotatedParseTree::shared_tree>& trees
+        ) {
+        if (dataset.size() == 0)
+            dataset.emplace_back(0);
+        for (auto& tree : trees) {
+            if (dataset[dataset.size()-1].size() == FLAGS_minibatch) {
                 dataset.emplace_back(0);
-            for (auto& tree : trees) {
+                dataset.reserve(FLAGS_minibatch);
+            }
+            dataset[dataset.size()-1].emplace_back(
+                to_index_pair(
+                    tree->to_labeled_pair()
+                )
+            );
+
+            for (auto& child : tree->general_children) {
                 if (dataset[dataset.size()-1].size() == FLAGS_minibatch) {
                     dataset.emplace_back(0);
                     dataset.reserve(FLAGS_minibatch);
                 }
                 dataset[dataset.size()-1].emplace_back(
                     to_index_pair(
-                        tree->to_labeled_pair()
+                        child->to_labeled_pair()
                     )
                 );
-
-                for (auto& child : tree->general_children) {
-                    if (dataset[dataset.size()-1].size() == FLAGS_minibatch) {
-                        dataset.emplace_back(0);
-                        dataset.reserve(FLAGS_minibatch);
-                    }
-                    dataset[dataset.size()-1].emplace_back(
-                        to_index_pair(
-                            child->to_labeled_pair()
-                        )
-                    );
-                }
             }
-        };
-
-        add_to_dataset_in_minibatches(dataset, sentiment_treebank);
-
-        std::vector<std::vector<std::pair<std::vector<uint>, uint>>> validation_set;
-
-        {
-            auto validation_treebank = SST::load(FLAGS_validation);
-            add_to_dataset_in_minibatches(validation_set, validation_treebank);
         }
-    #endif
+    };
+
+    add_to_dataset_in_minibatches(dataset, sentiment_treebank);
+
+    std::vector<std::vector<std::pair<std::vector<uint>, uint>>> validation_set;
+
+    {
+        auto validation_treebank = SST::load(FLAGS_validation);
+        add_to_dataset_in_minibatches(validation_set, validation_treebank);
+    }
 
     std::cout     << "        Max training epochs = " << FLAGS_epochs << std::endl;
-    #ifdef USE_MASKED_LOSS
-        std::cout     << "Number of training examples = " << dataset.size() * FLAGS_minibatch - (FLAGS_minibatch - dataset[dataset.size() - 1].data->rows()) << std::endl;
-    #else
-        std::cout     << "Number of training examples = " << dataset.size() * FLAGS_minibatch - (FLAGS_minibatch - dataset[dataset.size() - 1].size()) << std::endl;
-    #endif
+    std::cout     << "Number of training examples = " << dataset.size() * FLAGS_minibatch - (FLAGS_minibatch - dataset[dataset.size() - 1].size()) << std::endl;
 
     pool = new ThreadPool(FLAGS_j);
 
@@ -136,37 +226,29 @@ int main (int argc,  char* argv[]) {
     Create a model with an embedding, and several stacks:
     */
 
-    Mat<REAL_t> embedding(
-        word_vocab.index2word.size(),
-        FLAGS_input_size,
-        -1.0 / (REAL_t) FLAGS_input_size,
-         1.0 / (REAL_t) FLAGS_input_size);
     std::vector<int> hidden_sizes;
     for (int i = 0; i < (FLAGS_stack_size < 1 ? 1 : FLAGS_stack_size); i++) {
         hidden_sizes.emplace_back(FLAGS_hidden);
     }
-    StackedLSTM<REAL_t> model(FLAGS_input_size, hidden_sizes);
-    Layer<REAL_t> decoder(
-        FLAGS_hidden,
-        SST::label_names.size()
-    );
+
+    auto model = BidirectionalLSTM<REAL_t>(
+         word_vocab.index2word.size(),
+         FLAGS_input_size,
+         hidden_sizes,
+         SST::label_names.size());
+
+    vector<vector<Mat<T>> thread_params;
 
     // what needs to be optimized:
-    auto params = model.parameters();
-    auto decoder_params = decoder.parameters();
-    params.insert(params.end(), decoder_params.begin(), decoder_params.end());
-    params.push_back(embedding);
-
-    vector<Mat<REAL_t>> thread_embeddings;
-    vector<StackedLSTM<REAL_t>> thread_models;
-    vector<Layer<REAL_t>> thread_decoders;
+    vector<BidirectionalLSTM<REAL_t>> thread_models;
     for (int i = 0; i < FLAGS_j; i++) {
         // create a copy for each training thread
         // (shared memory mode = Hogwild)
-        thread_embeddings.push_back(embedding.shallow_copy());
         thread_models.push_back(model.shallow_copy());
-        thread_decoders.push_back(decoder.shallow_copy());
+        thread_params.push_back(thread_models.back().parameters());
     }
+
+    auto params = model.parameters();
 
     // Rho value, eps value, and gradient clipping value:
     Solver::AdaDelta<REAL_t> solver(params, 0.95, 1e-9, 5.0);
@@ -187,86 +269,24 @@ int main (int argc,  char* argv[]) {
         );
 
         for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
-            pool->run([&params, batch_id, &thread_embeddings, &thread_decoders, &thread_models, &journalist, &solver, &dataset, &best_validation_score, &batches_processed]() {
-                auto& embedding      = thread_embeddings[ThreadPool::get_thread_number()];
+            pool->run([&thread_params,&thread_models,  batch_id, &journalist, &solver, &dataset, &best_validation_score, &batches_processed]() {
                 auto& thread_model   = thread_models[ThreadPool::get_thread_number()];
-                auto& thread_decoder = thread_decoders[ThreadPool::get_thread_number()];
+                auto& thread_parms   = thread_params[ThreadPool::get_thread_number()];
                 auto& minibatch      = dataset[batch_id];
-
                 // many forward steps here:
-                #ifdef USE_MASKED_LOSS
-                    /*thread_model.masked_predict_cost(
-                        minibatch.data, // the sequence to draw from
-                        minibatch.data, // what to predict (the words offset by 1)
-                        1,
-                        minibatch.codelens,
-                        0,
-                        (REAL_t) FLAGS_dropout
-                    );*/
-                #else
-                    for (auto & example : minibatch) {
-                        int pass = 0;
-
-                        vector<Mat<REAL_t>> observation_sequence;
-                        for (auto& token : example.first) {
-                            observation_sequence.emplace_back(
-                                MatOps<REAL_t>::dropout_normalized(
-                                    embedding.row_pluck(token),
-                                    FLAGS_dropout
-                                )
-                            );
-                        }
-                        Mat<REAL_t> memory, hidden;
-                        std::tie(memory, hidden) = thread_model.cells[0].initial_states();
-                        for (auto& cell : thread_model.cells) {
-                            if (pass != 0) {
-                                std::tie(memory, hidden) = cell.initial_states();
-                            }
-                            if (pass % 2 == 0) {
-                                auto seq_begin = observation_sequence.begin();
-                                for (int i = 0; i < observation_sequence.size(); ++i) {
-                                    std::tie(memory, hidden) = cell.activate(
-                                        MatOps<REAL_t>::dropout_normalized(
-                                            observation_sequence[i],
-                                            FLAGS_dropout
-                                        ),
-                                        memory,
-                                        hidden);
-                                    // prepare the observation sequence to be fed to the next
-                                    // level up:
-                                    observation_sequence[i] = hidden;
-                                }
-                            } else {
-                                auto seq_begin = observation_sequence.rbegin();
-                                for (int i = observation_sequence.size() - 1; i > -1; --i) {
-                                    std::tie(memory, hidden) = cell.activate(
-                                        MatOps<REAL_t>::dropout_normalized(
-                                            observation_sequence[i],
-                                            FLAGS_dropout
-                                        ),
-                                        memory,
-                                        hidden);
-                                    // prepare the observation sequence to be fed to the next
-                                    // level up:
-                                    observation_sequence[i] = hidden;
-                                }
-                            }
-                            pass+=1;
-                        }
-                        auto logprobs = thread_decoder.activate(hidden);
-                        auto error = MatOps<REAL_t>::softmax_cross_entropy(logprobs, example.second);
-                        error.grad();
-                        graph::backward(); // backpropagate
-                    }
-                #endif
+                for (auto & example : minibatch) {
+                    auto logprobs = thread_model.activate_sequence(example.first, FLAGS_dropout);
+                    auto error = MatOps<REAL_t>::softmax_cross_entropy(logprobs, example.second);
+                    error.grad();
+                    graph::backward(); // backpropagate
+                }
                 solver.step(params); // One step of gradient descent
-
                 journalist.tick(++batches_processed, best_validation_score);
             });
         }
         pool->wait_until_idle();
 
-        double new_validation = 100.0;// * average_error(model, validation_set);
+        double new_validation = average_recall(model, validation_set);
 
         if (new_validation < best_validation_score) {
             // lose patience:

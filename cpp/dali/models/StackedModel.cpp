@@ -325,14 +325,14 @@ std::vector<int> StackedModel<R>::reconstruct(
     auto initial_state = get_final_activation(example);
     vector<int> outputs;
     auto input_vector = this->embedding.row_pluck(example[example.size() - 1]);
-    auto last_symbol = argmax(decoder->activate(input_vector, std::get<1>(initial_state)));
+    auto last_symbol = decoder->activate(input_vector, std::get<1>(initial_state)).argmax();
     outputs.emplace_back(last_symbol);
     last_symbol += symbol_offset;
 
     for (uint j = 0; j < eval_steps - 1; j++) {
         input_vector  = this->embedding.row_pluck(last_symbol);
         initial_state = stacked_lstm->activate(initial_state, input_vector);
-        last_symbol   = argmax(decoder->activate(input_vector, std::get<1>(initial_state)));
+        last_symbol   = decoder->activate(input_vector, std::get<1>(initial_state)).argmax();
         outputs.emplace_back(last_symbol);
         last_symbol += symbol_offset;
     }
@@ -346,7 +346,7 @@ typename StackedModel<R>::activation_t StackedModel<R>::activate(
     activation_t out;
     auto input_vector = this->embedding.row_pluck(index);
     std::get<0>(out)  = stacked_lstm->activate(previous_state, input_vector);
-    std::get<1>(out)  = softmax(decoder->activate(input_vector, std::get<1>(std::get<0>(out))));
+    std::get<1>(out)  = MatOps<R>::softmax_no_grad(decoder->activate(input_vector, std::get<1>(std::get<0>(out))));
     return out;
 }
 
@@ -357,7 +357,7 @@ typename StackedModel<R>::activation_t StackedModel<R>::activate(
     activation_t out;
     auto input_vector = this->embedding.rows_pluck(indices);
     std::get<0>(out)  = stacked_lstm->activate(previous_state, input_vector);
-    std::get<1>(out)  = softmax(decoder->activate(input_vector, std::get<1>(std::get<0>(out))));
+    std::get<1>(out)  = MatOps<R>::softmax_no_grad(decoder->activate(input_vector, std::get<1>(std::get<0>(out))));
     return out;
 }
 
@@ -383,7 +383,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedModel<R>::reconstruct_l
     vector<utils::OntologyBranch::shared_branch> outputs;
     // Rake the argmax over the available options (0 for go back to
     // root, and 1..n for the different children of the current position)
-    auto last_turn = argmax_slice(decoder->activate(input_vector, std::get<1>(initial_state)), 0, pos->children.size() + 1);
+    auto last_turn = decoder->activate(input_vector, std::get<1>(initial_state)).argmax_slice(0, pos->children.size() + 1);
     // if the turn is 0 go back to root, else go to one of the children using
     // the lattice pointers:
     pos = (last_turn == 0) ? root : pos->children[last_turn-1];
@@ -392,7 +392,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedModel<R>::reconstruct_l
     for (uint j = 0; j < eval_steps - 1; j++) {
         input_vector  = this->embedding.row_pluck(pos->id);
         initial_state = stacked_lstm->activate(initial_state, input_vector);
-        last_turn     = argmax_slice(decoder->activate(input_vector, std::get<1>(initial_state)), 0, pos->children.size() + 1);
+        last_turn     = decoder->activate(input_vector, std::get<1>(initial_state)).argmax_slice( 0, pos->children.size() + 1);
         pos           = (last_turn == 0) ? root : pos->children[last_turn-1];
         outputs.emplace_back(pos);
     }

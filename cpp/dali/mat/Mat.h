@@ -196,6 +196,8 @@ class Mat {
         Mat<R> pow(int);
         Mat<R> sqrt();
         Mat<R> elt_inv();
+        int argmax() const;
+        int argmax_slice(int lower, int upper) const;
 
         Mat<R> operator*(Mat<R> other);
         Mat<R> operator*(R alpha);
@@ -230,11 +232,5 @@ bool operator!=(const Mat<R>&, const Mat<R>&);
 
 template <typename R>
 bool operator==(const Mat<R>&, const Mat<R>&);
-
-template<typename R>
-int argmax(Mat<R>);
-
-template<typename R>
-int argmax_slice(Mat<R>, int, int);
 
 #endif

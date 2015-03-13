@@ -540,11 +540,11 @@ template bool operator==<float>(const Mat<float>&, const Mat<float>&);
 template bool operator==<double>(const Mat<double>&, const Mat<double>&);
 
 template<typename R>
-int argmax(Mat<R> A) {
+int Mat<R>::argmax() {
     int i = 0;
     R current_max = -std::numeric_limits<R>::infinity();
-    auto ptr = A.w().data();
-    for (int j = 0; j < A.number_of_elements(); j++) {
+    auto ptr = w().data();
+    for (int j = 0; j < number_of_elements(); j++) {
         if (*ptr > current_max) {
             current_max = *ptr;
             i = j;
@@ -555,10 +555,10 @@ int argmax(Mat<R> A) {
 }
 
 template<typename R>
-int argmax_slice(Mat<R> A, int min, int max) {
+int Mat<R>::argmax_slice(int min, int max) {
     int i = 0;
     R current_max = -std::numeric_limits<R>::infinity();
-    auto ptr = A.w().data();
+    auto ptr = w().data();
     for (int j = min; j < max; j++) {
         if (*ptr > current_max) {
             current_max = *ptr;
@@ -568,11 +568,6 @@ int argmax_slice(Mat<R> A, int min, int max) {
     }
     return i;
 }
-
-template int argmax(Mat<float>);
-template int argmax(Mat<double>);
-template int argmax_slice(Mat<float>, int, int);
-template int argmax_slice(Mat<double>, int, int);
 
 template<typename R>
 void utils::save_matrices(vector<Mat<R>> parameters, string dirname) {

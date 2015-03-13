@@ -569,7 +569,7 @@ namespace utils {
                 unknown_word = index2word.size() - 1;
         }
 
-        vector<typename Vocab::ind_t> Vocab::transform(const str_sequence& words) const {
+        vector<typename Vocab::ind_t> Vocab::transform(const str_sequence& words, bool with_end_symbol) const {
             vector<ind_t> result;
             std::transform(words.begin(), words.end(),
                            std::back_inserter(result), [this](const string& word) {
@@ -579,6 +579,9 @@ namespace utils {
                     return word2index.at(word);
                 }
             });
+            if (with_end_symbol) {
+                result.emplace_back( word2index.at(utils::end_symbol) );
+            }
             return result;
         }
 
@@ -1097,6 +1100,43 @@ namespace utils {
     void assert2(bool condition, std::string message) {
         if (!condition) {
             throw std::invalid_argument(message);
+        }
+    }
+
+
+    ConfusionMatrix::ConfusionMatrix(int classes, const vector<string>& _names) : names(_names), totals(classes) {
+        for (int i = 0; i < classes;++i) {
+            grid.emplace_back(classes);
+        }
+    }
+    void ConfusionMatrix::classified_a_when_b(int a, int b) {
+        // update the misclassification:
+        grid[b][a] += 1;
+        // update the stakes:
+        totals[b]  += 1;
+    };
+
+    void ConfusionMatrix::report() const {
+        std::cout << "\nConfusion Matrix\n\t";
+        for (auto & name : names) {
+            std::cout << name << "\t";
+        }
+        std::cout << "\n";
+        auto names_ptr = names.begin();
+        auto totals_ptr = totals.begin();
+        for (auto& category : grid) {
+            std::cout << *names_ptr << "\t";
+            for (auto & el : category) {
+                std::cout << std::fixed
+                          << std::setw(4)
+                          << std::setprecision(2)
+                          << std::setfill(' ')
+                          << ((*totals_ptr) > 0 ? (100.0 * ((double) el / (double)(*totals_ptr))) : 0.0)
+                          << "%\t";
+            }
+            std::cout << "\n";
+            names_ptr++;
+            totals_ptr++;
         }
     }
 

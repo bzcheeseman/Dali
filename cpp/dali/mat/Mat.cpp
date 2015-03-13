@@ -172,8 +172,8 @@ Mat<R>::Mat (const Mat<R>& other, bool copy_w, bool copy_dw) :
 }
 
 template<typename R>
-Mat<R> Mat<R>::shallow_copy(const Mat<R>& m) {
-        return Mat(m, false, true);
+Mat<R> Mat<R>::shallow_copy() {
+    return Mat(*this, false, true);
 }
 
 template<typename R>

@@ -160,7 +160,7 @@ class Mat {
         the parameters but each compute their own gradients.
         The gradients are kept in separate `dw` memory buffers
         but `w` buffers are shared amongst threads. */
-        static Mat shallow_copy(const Mat&);
+        Mat shallow_copy();
         operator std::string() const;
 
 

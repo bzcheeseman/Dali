@@ -190,6 +190,7 @@ class LSTM : public AbstractLayer<R> {
     typedef RNN<R>                        layer_type;
     void name_internal_layers();
     public:
+        typedef std::tuple<Mat<R>, Mat<R>> state_t;
         typedef R value_t;
         // cell input modulation:
         layer_type input_layer;
@@ -206,13 +207,17 @@ class LSTM : public AbstractLayer<R> {
         LSTM (const LSTM&, bool, bool);
         virtual std::vector<Mat<R>> parameters() const;
         static std::tuple<std::vector<Mat<R>>, std::vector<Mat<R>>> initial_states(const std::vector<int>&);
-        std::tuple<Mat<R>, Mat<R>> activate(
-
-            Mat<R>,
-            Mat<R>,
-            Mat<R>) const;
+        state_t activate(
+            Mat<R> input_vector,
+            Mat<R> cell_prev,
+            Mat<R> hidden_prev) const;
 
         LSTM<R> shallow_copy() const;
+        state_t initial_states() const;
+
+        virtual state_t activate_sequence(
+            state_t initial_state,
+            const Seq<Mat<R>>& sequence) const;
 };
 
 template<typename R>
@@ -231,6 +236,7 @@ class ShortcutLSTM : public AbstractLayer<R> {
     typedef ShortcutRNN<R>          layer_type;
     void name_internal_layers();
     public:
+        typedef std::tuple<Mat<R>, Mat<R>> state_t;
         typedef R value_t;
         // cell input modulation:
         layer_type input_layer;
@@ -243,15 +249,20 @@ class ShortcutLSTM : public AbstractLayer<R> {
         const int hidden_size;
         const int input_size;
         const int shortcut_size;
+        state_t initial_states() const;
         ShortcutLSTM (int, int, int);
         ShortcutLSTM (const ShortcutLSTM&, bool, bool);
         virtual std::vector<Mat<R>> parameters() const;
         std::tuple<Mat<R>, Mat<R>> activate(
-            Mat<R>,
-            Mat<R>,
-            Mat<R>,
-            Mat<R>) const;
+            Mat<R> input_vector,
+            Mat<R> shortcut_vector,
+            Mat<R> cell_prev,
+            Mat<R> hidden_prev) const;
         ShortcutLSTM<R> shallow_copy() const;
+        virtual state_t activate_sequence(
+            state_t initial_state,
+            const Seq<Mat<R>>& sequence,
+            const Seq<Mat<R>>& shortcut_sequence) const;
 };
 
 template<typename R>

@@ -3,7 +3,6 @@
 #include <Eigen/Eigen>
 #include <fstream>
 #include <iterator>
-#include <thread>
 #include <chrono>
 
 #include "dali/core.h"
@@ -28,26 +27,15 @@ using std::istringstream;
 using std::stringstream;
 using std::string;
 using std::min;
-using std::thread;
-using std::ref;
 using utils::Vocab;
-using utils::from_string;
-using utils::OntologyBranch;
 using utils::tokenized_uint_labeled_dataset;
 using std::atomic;
 using std::chrono::seconds;
-using std::array;
-
+using SST::Databatch;
+using utils::ConfusionMatrix;
 
 typedef float REAL_t;
 typedef Mat<REAL_t> mat;
-typedef float price_t;
-typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
-typedef Eigen::Matrix<REAL_t, Eigen::Dynamic, 1> float_vector;
-typedef std::pair<vector<string>, uint> labeled_pair;
-
-const string START = "**START**";
-const vector<string> label_names = {"--", "-", "=", "+", "++"};
 
 ThreadPool* pool;
 
@@ -58,136 +46,7 @@ DEFINE_int32(epoch_batches, 3, "How many minibatches should each label's model d
 DEFINE_int32(num_reconstructions,  1,    "How many sentences to demo after each epoch.");
 DEFINE_double(dropout, 0.3, "How much dropout noise to add to the problem ?");
 DEFINE_int32(memory_rampup, 30, "Over how many epochs should the memory grow ?");
-
 DEFINE_bool(use_surprise, true, "Whether to compare choices using log likelihood, or surprise (entropy is the integral of surprise around a circle with prob 0 and 1 on either sides)");
-
-/**
-Databatch
----------
-
-Datastructure handling the storage of training
-data, length of each example in a minibatch,
-and total number of prediction instances
-within a single minibatch.
-
-**/
-class Databatch {
-    typedef shared_ptr<index_mat> shared_index_mat;
-    public:
-        shared_index_mat data;
-        shared_eigen_index_vector targets;
-        shared_eigen_index_vector codelens;
-        int total_codes;
-        Databatch(int n, int d) {
-            data        = make_shared<index_mat>(n, d);
-            targets     = make_shared<eigen_index_vector>(n);
-            codelens    = make_shared<eigen_index_vector>(n);
-            total_codes = 0;
-            data->fill(0);
-        };
-};
-
-void insert_example_indices_into_matrix(
-    Vocab& word_vocab,
-    Databatch& databatch,
-    labeled_pair& example,
-    size_t& row) {
-    auto description_length = example.first.size();
-    (*databatch.data)(row, 0) = word_vocab.word2index[START];
-    for (size_t j = 0; j < description_length; j++)
-        (*databatch.data)(row, j + 1) = word_vocab.word2index.find(example.first[j]) != word_vocab.word2index.end() ? word_vocab.word2index[example.first[j]] : word_vocab.unknown_word;
-    (*databatch.data)(row, description_length + 1) = word_vocab.word2index[utils::end_symbol];
-    (*databatch.codelens)(row) = description_length + 1;
-    databatch.total_codes += description_length + 1;
-    (*databatch.targets)(row) = example.second;
-}
-
-Databatch convert_sentences_to_indices(
-    tokenized_uint_labeled_dataset& examples,
-    Vocab& word_vocab,
-    size_t num_elements,
-    vector<size_t>::iterator indices,
-    vector<size_t>::iterator lengths_sorted) {
-
-    auto indices_begin = indices;
-    Databatch databatch(num_elements, *std::max_element(lengths_sorted, lengths_sorted + num_elements));
-    for (size_t k = 0; k < num_elements; k++)
-        insert_example_indices_into_matrix(
-            word_vocab,
-            databatch,
-            examples[*(indices++)],
-            k);
-    return databatch;
-}
-
-vector<Databatch> create_labeled_dataset(
-    tokenized_uint_labeled_dataset& examples,
-    Vocab& word_vocab,
-    size_t minibatch_size) {
-
-    vector<Databatch> dataset;
-    vector<size_t> lengths = vector<size_t>(examples.size());
-    for (size_t i = 0; i != lengths.size(); ++i) lengths[i] = examples[i].first.size() + 2;
-    vector<size_t> lengths_sorted(lengths);
-
-    auto shortest = utils::argsort(lengths);
-    std::sort(lengths_sorted.begin(), lengths_sorted.end());
-    size_t piece_size = minibatch_size;
-    size_t so_far = 0;
-
-    auto shortest_ptr = lengths_sorted.begin();
-    auto end_ptr = lengths_sorted.end();
-    auto indices_ptr = shortest.begin();
-
-    while (shortest_ptr != end_ptr) {
-        dataset.emplace_back( convert_sentences_to_indices(
-            examples,
-            word_vocab,
-            min(piece_size, lengths.size() - so_far),
-            indices_ptr,
-            shortest_ptr) );
-        shortest_ptr += min(piece_size,          lengths.size() - so_far);
-        indices_ptr  += min(piece_size,          lengths.size() - so_far);
-        so_far        = min(so_far + piece_size, lengths.size());
-    }
-    return dataset;
-}
-
-/**
-get word vocab
---------------
-
-Collect a mapping from words to unique indices
-from a collection of Annnotate Parse Trees
-from the Stanford Sentiment Treebank, and only
-keep words ocurring more than some threshold
-number of times `min_occurence`
-
-Inputs
-------
-
-std::vector<SST::AnnotatedParseTree::shared_tree>& trees : Stanford Sentiment Treebank trees
-                                       int min_occurence : cutoff appearance of words to include
-                                                           in vocabulary.
-
-
-Outputs
--------
-
-Vocab vocab : the vocabulary extracted from the trees with the
-              addition of a special "**START**" word.
-
-**/
-Vocab get_word_vocab(vector<SST::AnnotatedParseTree::shared_tree>& trees, int min_occurence) {
-    tokenized_uint_labeled_dataset examples;
-    for (auto& tree : trees)
-        examples.emplace_back(tree->to_labeled_pair());
-    auto index2word  = utils::get_vocabulary(examples, min_occurence);
-    Vocab vocab(index2word);
-    vocab.word2index[START] = vocab.index2word.size();
-    vocab.index2word.emplace_back(START);
-    return vocab;
-}
 
 template<typename model_t>
 void reconstruct_random_beams(
@@ -214,7 +73,7 @@ void reconstruct_random_beams(
     std::cout << "\"" << std::endl;
     size_t name_num = 0;
     for (auto& model : models) {
-        std::cout << "(" << label_names[name_num++] << ") ";
+        std::cout << "(" << SST::label_names[name_num++] << ") ";
         auto beams = beam_search::beam_search(model,
             random_batch->data->row(random_example_index).head(init_size),
             max_length,
@@ -235,47 +94,6 @@ void reconstruct_random_beams(
     }
 }
 
-class ConfusionMatrix {
-    public:
-        vector<vector<atomic<int>>> grid;
-        vector<atomic<int>> totals;
-        const vector<string>& names;
-        ConfusionMatrix(int classes, const vector<string>& _names) : names(_names), totals(classes) {
-            for (int i = 0; i < classes;++i) {
-                grid.emplace_back(classes);
-            }
-        }
-        void classified_a_when_b(int a, int b) {
-            // update the misclassification:
-            grid[b][a] += 1;
-            // update the stakes:
-            totals[b]  += 1;
-        };
-        void report() const {
-            std::cout << "\nConfusion Matrix\n\t";
-            for (auto & name : names) {
-                std::cout << name << "\t";
-            }
-            std::cout << "\n";
-            auto names_ptr = names.begin();
-            auto totals_ptr = totals.begin();
-            for (auto& category : grid) {
-                std::cout << *names_ptr << "\t";
-                for (auto & el : category) {
-                    std::cout << std::fixed
-                              << std::setw(4)
-                              << std::setprecision(2)
-                              << std::setfill(' ')
-                              << ((*totals_ptr) > 0 ? (100.0 * ((double) el / (double)(*totals_ptr))) : 0.0)
-                              << "%\t";
-                }
-                std::cout << "\n";
-                names_ptr++;
-                totals_ptr++;
-            }
-        }
-};
-
 template<typename model_t>
 REAL_t average_error(const vector<model_t>& models, const vector<vector<Databatch>>& validation_sets) {
     atomic<int> correct(0);
@@ -283,7 +101,7 @@ REAL_t average_error(const vector<model_t>& models, const vector<vector<Databatc
     ReportProgress<double> journalist("Average error", validation_sets.size() * set_size);
     atomic<int> total(0);
     atomic<int> seen_minibatches(0);
-    auto confusion = ConfusionMatrix(5, label_names);
+    auto confusion = ConfusionMatrix(5, SST::label_names);
 
     for (int validation_set_num = 0; validation_set_num < validation_sets.size(); validation_set_num++) {
 
@@ -367,7 +185,7 @@ int main( int argc, char* argv[]) {
     auto epochs              = FLAGS_epochs;
     auto sentiment_treebank  = SST::load(FLAGS_train);
 
-    auto word_vocab          = get_word_vocab(sentiment_treebank, FLAGS_min_occurence);
+    auto word_vocab          = SST::get_word_vocab(sentiment_treebank, FLAGS_min_occurence);
     auto vocab_size          = word_vocab.index2word.size();
 
     // Load Dataset of Trees:
@@ -416,10 +234,10 @@ int main( int argc, char* argv[]) {
 
         i = 0;
         for (auto& tree_type : tree_types)
-            datasets[i++] = create_labeled_dataset(tree_type, word_vocab, FLAGS_minibatch);
+            datasets[i++] = SST::Databatch::create_labeled_dataset(tree_type, word_vocab, FLAGS_minibatch);
         i = 0;
         for (auto& tree_type : validation_tree_types)
-            validation_sets[i++] = create_labeled_dataset(tree_type, word_vocab, FLAGS_minibatch);
+            validation_sets[i++] = SST::Databatch::create_labeled_dataset(tree_type, word_vocab, FLAGS_minibatch);
     }
 
     std::cout     << "    Max training epochs = " << FLAGS_epochs << std::endl;

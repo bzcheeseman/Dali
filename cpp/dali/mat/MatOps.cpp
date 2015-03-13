@@ -312,7 +312,7 @@ Mat<R> MatOps<R>::pow(Mat<R> matrix, R other) {
         return MatOps<R>::elt_inv(matrix);
     } else if (other == (R) 0.0){
         return MatOps<R>::fill(matrix, 1.0);
-    } else if (other == (R)0.5) {
+    } else if (other == (R)0.5) {
         return MatOps<R>::sqrt(matrix);
     } else if (other == (R)1.0) {
         return matrix;

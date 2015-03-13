@@ -103,7 +103,7 @@ namespace utils {
                         std::map<std::string, ind_t> word2index;
                         str_sequence index2word;
 
-                        std::vector<ind_t> transform(const str_sequence& words) const;
+                        std::vector<ind_t> transform(const str_sequence& words, bool with_end_symbol = false) const;
                         Vocab();
                         Vocab(str_sequence&);
                         Vocab(str_sequence&, bool);
@@ -582,6 +582,16 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
                 assert(!is_done);
                 advance();
             }
+    };
+
+    class ConfusionMatrix {
+        public:
+            std::vector<std::vector<std::atomic<int>>> grid;
+            std::vector<std::atomic<int>> totals;
+            const std::vector<std::string>& names;
+            ConfusionMatrix(int classes, const std::vector<std::string>& _names);
+            void classified_a_when_b(int a, int b);
+            void report() const;
     };
 
     template<typename T>

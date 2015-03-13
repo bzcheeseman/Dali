@@ -315,7 +315,6 @@ typename StackedModel<R>::state_type StackedModel<R>::get_final_activation(
     return initial_state;
 }
 
-
 template<typename R>
 std::vector<int> StackedModel<R>::reconstruct(
     Indexing::Index example,

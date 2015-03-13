@@ -489,7 +489,7 @@ ShortcutLSTM<R> ShortcutLSTM<R>::shallow_copy() const {
 }
 
 template<typename R>
-std::tuple<Mat<R>, Mat<R>> LSTM<R>::activate (
+std::tuple<Mat<R>, Mat<R>> LSTM<R>::activate(
     Mat<R> input_vector,
     Mat<R> cell_prev,
     Mat<R> hidden_prev) const {
@@ -517,6 +517,19 @@ std::tuple<Mat<R>, Mat<R>> LSTM<R>::activate (
 
     return make_tuple(cell_d, hidden_d);
 }
+
+template<typename R>
+typename LSTM<R>::state_t LSTM<R>::activate_sequence(
+    state_t initial_state,
+    const Seq<Mat<R>>& sequence) const {
+    for (auto& input_vector : sequence)
+        initial_state = activate(
+            input_vector,
+            std::get<0>(initial_state),
+            std::get<1>(initial_state)
+        );
+    return initial_state;
+};
 
 template<typename R>
 std::tuple<Mat<R>, Mat<R>> ShortcutLSTM<R>::activate (
@@ -550,6 +563,25 @@ std::tuple<Mat<R>, Mat<R>> ShortcutLSTM<R>::activate (
 }
 
 template<typename R>
+typename ShortcutLSTM<R>::state_t ShortcutLSTM<R>::activate_sequence(
+    state_t initial_state,
+    const Seq<Mat<R>>& sequence,
+    const Seq<Mat<R>>& shortcut_sequence) const {
+    assert(sequence.size() == shortcut_sequence.size());
+    auto seq_begin = shortcut_sequence.begin();
+    for (auto& input_vector : sequence) {
+        initial_state = activate(
+            input_vector,
+            *seq_begin,
+            std::get<0>(initial_state),
+            std::get<1>(initial_state)
+        );
+        seq_begin++;
+    }
+    return initial_state;
+};
+
+template<typename R>
 std::vector<Mat<R>> LSTM<R>::parameters() const {
     std::vector<Mat<R>> parameters;
 
@@ -581,6 +613,15 @@ std::vector<Mat<R>> ShortcutLSTM<R>::parameters() const {
     parameters.insert( parameters.end(), cell_layer_params.begin(),   cell_layer_params.end() );
 
     return parameters;
+}
+
+template<typename R>
+typename LSTM<R>::state_t LSTM<R>::initial_states() const {
+    return state_t(Mat<R>(hidden_size, 1), Mat<R>(hidden_size, 1));
+}
+template<typename R>
+typename ShortcutLSTM<R>::state_t ShortcutLSTM<R>::initial_states() const {
+    return state_t(Mat<R>(hidden_size, 1), Mat<R>(hidden_size, 1));
 }
 
 template<typename R>

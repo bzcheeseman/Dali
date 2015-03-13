@@ -95,6 +95,43 @@ namespace SST {
     template<typename T>
     void stream_to_sentiment_treebank(T&, std::vector<AnnotatedParseTree::shared_tree>&);
     std::vector<AnnotatedParseTree::shared_tree> load(const std::string&);
+
+    class Databatch {
+        public:
+            typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
+            typedef std::shared_ptr<index_mat> shared_index_mat;
+            typedef Eigen::Matrix<unsigned int, Eigen::Dynamic, 1> eigen_index_vector;
+            typedef std::shared_ptr<eigen_index_vector> shared_eigen_index_vector;
+
+            shared_index_mat data;
+            shared_eigen_index_vector targets;
+            shared_eigen_index_vector codelens;
+            int total_codes;
+            Databatch(int n, int d);
+
+            void insert_example_indices_into_matrix(
+                utils::Vocab& word_vocab,
+                std::pair<std::vector<std::string>, uint>& example,
+                size_t& row);
+            static Databatch convert_sentences_to_indices(
+                utils::tokenized_uint_labeled_dataset& examples,
+                utils::Vocab& word_vocab,
+                size_t num_elements,
+                std::vector<size_t>::iterator indices,
+                std::vector<size_t>::iterator lengths_sorted);
+            static std::vector<Databatch> create_labeled_dataset(
+                utils::tokenized_uint_labeled_dataset& examples,
+                utils::Vocab& word_vocab,
+                size_t minibatch_size);
+            static std::vector<Databatch> create_labeled_dataset(
+                std::vector<SST::AnnotatedParseTree::shared_tree>& examples,
+                utils::Vocab& word_vocab,
+                size_t minibatch_size);
+    };
+
+    extern const std::vector<std::string> label_names;
+
+    utils::Vocab get_word_vocab(std::vector<SST::AnnotatedParseTree::shared_tree>& trees, int min_occurence);
 }
 
 std::ostream &operator <<(std::ostream &, const SST::AnnotatedParseTree&);

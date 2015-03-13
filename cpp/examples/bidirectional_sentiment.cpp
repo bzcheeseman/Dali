@@ -131,7 +131,10 @@ REAL_t average_recall(
         pool->run([batch_id, &model, &dataset, &correct, &total, &journalist]() {
             auto& minibatch = dataset[batch_id];
             for (auto& example : minibatch) {
-                auto prediction = model.activate_sequence(example.first).argmax();
+                auto prediction = model.activate_sequence(
+                    example.first, // see an example
+                    0.0            // activate without dropout
+                ).argmax();        // no softmax needed, simply get best guess
                 if (prediction == example.second) {
                     correct += 1;
                 }

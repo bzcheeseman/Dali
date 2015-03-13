@@ -540,7 +540,7 @@ template bool operator==<float>(const Mat<float>&, const Mat<float>&);
 template bool operator==<double>(const Mat<double>&, const Mat<double>&);
 
 template<typename R>
-int Mat<R>::argmax() {
+int Mat<R>::argmax() const {
     int i = 0;
     R current_max = -std::numeric_limits<R>::infinity();
     auto ptr = w().data();
@@ -555,11 +555,11 @@ int Mat<R>::argmax() {
 }
 
 template<typename R>
-int Mat<R>::argmax_slice(int min, int max) {
+int Mat<R>::argmax_slice(int lower, int upper) const {
     int i = 0;
     R current_max = -std::numeric_limits<R>::infinity();
     auto ptr = w().data();
-    for (int j = min; j < max; j++) {
+    for (int j = lower; j < upper; j++) {
         if (*ptr > current_max) {
             current_max = *ptr;
             i = j;

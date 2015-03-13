@@ -7,7 +7,7 @@ DEFINE_int32(subsets,            10,
 DEFINE_int32(min_occurence,      2,
         "How often a word must appear to be included in the Vocabulary \n"
         "(Note: other words replaced by special **UNKNONW** word)");
-DEFINE_int32(epochs,             5,
+DEFINE_int32(epochs,             2000,
         "How many training loops through the full dataset ?");
 DEFINE_string(train,             "",
         "Training dataset . ");

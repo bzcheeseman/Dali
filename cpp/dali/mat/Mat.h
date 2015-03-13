@@ -197,6 +197,12 @@ class Mat {
         Mat<R> sqrt();
         Mat<R> elt_inv();
         int argmax() const;
+        /*
+        Restricted range argmax: returns the index of the
+        highest value between two indices, lower and upper
+        (useful if a range of predictions is inadmissible,
+        so we are only considering a subset of predictions)
+        */
         int argmax_slice(int lower, int upper) const;
 
         Mat<R> operator*(Mat<R> other);

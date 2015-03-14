@@ -59,7 +59,7 @@ std::cout << "SIEMA" << std::endl;
 
     Mat<R> A(3, 5);
     A.w() = (A.w().array() + 1.2).matrix();
-    A = A + Mat<R>(3, 5, -0.5, 0.5);
+    A = A + Mat<R>(3, 5, weights<R>::uniform(1.0));
     // build random matrix of double type with standard deviation 2:
     Mat<R> B(A.dims(0), A.dims(1), 2.0);
     Mat<R> C(A.dims(1), 4,    2.0);
@@ -92,10 +92,10 @@ std::cout << "SIEMA" << std::endl;
     StackedInputLayer<R> superclassifier({20, 20, 10, 2}, 5);
 
     vector<Mat<R>> inputs;
-    inputs.emplace_back(20, 5, -2.0, 2.0);
-    inputs.emplace_back(20, 5, -2.0, 2.0);
-    inputs.emplace_back(10, 5, -2.0, 2.0);
-    inputs.emplace_back(2,  5, -2.0, 2.0);
+    inputs.emplace_back(20, 5, weights<R>::uniform(4.0));
+    inputs.emplace_back(20, 5, weights<R>::uniform(4.0));
+    inputs.emplace_back(10, 5, weights<R>::uniform(4.0));
+    inputs.emplace_back(2,  5, weights<R>::uniform(4.0));
 
     auto out2 = superclassifier.activate(inputs);
 
@@ -109,8 +109,8 @@ std::cout << "SIEMA" << std::endl;
     out2.print();
 
     // Now vstacks:
-    Mat<R> upper(4, 1, -2.0, 2.0);
-    Mat<R> lower(4, 3, -2.0, 2.0);
+    Mat<R> upper(4, 1, weights<R>::uniform(4.0));
+    Mat<R> lower(4, 3, weights<R>::uniform(4.0));
     std::cout << "Stacking \"upper\": " << std::endl;
     upper.print();
     std::cout << "with \"lower\": " << std::endl;

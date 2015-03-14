@@ -61,7 +61,7 @@ class BidirectionalLSTM {
         Layer<T> decoder;
 
         BidirectionalLSTM(int vocabulary_size, int input_size, vector<int> hidden_sizes, int output_size)
-            : embedding(vocabulary_size, input_size, -1.0 / (T) input_size, 1.0 / (T) input_size),
+            : embedding(vocabulary_size, input_size, weights<T>::uniform(1.0 / (T) input_size)),
               stacked_lstm(input_size, hidden_sizes),
               decoder(hidden_sizes.back(), output_size) {}
 

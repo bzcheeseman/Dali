@@ -649,8 +649,8 @@ int main(int argc, char** argv) {
     Eigen::initParallel();
 
     babi::benchmark_task<LstmBabiModelRunner<double>>("qa2_two-supporting-facts");
-
     babi::benchmark_task<LstmBabiModelRunner<double>>("qa16_basic-induction");
+
     // babi::benchmark_task<LstmBabiModelRunner<double>>("qa1_single-supporting-fact");
     // babi::benchmark_task<LstmBabiModelRunner<double>>("qa4_two-arg-relations");
     // babi::benchmark_task<LstmBabiModelRunner<double>>("qa3_three-supporting-facts");

@@ -24,10 +24,10 @@ Mat<R> AbstractMultiInputLayer<R>::activate(Mat<R> first_input, const std::vecto
 
 template<typename R>
 void Layer<R>::create_variables() {
-    R upper = 1. / sqrt(input_size);
-    W = Mat<R>(hidden_size, input_size, -upper, upper);
+    W = Mat<R>(hidden_size, input_size, weights<R>::uniform(1.0 / sqrt(input_size)));
     this->b = Mat<R>(hidden_size, 1);
 }
+
 template<typename R>
 Layer<R>::Layer (int _input_size, int _hidden_size) : hidden_size(_hidden_size), input_size(_input_size) {
     create_variables();
@@ -59,10 +59,10 @@ template<typename R>
 void StackedInputLayer<R>::create_variables() {
     int total_input_size = 0;
     for (auto& input_size : input_sizes) total_input_size += input_size;
-    R upper = 1. / sqrt(total_input_size);
     matrices.reserve(input_sizes.size());
     for (auto& input_size : input_sizes) {
-        matrices.emplace_back(hidden_size, input_size, -upper, upper);
+        matrices.emplace_back(hidden_size, input_size,
+                weights<R>::uniform(1. / sqrt(total_input_size)));
         DEBUG_ASSERT_MAT_NOT_NAN(matrices[matrices.size() -1]);
     }
     this->b = Mat<R>(hidden_size, 1);
@@ -184,23 +184,18 @@ std::vector<Mat<R>> StackedInputLayer<R>::parameters() const{
 
 template<typename R>
 void RNN<R>::create_variables() {
-    R upper = 1. / sqrt(input_size);
-    Wx = Mat<R>(output_size, input_size,  -upper, upper);
-    upper = 1. / sqrt(hidden_size);
+    Wx = Mat<R>(output_size, input_size,  weights<R>::uniform(1. / sqrt(input_size)));
 
-    Wh = Mat<R>(output_size, hidden_size, -upper, upper);
-    b  = Mat<R>(output_size, 1, -upper, upper);
+    Wh = Mat<R>(output_size, hidden_size, weights<R>::uniform(1. / sqrt(hidden_size)));
+    b  = Mat<R>(output_size, 1, weights<R>::uniform(1.));
 }
 
 template<typename R>
 void ShortcutRNN<R>::create_variables() {
-    R upper = 1. / sqrt(input_size);
-    Wx = Mat<R>(output_size, input_size,  -upper, upper);
-    upper = 1. / sqrt(shortcut_size);
-    Ws = Mat<R>(output_size, shortcut_size,  -upper, upper);
-    upper = 1. / sqrt(hidden_size);
-    Wh = Mat<R>(output_size, hidden_size, -upper, upper);
-    b  = Mat<R>(output_size, 1, -upper, upper);
+    Wx = Mat<R>(output_size, input_size,  weights<R>::uniform(1. / sqrt(input_size)));
+    Ws = Mat<R>(output_size, shortcut_size,  weights<R>::uniform(1. / sqrt(shortcut_size)));
+    Wh = Mat<R>(output_size, hidden_size, weights<R>::uniform(1. / sqrt(hidden_size)));
+    b  = Mat<R>(output_size, 1, weights<R>::uniform(1.));
 }
 
 

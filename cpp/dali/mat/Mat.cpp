@@ -47,6 +47,60 @@ GradInternal<R>::GradInternal(const GradInternal<R>& g) :
 }
 
 
+/* weights */
+
+template<typename R>
+typename weights<R>::initializer_t weights<R>::uninitialized() {
+    return [](Mat<R>&){};
+};
+
+template<typename R>
+typename weights<R>::initializer_t weights<R>::zeros() {
+    return [](Mat<R>& matrix){
+
+    };
+};
+
+template<typename R>
+typename weights<R>::initializer_t weights<R>::uniform(R lower, R upper) {
+    return [lower, upper](Mat<R>& matrix){
+        // TODO(szymon): scale by row length.
+        std::default_random_engine generator;
+        std::uniform_real_distribution<R> distribution(lower, upper);
+        std::random_device rd;
+        generator.seed(rd());
+        auto randn = [&] (int) {return distribution(generator);};
+        matrix.w() = Mat<R>::eigen_mat::NullaryExpr(matrix.dims(0),
+                                            matrix.dims(1),
+                                            randn);
+    };
+};
+
+template<typename R>
+typename weights<R>::initializer_t weights<R>::uniform(R bound) {
+    return uniform(-bound/2.0, bound/2.0);
+}
+
+template<typename R>
+typename weights<R>::initializer_t weights<R>::gaussian(R mean, R std) {
+    return [mean, std](Mat<R>& matrix){
+        std::default_random_engine generator;
+        std::normal_distribution<R> distribution(0.0, std);
+        std::random_device rd;
+        generator.seed(rd());
+        auto randn = [&] (int) {return distribution(generator);};
+        matrix.w() = Mat<R>::eigen_mat::NullaryExpr(matrix.dims(0),
+                                            matrix.dims(1),
+                                            randn);
+    };
+};
+
+template<typename R>
+typename weights<R>::initializer_t weights<R>::gaussian(R std) {
+    return gaussian(0.0, std);
+}
+
+
 /* Mat */
 
 // this does not need to initialize anything once we get rid of w and dw.
@@ -85,12 +139,19 @@ Mat<R>::Mat (dim_t n, dim_t d) : Mat(n,d, true) {
 
 
 template<typename R>
-Mat<R>::Mat (dim_t n, dim_t d, bool fill_zeros) : name(nullptr) {
-    // sometimes we don't need to reset m
-    // (for example if it's about to be assigned).
-    m = make_shared<MatInternal<R>>(n, d, fill_zeros);
+Mat<R>::Mat (dim_t n, dim_t d, typename weights<R>::initializer_t wi) :
+        name(nullptr) {
+    // Don't fill with zeros - it's initializer's job.
+    m = make_shared<MatInternal<R>>(n, d, false);
     // We always reset the grad calculation
     g = make_shared<GradInternal<R>>(n, d, true);
+
+    wi(*this);
+}
+
+template<typename R>
+Mat<R>::Mat (dim_t n, dim_t d, bool fill_zeros) :
+        Mat(n, d, fill_zeros ? weights<R>::zeros() : weights<R>::uninitialized()) {
 }
 
 template<typename R>
@@ -128,28 +189,6 @@ Mat<R>::Mat (string fname) {
         throw std::invalid_argument(error_msg.str());
     }
     arr.destruct();
-}
-
-template<typename R>
-Mat<R>::Mat (dim_t n, dim_t d, R std) :
-        Mat<R>(n, d, false) {
-    std::default_random_engine generator;
-    std::normal_distribution<R> distribution(0.0, std);
-    std::random_device rd;
-    generator.seed(rd());
-    auto randn = [&] (int) {return distribution(generator);};
-    w() = eigen_mat::NullaryExpr(dims(0), dims(1), randn);
-}
-
-template<typename R>
-Mat<R>::Mat (dim_t n, dim_t d, R lower, R upper) :
-         Mat<R>(n, d, false) {
-    std::default_random_engine generator;
-    std::uniform_real_distribution<R> distribution(lower, upper);
-    std::random_device rd;
-    generator.seed(rd());
-    auto randn = [&] (int) {return distribution(generator);};
-    w() = eigen_mat::NullaryExpr(dims(0), dims(1), randn);
 }
 
 template<typename R>
@@ -449,13 +488,6 @@ template<typename R>
 Mat<R>::~Mat() {}
 
 template<typename R>
-Mat<R> Mat<R>::RandMat(dim_t n, dim_t d, R std) {
-    // is in fact using C++ 11 's rvalue, move operator,
-    // so no copy is made.
-    return Mat(n, d, std);
-}
-
-template<typename R>
 Mat<R> Mat<R>::Empty(dim_t n, dim_t d) {
     // use an empty matrix and modify
     // it so as to not incur the filling
@@ -600,9 +632,11 @@ template void utils::save_matrices(vector<Mat<double> >, string);
 template void utils::load_matrices(vector<Mat<float> >, string);
 template void utils::load_matrices(vector<Mat<double> >, string);
 
-template class Mat<float>;
-template class Mat<double>;
 template class MatInternal<float>;
 template class MatInternal<double>;
 template class GradInternal<float>;
 template class GradInternal<double>;
+template class weights<float>;
+template class weights<double>;
+template class Mat<float>;
+template class Mat<double>;

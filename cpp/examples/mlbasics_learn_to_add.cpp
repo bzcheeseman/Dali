@@ -22,7 +22,7 @@ int main( int argc, char* argv[]) {
     double LR = 0.01;
 
     // Generate random examples, all the rows sum to number between 0 and 1.
-    mat X(NUM_EXAMPLES, EXAMPLE_SIZE, 0.0, 1.0/EXAMPLE_SIZE);
+    mat X(NUM_EXAMPLES, EXAMPLE_SIZE, weights<double>::uniform(0.0, 1.0/EXAMPLE_SIZE));
 
     // Compute sums of elements for each example. This is what we would
     // like the network to output.
@@ -32,7 +32,7 @@ int main( int argc, char* argv[]) {
 
     // Those are our parameters: y_output = W1*X1 + ... + Wn*Xn
     // We initialize them to random numbers between 0 and 1.
-    mat W(EXAMPLE_SIZE, 1, -1.0, 1.0);
+    mat W(EXAMPLE_SIZE, 1, weights<double>::uniform(1.0));
     W.print();
 
     for (int i = 0; i < ITERATIONS; ++i) {

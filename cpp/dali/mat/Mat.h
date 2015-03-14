@@ -18,6 +18,8 @@
 
 typedef unsigned int dim_t;
 
+template<typename R> class Mat;
+
 template<typename R>
 class MatInternal {
     private:
@@ -47,6 +49,24 @@ class GradInternal {
 
         GradInternal(dim_t n, dim_t d, bool empty=true);
         GradInternal(const GradInternal<R>& g);
+
+};
+
+template<typename R>
+struct weights {
+    typedef std::function<void(Mat<R>&)> initializer_t;
+
+    static initializer_t uninitialized();
+
+    static initializer_t zeros();
+
+    static initializer_t uniform(R lower, R upper);
+
+    static initializer_t uniform(R bound);
+
+    static initializer_t gaussian(R mean, R std);
+
+    static initializer_t gaussian(R std);
 
 };
 
@@ -101,10 +121,8 @@ class Mat {
         // sometimes we don't need to reset m
         // (for example if it's about to be assigned).
         Mat (dim_t n, dim_t d, bool fill_zeros);
-        // Zero mean normal distribution for weights.
-        Mat (dim_t n, dim_t d, R std);
-        // uniform distribution for weights.
-        Mat (dim_t n, dim_t d, R lower, R upper);
+        Mat (dim_t n, dim_t d,
+             typename weights<R>::initializer_t wi);
         /*
         A copy constructor that perform shallow and deep
         copies of a Mat.
@@ -151,7 +169,6 @@ class Mat {
         void npy_load(FILE*);
         void npy_load(cnpy::NpyArray&);
         Mat (std::string fname);
-        static Mat RandMat(dim_t n, dim_t d, R std);
         static Mat Empty(dim_t n, dim_t d);
         /* A copy constructor that perform shallow copies of a Mat.
 

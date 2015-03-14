@@ -35,6 +35,8 @@ DEFINE_double(dropout, 0.3, "How much dropout noise to add to the problem ?");
 DEFINE_bool(fast_dropout, false, "Use fast dropout?");
 DEFINE_string(solver, "adadelta", "What solver to use (adadelta, sgd, adam)");
 DEFINE_string(test, "", "Where is the test set?");
+DEFINE_double(root_weight, 2.0, "By how much to weigh the roots in the objective function?");
+
 
 ThreadPool* pool;
 
@@ -150,6 +152,7 @@ REAL_t average_recall(
     graph::NoBackprop nb;
     for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
         pool->run([batch_id, &model, &dataset, &correct, &total, &correct_root, &total_root, &journalist, &seen_minibatches]() {
+            graph::NoBackprop nb;
             auto& minibatch = dataset[batch_id];
             for (auto& example : minibatch) {
                 auto prediction = model.activate_sequence(
@@ -329,7 +332,7 @@ int main (int argc,  char* argv[]) {
                     auto logprobs = thread_model.activate_sequence(std::get<0>(example), FLAGS_dropout);
                     auto error = MatOps<REAL_t>::softmax_cross_entropy(logprobs, std::get<1>(example));
                     if (std::get<2>(example)) {
-                        error = error.eltmul(10.0);
+                        error = error.eltmul(FLAGS_root_weight);
                     }
                     error.grad();
                     graph::backward(); // backpropagate

@@ -2,6 +2,31 @@
 
 using std::shared_ptr;
 
+using conf_internal::ConfItem;
+using conf_internal::Choice;
+using conf_internal::Float;
+using conf_internal::Bool;
+
+void perturb_for(grid_clock_t::duration duration,
+                 const Model& model,
+                 std::function<double()> objective) {
+    grid_clock_t::time_point tp = grid_clock_t::now();
+    double obj = objective();
+    while(grid_clock_t::now() - tp <= duration) {
+        obj = perturbation_round(model, obj, objective);
+    }
+}
+
+void perturbX(int times,
+              const Model& model,
+              std::function<double()> objective) {
+    assert(times >= 0);
+    double obj = objective();
+
+    while(times--) {
+        obj = perturbation_round(model, obj, objective);
+    }
+}
 
 double perturbation_round(const Model& model,
                           double current_objective,
@@ -38,6 +63,13 @@ double perturbation_round(const Model& model,
         if (obj < current_objective)
             return obj;
         f->value = before_perturbation;
+    } else if (shared_ptr<Bool> b = std::dynamic_pointer_cast<Bool>(item)) {
+        auto before_perturbation = b->value;
+        b->value = !(b->value);
+        auto obj = objective();
+        if (obj < current_objective)
+            return obj;
+        b->value = before_perturbation;
     }
     return current_objective;
 }

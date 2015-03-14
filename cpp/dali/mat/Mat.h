@@ -228,8 +228,8 @@ class Mat {
         */
         int argmax_slice(int lower, int upper) const;
 
-        Mat<R> operator*(Mat<R> other);
-        Mat<R> operator*(R alpha);
+        Mat<R> operator*(Mat<R> other) const;
+        Mat<R> operator*(R alpha) const;
         Mat<R> operator+(Mat<R>);
         Mat<R> operator-(Mat<R>);
         Mat<R> operator+(R);

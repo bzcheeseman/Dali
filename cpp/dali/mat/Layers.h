@@ -92,21 +92,21 @@ class SecondOrderCombinator : public AbstractLayer<R> {
         without having to evaluate big matrix equation.
     */
     public:
-        const int input1;
-        const int input2;
-        const int output;
+        const int input1_size;
+        const int input2_size;
+        const int output_size;
 
         Mat<R> W1;
         Mat<R> W2;
         Mat<R> b;
 
-        SecondOrderCombinator(int input1, int input2, int output);
+        SecondOrderCombinator(int input1_size, int input2_size, int output_size);
 
         SecondOrderCombinator(const SecondOrderCombinator& m, bool copy_w, bool copy_dw);
 
         virtual std::vector<Mat<R>> parameters() const;
 
-        Mat<R> activate(Mat<R> input1, Mat<R> input2) const;
+        Mat<R> activate(Mat<R> i1, Mat<R> i2) const;
 };
 
 template<typename R>

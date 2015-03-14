@@ -157,6 +157,55 @@ class RecurrentGate : public AbstractLayer<T> {
         }
 };
 
+template <typename T>
+class LolGate : public AbstractLayer<T> {
+
+    public:
+    const int input1;
+    const int input2;
+    const int second_order_terms;
+    const int hidden;
+
+    RecurrentGate<T> gate;
+    SecondOrderCombinator<T> combinator;
+
+    LolGate(int input1, int input2, int second_order_terms, int hidden) :
+            input1(input1),
+            input2(input2),
+            second_order_terms(second_order_terms),
+            hidden(hidden),
+            gate(second_order_terms, hidden),
+            combinator(input1, input2, second_order_terms) {
+    }
+
+    LolGate (const LolGate<T>& other, bool copy_w, bool copy_dw) :
+            input1(other.input1),
+            input2(other.input2),
+            second_order_terms(other.second_order_terms),
+            hidden(other.hidden),
+            gate(other.gate, copy_w, copy_dw),
+            combinator(other.combinator, copy_w, copy_dw) {
+    }
+
+    Mat<T> initial_states() const {
+        return gate.initial_states();
+    }
+
+    tuple<Mat<T>,Mat<T>> activate(Mat<T> input1, Mat<T> input2, Mat<T> prev_hidden) const {
+        auto gate_input = combinator.activate(input1, input2);
+        return gate.activate(gate_input, prev_hidden);
+    }
+
+    virtual vector<Mat<T>> parameters() const {
+        std::vector<Mat<T>> ret;
+        auto gate_params = gate.parameters();
+        auto combinator_params = combinator.parameters();
+        ret.insert(ret.end(), gate_params.begin(), gate_params.end());
+        ret.insert(ret.end(), combinator_params.begin(), combinator_params.end());
+        return ret;
+    }
+};
+
 
 template<typename T>
 class LstmBabiModel {
@@ -178,13 +227,13 @@ class LstmBabiModel {
     const T             QUESTION_GATE_DROPOUT             =      0.3;
 
     // input here is fact word embedding and question_fact_word_gate_model final hidden.
-    const int           QUESTION_GATE_IN_FACT_WORDS       =
-            TEXT_REPR_EMBEDDINGS + utils::vsum(QUESTION_GATE_STACKS);
-    // input here is fact_model final hidden and question_fact_word_gate_model final hidden.
-    const int           QUESTION_GATE_IN_FACTS            =
-            utils::vsum(TEXT_REPR_STACKS) + utils::vsum(QUESTION_GATE_STACKS);
+    const int           QG_FACTS_INPUT1                   = utils::vsum(TEXT_REPR_STACKS);
+    const int           QG_FACT_WORDS_INPUT1              = TEXT_REPR_EMBEDDINGS;
 
-    const int           QUESTION_GATE_HIDDEN              =      50;
+    const int           QG_INPUT2                         = utils::vsum(QUESTION_GATE_STACKS);
+    const int           QG_SECOND_ORDER                   = 30;
+    const int           QG_HIDDEN                         = 30;
+
 
     StackedShortcutLSTM<T> question_fact_gate_model;
     Mat<T> question_fact_gate_embeddings;
@@ -192,8 +241,8 @@ class LstmBabiModel {
     StackedShortcutLSTM<T> question_fact_word_gate_model;
     Mat<T> question_fact_word_gate_embeddings;
 
-    RecurrentGate<T> fact_gate;
-    RecurrentGate<T> fact_word_gate;
+    LolGate<T> fact_gate;
+    LolGate<T> fact_word_gate;
 
 
     const vector<int>   HL_STACKS                  =      {20,20,20,20}; //,20,20};
@@ -273,8 +322,8 @@ class LstmBabiModel {
         LstmBabiModel(shared_ptr<Vocab> vocabulary) :
                 question_fact_gate_model(QUESTION_GATE_EMBEDDINGS, QUESTION_GATE_STACKS),
                 question_fact_word_gate_model(QUESTION_GATE_EMBEDDINGS, QUESTION_GATE_STACKS),
-                fact_gate(QUESTION_GATE_IN_FACTS, QUESTION_GATE_HIDDEN),
-                fact_word_gate(QUESTION_GATE_IN_FACT_WORDS, QUESTION_GATE_HIDDEN),
+                fact_gate(QG_FACTS_INPUT1, QG_INPUT2, QG_SECOND_ORDER, QG_HIDDEN),
+                fact_word_gate(QG_FACT_WORDS_INPUT1, QG_INPUT2, QG_SECOND_ORDER, QG_HIDDEN),
                 question_model(TEXT_REPR_EMBEDDINGS, TEXT_REPR_STACKS),
                 fact_model(TEXT_REPR_EMBEDDINGS, TEXT_REPR_STACKS),
                 hl_model(HL_INPUT_SIZE, HL_STACKS),
@@ -316,7 +365,7 @@ class LstmBabiModel {
         }
 
         Seq<Mat<T>> gate_memory(Seq<Mat<T>> seq,
-                                const RecurrentGate<T>& gate,
+                                const LolGate<T>& gate,
                                 Mat<T> gate_input) {
             Seq<Mat<T>> memory_seq;
             // By default initialized to zeros.
@@ -325,7 +374,7 @@ class LstmBabiModel {
             for (auto& embedding : seq) {
                 // out_state: next_hidden, output
                 std:tie(gate_activation, prev_hidden) =
-                        gate.activate(MatOps<T>::vstack(embedding, gate_input), prev_hidden);
+                        gate.activate(embedding, gate_input, prev_hidden);
                 // memory - gate activation - how much of that embedding do we keep.
                 memory_seq.push_back(gate_activation);
             }
@@ -341,7 +390,6 @@ class LstmBabiModel {
             }
             return gated_seq;
         }
-
 
         Mat<T> lstm_final_activation(const Seq<Mat<T>>& embeddings,
                                      const StackedShortcutLSTM<T>& model,

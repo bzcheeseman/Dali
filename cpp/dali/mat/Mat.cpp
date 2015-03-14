@@ -513,12 +513,12 @@ Mat<R> Mat<R>::Empty(dim_t n, dim_t d) {
 }
 
 template<typename R>
-Mat<R> Mat<R>::operator*(Mat<R> other) {
+Mat<R> Mat<R>::operator*(Mat<R> other) const {
     return MatOps<R>::eltmul(*this, other);
 }
 
 template<typename R>
-Mat<R> Mat<R>::operator*(R alpha) {
+Mat<R> Mat<R>::operator*(R alpha) const {
     return MatOps<R>::eltmul(*this, alpha);
 }
 

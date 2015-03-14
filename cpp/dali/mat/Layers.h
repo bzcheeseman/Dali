@@ -80,6 +80,36 @@ class StackedInputLayer : public AbstractMultiInputLayer<R> {
 };
 
 template<typename R>
+class SecondOrderCombinator : public AbstractLayer<R> {
+    /* Implements the following expression
+
+           y = W1 * i1 + W2 * i2 + b
+
+       The purpose is to capture only a few relevant terms from:
+
+           y = i1 * W * i2' + B
+
+        without having to evaluate big matrix equation.
+    */
+    public:
+        const int input1;
+        const int input2;
+        const int output;
+
+        Mat<R> W1;
+        Mat<R> W2;
+        Mat<R> b;
+
+        SecondOrderCombinator(int input1, int input2, int output);
+
+        SecondOrderCombinator(const SecondOrderCombinator& m, bool copy_w, bool copy_dw);
+
+        virtual std::vector<Mat<R>> parameters() const;
+
+        Mat<R> activate(Mat<R> input1, Mat<R> input2) const;
+};
+
+template<typename R>
 class RNN : public AbstractLayer<R> {
     /*
     Combine the input of a hidden vector and an input vector

@@ -262,6 +262,40 @@ std::vector<Mat<R>> ShortcutRNN<R>::parameters() const {
     return std::vector<Mat<R>>({Wx, Wh, Ws, b});
 }
 
+/* SecondOrderCombinator */
+
+template<typename R>
+SecondOrderCombinator<R>::SecondOrderCombinator(int input1, int input2, int output) :
+        input1(input1), input2(input2), output(output) {
+    W1 = Mat<R>(output, input1, weights<R>::uniform(1.0/sqrt(input1)));
+    W2 = Mat<R>(output, input2, weights<R>::uniform(1.0/sqrt(input2)));
+    b =  Mat<R>(output, 1,      weights<R>::uniform(1.0));
+}
+template<typename R>
+SecondOrderCombinator<R>::SecondOrderCombinator(const SecondOrderCombinator& m,
+                                                bool copy_w,
+                                                bool copy_dw) :
+        input1(m.input1),
+        input2(m.input2),
+        output(m.output),
+        W1(m.W1, copy_w, copy_dw),
+        W2(m.W2, copy_w, copy_dw),
+        b(m.b, copy_w, copy_dw) {
+}
+
+template<typename R>
+std::vector<Mat<R>> SecondOrderCombinator<R>::parameters() const {
+    return { W1, W2, b };
+}
+
+template<typename R>
+Mat<R> SecondOrderCombinator<R>::activate(Mat<R> input1, Mat<R> input2) const {
+    // TODO(jonathan): should be replaced with mul_mul_mul_with_mul
+    return (W1 * input1) * (W2 * input2) + b;
+}
+
+/* RNN */
+
 template<typename R>
 RNN<R>::RNN (int _input_size, int _hidden_size) :
         hidden_size(_hidden_size),

@@ -100,6 +100,23 @@ typename weights<R>::initializer_t weights<R>::gaussian(R std) {
     return gaussian(0.0, std);
 }
 
+template<typename R>
+typename weights<R>::initializer_t weights<R>::svd(initializer_t preinitializer) {
+    return [preinitializer](Mat<R>& matrix) {
+        assert(matrix.dims().size() == 2);
+        preinitializer(matrix);
+        auto svd = matrix.w().jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV);
+        int n = matrix.dims(0);
+        int d = matrix.dims(1);
+        if (n < d) {
+            matrix.w() = svd.matrixV().block(0, 0, n, d);
+        } else {
+
+            matrix.w() = svd.matrixU().block(0, 0, n, d);
+        }
+    };
+}
+
 
 /* Mat */
 

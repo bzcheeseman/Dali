@@ -214,7 +214,6 @@ class LstmBabiModel {
     // -> second order (between question and fact) relation for fact word gating
     // -> consider quadratic form]
     // -> add multiple answers
-
     shared_ptr<Vocab> vocab;
 
     public:
@@ -285,12 +284,21 @@ class LstmBabiModel {
             vocab = vocabulary;
             size_t n_words = vocab->index2word.size();
 
-            question_fact_gate_embeddings = Mat<T>(n_words, QUESTION_GATE_EMBEDDINGS);
-            question_fact_word_gate_embeddings = Mat<T>(n_words, QUESTION_GATE_EMBEDDINGS);
-            fact_embeddings = Mat<T>(n_words, TEXT_REPR_EMBEDDINGS);
-            question_representation_embeddings = Mat<T>(n_words, TEXT_REPR_EMBEDDINGS);
-            please_start_prediction = Mat<T>(HL_INPUT_SIZE, 1);
-
+            question_fact_gate_embeddings =
+                    Mat<T>(n_words, QUESTION_GATE_EMBEDDINGS,
+                           weights<T>::uniform(1.0/QUESTION_GATE_EMBEDDINGS));
+            question_fact_word_gate_embeddings =
+                    Mat<T>(n_words, QUESTION_GATE_EMBEDDINGS,
+                           weights<T>::uniform(1.0/QUESTION_GATE_EMBEDDINGS));
+            fact_embeddings =
+                    Mat<T>(n_words, TEXT_REPR_EMBEDDINGS,
+                           weights<T>::uniform(1.0/TEXT_REPR_EMBEDDINGS));
+            question_representation_embeddings =
+                    Mat<T>(n_words, TEXT_REPR_EMBEDDINGS,
+                           weights<T>::uniform(1.0/TEXT_REPR_EMBEDDINGS));
+            please_start_prediction =
+                    Mat<T>(HL_INPUT_SIZE, 1,
+                           weights<T>::uniform(1.0));
         }
 
 
@@ -573,6 +581,10 @@ class LstmBabiModelRunner: public babi::Model {
             vocab = make_shared<Vocab> (vocab_vector);
 
             model = std::make_shared<LstmBabiModel<T>>(vocab);
+
+            for (auto param: model->parameters()) {
+                weights<T>::svd(weights<T>::uninitialized())(param);
+            }
 
             int training_size = (int)(TRAINING_FRAC * data.size());
             std::vector<babi::Story> train(data.begin(), data.begin() + training_size);

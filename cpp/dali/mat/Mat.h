@@ -68,6 +68,12 @@ struct weights {
 
     static initializer_t gaussian(R std);
 
+    // Preinitializer is first run on the matrix and then SVD initialization
+    // happens. If you are unsure what kind of preinitializer to use, then try
+    // weights<R>::uniform(m), were m is the number of columns in your matrix.
+    // DISCLAIMER: do not use on big matrices (like embeddings) - faster version
+    // is a subject of current research.
+    static initializer_t svd(initializer_t preinitializer);
 };
 
 /**

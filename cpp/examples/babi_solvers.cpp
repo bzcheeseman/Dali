@@ -627,6 +627,7 @@ class LstmBabiModelRunner: public babi::Model {
 
         vector<string> question(const vector<string>& question) {
             graph::NoBackprop nb;
+
             // Don't use dropout for validation.
             int word_idx = model->activate_story(story_so_far, question, false).log_probs.argmax();
 

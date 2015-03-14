@@ -1,19 +1,20 @@
 
 set(EXAMPLES_DIR ${PROJECT_SOURCE_DIR}/examples)
 set(EXAMPLES_BUILD_DIR ${PROJECT_SOURCE_DIR}/build/examples)
-set(EXAMPLE_PROGRAMS character_prediction
-                     stacked_lstm
-                     sparkfun_prediction
-                     language_model_from_senti
+set(EXAMPLE_PROGRAMS babi_solvers
+                     bidirectional_sentiment
+                     character_prediction
+                     grid_search_simple
                      language_model
-                     main
-                     test_lattice
+                     language_model_from_senti
                      lattice_prediction
                      lattice_prediction_from_protobuff
+                     main
                      mlbasics_learn_to_add
                      mlbasics_rnn_binary_addition
-                     babi_solvers
-                     bidirectional_sentiment
+                     sparkfun_prediction
+                     stacked_lstm
+                     test_lattice
                      )
 
 foreach(program ${EXAMPLE_PROGRAMS})

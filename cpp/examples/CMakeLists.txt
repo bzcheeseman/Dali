@@ -3,6 +3,7 @@ set(EXAMPLES_DIR ${PROJECT_SOURCE_DIR}/examples)
 set(EXAMPLES_BUILD_DIR ${PROJECT_SOURCE_DIR}/build/examples)
 set(EXAMPLE_PROGRAMS babi_solvers
                      bidirectional_sentiment
+                     bidirectional_sentiment_shortcut
                      character_prediction
                      grid_search_simple
                      language_model

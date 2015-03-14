@@ -36,7 +36,6 @@ DEFINE_bool(fast_dropout, false, "Use fast dropout?");
 DEFINE_string(solver, "adadelta", "What solver to use (adadelta, sgd, adam)");
 DEFINE_string(test, "", "Where is the test set?");
 
-
 ThreadPool* pool;
 
 Mat<REAL_t> apply_dropout(Mat<REAL_t> X, REAL_t drop_prob) {
@@ -56,7 +55,7 @@ class BidirectionalLSTM {
     public:
 
         Mat<T> embedding;
-        StackedLSTM<T> stacked_lstm;
+        StackedShortcutLSTM<T> stacked_lstm;
         Layer<T> decoder;
 
         BidirectionalLSTM(int vocabulary_size, int input_size, vector<int> hidden_sizes, int output_size)
@@ -76,35 +75,52 @@ class BidirectionalLSTM {
         Mat<T> activate_sequence(Indexing::Index example, T drop_prob = 0.0) {
             size_t pass = 0;
 
-            vector<Mat<T>> X;
+            vector<Mat<T>> baseX;
             for (size_t i = 0; i < example.size(); i++) {
-                X.emplace_back(apply_dropout(embedding.row_pluck(example[i]), drop_prob));
+                baseX.emplace_back(embedding.row_pluck(example[i]));
             }
+            vector<Mat<T>> X;
+            X.insert(X.end(), baseX.begin(), baseX.end());
+
             Mat<T> memory, hidden;
-            std::tie(memory, hidden) = stacked_lstm.cells[0].initial_states();
+            std::tie(memory, hidden) = stacked_lstm.base_cell.initial_states();
+            for (auto it = X.begin(); it != X.end(); ++it) {
+                std::tie(memory, hidden) = stacked_lstm.base_cell.activate(
+                    apply_dropout(*it, drop_prob),
+                    memory,
+                    hidden);
+                // prepare the observation sequence to be fed to the next
+                // level up:
+                *it = hidden;
+            }
+            pass++;
             for (auto& cell : stacked_lstm.cells) {
-                if (pass != 0) {
-                    std::tie(memory, hidden) = cell.initial_states();
-                }
+                std::tie(memory, hidden) = cell.initial_states();
                 if (pass % 2 == 0) {
+                    auto it_base = baseX.begin();
                     for (auto it = X.begin(); it != X.end(); ++it) {
                         std::tie(memory, hidden) = cell.activate(
                             apply_dropout(*it, drop_prob),
+                            apply_dropout(*it_base, drop_prob),
                             memory,
                             hidden);
                         // prepare the observation sequence to be fed to the next
                         // level up:
                         *it = hidden;
+                        it_base++;
                     }
                 } else {
+                    auto it_base = baseX.rbegin();
                     for (auto it = X.rbegin(); it != X.rend(); ++it) {
                         std::tie(memory, hidden) = cell.activate(
                             apply_dropout(*it, drop_prob),
+                            apply_dropout(*it_base, drop_prob),
                             memory,
                             hidden);
                         // prepare the observation sequence to be fed to the next
                         // level up:
                         *it = hidden;
+                        it_base++;
                     }
                 }
                 pass+=1;
@@ -333,7 +349,6 @@ int main (int argc,  char* argv[]) {
         }
         std::cout << "Epoch (" << epoch << ") Best validation score = " << best_validation_score << ", patience = " << patience << std::endl;
     }
-
 
     if (!FLAGS_test.empty()) {
         std::vector<std::vector<std::tuple<std::vector<uint>, uint, bool>>> test_set;

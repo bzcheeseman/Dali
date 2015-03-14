@@ -328,6 +328,9 @@ int main (int argc,  char* argv[]) {
                 for (auto & example : minibatch) {
                     auto logprobs = thread_model.activate_sequence(std::get<0>(example), FLAGS_dropout);
                     auto error = MatOps<REAL_t>::softmax_cross_entropy(logprobs, std::get<1>(example));
+                    if (std::get<2>(example)) {
+                        error = error.eltmul(10.0);
+                    }
                     error.grad();
                     graph::backward(); // backpropagate
                 }

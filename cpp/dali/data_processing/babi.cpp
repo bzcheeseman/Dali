@@ -186,22 +186,30 @@ namespace babi {
     /* StoryParser */
 
     StoryParser::StoryParser(const Story* story) : story(story), story_idx(0) {
+        advance();
     }
 
-    sp_ret_t StoryParser::next() {
-        while (true) {
-            assert(!done());
+    void StoryParser::advance() {
+        next_qa = NULL;
+        while (story_idx < story->size()) {
             auto item_ptr = (*story)[story_idx++];
             if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
                 facts_so_far.push_back(f->fact);
             } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
-                return std::make_tuple(facts_so_far, qa);
+                next_qa = qa;
+                break;
             }
         }
     }
 
+    sp_ret_t StoryParser::next() {
+        sp_ret_t ret = std::make_tuple(facts_so_far, next_qa);
+        advance();
+        return ret;
+    }
+
     bool StoryParser::done() {
-        return story_idx >= story->size();
+        return next_qa == NULL;
     }
 };
 

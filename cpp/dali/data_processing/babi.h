@@ -191,8 +191,12 @@ namespace babi {
 
     class StoryParser : public utils::Generator<sp_ret_t> {
         std::vector<std::vector<std::string>> facts_so_far;
+        QA* next_qa;
+
         int story_idx;
         const Story* story;
+
+        void advance();
 
         public:
             StoryParser(const Story* story);

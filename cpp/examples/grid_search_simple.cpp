@@ -54,5 +54,4 @@ int main() {
 
     std::cout << "Optimized objective " << model_performance(siema)
               << " achieved by " << std::to_string(siema.conf()) << std::endl;
-
 }

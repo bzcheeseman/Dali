@@ -36,6 +36,7 @@ bool LSTV::update(double validation_error) {
     } else {
         num_updates_validation_increasing = 0;
     }
-    return num_updates_validation_increasing > patience;
+    bool is_validation_nan = !(validation_error == validation_error);
+    return num_updates_validation_increasing > patience || is_validation_nan;
 }
 

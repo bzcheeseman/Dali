@@ -646,7 +646,7 @@ class LstmBabiModelRunner: public babi::Model {
                 training_mode = cur_training_mode;
 
                 // Solver::AdaDelta<T> solver(params, 0.95, 1e-9, 5.0);
-                Solver::Adam<T> solver(params);
+                Solver::Adam<T> solver(params, 0.1, 0.001, 1e-9, 2.0);
                 LSTV training(SHORT_TERM_VALIDATION, LONG_TERM_VALIDATION,
                         (cur_training_mode == GATES ? GATES_PATIENCE : PREDICTION_PATIENCE));
 

@@ -6,7 +6,7 @@ file(GLOB_RECURSE DaliTemplates "${DaliDir}/*.cpp.template")
 
 # Remove tests from compilation
 file(GLOB_RECURSE DaliTests "${DaliDir}/tests.cpp")
-list(REMOVE_ITEM DaliSources ${DaliTests})
+list(REMOVE_ITEM DaliSources ${DaliTests} ${TESTS_MAIN})
 
 foreach(header ${DaliTemplates})
     message(STATUS "Template instantiator will run for ${header}")

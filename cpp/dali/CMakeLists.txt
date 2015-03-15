@@ -5,8 +5,8 @@ file(GLOB_RECURSE DaliSources "${DaliDir}/*.cpp")
 file(GLOB_RECURSE DaliTemplates "${DaliDir}/*.cpp.template")
 
 # Remove tests from compilation
-file(GLOB DaliTestFile "${DaliDir}/tests.cpp")
-list(REMOVE_ITEM DaliSources ${DaliTestFile})
+file(GLOB_RECURSE DaliTests "${DaliDir}/tests.cpp")
+list(REMOVE_ITEM DaliSources ${DaliTests})
 
 foreach(header ${DaliTemplates})
     message(STATUS "Template instantiator will run for ${header}")
@@ -42,4 +42,4 @@ if (GPERFTOOLS_FOUND)
   target_link_libraries(dali ${GPERFTOOLS_LIBRARIES})
 endif (GPERFTOOLS_FOUND)
 
-add_testsuite("test_dali" ${DaliTestFile} "dali")
+add_testsuite("test_dali" "dali" "${DaliTests}")

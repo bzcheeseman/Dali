@@ -25,9 +25,11 @@ endif(NOT GPERFTOOLS_FOUND)
 # This monstrosity came to live to alleviate two conditions:
 #      1) ctest ignores colored output
 #      2) make test does not build tests (wtf)
-function(add_testsuite TEST_TARGET TEST_FILE  TEST_DEPENDENCIES)
+set(TESTS_MAIN "${PROJECT_SOURCE_DIR}/dali/tests_main.cpp")
+function(add_testsuite TEST_TARGET TEST_DEPENDENCIES TEST_FILES)
+    list(APPEND TEST_FILES ${TESTS_MAIN})
     if(GTEST_FOUND)
-        add_executable(${TEST_TARGET} ${TEST_FILE})
+        add_executable(${TEST_TARGET} ${TEST_FILES})
         add_dependencies(${TEST_TARGET} ${TEST_DEPENDENCIES})
         target_link_libraries(${TEST_TARGET} ${TEST_DEPENDENCIES} ${GTEST_BOTH_LIBRARIES})
         add_test(${TEST_TARGET} ${TEST_TARGET})

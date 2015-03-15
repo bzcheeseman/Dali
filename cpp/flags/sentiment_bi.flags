@@ -4,8 +4,10 @@
 --j=9
 --minibatch=20
 --input_size=35
---hidden=35
+--hidden=100
 --dropout=0.65
 --stack_size=5
---solver=adam
+--solver=adadelta
 --patience=20
+--noshortcut
+--memory_feeds_gates

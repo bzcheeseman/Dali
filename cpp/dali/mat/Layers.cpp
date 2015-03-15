@@ -26,8 +26,11 @@ Mat<R> AbstractMultiInputLayer<R>::activate(Mat<R> first_input, const std::vecto
 
 template<typename R>
 void Layer<R>::create_variables() {
-    W = Mat<R>(hidden_size, input_size, weights<R>::uniform(1.0 / sqrt(input_size)));
-    this->b = Mat<R>(hidden_size, 1, weights<R>::uniform(1.0 / sqrt(input_size)));
+    W = Mat<R>(hidden_size, input_size, weights<R>::uniform(
+        -1.0 / sqrt(input_size), 1.0 / sqrt(input_size)));
+    this->b = Mat<R>(hidden_size, 1, weights<R>::uniform(
+        -1.0 / sqrt(input_size),
+        1.0 / sqrt(input_size)));
 }
 
 template<typename R>
@@ -62,12 +65,12 @@ void StackedInputLayer<R>::create_variables() {
     int total_input_size = 0;
     for (auto& input_size : input_sizes) total_input_size += input_size;
     matrices.reserve(input_sizes.size());
+    auto U = weights<R>::uniform(-1. / sqrt(total_input_size), 1. / sqrt(total_input_size));
     for (auto& input_size : input_sizes) {
-        matrices.emplace_back(hidden_size, input_size,
-                weights<R>::uniform(1. / sqrt(total_input_size)));
+        matrices.emplace_back(hidden_size, input_size, U);
         DEBUG_ASSERT_MAT_NOT_NAN(matrices[matrices.size() -1])
     }
-    this->b = Mat<R>(hidden_size, 1, weights<R>::uniform(1.0 / sqrt(total_input_size)));
+    this->b = Mat<R>(hidden_size, 1, U);
 }
 template<typename R>
 StackedInputLayer<R>::StackedInputLayer (vector<int> _input_sizes,
@@ -194,10 +197,10 @@ std::vector<Mat<R>> StackedInputLayer<R>::parameters() const{
 
 template<typename R>
 void RNN<R>::create_variables() {
-    Wx = Mat<R>(output_size, input_size,  weights<R>::uniform(1. / sqrt(input_size)));
+    Wx = Mat<R>(output_size, input_size,  weights<R>::uniform(-1. / sqrt(input_size), 1. / sqrt(input_size)));
 
-    Wh = Mat<R>(output_size, hidden_size, weights<R>::uniform(1. / sqrt(hidden_size)));
-    b  = Mat<R>(output_size, 1, weights<R>::uniform(1. / sqrt(hidden_size)));
+    Wh = Mat<R>(output_size, hidden_size, weights<R>::uniform(-1. / sqrt(hidden_size), 1. / sqrt(hidden_size)));
+    b  = Mat<R>(output_size, 1, weights<R>::uniform(-1. / sqrt(hidden_size), 1. / sqrt(hidden_size)));
 }
 
 template<typename R>
@@ -231,7 +234,7 @@ std::vector<Mat<R>> DelayedRNN<R>::parameters() const {
 
 template<typename R>
 Mat<R> DelayedRNN<R>::initial_states() const {
-    return Mat<R>(hidden_rnn.hidden_size, 1, weights<R>::uniform(1. / sqrt(hidden_rnn.hidden_size)));
+    return Mat<R>(hidden_rnn.hidden_size, 1, weights<R>::uniform(-1. / sqrt(hidden_rnn.hidden_size), 1. / sqrt(hidden_rnn.hidden_size)));
 }
 
 template<typename R>
@@ -259,9 +262,9 @@ template class DelayedRNN<double>;
 template<typename R>
 SecondOrderCombinator<R>::SecondOrderCombinator(int input1_size, int input2_size, int output_size) :
         input1_size(input1_size), input2_size(input2_size), output_size(output_size) {
-    W1 = Mat<R>(output_size, input1_size, weights<R>::uniform(1.0/sqrt(input1_size)));
-    W2 = Mat<R>(output_size, input2_size, weights<R>::uniform(1.0/sqrt(input2_size)));
-    b =  Mat<R>(output_size, 1,      weights<R>::uniform(1.0 / sqrt(input1_size)));
+    W1 = Mat<R>(output_size, input1_size, weights<R>::uniform(-1.0/sqrt(input1_size), 1.0/sqrt(input1_size)));
+    W2 = Mat<R>(output_size, input2_size, weights<R>::uniform(-1.0/sqrt(input1_size), 1.0/sqrt(input2_size)));
+    b =  Mat<R>(output_size, 1,           weights<R>::uniform(-1.0/sqrt(input1_size), 1.0/sqrt(input1_size)));
 }
 template<typename R>
 SecondOrderCombinator<R>::SecondOrderCombinator(const SecondOrderCombinator& m,
@@ -403,9 +406,9 @@ LSTM<R>::LSTM (int _input_size, int _hidden_size, bool _memory_feeds_gates) :
         cell_layer(_input_size, _hidden_size) {
 
     if (memory_feeds_gates) {
-        Wci = Mat<R>(hidden_size, 1, weights<R>::uniform(1. / sqrt(hidden_size)));
-        Wco = Mat<R>(hidden_size, 1, weights<R>::uniform(1. / sqrt(hidden_size)));
-        Wcf = Mat<R>(hidden_size, 1, weights<R>::uniform(1. / sqrt(hidden_size)));
+        Wci = Mat<R>(hidden_size, 1, weights<R>::uniform(-1. / sqrt(hidden_size), 1. / sqrt(hidden_size)));
+        Wco = Mat<R>(hidden_size, 1, weights<R>::uniform(-1. / sqrt(hidden_size), 1. / sqrt(hidden_size)));
+        Wcf = Mat<R>(hidden_size, 1, weights<R>::uniform(-1. / sqrt(hidden_size), 1. / sqrt(hidden_size)));
     }
     // Note: Ilya Sutskever recommends initializing with
     // forget gate at high value
@@ -426,9 +429,9 @@ LSTM<R>::LSTM (int _input_size, int shortcut_size, int _hidden_size, bool _memor
         cell_layer(  {_input_size, shortcut_size}, _hidden_size) {
 
     if (memory_feeds_gates) {
-        Wci = Mat<R>(hidden_size, 1, weights<R>::uniform(1. / sqrt(hidden_size)));
-        Wco = Mat<R>(hidden_size, 1, weights<R>::uniform(1. / sqrt(hidden_size)));
-        Wcf = Mat<R>(hidden_size, 1, weights<R>::uniform(1. / sqrt(hidden_size)));
+        Wci = Mat<R>(hidden_size, 1, weights<R>::uniform(-1. / sqrt(hidden_size), 1. / sqrt(hidden_size)));
+        Wco = Mat<R>(hidden_size, 1, weights<R>::uniform(-1. / sqrt(hidden_size), 1. / sqrt(hidden_size)));
+        Wcf = Mat<R>(hidden_size, 1, weights<R>::uniform(-1. / sqrt(hidden_size), 1. / sqrt(hidden_size)));
     }
     // Note: Ilya Sutskever recommends initializing with
     // forget gate at high value

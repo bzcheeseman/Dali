@@ -9,13 +9,14 @@ using std::vector;
 
 // Test file for LSTM
 int main () {
+    auto U = weights<R>::uniform(-2.0, 2.0);
     sane_crashes::activate();
     typedef double R;
     LSTM<R> lstm(30, 50,
         true   // do use Alex Graves' 2013 LSTM
                // where memory connects to gates
     );
-    Mat<R> embedding(1000, 30, weights<R>::uniform(2.0));
+    Mat<R> embedding(1000, 30, U);
     auto prev_state = lstm.initial_states();
     Mat<R> hidden, memory;
     std::tie(memory, hidden) = lstm.activate(embedding.rows_pluck({0, 1, 10, 2, 1, 3}), prev_state);
@@ -53,10 +54,10 @@ int main () {
 
     Mat<R> A(3, 5);
     A.w() = (A.w().array() + 1.2).matrix();
-    A = A + Mat<R>(3, 5, weights<R>::uniform(1.0));
+    A = A + Mat<R>(3, 5, weights<R>::uniform(-0.5, 0.5));
     // build random matrix of double type with standard deviation 2:
-    Mat<R> B(A.dims(0), A.dims(1), weights<R>::uniform(2.0 ));
-    Mat<R> C(A.dims(1), 4,   weights<R>::uniform( 2.0 ));
+    Mat<R> B(A.dims(0), A.dims(1), U);
+    Mat<R> C(A.dims(1), 4,         U);
 
     A.print();
     B.print();
@@ -86,10 +87,10 @@ int main () {
     StackedInputLayer<R> superclassifier({20, 20, 10, 2}, 5);
 
     vector<Mat<R>> inputs;
-    inputs.emplace_back(20, 5, weights<R>::uniform(4.0));
-    inputs.emplace_back(20, 5, weights<R>::uniform(4.0));
-    inputs.emplace_back(10, 5, weights<R>::uniform(4.0));
-    inputs.emplace_back(2,  5, weights<R>::uniform(4.0));
+    inputs.emplace_back(20, 5, U);
+    inputs.emplace_back(20, 5, U);
+    inputs.emplace_back(10, 5, U);
+    inputs.emplace_back(2,  5, U);
 
     auto out2 = superclassifier.activate(inputs);
 
@@ -103,8 +104,8 @@ int main () {
     out2.print();
 
     // Now vstacks:
-    Mat<R> upper(4, 1, weights<R>::uniform(4.0));
-    Mat<R> lower(4, 3, weights<R>::uniform(4.0));
+    Mat<R> upper(4, 1, U);
+    Mat<R> lower(4, 3, U);
     std::cout << "Stacking \"upper\": " << std::endl;
     upper.print();
     std::cout << "with \"lower\": " << std::endl;

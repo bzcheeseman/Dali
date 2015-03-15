@@ -85,7 +85,7 @@ template<typename R>
 typename weights<R>::initializer_t weights<R>::gaussian(R mean, R std) {
     return [mean, std](Mat<R>& matrix){
         std::default_random_engine generator;
-        std::normal_distribution<R> distribution(0.0, std);
+        std::normal_distribution<R> distribution(mean, std);
         std::random_device rd;
         generator.seed(rd());
         auto randn = [&] (int) {return distribution(generator);};

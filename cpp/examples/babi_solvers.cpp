@@ -326,7 +326,7 @@ class LstmBabiModel {
                 fact_word_gate(QG_FACT_WORDS_INPUT1, QG_INPUT2, QG_SECOND_ORDER, QG_HIDDEN),
                 question_model(TEXT_REPR_EMBEDDINGS, TEXT_REPR_STACKS, true, false),
                 fact_model(TEXT_REPR_EMBEDDINGS, TEXT_REPR_STACKS, true, false),
-                hl_model(HL_INPUT_SIZE, HL_STACKS),
+                hl_model(HL_INPUT_SIZE, HL_STACKS, true, false),
                 DECODER_OUTPUT(vocabulary->word2index.size()),
                 decoder(DECODER_INPUT, vocabulary->word2index.size()) {
 

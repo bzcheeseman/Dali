@@ -91,6 +91,37 @@ The run `make` to compile the code:
 That's it. Now built examples will be stored in `cpp/build/examples`.
 For instance a character prediction model using Stacked LSTMs is built under `cpp/build/examples/character_prediction`.
 
+#### Tests
+
+To compile and run tests you need [Google Tests](https://code.google.com/p/googletest/). Download it [here](https://code.google.com/p/googletest/downloads/detail?name=gtest-1.7.0.zip).
+
+#### 1. Compile and run tests
+
+From the build folder do the following:
+
+    cmake ..
+    make -j 9 run_tests
+
+##### 2.a Install Gtest on Mac OSX
+
+Homebrew does not offer a way of installing gtest, however in a few steps you can get it running. First go to the directory where you downloaded Gtests:
+
+    cd gtest-1.7.0
+    mkdir mybuild
+    cd mybuild
+    cmake ..
+    cp libgtest_main.a /usr/local/lib/libgtest_main.a
+    cp libgtest.a /usr/local/lib/libgtest.a
+    cp -R ../include/* /usr/local/include/
+
+Now cmake should be able to find gtest (go back to step 1).
+
+###### 2.b Install Gtest on Fedora Linux
+
+Using `yum` it's a piece of cake:
+
+    sudo yum install gtest gtest-devel
+
 #### MKL Zaziness Problems
 
 On Mac OSX, or more generally when using [Intel's gracious MKL Library](https://software.intel.com/en-us/intel-mkl) you may encounter an interesting bug with [`Eigen`](http://eigen.tuxfamily.org/bz/show_bug.cgi?id=874) where `MKL_BLAS` is shown as undefined during compilation.

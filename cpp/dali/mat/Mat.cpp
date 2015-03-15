@@ -211,15 +211,19 @@ Mat<R>::Mat (string fname) {
 template<typename R>
 Mat<R>::Mat (const Mat<R>& other, bool copy_w, bool copy_dw) :
         name(other.name) {
-    if (copy_w) {
+
+    if (copy_w && other.m) {
         // This copies memory using copy constructor
+        // The copy is only executed if matrix was actually initialized
+        // hence the && other.m part.
         m = make_shared<MatInternal<R>>(*other.m);
     } else {
         // This does not. (only shared_ptr is copied).
         m = other.m;
     }
 
-    if (copy_dw) {
+    if (copy_dw && other.g) {
+        // see comment for copy_w.
         this->g = make_shared<GradInternal<R>>(*other.g);
     } else {
         g = other.g;

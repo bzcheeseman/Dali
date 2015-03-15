@@ -146,6 +146,36 @@ TEST(Matrix, sigmoid_gradient) {
     }
 }
 
+TEST(Matrix, tanh_gradient) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return Xs[0].tanh();
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(20.0));
+        ASSERT_TRUE(gradient_same<R>(functor, {A}, 1e-4));
+    }
+}
+
+TEST(Matrix, exp_gradient) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return Xs[0].tanh();
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(20.0));
+        ASSERT_TRUE(gradient_same<R>(functor, {A}, 1e-4));
+    }
+}
+
+TEST(Matrix, log_gradient) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return Xs[0].tanh();
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(0.001, 20.0));
+        ASSERT_TRUE(gradient_same<R>(functor, {A}, 1e-4));
+    }
+}
+
 TEST(Matrix, matrix_dot_plus_bias) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[1].dot(Xs[0]) + Xs[2];

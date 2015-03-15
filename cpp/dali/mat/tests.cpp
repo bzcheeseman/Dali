@@ -55,6 +55,15 @@ TEST(Matrix, addition) {
     ASSERT_MATRIX_NEQ(A, B) << "A different from B.";
 }
 
+/**
+Gradient Same
+-------------
+
+Numerical gradient checking method. Performs
+a finite difference estimation of the gradient
+over each argument to a functor.
+
+**/
 template<typename R>
 bool gradient_same(
         std::function<Mat<R>(std::vector<Mat<R>>)> functor,

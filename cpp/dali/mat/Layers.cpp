@@ -253,9 +253,7 @@ DelayedRNN<R> DelayedRNN<R>::shallow_copy() const {
 template class DelayedRNN<float>;
 template class DelayedRNN<double>;
 
-
 /* StackedInputLayer */
-
 /* SecondOrderCombinator */
 
 template<typename R>
@@ -507,7 +505,7 @@ typename LSTM<R>::State LSTM<R>::_activate(
     }
 
     // compute hidden state as gated, saturated cell activations
-    auto hidden_d    = output_gate * cell_d.tanh();
+    auto hidden_d = output_gate * cell_d.tanh();
 
     DEBUG_ASSERT_NOT_NAN(hidden_d.w());
     DEBUG_ASSERT_NOT_NAN(cell_d.w());

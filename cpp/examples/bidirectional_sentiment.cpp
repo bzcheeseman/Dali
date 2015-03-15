@@ -318,7 +318,6 @@ int main (int argc,  char* argv[]) {
                     if (std::get<2>(example) && FLAGS_root_weight != 1.0) {
                         error = error * FLAGS_root_weight;
                     }
-                    error = error * (1.0 / minibatch.size());
                     error.grad();
                     graph::backward(); // backpropagate
                 }

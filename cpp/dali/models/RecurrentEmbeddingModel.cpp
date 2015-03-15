@@ -75,7 +75,7 @@ RecurrentEmbeddingModel<R>::RecurrentEmbeddingModel(
     stack_size(_stack_size),
     output_size(_output_size) {
 
-    embedding = mat(vocabulary_size, input_size, weights<R>::uniform(0.1));
+    embedding = mat(vocabulary_size, input_size, weights<R>::uniform(1./ input_size));
     for (int i = 0; i < stack_size;i++)
         hidden_sizes.emplace_back(hidden_size);
 }
@@ -88,7 +88,7 @@ RecurrentEmbeddingModel<R>::RecurrentEmbeddingModel(
     stack_size(_hidden_sizes.size()),
     output_size(_output_size),
     hidden_sizes(_hidden_sizes) {
-    embedding = mat(vocabulary_size, input_size, weights<R>::uniform(0.1));
+    embedding = mat(vocabulary_size, input_size, weights<R>::uniform(1./ input_size));
 }
 
 template<typename R>

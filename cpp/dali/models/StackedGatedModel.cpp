@@ -181,7 +181,7 @@ std::tuple<Z, Z> StackedGatedModel<Z>::masked_predict_cost(
                 start_loss,
                 memory_penalty
             );
-        } else {
+        } else {
             std::get<0>(cost) += masked_cross_entropy_no_grad(
                 logprobs,
                 i,
@@ -249,7 +249,7 @@ std::tuple<Z, Z> StackedGatedModel<Z>::masked_predict_cost(
                     start_loss,
                     memory_penalty
                 );
-            } else {
+            } else {
                 std::get<0>(cost) += masked_cross_entropy_no_grad(
                     logprobs,
                     i,

@@ -6,7 +6,7 @@ DEFINE_int32(hidden, 100, "How many Cells and Hidden Units should each LSTM have
 DEFINE_double(decay_rate, 0.95, "What decay rate should RMSProp use ?");
 DEFINE_double(rho, 0.95, "What rho / learning rate should the Solver use ?");
 DEFINE_bool(shortcut, true, "Use a Stacked LSTM with shortcuts");
-DEFINE_bool(memory_feeds_gates, true, "Use a Stacked LSTM with shortcuts");
+DEFINE_bool(memory_feeds_gates, true, "LSTM's memory cell also control gate outputs");
 
 using std::shared_ptr;
 using std::vector;
@@ -177,7 +177,7 @@ Z StackedModel<Z>::masked_predict_cost(
                 codelens,
                 (target_data->col(i+1).array() - offset).matrix()
             );
-        } else {
+        } else {
             cost += masked_cross_entropy_no_grad(
                 logprobs,
                 i,
@@ -230,7 +230,7 @@ Z StackedModel<Z>::masked_predict_cost(
                 codelens,
                 (target_data->col(i+1).array() - offset).matrix()
             );
-        } else {
+        } else {
             masked_cross_entropy_no_grad(
                 logprobs,
                 i,

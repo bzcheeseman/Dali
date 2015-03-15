@@ -35,7 +35,7 @@ DEFINE_double(dropout, 0.3, "How much dropout noise to add to the problem ?");
 DEFINE_bool(fast_dropout, false, "Use fast dropout?");
 DEFINE_string(solver, "adadelta", "What solver to use (adadelta, sgd, adam)");
 DEFINE_string(test, "", "Where is the test set?");
-DEFINE_double(root_weight, 2.0, "By how much to weigh the roots in the objective function?");
+DEFINE_double(root_weight, 1.0, "By how much to weigh the roots in the objective function?");
 
 
 ThreadPool* pool;
@@ -44,7 +44,7 @@ Mat<REAL_t> apply_dropout(Mat<REAL_t> X, REAL_t drop_prob) {
     if (drop_prob > 0) {
         if (FLAGS_fast_dropout) {
             return MatOps<REAL_t>::fast_dropout(X);
-        } else {
+        } else {
             return MatOps<REAL_t>::dropout_normalized(X, drop_prob);
         }
     } else {
@@ -238,8 +238,10 @@ int main (int argc,  char* argv[]) {
               << "     Vocabulary size : " << vocab_size << std::endl
               << "      minibatch size : " << FLAGS_minibatch << std::endl
               << "   number of threads : " << FLAGS_j << std::endl
-              << "        dropout type : " << (FLAGS_fast_dropout ? "fast" : "default") << std::endl
+              << "        Dropout type : " << (FLAGS_fast_dropout ? "fast" : "default") << std::endl
               << " Max training epochs : " << FLAGS_epochs << std::endl
+              << "           LSTM type : " << (FLAGS_memory_feeds_gates ? "Graves 2013" : "Zaremba 2014") << std::endl
+              << "          Stack size : " << FLAGS_stack_size << std::endl
               << " # training examples : " << dataset.size() * FLAGS_minibatch - (FLAGS_minibatch - dataset[dataset.size() - 1].size()) << std::endl;
 
     pool = new ThreadPool(FLAGS_j);
@@ -289,7 +291,7 @@ int main (int argc,  char* argv[]) {
         utils::exit_with_message("Did not recognize this solver type.");
     }
 
-    REAL_t best_validation_score = 0.0;
+    REAL_t best_validation_score = average_recall(model, validation_set);
     int epoch = 0;
     double patience = 0;
 
@@ -305,7 +307,7 @@ int main (int argc,  char* argv[]) {
         );
 
         for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
-            pool->run([&thread_params,&thread_models,  batch_id, &journalist, &solver, &dataset, &best_validation_score, &batches_processed]() {
+            pool->run([&thread_params, &thread_models,  batch_id, &journalist, &solver, &dataset, &best_validation_score, &batches_processed]() {
                 auto& thread_model  = thread_models[ThreadPool::get_thread_number()];
                 auto& params        = thread_params[ThreadPool::get_thread_number()];
                 auto& minibatch     = dataset[batch_id];
@@ -314,8 +316,9 @@ int main (int argc,  char* argv[]) {
                     auto logprobs = thread_model.activate_sequence(std::get<0>(example), FLAGS_dropout);
                     auto error = MatOps<REAL_t>::softmax_cross_entropy(logprobs, std::get<1>(example));
                     if (std::get<2>(example)) {
-                        error = error.eltmul(FLAGS_root_weight);
+                        error = error * FLAGS_root_weight;
                     }
+                    error = error * (1.0 / minibatch.size());
                     error.grad();
                     graph::backward(); // backpropagate
                 }

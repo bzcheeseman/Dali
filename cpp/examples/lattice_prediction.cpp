@@ -78,7 +78,8 @@ void insert_example_indices_into_matrix(
         size_t j = 0;
         for (auto& node : path.first) {
                 (*databatch.data)(row,        description_length + 1 + j)   = lattice_vocab.word2index[node->name] + word_vocab.word2index.size();
-                (*databatch.target_data)(row, description_length + 1 + j++) = path.second[j];
+                (*databatch.target_data)(row, description_length + 1 + j)   = path.second[j];
+            j++;
         }
         // **END** for tokens is the next dimension after all the categories (the last one)
         (*databatch.data)(row, description_length + j + 1) = word_vocab.word2index[utils::end_symbol];

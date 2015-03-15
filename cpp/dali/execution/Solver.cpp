@@ -30,6 +30,7 @@ namespace Solver {
     template<typename R>
     void SGD<R>::step (vector<Mat<R>>& parameters, R step_size) {
         for (auto& param : parameters) {
+            DEBUG_ASSERT_NOT_NAN(param.w());
             if (param.sparse) {
                 for (auto& i : *(param.sparse_row_keys)) {
                     if (this->regc > 0) {

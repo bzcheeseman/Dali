@@ -17,7 +17,10 @@ Mat<R> MatOps<R>::eltmul_broadcast(
             MS() << "Matrices " << matrix1 << " and " << matrix2
                  << " cannot be element multiplied with broadcast,"
                  << " they do not have the same dimensions.");
-    Mat<R> out(matrix1.dims(0), matrix1.dims(1), false);
+    Mat<R> out(
+        matrix1.dims(0),
+        matrix1.dims(1),
+        false);
     out.w() = (matrix1.w().array().colwise() * matrix2.w().col(0).array()).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
@@ -78,9 +81,9 @@ Mat<R> MatOps<R>::eltmul_broadcast_rowwise(
     if (matrix1.dims(1) != row_vector.dims(1) || row_vector.dims(0) != 1)
         throw std::invalid_argument("Matrices A and B^T cannot be element multiplied with broadcast, they do not have the same dimensions.");
     Mat<R> out (
-            matrix1.dims(0),
-            matrix1.dims(1),
-            false);
+        matrix1.dims(0),
+        matrix1.dims(1),
+        false);
     out.w() = (matrix1.w().array().rowwise() * row_vector.w().row(0).array()).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, row_vector, out]() {
@@ -387,7 +390,7 @@ Mat<R> MatOps<R>::steep_sigmoid(Mat<R> matrix, R aggressiveness) {
 
 template<typename R>
 Mat<R> MatOps<R>::sum(Mat<R> matrix) {
-    Mat<R> out (1,1,false);
+    Mat<R> out (1,1, false);
     out.w()(0) = matrix.w().array().sum();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out]() {
@@ -399,7 +402,7 @@ Mat<R> MatOps<R>::sum(Mat<R> matrix) {
 
 template<typename R>
 Mat<R> MatOps<R>::mean(Mat<R> matrix) {
-    Mat<R> out (1,1,false);
+    Mat<R> out (1,1, false);
     out.w()(0) = matrix.w().array().mean();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out](){
@@ -783,16 +786,18 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(std::initializer_list<Mat<R>> matrices) 
 
 template<typename R>
 Mat<R> MatOps<R>::mul_add_mul_with_bias(const vector<Mat<R>>& matrices) {
-    Mat<R> out (
+    Mat<R> out(
             matrices[0].dims(0),
             matrices[1].dims(1),
             true);
+    DEBUG_ASSERT_MAT_NOT_NAN(out)
     auto matrices_ptr = matrices.begin();
     while (matrices_ptr != (matrices.end() - 1)) {
-        out.w() += (*matrices_ptr).w()* (*(matrices_ptr + 1)).w();
-        DEBUG_ASSERT_MAT_NOT_NAN(out);
-        DEBUG_ASSERT_MAT_NOT_NAN((*matrices_ptr));
-        DEBUG_ASSERT_MAT_NOT_NAN((*(matrices_ptr + 1)));
+        DEBUG_ASSERT_MAT_NOT_NAN(*matrices_ptr)
+        DEBUG_ASSERT_MAT_NOT_NAN(*(matrices_ptr + 1))
+        DEBUG_ASSERT_MAT_NOT_NAN(out)
+        out.w() += (*matrices_ptr).w() * (*(matrices_ptr + 1)).w();
+        DEBUG_ASSERT_MAT_NOT_NAN(out)
         matrices_ptr+=2;
     }
 

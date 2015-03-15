@@ -15,7 +15,7 @@ int main () {
         true   // do use Alex Graves' 2013 LSTM
                // where memory connects to gates
     );
-    Mat<R> embedding(1000, 30, 2.0);
+    Mat<R> embedding(1000, 30, weights<R>::uniform(2.0));
     auto prev_state = lstm.initial_states();
     Mat<R> hidden, memory;
     std::tie(memory, hidden) = lstm.activate(embedding.rows_pluck({0, 1, 10, 2, 1, 3}), prev_state);
@@ -55,8 +55,8 @@ int main () {
     A.w() = (A.w().array() + 1.2).matrix();
     A = A + Mat<R>(3, 5, weights<R>::uniform(1.0));
     // build random matrix of double type with standard deviation 2:
-    Mat<R> B(A.dims(0), A.dims(1), 2.0);
-    Mat<R> C(A.dims(1), 4,    2.0);
+    Mat<R> B(A.dims(0), A.dims(1), weights<R>::uniform(2.0 ));
+    Mat<R> C(A.dims(1), 4,   weights<R>::uniform( 2.0 ));
 
     A.print();
     B.print();

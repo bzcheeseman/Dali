@@ -27,7 +27,7 @@ Mat<R> AbstractMultiInputLayer<R>::activate(Mat<R> first_input, const std::vecto
 template<typename R>
 void Layer<R>::create_variables() {
     W = Mat<R>(hidden_size, input_size, weights<R>::uniform(1.0 / sqrt(input_size)));
-    this->b = Mat<R>(hidden_size, 1);
+    this->b = Mat<R>(hidden_size, 1, weights<R>::uniform(1.0 / sqrt(input_size)));
 }
 
 template<typename R>
@@ -65,9 +65,9 @@ void StackedInputLayer<R>::create_variables() {
     for (auto& input_size : input_sizes) {
         matrices.emplace_back(hidden_size, input_size,
                 weights<R>::uniform(1. / sqrt(total_input_size)));
-        DEBUG_ASSERT_MAT_NOT_NAN(matrices[matrices.size() -1]);
+        DEBUG_ASSERT_MAT_NOT_NAN(matrices[matrices.size() -1])
     }
-    this->b = Mat<R>(hidden_size, 1);
+    this->b = Mat<R>(hidden_size, 1, weights<R>::uniform(1.0 / sqrt(total_input_size)));
 }
 template<typename R>
 StackedInputLayer<R>::StackedInputLayer (vector<int> _input_sizes,
@@ -124,13 +124,13 @@ vector<Mat<R>> StackedInputLayer<R>::zip_inputs_with_matrices_and_bias(
 
     mat_ptr++;
 
-    DEBUG_ASSERT_MAT_NOT_NAN((*mat_ptr));
-    DEBUG_ASSERT_MAT_NOT_NAN(input);
+    DEBUG_ASSERT_MAT_NOT_NAN((*mat_ptr))
+    DEBUG_ASSERT_MAT_NOT_NAN(input)
 
     while (mat_ptr != matrices.end()) {
 
-        DEBUG_ASSERT_MAT_NOT_NAN((*mat_ptr));
-        DEBUG_ASSERT_MAT_NOT_NAN((*input_ptr));
+        DEBUG_ASSERT_MAT_NOT_NAN((*mat_ptr))
+        DEBUG_ASSERT_MAT_NOT_NAN((*input_ptr))
 
         zipped.emplace_back(*mat_ptr);
         zipped.emplace_back(*input_ptr);
@@ -162,12 +162,12 @@ template<typename R>
 Mat<R> StackedInputLayer<R>::activate(
     Mat<R> input,
     const vector<Mat<R>>& inputs) const {
-    DEBUG_ASSERT_MAT_NOT_NAN(input);
+    DEBUG_ASSERT_MAT_NOT_NAN(input)
     auto zipped = zip_inputs_with_matrices_and_bias(input, inputs);
 
     auto out = MatOps<R>::mul_add_mul_with_bias(zipped);
 
-    DEBUG_ASSERT_MAT_NOT_NAN(out);
+    DEBUG_ASSERT_MAT_NOT_NAN(out)
 
     return out;
 }
@@ -197,7 +197,7 @@ void RNN<R>::create_variables() {
     Wx = Mat<R>(output_size, input_size,  weights<R>::uniform(1. / sqrt(input_size)));
 
     Wh = Mat<R>(output_size, hidden_size, weights<R>::uniform(1. / sqrt(hidden_size)));
-    b  = Mat<R>(output_size, 1, weights<R>::uniform(1.));
+    b  = Mat<R>(output_size, 1, weights<R>::uniform(1. / sqrt(hidden_size)));
 }
 
 template<typename R>
@@ -231,7 +231,7 @@ std::vector<Mat<R>> DelayedRNN<R>::parameters() const {
 
 template<typename R>
 Mat<R> DelayedRNN<R>::initial_states() const {
-    return Mat<R>(hidden_rnn.hidden_size, 1);
+    return Mat<R>(hidden_rnn.hidden_size, 1, weights<R>::uniform(1. / sqrt(hidden_rnn.hidden_size)));
 }
 
 template<typename R>
@@ -263,7 +263,7 @@ SecondOrderCombinator<R>::SecondOrderCombinator(int input1_size, int input2_size
         input1_size(input1_size), input2_size(input2_size), output_size(output_size) {
     W1 = Mat<R>(output_size, input1_size, weights<R>::uniform(1.0/sqrt(input1_size)));
     W2 = Mat<R>(output_size, input2_size, weights<R>::uniform(1.0/sqrt(input2_size)));
-    b =  Mat<R>(output_size, 1,      weights<R>::uniform(1.0));
+    b =  Mat<R>(output_size, 1,      weights<R>::uniform(1.0 / sqrt(input1_size)));
 }
 template<typename R>
 SecondOrderCombinator<R>::SecondOrderCombinator(const SecondOrderCombinator& m,
@@ -330,11 +330,11 @@ Mat<R> RNN<R>::activate(
     // takes 5% less time to run operations when grouping them (no big gains then)
     // 1.118s with explicit (& temporaries) vs 1.020s with grouped expression & backprop
     // return G.add(G.mul(Wx, input_vector), G.mul_with_bias(Wh, prev_hidden, b));
-    DEBUG_ASSERT_NOT_NAN(Wx.w());
-    DEBUG_ASSERT_NOT_NAN(input_vector.w());
-    DEBUG_ASSERT_NOT_NAN(Wh.w());
-    DEBUG_ASSERT_NOT_NAN(prev_hidden.w());
-    DEBUG_ASSERT_NOT_NAN(b.w());
+    DEBUG_ASSERT_MAT_NOT_NAN(Wx)
+    DEBUG_ASSERT_MAT_NOT_NAN(input_vector)
+    DEBUG_ASSERT_MAT_NOT_NAN(Wh)
+    DEBUG_ASSERT_MAT_NOT_NAN(prev_hidden)
+    DEBUG_ASSERT_MAT_NOT_NAN(b)
     return MatOps<R>::mul_add_mul_with_bias(Wx, input_vector, Wh, prev_hidden, b);
 }
 
@@ -405,9 +405,9 @@ LSTM<R>::LSTM (int _input_size, int _hidden_size, bool _memory_feeds_gates) :
         cell_layer(_input_size, _hidden_size) {
 
     if (memory_feeds_gates) {
-        Wci = Mat<R>(hidden_size, 1);
-        Wco = Mat<R>(hidden_size, 1);
-        Wcf = Mat<R>(hidden_size, 1);
+        Wci = Mat<R>(hidden_size, 1, weights<R>::uniform(1. / sqrt(hidden_size)));
+        Wco = Mat<R>(hidden_size, 1, weights<R>::uniform(1. / sqrt(hidden_size)));
+        Wcf = Mat<R>(hidden_size, 1, weights<R>::uniform(1. / sqrt(hidden_size)));
     }
     // Note: Ilya Sutskever recommends initializing with
     // forget gate at high value
@@ -428,9 +428,9 @@ LSTM<R>::LSTM (int _input_size, int shortcut_size, int _hidden_size, bool _memor
         cell_layer(  {_input_size, shortcut_size}, _hidden_size) {
 
     if (memory_feeds_gates) {
-        Wci = Mat<R>(hidden_size, 1);
-        Wco = Mat<R>(hidden_size, 1);
-        Wcf = Mat<R>(hidden_size, 1);
+        Wci = Mat<R>(hidden_size, 1, weights<R>::uniform(1. / sqrt(hidden_size)));
+        Wco = Mat<R>(hidden_size, 1, weights<R>::uniform(1. / sqrt(hidden_size)));
+        Wcf = Mat<R>(hidden_size, 1, weights<R>::uniform(1. / sqrt(hidden_size)));
     }
     // Note: Ilya Sutskever recommends initializing with
     // forget gate at high value
@@ -480,7 +480,7 @@ typename LSTM<R>::State LSTM<R>::_activate(
         forget_gate = (
             forget_layer.activate(gate_input) + (initial_state.memory * Wcf)
         ).sigmoid();
-    } else {
+    } else {
         // (Zaremba 2014 style)
 
         // input gate:
@@ -664,7 +664,7 @@ std::vector< typename LSTM<R>::State > forward_LSTMs(
                     *state_iter
                 )
             );
-        } else {
+        } else {
             out_state.emplace_back(
                 layer.activate(
                     MatOps<R>::dropout_normalized(layer_input, drop_prob),

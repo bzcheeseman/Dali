@@ -57,7 +57,7 @@ typename weights<R>::initializer_t weights<R>::uninitialized() {
 template<typename R>
 typename weights<R>::initializer_t weights<R>::zeros() {
     return [](Mat<R>& matrix){
-
+        matrix.w().fill(0);
     };
 };
 
@@ -151,12 +151,12 @@ const int Mat<R>::id() const {
 }
 
 template<typename R>
-Mat<R>::Mat (dim_t n, dim_t d) : Mat(n,d, true) {
+Mat<R>::Mat(dim_t n, dim_t d) : Mat(n,d, true) {
 }
 
 
 template<typename R>
-Mat<R>::Mat (dim_t n, dim_t d, typename weights<R>::initializer_t wi) :
+Mat<R>::Mat(dim_t n, dim_t d, typename weights<R>::initializer_t wi) :
         name(nullptr) {
     // Don't fill with zeros - it's initializer's job.
     m = make_shared<MatInternal<R>>(n, d, false);

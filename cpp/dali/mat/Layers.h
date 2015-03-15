@@ -165,38 +165,6 @@ class DelayedRNN : public AbstractLayer<R> {
         DelayedRNN<R> shallow_copy() const;
 };
 
-// template<typename R>
-// class ShortcutRNN : public AbstractLayer<R> {
-//     /*
-//     Combine the input of a hidden vector, an input vector, and
-//     a second input vector (a shortcut) into a single matrix
-//     product sum, and also take an input from another layer as
-//     a "shortcut", s:
-
-//         > y = A * [x, s, h] + b
-
-//     */
-//     void create_variables();
-//     public:
-//         typedef R value_t;
-//         Mat<R> Wx;
-//         Mat<R> Wh;
-//         Mat<R> Ws;
-//         Mat<R> b;
-//         const int hidden_size;
-//         const int input_size;
-//         const int shortcut_size;
-//         const int output_size;
-//         virtual std::vector<Mat<R>> parameters() const;
-//         ShortcutRNN (int, int, int);
-//         ShortcutRNN (int, int, int, int);
-
-//         ShortcutRNN (const ShortcutRNN&, bool, bool);
-//         Mat<R> activate(Mat<R>, Mat<R>, Mat<R>) const;
-
-//         ShortcutRNN<R> shallow_copy() const;
-// };
-
 template<typename R>
 class GatedInput : public RNN<R> {
     public:

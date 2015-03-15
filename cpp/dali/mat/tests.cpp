@@ -11,7 +11,7 @@ using std::chrono::milliseconds;
 
 typedef double R;
 
-#define NUM_RETRIES 100
+#define NUM_RETRIES 10
 #define EXPERIMENT_REPEAT for(int __repetition=0; __repetition < NUM_RETRIES; ++__repetition)
 
 template<typename T, typename K>
@@ -37,23 +37,6 @@ bool matrix_almost_equals (Mat<R> A, Mat<R> B, R eps) {
 #define ASSERT_MATRIX_EQ(A, B) ASSERT_TRUE(matrix_equals((A), (B)))
 #define ASSERT_MATRIX_NEQ(A, B) ASSERT_FALSE(matrix_equals((A), (B)))
 #define ASSERT_MATRIX_CLOSE(A, B, eps) ASSERT_TRUE(matrix_almost_equals((A), (B), (eps)))
-
-TEST(Matrix, eigen_addition) {
-    auto A = Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>(10, 20);
-    A.fill(0);
-    A.array() += 1;
-    auto B = Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>(10, 20);
-    B.fill(0);
-    ASSERT_MATRIX_EQ(A, A)  << "A equals A.";
-    ASSERT_MATRIX_NEQ(A, B) << "A different from B.";
-}
-
-TEST(Matrix, addition) {
-    auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
-    auto B = Mat<R>(10, 20, weights<R>::uniform(2.0));
-    ASSERT_MATRIX_EQ(A, A)  << "A equals A.";
-    ASSERT_MATRIX_NEQ(A, B) << "A different from B.";
-}
 
 /**
 Gradient Same
@@ -101,6 +84,23 @@ bool gradient_same(
     }
 
     return worked_out;
+}
+
+TEST(Eigen, eigen_addition) {
+    auto A = Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>(10, 20);
+    A.fill(0);
+    A.array() += 1;
+    auto B = Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>(10, 20);
+    B.fill(0);
+    ASSERT_MATRIX_EQ(A, A)  << "A equals A.";
+    ASSERT_MATRIX_NEQ(A, B) << "A different from B.";
+}
+
+TEST(Matrix, addition) {
+    auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
+    auto B = Mat<R>(10, 20, weights<R>::uniform(2.0));
+    ASSERT_MATRIX_EQ(A, A)  << "A equals A.";
+    ASSERT_MATRIX_NEQ(A, B) << "A different from B.";
 }
 
 TEST(Matrix, sum_gradient) {
@@ -200,7 +200,7 @@ TEST(Matrix, matrix_dot_plus_bias) {
     }
 }
 
-TEST(Matrix, matrix_mul_with_bias) {
+TEST(MatOps, matrix_mul_with_bias) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return MatOps<R>::mul_with_bias(Xs[1], Xs[0], Xs[2]);
     };
@@ -215,7 +215,7 @@ TEST(Matrix, matrix_mul_with_bias) {
     }
 }
 
-TEST(Matrix, matrix_mul_add_mul_with_bias) {
+TEST(MatOps, matrix_mul_add_mul_with_bias) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return MatOps<R>::mul_add_mul_with_bias(Xs[0], Xs[1], Xs[2], Xs[3], Xs[4]);
     };
@@ -314,3 +314,87 @@ TEST(Layer, LSTM_Graves_gradient) {
     }
 }
 
+TEST(Layer, LSTM_Graves_shortcut_gradient) {
+
+    int num_examples           = 20;
+    int hidden_size            = 10;
+    int input_size             = 5;
+    int shortcut_size          = 8;
+
+    EXPERIMENT_REPEAT {
+        auto X  = Mat<R>(input_size,    num_examples, weights<R>::uniform(20.0));
+        auto X_s = Mat<R>(shortcut_size, num_examples, weights<R>::uniform(20.0));
+        auto mylayer = LSTM<R>(input_size, shortcut_size, hidden_size, true);
+        auto params = mylayer.parameters();
+        params.emplace_back(X);
+        params.emplace_back(X_s);
+        auto initial_state = mylayer.initial_states();
+        auto functor = [&mylayer, &X, &X_s, &initial_state](vector<Mat<R>> Xs)-> Mat<R> {
+            auto myout_state = mylayer.activate(X, X_s, initial_state);
+            return myout_state.hidden;
+        };
+        ASSERT_TRUE(gradient_same<R>(functor, params, 0.0003));
+    }
+}
+
+TEST(Layer, LSTM_Zaremba_shortcut_gradient) {
+    int num_examples           = 20;
+    int hidden_size            = 10;
+    int input_size             = 5;
+    int shortcut_size          = 8;
+
+    EXPERIMENT_REPEAT {
+        auto X  = Mat<R>(input_size,    num_examples, weights<R>::uniform(20.0));
+        auto X_s = Mat<R>(shortcut_size, num_examples, weights<R>::uniform(20.0));
+        auto mylayer = LSTM<R>(input_size, shortcut_size, hidden_size, false);
+        auto params = mylayer.parameters();
+        params.emplace_back(X);
+        params.emplace_back(X_s);
+        auto initial_state = mylayer.initial_states();
+        auto functor = [&mylayer, &X, &X_s, &initial_state](vector<Mat<R>> Xs)-> Mat<R> {
+            auto myout_state = mylayer.activate(X, X_s, initial_state);
+            return myout_state.hidden;
+        };
+        ASSERT_TRUE(gradient_same<R>(functor, params, 0.0003));
+    }
+}
+
+TEST(Layer, RNN_gradient_vs_Stacked_gradient) {
+    int num_examples           = 20;
+    int hidden_size            = 10;
+    int input_size             = 5;
+
+    EXPERIMENT_REPEAT {
+
+        auto X  = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
+        auto H  = Mat<R>(hidden_size, num_examples, weights<R>::uniform(20.0));
+
+        auto X_s  = Mat<R>(X, true, true); // perform full copies
+        auto H_s  = Mat<R>(H, true, true); // perform full copies
+
+        auto rnn_layer = RNN<R>(input_size, hidden_size);
+        auto stacked_layer = StackedInputLayer<R>({input_size, hidden_size}, hidden_size);
+
+        auto params = rnn_layer.parameters();
+        auto stacked_params = stacked_layer.parameters();
+
+        for (auto it1 = params.begin(),
+                  it2 = stacked_params.begin(); (it1 != params.end()) && (it2 != stacked_params.end()); it1++, it2++) {
+            ASSERT_EQ((*it1).dims(), (*it2).dims());
+            it1->w() = it2->w(); // have the same parameters for both layers
+        }
+
+        auto error = ((rnn_layer.activate(X, H).tanh() - 1) ^ 2).sum();
+        error.grad();
+        auto error2 = ((stacked_layer.activate({X_s, H_s}).tanh() - 1) ^ 2).sum();
+        error2.grad();
+        graph::backward();
+
+        for (auto it1 = params.begin(),
+                  it2 = stacked_params.begin(); (it1 != params.end()) && (it2 != stacked_params.end()); it1++, it2++) {
+            ASSERT_MATRIX_CLOSE((*it1).dw(), (*it2).dw(), 1e-6);
+        }
+        ASSERT_MATRIX_CLOSE(X.dw(), X_s.dw(), 1e-6);
+        ASSERT_MATRIX_CLOSE(H.dw(), H_s.dw(), 1e-6);
+    }
+}

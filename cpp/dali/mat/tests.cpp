@@ -15,22 +15,22 @@ typedef double R;
 #define EXPERIMENT_REPEAT for(int __repetition=0; __repetition < NUM_RETRIES; ++__repetition)
 
 template<typename T, typename K>
-bool matrix_equals (const T& A, const K& B) {
+bool matrix_equals (const T& A, const K& B) {
     return (A.array() == B.array()).all();
 }
 
 template<typename R>
-bool matrix_equals (Mat<R> A, Mat<R> B) {
+bool matrix_equals (Mat<R> A, Mat<R> B) {
     return (A.w().array() == B.w().array()).all();
 }
 
 template<typename T, typename K, typename J>
-bool matrix_almost_equals (const T& A, const K& B, J eps) {
+bool matrix_almost_equals (const T& A, const K& B, J eps) {
     return (A.array() - B.array()).abs().array().maxCoeff() < eps;
 }
 
 template<typename R>
-bool matrix_almost_equals (Mat<R> A, Mat<R> B, R eps) {
+bool matrix_almost_equals (Mat<R> A, Mat<R> B, R eps) {
     return (A.w().array() - B.w().array()).abs().array().maxCoeff() < eps;
 }
 
@@ -232,3 +232,85 @@ TEST(Matrix, matrix_mul_add_mul_with_bias) {
         ASSERT_TRUE(gradient_same<R>(functor, {W, X, W_other, X_other, bias}, 0.0003));
     }
 }
+
+TEST(Layer, layer_tanh_gradient) {
+    int num_examples = 20;
+    int hidden_size = 10;
+    int input_size = 5;
+
+    EXPERIMENT_REPEAT {
+        auto X  = Mat<R>(input_size, num_examples,      weights<R>::uniform(20.0));
+        auto mylayer = Layer<R>(input_size, hidden_size);
+        auto params = mylayer.parameters();
+        params.emplace_back(X);
+        auto functor = [&mylayer](vector<Mat<R>> Xs)-> Mat<R> {
+            return mylayer.activate(Xs.back()).tanh();
+        };
+        ASSERT_TRUE(gradient_same<R>(functor, params, 0.0003));
+    }
+}
+
+TEST(Layer, stacked_layer_tanh_gradient) {
+
+    int num_examples           = 20;
+    int hidden_size            = 10;
+    int input_size             = 5;
+    int other_input_size       = 8;
+    int other_other_input_size = 12;
+
+    EXPERIMENT_REPEAT {
+        auto A  = Mat<R>(input_size, num_examples,      weights<R>::uniform(20.0));
+        auto B  = Mat<R>(other_input_size, num_examples,      weights<R>::uniform(20.0));
+        auto C  = Mat<R>(other_other_input_size, num_examples,      weights<R>::uniform(20.0));
+        auto mylayer = StackedInputLayer<R>({input_size, other_input_size, other_other_input_size}, hidden_size);
+        auto params = mylayer.parameters();
+        params.emplace_back(A);
+        params.emplace_back(B);
+        params.emplace_back(C);
+        auto functor = [&mylayer, &A, &B, &C](vector<Mat<R>> Xs)-> Mat<R> {
+            return mylayer.activate({A, B, C}).tanh();
+        };
+        ASSERT_TRUE(gradient_same<R>(functor, params, 0.0003));
+    }
+}
+
+TEST(Layer, LSTM_Zaremba_gradient) {
+
+    int num_examples           = 20;
+    int hidden_size            = 10;
+    int input_size             = 5;
+
+    EXPERIMENT_REPEAT {
+        auto X  = Mat<R>(input_size, num_examples,      weights<R>::uniform(20.0));
+        auto mylayer = LSTM<R>(input_size, hidden_size, false);
+        auto params = mylayer.parameters();
+        params.emplace_back(X);
+        auto initial_state = mylayer.initial_states();
+        auto functor = [&mylayer, &X, &initial_state](vector<Mat<R>> Xs)-> Mat<R> {
+            auto myout_state = mylayer.activate(X, initial_state);
+            return myout_state.hidden;
+        };
+        ASSERT_TRUE(gradient_same<R>(functor, params, 0.0003));
+    }
+}
+
+TEST(Layer, LSTM_Graves_gradient) {
+
+    int num_examples           = 20;
+    int hidden_size            = 10;
+    int input_size             = 5;
+
+    EXPERIMENT_REPEAT {
+        auto X  = Mat<R>(input_size, num_examples,      weights<R>::uniform(20.0));
+        auto mylayer = LSTM<R>(input_size, hidden_size, true);
+        auto params = mylayer.parameters();
+        params.emplace_back(X);
+        auto initial_state = mylayer.initial_states();
+        auto functor = [&mylayer, &X, &initial_state](vector<Mat<R>> Xs)-> Mat<R> {
+            auto myout_state = mylayer.activate(X, initial_state);
+            return myout_state.hidden;
+        };
+        ASSERT_TRUE(gradient_same<R>(functor, params, 0.0003));
+    }
+}
+

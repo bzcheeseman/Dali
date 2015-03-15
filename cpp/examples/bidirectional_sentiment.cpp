@@ -315,7 +315,7 @@ int main (int argc,  char* argv[]) {
                 for (auto & example : minibatch) {
                     auto logprobs = thread_model.activate_sequence(std::get<0>(example), FLAGS_dropout);
                     auto error = MatOps<REAL_t>::softmax_cross_entropy(logprobs, std::get<1>(example));
-                    if (std::get<2>(example)) {
+                    if (std::get<2>(example) && FLAGS_root_weight != 1.0) {
                         error = error * FLAGS_root_weight;
                     }
                     error = error * (1.0 / minibatch.size());
@@ -338,7 +338,11 @@ int main (int argc,  char* argv[]) {
             patience = std::max(patience - 1, 0.0);
             best_validation_score = new_validation;
         }
-        std::cout << "Epoch (" << epoch << ") Best validation score = " << best_validation_score << ", patience = " << patience << std::endl;
+        if (best_validation_score != new_validation) {
+            std::cout << "Epoch (" << epoch << ") Best validation score = " << best_validation_score << "% ("<< new_validation << "%), patience = " << patience << std::endl;
+        } else {
+            std::cout << "Epoch (" << epoch << ") Best validation score = " << best_validation_score << "%, patience = " << patience << std::endl;
+        }
     }
 
 

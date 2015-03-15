@@ -291,7 +291,7 @@ int main(int argc, char *argv[]) {
         "Sparkfun Dataset Prediction\n"
         "---------------------------\n"
         "Use StackedLSTMs to predict SparkFun categories in"
-        " sequential fashion. Moreover, use an Multi Layer Perceptron "
+        " sequential fashion. Moreover, use a Multi Layer Perceptron "
         " reading hidden LSTM activations to predict pricing."
         " Final network can read product description and predict it's category"
         " and price, or provide a topology for the products on SparkFun's website:\n"

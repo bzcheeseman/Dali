@@ -200,7 +200,7 @@ Then our forward function can be changed to:
             // pass this letter to the LSTM for processing
             initial_state = forward_LSTMs(input_vector, initial_state, cells);
             // classifier takes as input the final hidden layer's activation:
-            logprobs      = classifier.activate(std::get<1>(initial_state)[num_hidden_sizes-1]);
+            logprobs      = classifier.activate(initial_state[num_hidden_sizes-1].hidden);
             // compute the softmax probabilities
             probs         = logprobs.softmax_no_grad();
             // accumulate base 2 log prob and do smoothing

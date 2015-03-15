@@ -214,10 +214,10 @@ class LstmBabiModel {
     const int           TEXT_REPR_EMBEDDINGS       =      30;
     const T             TEXT_REPR_DROPOUT          =      0.3;
 
-    StackedShortcutLSTM<T> fact_model;
+    StackedLSTM<T> fact_model;
     Mat<T> fact_embeddings;
 
-    StackedShortcutLSTM<T> question_model;
+    StackedLSTM<T> question_model;
     Mat<T> question_representation_embeddings;
 
 
@@ -235,10 +235,10 @@ class LstmBabiModel {
     const int           QG_HIDDEN                         = 30;
 
 
-    StackedShortcutLSTM<T> question_fact_gate_model;
+    StackedLSTM<T> question_fact_gate_model;
     Mat<T> question_fact_gate_embeddings;
 
-    StackedShortcutLSTM<T> question_fact_word_gate_model;
+    StackedLSTM<T> question_fact_word_gate_model;
     Mat<T> question_fact_word_gate_embeddings;
 
     LolGate<T> fact_gate;
@@ -249,7 +249,7 @@ class LstmBabiModel {
     const int           HL_INPUT_SIZE              =      utils::vsum(TEXT_REPR_STACKS);
     const T             HL_DROPOUT                 =      0.5;
 
-    StackedShortcutLSTM<T> hl_model;
+    StackedLSTM<T> hl_model;
 
     Mat<T> please_start_prediction;
 
@@ -320,12 +320,12 @@ class LstmBabiModel {
         }
 
         LstmBabiModel(shared_ptr<Vocab> vocabulary) :
-                question_fact_gate_model(QUESTION_GATE_EMBEDDINGS, QUESTION_GATE_STACKS),
-                question_fact_word_gate_model(QUESTION_GATE_EMBEDDINGS, QUESTION_GATE_STACKS),
+                question_fact_gate_model(QUESTION_GATE_EMBEDDINGS, QUESTION_GATE_STACKS, true, false),
+                question_fact_word_gate_model(QUESTION_GATE_EMBEDDINGS, QUESTION_GATE_STACKS, true, false),
                 fact_gate(QG_FACTS_INPUT1, QG_INPUT2, QG_SECOND_ORDER, QG_HIDDEN),
                 fact_word_gate(QG_FACT_WORDS_INPUT1, QG_INPUT2, QG_SECOND_ORDER, QG_HIDDEN),
-                question_model(TEXT_REPR_EMBEDDINGS, TEXT_REPR_STACKS),
-                fact_model(TEXT_REPR_EMBEDDINGS, TEXT_REPR_STACKS),
+                question_model(TEXT_REPR_EMBEDDINGS, TEXT_REPR_STACKS, true, false),
+                fact_model(TEXT_REPR_EMBEDDINGS, TEXT_REPR_STACKS, true, false),
                 hl_model(HL_INPUT_SIZE, HL_STACKS),
                 DECODER_OUTPUT(vocabulary->word2index.size()),
                 decoder(DECODER_INPUT, vocabulary->word2index.size()) {
@@ -392,14 +392,13 @@ class LstmBabiModel {
         }
 
         Mat<T> lstm_final_activation(const Seq<Mat<T>>& embeddings,
-                                     const StackedShortcutLSTM<T>& model,
+                                     const StackedLSTM<T>& model,
                                      T dropout_value) {
-            vector<Mat<T>> memory, hidden;
-            std::tie(memory, hidden) = model.activate_sequence(model.initial_states(),
+            auto out_states = model.activate_sequence(model.initial_states(),
                                                      embeddings,
                                                      dropout_value);
             // out_state.second corresponds to LSTM hidden (as opposed to memory).
-            return MatOps<T>::vstack(hidden);
+            return MatOps<T>::vstack(LSTM<T>::State::hiddens(out_states));
         }
 
         StoryActivation<T> activate_story(const vector<vector<string>>& facts,

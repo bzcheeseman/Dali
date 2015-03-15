@@ -68,7 +68,7 @@ class RecurrentEmbeddingModel {
 
         void save(std::string) const;
 
-        typedef std::tuple<std::vector<mat>, std::vector<mat>> state_type;
+        typedef std::vector<typename LSTM<R>::State> state_type;
         virtual state_type initial_states() const;
         /**
         Save Configuration

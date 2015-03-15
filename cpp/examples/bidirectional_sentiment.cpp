@@ -60,9 +60,9 @@ class BidirectionalLSTM {
         StackedLSTM<T> stacked_lstm;
         Layer<T> decoder;
 
-        BidirectionalLSTM(int vocabulary_size, int input_size, vector<int> hidden_sizes, int output_size)
+        BidirectionalLSTM(int vocabulary_size, int input_size, vector<int> hidden_sizes, int output_size, bool shortcut, bool memory_feeds_gates)
             : embedding(vocabulary_size, input_size, weights<T>::uniform(1.0 / (T) input_size)),
-              stacked_lstm(input_size, hidden_sizes),
+              stacked_lstm(input_size, hidden_sizes, shortcut, memory_feeds_gates),
               decoder(hidden_sizes.back(), output_size) {}
 
         BidirectionalLSTM(const BidirectionalLSTM& model, bool copy_w, bool copy_dw)
@@ -81,36 +81,33 @@ class BidirectionalLSTM {
             for (size_t i = 0; i < example.size(); i++) {
                 X.emplace_back(apply_dropout(embedding.row_pluck(example[i]), drop_prob));
             }
-            Mat<T> memory, hidden;
-            std::tie(memory, hidden) = stacked_lstm.cells[0].initial_states();
+            auto state = stacked_lstm.cells[0].initial_states();
             for (auto& cell : stacked_lstm.cells) {
                 if (pass != 0) {
-                    std::tie(memory, hidden) = cell.initial_states();
+                    state = cell.initial_states();
                 }
                 if (pass % 2 == 0) {
                     for (auto it = X.begin(); it != X.end(); ++it) {
-                        std::tie(memory, hidden) = cell.activate(
+                        state = cell.activate(
                             apply_dropout(*it, drop_prob),
-                            memory,
-                            hidden);
+                            state);
                         // prepare the observation sequence to be fed to the next
                         // level up:
-                        *it = hidden;
+                        *it = state.hidden;
                     }
                 } else {
                     for (auto it = X.rbegin(); it != X.rend(); ++it) {
-                        std::tie(memory, hidden) = cell.activate(
+                        state = cell.activate(
                             apply_dropout(*it, drop_prob),
-                            memory,
-                            hidden);
+                            state);
                         // prepare the observation sequence to be fed to the next
                         // level up:
-                        *it = hidden;
+                        *it = state.hidden;
                     }
                 }
                 pass+=1;
             }
-            return decoder.activate(hidden);
+            return decoder.activate(state.hidden);
         }
 
         vector<Mat<T>> parameters() const {
@@ -260,7 +257,9 @@ int main (int argc,  char* argv[]) {
          word_vocab.index2word.size(),
          FLAGS_input_size,
          hidden_sizes,
-         SST::label_names.size());
+         SST::label_names.size(),
+         FLAGS_shortcut,
+         FLAGS_memory_feeds_gates);
 
     vector<vector<Mat<REAL_t>>> thread_params;
 

@@ -275,7 +275,8 @@ int main( int argc, char* argv[]) {
                 FLAGS_hidden,
                 FLAGS_stack_size < 1 ? 1 : FLAGS_stack_size,
                 word_vocab.index2word.size(),
-                FLAGS_shortcut
+                FLAGS_shortcut,
+                FLAGS_memory_feeds_gates
             );
         }
         thread_models.emplace_back();

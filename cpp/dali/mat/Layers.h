@@ -67,13 +67,11 @@ class StackedInputLayer : public AbstractMultiInputLayer<R> {
         virtual std::vector<Mat<R>> parameters() const;
         StackedInputLayer (std::initializer_list<int>, int);
         StackedInputLayer (std::vector<int>, int);
-
+        StackedInputLayer (int input_size, int output_size);
         StackedInputLayer (const StackedInputLayer&, bool, bool);
-
 
         Mat<R> activate(const std::vector<Mat<R>>&) const;
         Mat<R> activate(Mat<R>) const;
-
         Mat<R> activate(Mat<R>, const std::vector<Mat<R>>&) const;
 
         StackedInputLayer<R> shallow_copy() const;
@@ -167,37 +165,37 @@ class DelayedRNN : public AbstractLayer<R> {
         DelayedRNN<R> shallow_copy() const;
 };
 
-template<typename R>
-class ShortcutRNN : public AbstractLayer<R> {
-    /*
-    Combine the input of a hidden vector, an input vector, and
-    a second input vector (a shortcut) into a single matrix
-    product sum, and also take an input from another layer as
-    a "shortcut", s:
+// template<typename R>
+// class ShortcutRNN : public AbstractLayer<R> {
+//     /*
+//     Combine the input of a hidden vector, an input vector, and
+//     a second input vector (a shortcut) into a single matrix
+//     product sum, and also take an input from another layer as
+//     a "shortcut", s:
 
-        > y = A * [x, s, h] + b
+//         > y = A * [x, s, h] + b
 
-    */
-    void create_variables();
-    public:
-        typedef R value_t;
-        Mat<R> Wx;
-        Mat<R> Wh;
-        Mat<R> Ws;
-        Mat<R> b;
-        const int hidden_size;
-        const int input_size;
-        const int shortcut_size;
-        const int output_size;
-        virtual std::vector<Mat<R>> parameters() const;
-        ShortcutRNN (int, int, int);
-        ShortcutRNN (int, int, int, int);
+//     */
+//     void create_variables();
+//     public:
+//         typedef R value_t;
+//         Mat<R> Wx;
+//         Mat<R> Wh;
+//         Mat<R> Ws;
+//         Mat<R> b;
+//         const int hidden_size;
+//         const int input_size;
+//         const int shortcut_size;
+//         const int output_size;
+//         virtual std::vector<Mat<R>> parameters() const;
+//         ShortcutRNN (int, int, int);
+//         ShortcutRNN (int, int, int, int);
 
-        ShortcutRNN (const ShortcutRNN&, bool, bool);
-        Mat<R> activate(Mat<R>, Mat<R>, Mat<R>) const;
+//         ShortcutRNN (const ShortcutRNN&, bool, bool);
+//         Mat<R> activate(Mat<R>, Mat<R>, Mat<R>) const;
 
-        ShortcutRNN<R> shallow_copy() const;
-};
+//         ShortcutRNN<R> shallow_copy() const;
+// };
 
 template<typename R>
 class GatedInput : public RNN<R> {
@@ -217,10 +215,23 @@ class LSTM : public AbstractLayer<R> {
 
     See `Mat`, `HiddenLayer`
     */
-    typedef RNN<R>                        layer_type;
+    typedef StackedInputLayer<R> layer_type;
     void name_internal_layers();
+
     public:
-        typedef std::tuple<Mat<R>, Mat<R>> state_t;
+        struct State {
+            Mat<R> memory;
+            Mat<R> hidden;
+            State(Mat<R> _memory, Mat<R> _hidden);
+            static std::vector<Mat<R>> hiddens (const std::vector<State>&);
+            static std::vector<Mat<R>> memories (const std::vector<State>&);
+            operator std::tuple<Mat<R> &, Mat<R> &>();
+        };
+
+        Mat<R> Wci;
+        Mat<R> Wcf;
+        Mat<R> Wco;
+
         typedef R value_t;
         // cell input modulation:
         layer_type input_layer;
@@ -232,73 +243,35 @@ class LSTM : public AbstractLayer<R> {
         layer_type cell_layer;
         const int hidden_size;
         const int input_size;
-        LSTM (int, int);
-
+        const bool shortcut;
+        const bool memory_feeds_gates;
+        LSTM (int _input_size, int _hidden_size, bool _memory_feeds_gates = false);
+        LSTM (int _input_size, int shortcut_size, int _hidden_size, bool _memory_feeds_gates = false);
         LSTM (const LSTM&, bool, bool);
         virtual std::vector<Mat<R>> parameters() const;
-        static std::tuple<std::vector<Mat<R>>, std::vector<Mat<R>>> initial_states(const std::vector<int>&);
-        state_t activate(
+        static std::vector<State> initial_states(const std::vector<int>&);
+        State activate(
             Mat<R> input_vector,
-            Mat<R> cell_prev,
-            Mat<R> hidden_prev) const;
-
-        LSTM<R> shallow_copy() const;
-        state_t initial_states() const;
-
-        virtual state_t activate_sequence(
-            state_t initial_state,
-            const Seq<Mat<R>>& sequence) const;
-};
-
-template<typename R>
-class ShortcutLSTM : public AbstractLayer<R> {
-    /*
-    ShortcutLSTM layer with forget, output, memory write, and input
-    modulate gates, that can remember sequences for long
-    periods of time.
-
-    Unlike a traditional LSTM this layer type takes 2 inputs along
-    with its previous hidden state: an input from the layer below,
-    and a "shortcut" input from the base layer (or elsewhere).
-
-    See `Mat`, `HiddenLayer`
-    */
-    typedef ShortcutRNN<R>          layer_type;
-    void name_internal_layers();
-    public:
-        typedef std::tuple<Mat<R>, Mat<R>> state_t;
-        typedef R value_t;
-        // cell input modulation:
-        layer_type input_layer;
-        // cell forget gate:
-        layer_type forget_layer;
-        // cell output modulation
-        layer_type output_layer;
-        // cell write params
-        layer_type cell_layer;
-        const int hidden_size;
-        const int input_size;
-        const int shortcut_size;
-        state_t initial_states() const;
-        ShortcutLSTM (int, int, int);
-        ShortcutLSTM (const ShortcutLSTM&, bool, bool);
-        virtual std::vector<Mat<R>> parameters() const;
-        std::tuple<Mat<R>, Mat<R>> activate(
+            State prev_state) const;
+        State activate(
             Mat<R> input_vector,
             Mat<R> shortcut_vector,
-            Mat<R> cell_prev,
-            Mat<R> hidden_prev) const;
-        ShortcutLSTM<R> shallow_copy() const;
-        virtual state_t activate_sequence(
-            state_t initial_state,
-            const Seq<Mat<R>>& sequence,
-            const Seq<Mat<R>>& shortcut_sequence) const;
+            State prev_state) const;
+
+        LSTM<R> shallow_copy() const;
+        State initial_states() const;
+
+        virtual State activate_sequence(
+            State initial_state,
+            const Seq<Mat<R>>& sequence) const;
+    private:
+        State _activate(const std::vector<Mat<R>>&, const State&) const;
 };
 
 template<typename R>
 class AbstractStackedLSTM : public AbstractLayer<R> {
     public:
-        typedef std::tuple<std::vector<Mat<R>>, std::vector<Mat<R>>> state_t;
+        typedef std::vector < typename LSTM<R>::State > state_t;
 
         const int input_size;
         const std::vector<int> hidden_sizes;
@@ -324,7 +297,9 @@ template<typename R>
 class StackedLSTM : public AbstractStackedLSTM<R> {
     public:
         typedef LSTM<R> lstm_t;
-        typedef std::tuple<std::vector<Mat<R>>, std::vector<Mat<R>>> state_t;
+        typedef std::vector< typename LSTM<R>::State > state_t;
+        const bool shortcut;
+        const bool memory_feeds_gates;
 
         std::vector<lstm_t> cells;
         virtual state_t activate(
@@ -332,34 +307,21 @@ class StackedLSTM : public AbstractStackedLSTM<R> {
             Mat<R> input_vector,
             R drop_prob = 0.0) const;
         virtual std::vector<Mat<R>> parameters() const;
-        StackedLSTM(const int& input_size, const std::vector<int>& hidden_sizes);
+        StackedLSTM(
+            const int& input_size,
+            const std::vector<int>& hidden_sizes,
+            bool _shortcut,
+            bool _memory_feeds_gates);
         StackedLSTM(const StackedLSTM<R>& model, bool copy_w, bool copy_dw);
         StackedLSTM<R> shallow_copy() const;
 };
 
-template<typename R>
-class StackedShortcutLSTM : public AbstractStackedLSTM<R> {
-    public:
-        typedef LSTM<R>                  lstm_t;
-        typedef ShortcutLSTM<R> shortcut_lstm_t;
-        typedef std::tuple<std::vector<Mat<R>>, std::vector<Mat<R>>> state_t;
-
-        std::vector<shortcut_lstm_t> cells;
-        lstm_t base_cell;
-
-
-        virtual state_t activate(
-            state_t previous_state,
-            Mat<R> input_vector,
-            R drop_prob = 0.0) const;
-        virtual std::vector<Mat<R>> parameters() const;
-        StackedShortcutLSTM(const int& input_size, const std::vector<int>& hidden_sizes);
-        StackedShortcutLSTM(const StackedShortcutLSTM<R>& model, bool copy_w, bool copy_dw);
-        StackedShortcutLSTM<R> shallow_copy() const;
-};
-
 template<typename celltype>
-std::vector<celltype> StackedCells(const int&, const std::vector<int>&);
+std::vector<celltype> StackedCells(
+    const int&,
+    const std::vector<int>&,
+    bool shortcut,
+    bool memory_feeds_gates);
 
 /**
 StackedCells specialization to StackedLSTM
@@ -393,18 +355,10 @@ template<typename celltype>
 std::vector<celltype> StackedCells(const std::vector<celltype>&, bool, bool);
 
 template<typename R>
-std::tuple<std::vector<Mat<R>>, std::vector<Mat<R>>> forward_LSTMs(
+std::vector< typename LSTM<R>::State > forward_LSTMs(
     Mat<R>,
-    std::tuple<std::vector<Mat<R>>, std::vector<Mat<R>>>&,
+    std::vector< typename LSTM<R>::State >&,
     const std::vector<LSTM<R>>&,
-    R drop_prob=0.0);
-
-template<typename R>
-std::tuple<std::vector<Mat<R>>, std::vector<Mat<R>>> forward_LSTMs(
-    Mat<R>,
-    std::tuple<std::vector<Mat<R>>, std::vector<Mat<R>>>&,
-    const LSTM<R>&,
-    const std::vector<ShortcutLSTM<R>>&,
     R drop_prob=0.0);
 
 #endif

@@ -190,35 +190,36 @@ class Mat {
         // Various operations on matrix.
         // Soon to be replaced by legitimate operators
         // See MatOps for documentation.
-        Mat<R> eltmul_broadcast(Mat<R>);
-        Mat<R> eltmul(Mat<R>);
-        Mat<R> eltmul(R);
-        Mat<R> eltmul_broadcast_rowwise(Mat<R>);
-        Mat<R> eltmul_rowwise(Mat<R>);
-        Mat<R> add_broadcast(Mat<R>);
-        Mat<R> add(Mat<R>);
-        Mat<R> sub(Mat<R>);
-        Mat<R> sub_broadcast(Mat<R>);
-        Mat<R> sub_broadcast_reversed(Mat<R>);
-        Mat<R> square();
-        Mat<R> sum();
-        Mat<R> mean();
-        Mat<R> log();
-        Mat<R> exp();
-        Mat<R> sigmoid();
-        Mat<R> steep_sigmoid(R aggressiveness = 3.75);
-        Mat<R> T();
-        Mat<R> tanh();
-        Mat<R> relu();
+        Mat<R> eltmul_broadcast(Mat<R>) const;
+        Mat<R> eltmul(Mat<R>) const;
+        Mat<R> eltmul(R) const;
+        Mat<R> eltmul_broadcast_rowwise(Mat<R>) const;
+        Mat<R> eltmul_rowwise(Mat<R>) const;
+        Mat<R> add_broadcast(Mat<R>) const;
+        Mat<R> add(Mat<R>) const;
+        Mat<R> sub(Mat<R>) const;
+        Mat<R> sub_broadcast(Mat<R>) const;
+        Mat<R> sub_broadcast_reversed(Mat<R>) const;
+        Mat<R> square() const;
+        Mat<R> sum() const;
+        Mat<R> mean() const;
+        Mat<R> log() const;
+        Mat<R> exp() const;
+        Mat<R> sigmoid() const;
+        Mat<R> steep_sigmoid(R aggressiveness = 3.75) const;
+        // Warning: transpose makes a copy, uses extra memory
+        Mat<R> T() const;
+        Mat<R> tanh() const;
+        Mat<R> relu() const;
         Mat<R> mul(Mat<R>) const;
         Mat<R> dot(Mat<R>) const;
         Mat<R> rows_pluck(Indexing::Index) const;
         Mat<R> rows_cols_pluck(Indexing::Index, Indexing::Index) const;
         Mat<R> row_pluck(int) const;
-        Mat<R> pow(R);
-        Mat<R> pow(int);
-        Mat<R> sqrt();
-        Mat<R> elt_inv();
+        Mat<R> pow(R) const;
+        Mat<R> pow(int) const;
+        Mat<R> sqrt() const;
+        Mat<R> elt_inv() const;
         int argmax() const;
         /*
         Restricted range argmax: returns the index of the
@@ -230,12 +231,12 @@ class Mat {
 
         Mat<R> operator*(Mat<R> other) const;
         Mat<R> operator*(R alpha) const;
-        Mat<R> operator+(Mat<R>);
-        Mat<R> operator-(Mat<R>);
-        Mat<R> operator+(R);
-        Mat<R> operator-(R);
-        Mat<R> operator^(R);
-        Mat<R> operator^(int);
+        Mat<R> operator+(Mat<R>) const;
+        Mat<R> operator-(Mat<R>) const;
+        Mat<R> operator+(R) const;
+        Mat<R> operator-(R) const;
+        Mat<R> operator^(R) const;
+        Mat<R> operator^(int) const;
 };
 
 template<typename R>

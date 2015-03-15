@@ -34,7 +34,7 @@ int main (int argc, char *argv[]) {
     for (int i=0; i < FLAGS_stack_size; ++i)
         hidden_sizes.emplace_back(FLAGS_hidden_size);
 
-    auto cells = StackedCells<lstm>(FLAGS_input_size, hidden_sizes);
+    auto cells = StackedCells<lstm>(FLAGS_input_size, hidden_sizes, true, true);
     auto initial_state = lstm::initial_states(hidden_sizes);
 
     auto input_vector = mat(FLAGS_input_size, FLAGS_batch_size, (float)FLAGS_std);

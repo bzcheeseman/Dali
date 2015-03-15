@@ -11,21 +11,17 @@ using std::vector;
 int main () {
     sane_crashes::activate();
     typedef double R;
-std::cout << "SIEMA" << std::endl;
-    LSTM<R> lstm(30, 50);
-std::cout << "SIEMA" << std::endl;
-
+    LSTM<R> lstm(30, 50,
+        true   // do use Alex Graves' 2013 LSTM
+               // where memory connects to gates
+    );
     Mat<R> embedding(1000, 30, 2.0);
-    Mat<R> prev_cell(50, 1);
-    Mat<R> prev_hidden(50, 1);
-
+    auto prev_state = lstm.initial_states();
     Mat<R> hidden, memory;
-
-    std::tie(memory, hidden) = lstm.activate(embedding.rows_pluck({0, 1, 10, 2, 1, 3}), prev_cell, prev_hidden);
+    std::tie(memory, hidden) = lstm.activate(embedding.rows_pluck({0, 1, 10, 2, 1, 3}), prev_state);
     hidden.print();
 
-        // load numpy matrix from file:
-
+    // load numpy matrix from file:
     auto name = "numpy_test.npy";
     std::cout << "loading a numpy matrix \"" << name << "\" from the disk" << std::endl;
     Mat<R> numpy_mat;
@@ -54,8 +50,6 @@ std::cout << "SIEMA" << std::endl;
 
     std::cout << "Press Enter to continue" << std::endl;
     getchar();
-    //std::cin.ignore( std::numeric_limits<std::streamsize>::max(), '\n' );
-    //std::cin.get();
 
     Mat<R> A(3, 5);
     A.w() = (A.w().array() + 1.2).matrix();
@@ -143,7 +137,8 @@ std::cout << "SIEMA" << std::endl;
 
     graph::backward();
 
-
+    std::cout << "Press Enter to continue to Orthogonal Initialization" << std::endl;
+    getchar();
 
     /**
     Orthogonal Initialization:
@@ -159,8 +154,6 @@ std::cout << "SIEMA" << std::endl;
         q = u if u.shape == flat_shape else v # pick the one with the correct shape
         q = q.reshape(shape)
         return sharedX(scale * q[:shape[0], :shape[1]])
-
-
     **/
     std::default_random_engine generator;
     std::normal_distribution<R> distribution(0.0, 1.0);
@@ -178,11 +171,13 @@ std::cout << "SIEMA" << std::endl;
     auto A_ptr_T = A.w().transpose().data();
 
     std::cout <<( (A_ptr == A_ptr_T)  ? "t" : "f" ) << std::endl;
-/*
+
+
+
+    /**
     auto some_model = StackedGatedModel<R>(20, 10, 20, 2, 1, false, 0.3);
 
     some_model.save("some_model");
-
 
     auto loaded_model = StackedGatedModel<R>::load("some_model");
 
@@ -191,6 +186,6 @@ std::cout << "SIEMA" << std::endl;
     some_model.save("some_model");
 
     auto loaded_model2 = StackedModel<R>::load("some_model");
-*/
+    **/
     return 0;
 }

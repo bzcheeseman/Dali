@@ -630,7 +630,7 @@ class LstmBabiModelRunner: public babi::Model {
             model = std::make_shared<LstmBabiModel<T>>(vocab);
 
             for (auto param: model->parameters()) {
-                weights<T>::svd(weights<T>::uninitialized())(param);
+                weights<T>::svd(weights<T>::gaussian(1.0))(param);
             }
 
             int training_size = (int)(TRAINING_FRAC * data.size());
@@ -707,10 +707,10 @@ int main(int argc, char** argv) {
     Eigen::setNbThreads(0);
     Eigen::initParallel();
 
-    babi::benchmark_task<LstmBabiModelRunner<double>>("qa2_two-supporting-facts");
-    babi::benchmark_task<LstmBabiModelRunner<double>>("qa16_basic-induction");
-
     // babi::benchmark_task<LstmBabiModelRunner<double>>("qa1_single-supporting-fact");
+    // babi::benchmark_task<LstmBabiModelRunner<double>>("qa2_two-supporting-facts");
+    // babi::benchmark_task<LstmBabiModelRunner<double>>("qa16_basic-induction");
+
     // babi::benchmark_task<LstmBabiModelRunner<double>>("qa4_two-arg-relations");
     // babi::benchmark_task<LstmBabiModelRunner<double>>("qa3_three-supporting-facts");
     babi::benchmark<LstmBabiModelRunner<double>>();

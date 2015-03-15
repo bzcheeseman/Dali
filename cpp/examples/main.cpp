@@ -9,9 +9,9 @@ using std::vector;
 
 // Test file for LSTM
 int main () {
-    auto U = weights<R>::uniform(-2.0, 2.0);
-    sane_crashes::activate();
     typedef double R;
+    sane_crashes::activate();
+    auto U = weights<R>::uniform(-2.0, 2.0);
     LSTM<R> lstm(30, 50,
         true   // do use Alex Graves' 2013 LSTM
                // where memory connects to gates

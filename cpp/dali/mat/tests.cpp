@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 #include <Eigen/Eigen>
 
+#include "dali/test_utils.h"
 #include "dali/mat/Mat.h"
 #include "dali/mat/MatOps.h"
 
@@ -37,6 +38,7 @@ bool matrix_almost_equals (Mat<R> A, Mat<R> B, R eps) {
 #define ASSERT_MATRIX_EQ(A, B) ASSERT_TRUE(matrix_equals((A), (B)))
 #define ASSERT_MATRIX_NEQ(A, B) ASSERT_FALSE(matrix_equals((A), (B)))
 #define ASSERT_MATRIX_CLOSE(A, B, eps) ASSERT_TRUE(matrix_almost_equals((A), (B), (eps)))
+
 
 /**
 Gradient Same
@@ -86,7 +88,9 @@ bool gradient_same(
     return worked_out;
 }
 
-TEST(Eigen, eigen_addition) {
+typedef MemorySafeTest EigenTests;
+
+TEST_F(EigenTests, eigen_addition) {
     auto A = Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>(10, 20);
     A.fill(0);
     A.array() += 1;
@@ -96,14 +100,16 @@ TEST(Eigen, eigen_addition) {
     ASSERT_MATRIX_NEQ(A, B) << "A different from B.";
 }
 
-TEST(Matrix, addition) {
+typedef MemorySafeTest MatrixTests;
+
+TEST_F(MatrixTests, addition) {
     auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
     auto B = Mat<R>(10, 20, weights<R>::uniform(2.0));
     ASSERT_MATRIX_EQ(A, A)  << "A equals A.";
     ASSERT_MATRIX_NEQ(A, B) << "A different from B.";
 }
 
-TEST(Matrix, sum_gradient) {
+TEST_F(MatrixTests, sum_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].sum();
     };
@@ -113,7 +119,7 @@ TEST(Matrix, sum_gradient) {
     }
 }
 
-TEST(Matrix, addition_gradient) {
+TEST_F(MatrixTests, addition_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] + Xs[1];
     };
@@ -124,7 +130,7 @@ TEST(Matrix, addition_gradient) {
     }
 }
 
-TEST(Matrix, addition_broadcast_gradient) {
+TEST_F(MatrixTests, addition_broadcast_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] + Xs[1];
     };
@@ -135,7 +141,7 @@ TEST(Matrix, addition_broadcast_gradient) {
     }
 }
 
-TEST(Matrix, mean_gradient) {
+TEST_F(MatrixTests, mean_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].mean();
     };
@@ -145,7 +151,7 @@ TEST(Matrix, mean_gradient) {
     }
 }
 
-TEST(Matrix, sigmoid_gradient) {
+TEST_F(MatrixTests, sigmoid_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].sigmoid();
     };
@@ -155,7 +161,7 @@ TEST(Matrix, sigmoid_gradient) {
     }
 }
 
-TEST(Matrix, tanh_gradient) {
+TEST_F(MatrixTests, tanh_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].tanh();
     };
@@ -165,7 +171,7 @@ TEST(Matrix, tanh_gradient) {
     }
 }
 
-TEST(Matrix, exp_gradient) {
+TEST_F(MatrixTests, exp_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].tanh();
     };
@@ -175,7 +181,7 @@ TEST(Matrix, exp_gradient) {
     }
 }
 
-TEST(Matrix, log_gradient) {
+TEST_F(MatrixTests, log_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].tanh();
     };
@@ -185,7 +191,7 @@ TEST(Matrix, log_gradient) {
     }
 }
 
-TEST(Matrix, matrix_dot_plus_bias) {
+TEST_F(MatrixTests, matrix_dot_plus_bias) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[1].dot(Xs[0]) + Xs[2];
     };
@@ -200,7 +206,9 @@ TEST(Matrix, matrix_dot_plus_bias) {
     }
 }
 
-TEST(MatOps, matrix_mul_with_bias) {
+typedef MemorySafeTest MatOpsTests;
+
+TEST_F(MatOpsTests, matrix_mul_with_bias) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return MatOps<R>::mul_with_bias(Xs[1], Xs[0], Xs[2]);
     };
@@ -215,7 +223,7 @@ TEST(MatOps, matrix_mul_with_bias) {
     }
 }
 
-TEST(MatOps, matrix_mul_add_mul_with_bias) {
+TEST_F(MatOpsTests, matrix_mul_add_mul_with_bias) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return MatOps<R>::mul_add_mul_with_bias(Xs[0], Xs[1], Xs[2], Xs[3], Xs[4]);
     };
@@ -233,7 +241,9 @@ TEST(MatOps, matrix_mul_add_mul_with_bias) {
     }
 }
 
-TEST(Layer, layer_tanh_gradient) {
+typedef MemorySafeTest LayerTests;
+
+TEST_F(LayerTests, layer_tanh_gradient) {
     int num_examples = 20;
     int hidden_size = 10;
     int input_size = 5;
@@ -250,7 +260,7 @@ TEST(Layer, layer_tanh_gradient) {
     }
 }
 
-TEST(Layer, stacked_layer_tanh_gradient) {
+TEST_F(LayerTests, stacked_layer_tanh_gradient) {
 
     int num_examples           = 20;
     int hidden_size            = 10;
@@ -274,7 +284,7 @@ TEST(Layer, stacked_layer_tanh_gradient) {
     }
 }
 
-TEST(Layer, LSTM_Zaremba_gradient) {
+TEST_F(LayerTests, LSTM_Zaremba_gradient) {
 
     int num_examples           = 20;
     int hidden_size            = 10;
@@ -294,7 +304,7 @@ TEST(Layer, LSTM_Zaremba_gradient) {
     }
 }
 
-TEST(Layer, LSTM_Graves_gradient) {
+TEST_F(LayerTests, LSTM_Graves_gradient) {
 
     int num_examples           = 20;
     int hidden_size            = 10;
@@ -314,7 +324,7 @@ TEST(Layer, LSTM_Graves_gradient) {
     }
 }
 
-TEST(Layer, LSTM_Graves_shortcut_gradient) {
+TEST_F(LayerTests, LSTM_Graves_shortcut_gradient) {
 
     int num_examples           = 20;
     int hidden_size            = 10;
@@ -337,7 +347,7 @@ TEST(Layer, LSTM_Graves_shortcut_gradient) {
     }
 }
 
-TEST(Layer, LSTM_Zaremba_shortcut_gradient) {
+TEST_F(LayerTests, LSTM_Zaremba_shortcut_gradient) {
     int num_examples           = 20;
     int hidden_size            = 10;
     int input_size             = 5;
@@ -359,7 +369,7 @@ TEST(Layer, LSTM_Zaremba_shortcut_gradient) {
     }
 }
 
-TEST(Layer, RNN_gradient_vs_Stacked_gradient) {
+TEST_F(LayerTests, RNN_gradient_vs_Stacked_gradient) {
     int num_examples           = 20;
     int hidden_size            = 10;
     int input_size             = 5;

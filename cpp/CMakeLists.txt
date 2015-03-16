@@ -34,7 +34,6 @@ function(add_testsuite TEST_TARGET TEST_DEPENDENCIES TEST_FILES)
         target_link_libraries(${TEST_TARGET} ${TEST_DEPENDENCIES} ${GTEST_BOTH_LIBRARIES})
         add_test(${TEST_TARGET} ${TEST_TARGET})
         add_dependencies(build_tests ${TEST_TARGET})
-
         add_custom_target(${TEST_TARGET}_run ${TEST_TARGET})
         add_dependencies(run_tests ${TEST_TARGET}_run)
     endif(GTEST_FOUND)
@@ -47,6 +46,9 @@ if(GTEST_FOUND)
     add_custom_target(run_tests true)
     add_custom_target(build_tests)
     add_dependencies(run_tests build_tests)
+    ADD_CUSTOM_TARGET(run_tests_heapcheck
+        COMMAND ${PROJECT_SOURCE_DIR}/scripts/test_runner.sh ${CMAKE_BUILD_DIR}
+        WORKING_DIRECTORY ${CMAKE_BUILD_DIR})
 else(GTEST_FOUND)
     message("WARNING: GTESTS not found - install gtests to be able to run tests")
 endif(GTEST_FOUND)

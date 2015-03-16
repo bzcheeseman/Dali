@@ -37,6 +37,7 @@ DEFINE_bool(fast_dropout, false, "Use fast dropout?");
 DEFINE_string(solver, "adadelta", "What solver to use (adadelta, sgd, adam)");
 DEFINE_string(test, "", "Where is the test set?");
 DEFINE_double(root_weight, 1.0, "By how much to weigh the roots in the objective function?");
+DEFINE_bool(recursive_gates, true, "Make a prediction at every timestep?");
 
 
 ThreadPool* pool;
@@ -53,6 +54,14 @@ Mat<REAL_t> apply_dropout(Mat<REAL_t> X, REAL_t drop_prob) {
     }
 }
 
+vector<int> repeat_val(int val, int times) {
+    vector<int> vals(times);
+    for (auto& t : vals) {
+        t = val;
+    }
+    return vals;
+}
+
 template<typename T>
 class BidirectionalLSTM {
     public:
@@ -60,26 +69,44 @@ class BidirectionalLSTM {
         Mat<T> embedding;
         StackedLSTM<T> stacked_lstm;
         StackedInputLayer<T> decoder;
+        bool use_recursive_gates;
+        int output_size;
+        std::shared_ptr<StackedInputLayer<T>> prediction_gate;
 
-        BidirectionalLSTM(int vocabulary_size, int input_size, vector<int> hidden_sizes, int output_size, bool shortcut, bool memory_feeds_gates)
-            : embedding(vocabulary_size, input_size, weights<T>::uniform(-0.05, 0.05)),
-              stacked_lstm(input_size, hidden_sizes, shortcut, memory_feeds_gates),
-            decoder({hidden_sizes.back(), hidden_sizes.size() > 1 ? hidden_sizes[hidden_sizes.size() -2] : hidden_sizes.back()}, output_size) {
+
+        BidirectionalLSTM(int vocabulary_size, int hidden_size, int stack_size, int output_size, bool shortcut, bool memory_feeds_gates, bool use_recursive_gates)
+            : embedding(vocabulary_size, hidden_size, weights<T>::uniform(-0.05, 0.05)),
+              stacked_lstm(hidden_size, repeat_val(hidden_size, stack_size), shortcut, memory_feeds_gates),
+            decoder({hidden_size, hidden_size}, output_size),
+            use_recursive_gates(use_recursive_gates),
+            output_size(output_size) {
+
+            if (use_recursive_gates) {
+                prediction_gate = std::make_shared< StackedInputLayer<T> >( std::vector<int>({hidden_size, hidden_size, output_size}), 1);
+            } else {
+                prediction_gate = nullptr;
+            }
 
             stacked_lstm.cells.insert(
                 stacked_lstm.cells.begin(),
-                LSTM<T>(input_size, hidden_sizes[0], memory_feeds_gates)
+                LSTM<T>(hidden_size, hidden_size, memory_feeds_gates)
             );
-            hidden_sizes.insert(
-                hidden_sizes.begin(),
-                hidden_sizes[0]);
+            stacked_lstm.hidden_sizes.insert(
+                stacked_lstm.hidden_sizes.begin(),
+                hidden_size);
         }
 
         BidirectionalLSTM(const BidirectionalLSTM& model, bool copy_w, bool copy_dw)
             : embedding(model.embedding, copy_w, copy_dw),
               stacked_lstm(model.stacked_lstm, copy_w, copy_dw),
-              decoder(model.decoder, copy_w, copy_dw) {
-
+              decoder(model.decoder, copy_w, copy_dw),
+              use_recursive_gates(model.use_recursive_gates),
+              output_size(model.output_size) {
+            if (use_recursive_gates) {
+                prediction_gate = make_shared<StackedInputLayer<T>>(*model.prediction_gate, copy_w, copy_dw);
+            } else {
+                prediction_gate = nullptr;
+            }
         }
 
         BidirectionalLSTM<T> shallow_copy() const {
@@ -142,13 +169,51 @@ class BidirectionalLSTM {
                 }
                 pass+=1;
             }
-            if (pass % 2 == 0) {
-                // then we ended with backward pass
-                return decoder.activate({backwardX.front(), forwardX.back()});
+            if (use_recursive_gates) {
+                // Create a flat distribution
+                auto prediction = MatOps<T>::consider_constant(
+                                    MatOps<T>::fill(
+                                        Mat<T>(output_size, 1),
+                                        1.0 / output_size
+                                    )
+                                );
+                auto total_memory = MatOps<T>::consider_constant(Mat<T>(1, 1));
+                // With recursive gates the prediction happens all along
+                // we rerun through the highest layer's predictions:
+                for (auto it_back = backwardX.begin(),
+                              it_forward = forwardX.begin();
+                        (it_back != backwardX.end() && it_forward != forwardX.end());
+                        ++it_back, ++it_forward) {
+                    // get a value between 0 and 1 for how much we keep
+                    // update the current prediction
+                    auto new_memory = prediction_gate->activate({
+                        *it_forward,
+                        *it_back,
+                        prediction
+                    }).sigmoid();
+                    // Make a new prediction:
+                    auto new_prediction = decoder.activate({backwardX.front(), forwardX.back()});
+                    // Update the prediction using the alpha value (tradeoff between old and new)
+                    prediction = (
+                        new_prediction.eltmul_broadcast_rowwise(new_memory) +
+                        prediction.eltmul_broadcast_rowwise(1.0 - new_memory)
+                    );
+                    // penalize wavering memory (commit to something)
+                    if (graph::backprop_enabled && FLAGS_memory_penalty > 0) {
+                        // penalize memory
+                        new_memory = new_memory * FLAGS_memory_penalty;
+                        new_memory.grad();
+                    }
+                }
+                return prediction;
             } else {
-                // then we ended with forward pass
-
-                return decoder.activate({forwardX.back(), backwardX.front()});
+                if (pass % 2 == 0) {
+                    // then we ended with backward pass
+                    return decoder.activate({backwardX.front(), forwardX.back()});
+                } else {
+                    // then we ended with forward pass
+                    return decoder.activate({forwardX.back(), backwardX.front()});
+                }
             }
         }
 
@@ -157,6 +222,10 @@ class BidirectionalLSTM {
             auto decoder_params = decoder.parameters();
             params.insert(params.end(), decoder_params.begin(), decoder_params.end());
             params.push_back(embedding);
+            if (use_recursive_gates) {
+                auto gate_params = prediction_gate->parameters();
+                params.insert(params.end(), gate_params.begin(), gate_params.end());
+            }
             return params;
         }
 };
@@ -292,19 +361,16 @@ int main (int argc,  char* argv[]) {
     Create a model with an embedding, and several stacks:
     */
 
-    std::vector<int> hidden_sizes;
-    auto stack_size = std::max(FLAGS_stack_size, 2);
-    for (int i = 0; i < stack_size-1; i++) {
-        hidden_sizes.emplace_back(FLAGS_hidden);
-    }
+    auto stack_size  = std::max(FLAGS_stack_size, 2);
 
     auto model = BidirectionalLSTM<REAL_t>(
          word_vocab.index2word.size(),
-         FLAGS_input_size,
-         hidden_sizes,
+         FLAGS_hidden,
+         stack_size - 1,
          SST::label_names.size(),
          FLAGS_shortcut,
-         FLAGS_memory_feeds_gates);
+         FLAGS_memory_feeds_gates,
+         FLAGS_recursive_gates);
 
     vector<vector<Mat<REAL_t>>> thread_params;
 

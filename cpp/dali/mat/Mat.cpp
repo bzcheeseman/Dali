@@ -571,6 +571,40 @@ Mat<R> Mat<R>::empty_like(Mat<R> other) {
     return Mat<R>(other.dims(0), other.dims(1), false);
 }
 
+
+/* External operators */
+
+template<typename R>
+Mat<R> operator+(R other, Mat<R> mat) {
+    return MatOps<R>::add(mat, other);
+}
+
+template<typename R>
+Mat<R> operator-(R other, Mat<R> mat) {
+    return MatOps<R>::sub_broadcast_reversed(mat, other);
+}
+
+template<typename R>
+Mat<R> operator+(int other, Mat<R> mat) {
+    return MatOps<R>::add(mat, (R) other);
+}
+
+template<typename R>
+Mat<R> operator-(int other, Mat<R> mat) {
+    return MatOps<R>::sub_broadcast_reversed(mat, (R) other);
+}
+
+template Mat<float> operator-(int, Mat<float>);
+template Mat<float> operator-(float, Mat<float>);
+template Mat<double> operator-(int, Mat<double>);
+template Mat<double> operator-(double, Mat<double>);
+
+template Mat<float> operator+(int, Mat<float>);
+template Mat<float> operator+(float, Mat<float>);
+template Mat<double> operator+(int, Mat<double>);
+template Mat<double> operator+(double, Mat<double>);
+
+
 template<typename R>
 std::ostream& operator<<(std::ostream& strm, const Mat<R>& a) {
     if (a.name != nullptr) {

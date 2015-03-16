@@ -204,6 +204,17 @@ Mat<R> MatOps<R>::sub_broadcast_reversed(Mat<R> matrix1, Mat<R> matrix2) {
 }
 
 template<typename R>
+Mat<R> MatOps<R>::sub_broadcast_reversed(Mat<R> matrix, R other) {
+    auto out = Mat<R>::empty_like(matrix);
+    out.w() = (other - matrix.w().array()).matrix();
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, out] () {
+            GRAD(matrix).noalias() -= out.dw();
+        });
+    return out;
+}
+
+template<typename R>
 Mat<R> MatOps<R>::add(std::initializer_list<Mat<R>> matrices) {
     auto matrices_vector = vector<Mat<R>>(matrices);
     return add(matrices_vector);

@@ -78,6 +78,7 @@ struct MatOps {
     static Mat<R> add(Mat<R>, R);
     static Mat<R> sub_broadcast(Mat<R>, Mat<R>);
     static Mat<R> sub_broadcast_reversed(Mat<R>, Mat<R>);
+    static Mat<R> sub_broadcast_reversed(Mat<R>, R);
 
     static Mat<R> add(std::initializer_list<Mat<R>>);
     static Mat<R> add(const std::vector<Mat<R>>&);

@@ -244,6 +244,21 @@ class Mat {
 extern const std::vector<dim_t> mat_missing_dimensions;
 
 template<typename R>
+Mat<R> operator-(R other, Mat<R> mat);
+
+template<typename R>
+Mat<R> operator+(R other, Mat<R> mat);
+
+template<typename R>
+Mat<R> operator-(int other, Mat<R> mat);
+
+template<typename R>
+Mat<R> operator+(int other, Mat<R> mat);
+
+
+
+
+template<typename R>
 std::ostream& operator<<(std::ostream&, const Mat<R>&);
 
 // define hash code for matrices:

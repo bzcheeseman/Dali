@@ -465,9 +465,18 @@ typename LSTM<R>::State LSTM<R>::_activate(
 
     Mat<R> input_gate, forget_gate, output_gate;
 
-    auto constant_memory = MatOps<R>::consider_constant_if(initial_state.memory, !backprop_through_gates);
+    assert(initial_state.memory.dims(0) == hidden_size);
+    assert(initial_state.hidden.dims(0) == hidden_size);
+    assert(gate_input[0].dims(0) == input_size);
+    if (shortcut) {
+        assert(gate_input.size() == 3);
+        assert(gate_input[1].dims(0) == input_layer.input_sizes[1]);
+    } else {
+        assert(gate_input.size() == 2);
+    }
 
     if (memory_feeds_gates) {
+        auto constant_memory = MatOps<R>::consider_constant_if(initial_state.memory, !backprop_through_gates);
         // if the memory feeds the gates (Alex Graves 2013) then
         // a diagonal matrix (Wci and Wcf) connect memory to input
         // and forget gates

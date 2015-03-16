@@ -248,7 +248,7 @@ class AbstractStackedLSTM : public AbstractLayer<R> {
         typedef std::vector < typename LSTM<R>::State > state_t;
 
         const int input_size;
-        const std::vector<int> hidden_sizes;
+        std::vector<int> hidden_sizes;
 
         AbstractStackedLSTM(const int& input_size, const std::vector<int>& hidden_sizes);
         AbstractStackedLSTM(const AbstractStackedLSTM<R>& model, bool copy_w, bool copy_dw);

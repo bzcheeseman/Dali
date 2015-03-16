@@ -102,7 +102,7 @@ From the build folder do the following:
     cmake ..
     make -j 9 run_tests
 
-##### 2.a Install Gtest on Mac OSX
+###### 2.a Install Gtest on Mac OSX
 
 Homebrew does not offer a way of installing gtest, however in a few steps you can get it running. First go to the directory where you downloaded Gtests:
 

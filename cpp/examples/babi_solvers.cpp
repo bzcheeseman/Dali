@@ -320,13 +320,14 @@ class LstmBabiModel {
         }
 
         LstmBabiModel(shared_ptr<Vocab> vocabulary) :
-                question_fact_gate_model(QUESTION_GATE_EMBEDDINGS, QUESTION_GATE_STACKS, true, false),
-                question_fact_word_gate_model(QUESTION_GATE_EMBEDDINGS, QUESTION_GATE_STACKS, true, false),
+                // first true - shortcut, second true - feed memory to gates
+                question_fact_gate_model(QUESTION_GATE_EMBEDDINGS, QUESTION_GATE_STACKS, true, true),
+                question_fact_word_gate_model(QUESTION_GATE_EMBEDDINGS, QUESTION_GATE_STACKS, true, true),
                 fact_gate(QG_FACTS_INPUT1, QG_INPUT2, QG_SECOND_ORDER, QG_HIDDEN),
                 fact_word_gate(QG_FACT_WORDS_INPUT1, QG_INPUT2, QG_SECOND_ORDER, QG_HIDDEN),
-                question_model(TEXT_REPR_EMBEDDINGS, TEXT_REPR_STACKS, true, false),
-                fact_model(TEXT_REPR_EMBEDDINGS, TEXT_REPR_STACKS, true, false),
-                hl_model(HL_INPUT_SIZE, HL_STACKS, true, false),
+                question_model(TEXT_REPR_EMBEDDINGS, TEXT_REPR_STACKS, true, true),
+                fact_model(TEXT_REPR_EMBEDDINGS, TEXT_REPR_STACKS, true, true),
+                hl_model(HL_INPUT_SIZE, HL_STACKS, true, true),
                 DECODER_OUTPUT(vocabulary->word2index.size()),
                 decoder(DECODER_INPUT, vocabulary->word2index.size()) {
 
@@ -563,8 +564,10 @@ class LstmBabiModelRunner: public babi::Model {
             std::atomic<int> num_questions(0);
 
             vector<MatrixXd> thread_error;
-            for (int thread=0; thread<NUM_THREADS; ++thread)
+            for (int thread=0; thread<NUM_THREADS; ++thread) {
                 thread_error.emplace_back(3,1);
+                thread_error.back().fill(0);
+            }
 
             const int BATCH_SIZE = std::max( (int)dataset.size() / (2*NUM_THREADS), 2);
 

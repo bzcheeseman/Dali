@@ -530,13 +530,10 @@ class LstmBabiModelRunner: public babi::Model {
         }
 
         Mat<T> total_error;
-        if (training_mode == GATES) {
-            total_error = fact_selection_error;
-        } else if (training_mode == PREDICTION) {
-            total_error = prediction_error
-                        + fact_selection_error * FACT_SELECTION_LAMBDA_MAX
-                        + activation.word_fact_gate_memory_sum * FACT_WORD_SELECTION_LAMBDA_MAX;
-        }
+
+        total_error = prediction_error
+                    + fact_selection_error * FACT_SELECTION_LAMBDA_MAX
+                    + activation.word_fact_gate_memory_sum * FACT_WORD_SELECTION_LAMBDA_MAX;
 
         total_error.grad();
 
@@ -624,6 +621,14 @@ class LstmBabiModelRunner: public babi::Model {
         }
 
         void train(const vector<babi::Story>& data) {
+            shared_ptr<LSTV> default_method = make_shared<LSTV>(SHORT_TERM_VALIDATION,
+                                                                LONG_TERM_VALIDATION,
+                                                                PREDICTION_PATIENCE);
+
+            train(data, default_method);
+        }
+
+        void train(const vector<babi::Story>& data, shared_ptr<Training> training_method) {
             auto vocab_vector = data_to_vocab(data);
             vocab = make_shared<Vocab> (vocab_vector);
 
@@ -641,36 +646,26 @@ class LstmBabiModelRunner: public babi::Model {
 
             auto params = model->parameters();
 
-            for (training_mode_t cur_training_mode : { PREDICTION }) {
-                training_mode = cur_training_mode;
 
-                // Solver::AdaDelta<T> solver(params, 0.95, 1e-9, 5.0);
-                Solver::Adam<T> solver(params, 0.1, 0.001, 1e-9, 2.0);
-                LSTV training(SHORT_TERM_VALIDATION, LONG_TERM_VALIDATION,
-                        (cur_training_mode == GATES ? GATES_PATIENCE : PREDICTION_PATIENCE));
+            // Solver::AdaDelta<T> solver(params, 0.95, 1e-9, 5.0);
+            Solver::Adam<T> solver(params, 0.1, 0.001, 1e-9, 5.0);
 
-                while (true) {
-                    auto training_errors = run_epoch(train, &solver, true);
-                    auto validation_errors = run_epoch(validation, &solver, false);
+            training_method->reset();
 
-                    std::cout << "Epoch " << ++epoch << std::endl;
-                    std::cout << (cur_training_mode == GATES ? "Optimizing gates" : "Optimizing prediction") << std::endl;
-                    std::cout << "Errors(prob_answer, fact_select, words_sparsity): " << std::endl
-                              << "VALIDATION: " << validation_errors(0) << " "
-                                                << validation_errors(1) << " "
-                                                << validation_errors(2) << std::endl
-                              << "TRAINING: " << training_errors(0) << " "
-                                              << training_errors(1) << " "
-                                              << training_errors(2) << std::endl;
-                    if (cur_training_mode == GATES &&
-                            training.update(validation_errors(1))) {
-                        break;
-                    } else if (cur_training_mode == PREDICTION  &&
-                            training.update(validation_errors(0))) {
-                        break;
-                    }
-                    training.report();
-                }
+            while (true) {
+                auto training_errors = run_epoch(train, &solver, true);
+                auto validation_errors = run_epoch(validation, &solver, false);
+
+                std::cout << "Epoch " << ++epoch << std::endl;
+                std::cout << "Errors(prob_answer, fact_select, words_sparsity): " << std::endl
+                          << "VALIDATION: " << validation_errors(0) << " "
+                                            << validation_errors(1) << " "
+                                            << validation_errors(2) << std::endl
+                          << "TRAINING: " << training_errors(0) << " "
+                                          << training_errors(1) << " "
+                                          << training_errors(2) << std::endl;
+                if (training_method->should_stop(validation_errors(0))) break;
+                training_method->report();
             }
         }
 

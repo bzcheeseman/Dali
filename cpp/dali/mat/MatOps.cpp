@@ -211,7 +211,7 @@ Mat<R> MatOps<R>::add(std::initializer_list<Mat<R>> matrices) {
 
 template<typename R>
 Mat<R> MatOps<R>::add(const std::vector<Mat<R>>& matrices) {
-    auto out = Mat<R>::empty_like(*matrices.begin());
+    auto out = Mat<R>::zeros_like(*matrices.begin());
     for (auto& matrix : matrices)
         out.w() += matrix.w();
     if (graph::backprop_enabled)

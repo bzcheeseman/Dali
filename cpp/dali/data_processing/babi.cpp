@@ -166,6 +166,33 @@ namespace babi {
     vector<Story> Parser::training_data(const string& task,
                                         const int& num_questions,
                                         bool shuffled) {
+        if (task == "multitasking") {
+            vector<Story> stories;
+            for (std::string sub_task : {       "qa1_single-supporting-fact",
+                                                "qa2_two-supporting-facts",
+                                                "qa3_three-supporting-facts",
+                                                "qa4_two-arg-relations",
+                                                "qa5_three-arg-relations",
+                                                "qa6_yes-no-questions",
+                                                "qa7_counting",
+                                                // "qa8_lists-sets",
+                                                "qa9_simple-negation",
+                                                "qa10_indefinite-knowledge",
+                                                "qa11_basic-coreference",
+                                                "qa12_conjunction",
+                                                "qa13_compound-coreference",
+                                                "qa14_time-reasoning",
+                                                "qa15_basic-deduction",
+                                                "qa16_basic-induction",
+                                                "qa17_positional-reasoning",
+                                                "qa18_size-reasoning",
+                                                // "qa19_path-finding",
+                                                "qa20_agents-motivations"}) {
+                auto task_stories = training_data(sub_task, num_questions, shuffled);
+                stories.insert(stories.end(), task_stories.begin(), task_stories.end());
+            }
+            return stories;
+        }
         string filename = utils::join({task, "_train.txt"});
         string filepath = utils::dir_join({data_dir(),
                                            shuffled ? "shuffled" : "en",
@@ -176,12 +203,69 @@ namespace babi {
     vector<Story> Parser::testing_data(const string& task,
                                        const int& num_questions,
                                        bool shuffled) {
+        if (task == "multitasking") {
+            vector<Story> stories;
+            for (std::string sub_task : {       "qa1_single-supporting-fact",
+                                                "qa2_two-supporting-facts",
+                                                "qa3_three-supporting-facts",
+                                                "qa4_two-arg-relations",
+                                                "qa5_three-arg-relations",
+                                                "qa6_yes-no-questions",
+                                                "qa7_counting",
+                                                // "qa8_lists-sets",
+                                                "qa9_simple-negation",
+                                                "qa10_indefinite-knowledge",
+                                                "qa11_basic-coreference",
+                                                "qa12_conjunction",
+                                                "qa13_compound-coreference",
+                                                "qa14_time-reasoning",
+                                                "qa15_basic-deduction",
+                                                "qa16_basic-induction",
+                                                "qa17_positional-reasoning",
+                                                "qa18_size-reasoning",
+                                                // "qa19_path-finding",
+                                                "qa20_agents-motivations"}) {
+                auto task_stories = testing_data(sub_task, num_questions, shuffled);
+                stories.insert(stories.end(), task_stories.begin(), task_stories.end());
+            }
+            return stories;
+        }
+
         string filename = utils::join({task, "_test.txt"});
         string filepath = utils::dir_join({data_dir(),
                                            shuffled ? "shuffled" : "en",
                                            filename});
         return parse_file(filepath, num_questions);
     }
+
+
+    double task_accuracy(std::shared_ptr<Model> m, const std::string& task) {
+        int correct_questions = 0;
+        int total_questions = 0;
+        for (auto& story : Parser::testing_data(task)) {
+            m->new_story();
+            for (auto& item_ptr : story) {
+                if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
+                    m->fact(f->fact);
+                } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
+                    VS answer = m->question(qa->question);
+                    if(utils::vs_equal(answer, qa->answer)) {
+                        ++correct_questions;
+                    }
+                    ++total_questions;
+                } else {
+                    assert(NULL == "Unknown subclass of babi::Item");
+                }
+            }
+        }
+
+        double accuracy = 100.0*(double)correct_questions/total_questions;
+        std::stringstream ss3;
+        ss3 << task << " all done - accuracy on test set: "<< accuracy;
+        ThreadPool::print_safely(ss3.str());
+        return accuracy;
+    }
+
 
     /* StoryParser */
 

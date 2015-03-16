@@ -210,8 +210,8 @@ class LolGate : public AbstractLayer<T> {
 template<typename T>
 class LstmBabiModel {
     // MODEL PARAMS
-    const vector<int>   TEXT_REPR_STACKS           =      {30, 30};
-    const int           TEXT_REPR_EMBEDDINGS       =      30;
+    const vector<int>   TEXT_REPR_STACKS           =      {50};
+    const int           TEXT_REPR_EMBEDDINGS       =      50;
     const T             TEXT_REPR_DROPOUT          =      0.3;
 
     StackedLSTM<T> fact_model;
@@ -221,8 +221,8 @@ class LstmBabiModel {
     Mat<T> question_representation_embeddings;
 
 
-    const vector<int>   QUESTION_GATE_STACKS              =      {20, 20};
-    const int           QUESTION_GATE_EMBEDDINGS          =      15;
+    const vector<int>   QUESTION_GATE_STACKS              =      {50};
+    const int           QUESTION_GATE_EMBEDDINGS          =      50;
 
     const T             QUESTION_GATE_DROPOUT             =      0.3;
 
@@ -231,8 +231,8 @@ class LstmBabiModel {
     const int           QG_FACT_WORDS_INPUT1              = TEXT_REPR_EMBEDDINGS;
 
     const int           QG_INPUT2                         = utils::vsum(QUESTION_GATE_STACKS);
-    const int           QG_SECOND_ORDER                   = 30;
-    const int           QG_HIDDEN                         = 30;
+    const int           QG_SECOND_ORDER                   = 40;
+    const int           QG_HIDDEN                         = 40;
 
 
     StackedLSTM<T> question_fact_gate_model;
@@ -245,9 +245,9 @@ class LstmBabiModel {
     LolGate<T> fact_word_gate;
 
 
-    const vector<int>   HL_STACKS                  =      {20,20,20,20}; //,20,20};
+    const vector<int>   HL_STACKS                  =      {50,50,20,20};
     const int           HL_INPUT_SIZE              =      utils::vsum(TEXT_REPR_STACKS);
-    const T             HL_DROPOUT                 =      0.5;
+    const T             HL_DROPOUT                 =      0.7;
 
     StackedLSTM<T> hl_model;
 
@@ -704,8 +704,10 @@ int main(int argc, char** argv) {
 
     Eigen::setNbThreads(0);
     Eigen::initParallel();
-
+    babi::benchmark_task<LstmBabiModelRunner<double>>("multitasking");
     // babi::benchmark_task<LstmBabiModelRunner<double>>("qa1_single-supporting-fact");
+
+
     // babi::benchmark_task<LstmBabiModelRunner<double>>("qa2_two-supporting-facts");
     // babi::benchmark_task<LstmBabiModelRunner<double>>("qa16_basic-induction");
 

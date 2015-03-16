@@ -76,6 +76,8 @@ namespace babi {
             virtual VS question(const VS& quesiton) = 0;
     };
 
+    double task_accuracy(std::shared_ptr<Model> m, const std::string& task);
+
     template<typename T>
     double benchmark_task(const std::string& task) {
         std::stringstream ss;
@@ -93,30 +95,14 @@ namespace babi {
         ss2 << task << "training finished. Calculating accuracy on test set.";
         ThreadPool::print_safely(ss2.str());
 
-        int correct_questions = 0;
-        int total_questions = 0;
-        for (auto& story : Parser::testing_data(task)) {
-            m->new_story();
-            for (auto& item_ptr : story) {
-                if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
-                    m->fact(f->fact);
-                } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
-                    VS answer = m->question(qa->question);
-                    if(utils::vs_equal(answer, qa->answer)) {
-                        ++correct_questions;
-                    }
-                    ++total_questions;
-                } else {
-                    assert(NULL == "Unknown subclass of babi::Item");
-                }
+        if (task == "multitasking") {
+            for (auto subtask: Parser::tasks()) {
+                task_accuracy(m, subtask);
             }
         }
 
-        double accuracy = 100.0*(double)correct_questions/total_questions;
-        std::stringstream ss3;
-        ss3 << task << " all done - accuracy on test set: "<< accuracy;
-        ThreadPool::print_safely(ss3.str());
-        return accuracy;
+        return task_accuracy(m, task);
+
     }
 
     template<typename T>

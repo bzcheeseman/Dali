@@ -10,6 +10,8 @@ using std::stringstream;
 using utils::assert2;
 using std::make_shared;
 
+const vector<dim_t> mat_missing_dimensions({0,0});
+
 /* MatInternal */
 
 template<typename R>
@@ -88,10 +90,11 @@ typename weights<R>::initializer_t weights<R>::gaussian(R mean, R std) {
         std::normal_distribution<R> distribution(mean, std);
         std::random_device rd;
         generator.seed(rd());
-        auto randn = [&] (int) {return distribution(generator);};
-        matrix.w() = Mat<R>::eigen_mat::NullaryExpr(matrix.dims(0),
-                                            matrix.dims(1),
-                                            randn);
+        auto randn = [&distribution, &generator] (int) {return distribution(generator);};
+        matrix.w() = Mat<R>::eigen_mat::NullaryExpr(
+            matrix.dims(0),
+            matrix.dims(1),
+            randn);
     };
 };
 
@@ -135,17 +138,23 @@ typename Mat<R>::eigen_mat& Mat<R>::dw() const {
 
 template<typename R>
 const vector<dim_t>& Mat<R>::dims() const {
-    return m->dims;
+    if (m != nullptr)
+        return m->dims;
+    return mat_missing_dimensions;
 }
 
 template<typename R>
 const dim_t Mat<R>::dims(int idx) const {
-    return m->dims[idx];
+    if (m != nullptr)
+        return m->dims[idx];
+    return (dim_t) 0;
 }
 
 template<typename R>
 const int Mat<R>::id() const {
-    return m->id;
+    if (m != nullptr)
+        return m->id;
+    return -1;
 }
 
 template<typename R>
@@ -190,7 +199,6 @@ Mat<R>::Mat(string fname) :
     m = make_shared<MatInternal<R>>(npy_dims[0], npy_dims[1], false);
     g = make_shared<GradInternal<R>>(npy_dims[0], npy_dims[1], true);
 
-
     if (arr.word_size == sizeof(double)) {
         double* loaded_data_double = reinterpret_cast<double*>(arr.data);
         if (arr.fortran_order) {
@@ -219,11 +227,11 @@ Mat<R>::Mat(string fname) :
 }
 
 template<typename R>
-Mat<R>::Mat (const Mat<R>& other, bool copy_w, bool copy_dw) :
+Mat<R>::Mat(const Mat<R>& other, bool copy_w, bool copy_dw) :
         name(other.name),
         constant(other.constant) {
 
-    if (copy_w && other.m) {
+    if (copy_w && other.m != nullptr) {
         // This copies memory using copy constructor
         // The copy is only executed if matrix was actually initialized
         // hence the && other.m part.
@@ -233,7 +241,7 @@ Mat<R>::Mat (const Mat<R>& other, bool copy_w, bool copy_dw) :
         m = other.m;
     }
 
-    if (copy_dw && other.g) {
+    if (copy_dw && other.g != nullptr) {
         // see comment for copy_w.
         this->g = make_shared<GradInternal<R>>(*other.g);
     } else {
@@ -310,29 +318,23 @@ Mat<R> Mat<R>::eltmul_broadcast(Mat<R> matrix2) const {
 template<typename R>
 Mat<R> Mat<R>::eltmul(Mat<R> matrix2) const {
     return MatOps<R>::eltmul(*this, matrix2);
-
 }
-
 
 template<typename R>
 Mat<R> Mat<R>::eltmul(R alpha) const {
     return MatOps<R>::eltmul(*this, alpha);
-
 }
-
 
 template<typename R>
 Mat<R> Mat<R>::eltmul_broadcast_rowwise(
         Mat<R> row_vector) const {
     return MatOps<R>::eltmul_broadcast_rowwise(*this, row_vector);
-
 }
 
 template<typename R>
 Mat<R> Mat<R>::eltmul_rowwise(
         Mat<R> matrix2) const {
     return MatOps<R>::eltmul_rowwise(*this, matrix2);
-
 }
 
 template<typename R>
@@ -345,7 +347,6 @@ template<typename R>
 Mat<R> Mat<R>::sub(
         Mat<R> matrix2) const {
     return MatOps<R>::sub(*this, matrix2);
-
 }
 
 template<typename R>
@@ -392,7 +393,6 @@ Mat<R> Mat<R>::sigmoid() const {
     return MatOps<R>::sigmoid(*this);
 }
 
-
 template<typename R>
 Mat<R> Mat<R>::steep_sigmoid(R aggressiveness) const {
     return MatOps<R>::steep_sigmoid(*this, aggressiveness);
@@ -403,12 +403,10 @@ Mat<R> Mat<R>::sum() const {
     return MatOps<R>::sum(*this);
 }
 
-
 template<typename R>
 Mat<R> Mat<R>::mean() const {
     return MatOps<R>::mean(*this);
 }
-
 
 template<typename R>
 Mat<R> Mat<R>::log() const {
@@ -449,7 +447,6 @@ template<typename R>
 Mat<R> Mat<R>::rows_pluck(
         Indexing::Index indices) const {
     return MatOps<R>::rows_pluck(*this, indices);
-
 }
 
 template<typename R>
@@ -474,9 +471,7 @@ void Mat<R>::npy_save (FILE * fp) {
 
 template<typename R>
 void Mat<R>::npy_load(cnpy::NpyArray& arr) {
-
     m = make_shared<MatInternal<R>>(arr.shape[0], arr.shape.size() > 1 ? arr.shape[1] : 1);
-
 
     if (arr.word_size == sizeof(double)) {
         double* loaded_data_double = reinterpret_cast<double*>(arr.data);
@@ -578,7 +573,7 @@ Mat<R> Mat<R>::empty_like(Mat<R> other) {
 
 template<typename R>
 std::ostream& operator<<(std::ostream& strm, const Mat<R>& a) {
-    if (a.name != 0) {
+    if (a.name != nullptr) {
         return strm << "<#Mat name=\"" << *a.name<< "\" n=" << a.dims(0) << ", d=" << a.dims(1) << ">";
     } else {
         return strm << "<#Mat n=" << a.dims(0) << ", d=" << a.dims(1) << ">";

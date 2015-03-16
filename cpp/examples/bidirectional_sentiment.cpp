@@ -25,6 +25,7 @@ using std::atomic;
 using std::chrono::seconds;
 using SST::Databatch;
 using utils::ConfusionMatrix;
+using utils::assert2;
 
 typedef float REAL_t;
 typedef Mat<REAL_t> mat;
@@ -58,17 +59,28 @@ class BidirectionalLSTM {
 
         Mat<T> embedding;
         StackedLSTM<T> stacked_lstm;
-        Layer<T> decoder;
+        StackedInputLayer<T> decoder;
 
         BidirectionalLSTM(int vocabulary_size, int input_size, vector<int> hidden_sizes, int output_size, bool shortcut, bool memory_feeds_gates)
             : embedding(vocabulary_size, input_size, weights<T>::uniform(-0.05, 0.05)),
               stacked_lstm(input_size, hidden_sizes, shortcut, memory_feeds_gates),
-              decoder(hidden_sizes.back(), output_size) {}
+            decoder({hidden_sizes.back(), hidden_sizes.size() > 1 ? hidden_sizes[hidden_sizes.size() -2] : hidden_sizes.back()}, output_size) {
+
+            stacked_lstm.cells.insert(
+                stacked_lstm.cells.begin(),
+                LSTM<T>(input_size, hidden_sizes[0], memory_feeds_gates)
+            );
+            hidden_sizes.insert(
+                hidden_sizes.begin(),
+                hidden_sizes[0]);
+        }
 
         BidirectionalLSTM(const BidirectionalLSTM& model, bool copy_w, bool copy_dw)
             : embedding(model.embedding, copy_w, copy_dw),
               stacked_lstm(model.stacked_lstm, copy_w, copy_dw),
-              decoder(model.decoder, copy_w, copy_dw) {}
+              decoder(model.decoder, copy_w, copy_dw) {
+
+        }
 
         BidirectionalLSTM<T> shallow_copy() const {
             return BidirectionalLSTM(*this, false, true);
@@ -76,10 +88,12 @@ class BidirectionalLSTM {
 
         Mat<T> activate_sequence(Indexing::Index example, T drop_prob = 0.0) {
             size_t pass = 0;
-
-            vector<Mat<T>> X;
+            vector<Mat<T>> forwardX;
+            vector<Mat<T>> backwardX;
+            assert(example.size() > 0);
             for (size_t i = 0; i < example.size(); i++) {
-                X.emplace_back(apply_dropout(embedding.row_pluck(example[i]), drop_prob));
+                forwardX.emplace_back(embedding.row_pluck(example[i]));
+                backwardX.push_back(forwardX.back());
             }
             auto state = stacked_lstm.cells[0].initial_states();
             for (auto& cell : stacked_lstm.cells) {
@@ -87,27 +101,55 @@ class BidirectionalLSTM {
                     state = cell.initial_states();
                 }
                 if (pass % 2 == 0) {
-                    for (auto it = X.begin(); it != X.end(); ++it) {
-                        state = cell.activate(
-                            apply_dropout(*it, drop_prob),
-                            state);
+                    for (auto it_back = backwardX.begin(),
+                              it_forward = forwardX.begin();
+                        (it_back != backwardX.end() && it_forward != forwardX.end());
+                        ++it_back, ++it_forward) {
+                        if (cell.shortcut) {
+                            state = cell.activate(
+                                apply_dropout(*it_forward, drop_prob),
+                                apply_dropout(*it_back, drop_prob),
+                                state);
+                        } else {
+                            state = cell.activate(
+                                apply_dropout(*it_forward, drop_prob),
+                                state);
+                        }
                         // prepare the observation sequence to be fed to the next
                         // level up:
-                        *it = state.hidden;
+                        *it_forward = state.hidden;
                     }
                 } else {
-                    for (auto it = X.rbegin(); it != X.rend(); ++it) {
-                        state = cell.activate(
-                            apply_dropout(*it, drop_prob),
-                            state);
+                    for (auto it_back = backwardX.rbegin(),
+                              it_forward = forwardX.rbegin();
+                        (it_back != backwardX.rend() && it_forward != forwardX.rend());
+                        ++it_back, ++it_forward) {
+
+                        if (cell.shortcut) {
+                            state = cell.activate(
+                                apply_dropout(*it_back, drop_prob),
+                                apply_dropout(*it_forward, drop_prob),
+                                state);
+                        } else {
+                            state = cell.activate(
+                                apply_dropout(*it_back, drop_prob),
+                                state);
+                        }
                         // prepare the observation sequence to be fed to the next
                         // level up:
-                        *it = state.hidden;
+                        *it_back = state.hidden;
                     }
                 }
                 pass+=1;
             }
-            return decoder.activate(state.hidden);
+            if (pass % 2 == 0) {
+                // then we ended with backward pass
+                return decoder.activate({backwardX.front(), forwardX.back()});
+            } else {
+                // then we ended with forward pass
+
+                return decoder.activate({forwardX.back(), backwardX.front()});
+            }
         }
 
         vector<Mat<T>> parameters() const {
@@ -185,7 +227,7 @@ int main (int argc,  char* argv[]) {
 
     auto to_index_pair = [&word_vocab](std::pair<std::vector<std::string>, uint>&& pair, bool&& is_root) {
         return std::tuple<std::vector<uint>, uint, bool>(
-            word_vocab.transform(pair.first, true),
+            word_vocab.transform(pair.first),
             pair.second,
             is_root);
     };
@@ -241,7 +283,7 @@ int main (int argc,  char* argv[]) {
               << "        Dropout type : " << (FLAGS_fast_dropout ? "fast" : "default") << std::endl
               << " Max training epochs : " << FLAGS_epochs << std::endl
               << "           LSTM type : " << (FLAGS_memory_feeds_gates ? "Graves 2013" : "Zaremba 2014") << std::endl
-              << "          Stack size : " << FLAGS_stack_size << std::endl
+              << "          Stack size : " << std::max(FLAGS_stack_size, 2) << std::endl
               << " # training examples : " << dataset.size() * FLAGS_minibatch - (FLAGS_minibatch - dataset[dataset.size() - 1].size()) << std::endl;
 
     pool = new ThreadPool(FLAGS_j);
@@ -251,7 +293,8 @@ int main (int argc,  char* argv[]) {
     */
 
     std::vector<int> hidden_sizes;
-    for (int i = 0; i < (FLAGS_stack_size < 1 ? 1 : FLAGS_stack_size); i++) {
+    auto stack_size = std::max(FLAGS_stack_size, 2);
+    for (int i = 0; i < stack_size-1; i++) {
         hidden_sizes.emplace_back(FLAGS_hidden);
     }
 

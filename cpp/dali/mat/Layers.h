@@ -35,8 +35,8 @@ class Layer : public AbstractMultiInputLayer<R> {
     public:
         typedef R value_t;
         Mat<R> W;
-        const int hidden_size;
-        const int input_size;
+        int hidden_size;
+        int input_size;
         virtual std::vector<Mat<R>> parameters() const;
         Layer (int, int);
 
@@ -62,8 +62,8 @@ class StackedInputLayer : public AbstractMultiInputLayer<R> {
     public:
         typedef R value_t;
         std::vector<Mat<R>> matrices;
-        const int hidden_size;
-        const std::vector<int> input_sizes;
+        int hidden_size;
+        std::vector<int> input_sizes;
         virtual std::vector<Mat<R>> parameters() const;
         StackedInputLayer (std::initializer_list<int>, int);
         StackedInputLayer (std::vector<int>, int);
@@ -209,10 +209,10 @@ class LSTM : public AbstractLayer<R> {
         layer_type output_layer;
         // cell write params
         layer_type cell_layer;
-        const int hidden_size;
-        const int input_size;
-        const bool shortcut;
-        const bool memory_feeds_gates;
+        int hidden_size;
+        int input_size;
+        bool shortcut;
+        bool memory_feeds_gates;
 
         // In Alex Graves' slides / comments online you do not
         // backpropagate through memory cells at the gates

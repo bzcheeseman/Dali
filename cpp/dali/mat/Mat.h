@@ -241,6 +241,7 @@ class Mat {
         static Mat<R> zeros_like(Mat<R> shape);
         static Mat<R> empty_like(Mat<R> shape);
 };
+extern const std::vector<dim_t> mat_missing_dimensions;
 
 template<typename R>
 std::ostream& operator<<(std::ostream&, const Mat<R>&);

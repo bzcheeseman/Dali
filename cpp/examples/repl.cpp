@@ -30,7 +30,7 @@ typedef std::shared_ptr<mat> shared_mat;
         throw std::runtime_error(ss.str());
 
 /**
-Very rudimentary REPL for Dalhi / RecurrentJS.
+Very rudimentary REPL for Dali / RecurrentJS.
 
 Goal
 ----

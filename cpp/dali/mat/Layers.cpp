@@ -465,6 +465,8 @@ typename LSTM<R>::State LSTM<R>::_activate(
 
     Mat<R> input_gate, forget_gate, output_gate;
 
+    auto constant_memory = MatOps<R>::consider_constant(initial_state.memory);
+
     if (memory_feeds_gates) {
         // if the memory feeds the gates (Alex Graves 2013) then
         // a diagonal matrix (Wci and Wcf) connect memory to input
@@ -472,11 +474,11 @@ typename LSTM<R>::State LSTM<R>::_activate(
 
         // input gate:
         input_gate  = (
-            input_layer.activate(gate_input) + (initial_state.memory * Wci)
+            input_layer.activate(gate_input) + (constant_memory * Wci)
         ).sigmoid();
         // forget gate
         forget_gate = (
-            forget_layer.activate(gate_input) + (initial_state.memory * Wcf)
+            forget_layer.activate(gate_input) + (constant_memory * Wcf)
         ).sigmoid();
     } else {
         // (Zaremba 2014 style)
@@ -497,7 +499,7 @@ typename LSTM<R>::State LSTM<R>::_activate(
     if (memory_feeds_gates) {
         // output gate uses new memory (cell_d) to control its gate
         output_gate = (
-            output_layer.activate(gate_input) + (cell_d * Wco)
+            output_layer.activate(gate_input) + (MatOps<R>::consider_constant(cell_d) * Wco)
         ).sigmoid();
     } else {
         // output gate

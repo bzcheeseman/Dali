@@ -203,6 +203,9 @@ struct MatOps {
     static Mat<R> fill(Mat<R>, R);
     static Mat<R> sqrt(Mat<R>);
     static Mat<R> elt_inv(Mat<R>);
+
+
+    static Mat<R> consider_constant(Mat<R>);
 };
 
 

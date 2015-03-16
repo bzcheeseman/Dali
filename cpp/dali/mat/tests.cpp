@@ -39,6 +39,10 @@ bool matrix_almost_equals (Mat<R> A, Mat<R> B, R eps) {
 #define ASSERT_MATRIX_NEQ(A, B) ASSERT_FALSE(matrix_equals((A), (B)))
 #define ASSERT_MATRIX_CLOSE(A, B, eps) ASSERT_TRUE(matrix_almost_equals((A), (B), (eps)))
 
+#define EXPECT_MATRIX_EQ(A, B) EXPECT_TRUE(matrix_equals((A), (B)))
+#define EXPECT_MATRIX_NEQ(A, B) EXPECT_FALSE(matrix_equals((A), (B)))
+#define EXPECT_MATRIX_CLOSE(A, B, eps) EXPECT_TRUE(matrix_almost_equals((A), (B), (eps)))
+
 
 /**
 Gradient Same
@@ -408,3 +412,22 @@ TEST_F(LayerTests, RNN_gradient_vs_Stacked_gradient) {
         ASSERT_MATRIX_CLOSE(H.dw(), H_s.dw(), 1e-6);
     }
 }
+
+TEST_F(LayerTests, matrix_constant_check) {
+    int num_examples           = 20;
+    int input_size             = 5;
+    auto X  = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
+
+    auto X_const = MatOps<R>::consider_constant(X);
+    auto B = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
+
+    auto error = (((X_const * B) - 2.0) ^ 2).sum();
+    error.grad();
+    graph::backward();
+
+    EXPECT_MATRIX_EQ(X.dw(), Mat<R>::zeros_like(X).w());
+    EXPECT_MATRIX_NEQ(B.dw(), Mat<R>::zeros_like(X).w());
+}
+
+
+

@@ -117,12 +117,10 @@ typename weights<R>::initializer_t weights<R>::svd(initializer_t preinitializer)
     };
 }
 
-
 /* Mat */
-
 // this does not need to initialize anything once we get rid of w and dw.
 template<typename R>
-Mat<R>::Mat() {
+Mat<R>::Mat() : name(nullptr), constant(false) {
 }
 
 template<typename R>
@@ -154,10 +152,22 @@ template<typename R>
 Mat<R>::Mat(dim_t n, dim_t d) : Mat(n,d, true) {
 }
 
+/**
+This is the only Matrix constructor, all other
+constructors reference this one.
+If this one breaks, the whole ship goes to the
+bottom of the ocean.
+Do not let this one break. Please
 
+-Sincerely, the Tux Family
+
+Note: the copy constructor below is only a sideshow,
+**this** is where the action is!
+
+**/
 template<typename R>
 Mat<R>::Mat(dim_t n, dim_t d, typename weights<R>::initializer_t wi) :
-        name(nullptr) {
+        name(nullptr), constant(false) {
     // Don't fill with zeros - it's initializer's job.
     m = make_shared<MatInternal<R>>(n, d, false);
     // We always reset the grad calculation
@@ -172,9 +182,9 @@ Mat<R>::Mat (dim_t n, dim_t d, bool fill_zeros) :
 }
 
 template<typename R>
-Mat<R>::Mat (string fname) {
-    // TODO(jonathan): make it work!
-
+Mat<R>::Mat(string fname) :
+        name(nullptr),
+        constant(false) {
     auto arr = cnpy::npy_load(fname);
     vector<uint> npy_dims = {arr.shape[0], arr.shape.size() > 1 ? arr.shape[1] : 1};
     m = make_shared<MatInternal<R>>(npy_dims[0], npy_dims[1], false);
@@ -210,7 +220,8 @@ Mat<R>::Mat (string fname) {
 
 template<typename R>
 Mat<R>::Mat (const Mat<R>& other, bool copy_w, bool copy_dw) :
-        name(other.name) {
+        name(other.name),
+        constant(other.constant) {
 
     if (copy_w && other.m) {
         // This copies memory using copy constructor
@@ -553,6 +564,16 @@ Mat<R> Mat<R>::operator^(R other) const {
 template<typename R>
 Mat<R> Mat<R>::operator^(int other) const {
     return MatOps<R>::pow(*this, (R) other);
+}
+
+template<typename R>
+Mat<R> Mat<R>::zeros_like(Mat<R> other) {
+    return Mat<R>(other.dims(0), other.dims(1));
+}
+
+template<typename R>
+Mat<R> Mat<R>::empty_like(Mat<R> other) {
+    return Mat<R>(other.dims(0), other.dims(1), false);
 }
 
 template<typename R>

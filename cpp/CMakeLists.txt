@@ -53,6 +53,10 @@ else(GTEST_FOUND)
     message("WARNING: GTESTS not found - install gtests to be able to run tests")
 endif(GTEST_FOUND)
 
+if (GPERFTOOLS_FOUND)
+    add_definitions(-DGPERFTOOLS_FOUND)
+endif(GPERFTOOLS_FOUND)
+
 # CLEANING UP AFTER FINDERS
 # some library list variables are FALSE by default if libs are not found,
 # but it is much more useful to keep it empty.
@@ -80,7 +84,6 @@ if(CMAKE_BUILD_TYPE MATCHES "debug")
 else(CMAKE_BUILD_TYPE MATCHES "debug")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -w")
 endif(CMAKE_BUILD_TYPE MATCHES "debug")
-
 
 
 # INCLUDES

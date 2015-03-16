@@ -119,6 +119,7 @@ class Mat {
         // TODO(jonathan): wtf!
         bool sparse = false;
         std::shared_ptr<std::vector<uint>> sparse_row_keys;
+        bool constant;
 
         Mat();
 
@@ -237,6 +238,8 @@ class Mat {
         Mat<R> operator-(R) const;
         Mat<R> operator^(R) const;
         Mat<R> operator^(int) const;
+        static Mat<R> zeros_like(Mat<R> shape);
+        static Mat<R> empty_like(Mat<R> shape);
 };
 
 template<typename R>

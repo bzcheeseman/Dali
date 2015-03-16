@@ -465,7 +465,7 @@ typename LSTM<R>::State LSTM<R>::_activate(
 
     Mat<R> input_gate, forget_gate, output_gate;
 
-    auto constant_memory = MatOps<R>::consider_constant(initial_state.memory);
+    auto constant_memory = MatOps<R>::consider_constant_if(initial_state.memory, !backprop_through_gates);
 
     if (memory_feeds_gates) {
         // if the memory feeds the gates (Alex Graves 2013) then
@@ -499,7 +499,7 @@ typename LSTM<R>::State LSTM<R>::_activate(
     if (memory_feeds_gates) {
         // output gate uses new memory (cell_d) to control its gate
         output_gate = (
-            output_layer.activate(gate_input) + (MatOps<R>::consider_constant(cell_d) * Wco)
+            output_layer.activate(gate_input) + (MatOps<R>::consider_constant_if(cell_d, !backprop_through_gates) * Wco)
         ).sigmoid();
     } else {
         // output gate

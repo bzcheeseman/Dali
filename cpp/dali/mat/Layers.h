@@ -213,6 +213,12 @@ class LSTM : public AbstractLayer<R> {
         const int input_size;
         const bool shortcut;
         const bool memory_feeds_gates;
+
+        // In Alex Graves' slides / comments online you do not
+        // backpropagate through memory cells at the gates
+        // this is a boolean, so you can retrieve the true
+        // gradient by setting this to true:
+        bool backprop_through_gates = false;
         LSTM (int _input_size, int _hidden_size, bool _memory_feeds_gates = false);
         LSTM (int _input_size, int shortcut_size, int _hidden_size, bool _memory_feeds_gates = false);
         LSTM (const LSTM&, bool, bool);

@@ -295,7 +295,7 @@ TEST_F(LayerTests, LSTM_Zaremba_gradient) {
     int input_size             = 5;
 
     EXPERIMENT_REPEAT {
-        auto X  = Mat<R>(input_size, num_examples,      weights<R>::uniform(20.0));
+        auto X  = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
         auto mylayer = LSTM<R>(input_size, hidden_size, false);
         auto params = mylayer.parameters();
         params.emplace_back(X);
@@ -319,6 +319,11 @@ TEST_F(LayerTests, LSTM_Graves_gradient) {
         auto mylayer = LSTM<R>(input_size, hidden_size, true);
         auto params = mylayer.parameters();
         params.emplace_back(X);
+
+        // In an LSTM we do not back prop through the cell activations when using
+        // it in a gate, but to test it here we set this to true
+        mylayer.backprop_through_gates = true;
+
         auto initial_state = mylayer.initial_states();
         auto functor = [&mylayer, &X, &initial_state](vector<Mat<R>> Xs)-> Mat<R> {
             auto myout_state = mylayer.activate(X, initial_state);
@@ -342,6 +347,11 @@ TEST_F(LayerTests, LSTM_Graves_shortcut_gradient) {
         auto params = mylayer.parameters();
         params.emplace_back(X);
         params.emplace_back(X_s);
+
+        // In an LSTM we do not back prop through the cell activations when using
+        // it in a gate:
+        mylayer.backprop_through_gates = true;
+
         auto initial_state = mylayer.initial_states();
         auto functor = [&mylayer, &X, &X_s, &initial_state](vector<Mat<R>> Xs)-> Mat<R> {
             auto myout_state = mylayer.activate(X, X_s, initial_state);
@@ -364,6 +374,7 @@ TEST_F(LayerTests, LSTM_Zaremba_shortcut_gradient) {
         auto params = mylayer.parameters();
         params.emplace_back(X);
         params.emplace_back(X_s);
+
         auto initial_state = mylayer.initial_states();
         auto functor = [&mylayer, &X, &X_s, &initial_state](vector<Mat<R>> Xs)-> Mat<R> {
             auto myout_state = mylayer.activate(X, X_s, initial_state);

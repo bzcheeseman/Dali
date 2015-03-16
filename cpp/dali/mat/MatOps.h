@@ -204,8 +204,8 @@ struct MatOps {
     static Mat<R> sqrt(Mat<R>);
     static Mat<R> elt_inv(Mat<R>);
 
-
     static Mat<R> consider_constant(Mat<R>);
+    static Mat<R> consider_constant_if(Mat<R>, bool should_consider_constant);
 };
 
 

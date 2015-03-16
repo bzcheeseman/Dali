@@ -974,6 +974,16 @@ Mat<R> MatOps<R>::row_pluck(
     return out;
 }
 
+
+template<typename R>
+Mat<R> MatOps<R>::consider_constant_if(
+        Mat<R> matrix,
+        bool should_consider_constant) {
+    if (should_consider_constant)
+        return consider_constant(matrix);
+    return matrix;
+}
+
 template<typename R>
 Mat<R> MatOps<R>::consider_constant(
         Mat<R> matrix

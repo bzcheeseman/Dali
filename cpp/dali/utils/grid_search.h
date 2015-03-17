@@ -16,11 +16,11 @@ double perturbation_round(Conf& model,
                           double current_objective,
                           std::function<double()> objective);
 
-void perturb_for(grid_clock_t::duration duration,
-                 Conf& model,
-                 std::function<double()> objective);
+double perturb_for(grid_clock_t::duration duration,
+                   Conf& model,
+                   std::function<double()> objective);
 
-void perturbX(int times,
-              Conf& model,
-              std::function<double()> objective);
+double perturbX(int times,
+                Conf& model,
+                std::function<double()> objective);
 #endif

@@ -18,6 +18,7 @@ namespace conf_internal {
 using conf_internal::ConfItem;
 using conf_internal::Choice;
 using conf_internal::Float;
+using conf_internal::Int;
 using conf_internal::Bool;
 
 std::string Conf::ch(std::string name) {
@@ -28,18 +29,25 @@ double Conf::f(std::string name) {
     return get_float(name)->value;
 }
 
+int Conf::i(std::string name) {
+    return get_int(name)->value;
+}
+
 bool Conf::b(std::string name) {
     return get_bool(name)->value;
 }
 
 shared_ptr<Choice> Conf::get_choice(std::string name) {
-    return std::static_pointer_cast<Choice>(items[name]);
+    return std::static_pointer_cast<Choice>(items.at(name));
 }
 shared_ptr<Float> Conf::get_float(std::string name) {
-    return std::static_pointer_cast<Float>(items[name]);
+    return std::static_pointer_cast<Float>(items.at(name));
+}
+shared_ptr<Int> Conf::get_int(std::string name) {
+    return std::static_pointer_cast<Int>(items.at(name));
 }
 shared_ptr<Bool> Conf::get_bool(std::string name) {
-    return std::static_pointer_cast<Bool>(items[name]);
+    return std::static_pointer_cast<Bool>(items.at(name));
 }
 
 
@@ -51,7 +59,6 @@ Conf& Conf::def_choice(std::string name,
     assert2(choices.size() >= 2,
         MS() << "At least two choices are needed for " << name);
     auto c = make_shared<Choice>();
-    c->name = name;
     c->choices = choices;
     c->default_value = default_value;
     c->value = default_value;
@@ -68,7 +75,6 @@ Conf& Conf::def_float(std::string name,
     assert2(lower_bound <= default_value && default_value <= upper_bound,
                 MS() << "Default value for " << name << "not in range.");
     auto f = make_shared<Float>();
-    f->name = name;
     f->lower_bound = lower_bound;
     f->upper_bound = upper_bound;
     f->default_value = default_value;
@@ -78,11 +84,55 @@ Conf& Conf::def_float(std::string name,
     return *this;
 }
 
+Conf& Conf::def_int(std::string name,
+            int lower_bound,
+            int upper_bound,
+            int default_value) {
+    assert2(lower_bound <= default_value && default_value <= upper_bound,
+                MS() << "Default value for " << name << "not in range.");
+    auto i = make_shared<Int>();
+    i->lower_bound = lower_bound;
+    i->upper_bound = upper_bound;
+    i->default_value = default_value;
+    i->value = default_value;
+
+    items[name] = i;
+    return *this;
+}
+
 Conf& Conf::def_bool(std::string name, bool default_value) {
     auto b = make_shared<Bool>();
     b->default_value = default_value;
     b->value = default_value;
     items[name] = b;
+    return *this;
+}
+
+std::vector<int> Conf::stacks(std::string name) {
+    int ns       = i(utils::join({"__", name, "_stack_size"}));
+    int first_l  = i(utils::join({"__", name, "_first_layer"}));
+    int last_l   = i(utils::join({"__", name, "_last_layer"}));
+
+    std::vector<int> res;
+    for (int k=ns - 1; k >= 0; --k) {
+        int delta = first_l - last_l;
+        res.push_back(last_l + (k * delta) / (ns - 1));
+    }
+    return res;
+}
+
+Conf& Conf::def_stacks(std::string name,
+                       int min_stack_size,
+                       int max_stack_size,
+                       int default_stack_size,
+                       int min_layer_size,
+                       int max_layer_size,
+                       int default_first_layer,
+                       int default_last_layer) {
+    def_int(utils::join({"__", name, "_stack_size"}), min_stack_size, max_stack_size, default_stack_size);
+    def_int(utils::join({"__", name, "_first_layer"}), min_layer_size, max_layer_size, default_first_layer);
+    def_int(utils::join({"__", name, "_last_layer"}), min_layer_size, max_layer_size, default_last_layer);
+
     return *this;
 }
 

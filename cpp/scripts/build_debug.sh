@@ -10,6 +10,8 @@ set -o pipefail
 SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 PROJECT_DIR=$( dirname $SCRIPT_DIR )
 
+cat $SCRIPT_DIR/data/ascii_snail.txt
+
 pushd $PROJECT_DIR/build
     rm -rf ./*
     cmake -DCMAKE_BUILD_TYPE=debug ..

@@ -14,14 +14,14 @@ using std::chrono::seconds;
 
 class Siema : public Model {
     public:
-        virtual shared_ptr<Conf> default_conf() const {
-            shared_ptr<Conf> conf = make_shared<Conf>();
+        virtual Conf default_conf() const {
+            Conf conf;
             // Size can be small or large (small by default)
-            conf->def_choice("size", {"large", "small"}, "small");
+            conf.def_choice("size", {"large", "small"}, "small");
             // lol can be between 0 and 1 (0 by default).
-            conf->def_float("lol", 0.0, 1.0, 0.0);
+            conf.def_float("lol", 0.0, 1.0, 0.0);
             // negative is a logical value (true by default)
-            conf->def_bool("add5", false);
+            conf.def_bool("add5", false);
             return conf;
         }
 

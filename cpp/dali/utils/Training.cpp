@@ -67,3 +67,29 @@ void MaxEpochs::report() {
     std::cout << "Epochs remaining: " << epochs_so_far << "/" << max_epochs << std::endl;
 }
 
+
+TimeLimited::TimeLimited(clock_t::duration max_training_duration) :
+        max_training_duration(max_training_duration) {
+    reset();
+}
+
+bool TimeLimited::should_stop(double validation_error) {
+    bool is_validation_nan = !(validation_error == validation_error);
+    return (clock_t::now() - training_start >= max_training_duration) || is_validation_nan;
+}
+
+void TimeLimited::reset() {
+    training_start = clock_t::now();
+}
+
+void TimeLimited::report() {
+    clock_t::duration time_passed = clock_t::now() - training_start;
+    clock_t::duration remaining = max_training_duration - time_passed;
+    std::cout << "Remaining training time is "
+              // wow c++11!
+              << std::chrono::duration_cast<std::chrono::seconds>(remaining).count()
+              << " seconds of total "
+              << std::chrono::duration_cast<std::chrono::seconds>(max_training_duration).count()
+              << " seconds." << std::endl;
+}
+

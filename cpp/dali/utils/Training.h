@@ -34,9 +34,9 @@ class LSTV : public Training {
              double long_term_forgetting=0.01,
              int patience=5);
 
-        virtual bool should_stop(double validation);
-        virtual void reset();
-        virtual void report();
+        virtual bool should_stop(double validation) override;
+        virtual void reset() override;
+        virtual void report() override;
 };
 
 class MaxEpochs : public Training {
@@ -48,9 +48,23 @@ class MaxEpochs : public Training {
 
         MaxEpochs(int max_epochs);
 
-        virtual bool should_stop(double validation);
-        virtual void reset();
-        virtual void report();
+        virtual bool should_stop(double validation) override;
+        virtual void reset() override;
+        virtual void report() override;
+};
+
+class TimeLimited : public Training {
+    typedef std::chrono::high_resolution_clock clock_t;
+    clock_t::duration max_training_duration;
+    clock_t::time_point training_start;
+
+    public:
+
+        TimeLimited(clock_t::duration max_training_duration);
+
+        virtual bool should_stop(double validation) override;
+        virtual void reset() override;
+        virtual void report() override;
 };
 
 #endif

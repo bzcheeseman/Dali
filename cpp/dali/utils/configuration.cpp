@@ -114,9 +114,13 @@ std::vector<int> Conf::stacks(std::string name) {
     int last_l   = i(utils::join({"__", name, "_last_layer"}));
 
     std::vector<int> res;
-    for (int k=ns - 1; k >= 0; --k) {
-        int delta = first_l - last_l;
-        res.push_back(last_l + (k * delta) / (ns - 1));
+    if (ns == 1) {
+        res.push_back(first_l);
+    } else {
+        for (int k=ns - 1; k >= 0; --k) {
+            int delta = first_l - last_l;
+            res.push_back(last_l + (k * delta) / (ns - 1));
+        }
     }
     return res;
 }

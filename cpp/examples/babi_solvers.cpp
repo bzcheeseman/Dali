@@ -221,16 +221,16 @@ class LstmBabiModel : public Model {
     Mat<T> question_representation_embeddings;
 
 
-    const vector<int>   QUESTION_GATE_STACKS              =      {50};
+    // const vector<int>   QUESTION_GATE_STACKS              =      {50};
 
 
     // input here is fact word embedding and question_fact_word_gate_model final hidden.
     // const int           QG_FACTS_INPUT1                   = utils::vsum(TEXT_REPR_STACKS);
     // const int           QG_FACT_WORDS_INPUT1              = TEXT_REPR_EMBEDDINGS;
 
-    const int           QG_INPUT2                         = utils::vsum(QUESTION_GATE_STACKS);
-    const int           QG_SECOND_ORDER                   = 40;
-    const int           QG_HIDDEN                         = 40;
+    // const int           QG_INPUT2                         = utils::vsum(QUESTION_GATE_STACKS);
+    // const int           QG_SECOND_ORDER                   = 40;
+    // const int           QG_HIDDEN                         = 40;
 
 
     StackedLSTM<T> question_fact_gate_model;
@@ -274,6 +274,9 @@ class LstmBabiModel : public Model {
             conf.def_int("TEXT_REPR_EMBEDDINGS", 5, 50, 25);
             conf.def_stacks("HL_STACKS", 2,7,4,10,100, 50, 20);
             conf.def_stacks("TEXT_REPR_STACKS", 1, 4, 2, 5, 50, 40, 30);
+            conf.def_stacks("QUESTION_GATE_STACKS", 1, 4, 2, 5, 50, 40, 30);
+            conf.def_int("QG_SECOND_ORDER", 3, 30, 10);
+            conf.def_int("QG_HIDDEN", 3, 30, 10);
             return conf;
         }
 
@@ -335,18 +338,21 @@ class LstmBabiModel : public Model {
                 Model(configuration),
                 // first true - shortcut, second true - feed memory to gates
                 question_fact_gate_model(c().i("QUESTION_GATE_EMBEDDINGS"),
-                                         QUESTION_GATE_STACKS,
+                                         c().stacks("QUESTION_GATE_STACKS"),
                                          c().b("lstm_shortcut"),
                                          c().b("lstm_feed_mry")),
                 question_fact_word_gate_model(c().i("QUESTION_GATE_EMBEDDINGS"),
-                                              QUESTION_GATE_STACKS,
+                                              c().stacks("QUESTION_GATE_STACKS"),
                                               c().b("lstm_shortcut"),
                                               c().b("lstm_feed_mry")),
                 fact_gate(utils::vsum(c().stacks("TEXT_REPR_STACKS")),
-                          QG_INPUT2,
-                          QG_SECOND_ORDER,
-                          QG_HIDDEN),
-                fact_word_gate(c().i("TEXT_REPR_EMBEDDINGS"), QG_INPUT2, QG_SECOND_ORDER, QG_HIDDEN),
+                          utils::vsum(c().stacks("QUESTION_GATE_STACKS")),
+                          c().i("QG_SECOND_ORDER"),
+                          c().i("QG_HIDDEN")),
+                fact_word_gate(c().i("TEXT_REPR_EMBEDDINGS"),
+                               utils::vsum(c().stacks("QUESTION_GATE_STACKS")),
+                               c().i("QG_SECOND_ORDER"),
+                               c().i("QG_HIDDEN")),
                 question_model(c().i("TEXT_REPR_EMBEDDINGS"),
                                c().stacks("TEXT_REPR_STACKS"),
                                c().b("lstm_shortcut"),
@@ -379,9 +385,6 @@ class LstmBabiModel : public Model {
             please_start_prediction =
                     Mat<T>(utils::vsum(c().stacks("TEXT_REPR_STACKS")), 1,
                            weights<T>::uniform(1.0));
-            std::cout << "HL_STACK => " << c().stacks("HL_STACKS") << std::endl;
-            std::cout << "TEXT_REPR_STACKS => " << c().stacks("TEXT_REPR_STACKS") << std::endl;
-
         }
 
 
@@ -727,8 +730,15 @@ void grid_search() {
     perturb_for(seconds(60*15), babi_model_conf, [&babi_model_conf, &task, &data, &iters, &best_accuracy]() {
         reset(data, babi_model_conf);
         std::cout << "Grid search iteration " << iters++ << std::endl;
-        // TODO(szymon): This should really be max training time
-        shared_ptr<MaxEpochs> training_method = make_shared<MaxEpochs>(1);
+        std::cout << "HL_STACK => "
+                  << babi_model_conf.stacks("HL_STACKS") << std::endl;
+        std::cout << "TEXT_REPR_STACKS => "
+                  << babi_model_conf.stacks("TEXT_REPR_STACKS") << std::endl;
+        std::cout << "QUESTION_GATE_STACKS => "
+                  << babi_model_conf.stacks("QUESTION_GATE_STACKS") << std::endl;
+
+
+        shared_ptr<TimeLimited> training_method = make_shared<TimeLimited>(seconds(30));
         train(data, training_method);
         double accuracy = babi::task_accuracy(task, predict);
         best_accuracy = std::max(accuracy, best_accuracy);

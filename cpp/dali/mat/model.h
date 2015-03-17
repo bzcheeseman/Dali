@@ -12,7 +12,7 @@ class Model {
         // returns default configuration.
         // Default configuration acts like a schema for what the configuration
         // for this model should actually be. See examples from other models before use.
-        virtual  std::shared_ptr<Conf> default_conf() const;
+        virtual  Conf default_conf() const;
         // Returns mutable reference to a configuration. Should not be subclassed,
         // to ensure integrity of configuration.
         virtual Conf& conf() const final;

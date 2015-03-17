@@ -11,7 +11,6 @@
 #include <vector>
 
 #include "dali/utils.h"
-#include "dali/mat/model.h"
 
 
 namespace babi {

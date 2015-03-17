@@ -32,6 +32,7 @@ double perturbation_round(Conf& c,
                           double current_objective,
                           std::function<double()> objective) {
     // select random param;
+    utils::assert2(c.items.size() > 0, "Cannot grid search on empty configuration");
     int param_idx = rand() % c.items.size();
     auto item_kv = c.items.begin();
     std::advance(item_kv, param_idx);

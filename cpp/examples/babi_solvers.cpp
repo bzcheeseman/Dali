@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <iostream>
 #include <set>
 #include <vector>
@@ -7,6 +8,8 @@
 #include "dali/data_processing/babi.h"
 #include "dali/core.h"
 #include "dali/utils.h"
+#include "dali/mat/model.h"
+
 
 using babi::Fact;
 using babi::Item;
@@ -26,7 +29,7 @@ using utils::reversed;
 using utils::Timer;
 using utils::Vocab;
 using Eigen::MatrixXd;
-
+using std::chrono::seconds;
 
 DEFINE_int32(j, 9, "Number of threads");
 
@@ -208,7 +211,7 @@ class LolGate : public AbstractLayer<T> {
 
 
 template<typename T>
-class LstmBabiModel {
+class LstmBabiModel : public Model {
     // MODEL PARAMS
     const vector<int>   TEXT_REPR_STACKS           =      {50};
     const int           TEXT_REPR_EMBEDDINGS       =      50;
@@ -266,6 +269,12 @@ class LstmBabiModel {
 
     public:
         shared_ptr<Vocab> vocab;
+
+        virtual Conf default_conf() const override {
+            Conf conf;
+            conf.def_bool("training", false);
+            return conf;
+        }
 
         vector<Mat<T>> parameters() {
             vector<Mat<T>> res;
@@ -605,6 +614,10 @@ MatrixXd run_epoch(const vector<babi::Story>& dataset,
 }
 
 void train(const vector<babi::Story>& data, shared_ptr<Training> training_method) {
+    if(!model->conf().b("training")) {
+        return;
+    }
+
     for (auto param: model->parameters()) {
         weights<REAL_t>::svd(weights<REAL_t>::gaussian(1.0))(param);
     }
@@ -668,7 +681,7 @@ double benchmark_task(const std::string task) {
     auto data = babi::Parser::training_data(task);
     reset(data);
 
-    shared_ptr<MaxEpochs> training_method = make_shared<MaxEpochs>(1);
+    shared_ptr<MaxEpochs> training_method = make_shared<MaxEpochs>(20);
     train(data, training_method);
     double accuracy = babi::task_accuracy(task, predict);
     std::cout << "Accuracy on " << task << " is " << 100 * accuracy << "." << std::endl;
@@ -683,20 +696,27 @@ void benchmark_all() {
     babi::compare_results(our_results);
 }
 
-/*
+
 void grid_search() {
-    string task = "qa2_two-supporting-facts";
-    BabiModel m;
-    perturb_for(seconds(30), m.conf(), []() {
+    std::string task = "qa2_two-supporting-facts";
+    auto data = babi::Parser::training_data(task);
+    reset(data);
+    Conf conf = model->conf();
+
+    int iters = 1;
+    perturb_for(seconds(30), conf, [&conf, &task, &data, &iters]() {
+        reset(data);
+        std::cout << "Grid search iteration " << iters++ << std::endl;
+        model->conf() = conf;
         shared_ptr<MaxEpochs> training_method = make_shared<MaxEpochs>(1);
-        m.train(babi::Parser::training_data(task), training_method);
-        double accuracy = task_accuracy(&m, task);
+        train(data, training_method);
+        double accuracy = babi::task_accuracy(task, predict);
         std::cout << "Used the following configuration to achieve "
-                  << accuracy << " accuracy on task " << task;
-                  << std::to_string(m.conf(), true) << std::endl;
-        return accuracy;
+                  << 100.0 * accuracy << " accuracy on task " << task
+                  << std::to_string(model->conf(), true) << std::endl;
+        return -accuracy;
     });
-}*/
+}
 
 int main(int argc, char** argv) {
     sane_crashes::activate();
@@ -710,8 +730,8 @@ int main(int argc, char** argv) {
     Eigen::setNbThreads(0);
     Eigen::initParallel();
 
-    benchmark_all();
-    // grid_search();
+    grid_search();
+    // benchmark_all();
     // benchmark_task("qa1_single-supporting-fact");
 
     // benchmark_task("multitasking");

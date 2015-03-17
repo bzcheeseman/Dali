@@ -97,6 +97,7 @@ typedef conf_internal::Conf Conf;
 namespace std {
     std::string to_string (const conf_internal::Choice* c);
     std::string to_string (const conf_internal::Float* c);
+    std::string to_string (const conf_internal::Int* c);
     std::string to_string (const conf_internal::Bool* c);
     std::string to_string (const conf_internal::ConfItem* c);
     std::string to_string (const Conf& c, bool indented=false);

@@ -214,7 +214,6 @@ template<typename T>
 class LstmBabiModel : public Model {
     // MODEL PARAMS
     const vector<int>   TEXT_REPR_STACKS           =      {50};
-    const int           TEXT_REPR_EMBEDDINGS       =      50;
 
     StackedLSTM<T> fact_model;
     Mat<T> fact_embeddings;
@@ -224,11 +223,11 @@ class LstmBabiModel : public Model {
 
 
     const vector<int>   QUESTION_GATE_STACKS              =      {50};
-    const int           QUESTION_GATE_EMBEDDINGS          =      50;
+
 
     // input here is fact word embedding and question_fact_word_gate_model final hidden.
     const int           QG_FACTS_INPUT1                   = utils::vsum(TEXT_REPR_STACKS);
-    const int           QG_FACT_WORDS_INPUT1              = TEXT_REPR_EMBEDDINGS;
+    // const int           QG_FACT_WORDS_INPUT1              = TEXT_REPR_EMBEDDINGS;
 
     const int           QG_INPUT2                         = utils::vsum(QUESTION_GATE_STACKS);
     const int           QG_SECOND_ORDER                   = 40;
@@ -266,13 +265,16 @@ class LstmBabiModel : public Model {
     public:
         shared_ptr<Vocab> vocab;
 
-        virtual Conf default_conf() const override {
-            Conf conf;
+        static Conf default_conf() {
+            Conf conf = Model::default_conf();
             conf.def_bool("lstm_shortcut", false);
             conf.def_bool("lstm_feed_mry", false);
             conf.def_float("TEXT_REPR_DROPOUT", 0.0, 1.0, 0.3);
             conf.def_float("QUESTION_GATE_DROPOUT", 0.0, 1.0, 0.3);
             conf.def_float("HL_DROPOUT", 0.0, 1.0, 0.7);
+            conf.def_int("QUESTION_GATE_EMBEDDINGS", 5, 50, 25);
+            conf.def_int("TEXT_REPR_EMBEDDINGS", 5, 50, 25);
+
             return conf;
         }
 
@@ -307,6 +309,7 @@ class LstmBabiModel : public Model {
         }
 
         LstmBabiModel(const LstmBabiModel& model, bool copy_w, bool copy_dw) :
+                Model(model.c()),
                 question_fact_gate_model(model.question_fact_gate_model, copy_w, copy_dw),
                 question_fact_word_gate_model(
                         model.question_fact_word_gate_model, copy_w, copy_dw),
@@ -329,33 +332,45 @@ class LstmBabiModel : public Model {
             vocab = model.vocab;
         }
 
-        LstmBabiModel(shared_ptr<Vocab> vocabulary) :
+        LstmBabiModel(shared_ptr<Vocab> vocabulary, Conf configuration) :
+                Model(configuration),
                 // first true - shortcut, second true - feed memory to gates
-                question_fact_gate_model(QUESTION_GATE_EMBEDDINGS, QUESTION_GATE_STACKS, conf().b("lstm_shortcut"), conf().b("lstm_feed_mry")),
-                question_fact_word_gate_model(QUESTION_GATE_EMBEDDINGS, QUESTION_GATE_STACKS, conf().b("lstm_shortcut"), conf().b("lstm_feed_mry")),
+                question_fact_gate_model(c().i("QUESTION_GATE_EMBEDDINGS"),
+                                         QUESTION_GATE_STACKS,
+                                         c().b("lstm_shortcut"),
+                                         c().b("lstm_feed_mry")),
+                question_fact_word_gate_model(c().i("QUESTION_GATE_EMBEDDINGS"),
+                                              QUESTION_GATE_STACKS,
+                                              c().b("lstm_shortcut"),
+                                              c().b("lstm_feed_mry")),
                 fact_gate(QG_FACTS_INPUT1, QG_INPUT2, QG_SECOND_ORDER, QG_HIDDEN),
-                fact_word_gate(QG_FACT_WORDS_INPUT1, QG_INPUT2, QG_SECOND_ORDER, QG_HIDDEN),
-                question_model(TEXT_REPR_EMBEDDINGS, TEXT_REPR_STACKS, conf().b("lstm_shortcut"), conf().b("lstm_feed_mry")),
-                fact_model(TEXT_REPR_EMBEDDINGS, TEXT_REPR_STACKS, conf().b("lstm_shortcut"), conf().b("lstm_feed_mry")),
-                hl_model(HL_INPUT_SIZE, HL_STACKS, conf().b("lstm_shortcut"), conf().b("lstm_feed_mry")),
+                fact_word_gate(c().i("TEXT_REPR_EMBEDDINGS"), QG_INPUT2, QG_SECOND_ORDER, QG_HIDDEN),
+                question_model(c().i("TEXT_REPR_EMBEDDINGS"),
+                               TEXT_REPR_STACKS,
+                               c().b("lstm_shortcut"),
+                               c().b("lstm_feed_mry")),
+                fact_model(c().i("TEXT_REPR_EMBEDDINGS"),
+                           TEXT_REPR_STACKS,
+                           c().b("lstm_shortcut"),
+                           c().b("lstm_feed_mry")),
+                hl_model(HL_INPUT_SIZE, HL_STACKS, c().b("lstm_shortcut"), c().b("lstm_feed_mry")),
                 DECODER_OUTPUT(vocabulary->word2index.size()),
                 decoder(DECODER_INPUT, vocabulary->word2index.size()) {
-
             vocab = vocabulary;
             size_t n_words = vocab->index2word.size();
 
             question_fact_gate_embeddings =
-                    Mat<T>(n_words, QUESTION_GATE_EMBEDDINGS,
-                           weights<T>::uniform(1.0/QUESTION_GATE_EMBEDDINGS));
+                    Mat<T>(n_words, c().i("QUESTION_GATE_EMBEDDINGS"),
+                           weights<T>::uniform(1.0/c().i("QUESTION_GATE_EMBEDDINGS")));
             question_fact_word_gate_embeddings =
-                    Mat<T>(n_words, QUESTION_GATE_EMBEDDINGS,
-                           weights<T>::uniform(1.0/QUESTION_GATE_EMBEDDINGS));
+                    Mat<T>(n_words, c().i("QUESTION_GATE_EMBEDDINGS"),
+                           weights<T>::uniform(1.0/c().i("QUESTION_GATE_EMBEDDINGS")));
             fact_embeddings =
-                    Mat<T>(n_words, TEXT_REPR_EMBEDDINGS,
-                           weights<T>::uniform(1.0/TEXT_REPR_EMBEDDINGS));
+                    Mat<T>(n_words, c().i("TEXT_REPR_EMBEDDINGS"),
+                           weights<T>::uniform(1.0/c().i("TEXT_REPR_EMBEDDINGS")));
             question_representation_embeddings =
-                    Mat<T>(n_words, TEXT_REPR_EMBEDDINGS,
-                           weights<T>::uniform(1.0/TEXT_REPR_EMBEDDINGS));
+                    Mat<T>(n_words, c().i("TEXT_REPR_EMBEDDINGS"),
+                           weights<T>::uniform(1.0/c().i("TEXT_REPR_EMBEDDINGS")));
             please_start_prediction =
                     Mat<T>(HL_INPUT_SIZE, 1,
                            weights<T>::uniform(1.0));
@@ -418,17 +433,17 @@ class LstmBabiModel : public Model {
             auto fact_word_gate_hidden = lstm_final_activation(
                     get_embeddings(reversed(question), question_fact_word_gate_embeddings),
                     question_fact_word_gate_model,
-                    use_dropout ? conf().f("QUESTION_GATE_DROPOUT") : 0.0);
+                    use_dropout ? c().f("QUESTION_GATE_DROPOUT") : 0.0);
 
             auto fact_gate_hidden = lstm_final_activation(
                     get_embeddings(reversed(question), question_fact_gate_embeddings),
                     question_fact_gate_model,
-                    use_dropout ? conf().f("QUESTION_GATE_DROPOUT") : 0.0);
+                    use_dropout ? c().f("QUESTION_GATE_DROPOUT") : 0.0);
 
             auto question_representation = lstm_final_activation(
                     get_embeddings(reversed(question), question_representation_embeddings),
                     question_model,
-                    use_dropout ? conf().f("TEXT_REPR_DROPOUT") : 0.0);
+                    use_dropout ? c().f("TEXT_REPR_DROPOUT") : 0.0);
 
             Seq<Mat<T>> fact_representations;
             Mat<T> word_fact_gate_memory_sum(1,1);
@@ -447,7 +462,7 @@ class LstmBabiModel : public Model {
                 auto fact_repr = lstm_final_activation(
                         gated_embeddings,
                         fact_model,
-                        use_dropout ? conf().f("TEXT_REPR_DROPOUT") : 0.0);
+                        use_dropout ? c().f("TEXT_REPR_DROPOUT") : 0.0);
                 fact_representations.push_back(fact_repr);
             }
 
@@ -461,7 +476,7 @@ class LstmBabiModel : public Model {
             hl_input.push_back(please_start_prediction);
 
             auto hl_hidden = lstm_final_activation(
-                    hl_input, hl_model, use_dropout ? conf().f("HL_DROPOUT") : 0.0);
+                    hl_input, hl_model, use_dropout ? c().f("HL_DROPOUT") : 0.0);
 
             auto log_probs = decoder.activate(hl_hidden);
 
@@ -542,6 +557,8 @@ MatrixXd errors(StoryActivation<REAL_t> activation,
 MatrixXd run_epoch(const vector<babi::Story>& dataset,
                               Solver::Adam<REAL_t>* solver,
                               bool training) {
+
+
     const int NUM_THREADS = FLAGS_j;
     ThreadPool pool(NUM_THREADS);
 
@@ -626,7 +643,6 @@ void train(const vector<babi::Story>& data, shared_ptr<Training> training_method
 
     auto params = model->parameters();
 
-
     // Solver::AdaDelta<T> solver(params, 0.95, 1e-9, 5.0);
     Solver::Adam<REAL_t> solver(params, 0.1, 0.001, 1e-9, 5.0);
 
@@ -666,11 +682,11 @@ vector<string> predict(const vector<vector<string>>& facts,
     return {model->vocab->index2word[word_idx]};
 }
 
-void reset(const vector<babi::Story>& data) {
+void reset(const vector<babi::Story>& data, Conf babi_model_conf=BabiModel::default_conf()) {
     thread_models.clear();
     auto vocab_vector = babi::vocab_from_data(data);
     model.reset();
-    model = std::make_shared<BabiModel>(make_shared<Vocab> (vocab_vector));
+    model = std::make_shared<BabiModel>(make_shared<Vocab> (vocab_vector), babi_model_conf);
 }
 
 double benchmark_task(const std::string task) {
@@ -696,19 +712,14 @@ void benchmark_all() {
 void grid_search() {
     std::string task = "qa2_two-supporting-facts";
     auto data = babi::Parser::training_data(task);
-    reset(data);
-    Conf conf = model->conf();
-
+    Conf babi_model_conf = BabiModel::default_conf();
     int iters = 1;
     double best_accuracy = 0.0;
 
-    perturb_for(seconds(60*15), conf, [&conf, &task, &data, &iters, &best_accuracy]() {
-        reset(data);
+    perturb_for(seconds(60*15), babi_model_conf, [&babi_model_conf, &task, &data, &iters, &best_accuracy]() {
+        reset(data, babi_model_conf);
         std::cout << "Grid search iteration " << iters++ << std::endl;
-        model->conf() = conf;
-
         // TODO(szymon): This should really be max training time
-
         shared_ptr<MaxEpochs> training_method = make_shared<MaxEpochs>(1);
         train(data, training_method);
         double accuracy = babi::task_accuracy(task, predict);
@@ -716,12 +727,12 @@ void grid_search() {
         std::cout << "Achieved " << 100.0 * accuracy << "% accuracy on task " << task
                   << " (best so far is " << 100.0 * best_accuracy
                   << "%). Configuration was: " << std::endl
-                  << std::to_string(conf, true) << std::endl;
+                  << std::to_string(babi_model_conf, true) << std::endl;
         return -accuracy;
     });
     std::cout << "Best accuracy found by grid search (" << 100.0 * best_accuracy
               << "%) is achieved by the following configuration: " << std::endl
-              << std::to_string(conf, true) << std::endl;
+              << std::to_string(babi_model_conf, true) << std::endl;
 }
 
 int main(int argc, char** argv) {

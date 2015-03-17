@@ -1,12 +1,17 @@
 #include "model.h"
 
+Model::Model() {
+    _conf = std::make_shared<Conf>(default_conf());
+}
 
-Conf Model::default_conf() const {
+Model::Model (Conf conf) {
+    _conf = std::make_shared<Conf>(conf);
+}
+
+Conf Model::default_conf() {
     return Conf();
 }
 
-Conf& Model::conf()  const {
-    if(!_conf)
-        _conf = std::make_shared<Conf>(default_conf());
+Conf& Model::c()  const {
     return *_conf;
 }

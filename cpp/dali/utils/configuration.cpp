@@ -145,6 +145,10 @@ namespace std {
         return to_string(ffloat->value);
     }
 
+    std::string to_string (Int* iint) {
+        return to_string(iint->value);
+    }
+
     std::string to_string (Bool* bbool) {
         return bbool->value ? "true" : "false";
     }
@@ -154,8 +158,12 @@ namespace std {
             return to_string(choice);
         } else if (Float* ffloat = dynamic_cast<Float*>(c)) {
             return to_string(ffloat);
+        } else if (Int* iint = dynamic_cast<Int*>(c)) {
+            return to_string(iint);
         } else if (Bool* bbool = dynamic_cast<Bool*>(c)) {
             return to_string(bbool);
+        } else {
+            utils::assert2(false, "Alien conf item passed to to_string");
         }
     }
 

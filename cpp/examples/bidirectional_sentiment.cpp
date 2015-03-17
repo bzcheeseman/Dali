@@ -30,33 +30,47 @@ using utils::assert2;
 typedef float REAL_t;
 typedef Mat<REAL_t> mat;
 
-DEFINE_int32(minibatch, 100, "What size should be used for the minibatches ?");
-DEFINE_int32(patience, 5,    "How many unimproving epochs to wait through before witnessing progress ?");
-DEFINE_double(dropout, 0.3, "How much dropout noise to add to the problem ?");
-DEFINE_bool(fast_dropout, false, "Use fast dropout?");
-DEFINE_string(solver, "adadelta", "What solver to use (adadelta, sgd, adam)");
-DEFINE_string(test, "", "Where is the test set?");
-DEFINE_double(root_weight, 1.0, "By how much to weigh the roots in the objective function?");
-DEFINE_bool(recursive_gates, true, "Make a prediction at every timestep?");
+DEFINE_int32(minibatch,      100,        "What size should be used for the minibatches ?");
+DEFINE_int32(patience,       5,          "How many unimproving epochs to wait through before witnessing progress ?");
+DEFINE_double(dropout,       0.3,        "How much dropout noise to add to the problem ?");
+DEFINE_bool(fast_dropout,    false,      "Use fast dropout?");
+DEFINE_string(solver,        "adadelta", "What solver to use (adadelta, sgd, adam)");
+DEFINE_string(test,          "",         "Where is the test set?");
+DEFINE_double(root_weight,   1.0,        "By how much to weigh the roots in the objective function?");
+DEFINE_bool(recursive_gates, true,       "Make a prediction at every timestep?");
+DEFINE_bool(surprise,        true,       "Use Surprise distance with target distribution?");
 
 
-/*template<typename T>
+template<typename T>
 Mat<T> categorical_surprise(Mat<T> logprobs, int target) {
     auto out = Mat<T>(1, 1, false);
-    auto X = MatOps<T>::softmax_no_grad(logprobs);
+    auto probs = MatOps<T>::softmax_no_grad(logprobs);
 
     out.w()(0) = -(
-        std::log1p(-std::sqrt(1.0 - X.w()(target, 0))) -
-        std::log1p( std::sqrt(1.0 - X.w()(target, 0)))
+        std::log1p(-std::sqrt(1.0 - probs.w()(target, 0))) -
+        std::log1p( std::sqrt(1.0 - probs.w()(target, 0)))
     );
 
     if (graph::backprop_enabled) {
         if (!logprobs.constant) {
-            // d/db -(log1p(-sqrt(1 - (exp(a)/(exp(b) + exp(c) + exp(a)) )) ) - log1p(sqrt(1 - (exp(a)/(exp(b) + exp(c) + exp(a)) )) ))
+            graph::emplace_back([logprobs, probs, target]() {
+                auto root_coeff = std::sqrt(std::max(EPS, 1.0 - probs.w()(target, 0)));
+                logprobs.dw().noalias() += (
+                    (
+                        (0.5 * probs.w()(target, 0) / (root_coeff * (root_coeff + 1.0)) + EPS) +
+                        (0.5 * probs.w()(target, 0) / (root_coeff * (1.0 - root_coeff)) + EPS)
+
+                    ) * probs.w()
+                );
+                logprobs.dw()(target, 0) -= probs.w()(target, 0) * (
+                    (0.5 / (root_coeff * (root_coeff + 1.0)) + EPS) +
+                    (0.5 / (root_coeff * (1.0 - root_coeff)) + EPS)
+                );
+            });
         }
     }
     return out;
-}*/
+}
 
 
 
@@ -373,6 +387,7 @@ int main (int argc,  char* argv[]) {
               << " Max training epochs : " << FLAGS_epochs << std::endl
               << "           LSTM type : " << (FLAGS_memory_feeds_gates ? "Graves 2013" : "Zaremba 2014") << std::endl
               << "          Stack size : " << std::max(FLAGS_stack_size, 2) << std::endl
+              << "       Loss function : " << (FLAGS_surprise ? "Categorical Surprise" : "KL divergence") << std::endl
               << " # training examples : " << dataset.size() * FLAGS_minibatch - (FLAGS_minibatch - dataset[dataset.size() - 1].size()) << std::endl;
 
     pool = new ThreadPool(FLAGS_j);
@@ -436,14 +451,20 @@ int main (int argc,  char* argv[]) {
         );
 
         for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
-            pool->run([&thread_params, &thread_models,  batch_id, &journalist, &solver, &dataset, &best_validation_score, &batches_processed]() {
+            pool->run([&thread_params, &thread_models, batch_id, &journalist, &solver, &dataset, &best_validation_score, &batches_processed]() {
                 auto& thread_model  = thread_models[ThreadPool::get_thread_number()];
                 auto& params        = thread_params[ThreadPool::get_thread_number()];
                 auto& minibatch     = dataset[batch_id];
                 // many forward steps here:
                 for (auto & example : minibatch) {
                     auto logprobs = thread_model.activate_sequence(std::get<0>(example), FLAGS_dropout);
-                    auto error = MatOps<REAL_t>::softmax_cross_entropy(logprobs, std::get<1>(example));
+                    Mat<REAL_t> error;
+                    if (FLAGS_surprise) {
+                        error = categorical_surprise(logprobs, std::get<1>(example));
+                    } else {
+                        error = MatOps<REAL_t>::softmax_cross_entropy(logprobs, std::get<1>(example));
+                    }
+                    // auto error = MatOps<REAL_t>::softmax_cross_entropy(logprobs, std::get<1>(example));
                     if (std::get<2>(example) && FLAGS_root_weight != 1.0) {
                         error = error * FLAGS_root_weight;
                     }

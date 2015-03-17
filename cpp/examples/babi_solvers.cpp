@@ -213,7 +213,6 @@ class LolGate : public AbstractLayer<T> {
 template<typename T>
 class LstmBabiModel : public Model {
     // MODEL PARAMS
-    const vector<int>   TEXT_REPR_STACKS           =      {50};
 
     StackedLSTM<T> fact_model;
     Mat<T> fact_embeddings;
@@ -226,7 +225,7 @@ class LstmBabiModel : public Model {
 
 
     // input here is fact word embedding and question_fact_word_gate_model final hidden.
-    const int           QG_FACTS_INPUT1                   = utils::vsum(TEXT_REPR_STACKS);
+    // const int           QG_FACTS_INPUT1                   = utils::vsum(TEXT_REPR_STACKS);
     // const int           QG_FACT_WORDS_INPUT1              = TEXT_REPR_EMBEDDINGS;
 
     const int           QG_INPUT2                         = utils::vsum(QUESTION_GATE_STACKS);
@@ -244,14 +243,13 @@ class LstmBabiModel : public Model {
     LolGate<T> fact_word_gate;
 
 
-    const vector<int>   HL_STACKS                  =      {50,50,20,20};
-    const int           HL_INPUT_SIZE              =      utils::vsum(TEXT_REPR_STACKS);
+    // const int           HL_INPUT_SIZE              =      utils::vsum(TEXT_REPR_STACKS);
 
     StackedLSTM<T> hl_model;
 
     Mat<T> please_start_prediction;
 
-    const int           DECODER_INPUT              =      utils::vsum(HL_STACKS);
+    // const int           DECODER_INPUT              =      utils::vsum(HL_STACKS);
     const int           DECODER_OUTPUT; // gets initialized to vocabulary size in constructor
     Layer<T>            decoder;
 
@@ -274,7 +272,8 @@ class LstmBabiModel : public Model {
             conf.def_float("HL_DROPOUT", 0.0, 1.0, 0.7);
             conf.def_int("QUESTION_GATE_EMBEDDINGS", 5, 50, 25);
             conf.def_int("TEXT_REPR_EMBEDDINGS", 5, 50, 25);
-
+            conf.def_stacks("HL_STACKS", 2,7,4,10,100, 50, 20);
+            conf.def_stacks("TEXT_REPR_STACKS", 1, 4, 2, 5, 50, 40, 30);
             return conf;
         }
 
@@ -343,19 +342,25 @@ class LstmBabiModel : public Model {
                                               QUESTION_GATE_STACKS,
                                               c().b("lstm_shortcut"),
                                               c().b("lstm_feed_mry")),
-                fact_gate(QG_FACTS_INPUT1, QG_INPUT2, QG_SECOND_ORDER, QG_HIDDEN),
+                fact_gate(utils::vsum(c().stacks("TEXT_REPR_STACKS")),
+                          QG_INPUT2,
+                          QG_SECOND_ORDER,
+                          QG_HIDDEN),
                 fact_word_gate(c().i("TEXT_REPR_EMBEDDINGS"), QG_INPUT2, QG_SECOND_ORDER, QG_HIDDEN),
                 question_model(c().i("TEXT_REPR_EMBEDDINGS"),
-                               TEXT_REPR_STACKS,
+                               c().stacks("TEXT_REPR_STACKS"),
                                c().b("lstm_shortcut"),
                                c().b("lstm_feed_mry")),
                 fact_model(c().i("TEXT_REPR_EMBEDDINGS"),
-                           TEXT_REPR_STACKS,
+                           c().stacks("TEXT_REPR_STACKS"),
                            c().b("lstm_shortcut"),
                            c().b("lstm_feed_mry")),
-                hl_model(HL_INPUT_SIZE, HL_STACKS, c().b("lstm_shortcut"), c().b("lstm_feed_mry")),
+                hl_model(utils::vsum(c().stacks("TEXT_REPR_STACKS")),
+                         c().stacks("HL_STACKS"),
+                         c().b("lstm_shortcut"),
+                         c().b("lstm_feed_mry")),
                 DECODER_OUTPUT(vocabulary->word2index.size()),
-                decoder(DECODER_INPUT, vocabulary->word2index.size()) {
+                decoder(utils::vsum(c().stacks("HL_STACKS")), vocabulary->word2index.size()) {
             vocab = vocabulary;
             size_t n_words = vocab->index2word.size();
 
@@ -372,8 +377,11 @@ class LstmBabiModel : public Model {
                     Mat<T>(n_words, c().i("TEXT_REPR_EMBEDDINGS"),
                            weights<T>::uniform(1.0/c().i("TEXT_REPR_EMBEDDINGS")));
             please_start_prediction =
-                    Mat<T>(HL_INPUT_SIZE, 1,
+                    Mat<T>(utils::vsum(c().stacks("TEXT_REPR_STACKS")), 1,
                            weights<T>::uniform(1.0));
+            std::cout << "HL_STACK => " << c().stacks("HL_STACKS") << std::endl;
+            std::cout << "TEXT_REPR_STACKS => " << c().stacks("TEXT_REPR_STACKS") << std::endl;
+
         }
 
 

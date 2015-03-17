@@ -14,6 +14,8 @@ using std::chrono::seconds;
 
 class Siema : public Model {
     public:
+        Siema() : Model(default_conf()) {
+        }
         virtual Conf default_conf() const {
             Conf conf;
             // Size can be small or large (small by default)
@@ -28,11 +30,11 @@ class Siema : public Model {
         // SMALL: (lol)
         // LARGE: (lol+5) if add5 else lol
         virtual double activate() const {
-            double extra = conf().b("add5") ? 5.0 : 0.0;
-            if (conf().ch("size") == "small") {
-                return conf().f("lol") + extra;
-            } else if (conf().ch("size") == "large") {
-                return (6*conf().f("lol") + extra);
+            double extra = c().b("add5") ? 5.0 : 0.0;
+            if (c().ch("size") == "small") {
+                return c().f("lol") + extra;
+            } else if (c().ch("size") == "large") {
+                return (6*c().f("lol") + extra);
             }
         }
 };
@@ -48,10 +50,10 @@ int main() {
     sane_crashes::activate();
     Siema siema;
     std::cout << "Initial objective " << model_performance(siema)
-              << " achieved by " << std::to_string(siema.conf()) << std::endl;
-    perturb_for(seconds(1), siema.conf(), [&siema]() { return model_performance(siema); });
+              << " achieved by " << std::to_string(siema.c()) << std::endl;
+    perturb_for(seconds(1), siema.c(), [&siema]() { return model_performance(siema); });
     // perturbX(4, siema, [&siema]() { return model_performance(siema); });
 
     std::cout << "Optimized objective " << model_performance(siema)
-              << " achieved by " << std::to_string(siema.conf()) << std::endl;
+              << " achieved by " << std::to_string(siema.c()) << std::endl;
 }

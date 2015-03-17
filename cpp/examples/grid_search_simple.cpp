@@ -49,7 +49,7 @@ int main() {
     Siema siema;
     std::cout << "Initial objective " << model_performance(siema)
               << " achieved by " << std::to_string(siema.conf()) << std::endl;
-    perturb_for(seconds(1), siema, [&siema]() { return model_performance(siema); });
+    perturb_for(seconds(1), siema.conf(), [&siema]() { return model_performance(siema); });
     // perturbX(4, siema, [&siema]() { return model_performance(siema); });
 
     std::cout << "Optimized objective " << model_performance(siema)

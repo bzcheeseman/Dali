@@ -12,15 +12,15 @@
 typedef std::chrono::high_resolution_clock grid_clock_t;
 
 
-double perturbation_round(const Model& model,
+double perturbation_round(Conf& model,
                           double current_objective,
                           std::function<double()> objective);
 
 void perturb_for(grid_clock_t::duration duration,
-                 const Model& model,
+                 Conf& model,
                  std::function<double()> objective);
 
 void perturbX(int times,
-              const Model& model,
+              Conf& model,
               std::function<double()> objective);
 #endif

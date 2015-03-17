@@ -30,7 +30,7 @@ using Eigen::MatrixXd;
 
 DEFINE_int32(j, 9, "Number of threads");
 
-class MostCommonAnswer: public babi::Model {
+class MostCommonAnswer {
     vector<string> most_common_answer;
 
     public:
@@ -66,7 +66,7 @@ class MostCommonAnswer: public babi::Model {
         }
 };
 
-class RandomAnswer: public babi::Model {
+class RandomAnswer {
     set<string> tokens;
     public:
 
@@ -263,9 +263,10 @@ class LstmBabiModel {
     // -> second order (between question and fact) relation for fact word gating
     // -> consider quadratic form]
     // -> add multiple answers
-    shared_ptr<Vocab> vocab;
 
     public:
+        shared_ptr<Vocab> vocab;
+
         vector<Mat<T>> parameters() {
             vector<Mat<T>> res;
             for (auto model: std::vector<AbstractLayer<T>*>({
@@ -463,235 +464,239 @@ class LstmBabiModel {
 
 };
 
-template<typename T>
-class LstmBabiModelRunner: public babi::Model {
-    // TRAINING_PROCEDURE_PARAMS
-    const float TRAINING_FRAC = 0.8;
-    const float MINIMUM_IMPROVEMENT = 0.0001; // good one: 0.003
-    const double LONG_TERM_VALIDATION = 0.02;
-    const double SHORT_TERM_VALIDATION = 0.1;
 
-    // gates overfit easily
-    const int GATES_PATIENCE = 10;
-    // prediction haz dropout.
-    const int PREDICTION_PATIENCE = 100;
 
-    const T FACT_SELECTION_LAMBDA_MAX = 3.0;
-    const T FACT_WORD_SELECTION_LAMBDA_MAX = 0.0001;
 
-    const int BAKING_EPOCHS = 1000;
 
-    vector<string> data_to_vocab(const vector<babi::Story>& data) {
-        set<string> vocab_set;
-        for (auto& story : data) {
-            for(auto& item_ptr : story) {
-                if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
-                    vocab_set.insert(f->fact.begin(), f->fact.end());
-                } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
-                    vocab_set.insert(qa->question.begin(), qa->question.end());
-                    vocab_set.insert(qa->answer.begin(), qa->answer.end());
-                }
-            }
-        }
-        vector<string> vocab_as_vector;
-        vocab_as_vector.insert(vocab_as_vector.end(), vocab_set.begin(), vocab_set.end());
-        return vocab_as_vector;
+/* PARAMETERS FOR TRAINING */
+typedef double REAL_t;
+typedef LstmBabiModel<REAL_t> BabiModel;
+
+// TRAINING_PROCEDURE_PARAMS
+const float TRAINING_FRAC = 0.8;
+const float MINIMUM_IMPROVEMENT = 0.0001;
+const double LONG_TERM_VALIDATION = 0.02;
+const double SHORT_TERM_VALIDATION = 0.1;
+
+// prediction haz dropout.
+const int PREDICTION_PATIENCE = 100;
+
+const double FACT_SELECTION_LAMBDA_MAX = 3.0;
+const double FACT_WORD_SELECTION_LAMBDA_MAX = 0.0001;
+
+
+
+/* TRAINING FUNCTIONS */
+shared_ptr<BabiModel> model;
+
+vector<BabiModel> thread_models;
+
+
+
+MatrixXd errors(StoryActivation<REAL_t> activation,
+                uint answer_idx,
+                vector<int> supporting_facts) {
+
+    auto prediction_error = MatOps<REAL_t>::softmax_cross_entropy(activation.log_probs,
+                                                                  answer_idx);
+
+    Mat<REAL_t> fact_selection_error(1,1);
+
+    for (int i=0; i<activation.fact_gate_memory.size(); ++i) {
+        bool supporting = in_vector(supporting_facts, i);
+        auto partial_error = MatOps<REAL_t>::binary_cross_entropy(
+                                    activation.fact_gate_memory[i],
+                                    supporting ? 1.0 : 0.0);
+        float coeff = supporting ? 1.0 : 0.01;
+
+        fact_selection_error = fact_selection_error + partial_error * coeff;
     }
 
-    shared_ptr<Vocab> vocab;
-    shared_ptr<LstmBabiModel<T>> model;
+    Mat<REAL_t> total_error;
 
-    vector<LstmBabiModel<T>> thread_models;
+    total_error = prediction_error
+                + fact_selection_error * FACT_SELECTION_LAMBDA_MAX
+                + activation.word_fact_gate_memory_sum * FACT_WORD_SELECTION_LAMBDA_MAX;
 
-    int epoch;
+    total_error.grad();
 
-    enum training_mode_t {
-        GATES = 1,
-        PREDICTION = 2
-    };
+    MatrixXd reported_errors(3,1);
+    reported_errors(0) = prediction_error.w()(0,0);
+    reported_errors(1) = fact_selection_error.w()(0,0);
+    reported_errors(2) = activation.word_fact_gate_memory_sum.w()(0,0);
 
 
-    training_mode_t training_mode;
+    return reported_errors;
+}
 
-    MatrixXd errors(StoryActivation<T> activation, uint answer_idx, vector<int> supporting_facts) {
+// returns the errors;
+MatrixXd run_epoch(const vector<babi::Story>& dataset,
+                              Solver::Adam<REAL_t>* solver,
+                              bool training) {
+    const int NUM_THREADS = FLAGS_j;
+    ThreadPool pool(NUM_THREADS);
 
-        auto prediction_error = MatOps<T>::softmax_cross_entropy(activation.log_probs,
-                                                                 answer_idx);
-
-        Mat<T> fact_selection_error(1,1);
-
-        for (int i=0; i<activation.fact_gate_memory.size(); ++i) {
-            bool supporting = in_vector(supporting_facts, i);
-            auto partial_error = MatOps<T>::binary_cross_entropy(
-                                        activation.fact_gate_memory[i],
-                                        supporting ? 1.0 : 0.0);
-            float coeff = supporting ? 1.0 : 0.01;
-
-            fact_selection_error = fact_selection_error + partial_error * coeff;
+    if (thread_models.size() == 0) {
+        for (int i = 0; i < NUM_THREADS; ++i) {
+            thread_models.push_back(model->shallow_copy());
         }
+    }
+    std::atomic<int> num_questions(0);
 
-        Mat<T> total_error;
-
-        total_error = prediction_error
-                    + fact_selection_error * FACT_SELECTION_LAMBDA_MAX
-                    + activation.word_fact_gate_memory_sum * FACT_WORD_SELECTION_LAMBDA_MAX;
-
-        total_error.grad();
-
-        MatrixXd reported_errors(3,1);
-        reported_errors(0) = prediction_error.w()(0,0);
-        reported_errors(1) = fact_selection_error.w()(0,0);
-        reported_errors(2) = activation.word_fact_gate_memory_sum.w()(0,0);
-
-
-        return reported_errors;
+    vector<MatrixXd> thread_error;
+    for (int thread=0; thread<NUM_THREADS; ++thread) {
+        thread_error.emplace_back(3,1);
+        thread_error.back().fill(0);
     }
 
+    const int BATCH_SIZE = std::max( (int)dataset.size() / (2*NUM_THREADS), 2);
 
-    public:
-        // returns the errors;
-        MatrixXd run_epoch(const vector<babi::Story>& dataset,
-                                      Solver::Adam<T>* solver,
-                                      bool training) {
-            const int NUM_THREADS = FLAGS_j;
-            ThreadPool pool(NUM_THREADS);
+    auto random_order = utils::random_arange(dataset.size());
+    vector<vector<int>> batches;
+    for (int i=0; i<dataset.size(); i+=BATCH_SIZE) {
+        vector<int> batch;
+        for (int j=i; j<std::min(i+BATCH_SIZE, (int)dataset.size()); ++j) {
+            batch.push_back(random_order[j]);
+        }
+        batches.push_back(batch);
+    }
 
-            if (thread_models.size() == 0) {
-                for (int i = 0; i < NUM_THREADS; ++i) {
-                    thread_models.push_back(model->shallow_copy());
-                }
-            }
-            std::atomic<int> num_questions(0);
+    for (auto& batch : batches) {
+        pool.run([batch, &dataset, training, &num_questions, &thread_error, &solver]() {
+            BabiModel& thread_model = thread_models[ThreadPool::get_thread_number()];
+            auto params = thread_model.parameters();
+            for (auto story_id: batch) {
+                auto story = dataset[story_id];
 
-            vector<MatrixXd> thread_error;
-            for (int thread=0; thread<NUM_THREADS; ++thread) {
-                thread_error.emplace_back(3,1);
-                thread_error.back().fill(0);
-            }
+                babi::StoryParser parser(&story);
+                vector<vector<string>> facts_so_far;
+                QA* qa;
+                while (!parser.done()) {
+                    std::tie(facts_so_far, qa) = parser.next();
+                    // When we are training we want to do backprop
+                    graph::NoBackprop nb(!training);
+                    // When we are training we want to use dropout
+                    auto activation = thread_model.activate_story(
+                            facts_so_far, qa->question, training);
+                    uint answer_idx = model->vocab->word2index.at(qa->answer[0]);
 
-            const int BATCH_SIZE = std::max( (int)dataset.size() / (2*NUM_THREADS), 2);
+                    thread_error[ThreadPool::get_thread_number()] +=
+                            errors(activation, answer_idx, qa->supporting_facts);
 
-            auto random_order = utils::random_arange(dataset.size());
-            vector<vector<int>> batches;
-            for (int i=0; i<dataset.size(); i+=BATCH_SIZE) {
-                vector<int> batch;
-                for (int j=i; j<std::min(i+BATCH_SIZE, (int)dataset.size()); ++j) {
-                    batch.push_back(random_order[j]);
-                }
-                batches.push_back(batch);
-            }
-
-            for (auto& batch : batches) {
-                pool.run([this, batch, &dataset, training, &num_questions, &thread_error, &solver]() {
-                    LstmBabiModel<T>& thread_model = thread_models[ThreadPool::get_thread_number()];
-                    auto params = thread_model.parameters();
-                    for (auto story_id: batch) {
-                        auto story = dataset[story_id];
-
-                        babi::StoryParser parser(&story);
-                        vector<vector<string>> facts_so_far;
-                        QA* qa;
-                        while (!parser.done()) {
-                            std::tie(facts_so_far, qa) = parser.next();
-                            // When we are training we want to do backprop
-                            graph::NoBackprop nb(!training);
-                            // When we are training we want to use dropout
-                            auto activation = thread_model.activate_story(
-                                    facts_so_far, qa->question, training);
-                            uint answer_idx = vocab->word2index.at(qa->answer[0]);
-                            thread_error[ThreadPool::get_thread_number()] +=
-                                    errors(activation, answer_idx, qa->supporting_facts);
-
-                            num_questions += 1;
-                            if (training)
-                                graph::backward();
-                         }
-                    }
+                    num_questions += 1;
                     if (training)
-                        solver->step(params, 0.001);
-                });
+                        graph::backward();
+                 }
             }
+            if (training)
+                solver->step(params, 0.001);
+        });
+    }
 
-            pool.wait_until_idle();
+    pool.wait_until_idle();
 
-            MatrixXd total_error(3,1);
-            total_error << 0, 0, 0;
-            for (int i=0; i<NUM_THREADS; ++i)
-                total_error += thread_error[i];
-            total_error /= num_questions;
+    MatrixXd total_error(3,1);
+    total_error << 0, 0, 0;
+    for (int i=0; i<NUM_THREADS; ++i)
+        total_error += thread_error[i];
+    total_error /= num_questions;
 
-            return total_error;
-        }
+    return total_error;
+}
 
-        void train(const vector<babi::Story>& data) {
-            shared_ptr<LSTV> default_method = make_shared<LSTV>(SHORT_TERM_VALIDATION,
-                                                                LONG_TERM_VALIDATION,
-                                                                PREDICTION_PATIENCE);
+void train(const vector<babi::Story>& data, shared_ptr<Training> training_method) {
+    for (auto param: model->parameters()) {
+        weights<REAL_t>::svd(weights<REAL_t>::gaussian(1.0))(param);
+    }
 
-            train(data, default_method);
-        }
+    int training_size = (int)(TRAINING_FRAC * data.size());
+    std::vector<babi::Story> train(data.begin(), data.begin() + training_size);
+    std::vector<babi::Story> validation(data.begin() + training_size, data.end());
 
-        void train(const vector<babi::Story>& data, shared_ptr<Training> training_method) {
-            auto vocab_vector = data_to_vocab(data);
-            vocab = make_shared<Vocab> (vocab_vector);
+    int epoch = 0;
 
-            model = std::make_shared<LstmBabiModel<T>>(vocab);
-
-            for (auto param: model->parameters()) {
-                weights<T>::svd(weights<T>::gaussian(1.0))(param);
-            }
-
-            int training_size = (int)(TRAINING_FRAC * data.size());
-            std::vector<babi::Story> train(data.begin(), data.begin() + training_size);
-            std::vector<babi::Story> validation(data.begin() + training_size, data.end());
-
-            epoch = 0;
-
-            auto params = model->parameters();
+    auto params = model->parameters();
 
 
-            // Solver::AdaDelta<T> solver(params, 0.95, 1e-9, 5.0);
-            Solver::Adam<T> solver(params, 0.1, 0.001, 1e-9, 5.0);
+    // Solver::AdaDelta<T> solver(params, 0.95, 1e-9, 5.0);
+    Solver::Adam<REAL_t> solver(params, 0.1, 0.001, 1e-9, 5.0);
 
-            training_method->reset();
+    training_method->reset();
+    while (true) {
+        auto training_errors = run_epoch(train, &solver, true);
+        auto validation_errors = run_epoch(validation, &solver, false);
 
-            while (true) {
-                auto training_errors = run_epoch(train, &solver, true);
-                auto validation_errors = run_epoch(validation, &solver, false);
+        std::cout << "Epoch " << ++epoch << std::endl;
+        std::cout << "Errors(prob_answer, fact_select, words_sparsity): " << std::endl
+                  << "VALIDATION: " << validation_errors(0) << " "
+                                    << validation_errors(1) << " "
+                                    << validation_errors(2) << std::endl
+                  << "TRAINING: " << training_errors(0) << " "
+                                  << training_errors(1) << " "
+                                  << training_errors(2) << std::endl;
+        if (training_method->should_stop(validation_errors(0))) break;
+        training_method->report();
+    }
+}
 
-                std::cout << "Epoch " << ++epoch << std::endl;
-                std::cout << "Errors(prob_answer, fact_select, words_sparsity): " << std::endl
-                          << "VALIDATION: " << validation_errors(0) << " "
-                                            << validation_errors(1) << " "
-                                            << validation_errors(2) << std::endl
-                          << "TRAINING: " << training_errors(0) << " "
-                                          << training_errors(1) << " "
-                                          << training_errors(2) << std::endl;
-                if (training_method->should_stop(validation_errors(0))) break;
-                training_method->report();
-            }
-        }
+void train(const vector<babi::Story>& data) {
+    shared_ptr<LSTV> default_method = make_shared<LSTV>(SHORT_TERM_VALIDATION,
+                                                        LONG_TERM_VALIDATION,
+                                                        PREDICTION_PATIENCE);
 
-        vector<vector<string>> story_so_far;
+    train(data, default_method);
+}
 
-        void new_story() {
-            story_so_far.clear();
-        }
+vector<string> predict(const vector<vector<string>>& facts,
+                       const vector<string>& question) {
+    graph::NoBackprop nb;
 
-        void fact(const vector<string>& fact) {
-            story_so_far.push_back(fact);
-        }
+    // Don't use dropout for validation.
+    int word_idx = model->activate_story(facts, question, false).log_probs.argmax();
 
-        vector<string> question(const vector<string>& question) {
-            graph::NoBackprop nb;
+    return {model->vocab->index2word[word_idx]};
+}
 
-            // Don't use dropout for validation.
-            int word_idx = model->activate_story(story_so_far, question, false).log_probs.argmax();
+void reset(const vector<babi::Story>& data) {
+    thread_models.clear();
+    auto vocab_vector = babi::vocab_from_data(data);
+    model.reset();
+    model = std::make_shared<BabiModel>(make_shared<Vocab> (vocab_vector));
+}
 
-            return {vocab->index2word[word_idx]};
-        }
-};
+double benchmark_task(const std::string task) {
+    auto data = babi::Parser::training_data(task);
+    reset(data);
 
+    shared_ptr<MaxEpochs> training_method = make_shared<MaxEpochs>(1);
+    train(data, training_method);
+    double accuracy = babi::task_accuracy(task, predict);
+    std::cout << "Accuracy on " << task << " is " << 100 * accuracy << "." << std::endl;
+    return accuracy;
+}
+
+void benchmark_all() {
+    vector<double> our_results;
+    for (auto task : babi::tasks()) {
+        our_results.push_back(100.0 * benchmark_task(task));
+    }
+    babi::compare_results(our_results);
+}
+
+/*
+void grid_search() {
+    string task = "qa2_two-supporting-facts";
+    BabiModel m;
+    perturb_for(seconds(30), m.conf(), []() {
+        shared_ptr<MaxEpochs> training_method = make_shared<MaxEpochs>(1);
+        m.train(babi::Parser::training_data(task), training_method);
+        double accuracy = task_accuracy(&m, task);
+        std::cout << "Used the following configuration to achieve "
+                  << accuracy << " accuracy on task " << task;
+                  << std::to_string(m.conf(), true) << std::endl;
+        return accuracy;
+    });
+}*/
 
 int main(int argc, char** argv) {
     sane_crashes::activate();
@@ -704,14 +709,13 @@ int main(int argc, char** argv) {
 
     Eigen::setNbThreads(0);
     Eigen::initParallel();
-    babi::benchmark_task<LstmBabiModelRunner<double>>("multitasking");
-    // babi::benchmark_task<LstmBabiModelRunner<double>>("qa1_single-supporting-fact");
 
+    benchmark_all();
+    // grid_search();
+    // benchmark_task("qa1_single-supporting-fact");
 
-    // babi::benchmark_task<LstmBabiModelRunner<double>>("qa2_two-supporting-facts");
-    // babi::benchmark_task<LstmBabiModelRunner<double>>("qa16_basic-induction");
-
-    // babi::benchmark_task<LstmBabiModelRunner<double>>("qa4_two-arg-relations");
-    // babi::benchmark_task<LstmBabiModelRunner<double>>("qa3_three-supporting-facts");
-    babi::benchmark<LstmBabiModelRunner<double>>();
+    // benchmark_task("multitasking");
+    // benchmark_task("qa16_basic-induction");
+    // benchmark_task("qa4_two-arg-relations");
+    // benchmark_task("qa3_three-supporting-facts");
 }

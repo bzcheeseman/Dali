@@ -54,6 +54,7 @@ MaxEpochs::MaxEpochs(int max_epochs) : max_epochs(max_epochs) {
 }
 
 bool MaxEpochs::should_stop(double validation_error) {
+    ++epochs_so_far;
     bool is_validation_nan = !(validation_error == validation_error);
     return epochs_so_far >= max_epochs || is_validation_nan;
 }

@@ -8,30 +8,29 @@ using conf_internal::Float;
 using conf_internal::Bool;
 
 void perturb_for(grid_clock_t::duration duration,
-                 const Model& model,
+                 Conf& c,
                  std::function<double()> objective) {
     grid_clock_t::time_point tp = grid_clock_t::now();
     double obj = objective();
     while(grid_clock_t::now() - tp <= duration) {
-        obj = perturbation_round(model, obj, objective);
+        obj = perturbation_round(c, obj, objective);
     }
 }
 
 void perturbX(int times,
-              const Model& model,
+              Conf& c,
               std::function<double()> objective) {
     assert(times >= 0);
     double obj = objective();
 
     while(times--) {
-        obj = perturbation_round(model, obj, objective);
+        obj = perturbation_round(c, obj, objective);
     }
 }
 
-double perturbation_round(const Model& model,
+double perturbation_round(Conf& c,
                           double current_objective,
                           std::function<double()> objective) {
-    Conf& c = model.conf();
     // select random param;
     int param_idx = rand() % c.items.size();
     auto item_kv = c.items.begin();

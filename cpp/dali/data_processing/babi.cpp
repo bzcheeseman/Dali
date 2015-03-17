@@ -42,6 +42,7 @@ namespace babi {
         str << utils::join(fact, " ");
     }
 
+    /* Parser */
 
     vector<Story> Parser::parse_file(const string& filename,
                                      const int& num_questions) {
@@ -137,7 +138,7 @@ namespace babi {
         return utils::dir_join({ STR(DALI_DATA_DIR), "babi", "babi" });
     }
 
-    VS Parser::tasks() {
+    vector<string> tasks() {
         // TODO read from disk.
         return {
             "qa1_single-supporting-fact",
@@ -168,26 +169,7 @@ namespace babi {
                                         bool shuffled) {
         if (task == "multitasking") {
             vector<Story> stories;
-            for (std::string sub_task : {       "qa1_single-supporting-fact",
-                                                "qa2_two-supporting-facts",
-                                                "qa3_three-supporting-facts",
-                                                "qa4_two-arg-relations",
-                                                "qa5_three-arg-relations",
-                                                "qa6_yes-no-questions",
-                                                "qa7_counting",
-                                                // "qa8_lists-sets",
-                                                "qa9_simple-negation",
-                                                "qa10_indefinite-knowledge",
-                                                "qa11_basic-coreference",
-                                                "qa12_conjunction",
-                                                "qa13_compound-coreference",
-                                                "qa14_time-reasoning",
-                                                "qa15_basic-deduction",
-                                                "qa16_basic-induction",
-                                                "qa17_positional-reasoning",
-                                                "qa18_size-reasoning",
-                                                // "qa19_path-finding",
-                                                "qa20_agents-motivations"}) {
+            for (std::string sub_task : tasks()) {
                 auto task_stories = training_data(sub_task, num_questions, shuffled);
                 stories.insert(stories.end(), task_stories.begin(), task_stories.end());
             }
@@ -201,30 +183,11 @@ namespace babi {
     }
 
     vector<Story> Parser::testing_data(const string& task,
-                                       const int& num_questions,
-                                       bool shuffled) {
+                         const int& num_questions,
+                         bool shuffled) {
         if (task == "multitasking") {
             vector<Story> stories;
-            for (std::string sub_task : {       "qa1_single-supporting-fact",
-                                                "qa2_two-supporting-facts",
-                                                "qa3_three-supporting-facts",
-                                                "qa4_two-arg-relations",
-                                                "qa5_three-arg-relations",
-                                                "qa6_yes-no-questions",
-                                                "qa7_counting",
-                                                // "qa8_lists-sets",
-                                                "qa9_simple-negation",
-                                                "qa10_indefinite-knowledge",
-                                                "qa11_basic-coreference",
-                                                "qa12_conjunction",
-                                                "qa13_compound-coreference",
-                                                "qa14_time-reasoning",
-                                                "qa15_basic-deduction",
-                                                "qa16_basic-induction",
-                                                "qa17_positional-reasoning",
-                                                "qa18_size-reasoning",
-                                                // "qa19_path-finding",
-                                                "qa20_agents-motivations"}) {
+            for (std::string sub_task : tasks()) {
                 auto task_stories = testing_data(sub_task, num_questions, shuffled);
                 stories.insert(stories.end(), task_stories.begin(), task_stories.end());
             }
@@ -237,35 +200,6 @@ namespace babi {
                                            filename});
         return parse_file(filepath, num_questions);
     }
-
-
-    double task_accuracy(std::shared_ptr<Model> m, const std::string& task) {
-        int correct_questions = 0;
-        int total_questions = 0;
-        for (auto& story : Parser::testing_data(task)) {
-            m->new_story();
-            for (auto& item_ptr : story) {
-                if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
-                    m->fact(f->fact);
-                } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
-                    VS answer = m->question(qa->question);
-                    if(utils::vs_equal(answer, qa->answer)) {
-                        ++correct_questions;
-                    }
-                    ++total_questions;
-                } else {
-                    assert(NULL == "Unknown subclass of babi::Item");
-                }
-            }
-        }
-
-        double accuracy = 100.0*(double)correct_questions/total_questions;
-        std::stringstream ss3;
-        ss3 << task << " all done - accuracy on test set: "<< accuracy;
-        ThreadPool::print_safely(ss3.str());
-        return accuracy;
-    }
-
 
     /* StoryParser */
 
@@ -295,6 +229,93 @@ namespace babi {
     bool StoryParser::done() {
         return next_qa == NULL;
     }
+
+    /* helper functions */
+
+    double task_accuracy(const std::string& task, prediction_fun predict) {
+        int correct_questions = 0;
+        int total_questions = 0;
+        for (auto& story : Parser::testing_data(task)) {
+            babi::StoryParser parser(&story);
+            vector<VS> facts_so_far;
+            QA* qa;
+            while (!parser.done()) {
+                std::tie(facts_so_far, qa) = parser.next();
+                VS answer = predict(facts_so_far, qa->question);
+                if(utils::vs_equal(answer, qa->answer))
+                    ++correct_questions;
+                ++total_questions;
+            }
+        }
+
+        double accuracy = (double)correct_questions/total_questions;
+
+        return accuracy;
+    }
+
+    vector<string> vocab_from_data(const vector<babi::Story>& data) {
+        std::set<string> vocab_set;
+        for (auto& story : data) {
+            for(auto& item_ptr : story) {
+                if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
+                    vocab_set.insert(f->fact.begin(), f->fact.end());
+                } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
+                    vocab_set.insert(qa->question.begin(), qa->question.end());
+                    vocab_set.insert(qa->answer.begin(), qa->answer.end());
+                }
+            }
+        }
+        vector<string> vocab_as_vector;
+        vocab_as_vector.insert(vocab_as_vector.end(), vocab_set.begin(), vocab_set.end());
+        return vocab_as_vector;
+    }
+
+    void compare_results(std::vector<double> our_results) {
+        std::vector<double> facebook_lstm_results = {
+            50,  20,  20,  61,  70, 48,  49, 45, 64,  44, 72,  74,  94,  27, 21,  23,  51, 52, 8,  91
+        };
+
+        std::vector<double> facebook_best_results = {
+            100, 100, 100, 100, 98, 100, 85, 91, 100, 98, 100, 100, 100, 99, 100, 100, 65, 95, 36, 100
+        };
+
+        std::vector<double> facebook_multitask_results = {
+            100, 100, 98,  80,  99, 100, 86, 93, 100, 98, 100, 100, 100, 99, 100, 94,  72, 93, 19, 100
+        };
+
+        std::cout << "Babi Benchmark Results" << std::endl
+                  << std::endl
+                  << "Columns are (from left): task name, our result," << std::endl
+                  << "Facebook's LSTM result, Facebook's best result," << std::endl
+                  << "Facebook's multitask result." << std::endl
+                  << "===============================================" << std::endl;
+
+        std::function<std::string(std::string)> moar_whitespace = [](std::string input,
+                                                                     int num_whitespace=30) {
+            assert(input.size() < num_whitespace);
+            std::stringstream ss;
+            ss << input;
+            num_whitespace -= input.size();
+            while(num_whitespace--) ss << ' ';
+            return ss.str();
+        };
+        auto task_list = tasks();
+        for (int task_id = 0; task_id < task_list.size(); ++task_id) {
+            char special = ' ';
+            if (our_results[task_id] >= facebook_lstm_results[task_id]) special = '*';
+            if (our_results[task_id] >= facebook_best_results[task_id]) special = '!';
+
+
+            std::cout << std::setprecision(1) << std::fixed
+                      << moar_whitespace(task_list[task_id]) << "\t"
+                      << special << our_results[task_id] << special << "\t"
+                      << facebook_lstm_results[task_id] << "\t"
+                      << facebook_best_results[task_id] << "\t"
+                      << facebook_multitask_results[task_id] << std::endl;
+        }
+    }
+
+
 };
 
 

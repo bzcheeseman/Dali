@@ -40,6 +40,26 @@ DEFINE_double(root_weight, 1.0, "By how much to weigh the roots in the objective
 DEFINE_bool(recursive_gates, true, "Make a prediction at every timestep?");
 
 
+/*template<typename T>
+Mat<T> categorical_surprise(Mat<T> logprobs, int target) {
+    auto out = Mat<T>(1, 1, false);
+    auto X = MatOps<T>::softmax_no_grad(logprobs);
+
+    out.w()(0) = -(
+        std::log1p(-std::sqrt(1.0 - X.w()(target, 0))) -
+        std::log1p( std::sqrt(1.0 - X.w()(target, 0)))
+    );
+
+    if (graph::backprop_enabled) {
+        if (!logprobs.constant) {
+            // d/db -(log1p(-sqrt(1 - (exp(a)/(exp(b) + exp(c) + exp(a)) )) ) - log1p(sqrt(1 - (exp(a)/(exp(b) + exp(c) + exp(a)) )) ))
+        }
+    }
+    return out;
+}*/
+
+
+
 ThreadPool* pool;
 
 Mat<REAL_t> apply_dropout(Mat<REAL_t> X, REAL_t drop_prob) {

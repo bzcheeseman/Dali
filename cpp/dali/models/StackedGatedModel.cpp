@@ -157,7 +157,7 @@ std::tuple<Z, Z> StackedGatedModel<Z>::masked_predict_cost(
     auto n = data->cols();
     for (uint i = 0; i < n-1; ++i) {
         // pick this letter from the embedding
-        input_vector = this->embedding.rows_pluck(data->col(i));
+        input_vector = this->embedding[data->col(i)];
         memory = gate.activate(input_vector, initial_state.back().hidden );
         input_vector = input_vector.eltmul_broadcast_rowwise(memory);
         // pass this letter to the LSTM for processing
@@ -219,7 +219,7 @@ std::tuple<Z, Z> StackedGatedModel<Z>::masked_predict_cost(
     auto n = data->cols();
     for (uint i = 0; i < n-1; ++i) {
             // pick this letter from the embedding
-            input_vector = this->embedding.rows_pluck(data->col(i));
+            input_vector = this->embedding[data->col(i)];
             memory = gate.activate(
                 input_vector,
                 initial_state.back().hidden
@@ -418,7 +418,7 @@ typename StackedGatedModel<Z>::state_type StackedGatedModel<Z>::get_final_activa
     auto n = example.size();
     for (uint i = 0; i < n; ++i) {
         // pick this letter from the embedding
-        input_vector  = this->embedding.row_pluck(example[i]);
+        input_vector  = this->embedding[example[i]];
         memory        = gate.activate(
             input_vector,
             initial_state.back().hidden
@@ -459,7 +459,7 @@ typename StackedGatedModel<Z>::activation_t StackedGatedModel<Z>::activate(
         const uint& index) const {
     activation_t out;
 
-    auto input_vector = this->embedding.row_pluck(index);
+    auto input_vector = this->embedding[index];
     auto memory       = gate.activate(
         input_vector,
         previous_state.back().hidden
@@ -485,7 +485,7 @@ typename StackedGatedModel<Z>::activation_t StackedGatedModel<Z>::activate(
         state_type& previous_state,
         const eigen_index_block indices) const {
     activation_t out;
-    auto input_vector = this->embedding.rows_pluck(indices);
+    auto input_vector = this->embedding[indices];
     auto memory       = gate.activate(
         input_vector,
         previous_state.back().hidden
@@ -525,7 +525,7 @@ std::vector<int> StackedGatedModel<Z>::reconstruct(
     outputs.emplace_back(last_symbol);
     last_symbol += symbol_offset;
     for (uint j = 0; j < eval_steps - 1; j++) {
-            input_vector  = this->embedding.row_pluck(last_symbol);
+            input_vector  = this->embedding[last_symbol];
             memory        = gate.activate(
                 input_vector,
                 initial_state.back().hidden
@@ -557,7 +557,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<Z>::reconstr
     auto n = example.size();
     for (uint i = 0; i < n; ++i) {
         // pick this letter from the embedding
-        input_vector  = this->embedding.row_pluck(example[i]);
+        input_vector  = this->embedding[example[i]];
         memory        = gate.activate(input_vector, initial_state.back().hidden);
         input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
         // pass this letter to the LSTM for processing
@@ -580,7 +580,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<Z>::reconstr
     // add this decision to the output :
     outputs.emplace_back(pos);
     for (uint j = 0; j < eval_steps - 1; j++) {
-        input_vector  = this->embedding.row_pluck(pos->id);
+        input_vector  = this->embedding[pos->id];
         memory        = gate.activate(input_vector, initial_state.back().hidden);
         input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
         initial_state = this->stacked_lstm->activate(initial_state, input_vector);

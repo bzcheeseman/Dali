@@ -73,7 +73,7 @@ namespace sequence_probability {
 
         auto data_pluck = Indexing::Index::arange(0, data.rows());
 
-        log_prob.w().col(0) = std::get<1>(out_state_and_prob).rows_cols_pluck(
+        log_prob.w().col(0) = std::get<1>(out_state_and_prob)(
             data.col(1),
             data_pluck
         ).w().row(0).transpose().array().log();
@@ -83,7 +83,7 @@ namespace sequence_probability {
                 std::get<0>(out_state_and_prob),
                 data.col(i)
             );
-            auto plucked_activations = std::get<1>(out_state_and_prob).rows_cols_pluck(
+            auto plucked_activations = std::get<1>(out_state_and_prob)(
                 data.col(i+1),
                 data_pluck
             );
@@ -91,7 +91,7 @@ namespace sequence_probability {
         }
 
         // inelegant manner of dealing with scalar corrections on codelens:
-        auto relevant_log_prob = log_prob.rows_cols_pluck(
+        auto relevant_log_prob = log_prob(
             data_pluck,
             (codelens.array() - (uint)1).matrix()
         );
@@ -121,14 +121,14 @@ namespace sequence_probability {
 
         auto data_pluck = Indexing::Index::arange(0, data.rows());
 
-        log_prob.w().col(0) = SURPRISE( std::get<1>(out_state_and_prob).rows_cols_pluck(data.col(1), data_pluck).w().row(0).transpose() );
+        log_prob.w().col(0) = SURPRISE( std::get<1>(out_state_and_prob)(data.col(1), data_pluck).w().row(0).transpose() );
 
         for (int i = 1; i < n-1; i++) {
             out_state_and_prob = model.activate(
                 std::get<0>(out_state_and_prob),
                 data.col(i)
             );
-            auto plucked_activations = std::get<1>(out_state_and_prob).rows_cols_pluck(
+            auto plucked_activations = std::get<1>(out_state_and_prob)(
                 data.col(i+1),
                 data_pluck
             );
@@ -136,7 +136,7 @@ namespace sequence_probability {
         }
 
         // inelegant manner of dealing with scalar corrections on codelens:
-        auto relevant_log_prob = log_prob.rows_cols_pluck(
+        auto relevant_log_prob = log_prob(
             data_pluck,
             (codelens.array() - (uint)1).matrix()
         );

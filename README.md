@@ -227,7 +227,7 @@ Then our forward function can be changed to:
 
         for (int i = 0; i < n-1; ++i) {
             // pick this letter from the embedding
-            input_vector  = embedding.row_pluck(indices[i]);
+            input_vector  = embedding[indices[i]];
             // pass this letter to the LSTM for processing
             initial_state = forward_LSTMs(input_vector, initial_state, cells);
             // classifier takes as input the final hidden layer's activation:

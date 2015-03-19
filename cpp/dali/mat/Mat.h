@@ -214,9 +214,6 @@ class Mat {
         Mat<R> relu() const;
         Mat<R> mul(Mat<R>) const;
         Mat<R> dot(Mat<R>) const;
-        Mat<R> rows_pluck(Indexing::Index) const;
-        Mat<R> rows_cols_pluck(Indexing::Index, Indexing::Index) const;
-        Mat<R> row_pluck(int) const;
         Mat<R> pow(R) const;
         Mat<R> pow(int) const;
         Mat<R> sqrt() const;
@@ -238,6 +235,13 @@ class Mat {
         Mat<R> operator-(R) const;
         Mat<R> operator^(R) const;
         Mat<R> operator^(int) const;
+
+        // Plucking rows and columns:
+        Mat<R> operator[](int) const;
+        Mat<R> operator()(int) const;
+        Mat<R> operator[](Indexing::Index) const;
+        Mat<R> operator()(Indexing::Index) const;
+        Mat<R> operator()(Indexing::Index, Indexing::Index) const;
         static Mat<R> zeros_like(Mat<R> shape);
         static Mat<R> empty_like(Mat<R> shape);
 };

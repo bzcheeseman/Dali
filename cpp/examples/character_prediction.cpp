@@ -72,7 +72,7 @@ T validation_error(
         REAL_t example_cost = 0.0;
         for (int i = 0; i < n-1; ++i) {
             // pick this letter from the embedding
-            input_vector  = model.embedding.row_pluck(example[i]);
+            input_vector  = model.embedding[example[i]];
             // pass this letter to the LSTM for processing
             initial_state = model.stacked_lstm->activate(initial_state, input_vector);
             // classifier takes as input the final hidden layer's activation:
@@ -103,7 +103,7 @@ T cost_fun(
 
     for (int i = 0; i < n-1; ++i) {
         // pick this letter from the embedding
-        input_vector  = model.embedding.row_pluck(indices[i]);
+        input_vector  = model.embedding[indices[i]];
         // pass this letter to the LSTM for processing
         initial_state = model.stacked_lstm->activate(initial_state, input_vector);
         // classifier takes as input the final hidden layer's activation:

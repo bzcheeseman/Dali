@@ -157,7 +157,7 @@ Z StackedModel<Z>::masked_predict_cost(
     auto n = data->cols();
     for (uint i = 0; i < n-1; ++i) {
         // pick this letter from the embedding
-        input_vector = this->embedding.rows_pluck(data->col(i));
+        input_vector = this->embedding[data->col(i)];
         // pass this letter to the LSTM for processing
         initial_state = stacked_lstm->activate(
             initial_state,
@@ -210,7 +210,7 @@ Z StackedModel<Z>::masked_predict_cost(
     auto n = data->cols();
     for (uint i = 0; i < n-1; ++i) {
         // pick this letter from the embedding
-        input_vector = this->embedding.rows_pluck(data->col(i));
+        input_vector = this->embedding[data->col(i)];
         // pass this letter to the LSTM for processing
         initial_state = stacked_lstm->activate(
             initial_state,
@@ -377,7 +377,7 @@ typename StackedModel<Z>::state_type StackedModel<Z>::get_final_activation(
     auto n = example.size();
     for (uint i = 0; i < n; ++i) {
         // pick this letter from the embedding
-        input_vector  = this->embedding.row_pluck(example[i]);
+        input_vector  = this->embedding[example[i]];
         // pass this letter to the LSTM for processing
         initial_state = stacked_lstm->activate(
             initial_state,
@@ -398,7 +398,7 @@ std::vector<int> StackedModel<Z>::reconstruct(
     graph::NoBackprop nb;
     auto initial_state = get_final_activation(example);
     vector<int> outputs;
-    auto input_vector = this->embedding.row_pluck(example[example.size() - 1]);
+    auto input_vector = this->embedding[example[example.size() - 1]];
     auto last_symbol = decoder->activate(
         input_vector,
         GET_STATE_HIDDENS(initial_state)
@@ -407,7 +407,7 @@ std::vector<int> StackedModel<Z>::reconstruct(
     last_symbol += symbol_offset;
 
     for (uint j = 0; j < eval_steps - 1; j++) {
-        input_vector  = this->embedding.row_pluck(last_symbol);
+        input_vector  = this->embedding[last_symbol];
         initial_state = stacked_lstm->activate(initial_state, input_vector);
         last_symbol   = decoder->activate(
             input_vector,
@@ -424,7 +424,7 @@ typename StackedModel<Z>::activation_t StackedModel<Z>::activate(
     state_type& previous_state,
     const uint& index) const {
     activation_t out;
-    auto input_vector = this->embedding.row_pluck(index);
+    auto input_vector = this->embedding[index];
     std::get<0>(out)  = stacked_lstm->activate(previous_state, input_vector);
     std::get<1>(out)  = MatOps<Z>::softmax_no_grad(
         decoder->activate(
@@ -440,7 +440,7 @@ typename StackedModel<Z>::activation_t StackedModel<Z>::activate(
     state_type& previous_state,
     const eigen_index_block indices) const {
     activation_t out;
-    auto input_vector = this->embedding.rows_pluck(indices);
+    auto input_vector = this->embedding[indices];
     std::get<0>(out)  = stacked_lstm->activate(previous_state, input_vector);
     std::get<1>(out)  = MatOps<Z>::softmax_no_grad(
         decoder->activate(
@@ -464,7 +464,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedModel<Z>::reconstruct_l
     auto n = example.size();
     for (uint i = 0; i < n; ++i) {
         // pick this letter from the embedding
-        input_vector  = this->embedding.row_pluck(example[i]);
+        input_vector  = this->embedding[example[i]];
         // pass this letter to the LSTM for processing
         initial_state = stacked_lstm->activate(initial_state, input_vector);
         // decoder takes as input the final hidden layer's activation:
@@ -485,7 +485,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedModel<Z>::reconstruct_l
     // add this decision to the output :
     outputs.emplace_back(pos);
     for (uint j = 0; j < eval_steps - 1; j++) {
-        input_vector  = this->embedding.row_pluck(pos->id);
+        input_vector  = this->embedding[pos->id];
         initial_state = stacked_lstm->activate(initial_state, input_vector);
         last_turn     = decoder->activate(
             input_vector,

@@ -19,7 +19,7 @@ int main () {
     Mat<R> embedding(1000, 30, U);
     auto prev_state = lstm.initial_states();
     Mat<R> hidden, memory;
-    std::tie(memory, hidden) = lstm.activate(embedding.rows_pluck({0, 1, 10, 2, 1, 3}), prev_state);
+    std::tie(memory, hidden) = lstm.activate(embedding[{0, 1, 10, 2, 1, 3}], prev_state);
     hidden.print();
 
     // load numpy matrix from file:
@@ -65,7 +65,7 @@ int main () {
     auto A_times_B    = A * B;
     auto A_plus_B_sig = (A+B).sigmoid();
     auto A_dot_C_tanh = A.dot(C).tanh();
-    auto A_plucked    = A.row_pluck(2);
+    auto A_plucked    = A[2];
 
     A_times_B.print();
     A_plus_B_sig.print();
@@ -124,7 +124,7 @@ int main () {
     bob_indices(1,0) = 2;
     bob_indices(2,0) = 3;
 
-    auto bob = inputs[0].rows_pluck(bob_indices.col(0) );
+    auto bob = inputs[0][bob_indices.col(0)];
 
     bob.print();
 

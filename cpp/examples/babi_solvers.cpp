@@ -393,7 +393,7 @@ class LstmBabiModel : public Model {
             Seq<Mat<T>> seq;
             for (auto& word: words) {
                 auto question_idx = vocab->word2index.at(word);
-                auto embedding = embeddings.row_pluck(question_idx);
+                auto embedding = embeddings[question_idx];
                 seq.push_back(embedding);
                 // We don't need explicitly start prediction token because
                 // each question is guaranteed to end with "?" token.

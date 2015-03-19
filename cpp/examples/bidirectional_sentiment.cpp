@@ -153,7 +153,7 @@ class BidirectionalLSTM {
             vector<Mat<T>> backwardX;
             assert(example.size() > 0);
             for (size_t i = 0; i < example.size(); i++) {
-                forwardX.emplace_back(embedding.row_pluck(example[i]));
+                forwardX.emplace_back(embedding[example[i]]);
                 backwardX.push_back(forwardX.back());
             }
             auto state = stacked_lstm.cells[0].initial_states();
@@ -224,7 +224,7 @@ class BidirectionalLSTM {
                         *it_forward,
                         *it_back,
                         prediction
-                    }).sigmoid();
+                    }).steep_sigmoid();
                     // Make a new prediction:
                     auto new_prediction = decoder.activate({backwardX.front(), forwardX.back()});
                     // Update the prediction using the alpha value (tradeoff between old and new)
@@ -417,8 +417,15 @@ int main (int argc,  char* argv[]) {
         thread_models.push_back(model.shallow_copy());
         thread_params.push_back(thread_models.back().parameters());
     }
-
     auto params = model.parameters();
+
+    auto svd_init = weights<REAL_t>::svd(weights<REAL_t>::gaussian(0.0, 1.0));
+
+    for (auto& param : params) {
+        if (param.dims(0) < 1000) {
+            svd_init(param);
+        }
+    }
 
     // Rho value, eps value, and gradient clipping value:
     std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver;

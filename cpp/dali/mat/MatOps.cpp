@@ -30,6 +30,47 @@ Mat<R> MatOps<R>::eltmul_broadcast(
 }
 
 template<typename R>
+Mat<R> MatOps<R>::eltdivide_broadcast(
+        Mat<R> matrix1,
+        Mat<R> matrix2) {
+    assert2(matrix1.dims(0) == matrix2.dims(0) && matrix2.dims(1) == 1,
+            MS() << "Matrices " << matrix1 << " and " << matrix2
+                 << " cannot be element divided with broadcast,"
+                 << " they do not have the same dimensions.");
+    auto out = Mat<R>::empty_like(matrix1);
+    out.w() = (matrix1.w().array().colwise() / matrix2.w().col(0).array()).matrix();
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix1, matrix2, out]() {
+            GRAD(matrix1).noalias() += ((out.dw()).array().colwise() * (matrix2.w()).col(0).array().inverse()).matrix();
+            GRAD(matrix2).noalias() -= (
+                (
+                    matrix1.w().array().colwise() /
+                    matrix2.w().col(0).array().square()
+                ).matrix().array() * out.dw().array()
+            ).matrix().rowwise().sum();
+        });
+    return out;
+}
+
+template<typename R>
+Mat<R> MatOps<R>::eltdivide_broadcast_reversed(
+        Mat<R> matrix1,
+        Mat<R> matrix2) {
+    assert2(matrix1.dims(0) == matrix2.dims(0) && matrix2.dims(1) == 1,
+            MS() << "Matrices " << matrix1 << " and " << matrix2
+                 << " cannot be element divided with broadcast,"
+                 << " they do not have the same dimensions.");
+    auto out = Mat<R>::empty_like(matrix1);
+    out.w() = (matrix1.w().array().inverse().colwise() * matrix2.w().col(0).array()).matrix();
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix1, matrix2, out]() {
+            GRAD(matrix1).noalias() -= ((matrix1.w().array().square().inverse().colwise() * matrix2.w().col(0).array()).matrix().array() * out.dw().array()).matrix();
+            GRAD(matrix2).noalias() += (matrix1.w().array().inverse() * out.dw().array()).rowwise().sum().matrix();
+        });
+    return out;
+}
+
+template<typename R>
 Mat<R> MatOps<R>::eltmul(
     Mat<R> matrix1,
     Mat<R> matrix2) {
@@ -62,6 +103,44 @@ Mat<R> MatOps<R>::eltmul(
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, alpha, out]() {
             GRAD(matrix).noalias() += (alpha * (out.dw()).array()).matrix();
+        });
+    return out;
+}
+
+
+template<typename R>
+Mat<R> MatOps<R>::eltdivide(
+    Mat<R> matrix1,
+    Mat<R> matrix2) {
+    if (matrix1.dims(1) != matrix2.dims(1) && (matrix1.dims(1) == 1 || matrix2.dims(1) == 1)) {
+        if (matrix1.dims(1) == 1) {
+            return eltdivide_broadcast_reversed(matrix2, matrix1);
+        }
+        return eltdivide_broadcast(matrix1, matrix2);
+    }
+    assert2(matrix1.dims(0) == matrix2.dims(0) && matrix1.dims(1) == matrix2.dims(1),
+            "Matrices cannot be element-wise multiplied, they do not have the same dimensions.");
+    auto out = Mat<R>::empty_like(matrix1);
+    out.w() = (matrix1.w().array() / matrix2.w().array()).matrix();
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix1, matrix2, out]() {
+            GRAD(matrix1).noalias() += ((matrix2.w()).array().inverse() * (out.dw()).array()).matrix();
+            GRAD(matrix2).noalias() -= (((matrix1.w()).array() / matrix2.w().array().square()) * (out.dw()).array()).matrix();
+        });
+    return out;
+}
+
+
+template<typename R>
+Mat<R> MatOps<R>::eltdivide(
+    Mat<R> matrix,
+    R alpha) {
+
+    auto out = Mat<R>::empty_like(matrix);
+    out.w() = (matrix.w().array() / alpha).matrix();
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, alpha, out]() {
+            GRAD(matrix).noalias() += ((1.0 / alpha) * (out.dw()).array()).matrix();
         });
     return out;
 }

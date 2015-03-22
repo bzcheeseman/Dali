@@ -240,7 +240,7 @@ TEST_F(MatrixTests, matrix_divide_scalar) {
         auto functor = [&scalar](vector<Mat<R>> Xs)-> Mat<R> {
             return Xs[0] / scalar.w()(0);
         };
-        ASSERT_TRUE(gradient_same<R>(functor, {A}, 1e-4));
+        ASSERT_TRUE(gradient_same<R>(functor, {A}, 1e-3));
     }
 }
 
@@ -276,6 +276,75 @@ TEST_F(MatOpsTests, matrix_mul_add_mul_with_bias) {
         auto W_other = Mat<R>(hidden_size, other_input_size, weights<R>::uniform(2.0));
         auto bias    = Mat<R>(hidden_size, 1,                weights<R>::uniform(2.0));
         ASSERT_TRUE(gradient_same<R>(functor, {W, X, W_other, X_other, bias}, 0.0003));
+    }
+}
+
+TEST_F(MatOpsTests, matrix_conv2d) {
+    auto image = Mat<R>(10, 10);
+    int block_width  = 4,
+        block_offset = 3,
+        kernel_width = 3,
+        kernel_height = 3;
+    R filler = 2.0;
+
+    image.w().block(
+        block_offset,
+        block_offset,
+        block_width,
+        block_width).fill(filler);
+
+    auto kernel = Mat<R>(kernel_width, kernel_height);
+
+    kernel.w().fill(1);
+
+    auto out = MatOps<R>::conv2d(image, kernel);
+
+    auto expected = Mat<R>(
+        image.dims(0) - kernel.dims(0) + 1,
+        image.dims(1) - kernel.dims(1) + 1);
+
+    expected.w().block(
+        block_offset,
+        block_offset,
+        block_width - kernel_width + 1,
+        block_width - kernel_height + 1).fill(filler);
+
+    ASSERT_EQ( out.w().sum(), (block_width * block_width * filler)) << "Sum of convolution with image should be sum of image";
+
+    // TODO: test more properties here.
+    ASSERT_MATRIX_EQ(
+        expected.w().block(
+            block_offset,
+            block_offset,
+            block_width - kernel_width + 1,
+            block_width - kernel_height + 1),
+        out.w().block(
+            block_offset,
+            block_offset,
+            block_width - kernel_width + 1,
+            block_width - kernel_height + 1)) << "Center of kernel activations should match up.";
+}
+
+TEST_F(MatOpsTests, matrix_conv2d_grad) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return MatOps<R>::conv2d(Xs[0], Xs[1]).tanh();
+    };
+    EXPERIMENT_REPEAT {
+        auto kernel = Mat<R>(5, 5, weights<R>::uniform(-20.0, 20.0));
+        auto image = Mat<R>(20, 20, weights<R>::uniform(-20.0, 20.0));
+        ASSERT_TRUE(gradient_same<R>(functor, {image, kernel}, 1e-4));
+    }
+}
+
+TEST_F(MatOpsTests, matrix_conv1d_grad) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return MatOps<R>::conv1d(Xs[0], std::initializer_list<Mat<R>>({Xs[1], Xs[2]})).tanh();
+    };
+    EXPERIMENT_REPEAT {
+        auto kernel1 = Mat<R>(5, 5, weights<R>::uniform(-20.0, 20.0));
+        auto kernel2 = Mat<R>(5, 5, weights<R>::uniform(-20.0, 20.0));
+        auto image = Mat<R>(5, 20, weights<R>::uniform(-20.0, 20.0));
+        ASSERT_TRUE(gradient_same<R>(functor, {image, kernel1, kernel2}, 1e-2));
     }
 }
 

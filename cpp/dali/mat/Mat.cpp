@@ -542,11 +542,6 @@ Mat<R> Mat<R>::operator*(R alpha) const {
 }
 
 template<typename R>
-Mat<R> Mat<R>::operator*(int alpha) const {
-    return MatOps<R>::eltmul(*this, (R) alpha);
-}
-
-template<typename R>
 Mat<R> Mat<R>::operator/(Mat<R> other) const {
     return MatOps<R>::eltdivide(*this, other);
 }
@@ -554,11 +549,6 @@ Mat<R> Mat<R>::operator/(Mat<R> other) const {
 template<typename R>
 Mat<R> Mat<R>::operator/(R alpha) const {
     return MatOps<R>::eltdivide(*this, alpha);
-}
-
-template<typename R>
-Mat<R> Mat<R>::operator/(int alpha) const {
-    return MatOps<R>::eltdivide(*this, (R) alpha);
 }
 
 template<typename R>

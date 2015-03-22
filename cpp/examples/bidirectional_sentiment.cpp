@@ -105,14 +105,16 @@ class BidirectionalLSTM {
         StackedInputLayer<T> decoder;
         bool use_recursive_gates;
         int output_size;
+        int stack_size;
         std::shared_ptr<StackedInputLayer<T>> prediction_gate;
 
 
         BidirectionalLSTM(int vocabulary_size, int hidden_size, int stack_size, int output_size, bool shortcut, bool memory_feeds_gates, bool use_recursive_gates)
             : embedding(vocabulary_size, hidden_size, weights<T>::uniform(-0.05, 0.05)),
-              stacked_lstm(hidden_size, repeat_val(hidden_size, stack_size), shortcut, memory_feeds_gates),
-            decoder({hidden_size, hidden_size}, output_size),
+              stacked_lstm(hidden_size, repeat_val(hidden_size, std::max(stack_size-1, 1)), shortcut, memory_feeds_gates),
+            decoder({hidden_size, hidden_size }, output_size),
             use_recursive_gates(use_recursive_gates),
+            stack_size(stack_size),
             output_size(output_size) {
 
             if (use_recursive_gates) {
@@ -121,13 +123,15 @@ class BidirectionalLSTM {
                 prediction_gate = nullptr;
             }
 
-            stacked_lstm.cells.insert(
-                stacked_lstm.cells.begin(),
-                LSTM<T>(hidden_size, hidden_size, memory_feeds_gates)
-            );
-            stacked_lstm.hidden_sizes.insert(
-                stacked_lstm.hidden_sizes.begin(),
-                hidden_size);
+            if (stack_size > 1) {
+                stacked_lstm.cells.insert(
+                    stacked_lstm.cells.begin(),
+                    LSTM<T>(hidden_size, hidden_size, memory_feeds_gates)
+                );
+                stacked_lstm.hidden_sizes.insert(
+                    stacked_lstm.hidden_sizes.begin(),
+                    hidden_size);
+            }
         }
 
         BidirectionalLSTM(const BidirectionalLSTM& model, bool copy_w, bool copy_dw)
@@ -214,10 +218,9 @@ class BidirectionalLSTM {
                 auto total_memory = MatOps<T>::consider_constant(Mat<T>(1, 1));
                 // With recursive gates the prediction happens all along
                 // we rerun through the highest layer's predictions:
-                for (auto it_back = backwardX.begin(),
-                              it_forward = forwardX.begin();
+                for (auto it_back = backwardX.begin(), it_forward = forwardX.begin();
                         (it_back != backwardX.end() && it_forward != forwardX.end());
-                        ++it_back, ++it_forward) {
+                        ++it_back, ++it_forward)                                      {
                     // get a value between 0 and 1 for how much we keep
                     // update the current prediction
                     auto new_memory = prediction_gate->activate({
@@ -386,7 +389,7 @@ int main (int argc,  char* argv[]) {
               << "        Dropout type : " << (FLAGS_fast_dropout ? "fast" : "default") << std::endl
               << " Max training epochs : " << FLAGS_epochs << std::endl
               << "           LSTM type : " << (FLAGS_memory_feeds_gates ? "Graves 2013" : "Zaremba 2014") << std::endl
-              << "          Stack size : " << std::max(FLAGS_stack_size, 2) << std::endl
+              << "          Stack size : " << std::max(FLAGS_stack_size, 1) << std::endl
               << "       Loss function : " << (FLAGS_surprise ? "Categorical Surprise" : "KL divergence") << std::endl
               << " # training examples : " << dataset.size() * FLAGS_minibatch - (FLAGS_minibatch - dataset[dataset.size() - 1].size()) << std::endl;
 
@@ -396,12 +399,12 @@ int main (int argc,  char* argv[]) {
     Create a model with an embedding, and several stacks:
     */
 
-    auto stack_size  = std::max(FLAGS_stack_size, 2);
+    auto stack_size  = std::max(FLAGS_stack_size, 1);
 
     auto model = BidirectionalLSTM<REAL_t>(
          word_vocab.index2word.size(),
          FLAGS_hidden,
-         stack_size - 1,
+         stack_size,
          SST::label_names.size(),
          FLAGS_shortcut,
          FLAGS_memory_feeds_gates,

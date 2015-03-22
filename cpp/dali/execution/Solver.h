@@ -1,12 +1,12 @@
 #ifndef SOLVER_MAT_H
 #define SOLVER_MAT_H
 
-#include "dali/utils.h"
+#include <Eigen/Eigen>
+#include "dali/mat/Mat.h"
+#include "dali/utils/core_utils.h"
 
 #define SMOOTH_DEFAULT 1e-9
-
 #define SOLVER_MAT_TYPEDEF_H typedef Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
-
 #define SOLVER_MAT_DEFAULT_STEP_SIZE_H 0.035
 
 namespace Solver {

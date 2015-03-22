@@ -1,6 +1,5 @@
 #include <gflags/gflags.h>
 
-#include "dali/core.h"
 #include "dali/utils.h"
 
 

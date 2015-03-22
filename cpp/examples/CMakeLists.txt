@@ -15,17 +15,18 @@ set(EXAMPLE_PROGRAMS babi_solvers
                      sparkfun_prediction
                      stacked_lstm
                      test_lattice
+                     loading_from_sqlite
                      )
-
 foreach(program ${EXAMPLE_PROGRAMS})
     add_executable(${program} ${EXAMPLES_DIR}/${program}.cpp)
-    target_link_libraries(${program} dali)
+    target_link_libraries(${program} dali sqlite3 SQLiteCpp)
     if (MKL_FOUND AND BLAS_FOUND)
         add_custom_command(TARGET ${program}
             COMMAND sh ${PROJECT_SOURCE_DIR}/scripts/fix_dylib.sh ${EXAMPLES_BUILD_DIR}/${program}
             WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/build)
     endif (MKL_FOUND AND BLAS_FOUND)
 endforeach(program)
+
 
 # If custom libraries are needed for some targets add them below
 # like this:

@@ -4,8 +4,6 @@
 #include <algorithm>
 #include <vector>
 
-#include "dali/core.h"
-
 namespace beam_search {
 
     template<typename T>

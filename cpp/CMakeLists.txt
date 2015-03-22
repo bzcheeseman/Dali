@@ -5,12 +5,16 @@ project("recurrentjs")
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
+# For sqlite3:
+set(SQLiteCpp_FIND_VERSION "0.9.9")
+set(SQLITECPP_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/SQLiteCpp/include/SQLiteCpp)
 set(MKL_MULTI_THREADED "1")
 
 # REQUIRED PACKAGES
 find_package(Eigen3 REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Gflags REQUIRED)
+find_package(SQLiteCpp REQUIRED)
 
 # OPTIONAL PACAKGES
 find_package(GooglePerfTools)
@@ -77,7 +81,7 @@ add_definitions(-DGFLAGS_NAMESPACE=${GFLAGS_NAMESPACE})
 add_definitions(-DBUILD_DIR=${CMAKE_BUILD_DIR})
 
 message("=> BUILD_TYPE " ${CMAKE_BUILD_TYPE})
-set (CMAKE_CXX_COMPILER             "clang++")
+set (CMAKE_CXX_COMPILER "clang++")
 if(CMAKE_BUILD_TYPE MATCHES "debug")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g")
 else(CMAKE_BUILD_TYPE MATCHES "debug")
@@ -90,6 +94,7 @@ include_directories(${MKL_INCLUDE_DIR})
 include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${GFLAGS_INCLUDE_DIRS})
+include_directories(${PROJECT_SOURCE_DIR}/SQLiteCpp/include)
 if (GPERFTOOLS_FOUND)
     include_directories(${GPERFTOOLS_INCLUDE_DIR})
 endif (GPERFTOOLS_FOUND)
@@ -98,4 +103,15 @@ endif (GPERFTOOLS_FOUND)
 add_subdirectory(${PROJECT_SOURCE_DIR}/protobuf)
 add_subdirectory(${PROJECT_SOURCE_DIR}/dali)
 add_subdirectory(${PROJECT_SOURCE_DIR}/examples)
+
+
+# for special SQLiteCpp target:
+file(GLOB_RECURSE SQLITECPP_SRC "${PROJECT_SOURCE_DIR}/SQLiteCpp/src/*.cpp")
+# file(GLOB_RECURSE SQLITECPP_SRC "${PROJECT_SOURCE_DIR}/SQLiteCpp/include/SQLiteCpp/*.h")
+# add sources of the wrapper as a "SQLiteCpp" static library
+add_library(SQLiteCpp ${SQLITECPP_SRC})
+
+if (UNIX AND (CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang"))
+    set_target_properties(SQLiteCpp PROPERTIES COMPILE_FLAGS "-fPIC")
+endif (UNIX AND (CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang"))
 

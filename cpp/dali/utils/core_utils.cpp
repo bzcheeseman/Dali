@@ -139,17 +139,26 @@ namespace utils {
             return ss.str();
         }
 
+        template<typename T>
+        void load_corpus_from_stream(Corpus& corpus, T& stream) {
+            corpus.ParseFromIstream(&stream);
+        }
+
+        template void load_corpus_from_stream(Corpus&, igzstream&);
+        template void load_corpus_from_stream(Corpus&, std::fstream&);
+        template void load_corpus_from_stream(Corpus&, std::stringstream&);
+        template void load_corpus_from_stream(Corpus&, std::istream&);
 
         Corpus load_corpus_protobuff(const std::string& path) {
-                Corpus corpus;
-                if (is_gzip(path)) {
-                        igzstream fpgz(path.c_str(), std::ios::in | std::ios::binary);
-                        corpus.ParseFromIstream(&fpgz);
-                } else {
-                        std::fstream fp(path, std::ios::in | std::ios::binary);
-                        corpus.ParseFromIstream(&fp);
-                }
-                return corpus;
+            Corpus corpus;
+            if (is_gzip(path)) {
+                igzstream fpgz(path.c_str(), std::ios::in | std::ios::binary);
+                load_corpus_from_stream(corpus, fpgz);
+            } else {
+                std::fstream fp(path, std::ios::in | std::ios::binary);
+                load_corpus_from_stream(corpus, fp);
+            }
+            return corpus;
         }
 
         template<typename T>
@@ -382,6 +391,40 @@ namespace utils {
                                 );
                         }
                 }
+            return dataset;
+        }
+
+        Vocab get_protobuff_vocab(
+            SQLite::Database& db,
+            int min_occurence,
+            int max_elements) {
+
+        }
+
+        tokenized_multilabeled_dataset load_protobuff_dataset(
+            SQLite::Statement& query,
+            const vector<string>& index2label,
+            int num_elements,
+            int column) {
+            int els_seen = 0;
+            tokenized_multilabeled_dataset dataset;
+            while (query.executeStep()) {
+                const char* protobuff_serialized = query.getColumn(column);
+                stringstream ss(protobuff_serialized);
+                Corpus corpus;
+                load_corpus_from_stream(corpus, ss);
+                for (auto& example : corpus.example()) {
+
+                    dataset.emplace_back(std::piecewise_construct,
+                            std::forward_as_tuple(example.words().begin(), example.words().end()),
+                            std::forward_as_tuple(triggers_to_strings(example.trigger(), index2label))
+                    );
+                    ++els_seen;
+                }
+                if (els_seen >= num_elements) {
+                    break;
+                }
+            }
             return dataset;
         }
 

@@ -1,7 +1,5 @@
 #include "Reporting.h"
 
-#include "dali/models/RecurrentEmbeddingModel.h"
-
 typedef Throttled::Clock Clock;
 using std::atomic;
 using std::chrono::milliseconds;

@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 #include <unordered_map>
 #include <vector>
+#include "SQLiteCpp/Database.h"
 
 
 #include "dali/utils/gzstream.h"
@@ -274,6 +275,8 @@ namespace utils {
         str_sequence get_label_vocabulary(const tokenized_multilabeled_dataset&);
         void assign_lattice_ids(OntologyBranch::lookup_t, Vocab&, int offset = 0);
 
+        template<typename T>
+        void load_corpus_from_stream(Corpus& corpus, T& stream);
         Corpus load_corpus_protobuff(const std::string&);
         /**
         Load Protobuff Dataset
@@ -298,6 +301,7 @@ namespace utils {
 
         **/
         tokenized_multilabeled_dataset load_protobuff_dataset(std::string, const std::vector<std::string>&);
+        tokenized_multilabeled_dataset load_protobuff_dataset(SQLite::Statement& query, const std::vector<std::string>&, int max_elements = 100, int column = 0);
 
         std::string& trim(std::string&);
         std::string& ltrim(std::string&);

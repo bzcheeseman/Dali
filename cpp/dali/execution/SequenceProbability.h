@@ -2,8 +2,6 @@
 #define SEQUENCE_PROBABILITY_MAT_H
 
 #include <vector>
-#include "dali/core.h"
-#include "dali/utils/core_utils.h"
 
 namespace sequence_probability {
 

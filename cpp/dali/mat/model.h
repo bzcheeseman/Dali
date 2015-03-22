@@ -2,7 +2,6 @@
 #define MAT_MODEL_H
 
 #include <memory>
-
 #include "dali/utils/configuration.h"
 
 class Model {

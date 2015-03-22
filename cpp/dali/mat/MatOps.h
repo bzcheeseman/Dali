@@ -5,6 +5,8 @@
 #include <vector>
 #include <memory>
 
+#include <Eigen/Eigen>
+#include "dali/mat/Mat.h"
 #include "dali/utils.h"
 
 template<typename R> class Mat;

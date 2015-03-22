@@ -1,6 +1,7 @@
 #include "dali/utils.h"
 #include "dali/mat/MatOps.h"
 #include "dali/mat/Tape.h"
+#include "SQLiteCpp/Database.h"
 
 using utils::assert2;
 using utils::MS;
@@ -44,7 +45,6 @@ Mat<R> MatOps<R>::conv2d(Mat<R> image, Mat<R> kernel) {
             out_mat(row,col) = (image_mat.block(row, col, KSizeX, KSizeY).array() * kernel_mat.array()).sum() / kernel_sum;
         }
     }
-
     if (graph::backprop_enabled) {
         graph::emplace_back([image, kernel, out, kernel_sum](){
             auto& image_mat = image.w();
@@ -105,7 +105,6 @@ Mat<R> MatOps<R>::conv1d(Mat<R> image, const vector<Mat<R>>& kernels) {
             MS() << "All Kernel's second dimension (" << kernel.dims(1)
                  << ") must be equal");
     }
-
     auto out = Mat<R>(
         kernels.size(), // 1d convolution only holds one row
         image.dims(1) - kern_col_size + 1, // as many times as the kernel fits

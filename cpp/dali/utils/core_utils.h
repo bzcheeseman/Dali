@@ -67,9 +67,11 @@ std::ostream& operator<<(std::ostream&, const std::vector<std::string>&);
 std::ostream& operator<<(std::ostream&, const std::map<std::string, uint>&);
 std::ostream& operator<<(std::ostream&, const std::map<std::string, float>&);
 std::ostream& operator<<(std::ostream&, const std::map<std::string, double>&);
+std::ostream& operator<<(std::ostream&, const std::map<std::string, std::string>&);
 std::ostream& operator<<(std::ostream&, const std::unordered_map<std::string, uint>&);
 std::ostream& operator<<(std::ostream&, const std::unordered_map<std::string, float>&);
 std::ostream& operator<<(std::ostream&, const std::unordered_map<std::string, double>&);
+std::ostream& operator<<(std::ostream&, const std::unordered_map<std::string, std::string>&);
 
 template<typename T>
 std::ostream& operator<<(std::ostream&, const std::vector<T>&);
@@ -341,6 +343,12 @@ namespace utils {
         void stream_to_list(T&, str_sequence&);
 
         str_sequence load_list(const std::string&);
+
+        template<typename T>
+        void stream_to_redirection_list(T&, std::map<std::string, std::string>&);
+
+        std::map<std::string, std::string> load_redirection_list(const std::string&);
+
         /**
         randint
         -------

@@ -35,6 +35,8 @@ endif (BLAS_FOUND AND MKL_FOUND)
 
 target_link_libraries(dali ${ZLIB_LIBRARIES}
                            proto
+                           SQLiteCpp
+                           sqlite3
                            ${BLAS_LIBRARIES}
                            ${MKL_LIBRARIES}
                            ${GFLAGS_LIBRARIES})

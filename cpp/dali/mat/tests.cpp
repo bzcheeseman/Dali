@@ -4,8 +4,7 @@
 #include <Eigen/Eigen>
 
 #include "dali/test_utils.h"
-#include "dali/mat/Mat.h"
-#include "dali/mat/MatOps.h"
+#include "dali/core.h"
 
 using std::vector;
 using std::chrono::milliseconds;

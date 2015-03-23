@@ -69,16 +69,33 @@ std::ostream &operator <<(std::ostream &os, const std::map<string, double> &v) {
    return os << "}";
 }
 
+std::ostream &operator <<(std::ostream &os, const std::map<string, string> &v) {
+   if (v.size() == 0) return os << "{}";
+   os << "{\n";
+   for (auto& kv : v) {
+       os << "\"" << kv.first << "\" => \"" << kv.second << "\",\n";
+   }
+   return os << "}";
+}
+std::ostream &operator <<(std::ostream &os, const std::unordered_map<string, string> &v) {
+   if (v.size() == 0) return os << "{}";
+   os << "{\n";
+   for (auto& kv : v) {
+       os << "\"" << kv.first << "\" => \"" << kv.second << "\",\n";
+   }
+   return os << "}";
+}
+
 template<typename T>
 std::ostream& operator<<(std::ostream& os, const vector<T>& v) {
         if (v.size() == 0) return os << "[]";
         os << "[";
         for (auto& f : v)
                 os << std::fixed
-                                  << std::setw( 7 ) // keep 7 digits
-                                  << std::setprecision( 3 ) // use 3 decimals
-                                  << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
-                                  << f << " ";
+                   << std::setw( 7 ) // keep 7 digits
+                   << std::setprecision( 3 ) // use 3 decimals
+                   << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
+                   << f << " ";
         return os << "]";
 }
 
@@ -120,7 +137,7 @@ namespace utils {
         }
 
         vector<string> split(const std::string &s, char delim, bool keep_empty_strings) {
-                std::vector<std::string> elems;
+            std::vector<std::string> elems;
             std::stringstream ss(s);
             string item;
             while (std::getline(ss, item, delim))
@@ -323,17 +340,63 @@ namespace utils {
                 while (std::getline(fp, line))
                         list.emplace_back(line);
         }
+        template void stream_to_list(stringstream&, vector<string>&);
 
         vector<string> load_list(const string& fname) {
-                vector<string> list;
-                if (is_gzip(fname)) {
-                        igzstream fpgz(fname.c_str(), std::ios::in | std::ios::binary);
-                        stream_to_list(fpgz, list);
+            vector<string> list;
+            if (is_gzip(fname)) {
+                igzstream fpgz(fname.c_str(), std::ios::in | std::ios::binary);
+                stream_to_list(fpgz, list);
+            } else {
+                std::fstream fp(fname, std::ios::in | std::ios::binary);
+                stream_to_list(fp, list);
+            }
+            return list;
+        }
+
+        template<typename T>
+        void stream_to_redirection_list(T& fp, std::map<string, string>& mapping) {
+            string line;
+            const char dash = '-';
+            const char arrow = '>';
+            bool saw_dash = false;
+            auto checker = [&saw_dash, &arrow, &dash](const char& ch) {
+                if (saw_dash) {
+                    if (ch == arrow) {
+                        return true;
+                    } else {
+                        saw_dash = (ch == dash);
+                        return false;
+                    }
                 } else {
-                        std::fstream fp(fname, std::ios::in | std::ios::binary);
-                        stream_to_list(fp, list);
+                    saw_dash = (ch == dash);
+                    return false;
                 }
-                return list;
+            };
+            while (std::getline(fp, line)) {
+                auto pos_end_arrow = std::find_if(line.begin(), line.end(), checker);
+                if (pos_end_arrow != line.end()) {
+                    mapping.emplace(
+                        std::piecewise_construct,
+                        std::forward_as_tuple(line.begin(), pos_end_arrow-1),
+                        std::forward_as_tuple(pos_end_arrow+1, line.end())
+                    );
+                }
+            }
+        }
+
+        template void stream_to_redirection_list(stringstream&, std::map<string, string>&);
+
+        std::map<string, string> load_redirection_list(const string& fname) {
+            std::map<string, string> mapping;
+            if (is_gzip(fname)) {
+                igzstream fpgz(fname.c_str(), std::ios::in | std::ios::binary);
+                stream_to_redirection_list(fpgz, mapping);
+            } else {
+                std::fstream fp(fname, std::ios::in | std::ios::binary);
+                stream_to_redirection_list(fp, mapping);
+            }
+            return mapping;
         }
 
         template std::map<string, string> text_to_hashmap(const string&);
@@ -678,20 +741,20 @@ namespace utils {
     template long from_string<long>(const std::string& s);
 
     bool is_gzip(const std::string& fname) {
-            const unsigned char gzip_code = 0x1f;
-            const unsigned char gzip_code2 = 0x8b;
-            unsigned char ch;
-            std::ifstream file;
-            file.open(fname);
-            if (!file) return false;
-            file.read(reinterpret_cast<char*>(&ch), 1);
-            if (ch != gzip_code)
-                    return false;
-            if (!file) return false;
-            file.read(reinterpret_cast<char*>(&ch), 1);
-            if (ch != gzip_code2)
-                    return false;
-            return true;
+        const unsigned char gzip_code = 0x1f;
+        const unsigned char gzip_code2 = 0x8b;
+        unsigned char ch;
+        std::ifstream file;
+        file.open(fname);
+        if (!file) return false;
+        file.read(reinterpret_cast<char*>(&ch), 1);
+        if (ch != gzip_code)
+                return false;
+        if (!file) return false;
+        file.read(reinterpret_cast<char*>(&ch), 1);
+        if (ch != gzip_code2)
+                return false;
+        return true;
     }
 
     template <typename T>

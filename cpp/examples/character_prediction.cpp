@@ -69,7 +69,7 @@ T validation_error(
     T cost = 0.0;
     for (auto& example: data_set) {
         auto n = example.size();
-        REAL_t example_cost = 0.0;
+        auto error = Mat<T>(1,1);
         for (int i = 0; i < n-1; ++i) {
             // pick this letter from the embedding
             input_vector  = model.embedding[example[i]];
@@ -77,17 +77,17 @@ T validation_error(
             initial_state = model.stacked_lstm->activate(initial_state, input_vector);
             // classifier takes as input the final hidden layer's activation:
             logprobs      = model.decoder->activate(initial_state.back().hidden);
-            example_cost -= cross_entropy(logprobs, example[i+1]);
+            error = error + MatOps<T>::softmax_cross_entropy(logprobs, example[i+1]);
 
         }
-        cost += example_cost / (n-1);
+        cost += error.w()(0) / (n-1);
     }
     return cost / data_set.size();
 }
 
 
 template<typename T>
-T cost_fun(
+Mat<T> cost_fun(
     StackedModel<T>& model,
     vector<uint>& indices) {
 
@@ -98,7 +98,7 @@ T cost_fun(
     mat logprobs;
     mat probs;
 
-    T cost = 0.0;
+    auto cost = Mat<T>(1,1);
     auto n = indices.size();
 
     for (int i = 0; i < n-1; ++i) {
@@ -108,7 +108,7 @@ T cost_fun(
         initial_state = model.stacked_lstm->activate(initial_state, input_vector);
         // classifier takes as input the final hidden layer's activation:
         logprobs      = model.decoder->activate(initial_state.back().hidden);
-        cost -= cross_entropy(logprobs, indices[i+1]);
+        cost          = cost + MatOps<T>::softmax_cross_entropy(logprobs, indices[i+1]);
     }
     return cost / (n-1);
 }
@@ -162,11 +162,12 @@ int main (int argc, char *argv[]) {
                 auto thread_model = model.shallow_copy();
                 auto thread_parameters = thread_model.parameters();
                 for (auto i = 0; i < FLAGS_epochs / FLAGS_num_threads / FLAGS_minibatch_size; ++i) {
-                    for (auto mb = 0; mb < FLAGS_minibatch_size; ++mb)
+                    for (auto mb = 0; mb < FLAGS_minibatch_size; ++mb) {
                         cost_fun(
                             thread_model,            // what model should collect errors
                             train_set[uniform(seed)] // the sequence to predict
-                        );
+                        ).grad();
+                    }
                     graph::backward(); // backpropagate
 
                     // solve it.

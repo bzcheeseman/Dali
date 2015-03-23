@@ -52,6 +52,8 @@ int main(int argc, char * argv[]) {
         for (auto& concept : index2concept) {
             if (concept_redirections.find(concept) != concept_redirections.end()) {
                 concept = utils::capitalize(concept_redirections.at(concept));
+            } else {
+                concept = utils::capitalize(concept);
             }
         }
         utils::save_list(index2concept, FLAGS_clean_index2target);

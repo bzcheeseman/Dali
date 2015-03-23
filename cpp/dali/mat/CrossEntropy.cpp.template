@@ -1,30 +1,5 @@
 #include "CrossEntropy.h"
 
-template<typename Z>
-Z cross_entropy(Mat<Z> logprobs, uint& target) {
-    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
-    Z cost = -std::log(probs.w()(target,0));
-    logprobs.dw() = probs.w();
-    // write gradients into log probabilities
-    logprobs.dw()(target, 0) -= 1;
-    DEBUG_ASSERT_NOT_NAN(logprobs.dw());
-    return cost;
-}
-
-template<typename Z, typename M>
-Z cross_entropy(Mat<Z> logprobs, const M targets) {
-    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
-    Z cost = 0.0;
-    logprobs.dw() = probs.w();
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < targets.rows(); i++) {
-        cost -= std::log(probs.w()(targets(i),i));
-        logprobs.dw()(targets(i), i) -= 1;
-    }
-    DEBUG_ASSERT_NOT_NAN(logprobs.dw());
-    return cost;
-}
-
 template<typename Z, typename M>
 Z masked_cross_entropy(Mat<Z> logprobs,
     uint& T,
@@ -355,11 +330,6 @@ Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
     return cost;
 }
 
-template float  cross_entropy(Mat<float>, eigen_index_block);
-template double cross_entropy(Mat<double>, eigen_index_block);
-template float  cross_entropy(Mat<float>, eigen_index_block_scalar);
-template double cross_entropy(Mat<double>, eigen_index_block_scalar);
-
 template<typename Z>
 Z masked_sum(Mat<Z> values,
     uint& T,
@@ -648,9 +618,6 @@ Z masked_sum_no_grad(Mat<Z> values,
             cost += values.w().col(i).sum() * gparent;
     return cost;
 }
-
-template float cross_entropy(Mat<float>, uint&);
-template double cross_entropy(Mat<double>, uint&);
 
 // BEGIN TEMPLATE SPECIALIZATIONS
 

@@ -142,7 +142,7 @@ namespace utils {
             string item;
             while (std::getline(ss, item, delim))
                 if (!item.empty() || keep_empty_strings)
-                        elems.push_back(item);
+                    elems.push_back(item);
             return elems;
         }
 
@@ -355,6 +355,84 @@ namespace utils {
         }
 
         template<typename T>
+        void save_list_to_stream(const vector<string>& list, T& fp) {
+            for (auto& el : list) {
+                fp << el << "\n";
+            }
+        }
+
+        void save_list(const vector<string>& list, string fname, std::ios_base::openmode mode) {
+            if (endswith(fname, ".gz")) {
+                ogzstream fpgz(fname.c_str(), mode);
+                save_list_to_stream(list, fpgz);
+            } else {
+                ofstream fp(fname.c_str(), mode);
+                save_list_to_stream(list, fp);
+            }
+        }
+
+        template<typename T>
+        void stream_to_redirection_list(T& fp, std::map<string, string>& mapping, std::function<std::string(std::string&&)>& preprocessor, int num_threads) {
+            string line;
+            const char dash = '-';
+            const char arrow = '>';
+            bool saw_dash = false;
+            auto checker = [&saw_dash, &arrow, &dash](const char& ch) {
+                if (saw_dash) {
+                    if (ch == arrow) {
+                        return true;
+                    } else {
+                        saw_dash = (ch == dash);
+                        return false;
+                    }
+                } else {
+                    saw_dash = (ch == dash);
+                    return false;
+                }
+            };
+            if (num_threads > 1) {
+                ThreadPool pool(num_threads);
+                while (std::getline(fp, line)) {
+                    pool.run([&mapping, &preprocessor, &checker, line]() {
+                        auto pos_end_arrow = std::find_if(line.begin(), line.end(), checker);
+                        if (pos_end_arrow != line.end()) {
+                            mapping.emplace(
+                                std::piecewise_construct,
+                                std::forward_as_tuple(
+                                    preprocessor(
+                                        std::string(
+                                            line.begin(),
+                                            pos_end_arrow-1
+                                        )
+                                    )
+                                ),
+                                std::forward_as_tuple(
+                                    preprocessor(
+                                        std::string(
+                                            pos_end_arrow+1,
+                                            line.end()
+                                        )
+                                    )
+                                )
+                            );
+                        }
+                    });
+                }
+            } else {
+                while (std::getline(fp, line)) {
+                    auto pos_end_arrow = std::find_if(line.begin(), line.end(), checker);
+                    if (pos_end_arrow != line.end()) {
+                        mapping.emplace(
+                            std::piecewise_construct,
+                            std::forward_as_tuple( preprocessor(std::string(line.begin(), pos_end_arrow-1))),
+                            std::forward_as_tuple( preprocessor(std::string(pos_end_arrow+1, line.end())))
+                        );
+                    }
+                }
+            }
+        }
+
+        template<typename T>
         void stream_to_redirection_list(T& fp, std::map<string, string>& mapping) {
             string line;
             const char dash = '-';
@@ -364,7 +442,7 @@ namespace utils {
                 if (saw_dash) {
                     if (ch == arrow) {
                         return true;
-                    } else {
+                    } else {
                         saw_dash = (ch == dash);
                         return false;
                     }
@@ -378,14 +456,27 @@ namespace utils {
                 if (pos_end_arrow != line.end()) {
                     mapping.emplace(
                         std::piecewise_construct,
-                        std::forward_as_tuple(line.begin(), pos_end_arrow-1),
-                        std::forward_as_tuple(pos_end_arrow+1, line.end())
+                        std::forward_as_tuple( line.begin(), pos_end_arrow-1),
+                        std::forward_as_tuple( pos_end_arrow+1, line.end())
                     );
                 }
             }
         }
 
+        template void stream_to_redirection_list(stringstream&, std::map<string, string>&, std::function<std::string(std::string&&)>&, int);
         template void stream_to_redirection_list(stringstream&, std::map<string, string>&);
+
+        std::map<string, string> load_redirection_list(const string& fname, std::function<std::string(std::string&&)>&& preprocessor, int num_threads) {
+            std::map<string, string> mapping;
+            if (is_gzip(fname)) {
+                igzstream fpgz(fname.c_str(), std::ios::in | std::ios::binary);
+                stream_to_redirection_list(fpgz, mapping, preprocessor, num_threads);
+            } else {
+                std::fstream fp(fname, std::ios::in | std::ios::binary);
+                stream_to_redirection_list(fp, mapping, preprocessor, num_threads);
+            }
+            return mapping;
+        }
 
         std::map<string, string> load_redirection_list(const string& fname) {
             std::map<string, string> mapping;
@@ -457,13 +548,6 @@ namespace utils {
             return dataset;
         }
 
-        Vocab get_protobuff_vocab(
-            SQLite::Database& db,
-            int min_occurence,
-            int max_elements) {
-
-        }
-
         tokenized_multilabeled_dataset load_protobuff_dataset(
             SQLite::Statement& query,
             const vector<string>& index2label,
@@ -492,110 +576,128 @@ namespace utils {
         }
 
         vector<string> tokenize(const string& s) {
-                stringstream ss(s);
-                std::istream_iterator<string> begin(ss);
-                std::istream_iterator<string> end;
-                return vector<string>(begin, end);
+            stringstream ss(s);
+            std::istream_iterator<string> begin(ss);
+            std::istream_iterator<string> end;
+            return vector<string>(begin, end);
         }
 
         vector<std::pair<vector<string>, string>> load_tokenized_labeled_corpus(const string& fname) {
-                ifstream fp(fname.c_str());
-                string l;
-                const char space = ' ';
-                vector<std::pair<vector<string>, string>> pairs;
-                string::size_type n;
-                while (std::getline(fp, l)) {
-                        n = l.find(space);
-                        pairs.emplace_back(std::piecewise_construct,
-                                std::forward_as_tuple(tokenize(string(l.begin() + n + 1, l.end()))),
-                                std::forward_as_tuple(l.begin(), l.begin() + n)
-                        );
-                }
-                return pairs;
+            ifstream fp(fname.c_str());
+            string l;
+            const char space = ' ';
+            vector<std::pair<vector<string>, string>> pairs;
+            string::size_type n;
+            while (std::getline(fp, l)) {
+                n = l.find(space);
+                pairs.emplace_back(std::piecewise_construct,
+                    std::forward_as_tuple(tokenize(string(l.begin() + n + 1, l.end()))),
+                    std::forward_as_tuple(l.begin(), l.begin() + n)
+                );
+            }
+            return pairs;
         }
 
         vector<vector<string>> load_tokenized_unlabeled_corpus(const string& fname) {
-                ifstream fp(fname.c_str());
-                string l;
-                vector<vector<string>> list;
-                while (std::getline(fp, l))
-                        list.emplace_back(tokenize(string(l.begin(), l.end())));
-                return list;
+            ifstream fp(fname.c_str());
+            string l;
+            vector<vector<string>> list;
+            while (std::getline(fp, l))
+                list.emplace_back(tokenize(string(l.begin(), l.end())));
+            return list;
         }
 
         vector<string> get_vocabulary(const tokenized_labeled_dataset& examples, int min_occurence) {
-                std::map<string, uint> word_occurences;
-                string word;
-                for (auto& example : examples)
-                        for (auto& word : example.first) word_occurences[word] += 1;
-                vector<string> list;
-                for (auto& key_val : word_occurences)
-                        if (key_val.second >= min_occurence)
-                                list.emplace_back(key_val.first);
-                list.emplace_back(utils::end_symbol);
-                return list;
+            std::map<string, uint> word_occurences;
+            string word;
+            for (auto& example : examples)
+                for (auto& word : example.first) word_occurences[word] += 1;
+            vector<string> list;
+            for (auto& key_val : word_occurences)
+                if (key_val.second >= min_occurence)
+                    list.emplace_back(key_val.first);
+            list.emplace_back(utils::end_symbol);
+            return list;
         }
 
         vector<string> get_vocabulary(const vector<vector<string>>& examples, int min_occurence) {
-                std::map<string, uint> word_occurences;
-                string word;
-                for (auto& example : examples)
-                        for (auto& word : example) word_occurences[word] += 1;
-                vector<string> list;
-                for (auto& key_val : word_occurences)
-                        if (key_val.second >= min_occurence)
-                                list.emplace_back(key_val.first);
-                list.emplace_back(utils::end_symbol);
-                return list;
+            std::map<string, uint> word_occurences;
+            string word;
+            for (auto& example : examples) {
+                for (auto& word : example) {
+                    word_occurences[word] += 1;
+                }
+            }
+            vector<string> list;
+            for (auto& key_val : word_occurences) {
+                if (key_val.second >= min_occurence) {
+                    list.emplace_back(key_val.first);
+                }
+            }
+            list.emplace_back(utils::end_symbol);
+            return list;
         }
 
         vector<string> get_vocabulary(const tokenized_uint_labeled_dataset& examples, int min_occurence) {
-                std::map<string, uint> word_occurences;
-                string word;
-                for (auto& example : examples)
-                        for (auto& word : example.first) word_occurences[word] += 1;
-                vector<string> list;
-                for (auto& key_val : word_occurences)
-                        if (key_val.second >= min_occurence)
-                                list.emplace_back(key_val.first);
-                list.emplace_back(utils::end_symbol);
-                return list;
+            std::map<string, uint> word_occurences;
+            string word;
+            for (auto& example : examples) {
+                for (auto& word : example.first) {
+                    word_occurences[word] += 1;
+                }
+            }
+            vector<string> list;
+            for (auto& key_val : word_occurences) {
+                if (key_val.second >= min_occurence) {
+                    list.emplace_back(key_val.first);
+                }
+            }
+            list.emplace_back(utils::end_symbol);
+            return list;
         }
 
         vector<string> get_vocabulary(const tokenized_multilabeled_dataset& examples, int min_occurence) {
-                std::map<string, uint> word_occurences;
-                string word;
-                for (auto& example : examples)
-                        for (auto& word : example.first) word_occurences[word] += 1;
-                vector<string> list;
-                for (auto& key_val : word_occurences)
-                        if (key_val.second >= min_occurence)
-                                list.emplace_back(key_val.first);
-                list.emplace_back(utils::end_symbol);
-                return list;
+            std::map<string, uint> word_occurences;
+            string word;
+            for (auto& example : examples) {
+                for (auto& word : example.first) {
+                    word_occurences[word] += 1;
+                }
+            }
+            vector<string> list;
+            for (auto& key_val : word_occurences) {
+                if (key_val.second >= min_occurence) {
+                    list.emplace_back(key_val.first);
+                }
+            }
+            list.emplace_back(utils::end_symbol);
+            return list;
         }
 
         vector<string> get_label_vocabulary(const tokenized_labeled_dataset& examples) {
-                std::set<string> labels;
-                string word;
-                for (auto& example : examples)
-                        labels.insert(example.second);
-                return vector<string>(labels.begin(), labels.end());
+            std::set<string> labels;
+            string word;
+            for (auto& example : examples) {
+                labels.insert(example.second);
+            }
+            return vector<string>(labels.begin(), labels.end());
         }
 
         vector<string> get_label_vocabulary(const tokenized_multilabeled_dataset& examples) {
-                std::set<string> labels;
-                string word;
-                for (auto& example : examples)
-                        labels.insert(example.second.begin(), example.second.end());
-                return vector<string>(labels.begin(), labels.end());
+            std::set<string> labels;
+            string word;
+            for (auto& example : examples) {
+                labels.insert(example.second.begin(), example.second.end());
+            }
+            return vector<string>(labels.begin(), labels.end());
         }
 
         std::vector<string> get_lattice_vocabulary(const OntologyBranch::shared_branch lattice) {
                 std::vector<std::string> index2label;
                 index2label.emplace_back(end_symbol);
-                for (auto& kv : *lattice->lookup_table)
-                        index2label.emplace_back(kv.first);
+                for (auto& kv : *lattice->lookup_table) {
+                    index2label.emplace_back(kv.first);
+                }
                 return index2label;
         }
 
@@ -609,19 +711,19 @@ namespace utils {
 
         // trim from start
         std::string &ltrim(std::string &s) {
-                s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
-                return s;
+            s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
+            return s;
         }
 
         // trim from end
         std::string &rtrim(std::string &s) {
-                s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
-                return s;
+            s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
+            return s;
         }
 
         // trim from both ends
         std::string &trim(std::string &s) {
-                return ltrim(rtrim(s));
+            return ltrim(rtrim(s));
         }
 
         // From this StackOverflow:
@@ -849,13 +951,13 @@ namespace utils {
     }
 
     void OntologyBranch::save(string fname, std::ios_base::openmode mode) {
-            if (endswith(fname, ".gz")) {
-                    ogzstream fpgz(fname.c_str(), mode);
-                    save_to_stream(fpgz);
-            } else {
-                    ofstream fp(fname.c_str(), mode);
-                    save_to_stream(fp);
-            }
+        if (endswith(fname, ".gz")) {
+            ogzstream fpgz(fname.c_str(), mode);
+            save_to_stream(fpgz);
+        } else {
+            ofstream fp(fname.c_str(), mode);
+            save_to_stream(fp);
+        }
     }
     void OntologyBranch::compute_max_depth() {
             _max_depth = 0;
@@ -1148,6 +1250,107 @@ namespace utils {
     vector<T> reversed(const vector<T>& v) {
         vector<T> ret(v.rbegin(), v.rend());
         return ret;
+    }
+
+    void inplace_regex_replace(string& s, std::regex& reg, const std::string& replacement) {
+        string result;
+        std::regex_replace(std::back_inserter(result),
+            s.begin(),
+            s.end(),
+            reg, replacement);
+        s = result;
+    }
+
+    namespace xml_cleaner {
+
+        std::regex mvar_parser("\\{\\{\\d*mvar\\d*\\|([^\\}]+)\\}\\}");
+        std::regex html_remover("<[^>]+>");
+        std::regex markup_normalizer("[',/\\*_=-]{2,5}");
+        std::regex remove_wikipedia_link("\\[\\W*http[^\\] ]+\\b*(?[^\\]]+)\\]");
+        std::regex table_parser("\\{\\|[^\\}]+\\|\\}");
+        std::regex squiggly_bracket_parser("\\{\\{([^\\}]+)\\}\\}");
+        std::regex remove_bullets_nbsps("(&amp;nbsp;|&nbsp;|[\\^\n]\\*{1,}|[\\^\n]\\#{1,}|[\\^\n]:{1,})");
+        std::regex math_source_sections("<(math|source|code|sub|sup)[^>]*>([^<]*)</(math|source|code|sub|sup)>");
+        std::regex greater_than("(\\W)>(\\W)");
+        std::regex less_than("<([^\\w/])");
+        std::regex period_mover("([a-zA-ZÀ-Þ]{2})([\\./])\\s+([a-zA-ZÀ-Þ]{2})");
+        std::regex shifted_standard_punctuation("([\\!\?#\\$%;~|])");
+        std::regex english_specific_appendages("([A-Za-z])['’]([dms])\\b");
+        std::regex english_nots("n['’]t\\b");
+        std::regex semicolon_shifter("(.):([^/])");
+        std::regex french_appendages("(\\b[tjnlsmdclTJNLSMLDC]|qu)['’](?=[^tdms])");
+        std::regex shifted_parenthesis_squiggly_brackets("([\\(\\{\\}\\)])");
+        std::regex left_single_quote_converter("(?:(\\W|^))'(?=.*\\w)");
+        std::regex remaining_quote_converter("[\"“”»]");
+        std::regex left_quote_shifter("`(?!`)(?=.*\\w)");
+        std::regex left_quote_converter("[«\"](?=.*\\w)");
+        std::regex english_contractions("['’](ve|ll|re)\\b");
+        std::regex right_single_quote_converter("(\\w)'(?!')(?=\\W|$)");
+        std::regex dash_converter("–|--+|â\x80\x93|‐|‑|‒|—|―");
+        std::regex any_punctuation("\\W+");
+        std::regex comma_shifter(",(?!\\d)");
+        std::regex shifted_ellipses("(\\.\\.\\.+|…)");
+
+        vector<string> split_punct_keep_brackets(const string& original) {
+            // if no punctuation, return
+            if (!std::regex_search(original.begin(), original.end(), any_punctuation)) {
+                return {original};
+            }
+            // normalize and simplify punctuation:
+            string text = original;
+            inplace_regex_replace(text, period_mover, "$1 $2 $3");
+            inplace_regex_replace(text, left_quote_shifter, "` ");
+            inplace_regex_replace(text, left_quote_converter, "`` ");
+            inplace_regex_replace(text, left_single_quote_converter, "$1 ` ");
+            inplace_regex_replace(text, remaining_quote_converter, " '' ");
+            inplace_regex_replace(text, english_nots, " n't");
+            inplace_regex_replace(text, english_contractions, " '$1");
+            inplace_regex_replace(text, english_specific_appendages, "$1 '$2");
+            inplace_regex_replace(text, right_single_quote_converter, "$1 ' ");
+            inplace_regex_replace(text, dash_converter, " - ");
+            inplace_regex_replace(text, comma_shifter, " , ");
+            inplace_regex_replace(text, semicolon_shifter, "$1 : $2");
+            inplace_regex_replace(text, shifted_ellipses, " ...");
+            inplace_regex_replace(text, shifted_parenthesis_squiggly_brackets, " $1 ");
+            inplace_regex_replace(text, shifted_standard_punctuation, " $1 ");
+            inplace_regex_replace(text, french_appendages, "$1' ");
+
+            // replace crazy symbols by common ones:
+            auto special_symbol1_ptr = text.find("œ");
+            while (special_symbol1_ptr != std::string::npos) {
+                text.replace(special_symbol1_ptr, 1, "oe");
+                special_symbol1_ptr = text.find("œ");
+            }
+
+            special_symbol1_ptr = text.find("æ");
+            while (special_symbol1_ptr != std::string::npos) {
+                text.replace(special_symbol1_ptr, 1, "ae");
+                special_symbol1_ptr = text.find("æ");
+            }
+            // replace newlines by space
+            std::replace(text.begin(), text.end(), '\n', ' ');
+            return split(
+                text,
+                ' ',
+                false // don't keep empty strings
+            );
+        }
+
+        std::vector<string> process_text_keeping_brackets(const string& original) {
+            string text = original;
+            inplace_regex_replace(text, mvar_parser, "$1");
+            inplace_regex_replace(text, squiggly_bracket_parser, "");
+            inplace_regex_replace(text, table_parser, "");
+            inplace_regex_replace(text, markup_normalizer, "");
+            inplace_regex_replace(text, remove_wikipedia_link, "$&");
+            inplace_regex_replace(text, remove_bullets_nbsps, "");
+            inplace_regex_replace(text, math_source_sections, "");
+            inplace_regex_replace(text, greater_than, "$1&gt;$2");
+            inplace_regex_replace(text, less_than, "&lt;$1");
+            inplace_regex_replace(text, html_remover, " ");
+
+            return split_punct_keep_brackets(text);
+        }
     }
 
     template vector<float> reversed(const vector<float>& vec);

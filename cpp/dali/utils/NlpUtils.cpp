@@ -1,6 +1,5 @@
 #include "NlpUtils.h"
 
-
 DEFINE_int32(subsets,            10,
         "Break up dataset into how many minibatches ? \n"
         "(Note: reduces batch sparsity)");

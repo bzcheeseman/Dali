@@ -90,7 +90,7 @@ Mat<R> MatOps<R>::conv1d(Mat<R> image, Mat<R> kernel) {
 // Here multiple kernels are allowable
 template<typename R>
 Mat<R> MatOps<R>::conv1d(Mat<R> image, const vector<Mat<R>>& kernels) {
-    assert2(kernels.size() > 0, "Must at least pass 1 kernel to conv1d.");
+    assert2(kernels.size() > 0, "Must pass at least 1 kernel to conv1d.");
     int kern_col_size = kernels[0].dims(1);
     for (auto& kernel : kernels) {
         assert2(image.dims(0) == kernel.dims(0),

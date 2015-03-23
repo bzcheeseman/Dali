@@ -330,7 +330,7 @@ TEST_F(MatOpsTests, matrix_conv2d_grad) {
     };
     EXPERIMENT_REPEAT {
         auto kernel = Mat<R>(5, 5, weights<R>::uniform(-20.0, 20.0));
-        auto image = Mat<R>(20, 20, weights<R>::uniform(-20.0, 20.0));
+        auto image = Mat<R>(8, 8, weights<R>::uniform(-20.0, 20.0));
         ASSERT_TRUE(gradient_same<R>(functor, {image, kernel}, 1e-4));
     }
 }
@@ -392,9 +392,9 @@ TEST_F(LayerTests, stacked_layer_tanh_gradient) {
 
 TEST_F(LayerTests, LSTM_Zaremba_gradient) {
 
-    int num_examples           = 20;
-    int hidden_size            = 10;
-    int input_size             = 5;
+    int num_examples           = 10;
+    int hidden_size            = 5;
+    int input_size             = 3;
 
     EXPERIMENT_REPEAT {
         auto X  = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
@@ -412,9 +412,9 @@ TEST_F(LayerTests, LSTM_Zaremba_gradient) {
 
 TEST_F(LayerTests, LSTM_Graves_gradient) {
 
-    int num_examples           = 20;
-    int hidden_size            = 10;
-    int input_size             = 5;
+    int num_examples           = 10;
+    int hidden_size            = 5;
+    int input_size             = 3;
 
     EXPERIMENT_REPEAT {
         auto X  = Mat<R>(input_size, num_examples,      weights<R>::uniform(20.0));
@@ -437,10 +437,10 @@ TEST_F(LayerTests, LSTM_Graves_gradient) {
 
 TEST_F(LayerTests, LSTM_Graves_shortcut_gradient) {
 
-    int num_examples           = 20;
-    int hidden_size            = 10;
-    int input_size             = 5;
-    int shortcut_size          = 8;
+    int num_examples           = 10;
+    int hidden_size            = 5;
+    int input_size             = 3;
+    int shortcut_size          = 2;
 
     EXPERIMENT_REPEAT {
         auto X  = Mat<R>(input_size,    num_examples, weights<R>::uniform(20.0));
@@ -464,10 +464,10 @@ TEST_F(LayerTests, LSTM_Graves_shortcut_gradient) {
 }
 
 TEST_F(LayerTests, LSTM_Zaremba_shortcut_gradient) {
-    int num_examples           = 20;
-    int hidden_size            = 10;
-    int input_size             = 5;
-    int shortcut_size          = 8;
+    int num_examples           = 10;
+    int hidden_size            = 5;
+    int input_size             = 3;
+    int shortcut_size          = 2;
 
     EXPERIMENT_REPEAT {
         auto X  = Mat<R>(input_size,    num_examples, weights<R>::uniform(20.0));
@@ -487,9 +487,9 @@ TEST_F(LayerTests, LSTM_Zaremba_shortcut_gradient) {
 }
 
 TEST_F(LayerTests, RNN_gradient_vs_Stacked_gradient) {
-    int num_examples           = 20;
-    int hidden_size            = 10;
-    int input_size             = 5;
+    int num_examples           = 10;
+    int hidden_size            = 5;
+    int input_size             = 3;
 
     EXPERIMENT_REPEAT {
 
@@ -527,8 +527,8 @@ TEST_F(LayerTests, RNN_gradient_vs_Stacked_gradient) {
 }
 
 TEST_F(LayerTests, matrix_constant_check) {
-    int num_examples           = 20;
-    int input_size             = 5;
+    int num_examples           = 10;
+    int input_size             = 3;
     auto X  = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
 
     auto X_const = MatOps<R>::consider_constant(X);

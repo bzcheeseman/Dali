@@ -6,7 +6,7 @@
 #include "dali/utils/core_utils.h"
 #include "SQLiteCpp/Database.h"
 
-DEFINE_string(index2target, "", "Location of Index2Target file with mapping from integer to target name.");
+DEFINE_string(index2target, "", "Location of Index2target file with mapping from integer to target name.");
 DEFINE_string(dbpath, "", "Location of SQLite Database with protobuf elements");
 DEFINE_string(redirections, "", "Set of redirections from article names to other articles.");
 DEFINE_string(clean_index2target, "", "Clean version of index2target.");

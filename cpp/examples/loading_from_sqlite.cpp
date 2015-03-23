@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
-#include "dali/utils/core_utils.h"
+#include "dali/utils.h"
 #include "SQLiteCpp/Database.h"
 
 DEFINE_string(index2target, "", "Location of Index2target file with mapping from integer to target name.");
@@ -51,7 +51,7 @@ int main(int argc, char * argv[]) {
 
         for (auto& concept : index2concept) {
             if (concept_redirections.find(concept) != concept_redirections.end()) {
-                concept = concept_redirections.at(concept);
+                concept = utils::capitalize(concept_redirections.at(concept));
             }
         }
         utils::save_list(index2concept, FLAGS_clean_index2target);
@@ -63,4 +63,8 @@ int main(int argc, char * argv[]) {
     // Convert protobuf -> vector<string>
     auto els = load_protobuff_dataset(query, index2concept, 100);
     cout << "got labeled examples" << endl;
+    for (auto& el : els) {
+        std::cout << utils::join(std::get<0>(el), " ")
+                  << " (\033[4m" << utils::join(std::get<1>(el), "\x1B[m, \033[4m") << "\x1B[m)" << std::endl;
+    }
 }

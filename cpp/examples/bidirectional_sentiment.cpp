@@ -240,12 +240,12 @@ class BidirectionalLSTM {
                         ++it_back, ++it_forward) {
                         if (cell.shortcut) {
                             state = cell.activate(
-                                apply_dropout(*it_forward, drop_prob),
-                                apply_dropout(*it_back, drop_prob),
+                                MatOps<REAL_t>::dropout_normalized(*it_forward, drop_prob),
+                                MatOps<REAL_t>::dropout_normalized(*it_back, drop_prob),
                                 state);
                         } else {
                             state = cell.activate(
-                                apply_dropout(*it_forward, drop_prob),
+                                MatOps<REAL_t>::dropout_normalized(*it_forward, drop_prob),
                                 state);
                         }
                         // prepare the observation sequence to be fed to the next
@@ -260,12 +260,12 @@ class BidirectionalLSTM {
 
                         if (cell.shortcut) {
                             state = cell.activate(
-                                apply_dropout(*it_back, drop_prob),
-                                apply_dropout(*it_forward, drop_prob),
+                                MatOps<REAL_t>::dropout_normalized(*it_back, drop_prob),
+                                MatOps<REAL_t>::dropout_normalized(*it_forward, drop_prob),
                                 state);
                         } else {
                             state = cell.activate(
-                                apply_dropout(*it_back, drop_prob),
+                                MatOps<REAL_t>::dropout_normalized(*it_back, drop_prob),
                                 state);
                         }
                         // prepare the observation sequence to be fed to the next

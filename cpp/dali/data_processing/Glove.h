@@ -14,10 +14,10 @@ namespace glove {
     and from word to index. Matrix is dynamically resized.
     **/
     template<typename T>
-    std::tuple<Mat<T>, utils::Vocab> load(std::string fname);
+    std::tuple<Mat<T>, utils::Vocab> load(std::string fname, int threshold = -1);
 
     template<typename T>
-    void load(std::string fname, Mat<T>& mat, utils::Vocab& vocab);
+    void load(std::string fname, Mat<T>& mat, utils::Vocab& vocab, int threshold = -1);
 }
 
 #endif

@@ -405,7 +405,7 @@ int main (int argc,  char* argv[]) {
     auto word_vocab = Vocab();
 
     if (!FLAGS_pretrained_vectors.empty()) {
-        glove::load(FLAGS_pretrained_vectors, embedding, word_vocab);
+        glove::load(FLAGS_pretrained_vectors, embedding, word_vocab, 50000);
     } else {
         word_vocab = SST::get_word_vocab(sentiment_treebank, FLAGS_min_occurence);
     }

@@ -10,7 +10,7 @@ namespace glove {
 
 
     template<typename T>
-    void load(string fname, Mat<T>& underlying_mat, Vocab& vocab) {
+    void load(string fname, Mat<T>& underlying_mat, Vocab& vocab, int threshold) {
         if (!utils::file_exists(fname)) {
             throw std::runtime_error("Cannot open file with glove vectors.");
         }
@@ -57,6 +57,9 @@ namespace glove {
             if (i != observed_size) {
                 std::runtime_error("Vectors in Glove file are of different sizes.");
             }
+            if (vocab_size == threshold) {
+                break;
+            }
         }
         // now final update is made to matrix
         underlying_mat.resize(vocab_size  + 1, observed_size);
@@ -65,14 +68,14 @@ namespace glove {
     }
 
     template<typename T>
-    std::tuple<Mat<T>, Vocab> load(string fname) {
-        auto pair = make_tuple<Mat<T>, Vocab>(Mat<T>(100, 0, false), Vocab());
-        load(fname, std::get<0>(pair), std::get<1>(pair));
+    std::tuple<Mat<T>, Vocab> load(string fname, int threshold) {
+        auto pair = make_tuple<Mat<T>, Vocab>(Mat<T>(threshold > 0 ? threshold : 100, 0, false), Vocab());
+        load(fname, std::get<0>(pair), std::get<1>(pair), threshold);
         return pair;
     }
 
-    template std::tuple<Mat<float>, Vocab> load(string);
-    template std::tuple<Mat<double>, Vocab> load(string);
-    template void load(string fname, Mat<float>& underlying_mat, Vocab& vocab);
-    template void load(string fname, Mat<double>& underlying_mat, Vocab& vocab);
+    template std::tuple<Mat<float>, Vocab> load(string, int );
+    template std::tuple<Mat<double>, Vocab> load(string, int );
+    template void load(string fname, Mat<float>& underlying_mat, Vocab& vocab, int );
+    template void load(string fname, Mat<double>& underlying_mat, Vocab& vocab, int );
 }

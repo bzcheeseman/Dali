@@ -1,0 +1,17 @@
+--train=../data/sentiment/train.txt
+--validation=../data/sentiment/dev.txt
+--test=../data/sentiment/test.txt
+--j=18
+--minibatch=20
+--input_size=35
+--hidden=300
+--dropout=0.65
+--fast_dropout
+--nosurprise
+--stack_size=5
+--solver=adam
+--patience=5
+--shortcut
+--nomemory_feeds_gates
+--convolution
+--pretrained_vectors=/Users/agilience/Desktop/glove.6B.300d.txt

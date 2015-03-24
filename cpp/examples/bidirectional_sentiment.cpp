@@ -42,6 +42,7 @@ DEFINE_bool(recursive_gates, true,       "Make a prediction at every timestep?")
 DEFINE_bool(surprise,        true,       "Use Surprise distance with target distribution?");
 DEFINE_bool(convolution,     false,      "Perform a convolution before passing to LSTMs ?");
 DEFINE_int32(filters,        50,         "Number of filters to use for Convolution");
+DEFINE_string(pretrained_vectors, "",    "Load pretrained word vectors?");
 
 
 template<typename T>
@@ -139,12 +140,12 @@ class BidirectionalLSTM {
         std::shared_ptr<Filters<T>> filters;
 
 
-        BidirectionalLSTM(int vocabulary_size, int hidden_size, int stack_size, int output_size, bool shortcut, bool memory_feeds_gates, bool use_recursive_gates, bool convolution)
+        BidirectionalLSTM(int vocabulary_size, int input_size, int hidden_size, int stack_size, int output_size, bool shortcut, bool memory_feeds_gates, bool use_recursive_gates, bool convolution)
             :
               convolution(convolution),
-              embedding(vocabulary_size, hidden_size, weights<T>::uniform(-0.05, 0.05)),
+              embedding(vocabulary_size, input_size, weights<T>::uniform(-0.05, 0.05)),
               stacked_lstm(hidden_size, repeat_val(hidden_size, std::max(stack_size-1, 1)), shortcut, memory_feeds_gates),
-            decoder({hidden_size, hidden_size }, output_size),
+            decoder({hidden_size, hidden_size}, output_size),
             use_recursive_gates(use_recursive_gates),
             stack_size(stack_size),
             output_size(output_size) {
@@ -157,9 +158,16 @@ class BidirectionalLSTM {
 
             if (convolution) {
                 filters = make_shared<Filters<T>>(
-                    hidden_size,
-                    hidden_size,
-                    2);
+                    hidden_size, // number of filters
+                    input_size, // filter height
+                    2); // filter width (temporal dimension)
+            } else {
+                if (input_size != hidden_size) {
+                    throw std::runtime_error(
+                        "Input size must equal hidden size "
+                        "when no convolution is applied to change"
+                        " the word dimensions.");
+                }
             }
 
             if (stack_size > 1) {
@@ -392,7 +400,15 @@ int main (int argc,  char* argv[]) {
     auto epochs              = FLAGS_epochs;
     auto sentiment_treebank  = SST::load(FLAGS_train);
 
-    auto word_vocab          = SST::get_word_vocab(sentiment_treebank, FLAGS_min_occurence);
+
+    auto embedding = Mat<REAL_t>(100, 0);
+    auto word_vocab = Vocab();
+
+    if (!FLAGS_pretrained_vectors.empty()) {
+        glove::load(FLAGS_pretrained_vectors, embedding, word_vocab);
+    } else {
+        word_vocab = SST::get_word_vocab(sentiment_treebank, FLAGS_min_occurence);
+    }
     auto vocab_size          = word_vocab.index2word.size();
 
     // Load Dataset of Trees:
@@ -471,7 +487,8 @@ int main (int argc,  char* argv[]) {
     auto stack_size  = std::max(FLAGS_stack_size, 1);
 
     auto model = BidirectionalLSTM<REAL_t>(
-         word_vocab.index2word.size(),
+         FLAGS_pretrained_vectors.empty() ? word_vocab.index2word.size() : 0,
+         FLAGS_pretrained_vectors.empty() ? FLAGS_hidden : embedding.dims(1),
          FLAGS_hidden,
          stack_size,
          SST::label_names.size(),
@@ -479,6 +496,10 @@ int main (int argc,  char* argv[]) {
          FLAGS_memory_feeds_gates,
          FLAGS_recursive_gates,
          FLAGS_convolution);
+
+    if (!FLAGS_pretrained_vectors.empty()) {
+        model.embedding = embedding;
+    }
 
     vector<vector<Mat<REAL_t>>> thread_params;
 

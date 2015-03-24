@@ -8,27 +8,21 @@ using utils::from_string;
 
 namespace glove {
 
+
     template<typename T>
-    std::tuple<Mat<T>, Vocab> load(string fname) {
+    void load(string fname, Mat<T>& underlying_mat, Vocab& vocab) {
         if (!utils::file_exists(fname)) {
             throw std::runtime_error("Cannot open file with glove vectors.");
         }
-
         std::fstream fp(fname);
         std::string line;
-
-        int observed_size = 0;
-        int capacity      = 100;
+        int observed_size = underlying_mat.dims(1);
+        int capacity      = underlying_mat.dims(0);
         int vocab_size    = 0;
-        auto pair = make_tuple<Mat<T>, Vocab>(Mat<T>(capacity, observed_size, false), Vocab());
         vector<string> vocabulary;
         std::string item;
         // use mat for assigning elements
-        auto& mat = std::get<0>(pair).w();
-        // notify Mat of resizes using underlying mat
-        auto& underlying_mat = std::get<0>(pair);
-
-
+        auto& mat = underlying_mat.w();
         while (std::getline(fp, line)) {
             bool found_name = false;
             int i = 0; // count how many numbers are in this row
@@ -67,10 +61,18 @@ namespace glove {
         // now final update is made to matrix
         underlying_mat.resize(vocab_size  + 1, observed_size);
         mat.row(vocab_size).fill(0.0);
-        std::get<1>(pair) = Vocab(vocabulary);
+        vocab = Vocab(vocabulary);
+    }
+
+    template<typename T>
+    std::tuple<Mat<T>, Vocab> load(string fname) {
+        auto pair = make_tuple<Mat<T>, Vocab>(Mat<T>(100, 0, false), Vocab());
+        load(fname, std::get<0>(pair), std::get<1>(pair));
         return pair;
     }
 
     template std::tuple<Mat<float>, Vocab> load(string);
     template std::tuple<Mat<double>, Vocab> load(string);
+    template void load(string fname, Mat<float>& underlying_mat, Vocab& vocab);
+    template void load(string fname, Mat<double>& underlying_mat, Vocab& vocab);
 }

@@ -15,6 +15,9 @@ namespace glove {
     **/
     template<typename T>
     std::tuple<Mat<T>, utils::Vocab> load(std::string fname);
+
+    template<typename T>
+    void load(std::string fname, Mat<T>& mat, utils::Vocab& vocab);
 }
 
 #endif

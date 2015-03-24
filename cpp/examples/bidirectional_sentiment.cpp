@@ -28,6 +28,12 @@ using SST::Databatch;
 using utils::ConfusionMatrix;
 using utils::assert2;
 
+static int ADADELTA_TYPE = 0;
+static int ADAGRAD_TYPE = 1;
+static int SGD_TYPE = 2;
+static int ADAM_TYPE = 3;
+static int RMSPROP_TYPE = 4;
+
 typedef float REAL_t;
 typedef Mat<REAL_t> mat;
 
@@ -119,6 +125,10 @@ class Filters {
             for (auto & f : model.filters) {
                 filters.emplace_back(f, copy_w, copy_dw);
             }
+        }
+
+        vector<Mat<T>> parameters() const {
+            return filters;
         }
 
         Filters<T> shallow_copy() const {
@@ -340,6 +350,10 @@ class BidirectionalLSTM {
                 auto gate_params = prediction_gate->parameters();
                 params.insert(params.end(), gate_params.begin(), gate_params.end());
             }
+            if (convolution) {
+                auto filters_params = filters->parameters();
+                params.insert(params.end(), filters_params.begin(), filters_params.end());
+            }
             return params;
         }
 };
@@ -513,25 +527,33 @@ int main (int argc,  char* argv[]) {
     }
     auto params = model.parameters();
 
-    auto svd_init = weights<REAL_t>::svd(weights<REAL_t>::gaussian(0.0, 1.0));
+    // auto svd_init = weights<REAL_t>::svd(weights<REAL_t>::gaussian(0.0, 1.0));
 
-    for (auto& param : params) {
-        if (param.dims(0) < 1000) {
-            svd_init(param);
-        }
-    }
+    // for (auto& param : params) {
+    //     if (param.dims(0) < 1000) {
+    //         svd_init(param);
+    //     }
+    // }
 
     // Rho value, eps value, and gradient clipping value:
     std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver;
+    int solver_type;
     if (FLAGS_solver == "adadelta") {
         std::cout << "Using AdaDelta" << std::endl;
         solver = make_shared<Solver::AdaDelta<REAL_t>>(params, 0.95, 1e-9, 100.0);
+        solver_type = ADADELTA_TYPE;
     } else if (FLAGS_solver == "adam") {
         std::cout << "Using Adam" << std::endl;
         solver = make_shared<Solver::Adam<REAL_t>>(params, 0.1, 0.001, 1e-9, 100.0);
+        solver_type = ADAM_TYPE;
     } else if (FLAGS_solver == "sgd") {
         std::cout << "Using vanilla SGD" << std::endl;
         solver = make_shared<Solver::SGD<REAL_t>>(params, 1e-9, 100.0);
+        solver_type = SGD_TYPE;
+    } else if (FLAGS_solver == "adagrad") {
+        std::cout << "Using Adagrad" << std::endl;
+        solver = make_shared<Solver::AdaGrad<REAL_t>>(params, 1e-9, 100.0);
+        solver_type = ADAGRAD_TYPE;
     } else {
         utils::exit_with_message("Did not recognize this solver type.");
     }
@@ -579,7 +601,9 @@ int main (int argc,  char* argv[]) {
         pool->wait_until_idle();
         journalist.done();
         double new_validation = average_recall(model, validation_set);
-
+        if (solver_type == ADAGRAD_TYPE) {
+            solver->reset_caches(params);
+        }
         if (new_validation < best_validation_score) {
             // lose patience:
             patience += 1;

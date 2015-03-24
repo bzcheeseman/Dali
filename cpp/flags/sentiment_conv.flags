@@ -1,14 +1,14 @@
 --train=../data/sentiment/train.txt
 --validation=../data/sentiment/dev.txt
 --test=../data/sentiment/test.txt
---j=18
+--j=17
 --minibatch=20
 --input_size=35
 --hidden=300
 --dropout=0.65
 --fast_dropout
 --nosurprise
---stack_size=5
+--stack_size=1
 --solver=adam
 --patience=5
 --shortcut

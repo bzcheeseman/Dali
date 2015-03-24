@@ -244,6 +244,8 @@ class Mat {
         Mat<R> operator[](Indexing::Index) const;
         Mat<R> operator()(Indexing::Index) const;
         Mat<R> operator()(Indexing::Index, Indexing::Index) const;
+        // Mat<R> operator()(void*, Indexing::Index) const;
+        Mat<R> operator()(void*, int) const;
         static Mat<R> zeros_like(Mat<R> shape);
         static Mat<R> empty_like(Mat<R> shape);
 };

@@ -1064,6 +1064,18 @@ Mat<R> MatOps<R>::row_pluck(
     return out;
 }
 
+template<typename R>
+Mat<R> MatOps<R>::col_pluck(
+        Mat<R> matrix,
+        int col) {
+    Mat<R> out (matrix.dims(0), 1, false);
+    out.w() = matrix.w().col(col);
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, out, col]() {
+            GRAD(matrix).col(col).noalias() += out.dw().col(0).transpose();
+        });
+    return out;
+}
 
 template<typename R>
 Mat<R> MatOps<R>::consider_constant_if(

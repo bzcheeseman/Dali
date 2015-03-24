@@ -39,6 +39,8 @@ DEFINE_string(test,          "",         "Where is the test set?");
 DEFINE_double(root_weight,   1.0,        "By how much to weigh the roots in the objective function?");
 DEFINE_bool(recursive_gates, true,       "Make a prediction at every timestep?");
 DEFINE_bool(surprise,        true,       "Use Surprise distance with target distribution?");
+DEFINE_bool(convolution,     false,      "Perform a convolution before passing to LSTMs ?");
+DEFINE_int32(filters,        50,         "Number of filters to use for Convolution");
 
 
 template<typename T>
@@ -97,20 +99,49 @@ vector<int> repeat_val(int val, int times) {
 }
 
 template<typename T>
+class Filters {
+    public:
+        std::vector<Mat<T>> filters;
+
+        Filters(int n, int width, int height){
+            for (int i = 0; i < n; i++) {
+                filters.emplace_back(
+                    width,
+                    height,
+                    weights<T>::uniform(1.0 / (height + width))
+                );
+            }
+        }
+
+        Filters(const Filters& model, bool copy_w, bool copy_dw) {
+            for (auto & f : model.filters) {
+                filters.emplace_back(f, copy_w, copy_dw);
+            }
+        }
+
+        Filters<T> shallow_copy() const {
+            return Filters(*this, false, true);
+        }
+};
+
+template<typename T>
 class BidirectionalLSTM {
     public:
-
         Mat<T> embedding;
         StackedLSTM<T> stacked_lstm;
         StackedInputLayer<T> decoder;
         bool use_recursive_gates;
         int output_size;
         int stack_size;
+        bool convolution;
         std::shared_ptr<StackedInputLayer<T>> prediction_gate;
+        std::shared_ptr<Filters<T>> filters;
 
 
-        BidirectionalLSTM(int vocabulary_size, int hidden_size, int stack_size, int output_size, bool shortcut, bool memory_feeds_gates, bool use_recursive_gates)
-            : embedding(vocabulary_size, hidden_size, weights<T>::uniform(-0.05, 0.05)),
+        BidirectionalLSTM(int vocabulary_size, int hidden_size, int stack_size, int output_size, bool shortcut, bool memory_feeds_gates, bool use_recursive_gates, bool convolution)
+            :
+              convolution(convolution),
+              embedding(vocabulary_size, hidden_size, weights<T>::uniform(-0.05, 0.05)),
               stacked_lstm(hidden_size, repeat_val(hidden_size, std::max(stack_size-1, 1)), shortcut, memory_feeds_gates),
             decoder({hidden_size, hidden_size }, output_size),
             use_recursive_gates(use_recursive_gates),
@@ -121,6 +152,13 @@ class BidirectionalLSTM {
                 prediction_gate = std::make_shared< StackedInputLayer<T> >( std::vector<int>({hidden_size, hidden_size, output_size}), 1);
             } else {
                 prediction_gate = nullptr;
+            }
+
+            if (convolution) {
+                filters = make_shared<Filters<T>>(
+                    hidden_size,
+                    hidden_size,
+                    2);
             }
 
             if (stack_size > 1) {
@@ -135,7 +173,9 @@ class BidirectionalLSTM {
         }
 
         BidirectionalLSTM(const BidirectionalLSTM& model, bool copy_w, bool copy_dw)
-            : embedding(model.embedding, copy_w, copy_dw),
+            :
+              embedding(model.embedding, copy_w, copy_dw),
+              convolution(model.convolution),
               stacked_lstm(model.stacked_lstm, copy_w, copy_dw),
               decoder(model.decoder, copy_w, copy_dw),
               use_recursive_gates(model.use_recursive_gates),
@@ -144,6 +184,11 @@ class BidirectionalLSTM {
                 prediction_gate = make_shared<StackedInputLayer<T>>(*model.prediction_gate, copy_w, copy_dw);
             } else {
                 prediction_gate = nullptr;
+            }
+            if (convolution) {
+                filters = make_shared<Filters<T>>(*model.filters, copy_w, copy_dw);
+            } else {
+                filters = nullptr;
             }
         }
 
@@ -156,10 +201,25 @@ class BidirectionalLSTM {
             vector<Mat<T>> forwardX;
             vector<Mat<T>> backwardX;
             assert(example.size() > 0);
-            for (size_t i = 0; i < example.size(); i++) {
-                forwardX.emplace_back(embedding[example[i]]);
-                backwardX.push_back(forwardX.back());
+
+            if (convolution) {
+                auto convolved = MatOps<T>::conv1d(
+                    embedding[example],
+                    filters->filters,
+                    example.size() < 2
+                );
+                std::cout << convolved << std::endl;
+                for (size_t i = 0; i < convolved.dims(0); i++) {
+                    forwardX.emplace_back(convolved(NULL, i));
+                    backwardX.push_back(forwardX.back());
+                }
+            } else {
+                for (size_t i = 0; i < example.size(); i++) {
+                    forwardX.emplace_back(embedding[example[i]]);
+                    backwardX.push_back(forwardX.back());
+                }
             }
+
             auto state = stacked_lstm.cells[0].initial_states();
             for (auto& cell : stacked_lstm.cells) {
                 if (pass != 0) {
@@ -229,7 +289,10 @@ class BidirectionalLSTM {
                         prediction
                     }).steep_sigmoid();
                     // Make a new prediction:
-                    auto new_prediction = decoder.activate({backwardX.front(), forwardX.back()});
+                    auto new_prediction = decoder.activate({
+                        apply_dropout(backwardX.front(), drop_prob),
+                        apply_dropout(forwardX.back(), drop_prob)
+                    });
                     // Update the prediction using the alpha value (tradeoff between old and new)
                     prediction = (
                         new_prediction.eltmul_broadcast_rowwise(new_memory) +
@@ -246,10 +309,16 @@ class BidirectionalLSTM {
             } else {
                 if (pass % 2 == 0) {
                     // then we ended with backward pass
-                    return decoder.activate({backwardX.front(), forwardX.back()});
+                    return decoder.activate({
+                        apply_dropout(backwardX.front(), drop_prob),
+                        apply_dropout(forwardX.back(), drop_prob)
+                    });
                 } else {
                     // then we ended with forward pass
-                    return decoder.activate({forwardX.back(), backwardX.front()});
+                    return decoder.activate({
+                        apply_dropout(forwardX.back(), drop_prob),
+                        apply_dropout(backwardX.front(), drop_prob)
+                    });
                 }
             }
         }
@@ -408,7 +477,8 @@ int main (int argc,  char* argv[]) {
          SST::label_names.size(),
          FLAGS_shortcut,
          FLAGS_memory_feeds_gates,
-         FLAGS_recursive_gates);
+         FLAGS_recursive_gates,
+         FLAGS_convolution);
 
     vector<vector<Mat<REAL_t>>> thread_params;
 

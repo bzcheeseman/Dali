@@ -87,6 +87,12 @@ Mat<R> MatOps<R>::conv1d(Mat<R> image, Mat<R> kernel) {
     return MatOps<R>::conv1d(image, kerns);
 }
 
+template<typename R>
+Mat<R> MatOps<R>::conv1d(Mat<R> image, Mat<R> kernel, bool pad) {
+    auto kerns = vector<Mat<R>>({kernel});
+    return MatOps<R>::conv1d(image, kerns, pad);
+}
+
 // Here multiple kernels are allowable
 template<typename R>
 Mat<R> MatOps<R>::conv1d(Mat<R> image, const vector<Mat<R>>& kernels) {
@@ -159,6 +165,94 @@ Mat<R> MatOps<R>::conv1d(Mat<R> image, const vector<Mat<R>>& kernels) {
                     if (!kernels[i].constant) {
                         kernels[i].dw().noalias() += (image_mat.block(0, col, KSizeX, kern_col_size).array() * (out_grad(i, col) / (kernel_sums[i]))).matrix();
                     }
+                }
+            }
+        });
+    }
+    return out;
+}
+
+// Here multiple kernels are allowable (but only the overlap between them and image is used)
+template<typename R>
+Mat<R> MatOps<R>::conv1d(Mat<R> image, const vector<Mat<R>>& kernels, bool pad) {
+    if (!pad) {
+        return conv1d(image, kernels);
+    }
+    assert2(kernels.size() > 0, "Must pass at least 1 kernel to conv1d.");
+    int kern_col_size = kernels[0].dims(1);
+    for (auto& kernel : kernels) {
+        assert2(image.dims(0) <= kernel.dims(0),
+            MS() << "Kernel's first dimension (" << kernel.dims(0)
+                 << ") must be greater than or equal to argument's first dimension ("
+                 << image.dims(0));
+        assert2(kern_col_size == kernel.dims(1),
+            MS() << "All Kernel's second dimension (" << kernel.dims(1)
+                 << ") must be equal");
+    }
+    if (image.dims(0) == kernels[0].dims(0) && kern_col_size >= image.dims(1)) {
+        return conv1d(image, kernels);
+    }
+
+    auto out = Mat<R>(
+        kernels.size(), // 1d convolution only holds one row
+        1,              // kernels are larger than "image"
+        false // fill zeros
+    );
+
+    auto& out_mat = out.w();
+    auto& image_mat = image.w();
+    int KSizeX = image.dims(0),
+        SizeX  = image.dims(0),
+        SizeY  = image.dims(1);
+    vector<R> kernel_sums;
+    kernel_sums.reserve(kernels.size());
+    std::transform(kernels.begin(), kernels.end(), std::back_inserter(kernel_sums), [&SizeX, &SizeY](const Mat<R>& kern) {
+        return kern.w().block(
+            0,
+            0,
+            SizeX,
+            SizeY
+            ).sum();
+    });
+
+    for (int i = 0; i < kernels.size();i++) {
+        out_mat(i,0) = (image_mat.array() * kernels[i].w().block(
+            0,
+            0,
+            SizeX,
+            SizeY
+            ).array()).sum() / kernel_sums[i];
+    }
+
+    if (graph::backprop_enabled) {
+        graph::emplace_back([image, kernels, out, kernel_sums, kern_col_size](){
+            auto& image_mat = image.w();
+            int col=0,
+                KSizeX = image.dims(0),
+                SizeX  = image.dims(0),
+                SizeY  = image.dims(1);
+            bool grad_image = !image.constant;
+            auto& out_grad = out.dw();
+            auto& out_weight = out.w();
+            std::shared_ptr<Eigen::Matrix<R, Eigen::Dynamic, 1>> surplus;
+            bool computed_surplus = false;
+            for (int i=0; i < kernels.size();i++) {
+                if (!kernels[i].constant) {
+                    if (!computed_surplus) {
+                        surplus = make_shared<Eigen::Matrix<R, Eigen::Dynamic, 1>>((out_weight.array() * out_grad.array()).rowwise().sum());
+                        computed_surplus = true;
+                    }
+                    kernels[i].dw().array() -= (*surplus)(i,0) / kernel_sums[i];
+                }
+            }
+            if (grad_image) {
+                for (int i=0; i < kernels.size();i++) {
+                    image.dw().noalias() += kernels[i].w().block(0, 0, SizeX, SizeY) * (out_grad(i, 0) / kernel_sums[i]);
+                }
+            }
+            for (int i=0; i < kernels.size();i++) {
+                if (!kernels[i].constant) {
+                    kernels[i].dw().block(0, 0, SizeX, SizeY).noalias() += (image_mat.array() * (out_grad(i, 0) / (kernel_sums[i]))).matrix();
                 }
             }
         });

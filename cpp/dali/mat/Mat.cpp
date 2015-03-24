@@ -26,6 +26,8 @@ MatInternal<R>::MatInternal(dim_t n, dim_t d, bool fill_zeros) :
         w.fill(0);
     }
 }
+
+
 template<typename R>
 MatInternal<R>::MatInternal(const MatInternal<R>& m) :
         w(m.w),
@@ -243,11 +245,10 @@ Mat<R>::Mat(const Mat<R>& other, bool copy_w, bool copy_dw) :
 
     if (copy_dw && other.g != nullptr) {
         // see comment for copy_w.
-        this->g = make_shared<GradInternal<R>>(*other.g);
+        g = make_shared<GradInternal<R>>(*other.g);
     } else {
         g = other.g;
     }
-
 }
 
 template<typename R>
@@ -470,6 +471,13 @@ template<typename R>
 Mat<R> Mat<R>::operator()(
         int row) const {
     return MatOps<R>::row_pluck(*this, row);
+}
+
+template<typename R>
+Mat<R> Mat<R>::operator()(
+        void* nothing,
+        int col) const {
+    return MatOps<R>::col_pluck(*this, col);
 }
 
 template<typename R>

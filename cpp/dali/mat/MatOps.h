@@ -207,13 +207,16 @@ struct MatOps {
     static Mat<R> rows_pluck(Mat<R>, Indexing::Index);
     static Mat<R> rows_cols_pluck(Mat<R>, Indexing::Index, Indexing::Index);
     static Mat<R> row_pluck(Mat<R>, int);
+    static Mat<R> col_pluck(Mat<R>, int);
     static Mat<R> pow(Mat<R>, R);
     static Mat<R> fill(Mat<R>, R);
     static Mat<R> sqrt(Mat<R>);
     static Mat<R> elt_inv(Mat<R>);
     static Mat<R> conv2d(Mat<R> image, Mat<R> kernel);
     static Mat<R> conv1d(Mat<R> image, Mat<R> kernel);
+    static Mat<R> conv1d(Mat<R> image, Mat<R> kernel, bool pad);
     static Mat<R> conv1d(Mat<R> image, const std::vector<Mat<R>>& kernels);
+    static Mat<R> conv1d(Mat<R> image, const std::vector<Mat<R>>& kernels, bool pad);
 
     static Mat<R> consider_constant(Mat<R>);
     static Mat<R> consider_constant_if(Mat<R>, bool should_consider_constant);

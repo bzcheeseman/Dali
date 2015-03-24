@@ -163,6 +163,14 @@ template<typename R>
 Mat<R>::Mat(dim_t n, dim_t d) : Mat(n,d, true) {
 }
 
+template<typename R>
+void Mat<R>::resize(dim_t n, dim_t d) {
+    m->dims[0] = n;
+    m->dims[1] = d;
+    w().conservativeResize(n, d);
+    dw().conservativeResize(n, d);
+}
+
 /**
 This is the only Matrix constructor, all other
 constructors reference this one.

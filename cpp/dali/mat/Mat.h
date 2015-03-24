@@ -186,7 +186,7 @@ class Mat {
         but `w` buffers are shared amongst threads. */
         Mat shallow_copy();
         operator std::string() const;
-
+        void resize(dim_t rows, dim_t cols);
 
         // Various operations on matrix.
         // Soon to be replaced by legitimate operators

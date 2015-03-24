@@ -1,7 +1,7 @@
 #include <chrono>
 #include <vector>
 #include <gtest/gtest.h>
-
+#include "dali/data_processing/Glove.h"
 #include "dali/utils/ThreadPool.h"
 
 using std::vector;
@@ -58,5 +58,12 @@ TEST(ThreadPool, thread_number) {
             pool.wait_until_idle();
         }
     }
+}
+
+TEST(Glove, load) {
+    auto embedding = glove::load<double>( STR(DALI_DATA_DIR) "/glove/test_data.txt");
+    ASSERT_EQ(std::get<1>(embedding).index2word.size(), 21);
+    ASSERT_EQ(std::get<0>(embedding).dims(0), 21);
+    ASSERT_EQ(std::get<0>(embedding).dims(1), 300);
 }
 

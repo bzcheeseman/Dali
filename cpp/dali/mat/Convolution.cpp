@@ -189,7 +189,7 @@ Mat<R> MatOps<R>::conv1d(Mat<R> image, const vector<Mat<R>>& kernels, bool pad) 
             MS() << "All Kernel's second dimension (" << kernel.dims(1)
                  << ") must be equal");
     }
-    if (image.dims(0) == kernels[0].dims(0) && kern_col_size >= image.dims(1)) {
+    if (image.dims(0) == kernels[0].dims(0) && kern_col_size <= image.dims(1)) {
         return conv1d(image, kernels);
     }
 

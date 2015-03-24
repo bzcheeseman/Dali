@@ -208,8 +208,7 @@ class BidirectionalLSTM {
                     filters->filters,
                     example.size() < 2
                 );
-                std::cout << convolved << std::endl;
-                for (size_t i = 0; i < convolved.dims(0); i++) {
+                for (size_t i = 0; i < convolved.dims(1); i++) {
                     forwardX.emplace_back(convolved(NULL, i));
                     backwardX.push_back(forwardX.back());
                 }

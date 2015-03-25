@@ -40,12 +40,12 @@ typedef Mat<REAL_t> mat;
 DEFINE_int32(minibatch,      100,        "What size should be used for the minibatches ?");
 DEFINE_int32(patience,       5,          "How many unimproving epochs to wait through before witnessing progress ?");
 DEFINE_double(dropout,       0.3,        "How much dropout noise to add to the problem ?");
-DEFINE_bool(fast_dropout,    false,      "Use fast dropout?");
+DEFINE_bool(fast_dropout,    true,       "Use fast dropout?");
 DEFINE_string(solver,        "adadelta", "What solver to use (adadelta, sgd, adam)");
 DEFINE_string(test,          "",         "Where is the test set?");
 DEFINE_double(root_weight,   1.0,        "By how much to weigh the roots in the objective function?");
 DEFINE_bool(recursive_gates, true,       "Make a prediction at every timestep?");
-DEFINE_bool(surprise,        true,       "Use Surprise distance with target distribution?");
+DEFINE_bool(surprise,        false,       "Use Surprise distance with target distribution?");
 DEFINE_bool(convolution,     false,      "Perform a convolution before passing to LSTMs ?");
 DEFINE_int32(filters,        50,         "Number of filters to use for Convolution");
 DEFINE_string(pretrained_vectors, "",    "Load pretrained word vectors?");
@@ -56,7 +56,7 @@ Mat<T> categorical_surprise(Mat<T> logprobs, int target) {
     auto out = Mat<T>(1, 1, false);
     auto probs = MatOps<T>::softmax_no_grad(logprobs);
 
-    out.w()(0) = -(
+    out.w()(0) = (
         std::log1p(-std::sqrt(1.0 - probs.w()(target, 0))) -
         std::log1p( std::sqrt(1.0 - probs.w()(target, 0)))
     );
@@ -65,14 +65,14 @@ Mat<T> categorical_surprise(Mat<T> logprobs, int target) {
         if (!logprobs.constant) {
             graph::emplace_back([logprobs, probs, target]() {
                 auto root_coeff = std::sqrt(std::max(EPS, 1.0 - probs.w()(target, 0)));
-                logprobs.dw().noalias() += (
+                logprobs.dw().noalias() -= (
                     (
                         (0.5 * probs.w()(target, 0) / (root_coeff * (root_coeff + 1.0)) + EPS) +
                         (0.5 * probs.w()(target, 0) / (root_coeff * (1.0 - root_coeff)) + EPS)
 
                     ) * probs.w()
                 );
-                logprobs.dw()(target, 0) -= probs.w()(target, 0) * (
+                logprobs.dw()(target, 0) += probs.w()(target, 0) * (
                     (0.5 / (root_coeff * (root_coeff + 1.0)) + EPS) +
                     (0.5 / (root_coeff * (1.0 - root_coeff)) + EPS)
                 );

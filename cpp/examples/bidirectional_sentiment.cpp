@@ -575,7 +575,7 @@ int main (int argc,  char* argv[]) {
         );
 
         for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
-            pool->run([&thread_params, &thread_models, batch_id, &journalist, &solver, &dataset, &best_validation_score, &batches_processed]() {
+            pool->run([&solver_type, &thread_params, &thread_models, batch_id, &journalist, &solver, &dataset, &best_validation_score, &batches_processed]() {
                 auto& thread_model  = thread_models[ThreadPool::get_thread_number()];
                 auto& params        = thread_params[ThreadPool::get_thread_number()];
                 auto& minibatch     = dataset[batch_id];
@@ -596,9 +596,9 @@ int main (int argc,  char* argv[]) {
                     graph::backward(); // backpropagate
                 }
                 if (solver_type == ADAGRAD_TYPE) {
-                    dynamic_cast<Solver::AdaGrad*>(solver.get())->step(params, FLAGS_learning_rate);
+                    dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step(params, FLAGS_learning_rate);
                 } else if (solver_type == SGD_TYPE) {
-                    dynamic_cast<Solver::SGD*>(solver.get())->step(params, FLAGS_learning_rate);
+                    dynamic_cast<Solver::SGD<REAL_t>*>(solver.get())->step(params, FLAGS_learning_rate);
                 } else {
                     solver->step(params); // One step of gradient descent
                 }

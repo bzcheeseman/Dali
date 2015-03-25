@@ -93,10 +93,7 @@ namespace Solver {
                 std::forward_as_tuple(param.dims(0), param.dims(1)));
                 // initialize values for step cache to zero:
                 new_cache.first->second.fill(0);
-            } else {
-                ELOG("something stupid");
             }
-            ELOG(param);
 
         }
     }
@@ -182,8 +179,6 @@ namespace Solver {
         ) {
         for (auto& param : parameters) {
             auto& s = this->gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
-            std::cout << s.rows() << " " << s.cols() << std::endl;
-            std::cout << param.w().rows() << " " << param.w().cols() << std::endl;
 
             if (param.sparse) {
                 for (auto& i : *(param.sparse_row_keys)) {

@@ -49,6 +49,7 @@ DEFINE_bool(surprise,        false,       "Use Surprise distance with target dis
 DEFINE_bool(convolution,     false,      "Perform a convolution before passing to LSTMs ?");
 DEFINE_int32(filters,        50,         "Number of filters to use for Convolution");
 DEFINE_string(pretrained_vectors, "",    "Load pretrained word vectors?");
+DEFINE_double(learning_rate, 0.01,       "Learning rate for SGD and Adagrad.");
 
 
 template<typename T>
@@ -594,7 +595,13 @@ int main (int argc,  char* argv[]) {
                     error.grad();
                     graph::backward(); // backpropagate
                 }
-                solver->step(params); // One step of gradient descent
+                if (solver_type == ADAGRAD_TYPE) {
+                    dynamic_cast<Solver::AdaGrad*>(solver.get())->step(params, FLAGS_learning_rate);
+                } else if (solver_type == SGD_TYPE) {
+                    dynamic_cast<Solver::SGD*>(solver.get())->step(params, FLAGS_learning_rate);
+                } else {
+                    solver->step(params); // One step of gradient descent
+                }
                 journalist.tick(++batches_processed, best_validation_score);
             });
         }

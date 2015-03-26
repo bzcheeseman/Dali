@@ -42,6 +42,7 @@ DEFINE_int32(patience,       5,          "How many unimproving epochs to wait th
 DEFINE_double(dropout,       0.3,        "How much dropout noise to add to the problem ?");
 DEFINE_bool(fast_dropout,    true,       "Use fast dropout?");
 DEFINE_string(solver,        "adadelta", "What solver to use (adadelta, sgd, adam)");
+DEFINE_bool(bidirectional,   true,       "Read forward and backwards ?");
 DEFINE_string(test,          "",         "Where is the test set?");
 DEFINE_double(root_weight,   1.0,        "By how much to weigh the roots in the objective function?");
 DEFINE_bool(recursive_gates, true,       "Make a prediction at every timestep?");
@@ -57,7 +58,7 @@ Mat<T> categorical_surprise(Mat<T> logprobs, int target) {
     auto out = Mat<T>(1, 1, false);
     auto probs = MatOps<T>::softmax_no_grad(logprobs);
 
-    out.w()(0) = (
+    out.w()(0) = -(
         std::log1p(-std::sqrt(1.0 - probs.w()(target, 0))) -
         std::log1p( std::sqrt(1.0 - probs.w()(target, 0)))
     );
@@ -66,14 +67,14 @@ Mat<T> categorical_surprise(Mat<T> logprobs, int target) {
         if (!logprobs.constant) {
             graph::emplace_back([logprobs, probs, target]() {
                 auto root_coeff = std::sqrt(std::max(EPS, 1.0 - probs.w()(target, 0)));
-                logprobs.dw().noalias() -= (
+                logprobs.dw().noalias() += (
                     (
                         (0.5 * probs.w()(target, 0) / (root_coeff * (root_coeff + 1.0)) + EPS) +
                         (0.5 * probs.w()(target, 0) / (root_coeff * (1.0 - root_coeff)) + EPS)
 
                     ) * probs.w()
                 );
-                logprobs.dw()(target, 0) += probs.w()(target, 0) * (
+                logprobs.dw()(target, 0) -= probs.w()(target, 0) * (
                     (0.5 / (root_coeff * (root_coeff + 1.0)) + EPS) +
                     (0.5 / (root_coeff * (1.0 - root_coeff)) + EPS)
                 );
@@ -147,12 +148,14 @@ class BidirectionalLSTM {
         int output_size;
         int stack_size;
         bool convolution;
+        bool bidirectional;
         std::shared_ptr<StackedInputLayer<T>> prediction_gate;
         std::shared_ptr<Filters<T>> filters;
 
 
-        BidirectionalLSTM(int vocabulary_size, int input_size, int hidden_size, int stack_size, int output_size, bool shortcut, bool memory_feeds_gates, bool use_recursive_gates, bool convolution)
+        BidirectionalLSTM(int vocabulary_size, int input_size, int hidden_size, int stack_size, int output_size, bool shortcut, bool memory_feeds_gates, bool use_recursive_gates, bool convolution, bool bidirectional)
             :
+              bidirectional(bidirectional),
               convolution(convolution),
               embedding(vocabulary_size, input_size, weights<T>::uniform(-0.05, 0.05)),
               stacked_lstm(hidden_size, repeat_val(hidden_size, std::max(stack_size-1, 1)), shortcut, memory_feeds_gates),
@@ -195,6 +198,7 @@ class BidirectionalLSTM {
         BidirectionalLSTM(const BidirectionalLSTM& model, bool copy_w, bool copy_dw)
             :
               embedding(model.embedding, copy_w, copy_dw),
+              bidirectional(model.bidirectional),
               convolution(model.convolution),
               stacked_lstm(model.stacked_lstm, copy_w, copy_dw),
               decoder(model.decoder, copy_w, copy_dw),
@@ -220,6 +224,7 @@ class BidirectionalLSTM {
             size_t pass = 0;
             vector<Mat<T>> forwardX;
             vector<Mat<T>> backwardX;
+            vector<Mat<T>> embeddingX;
             assert(example.size() > 0);
 
             if (convolution) {
@@ -227,14 +232,16 @@ class BidirectionalLSTM {
                     embedding[example],
                     filters->filters,
                     example.size() < 2
-                );
+                ).tanh();
                 for (size_t i = 0; i < convolved.dims(1); i++) {
-                    forwardX.emplace_back(convolved(NULL, i));
+                    embeddingX.emplace_back(convolved(NULL, i));
+                    forwardX.push_back(embeddingX.back());
                     backwardX.push_back(forwardX.back());
                 }
             } else {
                 for (size_t i = 0; i < example.size(); i++) {
-                    forwardX.emplace_back(embedding[example[i]]);
+                    embeddingX.emplace_back(embedding[example[i]]);
+                    forwardX.push_back(embeddingX.back());
                     backwardX.push_back(forwardX.back());
                 }
             }
@@ -244,16 +251,28 @@ class BidirectionalLSTM {
                 if (pass != 0) {
                     state = cell.initial_states();
                 }
-                if (pass % 2 == 0) {
+                if ((pass % 2 == 0) || !bidirectional) {
                     for (auto it_back = backwardX.begin(),
-                              it_forward = forwardX.begin();
-                        (it_back != backwardX.end() && it_forward != forwardX.end());
-                        ++it_back, ++it_forward) {
+                              it_forward = forwardX.begin(),
+                              it_embed = embeddingX.begin();
+                        (it_back != backwardX.end() && it_forward != forwardX.end() && it_embed != embeddingX.end());
+                        ++it_back, ++it_forward, ++it_embed) {
                         if (cell.shortcut) {
-                            state = cell.activate(
-                                MatOps<REAL_t>::dropout_normalized(*it_forward, drop_prob),
-                                MatOps<REAL_t>::dropout_normalized(*it_back, drop_prob),
-                                state);
+                            // if the model used is bidirectional
+                            // then the backward stream should be available
+                            if (bidirectional) {
+                                state = cell.activate(
+                                    MatOps<REAL_t>::dropout_normalized(*it_forward, drop_prob),
+                                    MatOps<REAL_t>::dropout_normalized(*it_back, drop_prob),
+                                    state);
+                            } else {
+                                // else the "shortcut" stream is the lowest level's embeddings
+                                // simply.
+                                state = cell.activate(
+                                    MatOps<REAL_t>::dropout_normalized(*it_forward, drop_prob),
+                                    MatOps<REAL_t>::dropout_normalized(*it_embed, drop_prob),
+                                    state);
+                            }
                         } else {
                             state = cell.activate(
                                 MatOps<REAL_t>::dropout_normalized(*it_forward, drop_prob),
@@ -297,21 +316,21 @@ class BidirectionalLSTM {
                 auto total_memory = MatOps<T>::consider_constant(Mat<T>(1, 1));
                 // With recursive gates the prediction happens all along
                 // we rerun through the highest layer's predictions:
-                for (auto it_back = backwardX.begin(), it_forward = forwardX.begin();
-                        (it_back != backwardX.end() && it_forward != forwardX.end());
-                        ++it_back, ++it_forward)                                      {
+                for (auto it_back = backwardX.begin(), it_forward = forwardX.begin(), it_embed = embeddingX.begin();
+                        (it_back != backwardX.end() && it_forward != forwardX.end() && it_embed != embeddingX.end());
+                        ++it_back, ++it_forward, ++it_embed)                                      {
                     // get a value between 0 and 1 for how much we keep
                     // update the current prediction
                     auto new_memory = prediction_gate->activate({
                         *it_forward,
-                        *it_back,
+                        bidirectional ? *it_back : *it_embed,
                         prediction
-                    }).steep_sigmoid();
+                    }).sigmoid();
                     // Make a new prediction:
-                    auto new_prediction = decoder.activate({
-                        apply_dropout(backwardX.front(), drop_prob),
-                        apply_dropout(forwardX.back(), drop_prob)
-                    });
+                    auto new_prediction = MatOps<T>::softmax(decoder.activate({
+                        apply_dropout(*it_forward, drop_prob),
+                        apply_dropout(bidirectional ? *it_back : *it_embed, drop_prob)
+                    }));
                     // Update the prediction using the alpha value (tradeoff between old and new)
                     prediction = (
                         new_prediction.eltmul_broadcast_rowwise(new_memory) +
@@ -326,18 +345,22 @@ class BidirectionalLSTM {
                 }
                 return prediction;
             } else {
-                if (pass % 2 == 0) {
+                if (!bidirectional) {
+                    return MatOps<T>::softmax(decoder.activate(
+                        apply_dropout(forwardX.back(), drop_prob)
+                    ));
+                } else if (pass % 2 == 0) {
                     // then we ended with backward pass
-                    return decoder.activate({
+                    return MatOps<T>::softmax(decoder.activate({
                         apply_dropout(backwardX.front(), drop_prob),
                         apply_dropout(forwardX.back(), drop_prob)
-                    });
+                    }));
                 } else {
                     // then we ended with forward pass
-                    return decoder.activate({
+                    return MatOps<T>::softmax(decoder.activate({
                         apply_dropout(forwardX.back(), drop_prob),
                         apply_dropout(backwardX.front(), drop_prob)
-                    });
+                    }));
                 }
             }
         }
@@ -510,7 +533,8 @@ int main (int argc,  char* argv[]) {
          FLAGS_shortcut,
          FLAGS_memory_feeds_gates,
          FLAGS_recursive_gates,
-         FLAGS_convolution);
+         FLAGS_convolution,
+         FLAGS_bidirectional);
 
     if (!FLAGS_pretrained_vectors.empty()) {
         model.embedding = embedding;
@@ -580,14 +604,16 @@ int main (int argc,  char* argv[]) {
                 auto& params        = thread_params[ThreadPool::get_thread_number()];
                 auto& minibatch     = dataset[batch_id];
                 // many forward steps here:
+                REAL_t err = 0.0;
                 for (auto & example : minibatch) {
-                    auto logprobs = thread_model.activate_sequence(std::get<0>(example), FLAGS_dropout);
+                    auto probs = thread_model.activate_sequence(std::get<0>(example), FLAGS_dropout);
                     Mat<REAL_t> error;
                     if (FLAGS_surprise) {
-                        error = categorical_surprise(logprobs, std::get<1>(example));
+                        error = categorical_surprise(probs, std::get<1>(example));
                     } else {
-                        error = MatOps<REAL_t>::softmax_cross_entropy(logprobs, std::get<1>(example));
+                        error = MatOps<REAL_t>::cross_entropy(probs, std::get<1>(example));
                     }
+                    err += error.w()(0);
                     // auto error = MatOps<REAL_t>::softmax_cross_entropy(logprobs, std::get<1>(example));
                     if (std::get<2>(example) && FLAGS_root_weight != 1.0) {
                         error = error * FLAGS_root_weight;
@@ -602,7 +628,7 @@ int main (int argc,  char* argv[]) {
                 } else {
                     solver->step(params); // One step of gradient descent
                 }
-                journalist.tick(++batches_processed, best_validation_score);
+                journalist.tick(++batches_processed, err);
             });
         }
         pool->wait_until_idle();

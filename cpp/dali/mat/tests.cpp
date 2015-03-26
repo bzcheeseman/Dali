@@ -84,6 +84,11 @@ bool gradient_same(
 
         worked_out = worked_out && matrix_almost_equals(Arg_prime, arg.dw(), tolerance);
         if (!worked_out) {
+            std::cout << "-----------\nArg_prime:" << std::endl;
+            std::cout << Arg_prime << std::endl;
+            std::cout << "-----------\narg.dw():" << std::endl;
+            std::cout << arg.dw() << std::endl;
+            std::cout << "-----------" << std::endl;
             break;
         }
     }
@@ -332,6 +337,23 @@ TEST_F(MatOpsTests, matrix_conv2d_grad) {
         auto kernel = Mat<R>(5, 5, weights<R>::uniform(-20.0, 20.0));
         auto image = Mat<R>(8, 8, weights<R>::uniform(-20.0, 20.0));
         ASSERT_TRUE(gradient_same<R>(functor, {image, kernel}, 1e-4));
+    }
+}
+
+TEST_F(MatOpsTests, cross_entropy_grad) {
+    int target = 8;
+    auto functor = [&target](vector<Mat<R>> Xs)-> Mat<R> {
+        auto soft = MatOps<R>::softmax(
+                Xs[1].dot(Xs[0])
+            );
+        return MatOps<R>::cross_entropy(
+            soft,
+            target);
+    };
+    EXPERIMENT_REPEAT {
+        auto input = Mat<R>(5,  3, weights<R>::uniform(-2.0, 2.0));
+        auto layer = Mat<R>(10, 5, weights<R>::uniform(-2.0, 2.0));
+        ASSERT_TRUE(gradient_same<R>(functor, {input, layer}, 1e-4));
     }
 }
 

@@ -401,9 +401,16 @@ Mat<R> MatOps<R>::softmax_no_grad(Mat<R> matrix, R temperature) {
 template<typename R>
 Mat<R> MatOps<R>::softmax(Mat<R> matrix, R temperature) {
     Mat<R> out = MatOps<R>::softmax_no_grad(matrix, temperature);
-    if (graph::backprop_enabled)
-        graph::emplace_back([matrix, temperature, out](){
-            GRAD(matrix).noalias() += (((out.w()).array() - out.w().array().square())/temperature * out.dw().array()).matrix();
+    if (graph::backprop_enabled && !matrix.constant)
+        graph::emplace_back([matrix, temperature, out]() {
+            auto& dw = matrix.dw();
+            auto& sm = out.w();
+            auto& dy = out.dw();
+            typename Mat<R>::eigen_mat sm_times_dy = (sm.array() * dy.array());
+            auto colwise_sums                      = sm_times_dy.colwise().sum();
+            for (size_t i = 0; i < matrix.dims(1); ++i) {
+                dw.col(i) += sm_times_dy.col(i) - sm.col(i) * colwise_sums(i);
+            }
         });
     return out;
 }
@@ -495,18 +502,20 @@ template<typename R>
 Mat<R> MatOps<R>::cross_entropy(Mat<R> matrix, uint answer_idx) {
     DEBUG_ASSERT_BOUNDS(matrix.w(),0.0,1.0 + EPS);
     assert(matrix.dims().size() > 1);
-    Mat<R> out =  Mat<R>(1, 1, false);
+    Mat<R> out =  Mat<R>(
+        1,
+        matrix.dims(1),
+        false);
 
     auto x = matrix.w().array();
-
-    out.w()(0,0) = - std::log(x(answer_idx, 0) + EPS);
+    out.w() = - (x.row(answer_idx).array() + EPS).log();
 
     DEBUG_ASSERT_NOT_NAN(out.w());
 
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, answer_idx, out](){
             auto x = matrix.w().array();
-            GRAD(matrix)(answer_idx, 0) += -1.0/(x(answer_idx, 0) + EPS) * out.dw()(0,0);
+            GRAD(matrix).row(answer_idx).array() += -(x.row(answer_idx).array() + EPS).inverse() * out.dw().array();
         });
     return out;
 }

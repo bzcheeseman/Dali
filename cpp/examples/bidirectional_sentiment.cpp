@@ -54,7 +54,7 @@ DEFINE_double(learning_rate, 0.01,       "Learning rate for SGD and Adagrad.");
 
 
 template<typename T>
-Mat<T> categorical_surprise(Mat<T> logprobs, int target) {
+Mat<T> softmax_categorical_surprise(Mat<T> logprobs, int target) {
     auto out = Mat<T>(1, 1, false);
     auto probs = MatOps<T>::softmax_no_grad(logprobs);
 
@@ -235,6 +235,7 @@ class BidirectionalLSTM {
                 ).tanh();
                 for (size_t i = 0; i < convolved.dims(1); i++) {
                     embeddingX.emplace_back(convolved(NULL, i));
+                    // null as first argument means "for all rows take this column"
                     forwardX.push_back(embeddingX.back());
                     backwardX.push_back(forwardX.back());
                 }
@@ -604,16 +605,16 @@ int main (int argc,  char* argv[]) {
                 auto& params        = thread_params[ThreadPool::get_thread_number()];
                 auto& minibatch     = dataset[batch_id];
                 // many forward steps here:
-                REAL_t err = 0.0;
+                // REAL_t err = 0.0;
                 for (auto & example : minibatch) {
                     auto probs = thread_model.activate_sequence(std::get<0>(example), FLAGS_dropout);
                     Mat<REAL_t> error;
                     if (FLAGS_surprise) {
-                        error = categorical_surprise(probs, std::get<1>(example));
+                        error = softmax_categorical_surprise(probs, std::get<1>(example));
                     } else {
                         error = MatOps<REAL_t>::cross_entropy(probs, std::get<1>(example));
                     }
-                    err += error.w()(0);
+                    // err += error.w()(0);
                     // auto error = MatOps<REAL_t>::softmax_cross_entropy(logprobs, std::get<1>(example));
                     if (std::get<2>(example) && FLAGS_root_weight != 1.0) {
                         error = error * FLAGS_root_weight;
@@ -628,7 +629,7 @@ int main (int argc,  char* argv[]) {
                 } else {
                     solver->step(params); // One step of gradient descent
                 }
-                journalist.tick(++batches_processed, err);
+                journalist.tick(++batches_processed, best_validation_score);
             });
         }
         pool->wait_until_idle();

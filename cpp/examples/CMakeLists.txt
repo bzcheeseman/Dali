@@ -16,6 +16,7 @@ set(EXAMPLE_PROGRAMS babi_solvers
                      stacked_lstm
                      test_lattice
                      loading_from_sqlite
+                     lstm_sentiment
                      )
 foreach(program ${EXAMPLE_PROGRAMS})
     add_executable(${program} ${EXAMPLES_DIR}/${program}.cpp)

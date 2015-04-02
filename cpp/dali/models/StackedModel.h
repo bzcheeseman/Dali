@@ -94,8 +94,19 @@ class StackedModel : public RecurrentEmbeddingModel<Z>  {
                                               int output_size,
                                               bool verbose = true);
 
-        StackedModel(int, int, int, int, int, bool use_shortcut = false, bool memory_feeds_gates = false);
-        StackedModel(int, int, int, std::vector<int>&, bool use_shortcut = false, bool memory_feeds_gates = false);
+        StackedModel(int vocabulary_size,
+                     int input_size,
+                     int hidden_size,
+                     int stack_size,
+                     int output_size,
+                     bool use_shortcut = false,
+                     bool memory_feeds_gates = false);
+        StackedModel(int vocabulary_size,
+                     int input_size,
+                     int output_size,
+                     std::vector<int>& hidden_sizes,
+                     bool use_shortcut = false,
+                     bool memory_feeds_gates = false);
         /**StackedModel Constructor from configuration map
         ----------------------------------------------------
 

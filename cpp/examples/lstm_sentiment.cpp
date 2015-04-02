@@ -263,6 +263,7 @@ int main (int argc,  char* argv[]) {
 
     std::tuple<REAL_t, REAL_t> best_validation_score({0.0, 0.0});
     int epoch = 0;
+    int best_epoch = 0;
     double patience = 0;
     string best_file = "";
 
@@ -330,6 +331,7 @@ int main (int argc,  char* argv[]) {
             std::cout << "Epoch (" << epoch << ") Best validation score = " << std::get<0>(best_validation_score) << "% ("<< std::get<0>(new_validation) << "%), patience = " << patience << std::endl;
         } else {
             std::cout << "Epoch (" << epoch << ") Best validation score = " << std::get<0>(best_validation_score) << "%, patience = " << patience << std::endl;
+            best_epoch = epoch;
         }
         if (!FLAGS_save_location.empty()) {
             stringstream ss;
@@ -365,7 +367,9 @@ int main (int argc,  char* argv[]) {
                << "\t" << FLAGS_dropout
                << "\t" << FLAGS_hidden
                << "\t" << std::get<0>(a_r)
-               << "\t" << std::get<1>(a_r) << std::endl;
+               << "\t" << std::get<1>(a_r)
+               << "\t" << best_epoch
+               << std::endl;
         }
     }
 }

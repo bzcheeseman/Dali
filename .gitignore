@@ -50,6 +50,11 @@ __pycache__/*
 *.pyc
 *.egg-info
 
+# Downloaded Datasets #
+#######################
+*.ans
+*.tsv
+
 # Logs and databases #
 ######################
 *.log

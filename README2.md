@@ -73,9 +73,10 @@ That's it. Don't forget to checkout `examples/language_model.cpp`. It's not that
 
 #### Installation
 
-Get **[Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)** ([Download Link](http://bitbucket.org/eigen/eigen/get/3.2.4.tar.bz2)), **Clang**, and **protobuf**, then head to the `cpp/build` folder and use `cmake` to configure and create the appropriate Makefiles:
+Get **[Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)** ([Download Link](http://bitbucket.org/eigen/eigen/get/3.2.4.tar.bz2)), **Clang**, and **protobuf**, then head to the `cpp/build` folder and use `cmake` to configure and create the appropriate Makefiles.
 
-    > brew install clang
+You need the latest version of [Clang](http://llvm.org/releases/download.html) (>= 3.6.0).
+
     > brew install eigen
     > brew install cmake
     > HOMEBREW_CC=clang HOMEBREW_CXX=clang++ brew install protobuf

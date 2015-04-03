@@ -126,7 +126,7 @@ int main (int argc,  char* argv[]) {
     auto embedding = Mat<REAL_t>(100, 0);
     auto word_vocab = Vocab();
 
-    if (!FLAGS_pretrained_vectors.empty()) {
+    if (!FLAGS_pretrained_vectors.empty() && FLAGS_load.empty()) {
         glove::load(FLAGS_pretrained_vectors, embedding, word_vocab, 50000);
     } else {
         word_vocab = SST::get_word_vocab(sentiment_treebank, FLAGS_min_occurence);
@@ -188,16 +188,7 @@ int main (int argc,  char* argv[]) {
     }
 
 
-    std::cout << " Unique Trees Loaded : " << sentiment_treebank.size() << std::endl
-              << "        Example tree : " << *sentiment_treebank[sentiment_treebank.size()-1] << std::endl
-              << "     Vocabulary size : " << vocab_size << std::endl
-              << "      minibatch size : " << FLAGS_minibatch << std::endl
-              << "   number of threads : " << FLAGS_j << std::endl
-              << "        Dropout type : " << (FLAGS_fast_dropout ? "fast" : "default") << std::endl
-              << " Max training epochs : " << FLAGS_epochs << std::endl
-              << "           LSTM type : " << (FLAGS_memory_feeds_gates ? "Graves 2013" : "Zaremba 2014") << std::endl
-              << "          Stack size : " << std::max(FLAGS_stack_size, 1) << std::endl
-              << " # training examples : " << dataset.size() * FLAGS_minibatch - (FLAGS_minibatch - dataset[dataset.size() - 1].size()) << std::endl;
+
 
     pool = new ThreadPool(FLAGS_j);
 
@@ -207,14 +198,26 @@ int main (int argc,  char* argv[]) {
 
     auto stack_size  = std::max(FLAGS_stack_size, 1);
 
-    auto model = StackedModel<REAL_t>(
+    auto model = FLAGS_load.empty() ? StackedModel<REAL_t>(
          FLAGS_pretrained_vectors.empty() ? word_vocab.index2word.size() : 0,
          FLAGS_pretrained_vectors.empty() ? FLAGS_hidden : embedding.dims(1),
          FLAGS_hidden,
          stack_size,
          SST::label_names.size(),
          FLAGS_shortcut,
-         FLAGS_memory_feeds_gates);
+         FLAGS_memory_feeds_gates) :
+        StackedModel<REAL_t>::load(FLAGS_load);
+
+    std::cout << " Unique Trees Loaded : " << sentiment_treebank.size() << std::endl
+              << "        Example tree : " << *sentiment_treebank[sentiment_treebank.size()-1] << std::endl
+              << "     Vocabulary size : " << vocab_size << std::endl
+              << "      minibatch size : " << FLAGS_minibatch << std::endl
+              << "   number of threads : " << FLAGS_j << std::endl
+              << "        Dropout type : " << (FLAGS_fast_dropout ? "fast" : "default") << std::endl
+              << " Max training epochs : " << FLAGS_epochs << std::endl
+              << "           LSTM type : " << (model.memory_feeds_gates ? "Graves 2013" : "Zaremba 2014") << std::endl
+              << "          Stack size : " << model.hidden_sizes.size() << std::endl
+              << " # training examples : " << dataset.size() * FLAGS_minibatch - (FLAGS_minibatch - dataset[dataset.size() - 1].size()) << std::endl;
 
     if (!FLAGS_pretrained_vectors.empty()) {
         model.embedding = embedding;
@@ -268,6 +271,14 @@ int main (int argc,  char* argv[]) {
     double patience = 0;
     string best_file = "";
     REAL_t best_score = 0.0;
+
+    // if no training should occur then use the validation set
+    // to see how good the loaded model is.
+    if (epochs == 0) {
+        best_validation_score = average_recall(model, validation_set);
+        std::cout << "   Root recall = " << std::get<1>(best_validation_score) << std::endl;
+        std::cout << "Overall recall = " << std::get<0>(best_validation_score) << std::endl;
+    }
 
     while (patience < FLAGS_patience && epoch < epochs) {
 
@@ -367,7 +378,7 @@ int main (int argc,  char* argv[]) {
         auto a_r = average_recall(model, test_set);
 
         std::cout << "Done training" << std::endl;
-        std::cout << "Test recall " << std::get<0>(a_r) << "%, root => " << std::get<1>(a_r)<< "%" << std::endl;
+        std::cout << "Test recall "  << std::get<0>(a_r) << "%, root => " << std::get<1>(a_r)<< "%" << std::endl;
         if (!FLAGS_results_file.empty()) {
             ofstream fp;
             fp.open(FLAGS_results_file.c_str(), std::ios::out | std::ios::app);

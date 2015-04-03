@@ -49,7 +49,8 @@ DEFINE_double(root_weight,   1.0,        "By how much to weigh the roots in the 
 DEFINE_string(pretrained_vectors, "",    "Load pretrained word vectors?");
 DEFINE_double(learning_rate, 0.01,       "Learning rate for SGD and Adagrad.");
 DEFINE_string(results_file, "",          "Where to save test performance.");
-DEFINE_string(save_location, "",          "Where to save test performance.");
+DEFINE_string(save_location, "",         "Where to save test performance.");
+DEFINE_int32(validation_metric, 0,       "Use root (0) or overall (1) objective to choose best validation parameters?");
 
 ThreadPool* pool;
 
@@ -266,6 +267,7 @@ int main (int argc,  char* argv[]) {
     int best_epoch = 0;
     double patience = 0;
     string best_file = "";
+    REAL_t best_score = 0.0;
 
     while (patience < FLAGS_patience && epoch < epochs) {
 
@@ -319,6 +321,12 @@ int main (int argc,  char* argv[]) {
         if (solver_type == ADAGRAD_TYPE) {
             solver->reset_caches(params);
         }
+        if (!FLAGS_save_location.empty()) {
+            stringstream ss;
+            ss << FLAGS_save_location;
+            ss << "_" << epoch;
+            model.save(ss.str());
+        }
         if (std::get<0>(new_validation) + 1e-6 < std::get<0>(best_validation_score)) {
             // lose patience:
             patience += 1;
@@ -333,14 +341,15 @@ int main (int argc,  char* argv[]) {
             std::cout << "Epoch (" << epoch << ") Best validation score = " << std::get<0>(best_validation_score) << "%, patience = " << patience << std::endl;
             best_epoch = epoch;
         }
-        if (!FLAGS_save_location.empty()) {
+        if ((FLAGS_validation_metric == 0 && std::get<0>(new_validation) > best_score) ||
+            (FLAGS_validation_metric == 1 && std::get<1>(new_validation) > best_score)) {
+            best_score = (FLAGS_validation_metric == 0) ?
+                std::get<0>(new_validation) :
+                std::get<1>(new_validation);
             stringstream ss;
             ss << FLAGS_save_location;
             ss << "_" << epoch;
-            model.save(ss.str());
-            if (best_validation_score == new_validation) {
-                best_file = ss.str();
-            }
+            best_file = ss.str();
         }
     }
 
@@ -351,6 +360,7 @@ int main (int argc,  char* argv[]) {
             add_to_dataset_in_minibatches(test_set, test_treebank);
         }
         if (!FLAGS_save_location.empty() && !best_file.empty()) {
+            std::cout << "loading from best validation parameters \"" << best_file << "\"" << std::endl;
             auto params = model.parameters();
             utils::load_matrices(params, best_file);
         }

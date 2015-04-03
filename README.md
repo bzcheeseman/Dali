@@ -77,16 +77,30 @@ Get **[Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)** ([Download
 
 You need the latest version of [Clang](http://llvm.org/releases/download.html) (>= 3.6.0).
 
-    > brew install eigen
-    > brew install cmake
-    > HOMEBREW_CC=clang HOMEBREW_CXX=clang++ brew install protobuf
-    > cmake ..
+##### 1. Dependency Installation
 
+###### 1.a on Mac OSX
 
-The run `make` to compile the code:
+    brew install eigen
+    brew install cmake
+    brew install gflags
+    HOMEBREW_CC=clang HOMEBREW_CXX=clang++ brew install protobuf
+    cmake ..
 
+###### 1.b on Fedora Linux
 
-    > make -j 9
+    yum install eigen3-devel
+    yum install clang
+    yum install gflags gflags-devel
+    yum install sqlite-devel
+    yum install protobuf protobuf-devel protobuf-compiler
+
+##### 2. Compilation
+
+Then use `cmake` to create the `make` targets, and run `make` to compile the code:
+
+    cmake ..
+    make -j 9
 
 
 That's it. Now built examples will be stored in `cpp/build/examples`.
@@ -168,8 +182,8 @@ Sort the arguments of a list `np.argsort` style:
 Zealous use of `std::shared_ptr` appears to be the way of the future for managing
 both the backpropagation; `<functional>`'s lambda functions keep track of previous memory use in other steps, and the overall forward structure of the operations.
 
-### MKL Zaziness Problems
+### Intel MKL Support
 
-On Mac OSX, or more generally when using [Intel's gracious MKL Library](https://software.intel.com/en-us/intel-mkl) you may encounter an interesting bug with [`Eigen`](http://eigen.tuxfamily.org/bz/show_bug.cgi?id=874) where `MKL_BLAS` is shown as undefined during compilation.
+On Mac OSX, or more generally when using [Intel's MKL Library](https://software.intel.com/en-us/intel-mkl) you may encounter an interesting bug with [`Eigen`](http://eigen.tuxfamily.org/bz/show_bug.cgi?id=874) where `MKL_BLAS` is shown as undefined during compilation.
 
-To fix this bug (feature?) make the modifications listed [here](https://bitbucket.org/eigen/eigen/pull-request/82/fix-for-mkl_blas-not-defined-in-mkl-112/diff) to your Eigen header files and everything should be back to normal.
+To fix this bug make the modifications listed [here](https://bitbucket.org/eigen/eigen/pull-request/82/fix-for-mkl_blas-not-defined-in-mkl-112/diff) to your Eigen header files and everything should return to normal.

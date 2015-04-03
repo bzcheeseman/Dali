@@ -71,6 +71,8 @@ Let's run a simple example. We will use data from [Paul Graham's blog](http://pa
 
 That's it. Don't forget to checkout `examples/language_model.cpp`. It's not that scary!
 
+For a more extensive description of usage see the [character model tutorial](CharacterModel.md)
+
 ## Installation
 
 Get **[Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)** ([Download Link](http://bitbucket.org/eigen/eigen/get/3.2.4.tar.bz2)), **Clang**, and **protobuf**, then head to the `cpp/build` folder and use `cmake` to configure and create the appropriate Makefiles.

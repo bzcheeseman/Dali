@@ -1,41 +1,11 @@
 HIGH PRIORITY:
--> showing something to Brian
--> rethink memory organization
--> split core (maybe if we understand c++ while doing so, we will manage to catch some bugs?)
--> debug shortcut model with stack size 1
+-> mshadow and tensors (mutli gpu support etc.)
+-> visualizer - web frontend for error visualization
+-> multiple choice questions dataset
 
 LOWER_PRIOTITY:
--> add timers
--> add tests
--> add memory leak tests
 -> add performance test
--> bash completion for gflags
--> cleaning up crazy python scripts living all over the place
--> rethink directory structure
--> tensors
-
-
-
-Big Refactor Plan:
-=================================
-
-First proposal. Subject to change. Sending a newsletter advised.
-
-
-Core/Model split:
-    Split into core and models (makes refactor steps easy - change core first and then update model to work with changes).
-Put all the backprop code in one place:
-    Merge backward and Graph and encapsulate nicely all the operations, so that they definie both forward and backward in one place.
-Operation wrappers:
-    (* add timers)
-    * Add class BaseMatrix that is today's mat, should only support very basic operations like it supports now.
-    * Add class Matrix which wraps BaseMatrix and has a pointer to graph.
-    * Rename graph to problem, add make_matrix (T.shared())
-    * Encapsulate all the backprop methods with Eigen like easy to use operators. (not a priority but at that point easy to do and makes code readable). Think about which operations are basic and also leave room to make redundant composite operations that increase efficiency. There should be a clear separation between prime and composite operations.
-Add a sequence abstraction:
-    Not sure how to do that yet. Let's walk though a specific problem and see what would make sense. Tentative list of steps:
-    * Add a sparse matrix class is an alterative implementation of BaseMatrix.
-    * Add Mask that subclasses SparseMatrix.
-    * Add MaskedEntropy class that makes use of Sparse Matrix and sequence.
-    * Maybe even consider special SequenceMask class if that makes sense.
-
+-> refactor masked entropy
+-> sequence loss
+-> implement imagenet training
+-> load existing image net model from caffe

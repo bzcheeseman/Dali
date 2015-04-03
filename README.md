@@ -15,9 +15,7 @@ This is an reimagination of [Andrej Kaparthy](http://cs.stanford.edu/people/karp
 
 ### Why ?
 
-While there are existing great automatic differentiation libraries, a fast and no-compile version is lacking. In particular recurrentJS makes great use of callbacks and garbage collection to enable backprop through time. In this implementation the goal is to reduce reliance on these abstractions and have a simple backprop step class.
-
-In Python use of a specialized `Backward` class wraps backpropagation steps, while C++ uses the `<functional>` lambda functions but this time garbage collection and tracking is done using `C++11`'s excellent `std::shared_ptr`.
+While there are existing great automatic differentiation libraries, a fast simple multithreaded compile-less version is missing. Hogwild-style training can provide huge speedups when training data-parallel model in stochastic gradient descent situations, but Torch and Theano do not provide a way of doing this yet (*easily*).
 
 ## Usage
 

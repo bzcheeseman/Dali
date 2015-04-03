@@ -1,11 +1,15 @@
 #include <chrono>
 #include <vector>
+#include <memory>
 #include <gtest/gtest.h>
 #include <sstream>
+#include <cstdio>
 
 #include "dali/utils.h"
 using std::stringstream;
 using std::string;
+using utils::OntologyBranch;
+using std::make_shared;
 #include <string>
 
 TEST(utils, stream_to_redirection_list) {
@@ -82,4 +86,87 @@ TEST(xml_cleaner, preprocess) {
     "Raymond]]|publisher=[[MIT Press]]|year=1996|isbn=0-262-68092-0}}</ref>Okay\n";
 
     auto cleaned = utils::xml_cleaner::process_text_keeping_brackets(input);
+}
+
+TEST(utils, construct_lattice) {
+    auto root = make_shared<OntologyBranch>("root");
+    for (auto& v : {"Joe", "Bob", "Max", "Mary", "Jane", "Goodwin"})
+        make_shared<OntologyBranch>(v)->add_parent(root);
+    auto root2 = make_shared<OntologyBranch>("root 2");
+
+    for (auto& child : root->children) {
+        child->add_parent(root2);
+    }
+
+    stringstream ss;
+    // Output the name of both parents (verify they are indeed 2)
+    for (auto& par : root->children[2]->parents)
+        ss << par.lock()->name << " ";
+
+    ASSERT_EQ(ss.str(), "root root 2 ");
+    ASSERT_EQ(root->children[2]->parents.size(), 2);
+}
+
+TEST(utils, load_save_lattice) {
+    auto root = make_shared<OntologyBranch>("root");
+    for (auto& v : {"Joe", "Bob", "Max", "Mary", "Jane", "Goodwin"})
+        make_shared<OntologyBranch>(v)->add_parent(root);
+    auto root2 = make_shared<OntologyBranch>("root 2");
+
+    for (auto& child : root->children)
+        child->add_parent(root2);
+
+    string data_folder = STR(DALI_DATA_DIR) "/";
+    string fname       = data_folder + "/lattice2.txt";
+    string fname_gz    = fname + ".gz";
+
+    if (utils::file_exists(fname))
+        std::remove(fname.c_str());
+    // Test saving a lattice file
+    ASSERT_FALSE(utils::file_exists(fname));
+    root->save(fname);
+    ASSERT_TRUE(utils::file_exists(fname));
+    ASSERT_FALSE(utils::is_gzip(fname));
+
+    if (utils::file_exists(fname_gz))
+        std::remove(fname_gz.c_str());
+    // Test saving a gzipped file:
+    ASSERT_FALSE(utils::file_exists(fname_gz));
+    root->save(fname_gz);
+    ASSERT_TRUE(utils::file_exists(fname_gz));
+    ASSERT_TRUE(utils::is_gzip(fname_gz));
+}
+
+TEST(utils, load_lattice) {
+    string data_folder = STR(DALI_DATA_DIR) "/";
+    auto loaded_tree = OntologyBranch::load(data_folder + "lattice.txt");
+
+    // find 2 roots
+    ASSERT_EQ(loaded_tree.size(), 2);
+
+    stringstream ss;
+    for (auto& r : loaded_tree)
+        ss << r->name << " ";
+    ASSERT_EQ(ss.str(), "root 3 root 4 ");
+    // find root 2
+    ASSERT_TRUE(loaded_tree[0]->lookup_table->find("root 2") != loaded_tree[0]->lookup_table->end());
+
+    // compare with the original tree
+    auto root = make_shared<OntologyBranch>("root");
+    for (auto& v : {"Joe", "Bob", "Max", "Mary", "Jane", "Goodwin"})
+        make_shared<OntologyBranch>(v)->add_parent(root);
+
+    // iterate through children of root 2
+    auto root2_loaded = loaded_tree[0]->lookup_table->at("root 2");
+
+    int found = 0;
+    for (auto& child : root->children) {
+        for (auto& subchild : root2_loaded->children) {
+            if (subchild->name == child->name) {
+                found += 1;
+                break;
+            }
+        }
+    }
+    ASSERT_EQ(found, root->children.size());
 }

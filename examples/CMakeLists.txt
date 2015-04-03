@@ -15,8 +15,6 @@ set(EXAMPLE_PROGRAMS api_showcase
                      mlbasics_learn_to_add
                      mlbasics_rnn_binary_addition
                      sparkfun_prediction
-                     stacked_lstm
-                     test_lattice
                      )
 foreach(program ${EXAMPLE_PROGRAMS})
     add_executable(${program} ${EXAMPLES_DIR}/${program}.cpp)

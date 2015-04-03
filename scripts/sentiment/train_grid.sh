@@ -8,9 +8,8 @@ set -u
 set -o pipefail
 
 SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-PROJECT_DIR=$( dirname $SCRIPT_DIR )
+PROJECT_DIR=$(dirname $( dirname $SCRIPT_DIR ))
 
-PROGRAM_DIR=~/Desktop/Coding/python_packages/recurrentjs/cpp/
 STACK_SIZE=1
 PATIENCE=5
 CPU_CORES=`sysctl hw.ncpu`
@@ -18,8 +17,8 @@ CPU_CORES="${CPU_CORES: -1}"
 CPU_CORES=$((CPU_CORES+1))
 echo "Commencing Grid Search"
 echo "* running on ${CPU_CORES} cores"
-DATA_DIR="${PROGRAM_DIR}data/sentiment/"
-PROGRAM="${PROGRAM_DIR}build/examples/lstm_sentiment"
+DATA_DIR="${PROJECT_DIR}/data/sentiment/"
+PROGRAM="${PROJECT_DIR}/build/examples/lstm_sentiment"
 SAVE_FOLDER="${SCRIPT_DIR}/saved_models"
 RESULTS_FILE="${SCRIPT_DIR}/results.txt"
 BASE_FLAGS="--results_file=${RESULTS_FILE}"

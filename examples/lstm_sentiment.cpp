@@ -265,7 +265,7 @@ int main (int argc,  char* argv[]) {
         utils::exit_with_message("Did not recognize this solver type.");
     }
 
-    std::tuple<REAL_t, REAL_t> best_validation_score({0.0, 0.0});
+    std::tuple<REAL_t, REAL_t> best_validation_score(0.0, 0.0);
     int epoch = 0;
     int best_epoch = 0;
     double patience = 0;

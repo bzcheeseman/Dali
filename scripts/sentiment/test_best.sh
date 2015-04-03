@@ -33,7 +33,7 @@ if [ ! -f "${LOAD_DIR}/config.md" ]; then
 fi
 
 SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-PROJECT_DIR=$( dirname $SCRIPT_DIR )
+PROJECT_DIR=$(dirname $( dirname $SCRIPT_DIR ))
 
 # get the number of computer cores:
 CPU_CORES=`sysctl hw.ncpu`
@@ -41,9 +41,8 @@ CPU_CORES="${CPU_CORES: -1}"
 CPU_CORES=$((CPU_CORES+1))
 echo "running on ${CPU_CORES} cores"
 
-PROGRAM_DIR=~/Desktop/Coding/python_packages/recurrentjs/cpp/
-DATA_DIR="${PROGRAM_DIR}data/sentiment/"
-PROGRAM="${PROGRAM_DIR}build/examples/lstm_sentiment"
+DATA_DIR="${PROJECT_DIR}data/sentiment/"
+PROGRAM="${PROJECT_DIR}build/examples/lstm_sentiment"
 BASE_FLAGS="-epochs=0 -j=${CPU_CORES}"
 BASE_FLAGS="${BASE_FLAGS} --train=${DATA_DIR}train.txt "
 BASE_FLAGS="${BASE_FLAGS} --validation=${DATA_DIR}dev.txt "

@@ -20,7 +20,7 @@ namespace utils {
         regex mvar_parser("\\{\\{\\d*mvar\\d*\\|([^\\}]+)\\}\\}");
         regex html_remover("<[^>]+>");
         regex markup_normalizer("[',/\\*_=-]{2,5}");
-        regex remove_wikipedia_link("\\[\\W*http[^\\] ]+\\b*(?[^\\]]+)\\]");
+        regex remove_wikipedia_link("\\[\\W*http[^\\] ]+[ \t\r\n\f]*([^\\]]+)?\\]");
         regex table_parser("\\{\\|[^\\}]+\\|\\}");
         regex squiggly_bracket_parser("\\{\\{([^\\}]+)\\}\\}");
         regex remove_bullets_nbsps("(&amp;nbsp;|&nbsp;|[\\^\n]\\*{1,}|[\\^\n]\\#{1,}|[\\^\n]:{1,})");

@@ -19,8 +19,32 @@ echo "Commencing Grid Search"
 echo "* running on ${CPU_CORES} cores"
 DATA_DIR="${PROJECT_DIR}/data/sentiment/"
 PROGRAM="${PROJECT_DIR}/build/examples/lstm_sentiment"
-SAVE_FOLDER="${SCRIPT_DIR}/saved_models"
-RESULTS_FILE="${SCRIPT_DIR}/results.txt"
+
+if [ "$#" -ne 1 ]; then
+    echo "usage: $0 [results_dir] "
+    exit
+fi
+
+if [ ! -d "$1" ]; then
+    echo "Could not find directory \"$1\""
+    exit
+fi
+
+if [ ! -f "${DATA_DIR}train.txt" ]; then
+    echo "Training data not present. Downloading it now."
+    python3 ${DATA_DIR}generate.py
+fi
+
+function ensure_dir {
+    if [ "${1: -1}" != "/" ]; then
+        echo "${1}/"
+    else
+        echo $1
+    fi
+}
+
+SAVE_FOLDER="$(ensure_dir $1)saved_models"
+RESULTS_FILE="$(ensure_dir $1)results.txt"
 BASE_FLAGS="--results_file=${RESULTS_FILE}"
 BASE_FLAGS="${BASE_FLAGS} --save_location=${SAVE_FOLDER}/model --stack_size=${STACK_SIZE} --patience=${PATIENCE} -epochs=2000 -j=${CPU_CORES} --fast_dropout --noshortcut "
 BASE_FLAGS="${BASE_FLAGS} --train=${DATA_DIR}train.txt "
@@ -48,7 +72,7 @@ do
     for hidden in 300 350 400
     do
         # higher dropout values are subpar
-        for dropout in 0.0 0.1 0.2 0.3 0.4
+        for dropout in 0.05 0.1 0.2 0.3 0.4
         do
             # previously saved models are no longer useful for this grid tile
             rm -rf $SAVE_FOLDER/*

@@ -42,6 +42,12 @@ CPU_CORES=$((CPU_CORES+1))
 echo "running on ${CPU_CORES} cores"
 
 DATA_DIR="${PROJECT_DIR}data/sentiment/"
+
+if [ ! -f "${DATA_DIR}test.txt" ]; then
+    echo "Testing data not present. Downloading it now."
+    python3 ${DATA_DIR}generate.py
+fi
+
 PROGRAM="${PROJECT_DIR}build/examples/lstm_sentiment"
 BASE_FLAGS="-epochs=0 -j=${CPU_CORES}"
 BASE_FLAGS="${BASE_FLAGS} --train=${DATA_DIR}train.txt "

@@ -50,10 +50,16 @@ void LSTV::report() {
          << " (patience " << num_updates_validation_increasing << "/" << patience << ")" << std::endl;
 }
 
+double LSTV::validation_error() {
+    return short_term_validation;
+}
+
+
 MaxEpochs::MaxEpochs(int max_epochs) : max_epochs(max_epochs) {
 }
 
 bool MaxEpochs::should_stop(double validation_error) {
+    last_validation = validation_error;
     ++epochs_so_far;
     bool is_validation_nan = !(validation_error == validation_error);
     return epochs_so_far >= max_epochs || is_validation_nan;
@@ -67,6 +73,12 @@ void MaxEpochs::report() {
     std::cout << "Epochs remaining: " << epochs_so_far << "/" << max_epochs << std::endl;
 }
 
+double MaxEpochs::validation_error() {
+    return last_validation;
+}
+
+
+/* TimeLimited */
 
 TimeLimited::TimeLimited(clock_t::duration max_training_duration) :
         max_training_duration(max_training_duration) {
@@ -74,6 +86,7 @@ TimeLimited::TimeLimited(clock_t::duration max_training_duration) :
 }
 
 bool TimeLimited::should_stop(double validation_error) {
+    last_validation = validation_error;
     bool is_validation_nan = !(validation_error == validation_error);
     return (clock_t::now() - training_start >= max_training_duration) || is_validation_nan;
 }
@@ -93,3 +106,6 @@ void TimeLimited::report() {
               << " seconds." << std::endl;
 }
 
+double TimeLimited::validation_error() {
+    return last_validation;
+}

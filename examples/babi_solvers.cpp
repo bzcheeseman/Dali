@@ -33,73 +33,6 @@ using std::chrono::seconds;
 
 DEFINE_int32(j, 9, "Number of threads");
 
-class MostCommonAnswer {
-    vector<string> most_common_answer;
-
-    public:
-
-        void train(const vector<babi::Story>& data) {
-            std::unordered_map<string, int> freq;
-            for (auto& story : data) {
-                for(auto& item_ptr : story) {
-                    if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
-                        // ignore
-                    } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
-                        // When we are training we want to use dropout
-                        freq[utils::join(qa->answer, "|")] += 1;
-                    }
-                }
-            }
-            int max_freq = 0;
-            for (auto& kv: freq) {
-                if (kv.second > max_freq) {
-                    max_freq = kv.second;
-                    most_common_answer = utils::split(kv.first,'|');
-                }
-            }
-        }
-
-        void new_story() {
-        }
-
-        void fact(const vector<string>& fact) {
-        }
-        vector<string> question(const vector<string>& question) {
-            return most_common_answer;
-        }
-};
-
-class RandomAnswer {
-    set<string> tokens;
-    public:
-
-        void train(const vector<babi::Story>& data) {
-
-        }
-
-        void new_story() {
-            tokens.clear();
-        }
-
-        void fact(const vector<string>& fact) {
-            for(const string& token: fact) {
-                if (token.compare(".") == 0 || token.compare("?") == 0)
-                    continue;
-                tokens.insert(token);
-            }
-        }
-        vector<string> question(const vector<string>& question) {
-            string ans;
-            int ans_idx = rand()%tokens.size();
-            int current_idx = 0;
-            for(auto& el: tokens) {
-                if (current_idx == ans_idx)
-                    ans = el;
-                ++current_idx;
-            }
-            return {ans};
-        }
-};
 
 template<typename T>
 struct StoryActivation {
@@ -523,6 +456,7 @@ const double FACT_WORD_SELECTION_LAMBDA_MAX = 0.0001;
 
 /* TRAINING FUNCTIONS */
 shared_ptr<BabiModel> model;
+shared_ptr<BabiModel> best_model;
 
 vector<BabiModel> thread_models;
 
@@ -658,6 +592,10 @@ void train(const vector<babi::Story>& data, shared_ptr<Training> training_method
     Solver::Adam<REAL_t> solver(params, 0.1, 0.001, 1e-9, 5.0);
 
     training_method->reset();
+
+    double best_validation = run_epoch(validation, &solver, false)(0);
+    best_model = std::make_shared<BabiModel>(*model, true, true);
+
     while (true) {
         auto training_errors = run_epoch(train, &solver, true);
         auto validation_errors = run_epoch(validation, &solver, false);
@@ -672,6 +610,11 @@ void train(const vector<babi::Story>& data, shared_ptr<Training> training_method
                                   << training_errors(2) << std::endl;
         if (training_method->should_stop(validation_errors(0))) break;
         training_method->report();
+
+        if (best_validation < training_method->validation_error()) {
+            best_validation = training_method->validation_error();
+            best_model = std::make_shared<BabiModel>(*model, true, true);
+        }
     }
 }
 
@@ -688,15 +631,16 @@ vector<string> predict(const vector<vector<string>>& facts,
     graph::NoBackprop nb;
 
     // Don't use dropout for validation.
-    int word_idx = model->activate_story(facts, question, false).log_probs.argmax();
+    int word_idx = best_model->activate_story(facts, question, false).log_probs.argmax();
 
-    return {model->vocab->index2word[word_idx]};
+    return {best_model->vocab->index2word[word_idx]};
 }
 
 void reset(const vector<babi::Story>& data, Conf babi_model_conf=BabiModel::default_conf()) {
     thread_models.clear();
     auto vocab_vector = babi::vocab_from_data(data);
     model.reset();
+    best_model.reset();
     model = std::make_shared<BabiModel>(make_shared<Vocab> (vocab_vector), babi_model_conf);
 }
 
@@ -704,8 +648,9 @@ double benchmark_task(const std::string task) {
     auto data = babi::Parser::training_data(task);
     reset(data);
 
-    shared_ptr<MaxEpochs> training_method = make_shared<MaxEpochs>(20);
-    train(data, training_method);
+    //shared_ptr<MaxEpochs> training_method = make_shared<MaxEpochs>(20);
+    //train(data, training_method);
+    train(data);
     double accuracy = babi::task_accuracy(task, predict);
     std::cout << "Accuracy on " << task << " is " << 100 * accuracy << "." << std::endl;
     return accuracy;
@@ -765,9 +710,9 @@ int main(int argc, char** argv) {
     Eigen::setNbThreads(0);
     Eigen::initParallel();
 
-    grid_search();
+    // grid_search();
     // benchmark_all();
-    // benchmark_task("qa1_single-supporting-fact");
+    benchmark_task("qa1_single-supporting-fact");
 
     // benchmark_task("multitasking");
     // benchmark_task("qa16_basic-induction");

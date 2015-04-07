@@ -2,7 +2,6 @@
 #include "dali/utils/core_utils.h"
 #include "dali/utils/grid_search.h"
 #include "dali/utils/gzstream.h"
-#include "dali/utils/NlpUtils.h"
 #include "dali/utils/Reporting.h"
 #include "dali/utils/SaneCrashes.h"
 #include "dali/utils/ThreadPool.h"

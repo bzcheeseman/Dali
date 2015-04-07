@@ -6,12 +6,13 @@
 
 #include "dali/core.h"
 #include "dali/utils.h"
+#include "dali/utils/NlpUtils.h"
 #include "dali/models/StackedGatedModel.h"
 
 
 DEFINE_string(lattice, "", "Where to load a lattice / Ontology from ?");
 
-static bool dummy1 = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_lattice,
+static bool dummy3 = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_lattice,
                                                &utils::validate_flag_nonempty);
 
 DEFINE_int32(memory_rampup, 1000, "Over how many epochs should the memory grow ?");

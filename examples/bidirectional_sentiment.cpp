@@ -7,6 +7,7 @@
 
 #include "dali/core.h"
 #include "dali/utils.h"
+#include "dali/utils/NlpUtils.h"
 #include "dali/data_processing/SST.h"
 #include "dali/data_processing/Glove.h"
 #include "dali/models/StackedModel.h"
@@ -51,7 +52,6 @@ DEFINE_bool(convolution,     false,      "Perform a convolution before passing t
 DEFINE_int32(filters,        50,         "Number of filters to use for Convolution");
 DEFINE_string(pretrained_vectors, "",    "Load pretrained word vectors?");
 DEFINE_double(learning_rate, 0.01,       "Learning rate for SGD and Adagrad.");
-
 
 template<typename T>
 Mat<T> softmax_categorical_surprise(Mat<T> logprobs, int target) {

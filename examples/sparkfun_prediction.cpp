@@ -6,6 +6,7 @@
 
 #include "dali/core.h"
 #include "dali/utils.h"
+#include "dali/utils/NlpUtils.h"
 #include "dali/models/StackedGatedModel.h"
 
 using std::ifstream;

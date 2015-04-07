@@ -9,6 +9,7 @@
 
 #include "dali/core.h"
 #include "dali/utils.h"
+#include "dali/utils/NlpUtils.h"
 #include "dali/data_processing/SST.h"
 #include "dali/data_processing/Glove.h"
 #include "dali/models/StackedModel.h"
@@ -42,6 +43,7 @@ typedef Mat<REAL_t> mat;
 DEFINE_int32(minibatch,      100,        "What size should be used for the minibatches ?");
 DEFINE_int32(patience,       5,          "How many unimproving epochs to wait through before witnessing progress ?");
 DEFINE_double(dropout,       0.3,        "How much dropout noise to add to the problem ?");
+DEFINE_double(reg,           0.0,        "What penalty to place on L2 norm of weights?");
 DEFINE_bool(fast_dropout,    true,       "Use fast dropout?");
 DEFINE_string(solver,        "adadelta", "What solver to use (adadelta, sgd, adam)");
 DEFINE_string(test,          "",         "Where is the test set?");
@@ -50,7 +52,7 @@ DEFINE_string(pretrained_vectors, "",    "Load pretrained word vectors?");
 DEFINE_double(learning_rate, 0.01,       "Learning rate for SGD and Adagrad.");
 DEFINE_string(results_file, "",          "Where to save test performance.");
 DEFINE_string(save_location, "",         "Where to save test performance.");
-DEFINE_int32(validation_metric, 0,       "Use root (0) or overall (1) objective to choose best validation parameters?");
+DEFINE_int32(validation_metric, 0,       "Use root (1) or overall (0) objective to choose best validation parameters?");
 
 ThreadPool* pool;
 
@@ -217,7 +219,9 @@ int main (int argc,  char* argv[]) {
               << " Max training epochs : " << FLAGS_epochs << std::endl
               << "           LSTM type : " << (model.memory_feeds_gates ? "Graves 2013" : "Zaremba 2014") << std::endl
               << "          Stack size : " << model.hidden_sizes.size() << std::endl
-              << " # training examples : " << dataset.size() * FLAGS_minibatch - (FLAGS_minibatch - dataset[dataset.size() - 1].size()) << std::endl;
+              << " # training examples : " << dataset.size() * FLAGS_minibatch - (FLAGS_minibatch - dataset[dataset.size() - 1].size())
+              << "     validation obj. : " << (FLAGS_validation_metric == 0 ? "overall" : "root") << std::endl
+              << "              Solver : " << FLAGS_solver << std::endl;
 
     if (!FLAGS_pretrained_vectors.empty()) {
         model.embedding = embedding;
@@ -246,20 +250,16 @@ int main (int argc,  char* argv[]) {
     std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver;
     int solver_type;
     if (FLAGS_solver == "adadelta") {
-        std::cout << "Using AdaDelta" << std::endl;
-        solver = make_shared<Solver::AdaDelta<REAL_t>>(params, 0.95, 1e-9, 100.0);
+        solver = make_shared<Solver::AdaDelta<REAL_t>>(params, 0.95, 1e-9, 100.0, (REAL_t) FLAGS_reg);
         solver_type = ADADELTA_TYPE;
     } else if (FLAGS_solver == "adam") {
-        std::cout << "Using Adam" << std::endl;
-        solver = make_shared<Solver::Adam<REAL_t>>(params, 0.1, 0.001, 1e-9, 100.0);
+        solver = make_shared<Solver::Adam<REAL_t>>(params, 0.1, 0.001, 1e-9, 100.0, (REAL_t) FLAGS_reg);
         solver_type = ADAM_TYPE;
     } else if (FLAGS_solver == "sgd") {
-        std::cout << "Using vanilla SGD" << std::endl;
-        solver = make_shared<Solver::SGD<REAL_t>>(params, 1e-9, 100.0);
+        solver = make_shared<Solver::SGD<REAL_t>>(params, 100.0, (REAL_t) FLAGS_reg);
         solver_type = SGD_TYPE;
     } else if (FLAGS_solver == "adagrad") {
-        std::cout << "Using Adagrad" << std::endl;
-        solver = make_shared<Solver::AdaGrad<REAL_t>>(params, 1e-9, 100.0);
+        solver = make_shared<Solver::AdaGrad<REAL_t>>(params, 1e-9, 100.0, (REAL_t) FLAGS_reg);
         solver_type = ADAGRAD_TYPE;
     } else {
         utils::exit_with_message("Did not recognize this solver type.");
@@ -338,7 +338,10 @@ int main (int argc,  char* argv[]) {
             ss << "_" << epoch;
             model.save(ss.str());
         }
-        if (std::get<0>(new_validation) + 1e-6 < std::get<0>(best_validation_score)) {
+        if (
+            (FLAGS_validation_metric == 0 && std::get<0>(new_validation) + 1e-6 < std::get<0>(best_validation_score)) ||
+            (FLAGS_validation_metric == 1 && std::get<1>(new_validation) + 1e-6 < std::get<1>(best_validation_score))
+            ) {
             // lose patience:
             patience += 1;
         } else {
@@ -389,8 +392,13 @@ int main (int argc,  char* argv[]) {
                << "\t" << FLAGS_hidden
                << "\t" << std::get<0>(a_r)
                << "\t" << std::get<1>(a_r)
-               << "\t" << best_epoch
-               << std::endl;
+               << "\t" << best_epoch;
+            if ((FLAGS_solver == "adagrad" || FLAGS_solver == "sgd")) {
+                fp << "\t" << FLAGS_learning_rate;
+            } else {
+                fp << "\t" << "N/A";
+            }
+            fp  << "\t" << FLAGS_reg << std::endl;
         }
     }
 }

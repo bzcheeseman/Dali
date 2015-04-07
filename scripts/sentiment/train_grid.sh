@@ -46,7 +46,7 @@ function ensure_dir {
 SAVE_FOLDER="$(ensure_dir $1)saved_models"
 RESULTS_FILE="$(ensure_dir $1)results.txt"
 BASE_FLAGS="--results_file=${RESULTS_FILE}"
-BASE_FLAGS="${BASE_FLAGS} --save_location=${SAVE_FOLDER}/model --stack_size=${STACK_SIZE} --patience=${PATIENCE} -epochs=2000 -j=${CPU_CORES} --fast_dropout --noshortcut "
+BASE_FLAGS="${BASE_FLAGS} --validation_metric=1 --save_location=${SAVE_FOLDER}/model --stack_size=${STACK_SIZE} --patience=${PATIENCE} -epochs=2000 -j=${CPU_CORES} --fast_dropout --noshortcut "
 BASE_FLAGS="${BASE_FLAGS} --train=${DATA_DIR}train.txt "
 BASE_FLAGS="${BASE_FLAGS} --validation=${DATA_DIR}dev.txt "
 BASE_FLAGS="${BASE_FLAGS} --test=${DATA_DIR}test.txt "
@@ -65,18 +65,15 @@ if [ ! -d "$SAVE_FOLDER" ]; then
     mkdir $SAVE_FOLDER
 fi
 
-# change the variance of the gradients using minibatch sizes:
-for minibatch in 2 50 100
+for hidden in 100 200 300 400
 do
-    # models keeps improving at these hidden sizes:
-    for hidden in 300 350 400
+    for reg in 0.00001 0.0004 0.001 0.005
     do
-        # higher dropout values are subpar
-        for dropout in 0.05 0.1 0.2 0.3 0.4
+        for lr in 0.01 0.015 0.035 0.05
         do
             # previously saved models are no longer useful for this grid tile
             rm -rf $SAVE_FOLDER/*
-            $PROGRAM $BASE_FLAGS --hidden $hidden --dropout $dropout --minibatch $minibatch
+            $PROGRAM $BASE_FLAGS --learning_rate $lr --hidden $hidden --dropout 0.1 --minibatch 100 --solver adagrad --reg $reg
         done
     done
 done

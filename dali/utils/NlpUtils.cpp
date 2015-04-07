@@ -14,8 +14,3 @@ DEFINE_int32(j,                  1,
         "How many threads should be used ?");
 DEFINE_string(validation,        "",
         "Location of the validation dataset");
-
-static bool dummy = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_train,
-                                                            &utils::validate_flag_nonempty);
-static bool dummy1 = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_validation,
-                                                            &utils::validate_flag_nonempty);

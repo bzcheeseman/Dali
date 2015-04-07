@@ -53,6 +53,15 @@ namespace beam_search {
         return vec;
     }
 
+    inline eigen_index_vector convert_to_eigen_vector(const std::vector<uint>& list) {
+        eigen_index_vector vec(list.size());
+        auto ptr = vec.data();
+        for (auto& i : list) {
+            (*(ptr++)) = i;
+        }
+        return vec;
+    }
+
     inline eigen_index_vector convert_to_eigen_vector(const eigen_index_vector& list) {
         return list;
     }

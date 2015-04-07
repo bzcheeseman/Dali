@@ -7,6 +7,7 @@
 #include <thread>
 
 #include "dali/core.h"
+#include "dali/utils/NlpUtils.h"
 #include "dali/models/StackedModel.h"
 
 DEFINE_int32(num_threads,     5, "How many threads to run ?");

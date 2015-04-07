@@ -42,6 +42,7 @@ DEFINE_int32(j,                  1,
         "How many threads should be used ?");
 
 DEFINE_int32(expression_length, 5, "How much suffering to impose on our friend?");
+DEFINE_int32(num_examples,      1500, "How much suffering to impose on our friend?");
 
 
 vector<pair<vector<string>, vector<string>>> generate_examples(int num) {
@@ -100,7 +101,7 @@ vector<pair<vector<string>, vector<string>>> generate_examples(int num) {
                     } else if (last_operator == "-") {
                         result -= std::stoi(character);
                     } else {
-                        assert(NULL == "Unknown operator. Where is the WTF?");
+                        assert(NULL == "Unknown operator.");
                     }
                 }
             }
@@ -169,7 +170,7 @@ int main (int argc,  char* argv[]) {
 
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
-    auto examples = generate_examples(1500);
+    auto examples = generate_examples(FLAGS_num_examples);
     pool = new ThreadPool(FLAGS_j);
 
     // display the examples:
@@ -333,7 +334,7 @@ int main (int argc,  char* argv[]) {
                 }
             });
             throttled2.maybe_run(seconds(30), [&]() {
-                std::cout << "epoch: " << epoch << " Number correct = " << std::setprecision( 3 )  << 100.0 * num_correct(
+                std::cout << "epoch: " << epoch << " Percent correct = " << std::setprecision( 3 )  << 100.0 * num_correct(
                     model,
                     numerical_examples,
                     5,

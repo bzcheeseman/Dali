@@ -611,7 +611,8 @@ void train(const vector<babi::Story>& data, shared_ptr<Training> training_method
         if (training_method->should_stop(validation_errors(0))) break;
         training_method->report();
 
-        if (best_validation < training_method->validation_error()) {
+        if (best_validation > training_method->validation_error()) {
+            std::cout << "NEW WORLD RECORD!" << std::endl;
             best_validation = training_method->validation_error();
             best_model = std::make_shared<BabiModel>(*model, true, true);
         }
@@ -648,7 +649,7 @@ double benchmark_task(const std::string task) {
     auto data = babi::Parser::training_data(task);
     reset(data);
 
-    //shared_ptr<MaxEpochs> training_method = make_shared<MaxEpochs>(20);
+    //shared_ptr<MaxEpochs> training_method = make_shared<MaxEpochs>(5);
     //train(data, training_method);
     train(data);
     double accuracy = babi::task_accuracy(task, predict);

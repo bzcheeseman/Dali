@@ -173,6 +173,14 @@ int main () {
 
     std::cout <<( (A_ptr == A_ptr_T)  ? "t" : "f" ) << std::endl;
 
+    Mat<R> X(3,3);
+    X.w()(0,0) = 1.0;
+    X.w()(1,2) = -123.0;
+    X.print();
+    Mat<R> Y = Mat<R>(X, true, true);
+    Y.w()(1,2) = 512.0;
+    X.print();
+    Y.print();
 
 
     /**

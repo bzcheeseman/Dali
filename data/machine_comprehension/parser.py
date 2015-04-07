@@ -89,13 +89,19 @@ def store_sections(file_name, sections):
 def parse(data_path, training_file, test_file):
     ans_sets = []
     tsv_sets = []
+    dataset_names = set()
     for path in os.listdir(data_path):
-        if path.endswith(".ans"):
-            ans_sets.extend(
-                [ans.split("\t") for ans in open(os.path.join(data_path, path), "rt").read().split("\n") if len(ans) > 0]
-            )
-        if path.endswith(".tsv"):#.replace(r'\newline\newline', r' \newline ')
-            tsv_sets.extend([Section(sec) for sec in open(os.path.join(data_path, path), "rt").read().split("\n") if len(sec) > 0])
+        if path.endswith(".ans") or path.endswith(".tsv"):
+            path, extension = os.path.splitext(path)
+            dataset_names.add(path)
+
+    for name in dataset_names:
+        answer_path = os.path.join(data_path, name + ".ans")
+        question_path = os.path.join(data_path, name + ".tsv")
+        ans_sets.extend(
+            [ans.split("\t") for ans in open(answer_path, "rt").read().split("\n") if len(ans) > 0]
+        )
+        tsv_sets.extend([Section(sec) for sec in open(question_path, "rt").read().split("\n") if len(sec) > 0])
 
     for ans_set, section in zip(ans_sets, tsv_sets):
         section.add_answers(ans_set)

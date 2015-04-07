@@ -198,13 +198,13 @@ class LstmBabiModel : public Model {
 
         static Conf default_conf() {
             Conf conf = Model::default_conf();
-            conf.def_bool("lstm_shortcut", false);
-            conf.def_bool("lstm_feed_mry", false);
+            conf.def_bool("lstm_shortcut", true);
+            conf.def_bool("lstm_feed_mry", true);
             conf.def_float("TEXT_REPR_DROPOUT", 0.0, 1.0, 0.3);
             conf.def_float("QUESTION_GATE_DROPOUT", 0.0, 1.0, 0.3);
             conf.def_float("HL_DROPOUT", 0.0, 1.0, 0.7);
-            conf.def_int("QUESTION_GATE_EMBEDDINGS", 5, 50, 25);
-            conf.def_int("TEXT_REPR_EMBEDDINGS", 5, 50, 25);
+            conf.def_int("QUESTION_GATE_EMBEDDINGS", 5, 50, 40);
+            conf.def_int("TEXT_REPR_EMBEDDINGS", 5, 50, 40);
             conf.def_stacks("HL_STACKS", 2,7,4,10,100, 50, 20);
             conf.def_stacks("TEXT_REPR_STACKS", 1, 4, 2, 5, 50, 40, 30);
             conf.def_stacks("QUESTION_GATE_STACKS", 1, 4, 2, 5, 50, 40, 30);
@@ -713,7 +713,8 @@ int main(int argc, char** argv) {
 
     // grid_search();
     // benchmark_all();
-    benchmark_task("qa1_single-supporting-fact");
+    benchmark_task("qa4_two-arg-relations");
+
 
     // benchmark_task("multitasking");
     // benchmark_task("qa16_basic-induction");

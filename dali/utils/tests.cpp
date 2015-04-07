@@ -170,3 +170,19 @@ TEST(utils, load_lattice) {
     }
     ASSERT_EQ(found, root->children.size());
 }
+
+TEST(utils, smart_parser) {
+    std::shared_ptr<std::stringstream> ss = std::make_shared<std::stringstream>();
+    *ss << "siema 12 123\n"
+        << "555\n"
+        << "lol lone 123\n"
+        << " \n"
+        << "155\n";
+    SmartParser sp(ss);
+    assert(sp.next_string() == "siema");
+    assert(sp.next_int() == 12);
+    assert(sp.next_int() == 123);
+    assert(sp.next_int() == 555);
+    assert(sp.next_line() == "lol lone 123");
+    assert(sp.next_int() == 155);
+}

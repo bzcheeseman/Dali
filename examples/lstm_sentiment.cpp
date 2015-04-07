@@ -31,28 +31,30 @@ using SST::Databatch;
 using utils::ConfusionMatrix;
 using utils::assert2;
 
-static int ADADELTA_TYPE = 0;
-static int ADAGRAD_TYPE = 1;
-static int SGD_TYPE = 2;
-static int ADAM_TYPE = 3;
-static int RMSPROP_TYPE = 4;
+static const int ADADELTA_TYPE = 0;
+static const int ADAGRAD_TYPE = 1;
+static const int SGD_TYPE = 2;
+static const int ADAM_TYPE = 3;
+static const int RMSPROP_TYPE = 4;
 
 typedef float REAL_t;
 typedef Mat<REAL_t> mat;
 
-DEFINE_int32(minibatch,      100,        "What size should be used for the minibatches ?");
-DEFINE_int32(patience,       5,          "How many unimproving epochs to wait through before witnessing progress ?");
-DEFINE_double(dropout,       0.3,        "How much dropout noise to add to the problem ?");
-DEFINE_double(reg,           0.0,        "What penalty to place on L2 norm of weights?");
-DEFINE_bool(fast_dropout,    true,       "Use fast dropout?");
-DEFINE_string(solver,        "adadelta", "What solver to use (adadelta, sgd, adam)");
-DEFINE_string(test,          "",         "Where is the test set?");
-DEFINE_double(root_weight,   1.0,        "By how much to weigh the roots in the objective function?");
-DEFINE_string(pretrained_vectors, "",    "Load pretrained word vectors?");
-DEFINE_double(learning_rate, 0.01,       "Learning rate for SGD and Adagrad.");
-DEFINE_string(results_file, "",          "Where to save test performance.");
-DEFINE_string(save_location, "",         "Where to save test performance.");
-DEFINE_int32(validation_metric, 0,       "Use root (1) or overall (0) objective to choose best validation parameters?");
+DEFINE_int32(minibatch,      100,            "What size should be used for the minibatches ?");
+DEFINE_int32(patience,       5,              "How many unimproving epochs to wait through before witnessing progress ?");
+DEFINE_double(dropout,       0.3,            "How much dropout noise to add to the problem ?");
+DEFINE_double(reg,           0.0,            "What penalty to place on L2 norm of weights?");
+DEFINE_bool(fast_dropout,    true,           "Use fast dropout?");
+DEFINE_string(solver,        "adadelta",     "What solver to use (adadelta, sgd, adam)");
+DEFINE_string(test,          "",             "Where is the test set?");
+DEFINE_double(root_weight,   1.0,            "By how much to weigh the roots in the objective function?");
+DEFINE_string(pretrained_vectors, "",        "Load pretrained word vectors?");
+DEFINE_double(learning_rate,      0.01,      "Learning rate for SGD and Adagrad.");
+DEFINE_string(results_file,       "",        "Where to save test performance.");
+DEFINE_string(save_location,      "",        "Where to save test performance.");
+DEFINE_int32(validation_metric,   0,         "Use root (1) or overall (0) objective to choose best validation parameters?");
+DEFINE_double(embedding_learning_rate, -1.0, "A separate learning rate for embedding layer");
+DEFINE_bool(svd_init,             true,      "Initialize weights using SVD?");
 
 ThreadPool* pool;
 
@@ -112,22 +114,17 @@ std::tuple<REAL_t,REAL_t> average_recall(
 int main (int argc,  char* argv[]) {
     GFLAGS_NAMESPACE::SetUsageMessage(
         "\n"
-        "Sentiment Analysis using multiple bidirectional LSTMs\n"
-        "-----------------------------------------------------\n"
+        "Sentiment Analysis using single LSTM\n"
+        "------------------------------------\n"
         "\n"
         " @author Jonathan Raiman\n"
-        " @date March 13th 2015"
+        " @date April 7th 2015"
     );
-
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
-
     auto epochs              = FLAGS_epochs;
     auto sentiment_treebank  = SST::load(FLAGS_train);
-
-
     auto embedding = Mat<REAL_t>(100, 0);
     auto word_vocab = Vocab();
-
     if (!FLAGS_pretrained_vectors.empty() && FLAGS_load.empty()) {
         glove::load(FLAGS_pretrained_vectors, embedding, word_vocab, 50000);
     } else {
@@ -137,9 +134,7 @@ int main (int argc,  char* argv[]) {
 
     // Load Dataset of Trees:
     // Put trees into matrices:
-
     std::vector<std::vector<std::tuple<std::vector<uint>, uint, bool>>> dataset;
-
     auto to_index_pair = [&word_vocab](std::pair<std::vector<std::string>, uint>&& pair, bool&& is_root) {
         return std::tuple<std::vector<uint>, uint, bool>(
             word_vocab.transform(pair.first),
@@ -183,32 +178,36 @@ int main (int argc,  char* argv[]) {
     add_to_dataset_in_minibatches(dataset, sentiment_treebank);
 
     std::vector<std::vector<std::tuple<std::vector<uint>, uint, bool>>> validation_set;
-
     {
         auto validation_treebank = SST::load(FLAGS_validation);
         add_to_dataset_in_minibatches(validation_set, validation_treebank);
     }
-
-
-
-
     pool = new ThreadPool(FLAGS_j);
-
-    /*
-    Create a model with an embedding, and several stacks:
-    */
+    // Create a model with an embedding, and several stacks:
 
     auto stack_size  = std::max(FLAGS_stack_size, 1);
 
     auto model = FLAGS_load.empty() ? StackedModel<REAL_t>(
-         FLAGS_pretrained_vectors.empty() ? word_vocab.index2word.size() : 0,
-         FLAGS_pretrained_vectors.empty() ? FLAGS_hidden : embedding.dims(1),
-         FLAGS_hidden,
-         stack_size,
-         SST::label_names.size(),
-         FLAGS_shortcut,
-         FLAGS_memory_feeds_gates) :
-        StackedModel<REAL_t>::load(FLAGS_load);
+        FLAGS_pretrained_vectors.empty() ? word_vocab.index2word.size() : 0,
+        FLAGS_pretrained_vectors.empty() ? FLAGS_hidden : embedding.dims(1),
+        FLAGS_hidden,
+        stack_size,
+        SST::label_names.size(),
+        FLAGS_shortcut,
+        FLAGS_memory_feeds_gates) : StackedModel<REAL_t>::load(FLAGS_load);
+
+    int solver_type;
+    if (FLAGS_solver == "adadelta") {
+        solver_type = ADADELTA_TYPE;
+    } else if (FLAGS_solver == "adam") {
+        solver_type = ADAM_TYPE;
+    } else if (FLAGS_solver == "sgd") {
+        solver_type = SGD_TYPE;
+    } else if (FLAGS_solver == "adagrad") {
+        solver_type = ADAGRAD_TYPE;
+    } else {
+        utils::exit_with_message("Did not recognize this solver type.");
+    }
 
     std::cout << " Unique Trees Loaded : " << sentiment_treebank.size() << std::endl
               << "        Example tree : " << *sentiment_treebank[sentiment_treebank.size()-1] << std::endl
@@ -219,7 +218,7 @@ int main (int argc,  char* argv[]) {
               << " Max training epochs : " << FLAGS_epochs << std::endl
               << "           LSTM type : " << (model.memory_feeds_gates ? "Graves 2013" : "Zaremba 2014") << std::endl
               << "          Stack size : " << model.hidden_sizes.size() << std::endl
-              << " # training examples : " << dataset.size() * FLAGS_minibatch - (FLAGS_minibatch - dataset[dataset.size() - 1].size())
+              << " # training examples : " << dataset.size() * FLAGS_minibatch - (FLAGS_minibatch - dataset[dataset.size() - 1].size()) << std::endl
               << "     validation obj. : " << (FLAGS_validation_metric == 0 ? "overall" : "root") << std::endl
               << "              Solver : " << FLAGS_solver << std::endl;
 
@@ -228,6 +227,7 @@ int main (int argc,  char* argv[]) {
     }
 
     vector<vector<Mat<REAL_t>>> thread_params;
+    vector<vector<Mat<REAL_t>>> thread_embedding_params;
 
     // what needs to be optimized:
     vector<StackedModel<REAL_t>> thread_models;
@@ -235,34 +235,56 @@ int main (int argc,  char* argv[]) {
         // create a copy for each training thread
         // (shared memory mode = Hogwild)
         thread_models.push_back(model.shallow_copy());
-        thread_params.push_back(thread_models.back().parameters());
+
+        if (
+                FLAGS_embedding_learning_rate > 0 &&
+                (solver_type == SGD_TYPE || solver_type == ADAGRAD_TYPE)
+            ) {
+            auto thread_model_params = thread_models.back().parameters();
+            // take a slice of all the parameters except for embedding.
+            thread_params.emplace_back(
+                thread_model_params.begin() + 1,
+                thread_model_params.end()
+            );
+            // then add the embedding (the first parameter of StackeModel)
+            thread_embedding_params.emplace_back(
+                thread_model_params.begin(),
+                thread_model_params.begin() + 1
+            );
+        } else {
+            thread_params.push_back(
+                thread_models.back().parameters()
+            );
+        }
     }
     auto params = model.parameters();
     auto svd_init = weights<REAL_t>::svd(weights<REAL_t>::gaussian(0.0, 1.0));
 
-    for (auto& param : params) {
-        if (param.dims(0) < 1000) {
-            svd_init(param);
+    if (FLAGS_svd_init) {
+        for (auto& param : params) {
+            if (param.dims(0) < 1000) {
+                svd_init(param);
+            }
         }
     }
 
     // Rho value, eps value, and gradient clipping value:
     std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver;
-    int solver_type;
-    if (FLAGS_solver == "adadelta") {
-        solver = make_shared<Solver::AdaDelta<REAL_t>>(params, 0.95, 1e-9, 100.0, (REAL_t) FLAGS_reg);
-        solver_type = ADADELTA_TYPE;
-    } else if (FLAGS_solver == "adam") {
-        solver = make_shared<Solver::Adam<REAL_t>>(params, 0.1, 0.001, 1e-9, 100.0, (REAL_t) FLAGS_reg);
-        solver_type = ADAM_TYPE;
-    } else if (FLAGS_solver == "sgd") {
-        solver = make_shared<Solver::SGD<REAL_t>>(params, 100.0, (REAL_t) FLAGS_reg);
-        solver_type = SGD_TYPE;
-    } else if (FLAGS_solver == "adagrad") {
-        solver = make_shared<Solver::AdaGrad<REAL_t>>(params, 1e-9, 100.0, (REAL_t) FLAGS_reg);
-        solver_type = ADAGRAD_TYPE;
-    } else {
-        utils::exit_with_message("Did not recognize this solver type.");
+    switch (solver_type) {
+        case ADADELTA_TYPE:
+            solver = make_shared<Solver::AdaDelta<REAL_t>>(params, 0.95, 1e-9, 100.0, (REAL_t) FLAGS_reg);
+            break;
+        case ADAM_TYPE:
+            solver = make_shared<Solver::Adam<REAL_t>>(params, 0.1, 0.001, 1e-9, 100.0, (REAL_t) FLAGS_reg);
+            break;
+        case SGD_TYPE:
+            solver = make_shared<Solver::SGD<REAL_t>>(params, 100.0, (REAL_t) FLAGS_reg);
+            break;
+        case ADAGRAD_TYPE:
+            solver = make_shared<Solver::AdaGrad<REAL_t>>(params, 1e-9, 100.0, (REAL_t) FLAGS_reg);
+            break;
+        default:
+            utils::exit_with_message("Did not recognize this solver type.");
     }
 
     std::tuple<REAL_t, REAL_t> best_validation_score(0.0, 0.0);
@@ -292,10 +314,11 @@ int main (int argc,  char* argv[]) {
         );
 
         for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
-            pool->run([&solver_type, &thread_params, &thread_models, batch_id, &journalist, &solver, &dataset, &best_validation_score, &batches_processed]() {
-                auto& thread_model  = thread_models[ThreadPool::get_thread_number()];
-                auto& params        = thread_params[ThreadPool::get_thread_number()];
-                auto& minibatch     = dataset[batch_id];
+            pool->run([&solver_type, &thread_embedding_params, &thread_params, &thread_models, batch_id, &journalist, &solver, &dataset, &best_validation_score, &batches_processed]() {
+                auto& thread_model     = thread_models[ThreadPool::get_thread_number()];
+                auto& params           = thread_params[ThreadPool::get_thread_number()];
+                auto& embedding_params = thread_embedding_params[ThreadPool::get_thread_number()];
+                auto& minibatch        = dataset[batch_id];
                 // many forward steps here:
                 // REAL_t err = 0.0;
                 for (auto & example : minibatch) {
@@ -317,8 +340,14 @@ int main (int argc,  char* argv[]) {
                 }
                 if (solver_type == ADAGRAD_TYPE) {
                     dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step(params, FLAGS_learning_rate);
+                    if (FLAGS_embedding_learning_rate > 0) {
+                        dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step(embedding_params, FLAGS_embedding_learning_rate);
+                    }
                 } else if (solver_type == SGD_TYPE) {
                     dynamic_cast<Solver::SGD<REAL_t>*>(solver.get())->step(params, FLAGS_learning_rate);
+                    if (FLAGS_embedding_learning_rate > 0) {
+                        dynamic_cast<Solver::SGD<REAL_t>*>(solver.get())->step(embedding_params, FLAGS_embedding_learning_rate);
+                    }
                 } else {
                     solver->step(params); // One step of gradient descent
                 }

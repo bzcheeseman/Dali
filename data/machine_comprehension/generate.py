@@ -4,12 +4,17 @@ import sys
 from os import listdir
 from os.path import isdir, isfile, join, dirname, realpath
 
+from parser import parse
+
 # add data to path
 DATA_DIR = dirname(dirname(realpath(__file__)))
 sys.path.append(DATA_DIR)
 from utils import print_progress, execute_bash
 
 THIS_DATA_DIR = dirname(realpath(__file__))
+
+TRAIN_FILE = join(THIS_DATA_DIR, "mc_train.txt")
+TEST_FILE = join(THIS_DATA_DIR, "mc_test.txt")
 
 # important
 ZIP_URL      = 'http://research.microsoft.com/en-us/um/redmond/projects/mctest/data/MCTest.zip'
@@ -30,3 +35,5 @@ if __name__ == '__main__':
     execute_bash('unzip %s -d %s' % (ZIP_TEST_LOCAL, THIS_DATA_DIR))
     execute_bash('mv %s %s' % (join(THIS_DATA_DIR, "MCTest*", "*.{tsv,ans}"), THIS_DATA_DIR))
     delete_paths([ZIP_LOCAL,ZIP_TEST_LOCAL, join(THIS_DATA_DIR, "MCTest*")])
+    delete_paths([join(THIS_DATA_DIR, TRAIN_FILE), join(THIS_DATA_DIR, TEST_FILE)])
+    parse(THIS_DATA_DIR, TRAIN_FILE, TEST_FILE)

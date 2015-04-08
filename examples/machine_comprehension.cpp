@@ -19,7 +19,6 @@ using utils::random_minibatches;
 using utils::vsum;
 using utils::assert2;
 using std::function;
-using utils::LambdaOperator;
 
 vector<Section> train_data, validate_data, test_data;
 Vocab vocab;
@@ -219,17 +218,15 @@ class DragonModel {
             return params;
         }
 
-        Mat<R> answer_scores(const vector<string>& text,
+        vector<Mat<R>> answer_scores(const vector<string>& text,
                                      const vector<string>& question,
                                      const vector<vector<string>>& answers) {
-            vector<Mat<R>> answer_scores;
+            vector<Mat<R>> scores;
             for (auto& answer: answers) {
-                answer_scores.push_back(answer_score(text, question, answer));
+                scores.push_back(answer_score(text, question, answer));
             }
-            auto scores_as_mat = MatOps<R>::vstack(answer_scores);
-            auto probabilities = MatOps<R>::softmax(scores_as_mat);
 
-            return probabilities;
+            return scores;
         }
 
         Mat<R> error(const vector<string>& text,
@@ -238,7 +235,15 @@ class DragonModel {
                      int correct_answer) {
             auto scores = answer_scores(text, question, answers);
 
-            return MatOps<R>::cross_entropy(scores, correct_answer);
+            R margin = 0.1;
+
+            Mat<R> error(1,1);
+            for (int aidx=0; aidx < answers.size(); ++aidx) {
+                if (aidx == correct_answer) continue;
+                error = error + MatOps<R>::max(scores[aidx] - scores[correct_answer] + margin, 0.0);
+            }
+
+            return error;
         }
 
         int predict(const vector<string>& text,
@@ -246,7 +251,7 @@ class DragonModel {
                     const vector<vector<string>>& answers) {
             auto scores = answer_scores(text, question, answers);
 
-            return scores.argmax();
+            return MatOps<R>::vstack(scores).argmax();
         }
 };
 
@@ -340,7 +345,7 @@ int main(int argc, char** argv) {
 
     model_t model;
     auto params = model.parameters();
-    auto solver = Solver::Adam<double>(params);
+    auto solver = Solver::AdaDelta<double>(params);
 
     vector<model_t> thread_models;
 

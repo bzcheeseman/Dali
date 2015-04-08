@@ -23,25 +23,32 @@ While there are existing great automatic differentiation libraries, a fast simpl
 
 Create two 3x3 matrices filled with uniform random noise between -2 and 2:
 
-    Mat<float> A(3,3, -2.0, 2.0);
-    Mat<float> B(3,3, -2.0, 2.0);
+```cpp
+Mat<float> A(3,3, -2.0, 2.0);
+Mat<float> B(3,3, -2.0, 2.0);
+```
 
 Now let's multiply them:
 
-    auto C = A * B;
+```cpp
+auto C = A * B;
+```
 
 Now's let take the gradient of the squared sum of this operation:
 
-    auto error = (C ^ 2).sum();
+```cpp
+auto error = (C ^ 2).sum();
+```
 
 And get the gradient of error with respect to A and B:
 
-    error.grad();
-    graph::backward();
+```cpp
+error.grad();
+graph::backward();
 
-    auto A_gradient = A.dw();
-    auto B_gradient = B.dw();
-
+auto A_gradient = A.dw();
+auto B_gradient = B.dw();
+```
 
 ##### Behind the scenes:
 
@@ -53,7 +60,9 @@ variable in `graph::tape`). When we reach `C.sum()` we also add this operation t
 Computing the gradient is done in 2 steps, first we tell our graph what the objective
 function is:
 
-    error.grad();
+```cpp
+error.grad();
+```
 
 `error` needs to be a scalar (a 1x1 matrix in this implementation) to use `grad()`.
 Step 2 is to call `graph::backward()` and go through every operation executed so far
@@ -65,7 +74,9 @@ updated. Those are now [the gradients we we're looking for](http://youtu.be/DIzA
 
 Let's run a simple example. We will use data from [Paul Graham's blog](http://paulgraham.com) to train a language model. This way we can generate random pieces of startup wisdom at will! After about 5-10 minutes of training time you should see it generate sentences that sort of make sense. To do this go to cpp/build and execute
 
-    examples/language_model --flagfile ../flags/language_model_simple.flags
+```bash
+examples/language_model --flagfile ../flags/language_model_simple.flags
+```
 
 That's it. Don't forget to checkout `examples/language_model.cpp`. It's not that scary!
 
@@ -83,27 +94,32 @@ You need the latest version of [Clang](http://llvm.org/releases/download.html) (
 
 ###### 1.a on Mac OSX
 
-    brew install eigen
-    brew install cmake
-    brew install gflags
-    HOMEBREW_CC=clang HOMEBREW_CXX=clang++ brew install protobuf
-    cmake ..
+```bash
+brew install eigen
+brew install cmake
+brew install gflags
+HOMEBREW_CC=clang HOMEBREW_CXX=clang++ brew install protobuf
+cmake ..
+```
 
 ###### 1.b on Fedora Linux
 
-    yum install eigen3-devel
-    yum install clang
-    yum install gflags gflags-devel
-    yum install sqlite-devel
-    yum install protobuf protobuf-devel protobuf-compiler
+```bash
+yum install eigen3-devel
+yum install clang
+yum install gflags gflags-devel
+yum install sqlite-devel
+yum install protobuf protobuf-devel protobuf-compiler
+```
 
 ##### 2. Compilation
 
 Then use `cmake` to create the `make` targets, and run `make` to compile the code:
 
-    cmake ..
-    make -j 9
-
+```bash
+cmake ..
+make -j 9
+```
 
 That's it. Now built examples will be stored in `cpp/build/examples`.
 For instance a character prediction model using Stacked LSTMs is built under `cpp/build/examples/character_prediction`.
@@ -116,20 +132,24 @@ To compile and run tests you need [Google Tests](https://code.google.com/p/googl
 
 From the build folder do the following:
 
-    cmake ..
-    make -j 9 run_tests
+```bash
+cmake ..
+make -j 9 run_tests
+```
 
 ###### 2.a Install Gtest on Mac OSX
 
 Homebrew does not offer a way of installing gtest, however in a few steps you can get it running. First go to the directory where you downloaded Gtests:
 
-    cd gtest-1.7.0
-    mkdir mybuild
-    cd mybuild
-    cmake ..
-    cp libgtest_main.a /usr/local/lib/libgtest_main.a
-    cp libgtest.a /usr/local/lib/libgtest.a
-    cp -R ../include/* /usr/local/include/
+```bash
+cd gtest-1.7.0
+mkdir mybuild
+cd mybuild
+cmake ..
+cp libgtest_main.a /usr/local/lib/libgtest_main.a
+cp libgtest.a /usr/local/lib/libgtest.a
+cp -R ../include/* /usr/local/include/
+```
 
 Now cmake should be able to find gtest (go back to step 1).
 
@@ -137,7 +157,9 @@ Now cmake should be able to find gtest (go back to step 1).
 
 Using `yum` it's a piece of cake:
 
-    sudo yum install gtest gtest-devel
+```bash
+sudo yum install gtest gtest-devel
+```
 
 #### MKL Zaziness Problems
 
@@ -152,23 +174,27 @@ In the utilities namespace you will find several tools to make data processing a
 
 To create folders similar to how `os.makedirs` works in Python, you can do:
 
-
-    utils::makedirs("folder/subfolder/");
+```cpp
+utils::makedirs("folder/subfolder/");
+```
 
 Random integer between 0 and 2 (included):
 
-
-    utils::randint(0, 2);
+```cpp
+utils::randint(0, 2);
+```
 
 Check whether a file is gzipped:
 
-
-    utils::is_gzip("folder/suspicious.gz");
+```cpp
+utils::is_gzip("folder/suspicious.gz");
+```
 
 Sort the arguments of a list `np.argsort` style:
 
-
-    auto sorted_lengths = utils::argsort(lengths);
+```cpp
+auto sorted_lengths = utils::argsort(lengths);
+```
 
 
 ### Future steps

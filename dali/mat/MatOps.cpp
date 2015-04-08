@@ -8,6 +8,7 @@ using std::vector;
 using std::string;
 using utils::assert2;
 using utils::MS;
+using utils::LambdaOperator;
 
 #define GRAD(X) if (!(X).constant) (X).dw()
 
@@ -92,6 +93,28 @@ Mat<R> MatOps<R>::eltmul(
     return out;
 }
 
+template<typename R>
+Mat<R> MatOps<R>::max(Mat<R> matrix, R lower_bound) {
+    auto out = Mat<R>::empty_like(matrix);
+    // out = max(matrix, lower_bound);
+    out.w() = matrix.w().unaryExpr(
+        LambdaOperator<R>([&lower_bound](R item) {
+            return std::max(item, lower_bound);
+        }));
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, out, lower_bound]() {
+            if (!matrix.constant) {
+                // mask = (matrix >= lower_bound) ? 1.0 : 0:0;
+
+                auto mask = matrix.w().unaryExpr(
+                    LambdaOperator<R>([&lower_bound](R item) {
+                        return item >= lower_bound ? 1.0 : 0.0;
+                    }));
+                matrix.dw().noalias() += (mask.array() * (out.dw()).array()).matrix();
+            }
+        });
+    return out;
+}
 
 template<typename R>
 Mat<R> MatOps<R>::eltmul(

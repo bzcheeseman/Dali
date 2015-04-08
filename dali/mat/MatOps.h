@@ -25,6 +25,7 @@ struct MatOps {
     static Mat<R> eltmul(Mat<R>, R);
     static Mat<R> eltdivide(Mat<R>, Mat<R>);
     static Mat<R> eltdivide(Mat<R>, R);
+    static Mat<R> max(Mat<R>, R);
 
     /**
     Element Multiplication Broadcast Rowwise

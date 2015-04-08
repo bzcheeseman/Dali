@@ -19,6 +19,7 @@ using utils::random_minibatches;
 using utils::vsum;
 using utils::assert2;
 using std::function;
+using utils::LambdaOperator;
 
 vector<Section> train_data, validate_data, test_data;
 Vocab vocab;

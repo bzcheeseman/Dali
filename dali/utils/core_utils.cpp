@@ -905,6 +905,17 @@ namespace utils {
     template vector<size_t> argsort(const vector<std::string>&v);
 
     template<typename T>
+    LambdaOperator<T>::LambdaOperator(std::function<T(T)> lambda_expr) : lambda_expr(lambda_expr) {
+    }
+
+    template<typename T>
+    T LambdaOperator<T>::operator () (T x) const { return lambda_expr(x); }
+
+    template struct LambdaOperator<float>;
+    template struct LambdaOperator<double>;
+
+
+    template<typename T>
     T sigmoid_operator<T>::operator () (T x) const { return 1.0 / (1.0 + exp(-x)); }
 
     template<typename T>

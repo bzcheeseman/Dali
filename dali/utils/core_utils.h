@@ -401,6 +401,16 @@ namespace utils {
         bool gzip? : whether header matches gzip header
         **/
         bool is_gzip(const std::string&);
+
+        /* Used for Eigen CwiseExpr - wraps a lambda expression */
+        template<typename T>
+        struct LambdaOperator {
+            std::function<T(T)> lambda_expr;
+            LambdaOperator(std::function<T(T)> lambda_expr);
+            T operator() (T) const;
+        };
+
+
         template<typename T>
         struct sigmoid_operator {
                 T operator() (T) const;

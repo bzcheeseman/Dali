@@ -101,19 +101,25 @@ namespace utils {
         extern const char* unknown_word_symbol;
 
         class Vocab {
-                typedef uint ind_t;
                 private:
                         void construct_word2index();
                         void add_unknown_word();
                 public:
-                        ind_t unknown_word;
-                        std::map<std::string, ind_t> word2index;
-                        str_sequence index2word;
+                    typedef uint ind_t;
+                    ind_t unknown_word;
+                    std::map<std::string, ind_t> word2index;
+                    str_sequence index2word;
 
-                        std::vector<ind_t> transform(const str_sequence& words, bool with_end_symbol = false) const;
-                        Vocab();
-                        Vocab(str_sequence&);
-                        Vocab(str_sequence&, bool);
+                    std::vector<ind_t> transform(const str_sequence& words, bool with_end_symbol = false) const;
+
+                    // create vocabulary from many vectors of words. Vectors do not
+                    // need to contain unique words. They need not be sorted.
+                    // Standard use case is combining train/validate/test sets.
+                    static Vocab from_many_nonunique(std::initializer_list<str_sequence>,
+                                                     bool add_unknown_word=true);
+                    Vocab();
+                    Vocab(str_sequence&);
+                    Vocab(str_sequence&, bool);
         };
 
         template<typename T>
@@ -316,6 +322,7 @@ namespace utils {
         void ensure_directory(std::string&);
 
         std::vector<std::string> split_str(const std::string&, const std::string&);
+
         /**
         Text To Map
         -----------
@@ -497,6 +504,9 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
     str_sequence listdir(const std::string&);
 
     std::vector<size_t> random_arange(size_t);
+
+    std::vector<std::vector<size_t>> random_minibatches(size_t total_elements, size_t minibatch_size);
+
 
     std::vector<uint> arange(uint, uint);
 

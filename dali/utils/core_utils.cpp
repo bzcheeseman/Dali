@@ -126,6 +126,16 @@ namespace utils {
             return indices;
         }
 
+        vector<vector<size_t>> random_minibatches(size_t total_elements, size_t minibatch_size) {
+            vector<size_t> training_order = utils::random_arange(total_elements);
+            int num_minibatches = training_order.size() / minibatch_size;
+            vector<vector<size_t>> minibatches(num_minibatches);
+            for (int tidx = 0; tidx < total_elements; ++tidx) {
+                minibatches[tidx%num_minibatches].push_back(training_order[tidx]);
+            }
+            return minibatches;
+        }
+
         vector<uint> arange(uint start, uint end) {
             vector<uint> indices(end - start);
             for (uint i=0; i < indices.size();i++) indices[i] = i;
@@ -793,7 +803,23 @@ namespace utils {
             return result;
         }
 
+        Vocab Vocab::from_many_nonunique(std::initializer_list<str_sequence> sequences,
+                                  bool add_unknown_word) {
+            vector<string> words;
+            for (auto& sequence: sequences) {
+                for (auto& word: sequence) {
+                    words.push_back(word);
+                }
+            }
+            // make them unique
+            std::sort(words.begin(), words.end());
+            words.erase(std::unique(words.begin(), words.end()), words.end());
+
+            return Vocab(words, add_unknown_word);
+        }
+
         Vocab::Vocab() : unknown_word(-1) {add_unknown_word();};
+
         Vocab::Vocab(vector<string>& _index2word) : index2word(_index2word), unknown_word(-1) {
                 construct_word2index();
                 add_unknown_word();
@@ -1235,8 +1261,9 @@ namespace utils {
 
     template<typename T>
     T vsum(const vector<T>& vec) {
-        return accumulate(vec.begin(), vec.end(), 0,
-                          [](int a, int b) { return a+b; });
+        T res = 0;
+        for(T item: vec) res += item;
+        return res;
     }
 
     template float vsum(const vector<float>& vec);

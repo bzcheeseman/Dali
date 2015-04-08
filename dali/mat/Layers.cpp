@@ -31,6 +31,10 @@ void Layer<R>::create_variables() {
 }
 
 template<typename R>
+Layer<R>::Layer() {
+}
+
+template<typename R>
 Layer<R>::Layer (int _input_size, int _hidden_size) : hidden_size(_hidden_size), input_size(_input_size) {
     create_variables();
 }
@@ -69,6 +73,11 @@ void StackedInputLayer<R>::create_variables() {
     }
     this->b = Mat<R>(hidden_size, 1, U);
 }
+
+template<typename R>
+StackedInputLayer<R>::StackedInputLayer() {
+}
+
 template<typename R>
 StackedInputLayer<R>::StackedInputLayer (vector<int> _input_sizes,
                                          int _hidden_size) :
@@ -139,6 +148,12 @@ vector<Mat<R>> StackedInputLayer<R>::zip_inputs_with_matrices_and_bias(
     }
     zipped.emplace_back(this->b);
     return zipped;
+}
+
+template<typename R>
+Mat<R> StackedInputLayer<R>::activate(std::initializer_list<Mat<R>> inputs) const {
+    vector<Mat<R>> temp(inputs);
+    return activate(temp);
 }
 
 template<typename R>

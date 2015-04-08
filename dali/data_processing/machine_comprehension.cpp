@@ -68,4 +68,23 @@ namespace mc {
         string test_file = utils::join({data_dir, "mc_test.txt"});
         return std::make_tuple(parse_file(train_file), parse_file(test_file));
     }
+
+    vector<string> extract_vocabulary(const std::vector<Section>& sections) {
+        vector<string> result;
+        for(const Section& s : sections) {
+            result.insert(result.end(), s.text.begin(), s.text.end());
+            for (const Question& q: s.questions) {
+                result.insert(result.end(), q.text.begin(), q.text.end());
+                for (const vector<string>& a : q.answers) {
+                    result.insert(result.end(), a.begin(), a.end());
+                }
+            }
+        }
+        // return the vocabulary sorted and unique.
+        std::sort(result.begin(), result.end());
+        result.erase(std::unique(result.begin(), result.end()), result.end());
+
+        return result;
+    }
+
 }

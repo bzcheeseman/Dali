@@ -3,6 +3,9 @@ HIGH PRIORITY:
 -> visualizer - web frontend for error visualization
 -> multiple choice questions dataset
 
+MEDIUM PRIORITY:
+-> Improve NlpUtils. More generally agree on common set of practices for all the examples.
+
 LOWER_PRIOTITY:
 -> add performance test
 -> refactor masked entropy

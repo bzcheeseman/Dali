@@ -596,7 +596,7 @@ void train(const vector<babi::Story>& data, shared_ptr<Training> training_method
     double best_validation = run_epoch(validation, &solver, false)(0);
     best_model = std::make_shared<BabiModel>(*model, true, true);
 
-    while (true) {
+    while (epoch) {
         auto training_errors = run_epoch(train, &solver, true);
         auto validation_errors = run_epoch(validation, &solver, false);
 

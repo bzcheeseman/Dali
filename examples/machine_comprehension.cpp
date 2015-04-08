@@ -25,7 +25,8 @@ ThreadPool* pool;
 DEFINE_int32(j, 9, "Number of threads");
 DEFINE_int32(minibatch, 50, "Number of sections considered in every minibatch gradient step.");
 
-// TODO(szymon): write a neural network Layer
+// TODO(szymon): add gloved
+// TODO(szymon): add dropout
 // TODO(szymon): use ranking loss
 // TODO(szymon): make vocab sane
 
@@ -103,7 +104,7 @@ class DragonModel {
         const int EMBEDDING_SIZE = 50;
         const int HIDDEN_SIZE = 400;
         const bool SEPARATE_EMBEDDINGS = true;
-        const bool SVD_INIT = false;
+        const bool SVD_INIT = true;
         const vector<int> OUTPUT_NN_SIZES = {HIDDEN_SIZE, 400, 400, 1};
         const vector<typename NeuralNetworkLayer<R>::activation_t> OUTPUT_NN_ACTIVATIONS =
             { MatOps<R>::tanh, MatOps<R>::tanh, MatOps<R>::sigmoid };
@@ -148,6 +149,10 @@ class DragonModel {
             output_classifier = NeuralNetworkLayer<R>(OUTPUT_NN_SIZES, OUTPUT_NN_ACTIVATIONS);
 
             if (SVD_INIT) {
+                // Don't use SVD for embeddings!
+                auto params = words_repr_to_hidden.parameters();
+                auto params2 = output_classifier.parameters();
+                params.insert(params.end(), params2.begin(), params2.end());
                 for (auto param: parameters()) {
                     weights<R>::svd(weights<R>::gaussian(1.0))(param);
                 }
@@ -328,10 +333,8 @@ int main(int argc, char** argv) {
 
     vector<model_t> thread_models;
 
-    std::cout << "Siema" << std::endl;
     for (int tmidx = 0; tmidx < FLAGS_j; tmidx++)
         thread_models.emplace_back(model.shallow_copy());
-    std::cout << "Siema" << std::endl;
 
     auto thread_error = ThreadError(FLAGS_j);
 

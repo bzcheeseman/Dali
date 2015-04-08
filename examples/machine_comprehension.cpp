@@ -2,6 +2,7 @@
 #include <tuple>
 #include <vector>
 #include <string>
+#include <functional>
 
 #include "dali/core.h"
 #include "dali/data_processing/machine_comprehension.h"
@@ -14,6 +15,8 @@ using std::string;
 using utils::Vocab;
 using utils::random_minibatches;
 using utils::vsum;
+using utils::assert2;
+using std::function;
 
 vector<Section> train_data, validate_data, test_data;
 Vocab vocab;
@@ -27,12 +30,77 @@ DEFINE_int32(minibatch, 50, "Number of sections considered in every minibatch gr
 // TODO(szymon): make vocab sane
 
 template<typename R>
+class NeuralNetworkLayer {
+    public:
+        typedef function<Mat<R>(Mat<R>)> activation_t;
+
+        const vector<int> hidden_sizes;
+        const vector<activation_t> activations;
+
+        vector<Layer<R>> layers;
+
+        NeuralNetworkLayer(vector<int> hidden_sizes) :
+                NeuralNetworkLayer(hidden_sizes, identites(hidden_sizes.size() - 1)) {
+        }
+
+        NeuralNetworkLayer() {
+        }
+
+        NeuralNetworkLayer(vector<int> hidden_sizes, vector<activation_t> activations) :
+                hidden_sizes(hidden_sizes),
+                activations(activations) {
+            assert2(activations.size() == hidden_sizes.size() - 1,
+                    "Wrong number of activations for NeuralNetworkLayer")
+
+            for (int lidx = 0; lidx < hidden_sizes.size(); ++lidx) {
+                layers.append(Layer<R>(hidden_sizes[lidx], hidden_sizes[lidx + 1]));
+            }
+        }
+
+        NeuralNetworkLayer(NeuralNetworkLayer& other, bool copy_w, bool copy_dw) :
+            hidden_sizes(other.hidden_sizes),
+            activations(other.activations),
+            layers(other.layers, copy_w, copy_dw) {
+        }
+
+        NeuralNetworkLayer shallow_copy() {
+            return NeuralNetworkLayer(*this, false, true);
+        }
+
+        Mat<R> activate(Mat<R> input) {
+            Mat<R> last_output = input;
+            for (int i = 0; i < hidden_sizes.size() - 1; ++i)
+                last_output = activations[i](layers[i].activate(last_output));
+
+            return last_output;
+        }
+
+        vector<Mat<R>> parameters() {
+            vector<Mat<R>> params;
+            for (auto& layer: layers) {
+                auto layer_params = layer.parameters();
+                params.insert(params.back(), layer_params.begin(), layer_params.end());
+            }
+        }
+
+        static Mat<R> identity(Mat<R> m) { return m; }
+
+        static vector<activation_t> identites(int n) {
+            vector<activation_t> res;
+            while(n--) res.push_back(identity);
+            return res;
+        }
+};
+
+
+template<typename R>
 class DragonModel {
     public:
         const int EMBEDDING_SIZE = 50;
         const int HIDDEN_SIZE = 100;
         const bool SEPARATE_EMBEDDINGS = true;
         const bool SVD_INIT = true;
+        const vector<int> OUTPUT_NN_SIZES = {HIDDEN_SIZE, 1};
 
         Mat<R> embedding;
 
@@ -42,7 +110,7 @@ class DragonModel {
 
         StackedInputLayer<R> words_repr_to_hidden;
 
-        Layer<R> output_classifier;
+        NeuralNetworkLayer<R> output_classifier;
 
         DragonModel(const DragonModel& other, bool copy_w, bool copy_dw) {
             if (SEPARATE_EMBEDDINGS) {
@@ -52,8 +120,9 @@ class DragonModel {
             } else {
                 embedding = Mat<R>(other.embedding, copy_w, copy_dw);
             }
-            words_repr_to_hidden = StackedInputLayer<R>(other.words_repr_to_hidden, copy_w, copy_dw);
-            output_classifier = Layer<R>(other.output_classifier, copy_w, copy_dw);
+            words_repr_to_hidden =
+                    StackedInputLayer<R>(other.words_repr_to_hidden, copy_w, copy_dw);
+            output_classifier = NeuralNetworkLayer<R>(other.output_classifier, copy_w, copy_dw);
         }
 
         DragonModel() {
@@ -70,7 +139,7 @@ class DragonModel {
                                                           EMBEDDING_SIZE
                                                          }, HIDDEN_SIZE);
 
-            output_classifier = Layer<R>(HIDDEN_SIZE, 1);
+            output_classifier = NeuralNetworkLayer<R>(OUTPUT_NN_SIZES);
 
             if (SVD_INIT) {
                 for (auto param: parameters()) {
@@ -225,10 +294,16 @@ int main(int argc, char** argv) {
 
     const double VALIDATION_FRACTION = 0.1;
 
+    // Load the data set
     std::tie(train_data, test_data) = mc::load();
+    // shuffle examples
+    std::random_shuffle(train_data.begin(), train_data.end());
+    std::random_shuffle(test_data.begin(), test_data.end());
+    // separate validation dataset
     int num_validation = train_data.size() * VALIDATION_FRACTION;
     validate_data = vector<Section>(train_data.begin(), train_data.begin() + num_validation);
     train_data.erase(train_data.begin(), train_data.begin() + num_validation);
+    // extract vocabulary
     vocab = Vocab::from_many_nonunique({mc::extract_vocabulary(train_data),
                                         mc::extract_vocabulary(test_data)});
 

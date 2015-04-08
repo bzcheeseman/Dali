@@ -6,7 +6,9 @@
 
 #include "dali/core.h"
 #include "dali/data_processing/machine_comprehension.h"
+#include "dali/data_processing/Glove.h"
 #include "dali/utils.h"
+
 
 using mc::Section;
 using mc::Question;
@@ -24,6 +26,7 @@ ThreadPool* pool;
 
 DEFINE_int32(j, 9, "Number of threads");
 DEFINE_int32(minibatch, 50, "Number of sections considered in every minibatch gradient step.");
+DEFINE_string(pretrained_vectors, "", "Load pretrained word vectors?");
 
 // TODO(szymon): add gloved
 // TODO(szymon): add dropout
@@ -101,13 +104,13 @@ class NeuralNetworkLayer {
 template<typename R>
 class DragonModel {
     public:
-        const int EMBEDDING_SIZE = 50;
-        const int HIDDEN_SIZE = 400;
-        const bool SEPARATE_EMBEDDINGS = true;
+        const int EMBEDDING_SIZE = 300;
+        const int HIDDEN_SIZE = 50;
+        const bool SEPARATE_EMBEDDINGS = false;
         const bool SVD_INIT = true;
-        const vector<int> OUTPUT_NN_SIZES = {HIDDEN_SIZE, 400, 400, 1};
+        const vector<int> OUTPUT_NN_SIZES = {HIDDEN_SIZE, 50, 50, 50, 1};
         const vector<typename NeuralNetworkLayer<R>::activation_t> OUTPUT_NN_ACTIVATIONS =
-            { MatOps<R>::tanh, MatOps<R>::tanh, MatOps<R>::sigmoid };
+            { MatOps<R>::tanh, MatOps<R>::tanh, MatOps<R>::tanh, MatOps<R>::sigmoid };
 
         Mat<R> embedding;
 
@@ -134,6 +137,15 @@ class DragonModel {
 
         DragonModel() {
             auto weight_init = weights<R>::uniform(1.0/EMBEDDING_SIZE);
+            if (!FLAGS_pretrained_vectors.empty()) {
+                assert(!SEPARATE_EMBEDDINGS);
+                int num_loaded = glove::load_relevant_vectors(
+                        FLAGS_pretrained_vectors, embedding, vocab, 1000000);
+                std::cout << num_loaded << " out of " << vocab.word2index.size()
+                          << " word embeddings preloaded from glove." << std::endl;
+                assert (embedding.dims(1) == EMBEDDING_SIZE);
+            }
+
             if (SEPARATE_EMBEDDINGS) {
                 text_embedding = Mat<R>(vocab.word2index.size(), EMBEDDING_SIZE, weight_init);
                 question_embedding = Mat<R>(vocab.word2index.size(), EMBEDDING_SIZE, weight_init);
@@ -149,11 +161,12 @@ class DragonModel {
             output_classifier = NeuralNetworkLayer<R>(OUTPUT_NN_SIZES, OUTPUT_NN_ACTIVATIONS);
 
             if (SVD_INIT) {
+                std::cout << "Initializing with SVD!" << std::endl;
                 // Don't use SVD for embeddings!
                 auto params = words_repr_to_hidden.parameters();
                 auto params2 = output_classifier.parameters();
                 params.insert(params.end(), params2.begin(), params2.end());
-                for (auto param: parameters()) {
+                for (auto param: params) {
                     weights<R>::svd(weights<R>::gaussian(1.0))(param);
                 }
             }

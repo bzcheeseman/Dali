@@ -125,7 +125,8 @@ typename weights<R>::initializer_t weights<R>::svd(initializer_t preinitializer)
 /* Mat */
 // this does not need to initialize anything once we get rid of w and dw.
 template<typename R>
-Mat<R>::Mat() : name(nullptr), constant(false) {
+Mat<R>::Mat() : Mat(0,0) {
+
 }
 
 template<typename R>

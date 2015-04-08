@@ -34,33 +34,35 @@ class NeuralNetworkLayer {
     public:
         typedef function<Mat<R>(Mat<R>)> activation_t;
 
-        const vector<int> hidden_sizes;
-        const vector<activation_t> activations;
+        vector<int> hidden_sizes;
+        vector<activation_t> activations;
 
         vector<Layer<R>> layers;
 
-        NeuralNetworkLayer(vector<int> hidden_sizes) :
-                NeuralNetworkLayer(hidden_sizes, identites(hidden_sizes.size() - 1)) {
+        NeuralNetworkLayer() {
         }
 
-        NeuralNetworkLayer() {
+        NeuralNetworkLayer(vector<int> hidden_sizes) :
+                NeuralNetworkLayer(hidden_sizes, identities(hidden_sizes.size() - 1)) {
         }
 
         NeuralNetworkLayer(vector<int> hidden_sizes, vector<activation_t> activations) :
                 hidden_sizes(hidden_sizes),
                 activations(activations) {
             assert2(activations.size() == hidden_sizes.size() - 1,
-                    "Wrong number of activations for NeuralNetworkLayer")
+                    "Wrong number of activations for NeuralNetworkLayer");
 
-            for (int lidx = 0; lidx < hidden_sizes.size(); ++lidx) {
-                layers.append(Layer<R>(hidden_sizes[lidx], hidden_sizes[lidx + 1]));
+            for (int lidx = 0; lidx < hidden_sizes.size() - 1; ++lidx) {
+                layers.push_back(Layer<R>(hidden_sizes[lidx], hidden_sizes[lidx + 1]));
             }
         }
 
-        NeuralNetworkLayer(NeuralNetworkLayer& other, bool copy_w, bool copy_dw) :
-            hidden_sizes(other.hidden_sizes),
-            activations(other.activations),
-            layers(other.layers, copy_w, copy_dw) {
+        NeuralNetworkLayer(const NeuralNetworkLayer& other, bool copy_w, bool copy_dw) :
+                hidden_sizes(other.hidden_sizes),
+                activations(other.activations) {
+            for (auto& other_layer: other.layers) {
+                layers.emplace_back(other_layer, copy_w, copy_dw);
+            }
         }
 
         NeuralNetworkLayer shallow_copy() {
@@ -79,13 +81,15 @@ class NeuralNetworkLayer {
             vector<Mat<R>> params;
             for (auto& layer: layers) {
                 auto layer_params = layer.parameters();
-                params.insert(params.back(), layer_params.begin(), layer_params.end());
+                params.insert(params.end(), layer_params.begin(), layer_params.end());
             }
+            return params;
         }
 
         static Mat<R> identity(Mat<R> m) { return m; }
 
-        static vector<activation_t> identites(int n) {
+        static vector<activation_t> identities(int n) {
+            std::cout << n << std::endl;
             vector<activation_t> res;
             while(n--) res.push_back(identity);
             return res;
@@ -97,10 +101,12 @@ template<typename R>
 class DragonModel {
     public:
         const int EMBEDDING_SIZE = 50;
-        const int HIDDEN_SIZE = 100;
+        const int HIDDEN_SIZE = 400;
         const bool SEPARATE_EMBEDDINGS = true;
-        const bool SVD_INIT = true;
-        const vector<int> OUTPUT_NN_SIZES = {HIDDEN_SIZE, 1};
+        const bool SVD_INIT = false;
+        const vector<int> OUTPUT_NN_SIZES = {HIDDEN_SIZE, 400, 400, 1};
+        const vector<typename NeuralNetworkLayer<R>::activation_t> OUTPUT_NN_ACTIVATIONS =
+            { MatOps<R>::tanh, MatOps<R>::tanh, MatOps<R>::sigmoid };
 
         Mat<R> embedding;
 
@@ -139,7 +145,7 @@ class DragonModel {
                                                           EMBEDDING_SIZE
                                                          }, HIDDEN_SIZE);
 
-            output_classifier = NeuralNetworkLayer<R>(OUTPUT_NN_SIZES);
+            output_classifier = NeuralNetworkLayer<R>(OUTPUT_NN_SIZES, OUTPUT_NN_ACTIVATIONS);
 
             if (SVD_INIT) {
                 for (auto param: parameters()) {
@@ -177,7 +183,7 @@ class DragonModel {
                                                            question_repr,
                                                            answer_repr}).tanh();
 
-            return output_classifier.activate(hidden).sigmoid();
+            return output_classifier.activate(hidden);
         }
 
         vector<Mat<R>> parameters() {
@@ -314,15 +320,18 @@ int main(int argc, char** argv) {
 
     pool = new ThreadPool(FLAGS_j);
 
-    auto training = LSTV(0.5, 0.1, 2);
+    auto training = LSTV(0.5, 0.1, 10);
 
     model_t model;
     auto params = model.parameters();
     auto solver = Solver::Adam<double>(params);
 
     vector<model_t> thread_models;
+
+    std::cout << "Siema" << std::endl;
     for (int tmidx = 0; tmidx < FLAGS_j; tmidx++)
         thread_models.emplace_back(model.shallow_copy());
+    std::cout << "Siema" << std::endl;
 
     auto thread_error = ThreadError(FLAGS_j);
 

@@ -104,13 +104,13 @@ class NeuralNetworkLayer {
 template<typename R>
 class DragonModel {
     public:
-        int EMBEDDING_SIZE = 100;
+        int EMBEDDING_SIZE = 300;
         int HIDDEN_SIZE = 100;
-        bool SEPARATE_EMBEDDINGS = true;
+        bool SEPARATE_EMBEDDINGS = false;
         bool SVD_INIT = true;
-        vector<int> OUTPUT_NN_SIZES = {HIDDEN_SIZE, 100, 1};
+        vector<int> OUTPUT_NN_SIZES = {HIDDEN_SIZE, 100, 100, 1};
         vector<typename NeuralNetworkLayer<R>::activation_t> OUTPUT_NN_ACTIVATIONS =
-            { MatOps<R>::tanh, MatOps<R>::sigmoid };
+            { MatOps<R>::tanh, MatOps<R>::tanh, NeuralNetworkLayer<R>::identity };
 
         Mat<R> embedding;
 
@@ -218,14 +218,17 @@ class DragonModel {
             return params;
         }
 
-        vector<Mat<R>> answer_scores(const vector<string>& text,
+        Mat<R> answer_scores(const vector<string>& text,
                                      const vector<string>& question,
                                      const vector<vector<string>>& answers) {
             vector<Mat<R>> answer_scores;
             for (auto& answer: answers) {
                 answer_scores.push_back(answer_score(text, question, answer));
             }
-            return answer_scores;
+            auto scores_as_mat = MatOps<R>::vstack(answer_scores);
+            auto probabilities = MatOps<R>::softmax(scores_as_mat);
+
+            return probabilities;
         }
 
         Mat<R> error(const vector<string>& text,
@@ -233,25 +236,16 @@ class DragonModel {
                      const vector<vector<string>>& answers,
                      int correct_answer) {
             auto scores = answer_scores(text, question, answers);
-            vector<Mat<R>> partial_errors;
 
-            for (int aidx = 0; aidx < scores.size(); ++aidx) {
-                R target = (aidx == correct_answer) ? 1.0 : 0.0;
-                partial_errors.push_back(MatOps<R>::binary_cross_entropy(scores[aidx], target));
-            }
-            return MatOps<R>::add(partial_errors) / answers.size();
+            return MatOps<R>::cross_entropy(scores, correct_answer);
         }
 
         int predict(const vector<string>& text,
                     const vector<string>& question,
                     const vector<vector<string>>& answers) {
             auto scores = answer_scores(text, question, answers);
-            int best_answer = 0;
-            for (int aidx = 0; aidx < scores.size(); ++aidx) {
-                if (scores[aidx].w()(0,0) > scores[best_answer].w()(0,0))
-                    best_answer = aidx;
-            }
-            return best_answer;
+
+            return scores.argmax();
         }
 };
 
@@ -328,8 +322,11 @@ int main(int argc, char** argv) {
     validate_data = vector<Section>(train_data.begin(), train_data.begin() + num_validation);
     train_data.erase(train_data.begin(), train_data.begin() + num_validation);
     // extract vocabulary
-    vocab = Vocab::from_many_nonunique({mc::extract_vocabulary(train_data),
-                                        mc::extract_vocabulary(test_data)});
+    // only consider common words.
+    vector<vector<string>> wrapper;
+    wrapper.emplace_back(mc::extract_vocabulary(train_data));
+    auto index2word = utils::get_vocabulary(wrapper, 2);
+    vocab = Vocab(index2word);
 
     std::cout << "Datasets : " << "train (" << train_data.size() << " items), "
                                << "validate (" << validate_data.size() << " items), "

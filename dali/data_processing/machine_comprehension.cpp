@@ -80,9 +80,6 @@ namespace mc {
                 }
             }
         }
-        // return the vocabulary sorted and unique.
-        std::sort(result.begin(), result.end());
-        result.erase(std::unique(result.begin(), result.end()), result.end());
 
         return result;
     }

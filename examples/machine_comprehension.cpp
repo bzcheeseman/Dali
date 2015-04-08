@@ -104,13 +104,13 @@ class NeuralNetworkLayer {
 template<typename R>
 class DragonModel {
     public:
-        const int EMBEDDING_SIZE = 300;
-        const int HIDDEN_SIZE = 50;
-        const bool SEPARATE_EMBEDDINGS = false;
-        const bool SVD_INIT = true;
-        const vector<int> OUTPUT_NN_SIZES = {HIDDEN_SIZE, 50, 50, 50, 1};
-        const vector<typename NeuralNetworkLayer<R>::activation_t> OUTPUT_NN_ACTIVATIONS =
-            { MatOps<R>::tanh, MatOps<R>::tanh, MatOps<R>::tanh, MatOps<R>::sigmoid };
+        int EMBEDDING_SIZE = 100;
+        int HIDDEN_SIZE = 100;
+        bool SEPARATE_EMBEDDINGS = true;
+        bool SVD_INIT = true;
+        vector<int> OUTPUT_NN_SIZES = {HIDDEN_SIZE, 100, 1};
+        vector<typename NeuralNetworkLayer<R>::activation_t> OUTPUT_NN_ACTIVATIONS =
+            { MatOps<R>::tanh, MatOps<R>::sigmoid };
 
         Mat<R> embedding;
 
@@ -161,7 +161,6 @@ class DragonModel {
             output_classifier = NeuralNetworkLayer<R>(OUTPUT_NN_SIZES, OUTPUT_NN_ACTIVATIONS);
 
             if (SVD_INIT) {
-                std::cout << "Initializing with SVD!" << std::endl;
                 // Don't use SVD for embeddings!
                 auto params = words_repr_to_hidden.parameters();
                 auto params2 = output_classifier.parameters();
@@ -169,6 +168,7 @@ class DragonModel {
                 for (auto param: params) {
                     weights<R>::svd(weights<R>::gaussian(1.0))(param);
                 }
+                std::cout << "Initialized weights with SVD!" << std::endl;
             }
         }
 
@@ -338,7 +338,7 @@ int main(int argc, char** argv) {
 
     pool = new ThreadPool(FLAGS_j);
 
-    auto training = LSTV(0.5, 0.1, 10);
+    auto training = LSTV(0.9, 0.3, 3);
 
     model_t model;
     auto params = model.parameters();
@@ -350,6 +350,9 @@ int main(int argc, char** argv) {
         thread_models.emplace_back(model.shallow_copy());
 
     auto thread_error = ThreadError(FLAGS_j);
+
+    model_t best_model(model, false, false);
+    float best_accuracy = 0.0;
 
     while(true) {
         thread_error.reset();
@@ -385,8 +388,14 @@ int main(int argc, char** argv) {
         std::cout << "Training error = " << thread_error.average()
                   << ", Validation accuracy = " << val_acc << "%" << std::endl;
 
+        if (val_acc > best_accuracy) {
+            std::cout << "NEW WORLD RECORD!" << std::endl;
+            best_accuracy = val_acc;
+            best_model = model_t(model, true, true);
+        }
+
         if (training.should_stop(100.0-val_acc)) break;
     }
-    double test_acc = 100.0 * calculate_accuracy(model, test_data);
+    double test_acc = 100.0 * calculate_accuracy(best_model, test_data);
     std::cout << "Test accuracy = " << test_acc << "%" << std::endl;
 }

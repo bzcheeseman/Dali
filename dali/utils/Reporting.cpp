@@ -32,9 +32,20 @@ ReportProgress<T>::ReportProgress(string name,
 }
 
 template<typename T>
-void ReportProgress<T>::tick(const double& completed_work, T work) {
+void ReportProgress<T>::tick(const double& completed_work) {
+    tick(completed_work, "");
+}
+
+
+template<typename T>
+void ReportProgress<T>::tick(const double& completed_work, T extra_info) {
+    tick(completed_work, std::to_string(extra_info));
+}
+
+template<typename T>
+void ReportProgress<T>::tick(const double& completed_work, std::string extra_info) {
     if (printing_on) {
-        t.maybe_run(report_frequency, [this, &completed_work, &work]() {
+        t.maybe_run(report_frequency, [this, &completed_work, &extra_info]() {
             int active_bars = RESOLUTION * completed_work/total_work;
             std::stringstream ss;
             ss << "\r" << name << " [";
@@ -49,7 +60,7 @@ void ReportProgress<T>::tick(const double& completed_work, T work) {
                        << std::setprecision( 3 ) // use 3 decimals
                        << std::setw(6)
                        << std::setfill( ' ' ) <<  100.0 * completed_work/total_work << "%";
-            ss << " " << work;
+            ss << " " << extra_info;
             max_line_length = std::max(ss.str().size(), max_line_length);
             std::cout << ss.str();
             std::cout.flush();

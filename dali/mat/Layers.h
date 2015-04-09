@@ -251,9 +251,9 @@ class AbstractStackedLSTM : public AbstractLayer<R> {
     public:
         typedef std::vector < typename LSTM<R>::State > state_t;
 
-        const int input_size;
+        int input_size;
         std::vector<int> hidden_sizes;
-
+        AbstractStackedLSTM();
         AbstractStackedLSTM(const int& input_size, const std::vector<int>& hidden_sizes);
         AbstractStackedLSTM(const AbstractStackedLSTM<R>& model, bool copy_w, bool copy_dw);
 
@@ -276,8 +276,8 @@ class StackedLSTM : public AbstractStackedLSTM<R> {
     public:
         typedef LSTM<R> lstm_t;
         typedef std::vector< typename LSTM<R>::State > state_t;
-        const bool shortcut;
-        const bool memory_feeds_gates;
+        bool shortcut;
+        bool memory_feeds_gates;
 
         std::vector<lstm_t> cells;
         virtual state_t activate(
@@ -285,6 +285,7 @@ class StackedLSTM : public AbstractStackedLSTM<R> {
             Mat<R> input_vector,
             R drop_prob = 0.0) const;
         virtual std::vector<Mat<R>> parameters() const;
+        StackedLSTM();
         StackedLSTM(
             const int& input_size,
             const std::vector<int>& hidden_sizes,

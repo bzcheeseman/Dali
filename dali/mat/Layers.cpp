@@ -718,6 +718,10 @@ template class LSTM<float>;
 template class LSTM<double>;
 
 template<typename R>
+AbstractStackedLSTM<R>::AbstractStackedLSTM() : input_size(0) {
+}
+
+template<typename R>
 AbstractStackedLSTM<R>::AbstractStackedLSTM(const int& input_size, const std::vector<int>& hidden_sizes) :
         input_size(input_size),
         hidden_sizes(hidden_sizes) {
@@ -753,6 +757,12 @@ StackedLSTM<R>::StackedLSTM(
         AbstractStackedLSTM<R>(input_size, hidden_sizes) {
     cells = StackedCells<lstm_t>(input_size, hidden_sizes, shortcut, memory_feeds_gates);
 };
+
+template<typename R>
+StackedLSTM<R>::StackedLSTM() : AbstractStackedLSTM<R>(),
+                                shortcut(false),
+                                memory_feeds_gates(false) {
+}
 
 template<typename R>
 StackedLSTM<R>::StackedLSTM(const StackedLSTM<R>& model, bool copy_w, bool copy_dw) :

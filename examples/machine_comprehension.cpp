@@ -108,6 +108,7 @@ class DragonModel {
         int HIDDEN_SIZE = 100;
         bool SEPARATE_EMBEDDINGS = false;
         bool SVD_INIT = true;
+        vector<int> LSTM_STACKS = { 100 , 50, 50 };
         vector<int> OUTPUT_NN_SIZES = {HIDDEN_SIZE, 100, 100, 1};
         vector<typename NeuralNetworkLayer<R>::activation_t> OUTPUT_NN_ACTIVATIONS =
             { MatOps<R>::tanh, MatOps<R>::tanh, NeuralNetworkLayer<R>::identity };
@@ -117,6 +118,10 @@ class DragonModel {
         Mat<R> text_embedding;
         Mat<R> question_embedding;
         Mat<R> answer_embedding;
+
+        StackedLSTM<R> text_model;
+        StackedLSTM<R> question_model;
+        StackedLSTM<R> answer_model;
 
         StackedInputLayer<R> words_repr_to_hidden;
 
@@ -130,8 +135,13 @@ class DragonModel {
             } else {
                 embedding = Mat<R>(other.embedding, copy_w, copy_dw);
             }
+            text_model = StackedLSTM<R>(other.text_model, copy_w, copy_dw);
+            question_model = StackedLSTM<R>(other.answer_model, copy_w, copy_dw);
+            answer_model = StackedLSTM<R>(other.answer_model, copy_w, copy_dw);
+
             words_repr_to_hidden =
                     StackedInputLayer<R>(other.words_repr_to_hidden, copy_w, copy_dw);
+
             output_classifier = NeuralNetworkLayer<R>(other.output_classifier, copy_w, copy_dw);
         }
 
@@ -153,9 +163,14 @@ class DragonModel {
             } else {
                 embedding = Mat<R>(vocab.word2index.size(), EMBEDDING_SIZE, weight_init);
             }
-            words_repr_to_hidden = StackedInputLayer<R>({ EMBEDDING_SIZE,
-                                                          EMBEDDING_SIZE,
-                                                          EMBEDDING_SIZE
+            text_model     = StackedLSTM<R>(EMBEDDING_SIZE, LSTM_STACKS, true, true);
+            question_model = StackedLSTM<R>(EMBEDDING_SIZE, LSTM_STACKS, true, true);
+            answer_model   = StackedLSTM<R>(EMBEDDING_SIZE, LSTM_STACKS, true, true);
+
+            const int LSTM_OUTPUT_SIZE = utils::vsum(LSTM_STACKS);
+            words_repr_to_hidden = StackedInputLayer<R>({ LSTM_OUTPUT_SIZE,
+                                                          LSTM_OUTPUT_SIZE,
+                                                          LSTM_OUTPUT_SIZE
                                                          }, HIDDEN_SIZE);
 
             output_classifier = NeuralNetworkLayer<R>(OUTPUT_NN_SIZES, OUTPUT_NN_ACTIVATIONS);
@@ -176,25 +191,27 @@ class DragonModel {
             return DragonModel(*this, false, true);
         }
 
-        Mat<R> average_embeddings(const vector<Vocab::ind_t>& words, Mat<R> embedding) {
-
-            vector<Mat<R>> words_embeddings;
-            for (auto word_idx: words) {
+        Mat<R> words_to_repr(const vector<string>& words, StackedLSTM<R> model, Mat<R> embedding) {
+            auto word_idxs = vocab.transform(words);
+            Seq<Mat<R>> words_embeddings;
+            for (auto word_idx: word_idxs) {
                 assert (word_idx < vocab.index2word.size());
                 words_embeddings.push_back(embedding[word_idx]);
             }
-
-            return MatOps<R>::add(words_embeddings) / (R)words_embeddings.size();
+            auto out_states = model.activate_sequence(model.initial_states(),
+                                                      words_embeddings,
+                                                      0.0);
+            return MatOps<R>::vstack(LSTM<R>::State::hiddens(out_states));
         }
 
         Mat<R> answer_score(const vector<string>& text,
                             const vector<string>& question,
                             const vector<string>& answer) {
-            Mat<R> text_repr     = average_embeddings(vocab.transform(text),
+            Mat<R> text_repr     = words_to_repr(text, text_model,
                     SEPARATE_EMBEDDINGS ? text_embedding : embedding);
-            Mat<R> question_repr = average_embeddings(vocab.transform(question),
+            Mat<R> question_repr = words_to_repr(question, question_model,
                     SEPARATE_EMBEDDINGS ? question_embedding : embedding);
-            Mat<R> answer_repr   = average_embeddings(vocab.transform(answer),
+            Mat<R> answer_repr   = words_to_repr(answer, answer_model,
                     SEPARATE_EMBEDDINGS ? answer_embedding : embedding);
 
             Mat<R> hidden = words_repr_to_hidden.activate({text_repr,
@@ -356,13 +373,17 @@ int main(int argc, char** argv) {
 
     model_t best_model(model, false, false);
     float best_accuracy = 0.0;
-
     while(true) {
         thread_error.reset();
 
         auto minibatches = random_minibatches(train_data.size(), FLAGS_minibatch);
+
+        ReportProgress<double> journalist("Training", train_data.size());
+        std::atomic<int> processed_sections(0);
+
         for (int bidx = 0; bidx < minibatches.size(); ++bidx) {
-            pool->run([bidx, &minibatches, &thread_models, &solver, &thread_error]() {
+            pool->run([bidx, &minibatches, &thread_models, &solver, &thread_error,
+                       &processed_sections, &journalist]() {
                 auto& batch = minibatches[bidx];
                 model_t& thread_model = thread_models[ThreadPool::get_thread_number()];
 
@@ -380,6 +401,8 @@ int main(int argc, char** argv) {
                         e.grad();
                         graph::backward();
                     }
+                    processed_sections += 1;
+                    journalist.tick(processed_sections);
                 }
                 thread_error.update(partial_error / (double)partial_error_updates);
                 auto params = thread_model.parameters();
@@ -387,6 +410,7 @@ int main(int argc, char** argv) {
             });
         }
         pool->wait_until_idle();
+        journalist.done();
         double val_acc = 100.0 * calculate_accuracy(model, validate_data);
         std::cout << "Training error = " << thread_error.average()
                   << ", Validation accuracy = " << val_acc << "%" << std::endl;

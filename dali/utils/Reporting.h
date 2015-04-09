@@ -43,8 +43,9 @@ class ReportProgress {
         ReportProgress(std::string name,
                        const double& total_work,
                        Throttled::Clock::duration report_frequency=std::chrono::milliseconds(250));
-
-        void tick(const double& completed_work, T work);
+        void tick(const double& completed_work);
+        void tick(const double& completed_work, T extra_info);
+        void tick(const double& completed_work, std::string extra_info);
         void pause();
         void resume();
         void done();

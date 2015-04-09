@@ -8,6 +8,7 @@
 #include "dali/data_processing/machine_comprehension.h"
 #include "dali/data_processing/Glove.h"
 #include "dali/utils.h"
+#include "dali/models/QuestionAnswering.h"
 
 
 using mc::Section;
@@ -21,199 +22,16 @@ using utils::assert2;
 using std::function;
 
 vector<Section> train_data, validate_data, test_data;
-Vocab vocab;
+std::shared_ptr<Vocab> vocab;
 ThreadPool* pool;
 
 DEFINE_int32(j, 9, "Number of threads");
 DEFINE_int32(minibatch, 50, "Number of sections considered in every minibatch gradient step.");
-DEFINE_string(pretrained_vectors, "", "Load pretrained word vectors?");
+DEFINE_string(pretrained_vectors, "", "Path to pretrained word vectors (Glove etc.)?");
+DEFINE_double(validation_fraction, 0.1, "How much of training set to use for validation.");
 
-template<typename R>
-class DragonModel {
-    public:
-        int EMBEDDING_SIZE = 300;
-        int HIDDEN_SIZE = 100;
-        bool SEPARATE_EMBEDDINGS = false;
-        bool SVD_INIT = true;
-        vector<int> OUTPUT_NN_SIZES = {HIDDEN_SIZE, 100, 100, 1};
-        vector<typename NeuralNetworkLayer<R>::activation_t> OUTPUT_NN_ACTIVATIONS =
-            { MatOps<R>::tanh, MatOps<R>::tanh, NeuralNetworkLayer<R>::identity };
+typedef AveragingModel<double> model_t;
 
-        Mat<R> embedding;
-
-        Mat<R> text_embedding;
-        Mat<R> question_embedding;
-        Mat<R> answer_embedding;
-
-        StackedInputLayer<R> words_repr_to_hidden;
-
-        NeuralNetworkLayer<R> output_classifier;
-
-        DragonModel(const DragonModel& other, bool copy_w, bool copy_dw) {
-            if (SEPARATE_EMBEDDINGS) {
-                text_embedding = Mat<R>(other.text_embedding, copy_w, copy_dw);
-                question_embedding = Mat<R>(other.question_embedding, copy_w, copy_dw);
-                answer_embedding = Mat<R>(other.answer_embedding, copy_w, copy_dw);
-            } else {
-                embedding = Mat<R>(other.embedding, copy_w, copy_dw);
-            }
-            words_repr_to_hidden =
-                    StackedInputLayer<R>(other.words_repr_to_hidden, copy_w, copy_dw);
-            output_classifier = NeuralNetworkLayer<R>(other.output_classifier, copy_w, copy_dw);
-        }
-
-        DragonModel() {
-            auto weight_init = weights<R>::uniform(1.0/EMBEDDING_SIZE);
-            if (!FLAGS_pretrained_vectors.empty()) {
-                assert(!SEPARATE_EMBEDDINGS);
-                int num_loaded = glove::load_relevant_vectors(
-                        FLAGS_pretrained_vectors, embedding, vocab, 1000000);
-                std::cout << num_loaded << " out of " << vocab.word2index.size()
-                          << " word embeddings preloaded from glove." << std::endl;
-                assert (embedding.dims(1) == EMBEDDING_SIZE);
-            }
-
-            if (SEPARATE_EMBEDDINGS) {
-                text_embedding = Mat<R>(vocab.word2index.size(), EMBEDDING_SIZE, weight_init);
-                question_embedding = Mat<R>(vocab.word2index.size(), EMBEDDING_SIZE, weight_init);
-                answer_embedding = Mat<R>(vocab.word2index.size(), EMBEDDING_SIZE, weight_init);
-            } else {
-                embedding = Mat<R>(vocab.word2index.size(), EMBEDDING_SIZE, weight_init);
-            }
-            words_repr_to_hidden = StackedInputLayer<R>({ EMBEDDING_SIZE,
-                                                          EMBEDDING_SIZE,
-                                                          EMBEDDING_SIZE
-                                                         }, HIDDEN_SIZE);
-
-            output_classifier = NeuralNetworkLayer<R>(OUTPUT_NN_SIZES, OUTPUT_NN_ACTIVATIONS);
-
-            if (SVD_INIT) {
-                // Don't use SVD for embeddings!
-                auto params = words_repr_to_hidden.parameters();
-                auto params2 = output_classifier.parameters();
-                params.insert(params.end(), params2.begin(), params2.end());
-                for (auto param: params) {
-                    weights<R>::svd(weights<R>::gaussian(1.0))(param);
-                }
-                std::cout << "Initialized weights with SVD!" << std::endl;
-            }
-        }
-
-        DragonModel shallow_copy() const {
-            return DragonModel(*this, false, true);
-        }
-
-        Mat<R> average_embeddings(const vector<Vocab::ind_t>& words, Mat<R> embedding) {
-
-            vector<Mat<R>> words_embeddings;
-            for (auto word_idx: words) {
-                assert (word_idx < vocab.index2word.size());
-                words_embeddings.push_back(embedding[word_idx]);
-            }
-
-            return MatOps<R>::add(words_embeddings) / (R)words_embeddings.size();
-        }
-
-        Mat<R> answer_score(const vector<string>& text,
-                            const vector<string>& question,
-                            const vector<string>& answer) {
-            Mat<R> text_repr     = average_embeddings(vocab.transform(text),
-                    SEPARATE_EMBEDDINGS ? text_embedding : embedding);
-            Mat<R> question_repr = average_embeddings(vocab.transform(question),
-                    SEPARATE_EMBEDDINGS ? question_embedding : embedding);
-            Mat<R> answer_repr   = average_embeddings(vocab.transform(answer),
-                    SEPARATE_EMBEDDINGS ? answer_embedding : embedding);
-
-            Mat<R> hidden = words_repr_to_hidden.activate({text_repr,
-                                                           question_repr,
-                                                           answer_repr}).tanh();
-
-            return output_classifier.activate(hidden);
-        }
-
-        vector<Mat<R>> parameters() {
-            vector<Mat<R>> params;
-            if (SEPARATE_EMBEDDINGS) {
-                params = { text_embedding, question_embedding, answer_embedding };
-            } else {
-                params = { embedding };
-            }
-            auto temp = words_repr_to_hidden.parameters();
-            params.insert(params.end(), temp.begin(), temp.end());
-            temp = output_classifier.parameters();
-            params.insert(params.end(), temp.begin(), temp.end());
-            return params;
-        }
-
-        vector<Mat<R>> answer_scores(const vector<string>& text,
-                                     const vector<string>& question,
-                                     const vector<vector<string>>& answers) {
-            vector<Mat<R>> scores;
-            for (auto& answer: answers) {
-                scores.push_back(answer_score(text, question, answer));
-            }
-
-            return scores;
-        }
-
-        Mat<R> error(const vector<string>& text,
-                     const vector<string>& question,
-                     const vector<vector<string>>& answers,
-                     int correct_answer) {
-            auto scores = answer_scores(text, question, answers);
-
-            R margin = 0.1;
-
-            Mat<R> error(1,1);
-            for (int aidx=0; aidx < answers.size(); ++aidx) {
-                if (aidx == correct_answer) continue;
-                error = error + MatOps<R>::max(scores[aidx] - scores[correct_answer] + margin, 0.0);
-            }
-
-            return error;
-        }
-
-        int predict(const vector<string>& text,
-                    const vector<string>& question,
-                    const vector<vector<string>>& answers) {
-            auto scores = answer_scores(text, question, answers);
-
-            return MatOps<R>::vstack(scores).argmax();
-        }
-};
-
-class ThreadError {
-    public:
-        const int num_threads;
-        vector<double> thread_error;
-        vector<int>    thread_error_updates;
-
-        ThreadError(int num_threads) :
-                num_threads(num_threads),
-                thread_error(num_threads),
-                thread_error_updates(num_threads) {
-            reset();
-        }
-
-        void update(double error) {
-            thread_error[ThreadPool::get_thread_number()] += error;
-            thread_error_updates[ThreadPool::get_thread_number()] += 1;
-        }
-
-        double average() {
-            return vsum(thread_error) / vsum(thread_error_updates);
-        }
-
-        void reset() {
-            for (int tidx = 0; tidx < num_threads; ++tidx) {
-                thread_error[tidx] = 0;
-                thread_error_updates[tidx] = 0;
-            }
-        }
-
-};
-
-typedef DragonModel<double> model_t;
 
 double calculate_accuracy(model_t& model, const vector<Section>& data) {
     int correct = 0;
@@ -230,6 +48,29 @@ double calculate_accuracy(model_t& model, const vector<Section>& data) {
     return (double)correct/total;
 }
 
+void init() {
+    // Load the data set
+    std::tie(train_data, test_data) = mc::load();
+    // shuffle examples
+    std::random_shuffle(train_data.begin(), train_data.end());
+    std::random_shuffle(test_data.begin(), test_data.end());
+    // separate validation dataset
+    int num_validation = train_data.size() * FLAGS_validation_fraction;
+    validate_data = vector<Section>(train_data.begin(), train_data.begin() + num_validation);
+    train_data.erase(train_data.begin(), train_data.begin() + num_validation);
+    // extract vocabulary
+    // only consider common words.
+    vector<vector<string>> wrapper;
+    wrapper.emplace_back(mc::extract_vocabulary(train_data));
+    auto index2word = utils::get_vocabulary(wrapper, 2);
+    vocab = std::make_shared<Vocab>(index2word);
+
+    std::cout << "Datasets : " << "train (" << train_data.size() << " items), "
+                               << "validate (" << validate_data.size() << " items), "
+                               << "test (" << test_data.size() << " items)" << std::endl;
+    std::cout << "vocabulary size : " << vocab->word2index.size() << std::endl;
+
+}
 
 int main(int argc, char** argv) {
     sane_crashes::activate();
@@ -243,34 +84,16 @@ int main(int argc, char** argv) {
     Eigen::setNbThreads(0);
     Eigen::initParallel();
 
-    const double VALIDATION_FRACTION = 0.1;
-
-    // Load the data set
-    std::tie(train_data, test_data) = mc::load();
-    // shuffle examples
-    std::random_shuffle(train_data.begin(), train_data.end());
-    std::random_shuffle(test_data.begin(), test_data.end());
-    // separate validation dataset
-    int num_validation = train_data.size() * VALIDATION_FRACTION;
-    validate_data = vector<Section>(train_data.begin(), train_data.begin() + num_validation);
-    train_data.erase(train_data.begin(), train_data.begin() + num_validation);
-    // extract vocabulary
-    // only consider common words.
-    vector<vector<string>> wrapper;
-    wrapper.emplace_back(mc::extract_vocabulary(train_data));
-    auto index2word = utils::get_vocabulary(wrapper, 2);
-    vocab = Vocab(index2word);
-
-    std::cout << "Datasets : " << "train (" << train_data.size() << " items), "
-                               << "validate (" << validate_data.size() << " items), "
-                               << "test (" << test_data.size() << " items)" << std::endl;
-    std::cout << "vocabulary size : " << vocab.word2index.size() << std::endl;
+    init();
 
     pool = new ThreadPool(FLAGS_j);
 
     auto training = LSTV(0.9, 0.3, 3);
+    std::cout << "siema" << std::endl;
 
-    model_t model;
+    model_t model(vocab);
+    std::cout << "siema" << std::endl;
+
     auto params = model.parameters();
     auto solver = Solver::AdaDelta<double>(params);
 
@@ -279,7 +102,7 @@ int main(int argc, char** argv) {
     for (int tmidx = 0; tmidx < FLAGS_j; tmidx++)
         thread_models.emplace_back(model.shallow_copy());
 
-    auto thread_error = ThreadError(FLAGS_j);
+    auto thread_error = utils::ThreadError(FLAGS_j);
 
     model_t best_model(model, false, false);
     float best_accuracy = 0.0;

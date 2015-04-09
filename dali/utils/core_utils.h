@@ -550,6 +550,26 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
     template<typename T>
     std::vector<T> reversed(const std::vector<T>& v);
 
+    class ThreadError {
+        /* Small utility class used to safely average error contributions
+           from different threads. */
+        public:
+            const int num_threads;
+            std::vector<double> thread_error;
+            std::vector<int>    thread_error_updates;
+
+            ThreadError(int num_threads);
+
+            // should be called from a thread (this internally uses thread pool's number.)
+            void update(double error);
+
+            double average();
+
+            void reset();
+
+    };
+
+
     class Timer {
         typedef std::chrono::system_clock clock_t;
 

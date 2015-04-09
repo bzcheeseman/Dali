@@ -82,6 +82,37 @@ class StackedInputLayer : public AbstractMultiInputLayer<R> {
 };
 
 template<typename R>
+class NeuralNetworkLayer {
+    /* Creates a regular neural network - basically stacked layers.
+
+       If there are N-1 layers an each maps for vector of hidden_sizes[i] to hidden_sizes[i+1].
+       At the output of each layer function activations[i] is applied.
+    */
+
+    public:
+        typedef std::function<Mat<R>(Mat<R>)> activation_t;
+
+        std::vector<int> hidden_sizes;
+        std::vector<activation_t> activations;
+
+        std::vector<Layer<R>> layers;
+
+        NeuralNetworkLayer();
+
+        NeuralNetworkLayer(std::vector<int> hidden_sizes, std::vector<activation_t> activations);
+
+        NeuralNetworkLayer(const NeuralNetworkLayer& other, bool copy_w, bool copy_dw);
+
+        NeuralNetworkLayer shallow_copy();
+
+        Mat<R> activate(Mat<R> input);
+
+        std::vector<Mat<R>> parameters();
+
+        static Mat<R> identity(Mat<R> m);
+};
+
+template<typename R>
 class SecondOrderCombinator : public AbstractLayer<R> {
     /* Implements the following expression
 

@@ -207,6 +207,63 @@ std::vector<Mat<R>> StackedInputLayer<R>::parameters() const{
     return params;
 }
 
+/* NeuralNetworkLayer */
+template<typename R>
+NeuralNetworkLayer<R>::NeuralNetworkLayer() {
+}
+
+template<typename R>
+NeuralNetworkLayer<R>::NeuralNetworkLayer(vector<int> hidden_sizes, vector<activation_t> activations) :
+        hidden_sizes(hidden_sizes),
+        activations(activations) {
+    utils::assert2(activations.size() == hidden_sizes.size() - 1,
+            "Wrong number of activations for NeuralNetworkLayer");
+
+    for (int lidx = 0; lidx < hidden_sizes.size() - 1; ++lidx) {
+        layers.push_back(Layer<R>(hidden_sizes[lidx], hidden_sizes[lidx + 1]));
+    }
+}
+
+template<typename R>
+NeuralNetworkLayer<R>::NeuralNetworkLayer(const NeuralNetworkLayer& other, bool copy_w, bool copy_dw) :
+        hidden_sizes(other.hidden_sizes),
+        activations(other.activations) {
+    for (auto& other_layer: other.layers) {
+        layers.emplace_back(other_layer, copy_w, copy_dw);
+    }
+}
+
+template<typename R>
+NeuralNetworkLayer<R> NeuralNetworkLayer<R>::shallow_copy() {
+    return NeuralNetworkLayer(*this, false, true);
+}
+
+template<typename R>
+Mat<R> NeuralNetworkLayer<R>::activate(Mat<R> input) {
+    Mat<R> last_output = input;
+    for (int i = 0; i < hidden_sizes.size() - 1; ++i)
+        last_output = activations[i](layers[i].activate(last_output));
+
+    return last_output;
+}
+
+template<typename R>
+vector<Mat<R>> NeuralNetworkLayer<R>::parameters() {
+    vector<Mat<R>> params;
+    for (auto& layer: layers) {
+        auto layer_params = layer.parameters();
+        params.insert(params.end(), layer_params.begin(), layer_params.end());
+    }
+    return params;
+}
+template<typename R>
+Mat<R> NeuralNetworkLayer<R>::identity(Mat<R> m) { return m; }
+
+
+template class NeuralNetworkLayer<float>;
+template class NeuralNetworkLayer<double>;
+
+
 template<typename R>
 void RNN<R>::create_variables() {
     Wx = Mat<R>(output_size, input_size,  weights<R>::uniform(2.0 / sqrt(input_size)));

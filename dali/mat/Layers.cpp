@@ -327,6 +327,9 @@ template class DelayedRNN<double>;
 
 /* StackedInputLayer */
 /* SecondOrderCombinator */
+template<typename R>
+SecondOrderCombinator<R>::SecondOrderCombinator() {
+}
 
 template<typename R>
 SecondOrderCombinator<R>::SecondOrderCombinator(int input1_size, int input2_size, int output_size) :
@@ -362,6 +365,10 @@ template class SecondOrderCombinator<float>;
 template class SecondOrderCombinator<double>;
 
 /* RNN */
+template<typename R>
+RNN<R>::RNN() {
+}
+
 template<typename R>
 RNN<R>::RNN (int _input_size, int _hidden_size) :
         hidden_size(_hidden_size),

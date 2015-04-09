@@ -346,7 +346,7 @@ class LstmBabiModel : public Model {
                 std:tie(gate_activation, prev_hidden) =
                         gate.activate(embedding, gate_input, prev_hidden);
                 // memory - gate activation - how much of that embedding do we keep.
-                memory_seq.push_back(gate_activation);
+                memory_seq.push_back(gate_activation.sigmoid());
             }
             return memory_seq;
         }
@@ -596,7 +596,7 @@ void train(const vector<babi::Story>& data, shared_ptr<Training> training_method
     double best_validation = run_epoch(validation, &solver, false)(0);
     best_model = std::make_shared<BabiModel>(*model, true, true);
 
-    while (epoch) {
+    while (true) {
         auto training_errors = run_epoch(train, &solver, true);
         auto validation_errors = run_epoch(validation, &solver, false);
 
@@ -712,8 +712,8 @@ int main(int argc, char** argv) {
     Eigen::initParallel();
 
     // grid_search();
-    // benchmark_all();
     benchmark_task("qa4_two-arg-relations");
+    benchmark_all();
 
 
     // benchmark_task("multitasking");

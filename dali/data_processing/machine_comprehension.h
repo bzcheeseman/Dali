@@ -21,7 +21,7 @@ namespace mc {
     struct Section {
         std::string name;
         std::string turk_info;
-        std::vector<std::string> text;
+        std::vector<std::vector<std::string>> text;
         std::vector<Question> questions;
 
         void print();

@@ -125,13 +125,15 @@ class SecondOrderCombinator : public AbstractLayer<R> {
         without having to evaluate big matrix equation.
     */
     public:
-        const int input1_size;
-        const int input2_size;
-        const int output_size;
+        int input1_size;
+        int input2_size;
+        int output_size;
 
         Mat<R> W1;
         Mat<R> W2;
         Mat<R> b;
+
+        SecondOrderCombinator();
 
         SecondOrderCombinator(int input1_size, int input2_size, int output_size);
 
@@ -157,10 +159,11 @@ class RNN : public AbstractLayer<R> {
         Mat<R> Wx;
         Mat<R> Wh;
         Mat<R> b;
-        const int hidden_size;
-        const int input_size;
-        const int output_size;
+        int hidden_size;
+        int input_size;
+        int output_size;
         virtual std::vector<Mat<R>> parameters() const;
+        RNN();
         /**
         By default the RNN constructor sets the output size
         equal to the hidden size, creating the recurrence

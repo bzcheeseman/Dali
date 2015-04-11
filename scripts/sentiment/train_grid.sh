@@ -74,13 +74,13 @@ fi
 
 for hidden in 150
 do
-    for reg in 0.001
+    for reg in 0.0004 0.001 0.004
     do
-        for lr in 0.05
+        for lr in 0.01 0.05 0.1 0.3
         do
             # previously saved models are no longer useful for this grid tile
             rm -rf $SAVE_FOLDER/*
-            $PROGRAM $BASE_FLAGS --learning_rate $lr --hidden $hidden --minibatch 100 --solver adagrad --reg $reg
+            $PROGRAM $BASE_FLAGS --learning_rate $lr --hidden $hidden --minibatch 25 --solver adagrad --reg $reg
         done
     done
 done

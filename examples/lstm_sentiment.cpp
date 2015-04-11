@@ -14,6 +14,8 @@
 #include "dali/data_processing/Glove.h"
 #include "dali/models/StackedModel.h"
 
+using std::atomic;
+using std::chrono::seconds;
 using std::vector;
 using std::make_shared;
 using std::shared_ptr;
@@ -23,11 +25,9 @@ using std::stringstream;
 using std::string;
 using std::ofstream;
 using std::min;
+using SST::Databatch;
 using utils::Vocab;
 using utils::tokenized_uint_labeled_dataset;
-using std::atomic;
-using std::chrono::seconds;
-using SST::Databatch;
 using utils::ConfusionMatrix;
 using utils::assert2;
 
@@ -236,52 +236,52 @@ int main (int argc,  char* argv[]) {
         // (shared memory mode = Hogwild)
         thread_models.push_back(model.shallow_copy());
 
-        if (
-                FLAGS_embedding_learning_rate > 0 &&
-                (solver_type == SGD_TYPE || solver_type == ADAGRAD_TYPE)
-            ) {
-            auto thread_model_params = thread_models.back().parameters();
-            // take a slice of all the parameters except for embedding.
-            thread_params.emplace_back(
-                thread_model_params.begin() + 1,
-                thread_model_params.end()
-            );
-            // then add the embedding (the first parameter of StackeModel)
-            thread_embedding_params.emplace_back(
-                thread_model_params.begin(),
-                thread_model_params.begin() + 1
-            );
-        } else {
-            thread_params.push_back(
-                thread_models.back().parameters()
-            );
-        }
+        auto thread_model_params = thread_models.back().parameters();
+        // take a slice of all the parameters except for embedding.
+        thread_params.emplace_back(
+            thread_model_params.begin() + 1,
+            thread_model_params.end()
+        );
+        // then add the embedding (the first parameter of StackeModel)
+        thread_embedding_params.emplace_back(
+            thread_model_params.begin(),
+            thread_model_params.begin() + 1
+        );
     }
-    auto params = model.parameters();
+    vector<Mat<REAL_t>> params;
+    vector<Mat<REAL_t>> embedding_params;
+    {
+        auto temp  = model.parameters();
+        params = vector<Mat<REAL_t>>(temp.begin()+1, temp.end());
+        embedding_params.push_back(model.parameters()[0]);
+    }
     auto svd_init = weights<REAL_t>::svd(weights<REAL_t>::gaussian(0.0, 1.0));
 
     if (FLAGS_svd_init) {
         for (auto& param : params) {
-            if (param.dims(0) < 1000) {
-                svd_init(param);
-            }
+            svd_init(param);
         }
     }
 
     // Rho value, eps value, and gradient clipping value:
     std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver;
+    std::shared_ptr<Solver::AbstractSolver<REAL_t>> embedding_solver;
     switch (solver_type) {
         case ADADELTA_TYPE:
             solver = make_shared<Solver::AdaDelta<REAL_t>>(params, 0.95, 1e-9, 100.0, (REAL_t) FLAGS_reg);
+            embedding_solver = make_shared<Solver::AdaDelta<REAL_t>>(embedding_params, 0.95, 1e-9, 100.0, 0.0);
             break;
         case ADAM_TYPE:
             solver = make_shared<Solver::Adam<REAL_t>>(params, 0.1, 0.001, 1e-9, 100.0, (REAL_t) FLAGS_reg);
+            embedding_solver = make_shared<Solver::Adam<REAL_t>>(embedding_params, 0.1, 0.001, 1e-9, 100.0, 0.0);
             break;
         case SGD_TYPE:
             solver = make_shared<Solver::SGD<REAL_t>>(params, 100.0, (REAL_t) FLAGS_reg);
+            embedding_solver = make_shared<Solver::SGD<REAL_t>>(embedding_params, 100.0, 0.0);
             break;
         case ADAGRAD_TYPE:
             solver = make_shared<Solver::AdaGrad<REAL_t>>(params, 1e-9, 100.0, (REAL_t) FLAGS_reg);
+            embedding_solver = make_shared<Solver::AdaGrad<REAL_t>>(embedding_params, 1e-9, 100.0, 0.0);
             break;
         default:
             utils::exit_with_message("Did not recognize this solver type.");
@@ -314,7 +314,7 @@ int main (int argc,  char* argv[]) {
         );
 
         for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
-            pool->run([&solver_type, &thread_embedding_params, &thread_params, &thread_models, batch_id, &journalist, &solver, &dataset, &best_validation_score, &batches_processed]() {
+            pool->run([&solver_type, &thread_embedding_params, &thread_params, &thread_models, batch_id, &journalist, &solver, &embedding_solver, &dataset, &best_validation_score, &batches_processed]() {
                 auto& thread_model     = thread_models[ThreadPool::get_thread_number()];
                 auto& params           = thread_params[ThreadPool::get_thread_number()];
                 auto& embedding_params = thread_embedding_params[ThreadPool::get_thread_number()];
@@ -329,7 +329,7 @@ int main (int argc,  char* argv[]) {
                         )
                     );
                     Mat<REAL_t> error;
-                    error = MatOps<REAL_t>::softmax_cross_entropy(logprobs, std::get<1>(example));
+                    error = MatOps<REAL_t>::softmax_cross_entropy(logprobs, std::get<1>(example)) / minibatch.size();
                     // err += error.w()(0);
                     // auto error = MatOps<REAL_t>::softmax_cross_entropy(logprobs, std::get<1>(example));
                     if (std::get<2>(example) && FLAGS_root_weight != 1.0) {
@@ -340,16 +340,13 @@ int main (int argc,  char* argv[]) {
                 }
                 if (solver_type == ADAGRAD_TYPE) {
                     dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step(params, FLAGS_learning_rate);
-                    if (FLAGS_embedding_learning_rate > 0) {
-                        dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step(embedding_params, FLAGS_embedding_learning_rate);
-                    }
+                    dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step(embedding_params, FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate);
                 } else if (solver_type == SGD_TYPE) {
                     dynamic_cast<Solver::SGD<REAL_t>*>(solver.get())->step(params, FLAGS_learning_rate);
-                    if (FLAGS_embedding_learning_rate > 0) {
-                        dynamic_cast<Solver::SGD<REAL_t>*>(solver.get())->step(embedding_params, FLAGS_embedding_learning_rate);
-                    }
+                    dynamic_cast<Solver::SGD<REAL_t>*>(solver.get())->step(embedding_params, FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate);
                 } else {
                     solver->step(params); // One step of gradient descent
+                    embedding_solver->step(embedding_params);
                 }
                 journalist.tick(++batches_processed, std::get<0>(best_validation_score));
             });

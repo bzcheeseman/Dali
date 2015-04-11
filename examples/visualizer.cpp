@@ -1,0 +1,30 @@
+#include <iostream>
+#include <redox.hpp>
+
+using namespace std;
+using namespace redox;
+
+/**
+Simple hello world with Redis Server and Hi-Redis.
+
+Here's the gist: we'e gonna set the key "hello" to "world"
+in a redis server, and then retrieve it.
+
+To run this example run a process with redis server:
+
+```bash
+redis-server
+```
+**/
+
+int main(int argc, char* argv[]) {
+
+  Redox rdx;
+  if(!rdx.connect("localhost", 6379)) return 1;
+
+  rdx.set("hello", "world!");
+  cout << "Hello, " << rdx.get("hello") << endl;
+
+  rdx.disconnect();
+  return 0;
+}

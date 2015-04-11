@@ -86,7 +86,7 @@ For a funny example where you teach stacked LSTMs about multiplication, substrac
 
 ## Installation
 
-Get **[Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)** ([Download Link](http://bitbucket.org/eigen/eigen/get/3.2.4.tar.bz2)), **Clang**, and **protobuf**, then head to the `cpp/build` folder and use `cmake` to configure and create the appropriate Makefiles.
+Get **[Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)** ([Download Link](http://bitbucket.org/eigen/eigen/get/3.2.4.tar.bz2)), **GFlags**, **HiRedis**, **Clang**, and **protobuf**, then head to the `cpp/build` folder and use `cmake` to configure and create the appropriate Makefiles.
 
 You need the latest version of [Clang](http://llvm.org/releases/download.html) (>= 3.6.0).
 
@@ -99,6 +99,8 @@ brew install eigen
 brew install cmake
 brew install gflags
 HOMEBREW_CC=clang HOMEBREW_CXX=clang++ brew install protobuf
+brew install libev
+HOMEBREW_CC=clang HOMEBREW_CXX=clang++ brew install hiredis
 cmake ..
 ```
 
@@ -110,6 +112,8 @@ yum install clang
 yum install gflags gflags-devel
 yum install sqlite-devel
 yum install protobuf protobuf-devel protobuf-compiler
+yum install libev libev-devel
+yum install hiredis hiredis-devel
 ```
 
 ##### 2. Compilation

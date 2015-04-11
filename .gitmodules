@@ -1,3 +1,6 @@
 [submodule "cpp/SQLiteCpp"]
 	path = third_party/SQLiteCpp
 	url = https://github.com/SRombauts/SQLiteCpp.git
+[submodule "third_party/redox"]
+	path = third_party/redox
+	url = git@github.com:JonathanRaiman/redox.git

@@ -36,8 +36,10 @@ endif (BLAS_FOUND AND MKL_FOUND)
 target_link_libraries(dali ${ZLIB_LIBRARIES}
                            proto
                            SQLiteCpp
+                           redox_static
                            sqlite3
                            ${BLAS_LIBRARIES}
+                           ${HIREDIS_LIBRARIES}
                            ${MKL_LIBRARIES}
                            ${GFLAGS_LIBRARIES})
 if (GPERFTOOLS_FOUND)

@@ -14,12 +14,17 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 find_package(Eigen3 REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Gflags REQUIRED)
+find_package(HiRedis REQUIRED)
 
 # OPTIONAL PACAKGES
 find_package(GooglePerfTools)
 find_package(BLAS)
 find_package(MKL)
 find_package(GTest)
+
+if (NOT HIREDIS_FOUND)
+    message( FATAL_ERROR "ERROR: required dependency HiRedis not found.\n    > brew install hiredis")
+endif(NOT HIREDIS_FOUND)
 
 if (NOT GPERFTOOLS_FOUND)
     message("WARNING: consider installing gperftools for better multithreaded performance.\n    > brew install gperftools")
@@ -72,6 +77,7 @@ endforeach(libvar)
 
 # add submodule libraries
 add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/SQLiteCpp)
+add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/redox)
 
 # Relative path in C++ are hard. Adding a macro:
 add_definitions(-DDALI_DATA_DIR=${PROJECT_SOURCE_DIR}/data)
@@ -96,8 +102,11 @@ endif(CMAKE_BUILD_TYPE MATCHES "debug")
 include_directories(${MKL_INCLUDE_DIR})
 include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(${PROJECT_SOURCE_DIR})
+include_directories(${HIREDIS_INCLUDE_DIRS})
 include_directories(${GFLAGS_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR}/third_party/SQLiteCpp/include)
+include_directories(${PROJECT_SOURCE_DIR}/third_party/redox/include)
+
 if (GPERFTOOLS_FOUND)
     include_directories(${GPERFTOOLS_INCLUDE_DIR})
 endif (GPERFTOOLS_FOUND)

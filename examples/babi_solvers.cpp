@@ -500,7 +500,7 @@ MatrixXd errors(StoryActivation<REAL_t> activation,
 
 // returns the errors;
 MatrixXd run_epoch(const vector<babi::Story>& dataset,
-                              Solver::Adam<REAL_t>* solver,
+                              Solver::AbstractSolver<REAL_t>* solver,
                               bool training) {
 
 
@@ -520,7 +520,7 @@ MatrixXd run_epoch(const vector<babi::Story>& dataset,
         thread_error.back().fill(0);
     }
 
-    const int BATCH_SIZE = std::max( (int)dataset.size() / (2*NUM_THREADS), 2);
+    const int BATCH_SIZE = std::max( (int)dataset.size() / 20, 2);
 
     auto random_order = utils::random_arange(dataset.size());
     vector<vector<int>> batches;
@@ -560,12 +560,11 @@ MatrixXd run_epoch(const vector<babi::Story>& dataset,
                  }
             }
             if (training)
-                solver->step(params, 0.001);
+                solver->step(params);
         });
     }
 
     pool.wait_until_idle();
-
     MatrixXd total_error(3,1);
     total_error << 0, 0, 0;
     for (int i=0; i<NUM_THREADS; ++i)
@@ -589,8 +588,9 @@ void train(const vector<babi::Story>& data, shared_ptr<Training> training_method
     auto params = model->parameters();
 
     // Solver::AdaDelta<T> solver(params, 0.95, 1e-9, 5.0);
-    Solver::Adam<REAL_t> solver(params, 0.1, 0.001, 1e-9, 5.0);
-
+    Solver::AdaGrad<REAL_t> solver(params, 1e-9, 10.0, 1e-6);
+    const int BATCH_SIZE = std::max( (int)data.size() / 20, 2);
+    solver.step_size = 0.1 / BATCH_SIZE;
     training_method->reset();
 
     double best_validation = run_epoch(validation, &solver, false)(0);
@@ -599,7 +599,7 @@ void train(const vector<babi::Story>& data, shared_ptr<Training> training_method
     while (true) {
         auto training_errors = run_epoch(train, &solver, true);
         auto validation_errors = run_epoch(validation, &solver, false);
-
+        solver.reset_caches(params);
         std::cout << "Epoch " << ++epoch << std::endl;
         std::cout << "Errors(prob_answer, fact_select, words_sparsity): " << std::endl
                   << "VALIDATION: " << validation_errors(0) << " "
@@ -646,6 +646,7 @@ void reset(const vector<babi::Story>& data, Conf babi_model_conf=BabiModel::defa
 }
 
 double benchmark_task(const std::string task) {
+    std::cout << "Solving the most important problem in the world: " << task << std::endl;
     auto data = babi::Parser::training_data(task);
     reset(data);
 
@@ -713,7 +714,7 @@ int main(int argc, char** argv) {
 
     // grid_search();
     benchmark_task("qa4_two-arg-relations");
-    benchmark_all();
+    // benchmark_all();
 
 
     // benchmark_task("multitasking");

@@ -26,6 +26,9 @@ namespace Solver {
     template<typename R> class SGD : public AbstractSolver<R> {
         SOLVER_MAT_TYPEDEF_H
         public:
+            // This can be overriden by parameter passed to step function.
+            R step_size = SOLVER_MAT_DEFAULT_STEP_SIZE_H;
+
             SGD (R clipval = 5.0, R regc = 0.0);
             SGD (std::vector<Mat<R>>&, R clipval = 5.0, R regc = 0.0);
             virtual void step( std::vector<Mat<R>>&);
@@ -35,6 +38,9 @@ namespace Solver {
     template<typename R> class AdaGrad : public AbstractSolver<R> {
         SOLVER_MAT_TYPEDEF_H
         public:
+            // This can be overriden by parameter passed to step function.
+            R step_size = SOLVER_MAT_DEFAULT_STEP_SIZE_H;
+
             std::unordered_map<int, eigen_mat> gsums;
             AdaGrad (R smooth_eps = SMOOTH_DEFAULT, R clipval = 5.0, R regc = 0.0);
             AdaGrad (std::vector<Mat<R>>&, R smooth_eps = SMOOTH_DEFAULT, R clipval = 5.0, R regc = 0.0);

@@ -56,7 +56,7 @@ namespace Solver {
 
     template<typename R>
     void SGD<R>::step (vector<Mat<R>>& parameters) {
-        return step(parameters, SOLVER_MAT_DEFAULT_STEP_SIZE_H);
+        return step(parameters, this->step_size);
     }
 
     template class SGD<float>;
@@ -150,7 +150,7 @@ namespace Solver {
     template<typename R>
     void AdaGrad<R>::step(
         vector<Mat<R>>& parameters) {
-        return step(parameters, SOLVER_MAT_DEFAULT_STEP_SIZE_H);
+        return step(parameters, this->step_size);
     }
 
     template class AdaGrad<float>;

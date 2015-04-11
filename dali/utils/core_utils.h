@@ -563,6 +563,8 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
             // should be called from a thread (this internally uses thread pool's number.)
             void update(double error);
 
+            double this_thread_average();
+
             double average();
 
             void reset();

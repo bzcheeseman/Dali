@@ -144,7 +144,7 @@ int main(int argc, char** argv) {
                     }
                     processed_sections += 1;
 
-                    journalist.tick(processed_sections, partial_error / (double)partial_error_updates);
+                    journalist.tick(processed_sections, thread_error.this_thread_average());
 
                 }
 

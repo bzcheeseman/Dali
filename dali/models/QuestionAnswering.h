@@ -287,7 +287,7 @@ class LolGate : public AbstractLayer<R> {
 
 template<typename R>
 class GatedLstmsModel {
-    int EMBEDDING_SIZE = 100;
+    int EMBEDDING_SIZE = 300;
     int GATE_SECOND_ORDER = 40; // IDEA - dropout on second order features.
     vector<int> TEXT_STACKS = { 100, 100 };
     vector<int> HL_STACKS = { 100, 50, 50, 50 };
@@ -354,6 +354,16 @@ class GatedLstmsModel {
 
             embeddings = Mat<R>(vocab->index2word.size(), EMBEDDING_SIZE,
                     weights<R>::uniform(1.0/EMBEDDING_SIZE));
+
+            if (!FLAGS_pretrained_vectors.empty()) {
+                int num_loaded = glove::load_relevant_vectors(
+                        FLAGS_pretrained_vectors, embeddings, *vocab, 1000000);
+                // consider glove embeddings a constant variable.
+                // embeddings = MatOps<R>::consider_constant(embeddings);
+                std::cout << num_loaded << " out of " << vocab->word2index.size()
+                          << " word embeddings preloaded from glove." << std::endl;
+                assert (embeddings.dims(1) == EMBEDDING_SIZE);
+            }
 
             single_fact_model = StackedLSTM<R>(EMBEDDING_SIZE, TEXT_STACKS, true, true);
             question_model = StackedLSTM<R>(EMBEDDING_SIZE, TEXT_STACKS, true, true);

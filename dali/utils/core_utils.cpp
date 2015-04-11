@@ -1323,6 +1323,12 @@ namespace utils {
         thread_error_updates[ThreadPool::get_thread_number()] += 1;
     }
 
+    double ThreadError::this_thread_average() {
+        int updates = thread_error_updates[ThreadPool::get_thread_number()];
+        double error = thread_error[ThreadPool::get_thread_number()];
+        return (updates == 0) ? 1.0/0.0 : error/updates;
+    }
+
     double ThreadError::average() {
         return vsum(thread_error) / vsum(thread_error_updates);
     }

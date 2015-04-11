@@ -11,7 +11,8 @@ using std::getline;
 
 string SmartParser::next_line_internal() {
     string line_buffer;
-    assert2(getline(*stream, line_buffer), "EOF encountered while parsing a file.");
+    getline(*stream, line_buffer);
+    assert2(stream->eof(), "EOF encountered while parsing a file.");
     return line_buffer;
 }
 
@@ -25,7 +26,6 @@ SmartParser SmartParser::from_path(std::string filename) {
 
 SmartParser::SmartParser(std::shared_ptr<std::istream> stream) : stream(stream) {
 }
-
 
 std::string SmartParser::next_token() {
     while (token_in_line >= line_tokens.size()) {

@@ -215,14 +215,20 @@ int main (int argc,  char* argv[]) {
               << "      minibatch size : " << FLAGS_minibatch << std::endl
               << "   number of threads : " << FLAGS_j << std::endl
               << "        Dropout type : " << (FLAGS_fast_dropout ? "fast" : "default") << std::endl
+              << "        Dropout Prob : " << FLAGS_dropout << std::endl
               << " Max training epochs : " << FLAGS_epochs << std::endl
+              << "   First Hidden Size : " << model.hidden_sizes[0] << std::endl
               << "           LSTM type : " << (model.memory_feeds_gates ? "Graves 2013" : "Zaremba 2014") << std::endl
               << "          Stack size : " << model.hidden_sizes.size() << std::endl
               << " # training examples : " << dataset.size() * FLAGS_minibatch - (FLAGS_minibatch - dataset[dataset.size() - 1].size()) << std::endl
               << "     validation obj. : " << (FLAGS_validation_metric == 0 ? "overall" : "root") << std::endl
               << "              Solver : " << FLAGS_solver << std::endl;
+    if (FLAGS_embedding_learning_rate > 0) {
+        std::cout << " Embedding step size : " << FLAGS_embedding_learning_rate << std::endl;
+    }
 
     if (!FLAGS_pretrained_vectors.empty()) {
+        std::cout << "  Pretrained Vectors : " << FLAGS_pretrained_vectors << std::endl;
         model.embedding = embedding;
     }
 
@@ -340,10 +346,10 @@ int main (int argc,  char* argv[]) {
                 }
                 if (solver_type == ADAGRAD_TYPE) {
                     dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step(params, FLAGS_learning_rate);
-                    dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step(embedding_params, FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate);
+                    dynamic_cast<Solver::AdaGrad<REAL_t>*>(embedding_solver.get())->step(embedding_params, FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate);
                 } else if (solver_type == SGD_TYPE) {
                     dynamic_cast<Solver::SGD<REAL_t>*>(solver.get())->step(params, FLAGS_learning_rate);
-                    dynamic_cast<Solver::SGD<REAL_t>*>(solver.get())->step(embedding_params, FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate);
+                    dynamic_cast<Solver::SGD<REAL_t>*>(embedding_solver.get())->step(embedding_params, FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate);
                 } else {
                     solver->step(params); // One step of gradient descent
                     embedding_solver->step(embedding_params);
@@ -357,6 +363,7 @@ int main (int argc,  char* argv[]) {
         std::cout << "Root recall=" << std::get<1>(new_validation) << std::endl;
         if (solver_type == ADAGRAD_TYPE) {
             solver->reset_caches(params);
+            embedding_solver->reset_caches(embedding_params);
         }
         if (!FLAGS_save_location.empty()) {
             stringstream ss;

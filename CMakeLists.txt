@@ -6,15 +6,14 @@ project("recurrentjs")
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 # For sqlite3:
-set(SQLiteCpp_FIND_VERSION "0.9.9")
-set(SQLITECPP_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/SQLiteCpp/include/SQLiteCpp)
-set(MKL_MULTI_THREADED "1")
+#set(SQLiteCpp_FIND_VERSION "0.9.9")
+#set(SQLITECPP_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/SQLiteCpp/include/SQLiteCpp)
+#set(MKL_MULTI_THREADED "1")
 
 # REQUIRED PACKAGES
 find_package(Eigen3 REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Gflags REQUIRED)
-find_package(SQLiteCpp REQUIRED)
 
 # OPTIONAL PACAKGES
 find_package(GooglePerfTools)
@@ -71,6 +70,9 @@ foreach(libvar ${LIBVARS_TO_FIX})
     endif (NOT ${libvar})
 endforeach(libvar)
 
+# add submodule libraries
+add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/SQLiteCpp)
+
 # Relative path in C++ are hard. Adding a macro:
 add_definitions(-DDALI_DATA_DIR=${PROJECT_SOURCE_DIR}/data)
 
@@ -90,11 +92,12 @@ endif(CMAKE_BUILD_TYPE MATCHES "debug")
 
 
 # INCLUDES
+
 include_directories(${MKL_INCLUDE_DIR})
 include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${GFLAGS_INCLUDE_DIRS})
-include_directories(${PROJECT_SOURCE_DIR}/SQLiteCpp/include)
+include_directories(${PROJECT_SOURCE_DIR}/third_party/SQLiteCpp/include)
 if (GPERFTOOLS_FOUND)
     include_directories(${GPERFTOOLS_INCLUDE_DIR})
 endif (GPERFTOOLS_FOUND)
@@ -106,12 +109,12 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/examples)
 
 
 # for special SQLiteCpp target:
-file(GLOB_RECURSE SQLITECPP_SRC "${PROJECT_SOURCE_DIR}/SQLiteCpp/src/*.cpp")
+#file(GLOB_RECURSE SQLITECPP_SRC "${PROJECT_SOURCE_DIR}/SQLiteCpp/src/*.cpp")
 # file(GLOB_RECURSE SQLITECPP_SRC "${PROJECT_SOURCE_DIR}/SQLiteCpp/include/SQLiteCpp/*.h")
 # add sources of the wrapper as a "SQLiteCpp" static library
-add_library(SQLiteCpp ${SQLITECPP_SRC})
+# add_library(SQLiteCpp ${SQLITECPP_SRC})
 
-if (UNIX AND (CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang"))
-    set_target_properties(SQLiteCpp PROPERTIES COMPILE_FLAGS "-fPIC")
-endif (UNIX AND (CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang"))
+#if (UNIX AND (CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang"))
+#    set_target_properties(SQLiteCpp PROPERTIES COMPILE_FLAGS "-fPIC")
+#endif (UNIX AND (CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang"))
 

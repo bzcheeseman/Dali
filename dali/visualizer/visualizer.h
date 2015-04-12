@@ -9,15 +9,6 @@
 namespace visualizable {
     using json11::Json;
 
-    namespace {
-        std::vector<Json> to_json_array(const std::vector<std::string>& vs) {
-            std::vector<Json> res;
-            for(auto& str: vs) {
-                res.push_back(Json(str));
-            }
-            return res;
-        }
-    }
 
     struct Visualizable;
     struct Sentence;
@@ -29,6 +20,24 @@ namespace visualizable {
     typedef std::shared_ptr<Sentence> sentence_ptr;
     typedef std::shared_ptr<Sentences> sentences_ptr;
     typedef std::shared_ptr<ClassifierExample> classifier_example_ptr;
+
+    namespace {
+        std::vector<Json> to_json_array(const std::vector<std::string>& vs) {
+            std::vector<Json> res;
+            for(auto& str: vs) {
+                res.push_back(Json(str));
+            }
+            return res;
+        }
+
+        std::vector<sentence_ptr> sentence_vector(const std::vector<std::vector<std::string>>& vec) {
+            std::vector<sentence_ptr> res;
+            for (auto& sentence: vec) {
+                res.push_back(std::make_shared<Sentence>(sentence));
+            }
+            return res;
+        }
+    }
 
     struct Visualizable {
         virtual Json to_json() = 0;
@@ -50,6 +59,8 @@ namespace visualizable {
     struct Sentences : public Visualizable {
         std::vector<sentence_ptr> sentences;
         Sentences(std::vector<sentence_ptr> sentences) : sentences(sentences) {
+        }
+        Sentences(std::vector<std::vector<std::string>> vec) : sentences(sentence_vector(vec)) {
         }
 
         virtual Json to_json() override {
@@ -109,6 +120,10 @@ class Visualizer {
         std::shared_ptr<redox::Redox> rdx;
         EventQueue eq;
         EventQueue::repeating_t pinging;
+
+        // TODO(szymon): this kind of connection state should
+        // be handled by redox.. Remove this bool in the future.
+        bool connected = false;
 
     public:
         Visualizer(std::string my_namespace, std::shared_ptr<redox::Redox> rdx=nullptr);

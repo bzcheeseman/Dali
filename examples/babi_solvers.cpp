@@ -435,8 +435,13 @@ class LstmBabiModel : public Model {
         void visualize_example(const vector<vector<string>>& facts,
                                      const vector<string>& question,
                                      const vector<string>& correct_answer) {
-            auto ret = make_shared<visualizable::Sentence>(question);
-            visualizer->feed(ret->to_json());
+            auto vcontext = make_shared<visualizable::Sentences>(facts);
+            auto vquestion = make_shared<visualizable::Sentence>(question);
+            auto vanswer = make_shared<visualizable::Sentence>(correct_answer);
+
+            auto vqa = make_shared<visualizable::QA>(vcontext, vquestion, vanswer);
+
+            visualizer->feed(vqa->to_json());
         }
 
 };

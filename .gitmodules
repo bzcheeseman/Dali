@@ -4,3 +4,7 @@
 [submodule "third_party/redox"]
 	path = third_party/redox
 	url = https://github.com/JonathanRaiman/redox.git
+[submodule "third_party/json11"]
+	path = third_party/json11
+	url = https://github.com/nivwusquorum/json11.git
+	branch = feature/ADD_CMakeSupport

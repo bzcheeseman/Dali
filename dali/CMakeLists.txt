@@ -38,6 +38,7 @@ target_link_libraries(dali ${ZLIB_LIBRARIES}
                            SQLiteCpp
                            redox_static
                            sqlite3
+                           json11static
                            ${BLAS_LIBRARIES}
                            ${HIREDIS_LIBRARIES}
                            ${MKL_LIBRARIES}

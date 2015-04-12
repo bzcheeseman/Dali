@@ -78,6 +78,7 @@ endforeach(libvar)
 # add submodule libraries
 add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/SQLiteCpp)
 add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/redox)
+add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/json11)
 
 # Relative path in C++ are hard. Adding a macro:
 add_definitions(-DDALI_DATA_DIR=${PROJECT_SOURCE_DIR}/data)
@@ -106,6 +107,7 @@ include_directories(${HIREDIS_INCLUDE_DIRS})
 include_directories(${GFLAGS_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR}/third_party/SQLiteCpp/include)
 include_directories(${PROJECT_SOURCE_DIR}/third_party/redox/include)
+include_directories(${PROJECT_SOURCE_DIR}/third_party/json11)
 
 if (GPERFTOOLS_FOUND)
     include_directories(${GPERFTOOLS_INCLUDE_DIR})

@@ -22,6 +22,8 @@ class EventQueue {
         typedef std::chrono::high_resolution_clock clock_t;
         typedef clock_t::duration duration_t;
         typedef clock_t::time_point time_point_t;
+
+        typedef std::shared_ptr<EQHandle> repeating_t;
     private:
         typedef std::tuple<time_point_t, std::function<void()>> work_item_t;
         typedef std::function<bool(work_item_t, work_item_t)> comparator_t;

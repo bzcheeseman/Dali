@@ -1,14 +1,11 @@
 #ifndef DALI_VISUALIZER_VISUALIZER_H
 #define DALI_VISUALIZER_VISUALIZER_H
-
 #include <json11.hpp>
 #include <redox.hpp>
 #include <string>
-
 #include "dali/visualizer/EventQueue.h"
 
-
-
+// TODO: explain how this works
 namespace visualizable {
     using json11::Json;
 
@@ -54,7 +51,6 @@ namespace visualizable {
         std::vector<sentence_ptr> sentences;
         Sentences(std::vector<sentence_ptr> sentences) : sentences(sentences) {
         }
-
 
         virtual Json to_json() override {
             std::vector<Json> sentences_json;
@@ -106,6 +102,7 @@ namespace visualizable {
     };
 }
 
+// TODO: explain what this does
 class Visualizer {
     private:
         std::string my_namespace;
@@ -118,6 +115,5 @@ class Visualizer {
         void feed(const json11::Json& obj);
         void feed(const std::string& str);
 };
-
 
 #endif

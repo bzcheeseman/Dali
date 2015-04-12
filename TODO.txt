@@ -1,7 +1,9 @@
 HIGH PRIORITY:
 -> mshadow and tensors (mutli gpu support etc.)
--> visualizer - web frontend for error visualization
--> multiple choice questions dataset
+-> visualizer - web frontend for error visualization (50% done)
+-> Move Redis visualizer example to tests with check for redis presence
+-> switch "from unique words" in Vocab to "add_words"
+-> graceful connection / reconnection / deconnection in redox
 
 MEDIUM PRIORITY:
 -> Improve NlpUtils. More generally agree on common set of practices for all the examples.
@@ -12,3 +14,4 @@ LOWER_PRIOTITY:
 -> sequence loss
 -> implement imagenet training
 -> load existing image net model from caffe
+-> make machine comprehension dataset inline with other loading system

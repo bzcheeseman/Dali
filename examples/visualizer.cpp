@@ -3,9 +3,7 @@
 #include <chrono>
 #include <thread>
 #include <json11.hpp>
-
 #include "dali/visualizer/visualizer.h"
-
 
 using json11::Json;
 

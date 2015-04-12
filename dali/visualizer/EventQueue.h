@@ -45,10 +45,7 @@ class EventQueue {
         // How long to sleep if queue is empty.
         duration_t between_queue_checks = std::chrono::milliseconds(300);
 
-
-
         EventQueue();
-
         ~EventQueue();
 
         void push(std::function<void()> f);

@@ -5,7 +5,6 @@
 
 #include "dali/mat/Mat.h"
 #include "dali/mat/MatOps.h"
-#include "dali/mat/Seq.h"
 
 template<typename R>
 class AbstractLayer {
@@ -275,7 +274,7 @@ class LSTM : public AbstractLayer<R> {
 
         virtual State activate_sequence(
             State initial_state,
-            const Seq<Mat<R>>& sequence) const;
+            const std::vector<Mat<R>>& sequence) const;
     private:
         State _activate(const std::vector<Mat<R>>&, const State&) const;
 };
@@ -301,7 +300,7 @@ class AbstractStackedLSTM : public AbstractLayer<R> {
             R drop_prob = 0.0) const = 0;
         virtual state_t activate_sequence(
             state_t initial_state,
-            const Seq<Mat<R>>& sequence,
+            const std::vector<Mat<R>>& sequence,
             R drop_prob = 0.0) const;
 };
 

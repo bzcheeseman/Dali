@@ -625,7 +625,7 @@ typename LSTM<R>::State LSTM<R>::activate(
 template<typename R>
 typename LSTM<R>::State LSTM<R>::activate_sequence(
     State initial_state,
-    const Seq<Mat<R>>& sequence) const {
+    const vector<Mat<R>>& sequence) const {
     for (auto& input_vector : sequence)
         initial_state = activate(
             input_vector,
@@ -805,7 +805,7 @@ std::vector<typename LSTM<R>::State> AbstractStackedLSTM<R>::initial_states() co
 template<typename R>
 typename AbstractStackedLSTM<R>::state_t AbstractStackedLSTM<R>::activate_sequence(
     state_t initial_state,
-    const Seq<Mat<R>>& sequence,
+    const vector<Mat<R>>& sequence,
     R drop_prob) const {
     for (auto& input_vector : sequence)
         initial_state = activate(initial_state, input_vector, drop_prob);

@@ -378,8 +378,8 @@ class GatedLstmsModel {
         }
 
 
-        Seq<Mat<R>> get_embeddings(const vector<string>& words) {
-            Seq<Mat<R>> seq;
+        vector<Mat<R>> get_embeddings(const vector<string>& words) {
+            vector<Mat<R>> seq;
             auto idxes = vocab->transform(words);
             for (auto& idx: idxes) {
                 auto embedding = embeddings[idx];
@@ -388,10 +388,10 @@ class GatedLstmsModel {
             return seq;
         }
 
-        Seq<Mat<R>> gate_memory(Seq<Mat<R>> seq,
+        vector<Mat<R>> gate_memory(vector<Mat<R>> seq,
                                 const LolGate<R>& gate,
                                 Mat<R> gate_input) {
-            Seq<Mat<R>> memory_seq;
+            vector<Mat<R>> memory_seq;
             // By default initialized to zeros.
             auto prev_hidden = gate.initial_states();
             Mat<R> gate_activation;
@@ -405,17 +405,17 @@ class GatedLstmsModel {
             return memory_seq;
         }
 
-        Seq<Mat<R>> apply_gate(Seq<Mat<R>> memory,
-                               Seq<Mat<R>> seq) {
+        vector<Mat<R>> apply_gate(vector<Mat<R>> memory,
+                               vector<Mat<R>> seq) {
             assert(memory.size() == seq.size());
-            Seq<Mat<R>> gated_seq;
+            vector<Mat<R>> gated_seq;
             for(int i=0; i < memory.size(); ++i) {
                 gated_seq.push_back(seq[i].eltmul_broadcast_rowwise(memory[i]));
             }
             return gated_seq;
         }
 
-        Mat<R> lstm_final_activation(const Seq<Mat<R>>& embeddings,
+        Mat<R> lstm_final_activation(const vector<Mat<R>>& embeddings,
                                      const StackedLSTM<R>& model,
                                      R dropout_value) {
             auto out_states = model.activate_sequence(model.initial_states(),
@@ -438,7 +438,7 @@ class GatedLstmsModel {
                                                        use_dropout ? TEXT_DROPOUT : 0.0);
             Mat<R> reading_context = MatOps<R>::vstack(question_hidden, answer_hidden);
 
-            Seq<Mat<R>> fact_representations;
+            vector<Mat<R>> fact_representations;
             Mat<R> word_fact_gate_memory_sum(1,1);
 
             for (auto& fact: facts) {
@@ -463,7 +463,7 @@ class GatedLstmsModel {
 
             auto gated_facts = apply_gate(fact_gate_memory, fact_representations);
 
-            Seq<Mat<R>> hl_input;
+            vector<Mat<R>> hl_input;
             for (auto& gate_fact : gated_facts) {
                 hl_input.push_back(MatOps<R>::vstack(reading_context, gate_fact));
             }

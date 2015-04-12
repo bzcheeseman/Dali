@@ -24,15 +24,6 @@ namespace visualizable {
         using json11::Json;
         using utils::assert2;
 
-        template<typename T>
-        std::vector<Json> to_json_array(const std::vector<T>& vec) {
-            std::vector<Json> res;
-            for(auto& item: vec) {
-                res.push_back(Json(item));
-            }
-            return res;
-        }
-
         std::vector<sentence_ptr> sentence_vector(const std::vector<std::vector<std::string>>& vec) {
             std::vector<sentence_ptr> res;
             for (auto& sentence: vec) {
@@ -49,22 +40,35 @@ namespace visualizable {
 
     struct Sentence : public Visualizable {
         std::vector<std::string> tokens;
+        std::vector<double> weights;
+
         Sentence(std::vector<std::string> tokens) : tokens(tokens) {
+        }
+
+        void set_weights(const std::vector<double>& _weights) {
+            weights = _weights;
         }
 
         virtual Json to_json() override {
             return Json::object {
                 { "data_type", "sentence" },
-                { "sentence", Json::array(to_json_array(tokens))},
+                { "weights", weights },
+                { "sentence", tokens },
             };
         }
     };
 
     struct Sentences : public Visualizable {
         std::vector<sentence_ptr> sentences;
+        std::vector<double> weights;
+
         Sentences(std::vector<sentence_ptr> sentences) : sentences(sentences) {
         }
         Sentences(std::vector<std::vector<std::string>> vec) : sentences(sentence_vector(vec)) {
+        }
+
+        void set_weights(const std::vector<double>& _weights) {
+            weights = _weights;
         }
 
         virtual Json to_json() override {
@@ -75,7 +79,8 @@ namespace visualizable {
 
             return Json::object {
                 { "data_type", "sentences" },
-                { "sentences", Json::array(sentences_json)},
+                { "weights", weights },
+                { "sentences", sentences_json},
             };
         }
     };
@@ -155,8 +160,8 @@ namespace visualizable {
             }
             return Json::object {
                 { "data_type", "finite_distribution"},
-                { "probabilities", to_json_array(output_probs) },
-                { "labels", to_json_array(output_labels) },
+                { "probabilities", output_probs },
+                { "labels", output_labels },
             };
         }
     };

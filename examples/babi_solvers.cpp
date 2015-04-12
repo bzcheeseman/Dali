@@ -31,6 +31,8 @@ using utils::Timer;
 using utils::Vocab;
 using Eigen::MatrixXd;
 using std::chrono::seconds;
+using utils::assert2;
+using utils::MS;
 
 DEFINE_int32(j, 9, "Number of threads");
 DEFINE_bool(solver_mutex, false, "Synchronous execution of solver step.");
@@ -42,15 +44,33 @@ std::shared_ptr<Visualizer> visualizer;
 template<typename T>
 struct StoryActivation {
     Mat<T> log_probs;
-    Seq<Mat<T>> fact_gate_memory;
-    Mat<T> word_fact_gate_memory_sum;
+    vector<Mat<T>> fact_gate_memory;
+    vector<vector<Mat<T>>> fact_word_gate_memory;
 
     StoryActivation(Mat<T> log_probs,
-                    Seq<Mat<T>> fact_gate_memory,
-                    Mat<T> word_fact_gate_memory_sum) :
+                    vector<Mat<T>> fact_gate_memory,
+                    vector<vector<Mat<T>>> fact_word_gate_memory) :
             log_probs(log_probs),
             fact_gate_memory(fact_gate_memory),
-            word_fact_gate_memory_sum(word_fact_gate_memory_sum) {
+            fact_word_gate_memory(fact_word_gate_memory) {
+    }
+
+    Mat<T> fact_sum() {
+        Mat<T> res(1,1);
+        for(auto& fact_mem: fact_gate_memory) {
+            res = res + fact_mem;
+        }
+        return res;
+    }
+
+    Mat<T> fact_word_sum() {
+        Mat<T> res(1,1);
+        for(auto& fact_words: fact_word_gate_memory) {
+            for(auto& word_mem: fact_words) {
+                res = res + word_mem;
+            }
+        }
+        return res;
     }
 };
 
@@ -326,9 +346,9 @@ class LstmBabiModel : public Model {
         }
 
 
-        Seq<Mat<T>> get_embeddings(const vector<string>& words,
+        vector<Mat<T>> get_embeddings(const vector<string>& words,
                                    Mat<T> embeddings) {
-            Seq<Mat<T>> seq;
+            vector<Mat<T>> seq;
             for (auto& word: words) {
                 auto question_idx = vocab->word2index.at(word);
                 auto embedding = embeddings[question_idx];
@@ -339,10 +359,10 @@ class LstmBabiModel : public Model {
             return seq;
         }
 
-        Seq<Mat<T>> gate_memory(Seq<Mat<T>> seq,
+        vector<Mat<T>> gate_memory(vector<Mat<T>> seq,
                                 const LolGate<T>& gate,
                                 Mat<T> gate_input) {
-            Seq<Mat<T>> memory_seq;
+            vector<Mat<T>> memory_seq;
             // By default initialized to zeros.
             auto prev_hidden = gate.initial_states();
             Mat<T> gate_activation;
@@ -356,17 +376,17 @@ class LstmBabiModel : public Model {
             return memory_seq;
         }
 
-        Seq<Mat<T>> apply_gate(Seq<Mat<T>> memory,
-                               Seq<Mat<T>> seq) {
+        vector<Mat<T>> apply_gate(vector<Mat<T>> memory,
+                               vector<Mat<T>> seq) {
             assert(memory.size() == seq.size());
-            Seq<Mat<T>> gated_seq;
+            vector<Mat<T>> gated_seq;
             for(int i=0; i < memory.size(); ++i) {
                 gated_seq.push_back(seq[i].eltmul_broadcast_rowwise(memory[i]));
             }
             return gated_seq;
         }
 
-        Mat<T> lstm_final_activation(const Seq<Mat<T>>& embeddings,
+        Mat<T> lstm_final_activation(const vector<Mat<T>>& embeddings,
                                      const StackedLSTM<T>& model,
                                      T dropout_value) {
             auto out_states = model.activate_sequence(model.initial_states(),
@@ -394,19 +414,17 @@ class LstmBabiModel : public Model {
                     question_model,
                     use_dropout ? c().f("TEXT_REPR_DROPOUT") : 0.0);
 
-            Seq<Mat<T>> fact_representations;
-            Mat<T> word_fact_gate_memory_sum(1,1);
+            vector<Mat<T>> fact_representations;
+            vector<vector<Mat<T>>> fact_words_gate_memory;
 
             for (auto& fact: facts) {
                 auto this_fact_embeddings = get_embeddings(reversed(fact), fact_embeddings);
-                auto fact_word_gate_memory = gate_memory(this_fact_embeddings,
-                                                         fact_word_gate,
-                                                         fact_word_gate_hidden);
-                for (auto mem: fact_word_gate_memory) {
-                    word_fact_gate_memory_sum = word_fact_gate_memory_sum + mem;
-                }
+                auto this_fact_word_gate_memory = gate_memory(this_fact_embeddings,
+                                                              fact_word_gate,
+                                                              fact_word_gate_hidden);
 
-                auto gated_embeddings = apply_gate(fact_word_gate_memory, this_fact_embeddings);
+                fact_words_gate_memory.push_back(this_fact_word_gate_memory);
+                auto gated_embeddings = apply_gate(this_fact_word_gate_memory, this_fact_embeddings);
 
                 auto fact_repr = lstm_final_activation(
                         gated_embeddings,
@@ -419,7 +437,7 @@ class LstmBabiModel : public Model {
 
             auto gated_facts = apply_gate(fact_gate_memory, fact_representations);
             // There is probably a better way
-            Seq<Mat<T>> hl_input;
+            vector<Mat<T>> hl_input;
             hl_input.push_back(question_representation);
             hl_input.insert(hl_input.end(), gated_facts.rbegin(), gated_facts.rend());
             hl_input.push_back(please_start_prediction);
@@ -431,7 +449,7 @@ class LstmBabiModel : public Model {
 
             return StoryActivation<T>(log_probs,
                                       fact_gate_memory,
-                                      word_fact_gate_memory_sum);
+                                      fact_words_gate_memory);
         }
 
         void visualize_example(const vector<vector<string>>& facts,
@@ -450,7 +468,23 @@ class LstmBabiModel : public Model {
             auto vdistribution =
                     make_shared<visualizable::FiniteDistribution>(distribution_as_vec, vocab->index2word);
 
-            auto vcontext = make_shared<visualizable::Sentences>(facts);
+            vector<double> facts_weights;
+            vector<visualizable::sentence_ptr> facts_sentences;
+            for (int fidx=0; fidx < facts.size(); ++fidx) {
+                auto vfact = make_shared<visualizable::Sentence>(facts[fidx]);
+
+                vector<double> words_weights;
+
+                for (Mat<T> weight: activation.fact_word_gate_memory[fidx]) {
+                    words_weights.push_back(weight.w()(0,0));
+                }
+                vfact->set_weights(words_weights);
+                facts_sentences.push_back(vfact);
+                facts_weights.push_back(activation.fact_gate_memory[fidx].w()(0,0));
+            }
+
+            auto vcontext = make_shared<visualizable::Sentences>(facts_sentences);
+            vcontext->set_weights(facts_weights);
             auto vquestion = make_shared<visualizable::Sentence>(question);
             auto vanswer = make_shared<visualizable::Sentence>(correct_answer);
 
@@ -509,7 +543,7 @@ MatrixXd errors(StoryActivation<REAL_t> activation,
         auto partial_error = MatOps<REAL_t>::binary_cross_entropy(
                                     activation.fact_gate_memory[i],
                                     supporting ? 1.0 : 0.0);
-        float coeff = supporting ? 1.0 : 0.01;
+        float coeff = supporting ? 1.0 : 0.1;
 
         fact_selection_error = fact_selection_error + partial_error * coeff;
     }
@@ -518,14 +552,14 @@ MatrixXd errors(StoryActivation<REAL_t> activation,
 
     total_error = prediction_error
                 + fact_selection_error * FACT_SELECTION_LAMBDA_MAX
-                + activation.word_fact_gate_memory_sum * FACT_WORD_SELECTION_LAMBDA_MAX;
+                + activation.fact_word_sum() * FACT_WORD_SELECTION_LAMBDA_MAX;
 
     total_error.grad();
 
     MatrixXd reported_errors(3,1);
     reported_errors(0) = prediction_error.w()(0,0);
     reported_errors(1) = fact_selection_error.w()(0,0);
-    reported_errors(2) = activation.word_fact_gate_memory_sum.w()(0,0);
+    reported_errors(2) = activation.fact_word_sum().w()(0,0);
 
 
     return reported_errors;

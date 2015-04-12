@@ -2,7 +2,6 @@
 #include "dali/mat/Layers.h"
 #include "dali/mat/Mat.h"
 #include "dali/mat/MatOps.h"
-#include "dali/mat/Seq.h"
 #include "dali/mat/Tape.h"
 #include "dali/mat/CrossEntropy.h"
 #include "dali/mat/Softmax.h"

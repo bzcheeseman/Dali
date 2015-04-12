@@ -33,6 +33,8 @@ using Eigen::MatrixXd;
 using std::chrono::seconds;
 
 DEFINE_int32(j, 9, "Number of threads");
+DEFINE_bool(solver_mutex, false, "Synchronous execution of solver step.");
+
 
 // Visualizer
 std::shared_ptr<Visualizer> visualizer;
@@ -435,13 +437,28 @@ class LstmBabiModel : public Model {
         void visualize_example(const vector<vector<string>>& facts,
                                      const vector<string>& question,
                                      const vector<string>& correct_answer) {
+            graph::NoBackprop nb;
+            auto activation = activate_story(facts, question, false);
+            Mat<T> distribution = MatOps<T>::softmax(activation.log_probs);
+
+            std::vector<double> distribution_as_vec;
+
+            for (int i=0; i < distribution.dims(0); ++i) {
+                distribution_as_vec.push_back(distribution.w()(i,0));
+            }
+
+            auto vdistribution =
+                    make_shared<visualizable::FiniteDistribution>(distribution_as_vec, vocab->index2word);
+
             auto vcontext = make_shared<visualizable::Sentences>(facts);
             auto vquestion = make_shared<visualizable::Sentence>(question);
             auto vanswer = make_shared<visualizable::Sentence>(correct_answer);
 
             auto vqa = make_shared<visualizable::QA>(vcontext, vquestion, vanswer);
 
-            visualizer->feed(vqa->to_json());
+            auto vexample = make_shared<visualizable::ClassifierExample>(vqa, vdistribution);
+
+            visualizer->feed(vexample->to_json());
         }
 
 };
@@ -514,6 +531,8 @@ MatrixXd errors(StoryActivation<REAL_t> activation,
     return reported_errors;
 }
 
+std::mutex solver_mutex;
+
 // returns the errors;
 MatrixXd run_epoch(const vector<babi::Story>& dataset,
                               Solver::AbstractSolver<REAL_t>* solver,
@@ -575,8 +594,14 @@ MatrixXd run_epoch(const vector<babi::Story>& dataset,
                         graph::backward();
                  }
             }
-            if (training)
-                solver->step(params);
+            if (FLAGS_solver_mutex) {
+                    std::lock_guard<decltype(solver_mutex)> guard(solver_mutex);
+                    if (training)
+                        solver->step(params);
+            } else {
+                if (training)
+                    solver->step(params);
+            }
         });
     }
 
@@ -746,7 +771,7 @@ int main(int argc, char** argv) {
     Eigen::initParallel();
 
     visualizer = make_shared<Visualizer>("babi");
-
+    std::cout << "Number of threads: " << FLAGS_j << (FLAGS_solver_mutex ? "(with solver mutex)" : "") << std::endl;
     // grid_search();
     benchmark_task("qa1_single-supporting-fact");
     // benchmark_all();

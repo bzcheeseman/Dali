@@ -3,13 +3,14 @@
 #include <iostream>
 #include <set>
 #include <vector>
+#include <json11.hpp>
 #include <gflags/gflags.h>
 
 #include "dali/data_processing/babi.h"
 #include "dali/core.h"
 #include "dali/utils.h"
 #include "dali/mat/model.h"
-
+#include "dali/visualizer/visualizer.h"
 
 using babi::Fact;
 using babi::Item;
@@ -33,6 +34,8 @@ using std::chrono::seconds;
 
 DEFINE_int32(j, 9, "Number of threads");
 
+// Visualizer
+std::shared_ptr<Visualizer> visualizer;
 
 template<typename T>
 struct StoryActivation {
@@ -429,6 +432,12 @@ class LstmBabiModel : public Model {
                                       word_fact_gate_memory_sum);
         }
 
+        void visualize_example(const vector<vector<string>>& facts,
+                                     const vector<string>& question,
+                                     const vector<string>& correct_answer) {
+            auto ret = make_shared<visualizable::Sentence>(question);
+            visualizer->feed(ret->to_json());
+        }
 
 };
 
@@ -439,6 +448,8 @@ class LstmBabiModel : public Model {
 /* PARAMETERS FOR TRAINING */
 typedef double REAL_t;
 typedef LstmBabiModel<REAL_t> BabiModel;
+
+
 
 // TRAINING_PROCEDURE_PARAMS
 const float TRAINING_FRAC = 0.8;
@@ -574,6 +585,21 @@ MatrixXd run_epoch(const vector<babi::Story>& dataset,
     return total_error;
 }
 
+void visualize_examples(const vector<babi::Story>& data, int num_examples) {
+    while(num_examples--) {
+        int example = rand()%data.size();
+
+        babi::StoryParser parser(&data[example]);
+        vector<vector<string>> facts_so_far;
+        QA* qa;
+        while (!parser.done()) {
+            std::tie(facts_so_far, qa) = parser.next();
+            model->visualize_example(facts_so_far, qa->question, qa->answer);
+         }
+    }
+
+}
+
 void train(const vector<babi::Story>& data, shared_ptr<Training> training_method) {
     for (auto param: model->parameters()) {
         weights<REAL_t>::svd(weights<REAL_t>::gaussian(1.0))(param);
@@ -599,6 +625,8 @@ void train(const vector<babi::Story>& data, shared_ptr<Training> training_method
     while (true) {
         auto training_errors = run_epoch(train, &solver, true);
         auto validation_errors = run_epoch(validation, &solver, false);
+        visualize_examples(validation, 1);
+
         solver.reset_caches(params);
         std::cout << "Epoch " << ++epoch << std::endl;
         std::cout << "Errors(prob_answer, fact_select, words_sparsity): " << std::endl
@@ -712,8 +740,10 @@ int main(int argc, char** argv) {
     Eigen::setNbThreads(0);
     Eigen::initParallel();
 
+    visualizer = make_shared<Visualizer>("babi");
+
     // grid_search();
-    benchmark_task("qa4_two-arg-relations");
+    benchmark_task("qa1_single-supporting-fact");
     // benchmark_all();
 
 

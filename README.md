@@ -1,5 +1,5 @@
-RecurrentJS in C++
-------------------
+Dali
+----
 
 This is an reimagination of [Andrej Kaparthy](http://cs.stanford.edu/people/karpathy/)'s [recurrentJS](http://cs.stanford.edu/people/karpathy/recurrentjs/) ([Github](https://github.com/karpathy/recurrentjs)) in C++. It has similar API names but the backbones are using **Eigen** and C++11's standard library. This automatic differentiation library uses reverse-mode differentation (backpropgation) which allows it to differentiate mathematical expressions but also through control flow, while loops, recursion.
 
@@ -12,6 +12,7 @@ This is an reimagination of [Andrej Kaparthy](http://cs.stanford.edu/people/karp
 * Multiple index slicing
 * Speed
 * Clarity of API
+* [Visualize Neural Network output in real time](https://github.com/JonathanRaiman/dali-visualizer)
 
 ### Why ?
 

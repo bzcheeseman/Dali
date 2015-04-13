@@ -51,7 +51,7 @@ namespace visualizable {
 
         virtual Json to_json() override {
             return Json::object {
-                { "data_type", "sentence" },
+                { "type", "sentence" },
                 { "weights", weights },
                 { "sentence", tokens },
             };
@@ -78,7 +78,7 @@ namespace visualizable {
             }
 
             return Json::object {
-                { "data_type", "sentences" },
+                { "type", "sentences" },
                 { "weights", weights },
                 { "sentences", sentences_json},
             };
@@ -96,7 +96,7 @@ namespace visualizable {
 
         virtual Json to_json() override {
             return Json::object {
-                { "data_type", "qa"},
+                { "type", "qa"},
                 { "context", context->to_json()},
                 { "question", question->to_json()},
                 { "answer", answer->to_json()},
@@ -114,7 +114,7 @@ namespace visualizable {
 
         virtual Json to_json() override {
             return Json::object {
-                { "data_type", "classifier_example"},
+                { "type", "classifier_example"},
                 { "input", input->to_json()},
                 { "output", output->to_json()},
             };

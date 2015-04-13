@@ -35,7 +35,7 @@ void Visualizer::feed(const json11::Json& obj) {
 
 void Visualizer::feed(const std::string& str) {
     Json str_as_json = Json::object {
-        { "data_type", "report" },
+        { "type", "report" },
         { "data", str },
     };
     feed(str_as_json);

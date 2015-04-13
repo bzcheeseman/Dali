@@ -53,7 +53,7 @@ namespace visualizable {
             return Json::object {
                 { "type", "sentence" },
                 { "weights", weights },
-                { "sentence", tokens },
+                { "words", tokens },
             };
         }
     };
@@ -159,7 +159,7 @@ namespace visualizable {
                 output_labels[iters] = labels[best_index];
             }
             return Json::object {
-                { "data_type", "finite_distribution"},
+                { "type", "finite_distribution"},
                 { "probabilities", output_probs },
                 { "labels", output_labels },
             };

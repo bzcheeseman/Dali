@@ -492,6 +492,7 @@ class LstmBabiModel : public Model {
 
             auto vexample = make_shared<visualizable::ClassifierExample>(vqa, vdistribution);
 
+            // visualizer->feed(vqa->to_json());
             visualizer->feed(vexample->to_json());
         }
 
@@ -652,14 +653,21 @@ MatrixXd run_epoch(const vector<babi::Story>& dataset,
 void visualize_examples(const vector<babi::Story>& data, int num_examples) {
     while(num_examples--) {
         int example = rand()%data.size();
-
+        int question_no = rand()%6;
         babi::StoryParser parser(&data[example]);
         vector<vector<string>> facts_so_far;
         QA* qa;
+        bool example_sent = false;
         while (!parser.done()) {
             std::tie(facts_so_far, qa) = parser.next();
-            model->visualize_example(facts_so_far, qa->question, qa->answer);
-         }
+            if (question_no == 0) {
+                model->visualize_example(facts_so_far, qa->question, qa->answer);
+                example_sent = true;
+                break;
+            }
+            question_no--;
+        }
+        if (!example_sent) ++num_examples;
     }
 
 }
@@ -686,10 +694,14 @@ void train(const vector<babi::Story>& data, shared_ptr<Training> training_method
     double best_validation = run_epoch(validation, &solver, false)(0);
     best_model = std::make_shared<BabiModel>(*model, true, true);
 
+    Throttled example_visualization;
+
     while (true) {
         auto training_errors = run_epoch(train, &solver, true);
         auto validation_errors = run_epoch(validation, &solver, false);
-        visualize_examples(validation, 1);
+        example_visualization.maybe_run(seconds(15), [&validation]() {
+            visualize_examples(validation, 2);
+        });
 
         solver.reset_caches(params);
         std::cout << "Epoch " << ++epoch << std::endl;

@@ -32,29 +32,30 @@ using utils::ConfusionMatrix;
 using utils::assert2;
 
 static const int ADADELTA_TYPE = 0;
-static const int ADAGRAD_TYPE = 1;
-static const int SGD_TYPE = 2;
-static const int ADAM_TYPE = 3;
-static const int RMSPROP_TYPE = 4;
+static const int ADAGRAD_TYPE  = 1;
+static const int SGD_TYPE      = 2;
+static const int ADAM_TYPE     = 3;
+static const int RMSPROP_TYPE  = 4;
 
-typedef float REAL_t;
+typedef double REAL_t;
 typedef Mat<REAL_t> mat;
 
-DEFINE_int32(minibatch,      100,            "What size should be used for the minibatches ?");
-DEFINE_int32(patience,       5,              "How many unimproving epochs to wait through before witnessing progress ?");
-DEFINE_double(dropout,       0.3,            "How much dropout noise to add to the problem ?");
-DEFINE_double(reg,           0.0,            "What penalty to place on L2 norm of weights?");
-DEFINE_bool(fast_dropout,    true,           "Use fast dropout?");
-DEFINE_string(solver,        "adadelta",     "What solver to use (adadelta, sgd, adam)");
-DEFINE_string(test,          "",             "Where is the test set?");
-DEFINE_double(root_weight,   1.0,            "By how much to weigh the roots in the objective function?");
-DEFINE_string(pretrained_vectors, "",        "Load pretrained word vectors?");
-DEFINE_double(learning_rate,      0.01,      "Learning rate for SGD and Adagrad.");
-DEFINE_string(results_file,       "",        "Where to save test performance.");
-DEFINE_string(save_location,      "",        "Where to save test performance.");
-DEFINE_int32(validation_metric,   0,         "Use root (1) or overall (0) objective to choose best validation parameters?");
-DEFINE_double(embedding_learning_rate, -1.0, "A separate learning rate for embedding layer");
-DEFINE_bool(svd_init,             true,      "Initialize weights using SVD?");
+DEFINE_int32(minibatch,           100,        "What size should be used for the minibatches ?");
+DEFINE_int32(patience,            5,          "How many unimproving epochs to wait through before witnessing progress ?");
+DEFINE_double(dropout,            0.3,        "How much dropout noise to add to the problem ?");
+DEFINE_double(reg,                0.0,        "What penalty to place on L2 norm of weights?");
+DEFINE_bool(fast_dropout,         true,       "Use fast dropout?");
+DEFINE_string(solver,             "adadelta", "What solver to use (adadelta, sgd, adam)");
+DEFINE_string(test,               "",         "Where is the test set?");
+DEFINE_double(root_weight,        1.0,        "By how much to weigh the roots in the objective function?");
+DEFINE_string(pretrained_vectors, "",         "Load pretrained word vectors?");
+DEFINE_double(learning_rate,      0.01,       "Learning rate for SGD and Adagrad.");
+DEFINE_string(results_file,       "",         "Where to save test performance.");
+DEFINE_string(save_location,      "",         "Where to save test performance.");
+DEFINE_int32(validation_metric,   0,          "Use root (1) or overall (0) objective to choose best validation parameters?");
+DEFINE_double(embedding_learning_rate, -1.0,  "A separate learning rate for embedding layer");
+DEFINE_bool(svd_init,             true,       "Initialize weights using SVD?");
+DEFINE_bool(average_gradient,     false,      "Error during minibatch should be average or sum of errors.");
 
 ThreadPool* pool;
 
@@ -276,6 +277,9 @@ int main (int argc,  char* argv[]) {
         case ADADELTA_TYPE:
             solver = make_shared<Solver::AdaDelta<REAL_t>>(params, 0.95, 1e-9, 100.0, (REAL_t) FLAGS_reg);
             embedding_solver = make_shared<Solver::AdaDelta<REAL_t>>(embedding_params, 0.95, 1e-9, 100.0, 0.0);
+            dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
+            dynamic_cast<Solver::AdaGrad<REAL_t>*>(embedding_solver.get())->step_size = (
+                FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate);
             break;
         case ADAM_TYPE:
             solver = make_shared<Solver::Adam<REAL_t>>(params, 0.1, 0.001, 1e-9, 100.0, (REAL_t) FLAGS_reg);
@@ -284,6 +288,9 @@ int main (int argc,  char* argv[]) {
         case SGD_TYPE:
             solver = make_shared<Solver::SGD<REAL_t>>(params, 100.0, (REAL_t) FLAGS_reg);
             embedding_solver = make_shared<Solver::SGD<REAL_t>>(embedding_params, 100.0, 0.0);
+            dynamic_cast<Solver::SGD<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
+            dynamic_cast<Solver::SGD<REAL_t>*>(embedding_solver.get())->step_size = (
+                FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate);
             break;
         case ADAGRAD_TYPE:
             solver = make_shared<Solver::AdaGrad<REAL_t>>(params, 1e-9, 100.0, (REAL_t) FLAGS_reg);
@@ -326,7 +333,6 @@ int main (int argc,  char* argv[]) {
                 auto& embedding_params = thread_embedding_params[ThreadPool::get_thread_number()];
                 auto& minibatch        = dataset[batch_id];
                 // many forward steps here:
-                // REAL_t err = 0.0;
                 for (auto & example : minibatch) {
                     auto logprobs = thread_model.decoder->activate(
                         apply_dropout(
@@ -334,26 +340,21 @@ int main (int argc,  char* argv[]) {
                             FLAGS_dropout
                         )
                     );
-                    Mat<REAL_t> error;
-                    error = MatOps<REAL_t>::softmax_cross_entropy(logprobs, std::get<1>(example)) / minibatch.size();
-                    // err += error.w()(0);
-                    // auto error = MatOps<REAL_t>::softmax_cross_entropy(logprobs, std::get<1>(example));
+                    auto error = MatOps<REAL_t>::softmax_cross_entropy(logprobs, std::get<1>(example));
+                    if (FLAGS_average_gradient) {
+                        error = error/ minibatch.size();
+                    }
                     if (std::get<2>(example) && FLAGS_root_weight != 1.0) {
                         error = error * FLAGS_root_weight;
                     }
                     error.grad();
                     graph::backward(); // backpropagate
                 }
-                if (solver_type == ADAGRAD_TYPE) {
-                    dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step(params, FLAGS_learning_rate);
-                    dynamic_cast<Solver::AdaGrad<REAL_t>*>(embedding_solver.get())->step(embedding_params, FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate);
-                } else if (solver_type == SGD_TYPE) {
-                    dynamic_cast<Solver::SGD<REAL_t>*>(solver.get())->step(params, FLAGS_learning_rate);
-                    dynamic_cast<Solver::SGD<REAL_t>*>(embedding_solver.get())->step(embedding_params, FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate);
-                } else {
-                    solver->step(params); // One step of gradient descent
-                    embedding_solver->step(embedding_params);
-                }
+                // One step of gradient descent
+                solver->step(params);
+                // no L2 penalty on embedding:
+                embedding_solver->step(embedding_params);
+                // report minibatch completion to progress bar
                 journalist.tick(++batches_processed, std::get<0>(best_validation_score));
             });
         }
@@ -365,12 +366,13 @@ int main (int argc,  char* argv[]) {
             solver->reset_caches(params);
             embedding_solver->reset_caches(embedding_params);
         }
-        if (!FLAGS_save_location.empty()) {
-            stringstream ss;
-            ss << FLAGS_save_location;
-            ss << "_" << epoch;
-            model.save(ss.str());
-        }
+        // save every epoch?
+        // if (!FLAGS_save_location.empty()) {
+        //     stringstream ss;
+        //     ss << FLAGS_save_location;
+        //     ss << "_" << epoch;
+        //     model.save(ss.str());
+        // }
         if (
             (FLAGS_validation_metric == 0 && std::get<0>(new_validation) + 1e-6 < std::get<0>(best_validation_score)) ||
             (FLAGS_validation_metric == 1 && std::get<1>(new_validation) + 1e-6 < std::get<1>(best_validation_score))
@@ -393,10 +395,14 @@ int main (int argc,  char* argv[]) {
             best_score = (FLAGS_validation_metric == 0) ?
                 std::get<0>(new_validation) :
                 std::get<1>(new_validation);
-            stringstream ss;
-            ss << FLAGS_save_location;
-            ss << "_" << epoch;
-            best_file = ss.str();
+            // save best:
+            if (!FLAGS_save_location.empty()) {
+                // stringstream ss;
+                // ss << FLAGS_save_location;
+                // ss << "_" << epoch;
+                model.save(FLAGS_save_location);
+                best_file = FLAGS_save_location;
+            }
         }
     }
 

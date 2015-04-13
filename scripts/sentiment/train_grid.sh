@@ -50,7 +50,7 @@ BASE_FLAGS="--results_file=${RESULTS_FILE}"
 BASE_FLAGS="${BASE_FLAGS} --validation_metric=1"
 BASE_FLAGS="${BASE_FLAGS} --stack_size=${STACK_SIZE} --patience=${PATIENCE}"
 BASE_FLAGS="${BASE_FLAGS} --epochs=2000 -j=1"
-BASE_FLAGS="${BASE_FLAGS} --fast_dropout --dropout=0.32 --noshortcut"
+BASE_FLAGS="${BASE_FLAGS} --nofast_dropout --noshortcut --noaverage_gradient"
 # use some pretrained vectors:
 # BASE_FLAGS="${BASE_FLAGS} --pretrained_vectors=${VECTOR_FILE}"
 BASE_FLAGS="${BASE_FLAGS} --embedding_learning_rate -1."
@@ -72,18 +72,29 @@ if [ ! -d "$SAVE_FOLDER" ]; then
     mkdir $SAVE_FOLDER
 fi
 
+function pwait() {
+    while [ $(jobs -p | wc -l) -ge $1 ]; do
+        sleep 5
+    done
+}
+
 for hidden in 150
 do
-    for reg in 0.0004 0.001 0.004
+    for dropout in 0.3 0.4 0.5
     do
-        for lr in 0.001 0.004 0.01 0.05 0.1 0.3
+        for reg in 0.0004 0.001
         do
-            # previously saved models are no longer useful for this grid tile
-            if [ ! -d "${SAVE_FOLDER}/model${lr}_${reg}/" ]; then
-                mkdir "${SAVE_FOLDER}/model${lr}_${reg}/"
-            fi
-            rm -rf "${SAVE_FOLDER}/model${lr}_${reg}/*"
-            $PROGRAM $BASE_FLAGS --save_location="${SAVE_FOLDER}/model${lr}_${reg}" --learning_rate $lr --hidden $hidden --minibatch 25 --solver adagrad --reg $reg | tee "${SAVE_FOLDER}/model${lr}_${reg}/progress.txt" &
+            for lr in 0.01 0.015 0.032 0.035 0.04 0.05
+            do
+                # previously saved models are no longer useful for this grid tile
+                if [ ! -d "${SAVE_FOLDER}/model${lr}_${reg}/" ]; then
+                    mkdir "${SAVE_FOLDER}/model${lr}_${reg}/"
+                fi
+                rm -rf "${SAVE_FOLDER}/model${lr}_${reg}/*"
+                $PROGRAM $BASE_FLAGS --dropout $dropout --save_location="${SAVE_FOLDER}/model${lr}_${reg}" --learning_rate $lr --hidden $hidden --minibatch 25 --solver adagrad --reg $reg &
+                pwait $CPU_CORES
+            done
         done
     done
 done
+wait

@@ -527,6 +527,10 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
     std::string dir_parent(const std::string& path, int levels_up = 1);
 
     std::string dir_join(const std::vector<std::string>&);
+
+    template<typename T>
+    std::vector<T> normalize_weights(const std::vector<T>& weights);
+
     /**
     Exit With Message
     -----------------
@@ -677,7 +681,7 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
                 return Iter<T>(this, true);
             }
     };
-
+    void assert2(bool condition);
     void assert2(bool condition, std::string message);
 }
 

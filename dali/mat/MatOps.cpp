@@ -561,6 +561,20 @@ Mat<R> MatOps<R>::softmax_cross_entropy(Mat<R> matrix, uint answer_idx) {
 }
 
 template<typename R>
+Mat<R> MatOps<R>::margin_loss(Mat<R> matrix, uint answer_idx, R margin) {
+    // Exprected input is a column vector
+    assert(answer_idx < matrix.dims(0));
+    assert(matrix.dims(1) == 1);
+    Mat<R> error(1,1);
+    for (int idx = 0; idx < matrix.dims(0); ++idx) {
+        if (idx == answer_idx) continue;
+        error = error + MatOps<R>::max(matrix[idx] - matrix[answer_idx] + margin, 0.0);
+    }
+    return error;
+}
+
+
+template<typename R>
 Mat<R> MatOps<R>::log(Mat<R> matrix) {
     assert(matrix.dims().size() > 1);
     auto out = Mat<R>::empty_like(matrix);

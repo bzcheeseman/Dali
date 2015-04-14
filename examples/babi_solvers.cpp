@@ -36,8 +36,8 @@ using utils::MS;
 
 DEFINE_int32(j, 9, "Number of threads");
 DEFINE_bool(solver_mutex, false, "Synchronous execution of solver step.");
-
-
+DEFINE_bool(margin_loss, false, "Use margin loss instead of cross entropy");
+DEFINE_string(visualizer, "", "What to name the visualization job.");
 // Visualizer
 std::shared_ptr<Visualizer> visualizer;
 
@@ -457,16 +457,27 @@ class LstmBabiModel : public Model {
                                      const vector<string>& correct_answer) {
             graph::NoBackprop nb;
             auto activation = activate_story(facts, question, false);
-            Mat<T> distribution = MatOps<T>::softmax(activation.log_probs);
 
-            std::vector<double> distribution_as_vec;
-
-            for (int i=0; i < distribution.dims(0); ++i) {
-                distribution_as_vec.push_back(distribution.w()(i,0));
+            shared_ptr<visualizable::FiniteDistribution> vdistribution;
+            if (FLAGS_margin_loss) {
+                auto scores = activation.log_probs;
+                std::vector<double> scores_as_vec;
+                for (int i=0; i < scores.dims(0); ++i) {
+                    scores_as_vec.push_back(scores.w()(i,0));
+                }
+                auto distribution_as_vec = utils::normalize_weights(scores_as_vec);
+                vdistribution = make_shared<visualizable::FiniteDistribution>(
+                        distribution_as_vec, scores_as_vec, vocab->index2word);
+            } else {
+                auto distribution = MatOps<T>::softmax(activation.log_probs);
+                std::vector<double> distribution_as_vec;
+                for (int i=0; i < distribution.dims(0); ++i) {
+                    distribution_as_vec.push_back(distribution.w()(i,0));
+                }
+                vdistribution = make_shared<visualizable::FiniteDistribution>(
+                        distribution_as_vec, vocab->index2word);
             }
 
-            auto vdistribution =
-                    make_shared<visualizable::FiniteDistribution>(distribution_as_vec, vocab->index2word);
 
             vector<double> facts_weights;
             vector<visualizable::sentence_ptr> facts_sentences;
@@ -515,7 +526,7 @@ const double LONG_TERM_VALIDATION = 0.02;
 const double SHORT_TERM_VALIDATION = 0.1;
 
 // prediction haz dropout.
-const int PREDICTION_PATIENCE = 100;
+const int PREDICTION_PATIENCE = 200;
 
 const double FACT_SELECTION_LAMBDA_MAX = 3.0;
 const double FACT_WORD_SELECTION_LAMBDA_MAX = 0.0001;
@@ -533,10 +544,13 @@ vector<BabiModel> thread_models;
 MatrixXd errors(StoryActivation<REAL_t> activation,
                 uint answer_idx,
                 vector<int> supporting_facts) {
-
-    auto prediction_error = MatOps<REAL_t>::softmax_cross_entropy(activation.log_probs,
-                                                                  answer_idx);
-
+    Mat<REAL_t> prediction_error;
+    if (FLAGS_margin_loss) {
+        prediction_error = MatOps<REAL_t>::margin_loss(activation.log_probs, answer_idx);
+    } else {
+        prediction_error = MatOps<REAL_t>::softmax_cross_entropy(activation.log_probs,
+                                                                      answer_idx);
+    }
     Mat<REAL_t> fact_selection_error(1,1);
 
     for (int i=0; i<activation.fact_gate_memory.size(); ++i) {
@@ -684,11 +698,15 @@ void train(const vector<babi::Story>& data, shared_ptr<Training> training_method
     int epoch = 0;
 
     auto params = model->parameters();
-
+    bool solver_reset_cache = false;
     // Solver::AdaDelta<T> solver(params, 0.95, 1e-9, 5.0);
-    Solver::AdaGrad<REAL_t> solver(params, 1e-9, 10.0, 1e-6);
+    Solver::AdaGrad<REAL_t> solver(params, 1e-9, 10.0, 1e-9); solver_reset_cache = true;
+    //Solver::Adam<REAL_t> solver(params);
+
+
+
     const int BATCH_SIZE = std::max( (int)data.size() / 20, 2);
-    solver.step_size = 0.1 / BATCH_SIZE;
+    solver.step_size = 0.2 / BATCH_SIZE;
     training_method->reset();
 
     double best_validation = run_epoch(validation, &solver, false)(0);
@@ -699,11 +717,13 @@ void train(const vector<babi::Story>& data, shared_ptr<Training> training_method
     while (true) {
         auto training_errors = run_epoch(train, &solver, true);
         auto validation_errors = run_epoch(validation, &solver, false);
-        example_visualization.maybe_run(seconds(15), [&validation]() {
-            visualize_examples(validation, 2);
-        });
-
-        solver.reset_caches(params);
+        if (!FLAGS_visualizer.empty()) {
+            example_visualization.maybe_run(seconds(5), [&validation]() {
+                visualize_examples(validation, 1);
+            });
+        }
+        if (solver_reset_cache)
+            solver.reset_caches(params);
         std::cout << "Epoch " << ++epoch << std::endl;
         std::cout << "Errors(prob_answer, fact_select, words_sparsity): " << std::endl
                   << "VALIDATION: " << validation_errors(0) << " "
@@ -816,15 +836,16 @@ int main(int argc, char** argv) {
     Eigen::setNbThreads(0);
     Eigen::initParallel();
 
-    visualizer = make_shared<Visualizer>("babi");
+    visualizer = make_shared<Visualizer>(FLAGS_visualizer);
     std::cout << "Number of threads: " << FLAGS_j << (FLAGS_solver_mutex ? "(with solver mutex)" : "") << std::endl;
+    std::cout << "Using " << (FLAGS_margin_loss ? "margin loss" : "cross entropy") << std::endl;
     // grid_search();
     benchmark_task("qa1_single-supporting-fact");
+    benchmark_task("qa4_two-arg-relations");
     // benchmark_all();
 
 
     // benchmark_task("multitasking");
     // benchmark_task("qa16_basic-induction");
-    // benchmark_task("qa4_two-arg-relations");
     // benchmark_task("qa3_three-supporting-facts");
 }

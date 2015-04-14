@@ -1254,6 +1254,25 @@ namespace utils {
         return ss.str();
     }
 
+    template<typename T>
+    std::vector<T> normalize_weights(const std::vector<T>& weights) {
+        T minimum = weights[0];
+        T sum = 0;
+        for (int i=0; i<weights.size(); ++i) {
+            minimum = std::min(minimum, weights[i]);
+            sum += weights[i];
+        }
+        vector<T> res;
+        T normalized_sum = sum - minimum * weights.size();
+        for (int i=0; i<weights.size(); ++i) {
+            res.push_back((weights[i] - minimum) / (normalized_sum));
+        }
+        return res;
+    }
+
+    template vector<float> normalize_weights(const std::vector<float>&);
+    template vector<double> normalize_weights(const std::vector<double>&);
+
     bool vs_equal(const VS& a, const VS& b) {
         if (a.size() != b.size()) return false;
         for (int i=0; i< a.size(); ++i) {
@@ -1382,9 +1401,13 @@ namespace utils {
         timers.clear();
     }
 
+    void assert2(bool condition) {
+        assert2(condition, "");
+    }
+
     void assert2(bool condition, std::string message) {
         if (!condition) {
-            throw std::invalid_argument(message);
+            throw std::runtime_error(message);
         }
     }
 

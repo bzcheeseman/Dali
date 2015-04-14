@@ -1,11 +1,17 @@
 #ifndef DALI_VISUALIZER_VISUALIZER_H
 #define DALI_VISUALIZER_VISUALIZER_H
+
+#include <gflags/gflags.h>
 #include <json11.hpp>
 #include <redox.hpp>
 #include <string>
 
 #include "dali/visualizer/EventQueue.h"
 #include "dali/utils/core_utils.h"
+
+DECLARE_string(visualizer_hostname);
+DECLARE_int32(visualizer_port);
+
 
 // TODO: explain how this works
 namespace visualizable {
@@ -122,14 +128,21 @@ namespace visualizable {
     };
 
     struct FiniteDistribution : public Visualizable {
+        static const std::vector<double> empty_vec;
+
+
         std::vector<double> distribution;
+        std::vector<double> scores;
         std::vector<std::string> labels;
         int num_examples;
 
+
         FiniteDistribution(const std::vector<double>& distribution,
+                           const std::vector<double>& scores,
                            const std::vector<std::string>& labels,
                            int max_examples = 5) :
                 distribution(distribution),
+                scores(scores),
                 labels(labels) {
 
             assert2(labels.size() == distribution.size(),
@@ -138,9 +151,19 @@ namespace visualizable {
 
         }
 
+        FiniteDistribution(const std::vector<double>& distribution,
+                   const std::vector<std::string>& labels,
+                   int max_examples = 5) : FiniteDistribution(distribution,
+                                                              empty_vec,
+                                                              labels,
+                                                              num_examples) {
+        }
+
         virtual Json to_json() override {
             std::vector<std::string> output_labels(num_examples);
             std::vector<double> output_probs(num_examples);
+            std::vector<double> output_scores(num_examples);
+
             // Pick max_examples best answers;
 
             std::vector<bool> taken(distribution.size());
@@ -157,12 +180,23 @@ namespace visualizable {
                 taken[best_index] = true;
                 output_probs[iters] = distribution[best_index];
                 output_labels[iters] = labels[best_index];
+                if (!scores.empty())
+                    output_scores[iters] = scores[best_index];
             }
-            return Json::object {
-                { "type", "finite_distribution"},
-                { "probabilities", output_probs },
-                { "labels", output_labels },
-            };
+            if (scores.empty()) {
+                return Json::object {
+                    { "type", "finite_distribution"},
+                    { "probabilities", output_probs },
+                    { "labels", output_labels },
+                };
+            } else {
+                return Json::object {
+                    { "type", "finite_distribution"},
+                    { "scores", output_scores },
+                    { "probabilities", output_probs },
+                    { "labels", output_labels },
+                };
+            }
         }
     };
 }

@@ -108,6 +108,9 @@ struct MatOps {
     static Mat<R> sigmoid_binary_cross_entropy(Mat<R>, R);
     static Mat<R> cross_entropy(Mat<R>, uint answer_idx);
     static Mat<R> softmax_cross_entropy(Mat<R> matrix, uint answer_idx);
+
+    static Mat<R> margin_loss(Mat<R> matrix, uint answer_idx, R margin=0.1);
+
     static Mat<R> hstack(Mat<R>, Mat<R>);
     static Mat<R> hstack(std::initializer_list<Mat<R>>);
     static Mat<R> hstack(const std::vector<Mat<R>>&);

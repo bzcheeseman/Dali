@@ -38,6 +38,7 @@ DEFINE_int32(j, 9, "Number of threads");
 DEFINE_bool(solver_mutex, false, "Synchronous execution of solver step.");
 DEFINE_bool(margin_loss, false, "Use margin loss instead of cross entropy");
 DEFINE_string(visualizer, "", "What to name the visualization job.");
+DEFINE_int32(batch_size, 100, "How many stories to put in a single batch.");
 // Visualizer
 std::shared_ptr<Visualizer> visualizer;
 
@@ -528,8 +529,8 @@ const double SHORT_TERM_VALIDATION = 0.1;
 // prediction haz dropout.
 const int PREDICTION_PATIENCE = 200;
 
-const double FACT_SELECTION_LAMBDA_MAX = 3.0;
-const double FACT_WORD_SELECTION_LAMBDA_MAX = 0.0001;
+const double FACT_SELECTION_LAMBDA_MAX = 2.0;
+const double FACT_WORD_SELECTION_LAMBDA_MAX = 0.001;
 
 
 
@@ -546,7 +547,7 @@ MatrixXd errors(StoryActivation<REAL_t> activation,
                 vector<int> supporting_facts) {
     Mat<REAL_t> prediction_error;
     if (FLAGS_margin_loss) {
-        prediction_error = MatOps<REAL_t>::margin_loss(activation.log_probs, answer_idx);
+        prediction_error = MatOps<REAL_t>::margin_loss(activation.log_probs, answer_idx, 0.01);
     } else {
         prediction_error = MatOps<REAL_t>::softmax_cross_entropy(activation.log_probs,
                                                                       answer_idx);
@@ -568,6 +569,8 @@ MatrixXd errors(StoryActivation<REAL_t> activation,
     total_error = prediction_error
                 + fact_selection_error * FACT_SELECTION_LAMBDA_MAX
                 + activation.fact_word_sum() * FACT_WORD_SELECTION_LAMBDA_MAX;
+
+    total_error = total_error / FLAGS_batch_size;
 
     total_error.grad();
 
@@ -604,13 +607,12 @@ MatrixXd run_epoch(const vector<babi::Story>& dataset,
         thread_error.back().fill(0);
     }
 
-    const int BATCH_SIZE = std::max( (int)dataset.size() / 20, 2);
 
     auto random_order = utils::random_arange(dataset.size());
     vector<vector<int>> batches;
-    for (int i=0; i<dataset.size(); i+=BATCH_SIZE) {
+    for (int i=0; i<dataset.size(); i+=FLAGS_batch_size) {
         vector<int> batch;
-        for (int j=i; j<std::min(i+BATCH_SIZE, (int)dataset.size()); ++j) {
+        for (int j=i; j<std::min(i+FLAGS_batch_size, (int)dataset.size()); ++j) {
             batch.push_back(random_order[j]);
         }
         batches.push_back(batch);
@@ -699,14 +701,15 @@ void train(const vector<babi::Story>& data, shared_ptr<Training> training_method
 
     auto params = model->parameters();
     bool solver_reset_cache = false;
-    // Solver::AdaDelta<T> solver(params, 0.95, 1e-9, 5.0);
-    Solver::AdaGrad<REAL_t> solver(params, 1e-9, 10.0, 1e-9); solver_reset_cache = true;
-    //Solver::Adam<REAL_t> solver(params);
+
+    //Solver::AdaDelta<REAL_t> solver(params, 0.95, 1e-9, 5.0);
+
+    Solver::Adam<REAL_t> solver(params);
+
+    //Solver::AdaGrad<REAL_t> solver(params, 1e-9, 10.0, 1e-9); solver_reset_cache = true;
+    //AdaGrad: solver.step_size = 0.05 / FLAGS_batch_size;
 
 
-
-    const int BATCH_SIZE = std::max( (int)data.size() / 20, 2);
-    solver.step_size = 0.2 / BATCH_SIZE;
     training_method->reset();
 
     double best_validation = run_epoch(validation, &solver, false)(0);

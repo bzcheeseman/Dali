@@ -156,7 +156,7 @@ namespace visualizable {
                    int max_examples = 5) : FiniteDistribution(distribution,
                                                               empty_vec,
                                                               labels,
-                                                              num_examples) {
+                                                              max_examples) {
         }
 
         virtual Json to_json() override {

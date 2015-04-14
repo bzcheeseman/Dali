@@ -80,9 +80,9 @@ examples/language_model --flagfile ../flags/language_model_simple.flags
 
 That's it. Don't forget to checkout `examples/language_model.cpp`. It's not that scary!
 
-For a more extensive description of usage see the [character model tutorial](CharacterModel.md)
+For a more extensive description of usage see the [character model tutorial](docs/CharacterModel.md)
 
-For a funny example where you teach stacked LSTMs about multiplication, substraction, and addition [check this out](Arithmetic.md).
+For a funny example where you teach stacked LSTMs about multiplication, substraction, and addition [check this out](docs/Arithmetic.md).
 
 ## Installation
 

@@ -39,6 +39,7 @@ DEFINE_bool(solver_mutex, false, "Synchronous execution of solver step.");
 DEFINE_bool(margin_loss, false, "Use margin loss instead of cross entropy");
 DEFINE_string(visualizer, "", "What to name the visualization job.");
 DEFINE_int32(batch_size, 100, "How many stories to put in a single batch.");
+DEFINE_double(margin, 0.1, "Margin for margine loss (must use --margin_loss).");
 // Visualizer
 std::shared_ptr<Visualizer> visualizer;
 
@@ -547,7 +548,7 @@ MatrixXd errors(StoryActivation<REAL_t> activation,
                 vector<int> supporting_facts) {
     Mat<REAL_t> prediction_error;
     if (FLAGS_margin_loss) {
-        prediction_error = MatOps<REAL_t>::margin_loss(activation.log_probs, answer_idx, 0.01);
+        prediction_error = MatOps<REAL_t>::margin_loss(activation.log_probs, answer_idx, FLAGS_margin);
     } else {
         prediction_error = MatOps<REAL_t>::softmax_cross_entropy(activation.log_probs,
                                                                       answer_idx);

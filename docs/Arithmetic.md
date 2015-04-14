@@ -141,6 +141,27 @@ utils::Vocab vocab(
 );
 ```
 
+Finally we convert our examples into indices using the vocabulary
+as reference:
+
+```cpp
+auto char_examples = generate_examples(200);
+
+vector<pair<vector<uint>, vector<uint>>> examples(char_examples.size());
+{
+    for (size_t i = 0; i < char_examples.size();i++) {
+        examples[i].first  = vocab.transform(
+            char_examples[i].first, // words to convert
+            true                    // add end token
+        );
+        examples[i].second = vocab.transform(
+            char_examples[i].second, // words to convert
+            true                     // add end token
+        );
+    }
+}
+```
+
 ### Construct Model
 
 Here are some Stacked LSTMs like those used in [Wojciech Zaremba, and Ilya Sutskever's "Learning to Execute"](http://arxiv.org/abs/1410.4615):
@@ -178,11 +199,140 @@ auto activation = model.activate(
 
 ### Create an objective function
 
-Coming soon
+The model we are constructed must report character by character the result of the computation. To do this we train the output sequence to match the correct sequence of characters and penalize the Kullback-Leibler divergence between the character distribution provided by the model and the true character expected.
+
+
+#### 1. Feed the example to model
+
+```cpp
+void get_error(
+        StackedModel<REAL_t>& model,
+        pair<vector<uint>, vector<uint>>& example) {
+
+    // initialize cell and hidden activations of LSTM to zeros:
+    auto state = model.initial_states();
+
+    // loop through input characters, while ignoring the
+    // model's predictions, and keeping track of the
+    // internal state of the model
+    Mat<REAL_t> input_vector;
+    for (auto& c : example.first) {
+        // pick character's embedding:
+        input_vector = model.embedding[c];
+        // pass it to the model
+        state = model.stacked_lstm->activate(
+            initstateial_state,
+            input_vector
+        );
+    }
+```
+
+#### 2. Make predictions:
+
+The `state` of the LSTM is now supposed to contain
+all the necessary information to output the correct
+characters to complete the equation.
+
+To train such a system we compute the cross entropy
+between the LSTM decoder's output and the target
+distribution. We pass all the hidden states of our
+network as inputs to the decoder using
+`LSTM<REAL_t>::State::hiddens(state)`:
+
+```cpp
+auto error = MatOps<REAL_t>::softmax_cross_entropy(
+    model.decoder->activate(
+        input_vector,
+        LSTM<REAL_t>::State::hiddens(state)
+    ),
+    example.second.front()
+);
+```
+
+For every remaining character in the target we can
+now pass in as input the characters we **actually**
+wanted to have predicted, and penalize the system's
+output conditioned on those correct inputs (Note: we
+loop only until the before last element since our
+system must discover when to stop predicting on its
+own by predicting a special **end** token; more on
+this later).
+
+```cpp
+for (auto label_ptr = example.second.begin(); label_ptr < example.second.end() -1; label_ptr++) {
+    // read the correct prediction in
+    input_vector = model.embedding[*label_ptr];
+    state = model.stacked_lstm->activate(
+        state,
+        input_vector
+    );
+    // sum the errors at each step
+    error = error + MatOps<REAL_t>::softmax_cross_entropy(
+        model.decoder->activate(
+            input_vector,
+            LSTM<REAL_t>::State::hiddens(state)
+        ),
+        *(label_ptr+1)
+    );
+}
+```
+
+#### 3. Backpropagation
+
+We have now collected the error for this example. We can
+now ask our network to correct its weights accordingly
+using Paul Werbos' [backpropagation algorithm](http://deeplearning.cs.cmu.edu/pdfs/Werbos.backprop.pdf):
+
+```cpp
+// add to objective function
+error.grad();
+// backpropagate
+graph::backward();
+
+} // </get_error>
+```
+
+The network's parameters now contain the gradients needed for
+improvement.
 
 ### Train
 
-Coming soon
+Our objective function describes the current error our network
+is making. Using backpropagation we were able to obtain a gradient
+for the weights controlling the network that will reduce the error.
+
+To apply those updates to our weights we use an optimizer that controls
+our gradient descent. There are many different optimizers to choose from. Here we use [Adadelta](http://arxiv.org/abs/1212.5701) to simplify the number of hyperparameters to tune:
+
+```cpp
+auto solver = Solver::AdaDelta<REAL_t>>(
+    params, // what to train
+    0.95,   // rho value (controls AdaDelta)
+    1e-9,   // epsilon to avoid division by zero
+    100.0,  // clip gradients larger than this
+    1e-5    // L2 penalty on weights
+)
+```
+
+We can now loop through our examples, collecting gradient updates,
+and finally call `step` on the solver to apply updates to our weights:
+
+```cpp
+int epoch      = 0;
+int max_epochs = 300;
+while (epoch < 300) {
+    auto indices = utils::random_arange(examples.size());
+    auto indices_begin = indices.begin();
+
+    // one minibatch
+    for (auto indices_begin = indices.begin(); indices_begin < indices.begin() + std::min((size_t)FLAGS_minibatch, examples.size()); indices_begin++) {
+        get_error(model, examples[*indices_begin]);
+    }
+    // One step of gradient descent
+    solver.step(params);
+    epoch++;
+}
+```
 
 ### Output beam search predictions
 

@@ -139,7 +139,7 @@ class LolGate : public AbstractLayer<T> {
             combinator(input1, input2, second_order_terms) {
     }
 
-    LolGate (const LolGate<T>& other, bool copy_w, bool copy_dw) :
+    LolGate(const LolGate<T>& other, bool copy_w, bool copy_dw) :
             input1(other.input1),
             input2(other.input2),
             second_order_terms(other.second_order_terms),

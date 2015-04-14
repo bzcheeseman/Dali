@@ -219,9 +219,11 @@ int main (int argc,  char* argv[]) {
     } else if (FLAGS_solver == "sgd") {
         solver = make_shared<Solver::SGD<REAL_t>>(params, 100.0, (REAL_t) FLAGS_reg);
         solver_type = SGD_TYPE;
+        dynamic_cast<Solver::SGD<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
     } else if (FLAGS_solver == "adagrad") {
         solver = make_shared<Solver::AdaGrad<REAL_t>>(params, 1e-9, 100.0, (REAL_t) FLAGS_reg);
         solver_type = ADAGRAD_TYPE;
+        dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
     } else {
         utils::exit_with_message("Did not recognize this solver type.");
     }
@@ -308,15 +310,13 @@ int main (int argc,  char* argv[]) {
             graph::backward();
             minibatch_error += error.w()(0);
             // </training>
-
-            // REPORTING
+            // <reporting>
             throttled1.maybe_run(seconds(2), [&]() {
                 auto random_example_index = utils::randint(0, examples.size() -1);
                 auto beams = beam_search::beam_search(model,
                     numerical_examples[random_example_index].first,
                     20,
-                    0,  // offset symbols that are predicted
-                        // before being refed (no = 0)
+                    0,  // offset symbols that are predicted before being refed (no = 0)
                     5,
                     vocab.word2index.at(utils::end_symbol) // when to stop the sequence
                 );
@@ -335,22 +335,12 @@ int main (int argc,  char* argv[]) {
             });
             throttled2.maybe_run(seconds(30), [&]() {
                 std::cout << "epoch: " << epoch << " Percent correct = " << std::setprecision( 3 )  << 100.0 * num_correct(
-                    model,
-                    numerical_examples,
-                    5,
-                    vocab.word2index.at(utils::end_symbol)
+                    model, numerical_examples, 5, vocab.word2index.at(utils::end_symbol)
                 ) << "%" << std::endl;
             });
+            // </reporting>
         }
-        if (solver_type == ADAGRAD_TYPE) {
-            dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step(params, FLAGS_learning_rate);
-        } else if (solver_type == SGD_TYPE) {
-            dynamic_cast<Solver::SGD<REAL_t>*>(solver.get())->step(params, FLAGS_learning_rate);
-        } else {
-            solver->step(params); // One step of gradient descent
-        }
+        solver->step(params); // One step of gradient descent
         epoch++;
     }
-
-
 }

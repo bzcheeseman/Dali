@@ -1,6 +1,8 @@
 # Dali
 
-This is an reimagination of [Andrej Kaparthy](http://cs.stanford.edu/people/karpathy/)'s [recurrentJS](http://cs.stanford.edu/people/karpathy/recurrentjs/) ([Github](https://github.com/karpathy/recurrentjs)) in C++. It has similar API names but the backbones are using **Eigen** and C++11's standard library. This automatic differentiation library uses reverse-mode differentation (backpropgation) which allows it to differentiate mathematical expressions but also through control flow, while loops, recursion.
+An automatic differentiation library that uses reverse-mode differentation (backpropgation) to differentiate recurrent neural networks, but also mathematical expressions through control flow, while loops, recursion.
+
+This is an reimagination of [Andrej Kaparthy](http://cs.stanford.edu/people/karpathy/)'s [recurrentJS](http://cs.stanford.edu/people/karpathy/recurrentjs/) ([Github](https://github.com/karpathy/recurrentjs)) in C++. It has similar API names but the backbones are using **Eigen** and C++11's standard library.
 
 @authors **Jonathan Raiman** and **Szymon Sidor**
 
@@ -15,7 +17,7 @@ This is an reimagination of [Andrej Kaparthy](http://cs.stanford.edu/people/karp
 
 ### Why ?
 
-While there are existing great automatic differentiation libraries, a fast simple multithreaded compile-less version is missing. Hogwild-style training can provide huge speedups when training data-parallel model in stochastic gradient descent situations, but Torch and Theano do not provide a way of doing this yet (*easily*).
+While there are existing great automatic differentiation libraries, a fast simple **multithreaded** **compile-less** version is missing. Hogwild-style training provides huge speedups in data-parallel model training, and so far Torch and Theano do not provide an accessible way of achieving this.
 
 ## Usage
 
@@ -203,9 +205,9 @@ auto sorted_lengths = utils::argsort(lengths);
 
 ### Future steps
 
-* Switching matrix backend from **Eigen** to **[MatrixShadow](https://github.com/dmlc/mshadow)**.
-* Adding ImageNet and broader convolutional network support (currently supports `conv2d` and `conv1d`, but no pooling yet)
-* Web interface for visualization of progress and reporting.
+* Switch matrix backend from **Eigen** to **[MatrixShadow](https://github.com/dmlc/mshadow)**.
+* Add ImageNet and broader convolutional NN support (today Dali supports `conv2d` and `conv1d`, but no pooling yet)
+* Web interface for launching experiments (today [Dali-visualizer](https://github.com/JonathanRaiman/dali-visualizer) only shows progress and sample predictions)
 
 ## Additional Notes
 

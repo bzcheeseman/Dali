@@ -33,11 +33,12 @@ using Eigen::MatrixXd;
 using std::chrono::seconds;
 using utils::assert2;
 using utils::MS;
+using std::to_string;
 
 DEFINE_int32(j, 9, "Number of threads");
 DEFINE_bool(solver_mutex, false, "Synchronous execution of solver step.");
 DEFINE_bool(margin_loss, false, "Use margin loss instead of cross entropy");
-DEFINE_string(visualizer, "", "What to name the visualization job.");
+DEFINE_string(visualizer, "experiment", "What to name the visualization job.");
 DEFINE_int32(batch_size, 100, "How many stories to put in a single batch.");
 DEFINE_double(margin, 0.1, "Margin for margine loss (must use --margin_loss).");
 // Visualizer
@@ -840,7 +841,26 @@ int main(int argc, char** argv) {
     Eigen::setNbThreads(0);
     Eigen::initParallel();
 
-    visualizer = make_shared<Visualizer>(FLAGS_visualizer);
+    int increment = 0;
+    while (true) {
+        try {
+            if (increment == 0) {
+                visualizer = make_shared<Visualizer>(FLAGS_visualizer);
+            } else {
+                visualizer = make_shared<Visualizer>(FLAGS_visualizer + "_" + to_string(increment));
+            }
+        } catch (Visualizer::duplicate_name_error e) {
+            std::cout << "Duplicate Visualizer name : \"" << FLAGS_visualizer;
+            if (increment > 0) {
+                std::cout << "_" << increment;
+            }
+            std::cout << "\". Retrying with \"" << FLAGS_visualizer << "_" << to_string(increment + 1) << "\"" << std::endl;
+            increment++;
+            continue;
+        }
+        break;
+    }
+
     std::cout << "Number of threads: " << FLAGS_j << (FLAGS_solver_mutex ? "(with solver mutex)" : "") << std::endl;
     std::cout << "Using " << (FLAGS_margin_loss ? "margin loss" : "cross entropy") << std::endl;
     // grid_search();

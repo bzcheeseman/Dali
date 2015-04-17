@@ -214,6 +214,11 @@ class Visualizer {
         bool connected = false;
 
     public:
+        class duplicate_name_error : public std::runtime_error {
+            public:
+                explicit duplicate_name_error(const std::string& what_arg);
+                explicit duplicate_name_error(const char* what_arg);
+        };
         Visualizer(std::string my_namespace, std::shared_ptr<redox::Redox> rdx=nullptr);
         void feed(const json11::Json& obj);
         void feed(const std::string& str);

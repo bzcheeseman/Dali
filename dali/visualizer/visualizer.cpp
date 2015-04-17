@@ -30,11 +30,12 @@ Visualizer::Visualizer(std::string my_namespace, std::shared_ptr<redox::Redox> o
         throw std::runtime_error("VISUALIZER ERROR: can't connect to redis.");
         return;
     }
+    std::cout << "my_namespace = " << this->my_namespace << std::endl;
     std::string namespace_key = MS() << "namespace_" << this->my_namespace;
     auto& key_exists = rdx->commandSync<int>({"EXISTS", namespace_key});
     assert(key_exists.ok());
     if (key_exists.reply() == 1) {
-        throw std::runtime_error(MS() << "VISUALIZER ERROR: visualizer name already in use: " << my_namespace);
+        throw Visualizer::duplicate_name_error(MS() << "VISUALIZER ERROR: visualizer name already in use: " << my_namespace);
     }
     key_exists.free();
     // then we ping the visualizer regularly:
@@ -57,3 +58,7 @@ void Visualizer::feed(const std::string& str) {
     };
     feed(str_as_json);
 }
+
+Visualizer::duplicate_name_error::duplicate_name_error(const std::string& what_arg) : std::runtime_error(what_arg) {}
+Visualizer::duplicate_name_error::duplicate_name_error(const char* what_arg) : std::runtime_error(what_arg) {}
+

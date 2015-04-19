@@ -11,8 +11,9 @@ DEFINE_int32(visualizer_port, 6379, "Default port to be used by visualizer.");
 namespace visualizable {
     const std::vector<double> FiniteDistribution::empty_vec;
 }
+Visualizer::Visualizer(std::string my_namespace, std::shared_ptr<redox::Redox> other_rdx) : Visualizer(my_namespace, false, other_rdx) {}
 
-Visualizer::Visualizer(std::string my_namespace, std::shared_ptr<redox::Redox> other_rdx):
+Visualizer::Visualizer(std::string my_namespace, bool rename_if_needed, std::shared_ptr<redox::Redox> other_rdx) :
         my_namespace(my_namespace) {
     if(!other_rdx) {
         // if no redox connection was passed we create
@@ -30,14 +31,49 @@ Visualizer::Visualizer(std::string my_namespace, std::shared_ptr<redox::Redox> o
         throw std::runtime_error("VISUALIZER ERROR: can't connect to redis.");
         return;
     }
+
     std::cout << "my_namespace = " << this->my_namespace << std::endl;
     std::string namespace_key = MS() << "namespace_" << this->my_namespace;
     auto& key_exists = rdx->commandSync<int>({"EXISTS", namespace_key});
     assert(key_exists.ok());
-    if (key_exists.reply() == 1) {
-        throw Visualizer::duplicate_name_error(MS() << "VISUALIZER ERROR: visualizer name already in use: " << my_namespace);
-    }
+    bool taken = key_exists.reply() == 1;
     key_exists.free();
+    if (taken) {
+        if (rename_if_needed) {
+            int increment = 1;
+            if (!other_rdx) {
+                std::cout << "Duplicate Visualizer name : \"" << this->my_namespace
+                          << "\". Retrying with \"" << this->my_namespace << "_" << increment << "\"" << std::endl;
+            }
+            // iterate until a suitable name is found
+            while (true) {
+                if (increment > 500) {
+                    throw Visualizer::duplicate_name_error(MS() << "VISUALIZER ERROR: visualizer name already in use: " << my_namespace);
+                }
+                namespace_key = MS() << "namespace_" << this->my_namespace << "_" << increment;
+                auto& alternate_key_exists = rdx->commandSync<int>({"EXISTS", namespace_key});
+                assert(alternate_key_exists.ok());
+                taken = alternate_key_exists.reply() == 1;
+                alternate_key_exists.free();
+                if (taken) {
+                    if (!other_rdx) {
+                        std::cout << "Duplicate Visualizer name : \"" << this->my_namespace  << "_" << increment
+                                  << "\". Retrying with \"" << this->my_namespace << "_" << increment + 1 << "\"" << std::endl;
+                    }
+                    increment++;
+                    continue;
+                } else {
+                    // make note of new namespace:
+                    this->my_namespace = MS() << "_" << increment;
+                    break;
+                }
+            }
+        } else {
+            // give up immediately on renaming
+            // and throw duplicate name error:
+            throw Visualizer::duplicate_name_error(MS() << "VISUALIZER ERROR: visualizer name already in use: " << my_namespace);
+        }
+    }
     // then we ping the visualizer regularly:
     pinging = eq.run_every([this, namespace_key]() {
         if (!connected) return;

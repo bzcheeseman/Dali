@@ -842,24 +842,7 @@ int main(int argc, char** argv) {
     Eigen::initParallel();
 
     int increment = 0;
-    while (true) {
-        try {
-            if (increment == 0) {
-                visualizer = make_shared<Visualizer>(FLAGS_visualizer);
-            } else {
-                visualizer = make_shared<Visualizer>(FLAGS_visualizer + "_" + to_string(increment));
-            }
-        } catch (Visualizer::duplicate_name_error e) {
-            std::cout << "Duplicate Visualizer name : \"" << FLAGS_visualizer;
-            if (increment > 0) {
-                std::cout << "_" << increment;
-            }
-            std::cout << "\". Retrying with \"" << FLAGS_visualizer << "_" << to_string(increment + 1) << "\"" << std::endl;
-            increment++;
-            continue;
-        }
-        break;
-    }
+    visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
 
     std::cout << "Number of threads: " << FLAGS_j << (FLAGS_solver_mutex ? "(with solver mutex)" : "") << std::endl;
     std::cout << "Using " << (FLAGS_margin_loss ? "margin loss" : "cross entropy") << std::endl;

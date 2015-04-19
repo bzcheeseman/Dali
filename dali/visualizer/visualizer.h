@@ -220,6 +220,8 @@ class Visualizer {
                 explicit duplicate_name_error(const char* what_arg);
         };
         Visualizer(std::string my_namespace, std::shared_ptr<redox::Redox> rdx=nullptr);
+        Visualizer(std::string my_namespace, bool rename_if_needed, std::shared_ptr<redox::Redox> rdx=nullptr);
+
         void feed(const json11::Json& obj);
         void feed(const std::string& str);
 };

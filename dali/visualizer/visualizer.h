@@ -4,204 +4,96 @@
 #include <gflags/gflags.h>
 #include <json11.hpp>
 #include <redox.hpp>
+#include <memory>
 #include <string>
 
 #include "dali/visualizer/EventQueue.h"
 #include "dali/utils/core_utils.h"
+#include "dali/mat/Mat.h"
 
 DECLARE_string(visualizer_hostname);
 DECLARE_int32(visualizer_port);
 
-
-// TODO: explain how this works
+// TODO: Szymon explain how this works
 namespace visualizable {
-    struct Visualizable;
-    struct Sentence;
-    struct Sentences;
-    struct QA;
-    struct ClassifierExample;
-
-    typedef std::shared_ptr<Visualizable> visualizable_ptr;
-    typedef std::shared_ptr<Sentence> sentence_ptr;
-    typedef std::shared_ptr<Sentences> sentences_ptr;
-    typedef std::shared_ptr<ClassifierExample> classifier_example_ptr;
-
-    namespace {
-        using json11::Json;
-        using utils::assert2;
-
-        std::vector<sentence_ptr> sentence_vector(const std::vector<std::vector<std::string>>& vec) {
-            std::vector<sentence_ptr> res;
-            for (auto& sentence: vec) {
-                res.push_back(std::make_shared<Sentence>(sentence));
-            }
-            return res;
-        }
-
-    }
 
     struct Visualizable {
-        virtual Json to_json() = 0;
+        virtual json11::Json to_json() = 0;
     };
 
+    template<typename R>
     struct Sentence : public Visualizable {
         std::vector<std::string> tokens;
-        std::vector<double> weights;
+        std::vector<R> weights;
 
-        Sentence(std::vector<std::string> tokens) : tokens(tokens) {
-        }
+        Sentence(std::vector<std::string> tokens);
 
-        void set_weights(const std::vector<double>& _weights) {
-            weights = _weights;
-        }
+        void set_weights(const std::vector<R>& _weights);
+        void set_weights(const Mat<R>& _weights);
 
-        virtual Json to_json() override {
-            return Json::object {
-                { "type", "sentence" },
-                { "weights", weights },
-                { "words", tokens },
-            };
-        }
+        virtual json11::Json to_json() override;
     };
 
+    template<typename R>
+    std::vector<std::shared_ptr<Sentence<R>>> sentence_vector(const std::vector<std::vector<std::string>>& vec);
+
+    template<typename R>
     struct Sentences : public Visualizable {
+        typedef std::shared_ptr<Sentence<R>> sentence_ptr;
         std::vector<sentence_ptr> sentences;
-        std::vector<double> weights;
+        std::vector<R> weights;
 
-        Sentences(std::vector<sentence_ptr> sentences) : sentences(sentences) {
-        }
-        Sentences(std::vector<std::vector<std::string>> vec) : sentences(sentence_vector(vec)) {
-        }
+        Sentences(std::vector<sentence_ptr> sentences);
+        Sentences(std::vector<std::vector<std::string>> vec);
 
-        void set_weights(const std::vector<double>& _weights) {
-            weights = _weights;
-        }
+        void set_weights(const std::vector<R>& _weights);
+        void set_weights(const Mat<R>& _weights);
 
-        virtual Json to_json() override {
-            std::vector<Json> sentences_json;
-            for (auto& sentence: sentences) {
-                sentences_json.push_back(sentence->to_json());
-            }
-
-            return Json::object {
-                { "type", "sentences" },
-                { "weights", weights },
-                { "sentences", sentences_json},
-            };
-        }
+        virtual json11::Json to_json() override;
     };
 
+    template<typename R>
     struct QA : public Visualizable {
+        typedef std::shared_ptr<Sentence<R>> sentence_ptr;
+        typedef std::shared_ptr<Visualizable> visualizable_ptr;
         visualizable_ptr context;
         sentence_ptr question;
         sentence_ptr answer;
 
-        QA(visualizable_ptr context, sentence_ptr question, sentence_ptr answer) :
-                context(context), question(question), answer(answer) {
-        }
+        QA(visualizable_ptr context, sentence_ptr question, sentence_ptr answer);
 
-        virtual Json to_json() override {
-            return Json::object {
-                { "type", "qa"},
-                { "context", context->to_json()},
-                { "question", question->to_json()},
-                { "answer", answer->to_json()},
-            };
-        }
+        virtual json11::Json to_json() override;
     };
 
     struct ClassifierExample : public Visualizable {
+        typedef std::shared_ptr<Visualizable> visualizable_ptr;
+
         visualizable_ptr input;
         visualizable_ptr output;
 
-        ClassifierExample(visualizable_ptr input, visualizable_ptr output) :
-                input(input), output(output) {
-        }
+        ClassifierExample(visualizable_ptr input, visualizable_ptr output);
 
-        virtual Json to_json() override {
-            return Json::object {
-                { "type", "classifier_example"},
-                { "input", input->to_json()},
-                { "output", output->to_json()},
-            };
-        }
+        virtual json11::Json to_json() override;
     };
 
+    template<typename R>
     struct FiniteDistribution : public Visualizable {
-        static const std::vector<double> empty_vec;
-
-
-        std::vector<double> distribution;
-        std::vector<double> scores;
+        static const std::vector<R> empty_vec;
+        std::vector<R> distribution;
+        std::vector<R> scores;
         std::vector<std::string> labels;
         int top_picks;
 
-
-        FiniteDistribution(const std::vector<double>& distribution,
-                           const std::vector<double>& scores,
+        FiniteDistribution(const std::vector<R>& distribution,
+                           const std::vector<R>& scores,
                            const std::vector<std::string>& labels,
-                           int max_top_picks = -1) :
-                distribution(distribution),
-                scores(scores),
-                labels(labels) {
+                           int max_top_picks = -1);
 
-            assert2(labels.size() == distribution.size(),
-                    "FiniteDistribution visualizer: sizes of labels and distribution differ");
-            if (max_top_picks > 0) {
-                top_picks = std::min(max_top_picks, (int)distribution.size());
-            } else {
-                top_picks = distribution.size();
-            }
+        FiniteDistribution(const std::vector<R>& distribution,
+               const std::vector<std::string>& labels,
+               int max_top_picks = -1);
 
-        }
-
-        FiniteDistribution(const std::vector<double>& distribution,
-                   const std::vector<std::string>& labels,
-                   int max_top_picks = -1) : FiniteDistribution(distribution,
-                                                              empty_vec,
-                                                              labels,
-                                                              max_top_picks) {
-        }
-
-        virtual Json to_json() override {
-            std::vector<std::string> output_labels(top_picks);
-            std::vector<double> output_probs(top_picks);
-            std::vector<double> output_scores(top_picks);
-
-            // Pick top k best answers;
-
-            std::vector<bool> taken(distribution.size());
-            for(int idx = 0; idx < distribution.size(); ++idx) taken[idx] = false;
-
-            for(int iters = 0; iters < top_picks; ++iters) {
-                int best_index = -1;
-                for (int i=0; i < distribution.size(); ++i) {
-                    if (taken[i]) continue;
-                    if (best_index == -1 || distribution[i] > distribution[best_index]) best_index = i;
-                }
-                assert2(best_index != -1, "Szymon fucked up");
-
-                taken[best_index] = true;
-                output_probs[iters] = distribution[best_index];
-                output_labels[iters] = labels[best_index];
-                if (!scores.empty())
-                    output_scores[iters] = scores[best_index];
-            }
-            if (scores.empty()) {
-                return Json::object {
-                    { "type", "finite_distribution"},
-                    { "probabilities", output_probs },
-                    { "labels", output_labels },
-                };
-            } else {
-                return Json::object {
-                    { "type", "finite_distribution"},
-                    { "scores", output_scores },
-                    { "probabilities", output_probs },
-                    { "labels", output_labels },
-                };
-            }
-        }
+        virtual json11::Json to_json() override;
     };
 }
 

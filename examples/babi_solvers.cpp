@@ -461,7 +461,7 @@ class LstmBabiModel : public Model {
             graph::NoBackprop nb;
             auto activation = activate_story(facts, question, false);
 
-            shared_ptr<visualizable::FiniteDistribution> vdistribution;
+            shared_ptr<visualizable::FiniteDistribution<T>> vdistribution;
             if (FLAGS_margin_loss) {
                 auto scores = activation.log_probs;
                 std::vector<double> scores_as_vec;
@@ -469,7 +469,7 @@ class LstmBabiModel : public Model {
                     scores_as_vec.push_back(scores.w()(i,0));
                 }
                 auto distribution_as_vec = utils::normalize_weights(scores_as_vec);
-                vdistribution = make_shared<visualizable::FiniteDistribution>(
+                vdistribution = make_shared<visualizable::FiniteDistribution<T>>(
                         distribution_as_vec, scores_as_vec, vocab->index2word);
             } else {
                 auto distribution = MatOps<T>::softmax(activation.log_probs);
@@ -477,15 +477,15 @@ class LstmBabiModel : public Model {
                 for (int i=0; i < distribution.dims(0); ++i) {
                     distribution_as_vec.push_back(distribution.w()(i,0));
                 }
-                vdistribution = make_shared<visualizable::FiniteDistribution>(
+                vdistribution = make_shared<visualizable::FiniteDistribution<T>>(
                         distribution_as_vec, vocab->index2word);
             }
 
 
             vector<double> facts_weights;
-            vector<visualizable::sentence_ptr> facts_sentences;
+            vector<std::shared_ptr<visualizable::Sentence<T>>> facts_sentences;
             for (int fidx=0; fidx < facts.size(); ++fidx) {
-                auto vfact = make_shared<visualizable::Sentence>(facts[fidx]);
+                auto vfact = make_shared<visualizable::Sentence<T>>(facts[fidx]);
 
                 vector<double> words_weights;
 
@@ -497,12 +497,12 @@ class LstmBabiModel : public Model {
                 facts_weights.push_back(activation.fact_gate_memory[fidx].w()(0,0));
             }
 
-            auto vcontext = make_shared<visualizable::Sentences>(facts_sentences);
+            auto vcontext = make_shared<visualizable::Sentences<T>>(facts_sentences);
             vcontext->set_weights(facts_weights);
-            auto vquestion = make_shared<visualizable::Sentence>(question);
-            auto vanswer = make_shared<visualizable::Sentence>(correct_answer);
+            auto vquestion = make_shared<visualizable::Sentence<T>>(question);
+            auto vanswer = make_shared<visualizable::Sentence<T>>(correct_answer);
 
-            auto vqa = make_shared<visualizable::QA>(vcontext, vquestion, vanswer);
+            auto vqa = make_shared<visualizable::QA<T>>(vcontext, vquestion, vanswer);
 
             auto vexample = make_shared<visualizable::ClassifierExample>(vqa, vdistribution);
 

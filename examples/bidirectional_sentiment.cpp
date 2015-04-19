@@ -666,16 +666,13 @@ int main (int argc,  char* argv[]) {
                             std::get<0>(model_out).w().data() + std::get<0>(model_out).dims(0));
 
                         // store sentence memory & tokens:
-                        Json::object sentence = {
-                            { "type", "sentence" },
-                            { "weights", sentence_memory },
-                            { "words", word_vocab.decode(example) },
-                        };
+                        auto sentence = visualizable::Sentence<REAL_t>(word_vocab.decode(example));
+                        sentence.set_weights(std::get<0>(model_out));
 
                         // store sentence as input + distribution as output:
                         Json::object json_example = {
                             { "type", "classifier_example"},
-                            { "input", sentence},
+                            { "input", sentence.to_json()},
                             { "output",  utils::json_finite_distribution(std::get<1>(model_out), SST::label_names) },
                         };
 

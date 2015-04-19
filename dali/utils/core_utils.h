@@ -110,7 +110,8 @@ namespace utils {
                     std::map<std::string, ind_t> word2index;
                     str_sequence index2word;
 
-                    std::vector<ind_t> transform(const str_sequence& words, bool with_end_symbol = false) const;
+                    std::vector<ind_t> encode(const str_sequence& words, bool with_end_symbol = false) const;
+                    std::vector<std::string> decode(const std::vector<ind_t>&) const;
 
                     // create vocabulary from many vectors of words. Vectors do not
                     // need to contain unique words. They need not be sorted.

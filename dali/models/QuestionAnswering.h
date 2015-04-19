@@ -123,11 +123,11 @@ class AveragingModel {
                     text.emplace_back(token);
                 }
             }
-            Mat<R> text_repr     = average_embeddings(vocab->transform(text),
+            Mat<R> text_repr     = average_embeddings(vocab->encode(text),
                     SEPARATE_EMBEDDINGS ? text_embedding : embedding);
-            Mat<R> question_repr = average_embeddings(vocab->transform(question),
+            Mat<R> question_repr = average_embeddings(vocab->encode(question),
                     SEPARATE_EMBEDDINGS ? question_embedding : embedding);
-            Mat<R> answer_repr   = average_embeddings(vocab->transform(answer),
+            Mat<R> answer_repr   = average_embeddings(vocab->encode(answer),
                     SEPARATE_EMBEDDINGS ? answer_embedding : embedding);
 
             Mat<R> hidden = words_repr_to_hidden.activate({text_repr,
@@ -380,7 +380,7 @@ class GatedLstmsModel {
 
         vector<Mat<R>> get_embeddings(const vector<string>& words) {
             vector<Mat<R>> seq;
-            auto idxes = vocab->transform(words);
+            auto idxes = vocab->encode(words);
             for (auto& idx: idxes) {
                 auto embedding = embeddings[idx];
                 seq.push_back(embedding);

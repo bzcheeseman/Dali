@@ -12,6 +12,7 @@
 #include "dali/data_processing/Glove.h"
 #include "dali/models/StackedModel.h"
 #include "dali/models/StackedGatedModel.h"
+#include "dali/visualizer/visualizer.h"
 
 using std::vector;
 using std::make_shared;
@@ -28,6 +29,7 @@ using std::chrono::seconds;
 using SST::Databatch;
 using utils::ConfusionMatrix;
 using utils::assert2;
+using json11::Json;
 
 static int ADADELTA_TYPE = 0;
 static int ADAGRAD_TYPE = 1;
@@ -52,6 +54,7 @@ DEFINE_bool(convolution,     false,      "Perform a convolution before passing t
 DEFINE_int32(filters,        50,         "Number of filters to use for Convolution");
 DEFINE_string(pretrained_vectors, "",    "Load pretrained word vectors?");
 DEFINE_double(learning_rate, 0.01,       "Learning rate for SGD and Adagrad.");
+DEFINE_string(visualizer, "experiment", "What to name the visualization job.");
 
 template<typename T>
 Mat<T> softmax_categorical_surprise(Mat<T> logprobs, int target) {
@@ -84,8 +87,6 @@ Mat<T> softmax_categorical_surprise(Mat<T> logprobs, int target) {
     return out;
 }
 
-
-
 ThreadPool* pool;
 
 Mat<REAL_t> apply_dropout(Mat<REAL_t> X, REAL_t drop_prob) {
@@ -108,11 +109,11 @@ vector<int> repeat_val(int val, int times) {
     return vals;
 }
 
+// For convolutions:
 template<typename T>
 class Filters {
     public:
         std::vector<Mat<T>> filters;
-
         Filters(int n, int width, int height){
             for (int i = 0; i < n; i++) {
                 filters.emplace_back(
@@ -122,13 +123,11 @@ class Filters {
                 );
             }
         }
-
         Filters(const Filters& model, bool copy_w, bool copy_dw) {
             for (auto & f : model.filters) {
                 filters.emplace_back(f, copy_w, copy_dw);
             }
         }
-
         vector<Mat<T>> parameters() const {
             return filters;
         }
@@ -151,7 +150,6 @@ class BidirectionalLSTM {
         bool bidirectional;
         std::shared_ptr<StackedInputLayer<T>> prediction_gate;
         std::shared_ptr<Filters<T>> filters;
-
 
         BidirectionalLSTM(int vocabulary_size, int input_size, int hidden_size, int stack_size, int output_size, bool shortcut, bool memory_feeds_gates, bool use_recursive_gates, bool convolution, bool bidirectional)
             :
@@ -220,12 +218,14 @@ class BidirectionalLSTM {
             return BidirectionalLSTM(*this, false, true);
         }
 
-        Mat<T> activate_sequence(Indexing::Index example, T drop_prob = 0.0) {
+
+        std::tuple<Mat<T>, Mat<T>> activate_sequence(Indexing::Index example, T drop_prob = 0.0) {
             size_t pass = 0;
             vector<Mat<T>> forwardX;
             vector<Mat<T>> backwardX;
             vector<Mat<T>> embeddingX;
             assert(example.size() > 0);
+            std::tuple<Mat<T>, Mat<T>> prediction_tuple;
 
             if (convolution) {
                 auto convolved = MatOps<T>::conv1d(
@@ -306,6 +306,8 @@ class BidirectionalLSTM {
                 }
                 pass+=1;
             }
+            // store memory here:
+            std::get<0>(prediction_tuple) = Mat<T>(forwardX.size(), 1);
             if (use_recursive_gates) {
                 // Create a flat distribution
                 auto prediction = MatOps<T>::consider_constant(
@@ -317,6 +319,7 @@ class BidirectionalLSTM {
                 auto total_memory = MatOps<T>::consider_constant(Mat<T>(1, 1));
                 // With recursive gates the prediction happens all along
                 // we rerun through the highest layer's predictions:
+                int step = 0;
                 for (auto it_back = backwardX.begin(), it_forward = forwardX.begin(), it_embed = embeddingX.begin();
                         (it_back != backwardX.end() && it_forward != forwardX.end() && it_embed != embeddingX.end());
                         ++it_back, ++it_forward, ++it_embed)                                      {
@@ -327,6 +330,11 @@ class BidirectionalLSTM {
                         bidirectional ? *it_back : *it_embed,
                         prediction
                     }).sigmoid();
+
+                    // add this memory to output:
+                    std::get<0>(prediction_tuple).w()(step) = new_memory.w()(0);
+                    step++;
+
                     // Make a new prediction:
                     auto new_prediction = MatOps<T>::softmax(decoder.activate({
                         apply_dropout(*it_forward, drop_prob),
@@ -344,26 +352,27 @@ class BidirectionalLSTM {
                         new_memory.grad();
                     }
                 }
-                return prediction;
+                std::get<1>(prediction_tuple) = prediction;
             } else {
                 if (!bidirectional) {
-                    return MatOps<T>::softmax(decoder.activate(
-                        apply_dropout(forwardX.back(), drop_prob)
+                    std::get<1>(prediction_tuple) = MatOps<T>::softmax(decoder.activate(
+                            apply_dropout(forwardX.back(), drop_prob)
                     ));
                 } else if (pass % 2 == 0) {
                     // then we ended with backward pass
-                    return MatOps<T>::softmax(decoder.activate({
+                    std::get<1>(prediction_tuple) = MatOps<T>::softmax(decoder.activate({
                         apply_dropout(backwardX.front(), drop_prob),
                         apply_dropout(forwardX.back(), drop_prob)
                     }));
                 } else {
                     // then we ended with forward pass
-                    return MatOps<T>::softmax(decoder.activate({
+                    std::get<1>(prediction_tuple) = MatOps<T>::softmax(decoder.activate({
                         apply_dropout(forwardX.back(), drop_prob),
                         apply_dropout(backwardX.front(), drop_prob)
                     }));
                 }
             }
+            return prediction_tuple;
         }
 
         vector<Mat<T>> parameters() const {
@@ -399,10 +408,10 @@ REAL_t average_recall(
             graph::NoBackprop nb;
             auto& minibatch = dataset[batch_id];
             for (auto& example : minibatch) {
-                auto prediction = model.activate_sequence(
+                auto prediction = std::get<1>(model.activate_sequence(
                     std::get<0>(example), // see an example
                     0.0                   // activate without dropout
-                ).argmax();               // no softmax needed, simply get best guess
+                )).argmax();               // no softmax needed, simply get best guess
                 if (prediction == std::get<1>(example)) {
                     correct += 1;
                     if (std::get<2>(example)) {
@@ -457,7 +466,7 @@ int main (int argc,  char* argv[]) {
 
     auto to_index_pair = [&word_vocab](std::pair<std::vector<std::string>, uint>&& pair, bool&& is_root) {
         return std::tuple<std::vector<uint>, uint, bool>(
-            word_vocab.transform(pair.first),
+            word_vocab.encode(pair.first),
             pair.second,
             is_root);
     };
@@ -588,6 +597,22 @@ int main (int argc,  char* argv[]) {
     int epoch = 0;
     double patience = 0;
 
+
+    shared_ptr<Visualizer> visualizer;
+    Throttled example_visualization;
+    bool visualizer_active = false;
+    if (!FLAGS_visualizer.empty()) {
+        try {
+            visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
+            visualizer_active = true;
+        } catch (std::runtime_error e) {
+            // could not connect to redis.
+            std::cout << e.what() << std::endl;
+        }
+    } else {
+        // no Redis connection needed
+    }
+
     while (patience < FLAGS_patience && epoch < epochs) {
 
         stringstream ss;
@@ -600,14 +625,14 @@ int main (int argc,  char* argv[]) {
         );
 
         for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
-            pool->run([&solver_type, &thread_params, &thread_models, batch_id, &journalist, &solver, &dataset, &best_validation_score, &batches_processed]() {
+            pool->run([&word_vocab, &visualizer_active, &visualizer, &solver_type, &example_visualization, &thread_params, &thread_models, batch_id, &journalist, &solver, &dataset, &best_validation_score, &batches_processed]() {
                 auto& thread_model  = thread_models[ThreadPool::get_thread_number()];
                 auto& params        = thread_params[ThreadPool::get_thread_number()];
                 auto& minibatch     = dataset[batch_id];
                 // many forward steps here:
                 // REAL_t err = 0.0;
-                for (auto & example : minibatch) {
-                    auto probs = thread_model.activate_sequence(std::get<0>(example), FLAGS_dropout);
+                for (auto &example : minibatch) {
+                    auto probs = std::get<1>(thread_model.activate_sequence(std::get<0>(example), FLAGS_dropout));
                     Mat<REAL_t> error;
                     if (FLAGS_surprise) {
                         error = softmax_categorical_surprise(probs, std::get<1>(example));
@@ -621,6 +646,42 @@ int main (int argc,  char* argv[]) {
                     }
                     error.grad();
                     graph::backward(); // backpropagate
+                }
+                // show sentiment detection as it happens:
+                if (visualizer_active) {
+                    example_visualization.maybe_run(seconds(10), [&word_vocab, &visualizer, &minibatch, &thread_model]() {
+                        // visualization does not backpropagate.
+                        graph::NoBackprop nb;
+
+                        auto& example = std::get<0>(minibatch[utils::randint(0, minibatch.size()-1)]);
+
+                        // run model
+                        auto model_out = thread_model.activate_sequence(
+                            example,
+                            0.0);
+
+                        // collect memory as vector
+                        auto sentence_memory = std::vector<REAL_t>(
+                            std::get<0>(model_out).w().data(),
+                            std::get<0>(model_out).w().data() + std::get<0>(model_out).dims(0));
+
+                        // store sentence memory & tokens:
+                        Json::object sentence = {
+                            { "type", "sentence" },
+                            { "weights", sentence_memory },
+                            { "words", word_vocab.decode(example) },
+                        };
+
+                        // store sentence as input + distribution as output:
+                        Json::object json_example = {
+                            { "type", "classifier_example"},
+                            { "input", sentence},
+                            { "output",  utils::json_finite_distribution(std::get<1>(model_out), SST::label_names) },
+                        };
+
+                        // feed to visualizer
+                        visualizer->feed(json_example);
+                    });
                 }
                 if (solver_type == ADAGRAD_TYPE) {
                     dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step(params, FLAGS_learning_rate);
@@ -653,14 +714,12 @@ int main (int argc,  char* argv[]) {
         }
     }
 
-
     if (!FLAGS_test.empty()) {
         std::vector<std::vector<std::tuple<std::vector<uint>, uint, bool>>> test_set;
         {
             auto test_treebank = SST::load(FLAGS_test);
             add_to_dataset_in_minibatches(test_set, test_treebank);
         }
-
         std::cout << "Done training" << std::endl;
         std::cout << "Test recall " << average_recall(model, test_set) << "%" << std::endl;
     }

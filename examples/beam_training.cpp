@@ -231,8 +231,8 @@ int main (int argc,  char* argv[]) {
     vector<pair<vector<uint>, vector<uint>>> numerical_examples(examples.size());
     {
         for (size_t i = 0; i < examples.size();i++) {
-            numerical_examples[i].first  = vocab.transform(examples[i].first, true);
-            numerical_examples[i].second = vocab.transform(examples[i].second, true);
+            numerical_examples[i].first  = vocab.encode(examples[i].first, true);
+            numerical_examples[i].second = vocab.encode(examples[i].second, true);
         }
     }
 

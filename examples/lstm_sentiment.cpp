@@ -138,7 +138,7 @@ int main (int argc,  char* argv[]) {
     std::vector<std::vector<std::tuple<std::vector<uint>, uint, bool>>> dataset;
     auto to_index_pair = [&word_vocab](std::pair<std::vector<std::string>, uint>&& pair, bool&& is_root) {
         return std::tuple<std::vector<uint>, uint, bool>(
-            word_vocab.transform(pair.first),
+            word_vocab.encode(pair.first),
             pair.second,
             is_root);
     };

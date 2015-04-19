@@ -134,44 +134,48 @@ namespace visualizable {
         std::vector<double> distribution;
         std::vector<double> scores;
         std::vector<std::string> labels;
-        int num_examples;
+        int top_picks;
 
 
         FiniteDistribution(const std::vector<double>& distribution,
                            const std::vector<double>& scores,
                            const std::vector<std::string>& labels,
-                           int max_examples = 5) :
+                           int max_top_picks = -1) :
                 distribution(distribution),
                 scores(scores),
                 labels(labels) {
 
             assert2(labels.size() == distribution.size(),
                     "FiniteDistribution visualizer: sizes of labels and distribution differ");
-            num_examples = std::min(max_examples, (int)distribution.size());
+            if (max_top_picks > 0) {
+                top_picks = std::min(max_top_picks, (int)distribution.size());
+            } else {
+                top_picks = distribution.size();
+            }
 
         }
 
         FiniteDistribution(const std::vector<double>& distribution,
                    const std::vector<std::string>& labels,
-                   int max_examples = 5) : FiniteDistribution(distribution,
+                   int max_top_picks = -1) : FiniteDistribution(distribution,
                                                               empty_vec,
                                                               labels,
-                                                              max_examples) {
+                                                              max_top_picks) {
         }
 
         virtual Json to_json() override {
-            std::vector<std::string> output_labels(num_examples);
-            std::vector<double> output_probs(num_examples);
-            std::vector<double> output_scores(num_examples);
+            std::vector<std::string> output_labels(top_picks);
+            std::vector<double> output_probs(top_picks);
+            std::vector<double> output_scores(top_picks);
 
-            // Pick max_examples best answers;
+            // Pick top k best answers;
 
             std::vector<bool> taken(distribution.size());
             for(int idx = 0; idx < distribution.size(); ++idx) taken[idx] = false;
 
-            for(int iters = 0; iters < num_examples; ++iters) {
+            for(int iters = 0; iters < top_picks; ++iters) {
                 int best_index = -1;
-                for (int i=0; i<distribution.size(); ++i) {
+                for (int i=0; i < distribution.size(); ++i) {
                     if (taken[i]) continue;
                     if (best_index == -1 || distribution[i] > distribution[best_index]) best_index = i;
                 }

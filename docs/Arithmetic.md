@@ -150,11 +150,11 @@ auto char_examples = generate_examples(200);
 vector<pair<vector<uint>, vector<uint>>> examples(char_examples.size());
 {
     for (size_t i = 0; i < char_examples.size();i++) {
-        examples[i].first  = vocab.transform(
+        examples[i].first  = vocab.encode(
             char_examples[i].first, // words to convert
             true                    // add end token
         );
-        examples[i].second = vocab.transform(
+        examples[i].second = vocab.encode(
             char_examples[i].second, // words to convert
             true                     // add end token
         );

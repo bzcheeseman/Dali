@@ -734,10 +734,27 @@ void utils::load_matrices(vector<Mat<R>> parameters, string dirname) {
     }
 }
 
+
 template void utils::save_matrices(vector<Mat<float> >, string);
 template void utils::save_matrices(vector<Mat<double> >, string);
 template void utils::load_matrices(vector<Mat<float> >, string);
 template void utils::load_matrices(vector<Mat<double> >, string);
+
+template<typename R>
+json11::Json utils::json_finite_distribution(
+    const Mat<R>& probs,
+    const vector<string>& labels) {
+    assert2(probs.dims(1) == 1, MS() << "Probabilities must be a column vector");
+    vector<R> distribution(probs.w().data(), probs.w().data() + probs.dims(0));
+    return json11::Json::object {
+        { "type", "finite_distribution"},
+        { "probabilities", distribution },
+        { "labels", labels },
+    };
+}
+
+template json11::Json utils::json_finite_distribution(const Mat<float>&, const vector<string>&);
+template json11::Json utils::json_finite_distribution(const Mat<double>&, const vector<string>&);
 
 template class MatInternal<float>;
 template class MatInternal<double>;

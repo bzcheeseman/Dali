@@ -787,8 +787,9 @@ namespace utils {
                 unknown_word = index2word.size() - 1;
         }
 
-        vector<typename Vocab::ind_t> Vocab::transform(const str_sequence& words, bool with_end_symbol) const {
+        vector<typename Vocab::ind_t> Vocab::encode(const str_sequence& words, bool with_end_symbol) const {
             vector<ind_t> result;
+            result.reserve(words.size() + (with_end_symbol ? 1 : 0));
             std::transform(words.begin(), words.end(),
                            std::back_inserter(result), [this](const string& word) {
                 if (word2index.find(word) == word2index.end()) {
@@ -800,6 +801,20 @@ namespace utils {
             if (with_end_symbol) {
                 result.emplace_back( word2index.at(utils::end_symbol) );
             }
+            return result;
+        }
+
+        vector<string> Vocab::decode(const vector<ind_t>& indices) const {
+            vector<string> result;
+            result.reserve(indices.size());
+            std::transform(indices.begin(), indices.end(),
+                           std::back_inserter(result), [this](const ind_t& idx) {
+                if (idx < index2word.size()) {
+                    return index2word[idx];
+                } else {
+                    return index2word[unknown_word];
+                }
+            });
             return result;
         }
 

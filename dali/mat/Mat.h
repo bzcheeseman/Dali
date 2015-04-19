@@ -7,7 +7,12 @@
 #include <initializer_list>
 #include <iostream>
 #include <memory>
+#include <string>
+#include <vector>
 #include <unordered_map>
+
+// For handling json_finite_distribution
+#include <json11.hpp>
 
 #include "dali/mat/Index.h"
 #include "dali/mat/Tape.h"
@@ -282,6 +287,9 @@ namespace utils {
 
     template<typename R>
     void load_matrices(std::vector<Mat<R>>, std::string);
+
+    template<typename R>
+    json11::Json json_finite_distribution(const Mat<R>&, const std::vector<std::string>& labels);
 }
 
 template <typename R>

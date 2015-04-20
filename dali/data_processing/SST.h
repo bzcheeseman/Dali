@@ -10,6 +10,9 @@
 #include <Eigen/Eigen>
 #include "dali/utils.h"
 
+// for outputting json
+#include "dali/visualizer/visualizer.h"
+
 /**
 Stanford Sentiment Treebank
 ---------------------------
@@ -131,6 +134,37 @@ namespace SST {
 
     extern const std::vector<std::string> label_names;
 
+    template<typename R>
+    json11::Json json_classification(const std::vector<std::string>& sentence, const Mat<R>& probs);
+
+    template<typename R>
+    json11::Json json_classification(const std::vector<std::string>& sentence, const Mat<R>& probs, const Mat<R>& word_weights);
+
+    /**
+    get word vocab
+    --------------
+
+    Collect a mapping from words to unique indices
+    from a collection of Annnotate Parse Trees
+    from the Stanford Sentiment Treebank, and only
+    keep words ocurring more than some threshold
+    number of times `min_occurence`
+
+    Inputs
+    ------
+
+    std::vector<SST::AnnotatedParseTree::shared_tree>& trees : Stanford Sentiment Treebank trees
+                                           int min_occurence : cutoff appearance of words to include
+                                                               in vocabulary.
+
+
+    Outputs
+    -------
+
+    Vocab vocab : the vocabulary extracted from the trees with the
+                  addition of a special "**START**" word.
+
+    **/
     utils::Vocab get_word_vocab(std::vector<SST::AnnotatedParseTree::shared_tree>& trees, int min_occurence);
 }
 

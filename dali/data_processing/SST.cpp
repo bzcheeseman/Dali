@@ -7,6 +7,7 @@ using std::make_shared;
 using utils::tokenized_uint_labeled_dataset;
 using utils::Vocab;
 using std::min;
+using json11::Json;
 
 const string START = "**START**";
 
@@ -226,31 +227,44 @@ namespace SST {
         return dataset;
     }
 
-    /**
-    get word vocab
-    --------------
+    template<typename R>
+    Json json_classification(const vector<string>& sentence, const Mat<R>& probs) {
+        // store sentence memory & tokens:
+        auto sentence_viz = visualizable::Sentence<R>(sentence);
 
-    Collect a mapping from words to unique indices
-    from a collection of Annnotate Parse Trees
-    from the Stanford Sentiment Treebank, and only
-    keep words ocurring more than some threshold
-    number of times `min_occurence`
+        // store sentence as input + distribution as output:
+        Json::object json_example = {
+            { "type", "classifier_example"},
+            { "input", sentence_viz.to_json()},
+            { "output",  utils::json_finite_distribution(probs, SST::label_names) },
+        };
 
-    Inputs
-    ------
+        return json_example;
+    }
 
-    std::vector<SST::AnnotatedParseTree::shared_tree>& trees : Stanford Sentiment Treebank trees
-                                           int min_occurence : cutoff appearance of words to include
-                                                               in vocabulary.
+    template Json json_classification<float>(const vector<string>& sentence, const Mat<float>& probs);
+    template Json json_classification<double>(const vector<string>& sentence, const Mat<double>& probs);
 
+    template<typename R>
+    Json json_classification(const vector<string>& sentence, const Mat<R>& probs, const Mat<R>& word_weights) {
 
-    Outputs
-    -------
+        // store sentence memory & tokens:
+        auto sentence_viz = visualizable::Sentence<R>(sentence);
+        sentence_viz.set_weights(word_weights);
 
-    Vocab vocab : the vocabulary extracted from the trees with the
-                  addition of a special "**START**" word.
+        // store sentence as input + distribution as output:
+        Json::object json_example = {
+            { "type", "classifier_example"},
+            { "input", sentence_viz.to_json()},
+            { "output",  utils::json_finite_distribution(probs, SST::label_names) },
+        };
 
-    **/
+        return json_example;
+    }
+
+    template Json json_classification<float>(const vector<string>& sentence, const Mat<float>& probs, const Mat<float>& word_weights);
+    template Json json_classification<double>(const vector<string>& sentence, const Mat<double>& probs, const Mat<double>& word_weights);
+
     Vocab get_word_vocab(vector<SST::AnnotatedParseTree::shared_tree>& trees, int min_occurence) {
         tokenized_uint_labeled_dataset examples;
         for (auto& tree : trees)
@@ -261,6 +275,7 @@ namespace SST {
         vocab.index2word.emplace_back(START);
         return vocab;
     }
+
 }
 
 std::ostream &operator <<(std::ostream &os, const SST::AnnotatedParseTree&v) {

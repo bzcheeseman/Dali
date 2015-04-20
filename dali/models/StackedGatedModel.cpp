@@ -162,9 +162,7 @@ std::tuple<Z, Z> StackedGatedModel<Z>::masked_predict_cost(
         input_vector = input_vector.eltmul_broadcast_rowwise(memory);
         // pass this letter to the LSTM for processing
         initial_state = this->stacked_lstm->activate(initial_state, input_vector, drop_prob);
-        // classifier takes as input the final hidden layer's activation:
-        vector<Mat<Z>> hiddens = LSTM<Z>::State::hiddens(initial_state);
-        logprobs      = this->decoder->activate(input_vector, hiddens);
+        logprobs      = this->decode(input_vector, initial_state);
 
         if (graph::backprop_enabled) {
             std::get<0>(cost) += masked_cross_entropy(
@@ -231,9 +229,7 @@ std::tuple<Z, Z> StackedGatedModel<Z>::masked_predict_cost(
                 input_vector,
                 drop_prob
             );
-            // classifier takes as input the final hidden layer's activation:
-            vector<Mat<Z>> hiddens = LSTM<Z>::State::hiddens(initial_state);
-            logprobs      = this->decoder->activate(input_vector, hiddens);
+            logprobs  = this->decode(input_vector, initial_state);
             if (graph::backprop_enabled) {
                 std::get<0>(cost) += masked_cross_entropy(
                     logprobs,
@@ -426,7 +422,6 @@ typename StackedGatedModel<Z>::state_type StackedGatedModel<Z>::get_final_activa
         input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
         // pass this letter to the LSTM for processing
         initial_state = this->stacked_lstm->activate(initial_state, input_vector);
-        // decoder takes as input the final hidden layer's activation:
     }
     return initial_state;
 }
@@ -471,9 +466,9 @@ typename StackedGatedModel<Z>::activation_t StackedGatedModel<Z>::activate(
         input_vector
     );
     std::get<1>(out) = MatOps<Z>::softmax_no_grad(
-        this->decoder->activate(
+        this->decode(
             input_vector,
-            LSTM<Z>::State::hiddens(std::get<0>(out))
+            std::get<0>(out)
         )
     );
     std::get<2>(out) = memory;
@@ -496,9 +491,9 @@ typename StackedGatedModel<Z>::activation_t StackedGatedModel<Z>::activate(
         previous_state,
         input_vector);
     std::get<1>(out) = MatOps<Z>::softmax_no_grad(
-        this->decoder->activate(
+        this->decode(
             input_vector,
-            LSTM<Z>::State::hiddens(std::get<0>(out))
+            std::get<0>(out)
         )
     );
     std::get<2>(out) = memory;
@@ -518,9 +513,9 @@ std::vector<int> StackedGatedModel<Z>::reconstruct(
     mat input_vector;
     mat memory;
     vector<int> outputs;
-    auto last_symbol = this->decoder->activate(
+    auto last_symbol = this->decode(
       input_vector,
-      LSTM<Z>::State::hiddens(initial_state)
+      initial_state
     ).argmax();
     outputs.emplace_back(last_symbol);
     last_symbol += symbol_offset;
@@ -534,9 +529,9 @@ std::vector<int> StackedGatedModel<Z>::reconstruct(
             initial_state = this->stacked_lstm->activate(
                 initial_state,
                 input_vector);
-            last_symbol   = this->decoder->activate(
+            last_symbol   = this->decode(
                 input_vector,
-                LSTM<Z>::State::hiddens(initial_state)
+                initial_state
             ).argmax();
             outputs.emplace_back(last_symbol);
             last_symbol += symbol_offset;
@@ -562,14 +557,13 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<Z>::reconstr
         input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
         // pass this letter to the LSTM for processing
         initial_state = this->stacked_lstm->activate(initial_state, input_vector);
-        // decoder takes as input the final hidden layer's activation:
     }
     vector<utils::OntologyBranch::shared_branch> outputs;
     // Take the argmax over the available options (0 for go back to
     // root, and 1..n for the different children of the current position)
-    auto last_turn = this->decoder->activate(
+    auto last_turn = this->decode(
         input_vector,
-        LSTM<Z>::State::hiddens(initial_state)
+        initial_state
     ).argmax_slice(
         0,
         pos->children.size() + 1
@@ -584,9 +578,9 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<Z>::reconstr
         memory        = gate.activate(input_vector, initial_state.back().hidden);
         input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
         initial_state = this->stacked_lstm->activate(initial_state, input_vector);
-        last_turn     = this->decoder->activate(
+        last_turn     = this->decode(
             input_vector,
-            LSTM<Z>::State::hiddens(initial_state)
+            initial_state
         ).argmax_slice(
             0,
             pos->children.size() + 1

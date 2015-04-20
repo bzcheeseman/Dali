@@ -598,22 +598,16 @@ int main (int argc,  char* argv[]) {
     int epoch = 0;
     double patience = 0;
 
-
     shared_ptr<Visualizer> visualizer;
-    Throttled example_visualization;
-    bool visualizer_active = false;
     if (!FLAGS_visualizer.empty()) {
         try {
             visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
-            visualizer_active = true;
         } catch (std::runtime_error e) {
-            // could not connect to redis.
-            std::cout << e.what() << std::endl;
+            std::cout << e.what() << std::endl; // could not connect to redis.
         }
     }
 
     while (patience < FLAGS_patience && epoch < epochs) {
-
         stringstream ss;
         ss << "Epoch " << ++epoch;
         atomic<int> batches_processed(0);
@@ -624,7 +618,7 @@ int main (int argc,  char* argv[]) {
         );
 
         for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
-            pool->run([&word_vocab, &visualizer_active, &visualizer, &solver_type, &example_visualization, &thread_params, &thread_models, batch_id, &journalist, &solver, &dataset, &best_validation_score, &batches_processed]() {
+            pool->run([&word_vocab, &visualizer, &solver_type, &thread_params, &thread_models, batch_id, &journalist, &solver, &dataset, &best_validation_score, &batches_processed]() {
                 auto& thread_model  = thread_models[ThreadPool::get_thread_number()];
                 auto& params        = thread_params[ThreadPool::get_thread_number()];
                 auto& minibatch     = dataset[batch_id];
@@ -646,28 +640,24 @@ int main (int argc,  char* argv[]) {
                     error.grad();
                     graph::backward(); // backpropagate
                 }
-                // show sentiment detection as it happens:
-                if (visualizer_active) {
-                    example_visualization.maybe_run(seconds(10), [&word_vocab, &visualizer, &minibatch, &thread_model]() {
-                        // pick example
-                        auto& example = std::get<0>(minibatch[utils::randint(0, minibatch.size()-1)]);
-
-                        // visualization does not backpropagate.
-                        graph::NoBackprop nb;
-
-                        // make prediction
-                        auto model_out = thread_model.activate_sequence(
-                            example,
-                            0.0);
-
-                        // feed to visualizer
-                        visualizer->feed(
-                            SST::json_classification(word_vocab.decode(example),
+                // show sentiment detection as system learns:
+                if (visualizer != nullptr) {
+                    visualizer->throttled_feed(seconds(10), [&word_vocab, &visualizer, &minibatch, &thread_model]() {
+                            // pick example
+                            auto& example = std::get<0>(minibatch[utils::randint(0, minibatch.size()-1)]);
+                            // visualization does not backpropagate.
+                            graph::NoBackprop nb;
+                            // make prediction
+                            auto model_out = thread_model.activate_sequence(
+                                example,
+                                0.0);
+                            return SST::json_classification(
+                                word_vocab.decode(example),
                                 std::get<1>(model_out),
                                 std::get<0>(model_out)
-                            )
-                        );
-                    });
+                            );
+                        }
+                    );
                 }
                 solver->step(params); // One step of gradient descent
                 journalist.tick(++batches_processed, best_validation_score);

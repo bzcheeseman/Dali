@@ -319,18 +319,12 @@ int main (int argc,  char* argv[]) {
     REAL_t best_score = 0.0;
 
     shared_ptr<Visualizer> visualizer;
-    Throttled example_visualization;
-    bool visualizer_active = false;
     if (!FLAGS_visualizer.empty()) {
         try {
             visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
-            visualizer_active = true;
         } catch (std::runtime_error e) {
-            // could not connect to redis.
-            std::cout << e.what() << std::endl;
+            std::cout << e.what() << std::endl; // could not connect to redis.
         }
-    } else {
-        // no Redis connection needed
     }
 
     // if no training should occur then use the validation set
@@ -353,7 +347,7 @@ int main (int argc,  char* argv[]) {
         );
 
         for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
-            pool->run([&word_vocab, &visualizer_active, &visualizer, &example_visualization, &solver_type, &thread_embedding_params, &thread_params, &thread_models, batch_id, &journalist, &solver, &embedding_solver, &dataset, &best_validation_score, &batches_processed]() {
+            pool->run([&word_vocab, &visualizer, &solver_type, &thread_embedding_params, &thread_params, &thread_models, batch_id, &journalist, &solver, &embedding_solver, &dataset, &best_validation_score, &batches_processed]() {
                 auto& thread_model     = thread_models[ThreadPool::get_thread_number()];
                 auto& params           = thread_params[ThreadPool::get_thread_number()];
                 auto& embedding_params = thread_embedding_params[ThreadPool::get_thread_number()];
@@ -381,38 +375,30 @@ int main (int argc,  char* argv[]) {
                 // no L2 penalty on embedding:
                 embedding_solver->step(embedding_params);
 
-
                 // show sentiment detection as it happens:
-                if (visualizer_active) {
-                    example_visualization.maybe_run(seconds(10), [&word_vocab, &visualizer, &minibatch, &thread_model]() {
-                        // pick example
-                        auto& example = std::get<0>(minibatch[utils::randint(0, minibatch.size()-1)]);
-
-                        // visualization does not backpropagate.
-                        graph::NoBackprop nb;
-
-                        auto final_states = thread_model.get_final_activation(example, 0.0);
-
-                        // make prediction
-                        auto probs = MatOps<REAL_t>::softmax(
-                            thread_model.decode(
-                                thread_model.embedding[example.back()],
-                                final_states,
-                                0.0
-                            )
-                        );
-
-                        // feed to visualizer
-                        visualizer->feed(
-                            SST::json_classification(
+                if (visualizer != nullptr) {
+                    // show sentiment detection as system learns:
+                    visualizer->throttled_feed(seconds(10), [&word_vocab, &visualizer, &minibatch, &thread_model]() {
+                            // pick example
+                            auto& example = std::get<0>(minibatch[utils::randint(0, minibatch.size()-1)]);
+                            // visualization does not backpropagate.
+                            graph::NoBackprop nb;
+                            auto final_states = thread_model.get_final_activation(example, 0.0);
+                            // make prediction
+                            auto probs = MatOps<REAL_t>::softmax(
+                                thread_model.decode(
+                                    thread_model.embedding[example.back()],
+                                    final_states,
+                                    0.0
+                                )
+                            );
+                            return SST::json_classification(
                                 word_vocab.decode(example),
                                 probs
-                            )
-                        );
-                    });
+                            );
+                        }
+                    );
                 }
-
-
                 // report minibatch completion to progress bar
                 journalist.tick(++batches_processed, std::get<0>(best_validation_score));
             });

@@ -5,11 +5,16 @@
 #include <json11.hpp>
 #include <redox.hpp>
 #include <memory>
+#include <chrono>
+#include <functional>
 #include <string>
 
 #include "dali/visualizer/EventQueue.h"
 #include "dali/utils/core_utils.h"
 #include "dali/mat/Mat.h"
+
+// to import Throttled
+#include "dali/utils/Reporting.h"
 
 DECLARE_string(visualizer_hostname);
 DECLARE_int32(visualizer_port);
@@ -105,6 +110,7 @@ class Visualizer {
         std::shared_ptr<redox::Redox> rdx;
         EventQueue eq;
         EventQueue::repeating_t pinging;
+        Throttled throttle;
 
         // TODO(szymon): this kind of connection state should
         // be handled by redox.. Remove this bool in the future.
@@ -121,6 +127,7 @@ class Visualizer {
 
         void feed(const json11::Json& obj);
         void feed(const std::string& str);
+        void throttled_feed(Throttled::Clock::duration time_between_feeds, std::function<json11::Json()> f);
 };
 
 #endif

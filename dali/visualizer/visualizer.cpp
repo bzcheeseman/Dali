@@ -292,6 +292,12 @@ void Visualizer::feed(const std::string& str) {
     feed(str_as_json);
 }
 
+void Visualizer::throttled_feed(Throttled::Clock::duration time_between_feeds, std::function<json11::Json()> f) {
+    throttle.maybe_run(time_between_feeds, [&f, this]() {
+        feed(f());
+    });
+}
+
 Visualizer::duplicate_name_error::duplicate_name_error(const std::string& what_arg) : std::runtime_error(what_arg) {}
 Visualizer::duplicate_name_error::duplicate_name_error(const char* what_arg) : std::runtime_error(what_arg) {}
 

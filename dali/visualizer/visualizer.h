@@ -13,6 +13,7 @@
 
 DECLARE_string(visualizer_hostname);
 DECLARE_int32(visualizer_port);
+DECLARE_string(visualizer);
 
 // TODO: Szymon explain how this works
 namespace visualizable {

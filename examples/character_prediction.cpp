@@ -77,7 +77,7 @@ T validation_error(
             // pass this letter to the LSTM for processing
             initial_state = model.stacked_lstm->activate(initial_state, input_vector);
             // classifier takes as input the final hidden layer's activation:
-            logprobs      = model.decoder->activate(initial_state.back().hidden);
+            logprobs      = model.decode(input_vector, initial_state);
             error = error + MatOps<T>::softmax_cross_entropy(logprobs, example[i+1]);
 
         }
@@ -108,7 +108,7 @@ Mat<T> cost_fun(
         // pass this letter to the LSTM for processing
         initial_state = model.stacked_lstm->activate(initial_state, input_vector);
         // classifier takes as input the final hidden layer's activation:
-        logprobs      = model.decoder->activate(initial_state.back().hidden);
+        logprobs      = model.decode(input_vector, initial_state);
         cost          = cost + MatOps<T>::softmax_cross_entropy(logprobs, indices[i+1]);
     }
     return cost / (n-1);

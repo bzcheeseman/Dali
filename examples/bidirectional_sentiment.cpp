@@ -584,10 +584,12 @@ int main (int argc,  char* argv[]) {
         std::cout << "Using vanilla SGD" << std::endl;
         solver = make_shared<Solver::SGD<REAL_t>>(params, 1e-9, 100.0);
         solver_type = SGD_TYPE;
+        dynamic_cast<Solver::SGD<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
     } else if (FLAGS_solver == "adagrad") {
         std::cout << "Using Adagrad" << std::endl;
         solver = make_shared<Solver::AdaGrad<REAL_t>>(params, 1e-9, 100.0);
         solver_type = ADAGRAD_TYPE;
+        dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
     } else {
         utils::exit_with_message("Did not recognize this solver type.");
     }
@@ -608,8 +610,6 @@ int main (int argc,  char* argv[]) {
             // could not connect to redis.
             std::cout << e.what() << std::endl;
         }
-    } else {
-        // no Redis connection needed
     }
 
     while (patience < FLAGS_patience && epoch < epochs) {
@@ -669,13 +669,7 @@ int main (int argc,  char* argv[]) {
                         );
                     });
                 }
-                if (solver_type == ADAGRAD_TYPE) {
-                    dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step(params, FLAGS_learning_rate);
-                } else if (solver_type == SGD_TYPE) {
-                    dynamic_cast<Solver::SGD<REAL_t>*>(solver.get())->step(params, FLAGS_learning_rate);
-                } else {
-                    solver->step(params); // One step of gradient descent
-                }
+                solver->step(params); // One step of gradient descent
                 journalist.tick(++batches_processed, best_validation_score);
             });
         }

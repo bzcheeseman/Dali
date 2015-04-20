@@ -1,11 +1,11 @@
 #include "StackedModel.h"
 
-DEFINE_int32(stack_size, 4, "How many LSTMs should I stack ?");
-DEFINE_int32(input_size, 100, "Size of the word vectors");
-DEFINE_int32(hidden, 100, "How many Cells and Hidden Units should each LSTM have ?");
-DEFINE_double(decay_rate, 0.95, "What decay rate should RMSProp use ?");
-DEFINE_double(rho, 0.95, "What rho / learning rate should the Solver use ?");
-DEFINE_bool(shortcut, true, "Use a Stacked LSTM with shortcuts");
+DEFINE_int32(stack_size,        4,    "How many LSTMs should I stack ?");
+DEFINE_int32(input_size,        100,  "Size of the word vectors");
+DEFINE_int32(hidden,            100,  "How many Cells and Hidden Units should each LSTM have ?");
+DEFINE_double(decay_rate,       0.95, "What decay rate should RMSProp use ?");
+DEFINE_double(rho,              0.95, "What rho / learning rate should the Solver use ?");
+DEFINE_bool(shortcut,           true, "Use a Stacked LSTM with shortcuts");
 DEFINE_bool(memory_feeds_gates, true, "LSTM's memory cell also control gate outputs");
 
 using std::shared_ptr;
@@ -22,7 +22,7 @@ using utils::from_string;
 template<typename Z>
 vector<Mat<Z>> StackedModel<Z>::parameters() const {
     auto parameters = RecurrentEmbeddingModel<Z>::parameters();
-    auto decoder_params = decoder->parameters();
+    auto decoder_params = decoder.parameters();
     parameters.insert(parameters.end(), decoder_params.begin(), decoder_params.end());
     auto stacked_lstm_params = stacked_lstm->parameters();
     parameters.insert(parameters.end(), stacked_lstm_params.begin(), stacked_lstm_params.end());
@@ -38,23 +38,37 @@ typename StackedModel<Z>::config_t StackedModel<Z>::configuration() const  {
 }
 
 template<typename Z>
-vector<int> StackedModel<Z>::decoder_initialization(int input_size, vector<int> hidden_sizes) {
+vector<int> StackedModel<Z>::decoder_initialization(int input_size, vector<int> hidden_sizes, bool use_shortcut, bool input_vector_to_decoder) {
     vector<int> sizes;
-    sizes.reserve(1 + hidden_sizes.size());
-    sizes.emplace_back(input_size);
-    for (auto& s : hidden_sizes)
-        sizes.emplace_back(s);
-    return sizes;
+    if (use_shortcut) {
+        sizes.reserve((input_vector_to_decoder ? 1 : 0) + hidden_sizes.size());
+        if (input_vector_to_decoder) {
+            sizes.emplace_back(input_size);
+        }
+        for (auto& s : hidden_sizes)
+            sizes.emplace_back(s);
+        return sizes;
+    } else {
+        sizes.emplace_back(hidden_sizes.back());
+        return sizes;
+    }
 }
 
 template<typename Z>
-vector<int> StackedModel<Z>::decoder_initialization(int input_size, const vector<string>& hidden_sizes) {
+vector<int> StackedModel<Z>::decoder_initialization(int input_size, const vector<string>& hidden_sizes, bool use_shortcut, bool input_vector_to_decoder) {
     vector<int> sizes;
-    sizes.reserve(1 + hidden_sizes.size());
-    sizes.emplace_back(input_size);
-    for (auto& s : hidden_sizes)
-        sizes.emplace_back(from_string<int>(s));
-    return sizes;
+    if (use_shortcut) {
+        sizes.reserve((input_vector_to_decoder ? 1 : 0) + hidden_sizes.size());
+        if (input_vector_to_decoder) {
+            sizes.emplace_back(input_size);
+        }
+        for (auto& s : hidden_sizes)
+            sizes.emplace_back(from_string<int>(s));
+        return sizes;
+    } else {
+        sizes.emplace_back(from_string<int>(hidden_sizes.back()));
+        return sizes;
+    }
 }
 
 template<typename Z>
@@ -165,9 +179,9 @@ Z StackedModel<Z>::masked_predict_cost(
             drop_prob
         );
         // classifier takes as input the final hidden layer's activation:
-        logprobs      = decoder->activate(
+        logprobs      = decode(
             input_vector,
-            GET_STATE_HIDDENS(initial_state)
+            initial_state
         );
         if (graph::backprop_enabled) {
             cost += masked_cross_entropy(
@@ -188,6 +202,53 @@ Z StackedModel<Z>::masked_predict_cost(
         }
     }
     return cost;
+}
+
+template<typename Z>
+Mat<Z> StackedModel<Z>::decode(
+    Mat<Z> input_vector,
+    state_type& states,
+    Z drop_prob
+    ) const {
+    if (use_shortcut) {
+        if (drop_prob > 0.0) {
+            vector<Mat<Z>> dropped_states;
+            std::transform(states.begin(), states.end(), std::back_inserter(dropped_states), [&drop_prob](const typename LSTM<Z>::State& state) {
+                return MatOps<Z>::dropout_normalized(state.hidden, drop_prob);
+            });
+            if (_input_vector_to_decoder) {
+                return this->decoder.activate(
+                    MatOps<Z>::dropout_normalized(input_vector, drop_prob),
+                    dropped_states
+                );
+            } else {
+                return this->decoder.activate(
+                    dropped_states
+                );
+            }
+        } else {
+            if (_input_vector_to_decoder) {
+                return this->decoder.activate(
+                    input_vector,
+                    LSTM<Z>::State::hiddens(states)
+                );
+            } else {
+                return this->decoder.activate(
+                    LSTM<Z>::State::hiddens(states)
+                );
+            }
+        }
+    } else {
+        if (drop_prob > 0.0) {
+            return this->decoder.activate(
+                MatOps<Z>::dropout_normalized(states.back().hidden, drop_prob)
+            );
+        } else {
+            return this->decoder.activate(
+                states.back().hidden
+            );
+        }
+    }
 }
 
 template<typename Z>
@@ -218,10 +279,7 @@ Z StackedModel<Z>::masked_predict_cost(
             drop_prob
         );
         // classifier takes as input the final hidden layer's activation:
-        logprobs      = decoder->activate(
-            input_vector,
-            GET_STATE_HIDDENS(initial_state)
-        );
+        logprobs = decode(input_vector, initial_state);
         if (graph::backprop_enabled) {
             cost += masked_cross_entropy(
                 logprobs,
@@ -248,7 +306,7 @@ Z StackedModel<Z>::masked_predict_cost(
 template<typename Z>
 void StackedModel<Z>::name_parameters() {
     this->embedding.set_name("Embedding");
-    decoder->b.set_name("Decoder Bias");
+    decoder.b.set_name("Decoder Bias");
 }
 
 template<typename Z>
@@ -267,17 +325,8 @@ StackedModel<Z>::StackedModel (
         stack_size,
         output_size),
     use_shortcut(_use_shortcut),
-    memory_feeds_gates(_memory_feeds_gates) {
-    if (use_shortcut) {
-        decoder = make_shared<StackedInputLayer<Z>>(
-            decoder_initialization(this->input_size, this->hidden_sizes),
-            this->output_size);
-
-    } else {
-        decoder = make_shared<Layer<Z>>(
-            this->hidden_sizes[this->hidden_sizes.size() - 1],
-            this->output_size);
-    }
+    memory_feeds_gates(_memory_feeds_gates),
+    decoder(decoder_initialization(input_size, this->hidden_sizes, _use_shortcut, _input_vector_to_decoder), output_size) {
     stacked_lstm = make_shared<StackedLSTM<Z>>(
             this->input_size,
             this->hidden_sizes,
@@ -292,17 +341,10 @@ StackedModel<Z>::StackedModel (const typename StackedModel<Z>::config_t& config)
     use_shortcut( config.find("use_shortcut") != config.end() ? (from_string<int>("use_shortcut") > 0) : false ),
     memory_feeds_gates( config.find("memory_feeds_gates") != config.end() ? (from_string<int>("memory_feeds_gates") > 0) : false ),
     RecurrentEmbeddingModel<Z>(config) {
-    if (use_shortcut) {
-        decoder = make_shared<StackedInputLayer<Z>>(
-            decoder_initialization(this->input_size, this->hidden_sizes),
-            this->output_size
-        );
-    } else {
-        decoder = make_shared<Layer<Z>>(
-            this->hidden_sizes[this->hidden_sizes.size() - 1],
-            this->output_size
-        );
-    }
+    decoder = StackedInputLayer<Z>(
+        decoder_initialization(this->input_size, this->hidden_sizes, use_shortcut, _input_vector_to_decoder),
+        this->output_size
+    );
     stacked_lstm = make_shared<StackedLSTM<Z>>(
         this->input_size,
         this->hidden_sizes,
@@ -322,22 +364,15 @@ StackedModel<Z>::StackedModel(
     bool _memory_feeds_gates)
     : RecurrentEmbeddingModel<Z>(vocabulary_size, input_size, hidden_sizes, output_size),
     use_shortcut(_use_shortcut), memory_feeds_gates(_memory_feeds_gates) {
-    if (use_shortcut) {
-        decoder = make_shared<StackedInputLayer<Z>>(
-            decoder_initialization(this->input_size, this->hidden_sizes),
-            this->output_size
-        );
-    } else {
-        decoder = make_shared<Layer<Z>>(
-            this->hidden_sizes[this->hidden_sizes.size() - 1],
-            this->output_size
-        );
-    }
+    decoder = StackedInputLayer<Z> (
+        decoder_initialization(this->input_size, this->hidden_sizes, use_shortcut, _input_vector_to_decoder),
+        this->output_size
+    );
     stacked_lstm = make_shared<StackedLSTM<Z>>(
-            this->input_size,
-            this->hidden_sizes,
-            use_shortcut,
-            memory_feeds_gates
+        this->input_size,
+        this->hidden_sizes,
+        use_shortcut,
+        memory_feeds_gates
     );
     name_parameters();
 }
@@ -346,17 +381,10 @@ template<typename Z>
 StackedModel<Z>::StackedModel (const StackedModel<Z>& model, bool copy_w, bool copy_dw)
     : RecurrentEmbeddingModel<Z>(model, copy_w, copy_dw),
       use_shortcut(model.use_shortcut),
-      memory_feeds_gates(model.memory_feeds_gates) {
+      _input_vector_to_decoder(model.input_vector_to_decoder()),
+      memory_feeds_gates(model.memory_feeds_gates),
+      decoder(model.decoder, copy_w, copy_dw) {
 
-    if (use_shortcut) {
-        decoder = make_shared<StackedInputLayer<Z>>(
-            *dynamic_cast<StackedInputLayer<Z>*>(model.decoder.get()), copy_w, copy_dw
-        );
-    } else {
-        decoder = make_shared<Layer<Z>>(
-            *dynamic_cast<Layer<Z>*>(model.decoder.get()), copy_w, copy_dw
-        );
-    }
     stacked_lstm = make_shared<StackedLSTM<Z>>(
         *dynamic_cast<StackedLSTM<Z>*>(model.stacked_lstm.get()), copy_w, copy_dw
     );
@@ -399,9 +427,9 @@ std::vector<int> StackedModel<Z>::reconstruct(
     auto initial_state = get_final_activation(example);
     vector<int> outputs;
     auto input_vector = this->embedding[example[example.size() - 1]];
-    auto last_symbol = decoder->activate(
+    auto last_symbol = decode(
         input_vector,
-        GET_STATE_HIDDENS(initial_state)
+        initial_state
     ).argmax();
     outputs.emplace_back(last_symbol);
     last_symbol += symbol_offset;
@@ -409,9 +437,9 @@ std::vector<int> StackedModel<Z>::reconstruct(
     for (uint j = 0; j < eval_steps - 1; j++) {
         input_vector  = this->embedding[last_symbol];
         initial_state = stacked_lstm->activate(initial_state, input_vector);
-        last_symbol   = decoder->activate(
+        last_symbol   = decode(
             input_vector,
-            GET_STATE_HIDDENS(initial_state)
+            initial_state
         ).argmax();
         outputs.emplace_back(last_symbol);
         last_symbol += symbol_offset;
@@ -427,9 +455,9 @@ typename StackedModel<Z>::activation_t StackedModel<Z>::activate(
     auto input_vector = this->embedding[index];
     std::get<0>(out)  = stacked_lstm->activate(previous_state, input_vector);
     std::get<1>(out)  = MatOps<Z>::softmax_no_grad(
-        decoder->activate(
+        decode(
             input_vector,
-            GET_STATE_HIDDENS(std::get<0>(out))
+            std::get<0>(out)
         )
     );
     return out;
@@ -443,9 +471,9 @@ typename StackedModel<Z>::activation_t StackedModel<Z>::activate(
     auto input_vector = this->embedding[indices];
     std::get<0>(out)  = stacked_lstm->activate(previous_state, input_vector);
     std::get<1>(out)  = MatOps<Z>::softmax_no_grad(
-        decoder->activate(
+        decode(
             input_vector,
-            GET_STATE_HIDDENS(std::get<0>(out))
+            std::get<0>(out)
         )
     );
     return out;
@@ -472,9 +500,9 @@ std::vector<utils::OntologyBranch::shared_branch> StackedModel<Z>::reconstruct_l
     vector<utils::OntologyBranch::shared_branch> outputs;
     // Rake the argmax over the available options (0 for go back to
     // root, and 1..n for the different children of the current position)
-    auto last_turn = decoder->activate(
+    auto last_turn = decode(
         input_vector,
-        GET_STATE_HIDDENS(initial_state)
+        initial_state
     ).argmax_slice(
         0,
         pos->children.size() + 1
@@ -487,9 +515,9 @@ std::vector<utils::OntologyBranch::shared_branch> StackedModel<Z>::reconstruct_l
     for (uint j = 0; j < eval_steps - 1; j++) {
         input_vector  = this->embedding[pos->id];
         initial_state = stacked_lstm->activate(initial_state, input_vector);
-        last_turn     = decoder->activate(
+        last_turn     = decode(
             input_vector,
-            GET_STATE_HIDDENS(initial_state)
+            initial_state
         ).argmax_slice(
             0,
             pos->children.size() + 1
@@ -498,6 +526,19 @@ std::vector<utils::OntologyBranch::shared_branch> StackedModel<Z>::reconstruct_l
         outputs.emplace_back(pos);
     }
     return outputs;
+}
+
+template<typename Z>
+const bool& StackedModel<Z>::input_vector_to_decoder() const {
+    return _input_vector_to_decoder;
+}
+
+template<typename Z>
+void StackedModel<Z>::input_vector_to_decoder(bool should_input_feed_to_decoder) {
+    if (_input_vector_to_decoder != should_input_feed_to_decoder) {
+        _input_vector_to_decoder = should_input_feed_to_decoder;
+        decoder.input_sizes(decoder_initialization(this->input_size, this->hidden_sizes, use_shortcut, _input_vector_to_decoder));
+    }
 }
 
 template class StackedModel<float>;

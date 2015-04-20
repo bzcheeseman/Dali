@@ -75,7 +75,6 @@ template<typename Model>
 std::tuple<REAL_t,REAL_t> average_recall(
     Model& model,
     std::vector<std::vector<std::tuple<std::vector<uint>, uint, bool>>>& dataset) {
-    std::cout << "Getting average_recall" << std::endl;
     ReportProgress<REAL_t> journalist("Average recall", dataset.size());
     atomic<int> seen_minibatches(0);
     atomic<int> correct(0);
@@ -88,10 +87,12 @@ std::tuple<REAL_t,REAL_t> average_recall(
             graph::NoBackprop nb;
             auto& minibatch = dataset[batch_id];
             for (auto& example : minibatch) {
-                auto prediction = model.decoder->activate(model.get_final_activation(
-                    std::get<0>(example), // see an example
-                    0.0                   // activate without dropout
-                ).back().hidden).argmax();               // no softmax needed, simply get best guess
+                auto final_states = model.get_final_activation(std::get<0>(example), FLAGS_dropout);
+                // no softmax needed, simply get best guess
+                int prediction = model.decode(
+                    model.embedding[std::get<0>(example).back()],
+                    final_states
+                ).argmax();
                 if (prediction == std::get<1>(example)) {
                     correct += 1;
                     if (std::get<2>(example)) {
@@ -160,7 +161,6 @@ int main (int argc,  char* argv[]) {
                     true
                 )
             );
-
             for (auto& child : tree->general_children) {
                 if (dataset[dataset.size()-1].size() == FLAGS_minibatch) {
                     dataset.emplace_back(0);
@@ -194,8 +194,18 @@ int main (int argc,  char* argv[]) {
         FLAGS_hidden,
         stack_size,
         SST::label_names.size(),
-        FLAGS_shortcut,
+        (FLAGS_shortcut && stack_size > 1) ? FLAGS_shortcut : false,
         FLAGS_memory_feeds_gates) : StackedModel<REAL_t>::load(FLAGS_load);
+
+    if (FLAGS_shortcut && stack_size == 1) {
+        std::cout << "shortcut flag ignored: Shortcut connections only take effect with stack size > 1" << std::endl;
+    }
+
+    // don't send the input vector to the
+    // decoder:
+    model.input_vector_to_decoder(false);
+
+    std::cout << "model.input_vector_to_decoder() = " << model.input_vector_to_decoder() << std::endl;
 
     int solver_type;
     if (FLAGS_solver == "adadelta") {
@@ -204,7 +214,7 @@ int main (int argc,  char* argv[]) {
         solver_type = ADAM_TYPE;
     } else if (FLAGS_solver == "sgd") {
         solver_type = SGD_TYPE;
-    } else if (FLAGS_solver == "adagrad") {
+    } else if (FLAGS_solver == "adagrad") {
         solver_type = ADAGRAD_TYPE;
     } else {
         utils::exit_with_message("Did not recognize this solver type.");
@@ -223,6 +233,7 @@ int main (int argc,  char* argv[]) {
               << "          Stack size : " << model.hidden_sizes.size() << std::endl
               << " # training examples : " << dataset.size() * FLAGS_minibatch - (FLAGS_minibatch - dataset[dataset.size() - 1].size()) << std::endl
               << "     validation obj. : " << (FLAGS_validation_metric == 0 ? "overall" : "root") << std::endl
+              << " # layers -> decoder : " << model.decoder.matrices.size() << std::endl
               << "              Solver : " << FLAGS_solver << std::endl;
     if (FLAGS_embedding_learning_rate > 0) {
         std::cout << " Embedding step size : " << FLAGS_embedding_learning_rate << std::endl;
@@ -277,9 +288,6 @@ int main (int argc,  char* argv[]) {
         case ADADELTA_TYPE:
             solver = make_shared<Solver::AdaDelta<REAL_t>>(params, 0.95, 1e-9, 100.0, (REAL_t) FLAGS_reg);
             embedding_solver = make_shared<Solver::AdaDelta<REAL_t>>(embedding_params, 0.95, 1e-9, 100.0, 0.0);
-            dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
-            dynamic_cast<Solver::AdaGrad<REAL_t>*>(embedding_solver.get())->step_size = (
-                FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate);
             break;
         case ADAM_TYPE:
             solver = make_shared<Solver::Adam<REAL_t>>(params, 0.1, 0.001, 1e-9, 100.0, (REAL_t) FLAGS_reg);
@@ -295,6 +303,9 @@ int main (int argc,  char* argv[]) {
         case ADAGRAD_TYPE:
             solver = make_shared<Solver::AdaGrad<REAL_t>>(params, 1e-9, 100.0, (REAL_t) FLAGS_reg);
             embedding_solver = make_shared<Solver::AdaGrad<REAL_t>>(embedding_params, 1e-9, 100.0, 0.0);
+            dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
+            dynamic_cast<Solver::AdaGrad<REAL_t>*>(embedding_solver.get())->step_size = (
+                FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate);
             break;
         default:
             utils::exit_with_message("Did not recognize this solver type.");
@@ -306,6 +317,21 @@ int main (int argc,  char* argv[]) {
     double patience = 0;
     string best_file = "";
     REAL_t best_score = 0.0;
+
+    shared_ptr<Visualizer> visualizer;
+    Throttled example_visualization;
+    bool visualizer_active = false;
+    if (!FLAGS_visualizer.empty()) {
+        try {
+            visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
+            visualizer_active = true;
+        } catch (std::runtime_error e) {
+            // could not connect to redis.
+            std::cout << e.what() << std::endl;
+        }
+    } else {
+        // no Redis connection needed
+    }
 
     // if no training should occur then use the validation set
     // to see how good the loaded model is.
@@ -327,18 +353,18 @@ int main (int argc,  char* argv[]) {
         );
 
         for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
-            pool->run([&solver_type, &thread_embedding_params, &thread_params, &thread_models, batch_id, &journalist, &solver, &embedding_solver, &dataset, &best_validation_score, &batches_processed]() {
+            pool->run([&word_vocab, &visualizer_active, &visualizer, &example_visualization, &solver_type, &thread_embedding_params, &thread_params, &thread_models, batch_id, &journalist, &solver, &embedding_solver, &dataset, &best_validation_score, &batches_processed]() {
                 auto& thread_model     = thread_models[ThreadPool::get_thread_number()];
                 auto& params           = thread_params[ThreadPool::get_thread_number()];
                 auto& embedding_params = thread_embedding_params[ThreadPool::get_thread_number()];
                 auto& minibatch        = dataset[batch_id];
                 // many forward steps here:
                 for (auto & example : minibatch) {
-                    auto logprobs = thread_model.decoder->activate(
-                        apply_dropout(
-                            thread_model.get_final_activation(std::get<0>(example), FLAGS_dropout).back().hidden,
-                            FLAGS_dropout
-                        )
+                    auto final_states = thread_model.get_final_activation(std::get<0>(example), FLAGS_dropout);
+                    auto logprobs = thread_model.decode(
+                        thread_model.embedding[std::get<0>(example).back()],
+                        final_states,
+                        FLAGS_dropout
                     );
                     auto error = MatOps<REAL_t>::softmax_cross_entropy(logprobs, std::get<1>(example));
                     if (FLAGS_average_gradient) {
@@ -354,6 +380,39 @@ int main (int argc,  char* argv[]) {
                 solver->step(params);
                 // no L2 penalty on embedding:
                 embedding_solver->step(embedding_params);
+
+
+                // show sentiment detection as it happens:
+                if (visualizer_active) {
+                    example_visualization.maybe_run(seconds(10), [&word_vocab, &visualizer, &minibatch, &thread_model]() {
+                        // pick example
+                        auto& example = std::get<0>(minibatch[utils::randint(0, minibatch.size()-1)]);
+
+                        // visualization does not backpropagate.
+                        graph::NoBackprop nb;
+
+                        auto final_states = thread_model.get_final_activation(example, 0.0);
+
+                        // make prediction
+                        auto probs = MatOps<REAL_t>::softmax(
+                            thread_model.decode(
+                                thread_model.embedding[example.back()],
+                                final_states,
+                                0.0
+                            )
+                        );
+
+                        // feed to visualizer
+                        visualizer->feed(
+                            SST::json_classification(
+                                word_vocab.decode(example),
+                                probs
+                            )
+                        );
+                    });
+                }
+
+
                 // report minibatch completion to progress bar
                 journalist.tick(++batches_processed, std::get<0>(best_validation_score));
             });
@@ -366,13 +425,6 @@ int main (int argc,  char* argv[]) {
             solver->reset_caches(params);
             embedding_solver->reset_caches(embedding_params);
         }
-        // save every epoch?
-        // if (!FLAGS_save_location.empty()) {
-        //     stringstream ss;
-        //     ss << FLAGS_save_location;
-        //     ss << "_" << epoch;
-        //     model.save(ss.str());
-        // }
         if (
             (FLAGS_validation_metric == 0 && std::get<0>(new_validation) + 1e-6 < std::get<0>(best_validation_score)) ||
             (FLAGS_validation_metric == 1 && std::get<1>(new_validation) + 1e-6 < std::get<1>(best_validation_score))

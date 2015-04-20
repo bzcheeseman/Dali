@@ -199,8 +199,8 @@ Mat<R> StackedInputLayer<R>::activate(
 template<typename R>
 Mat<R> StackedInputLayer<R>::activate(
     Mat<R> input_vector) const {
-    if (matrices.size() == 0) {
-        return MatOps<R>::mul_with_bias(matrices[0], input_vector, this->b);
+    if (matrices.size() == 1) {
+        return MatOps<R>::mul_with_bias(matrices.front(), input_vector, this->b);
     } else {
         throw std::runtime_error("Error: Stacked Input Layer parametrized with more than 1 inputs only received 1 input vector.");
     }

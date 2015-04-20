@@ -40,6 +40,7 @@ class StackedModel : public RecurrentEmbeddingModel<Z>  {
     typedef LSTM<Z>                    lstm;
     typedef Layer<Z>           classifier_t;
     typedef std::map<std::string, std::vector<std::string>> config_t;
+    bool _input_vector_to_decoder = true;
 
     inline void name_parameters();
 
@@ -56,7 +57,7 @@ class StackedModel : public RecurrentEmbeddingModel<Z>  {
 
         typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
         typedef std::shared_ptr< index_mat > shared_index_mat;
-        std::shared_ptr<AbstractMultiInputLayer<Z>> decoder;
+        StackedInputLayer<Z> decoder;
         virtual std::vector<mat> parameters() const;
         /**
         Load
@@ -211,6 +212,9 @@ class StackedModel : public RecurrentEmbeddingModel<Z>  {
             utils::OntologyBranch::shared_branch,
             int) const;
 
+        const bool& input_vector_to_decoder() const;
+        void input_vector_to_decoder(bool should_input_feed_to_decoder);
+
         /**
         Shallow Copy
         ------------
@@ -234,28 +238,11 @@ class StackedModel : public RecurrentEmbeddingModel<Z>  {
         StackedModel<Z> shallow_copy() const;
 
         /**
-        Decoder initialization
-        ----------------------
-
-        Prepare sequence of input sizes to
-        parametrize the decoder for this shorcut
-        stacked LSTM model.
-
-        Inputs
-        ------
-
-           int input_size : size of input embedding
-          int hidden_size : size of internal layers
-           int stack_size : how many stacked layers
-                            are used.
-
-        Outputs
-        -------
-
-        std::vector<int> init_list : sizes needed for decoder init.
-
+        Syntactic sugar for using the decoder. Picks out the relevant information
+        to use in the decoder. Adapts to shortcut connections, input_vector fed
+        to decoder, and extracting hidden states from LSTM States.
         **/
-        static std::vector<int> decoder_initialization(int, int, int);
+        mat decode(mat input_vector, state_type& states, Z drop_prob = 0.0) const;
 
 
         /**
@@ -278,8 +265,8 @@ std::vector<int> hidden_sizes : size of internal layers
         std::vector<int> init_list : sizes needed for decoder init.
 
         **/
-        static std::vector<int> decoder_initialization(int, std::vector<int>);
-        static std::vector<int> decoder_initialization(int, const std::vector<std::string>&);
+        static std::vector<int> decoder_initialization(int, std::vector<int>, bool use_shortcut, bool input_vector_to_decoder);
+        static std::vector<int> decoder_initialization(int, const std::vector<std::string>&, bool use_shortcut, bool input_vector_to_decoder);
 };
 
 #endif

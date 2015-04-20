@@ -220,7 +220,7 @@ int main (int argc,  char* argv[]) {
         solver = make_shared<Solver::SGD<REAL_t>>(params, 100.0, (REAL_t) FLAGS_reg);
         solver_type = SGD_TYPE;
         dynamic_cast<Solver::SGD<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
-    } else if (FLAGS_solver == "adagrad") {
+    } else if (FLAGS_solver == "adagrad") {
         solver = make_shared<Solver::AdaGrad<REAL_t>>(params, 1e-9, 100.0, (REAL_t) FLAGS_reg);
         solver_type = ADAGRAD_TYPE;
         dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
@@ -286,9 +286,9 @@ int main (int argc,  char* argv[]) {
                 );
             }
             auto error = MatOps<REAL_t>::softmax_cross_entropy(
-                model.decoder->activate(
+                model.decode(
                     input_vector,
-                    LSTM<REAL_t>::State::hiddens(initial_state)
+                    initial_state
                 ),
                 example.second.front()
             );
@@ -299,9 +299,9 @@ int main (int argc,  char* argv[]) {
                     input_vector
                 );
                 error = error + MatOps<REAL_t>::softmax_cross_entropy(
-                    model.decoder->activate(
+                    model.decode(
                         input_vector,
-                        LSTM<REAL_t>::State::hiddens(initial_state)
+                        initial_state
                     ),
                     *(label_ptr+1)
                 );

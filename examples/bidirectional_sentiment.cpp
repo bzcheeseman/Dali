@@ -54,7 +54,6 @@ DEFINE_bool(convolution,     false,      "Perform a convolution before passing t
 DEFINE_int32(filters,        50,         "Number of filters to use for Convolution");
 DEFINE_string(pretrained_vectors, "",    "Load pretrained word vectors?");
 DEFINE_double(learning_rate, 0.01,       "Learning rate for SGD and Adagrad.");
-DEFINE_string(visualizer, "experiment", "What to name the visualization job.");
 
 template<typename T>
 Mat<T> softmax_categorical_surprise(Mat<T> logprobs, int target) {
@@ -650,34 +649,24 @@ int main (int argc,  char* argv[]) {
                 // show sentiment detection as it happens:
                 if (visualizer_active) {
                     example_visualization.maybe_run(seconds(10), [&word_vocab, &visualizer, &minibatch, &thread_model]() {
+                        // pick example
+                        auto& example = std::get<0>(minibatch[utils::randint(0, minibatch.size()-1)]);
+
                         // visualization does not backpropagate.
                         graph::NoBackprop nb;
 
-                        auto& example = std::get<0>(minibatch[utils::randint(0, minibatch.size()-1)]);
-
-                        // run model
+                        // make prediction
                         auto model_out = thread_model.activate_sequence(
                             example,
                             0.0);
 
-                        // collect memory as vector
-                        auto sentence_memory = std::vector<REAL_t>(
-                            std::get<0>(model_out).w().data(),
-                            std::get<0>(model_out).w().data() + std::get<0>(model_out).dims(0));
-
-                        // store sentence memory & tokens:
-                        auto sentence = visualizable::Sentence<REAL_t>(word_vocab.decode(example));
-                        sentence.set_weights(std::get<0>(model_out));
-
-                        // store sentence as input + distribution as output:
-                        Json::object json_example = {
-                            { "type", "classifier_example"},
-                            { "input", sentence.to_json()},
-                            { "output",  utils::json_finite_distribution(std::get<1>(model_out), SST::label_names) },
-                        };
-
                         // feed to visualizer
-                        visualizer->feed(json_example);
+                        visualizer->feed(
+                            SST::json_classification(word_vocab.decode(example),
+                                std::get<1>(model_out),
+                                std::get<0>(model_out)
+                            )
+                        );
                     });
                 }
                 if (solver_type == ADAGRAD_TYPE) {

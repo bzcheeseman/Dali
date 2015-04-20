@@ -38,7 +38,6 @@ using std::to_string;
 DEFINE_int32(j, 9, "Number of threads");
 DEFINE_bool(solver_mutex, false, "Synchronous execution of solver step.");
 DEFINE_bool(margin_loss, false, "Use margin loss instead of cross entropy");
-DEFINE_string(visualizer, "experiment", "What to name the visualization job.");
 DEFINE_int32(batch_size, 100, "How many stories to put in a single batch.");
 DEFINE_double(margin, 0.1, "Margin for margine loss (must use --margin_loss).");
 // Visualizer

@@ -64,12 +64,11 @@ std::vector<Mat<R>> Layer<R>::parameters() const{
 template<typename R>
 void StackedInputLayer<R>::create_variables() {
     int total_input_size = 0;
-    for (auto& input_size : input_sizes) total_input_size += input_size;
-    matrices.reserve(input_sizes.size());
+    for (auto& input_size : _input_sizes) total_input_size += input_size;
+    matrices.reserve(_input_sizes.size());
     auto U = weights<R>::uniform(2.0 / sqrt(total_input_size));
-    for (auto& input_size : input_sizes) {
+    for (auto& input_size : _input_sizes) {
         matrices.emplace_back(hidden_size, input_size, U);
-        DEBUG_ASSERT_MAT_NOT_NAN(matrices[matrices.size() -1])
     }
     this->b = Mat<R>(hidden_size, 1, U);
 }
@@ -79,10 +78,37 @@ StackedInputLayer<R>::StackedInputLayer() {
 }
 
 template<typename R>
-StackedInputLayer<R>::StackedInputLayer (vector<int> _input_sizes,
+const std::vector<int>& StackedInputLayer<R>::input_sizes() const {
+    return _input_sizes;
+}
+
+template<typename R>
+void StackedInputLayer<R>::input_sizes(std::vector<int> new_sizes) {
+    utils::assert2(new_sizes.size() > 0, "StackedInputLayer must have at least one input (0 provided)");
+    // optimistic exit
+    if (new_sizes == _input_sizes)
+        return;
+
+    // new random numbers
+    int total_input_size = 0;
+    for (auto& input_size : new_sizes) total_input_size += input_size;
+    auto U = weights<R>::uniform(2.0 / sqrt(total_input_size));
+
+    // construct matrices
+    matrices = std::vector<Mat<R>>();
+    for (auto& input_size : new_sizes) {
+        matrices.emplace_back(hidden_size, input_size, U);
+    }
+
+    // save new size
+    _input_sizes = new_sizes;
+}
+
+template<typename R>
+StackedInputLayer<R>::StackedInputLayer (vector<int> input_sizes,
                                          int _hidden_size) :
         hidden_size(_hidden_size),
-        input_sizes(_input_sizes) {
+        _input_sizes(input_sizes) {
     create_variables();
 }
 
@@ -90,20 +116,23 @@ template<typename R>
 StackedInputLayer<R>::StackedInputLayer (int input_size,
                                          int output_size) :
         hidden_size(output_size),
-        input_sizes({input_size}) {
+        _input_sizes({input_size}) {
     create_variables();
 }
 
 template<typename R>
-StackedInputLayer<R>::StackedInputLayer (std::initializer_list<int> _input_sizes,
+StackedInputLayer<R>::StackedInputLayer (std::initializer_list<int> input_sizes,
                                          int _hidden_size) :
         hidden_size(_hidden_size),
-        input_sizes(_input_sizes) {
+        _input_sizes(input_sizes) {
     create_variables();
 }
 
 template<typename R>
 vector<Mat<R>> StackedInputLayer<R>::zip_inputs_with_matrices_and_bias(const vector<Mat<R>>& inputs) const {
+    assert2(inputs.size() == matrices.size(),
+        utils::MS() << "Not an equal number of inputs to stack (" << inputs.size()
+                    << ") and matrices in StackedInputLayer (" << this->matrices.size() << ")");
     vector<Mat<R>> zipped;
     zipped.reserve(matrices.size() * 2 + 1);
     auto input_ptr = inputs.begin();
@@ -120,12 +149,16 @@ template<typename R>
 vector<Mat<R>> StackedInputLayer<R>::zip_inputs_with_matrices_and_bias(
         Mat<R> input,
         const vector<Mat<R>>& inputs) const {
+
+    assert2((1 + inputs.size()) == matrices.size(),
+        utils::MS() << "Not an equal number of inputs to stack (" << (1 + inputs.size())
+                    << ") and matrices in StackedInputLayer (" << this->matrices.size() << ")");
     vector<Mat<R>> zipped;
     zipped.reserve(matrices.size() * 2 + 1);
     auto input_ptr = inputs.begin();
     auto mat_ptr = matrices.begin();
 
-    // We are provided separately with anoter input vector
+    // We are provided separately with another input vector
     // that will go first in the zip, while the remainder will
     // be loaded in "zip" form with the vector of inputs
     zipped.emplace_back(*mat_ptr);
@@ -188,7 +221,7 @@ Mat<R> StackedInputLayer<R>::activate(
 }
 
 template<typename R>
-StackedInputLayer<R>::StackedInputLayer (const StackedInputLayer<R>& layer, bool copy_w, bool copy_dw) : hidden_size(layer.hidden_size), input_sizes(layer.input_sizes) {
+StackedInputLayer<R>::StackedInputLayer (const StackedInputLayer<R>& layer, bool copy_w, bool copy_dw) : hidden_size(layer.hidden_size), _input_sizes(layer.input_sizes()) {
     matrices.reserve(layer.matrices.size());
     for (auto& matrix : layer.matrices)
         matrices.emplace_back(matrix, copy_w, copy_dw);
@@ -476,10 +509,10 @@ LSTM<R>::LSTM (int _input_size, int _hidden_size, bool _memory_feeds_gates) :
         memory_feeds_gates(_memory_feeds_gates),
         hidden_size(_hidden_size),
         input_size(_input_size),
-        input_layer(_input_size, _hidden_size),
-        forget_layer(_input_size, _hidden_size),
-        output_layer(_input_size, _hidden_size),
-        cell_layer(_input_size, _hidden_size) {
+        input_layer({_input_size, _hidden_size}, _hidden_size),
+        forget_layer({_input_size, _hidden_size}, _hidden_size),
+        output_layer({_input_size, _hidden_size}, _hidden_size),
+        cell_layer({_input_size, _hidden_size}, _hidden_size) {
 
     if (memory_feeds_gates) {
         Wci = Mat<R>(hidden_size, 1, weights<R>::uniform(2. / sqrt(hidden_size)));
@@ -499,10 +532,10 @@ LSTM<R>::LSTM (int _input_size, int shortcut_size, int _hidden_size, bool _memor
         memory_feeds_gates(_memory_feeds_gates),
         hidden_size(_hidden_size),
         input_size(_input_size),
-        input_layer( {_input_size, shortcut_size}, _hidden_size),
-        forget_layer({_input_size, shortcut_size}, _hidden_size),
-        output_layer({_input_size, shortcut_size}, _hidden_size),
-        cell_layer(  {_input_size, shortcut_size}, _hidden_size) {
+        input_layer( {_input_size, _hidden_size, shortcut_size}, _hidden_size),
+        forget_layer({_input_size, _hidden_size, shortcut_size}, _hidden_size),
+        output_layer({_input_size, _hidden_size, shortcut_size}, _hidden_size),
+        cell_layer(  {_input_size, _hidden_size, shortcut_size}, _hidden_size) {
 
     if (memory_feeds_gates) {
         Wci = Mat<R>(hidden_size, 1, weights<R>::uniform(2. / sqrt(hidden_size)));
@@ -549,7 +582,7 @@ typename LSTM<R>::State LSTM<R>::_activate(
     assert(gate_input[0].dims(0) == input_size);
     if (shortcut) {
         assert(gate_input.size() == 3);
-        assert(gate_input[1].dims(0) == input_layer.input_sizes[1]);
+        assert(gate_input[1].dims(0) == input_layer.input_sizes()[1]);
     } else {
         assert(gate_input.size() == 2);
     }

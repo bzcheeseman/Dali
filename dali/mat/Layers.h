@@ -60,17 +60,22 @@ class StackedInputLayer : public AbstractMultiInputLayer<R> {
     void create_variables();
     std::vector<Mat<R>> zip_inputs_with_matrices_and_bias(const std::vector<Mat<R>>&) const;
     std::vector<Mat<R>> zip_inputs_with_matrices_and_bias(Mat<R>, const std::vector<Mat<R>>&) const;
+    std::vector<int> _input_sizes;
     public:
         typedef R value_t;
         std::vector<Mat<R>> matrices;
         int hidden_size;
-        std::vector<int> input_sizes;
+
         virtual std::vector<Mat<R>> parameters() const;
         StackedInputLayer();
         StackedInputLayer(std::initializer_list<int>, int);
         StackedInputLayer(std::vector<int>, int);
         StackedInputLayer(int input_size, int output_size);
         StackedInputLayer(const StackedInputLayer&, bool, bool);
+        // getter
+        const std::vector<int>& input_sizes() const;
+        // settter
+        void input_sizes(std::vector<int> new_sizes);
 
         Mat<R> activate(std::initializer_list<Mat<R>>) const;
         Mat<R> activate(const std::vector<Mat<R>>&) const;

@@ -63,7 +63,6 @@ To run our network forward in time we'll need some initial states and a forward 
 
 ```cpp
 std::vector< typename LSTM<float>::State > forward_LSTMs(
-    Graph<float>&,
     Mat<float>,
     pair<vector<Mat<float>>, vector<Mat<float>>>&,
     vector<LSTM<float>>&);
@@ -105,7 +104,6 @@ Then our forward function can be changed to:
 
 ```cpp
 float cost_fun(
-    Graph<float>& G, // the graph for the computation
     vector<int>& hidden_sizes, // re-initialize the hidden cell states at each new sentence
     vector<LSTM<float>>& cells,  // the LSTMs
     mat embedding, // the embedding matrix
@@ -145,7 +143,7 @@ float cost_fun(
 
 #### Training
 
-Now that we've built up this computation graph we should assign errors in the outputs we can about, and backpropagate it:
+Now that we've computed the cost we need to tell the computation graph to backpropagate it to the parameters:
 
 ```cpp
 graph::backward();
@@ -186,7 +184,6 @@ Then we train by looping through the sentences:
 
 ```cpp
 for (auto i = 0; i < epochs; ++i) {
-    auto G = Graph<float>(true);      // create a new graph for each loop
     auto cost = cost_fun(
         G,                       // to keep track of computation
         hidden_sizes,            // to construct initial states
@@ -195,7 +192,7 @@ for (auto i = 0; i < epochs; ++i) {
         classifier,              // decoder for LSTM final hidden layer
         sentences[uniform(seed)] // the sequence to predict
     );
-    G.backward();                // backpropagate
+    graph::backward();           // backpropagate
     // progress by one step
     solver.step(parameters, 0.01, 0.0);
     if (i % report_frequency == 0)

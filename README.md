@@ -196,7 +196,7 @@ Check whether a file is gzipped:
 utils::is_gzip("folder/suspicious.gz");
 ```
 
-Sort the arguments of a list `np.argsort` style:
+Sort the arguments of a list [np.argsort](http://docs.scipy.org/doc/numpy/reference/generated/numpy.argsort.html) style:
 
 ```cpp
 auto sorted_lengths = utils::argsort(lengths);

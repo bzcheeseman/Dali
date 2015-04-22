@@ -530,8 +530,8 @@ const double SHORT_TERM_VALIDATION = 0.1;
 // prediction haz dropout.
 const int PREDICTION_PATIENCE = 200;
 
-const double FACT_SELECTION_LAMBDA_MAX = 2.0;
-const double FACT_WORD_SELECTION_LAMBDA_MAX = 0.001;
+const double FACT_SELECTION_LAMBDA_MAX = 3.0;
+const double FACT_WORD_SELECTION_LAMBDA_MAX = 0.0005;
 
 
 
@@ -689,6 +689,9 @@ void visualize_examples(const vector<babi::Story>& data, int num_examples) {
 
 }
 
+vector<string> predict(const vector<vector<string>>& facts,
+                       const vector<string>& question);
+
 void train(const vector<babi::Story>& data, shared_ptr<Training> training_method) {
     for (auto param: model->parameters()) {
         weights<REAL_t>::svd(weights<REAL_t>::gaussian(1.0))(param);
@@ -705,10 +708,11 @@ void train(const vector<babi::Story>& data, shared_ptr<Training> training_method
 
     //Solver::AdaDelta<REAL_t> solver(params, 0.95, 1e-9, 5.0);
 
-    Solver::Adam<REAL_t> solver(params);
+    // Solver::Adam<REAL_t> solver(params);
 
-    //Solver::AdaGrad<REAL_t> solver(params, 1e-9, 10.0, 1e-9); solver_reset_cache = true;
-    //AdaGrad: solver.step_size = 0.05 / FLAGS_batch_size;
+    Solver::AdaGrad<REAL_t> solver(params, 1e-9, 100.0, 1e-8); solver_reset_cache = true;
+    //AdaGrad:
+    solver.step_size = 0.2 / FLAGS_batch_size;
 
 
     training_method->reset();
@@ -735,7 +739,8 @@ void train(const vector<babi::Story>& data, shared_ptr<Training> training_method
                                     << validation_errors(2) << std::endl
                   << "TRAINING: " << training_errors(0) << " "
                                   << training_errors(1) << " "
-                                  << training_errors(2) << std::endl;
+                                  << training_errors(2) << std::endl
+                  << "VALIDATION ACCURACY: " << 100.0 * babi::accuracy(validation, predict) << "%" << std::endl;
         if (training_method->should_stop(validation_errors(0))) break;
         training_method->report();
 
@@ -846,6 +851,11 @@ int main(int argc, char** argv) {
     std::cout << "Number of threads: " << FLAGS_j << (FLAGS_solver_mutex ? "(with solver mutex)" : "") << std::endl;
     std::cout << "Using " << (FLAGS_margin_loss ? "margin loss" : "cross entropy") << std::endl;
     // grid_search();
+
+    while(true) {
+        benchmark_task("qa15_basic-deduction");
+    }
+
     benchmark_task("qa1_single-supporting-fact");
     benchmark_task("qa4_two-arg-relations");
     // benchmark_all();

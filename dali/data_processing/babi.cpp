@@ -233,9 +233,13 @@ namespace babi {
     /* helper functions */
 
     double task_accuracy(const std::string& task, prediction_fun predict) {
+        return accuracy(Parser::testing_data(task), predict);
+    }
+
+    double accuracy(const vector<Story>& data, prediction_fun predict) {
         int correct_questions = 0;
         int total_questions = 0;
-        for (auto& story : Parser::testing_data(task)) {
+        for (auto& story : data) {
             babi::StoryParser parser(&story);
             vector<VS> facts_so_far;
             QA* qa;

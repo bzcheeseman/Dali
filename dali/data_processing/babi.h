@@ -90,7 +90,8 @@ namespace babi {
     // Evaluates accuracy of a model on a task using generic predict function.
     // prediction_fun: (fact_list, question) -> answer
     typedef std::function<VS(std::vector<VS>,VS)> prediction_fun;
-    double task_accuracy(const std::string& task, prediction_fun);
+    double accuracy(const std::vector<Story>& data, prediction_fun predict);
+    double task_accuracy(const std::string& task, prediction_fun predict);
 
     // Extract list of words used in all the facts, questions and answers
     // in particular dataset.

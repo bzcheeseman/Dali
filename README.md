@@ -178,7 +178,7 @@ To fix this bug (feature?) make the modifications listed [here](https://bitbucke
 
 In the utilities namespace you will find several tools to make data processing and saving easier.
 
-To create folders similar to how `os.makedirs` works in Python, you can do:
+To create folders similar to how [os.makedirs](https://docs.python.org/2/library/os.html#os.makedirs) works in Python, you can do:
 
 ```cpp
 utils::makedirs("folder/subfolder/");

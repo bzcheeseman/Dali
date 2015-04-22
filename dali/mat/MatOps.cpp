@@ -820,7 +820,7 @@ Mat<R> MatOps<R>::mul_add_broadcast_mul_with_bias(
               (
                   (matrix2.w() * input_to_2.w())
               )
-          ).colwise() + (bias.w()+ (matrix1.w() * input_to_1.w())).col(0)
+          ).colwise() + (bias.w() + (matrix1.w() * input_to_1.w())).col(0)
       ).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, input_to_1, matrix2, input_to_2, bias, out] () {
@@ -828,7 +828,9 @@ Mat<R> MatOps<R>::mul_add_broadcast_mul_with_bias(
             // broadcasting input means taking outer product here:
             GRAD(matrix1) += ((out.dw()).rowwise().sum() * ((input_to_1.w()).transpose()));
             // broadcasting output means sum after the reverse product here:
-            GRAD(input_to_1).noalias() += (matrix1.w().transpose() * (out.dw())).rowwise().sum();
+            GRAD(input_to_1).noalias() += (
+                matrix1.w().transpose() * (out.dw())
+            ).rowwise().sum();
             // second multiply:
             GRAD(matrix2).noalias() += (out.dw()) * ((input_to_2.w()).transpose());
 
@@ -848,9 +850,15 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(std::initializer_list<Mat<R>> matrices) 
 
 template<typename R>
 Mat<R> MatOps<R>::mul_add_mul_with_bias(const vector<Mat<R>>& matrices) {
+    // broacast to largest input size
+    dim_t max_broadcast = matrices[1].dims(1);
+    for (auto matrices_ptr = matrices.begin()+1; matrices_ptr < matrices.end(); matrices_ptr+=2) {
+        max_broadcast = std::max(max_broadcast, matrices_ptr->dims(1));
+    }
+
     Mat<R> out(
             matrices[0].dims(0),
-            matrices[1].dims(1),
+            max_broadcast,
             true);
     DEBUG_ASSERT_MAT_NOT_NAN(out)
     auto matrices_ptr = matrices.begin();
@@ -858,7 +866,14 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(const vector<Mat<R>>& matrices) {
         DEBUG_ASSERT_MAT_NOT_NAN(*matrices_ptr)
         DEBUG_ASSERT_MAT_NOT_NAN(*(matrices_ptr + 1))
         DEBUG_ASSERT_MAT_NOT_NAN(out)
-        out.w() += (*matrices_ptr).w() * (*(matrices_ptr + 1)).w();
+        // inputs must either match the broadcasted size, or be broadcastable by having their
+        // inner dimension be 1 (a column vector essentially)
+        assert(((matrices_ptr+1)->dims(1) == max_broadcast) || ((matrices_ptr+1)->dims(1) == 1));
+        if (matrices_ptr->dims(1) == max_broadcast) {
+            out.w() += (*matrices_ptr).w() * (*(matrices_ptr + 1)).w();
+        } else {
+            out.w().colwise() += ((*matrices_ptr).w() * (*(matrices_ptr + 1)).w()).col(0);
+        }
         DEBUG_ASSERT_MAT_NOT_NAN(out)
         matrices_ptr+=2;
     }
@@ -866,11 +881,20 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(const vector<Mat<R>>& matrices) {
     DEBUG_ASSERT_NOT_NAN((*(matrices.begin() + matrices.size() - 1)).w());
     out.w().colwise() += (*(matrices.begin() + matrices.size() - 1)).w().col(0);
     if (graph::backprop_enabled)
-        graph::emplace_back([matrices, out](){
+        graph::emplace_back([matrices, out, max_broadcast](){
             auto matrices_ptr = matrices.begin();
             while (matrices_ptr != (matrices.end() - 1)) {
-                GRAD((*matrices_ptr)).noalias()   += (out.dw()) * (*(matrices_ptr+1)).w().transpose();
-                GRAD(*(matrices_ptr+1)).noalias() += (*matrices_ptr).w().transpose() * (out.dw());
+                if ((matrices_ptr+1)->dims(1) == max_broadcast) {
+                    GRAD((*matrices_ptr)).noalias()   += out.dw() * (*(matrices_ptr+1)).w().transpose();
+                    GRAD(*(matrices_ptr+1)).noalias() += (*matrices_ptr).w().transpose() * (out.dw());
+                } else {
+                    // broadcasting input means taking outer product here:
+                    GRAD(*matrices_ptr) += (out.dw().rowwise().sum() * ((*(matrices_ptr+1)).w()).transpose());
+                    // broadcasting output means sum after the reverse product here:
+                    GRAD(*(matrices_ptr+1)).noalias() += (
+                        (*matrices_ptr).w().transpose() * out.dw()
+                    ).rowwise().sum();
+                }
                 matrices_ptr+=2;
             }
             auto bias = *(matrices.begin() + matrices.size() - 1);

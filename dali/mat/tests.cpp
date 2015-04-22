@@ -388,6 +388,31 @@ TEST_F(LayerTests, layer_tanh_gradient) {
     }
 }
 
+TEST_F(LayerTests, BroadcastMultiply) {
+    int large_size = 10;
+    int out_size   = 2;
+
+    // different input sizes passed to a stacked input layer
+    vector<int> input_sizes   = {5,  2, 5,  1, 5};
+
+    // broadcast the 1s into the larger dimension:
+    vector<int> example_sizes = {large_size, 1, large_size, 1, large_size};
+
+    // build layer
+    auto layer = StackedInputLayer<R>(input_sizes, out_size);
+
+    // build inputs
+    vector<Mat<R>> inputs;
+    for (int i = 0; i < input_sizes.size(); i++) {
+        inputs.emplace_back(input_sizes[i], example_sizes[i], weights<R>::uniform(5.0));
+    }
+    // project
+    auto out_state = layer.activate(inputs);
+
+    ASSERT_EQ(out_state.dims(1), large_size) << "Output should be broadcasted to largest number of input examples.";
+    ASSERT_EQ(out_state.dims(0), out_size)   << "Output should have the correct output dimensions.";
+}
+
 TEST_F(LayerTests, stacked_layer_tanh_gradient) {
 
     int num_examples           = 20;
@@ -410,24 +435,6 @@ TEST_F(LayerTests, stacked_layer_tanh_gradient) {
         };
         ASSERT_TRUE(gradient_same<R>(functor, params, 0.0003));
     }
-}
-
-TEST_F(LayerTests, BroadcastMultiply) {
-    int large_size = 1;
-    int out_size = 2;
-    vector<int> example_sizes = {large_size, 1};//, large_size, large_size, large_size};//;//, 1, large_size, 1, large_size};
-    vector<int> input_sizes   = {5,  2};//5,  1, 5};
-    auto layer = StackedInputLayer<R>(input_sizes, out_size);
-
-    vector<Mat<R>> inputs;
-    for (int i = 0; i < input_sizes.size(); i++) {
-        inputs.emplace_back(input_sizes[i], example_sizes[i], weights<R>::uniform(5.0));
-    }
-
-    auto out_state = layer.activate(inputs);
-
-    ASSERT_EQ(out_state.dims(1), large_size) << "Output was not broadcasted to largest number of input examples.";
-    ASSERT_EQ(out_state.dims(0), out_size) << "Output should have the correct output dimensions.";
 }
 
 TEST_F(LayerTests, LSTM_Zaremba_gradient) {

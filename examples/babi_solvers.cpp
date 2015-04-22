@@ -686,7 +686,6 @@ void visualize_examples(const vector<babi::Story>& data, int num_examples) {
         }
         if (!example_sent) ++num_examples;
     }
-
 }
 
 vector<string> predict(const vector<vector<string>>& facts,
@@ -737,9 +736,9 @@ void train(const vector<babi::Story>& data, shared_ptr<Training> training_method
                   << "VALIDATION: " << validation_errors(0) << " "
                                     << validation_errors(1) << " "
                                     << validation_errors(2) << std::endl
-                  << "TRAINING: " << training_errors(0) << " "
-                                  << training_errors(1) << " "
-                                  << training_errors(2) << std::endl
+                  << "TRAINING: "   << training_errors(0) << " "
+                                    << training_errors(1) << " "
+                                    << training_errors(2) << std::endl
                   << "VALIDATION ACCURACY: " << 100.0 * babi::accuracy(validation, predict) << "%" << std::endl;
         if (training_method->should_stop(validation_errors(0))) break;
         training_method->report();
@@ -846,7 +845,9 @@ int main(int argc, char** argv) {
     Eigen::initParallel();
 
     int increment = 0;
-    visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
+    if (!FLAGS_visualizer.empty()) {
+        visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
+    }
 
     std::cout << "Number of threads: " << FLAGS_j << (FLAGS_solver_mutex ? "(with solver mutex)" : "") << std::endl;
     std::cout << "Using " << (FLAGS_margin_loss ? "margin loss" : "cross entropy") << std::endl;

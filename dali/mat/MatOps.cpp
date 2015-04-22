@@ -778,9 +778,9 @@ Mat<R> MatOps<R>::mul_with_bias(
     Mat<R> matrix2,
     Mat<R> bias) {
     if (matrix1.dims(1) != matrix2.dims(0))
-            throw std::invalid_argument("matmul dimensions misaligned.");
+        throw std::invalid_argument("matmul dimensions misaligned.");
     if (matrix1.dims(0) != bias.dims(0) || bias.dims(1) != 1)
-            throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
+        throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
     Mat<R> out (
             matrix1.dims(0),
             matrix2.dims(1),

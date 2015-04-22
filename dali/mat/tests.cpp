@@ -412,6 +412,24 @@ TEST_F(LayerTests, stacked_layer_tanh_gradient) {
     }
 }
 
+TEST_F(LayerTests, BroadcastMultiply) {
+    int large_size = 1;
+    int out_size = 2;
+    vector<int> example_sizes = {large_size, 1};//, large_size, large_size, large_size};//;//, 1, large_size, 1, large_size};
+    vector<int> input_sizes   = {5,  2};//5,  1, 5};
+    auto layer = StackedInputLayer<R>(input_sizes, out_size);
+
+    vector<Mat<R>> inputs;
+    for (int i = 0; i < input_sizes.size(); i++) {
+        inputs.emplace_back(input_sizes[i], example_sizes[i], weights<R>::uniform(5.0));
+    }
+
+    auto out_state = layer.activate(inputs);
+
+    ASSERT_EQ(out_state.dims(1), large_size) << "Output was not broadcasted to largest number of input examples.";
+    ASSERT_EQ(out_state.dims(0), out_size) << "Output should have the correct output dimensions.";
+}
+
 TEST_F(LayerTests, LSTM_Zaremba_gradient) {
 
     int num_examples           = 10;
@@ -564,5 +582,21 @@ TEST_F(LayerTests, matrix_constant_check) {
     EXPECT_MATRIX_NEQ(B.dw(), Mat<R>::zeros_like(X).w());
 }
 
+TEST_F(LayerTests, shortcut_test) {
+    int input_size = 10;
+    int num_examples = 2;
+    auto hidden_sizes = {40, 30};//{30, 13, 20, 1, 9, 2};
 
+    auto model = StackedLSTM<R>(input_size, hidden_sizes, true, true);
+    auto X = {Mat<R>(
+        input_size,
+        num_examples,
+        weights<R>::uniform(20.0)
+    )};
+
+    auto out_states = model.activate_sequence(model.initial_states(),
+                                              X,
+                                              0.2);
+
+}
 

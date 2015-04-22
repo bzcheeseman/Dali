@@ -581,8 +581,12 @@ typename LSTM<R>::State LSTM<R>::_activate(
     assert(initial_state.hidden.dims(0) == hidden_size);
     assert(gate_input[0].dims(0) == input_size);
     if (shortcut) {
-        assert(gate_input.size() == 3);
-        assert(gate_input[1].dims(0) == input_layer.input_sizes()[1]);
+        assert2(gate_input.size() == 3,
+            utils::MS() << "Expected 3 inputs, but got " << gate_input.size() << " instead.");
+        assert2(gate_input[2].dims(0) == input_layer.input_sizes()[2],
+            utils::MS() << "Gate inputs don't match: gate expected a shortcut input of size "
+                 << input_layer.input_sizes()[2]
+                 << " but got " << gate_input[2].dims(0) << " instead.");
     } else {
         assert(gate_input.size() == 2);
     }
@@ -650,8 +654,8 @@ typename LSTM<R>::State LSTM<R>::activate(
     Mat<R> shortcut_vector,
     State  initial_state) const {
     if (!shortcut)
-        throw std::runtime_error("Error: LSTM without Shorcuts received shortcut_vector.");
-    auto gate_input = std::vector<Mat<R>>({input_vector, shortcut_vector, initial_state.hidden});
+        throw std::runtime_error("Error: LSTM without Shortcuts received shortcut_vector.");
+    auto gate_input = std::vector<Mat<R>>({input_vector, initial_state.hidden, shortcut_vector});
     return _activate(gate_input, initial_state);
 }
 
@@ -718,7 +722,7 @@ vector<celltype> StackedCells(
     cells.reserve(hidden_sizes.size());
     int prev_size = input_size;
     int i = 0;
-    for (auto& size : hidden_sizes) {
+    for (auto& hidden_size : hidden_sizes) {
         if (shortcut) {
             if (i == 0) {
                 // first cell in a shorcut
@@ -727,7 +731,7 @@ vector<celltype> StackedCells(
                 // so no shorcut is used
                 cells.emplace_back(
                     prev_size,
-                    size,
+                    hidden_size,
                     memory_feeds_gates);
             } else {
                 // other cells in a shorcut
@@ -737,16 +741,16 @@ vector<celltype> StackedCells(
                 cells.emplace_back(
                     prev_size,
                     input_size,
-                    size,
+                    hidden_size,
                     memory_feeds_gates);
             }
         } else {
             cells.emplace_back(
                 prev_size,
-                size,
+                hidden_size,
                 memory_feeds_gates);
         }
-        prev_size = size;
+        prev_size = hidden_size;
         i++;
     }
     return cells;

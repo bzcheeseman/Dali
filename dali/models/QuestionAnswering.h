@@ -4,13 +4,14 @@
 #include <gflags/gflags.h>
 #include <string>
 #include <vector>
-
 #include "dali/core.h"
 #include "dali/utils.h"
 
 DECLARE_string(pretrained_vectors);
 
-// This is an anonymous namespace - what happens in Anonymous namespace stays
+// Szymon's Vegas logic:
+// This is an anonymous namespace - what happens in
+// Anonymous namespace stays
 // in anonymous namespace!
 namespace {
     using std::vector;

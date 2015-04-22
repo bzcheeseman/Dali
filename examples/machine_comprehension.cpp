@@ -10,7 +10,6 @@
 #include "dali/utils.h"
 #include "dali/models/QuestionAnswering.h"
 
-
 using mc::Section;
 using mc::Question;
 using std::vector;
@@ -60,11 +59,16 @@ void init() {
     std::tie(train_data, test_data) = mc::load();
     // shuffle examples
     std::random_shuffle(train_data.begin(), train_data.end());
-    std::random_shuffle(test_data.begin(), test_data.end());
     // separate validation dataset
     int num_validation = train_data.size() * FLAGS_validation_fraction;
-    validate_data = vector<Section>(train_data.begin(), train_data.begin() + num_validation);
-    train_data.erase(train_data.begin(), train_data.begin() + num_validation);
+    validate_data      = vector<Section>(
+        train_data.begin(),
+        train_data.begin() + num_validation
+    );
+    train_data.erase(
+        train_data.begin(),
+        train_data.begin() + num_validation
+    );
     // extract vocabulary
     // only consider common words.
     vector<vector<string>> wrapper;
@@ -72,9 +76,9 @@ void init() {
     auto index2word = utils::get_vocabulary(wrapper, 2);
     vocab = std::make_shared<Vocab>(index2word);
 
-    std::cout << "Datasets : " << "train (" << train_data.size() << " items), "
+    std::cout << "Datasets : " << "train ("    << train_data.size()    << " items), "
                                << "validate (" << validate_data.size() << " items), "
-                               << "test (" << test_data.size() << " items)" << std::endl;
+                               << "test ("     << test_data.size()     << " items)" << std::endl;
     std::cout << "vocabulary size : " << vocab->word2index.size() << std::endl;
 
 }
@@ -90,7 +94,6 @@ int main(int argc, char** argv) {
 
     Eigen::setNbThreads(0);
     Eigen::initParallel();
-
     init();
 
     pool = new ThreadPool(FLAGS_j);

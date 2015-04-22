@@ -38,7 +38,7 @@ using std::to_string;
 DEFINE_int32(j, 9, "Number of threads");
 DEFINE_bool(solver_mutex, false, "Synchronous execution of solver step.");
 DEFINE_bool(margin_loss, false, "Use margin loss instead of cross entropy");
-DEFINE_int32(batch_size, 100, "How many stories to put in a single batch.");
+DEFINE_int32(minibatch, 100, "How many stories to put in a single batch.");
 DEFINE_double(margin, 0.1, "Margin for margine loss (must use --margin_loss).");
 // Visualizer
 std::shared_ptr<Visualizer> visualizer;
@@ -429,7 +429,7 @@ class LstmBabiModel : public Model {
                 auto gated_embeddings = apply_gate(this_fact_word_gate_memory, this_fact_embeddings);
 
                 auto fact_repr = lstm_final_activation(
-                        gated_embeddings,
+                        this_fact_embeddings,//gated_embeddings,
                         fact_model,
                         use_dropout ? c().f("TEXT_REPR_DROPOUT") : 0.0);
                 fact_representations.push_back(fact_repr);
@@ -441,7 +441,7 @@ class LstmBabiModel : public Model {
             // There is probably a better way
             vector<Mat<T>> hl_input;
             hl_input.push_back(question_representation);
-            hl_input.insert(hl_input.end(), gated_facts.rbegin(), gated_facts.rend());
+            hl_input.insert(hl_input.end(), gated_facts.begin(), gated_facts.end());
             hl_input.push_back(please_start_prediction);
 
             auto hl_hidden = lstm_final_activation(
@@ -469,7 +469,7 @@ class LstmBabiModel : public Model {
                 }
                 auto distribution_as_vec = utils::normalize_weights(scores_as_vec);
                 vdistribution = make_shared<visualizable::FiniteDistribution<T>>(
-                        distribution_as_vec, scores_as_vec, vocab->index2word);
+                        distribution_as_vec, scores_as_vec, vocab->index2word, 5);
             } else {
                 auto distribution = MatOps<T>::softmax(activation.log_probs);
                 std::vector<double> distribution_as_vec;
@@ -477,7 +477,7 @@ class LstmBabiModel : public Model {
                     distribution_as_vec.push_back(distribution.w()(i,0));
                 }
                 vdistribution = make_shared<visualizable::FiniteDistribution<T>>(
-                        distribution_as_vec, vocab->index2word);
+                        distribution_as_vec, vocab->index2word, 5);
             }
 
 
@@ -568,10 +568,10 @@ MatrixXd errors(StoryActivation<REAL_t> activation,
     Mat<REAL_t> total_error;
 
     total_error = prediction_error
-                + fact_selection_error * FACT_SELECTION_LAMBDA_MAX
-                + activation.fact_word_sum() * FACT_WORD_SELECTION_LAMBDA_MAX;
+                + fact_selection_error * FACT_SELECTION_LAMBDA_MAX;
+                //+ activation.fact_word_sum() * FACT_WORD_SELECTION_LAMBDA_MAX;
 
-    total_error = total_error / FLAGS_batch_size;
+    total_error = total_error / FLAGS_minibatch;
 
     total_error.grad();
 
@@ -611,9 +611,9 @@ MatrixXd run_epoch(const vector<babi::Story>& dataset,
 
     auto random_order = utils::random_arange(dataset.size());
     vector<vector<int>> batches;
-    for (int i=0; i<dataset.size(); i+=FLAGS_batch_size) {
+    for (int i=0; i<dataset.size(); i+=FLAGS_minibatch) {
         vector<int> batch;
-        for (int j=i; j<std::min(i+FLAGS_batch_size, (int)dataset.size()); ++j) {
+        for (int j=i; j<std::min(i+FLAGS_minibatch, (int)dataset.size()); ++j) {
             batch.push_back(random_order[j]);
         }
         batches.push_back(batch);
@@ -711,7 +711,7 @@ void train(const vector<babi::Story>& data, shared_ptr<Training> training_method
 
     Solver::AdaGrad<REAL_t> solver(params, 1e-9, 100.0, 1e-8); solver_reset_cache = true;
     //AdaGrad:
-    solver.step_size = 0.2 / FLAGS_batch_size;
+    solver.step_size = 0.2 / FLAGS_minibatch;
 
 
     training_method->reset();
@@ -853,13 +853,7 @@ int main(int argc, char** argv) {
     std::cout << "Using " << (FLAGS_margin_loss ? "margin loss" : "cross entropy") << std::endl;
     // grid_search();
 
-    while(true) {
-        benchmark_task("qa15_basic-deduction");
-    }
-
-    benchmark_task("qa1_single-supporting-fact");
-    benchmark_task("qa4_two-arg-relations");
-    // benchmark_all();
+    benchmark_all();
 
 
     // benchmark_task("multitasking");

@@ -81,15 +81,17 @@ bool gradient_same(
                 Arg_prime(i,j) = (obj_positive - obj_negative) / (2.0 * grad_epsilon);
             }
         }
-
-        worked_out = worked_out && matrix_almost_equals(Arg_prime, arg.dw(), tolerance);
-        if (!worked_out) {
+        bool did_work_out = matrix_almost_equals(Arg_prime, arg.dw(), tolerance);
+        worked_out = worked_out && did_work_out;
+        if (!did_work_out) {
             std::cout << "-----------\nArg_prime:" << std::endl;
             std::cout << Arg_prime << std::endl;
             std::cout << "-----------\narg.dw():" << std::endl;
             std::cout << arg.dw() << std::endl;
+            if (arg.name != nullptr) {
+                std::cout << "arg.name = " << *arg.name << std::endl;
+            }
             std::cout << "-----------" << std::endl;
-            break;
         }
     }
 
@@ -274,11 +276,11 @@ TEST_F(MatOpsTests, matrix_mul_add_mul_with_bias) {
     int input_size = 5;
     int other_input_size = 7;
     EXPERIMENT_REPEAT {
-        auto X       = Mat<R>(input_size, num_examples,      weights<R>::uniform(20.0));
-        auto X_other = Mat<R>(other_input_size, num_examples,      weights<R>::uniform(20.0));
-        auto W       = Mat<R>(hidden_size, input_size,       weights<R>::uniform(2.0));
-        auto W_other = Mat<R>(hidden_size, other_input_size, weights<R>::uniform(2.0));
-        auto bias    = Mat<R>(hidden_size, 1,                weights<R>::uniform(2.0));
+        auto X       = Mat<R>(input_size, num_examples,       weights<R>::uniform(20.0));
+        auto X_other = Mat<R>(other_input_size, num_examples, weights<R>::uniform(20.0));
+        auto W       = Mat<R>(hidden_size, input_size,        weights<R>::uniform(2.0));
+        auto W_other = Mat<R>(hidden_size, other_input_size,  weights<R>::uniform(2.0));
+        auto bias    = Mat<R>(hidden_size, 1,                 weights<R>::uniform(2.0));
         ASSERT_TRUE(gradient_same<R>(functor, {W, X, W_other, X_other, bias}, 0.0003));
     }
 }
@@ -372,7 +374,7 @@ TEST_F(MatOpsTests, matrix_conv1d_grad) {
 typedef MemorySafeTest LayerTests;
 
 TEST_F(LayerTests, layer_tanh_gradient) {
-    int num_examples = 20;
+    int num_examples = 10;
     int hidden_size = 10;
     int input_size = 5;
 
@@ -389,43 +391,63 @@ TEST_F(LayerTests, layer_tanh_gradient) {
 }
 
 TEST_F(LayerTests, BroadcastMultiply) {
+
     int large_size = 10;
     int out_size   = 2;
 
     // different input sizes passed to a stacked input layer
-    vector<int> input_sizes   = {5,  2, 5,  1, 5};
+    vector<int> input_sizes   = {5,  2,  5,  1, 5};
 
     // broadcast the 1s into the larger dimension:
     vector<int> example_sizes = {large_size, 1, large_size, 1, large_size};
 
-    // build layer
-    auto layer = StackedInputLayer<R>(input_sizes, out_size);
+    EXPERIMENT_REPEAT {
+        // build layer
+        auto mylayer = StackedInputLayer<R>(input_sizes, out_size);
 
-    // build inputs
-    vector<Mat<R>> inputs;
-    for (int i = 0; i < input_sizes.size(); i++) {
-        inputs.emplace_back(input_sizes[i], example_sizes[i], weights<R>::uniform(5.0));
+        // build inputs
+        vector<Mat<R>> inputs;
+        for (int i = 0; i < input_sizes.size(); i++) {
+            inputs.emplace_back(input_sizes[i], example_sizes[i], weights<R>::uniform(5.0));
+        }
+
+        // add the params
+        auto params = mylayer.parameters();
+        params.insert(params.end(), inputs.begin(), inputs.end());
+
+        // project
+        auto functor = [&mylayer, &inputs](vector<Mat<R>> Xs)-> Mat<R> {
+            return mylayer.activate(inputs);
+        };
+        ASSERT_TRUE(gradient_same<R>(functor, params, 0.0003));
     }
-    // project
-    auto out_state = layer.activate(inputs);
-
-    ASSERT_EQ(out_state.dims(1), large_size) << "Output should be broadcasted to largest number of input examples.";
-    ASSERT_EQ(out_state.dims(0), out_size)   << "Output should have the correct output dimensions.";
 }
 
 TEST_F(LayerTests, stacked_layer_tanh_gradient) {
 
-    int num_examples           = 20;
-    int hidden_size            = 10;
-    int input_size             = 5;
-    int other_input_size       = 8;
-    int other_other_input_size = 12;
+    int num_examples = 10;
+    int hidden_size  = 10;
+    int input_size_1 = 5;
+    int input_size_2 = 8;
+    int input_size_3 = 12;
 
     EXPERIMENT_REPEAT {
-        auto A  = Mat<R>(input_size, num_examples,      weights<R>::uniform(20.0));
-        auto B  = Mat<R>(other_input_size, num_examples,      weights<R>::uniform(20.0));
-        auto C  = Mat<R>(other_other_input_size, num_examples,      weights<R>::uniform(20.0));
-        auto mylayer = StackedInputLayer<R>({input_size, other_input_size, other_other_input_size}, hidden_size);
+        auto A  = Mat<R>(
+            input_size_1,
+            num_examples,
+            weights<R>::uniform(20.0));
+        auto B  = Mat<R>(
+            input_size_2,
+            num_examples,
+            weights<R>::uniform(20.0));
+        auto C  = Mat<R>(
+            input_size_3,
+            num_examples,
+            weights<R>::uniform(20.0));
+        auto mylayer = StackedInputLayer<R>({
+            input_size_1,
+            input_size_2,
+            input_size_3}, hidden_size);
         auto params = mylayer.parameters();
         params.emplace_back(A);
         params.emplace_back(B);

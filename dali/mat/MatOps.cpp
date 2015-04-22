@@ -869,27 +869,28 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(const vector<Mat<R>>& matrices) {
         // inputs must either match the broadcasted size, or be broadcastable by having their
         // inner dimension be 1 (a column vector essentially)
         assert(((matrices_ptr+1)->dims(1) == max_broadcast) || ((matrices_ptr+1)->dims(1) == 1));
-        if (matrices_ptr->dims(1) == max_broadcast) {
+        if ((matrices_ptr+1)->dims(1) == max_broadcast) {
             out.w() += (*matrices_ptr).w() * (*(matrices_ptr + 1)).w();
         } else {
-            out.w().colwise() += ((*matrices_ptr).w() * (*(matrices_ptr + 1)).w()).col(0);
+            auto el = ((*matrices_ptr).w() * (*(matrices_ptr + 1)).w());
+            out.w().colwise() += el.col(0);
         }
         DEBUG_ASSERT_MAT_NOT_NAN(out)
         matrices_ptr+=2;
     }
 
-    DEBUG_ASSERT_NOT_NAN((*(matrices.begin() + matrices.size() - 1)).w());
-    out.w().colwise() += (*(matrices.begin() + matrices.size() - 1)).w().col(0);
+    DEBUG_ASSERT_NOT_NAN(matrices.back().w());
+    out.w().colwise() += matrices.back().w().col(0);
     if (graph::backprop_enabled)
         graph::emplace_back([matrices, out, max_broadcast](){
             auto matrices_ptr = matrices.begin();
             while (matrices_ptr != (matrices.end() - 1)) {
                 if ((matrices_ptr+1)->dims(1) == max_broadcast) {
-                    GRAD((*matrices_ptr)).noalias()   += out.dw() * (*(matrices_ptr+1)).w().transpose();
+                    GRAD(*matrices_ptr).noalias()   += out.dw() * (*(matrices_ptr+1)).w().transpose();
                     GRAD(*(matrices_ptr+1)).noalias() += (*matrices_ptr).w().transpose() * (out.dw());
                 } else {
                     // broadcasting input means taking outer product here:
-                    GRAD(*matrices_ptr) += (out.dw().rowwise().sum() * ((*(matrices_ptr+1)).w()).transpose());
+                    GRAD(*matrices_ptr).noalias() += (out.dw().rowwise().sum() * ((*(matrices_ptr+1)).w().transpose()));
                     // broadcasting output means sum after the reverse product here:
                     GRAD(*(matrices_ptr+1)).noalias() += (
                         (*matrices_ptr).w().transpose() * out.dw()
@@ -897,8 +898,7 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(const vector<Mat<R>>& matrices) {
                 }
                 matrices_ptr+=2;
             }
-            auto bias = *(matrices.begin() + matrices.size() - 1);
-            GRAD(bias).noalias() += out.dw().rowwise().sum();
+            GRAD(matrices.back()).noalias() += out.dw().rowwise().sum();
         });
 
     DEBUG_ASSERT_NOT_NAN(out.w());

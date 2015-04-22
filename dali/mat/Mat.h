@@ -112,12 +112,9 @@ class Mat {
     private:
         std::shared_ptr<MatInternal<R>> m;
         std::shared_ptr<GradInternal<R>> g;
-
     public:
-
         typedef Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
         typedef Eigen::Map<eigen_mat> eigen_mat_view;
-
 
         std::shared_ptr<std::string> name = nullptr;
 

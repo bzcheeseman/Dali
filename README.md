@@ -26,8 +26,8 @@ While there are existing great automatic differentiation libraries, a fast simpl
 Create two 3x3 matrices filled with uniform random noise between -2 and 2:
 
 ```cpp
-Mat<float> A(3,3, -2.0, 2.0);
-Mat<float> B(3,3, -2.0, 2.0);
+Mat<float> A(3,3, weights<float>::uniform(-2.0, 2.0));
+Mat<float> B(3,3, weights<float>::uniform(-2.0, 2.0));
 ```
 
 Now let's multiply them:

@@ -12,7 +12,7 @@ using std::getline;
 string SmartParser::next_line_internal() {
     string line_buffer;
     getline(*stream, line_buffer);
-    assert2(stream->eof(), "EOF encountered while parsing a file.");
+    assert2(!stream->eof(), "EOF encountered while parsing a file.");
     return line_buffer;
 }
 

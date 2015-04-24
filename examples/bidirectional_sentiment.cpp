@@ -31,14 +31,15 @@ using utils::ConfusionMatrix;
 using utils::assert2;
 using json11::Json;
 
+typedef float REAL_t;
+typedef Mat<REAL_t> mat;
+
 static int ADADELTA_TYPE = 0;
 static int ADAGRAD_TYPE = 1;
 static int SGD_TYPE = 2;
 static int ADAM_TYPE = 3;
 static int RMSPROP_TYPE = 4;
-
-typedef float REAL_t;
-typedef Mat<REAL_t> mat;
+static REAL_t memory_penalty = 0.0;
 
 DEFINE_int32(minibatch,      100,        "What size should be used for the minibatches ?");
 DEFINE_int32(patience,       5,          "How many unimproving epochs to wait through before witnessing progress ?");
@@ -49,7 +50,7 @@ DEFINE_bool(bidirectional,   true,       "Read forward and backwards ?");
 DEFINE_string(test,          "",         "Where is the test set?");
 DEFINE_double(root_weight,   1.0,        "By how much to weigh the roots in the objective function?");
 DEFINE_bool(recursive_gates, true,       "Make a prediction at every timestep?");
-DEFINE_bool(surprise,        false,       "Use Surprise distance with target distribution?");
+DEFINE_bool(surprise,        false,      "Use Surprise distance with target distribution?");
 DEFINE_bool(convolution,     false,      "Perform a convolution before passing to LSTMs ?");
 DEFINE_int32(filters,        50,         "Number of filters to use for Convolution");
 DEFINE_string(pretrained_vectors, "",    "Load pretrained word vectors?");
@@ -345,9 +346,9 @@ class BidirectionalLSTM {
                         prediction.eltmul_broadcast_rowwise(1.0 - new_memory)
                     );
                     // penalize wavering memory (commit to something)
-                    if (graph::backprop_enabled && FLAGS_memory_penalty > 0) {
+                    if (graph::backprop_enabled && memory_penalty > 0) {
                         // penalize memory
-                        new_memory = new_memory * FLAGS_memory_penalty;
+                        new_memory = new_memory * memory_penalty;
                         new_memory.grad();
                     }
                 }
@@ -469,6 +470,8 @@ int main (int argc,  char* argv[]) {
             pair.second,
             is_root);
     };
+
+    int rampup_time = 100;
 
     auto add_to_dataset_in_minibatches = [&to_index_pair](
         std::vector<std::vector<std::tuple<std::vector<uint>, uint, bool>>>& dataset,
@@ -594,7 +597,7 @@ int main (int argc,  char* argv[]) {
         utils::exit_with_message("Did not recognize this solver type.");
     }
 
-    REAL_t best_validation_score = average_recall(model, validation_set);
+    REAL_t best_validation_score = 0.0;
     int epoch = 0;
     double patience = 0;
 
@@ -666,6 +669,12 @@ int main (int argc,  char* argv[]) {
         pool->wait_until_idle();
         journalist.done();
         double new_validation = average_recall(model, validation_set);
+
+        memory_penalty = std::max(
+            memory_penalty,
+            (REAL_t) (FLAGS_memory_penalty * std::min(1.0, ((double)(epoch * epoch) / (double)(rampup_time * rampup_time))))
+        );
+
         if (solver_type == ADAGRAD_TYPE) {
             solver->reset_caches(params);
         }

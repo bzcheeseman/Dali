@@ -846,7 +846,7 @@ int main(int argc, char** argv) {
 
     int increment = 0;
     if (!FLAGS_visualizer.empty()) {
-        visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
+        visualizer = make_shared<Visualizer>(FLAGS_visualizer);
     }
 
     std::cout << "Number of threads: " << FLAGS_j << (FLAGS_solver_mutex ? "(with solver mutex)" : "") << std::endl;

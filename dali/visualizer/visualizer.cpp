@@ -213,9 +213,6 @@ namespace visualizable {
 
 void Visualizer::connected_callback(int status) {
     rdx_state.store(status);
-    if (rdx_state.load() == redox::Redox::CONNECTED) {
-        update_name();
-    }
 }
 
 bool Visualizer::ensure_connection() {
@@ -240,61 +237,66 @@ Visualizer::Visualizer(std::string my_namespace,
         rename_if_needed(rename_if_needed),
         rdx_state(redox::Redox::DISCONNECTED) {
 
+
     // then we ping the visualizer regularly:
-    pinging = eq.run_every([this, rename_if_needed]() {
-        if (!ensure_connection())
+    pinging = eq.run_every([this]() {
+        if (!ensure_connection()) {
+            name_initialized = false;
+            return;
+        }
+
+        if (!name_initialized)
+            name_initialized = update_name();
+
+        if (!name_initialized)
             return;
 
         // Expire at 2 seconds
         std::string namespace_key = MS() << "namespace_" << this->my_namespace;
         rdx->command<string>({"SET", namespace_key, "1", "EX", "2"});
+
     }, std::chrono::seconds(1));
 }
 
-void Visualizer::update_name() {
-    try {
-        std::string namespace_key = MS() << "namespace_" << this->my_namespace;
-        auto& key_exists = rdx->commandSync<int>({"EXISTS", namespace_key});
-        assert(key_exists.ok());
-        bool taken = key_exists.reply() == 1;
-        key_exists.free();
-        if (taken) {
+bool Visualizer::update_name() {
+    int increment = 0;
+
+    while (true) {
+        std::string namespace_key;
+        if (increment == 0) {
+            namespace_key = MS() << "namespace_" << this->my_namespace;
+        } else {
+            namespace_key = MS() << "namespace_" << this->my_namespace << "_" << increment;
+        }
+        bool taken;
+        try {
+            auto& key_exists = rdx->commandSync<int>({"EXISTS", namespace_key});
+            if (!key_exists.ok())
+                return false;
+            taken = (key_exists.reply() == 1);
+            key_exists.free();
+        } catch (std::runtime_error e) {
+            return false;
+        }
+
+        if(taken) {
             if (rename_if_needed) {
-                int increment = 1;
-
-                std::cout << "Duplicate Visualizer name : \"" << this->my_namespace
-                          << "\". Retrying with \"" << this->my_namespace << "_" << increment << "\"" << std::endl;
-
-                // iterate until a suitable name is found
-                while (true) {
-                    if (increment > 500) {
-                        throw Visualizer::duplicate_name_error(MS() << "VISUALIZER ERROR: visualizer name already in use: " << my_namespace);
-                    }
-                    namespace_key = MS() << "namespace_" << this->my_namespace << "_" << increment;
-                    auto& alternate_key_exists = rdx->commandSync<int>({"EXISTS", namespace_key});
-                    assert(alternate_key_exists.ok());
-                    taken = alternate_key_exists.reply() == 1;
-                    alternate_key_exists.free();
-                    if (taken) {
-                        std::cout << "Duplicate Visualizer name : \"" << this->my_namespace  << "_" << increment
-                                  << "\". Retrying with \"" << this->my_namespace << "_" << increment + 1 << "\"" << std::endl;
-
-                        increment++;
-                        continue;
-                    } else {
-                        // make note of new namespace:
-                        this->my_namespace = MS() << "_" << increment;
-                        break;
-                    }
-                }
+                std::cout << "Duplicate Visualizer name : \"" << this->my_namespace  << "_" << increment
+                          << "\". Retrying with \"" << this->my_namespace << "_" << increment + 1 << "\"" << std::endl;
+                increment++;
+                continue;
             } else {
                 // give up immediately on renaming
                 // and throw duplicate name error:
                 throw Visualizer::duplicate_name_error(MS() << "VISUALIZER ERROR: visualizer name already in use: " << my_namespace);
             }
+        } else {
+            if (increment != 0)
+                my_namespace = MS() << my_namespace << "_" << increment;
+            break;
         }
-    } catch (std::runtime_error e) {
     }
+    return true;
 }
 
 

@@ -115,9 +115,11 @@ class Visualizer {
         std::mutex connection_mutex;
         std::atomic<int> rdx_state;
 
+        bool name_initialized = false;
+
         const bool rename_if_needed;
 
-        void update_name();
+        bool update_name();
 
         void connected_callback(int status);
         bool ensure_connection();

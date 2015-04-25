@@ -112,18 +112,22 @@ class Visualizer {
         EventQueue::repeating_t pinging;
         Throttled throttle;
 
-        // TODO(szymon): this kind of connection state should
-        // be handled by redox.. Remove this bool in the future.
-        bool connected = false;
+        std::mutex connection_mutex;
+        std::atomic<int> rdx_state;
 
+        const bool rename_if_needed;
+
+        void update_name();
+
+        void connected_callback(int status);
+        bool ensure_connection();
     public:
         class duplicate_name_error : public std::runtime_error {
             public:
                 explicit duplicate_name_error(const std::string& what_arg);
                 explicit duplicate_name_error(const char* what_arg);
         };
-        Visualizer(std::string my_namespace, std::shared_ptr<redox::Redox> rdx=nullptr);
-        Visualizer(std::string my_namespace, bool rename_if_needed, std::shared_ptr<redox::Redox> rdx=nullptr);
+        Visualizer(std::string my_namespace, bool rename_if_needed=false);
 
         void feed(const json11::Json& obj);
         void feed(const std::string& str);

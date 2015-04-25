@@ -4,13 +4,14 @@
 #include <gtest/gtest.h>
 #include <sstream>
 #include <cstdio>
+#include <string>
 
 #include "dali/utils.h"
+
 using std::stringstream;
 using std::string;
 using utils::OntologyBranch;
 using std::make_shared;
-#include <string>
 
 TEST(utils, stream_to_redirection_list) {
     stringstream ss(

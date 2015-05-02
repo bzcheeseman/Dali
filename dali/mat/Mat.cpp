@@ -734,6 +734,32 @@ void utils::load_matrices(vector<Mat<R>> parameters, string dirname) {
     }
 }
 
+template <>
+vector<size_t> utils::argsort(const vector<Mat<float>> &v) {
+    // initialize original index locations
+    vector<size_t> idx(v.size());
+    for (size_t i = 0; i != idx.size(); ++i) idx[i] = i;
+
+    // sort indexes based on comparing values in v
+    sort(idx.begin(), idx.end(),
+       [&v](size_t i1, size_t i2) {return v[i1].w()(0) < v[i2].w()(0);});
+
+    return idx;
+}
+
+template <>
+vector<size_t> utils::argsort(const vector<Mat<double>> &v) {
+    // initialize original index locations
+    vector<size_t> idx(v.size());
+    for (size_t i = 0; i != idx.size(); ++i) idx[i] = i;
+
+    // sort indexes based on comparing values in v
+    sort(idx.begin(), idx.end(),
+       [&v](size_t i1, size_t i2) {return v[i1].w()(0) < v[i2].w()(0);});
+
+    return idx;
+}
+
 
 template void utils::save_matrices(vector<Mat<float> >, string);
 template void utils::save_matrices(vector<Mat<double> >, string);

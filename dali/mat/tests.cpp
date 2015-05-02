@@ -371,6 +371,21 @@ TEST_F(MatOpsTests, matrix_conv1d_grad) {
     }
 }
 
+TEST_F(MatOpsTests, vector_softmax) {
+    int softmax_size = 15;
+    EXPERIMENT_REPEAT {
+        vector<Mat<R>> matrices;
+        for (int i = 0; i < softmax_size; i++) {
+            matrices.emplace_back(1,1, weights<R>::uniform(-20.0, 20.0));
+        }
+        auto functor = [&matrices](vector<Mat<R>> Xs)-> Mat<R> {
+            auto mats = MatOps<R>::softmax(matrices);
+            return (mats[4] - 1.0) ^ 2;
+        };
+        ASSERT_TRUE(gradient_same<R>(functor, {matrices}, 1e-4));
+    }
+}
+
 typedef MemorySafeTest LayerTests;
 
 TEST_F(LayerTests, layer_tanh_gradient) {
@@ -627,5 +642,20 @@ TEST_F(LayerTests, shortcut_test) {
                                               X,
                                               0.2);
 
+}
+
+TEST_F(MatrixTests, argsort) {
+    vector<Mat<R>> mats;
+    Mat<R> A(1,1);
+    A.w() << 3;
+    mats.push_back(A);
+    Mat<R> B(1,1);
+    B.w() << 9;
+    mats.push_back(B);
+    Mat<R> C(1,1);
+    C.w() << 1;
+    mats.push_back(C);
+    auto sorted = utils::argsort(mats);
+    ASSERT_EQ(sorted, std::vector<size_t>({2, 0, 1}));
 }
 

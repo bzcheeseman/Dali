@@ -439,6 +439,55 @@ Mat<R> MatOps<R>::softmax(Mat<R> matrix, R temperature) {
 }
 
 template<typename R>
+vector<Mat<R>> MatOps<R>::softmax_no_grad(const vector<Mat<R>>& matrices, R temperature) {
+    vector<Mat<R>> out;
+    out.reserve(matrices.size());
+    assert2(matrices.size() > 0, "Must be a non empty list of vectors to softmax.");
+    R layer_max = matrices[0].w()(0);
+
+    for (auto& mat : matrices) {
+        assert2(mat.dims(0) == 1 && mat.dims(1) == 1, "Softmax on a vector must be made on 1x1 matrices only.");
+        layer_max = std::max(layer_max, mat.w()(0));
+    }
+    R total = 0.0;
+    for (auto& mat : matrices) {
+        out.emplace_back(1,1);
+        out.back().w()(0) = std::exp(mat.w()(0) - layer_max);
+        total += out.back().w()(0);
+    }
+    for (auto& mat : out) {
+        mat.w()(0) /= total;
+    }
+    return out;
+}
+
+template<typename R>
+vector<Mat<R>> MatOps<R>::softmax(const vector<Mat<R>>& matrices, R temperature) {
+    vector<Mat<R>> out = MatOps<R>::softmax_no_grad(matrices, temperature);
+    if (graph::backprop_enabled)
+        graph::emplace_back([temperature, out, matrices]() {
+            R colwise_sums = 0.0;
+
+            for (int i = 0; i < out.size(); i++) {
+                auto& dw = matrices[i].dw();
+                auto& sm = out[i].w();
+                auto& dy = out[i].dw();
+                colwise_sums += sm(0) * dy(0);
+            }
+
+            for (int i = 0; i < out.size(); i++) {
+                if (!matrices[i].constant) {
+                    auto& dw = matrices[i].dw();
+                    auto& sm = out[i].w();
+                    auto& dy = out[i].dw();
+                    dw(0) += (sm(0) * dy(0)) - (sm(0) * colwise_sums);
+                }
+            }
+        });
+    return out;
+}
+
+template<typename R>
 Mat<R> MatOps<R>::steep_sigmoid(Mat<R> matrix, R aggressiveness) {
     auto out = Mat<R>::empty_like(matrix);
     out.w() = matrix.w().unaryExpr(utils::steep_sigmoid_operator<R>(aggressiveness));

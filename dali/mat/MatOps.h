@@ -121,6 +121,12 @@ struct MatOps {
     static Mat<R> sigmoid(Mat<R>);
     static Mat<R> softmax(Mat<R>, R temperature=1.0);
     static Mat<R> softmax_no_grad(Mat<R>, R temperature = 1.0);
+
+    // convenience functions for performing a softmax
+    // across a vector of 1x1 matrices:
+    static std::vector<Mat<R>> softmax(const std::vector<Mat<R>>&, R temperature=1.0);
+    static std::vector<Mat<R>> softmax_no_grad(const std::vector<Mat<R>>&, R temperature = 1.0);
+
     static Mat<R> steep_sigmoid(Mat<R>, R aggressiveness = 3.75);
     static Mat<R> transpose(Mat<R>);
     static Mat<R> tanh(Mat<R>);

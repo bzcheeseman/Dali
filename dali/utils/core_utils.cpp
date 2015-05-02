@@ -103,6 +103,7 @@ template std::ostream& operator<< <double>(std::ostream& strm, const vector<doub
 template std::ostream& operator<< <float>(std::ostream& strm, const vector<float>& a);
 template std::ostream& operator<< <uint>(std::ostream& strm, const vector<uint>& a);
 template std::ostream& operator<< <int>(std::ostream& strm, const vector<int>& a);
+template std::ostream& operator<< <size_t>(std::ostream& strm, const vector<size_t>& a);
 
 namespace utils {
 

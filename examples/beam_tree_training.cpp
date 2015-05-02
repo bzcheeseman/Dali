@@ -20,8 +20,8 @@ using std::pair;
 using std::to_string;
 using std::make_shared;
 using std::chrono::seconds;
+using utils::MS;
 typedef double REAL_t;
-typedef StackedModel<REAL_t> model_t;
 
 vector<string> SYMBOLS = {"+", "*", "-"};
 static int NUM_SYMBOLS = SYMBOLS.size();
@@ -37,13 +37,107 @@ DEFINE_double(reg,           0.0,        "What penalty to place on L2 norm of we
 DEFINE_double(learning_rate, 0.01,       "Learning rate for SGD and Adagrad.");
 DEFINE_int32(minibatch,      100,        "What size should be used for the minibatches ?");
 DEFINE_bool(fast_dropout,    true,       "Use fast dropout?");
-DEFINE_int32(epochs,             2000,
-        "How many training loops through the full dataset ?");
-DEFINE_int32(j,                  1,
-        "How many threads should be used ?");
+DEFINE_int32(epochs,         2000,       "How many training loops through the full dataset ?");
+DEFINE_int32(j,                 1,       "How many threads should be used ?");
+DEFINE_int32(expression_length, 5,       "How much suffering to impose on our friend?");
+DEFINE_int32(num_examples,      1500,    "How much suffering to impose on our friend?");
 
-DEFINE_int32(expression_length, 5, "How much suffering to impose on our friend?");
-DEFINE_int32(num_examples,      1500, "How much suffering to impose on our friend?");
+template<typename Z>
+class StackedTreeModel : public StackedModel {
+    public:
+        typedef Mat<Z> mat;
+        typedef std::vector< typename LSTM<Z>::State> state_type;
+        typedef std::tuple<state_type, mat, mat> activation_t;
+        typedef Z value_t;
+
+        vector<Mat<Z>> deciders;
+        vector<Mat<Z>> pair_deciders;
+        Layer<Z> input_transformer;
+        Layer<Z> input_gater;
+        int num_actions;
+
+        StackedTreeModel(int num_decisions,
+                         int vocabulary_size,
+                         int input_size,
+                         int hidden_size,
+                         int stack_size,
+                         int output_size,
+                         bool use_shortcut = false,
+                         bool memory_feeds_gates = false) :
+            StackedModel<Z>(vocabulary_size, input_size, hidden_size, stack_size, output_size, use_shortcut, memory_feeds_gates),
+            input_transformer(input_size, hidden_size),
+            input_gater(input_size, hidden_size),
+            num_actions(num_decisions) {
+
+            int total_hidden_size = hidden_size * stack_size;
+
+            for (int decision_idx = 0; decision_idx < num_decisions; decision_idx++) {
+                // train a linear map that takes both inputs + hidden states:
+                deciders.emplace_back(2 * total_hidden_size, 1);
+                // train a tensor that takes both inputs + hidden states:
+                pair_deciders.emplace_back(2 * total_hidden_size, 2 * total_hidden_size);
+            }
+        }
+
+        Mat<Z> rate_pair(state_type& left_state, state_type& right_state, int action) {
+            assert2(
+                action > -1 && action < num_decisions,
+                MS() << "Acting number must between 0 and the max action number ("
+                     << num_actions
+                     << ")"
+            );
+
+            auto hiddens = LSTM<Z>::State::hiddens(left_state);
+            auto right_hiddens = LSTM<Z>::State::hiddens(right_state);
+            hiddens.insert(hiddens.end(), right_hiddens.begin(), right_hiddens.end());
+
+            auto observation = MatOps<Z>::hstack(hiddens);
+            auto action_score = (
+                deciders[action].dot(hiddens) + pair_deciders[action].dot(hiddens).T().dot(hiddens)
+            );
+
+            return action_score;
+        }
+
+        Mat<Z> join_pair(state_type& left_state, state_type& right_state) {
+
+        }
+
+
+        StackedTreeModel<Z> shallow_copy() const {
+            return StackedTreeModel<Z>(*this, false, true);
+        }
+
+        template<typename Z>
+        StackedTreeModel (const StackedTreeModel<Z>& model, bool copy_w, bool copy_dw) :
+            StackedModel(model, copy_w, copy_dw),
+            num_actions(model.num_actions),
+            input_transformer(model.input_transformer, copy_w, copy_dw),
+            input_gater(model.input_transformer, copy_w, copy_dw) {
+            for (int decision_idx = 0; decision_idx < num_decisions; decision_idx++) {
+                // train a linear map that takes both inputs + hidden states:
+                deciders.emplace_back(model.deciders[decision_idx], copy_w, copy_dw);
+                // train a tensor that takes both inputs + hidden states:
+                pair_deciders.emplace_back(model.pair_deciders[decision_idx], copy_w, copy_dw);
+            }
+        }
+
+        vector<Mat<Z>> parameters() const {
+            auto params = StackedModel<Z>::parameters();
+            params.insert(params.end(), deciders.begin(), deciders.end());
+            params.insert(params.end(), pair_deciders.begin(), pair_deciders.end());
+
+            auto input_transformer_params = input_transformer.parameters();
+            params.insert(params.end(), input_transformer_params.begin(), input_transformer_params.end());
+
+            auto input_gater_params = input_gater.parameters();
+            params.insert(params.end(), input_gater_params.begin(), input_gater_params.end());
+
+            return params;
+        }
+};
+
+typedef StackedTreeModel<REAL_t> model_t;
 
 
 vector<pair<vector<string>, vector<string>>> generate_examples(int num) {
@@ -162,50 +256,77 @@ double num_correct(M& model, vector<pair<vector<uint>, vector<uint>>> examples, 
 /*
 TODO:
 
-For each rate pair action extract the internal state of the system assuming
-the pair was joined. This new internal state can now be used to produce k
-new states.
+1. Add tree lstm (n-ary lstm:
+here => https://github.com/stanfordnlp/treelstm/edit/master/models/BinaryTreeLSTM.lua
 
-To do so TreeReduceOutput must take as input the k current best trees, and
-the probability of the current branch. When reranking the k best among the
-current best trees + the new generated trees * current prob are kept. For
-those the system can be propagated. For each the prob-state pair is kept.
+2. Include tree lstm into stacked model
 
-With those pairs it is now possible to continue the joining until all
-trees have been built up.
+3. Add tree LSTM to this example
 
-Then take prediction of each model and average according to probability.
-Use KL divergence and backprop.
+4. Make tree LSTM compose hidden states hierarchically
+
+5. finish recursive formula below
 
 */
 
 
-template<typename R, typename M, typename S>
-struct TreeReduceOutput {
-    TreeReduceOutput(vector<Mat<T>> current, int k, const M& model, S internal_state) {
-        if (current.size() > 1) {
-            vector<Mat<T>> probs;
-            for (int i = 0; i < current.size() -1; i++) {
-                probs.push_back(
-                    model.rate_pair(internal_state, current[i], current[i+1])
-                );
-            }
+template<typename Z, typename M, typename S>
+tree_reduce_output(Mat<Z> logprob, vector<Mat<Z>> current, int k, const M& model, S internal_state) {
+    if (current.size() > 1) {
+        vector<Mat<Z>> logprobs;
+        // for all subsequent pairs of input check which is most promising:
+        for (int i = 0; i < current.size() -1; i++) {
+            probs.push_back(
+                model.rate_pair(internal_state, current[i], current[i+1], 0)
+            );
+        }
 
-            // sort the best:
-            std::sort(probs.begin(), probs.end(), [](const Mat<R>& prob1, const Mat<R>& prob2) {
-                return prob1.w()[0] < prob2.w()[0];
-            });
+        // apply softmax to vector:
+        vector<Mat<Z>> softmax_probs = MatOps<Z>::softmax(probs);
 
+        // sort the best:
+        auto sorted = utils::argsort(probs);
 
-            // now take the best k
-            vector<Mat<T>> best_probs(
-                probs.begin(),
-                (k < probs.size()) ? probs.begin() + k : probs.end()
+        // now take the best k
+        vector<ind_t> best_idxes(
+            sorted.begin(),
+            (k < probs.size()) ? sorted.begin() + k : sorted.end()
+        );
+
+        vector<Mat<Z>> conditional_probs;
+        vector<vector<Mat<Z>> new_inputs;
+
+        for (auto& idx : best_idxes) {
+            // take log prob and add previous log prob
+            conditional_probs.push_back(
+                softmax_probs[idx].log() + logprob
             );
 
+            vector<Mat<Z>> new_input;
+
+            // add what came before
+            for (int i = 0; i < idx; i++) {
+                new_input.emplace_back(current[i]);
+            }
+
+            // create a new input as a join of the other two:
+            new_input.emplace_back(
+                model.join_pair(internal_state, current[idx], current[idx+1])
+            );
+
+            // add the remainder
+            for (int i = idx + 1; i < current.size(); i++) {
+                new_input.emplace_back(current[i]);
+            }
+
+            // new input is now smaller
+            assert(new_input.size() == current.size() - 1);
+
+            // add this to the new set of inputs
+            new_inputs.push_back(new_input);
         }
     }
-};
+}
 
 
 int main (int argc,  char* argv[]) {
@@ -248,6 +369,7 @@ int main (int argc,  char* argv[]) {
 
     // train a silly system to output the numbers it needs
     auto model = model_t(
+         1, // only one decision => binary choice
          vocab.index2word.size(),
          FLAGS_input_size,
          FLAGS_hidden,

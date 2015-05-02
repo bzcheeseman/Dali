@@ -804,10 +804,10 @@ namespace utils {
             return result;
         }
 
-        vector<string> Vocab::decode(const vector<ind_t>& indices) const {
+        vector<string> Vocab::decode(Indexing::Index indices) const {
             vector<string> result;
             result.reserve(indices.size());
-            std::transform(indices.begin(), indices.end(),
+            std::transform(indices.data(), indices.data() + indices.size(),
                            std::back_inserter(result), [this](const ind_t& idx) {
                 if (idx < index2word.size()) {
                     return index2word[idx];

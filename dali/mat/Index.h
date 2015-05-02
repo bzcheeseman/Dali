@@ -24,6 +24,7 @@ typedef Eigen::VectorBlock<Eigen::Block<Eigen::Matrix<unsigned int, Eigen::Dynam
 namespace Indexing {
 
     typedef uint ind_t;
+    // TODO add iterators
 
     class IndexInternal {
         public:

@@ -2,10 +2,8 @@
 #include <atomic>
 #include <chrono>
 #include <deque>
-#include <Eigen/Eigen>
 #include <fstream>
 #include <gflags/gflags.h>
-#include <gflags/gflags_completions.h>
 #include <iterator>
 #include <mutex>
 #include <thread>
@@ -13,8 +11,8 @@
 #include "dali/core.h"
 #include "dali/utils.h"
 #include "dali/utils/NlpUtils.h"
-#include "dali/data_processing/SST.h"
 #include "dali/models/StackedModel.h"
+#include "dali/visualizer/visualizer.h"
 
 DEFINE_int32(minibatch,            100,  "What size should be used for the minibatches ?");
 DEFINE_bool(sparse,                true, "Use sparse embedding");
@@ -36,6 +34,7 @@ using utils::OntologyBranch;
 using utils::tokenized_uint_labeled_dataset;
 using utils::Vocab;
 using utils::Timer;
+using std::tuple;
 using std::chrono::seconds;
 
 typedef float REAL_t;
@@ -45,21 +44,10 @@ typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
 typedef Eigen::Matrix<REAL_t, Eigen::Dynamic, 1> float_vector;
 typedef std::pair<vector<string>, uint> labeled_pair;
 
-
 const string START = "**START**";
 
 ThreadPool* pool;
 
-/**
-Databatch
----------
-
-Datastructure handling the storage of training
-data, length of each example in a minibatch,
-and total number of prediction instances
-within a single minibatch.
-
-**/
 class Databatch {
     typedef shared_ptr<index_mat> shared_index_mat;
     public:
@@ -145,31 +133,6 @@ vector<Databatch> create_dataset(
     return dataset;
 }
 
-/**
-get word vocab
---------------
-
-Collect a mapping from words to unique indices
-from a collection of Annnotate Parse Trees
-from the Stanford Sentiment Treebank, and only
-keep words ocurring more than some threshold
-number of times `min_occurence`
-
-Inputs
-------
-
-std::vector<SST::AnnotatedParseTree::shared_tree>& trees : Stanford Sentiment Treebank trees
-                                       int min_occurence : cutoff appearance of words to include
-                                                           in vocabulary.
-
-
-Outputs
--------
-
-Vocab vocab : the vocabulary extracted from the trees with the
-              addition of a special "**START**" word.
-
-**/
 Vocab get_word_vocab(const vector<vector<string>>& examples, int min_occurence) {
     auto index2word  = utils::get_vocabulary(examples, min_occurence);
     Vocab vocab(index2word);
@@ -178,71 +141,8 @@ Vocab get_word_vocab(const vector<vector<string>>& examples, int min_occurence) 
     return vocab;
 }
 
-/**
-Reconstruct Random Beams
-------------------------
-
-TODO: rewrite this
-
-Condition on the special "**START**" word, generate
-a sentence from the language model and output it
-to standard out.
-
-Inputs
-------
-               StackedModel<T>& model : language model to query
-           const Databatch& minibatch : where to pull the sample from
-                         const int& i : what row to use from the databatch
-              const Vocab& word_vocab : the word vocabulary with a lookup table
-                                        mapping unique words to an index and
-                                        vice-versa.
-
-
-**/
-template<typename model_t>
-void reconstruct_random_beams(
-    model_t& model,
-    const vector<Databatch>& dataset,
-    const Vocab& word_vocab,
-    const int& init_size,
-    const int& k,
-    const int& max_length) {
-
-    int random_example_index;
-    const Databatch* random_batch;
-    while (true) {
-        random_batch = &dataset[utils::randint(0, dataset.size() - 1)];
-        random_example_index = utils::randint(0, random_batch->data->rows() - 1);
-        if ((*random_batch->codelens)(random_example_index) > init_size) {
-            break;
-        }
-    }
-    auto beams = beam_search::beam_search(model,
-        random_batch->data->row(random_example_index).head(init_size),
-        max_length,
-        0,  // offset symbols that are predicted
-            // before being refed (no = 0)
-        k,
-        word_vocab.word2index.at(utils::end_symbol), // when to stop the sequence
-        word_vocab.unknown_word
-    );
-    std::cout << "Reconstructions: \"";
-    for (int j = 1; j < init_size; j++)
-        std::cout << word_vocab.index2word[(*random_batch->data)(random_example_index, j)] << " ";
-    std::cout << "\"" << std::endl;
-    for (const auto& beam : beams) {
-        std::cout << "=> (" << std::setprecision( 5 ) << std::get<1>(beam) << ") ";
-        for (const auto& word : std::get<0>(beam)) {
-            if (word != word_vocab.word2index.at(utils::end_symbol))
-                std::cout << word_vocab.index2word.at(word) << " ";
-        }
-        std::cout << std::endl;
-    }
-}
-
 template<typename model_t>
 REAL_t average_error(model_t& model, const vector<Databatch>& dataset) {
-    // don't backpropagate from now on in this scope:
     graph::NoBackprop nb;
     Timer t("average_error");
 
@@ -269,33 +169,6 @@ REAL_t average_error(model_t& model, const vector<Databatch>& dataset) {
     return cost / full_code_size;
 }
 
-/**
-Training Loop
--------------
-
-Go through a single epoch of training by updating
-parameters once for each minibatch in the dataset.
-Takes an optimizer, model, and dataset and performs
-several steps of gradient descent.
-Moreover every `report_frequency` epochs this will
-output the current training error and perform
-a sentence reconstruction from the current model.
-
-See `reconstruct`
-
-Inputs
-------
-               StackedModel<T>& model : language model to train
-     const vector<Databatch>& dataset : sentences broken into minibatches to
-                                        train model on.
-              const Vocab& word_vocab : the word vocabulary with a lookup table
-                                        mapping unique words to an index and
-                                        vice-versa.
-                            S& Solver : Solver handling updates to parameters using
-                                        a specific regimen (SGD, Adadelta, AdaGrad, etc.)
-                     const int& epoch : how many epochs of training has been done so far.
-
-**/
 template<typename model_t, typename S>
 void training_loop(model_t& model,
     const vector<Databatch>& dataset,
@@ -356,71 +229,15 @@ void training_loop(model_t& model,
         );
         journalist.resume();
     }
-    // Thank you for your service
     journalist.done();
 }
 
-/**
-Train Model
------------
+std::tuple<Vocab, vector<Databatch>> load_dataset_and_vocabulary(const string& fname, int min_occurence, int minibatch_size) {
+        std::tuple<Vocab, vector<Databatch>> pair;
 
-Train a single language model on a corpus of minibatches of sentences
-predicting the next word given the current sequence. Stops training
-when max number of epochs is reached, training stops decreasing error
-for 5 epochs, or cost dips below the cutoff.
-
-Inputs
-------
-
-const vector<Databatch>& dataset : sentences broken into minibatches to
-                                   train model on.
-         const Vocab& word_vocab : the word vocabulary with a lookup table
-                                   mapping unique words to an index and
-                                   vice-versa.
-
-**/
-template<typename model_t, class S>
-void train_model(const vector<Databatch>& dataset,
-        const vector<Databatch>& validation_set,
-        const Vocab& word_vocab) {
-
-    model_t model = model_t::build_from_CLI(FLAGS_load,
-                                            word_vocab.index2word.size(),
-                                            word_vocab.index2word.size(),
-                                            true);
-
-    auto parameters = model.parameters();
-    S solver(parameters, FLAGS_rho, 1e-9, 5.0);
-
-    int epoch = 0;
-    auto cost = std::numeric_limits<REAL_t>::infinity();
-    double new_cost = 0.0;
-    int patience = 0;
-
-    while (cost > FLAGS_cutoff && epoch < FLAGS_epochs && patience < FLAGS_patience) {
-        new_cost = 0.0;
-        training_loop(model, dataset, word_vocab, solver, epoch);
-        new_cost = average_error(model, validation_set);
-        if (new_cost >= cost) {
-            patience += 1;
-        } else {
-            patience = 0;
-        }
-        cost = new_cost;
-        std::cout << "epoch (" << epoch << ") KL error = "
-                  << std::setprecision(3) << std::fixed
-                  << std::setw(5) << std::setfill(' ') << new_cost
-                  << " patience = " << patience << std::endl;
-        maybe_save_model(&model);
-        epoch++;
-    }
-}
-
-std::pair<Vocab, vector<Databatch>> load_dataset_and_vocabulary(const string& fname, int min_occurence, int minibatch_size) {
-        auto text_corpus        = utils::load_tokenized_unlabeled_corpus(fname);
-        std::pair<Vocab, vector<Databatch>> pair;
-        pair.first = get_word_vocab(text_corpus, min_occurence);
-        pair.second = create_dataset(text_corpus, pair.first, minibatch_size);
+        auto text_corpus  = utils::load_tokenized_unlabeled_corpus(fname);
+        std::get<0>(pair) = get_word_vocab(text_corpus, min_occurence);
+        std::get<1>(pair) = create_dataset(text_corpus, std::get<0>(pair), minibatch_size);
         return pair;
 }
 
@@ -441,27 +258,25 @@ int main( int argc, char* argv[]) {
         " @date February 15th 2015"
     );
 
-    GFLAGS_NAMESPACE::HandleCommandLineCompletions();
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
-    // TODO(jonathan): figure out if this affects performance and/or
-    // thread safety
-    Eigen::initParallel();
-
+    utils::Vocab      word_vocab;
+    vector<Databatch> training;
+    vector<Databatch> validation;
 
     Timer dl_timer("Dataset loading");
-        auto dataset_vocab      = load_dataset_and_vocabulary(
-            FLAGS_train,
-            FLAGS_min_occurence,
-            FLAGS_minibatch);
+    std::tie(word_vocab, training) = load_dataset_and_vocabulary(
+        FLAGS_train,
+        FLAGS_min_occurence,
+        FLAGS_minibatch);
 
-        auto validation_set     = load_dataset_with_vocabulary(
-            FLAGS_validation,
-            dataset_vocab.first,
-            FLAGS_minibatch);
+    validation = load_dataset_with_vocabulary(
+        FLAGS_validation,
+        word_vocab,
+        FLAGS_minibatch);
     dl_timer.stop();
 
-    auto vocab_size = dataset_vocab.first.index2word.size();
+    auto vocab_size = word_vocab.index2word.size();
 
     std::cout << "    Vocabulary size = " << vocab_size << " (occuring more than " << FLAGS_min_occurence << ")" << std::endl
               << "Max training epochs = " << FLAGS_epochs           << std::endl
@@ -471,11 +286,152 @@ int main( int argc, char* argv[]) {
               << "       max_patience = " << FLAGS_patience         << std::endl;
 
     pool = new ThreadPool(FLAGS_j);
+    shared_ptr<Visualizer> visualizer;
 
-    train_model<StackedModel<REAL_t>, Solver::AdaDelta<REAL_t>>(
-        dataset_vocab.second,
-        validation_set,
-        dataset_vocab.first);
+    if (!FLAGS_visualizer.empty()) {
+        try {
+            visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
+        } catch (std::runtime_error e) {
+            std::cout << e.what() << std::endl; // could not connect to redis.
+        }
+    }
+
+    auto model = StackedModel<REAL_t>::build_from_CLI(
+        FLAGS_load,
+        word_vocab.index2word.size(),
+        word_vocab.index2word.size(),
+        true);
+
+    auto parameters = model.parameters();
+    Solver::AdaDelta<REAL_t> solver(parameters, FLAGS_rho, 1e-9, 5.0);
+
+    // replicate model for each thread:
+    vector<StackedModel<REAL_t>> thread_models;
+    for (int i = 0; i <FLAGS_j; ++i)
+        thread_models.emplace_back(model, false, true);
+
+    int epoch       = 0;
+    auto cost       = std::numeric_limits<REAL_t>::infinity();
+    double new_cost = 0.0;
+    int patience    = 0;
+
+    while (cost > FLAGS_cutoff && epoch < FLAGS_epochs && patience < FLAGS_patience) {
+
+        std::atomic<int> full_code_size(0);
+        auto random_batch_order = utils::random_arange(training.size());
+
+        std::atomic<int> batches_processed(0);
+
+        stringstream ss;
+        ss << "Training epoch " << epoch;
+
+        ReportProgress<double> journalist(ss.str(), random_batch_order.size());
+
+        for (auto batch_id : random_batch_order) {
+            pool->run([&model, &training, &solver, &full_code_size,
+                       &cost, &thread_models, batch_id, &random_batch_order,
+                       &batches_processed, &journalist]() {
+
+                auto& thread_model = thread_models[ThreadPool::get_thread_number()];
+                auto thread_parameters = thread_model.parameters();
+                auto& minibatch = training[batch_id];
+
+                thread_model.masked_predict_cost(
+                    minibatch.data, // the sequence to draw from
+                    minibatch.data, // what to predict (the words offset by 1)
+                    0,
+                    minibatch.codelens,
+                    0
+                );
+                thread_model.embedding.sparse_row_keys = minibatch.row_keys;
+
+                graph::backward(); // backpropagate
+                solver.step(thread_parameters);
+
+                journalist.tick(++batches_processed, cost);
+            });
+        }
+
+        auto& dataset = training;
+
+        while(!pool->idle()) {
+            int time_between_reconstructions_s = 10;
+            pool->wait_until_idle(seconds(time_between_reconstructions_s));
+
+            // Tell the journalist the news can wait
+            journalist.pause();
+
+            int random_example_index;
+            int priming_size = utils::randint(1, 6);
+            const Databatch* random_batch;
+            while (true) {
+                random_batch = &dataset[utils::randint(0, dataset.size() - 1)];
+                random_example_index = utils::randint(0, random_batch->data->rows() - 1);
+                if ((*random_batch->codelens)(random_example_index) > priming_size) {
+                    break;
+                }
+            }
+            auto primer = random_batch->data->row(random_example_index).head(priming_size);
+
+            auto beams = beam_search::beam_search(model,
+                primer,
+                20, // max size of a sequence
+                0,  // offset symbols that are predicted
+                    // before being refed (no = 0)
+                FLAGS_num_reconstructions, // how many beams
+                word_vocab.word2index.at(utils::end_symbol), // when to stop the sequence
+                word_vocab.unknown_word
+            );
+
+            std::cout << "Reconstructions: \"";
+            for (int j = 1; j < priming_size; j++)
+                std::cout << word_vocab.index2word[(*random_batch->data)(random_example_index, j)] << " ";
+            std::cout << "\"" << std::endl;
+            for (const auto& beam : beams) {
+                std::cout << "=> (" << std::setprecision( 5 ) << std::get<1>(beam) << ") ";
+                for (const auto& word : std::get<0>(beam)) {
+                    if (word != word_vocab.word2index.at(utils::end_symbol))
+                        std::cout << word_vocab.index2word.at(word) << " ";
+                }
+                std::cout << std::endl;
+            }
+
+            if (visualizer != nullptr) {
+                visualizer->throttled_feed(seconds(10), [&visualizer, &beams, &word_vocab, &primer]() {
+                    vector<vector<string>> sentences;
+                    vector<REAL_t>         probs;
+                    for (auto& beam : beams) {
+                        sentences.emplace_back(word_vocab.decode(std::get<0>(beam)));
+                        probs.emplace_back(std::get<1>(beam));
+                    }
+
+                    auto input_sentence = make_shared<visualizable::Sentence<REAL_t>>(word_vocab.decode(primer));
+                    auto sentences_viz = make_shared<visualizable::Sentences<REAL_t>>(sentences);
+                    sentences_viz->set_weights(probs);
+                    auto input_output_pair = visualizable::ClassifierExample(input_sentence, sentences_viz);
+
+                    return input_output_pair.to_json();
+                });
+            }
+
+            journalist.resume();
+        }
+        journalist.done();
+
+        new_cost = average_error(model, validation);
+        if (new_cost >= cost) {
+            patience += 1;
+        } else {
+            patience = 0;
+        }
+        cost = new_cost;
+        std::cout << "epoch (" << epoch << ") KL error = "
+                  << std::setprecision(3) << std::fixed
+                  << std::setw(5) << std::setfill(' ') << new_cost
+                  << " patience = " << patience << std::endl;
+        maybe_save_model(&model);
+        epoch++;
+    }
 
     Timer::report();
     return 0;

@@ -35,8 +35,8 @@ class AveragingModel {
         shared_ptr<Vocab> vocab;
 
         vector<int> OUTPUT_NN_SIZES = {HIDDEN_SIZE, 100, 100, 1};
-        vector<typename NeuralNetworkLayer<R>::activation_t> OUTPUT_NN_ACTIVATIONS =
-            { MatOps<R>::tanh, MatOps<R>::tanh, NeuralNetworkLayer<R>::identity };
+        vector<typename MultiLayerPerceptron<R>::activation_t> OUTPUT_NN_ACTIVATIONS =
+            { MatOps<R>::tanh, MatOps<R>::tanh, MultiLayerPerceptron<R>::identity };
 
         Mat<R> embedding;
 
@@ -46,7 +46,7 @@ class AveragingModel {
 
         StackedInputLayer<R> words_repr_to_hidden;
 
-        NeuralNetworkLayer<R> output_classifier;
+        MultiLayerPerceptron<R> output_classifier;
 
         AveragingModel(const AveragingModel& other, bool copy_w, bool copy_dw) {
             if (SEPARATE_EMBEDDINGS) {
@@ -58,7 +58,7 @@ class AveragingModel {
             }
             words_repr_to_hidden =
                     StackedInputLayer<R>(other.words_repr_to_hidden, copy_w, copy_dw);
-            output_classifier = NeuralNetworkLayer<R>(other.output_classifier, copy_w, copy_dw);
+            output_classifier = MultiLayerPerceptron<R>(other.output_classifier, copy_w, copy_dw);
             vocab = other.vocab;
         }
 
@@ -86,7 +86,7 @@ class AveragingModel {
                                                           EMBEDDING_SIZE
                                                          }, HIDDEN_SIZE);
 
-            output_classifier = NeuralNetworkLayer<R>(OUTPUT_NN_SIZES, OUTPUT_NN_ACTIVATIONS);
+            output_classifier = MultiLayerPerceptron<R>(OUTPUT_NN_SIZES, OUTPUT_NN_ACTIVATIONS);
 
             if (SVD_INIT) {
                 // Don't use SVD for embeddings!

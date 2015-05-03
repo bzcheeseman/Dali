@@ -540,8 +540,8 @@ TEST_F(LayerTests, LSTM_Graves_shortcut_gradient) {
 
         auto initial_state = mylayer.initial_states();
         auto functor = [&mylayer, &X, &X_s, &initial_state](vector<Mat<R>> Xs)-> Mat<R> {
-            auto myout_state = mylayer.activate(X, X_s, initial_state);
-            return myout_state.hidden;
+            auto state = mylayer.activate_shortcut(X, X_s, initial_state);
+            return state.hidden;
         };
         ASSERT_TRUE(gradient_same<R>(functor, params, 0.0003));
     }
@@ -563,8 +563,8 @@ TEST_F(LayerTests, LSTM_Zaremba_shortcut_gradient) {
 
         auto initial_state = mylayer.initial_states();
         auto functor = [&mylayer, &X, &X_s, &initial_state](vector<Mat<R>> Xs)-> Mat<R> {
-            auto myout_state = mylayer.activate(X, X_s, initial_state);
-            return myout_state.hidden;
+            auto state = mylayer.activate_shortcut(X, X_s, initial_state);
+            return state.hidden;
         };
         ASSERT_TRUE(gradient_same<R>(functor, params, 0.0003));
     }

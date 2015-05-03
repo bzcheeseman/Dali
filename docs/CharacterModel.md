@@ -7,7 +7,7 @@ Let's go through a character model forecasting problem and implement it using **
 Let's build a stacked LSTM network. We start by including the right header:
 
 ```cpp
-#include "core/Layers.h"
+#include "core/LSTM.h"
 ```
 
 And let's populate our namespace with some goodies:

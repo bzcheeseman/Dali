@@ -262,14 +262,14 @@ class BidirectionalLSTM {
                             // if the model used is bidirectional
                             // then the backward stream should be available
                             if (bidirectional) {
-                                state = cell.activate(
+                                state = cell.activate_shortcut(
                                     MatOps<REAL_t>::dropout_normalized(*it_forward, drop_prob),
                                     MatOps<REAL_t>::dropout_normalized(*it_back, drop_prob),
                                     state);
                             } else {
                                 // else the "shortcut" stream is the lowest level's embeddings
                                 // simply.
-                                state = cell.activate(
+                                state = cell.activate_shortcut(
                                     MatOps<REAL_t>::dropout_normalized(*it_forward, drop_prob),
                                     MatOps<REAL_t>::dropout_normalized(*it_embed, drop_prob),
                                     state);
@@ -290,7 +290,7 @@ class BidirectionalLSTM {
                         ++it_back, ++it_forward) {
 
                         if (cell.shortcut) {
-                            state = cell.activate(
+                            state = cell.activate_shortcut(
                                 MatOps<REAL_t>::dropout_normalized(*it_back, drop_prob),
                                 MatOps<REAL_t>::dropout_normalized(*it_forward, drop_prob),
                                 state);

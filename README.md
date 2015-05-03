@@ -17,7 +17,7 @@ This is an reimagination of [Andrej Kaparthy](http://cs.stanford.edu/people/karp
 
 ### Why ?
 
-While there are existing great automatic differentiation libraries, a fast simple **multithreaded** **compile-less** version is missing. Hogwild-style training provides huge speedups in data-parallel model training, and so far Torch and Theano do not provide an accessible way of achieving this.
+While there are existing great automatic differentiation libraries, a fast simple **multithreaded** **compile-less** version is missing. Hogwild-style training provides huge speedups in data-parallel model training, and so far Torch and Theano do not provide an accessible way of having this.
 
 ## Usage
 

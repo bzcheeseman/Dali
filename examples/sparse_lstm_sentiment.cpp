@@ -12,7 +12,7 @@
 #include "dali/utils/NlpUtils.h"
 #include "dali/data_processing/SST.h"
 #include "dali/data_processing/Glove.h"
-#include "dali/models/StackedModel.h"
+#include "dali/models/StackedGatedModel.h"
 
 using std::atomic;
 using std::chrono::seconds;
@@ -52,6 +52,7 @@ DEFINE_int32(validation_metric,   0,          "Use root (1) or overall (0) objec
 DEFINE_double(embedding_learning_rate, -1.0,  "A separate learning rate for embedding layer");
 DEFINE_bool(svd_init,             true,       "Initialize weights using SVD?");
 DEFINE_bool(average_gradient,     false,      "Error during minibatch should be average or sum of errors.");
+DEFINE_string(memory_penalty_curve, "flat",   "Type of annealing used on gate memory penalty (flat, linear, square)");
 
 ThreadPool* pool;
 
@@ -65,8 +66,20 @@ int main (int argc,  char* argv[]) {
         " @date April 7th 2015"
     );
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
-    auto epochs              = FLAGS_epochs;
 
+    int memory_penalty_curve_type;
+    if (FLAGS_memory_penalty_curve == "flat") {
+        memory_penalty_curve_type = 0;
+    } else if (FLAGS_memory_penalty_curve == "linear") {
+        memory_penalty_curve_type = 1;
+    } else if (FLAGS_memory_penalty_curve == "square") {
+        memory_penalty_curve_type = 2;
+    } else {
+        utils::assert2(false, "memory_penalty_curve can only be flat, linear, or square.");
+    }
+
+    auto epochs = FLAGS_epochs;
+    int rampup_time = 10;
 
     auto sentiment_treebank = SST::load(FLAGS_train);
     auto embedding          = Mat<REAL_t>(100, 0);
@@ -93,14 +106,15 @@ int main (int argc,  char* argv[]) {
 
     auto stack_size  = std::max(FLAGS_stack_size, 1);
 
-    auto model = FLAGS_load.empty() ? StackedModel<REAL_t>(
+    auto model = FLAGS_load.empty() ? StackedGatedModel<REAL_t>(
         FLAGS_pretrained_vectors.empty() ? word_vocab.index2word.size() : 0,
         FLAGS_pretrained_vectors.empty() ? FLAGS_hidden : embedding.dims(1),
         FLAGS_hidden,
         stack_size,
         SST::label_names.size(),
         (FLAGS_shortcut && stack_size > 1) ? FLAGS_shortcut : false,
-        FLAGS_memory_feeds_gates) : StackedModel<REAL_t>::load(FLAGS_load);
+        FLAGS_memory_feeds_gates,
+        FLAGS_memory_penalty) : StackedGatedModel<REAL_t>::load(FLAGS_load);
 
     if (FLAGS_shortcut && stack_size == 1) {
         std::cout << "shortcut flag ignored: Shortcut connections only take effect with stack size > 1" << std::endl;
@@ -153,7 +167,7 @@ int main (int argc,  char* argv[]) {
     vector<vector<Mat<REAL_t>>> thread_embedding_params;
 
     // what needs to be optimized:
-    vector<StackedModel<REAL_t>> thread_models;
+    vector<StackedGatedModel<REAL_t>> thread_models;
     for (int i = 0; i < FLAGS_j; i++) {
         // create a copy for each training thread
         // (shared memory mode = Hogwild)
@@ -253,6 +267,30 @@ int main (int argc,  char* argv[]) {
     }
 
     while (patience < FLAGS_patience && epoch < epochs) {
+
+        if (memory_penalty_curve_type == 1) { // linear
+            model.memory_penalty = std::min(
+                FLAGS_memory_penalty,
+                (REAL_t) (FLAGS_memory_penalty * std::min(1.0, ((double)(epoch) / (double)(rampup_time))))
+            );
+            for (auto& thread_model : thread_models) {
+                thread_model.memory_penalty = std::min(
+                    FLAGS_memory_penalty,
+                    (REAL_t) (FLAGS_memory_penalty * std::min(1.0, ((double)(epoch) / (double)(rampup_time))))
+                );
+            }
+        } else if (memory_penalty_curve_type == 2) { // square
+            model.memory_penalty = std::min(
+                FLAGS_memory_penalty,
+                (REAL_t) (FLAGS_memory_penalty * std::min(1.0, ((double)(epoch * epoch) / (double)(rampup_time * rampup_time))))
+            );
+            for (auto& thread_model : thread_models) {
+                thread_model.memory_penalty = std::min(
+                    FLAGS_memory_penalty,
+                    (REAL_t) (FLAGS_memory_penalty * std::min(1.0, ((double)(epoch * epoch) / (double)(rampup_time * rampup_time))))
+                );
+            }
+        }
 
         stringstream ss;
         ss << "Epoch " << ++epoch;
@@ -386,7 +424,9 @@ int main (int argc,  char* argv[]) {
                << "\t" << FLAGS_hidden
                << "\t" << std::get<0>(recall)
                << "\t" << std::get<1>(recall)
-               << "\t" << best_epoch;
+               << "\t" << best_epoch
+               << "\t" << FLAGS_memory_penalty
+               << "\t" << FLAGS_memory_penalty_curve;
             if ((FLAGS_solver == "adagrad" || FLAGS_solver == "sgd")) {
                 fp << "\t" << FLAGS_learning_rate;
             } else {

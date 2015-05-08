@@ -13,6 +13,7 @@ set(EXAMPLE_PROGRAMS api_showcase
                      lattice_prediction_from_protobuff
                      loading_from_sqlite
                      lstm_sentiment
+                     sparse_lstm_sentiment
                      machine_comprehension
                      mlbasics_learn_to_add
                      mlbasics_rnn_binary_addition

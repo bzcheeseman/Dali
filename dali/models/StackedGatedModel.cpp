@@ -419,6 +419,10 @@ typename StackedGatedModel<Z>::state_type StackedGatedModel<Z>::get_final_activa
             input_vector,
             initial_state.back().hidden
         );
+        if (graph::backprop_enabled && memory_penalty > 0) {
+            // add this sum to objective function
+            (memory * memory_penalty).grad();
+        }
         input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
         // pass this letter to the LSTM for processing
         initial_state = this->stacked_lstm->activate(initial_state, input_vector);

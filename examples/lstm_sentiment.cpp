@@ -59,60 +59,6 @@ DEFINE_bool(average_gradient,     false,      "Error during minibatch should be 
 
 ThreadPool* pool;
 
-Mat<REAL_t> apply_dropout(Mat<REAL_t> X, REAL_t drop_prob) {
-    if (drop_prob > 0) {
-        if (FLAGS_fast_dropout) {
-            return MatOps<REAL_t>::fast_dropout(X);
-        } else {
-            return MatOps<REAL_t>::dropout_normalized(X, drop_prob);
-        }
-    } else {
-        return X;
-    }
-}
-
-template<typename Model>
-std::tuple<REAL_t,REAL_t> average_recall(
-    Model& model,
-    std::vector<std::vector<std::tuple<std::vector<uint>, uint, bool>>>& dataset) {
-    ReportProgress<REAL_t> journalist("Average recall", dataset.size());
-    atomic<int> seen_minibatches(0);
-    atomic<int> correct(0);
-    atomic<int> correct_root(0);
-    atomic<int> total_root(0);
-    atomic<int> total(0);
-    graph::NoBackprop nb;
-    for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
-        pool->run([batch_id, &model, &dataset, &correct, &total, &correct_root, &total_root, &journalist, &seen_minibatches]() {
-            graph::NoBackprop nb;
-            auto& minibatch = dataset[batch_id];
-            for (auto& example : minibatch) {
-                auto final_states = model.get_final_activation(std::get<0>(example), FLAGS_dropout);
-                // no softmax needed, simply get best guess
-                int prediction = model.decode(
-                    model.embedding[std::get<0>(example).back()],
-                    final_states
-                ).argmax();
-                if (prediction == std::get<1>(example)) {
-                    correct += 1;
-                    if (std::get<2>(example)) {
-                        correct_root +=1;
-                    }
-                }
-                total += 1;
-                if (std::get<2>(example)) {
-                    total_root +=1;
-                }
-            }
-            seen_minibatches += 1;
-            journalist.tick(seen_minibatches, 100.0 * ((REAL_t) correct / (REAL_t) total));
-        });
-    }
-    pool->wait_until_idle();
-    journalist.done();
-    return std::tuple<REAL_t, REAL_t>(100.0 * ((REAL_t) correct / (REAL_t) total), 100.0 * (REAL_t) correct_root  / (REAL_t) total_root);
-}
-
 int main (int argc,  char* argv[]) {
     GFLAGS_NAMESPACE::SetUsageMessage(
         "\n"
@@ -327,10 +273,22 @@ int main (int argc,  char* argv[]) {
         }
     }
 
+    auto pred_fun = [&model](vector<uint>& example) {
+        graph::NoBackprop nb;
+        auto final_states = model.get_final_activation(
+            example, 0.0
+        );
+        // no softmax needed, simply get best guess
+        return model.decode(
+            model.embedding[example.back()],
+            final_states
+        ).argmax();
+    };
+
     // if no training should occur then use the validation set
     // to see how good the loaded model is.
     if (epochs == 0) {
-        best_validation_score = average_recall(model, validation_set);
+        best_validation_score = SST::average_recall(validation_set, pred_fun, FLAGS_j);
         std::cout << "   Root recall = " << std::get<1>(best_validation_score) << std::endl;
         std::cout << "Overall recall = " << std::get<0>(best_validation_score) << std::endl;
     }
@@ -405,7 +363,7 @@ int main (int argc,  char* argv[]) {
         }
         pool->wait_until_idle();
         journalist.done();
-        auto new_validation = average_recall(model, validation_set);
+        auto new_validation = SST::average_recall(validation_set, pred_fun, FLAGS_j);
         std::cout << "Root recall=" << std::get<1>(new_validation) << std::endl;
         if (solver_type == ADAGRAD_TYPE) {
             solver->reset_caches(params);
@@ -455,10 +413,10 @@ int main (int argc,  char* argv[]) {
             auto params = model.parameters();
             utils::load_matrices(params, best_file);
         }
-        auto a_r = average_recall(model, test_set);
+        auto recall = SST::average_recall(test_set, pred_fun, FLAGS_j);
 
         std::cout << "Done training" << std::endl;
-        std::cout << "Test recall "  << std::get<0>(a_r) << "%, root => " << std::get<1>(a_r)<< "%" << std::endl;
+        std::cout << "Test recall "  << std::get<0>(recall) << "%, root => " << std::get<1>(recall)<< "%" << std::endl;
         if (!FLAGS_results_file.empty()) {
             ofstream fp;
             fp.open(FLAGS_results_file.c_str(), std::ios::out | std::ios::app);
@@ -467,8 +425,8 @@ int main (int argc,  char* argv[]) {
                << "\t" << (FLAGS_fast_dropout ? "fast" : "std")
                << "\t" << FLAGS_dropout
                << "\t" << FLAGS_hidden
-               << "\t" << std::get<0>(a_r)
-               << "\t" << std::get<1>(a_r)
+               << "\t" << std::get<0>(recall)
+               << "\t" << std::get<1>(recall)
                << "\t" << best_epoch;
             if ((FLAGS_solver == "adagrad" || FLAGS_solver == "sgd")) {
                 fp << "\t" << FLAGS_learning_rate;
@@ -479,4 +437,3 @@ int main (int argc,  char* argv[]) {
         }
     }
 }
-

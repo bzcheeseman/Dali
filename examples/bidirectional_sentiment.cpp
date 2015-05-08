@@ -392,47 +392,6 @@ class BidirectionalLSTM {
         }
 };
 
-REAL_t average_recall(
-    BidirectionalLSTM<REAL_t>& model,
-    std::vector<std::vector<std::tuple<std::vector<uint>, uint, bool>>>& dataset) {
-    std::cout << "Getting average_recall" << std::endl;
-    ReportProgress<REAL_t> journalist("Average recall", dataset.size());
-    atomic<int> seen_minibatches(0);
-    atomic<int> correct(0);
-    atomic<int> correct_root(0);
-    atomic<int> total_root(0);
-    atomic<int> total(0);
-    graph::NoBackprop nb;
-    for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
-        pool->run([batch_id, &model, &dataset, &correct, &total, &correct_root, &total_root, &journalist, &seen_minibatches]() {
-            graph::NoBackprop nb;
-            auto& minibatch = dataset[batch_id];
-            for (auto& example : minibatch) {
-                auto prediction = std::get<1>(model.activate_sequence(
-                    std::get<0>(example), // see an example
-                    0.0                   // activate without dropout
-                )).argmax();               // no softmax needed, simply get best guess
-                if (prediction == std::get<1>(example)) {
-                    correct += 1;
-                    if (std::get<2>(example)) {
-                        correct_root +=1;
-                    }
-                }
-                total += 1;
-                if (std::get<2>(example)) {
-                    total_root +=1;
-                }
-            }
-            seen_minibatches += 1;
-            journalist.tick(seen_minibatches, 100.0 * ((REAL_t) correct / (REAL_t) total));
-        });
-    }
-    pool->wait_until_idle();
-    journalist.done();
-    std::cout << "Root nodes recall = " << 100.0 * (REAL_t) correct_root  / (REAL_t) total_root << "%" << std::endl;
-    return 100.0 * ((REAL_t) correct / (REAL_t) total);
-}
-
 int main (int argc,  char* argv[]) {
     GFLAGS_NAMESPACE::SetUsageMessage(
         "\n"
@@ -564,6 +523,15 @@ int main (int argc,  char* argv[]) {
     }
     auto params = model.parameters();
 
+    auto pred_fun = [&model](vector<uint>& example){
+        graph::NoBackprop nb;
+        return std::get<1>(model.activate_sequence(
+            example, // see an example
+            0.0      // activate without dropout
+        )).argmax(); // no softmax needed, simply get best guess
+    };
+
+
     // auto svd_init = weights<REAL_t>::svd(weights<REAL_t>::gaussian(0.0, 1.0));
 
     // for (auto& param : params) {
@@ -621,7 +589,7 @@ int main (int argc,  char* argv[]) {
         );
 
         for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
-            pool->run([&word_vocab, &visualizer, &solver_type, &thread_params, &thread_models, batch_id, &journalist, &solver, &dataset, &best_validation_score, &batches_processed]() {
+            pool->run([&word_vocab, &pred_fun, &visualizer, &solver_type, &thread_params, &thread_models, batch_id, &journalist, &solver, &dataset, &best_validation_score, &batches_processed]() {
                 auto& thread_model  = thread_models[ThreadPool::get_thread_number()];
                 auto& params        = thread_params[ThreadPool::get_thread_number()];
                 auto& minibatch     = dataset[batch_id];
@@ -668,7 +636,7 @@ int main (int argc,  char* argv[]) {
         }
         pool->wait_until_idle();
         journalist.done();
-        double new_validation = average_recall(model, validation_set);
+        double new_validation = std::get<0>(SST::average_recall(validation_set, pred_fun, FLAGS_j));
 
         memory_penalty = std::max(
             memory_penalty,
@@ -700,7 +668,8 @@ int main (int argc,  char* argv[]) {
             add_to_dataset_in_minibatches(test_set, test_treebank);
         }
         std::cout << "Done training" << std::endl;
-        std::cout << "Test recall " << average_recall(model, test_set) << "%" << std::endl;
+        auto recall = SST::average_recall(test_set, pred_fun, FLAGS_j);
+        std::cout << "Test recall total=" << std::get<0>(recall) << "%, root="<< std::get<1>(recall) << "%" << std::endl;
     }
 
 }

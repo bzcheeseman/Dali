@@ -3,15 +3,15 @@
 
 #include "dali/mat/Layers.h"
 
+// TODO: Add Tree-LSTM (variable number of input states -> reduces to single state.)
 template<typename R>
 class LSTM : public AbstractLayer<R> {
     /*
-
     LSTM layer with forget, output, memory write, and input
     modulate gates, that can remember sequences for long
     periods of time.
 
-    See `Mat`, `HiddenLayer`
+    See `Layers.h`
     */
     typedef StackedInputLayer<R> layer_type;
     void name_internal_layers();

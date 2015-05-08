@@ -8,6 +8,7 @@ using utils::tokenized_uint_labeled_dataset;
 using utils::Vocab;
 using std::min;
 using json11::Json;
+using std::atomic;
 
 const string START = "**START**";
 
@@ -274,6 +275,43 @@ namespace SST {
         vocab.word2index[START] = vocab.index2word.size();
         vocab.index2word.emplace_back(START);
         return vocab;
+    }
+
+    std::tuple<double,double> average_recall(
+        vector<vector<std::tuple<vector<uint>, uint, bool>>>& dataset,
+        std::function<int(vector<uint>&)> predict,
+        int num_threads) {
+        ReportProgress<double> journalist("Average recall", dataset.size());
+        atomic<int> seen_minibatches(0);
+        atomic<int> correct(0);
+        atomic<int> correct_root(0);
+        atomic<int> total_root(0);
+        atomic<int> total(0);
+        ThreadPool pool(num_threads);
+
+        for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
+            pool.run([batch_id, &predict, &dataset, &correct, &total, &correct_root, &total_root, &journalist, &seen_minibatches]() {
+                auto& minibatch = dataset[batch_id];
+                for (auto& example : minibatch) {
+                    int prediction = predict(std::get<0>(example));
+                    if (prediction == std::get<1>(example)) {
+                        correct += 1;
+                        if (std::get<2>(example)) {
+                            correct_root +=1;
+                        }
+                    }
+                    total += 1;
+                    if (std::get<2>(example)) {
+                        total_root +=1;
+                    }
+                }
+                seen_minibatches += 1;
+                journalist.tick(seen_minibatches, 100.0 * ((double) correct / (double) total));
+            });
+        }
+        pool.wait_until_idle();
+        journalist.done();
+        return std::tuple<double, double>(100.0 * ((double) correct / (double) total), 100.0 * (double) correct_root  / (double) total_root);
     }
 
 }

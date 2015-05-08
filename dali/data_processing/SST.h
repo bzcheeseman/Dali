@@ -166,6 +166,32 @@ namespace SST {
 
     **/
     utils::Vocab get_word_vocab(std::vector<SST::AnnotatedParseTree::shared_tree>& trees, int min_occurence);
+
+    /**
+    Average Recall
+    --------------
+
+    Obtain average recall using minibatches by parallelizing a
+    predict function that takes a string of indices (words) as
+    input, and a lambda returning an integer as output.
+
+    Inputs
+    ------
+    std::vector<std::vector<std::tuple<std::vector<uint>, uint, bool>>>& dataset
+    std::function<int(std::vector<uint>&)> predict : lambda returning predicted class 0-4
+    int num_threads (optional) : how many threads to use for parallelizing prediction
+
+    Outputs
+    -------
+
+    std::tuple<double,double> recall : returns tuple of {total correct, root correct}
+
+    **/
+    std::tuple<double,double> average_recall(
+        std::vector<std::vector<std::tuple<std::vector<uint>, uint, bool>>>& dataset,
+        std::function<int(std::vector<uint>&)> predict,
+        int num_threads = 9);
+
 }
 
 std::ostream &operator <<(std::ostream &, const SST::AnnotatedParseTree&);

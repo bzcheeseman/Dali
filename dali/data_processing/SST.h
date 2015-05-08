@@ -27,6 +27,8 @@ usage.
 
 **/
 namespace SST {
+    typedef std::vector<std::vector<std::tuple<std::vector<uint>, uint, bool>>> treebank_minibatch_dataset;
+
     class AnnotatedParseTree {
         public:
             typedef std::shared_ptr<AnnotatedParseTree> shared_tree;
@@ -97,7 +99,13 @@ namespace SST {
     **/
     template<typename T>
     void stream_to_sentiment_treebank(T&, std::vector<AnnotatedParseTree::shared_tree>&);
+
     std::vector<AnnotatedParseTree::shared_tree> load(const std::string&);
+
+    treebank_minibatch_dataset convert_trees_to_indexed_minibatches(
+        const utils::Vocab& word_vocab,
+        const std::vector<AnnotatedParseTree::shared_tree>& trees,
+        int minibatch_size);
 
     class Databatch {
         public:
@@ -188,9 +196,10 @@ namespace SST {
 
     **/
     std::tuple<double,double> average_recall(
-        std::vector<std::vector<std::tuple<std::vector<uint>, uint, bool>>>& dataset,
+        treebank_minibatch_dataset& dataset,
         std::function<int(std::vector<uint>&)> predict,
         int num_threads = 9);
+
 
 }
 

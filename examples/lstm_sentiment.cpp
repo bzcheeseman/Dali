@@ -70,65 +70,28 @@ int main (int argc,  char* argv[]) {
     );
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
     auto epochs              = FLAGS_epochs;
-    auto sentiment_treebank  = SST::load(FLAGS_train);
-    auto embedding = Mat<REAL_t>(100, 0);
-    auto word_vocab = Vocab();
-    if (!FLAGS_pretrained_vectors.empty() && FLAGS_load.empty()) {
+
+
+    auto sentiment_treebank = SST::load(FLAGS_train);
+    auto embedding          = Mat<REAL_t>(100, 0);
+    auto word_vocab         = Vocab();
+    if (!FLAGS_pretrained_vectors.empty()) {
         glove::load(FLAGS_pretrained_vectors, embedding, word_vocab, 50000);
     } else {
         word_vocab = SST::get_word_vocab(sentiment_treebank, FLAGS_min_occurence);
     }
-    auto vocab_size          = word_vocab.index2word.size();
+    auto vocab_size     = word_vocab.index2word.size();
+    auto dataset        = SST::convert_trees_to_indexed_minibatches(
+        word_vocab,
+        sentiment_treebank,
+        FLAGS_minibatch
+    );
+    auto validation_set = SST::convert_trees_to_indexed_minibatches(
+        word_vocab,
+        SST::load(FLAGS_validation),
+        FLAGS_minibatch
+    );
 
-    // Load Dataset of Trees:
-    // Put trees into matrices:
-    std::vector<std::vector<std::tuple<std::vector<uint>, uint, bool>>> dataset;
-    auto to_index_pair = [&word_vocab](std::pair<std::vector<std::string>, uint>&& pair, bool&& is_root) {
-        return std::tuple<std::vector<uint>, uint, bool>(
-            word_vocab.encode(pair.first),
-            pair.second,
-            is_root);
-    };
-
-    auto add_to_dataset_in_minibatches = [&to_index_pair](
-        std::vector<std::vector<std::tuple<std::vector<uint>, uint, bool>>>& dataset,
-        std::vector<SST::AnnotatedParseTree::shared_tree>& trees
-        ) {
-        if (dataset.size() == 0)
-            dataset.emplace_back(0);
-        for (auto& tree : trees) {
-            if (dataset[dataset.size()-1].size() == FLAGS_minibatch) {
-                dataset.emplace_back(0);
-                dataset.reserve(FLAGS_minibatch);
-            }
-            dataset[dataset.size()-1].emplace_back(
-                to_index_pair(
-                    tree->to_labeled_pair(),
-                    true
-                )
-            );
-            for (auto& child : tree->general_children) {
-                if (dataset[dataset.size()-1].size() == FLAGS_minibatch) {
-                    dataset.emplace_back(0);
-                    dataset.reserve(FLAGS_minibatch);
-                }
-                dataset[dataset.size()-1].emplace_back(
-                    to_index_pair(
-                        child->to_labeled_pair(),
-                        false
-                    )
-                );
-            }
-        }
-    };
-
-    add_to_dataset_in_minibatches(dataset, sentiment_treebank);
-
-    std::vector<std::vector<std::tuple<std::vector<uint>, uint, bool>>> validation_set;
-    {
-        auto validation_treebank = SST::load(FLAGS_validation);
-        add_to_dataset_in_minibatches(validation_set, validation_treebank);
-    }
     pool = new ThreadPool(FLAGS_j);
     // Create a model with an embedding, and several stacks:
 
@@ -403,11 +366,11 @@ int main (int argc,  char* argv[]) {
     }
 
     if (!FLAGS_test.empty()) {
-        std::vector<std::vector<std::tuple<std::vector<uint>, uint, bool>>> test_set;
-        {
-            auto test_treebank = SST::load(FLAGS_test);
-            add_to_dataset_in_minibatches(test_set, test_treebank);
-        }
+        auto test_set = SST::convert_trees_to_indexed_minibatches(
+            word_vocab,
+            SST::load(FLAGS_test),
+            FLAGS_minibatch
+        );
         if (!FLAGS_save_location.empty() && !best_file.empty()) {
             std::cout << "loading from best validation parameters \"" << best_file << "\"" << std::endl;
             auto params = model.parameters();

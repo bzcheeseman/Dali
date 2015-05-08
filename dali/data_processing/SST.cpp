@@ -129,6 +129,56 @@ namespace SST {
         return trees;
     }
 
+    treebank_minibatch_dataset convert_trees_to_indexed_minibatches(
+        const Vocab& word_vocab,
+        const std::vector<AnnotatedParseTree::shared_tree>& trees,
+        int minibatch_size) {
+        treebank_minibatch_dataset dataset;
+
+        auto to_index_pair = [&word_vocab](std::pair<std::vector<std::string>, uint>&& pair, bool&& is_root) {
+            return std::tuple<std::vector<uint>, uint, bool>(
+                word_vocab.encode(pair.first),
+                pair.second,
+                is_root);
+        };
+
+        if (dataset.size() == 0)
+            dataset.emplace_back(0);
+
+        for (auto& tree : trees) {
+
+            // create new minibatch
+            if (dataset[dataset.size()-1].size() == minibatch_size) {
+                dataset.emplace_back(0);
+                dataset.reserve(minibatch_size);
+            }
+
+            // add root
+            dataset[dataset.size()-1].emplace_back(
+                to_index_pair(
+                    tree->to_labeled_pair(),
+                    true
+                )
+            );
+
+            // add children:
+            for (auto& child : tree->general_children) {
+                if (dataset[dataset.size()-1].size() == minibatch_size) {
+                    dataset.emplace_back(0);
+                    dataset.reserve(minibatch_size);
+                }
+                dataset[dataset.size()-1].emplace_back(
+                    to_index_pair(
+                        child->to_labeled_pair(),
+                        false
+                    )
+                );
+            }
+        }
+
+        return dataset;
+    }
+
     /**
     Databatch
     ---------
@@ -313,6 +363,8 @@ namespace SST {
         journalist.done();
         return std::tuple<double, double>(100.0 * ((double) correct / (double) total), 100.0 * (double) correct_root  / (double) total_root);
     }
+
+
 
 }
 

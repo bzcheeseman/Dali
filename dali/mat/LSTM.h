@@ -3,7 +3,6 @@
 
 #include "dali/mat/Layers.h"
 
-// TODO: Add Tree-LSTM (variable number of input states -> reduces to single state.)
 template<typename R>
 class LSTM : public AbstractLayer<R> {
     /*
@@ -26,8 +25,11 @@ class LSTM : public AbstractLayer<R> {
             operator std::tuple<Mat<R> &, Mat<R> &>();
         };
 
-        Mat<R> Wci;
-        std::vector<Mat<R>> Wcfs;
+        // each child's memory to write controller for memory:
+        std::vector<Mat<R>> Wcells_to_inputs;
+        // each child's memory to forget gate for memory:
+        std::vector<Mat<R>> Wcells_to_forgets;
+        // memory to output gate
         Mat<R> Wco;
 
         typedef R value_t;
@@ -181,6 +183,13 @@ std::vector<celltype> StackedCells(const std::vector<celltype>&, bool, bool);
 
 template<typename R>
 std::vector< typename LSTM<R>::State > forward_LSTMs(
+    Mat<R>,
+    std::vector< typename LSTM<R>::State >&,
+    const std::vector<LSTM<R>>&,
+    R drop_prob=0.0);
+
+template<typename R>
+std::vector< typename LSTM<R>::State > shortcut_forward_LSTMs(
     Mat<R>,
     std::vector< typename LSTM<R>::State >&,
     const std::vector<LSTM<R>>&,

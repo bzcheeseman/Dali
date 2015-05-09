@@ -2,8 +2,9 @@
 set(EXAMPLES_DIR ${PROJECT_SOURCE_DIR}/examples)
 set(EXAMPLES_BUILD_DIR ${PROJECT_SOURCE_DIR}/build/examples)
 set(EXAMPLE_PROGRAMS api_showcase
-                     babi_solvers
                      arithmetic
+                     babi_solvers
+                     beam_tree_training
                      bidirectional_sentiment
                      character_prediction
                      grid_search_simple

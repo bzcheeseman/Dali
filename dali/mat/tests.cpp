@@ -529,7 +529,7 @@ TEST_F(LayerTests, LSTM_Graves_shortcut_gradient) {
     EXPERIMENT_REPEAT {
         auto X  = Mat<R>(input_size,    num_examples, weights<R>::uniform(20.0));
         auto X_s = Mat<R>(shortcut_size, num_examples, weights<R>::uniform(20.0));
-        auto mylayer = LSTM<R>(input_size, shortcut_size, hidden_size, true);
+        auto mylayer = LSTM<R>({input_size, shortcut_size}, hidden_size, 1, true);
         auto params = mylayer.parameters();
         params.emplace_back(X);
         params.emplace_back(X_s);
@@ -556,7 +556,7 @@ TEST_F(LayerTests, LSTM_Zaremba_shortcut_gradient) {
     EXPERIMENT_REPEAT {
         auto X  = Mat<R>(input_size,    num_examples, weights<R>::uniform(20.0));
         auto X_s = Mat<R>(shortcut_size, num_examples, weights<R>::uniform(20.0));
-        auto mylayer = LSTM<R>(input_size, shortcut_size, hidden_size, false);
+        auto mylayer = LSTM<R>({input_size, shortcut_size}, hidden_size, 1, false);
         auto params = mylayer.parameters();
         params.emplace_back(X);
         params.emplace_back(X_s);
@@ -643,6 +643,42 @@ TEST_F(LayerTests, shortcut_test) {
                                               0.2);
 
 }
+
+
+TEST_F(LayerTests, multi_input_lstm_test) {
+    int num_children = 3;
+    int input_size = 4;
+    int hidden_size = 2;
+    int num_examples = 3;
+
+    EXPERIMENT_REPEAT {
+        auto input = Mat<R>(input_size,    num_examples, weights<R>::uniform(20.0));
+        vector<LSTM<R>::State> states;
+        for (int cidx = 0 ; cidx < num_children; ++cidx) {
+            states.emplace_back(
+                Mat<R>(hidden_size, num_examples, weights<R>::uniform(20.0)),
+                Mat<R>(hidden_size, num_examples, weights<R>::uniform(20.0))
+            );
+        }
+
+        auto mylayer = LSTM<R>(input_size, hidden_size, num_children);
+        auto params = mylayer.parameters();
+        params.emplace_back(input);
+        for(auto& state: states) {
+            params.emplace_back(state.memory);
+            params.emplace_back(state.hidden);
+        }
+
+        auto functor = [&mylayer, &input, &states](vector<Mat<R>> Xs)-> Mat<R> {
+                auto state = mylayer.activate(input, states);
+                return state.hidden;
+        };
+        ASSERT_TRUE(gradient_same<R>(functor, params, 0.0003));
+
+        utils::Timer::report();
+    }
+}
+
 
 TEST_F(MatrixTests, argsort) {
     vector<Mat<R>> mats;

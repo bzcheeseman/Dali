@@ -171,6 +171,9 @@ namespace utils {
         template<typename T>
         bool in_vector(const std::vector<T>&, T&);
 
+        template<typename T>
+        std::vector<T> concatenate(std::initializer_list<std::vector<T>>);
+
         template<typename IN, typename OUT>
         std::vector<OUT> fmap(std::vector<IN> in_list,
                               std::function<OUT(IN)> f);

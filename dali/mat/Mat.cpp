@@ -708,79 +708,88 @@ int Mat<R>::argmax_slice(int lower, int upper) const {
     return i;
 }
 
-template<typename R>
-void utils::save_matrices(vector<Mat<R>> parameters, string dirname) {
-    utils::ensure_directory(dirname);
-    const char * c_dirname = dirname.c_str();
-    utils::makedirs(c_dirname);
-    int i = 0;
-    for (auto& param : parameters) {
-        stringstream param_location;
-        param_location << dirname << "/param_" << i << ".npy";
-        param.npy_save(param_location.str());
-        i++;
+
+
+namespace utils {
+    template<typename R>
+    void save_matrices(vector<Mat<R>> parameters, string dirname) {
+        utils::ensure_directory(dirname);
+        const char * c_dirname = dirname.c_str();
+        utils::makedirs(c_dirname);
+        int i = 0;
+        for (auto& param : parameters) {
+            stringstream param_location;
+            param_location << dirname << "/param_" << i << ".npy";
+            param.npy_save(param_location.str());
+            i++;
+        }
     }
-}
 
-template<typename R>
-void utils::load_matrices(vector<Mat<R>> parameters, string dirname) {
-    utils::ensure_directory(dirname);
-    int i = 0;
-    for (auto& param : parameters) {
-        stringstream param_location;
-        param_location << dirname << "/param_" << i << ".npy";
-        param.npy_load(param_location.str());
-        i++;
+    template<typename R>
+    void load_matrices(vector<Mat<R>> parameters, string dirname) {
+        utils::ensure_directory(dirname);
+        int i = 0;
+        for (auto& param : parameters) {
+            stringstream param_location;
+            param_location << dirname << "/param_" << i << ".npy";
+            param.npy_load(param_location.str());
+            i++;
+        }
     }
+
+    template <>
+    vector<size_t> argsort(const vector<Mat<float>> &v) {
+        // initialize original index locations
+        vector<size_t> idx(v.size());
+        for (size_t i = 0; i != idx.size(); ++i) idx[i] = i;
+
+        // sort indexes based on comparing values in v
+        sort(idx.begin(), idx.end(),
+           [&v](size_t i1, size_t i2) {return v[i1].w()(0) < v[i2].w()(0);});
+
+        return idx;
+    }
+
+
+    template <>
+    vector<size_t> argsort(const vector<Mat<double>> &v) {
+        // initialize original index locations
+        vector<size_t> idx(v.size());
+        for (size_t i = 0; i != idx.size(); ++i) idx[i] = i;
+
+        // sort indexes based on comparing values in v
+        sort(idx.begin(), idx.end(),
+           [&v](size_t i1, size_t i2) {return v[i1].w()(0) < v[i2].w()(0);});
+
+        return idx;
+    }
+
+    template void save_matrices(vector<Mat<float> >, string);
+    template void save_matrices(vector<Mat<double> >, string);
+    template void load_matrices(vector<Mat<float> >, string);
+    template void load_matrices(vector<Mat<double> >, string);
+
+
+    template<typename R>
+    json11::Json json_finite_distribution(
+        const Mat<R>& probs,
+        const vector<string>& labels) {
+        assert2(probs.dims(1) == 1, MS() << "Probabilities must be a column vector");
+        vector<R> distribution(probs.w().data(), probs.w().data() + probs.dims(0));
+        return json11::Json::object {
+            { "type", "finite_distribution"},
+            { "probabilities", distribution },
+            { "labels", labels },
+        };
+    }
+
+    template json11::Json json_finite_distribution(const Mat<float>&, const vector<string>&);
+    template json11::Json json_finite_distribution(const Mat<double>&, const vector<string>&);
+
+
 }
 
-template <>
-vector<size_t> utils::argsort(const vector<Mat<float>> &v) {
-    // initialize original index locations
-    vector<size_t> idx(v.size());
-    for (size_t i = 0; i != idx.size(); ++i) idx[i] = i;
 
-    // sort indexes based on comparing values in v
-    sort(idx.begin(), idx.end(),
-       [&v](size_t i1, size_t i2) {return v[i1].w()(0) < v[i2].w()(0);});
-
-    return idx;
-}
-
-template <>
-vector<size_t> utils::argsort(const vector<Mat<double>> &v) {
-    // initialize original index locations
-    vector<size_t> idx(v.size());
-    for (size_t i = 0; i != idx.size(); ++i) idx[i] = i;
-
-    // sort indexes based on comparing values in v
-    sort(idx.begin(), idx.end(),
-       [&v](size_t i1, size_t i2) {return v[i1].w()(0) < v[i2].w()(0);});
-
-    return idx;
-}
-
-
-template void utils::save_matrices(vector<Mat<float> >, string);
-template void utils::save_matrices(vector<Mat<double> >, string);
-template void utils::load_matrices(vector<Mat<float> >, string);
-template void utils::load_matrices(vector<Mat<double> >, string);
-
-template<typename R>
-json11::Json utils::json_finite_distribution(
-    const Mat<R>& probs,
-    const vector<string>& labels) {
-    assert2(probs.dims(1) == 1, MS() << "Probabilities must be a column vector");
-    vector<R> distribution(probs.w().data(), probs.w().data() + probs.dims(0));
-    return json11::Json::object {
-        { "type", "finite_distribution"},
-        { "probabilities", distribution },
-        { "labels", labels },
-    };
-}
-
-template json11::Json utils::json_finite_distribution(const Mat<float>&, const vector<string>&);
-template json11::Json utils::json_finite_distribution(const Mat<double>&, const vector<string>&);
 
 template class MatInternal<float>;
 template class MatInternal<double>;

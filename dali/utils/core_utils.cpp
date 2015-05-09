@@ -1,5 +1,7 @@
 #include "core_utils.h"
 
+#include "dali/mat/Mat.h"
+
 using std::vector;
 using std::string;
 using std::ifstream;
@@ -8,6 +10,7 @@ using std::ofstream;
 using std::set;
 using std::make_shared;
 using std::function;
+using std::initializer_list;
 
 const char* utils::end_symbol          = "**END**";
 const char* utils::unknown_word_symbol = "███████";
@@ -212,6 +215,21 @@ namespace utils {
         template bool in_vector(const vector<int>&,    int&);
         template bool in_vector(const vector<uint>&,   uint&);
         template bool in_vector(const vector<string>&, string&);
+
+        template<typename T>
+        vector<T> concatenate(initializer_list<vector<T>> lists) {
+            vector<T> concatenated_list;
+            for (auto& list: lists) {
+                for (auto& el: list) {
+                    concatenated_list.emplace_back(el);
+                }
+            }
+            return concatenated_list;
+        }
+
+        template vector<int> concatenate(initializer_list<vector<int>>);
+        template vector<Mat<float>> concatenate(std::initializer_list<vector<Mat<float>>>);
+        template vector<Mat<double>> concatenate(std::initializer_list<vector<Mat<double>>>);
 
         template<typename IN, typename OUT>
         vector<OUT> fmap(vector<IN> in_list, function<OUT(IN)> f) {

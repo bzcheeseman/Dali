@@ -27,21 +27,23 @@ class LSTM : public AbstractLayer<R> {
         };
 
         Mat<R> Wci;
-        Mat<R> Wcf;
+        std::vector<Mat<R>> Wcfs;
         Mat<R> Wco;
 
         typedef R value_t;
         // cell input modulation:
         layer_type input_layer;
         // cell forget gate:
-        layer_type forget_layer;
+        std::vector<layer_type> forget_layers;
         // cell output modulation
         layer_type output_layer;
         // cell write params
         layer_type cell_layer;
+
         int hidden_size;
-        int input_size;
-        bool shortcut;
+        std::vector<int> input_sizes;
+        int num_children;
+
         bool memory_feeds_gates;
 
         // In Alex Graves' slides / comments online you do not
@@ -49,27 +51,44 @@ class LSTM : public AbstractLayer<R> {
         // this is a boolean, so you can retrieve the true
         // gradient by setting this to true:
         bool backprop_through_gates = false;
+
+        // This is a regular vanilla, but awesome LSTM constructor.
         LSTM (int _input_size, int _hidden_size, bool _memory_feeds_gates = false);
-        LSTM (int _input_size, int shortcut_size, int _hidden_size, bool _memory_feeds_gates = false);
+
+        // This constructors purpose is to create a tree LSTM.
+        LSTM (int _input_size, int _hidden_size, int num_children, bool _memory_feeds_gates = false);
+
+        // This constructor is generally intended to support shortcut LSTM. It also
+        // happens to be the most general constructor available.
+        LSTM (std::vector<int> _input_sizes, int _hidden_sizes, int num_children, bool _memory_feeds_gates = false);
+
         LSTM (const LSTM&, bool, bool);
+
         virtual std::vector<Mat<R>> parameters() const;
         static std::vector<State> initial_states(const std::vector<int>&);
+
         State activate(
             Mat<R> input_vector,
-            State prev_state) const;
+            State previous_state) const;
+
+        State activate(
+            Mat<R> input_vector,
+            std::vector<State> previous_children_states) const;
+
         State activate_shortcut(
             Mat<R> input_vector,
             Mat<R> shortcut_vector,
             State prev_state) const;
 
         LSTM<R> shallow_copy() const;
+
         State initial_states() const;
 
         virtual State activate_sequence(
             State initial_state,
             const std::vector<Mat<R>>& sequence) const;
     private:
-        State _activate(const std::vector<Mat<R>>&, const State&) const;
+        State _activate(const std::vector<Mat<R>>&, const std::vector<State>&) const;
 };
 
 template<typename R>

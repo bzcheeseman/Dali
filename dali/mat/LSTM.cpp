@@ -1,21 +1,45 @@
 #include "LSTM.h"
+
 using std::vector;
+using utils::assert2;
 
 template<typename R>
-LSTM<R>::LSTM (int _input_size, int _hidden_size, bool _memory_feeds_gates) :
-        shortcut(false),
+LSTM<R>::LSTM(int _input_size, int _hidden_size, bool _memory_feeds_gates) :
+        LSTM<R>(vector<int>({_input_size}), _hidden_size, 1,_memory_feeds_gates) {
+}
+
+template<typename R>
+LSTM<R>::LSTM(int _input_size, int _hidden_size, int _num_children, bool _memory_feeds_gates) :
+        LSTM<R>(vector<int> {_input_size}, _hidden_size, _num_children,_memory_feeds_gates) {
+}
+
+template<typename R>
+LSTM<R>::LSTM (vector<int> _input_sizes, int _hidden_size, int _num_children, bool _memory_feeds_gates) :
         memory_feeds_gates(_memory_feeds_gates),
+        input_sizes(_input_sizes),
         hidden_size(_hidden_size),
-        input_size(_input_size),
-        input_layer({_input_size, _hidden_size}, _hidden_size),
-        forget_layer({_input_size, _hidden_size}, _hidden_size),
-        output_layer({_input_size, _hidden_size}, _hidden_size),
-        cell_layer({_input_size, _hidden_size}, _hidden_size) {
+        num_children(_num_children) {
+
+    auto gate_input_sizes = utils::concatenate({
+        input_sizes,
+        vector<int>(num_children, hidden_size) // num_children * [hidden_size]
+    });
+
+    input_layer = StackedInputLayer<R>(gate_input_sizes, hidden_size);
+    for (int cidx=0; cidx < num_children; ++cidx) {
+        forget_layers.emplace_back(gate_input_sizes, hidden_size);
+    }
+    output_layer = StackedInputLayer<R>(gate_input_sizes, hidden_size);
+    cell_layer = StackedInputLayer<R>(gate_input_sizes, hidden_size);
 
     if (memory_feeds_gates) {
+        assert2(false, "Not implemented.");
+
         Wci = Mat<R>(hidden_size, 1, weights<R>::uniform(2. / sqrt(hidden_size)));
         Wco = Mat<R>(hidden_size, 1, weights<R>::uniform(2. / sqrt(hidden_size)));
-        Wcf = Mat<R>(hidden_size, 1, weights<R>::uniform(2. / sqrt(hidden_size)));
+        for (int cidx=0; cidx < num_children; ++cidx) {
+            Wcfs.emplace_back(hidden_size, 1, weights<R>::uniform(2. / sqrt(hidden_size)));
+        }
     }
     // Note: Ilya Sutskever recommends initializing with
     // forget gate at high value
@@ -24,42 +48,30 @@ LSTM<R>::LSTM (int _input_size, int _hidden_size, bool _memory_feeds_gates) :
     name_internal_layers();
 }
 
+
 template<typename R>
-LSTM<R>::LSTM (int _input_size, int shortcut_size, int _hidden_size, bool _memory_feeds_gates) :
-        shortcut(true),
-        memory_feeds_gates(_memory_feeds_gates),
-        hidden_size(_hidden_size),
-        input_size(_input_size),
-        input_layer( {_input_size, _hidden_size, shortcut_size}, _hidden_size),
-        forget_layer({_input_size, _hidden_size, shortcut_size}, _hidden_size),
-        output_layer({_input_size, _hidden_size, shortcut_size}, _hidden_size),
-        cell_layer(  {_input_size, _hidden_size, shortcut_size}, _hidden_size) {
+LSTM<R>::LSTM (const LSTM<R>& other, bool copy_w, bool copy_dw) :
+        memory_feeds_gates(other.memory_feeds_gates),
+        input_sizes(other.input_sizes),
+        hidden_size(other.hidden_size),
+        num_children(other.num_children) {
+
+    input_layer = StackedInputLayer<R>(other.input_layer, copy_w, copy_dw);
+    for (int cidx=0; cidx < num_children; ++cidx) {
+        forget_layers.emplace_back(other.forget_layers[cidx], copy_w, copy_dw);
+    }
+    output_layer = StackedInputLayer<R>(other.output_layer, copy_w, copy_dw);
+    cell_layer = StackedInputLayer<R>(other.cell_layer, copy_w, copy_dw);
 
     if (memory_feeds_gates) {
-        Wci = Mat<R>(hidden_size, 1, weights<R>::uniform(2. / sqrt(hidden_size)));
-        Wco = Mat<R>(hidden_size, 1, weights<R>::uniform(2. / sqrt(hidden_size)));
-        Wcf = Mat<R>(hidden_size, 1, weights<R>::uniform(2. / sqrt(hidden_size)));
+        assert2(false, "Not implemented.");
+        Wci = Mat<R>(other.Wci, copy_w, copy_dw);
+        Wco = Mat<R>(other.Wco, copy_w, copy_dw);
+        for (int cidx=0; cidx < num_children; ++cidx) {
+            Wcfs.emplace_back(other.Wcfs[cidx], copy_w, copy_dw);
+        }
     }
-    // Note: Ilya Sutskever recommends initializing with
-    // forget gate at high value
-    // http://yyue.blogspot.fr/2015/01/a-brief-overview-of-deep-learning.html
-    // forget_layer.b.w().array() += 2;
-    name_internal_layers();
-}
 
-template<typename R>
-LSTM<R>::LSTM (const LSTM<R>& lstm, bool copy_w, bool copy_dw) :
-        shortcut(lstm.shortcut),
-        Wci(lstm.Wci, copy_w, copy_dw),
-        Wcf(lstm.Wcf, copy_w, copy_dw),
-        Wco(lstm.Wco, copy_w, copy_dw),
-        memory_feeds_gates(lstm.memory_feeds_gates),
-        hidden_size(lstm.hidden_size),
-        input_size(lstm.input_size),
-        input_layer(lstm.input_layer, copy_w, copy_dw),
-        forget_layer(lstm.forget_layer, copy_w, copy_dw),
-        output_layer(lstm.output_layer, copy_w, copy_dw),
-        cell_layer(lstm.cell_layer, copy_w, copy_dw) {
     name_internal_layers();
 }
 
@@ -67,7 +79,6 @@ template<typename R>
 LSTM<R> LSTM<R>::shallow_copy() const {
     return LSTM<R>(*this, false, true);
 }
-
 
 template<typename R>
 void LSTM<R>::name_internal_layers() {
@@ -109,27 +120,25 @@ vector<Mat<R>> LSTM<R>::State::memories( const vector<typename LSTM<R>::State>& 
 
 template<typename R>
 typename LSTM<R>::State LSTM<R>::_activate(
-    const std::vector<Mat<R>>& gate_input,
-    const State& initial_state) const {
+        const vector<Mat<R>>& inputs,
+        const vector<State>& states) const {
 
-    Mat<R> input_gate, forget_gate, output_gate;
+    Mat<R> input_gate, output_gate;
+    vector<Mat<R>> forget_gates;
 
-    assert(initial_state.memory.dims(0) == hidden_size);
-    assert(initial_state.hidden.dims(0) == hidden_size);
-    assert(gate_input[0].dims(0) == input_size);
-    if (shortcut) {
-        assert2(gate_input.size() == 3,
-            utils::MS() << "Expected 3 inputs, but got " << gate_input.size() << " instead.");
-        assert2(gate_input[2].dims(0) == input_layer.input_sizes()[2],
-            utils::MS() << "Gate inputs don't match: gate expected a shortcut input of size "
-                 << input_layer.input_sizes()[2]
-                 << " but got " << gate_input[2].dims(0) << " instead.");
-    } else {
-        assert(gate_input.size() == 2);
+
+    for (auto& state: states) {
+        assert(state.memory.dims(0) == hidden_size);
+        assert(state.hidden.dims(0) == hidden_size);
     }
+    assert(input_sizes.size() == inputs.size());
+    for (int iidx = 0; iidx < input_sizes.size(); ++iidx) {
+        assert(inputs[iidx].dims(0) == input_sizes[iidx]);
+    }
+    auto gate_input = utils::concatenate({inputs, State::hiddens(states)});
 
     if (memory_feeds_gates) {
-        auto constant_memory = MatOps<R>::consider_constant_if(initial_state.memory, !backprop_through_gates);
+        /*auto constant_memory = MatOps<R>::consider_constant_if(initial_state.memory, !backprop_through_gates);
         // if the memory feeds the gates (Alex Graves 2013) then
         // a diagonal matrix (Wci and Wcf) connect memory to input
         // and forget gates
@@ -141,28 +150,37 @@ typename LSTM<R>::State LSTM<R>::_activate(
         // forget gate
         forget_gate = (
             forget_layer.activate(gate_input) + (constant_memory * Wcf)
-        ).sigmoid();
+        ).sigmoid();*/
+        assert2(false, "Not implemented.");
     } else {
         // (Zaremba 2014 style)
 
         // input gate:
         input_gate  = input_layer.activate(gate_input).sigmoid();
         // forget gate
-        forget_gate = forget_layer.activate(gate_input).sigmoid();
+        for (int cidx = 0; cidx < num_children; ++cidx) {
+            forget_gates.emplace_back(forget_layers[cidx].activate(gate_input).sigmoid());
+        }
     }
     // write operation on cells
     auto cell_write  = cell_layer.activate(gate_input).tanh();
 
     // compute new cell activation
-    auto retain_cell = forget_gate * initial_state.memory; // what do we keep from cell
+    vector<Mat<R>> memory_contributions;
+    for (int cidx = 0; cidx < num_children; ++cidx) {
+        memory_contributions.emplace_back(forget_gates[cidx] * states[cidx].memory);
+    }
+    auto retain_cell = MatOps<R>::add(memory_contributions);
     auto write_cell  = input_gate  * cell_write; // what do we write to cell
     auto cell_d      = retain_cell + write_cell; // new cell contents
 
     if (memory_feeds_gates) {
         // output gate uses new memory (cell_d) to control its gate
+        assert2(false, "Not implemented.");
         output_gate = (
             output_layer.activate(gate_input) + (MatOps<R>::consider_constant_if(cell_d, !backprop_through_gates) * Wco)
         ).sigmoid();
+
     } else {
         // output gate
         output_gate = output_layer.activate(gate_input).sigmoid();
@@ -179,30 +197,43 @@ typename LSTM<R>::State LSTM<R>::_activate(
 
 template<typename R>
 typename LSTM<R>::State LSTM<R>::activate(
-    Mat<R> input_vector,
-    State  state) const {
-    auto gate_input = std::vector<Mat<R>>({input_vector, state.hidden});
-    return _activate(gate_input, state);
+        Mat<R> input_vector,
+        State  state) const {
+    return _activate(
+        vector<Mat<R>>({input_vector}),
+        vector<State>({state})
+    );
+}
+
+template<typename R>
+typename LSTM<R>::State LSTM<R>::activate(
+        Mat<R> input_vector,
+        vector<State> previous_children_states) const {
+    return _activate(
+        vector<Mat<R>>({input_vector}),
+        previous_children_states
+    );
 }
 
 template<typename R>
 typename LSTM<R>::State LSTM<R>::activate_shortcut(
-    Mat<R> input_vector,
-    Mat<R> shortcut_vector,
-    State  state) const {
-    utils::assert2(shortcut, "Error: LSTM without Shortcuts received shortcut_vector.");
-    auto gate_input = std::vector<Mat<R>>({input_vector, state.hidden, shortcut_vector});
-    return _activate(gate_input, state);
+        Mat<R> input_vector,
+        Mat<R> shortcut_vector,
+        State  state) const {
+    return _activate(
+        vector<Mat<R>>({input_vector, shortcut_vector}),
+        vector<State>({state})
+    );
 }
 
 template<typename R>
 typename LSTM<R>::State LSTM<R>::activate_sequence(
-    State state,
-    const vector<Mat<R>>& sequence) const {
+        State state,
+        const vector<Mat<R>>& sequence) const {
     for (auto& input_vector : sequence)
         state = activate(
             input_vector,
-            state
+            vector<State>({state})
         );
     return state;
 };
@@ -212,27 +243,30 @@ std::vector<Mat<R>> LSTM<R>::parameters() const {
     std::vector<Mat<R>> parameters;
 
     if (memory_feeds_gates) {
+        assert2(false, "Not implemented.");
         parameters.emplace_back( Wci);
-        parameters.emplace_back( Wcf);
-        parameters.emplace_back( Wco);
+        for (int cidx = 0; cidx < num_children; ++cidx) {
+            parameters.emplace_back(Wcfs[cidx]);
+        }
+        parameters.emplace_back(Wco);
     }
 
     auto input_layer_params  = input_layer.parameters();
-    auto forget_layer_params = forget_layer.parameters();
-    auto output_layer_params = output_layer.parameters();
-    auto cell_layer_params   = cell_layer.parameters();
-
     parameters.insert( parameters.end(), input_layer_params.begin(),  input_layer_params.end() );
-    parameters.insert( parameters.end(), forget_layer_params.begin(), forget_layer_params.end() );
+
+    for (int cidx = 0; cidx < num_children; ++cidx) {
+        auto forget_layer_params = forget_layers[cidx].parameters();
+        parameters.insert( parameters.end(), forget_layer_params.begin(), forget_layer_params.end() );
+    }
+
+    auto output_layer_params = output_layer.parameters();
     parameters.insert( parameters.end(), output_layer_params.begin(), output_layer_params.end() );
+
+    auto cell_layer_params   = cell_layer.parameters();
     parameters.insert( parameters.end(), cell_layer_params.begin(),   cell_layer_params.end() );
 
-    return parameters;
-}
 
-template<typename R>
-typename LSTM<R>::State LSTM<R>::initial_states() const {
-    return LSTM<R>::State(Mat<R>(hidden_size, 1), Mat<R>(hidden_size, 1));
+    return parameters;
 }
 
 template<typename R>
@@ -244,6 +278,13 @@ typename std::vector< typename LSTM<R>::State > LSTM<R>::initial_states(
         initial_state.emplace_back(Mat<R>(size, 1), Mat<R>(size, 1));
     }
     return initial_state;
+}
+
+
+
+template<typename R>
+typename LSTM<R>::State LSTM<R>::initial_states() const {
+    return LSTM<R>::State(Mat<R>(hidden_size, 1), Mat<R>(hidden_size, 1));
 }
 
 // TODO: make this a static method of StackedLSTM
@@ -305,11 +346,11 @@ vector<celltype> StackedCells(const vector<celltype>& source_cells,
 
 template<typename R>
 std::vector< typename LSTM<R>::State > forward_LSTMs(
-    Mat<R> base_input,
-    std::vector< typename LSTM<R>::State >& previous_state,
-    const vector<LSTM<R>>& cells,
-    R drop_prob) {
-
+        Mat<R> base_input,
+        std::vector< typename LSTM<R>::State >& previous_state,
+        const vector<LSTM<R>>& cells,
+        R drop_prob) {
+/*
     std::vector< typename LSTM<R>::State> out_state;
     out_state.reserve(cells.size());
 
@@ -336,7 +377,9 @@ std::vector< typename LSTM<R>::State > forward_LSTMs(
         ++state_iter;
         layer_input = out_state.back().hidden;
     }
-    return out_state;
+    return out_state;*/
+    assert2(false, "Not implemented.");
+    return {};
 }
 
 template class LSTM<float>;

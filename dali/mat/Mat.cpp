@@ -27,7 +27,6 @@ MatInternal<R>::MatInternal(dim_t n, dim_t d, bool fill_zeros) :
     }
 }
 
-
 template<typename R>
 MatInternal<R>::MatInternal(const MatInternal<R>& m) :
         w(m.w),
@@ -785,7 +784,6 @@ namespace utils {
 
     template json11::Json json_finite_distribution(const Mat<float>&, const vector<string>&);
     template json11::Json json_finite_distribution(const Mat<double>&, const vector<string>&);
-
 
 }
 

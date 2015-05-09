@@ -43,7 +43,7 @@ DEFINE_int32(expression_length, 5,       "How much suffering to impose on our fr
 DEFINE_int32(num_examples,      1500,    "How much suffering to impose on our friend?");
 
 template<typename Z>
-class StackedTreeModel : public StackedModel {
+class StackedTreeModel : public StackedModel<Z> {
     public:
         typedef Mat<Z> mat;
         typedef std::vector< typename LSTM<Z>::State> state_type;
@@ -81,7 +81,7 @@ class StackedTreeModel : public StackedModel {
 
         Mat<Z> rate_pair(state_type& left_state, state_type& right_state, int action) {
             assert2(
-                action > -1 && action < num_decisions,
+                action > -1 && action < num_actions,
                 MS() << "Acting number must between 0 and the max action number ("
                      << num_actions
                      << ")"

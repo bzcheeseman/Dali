@@ -77,6 +77,8 @@ class LSTM : public AbstractLayer<R> {
             Mat<R> input_vector,
             std::vector<State> previous_children_states) const;
 
+        State activate(const std::vector<Mat<R>>&, const std::vector<State>&) const;
+
         State activate_shortcut(
             Mat<R> input_vector,
             Mat<R> shortcut_vector,
@@ -89,8 +91,6 @@ class LSTM : public AbstractLayer<R> {
         virtual State activate_sequence(
             State initial_state,
             const std::vector<Mat<R>>& sequence) const;
-    private:
-        State _activate(const std::vector<Mat<R>>&, const std::vector<State>&) const;
 };
 
 template<typename R>

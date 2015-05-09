@@ -117,7 +117,7 @@ vector<Mat<R>> LSTM<R>::State::memories( const vector<typename LSTM<R>::State>& 
 }
 
 template<typename R>
-typename LSTM<R>::State LSTM<R>::_activate(
+typename LSTM<R>::State LSTM<R>::activate(
         const vector<Mat<R>>& inputs,
         const vector<State>& states) const {
 
@@ -196,7 +196,7 @@ template<typename R>
 typename LSTM<R>::State LSTM<R>::activate(
         Mat<R> input_vector,
         State  state) const {
-    return _activate(
+    return activate(
         vector<Mat<R>>({input_vector}),
         vector<State>({state})
     );
@@ -206,7 +206,7 @@ template<typename R>
 typename LSTM<R>::State LSTM<R>::activate(
         Mat<R> input_vector,
         vector<State> previous_children_states) const {
-    return _activate(
+    return activate(
         vector<Mat<R>>({input_vector}),
         previous_children_states
     );
@@ -217,7 +217,7 @@ typename LSTM<R>::State LSTM<R>::activate_shortcut(
         Mat<R> input_vector,
         Mat<R> shortcut_vector,
         State  state) const {
-    return _activate(
+    return activate(
         vector<Mat<R>>({input_vector, shortcut_vector}),
         vector<State>({state})
     );

@@ -4,6 +4,7 @@ set(EXAMPLES_BUILD_DIR ${PROJECT_SOURCE_DIR}/build/examples)
 set(EXAMPLE_PROGRAMS api_showcase
                      arithmetic
                      babi_solvers
+                     beam_tree_training
                      bidirectional_sentiment
                      character_prediction
                      grid_search_simple

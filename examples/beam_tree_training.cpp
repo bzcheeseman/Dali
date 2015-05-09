@@ -21,6 +21,10 @@ using std::to_string;
 using std::make_shared;
 using std::chrono::seconds;
 using utils::MS;
+using std::tuple;
+using std::min;
+using utils::assert2;
+
 typedef double REAL_t;
 
 vector<string> SYMBOLS = {"+", "*", "-"};
@@ -42,6 +46,7 @@ DEFINE_int32(j,                 1,       "How many threads should be used ?");
 DEFINE_int32(expression_length, 5,       "How much suffering to impose on our friend?");
 DEFINE_int32(num_examples,      1500,    "How much suffering to impose on our friend?");
 
+/*
 template<typename Z>
 class StackedTreeModel : public StackedModel<Z> {
     public:
@@ -138,7 +143,7 @@ class StackedTreeModel : public StackedModel<Z> {
 };
 
 typedef StackedTreeModel<REAL_t> model_t;
-
+*/
 
 vector<pair<vector<string>, vector<string>>> generate_examples(int num) {
     vector<pair<vector<string>, vector<string>>> examples;
@@ -270,63 +275,196 @@ here => https://github.com/stanfordnlp/treelstm/edit/master/models/BinaryTreeLST
 */
 
 
-template<typename Z, typename M, typename S>
-tree_reduce_output(Mat<Z> logprob, vector<Mat<Z>> current, int k, const M& model, S internal_state) {
-    if (current.size() > 1) {
-        vector<Mat<Z>> logprobs;
-        // for all subsequent pairs of input check which is most promising:
-        for (int i = 0; i < current.size() -1; i++) {
-            probs.push_back(
-                model.rate_pair(internal_state, current[i], current[i+1], 0)
-            );
+
+template<typename T>
+class LeafModule {
+    typedef typename LSTM<T>::State lstm_state_t;
+
+    public:
+        int input_size;
+        int hidden_size;
+
+        Layer<T> c_layer;
+        Layer<T> o_layer;
+
+        LeafModule<T>(int input_size, int hidden_size) :
+                input_size(input_size),
+                hidden_size(hidden_size),
+                c_layer(input_size, hidden_size),
+                o_layer(input_size, hidden_size) {
         }
 
-        // apply softmax to vector:
-        vector<Mat<Z>> softmax_probs = MatOps<Z>::softmax(probs);
-
-        // sort the best:
-        auto sorted = utils::argsort(probs);
-
-        // now take the best k
-        vector<ind_t> best_idxes(
-            sorted.begin(),
-            (k < probs.size()) ? sorted.begin() + k : sorted.end()
-        );
-
-        vector<Mat<Z>> conditional_probs;
-        vector<vector<Mat<Z>> new_inputs;
-
-        for (auto& idx : best_idxes) {
-            // take log prob and add previous log prob
-            conditional_probs.push_back(
-                softmax_probs[idx].log() + logprob
-            );
-
-            vector<Mat<Z>> new_input;
-
-            // add what came before
-            for (int i = 0; i < idx; i++) {
-                new_input.emplace_back(current[i]);
-            }
-
-            // create a new input as a join of the other two:
-            new_input.emplace_back(
-                model.join_pair(internal_state, current[idx], current[idx+1])
-            );
-
-            // add the remainder
-            for (int i = idx + 1; i < current.size(); i++) {
-                new_input.emplace_back(current[i]);
-            }
-
-            // new input is now smaller
-            assert(new_input.size() == current.size() - 1);
-
-            // add this to the new set of inputs
-            new_inputs.push_back(new_input);
+        LeafModule<T>(const LeafModule<T>& other, bool copy_w, bool copy_dw) :
+                input_size(other.input_size),
+                hidden_size(other.hidden_size),
+                c_layer(other.c_layer, copy_w, copy_dw),
+                o_layer(other.o_layer, copy_w, copy_dw) {
         }
-    }
-}
+
+
+        lstm_state_t activate(Mat<T> embedding) const {
+            auto c = c_layer.activate(embedding);
+            auto o = o_layer.activate(embedding).sigmoid();
+            auto h = c.tanh() * o;
+            return lstm_state_t(c,h);
+        }
+
+        vector<Mat<T>> parameters() const {
+            vector<Mat<T>> res;
+            auto c_layer_params = c_layer.parameters();
+            auto o_layer_params = o_layer.parameters();
+            res.insert(res.end(), c_layer_params.begin(), c_layer_params.end());
+            res.insert(res.end(), o_layer_params.begin(), o_layer_params.end());
+            return res;
+        }
+};
+
+template<typename T>
+class TreeModel {
+    public:
+        typedef typename LSTM<T>::State lstm_state_t;
+
+        struct Node {
+            Mat<T> log_probability;
+            lstm_state_t state;
+            Node(Mat<T> log_probability, lstm_state_t state) :
+                    log_probability(log_probability),
+                    state(state) {
+            }
+
+            Node(lstm_state_t state) :
+                    log_probability(1,1),
+                    state(state) {
+                // log probability by default initializes to 0.0 (p = 1.0).
+                log_probability.constant = true;
+            }
+        };
+
+        int input_size;
+        int hidden_size;
+
+        LeafModule<T> leaf_module;
+        LSTM<T> composer;
+        Layer<T> prob_decoder;
+
+        TreeModel(int input_size, int hidden_size) :
+                input_size(input_size),
+                hidden_size(hidden_size),
+                leaf_module(input_size, hidden_size),
+                composer(vector<int>(), hidden_size, 2),
+                prob_decoder(hidden_size, 1) {
+
+        }
+
+        vector<Node> convert_to_leaves(vector<Mat<T>> input) {
+            vector<Node> leaves;
+            for (auto& embedding : input) {
+                leaves.emplace_back(leaf_module.activate(embedding));
+            }
+            return leaves;
+        }
+
+        // The returned node is incomplte.
+        lstm_state_t join_states(Node a, Node b) {
+            auto new_state = composer.activate(vector<Mat<T>>(), {a.state, b.state});
+            return new_state;
+        }
+
+        vector<vector<Node>> cangen(vector<Node> states, int beam_width) {
+            assert2(states.size() >= 2,
+                    "There's nothing to join here, kurwa!");
+            int num_candidates = min((size_t)beam_width, states.size() - 1);
+
+            vector<Node> possible_joins;
+            vector<Mat<T>> scores;
+            for (size_t sidx = 0; sidx + 1 < states.size(); ++sidx) {
+                possible_joins.emplace_back(
+                    Mat<T>(),
+                    join_states(states[sidx], states[sidx + 1])
+                );
+                scores.emplace_back(prob_decoder.activate(possible_joins.back().state.hidden));
+            }
+            auto normalized_scores = MatOps<T>::softmax(scores);
+            for (size_t sidx = 0; sidx + 1 < states.size(); ++sidx) {
+                possible_joins[sidx].log_probability =
+                        normalized_scores[sidx].log() +
+                        states[sidx].log_probability +
+                        states[sidx + 1].log_probability;
+            }
+
+            // initialize original index locations
+            vector<size_t> idx(possible_joins.size());
+            for (size_t i = 0; i < idx.size(); ++i)
+                idx[i] = i;
+
+            // sort indexes based on comparing values in v
+            sort(idx.begin(), idx.end(), [&possible_joins](size_t i1, size_t i2) {
+                return possible_joins[i1].log_probability.w()(0) > possible_joins[i2].log_probability.w()(0);
+            });
+            vector<vector<Node>> results;
+
+            for (size_t cidx = 0; cidx < num_candidates; ++cidx) {
+                vector<Node> result;
+                size_t join_idx = idx[cidx];
+                for (size_t sidx = 0; sidx < join_idx; ++sidx)
+                    result.emplace_back(states[sidx]);
+                result.emplace_back(possible_joins[join_idx]);
+                for (size_t sidx = join_idx + 2; sidx < states.size(); ++sidx) {
+                    result.emplace_back(states[sidx]);
+                }
+                assert(result.size() == states.size() - 1);
+                results.emplace_back(result);
+            }
+            return results;
+        }
+
+        T candidate_log_probability(vector<Node> candidate) {
+            T result = 0.0;
+            for (auto& node: candidate) {
+                result += node.log_probability.w()(0,0);
+            }
+            return result;
+        }
+
+        vector<Node> best_trees(vector<Mat<T>> input, int beam_width) {
+            auto leaves = convert_to_leaves(input);
+            vector<vector<Node>> candidates = { leaves };
+            while (candidates[0].size() > 1) {
+                vector<vector<Node>> new_candidates;
+                for (auto& candidate: candidates) {
+                    for (auto& new_candidate: cangen(candidate, beam_width)) {
+                        new_candidates.emplace_back(new_candidate);
+                    }
+                }
+                sort(new_candidates.begin(), new_candidates.end(),
+                        [this](const vector<Node>& c1, const vector<Node>& c2) {
+                    return candidate_log_probability(c1) > candidate_log_probability(c2);
+                });
+                candidates = vector<vector<Node>>(
+                    new_candidates.begin(),
+                    new_candidates.begin() + min((size_t)beam_width, new_candidates.size())
+                );
+                for (size_t cidx = 0; cidx + 1 < candidates.size(); ++cidx) {
+                    assert2(candidates[cidx].size() == candidates[cidx + 1].size(),
+                            "Generated candidates of different sizes.");
+                }
+
+            }
+            vector<Node> result;
+            for (auto& candidate: candidates) {
+                result.emplace_back(candidate[0]);
+            }
+            return result;
+        }
+
+};
+
+template class LeafModule<float>;
+template class LeafModule<double>;
+
+template class TreeModel<float>;
+template class TreeModel<double>;
+
 
 
 int main (int argc,  char* argv[]) {
@@ -366,7 +504,7 @@ int main (int argc,  char* argv[]) {
     std::cout << symbols << std::endl;
 
     utils::Vocab vocab(symbols, false);
-
+    /*
     // train a silly system to output the numbers it needs
     auto model = model_t(
          1, // only one decision => binary choice
@@ -436,6 +574,7 @@ int main (int argc,  char* argv[]) {
 
     Throttled throttled1;
     Throttled throttled2;
+
 
     while (epoch < FLAGS_epochs) {
 
@@ -514,5 +653,5 @@ int main (int argc,  char* argv[]) {
         }
         solver->step(params); // One step of gradient descent
         epoch++;
-    }
+    }*/
 }

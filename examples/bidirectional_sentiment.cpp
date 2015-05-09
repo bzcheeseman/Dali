@@ -258,7 +258,7 @@ class BidirectionalLSTM {
                               it_embed = embeddingX.begin();
                         (it_back != backwardX.end() && it_forward != forwardX.end() && it_embed != embeddingX.end());
                         ++it_back, ++it_forward, ++it_embed) {
-                        if (cell.shortcut) {
+                        if (cell.input_sizes.size() == 2) {
                             // if the model used is bidirectional
                             // then the backward stream should be available
                             if (bidirectional) {
@@ -289,7 +289,7 @@ class BidirectionalLSTM {
                         (it_back != backwardX.rend() && it_forward != forwardX.rend());
                         ++it_back, ++it_forward) {
 
-                        if (cell.shortcut) {
+                        if (cell.input_sizes.size() == 2) {
                             state = cell.activate_shortcut(
                                 MatOps<REAL_t>::dropout_normalized(*it_back, drop_prob),
                                 MatOps<REAL_t>::dropout_normalized(*it_forward, drop_prob),

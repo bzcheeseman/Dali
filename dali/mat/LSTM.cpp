@@ -124,12 +124,13 @@ typename LSTM<R>::State LSTM<R>::_activate(
     Mat<R> input_gate, output_gate;
     vector<Mat<R>> forget_gates;
 
-
     for (auto& state: states) {
         assert(state.memory.dims(0) == hidden_size);
         assert(state.hidden.dims(0) == hidden_size);
     }
-    assert(input_sizes.size() == inputs.size());
+    assert2(input_sizes.size() == inputs.size(),
+        utils::MS() << "Got " << inputs.size() << " inputs but expected " << input_sizes.size() << " instead."
+    );
     for (int iidx = 0; iidx < input_sizes.size(); ++iidx) {
         assert(inputs[iidx].dims(0) == input_sizes[iidx]);
     }

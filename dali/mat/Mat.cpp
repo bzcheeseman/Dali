@@ -27,7 +27,6 @@ MatInternal<R>::MatInternal(dim_t n, dim_t d, bool fill_zeros) :
     }
 }
 
-
 template<typename R>
 MatInternal<R>::MatInternal(const MatInternal<R>& m) :
         w(m.w),
@@ -759,7 +758,6 @@ vector<size_t> utils::argsort(const vector<Mat<double>> &v) {
 
     return idx;
 }
-
 
 template void utils::save_matrices(vector<Mat<float> >, string);
 template void utils::save_matrices(vector<Mat<double> >, string);

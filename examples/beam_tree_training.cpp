@@ -301,6 +301,9 @@ class LeafModule {
                 o_layer(other.o_layer, copy_w, copy_dw) {
         }
 
+        LeafModule<T> shallow_copy() const {
+            return LeafModule<T>(*this, false, true);
+        }
 
         lstm_state_t activate(Mat<T> embedding) const {
             auto c = c_layer.activate(embedding);
@@ -353,7 +356,18 @@ class TreeModel {
                 leaf_module(input_size, hidden_size),
                 composer(vector<int>(), hidden_size, 2),
                 prob_decoder(hidden_size, 1) {
+        }
 
+        TreeModel(const TreeModel<T>& other, bool copy_w, bool copy_dw) :
+                input_size(other.input_size),
+                hidden_size(other.hidden_size),
+                leaf_module(other.leaf_module, copy_w, copy_dw),
+                composer(other.composer, copy_w, copy_dw),
+                prob_decoder(other.prob_decoder, copy_w, copy_dw) {
+        }
+
+        TreeModel<T> shallow_copy() const {
+            return TreeModel<T>(*this, false, true);
         }
 
         vector<Node> convert_to_leaves(vector<Mat<T>> input) {
@@ -364,15 +378,16 @@ class TreeModel {
             return leaves;
         }
 
-        // The returned node is incomplte.
+        // The returned node is incomplete.
         lstm_state_t join_states(Node a, Node b) {
-            auto new_state = composer.activate(vector<Mat<T>>(), {a.state, b.state});
-            return new_state;
+            return composer.activate(
+                vector<Mat<T>>(),
+                {a.state, b.state}
+            );
         }
 
         vector<vector<Node>> cangen(vector<Node> states, int beam_width) {
-            assert2(states.size() >= 2,
-                    "There's nothing to join here, kurwa!");
+            assert2(states.size() >= 2, "Must at least have 2 states to join for candidate generation.");
             int num_candidates = min((size_t)beam_width, states.size() - 1);
 
             vector<Node> possible_joins;
@@ -455,6 +470,19 @@ class TreeModel {
                 result.emplace_back(candidate[0]);
             }
             return result;
+        }
+
+        vector<Mat<T>> parameters() const {
+            vector<Mat<T>> params = leaf_module.parameters();
+
+            auto composer_params = composer.parameters();
+            params.insert(params.end(), composer_params.begin(), composer_params.end());
+
+
+            auto prob_decoder_params = prob_decoder.parameters();
+            params.insert(params.end(), prob_decoder_params.begin(), prob_decoder_params.end());
+
+            return params;
         }
 
 };

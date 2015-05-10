@@ -1,6 +1,6 @@
 HIGH PRIORITY:
 -> mshadow and tensors (mutli gpu support etc.)
--> visualizer - web frontend for error visualization (50% done)
+-> visualizer - web frontend for error visualization (60% done)
 -> Move Redis visualizer example to tests with check for redis presence
 -> switch "from unique words" in Vocab to "add_words"
 -> graceful connection / reconnection / deconnection in redox

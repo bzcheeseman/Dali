@@ -1,18 +1,7 @@
-#include <algorithm>
-#include <atomic>
-#include <Eigen/Eigen>
-#include <fstream>
-#include <ostream>
-#include <fstream>
-#include <iterator>
-#include <chrono>
-#include <vector>
-#include <memory>
-#include <string>
-
 #include "dali/core.h"
 #include "dali/utils.h"
 #include "dali/models/StackedModel.h"
+#include "dali/data_processing/Arithmetic.h"
 
 using std::string;
 using std::vector;
@@ -20,6 +9,7 @@ using std::pair;
 using std::to_string;
 using std::make_shared;
 using std::chrono::seconds;
+
 typedef double REAL_t;
 
 vector<string> SYMBOLS = {"+", "*", "-"};
@@ -43,87 +33,6 @@ DEFINE_int32(j,                  1,
 
 DEFINE_int32(expression_length, 5, "How much suffering to impose on our friend?");
 DEFINE_int32(num_examples,      1500, "How much suffering to impose on our friend?");
-
-
-vector<pair<vector<string>, vector<string>>> generate_examples(int num) {
-    vector<pair<vector<string>, vector<string>>> examples;
-    int i = 0;
-    while (i < num) {
-        vector<string> example;
-        auto expr_length = utils::randint(1, std::max(1, FLAGS_expression_length));
-        bool use_operator = false;
-        for (int j = 0; j < expr_length; j++) {
-            if (use_operator) {
-                auto operation = SYMBOLS[utils::randint(0, NUM_SYMBOLS-1)];
-                example.push_back(operation);
-                use_operator = false;
-            } else {
-                auto value = to_string(utils::randint(0, 9));
-                example.push_back(value);
-                use_operator = true;
-            }
-        }
-        if (!use_operator) {
-            auto value = to_string(utils::randint(0, 9));
-            example.push_back(value);
-            use_operator = true;
-        }
-
-        int result = 0;
-
-        {
-            int product_so_far = 1;
-            vector<string> multiplied;
-            for (auto& character : example) {
-                if (utils::in_vector(SYMBOLS, character)) {
-                    if (character == "*") {
-                        // do nothing
-                    } else {
-                        multiplied.push_back(to_string(product_so_far));
-                        multiplied.push_back(character);
-                        product_so_far = 1;
-                    }
-                } else {
-                    product_so_far *= character[0] - '0';
-                }
-            }
-            multiplied.push_back(to_string(product_so_far));
-
-            string last_operator = "";
-            for (auto& character: multiplied) {
-                if (utils::in_vector(SYMBOLS, character)) {
-                    last_operator = character;
-                } else {
-                    if (last_operator == "") {
-                        result = std::stoi(character);
-                    } else if (last_operator == "+") {
-                        result += std::stoi(character);
-                    } else if (last_operator == "-") {
-                        result -= std::stoi(character);
-                    } else {
-                        assert(NULL == "Unknown operator.");
-                    }
-                }
-            }
-        }
-
-        if (result > -50 && result < 50) {
-            i++;
-
-            auto res = to_string(result);
-
-            vector<string> character_result;
-            for (int j = 0; j < res.size(); j++) {
-                character_result.emplace_back(res.begin()+j, res.begin()+j+1);
-            }
-            examples.emplace_back(
-                example,
-                character_result
-            );
-        }
-    }
-    return examples;
-}
 
 ThreadPool* pool;
 
@@ -170,7 +79,7 @@ int main (int argc,  char* argv[]) {
 
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
-    auto examples = generate_examples(FLAGS_num_examples);
+    auto examples = arithmetic::generate(FLAGS_num_examples, FLAGS_expression_length);
     pool = new ThreadPool(FLAGS_j);
 
     // display the examples:

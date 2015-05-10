@@ -12,7 +12,7 @@
 
 #include "dali/core.h"
 #include "dali/utils.h"
-#include "dali/models/StackedModel.h"
+
 
 using std::string;
 using std::vector;
@@ -45,6 +45,9 @@ DEFINE_int32(epochs,         2000,       "How many training loops through the fu
 DEFINE_int32(j,                 1,       "How many threads should be used ?");
 DEFINE_int32(expression_length, 5,       "How much suffering to impose on our friend?");
 DEFINE_int32(num_examples,      1500,    "How much suffering to impose on our friend?");
+DEFINE_bool(memory_feeds_gates, true, "LSTM's memory cell also control gate outputs");
+DEFINE_int32(input_size,        100,  "Size of the word vectors");
+DEFINE_int32(hidden,            100,  "How many Cells and Hidden Units should each LSTM have ?");
 
 /*
 template<typename Z>
@@ -350,11 +353,11 @@ class TreeModel {
         LSTM<T> composer;
         Layer<T> prob_decoder;
 
-        TreeModel(int input_size, int hidden_size) :
+        TreeModel(int input_size, int hidden_size, bool memory_feeds_gates = false) :
                 input_size(input_size),
                 hidden_size(hidden_size),
                 leaf_module(input_size, hidden_size),
-                composer(vector<int>(), hidden_size, 2),
+                composer(vector<int>(), hidden_size, 2, memory_feeds_gates),
                 prob_decoder(hidden_size, 1) {
         }
 
@@ -478,7 +481,6 @@ class TreeModel {
             auto composer_params = composer.parameters();
             params.insert(params.end(), composer_params.begin(), composer_params.end());
 
-
             auto prob_decoder_params = prob_decoder.parameters();
             params.insert(params.end(), prob_decoder_params.begin(), prob_decoder_params.end());
 
@@ -493,7 +495,7 @@ template class LeafModule<double>;
 template class TreeModel<float>;
 template class TreeModel<double>;
 
-
+typedef TreeModel<REAL_t> model_t;
 
 int main (int argc,  char* argv[]) {
     GFLAGS_NAMESPACE::SetUsageMessage(
@@ -532,17 +534,12 @@ int main (int argc,  char* argv[]) {
     std::cout << symbols << std::endl;
 
     utils::Vocab vocab(symbols, false);
-    /*
+
     // train a silly system to output the numbers it needs
     auto model = model_t(
-         1, // only one decision => binary choice
-         vocab.index2word.size(),
-         FLAGS_input_size,
-         FLAGS_hidden,
-         FLAGS_stack_size,
-         vocab.index2word.size(),
-         false,
-         false);
+        FLAGS_input_size,
+        FLAGS_hidden,
+        FLAGS_memory_feeds_gates);
 
     // Rho value, eps value, and gradient clipping value:
     std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver;
@@ -590,16 +587,14 @@ int main (int argc,  char* argv[]) {
     std::cout << "     Vocabulary size : " << symbols.size() << std::endl
               << "      minibatch size : " << FLAGS_minibatch << std::endl
               << "   number of threads : " << FLAGS_j << std::endl
-              << "          stack size : " << FLAGS_stack_size << std::endl
               << "        Dropout type : " << (FLAGS_fast_dropout ? "fast" : "default") << std::endl
               << " Max training epochs : " << FLAGS_epochs << std::endl
-              << "           LSTM type : " << (model.memory_feeds_gates ? "Graves 2013" : "Zaremba 2014") << std::endl
-              << "          Stack size : " << model.hidden_sizes.size() << std::endl
+              << "           LSTM type : " << (model.composer.memory_feeds_gates ? "Graves 2013" : "Zaremba 2014") << std::endl
               << "         Hidden size : " << FLAGS_hidden << std::endl
               << "          Input size : " << FLAGS_input_size << std::endl
               << " # training examples : " << examples.size() << std::endl
               << "              Solver : " << FLAGS_solver << std::endl;
-
+    /*
     Throttled throttled1;
     Throttled throttled2;
 

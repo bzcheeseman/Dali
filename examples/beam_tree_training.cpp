@@ -13,7 +13,6 @@
 #include "dali/core.h"
 #include "dali/utils.h"
 
-
 using std::string;
 using std::vector;
 using std::pair;
@@ -48,105 +47,6 @@ DEFINE_int32(num_examples,      1500,    "How much suffering to impose on our fr
 DEFINE_bool(memory_feeds_gates, true, "LSTM's memory cell also control gate outputs");
 DEFINE_int32(input_size,        100,  "Size of the word vectors");
 DEFINE_int32(hidden,            100,  "How many Cells and Hidden Units should each LSTM have ?");
-
-/*
-template<typename Z>
-class StackedTreeModel : public StackedModel<Z> {
-    public:
-        typedef Mat<Z> mat;
-        typedef std::vector< typename LSTM<Z>::State> state_type;
-        typedef std::tuple<state_type, mat, mat> activation_t;
-        typedef Z value_t;
-
-        vector<Mat<Z>> deciders;
-        vector<Mat<Z>> pair_deciders;
-        Layer<Z> input_transformer;
-        Layer<Z> input_gater;
-        int num_actions;
-
-        StackedTreeModel(int num_decisions,
-                         int vocabulary_size,
-                         int input_size,
-                         int hidden_size,
-                         int stack_size,
-                         int output_size,
-                         bool use_shortcut = false,
-                         bool memory_feeds_gates = false) :
-            StackedModel<Z>(vocabulary_size, input_size, hidden_size, stack_size, output_size, use_shortcut, memory_feeds_gates),
-            input_transformer(input_size, hidden_size),
-            input_gater(input_size, hidden_size),
-            num_actions(num_decisions) {
-
-            int total_hidden_size = hidden_size * stack_size;
-
-            for (int decision_idx = 0; decision_idx < num_decisions; decision_idx++) {
-                // train a linear map that takes both inputs + hidden states:
-                deciders.emplace_back(2 * total_hidden_size, 1);
-                // train a tensor that takes both inputs + hidden states:
-                pair_deciders.emplace_back(2 * total_hidden_size, 2 * total_hidden_size);
-            }
-        }
-
-        Mat<Z> rate_pair(state_type& left_state, state_type& right_state, int action) {
-            assert2(
-                action > -1 && action < num_actions,
-                MS() << "Acting number must between 0 and the max action number ("
-                     << num_actions
-                     << ")"
-            );
-
-            auto hiddens = LSTM<Z>::State::hiddens(left_state);
-            auto right_hiddens = LSTM<Z>::State::hiddens(right_state);
-            hiddens.insert(hiddens.end(), right_hiddens.begin(), right_hiddens.end());
-
-            auto observation = MatOps<Z>::hstack(hiddens);
-            auto action_score = (
-                deciders[action].dot(hiddens) + pair_deciders[action].dot(hiddens).T().dot(hiddens)
-            );
-
-            return action_score;
-        }
-
-        Mat<Z> join_pair(state_type& left_state, state_type& right_state) {
-
-        }
-
-
-        StackedTreeModel<Z> shallow_copy() const {
-            return StackedTreeModel<Z>(*this, false, true);
-        }
-
-        template<typename Z>
-        StackedTreeModel (const StackedTreeModel<Z>& model, bool copy_w, bool copy_dw) :
-            StackedModel(model, copy_w, copy_dw),
-            num_actions(model.num_actions),
-            input_transformer(model.input_transformer, copy_w, copy_dw),
-            input_gater(model.input_transformer, copy_w, copy_dw) {
-            for (int decision_idx = 0; decision_idx < num_decisions; decision_idx++) {
-                // train a linear map that takes both inputs + hidden states:
-                deciders.emplace_back(model.deciders[decision_idx], copy_w, copy_dw);
-                // train a tensor that takes both inputs + hidden states:
-                pair_deciders.emplace_back(model.pair_deciders[decision_idx], copy_w, copy_dw);
-            }
-        }
-
-        vector<Mat<Z>> parameters() const {
-            auto params = StackedModel<Z>::parameters();
-            params.insert(params.end(), deciders.begin(), deciders.end());
-            params.insert(params.end(), pair_deciders.begin(), pair_deciders.end());
-
-            auto input_transformer_params = input_transformer.parameters();
-            params.insert(params.end(), input_transformer_params.begin(), input_transformer_params.end());
-
-            auto input_gater_params = input_gater.parameters();
-            params.insert(params.end(), input_gater_params.begin(), input_gater_params.end());
-
-            return params;
-        }
-};
-
-typedef StackedTreeModel<REAL_t> model_t;
-*/
 
 vector<pair<vector<string>, vector<string>>> generate_examples(int num) {
     vector<pair<vector<string>, vector<string>>> examples;
@@ -260,24 +160,6 @@ double num_correct(M& model, vector<pair<vector<uint>, vector<uint>>> examples, 
     pool->wait_until_idle();
     return (double) correct / (double) examples.size();
 }
-
-/*
-TODO:
-
-1. Add tree lstm (n-ary lstm:
-here => https://github.com/stanfordnlp/treelstm/edit/master/models/BinaryTreeLSTM.lua
-
-2. Include tree lstm into stacked model
-
-3. Add tree LSTM to this example
-
-4. Make tree LSTM compose hidden states hierarchically
-
-5. finish recursive formula below
-
-*/
-
-
 
 template<typename T>
 class LeafModule {

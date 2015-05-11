@@ -50,6 +50,7 @@ struct MatOps {
     Mat<R> out : the rowwise multiply of matrix1 with row_vector.
     **/
     static Mat<R> eltmul_broadcast_rowwise(Mat<R>, Mat<R>);
+    static std::vector<Mat<R>> eltmul_broadcast_rowwise(const std::vector<Mat<R>>&, const std::vector<Mat<R>>&);
     /**
     Element Multiplication Rowwise
     ------------------------------

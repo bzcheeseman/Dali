@@ -30,9 +30,9 @@ DEFINE_int32(epochs,         2000,       "How many training loops through the fu
 DEFINE_int32(j,                 1,       "How many threads should be used ?");
 DEFINE_int32(expression_length, 5,       "How much suffering to impose on our friend?");
 DEFINE_int32(num_examples,      1500,    "How much suffering to impose on our friend?");
-DEFINE_bool(memory_feeds_gates, true, "LSTM's memory cell also control gate outputs");
-DEFINE_int32(input_size,        100,  "Size of the word vectors");
-DEFINE_int32(hidden,            100,  "How many Cells and Hidden Units should each LSTM have ?");
+DEFINE_bool(memory_feeds_gates, true,    "LSTM's memory cell also control gate outputs");
+DEFINE_int32(input_size,        50,      "Size of the word vectors");
+DEFINE_int32(hidden,            100,     "How many Cells and Hidden Units should each LSTM have ?");
 
 ThreadPool* pool;
 
@@ -83,7 +83,6 @@ class LeafModule {
                 hidden_size(hidden_size),
                 c_layer(input_size, hidden_size),
                 o_layer(input_size, hidden_size) {
-
         }
 
         LeafModule<T>(const LeafModule<T>& other, bool copy_w, bool copy_dw) :
@@ -163,6 +162,7 @@ class BeamLSTM : public LSTM<T> {
             auto params = LSTM<T>::parameters();
             auto decoder_params = decoder.parameters();
             params.insert(params.end(), decoder_params.begin(), decoder_params.end());
+            return params;
         }
 
         vector<Node> activate(Mat<T> input, const vector<Node>& states) const {
@@ -173,9 +173,13 @@ class BeamLSTM : public LSTM<T> {
 
             std::transform(states.begin(), states.end(), std::back_inserter(new_state),
                     [this, &input](const Node& prev_node) {
-                auto new_state = LSTM<T>::activate(input, prev_node.state);
-                return Node(prev_node.log_probability, new_state);
+                return Node(
+                    prev_node.log_probability,
+                    LSTM<T>::activate(input, prev_node.state)
+                );
             });
+
+            return new_state;
         }
 
         Mat<T> decode(typename LSTM<T>::State state) const {
@@ -196,7 +200,7 @@ class BeamLSTM : public LSTM<T> {
             // item 2. exponentiates to remove logs.
             auto probabilites = MatOps<T>::softmax(scores);
 
-            auto weighted_distributions = MatOps<T>::eltmul(distributions, probabilites);
+            auto weighted_distributions = MatOps<T>::eltmul_broadcast_rowwise(distributions, probabilites);
 
             return MatOps<T>::add(weighted_distributions);
         }
@@ -252,6 +256,7 @@ class BeamTree {
         }
 
         vector<vector<Node>> cangen(vector<Node> states, int beam_width) const {
+
             assert2(states.size() >= 2, "Must at least have 2 states to join for candidate generation.");
             int num_candidates = min((size_t)beam_width, states.size() - 1);
 
@@ -295,6 +300,7 @@ class BeamTree {
                 assert(result.size() == states.size() - 1);
                 results.emplace_back(result);
             }
+
             return results;
         }
 
@@ -392,7 +398,7 @@ class ArithmeticModel {
                         int hidden_size,
                         int vocab_size,
                         bool memory_feeds_gates = false) :
-                embedding(input_size, vocab_size),
+                embedding(vocab_size, input_size),
                 decoder_lstm(input_size, hidden_size, vocab_size, memory_feeds_gates),
                 tree(input_size, hidden_size, memory_feeds_gates) {
         }
@@ -416,18 +422,17 @@ class ArithmeticModel {
         }
 
         Mat<T> error(const example_t& example, int beam_width) const {
-
             auto expression_embedding = convert_to_embeddings(example.first);
             auto state = tree.best_trees(expression_embedding, beam_width);
-
             auto& targets = example.second;
 
             Mat<T> error(1,1);
             for (int aidx = 0; aidx < targets.size(); ++aidx) {
                 Mat<T> prediction = decoder_lstm.decode(state);
                 error = error + MatOps<T>::cross_entropy(prediction, targets[aidx]);
-                if (aidx + 1 < targets.size())
+                if (aidx + 1 < targets.size()) {
                     state = decoder_lstm.activate(embedding[targets[aidx]], state);
+                }
             }
             return error;
        }
@@ -559,12 +564,17 @@ int main (int argc,  char* argv[]) {
     auto model = model_t(
         FLAGS_input_size,
         FLAGS_hidden,
+        vocab.index2word.size(),
         FLAGS_memory_feeds_gates);
+
+
 
     // Rho value, eps value, and gradient clipping value:
     std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver;
     int solver_type;
+
     auto params = model.parameters();
+
     if (FLAGS_solver == "adadelta") {
         solver = make_shared<Solver::AdaDelta<REAL_t>>(params, 0.95, 1e-9, 100.0, (REAL_t) FLAGS_reg);
         solver_type = ADADELTA_TYPE;
@@ -591,16 +601,6 @@ int main (int argc,  char* argv[]) {
         }
     }
 
-    for (auto example_ptr = numerical_examples.begin(); example_ptr < numerical_examples.end() && example_ptr < numerical_examples.begin() + 20; example_ptr++) {
-        for (auto& val : example_ptr->first) {
-            std::cout << val << " ";
-        }
-        for (auto& val : example_ptr->second) {
-            std::cout << val << " ";
-        }
-        std::cout << std::endl;
-    }
-
     int epoch = 0;
     auto end_symbol_idx = vocab.word2index[utils::end_symbol];
 
@@ -617,7 +617,9 @@ int main (int argc,  char* argv[]) {
     /*
     Throttled throttled1;
     Throttled throttled2;
+    */
 
+    int BEAM_WIDTH = 10;
 
     while (epoch < FLAGS_epochs) {
 
@@ -630,71 +632,44 @@ int main (int argc,  char* argv[]) {
         for (auto indices_begin = indices.begin(); indices_begin < indices.begin() + std::min((size_t)FLAGS_minibatch, numerical_examples.size()); indices_begin++) {
             // <training>
             auto& example = numerical_examples[*indices_begin];
-            auto initial_state = model.initial_states();
-            Mat<REAL_t> input_vector;
-            for (auto& c : example.first) {
-                input_vector = model.embedding[c];
-                initial_state = model.stacked_lstm->activate(
-                    initial_state,
-                    input_vector
-                );
-            }
-            auto error = MatOps<REAL_t>::softmax_cross_entropy(
-                model.decode(
-                    input_vector,
-                    initial_state
-                ),
-                example.second.front()
-            );
-            for (auto label_ptr = example.second.begin(); label_ptr < example.second.end() -1; label_ptr++) {
-                input_vector = model.embedding[*label_ptr];
-                initial_state = model.stacked_lstm->activate(
-                    initial_state,
-                    input_vector
-                );
-                error = error + MatOps<REAL_t>::softmax_cross_entropy(
-                    model.decode(
-                        input_vector,
-                        initial_state
-                    ),
-                    *(label_ptr+1)
-                );
-            }
+
+            auto error = model.error(example, BEAM_WIDTH);
             error.grad();
             graph::backward();
             minibatch_error += error.w()(0);
             // </training>
-            // <reporting>
-            throttled1.maybe_run(seconds(2), [&]() {
-                auto random_example_index = utils::randint(0, examples.size() -1);
-                auto beams = beam_search::beam_search(model,
-                    numerical_examples[random_example_index].first,
-                    20,
-                    0,  // offset symbols that are predicted before being refed (no = 0)
-                    5,
-                    vocab.word2index.at(utils::end_symbol) // when to stop the sequence
-                );
-                for (auto& val : examples[random_example_index].first) {
-                    std::cout << val << " ";
-                }
-                std::cout << std::endl;
-                for (const auto& beam : beams) {
-                    std::cout << "= (" << std::setprecision( 3 ) << std::get<1>(beam) << ") ";
-                    for (const auto& word : std::get<0>(beam)) {
-                        if (word != vocab.word2index.at(utils::end_symbol))
-                            std::cout << vocab.index2word.at(word);
-                    }
-                    std::cout << std::endl;
-                }
-            });
-            throttled2.maybe_run(seconds(30), [&]() {
-                std::cout << "epoch: " << epoch << " Percent correct = " << std::setprecision( 3 )  << 100.0 * num_correct(
-                    model, numerical_examples, 5, vocab.word2index.at(utils::end_symbol)
-                ) << "%" << std::endl;
-            });
+            // // <reporting>
+            // throttled1.maybe_run(seconds(2), [&]() {
+            //     auto random_example_index = utils::randint(0, examples.size() -1);
+            //     auto beams = beam_search::beam_search(model,
+            //         numerical_examples[random_example_index].first,
+            //         20,
+            //         0,  // offset symbols that are predicted before being refed (no = 0)
+            //         5,
+            //         vocab.word2index.at(utils::end_symbol) // when to stop the sequence
+            //     );
+            //     for (auto& val : examples[random_example_index].first) {
+            //         std::cout << val << " ";
+            //     }
+            //     std::cout << std::endl;
+            //     for (const auto& beam : beams) {
+            //         std::cout << "= (" << std::setprecision( 3 ) << std::get<1>(beam) << ") ";
+            //         for (const auto& word : std::get<0>(beam)) {
+            //             if (word != vocab.word2index.at(utils::end_symbol))
+            //                 std::cout << vocab.index2word.at(word);
+            //         }
+            //         std::cout << std::endl;
+            //     }
+            // });
+            // throttled2.maybe_run(seconds(30), [&]() {
+            //     std::cout << "epoch: " << epoch << " Percent correct = " << std::setprecision( 3 )  << 100.0 * num_correct(
+            //         model, numerical_examples, 5, vocab.word2index.at(utils::end_symbol)
+            //     ) << "%" << std::endl;
+            // });
             // </reporting>
         }
+        std::cout << "minibatch_error => " << minibatch_error << std::endl;
         solver->step(params); // One step of gradient descent
         epoch++;
-    }*/
+    }
 }

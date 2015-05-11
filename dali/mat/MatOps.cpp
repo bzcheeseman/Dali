@@ -141,19 +141,6 @@ vector<Mat<R>> MatOps<R>::eltmul(const vector<Mat<R>>& seq1, const vector<Mat<R>
     return result;
 }
 
-template<typename R>
-vector<Mat<R>> MatOps<R>::eltmul_rowwise(const vector<Mat<R>>& seq1, const vector<Mat<R>>& seq2) {
-    assert2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
-
-    vector<Mat<R>> result(seq1.size());
-    for (int i = 0; i < seq1.size(); ++i) {
-        result[i] = eltmul_rowwise(seq1[i], seq2[i]);
-    }
-    return result;
-}
-
-
-
 
 template<typename R>
 Mat<R> MatOps<R>::eltdivide(
@@ -210,6 +197,17 @@ Mat<R> MatOps<R>::eltmul_broadcast_rowwise(
 }
 
 template<typename R>
+vector<Mat<R>> MatOps<R>::eltmul_broadcast_rowwise(const vector<Mat<R>>& seq1, const vector<Mat<R>>& seq2) {
+    assert2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
+
+    vector<Mat<R>> result(seq1.size());
+    for (int i = 0; i < seq1.size(); ++i) {
+        result[i] = eltmul_broadcast_rowwise(seq1[i], seq2[i]);
+    }
+    return result;
+}
+
+template<typename R>
 Mat<R> MatOps<R>::eltmul_rowwise(
     Mat<R> matrix1,
     Mat<R> matrix2) {
@@ -224,6 +222,17 @@ Mat<R> MatOps<R>::eltmul_rowwise(
             GRAD(matrix2).noalias() += ((matrix1.w()).array() * (out.dw()).array()).matrix().transpose();
         });
     return out;
+}
+
+template<typename R>
+vector<Mat<R>> MatOps<R>::eltmul_rowwise(const vector<Mat<R>>& seq1, const vector<Mat<R>>& seq2) {
+    assert2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
+
+    vector<Mat<R>> result(seq1.size());
+    for (int i = 0; i < seq1.size(); ++i) {
+        result[i] = eltmul_rowwise(seq1[i], seq2[i]);
+    }
+    return result;
 }
 
 template<typename R>

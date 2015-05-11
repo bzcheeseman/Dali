@@ -3,6 +3,7 @@
 using std::vector;
 using std::string;
 using std::to_string;
+using utils::Vocab;
 
 namespace arithmetic {
     std::vector<std::string> symbols = {"+", "*", "-"};
@@ -82,4 +83,15 @@ namespace arithmetic {
         }
         return examples;
     }
+
+    Vocab vocabulary() {
+        // define symbols:
+        vector<string> symbols;
+        for (int i = 0; i < 10; i++) {
+            symbols.push_back(to_string(i));
+        }
+        symbols.insert(symbols.end(), arithmetic::symbols.begin(), arithmetic::symbols.end());
+        symbols.push_back(utils::end_symbol);
+        return Vocab(symbols, false);
+    };
 }

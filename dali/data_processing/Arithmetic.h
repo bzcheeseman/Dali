@@ -6,8 +6,10 @@
 #include "dali/utils/core_utils.h"
 
 namespace arithmetic {
-    std::vector<std::pair<std::vector<std::string>, std::vector<std::string>>> generate(int num, int expression_length);
+    typedef std::pair<std::vector<std::string>, std::vector<std::string>> Example;
+    std::vector<Example> generate(int num, int expression_length);
     extern std::vector<std::string> symbols;
+    utils::Vocab vocabulary();
 }
 
 #endif

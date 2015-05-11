@@ -23,6 +23,7 @@ struct MatOps {
     static Mat<R> eltdivide_broadcast_reversed(Mat<R>, Mat<R>);
     static Mat<R> eltmul(Mat<R>, Mat<R>);
     static Mat<R> eltmul(Mat<R>, R);
+    static std::vector<Mat<R>> eltmul(const std::vector<Mat<R>>&, const std::vector<Mat<R>>&);
     static Mat<R> eltdivide(Mat<R>, Mat<R>);
     static Mat<R> eltdivide(Mat<R>, R);
     static Mat<R> max(Mat<R>, R);
@@ -71,6 +72,8 @@ struct MatOps {
 
     **/
     static Mat<R> eltmul_rowwise(Mat<R>, Mat<R>);
+    static std::vector<Mat<R>> eltmul_rowwise(const std::vector<Mat<R>>&, const std::vector<Mat<R>>&);
+
     static Mat<R> mul_with_bias(Mat<R>, Mat<R>, Mat<R>);
     // operation of the form (A * x + B * y) + C, called with mul_add_mul_with_bias(A, x, B, y, C)
     static Mat<R> mul_add_mul_with_bias(Mat<R>, Mat<R>, Mat<R>, Mat<R>, Mat<R>);

@@ -130,6 +130,30 @@ Mat<R> MatOps<R>::eltmul(
     return out;
 }
 
+template<typename R>
+vector<Mat<R>> MatOps<R>::eltmul(const vector<Mat<R>>& seq1, const vector<Mat<R>>& seq2) {
+    assert2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
+
+    vector<Mat<R>> result(seq1.size());
+    for (int i = 0; i < seq1.size(); ++i) {
+        result[i] = seq1[i] * seq2[i];
+    }
+    return result;
+}
+
+template<typename R>
+vector<Mat<R>> MatOps<R>::eltmul_rowwise(const vector<Mat<R>>& seq1, const vector<Mat<R>>& seq2) {
+    assert2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
+
+    vector<Mat<R>> result(seq1.size());
+    for (int i = 0; i < seq1.size(); ++i) {
+        result[i] = eltmul_rowwise(seq1[i], seq2[i]);
+    }
+    return result;
+}
+
+
+
 
 template<typename R>
 Mat<R> MatOps<R>::eltdivide(

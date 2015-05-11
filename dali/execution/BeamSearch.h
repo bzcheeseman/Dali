@@ -161,7 +161,6 @@ namespace beam_search {
             // if the search takes too long
             // or k paths have reached an endpoint
             // then exit the search
-
             if (i == max_steps || stops == k)
                 break;
         }

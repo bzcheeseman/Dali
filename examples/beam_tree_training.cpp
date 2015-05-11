@@ -83,6 +83,7 @@ class LeafModule {
                 hidden_size(hidden_size),
                 c_layer(input_size, hidden_size),
                 o_layer(input_size, hidden_size) {
+
         }
 
         LeafModule<T>(const LeafModule<T>& other, bool copy_w, bool copy_dw) :
@@ -114,25 +115,98 @@ class LeafModule {
 };
 
 template<typename T>
-class TreeModel {
+struct BeamNode {
+    typedef typename LSTM<T>::State lstm_state_t;
+
+    Mat<T> log_probability;
+    lstm_state_t state;
+
+    BeamNode() : state(Mat<T>(), Mat<T>()) {}
+
+    BeamNode(Mat<T> log_probability, lstm_state_t state) :
+            log_probability(log_probability),
+            state(state) {
+    }
+
+    BeamNode(lstm_state_t state) :
+            log_probability(1,1),
+            state(state) {
+        // log probability by default initializes to 0.0 (p = 1.0).
+        log_probability.constant = true;
+    }
+};
+
+template<typename T>
+class BeamLSTM : public LSTM<T> {
+    typedef BeamNode<T> Node;
+    public:
+        int output_size;
+        Layer<T> decoder;
+
+        BeamLSTM(int input_size, int hidden_size, int output_size, bool memory_feeds_gates=false) :
+                LSTM<T>(input_size, hidden_size, memory_feeds_gates),
+                output_size(output_size),
+                decoder(hidden_size, output_size) {
+        }
+
+        BeamLSTM(const BeamLSTM& other, bool copy_w, bool copy_dw) :
+                LSTM<T>(other, copy_w, copy_dw),
+                output_size(other.output_size),
+                decoder(other.decoder, copy_w, copy_dw) {
+        }
+
+        BeamLSTM<T> shallow_copy() const {
+            return BeamLSTM<T>(*this, false, true);
+        }
+
+        vector<Mat<T>> parameters() const {
+            auto params = LSTM<T>::parameters();
+            auto decoder_params = decoder.parameters();
+            params.insert(params.end(), decoder_params.begin(), decoder_params.end());
+        }
+
+        vector<Node> activate(Mat<T> input, const vector<Node>& states) const {
+            int beam_width = states.size();
+
+            vector<Node> new_state;
+            new_state.reserve(states.size());
+
+            std::transform(states.begin(), states.end(), std::back_inserter(new_state),
+                    [this, &input](const Node& prev_node) {
+                auto new_state = LSTM<T>::activate(input, prev_node.state);
+                return Node(prev_node.log_probability, new_state);
+            });
+        }
+
+        Mat<T> decode(typename LSTM<T>::State state) const {
+            return MatOps<T>::softmax(decoder.activate(state.hidden));
+        }
+
+        Mat<T> decode(const vector<Node>& states) const {
+            vector<Mat<T>> distributions;
+            vector<Mat<T>> scores;
+
+            for (auto& node: states) {
+                distributions.emplace_back(MatOps<T>::softmax(decoder.activate(node.state.hidden)));
+                scores.emplace_back(node.log_probability);
+            }
+
+            // softmax achieves dual purpose here:
+            // item 1. normalizes the probability distributions
+            // item 2. exponentiates to remove logs.
+            auto probabilites = MatOps<T>::softmax(scores);
+
+            auto weighted_distributions = MatOps<T>::eltmul(distributions, probabilites);
+
+            return MatOps<T>::add(weighted_distributions);
+        }
+};
+
+template<typename T>
+class BeamTree {
+    typedef BeamNode<T> Node;
     public:
         typedef typename LSTM<T>::State lstm_state_t;
-
-        struct Node {
-            Mat<T> log_probability;
-            lstm_state_t state;
-            Node(Mat<T> log_probability, lstm_state_t state) :
-                    log_probability(log_probability),
-                    state(state) {
-            }
-
-            Node(lstm_state_t state) :
-                    log_probability(1,1),
-                    state(state) {
-                // log probability by default initializes to 0.0 (p = 1.0).
-                log_probability.constant = true;
-            }
-        };
 
         int input_size;
         int hidden_size;
@@ -141,7 +215,7 @@ class TreeModel {
         LSTM<T> composer;
         Layer<T> prob_decoder;
 
-        TreeModel(int input_size, int hidden_size, bool memory_feeds_gates = false) :
+        BeamTree(int input_size, int hidden_size, bool memory_feeds_gates = false) :
                 input_size(input_size),
                 hidden_size(hidden_size),
                 leaf_module(input_size, hidden_size),
@@ -149,7 +223,7 @@ class TreeModel {
                 prob_decoder(hidden_size, 1) {
         }
 
-        TreeModel(const TreeModel<T>& other, bool copy_w, bool copy_dw) :
+        BeamTree(const BeamTree<T>& other, bool copy_w, bool copy_dw) :
                 input_size(other.input_size),
                 hidden_size(other.hidden_size),
                 leaf_module(other.leaf_module, copy_w, copy_dw),
@@ -157,11 +231,11 @@ class TreeModel {
                 prob_decoder(other.prob_decoder, copy_w, copy_dw) {
         }
 
-        TreeModel<T> shallow_copy() const {
-            return TreeModel<T>(*this, false, true);
+        BeamTree<T> shallow_copy() const {
+            return BeamTree<T>(*this, false, true);
         }
 
-        vector<Node> convert_to_leaves(vector<Mat<T>> input) {
+        vector<Node> convert_to_leaves(vector<Mat<T>> input) const {
             vector<Node> leaves;
             for (auto& embedding : input) {
                 leaves.emplace_back(leaf_module.activate(embedding));
@@ -170,14 +244,14 @@ class TreeModel {
         }
 
         // The returned node is incomplete.
-        lstm_state_t join_states(Node a, Node b) {
+        lstm_state_t join_states(Node a, Node b) const {
             return composer.activate(
                 vector<Mat<T>>(),
                 {a.state, b.state}
             );
         }
 
-        vector<vector<Node>> cangen(vector<Node> states, int beam_width) {
+        vector<vector<Node>> cangen(vector<Node> states, int beam_width) const {
             assert2(states.size() >= 2, "Must at least have 2 states to join for candidate generation.");
             int num_candidates = min((size_t)beam_width, states.size() - 1);
 
@@ -224,15 +298,15 @@ class TreeModel {
             return results;
         }
 
-        T candidate_log_probability(vector<Node> candidate) {
+        T candidate_log_probability(vector<Node> candidate) const {
             T result = 0.0;
             for (auto& node: candidate) {
-                result += node.log_probability.w()(0,0);
+                result += node.log_probability.w()(0);
             }
             return result;
         }
 
-        vector<Node> best_trees(vector<Mat<T>> input, int beam_width) {
+        vector<Node> best_trees(vector<Mat<T>> input, int beam_width) const {
             auto leaves = convert_to_leaves(input);
             vector<vector<Node>> candidates = { leaves };
             while (candidates[0].size() > 1) {
@@ -280,10 +354,177 @@ class TreeModel {
 template class LeafModule<float>;
 template class LeafModule<double>;
 
-template class TreeModel<float>;
-template class TreeModel<double>;
+template class BeamLSTM<float>;
+template class BeamLSTM<double>;
 
-typedef TreeModel<REAL_t> model_t;
+template class BeamTree<float>;
+template class BeamTree<double>;
+
+typedef vector<uint> sequence_t;
+typedef std::pair<sequence_t, sequence_t> example_t;
+
+template<typename T>
+struct PredictionNode {
+    BeamNode<T> node;
+    sequence_t prediction;
+    PredictionNode() {};
+    PredictionNode(BeamNode<T> node) : node(node) {}
+    PredictionNode(BeamNode<T> node, const sequence_t& prediction) : node(node), prediction(prediction) {}
+
+    PredictionNode<T> make_choice(uint choice, BeamNode<T> node) {
+        PredictionNode<T> fork(node, this->prediction);
+        // add new choice to fork:
+        fork.prediction.emplace_back(choice);
+        return fork;
+    }
+};
+
+template<typename T>
+class ArithmeticModel {
+    typedef BeamNode<T> Node;
+
+    public:
+        Mat<T> embedding;
+        BeamTree<T> tree;
+        BeamLSTM<T> decoder_lstm;
+
+        ArithmeticModel(int input_size,
+                        int hidden_size,
+                        int vocab_size,
+                        bool memory_feeds_gates = false) :
+                embedding(input_size, vocab_size),
+                decoder_lstm(input_size, hidden_size, vocab_size, memory_feeds_gates),
+                tree(input_size, hidden_size, memory_feeds_gates) {
+        }
+
+        ArithmeticModel(const ArithmeticModel<T>& other, bool copy_w, bool copy_dw) :
+                embedding(other.embedding, copy_w, copy_dw),
+                decoder_lstm(other.decoder_lstm, copy_w, copy_dw),
+                tree(other.tree, copy_w, copy_dw) {
+        }
+
+        ArithmeticModel<T> shallow_copy() const {
+            return ArithmeticModel<T>(*this, false, true);
+        }
+
+        vector<Mat<T>> parameters() const {
+            auto params = decoder_lstm.parameters();
+            params.emplace_back(embedding);
+            auto tree_params = tree.parameters();
+            params.insert(params.end(), tree_params.begin(), tree_params.end());
+            return params;
+        }
+
+        Mat<T> error(const example_t& example, int beam_width) const {
+
+            auto expression_embedding = convert_to_embeddings(example.first);
+            auto state = tree.best_trees(expression_embedding, beam_width);
+
+            auto& targets = example.second;
+
+            Mat<T> error(1,1);
+            for (int aidx = 0; aidx < targets.size(); ++aidx) {
+                Mat<T> prediction = decoder_lstm.decode(state);
+                error = error + MatOps<T>::cross_entropy(prediction, targets[aidx]);
+                if (aidx + 1 < targets.size())
+                    state = decoder_lstm.activate(embedding[targets[aidx]], state);
+            }
+            return error;
+       }
+
+       vector<Mat<T>> convert_to_embeddings(const vector<uint>& expression) const {
+            vector<Mat<T>> embeddings;
+            embeddings.reserve(expression.size());
+            std::transform(expression.begin(), expression.end(), std::back_inserter(embeddings),
+                    [this](uint embedding_idx) {
+                return embedding[embedding_idx];
+            });
+            return embeddings;
+       }
+
+       vector<PredictionNode<T>> predict(
+                const vector<uint>& expression,
+                int beam_width,
+                int max_output_length,
+                uint end_symbol,
+                uint ignore_symbol = -1) const {
+            auto embeddings = convert_to_embeddings(expression);
+
+            /* BEGIN (TRUE) BEAM SEARCH */
+            vector<Node> candidate_trees = tree.best_trees(embeddings, beam_width);
+
+            vector<PredictionNode<T>> candidates;
+
+            candidates.reserve(candidate_trees.size());
+
+            std::transform(candidate_trees.begin(), candidate_trees.end(), std::back_inserter(candidates),
+                    [](const Node& node) {
+                return PredictionNode<T>(node);
+            });
+
+            for (int sidx = 0; sidx < max_output_length; ++sidx) {
+                vector<PredictionNode<T>> new_candidates;
+
+                for (auto& candidate : candidates) {
+                    if (candidate.prediction.size() > 0 && candidate.prediction.back() == end_symbol) {
+                        new_candidates.emplace_back(candidate);
+                    } else {
+                        auto next_symbol_distribution = MatOps<T>::softmax(
+                            decoder_lstm.decode(candidate.node.state)
+                        );
+                        vector<uint> predicted_symbols;
+                        for (size_t pidx = 0; pidx < next_symbol_distribution.dims(0); ++pidx)
+                            predicted_symbols.push_back(pidx);
+
+                        std::sort(predicted_symbols.begin(), predicted_symbols.end(),
+                                [&next_symbol_distribution](uint a, uint b) {
+                            return next_symbol_distribution[a].w()(0) > next_symbol_distribution[b].w()(0);
+                        });
+                        int n_generated_candidates = std::min((uint) beam_width, next_symbol_distribution.dims(0));
+                        for (int ncidx = 0; ncidx < n_generated_candidates; ++ncidx) {
+                            uint candide_idx = predicted_symbols[ncidx];
+                            // For each generated symbol within the top part of the beam
+                            // we show this "winning" symbol to the decoding LSTM
+                            // and advance the internal state by 1. Also we keep track of the
+                            // probability of this fork, and update the predictions list.
+                            new_candidates.emplace_back(
+                                candidate.make_choice(
+                                    candide_idx,
+                                    Node(
+                                        candidate.node.log_probability + next_symbol_distribution[candide_idx].log(),
+                                        decoder_lstm.LSTM<T>::activate(embedding[candide_idx], candidate.node.state)
+                                    )
+                                )
+                            );
+                        }
+
+                    }
+                }
+
+                std::sort(new_candidates.begin(), new_candidates.end(),
+                        [](const PredictionNode<T>& a, const PredictionNode<T> b) {
+                    return a.node.log_probability.w()(0) > b.node.log_probability.w()(0);
+                });
+
+                new_candidates.resize(beam_width);
+                candidates = new_candidates;
+
+                bool all_predictions_stopped = true;
+                for (auto& prediction_node: candidates) {
+                    all_predictions_stopped = all_predictions_stopped &&
+                            prediction_node.prediction.back() == end_symbol;
+                }
+                if (all_predictions_stopped)
+                    break;
+            }
+            return candidates;
+       }
+};
+
+template class ArithmeticModel<float>;
+// template class ArithmeticModel<double>;
+
+typedef ArithmeticModel<REAL_t> model_t;
 
 int main (int argc,  char* argv[]) {
     GFLAGS_NAMESPACE::SetUsageMessage(
@@ -312,16 +553,7 @@ int main (int argc,  char* argv[]) {
         std::cout << std::endl;
     }
 
-    // define symbols:
-    vector<string> symbols;
-    for (int i = 0; i < 10; i++) {
-        symbols.push_back(to_string(i));
-    }
-    symbols.insert(symbols.end(), arithmetic::symbols.begin(), arithmetic::symbols.end());
-    symbols.push_back(utils::end_symbol);
-    std::cout << symbols << std::endl;
-
-    utils::Vocab vocab(symbols, false);
+    auto vocab = arithmetic::vocabulary();
 
     // train a silly system to output the numbers it needs
     auto model = model_t(
@@ -372,12 +604,12 @@ int main (int argc,  char* argv[]) {
     int epoch = 0;
     auto end_symbol_idx = vocab.word2index[utils::end_symbol];
 
-    std::cout << "     Vocabulary size : " << symbols.size() << std::endl
+    std::cout << "     Vocabulary size : " << vocab.index2word.size() << std::endl
               << "      minibatch size : " << FLAGS_minibatch << std::endl
               << "   number of threads : " << FLAGS_j << std::endl
               << "        Dropout type : " << (FLAGS_fast_dropout ? "fast" : "default") << std::endl
               << " Max training epochs : " << FLAGS_epochs << std::endl
-              << "           LSTM type : " << (model.composer.memory_feeds_gates ? "Graves 2013" : "Zaremba 2014") << std::endl
+              << "           LSTM type : " << (model.tree.composer.memory_feeds_gates ? "Graves 2013" : "Zaremba 2014") << std::endl
               << "         Hidden size : " << FLAGS_hidden << std::endl
               << "          Input size : " << FLAGS_input_size << std::endl
               << " # training examples : " << examples.size() << std::endl

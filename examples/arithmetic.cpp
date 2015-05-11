@@ -94,16 +94,7 @@ int main (int argc,  char* argv[]) {
         std::cout << std::endl;
     }
 
-    // define symbols:
-    vector<string> symbols;
-    for (int i = 0; i < 10; i++) {
-        symbols.push_back(to_string(i));
-    }
-    symbols.insert(symbols.end(), SYMBOLS.begin(), SYMBOLS.end());
-    symbols.push_back(utils::end_symbol);
-    std::cout << symbols << std::endl;
-
-    utils::Vocab vocab(symbols, false);
+    auto vocab = arithmetic::vocabulary();
 
     // train a silly system to output the numbers it needs
     auto model = StackedModel<REAL_t>(
@@ -158,7 +149,7 @@ int main (int argc,  char* argv[]) {
     int epoch = 0;
     auto end_symbol_idx = vocab.word2index[utils::end_symbol];
 
-    std::cout << "     Vocabulary size : " << symbols.size() << std::endl
+    std::cout << "     Vocabulary size : " << vocab.index2word.size() << std::endl
               << "      minibatch size : " << FLAGS_minibatch << std::endl
               << "   number of threads : " << FLAGS_j << std::endl
               << "          stack size : " << FLAGS_stack_size << std::endl

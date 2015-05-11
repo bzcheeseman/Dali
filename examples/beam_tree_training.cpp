@@ -12,6 +12,7 @@ using utils::MS;
 using std::tuple;
 using std::min;
 using utils::assert2;
+using arithmetic::NumericalExample;
 
 typedef float REAL_t;
 
@@ -38,36 +39,6 @@ DEFINE_int32(difficulty_stage,  5,       "How long to wait before increasing dif
 
 ThreadPool* pool;
 
-template<typename M>
-double num_correct(M& model, vector<arithmetic::NumericalExample> examples, int beam_width, uint stop_symbol) {
-    std::atomic<int> correct(examples.size());
-    for (size_t i = 0; i < examples.size(); i++) {
-        pool->run([&model, i, &examples, &stop_symbol, &beam_width, &correct]() {
-            auto beams = beam_search::beam_search(model,
-                examples[i].first,
-                20,
-                0,  // offset symbols that are predicted
-                    // before being refed (no = 0)
-                beam_width,
-                stop_symbol // when to stop the sequence
-            );
-            if (std::get<0>(beams[0]).size() == examples[i].second.size()) {
-                for (auto beam_ptr = std::get<0>(beams[0]).begin(), example_ptr = examples[i].second.begin();
-                    beam_ptr < std::get<0>(beams[0]).end() && example_ptr < examples[i].second.end();
-                    beam_ptr++, example_ptr++) {
-                    if (*beam_ptr != *example_ptr) {
-                        correct--;
-                        break;
-                    }
-                }
-            } else {
-                correct--;
-            }
-        });
-    }
-    pool->wait_until_idle();
-    return (double) correct / (double) examples.size();
-}
 
 template<typename T>
 class LeafModule {
@@ -442,9 +413,13 @@ class ArithmeticModel {
             auto& targets = example.second;
 
             Mat<T> error(1,1);
+            error.constant = true;
             for (int aidx = 0; aidx < targets.size(); ++aidx) {
                 Mat<T> prediction = decoder_lstm.decode(state);
-                error = error + MatOps<T>::cross_entropy(prediction, targets[aidx]);
+                // if result is good enough move on.
+                if (prediction.w()(targets[aidx]) < 0.8) {
+                    error = error + MatOps<T>::cross_entropy(prediction, targets[aidx]);
+                }
                 if (aidx + 1 < targets.size()) {
                     state = decoder_lstm.activate(embedding[targets[aidx]], state);
                 }
@@ -507,6 +482,7 @@ class ArithmeticModel {
                             // we show this "winning" symbol to the decoding LSTM
                             // and advance the internal state by 1. Also we keep track of the
                             // probability of this fork, and update the predictions list.
+                            std::cout << next_symbol_distribution[candide_idx] << std::endl;
                             new_candidates.emplace_back(
                                 candidate.make_choice(
                                     candide_idx,
@@ -546,6 +522,125 @@ template class ArithmeticModel<double>;
 
 typedef ArithmeticModel<REAL_t> model_t;
 
+std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver;
+
+
+
+double accuracy(const model_t& model, vector<arithmetic::NumericalExample>& examples, int beam_width) {
+    std::atomic<int> correct(examples.size());
+    for (size_t eidx = 0; eidx < examples.size(); eidx++) {
+        pool->run([&model, eidx, &examples, &beam_width, &correct]() {
+            graph::NoBackprop nb;
+
+            auto& vocab = arithmetic::vocabulary;
+
+            auto& expression = examples[eidx].first;
+            auto& correct_answer = examples[eidx].second;
+
+            auto predictions = model.predict(expression,
+                                             beam_width,
+                                             20,
+                                             vocab.word2index.at(utils::end_symbol));
+            auto& best_prediction = predictions[0].prediction;
+            if (best_prediction.size() == correct_answer.size()) {
+                bool is_correct = true;
+                for (int iidx = 0; iidx < best_prediction.size(); ++iidx) {
+                    is_correct = is_correct && best_prediction[iidx] == correct_answer[iidx];
+                }
+                if (!is_correct)
+                    correct--;
+            } else {
+                correct--;
+            }
+        });
+    }
+    pool->wait_until_idle();
+    return (double) correct / (double) examples.size();
+}
+
+void training_loop(model_t& model,
+                   vector<NumericalExample>& train,
+                   vector<NumericalExample>& validate) {
+    auto& vocab = arithmetic::vocabulary;
+
+    auto params = model.parameters();
+
+    int epoch = 0;
+    int difficulty_waiting = 0;
+    auto end_symbol_idx = vocab.word2index[utils::end_symbol];
+
+    int beam_width = FLAGS_beam_width;
+
+    if (beam_width < 1) {
+        utils::exit_with_message(MS() << "Beam width must be strictly positive (got " << beam_width << ")");
+    }
+
+    Throttled throttled_examples;
+    Throttled throttled_validation;
+
+    bool target_accuracy_reached = false;
+
+    while (!target_accuracy_reached) {
+
+        auto indices = utils::random_arange(train.size());
+        auto indices_begin = indices.begin();
+
+        REAL_t minibatch_error = 0.0;
+
+        // one minibatch
+        for (auto indices_begin = indices.begin();
+                indices_begin < indices.begin() + std::min((size_t)FLAGS_minibatch, train.size());
+                indices_begin++) {
+            // <training>
+            auto& example = train[*indices_begin];
+
+            auto error = model.error(example, beam_width);
+            error.grad();
+            graph::backward();
+            minibatch_error += error.w()(0);
+            // </training>
+            // // <reporting>
+            throttled_examples.maybe_run(seconds(2), [&]() {
+                graph::NoBackprop nb;
+                auto random_example_index = utils::randint(0, validate.size() -1);
+                auto& expression = validate[random_example_index].first;
+                auto predictions = model.predict(expression,
+                                                 beam_width,
+                                                 20,
+                                                 vocab.word2index.at(utils::end_symbol));
+
+                auto expression_string = arithmetic::vocabulary.decode(expression);
+                expression_string.resize(expression_string.size() - 1);
+                std::cout << utils::join(expression_string) << std::endl;
+
+                for (auto& prediction : predictions) {
+                    std::cout << "= (" << std::setprecision( 3 ) << prediction.node.log_probability.w()(0) << ") ";
+                    for (const auto& word : prediction.prediction) {
+                        if (word != vocab.word2index.at(utils::end_symbol))
+                            std::cout << vocab.index2word.at(word);
+                    }
+                    std::cout << std::endl;
+                }
+            });
+            double current_accuracy = -1;
+            throttled_validation.maybe_run(seconds(30), [&]() {
+                current_accuracy = accuracy(model, validate, FLAGS_beam_width);
+                std::cout << "epoch: " << epoch << " Percent correct = " << std::setprecision( 3 )
+                          << 100.0 * current_accuracy << "%" << std::endl;
+            });
+            if (current_accuracy != -1 && current_accuracy > 0.9) {
+                std::cout << "Current accuracy is now " << current_accuracy << std::endl;
+                target_accuracy_reached = true;
+                break;
+            }
+            // </reporting>
+        }
+        solver->step(params); // One step of gradient descent
+        epoch++;
+    }
+}
+
+
 int main (int argc,  char* argv[]) {
     GFLAGS_NAMESPACE::SetUsageMessage(
         "\n"
@@ -560,19 +655,16 @@ int main (int argc,  char* argv[]) {
 
     pool = new ThreadPool(FLAGS_j);
 
-    auto& vocab = arithmetic::vocabulary;
-
     // train a silly system to output the numbers it needs
     auto model = model_t(
         FLAGS_input_size,
         FLAGS_hidden,
-        vocab.index2word.size(),
+        arithmetic::vocabulary.index2word.size(),
         FLAGS_memory_feeds_gates);
 
 
 
     // Rho value, eps value, and gradient clipping value:
-    std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver;
     int solver_type;
 
     auto params = model.parameters();
@@ -595,15 +687,10 @@ int main (int argc,  char* argv[]) {
         utils::exit_with_message("Did not recognize this solver type.");
     }
 
-    int difficulty = 3;
+    vector<arithmetic::NumericalExample> train, validate;
 
-    auto examples = arithmetic::generate_numerical(FLAGS_num_examples, difficulty);
 
-    int epoch = 0;
-    int difficulty_waiting = 0;
-    auto end_symbol_idx = vocab.word2index[utils::end_symbol];
-
-    std::cout << "     Vocabulary size : " << vocab.index2word.size() << std::endl
+    std::cout << "     Vocabulary size : " << arithmetic::vocabulary.index2word.size() << std::endl
               << "      minibatch size : " << FLAGS_minibatch << std::endl
               << "   number of threads : " << FLAGS_j << std::endl
               << "        Dropout type : " << (FLAGS_fast_dropout ? "fast" : "default") << std::endl
@@ -611,87 +698,14 @@ int main (int argc,  char* argv[]) {
               << "           LSTM type : " << (model.tree.composer.memory_feeds_gates ? "Graves 2013" : "Zaremba 2014") << std::endl
               << "         Hidden size : " << FLAGS_hidden << std::endl
               << "          Input size : " << FLAGS_input_size << std::endl
-              << " # training examples : " << examples.size() << std::endl
+              << " examples/difficulty : " << FLAGS_num_examples << std::endl
               << "              Solver : " << FLAGS_solver << std::endl;
-    /*
-    Throttled throttled1;
-    Throttled throttled2;
-    */
 
-    int beam_width = FLAGS_beam_width;
 
-    if (beam_width < 1) {
-        utils::exit_with_message(MS() << "Beam width must be strictly positive (got " << beam_width << ")");
-    }
-
-    while (epoch < FLAGS_epochs) {
-
-        auto indices = utils::random_arange(examples.size());
-        auto indices_begin = indices.begin();
-
-        REAL_t minibatch_error = 0.0;
-
-        // one minibatch
-        for (auto indices_begin = indices.begin(); indices_begin < indices.begin() + std::min((size_t)FLAGS_minibatch, examples.size()); indices_begin++) {
-            // <training>
-            auto& example = examples[*indices_begin];
-
-            auto error = model.error(example, beam_width);
-            error.grad();
-            graph::backward();
-            minibatch_error += error.w()(0);
-            // </training>
-            // // <reporting>
-            // throttled1.maybe_run(seconds(2), [&]() {
-            //     auto random_example_index = utils::randint(0, examples.size() -1);
-            //     auto beams = beam_search::beam_search(model,
-            //         examples[random_example_index].first,
-            //         20,
-            //         0,  // offset symbols that are predicted before being refed (no = 0)
-            //         5,
-            //         vocab.word2index.at(utils::end_symbol) // when to stop the sequence
-            //     );
-            //
-            //     std::cout << arithmetic::vocabulary.decode(examples[random_example_index].first) << std::endl;
-            //
-            //     for (const auto& beam : beams) {
-            //         std::cout << "= (" << std::setprecision( 3 ) << std::get<1>(beam) << ") ";
-            //         for (const auto& word : std::get<0>(beam)) {
-            //             if (word != vocab.word2index.at(utils::end_symbol))
-            //                 std::cout << vocab.index2word.at(word);
-            //         }
-            //         std::cout << std::endl;
-            //     }
-            // });
-            // throttled2.maybe_run(seconds(30), [&]() {
-            //     std::cout << "epoch: " << epoch << " Percent correct = " << std::setprecision( 3 )  << 100.0 * num_correct(
-            //         model, examples, 5, vocab.word2index.at(utils::end_symbol)
-            //     ) << "%" << std::endl;
-            // });
-            // </reporting>
-        }
-        std::cout << "Minibatch error = " << minibatch_error << std::endl;
-        solver->step(params); // One step of gradient descent
-        epoch++;
-
-        // curriculum learning
-        if (difficulty < FLAGS_expression_length) {
-            difficulty_waiting++;
-            // increase difficulty
-            if (difficulty_waiting > FLAGS_difficulty_stage) {
-                difficulty_waiting = 0;
-                difficulty += 2;
-                std::cout << "Increasing maximum expression length to " << difficulty << "." << std::endl;
-                examples = arithmetic::generate_numerical(FLAGS_num_examples, difficulty);
-            }
-            // narrow focus
-        } else if (beam_width > 2) {
-            difficulty_waiting++;
-            if (difficulty_waiting > FLAGS_difficulty_stage) {
-                difficulty_waiting = 0;
-                beam_width -= 1;
-                std::cout << "Shrinking beam width to " << beam_width << "." << std::endl;
-            }
-        }
+    for (int difficulty = 1; difficulty < FLAGS_expression_length; difficulty += 2) {
+        auto train    = arithmetic::generate_numerical(FLAGS_num_examples, difficulty);
+        auto validate = arithmetic::generate_numerical(FLAGS_num_examples / 10, difficulty);
+        std::cout << "Increasing difficulty to " << difficulty << "." << std::endl;
+        training_loop(model, train, validate);
     }
 }

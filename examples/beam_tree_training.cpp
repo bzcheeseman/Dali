@@ -482,7 +482,6 @@ class ArithmeticModel {
                             // we show this "winning" symbol to the decoding LSTM
                             // and advance the internal state by 1. Also we keep track of the
                             // probability of this fork, and update the predictions list.
-                            std::cout << next_symbol_distribution[candide_idx] << std::endl;
                             new_candidates.emplace_back(
                                 candidate.make_choice(
                                     candide_idx,

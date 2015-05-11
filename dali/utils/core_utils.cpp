@@ -1481,6 +1481,14 @@ namespace utils {
             totals_ptr++;
         }
     }
+    // color codes: http://www.codebuilder.me/2014/01/color-terminal-text-in-c/
+    std::string green       = "\033[32m";
+    std::string red         = "\033[31m";
+    std::string blue        = "\033[34m";
+    std::string yellow      = "\033[33m";
+    std::string cyan        = "\033[36m";
+    std::string black       = "\033[30m";
+    std::string reset_color = "\033[0m";
 
 }
 

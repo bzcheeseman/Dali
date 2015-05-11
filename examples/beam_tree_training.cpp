@@ -139,8 +139,6 @@ class BeamLSTM : public LSTM<T> {
         }
 
         vector<Node> activate(Mat<T> input, const vector<Node>& states) const {
-            int beam_width = states.size();
-
             vector<Node> new_state;
             new_state.reserve(states.size());
 
@@ -164,18 +162,29 @@ class BeamLSTM : public LSTM<T> {
             vector<Mat<T>> scores;
 
             for (auto& node: states) {
-                distributions.emplace_back(MatOps<T>::softmax(decoder.activate(node.state.hidden)));
+                distributions.emplace_back(
+                    MatOps<T>::softmax(
+                        decoder.activate(node.state.hidden)
+                    )
+                );
                 scores.emplace_back(node.log_probability);
             }
 
             // softmax achieves dual purpose here:
             // item 1. normalizes the probability distributions
             // item 2. exponentiates to remove logs.
-            auto probabilites = MatOps<T>::softmax(scores);
+            if (scores.size() == 1) {
+                return distributions.front();
+            } else {
+                auto probabilites = MatOps<T>::softmax(scores);
 
-            auto weighted_distributions = MatOps<T>::eltmul_broadcast_rowwise(distributions, probabilites);
+                auto weighted_distributions = MatOps<T>::eltmul_broadcast_rowwise(
+                    distributions,
+                    probabilites
+                );
 
-            return MatOps<T>::add(weighted_distributions);
+                return MatOps<T>::add(weighted_distributions);
+            }
         }
 };
 
@@ -341,7 +350,6 @@ class BeamTree {
 
             return params;
         }
-
 };
 
 template class LeafModule<float>;
@@ -409,23 +417,23 @@ class ArithmeticModel {
 
         Mat<T> error(const arithmetic::NumericalExample& example, int beam_width) const {
             auto expression_embedding = convert_to_embeddings(example.first);
-            auto state = tree.best_trees(expression_embedding, beam_width);
+            auto states = tree.best_trees(expression_embedding, beam_width);
             auto& targets = example.second;
 
             Mat<T> error(1,1);
             error.constant = true;
             for (int aidx = 0; aidx < targets.size(); ++aidx) {
-                Mat<T> prediction = decoder_lstm.decode(state);
+                Mat<T> prediction = decoder_lstm.decode(states);
                 // if result is good enough move on.
                 if (prediction.w()(targets[aidx]) < 0.8) {
                     error = error + MatOps<T>::cross_entropy(prediction, targets[aidx]);
                 } else {
-                    std::cout << "skipping when predicting " << arithmetic::vocabulary.index2word[targets[aidx]]
-                              << " with prob = " << prediction.w()(targets[aidx])
-                              << " at position " << aidx << "."<< std::endl;
+                    // std::cout << "skipping when predicting " << arithmetic::vocabulary.index2word[targets[aidx]]
+                    //           << " with prob = " << prediction.w()(targets[aidx])
+                    //           << " at position " << aidx << "."<< std::endl;
                 }
                 if (aidx + 1 < targets.size()) {
-                    state = decoder_lstm.activate(embedding[targets[aidx]], state);
+                    states = decoder_lstm.activate(embedding[targets[aidx]], states);
                 }
             }
             return error;
@@ -453,7 +461,6 @@ class ArithmeticModel {
             vector<Node> candidate_trees = tree.best_trees(embeddings, beam_width);
 
             vector<PredictionNode<T>> candidates;
-
             candidates.reserve(candidate_trees.size());
 
             std::transform(candidate_trees.begin(), candidate_trees.end(), std::back_inserter(candidates),
@@ -468,30 +475,32 @@ class ArithmeticModel {
                     if (candidate.prediction.size() > 0 && candidate.prediction.back() == end_symbol) {
                         new_candidates.emplace_back(candidate);
                     } else {
-                        auto next_symbol_distribution = MatOps<T>::softmax(
-                            decoder_lstm.decode(candidate.node.state)
-                        );
+                        auto next_symbol_distribution = decoder_lstm.decode(candidate.node.state);
+
                         vector<uint> predicted_symbols;
                         for (size_t pidx = 0; pidx < next_symbol_distribution.dims(0); ++pidx)
                             predicted_symbols.push_back(pidx);
 
                         std::sort(predicted_symbols.begin(), predicted_symbols.end(),
-                                [&next_symbol_distribution](uint a, uint b) {
-                            return next_symbol_distribution[a].w()(0) > next_symbol_distribution[b].w()(0);
+                                [&next_symbol_distribution](const uint& a, const uint& b) {
+                            return next_symbol_distribution.w()(a) > next_symbol_distribution.w()(b);
                         });
-                        int n_generated_candidates = std::min((uint) beam_width, next_symbol_distribution.dims(0));
+                        int n_generated_candidates = std::min(
+                            (uint) beam_width,
+                            next_symbol_distribution.dims(0)
+                        );
                         for (int ncidx = 0; ncidx < n_generated_candidates; ++ncidx) {
-                            uint candide_idx = predicted_symbols[ncidx];
+                            uint candidate_idx = predicted_symbols[ncidx];
                             // For each generated symbol within the top part of the beam
                             // we show this "winning" symbol to the decoding LSTM
                             // and advance the internal state by 1. Also we keep track of the
                             // probability of this fork, and update the predictions list.
                             new_candidates.emplace_back(
                                 candidate.make_choice(
-                                    candide_idx,
+                                    candidate_idx,
                                     Node(
-                                        candidate.node.log_probability + next_symbol_distribution[candide_idx].log(),
-                                        decoder_lstm.LSTM<T>::activate(embedding[candide_idx], candidate.node.state)
+                                        candidate.node.log_probability + next_symbol_distribution[candidate_idx].log(),
+                                        decoder_lstm.LSTM<T>::activate(embedding[candidate_idx], candidate.node.state)
                                     )
                                 )
                             );
@@ -504,14 +513,17 @@ class ArithmeticModel {
                         [](const PredictionNode<T>& a, const PredictionNode<T> b) {
                     return a.node.log_probability.w()(0) > b.node.log_probability.w()(0);
                 });
-
-                new_candidates.resize(beam_width);
+                if (new_candidates.size() > beam_width)
+                    new_candidates.resize(beam_width);
                 candidates = new_candidates;
 
                 bool all_predictions_stopped = true;
                 for (auto& prediction_node: candidates) {
                     all_predictions_stopped = all_predictions_stopped &&
                             prediction_node.prediction.back() == end_symbol;
+                    // cut out early if we noticed that some did not stop
+                    if (!all_predictions_stopped)
+                        break;
                 }
                 if (all_predictions_stopped)
                     break;
@@ -526,8 +538,6 @@ template class ArithmeticModel<double>;
 typedef ArithmeticModel<REAL_t> model_t;
 
 std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver;
-
-
 
 double accuracy(const model_t& model, vector<arithmetic::NumericalExample>& examples, int beam_width) {
     std::atomic<int> correct(examples.size());
@@ -617,12 +627,17 @@ void training_loop(model_t& model,
                 std::cout << utils::join(expression_string) << std::endl;
 
                 for (auto& prediction : predictions) {
+                    if (validate[random_example_index].second == prediction.prediction) {
+                        std::cout << utils::green;
+                    } else {
+                        std::cout << utils::black;
+                    }
                     std::cout << "= (" << std::setprecision( 3 ) << prediction.node.log_probability.w()(0) << ") ";
                     for (const auto& word : prediction.prediction) {
                         if (word != vocab.word2index.at(utils::end_symbol))
                             std::cout << vocab.index2word.at(word);
                     }
-                    std::cout << std::endl;
+                    std::cout << utils::reset_color << std::endl;
                 }
             });
             double current_accuracy = -1;

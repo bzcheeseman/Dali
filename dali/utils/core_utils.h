@@ -689,6 +689,14 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
     };
     void assert2(bool condition);
     void assert2(bool condition, std::string message);
+
+    extern std::string green;
+    extern std::string red;
+    extern std::string blue;
+    extern std::string yellow;
+    extern std::string cyan;
+    extern std::string black;
+    extern std::string reset_color;
 }
 
 // define hash code for OntologyBranch

@@ -643,7 +643,7 @@ void training_loop(model_t& model,
             double current_accuracy = -1;
             throttled_validation.maybe_run(seconds(30), [&]() {
                 current_accuracy = accuracy(model, validate, FLAGS_beam_width);
-                std::cout << "epoch: " << epoch << " Percent correct = " << std::setprecision( 3 )
+                std::cout << "epoch: " << epoch << ", accuracy = " << std::setprecision( 3 )
                           << 100.0 * current_accuracy << "%" << std::endl;
             });
             if (current_accuracy != -1 && current_accuracy > 0.9) {

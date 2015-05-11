@@ -34,6 +34,7 @@ DEFINE_bool(memory_feeds_gates, true,    "LSTM's memory cell also control gate o
 DEFINE_int32(input_size,        50,      "Size of the word vectors");
 DEFINE_int32(hidden,            100,     "How many Cells and Hidden Units should each LSTM have ?");
 DEFINE_int32(beam_width,        10,      "Size of the training beam.");
+DEFINE_int32(difficulty_stage,  5,       "How long to wait before increasing difficulty level?");
 
 ThreadPool* pool;
 
@@ -594,9 +595,12 @@ int main (int argc,  char* argv[]) {
         utils::exit_with_message("Did not recognize this solver type.");
     }
 
-    auto examples = arithmetic::generate_numerical(FLAGS_num_examples, FLAGS_expression_length);
+    int difficulty = 3;
+
+    auto examples = arithmetic::generate_numerical(FLAGS_num_examples, difficulty);
 
     int epoch = 0;
+    int difficulty_waiting = 0;
     auto end_symbol_idx = vocab.word2index[utils::end_symbol];
 
     std::cout << "     Vocabulary size : " << vocab.index2word.size() << std::endl
@@ -614,8 +618,10 @@ int main (int argc,  char* argv[]) {
     Throttled throttled2;
     */
 
-    if (FLAGS_beam_width < 1) {
-        utils::exit_with_message(MS() << "Beam width must be strictly positive (got " << FLAGS_beam_width << ")");
+    int beam_width = FLAGS_beam_width;
+
+    if (beam_width < 1) {
+        utils::exit_with_message(MS() << "Beam width must be strictly positive (got " << beam_width << ")");
     }
 
     while (epoch < FLAGS_epochs) {
@@ -630,7 +636,7 @@ int main (int argc,  char* argv[]) {
             // <training>
             auto& example = examples[*indices_begin];
 
-            auto error = model.error(example, FLAGS_beam_width);
+            auto error = model.error(example, beam_width);
             error.grad();
             graph::backward();
             minibatch_error += error.w()(0);
@@ -664,8 +670,28 @@ int main (int argc,  char* argv[]) {
             // });
             // </reporting>
         }
-        std::cout << "minibatch_error => " << minibatch_error << std::endl;
+        std::cout << "Minibatch error = " << minibatch_error << std::endl;
         solver->step(params); // One step of gradient descent
         epoch++;
+
+        // curriculum learning
+        if (difficulty < FLAGS_expression_length) {
+            difficulty_waiting++;
+            // increase difficulty
+            if (difficulty_waiting > FLAGS_difficulty_stage) {
+                difficulty_waiting = 0;
+                difficulty += 2;
+                std::cout << "Increasing maximum expression length to " << difficulty << "." << std::endl;
+                examples = arithmetic::generate_numerical(FLAGS_num_examples, difficulty);
+            }
+            // narrow focus
+        } else if (beam_width > 2) {
+            difficulty_waiting++;
+            if (difficulty_waiting > FLAGS_difficulty_stage) {
+                difficulty_waiting = 0;
+                beam_width -= 1;
+                std::cout << "Shrinking beam width to " << beam_width << "." << std::endl;
+            }
+        }
     }
 }

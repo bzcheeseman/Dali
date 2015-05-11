@@ -86,6 +86,35 @@ class LeafModule {
         }
 };
 
+/**
+Q: Should multiple trees pool their answers?
+--------------------------------------------
+
+It appears that beams reveal same answers through different
+processes:
+
+    3-4
+    = (-1.6) -2
+
+    = (-1.64) -1
+
+    = (-2.81) 0
+
+    = (-2.99) -1
+
+    = (-3.1) -2
+    = (-3.26) 3
+    = (-3.28) 7
+    = (-3.44) 2
+    = (-3.44) 5
+    = (-3.66) 6
+
+Notice how -1 is not the predicted answer, but the cumulated
+probability of both -1s being predicted does yield the correct
+answer.
+
+**/
+
 template<typename T>
 struct BeamNode {
     typedef typename LSTM<T>::State lstm_state_t;

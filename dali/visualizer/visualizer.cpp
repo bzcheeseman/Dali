@@ -1,4 +1,7 @@
 #include "visualizer.h"
+
+#include <memory>
+
 #include "dali/utils/core_utils.h"
 
 using utils::MS;
@@ -7,6 +10,8 @@ using json11::Json;
 using utils::assert2;
 
 using namespace std::placeholders;
+using std::vector;
+using std::shared_ptr;
 
 DEFINE_string(visualizer_hostname, "127.0.0.1", "Default hostname to be used by visualizer.");
 DEFINE_int32(visualizer_port, 6379, "Default port to be used by visualizer.");
@@ -206,8 +211,60 @@ namespace visualizable {
     template<typename R>
     const std::vector<R> FiniteDistribution<R>::empty_vec;
 
-    // template<> const std::vector<double> FiniteDistribution<double>::empty_vec;
-    // template<> const std::vector<float> FiniteDistribution<float>::empty_vec;
+    template<typename R>
+    Tree<R>::Tree(string label) :
+            label(label) {
+    }
+
+    template<typename R>
+    Tree<R>::Tree(std::initializer_list<std::shared_ptr<Tree<R>>> children) :
+            children(vector<std::shared_ptr<Tree<R>>>(children)) {
+    }
+
+    template<typename R>
+    Tree<R>::Tree(vector<std::shared_ptr<Tree<R>>> children) :
+            children(children) {
+    }
+
+    template<typename R>
+    Tree<R>::Tree(string label, std::initializer_list<shared_ptr<Tree<R>>> children) :
+            label(label),
+            children(vector<std::shared_ptr<Tree<R>>>(children)) {
+    }
+
+
+    template<typename R>
+    Tree<R>::Tree(string label, vector<shared_ptr<Tree<R>>> children) :
+            label(label),
+            children(children) {
+    }
+
+    template<typename R>
+    json11::Json Tree<R>::to_json() {
+        vector<json11::Json> children_as_json;
+        std::transform(children.begin(), children.end(), std::back_inserter(children_as_json),
+                [this](shared_ptr<Tree<R>> child) {
+            auto child_json = child->to_json();
+            return child_json;
+        });
+
+        if (label.empty()) {
+
+            return Json::object {
+                { "type", "tree" },
+                { "children", children_as_json},
+            };
+        } else {
+            return Json::object {
+                { "type", "tree" },
+                { "label", label },
+                { "children", children_as_json},
+            };
+        }
+    }
+
+    template class Tree<float>;
+    template class Tree<double>;
 
 }
 

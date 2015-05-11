@@ -1,6 +1,10 @@
+#include <memory>
+
 #include "dali/core.h"
 #include "dali/utils.h"
 #include "dali/data_processing/Arithmetic.h"
+#include "dali/visualizer/visualizer.h"
+
 
 using std::string;
 using std::vector;
@@ -114,6 +118,7 @@ probability of both -1s being predicted does yield the correct
 answer.
 
 **/
+
 
 template<typename T>
 struct BeamNode {
@@ -658,8 +663,6 @@ void training_loop(model_t& model,
                 for (auto& prediction : predictions) {
                     if (validate[random_example_index].second == prediction.prediction) {
                         std::cout << utils::green;
-                    } else {
-                        std::cout << utils::black;
                     }
                     std::cout << "= (" << std::setprecision( 3 ) << prediction.node.log_probability.w()(0) << ") ";
                     for (const auto& word : prediction.prediction) {
@@ -745,6 +748,7 @@ int main (int argc,  char* argv[]) {
               << "          Input size : " << FLAGS_input_size << std::endl
               << " examples/difficulty : " << FLAGS_num_examples << std::endl
               << "              Solver : " << FLAGS_solver << std::endl;
+
 
 
     for (int difficulty = 1; difficulty < FLAGS_expression_length; difficulty += 2) {

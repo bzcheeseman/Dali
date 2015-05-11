@@ -33,11 +33,12 @@ DEFINE_int32(num_examples,      1500,    "How much suffering to impose on our fr
 DEFINE_bool(memory_feeds_gates, true,    "LSTM's memory cell also control gate outputs");
 DEFINE_int32(input_size,        50,      "Size of the word vectors");
 DEFINE_int32(hidden,            100,     "How many Cells and Hidden Units should each LSTM have ?");
+DEFINE_int32(beam_width,        10,      "Size of the training beam.");
 
 ThreadPool* pool;
 
 template<typename M>
-double num_correct(M& model, vector<pair<vector<uint>, vector<uint>>> examples, int beam_width, uint stop_symbol) {
+double num_correct(M& model, vector<arithmetic::NumericalExample> examples, int beam_width, uint stop_symbol) {
     std::atomic<int> correct(examples.size());
     for (size_t i = 0; i < examples.size(); i++) {
         pool->run([&model, i, &examples, &stop_symbol, &beam_width, &correct]() {
@@ -254,9 +255,23 @@ class BeamTree {
                 {a.state, b.state}
             );
         }
+        /**
+        Given an ordered set of n nodes, find the best contiguous
+        pairs to join to form n-1 nodes. Return the `beam_width`
+        best set of nodes with the resulting join applied.
 
+        Inputs
+        ------
+
+        vector<Node> states : nodes to join
+        int      beam_width : number of joins to consider
+
+        Outputs
+        -------
+
+        vector<vector<Node>> new states : new sets with joined nodes
+        **/
         vector<vector<Node>> cangen(vector<Node> states, int beam_width) const {
-
             assert2(states.size() >= 2, "Must at least have 2 states to join for candidate generation.");
             int num_candidates = min((size_t)beam_width, states.size() - 1);
 
@@ -367,7 +382,6 @@ template class BeamTree<float>;
 template class BeamTree<double>;
 
 typedef vector<uint> sequence_t;
-typedef std::pair<sequence_t, sequence_t> example_t;
 
 template<typename T>
 struct PredictionNode {
@@ -421,7 +435,7 @@ class ArithmeticModel {
             return params;
         }
 
-        Mat<T> error(const example_t& example, int beam_width) const {
+        Mat<T> error(const arithmetic::NumericalExample& example, int beam_width) const {
             auto expression_embedding = convert_to_embeddings(example.first);
             auto state = tree.best_trees(expression_embedding, beam_width);
             auto& targets = example.second;
@@ -527,7 +541,7 @@ class ArithmeticModel {
 };
 
 template class ArithmeticModel<float>;
-// template class ArithmeticModel<double>;
+template class ArithmeticModel<double>;
 
 typedef ArithmeticModel<REAL_t> model_t;
 
@@ -543,22 +557,9 @@ int main (int argc,  char* argv[]) {
 
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
-    auto examples = arithmetic::generate(FLAGS_num_examples, FLAGS_expression_length);
     pool = new ThreadPool(FLAGS_j);
 
-    // display the examples:
-    for (auto example_ptr = examples.begin(); example_ptr < examples.end() && example_ptr < examples.begin() + 20; example_ptr++) {
-        for (auto& val : example_ptr->first) {
-            std::cout << val << " ";
-        }
-        std::cout << "= ";
-        for (auto& val : example_ptr->second) {
-            std::cout << val;
-        }
-        std::cout << std::endl;
-    }
-
-    auto vocab = arithmetic::vocabulary();
+    auto& vocab = arithmetic::vocabulary;
 
     // train a silly system to output the numbers it needs
     auto model = model_t(
@@ -593,13 +594,7 @@ int main (int argc,  char* argv[]) {
         utils::exit_with_message("Did not recognize this solver type.");
     }
 
-    vector<pair<vector<uint>, vector<uint>>> numerical_examples(examples.size());
-    {
-        for (size_t i = 0; i < examples.size();i++) {
-            numerical_examples[i].first  = vocab.encode(examples[i].first, true);
-            numerical_examples[i].second = vocab.encode(examples[i].second, true);
-        }
-    }
+    auto examples = arithmetic::generate_numerical(FLAGS_num_examples, FLAGS_expression_length);
 
     int epoch = 0;
     auto end_symbol_idx = vocab.word2index[utils::end_symbol];
@@ -619,21 +614,23 @@ int main (int argc,  char* argv[]) {
     Throttled throttled2;
     */
 
-    int BEAM_WIDTH = 10;
+    if (FLAGS_beam_width < 1) {
+        utils::exit_with_message(MS() << "Beam width must be strictly positive (got " << FLAGS_beam_width << ")");
+    }
 
     while (epoch < FLAGS_epochs) {
 
-        auto indices = utils::random_arange(numerical_examples.size());
+        auto indices = utils::random_arange(examples.size());
         auto indices_begin = indices.begin();
 
         REAL_t minibatch_error = 0.0;
 
         // one minibatch
-        for (auto indices_begin = indices.begin(); indices_begin < indices.begin() + std::min((size_t)FLAGS_minibatch, numerical_examples.size()); indices_begin++) {
+        for (auto indices_begin = indices.begin(); indices_begin < indices.begin() + std::min((size_t)FLAGS_minibatch, examples.size()); indices_begin++) {
             // <training>
-            auto& example = numerical_examples[*indices_begin];
+            auto& example = examples[*indices_begin];
 
-            auto error = model.error(example, BEAM_WIDTH);
+            auto error = model.error(example, FLAGS_beam_width);
             error.grad();
             graph::backward();
             minibatch_error += error.w()(0);
@@ -642,16 +639,15 @@ int main (int argc,  char* argv[]) {
             // throttled1.maybe_run(seconds(2), [&]() {
             //     auto random_example_index = utils::randint(0, examples.size() -1);
             //     auto beams = beam_search::beam_search(model,
-            //         numerical_examples[random_example_index].first,
+            //         examples[random_example_index].first,
             //         20,
             //         0,  // offset symbols that are predicted before being refed (no = 0)
             //         5,
             //         vocab.word2index.at(utils::end_symbol) // when to stop the sequence
             //     );
-            //     for (auto& val : examples[random_example_index].first) {
-            //         std::cout << val << " ";
-            //     }
-            //     std::cout << std::endl;
+            //
+            //     std::cout << arithmetic::vocabulary.decode(examples[random_example_index].first) << std::endl;
+            //
             //     for (const auto& beam : beams) {
             //         std::cout << "= (" << std::setprecision( 3 ) << std::get<1>(beam) << ") ";
             //         for (const auto& word : std::get<0>(beam)) {
@@ -663,7 +659,7 @@ int main (int argc,  char* argv[]) {
             // });
             // throttled2.maybe_run(seconds(30), [&]() {
             //     std::cout << "epoch: " << epoch << " Percent correct = " << std::setprecision( 3 )  << 100.0 * num_correct(
-            //         model, numerical_examples, 5, vocab.word2index.at(utils::end_symbol)
+            //         model, examples, 5, vocab.word2index.at(utils::end_symbol)
             //     ) << "%" << std::endl;
             // });
             // </reporting>

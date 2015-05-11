@@ -79,30 +79,16 @@ int main (int argc,  char* argv[]) {
 
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
-    auto examples = arithmetic::generate(FLAGS_num_examples, FLAGS_expression_length);
+    auto examples = arithmetic::generate_numerical(FLAGS_num_examples, FLAGS_expression_length);
     pool = new ThreadPool(FLAGS_j);
-
-    // display the examples:
-    for (auto example_ptr = examples.begin(); example_ptr < examples.end() && example_ptr < examples.begin() + 20; example_ptr++) {
-        for (auto& val : example_ptr->first) {
-            std::cout << val << " ";
-        }
-        std::cout << "= ";
-        for (auto& val : example_ptr->second) {
-            std::cout << val;
-        }
-        std::cout << std::endl;
-    }
-
-    auto vocab = arithmetic::vocabulary();
 
     // train a silly system to output the numbers it needs
     auto model = StackedModel<REAL_t>(
-         vocab.index2word.size(),
+         arithmetic::vocabulary.index2word.size(),
          FLAGS_input_size,
          FLAGS_hidden,
          FLAGS_stack_size,
-         vocab.index2word.size(),
+         arithmetic::vocabulary.index2word.size(),
          false,
          false);
 
@@ -128,28 +114,10 @@ int main (int argc,  char* argv[]) {
         utils::exit_with_message("Did not recognize this solver type.");
     }
 
-    vector<pair<vector<uint>, vector<uint>>> numerical_examples(examples.size());
-    {
-        for (size_t i = 0; i < examples.size();i++) {
-            numerical_examples[i].first  = vocab.encode(examples[i].first, true);
-            numerical_examples[i].second = vocab.encode(examples[i].second, true);
-        }
-    }
-
-    for (auto example_ptr = numerical_examples.begin(); example_ptr < numerical_examples.end() && example_ptr < numerical_examples.begin() + 20; example_ptr++) {
-        for (auto& val : example_ptr->first) {
-            std::cout << val << " ";
-        }
-        for (auto& val : example_ptr->second) {
-            std::cout << val << " ";
-        }
-        std::cout << std::endl;
-    }
-
     int epoch = 0;
-    auto end_symbol_idx = vocab.word2index[utils::end_symbol];
+    auto end_symbol_idx = arithmetic::vocabulary.word2index[utils::end_symbol];
 
-    std::cout << "     Vocabulary size : " << vocab.index2word.size() << std::endl
+    std::cout << "     Vocabulary size : " << arithmetic::vocabulary.index2word.size() << std::endl
               << "      minibatch size : " << FLAGS_minibatch << std::endl
               << "   number of threads : " << FLAGS_j << std::endl
               << "          stack size : " << FLAGS_stack_size << std::endl
@@ -167,15 +135,15 @@ int main (int argc,  char* argv[]) {
 
     while (epoch < FLAGS_epochs) {
 
-        auto indices = utils::random_arange(numerical_examples.size());
+        auto indices = utils::random_arange(examples.size());
         auto indices_begin = indices.begin();
 
         REAL_t minibatch_error = 0.0;
 
         // one minibatch
-        for (auto indices_begin = indices.begin(); indices_begin < indices.begin() + std::min((size_t)FLAGS_minibatch, numerical_examples.size()); indices_begin++) {
+        for (auto indices_begin = indices.begin(); indices_begin < indices.begin() + std::min((size_t)FLAGS_minibatch, examples.size()); indices_begin++) {
             // <training>
-            auto& example = numerical_examples[*indices_begin];
+            auto& example = examples[*indices_begin];
             auto initial_state = model.initial_states();
             Mat<REAL_t> input_vector;
             for (auto& c : example.first) {
@@ -214,28 +182,27 @@ int main (int argc,  char* argv[]) {
             throttled1.maybe_run(seconds(2), [&]() {
                 auto random_example_index = utils::randint(0, examples.size() -1);
                 auto beams = beam_search::beam_search(model,
-                    numerical_examples[random_example_index].first,
+                    examples[random_example_index].first,
                     20,
                     0,  // offset symbols that are predicted before being refed (no = 0)
                     5,
-                    vocab.word2index.at(utils::end_symbol) // when to stop the sequence
+                    arithmetic::vocabulary.word2index.at(utils::end_symbol) // when to stop the sequence
                 );
-                for (auto& val : examples[random_example_index].first) {
-                    std::cout << val << " ";
-                }
-                std::cout << std::endl;
+
+                std::cout << arithmetic::vocabulary.decode(examples[random_example_index].first) << std::endl;
+
                 for (const auto& beam : beams) {
                     std::cout << "= (" << std::setprecision( 3 ) << std::get<1>(beam) << ") ";
                     for (const auto& word : std::get<0>(beam)) {
-                        if (word != vocab.word2index.at(utils::end_symbol))
-                            std::cout << vocab.index2word.at(word);
+                        if (word != arithmetic::vocabulary.word2index.at(utils::end_symbol))
+                            std::cout << arithmetic::vocabulary.index2word.at(word);
                     }
                     std::cout << std::endl;
                 }
             });
             throttled2.maybe_run(seconds(30), [&]() {
                 std::cout << "epoch: " << epoch << " Percent correct = " << std::setprecision( 3 )  << 100.0 * num_correct(
-                    model, numerical_examples, 5, vocab.word2index.at(utils::end_symbol)
+                    model, examples, 5, arithmetic::vocabulary.word2index.at(utils::end_symbol)
                 ) << "%" << std::endl;
             });
             // </reporting>

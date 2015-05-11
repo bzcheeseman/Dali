@@ -7,9 +7,13 @@
 
 namespace arithmetic {
     typedef std::pair<std::vector<std::string>, std::vector<std::string>> Example;
+    typedef std::pair<std::vector<uint>, std::vector<uint>> NumericalExample;
+
     std::vector<Example> generate(int num, int expression_length);
+    std::vector<NumericalExample> generate_numerical(int num, int expression_length);
+
     extern std::vector<std::string> symbols;
-    utils::Vocab vocabulary();
+    extern utils::Vocab vocabulary;
 }
 
 #endif

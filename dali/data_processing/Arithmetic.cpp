@@ -84,7 +84,17 @@ namespace arithmetic {
         return examples;
     }
 
-    Vocab vocabulary() {
+    vector<NumericalExample> generate_numerical(int num, int expression_length) {
+        auto examples = generate(num, expression_length);
+        vector<NumericalExample> numerical_examples(examples.size());
+        for (size_t i = 0; i < examples.size();i++) {
+            numerical_examples[i].first  = arithmetic::vocabulary.encode(examples[i].first, true);
+            numerical_examples[i].second = arithmetic::vocabulary.encode(examples[i].second, true);
+        }
+        return numerical_examples;
+    }
+
+    Vocab create_vocabulary() {
         // define symbols:
         vector<string> symbols;
         for (int i = 0; i < 10; i++) {
@@ -93,5 +103,7 @@ namespace arithmetic {
         symbols.insert(symbols.end(), arithmetic::symbols.begin(), arithmetic::symbols.end());
         symbols.push_back(utils::end_symbol);
         return Vocab(symbols, false);
-    };
+    }
+
+    Vocab vocabulary = create_vocabulary();
 }

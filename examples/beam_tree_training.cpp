@@ -419,6 +419,10 @@ class ArithmeticModel {
                 // if result is good enough move on.
                 if (prediction.w()(targets[aidx]) < 0.8) {
                     error = error + MatOps<T>::cross_entropy(prediction, targets[aidx]);
+                } else {
+                    std::cout << "skipping when predicting " << arithmetic::vocabulary.index2word[targets[aidx]]
+                              << " with prob = " << prediction.w()(targets[aidx])
+                              << " at position " << aidx << "."<< std::endl;
                 }
                 if (aidx + 1 < targets.size()) {
                     state = decoder_lstm.activate(embedding[targets[aidx]], state);
@@ -661,8 +665,6 @@ int main (int argc,  char* argv[]) {
         arithmetic::vocabulary.index2word.size(),
         FLAGS_memory_feeds_gates);
 
-
-
     // Rho value, eps value, and gradient clipping value:
     int solver_type;
 
@@ -704,6 +706,7 @@ int main (int argc,  char* argv[]) {
     for (int difficulty = 1; difficulty < FLAGS_expression_length; difficulty += 2) {
         auto train    = arithmetic::generate_numerical(FLAGS_num_examples, difficulty);
         auto validate = arithmetic::generate_numerical(FLAGS_num_examples / 10, difficulty);
+
         std::cout << "Increasing difficulty to " << difficulty << "." << std::endl;
         training_loop(model, train, validate);
     }

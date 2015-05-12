@@ -6,17 +6,18 @@
 #include "dali/visualizer/visualizer.h"
 
 
-using std::string;
-using std::vector;
-using std::pair;
-using std::to_string;
-using std::make_shared;
-using std::chrono::seconds;
-using utils::MS;
-using std::tuple;
-using std::min;
-using utils::assert2;
 using arithmetic::NumericalExample;
+using std::chrono::seconds;
+using std::make_shared;
+using std::min;
+using std::pair;
+using std::shared_ptr;
+using std::string;
+using std::to_string;
+using std::tuple;
+using std::vector;
+using utils::assert2;
+using utils::MS;
 
 typedef float REAL_t;
 
@@ -42,6 +43,7 @@ DEFINE_int32(beam_width,        10,      "Size of the training beam.");
 DEFINE_int32(difficulty_stage,  5,       "How long to wait before increasing difficulty level?");
 
 ThreadPool* pool;
+std::shared_ptr<Visualizer> visualizer;
 
 
 template<typename T>
@@ -223,8 +225,44 @@ class BeamLSTM : public LSTM<T> {
 };
 
 template<typename T>
+struct BeamTreeResult {
+    BeamNode<T> node;
+    vector<uint> derivation;
+
+    BeamTreeResult(BeamNode<T> node, vector<uint> derivation) :
+            node(node),
+            derivation(derivation) {
+    }
+
+    static vector<BeamNode<T>> nodes(const vector<BeamTreeResult<T>>& results) {
+        vector<BeamNode<T>> nodes;
+        std::transform(results.begin(), results.end(), std::back_inserter(nodes),
+                [](const BeamTreeResult<T>& result) {
+            return result.node;
+        });
+        return nodes;
+    }
+};
+
+template class BeamTreeResult<float>;
+template class BeamTreeResult<double>;
+
+template<typename T>
 class BeamTree {
     typedef BeamNode<T> Node;
+
+    struct PartialTree {
+        vector<Node> nodes;
+        vector<uint> derivation;
+
+        PartialTree(vector<BeamNode<T>> nodes,
+                    vector<uint> derivation=vector<uint>()) :
+                nodes(nodes),
+                derivation(derivation) {
+        }
+    };
+
+
     public:
         typedef typename LSTM<T>::State lstm_state_t;
 
@@ -284,27 +322,28 @@ class BeamTree {
         Outputs
         -------
 
-        vector<vector<Node>> new states : new sets with joined nodes
+        vector<Candidate> new states : new sets with joined nodes
         **/
-        vector<vector<Node>> cangen(vector<Node> states, int beam_width) const {
-            assert2(states.size() >= 2, "Must at least have 2 states to join for candidate generation.");
-            int num_candidates = min((size_t)beam_width, states.size() - 1);
+        vector<PartialTree> cangen(PartialTree candidate, int beam_width) const {
+            assert2(candidate.nodes.size() >= 2,
+                    "Must at least have 2 states to join for candidate generation.");
+            int num_candidates = min((size_t)beam_width, candidate.nodes.size() - 1);
 
             vector<Node> possible_joins;
             vector<Mat<T>> scores;
-            for (size_t sidx = 0; sidx + 1 < states.size(); ++sidx) {
+            for (size_t sidx = 0; sidx + 1 < candidate.nodes.size(); ++sidx) {
                 possible_joins.emplace_back(
                     Mat<T>(),
-                    join_states(states[sidx], states[sidx + 1])
+                    join_states(candidate.nodes[sidx], candidate.nodes[sidx + 1])
                 );
                 scores.emplace_back(prob_decoder.activate(possible_joins.back().state.hidden));
             }
             auto normalized_scores = MatOps<T>::softmax(scores);
-            for (size_t sidx = 0; sidx + 1 < states.size(); ++sidx) {
+            for (size_t sidx = 0; sidx + 1 < candidate.nodes.size(); ++sidx) {
                 possible_joins[sidx].log_probability =
                         normalized_scores[sidx].log() +
-                        states[sidx].log_probability +
-                        states[sidx + 1].log_probability;
+                        candidate.nodes[sidx].log_probability +
+                        candidate.nodes[sidx + 1].log_probability;
             }
 
             // initialize original index locations
@@ -316,61 +355,63 @@ class BeamTree {
             sort(idx.begin(), idx.end(), [&possible_joins](size_t i1, size_t i2) {
                 return possible_joins[i1].log_probability.w()(0) > possible_joins[i2].log_probability.w()(0);
             });
-            vector<vector<Node>> results;
+            vector<PartialTree> results;
 
             for (size_t cidx = 0; cidx < num_candidates; ++cidx) {
                 vector<Node> result;
                 size_t join_idx = idx[cidx];
                 for (size_t sidx = 0; sidx < join_idx; ++sidx)
-                    result.emplace_back(states[sidx]);
+                    result.emplace_back(candidate.nodes[sidx]);
                 result.emplace_back(possible_joins[join_idx]);
-                for (size_t sidx = join_idx + 2; sidx < states.size(); ++sidx) {
-                    result.emplace_back(states[sidx]);
+                for (size_t sidx = join_idx + 2; sidx < candidate.nodes.size(); ++sidx) {
+                    result.emplace_back(candidate.nodes[sidx]);
                 }
-                assert(result.size() == states.size() - 1);
-                results.emplace_back(result);
+                assert(result.size() == candidate.nodes.size() - 1);
+                auto new_derivation = candidate.derivation; // copy
+                // here cidx encodes the decision we made to join nodes cidx and cidx + 1.
+                new_derivation.push_back(cidx);
+                results.emplace_back(PartialTree(result, new_derivation));
             }
 
             return results;
         }
 
-        T candidate_log_probability(vector<Node> candidate) const {
+        T candidate_log_probability(PartialTree candidate) const {
             T result = 0.0;
-            for (auto& node: candidate) {
+            for (auto& node: candidate.nodes) {
                 result += node.log_probability.w()(0);
             }
             return result;
         }
 
-        vector<Node> best_trees(vector<Mat<T>> input, int beam_width) const {
+        vector<BeamTreeResult<T>> best_trees(vector<Mat<T>> input, int beam_width) const {
             auto leaves = convert_to_leaves(input);
-            vector<vector<Node>> candidates = { leaves };
-            while (candidates[0].size() > 1) {
-                vector<vector<Node>> new_candidates;
+            vector<PartialTree> candidates = { PartialTree(leaves) };
+            while (candidates[0].nodes.size() > 1) {
+                vector<PartialTree> new_candidates;
                 for (auto& candidate: candidates) {
                     for (auto& new_candidate: cangen(candidate, beam_width)) {
                         new_candidates.emplace_back(new_candidate);
                     }
                 }
                 sort(new_candidates.begin(), new_candidates.end(),
-                        [this](const vector<Node>& c1, const vector<Node>& c2) {
+                        [this](const PartialTree& c1, const PartialTree& c2) {
                     return candidate_log_probability(c1) > candidate_log_probability(c2);
                 });
-                candidates = vector<vector<Node>>(
+                candidates = vector<PartialTree>(
                     new_candidates.begin(),
                     new_candidates.begin() + min((size_t)beam_width, new_candidates.size())
                 );
                 for (size_t cidx = 0; cidx + 1 < candidates.size(); ++cidx) {
-                    assert2(candidates[cidx].size() == candidates[cidx + 1].size(),
+                    assert2(candidates[cidx].nodes.size() == candidates[cidx + 1].nodes.size(),
                             "Generated candidates of different sizes.");
                 }
-
             }
-            vector<Node> result;
-            for (auto& candidate: candidates) {
-                result.emplace_back(candidate[0]);
+            vector<BeamTreeResult<T>> results;
+            for (auto& tree: candidates) {
+                results.emplace_back(tree.nodes[0], tree.derivation);
             }
-            return result;
+            return results;
         }
 
         vector<Mat<T>> parameters() const {
@@ -401,6 +442,8 @@ template<typename T>
 struct PredictionNode {
     BeamNode<T> node;
     sequence_t prediction;
+    vector<uint> derivation;
+
     PredictionNode() {};
     PredictionNode(BeamNode<T> node) : node(node) {}
     PredictionNode(BeamNode<T> node, const sequence_t& prediction) : node(node), prediction(prediction) {}
@@ -409,6 +452,7 @@ struct PredictionNode {
         PredictionNode<T> fork(node, this->prediction);
         // add new choice to fork:
         fork.prediction.emplace_back(choice);
+        fork.derivation = this->derivation;
         return fork;
     }
 };
@@ -451,13 +495,13 @@ class ArithmeticModel {
 
         Mat<T> error(const arithmetic::NumericalExample& example, int beam_width) const {
             auto expression_embedding = convert_to_embeddings(example.first);
-            auto states = tree.best_trees(expression_embedding, beam_width);
+            auto candidates = BeamTreeResult<T>::nodes(tree.best_trees(expression_embedding, beam_width));
             auto& targets = example.second;
 
             Mat<T> error(1,1);
             error.constant = true;
             for (int aidx = 0; aidx < targets.size(); ++aidx) {
-                Mat<T> prediction = decoder_lstm.decode(states);
+                Mat<T> prediction = decoder_lstm.decode(candidates);
                 // if result is good enough move on.
                 if (prediction.w()(targets[aidx]) < 0.8) {
                     error = error + MatOps<T>::cross_entropy(prediction, targets[aidx]);
@@ -467,7 +511,7 @@ class ArithmeticModel {
                     //           << " at position " << aidx << "."<< std::endl;
                 }
                 if (aidx + 1 < targets.size()) {
-                    states = decoder_lstm.activate(embedding[targets[aidx]], states);
+                    candidates = decoder_lstm.activate(embedding[targets[aidx]], candidates);
                 }
             }
             return error;
@@ -492,14 +536,16 @@ class ArithmeticModel {
             auto embeddings = convert_to_embeddings(expression);
 
             /* BEGIN (TRUE) BEAM SEARCH */
-            vector<Node> candidate_trees = tree.best_trees(embeddings, beam_width);
+            auto candidate_trees = tree.best_trees(embeddings, beam_width);
 
             vector<PredictionNode<T>> candidates;
             candidates.reserve(candidate_trees.size());
 
             std::transform(candidate_trees.begin(), candidate_trees.end(), std::back_inserter(candidates),
-                    [](const Node& node) {
-                return PredictionNode<T>(node);
+                    [](const BeamTreeResult<T>& tree) {
+                auto ret = PredictionNode<T>(tree.node);
+                ret.derivation = tree.derivation;
+                return ret;
             });
 
             for (int sidx = 0; sidx < max_output_length; ++sidx) {
@@ -605,6 +651,34 @@ double accuracy(const model_t& model, vector<arithmetic::NumericalExample>& exam
     return (double) correct / (double) examples.size();
 }
 
+
+shared_ptr<visualizable::Tree> visualize_derivation(vector<uint> derivation, vector<string> words) {
+    using visualizable::Tree;
+
+    vector<shared_ptr<Tree>> result;
+    std::transform(words.begin(), words.end(), std::back_inserter(result),
+            [](const string& a) {
+        return make_shared<Tree>(a);
+    });
+    for (auto merge_idx : derivation) {
+        vector<shared_ptr<Tree>> new_result;
+        for(size_t ridx = 0; ridx < merge_idx; ++ridx) {
+            new_result.push_back(result[ridx]);
+        }
+        new_result.push_back(make_shared<Tree>(std::initializer_list<shared_ptr<Tree>>{
+            result[merge_idx],
+            result[merge_idx + 1]
+        }));
+        for(size_t ridx = merge_idx + 2; ridx < result.size(); ++ridx) {
+            new_result.push_back(result[ridx]);
+        }
+        result = new_result;
+    }
+    assert2(result.size() == 1, "Szymon fucked up.");
+
+    return result[0];
+}
+
 void training_loop(model_t& model,
                    vector<NumericalExample>& train,
                    vector<NumericalExample>& validate) {
@@ -671,6 +745,10 @@ void training_loop(model_t& model,
                     }
                     std::cout << utils::reset_color << std::endl;
                 }
+                auto visualization = visualize_derivation(predictions[0].derivation,
+                                                          vocab.decode(expression));
+                visualizer->feed(visualization.to_json());
+
             });
             double current_accuracy = -1;
             throttled_validation.maybe_run(seconds(30), [&]() {
@@ -737,6 +815,9 @@ int main (int argc,  char* argv[]) {
 
     vector<arithmetic::NumericalExample> train, validate;
 
+    if (!FLAGS_visualizer.empty()) {
+        visualizer = make_shared<Visualizer>(FLAGS_visualizer);
+    }
 
     std::cout << "     Vocabulary size : " << arithmetic::vocabulary.index2word.size() << std::endl
               << "      minibatch size : " << FLAGS_minibatch << std::endl

@@ -211,39 +211,33 @@ namespace visualizable {
     template<typename R>
     const std::vector<R> FiniteDistribution<R>::empty_vec;
 
-    template<typename R>
-    Tree<R>::Tree(string label) :
+    Tree::Tree(string label) :
             label(label) {
     }
 
-    template<typename R>
-    Tree<R>::Tree(std::initializer_list<std::shared_ptr<Tree<R>>> children) :
-            children(vector<std::shared_ptr<Tree<R>>>(children)) {
+    Tree::Tree(std::initializer_list<std::shared_ptr<Tree>> children) :
+            children(vector<std::shared_ptr<Tree>>(children)) {
     }
 
-    template<typename R>
-    Tree<R>::Tree(vector<std::shared_ptr<Tree<R>>> children) :
+    Tree::Tree(vector<std::shared_ptr<Tree>> children) :
             children(children) {
     }
 
-    template<typename R>
-    Tree<R>::Tree(string label, std::initializer_list<shared_ptr<Tree<R>>> children) :
+    Tree::Tree(string label, std::initializer_list<shared_ptr<Tree>> children) :
             label(label),
-            children(vector<std::shared_ptr<Tree<R>>>(children)) {
+            children(vector<std::shared_ptr<Tree>>(children)) {
     }
 
 
-    template<typename R>
-    Tree<R>::Tree(string label, vector<shared_ptr<Tree<R>>> children) :
+    Tree::Tree(string label, vector<shared_ptr<Tree>> children) :
             label(label),
             children(children) {
     }
 
-    template<typename R>
-    json11::Json Tree<R>::to_json() {
+    json11::Json Tree::to_json() {
         vector<json11::Json> children_as_json;
         std::transform(children.begin(), children.end(), std::back_inserter(children_as_json),
-                [this](shared_ptr<Tree<R>> child) {
+                [this](shared_ptr<Tree> child) {
             auto child_json = child->to_json();
             return child_json;
         });
@@ -263,8 +257,6 @@ namespace visualizable {
         }
     }
 
-    template class Tree<float>;
-    template class Tree<double>;
 
 }
 

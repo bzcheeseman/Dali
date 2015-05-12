@@ -102,20 +102,19 @@ namespace visualizable {
         virtual json11::Json to_json() override;
     };
 
-    template<typename R>
     struct Tree: public Visualizable {
         std::string label;
-        std::vector<std::shared_ptr<Tree<R>>> children;
+        std::vector<std::shared_ptr<Tree>> children;
 
         Tree(std::string label);
 
-        Tree(std::initializer_list<std::shared_ptr<Tree<R>>> children);
+        Tree(std::initializer_list<std::shared_ptr<Tree>> children);
 
-        Tree(std::vector<std::shared_ptr<Tree<R>>> children);
+        Tree(std::vector<std::shared_ptr<Tree>> children);
 
-        Tree(std::string label, std::initializer_list<std::shared_ptr<Tree<R>>> children);
+        Tree(std::string label, std::initializer_list<std::shared_ptr<Tree>> children);
 
-        Tree(std::string label, std::vector<std::shared_ptr<Tree<R>>> children);
+        Tree(std::string label, std::vector<std::shared_ptr<Tree>> children);
 
         virtual json11::Json to_json() override;
     };

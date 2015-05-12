@@ -31,16 +31,13 @@ DEFINE_string(solver,        "adadelta", "What solver to use (adadelta, sgd, ada
 DEFINE_double(reg,           0.0,        "What penalty to place on L2 norm of weights?");
 DEFINE_double(learning_rate, 0.01,       "Learning rate for SGD and Adagrad.");
 DEFINE_int32(minibatch,      100,        "What size should be used for the minibatches ?");
-DEFINE_bool(fast_dropout,    true,       "Use fast dropout?");
-DEFINE_int32(epochs,         2000,       "How many training loops through the full dataset ?");
-DEFINE_int32(j,                 1,       "How many threads should be used ?");
-DEFINE_int32(expression_length, 5,       "How much suffering to impose on our friend?");
-DEFINE_int32(num_examples,      1500,    "How much suffering to impose on our friend?");
-DEFINE_bool(memory_feeds_gates, true,    "LSTM's memory cell also control gate outputs");
+DEFINE_int32(j,                 9,       "How many threads should be used ?");
+DEFINE_int32(expression_length, 19,      "How much suffering to impose on our friend?");
+DEFINE_int32(num_examples,      5000,    "How much suffering to impose on our friend?");
+DEFINE_bool(memory_feeds_gates, false,    "LSTM's memory cell also control gate outputs");
 DEFINE_int32(input_size,        50,      "Size of the word vectors");
 DEFINE_int32(hidden,            100,     "How many Cells and Hidden Units should each LSTM have ?");
 DEFINE_int32(beam_width,        10,      "Size of the training beam.");
-DEFINE_int32(difficulty_stage,  5,       "How long to wait before increasing difficulty level?");
 
 ThreadPool* pool;
 std::shared_ptr<Visualizer> visualizer;
@@ -189,10 +186,6 @@ class BeamLSTM : public LSTM<T> {
             return new_state;
         }
 
-        Mat<T> decode(typename LSTM<T>::State state) const {
-            return MatOps<T>::softmax(decoder.activate(state.hidden));
-        }
-
         Mat<T> decode(const vector<Node>& states) const {
             vector<Mat<T>> distributions;
             vector<Mat<T>> scores;
@@ -239,6 +232,15 @@ struct BeamTreeResult {
         std::transform(results.begin(), results.end(), std::back_inserter(nodes),
                 [](const BeamTreeResult<T>& result) {
             return result.node;
+        });
+        return nodes;
+    }
+
+    static vector<vector<uint>> derivations(const vector<BeamTreeResult<T>>& results) {
+        vector<vector<uint>> nodes;
+        std::transform(results.begin(), results.end(), std::back_inserter(nodes),
+                [](const BeamTreeResult<T>& result) {
+            return result.derivation;
         });
         return nodes;
     }
@@ -440,21 +442,36 @@ typedef vector<uint> sequence_t;
 
 template<typename T>
 struct PredictionNode {
-    BeamNode<T> node;
+    vector<BeamNode<T>> nodes;
     sequence_t prediction;
-    vector<uint> derivation;
+    vector<vector<uint>> derivations;
 
     PredictionNode() {};
-    PredictionNode(BeamNode<T> node) : node(node) {}
-    PredictionNode(BeamNode<T> node, const sequence_t& prediction) : node(node), prediction(prediction) {}
-
-    PredictionNode<T> make_choice(uint choice, BeamNode<T> node) {
-        PredictionNode<T> fork(node, this->prediction);
+    PredictionNode(vector<BeamNode<T>> nodes, vector<vector<uint>> derivations) :
+            nodes(nodes),
+            derivations(derivations) {
+    }
+    PredictionNode(vector<BeamNode<T>> nodes, vector<vector<uint>> derivations, const sequence_t& prediction) :
+            nodes(nodes),
+            derivations(derivations),
+            prediction(prediction) {
+    }
+    PredictionNode<T> make_choice(uint choice, vector<BeamNode<T>> nodes) const {
+        PredictionNode<T> fork(nodes, this->derivations, this->prediction);
         // add new choice to fork:
         fork.prediction.emplace_back(choice);
-        fork.derivation = this->derivation;
         return fork;
     }
+
+    Mat<T> get_probability() const {
+        vector<Mat<T>> probabilities;
+        std::transform(nodes.begin(), nodes.end(), std::back_inserter(probabilities),
+                [](const BeamNode<T>& node) {
+            return node.log_probability.exp();
+        });
+        return MatOps<T>::add(probabilities);
+    }
+
 };
 
 template<typename T>
@@ -539,14 +556,11 @@ class ArithmeticModel {
             auto candidate_trees = tree.best_trees(embeddings, beam_width);
 
             vector<PredictionNode<T>> candidates;
-            candidates.reserve(candidate_trees.size());
+            candidates.emplace_back(
+                BeamTreeResult<T>::nodes(candidate_trees),
+                BeamTreeResult<T>::derivations(candidate_trees)
+            );
 
-            std::transform(candidate_trees.begin(), candidate_trees.end(), std::back_inserter(candidates),
-                    [](const BeamTreeResult<T>& tree) {
-                auto ret = PredictionNode<T>(tree.node);
-                ret.derivation = tree.derivation;
-                return ret;
-            });
 
             for (int sidx = 0; sidx < max_output_length; ++sidx) {
                 vector<PredictionNode<T>> new_candidates;
@@ -555,7 +569,7 @@ class ArithmeticModel {
                     if (candidate.prediction.size() > 0 && candidate.prediction.back() == end_symbol) {
                         new_candidates.emplace_back(candidate);
                     } else {
-                        auto next_symbol_distribution = decoder_lstm.decode(candidate.node.state);
+                        auto next_symbol_distribution = decoder_lstm.decode(candidate.nodes);
 
                         vector<uint> predicted_symbols;
                         for (size_t pidx = 0; pidx < next_symbol_distribution.dims(0); ++pidx)
@@ -575,13 +589,14 @@ class ArithmeticModel {
                             // we show this "winning" symbol to the decoding LSTM
                             // and advance the internal state by 1. Also we keep track of the
                             // probability of this fork, and update the predictions list.
+                            auto new_nodes = decoder_lstm.activate(embedding[candidate_idx], candidate.nodes);
+                            for (auto& node: new_nodes) {
+                                node.log_probability = node.log_probability + next_symbol_distribution[candidate_idx].log();
+                            }
                             new_candidates.emplace_back(
                                 candidate.make_choice(
                                     candidate_idx,
-                                    Node(
-                                        candidate.node.log_probability + next_symbol_distribution[candidate_idx].log(),
-                                        decoder_lstm.LSTM<T>::activate(embedding[candidate_idx], candidate.node.state)
-                                    )
+                                    new_nodes
                                 )
                             );
                         }
@@ -591,7 +606,7 @@ class ArithmeticModel {
 
                 std::sort(new_candidates.begin(), new_candidates.end(),
                         [](const PredictionNode<T>& a, const PredictionNode<T> b) {
-                    return a.node.log_probability.w()(0) > b.node.log_probability.w()(0);
+                    return a.get_probability().w()(0) > b.get_probability().w()(0);
                 });
                 if (new_candidates.size() > beam_width)
                     new_candidates.resize(beam_width);
@@ -738,14 +753,14 @@ void training_loop(model_t& model,
                     if (validate[random_example_index].second == prediction.prediction) {
                         std::cout << utils::green;
                     }
-                    std::cout << "= (" << std::setprecision( 3 ) << prediction.node.log_probability.w()(0) << ") ";
+                    std::cout << "= (" << std::setprecision( 3 ) << prediction.get_probability().log().w()(0) << ") ";
                     for (const auto& word : prediction.prediction) {
                         if (word != vocab.word2index.at(utils::end_symbol))
                             std::cout << vocab.index2word.at(word);
                     }
                     std::cout << utils::reset_color << std::endl;
                 }
-                auto visualization = visualize_derivation(predictions[0].derivation,
+                auto visualization = visualize_derivation(predictions[0].derivations[0],
                                                           vocab.decode(expression));
                 if (visualizer)
                     visualizer->feed(visualization->to_json());
@@ -823,8 +838,6 @@ int main (int argc,  char* argv[]) {
     std::cout << "     Vocabulary size : " << arithmetic::vocabulary.index2word.size() << std::endl
               << "      minibatch size : " << FLAGS_minibatch << std::endl
               << "   number of threads : " << FLAGS_j << std::endl
-              << "        Dropout type : " << (FLAGS_fast_dropout ? "fast" : "default") << std::endl
-              << " Max training epochs : " << FLAGS_epochs << std::endl
               << "           LSTM type : " << (model.tree.composer.memory_feeds_gates ? "Graves 2013" : "Zaremba 2014") << std::endl
               << "         Hidden size : " << FLAGS_hidden << std::endl
               << "          Input size : " << FLAGS_input_size << std::endl

@@ -747,7 +747,8 @@ void training_loop(model_t& model,
                 }
                 auto visualization = visualize_derivation(predictions[0].derivation,
                                                           vocab.decode(expression));
-                visualizer->feed(visualization.to_json());
+                if (visualizer)
+                    visualizer->feed(visualization->to_json());
 
             });
             double current_accuracy = -1;

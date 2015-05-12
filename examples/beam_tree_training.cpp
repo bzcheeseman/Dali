@@ -5,7 +5,6 @@
 #include "dali/data_processing/Arithmetic.h"
 #include "dali/visualizer/visualizer.h"
 
-
 using arithmetic::NumericalExample;
 using std::chrono::seconds;
 using std::make_shared;
@@ -694,6 +693,8 @@ shared_ptr<visualizable::Tree> visualize_derivation(vector<uint> derivation, vec
     return result[0];
 }
 
+
+
 void training_loop(model_t& model,
                    vector<NumericalExample>& train,
                    vector<NumericalExample>& validate) {
@@ -784,6 +785,17 @@ void training_loop(model_t& model,
     }
 }
 
+void increase_dataset_difficulty(vector<NumericalExample>& dataset,
+                                 int new_difficulty,
+                                 int target_size) {
+    random_shuffle(dataset.begin(), dataset.end());
+    dataset.erase(dataset.begin() + dataset.size() / 2, dataset.end());
+    auto new_examples =
+            arithmetic::generate_numerical(target_size - dataset.size(), new_difficulty);
+    for (auto& new_example : new_examples) {
+        dataset.emplace_back(new_example);
+    }
+}
 
 int main (int argc,  char* argv[]) {
     GFLAGS_NAMESPACE::SetUsageMessage(
@@ -829,8 +841,6 @@ int main (int argc,  char* argv[]) {
         utils::exit_with_message("Did not recognize this solver type.");
     }
 
-    vector<arithmetic::NumericalExample> train, validate;
-
     if (!FLAGS_visualizer.empty()) {
         visualizer = make_shared<Visualizer>(FLAGS_visualizer);
     }
@@ -844,11 +854,11 @@ int main (int argc,  char* argv[]) {
               << " examples/difficulty : " << FLAGS_num_examples << std::endl
               << "              Solver : " << FLAGS_solver << std::endl;
 
-
+    vector<NumericalExample> train, validate;
 
     for (int difficulty = 1; difficulty < FLAGS_expression_length; difficulty += 2) {
-        auto train    = arithmetic::generate_numerical(FLAGS_num_examples, difficulty);
-        auto validate = arithmetic::generate_numerical(FLAGS_num_examples / 10, difficulty);
+        increase_dataset_difficulty(train, difficulty, FLAGS_num_examples);
+        increase_dataset_difficulty(validate, difficulty, FLAGS_num_examples / 10);
 
         std::cout << "Increasing difficulty to " << difficulty << "." << std::endl;
         training_loop(model, train, validate);

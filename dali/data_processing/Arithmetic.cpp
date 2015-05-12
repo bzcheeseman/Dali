@@ -14,9 +14,8 @@ namespace arithmetic {
         int i = 0;
         while (i < num) {
             vector<string> example;
-            auto expr_length = utils::randint(1, std::max(1, expression_length));
             bool use_operator = false;
-            for (int j = 0; j < expr_length; j++) {
+            for (int j = 0; j < expression_length; j++) {
                 if (use_operator) {
                     auto operation = symbols[utils::randint(0, NUM_SYMBOLS-1)];
                     example.push_back(operation);

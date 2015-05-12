@@ -519,9 +519,7 @@ class ArithmeticModel {
             error.constant = true;
             for (int aidx = 0; aidx < targets.size(); ++aidx) {
                 Mat<T> prediction = decoder_lstm.decode(candidates);
-
                 error = error + MatOps<T>::cross_entropy(prediction, targets[aidx]);
-
                 if (aidx + 1 < targets.size()) {
                     candidates = decoder_lstm.activate(embedding[targets[aidx]], candidates);
                 }

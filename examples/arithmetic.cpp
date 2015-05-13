@@ -79,6 +79,12 @@ int main (int argc,  char* argv[]) {
 
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
+    auto ex_bonus = arithmetic::generate(FLAGS_num_examples, FLAGS_expression_length);
+
+    for (auto& ex : ex_bonus) {
+        std::cout << utils::join(std::get<0>(ex)) << " => " << utils::join(std::get<1>(ex)) << std::endl;
+    }
+
     auto examples = arithmetic::generate_numerical(FLAGS_num_examples, FLAGS_expression_length);
     pool = new ThreadPool(FLAGS_j);
 

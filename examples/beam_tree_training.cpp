@@ -815,7 +815,11 @@ void increase_dataset_difficulty(vector<NumericalExample>& dataset,
     random_shuffle(dataset.begin(), dataset.end());
     dataset.erase(dataset.begin() + dataset.size() / 2, dataset.end());
     auto new_examples =
-            arithmetic::generate_numerical(target_size - dataset.size(), new_difficulty, FLAGS_use_end_symbol);
+            arithmetic::generate_numerical(target_size - dataset.size(),
+                                           new_difficulty,
+                                           0,
+                                           1000,
+                                           FLAGS_use_end_symbol);
     for (auto& new_example : new_examples) {
         dataset.emplace_back(new_example);
     }

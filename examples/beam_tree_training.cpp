@@ -35,7 +35,7 @@ DEFINE_int32(expression_length,       19,      "How much suffering to impose on 
 DEFINE_int32(num_examples,            5000,    "How much suffering to impose on our friend?");
 DEFINE_bool(memory_feeds_gates,       false,   "LSTM's memory cell also control gate outputs");
 DEFINE_int32(input_size,              10,      "Size of the word vectors");
-DEFINE_int32(graduation_time,         50000,    "How many epochs per difficulty class?");
+DEFINE_int32(graduation_time,         25000,    "How many epochs per difficulty class?");
 DEFINE_int32(hidden,                  20,     "How many Cells and Hidden Units should each LSTM have?");
 DEFINE_int32(beam_width,              10,      "Size of the training beam.");
 DEFINE_bool(use_end_symbol,           false,   "Whether to use end symbol in expression when training.");
@@ -887,7 +887,13 @@ int main (int argc,  char* argv[]) {
 
         std::cout << "Increasing difficulty to " << difficulty << "." << std::endl;
         training_loop(model, train, validate);
-        std::cout << "Test accuracy on difficulty " << difficulty << " is "
+        std::cout << "Test accuracy on difficulty 1 up to " << difficulty << " is "
                   << 100.0 * accuracy(model, test, FLAGS_beam_width) << "%" << std::endl;
+        for (int old_difficulty = 1; old_difficulty <=difficulty; old_difficulty += 2) {
+            auto old_examples = arithmetic::generate_numerical(FLAGS_num_examples / 10, old_difficulty, FLAGS_use_end_symbol);
+                    std::cout << "Test accuracy on difficulty " << old_difficulty << " when trained on difficulty up to "
+                              << difficulty << " is "
+                              << 100.0 * accuracy(model, old_examples, FLAGS_beam_width) << "%" << std::endl;
+        }
     }
 }

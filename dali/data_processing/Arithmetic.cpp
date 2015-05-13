@@ -67,7 +67,7 @@ namespace arithmetic {
                     }
                 }
             }
-            if (result > -50 && result < 50) {
+            if (result > -500000 && result < 500000) {
                 i++;
                 auto res = to_string(result);
                 vector<string> character_result;

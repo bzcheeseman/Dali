@@ -26,17 +26,18 @@ static int SGD_TYPE = 2;
 static int ADAM_TYPE = 3;
 static int RMSPROP_TYPE = 4;
 
-DEFINE_string(solver,        "adadelta", "What solver to use (adadelta, sgd, adam)");
-DEFINE_double(reg,           0.0,        "What penalty to place on L2 norm of weights?");
-DEFINE_double(learning_rate, 0.01,       "Learning rate for SGD and Adagrad.");
-DEFINE_int32(minibatch,      100,        "What size should be used for the minibatches ?");
-DEFINE_int32(j,                 9,       "How many threads should be used ?");
-DEFINE_int32(expression_length, 19,      "How much suffering to impose on our friend?");
-DEFINE_int32(num_examples,      5000,    "How much suffering to impose on our friend?");
-DEFINE_bool(memory_feeds_gates, false,    "LSTM's memory cell also control gate outputs");
-DEFINE_int32(input_size,        50,      "Size of the word vectors");
-DEFINE_int32(hidden,            100,     "How many Cells and Hidden Units should each LSTM have ?");
-DEFINE_int32(beam_width,        10,      "Size of the training beam.");
+DEFINE_string(solver,                 "adadelta", "What solver to use (adadelta, sgd, adam)");
+DEFINE_double(reg,                    0.0,     "What penalty to place on L2 norm of weights?");
+DEFINE_double(learning_rate,          0.01,    "Learning rate for SGD and Adagrad.");
+DEFINE_int32(minibatch,               100,     "What size should be used for the minibatches ?");
+DEFINE_int32(j,                       9,       "How many threads should be used ?");
+DEFINE_int32(expression_length,       19,      "How much suffering to impose on our friend?");
+DEFINE_int32(num_examples,            5000,    "How much suffering to impose on our friend?");
+DEFINE_bool(memory_feeds_gates,       false,   "LSTM's memory cell also control gate outputs");
+DEFINE_int32(input_size,              50,      "Size of the word vectors");
+DEFINE_int32(graduation_time,         5000,    "How many epochs per difficulty class?");
+DEFINE_int32(hidden,                  100,     "How many Cells and Hidden Units should each LSTM have?");
+DEFINE_int32(beam_width,              10,      "Size of the training beam.");
 
 ThreadPool* pool;
 std::shared_ptr<Visualizer> visualizer;
@@ -518,14 +519,9 @@ class ArithmeticModel {
             error.constant = true;
             for (int aidx = 0; aidx < targets.size(); ++aidx) {
                 Mat<T> prediction = decoder_lstm.decode(candidates);
-                // if result is good enough move on.
-                if (prediction.w()(targets[aidx]) < 0.8) {
-                    error = error + MatOps<T>::cross_entropy(prediction, targets[aidx]);
-                } else {
-                    // std::cout << "skipping when predicting " << arithmetic::vocabulary.index2word[targets[aidx]]
-                    //           << " with prob = " << prediction.w()(targets[aidx])
-                    //           << " at position " << aidx << "."<< std::endl;
-                }
+
+                error = error + MatOps<T>::cross_entropy(prediction, targets[aidx]);
+
                 if (aidx + 1 < targets.size()) {
                     candidates = decoder_lstm.activate(embedding[targets[aidx]], candidates);
                 }
@@ -717,7 +713,7 @@ void training_loop(model_t& model,
 
     bool target_accuracy_reached = false;
 
-    while (!target_accuracy_reached) {
+    while (!target_accuracy_reached && epoch++ < FLAGS_graduation_time) {
 
         auto indices = utils::random_arange(train.size());
         auto indices_begin = indices.begin();
@@ -737,7 +733,7 @@ void training_loop(model_t& model,
             minibatch_error += error.w()(0);
             // </training>
             // // <reporting>
-            throttled_examples.maybe_run(seconds(2), [&]() {
+            throttled_examples.maybe_run(seconds(10), [&]() {
                 graph::NoBackprop nb;
                 auto random_example_index = utils::randint(0, validate.size() -1);
                 auto& expression = validate[random_example_index].first;
@@ -854,13 +850,18 @@ int main (int argc,  char* argv[]) {
               << " examples/difficulty : " << FLAGS_num_examples << std::endl
               << "              Solver : " << FLAGS_solver << std::endl;
 
-    vector<NumericalExample> train, validate;
+    vector<NumericalExample> train, validate, test;
+
+
 
     for (int difficulty = 1; difficulty < FLAGS_expression_length; difficulty += 2) {
         increase_dataset_difficulty(train, difficulty, FLAGS_num_examples);
         increase_dataset_difficulty(validate, difficulty, FLAGS_num_examples / 10);
+        increase_dataset_difficulty(test, difficulty, FLAGS_num_examples / 10);
 
         std::cout << "Increasing difficulty to " << difficulty << "." << std::endl;
         training_loop(model, train, validate);
+        std::cout << "Test accuracy on difficulty " << difficulty << " is "
+                  << 100.0 * accuracy(model, test, FLAGS_beam_width) << "%" << std::endl;
     }
 }

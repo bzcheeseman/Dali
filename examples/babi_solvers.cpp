@@ -503,10 +503,11 @@ class LstmBabiModel : public Model {
 
             auto vqa = make_shared<visualizable::QA<T>>(vcontext, vquestion, vanswer);
 
-            auto vexample = make_shared<visualizable::ClassifierExample>(vqa, vdistribution);
+            auto vgrid = make_shared<visualizable::GridLayout>();
+            vgrid->add_in_column(0, vqa);
+            vgrid->add_in_column(1, vdistribution);
 
-            // visualizer->feed(vqa->to_json());
-            visualizer->feed(vexample->to_json());
+            visualizer->feed(vgrid->to_json());
         }
 
 };

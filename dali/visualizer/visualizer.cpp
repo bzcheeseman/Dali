@@ -20,7 +20,7 @@ DEFINE_string(visualizer, "", "What to name the visualization job.");
 namespace visualizable {
 
     typedef std::shared_ptr<Visualizable> visualizable_ptr;
-    typedef std::shared_ptr<ClassifierExample> classifier_example_ptr;
+    typedef std::shared_ptr<GridLayout> grid_layout_ptr;
 
     template<typename R>
     std::vector<std::shared_ptr<Sentence<R>>> sentence_vector(const std::vector<std::vector<std::string>>& vec) {
@@ -121,17 +121,26 @@ namespace visualizable {
     template class QA<float>;
     template class QA<double>;
 
-    /** ClassifierExample **/
+    /** GridLayout **/
 
-    ClassifierExample::ClassifierExample(visualizable_ptr input, visualizable_ptr output) :
-            input(input), output(output) {
+    void GridLayout::add_in_column(int column, visualizable_ptr vis) {
+        while (grid.size() <= column)
+            grid.emplace_back();
+        grid[column].push_back(vis);
     }
 
-    json11::Json ClassifierExample::to_json() {
+    json11::Json GridLayout::to_json() {
+        vector<vector<json11::Json>> grid_as_json;
+        for (auto& column: grid) {
+            vector<json11::Json> column_contents;
+            for(auto& vis: column) {
+                column_contents.push_back(vis->to_json());
+            }
+            grid_as_json.push_back(column_contents);
+        }
         return Json::object {
-            { "type", "classifier_example"},
-            { "input", input->to_json()},
-            { "output", output->to_json()},
+            { "type", "grid_layout"},
+            { "grid", grid_as_json},
         };
     }
 

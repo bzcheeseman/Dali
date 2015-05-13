@@ -71,13 +71,14 @@ namespace visualizable {
         virtual json11::Json to_json() override;
     };
 
-    struct ClassifierExample : public Visualizable {
+    struct GridLayout : public Visualizable {
         typedef std::shared_ptr<Visualizable> visualizable_ptr;
 
-        visualizable_ptr input;
+        std::vector<std::vector<visualizable_ptr>> grid;
         visualizable_ptr output;
 
-        ClassifierExample(visualizable_ptr input, visualizable_ptr output);
+        // adds a card in <column>-th column
+        void add_in_column(int column, visualizable_ptr);
 
         virtual json11::Json to_json() override;
     };

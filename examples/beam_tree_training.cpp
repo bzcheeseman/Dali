@@ -38,6 +38,7 @@ DEFINE_int32(input_size,              50,      "Size of the word vectors");
 DEFINE_int32(graduation_time,         5000,    "How many epochs per difficulty class?");
 DEFINE_int32(hidden,                  100,     "How many Cells and Hidden Units should each LSTM have?");
 DEFINE_int32(beam_width,              10,      "Size of the training beam.");
+DEFINE_int32(visualizer_trees,        3,       "Max number of trees to show in visualizer per example.");
 
 ThreadPool* pool;
 std::shared_ptr<Visualizer> visualizer;
@@ -744,21 +745,42 @@ void training_loop(model_t& model,
                 expression_string.resize(expression_string.size() - 1);
                 std::cout << utils::join(expression_string) << std::endl;
 
+
+                vector<string> prediction_string;
+                vector<double> prediction_probability;
+
                 for (auto& prediction : predictions) {
                     if (validate[random_example_index].second == prediction.prediction) {
                         std::cout << utils::green;
                     }
+                    prediction_probability.push_back(prediction.get_probability().w()(0));
                     std::cout << "= (" << std::setprecision( 3 ) << prediction.get_probability().log().w()(0) << ") ";
-                    for (const auto& word : prediction.prediction) {
-                        if (word != vocab.word2index.at(utils::end_symbol))
-                            std::cout << vocab.index2word.at(word);
-                    }
-                    std::cout << utils::reset_color << std::endl;
+                    auto digits = vocab.decode(prediction.prediction);
+                    if (digits.back() == utils::end_symbol)
+                        digits.pop_back();
+                    auto joined_digits = utils::join(digits);
+                    prediction_string.push_back(joined_digits);
+                    std::cout << joined_digits << utils::reset_color << std::endl;
                 }
-                auto visualization = visualize_derivation(predictions[0].derivations[0],
-                                                          vocab.decode(expression));
+                auto vgrid = make_shared<visualizable::GridLayout>();
+
+                for (int didx = 0;
+                        didx < min((size_t)FLAGS_visualizer_trees, predictions[0].derivations.size());
+                        ++didx) {
+                    auto visualization = visualize_derivation(
+                            predictions[0].derivations[didx],
+                            vocab.decode(expression)
+                    );
+                    vgrid->add_in_column(0, visualization);
+                }
+                vgrid->add_in_column(1, make_shared<visualizable::Sentence<double>>(expression_string));
+                vgrid->add_in_column(1, make_shared<visualizable::FiniteDistribution<double>>(
+                    prediction_probability,
+                    prediction_string
+                ));
+
                 if (visualizer)
-                    visualizer->feed(visualization->to_json());
+                    visualizer->feed(vgrid->to_json());
 
             });
             double current_accuracy = -1;

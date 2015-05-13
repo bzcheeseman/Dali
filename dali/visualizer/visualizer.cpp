@@ -220,6 +220,22 @@ namespace visualizable {
     template<typename R>
     const std::vector<R> FiniteDistribution<R>::empty_vec;
 
+    template<typename T>
+    Probability<T>::Probability(T probability) : probability(probability) {
+    }
+
+    template<typename T>
+    json11::Json Probability<T>::to_json() {
+        return Json::object {
+            { "type", "probability"},
+            { "probability", probability },
+        };
+    }
+
+    template class Probability<float>;
+    template class Probability<double>;
+
+
     Tree::Tree(string label) :
             label(label) {
     }

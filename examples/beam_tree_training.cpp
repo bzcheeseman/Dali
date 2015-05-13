@@ -773,10 +773,8 @@ void training_loop(model_t& model,
                             predictions[0].derivations[didx],
                             vocab.decode(expression)
                     );
-                    auto tree_prob = std::to_string(predictions[0].nodes[didx].log_probability.exp().w()(0,0));
-                    vgrid->add_in_column(0, make_shared<visualizable::Sentence<double>>(
-                        vector<string>{ tree_prob }
-                    ));
+                    auto tree_prob = predictions[0].nodes[didx].log_probability.exp().w()(0,0);
+                    vgrid->add_in_column(0, make_shared<visualizable::Probability<double>>(tree_prob));
                     vgrid->add_in_column(0, visualization);
                 }
                 vgrid->add_in_column(1, make_shared<visualizable::Sentence<double>>(expression_string));

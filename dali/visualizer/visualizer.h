@@ -103,6 +103,15 @@ namespace visualizable {
         virtual json11::Json to_json() override;
     };
 
+    template<typename T>
+    struct Probability: public Visualizable {
+        T probability;
+
+        Probability(T probability);
+
+        virtual json11::Json to_json() override;
+    };
+
     struct Tree: public Visualizable {
         std::string label;
         std::vector<std::shared_ptr<Tree>> children;

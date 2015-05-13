@@ -83,11 +83,11 @@ namespace arithmetic {
         return examples;
     }
 
-    vector<NumericalExample> generate_numerical(int num, int expression_length) {
+    vector<NumericalExample> generate_numerical(int num, int expression_length, bool with_end_symbol) {
         auto examples = generate(num, expression_length);
         vector<NumericalExample> numerical_examples(examples.size());
         for (size_t i = 0; i < examples.size();i++) {
-            numerical_examples[i].first  = arithmetic::vocabulary.encode(examples[i].first, true);
+            numerical_examples[i].first  = arithmetic::vocabulary.encode(examples[i].first, with_end_symbol);
             numerical_examples[i].second = arithmetic::vocabulary.encode(examples[i].second, true);
         }
         return numerical_examples;

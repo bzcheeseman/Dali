@@ -28,16 +28,17 @@ static int RMSPROP_TYPE = 4;
 
 DEFINE_string(solver,                 "adadelta", "What solver to use (adadelta, sgd, adam)");
 DEFINE_double(reg,                    0.0,     "What penalty to place on L2 norm of weights?");
-DEFINE_double(learning_rate,          0.01,    "Learning rate for SGD and Adagrad.");
+DEFINE_double(learning_rate,          0.003,    "Learning rate for SGD and Adagrad.");
 DEFINE_int32(minibatch,               100,     "What size should be used for the minibatches ?");
 DEFINE_int32(j,                       9,       "How many threads should be used ?");
 DEFINE_int32(expression_length,       19,      "How much suffering to impose on our friend?");
 DEFINE_int32(num_examples,            5000,    "How much suffering to impose on our friend?");
 DEFINE_bool(memory_feeds_gates,       false,   "LSTM's memory cell also control gate outputs");
-DEFINE_int32(input_size,              50,      "Size of the word vectors");
-DEFINE_int32(graduation_time,         5000,    "How many epochs per difficulty class?");
-DEFINE_int32(hidden,                  100,     "How many Cells and Hidden Units should each LSTM have?");
+DEFINE_int32(input_size,              10,      "Size of the word vectors");
+DEFINE_int32(graduation_time,         50000,    "How many epochs per difficulty class?");
+DEFINE_int32(hidden,                  20,     "How many Cells and Hidden Units should each LSTM have?");
 DEFINE_int32(beam_width,              10,      "Size of the training beam.");
+DEFINE_bool(use_end_symbol,           false,   "Whether to use end symbol in expression when training.");
 DEFINE_int32(visualizer_trees,        3,       "Max number of trees to show in visualizer per example.");
 
 ThreadPool* pool;
@@ -742,7 +743,8 @@ void training_loop(model_t& model,
                                                  vocab.word2index.at(utils::end_symbol));
 
                 auto expression_string = arithmetic::vocabulary.decode(expression);
-                expression_string.resize(expression_string.size() - 1);
+                if (expression_string.back() == utils::end_symbol)
+                    expression_string.resize(expression_string.size() - 1);
                 std::cout << utils::join(expression_string) << std::endl;
 
 
@@ -811,7 +813,7 @@ void increase_dataset_difficulty(vector<NumericalExample>& dataset,
     random_shuffle(dataset.begin(), dataset.end());
     dataset.erase(dataset.begin() + dataset.size() / 2, dataset.end());
     auto new_examples =
-            arithmetic::generate_numerical(target_size - dataset.size(), new_difficulty);
+            arithmetic::generate_numerical(target_size - dataset.size(), new_difficulty, FLAGS_use_end_symbol);
     for (auto& new_example : new_examples) {
         dataset.emplace_back(new_example);
     }

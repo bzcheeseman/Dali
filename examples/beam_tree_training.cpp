@@ -764,6 +764,8 @@ void training_loop(model_t& model,
                 }
                 auto vgrid = make_shared<visualizable::GridLayout>();
 
+                assert2(predictions[0].derivations.size() == predictions[0].nodes.size(),
+                        "Szymon fucked up.");
                 for (int didx = 0;
                         didx < min((size_t)FLAGS_visualizer_trees, predictions[0].derivations.size());
                         ++didx) {
@@ -771,6 +773,10 @@ void training_loop(model_t& model,
                             predictions[0].derivations[didx],
                             vocab.decode(expression)
                     );
+                    auto tree_prob = std::to_string(predictions[0].nodes[didx].log_probability.exp().w()(0,0));
+                    vgrid->add_in_column(0, make_shared<visualizable::Sentence<double>>(
+                        vector<string>{ tree_prob }
+                    ));
                     vgrid->add_in_column(0, visualization);
                 }
                 vgrid->add_in_column(1, make_shared<visualizable::Sentence<double>>(expression_string));

@@ -41,6 +41,8 @@ DEFINE_int32(beam_width,              10,      "Size of the training beam.");
 DEFINE_bool(use_end_symbol,           false,   "Whether to use end symbol in expression when training.");
 DEFINE_int32(visualizer_trees,        3,       "Max number of trees to show in visualizer per example.");
 
+const int MAX_OUTPUT_LENGTH = 10;
+
 ThreadPool* pool;
 std::shared_ptr<Visualizer> visualizer;
 
@@ -642,7 +644,7 @@ double accuracy(const model_t& model, vector<arithmetic::NumericalExample>& exam
 
             auto predictions = model.predict(expression,
                                              beam_width,
-                                             20,
+                                             MAX_OUTPUT_LENGTH,
                                              vocab.word2index.at(utils::end_symbol));
             auto& best_prediction = predictions[0].prediction;
             if (best_prediction.size() == correct_answer.size()) {
@@ -739,7 +741,7 @@ void training_loop(model_t& model,
                 auto& expression = validate[random_example_index].first;
                 auto predictions = model.predict(expression,
                                                  beam_width,
-                                                 20,
+                                                 MAX_OUTPUT_LENGTH,
                                                  vocab.word2index.at(utils::end_symbol));
 
                 auto expression_string = arithmetic::vocabulary.decode(expression);

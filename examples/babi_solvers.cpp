@@ -35,11 +35,33 @@ using utils::assert2;
 using utils::MS;
 using std::to_string;
 
-DEFINE_int32(j, 9, "Number of threads");
-DEFINE_bool(solver_mutex, false, "Synchronous execution of solver step.");
-DEFINE_bool(margin_loss, false, "Use margin loss instead of cross entropy");
-DEFINE_int32(minibatch, 100, "How many stories to put in a single batch.");
-DEFINE_double(margin, 0.1, "Margin for margine loss (must use --margin_loss).");
+DEFINE_int32(j,                        1,      "Number of threads");
+DEFINE_bool(solver_mutex,              false,  "Synchronous execution of solver step.");
+DEFINE_bool(margin_loss,               false,  "Use margin loss instead of cross entropy");
+DEFINE_int32(minibatch,                100,    "How many stories to put in a single batch.");
+DEFINE_double(margin,                  0.1,    "Margin for margine loss (must use --margin_loss).");
+// generic lstm properties
+DEFINE_bool(lstm_shortcut,             true,   "Should shortcut be used in LSTMs");
+DEFINE_bool(lstm_feed_mry,             true,   "Should memory be fed to gates in LSTMs");
+// high level
+DEFINE_int32(hl_hidden,                20,     "What hidden size to use for high level.");
+DEFINE_int32(hl_stack,                 4,      "How high is the LSTM for high level.");
+DEFINE_double(hl_dropout,              0.7,    "How much dropout to use at high level.");
+// question gate model
+DEFINE_double(question_gate_dropout,   0.3,    "How much dropout to use for question gates.");
+DEFINE_int32(question_gate_input,      20,     "Embedding size for question gate models.");
+DEFINE_int32(question_gate_stack,      2,      "How high is the LSTM for question gates.");
+DEFINE_int32(question_gate_hidden,     40,     "What hidden size to use for question gates level.");
+DEFINE_int32(qg_hidden,                10,     "hidden for qg.");
+DEFINE_int32(qg_second_order,          10,     "second order for qg.");
+// text repr model
+DEFINE_int32(text_repr_input,          40,     "Embedding size for text_representation models.");
+DEFINE_int32(text_repr_hidden,         40,     "What hidden size to use for question representation.");
+DEFINE_int32(text_repr_stack,          2,      "How high is the LSTM for text representation");
+DEFINE_double(text_repr_dropout,       0.3,    "How much dropout to use for text representation.");
+
+
+
 // Visualizer
 std::shared_ptr<Visualizer> visualizer;
 
@@ -171,7 +193,7 @@ class LolGate : public AbstractLayer<T> {
 
 
 template<typename T>
-class LstmBabiModel : public Model {
+class LstmBabiModel {
     // MODEL PARAMS
 
     StackedLSTM<T> fact_model;
@@ -179,19 +201,6 @@ class LstmBabiModel : public Model {
 
     StackedLSTM<T> question_model;
     Mat<T> question_representation_embeddings;
-
-
-    // const vector<int>   QUESTION_GATE_STACKS              =      {50};
-
-
-    // input here is fact word embedding and question_fact_word_gate_model final hidden.
-    // const int           QG_FACTS_INPUT1                   = utils::vsum(TEXT_REPR_STACKS);
-    // const int           QG_FACT_WORDS_INPUT1              = TEXT_REPR_EMBEDDINGS;
-
-    // const int           QG_INPUT2                         = utils::vsum(QUESTION_GATE_STACKS);
-    // const int           QG_SECOND_ORDER                   = 40;
-    // const int           QG_HIDDEN                         = 40;
-
 
     StackedLSTM<T> question_fact_gate_model;
     Mat<T> question_fact_gate_embeddings;
@@ -202,14 +211,10 @@ class LstmBabiModel : public Model {
     LolGate<T> fact_gate;
     LolGate<T> fact_word_gate;
 
-
-    // const int           HL_INPUT_SIZE              =      utils::vsum(TEXT_REPR_STACKS);
-
     StackedLSTM<T> hl_model;
 
     Mat<T> please_start_prediction;
 
-    // const int           DECODER_INPUT              =      utils::vsum(HL_STACKS);
     const int           DECODER_OUTPUT; // gets initialized to vocabulary size in constructor
     Layer<T>            decoder;
 
@@ -222,23 +227,6 @@ class LstmBabiModel : public Model {
 
     public:
         shared_ptr<Vocab> vocab;
-
-        static Conf default_conf() {
-            Conf conf = Model::default_conf();
-            conf.def_bool("lstm_shortcut", true);
-            conf.def_bool("lstm_feed_mry", true);
-            conf.def_float("TEXT_REPR_DROPOUT", 0.0, 1.0, 0.3);
-            conf.def_float("QUESTION_GATE_DROPOUT", 0.0, 1.0, 0.3);
-            conf.def_float("HL_DROPOUT", 0.0, 1.0, 0.7);
-            conf.def_int("QUESTION_GATE_EMBEDDINGS", 5, 50, 40);
-            conf.def_int("TEXT_REPR_EMBEDDINGS", 5, 50, 40);
-            conf.def_stacks("HL_STACKS", 2,7,4,10,100, 50, 20);
-            conf.def_stacks("TEXT_REPR_STACKS", 1, 4, 2, 5, 50, 40, 30);
-            conf.def_stacks("QUESTION_GATE_STACKS", 1, 4, 2, 5, 50, 40, 30);
-            conf.def_int("QG_SECOND_ORDER", 3, 30, 10);
-            conf.def_int("QG_HIDDEN", 3, 30, 10);
-            return conf;
-        }
 
         vector<Mat<T>> parameters() {
             vector<Mat<T>> res;
@@ -271,7 +259,6 @@ class LstmBabiModel : public Model {
         }
 
         LstmBabiModel(const LstmBabiModel& model, bool copy_w, bool copy_dw) :
-                Model(model.c()),
                 question_fact_gate_model(model.question_fact_gate_model, copy_w, copy_dw),
                 question_fact_word_gate_model(
                         model.question_fact_word_gate_model, copy_w, copy_dw),
@@ -294,56 +281,55 @@ class LstmBabiModel : public Model {
             vocab = model.vocab;
         }
 
-        LstmBabiModel(shared_ptr<Vocab> vocabulary, Conf configuration) :
-                Model(configuration),
+        LstmBabiModel(shared_ptr<Vocab> vocabulary) :
                 // first true - shortcut, second true - feed memory to gates
-                question_fact_gate_model(c().i("QUESTION_GATE_EMBEDDINGS"),
-                                         c().stacks("QUESTION_GATE_STACKS"),
-                                         c().b("lstm_shortcut"),
-                                         c().b("lstm_feed_mry")),
-                question_fact_word_gate_model(c().i("QUESTION_GATE_EMBEDDINGS"),
-                                              c().stacks("QUESTION_GATE_STACKS"),
-                                              c().b("lstm_shortcut"),
-                                              c().b("lstm_feed_mry")),
-                fact_gate(utils::vsum(c().stacks("TEXT_REPR_STACKS")),
-                          utils::vsum(c().stacks("QUESTION_GATE_STACKS")),
-                          c().i("QG_SECOND_ORDER"),
-                          c().i("QG_HIDDEN")),
-                fact_word_gate(c().i("TEXT_REPR_EMBEDDINGS"),
-                               utils::vsum(c().stacks("QUESTION_GATE_STACKS")),
-                               c().i("QG_SECOND_ORDER"),
-                               c().i("QG_HIDDEN")),
-                question_model(c().i("TEXT_REPR_EMBEDDINGS"),
-                               c().stacks("TEXT_REPR_STACKS"),
-                               c().b("lstm_shortcut"),
-                               c().b("lstm_feed_mry")),
-                fact_model(c().i("TEXT_REPR_EMBEDDINGS"),
-                           c().stacks("TEXT_REPR_STACKS"),
-                           c().b("lstm_shortcut"),
-                           c().b("lstm_feed_mry")),
-                hl_model(utils::vsum(c().stacks("TEXT_REPR_STACKS")),
-                         c().stacks("HL_STACKS"),
-                         c().b("lstm_shortcut"),
-                         c().b("lstm_feed_mry")),
+                question_fact_gate_model(FLAGS_question_gate_input,
+                                         vector<int>(FLAGS_question_gate_stack, FLAGS_question_gate_hidden),
+                                         FLAGS_lstm_shortcut,
+                                         FLAGS_lstm_feed_mry),
+                question_fact_word_gate_model(FLAGS_question_gate_input,
+                                              vector<int>(FLAGS_question_gate_stack, FLAGS_question_gate_hidden),
+                                              FLAGS_lstm_shortcut,
+                                              FLAGS_lstm_feed_mry),
+                fact_gate(utils::vsum(vector<int>(FLAGS_text_repr_stack, FLAGS_text_repr_hidden)),
+                          utils::vsum(vector<int>(FLAGS_question_gate_stack, FLAGS_question_gate_hidden)),
+                          FLAGS_qg_second_order,
+                          FLAGS_qg_hidden),
+                fact_word_gate(FLAGS_text_repr_input,
+                               utils::vsum(vector<int>(FLAGS_question_gate_stack, FLAGS_question_gate_hidden)),
+                               FLAGS_qg_second_order,
+                               FLAGS_qg_hidden),
+                question_model(FLAGS_text_repr_input,
+                               vector<int>(FLAGS_text_repr_stack, FLAGS_text_repr_hidden),
+                               FLAGS_lstm_shortcut,
+                               FLAGS_lstm_feed_mry),
+                fact_model(FLAGS_text_repr_input,
+                           vector<int>(FLAGS_text_repr_stack, FLAGS_text_repr_hidden),
+                           FLAGS_lstm_shortcut,
+                           FLAGS_lstm_feed_mry),
+                hl_model(utils::vsum(vector<int>(FLAGS_text_repr_stack, FLAGS_text_repr_hidden)),
+                         vector<int>(FLAGS_hl_stack, FLAGS_hl_hidden),
+                         FLAGS_lstm_shortcut,
+                         FLAGS_lstm_feed_mry),
                 DECODER_OUTPUT(vocabulary->word2index.size()),
-                decoder(utils::vsum(c().stacks("HL_STACKS")), vocabulary->word2index.size()) {
+                decoder(utils::vsum(vector<int>(FLAGS_hl_stack, FLAGS_hl_hidden)), vocabulary->word2index.size()) {
             vocab = vocabulary;
             size_t n_words = vocab->index2word.size();
 
             question_fact_gate_embeddings =
-                    Mat<T>(n_words, c().i("QUESTION_GATE_EMBEDDINGS"),
-                           weights<T>::uniform(1.0/c().i("QUESTION_GATE_EMBEDDINGS")));
+                    Mat<T>(n_words, FLAGS_question_gate_input,
+                           weights<T>::uniform(1.0/FLAGS_question_gate_input));
             question_fact_word_gate_embeddings =
-                    Mat<T>(n_words, c().i("QUESTION_GATE_EMBEDDINGS"),
-                           weights<T>::uniform(1.0/c().i("QUESTION_GATE_EMBEDDINGS")));
+                    Mat<T>(n_words, FLAGS_question_gate_input,
+                           weights<T>::uniform(1.0/FLAGS_question_gate_input));
             fact_embeddings =
-                    Mat<T>(n_words, c().i("TEXT_REPR_EMBEDDINGS"),
-                           weights<T>::uniform(1.0/c().i("TEXT_REPR_EMBEDDINGS")));
+                    Mat<T>(n_words, FLAGS_text_repr_input,
+                           weights<T>::uniform(1.0/FLAGS_text_repr_input));
             question_representation_embeddings =
-                    Mat<T>(n_words, c().i("TEXT_REPR_EMBEDDINGS"),
-                           weights<T>::uniform(1.0/c().i("TEXT_REPR_EMBEDDINGS")));
+                    Mat<T>(n_words, FLAGS_text_repr_input,
+                           weights<T>::uniform(1.0/FLAGS_text_repr_input));
             please_start_prediction =
-                    Mat<T>(utils::vsum(c().stacks("TEXT_REPR_STACKS")), 1,
+                    Mat<T>(utils::vsum(vector<int>(FLAGS_text_repr_stack, FLAGS_text_repr_hidden)), 1,
                            weights<T>::uniform(1.0));
         }
 
@@ -404,17 +390,17 @@ class LstmBabiModel : public Model {
             auto fact_word_gate_hidden = lstm_final_activation(
                     get_embeddings(reversed(question), question_fact_word_gate_embeddings),
                     question_fact_word_gate_model,
-                    use_dropout ? c().f("QUESTION_GATE_DROPOUT") : 0.0);
+                    use_dropout ? FLAGS_question_gate_dropout : 0.0);
 
             auto fact_gate_hidden = lstm_final_activation(
                     get_embeddings(reversed(question), question_fact_gate_embeddings),
                     question_fact_gate_model,
-                    use_dropout ? c().f("QUESTION_GATE_DROPOUT") : 0.0);
+                    use_dropout ? FLAGS_question_gate_dropout : 0.0);
 
             auto question_representation = lstm_final_activation(
                     get_embeddings(reversed(question), question_representation_embeddings),
                     question_model,
-                    use_dropout ? c().f("TEXT_REPR_DROPOUT") : 0.0);
+                    use_dropout ? FLAGS_text_repr_dropout : 0.0);
 
             vector<Mat<T>> fact_representations;
             vector<vector<Mat<T>>> fact_words_gate_memory;
@@ -431,7 +417,7 @@ class LstmBabiModel : public Model {
                 auto fact_repr = lstm_final_activation(
                         this_fact_embeddings,//gated_embeddings,
                         fact_model,
-                        use_dropout ? c().f("TEXT_REPR_DROPOUT") : 0.0);
+                        use_dropout ? FLAGS_text_repr_dropout : 0.0);
                 fact_representations.push_back(fact_repr);
             }
 
@@ -445,7 +431,7 @@ class LstmBabiModel : public Model {
             hl_input.push_back(please_start_prediction);
 
             auto hl_hidden = lstm_final_activation(
-                    hl_input, hl_model, use_dropout ? c().f("HL_DROPOUT") : 0.0);
+                    hl_input, hl_model, use_dropout ? FLAGS_hl_dropout : 0.0);
 
             auto log_probs = decoder.activate(hl_hidden);
 
@@ -770,12 +756,12 @@ vector<string> predict(const vector<vector<string>>& facts,
     return {best_model->vocab->index2word[word_idx]};
 }
 
-void reset(const vector<babi::Story>& data, Conf babi_model_conf=BabiModel::default_conf()) {
+void reset(const vector<babi::Story>& data) {
     thread_models.clear();
     auto vocab_vector = babi::vocab_from_data(data);
     model.reset();
     best_model.reset();
-    model = std::make_shared<BabiModel>(make_shared<Vocab> (vocab_vector), babi_model_conf);
+    model = std::make_shared<BabiModel>(make_shared<Vocab> (vocab_vector));
 }
 
 double benchmark_task(const std::string task) {
@@ -799,39 +785,6 @@ void benchmark_all() {
     babi::compare_results(our_results);
 }
 
-
-void grid_search() {
-    std::string task = "qa2_two-supporting-facts";
-    auto data = babi::Parser::training_data(task);
-    Conf babi_model_conf = BabiModel::default_conf();
-    int iters = 1;
-    double best_accuracy = 0.0;
-
-    perturb_for(seconds(60*15), babi_model_conf, [&babi_model_conf, &task, &data, &iters, &best_accuracy]() {
-        reset(data, babi_model_conf);
-        std::cout << "Grid search iteration " << iters++ << std::endl;
-        std::cout << "HL_STACK => "
-                  << babi_model_conf.stacks("HL_STACKS") << std::endl;
-        std::cout << "TEXT_REPR_STACKS => "
-                  << babi_model_conf.stacks("TEXT_REPR_STACKS") << std::endl;
-        std::cout << "QUESTION_GATE_STACKS => "
-                  << babi_model_conf.stacks("QUESTION_GATE_STACKS") << std::endl;
-
-
-        shared_ptr<TimeLimited> training_method = make_shared<TimeLimited>(seconds(30));
-        train(data, training_method);
-        double accuracy = babi::task_accuracy(task, predict);
-        best_accuracy = std::max(accuracy, best_accuracy);
-        std::cout << "Achieved " << 100.0 * accuracy << "% accuracy on task " << task
-                  << " (best so far is " << 100.0 * best_accuracy
-                  << "%). Configuration was: " << std::endl
-                  << std::to_string(babi_model_conf, true) << std::endl;
-        return -accuracy;
-    });
-    std::cout << "Best accuracy found by grid search (" << 100.0 * best_accuracy
-              << "%) is achieved by the following configuration: " << std::endl
-              << std::to_string(babi_model_conf, true) << std::endl;
-}
 
 int main(int argc, char** argv) {
     sane_crashes::activate();

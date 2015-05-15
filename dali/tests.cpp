@@ -89,6 +89,5 @@ TEST(arithmetic, generate) {
 
     ASSERT_EQ(demultiplied, example3);
     ASSERT_EQ(arithmetic::compute_result(std::get<0>(example3), std::get<1>(example3)), 130);
-
 }
 

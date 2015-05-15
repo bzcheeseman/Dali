@@ -18,10 +18,9 @@ namespace arithmetic {
         int el_idx = 0;
         for (int j = 0; j < numbers.size() + ops.size(); j++) {
             if (use_operator) {
-                character_list.push_back(ops[op_idx]);
-                op_idx++;
+                character_list.push_back(ops[op_idx++]);
             } else {
-                auto num = to_string(numbers[el_idx]);
+                auto num = to_string(numbers[el_idx++]);
                 for (int c_offset = 0; c_offset < num.size(); c_offset++) {
                     character_list.emplace_back(
                         num.begin() + c_offset,
@@ -29,7 +28,7 @@ namespace arithmetic {
                     );
                 }
             }
-            use_operator = use_operator ? false : true;
+            use_operator = !use_operator;
         }
         return character_list;
     }
@@ -47,6 +46,7 @@ namespace arithmetic {
                 use_operator = true;
             }
         }
+
         return example;
     }
 

@@ -33,6 +33,7 @@ DEFINE_int32(j,                  1,
 
 DEFINE_int32(expression_length, 5, "How much suffering to impose on our friend?");
 DEFINE_int32(num_examples,      1500, "How much suffering to impose on our friend?");
+DEFINE_int32(max_number_in_expression, 100000, "Maximum number used in mathematical expressions.");
 
 ThreadPool* pool;
 
@@ -79,7 +80,7 @@ int main (int argc,  char* argv[]) {
 
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
-    auto ex_bonus = arithmetic::generate(FLAGS_num_examples, FLAGS_expression_length);
+    auto ex_bonus = arithmetic::generate(FLAGS_num_examples, FLAGS_expression_length, 0, FLAGS_max_number_in_expression);
 
     for (auto& ex : ex_bonus) {
         std::cout << utils::join(std::get<0>(ex)) << " => " << utils::join(std::get<1>(ex)) << std::endl;

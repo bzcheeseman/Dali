@@ -40,6 +40,7 @@ DEFINE_int32(hidden,                  20,     "How many Cells and Hidden Units s
 DEFINE_int32(beam_width,              10,      "Size of the training beam.");
 DEFINE_bool(use_end_symbol,           false,   "Whether to use end symbol in expression when training.");
 DEFINE_int32(visualizer_trees,        3,       "Max number of trees to show in visualizer per example.");
+DEFINE_int32(max_number_in_expression, 100000, "Maximum number used in mathematical expressions.");
 
 const int MAX_OUTPUT_LENGTH = 10;
 
@@ -818,7 +819,7 @@ void increase_dataset_difficulty(vector<NumericalExample>& dataset,
             arithmetic::generate_numerical(target_size - dataset.size(),
                                            new_difficulty,
                                            0,
-                                           1000,
+                                           FLAGS_max_number_in_expression,
                                            FLAGS_use_end_symbol);
     for (auto& new_example : new_examples) {
         dataset.emplace_back(new_example);

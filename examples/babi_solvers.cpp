@@ -37,9 +37,8 @@ using std::to_string;
 
 DEFINE_int32(j,                        1,      "Number of threads");
 DEFINE_bool(solver_mutex,              false,  "Synchronous execution of solver step.");
-DEFINE_bool(margin_loss,               false,  "Use margin loss instead of cross entropy");
 DEFINE_int32(minibatch,                100,    "How many stories to put in a single batch.");
-DEFINE_double(margin,                  0.1,    "Margin for margine loss (must use --margin_loss).");
+DEFINE_int32(max_epochs,               1000,   "maximum number of epochs for trainging");
 // generic lstm properties
 DEFINE_bool(lstm_shortcut,             true,   "Should shortcut be used in LSTMs");
 DEFINE_bool(lstm_feed_mry,             true,   "Should memory be fed to gates in LSTMs");
@@ -59,8 +58,16 @@ DEFINE_int32(text_repr_input,          40,     "Embedding size for text_represen
 DEFINE_int32(text_repr_hidden,         40,     "What hidden size to use for question representation.");
 DEFINE_int32(text_repr_stack,          2,      "How high is the LSTM for text representation");
 DEFINE_double(text_repr_dropout,       0.3,    "How much dropout to use for text representation.");
+// error
+DEFINE_bool(margin_loss,               true,  "Use margin loss instead of cross entropy");
+DEFINE_double(margin,                  0.1,    "Margin for margine loss (must use --margin_loss).");
+DEFINE_double(unsupporting_ratio,      0.1,    "How much to penalize unsporring facts (for supporting it's 1.0).");
+DEFINE_double(fact_selection_lambda,   0.1,    "How much fact selection matters in error.");
+DEFINE_double(word_selection_sparsity, 0.0001, "How much does word selection sparsity matters");
+DEFINE_string(babi_problem,            "",     "Which problem to benchmark");
 
-
+static bool dummy3 = GFLAGS_NAMESPACE::RegisterFlagValidator(
+            &FLAGS_babi_problem, &utils::validate_flag_nonempty);
 
 // Visualizer
 std::shared_ptr<Visualizer> visualizer;
@@ -525,6 +532,7 @@ const double FACT_WORD_SELECTION_LAMBDA_MAX = 0.0005;
 /* TRAINING FUNCTIONS */
 shared_ptr<BabiModel> model;
 shared_ptr<BabiModel> best_model;
+int best_model_epoch = 0;
 
 vector<BabiModel> thread_models;
 
@@ -547,7 +555,7 @@ MatrixXd errors(StoryActivation<REAL_t> activation,
         auto partial_error = MatOps<REAL_t>::binary_cross_entropy(
                                     activation.fact_gate_memory[i],
                                     supporting ? 1.0 : 0.0);
-        float coeff = supporting ? 1.0 : 0.1;
+        float coeff = supporting ? 1.0 : FLAGS_unsupporting_ratio;
 
         fact_selection_error = fact_selection_error + partial_error * coeff;
     }
@@ -555,8 +563,8 @@ MatrixXd errors(StoryActivation<REAL_t> activation,
     Mat<REAL_t> total_error;
 
     total_error = prediction_error
-                + fact_selection_error * FACT_SELECTION_LAMBDA_MAX;
-                //+ activation.fact_word_sum() * FACT_WORD_SELECTION_LAMBDA_MAX;
+                + fact_selection_error * FLAGS_fact_selection_lambda
+                + activation.fact_word_sum() * FLAGS_word_selection_sparsity;
 
     total_error = total_error / FLAGS_minibatch;
 
@@ -687,28 +695,29 @@ void train(const vector<babi::Story>& data, shared_ptr<Training> training_method
     std::vector<babi::Story> train(data.begin(), data.begin() + training_size);
     std::vector<babi::Story> validation(data.begin() + training_size, data.end());
 
-    int epoch = 0;
-
     auto params = model->parameters();
     bool solver_reset_cache = false;
 
-    //Solver::AdaDelta<REAL_t> solver(params, 0.95, 1e-9, 5.0);
+    Solver::AdaDelta<REAL_t> solver(params, 0.95, 1e-9, 5.0);
 
     // Solver::Adam<REAL_t> solver(params);
 
-    Solver::AdaGrad<REAL_t> solver(params, 1e-9, 100.0, 1e-8); solver_reset_cache = true;
+    // Solver::AdaGrad<REAL_t> solver(params, 1e-9, 100.0, 1e-8); solver_reset_cache = true;
     //AdaGrad:
-    solver.step_size = 0.2 / FLAGS_minibatch;
+    // solver.step_size = 0.2 / FLAGS_minibatch;
 
 
     training_method->reset();
 
     double best_validation = run_epoch(validation, &solver, false)(0);
     best_model = std::make_shared<BabiModel>(*model, true, true);
+    best_model_epoch = 0;
+
+    int epoch = 0;
 
     Throttled example_visualization;
 
-    while (true) {
+    while (epoch++ < FLAGS_max_epochs) {
         auto training_errors = run_epoch(train, &solver, true);
         auto validation_errors = run_epoch(validation, &solver, false);
         if (!FLAGS_visualizer.empty()) {
@@ -727,13 +736,15 @@ void train(const vector<babi::Story>& data, shared_ptr<Training> training_method
                                     << training_errors(1) << " "
                                     << training_errors(2) << std::endl
                   << "VALIDATION ACCURACY: " << 100.0 * babi::accuracy(validation, predict) << "%" << std::endl;
-        if (training_method->should_stop(validation_errors(0))) break;
+        if (training_method->should_stop(validation_errors(0)))
+            break;
         training_method->report();
 
         if (best_validation > training_method->validation_error()) {
             std::cout << "NEW WORLD RECORD!" << std::endl;
             best_validation = training_method->validation_error();
             best_model = std::make_shared<BabiModel>(*model, true, true);
+            best_model_epoch = epoch;
         }
     }
 }
@@ -769,11 +780,10 @@ double benchmark_task(const std::string task) {
     auto data = babi::Parser::training_data(task);
     reset(data);
 
-    //shared_ptr<MaxEpochs> training_method = make_shared<MaxEpochs>(5);
-    //train(data, training_method);
     train(data);
+    std::cout << "[RESULTS] Best model was achieved at epoch " << best_model_epoch << " ." << std::endl;
     double accuracy = babi::task_accuracy(task, predict);
-    std::cout << "Accuracy on " << task << " is " << 100 * accuracy << "." << std::endl;
+    std::cout << "[RESULTS] Accuracy on " << task << " is " << 100 * accuracy << " ." << std::endl;
     return accuracy;
 }
 
@@ -805,9 +815,8 @@ int main(int argc, char** argv) {
 
     std::cout << "Number of threads: " << FLAGS_j << (FLAGS_solver_mutex ? "(with solver mutex)" : "") << std::endl;
     std::cout << "Using " << (FLAGS_margin_loss ? "margin loss" : "cross entropy") << std::endl;
-    // grid_search();
 
-    benchmark_all();
+    benchmark_task(FLAGS_babi_problem);
 
 
     // benchmark_task("multitasking");

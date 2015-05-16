@@ -717,7 +717,7 @@ void train(const vector<babi::Story>& data, shared_ptr<Training> training_method
 
     Throttled example_visualization;
 
-    while (epoch++ < FLAGS_max_epochs) {
+    while (epoch < FLAGS_max_epochs) {
         auto training_errors = run_epoch(train, &solver, true);
         auto validation_errors = run_epoch(validation, &solver, false);
         if (!FLAGS_visualizer.empty()) {

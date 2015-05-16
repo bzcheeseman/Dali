@@ -40,7 +40,7 @@ small_model_flags="--hl_hidden 30 \
                    --question_gate_input 20 \
                    --question_gate_stack 1 \
                    --question_gate_hidden 20 \
-                   --test_repr_input 40 \
+                   --text_repr_input 40 \
                    --text_repr_hidden 100 \
                    --text_repr_stack 2"
 

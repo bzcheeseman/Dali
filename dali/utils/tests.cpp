@@ -9,8 +9,6 @@
 #include "dali/utils.h"
 #include "dali/utils/ThreadPool.h"
 
-
-
 using std::chrono::milliseconds;
 using std::make_shared;
 using std::string;

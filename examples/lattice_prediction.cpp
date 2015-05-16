@@ -212,7 +212,7 @@ int main( int argc, char* argv[]) {
 
 
     auto lattice     = OntologyBranch::load(FLAGS_lattice)[0];
-    auto examples    = utils::load_tokenized_labeled_corpus(FLAGS_train);
+    auto examples    = utils::load_tokenized_labeled_corpus(FLAGS_train, true, ' ');
     auto index2word  = utils::get_vocabulary(examples, FLAGS_min_occurence);
     auto index2label = utils::get_lattice_vocabulary(lattice);
     Vocab word_vocab(index2word);

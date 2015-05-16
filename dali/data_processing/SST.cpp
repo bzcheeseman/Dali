@@ -1,4 +1,4 @@
-#include "SST.h"
+#include "dali/data_processing/SST.h"
 
 using std::string;
 using std::vector;

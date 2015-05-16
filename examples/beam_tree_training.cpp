@@ -770,7 +770,7 @@ void training_loop(model_t& model,
                 auto vgrid = make_shared<visualizable::GridLayout>();
 
                 assert2(predictions[0].derivations.size() == predictions[0].nodes.size(),
-                        "Szymon fucked up.");
+                        "Szymon messed up.");
                 for (int didx = 0;
                         didx < min((size_t)FLAGS_visualizer_trees, predictions[0].derivations.size());
                         ++didx) {

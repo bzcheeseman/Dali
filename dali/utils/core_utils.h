@@ -279,7 +279,11 @@ namespace utils {
 
         **/
         std::vector<std::pair<std::string, std::string>> load_labeled_corpus(const std::string&);
-        tokenized_labeled_dataset load_tokenized_labeled_corpus(const std::string&);
+        tokenized_labeled_dataset load_tokenized_labeled_corpus(const std::string&, bool left_label, const char& delimiter = ' ');
+
+        template<typename T>
+        void load_tokenized_labeled_corpus_from_stream(T&, bool& left_label, tokenized_labeled_dataset&, const char& delimiter = ' ');
+
         std::vector<str_sequence> load_tokenized_unlabeled_corpus(const std::string&);
         str_sequence tokenize(const std::string&);
         str_sequence get_vocabulary(const tokenized_labeled_dataset&, int);

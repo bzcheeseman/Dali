@@ -1,5 +1,5 @@
-#ifndef SST_MAT_H
-#define SST_MAT_H
+#ifndef SST_DALI_H
+#define SST_DALI_H
 
 #include <memory>
 #include <fstream>

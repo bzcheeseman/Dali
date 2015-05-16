@@ -2,6 +2,7 @@
 
 #include "dali/data_processing/Glove.h"
 #include "dali/data_processing/Arithmetic.h"
+#include "dali/data_processing/NER.h"
 
 TEST(Glove, load) {
     auto embedding = glove::load<double>( STR(DALI_DATA_DIR) "/glove/test_data.txt");
@@ -41,3 +42,7 @@ TEST(arithmetic, generate) {
     ASSERT_EQ(arithmetic::compute_result(std::get<0>(example3), std::get<1>(example3)), 130);
 }
 
+TEST(NER, load) {
+    auto NER_data = NER::load( STR(DALI_DATA_DIR) "/NER/NER_dummy_dataset.txt");
+    ASSERT_EQ(NER_data.size(), 2);
+}

@@ -147,7 +147,7 @@ namespace utils {
         }
 
         void ensure_directory (std::string& dirname) {
-                if (dirname.back() != '/') dirname += "/";
+            if (dirname.back() != '/') dirname += "/";
         }
 
         vector<string> split(const std::string &s, char delim, bool keep_empty_strings) {
@@ -395,7 +395,7 @@ namespace utils {
                 ogzstream fpgz(fname.c_str(), mode);
                 save_list_to_stream(list, fpgz);
             } else {
-                ofstream fp(fname.c_str(), mode);
+                ofstream fp(fname, mode);
                 save_list_to_stream(list, fp);
             }
         }
@@ -611,21 +611,44 @@ namespace utils {
             return vector<string>(begin, end);
         }
 
-        vector<std::pair<vector<string>, string>> load_tokenized_labeled_corpus(const string& fname) {
-            ifstream fp(fname.c_str());
-            string l;
-            const char space = ' ';
+        vector<std::pair<vector<string>, string>> load_tokenized_labeled_corpus(const string& fname, bool left_label, const char& delimiter) {
             vector<std::pair<vector<string>, string>> pairs;
-            string::size_type n;
-            while (std::getline(fp, l)) {
-                n = l.find(space);
-                pairs.emplace_back(std::piecewise_construct,
-                    std::forward_as_tuple(tokenize(string(l.begin() + n + 1, l.end()))),
-                    std::forward_as_tuple(l.begin(), l.begin() + n)
-                );
+            if (utils::is_gzip(fname)) {
+                igzstream fpgz(fname.c_str());
+                load_tokenized_labeled_corpus_from_stream(fpgz, left_label, pairs, delimiter);
+            } else {
+                ifstream fp(fname);
+                load_tokenized_labeled_corpus_from_stream(fp,   left_label, pairs, delimiter);
             }
             return pairs;
         }
+
+        template<typename T>
+        void load_tokenized_labeled_corpus_from_stream(T& stream, bool& left_label, vector<std::pair<vector<string>, string>>& pairs, const char& delimiter) {
+            string::size_type n;
+            string l;
+            while (std::getline(stream, l)) {
+                n = l.find(delimiter);
+                if (n < l.size()) {
+                    if (left_label) {
+                        pairs.emplace_back(std::piecewise_construct,
+                            std::forward_as_tuple(tokenize(string(l.begin() + n + 1, l.end()))),
+                            std::forward_as_tuple(l.begin(), l.begin() + n)
+                        );
+                    } else {
+                        pairs.emplace_back(std::piecewise_construct,
+                            std::forward_as_tuple(tokenize(string(l.begin(), l.begin() + n))),
+                            std::forward_as_tuple(l.begin() + n + 1, l.end())
+                        );
+                    }
+                }
+            }
+        }
+
+        template void load_tokenized_labeled_corpus_from_stream(igzstream&,         bool&, vector<std::pair<vector<string>, string>>&, const char& delimiter);
+        template void load_tokenized_labeled_corpus_from_stream(std::fstream&,      bool&, vector<std::pair<vector<string>, string>>&, const char& delimiter);
+        template void load_tokenized_labeled_corpus_from_stream(std::stringstream&, bool&, vector<std::pair<vector<string>, string>>&, const char& delimiter);
+        template void load_tokenized_labeled_corpus_from_stream(std::istream&,      bool&, vector<std::pair<vector<string>, string>>&, const char& delimiter);
 
         vector<vector<string>> load_tokenized_unlabeled_corpus(const string& fname) {
             ifstream fp(fname.c_str());
@@ -855,12 +878,12 @@ namespace utils {
         Vocab::Vocab() : unknown_word(-1) {add_unknown_word();};
 
         Vocab::Vocab(vector<string>& _index2word) : index2word(_index2word), unknown_word(-1) {
-                construct_word2index();
-                add_unknown_word();
+            construct_word2index();
+            add_unknown_word();
         }
         Vocab::Vocab(vector<string>& _index2word, bool _unknown_word) : index2word(_index2word), unknown_word(-1) {
-                construct_word2index();
-                if (_unknown_word) add_unknown_word();
+            construct_word2index();
+            if (_unknown_word) add_unknown_word();
         }
 
         template<typename T>
@@ -878,22 +901,22 @@ namespace utils {
             return false;
         }
         return !s.empty() && std::find_if(s.begin() + (is_negative ? 1 : 0),
-                s.end(), [&is_decimal](char c) {
-                    if (is_decimal) {
-                        if (c == '.') {
-                            return true;
-                        } else {
-                            return !std::isdigit(c);
-                        }
+            s.end(), [&is_decimal](char c) {
+                if (is_decimal) {
+                    if (c == '.') {
+                        return true;
                     } else {
-                        if (c == '.') {
-                            is_decimal = true;
-                            return false;
-                        } else {
-                            return !std::isdigit(c);
-                        }
+                        return !std::isdigit(c);
                     }
-                }) == s.end();
+                } else {
+                    if (c == '.') {
+                        is_decimal = true;
+                        return false;
+                    } else {
+                        return !std::isdigit(c);
+                    }
+                }
+            }) == s.end();
     }
 
     template float from_string<float>(const std::string& s);
@@ -948,7 +971,6 @@ namespace utils {
     template struct LambdaOperator<float>;
     template struct LambdaOperator<double>;
 
-
     template<typename T>
     T sigmoid_operator<T>::operator () (T x) const { return 1.0 / (1.0 + exp(-x)); }
 
@@ -992,33 +1014,33 @@ namespace utils {
 
     template<typename T>
     void OntologyBranch::save_to_stream(T& fp) {
-            auto hasher = std::hash<OntologyBranch>();
-            set<size_t> visited_list;
-            vector<shared_branch> open_list;
-            open_list.push_back(shared_from_this());
-            while (open_list.size() > 0) {
-                    auto el = open_list[0];
-                    open_list.erase(open_list.begin());
-                    if (visited_list.count(hasher(*el)) == 0) {
-                            visited_list.insert(hasher(*el));
-                            if (el->children.size() > 1) {
-                                    auto child_ptr = el->children.begin();
-                                    open_list.emplace_back(*child_ptr);
-                                    fp << el->name << "->" << (*(child_ptr++))->name << "\n";
-                                    while (child_ptr != el->children.end()) {
-                                            open_list.emplace_back(*child_ptr);
-                                            fp << (*(child_ptr++))->name << "\n";
-                                    }
-                            } else {
-                                    for (auto& child : el->children) {
-                                            fp << el->name << "->" << child->name << "\n";
-                                            open_list.emplace_back(child);
-                                    }
-                            }
-                            for (auto& parent : el->parents)
-                                    open_list.emplace_back(parent.lock());
+        auto hasher = std::hash<OntologyBranch>();
+        set<size_t> visited_list;
+        vector<shared_branch> open_list;
+        open_list.push_back(shared_from_this());
+        while (open_list.size() > 0) {
+            auto el = open_list[0];
+            open_list.erase(open_list.begin());
+            if (visited_list.count(hasher(*el)) == 0) {
+                visited_list.insert(hasher(*el));
+                if (el->children.size() > 1) {
+                    auto child_ptr = el->children.begin();
+                    open_list.emplace_back(*child_ptr);
+                    fp << el->name << "->" << (*(child_ptr++))->name << "\n";
+                    while (child_ptr != el->children.end()) {
+                        open_list.emplace_back(*child_ptr);
+                        fp << (*(child_ptr++))->name << "\n";
                     }
+                } else {
+                    for (auto& child : el->children) {
+                        fp << el->name << "->" << child->name << "\n";
+                        open_list.emplace_back(child);
+                    }
+                }
+                for (auto& parent : el->parents)
+                    open_list.emplace_back(parent.lock());
             }
+        }
     }
 
     void OntologyBranch::save(string fname, std::ios_base::openmode mode) {
@@ -1031,18 +1053,18 @@ namespace utils {
         }
     }
     void OntologyBranch::compute_max_depth() {
-            _max_depth = 0;
-            for (auto&v : children)
-                    if (v->max_depth() + 1 > _max_depth)
-                            _max_depth = v->max_depth() + 1;
+        _max_depth = 0;
+        for (auto&v : children)
+            if (v->max_depth() + 1 > _max_depth)
+                 _max_depth = v->max_depth() + 1;
     }
 
     int& OntologyBranch::max_depth() {
-            if (_max_depth > -1) return _max_depth;
-            else {
-                    compute_max_depth();
-                    return _max_depth;
-            }
+        if (_max_depth > -1) return _max_depth;
+        else {
+                compute_max_depth();
+                return _max_depth;
+        }
     }
 
     std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> OntologyBranch::random_path_to_root(const string& nodename) {
@@ -1163,8 +1185,9 @@ namespace utils {
     }
 
     template<typename T>
-    void OntologyBranch::load_branches_from_stream(T& fp,
-            std::vector<OntologyBranch::shared_branch>& roots) {
+    void OntologyBranch::load_branches_from_stream(
+                T& fp,
+                std::vector<OntologyBranch::shared_branch>& roots) {
 
             std::vector<OntologyBranch::shared_branch> parentless;
             auto branch_map = make_shared<std::map<std::string, OntologyBranch::shared_branch>>();
@@ -1206,17 +1229,17 @@ namespace utils {
     }
 
     std::vector<OntologyBranch::shared_branch> OntologyBranch::load(string fname) {
-            std::vector<OntologyBranch::shared_branch> roots;
+        std::vector<OntologyBranch::shared_branch> roots;
 
-            if (utils::is_gzip(fname)) {
-                    igzstream fpgz(fname.c_str());
-                    load_branches_from_stream(fpgz, roots);
-            } else {
-                    ifstream fp(fname);
-                    load_branches_from_stream(fp, roots);
-            }
+        if (utils::is_gzip(fname)) {
+            igzstream fpgz(fname.c_str());
+            load_branches_from_stream(fpgz, roots);
+        } else {
+            ifstream fp(fname);
+            load_branches_from_stream(fp, roots);
+        }
 
-            return roots;
+        return roots;
     }
 
     OntologyBranch::OntologyBranch(const string& _name) : name(_name), _max_depth(-1) {}

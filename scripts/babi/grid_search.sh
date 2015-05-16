@@ -70,10 +70,10 @@ for model_type in small big; do
     else
         model_flags="$small_model_flags"
     fi
-    for unsupporting_ratio in 0.0 10.0 1.0 0.1 0.01; do
-        for fact_selection_lambda in 0.0 5.0 1.0 0.1 0.01; do
-            for word_selection_sparsity in 0.0 0.1 0.01 0.001 0.00001; do
-                for problem in $problems; do
+    for problem in $problems; do
+        for unsupporting_ratio in 0.0 10.0 1.0 0.1 0.01; do
+            for fact_selection_lambda in 0.0 5.0 1.0 0.1 0.01; do
+                for word_selection_sparsity in 0.0 0.1 0.01 0.001 0.00001; do
                     tempfile=$(mktemp)
                     tempfiles="$tempfiles $tempfile"
                     echo "$model_type $unsupporting_ratio $fact_selection_lambda $word_selection_sparsity $problem" > $tempfile &&

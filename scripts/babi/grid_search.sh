@@ -58,6 +58,7 @@ problems="qa1_single-supporting-fact \
           qa16_basic-induction"
 
 pushd $PROJECT_DIR/build
+cmake ..
 make -j9 babi_solvers
 popd
 

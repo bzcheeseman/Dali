@@ -408,7 +408,11 @@ int main( int argc, char* argv[]) {
                     auto input_sentence = make_shared<visualizable::Sentence<REAL_t>>(word_vocab.decode(primer));
                     auto sentences_viz = make_shared<visualizable::Sentences<REAL_t>>(sentences);
                     sentences_viz->set_weights(probs);
-                    auto input_output_pair = visualizable::ClassifierExample(input_sentence, sentences_viz);
+
+                    auto input_output_pair = visualizable::GridLayout();
+
+                    input_output_pair.add_in_column(0, input_sentence);
+                    input_output_pair.add_in_column(0, sentences_viz);
 
                     return input_output_pair.to_json();
                 });

@@ -245,8 +245,8 @@ Mat<R> MatOps<R>::add(
         }
         return add_broadcast(matrix1, matrix2);
     }
-    if (matrix1.dims(0) != matrix2.dims(0) || matrix1.dims(1) != matrix2.dims(1))
-        throw std::invalid_argument("Matrices cannot be added, they do not have the same dimensions.");
+    assert2((matrix1.dims(0) == matrix2.dims(0)) && (matrix1.dims(1) == matrix2.dims(1)),
+        "Matrices cannot be added, they do not have the same dimensions.");
     auto out = Mat<R>::empty_like(matrix1);
     out.w() = matrix1.w() + matrix2.w();
     if (graph::backprop_enabled)
@@ -268,8 +268,8 @@ Mat<R> MatOps<R>::sub(
         }
         return sub_broadcast(matrix1, matrix2);
     }
-    if (matrix1.dims(0) != matrix2.dims(0) || matrix1.dims(1) != matrix2.dims(1))
-        throw std::invalid_argument("Matrices cannot be added, they do not have the same dimensions.");
+    assert2((matrix1.dims(0) == matrix2.dims(0)) && (matrix1.dims(1) == matrix2.dims(1)),
+        "Matrices cannot be added, they do not have the same dimensions.");
     auto out = Mat<R>::empty_like(matrix1);
     out.w() = matrix1.w() - matrix2.w();
     if (graph::backprop_enabled)

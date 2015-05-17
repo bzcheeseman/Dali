@@ -839,8 +839,7 @@ template<typename R>
 Mat<R> MatOps<R>::mul(
     Mat<R> matrix1,
     Mat<R> matrix2) {
-    if (matrix1.dims(1) != matrix2.dims(0))
-        throw std::invalid_argument("matmul dimensions misaligned.");
+    assert2(matrix1.dims(1) == matrix2.dims(0), "matmul dimensions misaligned.");
     Mat<R> out (
         matrix1.dims(0),
         matrix2.dims(1),
@@ -859,8 +858,7 @@ Mat<R> MatOps<R>::mul_with_bias(
     Mat<R> matrix1,
     Mat<R> matrix2,
     Mat<R> bias) {
-    if (matrix1.dims(1) != matrix2.dims(0))
-        throw std::invalid_argument("matmul dimensions misaligned.");
+    assert2(matrix1.dims(1) == matrix2.dims(0), "matmul dimensions misaligned.");
     if (matrix1.dims(0) != bias.dims(0) || bias.dims(1) != 1)
         throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
     Mat<R> out (
@@ -884,8 +882,7 @@ Mat<R> MatOps<R>::mul_add_broadcast_mul_with_bias(
     Mat<R> matrix2,
     Mat<R> input_to_2,
     Mat<R> bias) {
-    if (matrix1.dims(1) != input_to_1.dims(0))
-        throw std::invalid_argument("matmul 1 dimensions misaligned.");
+    assert2(matrix1.dims(1) == input_to_1.dims(0), "matmul 1 dimensions misaligned.");
     if (matrix2.dims(1) != input_to_2.dims(0))
         throw std::invalid_argument("matmul 2 dimensions misaligned.");
     if (matrix2.dims(0) != bias.dims(0) || matrix1.dims(0) != bias.dims(0) || input_to_1.dims(1) != 1 || bias.dims(1) != 1)
@@ -996,8 +993,7 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(
     Mat<R> input_to_2,
     Mat<R> bias) {
     DEBUG_ASSERT_NOT_NAN(bias.w());
-    if (matrix1.dims(1) != input_to_1.dims(0))
-        throw std::invalid_argument("matmul 1 dimensions misaligned.");
+    assert2(matrix1.dims(1) == input_to_1.dims(0), "matmul 1 dimensions misaligned.");
     if (matrix2.dims(1) != input_to_2.dims(0))
         throw std::invalid_argument("matmul 2 dimensions misaligned.");
     if (matrix2.dims(0) != bias.dims(0) || matrix1.dims(0) != bias.dims(0) || bias.dims(1) != 1)

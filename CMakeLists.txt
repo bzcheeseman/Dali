@@ -92,9 +92,9 @@ add_definitions(-DBUILD_DIR=${CMAKE_BUILD_DIR})
 message("=> BUILD_TYPE " ${CMAKE_BUILD_TYPE})
 set (CMAKE_CXX_COMPILER "clang++")
 if(CMAKE_BUILD_TYPE MATCHES "debug")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g -fPIC")
 else(CMAKE_BUILD_TYPE MATCHES "debug")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -w")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -w -fPIC")
 endif(CMAKE_BUILD_TYPE MATCHES "debug")
 
 

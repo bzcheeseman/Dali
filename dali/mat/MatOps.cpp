@@ -153,7 +153,7 @@ Mat<R> MatOps<R>::eltdivide(
         return eltdivide_broadcast(matrix1, matrix2);
     }
     assert2(matrix1.dims(0) == matrix2.dims(0) && matrix1.dims(1) == matrix2.dims(1),
-            "Matrices cannot be element-wise multiplied, they do not have the same dimensions.");
+            "Matrices cannot be element-wise divided, they do not have the same dimensions.");
     auto out = Mat<R>::empty_like(matrix1);
     out.w() = (matrix1.w().array() / matrix2.w().array()).matrix();
     if (graph::backprop_enabled)
@@ -269,7 +269,7 @@ Mat<R> MatOps<R>::sub(
         return sub_broadcast(matrix1, matrix2);
     }
     assert2((matrix1.dims(0) == matrix2.dims(0)) && (matrix1.dims(1) == matrix2.dims(1)),
-        "Matrices cannot be added, they do not have the same dimensions.");
+        "Matrices cannot be subtracted, they do not have the same dimensions.");
     auto out = Mat<R>::empty_like(matrix1);
     out.w() = matrix1.w() - matrix2.w();
     if (graph::backprop_enabled)
@@ -860,7 +860,7 @@ Mat<R> MatOps<R>::mul_with_bias(
     Mat<R> bias) {
     assert2(matrix1.dims(1) == matrix2.dims(0), "matmul dimensions misaligned.");
     if (matrix1.dims(0) != bias.dims(0) || bias.dims(1) != 1)
-        throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
+        throw std::invalid_argument("Matrices cannot be multiplied with broadcast, they do not have the same dimensions.");
     Mat<R> out (
             matrix1.dims(0),
             matrix2.dims(1),
@@ -886,7 +886,7 @@ Mat<R> MatOps<R>::mul_add_broadcast_mul_with_bias(
     if (matrix2.dims(1) != input_to_2.dims(0))
         throw std::invalid_argument("matmul 2 dimensions misaligned.");
     if (matrix2.dims(0) != bias.dims(0) || matrix1.dims(0) != bias.dims(0) || input_to_1.dims(1) != 1 || bias.dims(1) != 1)
-        throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
+        throw std::invalid_argument("Matrices cannot be shigamizood, they do not have the same dimensions.");
     Mat<R> out (
             matrix1.dims(0),
             input_to_2.dims(1),
@@ -997,7 +997,7 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(
     if (matrix2.dims(1) != input_to_2.dims(0))
         throw std::invalid_argument("matmul 2 dimensions misaligned.");
     if (matrix2.dims(0) != bias.dims(0) || matrix1.dims(0) != bias.dims(0) || bias.dims(1) != 1)
-        throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
+        throw std::invalid_argument("Matrices cannot be shigamizood, they do not have the same dimensions.");
     if (input_to_1.dims(1) != input_to_2.dims(1)) {
         if (input_to_1.dims(1) == 1) {
             return mul_add_broadcast_mul_with_bias(matrix1, input_to_1, matrix2, input_to_2, bias);

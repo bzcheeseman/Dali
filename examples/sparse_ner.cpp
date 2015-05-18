@@ -98,7 +98,16 @@ int main (int argc,  char* argv[]) {
         FLAGS_minibatch
     );
     // No validation set yet...
-    auto validation_set = dataset; //FLAGS_validation
+    decltype(dataset) validation_set;
+    {
+        auto ner_valid_data = NER::load(FLAGS_validation);
+        validation_set = NER::convert_to_indexed_minibatches(
+            word_vocab,
+            label_vocab,
+            ner_valid_data,
+            FLAGS_minibatch
+        );
+    }
 
     pool = new ThreadPool(FLAGS_j);
     // Create a model with an embedding, and several stacks:
@@ -250,7 +259,7 @@ int main (int argc,  char* argv[]) {
         int ex_idx = 0;
         for (auto& el : example) {
             std::tie(state, probs, memory) = model.activate(state, el);
-            predictions[ex_idx] = probs.argmax();
+            predictions[ex_idx++] = probs.argmax();
         }
         return predictions;
     };
@@ -332,7 +341,7 @@ int main (int argc,  char* argv[]) {
                 // show sentiment detection as it happens:
                 if (visualizer != nullptr) {
                     // show sentiment detection as system learns:
-                    visualizer->throttled_feed(seconds(10), [&word_vocab, &label_vocab, &visualizer, &minibatch, &thread_model]() {
+                    visualizer->throttled_feed(seconds(5), [&word_vocab, &label_vocab, &visualizer, &minibatch, &thread_model]() {
                             // pick example
                             auto& example = std::get<0>(minibatch[utils::randint(0, minibatch.size()-1)]);
                             // visualization does not backpropagate.

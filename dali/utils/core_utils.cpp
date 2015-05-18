@@ -526,75 +526,74 @@ namespace utils {
         template std::map<string, uint>   text_to_hashmap(const string&);
 
         void map_to_file(const std::map<string, std::vector<string>>& map, const string& fname) {
-                ofstream fp;
-                fp.open(fname.c_str(), std::ios::out);
-                for (auto& kv : map) {
-                        fp << kv.first;
-                        for (auto& v: kv.second)
-                                fp << " " << v;
-                        fp << "\n";
-                }
+            ofstream fp;
+            fp.open(fname.c_str(), std::ios::out);
+            for (auto& kv : map) {
+                fp << kv.first;
+                for (auto& v: kv.second)
+                    fp << " " << v;
+                fp << "\n";
+            }
         }
 
         vector<std::pair<string, string>> load_labeled_corpus(const string& fname) {
-                ifstream fp(fname.c_str());
-                string l;
-                const char space = ' ';
-                vector<std::pair<string, string>> pairs;
-                string::size_type n;
-                while (std::getline(fp, l)) {
-                        n = l.find(space);
-                        pairs.emplace_back(std::piecewise_construct,
-                                std::forward_as_tuple(l.begin() + n + 1, l.end()),
-                                std::forward_as_tuple(l.begin(), l.begin() + n)
-                        );
-                }
-                return pairs;
+            ifstream fp(fname.c_str());
+            string l;
+            const char space = ' ';
+            vector<std::pair<string, string>> pairs;
+            string::size_type n;
+            while (std::getline(fp, l)) {
+                n = l.find(space);
+                pairs.emplace_back(std::piecewise_construct,
+                    std::forward_as_tuple(l.begin() + n + 1, l.end()),
+                    std::forward_as_tuple(l.begin(), l.begin() + n)
+                );
+            }
+            return pairs;
         }
 
         vector<string> triggers_to_strings(const google::protobuf::RepeatedPtrField<Example::Trigger>& triggers, const vector<string>& index2target) {
-                vector<string> data;
-                data.reserve(triggers.size());
-                for (auto& trig : triggers)
-                        if (trig.id() < index2target.size())
-                                data.emplace_back(index2target[trig.id()]);
-                return data;
+            vector<string> data;
+            data.reserve(triggers.size());
+            for (auto& trig : triggers)
+                if (trig.id() < index2target.size())
+                    data.emplace_back(index2target[trig.id()]);
+            return data;
         }
 
-        tokenized_multilabeled_dataset load_protobuff_dataset(string directory, const vector<string>& index2label) {
-                ensure_directory(directory);
-                auto files = listdir(directory);
-                tokenized_multilabeled_dataset dataset;
-                for (auto& file : files) {
-                        auto corpus = load_corpus_protobuff(directory + file);
-                        for (auto& example : corpus.example()) {
-                                dataset.emplace_back(std::piecewise_construct,
-                                        std::forward_as_tuple(example.words().begin(), example.words().end()),
-                                        std::forward_as_tuple(triggers_to_strings(example.trigger(), index2label))
-                                );
-                        }
+        tokenized_labeled_dataset load_protobuff_dataset(string directory, const vector<string>& index2label) {
+            ensure_directory(directory);
+            auto files = listdir(directory);
+            tokenized_labeled_dataset dataset;
+            for (auto& file : files) {
+                auto corpus = load_corpus_protobuff(directory + file);
+                for (auto& example : corpus.example()) {
+                    dataset.emplace_back(std::initializer_list<vector<string>>({
+                        vector<string>(example.words().begin(), example.words().end()),
+                        triggers_to_strings(example.trigger(), index2label)
+                    }));
                 }
+            }
             return dataset;
         }
 
-        tokenized_multilabeled_dataset load_protobuff_dataset(
+        tokenized_labeled_dataset load_protobuff_dataset(
             SQLite::Statement& query,
             const vector<string>& index2label,
             int num_elements,
             int column) {
             int els_seen = 0;
-            tokenized_multilabeled_dataset dataset;
+            tokenized_labeled_dataset dataset;
             while (query.executeStep()) {
                 const char* protobuff_serialized = query.getColumn(column);
                 stringstream ss(protobuff_serialized);
                 Corpus corpus;
                 load_corpus_from_stream(corpus, ss);
                 for (auto& example : corpus.example()) {
-
-                    dataset.emplace_back(std::piecewise_construct,
-                            std::forward_as_tuple(example.words().begin(), example.words().end()),
-                            std::forward_as_tuple(triggers_to_strings(example.trigger(), index2label))
-                    );
+                    dataset.emplace_back(std::initializer_list<vector<string>>{
+                        vector<string>(example.words().begin(), example.words().end()),
+                        triggers_to_strings(example.trigger(), index2label)
+                    });
                     ++els_seen;
                 }
                 if (els_seen >= num_elements) {
@@ -611,44 +610,56 @@ namespace utils {
             return vector<string>(begin, end);
         }
 
-        vector<std::pair<vector<string>, string>> load_tokenized_labeled_corpus(const string& fname, bool left_label, const char& delimiter) {
-            vector<std::pair<vector<string>, string>> pairs;
+        tokenized_labeled_dataset load_tsv(const string& fname, int expected_columns, const char& delimiter) {
+            assert2(file_exists(fname), "Cannot open tsv file.");
+            tokenized_labeled_dataset tsv_data;
             if (utils::is_gzip(fname)) {
                 igzstream fpgz(fname.c_str());
-                load_tokenized_labeled_corpus_from_stream(fpgz, left_label, pairs, delimiter);
+                load_tsv_from_stream(fpgz, tsv_data, expected_columns, delimiter);
             } else {
                 ifstream fp(fname);
-                load_tokenized_labeled_corpus_from_stream(fp,   left_label, pairs, delimiter);
+                load_tsv_from_stream(fp,   tsv_data, expected_columns, delimiter);
             }
-            return pairs;
+            return tsv_data;
         }
 
         template<typename T>
-        void load_tokenized_labeled_corpus_from_stream(T& stream, bool& left_label, vector<std::pair<vector<string>, string>>& pairs, const char& delimiter) {
+        void load_tsv_from_stream(
+                T& stream,
+                tokenized_labeled_dataset& tsv_data,
+                int& expected_columns,
+                const char& delimiter) {
             string::size_type n;
             string l;
+            string cell;
+            // row by row
+            int line_number = 0;
             while (std::getline(stream, l)) {
-                n = l.find(delimiter);
-                if (n < l.size()) {
-                    if (left_label) {
-                        pairs.emplace_back(std::piecewise_construct,
-                            std::forward_as_tuple(tokenize(string(l.begin() + n + 1, l.end()))),
-                            std::forward_as_tuple(l.begin(), l.begin() + n)
-                        );
-                    } else {
-                        pairs.emplace_back(std::piecewise_construct,
-                            std::forward_as_tuple(tokenize(string(l.begin(), l.begin() + n))),
-                            std::forward_as_tuple(l.begin() + n + 1, l.end())
+                line_number++;
+                std::stringstream ss(l);
+                vector<vector<string>> row_data;
+                // cells separated by tab or comma
+                while(std::getline(ss, cell, delimiter)) {
+                    row_data.push_back(tokenize(cell));
+                }
+                if (row_data.size() > 0) {
+                    if (expected_columns > 0) {
+                        assert2(
+                            row_data.size() == expected_columns,
+                            MS() << "File TSV Row at linenumber "
+                                 << line_number
+                                 << " has unexpected number of columns (" << row_data.size() << ")."
                         );
                     }
+                    tsv_data.emplace_back(row_data);
                 }
             }
         }
 
-        template void load_tokenized_labeled_corpus_from_stream(igzstream&,         bool&, vector<std::pair<vector<string>, string>>&, const char& delimiter);
-        template void load_tokenized_labeled_corpus_from_stream(std::fstream&,      bool&, vector<std::pair<vector<string>, string>>&, const char& delimiter);
-        template void load_tokenized_labeled_corpus_from_stream(std::stringstream&, bool&, vector<std::pair<vector<string>, string>>&, const char& delimiter);
-        template void load_tokenized_labeled_corpus_from_stream(std::istream&,      bool&, vector<std::pair<vector<string>, string>>&, const char& delimiter);
+        template void load_tsv_from_stream(igzstream&,         tokenized_labeled_dataset&, int&, const char& delimiter);
+        template void load_tsv_from_stream(std::fstream&,      tokenized_labeled_dataset&, int&, const char& delimiter);
+        template void load_tsv_from_stream(std::stringstream&, tokenized_labeled_dataset&, int&, const char& delimiter);
+        template void load_tsv_from_stream(std::istream&,      tokenized_labeled_dataset&, int&, const char& delimiter);
 
         vector<vector<string>> load_tokenized_unlabeled_corpus(const string& fname) {
             ifstream fp(fname.c_str());
@@ -663,7 +674,7 @@ namespace utils {
             std::map<string, uint> word_occurences;
             string word;
             for (auto& example : examples)
-                for (auto& word : example.first) word_occurences[word] += 1;
+                for (auto& word : example[0]) word_occurences[word] += 1;
             vector<string> list;
             for (auto& key_val : word_occurences)
                 if (key_val.second >= min_occurence)
@@ -708,54 +719,28 @@ namespace utils {
             return list;
         }
 
-        vector<string> get_vocabulary(const tokenized_multilabeled_dataset& examples, int min_occurence) {
-            std::map<string, uint> word_occurences;
-            string word;
-            for (auto& example : examples) {
-                for (auto& word : example.first) {
-                    word_occurences[word] += 1;
-                }
-            }
-            vector<string> list;
-            for (auto& key_val : word_occurences) {
-                if (key_val.second >= min_occurence) {
-                    list.emplace_back(key_val.first);
-                }
-            }
-            list.emplace_back(utils::end_symbol);
-            return list;
-        }
-
         vector<string> get_label_vocabulary(const tokenized_labeled_dataset& examples) {
             std::set<string> labels;
             string word;
             for (auto& example : examples) {
-                labels.insert(example.second);
-            }
-            return vector<string>(labels.begin(), labels.end());
-        }
-
-        vector<string> get_label_vocabulary(const tokenized_multilabeled_dataset& examples) {
-            std::set<string> labels;
-            string word;
-            for (auto& example : examples) {
-                labels.insert(example.second.begin(), example.second.end());
+                assert2(example.size() > 1, "Examples must have at least 2 columns.");
+                labels.insert(example[1].begin(), example[1].end());
             }
             return vector<string>(labels.begin(), labels.end());
         }
 
         std::vector<string> get_lattice_vocabulary(const OntologyBranch::shared_branch lattice) {
-                std::vector<std::string> index2label;
-                index2label.emplace_back(end_symbol);
-                for (auto& kv : *lattice->lookup_table) {
-                    index2label.emplace_back(kv.first);
-                }
-                return index2label;
+            std::vector<std::string> index2label;
+            index2label.emplace_back(end_symbol);
+            for (auto& kv : *lattice->lookup_table) {
+                index2label.emplace_back(kv.first);
+            }
+            return index2label;
         }
 
         void assign_lattice_ids(OntologyBranch::lookup_t lookup_table, Vocab& lattice_vocab, int offset) {
-                for(auto& kv : *lookup_table)
-                        kv.second->id = lattice_vocab.word2index.at(kv.first) + offset;
+            for(auto& kv : *lookup_table)
+                kv.second->id = lattice_vocab.word2index.at(kv.first) + offset;
         }
 
         // Trimming text from StackOverflow:
@@ -1283,8 +1268,8 @@ namespace utils {
     }
 
     bool file_exists (const std::string& fname) {
-            struct stat buffer;
-            return (stat (fname.c_str(), &buffer) == 0);
+        struct stat buffer;
+        return (stat (fname.c_str(), &buffer) == 0);
     }
 
     std::string dir_parent(const std::string& path, int levels_up) {

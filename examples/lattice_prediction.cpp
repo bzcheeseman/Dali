@@ -63,18 +63,18 @@ vector<string> ontology_path_to_pathnames(const vector<OntologyBranch::shared_br
 }
 
 void insert_example_indices_into_matrix(
-    Vocab& lattice_vocab,
-    Vocab& word_vocab,
-    shared_lattice_t lattice,
-    Databatch& databatch,
-    labeled_pair& example,
-    size_t& row) {
-    auto description_length = example.first.size();
+        Vocab& lattice_vocab,
+        Vocab& word_vocab,
+        shared_lattice_t lattice,
+        Databatch& databatch,
+        vector<vector<string>>& example,
+        size_t& row) {
+    auto description_length = example[0].size();
     for (size_t j = 0; j < description_length; j++)
-            (*databatch.data)(row, j) = word_vocab.word2index.find(example.first[j]) != word_vocab.word2index.end() ? word_vocab.word2index[example.first[j]] : word_vocab.unknown_word;
+            (*databatch.data)(row, j) = word_vocab.word2index.find(example[0][j]) != word_vocab.word2index.end() ? word_vocab.word2index[example[0][j]] : word_vocab.unknown_word;
     (*databatch.data)(row, description_length) = word_vocab.word2index[utils::end_symbol];
 
-    auto path = lattice->random_path_from_root(example.second, 1);
+    auto path = lattice->random_path_from_root(example[1].front(), 1);
 
     size_t j = 0;
     for (auto& node : path.first) {
@@ -121,7 +121,7 @@ vector<Databatch> create_labeled_dataset(
     vector<Databatch> dataset;
     vector<size_t> lengths = vector<size_t>(examples.size());
     for (size_t i = 0; i != lengths.size(); ++i)
-        lengths[i] = examples[i].first.size() + lattice->max_depth() + 2;
+        lengths[i] = examples[i][0].size() + lattice->max_depth() + 2;
     vector<size_t> lengths_sorted(lengths);
 
     auto shortest = utils::argsort(lengths);
@@ -199,7 +199,7 @@ void training_loop(StackedGatedModel<T>& model,
 int main( int argc, char* argv[]) {
     GFLAGS_NAMESPACE::SetUsageMessage(
         "\n"
-                "Lattice Prediction\n"
+        "Lattice Prediction\n"
         "------------\n"
         "Teach a network to navigate a lattice "
         " from text examples and lattice positions."
@@ -210,9 +210,14 @@ int main( int argc, char* argv[]) {
 
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
-
     auto lattice     = OntologyBranch::load(FLAGS_lattice)[0];
-    auto examples    = utils::load_tokenized_labeled_corpus(FLAGS_train, true, ' ');
+
+    int number_of_columns = 2;
+    auto examples    = utils::load_tsv(
+        FLAGS_train,
+        number_of_columns
+    );
+
     auto index2word  = utils::get_vocabulary(examples, FLAGS_min_occurence);
     auto index2label = utils::get_lattice_vocabulary(lattice);
     Vocab word_vocab(index2word);

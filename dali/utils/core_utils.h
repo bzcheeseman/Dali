@@ -95,9 +95,13 @@ namespace utils {
         bool makedirs(const char* path, mode_t mode = DEFAULT_MODE);
         typedef std::vector<std::string> str_sequence;
 
-        typedef std::vector<std::pair<str_sequence, std::string>> tokenized_labeled_dataset;
+        /**
+        type tokenized_labeled_dataset
+        a vector of vectors of string sequences (e.g. loading a tsv with many rows,
+        and each row has whitespace separated words for each column)
+        **/
+        typedef std::vector<std::vector<str_sequence>> tokenized_labeled_dataset;
         typedef std::vector<std::pair<str_sequence, uint>> tokenized_uint_labeled_dataset;
-        typedef std::vector<std::pair<str_sequence, str_sequence>> tokenized_multilabeled_dataset;
 
         extern const char* end_symbol;
         extern const char* unknown_word_symbol;
@@ -279,20 +283,18 @@ namespace utils {
 
         **/
         std::vector<std::pair<std::string, std::string>> load_labeled_corpus(const std::string&);
-        tokenized_labeled_dataset load_tokenized_labeled_corpus(const std::string&, bool left_label, const char& delimiter = ' ');
+        tokenized_labeled_dataset load_tsv(const std::string&, int number_of_columns = -1, const char& delimiter = '\t');
 
         template<typename T>
-        void load_tokenized_labeled_corpus_from_stream(T&, bool& left_label, tokenized_labeled_dataset&, const char& delimiter = ' ');
+        void load_tsv_from_stream(T&, tokenized_labeled_dataset&, int& number_of_columns, const char& delimiter = '\t');
 
         std::vector<str_sequence> load_tokenized_unlabeled_corpus(const std::string&);
         str_sequence tokenize(const std::string&);
         str_sequence get_vocabulary(const tokenized_labeled_dataset&, int);
         str_sequence get_vocabulary(const std::vector<str_sequence>&, int);
-        str_sequence get_vocabulary(const tokenized_multilabeled_dataset&, int);
         str_sequence get_vocabulary(const tokenized_uint_labeled_dataset&, int);
         str_sequence get_lattice_vocabulary(const OntologyBranch::shared_branch);
         str_sequence get_label_vocabulary(const tokenized_labeled_dataset&);
-        str_sequence get_label_vocabulary(const tokenized_multilabeled_dataset&);
         void assign_lattice_ids(OntologyBranch::lookup_t, Vocab&, int offset = 0);
 
         template<typename T>
@@ -320,8 +322,8 @@ namespace utils {
                                                         and vector of string labels
 
         **/
-        tokenized_multilabeled_dataset load_protobuff_dataset(std::string, const std::vector<std::string>&);
-        tokenized_multilabeled_dataset load_protobuff_dataset(SQLite::Statement& query, const std::vector<std::string>&, int max_elements = 100, int column = 0);
+        tokenized_labeled_dataset load_protobuff_dataset(std::string, const std::vector<std::string>&);
+        tokenized_labeled_dataset load_protobuff_dataset(SQLite::Statement& query, const std::vector<std::string>&, int max_elements = 100, int column = 0);
 
         std::string& trim(std::string&);
         std::string& ltrim(std::string&);

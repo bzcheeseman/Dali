@@ -195,6 +195,16 @@ TEST(utils, load_save_lattice) {
     ASSERT_TRUE(utils::is_gzip(fname_gz));
 }
 
+TEST(utils, load_tsv) {
+    string tsv_file = STR(DALI_DATA_DIR) "/CoNLL_NER/NER_dummy_dataset.tsv";
+    ASSERT_THROW(
+        utils::load_tsv(tsv_file, 3, '\t'), std::runtime_error
+    );
+    auto dataset = utils::load_tsv(tsv_file, 4, '\t');
+    ASSERT_EQ(dataset.size(), 7);
+    ASSERT_EQ(dataset.back().front().front(), ".");
+}
+
 TEST(utils, load_lattice) {
     string data_folder = STR(DALI_DATA_DIR) "/";
     auto loaded_tree = OntologyBranch::load(data_folder + "lattice.txt");

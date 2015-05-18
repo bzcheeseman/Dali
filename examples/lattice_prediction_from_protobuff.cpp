@@ -25,7 +25,6 @@ using std::shared_ptr;
 using std::string;
 using std::vector;
 using utils::OntologyBranch;
-using utils::tokenized_labeled_dataset;
 using utils::Vocab;
 
 typedef float REAL_t;
@@ -60,8 +59,8 @@ int main( int argc, char* argv[]) {
         std::cout <<"First examples:" << std::endl;
         std::cout <<"---------------" << std::endl;
         for (int i = 0; i < 5 ; i++) {
-                std::cout << examples[i].first << std::endl;
-                std::cout << examples[i].second << std::endl;
+                std::cout << examples[i][0] << std::endl;
+                std::cout << examples[i][1] << std::endl;
                 std::cout << std::endl;
         }
         std::cout << "Loading Lattice" << std::endl;

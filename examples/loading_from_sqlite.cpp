@@ -66,7 +66,7 @@ int main(int argc, char * argv[]) {
     auto els = load_protobuff_dataset(query, index2concept, 100);
     cout << "got labeled examples" << endl;
     for (auto& el : els) {
-        std::cout << utils::join(std::get<0>(el), " ")
-                  << " (\033[4m" << utils::join(std::get<1>(el), "\x1B[m, \033[4m") << "\x1B[m)" << std::endl;
+        std::cout << utils::join(el[0], " ")
+                  << " (\033[4m" << utils::join(el[1], "\x1B[m, \033[4m") << "\x1B[m)" << std::endl;
     }
 }

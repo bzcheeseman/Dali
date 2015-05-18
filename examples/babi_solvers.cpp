@@ -47,12 +47,8 @@ DEFINE_int32(hl_hidden,                20,     "What hidden size to use for high
 DEFINE_int32(hl_stack,                 4,      "How high is the LSTM for high level.");
 DEFINE_double(hl_dropout,              0.7,    "How much dropout to use at high level.");
 // question gate model
-DEFINE_double(question_gate_dropout,   0.3,    "How much dropout to use for question gates.");
-DEFINE_int32(question_gate_input,      20,     "Embedding size for question gate models.");
-DEFINE_int32(question_gate_stack,      2,      "How high is the LSTM for question gates.");
-DEFINE_int32(question_gate_hidden,     40,     "What hidden size to use for question gates level.");
-DEFINE_int32(qg_hidden,                10,     "hidden for qg.");
-DEFINE_int32(qg_second_order,          10,     "second order for qg.");
+DEFINE_int32(gate_input,               20,     "Embedding size for gates.");
+DEFINE_int32(gate_second_order,        10,     "How many second order terms to consider for a gate.");
 // text repr model
 DEFINE_int32(text_repr_input,          40,     "Embedding size for text_representation models.");
 DEFINE_int32(text_repr_hidden,         40,     "What hidden size to use for question representation.");
@@ -69,24 +65,27 @@ DEFINE_string(babi_problem,            "",     "Which problem to benchmark");
 static bool dummy3 = GFLAGS_NAMESPACE::RegisterFlagValidator(
             &FLAGS_babi_problem, &utils::validate_flag_nonempty);
 
+
+typedef float REAL_t;
 // Visualizer
 std::shared_ptr<Visualizer> visualizer;
+
 
 template<typename T>
 struct StoryActivation {
     Mat<T> log_probs;
     vector<Mat<T>> fact_gate_memory;
-    vector<vector<Mat<T>>> fact_word_gate_memory;
+    vector<vector<Mat<T>>> word_gate_memory;
 
     StoryActivation(Mat<T> log_probs,
                     vector<Mat<T>> fact_gate_memory,
-                    vector<vector<Mat<T>>> fact_word_gate_memory) :
+                    vector<vector<Mat<T>>> word_gate_memory) :
             log_probs(log_probs),
             fact_gate_memory(fact_gate_memory),
-            fact_word_gate_memory(fact_word_gate_memory) {
+            word_gate_memory(word_gate_memory) {
     }
 
-    Mat<T> fact_sum() {
+    Mat<T> fact_memory_sum() {
         Mat<T> res(1,1);
         for(auto& fact_mem: fact_gate_memory) {
             res = res + fact_mem;
@@ -94,9 +93,9 @@ struct StoryActivation {
         return res;
     }
 
-    Mat<T> fact_word_sum() {
+    Mat<T> word_memory_sum() {
         Mat<T> res(1,1);
-        for(auto& fact_words: fact_word_gate_memory) {
+        for(auto& fact_words: word_gate_memory) {
             for(auto& word_mem: fact_words) {
                 res = res + word_mem;
             }
@@ -105,132 +104,26 @@ struct StoryActivation {
     }
 };
 
-template<typename T>
-class RecurrentGate : public AbstractLayer<T> {
-    const int input_size;
-    const int hidden_size;
-
-    public:
-        RNN<T> recurrent;
-        Layer<T> gate_classifier;
-
-        RecurrentGate(int input_size, int hidden_size) :
-                input_size(input_size),
-                hidden_size(hidden_size),
-                recurrent(input_size, hidden_size),
-                gate_classifier(hidden_size, 1) {
-        }
-
-        RecurrentGate (const RecurrentGate<T>& other, bool copy_w, bool copy_dw) :
-            input_size(other.input_size),
-            hidden_size(other.hidden_size),
-            recurrent(other.recurrent, copy_w, copy_dw),
-            gate_classifier(other.gate_classifier, copy_w, copy_dw) {
-        }
-
-        Mat<T> initial_states() const {
-            return Mat<T>(hidden_size, 1, true);
-        }
-
-        tuple<Mat<T>,Mat<T>> activate(Mat<T> input, Mat<T> prev_hidden) const {
-            auto next_hidden = recurrent.activate(input, prev_hidden).tanh();
-            auto output = gate_classifier.activate(next_hidden).sigmoid();
-            return make_tuple(output, next_hidden);
-        }
-
-        virtual vector<Mat<T>> parameters() const {
-            std::vector<Mat<T>> ret;
-
-            auto rnn_params = recurrent.parameters();
-            auto gc_params = gate_classifier.parameters();
-            ret.insert(ret.end(), rnn_params.begin(), rnn_params.end());
-            ret.insert(ret.end(), gc_params.begin(), gc_params.end());
-            return ret;
-        }
-};
-
-template <typename T>
-class LolGate : public AbstractLayer<T> {
-
-    public:
-    const int input1;
-    const int input2;
-    const int second_order_terms;
-    const int hidden;
-
-    RecurrentGate<T> gate;
-    SecondOrderCombinator<T> combinator;
-
-    LolGate(int input1, int input2, int second_order_terms, int hidden) :
-            input1(input1),
-            input2(input2),
-            second_order_terms(second_order_terms),
-            hidden(hidden),
-            gate(second_order_terms, hidden),
-            combinator(input1, input2, second_order_terms) {
-    }
-
-    LolGate(const LolGate<T>& other, bool copy_w, bool copy_dw) :
-            input1(other.input1),
-            input2(other.input2),
-            second_order_terms(other.second_order_terms),
-            hidden(other.hidden),
-            gate(other.gate, copy_w, copy_dw),
-            combinator(other.combinator, copy_w, copy_dw) {
-    }
-
-    Mat<T> initial_states() const {
-        return gate.initial_states();
-    }
-
-    tuple<Mat<T>,Mat<T>> activate(Mat<T> input1, Mat<T> input2, Mat<T> prev_hidden) const {
-        auto gate_input = combinator.activate(input1, input2);
-        return gate.activate(gate_input, prev_hidden);
-    }
-
-    virtual vector<Mat<T>> parameters() const {
-        std::vector<Mat<T>> ret;
-        auto gate_params = gate.parameters();
-        auto combinator_params = combinator.parameters();
-        ret.insert(ret.end(), gate_params.begin(), gate_params.end());
-        ret.insert(ret.end(), combinator_params.begin(), combinator_params.end());
-        return ret;
-    }
-};
-
 
 template<typename T>
 class LstmBabiModel {
-    // MODEL PARAMS
-
     StackedLSTM<T> fact_model;
     Mat<T> fact_embeddings;
 
     StackedLSTM<T> question_model;
-    Mat<T> question_representation_embeddings;
+    Mat<T> question_embeddings;
 
-    StackedLSTM<T> question_fact_gate_model;
-    Mat<T> question_fact_gate_embeddings;
+    SecondOrderCombinator<T> word_gate;
+    Mat<T> word_gate_embeddings;
 
-    StackedLSTM<T> question_fact_word_gate_model;
-    Mat<T> question_fact_word_gate_embeddings;
-
-    LolGate<T> fact_gate;
-    LolGate<T> fact_word_gate;
+    SecondOrderCombinator<T> fact_gate;
+    Mat<T> fact_gate_embeddings;
 
     StackedLSTM<T> hl_model;
 
     Mat<T> please_start_prediction;
 
-    const int           DECODER_OUTPUT; // gets initialized to vocabulary size in constructor
     Layer<T>            decoder;
-
-    // TODO:
-    // -> we are mostly concerned with gates being on for positive facts.
-    //    some false positives are acceptable.
-    // -> second order (between question and fact) relation for fact word gating
-    // -> consider quadratic form]
-    // -> add multiple answers
 
     public:
         shared_ptr<Vocab> vocab;
@@ -238,21 +131,19 @@ class LstmBabiModel {
         vector<Mat<T>> parameters() {
             vector<Mat<T>> res;
             for (auto model: std::vector<AbstractLayer<T>*>({
-                                &question_fact_gate_model,
-                                &question_fact_word_gate_model,
-                                &fact_gate,
-                                &fact_word_gate,
-                                &question_model,
                                 &fact_model,
+                                &question_model,
+                                &word_gate,
+                                &fact_gate,
                                 &hl_model,
                                 &decoder })) {
                 auto params = model->parameters();
                 res.insert(res.end(), params.begin(), params.end());
             }
-            for (auto& matrix: { question_fact_gate_embeddings,
-                                 question_fact_word_gate_embeddings,
-                                 fact_embeddings,
-                                 question_representation_embeddings,
+            for (auto& matrix: { fact_embeddings,
+                                 question_embeddings,
+                                 word_gate_embeddings,
+                                 fact_gate_embeddings,
                                  please_start_prediction
                                  }) {
                 res.emplace_back(matrix);
@@ -266,73 +157,55 @@ class LstmBabiModel {
         }
 
         LstmBabiModel(const LstmBabiModel& model, bool copy_w, bool copy_dw) :
-                question_fact_gate_model(model.question_fact_gate_model, copy_w, copy_dw),
-                question_fact_word_gate_model(
-                        model.question_fact_word_gate_model, copy_w, copy_dw),
-                fact_gate(model.fact_gate, copy_w, copy_dw),
-                fact_word_gate(model.fact_word_gate, copy_w, copy_dw),
-                question_model(model.question_model, copy_w, copy_dw),
                 fact_model(model.fact_model, copy_w, copy_dw),
+                question_model(model.question_model, copy_w, copy_dw),
+                word_gate(model.word_gate, copy_w, copy_dw),
+                fact_gate(model.fact_gate, copy_w, copy_dw),
                 hl_model(model.hl_model, copy_w, copy_dw),
-                DECODER_OUTPUT(model.DECODER_OUTPUT),
                 decoder(model.decoder, copy_w, copy_dw),
                 // paramters begin here
-                question_fact_gate_embeddings(
-                        model.question_fact_gate_embeddings, copy_w, copy_dw),
-                question_fact_word_gate_embeddings(
-                        model.question_fact_word_gate_embeddings, copy_w, copy_dw),
                 fact_embeddings(model.fact_embeddings, copy_w, copy_dw),
-                question_representation_embeddings(
-                        model.question_representation_embeddings, copy_w, copy_dw),
+                question_embeddings(model.question_embeddings, copy_w, copy_dw),
+                word_gate_embeddings(model.word_gate_embeddings, copy_w, copy_dw),
+                fact_gate_embeddings(model.fact_gate_embeddings, copy_w, copy_dw),
                 please_start_prediction(model.please_start_prediction, copy_w, copy_dw) {
             vocab = model.vocab;
         }
 
         LstmBabiModel(shared_ptr<Vocab> vocabulary) :
                 // first true - shortcut, second true - feed memory to gates
-                question_fact_gate_model(FLAGS_question_gate_input,
-                                         vector<int>(FLAGS_question_gate_stack, FLAGS_question_gate_hidden),
-                                         FLAGS_lstm_shortcut,
-                                         FLAGS_lstm_feed_mry),
-                question_fact_word_gate_model(FLAGS_question_gate_input,
-                                              vector<int>(FLAGS_question_gate_stack, FLAGS_question_gate_hidden),
-                                              FLAGS_lstm_shortcut,
-                                              FLAGS_lstm_feed_mry),
-                fact_gate(utils::vsum(vector<int>(FLAGS_text_repr_stack, FLAGS_text_repr_hidden)),
-                          utils::vsum(vector<int>(FLAGS_question_gate_stack, FLAGS_question_gate_hidden)),
-                          FLAGS_qg_second_order,
-                          FLAGS_qg_hidden),
-                fact_word_gate(FLAGS_text_repr_input,
-                               utils::vsum(vector<int>(FLAGS_question_gate_stack, FLAGS_question_gate_hidden)),
-                               FLAGS_qg_second_order,
-                               FLAGS_qg_hidden),
-                question_model(FLAGS_text_repr_input,
-                               vector<int>(FLAGS_text_repr_stack, FLAGS_text_repr_hidden),
-                               FLAGS_lstm_shortcut,
-                               FLAGS_lstm_feed_mry),
                 fact_model(FLAGS_text_repr_input,
                            vector<int>(FLAGS_text_repr_stack, FLAGS_text_repr_hidden),
                            FLAGS_lstm_shortcut,
                            FLAGS_lstm_feed_mry),
+                question_model(FLAGS_text_repr_input,
+                               vector<int>(FLAGS_text_repr_stack, FLAGS_text_repr_hidden),
+                               FLAGS_lstm_shortcut,
+                               FLAGS_lstm_feed_mry),
+                word_gate(FLAGS_gate_input, FLAGS_gate_input, FLAGS_gate_second_order),
+                fact_gate(FLAGS_gate_input,
+                          utils::vsum(vector<int>(FLAGS_text_repr_stack, FLAGS_text_repr_hidden)),
+                          FLAGS_gate_second_order),
                 hl_model(utils::vsum(vector<int>(FLAGS_text_repr_stack, FLAGS_text_repr_hidden)),
                          vector<int>(FLAGS_hl_stack, FLAGS_hl_hidden),
                          FLAGS_lstm_shortcut,
                          FLAGS_lstm_feed_mry),
-                DECODER_OUTPUT(vocabulary->word2index.size()),
-                decoder(utils::vsum(vector<int>(FLAGS_hl_stack, FLAGS_hl_hidden)), vocabulary->word2index.size()) {
+                decoder(utils::vsum(vector<int>(FLAGS_hl_stack, FLAGS_hl_hidden)),
+                        vocabulary->word2index.size()) {
+
             vocab = vocabulary;
             size_t n_words = vocab->index2word.size();
 
-            question_fact_gate_embeddings =
-                    Mat<T>(n_words, FLAGS_question_gate_input,
-                           weights<T>::uniform(1.0/FLAGS_question_gate_input));
-            question_fact_word_gate_embeddings =
-                    Mat<T>(n_words, FLAGS_question_gate_input,
-                           weights<T>::uniform(1.0/FLAGS_question_gate_input));
+            word_gate_embeddings =
+                    Mat<T>(n_words, FLAGS_gate_input,
+                           weights<T>::uniform(1.0/FLAGS_gate_input));
+            fact_gate_embeddings =
+                    Mat<T>(n_words, FLAGS_gate_input,
+                           weights<T>::uniform(1.0/FLAGS_gate_input));
             fact_embeddings =
                     Mat<T>(n_words, FLAGS_text_repr_input,
                            weights<T>::uniform(1.0/FLAGS_text_repr_input));
-            question_representation_embeddings =
+            question_embeddings =
                     Mat<T>(n_words, FLAGS_text_repr_input,
                            weights<T>::uniform(1.0/FLAGS_text_repr_input));
             please_start_prediction =
@@ -342,11 +215,11 @@ class LstmBabiModel {
 
 
         vector<Mat<T>> get_embeddings(const vector<string>& words,
-                                   Mat<T> embeddings) {
+                                      Mat<T> embedding_matrix) {
             vector<Mat<T>> seq;
             for (auto& word: words) {
                 auto question_idx = vocab->word2index.at(word);
-                auto embedding = embeddings[question_idx];
+                auto embedding = embedding_matrix[question_idx];
                 seq.push_back(embedding);
                 // We don't need explicitly start prediction token because
                 // each question is guaranteed to end with "?" token.
@@ -354,25 +227,8 @@ class LstmBabiModel {
             return seq;
         }
 
-        vector<Mat<T>> gate_memory(vector<Mat<T>> seq,
-                                const LolGate<T>& gate,
-                                Mat<T> gate_input) {
-            vector<Mat<T>> memory_seq;
-            // By default initialized to zeros.
-            auto prev_hidden = gate.initial_states();
-            Mat<T> gate_activation;
-            for (auto& embedding : seq) {
-                // out_state: next_hidden, output
-                std:tie(gate_activation, prev_hidden) =
-                        gate.activate(embedding, gate_input, prev_hidden);
-                // memory - gate activation - how much of that embedding do we keep.
-                memory_seq.push_back(gate_activation.sigmoid());
-            }
-            return memory_seq;
-        }
-
         vector<Mat<T>> apply_gate(vector<Mat<T>> memory,
-                               vector<Mat<T>> seq) {
+                                  vector<Mat<T>> seq) {
             assert(memory.size() == seq.size());
             vector<Mat<T>> gated_seq;
             for(int i=0; i < memory.size(); ++i) {
@@ -394,46 +250,58 @@ class LstmBabiModel {
         StoryActivation<T> activate_story(const vector<vector<string>>& facts,
                                           const vector<string>& question,
                                           bool use_dropout) {
-            auto fact_word_gate_hidden = lstm_final_activation(
-                    get_embeddings(reversed(question), question_fact_word_gate_embeddings),
-                    question_fact_word_gate_model,
-                    use_dropout ? FLAGS_question_gate_dropout : 0.0);
-
-            auto fact_gate_hidden = lstm_final_activation(
-                    get_embeddings(reversed(question), question_fact_gate_embeddings),
-                    question_fact_gate_model,
-                    use_dropout ? FLAGS_question_gate_dropout : 0.0);
-
-            auto question_representation = lstm_final_activation(
-                    get_embeddings(reversed(question), question_representation_embeddings),
-                    question_model,
-                    use_dropout ? FLAGS_text_repr_dropout : 0.0);
+            auto word_gate_embeddings_question = get_embeddings(question, word_gate_embeddings);
+            auto word_gate_hidden_question = MatOps<T>::add(word_gate_embeddings_question) /
+                                             (T)word_gate_embeddings_question.size();
 
             vector<Mat<T>> fact_representations;
-            vector<vector<Mat<T>>> fact_words_gate_memory;
+            vector<vector<Mat<T>>> word_gate_memories;
 
             for (auto& fact: facts) {
-                auto this_fact_embeddings = get_embeddings(reversed(fact), fact_embeddings);
-                auto this_fact_word_gate_memory = gate_memory(this_fact_embeddings,
-                                                              fact_word_gate,
-                                                              fact_word_gate_hidden);
+                auto gate_embeddings_fact = get_embeddings(reversed(fact), word_gate_embeddings);
+                vector<Mat<T>> word_gate_memory;
+                for (auto& gate_hidden_fact_word: gate_embeddings_fact) {
+                    word_gate_memory.push_back(
+                        word_gate.activate(word_gate_hidden_question, gate_hidden_fact_word).sum().sigmoid()
+                    );
+                }
+                word_gate_memories.push_back(word_gate_memory);
 
-                fact_words_gate_memory.push_back(this_fact_word_gate_memory);
-                auto gated_embeddings = apply_gate(this_fact_word_gate_memory, this_fact_embeddings);
+
+                auto gated_embeddings = apply_gate(
+                    word_gate_memory,
+                    get_embeddings(reversed(fact), fact_embeddings)
+                );
 
                 auto fact_repr = lstm_final_activation(
-                        this_fact_embeddings,//gated_embeddings,
+                        gated_embeddings,
                         fact_model,
                         use_dropout ? FLAGS_text_repr_dropout : 0.0);
+
                 fact_representations.push_back(fact_repr);
             }
 
-            auto fact_gate_memory = gate_memory(fact_representations, fact_gate, fact_gate_hidden);
+            auto fact_gate_embeddings_question = get_embeddings(question, fact_gate_embeddings);
+            auto fact_gate_hidden_question = MatOps<T>::add(fact_gate_embeddings_question) /
+                                             (T)fact_gate_embeddings_question.size();
+
+            vector<Mat<T>> fact_gate_memory;
+            for (auto& fact_representation: fact_representations) {
+                fact_gate_memory.push_back(
+                    fact_gate.activate(fact_gate_hidden_question, fact_representation).sum().sigmoid()
+                );
+            }
 
             auto gated_facts = apply_gate(fact_gate_memory, fact_representations);
+
+            auto question_hidden = lstm_final_activation(
+                    get_embeddings(reversed(question), question_embeddings),
+                    question_model,
+                    use_dropout ? FLAGS_text_repr_dropout : 0.0);
+
             // There is probably a better way
             vector<Mat<T>> hl_input;
-            hl_input.push_back(question_representation);
+            hl_input.push_back(question_hidden);
             hl_input.insert(hl_input.end(), gated_facts.begin(), gated_facts.end());
             hl_input.push_back(please_start_prediction);
 
@@ -444,19 +312,19 @@ class LstmBabiModel {
 
             return StoryActivation<T>(log_probs,
                                       fact_gate_memory,
-                                      fact_words_gate_memory);
+                                      word_gate_memories);
         }
 
         void visualize_example(const vector<vector<string>>& facts,
-                                     const vector<string>& question,
-                                     const vector<string>& correct_answer) {
+                               const vector<string>& question,
+                               const vector<string>& correct_answer) {
             graph::NoBackprop nb;
             auto activation = activate_story(facts, question, false);
 
             shared_ptr<visualizable::FiniteDistribution<T>> vdistribution;
             if (FLAGS_margin_loss) {
                 auto scores = activation.log_probs;
-                std::vector<double> scores_as_vec;
+                std::vector<REAL_t> scores_as_vec;
                 for (int i=0; i < scores.dims(0); ++i) {
                     scores_as_vec.push_back(scores.w()(i,0));
                 }
@@ -465,7 +333,7 @@ class LstmBabiModel {
                         distribution_as_vec, scores_as_vec, vocab->index2word, 5);
             } else {
                 auto distribution = MatOps<T>::softmax(activation.log_probs);
-                std::vector<double> distribution_as_vec;
+                std::vector<REAL_t> distribution_as_vec;
                 for (int i=0; i < distribution.dims(0); ++i) {
                     distribution_as_vec.push_back(distribution.w()(i,0));
                 }
@@ -474,14 +342,14 @@ class LstmBabiModel {
             }
 
 
-            vector<double> facts_weights;
+            vector<REAL_t> facts_weights;
             vector<std::shared_ptr<visualizable::Sentence<T>>> facts_sentences;
             for (int fidx=0; fidx < facts.size(); ++fidx) {
                 auto vfact = make_shared<visualizable::Sentence<T>>(facts[fidx]);
 
-                vector<double> words_weights;
+                vector<REAL_t> words_weights;
 
-                for (Mat<T> weight: activation.fact_word_gate_memory[fidx]) {
+                for (Mat<T> weight: activation.word_gate_memory[fidx]) {
                     words_weights.push_back(weight.w()(0,0));
                 }
                 vfact->set_weights(words_weights);
@@ -510,7 +378,6 @@ class LstmBabiModel {
 
 
 /* PARAMETERS FOR TRAINING */
-typedef double REAL_t;
 typedef LstmBabiModel<REAL_t> BabiModel;
 
 
@@ -523,11 +390,6 @@ const double SHORT_TERM_VALIDATION = 0.1;
 
 // prediction haz dropout.
 const int PREDICTION_PATIENCE = 200;
-
-const double FACT_SELECTION_LAMBDA_MAX = 3.0;
-const double FACT_WORD_SELECTION_LAMBDA_MAX = 0.0005;
-
-
 
 /* TRAINING FUNCTIONS */
 shared_ptr<BabiModel> model;
@@ -564,7 +426,7 @@ MatrixXd errors(StoryActivation<REAL_t> activation,
 
     total_error = prediction_error
                 + fact_selection_error * FLAGS_fact_selection_lambda
-                + activation.fact_word_sum() * FLAGS_word_selection_sparsity;
+                + activation.word_memory_sum() * FLAGS_word_selection_sparsity;
 
     total_error = total_error / FLAGS_minibatch;
 
@@ -573,7 +435,7 @@ MatrixXd errors(StoryActivation<REAL_t> activation,
     MatrixXd reported_errors(3,1);
     reported_errors(0) = prediction_error.w()(0,0);
     reported_errors(1) = fact_selection_error.w()(0,0);
-    reported_errors(2) = activation.fact_word_sum().w()(0,0);
+    reported_errors(2) = activation.word_memory_sum().w()(0,0);
 
 
     return reported_errors;
@@ -700,13 +562,6 @@ void train(const vector<babi::Story>& data, shared_ptr<Training> training_method
 
     Solver::AdaDelta<REAL_t> solver(params, 0.95, 1e-9, 5.0);
 
-    // Solver::Adam<REAL_t> solver(params);
-
-    // Solver::AdaGrad<REAL_t> solver(params, 1e-9, 100.0, 1e-8); solver_reset_cache = true;
-    //AdaGrad:
-    // solver.step_size = 0.2 / FLAGS_minibatch;
-
-
     training_method->reset();
 
     double best_validation = run_epoch(validation, &solver, false)(0);
@@ -787,15 +642,6 @@ double benchmark_task(const std::string task) {
     return accuracy;
 }
 
-void benchmark_all() {
-    vector<double> our_results;
-    for (auto task : babi::tasks()) {
-        our_results.push_back(100.0 * benchmark_task(task));
-    }
-    babi::compare_results(our_results);
-}
-
-
 int main(int argc, char** argv) {
     sane_crashes::activate();
 
@@ -817,9 +663,4 @@ int main(int argc, char** argv) {
     std::cout << "Using " << (FLAGS_margin_loss ? "margin loss" : "cross entropy") << std::endl;
 
     benchmark_task(FLAGS_babi_problem);
-
-
-    // benchmark_task("multitasking");
-    // benchmark_task("qa16_basic-induction");
-    // benchmark_task("qa3_three-supporting-facts");
 }

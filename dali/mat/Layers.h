@@ -119,7 +119,9 @@ template<typename R>
 class SecondOrderCombinator : public AbstractLayer<R> {
     /* Implements the following expression
 
-           y = W1 * i1 + W2 * i2 + b
+           y = (W1 * i1) * (W2 * i2) + b
+           (the middle * is elementwise, others are matrix
+            multiplies)
 
        The purpose is to capture only a few relevant terms from:
 

@@ -29,26 +29,19 @@ common_flags="--j 1 \
              --nolstm_feed_mry \
              --hl_stack 3 \
              --hl_dropout 0.3 \
-             --question_gate_dropout 0.3 \
-             --qg_hidden 20 \
-             --qg_second_order 20 \
+             --gate_input 20 \
+             --gate_second_order 10 \
              --text_repr_dropout 0.3 \
              --margin_loss true \
              --margin 0.05"
 small_model_flags="--hl_hidden 30 \
                    --hl_stack 3 \
-                   --question_gate_input 20 \
-                   --question_gate_stack 1 \
-                   --question_gate_hidden 20 \
                    --text_repr_input 40 \
                    --text_repr_hidden 100 \
                    --text_repr_stack 2"
 
 big_model_flags="--hl_hidden 50 \
                  --hl_stack 4 \
-                 --question_gate_input 40 \
-                 --question_gate_stack 2 \
-                 --question_gate_hidden 100 \
                  --text_repr_input 50 \
                  --text_repr_hidden 100 \
                  --text_repr_stack 3"

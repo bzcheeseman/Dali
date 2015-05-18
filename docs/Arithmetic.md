@@ -170,11 +170,11 @@ Here are some Stacked LSTMs like those used in [Wojciech Zaremba, and Ilya Sutsk
 #include "core/models/StackedModel.h"
 
 auto model = StackedModel<REAL_t>(
-     vocab.index2word.size(), // vocabulary size
+     vocab.size(), // vocabulary size
      100, // embedding dimension
      100, // # of LSTM hidden cells
      3, // How many LSTM layers are connected up
-     vocab.index2word.size(), // How many output dimensions in the decoder
+     vocab.size(), // How many output dimensions in the decoder
      false, // Whether to use Alex Graves-style shortcuts from inputs to each layer +
             // from each hidden to the decoder
      false  // Whether to connect the memory units from the LSTM to the gates

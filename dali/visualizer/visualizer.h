@@ -59,6 +59,15 @@ namespace visualizable {
     };
 
     template<typename R>
+    struct ParallelSentence : public Visualizable {
+        typedef std::shared_ptr<Sentence<R>> sentence_ptr;
+        sentence_ptr sentence1;
+        sentence_ptr sentence2;
+        ParallelSentence(sentence_ptr sentence1, sentence_ptr sentence2);
+        virtual json11::Json to_json() override;
+    };
+
+    template<typename R>
     struct QA : public Visualizable {
         typedef std::shared_ptr<Sentence<R>> sentence_ptr;
         typedef std::shared_ptr<Visualizable> visualizable_ptr;

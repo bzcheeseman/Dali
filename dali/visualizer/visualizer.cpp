@@ -85,6 +85,23 @@ namespace visualizable {
     }
 
     template<typename R>
+    ParallelSentence<R>::ParallelSentence(sentence_ptr sentence1, sentence_ptr sentence2) :
+            sentence1(sentence1), sentence2(sentence2) {
+    }
+
+    template<typename R>
+    json11::Json ParallelSentence<R>::to_json() {
+        return Json::object {
+            { "type", "parallel_sentence" },
+            { "sentence1", sentence1->to_json()},
+            { "sentence2", sentence2->to_json()}
+        };
+    };
+
+    template class ParallelSentence<float>;
+    template class ParallelSentence<double>;
+
+    template<typename R>
     json11::Json Sentences<R>::to_json() {
         std::vector<Json> sentences_json;
         for (auto& sentence: sentences) {

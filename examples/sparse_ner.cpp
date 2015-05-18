@@ -37,14 +37,13 @@ static const int RMSPROP_TYPE  = 4;
 typedef double REAL_t;
 typedef Mat<REAL_t> mat;
 
-DEFINE_int32(minibatch,           100,        "What size should be used for the minibatches ?");
+DEFINE_int32(minibatch,           5,        "What size should be used for the minibatches ?");
 DEFINE_int32(patience,            5,          "How many unimproving epochs to wait through before witnessing progress ?");
 DEFINE_double(dropout,            0.3,        "How much dropout noise to add to the problem ?");
 DEFINE_double(reg,                0.0,        "What penalty to place on L2 norm of weights?");
 DEFINE_bool(fast_dropout,         true,       "Use fast dropout?");
 DEFINE_string(solver,             "adadelta", "What solver to use (adadelta, sgd, adam)");
 DEFINE_string(test,               "",         "Where is the test set?");
-DEFINE_double(root_weight,        1.0,        "By how much to weigh the roots in the objective function?");
 DEFINE_string(pretrained_vectors, "",         "Load pretrained word vectors?");
 DEFINE_double(learning_rate,      0.01,       "Learning rate for SGD and Adagrad.");
 DEFINE_string(results_file,       "",         "Where to save test performance.");
@@ -97,6 +96,7 @@ int main (int argc,  char* argv[]) {
         ner_data,
         FLAGS_minibatch
     );
+    ner_data.clear();
     // No validation set yet...
     decltype(dataset) validation_set;
     {
@@ -362,15 +362,14 @@ int main (int argc,  char* argv[]) {
 
                             auto input_sentence = make_shared<visualizable::Sentence<REAL_t>>(word_vocab.decode(example));
                             input_sentence->set_weights(MatOps<REAL_t>::hstack(memories));
-
-                            auto input_output_pair = visualizable::GridLayout();
-                            input_output_pair.add_in_column(0, input_sentence);
-                            input_output_pair.add_in_column(1,
-                                make_shared<visualizable::Sentence<REAL_t>>(
-                                    label_vocab.decode(prediction)
-                                )
+                            auto decoded = label_vocab.decode(prediction);
+                            for (auto& s : decoded)
+                                if (s == label_vocab.index2word[0]) s.clear();
+                            auto psentence = visualizable::ParallelSentence<REAL_t>(
+                                input_sentence,
+                                make_shared<visualizable::Sentence<REAL_t>>(decoded)
                             );
-                            return input_output_pair.to_json();
+                            return psentence.to_json();
                         }
                     );
                 }

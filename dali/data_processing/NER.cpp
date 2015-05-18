@@ -67,12 +67,18 @@ namespace NER {
     }
 
     vector<string> get_label_vocabulary(const ner_full_dataset& examples) {
-        std::set<string> labels;
-        string word;
+        std::map<string, uint> label_occurences;
         for (auto& example : examples)
-            labels.insert(example.second.begin(), example.second.end());
+            for (auto& label : example.first) label_occurences[label] += 1;
+        vector<string> labels(label_occurences.size());
+        for (auto& key_val : label_occurences)
+            labels.emplace_back(key_val.first);
 
-        return vector<string>(labels.begin(), labels.end());
+        std::sort(labels.begin(), labels.end(), [&label_occurences](const string& a, const string& b) {
+            return label_occurences[a] > label_occurences[b];
+        });
+
+        return labels;
     }
 
     ner_minibatch_dataset convert_to_indexed_minibatches(

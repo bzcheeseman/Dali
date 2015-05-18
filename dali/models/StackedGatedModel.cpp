@@ -158,7 +158,7 @@ std::tuple<Z, Z> StackedGatedModel<Z>::masked_predict_cost(
     for (uint i = 0; i < n-1; ++i) {
         // pick this letter from the embedding
         input_vector = this->embedding[data->col(i)];
-        memory = gate.activate(input_vector, initial_state.back().hidden );
+        memory = gate.activate(input_vector, initial_state.back().hidden ).sigmoid();
         input_vector = input_vector.eltmul_broadcast_rowwise(memory);
         // pass this letter to the LSTM for processing
         initial_state = this->stacked_lstm->activate(initial_state, input_vector, drop_prob);
@@ -221,7 +221,7 @@ std::tuple<Z, Z> StackedGatedModel<Z>::masked_predict_cost(
             memory = gate.activate(
                 input_vector,
                 initial_state.back().hidden
-            );
+            ).sigmoid();
             input_vector = input_vector.eltmul_broadcast_rowwise(memory);
             // pass this letter to the LSTM for processing
             initial_state = this->stacked_lstm->activate(
@@ -418,7 +418,7 @@ typename StackedGatedModel<Z>::state_type StackedGatedModel<Z>::get_final_activa
         memory        = gate.activate(
             input_vector,
             initial_state.back().hidden
-        );
+        ).sigmoid();
         if (graph::backprop_enabled && memory_penalty > 0) {
             // add this sum to objective function
             (memory * memory_penalty).grad();
@@ -462,19 +462,26 @@ typename StackedGatedModel<Z>::activation_t StackedGatedModel<Z>::activate(
     auto memory       = gate.activate(
         input_vector,
         previous_state.back().hidden
-    );
+    ).sigmoid();
     input_vector      = input_vector.eltmul_broadcast_rowwise(memory);
 
     std::get<0>(out) = this->stacked_lstm->activate(
         previous_state,
         input_vector
     );
-    std::get<1>(out) = MatOps<Z>::softmax_no_grad(
-        this->decode(
-            input_vector,
-            std::get<0>(out)
-        )
-    );
+    std::get<1>(out) = graph::backprop_enabled ?
+        MatOps<Z>::softmax(
+            this->decode(
+                input_vector,
+                std::get<0>(out)
+            )
+        ) :
+        MatOps<Z>::softmax_no_grad(
+            this->decode(
+                input_vector,
+                std::get<0>(out)
+            )
+        );
     std::get<2>(out) = memory;
     return out;
 }
@@ -488,18 +495,25 @@ typename StackedGatedModel<Z>::activation_t StackedGatedModel<Z>::activate(
     auto memory       = gate.activate(
         input_vector,
         previous_state.back().hidden
-    );
+    ).sigmoid();
     input_vector      = input_vector.eltmul_broadcast_rowwise(memory);
 
     std::get<0>(out) = this->stacked_lstm->activate(
         previous_state,
         input_vector);
-    std::get<1>(out) = MatOps<Z>::softmax_no_grad(
-        this->decode(
-            input_vector,
-            std::get<0>(out)
-        )
-    );
+    std::get<1>(out) = graph::backprop_enabled ?
+        MatOps<Z>::softmax(
+            this->decode(
+                input_vector,
+                std::get<0>(out)
+            )
+        ) :
+        MatOps<Z>::softmax_no_grad(
+            this->decode(
+                input_vector,
+                std::get<0>(out)
+            )
+        );
     std::get<2>(out) = memory;
 
     return out;
@@ -528,7 +542,7 @@ std::vector<int> StackedGatedModel<Z>::reconstruct(
             memory        = gate.activate(
                 input_vector,
                 initial_state.back().hidden
-            );
+            ).sigmoid();
             input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
             initial_state = this->stacked_lstm->activate(
                 initial_state,
@@ -557,7 +571,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<Z>::reconstr
     for (uint i = 0; i < n; ++i) {
         // pick this letter from the embedding
         input_vector  = this->embedding[example[i]];
-        memory        = gate.activate(input_vector, initial_state.back().hidden);
+        memory        = gate.activate(input_vector, initial_state.back().hidden).sigmoid();
         input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
         // pass this letter to the LSTM for processing
         initial_state = this->stacked_lstm->activate(initial_state, input_vector);
@@ -579,7 +593,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<Z>::reconstr
     outputs.emplace_back(pos);
     for (uint j = 0; j < eval_steps - 1; j++) {
         input_vector  = this->embedding[pos->id];
-        memory        = gate.activate(input_vector, initial_state.back().hidden);
+        memory        = gate.activate(input_vector, initial_state.back().hidden).sigmoid();
         input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
         initial_state = this->stacked_lstm->activate(initial_state, input_vector);
         last_turn     = this->decode(

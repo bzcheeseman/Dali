@@ -110,667 +110,667 @@ template std::ostream& operator<< <size_t>(std::ostream& strm, const vector<size
 
 namespace utils {
 
-        #ifndef NDEBUG
-        string explain_mat_bug(const string& mat_name, const char* file, const int& line) {
-            stringstream ss;
-            ss << "Matrix \"" << mat_name << "\" has NaNs in file:\"" << file << "\" and line: " << line;
-            return ss.str();
+    #ifndef NDEBUG
+    string explain_mat_bug(const string& mat_name, const char* file, const int& line) {
+        stringstream ss;
+        ss << "Matrix \"" << mat_name << "\" has NaNs in file:\"" << file << "\" and line: " << line;
+        return ss.str();
+    }
+    template<typename T>
+    bool contains_NaN(T val) {return !(val == val);}
+
+    template bool contains_NaN(float);
+    template bool contains_NaN(double);
+    #endif
+
+    vector<size_t> random_arange(size_t size) {
+        vector<size_t> indices(size);
+        for (size_t i=0; i < size;i++) indices[i] = i;
+        std::random_shuffle( indices.begin(), indices.end() );
+        return indices;
+    }
+
+    vector<vector<size_t>> random_minibatches(size_t total_elements, size_t minibatch_size) {
+        vector<size_t> training_order = utils::random_arange(total_elements);
+        int num_minibatches = training_order.size() / minibatch_size;
+        vector<vector<size_t>> minibatches(num_minibatches);
+        for (int tidx = 0; tidx < total_elements; ++tidx) {
+            minibatches[tidx%num_minibatches].push_back(training_order[tidx]);
         }
-        template<typename T>
-        bool contains_NaN(T val) {return !(val == val);}
+        return minibatches;
+    }
 
-        template bool contains_NaN(float);
-        template bool contains_NaN(double);
-        #endif
+    vector<uint> arange(uint start, uint end) {
+        vector<uint> indices(end - start);
+        for (uint i=0; i < indices.size();i++) indices[i] = i;
+        return indices;
+    }
 
-        vector<size_t> random_arange(size_t size) {
-            vector<size_t> indices(size);
-            for (size_t i=0; i < size;i++) indices[i] = i;
-            std::random_shuffle( indices.begin(), indices.end() );
-            return indices;
+    void ensure_directory (std::string& dirname) {
+        if (dirname.back() != '/') dirname += "/";
+    }
+
+    vector<string> split(const std::string &s, char delim, bool keep_empty_strings) {
+        std::vector<std::string> elems;
+        std::stringstream ss(s);
+        string item;
+        while (std::getline(ss, item, delim))
+            if (!item.empty() || keep_empty_strings)
+                elems.push_back(item);
+        return elems;
+    }
+
+    string join(const vector<string>& vs, const string& in_between) {
+        std::stringstream ss;
+        for (int i = 0; i < vs.size(); ++i) {
+            ss << vs[i];
+            if (i + 1 != vs.size())
+                ss << in_between;
         }
+        return ss.str();
+    }
 
-        vector<vector<size_t>> random_minibatches(size_t total_elements, size_t minibatch_size) {
-            vector<size_t> training_order = utils::random_arange(total_elements);
-            int num_minibatches = training_order.size() / minibatch_size;
-            vector<vector<size_t>> minibatches(num_minibatches);
-            for (int tidx = 0; tidx < total_elements; ++tidx) {
-                minibatches[tidx%num_minibatches].push_back(training_order[tidx]);
-            }
-            return minibatches;
+    template<typename T>
+    void load_corpus_from_stream(Corpus& corpus, T& stream) {
+        corpus.ParseFromIstream(&stream);
+    }
+
+    template void load_corpus_from_stream(Corpus&, igzstream&);
+    template void load_corpus_from_stream(Corpus&, std::fstream&);
+    template void load_corpus_from_stream(Corpus&, std::stringstream&);
+    template void load_corpus_from_stream(Corpus&, std::istream&);
+
+    Corpus load_corpus_protobuff(const std::string& path) {
+        Corpus corpus;
+        if (is_gzip(path)) {
+            igzstream fpgz(path.c_str(), std::ios::in | std::ios::binary);
+            load_corpus_from_stream(corpus, fpgz);
+        } else {
+            std::fstream fp(path, std::ios::in | std::ios::binary);
+            load_corpus_from_stream(corpus, fp);
         }
+        return corpus;
+    }
 
-        vector<uint> arange(uint start, uint end) {
-            vector<uint> indices(end - start);
-            for (uint i=0; i < indices.size();i++) indices[i] = i;
-            return indices;
+    template<typename T>
+    bool add_to_set(vector<T>& set, T& el) {
+        if(std::find(set.begin(), set.end(), el) != set.end()) {
+                return false;
+        } else {
+                set.emplace_back(el);
+                return true;
         }
+    }
 
-        void ensure_directory (std::string& dirname) {
-            if (dirname.back() != '/') dirname += "/";
-        }
-
-        vector<string> split(const std::string &s, char delim, bool keep_empty_strings) {
-            std::vector<std::string> elems;
-            std::stringstream ss(s);
-            string item;
-            while (std::getline(ss, item, delim))
-                if (!item.empty() || keep_empty_strings)
-                    elems.push_back(item);
-            return elems;
-        }
-
-        string join(const vector<string>& vs, const string& in_between) {
-            std::stringstream ss;
-            for (int i = 0; i < vs.size(); ++i) {
-                ss << vs[i];
-                if (i + 1 != vs.size())
-                    ss << in_between;
-            }
-            return ss.str();
-        }
-
-        template<typename T>
-        void load_corpus_from_stream(Corpus& corpus, T& stream) {
-            corpus.ParseFromIstream(&stream);
-        }
-
-        template void load_corpus_from_stream(Corpus&, igzstream&);
-        template void load_corpus_from_stream(Corpus&, std::fstream&);
-        template void load_corpus_from_stream(Corpus&, std::stringstream&);
-        template void load_corpus_from_stream(Corpus&, std::istream&);
-
-        Corpus load_corpus_protobuff(const std::string& path) {
-            Corpus corpus;
-            if (is_gzip(path)) {
-                igzstream fpgz(path.c_str(), std::ios::in | std::ios::binary);
-                load_corpus_from_stream(corpus, fpgz);
-            } else {
-                std::fstream fp(path, std::ios::in | std::ios::binary);
-                load_corpus_from_stream(corpus, fp);
-            }
-            return corpus;
-        }
-
-        template<typename T>
-        bool add_to_set(vector<T>& set, T& el) {
-            if(std::find(set.begin(), set.end(), el) != set.end()) {
-                    return false;
-            } else {
-                    set.emplace_back(el);
-                    return true;
-            }
-        }
-
-        template bool add_to_set(vector<int>&,    int&);
-        template bool add_to_set(vector<uint>&,   uint&);
-        template bool add_to_set(vector<string>&, string&);
+    template bool add_to_set(vector<int>&,    int&);
+    template bool add_to_set(vector<uint>&,   uint&);
+    template bool add_to_set(vector<string>&, string&);
 
 
-        template<typename T>
-        bool in_vector(const std::vector<T>& set, T& el) {
-            return std::find(set.begin(), set.end(), el) != set.end();
-        }
+    template<typename T>
+    bool in_vector(const std::vector<T>& set, T& el) {
+        return std::find(set.begin(), set.end(), el) != set.end();
+    }
 
-        template bool in_vector(const vector<int>&,    int&);
-        template bool in_vector(const vector<uint>&,   uint&);
-        template bool in_vector(const vector<string>&, string&);
+    template bool in_vector(const vector<int>&,    int&);
+    template bool in_vector(const vector<uint>&,   uint&);
+    template bool in_vector(const vector<string>&, string&);
 
-        template<typename T>
-        vector<T> concatenate(initializer_list<vector<T>> lists) {
-            vector<T> concatenated_list;
-            for (auto& list: lists) {
-                for (auto& el: list) {
-                    concatenated_list.emplace_back(el);
-                }
-            }
-            return concatenated_list;
-        }
-
-        template vector<int> concatenate(initializer_list<vector<int>>);
-        template vector<Mat<float>> concatenate(std::initializer_list<vector<Mat<float>>>);
-        template vector<Mat<double>> concatenate(std::initializer_list<vector<Mat<double>>>);
-
-        template<typename IN, typename OUT>
-        vector<OUT> fmap(vector<IN> in_list, function<OUT(IN)> f) {
-            vector<OUT> out_list;
-            for (IN& in_element: in_list)
-                out_list.push_back(f(in_element));
-            return out_list;
-        }
-
-        template vector<string> fmap(vector<int>, function<string(int)>);
-
-        template<typename T>
-        void tuple_sum(std::tuple<T, T>& A, std::tuple<T, T> B) {
-                std::get<0>(A) += std::get<0>(B);
-                std::get<1>(A) += std::get<1>(B);
-        }
-
-        template void tuple_sum(std::tuple<float, float>&, std::tuple<float, float>);
-        template void tuple_sum(std::tuple<double, double>&, std::tuple<double, double>);
-        template void tuple_sum(std::tuple<int, int>&, std::tuple<int, int>);
-        template void tuple_sum(std::tuple<uint, uint>&, std::tuple<uint, uint>);
-
-        template<typename T>
-        void assert_map_has_key(std::map<string, T>& map, const string& key) {
-                if (map.count(key) < 1) {
-                        stringstream error_msg;
-                        error_msg << "Map is missing the following key : \"" << key << "\".";
-                        throw std::runtime_error(error_msg.str());
-                }
-        }
-
-        template void assert_map_has_key(std::map<string, string>&, const string&);
-        template void assert_map_has_key(std::map<string, vector<string>>&, const string&);
-
-        vector<string> listdir(const string& folder) {
-                vector<string> filenames;
-                DIR *dp;
-            struct dirent *dirp;
-            if ((dp  = opendir(folder.c_str())) == nullptr) {
-                stringstream error_msg;
-                        error_msg << "Error: could not open directory \"" << folder << "\"";
-                        throw std::runtime_error(error_msg.str());
-            }
-            // list all contents of directory:
-            while ((dirp = readdir(dp)) != nullptr)
-                // exclude "current directory" (.) and "parent directory" (..)
-                if (std::strcmp(dirp->d_name, ".") != 0 && std::strcmp(dirp->d_name, "..") != 0)
-                        filenames.emplace_back(dirp->d_name);
-            closedir(dp);
-            return filenames;
-        }
-
-        vector<string> split_str(const string& original, const string& delimiter) {
-                std::vector<std::string> tokens;
-                auto delimiter_ptr = delimiter.begin();
-                stringstream ss(original);
-                int inside = 0;
-                std::vector<char> token;
-                char ch;
-                while (ss) {
-                        ch = ss.get();
-                        if (ch == *delimiter_ptr) {
-                                delimiter_ptr++;
-                                inside++;
-                                if (delimiter_ptr == delimiter.end()) {
-                                        tokens.emplace_back(token.begin(), token.end());
-                                        token.clear();
-                                        inside = 0;
-                                        delimiter_ptr = delimiter.begin();
-                                }
-                        } else {
-                                if (inside > 0) {
-                                        token.insert(token.end(), delimiter.begin(), delimiter_ptr);
-                                        delimiter_ptr = delimiter.begin();
-                                        inside = 0;
-                                } else {
-                                        token.push_back(ch);
-                                }
-                        }
-                }
-                if (inside > 0) {
-                        token.insert(token.end(), delimiter.begin(), delimiter_ptr);
-                        tokens.emplace_back(token.begin(), token.end());
-                        token.clear();
-                } else {
-                        if (token.size() > 0)
-                                tokens.emplace_back(token.begin(), token.end()-1);
-                }
-                return tokens;
-        }
-        std::map<string, std::vector<string>> text_to_map(const string& fname) {
-                ifstream infile(fname);
-                string line;
-                const char space = ' ';
-                std::map<string, std::vector<string>> map;
-                while (std::getline(infile, line)) {
-                        if (*line.begin() != '=' && *line.begin() != '-' && *line.begin() != '#') {
-                                const auto tokens = utils::split(line, space);
-                                if (tokens.size() > 1) {
-                                        auto ptr = tokens.begin() + 1;
-                                        while( ptr != tokens.end()) {
-                                                map[tokens[0]].emplace_back(*(ptr++));
-                                        }
-                                }
-                        }
-                }
-                return map;
-        }
-
-        template<typename T, typename K>
-        void stream_to_hashmap(T& infile, std::map<string, K>& map) {
-                string line;
-                const char space = ' ';
-                while (std::getline(infile, line)) {
-                        const auto tokens = utils::split(line, space);
-                        if (tokens.size() > 1)
-                                map[tokens[0]] = from_string<K>(tokens[1]);
-                }
-        }
-
-        template<typename T>
-        std::map<string, T> text_to_hashmap(const string& fname) {
-                std::map<string, T> map;
-                if (is_gzip(fname)) {
-                        igzstream fpgz(fname.c_str(), std::ios::in | std::ios::binary);
-                        stream_to_hashmap(fpgz, map);
-                } else {
-                        std::fstream fp(fname, std::ios::in | std::ios::binary);
-                        stream_to_hashmap(fp, map);
-                }
-                return map;
-        }
-
-        template<typename T>
-        void stream_to_list(T& fp, vector<string>& list) {
-                string line;
-                while (std::getline(fp, line))
-                        list.emplace_back(line);
-        }
-        template void stream_to_list(stringstream&, vector<string>&);
-
-        vector<string> load_list(const string& fname) {
-            vector<string> list;
-            if (is_gzip(fname)) {
-                igzstream fpgz(fname.c_str(), std::ios::in | std::ios::binary);
-                stream_to_list(fpgz, list);
-            } else {
-                std::fstream fp(fname, std::ios::in | std::ios::binary);
-                stream_to_list(fp, list);
-            }
-            return list;
-        }
-
-        template<typename T>
-        void save_list_to_stream(const vector<string>& list, T& fp) {
-            for (auto& el : list) {
-                fp << el << "\n";
+    template<typename T>
+    vector<T> concatenate(initializer_list<vector<T>> lists) {
+        vector<T> concatenated_list;
+        for (auto& list: lists) {
+            for (auto& el: list) {
+                concatenated_list.emplace_back(el);
             }
         }
+        return concatenated_list;
+    }
 
-        void save_list(const vector<string>& list, string fname, std::ios_base::openmode mode) {
-            if (endswith(fname, ".gz")) {
-                ogzstream fpgz(fname.c_str(), mode);
-                save_list_to_stream(list, fpgz);
-            } else {
-                ofstream fp(fname, mode);
-                save_list_to_stream(list, fp);
+    template vector<int> concatenate(initializer_list<vector<int>>);
+    template vector<Mat<float>> concatenate(std::initializer_list<vector<Mat<float>>>);
+    template vector<Mat<double>> concatenate(std::initializer_list<vector<Mat<double>>>);
+
+    template<typename IN, typename OUT>
+    vector<OUT> fmap(vector<IN> in_list, function<OUT(IN)> f) {
+        vector<OUT> out_list;
+        for (IN& in_element: in_list)
+            out_list.push_back(f(in_element));
+        return out_list;
+    }
+
+    template vector<string> fmap(vector<int>, function<string(int)>);
+
+    template<typename T>
+    void tuple_sum(std::tuple<T, T>& A, std::tuple<T, T> B) {
+            std::get<0>(A) += std::get<0>(B);
+            std::get<1>(A) += std::get<1>(B);
+    }
+
+    template void tuple_sum(std::tuple<float, float>&, std::tuple<float, float>);
+    template void tuple_sum(std::tuple<double, double>&, std::tuple<double, double>);
+    template void tuple_sum(std::tuple<int, int>&, std::tuple<int, int>);
+    template void tuple_sum(std::tuple<uint, uint>&, std::tuple<uint, uint>);
+
+    template<typename T>
+    void assert_map_has_key(std::map<string, T>& map, const string& key) {
+            if (map.count(key) < 1) {
+                    stringstream error_msg;
+                    error_msg << "Map is missing the following key : \"" << key << "\".";
+                    throw std::runtime_error(error_msg.str());
             }
-        }
+    }
 
-        template<typename T>
-        void stream_to_redirection_list(T& fp, std::map<string, string>& mapping, std::function<std::string(std::string&&)>& preprocessor, int num_threads) {
-            string line;
-            const char dash = '-';
-            const char arrow = '>';
-            bool saw_dash = false;
-            auto checker = [&saw_dash, &arrow, &dash](const char& ch) {
-                if (saw_dash) {
-                    if (ch == arrow) {
-                        return true;
+    template void assert_map_has_key(std::map<string, string>&, const string&);
+    template void assert_map_has_key(std::map<string, vector<string>>&, const string&);
+
+    vector<string> listdir(const string& folder) {
+            vector<string> filenames;
+            DIR *dp;
+        struct dirent *dirp;
+        if ((dp  = opendir(folder.c_str())) == nullptr) {
+            stringstream error_msg;
+                    error_msg << "Error: could not open directory \"" << folder << "\"";
+                    throw std::runtime_error(error_msg.str());
+        }
+        // list all contents of directory:
+        while ((dirp = readdir(dp)) != nullptr)
+            // exclude "current directory" (.) and "parent directory" (..)
+            if (std::strcmp(dirp->d_name, ".") != 0 && std::strcmp(dirp->d_name, "..") != 0)
+                    filenames.emplace_back(dirp->d_name);
+        closedir(dp);
+        return filenames;
+    }
+
+    vector<string> split_str(const string& original, const string& delimiter) {
+            std::vector<std::string> tokens;
+            auto delimiter_ptr = delimiter.begin();
+            stringstream ss(original);
+            int inside = 0;
+            std::vector<char> token;
+            char ch;
+            while (ss) {
+                    ch = ss.get();
+                    if (ch == *delimiter_ptr) {
+                            delimiter_ptr++;
+                            inside++;
+                            if (delimiter_ptr == delimiter.end()) {
+                                    tokens.emplace_back(token.begin(), token.end());
+                                    token.clear();
+                                    inside = 0;
+                                    delimiter_ptr = delimiter.begin();
+                            }
                     } else {
-                        saw_dash = (ch == dash);
-                        return false;
+                            if (inside > 0) {
+                                    token.insert(token.end(), delimiter.begin(), delimiter_ptr);
+                                    delimiter_ptr = delimiter.begin();
+                                    inside = 0;
+                            } else {
+                                    token.push_back(ch);
+                            }
                     }
+            }
+            if (inside > 0) {
+                    token.insert(token.end(), delimiter.begin(), delimiter_ptr);
+                    tokens.emplace_back(token.begin(), token.end());
+                    token.clear();
+            } else {
+                    if (token.size() > 0)
+                            tokens.emplace_back(token.begin(), token.end()-1);
+            }
+            return tokens;
+    }
+    std::map<string, std::vector<string>> text_to_map(const string& fname) {
+            ifstream infile(fname);
+            string line;
+            const char space = ' ';
+            std::map<string, std::vector<string>> map;
+            while (std::getline(infile, line)) {
+                    if (*line.begin() != '=' && *line.begin() != '-' && *line.begin() != '#') {
+                            const auto tokens = utils::split(line, space);
+                            if (tokens.size() > 1) {
+                                    auto ptr = tokens.begin() + 1;
+                                    while( ptr != tokens.end()) {
+                                            map[tokens[0]].emplace_back(*(ptr++));
+                                    }
+                            }
+                    }
+            }
+            return map;
+    }
+
+    template<typename T, typename K>
+    void stream_to_hashmap(T& infile, std::map<string, K>& map) {
+            string line;
+            const char space = ' ';
+            while (std::getline(infile, line)) {
+                    const auto tokens = utils::split(line, space);
+                    if (tokens.size() > 1)
+                            map[tokens[0]] = from_string<K>(tokens[1]);
+            }
+    }
+
+    template<typename T>
+    std::map<string, T> text_to_hashmap(const string& fname) {
+            std::map<string, T> map;
+            if (is_gzip(fname)) {
+                    igzstream fpgz(fname.c_str(), std::ios::in | std::ios::binary);
+                    stream_to_hashmap(fpgz, map);
+            } else {
+                    std::fstream fp(fname, std::ios::in | std::ios::binary);
+                    stream_to_hashmap(fp, map);
+            }
+            return map;
+    }
+
+    template<typename T>
+    void stream_to_list(T& fp, vector<string>& list) {
+            string line;
+            while (std::getline(fp, line))
+                    list.emplace_back(line);
+    }
+    template void stream_to_list(stringstream&, vector<string>&);
+
+    vector<string> load_list(const string& fname) {
+        vector<string> list;
+        if (is_gzip(fname)) {
+            igzstream fpgz(fname.c_str(), std::ios::in | std::ios::binary);
+            stream_to_list(fpgz, list);
+        } else {
+            std::fstream fp(fname, std::ios::in | std::ios::binary);
+            stream_to_list(fp, list);
+        }
+        return list;
+    }
+
+    template<typename T>
+    void save_list_to_stream(const vector<string>& list, T& fp) {
+        for (auto& el : list) {
+            fp << el << "\n";
+        }
+    }
+
+    void save_list(const vector<string>& list, string fname, std::ios_base::openmode mode) {
+        if (endswith(fname, ".gz")) {
+            ogzstream fpgz(fname.c_str(), mode);
+            save_list_to_stream(list, fpgz);
+        } else {
+            ofstream fp(fname, mode);
+            save_list_to_stream(list, fp);
+        }
+    }
+
+    template<typename T>
+    void stream_to_redirection_list(T& fp, std::map<string, string>& mapping, std::function<std::string(std::string&&)>& preprocessor, int num_threads) {
+        string line;
+        const char dash = '-';
+        const char arrow = '>';
+        bool saw_dash = false;
+        auto checker = [&saw_dash, &arrow, &dash](const char& ch) {
+            if (saw_dash) {
+                if (ch == arrow) {
+                    return true;
                 } else {
                     saw_dash = (ch == dash);
                     return false;
                 }
-            };
-            if (num_threads > 1) {
-                ThreadPool pool(num_threads);
-                while (std::getline(fp, line)) {
-                    pool.run([&mapping, &preprocessor, &checker, line]() {
-                        auto pos_end_arrow = std::find_if(line.begin(), line.end(), checker);
-                        if (pos_end_arrow != line.end()) {
-                            mapping.emplace(
-                                std::piecewise_construct,
-                                std::forward_as_tuple(
-                                    preprocessor(
-                                        std::string(
-                                            line.begin(),
-                                            pos_end_arrow-1
-                                        )
-                                    )
-                                ),
-                                std::forward_as_tuple(
-                                    preprocessor(
-                                        std::string(
-                                            pos_end_arrow+1,
-                                            line.end()
-                                        )
-                                    )
-                                )
-                            );
-                        }
-                    });
-                }
-            } else {
-                while (std::getline(fp, line)) {
+            } else {
+                saw_dash = (ch == dash);
+                return false;
+            }
+        };
+        if (num_threads > 1) {
+            ThreadPool pool(num_threads);
+            while (std::getline(fp, line)) {
+                pool.run([&mapping, &preprocessor, &checker, line]() {
                     auto pos_end_arrow = std::find_if(line.begin(), line.end(), checker);
                     if (pos_end_arrow != line.end()) {
                         mapping.emplace(
                             std::piecewise_construct,
-                            std::forward_as_tuple( preprocessor(std::string(line.begin(), pos_end_arrow-1))),
-                            std::forward_as_tuple( preprocessor(std::string(pos_end_arrow+1, line.end())))
+                            std::forward_as_tuple(
+                                preprocessor(
+                                    std::string(
+                                        line.begin(),
+                                        pos_end_arrow-1
+                                    )
+                                )
+                            ),
+                            std::forward_as_tuple(
+                                preprocessor(
+                                    std::string(
+                                        pos_end_arrow+1,
+                                        line.end()
+                                    )
+                                )
+                            )
                         );
                     }
-                }
+                });
             }
-        }
-
-        template<typename T>
-        void stream_to_redirection_list(T& fp, std::map<string, string>& mapping) {
-            string line;
-            const char dash = '-';
-            const char arrow = '>';
-            bool saw_dash = false;
-            auto checker = [&saw_dash, &arrow, &dash](const char& ch) {
-                if (saw_dash) {
-                    if (ch == arrow) {
-                        return true;
-                    } else {
-                        saw_dash = (ch == dash);
-                        return false;
-                    }
-                } else {
-                    saw_dash = (ch == dash);
-                    return false;
-                }
-            };
+        } else {
             while (std::getline(fp, line)) {
                 auto pos_end_arrow = std::find_if(line.begin(), line.end(), checker);
                 if (pos_end_arrow != line.end()) {
                     mapping.emplace(
                         std::piecewise_construct,
-                        std::forward_as_tuple( line.begin(), pos_end_arrow-1),
-                        std::forward_as_tuple( pos_end_arrow+1, line.end())
+                        std::forward_as_tuple( preprocessor(std::string(line.begin(), pos_end_arrow-1))),
+                        std::forward_as_tuple( preprocessor(std::string(pos_end_arrow+1, line.end())))
                     );
                 }
             }
         }
+    }
 
-        template void stream_to_redirection_list(stringstream&, std::map<string, string>&, std::function<std::string(std::string&&)>&, int);
-        template void stream_to_redirection_list(stringstream&, std::map<string, string>&);
-
-        std::map<string, string> load_redirection_list(const string& fname, std::function<std::string(std::string&&)>&& preprocessor, int num_threads) {
-            std::map<string, string> mapping;
-            if (is_gzip(fname)) {
-                igzstream fpgz(fname.c_str(), std::ios::in | std::ios::binary);
-                stream_to_redirection_list(fpgz, mapping, preprocessor, num_threads);
+    template<typename T>
+    void stream_to_redirection_list(T& fp, std::map<string, string>& mapping) {
+        string line;
+        const char dash = '-';
+        const char arrow = '>';
+        bool saw_dash = false;
+        auto checker = [&saw_dash, &arrow, &dash](const char& ch) {
+            if (saw_dash) {
+                if (ch == arrow) {
+                    return true;
+                } else {
+                    saw_dash = (ch == dash);
+                    return false;
+                }
             } else {
-                std::fstream fp(fname, std::ios::in | std::ios::binary);
-                stream_to_redirection_list(fp, mapping, preprocessor, num_threads);
+                saw_dash = (ch == dash);
+                return false;
             }
-            return mapping;
-        }
-
-        std::map<string, string> load_redirection_list(const string& fname) {
-            std::map<string, string> mapping;
-            if (is_gzip(fname)) {
-                igzstream fpgz(fname.c_str(), std::ios::in | std::ios::binary);
-                stream_to_redirection_list(fpgz, mapping);
-            } else {
-                std::fstream fp(fname, std::ios::in | std::ios::binary);
-                stream_to_redirection_list(fp, mapping);
-            }
-            return mapping;
-        }
-
-        template std::map<string, string> text_to_hashmap(const string&);
-        template std::map<string, int>    text_to_hashmap(const string&);
-        template std::map<string, float>  text_to_hashmap(const string&);
-        template std::map<string, double> text_to_hashmap(const string&);
-        template std::map<string, uint>   text_to_hashmap(const string&);
-
-        void map_to_file(const std::map<string, std::vector<string>>& map, const string& fname) {
-            ofstream fp;
-            fp.open(fname.c_str(), std::ios::out);
-            for (auto& kv : map) {
-                fp << kv.first;
-                for (auto& v: kv.second)
-                    fp << " " << v;
-                fp << "\n";
-            }
-        }
-
-        vector<std::pair<string, string>> load_labeled_corpus(const string& fname) {
-            ifstream fp(fname.c_str());
-            string l;
-            const char space = ' ';
-            vector<std::pair<string, string>> pairs;
-            string::size_type n;
-            while (std::getline(fp, l)) {
-                n = l.find(space);
-                pairs.emplace_back(std::piecewise_construct,
-                    std::forward_as_tuple(l.begin() + n + 1, l.end()),
-                    std::forward_as_tuple(l.begin(), l.begin() + n)
+        };
+        while (std::getline(fp, line)) {
+            auto pos_end_arrow = std::find_if(line.begin(), line.end(), checker);
+            if (pos_end_arrow != line.end()) {
+                mapping.emplace(
+                    std::piecewise_construct,
+                    std::forward_as_tuple( line.begin(), pos_end_arrow-1),
+                    std::forward_as_tuple( pos_end_arrow+1, line.end())
                 );
             }
-            return pairs;
         }
+    }
 
-        vector<string> triggers_to_strings(const google::protobuf::RepeatedPtrField<Example::Trigger>& triggers, const vector<string>& index2target) {
-            vector<string> data;
-            data.reserve(triggers.size());
-            for (auto& trig : triggers)
-                if (trig.id() < index2target.size())
-                    data.emplace_back(index2target[trig.id()]);
-            return data;
+    template void stream_to_redirection_list(stringstream&, std::map<string, string>&, std::function<std::string(std::string&&)>&, int);
+    template void stream_to_redirection_list(stringstream&, std::map<string, string>&);
+
+    std::map<string, string> load_redirection_list(const string& fname, std::function<std::string(std::string&&)>&& preprocessor, int num_threads) {
+        std::map<string, string> mapping;
+        if (is_gzip(fname)) {
+            igzstream fpgz(fname.c_str(), std::ios::in | std::ios::binary);
+            stream_to_redirection_list(fpgz, mapping, preprocessor, num_threads);
+        } else {
+            std::fstream fp(fname, std::ios::in | std::ios::binary);
+            stream_to_redirection_list(fp, mapping, preprocessor, num_threads);
         }
+        return mapping;
+    }
 
-        tokenized_labeled_dataset load_protobuff_dataset(string directory, const vector<string>& index2label) {
-            ensure_directory(directory);
-            auto files = listdir(directory);
-            tokenized_labeled_dataset dataset;
-            for (auto& file : files) {
-                auto corpus = load_corpus_protobuff(directory + file);
-                for (auto& example : corpus.example()) {
-                    dataset.emplace_back(std::initializer_list<vector<string>>({
-                        vector<string>(example.words().begin(), example.words().end()),
-                        triggers_to_strings(example.trigger(), index2label)
-                    }));
+    std::map<string, string> load_redirection_list(const string& fname) {
+        std::map<string, string> mapping;
+        if (is_gzip(fname)) {
+            igzstream fpgz(fname.c_str(), std::ios::in | std::ios::binary);
+            stream_to_redirection_list(fpgz, mapping);
+        } else {
+            std::fstream fp(fname, std::ios::in | std::ios::binary);
+            stream_to_redirection_list(fp, mapping);
+        }
+        return mapping;
+    }
+
+    template std::map<string, string> text_to_hashmap(const string&);
+    template std::map<string, int>    text_to_hashmap(const string&);
+    template std::map<string, float>  text_to_hashmap(const string&);
+    template std::map<string, double> text_to_hashmap(const string&);
+    template std::map<string, uint>   text_to_hashmap(const string&);
+
+    void map_to_file(const std::map<string, std::vector<string>>& map, const string& fname) {
+        ofstream fp;
+        fp.open(fname.c_str(), std::ios::out);
+        for (auto& kv : map) {
+            fp << kv.first;
+            for (auto& v: kv.second)
+                fp << " " << v;
+            fp << "\n";
+        }
+    }
+
+    vector<std::pair<string, string>> load_labeled_corpus(const string& fname) {
+        ifstream fp(fname.c_str());
+        string l;
+        const char space = ' ';
+        vector<std::pair<string, string>> pairs;
+        string::size_type n;
+        while (std::getline(fp, l)) {
+            n = l.find(space);
+            pairs.emplace_back(std::piecewise_construct,
+                std::forward_as_tuple(l.begin() + n + 1, l.end()),
+                std::forward_as_tuple(l.begin(), l.begin() + n)
+            );
+        }
+        return pairs;
+    }
+
+    vector<string> triggers_to_strings(const google::protobuf::RepeatedPtrField<Example::Trigger>& triggers, const vector<string>& index2target) {
+        vector<string> data;
+        data.reserve(triggers.size());
+        for (auto& trig : triggers)
+            if (trig.id() < index2target.size())
+                data.emplace_back(index2target[trig.id()]);
+        return data;
+    }
+
+    tokenized_labeled_dataset load_protobuff_dataset(string directory, const vector<string>& index2label) {
+        ensure_directory(directory);
+        auto files = listdir(directory);
+        tokenized_labeled_dataset dataset;
+        for (auto& file : files) {
+            auto corpus = load_corpus_protobuff(directory + file);
+            for (auto& example : corpus.example()) {
+                dataset.emplace_back(std::initializer_list<vector<string>>({
+                    vector<string>(example.words().begin(), example.words().end()),
+                    triggers_to_strings(example.trigger(), index2label)
+                }));
+            }
+        }
+        return dataset;
+    }
+
+    tokenized_labeled_dataset load_protobuff_dataset(
+        SQLite::Statement& query,
+        const vector<string>& index2label,
+        int num_elements,
+        int column) {
+        int els_seen = 0;
+        tokenized_labeled_dataset dataset;
+        while (query.executeStep()) {
+            const char* protobuff_serialized = query.getColumn(column);
+            stringstream ss(protobuff_serialized);
+            Corpus corpus;
+            load_corpus_from_stream(corpus, ss);
+            for (auto& example : corpus.example()) {
+                dataset.emplace_back(std::initializer_list<vector<string>>{
+                    vector<string>(example.words().begin(), example.words().end()),
+                    triggers_to_strings(example.trigger(), index2label)
+                });
+                ++els_seen;
+            }
+            if (els_seen >= num_elements) {
+                break;
+            }
+        }
+        return dataset;
+    }
+
+    vector<string> tokenize(const string& s) {
+        stringstream ss(s);
+        std::istream_iterator<string> begin(ss);
+        std::istream_iterator<string> end;
+        return vector<string>(begin, end);
+    }
+
+    tokenized_labeled_dataset load_tsv(const string& fname, int expected_columns, const char& delimiter) {
+        assert2(file_exists(fname), "Cannot open tsv file.");
+        tokenized_labeled_dataset tsv_data;
+        if (utils::is_gzip(fname)) {
+            igzstream fpgz(fname.c_str());
+            load_tsv_from_stream(fpgz, tsv_data, expected_columns, delimiter);
+        } else {
+            ifstream fp(fname);
+            load_tsv_from_stream(fp,   tsv_data, expected_columns, delimiter);
+        }
+        return tsv_data;
+    }
+
+    template<typename T>
+    void load_tsv_from_stream(
+            T& stream,
+            tokenized_labeled_dataset& tsv_data,
+            int& expected_columns,
+            const char& delimiter) {
+        string::size_type n;
+        string l;
+        string cell;
+        // row by row
+        int line_number = 0;
+        while (std::getline(stream, l)) {
+            line_number++;
+            std::stringstream ss(l);
+            vector<vector<string>> row_data;
+            // cells separated by tab or comma
+            while(std::getline(ss, cell, delimiter)) {
+                row_data.push_back(tokenize(cell));
+            }
+            if (row_data.size() > 0) {
+                if (expected_columns > 0) {
+                    assert2(
+                        row_data.size() == expected_columns,
+                        MS() << "File TSV Row at linenumber "
+                             << line_number
+                             << " has unexpected number of columns (" << row_data.size() << ")."
+                    );
                 }
-            }
-            return dataset;
-        }
-
-        tokenized_labeled_dataset load_protobuff_dataset(
-            SQLite::Statement& query,
-            const vector<string>& index2label,
-            int num_elements,
-            int column) {
-            int els_seen = 0;
-            tokenized_labeled_dataset dataset;
-            while (query.executeStep()) {
-                const char* protobuff_serialized = query.getColumn(column);
-                stringstream ss(protobuff_serialized);
-                Corpus corpus;
-                load_corpus_from_stream(corpus, ss);
-                for (auto& example : corpus.example()) {
-                    dataset.emplace_back(std::initializer_list<vector<string>>{
-                        vector<string>(example.words().begin(), example.words().end()),
-                        triggers_to_strings(example.trigger(), index2label)
-                    });
-                    ++els_seen;
-                }
-                if (els_seen >= num_elements) {
-                    break;
-                }
-            }
-            return dataset;
-        }
-
-        vector<string> tokenize(const string& s) {
-            stringstream ss(s);
-            std::istream_iterator<string> begin(ss);
-            std::istream_iterator<string> end;
-            return vector<string>(begin, end);
-        }
-
-        tokenized_labeled_dataset load_tsv(const string& fname, int expected_columns, const char& delimiter) {
-            assert2(file_exists(fname), "Cannot open tsv file.");
-            tokenized_labeled_dataset tsv_data;
-            if (utils::is_gzip(fname)) {
-                igzstream fpgz(fname.c_str());
-                load_tsv_from_stream(fpgz, tsv_data, expected_columns, delimiter);
-            } else {
-                ifstream fp(fname);
-                load_tsv_from_stream(fp,   tsv_data, expected_columns, delimiter);
-            }
-            return tsv_data;
-        }
-
-        template<typename T>
-        void load_tsv_from_stream(
-                T& stream,
-                tokenized_labeled_dataset& tsv_data,
-                int& expected_columns,
-                const char& delimiter) {
-            string::size_type n;
-            string l;
-            string cell;
-            // row by row
-            int line_number = 0;
-            while (std::getline(stream, l)) {
-                line_number++;
-                std::stringstream ss(l);
-                vector<vector<string>> row_data;
-                // cells separated by tab or comma
-                while(std::getline(ss, cell, delimiter)) {
-                    row_data.push_back(tokenize(cell));
-                }
-                if (row_data.size() > 0) {
-                    if (expected_columns > 0) {
-                        assert2(
-                            row_data.size() == expected_columns,
-                            MS() << "File TSV Row at linenumber "
-                                 << line_number
-                                 << " has unexpected number of columns (" << row_data.size() << ")."
-                        );
-                    }
-                    tsv_data.emplace_back(row_data);
-                }
+                tsv_data.emplace_back(row_data);
             }
         }
+    }
 
-        template void load_tsv_from_stream(igzstream&,         tokenized_labeled_dataset&, int&, const char& delimiter);
-        template void load_tsv_from_stream(std::fstream&,      tokenized_labeled_dataset&, int&, const char& delimiter);
-        template void load_tsv_from_stream(std::stringstream&, tokenized_labeled_dataset&, int&, const char& delimiter);
-        template void load_tsv_from_stream(std::istream&,      tokenized_labeled_dataset&, int&, const char& delimiter);
+    template void load_tsv_from_stream(igzstream&,         tokenized_labeled_dataset&, int&, const char& delimiter);
+    template void load_tsv_from_stream(std::fstream&,      tokenized_labeled_dataset&, int&, const char& delimiter);
+    template void load_tsv_from_stream(std::stringstream&, tokenized_labeled_dataset&, int&, const char& delimiter);
+    template void load_tsv_from_stream(std::istream&,      tokenized_labeled_dataset&, int&, const char& delimiter);
 
-        vector<vector<string>> load_tokenized_unlabeled_corpus(const string& fname) {
-            ifstream fp(fname.c_str());
-            string l;
-            vector<vector<string>> list;
-            while (std::getline(fp, l))
-                list.emplace_back(tokenize(string(l.begin(), l.end())));
-            return list;
-        }
+    vector<vector<string>> load_tokenized_unlabeled_corpus(const string& fname) {
+        ifstream fp(fname.c_str());
+        string l;
+        vector<vector<string>> list;
+        while (std::getline(fp, l))
+            list.emplace_back(tokenize(string(l.begin(), l.end())));
+        return list;
+    }
 
-        vector<string> get_vocabulary(const tokenized_labeled_dataset& examples, int min_occurence) {
-            std::map<string, uint> word_occurences;
-            string word;
-            for (auto& example : examples)
-                for (auto& word : example[0]) word_occurences[word] += 1;
-            vector<string> list;
-            for (auto& key_val : word_occurences)
-                if (key_val.second >= min_occurence)
-                    list.emplace_back(key_val.first);
-            list.emplace_back(utils::end_symbol);
-            return list;
-        }
+    vector<string> get_vocabulary(const tokenized_labeled_dataset& examples, int min_occurence) {
+        std::map<string, uint> word_occurences;
+        string word;
+        for (auto& example : examples)
+            for (auto& word : example[0]) word_occurences[word] += 1;
+        vector<string> list;
+        for (auto& key_val : word_occurences)
+            if (key_val.second >= min_occurence)
+                list.emplace_back(key_val.first);
+        list.emplace_back(utils::end_symbol);
+        return list;
+    }
 
-        vector<string> get_vocabulary(const vector<vector<string>>& examples, int min_occurence) {
-            std::map<string, uint> word_occurences;
-            string word;
-            for (auto& example : examples) {
-                for (auto& word : example) {
-                    word_occurences[word] += 1;
-                }
+    vector<string> get_vocabulary(const vector<vector<string>>& examples, int min_occurence) {
+        std::map<string, uint> word_occurences;
+        string word;
+        for (auto& example : examples) {
+            for (auto& word : example) {
+                word_occurences[word] += 1;
             }
-            vector<string> list;
-            for (auto& key_val : word_occurences) {
-                if (key_val.second >= min_occurence) {
-                    list.emplace_back(key_val.first);
-                }
+        }
+        vector<string> list;
+        for (auto& key_val : word_occurences) {
+            if (key_val.second >= min_occurence) {
+                list.emplace_back(key_val.first);
             }
-            list.emplace_back(utils::end_symbol);
-            return list;
         }
+        list.emplace_back(utils::end_symbol);
+        return list;
+    }
 
-        vector<string> get_vocabulary(const tokenized_uint_labeled_dataset& examples, int min_occurence) {
-            std::map<string, uint> word_occurences;
-            string word;
-            for (auto& example : examples) {
-                for (auto& word : example.first) {
-                    word_occurences[word] += 1;
-                }
+    vector<string> get_vocabulary(const tokenized_uint_labeled_dataset& examples, int min_occurence) {
+        std::map<string, uint> word_occurences;
+        string word;
+        for (auto& example : examples) {
+            for (auto& word : example.first) {
+                word_occurences[word] += 1;
             }
-            vector<string> list;
-            for (auto& key_val : word_occurences) {
-                if (key_val.second >= min_occurence) {
-                    list.emplace_back(key_val.first);
-                }
+        }
+        vector<string> list;
+        for (auto& key_val : word_occurences) {
+            if (key_val.second >= min_occurence) {
+                list.emplace_back(key_val.first);
             }
-            list.emplace_back(utils::end_symbol);
-            return list;
         }
+        list.emplace_back(utils::end_symbol);
+        return list;
+    }
 
-        vector<string> get_label_vocabulary(const tokenized_labeled_dataset& examples) {
-            std::set<string> labels;
-            string word;
-            for (auto& example : examples) {
-                assert2(example.size() > 1, "Examples must have at least 2 columns.");
-                labels.insert(example[1].begin(), example[1].end());
-            }
-            return vector<string>(labels.begin(), labels.end());
+    vector<string> get_label_vocabulary(const tokenized_labeled_dataset& examples) {
+        std::set<string> labels;
+        string word;
+        for (auto& example : examples) {
+            assert2(example.size() > 1, "Examples must have at least 2 columns.");
+            labels.insert(example[1].begin(), example[1].end());
         }
+        return vector<string>(labels.begin(), labels.end());
+    }
 
-        std::vector<string> get_lattice_vocabulary(const OntologyBranch::shared_branch lattice) {
-            std::vector<std::string> index2label;
-            index2label.emplace_back(end_symbol);
-            for (auto& kv : *lattice->lookup_table) {
-                index2label.emplace_back(kv.first);
-            }
-            return index2label;
+    std::vector<string> get_lattice_vocabulary(const OntologyBranch::shared_branch lattice) {
+        std::vector<std::string> index2label;
+        index2label.emplace_back(end_symbol);
+        for (auto& kv : *lattice->lookup_table) {
+            index2label.emplace_back(kv.first);
         }
+        return index2label;
+    }
 
-        void assign_lattice_ids(OntologyBranch::lookup_t lookup_table, Vocab& lattice_vocab, int offset) {
-            for(auto& kv : *lookup_table)
-                kv.second->id = lattice_vocab.word2index.at(kv.first) + offset;
-        }
+    void assign_lattice_ids(OntologyBranch::lookup_t lookup_table, Vocab& lattice_vocab, int offset) {
+        for(auto& kv : *lookup_table)
+            kv.second->id = lattice_vocab.word2index.at(kv.first) + offset;
+    }
 
-        // Trimming text from StackOverflow:
-        // http://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
+    // Trimming text from StackOverflow:
+    // http://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
 
-        // trim from start
-        std::string &ltrim(std::string &s) {
-            s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
-            return s;
-        }
+    // trim from start
+    std::string &ltrim(std::string &s) {
+        s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
+        return s;
+    }
 
-        // trim from end
-        std::string &rtrim(std::string &s) {
-            s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
-            return s;
-        }
+    // trim from end
+    std::string &rtrim(std::string &s) {
+        s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
+        return s;
+    }
 
-        // trim from both ends
-        std::string &trim(std::string &s) {
-            return ltrim(rtrim(s));
-        }
+    // trim from both ends
+    std::string &trim(std::string &s) {
+        return ltrim(rtrim(s));
+    }
 
-        // From this StackOverflow:
-        // http://stackoverflow.com/questions/675039/how-can-i-create-directory-tree-in-c-linux
-        bool makedirs(const char* path, mode_t mode) {
-          // const cast for hack
-          char* p = const_cast<char*>(path);
+    // From this StackOverflow:
+    // http://stackoverflow.com/questions/675039/how-can-i-create-directory-tree-in-c-linux
+    bool makedirs(const char* path, mode_t mode) {
+        // const cast for hack
+        char* p = const_cast<char*>(path);
 
-          // Do mkdir for each slash until end of string or error
-          while (*p != '\0') {
+        // Do mkdir for each slash until end of string or error
+        while (*p != '\0') {
             // Skip first character
             p++;
 
@@ -785,93 +785,102 @@ namespace utils {
 
             // Create folder from path to '\0' inserted at p
             if(mkdir(path, mode) == -1 && errno != EEXIST) {
-              *p = v;
-              return false;
+                *p = v;
+                return false;
             }
 
             // Restore path to it's former glory
             *p = v;
-          }
-          return true;
         }
+        return true;
+    }
 
-        int randint(int lower, int upper) {
-                if (lower == upper) return lower;
-                std::default_random_engine generator;
-                std::uniform_int_distribution<int> distribution(lower, upper);
-                std::random_device rd;
-                generator.seed(rd());
-                return distribution(generator);
-        }
-        void Vocab::construct_word2index() {
-                uint i = 0;
-                for (auto& s : index2word)
-                        word2index[s] = i++;
-        }
-        void Vocab::add_unknown_word() {
-                index2word.emplace_back(unknown_word_symbol);
-                word2index[unknown_word_symbol] = index2word.size() - 1;
-                unknown_word = index2word.size() - 1;
-        }
+    int randint(int lower, int upper) {
+        if (lower == upper) return lower;
+        std::default_random_engine generator;
+        std::uniform_int_distribution<int> distribution(lower, upper);
+        std::random_device rd;
+        generator.seed(rd());
+        return distribution(generator);
+    }
+    void Vocab::construct_word2index() {
+        uint i = 0;
+        for (auto& s : index2word)
+            word2index[s] = i++;
+    }
+    void Vocab::add_unknown_word() {
+        index2word.emplace_back(unknown_word_symbol);
+        word2index[unknown_word_symbol] = index2word.size() - 1;
+        unknown_word = index2word.size() - 1;
+    }
 
-        vector<typename Vocab::ind_t> Vocab::encode(const str_sequence& words, bool with_end_symbol) const {
-            vector<ind_t> result;
-            result.reserve(words.size() + (with_end_symbol ? 1 : 0));
-            std::transform(words.begin(), words.end(),
-                           std::back_inserter(result), [this](const string& word) {
-                if (word2index.find(word) == word2index.end()) {
-                    return unknown_word;
-                } else {
-                    return word2index.at(word);
-                }
-            });
-            if (with_end_symbol) {
-                result.emplace_back( word2index.at(utils::end_symbol) );
+    size_t Vocab::size() const {
+        return index2word.size();
+    }
+
+    vector<typename Vocab::ind_t> Vocab::encode(const str_sequence& words, bool with_end_symbol) const {
+        vector<ind_t> result;
+        result.reserve(words.size() + (with_end_symbol ? 1 : 0));
+        std::transform(words.begin(), words.end(),
+                       std::back_inserter(result), [this](const string& word) {
+            if (word2index.find(word) == word2index.end()) {
+                return unknown_word;
+            } else {
+                return word2index.at(word);
             }
-            return result;
+        });
+        if (with_end_symbol) {
+            result.emplace_back( word2index.at(utils::end_symbol) );
         }
+        return result;
+    }
 
-        vector<string> Vocab::decode(Indexing::Index indices) const {
-            vector<string> result;
-            result.reserve(indices.size());
-            std::transform(indices.data(), indices.data() + indices.size(),
-                           std::back_inserter(result), [this](const ind_t& idx) {
-                if (idx < index2word.size()) {
-                    return index2word[idx];
-                } else {
-                    return index2word[unknown_word];
-                }
-            });
-            return result;
-        }
-
-        Vocab Vocab::from_many_nonunique(std::initializer_list<str_sequence> sequences,
-                                  bool add_unknown_word) {
-            vector<string> words;
-            for (auto& sequence: sequences) {
-                for (auto& word: sequence) {
-                    words.push_back(word);
-                }
+    vector<string> Vocab::decode(Indexing::Index indices) const {
+        vector<string> result;
+        result.reserve(indices.size());
+        std::transform(indices.data(), indices.data() + indices.size(),
+                       std::back_inserter(result), [this](const ind_t& idx) {
+            if (idx < index2word.size()) {
+                return index2word[idx];
+            } else {
+                return index2word[unknown_word];
             }
-            // make them unique
-            std::sort(words.begin(), words.end());
-            words.erase(std::unique(words.begin(), words.end()), words.end());
+        });
+        return result;
+    }
 
-            return Vocab(words, add_unknown_word);
+    Vocab Vocab::from_many_nonunique(std::initializer_list<str_sequence> sequences,
+                              bool add_unknown_word) {
+        vector<string> words;
+        for (auto& sequence: sequences) {
+            for (auto& word: sequence) {
+                words.push_back(word);
+            }
         }
+        // make them unique
+        std::sort(words.begin(), words.end());
+        words.erase(std::unique(words.begin(), words.end()), words.end());
 
-        Vocab::Vocab() : unknown_word(-1) {add_unknown_word();};
+        return Vocab(words, add_unknown_word);
+    }
 
-        Vocab::Vocab(vector<string>& _index2word) : index2word(_index2word), unknown_word(-1) {
-            construct_word2index();
-            add_unknown_word();
-        }
-        Vocab::Vocab(vector<string>& _index2word, bool _unknown_word) : index2word(_index2word), unknown_word(-1) {
-            construct_word2index();
-            if (_unknown_word) add_unknown_word();
-        }
+    Vocab::Vocab() : unknown_word(-1) {add_unknown_word();};
 
-        template<typename T>
+    Vocab::Vocab(vector<string>& _index2word) : index2word(_index2word), unknown_word(-1) {
+        construct_word2index();
+        add_unknown_word();
+    }
+    Vocab::Vocab(vector<string>& _index2word, bool _unknown_word) : index2word(_index2word), unknown_word(-1) {
+        construct_word2index();
+        if (_unknown_word) add_unknown_word();
+    }
+
+    Vocab::Vocab(vector<string>&& _index2word) : Vocab(_index2word) {
+    }
+    Vocab::Vocab(vector<string>&& _index2word, bool _unknown_word) : Vocab(_index2word, _unknown_word) {
+    }
+
+    template<typename T>
     T from_string(const std::string& s) {
         std::istringstream stream (s);
         T t;
@@ -1497,7 +1506,6 @@ namespace utils {
     std::string cyan        = "\033[36m";
     std::string black       = "\033[30m";
     std::string reset_color = "\033[0m";
-
 }
 
 std::ostream& operator<<(std::ostream& strm, const utils::OntologyBranch& a) {

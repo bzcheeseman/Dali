@@ -127,6 +127,9 @@ namespace utils {
                     Vocab();
                     Vocab(str_sequence&);
                     Vocab(str_sequence&, bool);
+                    Vocab(str_sequence&&, bool);
+                    Vocab(str_sequence&&);
+                    size_t size() const;
         };
 
         template<typename T>

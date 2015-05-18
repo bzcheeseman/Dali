@@ -253,7 +253,7 @@ void reconstruct(
             minibatch.data->row(i).head((*minibatch.start_loss)(i) + 1),
             category_vocab,
             (*minibatch.codelens)(i),
-            word_vocab.index2word.size()) << std::endl;
+            word_vocab.size()) << std::endl;
 }
 
 template<typename T, typename S>
@@ -272,7 +272,7 @@ void training_loop(StackedGatedModel<T>& model,
                     minibatch.data, // what to predict
                     minibatch.start_loss,
                     minibatch.codelens,
-                    word_vocab.index2word.size()
+                    word_vocab.size()
             ));
             graph::backward();// backpropagate
             solver.step(parameters); // One step of gradient descent
@@ -318,7 +318,7 @@ int main(int argc, char *argv[]) {
         Vocab category_vocab(index2category, false);
         auto dataset = create_labeled_dataset(products, category_vocab, word_vocab, FLAGS_subsets);
         std::cout << "Loaded Dataset" << std::endl;
-        auto vocab_size = word_vocab.index2word.size() + index2category.size() + 1;
+        auto vocab_size = word_vocab.size() + index2category.size() + 1;
         // TODO: renable
         auto model = StackedGatedModel<REAL_t>::build_from_CLI(FLAGS_load, vocab_size, index2category.size() + 1, true);
         auto memory_penalty = FLAGS_memory_penalty;

@@ -6,7 +6,7 @@
 
 TEST(Glove, load) {
     auto embedding = glove::load<double>( STR(DALI_DATA_DIR) "/glove/test_data.txt");
-    ASSERT_EQ(std::get<1>(embedding).index2word.size(), 21);
+    ASSERT_EQ(std::get<1>(embedding).size(), 21);
     ASSERT_EQ(std::get<0>(embedding).dims(0), 21);
     ASSERT_EQ(std::get<0>(embedding).dims(1), 300);
 }

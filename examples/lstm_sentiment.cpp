@@ -74,9 +74,9 @@ int main (int argc,  char* argv[]) {
     if (!FLAGS_pretrained_vectors.empty()) {
         glove::load(FLAGS_pretrained_vectors, embedding, word_vocab, 50000);
     } else {
-        word_vocab = SST::get_word_vocab(sentiment_treebank, FLAGS_min_occurence);
+        word_vocab = SST::get_vocabulary(sentiment_treebank, FLAGS_min_occurence);
     }
-    auto vocab_size     = word_vocab.index2word.size();
+    auto vocab_size     = word_vocab.size();
     auto dataset        = SST::convert_trees_to_indexed_minibatches(
         word_vocab,
         sentiment_treebank,
@@ -94,7 +94,7 @@ int main (int argc,  char* argv[]) {
     auto stack_size  = std::max(FLAGS_stack_size, 1);
 
     auto model = FLAGS_load.empty() ? StackedModel<REAL_t>(
-        FLAGS_pretrained_vectors.empty() ? word_vocab.index2word.size() : 0,
+        FLAGS_pretrained_vectors.empty() ? word_vocab.size() : 0,
         FLAGS_pretrained_vectors.empty() ? FLAGS_hidden : embedding.dims(1),
         FLAGS_hidden,
         stack_size,

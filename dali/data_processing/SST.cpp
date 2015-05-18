@@ -150,7 +150,7 @@ namespace SST {
             // create new minibatch
             if (dataset[dataset.size()-1].size() == minibatch_size) {
                 dataset.emplace_back(0);
-                dataset.reserve(minibatch_size);
+                dataset.back().reserve(minibatch_size);
             }
 
             // add root
@@ -165,7 +165,7 @@ namespace SST {
             for (auto& child : tree->general_children) {
                 if (dataset[dataset.size()-1].size() == minibatch_size) {
                     dataset.emplace_back(0);
-                    dataset.reserve(minibatch_size);
+                    dataset.back().reserve(minibatch_size);
                 }
                 dataset[dataset.size()-1].emplace_back(
                     to_index_pair(
@@ -316,13 +316,13 @@ namespace SST {
     template Json json_classification<float>(const vector<string>& sentence, const Mat<float>& probs, const Mat<float>& word_weights);
     template Json json_classification<double>(const vector<string>& sentence, const Mat<double>& probs, const Mat<double>& word_weights);
 
-    Vocab get_word_vocab(vector<SST::AnnotatedParseTree::shared_tree>& trees, int min_occurence) {
+    Vocab get_vocabulary(vector<SST::AnnotatedParseTree::shared_tree>& trees, int min_occurence) {
         tokenized_uint_labeled_dataset examples;
         for (auto& tree : trees)
             examples.emplace_back(tree->to_labeled_pair());
         auto index2word  = utils::get_vocabulary(examples, min_occurence);
         Vocab vocab(index2word);
-        vocab.word2index[START] = vocab.index2word.size();
+        vocab.word2index[START] = vocab.size();
         vocab.index2word.emplace_back(START);
         return vocab;
     }

@@ -173,7 +173,7 @@ namespace SST {
                   addition of a special "**START**" word.
 
     **/
-    utils::Vocab get_word_vocab(std::vector<SST::AnnotatedParseTree::shared_tree>& trees, int min_occurence);
+    utils::Vocab get_vocabulary(std::vector<SST::AnnotatedParseTree::shared_tree>& trees, int min_occurence);
 
     /**
     Average Recall

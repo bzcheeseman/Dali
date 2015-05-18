@@ -3,7 +3,6 @@
 
 #include "dali/core.h"
 #include "dali/utils.h"
-//#include "core/StackedGatedModel.h"
 
 using std::vector;
 
@@ -182,19 +181,5 @@ int main () {
     X.print();
     Y.print();
 
-
-    /**
-    auto some_model = StackedGatedModel<R>(20, 10, 20, 2, 1, false, 0.3);
-
-    some_model.save("some_model");
-
-    auto loaded_model = StackedGatedModel<R>::load("some_model");
-
-    auto some_model2 = StackedModel<R>(20, 10, 20, 2, 1, false);
-
-    some_model.save("some_model");
-
-    auto loaded_model2 = StackedModel<R>::load("some_model");
-    **/
     return 0;
 }

@@ -844,7 +844,7 @@ int main (int argc,  char* argv[]) {
     auto model = model_t(
         FLAGS_input_size,
         FLAGS_hidden,
-        arithmetic::vocabulary.index2word.size(),
+        arithmetic::vocabulary.size(),
         FLAGS_memory_feeds_gates);
 
     // Rho value, eps value, and gradient clipping value:
@@ -874,7 +874,7 @@ int main (int argc,  char* argv[]) {
         visualizer = make_shared<Visualizer>(FLAGS_visualizer);
     }
 
-    std::cout << "     Vocabulary size : " << arithmetic::vocabulary.index2word.size() << std::endl
+    std::cout << "     Vocabulary size : " << arithmetic::vocabulary.size() << std::endl
               << "      minibatch size : " << FLAGS_minibatch << std::endl
               << "   number of threads : " << FLAGS_j << std::endl
               << "           LSTM type : " << (model.tree.composer.memory_feeds_gates ? "Graves 2013" : "Zaremba 2014") << std::endl

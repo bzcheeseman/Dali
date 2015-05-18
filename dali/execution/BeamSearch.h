@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <vector>
 
+// TODO: Simplify this code and use lambdas instead.
+
 namespace beam_search {
 
     template<typename T>

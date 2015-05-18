@@ -133,10 +133,9 @@ vector<Databatch> create_dataset(
     return dataset;
 }
 
-Vocab get_word_vocab(const vector<vector<string>>& examples, int min_occurence) {
-    auto index2word  = utils::get_vocabulary(examples, min_occurence);
-    Vocab vocab(index2word);
-    vocab.word2index[START] = vocab.index2word.size();
+Vocab get_vocabulary(const vector<vector<string>>& examples, int min_occurence) {
+    Vocab vocab(utils::get_vocabulary(examples, min_occurence));
+    vocab.word2index[START] = vocab.size();
     vocab.index2word.emplace_back(START);
     return vocab;
 }
@@ -236,7 +235,7 @@ std::tuple<Vocab, vector<Databatch>> load_dataset_and_vocabulary(const string& f
         std::tuple<Vocab, vector<Databatch>> pair;
 
         auto text_corpus  = utils::load_tokenized_unlabeled_corpus(fname);
-        std::get<0>(pair) = get_word_vocab(text_corpus, min_occurence);
+        std::get<0>(pair) = get_vocabulary(text_corpus, min_occurence);
         std::get<1>(pair) = create_dataset(text_corpus, std::get<0>(pair), minibatch_size);
         return pair;
 }
@@ -276,9 +275,7 @@ int main( int argc, char* argv[]) {
         FLAGS_minibatch);
     dl_timer.stop();
 
-    auto vocab_size = word_vocab.index2word.size();
-
-    std::cout << "    Vocabulary size = " << vocab_size << " (occuring more than " << FLAGS_min_occurence << ")" << std::endl
+    std::cout << "    Vocabulary size = " << word_vocab.size() << " (occuring more than " << FLAGS_min_occurence << ")" << std::endl
               << "Max training epochs = " << FLAGS_epochs           << std::endl
               << "    Training cutoff = " << FLAGS_cutoff           << std::endl
               << "  Number of threads = " << FLAGS_j                << std::endl
@@ -298,8 +295,8 @@ int main( int argc, char* argv[]) {
 
     auto model = StackedModel<REAL_t>::build_from_CLI(
         FLAGS_load,
-        word_vocab.index2word.size(),
-        word_vocab.index2word.size(),
+        word_vocab.size(),
+        word_vocab.size(),
         true);
 
     auto parameters = model.parameters();
@@ -412,7 +409,7 @@ int main( int argc, char* argv[]) {
                     auto input_output_pair = visualizable::GridLayout();
 
                     input_output_pair.add_in_column(0, input_sentence);
-                    input_output_pair.add_in_column(0, sentences_viz);
+                    input_output_pair.add_in_column(1, sentences_viz);
 
                     return input_output_pair.to_json();
                 });

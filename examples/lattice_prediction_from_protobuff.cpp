@@ -54,7 +54,7 @@ int main( int argc, char* argv[]) {
         std::cout << "Loaded " << examples.size() << " examples,";
         auto index2word    = utils::get_vocabulary(examples, FLAGS_min_occurence);
         Vocab word_vocab(index2word);
-        std::cout <<" with a total vocabulary of " << word_vocab.index2word.size()
+        std::cout <<" with a total vocabulary of " << word_vocab.size()
                   <<" words (occuring more than "  << FLAGS_min_occurence << " times)"<< std::endl << std::endl;
         std::cout <<"First examples:" << std::endl;
         std::cout <<"---------------" << std::endl;

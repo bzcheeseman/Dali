@@ -186,8 +186,8 @@ int main( int argc, char* argv[]) {
     auto epochs              = FLAGS_epochs;
     auto sentiment_treebank  = SST::load(FLAGS_train);
 
-    auto word_vocab          = SST::get_word_vocab(sentiment_treebank, FLAGS_min_occurence);
-    auto vocab_size          = word_vocab.index2word.size();
+    auto word_vocab          = SST::get_vocabulary(sentiment_treebank, FLAGS_min_occurence);
+    auto vocab_size          = word_vocab.size();
 
     // Load Dataset of Trees:
     std::cout << "Unique Treees Loaded : " << sentiment_treebank.size() << std::endl
@@ -271,11 +271,11 @@ int main( int argc, char* argv[]) {
             models.emplace_back(MODEL_USED<REAL_t>::load(FLAGS_load + std::to_string(sentiment)));
         } else {
             models.emplace_back(
-                word_vocab.index2word.size(),
+                word_vocab.size(),
                 FLAGS_input_size,
                 FLAGS_hidden,
                 FLAGS_stack_size < 1 ? 1 : FLAGS_stack_size,
-                word_vocab.index2word.size(),
+                word_vocab.size(),
                 FLAGS_shortcut,
                 FLAGS_memory_feeds_gates
             );

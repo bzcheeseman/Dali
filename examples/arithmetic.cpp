@@ -91,11 +91,11 @@ int main (int argc,  char* argv[]) {
 
     // train a silly system to output the numbers it needs
     auto model = StackedModel<REAL_t>(
-         arithmetic::vocabulary.index2word.size(),
+         arithmetic::vocabulary.size(),
          FLAGS_input_size,
          FLAGS_hidden,
          FLAGS_stack_size,
-         arithmetic::vocabulary.index2word.size(),
+         arithmetic::vocabulary.size(),
          false,
          false);
 
@@ -124,7 +124,7 @@ int main (int argc,  char* argv[]) {
     int epoch = 0;
     auto end_symbol_idx = arithmetic::vocabulary.word2index[utils::end_symbol];
 
-    std::cout << "     Vocabulary size : " << arithmetic::vocabulary.index2word.size() << std::endl
+    std::cout << "     Vocabulary size : " << arithmetic::vocabulary.size() << std::endl
               << "      minibatch size : " << FLAGS_minibatch << std::endl
               << "   number of threads : " << FLAGS_j << std::endl
               << "          stack size : " << FLAGS_stack_size << std::endl

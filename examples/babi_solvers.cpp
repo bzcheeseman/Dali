@@ -194,7 +194,7 @@ class LstmBabiModel {
                         vocabulary->word2index.size()) {
 
             vocab = vocabulary;
-            size_t n_words = vocab->index2word.size();
+            size_t n_words = vocab->size();
 
             word_gate_embeddings =
                     Mat<T>(n_words, FLAGS_gate_input,

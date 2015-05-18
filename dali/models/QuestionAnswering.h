@@ -108,7 +108,7 @@ class AveragingModel {
 
             vector<Mat<R>> words_embeddings;
             for (auto word_idx: words) {
-                assert (word_idx < vocab->index2word.size());
+                assert (word_idx < vocab->size());
                 words_embeddings.push_back(embedding[word_idx]);
             }
 
@@ -351,9 +351,9 @@ class GatedLstmsModel {
 
         GatedLstmsModel(shared_ptr<Vocab> vocabulary) {
             vocab = vocabulary;
-            size_t n_words = vocab->index2word.size();
+            size_t n_words = vocab->size();
 
-            embeddings = Mat<R>(vocab->index2word.size(), EMBEDDING_SIZE,
+            embeddings = Mat<R>(vocab->size(), EMBEDDING_SIZE,
                     weights<R>::uniform(1.0/EMBEDDING_SIZE));
 
             if (!FLAGS_pretrained_vectors.empty()) {

@@ -454,12 +454,19 @@ typename StackedModel<Z>::activation_t StackedModel<Z>::activate(
     activation_t out;
     auto input_vector = this->embedding[index];
     std::get<0>(out)  = stacked_lstm->activate(previous_state, input_vector);
-    std::get<1>(out)  = MatOps<Z>::softmax_no_grad(
-        decode(
-            input_vector,
-            std::get<0>(out)
-        )
-    );
+    std::get<1>(out)  = graph::backprop_enabled ?
+        MatOps<Z>::softmax(
+            decode(
+                input_vector,
+                std::get<0>(out)
+            )
+        ) :
+        MatOps<Z>::softmax_no_grad(
+            decode(
+                input_vector,
+                std::get<0>(out)
+            )
+        );
     return out;
 }
 
@@ -470,12 +477,19 @@ typename StackedModel<Z>::activation_t StackedModel<Z>::activate(
     activation_t out;
     auto input_vector = this->embedding[indices];
     std::get<0>(out)  = stacked_lstm->activate(previous_state, input_vector);
-    std::get<1>(out)  = MatOps<Z>::softmax_no_grad(
-        decode(
-            input_vector,
-            std::get<0>(out)
-        )
-    );
+    std::get<1>(out)  = graph::backprop_enabled ?
+        MatOps<Z>::softmax(
+            decode(
+                input_vector,
+                std::get<0>(out)
+            )
+        ) :
+        MatOps<Z>::softmax_no_grad(
+            decode(
+                input_vector,
+                std::get<0>(out)
+            )
+        );
     return out;
 }
 

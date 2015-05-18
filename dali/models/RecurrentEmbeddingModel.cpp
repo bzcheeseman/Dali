@@ -17,10 +17,10 @@ string RecurrentEmbeddingModel<R>::reconstruct_string(
     stringstream rec;
     for (auto& cat : reconstruction) {
         rec << (
-            (cat < lookup_table.index2word.size()) ?
+            (cat < lookup_table.size()) ?
                 lookup_table.index2word.at(cat) :
                 (
-                    cat == lookup_table.index2word.size() ? "**END**" : "??"
+                    cat == lookup_table.size() ? "**END**" : "??"
                 )
             ) << ", ";
     }

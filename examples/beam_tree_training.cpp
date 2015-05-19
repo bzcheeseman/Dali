@@ -523,6 +523,7 @@ class ArithmeticModel {
             Mat<T> error(1,1);
             error.constant = true;
             for (int aidx = 0; aidx < targets.size(); ++aidx) {
+                // TODO: each error should act individually (ErrorTotal = Sum { error[idx] * prob[idx] } )
                 Mat<T> prediction = decoder_lstm.decode(candidates);
                 error = error + MatOps<T>::cross_entropy(prediction, targets[aidx]);
                 if (aidx + 1 < targets.size()) {

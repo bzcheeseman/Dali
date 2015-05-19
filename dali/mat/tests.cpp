@@ -679,6 +679,19 @@ TEST_F(LayerTests, multi_input_lstm_test) {
     }
 }
 
+TEST_F(LayerTests, activate_sequence) {
+    vector<int> hidden_sizes = {7, 10};
+    int input_size = 5;
+    int num_out_states = hidden_sizes.size();
+    vector<Mat<R>> sequence;
+    for (int i = 0; i < 10; i++) {
+        sequence.emplace_back(input_size, 1);
+    }
+    auto model = StackedLSTM<R>(input_size, hidden_sizes, false, false);
+    auto out_states = model.activate_sequence(model.initial_states(), sequence, 0.1);
+    ASSERT_EQ(num_out_states, LSTM<R>::State::hiddens(out_states).size());
+}
+
 
 TEST_F(MatrixTests, argsort) {
     vector<Mat<R>> mats;

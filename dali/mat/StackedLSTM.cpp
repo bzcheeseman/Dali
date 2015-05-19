@@ -101,7 +101,6 @@ typename StackedLSTM<R>::state_t StackedLSTM<R>::activate(
             state_t previous_state,
             Mat<R> input_vector,
             R drop_prob) const {
-
     if (shortcut) {
         return shortcut_forward_LSTMs(input_vector, previous_state, cells, drop_prob);
     } else {
@@ -167,7 +166,8 @@ vector<celltype> StackedCells(
                 cells.emplace_back(
                     utils::concatenate({
                         std::vector<int>({prev_size}),
-                        input_sizes}),
+                        input_sizes
+                    }),
                     hidden_size,
                     1,
                     memory_feeds_gates);
@@ -214,7 +214,6 @@ std::vector< typename LSTM<R>::State > forward_LSTMs(
 
     auto layer_input = base_input;
     auto state_iter = previous_state.begin();
-
     for (auto& layer : cells) {
         out_state.emplace_back(
             layer.activate(

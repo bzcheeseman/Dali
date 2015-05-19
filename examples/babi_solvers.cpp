@@ -12,6 +12,8 @@
 #include "dali/mat/model.h"
 #include "dali/visualizer/visualizer.h"
 
+using namespace std::placeholders;
+
 using babi::Fact;
 using babi::Item;
 using babi::QA;
@@ -215,7 +217,7 @@ class LstmBabiModel {
 
 
         vector<Mat<T>> get_embeddings(const vector<string>& words,
-                                      Mat<T> embedding_matrix) {
+                                      Mat<T> embedding_matrix) const {
             vector<Mat<T>> seq;
             for (auto& word: words) {
                 auto question_idx = vocab->word2index.at(word);
@@ -228,7 +230,7 @@ class LstmBabiModel {
         }
 
         vector<Mat<T>> apply_gate(vector<Mat<T>> memory,
-                                  vector<Mat<T>> seq) {
+                                  vector<Mat<T>> seq) const {
             assert(memory.size() == seq.size());
             vector<Mat<T>> gated_seq;
             for(int i=0; i < memory.size(); ++i) {
@@ -239,7 +241,7 @@ class LstmBabiModel {
 
         Mat<T> lstm_final_activation(const vector<Mat<T>>& embeddings,
                                      const StackedLSTM<T>& model,
-                                     T dropout_value) {
+                                     T dropout_value) const {
             auto out_states = model.activate_sequence(model.initial_states(),
                                                      embeddings,
                                                      dropout_value);
@@ -249,7 +251,7 @@ class LstmBabiModel {
 
         StoryActivation<T> activate_story(const vector<vector<string>>& facts,
                                           const vector<string>& question,
-                                          bool use_dropout) {
+                                          bool use_dropout) const {
             auto word_gate_embeddings_question = get_embeddings(question, word_gate_embeddings);
             auto word_gate_hidden_question = MatOps<T>::add(word_gate_embeddings_question) /
                                              (T)word_gate_embeddings_question.size();
@@ -317,7 +319,7 @@ class LstmBabiModel {
 
         void visualize_example(const vector<vector<string>>& facts,
                                const vector<string>& question,
-                               const vector<string>& correct_answer) {
+                               const vector<string>& correct_answer) const {
             graph::NoBackprop nb;
             auto activation = activate_story(facts, question, false);
 
@@ -371,6 +373,51 @@ class LstmBabiModel {
             visualizer->feed(vgrid->to_json());
         }
 
+        Mat<T> error(const vector<vector<string>>& facts,
+                     const vector<string>& question,
+                     uint answer_idx,
+                     vector<int> supporting_facts) const {
+            auto activation = activate_story(facts, question, true);
+            Mat<REAL_t> prediction_error;
+            if (FLAGS_margin_loss) {
+                prediction_error = MatOps<REAL_t>::margin_loss(activation.log_probs, answer_idx, FLAGS_margin);
+            } else {
+                prediction_error = MatOps<REAL_t>::softmax_cross_entropy(activation.log_probs,
+                                                                              answer_idx);
+            }
+            Mat<REAL_t> fact_selection_error(1,1);
+
+            for (int i=0; i<activation.fact_gate_memory.size(); ++i) {
+                bool supporting = in_vector(supporting_facts, i);
+                auto partial_error = MatOps<REAL_t>::binary_cross_entropy(
+                                            activation.fact_gate_memory[i],
+                                            supporting ? 1.0 : 0.0);
+                float coeff = supporting ? 1.0 : FLAGS_unsupporting_ratio;
+
+                fact_selection_error = fact_selection_error + partial_error * coeff;
+            }
+
+            Mat<REAL_t> total_error;
+
+            total_error = prediction_error
+                        + fact_selection_error * FLAGS_fact_selection_lambda
+                        + activation.word_memory_sum() * FLAGS_word_selection_sparsity;
+
+            total_error = total_error / FLAGS_minibatch;
+
+            return total_error;
+        }
+
+        vector<string> predict(const vector<vector<string>>& facts,
+                       const vector<string>& question) const {
+            graph::NoBackprop nb;
+
+            // Don't use dropout for validation.
+            int word_idx = activate_story(facts, question, false).log_probs.argmax();
+
+            return {vocab->index2word[word_idx]};
+        }
+
 };
 
 
@@ -378,7 +425,7 @@ class LstmBabiModel {
 
 
 /* PARAMETERS FOR TRAINING */
-typedef LstmBabiModel<REAL_t> BabiModel;
+typedef LstmBabiModel<REAL_t> model_t;
 
 
 
@@ -392,61 +439,19 @@ const double SHORT_TERM_VALIDATION = 0.1;
 const int PREDICTION_PATIENCE = 200;
 
 /* TRAINING FUNCTIONS */
-shared_ptr<BabiModel> model;
-shared_ptr<BabiModel> best_model;
+shared_ptr<model_t> model;
+
+shared_ptr<model_t> best_model;
 int best_model_epoch = 0;
 
-vector<BabiModel> thread_models;
+vector<model_t> thread_models;
 
-
-
-MatrixXd errors(StoryActivation<REAL_t> activation,
-                uint answer_idx,
-                vector<int> supporting_facts) {
-    Mat<REAL_t> prediction_error;
-    if (FLAGS_margin_loss) {
-        prediction_error = MatOps<REAL_t>::margin_loss(activation.log_probs, answer_idx, FLAGS_margin);
-    } else {
-        prediction_error = MatOps<REAL_t>::softmax_cross_entropy(activation.log_probs,
-                                                                      answer_idx);
-    }
-    Mat<REAL_t> fact_selection_error(1,1);
-
-    for (int i=0; i<activation.fact_gate_memory.size(); ++i) {
-        bool supporting = in_vector(supporting_facts, i);
-        auto partial_error = MatOps<REAL_t>::binary_cross_entropy(
-                                    activation.fact_gate_memory[i],
-                                    supporting ? 1.0 : 0.0);
-        float coeff = supporting ? 1.0 : FLAGS_unsupporting_ratio;
-
-        fact_selection_error = fact_selection_error + partial_error * coeff;
-    }
-
-    Mat<REAL_t> total_error;
-
-    total_error = prediction_error
-                + fact_selection_error * FLAGS_fact_selection_lambda
-                + activation.word_memory_sum() * FLAGS_word_selection_sparsity;
-
-    total_error = total_error / FLAGS_minibatch;
-
-    total_error.grad();
-
-    MatrixXd reported_errors(3,1);
-    reported_errors(0) = prediction_error.w()(0,0);
-    reported_errors(1) = fact_selection_error.w()(0,0);
-    reported_errors(2) = activation.word_memory_sum().w()(0,0);
-
-
-    return reported_errors;
-}
 
 std::mutex solver_mutex;
 
 // returns the errors;
-MatrixXd run_epoch(const vector<babi::Story>& dataset,
-                              Solver::AbstractSolver<REAL_t>* solver,
-                              bool training) {
+double run_epoch(const vector<babi::Story>& dataset,
+                 Solver::AbstractSolver<REAL_t>* solver) {
 
 
     const int NUM_THREADS = FLAGS_j;
@@ -459,12 +464,7 @@ MatrixXd run_epoch(const vector<babi::Story>& dataset,
     }
     std::atomic<int> num_questions(0);
 
-    vector<MatrixXd> thread_error;
-    for (int thread=0; thread<NUM_THREADS; ++thread) {
-        thread_error.emplace_back(3,1);
-        thread_error.back().fill(0);
-    }
-
+    vector<REAL_t> thread_error(NUM_THREADS, 0.0);
 
     auto random_order = utils::random_arange(dataset.size());
     vector<vector<int>> batches;
@@ -477,8 +477,8 @@ MatrixXd run_epoch(const vector<babi::Story>& dataset,
     }
 
     for (auto& batch : batches) {
-        pool.run([batch, &dataset, training, &num_questions, &thread_error, &solver]() {
-            BabiModel& thread_model = thread_models[ThreadPool::get_thread_number()];
+        pool.run([batch, &dataset, &num_questions, &thread_error, &solver]() {
+            model_t& thread_model = thread_models[ThreadPool::get_thread_number()];
             auto params = thread_model.parameters();
             for (auto story_id: batch) {
                 auto story = dataset[story_id];
@@ -488,40 +488,34 @@ MatrixXd run_epoch(const vector<babi::Story>& dataset,
                 QA* qa;
                 while (!parser.done()) {
                     std::tie(facts_so_far, qa) = parser.next();
-                    // When we are training we want to do backprop
-                    graph::NoBackprop nb(!training);
-                    // When we are training we want to use dropout
-                    auto activation = thread_model.activate_story(
-                            facts_so_far, qa->question, training);
+
                     uint answer_idx = model->vocab->word2index.at(qa->answer[0]);
 
-                    thread_error[ThreadPool::get_thread_number()] +=
-                            errors(activation, answer_idx, qa->supporting_facts);
+                    auto error = model->error(facts_so_far,
+                                              qa->question,
+                                              answer_idx,
+                                              qa->supporting_facts);
+                    error.grad();
+
+                    thread_error[ThreadPool::get_thread_number()] += error.w()(0,0);
 
                     num_questions += 1;
-                    if (training)
-                        graph::backward();
+
+                    graph::backward();
                  }
             }
             if (FLAGS_solver_mutex) {
-                    std::lock_guard<decltype(solver_mutex)> guard(solver_mutex);
-                    if (training)
-                        solver->step(params);
+                std::lock_guard<decltype(solver_mutex)> guard(solver_mutex);
+                solver->step(params);
             } else {
-                if (training)
-                    solver->step(params);
+                solver->step(params);
             }
         });
     }
 
     pool.wait_until_idle();
-    MatrixXd total_error(3,1);
-    total_error << 0, 0, 0;
-    for (int i=0; i<NUM_THREADS; ++i)
-        total_error += thread_error[i];
-    total_error /= num_questions;
 
-    return total_error;
+    return utils::vsum(thread_error) / num_questions;
 }
 
 void visualize_examples(const vector<babi::Story>& data, int num_examples) {
@@ -545,27 +539,22 @@ void visualize_examples(const vector<babi::Story>& data, int num_examples) {
     }
 }
 
-vector<string> predict(const vector<vector<string>>& facts,
-                       const vector<string>& question);
-
-void train(const vector<babi::Story>& data, shared_ptr<Training> training_method) {
+void train(const vector<babi::Story>& data) {
     for (auto param: model->parameters()) {
         weights<REAL_t>::svd(weights<REAL_t>::gaussian(1.0))(param);
     }
 
     int training_size = (int)(TRAINING_FRAC * data.size());
     std::vector<babi::Story> train(data.begin(), data.begin() + training_size);
-    std::vector<babi::Story> validation(data.begin() + training_size, data.end());
+    std::vector<babi::Story> validate(data.begin() + training_size, data.end());
 
     auto params = model->parameters();
     bool solver_reset_cache = false;
 
     Solver::AdaDelta<REAL_t> solver(params, 0.95, 1e-9, 5.0);
 
-    training_method->reset();
-
-    double best_validation = run_epoch(validation, &solver, false)(0);
-    best_model = std::make_shared<BabiModel>(*model, true, true);
+    double best_validation_accuracy = 0.0;
+    best_model = std::make_shared<model_t>(*model, true, true);
     best_model_epoch = 0;
 
     int epoch = 0;
@@ -573,53 +562,29 @@ void train(const vector<babi::Story>& data, shared_ptr<Training> training_method
     Throttled example_visualization;
 
     while (epoch < FLAGS_max_epochs) {
-        auto training_errors = run_epoch(train, &solver, true);
-        auto validation_errors = run_epoch(validation, &solver, false);
+        auto training_error = run_epoch(train, &solver);
+
         if (!FLAGS_visualizer.empty()) {
-            example_visualization.maybe_run(seconds(5), [&validation]() {
-                visualize_examples(validation, 1);
+            example_visualization.maybe_run(seconds(5), [&validate]() {
+                visualize_examples(validate, 1);
             });
         }
         if (solver_reset_cache)
             solver.reset_caches(params);
-        std::cout << "Epoch " << ++epoch << std::endl;
-        std::cout << "Errors(prob_answer, fact_select, words_sparsity): " << std::endl
-                  << "VALIDATION: " << validation_errors(0) << " "
-                                    << validation_errors(1) << " "
-                                    << validation_errors(2) << std::endl
-                  << "TRAINING: "   << training_errors(0) << " "
-                                    << training_errors(1) << " "
-                                    << training_errors(2) << std::endl
-                  << "VALIDATION ACCURACY: " << 100.0 * babi::accuracy(validation, predict) << "%" << std::endl;
-        if (training_method->should_stop(validation_errors(0)))
-            break;
-        training_method->report();
 
-        if (best_validation > training_method->validation_error()) {
+        double validation_accuracy = babi::accuracy(validate, std::bind(&model_t::predict, model.get(), _1, _2));
+
+        std::cout << "Epoch " << ++epoch << std::endl
+                  << "Training error:" << training_error
+                  << "Validation accuracy: " << 100.0 * validation_accuracy << "%" << std::endl;
+
+        if (best_validation_accuracy < validation_accuracy) {
             std::cout << "NEW WORLD RECORD!" << std::endl;
-            best_validation = training_method->validation_error();
-            best_model = std::make_shared<BabiModel>(*model, true, true);
+            best_validation_accuracy = validation_accuracy;
+            best_model = std::make_shared<model_t>(*model, true, true);
             best_model_epoch = epoch;
         }
     }
-}
-
-void train(const vector<babi::Story>& data) {
-    shared_ptr<LSTV> default_method = make_shared<LSTV>(SHORT_TERM_VALIDATION,
-                                                        LONG_TERM_VALIDATION,
-                                                        PREDICTION_PATIENCE);
-
-    train(data, default_method);
-}
-
-vector<string> predict(const vector<vector<string>>& facts,
-                       const vector<string>& question) {
-    graph::NoBackprop nb;
-
-    // Don't use dropout for validation.
-    int word_idx = best_model->activate_story(facts, question, false).log_probs.argmax();
-
-    return {best_model->vocab->index2word[word_idx]};
 }
 
 void reset(const vector<babi::Story>& data) {
@@ -627,7 +592,7 @@ void reset(const vector<babi::Story>& data) {
     auto vocab_vector = babi::vocab_from_data(data);
     model.reset();
     best_model.reset();
-    model = std::make_shared<BabiModel>(make_shared<Vocab> (vocab_vector));
+    model = std::make_shared<model_t>(make_shared<Vocab> (vocab_vector));
 }
 
 double benchmark_task(const std::string task) {
@@ -637,13 +602,13 @@ double benchmark_task(const std::string task) {
 
     train(data);
     std::cout << "[RESULTS] Best model was achieved at epoch " << best_model_epoch << " ." << std::endl;
-    double accuracy = babi::task_accuracy(task, predict);
+    double accuracy = babi::task_accuracy(task, std::bind(&model_t::predict, model.get(), _1, _2));
     std::cout << "[RESULTS] Accuracy on " << task << " is " << 100 * accuracy << " ." << std::endl;
     return accuracy;
 }
 
 int main(int argc, char** argv) {
-    sane_crashes::activate();
+    // sane_crashes::activate();
 
     GFLAGS_NAMESPACE::SetUsageMessage(
         "\nBabi!"

@@ -1,7 +1,7 @@
 # Dali
 An automatic differentiation library that uses reverse-mode differentation (backpropgation) to differentiate recurrent neural networks, but also mathematical expressions through control flow, while loops, recursion.
 
-<img src="https://raw.github.com/JonathanRaiman/Dali/master/misc/salvador.jpg" width="50%" /> 
+<img src="https://raw.github.com/JonathanRaiman/Dali/master/misc/salvador.jpg" width="50%" />
 
 This is an reimagination of [Andrej Kaparthy](http://cs.stanford.edu/people/karpathy/)'s [recurrentJS](http://cs.stanford.edu/people/karpathy/recurrentjs/) ([Github](https://github.com/karpathy/recurrentjs)) in C++. It has similar API names but the backbones are using **Eigen** and C++11's standard library.
 
@@ -222,3 +222,17 @@ both the backpropagation; `<functional>`'s lambda functions keep track of previo
 On Mac OSX, or more generally when using [Intel's MKL Library](https://software.intel.com/en-us/intel-mkl) you may encounter an interesting bug with [`Eigen`](http://eigen.tuxfamily.org/bz/show_bug.cgi?id=874) where `MKL_BLAS` is shown as undefined during compilation.
 
 To fix this bug make the modifications listed [here](https://bitbucket.org/eigen/eigen/pull-request/82/fix-for-mkl_blas-not-defined-in-mkl-112/diff) to your Eigen header files and everything should return to normal.
+
+### Debugging assert2 failures with GDB
+We made some effort to improve assertions in Dali and we use exceptions instead of regular asserts. One downside of this approach is that it's harder to debug with gdb. Here's a simple recepie to debug assert2 failures:
+
+```bash
+gdb --args example/dali_code.o arg1 arg2
+...
+catch throw
+run
+...
+backtrace
+```
+
+You should now see a stack trace for the assertion error.

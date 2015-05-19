@@ -509,7 +509,7 @@ vector<Mat<R>> MatOps<R>::softmax(const vector<Mat<R>>& matrices, R temperature)
             }
 
             for (int i = 0; i < out.size(); i++) {
-                if (!matrices[i].constant) {
+                if (!matrices[i].constant) {
                     auto& dw = matrices[i].dw();
                     auto& sm = out[i].w();
                     auto& dy = out[i].dw();
@@ -607,6 +607,7 @@ template<typename R>
 Mat<R> MatOps<R>::cross_entropy(Mat<R> matrix, uint answer_idx) {
     DEBUG_ASSERT_BOUNDS(matrix.w(),0.0,1.0 + EPS);
     assert(matrix.dims().size() > 1);
+    assert(answer_idx < matrix.dims(0));
     Mat<R> out =  Mat<R>(
         1,
         matrix.dims(1),
@@ -654,7 +655,6 @@ Mat<R> MatOps<R>::margin_loss(Mat<R> matrix, uint answer_idx, R margin) {
     }
     return error;
 }
-
 
 template<typename R>
 Mat<R> MatOps<R>::log(Mat<R> matrix) {
@@ -1138,6 +1138,30 @@ Mat<R> MatOps<R>::dropout_normalized(
         });
     }
     return out;
+}
+
+template<typename R>
+vector<Mat<R>> MatOps<R>::dropout_normalized(
+    const vector<Mat<R>>& matrices,
+    R drop_prob) {
+    vector<Mat<R>> dropped_matrices;
+    dropped_matrices.reserve(matrices.size());
+    for (auto& mat : matrices) {
+        dropped_matrices.emplace_back(dropout_normalized(mat, drop_prob));
+    }
+    return dropped_matrices;
+}
+
+template<typename R>
+vector<Mat<R>> MatOps<R>::dropout(
+    const vector<Mat<R>>& matrices,
+    R drop_prob) {
+    vector<Mat<R>> dropped_matrices;
+    dropped_matrices.reserve(matrices.size());
+    for (auto& mat : matrices) {
+        dropped_matrices.emplace_back(dropout(mat, drop_prob));
+    }
+    return dropped_matrices;
 }
 
 template<typename R>

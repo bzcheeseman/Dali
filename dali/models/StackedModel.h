@@ -53,7 +53,7 @@ class StackedModel : public RecurrentEmbeddingModel<Z>  {
         const bool use_shortcut;
         const bool memory_feeds_gates;
 
-        std::shared_ptr<AbstractStackedLSTM<Z>> stacked_lstm;
+        StackedLSTM<Z> stacked_lstm;
 
         typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
         typedef std::shared_ptr< index_mat > shared_index_mat;

@@ -155,7 +155,7 @@ int main (int argc,  char* argv[]) {
             Mat<REAL_t> input_vector;
             for (auto& c : example.first) {
                 input_vector = model.embedding[c];
-                initial_state = model.stacked_lstm->activate(
+                initial_state = model.stacked_lstm.activate(
                     initial_state,
                     input_vector
                 );
@@ -169,7 +169,7 @@ int main (int argc,  char* argv[]) {
             );
             for (auto label_ptr = example.second.begin(); label_ptr < example.second.end() -1; label_ptr++) {
                 input_vector = model.embedding[*label_ptr];
-                initial_state = model.stacked_lstm->activate(
+                initial_state = model.stacked_lstm.activate(
                     initial_state,
                     input_vector
                 );

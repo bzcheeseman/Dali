@@ -98,10 +98,11 @@ class AbstractStackedLSTM : public AbstractLayer<R> {
     public:
         typedef std::vector < typename LSTM<R>::State > state_t;
 
-        int input_size;
+        std::vector<int> input_sizes;
         std::vector<int> hidden_sizes;
         AbstractStackedLSTM();
         AbstractStackedLSTM(const int& input_size, const std::vector<int>& hidden_sizes);
+        AbstractStackedLSTM(const std::vector<int>& input_sizes, const std::vector<int>& hidden_sizes);
         AbstractStackedLSTM(const AbstractStackedLSTM<R>& model, bool copy_w, bool copy_dw);
 
         virtual state_t initial_states() const;
@@ -131,6 +132,10 @@ class StackedLSTM : public AbstractStackedLSTM<R> {
             state_t previous_state,
             Mat<R> input_vector,
             R drop_prob = 0.0) const;
+        virtual state_t activate(
+            state_t previous_state,
+            const std::vector<Mat<R>>& inputs,
+            R drop_prob = 0.0) const;
         virtual std::vector<Mat<R>> parameters() const;
         StackedLSTM();
         StackedLSTM(
@@ -138,16 +143,14 @@ class StackedLSTM : public AbstractStackedLSTM<R> {
             const std::vector<int>& hidden_sizes,
             bool _shortcut,
             bool _memory_feeds_gates);
+        StackedLSTM(
+            const std::vector<int>& input_sizes,
+            const std::vector<int>& hidden_sizes,
+            bool _shortcut,
+            bool _memory_feeds_gates);
         StackedLSTM(const StackedLSTM<R>& model, bool copy_w, bool copy_dw);
         StackedLSTM<R> shallow_copy() const;
 };
-
-template<typename celltype>
-std::vector<celltype> StackedCells(
-    const int&,
-    const std::vector<int>&,
-    bool shortcut,
-    bool memory_feeds_gates);
 
 /**
 StackedCells specialization to StackedLSTM
@@ -175,22 +178,46 @@ vector<ShortcutLSTM<R>> cells : constructed shortcutLSTMs
 
 **/
 template<typename celltype>
-std::vector<celltype> StackedCells(const int&, const int&, const std::vector<int>&);
+std::vector<celltype> StackedCells(
+    const int& input_size,
+    const std::vector<int>& hidden_sizes,
+    bool shortcut,
+    bool memory_feeds_gates);
+
+template<typename celltype>
+std::vector<celltype> StackedCells(
+    const std::vector<int>& input_sizes,
+    const std::vector<int>& hidden_sizes,
+    bool shortcut,
+    bool memory_feeds_gates);
 
 template<typename celltype>
 std::vector<celltype> StackedCells(const std::vector<celltype>&, bool, bool);
 
+template<typename R>
+std::vector< typename LSTM<R>::State > forward_LSTMs(
+    Mat<R> input,
+    std::vector< typename LSTM<R>::State >&,
+    const std::vector<LSTM<R>>&,
+    R drop_prob=0.0);
 
 template<typename R>
 std::vector< typename LSTM<R>::State > forward_LSTMs(
-    Mat<R>,
+    const std::vector<Mat<R>>& inputs,
     std::vector< typename LSTM<R>::State >&,
     const std::vector<LSTM<R>>&,
     R drop_prob=0.0);
 
 template<typename R>
 std::vector< typename LSTM<R>::State > shortcut_forward_LSTMs(
-    Mat<R>,
+    Mat<R> input,
+    std::vector< typename LSTM<R>::State >&,
+    const std::vector<LSTM<R>>&,
+    R drop_prob=0.0);
+
+template<typename R>
+std::vector< typename LSTM<R>::State > shortcut_forward_LSTMs(
+    const std::vector<Mat<R>>& inputs,
     std::vector< typename LSTM<R>::State >&,
     const std::vector<LSTM<R>>&,
     R drop_prob=0.0);

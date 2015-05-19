@@ -68,9 +68,13 @@ namespace NER {
 
     vector<string> get_label_vocabulary(const ner_full_dataset& examples) {
         std::map<string, uint> label_occurences;
-        for (auto& example : examples)
-            for (auto& label : example.first) label_occurences[label] += 1;
-        vector<string> labels(label_occurences.size());
+        for (auto& example : examples) {
+            for (auto& label : example.second) {
+                label_occurences[label] += 1;
+            }
+        }
+        vector<string> labels;
+        labels.reserve(label_occurences.size());
         for (auto& key_val : label_occurences)
             labels.emplace_back(key_val.first);
 

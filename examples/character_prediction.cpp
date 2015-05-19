@@ -75,7 +75,7 @@ T validation_error(
             // pick this letter from the embedding
             input_vector  = model.embedding[example[i]];
             // pass this letter to the LSTM for processing
-            initial_state = model.stacked_lstm->activate(initial_state, input_vector);
+            initial_state = model.stacked_lstm.activate(initial_state, input_vector);
             // classifier takes as input the final hidden layer's activation:
             logprobs      = model.decode(input_vector, initial_state);
             error = error + MatOps<T>::softmax_cross_entropy(logprobs, example[i+1]);
@@ -106,7 +106,7 @@ Mat<T> cost_fun(
         // pick this letter from the embedding
         input_vector  = model.embedding[indices[i]];
         // pass this letter to the LSTM for processing
-        initial_state = model.stacked_lstm->activate(initial_state, input_vector);
+        initial_state = model.stacked_lstm.activate(initial_state, input_vector);
         // classifier takes as input the final hidden layer's activation:
         logprobs      = model.decode(input_vector, initial_state);
         cost          = cost + MatOps<T>::softmax_cross_entropy(logprobs, indices[i+1]);

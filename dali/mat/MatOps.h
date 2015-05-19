@@ -178,6 +178,9 @@ struct MatOps {
     static Mat<R> dropout(Mat<R>, R);
     static Mat<R> dropout_normalized(Mat<R>, R);
 
+    static std::vector<Mat<R>> dropout(const std::vector<Mat<R>>&, R);
+    static std::vector<Mat<R>> dropout_normalized(const std::vector<Mat<R>>&, R);
+
     /**
     Fast Dropout
     ------------

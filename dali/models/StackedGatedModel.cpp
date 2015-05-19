@@ -75,7 +75,7 @@ StackedGatedModel<Z> StackedGatedModel<Z>::build_from_CLI(
                   << model.embedding.dims(0)
                   << std::endl
                   << "Input size            = "
-                  << model.input_size
+                  << model.embedding.dims(1)
                   << std::endl
                   << "Output size           = "
                   << model.output_size
@@ -161,7 +161,7 @@ std::tuple<Z, Z> StackedGatedModel<Z>::masked_predict_cost(
         memory = gate.activate(input_vector, initial_state.back().hidden ).sigmoid();
         input_vector = input_vector.eltmul_broadcast_rowwise(memory);
         // pass this letter to the LSTM for processing
-        initial_state = this->stacked_lstm->activate(initial_state, input_vector, drop_prob);
+        initial_state = this->stacked_lstm.activate(initial_state, input_vector, drop_prob);
         logprobs      = this->decode(input_vector, initial_state);
 
         if (graph::backprop_enabled) {
@@ -224,7 +224,7 @@ std::tuple<Z, Z> StackedGatedModel<Z>::masked_predict_cost(
             ).sigmoid();
             input_vector = input_vector.eltmul_broadcast_rowwise(memory);
             // pass this letter to the LSTM for processing
-            initial_state = this->stacked_lstm->activate(
+            initial_state = this->stacked_lstm.activate(
                 initial_state,
                 input_vector,
                 drop_prob
@@ -425,7 +425,7 @@ typename StackedGatedModel<Z>::state_type StackedGatedModel<Z>::get_final_activa
         }
         input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
         // pass this letter to the LSTM for processing
-        initial_state = this->stacked_lstm->activate(initial_state, input_vector);
+        initial_state = this->stacked_lstm.activate(initial_state, input_vector);
     }
     return initial_state;
 }
@@ -465,7 +465,7 @@ typename StackedGatedModel<Z>::activation_t StackedGatedModel<Z>::activate(
     ).sigmoid();
     input_vector      = input_vector.eltmul_broadcast_rowwise(memory);
 
-    std::get<0>(out) = this->stacked_lstm->activate(
+    std::get<0>(out) = this->stacked_lstm.activate(
         previous_state,
         input_vector
     );
@@ -498,7 +498,7 @@ typename StackedGatedModel<Z>::activation_t StackedGatedModel<Z>::activate(
     ).sigmoid();
     input_vector      = input_vector.eltmul_broadcast_rowwise(memory);
 
-    std::get<0>(out) = this->stacked_lstm->activate(
+    std::get<0>(out) = this->stacked_lstm.activate(
         previous_state,
         input_vector);
     std::get<1>(out) = graph::backprop_enabled ?
@@ -544,7 +544,7 @@ std::vector<int> StackedGatedModel<Z>::reconstruct(
                 initial_state.back().hidden
             ).sigmoid();
             input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
-            initial_state = this->stacked_lstm->activate(
+            initial_state = this->stacked_lstm.activate(
                 initial_state,
                 input_vector);
             last_symbol   = this->decode(
@@ -574,7 +574,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<Z>::reconstr
         memory        = gate.activate(input_vector, initial_state.back().hidden).sigmoid();
         input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
         // pass this letter to the LSTM for processing
-        initial_state = this->stacked_lstm->activate(initial_state, input_vector);
+        initial_state = this->stacked_lstm.activate(initial_state, input_vector);
     }
     vector<utils::OntologyBranch::shared_branch> outputs;
     // Take the argmax over the available options (0 for go back to
@@ -595,7 +595,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<Z>::reconstr
         input_vector  = this->embedding[pos->id];
         memory        = gate.activate(input_vector, initial_state.back().hidden).sigmoid();
         input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
-        initial_state = this->stacked_lstm->activate(initial_state, input_vector);
+        initial_state = this->stacked_lstm.activate(initial_state, input_vector);
         last_turn     = this->decode(
             input_vector,
             initial_state

@@ -24,7 +24,7 @@ vector<Mat<Z>> StackedModel<Z>::parameters() const {
     auto parameters = RecurrentEmbeddingModel<Z>::parameters();
     auto decoder_params = decoder.parameters();
     parameters.insert(parameters.end(), decoder_params.begin(), decoder_params.end());
-    auto stacked_lstm_params = stacked_lstm->parameters();
+    auto stacked_lstm_params = stacked_lstm.parameters();
     parameters.insert(parameters.end(), stacked_lstm_params.begin(), stacked_lstm_params.end());
     return parameters;
 }
@@ -101,7 +101,7 @@ StackedModel<Z> StackedModel<Z>::build_from_CLI(
                   << model.embedding.dims(0)
                   << std::endl
                   << "Input size            = "
-                  << model.input_size
+                  << model.embedding.dims(1)
                   << std::endl
                   << "Output size           = "
                   << model.output_size
@@ -173,7 +173,7 @@ Z StackedModel<Z>::masked_predict_cost(
         // pick this letter from the embedding
         input_vector = this->embedding[data->col(i)];
         // pass this letter to the LSTM for processing
-        initial_state = stacked_lstm->activate(
+        initial_state = stacked_lstm.activate(
             initial_state,
             input_vector,
             drop_prob
@@ -273,7 +273,7 @@ Z StackedModel<Z>::masked_predict_cost(
         // pick this letter from the embedding
         input_vector = this->embedding[data->col(i)];
         // pass this letter to the LSTM for processing
-        initial_state = stacked_lstm->activate(
+        initial_state = stacked_lstm.activate(
             initial_state,
             input_vector,
             drop_prob
@@ -327,8 +327,8 @@ StackedModel<Z>::StackedModel (
     use_shortcut(_use_shortcut),
     memory_feeds_gates(_memory_feeds_gates),
     decoder(decoder_initialization(input_size, this->hidden_sizes, _use_shortcut, _input_vector_to_decoder), output_size) {
-    stacked_lstm = make_shared<StackedLSTM<Z>>(
-            this->input_size,
+    stacked_lstm = StackedLSTM<Z>(
+            input_size,
             this->hidden_sizes,
             use_shortcut,
             memory_feeds_gates);
@@ -338,15 +338,15 @@ StackedModel<Z>::StackedModel (
 template<typename Z>
 StackedModel<Z>::StackedModel (const typename StackedModel<Z>::config_t& config)
     :
-    use_shortcut( config.find("use_shortcut") != config.end() ? (from_string<int>("use_shortcut") > 0) : false ),
-    memory_feeds_gates( config.find("memory_feeds_gates") != config.end() ? (from_string<int>("memory_feeds_gates") > 0) : false ),
+    use_shortcut( config.find("use_shortcut") != config.end() ? (from_string<int>(config.at("use_shortcut")[0]) > 0) : false ),
+    memory_feeds_gates( config.find("memory_feeds_gates") != config.end() ? (from_string<int>(config.at("memory_feeds_gates")[0]) > 0) : false ),
     RecurrentEmbeddingModel<Z>(config) {
     decoder = StackedInputLayer<Z>(
-        decoder_initialization(this->input_size, this->hidden_sizes, use_shortcut, _input_vector_to_decoder),
+        decoder_initialization(from_string<int>(config.at("input_size")[0]), this->hidden_sizes, use_shortcut, _input_vector_to_decoder),
         this->output_size
     );
-    stacked_lstm = make_shared<StackedLSTM<Z>>(
-        this->input_size,
+    stacked_lstm = StackedLSTM<Z>(
+        from_string<int>(config.at("input_size")[0]),
         this->hidden_sizes,
         use_shortcut,
         memory_feeds_gates
@@ -365,11 +365,11 @@ StackedModel<Z>::StackedModel(
     : RecurrentEmbeddingModel<Z>(vocabulary_size, input_size, hidden_sizes, output_size),
     use_shortcut(_use_shortcut), memory_feeds_gates(_memory_feeds_gates) {
     decoder = StackedInputLayer<Z> (
-        decoder_initialization(this->input_size, this->hidden_sizes, use_shortcut, _input_vector_to_decoder),
+        decoder_initialization(input_size, this->hidden_sizes, use_shortcut, _input_vector_to_decoder),
         this->output_size
     );
-    stacked_lstm = make_shared<StackedLSTM<Z>>(
-        this->input_size,
+    stacked_lstm = StackedLSTM<Z>(
+        input_size,
         this->hidden_sizes,
         use_shortcut,
         memory_feeds_gates
@@ -385,8 +385,8 @@ StackedModel<Z>::StackedModel (const StackedModel<Z>& model, bool copy_w, bool c
       memory_feeds_gates(model.memory_feeds_gates),
       decoder(model.decoder, copy_w, copy_dw) {
 
-    stacked_lstm = make_shared<StackedLSTM<Z>>(
-        *dynamic_cast<StackedLSTM<Z>*>(model.stacked_lstm.get()), copy_w, copy_dw
+    stacked_lstm = StackedLSTM<Z>(
+        model.stacked_lstm, copy_w, copy_dw
     );
     name_parameters();
 }
@@ -407,7 +407,7 @@ typename StackedModel<Z>::state_type StackedModel<Z>::get_final_activation(
         // pick this letter from the embedding
         input_vector  = this->embedding[example[i]];
         // pass this letter to the LSTM for processing
-        initial_state = stacked_lstm->activate(
+        initial_state = stacked_lstm.activate(
             initial_state,
             input_vector,
             drop_prob
@@ -436,7 +436,7 @@ std::vector<int> StackedModel<Z>::reconstruct(
 
     for (uint j = 0; j < eval_steps - 1; j++) {
         input_vector  = this->embedding[last_symbol];
-        initial_state = stacked_lstm->activate(initial_state, input_vector);
+        initial_state = stacked_lstm.activate(initial_state, input_vector);
         last_symbol   = decode(
             input_vector,
             initial_state
@@ -453,7 +453,7 @@ typename StackedModel<Z>::activation_t StackedModel<Z>::activate(
     const uint& index) const {
     activation_t out;
     auto input_vector = this->embedding[index];
-    std::get<0>(out)  = stacked_lstm->activate(previous_state, input_vector);
+    std::get<0>(out)  = stacked_lstm.activate(previous_state, input_vector);
     std::get<1>(out)  = graph::backprop_enabled ?
         MatOps<Z>::softmax(
             decode(
@@ -476,7 +476,7 @@ typename StackedModel<Z>::activation_t StackedModel<Z>::activate(
     const eigen_index_block indices) const {
     activation_t out;
     auto input_vector = this->embedding[indices];
-    std::get<0>(out)  = stacked_lstm->activate(previous_state, input_vector);
+    std::get<0>(out)  = stacked_lstm.activate(previous_state, input_vector);
     std::get<1>(out)  = graph::backprop_enabled ?
         MatOps<Z>::softmax(
             decode(
@@ -508,7 +508,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedModel<Z>::reconstruct_l
         // pick this letter from the embedding
         input_vector  = this->embedding[example[i]];
         // pass this letter to the LSTM for processing
-        initial_state = stacked_lstm->activate(initial_state, input_vector);
+        initial_state = stacked_lstm.activate(initial_state, input_vector);
         // decoder takes as input the final hidden layer's activation:
     }
     vector<utils::OntologyBranch::shared_branch> outputs;
@@ -528,7 +528,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedModel<Z>::reconstruct_l
     outputs.emplace_back(pos);
     for (uint j = 0; j < eval_steps - 1; j++) {
         input_vector  = this->embedding[pos->id];
-        initial_state = stacked_lstm->activate(initial_state, input_vector);
+        initial_state = stacked_lstm.activate(initial_state, input_vector);
         last_turn     = decode(
             input_vector,
             initial_state
@@ -551,7 +551,7 @@ template<typename Z>
 void StackedModel<Z>::input_vector_to_decoder(bool should_input_feed_to_decoder) {
     if (_input_vector_to_decoder != should_input_feed_to_decoder) {
         _input_vector_to_decoder = should_input_feed_to_decoder;
-        decoder.input_sizes(decoder_initialization(this->input_size, this->hidden_sizes, use_shortcut, _input_vector_to_decoder));
+        decoder.input_sizes(decoder_initialization(this->embedding.dims(1), this->hidden_sizes, use_shortcut, _input_vector_to_decoder));
     }
 }
 

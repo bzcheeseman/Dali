@@ -96,7 +96,6 @@ int main (int argc,  char* argv[]) {
         ner_data,
         FLAGS_minibatch
     );
-    ner_data.clear();
     // No validation set yet...
     decltype(dataset) validation_set;
     {
@@ -195,13 +194,6 @@ int main (int argc,  char* argv[]) {
         auto temp  = model.parameters();
         params = vector<Mat<REAL_t>>(temp.begin()+1, temp.end());
         embedding_params.push_back(model.parameters()[0]);
-    }
-    auto svd_init = weights<REAL_t>::svd(weights<REAL_t>::gaussian(0.0, 1.0));
-
-    if (FLAGS_svd_init) {
-        for (auto& param : params) {
-            svd_init(param);
-        }
     }
 
     // Rho value, eps value, and gradient clipping value:
@@ -324,7 +316,10 @@ int main (int argc,  char* argv[]) {
                     for (int ex_idx = 0; ex_idx < std::get<0>(example).size(); ex_idx++) {
                         std::tie(state, probs, memory) = thread_model.activate(state, std::get<0>(example)[ex_idx]);
                         memories.emplace_back(memory);
-                        error = error + MatOps<REAL_t>::cross_entropy(probs, std::get<1>(example)[ex_idx]);
+                        error = error + MatOps<REAL_t>::cross_entropy(
+                            probs,
+                            std::get<1>(example)[ex_idx]
+                        );
                     }
                     // total error is prediction error + memory usage.
                     if (thread_model.memory_penalty > 0) {
@@ -342,36 +337,39 @@ int main (int argc,  char* argv[]) {
                 if (visualizer != nullptr) {
                     // show sentiment detection as system learns:
                     visualizer->throttled_feed(seconds(5), [&word_vocab, &label_vocab, &visualizer, &minibatch, &thread_model]() {
-                            // pick example
-                            auto& example = std::get<0>(minibatch[utils::randint(0, minibatch.size()-1)]);
-                            // visualization does not backpropagate.
-                            graph::NoBackprop nb;
+                        // pick example
+                        auto& example = std::get<0>(minibatch[utils::randint(0, minibatch.size()-1)]);
+                        // visualization does not backpropagate.
+                        graph::NoBackprop nb;
 
-                            auto state = thread_model.initial_states();
-                            Mat<REAL_t> memory;
-                            Mat<REAL_t> probs;
+                        auto state = thread_model.initial_states();
+                        Mat<REAL_t> memory;
+                        Mat<REAL_t> probs;
 
-                            vector<Mat<REAL_t>> memories;
-                            vector<uint> prediction;
+                        vector<Mat<REAL_t>> memories;
+                        vector<uint> prediction;
 
-                            for (auto& el : example) {
-                                std::tie(state, probs, memory) = thread_model.activate(state, el);
-                                memories.emplace_back(memory);
-                                prediction.emplace_back(probs.argmax());
-                            }
-
-                            auto input_sentence = make_shared<visualizable::Sentence<REAL_t>>(word_vocab.decode(example));
-                            input_sentence->set_weights(MatOps<REAL_t>::hstack(memories));
-                            auto decoded = label_vocab.decode(prediction);
-                            for (auto& s : decoded)
-                                if (s == label_vocab.index2word[0]) s.clear();
-                            auto psentence = visualizable::ParallelSentence<REAL_t>(
-                                input_sentence,
-                                make_shared<visualizable::Sentence<REAL_t>>(decoded)
-                            );
-                            return psentence.to_json();
+                        for (auto& el : example) {
+                            std::tie(state, probs, memory) = thread_model.activate(state, el);
+                            memories.emplace_back(memory);
+                            prediction.emplace_back(probs.argmax());
                         }
-                    );
+
+                        auto input_sentence = make_shared<visualizable::Sentence<REAL_t>>(word_vocab.decode(example));
+                        input_sentence->set_weights(MatOps<REAL_t>::hstack(memories));
+                        auto decoded = label_vocab.decode(prediction);
+                        for (auto it_decoded = decoded.begin(); it_decoded < decoded.end(); it_decoded++) {
+                            if (*it_decoded == label_vocab.index2word[0]) {
+                                *it_decoded = " ";
+                            }
+                        }
+
+                        auto psentence = visualizable::ParallelSentence<REAL_t>(
+                            input_sentence,
+                            make_shared<visualizable::Sentence<REAL_t>>(decoded)
+                        );
+                        return psentence.to_json();
+                    });
                 }
                 // report minibatch completion to progress bar
                 journalist.tick(++batches_processed, best_validation_score);
@@ -402,9 +400,6 @@ int main (int argc,  char* argv[]) {
             best_score = new_validation;
             // save best:
             if (!FLAGS_save_location.empty()) {
-                // stringstream ss;
-                // ss << FLAGS_save_location;
-                // ss << "_" << epoch;
                 model.save(FLAGS_save_location);
                 best_file = FLAGS_save_location;
             }

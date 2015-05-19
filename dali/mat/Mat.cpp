@@ -115,7 +115,6 @@ typename weights<R>::initializer_t weights<R>::svd(initializer_t preinitializer)
         if (n < d) {
             matrix.w() = svd.matrixV().block(0, 0, n, d);
         } else {
-
             matrix.w() = svd.matrixU().block(0, 0, n, d);
         }
     };
@@ -125,7 +124,6 @@ typename weights<R>::initializer_t weights<R>::svd(initializer_t preinitializer)
 // this does not need to initialize anything once we get rid of w and dw.
 template<typename R>
 Mat<R>::Mat() : Mat(0,0) {
-
 }
 
 template<typename R>
@@ -266,17 +264,17 @@ Mat<R> Mat<R>::shallow_copy() {
 
 template<typename R>
 void Mat<R>::set_name(string& _name) {
-        name = std::make_shared<string>(_name);
+    name = std::make_shared<string>(_name);
 }
 
 template<typename R>
 void Mat<R>::set_name(char * _name) {
-        name = std::make_shared<string>(_name);
+    name = std::make_shared<string>(_name);
 }
 
 template<typename R>
 void Mat<R>::set_name(const char * _name) {
-        name = std::make_shared<string>(_name);
+    name = std::make_shared<string>(_name);
 }
 
 template<typename R>
@@ -316,8 +314,6 @@ unsigned int Mat<R>::number_of_elements() const {
         dim *= n;
     return dim;
 }
-
-
 
 template<typename R>
 Mat<R> Mat<R>::eltmul_broadcast(Mat<R> matrix2) const {

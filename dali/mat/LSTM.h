@@ -62,7 +62,7 @@ class LSTM : public AbstractLayer<R> {
 
         // This constructor is generally intended to support shortcut LSTM. It also
         // happens to be the most general constructor available.
-        LSTM (std::vector<int> _input_sizes, int _hidden_sizes, int num_children, bool _memory_feeds_gates = false);
+        LSTM (std::vector<int> _input_sizes, int _hidden_size, int num_children, bool _memory_feeds_gates = false);
 
         LSTM (const LSTM&, bool, bool);
 

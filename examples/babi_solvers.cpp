@@ -574,9 +574,9 @@ void train(const vector<babi::Story>& data) {
 
         double validation_accuracy = babi::accuracy(validate, std::bind(&model_t::predict, model.get(), _1, _2));
 
-        std::cout << "Epoch " << ++epoch << std::endl
-                  << "Training error:" << training_error
-                  << "Validation accuracy: " << 100.0 * validation_accuracy << "%" << std::endl;
+        std::cout << "Epoch: " << ++epoch << ", "
+                  << "Training error: " << utils::bold << training_error << utils::reset_color << ", "
+                  << "Validation accuracy: " << utils::bold << 100.0 * validation_accuracy << "%" << utils::reset_color << std::endl;
 
         if (best_validation_accuracy < validation_accuracy) {
             std::cout << "NEW WORLD RECORD!" << std::endl;

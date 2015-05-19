@@ -706,6 +706,7 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
     extern std::string cyan;
     extern std::string black;
     extern std::string reset_color;
+    extern std::string bold;
 }
 
 // define hash code for OntologyBranch

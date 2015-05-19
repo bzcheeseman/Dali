@@ -157,6 +157,7 @@ vector<celltype> StackedCells(
                 cells.emplace_back(
                     input_sizes,
                     hidden_size,
+                    1,
                     memory_feeds_gates);
             } else {
                 // other cells in a shorcut
@@ -177,11 +178,13 @@ vector<celltype> StackedCells(
                 cells.emplace_back(
                     input_sizes,
                     hidden_size,
+                    1,
                     memory_feeds_gates);
             } else {
                 cells.emplace_back(
                     prev_size,
                     hidden_size,
+                    1,
                     memory_feeds_gates);
             }
         }

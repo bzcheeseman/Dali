@@ -641,9 +641,7 @@ TEST_F(LayerTests, shortcut_test) {
     auto out_states = model.activate_sequence(model.initial_states(),
                                               X,
                                               0.2);
-
 }
-
 
 TEST_F(LayerTests, multi_input_lstm_test) {
     int num_children = 3;

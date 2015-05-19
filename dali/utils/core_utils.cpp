@@ -1506,6 +1506,7 @@ namespace utils {
     std::string cyan        = "\033[36m";
     std::string black       = "\033[30m";
     std::string reset_color = "\033[0m";
+    std::string bold        = "\033[1m";
 }
 
 std::ostream& operator<<(std::ostream& strm, const utils::OntologyBranch& a) {

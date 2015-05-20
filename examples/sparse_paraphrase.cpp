@@ -305,20 +305,9 @@ int main (int argc,  char* argv[]) {
                 // many forward steps here:
                 for (auto & example : minibatch) {
                     auto error = MatOps<REAL_t>::consider_constant(Mat<REAL_t>(1,1));
-                    auto state = thread_model.initial_states();
-                    Mat<REAL_t> memory;
-                    Mat<REAL_t> probs;
-                    vector<Mat<REAL_t>> memories;
-                    memories.reserve(std::get<0>(example).size());
 
-                    for (int ex_idx = 0; ex_idx < std::get<0>(example).size(); ex_idx++) {
-                        std::tie(state, probs, memory) = thread_model.activate(state, std::get<0>(example)[ex_idx]);
-                        memories.emplace_back(memory);
-                        error = error + MatOps<REAL_t>::cross_entropy(
-                            probs,
-                            std::get<1>(example)[ex_idx]
-                        );
-                    }
+                    // Your code goes here
+
                     // total error is prediction error + memory usage.
                     if (thread_model.memory_penalty > 0) {
                         error = error + MatOps<REAL_t>::add(memories) * thread_model.memory_penalty;
@@ -330,6 +319,7 @@ int main (int argc,  char* argv[]) {
                 solver->step(params);
                 // no L2 penalty on embedding:
                 embedding_solver->step(embedding_params);
+
                 if (visualizer != nullptr) {
                     visualizer->throttled_feed(seconds(5), [&word_vocab, &visualizer, &minibatch, &thread_model]() {
                         // pick example
@@ -337,28 +327,8 @@ int main (int argc,  char* argv[]) {
                         // visualization does not backpropagate.
                         graph::NoBackprop nb;
 
-                        auto state = thread_model.initial_states();
-                        Mat<REAL_t> memory;
-                        Mat<REAL_t> probs;
+                        // Your visualization code goes here
 
-                        vector<Mat<REAL_t>> memories;
-                        vector<uint> prediction;
-
-                        for (auto& el : example) {
-                            std::tie(state, probs, memory) = thread_model.activate(state, el);
-                            memories.emplace_back(memory);
-                            prediction.emplace_back(probs.argmax());
-                        }
-
-                        auto input_sentence = make_shared<visualizable::Sentence<REAL_t>>(word_vocab.decode(example));
-                        input_sentence->set_weights(MatOps<REAL_t>::hstack(memories));
-
-                        // Write me
-
-                        auto psentence = visualizable::ParallelSentence<REAL_t>(
-                            input_sentence,
-                            input_sentence
-                        );
                         return psentence.to_json();
                     });
                 }
@@ -397,17 +367,19 @@ int main (int argc,  char* argv[]) {
         }
     }
 
-    /*if (!FLAGS_test.empty()) {
-        auto test_set = SST::convert_trees_to_indexed_minibatches(
-            word_vocab,
-            SST::load(FLAGS_test),
-            FLAGS_minibatch
-        );
+    if (!FLAGS_test.empty()) {
+        auto test_set =  // load test set.
+
         if (!FLAGS_save_location.empty() && !best_file.empty()) {
             std::cout << "loading from best validation parameters \"" << best_file << "\"" << std::endl;
             auto params = model.parameters();
             utils::load_matrices(params, best_file);
         }
+
+        // write test code and reporting here.
+
+        auto test_score = paraphrase::pearson_correlation(validation_set, pred_fun, FLAGS_j);
+
         auto recall = SST::average_recall(test_set, pred_fun, FLAGS_j);
 
         std::cout << "Done training" << std::endl;
@@ -432,5 +404,9 @@ int main (int argc,  char* argv[]) {
             }
             fp  << "\t" << FLAGS_reg << std::endl;
         }
-    }*/
+    }
+
+
+    // Write test accuracy here.
+
 }

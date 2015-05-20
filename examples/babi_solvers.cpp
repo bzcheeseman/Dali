@@ -393,8 +393,6 @@ class LstmBabiModel {
                         + fact_selection_error * FLAGS_fact_selection_lambda
                         + activation.word_memory_sum() * FLAGS_word_selection_sparsity;
 
-            total_error = total_error / FLAGS_minibatch;
-
             return total_error;
         }
 
@@ -465,7 +463,7 @@ double run_epoch(const vector<babi::Story>& dataset,
                                                           qa->question,
                                                           answer_idx,
                                                           qa->supporting_facts);
-                    error.grad();
+                    (error / FLAGS_minibatch).grad();
 
                     thread_error[ThreadPool::get_thread_number()] += error.w()(0,0);
 

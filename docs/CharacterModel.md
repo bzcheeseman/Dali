@@ -63,15 +63,15 @@ To run our network forward in time we'll need some initial states and a forward 
 
 ```cpp
 std::vector< typename LSTM<float>::State > forward_LSTMs(
-    Mat<float>,
-    pair<vector<Mat<float>>, vector<Mat<float>>>&,
-    vector<LSTM<float>>&);
+    Mat<float> input,
+    vector<LSTM<float>::State>& states,
+    vector<LSTM<float>>& lstms);
 ```
 
 Now that we can propagate our network forward let's run this forward in time, and start off with a blank cell activation and hidden activation for each LSTM, here we use the LSTM class's `initial_states` static method:
 
 ```cpp
-auto initial_state = LSTM<float>::initial_states(hidden_sizes);
+auto state = LSTM<float>::initial_states(hidden_sizes);
 ```
 
 And we can now run this network forward:
@@ -80,7 +80,7 @@ And we can now run this network forward:
 auto timesteps = 20;
 
 for (auto i = 0; i < timesteps; ++i)
-    initial_state = forward_LSTMs(G, input_vector, initial_state, cells);
+    state = forward_LSTMs(input_vector, state, cells);
 ```
 
 The input_vector isn't changing, but this is just an example. We could have instead used indices and plucked rows from an embedding matrix, or taken audio or video inputs.
@@ -111,7 +111,7 @@ float cost_fun(
     vector<int>& indices // the indices in a sentence whose perplexity we'd like to reduce
     ) {
     // construct hidden cell states:
-    auto initial_state = lstm::initial_states(hidden_sizes);
+    auto state = lstm::states(hidden_sizes);
     auto num_hidden_sizes = hidden_sizes.size();
 
     mat input_vector;
@@ -125,9 +125,9 @@ float cost_fun(
         // pick this letter from the embedding
         input_vector  = embedding[indices[i]];
         // pass this letter to the LSTM for processing
-        initial_state = forward_LSTMs(input_vector, initial_state, cells);
+        state = forward_LSTMs(input_vector, state, cells);
         // classifier takes as input the final hidden layer's activation:
-        logprobs      = classifier.activate(initial_state[num_hidden_sizes-1].hidden);
+        logprobs = classifier.activate(state[num_hidden_sizes-1].hidden);
         // compute the softmax probabilities
         probs         = logprobs.softmax_no_grad();
         // accumulate base 2 log prob and do smoothing
@@ -185,7 +185,6 @@ Then we train by looping through the sentences:
 ```cpp
 for (auto i = 0; i < epochs; ++i) {
     auto cost = cost_fun(
-        G,                       // to keep track of computation
         hidden_sizes,            // to construct initial states
         cells,                   // LSTMs
         embedding,               // character embedding

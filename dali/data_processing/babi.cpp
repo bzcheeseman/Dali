@@ -1,8 +1,14 @@
 #include "babi.h"
 
+#include <atomic>
+
+#include "dali/utils.h"
+
+using std::atomic;
+using std::make_shared;
 using std::string;
 using std::vector;
-using std::make_shared;
+using utils::random_minibatches;
 
 namespace babi {
     void Item::to_stream(std::ostream& str) const {
@@ -232,25 +238,39 @@ namespace babi {
 
     /* helper functions */
 
-    double task_accuracy(const std::string& task, prediction_fun predict) {
-        return accuracy(Parser::testing_data(task), predict);
+    double task_accuracy(const std::string& task, prediction_fun predict, int num_threads) {
+        return accuracy(Parser::testing_data(task), predict, num_threads);
     }
 
-    double accuracy(const vector<Story>& data, prediction_fun predict) {
-        int correct_questions = 0;
-        int total_questions = 0;
-        for (auto& story : data) {
-            babi::StoryParser parser(&story);
-            vector<VS> facts_so_far;
-            QA* qa;
-            while (!parser.done()) {
-                std::tie(facts_so_far, qa) = parser.next();
-                VS answer = predict(facts_so_far, qa->question);
-                if(utils::vs_equal(answer, qa->answer))
-                    ++correct_questions;
-                ++total_questions;
-            }
+    double accuracy(const vector<Story>& data, prediction_fun predict, int num_threads) {
+        ThreadPool pool(num_threads);
+
+        atomic<int> correct_questions(0);
+        atomic<int> total_questions(0);
+
+        auto batches = random_minibatches(data.size(), num_threads);
+
+        for (int bidx = 0; bidx < batches.size(); ++bidx) {
+            pool.run([&batches, &data, &correct_questions, &total_questions,
+                      &predict, bidx]() {
+                auto batch = batches[bidx];
+                for (auto& story_idx : batch) {
+                    auto& story = data[story_idx];
+                    babi::StoryParser parser(&story);
+                    vector<VS> facts_so_far;
+                    QA* qa;
+                    while (!parser.done()) {
+                        std::tie(facts_so_far, qa) = parser.next();
+                        VS answer = predict(facts_so_far, qa->question);
+                        if(utils::vs_equal(answer, qa->answer))
+                            ++correct_questions;
+                        ++total_questions;
+                    }
+                }
+            });
         }
+
+        pool.wait_until_idle();
 
         double accuracy = (double)correct_questions/total_questions;
 

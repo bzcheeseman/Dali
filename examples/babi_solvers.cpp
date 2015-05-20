@@ -38,7 +38,8 @@ using std::to_string;
 DEFINE_int32(j,                        1,      "Number of threads");
 DEFINE_bool(solver_mutex,              false,  "Synchronous execution of solver step.");
 DEFINE_int32(minibatch,                100,    "How many stories to put in a single batch.");
-DEFINE_int32(max_epochs,               1000,   "maximum number of epochs for trainging");
+DEFINE_int32(max_epochs,               2000,   "maximum number of epochs for training");
+DEFINE_int32(patience,                 200,   "after <patience> epochs of performance decrease we stop.");
 // generic lstm properties
 DEFINE_bool(lstm_shortcut,             true,   "Should shortcut be used in LSTMs");
 DEFINE_bool(lstm_feed_mry,             true,   "Should memory be fed to gates in LSTMs");
@@ -370,7 +371,11 @@ class LstmBabiModel {
             auto activation = activate_story(facts, question, true);
             Mat<REAL_t> prediction_error;
             if (FLAGS_margin_loss) {
-                prediction_error = MatOps<REAL_t>::margin_loss(activation.log_probs, answer_idx, FLAGS_margin);
+                // We estimated eprically that margin loss scales as about 6.0
+                // cross entropy. We want to put the roughly in the same bucket, so
+                // so that improtance of gate errors and sparsity has more or less
+                // the same effect for both types of errors.
+                prediction_error = 6.0 * MatOps<REAL_t>::margin_loss(activation.log_probs, answer_idx, FLAGS_margin);
             } else {
                 prediction_error = MatOps<REAL_t>::softmax_cross_entropy(activation.log_probs,
                                                                               answer_idx);
@@ -489,7 +494,7 @@ double run_epoch(const vector<babi::Story>& dataset,
 void visualize_examples(const vector<babi::Story>& data, int num_examples) {
     while(num_examples--) {
         int example = rand()%data.size();
-        int question_no = rand()%6;
+        int question_no = utils::randint(0, 5);
         babi::StoryParser parser(&data[example]);
         vector<vector<string>> facts_so_far;
         QA* qa;
@@ -520,16 +525,19 @@ void train(const vector<babi::Story>& data, float training_fraction = 0.8) {
     bool solver_reset_cache = false;
 
     Solver::AdaDelta<REAL_t> solver(params, 0.95, 1e-9, 5.0);
+    //Solver::Adam<REAL_t> solver(params);
+    solver.regc = 1e-5;
 
     double best_validation_accuracy = 0.0;
     best_model = std::make_shared<model_t>(*model, true, true);
     best_model_epoch = 0;
 
     int epoch = 0;
+    int patience = 0;
 
     Throttled example_visualization;
 
-    while (epoch < FLAGS_max_epochs) {
+    while (epoch < FLAGS_max_epochs && patience < FLAGS_patience) {
         auto training_error = run_epoch(train, &solver);
 
         if (!FLAGS_visualizer.empty()) {
@@ -540,11 +548,11 @@ void train(const vector<babi::Story>& data, float training_fraction = 0.8) {
         if (solver_reset_cache)
             solver.reset_caches(params);
 
-        double validation_accuracy = babi::accuracy(validate, std::bind(&model_t::predict, model.get(), _1, _2));
-
-        std::cout << "Epoch: " << ++epoch << ", "
-                  << "Training error: " << utils::bold << training_error << utils::reset_color << ", "
-                  << "Validation accuracy: " << utils::bold << 100.0 * validation_accuracy << "%" << utils::reset_color << std::endl;
+        double validation_accuracy = babi::accuracy(
+            validate,
+            std::bind(&model_t::predict, model.get(), _1, _2),
+            FLAGS_j
+        );
 
         if (best_validation_accuracy < validation_accuracy) {
             std::cout << "NEW WORLD RECORD!" << std::endl;
@@ -552,6 +560,17 @@ void train(const vector<babi::Story>& data, float training_fraction = 0.8) {
             best_model = std::make_shared<model_t>(*model, true, true);
             best_model_epoch = epoch;
         }
+
+        if (best_validation_accuracy > validation_accuracy) {
+            patience += 1;
+        } else {
+            patience = 0;
+        }
+
+        std::cout << "Epoch: " << ++epoch << ", "
+                  << "Training error: " << utils::bold << training_error << utils::reset_color << ", "
+                  << "Validation accuracy: " << utils::bold << 100.0 * validation_accuracy << "%" << utils::reset_color
+                  << " (patience: " << patience << "/" << FLAGS_patience << ")." << std::endl;
     }
 }
 
@@ -570,7 +589,10 @@ double benchmark_task(const std::string task) {
 
     train(data, 0.8);
     std::cout << "[RESULTS] Best model was achieved at epoch " << best_model_epoch << " ." << std::endl;
-    double accuracy = babi::task_accuracy(task, std::bind(&model_t::predict, model.get(), _1, _2));
+    double accuracy = babi::task_accuracy(
+        task,
+        std::bind(&model_t::predict, model.get(), _1, _2),
+        FLAGS_j);
     std::cout << "[RESULTS] Accuracy on " << task << " is " << 100.0 * accuracy << " ." << std::endl;
     return accuracy;
 }

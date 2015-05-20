@@ -10,7 +10,7 @@
 #include "dali/core.h"
 #include "dali/utils.h"
 #include "dali/utils/NlpUtils.h"
-#include "dali/data_processing/NER.h"
+#include "dali/data_processing/Paraphrase.h"
 #include "dali/data_processing/Glove.h"
 #include "dali/models/StackedGatedModel.h"
 #include "dali/visualizer/visualizer.h"
@@ -37,7 +37,7 @@ static const int RMSPROP_TYPE  = 4;
 typedef double REAL_t;
 typedef Mat<REAL_t> mat;
 
-DEFINE_int32(minibatch,           5,        "What size should be used for the minibatches ?");
+DEFINE_int32(minibatch,           5,          "What size should be used for the minibatches ?");
 DEFINE_int32(patience,            5,          "How many unimproving epochs to wait through before witnessing progress ?");
 DEFINE_double(dropout,            0.3,        "How much dropout noise to add to the problem ?");
 DEFINE_double(reg,                0.0,        "What penalty to place on L2 norm of weights?");
@@ -58,11 +58,11 @@ ThreadPool* pool;
 int main (int argc,  char* argv[]) {
     GFLAGS_NAMESPACE::SetUsageMessage(
         "\n"
-        "Named Entity Recognition using single LSTM\n"
-        "------------------------------------------\n"
+        "Textual Similarity using single LSTM\n"
+        "------------------------------------\n"
         "\n"
-        " @author Jonathan Raiman\n"
-        " @date April 7th 2015"
+        " @author Jonathan Raiman & Szymon Sidor\n"
+        " @date May 20th 2015"
     );
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -80,30 +80,27 @@ int main (int argc,  char* argv[]) {
     auto epochs = FLAGS_epochs;
     int rampup_time = 10;
 
-    auto ner_data       = NER::load(FLAGS_train);
-    auto embedding      = Mat<REAL_t>(100, 0);
-    auto word_vocab     = Vocab();
+    auto paraphrase_data = paraphrase::load(FLAGS_train);
+    auto embedding       = Mat<REAL_t>(100, 0);
+    auto word_vocab      = Vocab();
     if (!FLAGS_pretrained_vectors.empty()) {
         glove::load(FLAGS_pretrained_vectors, embedding, word_vocab, 50000);
     } else {
-        word_vocab = Vocab(NER::get_vocabulary(ner_data, FLAGS_min_occurence), true);
+        word_vocab = Vocab(paraphrase::get_vocabulary(paraphrase_data, FLAGS_min_occurence), true);
     }
-    auto label_vocab    = Vocab(NER::get_label_vocabulary(ner_data), false);
     auto vocab_size     = word_vocab.size();
-    auto dataset        = NER::convert_to_indexed_minibatches(
+    auto dataset        = paraphrase::convert_to_indexed_minibatches(
         word_vocab,
-        label_vocab,
-        ner_data,
+        paraphrase_data,
         FLAGS_minibatch
     );
     // No validation set yet...
     decltype(dataset) validation_set;
     {
-        auto ner_valid_data = NER::load(FLAGS_validation);
-        validation_set = NER::convert_to_indexed_minibatches(
+        auto paraphrase_valid_data = paraphrase::load(FLAGS_validation);
+        validation_set = paraphrase::convert_to_indexed_minibatches(
             word_vocab,
-            label_vocab,
-            ner_valid_data,
+            paraphrase_valid_data,
             FLAGS_minibatch
         );
     }
@@ -118,7 +115,7 @@ int main (int argc,  char* argv[]) {
         FLAGS_pretrained_vectors.empty() ? FLAGS_hidden : embedding.dims(1),
         FLAGS_hidden,
         stack_size,
-        label_vocab.size(),
+        1,
         (FLAGS_shortcut && stack_size > 1) ? FLAGS_shortcut : false,
         FLAGS_memory_feeds_gates,
         FLAGS_memory_penalty) : StackedGatedModel<REAL_t>::load(FLAGS_load);
@@ -242,25 +239,16 @@ int main (int argc,  char* argv[]) {
         }
     }
 
-    auto pred_fun = [&model](vector<uint>& example) {
-        graph::NoBackprop nb;
-        vector<uint> predictions(example.size());
-        auto state = model.initial_states();
-        Mat<REAL_t> memory;
-        Mat<REAL_t> probs;
-        int ex_idx = 0;
-        for (auto& el : example) {
-            std::tie(state, probs, memory) = model.activate(state, el);
-            predictions[ex_idx++] = probs.argmax();
-        }
-        return predictions;
+    auto pred_fun = [&model](vector<uint>& sentence1, vector<uint>& sentence2) {
+        // Write me
+        return 2.0;
     };
 
     // if no training should occur then use the validation set
     // to see how good the loaded model is.
     if (epochs == 0) {
-        best_validation_score = NER::average_recall(validation_set, pred_fun, FLAGS_j);
-        std::cout << "recall = " << best_validation_score << std::endl;
+        best_validation_score = paraphrase::pearson_correlation(validation_set, pred_fun, FLAGS_j);
+        std::cout << "correlation = " << best_validation_score << std::endl;
     }
 
     while (patience < FLAGS_patience && epoch < epochs) {
@@ -299,7 +287,7 @@ int main (int argc,  char* argv[]) {
         );
 
         for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
-            pool->run([&word_vocab, &label_vocab, &visualizer, &solver_type, &thread_embedding_params, &thread_params, &thread_models, batch_id, &journalist, &solver, &embedding_solver, &dataset, &best_validation_score, &batches_processed]() {
+            pool->run([&word_vocab, &visualizer, &solver_type, &thread_embedding_params, &thread_params, &thread_models, batch_id, &journalist, &solver, &embedding_solver, &dataset, &best_validation_score, &batches_processed]() {
                 auto& thread_model     = thread_models[ThreadPool::get_thread_number()];
                 auto& params           = thread_params[ThreadPool::get_thread_number()];
                 auto& embedding_params = thread_embedding_params[ThreadPool::get_thread_number()];
@@ -332,9 +320,8 @@ int main (int argc,  char* argv[]) {
                 solver->step(params);
                 // no L2 penalty on embedding:
                 embedding_solver->step(embedding_params);
-
                 if (visualizer != nullptr) {
-                    visualizer->throttled_feed(seconds(5), [&word_vocab, &label_vocab, &visualizer, &minibatch, &thread_model]() {
+                    visualizer->throttled_feed(seconds(5), [&word_vocab, &visualizer, &minibatch, &thread_model]() {
                         // pick example
                         auto& example = std::get<0>(minibatch[utils::randint(0, minibatch.size()-1)]);
                         // visualization does not backpropagate.
@@ -355,16 +342,12 @@ int main (int argc,  char* argv[]) {
 
                         auto input_sentence = make_shared<visualizable::Sentence<REAL_t>>(word_vocab.decode(example));
                         input_sentence->set_weights(MatOps<REAL_t>::hstack(memories));
-                        auto decoded = label_vocab.decode(prediction);
-                        for (auto it_decoded = decoded.begin(); it_decoded < decoded.end(); it_decoded++) {
-                            if (*it_decoded == label_vocab.index2word[0]) {
-                                *it_decoded = " ";
-                            }
-                        }
+
+                        // Write me
 
                         auto psentence = visualizable::ParallelSentence<REAL_t>(
                             input_sentence,
-                            make_shared<visualizable::Sentence<REAL_t>>(decoded)
+                            input_sentence
                         );
                         return psentence.to_json();
                     });
@@ -375,7 +358,7 @@ int main (int argc,  char* argv[]) {
         }
         pool->wait_until_idle();
         journalist.done();
-        auto new_validation = NER::average_recall(validation_set, pred_fun, FLAGS_j);
+        auto new_validation = paraphrase::pearson_correlation(validation_set, pred_fun, FLAGS_j);
         if (solver_type == ADAGRAD_TYPE) {
             solver->reset_caches(params);
             embedding_solver->reset_caches(embedding_params);

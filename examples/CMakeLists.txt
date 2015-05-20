@@ -20,6 +20,7 @@ set(EXAMPLE_PROGRAMS api_showcase
                      sparkfun_prediction
                      sparse_lstm_sentiment
                      sparse_ner
+                     sparse_paraphrase
                      visualizer
                      )
 foreach(program ${EXAMPLE_PROGRAMS})

@@ -459,9 +459,9 @@ double run_epoch(const vector<babi::Story>& dataset,
                 while (!parser.done()) {
                     std::tie(facts_so_far, qa) = parser.next();
 
-                    uint answer_idx = thread_model->vocab->word2index.at(qa->answer[0]);
+                    uint answer_idx = thread_model.vocab->word2index.at(qa->answer[0]);
 
-                    auto error      = thread_model->error(facts_so_far,
+                    auto error      = thread_model.error(facts_so_far,
                                                           qa->question,
                                                           answer_idx,
                                                           qa->supporting_facts);
@@ -478,13 +478,6 @@ double run_epoch(const vector<babi::Story>& dataset,
                 std::lock_guard<decltype(solver_mutex)> guard(solver_mutex);
                 solver->step(params);
             } else {
-                int missing = 0;
-                for (auto &param : params) {
-                    if (param.dw().array().square().sum() <= 0) {
-                        missing++;
-                    }
-                }
-                utils::assert2(missing == 0, MS() << missing << "/" << params.size() << " parameters have no gradient.");
                 solver->step(params);
             }
         });

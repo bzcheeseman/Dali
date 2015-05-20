@@ -221,7 +221,7 @@ void get_error(
         input_vector = model.embedding[c];
         // pass it to the model
         state = model.stacked_lstm->activate(
-            initstateial_state,
+            state,
             input_vector
         );
     }

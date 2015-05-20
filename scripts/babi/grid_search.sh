@@ -46,6 +46,8 @@ cmake ..
 make -j9 babi_solvers
 popd
 
+echo running with $NUM_THREADS parallel instances
+
 tempfiles=""
 
 for problem in $problems; do
@@ -54,18 +56,17 @@ for problem in $problems; do
             for word_selection_sparsity in 0.0 0.1 0.01 0.001 0.00001; do
                 tempfile=$(mktemp)
                 tempfiles="$tempfiles $tempfile"
-                echo "$model_type $unsupporting_ratio $fact_selection_lambda $word_selection_sparsity $problem" > $tempfile &&
+                echo "$unsupporting_ratio $fact_selection_lambda $word_selection_sparsity $problem" > $tempfile &&
                 $program $common_flags \
-                              $model_flags \
                               --unsupporting_ratio $unsupporting_ratio \
                               --fact_selection_lambda $fact_selection_lambda \
                               --word_selection_sparsity $word_selection_sparsity \
                               --babi_problem $problem \
                               >> $tempfile 2>&1 &&
                 echo >> $tempfile &&
-                cat $tempfile | head -1
-                cat $tempfile | grep "RESULTS" &&
-                pwait $MAX_CORES
+                cat $tempfile | head -1 &&
+                cat $tempfile | grep "RESULTS" &
+                pwait $NUM_THREADS
             done
         done
     done

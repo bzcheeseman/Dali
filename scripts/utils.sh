@@ -10,3 +10,26 @@ function pwait() {
         sleep 5
     done
 }
+
+# can detect cores on Linux and Mac
+function num_cores {
+    local RET='you will never see me'
+    if `which nproc` > /dev/null; then
+        RET=$(nproc)
+    else
+        mac_cpus=`sysctl hw.ncpu`
+        RET=${mac_cpus: -1}
+    fi
+    echo $RET
+}
+
+CPU_CORES=$(num_cores)
+NUM_THREADS=$((CPU_CORES+1))
+
+function ensure_dir {
+    if [ "${1: -1}" != "/" ]; then
+        echo "${1}/"
+    else
+        echo $1
+    fi
+}

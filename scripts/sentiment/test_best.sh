@@ -1,24 +1,14 @@
 #!/bin/bash
 
-# stop script on error and print it
-set -e
-# inform me of undefined variables
-set -u
-# handle cascading failures well
-set -o pipefail
-
 if [ "$#" -ne 1 ]; then
     echo "usage: $0 [saved_model_dir] "
     exit
 fi
 
-function ensure_dir {
-    if [ "${1: -1}" != "/" ]; then
-        echo "${1}/"
-    else
-        echo $1
-    fi
-}
+SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+PROJECT_DIR=$(dirname $( dirname $SCRIPT_DIR ))
+
+source PROJECT_DIR/scripts/utils.sh
 
 LOAD_DIR=`ensure_dir $1`
 
@@ -32,14 +22,8 @@ if [ ! -f "${LOAD_DIR}/config.md" ]; then
     exit
 fi
 
-SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-PROJECT_DIR=$(dirname $( dirname $SCRIPT_DIR ))
-
 # get the number of computer cores:
-CPU_CORES=`sysctl hw.ncpu`
-CPU_CORES="${CPU_CORES: -1}"
-CPU_CORES=$((CPU_CORES+1))
-echo "running on ${CPU_CORES} cores"
+echo "running on ${NUM_THREADS} cores"
 
 DATA_DIR="${PROJECT_DIR}data/sentiment/"
 
@@ -49,7 +33,7 @@ if [ ! -f "${DATA_DIR}test.txt" ]; then
 fi
 
 PROGRAM="${PROJECT_DIR}build/examples/lstm_sentiment"
-BASE_FLAGS="-epochs=0 -j=${CPU_CORES}"
+BASE_FLAGS="-epochs=0 -j=${NUM_THREADS}"
 BASE_FLAGS="${BASE_FLAGS} --train=${DATA_DIR}train.txt "
 BASE_FLAGS="${BASE_FLAGS} --validation=${DATA_DIR}dev.txt "
 BASE_FLAGS="${BASE_FLAGS} --test=${DATA_DIR}test.txt "

@@ -1,20 +1,12 @@
 #!/bin/bash
 
-# stop script on error and print it
-set -e
-# inform me of undefined variables
-set -u
-# handle cascading failures well
-set -o pipefail
-
 SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 PROJECT_DIR=$(dirname $( dirname $SCRIPT_DIR ))
 
+source PROJECT_DIR/scripts/utils.sh
+
 STACK_SIZE=1
 PATIENCE=5
-CPU_CORES=`sysctl hw.ncpu`
-CPU_CORES="${CPU_CORES: -1}"
-CPU_CORES=$((CPU_CORES+1))
 echo "Commencing Grid Search"
 echo "* running on ${CPU_CORES} cores"
 DATA_DIR="${PROJECT_DIR}/data/sentiment/"
@@ -35,14 +27,6 @@ if [ ! -f "${DATA_DIR}train.txt" ]; then
     echo "Training data not present. Downloading it now."
     python3 ${DATA_DIR}generate.py
 fi
-
-function ensure_dir {
-    if [ "${1: -1}" != "/" ]; then
-        echo "${1}/"
-    else
-        echo $1
-    fi
-}
 
 SAVE_FOLDER="$(ensure_dir $1)saved_models"
 RESULTS_FILE="$(ensure_dir $1)results.txt"
@@ -71,12 +55,6 @@ touch $RESULTS_FILE
 if [ ! -d "$SAVE_FOLDER" ]; then
     mkdir $SAVE_FOLDER
 fi
-
-function pwait() {
-    while [ $(jobs -p | wc -l) -ge $1 ]; do
-        sleep 5
-    done
-}
 
 for hidden in 150
 do

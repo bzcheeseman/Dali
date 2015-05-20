@@ -371,11 +371,11 @@ class LstmBabiModel {
             auto activation = activate_story(facts, question, true);
             Mat<REAL_t> prediction_error;
             if (FLAGS_margin_loss) {
-                // We estimated eprically that margin loss scales as about 6.0
+                // We estimated eprically that margin loss scales as about 3.0
                 // cross entropy. We want to put the roughly in the same bucket, so
                 // so that improtance of gate errors and sparsity has more or less
                 // the same effect for both types of errors.
-                prediction_error = 6.0 * MatOps<REAL_t>::margin_loss(activation.log_probs, answer_idx, FLAGS_margin);
+                prediction_error = 3 * MatOps<REAL_t>::margin_loss(activation.log_probs, answer_idx, FLAGS_margin);
             } else {
                 prediction_error = MatOps<REAL_t>::softmax_cross_entropy(activation.log_probs,
                                                                               answer_idx);
@@ -553,9 +553,9 @@ void train(const vector<babi::Story>& data, float training_fraction = 0.8) {
             std::bind(&model_t::predict, model.get(), _1, _2),
             FLAGS_j
         );
+        bool best_so_far = best_validation_accuracy < validation_accuracy;
 
-        if (best_validation_accuracy < validation_accuracy) {
-            std::cout << "NEW WORLD RECORD!" << std::endl;
+        if (best_so_far) {
             best_validation_accuracy = validation_accuracy;
             best_model = std::make_shared<model_t>(*model, true, true);
             best_model_epoch = epoch;
@@ -567,7 +567,8 @@ void train(const vector<babi::Story>& data, float training_fraction = 0.8) {
             patience = 0;
         }
 
-        std::cout << "Epoch: " << ++epoch << ", "
+        std::cout << (best_so_far ? "*" : "")
+                  << "Epoch: " << ++epoch << ", "
                   << "Training error: " << utils::bold << training_error << utils::reset_color << ", "
                   << "Validation accuracy: " << utils::bold << 100.0 * validation_accuracy << "%" << utils::reset_color
                   << " (patience: " << patience << "/" << FLAGS_patience << ")." << std::endl;

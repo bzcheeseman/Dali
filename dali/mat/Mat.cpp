@@ -626,15 +626,32 @@ Mat<R> operator-(int other, Mat<R> mat) {
     return MatOps<R>::sub_broadcast_reversed(mat, (R) other);
 }
 
-template Mat<float> operator-(int, Mat<float>);
-template Mat<float> operator-(float, Mat<float>);
-template Mat<double> operator-(int, Mat<double>);
-template Mat<double> operator-(double, Mat<double>);
+template<typename R>
+Mat<R> operator*(int other, Mat<R> mat) {
+    return MatOps<R>::eltmul(mat, (R)other);
+}
+
+template<typename R>
+Mat<R> operator*(R other, Mat<R> mat) {
+    return MatOps<R>::eltmul(mat, other);
+}
 
 template Mat<float> operator+(int, Mat<float>);
 template Mat<float> operator+(float, Mat<float>);
 template Mat<double> operator+(int, Mat<double>);
 template Mat<double> operator+(double, Mat<double>);
+
+template Mat<float> operator-(int, Mat<float>);
+template Mat<float> operator-(float, Mat<float>);
+template Mat<double> operator-(int, Mat<double>);
+template Mat<double> operator-(double, Mat<double>);
+
+template Mat<float> operator*(int, Mat<float>);
+template Mat<float> operator*(float, Mat<float>);
+template Mat<double> operator*(int, Mat<double>);
+template Mat<double> operator*(double, Mat<double>);
+
+
 
 
 template<typename R>

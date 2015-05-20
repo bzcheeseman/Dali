@@ -78,15 +78,15 @@ function pwait() {
     done
 }
 
-for hidden in 150
+for hidden in 25 50 150
 do
     for dropout in 0.3
     do
         for reg in 0
         do
-            for lr in 0.035
+            for lr in 0.01
             do
-                for penalty in 0.0 0.0001 0.001 0.01 0.1
+                for penalty in 0.00001 0.0001 0.0005 0.001 0.01 0.1
                 do
                     for curve in flat linear square
                     do
@@ -99,6 +99,13 @@ do
                         pwait $CPU_CORES
                     done
                 done
+                # previously saved models are no longer useful for this grid tile
+                if [ ! -d "${SAVE_FOLDER}/model${curve}_0/" ]; then
+                    mkdir "${SAVE_FOLDER}/model${curve}_0/"
+                    rm -rf "${SAVE_FOLDER}/model${curve}_0/*"
+                    $PROGRAM $BASE_FLAGS --dropout $dropout --save_location="${SAVE_FOLDER}/model${lr}_${reg}" --memory_penalty_curve $curve --memory_penalty 0.0 --learning_rate $lr --hidden $hidden --minibatch 100 --solver adagrad --reg $reg &
+                    pwait $CPU_CORES
+                fi
             done
         done
     done

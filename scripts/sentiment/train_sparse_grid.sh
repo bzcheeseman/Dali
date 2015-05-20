@@ -12,7 +12,21 @@ PROJECT_DIR=$(dirname $( dirname $SCRIPT_DIR ))
 
 STACK_SIZE=1
 PATIENCE=5
-CPU_CORES=`sysctl hw.ncpu`
+if `which nproc`; then
+    echo "success"
+else
+    echo "bad"
+fi
+
+function num_cores {
+    if `which nproc`; then
+        echo `nproc`
+    else
+        echo `sysctl hw.ncpu`
+    fi
+}
+
+CPU_CORES=$(num_cores)
 CPU_CORES="${CPU_CORES: -1}"
 CPU_CORES=$((CPU_CORES+1))
 echo "Commencing Grid Search"

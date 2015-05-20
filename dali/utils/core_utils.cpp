@@ -208,13 +208,13 @@ namespace utils {
 
 
     template<typename T>
-    bool in_vector(const std::vector<T>& set, T& el) {
+    bool in_vector(const std::vector<T>& set, const T& el) {
         return std::find(set.begin(), set.end(), el) != set.end();
     }
 
-    template bool in_vector(const vector<int>&,    int&);
-    template bool in_vector(const vector<uint>&,   uint&);
-    template bool in_vector(const vector<string>&, string&);
+    template bool in_vector(const vector<int>&,    const int&);
+    template bool in_vector(const vector<uint>&,   const uint&);
+    template bool in_vector(const vector<string>&, const string&);
 
     template<typename T>
     vector<T> concatenate(initializer_list<vector<T>> lists) {

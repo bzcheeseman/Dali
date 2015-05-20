@@ -176,7 +176,7 @@ namespace utils {
         bool add_to_set(std::vector<T>&, T&);
 
         template<typename T>
-        bool in_vector(const std::vector<T>&, T&);
+        bool in_vector(const std::vector<T>&, const T&);
 
         template<typename T>
         std::vector<T> concatenate(std::initializer_list<std::vector<T>>);

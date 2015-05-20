@@ -80,7 +80,17 @@ int main (int argc,  char* argv[]) {
     auto epochs = FLAGS_epochs;
     int rampup_time = 10;
 
-    auto paraphrase_data = paraphrase::load(FLAGS_train);
+    vector<string> paraphrase_list = {"(3, 2)", "(4, 1)", "(5, 0)"};
+    vector<string> non_paraphrase_list = {"(1, 4)", "(0, 5)"};
+    auto similarity_score_extractor = [&paraphrase_list, &non_paraphrase_list](const string& number_column) {
+        if (utils::in_vector(paraphrase_list, number_column))
+            return 1.0;
+        if (utils::in_vector(non_paraphrase_list, number_column))
+            return 0.0;
+        return 0.5;
+    };
+
+    auto paraphrase_data = paraphrase::load(FLAGS_train, similarity_score_extractor);
     auto embedding       = Mat<REAL_t>(100, 0);
     auto word_vocab      = Vocab();
     if (!FLAGS_pretrained_vectors.empty()) {
@@ -97,7 +107,7 @@ int main (int argc,  char* argv[]) {
     // No validation set yet...
     decltype(dataset) validation_set;
     {
-        auto paraphrase_valid_data = paraphrase::load(FLAGS_validation);
+        auto paraphrase_valid_data = paraphrase::load(FLAGS_validation, similarity_score_extractor);
         validation_set = paraphrase::convert_to_indexed_minibatches(
             word_vocab,
             paraphrase_valid_data,

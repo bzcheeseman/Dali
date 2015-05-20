@@ -223,8 +223,9 @@ On Mac OSX, or more generally when using [Intel's MKL Library](https://software.
 
 To fix this bug make the modifications listed [here](https://bitbucket.org/eigen/eigen/pull-request/82/fix-for-mkl_blas-not-defined-in-mkl-112/diff) to your Eigen header files and everything should return to normal.
 
-### Debugging assert2 failures with GDB
-We made some effort to improve assertions in Dali and we use exceptions instead of regular asserts. One downside of this approach is that it's harder to debug with gdb. Here's a simple recepie to debug assert2 failures:
+### Debugging Assertion Failures
+
+You can use [gdb](http://www.gnu.org/software/gdb/) to debug assertion failures in **Dali**. The majority of the assertions in Dali use `utils::assert2` instead of the usual `assert` method to provide more informative error messages. It is easy to catch and trace these errors using **gdb**:
 
 ```bash
 gdb --args example/dali_code.o arg1 arg2
@@ -235,4 +236,4 @@ run
 backtrace
 ```
 
-You should now see a stack trace for the assertion error.
+A stack trace for the assertion error should now appear.

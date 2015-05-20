@@ -39,11 +39,10 @@ class Layer : public AbstractMultiInputLayer<R> {
         virtual std::vector<Mat<R>> parameters() const;
 
         Layer();
-        Layer(int, int);
+        Layer(int input_size, int hidden_size);
         Layer(const Layer&, bool, bool);
 
         Mat<R> activate(Mat<R>) const;
-
         Layer<R> shallow_copy() const;
 };
 
@@ -68,10 +67,10 @@ class StackedInputLayer : public AbstractMultiInputLayer<R> {
 
         virtual std::vector<Mat<R>> parameters() const;
         StackedInputLayer();
-        StackedInputLayer(std::initializer_list<int>, int);
-        StackedInputLayer(std::vector<int>, int);
-        StackedInputLayer(int input_size, int output_size);
-        StackedInputLayer(const StackedInputLayer&, bool, bool);
+        StackedInputLayer(std::initializer_list<int> input_sizes, int output_size);
+        StackedInputLayer(std::vector<int> input_sizes,           int output_size);
+        StackedInputLayer(int input_size,                         int output_size);
+        StackedInputLayer(const StackedInputLayer& other, bool copy_w, bool copy_dw);
         // getter
         const std::vector<int>& input_sizes() const;
         // settter

@@ -617,5 +617,12 @@ int main(int argc, char** argv) {
     std::cout << "Number of threads: " << FLAGS_j << (FLAGS_solver_mutex ? "(with solver mutex)" : "") << std::endl;
     std::cout << "Using " << (FLAGS_margin_loss ? "margin loss" : "cross entropy") << std::endl;
 
-    benchmark_task(FLAGS_babi_problem);
+    if (FLAGS_babi_problem == "all") {
+        std::cout << "Running a benchmark for all babi problems" << std::endl;
+        for (auto& task: babi::tasks()) {
+            benchmark_task(task);
+        }
+    } else {
+        benchmark_task(FLAGS_babi_problem);
+    }
 }

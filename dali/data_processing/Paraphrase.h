@@ -29,6 +29,12 @@ namespace paraphrase {
 
     ner_full_dataset load(std::string path, similarity_score_extractor_t similarity_score_extractor);
 
+    namespace STS_2015 {
+        ner_full_dataset load_train(std::string = "default");
+        ner_full_dataset load_test(std::string = "default");
+        ner_full_dataset load_dev(std::string = "default");
+    }
+
     std::vector<std::string> get_vocabulary(const ner_full_dataset& examples, int min_occurence);
 
     typedef std::vector<std::vector<std::tuple<std::vector<uint>, std::vector<uint>, double>>> ner_minibatch_dataset;
@@ -52,16 +58,41 @@ namespace paraphrase {
         predicted entity predictions at each timesteps
     int num_threads (optional) : how many threads to use for parallelizing prediction
 
-    Outputs
-    -------
-
-    double recall : returns tuple of {total correct, root correct}
-
     **/
+
     double pearson_correlation(
         ner_minibatch_dataset& dataset,
         std::function<double(std::vector<uint>&, std::vector<uint>&)> predict,
         int num_threads = 9);
+
+    enum Label {
+        PARAPHRASE,
+        NOT_PARAPHRASE,
+        UNDECIDED
+    };
+
+    /*
+    Binary Accuracy
+    ---------------
+
+    returns F1 score, recall, and precision for the predict method
+
+    Note:
+
+    */
+    double binary_accuracy(
+        ner_minibatch_dataset& dataset,
+        std::function<Label(std::vector<uint>&, std::vector<uint>&)> predict,
+        int num_threads = 9
+        );
+
+    // This is a convenience method for evaluation real valued paraphrase
+    // prediction, based on guidelines from STS 2015 dataset when evaluation.
+    double binary_accuracy(
+        ner_minibatch_dataset& dataset,
+        std::function<double(std::vector<uint>&, std::vector<uint>&)> predict,
+        int num_threads = 9
+        );
 };
 
 #endif

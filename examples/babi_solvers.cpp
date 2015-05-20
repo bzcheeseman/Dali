@@ -5,7 +5,6 @@
 #include <vector>
 #include <json11.hpp>
 #include <gflags/gflags.h>
-
 #include "dali/data_processing/babi.h"
 #include "dali/core.h"
 #include "dali/utils.h"
@@ -13,7 +12,6 @@
 #include "dali/visualizer/visualizer.h"
 
 using namespace std::placeholders;
-
 using babi::Fact;
 using babi::Item;
 using babi::QA;
@@ -67,11 +65,9 @@ DEFINE_string(babi_problem,            "",     "Which problem to benchmark");
 static bool dummy3 = GFLAGS_NAMESPACE::RegisterFlagValidator(
             &FLAGS_babi_problem, &utils::validate_flag_nonempty);
 
-
 typedef float REAL_t;
 // Visualizer
 std::shared_ptr<Visualizer> visualizer;
-
 
 template<typename T>
 struct StoryActivation {
@@ -105,7 +101,6 @@ struct StoryActivation {
         return res;
     }
 };
-
 
 template<typename T>
 class LstmBabiModel {
@@ -165,7 +160,7 @@ class LstmBabiModel {
                 fact_gate(model.fact_gate, copy_w, copy_dw),
                 hl_model(model.hl_model, copy_w, copy_dw),
                 decoder(model.decoder, copy_w, copy_dw),
-                // paramters begin here
+                // parameters begin here
                 fact_embeddings(model.fact_embeddings, copy_w, copy_dw),
                 question_embeddings(model.question_embeddings, copy_w, copy_dw),
                 word_gate_embeddings(model.word_gate_embeddings, copy_w, copy_dw),
@@ -214,7 +209,6 @@ class LstmBabiModel {
                     Mat<T>(utils::vsum(vector<int>(FLAGS_text_repr_stack, FLAGS_text_repr_hidden)), 1,
                            weights<T>::uniform(1.0));
         }
-
 
         vector<Mat<T>> get_embeddings(const vector<string>& words,
                                       Mat<T> embedding_matrix) const {
@@ -269,7 +263,6 @@ class LstmBabiModel {
                 }
                 word_gate_memories.push_back(word_gate_memory);
 
-
                 auto gated_embeddings = apply_gate(
                     word_gate_memory,
                     get_embeddings(reversed(fact), fact_embeddings)
@@ -293,9 +286,7 @@ class LstmBabiModel {
                     fact_gate.activate(fact_gate_hidden_question, fact_representation).sum().sigmoid()
                 );
             }
-
             auto gated_facts = apply_gate(fact_gate_memory, fact_representations);
-
             auto question_hidden = lstm_final_activation(
                     get_embeddings(reversed(question), question_embeddings),
                     question_model,
@@ -342,7 +333,6 @@ class LstmBabiModel {
                 vdistribution = make_shared<visualizable::FiniteDistribution<T>>(
                         distribution_as_vec, vocab->index2word, 5);
             }
-
 
             vector<REAL_t> facts_weights;
             vector<std::shared_ptr<visualizable::Sentence<T>>> facts_sentences;
@@ -417,26 +407,10 @@ class LstmBabiModel {
 
             return {vocab->index2word[word_idx]};
         }
-
 };
-
-
-
-
 
 /* PARAMETERS FOR TRAINING */
 typedef LstmBabiModel<REAL_t> model_t;
-
-
-
-// TRAINING_PROCEDURE_PARAMS
-const float TRAINING_FRAC = 0.8;
-const float MINIMUM_IMPROVEMENT = 0.0001;
-const double LONG_TERM_VALIDATION = 0.02;
-const double SHORT_TERM_VALIDATION = 0.1;
-
-// prediction haz dropout.
-const int PREDICTION_PATIENCE = 200;
 
 /* TRAINING FUNCTIONS */
 shared_ptr<model_t> model;
@@ -445,15 +419,11 @@ shared_ptr<model_t> best_model;
 int best_model_epoch = 0;
 
 vector<model_t> thread_models;
-
-
 std::mutex solver_mutex;
 
 // returns the errors;
 double run_epoch(const vector<babi::Story>& dataset,
                  Solver::AbstractSolver<REAL_t>* solver) {
-
-
     const int NUM_THREADS = FLAGS_j;
     ThreadPool pool(NUM_THREADS);
 
@@ -489,12 +459,12 @@ double run_epoch(const vector<babi::Story>& dataset,
                 while (!parser.done()) {
                     std::tie(facts_so_far, qa) = parser.next();
 
-                    uint answer_idx = model->vocab->word2index.at(qa->answer[0]);
+                    uint answer_idx = thread_model->vocab->word2index.at(qa->answer[0]);
 
-                    auto error = model->error(facts_so_far,
-                                              qa->question,
-                                              answer_idx,
-                                              qa->supporting_facts);
+                    auto error      = thread_model->error(facts_so_far,
+                                                          qa->question,
+                                                          answer_idx,
+                                                          qa->supporting_facts);
                     error.grad();
 
                     thread_error[ThreadPool::get_thread_number()] += error.w()(0,0);
@@ -502,12 +472,19 @@ double run_epoch(const vector<babi::Story>& dataset,
                     num_questions += 1;
 
                     graph::backward();
-                 }
+                }
             }
             if (FLAGS_solver_mutex) {
                 std::lock_guard<decltype(solver_mutex)> guard(solver_mutex);
                 solver->step(params);
             } else {
+                int missing = 0;
+                for (auto &param : params) {
+                    if (param.dw().array().square().sum() <= 0) {
+                        missing++;
+                    }
+                }
+                utils::assert2(missing == 0, MS() << missing << "/" << params.size() << " parameters have no gradient.");
                 solver->step(params);
             }
         });
@@ -539,12 +516,12 @@ void visualize_examples(const vector<babi::Story>& data, int num_examples) {
     }
 }
 
-void train(const vector<babi::Story>& data) {
+void train(const vector<babi::Story>& data, float training_fraction = 0.8) {
     for (auto param: model->parameters()) {
         weights<REAL_t>::svd(weights<REAL_t>::gaussian(1.0))(param);
     }
 
-    int training_size = (int)(TRAINING_FRAC * data.size());
+    int training_size = (int)(training_fraction * data.size());
     std::vector<babi::Story> train(data.begin(), data.begin() + training_size);
     std::vector<babi::Story> validate(data.begin() + training_size, data.end());
 
@@ -600,16 +577,15 @@ double benchmark_task(const std::string task) {
     auto data = babi::Parser::training_data(task);
     reset(data);
 
-    train(data);
+    train(data, 0.8);
     std::cout << "[RESULTS] Best model was achieved at epoch " << best_model_epoch << " ." << std::endl;
     double accuracy = babi::task_accuracy(task, std::bind(&model_t::predict, model.get(), _1, _2));
-    std::cout << "[RESULTS] Accuracy on " << task << " is " << 100 * accuracy << " ." << std::endl;
+    std::cout << "[RESULTS] Accuracy on " << task << " is " << 100.0 * accuracy << " ." << std::endl;
     return accuracy;
 }
 
 int main(int argc, char** argv) {
     // sane_crashes::activate();
-
     GFLAGS_NAMESPACE::SetUsageMessage(
         "\nBabi!"
     );

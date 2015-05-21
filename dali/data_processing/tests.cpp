@@ -108,6 +108,13 @@ TEST(paraphrase, load) {
     auto minibatches = paraphrase::convert_to_indexed_minibatches(vocab, paraphrase_data, 2);
 
     ASSERT_EQ(minibatches.size(), 2);
+
+    auto char_vocab = utils::CharacterVocab(10, 255);
+    auto char_minibatches = paraphrase::convert_to_indexed_minibatches(char_vocab, paraphrase_data, 2);
+
+    ASSERT_EQ(char_minibatches.size(), 2);
+    auto sentence = char_vocab.decode(std::get<0>(char_minibatches[0][0]));
+    ASSERT_EQ(sentence, std::get<0>(paraphrase_data[0]));
 }
 
 

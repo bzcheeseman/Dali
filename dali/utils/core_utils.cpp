@@ -885,6 +885,10 @@ namespace utils {
         if (words.size() > 0) char_size += words.size() - 1;
 
         result.reserve(char_size);
+
+        int space_char = ' ' - min_char;
+        if (space_char < 0) space_char = max_char;
+
         int word_idx = 0;
         for (auto& w : words) {
             for (auto& c : w) {
@@ -896,7 +900,7 @@ namespace utils {
                 }
             }
             word_idx++;
-            if (word_idx < words.size()) result.emplace_back(' ');
+            if (word_idx < words.size()) result.emplace_back(space_char);
         }
         return result;
     }

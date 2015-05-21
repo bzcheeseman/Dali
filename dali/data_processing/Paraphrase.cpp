@@ -136,7 +136,7 @@ namespace paraphrase {
         return dataset;
     }
 
-    paraphrase_minibatch_dataset convert_to_character_minibatches(
+    paraphrase_minibatch_dataset convert_to_indexed_minibatches(
             const utils::CharacterVocab& character_vocab,
             paraphrase_full_dataset& examples,
             int minibatch_size) {

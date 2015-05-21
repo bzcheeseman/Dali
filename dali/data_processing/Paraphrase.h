@@ -37,6 +37,10 @@ namespace paraphrase {
         paraphrase_full_dataset load_dev(std::string =   STR(DALI_DATA_DIR) "/paraphrase_STS_2015/secret/dev.tsv");
     }
 
+    namespace STS_2014 {
+        paraphrase_full_dataset load(std::string = STR(DALI_DATA_DIR) "/paraphrase_STS_2014/train.tokenized.tsv");
+    }
+
     std::vector<std::string> get_vocabulary(const paraphrase_full_dataset& examples, int min_occurence);
 
     typedef std::vector<std::vector<numeric_example_t>> paraphrase_minibatch_dataset;

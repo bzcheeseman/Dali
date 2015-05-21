@@ -885,9 +885,10 @@ namespace utils {
         if (words.size() > 0) char_size += words.size() - 1;
 
         result.reserve(char_size);
-
+        int unknown_char = max_char - min_char;
         int space_char = ' ' - min_char;
-        if (space_char < 0) space_char = max_char;
+
+        if (space_char < 0) space_char = unknown_char;
 
         int word_idx = 0;
         for (auto& w : words) {
@@ -896,7 +897,7 @@ namespace utils {
                     result.emplace_back(c - min_char);
                 } else {
                     // all unknown get replaced by max_char
-                    result.emplace_back(max_char);
+                    result.emplace_back(unknown_char);
                 }
             }
             word_idx++;

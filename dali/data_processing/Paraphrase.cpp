@@ -92,7 +92,7 @@ namespace paraphrase {
             loader.sentence2_column = 3;
             loader.similarity_column = 4;
             loader.similarity_score_extractor = [](const string& number_column) {
-                auto num = utils::from_string<int>(number_column);
+                auto num = from_string<int>(number_column);
                 return ((double) num) / 5.0;
             };
             auto tsv_data = utils::load_tsv(
@@ -104,6 +104,24 @@ namespace paraphrase {
         }
         paraphrase_full_dataset load_dev(std::string path) {
             return load_train(path);
+        }
+    }
+    namespace STS_2014 {
+        paraphrase_full_dataset load(std::string path) {
+            auto loader = ParaphraseLoader();
+            loader.sentence1_column  = 0;
+            loader.sentence2_column  = 1;
+            loader.similarity_column = 2;
+
+            loader.similarity_score_extractor = [](const string& score_str) {
+                return from_string<double>(score_str) / 5.0;
+            };
+            auto tsv_data = utils::load_tsv(
+                path,
+                -1,
+                '\t'
+            );
+            return loader.convert_tsv(tsv_data);
         }
     }
 

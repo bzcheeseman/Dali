@@ -8,3 +8,4 @@
 #include "dali/utils/Training.h"
 #include "dali/utils/xml_cleaner.h"
 #include "dali/utils/ParseUtils.h"
+#include "dali/utils/scoring_utils.h"

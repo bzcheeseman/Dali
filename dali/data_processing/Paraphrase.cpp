@@ -140,21 +140,111 @@ namespace paraphrase {
         return dataset;
     }
 
+    template<typename T>
+    vector<T> collect_predictions(
+            paraphrase_minibatch_dataset& dataset,
+            std::function<T(std::vector<uint>&, std::vector<uint>&)> predict,
+            int num_threads
+            ) {
+
+        int total;
+        for (auto& minibatch : dataset) total += minibatch.size();
+        vector<T> predictions(total);
+
+        ThreadPool pool(num_threads);
+        int predictions_idx = 0;
+        for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
+            pool.run([batch_id, predictions_idx, &predict, &predictions, &dataset]() {
+                auto& minibatch = dataset[batch_id];
+                for (int example_idx = 0; example_idx < minibatch.size(); example_idx++) {
+                    predictions[example_idx + predictions_idx] = predict(
+                        std::get<0>(minibatch[example_idx]),
+                        std::get<1>(minibatch[example_idx])
+                    );
+                }
+            });
+            predictions_idx += dataset[batch_id].size();
+        }
+        pool.wait_until_idle();
+        return predictions;
+    }
+
     double pearson_correlation(
         paraphrase_minibatch_dataset& dataset,
         std::function<double(std::vector<uint>&, std::vector<uint>&)> predict,
         int num_threads) {
-        return 0.0;
+
+        double avg_x;
+        int    total;
+        for (auto& minibatch : dataset) {
+            total += minibatch.size();
+            for (auto& example : minibatch) avg_x += std::get<2>(example);
+        }
+        avg_x /= total;
+
+        auto predictions = collect_predictions<double>(dataset, predict, num_threads);
+        assert2(predictions.size() == total, "Not an equal number of examples and predictions.");
+
+        double avg_y;
+        for (auto& pred : predictions) avg_y += pred;
+        avg_y /= total;
+
+        double xdiff, ydiff, xdiff_square, ydiff_square, diffprod;
+
+        int example_idx = 0;
+        for (auto& minibatch : dataset) {
+            for (auto& example : minibatch) {
+                xdiff = std::get<2>(example) - avg_x;
+                ydiff = predictions[example_idx] - avg_y;
+                diffprod += xdiff * ydiff;
+                xdiff_square += xdiff * xdiff;
+                ydiff_square += ydiff * ydiff;
+                example_idx++;
+            }
+        }
+        if (xdiff_square == 0 || ydiff_square == 0) return 0.0;
+
+        return diffprod / std::sqrt(xdiff_square * ydiff_square);
     }
 
-    double binary_accuracy(
+    utils::Accuracy binary_accuracy(
         paraphrase_minibatch_dataset& dataset,
         std::function<Label(std::vector<uint>&, std::vector<uint>&)> predict,
         int num_threads) {
-        return 0.0;
+
+        auto predictions = collect_predictions<Label>(dataset, predict, num_threads);
+
+
+        int example_idx = 0;
+        int true_positive, false_positive, true_negative, false_negative;
+
+        Label correct_label;
+        for (auto& minibatch : dataset) {
+            for (auto& example : minibatch) {
+                correct_label = std::get<2>(example) >= 0.65 ? PARAPHRASE : (std::get<2>(example) <= 0.55 ? NOT_PARAPHRASE : UNDECIDED);
+                if (correct_label != UNDECIDED) {
+                    if        (predictions[example_idx] == PARAPHRASE     && correct_label == PARAPHRASE) {
+                        true_positive++;
+                    } else if (predictions[example_idx] == NOT_PARAPHRASE && correct_label == NOT_PARAPHRASE) {
+                        true_negative++;
+                    } else if (predictions[example_idx] == PARAPHRASE     && correct_label == NOT_PARAPHRASE) {
+                        false_positive++;
+                    } else if (predictions[example_idx] == NOT_PARAPHRASE && correct_label == PARAPHRASE) {
+                        false_negative++;
+                    }
+                }
+                example_idx++;
+            }
+        }
+
+        return utils::Accuracy()
+            .true_positive(true_positive)
+            .true_negative(true_negative)
+            .false_positive(false_positive)
+            .false_negative(false_negative);
     }
 
-    double binary_accuracy(
+    utils::Accuracy binary_accuracy(
         paraphrase_minibatch_dataset& dataset,
         std::function<double(std::vector<uint>&, std::vector<uint>&)> predict,
         int num_threads) {

@@ -1,5 +1,5 @@
-#ifndef RECURRENT_MAT_UTILS_H
-#define RECURRENT_MAT_UTILS_H
+#ifndef CORE_UTILS_DALI_H
+#define CORE_UTILS_DALI_H
 
 #include <algorithm>
 #include <atomic>
@@ -21,7 +21,6 @@
 #include <ostream>
 #include <random>
 #include <set>
-#include <sstream>
 #include <sstream>
 #include <string>
 #include <sys/stat.h>
@@ -668,16 +667,6 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
                 assert(!is_done);
                 advance();
             }
-    };
-
-    class ConfusionMatrix {
-        public:
-            std::vector<std::vector<std::atomic<int>>> grid;
-            std::vector<std::atomic<int>> totals;
-            const std::vector<std::string>& names;
-            ConfusionMatrix(int classes, const std::vector<std::string>& _names);
-            void classified_a_when_b(int a, int b);
-            void report() const;
     };
 
     std::string capitalize(const std::string& s);

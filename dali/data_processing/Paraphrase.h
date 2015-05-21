@@ -14,6 +14,7 @@ namespace paraphrase {
     and similarity as a double (e.g. 0.0 => different, 1.0 => identical)
     */
     typedef std::tuple< std::vector<std::string>, std::vector<std::string>, double > example_t;
+    typedef std::tuple<std::vector<uint>, std::vector<uint>, double>         numeric_example_t;
     typedef std::function<double(const std::string&)> similarity_score_extractor_t;
     class ParaphraseLoader {
         public:
@@ -25,23 +26,23 @@ namespace paraphrase {
             ParaphraseLoader();
             std::vector<example_t> convert_tsv(const utils::tokenized_labeled_dataset& tsv_data);
     };
-    typedef std::vector<example_t> ner_full_dataset;
+    typedef std::vector<example_t> paraphrase_full_dataset;
 
-    ner_full_dataset load(std::string path, similarity_score_extractor_t similarity_score_extractor);
+    paraphrase_full_dataset load(std::string path, similarity_score_extractor_t similarity_score_extractor);
 
     namespace STS_2015 {
-        ner_full_dataset load_train(std::string = "default");
-        ner_full_dataset load_test(std::string = "default");
-        ner_full_dataset load_dev(std::string = "default");
+        paraphrase_full_dataset load_train(std::string = STR(DALI_DATA_DIR) "/paraphrase_STS_2015/secret/train.tsv");
+        paraphrase_full_dataset load_test(std::string =  STR(DALI_DATA_DIR) "/paraphrase_STS_2015/secret/test.tsv");
+        paraphrase_full_dataset load_dev(std::string =  STR(DALI_DATA_DIR) "/paraphrase_STS_2015/secret/dev.tsv");
     }
 
-    std::vector<std::string> get_vocabulary(const ner_full_dataset& examples, int min_occurence);
+    std::vector<std::string> get_vocabulary(const paraphrase_full_dataset& examples, int min_occurence);
 
-    typedef std::vector<std::vector<std::tuple<std::vector<uint>, std::vector<uint>, double>>> ner_minibatch_dataset;
+    typedef std::vector<std::vector<numeric_example_t>> paraphrase_minibatch_dataset;
 
-    ner_minibatch_dataset convert_to_indexed_minibatches(
+    paraphrase_minibatch_dataset convert_to_indexed_minibatches(
         const utils::Vocab& word_vocab,
-        ner_full_dataset& dataset,
+        paraphrase_full_dataset& dataset,
         int minibatch_size);
 
     /**
@@ -61,7 +62,7 @@ namespace paraphrase {
     **/
 
     double pearson_correlation(
-        ner_minibatch_dataset& dataset,
+        paraphrase_minibatch_dataset& dataset,
         std::function<double(std::vector<uint>&, std::vector<uint>&)> predict,
         int num_threads = 9);
 
@@ -81,7 +82,7 @@ namespace paraphrase {
 
     */
     double binary_accuracy(
-        ner_minibatch_dataset& dataset,
+        paraphrase_minibatch_dataset& dataset,
         std::function<Label(std::vector<uint>&, std::vector<uint>&)> predict,
         int num_threads = 9
         );
@@ -89,7 +90,7 @@ namespace paraphrase {
     // This is a convenience method for evaluation real valued paraphrase
     // prediction, based on guidelines from STS 2015 dataset when evaluation.
     double binary_accuracy(
-        ner_minibatch_dataset& dataset,
+        paraphrase_minibatch_dataset& dataset,
         std::function<double(std::vector<uint>&, std::vector<uint>&)> predict,
         int num_threads = 9
         );

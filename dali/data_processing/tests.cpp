@@ -3,6 +3,7 @@
 #include "dali/data_processing/Glove.h"
 #include "dali/data_processing/Arithmetic.h"
 #include "dali/data_processing/NER.h"
+#include "dali/data_processing/Paraphrase.h"
 
 TEST(Glove, load) {
     auto embedding = glove::load<double>( STR(DALI_DATA_DIR) "/glove/test_data.txt");
@@ -26,20 +27,44 @@ TEST(arithmetic, generate) {
     ASSERT_EQ(std::get<0>(example).size(), 3);
     ASSERT_EQ(std::get<1>(example).size(), 2);
 
-    auto example2     = std::make_tuple(std::vector<int>({12, 9, 3}), std::vector<std::string>({"*", "+"}));
-    auto demultiplied = arithmetic::remove_multiplies(std::get<0>(example2), std::get<1>(example2));
-    auto example3     = std::make_tuple(std::vector<int>({108, 3}), std::vector<std::string>({"+"}));
+    auto example2 = std::make_tuple(
+        std::vector<int>({12, 9, 3}),
+        std::vector<std::string>({"*", "+"})
+    );
+    auto demultiplied = arithmetic::remove_multiplies(
+        std::get<0>(example2),
+        std::get<1>(example2)
+    );
+    auto example3     = std::make_tuple(
+        std::vector<int>({108, 3}),
+        std::vector<std::string>({"+"})
+    );
 
     ASSERT_EQ(demultiplied, example3);
-    ASSERT_EQ(arithmetic::compute_result(std::get<0>(example3), std::get<1>(example3)), 111);
-
-
-    example2     = std::make_tuple(std::vector<int>({12, 9, 3, 5, 5}), std::vector<std::string>({"*", "-","+", "*"}));
-    demultiplied = arithmetic::remove_multiplies(std::get<0>(example2), std::get<1>(example2));
-    example3     = std::make_tuple(std::vector<int>({108, 3, 25}), std::vector<std::string>({"-", "+"}));
-
+    ASSERT_EQ(arithmetic::compute_result(
+        std::get<0>(example3),
+        std::get<1>(example3)),
+        111);
+    example2     = std::make_tuple(
+        std::vector<int>({12, 9, 3, 5, 5}),
+        std::vector<std::string>({"*", "-","+", "*"})
+    );
+    demultiplied = arithmetic::remove_multiplies(
+        std::get<0>(example2),
+        std::get<1>(example2)
+    );
+    example3     = std::make_tuple(
+        std::vector<int>({108, 3, 25}),
+        std::vector<std::string>({"-", "+"})
+    );
     ASSERT_EQ(demultiplied, example3);
-    ASSERT_EQ(arithmetic::compute_result(std::get<0>(example3), std::get<1>(example3)), 130);
+    ASSERT_EQ(
+        arithmetic::compute_result(
+            std::get<0>(example3),
+            std::get<1>(example3)
+        ),
+        130
+    );
 }
 
 TEST(NER, load) {
@@ -62,5 +87,27 @@ TEST(NER, load) {
     ASSERT_EQ(NER_data.front().first.back(), ".");
     // before last word of first example is a location
     ASSERT_EQ(NER_data.front().second[5], "I-LOC");
-
 }
+
+TEST(paraphrase, load) {
+    auto paraphrase_data = paraphrase::STS_2015::load_train( STR(DALI_DATA_DIR) "/paraphrase_STS_2015/paraphrase_dummy_data.tsv");
+    ASSERT_EQ(paraphrase_data.size(), 4);
+
+    ASSERT_EQ(std::get<2>(paraphrase_data[0]), 1.0);
+    ASSERT_EQ(std::get<2>(paraphrase_data[1]), 0.2);
+    ASSERT_EQ(std::get<2>(paraphrase_data[2]), 0.6);
+    ASSERT_EQ(std::get<2>(paraphrase_data[3]), 0.4);
+
+    auto expected = utils::tokenize(
+        "But my bro from the 757 EJ Manuel is the 1st QB gone"
+    );
+
+    ASSERT_EQ(std::get<1>(paraphrase_data[0]), expected);
+
+    auto vocab       = paraphrase::get_vocabulary(paraphrase_data, 1);
+    auto minibatches = paraphrase::convert_to_indexed_minibatches(vocab, paraphrase_data, 2);
+
+    ASSERT_EQ(minibatches.size(), 2);
+}
+
+

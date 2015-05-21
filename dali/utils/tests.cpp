@@ -273,6 +273,12 @@ TEST(utils, CharacterVocab) {
     ASSERT_EQ(chars.size(), seq_size);
     ASSERT_EQ(seq, vocab.decode(chars));
 
+
+    auto char_decoded_seq = vocab.decode_characters(chars);
+    ASSERT_EQ(char_decoded_seq.size(), seq_size);
+    ASSERT_EQ(utils::join(seq, " "), utils::join(char_decoded_seq));
+
+
     // space char is char 32, if we start at 33 we lose it, and
     // spaces get replaced by "█":
     auto spaceless_vocab = CharacterVocab(33, 255);
@@ -280,4 +286,8 @@ TEST(utils, CharacterVocab) {
     ASSERT_NE(seq, spaceless_vocab.decode(spaceless_chars));
     auto special_seq = utils::join(seq, "█");
     ASSERT_EQ(special_seq, utils::join(spaceless_vocab.decode(spaceless_chars)));
+
+
+
+
 }

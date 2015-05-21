@@ -57,6 +57,7 @@ namespace visualizable {
             { "type", "sentence" },
             { "weights", weights },
             { "words", tokens },
+            { "spaces", this->spaces },
         };
     }
 

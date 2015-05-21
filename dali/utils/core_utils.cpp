@@ -919,6 +919,19 @@ namespace utils {
         return tokenize(stream);
     }
 
+    vector<string> CharacterVocab::decode_characters(Indexing::Index indices) const {
+        vector<string> result(indices.size());
+        int char_idx = 0;
+        for (auto& index : indices) {
+            if (index == max_char) {
+                result[char_idx++] = "█";
+            } else {
+                result[char_idx++] = (char) (index + min_char);
+            }
+        }
+        return result;
+    }
+
     template<typename T>
     T from_string(const std::string& s) {
         std::istringstream stream (s);

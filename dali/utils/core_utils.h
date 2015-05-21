@@ -137,8 +137,9 @@ namespace utils {
                     ind_t min_char;
                     ind_t max_char;
 
-                    std::vector<ind_t> encode(const str_sequence& words) const;
+                    std::vector<ind_t>       encode(const str_sequence& words) const;
                     std::vector<std::string> decode(Indexing::Index) const;
+                    std::vector<std::string> decode_characters(Indexing::Index) const;
 
                     CharacterVocab(int min_char, int max_char);
                     size_t size() const;

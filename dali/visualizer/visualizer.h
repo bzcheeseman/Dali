@@ -31,6 +31,7 @@ namespace visualizable {
     struct Sentence : public Visualizable {
         std::vector<std::string> tokens;
         std::vector<R> weights;
+        bool spaces = true;
 
         Sentence(std::vector<std::string> tokens);
 

@@ -30,6 +30,7 @@ using std::vector;
 using utils::assert2;
 using utils::vsum;
 using utils::Vocab;
+using utils::CharacterVocab;
 using utils::MS;
 
 static const int ADADELTA_TYPE = 0;
@@ -302,12 +303,13 @@ int main (int argc,  char* argv[]) {
 
     auto paraphrase_data = paraphrase::STS_2015::load_train();
     auto word_vocab      = Vocab();
+    auto char_vocab      = CharacterVocab(32, 255);
 
     word_vocab = Vocab(paraphrase::get_vocabulary(paraphrase_data, FLAGS_min_occurence), true);
 
     auto vocab_size     = word_vocab.size();
     auto dataset        = paraphrase::convert_to_indexed_minibatches(
-        word_vocab,
+        char_vocab,
         paraphrase_data,
         FLAGS_minibatch
     );
@@ -316,7 +318,7 @@ int main (int argc,  char* argv[]) {
     {
         auto paraphrase_valid_data =  paraphrase::STS_2015::load_dev();
         validation_set = paraphrase::convert_to_indexed_minibatches(
-            word_vocab,
+            char_vocab,
             paraphrase_valid_data,
             FLAGS_minibatch
         );
@@ -327,7 +329,7 @@ int main (int argc,  char* argv[]) {
     vector<int> hidden_sizes;
 
     auto model = model_t(FLAGS_input_size,
-                         word_vocab.size(),
+                         char_vocab.size(),
                          vector<int>(FLAGS_stack_size, FLAGS_hidden),
                          FLAGS_gate_second_order,
                          FLAGS_dropout);
@@ -447,7 +449,7 @@ int main (int argc,  char* argv[]) {
         );
 
         for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
-            pool->run([&word_vocab, &visualizer, &solver_type, &thread_params, &thread_models,
+            pool->run([&word_vocab, &char_vocab, &visualizer, &solver_type, &thread_params, &thread_models,
                        batch_id, &journalist, &solver, &dataset,
                        &best_validation_score, &examples_processed,
                        &memory_penalty]() {
@@ -481,7 +483,7 @@ int main (int argc,  char* argv[]) {
                 journalist.tick(examples_processed, minibatch_error);
 
                 if (visualizer != nullptr) {
-                    visualizer->throttled_feed(seconds(5), [&word_vocab, &visualizer, &minibatch, &thread_model]() {
+                    visualizer->throttled_feed(seconds(5), [&word_vocab, &char_vocab, &visualizer, &minibatch, &thread_model]() {
                         // pick example
                         vector<uint> sentence1, sentence2;
                         double true_score;
@@ -495,12 +497,14 @@ int main (int argc,  char* argv[]) {
                                 thread_model.predict_with_memories(sentence1, sentence2);
 
                         auto vs1  = make_shared<visualizable::Sentence<REAL_t>>(
-                                word_vocab.decode(sentence1));
+                                char_vocab.decode_characters(sentence1));
                         vs1->set_weights(memory1);
+                        vs1->spaces = false;
 
                         auto vs2  = make_shared<visualizable::Sentence<REAL_t>>(
-                                word_vocab.decode(sentence2));
+                                char_vocab.decode_characters(sentence2));
                         vs2->set_weights(memory2);
+                        vs2->spaces = false;
 
                         auto msg1 = make_shared<visualizable::Message>(MS() << "Predicted score: " << predicted_score);
                         auto msg2 = make_shared<visualizable::Message>(MS() << "True score: " << true_score);

@@ -474,11 +474,12 @@ int main (int argc,  char* argv[]) {
 
                     partial_error.grad();
                     graph::backward(); // backpropagate
+                    examples_processed++;
                 }
                 // One step of gradient descent
                 solver->step(params);
 
-                journalist.tick(++examples_processed, minibatch_error);
+                journalist.tick(examples_processed, minibatch_error);
 
                 if (visualizer != nullptr) {
                     visualizer->throttled_feed(seconds(5), [&word_vocab, &visualizer, &minibatch, &thread_model]() {

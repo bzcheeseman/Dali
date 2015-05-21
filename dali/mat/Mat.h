@@ -235,6 +235,7 @@ class Mat {
         Mat<R> operator/(R alpha) const;
         Mat<R> operator+(Mat<R>) const;
         Mat<R> operator-(Mat<R>) const;
+        Mat<R> operator-() const;
         Mat<R> operator+(R) const;
         Mat<R> operator-(R) const;
         Mat<R> operator^(R) const;

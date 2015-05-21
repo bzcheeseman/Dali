@@ -573,6 +573,12 @@ Mat<R> Mat<R>::operator-(Mat<R> other) const {
     return MatOps<R>::sub(*this, other);
 }
 
+
+template<typename R>
+Mat<R> Mat<R>::operator-() const {
+    return (*this) * -1;
+}
+
 template<typename R>
 Mat<R> Mat<R>::operator+(R other) const {
     return MatOps<R>::add(*this, other);

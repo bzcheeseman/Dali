@@ -9,3 +9,4 @@
 #include "dali/utils/xml_cleaner.h"
 #include "dali/utils/ParseUtils.h"
 #include "dali/utils/scoring_utils.h"
+#include "dali/utils/OntologyBranch.h"

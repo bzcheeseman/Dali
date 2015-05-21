@@ -67,18 +67,65 @@ DEFINE_bool(end_token,                 true,       "Whether to add a token indic
 ThreadPool* pool;
 
 
-/*template<typename T>
+template<typename T>
 class SparseStackedLSTM : public StackedLSTM<T> {
-    SparseStackedLSTM() : StackedLSTM<T>() {
-    }
+    typedef typename StackedLSTM<T>::State state_t;
+    public:
+        SecondOrderCombinator<T> gate_encoder;
 
-    SparseStackedLSTM(int input_size,
-                      vector<int> hidden_size,
-                      bool shortcut,
-                      bool memory_feeds_gates) :
-            StackedLSTM<T>(input_size, hidden_size, shortcut, memory_feeds_gates) {
-    }
-};*/
+        SparseStackedLSTM() : StackedLSTM<T>() {
+        }
+
+        SparseStackedLSTM(const SparseStackedLSTM<T>& other, bool copy_w, bool copy_dw) :
+            StackedLSTM<T>(other, copy_w, copy_dw),
+            gate_encoder(other.gate_encoder, copy_w, copy_dw) {
+        }
+
+        SparseStackedLSTM shallow_copy() {
+            return SparseStackedLSTM(*this, false, true);
+        }
+
+        vector<Mat<T>> parameters() {
+            auto params = StackedLSTM<T>::parameters();
+            auto gate_params = gate_encoder.parameters();
+            params.emplace_back(gate_params.begin(), gate_params.end());
+            return params;
+        }
+
+        SparseStackedLSTM(int input_size,
+                          vector<int> hidden_sizes,
+                          int gate_second_order,
+                          bool shortcut,
+                          bool memory_feeds_gates) :
+                StackedLSTM<T>(input_size, hidden_sizes, shortcut, memory_feeds_gates),
+                gate_encoder(input_size, vsum(hidden_sizes), gate_second_order) {
+        }
+
+        Mat<T> activate_gate(Mat<T> input, Mat<T> hidden) {
+            return gate_encoder.activate(input, hidden).sum().sigmoid();
+        }
+
+        // returns next state and memory
+        std::tuple<state_t, Mat<T>> activate(Mat<T> input, state_t prev_state) {
+            auto current_hiddens =  MatOps<T>::vstack(LSTM<T>::State::hiddens(prev_state));
+            auto gate_memory     =  activate_gate(input, current_hiddens);
+            auto gated_input     =  input.eltmul_broadcast_rowwise(gate_memory);
+            auto next_state      =  StackedLSTM<T>::activate(gated_input, prev_state);
+
+            return std::make_tuple(next_state, gate_memory);
+        }
+
+        // returns last state and memory at every step
+        std::tuple<state_t, vector<Mat<T>>> activate_sequence(vector<Mat<T>> inputs, state_t state) {
+            vector<Mat<T>> memories;
+            for (auto& input: inputs) {
+                Mat<T> memory;
+                std::tie(state, memory) = activate(input, state);
+                memories.append(memory);
+            }
+            return make_tuple(state, memories);
+        }
+};
 
 template<typename T>
 class ParaphraseModel {

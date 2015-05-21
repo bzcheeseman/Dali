@@ -56,6 +56,7 @@ DEFINE_double(reg,                     0.0,        "What penalty to place on L2 
 DEFINE_int32(input_size,               100,        "Size of embeddings.");
 DEFINE_int32(hidden,                   100,        "What hidden size to use.");
 DEFINE_int32(stack_size,               2,          "How tall is the great LSTM tower.");
+DEFINE_int32(gate_second_order,        50,         "How many second order terms to consider in gate");
 DEFINE_bool(lstm_shortcut,             true,       "Should shortcut be used in LSTMs");
 DEFINE_bool(lstm_memory_feeds_gates,   true,       "Should memory be fed to gates in LSTMs");
 DEFINE_double(dropout,                 0.3,        "How much dropout noise to add to the problem ?");
@@ -69,8 +70,9 @@ ThreadPool* pool;
 
 template<typename T>
 class SparseStackedLSTM : public StackedLSTM<T> {
-    typedef typename StackedLSTM<T>::State state_t;
     public:
+        typedef typename StackedLSTM<T>::state_t state_t;
+
         SecondOrderCombinator<T> gate_encoder;
 
         SparseStackedLSTM() : StackedLSTM<T>() {
@@ -81,14 +83,14 @@ class SparseStackedLSTM : public StackedLSTM<T> {
             gate_encoder(other.gate_encoder, copy_w, copy_dw) {
         }
 
-        SparseStackedLSTM shallow_copy() {
+        SparseStackedLSTM shallow_copy() const {
             return SparseStackedLSTM(*this, false, true);
         }
 
-        vector<Mat<T>> parameters() {
+        vector<Mat<T>> parameters() const {
             auto params = StackedLSTM<T>::parameters();
             auto gate_params = gate_encoder.parameters();
-            params.emplace_back(gate_params.begin(), gate_params.end());
+            params.insert(params.end(), gate_params.begin(), gate_params.end());
             return params;
         }
 
@@ -101,27 +103,29 @@ class SparseStackedLSTM : public StackedLSTM<T> {
                 gate_encoder(input_size, vsum(hidden_sizes), gate_second_order) {
         }
 
-        Mat<T> activate_gate(Mat<T> input, Mat<T> hidden) {
+        Mat<T> activate_gate(Mat<T> input, Mat<T> hidden) const {
             return gate_encoder.activate(input, hidden).sum().sigmoid();
         }
 
         // returns next state and memory
-        std::tuple<state_t, Mat<T>> activate(Mat<T> input, state_t prev_state) {
+        std::tuple<state_t, Mat<T>> activate(Mat<T> input, state_t prev_state, T dropout_probability) const {
             auto current_hiddens =  MatOps<T>::vstack(LSTM<T>::State::hiddens(prev_state));
             auto gate_memory     =  activate_gate(input, current_hiddens);
             auto gated_input     =  input.eltmul_broadcast_rowwise(gate_memory);
-            auto next_state      =  StackedLSTM<T>::activate(gated_input, prev_state);
+            auto next_state      =  StackedLSTM<T>::activate(prev_state, gated_input, dropout_probability);
 
             return std::make_tuple(next_state, gate_memory);
         }
 
         // returns last state and memory at every step
-        std::tuple<state_t, vector<Mat<T>>> activate_sequence(vector<Mat<T>> inputs, state_t state) {
+        std::tuple<state_t, vector<Mat<T>>> activate_sequence(vector<Mat<T>> inputs,
+                                                              state_t state,
+                                                              T dropout_probability) const {
             vector<Mat<T>> memories;
             for (auto& input: inputs) {
                 Mat<T> memory;
-                std::tie(state, memory) = activate(input, state);
-                memories.append(memory);
+                std::tie(state, memory) = activate(input, state, dropout_probability);
+                memories.push_back(memory);
             }
             return make_tuple(state, memories);
         }
@@ -129,25 +133,32 @@ class SparseStackedLSTM : public StackedLSTM<T> {
 
 template<typename T>
 class ParaphraseModel {
+    typedef typename StackedLSTM<T>::state_t state_t;
+
     public:
         int input_size;
         int vocab_size;
         vector<int> hidden_sizes;
         T dropout_probability;
 
-        StackedLSTM<T> sentence_encoder;
+        SparseStackedLSTM<T> sentence_encoder;
         Mat<T> end_of_sentence_token;
         Mat<T> embedding_matrix;
 
         Mat<T> similarity_bias;
 
-        ParaphraseModel(int input_size, int vocab_size, vector<int> hidden_sizes, T dropout_probability) :
+        ParaphraseModel(int input_size,
+                        int vocab_size,
+                        vector<int> hidden_sizes,
+                        int gate_second_order,
+                        T dropout_probability) :
                 input_size(input_size),
                 vocab_size(vocab_size),
                 hidden_sizes(hidden_sizes),
                 dropout_probability(dropout_probability),
                 sentence_encoder(input_size,
                                  hidden_sizes,
+                                 gate_second_order,
                                  FLAGS_lstm_shortcut,
                                  FLAGS_lstm_memory_feeds_gates),
                 end_of_sentence_token(input_size, 1, weights<T>::uniform(1.0 / input_size)),
@@ -186,7 +197,8 @@ class ParaphraseModel {
             return res;
         }
 
-        Mat<T> encode_sentence(vector<uint> sentence, bool use_dropout) const {
+        // returns sentence and vector of memories
+        std::tuple<Mat<T>, vector<Mat<T>>> encode_sentence(vector<uint> sentence, bool use_dropout) const {
             vector<Mat<T>> embeddings;
             for (auto& word_idx: sentence) {
                 embeddings.emplace_back(embedding_matrix[word_idx]);
@@ -194,34 +206,69 @@ class ParaphraseModel {
             if (FLAGS_end_token)
                 embeddings.push_back(end_of_sentence_token);
 
-            auto out_states = sentence_encoder.activate_sequence(
-                    sentence_encoder.initial_states(),
+            auto state = sentence_encoder.initial_states();
+            vector<Mat<T>> memories;
+            std::tie(state, memories) = sentence_encoder.activate_sequence(
                     embeddings,
+                    state,
                     use_dropout ? dropout_probability : 0.0);
-            return MatOps<T>::vstack(LSTM<T>::State::hiddens(out_states));
+            auto sentence_hidden = MatOps<T>::vstack(LSTM<T>::State::hiddens(state));
+            return std::make_tuple(sentence_hidden, memories);
         }
 
-        Mat<T> similarity(vector<uint> sentence1, vector<uint> sentence2, bool use_dropout) const {
-            auto sentence1_hidden = encode_sentence(sentence1, use_dropout);
-            auto sentence2_hidden = encode_sentence(sentence2, use_dropout);
+        std::tuple<Mat<T>, vector<Mat<T>>, vector<Mat<T>>> similarity(vector<uint> sentence1,
+                                                                      vector<uint> sentence2,
+                                                                      bool use_dropout) const {
+            Mat<T> sentence1_hidden, sentence2_hidden;
+            vector<Mat<T>> sentence1_memories, sentence2_memories;
+            std::tie(sentence1_hidden, sentence1_memories) =
+                    encode_sentence(sentence1, use_dropout);
+            std::tie(sentence2_hidden, sentence2_memories) =
+                    encode_sentence(sentence2, use_dropout);
 
-            return (sentence1_hidden * sentence2_hidden + similarity_bias).sum().sigmoid();
+            auto similarity_score = (sentence1_hidden * sentence2_hidden + similarity_bias).sum().sigmoid();
+            return std::make_tuple(similarity_score, sentence1_memories, sentence2_memories);
         }
 
-        Mat<T> error(const paraphrase::numeric_example_t& example) const {
+        tuple<Mat<T>, vector<Mat<T>>, vector<Mat<T>>> error(
+                const paraphrase::numeric_example_t& example) const {
             vector<uint> sentence1, sentence2;
             double correct_score;
             std::tie(sentence1, sentence2, correct_score) = example;
 
-            auto similarity_score = similarity(sentence1, sentence2, true);
+            Mat<T> similarity_score;
+            vector<Mat<T>> memory1, memory2;
+            std::tie(similarity_score, memory1, memory2) =
+                    similarity(sentence1, sentence2, true);
 
-            return (similarity_score - correct_score)^2;
+            auto error_value = (similarity_score - correct_score)^2;
+
+            return std::make_tuple(error_value, memory1, memory2);
+        }
+
+        tuple<double, vector<double>, vector<double>> predict_with_memories(vector<uint> sentence1, vector<uint> sentence2) const {
+            graph::NoBackprop nb;
+            vector<Mat<T>> memory1_mat, memory2_mat;
+            Mat<T> similarity_mat;
+            std::tie(similarity_mat, memory1_mat, memory2_mat) =
+                    similarity(sentence1, sentence2, false);
+
+            auto extract_double  = [](Mat<T> m) { return m.w()(0,0); };
+            vector<double> memory1, memory2;
+
+            std::transform(memory1_mat.begin(), memory1_mat.end(), std::back_inserter(memory1), extract_double);
+            std::transform(memory2_mat.begin(), memory2_mat.end(), std::back_inserter(memory2), extract_double);
+
+            auto similarity_score = extract_double(similarity_mat);
+            return make_tuple(similarity_score, memory1, memory2);
         }
 
         double predict(vector<uint> sentence1, vector<uint> sentence2) const {
-            graph::NoBackprop nb;
+            double score;
+            vector<double> ignored1, ignored2;
+            std::tie(score, ignored1, ignored2) = predict_with_memories(sentence1, sentence2);
 
-            return similarity(sentence1, sentence2, false).w()(0,0);
+            return score;
         }
 
 };
@@ -283,6 +330,7 @@ int main (int argc,  char* argv[]) {
     auto model = model_t(FLAGS_input_size,
                          word_vocab.size(),
                          vector<int>(FLAGS_stack_size, FLAGS_hidden),
+                         FLAGS_gate_second_order,
                          FLAGS_dropout);
 
     if (FLAGS_lstm_shortcut && FLAGS_stack_size == 1) {
@@ -375,30 +423,19 @@ int main (int argc,  char* argv[]) {
     }
 
     while (patience < FLAGS_patience && epoch < epochs) {
+        double memory_penalty = 0.0;
 
-        /*if (memory_penalty_curve_type == 1) { // linear
-            model.memory_penalty = std::min(
+        if (memory_penalty_curve_type == 1) { // linear
+            memory_penalty = std::min(
                 FLAGS_memory_penalty,
                 (REAL_t) (FLAGS_memory_penalty * std::min(1.0, ((double)(epoch) / (double)(rampup_time))))
             );
-            for (auto& thread_model : thread_models) {
-                thread_model.memory_penalty = std::min(
-                    FLAGS_memory_penalty,
-                    (REAL_t) (FLAGS_memory_penalty * std::min(1.0, ((double)(epoch) / (double)(rampup_time))))
-                );
-            }
         } else if (memory_penalty_curve_type == 2) { // square
-            model.memory_penalty = std::min(
+            memory_penalty = std::min(
                 FLAGS_memory_penalty,
                 (REAL_t) (FLAGS_memory_penalty * std::min(1.0, ((double)(epoch * epoch) / (double)(rampup_time * rampup_time))))
             );
-            for (auto& thread_model : thread_models) {
-                thread_model.memory_penalty = std::min(
-                    FLAGS_memory_penalty,
-                    (REAL_t) (FLAGS_memory_penalty * std::min(1.0, ((double)(epoch * epoch) / (double)(rampup_time * rampup_time))))
-                );
-            }
-        }*/
+        }
 
         atomic<int> examples_processed(0);
 
@@ -413,25 +450,30 @@ int main (int argc,  char* argv[]) {
         for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
             pool->run([&word_vocab, &visualizer, &solver_type, &thread_params, &thread_models,
                        batch_id, &journalist, &solver, &dataset,
-                       &best_validation_score, &examples_processed]() {
+                       &best_validation_score, &examples_processed,
+                       &memory_penalty]() {
                 auto& thread_model     = thread_models[ThreadPool::get_thread_number()];
                 auto& params           = thread_params[ThreadPool::get_thread_number()];
                 auto& minibatch        = dataset[batch_id];
                 // many forward steps here:
                 REAL_t minibatch_error = 0.0;
                 for (auto& example : minibatch) {
+                    Mat<REAL_t> partial_error;
+                    vector<Mat<REAL_t>> memory1, memory2;
+                    std::tie(partial_error, memory1, memory2) =
+                            thread_model.error(example);
 
-                    auto partial_error = thread_model.error(example) / minibatch.size();
+                    if (memory_penalty > 0) {
+                        auto memory = MatOps<REAL_t>::add(memory1) + MatOps<REAL_t>::add(memory2);
+                        partial_error = partial_error + memory_penalty * memory;
+                    }
+
+                    partial_error = partial_error / minibatch.size();
+
                     minibatch_error += partial_error.w()(0,0);
 
                     partial_error.grad();
                     graph::backward(); // backpropagate
-
-                    // total error is prediction error + memory usage.
-                    /*if (thread_model.memory_penalty > 0) {
-                        error = error + MatOps<REAL_t>::add(memories) * thread_model.memory_penalty;
-                    }*/
-
                 }
                 // One step of gradient descent
                 solver->step(params);
@@ -447,13 +489,19 @@ int main (int argc,  char* argv[]) {
                         std::tie(sentence1, sentence2, true_score) =
                                 minibatch[utils::randint(0, minibatch.size()-1)];
 
-                        double predicted_score = thread_model.predict(sentence1, sentence2);
-
+                        double predicted_score;
+                        vector<double> memory1, memory2;
+                        std::tie(predicted_score, memory1, memory2) =
+                                thread_model.predict_with_memories(sentence1, sentence2);
 
                         auto vs1  = make_shared<visualizable::Sentence<REAL_t>>(
                                 word_vocab.decode(sentence1));
+                        vs1->set_weights(memory1);
+
                         auto vs2  = make_shared<visualizable::Sentence<REAL_t>>(
                                 word_vocab.decode(sentence2));
+                        vs2->set_weights(memory2);
+
                         auto msg1 = make_shared<visualizable::Message>(MS() << "Predicted score: " << predicted_score);
                         auto msg2 = make_shared<visualizable::Message>(MS() << "True score: " << true_score);
 

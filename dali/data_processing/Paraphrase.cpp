@@ -1,5 +1,6 @@
 #include "dali/data_processing/Paraphrase.h"
 
+using namespace std::placeholders;
 using std::vector;
 using std::string;
 using utils::assert2;
@@ -68,21 +69,16 @@ namespace paraphrase {
             loader.sentence2_column  = 3;
             loader.similarity_column = 4;
 
-            vector<string> paraphrase_list = {"(3, 2)", "(4, 1)", "(5, 0)"};
-            vector<string> non_paraphrase_list = {"(1, 4)", "(0, 5)"};
-            loader.similarity_score_extractor = [&paraphrase_list, &non_paraphrase_list](const string& number_column) {
-                if (number_column.size() > 1) {
-                    return (
-                        (double) from_string<int>(string(
-                            number_column.begin() + 1,
-                            number_column.begin() + 2)
-                        ) / 5.0
-                    );
-                } else {
-                    assert2("Number column should have format \"(A, B)\".");
-                    return 0.5;
-                }
+            auto score_map = std::map<string, double> {
+                {"(0,5)", 0.0},
+                {"(1,4)", 0.0},
+                {"(2,3)", 0.5},
+                {"(3,2)", 1.0},
+                {"(4,1)", 1.0},
+                {"(5,0)", 1.0},
             };
+
+            loader.similarity_score_extractor = [&score_map](const string& score_str) {return score_map.at(score_str);};
             auto tsv_data = utils::load_tsv(
                 path,
                 -1,

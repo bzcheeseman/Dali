@@ -5,6 +5,8 @@
 #include <vector>
 #include <atomic>
 #include <set>
+#include <map>
+
 #include "dali/utils/core_utils.h"
 #include "dali/utils/Reporting.h"
 #include "dali/utils/scoring_utils.h"

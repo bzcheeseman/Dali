@@ -145,7 +145,6 @@ class ParaphraseModel {
         Mat<T> end_of_sentence_token;
         Mat<T> embedding_matrix;
 
-        Mat<T> similarity_bias;
 
         ParaphraseModel(int input_size,
                         int vocab_size,
@@ -162,8 +161,8 @@ class ParaphraseModel {
                                  FLAGS_lstm_shortcut,
                                  FLAGS_lstm_memory_feeds_gates),
                 end_of_sentence_token(input_size, 1, weights<T>::uniform(1.0 / input_size)),
-                embedding_matrix(vocab_size, input_size, weights<T>::uniform(1.0 / input_size)),
-                similarity_bias(vsum(hidden_sizes), 1) {
+                embedding_matrix(vocab_size, input_size, weights<T>::uniform(1.0 / input_size))
+                 {
         }
 
         ParaphraseModel(const ParaphraseModel& other, bool copy_w, bool copy_dw) :
@@ -173,8 +172,7 @@ class ParaphraseModel {
                 dropout_probability(other.dropout_probability),
                 sentence_encoder(other.sentence_encoder, copy_w, copy_dw),
                 end_of_sentence_token(other.end_of_sentence_token, copy_w, copy_dw),
-                embedding_matrix(other.embedding_matrix, copy_w, copy_dw),
-                similarity_bias(other.similarity_bias, copy_w, copy_dw) {
+                embedding_matrix(other.embedding_matrix, copy_w, copy_dw) {
 
         }
 
@@ -189,8 +187,7 @@ class ParaphraseModel {
             res.insert(res.end(), params.begin(), params.end());
 
             for (auto& matrix: { end_of_sentence_token,
-                                 embedding_matrix,
-                                 similarity_bias
+                                 embedding_matrix
                                  }) {
                 res.emplace_back(matrix);
             }
@@ -226,7 +223,9 @@ class ParaphraseModel {
             std::tie(sentence2_hidden, sentence2_memories) =
                     encode_sentence(sentence2, use_dropout);
 
-            auto similarity_score = (sentence1_hidden * sentence2_hidden + similarity_bias).sum().sigmoid();
+            auto s1_norm = sentence1_hidden.square().sum().sqrt();
+            auto s2_norm = sentence2_hidden.square().sum().sqrt();
+            auto similarity_score = (sentence1_hidden * sentence2_hidden ).sum() / (s1_norm * s2_norm);
             return std::make_tuple(similarity_score, sentence1_memories, sentence2_memories);
         }
 

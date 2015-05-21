@@ -58,7 +58,7 @@ DEFINE_int32(hidden,                   100,        "What hidden size to use.");
 DEFINE_int32(stack_size,               2,          "How tall is the great LSTM tower.");
 DEFINE_int32(gate_second_order,        50,         "How many second order terms to consider in gate");
 DEFINE_bool(lstm_shortcut,             true,       "Should shortcut be used in LSTMs");
-DEFINE_bool(lstm_memory_feeds_gates,   true,       "Should memory be fed to gates in LSTMs");
+DEFINE_bool(lstm_memory_feeds_gates,   false,      "Should memory be fed to gates in LSTMs");
 DEFINE_double(dropout,                 0.3,        "How much dropout noise to add to the problem ?");
 DEFINE_double(memory_penalty,          0.1,        "Coefficient in front of memory penalty");
 DEFINE_string(memory_penalty_curve,    "flat",     "Type of annealing used on gate memory penalty (flat, linear, square)");
@@ -66,6 +66,9 @@ DEFINE_string(memory_penalty_curve,    "flat",     "Type of annealing used on ga
 DEFINE_bool(svd_init,                  true,       "Initialize weights using SVD?");
 DEFINE_bool(end_token,                 true,       "Whether to add a token indicating end of sentence.");
 DEFINE_bool(use_characters,            true,       "Use word embeddings or character embeddings?");
+DEFINE_int32(negative_samples,         30,         "Create random pairs of paraphrases and treat as negative samples.");
+DEFINE_bool(show_similar,              true,       "Visualize neighboring representations?");
+DEFINE_int32(number_of_comparisons,    20,         "How many sentences should be compared?");
 ThreadPool* pool;
 
 
@@ -214,6 +217,12 @@ class ParaphraseModel {
             return std::make_tuple(sentence_hidden, memories);
         }
 
+        Mat<T> cosine_distance(Mat<T> sentence1_hidden, Mat<T> sentence2_hidden) const {
+            auto s1_norm = sentence1_hidden.square().sum().sqrt();
+            auto s2_norm = sentence2_hidden.square().sum().sqrt();
+            return (sentence1_hidden * sentence2_hidden ).sum() / (s1_norm * s2_norm);
+        }
+
         std::tuple<Mat<T>, vector<Mat<T>>, vector<Mat<T>>> similarity(vector<uint> sentence1,
                                                                       vector<uint> sentence2,
                                                                       bool use_dropout) const {
@@ -224,18 +233,14 @@ class ParaphraseModel {
             std::tie(sentence2_hidden, sentence2_memories) =
                     encode_sentence(sentence2, use_dropout);
 
-            auto s1_norm = sentence1_hidden.square().sum().sqrt();
-            auto s2_norm = sentence2_hidden.square().sum().sqrt();
-            auto similarity_score = (sentence1_hidden * sentence2_hidden ).sum() / (s1_norm * s2_norm);
+            auto similarity_score = cosine_distance(sentence1_hidden, sentence2_hidden );
             return std::make_tuple(similarity_score, sentence1_memories, sentence2_memories);
         }
 
         tuple<Mat<T>, vector<Mat<T>>, vector<Mat<T>>> error(
-                const paraphrase::numeric_example_t& example) const {
-            vector<uint> sentence1, sentence2;
-            double correct_score;
-            std::tie(sentence1, sentence2, correct_score) = example;
-
+                const vector<uint>& sentence1,
+                const vector<uint>& sentence2,
+                double correct_score) const {
             Mat<T> similarity_score;
             vector<Mat<T>> memory1, memory2;
             std::tie(similarity_score, memory1, memory2) =
@@ -317,6 +322,103 @@ std::tuple<Vocab, CharacterVocab, typename paraphrase::paraphrase_minibatch_data
     }
 
     return make_tuple(word_vocab, char_vocab, training_data, validation_data);
+}
+
+void backprop_example(
+        const model_t& thread_model,
+        const vector<uint>& sentence1,
+        const vector<uint>& sentence2,
+        const double& label,
+        const double& memory_penalty,
+        const int& minibatch_size,
+        double& minibatch_error) {
+    Mat<REAL_t> partial_error;
+    vector<Mat<REAL_t>> memory1, memory2;
+    std::tie(partial_error, memory1, memory2) =
+            thread_model.error(sentence1, sentence2, label);
+
+    if (memory_penalty > 0) {
+        auto memory = MatOps<REAL_t>::add(memory1) + MatOps<REAL_t>::add(memory2);
+        partial_error = partial_error + memory_penalty * memory;
+    }
+
+    partial_error = partial_error / minibatch_size;
+
+    minibatch_error += partial_error.w()(0,0);
+
+    partial_error.grad();
+    graph::backward(); // backpropagate
+}
+
+void backprop_random_example(
+        const model_t& thread_model,
+        const typename paraphrase::paraphrase_minibatch_dataset& dataset,
+        const double& memory_penalty,
+        const int& minibatch_size,
+        double& minibatch_error) {
+    auto batch_id_1 = utils::randint(0, dataset.size() - 1);
+    auto ex_id_1    = utils::randint(0, dataset[batch_id_1].size() - 1);
+    auto ex_id_1_b  = utils::randint(0, 1);
+
+    auto batch_id_2 = utils::randint(0, dataset.size() - 1);
+    int  ex_id_2    = utils::randint(0, dataset[batch_id_2].size() - 1);
+    auto ex_id_2_b  = utils::randint(0, 1);
+
+    // make sure they are different
+    if (batch_id_1 == batch_id_2 && ex_id_1 == ex_id_2) {
+        if (dataset[batch_id_2].size() > 2) {
+            while (ex_id_2 == ex_id_1) {
+                ex_id_2 = utils::randint(0, dataset[batch_id_2].size() - 1);
+            }
+        } else {
+            while (batch_id_1 == batch_id_2) {
+                batch_id_2 = utils::randint(0, dataset.size() - 1);
+            }
+            ex_id_2 = utils::randint(0, dataset[batch_id_2].size() - 1);
+        }
+    }
+
+    if (ex_id_1_b == 1) {
+        if (ex_id_2_b == 1) {
+            backprop_example(
+                thread_model,
+                std::get<1>(dataset[batch_id_1][ex_id_1]),
+                std::get<1>(dataset[batch_id_2][ex_id_2]),
+                0.0,
+                memory_penalty,
+                minibatch_size,
+                minibatch_error);
+        } else {
+            backprop_example(
+                thread_model,
+                std::get<1>(dataset[batch_id_1][ex_id_1]),
+                std::get<0>(dataset[batch_id_2][ex_id_2]),
+                0.0,
+                memory_penalty,
+                minibatch_size,
+                minibatch_error);
+        }
+    } else {
+        if (ex_id_2_b == 1) {
+            backprop_example(
+                thread_model,
+                std::get<0>(dataset[batch_id_1][ex_id_1]),
+                std::get<1>(dataset[batch_id_2][ex_id_2]),
+                0.0,
+                memory_penalty,
+                minibatch_size,
+                minibatch_error);
+        } else {
+            backprop_example(
+                thread_model,
+                std::get<0>(dataset[batch_id_1][ex_id_1]),
+                std::get<0>(dataset[batch_id_2][ex_id_2]),
+                0.0,
+                memory_penalty,
+                minibatch_size,
+                minibatch_error);
+        }
+    }
 }
 
 int main (int argc,  char* argv[]) {
@@ -474,7 +576,7 @@ int main (int argc,  char* argv[]) {
         atomic<int> examples_processed(0);
 
         int total_examples = 0;
-        for (auto& minibatch: training_set) total_examples += minibatch.size();
+        for (auto& minibatch: training_set) total_examples += (minibatch.size() + FLAGS_negative_samples);
 
         ReportProgress<double> journalist(
             utils::MS() << "Epoch " << ++epoch, // what to say first
@@ -485,73 +587,155 @@ int main (int argc,  char* argv[]) {
             pool->run([&word_vocab, &char_vocab, &visualizer, &solver_type, &thread_params, &thread_models,
                        batch_id, &journalist, &solver, &training_set,
                        &best_validation_score, &examples_processed,
-                       &memory_penalty]() {
+                       &memory_penalty, &total_examples]() {
                 auto& thread_model     = thread_models[ThreadPool::get_thread_number()];
                 auto& params           = thread_params[ThreadPool::get_thread_number()];
                 auto& minibatch        = training_set[batch_id];
                 // many forward steps here:
                 REAL_t minibatch_error = 0.0;
                 for (auto& example : minibatch) {
-                    Mat<REAL_t> partial_error;
-                    vector<Mat<REAL_t>> memory1, memory2;
-                    std::tie(partial_error, memory1, memory2) =
-                            thread_model.error(example);
-
-                    if (memory_penalty > 0) {
-                        auto memory = MatOps<REAL_t>::add(memory1) + MatOps<REAL_t>::add(memory2);
-                        partial_error = partial_error + memory_penalty * memory;
-                    }
-
-                    partial_error = partial_error / minibatch.size();
-
-                    minibatch_error += partial_error.w()(0,0);
-
-                    partial_error.grad();
-                    graph::backward(); // backpropagate
+                    backprop_example(
+                        thread_model,
+                        std::get<0>(example),
+                        std::get<1>(example),
+                        std::get<2>(example),
+                        memory_penalty,
+                        minibatch.size(),
+                        minibatch_error);
                     examples_processed++;
                 }
                 // One step of gradient descent
                 solver->step(params);
 
+
+                if (total_examples >= 2 && FLAGS_negative_samples > 0) {
+                    for (int artificial_idx = 0; artificial_idx < FLAGS_negative_samples; artificial_idx++) {
+                        backprop_random_example(
+                            thread_model,
+                            training_set,
+                            memory_penalty,
+                            FLAGS_negative_samples * 3,
+                            minibatch_error);
+                        examples_processed++;
+                    }
+                    // One step of gradient descent
+                    solver->step(params);
+                }
+
                 journalist.tick(examples_processed, minibatch_error);
 
                 if (visualizer != nullptr) {
-                    visualizer->throttled_feed(seconds(5), [&word_vocab, &char_vocab, &visualizer, &minibatch, &thread_model]() {
+                    visualizer->throttled_feed(seconds(5), [&total_examples, &word_vocab, &char_vocab, &visualizer, &training_set, &thread_model]() {
+                        graph::NoBackprop nb;
                         // pick example
                         vector<uint> sentence1, sentence2;
                         double true_score;
 
-                        std::tie(sentence1, sentence2, true_score) =
-                                minibatch[utils::randint(0, minibatch.size()-1)];
+                        auto example_batch_id = utils::randint(0, training_set.size() - 1);
+                        auto& minibatch = training_set[example_batch_id];
+                        auto example_id = utils::randint(0, minibatch.size()-1);
+                        std::tie(sentence1, sentence2, true_score) = minibatch[example_id];
 
-                        double predicted_score;
-                        vector<double> memory1, memory2;
-                        std::tie(predicted_score, memory1, memory2) =
-                                thread_model.predict_with_memories(sentence1, sentence2);
+                        if (FLAGS_show_similar) {
+                            auto& sampled_sentence = utils::randint(0, 1) > 0 ? sentence2 : sentence1;
 
-                        auto vs1  = make_shared<visualizable::Sentence<REAL_t>>(
-                            FLAGS_use_characters ? char_vocab.decode_characters(sentence1) :
-                                                   word_vocab.decode(sentence1));
-                        vs1->set_weights(memory1);
-                        vs1->spaces = !FLAGS_use_characters;
+                            int  seen_sentences = 0;
+                            auto original_encoded = thread_model.encode_sentence(sampled_sentence, false);
 
-                        auto vs2  = make_shared<visualizable::Sentence<REAL_t>>(
-                            FLAGS_use_characters ? char_vocab.decode_characters(sentence2) :
-                                                   word_vocab.decode(sentence2));
-                        vs2->set_weights(memory2);
-                        vs2->spaces = !FLAGS_use_characters;
+                            vector<tuple<vector<uint> *, REAL_t>> sampled_idxes(std::min(total_examples, FLAGS_number_of_comparisons));
 
-                        auto msg1 = make_shared<visualizable::Message>(MS() << "Predicted similarity: " << predicted_score);
-                        auto msg2 = make_shared<visualizable::Message>(MS() << "True similarity: " << true_score);
+                            std::map<vector<uint> *, bool> visited;
+                            visited[&sampled_sentence] = true;
+                            int num_tries = 0;
+                            while (seen_sentences < std::min(total_examples, FLAGS_number_of_comparisons) && num_tries < FLAGS_number_of_comparisons * 2) {
+                                num_tries++;
 
-                        auto grid = make_shared<visualizable::GridLayout>();
+                                auto  other_batch_id   = utils::randint(0, training_set.size() - 1);
+                                auto& other_minibatch  = training_set[other_batch_id];
+                                auto  other_example_id = utils::randint(0, other_minibatch.size()-1);
+                                auto& other_example    = other_minibatch[other_example_id];
+                                auto which_sequence    = utils::randint(0, 1);
+                                auto& other_sequence   = which_sequence > 0 ? std::get<1>(other_example) : std::get<0>(other_example);
+                                if (visited.find(&other_sequence) == visited.end()) {
+                                    auto other_encoded     = thread_model.encode_sentence(other_sequence, false);
+                                    sampled_idxes.emplace_back(
+                                        &other_sequence,
+                                        thread_model.cosine_distance(std::get<0>(original_encoded), std::get<0>(other_encoded)).w()(0,0)
+                                    );
+                                    visited[&other_sequence] = true;
+                                    seen_sentences++;
+                                }
+                            }
 
-                        grid->add_in_column(0, vs1);
-                        grid->add_in_column(0, vs2);
-                        grid->add_in_column(1, msg1);
-                        grid->add_in_column(1, msg2);
+                            std::sort(sampled_idxes.begin(), sampled_idxes.end(),
+                                    [](const tuple<vector<uint> *, REAL_t>& ex1,
+                                       const tuple<vector<uint> *, REAL_t>& ex2) {
+                                return std::get<1>(ex1) > std::get<1>(ex2);
+                            });
 
-                        return grid->to_json();
+                            // set up sentence 1 for visualization
+                            auto input_sentence = make_shared<visualizable::Sentence<REAL_t>>(
+                                FLAGS_use_characters ? char_vocab.decode_characters(sampled_sentence) :
+                                                       word_vocab.decode(sampled_sentence));
+                            auto extract_double  = [](Mat<REAL_t> m) { return m.w()(0,0); };
+                            vector<double> original_sentence_memory;
+                            std::transform(
+                                std::get<1>(original_encoded).begin(),
+                                std::get<1>(original_encoded).end(),
+                                std::back_inserter(original_sentence_memory),
+                                extract_double);
+                            input_sentence->set_weights(original_sentence_memory);
+
+
+                            vector<vector<string>> sentences;
+                            vector<REAL_t>         sims;
+
+                            for (int presented_sentence_idx = 0; presented_sentence_idx < std::min(sampled_idxes.size(), (size_t)5); presented_sentence_idx++) {
+                                auto& ex = sampled_idxes[presented_sentence_idx];
+                                sentences.emplace_back(FLAGS_use_characters ?
+                                                       char_vocab.decode_characters(*std::get<0>(ex)) :
+                                                       word_vocab.decode(*std::get<0>(ex)));
+                                sims.emplace_back(std::get<1>(ex));
+                            }
+                            auto sentences_viz = make_shared<visualizable::Sentences<REAL_t>>(sentences);
+                            sentences_viz->set_weights(sims);
+
+                            auto input_output_pair = visualizable::GridLayout();
+
+                            input_output_pair.add_in_column(0, input_sentence);
+                            input_output_pair.add_in_column(1, sentences_viz);
+
+                            return input_output_pair.to_json();
+                        } else {
+                            double predicted_score;
+                            vector<double> memory1, memory2;
+                            std::tie(predicted_score, memory1, memory2) =
+                                    thread_model.predict_with_memories(sentence1, sentence2);
+
+                            auto vs1  = make_shared<visualizable::Sentence<REAL_t>>(
+                                FLAGS_use_characters ? char_vocab.decode_characters(sentence1) :
+                                                       word_vocab.decode(sentence1));
+                            vs1->set_weights(memory1);
+                            vs1->spaces = !FLAGS_use_characters;
+
+                            auto vs2  = make_shared<visualizable::Sentence<REAL_t>>(
+                                FLAGS_use_characters ? char_vocab.decode_characters(sentence2) :
+                                                       word_vocab.decode(sentence2));
+                            vs2->set_weights(memory2);
+                            vs2->spaces = !FLAGS_use_characters;
+
+                            auto msg1 = make_shared<visualizable::Message>(MS() << "Predicted similarity: " << predicted_score);
+                            auto msg2 = make_shared<visualizable::Message>(MS() << "True similarity: " << true_score);
+
+                            auto grid = make_shared<visualizable::GridLayout>();
+
+                            grid->add_in_column(0, vs1);
+                            grid->add_in_column(0, vs2);
+                            grid->add_in_column(1, msg1);
+                            grid->add_in_column(1, msg2);
+
+                            return grid->to_json();
+                        }
                     });
                 }
                 // report minibatch completion to progress bar

@@ -759,9 +759,9 @@ int main (int argc,  char* argv[]) {
             best_validation_score = new_validation;
         }
         if (best_validation_score != new_validation) {
-            std::cout << "Epoch (" << epoch << ") Best validation score = " << best_validation_score << "% ("<< new_validation << "%), patience = " << patience << std::endl;
+            std::cout << "Epoch (" << epoch << ") Best validation score = " << best_validation_score << " ("<< new_validation << "), patience = " << patience << std::endl;
         } else {
-            std::cout << "Epoch (" << epoch << ") Best validation score = " << best_validation_score << "%, patience = " << patience << std::endl;
+            std::cout << "Epoch (" << epoch << ") Best validation score = " << best_validation_score << ", patience = " << patience << std::endl;
             best_epoch = epoch;
         }
         if (new_validation > best_score) {

@@ -72,14 +72,14 @@ std::shared_ptr<Visualizer> visualizer;
 
 template<typename T>
 struct StoryActivation {
-    Mat<T> log_probs;
+    Mat<T> hidden;
     vector<Mat<T>> fact_gate_memory;
     vector<vector<Mat<T>>> word_gate_memory;
 
-    StoryActivation(Mat<T> log_probs,
+    StoryActivation(Mat<T> hidden,
                     vector<Mat<T>> fact_gate_memory,
                     vector<vector<Mat<T>>> word_gate_memory) :
-            log_probs(log_probs),
+            hidden(hidden),
             fact_gate_memory(fact_gate_memory),
             word_gate_memory(word_gate_memory) {
     }
@@ -302,9 +302,7 @@ class LstmBabiModel {
             auto hl_hidden = lstm_final_activation(
                     hl_input, hl_model, use_dropout ? FLAGS_hl_dropout : 0.0);
 
-            auto log_probs = decoder.activate(hl_hidden);
-
-            return StoryActivation<T>(log_probs,
+            return StoryActivation<T>(hl_hidden,
                                       fact_gate_memory,
                                       word_gate_memories);
         }
@@ -314,10 +312,10 @@ class LstmBabiModel {
                                const vector<string>& correct_answer) const {
             graph::NoBackprop nb;
             auto activation = activate_story(facts, question, false);
+            auto scores = decoder.activate(activation.hidden);
 
             shared_ptr<visualizable::FiniteDistribution<T>> vdistribution;
             if (FLAGS_margin_loss) {
-                auto scores = activation.log_probs;
                 std::vector<REAL_t> scores_as_vec;
                 for (int i=0; i < scores.dims(0); ++i) {
                     scores_as_vec.push_back(scores.w()(i,0));
@@ -326,7 +324,7 @@ class LstmBabiModel {
                 vdistribution = make_shared<visualizable::FiniteDistribution<T>>(
                         distribution_as_vec, scores_as_vec, vocab->index2word, 5);
             } else {
-                auto distribution = MatOps<T>::softmax(activation.log_probs);
+                auto distribution = MatOps<T>::softmax(scores);
                 std::vector<REAL_t> distribution_as_vec;
                 for (int i=0; i < distribution.dims(0); ++i) {
                     distribution_as_vec.push_back(distribution.w()(i,0));
@@ -375,10 +373,11 @@ class LstmBabiModel {
                 // cross entropy. We want to put the roughly in the same bucket, so
                 // so that improtance of gate errors and sparsity has more or less
                 // the same effect for both types of errors.
-                prediction_error = 3 * MatOps<REAL_t>::margin_loss(activation.log_probs, answer_idx, FLAGS_margin);
+                auto scores = decoder.activate(activation.hidden);
+                prediction_error = 3 * MatOps<REAL_t>::margin_loss(scores, answer_idx, FLAGS_margin);
             } else {
-                prediction_error = MatOps<REAL_t>::softmax_cross_entropy(activation.log_probs,
-                                                                              answer_idx);
+                auto log_probs = decoder.activate(activation.hidden);
+                prediction_error = MatOps<REAL_t>::softmax_cross_entropy(log_probs, answer_idx);
             }
             Mat<REAL_t> fact_selection_error(1,1);
 
@@ -406,7 +405,10 @@ class LstmBabiModel {
             graph::NoBackprop nb;
 
             // Don't use dropout for validation.
-            int word_idx = activate_story(facts, question, false).log_probs.argmax();
+            auto hidden = activate_story(facts, question, false).hidden;
+            auto scores = decoder.activate(hidden);
+
+            int word_idx = scores.argmax();
 
             return {vocab->index2word[word_idx]};
         }

@@ -30,6 +30,7 @@ using std::vector;
 using utils::assert2;
 using utils::vsum;
 using utils::Vocab;
+using utils::MS;
 
 static const int ADADELTA_TYPE = 0;
 static const int ADAGRAD_TYPE  = 1;
@@ -385,23 +386,40 @@ int main (int argc,  char* argv[]) {
                     }*/
 
                 }
-                journalist.tick(++examples_processed, minibatch_error);
-
                 // One step of gradient descent
                 solver->step(params);
 
-                /*if (visualizer != nullptr) {
+                journalist.tick(++examples_processed, minibatch_error);
+
+                if (visualizer != nullptr) {
                     visualizer->throttled_feed(seconds(5), [&word_vocab, &visualizer, &minibatch, &thread_model]() {
                         // pick example
-                        auto& example = std::get<0>(minibatch[utils::randint(0, minibatch.size()-1)]);
-                        // visualization does not backpropagate.
-                        graph::NoBackprop nb;
+                        vector<uint> sentence1, sentence2;
+                        double true_score;
 
-                        // Your visualization code goes here
+                        std::tie(sentence1, sentence2, true_score) =
+                                minibatch[utils::randint(0, minibatch.size()-1)];
 
-                        return psentence.to_json();
+                        double predicted_score = thread_model.predict(sentence1, sentence2);
+
+
+                        auto vs1  = make_shared<visualizable::Sentence<REAL_t>>(
+                                word_vocab.decode(sentence1));
+                        auto vs2  = make_shared<visualizable::Sentence<REAL_t>>(
+                                word_vocab.decode(sentence2));
+                        auto msg1 = make_shared<visualizable::Message>(MS() << "Predicted score: " << predicted_score);
+                        auto msg2 = make_shared<visualizable::Message>(MS() << "True score: " << true_score);
+
+                        auto grid = make_shared<visualizable::GridLayout>();
+
+                        grid->add_in_column(0, vs1);
+                        grid->add_in_column(0, vs2);
+                        grid->add_in_column(1, msg1);
+                        grid->add_in_column(1, msg2);
+
+                        return grid->to_json();
                     });
-                }*/
+                }
                 // report minibatch completion to progress bar
             });
         }

@@ -252,6 +252,15 @@ namespace visualizable {
     template class Probability<float>;
     template class Probability<double>;
 
+    Message::Message(std::string content) : content(content) {
+    }
+
+    json11::Json Message::to_json() {
+        return Json::object {
+            { "type", "message"},
+            { "content", content },
+        };
+    }
 
     Tree::Tree(string label) :
             label(label) {

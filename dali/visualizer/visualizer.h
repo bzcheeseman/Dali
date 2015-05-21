@@ -121,6 +121,14 @@ namespace visualizable {
         virtual json11::Json to_json() override;
     };
 
+    struct Message: public Visualizable {
+        std::string content;
+
+        Message(std::string content);
+
+        virtual json11::Json to_json() override;
+    };
+
     struct Tree: public Visualizable {
         std::string label;
         std::vector<std::shared_ptr<Tree>> children;

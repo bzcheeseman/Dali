@@ -352,33 +352,41 @@ int main (int argc,  char* argv[]) {
             }
         }*/
 
-        atomic<int> batches_processed(0);
+        atomic<int> examples_processed(0);
+
+        int total_examples = 0;
+        for (auto& minibatch: dataset) total_examples += minibatch.size();
 
         ReportProgress<double> journalist(
             utils::MS() << "Epoch " << ++epoch, // what to say first
-            dataset.size() // how many steps to expect before being done with epoch
+            total_examples // how many steps to expect before being done with epoch
         );
 
         for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
             pool->run([&word_vocab, &visualizer, &solver_type, &thread_params, &thread_models,
                        batch_id, &journalist, &solver, &dataset,
-                       &best_validation_score, &batches_processed]() {
+                       &best_validation_score, &examples_processed]() {
                 auto& thread_model     = thread_models[ThreadPool::get_thread_number()];
                 auto& params           = thread_params[ThreadPool::get_thread_number()];
                 auto& minibatch        = dataset[batch_id];
                 // many forward steps here:
+                REAL_t minibatch_error = 0.0;
                 for (auto& example : minibatch) {
-                    auto error = MatOps<REAL_t>::consider_constant(Mat<REAL_t>(1,1));
 
-                    thread_model.error(example);
+                    auto partial_error = thread_model.error(example) / minibatch.size();
+                    minibatch_error += partial_error.w()(0,0);
+
+                    partial_error.grad();
+                    graph::backward(); // backpropagate
 
                     // total error is prediction error + memory usage.
                     /*if (thread_model.memory_penalty > 0) {
                         error = error + MatOps<REAL_t>::add(memories) * thread_model.memory_penalty;
                     }*/
-                    error.grad();
-                    graph::backward(); // backpropagate
+
                 }
+                journalist.tick(++examples_processed, minibatch_error);
+
                 // One step of gradient descent
                 solver->step(params);
 
@@ -395,7 +403,6 @@ int main (int argc,  char* argv[]) {
                     });
                 }*/
                 // report minibatch completion to progress bar
-                journalist.tick(++batches_processed, best_validation_score);
             });
         }
         pool->wait_until_idle();

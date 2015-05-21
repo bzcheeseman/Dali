@@ -12,21 +12,24 @@
 #include "dali/utils/NlpUtils.h"
 #include "dali/data_processing/Paraphrase.h"
 #include "dali/data_processing/Glove.h"
-#include "dali/models/StackedGatedModel.h"
 #include "dali/visualizer/visualizer.h"
 
+using namespace std::placeholders;
 using std::atomic;
 using std::chrono::seconds;
-using std::vector;
-using std::make_shared;
-using std::shared_ptr;
 using std::ifstream;
-using std::stringstream;
-using std::string;
-using std::ofstream;
+using std::make_shared;
 using std::min;
-using utils::Vocab;
+using std::ofstream;
+using std::shared_ptr;
+using std::string;
+using std::stringstream;
+using std::tie;
+using std::tuple;
+using std::vector;
 using utils::assert2;
+using utils::vsum;
+using utils::Vocab;
 
 static const int ADADELTA_TYPE = 0;
 static const int ADAGRAD_TYPE  = 1;
@@ -35,25 +38,148 @@ static const int ADAM_TYPE     = 3;
 static const int RMSPROP_TYPE  = 4;
 
 typedef double REAL_t;
-typedef Mat<REAL_t> mat;
 
-DEFINE_int32(minibatch,           5,          "What size should be used for the minibatches ?");
-DEFINE_int32(patience,            5,          "How many unimproving epochs to wait through before witnessing progress ?");
-DEFINE_double(dropout,            0.3,        "How much dropout noise to add to the problem ?");
-DEFINE_double(reg,                0.0,        "What penalty to place on L2 norm of weights?");
-DEFINE_bool(fast_dropout,         true,       "Use fast dropout?");
-DEFINE_string(solver,             "adadelta", "What solver to use (adadelta, sgd, adam)");
-DEFINE_string(test,               "",         "Where is the test set?");
-DEFINE_string(pretrained_vectors, "",         "Load pretrained word vectors?");
-DEFINE_double(learning_rate,      0.01,       "Learning rate for SGD and Adagrad.");
-DEFINE_string(results_file,       "",         "Where to save test performance.");
-DEFINE_string(save_location,      "",         "Where to save test performance.");
-DEFINE_double(embedding_learning_rate, -1.0,  "A separate learning rate for embedding layer");
-DEFINE_bool(svd_init,             true,       "Initialize weights using SVD?");
-DEFINE_bool(average_gradient,     false,      "Error during minibatch should be average or sum of errors.");
-DEFINE_string(memory_penalty_curve, "flat",   "Type of annealing used on gate memory penalty (flat, linear, square)");
 
+// training flags
+DEFINE_int32(minibatch,                5,          "What size should be used for the minibatches ?");
+DEFINE_int32(patience,                 5,          "How many unimproving epochs to wait through before witnessing progress ?");
+// files
+DEFINE_string(results_file,            "",         "Where to save test performance.");
+DEFINE_string(save_location,           "",         "Where to save test performance.");
+DEFINE_string(test,                    "",         "Where is the test set?");
+// solvers
+DEFINE_string(solver,                  "adadelta", "What solver to use (adadelta, sgd, adam)");
+DEFINE_double(learning_rate,           0.01,       "Learning rate for SGD and Adagrad.");
+DEFINE_double(reg,                     0.0,        "What penalty to place on L2 norm of weights?");
+// model
+DEFINE_int32(input_size,               100,        "Size of embeddings.");
+DEFINE_int32(hidden,                   100,        "What hidden size to use.");
+DEFINE_int32(stack_size,               2,          "How tall is the great LSTM tower.");
+DEFINE_bool(lstm_shortcut,             true,       "Should shortcut be used in LSTMs");
+DEFINE_bool(lstm_memory_feeds_gates,   true,       "Should memory be fed to gates in LSTMs");
+DEFINE_double(dropout,                 0.3,        "How much dropout noise to add to the problem ?");
+DEFINE_double(memory_penalty,          0.1,        "Coefficient in front of memory penalty");
+DEFINE_string(memory_penalty_curve,    "flat",     "Type of annealing used on gate memory penalty (flat, linear, square)");
+// features
+DEFINE_bool(svd_init,                  true,       "Initialize weights using SVD?");
+DEFINE_bool(end_token,                 true,       "Whether to add a token indicating end of sentence.");
 ThreadPool* pool;
+
+
+/*template<typename T>
+class SparseStackedLSTM : public StackedLSTM<T> {
+    SparseStackedLSTM() : StackedLSTM<T>() {
+    }
+
+    SparseStackedLSTM(int input_size,
+                      vector<int> hidden_size,
+                      bool shortcut,
+                      bool memory_feeds_gates) :
+            StackedLSTM<T>(input_size, hidden_size, shortcut, memory_feeds_gates) {
+    }
+};*/
+
+template<typename T>
+class ParaphraseModel {
+    public:
+        int input_size;
+        int vocab_size;
+        vector<int> hidden_sizes;
+        T dropout_probability;
+
+        StackedLSTM<T> sentence_encoder;
+        Mat<T> end_of_sentence_token;
+        Mat<T> embedding_matrix;
+
+        Mat<T> similarity_bias;
+
+        ParaphraseModel(int input_size, int vocab_size, vector<int> hidden_sizes, T dropout_probability) :
+                input_size(input_size),
+                vocab_size(vocab_size),
+                hidden_sizes(hidden_sizes),
+                dropout_probability(dropout_probability),
+                sentence_encoder(input_size,
+                                 hidden_sizes,
+                                 FLAGS_lstm_shortcut,
+                                 FLAGS_lstm_memory_feeds_gates),
+                end_of_sentence_token(input_size, 1, weights<T>::uniform(1.0 / input_size)),
+                embedding_matrix(vocab_size, input_size, weights<T>::uniform(1.0 / input_size)),
+                similarity_bias(vsum(hidden_sizes), 1) {
+        }
+
+        ParaphraseModel(const ParaphraseModel& other, bool copy_w, bool copy_dw) :
+                input_size(other.input_size),
+                vocab_size(other.vocab_size),
+                hidden_sizes(other.hidden_sizes),
+                dropout_probability(other.dropout_probability),
+                sentence_encoder(other.sentence_encoder, copy_w, copy_dw),
+                end_of_sentence_token(other.end_of_sentence_token, copy_w, copy_dw),
+                embedding_matrix(other.embedding_matrix, copy_w, copy_dw),
+                similarity_bias(other.similarity_bias, copy_w, copy_dw) {
+
+        }
+
+        ParaphraseModel<T> shallow_copy() const {
+            return ParaphraseModel<T>(*this, false, true);
+        }
+
+        vector<Mat<T>> parameters() const {
+            vector<Mat<T>> res;
+
+            auto params = sentence_encoder.parameters();
+            res.insert(res.end(), params.begin(), params.end());
+
+            for (auto& matrix: { end_of_sentence_token,
+                                 embedding_matrix,
+                                 similarity_bias
+                                 }) {
+                res.emplace_back(matrix);
+            }
+            return res;
+        }
+
+        Mat<T> encode_sentence(vector<uint> sentence, bool use_dropout) const {
+            vector<Mat<T>> embeddings;
+            for (auto& word_idx: sentence) {
+                embeddings.emplace_back(embedding_matrix[word_idx]);
+            }
+            if (FLAGS_end_token)
+                embeddings.push_back(end_of_sentence_token);
+
+            auto out_states = sentence_encoder.activate_sequence(
+                    sentence_encoder.initial_states(),
+                    embeddings,
+                    use_dropout ? dropout_probability : 0.0);
+            return MatOps<T>::vstack(LSTM<T>::State::hiddens(out_states));
+        }
+
+        Mat<T> similarity(vector<uint> sentence1, vector<uint> sentence2, bool use_dropout) const {
+            auto sentence1_hidden = encode_sentence(sentence1, use_dropout);
+            auto sentence2_hidden = encode_sentence(sentence2, use_dropout);
+
+            return (sentence1_hidden * sentence2_hidden + similarity_bias).sum().sigmoid();
+        }
+
+        Mat<T> error(const paraphrase::numeric_example_t& example) const {
+            vector<uint> sentence1, sentence2;
+            double correct_score;
+            std::tie(sentence1, sentence2, correct_score) = example;
+
+            auto similarity_score = similarity(sentence1, sentence2, true);
+
+            return (similarity_score - correct_score)^2;
+        }
+
+        double predict(vector<uint> sentence1, vector<uint> sentence2) const {
+            graph::NoBackprop nb;
+
+            return similarity(sentence1, sentence2, false).w()(0,0);
+        }
+
+};
+
+typedef ParaphraseModel<REAL_t> model_t;
+
 
 int main (int argc,  char* argv[]) {
     GFLAGS_NAMESPACE::SetUsageMessage(
@@ -80,24 +206,11 @@ int main (int argc,  char* argv[]) {
     auto epochs = FLAGS_epochs;
     int rampup_time = 10;
 
-    vector<string> paraphrase_list = {"(3, 2)", "(4, 1)", "(5, 0)"};
-    vector<string> non_paraphrase_list = {"(1, 4)", "(0, 5)"};
-    auto similarity_score_extractor = [&paraphrase_list, &non_paraphrase_list](const string& number_column) {
-        if (utils::in_vector(paraphrase_list, number_column))
-            return 1.0;
-        if (utils::in_vector(non_paraphrase_list, number_column))
-            return 0.0;
-        return 0.5;
-    };
-
-    auto paraphrase_data = paraphrase::load(FLAGS_train, similarity_score_extractor);
-    auto embedding       = Mat<REAL_t>(100, 0);
+    auto paraphrase_data = paraphrase::STS_2015::load_train();
     auto word_vocab      = Vocab();
-    if (!FLAGS_pretrained_vectors.empty()) {
-        glove::load(FLAGS_pretrained_vectors, embedding, word_vocab, 50000);
-    } else {
-        word_vocab = Vocab(paraphrase::get_vocabulary(paraphrase_data, FLAGS_min_occurence), true);
-    }
+
+    word_vocab = Vocab(paraphrase::get_vocabulary(paraphrase_data, FLAGS_min_occurence), true);
+
     auto vocab_size     = word_vocab.size();
     auto dataset        = paraphrase::convert_to_indexed_minibatches(
         word_vocab,
@@ -107,7 +220,7 @@ int main (int argc,  char* argv[]) {
     // No validation set yet...
     decltype(dataset) validation_set;
     {
-        auto paraphrase_valid_data = paraphrase::load(FLAGS_validation, similarity_score_extractor);
+        auto paraphrase_valid_data =  paraphrase::STS_2015::load_dev();
         validation_set = paraphrase::convert_to_indexed_minibatches(
             word_vocab,
             paraphrase_valid_data,
@@ -116,27 +229,17 @@ int main (int argc,  char* argv[]) {
     }
 
     pool = new ThreadPool(FLAGS_j);
-    // Create a model with an embedding, and several stacks:
 
-    auto stack_size  = std::max(FLAGS_stack_size, 1);
+    vector<int> hidden_sizes;
 
-    auto model = FLAGS_load.empty() ? StackedGatedModel<REAL_t>(
-        FLAGS_pretrained_vectors.empty() ? word_vocab.size() : 0,
-        FLAGS_pretrained_vectors.empty() ? FLAGS_hidden : embedding.dims(1),
-        FLAGS_hidden,
-        stack_size,
-        1,
-        (FLAGS_shortcut && stack_size > 1) ? FLAGS_shortcut : false,
-        FLAGS_memory_feeds_gates,
-        FLAGS_memory_penalty) : StackedGatedModel<REAL_t>::load(FLAGS_load);
+    auto model = model_t(FLAGS_input_size,
+                         word_vocab.size(),
+                         vector<int>(FLAGS_stack_size, FLAGS_hidden),
+                         FLAGS_dropout);
 
-    if (FLAGS_shortcut && stack_size == 1) {
+    if (FLAGS_lstm_shortcut && FLAGS_stack_size == 1) {
         std::cout << "shortcut flag ignored: Shortcut connections only take effect with stack size > 1" << std::endl;
     }
-
-    // don't send the input vector to the
-    // decoder:
-    model.input_vector_to_decoder(false);
 
     int solver_type;
     if (FLAGS_solver == "adadelta") {
@@ -155,29 +258,18 @@ int main (int argc,  char* argv[]) {
     std::cout << "     Vocabulary size : " << vocab_size << std::endl
               << "      minibatch size : " << FLAGS_minibatch << std::endl
               << "   number of threads : " << FLAGS_j << std::endl
-              << "        Dropout type : " << (FLAGS_fast_dropout ? "fast" : "default") << std::endl
               << "        Dropout Prob : " << FLAGS_dropout << std::endl
               << " Max training epochs : " << FLAGS_epochs << std::endl
               << "   First Hidden Size : " << model.hidden_sizes[0] << std::endl
-              << "           LSTM type : " << (model.memory_feeds_gates ? "Graves 2013" : "Zaremba 2014") << std::endl
+              << "           LSTM type : " << (FLAGS_lstm_memory_feeds_gates ? "Graves 2013" : "Zaremba 2014") << std::endl
               << "          Stack size : " << model.hidden_sizes.size() << std::endl
               << " # training examples : " << dataset.size() * FLAGS_minibatch - (FLAGS_minibatch - dataset[dataset.size() - 1].size()) << std::endl
-              << " # layers -> decoder : " << model.decoder.matrices.size() << std::endl
               << "              Solver : " << FLAGS_solver << std::endl;
-    if (FLAGS_embedding_learning_rate > 0) {
-        std::cout << " Embedding step size : " << FLAGS_embedding_learning_rate << std::endl;
-    }
-
-    if (!FLAGS_pretrained_vectors.empty()) {
-        std::cout << "  Pretrained Vectors : " << FLAGS_pretrained_vectors << std::endl;
-        model.embedding = embedding;
-    }
 
     vector<vector<Mat<REAL_t>>> thread_params;
-    vector<vector<Mat<REAL_t>>> thread_embedding_params;
 
     // what needs to be optimized:
-    vector<StackedGatedModel<REAL_t>> thread_models;
+    vector<model_t> thread_models;
     for (int i = 0; i < FLAGS_j; i++) {
         // create a copy for each training thread
         // (shared memory mode = Hogwild)
@@ -186,48 +278,28 @@ int main (int argc,  char* argv[]) {
         auto thread_model_params = thread_models.back().parameters();
         // take a slice of all the parameters except for embedding.
         thread_params.emplace_back(
-            thread_model_params.begin() + 1,
+            thread_model_params.begin(),
             thread_model_params.end()
         );
-        // then add the embedding (the first parameter of StackeModel)
-        thread_embedding_params.emplace_back(
-            thread_model_params.begin(),
-            thread_model_params.begin() + 1
-        );
     }
-    vector<Mat<REAL_t>> params;
-    vector<Mat<REAL_t>> embedding_params;
-    {
-        auto temp  = model.parameters();
-        params = vector<Mat<REAL_t>>(temp.begin()+1, temp.end());
-        embedding_params.push_back(model.parameters()[0]);
-    }
+    auto params = model.parameters();
 
     // Rho value, eps value, and gradient clipping value:
     std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver;
-    std::shared_ptr<Solver::AbstractSolver<REAL_t>> embedding_solver;
     switch (solver_type) {
         case ADADELTA_TYPE:
             solver = make_shared<Solver::AdaDelta<REAL_t>>(params, 0.95, 1e-9, 100.0, (REAL_t) FLAGS_reg);
-            embedding_solver = make_shared<Solver::AdaDelta<REAL_t>>(embedding_params, 0.95, 1e-9, 100.0, 0.0);
             break;
         case ADAM_TYPE:
             solver = make_shared<Solver::Adam<REAL_t>>(params, 0.1, 0.001, 1e-9, 100.0, (REAL_t) FLAGS_reg);
-            embedding_solver = make_shared<Solver::Adam<REAL_t>>(embedding_params, 0.1, 0.001, 1e-9, 100.0, 0.0);
             break;
         case SGD_TYPE:
             solver = make_shared<Solver::SGD<REAL_t>>(params, 100.0, (REAL_t) FLAGS_reg);
-            embedding_solver = make_shared<Solver::SGD<REAL_t>>(embedding_params, 100.0, 0.0);
             dynamic_cast<Solver::SGD<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
-            dynamic_cast<Solver::SGD<REAL_t>*>(embedding_solver.get())->step_size = (
-                FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate);
             break;
         case ADAGRAD_TYPE:
             solver = make_shared<Solver::AdaGrad<REAL_t>>(params, 1e-9, 100.0, (REAL_t) FLAGS_reg);
-            embedding_solver = make_shared<Solver::AdaGrad<REAL_t>>(embedding_params, 1e-9, 100.0, 0.0);
             dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
-            dynamic_cast<Solver::AdaGrad<REAL_t>*>(embedding_solver.get())->step_size = (
-                FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate);
             break;
         default:
             utils::exit_with_message("Did not recognize this solver type.");
@@ -241,29 +313,22 @@ int main (int argc,  char* argv[]) {
     REAL_t best_score = 0.0;
 
     shared_ptr<Visualizer> visualizer;
-    if (!FLAGS_visualizer.empty()) {
-        try {
-            visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
-        } catch (std::runtime_error e) {
-            std::cout << e.what() << std::endl; // could not connect to redis.
-        }
-    }
-
-    auto pred_fun = [&model](vector<uint>& sentence1, vector<uint>& sentence2) {
-        // Write me
-        return 2.0;
-    };
+    if (!FLAGS_visualizer.empty())
+        visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
 
     // if no training should occur then use the validation set
     // to see how good the loaded model is.
     if (epochs == 0) {
-        best_validation_score = paraphrase::pearson_correlation(validation_set, pred_fun, FLAGS_j);
+        best_validation_score = paraphrase::pearson_correlation(
+                validation_set,
+                std::bind(&model_t::predict, &model, _1, _2),
+                FLAGS_j);
         std::cout << "correlation = " << best_validation_score << std::endl;
     }
 
     while (patience < FLAGS_patience && epoch < epochs) {
 
-        if (memory_penalty_curve_type == 1) { // linear
+        /*if (memory_penalty_curve_type == 1) { // linear
             model.memory_penalty = std::min(
                 FLAGS_memory_penalty,
                 (REAL_t) (FLAGS_memory_penalty * std::min(1.0, ((double)(epoch) / (double)(rampup_time))))
@@ -285,42 +350,39 @@ int main (int argc,  char* argv[]) {
                     (REAL_t) (FLAGS_memory_penalty * std::min(1.0, ((double)(epoch * epoch) / (double)(rampup_time * rampup_time))))
                 );
             }
-        }
+        }*/
 
-        stringstream ss;
-        ss << "Epoch " << ++epoch;
         atomic<int> batches_processed(0);
 
         ReportProgress<double> journalist(
-            ss.str(),      // what to say first
+            utils::MS() << "Epoch " << ++epoch, // what to say first
             dataset.size() // how many steps to expect before being done with epoch
         );
 
         for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
-            pool->run([&word_vocab, &visualizer, &solver_type, &thread_embedding_params, &thread_params, &thread_models, batch_id, &journalist, &solver, &embedding_solver, &dataset, &best_validation_score, &batches_processed]() {
+            pool->run([&word_vocab, &visualizer, &solver_type, &thread_params, &thread_models,
+                       batch_id, &journalist, &solver, &dataset,
+                       &best_validation_score, &batches_processed]() {
                 auto& thread_model     = thread_models[ThreadPool::get_thread_number()];
                 auto& params           = thread_params[ThreadPool::get_thread_number()];
-                auto& embedding_params = thread_embedding_params[ThreadPool::get_thread_number()];
                 auto& minibatch        = dataset[batch_id];
                 // many forward steps here:
-                for (auto & example : minibatch) {
+                for (auto& example : minibatch) {
                     auto error = MatOps<REAL_t>::consider_constant(Mat<REAL_t>(1,1));
 
-                    // Your code goes here
+                    thread_model.error(example);
 
                     // total error is prediction error + memory usage.
-                    if (thread_model.memory_penalty > 0) {
+                    /*if (thread_model.memory_penalty > 0) {
                         error = error + MatOps<REAL_t>::add(memories) * thread_model.memory_penalty;
-                    }
+                    }*/
                     error.grad();
                     graph::backward(); // backpropagate
                 }
                 // One step of gradient descent
                 solver->step(params);
-                // no L2 penalty on embedding:
-                embedding_solver->step(embedding_params);
 
-                if (visualizer != nullptr) {
+                /*if (visualizer != nullptr) {
                     visualizer->throttled_feed(seconds(5), [&word_vocab, &visualizer, &minibatch, &thread_model]() {
                         // pick example
                         auto& example = std::get<0>(minibatch[utils::randint(0, minibatch.size()-1)]);
@@ -331,17 +393,19 @@ int main (int argc,  char* argv[]) {
 
                         return psentence.to_json();
                     });
-                }
+                }*/
                 // report minibatch completion to progress bar
                 journalist.tick(++batches_processed, best_validation_score);
             });
         }
         pool->wait_until_idle();
         journalist.done();
-        auto new_validation = paraphrase::pearson_correlation(validation_set, pred_fun, FLAGS_j);
+        auto new_validation = paraphrase::pearson_correlation(
+            validation_set,
+            std::bind(&model_t::predict, &model, _1, _2),
+            FLAGS_j);
         if (solver_type == ADAGRAD_TYPE) {
             solver->reset_caches(params);
-            embedding_solver->reset_caches(embedding_params);
         }
         if (new_validation + 1e-6 < best_validation_score) {
             // lose patience:
@@ -360,14 +424,14 @@ int main (int argc,  char* argv[]) {
         if (new_validation > best_score) {
             best_score = new_validation;
             // save best:
-            if (!FLAGS_save_location.empty()) {
+            /*if (!FLAGS_save_location.empty()) {
                 model.save(FLAGS_save_location);
                 best_file = FLAGS_save_location;
-            }
+            }*/
         }
     }
 
-    if (!FLAGS_test.empty()) {
+    /*if (!FLAGS_test.empty()) {
         auto test_set =  // load test set.
 
         if (!FLAGS_save_location.empty() && !best_file.empty()) {
@@ -408,5 +472,5 @@ int main (int argc,  char* argv[]) {
 
 
     // Write test accuracy here.
-
+    */
 }

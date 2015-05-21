@@ -53,6 +53,22 @@ class StackedGatedModel : public StackedModel<Z> {
         const gate_t gate;
         Z memory_penalty;
         virtual std::vector<mat> parameters() const;
+        /**
+        Configuration
+        -------------
+
+        Return a map with keys corresponding to hyperparameters for
+        the model and where values are vectors of strings containing
+        the assignments to each hyperparameter for the loaded model.
+
+        Useful for saving the model to file and reloading it later.
+
+        Outputs
+        -------
+
+        std::map<std::string, std::vector< std::string >> config : configuration map
+
+        **/
         virtual config_t configuration() const;
         static StackedGatedModel<Z> load(std::string);
         static StackedGatedModel<Z> build_from_CLI(std::string load_location,

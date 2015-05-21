@@ -18,23 +18,6 @@ vector<Mat<Z>> StackedGatedModel<Z>::parameters() const {
     return parameters;
 }
 
-/**
-Configuration
--------------
-
-Return a map with keys corresponding to hyperparameters for
-the model and where values are vectors of strings containing
-the assignments to each hyperparameter for the loaded model.
-
-Useful for saving the model to file and reloading it later.
-
-Outputs
--------
-
-std::map<std::string, std::vector< std::string >> config : configuration map
-
-**/
-
 template<typename Z>
 typename StackedGatedModel<Z>::config_t StackedGatedModel<Z>::configuration() const  {
     auto config = StackedModel<Z>::configuration();

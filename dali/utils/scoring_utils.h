@@ -5,6 +5,7 @@
 #include <string>
 #include <iostream>
 #include <iomanip>
+#include <atomic>
 
 namespace utils {
     class ConfusionMatrix {

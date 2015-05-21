@@ -46,6 +46,11 @@ namespace paraphrase {
         paraphrase_full_dataset& dataset,
         int minibatch_size);
 
+    paraphrase_minibatch_dataset convert_to_character_minibatches(
+        const utils::CharacterVocab& word_vocab,
+        paraphrase_full_dataset& dataset,
+        int minibatch_size);
+
     /**
     Pearson Correlation
     -------------------

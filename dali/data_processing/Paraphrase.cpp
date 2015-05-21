@@ -136,6 +136,35 @@ namespace paraphrase {
         return dataset;
     }
 
+    paraphrase_minibatch_dataset convert_to_character_minibatches(
+            const utils::CharacterVocab& character_vocab,
+            paraphrase_full_dataset& examples,
+            int minibatch_size) {
+        paraphrase_minibatch_dataset dataset;
+
+        auto to_index_pair = [&character_vocab](example_t& example) {
+            return numeric_example_t(
+                character_vocab.encode(std::get<0>(example)),
+                character_vocab.encode(std::get<1>(example)),
+                std::get<2>(example)
+            );
+        };
+        if (dataset.size() == 0)
+            dataset.emplace_back(0);
+        for (auto& example : examples) {
+            // create new minibatch
+            if (dataset[dataset.size()-1].size() == minibatch_size) {
+                dataset.emplace_back(0);
+                dataset.back().reserve(minibatch_size);
+            }
+            // add example
+            dataset[dataset.size()-1].emplace_back(
+                to_index_pair(example)
+            );
+        }
+        return dataset;
+    }
+
     template<typename T>
     vector<T> collect_predictions(
             paraphrase_minibatch_dataset& dataset,

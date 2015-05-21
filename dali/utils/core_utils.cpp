@@ -866,6 +866,55 @@ namespace utils {
     Vocab::Vocab(vector<string>&& _index2word, bool _unknown_word) : Vocab(_index2word, _unknown_word) {
     }
 
+    CharacterVocab::CharacterVocab(int min_char, int max_char)
+        : min_char(min_char), max_char(max_char) {
+        assert2(max_char > min_char, MS() << "Maximum character (" << max_char << ") must be larger than minimum character (" << min_char << ").");
+        assert2(max_char >= 0 && min_char >= 0, "Cannot have negative characters in mapping");
+    }
+
+    size_t CharacterVocab::size() const {
+        return (size_t) ((max_char - min_char) + 1);
+    }
+
+    vector<typename Vocab::ind_t> CharacterVocab::encode(const str_sequence& words) const {
+        vector<ind_t> result;
+        int char_size = 0;
+        // add all characters:
+        for (auto& w : words) char_size += w.size();
+        // for spaces:
+        if (words.size() > 0) char_size += words.size() - 1;
+
+        result.reserve(char_size);
+        int word_idx = 0;
+        for (auto& w : words) {
+            for (auto& c : w) {
+                if ((int)c >= min_char && (int)c < max_char) {
+                    result.emplace_back(c - min_char);
+                } else {
+                    // all unknown get replaced by max_char
+                    result.emplace_back(max_char);
+                }
+            }
+            word_idx++;
+            if (word_idx < words.size()) result.emplace_back(' ');
+        }
+        return result;
+    }
+
+    vector<string> CharacterVocab::decode(Indexing::Index indices) const {
+        vector<string> result;
+        result.reserve(indices.size());
+        auto stream = MS();
+        for (auto& index : indices) {
+            if (index == max_char) {
+                stream << "█";
+            } else {
+                stream << ((char) (index + min_char));
+            }
+        }
+        return tokenize(stream);
+    }
+
     template<typename T>
     T from_string(const std::string& s) {
         std::istringstream stream (s);

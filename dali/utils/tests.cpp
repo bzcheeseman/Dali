@@ -15,6 +15,7 @@ using std::string;
 using std::stringstream;
 using std::vector;
 using utils::OntologyBranch;
+using utils::CharacterVocab;
 
 
 TEST(ThreadPool, wait_until_idle) {
@@ -262,4 +263,13 @@ TEST(utils, pearson_correlation) {
     auto corr = utils::pearson_correlation(x,y);
 
     ASSERT_NEAR(corr, 0.5298, 1e-5);
+}
+
+TEST(utils, CharacterVocab) {
+    auto seq      = vector<string>{"bob", "ate", "an", "apple"};
+    auto vocab    = CharacterVocab(0, 255);
+    auto chars    = vocab.encode(seq);
+    auto seq_size = utils::join(seq, " ").size();
+    ASSERT_EQ(chars.size(), seq_size);
+    ASSERT_EQ(seq, vocab.decode(chars));
 }

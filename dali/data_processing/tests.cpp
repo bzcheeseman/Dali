@@ -94,9 +94,9 @@ TEST(paraphrase, load) {
     ASSERT_EQ(paraphrase_data.size(), 4);
 
     ASSERT_EQ(std::get<2>(paraphrase_data[0]), 1.0);
-    ASSERT_EQ(std::get<2>(paraphrase_data[1]), 0.2);
-    ASSERT_EQ(std::get<2>(paraphrase_data[2]), 0.6);
-    ASSERT_EQ(std::get<2>(paraphrase_data[3]), 0.4);
+    ASSERT_EQ(std::get<2>(paraphrase_data[1]), 0.0);
+    ASSERT_EQ(std::get<2>(paraphrase_data[2]), 1.0);
+    ASSERT_EQ(std::get<2>(paraphrase_data[3]), 0.5);
 
     auto expected = utils::tokenize(
         "But my bro from the 757 EJ Manuel is the 1st QB gone"

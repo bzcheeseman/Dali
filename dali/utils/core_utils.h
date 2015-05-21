@@ -131,6 +131,19 @@ namespace utils {
                     size_t size() const;
         };
 
+        class CharacterVocab {
+                public:
+                    typedef uint ind_t;
+                    ind_t min_char;
+                    ind_t max_char;
+
+                    std::vector<ind_t> encode(const str_sequence& words) const;
+                    std::vector<std::string> decode(Indexing::Index) const;
+
+                    CharacterVocab(int min_char, int max_char);
+                    size_t size() const;
+        };
+
         template<typename T>
         void tuple_sum(std::tuple<T, T>&, std::tuple<T,T>);
         /**

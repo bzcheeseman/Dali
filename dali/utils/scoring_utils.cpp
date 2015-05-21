@@ -56,6 +56,20 @@ namespace utils {
         fn = _fn;
         return *this;
     }
+
+    int Accuracy::true_positive() const {
+        return tp;
+    }
+    int Accuracy::true_negative() const {
+        return tn;
+    }
+    int Accuracy::false_positive() const {
+        return fp;
+    }
+    int Accuracy::false_negative() const {
+        return fn;
+    }
+
     double Accuracy::precision() const {
         return (double) tp / ((double)(tp + fp));
     }
@@ -67,4 +81,37 @@ namespace utils {
         auto R = recall();
         return (2.0 * P * R) / (P + R);
     }
+
+    template<typename T>
+    double pearson_correlation(const std::vector<T>& x, const std::vector<T>& y) {
+        utils::assert2(y.size() == x.size(), "Not an equal number of abscissa and ordinates.");
+
+        double avg_x = 0;
+        int    total = x.size();
+        for (auto& datapoint : x) avg_x += datapoint;
+        avg_x /= total;
+
+        double avg_y = 0;
+        for (auto& prediction : y) avg_y += prediction;
+        avg_y /= total;
+
+        double xdiff        = 0;
+        double ydiff        = 0;
+        double xdiff_square = 0;
+        double ydiff_square = 0;
+        double diffprod     = 0;
+
+        for (int example_idx = 0; example_idx < total; example_idx++) {
+            xdiff = x[example_idx] - avg_x;
+            ydiff = y[example_idx] - avg_y;
+            diffprod += xdiff * ydiff;
+            xdiff_square += xdiff * xdiff;
+            ydiff_square += ydiff * ydiff;
+        }
+        if (xdiff_square == 0 || ydiff_square == 0) return 0.0;
+        return diffprod / std::sqrt(xdiff_square * ydiff_square);
+    }
+
+    template double pearson_correlation(const std::vector<float>& x, const std::vector<float>& y);
+    template double pearson_correlation(const std::vector<double>& x, const std::vector<double>& y);
 }

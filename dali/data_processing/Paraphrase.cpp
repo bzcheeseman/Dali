@@ -174,37 +174,14 @@ namespace paraphrase {
         std::function<double(std::vector<uint>&, std::vector<uint>&)> predict,
         int num_threads) {
 
-        double avg_x;
-        int    total;
+        vector<double> gold_labels;
         for (auto& minibatch : dataset) {
-            total += minibatch.size();
-            for (auto& example : minibatch) avg_x += std::get<2>(example);
+            for (auto& example : minibatch) gold_labels.emplace_back(std::get<2>(example));
         }
-        avg_x /= total;
 
         auto predictions = collect_predictions<double>(dataset, predict, num_threads);
-        assert2(predictions.size() == total, "Not an equal number of examples and predictions.");
 
-        double avg_y;
-        for (auto& pred : predictions) avg_y += pred;
-        avg_y /= total;
-
-        double xdiff, ydiff, xdiff_square, ydiff_square, diffprod;
-
-        int example_idx = 0;
-        for (auto& minibatch : dataset) {
-            for (auto& example : minibatch) {
-                xdiff = std::get<2>(example) - avg_x;
-                ydiff = predictions[example_idx] - avg_y;
-                diffprod += xdiff * ydiff;
-                xdiff_square += xdiff * xdiff;
-                ydiff_square += ydiff * ydiff;
-                example_idx++;
-            }
-        }
-        if (xdiff_square == 0 || ydiff_square == 0) return 0.0;
-
-        return diffprod / std::sqrt(xdiff_square * ydiff_square);
+        return utils::pearson_correlation(gold_labels, predictions);
     }
 
     utils::Accuracy binary_accuracy(
@@ -214,9 +191,11 @@ namespace paraphrase {
 
         auto predictions = collect_predictions<Label>(dataset, predict, num_threads);
 
-
-        int example_idx = 0;
-        int true_positive, false_positive, true_negative, false_negative;
+        int example_idx    = 0;
+        int true_positive  = 0;
+        int false_positive = 0;
+        int true_negative  = 0;
+        int false_negative = 0;
 
         Label correct_label;
         for (auto& minibatch : dataset) {

@@ -254,3 +254,12 @@ TEST(utils, smart_parser) {
     assert(sp.next_line() == "lol lone 123");
     assert(sp.next_int() == 155);
 }
+
+TEST(utils, pearson_correlation) {
+    vector<double> x = {43, 21, 25, 42, 57, 59};
+    vector<double> y = {99, 65, 79, 75, 87, 81};
+
+    auto corr = utils::pearson_correlation(x,y);
+
+    ASSERT_NEAR(corr, 0.5298, 1e-5);
+}

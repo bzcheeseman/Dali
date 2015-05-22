@@ -100,7 +100,7 @@ TEST(beam_search, beam_search_automata) {
     ASSERT_NEAR(beam_search_results.back().score, std::log(0.5) * 20, 1e-5);
 }
 
-TEST(beam_search, beam_search2_szymon) {
+TEST(beam_search, beam_search_score_test) {
     using beam_search::beam_search2;
     using beam_search::BeamSearchResult;
     using utils::iter_to_str;

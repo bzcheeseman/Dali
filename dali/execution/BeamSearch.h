@@ -16,12 +16,12 @@ namespace beam_search {
 
         BeamSearchResult() {}
 
-        BeamSearchResult(state_t state,
-                         std::vector<uint> solution,
-                         REAL_t score) :
-                state(state),
-                solution(solution),
-                score(score) {
+        BeamSearchResult(state_t _state,
+                         std::vector<uint> _solution,
+                         REAL_t _score) :
+                state(_state),
+                solution(_solution),
+                score(_score) {
         }
     };
 
@@ -36,26 +36,26 @@ namespace beam_search {
 
         BeamSearchProposal() {}
 
-        BeamSearchProposal(result_t prev_result,
-                         REAL_t score,
-                         uint candidate_idx,
-                         bool finialized) :
-                prev_result(prev_result),
-                score(score),
-                candidate_idx(candidate_idx),
-                finalized(finalized) {
+        BeamSearchProposal(result_t _prev_result,
+                         REAL_t _score,
+                         uint _candidate_idx,
+                         bool _finalized) :
+                prev_result(_prev_result),
+                score(_score),
+                candidate_idx(_candidate_idx),
+                finalized(_finalized) {
         }
 
-        static BeamSearchProposal finalized_solution(result_t result) {
+        static BeamSearchProposal finalized_solution(result_t _result) {
             return BeamSearchProposal<REAL_t,state_t>(
-                    result, result.score, 0, true);
+                    _result, _result.score, 0, true);
         }
 
-        static BeamSearchProposal solution_candidate(result_t prev_result,
-                                                     REAL_t updated_score,
-                                                     uint candidate_idx) {
+        static BeamSearchProposal solution_candidate(result_t _prev_result,
+                                                     REAL_t _updated_score,
+                                                     uint _candidate_idx) {
             return BeamSearchProposal<REAL_t,state_t>(
-                    prev_result, updated_score, candidate_idx, false);
+                    _prev_result, _updated_score, _candidate_idx, false);
         }
 
 
@@ -107,7 +107,7 @@ namespace beam_search {
             });
             proposals.resize(std::min((size_t)beam_width, proposals.size()));
 
-            results.clear();
+            results = std::vector<result_t>();
             for(auto& proposal : proposals) {
                 if (proposal.finalized) {
                     results.push_back(proposal.prev_result);
@@ -115,7 +115,6 @@ namespace beam_search {
                     auto new_state = make_choice(proposal.prev_result.state, proposal.candidate_idx);
                     auto new_solution = proposal.prev_result.solution;
                     new_solution.emplace_back(proposal.candidate_idx);
-
                     results.emplace_back(new_state, new_solution, proposal.score);
                 }
             }

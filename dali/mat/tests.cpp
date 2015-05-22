@@ -690,6 +690,16 @@ TEST_F(LayerTests, multi_input_lstm_test) {
     }
 }
 
+TEST_F(MatrixTests, log_exp) {
+    EXPERIMENT_REPEAT {
+        graph::NoBackprop nb;
+        auto mat = Mat<R>(10, 10, weights<R>::uniform(0.1, 20.0));
+        auto log_mat = mat.log();
+        auto exp_log_mat = log_mat.exp();
+        ASSERT_MATRIX_CLOSE(mat, exp_log_mat, 1e-6);
+    }
+}
+
 TEST_F(LayerTests, activate_sequence) {
     vector<int> hidden_sizes = {7, 10};
     int input_size = 5;

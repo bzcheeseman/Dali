@@ -435,6 +435,15 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
                      const std::string& in_between="");
 
     bool vs_equal(const VS& a, const VS& b);
+
+    template<typename T>
+    bool vectors_equal(std::vector<T> a, std::vector<T> b) {
+        if (a.size() != b.size()) return false;
+        for (int i = 0; i < a.size(); ++i)
+            if (a[i] != b[i]) return false;
+        return true;
+    }
+
     /**
     Triggers To Strings
     -------------------
@@ -562,6 +571,21 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
             template<class T>
             MS& operator<<(T const& VAR) { stream << VAR; return *this; }
     };
+
+    template<typename T>
+    std::string iter_to_str(T begin, T end)
+    {
+        std::stringstream ss;
+        bool first = true;
+        for (; begin != end; begin++)
+        {
+            if (!first)
+                ss << ", ";
+            ss << *begin;
+            first = false;
+        }
+        return ss.str();
+    }
 
     template<typename T> class Generator;
 

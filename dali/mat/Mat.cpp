@@ -151,6 +151,11 @@ const dim_t Mat<R>::dims(int idx) const {
 }
 
 template<typename R>
+bool Mat<R>::empty() const {
+    return number_of_elements() == 0;
+}
+
+template<typename R>
 const int Mat<R>::id() const {
     if (m != nullptr)
         return m->id;
@@ -543,6 +548,31 @@ Mat<R> Mat<R>::Empty(dim_t n, dim_t d) {
     return Mat(n, d, false);
 }
 
+
+
+template<typename R>
+Mat<R> Mat<R>::operator+(Mat<R> other) const {
+    return MatOps<R>::add(*this, other);
+}
+
+template<typename R>
+Mat<R> Mat<R>::operator+(R other) const {
+    return MatOps<R>::add(*this, other);
+}
+
+
+template<typename R>
+Mat<R> Mat<R>::operator-(Mat<R> other) const {
+    return MatOps<R>::sub(*this, other);
+}
+
+template<typename R>
+Mat<R> Mat<R>::operator-(R other) const {
+    return MatOps<R>::add(*this, -other);
+}
+
+
+
 template<typename R>
 Mat<R> Mat<R>::operator*(Mat<R> other) const {
     return MatOps<R>::eltmul(*this, other);
@@ -551,6 +581,12 @@ Mat<R> Mat<R>::operator*(Mat<R> other) const {
 template<typename R>
 Mat<R> Mat<R>::operator*(R alpha) const {
     return MatOps<R>::eltmul(*this, alpha);
+}
+
+
+template<typename R>
+Mat<R> Mat<R>::operator-() const {
+    return (*this) * -1;
 }
 
 template<typename R>
@@ -563,31 +599,7 @@ Mat<R> Mat<R>::operator/(R alpha) const {
     return MatOps<R>::eltdivide(*this, alpha);
 }
 
-template<typename R>
-Mat<R> Mat<R>::operator+(Mat<R> other) const {
-    return MatOps<R>::add(*this, other);
-}
 
-template<typename R>
-Mat<R> Mat<R>::operator-(Mat<R> other) const {
-    return MatOps<R>::sub(*this, other);
-}
-
-
-template<typename R>
-Mat<R> Mat<R>::operator-() const {
-    return (*this) * -1;
-}
-
-template<typename R>
-Mat<R> Mat<R>::operator+(R other) const {
-    return MatOps<R>::add(*this, other);
-}
-
-template<typename R>
-Mat<R> Mat<R>::operator-(R other) const {
-    return MatOps<R>::add(*this, -other);
-}
 
 template<typename R>
 Mat<R> Mat<R>::operator^(R other) const {
@@ -755,6 +767,23 @@ namespace utils {
         }
     }
 
+    template <typename T>
+    vector<size_t> argsort_rowwise(Mat<T> &m) {
+        // initialize original index locations
+        vector<size_t> idx(m.dims(0));
+        for (size_t i = 0; i != idx.size(); ++i) idx[i] = i;
+
+        // sort indexes based on comparing values in v
+        sort(idx.begin(), idx.end(), [&m](size_t i1, size_t i2) {
+            return m.w()(i1) < m.w()(i2);
+        });
+
+        return idx;
+    }
+
+    template vector<size_t> argsort_rowwise(Mat<float>&);
+    template vector<size_t> argsort_rowwise(Mat<double>&);
+
     template <>
     vector<size_t> argsort(const vector<Mat<float>> &v) {
         // initialize original index locations
@@ -767,7 +796,6 @@ namespace utils {
 
         return idx;
     }
-
 
     template <>
     vector<size_t> argsort(const vector<Mat<double>> &v) {

@@ -164,7 +164,10 @@ class Mat {
 
         const std::vector<dim_t>& dims() const;
         const dim_t dims(int idx) const;
+
         unsigned int number_of_elements() const;
+
+        bool empty() const;
 
         const int id() const;
 
@@ -229,15 +232,20 @@ class Mat {
         */
         int argmax_slice(int lower, int upper) const;
 
+        Mat<R> operator-() const;
+
+        Mat<R> operator+(Mat<R>) const;
+        Mat<R> operator+(R) const;
+
+        Mat<R> operator-(Mat<R>) const;
+        Mat<R> operator-(R) const;
+
         Mat<R> operator*(Mat<R> other) const;
         Mat<R> operator*(R alpha) const;
+
         Mat<R> operator/(Mat<R> other) const;
         Mat<R> operator/(R alpha) const;
-        Mat<R> operator+(Mat<R>) const;
-        Mat<R> operator-(Mat<R>) const;
-        Mat<R> operator-() const;
-        Mat<R> operator+(R) const;
-        Mat<R> operator-(R) const;
+
         Mat<R> operator^(R) const;
         Mat<R> operator^(int) const;
 
@@ -281,6 +289,9 @@ namespace std {
 }
 
 namespace utils {
+    template<typename T>
+    std::vector<size_t> argsort_rowwise(Mat<T> &m);
+
     template<typename R>
     void save_matrices(std::vector<Mat<R>>, std::string);
 

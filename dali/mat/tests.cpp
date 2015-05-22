@@ -54,7 +54,7 @@ over each argument to a functor.
 **/
 template<typename R>
 bool gradient_same(
-        std::function<Mat<R>(std::vector<Mat<R>>)> functor,
+        std::function<Mat<R>(std::vector<Mat<R>>&)> functor,
         std::vector<Mat<R>> arguments,
         R tolerance    = 1e-5,
         R grad_epsilon = 1e-9) {
@@ -249,6 +249,19 @@ TEST_F(MatrixTests, matrix_divide_scalar) {
         ASSERT_TRUE(gradient_same<R>(functor, {A}, 1e-3));
     }
 }
+
+/*
+TEST_F(MatrixTests, divide_inplace) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        Xs[0] /= 20.0;
+        return (Xs[0] - 2.0) ^ 2;
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(0.001, 20.0));
+        ASSERT_TRUE(gradient_same<R>(functor, {A}, 1e-4));
+    }
+}
+*/
 
 typedef MemorySafeTest MatOpsTests;
 

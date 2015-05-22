@@ -9,13 +9,18 @@
 #include "dali/core.h"
 #include "dali/utils.h"
 #include "dali/mat/model.h"
+#include "dali/execution/BeamSearch.h"
 #include "dali/visualizer/visualizer.h"
 
 using namespace std::placeholders;
+
 using babi::Fact;
 using babi::Item;
 using babi::QA;
 using babi::Story;
+using beam_search::BeamSearchResult;
+using Eigen::MatrixXd;
+using std::chrono::seconds;
 using std::get;
 using std::make_shared;
 using std::make_tuple;
@@ -23,23 +28,22 @@ using std::set;
 using std::shared_ptr;
 using std::string;
 using std::tie;
+using std::to_string;
 using std::tuple;
 using std::vector;
+using utils::assert2;
 using utils::in_vector;
+using utils::MS;
 using utils::reversed;
 using utils::Timer;
 using utils::Vocab;
-using Eigen::MatrixXd;
-using std::chrono::seconds;
-using utils::assert2;
-using utils::MS;
-using std::to_string;
 
 DEFINE_int32(j,                        1,      "Number of threads");
 DEFINE_bool(solver_mutex,              false,  "Synchronous execution of solver step.");
 DEFINE_int32(minibatch,                100,    "How many stories to put in a single batch.");
 DEFINE_int32(max_epochs,               2000,   "maximum number of epochs for training");
-DEFINE_int32(patience,                 200,   "after <patience> epochs of performance decrease we stop.");
+DEFINE_int32(patience,                 200,    "after <patience> epochs of performance decrease we stop.");
+DEFINE_int32(beam_width,               5,      "width of the beam for prediction.");
 // generic lstm properties
 DEFINE_bool(lstm_shortcut,             true,   "Should shortcut be used in LSTMs");
 DEFINE_bool(lstm_feed_mry,             true,   "Should memory be fed to gates in LSTMs");
@@ -72,14 +76,15 @@ std::shared_ptr<Visualizer> visualizer;
 
 template<typename T>
 struct StoryActivation {
-    Mat<T> hidden;
+    typedef typename StackedLSTM<T>::state_t lstm_state_t;
+    lstm_state_t lstm_state;
     vector<Mat<T>> fact_gate_memory;
     vector<vector<Mat<T>>> word_gate_memory;
 
-    StoryActivation(Mat<T> hidden,
+    StoryActivation(lstm_state_t lstm_state,
                     vector<Mat<T>> fact_gate_memory,
                     vector<vector<Mat<T>>> word_gate_memory) :
-            hidden(hidden),
+            lstm_state(lstm_state),
             fact_gate_memory(fact_gate_memory),
             word_gate_memory(word_gate_memory) {
     }
@@ -105,6 +110,9 @@ struct StoryActivation {
 
 template<typename T>
 class LstmBabiModel {
+    const uint MAX_ANSWER_LENGTH = 5;
+    typedef typename StackedLSTM<T>::state_t lstm_state_t;
+
     StackedLSTM<T> fact_model;
     Mat<T> fact_embeddings;
 
@@ -117,6 +125,7 @@ class LstmBabiModel {
     SecondOrderCombinator<T> fact_gate;
     Mat<T> fact_gate_embeddings;
 
+    Mat<T> answer_embeddings;
     StackedLSTM<T> hl_model;
 
     Mat<T> please_start_prediction;
@@ -142,6 +151,7 @@ class LstmBabiModel {
                                  question_embeddings,
                                  word_gate_embeddings,
                                  fact_gate_embeddings,
+                                 answer_embeddings,
                                  please_start_prediction
                                  }) {
                 res.emplace_back(matrix);
@@ -166,6 +176,7 @@ class LstmBabiModel {
                 question_embeddings(model.question_embeddings, copy_w, copy_dw),
                 word_gate_embeddings(model.word_gate_embeddings, copy_w, copy_dw),
                 fact_gate_embeddings(model.fact_gate_embeddings, copy_w, copy_dw),
+                answer_embeddings(model.answer_embeddings, copy_w, copy_dw),
                 please_start_prediction(model.please_start_prediction, copy_w, copy_dw) {
             vocab = model.vocab;
         }
@@ -193,6 +204,7 @@ class LstmBabiModel {
 
             vocab = vocabulary;
             size_t n_words = vocab->size();
+            size_t hl_model_input = utils::vsum(vector<int>(FLAGS_text_repr_stack, FLAGS_text_repr_hidden));
 
             word_gate_embeddings =
                     Mat<T>(n_words, FLAGS_gate_input,
@@ -206,9 +218,11 @@ class LstmBabiModel {
             question_embeddings =
                     Mat<T>(n_words, FLAGS_text_repr_input,
                            weights<T>::uniform(1.0/FLAGS_text_repr_input));
+            answer_embeddings =
+                    Mat<T>(n_words, hl_model_input,
+                           weights<T>::uniform(1.0/hl_model_input));
             please_start_prediction =
-                    Mat<T>(utils::vsum(vector<int>(FLAGS_text_repr_stack, FLAGS_text_repr_hidden)), 1,
-                           weights<T>::uniform(1.0));
+                    Mat<T>(hl_model_input, 1, weights<T>::uniform(1.0));
         }
 
         vector<Mat<T>> get_embeddings(const vector<string>& words,
@@ -224,8 +238,8 @@ class LstmBabiModel {
             return seq;
         }
 
-        vector<Mat<T>> apply_gate(vector<Mat<T>> memory,
-                                  vector<Mat<T>> seq) const {
+        static vector<Mat<T>> apply_gate(vector<Mat<T>> memory,
+                                  vector<Mat<T>> seq) {
             assert(memory.size() == seq.size());
             vector<Mat<T>> gated_seq;
             for(int i=0; i < memory.size(); ++i) {
@@ -234,14 +248,8 @@ class LstmBabiModel {
             return gated_seq;
         }
 
-        Mat<T> lstm_final_activation(const vector<Mat<T>>& embeddings,
-                                     const StackedLSTM<T>& model,
-                                     T dropout_value) const {
-            auto out_states = model.activate_sequence(model.initial_states(),
-                                                     embeddings,
-                                                     dropout_value);
-            // out_state.second corresponds to LSTM hidden (as opposed to memory).
-            return MatOps<T>::vstack(LSTM<T>::State::hiddens(out_states));
+        static Mat<T> state_to_hidden(lstm_state_t state) {
+            return MatOps<T>::vstack(LSTM<T>::State::hiddens(state));
         }
 
         StoryActivation<T> activate_story(const vector<vector<string>>& facts,
@@ -269,10 +277,10 @@ class LstmBabiModel {
                     get_embeddings(reversed(fact), fact_embeddings)
                 );
 
-                auto fact_repr = lstm_final_activation(
+                auto fact_repr = state_to_hidden(fact_model.activate_sequence(
+                        fact_model.initial_states(),
                         gated_embeddings,
-                        fact_model,
-                        use_dropout ? FLAGS_text_repr_dropout : 0.0);
+                        use_dropout ? FLAGS_text_repr_dropout : 0.0));
 
                 fact_representations.push_back(fact_repr);
             }
@@ -288,10 +296,10 @@ class LstmBabiModel {
                 );
             }
             auto gated_facts = apply_gate(fact_gate_memory, fact_representations);
-            auto question_hidden = lstm_final_activation(
+            auto question_hidden = state_to_hidden(question_model.activate_sequence(
+                    question_model.initial_states(),
                     get_embeddings(reversed(question), question_embeddings),
-                    question_model,
-                    use_dropout ? FLAGS_text_repr_dropout : 0.0);
+                    use_dropout ? FLAGS_text_repr_dropout : 0.0));
 
             // There is probably a better way
             vector<Mat<T>> hl_input;
@@ -299,12 +307,97 @@ class LstmBabiModel {
             hl_input.insert(hl_input.end(), gated_facts.begin(), gated_facts.end());
             hl_input.push_back(please_start_prediction);
 
-            auto hl_hidden = lstm_final_activation(
-                    hl_input, hl_model, use_dropout ? FLAGS_hl_dropout : 0.0);
+            auto hl_final_state = hl_model.activate_sequence(
+                    hl_model.initial_states(),
+                    hl_input,
+                    use_dropout ? FLAGS_hl_dropout : 0.0);
 
-            return StoryActivation<T>(hl_hidden,
+            return StoryActivation<T>(hl_final_state,
                                       fact_gate_memory,
                                       word_gate_memories);
+        }
+
+        Mat<T> error(const vector<vector<string>>& facts,
+                     const vector<string>& question,
+                     const vector<string>& answer,
+                     vector<int> supporting_facts) const {
+
+            auto activation = activate_story(facts, question, true);
+
+            Mat<REAL_t> prediction_error(1,1);
+
+            auto current_state = activation.lstm_state;
+            auto answer_idxes = vocab->encode(answer, true);
+            for (auto& word_idx: answer_idxes) { // for word idxes with end token
+                if (FLAGS_margin_loss) {
+                    // We estimated eprically that margin loss scales as about 3.0
+                    // cross entropy. We want to put the roughly in the same bucket, so
+                    // so that improtance of gate errors and sparsity has more or less
+                    // the same effect for both types of errors.
+                    auto scores = decoder.activate(state_to_hidden(current_state));
+                    prediction_error = prediction_error +
+                            MatOps<REAL_t>::margin_loss(scores, word_idx, FLAGS_margin);
+                } else {
+                    auto log_probs = decoder.activate(state_to_hidden(current_state));
+                    prediction_error = prediction_error +
+                            MatOps<REAL_t>::softmax_cross_entropy(log_probs, word_idx);
+                }
+                current_state = hl_model.activate(
+                        current_state, answer_embeddings[word_idx], FLAGS_hl_dropout);
+            }
+            // prediction_error = prediction_error / answer_idxes.size();
+
+            Mat<REAL_t> fact_selection_error(1,1);
+
+            for (int i=0; i<activation.fact_gate_memory.size(); ++i) {
+                bool supporting = in_vector(supporting_facts, i);
+                auto partial_error = MatOps<REAL_t>::binary_cross_entropy(
+                                            activation.fact_gate_memory[i],
+                                            supporting ? 1.0 : 0.0);
+                float coeff = supporting ? 1.0 : FLAGS_unsupporting_ratio;
+
+                fact_selection_error = fact_selection_error + partial_error * coeff;
+            }
+
+            Mat<REAL_t> total_error;
+
+            total_error = prediction_error
+                        + fact_selection_error * FLAGS_fact_selection_lambda
+                        + activation.word_memory_sum() * FLAGS_word_selection_sparsity;
+
+            return total_error;
+        }
+
+        vector<BeamSearchResult<T, lstm_state_t>> my_beam_search(StoryActivation<T>& activation) const {
+            // candidate_t = int, state type = lstm_state_t,
+            auto initial_state = activation.lstm_state;
+            auto candidate_scores = [this](lstm_state_t state) -> Mat<T> {
+                auto scores = decoder.activate(LstmBabiModel<T>::state_to_hidden(state));
+                return FLAGS_margin_loss ? scores : MatOps<T>::softmax(scores).log();
+            };
+            auto make_choice = [this](lstm_state_t state, uint candidate) -> lstm_state_t {
+                return hl_model.activate(state, answer_embeddings[candidate], 0.0);
+            };
+            auto beam_search_results = beam_search::beam_search2<T, lstm_state_t>(
+                    initial_state,
+                    FLAGS_beam_width,
+                    candidate_scores,
+                    make_choice,
+                    vocab->word2index.at(utils::end_symbol),
+                    MAX_ANSWER_LENGTH);
+
+            return beam_search_results;
+        }
+
+        vector<string> predict(const vector<vector<string>>& facts,
+                       const vector<string>& question) const {
+            graph::NoBackprop nb;
+
+            auto activation = activate_story(facts, question, false);
+            auto result_as_idxes = my_beam_search(activation)[0].solution;
+            auto result = vocab->decode(result_as_idxes, true);
+
+            return result;
         }
 
         void visualize_example(const vector<vector<string>>& facts,
@@ -312,26 +405,20 @@ class LstmBabiModel {
                                const vector<string>& correct_answer) const {
             graph::NoBackprop nb;
             auto activation = activate_story(facts, question, false);
-            auto scores = decoder.activate(activation.hidden);
+            auto beam_search_results = my_beam_search(activation);
 
             shared_ptr<visualizable::FiniteDistribution<T>> vdistribution;
-            if (FLAGS_margin_loss) {
-                std::vector<REAL_t> scores_as_vec;
-                for (int i=0; i < scores.dims(0); ++i) {
-                    scores_as_vec.push_back(scores.w()(i,0));
-                }
-                auto distribution_as_vec = utils::normalize_weights(scores_as_vec);
-                vdistribution = make_shared<visualizable::FiniteDistribution<T>>(
-                        distribution_as_vec, scores_as_vec, vocab->index2word, 5);
-            } else {
-                auto distribution = MatOps<T>::softmax(scores);
-                std::vector<REAL_t> distribution_as_vec;
-                for (int i=0; i < distribution.dims(0); ++i) {
-                    distribution_as_vec.push_back(distribution.w()(i,0));
-                }
-                vdistribution = make_shared<visualizable::FiniteDistribution<T>>(
-                        distribution_as_vec, vocab->index2word, 5);
+            std::vector<REAL_t> scores_as_vec;
+            std::vector<string> beam_search_results_solutions;
+            for (auto& result: beam_search_results) {
+                scores_as_vec.push_back(
+                        FLAGS_margin_loss ? result.score : std::exp(result.score));
+                auto answer_str = vocab->decode(result.solution, true);
+                beam_search_results_solutions.push_back(utils::join(answer_str, " "));
             }
+            auto distribution_as_vec = utils::normalize_weights(scores_as_vec);
+            vdistribution = make_shared<visualizable::FiniteDistribution<T>>(
+                    distribution_as_vec, scores_as_vec, beam_search_results_solutions, 5);
 
             vector<REAL_t> facts_weights;
             vector<std::shared_ptr<visualizable::Sentence<T>>> facts_sentences;
@@ -360,57 +447,6 @@ class LstmBabiModel {
             vgrid->add_in_column(1, vdistribution);
 
             visualizer->feed(vgrid->to_json());
-        }
-
-        Mat<T> error(const vector<vector<string>>& facts,
-                     const vector<string>& question,
-                     uint answer_idx,
-                     vector<int> supporting_facts) const {
-            auto activation = activate_story(facts, question, true);
-            Mat<REAL_t> prediction_error;
-            if (FLAGS_margin_loss) {
-                // We estimated eprically that margin loss scales as about 3.0
-                // cross entropy. We want to put the roughly in the same bucket, so
-                // so that improtance of gate errors and sparsity has more or less
-                // the same effect for both types of errors.
-                auto scores = decoder.activate(activation.hidden);
-                prediction_error = 3 * MatOps<REAL_t>::margin_loss(scores, answer_idx, FLAGS_margin);
-            } else {
-                auto log_probs = decoder.activate(activation.hidden);
-                prediction_error = MatOps<REAL_t>::softmax_cross_entropy(log_probs, answer_idx);
-            }
-            Mat<REAL_t> fact_selection_error(1,1);
-
-            for (int i=0; i<activation.fact_gate_memory.size(); ++i) {
-                bool supporting = in_vector(supporting_facts, i);
-                auto partial_error = MatOps<REAL_t>::binary_cross_entropy(
-                                            activation.fact_gate_memory[i],
-                                            supporting ? 1.0 : 0.0);
-                float coeff = supporting ? 1.0 : FLAGS_unsupporting_ratio;
-
-                fact_selection_error = fact_selection_error + partial_error * coeff;
-            }
-
-            Mat<REAL_t> total_error;
-
-            total_error = prediction_error
-                        + fact_selection_error * FLAGS_fact_selection_lambda
-                        + activation.word_memory_sum() * FLAGS_word_selection_sparsity;
-
-            return total_error;
-        }
-
-        vector<string> predict(const vector<vector<string>>& facts,
-                       const vector<string>& question) const {
-            graph::NoBackprop nb;
-
-            // Don't use dropout for validation.
-            auto hidden = activate_story(facts, question, false).hidden;
-            auto scores = decoder.activate(hidden);
-
-            int word_idx = scores.argmax();
-
-            return {vocab->index2word[word_idx]};
         }
 };
 
@@ -464,11 +500,10 @@ double run_epoch(const vector<babi::Story>& dataset,
                 while (!parser.done()) {
                     std::tie(facts_so_far, qa) = parser.next();
 
-                    uint answer_idx = thread_model.vocab->word2index.at(qa->answer[0]);
 
                     auto error      = thread_model.error(facts_so_far,
                                                           qa->question,
-                                                          answer_idx,
+                                                          qa->answer,
                                                           qa->supporting_facts);
                     (error / FLAGS_minibatch).grad();
 
@@ -526,8 +561,8 @@ void train(const vector<babi::Story>& data, float training_fraction = 0.8) {
     auto params = model->parameters();
     bool solver_reset_cache = false;
 
-    Solver::AdaDelta<REAL_t> solver(params, 0.95, 1e-9, 5.0);
-    //Solver::Adam<REAL_t> solver(params);
+    //Solver::AdaDelta<REAL_t> solver(params, 0.95, 1e-9, 5.0);
+    Solver::Adam<REAL_t> solver(params);
     solver.regc = 1e-5;
 
     double best_validation_accuracy = 0.0;
@@ -580,6 +615,7 @@ void train(const vector<babi::Story>& data, float training_fraction = 0.8) {
 void reset(const vector<babi::Story>& data) {
     thread_models.clear();
     auto vocab_vector = babi::vocab_from_data(data);
+    vocab_vector.push_back(utils::end_symbol);
     model.reset();
     best_model.reset();
     model = std::make_shared<model_t>(make_shared<Vocab> (vocab_vector));
@@ -588,6 +624,10 @@ void reset(const vector<babi::Story>& data) {
 double benchmark_task(const std::string task) {
     std::cout << "Solving the most important problem in the world: " << task << std::endl;
     auto data = babi::Parser::training_data(task);
+    std::cout << "EXAMPLE STORY" << std::endl;
+    for(auto& babi_item: data[0]) {
+        std::cout << *babi_item << std::endl;
+    }
     reset(data);
 
     train(data, 0.8);

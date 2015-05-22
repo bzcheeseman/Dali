@@ -1185,6 +1185,7 @@ namespace utils {
     template vector<double> reversed(const vector<double>& vec);
     template vector<int> reversed(const vector<int>& vec);
     template vector<uint> reversed(const vector<uint>& vec);
+    template vector<size_t> reversed(const vector<size_t>& vec);
     template vector<string> reversed(const vector<string>& vec);
     template vector<vector<string>> reversed(const vector<vector<string>>& vec);
 

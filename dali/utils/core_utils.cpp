@@ -1139,14 +1139,10 @@ namespace utils {
     string prefix_match(vector<string> candidates, string input) {
         assert2(!candidates.empty(), "Empty set of candidates for prefix matching.");
         int best_match_idx = -1;
-        for (candidate: candidates) {
+        for (auto& candidate: candidates) {
             if (candidate.size() < input.size())
                 continue;
-            bool matches = true;
-            for (int sidx = 0; sidx < input.size() && matches; ++sidx)
-                if (candidate[sidx] != input[sidx])
-                    matches = false;
-            if (matches)
+            if (startswith(candidate, input))
                 return candidate;
         }
         assert2(false, MS() << "Could not find match for " << input << " in " << candidates <<".");

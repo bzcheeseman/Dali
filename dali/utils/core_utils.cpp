@@ -916,7 +916,8 @@ namespace utils {
     vector<string> CharacterVocab::decode(Indexing::Index indices) const {
         vector<string> result;
         result.reserve(indices.size());
-        auto stream = MS();
+
+        stringstream stream;
         for (auto& index : indices) {
             if (index == max_char) {
                 stream << "█";
@@ -924,7 +925,7 @@ namespace utils {
                 stream << ((char) (index + min_char));
             }
         }
-        return tokenize(stream);
+        return tokenize(stream.str());
     }
 
     vector<string> CharacterVocab::decode_characters(Indexing::Index indices) const {

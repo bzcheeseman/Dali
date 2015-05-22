@@ -4,13 +4,8 @@
 #include <algorithm>
 #include <functional>
 #include <vector>
-
 #include <dali/mat/Mat.h>
-
-using utils::assert2;
-using utils::in_vector;
-using utils::argsort_rowwise;
-using std::min;
+#include <dali/utils/core_utils.h>
 
 namespace beam_search {
     template<typename REAL_t,typename state_t>
@@ -77,7 +72,7 @@ namespace beam_search {
                  uint end_symbol,
                  int max_solution_length,
                  std::vector<uint> forbidden_symbols=std::vector<uint>()) {
-        assert2(beam_width > 0, "What the fuck is wrong with you?");
+        utils::assert2(beam_width > 0, "Beam width must be strictly positive.");
         typedef BeamSearchResult<REAL_t, state_t> result_t;
         typedef BeamSearchProposal<REAL_t, state_t> proposal_t;
 
@@ -92,10 +87,11 @@ namespace beam_search {
                     proposals.push_back(proposal_t::finalized_solution(result));
                 } else {
                     auto scores = candidate_scores(result.state);
-                    auto sorted_candidates = utils::reversed(argsort_rowwise(scores));
+                    auto sorted_candidates = utils::argsort_rowwise(scores);
+                    std::reverse(sorted_candidates.begin(), sorted_candidates.end());
                     auto candidates_remaining = beam_width;
                     for(auto& candidate_idx: sorted_candidates) {
-                        if (in_vector(forbidden_symbols, (uint)candidate_idx))
+                        if (utils::in_vector(forbidden_symbols, (uint)candidate_idx))
                             continue;
                         if (candidates_remaining-- <= 0)
                             break;
@@ -109,7 +105,7 @@ namespace beam_search {
             sort(proposals.begin(), proposals.end(), [](proposal_t a, proposal_t b) {
                 return a.score > b.score;
             });
-            proposals.resize(min((size_t)beam_width, proposals.size()));
+            proposals.resize(std::min((size_t)beam_width, proposals.size()));
 
             results.clear();
             for(auto& proposal : proposals) {

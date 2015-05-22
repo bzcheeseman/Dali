@@ -1,4 +1,5 @@
-#include "Mat.h"
+#include <gtest/gtest.h>
+#include "dali/mat/Mat.h"
 #include "dali/execution/BeamSearch.h"
 
 TEST(beam_search, beam_search2) {

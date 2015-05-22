@@ -284,7 +284,7 @@ TEST(utils, CharacterVocab) {
     auto spaceless_vocab = CharacterVocab(33, 255);
     auto spaceless_chars = spaceless_vocab.encode(seq);
     ASSERT_NE(seq, spaceless_vocab.decode(spaceless_chars));
-    auto special_seq = utils::join(seq, "█");
+    auto special_seq = utils::join(seq, "\xFF");
     ASSERT_EQ(special_seq, utils::join(spaceless_vocab.decode(spaceless_chars)));
 }
 

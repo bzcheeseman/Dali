@@ -286,8 +286,25 @@ TEST(utils, CharacterVocab) {
     ASSERT_NE(seq, spaceless_vocab.decode(spaceless_chars));
     auto special_seq = utils::join(seq, "█");
     ASSERT_EQ(special_seq, utils::join(spaceless_vocab.decode(spaceless_chars)));
+}
 
 
+TEST(utils, prefix_match) {
+    using utils::prefix_match;
+    vector<string> candidates = {
+        "siema",
+        "lol",
+        "we_hit_a_wall",
+    };
+    // candidates match with themselvers
+    for (auto& candidate : candidates) {
+        ASSERT_EQ(candidate, prefix_match(candidates, candidate));
+    }
 
+    EXPECT_THROW(prefix_match(candidates, "low"), std::runtime_error);
+    EXPECT_THROW(prefix_match(candidates, "lol2"), std::runtime_error);
 
+    EXPECT_EQ(prefix_match(candidates, ""), "siema");
+    EXPECT_EQ(prefix_match(candidates, "lo"), "lol");
+    EXPECT_EQ(prefix_match(candidates, "we_hit"), "we_hit_a_wall");
 }

@@ -345,7 +345,7 @@ class LstmBabiModel {
                 current_state = hl_model.activate(
                         current_state, answer_embeddings[word_idx], FLAGS_hl_dropout);
             }
-            // prediction_error = prediction_error / answer_idxes.size();
+            prediction_error = prediction_error / answer_idxes.size();
 
             Mat<REAL_t> fact_selection_error(1,1);
 
@@ -641,7 +641,6 @@ double benchmark_task(const std::string task) {
 }
 
 int main(int argc, char** argv) {
-    // sane_crashes::activate();
     GFLAGS_NAMESPACE::SetUsageMessage(
         "\nBabi!"
     );
@@ -665,6 +664,6 @@ int main(int argc, char** argv) {
             benchmark_task(task);
         }
     } else {
-        benchmark_task(FLAGS_babi_problem);
+        benchmark_task(utils::prefix_match(babi::tasks(), FLAGS_babi_problem));
     }
 }

@@ -479,6 +479,11 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
     template<typename T>
     std::vector<T> normalize_weights(const std::vector<T>& weights);
 
+
+    // returns candidate from candidates with longest common prefix with input.
+    // if longest prefix is ambiguous, returns the first one from the list.
+    std::string prefix_match(std::vector<std::string> candidates, std::string input);
+
     /**
     Exit With Message
     -----------------

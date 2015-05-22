@@ -1136,6 +1136,23 @@ namespace utils {
     template vector<float> normalize_weights(const std::vector<float>&);
     template vector<double> normalize_weights(const std::vector<double>&);
 
+    string prefix_match(vector<string> candidates, string input) {
+        assert2(!candidates.empty(), "Empty set of candidates for prefix matching.");
+        int best_match_idx = -1;
+        for (candidate: candidates) {
+            if (candidate.size() < input.size())
+                continue;
+            bool matches = true;
+            for (int sidx = 0; sidx < input.size() && matches; ++sidx)
+                if (candidate[sidx] != input[sidx])
+                    matches = false;
+            if (matches)
+                return candidate;
+        }
+        assert2(false, MS() << "Could not find match for " << input << " in " << candidates <<".");
+    }
+
+
     bool vs_equal(const VS& a, const VS& b) {
         if (a.size() != b.size()) return false;
         for (int i=0; i< a.size(); ++i) {

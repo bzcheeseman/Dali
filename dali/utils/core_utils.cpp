@@ -821,10 +821,17 @@ namespace utils {
         return result;
     }
 
-    vector<string> Vocab::decode(Indexing::Index indices) const {
+    vector<string> Vocab::decode(Indexing::Index indices, bool remove_end_symbol) const {
         vector<string> result;
         result.reserve(indices.size());
-        std::transform(indices.data(), indices.data() + indices.size(),
+        // either the decoding must remove the end symbol
+        // if there is one, or we assume there is none to remove.
+        bool has_end_symbol = remove_end_symbol ?
+            indices[indices.size() - 1] == word2index.at(utils::end_symbol) :
+            false;
+        auto index_end = indices.data() + indices.size();
+        if (has_end_symbol) index_end--;
+        std::transform(indices.data(), index_end,
                        std::back_inserter(result), [this](const ind_t& idx) {
             if (idx < index2word.size()) {
                 return index2word[idx];

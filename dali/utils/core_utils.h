@@ -116,7 +116,7 @@ namespace utils {
                     str_sequence index2word;
 
                     std::vector<ind_t> encode(const str_sequence& words, bool with_end_symbol = false) const;
-                    std::vector<std::string> decode(Indexing::Index) const;
+                    std::vector<std::string> decode(Indexing::Index, bool remove_end_symbol = false) const;
 
                     // create vocabulary from many vectors of words. Vectors do not
                     // need to contain unique words. They need not be sorted.

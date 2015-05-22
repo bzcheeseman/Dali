@@ -67,7 +67,6 @@ TEST(beam_search, beam_search_automata) {
     ASSERT_EQ(beam_search_results[0].solution.size(), max_size);
     ASSERT_EQ(beam_search_results[0].solution, comp);
 
-
     // Take less greedy approach:
     int beam_width = 7;
     beam_search_results = beam_search::beam_search2<REAL_t, state_t>(
@@ -88,7 +87,6 @@ TEST(beam_search, beam_search_automata) {
     ASSERT_EQ(beam_search_results.back().solution.size(), max_size);
     ASSERT_NEAR(beam_search_results.back().score, std::log(0.5) * 20, 1e-5);
 }
-
 
 TEST(beam_search, beam_search2_szymon) {
     // vector<tuple<string, vector<int>>> choices = {

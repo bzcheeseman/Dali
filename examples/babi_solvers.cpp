@@ -493,13 +493,10 @@ double run_epoch(const vector<babi::Story>& dataset,
             auto params = thread_model.parameters();
             for (auto story_id: batch) {
                 auto story = dataset[story_id];
-
-                babi::StoryParser parser(&story);
                 vector<vector<string>> facts_so_far;
                 QA* qa;
-                while (!parser.done()) {
-                    std::tie(facts_so_far, qa) = parser.next();
-
+                for (auto substory : babi::story_parser(story)) {
+                    std::tie(facts_so_far, qa) = substory;
 
                     auto error      = thread_model.error(facts_so_far,
                                                           qa->question,
@@ -532,12 +529,11 @@ void visualize_examples(const vector<babi::Story>& data, int num_examples) {
     while(num_examples--) {
         int example = rand()%data.size();
         int question_no = utils::randint(0, 5);
-        babi::StoryParser parser(&data[example]);
         vector<vector<string>> facts_so_far;
         QA* qa;
         bool example_sent = false;
-        while (!parser.done()) {
-            std::tie(facts_so_far, qa) = parser.next();
+        for (auto story : babi::story_parser(data[example])) {
+            std::tie(facts_so_far, qa) = story;
             if (question_no == 0) {
                 model->visualize_example(facts_so_far, qa->question, qa->answer);
                 example_sent = true;

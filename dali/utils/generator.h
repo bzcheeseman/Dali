@@ -154,6 +154,9 @@ namespace utils {
     using yield_t = std::function<void(T)>;
 
     template<typename T>
+    using Generator = Gen<LambdaGeneratorHeart<T>>;
+
+    template<typename T>
     Gen<LambdaGeneratorHeart<T>> make_generator(typename LambdaGeneratorHeart<T>::generator_t generator) {
         return Gen<LambdaGeneratorHeart<T>>(generator);
     }

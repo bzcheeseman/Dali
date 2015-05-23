@@ -573,8 +573,7 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
     };
 
     template<typename T>
-    std::string iter_to_str(T begin, T end)
-    {
+    std::string iter_to_str(T begin, T end) {
         std::stringstream ss;
         bool first = true;
         for (; begin != end; begin++)
@@ -589,71 +588,8 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
 
     std::string capitalize(const std::string& s);
 
-    template<typename T> class Generator;
-
-
     void assert2(bool condition);
     void assert2(bool condition, std::string message);
-
-    template<typename T>
-    class Iter {
-        Generator<T>* gen;
-        T next;
-        bool is_done = true;
-
-        void advance() {
-            if (gen->done()) {
-                is_done = true;
-            } else {
-                std::cout << "hello world" << std::endl;
-                next = std::move(gen->next());
-            }
-        }
-
-        public:
-            Iter (Generator<T>* gen, bool is_end) : gen(gen) {
-                if (!is_end) {
-                    advance();
-                    is_done = false;
-                } else {
-                    is_done = true;
-                }
-            }
-
-            // this function only compares regular iterators with end iterators...
-            bool operator!= (const Iter& other) const {
-                // assume we comparing regular iterator to end iterator.
-                return is_done != other.is_done;
-            }
-
-            // this method must be defined after the definition of IntVector
-            // since it needs to use it
-            T& operator* () {
-                return next;
-            }
-
-            const Iter& operator++ () {
-                utils::assert2(!is_done, "Cannot increment iterator when end is reached.");
-                advance();
-            }
-    };
-
-
-
-    template<typename T>
-    class Generator {
-        public:
-            virtual T next() = 0;
-            virtual bool done() const = 0;
-
-            Iter<T> begin() {
-                return Iter<T>(this, false);
-            }
-
-            Iter<T> end() {
-                return Iter<T>(this, true);
-            }
-    };
 
     extern std::string green;
     extern std::string red;

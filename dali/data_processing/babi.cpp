@@ -207,33 +207,19 @@ namespace babi {
         return parse_file(filepath, num_questions);
     }
 
-    /* StoryParser */
-
-    StoryParser::StoryParser(const Story* story) : story(story), story_idx(0) {
-        advance();
-    }
-
-    void StoryParser::advance() {
-        next_qa = NULL;
-        while (story_idx < story->size()) {
-            auto item_ptr = (*story)[story_idx++];
-            if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
-                facts_so_far.push_back(f->fact);
-            } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
-                next_qa = qa;
-                break;
+    utils::Generator<sp_ret_t> story_parser(const Story& story) {
+        return utils::make_generator<sp_ret_t>([&story](utils::yield_t<sp_ret_t> yield) {
+            int story_idx = 0;
+            vector<vector<string>> facts_so_far;
+            while (story_idx < story.size()) {
+                auto item_ptr = story[story_idx++];
+                if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
+                    facts_so_far.push_back(f->fact);
+                } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
+                    yield(std::make_tuple(facts_so_far, qa));
+                }
             }
-        }
-    }
-
-    sp_ret_t StoryParser::next() {
-        sp_ret_t ret = std::make_tuple(facts_so_far, next_qa);
-        advance();
-        return ret;
-    }
-
-    bool StoryParser::done() const {
-        return next_qa == NULL;
+        });
     }
 
     /* helper functions */
@@ -256,11 +242,10 @@ namespace babi {
                 auto batch = batches[bidx];
                 for (auto& story_idx : batch) {
                     auto& story = data[story_idx];
-                    babi::StoryParser parser(&story);
                     vector<VS> facts_so_far;
                     QA* qa;
-                    while (!parser.done()) {
-                        std::tie(facts_so_far, qa) = parser.next();
+                    for (auto story : story_parser(story)) {
+                        std::tie(facts_so_far, qa) = story;
                         VS answer = predict(facts_so_far, qa->question);
                         if(utils::vs_equal(answer, qa->answer))
                             ++correct_questions;

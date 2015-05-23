@@ -67,22 +67,7 @@ namespace babi {
 
     typedef std::tuple<std::vector<std::vector<std::string>>, QA*> sp_ret_t;
 
-    class StoryParser : public utils::Generator<sp_ret_t> {
-        std::vector<std::vector<std::string>> facts_so_far;
-        QA* next_qa;
-
-        int story_idx;
-        const Story* story;
-
-        void advance();
-
-        public:
-            StoryParser(const Story* story);
-
-            sp_ret_t next();
-
-            bool done() const;
-    };
+    utils::Generator<sp_ret_t> story_parser(const Story& story);
 
     // List of all the babi tasks
     std::vector<std::string> tasks();

@@ -2,6 +2,8 @@
 Python style generators for C++ 11
 @author Daniel Speyer
 @source https://github.com/dspeyer/generators
+
+An oasis of Python in lava sea of C++
 */
 
 #ifndef DALI_UTILS_GENERATOR_H
@@ -59,7 +61,7 @@ namespace utils {
             GeneratorHeart() : hasOutputted(false), abort(false) {}
 
             void yield(OutputT v) {
-                assert2((bool)mutex, "Daniel should consider a career in advertising.");
+                assert2((bool)mutex, "Mutex was not present during yield.");
                 value = v;
                 hasOutputted = true;
                 while (hasOutputted) {
@@ -136,6 +138,25 @@ namespace utils {
             ForLooping begin() { return ForLooping(this); }
             ForLooping end() { return ForLooping(NULL); }
     };
+
+    template<typename T>
+    class LambdaGeneratorHeart : public GeneratorHeart<T> {
+        public:
+            typedef std::function<void(std::function<void(T)>)> generator_t;
+
+            void run(generator_t generator) {
+                generator(std::bind(&GeneratorHeart<T>::yield, this, std::placeholders::_1));
+            }
+
+    };
+
+    template<typename T>
+    using yield_t = std::function<void(T)>;
+
+    template<typename T>
+    Gen<LambdaGeneratorHeart<T>> make_generator(typename LambdaGeneratorHeart<T>::generator_t generator) {
+        return Gen<LambdaGeneratorHeart<T>>(generator);
+    }
 }
 
 #endif

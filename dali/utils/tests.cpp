@@ -323,6 +323,20 @@ TEST(utils, generator_test) {
     ASSERT_EQ(vals, vector<int>({2, 4, 6, 8}));
 }
 
+TEST(utils, lambda_generator_test) {
+    auto gen = utils::make_generator<int>([](utils::yield_t<int> yield) {
+        for (int i=2; i<9; i+=2) {
+            yield(i);
+        }
+    });
+    auto vals = vector<int>();
+    for (int i : gen)
+        vals.emplace_back(i);
+    ASSERT_EQ(vals, vector<int>({2, 4, 6, 8}));
+}
+
+
+
 
 
 

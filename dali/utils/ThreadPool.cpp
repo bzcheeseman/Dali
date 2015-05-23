@@ -1,5 +1,7 @@
 #include "ThreadPool.h"
 
+#include <string>
+
 using std::chrono::milliseconds;
 using std::function;
 using std::vector;
@@ -54,7 +56,7 @@ void ThreadPool::thread_body(int _thread_id) {
         }
         // Function defines implicit conversion to bool
         // which is true only if call target was set.
-        if ((bool)f) {
+        if (static_cast<bool>(f)) {
             f();
         } else {
             std::this_thread::sleep_for(between_queue_checks);
@@ -97,7 +99,8 @@ ThreadPool::~ThreadPool() {
     // Terminates thread pool making sure that all the work
     // is completed.
     should_terminate = true;
-    for(auto& t: pool) t.join();
+    for (auto& t : pool)
+        t.join();
 }
 
 int ThreadPool::get_thread_number() {
@@ -106,5 +109,6 @@ int ThreadPool::get_thread_number() {
 
 void ThreadPool::print_safely(std::string message) {
     std::lock_guard<decltype(printing_lock)> guard(printing_lock);
-    std::cout << "[thread " << get_thread_number() << "] " << message << std::endl;
+    std::cout << "[thread " << get_thread_number() << "] "
+              << message << std::endl;
 }

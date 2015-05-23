@@ -5,11 +5,11 @@
 #include "dali/mat/Mat.h"
 #include "dali/utils/core_utils.h"
 
-#define SMOOTH_DEFAULT 1e-9
 #define SOLVER_MAT_TYPEDEF_H typedef Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
 #define SOLVER_MAT_DEFAULT_STEP_SIZE_H 0.035
 
 namespace Solver {
+    const double SMOOTH_DEFAULT = 1e-9;
 
     template<typename R> class AbstractSolver {
         SOLVER_MAT_TYPEDEF_H
@@ -53,7 +53,9 @@ namespace Solver {
     template<typename R> class RMSProp : public AdaGrad<R> {
         SOLVER_MAT_TYPEDEF_H
         public:
+            R step_size = SOLVER_MAT_DEFAULT_STEP_SIZE_H;
             R decay_rate;
+
             RMSProp (R _decay_rate= 0.999, R smooth_eps = SMOOTH_DEFAULT, R clipval = 5.0, R regc = 0.0);
             RMSProp (std::vector<Mat<R>>&, R _decay_rate= 0.999, R smooth_eps = SMOOTH_DEFAULT, R clipval = 5.0, R regc = 0.0);
             virtual void step(std::vector<Mat<R>>&);

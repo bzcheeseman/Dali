@@ -216,7 +216,7 @@ namespace Solver {
     template<typename R>
     void RMSProp<R>::step(
         vector<Mat<R>>& parameters) {
-        return step(parameters, SOLVER_MAT_DEFAULT_STEP_SIZE_H);
+        return step(parameters, step_size);
     }
 
     template class RMSProp<float>;

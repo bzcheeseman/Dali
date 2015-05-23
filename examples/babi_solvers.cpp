@@ -125,8 +125,10 @@ class LstmBabiModel {
     SecondOrderCombinator<T> fact_gate;
     Mat<T> fact_gate_embeddings;
 
-    Mat<T> answer_embeddings;
     StackedLSTM<T> hl_model;
+
+    StackedLSTM<T> answer_model;
+    Mat<T> answer_embeddings;
 
     Mat<T> please_start_prediction;
 
@@ -143,6 +145,7 @@ class LstmBabiModel {
                                 &word_gate,
                                 &fact_gate,
                                 &hl_model,
+                                &answer_model,
                                 &decoder })) {
                 auto params = model->parameters();
                 res.insert(res.end(), params.begin(), params.end());
@@ -170,6 +173,7 @@ class LstmBabiModel {
                 word_gate(model.word_gate, copy_w, copy_dw),
                 fact_gate(model.fact_gate, copy_w, copy_dw),
                 hl_model(model.hl_model, copy_w, copy_dw),
+                answer_model(model.answer_model, copy_w, copy_dw),
                 decoder(model.decoder, copy_w, copy_dw),
                 // parameters begin here
                 fact_embeddings(model.fact_embeddings, copy_w, copy_dw),
@@ -196,6 +200,10 @@ class LstmBabiModel {
                           utils::vsum(vector<int>(FLAGS_text_repr_stack, FLAGS_text_repr_hidden)),
                           FLAGS_gate_second_order),
                 hl_model(utils::vsum(vector<int>(FLAGS_text_repr_stack, FLAGS_text_repr_hidden)),
+                         vector<int>(FLAGS_hl_stack, FLAGS_hl_hidden),
+                         FLAGS_lstm_shortcut,
+                         FLAGS_lstm_feed_mry),
+                answer_model(utils::vsum(vector<int>(FLAGS_text_repr_stack, FLAGS_text_repr_hidden)),
                          vector<int>(FLAGS_hl_stack, FLAGS_hl_hidden),
                          FLAGS_lstm_shortcut,
                          FLAGS_lstm_feed_mry),
@@ -342,10 +350,9 @@ class LstmBabiModel {
                     prediction_error = prediction_error +
                             MatOps<REAL_t>::softmax_cross_entropy(log_probs, word_idx);
                 }
-                current_state = hl_model.activate(
+                current_state = answer_model.activate(
                         current_state, answer_embeddings[word_idx], FLAGS_hl_dropout);
             }
-            prediction_error = prediction_error / answer_idxes.size();
 
             Mat<REAL_t> fact_selection_error(1,1);
 
@@ -376,7 +383,7 @@ class LstmBabiModel {
                 return FLAGS_margin_loss ? scores : MatOps<T>::softmax(scores).log();
             };
             auto make_choice = [this](lstm_state_t state, uint candidate) -> lstm_state_t {
-                return hl_model.activate(state, answer_embeddings[candidate], 0.0);
+                return answer_model.activate(state, answer_embeddings[candidate], 0.0);
             };
             auto beam_search_results = beam_search::beam_search2<T, lstm_state_t>(
                     initial_state,
@@ -459,7 +466,6 @@ shared_ptr<model_t> model;
 shared_ptr<model_t> best_model;
 int best_model_epoch = 0;
 
-vector<model_t> thread_models;
 std::mutex solver_mutex;
 
 // returns the errors;
@@ -468,11 +474,11 @@ double run_epoch(const vector<babi::Story>& dataset,
     const int NUM_THREADS = FLAGS_j;
     ThreadPool pool(NUM_THREADS);
 
-    if (thread_models.size() == 0) {
-        for (int i = 0; i < NUM_THREADS; ++i) {
-            thread_models.push_back(model->shallow_copy());
-        }
+    vector<model_t> thread_models;
+    for (int i = 0; i < NUM_THREADS; ++i) {
+        thread_models.push_back(model->shallow_copy());
     }
+
     std::atomic<int> num_questions(0);
 
     vector<REAL_t> thread_error(NUM_THREADS, 0.0);
@@ -488,7 +494,7 @@ double run_epoch(const vector<babi::Story>& dataset,
     }
 
     for (auto& batch : batches) {
-        pool.run([batch, &dataset, &num_questions, &thread_error, &solver]() {
+        pool.run([batch, &dataset, &num_questions, &thread_error, &solver, &thread_models]() {
             model_t& thread_model = thread_models[ThreadPool::get_thread_number()];
             auto params = thread_model.parameters();
             for (auto story_id: batch) {
@@ -555,11 +561,13 @@ void train(const vector<babi::Story>& data, float training_fraction = 0.8) {
     std::vector<babi::Story> validate(data.begin() + training_size, data.end());
 
     auto params = model->parameters();
-    bool solver_reset_cache = false;
 
-    //Solver::AdaDelta<REAL_t> solver(params, 0.95, 1e-9, 5.0);
-    Solver::Adam<REAL_t> solver(params);
-    solver.regc = 1e-5;
+    // Solver::Adam<REAL_t> solver(params); // , 0.1, 0.0001);
+    Solver::AdaDelta<REAL_t> solver(params, 0.5, 1e-9, 100.0);
+    // Solver::SGD<REAL_t> solver(params, 100.0, 1e-6);
+    // Solver::RMSProp<REAL_t> solver(params, 0.5, Solver::SMOOTH_DEFAULT, 100.0, 1e-6);
+    //solver.step_size = 10.0;
+    //solver.regc = 1e-6;
 
     double best_validation_accuracy = 0.0;
     best_model = std::make_shared<model_t>(*model, true, true);
@@ -578,14 +586,12 @@ void train(const vector<babi::Story>& data, float training_fraction = 0.8) {
                 visualize_examples(validate, 1);
             });
         }
-        if (solver_reset_cache)
-            solver.reset_caches(params);
 
         double validation_accuracy = babi::accuracy(
             validate,
             std::bind(&model_t::predict, model.get(), _1, _2),
-            FLAGS_j
-        );
+            FLAGS_j);
+
         bool best_so_far = best_validation_accuracy < validation_accuracy;
 
         if (best_so_far) {
@@ -609,7 +615,6 @@ void train(const vector<babi::Story>& data, float training_fraction = 0.8) {
 }
 
 void reset(const vector<babi::Story>& data) {
-    thread_models.clear();
     auto vocab_vector = babi::vocab_from_data(data);
     vocab_vector.push_back(utils::end_symbol);
     model.reset();

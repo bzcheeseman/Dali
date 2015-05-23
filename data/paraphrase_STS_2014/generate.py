@@ -20,7 +20,8 @@ THIS_DATA_DIR = dirname(realpath(__file__))
 ZIP_URL = "http://alt.qcri.org/semeval2014/task10/data/uploads/sts-en-gs-2014.zip"
 ZIP_LOCAL = join(THIS_DATA_DIR, "dataset.zip")
 UNZIPPED_LOCAL = join(THIS_DATA_DIR, "dataset")
-TOKENIZED_FILE = join(THIS_DATA_DIR, "train.tokenized.tsv")
+TEST_TOKENIZED_FILE = join(THIS_DATA_DIR, "test.tokenized.tsv")
+TRAIN_TOKENIZED_FILE = join(THIS_DATA_DIR, "train.tokenized.tsv")
 
 def is_dataset_input(fname):
     return fname.endswith(".txt") and ("readme" not in fname) and (".input." in fname)
@@ -57,20 +58,9 @@ def tokenize_sentences(text):
     gen_sentences = [" ".join(tsentence) for sentence in sentences for tsentence in to_raw_text_markupless(sentence)]
     return "\t".join(gen_sentences[0:2]) + " ".join(gen_sentences[2:])
 
-if __name__ == '__main__':
-    execute_bash("rm -rf %s" % (ZIP_LOCAL,))
-    execute_bash("rm -rf %s" % (UNZIPPED_LOCAL,))
-    execute_bash("wget -O {path} {url}".format(url=ZIP_URL, path=ZIP_LOCAL))
-    execute_bash("unzip {zipfile} -d {target}".format(zipfile=ZIP_LOCAL, target=UNZIPPED_LOCAL))
-
-    tar_files = collect_files_with_ext(UNZIPPED_LOCAL, ".tgz")
-    for tar_file, tar_file_name in tar_files:
-        execute_bash("tar -xf %s -C %s" % (tar_file, UNZIPPED_LOCAL))
-
-    dataset_input_names = collect_text_files(UNZIPPED_LOCAL)
-
-    with open(TOKENIZED_FILE, "wt")               as ftokenized:
-        for dataset_fname, dataset_name in dataset_input_names:
+def transform_files_into_one(filenames, destination_tokenized):
+    with open(destination_tokenized, "wt")  as ftokenized:
+        for dataset_fname, dataset_name in filenames:
             with open(join(THIS_DATA_DIR, dataset_name.replace(".txt", ".tsv")), "wt") as fout:
                 with open(dataset_fname, "rt")                                         as finputs:
                     with open(dataset_fname.replace(".input.", ".gs."), "rt")          as flabels:
@@ -82,8 +72,35 @@ if __name__ == '__main__':
                             if tokenizer_available:
                                 ftokenized.write(tokenize_sentences(sentences) + "\t" + label)
 
+def delete_paths(paths):
+    for path in paths:
+        execute_bash('rm -rf %s' % (path,))
 
+if __name__ == '__main__':
+    execute_bash("rm -rf %s" % (ZIP_LOCAL,))
+    execute_bash("rm -rf %s" % (UNZIPPED_LOCAL,))
+    execute_bash("wget -O {path} {url}".format(url=ZIP_URL, path=ZIP_LOCAL))
+    execute_bash("unzip {zipfile} -d {target}".format(zipfile=ZIP_LOCAL, target=UNZIPPED_LOCAL))
+
+
+    # create test set:
+    test_input_names = collect_text_files(UNZIPPED_LOCAL)
+    transform_files_into_one(test_input_names, TEST_TOKENIZED_FILE)
     if not tokenizer_available:
-        execute_bash("rm %s" % (TOKENIZED_FILE,))
+        execute_bash("rm %s" % (TEST_TOKENIZED_FILE,))
+    delete_paths([path path, name in dataset_input_names])
+
+    # untar train files:
+    tar_files = collect_files_with_ext(UNZIPPED_LOCAL, ".tgz")
+    for tar_file, tar_file_name in tar_files:
+        execute_bash("tar -xf %s -C %s" % (tar_file, UNZIPPED_LOCAL))
+
+    # create train set
+    train_input_names = collect_text_files(UNZIPPED_LOCAL)
+    transform_files_into_one(test_input_names, TRAIN_TOKENIZED_FILE)
+    if not tokenizer_available:
+        execute_bash("rm %s" % (TRAIN_TOKENIZED_FILE,))
+
+    # remove everything else
     execute_bash("rm -rf %s" % (UNZIPPED_LOCAL))
     execute_bash("rm -rf %s" % (ZIP_LOCAL))

@@ -349,7 +349,7 @@ class LstmBabiModel {
 
             Mat<REAL_t> fact_selection_error(1,1);
 
-            for (int i=0; i<activation.fact_gate_memory.size(); ++i) {
+            for (int i=0; i < activation.fact_gate_memory.size(); ++i) {
                 bool supporting = in_vector(supporting_facts, i);
                 auto partial_error = MatOps<REAL_t>::binary_cross_entropy(
                                             activation.fact_gate_memory[i],

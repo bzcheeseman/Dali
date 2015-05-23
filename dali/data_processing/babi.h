@@ -81,7 +81,7 @@ namespace babi {
 
             sp_ret_t next();
 
-            bool done();
+            bool done() const;
     };
 
     // List of all the babi tasks

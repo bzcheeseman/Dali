@@ -7,7 +7,6 @@
 #include <string>
 
 #include "dali/utils.h"
-#include "dali/utils/ThreadPool.h"
 
 using std::chrono::milliseconds;
 using std::make_shared;
@@ -308,3 +307,22 @@ TEST(utils, prefix_match) {
     EXPECT_EQ(prefix_match(candidates, "lo"), "lol");
     EXPECT_EQ(prefix_match(candidates, "we_hit"), "we_hit_a_wall");
 }
+
+struct Range : utils::GeneratorHeart<int> {
+    void run(int start, int end, int interval=1) {
+        for (int i=start; i<end; i+=interval) {
+            yield(i);
+        }
+    }
+};
+
+TEST(utils, generator_test) {
+    auto vals = vector<int>();
+    for (int i : utils::Gen<Range>(2,9,2))
+        vals.emplace_back(i);
+    ASSERT_EQ(vals, vector<int>({2, 4, 6, 8}));
+}
+
+
+
+

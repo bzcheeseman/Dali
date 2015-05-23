@@ -587,7 +587,13 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
         return ss.str();
     }
 
+    std::string capitalize(const std::string& s);
+
     template<typename T> class Generator;
+
+
+    void assert2(bool condition);
+    void assert2(bool condition, std::string message);
 
     template<typename T>
     class Iter {
@@ -599,8 +605,8 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
             if (gen->done()) {
                 is_done = true;
             } else {
+                std::cout << "hello world" << std::endl;
                 next = std::move(gen->next());
-
             }
         }
 
@@ -627,18 +633,18 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
             }
 
             const Iter& operator++ () {
-                assert(!is_done);
+                utils::assert2(!is_done, "Cannot increment iterator when end is reached.");
                 advance();
             }
     };
 
-    std::string capitalize(const std::string& s);
+
 
     template<typename T>
     class Generator {
         public:
             virtual T next() = 0;
-            virtual bool done() = 0;
+            virtual bool done() const = 0;
 
             Iter<T> begin() {
                 return Iter<T>(this, false);
@@ -648,8 +654,6 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
                 return Iter<T>(this, true);
             }
     };
-    void assert2(bool condition);
-    void assert2(bool condition, std::string message);
 
     extern std::string green;
     extern std::string red;

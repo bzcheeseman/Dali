@@ -252,7 +252,7 @@ std::vector< typename LSTM<R>::State > shortcut_forward_LSTMs(
                     *state_iter
                 )
             );
-        } else {
+        } else {
             out_state.emplace_back(
                 layer.activate_shortcut(
                     MatOps<R>::dropout_normalized(layer_input, drop_prob),
@@ -290,7 +290,7 @@ std::vector< typename LSTM<R>::State > forward_LSTMs(
                     {*state_iter}
                 )
             );
-        } else {
+        } else {
             out_state.emplace_back(
                 layer.activate(
                     MatOps<R>::dropout_normalized(out_state.back().hidden, drop_prob),
@@ -330,7 +330,7 @@ std::vector< typename LSTM<R>::State > shortcut_forward_LSTMs(
                     {*state_iter}
                 )
             );
-        } else {
+        } else {
             layer_inputs[0] = out_state.back().hidden;
             out_state.emplace_back(
                 layer.activate(

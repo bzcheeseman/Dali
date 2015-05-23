@@ -314,10 +314,10 @@ std::tuple<Vocab, CharacterVocab, typename paraphrase::paraphrase_minibatch_data
 
     decltype(dataset) validation_data;
     decltype(dataset) training_data;
-    for (auto& validation_idx : validation_idxes) {
+    for (auto& validation_idx : validation_idxes) {
         validation_data.emplace_back(dataset[validation_idx]);
     }
-    for (auto& training_idx : training_idxes) {
+    for (auto& training_idx : training_idxes) {
         training_data.emplace_back(dataset[training_idx]);
     }
 
@@ -370,7 +370,7 @@ void backprop_random_example(
             while (ex_id_2 == ex_id_1) {
                 ex_id_2 = utils::randint(0, dataset[batch_id_2].size() - 1);
             }
-        } else {
+        } else {
             while (batch_id_1 == batch_id_2) {
                 batch_id_2 = utils::randint(0, dataset.size() - 1);
             }
@@ -388,7 +388,7 @@ void backprop_random_example(
                 memory_penalty,
                 minibatch_size,
                 minibatch_error);
-        } else {
+        } else {
             backprop_example(
                 thread_model,
                 std::get<1>(dataset[batch_id_1][ex_id_1]),
@@ -398,7 +398,7 @@ void backprop_random_example(
                 minibatch_size,
                 minibatch_error);
         }
-    } else {
+    } else {
         if (ex_id_2_b == 1) {
             backprop_example(
                 thread_model,
@@ -408,7 +408,7 @@ void backprop_random_example(
                 memory_penalty,
                 minibatch_size,
                 minibatch_error);
-        } else {
+        } else {
             backprop_example(
                 thread_model,
                 std::get<0>(dataset[batch_id_1][ex_id_1]),
@@ -435,7 +435,7 @@ int main (int argc,  char* argv[]) {
     int memory_penalty_curve_type;
     if (FLAGS_memory_penalty_curve == "flat") {
         memory_penalty_curve_type = 0;
-    } else if (FLAGS_memory_penalty_curve == "linear") {
+    } else if (FLAGS_memory_penalty_curve == "linear") {
         memory_penalty_curve_type = 1;
     } else if (FLAGS_memory_penalty_curve == "square") {
         memory_penalty_curve_type = 2;
@@ -706,7 +706,7 @@ int main (int argc,  char* argv[]) {
                             input_output_pair.add_in_column(1, sentences_viz);
 
                             return input_output_pair.to_json();
-                        } else {
+                        } else {
                             double predicted_score;
                             vector<double> memory1, memory2;
                             std::tie(predicted_score, memory1, memory2) =

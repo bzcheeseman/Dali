@@ -232,7 +232,7 @@ namespace babi {
         return ret;
     }
 
-    bool StoryParser::done() {
+    bool StoryParser::done() const {
         return next_qa == NULL;
     }
 

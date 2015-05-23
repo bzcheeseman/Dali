@@ -88,7 +88,7 @@ if __name__ == '__main__':
     transform_files_into_one(test_input_names, TEST_TOKENIZED_FILE)
     if not tokenizer_available:
         execute_bash("rm %s" % (TEST_TOKENIZED_FILE,))
-    delete_paths([path path, name in dataset_input_names])
+    delete_paths([path for path, name in test_input_names])
 
     # untar train files:
     tar_files = collect_files_with_ext(UNZIPPED_LOCAL, ".tgz")
@@ -97,7 +97,7 @@ if __name__ == '__main__':
 
     # create train set
     train_input_names = collect_text_files(UNZIPPED_LOCAL)
-    transform_files_into_one(test_input_names, TRAIN_TOKENIZED_FILE)
+    transform_files_into_one(train_input_names, TRAIN_TOKENIZED_FILE)
     if not tokenizer_available:
         execute_bash("rm %s" % (TRAIN_TOKENIZED_FILE,))
 

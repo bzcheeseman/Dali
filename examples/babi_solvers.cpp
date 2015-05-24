@@ -39,8 +39,7 @@ using utils::Timer;
 using utils::Vocab;
 
 DEFINE_int32(j,                        1,      "Number of threads");
-DEFINE_bool(solver_mutex,              false,  "Synchronous execution of solver step.");
-DEFINE_int32(minibatch,                100,    "How many stories to put in a single batch.");
+DEFINE_int32(minibatch,                10,    "How many stories to put in a single batch.");
 DEFINE_int32(max_epochs,               2000,   "maximum number of epochs for training");
 DEFINE_int32(patience,                 200,    "after <patience> epochs of performance decrease we stop.");
 DEFINE_int32(beam_width,               5,      "width of the beam for prediction.");
@@ -51,6 +50,7 @@ DEFINE_bool(lstm_feed_mry,             true,   "Should memory be fed to gates in
 DEFINE_int32(hl_hidden,                20,     "What hidden size to use for high level.");
 DEFINE_int32(hl_stack,                 4,      "How high is the LSTM for high level.");
 DEFINE_double(hl_dropout,              0.7,    "How much dropout to use at high level.");
+DEFINE_double(answer_dropout,          0.3,    "How much dropout to use at answer generation model.");
 // question gate model
 DEFINE_int32(gate_input,               20,     "Embedding size for gates.");
 DEFINE_int32(gate_second_order,        10,     "How many second order terms to consider for a gate.");
@@ -204,7 +204,7 @@ class LstmBabiModel {
                          FLAGS_lstm_shortcut,
                          FLAGS_lstm_feed_mry),
                 answer_model(utils::vsum(vector<int>(FLAGS_text_repr_stack, FLAGS_text_repr_hidden)),
-                         vector<int>(FLAGS_hl_stack, FLAGS_hl_hidden),
+                         { FLAGS_hl_stack * FLAGS_hl_hidden },
                          FLAGS_lstm_shortcut,
                          FLAGS_lstm_feed_mry),
                 decoder(utils::vsum(vector<int>(FLAGS_hl_stack, FLAGS_hl_hidden)),
@@ -258,6 +258,12 @@ class LstmBabiModel {
 
         static Mat<T> state_to_hidden(lstm_state_t state) {
             return MatOps<T>::vstack(LSTM<T>::State::hiddens(state));
+        }
+
+        static lstm_state_t flatten_state(lstm_state_t state) {
+            auto hidden = MatOps<T>::vstack(LSTM<T>::State::hiddens(state));
+            auto memory = MatOps<T>::vstack(LSTM<T>::State::memories(state));
+            return {typename LSTM<T>::State(memory, hidden)};
         }
 
         StoryActivation<T> activate_story(const vector<vector<string>>& facts,
@@ -334,24 +340,27 @@ class LstmBabiModel {
 
             Mat<REAL_t> prediction_error(1,1);
 
-            auto current_state = activation.lstm_state;
+            auto current_state = flatten_state(activation.lstm_state);
             auto answer_idxes = vocab->encode(answer, true);
             for (auto& word_idx: answer_idxes) { // for word idxes with end token
+                Mat<T> partial_error;
                 if (FLAGS_margin_loss) {
                     // We estimated eprically that margin loss scales as about 3.0
                     // cross entropy. We want to put the roughly in the same bucket, so
                     // so that improtance of gate errors and sparsity has more or less
                     // the same effect for both types of errors.
+
                     auto scores = decoder.activate(state_to_hidden(current_state));
-                    prediction_error = prediction_error +
+                    partial_error =
                             MatOps<REAL_t>::margin_loss(scores, word_idx, FLAGS_margin);
                 } else {
                     auto log_probs = decoder.activate(state_to_hidden(current_state));
-                    prediction_error = prediction_error +
+                    partial_error =
                             MatOps<REAL_t>::softmax_cross_entropy(log_probs, word_idx);
                 }
+                prediction_error = prediction_error + partial_error;
                 current_state = answer_model.activate(
-                        current_state, answer_embeddings[word_idx], FLAGS_hl_dropout);
+                        current_state, answer_embeddings[word_idx], FLAGS_answer_dropout);
             }
 
             Mat<REAL_t> fact_selection_error(1,1);
@@ -377,13 +386,13 @@ class LstmBabiModel {
 
         vector<BeamSearchResult<T, lstm_state_t>> my_beam_search(StoryActivation<T>& activation) const {
             // candidate_t = int, state type = lstm_state_t,
-            auto initial_state = activation.lstm_state;
+            auto initial_state = flatten_state(activation.lstm_state);
             auto candidate_scores = [this](lstm_state_t state) -> Mat<T> {
                 auto scores = decoder.activate(LstmBabiModel<T>::state_to_hidden(state));
                 return FLAGS_margin_loss ? scores : MatOps<T>::softmax(scores).log();
             };
             auto make_choice = [this](lstm_state_t state, uint candidate) -> lstm_state_t {
-                return answer_model.activate(state, answer_embeddings[candidate], 0.0);
+                return answer_model.activate(state, answer_embeddings[candidate]);
             };
             auto beam_search_results = beam_search::beam_search2<T, lstm_state_t>(
                     initial_state,
@@ -423,7 +432,8 @@ class LstmBabiModel {
                 auto answer_str = vocab->decode(result.solution, true);
                 beam_search_results_solutions.push_back(utils::join(answer_str, " "));
             }
-            auto distribution_as_vec = utils::normalize_weights(scores_as_vec);
+            auto distribution_as_vec =
+                    FLAGS_margin_loss ? utils::normalize_weights(scores_as_vec) : scores_as_vec;
             vdistribution = make_shared<visualizable::FiniteDistribution<T>>(
                     distribution_as_vec, scores_as_vec, beam_search_results_solutions, 5);
 
@@ -466,8 +476,6 @@ shared_ptr<model_t> model;
 shared_ptr<model_t> best_model;
 int best_model_epoch = 0;
 
-std::mutex solver_mutex;
-
 // returns the errors;
 double run_epoch(const vector<babi::Story>& dataset,
                  Solver::AbstractSolver<REAL_t>* solver) {
@@ -508,7 +516,7 @@ double run_epoch(const vector<babi::Story>& dataset,
                                                           qa->question,
                                                           qa->answer,
                                                           qa->supporting_facts);
-                    (error / FLAGS_minibatch).grad();
+                    error.grad();
 
                     thread_error[ThreadPool::get_thread_number()] += error.w()(0,0);
 
@@ -517,12 +525,7 @@ double run_epoch(const vector<babi::Story>& dataset,
                     graph::backward();
                 }
             }
-            if (FLAGS_solver_mutex) {
-                std::lock_guard<decltype(solver_mutex)> guard(solver_mutex);
-                solver->step(params);
-            } else {
-                solver->step(params);
-            }
+            solver->step(params);
         });
     }
 
@@ -552,9 +555,9 @@ void visualize_examples(const vector<babi::Story>& data, int num_examples) {
 }
 
 void train(const vector<babi::Story>& data, float training_fraction = 0.8) {
-    for (auto param: model->parameters()) {
+    /*for (auto param: model->parameters()) {
         weights<REAL_t>::svd(weights<REAL_t>::gaussian(1.0))(param);
-    }
+    }*/
 
     int training_size = (int)(training_fraction * data.size());
     std::vector<babi::Story> train(data.begin(), data.begin() + training_size);
@@ -563,7 +566,7 @@ void train(const vector<babi::Story>& data, float training_fraction = 0.8) {
     auto params = model->parameters();
 
     // Solver::Adam<REAL_t> solver(params); // , 0.1, 0.0001);
-    Solver::AdaDelta<REAL_t> solver(params, 0.5, 1e-9, 100.0);
+    Solver::AdaDelta<REAL_t> solver(params, 0.95, 1e-9, 100.0);
     // Solver::SGD<REAL_t> solver(params, 100.0, 1e-6);
     // Solver::RMSProp<REAL_t> solver(params, 0.5, Solver::SMOOTH_DEFAULT, 100.0, 1e-6);
     //solver.step_size = 10.0;
@@ -656,7 +659,7 @@ int main(int argc, char** argv) {
         visualizer = make_shared<Visualizer>(FLAGS_visualizer);
     }
 
-    std::cout << "Number of threads: " << FLAGS_j << (FLAGS_solver_mutex ? "(with solver mutex)" : "") << std::endl;
+    std::cout << "Number of threads: " << FLAGS_j << std::endl;
     std::cout << "Using " << (FLAGS_margin_loss ? "margin loss" : "cross entropy") << std::endl;
 
     if (FLAGS_babi_problem == "all") {

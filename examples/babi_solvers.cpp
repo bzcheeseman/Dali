@@ -50,6 +50,8 @@ DEFINE_bool(lstm_feed_mry,             true,   "Should memory be fed to gates in
 DEFINE_int32(hl_hidden,                20,     "What hidden size to use for high level.");
 DEFINE_int32(hl_stack,                 4,      "How high is the LSTM for high level.");
 DEFINE_double(hl_dropout,              0.7,    "How much dropout to use at high level.");
+// answer model
+DEFINE_int32(answer_input,             10,     "Embeddings for answer");
 DEFINE_double(answer_dropout,          0.3,    "How much dropout to use at answer generation model.");
 // question gate model
 DEFINE_int32(gate_input,               20,     "Embedding size for gates.");
@@ -203,7 +205,7 @@ class LstmBabiModel {
                          vector<int>(FLAGS_hl_stack, FLAGS_hl_hidden),
                          FLAGS_lstm_shortcut,
                          FLAGS_lstm_feed_mry),
-                answer_model(utils::vsum(vector<int>(FLAGS_text_repr_stack, FLAGS_text_repr_hidden)),
+                answer_model(FLAGS_answer_input,
                          { FLAGS_hl_stack * FLAGS_hl_hidden },
                          FLAGS_lstm_shortcut,
                          FLAGS_lstm_feed_mry),
@@ -227,10 +229,10 @@ class LstmBabiModel {
                     Mat<T>(n_words, FLAGS_text_repr_input,
                            weights<T>::uniform(1.0/FLAGS_text_repr_input));
             answer_embeddings =
-                    Mat<T>(n_words, hl_model_input,
+                    Mat<T>(n_words, FLAGS_answer_input,
                            weights<T>::uniform(1.0/hl_model_input));
             please_start_prediction =
-                    Mat<T>(hl_model_input, 1, weights<T>::uniform(1.0));
+                    Mat<T>(FLAGS_answer_input, 1, weights<T>::uniform(1.0));
         }
 
         vector<Mat<T>> get_embeddings(const vector<string>& words,
@@ -319,7 +321,6 @@ class LstmBabiModel {
             vector<Mat<T>> hl_input;
             hl_input.push_back(question_hidden);
             hl_input.insert(hl_input.end(), gated_facts.begin(), gated_facts.end());
-            hl_input.push_back(please_start_prediction);
 
             auto hl_final_state = hl_model.activate_sequence(
                     hl_model.initial_states(),
@@ -338,9 +339,11 @@ class LstmBabiModel {
 
             auto activation = activate_story(facts, question, true);
 
+            auto current_state = answer_model.activate(
+                        flatten_state(activation.lstm_state), please_start_prediction, FLAGS_answer_dropout);
+
             Mat<REAL_t> prediction_error(1,1);
 
-            auto current_state = flatten_state(activation.lstm_state);
             auto answer_idxes = vocab->encode(answer, true);
             for (auto& word_idx: answer_idxes) { // for word idxes with end token
                 Mat<T> partial_error;
@@ -386,7 +389,9 @@ class LstmBabiModel {
 
         vector<BeamSearchResult<T, lstm_state_t>> my_beam_search(StoryActivation<T>& activation) const {
             // candidate_t = int, state type = lstm_state_t,
-            auto initial_state = flatten_state(activation.lstm_state);
+             auto initial_state = answer_model.activate(
+                        flatten_state(activation.lstm_state), please_start_prediction, FLAGS_answer_dropout);
+
             auto candidate_scores = [this](lstm_state_t state) -> Mat<T> {
                 auto scores = decoder.activate(LstmBabiModel<T>::state_to_hidden(state));
                 return FLAGS_margin_loss ? scores : MatOps<T>::softmax(scores).log();

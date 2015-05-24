@@ -283,7 +283,7 @@ class LstmBabiModel {
                 vector<Mat<T>> word_gate_memory;
                 for (auto& gate_hidden_fact_word: gate_embeddings_fact) {
                     word_gate_memory.push_back(
-                        word_gate.activate(word_gate_hidden_question, gate_hidden_fact_word).sum().sigmoid()
+                        word_gate.activate(word_gate_hidden_question, gate_hidden_fact_word).sigmoid().sum().sigmoid()
                     );
                 }
                 word_gate_memories.push_back(word_gate_memory);
@@ -308,7 +308,7 @@ class LstmBabiModel {
             vector<Mat<T>> fact_gate_memory;
             for (auto& fact_representation: fact_representations) {
                 fact_gate_memory.push_back(
-                    fact_gate.activate(fact_gate_hidden_question, fact_representation).sum().sigmoid()
+                    fact_gate.activate(fact_gate_hidden_question, fact_representation).sigmoid().sum().sigmoid()
                 );
             }
             auto gated_facts = apply_gate(fact_gate_memory, fact_representations);
@@ -397,7 +397,7 @@ class LstmBabiModel {
 
             auto candidate_scores = [this](lstm_state_t state) -> Mat<T> {
                 auto scores = decoder.activate(LstmBabiModel<T>::state_to_hidden(state));
-                return FLAGS_margin_loss ? scores : MatOps<T>::softmax(scores).log();
+                return MatOps<T>::softmax(scores).log();
             };
             auto make_choice = [this](lstm_state_t state, uint candidate) -> lstm_state_t {
                 return answer_model.activate(state, answer_embeddings[candidate]);
@@ -436,7 +436,7 @@ class LstmBabiModel {
             std::vector<string> beam_search_results_solutions;
             for (auto& result: beam_search_results) {
                 scores_as_vec.push_back(
-                        FLAGS_margin_loss ? result.score : std::exp(result.score));
+                        std::exp(result.score));
                 auto answer_str = vocab->decode(result.solution, true);
                 beam_search_results_solutions.push_back(utils::join(answer_str, " "));
             }
@@ -573,8 +573,8 @@ void train(const vector<babi::Story>& data, float training_fraction = 0.8) {
 
     auto params = model->parameters();
 
-    Solver::Adam<REAL_t> solver(params); // , 0.1, 0.0001);
-    // Solver::AdaDelta<REAL_t> solver(params, 0.95, 1e-9, 100.0);
+    // Solver::Adam<REAL_t> solver(params); // , 0.1, 0.0001);
+    Solver::AdaDelta<REAL_t> solver(params, 0.9, 1e-9, 100.0);
     // Solver::SGD<REAL_t> solver(params, 100.0, 1e-6);
     // Solver::RMSProp<REAL_t> solver(params, 0.5, Solver::SMOOTH_DEFAULT, 100.0, 1e-6);
     //solver.step_size = 10.0;

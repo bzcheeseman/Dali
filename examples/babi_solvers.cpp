@@ -344,6 +344,8 @@ class LstmBabiModel {
 
             Mat<REAL_t> prediction_error(1,1);
 
+            vector<Mat<T>> prediction_errors;
+
             auto answer_idxes = vocab->encode(answer, true);
             for (auto& word_idx: answer_idxes) { // for word idxes with end token
                 Mat<T> partial_error;
@@ -361,7 +363,8 @@ class LstmBabiModel {
                     partial_error =
                             MatOps<REAL_t>::softmax_cross_entropy(log_probs, word_idx);
                 }
-                prediction_error = prediction_error + partial_error;
+
+                prediction_errors.push_back(partial_error);
                 current_state = answer_model.activate(
                         current_state, answer_embeddings[word_idx], FLAGS_answer_dropout);
             }
@@ -380,7 +383,7 @@ class LstmBabiModel {
 
             Mat<REAL_t> total_error;
 
-            total_error = prediction_error
+            total_error = MatOps<T>::add(prediction_errors)
                         + fact_selection_error * FLAGS_fact_selection_lambda
                         + activation.word_memory_sum() * FLAGS_word_selection_sparsity;
 
@@ -570,8 +573,8 @@ void train(const vector<babi::Story>& data, float training_fraction = 0.8) {
 
     auto params = model->parameters();
 
-    // Solver::Adam<REAL_t> solver(params); // , 0.1, 0.0001);
-    Solver::AdaDelta<REAL_t> solver(params, 0.95, 1e-9, 100.0);
+    Solver::Adam<REAL_t> solver(params); // , 0.1, 0.0001);
+    // Solver::AdaDelta<REAL_t> solver(params, 0.95, 1e-9, 100.0);
     // Solver::SGD<REAL_t> solver(params, 100.0, 1e-6);
     // Solver::RMSProp<REAL_t> solver(params, 0.5, Solver::SMOOTH_DEFAULT, 100.0, 1e-6);
     //solver.step_size = 10.0;

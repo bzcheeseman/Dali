@@ -557,6 +557,19 @@ Mat<R> Mat<R>::operator+(R other) const {
     return MatOps<R>::add(*this, other);
 }
 
+template<typename R>
+Mat<R>& Mat<R>::operator+=(Mat<R> other) {
+    auto sum = MatOps<R>::add(*this, other);
+    *this = sum;
+    return *this;
+}
+
+template<typename R>
+Mat<R>& Mat<R>::operator+=(R other) {
+    auto sum = MatOps<R>::add(*this, other);
+    *this = sum;
+    return *this;
+}
 
 template<typename R>
 Mat<R> Mat<R>::operator-(Mat<R> other) const {
@@ -568,7 +581,19 @@ Mat<R> Mat<R>::operator-(R other) const {
     return MatOps<R>::add(*this, -other);
 }
 
+template<typename R>
+Mat<R>& Mat<R>::operator-=(Mat<R> other) {
+    auto diff = MatOps<R>::sub(*this, other);
+    *this = diff;
+    return *this;
+}
 
+template<typename R>
+Mat<R>& Mat<R>::operator-=(R other) {
+    auto diff = MatOps<R>::add(*this, -other);
+    *this = diff;
+    return *this;
+}
 
 template<typename R>
 Mat<R> Mat<R>::operator*(Mat<R> other) const {
@@ -578,6 +603,20 @@ Mat<R> Mat<R>::operator*(Mat<R> other) const {
 template<typename R>
 Mat<R> Mat<R>::operator*(R alpha) const {
     return MatOps<R>::eltmul(*this, alpha);
+}
+
+template<typename R>
+Mat<R>& Mat<R>::operator*=(Mat<R> other) {
+    auto prod = MatOps<R>::eltmul(*this, other);
+    *this = prod;
+    return *this;
+}
+
+template<typename R>
+Mat<R>& Mat<R>::operator*=(R other) {
+    auto prod = MatOps<R>::eltmul(*this, other);
+    *this = prod;
+    return *this;
 }
 
 
@@ -596,7 +635,19 @@ Mat<R> Mat<R>::operator/(R alpha) const {
     return MatOps<R>::eltdivide(*this, alpha);
 }
 
+template<typename R>
+Mat<R>& Mat<R>::operator/=(Mat<R> other) {
+    auto divided = MatOps<R>::eltdivide(*this, other);
+    *this = divided;
+    return *this;
+}
 
+template<typename R>
+Mat<R>& Mat<R>::operator/=(R other) {
+    auto divided = MatOps<R>::eltdivide(*this, other);
+    *this = divided;
+    return *this;
+}
 
 template<typename R>
 Mat<R> Mat<R>::operator^(R other) const {

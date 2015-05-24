@@ -237,15 +237,23 @@ class Mat {
 
         Mat<R> operator+(Mat<R>) const;
         Mat<R> operator+(R) const;
+        Mat<R>& operator+=(Mat<R>);
+        Mat<R>& operator+=(R);
 
         Mat<R> operator-(Mat<R>) const;
         Mat<R> operator-(R) const;
+        Mat<R>& operator-=(Mat<R>);
+        Mat<R>& operator-=(R);
 
         Mat<R> operator*(Mat<R> other) const;
         Mat<R> operator*(R alpha) const;
+        Mat<R>& operator*=(Mat<R>);
+        Mat<R>& operator*=(R);
 
         Mat<R> operator/(Mat<R> other) const;
         Mat<R> operator/(R alpha) const;
+        Mat<R>& operator/=(Mat<R>);
+        Mat<R>& operator/=(R);
 
         Mat<R> operator^(R) const;
         Mat<R> operator^(int) const;

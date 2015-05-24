@@ -140,6 +140,67 @@ TEST_F(MatrixTests, recursive_sum) {
     }
 }
 
+TEST_F(MatrixTests, inplace_sum) {
+
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(3, 4, weights<R>::uniform(2.0));
+        auto B = Mat<R>(3, 4, weights<R>::uniform(2.0));
+
+        auto functor = [&A, &B](vector<Mat<R>>& Xs)-> Mat<R> {
+            auto A_temp = A;
+            auto B_temp = B;
+            A_temp += B_temp;
+            return A_temp;
+        };
+        ASSERT_TRUE(gradient_same<R>(functor, {A, B}, 1e-2));
+    }
+}
+
+TEST_F(MatrixTests, inplace_substract) {
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(3, 4, weights<R>::uniform(2.0));
+        auto B = Mat<R>(3, 4, weights<R>::uniform(2.0));
+
+        auto functor = [&A, &B](vector<Mat<R>>& Xs)-> Mat<R> {
+            auto A_temp = A;
+            auto B_temp = B;
+            A_temp -= B_temp;
+            return A_temp;
+        };
+        ASSERT_TRUE(gradient_same<R>(functor, {A, B}, 1e-2));
+    }
+}
+
+TEST_F(MatrixTests, inplace_divide) {
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(3, 4, weights<R>::uniform(2.0));
+        auto B = Mat<R>(3, 4, weights<R>::uniform(2.0));
+
+        auto functor = [&A, &B](vector<Mat<R>>& Xs)-> Mat<R> {
+            auto A_temp = A;
+            auto B_temp = B;
+            A_temp /= B_temp;
+            return A_temp;
+        };
+        ASSERT_TRUE(gradient_same<R>(functor, {A, B}, 1e-2));
+    }
+}
+
+TEST_F(MatrixTests, inplace_multiply) {
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(3, 4, weights<R>::uniform(2.0));
+        auto B = Mat<R>(3, 4, weights<R>::uniform(2.0));
+
+        auto functor = [&A, &B](vector<Mat<R>>& Xs)-> Mat<R> {
+            auto A_temp = A;
+            auto B_temp = B;
+            A_temp *= B_temp;
+            return A_temp;
+        };
+        ASSERT_TRUE(gradient_same<R>(functor, {A, B}, 1e-2));
+    }
+}
+
 TEST_F(MatrixTests, addition_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] + Xs[1];

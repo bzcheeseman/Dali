@@ -8,42 +8,74 @@ using utils::from_string;
 
 namespace paraphrase {
 
+    utils::Generator<example_t> generate_examples(ParaphraseLoader& para_loader, std::string fname) {
+        auto gen = utils::make_generator<example_t>([para_loader, fname](utils::yield_t<example_t> yield) {
+            auto row_gen = utils::generate_tsv_rows(fname);
+            for (auto row : row_gen)
+                yield(para_loader.tsv_row_to_example(row));
+        });
+        return gen;
+    }
+
+    utils::Generator<example_t> generate_examples(std::string fname, similarity_score_extractor_t similarity_score_extractor) {
+        auto para_loader = ParaphraseLoader();
+        para_loader.similarity_score_extractor = similarity_score_extractor;
+        return generate_examples(para_loader, fname);
+    }
+
+    paraphrase_full_dataset load(ParaphraseLoader& para_loader, std::string path) {
+        auto gen = generate_examples(para_loader, path);
+        paraphrase_full_dataset examples;
+        for (auto example : gen)
+            examples.emplace_back(example);
+        return examples;
+    }
+
+    paraphrase_full_dataset load(std::string path, similarity_score_extractor_t similarity_score_extractor) {
+        auto para_loader = ParaphraseLoader();
+        para_loader.similarity_score_extractor = similarity_score_extractor;
+        return load(para_loader, path);
+    }
+
     ParaphraseLoader::ParaphraseLoader() : sentence1_column(0), sentence2_column(1), similarity_column(2) {}
 
-    paraphrase_full_dataset ParaphraseLoader::convert_tsv(const utils::tokenized_labeled_dataset& tsv_data) {
+    example_t ParaphraseLoader::tsv_row_to_example(utils::row_t& row) const {
+        example_t example;
+        if (sentence1_column < 0) {
+            assert2(row.size() + sentence1_column > 0, "Accessing a negatively valued column.");
+            std::get<0>(example) = row[row.size() + sentence1_column];
+        } else {
+            assert2(row.size() > sentence1_column, "Accessing a non-existing column");
+            std::get<0>(example) = row[sentence1_column];
+        }
+        if (sentence2_column < 0) {
+            assert2(row.size() + sentence2_column > 0, "Accessing a negatively valued column.");
+            std::get<1>(example) = row[row.size() + sentence2_column];
+        } else {
+            assert2(row.size() > sentence2_column, "Accessing a non-existing column");
+            std::get<1>(example) = row[sentence2_column];
+        }
+        if (similarity_column < 0) {
+            assert2(row.size() + similarity_column > 0, "Accessing a negatively valued column.");
+            std::get<2>(example) = similarity_score_extractor(
+                utils::join(row[row.size() + similarity_column])
+            );
+        } else {
+            assert2(row.size() > similarity_column, "Accessing a non-existing column");
+            std::get<2>(example) = similarity_score_extractor(
+                utils::join(row[similarity_column])
+            );
+        }
+        return example;
+    }
+
+    paraphrase_full_dataset ParaphraseLoader::convert_tsv(const utils::tokenized_labeled_dataset& tsv_data) const {
         assert2(similarity_score_extractor != NULL,
             "Must pass a similarity score extractor to convert similarity scores from strings to doubles."
         );
         paraphrase_full_dataset split_dataset;
-        for (auto& line : tsv_data) {
-            example_t example;
-            if (sentence1_column < 0) {
-                assert2(line.size() + sentence1_column > 0, "Accessing a negatively valued column.");
-                std::get<0>(example) = line[line.size() + sentence1_column];
-            } else {
-                assert2(line.size() > sentence1_column, "Accessing a non-existing column");
-                std::get<0>(example) = line[sentence1_column];
-            }
-            if (sentence2_column < 0) {
-                assert2(line.size() + sentence2_column > 0, "Accessing a negatively valued column.");
-                std::get<1>(example) = line[line.size() + sentence2_column];
-            } else {
-                assert2(line.size() > sentence2_column, "Accessing a non-existing column");
-                std::get<1>(example) = line[sentence2_column];
-            }
-            if (similarity_column < 0) {
-                assert2(line.size() + similarity_column > 0, "Accessing a negatively valued column.");
-                std::get<2>(example) = similarity_score_extractor(
-                    utils::join(line[line.size() + similarity_column])
-                );
-            } else {
-                assert2(line.size() > similarity_column, "Accessing a non-existing column");
-                std::get<2>(example) = similarity_score_extractor(
-                    utils::join(line[similarity_column])
-                );
-            }
-            split_dataset.emplace_back(example);
-        }
+        for (auto line : tsv_data)
+            split_dataset.emplace_back(tsv_row_to_example(line));
         return split_dataset;
     }
 
@@ -62,8 +94,24 @@ namespace paraphrase {
         return list;
     }
 
+    vector<string> get_vocabulary(utils::Generator<example_t>& examples, int min_occurence) {
+        std::map<string, uint> word_occurences;
+        string word;
+        for (auto example : examples) {
+            for (auto& word : std::get<0>(example)) word_occurences[word] += 1;
+            for (auto& word : std::get<1>(example)) word_occurences[word] += 1;
+        }
+        vector<string> list;
+        for (auto& key_val : word_occurences)
+            if (key_val.second >= min_occurence)
+                list.emplace_back(key_val.first);
+        list.emplace_back(utils::end_symbol);
+        return list;
+    }
+
     namespace STS_2015 {
-        paraphrase_full_dataset load_train(std::string path) {
+
+        utils::Generator<example_t> generate_train(std::string path) {
             auto loader = ParaphraseLoader();
             loader.sentence1_column  = 2;
             loader.sentence2_column  = 3;
@@ -78,15 +126,19 @@ namespace paraphrase {
                 {"(5,0)", 1.0},
             };
 
-            loader.similarity_score_extractor = [&score_map](const string& score_str) {return score_map.at(score_str);};
-            auto tsv_data = utils::load_tsv(
-                path,
-                -1,
-                '\t'
-            );
-            return loader.convert_tsv(tsv_data);
+            loader.similarity_score_extractor = [score_map](const string& score_str) {return score_map.at(score_str);};
+            return generate_examples(loader, path);
         }
-        paraphrase_full_dataset load_test(std::string path) {
+
+        paraphrase_full_dataset load_train(std::string path) {
+            auto gen = STS_2015::generate_train(path);
+            paraphrase_full_dataset examples;
+            for (auto example : gen)
+                examples.emplace_back(example);
+            return examples;
+        }
+
+        utils::Generator<example_t> generate_test(std::string path) {
             auto loader = ParaphraseLoader();
             loader.sentence1_column = 2;
             loader.sentence2_column = 3;
@@ -95,13 +147,21 @@ namespace paraphrase {
                 auto num = from_string<int>(number_column);
                 return ((double) num) / 5.0;
             };
-            auto tsv_data = utils::load_tsv(
-                path,
-                -1,
-                '\t'
-            );
-            return loader.convert_tsv(tsv_data);
+            return generate_examples(loader, path);
         }
+
+        paraphrase_full_dataset load_test(std::string path) {
+            auto gen = STS_2015::generate_test(path);
+            paraphrase_full_dataset examples;
+            for (auto example : gen)
+                examples.emplace_back(example);
+            return examples;
+        }
+
+        utils::Generator<example_t> generate_dev(std::string path) {
+            return generate_train(path);
+        }
+
         paraphrase_full_dataset load_dev(std::string path) {
             return load_train(path);
         }
@@ -116,12 +176,8 @@ namespace paraphrase {
             loader.similarity_score_extractor = [](const string& score_str) {
                 return from_string<double>(score_str) / 5.0;
             };
-            auto tsv_data = utils::load_tsv(
-                path,
-                -1,
-                '\t'
-            );
-            return loader.convert_tsv(tsv_data);
+
+            return load(loader, path);
         }
     }
 
@@ -153,6 +209,67 @@ namespace paraphrase {
         }
         return dataset;
     }
+
+    utils::Generator<vector<numeric_example_t>> convert_to_indexed_minibatches(
+            const utils::Vocab& word_vocab,
+            utils::Generator<example_t>& examples,
+            int minibatch_size) {
+
+        auto gen = utils::make_generator<vector<numeric_example_t>>(
+                [examples, minibatch_size, word_vocab](utils::yield_t<vector<numeric_example_t>> yield) {
+            int seen = 0;
+            auto minibatch = vector<numeric_example_t>();
+            minibatch.reserve(minibatch_size);
+            auto ex_iter = examples;
+            for (auto example : ex_iter) {
+                minibatch.emplace_back(
+                    word_vocab.encode(std::get<0>(example)),
+                    word_vocab.encode(std::get<1>(example)),
+                    std::get<2>(example)
+                );
+                if (seen++ % minibatch_size == 0) {
+                    yield(minibatch);
+                    minibatch.clear();
+                }
+            }
+            if (minibatch.size() > 0) {
+                yield(minibatch);
+            }
+        });
+        return gen;
+    }
+
+
+    utils::Generator<vector<numeric_example_t>> convert_to_indexed_minibatches(
+            const utils::CharacterVocab& character_vocab,
+            utils::Generator<example_t>& examples,
+            int minibatch_size) {
+
+        auto gen = utils::make_generator<vector<numeric_example_t>>(
+                [examples, minibatch_size, character_vocab](utils::yield_t<vector<numeric_example_t>> yield) {
+            int seen = 0;
+            auto minibatch = vector<numeric_example_t>();
+            minibatch.reserve(minibatch_size);
+            auto ex_iter = examples;
+            for (auto example : ex_iter) {
+                seen++;
+                minibatch.emplace_back(
+                    character_vocab.encode(std::get<0>(example)),
+                    character_vocab.encode(std::get<1>(example)),
+                    std::get<2>(example)
+                );
+                if (seen % minibatch_size == 0) {
+                    yield(minibatch);
+                    minibatch.clear();
+                }
+            }
+            if (minibatch.size() > 0) {
+                yield(minibatch);
+            }
+        });
+        return gen;
+    }
+
 
     paraphrase_minibatch_dataset convert_to_indexed_minibatches(
             const utils::CharacterVocab& character_vocab,

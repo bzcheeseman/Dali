@@ -80,7 +80,7 @@ namespace Indexing {
                     const_iterator(const pointer ptr);
                     self_type operator++();
                     self_type operator++(int junk);
-                    const reference operator*();
+                    reference operator*();
                     const pointer operator->();
                     bool operator==(const self_type& rhs);
                     bool operator!=(const self_type& rhs);

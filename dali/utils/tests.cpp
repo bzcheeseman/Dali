@@ -5,7 +5,6 @@
 #include <sstream>
 #include <cstdio>
 #include <string>
-
 #include "dali/utils.h"
 
 using std::chrono::milliseconds;
@@ -15,7 +14,6 @@ using std::stringstream;
 using std::vector;
 using utils::OntologyBranch;
 using utils::CharacterVocab;
-
 
 TEST(ThreadPool, wait_until_idle) {
     const int NUM_THREADS = 10;
@@ -78,7 +76,6 @@ TEST(utils, stream_to_redirection_list) {
 
     std::map<string, string> mapping;
     utils::stream_to_redirection_list(ss, mapping);
-
     ASSERT_TRUE(mapping.find("hello") != mapping.end());
     ASSERT_TRUE(mapping.find("what") != mapping.end());
     ASSERT_TRUE(mapping.find("who") != mapping.end());
@@ -287,7 +284,6 @@ TEST(utils, CharacterVocab) {
     ASSERT_EQ(special_seq, utils::join(spaceless_vocab.decode(spaceless_chars)));
 }
 
-
 TEST(utils, prefix_match) {
     using utils::prefix_match;
     vector<string> candidates = {
@@ -318,25 +314,16 @@ struct Range : utils::GeneratorHeart<int> {
 
 TEST(utils, generator_test) {
     auto vals = vector<int>();
-    for (int i : utils::Gen<Range>(2,9,2))
-        vals.emplace_back(i);
+    for (int i : utils::Gen<Range>(2,9,2)) vals.emplace_back(i);
     ASSERT_EQ(vals, vector<int>({2, 4, 6, 8}));
 }
 
 TEST(utils, lambda_generator_test) {
     auto gen = utils::make_generator<int>([](utils::yield_t<int> yield) {
-        for (int i=2; i<9; i+=2) {
-            yield(i);
-        }
+        for (int i=2; i<9; i+=2) yield(i);
     });
     auto vals = vector<int>();
     for (int i : gen)
         vals.emplace_back(i);
     ASSERT_EQ(vals, vector<int>({2, 4, 6, 8}));
 }
-
-
-
-
-
-

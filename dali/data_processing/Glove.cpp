@@ -39,7 +39,7 @@ namespace glove {
                         capacity = capacity * 1.1;
                     }
                     found_name = true;
-                } else {
+                } else {
                     if (!item.empty()) {
                         if (observed_size == 0 && i+1 > mat.cols()) {
                             underlying_mat.resize(capacity, std::max(100, (int) (mat.cols() * 1.5)));
@@ -113,7 +113,6 @@ namespace glove {
                     // store the embedding
                     for (int eidx = 0; eidx < embedding_size; ++ eidx)
                         target.w()(word_index, eidx) = embedding[eidx];
-
                     ++words_matched_so_far;
                 }
                 if (threshold != -1 && ++words_read_so_far >= threshold) break;

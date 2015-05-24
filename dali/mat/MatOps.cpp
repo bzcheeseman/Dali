@@ -1,9 +1,5 @@
 #include "MatOps.h"
 
-#include "dali/mat/Index.h"
-#include "dali/mat/Mat.h"
-#include "dali/mat/Tape.h"
-
 using std::vector;
 using std::string;
 using utils::assert2;

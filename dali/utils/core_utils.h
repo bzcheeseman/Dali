@@ -221,10 +221,7 @@ namespace utils {
 
         **/
         std::vector<std::pair<std::string, std::string>> load_labeled_corpus(const std::string&);
-        tokenized_labeled_dataset load_tsv(const std::string&, int number_of_columns = -1, const char& delimiter = '\t');
 
-        template<typename T>
-        void load_tsv_from_stream(T&, tokenized_labeled_dataset&, int& number_of_columns, const char& delimiter = '\t');
 
         std::vector<str_sequence> load_tokenized_unlabeled_corpus(const std::string&);
         str_sequence tokenize(const std::string&);

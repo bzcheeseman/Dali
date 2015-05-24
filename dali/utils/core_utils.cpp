@@ -447,7 +447,7 @@ namespace utils {
                     }
                 });
             }
-        } else {
+        } else {
             while (std::getline(fp, line)) {
                 auto pos_end_arrow = std::find_if(line.begin(), line.end(), checker);
                 if (pos_end_arrow != line.end()) {
@@ -610,57 +610,6 @@ namespace utils {
         return vector<string>(begin, end);
     }
 
-    tokenized_labeled_dataset load_tsv(const string& fname, int expected_columns, const char& delimiter) {
-        assert2(file_exists(fname), "Cannot open tsv file.");
-        tokenized_labeled_dataset tsv_data;
-        if (utils::is_gzip(fname)) {
-            igzstream fpgz(fname.c_str());
-            load_tsv_from_stream(fpgz, tsv_data, expected_columns, delimiter);
-        } else {
-            ifstream fp(fname);
-            load_tsv_from_stream(fp,   tsv_data, expected_columns, delimiter);
-        }
-        return tsv_data;
-    }
-
-    template<typename T>
-    void load_tsv_from_stream(
-            T& stream,
-            tokenized_labeled_dataset& tsv_data,
-            int& expected_columns,
-            const char& delimiter) {
-        string::size_type n;
-        string l;
-        string cell;
-        // row by row
-        int line_number = 0;
-        while (std::getline(stream, l)) {
-            line_number++;
-            std::stringstream ss(l);
-            vector<vector<string>> row_data;
-            // cells separated by tab or comma
-            while(std::getline(ss, cell, delimiter)) {
-                row_data.push_back(tokenize(cell));
-            }
-            if (row_data.size() > 0) {
-                if (expected_columns > 0) {
-                    assert2(
-                        row_data.size() == expected_columns,
-                        MS() << "File TSV Row at linenumber "
-                             << line_number
-                             << " has unexpected number of columns (" << row_data.size() << ")."
-                    );
-                }
-                tsv_data.emplace_back(row_data);
-            }
-        }
-    }
-
-    template void load_tsv_from_stream(igzstream&,         tokenized_labeled_dataset&, int&, const char& delimiter);
-    template void load_tsv_from_stream(std::fstream&,      tokenized_labeled_dataset&, int&, const char& delimiter);
-    template void load_tsv_from_stream(std::stringstream&, tokenized_labeled_dataset&, int&, const char& delimiter);
-    template void load_tsv_from_stream(std::istream&,      tokenized_labeled_dataset&, int&, const char& delimiter);
-
     vector<vector<string>> load_tokenized_unlabeled_corpus(const string& fname) {
         ifstream fp(fname.c_str());
         string l;
@@ -711,7 +660,7 @@ namespace utils {
         }
         vector<string> list;
         for (auto& key_val : word_occurences) {
-            if (key_val.second >= min_occurence) {
+            if (key_val.second >= min_occurence) {
                 list.emplace_back(key_val.first);
             }
         }
@@ -921,7 +870,7 @@ namespace utils {
         for (auto& index : indices) {
             if (index == max_char) {
                 stream << "█";
-            } else {
+            } else {
                 stream << ((char) (index + min_char));
             }
         }
@@ -934,7 +883,7 @@ namespace utils {
         for (auto& index : indices) {
             if (index == max_char) {
                 result[char_idx++] = "█";
-            } else {
+            } else {
                 result[char_idx++] = (char) (index + min_char);
             }
         }
@@ -1146,6 +1095,7 @@ namespace utils {
                 return candidate;
         }
         assert2(false, MS() << "Could not find match for " << input << " in " << candidates <<".");
+        return "";
     }
 
 

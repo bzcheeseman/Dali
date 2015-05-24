@@ -5,7 +5,7 @@
 #include <vector>
 #include <atomic>
 #include <set>
-#include "dali/utils/core_utils.h"
+#include "dali/utils/tsv_utils.h"
 #include "dali/utils/Reporting.h"
 
 namespace NER {

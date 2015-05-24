@@ -173,7 +173,7 @@ class BidirectionalLSTM {
                     hidden_size, // number of filters
                     input_size, // filter height
                     2); // filter width (temporal dimension)
-            } else {
+            } else {
                 if (input_size != hidden_size) {
                     throw std::runtime_error(
                         "Input size must equal hidden size "
@@ -209,7 +209,7 @@ class BidirectionalLSTM {
             }
             if (convolution) {
                 filters = make_shared<Filters<T>>(*model.filters, copy_w, copy_dw);
-            } else {
+            } else {
                 filters = nullptr;
             }
         }
@@ -354,7 +354,7 @@ class BidirectionalLSTM {
                 }
                 std::get<1>(prediction_tuple) = prediction;
             } else {
-                if (!bidirectional) {
+                if (!bidirectional) {
                     std::get<1>(prediction_tuple) = MatOps<T>::softmax(decoder.activate(
                             apply_dropout(forwardX.back(), drop_prob)
                     ));
@@ -508,7 +508,7 @@ int main (int argc,  char* argv[]) {
         solver = make_shared<Solver::SGD<REAL_t>>(params, 1e-9, 100.0);
         solver_type = SGD_TYPE;
         dynamic_cast<Solver::SGD<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
-    } else if (FLAGS_solver == "adagrad") {
+    } else if (FLAGS_solver == "adagrad") {
         std::cout << "Using Adagrad" << std::endl;
         solver = make_shared<Solver::AdaGrad<REAL_t>>(params, 1e-9, 100.0);
         solver_type = ADAGRAD_TYPE;

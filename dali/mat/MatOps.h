@@ -4,8 +4,10 @@
 #include <initializer_list>
 #include <vector>
 #include <memory>
-
 #include <Eigen/Eigen>
+#include "dali/mat/Index.h"
+#include "dali/mat/Mat.h"
+#include "dali/mat/Tape.h"
 #include "dali/mat/Mat.h"
 #include "dali/utils.h"
 

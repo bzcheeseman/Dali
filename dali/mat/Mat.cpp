@@ -1,7 +1,4 @@
-#include "Mat.h"
-
-#include "dali/utils.h"
-#include "dali/mat/MatOps.h"
+#include "dali/mat/Mat.h"
 
 using namespace Eigen;
 using std::vector;
@@ -831,10 +828,7 @@ namespace utils {
 
     template json11::Json json_finite_distribution(const Mat<float>&, const vector<string>&);
     template json11::Json json_finite_distribution(const Mat<double>&, const vector<string>&);
-
 }
-
-
 
 template class MatInternal<float>;
 template class MatInternal<double>;

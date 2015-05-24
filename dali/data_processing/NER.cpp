@@ -22,7 +22,7 @@ namespace NER {
                 if (data_column < 0) {
                     assert2(line.size() + data_column > 0, "Accessing a negatively valued column.");
                     current_example.first.emplace_back(line[line.size() + data_column].front());
-                } else {
+                } else {
                     assert2(line.size() > data_column, "Accessing a non-existing column");
                     current_example.first.emplace_back(line[data_column].front());
                 }
@@ -30,7 +30,7 @@ namespace NER {
                 if (label_column < 0) {
                     assert2(line.size() + label_column > 0, "Accessing a negatively valued column.");
                     current_example.second.emplace_back(line[line.size() + label_column].front());
-                } else {
+                } else {
                     assert2(line.size() > label_column, "Accessing a non-existing column");
                     current_example.second.emplace_back(line[label_column].front());
                 }

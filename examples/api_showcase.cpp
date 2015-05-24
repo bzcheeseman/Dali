@@ -5,9 +5,17 @@
 #include "dali/utils.h"
 
 using std::vector;
+using std::string;
 
 // Test file for LSTM
 int main () {
+
+    string tsv_file = STR(DALI_DATA_DIR) "/CoNLL_NER/NER_dummy_dataset.tsv";
+    auto dataset = utils::load_tsv(tsv_file, 4, '\t');
+    utils::assert2(dataset.size() == 7, "ne");
+    utils::assert2(dataset.back().front().front() == ".", "ne");
+
+
     typedef double R;
     sane_crashes::activate();
     auto U = weights<R>::uniform(-2.0, 2.0);

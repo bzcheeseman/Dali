@@ -4,6 +4,9 @@
 #include "dali/data_processing/Arithmetic.h"
 #include "dali/data_processing/NER.h"
 #include "dali/data_processing/Paraphrase.h"
+#include <vector>
+
+using std::vector;
 
 TEST(Glove, load) {
     auto embedding = glove::load<double>( STR(DALI_DATA_DIR) "/glove/test_data.txt");
@@ -116,5 +119,39 @@ TEST(paraphrase, load) {
     auto sentence = char_vocab.decode(std::get<0>(char_minibatches[0][0]));
     ASSERT_EQ(sentence, std::get<0>(paraphrase_data[0]));
 }
+
+
+TEST(paraphrase, generator_load) {
+    auto gen_data = paraphrase::STS_2015::generate_train(STR(DALI_DATA_DIR) "/paraphrase_STS_2015/paraphrase_dummy_data.tsv");
+    int ex_seen = 0;
+    for (auto ex : gen_data) ex_seen++;
+    ASSERT_EQ(ex_seen, 4);
+    // TODO: find why when gen_data is overwritten a segfault occurs!!
+    auto gen_data2 = paraphrase::STS_2015::generate_train(STR(DALI_DATA_DIR) "/paraphrase_STS_2015/paraphrase_dummy_data.tsv");
+    auto paraphrase_data = paraphrase::STS_2015::load_train( STR(DALI_DATA_DIR) "/paraphrase_STS_2015/paraphrase_dummy_data.tsv");
+    auto vocab_gen = paraphrase::get_vocabulary(gen_data2, 1);
+    auto vocab     = paraphrase::get_vocabulary(paraphrase_data, 1);
+    ASSERT_EQ(vocab_gen, vocab);
+}
+
+// TEST(paraphrase, convert_to_indexed_minibatches) {
+//     auto vocab_gen = utils::Vocab();
+//     {
+//         auto gen_data = paraphrase::STS_2015::generate_train(STR(DALI_DATA_DIR) "/paraphrase_STS_2015/paraphrase_dummy_data.tsv");
+//         vocab_gen = utils::Vocab(paraphrase::get_vocabulary(gen_data, 1));
+//     }
+//     auto gen_data = paraphrase::STS_2015::generate_train(STR(DALI_DATA_DIR) "/paraphrase_STS_2015/paraphrase_dummy_data.tsv");
+
+//     // deadlock when generator inside generator is run.
+//     auto gen_minibatches = paraphrase::convert_to_indexed_minibatches(vocab_gen, gen_data, 3);
+
+//     vector<vector<paraphrase::numeric_example_t>> minibatches;
+//     for (auto minibatch : gen_minibatches) {
+//         minibatches.emplace_back(minibatch);
+//     }
+
+//     ASSERT_EQ(minibatches.size(), 2);
+
+// }
 
 

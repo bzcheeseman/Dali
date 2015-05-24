@@ -129,6 +129,18 @@ TEST_F(MatrixTests, sum_gradient) {
     }
 }
 
+TEST_F(MatrixTests, resursive_sum) {
+    auto functor = [](vector<Mat<R>>& Xs)-> Mat<R> {
+        int repeats = 1;
+        Xs[0] = Xs[0] + Xs[0];
+        return Xs[0].sum();
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
+        ASSERT_TRUE(gradient_same<R>(functor, {A}, 1e-2));
+    }
+}
+
 TEST_F(MatrixTests, addition_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] + Xs[1];

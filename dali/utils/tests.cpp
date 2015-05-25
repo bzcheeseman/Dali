@@ -328,28 +328,48 @@ TEST(utils, lambda_generator_test) {
     ASSERT_EQ(vals, vector<int>({2, 4, 6, 8}));
 }
 
-/*
+
 TEST(utils, test_initialize_gen) {
-    int x = 0;
-    auto gen_12345 = utils::generator_constructor<int>([](utils::yield_t<int> yield) {
+    // This test illustrates that generator_constructor can be sometimes
+    // dangerous if we do not thin about initialization
+
+    // TEST GOAL: generate {1,2,3,4,5,  1,2,3,4,5} using shared_resource.
+
+    int shared_resource = 1;
+
+    auto advance_noinitialization = [&shared_resource](utils::yield_t<int> yield) {
         int repeats = 5;
         while(repeats--) {
-            yield(i);
+            yield(shared_resource++);
         }
-    });
-    auto gen_5x_12345 = utils::generator_constructor<int>([&gen_12345](utils::yield_t<int> yield) {
+    };
+
+    auto advance_correct = [&shared_resource](utils::yield_t<int> yield) {
+        shared_resource = 1;
         int repeats = 5;
         while(repeats--) {
-            for (auto num: gen_12345())
-                yield(num);
+            yield(shared_resource++);
         }
-    });
+    };
+
+
+    auto noinitialization = utils::generator_constructor<int>(advance_noinitialization);
+    auto correct = utils::generator_constructor<int>(advance_correct);
 
     auto vals = vector<int>();
-    for (int i : gen_5x_12345())
+    for (int i : noinitialization())
         vals.emplace_back(i);
-    ASSERT_EQ(vector<int>({1,2,3,4,5, 1,2,3,4,5, 1,2,3,4,5, 1,2,3,4,5, 1,2,3,4,5}), vals);
-}*/
+    for (int i : noinitialization())
+        vals.emplace_back(i);
+    ASSERT_EQ(vector<int>({1,2,3,4,5,6,7,8,9,10}), vals);
+
+    vals.clear();
+    for (int i : correct())
+        vals.emplace_back(i);
+    for (int i : correct())
+        vals.emplace_back(i);
+    ASSERT_EQ(vector<int>({1,2,3,4,5, 1,2,3,4,5}), vals);
+}
 
 
 TEST(utils, recursive_generator_test) {

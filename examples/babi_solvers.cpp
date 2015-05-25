@@ -436,7 +436,7 @@ class LstmBabiModel {
             std::vector<string> beam_search_results_solutions;
             for (auto& result: beam_search_results) {
                 scores_as_vec.push_back(
-                        std::exp(result.score));
+                        FLAGS_margin_loss ? result.score : std::exp(result.score));
                 auto answer_str = vocab->decode(result.solution, true);
                 beam_search_results_solutions.push_back(utils::join(answer_str, " "));
             }

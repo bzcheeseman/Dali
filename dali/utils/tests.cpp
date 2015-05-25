@@ -327,3 +327,25 @@ TEST(utils, lambda_generator_test) {
         vals.emplace_back(i);
     ASSERT_EQ(vals, vector<int>({2, 4, 6, 8}));
 }
+
+
+TEST(utils, recursive_generator_test) {
+    // generate {1,2,3,4,5} five times.
+    auto make_gen_12345 = []() {
+        return utils::make_generator<int>([](utils::yield_t<int> yield) {
+            for (int i=1; i<=5; i+=1) yield(i);
+        });
+    };
+    auto gen_5x_12345 = utils::make_generator<int>([&make_gen_12345](utils::yield_t<int> yield) {
+        int repeats = 5;
+        while(repeats--) {
+            for (auto num: make_gen_12345())
+                yield(num);
+        }
+    });
+
+    auto vals = vector<int>();
+    for (int i : gen_5x_12345)
+        vals.emplace_back(i);
+    ASSERT_EQ(vector<int>({1,2,3,4,5, 1,2,3,4,5, 1,2,3,4,5, 1,2,3,4,5, 1,2,3,4,5}), vals);
+}

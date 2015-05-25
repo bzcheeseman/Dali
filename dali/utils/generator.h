@@ -157,8 +157,18 @@ namespace utils {
     using Generator = Gen<LambdaGeneratorHeart<T>>;
 
     template<typename T>
-    Gen<LambdaGeneratorHeart<T>> make_generator(typename LambdaGeneratorHeart<T>::generator_t generator) {
-        return Gen<LambdaGeneratorHeart<T>>(generator);
+    Gen<LambdaGeneratorHeart<T>> make_generator(typename LambdaGeneratorHeart<T>::generator_t generator_f) {
+        return Gen<LambdaGeneratorHeart<T>>(generator_f);
+    }
+
+    template<typename T>
+    std::function<Gen<LambdaGeneratorHeart<T>>(void)> generator_constructor(
+            typename LambdaGeneratorHeart<T>::generator_t generator_f,
+            std::function<void()> initialize_generator=[](){}) {
+        return [initialize_generator, generator_f]() {
+            initialize_generator();
+            return make_generator<T>(generator_f);
+        };
     }
 }
 

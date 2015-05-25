@@ -328,24 +328,49 @@ TEST(utils, lambda_generator_test) {
     ASSERT_EQ(vals, vector<int>({2, 4, 6, 8}));
 }
 
-
-TEST(utils, recursive_generator_test) {
-    // generate {1,2,3,4,5} five times.
-    auto make_gen_12345 = []() {
-        return utils::make_generator<int>([](utils::yield_t<int> yield) {
-            for (int i=1; i<=5; i+=1) yield(i);
-        });
-    };
-    auto gen_5x_12345 = utils::make_generator<int>([&make_gen_12345](utils::yield_t<int> yield) {
+/*
+TEST(utils, test_initialize_gen) {
+    int x = 0;
+    auto gen_12345 = utils::generator_constructor<int>([](utils::yield_t<int> yield) {
         int repeats = 5;
         while(repeats--) {
-            for (auto num: make_gen_12345())
+            yield(i);
+        }
+    });
+    auto gen_5x_12345 = utils::generator_constructor<int>([&gen_12345](utils::yield_t<int> yield) {
+        int repeats = 5;
+        while(repeats--) {
+            for (auto num: gen_12345())
                 yield(num);
         }
     });
 
     auto vals = vector<int>();
-    for (int i : gen_5x_12345)
+    for (int i : gen_5x_12345())
+        vals.emplace_back(i);
+    ASSERT_EQ(vector<int>({1,2,3,4,5, 1,2,3,4,5, 1,2,3,4,5, 1,2,3,4,5, 1,2,3,4,5}), vals);
+}*/
+
+
+TEST(utils, recursive_generator_test) {
+    // here we are using generator_constructor rather than make generator,
+    // so that we can use it multiple times. For example each time we call
+    // gen_12345() new generator is constructed.
+
+    // TEST GOAL: generate {1,2,3,4,5} five times.
+    auto gen_12345 = utils::generator_constructor<int>([](utils::yield_t<int> yield) {
+        for (int i=1; i<=5; i+=1) yield(i);
+    });
+    auto gen_5x_12345 = utils::generator_constructor<int>([&gen_12345](utils::yield_t<int> yield) {
+        int repeats = 5;
+        while(repeats--) {
+            for (auto num: gen_12345())
+                yield(num);
+        }
+    });
+
+    auto vals = vector<int>();
+    for (int i : gen_5x_12345())
         vals.emplace_back(i);
     ASSERT_EQ(vector<int>({1,2,3,4,5, 1,2,3,4,5, 1,2,3,4,5, 1,2,3,4,5, 1,2,3,4,5}), vals);
 }

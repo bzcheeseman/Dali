@@ -454,6 +454,32 @@ namespace Solver {
         return step(parameters, 0.0002);
     }
 
+    template<typename R>
+    std::shared_ptr<AbstractSolver<R>> construct(std::string solver_name, std::vector<Mat<R>>& params, R learning_rate, R regc) {
+        std::shared_ptr<AbstractSolver<R>> solver;
+        std::transform(solver_name.begin(), solver_name.end(), solver_name.begin(), ::tolower);
+        if (solver_name        == "adadelta") {
+            solver = std::make_shared<AdaDelta<R>>(params, 0.95, 1e-9, 100.0, regc);
+        } else if (solver_name == "adam") {
+            solver = std::make_shared<Adam<R>>(params, 0.1, 0.001, 1e-9, 100.0, regc);
+        } else if (solver_name == "sgd") {
+            solver = std::make_shared<SGD<R>>(params, 100.0, regc);
+            dynamic_cast<SGD<R>*>(solver.get())->step_size = learning_rate;
+        } else if (solver_name == "adagrad") {
+            solver = std::make_shared<AdaGrad<R>>(params, 1e-9, 100.0, regc);
+            dynamic_cast<Solver::AdaGrad<R>*>(solver.get())->step_size = learning_rate;
+        } else if (solver_name == "rmsprop") {
+            solver = std::make_shared<RMSProp<R>>(params, 0.999, 1e-9, 100.0, regc);
+            dynamic_cast<Solver::RMSProp<R>*>(solver.get())->step_size = learning_rate;
+        } else {
+            utils::exit_with_message("Did not recognize this solver type.");
+        }
+        return solver;
+    }
+
+    template std::shared_ptr<AbstractSolver<float>> construct(std::string solver_name, std::vector<Mat<float>>& params, float learning_rate, float regc);
+    template std::shared_ptr<AbstractSolver<double>> construct(std::string solver_name, std::vector<Mat<double>>& params, double learning_rate, double regc);
+
     template class Adam<float>;
     template class Adam<double>;
 }

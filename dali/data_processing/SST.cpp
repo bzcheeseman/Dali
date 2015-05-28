@@ -363,9 +363,6 @@ namespace SST {
         journalist.done();
         return std::tuple<double, double>(100.0 * ((double) correct / (double) total), 100.0 * (double) correct_root  / (double) total_root);
     }
-
-
-
 }
 
 std::ostream &operator <<(std::ostream &os, const SST::AnnotatedParseTree&v) {

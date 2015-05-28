@@ -5,10 +5,13 @@
 #include <vector>
 #include <atomic>
 #include <set>
+#include <memory>
+#include <algorithm>
 #include <map>
 
 #include "dali/utils/tsv_utils.h"
 #include "dali/utils/Reporting.h"
+#include "dali/visualizer/visualizer.h"
 #include "dali/utils/scoring_utils.h"
 
 namespace paraphrase {
@@ -47,11 +50,19 @@ namespace paraphrase {
     }
 
     namespace STS_2014 {
-        paraphrase_full_dataset load(std::string = STR(DALI_DATA_DIR) "/paraphrase_STS_2014/train.tokenized.tsv");
+        paraphrase_full_dataset     load_test(std::string = STR(DALI_DATA_DIR) "/paraphrase_STS_2014/test.tokenized.tsv");
+        utils::Generator<example_t> generate_test(std::string = STR(DALI_DATA_DIR) "/paraphrase_STS_2014/test.tokenized.tsv");
+        paraphrase_full_dataset     load_train(std::string = STR(DALI_DATA_DIR) "/paraphrase_STS_2014/train.tokenized.tsv");
+        utils::Generator<example_t> generate_train(std::string = STR(DALI_DATA_DIR) "/paraphrase_STS_2014/train.tokenized.tsv");
     }
 
-    std::vector<std::string> get_vocabulary(const paraphrase_full_dataset& examples, int min_occurence);
-    std::vector<std::string> get_vocabulary(utils::Generator<example_t>& examples, int min_occurence);
+    namespace wikianswers {
+        paraphrase_full_dataset     load(std::string = STR(DALI_DATA_DIR) "/paraphrase_wikianswers/wikianswers.paraphrases.tsv.gz");
+        utils::Generator<example_t> generate(std::string = STR(DALI_DATA_DIR) "/paraphrase_wikianswers/wikianswers.paraphrases.tsv.gz");
+    }
+
+    std::vector<std::string> get_vocabulary(const paraphrase_full_dataset& examples, int min_occurence, int max_examples_seen = -1);
+    std::vector<std::string> get_vocabulary(utils::Generator<example_t>& examples, int min_occurence, int max_examples_seen = -1);
 
     typedef std::vector<std::vector<numeric_example_t>> paraphrase_minibatch_dataset;
 
@@ -134,6 +145,23 @@ namespace paraphrase {
         std::function<double(std::vector<uint>&, std::vector<uint>&)> predict,
         int num_threads = 9
         );
+
+    json11::Json nearest_neighbors(
+        const utils::CharacterVocab& character_vocab,
+        std::vector<uint>& original,
+        paraphrase_minibatch_dataset& dataset,
+        std::function<double(std::vector<uint>&, std::vector<uint>&)> distance,
+        int max_number_of_comparisons
+    );
+
+    json11::Json nearest_neighbors(
+        const utils::Vocab& word_vocab,
+        std::vector<uint>& original,
+        paraphrase_minibatch_dataset& dataset,
+        std::function<double(std::vector<uint>&, std::vector<uint>&)> distance,
+        int max_number_of_comparisons
+    );
+
 };
 
 #endif

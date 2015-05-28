@@ -188,13 +188,17 @@ namespace utils {
             }
 
             Generator<T> operator+(Generator<T> other) {
-                return Generator<T>([other, this](yield_t<T> yield) {
-                    auto other_cpy = other;
-                    auto self_cpy  = *this;
-                    for (auto el : self_cpy) {
+
+                auto other_cpy = other;
+                auto self_cpy  = *this;
+
+                return Generator<T>([other_cpy, self_cpy](yield_t<T> yield) {
+                    auto other = other_cpy;
+                    auto self  = self_cpy;
+                    for (auto el : self) {
                         yield(el);
                     }
-                    for (auto el : other_cpy) {
+                    for (auto el : other) {
                         yield(el);
                     }
                 });

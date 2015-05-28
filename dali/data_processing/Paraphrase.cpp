@@ -4,6 +4,8 @@ using namespace std::placeholders;
 using std::vector;
 using std::string;
 using utils::assert2;
+using std::tuple;
+using std::make_shared;
 using utils::from_string;
 
 namespace paraphrase {
@@ -79,10 +81,13 @@ namespace paraphrase {
         return split_dataset;
     }
 
-    vector<string> get_vocabulary(const paraphrase_full_dataset& examples, int min_occurence) {
+    vector<string> get_vocabulary(const paraphrase_full_dataset& examples, int min_occurence, int max_examples_seen) {
         std::map<string, uint> word_occurences;
         string word;
+        int seen = 0;
         for (auto& example : examples) {
+            seen++;
+            if (max_examples_seen > -1 && seen > max_examples_seen) break;
             for (auto& word : std::get<0>(example)) word_occurences[word] += 1;
             for (auto& word : std::get<1>(example)) word_occurences[word] += 1;
         }
@@ -94,11 +99,14 @@ namespace paraphrase {
         return list;
     }
 
-    vector<string> get_vocabulary(utils::Generator<example_t>& examples, int min_occurence) {
+    vector<string> get_vocabulary(utils::Generator<example_t>& examples, int min_occurence, int max_examples_seen) {
         std::map<string, uint> word_occurences;
         string word;
         examples.reset();
+        int seen = 0;
         for (auto example : examples) {
+            seen++;
+            if (max_examples_seen > -1 && seen > max_examples_seen) break;
             for (auto& word : std::get<0>(example)) word_occurences[word] += 1;
             for (auto& word : std::get<1>(example)) word_occurences[word] += 1;
         }
@@ -111,15 +119,44 @@ namespace paraphrase {
         return list;
     }
 
-    namespace STS_2015 {
+    namespace STS_2014 {
+        utils::Generator<example_t> generate_test(std::string path) {
+            return STS_2014::generate_train(path);
+        }
+
+        paraphrase_full_dataset load_test(std::string path) {
+            return STS_2014::load_train(path);
+        }
 
         utils::Generator<example_t> generate_train(std::string path) {
             auto loader = ParaphraseLoader();
+            loader.sentence1_column  = 0;
+            loader.sentence2_column  = 1;
+            loader.similarity_column = 2;
+
+            loader.similarity_score_extractor = [](const string& score_str) {
+                return from_string<double>(score_str) / 5.0;
+            };
+
+            return generate_examples(loader, path);
+        }
+
+        paraphrase_full_dataset load_train(std::string path) {
+            auto gen = STS_2014::generate_train(path);
+            paraphrase_full_dataset examples;
+            for (auto example : gen)
+                examples.emplace_back(example);
+            return examples;
+        }
+    }
+
+    namespace STS_2015 {
+        utils::Generator<example_t> generate_train(std::string path) {
+            auto loader              = ParaphraseLoader();
             loader.sentence1_column  = 2;
             loader.sentence2_column  = 3;
             loader.similarity_column = 4;
-
-            auto score_map = std::map<string, double> {
+            auto score_map           = std::map<string, double> {
                 {"(0,5)", 0.0},
                 {"(1,4)", 0.0},
                 {"(2,3)", 0.5},
@@ -127,7 +164,6 @@ namespace paraphrase {
                 {"(4,1)", 1.0},
                 {"(5,0)", 1.0},
             };
-
             loader.similarity_score_extractor = [score_map](const string& score_str) {return score_map.at(score_str);};
             return generate_examples(loader, path);
         }
@@ -141,10 +177,10 @@ namespace paraphrase {
         }
 
         utils::Generator<example_t> generate_test(std::string path) {
-            auto loader = ParaphraseLoader();
-            loader.sentence1_column = 2;
-            loader.sentence2_column = 3;
-            loader.similarity_column = 4;
+            auto loader                       = ParaphraseLoader();
+            loader.sentence1_column           = 2;
+            loader.sentence2_column           = 3;
+            loader.similarity_column          = 4;
             loader.similarity_score_extractor = [](const string& number_column) {
                 auto num = from_string<int>(number_column);
                 return ((double) num) / 5.0;
@@ -166,20 +202,6 @@ namespace paraphrase {
 
         paraphrase_full_dataset load_dev(std::string path) {
             return load_train(path);
-        }
-    }
-    namespace STS_2014 {
-        paraphrase_full_dataset load(std::string path) {
-            auto loader = ParaphraseLoader();
-            loader.sentence1_column  = 0;
-            loader.sentence2_column  = 1;
-            loader.similarity_column = 2;
-
-            loader.similarity_score_extractor = [](const string& score_str) {
-                return from_string<double>(score_str) / 5.0;
-            };
-
-            return load(loader, path);
         }
     }
 
@@ -213,6 +235,29 @@ namespace paraphrase {
         return dataset;
     }
 
+    namespace wikianswers {
+        utils::Generator<example_t> generate(std::string path) {
+            auto loader = ParaphraseLoader();
+            loader.sentence1_column  = 0;
+            loader.sentence2_column  = 1;
+            loader.similarity_column = 0;
+
+            loader.similarity_score_extractor = [](const string& score_str) {
+                return 1.0;
+            };
+
+            return generate_examples(loader, path);
+        }
+
+        paraphrase_full_dataset load(std::string path) {
+            auto gen = wikianswers::generate(path);
+            paraphrase_full_dataset examples;
+            for (auto example : gen)
+                examples.emplace_back(example);
+            return examples;
+        }
+    }
+
     utils::Generator<vector<numeric_example_t>> convert_to_indexed_minibatches(
             const utils::Vocab& word_vocab,
             utils::Generator<example_t>& examples,
@@ -235,7 +280,7 @@ namespace paraphrase {
                     minibatch.clear();
                 }
             }
-            if (minibatch.size() > 0) {
+            if (minibatch.size() > 0) {
                 yield(minibatch);
             }
         });
@@ -271,7 +316,6 @@ namespace paraphrase {
         });
         return gen;
     }
-
 
     paraphrase_minibatch_dataset convert_to_indexed_minibatches(
             const utils::CharacterVocab& character_vocab,
@@ -402,5 +446,131 @@ namespace paraphrase {
             }
         };
         return binary_accuracy(dataset, new_predict_func, num_threads);
+    }
+
+    json11::Json nearest_neighbors(
+            const utils::CharacterVocab& character_vocab,
+            std::vector<uint>& original,
+            paraphrase_minibatch_dataset& dataset,
+            std::function<double(std::vector<uint>&, std::vector<uint>&)> distance,
+            int max_number_of_comparisons
+            ) {
+        int  seen_sentences = 0;
+        vector<tuple<vector<uint> *, double>> sampled_idxes;
+
+        std::map<vector<uint> *, bool> visited;
+        visited[&original] = true;
+        int num_tries = 0;
+
+        int total_examples = 0;
+        for (auto& batch : dataset) total_examples += batch.size();
+
+        while (seen_sentences < std::min(total_examples, max_number_of_comparisons) && num_tries < max_number_of_comparisons * 2) {
+            num_tries++;
+
+            auto  other_batch_id   = utils::randint(0, dataset.size() - 1);
+            auto& other_minibatch  = dataset[other_batch_id];
+            auto  other_example_id = utils::randint(0, other_minibatch.size()-1);
+            auto& other_example    = other_minibatch[other_example_id];
+            auto which_sequence    = utils::randint(0, 1);
+            auto& other_sequence   = which_sequence > 0 ? std::get<1>(other_example) : std::get<0>(other_example);
+            if (visited.find(&other_sequence) == visited.end()) {
+                sampled_idxes.emplace_back(
+                    &other_sequence,
+                    distance(original, other_sequence)
+                );
+                visited[&other_sequence] = true;
+                seen_sentences++;
+            }
+        }
+
+        std::sort(sampled_idxes.begin(), sampled_idxes.end(),
+                [](const tuple<vector<uint> *, double>& ex1,
+                   const tuple<vector<uint> *, double>& ex2) {
+            return std::get<1>(ex1) > std::get<1>(ex2);
+        });
+
+        // set up sentence 1 for visualization
+        auto input_sentence = make_shared<visualizable::Sentence<double>>(character_vocab.decode_characters(original));
+        vector<vector<string>> sentences;
+        vector<double>         sims;
+
+        for (int presented_sentence_idx = 0; presented_sentence_idx < std::min(sampled_idxes.size(), (size_t)5); presented_sentence_idx++) {
+            auto& ex = sampled_idxes[presented_sentence_idx];
+            sentences.emplace_back(character_vocab.decode_characters(*std::get<0>(ex)));
+            sims.emplace_back(std::get<1>(ex));
+        }
+        auto sentences_viz = make_shared<visualizable::Sentences<double>>(sentences);
+        sentences_viz->set_weights(sims);
+
+        auto input_output_pair = visualizable::GridLayout();
+
+        input_output_pair.add_in_column(0, input_sentence);
+        input_output_pair.add_in_column(1, sentences_viz);
+
+        return input_output_pair.to_json();
+    }
+
+    json11::Json nearest_neighbors(
+            const utils::Vocab& word_vocab,
+            std::vector<uint>& original,
+            paraphrase_minibatch_dataset& dataset,
+            std::function<double(std::vector<uint>&, std::vector<uint>&)> distance,
+            int max_number_of_comparisons
+            ) {
+        int  seen_sentences = 0;
+        vector<tuple<vector<uint> *, double>> sampled_idxes;
+
+        std::map<vector<uint> *, bool> visited;
+        visited[&original] = true;
+        int num_tries = 0;
+
+        int total_examples = 0;
+        for (auto& batch : dataset) total_examples += batch.size();
+
+        while (seen_sentences < std::min(total_examples, max_number_of_comparisons) && num_tries < max_number_of_comparisons * 2) {
+            num_tries++;
+
+            auto  other_batch_id   = utils::randint(0, dataset.size() - 1);
+            auto& other_minibatch  = dataset[other_batch_id];
+            auto  other_example_id = utils::randint(0, other_minibatch.size()-1);
+            auto& other_example    = other_minibatch[other_example_id];
+            auto which_sequence    = utils::randint(0, 1);
+            auto& other_sequence   = which_sequence > 0 ? std::get<1>(other_example) : std::get<0>(other_example);
+            if (visited.find(&other_sequence) == visited.end()) {
+                sampled_idxes.emplace_back(
+                    &other_sequence,
+                    distance(original, other_sequence)
+                );
+                visited[&other_sequence] = true;
+                seen_sentences++;
+            }
+        }
+
+        std::sort(sampled_idxes.begin(), sampled_idxes.end(),
+                [](const tuple<vector<uint> *, double>& ex1,
+                   const tuple<vector<uint> *, double>& ex2) {
+            return std::get<1>(ex1) > std::get<1>(ex2);
+        });
+
+        // set up sentence 1 for visualization
+        auto input_sentence = make_shared<visualizable::Sentence<double>>(word_vocab.decode(original));
+        vector<vector<string>> sentences;
+        vector<double>         sims;
+
+        for (int presented_sentence_idx = 0; presented_sentence_idx < std::min(sampled_idxes.size(), (size_t)5); presented_sentence_idx++) {
+            auto& ex = sampled_idxes[presented_sentence_idx];
+            sentences.emplace_back(word_vocab.decode(*std::get<0>(ex)));
+            sims.emplace_back(std::get<1>(ex));
+        }
+        auto sentences_viz = make_shared<visualizable::Sentences<double>>(sentences);
+        sentences_viz->set_weights(sims);
+
+        auto input_output_pair = visualizable::GridLayout();
+
+        input_output_pair.add_in_column(0, input_sentence);
+        input_output_pair.add_in_column(1, sentences_viz);
+
+        return input_output_pair.to_json();
     }
 };

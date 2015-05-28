@@ -280,50 +280,45 @@ class ParaphraseModel {
 
 typedef ParaphraseModel<REAL_t> model_t;
 
-
-std::tuple<Vocab, CharacterVocab, typename paraphrase::paraphrase_minibatch_dataset, typename paraphrase::paraphrase_minibatch_dataset> load_data(
-        double training_split,
-        int minibatch_size,
+std::tuple<Vocab, CharacterVocab, typename paraphrase::paraphrase_minibatch_dataset, typename paraphrase::paraphrase_minibatch_dataset, typename paraphrase::paraphrase_minibatch_dataset> load_data(
+        double data_split,
+        int batch_size,
         bool use_characters,
         int min_word_occurence) {
-    auto paraphrase_data = paraphrase::STS_2014::load();//paraphrase::STS_2015::load_train();
-    auto word_vocab      = Vocab();
-    auto char_vocab      = CharacterVocab(32, 255);
+    using namespace paraphrase;
+    // combine two datasets by mixing their generators:
+    auto train      = STS_2014::generate_train() + wikianswers::generate();
+    auto word_vocab = Vocab(get_vocabulary(train, min_word_occurence, FLAGS_use_characters ? 0 : 300000), true);
+    auto char_vocab = CharacterVocab(32, 255);
 
-    word_vocab = Vocab(paraphrase::get_vocabulary(paraphrase_data, min_word_occurence), true);
+    auto dataset       = use_characters ? convert_to_indexed_minibatches(char_vocab, train, batch_size)
+                                        : convert_to_indexed_minibatches(word_vocab, train, batch_size);
 
-    auto dataset = use_characters ? paraphrase::convert_to_indexed_minibatches(
-        char_vocab,
-        paraphrase_data,
-        minibatch_size
-    ) : paraphrase::convert_to_indexed_minibatches(
-        word_vocab,
-        paraphrase_data,
-        minibatch_size
-    );
+    auto test = STS_2014::load_test();
+    auto test_dataset  = use_characters ? convert_to_indexed_minibatches(char_vocab, test, batch_size)
+                                        : convert_to_indexed_minibatches(word_vocab, test, batch_size);
 
-    int training_size = (int)(training_split * dataset.size());
 
-    auto minibatches_idxes = utils::random_arange(dataset.size());
-    decltype(minibatches_idxes) training_idxes(
-        minibatches_idxes.begin(),
-        minibatches_idxes.begin() + training_size);
-    decltype(minibatches_idxes) validation_idxes(
-        minibatches_idxes.begin() + training_size,
-        minibatches_idxes.end());
 
-    decltype(dataset) validation_data;
-    decltype(dataset) training_data;
+    std::default_random_engine generator;
+    std::uniform_real_distribution<double> distribution(0, 1);
+    std::random_device rd;
+    generator.seed(rd());
 
-    for (auto& validation_idx : validation_idxes) {
-        validation_data.emplace_back(dataset[validation_idx]);
+    decltype(test_dataset) validation_data;
+    decltype(test_dataset) training_data;
+
+
+    for (auto example : dataset) {
+        if (distribution(generator) > data_split) {
+            validation_data.emplace_back(example);
+        } else {
+            training_data.emplace_back(example);
+        }
     }
 
-    for (auto& training_idx : training_idxes) {
-        training_data.emplace_back(dataset[training_idx]);
-    }
-
-    return make_tuple(word_vocab, char_vocab, training_data, validation_data);
+    // implement validation set online.
+    return make_tuple(word_vocab, char_vocab, training_data, validation_data, test_dataset);
 }
 
 void backprop_example(
@@ -345,7 +340,6 @@ void backprop_example(
     }
 
     partial_error = partial_error / minibatch_size;
-
     minibatch_error += partial_error.w()(0,0);
 
     partial_error.grad();
@@ -448,10 +442,8 @@ int main (int argc,  char* argv[]) {
     auto epochs = FLAGS_epochs;
     int rampup_time = 10;
 
-    auto paraphrase_data = paraphrase::STS_2014::load();//paraphrase::STS_2015::load_train();
-
     auto dataset = load_data(
-        0.8,                  // train - dev split
+        0.9,
         FLAGS_minibatch,      // minibatch size
         FLAGS_use_characters, // use characters or words
         FLAGS_min_occurence   // min word appearance to be in vocab
@@ -461,11 +453,11 @@ int main (int argc,  char* argv[]) {
     auto& char_vocab      = std::get<1>(dataset);
     auto& training_set    = std::get<2>(dataset);
     auto& validation_set  = std::get<3>(dataset);
-
+    auto& test_set        = std::get<4>(dataset);
 
     pool = new ThreadPool(FLAGS_j);
 
-    vector<int> hidden_sizes;
+
 
     auto model = model_t(FLAGS_input_size,
                          FLAGS_use_characters ? char_vocab.size() : word_vocab.size(),
@@ -476,32 +468,24 @@ int main (int argc,  char* argv[]) {
     if (FLAGS_lstm_shortcut && FLAGS_stack_size == 1)
         std::cout << "shortcut flag ignored: Shortcut connections only take effect with stack size > 1" << std::endl;
 
-    int solver_type;
-    if (FLAGS_solver == "adadelta") {
-        solver_type = ADADELTA_TYPE;
-    } else if (FLAGS_solver == "adam") {
-        solver_type = ADAM_TYPE;
-    } else if (FLAGS_solver == "sgd") {
-        solver_type = SGD_TYPE;
-    } else if (FLAGS_solver == "adagrad") {
-        solver_type = ADAGRAD_TYPE;
-    } else {
-        utils::exit_with_message("Did not recognize this solver type.");
-    }
-    if (training_set.size() == 0) utils::exit_with_message("Dataset is empty");
+    int total_examples = 0;
+    for (auto minibatch: training_set)
+        total_examples += (minibatch.size() + FLAGS_negative_samples);
 
     std::cout << "     Vocabulary size : " << model.vocab_size << std::endl
               << "      minibatch size : " << FLAGS_minibatch << std::endl
+              << "   training examples : " << total_examples << std::endl
               << "   number of threads : " << FLAGS_j << std::endl
               << "        Dropout Prob : " << FLAGS_dropout << std::endl
               << " Max training epochs : " << FLAGS_epochs << std::endl
               << "   First Hidden Size : " << model.hidden_sizes[0] << std::endl
               << "           LSTM type : " << (FLAGS_lstm_memory_feeds_gates ? "Graves 2013" : "Zaremba 2014") << std::endl
               << "          Stack size : " << model.hidden_sizes.size() << std::endl
-              << " # training examples : " << training_set.size() * FLAGS_minibatch - (FLAGS_minibatch - training_set[training_set.size() - 1].size()) << std::endl
               << "              Solver : " << FLAGS_solver << std::endl;
 
     vector<vector<Mat<REAL_t>>> thread_params;
+
+
 
     // what needs to be optimized:
     vector<model_t> thread_models;
@@ -520,25 +504,7 @@ int main (int argc,  char* argv[]) {
     auto params = model.parameters();
 
     // Rho value, eps value, and gradient clipping value:
-    std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver;
-    switch (solver_type) {
-        case ADADELTA_TYPE:
-            solver = make_shared<Solver::AdaDelta<REAL_t>>(params, 0.95, 1e-9, 100.0, (REAL_t) FLAGS_reg);
-            break;
-        case ADAM_TYPE:
-            solver = make_shared<Solver::Adam<REAL_t>>(params, 0.1, 0.001, 1e-9, 100.0, (REAL_t) FLAGS_reg);
-            break;
-        case SGD_TYPE:
-            solver = make_shared<Solver::SGD<REAL_t>>(params, 100.0, (REAL_t) FLAGS_reg);
-            dynamic_cast<Solver::SGD<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
-            break;
-        case ADAGRAD_TYPE:
-            solver = make_shared<Solver::AdaGrad<REAL_t>>(params, 1e-9, 100.0, (REAL_t) FLAGS_reg);
-            dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
-            break;
-        default:
-            utils::exit_with_message("Did not recognize this solver type.");
-    }
+    auto solver = Solver::construct<REAL_t>(FLAGS_solver, params, FLAGS_learning_rate, (REAL_t) FLAGS_reg);
 
     REAL_t best_validation_score = 0.0;
     int epoch = 0;
@@ -546,6 +512,7 @@ int main (int argc,  char* argv[]) {
     double patience = 0;
     string best_file = "";
     REAL_t best_score = 0.0;
+
 
     shared_ptr<Visualizer> visualizer;
     if (!FLAGS_visualizer.empty())
@@ -562,6 +529,7 @@ int main (int argc,  char* argv[]) {
     }
 
     while (patience < FLAGS_patience && epoch < epochs) {
+
         double memory_penalty = 0.0;
         if (memory_penalty_curve_type == 1) { // linear
             memory_penalty = std::min(
@@ -576,23 +544,18 @@ int main (int argc,  char* argv[]) {
         }
 
         atomic<int> examples_processed(0);
-
-        int total_examples = 0;
-        for (auto& minibatch: training_set) total_examples += (minibatch.size() + FLAGS_negative_samples);
-
         ReportProgress<double> journalist(
             utils::MS() << "Epoch " << ++epoch, // what to say first
             total_examples // how many steps to expect before being done with epoch
         );
 
-        for (int batch_id = 0; batch_id < training_set.size(); ++batch_id) {
-            pool->run([&word_vocab, &char_vocab, &visualizer, &solver_type, &thread_params, &thread_models,
-                       batch_id, &journalist, &solver, &training_set,
+        for (auto minibatch : training_set) {
+            pool->run([&word_vocab, &char_vocab, &visualizer, &thread_params, &thread_models,
+                       minibatch, &journalist, &solver, &training_set,
                        &best_validation_score, &examples_processed,
                        &memory_penalty, &total_examples]() {
                 auto& thread_model     = thread_models[ThreadPool::get_thread_number()];
                 auto& params           = thread_params[ThreadPool::get_thread_number()];
-                auto& minibatch        = training_set[batch_id];
                 // many forward steps here:
                 REAL_t minibatch_error = 0.0;
                 for (auto& example : minibatch) {
@@ -608,7 +571,6 @@ int main (int argc,  char* argv[]) {
                 }
                 // One step of gradient descent
                 solver->step(params);
-
 
                 if (total_examples >= 2 && FLAGS_negative_samples > 0) {
                     for (int artificial_idx = 0; artificial_idx < FLAGS_negative_samples; artificial_idx++) {
@@ -627,87 +589,34 @@ int main (int argc,  char* argv[]) {
                 journalist.tick(examples_processed, minibatch_error);
 
                 if (visualizer != nullptr) {
-                    visualizer->throttled_feed(seconds(5), [&total_examples, &word_vocab, &char_vocab, &visualizer, &training_set, &thread_model]() {
+                    visualizer->throttled_feed(seconds(5), [&total_examples, &word_vocab, &training_set, &char_vocab, &visualizer, minibatch, &thread_model]() {
                         graph::NoBackprop nb;
                         // pick example
                         vector<uint> sentence1, sentence2;
                         double true_score;
 
-                        auto example_batch_id = utils::randint(0, training_set.size() - 1);
-                        auto& minibatch = training_set[example_batch_id];
                         auto example_id = utils::randint(0, minibatch.size()-1);
                         std::tie(sentence1, sentence2, true_score) = minibatch[example_id];
 
                         if (FLAGS_show_similar) {
                             auto& sampled_sentence = utils::randint(0, 1) > 0 ? sentence2 : sentence1;
-
-                            int  seen_sentences = 0;
-                            auto original_encoded = thread_model.encode_sentence(sampled_sentence, false);
-
-                            vector<tuple<vector<uint> *, REAL_t>> sampled_idxes(std::min(total_examples, FLAGS_number_of_comparisons));
-
-                            std::map<vector<uint> *, bool> visited;
-                            visited[&sampled_sentence] = true;
-                            int num_tries = 0;
-                            while (seen_sentences < std::min(total_examples, FLAGS_number_of_comparisons) && num_tries < FLAGS_number_of_comparisons * 2) {
-                                num_tries++;
-
-                                auto  other_batch_id   = utils::randint(0, training_set.size() - 1);
-                                auto& other_minibatch  = training_set[other_batch_id];
-                                auto  other_example_id = utils::randint(0, other_minibatch.size()-1);
-                                auto& other_example    = other_minibatch[other_example_id];
-                                auto which_sequence    = utils::randint(0, 1);
-                                auto& other_sequence   = which_sequence > 0 ? std::get<1>(other_example) : std::get<0>(other_example);
-                                if (visited.find(&other_sequence) == visited.end()) {
-                                    auto other_encoded     = thread_model.encode_sentence(other_sequence, false);
-                                    sampled_idxes.emplace_back(
-                                        &other_sequence,
-                                        thread_model.cosine_distance(std::get<0>(original_encoded), std::get<0>(other_encoded)).w()(0,0)
-                                    );
-                                    visited[&other_sequence] = true;
-                                    seen_sentences++;
-                                }
+                            auto cosine_distance = [&thread_model](const std::vector<uint>& s1, const std::vector<uint>& s2) {
+                                    auto original_encoded = thread_model.encode_sentence(s1, false);
+                                    auto other_encoded    = thread_model.encode_sentence(s2, false);
+                                    return (double) thread_model.cosine_distance(
+                                        std::get<0>(original_encoded),
+                                        std::get<0>(other_encoded)
+                                    ).w()(0,0);
+                            };
+                            if (FLAGS_use_characters) {
+                                return paraphrase::nearest_neighbors(
+                                    char_vocab, sampled_sentence, training_set, cosine_distance, FLAGS_number_of_comparisons
+                                );
+                            } else {
+                                return paraphrase::nearest_neighbors(
+                                    word_vocab, sampled_sentence, training_set, cosine_distance, FLAGS_number_of_comparisons
+                                );
                             }
-
-                            std::sort(sampled_idxes.begin(), sampled_idxes.end(),
-                                    [](const tuple<vector<uint> *, REAL_t>& ex1,
-                                       const tuple<vector<uint> *, REAL_t>& ex2) {
-                                return std::get<1>(ex1) > std::get<1>(ex2);
-                            });
-
-                            // set up sentence 1 for visualization
-                            auto input_sentence = make_shared<visualizable::Sentence<REAL_t>>(
-                                FLAGS_use_characters ? char_vocab.decode_characters(sampled_sentence) :
-                                                       word_vocab.decode(sampled_sentence));
-                            auto extract_double  = [](Mat<REAL_t> m) { return m.w()(0,0); };
-                            vector<double> original_sentence_memory;
-                            std::transform(
-                                std::get<1>(original_encoded).begin(),
-                                std::get<1>(original_encoded).end(),
-                                std::back_inserter(original_sentence_memory),
-                                extract_double);
-                            input_sentence->set_weights(original_sentence_memory);
-
-
-                            vector<vector<string>> sentences;
-                            vector<REAL_t>         sims;
-
-                            for (int presented_sentence_idx = 0; presented_sentence_idx < std::min(sampled_idxes.size(), (size_t)5); presented_sentence_idx++) {
-                                auto& ex = sampled_idxes[presented_sentence_idx];
-                                sentences.emplace_back(FLAGS_use_characters ?
-                                                       char_vocab.decode_characters(*std::get<0>(ex)) :
-                                                       word_vocab.decode(*std::get<0>(ex)));
-                                sims.emplace_back(std::get<1>(ex));
-                            }
-                            auto sentences_viz = make_shared<visualizable::Sentences<REAL_t>>(sentences);
-                            sentences_viz->set_weights(sims);
-
-                            auto input_output_pair = visualizable::GridLayout();
-
-                            input_output_pair.add_in_column(0, input_sentence);
-                            input_output_pair.add_in_column(1, sentences_viz);
-
-                            return input_output_pair.to_json();
                         } else {
                             double predicted_score;
                             vector<double> memory1, memory2;
@@ -749,9 +658,11 @@ int main (int argc,  char* argv[]) {
             validation_set,
             std::bind(&model_t::predict, &model, _1, _2),
             FLAGS_j);
-        if (solver_type == ADAGRAD_TYPE) {
+
+        if (dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())) {
             solver->reset_caches(params);
         }
+
         if (new_validation + 1e-6 < best_validation_score) {
             // lose patience:
             patience += 1;

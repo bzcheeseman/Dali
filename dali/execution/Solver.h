@@ -91,5 +91,9 @@ namespace Solver {
             virtual void create_gradient_caches(std::vector<Mat<R>>&);
             virtual void reset_caches(std::vector<Mat<R>>&);
     };
+
+    template<typename R>
+    std::shared_ptr<AbstractSolver<R>> construct(std::string solver_name, std::vector<Mat<R>>& params, R learning_rate = 0.0, R regc = 0.0);
+
 }
 #endif

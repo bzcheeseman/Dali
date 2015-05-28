@@ -285,14 +285,14 @@ std::tuple<Vocab, CharacterVocab, typename paraphrase::paraphrase_minibatch_data
         double training_split,
         int minibatch_size,
         bool use_characters,
-        int min_word_occurecnce) {
+        int min_word_occurence) {
     auto paraphrase_data = paraphrase::STS_2014::load();//paraphrase::STS_2015::load_train();
     auto word_vocab      = Vocab();
     auto char_vocab      = CharacterVocab(32, 255);
 
-    word_vocab = Vocab(paraphrase::get_vocabulary(paraphrase_data, min_word_occurecnce), true);
+    word_vocab = Vocab(paraphrase::get_vocabulary(paraphrase_data, min_word_occurence), true);
 
-    auto dataset        = use_characters ? paraphrase::convert_to_indexed_minibatches(
+    auto dataset = use_characters ? paraphrase::convert_to_indexed_minibatches(
         char_vocab,
         paraphrase_data,
         minibatch_size
@@ -314,9 +314,11 @@ std::tuple<Vocab, CharacterVocab, typename paraphrase::paraphrase_minibatch_data
 
     decltype(dataset) validation_data;
     decltype(dataset) training_data;
+
     for (auto& validation_idx : validation_idxes) {
         validation_data.emplace_back(dataset[validation_idx]);
     }
+
     for (auto& training_idx : training_idxes) {
         training_data.emplace_back(dataset[training_idx]);
     }

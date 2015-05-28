@@ -242,7 +242,6 @@ namespace paraphrase {
         return gen;
     }
 
-
     utils::Generator<vector<numeric_example_t>> convert_to_indexed_minibatches(
             const utils::CharacterVocab& character_vocab,
             utils::Generator<example_t>& examples,
@@ -253,8 +252,8 @@ namespace paraphrase {
             int seen = 0;
             auto minibatch = vector<numeric_example_t>();
             minibatch.reserve(minibatch_size);
-            auto ex_iter = examples;
-            for (auto example : ex_iter) {
+            auto examples_cpy = examples;
+            for (auto example : examples_cpy) {
                 seen++;
                 minibatch.emplace_back(
                     character_vocab.encode(std::get<0>(example)),

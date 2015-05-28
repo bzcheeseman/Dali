@@ -186,6 +186,19 @@ namespace utils {
                     genheart = std::make_shared<Gen<LambdaGeneratorHeart<T>>>(gen);
                 return genheart->end();
             }
+
+            Generator<T> operator+(Generator<T> other) {
+                return Generator<T>([other, this](yield_t<T> yield) {
+                    auto other_cpy = other;
+                    auto self_cpy  = *this;
+                    for (auto el : self_cpy) {
+                        yield(el);
+                    }
+                    for (auto el : other_cpy) {
+                        yield(el);
+                    }
+                });
+            }
     };
 
     template<typename T>

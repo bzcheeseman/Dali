@@ -396,3 +396,24 @@ TEST(utils, recursive_generator_test) {
         vals.emplace_back(i);
     ASSERT_EQ(vector<int>({1,2,3,4,5, 1,2,3,4,5, 1,2,3,4,5, 1,2,3,4,5, 1,2,3,4,5}), vals);
 }
+
+TEST(utils, combine_generators) {
+    // here we take two short generators and
+    // create a longer one out of the pair:
+    auto comb_gen = (
+        utils::Generator<int>([](utils::yield_t<int> yield) {
+            for (int i=1; i<=5; i+=1) yield(i);
+        })
+        +
+        utils::Generator<int>([](utils::yield_t<int> yield) {
+            for (int i=6; i<=10; i+=1) yield(i);
+        })
+    );
+
+    auto vals = vector<int>();
+    for (int i : comb_gen)
+        vals.emplace_back(i);
+
+    ASSERT_EQ(vals, vector<int>({1,2,3,4,5,6,7,8,9,10}));
+
+}

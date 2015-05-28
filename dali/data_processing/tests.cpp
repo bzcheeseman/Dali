@@ -134,24 +134,20 @@ TEST(paraphrase, generator_load) {
     ASSERT_EQ(vocab_gen, vocab);
 }
 
-// TEST(paraphrase, convert_to_indexed_minibatches) {
-//     auto vocab_gen = utils::Vocab();
-//     {
-//         auto gen_data = paraphrase::STS_2015::generate_train(STR(DALI_DATA_DIR) "/paraphrase_STS_2015/paraphrase_dummy_data.tsv");
-//         vocab_gen = utils::Vocab(paraphrase::get_vocabulary(gen_data, 1));
-//     }
-//     auto gen_data = paraphrase::STS_2015::generate_train(STR(DALI_DATA_DIR) "/paraphrase_STS_2015/paraphrase_dummy_data.tsv");
+TEST(paraphrase, convert_to_indexed_minibatches) {
+    auto gen_data = paraphrase::STS_2015::generate_train(STR(DALI_DATA_DIR) "/paraphrase_STS_2015/paraphrase_dummy_data.tsv");
+    auto vocab_gen = utils::Vocab(paraphrase::get_vocabulary(gen_data, 1));
 
-//     // deadlock when generator inside generator is run.
-//     auto gen_minibatches = paraphrase::convert_to_indexed_minibatches(vocab_gen, gen_data, 3);
+    // deadlock when generator inside generator is run.
+    auto gen_minibatches = paraphrase::convert_to_indexed_minibatches(vocab_gen, gen_data, 3);
 
-//     vector<vector<paraphrase::numeric_example_t>> minibatches;
-//     for (auto minibatch : gen_minibatches) {
-//         minibatches.emplace_back(minibatch);
-//     }
+    vector<vector<paraphrase::numeric_example_t>> minibatches;
+    for (auto minibatch : gen_minibatches) {
+        minibatches.emplace_back(minibatch);
+    }
 
-//     ASSERT_EQ(minibatches.size(), 2);
+    ASSERT_EQ(minibatches.size(), 2);
 
-// }
+}
 
 

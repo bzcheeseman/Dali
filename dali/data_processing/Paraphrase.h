@@ -31,18 +31,18 @@ namespace paraphrase {
     typedef std::vector<example_t> paraphrase_full_dataset;
 
 
-    utils::ClonableGen<example_t> generate_examples(std::string path, similarity_score_extractor_t similarity_score_extractor);
-    utils::ClonableGen<example_t> generate_examples(ParaphraseLoader&, std::string path);
+    utils::Generator<example_t> generate_examples(std::string path, similarity_score_extractor_t similarity_score_extractor);
+    utils::Generator<example_t> generate_examples(ParaphraseLoader&, std::string path);
 
     paraphrase_full_dataset load(std::string path, similarity_score_extractor_t similarity_score_extractor);
     paraphrase_full_dataset load(ParaphraseLoader&, std::string path);
 
     namespace STS_2015 {
-        utils::ClonableGen<example_t> generate_train(std::string = STR(DALI_DATA_DIR) "/paraphrase_STS_2015/secret/train.tsv");
+        utils::Generator<example_t> generate_train(std::string = STR(DALI_DATA_DIR) "/paraphrase_STS_2015/secret/train.tsv");
         paraphrase_full_dataset load_train(std::string = STR(DALI_DATA_DIR) "/paraphrase_STS_2015/secret/train.tsv");
-        utils::ClonableGen<example_t> generate_test(std::string = STR(DALI_DATA_DIR) "/paraphrase_STS_2015/secret/test.tsv");
+        utils::Generator<example_t> generate_test(std::string = STR(DALI_DATA_DIR) "/paraphrase_STS_2015/secret/test.tsv");
         paraphrase_full_dataset load_test(std::string =  STR(DALI_DATA_DIR) "/paraphrase_STS_2015/secret/test.tsv");
-        utils::ClonableGen<example_t> generate_dev(std::string = STR(DALI_DATA_DIR) "/paraphrase_STS_2015/secret/dev.tsv");
+        utils::Generator<example_t> generate_dev(std::string = STR(DALI_DATA_DIR) "/paraphrase_STS_2015/secret/dev.tsv");
         paraphrase_full_dataset load_dev(std::string =   STR(DALI_DATA_DIR) "/paraphrase_STS_2015/secret/dev.tsv");
     }
 
@@ -51,7 +51,7 @@ namespace paraphrase {
     }
 
     std::vector<std::string> get_vocabulary(const paraphrase_full_dataset& examples, int min_occurence);
-    std::vector<std::string> get_vocabulary(utils::ClonableGen<example_t>& examples, int min_occurence);
+    std::vector<std::string> get_vocabulary(utils::Generator<example_t>& examples, int min_occurence);
 
     typedef std::vector<std::vector<numeric_example_t>> paraphrase_minibatch_dataset;
 
@@ -65,14 +65,14 @@ namespace paraphrase {
         paraphrase_full_dataset& dataset,
         int minibatch_size);
 
-    utils::ClonableGen<std::vector<numeric_example_t>> convert_to_indexed_minibatches(
+    utils::Generator<std::vector<numeric_example_t>> convert_to_indexed_minibatches(
         const utils::Vocab& word_vocab,
-        utils::ClonableGen<example_t>& dataset,
+        utils::Generator<example_t>& dataset,
         int minibatch_size);
 
-    utils::ClonableGen<std::vector<numeric_example_t>> convert_to_indexed_minibatches(
+    utils::Generator<std::vector<numeric_example_t>> convert_to_indexed_minibatches(
         const utils::CharacterVocab& character_vocab,
-        utils::ClonableGen<example_t>& dataset,
+        utils::Generator<example_t>& dataset,
         int minibatch_size);
 
     /**

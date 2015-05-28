@@ -13,10 +13,10 @@
 namespace utils {
     typedef std::vector<std::vector<std::string>> row_t;
 
-    ClonableGen<row_t> generate_tsv_rows(const std::string& fname, const char& delimiter = '\t');
+    Generator<row_t> generate_tsv_rows(const std::string& fname, const char& delimiter = '\t');
 
     template<typename T>
-    ClonableGen<row_t> generate_tsv_rows_from_stream(std::shared_ptr<T> stream, const char& delimiter = '\t');
+    Generator<row_t> generate_tsv_rows_from_stream(std::shared_ptr<T> stream, const char& delimiter = '\t');
 
     tokenized_labeled_dataset load_tsv(const std::string&, int number_of_columns = -1, const char& delimiter = '\t');
 }

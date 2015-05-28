@@ -8,8 +8,8 @@ using utils::from_string;
 
 namespace paraphrase {
 
-    utils::ClonableGen<example_t> generate_examples(ParaphraseLoader& para_loader, std::string fname) {
-        auto gen = utils::make_generator<example_t>([para_loader, fname](utils::yield_t<example_t> yield) {
+    utils::Generator<example_t> generate_examples(ParaphraseLoader& para_loader, std::string fname) {
+        auto gen = utils::Generator<example_t>([para_loader, fname](utils::yield_t<example_t> yield) {
             auto row_gen = utils::generate_tsv_rows(fname);
             for (auto row : row_gen)
                 yield(para_loader.tsv_row_to_example(row));
@@ -17,7 +17,7 @@ namespace paraphrase {
         return gen;
     }
 
-    utils::ClonableGen<example_t> generate_examples(std::string fname, similarity_score_extractor_t similarity_score_extractor) {
+    utils::Generator<example_t> generate_examples(std::string fname, similarity_score_extractor_t similarity_score_extractor) {
         auto para_loader = ParaphraseLoader();
         para_loader.similarity_score_extractor = similarity_score_extractor;
         return generate_examples(para_loader, fname);
@@ -94,13 +94,15 @@ namespace paraphrase {
         return list;
     }
 
-    vector<string> get_vocabulary(utils::ClonableGen<example_t>& examples, int min_occurence) {
+    vector<string> get_vocabulary(utils::Generator<example_t>& examples, int min_occurence) {
         std::map<string, uint> word_occurences;
         string word;
+        examples.reset();
         for (auto example : examples) {
             for (auto& word : std::get<0>(example)) word_occurences[word] += 1;
             for (auto& word : std::get<1>(example)) word_occurences[word] += 1;
         }
+        examples.reset();
         vector<string> list;
         for (auto& key_val : word_occurences)
             if (key_val.second >= min_occurence)
@@ -111,7 +113,7 @@ namespace paraphrase {
 
     namespace STS_2015 {
 
-        utils::ClonableGen<example_t> generate_train(std::string path) {
+        utils::Generator<example_t> generate_train(std::string path) {
             auto loader = ParaphraseLoader();
             loader.sentence1_column  = 2;
             loader.sentence2_column  = 3;
@@ -138,7 +140,7 @@ namespace paraphrase {
             return examples;
         }
 
-        utils::ClonableGen<example_t> generate_test(std::string path) {
+        utils::Generator<example_t> generate_test(std::string path) {
             auto loader = ParaphraseLoader();
             loader.sentence1_column = 2;
             loader.sentence2_column = 3;
@@ -158,7 +160,7 @@ namespace paraphrase {
             return examples;
         }
 
-        utils::ClonableGen<example_t> generate_dev(std::string path) {
+        utils::Generator<example_t> generate_dev(std::string path) {
             return generate_train(path);
         }
 
@@ -196,6 +198,7 @@ namespace paraphrase {
         };
         if (dataset.size() == 0)
             dataset.emplace_back(0);
+
         for (auto& example : examples) {
             // create new minibatch
             if (dataset[dataset.size()-1].size() == minibatch_size) {
@@ -210,18 +213,18 @@ namespace paraphrase {
         return dataset;
     }
 
-    utils::ClonableGen<vector<numeric_example_t>> convert_to_indexed_minibatches(
+    utils::Generator<vector<numeric_example_t>> convert_to_indexed_minibatches(
             const utils::Vocab& word_vocab,
-            utils::ClonableGen<example_t>& examples,
+            utils::Generator<example_t>& examples,
             int minibatch_size) {
 
-        auto gen = utils::make_generator<vector<numeric_example_t>>(
+        auto gen = utils::Generator<vector<numeric_example_t>>(
                 [examples, minibatch_size, word_vocab](utils::yield_t<vector<numeric_example_t>> yield) {
             int seen = 0;
             auto minibatch = vector<numeric_example_t>();
             minibatch.reserve(minibatch_size);
-            auto ex_iter = examples;
-            for (auto example : ex_iter) {
+            auto examples_cpy = examples;
+            for (auto example : examples_cpy) {
                 minibatch.emplace_back(
                     word_vocab.encode(std::get<0>(example)),
                     word_vocab.encode(std::get<1>(example)),
@@ -240,12 +243,12 @@ namespace paraphrase {
     }
 
 
-    utils::ClonableGen<vector<numeric_example_t>> convert_to_indexed_minibatches(
+    utils::Generator<vector<numeric_example_t>> convert_to_indexed_minibatches(
             const utils::CharacterVocab& character_vocab,
-            utils::ClonableGen<example_t>& examples,
+            utils::Generator<example_t>& examples,
             int minibatch_size) {
 
-        auto gen = utils::make_generator<vector<numeric_example_t>>(
+        auto gen = utils::Generator<vector<numeric_example_t>>(
                 [examples, minibatch_size, character_vocab](utils::yield_t<vector<numeric_example_t>> yield) {
             int seen = 0;
             auto minibatch = vector<numeric_example_t>();

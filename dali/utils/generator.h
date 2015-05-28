@@ -17,6 +17,7 @@ An oasis of Python in lava sea of C++
 
 namespace utils {
 
+    // subclass for handling forloop state internally.
     template<typename T>
     class ForLooping {
         private:
@@ -75,7 +76,6 @@ namespace utils {
             }
     };
 
-
     template<typename Heart>
     class Gen {
         private:
@@ -108,7 +108,6 @@ namespace utils {
                     ++(*this);
                 }
                 thread_ptr->join();
-                // assert2(!mutex->try_lock(), "Destroying generator with mutex unlocked.");
             }
             template<typename... ARGS>
             void threadmain(ARGS... args) {
@@ -139,6 +138,7 @@ namespace utils {
             ForLooping end() { return ForLooping(NULL); }
     };
 
+    // Generator heart specifically tailored for lambdas.
     template<typename T>
     class LambdaGeneratorHeart : public GeneratorHeart<T> {
         public:
@@ -152,11 +152,17 @@ namespace utils {
     template<typename T>
     using yield_t = std::function<void(T)>;
 
-    template<typename T>
-    using Generator = Gen<LambdaGeneratorHeart<T>>;
+    /*
+    Generator<T>
+    ------------
 
+    A wrapper around Gen<LambdaGeneratorHeart<T>>, a generator built from
+    a lambda. This wrapper allows easy copying, moving, and resetting
+    of a generator.
+
+    */
     template<typename T>
-    class ClonableGen {
+    class Generator {
         public:
             typedef typename LambdaGeneratorHeart<T>::generator_t generator_t;
             typedef Gen<LambdaGeneratorHeart<T>> heart_t;
@@ -164,8 +170,8 @@ namespace utils {
             std::shared_ptr< heart_t > genheart;
             generator_t gen;
 
-            ClonableGen(generator_t _gen) : gen(_gen), genheart(NULL) {};
-            ClonableGen(const ClonableGen<Gen<LambdaGeneratorHeart<T>>>& other) : gen(other.gen), genheart(NULL) {}
+            Generator(generator_t _gen) : gen(_gen), genheart(NULL) {};
+            Generator(const Generator<Gen<LambdaGeneratorHeart<T>>>& other) : gen(other.gen), genheart(NULL) {}
 
             void reset() {genheart = NULL;}
 
@@ -183,18 +189,9 @@ namespace utils {
     };
 
     template<typename T>
-    ClonableGen<T> make_generator(typename LambdaGeneratorHeart<T>::generator_t generator) {
-        return ClonableGen<T>(generator);
+    Generator<T> make_generator(typename LambdaGeneratorHeart<T>::generator_t generator) {
+        return Generator<T>(generator);
     }
-
-    // since this generator is constructed many times it is important to remember to initialize state in the generator function
-    // template<typename T>
-    // std::function<Gen<LambdaGeneratorHeart<T>>(void)> generator_constructor(
-    //         typename LambdaGeneratorHeart<T>::generator_t generator) {
-    //     return [generator]() {
-    //         return make_generator<T>(generator);
-    //     };
-    // }
 }
 
 #endif

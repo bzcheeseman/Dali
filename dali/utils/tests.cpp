@@ -319,7 +319,7 @@ TEST(utils, generator_test) {
 }
 
 TEST(utils, lambda_generator_test) {
-    auto gen = utils::make_generator<int>([](utils::yield_t<int> yield) {
+    auto gen = utils::Generator<int>([](utils::yield_t<int> yield) {
         for (int i=2; i<9; i+=2) yield(i);
     });
     auto vals = vector<int>();
@@ -352,8 +352,8 @@ TEST(utils, test_initialize_gen) {
         }
     };
 
-    auto noinitialization = utils::make_generator<int>(advance_noinitialization);
-    auto correct = utils::make_generator<int>(advance_correct);
+    auto noinitialization = utils::Generator<int>(advance_noinitialization);
+    auto correct = utils::Generator<int>(advance_correct);
 
     auto vals = vector<int>();
     for (int i : noinitialization)
@@ -374,15 +374,15 @@ TEST(utils, test_initialize_gen) {
 
 
 TEST(utils, recursive_generator_test) {
-    // here we are using make_generator rather than make generator,
+    // here we are using Generator rather than make generator,
     // so that we can use it multiple times. For example each time we call
     // gen_12345() new generator is constructed.
 
     // TEST GOAL: generate {1,2,3,4,5} five times.
-    auto gen_12345 = utils::make_generator<int>([](utils::yield_t<int> yield) {
+    auto gen_12345 = utils::Generator<int>([](utils::yield_t<int> yield) {
         for (int i=1; i<=5; i+=1) yield(i);
     });
-    auto gen_5x_12345 = utils::make_generator<int>([&gen_12345](utils::yield_t<int> yield) {
+    auto gen_5x_12345 = utils::Generator<int>([&gen_12345](utils::yield_t<int> yield) {
         int repeats = 5;
         while(repeats--) {
             gen_12345.reset();

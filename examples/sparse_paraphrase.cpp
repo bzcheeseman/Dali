@@ -334,7 +334,7 @@ std::tuple<Vocab, CharacterVocab, typename paraphrase::paraphrase_minibatch_data
 
     int seen = 0;
     for (auto example : dataset) {
-        seen++;
+        seen+=example.size();
         if (max_training_examples > -1 && seen > max_training_examples) break;
 
         if (distribution(generator) > data_split) {
@@ -476,7 +476,7 @@ int main (int argc,  char* argv[]) {
         FLAGS_minibatch,      // minibatch size
         FLAGS_use_characters, // use characters or words
         FLAGS_min_occurence,   // min word appearance to be in vocab
-        500
+        200000
     );
 
     auto& word_vocab      = std::get<0>(dataset);

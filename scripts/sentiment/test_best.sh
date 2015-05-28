@@ -8,7 +8,7 @@ fi
 SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 PROJECT_DIR=$(dirname $( dirname $SCRIPT_DIR ))
 
-source PROJECT_DIR/scripts/utils.sh
+source $PROJECT_DIR/scripts/utils.sh
 
 LOAD_DIR=`ensure_dir $1`
 

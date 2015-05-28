@@ -17,6 +17,6 @@ if __name__ == '__main__':
     if exists(DOWNLOADED_FILE):
         print("Found file.")
     else:
-        execute_bash("wget -O {path} {url}".format(url=DOWNLOADED_FILE, path=path))
+        execute_bash("wget -O {path} {url}".format(url=FILE_URL, path=DOWNLOADED_FILE))
         print("Downloaded file")
 

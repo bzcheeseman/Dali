@@ -6,7 +6,7 @@ using std::ifstream;
 
 namespace utils {
 
-    Generator<row_t> generate_tsv_rows(const std::string& fname, const char& delimiter) {
+    ClonableGen<row_t> generate_tsv_rows(const std::string& fname, const char& delimiter) {
         assert2(file_exists(fname), "Cannot open tsv file.");
         if (utils::is_gzip(fname)) {
             auto fpgz = std::make_shared<igzstream>(fname.c_str());
@@ -20,7 +20,7 @@ namespace utils {
     }
 
     template<typename T>
-    Generator<row_t> generate_tsv_rows_from_stream(std::shared_ptr<T> stream, const char& delimiter) {
+    ClonableGen<row_t> generate_tsv_rows_from_stream(std::shared_ptr<T> stream, const char& delimiter) {
         return utils::make_generator<row_t>([stream, delimiter](utils::yield_t<row_t> yield) {
             string::size_type n;
             string l, cell;
@@ -55,8 +55,8 @@ namespace utils {
         return rows;
     }
 
-    template Generator<row_t> generate_tsv_rows_from_stream(std::shared_ptr<igzstream>,         const char& delimiter);
-    template Generator<row_t> generate_tsv_rows_from_stream(std::shared_ptr<std::fstream>,      const char& delimiter);
-    template Generator<row_t> generate_tsv_rows_from_stream(std::shared_ptr<std::stringstream>, const char& delimiter);
-    template Generator<row_t> generate_tsv_rows_from_stream(std::shared_ptr<std::istream>,      const char& delimiter);
+    template ClonableGen<row_t> generate_tsv_rows_from_stream(std::shared_ptr<igzstream>,         const char& delimiter);
+    template ClonableGen<row_t> generate_tsv_rows_from_stream(std::shared_ptr<std::fstream>,      const char& delimiter);
+    template ClonableGen<row_t> generate_tsv_rows_from_stream(std::shared_ptr<std::stringstream>, const char& delimiter);
+    template ClonableGen<row_t> generate_tsv_rows_from_stream(std::shared_ptr<std::istream>,      const char& delimiter);
 }

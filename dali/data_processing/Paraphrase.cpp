@@ -8,7 +8,7 @@ using utils::from_string;
 
 namespace paraphrase {
 
-    utils::Generator<example_t> generate_examples(ParaphraseLoader& para_loader, std::string fname) {
+    utils::ClonableGen<example_t> generate_examples(ParaphraseLoader& para_loader, std::string fname) {
         auto gen = utils::make_generator<example_t>([para_loader, fname](utils::yield_t<example_t> yield) {
             auto row_gen = utils::generate_tsv_rows(fname);
             for (auto row : row_gen)
@@ -17,7 +17,7 @@ namespace paraphrase {
         return gen;
     }
 
-    utils::Generator<example_t> generate_examples(std::string fname, similarity_score_extractor_t similarity_score_extractor) {
+    utils::ClonableGen<example_t> generate_examples(std::string fname, similarity_score_extractor_t similarity_score_extractor) {
         auto para_loader = ParaphraseLoader();
         para_loader.similarity_score_extractor = similarity_score_extractor;
         return generate_examples(para_loader, fname);
@@ -94,7 +94,7 @@ namespace paraphrase {
         return list;
     }
 
-    vector<string> get_vocabulary(utils::Generator<example_t>& examples, int min_occurence) {
+    vector<string> get_vocabulary(utils::ClonableGen<example_t>& examples, int min_occurence) {
         std::map<string, uint> word_occurences;
         string word;
         for (auto example : examples) {
@@ -111,7 +111,7 @@ namespace paraphrase {
 
     namespace STS_2015 {
 
-        utils::Generator<example_t> generate_train(std::string path) {
+        utils::ClonableGen<example_t> generate_train(std::string path) {
             auto loader = ParaphraseLoader();
             loader.sentence1_column  = 2;
             loader.sentence2_column  = 3;
@@ -138,7 +138,7 @@ namespace paraphrase {
             return examples;
         }
 
-        utils::Generator<example_t> generate_test(std::string path) {
+        utils::ClonableGen<example_t> generate_test(std::string path) {
             auto loader = ParaphraseLoader();
             loader.sentence1_column = 2;
             loader.sentence2_column = 3;
@@ -158,7 +158,7 @@ namespace paraphrase {
             return examples;
         }
 
-        utils::Generator<example_t> generate_dev(std::string path) {
+        utils::ClonableGen<example_t> generate_dev(std::string path) {
             return generate_train(path);
         }
 
@@ -210,9 +210,9 @@ namespace paraphrase {
         return dataset;
     }
 
-    utils::Generator<vector<numeric_example_t>> convert_to_indexed_minibatches(
+    utils::ClonableGen<vector<numeric_example_t>> convert_to_indexed_minibatches(
             const utils::Vocab& word_vocab,
-            utils::Generator<example_t>& examples,
+            utils::ClonableGen<example_t>& examples,
             int minibatch_size) {
 
         auto gen = utils::make_generator<vector<numeric_example_t>>(
@@ -240,9 +240,9 @@ namespace paraphrase {
     }
 
 
-    utils::Generator<vector<numeric_example_t>> convert_to_indexed_minibatches(
+    utils::ClonableGen<vector<numeric_example_t>> convert_to_indexed_minibatches(
             const utils::CharacterVocab& character_vocab,
-            utils::Generator<example_t>& examples,
+            utils::ClonableGen<example_t>& examples,
             int minibatch_size) {
 
         auto gen = utils::make_generator<vector<numeric_example_t>>(

@@ -147,7 +147,6 @@ namespace utils {
             void run(generator_t generator) {
                 generator(std::bind(&GeneratorHeart<T>::yield, this, std::placeholders::_1));
             }
-
     };
 
     template<typename T>
@@ -157,18 +156,45 @@ namespace utils {
     using Generator = Gen<LambdaGeneratorHeart<T>>;
 
     template<typename T>
-    Gen<LambdaGeneratorHeart<T>> make_generator(typename LambdaGeneratorHeart<T>::generator_t generator) {
-        return Gen<LambdaGeneratorHeart<T>>(generator);
+    class ClonableGen {
+        public:
+            typedef typename LambdaGeneratorHeart<T>::generator_t generator_t;
+            typedef Gen<LambdaGeneratorHeart<T>> heart_t;
+            typedef typename heart_t::ForLooping ForLooping;
+            std::shared_ptr< heart_t > genheart;
+            generator_t gen;
+
+            ClonableGen(generator_t _gen) : gen(_gen), genheart(NULL) {};
+            ClonableGen(const ClonableGen<Gen<LambdaGeneratorHeart<T>>>& other) : gen(other.gen), genheart(NULL) {}
+
+            void reset() {genheart = NULL;}
+
+            ForLooping begin() {
+                if (!genheart)
+                    genheart = std::make_shared<heart_t>(gen);
+                return genheart->begin();
+            };
+
+            ForLooping end() {
+                if (!genheart)
+                    genheart = std::make_shared<Gen<LambdaGeneratorHeart<T>>>(gen);
+                return genheart->end();
+            }
+    };
+
+    template<typename T>
+    ClonableGen<T> make_generator(typename LambdaGeneratorHeart<T>::generator_t generator) {
+        return ClonableGen<T>(generator);
     }
 
     // since this generator is constructed many times it is important to remember to initialize state in the generator function
-    template<typename T>
-    std::function<Gen<LambdaGeneratorHeart<T>>(void)> generator_constructor(
-            typename LambdaGeneratorHeart<T>::generator_t generator) {
-        return [generator]() {
-            return make_generator<T>(generator);
-        };
-    }
+    // template<typename T>
+    // std::function<Gen<LambdaGeneratorHeart<T>>(void)> generator_constructor(
+    //         typename LambdaGeneratorHeart<T>::generator_t generator) {
+    //     return [generator]() {
+    //         return make_generator<T>(generator);
+    //     };
+    // }
 }
 
 #endif

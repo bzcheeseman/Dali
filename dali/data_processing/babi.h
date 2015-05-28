@@ -67,7 +67,7 @@ namespace babi {
 
     typedef std::tuple<std::vector<std::vector<std::string>>, QA*> sp_ret_t;
 
-    utils::Generator<sp_ret_t> story_parser(const Story& story);
+    utils::ClonableGen<sp_ret_t> story_parser(const Story& story);
 
     // List of all the babi tasks
     std::vector<std::string> tasks();

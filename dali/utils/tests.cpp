@@ -352,45 +352,47 @@ TEST(utils, test_initialize_gen) {
         }
     };
 
-
-    auto noinitialization = utils::generator_constructor<int>(advance_noinitialization);
-    auto correct = utils::generator_constructor<int>(advance_correct);
+    auto noinitialization = utils::make_generator<int>(advance_noinitialization);
+    auto correct = utils::make_generator<int>(advance_correct);
 
     auto vals = vector<int>();
-    for (int i : noinitialization())
+    for (int i : noinitialization)
         vals.emplace_back(i);
-    for (int i : noinitialization())
+    noinitialization.reset();
+    for (int i : noinitialization)
         vals.emplace_back(i);
     ASSERT_EQ(vector<int>({1,2,3,4,5,6,7,8,9,10}), vals);
 
     vals.clear();
-    for (int i : correct())
+    for (int i : correct)
         vals.emplace_back(i);
-    for (int i : correct())
+    correct.reset();
+    for (int i : correct)
         vals.emplace_back(i);
-    ASSERT_EQ(vector<int>({1,2,3,4,5, 1,2,3,4,5}), vals);
+    ASSERT_EQ(vector<int>({1,2,3,4,5,1,2,3,4,5}), vals);
 }
 
 
 TEST(utils, recursive_generator_test) {
-    // here we are using generator_constructor rather than make generator,
+    // here we are using make_generator rather than make generator,
     // so that we can use it multiple times. For example each time we call
     // gen_12345() new generator is constructed.
 
     // TEST GOAL: generate {1,2,3,4,5} five times.
-    auto gen_12345 = utils::generator_constructor<int>([](utils::yield_t<int> yield) {
+    auto gen_12345 = utils::make_generator<int>([](utils::yield_t<int> yield) {
         for (int i=1; i<=5; i+=1) yield(i);
     });
-    auto gen_5x_12345 = utils::generator_constructor<int>([&gen_12345](utils::yield_t<int> yield) {
+    auto gen_5x_12345 = utils::make_generator<int>([&gen_12345](utils::yield_t<int> yield) {
         int repeats = 5;
         while(repeats--) {
-            for (auto num: gen_12345())
+            gen_12345.reset();
+            for (auto num: gen_12345)
                 yield(num);
         }
     });
 
     auto vals = vector<int>();
-    for (int i : gen_5x_12345())
+    for (int i : gen_5x_12345)
         vals.emplace_back(i);
     ASSERT_EQ(vector<int>({1,2,3,4,5, 1,2,3,4,5, 1,2,3,4,5, 1,2,3,4,5, 1,2,3,4,5}), vals);
 }

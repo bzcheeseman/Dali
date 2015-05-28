@@ -207,7 +207,7 @@ namespace babi {
         return parse_file(filepath, num_questions);
     }
 
-    utils::Generator<sp_ret_t> story_parser(const Story& story) {
+    utils::ClonableGen<sp_ret_t> story_parser(const Story& story) {
         return utils::make_generator<sp_ret_t>([&story](utils::yield_t<sp_ret_t> yield) {
             int story_idx = 0;
             vector<vector<string>> facts_so_far;

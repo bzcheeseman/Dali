@@ -331,7 +331,7 @@ TEST(utils, lambda_generator_test) {
 
 TEST(utils, test_initialize_gen) {
     // This test illustrates that generator_constructor can be sometimes
-    // dangerous if we do not thin about initialization
+    // dangerous if we do not think about initialization
 
     // TEST GOAL: generate {1,2,3,4,5,  1,2,3,4,5} using shared_resource.
 

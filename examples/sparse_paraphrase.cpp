@@ -47,7 +47,6 @@ DEFINE_int32(patience,                 5,          "How many unimproving epochs 
 // files
 DEFINE_string(results_file,            "",         "Where to save test performance.");
 DEFINE_string(save_location,           "",         "Where to save test performance.");
-DEFINE_string(test,                    "",         "Where is the test set?");
 // solvers
 DEFINE_string(solver,                  "adadelta", "What solver to use (adadelta, sgd, adam)");
 DEFINE_double(learning_rate,           0.01,       "Learning rate for SGD and Adagrad.");
@@ -140,6 +139,8 @@ class ParaphraseModel {
     typedef typename StackedLSTM<T>::state_t state_t;
 
     public:
+
+        typedef std::map<std::string, std::vector<std::string>> config_t;
         int input_size;
         int vocab_size;
         vector<int> hidden_sizes;
@@ -196,6 +197,25 @@ class ParaphraseModel {
                 res.emplace_back(matrix);
             }
             return res;
+        }
+
+        config_t configuration() const {
+            // TODO: make this class inherit from other classes...
+            return config_t();
+        }
+
+        void save_configuration(std::string fname) const {
+            auto config = configuration();
+            utils::map_to_file(config, fname);
+        }
+
+        void save(std::string dirname) const {
+            utils::ensure_directory(dirname);
+            // Save the matrices:
+            auto params = parameters();
+            utils::save_matrices(params, dirname);
+            dirname += "config.md";
+            save_configuration(dirname);
         }
 
         // returns sentence and vector of memories
@@ -284,12 +304,15 @@ std::tuple<Vocab, CharacterVocab, typename paraphrase::paraphrase_minibatch_data
         double data_split,
         int batch_size,
         bool use_characters,
-        int min_word_occurence) {
+        int min_word_occurence,
+        int max_training_examples) {
     using namespace paraphrase;
     // combine two datasets by mixing their generators:
     auto train      = STS_2014::generate_train() + wikianswers::generate();
     auto word_vocab = Vocab(get_vocabulary(train, min_word_occurence, FLAGS_use_characters ? 0 : 300000), true);
     auto char_vocab = CharacterVocab(32, 255);
+
+    std::cout << "loaded vocabulary" << std::endl;
 
     auto dataset       = use_characters ? convert_to_indexed_minibatches(char_vocab, train, batch_size)
                                         : convert_to_indexed_minibatches(word_vocab, train, batch_size);
@@ -299,6 +322,7 @@ std::tuple<Vocab, CharacterVocab, typename paraphrase::paraphrase_minibatch_data
                                         : convert_to_indexed_minibatches(word_vocab, test, batch_size);
 
 
+    std::cout << "got test set" << std::endl;
 
     std::default_random_engine generator;
     std::uniform_real_distribution<double> distribution(0, 1);
@@ -308,14 +332,19 @@ std::tuple<Vocab, CharacterVocab, typename paraphrase::paraphrase_minibatch_data
     decltype(test_dataset) validation_data;
     decltype(test_dataset) training_data;
 
-
+    int seen = 0;
     for (auto example : dataset) {
+        seen++;
+        if (max_training_examples > -1 && seen > max_training_examples) break;
+
         if (distribution(generator) > data_split) {
             validation_data.emplace_back(example);
         } else {
             training_data.emplace_back(example);
         }
     }
+
+    std::cout << "loaded training data" << std::endl;
 
     // implement validation set online.
     return make_tuple(word_vocab, char_vocab, training_data, validation_data, test_dataset);
@@ -446,7 +475,8 @@ int main (int argc,  char* argv[]) {
         0.9,
         FLAGS_minibatch,      // minibatch size
         FLAGS_use_characters, // use characters or words
-        FLAGS_min_occurence   // min word appearance to be in vocab
+        FLAGS_min_occurence,   // min word appearance to be in vocab
+        500
     );
 
     auto& word_vocab      = std::get<0>(dataset);
@@ -578,7 +608,7 @@ int main (int argc,  char* argv[]) {
                             thread_model,
                             training_set,
                             memory_penalty,
-                            FLAGS_negative_samples * 3,
+                            FLAGS_negative_samples,
                             minibatch_error);
                         examples_processed++;
                     }
@@ -668,7 +698,7 @@ int main (int argc,  char* argv[]) {
             patience += 1;
         } else {
             // recover some patience:
-            patience = std::max(patience - 1, 0.0);
+            patience = 0.0;
             best_validation_score = new_validation;
         }
         if (best_validation_score != new_validation) {
@@ -680,53 +710,51 @@ int main (int argc,  char* argv[]) {
         if (new_validation > best_score) {
             best_score = new_validation;
             // save best:
-            /*if (!FLAGS_save_location.empty()) {
+            if (!FLAGS_save_location.empty()) {
                 model.save(FLAGS_save_location);
                 best_file = FLAGS_save_location;
-            }*/
-        }
-    }
-
-    /*if (!FLAGS_test.empty()) {
-        auto test_set =  // load test set.
-
-        if (!FLAGS_save_location.empty() && !best_file.empty()) {
-            std::cout << "loading from best validation parameters \"" << best_file << "\"" << std::endl;
-            auto params = model.parameters();
-            utils::load_matrices(params, best_file);
-        }
-
-        // write test code and reporting here.
-
-        auto test_score = paraphrase::pearson_correlation(validation_set, pred_fun, FLAGS_j);
-
-        auto recall = SST::average_recall(test_set, pred_fun, FLAGS_j);
-
-        std::cout << "Done training" << std::endl;
-        std::cout << "Test recall "  << std::get<0>(recall) << "%, root => " << std::get<1>(recall)<< "%" << std::endl;
-        if (!FLAGS_results_file.empty()) {
-            ofstream fp;
-            fp.open(FLAGS_results_file.c_str(), std::ios::out | std::ios::app);
-            fp         << FLAGS_solver
-               << "\t" << FLAGS_minibatch
-               << "\t" << (FLAGS_fast_dropout ? "fast" : "std")
-               << "\t" << FLAGS_dropout
-               << "\t" << FLAGS_hidden
-               << "\t" << std::get<0>(recall)
-               << "\t" << std::get<1>(recall)
-               << "\t" << best_epoch
-               << "\t" << FLAGS_memory_penalty
-               << "\t" << FLAGS_memory_penalty_curve;
-            if ((FLAGS_solver == "adagrad" || FLAGS_solver == "sgd")) {
-                fp << "\t" << FLAGS_learning_rate;
-            } else {
-                fp << "\t" << "N/A";
             }
-            fp  << "\t" << FLAGS_reg << std::endl;
         }
     }
 
+    if (!FLAGS_save_location.empty() && !best_file.empty()) {
+        std::cout << "loading from best validation parameters \"" << best_file << "\"" << std::endl;
+        auto params = model.parameters();
+        utils::load_matrices(params, best_file);
+    }
 
+    // write test code and reporting here.
+
+    auto test_score = paraphrase::pearson_correlation(test_set, std::bind(&model_t::predict, &model, _1, _2), FLAGS_j);
+
+    auto acc        = paraphrase::binary_accuracy(test_set, std::bind(&model_t::predict, &model, _1, _2), FLAGS_j);
+
+    std::cout << "Done training" << std::endl;
+    std::cout << "Test correlation "    << test_score
+                     << ", recall "     << acc.recall() * 100.0
+                     << "%, precision " << acc.precision() << std::endl;
+    if (!FLAGS_results_file.empty()) {
+        ofstream fp;
+        fp.open(FLAGS_results_file.c_str(), std::ios::out | std::ios::app);
+        fp         << FLAGS_solver
+           << "\t" << FLAGS_minibatch
+           << "\t" << "std"
+           << "\t" << FLAGS_dropout
+           << "\t" << FLAGS_hidden
+           << "\t" << test_score
+           << "\t" << acc.recall()
+           << "\t" << acc.precision()
+           << "\t" << acc.F1()
+           << "\t" << best_epoch
+           << "\t" << FLAGS_memory_penalty
+           << "\t" << FLAGS_memory_penalty_curve;
+        if ((FLAGS_solver == "adagrad" || FLAGS_solver == "sgd")) {
+            fp << "\t" << FLAGS_learning_rate;
+        } else {
+            fp << "\t" << "N/A";
+        }
+        fp  << "\t" << FLAGS_reg << std::endl;
+    }
     // Write test accuracy here.
-    */
+
 }

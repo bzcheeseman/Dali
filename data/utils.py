@@ -18,3 +18,14 @@ def execute_bash(command):
         print(line, end='', flush=True)
     process.wait()
     assert process.returncode == 0
+
+def collect_files_with_ext(path, extension):
+    paths = [(os.path.join(path, subpath), subpath) for subpath in os.listdir(path)]
+    files = []
+    for subpath, name in paths:
+        if os.path.isdir(subpath):
+            files += collect_files_with_ext(subpath, extension)
+        else:
+            if subpath.endswith(extension):
+                files.append((subpath, name))
+    return files

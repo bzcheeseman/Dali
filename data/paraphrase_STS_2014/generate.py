@@ -13,7 +13,7 @@ from os.path import isdir, isfile, join, dirname, realpath, exists
 # add data to path
 DATA_DIR = dirname(dirname(realpath(__file__)))
 sys.path.append(DATA_DIR)
-from utils import print_progress, execute_bash
+from utils import print_progress, execute_bash, collect_files_with_ext
 
 THIS_DATA_DIR = dirname(realpath(__file__))
 
@@ -25,17 +25,6 @@ TRAIN_TOKENIZED_FILE = join(THIS_DATA_DIR, "train.tokenized.tsv")
 
 def is_dataset_input(fname):
     return fname.endswith(".txt") and ("readme" not in fname) and (".input." in fname)
-
-def collect_files_with_ext(path, extension):
-    paths = [(join(path, subpath), subpath) for subpath in listdir(path)]
-    files = []
-    for subpath, name in paths:
-        if isdir(subpath):
-            files += collect_files_with_ext(subpath, extension)
-        else:
-            if subpath.endswith(extension):
-                files.append((subpath, name))
-    return files
 
 def collect_text_files(path):
     return [(subpath, name) for subpath, name in collect_files_with_ext(path, ".txt") if is_dataset_input(subpath)]

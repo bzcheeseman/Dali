@@ -33,14 +33,7 @@ using utils::Vocab;
 using utils::CharacterVocab;
 using utils::MS;
 
-static const int ADADELTA_TYPE = 0;
-static const int ADAGRAD_TYPE  = 1;
-static const int SGD_TYPE      = 2;
-static const int ADAM_TYPE     = 3;
-static const int RMSPROP_TYPE  = 4;
-
 typedef double REAL_t;
-
 // training flags
 DEFINE_int32(minibatch,                5,          "What size should be used for the minibatches ?");
 DEFINE_int32(patience,                 5,          "How many unimproving epochs to wait through before witnessing progress ?");
@@ -48,8 +41,6 @@ DEFINE_int32(patience,                 5,          "How many unimproving epochs 
 DEFINE_string(results_file,            "",         "Where to save test performance.");
 DEFINE_string(save_location,           "",         "Where to save test performance.");
 // solvers
-DEFINE_string(solver,                  "adadelta", "What solver to use (adadelta, sgd, adam)");
-DEFINE_double(learning_rate,           0.01,       "Learning rate for SGD and Adagrad.");
 DEFINE_double(reg,                     0.0,        "What penalty to place on L2 norm of weights?");
 // model
 DEFINE_int32(input_size,               100,        "Size of embeddings.");
@@ -514,31 +505,13 @@ int main (int argc,  char* argv[]) {
               << "              Solver : " << FLAGS_solver << std::endl;
 
     vector<vector<Mat<REAL_t>>> thread_params;
-
-
-
-    // what needs to be optimized:
     vector<model_t> thread_models;
-    for (int i = 0; i < FLAGS_j; i++) {
-        // create a copy for each training thread
-        // (shared memory mode = Hogwild)
-        thread_models.push_back(model.shallow_copy());
-
-        auto thread_model_params = thread_models.back().parameters();
-        // take a slice of all the parameters except for embedding.
-        thread_params.emplace_back(
-            thread_model_params.begin(),
-            thread_model_params.end()
-        );
-    }
+    std::tie(thread_models, thread_params) = utils::shallow_copy(model, FLAGS_j);
     auto params = model.parameters();
-
-    // Rho value, eps value, and gradient clipping value:
     auto solver = Solver::construct<REAL_t>(FLAGS_solver, params, FLAGS_learning_rate, (REAL_t) FLAGS_reg);
 
     REAL_t best_validation_score = 0.0;
-    int epoch = 0;
-    int best_epoch = 0;
+    int best_epoch = 0, epoch = 0;
     double patience = 0;
     string best_file = "";
     REAL_t best_score = 0.0;
@@ -689,9 +662,7 @@ int main (int argc,  char* argv[]) {
             std::bind(&model_t::predict, &model, _1, _2),
             FLAGS_j);
 
-        if (dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())) {
-            solver->reset_caches(params);
-        }
+        if (solver->is_adagrad()) solver->reset_caches(params);
 
         if (new_validation + 1e-6 < best_validation_score) {
             // lose patience:
@@ -724,9 +695,7 @@ int main (int argc,  char* argv[]) {
     }
 
     // write test code and reporting here.
-
     auto test_score = paraphrase::pearson_correlation(test_set, std::bind(&model_t::predict, &model, _1, _2), FLAGS_j);
-
     auto acc        = paraphrase::binary_accuracy(test_set, std::bind(&model_t::predict, &model, _1, _2), FLAGS_j);
 
     std::cout << "Done training" << std::endl;
@@ -756,5 +725,4 @@ int main (int argc,  char* argv[]) {
         fp  << "\t" << FLAGS_reg << std::endl;
     }
     // Write test accuracy here.
-
 }

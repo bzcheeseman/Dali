@@ -21,9 +21,7 @@ static int SGD_TYPE = 2;
 static int ADAM_TYPE = 3;
 static int RMSPROP_TYPE = 4;
 
-DEFINE_string(solver,        "adadelta", "What solver to use (adadelta, sgd, adam)");
 DEFINE_double(reg,           0.0,        "What penalty to place on L2 norm of weights?");
-DEFINE_double(learning_rate, 0.01,       "Learning rate for SGD and Adagrad.");
 DEFINE_int32(minibatch,      100,        "What size should be used for the minibatches ?");
 DEFINE_bool(fast_dropout,    true,       "Use fast dropout?");
 DEFINE_int32(epochs,             2000,
@@ -99,27 +97,8 @@ int main (int argc,  char* argv[]) {
          false,
          false);
 
-    // Rho value, eps value, and gradient clipping value:
-    std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver;
-    int solver_type;
     auto params = model.parameters();
-    if (FLAGS_solver == "adadelta") {
-        solver = make_shared<Solver::AdaDelta<REAL_t>>(params, 0.95, 1e-9, 100.0, (REAL_t) FLAGS_reg);
-        solver_type = ADADELTA_TYPE;
-    } else if (FLAGS_solver == "adam") {
-        solver = make_shared<Solver::Adam<REAL_t>>(params, 0.1, 0.001, 1e-9, 100.0, (REAL_t) FLAGS_reg);
-        solver_type = ADAM_TYPE;
-    } else if (FLAGS_solver == "sgd") {
-        solver = make_shared<Solver::SGD<REAL_t>>(params, 100.0, (REAL_t) FLAGS_reg);
-        solver_type = SGD_TYPE;
-        dynamic_cast<Solver::SGD<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
-    } else if (FLAGS_solver == "adagrad") {
-        solver = make_shared<Solver::AdaGrad<REAL_t>>(params, 1e-9, 100.0, (REAL_t) FLAGS_reg);
-        solver_type = ADAGRAD_TYPE;
-        dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
-    } else {
-        utils::exit_with_message("Did not recognize this solver type.");
-    }
+    auto solver = Solver::construct(FLAGS_solver, params, (REAL_t)FLAGS_learning_rate, (REAL_t)FLAGS_reg);
 
     int epoch = 0;
     auto end_symbol_idx = arithmetic::vocabulary.word2index[utils::end_symbol];

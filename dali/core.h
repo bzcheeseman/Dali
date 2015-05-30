@@ -9,3 +9,4 @@
 #include "dali/execution/SequenceProbability.h"
 #include "dali/execution/BeamSearch.h"
 #include "dali/execution/Solver.h"
+#include "dali/models/shallow_copy.h"

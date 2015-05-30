@@ -3,7 +3,16 @@
 using std::vector;
 #define PARAM_KEY_FOR_LOOKUP_TABLE param.id()
 
+DEFINE_string(solver, "adadelta", "What solver to use (adadelta, sgd, adam, rmsprop, adagrad)");
+DEFINE_double(learning_rate, 0.01, "Learning rate for SGD and Adagrad.");
+
 namespace Solver {
+
+    #define DECLARE_TYPENAME_GETTER(CLASSNAME, METHODNAME, IS_CLASSNAME) \
+    template<typename R> \
+    bool CLASSNAME<R>::is_ ##METHODNAME () const {\
+        return IS_CLASSNAME;\
+    }
 
     /* Abstract Solver */
     template<typename R>
@@ -16,6 +25,12 @@ namespace Solver {
 
     template<typename R>
     void AbstractSolver<R>::reset_caches(vector<Mat<R>>& parameters) {}
+
+    DECLARE_TYPENAME_GETTER(AbstractSolver, sgd,      false)
+    DECLARE_TYPENAME_GETTER(AbstractSolver, adagrad,  false)
+    DECLARE_TYPENAME_GETTER(AbstractSolver, adam,     false)
+    DECLARE_TYPENAME_GETTER(AbstractSolver, rmsprop,  false)
+    DECLARE_TYPENAME_GETTER(AbstractSolver, adadelta, false)
 
     /* SGD */
     template<typename R>
@@ -61,6 +76,8 @@ namespace Solver {
 
     template class SGD<float>;
     template class SGD<double>;
+
+    DECLARE_TYPENAME_GETTER(SGD, sgd, true)
 
     /* AdaGrad */
     template<typename R>
@@ -156,6 +173,8 @@ namespace Solver {
     template class AdaGrad<float>;
     template class AdaGrad<double>;
 
+    DECLARE_TYPENAME_GETTER(AdaGrad, adagrad, true)
+
     /* RMSProp */
     template<typename R>
     RMSProp<R>::RMSProp (
@@ -221,6 +240,8 @@ namespace Solver {
 
     template class RMSProp<float>;
     template class RMSProp<double>;
+
+    DECLARE_TYPENAME_GETTER(RMSProp, rmsprop, true)
 
     /* AdaDelta */
     template<typename R>
@@ -327,6 +348,8 @@ namespace Solver {
 
     template class AdaDelta<float>;
     template class AdaDelta<double>;
+
+    DECLARE_TYPENAME_GETTER(AdaDelta, adadelta, true)
 
     /* Adam */
     template<typename R>
@@ -482,4 +505,6 @@ namespace Solver {
 
     template class Adam<float>;
     template class Adam<double>;
+
+    DECLARE_TYPENAME_GETTER(Adam, adam, true)
 }

@@ -97,7 +97,5 @@ void ReportProgress<T>::resume() {
     printing_on = true;
 }
 
-
 template class ReportProgress<float>;
 template class ReportProgress<double>;
-

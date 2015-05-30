@@ -309,6 +309,7 @@ namespace utils {
 
     template<typename R>
     json11::Json json_finite_distribution(const Mat<R>&, const std::vector<std::string>& labels);
+
 }
 
 template <typename R>

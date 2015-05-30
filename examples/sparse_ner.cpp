@@ -28,25 +28,16 @@ using std::min;
 using utils::Vocab;
 using utils::assert2;
 
-static const int ADADELTA_TYPE = 0;
-static const int ADAGRAD_TYPE  = 1;
-static const int SGD_TYPE      = 2;
-static const int ADAM_TYPE     = 3;
-static const int RMSPROP_TYPE  = 4;
-
 typedef double REAL_t;
-typedef Mat<REAL_t> mat;
 
-DEFINE_int32(minibatch,           5,        "What size should be used for the minibatches ?");
+DEFINE_int32(minibatch,           5,          "What size should be used for the minibatches ?");
 DEFINE_int32(patience,            5,          "How many unimproving epochs to wait through before witnessing progress ?");
 DEFINE_double(dropout,            0.3,        "How much dropout noise to add to the problem ?");
 DEFINE_double(reg,                0.0,        "What penalty to place on L2 norm of weights?");
 DEFINE_bool(fast_dropout,         true,       "Use fast dropout?");
-DEFINE_string(solver,             "adadelta", "What solver to use (adadelta, sgd, adam)");
 DEFINE_string(test,               "",         "Where is the test set?");
 DEFINE_string(pretrained_vectors, "",         "Load pretrained word vectors?");
-DEFINE_double(learning_rate,      0.01,       "Learning rate for SGD and Adagrad.");
-DEFINE_string(results_file,       "",         "Where to save test performance.");
+DEFINE_string(results_file,       "",         "Where to save the accuracy results.");
 DEFINE_string(save_location,      "",         "Where to save test performance.");
 DEFINE_double(embedding_learning_rate, -1.0,  "A separate learning rate for embedding layer");
 DEFINE_bool(svd_init,             true,       "Initialize weights using SVD?");
@@ -67,7 +58,7 @@ int main (int argc,  char* argv[]) {
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
     int memory_penalty_curve_type;
-    if (FLAGS_memory_penalty_curve == "flat") {
+    if (FLAGS_memory_penalty_curve        == "flat") {
         memory_penalty_curve_type = 0;
     } else if (FLAGS_memory_penalty_curve == "linear") {
         memory_penalty_curve_type = 1;
@@ -112,7 +103,6 @@ int main (int argc,  char* argv[]) {
     // Create a model with an embedding, and several stacks:
 
     auto stack_size  = std::max(FLAGS_stack_size, 1);
-
     auto model = FLAGS_load.empty() ? StackedGatedModel<REAL_t>(
         FLAGS_pretrained_vectors.empty() ? word_vocab.size() : 0,
         FLAGS_pretrained_vectors.empty() ? FLAGS_hidden : embedding.dims(1),
@@ -123,26 +113,11 @@ int main (int argc,  char* argv[]) {
         FLAGS_memory_feeds_gates,
         FLAGS_memory_penalty) : StackedGatedModel<REAL_t>::load(FLAGS_load);
 
-    if (FLAGS_shortcut && stack_size == 1) {
+    if (FLAGS_shortcut && stack_size == 1)
         std::cout << "shortcut flag ignored: Shortcut connections only take effect with stack size > 1" << std::endl;
-    }
-
     // don't send the input vector to the
     // decoder:
     model.input_vector_to_decoder(false);
-
-    int solver_type;
-    if (FLAGS_solver == "adadelta") {
-        solver_type = ADADELTA_TYPE;
-    } else if (FLAGS_solver == "adam") {
-        solver_type = ADAM_TYPE;
-    } else if (FLAGS_solver == "sgd") {
-        solver_type = SGD_TYPE;
-    } else if (FLAGS_solver == "adagrad") {
-        solver_type = ADAGRAD_TYPE;
-    } else {
-        utils::exit_with_message("Did not recognize this solver type.");
-    }
     if (dataset.size() == 0) utils::exit_with_message("Dataset is empty");
 
     std::cout << "     Vocabulary size : " << vocab_size << std::endl
@@ -157,9 +132,8 @@ int main (int argc,  char* argv[]) {
               << " # training examples : " << dataset.size() * FLAGS_minibatch - (FLAGS_minibatch - dataset[dataset.size() - 1].size()) << std::endl
               << " # layers -> decoder : " << model.decoder.matrices.size() << std::endl
               << "              Solver : " << FLAGS_solver << std::endl;
-    if (FLAGS_embedding_learning_rate > 0) {
+    if (FLAGS_embedding_learning_rate > 0)
         std::cout << " Embedding step size : " << FLAGS_embedding_learning_rate << std::endl;
-    }
 
     if (!FLAGS_pretrained_vectors.empty()) {
         std::cout << "  Pretrained Vectors : " << FLAGS_pretrained_vectors << std::endl;
@@ -168,79 +142,31 @@ int main (int argc,  char* argv[]) {
 
     vector<vector<Mat<REAL_t>>> thread_params;
     vector<vector<Mat<REAL_t>>> thread_embedding_params;
-
     // what needs to be optimized:
     vector<StackedGatedModel<REAL_t>> thread_models;
-    for (int i = 0; i < FLAGS_j; i++) {
-        // create a copy for each training thread
-        // (shared memory mode = Hogwild)
-        thread_models.push_back(model.shallow_copy());
-
-        auto thread_model_params = thread_models.back().parameters();
-        // take a slice of all the parameters except for embedding.
-        thread_params.emplace_back(
-            thread_model_params.begin() + 1,
-            thread_model_params.end()
-        );
-        // then add the embedding (the first parameter of StackeModel)
-        thread_embedding_params.emplace_back(
-            thread_model_params.begin(),
-            thread_model_params.begin() + 1
-        );
+    std::tie(thread_models, thread_params) = utils::shallow_copy(model, FLAGS_j);
+    for (auto& thread_param : thread_params) {
+        thread_embedding_params.emplace_back(thread_param.begin(), thread_param.begin()+1);
+        thread_param = vector< Mat<REAL_t> >(thread_param.begin() + 1, thread_param.end());
     }
-    vector<Mat<REAL_t>> params;
-    vector<Mat<REAL_t>> embedding_params;
-    {
-        auto temp  = model.parameters();
-        params = vector<Mat<REAL_t>>(temp.begin()+1, temp.end());
-        embedding_params.push_back(model.parameters()[0]);
-    }
-
-    // Rho value, eps value, and gradient clipping value:
-    std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver;
-    std::shared_ptr<Solver::AbstractSolver<REAL_t>> embedding_solver;
-    switch (solver_type) {
-        case ADADELTA_TYPE:
-            solver = make_shared<Solver::AdaDelta<REAL_t>>(params, 0.95, 1e-9, 100.0, (REAL_t) FLAGS_reg);
-            embedding_solver = make_shared<Solver::AdaDelta<REAL_t>>(embedding_params, 0.95, 1e-9, 100.0, 0.0);
-            break;
-        case ADAM_TYPE:
-            solver = make_shared<Solver::Adam<REAL_t>>(params, 0.1, 0.001, 1e-9, 100.0, (REAL_t) FLAGS_reg);
-            embedding_solver = make_shared<Solver::Adam<REAL_t>>(embedding_params, 0.1, 0.001, 1e-9, 100.0, 0.0);
-            break;
-        case SGD_TYPE:
-            solver = make_shared<Solver::SGD<REAL_t>>(params, 100.0, (REAL_t) FLAGS_reg);
-            embedding_solver = make_shared<Solver::SGD<REAL_t>>(embedding_params, 100.0, 0.0);
-            dynamic_cast<Solver::SGD<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
-            dynamic_cast<Solver::SGD<REAL_t>*>(embedding_solver.get())->step_size = (
-                FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate);
-            break;
-        case ADAGRAD_TYPE:
-            solver = make_shared<Solver::AdaGrad<REAL_t>>(params, 1e-9, 100.0, (REAL_t) FLAGS_reg);
-            embedding_solver = make_shared<Solver::AdaGrad<REAL_t>>(embedding_params, 1e-9, 100.0, 0.0);
-            dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
-            dynamic_cast<Solver::AdaGrad<REAL_t>*>(embedding_solver.get())->step_size = (
-                FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate);
-            break;
-        default:
-            utils::exit_with_message("Did not recognize this solver type.");
-    }
+    vector<Mat<REAL_t>> params = model.parameters();
+    vector<Mat<REAL_t>> embedding_params(params.begin(), params.begin() + 1);
+    params = vector<Mat<REAL_t>>(params.begin() + 1, params.end());
+    auto solver           = Solver::construct(FLAGS_solver, params, (REAL_t) FLAGS_learning_rate, (REAL_t) FLAGS_reg);
+    auto embedding_solver = Solver::construct(FLAGS_solver,
+        embedding_params,
+        (REAL_t) (FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate),
+        (REAL_t) FLAGS_reg);
 
     REAL_t best_validation_score = 0.0;
-    int epoch = 0;
-    int best_epoch = 0;
+    int epoch = 0, best_epoch = 0;
     double patience = 0;
     string best_file = "";
     REAL_t best_score = 0.0;
 
     shared_ptr<Visualizer> visualizer;
-    if (!FLAGS_visualizer.empty()) {
-        try {
-            visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
-        } catch (std::runtime_error e) {
-            std::cout << e.what() << std::endl; // could not connect to redis.
-        }
-    }
+    if (!FLAGS_visualizer.empty())
+        visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
 
     auto pred_fun = [&model](vector<uint>& example) {
         graph::NoBackprop nb;
@@ -299,7 +225,7 @@ int main (int argc,  char* argv[]) {
         );
 
         for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
-            pool->run([&word_vocab, &label_vocab, &visualizer, &solver_type, &thread_embedding_params, &thread_params, &thread_models, batch_id, &journalist, &solver, &embedding_solver, &dataset, &best_validation_score, &batches_processed]() {
+            pool->run([&word_vocab, &label_vocab, &visualizer, &thread_embedding_params, &thread_params, &thread_models, batch_id, &journalist, &solver, &embedding_solver, &dataset, &best_validation_score, &batches_processed]() {
                 auto& thread_model     = thread_models[ThreadPool::get_thread_number()];
                 auto& params           = thread_params[ThreadPool::get_thread_number()];
                 auto& embedding_params = thread_embedding_params[ThreadPool::get_thread_number()];
@@ -376,7 +302,7 @@ int main (int argc,  char* argv[]) {
         pool->wait_until_idle();
         journalist.done();
         auto new_validation = NER::average_recall(validation_set, pred_fun, FLAGS_j);
-        if (solver_type == ADAGRAD_TYPE) {
+        if (solver->is_adagrad()) {
             solver->reset_caches(params);
             embedding_solver->reset_caches(embedding_params);
         }
@@ -403,41 +329,4 @@ int main (int argc,  char* argv[]) {
             }
         }
     }
-
-    /*if (!FLAGS_test.empty()) {
-        auto test_set = SST::convert_trees_to_indexed_minibatches(
-            word_vocab,
-            SST::load(FLAGS_test),
-            FLAGS_minibatch
-        );
-        if (!FLAGS_save_location.empty() && !best_file.empty()) {
-            std::cout << "loading from best validation parameters \"" << best_file << "\"" << std::endl;
-            auto params = model.parameters();
-            utils::load_matrices(params, best_file);
-        }
-        auto recall = SST::average_recall(test_set, pred_fun, FLAGS_j);
-
-        std::cout << "Done training" << std::endl;
-        std::cout << "Test recall "  << std::get<0>(recall) << "%, root => " << std::get<1>(recall)<< "%" << std::endl;
-        if (!FLAGS_results_file.empty()) {
-            ofstream fp;
-            fp.open(FLAGS_results_file.c_str(), std::ios::out | std::ios::app);
-            fp         << FLAGS_solver
-               << "\t" << FLAGS_minibatch
-               << "\t" << (FLAGS_fast_dropout ? "fast" : "std")
-               << "\t" << FLAGS_dropout
-               << "\t" << FLAGS_hidden
-               << "\t" << std::get<0>(recall)
-               << "\t" << std::get<1>(recall)
-               << "\t" << best_epoch
-               << "\t" << FLAGS_memory_penalty
-               << "\t" << FLAGS_memory_penalty_curve;
-            if ((FLAGS_solver == "adagrad" || FLAGS_solver == "sgd")) {
-                fp << "\t" << FLAGS_learning_rate;
-            } else {
-                fp << "\t" << "N/A";
-            }
-            fp  << "\t" << FLAGS_reg << std::endl;
-        }
-    }*/
 }

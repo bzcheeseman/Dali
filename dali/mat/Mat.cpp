@@ -879,6 +879,7 @@ namespace utils {
 
     template json11::Json json_finite_distribution(const Mat<float>&, const vector<string>&);
     template json11::Json json_finite_distribution(const Mat<double>&, const vector<string>&);
+
 }
 
 template class MatInternal<float>;

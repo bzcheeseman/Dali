@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <atomic>
-#include <Eigen/Eigen>
 #include <fstream>
 #include <iterator>
 #include <chrono>
@@ -27,25 +26,15 @@ using utils::tokenized_uint_labeled_dataset;
 using std::atomic;
 using std::chrono::seconds;
 using SST::Databatch;
-using utils::ConfusionMatrix;
 using utils::assert2;
 using json11::Json;
 
 typedef float REAL_t;
-typedef Mat<REAL_t> mat;
-
-static int ADADELTA_TYPE = 0;
-static int ADAGRAD_TYPE = 1;
-static int SGD_TYPE = 2;
-static int ADAM_TYPE = 3;
-static int RMSPROP_TYPE = 4;
 static REAL_t memory_penalty = 0.0;
-
 DEFINE_int32(minibatch,      100,        "What size should be used for the minibatches ?");
 DEFINE_int32(patience,       5,          "How many unimproving epochs to wait through before witnessing progress ?");
 DEFINE_double(dropout,       0.3,        "How much dropout noise to add to the problem ?");
 DEFINE_bool(fast_dropout,    true,       "Use fast dropout?");
-DEFINE_string(solver,        "adadelta", "What solver to use (adadelta, sgd, adam)");
 DEFINE_bool(bidirectional,   true,       "Read forward and backwards ?");
 DEFINE_string(test,          "",         "Where is the test set?");
 DEFINE_double(root_weight,   1.0,        "By how much to weigh the roots in the objective function?");
@@ -54,7 +43,6 @@ DEFINE_bool(surprise,        false,      "Use Surprise distance with target dist
 DEFINE_bool(convolution,     false,      "Perform a convolution before passing to LSTMs ?");
 DEFINE_int32(filters,        50,         "Number of filters to use for Convolution");
 DEFINE_string(pretrained_vectors, "",    "Load pretrained word vectors?");
-DEFINE_double(learning_rate, 0.01,       "Learning rate for SGD and Adagrad.");
 
 template<typename T>
 Mat<T> softmax_categorical_surprise(Mat<T> logprobs, int target) {
@@ -401,12 +389,9 @@ int main (int argc,  char* argv[]) {
         " @author Jonathan Raiman\n"
         " @date March 13th 2015"
     );
-
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
-
     auto epochs     = FLAGS_epochs;
     int rampup_time = 100;
-
     auto sentiment_treebank = SST::load(FLAGS_train);
     auto embedding          = Mat<REAL_t>(100, 0);
     auto word_vocab         = Vocab();
@@ -464,17 +449,9 @@ int main (int argc,  char* argv[]) {
     }
 
     vector<vector<Mat<REAL_t>>> thread_params;
-
-    // what needs to be optimized:
     vector<BidirectionalLSTM<REAL_t>> thread_models;
-    for (int i = 0; i < FLAGS_j; i++) {
-        // create a copy for each training thread
-        // (shared memory mode = Hogwild)
-        thread_models.push_back(model.shallow_copy());
-        thread_params.push_back(thread_models.back().parameters());
-    }
+    std::tie(thread_models, thread_params) = utils::shallow_copy(model, FLAGS_j);
     auto params = model.parameters();
-
     auto pred_fun = [&model](vector<uint>& example){
         graph::NoBackprop nb;
         return std::get<1>(model.activate_sequence(
@@ -482,53 +459,15 @@ int main (int argc,  char* argv[]) {
             0.0      // activate without dropout
         )).argmax(); // no softmax needed, simply get best guess
     };
-
-
-    // auto svd_init = weights<REAL_t>::svd(weights<REAL_t>::gaussian(0.0, 1.0));
-
-    // for (auto& param : params) {
-    //     if (param.dims(0) < 1000) {
-    //         svd_init(param);
-    //     }
-    // }
-
-    // Rho value, eps value, and gradient clipping value:
-    std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver;
-    int solver_type;
-    if (FLAGS_solver == "adadelta") {
-        std::cout << "Using AdaDelta" << std::endl;
-        solver = make_shared<Solver::AdaDelta<REAL_t>>(params, 0.95, 1e-9, 100.0);
-        solver_type = ADADELTA_TYPE;
-    } else if (FLAGS_solver == "adam") {
-        std::cout << "Using Adam" << std::endl;
-        solver = make_shared<Solver::Adam<REAL_t>>(params, 0.1, 0.001, 1e-9, 100.0);
-        solver_type = ADAM_TYPE;
-    } else if (FLAGS_solver == "sgd") {
-        std::cout << "Using vanilla SGD" << std::endl;
-        solver = make_shared<Solver::SGD<REAL_t>>(params, 1e-9, 100.0);
-        solver_type = SGD_TYPE;
-        dynamic_cast<Solver::SGD<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
-    } else if (FLAGS_solver == "adagrad") {
-        std::cout << "Using Adagrad" << std::endl;
-        solver = make_shared<Solver::AdaGrad<REAL_t>>(params, 1e-9, 100.0);
-        solver_type = ADAGRAD_TYPE;
-        dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
-    } else {
-        utils::exit_with_message("Did not recognize this solver type.");
-    }
+    auto solver = Solver::construct(FLAGS_solver, params, (REAL_t)FLAGS_learning_rate);
 
     REAL_t best_validation_score = 0.0;
-    int epoch = 0;
-    double patience = 0;
+    int epoch                    = 0;
+    double patience              = 0;
 
     shared_ptr<Visualizer> visualizer;
-    if (!FLAGS_visualizer.empty()) {
-        try {
-            visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
-        } catch (std::runtime_error e) {
-            std::cout << e.what() << std::endl; // could not connect to redis.
-        }
-    }
+    if (!FLAGS_visualizer.empty())
+        visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
 
     while (patience < FLAGS_patience && epoch < epochs) {
         stringstream ss;
@@ -541,7 +480,7 @@ int main (int argc,  char* argv[]) {
         );
 
         for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
-            pool->run([&word_vocab, &pred_fun, &visualizer, &solver_type, &thread_params, &thread_models, batch_id, &journalist, &solver, &dataset, &best_validation_score, &batches_processed]() {
+            pool->run([&word_vocab, &pred_fun, &visualizer, &thread_params, &thread_models, batch_id, &journalist, &solver, &dataset, &best_validation_score, &batches_processed]() {
                 auto& thread_model  = thread_models[ThreadPool::get_thread_number()];
                 auto& params        = thread_params[ThreadPool::get_thread_number()];
                 auto& minibatch     = dataset[batch_id];
@@ -595,9 +534,9 @@ int main (int argc,  char* argv[]) {
             (REAL_t) (FLAGS_memory_penalty * std::min(1.0, ((double)(epoch * epoch) / (double)(rampup_time * rampup_time))))
         );
 
-        if (solver_type == ADAGRAD_TYPE) {
+        if (solver->is_adagrad())
             solver->reset_caches(params);
-        }
+
         if (new_validation < best_validation_score) {
             // lose patience:
             patience += 1;
@@ -606,11 +545,10 @@ int main (int argc,  char* argv[]) {
             patience = std::max(patience - 1, 0.0);
             best_validation_score = new_validation;
         }
-        if (best_validation_score != new_validation) {
+        if (best_validation_score != new_validation)
             std::cout << "Epoch (" << epoch << ") Best validation score = " << best_validation_score << "% ("<< new_validation << "%), patience = " << patience << std::endl;
-        } else {
+        else
             std::cout << "Epoch (" << epoch << ") Best validation score = " << best_validation_score << "%, patience = " << patience << std::endl;
-        }
     }
 
     if (!FLAGS_test.empty()) {
@@ -623,6 +561,4 @@ int main (int argc,  char* argv[]) {
         auto recall = SST::average_recall(test_set, pred_fun, FLAGS_j);
         std::cout << "Test recall total=" << std::get<0>(recall) << "%, root="<< std::get<1>(recall) << "%" << std::endl;
     }
-
 }
-

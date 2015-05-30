@@ -27,12 +27,6 @@ using std::min;
 using utils::Vocab;
 using utils::assert2;
 
-static const int ADADELTA_TYPE = 0;
-static const int ADAGRAD_TYPE  = 1;
-static const int SGD_TYPE      = 2;
-static const int ADAM_TYPE     = 3;
-static const int RMSPROP_TYPE  = 4;
-
 typedef double REAL_t;
 typedef Mat<REAL_t> mat;
 
@@ -41,11 +35,9 @@ DEFINE_int32(patience,            5,          "How many unimproving epochs to wa
 DEFINE_double(dropout,            0.3,        "How much dropout noise to add to the problem ?");
 DEFINE_double(reg,                0.0,        "What penalty to place on L2 norm of weights?");
 DEFINE_bool(fast_dropout,         true,       "Use fast dropout?");
-DEFINE_string(solver,             "adadelta", "What solver to use (adadelta, sgd, adam)");
 DEFINE_string(test,               "",         "Where is the test set?");
 DEFINE_double(root_weight,        1.0,        "By how much to weigh the roots in the objective function?");
 DEFINE_string(pretrained_vectors, "",         "Load pretrained word vectors?");
-DEFINE_double(learning_rate,      0.01,       "Learning rate for SGD and Adagrad.");
 DEFINE_string(results_file,       "",         "Where to save test performance.");
 DEFINE_string(save_location,      "",         "Where to save test performance.");
 DEFINE_int32(validation_metric,   0,          "Use root (1) or overall (0) objective to choose best validation parameters?");
@@ -112,19 +104,6 @@ int main (int argc,  char* argv[]) {
 
     std::cout << "model.input_vector_to_decoder() = " << model.input_vector_to_decoder() << std::endl;
 
-    int solver_type;
-    if (FLAGS_solver == "adadelta") {
-        solver_type = ADADELTA_TYPE;
-    } else if (FLAGS_solver == "adam") {
-        solver_type = ADAM_TYPE;
-    } else if (FLAGS_solver == "sgd") {
-        solver_type = SGD_TYPE;
-    } else if (FLAGS_solver == "adagrad") {
-        solver_type = ADAGRAD_TYPE;
-    } else {
-        utils::exit_with_message("Did not recognize this solver type.");
-    }
-
     std::cout << " Unique Trees Loaded : " << sentiment_treebank.size() << std::endl
               << "        Example tree : " << *sentiment_treebank[sentiment_treebank.size()-1] << std::endl
               << "     Vocabulary size : " << vocab_size << std::endl
@@ -181,40 +160,13 @@ int main (int argc,  char* argv[]) {
     auto svd_init = weights<REAL_t>::svd(weights<REAL_t>::gaussian(0.0, 1.0));
 
     if (FLAGS_svd_init) {
-        for (auto& param : params) {
-            svd_init(param);
-        }
+        for (auto& param : params) svd_init(param);
     }
-
-    // Rho value, eps value, and gradient clipping value:
-    std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver;
-    std::shared_ptr<Solver::AbstractSolver<REAL_t>> embedding_solver;
-    switch (solver_type) {
-        case ADADELTA_TYPE:
-            solver = make_shared<Solver::AdaDelta<REAL_t>>(params, 0.95, 1e-9, 100.0, (REAL_t) FLAGS_reg);
-            embedding_solver = make_shared<Solver::AdaDelta<REAL_t>>(embedding_params, 0.95, 1e-9, 100.0, 0.0);
-            break;
-        case ADAM_TYPE:
-            solver = make_shared<Solver::Adam<REAL_t>>(params, 0.1, 0.001, 1e-9, 100.0, (REAL_t) FLAGS_reg);
-            embedding_solver = make_shared<Solver::Adam<REAL_t>>(embedding_params, 0.1, 0.001, 1e-9, 100.0, 0.0);
-            break;
-        case SGD_TYPE:
-            solver = make_shared<Solver::SGD<REAL_t>>(params, 100.0, (REAL_t) FLAGS_reg);
-            embedding_solver = make_shared<Solver::SGD<REAL_t>>(embedding_params, 100.0, 0.0);
-            dynamic_cast<Solver::SGD<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
-            dynamic_cast<Solver::SGD<REAL_t>*>(embedding_solver.get())->step_size = (
-                FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate);
-            break;
-        case ADAGRAD_TYPE:
-            solver = make_shared<Solver::AdaGrad<REAL_t>>(params, 1e-9, 100.0, (REAL_t) FLAGS_reg);
-            embedding_solver = make_shared<Solver::AdaGrad<REAL_t>>(embedding_params, 1e-9, 100.0, 0.0);
-            dynamic_cast<Solver::AdaGrad<REAL_t>*>(solver.get())->step_size = FLAGS_learning_rate;
-            dynamic_cast<Solver::AdaGrad<REAL_t>*>(embedding_solver.get())->step_size = (
-                FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate);
-            break;
-        default:
-            utils::exit_with_message("Did not recognize this solver type.");
-    }
+    auto solver = Solver::construct<REAL_t>(FLAGS_solver, params, FLAGS_learning_rate, (REAL_t) FLAGS_reg);
+    auto embedding_solver = Solver::construct<REAL_t>(
+        FLAGS_solver, embedding_params,
+        FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate,
+        0.0);
 
     std::tuple<REAL_t, REAL_t> best_validation_score(0.0, 0.0);
     int epoch = 0;
@@ -224,13 +176,8 @@ int main (int argc,  char* argv[]) {
     REAL_t best_score = 0.0;
 
     shared_ptr<Visualizer> visualizer;
-    if (!FLAGS_visualizer.empty()) {
-        try {
-            visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
-        } catch (std::runtime_error e) {
-            std::cout << e.what() << std::endl; // could not connect to redis.
-        }
-    }
+    if (!FLAGS_visualizer.empty())
+        visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
 
     auto pred_fun = [&model](vector<uint>& example) {
         graph::NoBackprop nb;
@@ -244,27 +191,15 @@ int main (int argc,  char* argv[]) {
         ).argmax();
     };
 
-    // if no training should occur then use the validation set
-    // to see how good the loaded model is.
-    if (epochs == 0) {
-        best_validation_score = SST::average_recall(validation_set, pred_fun, FLAGS_j);
-        std::cout << "   Root recall = " << std::get<1>(best_validation_score) << std::endl;
-        std::cout << "Overall recall = " << std::get<0>(best_validation_score) << std::endl;
-    }
-
     while (patience < FLAGS_patience && epoch < epochs) {
-
-        stringstream ss;
-        ss << "Epoch " << ++epoch;
         atomic<int> batches_processed(0);
-
         ReportProgress<double> journalist(
-            ss.str(),      // what to say first
+            utils::MS() << "Epoch " << ++epoch,      // what to say first
             dataset.size() // how many steps to expect before being done with epoch
         );
 
         for (int batch_id = 0; batch_id < dataset.size(); ++batch_id) {
-            pool->run([&word_vocab, &visualizer, &solver_type, &thread_embedding_params, &thread_params, &thread_models, batch_id, &journalist, &solver, &embedding_solver, &dataset, &best_validation_score, &batches_processed]() {
+            pool->run([&word_vocab, &visualizer, &thread_embedding_params, &thread_params, &thread_models, batch_id, &journalist, &solver, &embedding_solver, &dataset, &best_validation_score, &batches_processed]() {
                 auto& thread_model     = thread_models[ThreadPool::get_thread_number()];
                 auto& params           = thread_params[ThreadPool::get_thread_number()];
                 auto& embedding_params = thread_embedding_params[ThreadPool::get_thread_number()];
@@ -324,7 +259,7 @@ int main (int argc,  char* argv[]) {
         journalist.done();
         auto new_validation = SST::average_recall(validation_set, pred_fun, FLAGS_j);
         std::cout << "Root recall=" << std::get<1>(new_validation) << std::endl;
-        if (solver_type == ADAGRAD_TYPE) {
+        if (solver->is_adagrad()) {
             solver->reset_caches(params);
             embedding_solver->reset_caches(embedding_params);
         }

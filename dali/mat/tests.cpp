@@ -785,7 +785,6 @@ TEST_F(LayerTests, activate_sequence) {
     ASSERT_EQ(num_out_states, LSTM<R>::State::hiddens(out_states).size());
 }
 
-
 TEST_F(MatrixTests, argsort) {
     vector<Mat<R>> mats;
     Mat<R> A(1,1);
@@ -800,4 +799,3 @@ TEST_F(MatrixTests, argsort) {
     auto sorted = utils::argsort(mats);
     ASSERT_EQ(sorted, std::vector<size_t>({2, 0, 1}));
 }
-

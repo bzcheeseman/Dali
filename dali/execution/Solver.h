@@ -8,6 +8,9 @@
 #define SOLVER_MAT_TYPEDEF_H typedef Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
 #define SOLVER_MAT_DEFAULT_STEP_SIZE_H 0.035
 
+DECLARE_string(solver);
+DECLARE_double(learning_rate);
+
 namespace Solver {
     const double SMOOTH_DEFAULT = 1e-9;
 
@@ -21,6 +24,11 @@ namespace Solver {
             AbstractSolver(R clipval, R smooth_eps, R regc);
             virtual void step( std::vector<Mat<R>>& ) = 0;
             virtual void reset_caches( std::vector<Mat<R>>&);
+            virtual bool is_adagrad()  const;
+            virtual bool is_adadelta() const;
+            virtual bool is_sgd()      const;
+            virtual bool is_rmsprop()  const;
+            virtual bool is_adam()     const;
     };
 
     template<typename R> class SGD : public AbstractSolver<R> {
@@ -33,6 +41,7 @@ namespace Solver {
             SGD (std::vector<Mat<R>>&, R clipval = 5.0, R regc = 0.0);
             virtual void step( std::vector<Mat<R>>&);
             virtual void step( std::vector<Mat<R>>&, R step_size);
+            virtual bool is_sgd() const;
     };
 
     template<typename R> class AdaGrad : public AbstractSolver<R> {
@@ -48,6 +57,7 @@ namespace Solver {
             virtual void step( std::vector<Mat<R>>&, R step_size);
             virtual void create_gradient_caches(std::vector<Mat<R>>&);
             virtual void reset_caches(std::vector<Mat<R>>&);
+            virtual bool is_adagrad() const;
     };
 
     template<typename R> class RMSProp : public AdaGrad<R> {
@@ -60,6 +70,7 @@ namespace Solver {
             RMSProp (std::vector<Mat<R>>&, R _decay_rate= 0.999, R smooth_eps = SMOOTH_DEFAULT, R clipval = 5.0, R regc = 0.0);
             virtual void step(std::vector<Mat<R>>&);
             virtual void step(std::vector<Mat<R>>&, R step_size);
+            virtual bool is_rmsprop() const;
     };
 
     template<typename R> class AdaDelta : public AbstractSolver<R> {
@@ -73,6 +84,7 @@ namespace Solver {
             virtual void step(std::vector<Mat<R>>&);
             virtual void create_gradient_caches(std::vector<Mat<R>>&);
             virtual void reset_caches(std::vector<Mat<R>>&);
+            virtual bool is_adadelta() const;
     };
 
     template<typename R> class Adam : public AbstractSolver<R> {
@@ -90,6 +102,7 @@ namespace Solver {
             virtual void step(std::vector<Mat<R>>&, R step_size);
             virtual void create_gradient_caches(std::vector<Mat<R>>&);
             virtual void reset_caches(std::vector<Mat<R>>&);
+            virtual bool is_adam() const;
     };
 
     template<typename R>

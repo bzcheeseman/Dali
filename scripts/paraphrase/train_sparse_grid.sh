@@ -69,10 +69,10 @@ do
                 # previously saved models are no longer useful for this grid tile
                 if [ ! -d "${SAVE_FOLDER}/model${curve}_0/" ]; then
                     mkdir "${SAVE_FOLDER}/model${curve}_0/"
-                    rm -rf "${SAVE_FOLDER}/model${curve}_0/*"
-                    $PROGRAM $BASE_FLAGS --dropout $dropout --save_location="${SAVE_FOLDER}/model${lr}_${reg}" --memory_penalty_curve $curve --memory_penalty 0.0 --learning_rate $lr --hidden $hidden --minibatch 100 --solver adagrad --reg $reg &
-                    pwait $NUM_THREADS
                 fi
+                rm -rf "${SAVE_FOLDER}/model${curve}_0/*"
+                $PROGRAM $BASE_FLAGS --dropout $dropout --save_location="${SAVE_FOLDER}/model${lr}_${reg}" --memory_penalty_curve $curve --memory_penalty 0.0 --learning_rate $lr --hidden $hidden --minibatch 100 --solver adagrad --reg $reg &
+                pwait $NUM_THREADS
             done
         done
     done

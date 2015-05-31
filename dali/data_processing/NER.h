@@ -37,21 +37,18 @@ namespace NER {
     /**
     Average Recall
     --------------
-
     Obtain average recall using minibatches by parallelizing a
     predict function that takes a string of indices (words) as
     input, and a lambda returning an integer as output.
 
     Inputs
     ------
-    std::vector<std::vector<std::tuple<std::vector<uint>, std::vector<uint>>>>& dataset
-    std::function<std::vector<uint>(std::vector<uint>&)> predict : lambda returning
-        predicted entity predictions at each timesteps
-    int num_threads (optional) : how many threads to use for parallelizing prediction
+    dataset
+    predict : lambda returning predicted entity predictions at each timesteps
+    num_threads (optional) : how many threads to use for parallelizing prediction
 
     Outputs
     -------
-
     double recall : returns tuple of {total correct, root correct}
 
     **/

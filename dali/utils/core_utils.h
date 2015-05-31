@@ -81,9 +81,7 @@ std::ostream& operator<<(std::ostream&, const std::vector<T>&);
 
 typedef std::vector<std::string> VS;
 
-
 namespace utils {
-
         #ifndef NDEBUG
             std::string explain_mat_bug(const std::string&, const char*, const int&);
             template<typename T>
@@ -271,19 +269,16 @@ namespace utils {
         /**
         Text To Map
         -----------
-
         Read a text file, extract all key value pairs and
         ignore markdown decoration characters such as =, -,
         and #
 
         Inputs
         ------
-
         std::string fname : the file to read
 
         Outputs
         -------
-
         std::map<string, std::vector<string> > map : the extracted key value pairs.
 
         **/
@@ -315,7 +310,6 @@ namespace utils {
         /**
         randint
         -------
-
         Sample integers from a uniform distribution between (and including)
         lower and upper int values.
 
@@ -332,20 +326,18 @@ namespace utils {
         /**
         Is Gzip ?
         ---------
-
         Check whether a file has the header information for a GZIP
         file or not.
 
         Inputs
         ------
-        std::string& fname : potential gzip file's path
+        fname : potential gzip file's path
 
         Outputs
         -------
-
-        bool gzip? : whether header matches gzip header
+        whether header matches gzip header
         **/
-        bool is_gzip(const std::string&);
+        bool is_gzip(const std::string& fname);
 
         /* Used for Eigen CwiseExpr - wraps a lambda expression */
         template<typename T>
@@ -427,19 +419,8 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
     **/
     str_sequence split(const std::string &, char, bool keep_empty_strings = false);
 
-
     std::string join(const std::vector<std::string>& vs,
                      const std::string& in_between="");
-
-    bool vs_equal(const VS& a, const VS& b);
-
-    template<typename T>
-    bool vectors_equal(std::vector<T> a, std::vector<T> b) {
-        if (a.size() != b.size()) return false;
-        for (int i = 0; i < a.size(); ++i)
-            if (a[i] != b[i]) return false;
-        return true;
-    }
 
     /**
     Triggers To Strings
@@ -471,7 +452,6 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
 
     std::vector<std::vector<size_t>> random_minibatches(size_t total_elements, size_t minibatch_size);
 
-
     std::vector<uint> arange(uint, uint);
 
     template <class T> inline void hash_combine(std::size_t &, const T &);
@@ -493,14 +473,12 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
     /**
     Exit With Message
     -----------------
-
     Exit the program with a message printed to std::cerr
 
     Inputs
     ------
-
-    std::string& message : error message
-    int error_code : code for the error, defaults to 1
+    error message
+    error_code : code for the error, defaults to 1
 
     **/
     void exit_with_message(const std::string&, int error_code = 1);
@@ -525,11 +503,8 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
 
             // should be called from a thread (this internally uses thread pool's number.)
             void update(double error);
-
             double this_thread_average();
-
             double average();
-
             void reset();
 
     };

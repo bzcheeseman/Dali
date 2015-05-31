@@ -42,7 +42,6 @@ bool matrix_almost_equals (Mat<R> A, Mat<R> B, R eps) {
 #define EXPECT_MATRIX_NEQ(A, B) EXPECT_FALSE(matrix_equals((A), (B)))
 #define EXPECT_MATRIX_CLOSE(A, B, eps) EXPECT_TRUE(matrix_almost_equals((A), (B), (eps)))
 
-
 /**
 Gradient Same
 -------------

@@ -247,7 +247,7 @@ namespace babi {
                     for (auto story : story_parser(story)) {
                         std::tie(facts_so_far, qa) = story;
                         VS answer = predict(facts_so_far, qa->question);
-                        if(utils::vs_equal(answer, qa->answer))
+                        if(answer == qa->answer)
                             ++correct_questions;
                         ++total_questions;
                     }

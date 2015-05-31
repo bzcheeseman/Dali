@@ -1,12 +1,6 @@
 #include <gtest/gtest.h>
-
-#include <cstdlib>
 #include <map>
-#include <tuple>
-#include <vector>
 #include <stdexcept>
-#include <string>
-
 
 #include "dali/mat/Mat.h"
 #include "dali/mat/MatOps.h"
@@ -17,7 +11,6 @@ using std::map;
 using std::string;
 using std::tuple;
 using std::vector;
-
 using ::testing::AssertionResult;
 using ::testing::AssertionSuccess;
 using ::testing::AssertionFailure;
@@ -126,12 +119,10 @@ TEST(beam_search, beam_search_score_test) {
     // as well as better optimal solution:
     // GREEDY:    (beam_width == 1) => "aa" worth 0.33
     // OPTIMAL:   (beam_width == 2) => "ba" worth 0.495
-
     auto res_aa = result_t("aa", {0,0}, std::log(0.6 * 0.55));
     auto res_ab = result_t("ab", {0,1}, std::log(0.6 * 0.45));
     auto res_ba = result_t("ba", {1,0}, std::log(0.4 * 0.99));
     auto res_bb = result_t("bb", {1,1}, std::log(0.4 * 0.11));
-
 
     auto initial_state = "";
     auto candidate_scores = [&](state_t state) -> Mat<REAL_t> {
@@ -171,7 +162,7 @@ TEST(beam_search, beam_search_score_test) {
                 return AssertionFailure()
                     << "Result " << ridx + 1 << " has different states: <"
                     << a.state  << "> != <" << b.state << ">";
-            if (!utils::vectors_equal(a.solution, b.solution)) {
+            if (a.solution != b.solution) {
                 auto a_str = iter_to_str(a.solution.begin(),
                                          a.solution.end());
                 auto b_str = iter_to_str(b.solution.begin(),
@@ -186,7 +177,6 @@ TEST(beam_search, beam_search_score_test) {
                     << a.score  << " != " << b.score;
         }
         return AssertionSuccess();
-
     };
 
     EXPECT_THROW(my_beam_search(0),std::runtime_error);
@@ -206,5 +196,4 @@ TEST(beam_search, beam_search_score_test) {
         my_beam_search(10),
         {res_ba, res_aa, res_ab, res_bb}
     ));
-
 }

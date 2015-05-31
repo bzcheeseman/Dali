@@ -116,7 +116,6 @@ namespace arithmetic {
         }
         /**
         4 steps:
-        --------
 
         1. Create a random set of operation,
         2. Remove multiplies to leave only + & -
@@ -156,9 +155,9 @@ namespace arithmetic {
         return examples;
     }
 
-    vector<NumericalExample> generate_numerical(int num, int expression_length, int min, int max, bool with_end_symbol) {
+    vector<numeric_example_t> generate_numerical(int num, int expression_length, int min, int max, bool with_end_symbol) {
         auto examples = generate(num, expression_length, min, max);
-        vector<NumericalExample> numerical_examples(examples.size());
+        vector<numeric_example_t> numerical_examples(examples.size());
         for (size_t i = 0; i < examples.size();i++) {
             numerical_examples[i].first  = arithmetic::vocabulary.encode(examples[i].first, with_end_symbol);
             numerical_examples[i].second = arithmetic::vocabulary.encode(examples[i].second, true);
@@ -178,4 +177,32 @@ namespace arithmetic {
     }
 
     Vocab vocabulary = create_vocabulary();
+
+    double average_recall(
+            vector<arithmetic::numeric_example_t>& examples,
+            std::function<std::vector<uint>(std::vector<uint>&)> predict,
+            int num_threads) {
+        ThreadPool pool(num_threads);
+        std::atomic<int> correct(examples.size());
+        auto& vocab = arithmetic::vocabulary;
+        for (size_t eidx = 0; eidx < examples.size(); eidx++) {
+            pool.run([&vocab, &predict, eidx, &examples, &correct]() {
+                auto& expression      = examples[eidx].first;
+                auto& correct_answer  = examples[eidx].second;
+                auto prediction       = predict(expression);
+                if (prediction.size() == correct_answer.size()) {
+                    bool is_correct = true;
+                    for (int iidx = 0; iidx < prediction.size(); ++iidx) {
+                        is_correct = is_correct && prediction[iidx] == correct_answer[iidx];
+                    }
+                    if (!is_correct)
+                        correct--;
+                } else {
+                    correct--;
+                }
+            });
+        }
+        pool.wait_until_idle();
+        return (double) correct / (double) examples.size();
+    }
 }

@@ -3,7 +3,7 @@
 #include "dali/data_processing/Arithmetic.h"
 #include "dali/visualizer/visualizer.h"
 
-using arithmetic::NumericalExample;
+using arithmetic::numeric_example_t;
 using std::chrono::seconds;
 using std::make_shared;
 using std::min;
@@ -17,12 +17,6 @@ using utils::assert2;
 using utils::MS;
 
 typedef float REAL_t;
-
-static int ADADELTA_TYPE = 0;
-static int ADAGRAD_TYPE = 1;
-static int SGD_TYPE = 2;
-static int ADAM_TYPE = 3;
-static int RMSPROP_TYPE = 4;
 
 DEFINE_double(reg,                    0.0,     "What penalty to place on L2 norm of weights?");
 DEFINE_int32(minibatch,               100,     "What size should be used for the minibatches ?");
@@ -38,10 +32,10 @@ DEFINE_bool(use_end_symbol,           false,   "Whether to use end symbol in exp
 DEFINE_int32(visualizer_trees,        3,       "Max number of trees to show in visualizer per example.");
 DEFINE_int32(max_number_in_expression, 100000, "Maximum number used in mathematical expressions.");
 
-const int MAX_OUTPUT_LENGTH = 10;
+#define MAX_OUTPUT_LENGTH 10
 
 ThreadPool* pool;
-std::shared_ptr<Visualizer> visualizer;
+shared_ptr<Visualizer> visualizer;
 
 template<typename T>
 class LeafModule {
@@ -508,7 +502,7 @@ class ArithmeticModel {
             return params;
         }
 
-        Mat<T> error(const arithmetic::NumericalExample& example, int beam_width) const {
+        Mat<T> error(const arithmetic::numeric_example_t& example, int beam_width) const {
             auto expression_embedding = convert_to_embeddings(example.first);
             auto candidates = BeamTreeResult<T>::nodes(tree.best_trees(expression_embedding, beam_width));
             auto& targets = example.second;
@@ -592,7 +586,6 @@ class ArithmeticModel {
                                 )
                             );
                         }
-
                     }
                 }
 
@@ -624,39 +617,6 @@ template class ArithmeticModel<double>;
 
 typedef ArithmeticModel<REAL_t> model_t;
 
-double accuracy(const model_t& model, vector<arithmetic::NumericalExample>& examples, int beam_width) {
-    std::atomic<int> correct(examples.size());
-    for (size_t eidx = 0; eidx < examples.size(); eidx++) {
-        pool->run([&model, eidx, &examples, &beam_width, &correct]() {
-            graph::NoBackprop nb;
-
-            auto& vocab = arithmetic::vocabulary;
-
-            auto& expression = examples[eidx].first;
-            auto& correct_answer = examples[eidx].second;
-
-            auto predictions = model.predict(expression,
-                                             beam_width,
-                                             MAX_OUTPUT_LENGTH,
-                                             vocab.word2index.at(utils::end_symbol));
-            auto& best_prediction = predictions[0].prediction;
-            if (best_prediction.size() == correct_answer.size()) {
-                bool is_correct = true;
-                for (int iidx = 0; iidx < best_prediction.size(); ++iidx) {
-                    is_correct = is_correct && best_prediction[iidx] == correct_answer[iidx];
-                }
-                if (!is_correct)
-                    correct--;
-            } else {
-                correct--;
-            }
-        });
-    }
-    pool->wait_until_idle();
-    return (double) correct / (double) examples.size();
-}
-
-
 shared_ptr<visualizable::Tree> visualize_derivation(vector<uint> derivation, vector<string> words) {
     using visualizable::Tree;
 
@@ -679,15 +639,16 @@ shared_ptr<visualizable::Tree> visualize_derivation(vector<uint> derivation, vec
         }
         result = new_result;
     }
-    assert2(result.size() == 1, "Szymon fucked up.");
+    assert2(result.size() == 1, "Szymon messed up.");
 
     return result[0];
 }
 
 void training_loop(std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver,
         model_t& model,
-        vector<NumericalExample>& train,
-        vector<NumericalExample>& validate) {
+        std::function<vector<uint>(vector<uint>&)> pred_fun,
+        vector<numeric_example_t>& train,
+        vector<numeric_example_t>& validate) {
     auto& vocab = arithmetic::vocabulary;
 
     auto params = model.parameters();
@@ -698,9 +659,8 @@ void training_loop(std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver,
 
     int beam_width = FLAGS_beam_width;
 
-    if (beam_width < 1) {
+    if (beam_width < 1)
         utils::exit_with_message(MS() << "Beam width must be strictly positive (got " << beam_width << ")");
-    }
 
     Throttled throttled_examples;
     Throttled throttled_validation;
@@ -785,7 +745,7 @@ void training_loop(std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver,
             });
             double current_accuracy = -1;
             throttled_validation.maybe_run(seconds(30), [&]() {
-                current_accuracy = accuracy(model, validate, FLAGS_beam_width);
+                current_accuracy = arithmetic::average_recall(validate, pred_fun, FLAGS_j);
                 std::cout << "epoch: " << epoch << ", accuracy = " << std::setprecision( 3 )
                           << 100.0 * current_accuracy << "%" << std::endl;
             });
@@ -801,7 +761,7 @@ void training_loop(std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver,
     }
 }
 
-void increase_dataset_difficulty(vector<NumericalExample>& dataset,
+void increase_dataset_difficulty(vector<numeric_example_t>& dataset,
                                  int new_difficulty,
                                  int target_size) {
     random_shuffle(dataset.begin(), dataset.end());
@@ -831,19 +791,25 @@ int main (int argc,  char* argv[]) {
 
     pool = new ThreadPool(FLAGS_j);
 
-    // train a silly system to output the numbers it needs
     auto model = model_t(
         FLAGS_input_size,
         FLAGS_hidden,
         arithmetic::vocabulary.size(),
         FLAGS_memory_feeds_gates);
 
+    auto pred_fun = [&model](vector<uint>& example) {
+        auto predictions = model.predict(example,
+                                         FLAGS_beam_width,
+                                         MAX_OUTPUT_LENGTH,
+                                         arithmetic::vocabulary.word2index.at(utils::end_symbol));
+        return predictions[0].prediction;
+    };
+
     auto params = model.parameters();
     auto solver = Solver::construct(FLAGS_solver, params, (REAL_t) FLAGS_learning_rate, (REAL_t) FLAGS_reg);
 
-    if (!FLAGS_visualizer.empty()) {
+    if (!FLAGS_visualizer.empty())
         visualizer = make_shared<Visualizer>(FLAGS_visualizer);
-    }
 
     std::cout << "     Vocabulary size : " << arithmetic::vocabulary.size() << std::endl
               << "      minibatch size : " << FLAGS_minibatch << std::endl
@@ -854,22 +820,22 @@ int main (int argc,  char* argv[]) {
               << " examples/difficulty : " << FLAGS_num_examples << std::endl
               << "              Solver : " << FLAGS_solver << std::endl;
 
-    vector<NumericalExample> train, validate, test;
+    vector<numeric_example_t> train, validate, test;
 
     for (int difficulty = 1; difficulty < FLAGS_expression_length; difficulty += 2) {
-        increase_dataset_difficulty(train, difficulty, FLAGS_num_examples);
+        increase_dataset_difficulty(train,    difficulty, FLAGS_num_examples);
         increase_dataset_difficulty(validate, difficulty, FLAGS_num_examples / 10);
-        increase_dataset_difficulty(test, difficulty, FLAGS_num_examples / 10);
+        increase_dataset_difficulty(test,     difficulty, FLAGS_num_examples / 10);
 
         std::cout << "Increasing difficulty to " << difficulty << "." << std::endl;
-        training_loop(solver, model, train, validate);
+        training_loop(solver, model, pred_fun, train, validate);
         std::cout << "Test accuracy on difficulty 1 up to " << difficulty << " is "
-                  << 100.0 * accuracy(model, test, FLAGS_beam_width) << "%" << std::endl;
+                  << 100.0 * arithmetic::average_recall(test, pred_fun, FLAGS_j) << "%" << std::endl;
         for (int old_difficulty = 1; old_difficulty <=difficulty; old_difficulty += 2) {
             auto old_examples = arithmetic::generate_numerical(FLAGS_num_examples / 10, old_difficulty, FLAGS_use_end_symbol);
                     std::cout << "Test accuracy on difficulty " << old_difficulty << " when trained on difficulty up to "
                               << difficulty << " is "
-                              << 100.0 * accuracy(model, old_examples, FLAGS_beam_width) << "%" << std::endl;
+                              << 100.0 * arithmetic::average_recall(old_examples, pred_fun, FLAGS_j) << "%" << std::endl;
         }
     }
 }

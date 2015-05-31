@@ -1098,16 +1098,6 @@ namespace utils {
         return "";
     }
 
-
-    bool vs_equal(const VS& a, const VS& b) {
-        if (a.size() != b.size()) return false;
-        for (int i=0; i< a.size(); ++i) {
-            if (a[i].compare(b[i]) != 0)
-                return false;
-        }
-        return true;
-    }
-
     bool validate_flag_nonempty(const char* flagname, const std::string& value) {
         if (value.empty()) {
             std::cout << "Invalid value for --" << flagname << " (can't be empty)" << std::endl;

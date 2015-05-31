@@ -12,59 +12,16 @@ using std::chrono::seconds;
 
 typedef double REAL_t;
 
-vector<string> SYMBOLS = {"+", "*", "-"};
-static int NUM_SYMBOLS = SYMBOLS.size();
-
-static int ADADELTA_TYPE = 0;
-static int ADAGRAD_TYPE = 1;
-static int SGD_TYPE = 2;
-static int ADAM_TYPE = 3;
-static int RMSPROP_TYPE = 4;
-
-DEFINE_double(reg,           0.0,        "What penalty to place on L2 norm of weights?");
-DEFINE_int32(minibatch,      100,        "What size should be used for the minibatches ?");
-DEFINE_bool(fast_dropout,    true,       "Use fast dropout?");
-DEFINE_int32(epochs,             2000,
-        "How many training loops through the full dataset ?");
-DEFINE_int32(j,                  1,
-        "How many threads should be used ?");
-
+DEFINE_double(reg,           0.0,  "What penalty to place on L2 norm of weights?");
+DEFINE_int32(minibatch,      100,  "What size should be used for the minibatches ?");
+DEFINE_bool(fast_dropout,    true, "Use fast dropout?");
+DEFINE_int32(epochs,         2000, "How many training loops through the full dataset ?");
+DEFINE_int32(j,                 1, "How many threads should be used ?");
 DEFINE_int32(expression_length, 5, "How much suffering to impose on our friend?");
 DEFINE_int32(num_examples,      1500, "How much suffering to impose on our friend?");
 DEFINE_int32(max_number_in_expression, 100000, "Maximum number used in mathematical expressions.");
 
 ThreadPool* pool;
-
-template<typename M>
-double num_correct(M& model, vector<pair<vector<uint>, vector<uint>>> examples, int beam_width, uint stop_symbol) {
-    std::atomic<int> correct(examples.size());
-    for (size_t i = 0; i < examples.size(); i++) {
-        pool->run([&model, i, &examples, &stop_symbol, &beam_width, &correct]() {
-            auto beams = beam_search::beam_search(model,
-                examples[i].first,
-                20,
-                0,  // offset symbols that are predicted
-                    // before being refed (no = 0)
-                beam_width,
-                stop_symbol // when to stop the sequence
-            );
-            if (std::get<0>(beams[0]).size() == examples[i].second.size()) {
-                for (auto beam_ptr = std::get<0>(beams[0]).begin(), example_ptr = examples[i].second.begin();
-                    beam_ptr < std::get<0>(beams[0]).end() && example_ptr < examples[i].second.end();
-                    beam_ptr++, example_ptr++) {
-                    if (*beam_ptr != *example_ptr) {
-                        correct--;
-                        break;
-                    }
-                }
-            } else {
-                correct--;
-            }
-        });
-    }
-    pool->wait_until_idle();
-    return (double) correct / (double) examples.size();
-}
 
 int main (int argc,  char* argv[]) {
     GFLAGS_NAMESPACE::SetUsageMessage(
@@ -78,12 +35,6 @@ int main (int argc,  char* argv[]) {
 
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
-    auto ex_bonus = arithmetic::generate(FLAGS_num_examples, FLAGS_expression_length, 0, FLAGS_max_number_in_expression);
-
-    for (auto& ex : ex_bonus) {
-        std::cout << utils::join(std::get<0>(ex)) << " => " << utils::join(std::get<1>(ex)) << std::endl;
-    }
-
     auto examples = arithmetic::generate_numerical(FLAGS_num_examples, FLAGS_expression_length);
     pool = new ThreadPool(FLAGS_j);
 
@@ -96,6 +47,18 @@ int main (int argc,  char* argv[]) {
          arithmetic::vocabulary.size(),
          false,
          false);
+
+    auto pred_fun = [&model](vector<uint>& example) {
+        graph::NoBackprop nb;
+        auto beams = beam_search::beam_search(model,
+            example,
+            20,
+            0,  // offset symbols that are predicted before being refed (no = 0)
+            5,
+            arithmetic::vocabulary.word2index.at(utils::end_symbol)
+        );
+        return std::get<0>(beams[0]);
+    };
 
     auto params = model.parameters();
     auto solver = Solver::construct(FLAGS_solver, params, (REAL_t)FLAGS_learning_rate, (REAL_t)FLAGS_reg);
@@ -120,7 +83,6 @@ int main (int argc,  char* argv[]) {
     Throttled throttled2;
 
     while (epoch < FLAGS_epochs) {
-
         auto indices = utils::random_arange(examples.size());
         auto indices_begin = indices.begin();
 
@@ -164,7 +126,6 @@ int main (int argc,  char* argv[]) {
             graph::backward();
             minibatch_error += error.w()(0);
             // </training>
-            // <reporting>
             throttled1.maybe_run(seconds(2), [&]() {
                 auto random_example_index = utils::randint(0, examples.size() -1);
                 auto beams = beam_search::beam_search(model,
@@ -187,11 +148,9 @@ int main (int argc,  char* argv[]) {
                 }
             });
             throttled2.maybe_run(seconds(30), [&]() {
-                std::cout << "epoch: " << epoch << " Percent correct = " << std::setprecision( 3 )  << 100.0 * num_correct(
-                    model, examples, 5, arithmetic::vocabulary.word2index.at(utils::end_symbol)
-                ) << "%" << std::endl;
+                auto correct = arithmetic::average_recall(examples, pred_fun, FLAGS_j);
+                std::cout << "epoch: " << epoch << " Percent correct = " << std::setprecision( 3 )  << 100.0 * correct << "%" << std::endl;
             });
-            // </reporting>
         }
         solver->step(params); // One step of gradient descent
         epoch++;

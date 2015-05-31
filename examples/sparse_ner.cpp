@@ -144,11 +144,9 @@ int main (int argc,  char* argv[]) {
     vector<vector<Mat<REAL_t>>> thread_embedding_params;
     // what needs to be optimized:
     vector<StackedGatedModel<REAL_t>> thread_models;
-    std::tie(thread_models, thread_params) = utils::shallow_copy(model, FLAGS_j);
-    for (auto& thread_param : thread_params) {
-        thread_embedding_params.emplace_back(thread_param.begin(), thread_param.begin()+1);
-        thread_param = vector< Mat<REAL_t> >(thread_param.begin() + 1, thread_param.end());
-    }
+    std::tie(thread_models, thread_embedding_params, thread_params) = utils::shallow_copy_multi_params(model, FLAGS_j, [&model](const Mat<REAL_t>& mat) {
+        return &mat.w() == &model.embedding.w();
+    });
     vector<Mat<REAL_t>> params = model.parameters();
     vector<Mat<REAL_t>> embedding_params(params.begin(), params.begin() + 1);
     params = vector<Mat<REAL_t>>(params.begin() + 1, params.end());

@@ -49,7 +49,7 @@ TEST(utils, shallow_copy_multi_params) {
     );
 
     int num_copies = 3;
-    auto copies = utils::shallow_copy_multi_params(base_model, num_copies, (std::function<bool(const Mat<R>&)>)[&base_model](const Mat<R>& mat)->bool {
+    auto copies = utils::shallow_copy_multi_params(base_model, num_copies, [&base_model](const Mat<R>& mat)->bool {
         return &mat.w() == &base_model.embedding.w();
     });
 

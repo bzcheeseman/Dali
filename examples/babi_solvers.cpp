@@ -653,28 +653,23 @@ double benchmark_task(const std::string task) {
 }
 
 int main(int argc, char** argv) {
-    GFLAGS_NAMESPACE::SetUsageMessage(
-        "\nBabi!"
-    );
-
+    GFLAGS_NAMESPACE::SetUsageMessage("\nBabi!");
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
     Eigen::setNbThreads(0);
     Eigen::initParallel();
 
     int increment = 0;
-    if (!FLAGS_visualizer.empty()) {
+    if (!FLAGS_visualizer.empty())
         visualizer = make_shared<Visualizer>(FLAGS_visualizer);
-    }
 
     std::cout << "Number of threads: " << FLAGS_j << std::endl;
     std::cout << "Using " << (FLAGS_margin_loss ? "margin loss" : "cross entropy") << std::endl;
 
     if (FLAGS_babi_problem == "all") {
         std::cout << "Running a benchmark for all babi problems" << std::endl;
-        for (auto& task: babi::tasks()) {
+        for (auto& task: babi::tasks())
             benchmark_task(task);
-        }
     } else {
         benchmark_task(utils::prefix_match(babi::tasks(), FLAGS_babi_problem));
     }

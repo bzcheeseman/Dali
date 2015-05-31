@@ -130,68 +130,42 @@ int main (int argc,  char* argv[]) {
               << "     validation obj. : " << (FLAGS_validation_metric == 0 ? "overall" : "root") << std::endl
               << " # layers -> decoder : " << model.decoder.matrices.size() << std::endl
               << "              Solver : " << FLAGS_solver << std::endl;
-    if (FLAGS_embedding_learning_rate > 0) {
+    if (FLAGS_embedding_learning_rate > 0)
         std::cout << " Embedding step size : " << FLAGS_embedding_learning_rate << std::endl;
-    }
 
     if (!FLAGS_pretrained_vectors.empty()) {
         std::cout << "  Pretrained Vectors : " << FLAGS_pretrained_vectors << std::endl;
         model.embedding = embedding;
     }
 
-    vector<vector<Mat<REAL_t>>> thread_params;
-    vector<vector<Mat<REAL_t>>> thread_embedding_params;
-
-    // what needs to be optimized:
+    vector<vector<Mat<REAL_t>>>       thread_params;
+    vector<vector<Mat<REAL_t>>>       thread_embedding_params;
     vector<StackedGatedModel<REAL_t>> thread_models;
-    for (int i = 0; i < FLAGS_j; i++) {
-        // create a copy for each training thread
-        // (shared memory mode = Hogwild)
-        thread_models.push_back(model.shallow_copy());
+    std::tie(thread_models, thread_embedding_params, thread_params) = utils::shallow_copy_multi_params(model, FLAGS_j, [&model](const Mat<REAL_t>& mat) {
+        return &mat.w() == &model.embedding.w();
+    });
 
-        auto thread_model_params = thread_models.back().parameters();
-        // take a slice of all the parameters except for embedding.
-        thread_params.emplace_back(
-            thread_model_params.begin() + 1,
-            thread_model_params.end()
-        );
-        // then add the embedding (the first parameter of StackeModel)
-        thread_embedding_params.emplace_back(
-            thread_model_params.begin(),
-            thread_model_params.begin() + 1
-        );
-    }
-    vector<Mat<REAL_t>> params;
-    vector<Mat<REAL_t>> embedding_params;
-    {
-        auto temp  = model.parameters();
-        params = vector<Mat<REAL_t>>(temp.begin()+1, temp.end());
-        embedding_params.push_back(model.parameters()[0]);
-    }
+    vector<Mat<REAL_t>> params = model.parameters();
+    vector<Mat<REAL_t>> embedding_params(params.begin(), params.begin() + 1);
+    params = vector<Mat<REAL_t>>(params.begin() + 1, params.end());
 
     if (FLAGS_svd_init) {
         auto svd_init = weights<REAL_t>::svd(weights<REAL_t>::gaussian(0.0, 1.0));
         for (auto& param : params) svd_init(param);
     }
 
-    auto solver = Solver::construct(FLAGS_solver, params, (REAL_t) FLAGS_learning_rate, (REAL_t) FLAGS_reg);
-    auto embedding_solver = Solver::construct(FLAGS_solver, params, (REAL_t) (FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate), 0.0);
+    auto solver           = Solver::construct(FLAGS_solver, params, (REAL_t) FLAGS_learning_rate, (REAL_t) FLAGS_reg);
+    auto embedding_solver = Solver::construct(FLAGS_solver, embedding_params, (REAL_t) (FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate), 0.0);
 
     std::tuple<REAL_t, REAL_t> best_validation_score(0.0, 0.0);
-    int epoch = 0;
-    int best_epoch = 0;
+    int epoch = 0, best_epoch = 0;
     double patience = 0;
     string best_file = "";
     REAL_t best_score = 0.0;
 
     shared_ptr<Visualizer> visualizer;
-    if (!FLAGS_visualizer.empty()) {
-        try {
-            visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
-        } catch (std::runtime_error e) {
-            std::cout << e.what() << std::endl; // could not connect to redis.
-        }
-    }
+    if (!FLAGS_visualizer.empty())
+        visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
 
     auto pred_fun = [&model](vector<uint>& example) {
         graph::NoBackprop nb;
@@ -260,12 +234,10 @@ int main (int argc,  char* argv[]) {
                         FLAGS_dropout
                     );
                     auto error = MatOps<REAL_t>::softmax_cross_entropy(logprobs, std::get<1>(example));
-                    if (FLAGS_average_gradient) {
+                    if (FLAGS_average_gradient)
                         error = error/ minibatch.size();
-                    }
-                    if (std::get<2>(example) && FLAGS_root_weight != 1.0) {
+                    if (std::get<2>(example) && FLAGS_root_weight != 1.0)
                         error = error * FLAGS_root_weight;
-                    }
                     error.grad();
                     graph::backward(); // backpropagate
                 }

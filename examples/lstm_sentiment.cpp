@@ -59,15 +59,13 @@ int main (int argc,  char* argv[]) {
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
     auto epochs              = FLAGS_epochs;
 
-
     auto sentiment_treebank = SST::load(FLAGS_train);
     auto embedding          = Mat<REAL_t>(100, 0);
     auto word_vocab         = Vocab();
-    if (!FLAGS_pretrained_vectors.empty()) {
+    if (!FLAGS_pretrained_vectors.empty())
         glove::load(FLAGS_pretrained_vectors, embedding, word_vocab, 50000);
-    } else {
+    else
         word_vocab = SST::get_vocabulary(sentiment_treebank, FLAGS_min_occurence);
-    }
     auto vocab_size     = word_vocab.size();
     auto dataset        = SST::convert_trees_to_indexed_minibatches(
         word_vocab,
@@ -81,7 +79,6 @@ int main (int argc,  char* argv[]) {
     );
 
     pool = new ThreadPool(FLAGS_j);
-    // Create a model with an embedding, and several stacks:
 
     auto stack_size  = std::max(FLAGS_stack_size, 1);
 
@@ -93,14 +90,10 @@ int main (int argc,  char* argv[]) {
         SST::label_names.size(),
         (FLAGS_shortcut && stack_size > 1) ? FLAGS_shortcut : false,
         FLAGS_memory_feeds_gates) : StackedModel<REAL_t>::load(FLAGS_load);
-
-    if (FLAGS_shortcut && stack_size == 1) {
-        std::cout << "shortcut flag ignored: Shortcut connections only take effect with stack size > 1" << std::endl;
-    }
-
-    // don't send the input vector to the
-    // decoder:
     model.input_vector_to_decoder(false);
+
+    if (FLAGS_shortcut && stack_size == 1)
+        std::cout << "shortcut flag ignored: Shortcut connections only take effect with stack size > 1" << std::endl;
 
     std::cout << "model.input_vector_to_decoder() = " << model.input_vector_to_decoder() << std::endl;
 
@@ -119,58 +112,36 @@ int main (int argc,  char* argv[]) {
               << "     validation obj. : " << (FLAGS_validation_metric == 0 ? "overall" : "root") << std::endl
               << " # layers -> decoder : " << model.decoder.matrices.size() << std::endl
               << "              Solver : " << FLAGS_solver << std::endl;
-    if (FLAGS_embedding_learning_rate > 0) {
+    if (FLAGS_embedding_learning_rate > 0)
         std::cout << " Embedding step size : " << FLAGS_embedding_learning_rate << std::endl;
-    }
 
     if (!FLAGS_pretrained_vectors.empty()) {
         std::cout << "  Pretrained Vectors : " << FLAGS_pretrained_vectors << std::endl;
         model.embedding = embedding;
     }
 
-    vector<vector<Mat<REAL_t>>> thread_params;
-    vector<vector<Mat<REAL_t>>> thread_embedding_params;
-
-    // what needs to be optimized:
+    vector<vector<Mat<REAL_t>>>       thread_params;
+    vector<vector<Mat<REAL_t>>>       thread_embedding_params;
     vector<StackedModel<REAL_t>> thread_models;
-    for (int i = 0; i < FLAGS_j; i++) {
-        // create a copy for each training thread
-        // (shared memory mode = Hogwild)
-        thread_models.push_back(model.shallow_copy());
+    std::tie(thread_models, thread_embedding_params, thread_params) = utils::shallow_copy_multi_params(model, FLAGS_j, [&model](const Mat<REAL_t>& mat) {
+        return &mat.w() == &model.embedding.w();
+    });
 
-        auto thread_model_params = thread_models.back().parameters();
-        // take a slice of all the parameters except for embedding.
-        thread_params.emplace_back(
-            thread_model_params.begin() + 1,
-            thread_model_params.end()
-        );
-        // then add the embedding (the first parameter of StackeModel)
-        thread_embedding_params.emplace_back(
-            thread_model_params.begin(),
-            thread_model_params.begin() + 1
-        );
-    }
-    vector<Mat<REAL_t>> params;
-    vector<Mat<REAL_t>> embedding_params;
-    {
-        auto temp  = model.parameters();
-        params = vector<Mat<REAL_t>>(temp.begin()+1, temp.end());
-        embedding_params.push_back(model.parameters()[0]);
-    }
+    vector<Mat<REAL_t>> params = model.parameters();
+    vector<Mat<REAL_t>> embedding_params(params.begin(), params.begin() + 1);
+    params = vector<Mat<REAL_t>>(params.begin() + 1, params.end());
+
     auto svd_init = weights<REAL_t>::svd(weights<REAL_t>::gaussian(0.0, 1.0));
 
     if (FLAGS_svd_init) {
         for (auto& param : params) svd_init(param);
     }
     auto solver = Solver::construct<REAL_t>(FLAGS_solver, params, FLAGS_learning_rate, (REAL_t) FLAGS_reg);
-    auto embedding_solver = Solver::construct<REAL_t>(
-        FLAGS_solver, embedding_params,
-        FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate,
-        0.0);
+    auto embedding_solver = Solver::construct<REAL_t>(FLAGS_solver, embedding_params,
+        FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate, 0.0);
 
     std::tuple<REAL_t, REAL_t> best_validation_score(0.0, 0.0);
-    int epoch = 0;
-    int best_epoch = 0;
+    int epoch = 0, best_epoch = 0;
     double patience = 0;
     string best_file = "";
     REAL_t best_score = 0.0;
@@ -263,14 +234,10 @@ int main (int argc,  char* argv[]) {
             solver->reset_caches(params);
             embedding_solver->reset_caches(embedding_params);
         }
-        if (
-            (FLAGS_validation_metric == 0 && std::get<0>(new_validation) + 1e-6 < std::get<0>(best_validation_score)) ||
-            (FLAGS_validation_metric == 1 && std::get<1>(new_validation) + 1e-6 < std::get<1>(best_validation_score))
-            ) {
-            // lose patience:
+        if ((FLAGS_validation_metric == 0 && std::get<0>(new_validation) + 1e-6 < std::get<0>(best_validation_score)) ||
+            (FLAGS_validation_metric == 1 && std::get<1>(new_validation) + 1e-6 < std::get<1>(best_validation_score))) {
             patience += 1;
         } else {
-            // recover some patience:
             patience = std::max(patience - 1, 0.0);
             best_validation_score = new_validation;
         }
@@ -287,9 +254,6 @@ int main (int argc,  char* argv[]) {
                 std::get<1>(new_validation);
             // save best:
             if (!FLAGS_save_location.empty()) {
-                // stringstream ss;
-                // ss << FLAGS_save_location;
-                // ss << "_" << epoch;
                 model.save(FLAGS_save_location);
                 best_file = FLAGS_save_location;
             }

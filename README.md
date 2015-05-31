@@ -1,5 +1,5 @@
 # Dali
-An automatic differentiation library that uses reverse-mode differentation (backpropgation) to differentiate recurrent neural networks, but also mathematical expressions through control flow, while loops, recursion.
+An automatic differentiation library that uses reverse-mode differentation (backpropgation) to differentiate recurrent neural networks, or most mathematical expressions through control flow, while loops, recursion.
 
 <img src="https://raw.github.com/JonathanRaiman/Dali/master/misc/salvador.jpg" width="50%" />
 
@@ -206,9 +206,10 @@ auto sorted_lengths = utils::argsort(lengths);
 
 ### Future steps
 
-* Switch matrix backend from **Eigen** to **[MatrixShadow](https://github.com/dmlc/mshadow)**.
-* Add ImageNet and broader convolutional NN support (today Dali supports `conv2d` and `conv1d`, but no pooling yet)
-* Web interface for launching experiments (today [Dali-visualizer](https://github.com/JonathanRaiman/dali-visualizer) only shows progress and sample predictions)
+* Switch matrix backend from **Eigen** to **[MShadow](https://github.com/dmlc/mshadow)**.
+* Add ImageNet, Caffe loading, broader ConvNet support (currently have `conv2d` and `conv1d`, but no pooling)
+* Web interface for managing experiments (today [Dali-visualizer](https://github.com/JonathanRaiman/dali-visualizer) only shows progress and sample predictions)
+* Add some mathematical expressions from [Deepmind's Torch Cephes module](http://deepmind.github.io/torch-cephes/).
 
 ## Additional Notes
 

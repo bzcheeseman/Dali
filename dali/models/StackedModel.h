@@ -12,6 +12,7 @@
 #include "dali/mat/CrossEntropy.h"
 #include "dali/mat/Softmax.h"
 #include "dali/models/RecurrentEmbeddingModel.h"
+#include "dali/models/ReconstructModel.h"
 #include "dali/core.h"
 #include "dali/utils.h"
 
@@ -33,7 +34,7 @@ DECLARE_bool(shortcut);
 DECLARE_bool(memory_feeds_gates);
 
 template<typename Z>
-class StackedModel : public RecurrentEmbeddingModel<Z>  {
+class StackedModel : public RecurrentEmbeddingModel<Z>, public ReconstructModel {
     typedef LSTM<Z>                    lstm;
     typedef Layer<Z>           classifier_t;
     typedef std::map<std::string, std::vector<std::string>> config_t;

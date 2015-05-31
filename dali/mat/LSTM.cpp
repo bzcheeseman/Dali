@@ -47,7 +47,6 @@ LSTM<R>::LSTM (vector<int> _input_sizes, int _hidden_size, int _num_children, bo
     name_internal_layers();
 }
 
-
 template<typename R>
 LSTM<R>::LSTM (const LSTM<R>& other, bool copy_w, bool copy_dw) :
         memory_feeds_gates(other.memory_feeds_gates),

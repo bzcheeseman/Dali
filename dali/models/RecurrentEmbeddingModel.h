@@ -20,16 +20,7 @@ class RecurrentEmbeddingModel {
         const int output_size;
         const int stack_size;
         std::vector<int> hidden_sizes;
-
         mat embedding;
-        virtual std::vector<int> reconstruct(
-            Indexing::Index,
-            int,
-            int symbol_offset = 0) const = 0;
-        virtual std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(
-            Indexing::Index,
-            utils::OntologyBranch::shared_branch,
-            int) const = 0;
 
         /**
         Configuration
@@ -82,15 +73,7 @@ class RecurrentEmbeddingModel {
 
         **/
         virtual void save_configuration(std::string fname) const;
-        std::string reconstruct_string(
-            Indexing::Index,
-            const utils::Vocab&,
-            int,
-            int symbol_offset = 0) const;
-        std::string reconstruct_lattice_string(
-            Indexing::Index,
-            utils::OntologyBranch::shared_branch,
-            int) const;
+
         RecurrentEmbeddingModel(
             int _vocabulary_size,
             int _input_size,

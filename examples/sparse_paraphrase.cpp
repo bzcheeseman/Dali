@@ -13,6 +13,7 @@
 #include "dali/data_processing/Paraphrase.h"
 #include "dali/data_processing/Glove.h"
 #include "dali/visualizer/visualizer.h"
+#include "dali/models/RecurrentEmbeddingModel.h"
 
 using namespace std::placeholders;
 using std::atomic;
@@ -126,7 +127,7 @@ class SparseStackedLSTM : public StackedLSTM<T> {
 };
 
 template<typename T>
-class ParaphraseModel : RecurrentEmbeddingModel<T> {
+class ParaphraseModel : public RecurrentEmbeddingModel<T> {
     typedef typename StackedLSTM<T>::state_t state_t;
 
     public:
@@ -138,11 +139,7 @@ class ParaphraseModel : RecurrentEmbeddingModel<T> {
                         vector<int> _hidden_sizes,
                         int gate_second_order,
                         T dropout_probability) :
-            RecurrentEmbeddingModel<T>(
-                int _vocabulary_size,
-                int _input_size,
-                int _hidden_sizes,
-                0),
+            RecurrentEmbeddingModel<T>(_vocabulary_size, _input_size, _hidden_sizes, 0),
                 sentence_encoder(_input_size,
                                  _hidden_sizes,
                                  gate_second_order,
@@ -171,7 +168,7 @@ class ParaphraseModel : RecurrentEmbeddingModel<T> {
         std::tuple<Mat<T>, vector<Mat<T>>> encode_sentence(vector<uint> sentence, T drop_prob) const {
             vector<Mat<T>> embeddings;
             for (auto& word_idx: sentence) {
-                embeddings.emplace_back(embedding[word_idx]);
+                embeddings.emplace_back(this->embedding[word_idx]);
             }
             if (FLAGS_end_token)
                 embeddings.push_back(end_of_sentence_token);
@@ -187,7 +184,7 @@ class ParaphraseModel : RecurrentEmbeddingModel<T> {
         }
 
         Mat<T> cosine_distance(Mat<T> s1, Mat<T> s2) const {
-            return (sentence1_hidden * sentence2_hidden ).sum() / (s1.L2_norm() * s2.L2_norm());
+            return (s1 * s2).sum() / (s1.L2_norm() * s2.L2_norm());
         }
 
         std::tuple<Mat<T>, vector<Mat<T>>, vector<Mat<T>>> similarity(vector<uint> sentence1,
@@ -416,8 +413,8 @@ int main (int argc,  char* argv[]) {
 
     auto dataset = load_data(
         0.9,
-        FLAGS_minibatch,      // minibatch size
-        FLAGS_use_characters, // use characters or words
+        FLAGS_minibatch,       // minibatch size
+        FLAGS_use_characters,  // use characters or words
         FLAGS_min_occurence,   // min word appearance to be in vocab
         200000
     );
@@ -432,8 +429,8 @@ int main (int argc,  char* argv[]) {
 
 
 
-    auto model = model_t(FLAGS_input_size,
-                         FLAGS_use_characters ? char_vocab.size() : word_vocab.size(),
+    auto model = model_t(FLAGS_use_characters ? char_vocab.size() : word_vocab.size(),
+                         FLAGS_input_size,
                          vector<int>(FLAGS_stack_size, FLAGS_hidden),
                          FLAGS_gate_second_order,
                          FLAGS_dropout);
@@ -445,7 +442,7 @@ int main (int argc,  char* argv[]) {
     for (auto minibatch: training_set)
         total_examples += (minibatch.size() + FLAGS_negative_samples);
 
-    std::cout << "     Vocabulary size : " << model.vocab_size << std::endl
+    std::cout << "     Vocabulary size : " << model.vocabulary_size << std::endl
               << "      minibatch size : " << FLAGS_minibatch << std::endl
               << "   training examples : " << total_examples << std::endl
               << "   number of threads : " << FLAGS_j << std::endl
@@ -467,7 +464,6 @@ int main (int argc,  char* argv[]) {
     double patience = 0;
     string best_file = "";
     REAL_t best_score = 0.0;
-
 
     shared_ptr<Visualizer> visualizer;
     if (!FLAGS_visualizer.empty())
@@ -604,7 +600,6 @@ int main (int argc,  char* argv[]) {
                         }
                     });
                 }
-                // report minibatch completion to progress bar
             });
         }
         pool->wait_until_idle();

@@ -8,26 +8,6 @@ using utils::from_string;
 using std::to_string;
 
 template<typename R>
-string RecurrentEmbeddingModel<R>::reconstruct_string(
-    Indexing::Index example,
-    const utils::Vocab& lookup_table,
-    int eval_steps,
-    int symbol_offset) const {
-    auto reconstruction = reconstruct(example, eval_steps, symbol_offset);
-    stringstream rec;
-    for (auto& cat : reconstruction) {
-        rec << (
-            (cat < lookup_table.size()) ?
-                lookup_table.index2word.at(cat) :
-                (
-                    cat == lookup_table.size() ? "**END**" : "??"
-                )
-            ) << ", ";
-    }
-    return rec.str();
-}
-
-template<typename R>
 void RecurrentEmbeddingModel<R>::save(std::string dirname) const {
     utils::ensure_directory(dirname);
     // Save the matrices:
@@ -53,18 +33,6 @@ template<typename R>
 void RecurrentEmbeddingModel<R>::save_configuration(std::string fname) const {
     auto config = configuration();
     utils::map_to_file(config, fname);
-}
-
-template<typename R>
-string RecurrentEmbeddingModel<R>::reconstruct_lattice_string(
-    Indexing::Index example,
-    utils::OntologyBranch::shared_branch root,
-    int eval_steps) const {
-    auto reconstruction = reconstruct_lattice(example, root, eval_steps);
-    stringstream rec;
-    for (auto& cat : reconstruction)
-        rec << ((&(*cat) == &(*root)) ? "⟲" : cat->name) << ", ";
-    return rec.str();
 }
 
 template<typename R>

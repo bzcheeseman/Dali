@@ -28,7 +28,7 @@ namespace utils {
         }
         return copies;
     }
-
+    // pass a lamdba as third argument to decide which bin to place parameters in (split into 2 bins)
     template <typename R, template <typename> class M, typename UnaryPredicate>
     std::tuple<std::vector<M<R>>, std::vector<std::vector<Mat<R>>>, std::vector<std::vector<Mat<R>>>> shallow_copy_multi_params(
             const M<R>& model, int num_copies, UnaryPredicate bin_function) {

@@ -252,6 +252,16 @@ TEST_F(MatrixTests, tanh_gradient) {
     }
 }
 
+TEST_F(MatrixTests, norm_gradient) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return Xs[0].L2_norm();
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(20.0));
+        ASSERT_TRUE(gradient_same<R>(functor, {A}, 1e-5));
+    }
+}
+
 TEST_F(MatrixTests, exp_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].tanh();

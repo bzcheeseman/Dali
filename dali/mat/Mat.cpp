@@ -377,6 +377,11 @@ Mat<R> Mat<R>::square() const {
 }
 
 template<typename R>
+Mat<R> Mat<R>::L2_norm() const {
+    return MatOps<R>::L2_norm(*this);
+}
+
+template<typename R>
 Mat<R> Mat<R>::sqrt() const {
     return MatOps<R>::sqrt(*this);
 }

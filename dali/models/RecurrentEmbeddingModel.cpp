@@ -44,9 +44,9 @@ typename RecurrentEmbeddingModel<R>::state_type RecurrentEmbeddingModel<R>::init
 
 template<typename R>
 vector<typename RecurrentEmbeddingModel<R>::mat> RecurrentEmbeddingModel<R>::parameters() const {
-        vector<mat> parameters;
-        parameters.push_back(this->embedding);
-        return parameters;
+    vector<mat> parameters;
+    parameters.push_back(this->embedding);
+    return parameters;
 }
 
 template<typename R>

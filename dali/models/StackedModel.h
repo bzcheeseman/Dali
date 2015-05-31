@@ -18,11 +18,8 @@
 /**
 StackedModel
 -----------------
-
 A Model for making sequence predictions using stacked LSTM cells.
-
 The network uses an embedding layer, and can reconstruct a sequence.
-
 The objective function is built using masked cross entropy (only certain
 input channels collect error over small intervals).
 

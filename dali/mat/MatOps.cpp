@@ -377,6 +377,17 @@ Mat<R> MatOps<R>::square(Mat<R> matrix) {
 }
 
 template<typename R>
+Mat<R> MatOps<R>::L2_norm(Mat<R> matrix) {
+    auto out = Mat<R>(1, 1, false);
+    out.w()(0) = matrix.w().norm();
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, out]() {
+            GRAD(matrix).noalias() += ((matrix.w().array() / out.w()(0)) * out.dw()(0)).matrix();
+        });
+    return out;
+}
+
+template<typename R>
 Mat<R> MatOps<R>::sqrt(Mat<R> matrix) {
     auto out = Mat<R>::empty_like(matrix);
     out.w() = matrix.w().array().sqrt();

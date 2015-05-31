@@ -126,94 +126,52 @@ class SparseStackedLSTM : public StackedLSTM<T> {
 };
 
 template<typename T>
-class ParaphraseModel {
+class ParaphraseModel : RecurrentEmbeddingModel<T> {
     typedef typename StackedLSTM<T>::state_t state_t;
 
     public:
-
-        typedef std::map<std::string, std::vector<std::string>> config_t;
-        int input_size;
-        int vocab_size;
-        vector<int> hidden_sizes;
-        T dropout_probability;
-
         SparseStackedLSTM<T> sentence_encoder;
         Mat<T> end_of_sentence_token;
-        Mat<T> embedding_matrix;
 
-
-        ParaphraseModel(int input_size,
-                        int vocab_size,
-                        vector<int> hidden_sizes,
+        ParaphraseModel(int _vocabulary_size,
+                        int _input_size,
+                        vector<int> _hidden_sizes,
                         int gate_second_order,
                         T dropout_probability) :
-                input_size(input_size),
-                vocab_size(vocab_size),
-                hidden_sizes(hidden_sizes),
-                dropout_probability(dropout_probability),
-                sentence_encoder(input_size,
-                                 hidden_sizes,
+            RecurrentEmbeddingModel<T>(
+                int _vocabulary_size,
+                int _input_size,
+                int _hidden_sizes,
+                0),
+                sentence_encoder(_input_size,
+                                 _hidden_sizes,
                                  gate_second_order,
                                  FLAGS_lstm_shortcut,
                                  FLAGS_lstm_memory_feeds_gates),
-                end_of_sentence_token(input_size, 1, weights<T>::uniform(1.0 / input_size)),
-                embedding_matrix(vocab_size, input_size, weights<T>::uniform(1.0 / input_size))
-                 {
-        }
+                end_of_sentence_token(_input_size, 1, weights<T>::uniform(1.0 / _input_size)) {}
 
         ParaphraseModel(const ParaphraseModel& other, bool copy_w, bool copy_dw) :
-                input_size(other.input_size),
-                vocab_size(other.vocab_size),
-                hidden_sizes(other.hidden_sizes),
-                dropout_probability(other.dropout_probability),
+                RecurrentEmbeddingModel<T>(other, copy_w, copy_dw),
                 sentence_encoder(other.sentence_encoder, copy_w, copy_dw),
-                end_of_sentence_token(other.end_of_sentence_token, copy_w, copy_dw),
-                embedding_matrix(other.embedding_matrix, copy_w, copy_dw) {
-
-        }
+                end_of_sentence_token(other.end_of_sentence_token, copy_w, copy_dw) {}
 
         ParaphraseModel<T> shallow_copy() const {
             return ParaphraseModel<T>(*this, false, true);
         }
 
         vector<Mat<T>> parameters() const {
-            vector<Mat<T>> res;
-
-            auto params = sentence_encoder.parameters();
-            res.insert(res.end(), params.begin(), params.end());
-
-            for (auto& matrix: { end_of_sentence_token,
-                                 embedding_matrix
-                                 }) {
-                res.emplace_back(matrix);
-            }
-            return res;
-        }
-
-        config_t configuration() const {
-            // TODO: make this class inherit from other classes...
-            return config_t();
-        }
-
-        void save_configuration(std::string fname) const {
-            auto config = configuration();
-            utils::map_to_file(config, fname);
-        }
-
-        void save(std::string dirname) const {
-            utils::ensure_directory(dirname);
-            // Save the matrices:
-            auto params = parameters();
-            utils::save_matrices(params, dirname);
-            dirname += "config.md";
-            save_configuration(dirname);
+            auto params = RecurrentEmbeddingModel<T>::parameters();
+            auto sentence_encoder_params = sentence_encoder.parameters();
+            params.insert(params.end(), sentence_encoder_params.begin(), sentence_encoder_params.end());
+            params.emplace_back(end_of_sentence_token);
+            return params;
         }
 
         // returns sentence and vector of memories
-        std::tuple<Mat<T>, vector<Mat<T>>> encode_sentence(vector<uint> sentence, bool use_dropout) const {
+        std::tuple<Mat<T>, vector<Mat<T>>> encode_sentence(vector<uint> sentence, T drop_prob) const {
             vector<Mat<T>> embeddings;
             for (auto& word_idx: sentence) {
-                embeddings.emplace_back(embedding_matrix[word_idx]);
+                embeddings.emplace_back(embedding[word_idx]);
             }
             if (FLAGS_end_token)
                 embeddings.push_back(end_of_sentence_token);
@@ -221,28 +179,26 @@ class ParaphraseModel {
             auto state = sentence_encoder.initial_states();
             vector<Mat<T>> memories;
             std::tie(state, memories) = sentence_encoder.activate_sequence(
-                    embeddings,
-                    state,
-                    use_dropout ? dropout_probability : 0.0);
+                embeddings,
+                state,
+                drop_prob);
             auto sentence_hidden = MatOps<T>::vstack(LSTM<T>::State::hiddens(state));
             return std::make_tuple(sentence_hidden, memories);
         }
 
-        Mat<T> cosine_distance(Mat<T> sentence1_hidden, Mat<T> sentence2_hidden) const {
-            auto s1_norm = sentence1_hidden.square().sum().sqrt();
-            auto s2_norm = sentence2_hidden.square().sum().sqrt();
-            return (sentence1_hidden * sentence2_hidden ).sum() / (s1_norm * s2_norm);
+        Mat<T> cosine_distance(Mat<T> s1, Mat<T> s2) const {
+            return (sentence1_hidden * sentence2_hidden ).sum() / (s1.L2_norm() * s2.L2_norm());
         }
 
         std::tuple<Mat<T>, vector<Mat<T>>, vector<Mat<T>>> similarity(vector<uint> sentence1,
                                                                       vector<uint> sentence2,
-                                                                      bool use_dropout) const {
+                                                                      T drop_prob) const {
             Mat<T> sentence1_hidden, sentence2_hidden;
             vector<Mat<T>> sentence1_memories, sentence2_memories;
             std::tie(sentence1_hidden, sentence1_memories) =
-                    encode_sentence(sentence1, use_dropout);
+                    encode_sentence(sentence1, drop_prob);
             std::tie(sentence2_hidden, sentence2_memories) =
-                    encode_sentence(sentence2, use_dropout);
+                    encode_sentence(sentence2, drop_prob);
 
             auto similarity_score = cosine_distance(sentence1_hidden, sentence2_hidden );
             return std::make_tuple(similarity_score, sentence1_memories, sentence2_memories);
@@ -251,15 +207,14 @@ class ParaphraseModel {
         tuple<Mat<T>, vector<Mat<T>>, vector<Mat<T>>> error(
                 const vector<uint>& sentence1,
                 const vector<uint>& sentence2,
+                T drop_prob,
                 double correct_score) const {
             Mat<T> similarity_score;
             vector<Mat<T>> memory1, memory2;
-            std::tie(similarity_score, memory1, memory2) =
-                    similarity(sentence1, sentence2, true);
+            std::tie(similarity_score, memory1, memory2) = similarity(sentence1, sentence2, drop_prob);
 
-            auto error_value = (similarity_score - correct_score)^2;
-
-            return std::make_tuple(error_value, memory1, memory2);
+            auto error = (similarity_score - correct_score)^2;
+            return std::make_tuple(error, memory1, memory2);
         }
 
         tuple<double, vector<double>, vector<double>> predict_with_memories(vector<uint> sentence1, vector<uint> sentence2) const {
@@ -267,7 +222,7 @@ class ParaphraseModel {
             vector<Mat<T>> memory1_mat, memory2_mat;
             Mat<T> similarity_mat;
             std::tie(similarity_mat, memory1_mat, memory2_mat) =
-                    similarity(sentence1, sentence2, false);
+                    similarity(sentence1, sentence2, 0.0);
 
             auto extract_double  = [](Mat<T> m) { return m.w()(0,0); };
             vector<double> memory1, memory2;
@@ -283,7 +238,6 @@ class ParaphraseModel {
             double score;
             vector<double> ignored1, ignored2;
             std::tie(score, ignored1, ignored2) = predict_with_memories(sentence1, sentence2);
-
             return score;
         }
 
@@ -328,15 +282,13 @@ std::tuple<Vocab, CharacterVocab, typename paraphrase::paraphrase_minibatch_data
         seen+=example.size();
         if (max_training_examples > -1 && seen > max_training_examples) break;
 
-        if (distribution(generator) > data_split) {
+        if (distribution(generator) > data_split)
             validation_data.emplace_back(example);
-        } else {
+        else
             training_data.emplace_back(example);
-        }
     }
 
-    std::cout << "loaded training data" << std::endl;
-
+    std::cout << "Loaded training data" << std::endl;
     // implement validation set online.
     return make_tuple(word_vocab, char_vocab, training_data, validation_data, test_dataset);
 }
@@ -352,7 +304,7 @@ void backprop_example(
     Mat<REAL_t> partial_error;
     vector<Mat<REAL_t>> memory1, memory2;
     std::tie(partial_error, memory1, memory2) =
-            thread_model.error(sentence1, sentence2, label);
+            thread_model.error(sentence1, sentence2, FLAGS_dropout, label);
 
     if (memory_penalty > 0) {
         auto memory = MatOps<REAL_t>::add(memory1) + MatOps<REAL_t>::add(memory2);
@@ -604,8 +556,8 @@ int main (int argc,  char* argv[]) {
                         if (FLAGS_show_similar) {
                             auto& sampled_sentence = utils::randint(0, 1) > 0 ? sentence2 : sentence1;
                             auto cosine_distance = [&thread_model](const std::vector<uint>& s1, const std::vector<uint>& s2) {
-                                    auto original_encoded = thread_model.encode_sentence(s1, false);
-                                    auto other_encoded    = thread_model.encode_sentence(s2, false);
+                                    auto original_encoded = thread_model.encode_sentence(s1, 0.0);
+                                    auto other_encoded    = thread_model.encode_sentence(s2, 0.0);
                                     return (double) thread_model.cosine_distance(
                                         std::get<0>(original_encoded),
                                         std::get<0>(other_encoded)

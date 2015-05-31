@@ -97,6 +97,7 @@ struct MatOps {
     static Mat<R> add(std::initializer_list<Mat<R>>);
     static Mat<R> add(const std::vector<Mat<R>>&);
     static Mat<R> square(Mat<R>);
+    static Mat<R> L2_norm(Mat<R>);
 
     static Mat<R> sum(Mat<R>);
 

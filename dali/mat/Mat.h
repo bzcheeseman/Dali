@@ -208,6 +208,7 @@ class Mat {
         Mat<R> sub_broadcast(Mat<R>) const;
         Mat<R> sub_broadcast_reversed(Mat<R>) const;
         Mat<R> square() const;
+        Mat<R> L2_norm() const;
         Mat<R> sum() const;
         Mat<R> mean() const;
         Mat<R> log() const;

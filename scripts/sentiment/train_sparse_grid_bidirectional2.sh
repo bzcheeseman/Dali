@@ -34,7 +34,7 @@ BASE_FLAGS="--results_file=${RESULTS_FILE}"
 BASE_FLAGS="${BASE_FLAGS} --validation_metric=1"
 BASE_FLAGS="${BASE_FLAGS} --stack_size=${STACK_SIZE} --patience=${PATIENCE}"
 BASE_FLAGS="${BASE_FLAGS} --epochs=2000 -j=1"
-BASE_FLAGS="${BASE_FLAGS} --nofast_dropout --shortcut --noaverage_gradient"
+BASE_FLAGS="${BASE_FLAGS} --nofast_dropout --shortcut"
 # use some pretrained vectors:
 # BASE_FLAGS="${BASE_FLAGS} --pretrained_vectors=${VECTOR_FILE}"
 BASE_FLAGS="${BASE_FLAGS} --train=${DATA_DIR}train.txt "

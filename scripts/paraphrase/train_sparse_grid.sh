@@ -45,7 +45,7 @@ if [ ! -d "$SAVE_FOLDER" ]; then
     mkdir $SAVE_FOLDER
 fi
 
-for hidden in 25 50 150
+for hidden in 50 150
 do
     for dropout in 0.3
     do
@@ -53,25 +53,25 @@ do
         do
             for lr in 0.01
             do
-                for penalty in 0.00001 0.0001 0.0005 0.001 0.01 0.1
-                do
-                    for curve in flat linear square
-                    do
-                        # previously saved models are no longer useful for this grid tile
-                        if [ ! -d "${SAVE_FOLDER}/model${curve}_${penalty}/" ]; then
-                            mkdir "${SAVE_FOLDER}/model${curve}_${penalty}/"
-                        fi
-                        rm -rf "${SAVE_FOLDER}/model${curve}_${penalty}/*"
-                        $PROGRAM $BASE_FLAGS --dropout $dropout --save_location="${SAVE_FOLDER}/model${lr}_${reg}" --memory_penalty_curve $curve --memory_penalty $penalty --learning_rate $lr --hidden $hidden --minibatch 100 --solver adagrad --reg $reg &
-                        pwait $NUM_THREADS
-                    done
-                done
+                # for penalty in 0.00001 0.0001 0.0005 0.001 0.01 0.1
+                # do
+                #     for curve in flat linear square
+                #     do
+                #         # previously saved models are no longer useful for this grid tile
+                #         if [ ! -d "${SAVE_FOLDER}/model${curve}_${penalty}/" ]; then
+                #             mkdir "${SAVE_FOLDER}/model${curve}_${penalty}/"
+                #         fi
+                #         rm -rf "${SAVE_FOLDER}/model${curve}_${penalty}/*"
+                #         $PROGRAM $BASE_FLAGS --dropout $dropout --save_location="${SAVE_FOLDER}/model${lr}_${reg}" --memory_penalty_curve $curve --memory_penalty $penalty --learning_rate $lr --hidden $hidden --minibatch 100 --solver adagrad --reg $reg &
+                #         pwait $NUM_THREADS
+                #     done
+                # done
                 # previously saved models are no longer useful for this grid tile
-                if [ ! -d "${SAVE_FOLDER}/model${curve}_0/" ]; then
-                    mkdir "${SAVE_FOLDER}/model${curve}_0/"
+                if [ ! -d "${SAVE_FOLDER}/model_0/" ]; then
+                    mkdir "${SAVE_FOLDER}/model_0/"
                 fi
-                rm -rf "${SAVE_FOLDER}/model${curve}_0/*"
-                $PROGRAM $BASE_FLAGS --dropout $dropout --save_location="${SAVE_FOLDER}/model${lr}_${reg}" --memory_penalty_curve $curve --memory_penalty 0.0 --learning_rate $lr --hidden $hidden --minibatch 100 --solver adagrad --reg $reg &
+                rm -rf "${SAVE_FOLDER}/model_0/*"
+                $PROGRAM $BASE_FLAGS --dropout $dropout --save_location="${SAVE_FOLDER}/model${lr}_${reg}"  --memory_penalty 0.0 --learning_rate $lr --hidden $hidden --minibatch 100 --solver adagrad --reg $reg &
                 pwait $NUM_THREADS
             done
         done

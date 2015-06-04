@@ -3,6 +3,8 @@
 #include <fstream>
 #include <iterator>
 #include <chrono>
+#include <fstream>
+#include <ostream>
 
 #include "dali/core.h"
 #include "dali/utils.h"
@@ -20,6 +22,7 @@ using std::ifstream;
 using std::istringstream;
 using std::stringstream;
 using std::string;
+using std::ofstream;
 using std::min;
 using utils::Vocab;
 using utils::tokenized_uint_labeled_dataset;
@@ -28,13 +31,16 @@ using std::chrono::seconds;
 using SST::Databatch;
 using utils::assert2;
 using json11::Json;
+using std::to_string;
 
 typedef float REAL_t;
-static REAL_t memory_penalty = 0.0;
+DEFINE_string(results_file,            "",         "Where to save test performance.");
+DEFINE_string(save_location,           "",         "Where to save test performance.");
 DEFINE_int32(minibatch,      100,        "What size should be used for the minibatches ?");
 DEFINE_int32(patience,       5,          "How many unimproving epochs to wait through before witnessing progress ?");
 DEFINE_double(dropout,       0.3,        "How much dropout noise to add to the problem ?");
-DEFINE_bool(fast_dropout,    true,       "Use fast dropout?");
+DEFINE_double(reg,           0.0,        "What penalty to place on L2 norm of weights?");
+DEFINE_bool(fast_dropout,    false,       "Use fast dropout?");
 DEFINE_bool(bidirectional,   true,       "Read forward and backwards ?");
 DEFINE_string(test,          "",         "Where is the test set?");
 DEFINE_double(root_weight,   1.0,        "By how much to weigh the roots in the objective function?");
@@ -43,6 +49,8 @@ DEFINE_bool(surprise,        false,      "Use Surprise distance with target dist
 DEFINE_bool(convolution,     false,      "Perform a convolution before passing to LSTMs ?");
 DEFINE_int32(filters,        50,         "Number of filters to use for Convolution");
 DEFINE_string(pretrained_vectors, "",    "Load pretrained word vectors?");
+DEFINE_string(memory_penalty_curve, "flat",   "Type of annealing used on gate memory penalty (flat, linear, square)");
+DEFINE_int32(validation_metric,   0,          "Use root (1) or overall (0) objective to choose best validation parameters?");
 
 template<typename T>
 Mat<T> softmax_categorical_surprise(Mat<T> logprobs, int target) {
@@ -136,8 +144,10 @@ class BidirectionalLSTM {
         int stack_size;
         bool convolution;
         bool bidirectional;
+        T memory_penalty;
         std::shared_ptr<StackedInputLayer<T>> prediction_gate;
         std::shared_ptr<Filters<T>> filters;
+        typedef std::map<std::string, std::vector<std::string>> config_t;
 
         BidirectionalLSTM(int vocabulary_size, int input_size, int hidden_size, int stack_size, int output_size, bool shortcut, bool memory_feeds_gates, bool use_recursive_gates, bool convolution, bool bidirectional)
             :
@@ -179,6 +189,19 @@ class BidirectionalLSTM {
                     stacked_lstm.hidden_sizes.begin(),
                     hidden_size);
             }
+        }
+
+        config_t configuration() const  {
+            config_t config;
+            config["output_size"].emplace_back(to_string(output_size));
+            config["vocabulary_size"].emplace_back(to_string(embedding.dims(0)));
+            config["input_size"].emplace_back(to_string(embedding.dims(1)));
+            config["use_recursive_gates"].emplace_back(use_recursive_gates ? "true" : "false");
+            config["convolution"].emplace_back(convolution ? "true" : "false");
+            config["bidirectional"].emplace_back(bidirectional ? "true" : "false");
+            for (auto& v : stacked_lstm.hidden_sizes)
+                config["hidden_sizes"].emplace_back(to_string(v));
+            return config;
         }
 
         BidirectionalLSTM(const BidirectionalLSTM& model, bool copy_w, bool copy_dw)
@@ -378,6 +401,22 @@ class BidirectionalLSTM {
             }
             return params;
         }
+
+
+        void save(std::string dirname) const {
+            utils::ensure_directory(dirname);
+            // Save the matrices:
+            auto params = parameters();
+            utils::save_matrices(params, dirname);
+            dirname += "config.md";
+            save_configuration(dirname);
+        }
+
+        void save_configuration(std::string fname) const {
+            auto config = configuration();
+            utils::map_to_file(config, fname);
+        }
+
 };
 
 int main (int argc,  char* argv[]) {
@@ -390,8 +429,20 @@ int main (int argc,  char* argv[]) {
         " @date March 13th 2015"
     );
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+
+    int memory_penalty_curve_type;
+    if (FLAGS_memory_penalty_curve == "flat") {
+        memory_penalty_curve_type = 0;
+    } else if (FLAGS_memory_penalty_curve == "linear") {
+        memory_penalty_curve_type = 1;
+    } else if (FLAGS_memory_penalty_curve == "square") {
+        memory_penalty_curve_type = 2;
+    } else {
+        utils::assert2(false, "memory_penalty_curve can only be flat, linear, or square.");
+    }
+
     auto epochs     = FLAGS_epochs;
-    int rampup_time = 100;
+    int rampup_time = 10;
     auto sentiment_treebank = SST::load(FLAGS_train);
     auto embedding          = Mat<REAL_t>(100, 0);
     auto word_vocab         = Vocab();
@@ -461,15 +512,42 @@ int main (int argc,  char* argv[]) {
     };
     auto solver = Solver::construct(FLAGS_solver, params, (REAL_t)FLAGS_learning_rate);
 
-    REAL_t best_validation_score = 0.0;
-    int epoch                    = 0;
-    double patience              = 0;
+    std::tuple<REAL_t, REAL_t> best_validation_score(0.0, 0.0);
+    int epoch = 0, best_epoch = 0;
+    double patience = 0;
+    string best_file = "";
+    REAL_t best_score = 0.0;
 
     shared_ptr<Visualizer> visualizer;
     if (!FLAGS_visualizer.empty())
         visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
 
     while (patience < FLAGS_patience && epoch < epochs) {
+
+        if (memory_penalty_curve_type == 1) { // linear
+            model.memory_penalty = (REAL_t) std::min(
+                FLAGS_memory_penalty,
+                (FLAGS_memory_penalty * std::min(1.0, ((double)(epoch) / (double)(rampup_time))))
+            );
+            for (auto& thread_model : thread_models) {
+                thread_model.memory_penalty = (REAL_t) std::min(
+                    FLAGS_memory_penalty,
+                    (FLAGS_memory_penalty * std::min(1.0, ((double)(epoch) / (double)(rampup_time))))
+                );
+            }
+        } else if (memory_penalty_curve_type == 2) { // square
+            model.memory_penalty = (REAL_t) std::min(
+                FLAGS_memory_penalty,
+                (FLAGS_memory_penalty * std::min(1.0, ((double)(epoch * epoch) / (double)(rampup_time * rampup_time))))
+            );
+            for (auto& thread_model : thread_models) {
+                thread_model.memory_penalty = (REAL_t) std::min(
+                    FLAGS_memory_penalty,
+                    (FLAGS_memory_penalty * std::min(1.0, ((double)(epoch * epoch) / (double)(rampup_time * rampup_time))))
+                );
+            }
+        }
+
         stringstream ss;
         ss << "Epoch " << ++epoch;
         atomic<int> batches_processed(0);
@@ -522,22 +600,21 @@ int main (int argc,  char* argv[]) {
                     );
                 }
                 solver->step(params); // One step of gradient descent
-                journalist.tick(++batches_processed, best_validation_score);
+                journalist.tick(++batches_processed, std::get<0>(best_validation_score));
             });
         }
         pool->wait_until_idle();
         journalist.done();
-        double new_validation = std::get<0>(SST::average_recall(validation_set, pred_fun, FLAGS_j));
-
-        memory_penalty = std::max(
-            memory_penalty,
-            (REAL_t) (FLAGS_memory_penalty * std::min(1.0, ((double)(epoch * epoch) / (double)(rampup_time * rampup_time))))
-        );
-
-        if (solver->is_adagrad())
+        auto new_validation = SST::average_recall(validation_set, pred_fun, FLAGS_j);
+        std::cout << "Root recall=" << std::get<1>(new_validation) << std::endl;
+        if (solver->is_adagrad()) {
             solver->reset_caches(params);
-
-        if (new_validation < best_validation_score) {
+            //embedding_solver->reset_caches(embedding_params);
+        }
+        if (
+            (FLAGS_validation_metric == 0 && std::get<0>(new_validation) + 1e-6 < std::get<0>(best_validation_score)) ||
+            (FLAGS_validation_metric == 1 && std::get<1>(new_validation) + 1e-6 < std::get<1>(best_validation_score))
+            ) {
             // lose patience:
             patience += 1;
         } else {
@@ -545,10 +622,23 @@ int main (int argc,  char* argv[]) {
             patience = std::max(patience - 1, 0.0);
             best_validation_score = new_validation;
         }
-        if (best_validation_score != new_validation)
-            std::cout << "Epoch (" << epoch << ") Best validation score = " << best_validation_score << "% ("<< new_validation << "%), patience = " << patience << std::endl;
-        else
-            std::cout << "Epoch (" << epoch << ") Best validation score = " << best_validation_score << "%, patience = " << patience << std::endl;
+        if (best_validation_score != new_validation) {
+            std::cout << "Epoch (" << epoch << ") Best validation score = " << std::get<0>(best_validation_score) << "% ("<< std::get<0>(new_validation) << "%), patience = " << patience << std::endl;
+        } else {
+            std::cout << "Epoch (" << epoch << ") Best validation score = " << std::get<0>(best_validation_score) << "%, patience = " << patience << std::endl;
+            best_epoch = epoch;
+        }
+        if ((FLAGS_validation_metric == 0 && std::get<0>(new_validation) > best_score) ||
+            (FLAGS_validation_metric == 1 && std::get<1>(new_validation) > best_score)) {
+            best_score = (FLAGS_validation_metric == 0) ?
+                std::get<0>(new_validation) :
+                std::get<1>(new_validation);
+            // save best:
+            if (!FLAGS_save_location.empty()) {
+                model.save(FLAGS_save_location);
+                best_file = FLAGS_save_location;
+            }
+        }
     }
 
     if (!FLAGS_test.empty()) {
@@ -557,8 +647,34 @@ int main (int argc,  char* argv[]) {
             SST::load(FLAGS_test),
             FLAGS_minibatch
         );
-        std::cout << "Done training" << std::endl;
+        if (!FLAGS_save_location.empty() && !best_file.empty()) {
+            std::cout << "loading from best validation parameters \"" << best_file << "\"" << std::endl;
+            auto params = model.parameters();
+            utils::load_matrices(params, best_file);
+        }
         auto recall = SST::average_recall(test_set, pred_fun, FLAGS_j);
-        std::cout << "Test recall total=" << std::get<0>(recall) << "%, root="<< std::get<1>(recall) << "%" << std::endl;
+
+        std::cout << "Done training" << std::endl;
+        std::cout << "Test recall "  << std::get<0>(recall) << "%, root => " << std::get<1>(recall)<< "%" << std::endl;
+        if (!FLAGS_results_file.empty()) {
+            ofstream fp;
+            fp.open(FLAGS_results_file.c_str(), std::ios::out | std::ios::app);
+            fp         << FLAGS_solver
+               << "\t" << FLAGS_minibatch
+               << "\t" << (FLAGS_fast_dropout ? "fast" : "std")
+               << "\t" << FLAGS_dropout
+               << "\t" << FLAGS_hidden
+               << "\t" << std::get<0>(recall)
+               << "\t" << std::get<1>(recall)
+               << "\t" << best_epoch
+               << "\t" << FLAGS_memory_penalty
+               << "\t" << FLAGS_memory_penalty_curve;
+            if ((FLAGS_solver == "adagrad" || FLAGS_solver == "sgd")) {
+                fp << "\t" << FLAGS_learning_rate;
+            } else {
+                fp << "\t" << "N/A";
+            }
+            fp  << "\t" << FLAGS_reg << std::endl;
+        }
     }
 }

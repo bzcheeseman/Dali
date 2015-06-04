@@ -71,7 +71,7 @@ do
                     mkdir "${SAVE_FOLDER}/model_0/"
                 fi
                 rm -rf "${SAVE_FOLDER}/model_0/*"
-                $PROGRAM $BASE_FLAGS --dropout $dropout --save_location="${SAVE_FOLDER}/model${lr}_${reg}"  --memory_penalty 0.0 --learning_rate $lr --hidden $hidden --minibatch 100 --solver adagrad --reg $reg &
+                $PROGRAM $BASE_FLAGS --dropout $dropout --save_location="${SAVE_FOLDER}/model_${hidden}_0"  --memory_penalty 0.0 --learning_rate $lr --hidden $hidden --minibatch 100 --solver adagrad --reg $reg &
                 pwait $NUM_THREADS
             done
         done

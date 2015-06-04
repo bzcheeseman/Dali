@@ -68,7 +68,7 @@ do
                     mkdir "${SAVE_FOLDER}/model_0/"
                 fi
                 rm -rf "${SAVE_FOLDER}/model_0/*"
-                $PROGRAM $BASE_FLAGS --dropout $dropout --save_location="${SAVE_FOLDER}/model${lr}_${reg}" --memory_penalty 0.0 --learning_rate $lr --hidden $hidden --minibatch 100 --solver adagrad --reg $reg &
+                $PROGRAM $BASE_FLAGS --dropout $dropout --save_location="${SAVE_FOLDER}/model_0" --memory_penalty 0.0 --learning_rate $lr --hidden $hidden --minibatch 100 --solver adagrad --reg $reg &
                 pwait $NUM_THREADS
 
                 for penalty in 0.00001 0.0001 0.0005 0.001 0.01 0.1
@@ -80,7 +80,7 @@ do
                             mkdir "${SAVE_FOLDER}/model${curve}_${penalty}/"
                         fi
                         rm -rf "${SAVE_FOLDER}/model${curve}_${penalty}/*"
-                        $PROGRAM $BASE_FLAGS --dropout $dropout --save_location="${SAVE_FOLDER}/model${lr}_${reg}" --memory_penalty_curve $curve --memory_penalty $penalty --learning_rate $lr --hidden $hidden --minibatch 100 --solver adagrad --reg $reg &
+                        $PROGRAM $BASE_FLAGS --dropout $dropout --save_location="${SAVE_FOLDER}/model${curve}_${penalty}" --memory_penalty_curve $curve --memory_penalty $penalty --learning_rate $lr --hidden $hidden --minibatch 100 --solver adagrad --reg $reg &
                         pwait $NUM_THREADS
                     done
                 done

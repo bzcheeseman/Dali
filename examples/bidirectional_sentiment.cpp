@@ -430,6 +430,8 @@ int main (int argc,  char* argv[]) {
     );
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
+    if (FLAGS_patience > 40) FLAGS_patience = 40;
+
     int memory_penalty_curve_type;
     if (FLAGS_memory_penalty_curve == "flat") {
         memory_penalty_curve_type = 0;

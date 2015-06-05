@@ -16,6 +16,7 @@ class LSTM : public AbstractLayer<R> {
     void name_internal_layers();
 
     public:
+
         struct State {
             Mat<R> memory;
             Mat<R> hidden;
@@ -24,6 +25,8 @@ class LSTM : public AbstractLayer<R> {
             static std::vector<Mat<R>> memories (const std::vector<State>&);
             operator std::tuple<Mat<R> &, Mat<R> &>();
         };
+
+        typedef State activation_t;
 
         // each child's memory to write controller for memory:
         std::vector<Mat<R>> Wcells_to_inputs;

@@ -33,7 +33,7 @@ namespace utils {
     std::tuple<std::vector<M<R>>, std::vector<std::vector<Mat<R>>>, std::vector<std::vector<Mat<R>>>> shallow_copy_multi_params(
             const M<R>& model, int num_copies, UnaryPredicate bin_function) {
         std::tuple<std::vector<M<R>>, std::vector<std::vector<Mat<R>>>, std::vector<std::vector<Mat<R>>>> copies;
-        auto bin_yang_function = [&bin_function](const Mat<R>& mat) {return !bin_function(mat);};
+        auto bin_yang_function = [&bin_function](const Mat<R>& mat) {return !bin_function(mat);};
         for (int i = 0; i < num_copies; i++) {
             // create a copy for each training thread
             // (shared memory mode = Hogwild)

@@ -794,6 +794,26 @@ TEST_F(LayerTests, activate_sequence) {
     ASSERT_EQ(num_out_states, LSTM<R>::State::hiddens(out_states).size());
 }
 
+TEST_F(LayerTests, GRU) {
+    int input_size = 3;
+    int hidden_size = 5;
+    int tsteps = 5;
+
+    EXPERIMENT_REPEAT {
+        auto gru = GRU<R>(input_size, hidden_size);
+        auto params = gru.parameters();
+        auto inputs = vector<Mat<R>>();
+        for (int i = 0; i < tsteps; i++) inputs.emplace_back(Mat<R>(input_size,1, weights<R>::uniform(20.0)));
+        auto functor = [&inputs, &gru,&tsteps, &hidden_size, &input_size](vector<Mat<R>> Xs)-> Mat<R> {
+            auto state = Mat<R>(hidden_size, 1);
+            for (int i = 0; i < tsteps; i++)
+                state = gru.activate(inputs[i], state);
+            return (state -1.0) ^ 2;
+        };
+        ASSERT_TRUE(gradient_same<R>(functor, params, 1e-5));
+    }
+}
+
 TEST_F(MatrixTests, argsort) {
     vector<Mat<R>> mats;
     Mat<R> A(1,1);

@@ -6,6 +6,7 @@
 #include "dali/mat/CrossEntropy.h"
 #include "dali/mat/Softmax.h"
 #include "dali/mat/LSTM.h"
+#include "dali/mat/GRU.h"
 #include "dali/execution/SequenceProbability.h"
 #include "dali/execution/BeamSearch.h"
 #include "dali/execution/Solver.h"

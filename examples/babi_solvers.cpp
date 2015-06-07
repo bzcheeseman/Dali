@@ -378,7 +378,7 @@ class LstmBabiModel {
                                             supporting ? 1.0 : 0.0);
                 float coeff = supporting ? 1.0 : FLAGS_unsupporting_ratio;
 
-                fact_selection_error = fact_selection_error + partial_error * coeff;
+                fact_selection_error += partial_error * coeff;
             }
 
             Mat<REAL_t> total_error;
@@ -573,12 +573,12 @@ void train(const vector<babi::Story>& data, float training_fraction = 0.8) {
 
     auto params = model->parameters();
 
-    // Solver::Adam<REAL_t> solver(params); // , 0.1, 0.0001);
-    Solver::AdaDelta<REAL_t> solver(params, 0.9, 1e-9, 100.0);
+    Solver::Adam<REAL_t> solver(params); // , 0.1, 0.0001);
+    // Solver::AdaDelta<REAL_t> solver(params, 0.9, 1e-9, 100.0);
     // Solver::SGD<REAL_t> solver(params, 100.0, 1e-6);
     // Solver::RMSProp<REAL_t> solver(params, 0.5, Solver::SMOOTH_DEFAULT, 100.0, 1e-6);
     //solver.step_size = 10.0;
-    //solver.regc = 1e-6;
+    solver.regc = 1e-6;
 
     double best_validation_accuracy = 0.0;
     best_model = std::make_shared<model_t>(*model, true, true);
@@ -609,6 +609,10 @@ void train(const vector<babi::Story>& data, float training_fraction = 0.8) {
             best_validation_accuracy = validation_accuracy;
             best_model = std::make_shared<model_t>(*model, true, true);
             best_model_epoch = epoch;
+        }
+
+        if (epoch % 2 == 0) {
+            solver.reset_caches(params);
         }
 
         if (best_validation_accuracy > validation_accuracy) {

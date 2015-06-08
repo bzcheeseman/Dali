@@ -30,7 +30,7 @@ class GRU {
 
         std::vector<Mat<R>> parameters() const;
 
-        Mat<R> initial_state() const;
+        Mat<R> initial_states() const;
 };
 
 #endif

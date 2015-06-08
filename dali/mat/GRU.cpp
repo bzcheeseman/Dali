@@ -79,7 +79,7 @@ std::vector<Mat<R>> GRU<R>::parameters() const {
 }
 
 template<typename R>
-Mat<R> GRU<R>::initial_state() const {
+Mat<R> GRU<R>::initial_states() const {
     return Mat<R>(hidden_size, 1);
 }
 

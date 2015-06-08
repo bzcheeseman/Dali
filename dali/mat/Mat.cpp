@@ -62,6 +62,17 @@ typename weights<R>::initializer_t weights<R>::zeros() {
 };
 
 template<typename R>
+typename weights<R>::initializer_t weights<R>::eye(R diag) {
+    return [diag](Mat<R>& matrix){
+        assert2(matrix.dims(0) == matrix.dims(1), "Identity initialization requires square matrix.");
+        auto& mat = matrix.w();
+        mat.fill(0);
+        for (int i = 0; i < matrix.dims(0); i++)
+            mat(i,i) = diag;
+    };
+};
+
+template<typename R>
 typename weights<R>::initializer_t weights<R>::uniform(R lower, R upper) {
     return [lower, upper](Mat<R>& matrix){
         // TODO(szymon): scale by row length.

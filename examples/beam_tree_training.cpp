@@ -196,7 +196,7 @@ class BeamLSTM : public LSTM<T> {
             // item 2. exponentiates to remove logs.
             if (scores.size() == 1) {
                 return distributions.front();
-            } else {
+            } else {
                 auto probabilites = MatOps<T>::softmax(scores);
 
                 auto weighted_distributions = MatOps<T>::eltmul_broadcast_rowwise(

@@ -2,7 +2,7 @@
 #define CORE_GRU_H
 
 #include <vector>
-#include "dali/mat/mat.h"
+#include "dali/mat/Mat.h"
 #include "dali/mat/Layers.h"
 
 template<typename R>

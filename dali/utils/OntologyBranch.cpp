@@ -6,7 +6,7 @@ using std::ifstream;
 using std::set;
 using std::ofstream;
 
-namespace utils {
+namespace utils {
     template<typename T>
     void OntologyBranch::save_to_stream(T& fp) {
         auto hasher = std::hash<OntologyBranch>();

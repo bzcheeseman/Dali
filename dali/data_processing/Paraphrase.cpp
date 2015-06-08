@@ -310,7 +310,7 @@ namespace paraphrase {
                     minibatch.clear();
                 }
             }
-            if (minibatch.size() > 0) {
+            if (minibatch.size() > 0) {
                 yield(minibatch);
             }
         });

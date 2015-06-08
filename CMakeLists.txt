@@ -5,11 +5,6 @@ project("recurrentjs")
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
-# For sqlite3:
-#set(SQLiteCpp_FIND_VERSION "0.9.9")
-#set(SQLITECPP_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/SQLiteCpp/include/SQLiteCpp)
-#set(MKL_MULTI_THREADED "1")
-
 # REQUIRED PACKAGES
 find_package(Eigen3 REQUIRED)
 find_package(ZLIB REQUIRED)
@@ -90,7 +85,7 @@ add_definitions(-DGFLAGS_NAMESPACE=${GFLAGS_NAMESPACE})
 add_definitions(-DBUILD_DIR=${CMAKE_BUILD_DIR})
 
 message("=> BUILD_TYPE " ${CMAKE_BUILD_TYPE})
-set (CMAKE_CXX_COMPILER "clang++")
+#set (CMAKE_CXX_COMPILER "clang++")
 if(CMAKE_BUILD_TYPE MATCHES "debug")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g -fPIC")
 else(CMAKE_BUILD_TYPE MATCHES "debug")

@@ -60,7 +60,7 @@ int main (int argc,  char* argv[]) {
     int memory_penalty_curve_type;
     if (FLAGS_memory_penalty_curve        == "flat") {
         memory_penalty_curve_type = 0;
-    } else if (FLAGS_memory_penalty_curve == "linear") {
+    } else if (FLAGS_memory_penalty_curve == "linear") {
         memory_penalty_curve_type = 1;
     } else if (FLAGS_memory_penalty_curve == "square") {
         memory_penalty_curve_type = 2;

@@ -241,10 +241,10 @@ namespace babi {
                       &predict, bidx]() {
                 auto batch = batches[bidx];
                 for (auto& story_idx : batch) {
-                    auto& story = data[story_idx];
+                    auto& stories = data[story_idx];
                     vector<VS> facts_so_far;
                     QA* qa;
-                    for (auto story : story_parser(story)) {
+                    for (auto story : story_parser(stories)) {
                         std::tie(facts_so_far, qa) = story;
                         VS answer = predict(facts_so_far, qa->question);
                         if(answer == qa->answer)

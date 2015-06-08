@@ -8,3 +8,6 @@
 	path = third_party/json11
 	url = git@github.com:nivwusquorum/json11.git
 	branch = feature/ADD_CMakeSupport
+[submodule "third_party/mshadow"]
+	path = third_party/mshadow
+	url = git@github.com:dmlc/mshadow.git

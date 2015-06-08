@@ -224,6 +224,7 @@ struct MatOps {
     **/
     static Mat<R> fast_dropout(Mat<R>);
     static Mat<R> mul(Mat<R>, Mat<R>);
+    static Mat<R> quadratic_form(Mat<R> left, Mat<R> weigths, Mat<R> right);
     static Mat<R> rows_pluck(Mat<R>, Indexing::Index);
     static Mat<R> rows_cols_pluck(Mat<R>, Indexing::Index, Indexing::Index);
     static Mat<R> row_pluck(Mat<R>, int);

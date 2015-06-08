@@ -832,6 +832,24 @@ TEST_F(MatrixTests, powtest) {
     }
 }
 
+TEST_F(MatrixTests, quadratic_form) {
+    int left_size = 2;
+    int right_size = 3;
+    int left_size_outer = 4;
+    int right_size_outer = 5;
+
+    EXPERIMENT_REPEAT {
+        auto left = Mat<R>(left_size, left_size_outer, weights<R>::uniform(20.0));
+        auto middle = Mat<R>(left_size, right_size, weights<R>::uniform(20.0));
+        auto right = Mat<R>(right_size, right_size_outer, weights<R>::uniform(20.0));
+
+        auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+            return MatOps<R>::quadratic_form(Xs[0], Xs[1], Xs[2]);
+        };
+        ASSERT_TRUE(gradient_same<R>(functor, {left, middle, right}, 1e-3));
+    }
+}
+
 TEST_F(MatrixTests, argsort) {
     vector<Mat<R>> mats;
     Mat<R> A(1,1);

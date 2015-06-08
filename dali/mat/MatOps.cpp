@@ -876,6 +876,39 @@ Mat<R> MatOps<R>::mul(
 }
 
 template<typename R>
+Mat<R> MatOps<R>::quadratic_form(
+    Mat<R> left,
+    Mat<R> weights,
+    Mat<R> right) {
+
+    assert2(weights.dims(1) == right.dims(0), "Quadratic form right matrix has wrong dimensions.");
+    assert2(left.dims(0) == weights.dims(0) , "Quadratic form left matrix has wrong dimensions.");
+
+    Mat<R> out (
+        left.dims(1),
+        right.dims(1),
+        false);
+    if (graph::backprop_enabled) {
+        auto left_side_mul = std::make_shared<Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>>(
+            left.dims(1), weights.dims(1)
+        );
+        (*left_side_mul) = left.w().transpose() * weights.w();
+        out.w() = (*left_side_mul) * right.w();
+        graph::emplace_back([left_side_mul, left, weights, right, out](){
+            GRAD(right).noalias() += (*left_side_mul).transpose() * out.dw();
+            auto LeftT_dot_weights_grad = out.dw() * (right.w().transpose());
+            GRAD(left).noalias() += (
+                LeftT_dot_weights_grad * weights.w().transpose()
+            ).transpose();
+            GRAD(weights).noalias() += left.w() * LeftT_dot_weights_grad;
+        });
+    } else {
+        out.w() = left.w().transpose() * weights.w() * right.w();
+    }
+    return out;
+}
+
+template<typename R>
 Mat<R> MatOps<R>::mul_with_bias(
     Mat<R> matrix1,
     Mat<R> matrix2,

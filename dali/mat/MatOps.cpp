@@ -439,6 +439,21 @@ Mat<R> MatOps<R>::pow(Mat<R> matrix, R other) {
 }
 
 template<typename R>
+Mat<R> MatOps<R>::pow(Mat<R> matrix, Mat<R> other) {
+    assert2(other.dims(0) == 1 && other.dims(1) == 1, "exponent must be a 1x1 matrix.");
+    auto out = Mat<R>::empty_like(matrix);
+    out.w() = matrix.w().array().pow(other.w()(0));
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, out, other]() {
+            GRAD(matrix).noalias() += other.w()(0) * ((matrix.w()).array().pow(other.w()(0) - 1.0) * (out.dw()).array()).matrix();
+            GRAD(other)(0) += (
+                matrix.w().unaryExpr(utils::log_or_zero<R>()).array() * out.w().array() * out.dw().array()
+            ).sum();
+        });
+    return out;
+}
+
+template<typename R>
 Mat<R> MatOps<R>::sigmoid(Mat<R> matrix) {
     auto out = Mat<R>::empty_like(matrix);
     out.w() = matrix.w().unaryExpr(utils::sigmoid_operator<R>());

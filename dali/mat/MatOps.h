@@ -229,6 +229,7 @@ struct MatOps {
     static Mat<R> row_pluck(Mat<R>, int);
     static Mat<R> col_pluck(Mat<R>, int);
     static Mat<R> pow(Mat<R>, R);
+    static Mat<R> pow(Mat<R>, Mat<R>);
     static Mat<R> fill(Mat<R>, R);
     static Mat<R> sqrt(Mat<R>);
     static Mat<R> elt_inv(Mat<R>);

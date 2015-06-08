@@ -660,6 +660,11 @@ Mat<R> Mat<R>::operator^(R other) const {
 }
 
 template<typename R>
+Mat<R> Mat<R>::operator^(Mat<R> other) const {
+    return MatOps<R>::pow(*this, other);
+}
+
+template<typename R>
 Mat<R> Mat<R>::operator^(int other) const {
     return MatOps<R>::pow(*this, (R) other);
 }

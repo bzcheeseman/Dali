@@ -350,18 +350,24 @@ namespace utils {
 
         template<typename T>
         struct sigmoid_operator {
-                T operator() (T) const;
+            T operator() (T) const;
         };
+
+        template<typename T>
+        struct log_or_zero {
+            T operator() (T) const;
+        };
+
         template<typename T>
         struct steep_sigmoid_operator {
-                // Sourced from Indico's Passage library's activations
-                // (Theano Python module)
-                // https://github.com/IndicoDataSolutions/Passage
-                // motivation in this Youtube video:
-                // https://www.youtube.com/watch?v=VINCQghQRuM
-                const T aggressiveness;
-                steep_sigmoid_operator(T aggressiveness);
-                T operator() (T) const;
+            // Sourced from Indico's Passage library's activations
+            // (Theano Python module)
+            // https://github.com/IndicoDataSolutions/Passage
+            // motivation in this Youtube video:
+            // https://www.youtube.com/watch?v=VINCQghQRuM
+            const T aggressiveness;
+            steep_sigmoid_operator(T aggressiveness);
+            T operator() (T) const;
         };
         template<typename T>
         struct tanh_operator {

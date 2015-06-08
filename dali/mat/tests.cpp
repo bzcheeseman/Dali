@@ -814,6 +814,24 @@ TEST_F(LayerTests, GRU) {
     }
 }
 
+TEST_F(MatrixTests, powtest) {
+    int height = 3;
+    int width = 4;
+
+    EXPERIMENT_REPEAT {
+
+        auto mat = Mat<R>(height, width, weights<R>::uniform(0.1, 20.0));
+
+        auto exponent = Mat<R>(1,1);
+        exponent.w()(0) = 2.0;
+
+        auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+            return Xs[0] ^ Xs[1];
+        };
+        ASSERT_TRUE(gradient_same<R>(functor, {mat, exponent}, 1e-3));
+    }
+}
+
 TEST_F(MatrixTests, argsort) {
     vector<Mat<R>> mats;
     Mat<R> A(1,1);

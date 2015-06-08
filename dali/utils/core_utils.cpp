@@ -978,6 +978,13 @@ namespace utils {
     template<typename T>
     T sigmoid_operator<T>::operator () (T x) const { return 1.0 / (1.0 + exp(-x)); }
 
+
+    template<typename T>
+    T log_or_zero<T>::operator () (T x) const { return x > 0 ? log(x) : 0; }
+
+    template struct log_or_zero<float>;
+    template struct log_or_zero<double>;
+
     template<typename T>
     T steep_sigmoid_operator<T>::operator () (T x) const {return 1.0 / (1.0 + exp( - aggressiveness * x));}
 

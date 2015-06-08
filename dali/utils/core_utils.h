@@ -322,7 +322,12 @@ namespace utils {
         -------
         int sample
         **/
-        int randint(int, int);
+        int randint(int lower, int upper);
+
+
+        double randdouble(double lower=0.0, double upper=1.0);
+
+
         /**
         Is Gzip ?
         ---------

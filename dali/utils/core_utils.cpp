@@ -731,13 +731,23 @@ namespace utils {
     }
 
     int randint(int lower, int upper) {
-        if (lower == upper) return lower;
+        assert2 (lower <= upper, "Lower bound must be smaller than upper bound.");
         std::default_random_engine generator;
         std::uniform_int_distribution<int> distribution(lower, upper);
         std::random_device rd;
         generator.seed(rd());
         return distribution(generator);
     }
+
+    double randdouble(double lower, double upper) {
+        assert2 (lower <= upper, "Lower bound must be smaller than upper bound.");
+        std::default_random_engine generator;
+        std::uniform_real_distribution<double> distribution(lower, upper);
+        std::random_device rd;
+        generator.seed(rd());
+        return distribution(generator);
+    }
+
     void Vocab::construct_word2index() {
         uint i = 0;
         for (auto& s : index2word)

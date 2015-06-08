@@ -138,6 +138,7 @@ struct MatOps {
     static Mat<R> transpose(Mat<R>);
     static Mat<R> tanh(Mat<R>);
     static Mat<R> relu(Mat<R>);
+    static Mat<R> abs(Mat<R>);
     /**
     Dropout
     -------

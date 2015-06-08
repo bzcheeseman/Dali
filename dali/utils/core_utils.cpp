@@ -998,7 +998,10 @@ namespace utils {
     T relu_operator<T>::operator() (T x) const { return std::max(x, (T) 0.0); }
 
     template<typename T>
-    T sign_operator<T>::operator() (T x) const { return x > 0.0 ? 1.0 : 0.0; }
+    T max_operator<T>::operator() (T x) const { return x > 0.0 ? 1.0 : 0.0; }
+
+    template<typename T>
+    T sign_operator<T>::operator() (T x) const { return x > 0.0 ? 1.0 : -1.0; }
 
     template<typename T>
     T dtanh_operator<T>::operator() (T x) const { return 1.0 - x*x; }
@@ -1013,6 +1016,7 @@ namespace utils {
     template struct tanh_operator<float>;
     template struct relu_operator<float>;
     template struct sign_operator<float>;
+    template struct max_operator<float>;
     template struct dtanh_operator<float>;
     // template struct clip_operator<float>;
 
@@ -1021,6 +1025,7 @@ namespace utils {
     template struct tanh_operator<double>;
     template struct relu_operator<double>;
     template struct sign_operator<double>;
+    template struct max_operator<double>;
     template struct dtanh_operator<double>;
 
     void exit_with_message(const std::string& message, int error_code) {

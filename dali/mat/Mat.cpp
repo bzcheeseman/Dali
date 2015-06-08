@@ -431,6 +431,11 @@ Mat<R> Mat<R>::exp() const {
 }
 
 template<typename R>
+Mat<R> Mat<R>::abs() const {
+    return MatOps<R>::abs(*this);
+}
+
+template<typename R>
 Mat<R> Mat<R>::T() const {
     return MatOps<R>::transpose(*this);
 }

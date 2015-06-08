@@ -852,7 +852,18 @@ Mat<R> MatOps<R>::relu(Mat<R> matrix) {
     out.w() = matrix.w().unaryExpr(utils::relu_operator<R>());
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out](){
-            GRAD(matrix).noalias() += (out.w().unaryExpr(utils::sign_operator<R>()).array() * out.dw().array()).matrix();
+            GRAD(matrix).noalias() += (out.w().unaryExpr(utils::max_operator<R>()).array() * out.dw().array()).matrix();
+        });
+    return out;
+}
+
+template<typename R>
+Mat<R> MatOps<R>::abs(Mat<R> matrix) {
+    auto out = Mat<R>::empty_like(matrix);
+    out.w() = matrix.w().array().abs().matrix();
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, out](){
+            GRAD(matrix).noalias() += (matrix.w().unaryExpr(utils::sign_operator<R>()).array() * out.dw().array()).matrix();
         });
     return out;
 }

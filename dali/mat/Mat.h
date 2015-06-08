@@ -213,6 +213,7 @@ class Mat {
         Mat<R> mean() const;
         Mat<R> log() const;
         Mat<R> exp() const;
+        Mat<R> abs() const;
         Mat<R> sigmoid() const;
         Mat<R> steep_sigmoid(R aggressiveness = 3.75) const;
         // Warning: transpose makes a copy, uses extra memory

@@ -850,6 +850,21 @@ TEST_F(MatrixTests, quadratic_form) {
     }
 }
 
+TEST_F(MatrixTests, abs) {
+    int input_size = 5;
+    int hidden_size = 3;
+
+    EXPERIMENT_REPEAT {
+        auto mat = Mat<R>(input_size, hidden_size, weights<R>::uniform(0.1, 20.0));
+        auto mat2 = Mat<R>(input_size, hidden_size, weights<R>::uniform(-20.0, -0.1));
+
+        auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+            return MatOps<R>::hstack(Xs).abs();
+        };
+        ASSERT_TRUE(gradient_same<R>(functor, {mat, mat2}, 1e-4));
+    }
+}
+
 TEST_F(MatrixTests, argsort) {
     vector<Mat<R>> mats;
     Mat<R> A(1,1);

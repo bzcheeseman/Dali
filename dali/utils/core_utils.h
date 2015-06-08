@@ -382,6 +382,10 @@ namespace utils {
                 T operator() (T) const;
         };
         template<typename T>
+        struct max_operator {
+                T operator() (T) const;
+        };
+        template<typename T>
         struct dtanh_operator {
                 T operator() (T) const;
         };

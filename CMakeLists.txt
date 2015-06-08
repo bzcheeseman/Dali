@@ -11,11 +11,14 @@ find_package(ZLIB REQUIRED)
 find_package(Gflags REQUIRED)
 find_package(HiRedis REQUIRED)
 
-# OPTIONAL PACAKGES
+# OPTIONAL PACKAGES
 find_package(GooglePerfTools)
 find_package(BLAS)
 find_package(MKL)
 find_package(GTest)
+
+# mshadow
+include(${PROJECT_SOURCE_DIR}/MShadowCMakeLists.cmake)
 
 if (NOT HIREDIS_FOUND)
     message( FATAL_ERROR "ERROR: required dependency HiRedis not found.\n    > brew install hiredis")
@@ -100,7 +103,6 @@ endif(CMAKE_BUILD_TYPE MATCHES "debug")
 
 
 # INCLUDES
-
 include_directories(${MKL_INCLUDE_DIR})
 include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(${PROJECT_SOURCE_DIR})

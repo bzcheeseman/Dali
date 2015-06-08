@@ -24,7 +24,13 @@ class GRU {
 
         Mat<R> activate(Mat<R> input_vector, Mat<R> previous_state) const;
 
+        Mat<R> activate_sequence(std::vector<Mat<R>> input_sequence) const;
+
+        Mat<R> activate_sequence(std::vector<Mat<R>> input_sequence, Mat<R> initial_state) const;
+
         std::vector<Mat<R>> parameters() const;
+
+        Mat<R> initial_state() const;
 };
 
 #endif

@@ -1,5 +1,7 @@
 #include "dali/mat/GRU.h"
 
+using std::vector;
+
 template<typename R>
 GRU<R>::GRU(int _input_size, int _hidden_size) :
     input_size(_input_size),
@@ -46,6 +48,19 @@ Mat<R> GRU<R>::activate(
 }
 
 template<typename R>
+Mat<R> GRU<R>::activate_sequence(vector<Mat<R>> input_sequence) const {
+    return activate_sequence(input_sequence, initial_state());
+}
+
+template<typename R>
+Mat<R> GRU<R>::activate_sequence(vector<Mat<R>> input_sequence, Mat<R> state) const {
+    for (auto& input: input_sequence) {
+        state = activate(input, state);
+    }
+    return state;
+}
+
+template<typename R>
 std::vector<Mat<R>> GRU<R>::parameters() const {
     auto params = reset_layer.parameters();
     auto memory_interpolation_layer_params = memory_interpolation_layer.parameters();
@@ -61,6 +76,11 @@ std::vector<Mat<R>> GRU<R>::parameters() const {
         memory_to_memory_layer_params.end()
     );
     return params;
+}
+
+template<typename R>
+Mat<R> GRU<R>::initial_state() const {
+    return Mat<R>(hidden_size, 1);
 }
 
 template class GRU<float>;

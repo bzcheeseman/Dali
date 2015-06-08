@@ -49,7 +49,7 @@ Mat<R> GRU<R>::activate(
 
 template<typename R>
 Mat<R> GRU<R>::activate_sequence(vector<Mat<R>> input_sequence) const {
-    return activate_sequence(input_sequence, initial_state());
+    return activate_sequence(input_sequence, initial_states());
 }
 
 template<typename R>

@@ -16,6 +16,7 @@ using std::vector;
 using utils::assert2;
 using utils::MS;
 
+
 typedef float REAL_t;
 
 DEFINE_double(reg,                    0.0,     "What penalty to place on L2 norm of weights?");

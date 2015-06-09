@@ -7,7 +7,6 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include <Eigen/Eigen>
 #include "dali/utils.h"
 
 // for outputting json

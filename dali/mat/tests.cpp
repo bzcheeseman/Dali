@@ -1,7 +1,6 @@
 #include <chrono>
 #include <vector>
 #include <gtest/gtest.h>
-#include <Eigen/Eigen>
 
 #include "dali/test_utils.h"
 #include "dali/core.h"
@@ -27,6 +26,15 @@ bool matrix_equals (Mat<R> A, Mat<R> B) {
 template<typename T, typename K, typename J>
 bool matrix_almost_equals (const T& A, const K& B, J eps) {
     return (A.array() - B.array()).abs().array().maxCoeff() < eps;
+}\
+
+template<typename T, typename J>
+bool buffer_almost_equals(T* buffer1, T* buffer2, uint size, J eps) {
+    for (int i=0; i<size; ++i) {
+        if (abs(buffer1[i] - buffer2[i]) > eps)
+            return false;
+    }
+    return true;
 }
 
 template<typename R>
@@ -68,19 +76,18 @@ bool gradient_same(
     graph::NoBackprop nb;
 
     for (auto& arg : arguments) {
-        auto Arg_prime = Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>(arg.dims(0), arg.dims(1));
-        for (int i = 0; i < arg.dims(0); i++) {
-            for (int j = 0; j < arg.dims(1); j++) {
-                auto prev_val = arg.w()(i, j);
-                arg.w()(i, j) = prev_val +  grad_epsilon;
-                auto obj_positive = functor(arguments).w().array().sum();
-                arg.w()(i, j) = prev_val - grad_epsilon;
-                auto obj_negative = functor(arguments).w().array().sum();
-                arg.w()(i, j) = prev_val;
-                Arg_prime(i,j) = (obj_positive - obj_negative) / (2.0 * grad_epsilon);
-            }
+        R  Arg_prime[arg.number_of_elements()];
+        R* arg_buffer = arg.w().data();
+        for (int i = 0; i < arg.number_of_elements(); i++) {
+            auto prev_val = arg_buffer[i];
+            arg_buffer[i] = prev_val +  grad_epsilon;
+            auto obj_positive = functor(arguments).w().array().sum();
+            arg_buffer[i] = prev_val - grad_epsilon;
+            auto obj_negative = functor(arguments).w().array().sum();
+            arg_buffer[i] = prev_val;
+            Arg_prime[i] = (obj_positive - obj_negative) / (2.0 * grad_epsilon);
         }
-        bool did_work_out = matrix_almost_equals(Arg_prime, arg.dw(), tolerance);
+        bool did_work_out = buffer_almost_equals((R*)Arg_prime, arg.dw().data(), arg.number_of_elements(), tolerance);
         worked_out = worked_out && did_work_out;
         if (!did_work_out) {
             std::cout << "-----------\nArg_prime:" << std::endl;
@@ -95,18 +102,6 @@ bool gradient_same(
     }
 
     return worked_out;
-}
-
-typedef MemorySafeTest EigenTests;
-
-TEST_F(EigenTests, eigen_addition) {
-    auto A = Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>(10, 20);
-    A.fill(0);
-    A.array() += 1;
-    auto B = Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>(10, 20);
-    B.fill(0);
-    ASSERT_MATRIX_EQ(A, A)  << "A equals A.";
-    ASSERT_MATRIX_NEQ(A, B) << "A different from B.";
 }
 
 typedef MemorySafeTest MatrixTests;

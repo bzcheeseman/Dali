@@ -29,13 +29,13 @@ struct AutomataState {
         // 0 goes to [0, 1, 2], 1 goes to [1, 2], and 2 goes to 2.
         auto new_states = Mat<REAL_t>(3, 1);
         if (state == 0) {
-            new_states.w()(0, 0) = 0.5;
-            new_states.w()(1, 0) = 0.3;
-            new_states.w()(2, 0) = 0.2;
+            (*new_states.w())(0, 0) = 0.5;
+            (*new_states.w())(1, 0) = 0.3;
+            (*new_states.w())(2, 0) = 0.2;
         }
         if (state == 1) {
-            new_states.w()(1, 0) = 0.5;
-            new_states.w()(2, 0) = 0.5;
+            (*new_states.w())(1, 0) = 0.5;
+            (*new_states.w())(2, 0) = 0.5;
         }
         if (state == 2) {
             assert(false);
@@ -187,8 +187,8 @@ TEST(beam_search, beam_search_score_test) {
     auto initial_state = "";
     auto candidate_scores = [&](state_t state) -> Mat<REAL_t> {
         Mat<REAL_t> ret(2,1);
-        ret.w() << std::log(choices.at(state + "a")),
-                   std::log(choices.at(state + "b"));
+        (*ret.w())(0,0) = std::log(choices.at(state + "a"));
+        (*ret.w())(1,0) = std::log(choices.at(state + "b"));
 
         return ret;
     };

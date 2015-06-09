@@ -57,6 +57,9 @@ class MatInternal {
         R& operator()(int i, int j);
         R operator()(int i, int j) const;
 
+        R& operator()(int i);
+        R operator()(int i) const;
+
         const R* data() const;
         R* data();
 
@@ -75,6 +78,15 @@ class GradInternal {
 
         GradInternal(dim_t n, dim_t d, bool empty=true);
         GradInternal(const GradInternal<R>& g);
+
+        R& operator()(int i, int j);
+        R operator()(int i, int j) const;
+
+        R& operator()(int i);
+        R operator()(int i) const;
+
+        const R* data() const;
+        R* data();
 
         operator eigen_mat();
 };
@@ -197,7 +209,10 @@ struct MatOps {
 
     static Mat<R> sigmoid(Mat<R>);
     static Mat<R> softmax(Mat<R>, R temperature=1.0);
+    static Mat<R> softmax_transpose(Mat<R>, R temperature=1.0);
     static Mat<R> softmax_no_grad(Mat<R>, R temperature = 1.0);
+    static Mat<R> softmax_no_grad_transpose(Mat<R>, R temperature=1.0);
+
 
     // convenience functions for performing a softmax
     // across a vector of 1x1 matrices:

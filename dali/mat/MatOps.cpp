@@ -48,6 +48,16 @@ R MatInternal<R>::operator()(int i, int j) const {
 }
 
 template<typename R>
+R& MatInternal<R>::operator()(int i) {
+    return w(i);
+}
+
+template<typename R>
+R MatInternal<R>::operator()(int i) const {
+    return w(i);
+}
+
+template<typename R>
 const R* MatInternal<R>::data() const {
     return w.data();
 }
@@ -94,6 +104,38 @@ GradInternal<R>::operator typename GradInternal<R>::eigen_mat () {
 }
 
 
+
+template<typename R>
+R& GradInternal<R>::operator()(int i, int j) {
+    return dw(i,j);
+}
+
+template<typename R>
+R GradInternal<R>::operator()(int i, int j) const {
+    return dw(i,j);
+}
+
+template<typename R>
+R& GradInternal<R>::operator()(int i) {
+    return dw(i);
+}
+
+template<typename R>
+R GradInternal<R>::operator()(int i) const {
+    return dw(i);
+}
+
+template<typename R>
+const R* GradInternal<R>::data() const {
+    return dw.data();
+}
+
+template<typename R>
+R* GradInternal<R>::data() {
+    return dw.data();
+}
+
+
 /** END GRADINTERNAL **/
 
 template<typename R>
@@ -105,11 +147,11 @@ Mat<R> MatOps<R>::eltmul_broadcast(
                  << " cannot be element multiplied with broadcast,"
                  << " they do not have the same dimensions.");
     auto out = Mat<R>::empty_like(matrix1);
-    out.w() = (GET_MAT(matrix1).array().colwise() * GET_MAT(matrix2).col(0).array()).matrix();
+    GET_MAT(out) = (GET_MAT(matrix1).array().colwise() * GET_MAT(matrix2).col(0).array()).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
-            GRAD(matrix1).noalias() += ((out.dw()).array().colwise() * (matrix2.w()).col(0).array()).matrix();
-            GRAD(matrix2).noalias() += ((matrix1.w()).array() * (out.dw()).array()).matrix().rowwise().sum();
+            GRAD(matrix1).noalias() += ((GET_GRAD(out)).array().colwise() * (GET_MAT(matrix2)).col(0).array()).matrix();
+            GRAD(matrix2).noalias() += ((GET_MAT(matrix1)).array() * (GET_GRAD(out)).array()).matrix().rowwise().sum();
         });
     return out;
 }
@@ -123,15 +165,22 @@ Mat<R> MatOps<R>::eltdivide_broadcast(
                  << " cannot be element divided with broadcast,"
                  << " they do not have the same dimensions.");
     auto out = Mat<R>::empty_like(matrix1);
-    out.w() = (GET_MAT(matrix1).array().colwise() / GET_MAT(matrix2).col(0).array()).matrix();
+    GET_MAT(out) = (
+        GET_MAT(matrix1).array().colwise()
+        /
+        GET_MAT(matrix2).col(0).array()
+    ).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
-            GRAD(matrix1).noalias() += ((out.dw()).array().colwise() * (matrix2.w()).col(0).array().inverse()).matrix();
+            GRAD(matrix1).noalias() += (
+                (GET_GRAD(out)).array().colwise() *
+                (GET_MAT(matrix2)).col(0).array().inverse()
+            ).matrix();
             GRAD(matrix2).noalias() -= (
                 (
                     GET_MAT(matrix1).array().colwise() /
                     GET_MAT(matrix2).col(0).array().square()
-                ).matrix().array() * out.dw().array()
+                ).matrix().array() * GET_GRAD(out).array()
             ).matrix().rowwise().sum();
         });
     return out;
@@ -149,8 +198,8 @@ Mat<R> MatOps<R>::eltdivide_broadcast_reversed(
     GET_MAT(out) = (GET_MAT(matrix1).array().inverse().colwise() * GET_MAT(matrix2).col(0).array()).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
-            GRAD(matrix1).noalias() -= ((GET_MAT(matrix1).array().square().inverse().colwise() * matrix2.w().col(0).array()).matrix().array() * out.dw().array()).matrix();
-            GRAD(matrix2).noalias() += (GET_MAT(matrix1).array().inverse() * out.dw().array()).rowwise().sum().matrix();
+            GRAD(matrix1).noalias() -= ((GET_MAT(matrix1).array().square().inverse().colwise() * GET_MAT(matrix2).col(0).array()).matrix().array() * GET_GRAD(out).array()).matrix();
+            GRAD(matrix2).noalias() += (GET_MAT(matrix1).array().inverse() * GET_GRAD(out).array()).rowwise().sum().matrix();
         });
     return out;
 }
@@ -171,8 +220,8 @@ Mat<R> MatOps<R>::eltmul(
     GET_MAT(out) = (GET_MAT(matrix1).array() * GET_MAT(matrix2).array()).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
-            GRAD(matrix1).noalias() += ((matrix2.w()).array() * (out.dw()).array()).matrix();
-            GRAD(matrix2).noalias() += ((matrix1.w()).array() * (out.dw()).array()).matrix();
+            GRAD(matrix1).noalias() += ((GET_MAT(matrix2)).array() * (GET_GRAD(out)).array()).matrix();
+            GRAD(matrix2).noalias() += ((GET_MAT(matrix1)).array() * (GET_GRAD(out)).array()).matrix();
         });
     return out;
 }
@@ -181,7 +230,7 @@ template<typename R>
 Mat<R> MatOps<R>::max(Mat<R> matrix, R lower_bound) {
     auto out = Mat<R>::empty_like(matrix);
     // out = max(matrix, lower_bound);
-    out.w() = matrix.w().unaryExpr(
+    GET_MAT(out) = GET_MAT(matrix).unaryExpr(
         LambdaOperator<R>([&lower_bound](R item) {
             return std::max(item, lower_bound);
         }));
@@ -190,11 +239,11 @@ Mat<R> MatOps<R>::max(Mat<R> matrix, R lower_bound) {
             if (!matrix.constant) {
                 // mask = (matrix >= lower_bound) ? 1.0 : 0:0;
 
-                auto mask = matrix.w().unaryExpr(
+                auto mask = GET_MAT(matrix).unaryExpr(
                     LambdaOperator<R>([&lower_bound](R item) {
                         return item >= lower_bound ? 1.0 : 0.0;
                     }));
-                matrix.dw().noalias() += (mask.array() * (out.dw()).array()).matrix();
+                GET_GRAD(matrix).noalias() += (mask.array() * (GET_GRAD(out)).array()).matrix();
             }
         });
     return out;
@@ -206,10 +255,10 @@ Mat<R> MatOps<R>::eltmul(
     R alpha) {
 
     auto out = Mat<R>::empty_like(matrix);
-    out.w() = (GET_MAT(matrix).array() * alpha).matrix();
+    GET_MAT(out) = (GET_MAT(matrix).array() * alpha).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, alpha, out]() {
-            GRAD(matrix).noalias() += (alpha * (out.dw()).array()).matrix();
+            GRAD(matrix).noalias() += (alpha * (GET_GRAD(out)).array()).matrix();
         });
     return out;
 }
@@ -242,8 +291,16 @@ Mat<R> MatOps<R>::eltdivide(
     GET_MAT(out) = (GET_MAT(matrix1).array() / GET_MAT(matrix2).array()).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
-            GRAD(matrix1).noalias() += ((matrix2.w()).array().inverse() * (out.dw()).array()).matrix();
-            GRAD(matrix2).noalias() -= (((GET_MAT(matrix1).array() / GET_MAT(matrix2).array().square()) * (out.dw()).array()).matrix();
+            GRAD(matrix1).noalias() += (
+                GET_MAT(matrix2).array().inverse() *
+                GET_GRAD(out).array()
+            ).matrix();
+            GRAD(matrix2).noalias() -= (
+                (
+                    GET_MAT(matrix1).array() /
+                    GET_MAT(matrix2).array().square()
+                ) * GET_GRAD(out).array()
+            ).matrix();
         });
     return out;
 }
@@ -257,7 +314,7 @@ Mat<R> MatOps<R>::eltdivide(
     GET_MAT(out) = (GET_MAT(matrix).array() / alpha).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, alpha, out]() {
-            GRAD(matrix).noalias() += ((1.0 / alpha) * (out.dw()).array()).matrix();
+            GRAD(matrix).noalias() += ((1.0 / alpha) * (GET_GRAD(out)).array()).matrix();
         });
     return out;
 }
@@ -270,11 +327,11 @@ Mat<R> MatOps<R>::eltmul_broadcast_rowwise(
     if (matrix1.dims(1) != row_vector.dims(1) || row_vector.dims(0) != 1)
         throw std::invalid_argument("Matrices A and B^T cannot be element multiplied with broadcast, they do not have the same dimensions.");
     auto out = Mat<R>::empty_like(matrix1);
-    GET_MAT(out) = (GET_MAT(matrix1).array().rowwise() * row_vector.w().row(0).array()).matrix();
+    GET_MAT(out) = (GET_MAT(matrix1).array().rowwise() * GET_MAT(row_vector).row(0).array()).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, row_vector, out]() {
-            GRAD(matrix1).noalias() += ((out.dw()).array().rowwise() * (row_vector.w()).row(0).array()).matrix();
-            GRAD(row_vector).noalias() += (((matrix1.w()).array() * (out.dw()).array()).matrix().colwise().sum()).matrix();
+            GRAD(matrix1).noalias() += ((GET_GRAD(out)).array().rowwise() * (GET_MAT(row_vector)).row(0).array()).matrix();
+            GRAD(row_vector).noalias() += (((GET_MAT(matrix1)).array() * (GET_GRAD(out)).array()).matrix().colwise().sum()).matrix();
         });
     return out;
 }
@@ -301,8 +358,14 @@ Mat<R> MatOps<R>::eltmul_rowwise(
     GET_MAT(out) = (GET_MAT(matrix1).array() * GET_MAT(matrix2).transpose().array()).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
-            GRAD(matrix1).noalias() += ((GET_MAT(matrix2)).transpose().array() * (out.dw()).array()).matrix();
-            GRAD(matrix2).noalias() += ((GET_MAT(matrix1).array() * (out.dw()).array()).matrix().transpose();
+            GRAD(matrix1).noalias() += (
+                GET_MAT(matrix2).transpose().array() *
+                GET_GRAD(out).array()
+            ).matrix();
+            GRAD(matrix2).noalias() += (
+                GET_MAT(matrix1).array() *
+                GET_GRAD(out).array()
+            ).matrix().transpose();
         });
     return out;
 }
@@ -331,11 +394,11 @@ Mat<R> MatOps<R>::add(
     assert2((matrix1.dims(0) == matrix2.dims(0)) && (matrix1.dims(1) == matrix2.dims(1)),
         "Matrices cannot be added, they do not have the same dimensions.");
     auto out = Mat<R>::empty_like(matrix1);
-    out.w() = matrix1.w() + matrix2.w();
+    GET_MAT(out) = GET_MAT(matrix1) + GET_MAT(matrix2);
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
-            GRAD(matrix1).noalias() += out.dw();
-            GRAD(matrix2).noalias() += out.dw();
+            GRAD(matrix1).noalias() += GET_GRAD(out);
+            GRAD(matrix2).noalias() += GET_GRAD(out);
         });
     return out;
 }
@@ -354,11 +417,11 @@ Mat<R> MatOps<R>::sub(
     assert2((matrix1.dims(0) == matrix2.dims(0)) && (matrix1.dims(1) == matrix2.dims(1)),
         "Matrices cannot be subtracted, they do not have the same dimensions.");
     auto out = Mat<R>::empty_like(matrix1);
-    out.w() = matrix1.w() - matrix2.w();
+    GET_MAT(out) = GET_MAT(matrix1) - GET_MAT(matrix2);
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
-            GRAD(matrix1).noalias() += out.dw();
-            GRAD(matrix2).noalias() -= out.dw();
+            GRAD(matrix1).noalias() += GET_GRAD(out);
+            GRAD(matrix2).noalias() -= GET_GRAD(out);
         });
     return out;
 }
@@ -382,11 +445,11 @@ Mat<R> MatOps<R>::add_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
     if (matrix1.dims(0) != matrix2.dims(0) || matrix2.dims(1) != 1)
             throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
     auto out = Mat<R>::empty_like(matrix1);
-    out.w() = (matrix1.w().colwise() + matrix2.w().col(0)).matrix();
+    GET_MAT(out) = (GET_MAT(matrix1).colwise() + GET_MAT(matrix2).col(0)).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
-            GRAD(matrix1).noalias() += out.dw();
-            GRAD(matrix2).noalias() += out.dw().rowwise().sum();
+            GRAD(matrix1).noalias() += GET_GRAD(out);
+            GRAD(matrix2).noalias() += GET_GRAD(out).rowwise().sum();
         });
     return out;
 }
@@ -397,11 +460,11 @@ Mat<R> MatOps<R>::sub_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
     if (matrix1.dims(0) != matrix2.dims(0) || matrix2.dims(1) != 1)
         throw std::invalid_argument("Matrices cannot be substracted with broadcast, they do not have the same dimensions.");
     auto out = Mat<R>::empty_like(matrix1);
-    out.w() = (matrix1.w().colwise() - matrix2.w().col(0)).matrix();
+    GET_MAT(out) = (GET_MAT(matrix1).colwise() - GET_MAT(matrix2).col(0)).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
-            GRAD(matrix1).noalias() += out.dw();
-            GRAD(matrix2).noalias() -= out.dw().rowwise().sum();
+            GRAD(matrix1).noalias() += GET_GRAD(out);
+            GRAD(matrix2).noalias() -= GET_GRAD(out).rowwise().sum();
         });
     return out;
 }
@@ -412,11 +475,11 @@ Mat<R> MatOps<R>::sub_broadcast_reversed(Mat<R> matrix1, Mat<R> matrix2) {
     if (matrix1.dims(0) != matrix2.dims(0) || matrix2.dims(1) != 1)
         throw std::invalid_argument("Matrices cannot be substracted with broadcast, they do not have the same dimensions.");
     auto out = Mat<R>::empty_like(matrix1);
-    out.w() = ((-matrix1.w()).colwise() + matrix2.w().col(0)).matrix();
+    GET_MAT(out) = ((-GET_MAT(matrix1)).colwise() + GET_MAT(matrix2).col(0)).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out] () {
-            GRAD(matrix1).noalias() -= out.dw();
-            GRAD(matrix2).noalias() += out.dw().rowwise().sum();
+            GRAD(matrix1).noalias() -= GET_GRAD(out);
+            GRAD(matrix2).noalias() += GET_GRAD(out).rowwise().sum();
         });
     return out;
 }
@@ -458,7 +521,7 @@ Mat<R> MatOps<R>::square(Mat<R> matrix) {
     GET_MAT(out) = GET_MAT(matrix).array().square();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out]() {
-            GRAD(matrix).noalias() += 2.0 * ((matrix.w()).array() * (out.dw()).array()).matrix();
+            GRAD(matrix).noalias() += 2.0 * ((GET_MAT(matrix)).array() * (GET_GRAD(out)).array()).matrix();
         });
     return out;
 }
@@ -466,7 +529,7 @@ Mat<R> MatOps<R>::square(Mat<R> matrix) {
 template<typename R>
 Mat<R> MatOps<R>::L2_norm(Mat<R> matrix) {
     auto out = Mat<R>(1, 1, false);
-    out.w()(0) = matrix.w().norm();
+    GET_MAT(out)(0) = GET_MAT(matrix).norm();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out]() {
             GRAD(matrix).noalias() += ((GET_MAT(matrix).array() / GET_MAT(out)(0)) * GET_GRAD(out)(0)).matrix();
@@ -499,7 +562,7 @@ Mat<R> MatOps<R>::elt_inv(Mat<R> matrix) {
 template<typename R>
 Mat<R> MatOps<R>::fill(Mat<R> matrix, R filler) {
     auto out = Mat<R>::empty_like(matrix);
-    out.w().fill(filler);
+    GET_MAT(out).fill(filler);
     return out;
 }
 
@@ -529,10 +592,10 @@ template<typename R>
 Mat<R> MatOps<R>::pow(Mat<R> matrix, Mat<R> other) {
     assert2(other.dims(0) == 1 && other.dims(1) == 1, "exponent must be a 1x1 matrix.");
     auto out = Mat<R>::empty_like(matrix);
-    GET_MAT(out) = GET_MAT(matrix).array().pow(other.w()(0));
+    GET_MAT(out) = GET_MAT(matrix).array().pow(GET_MAT(other)(0));
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out, other]() {
-            GRAD(matrix).noalias() += GET_MAT(other)(0) * ((matrix.w()).array().pow(other.w()(0) - 1.0) * (GET_MAT(out)).array()).matrix();
+            GRAD(matrix).noalias() += GET_MAT(other)(0) * ((GET_MAT(matrix)).array().pow(GET_MAT(other)(0) - 1.0) * (GET_MAT(out)).array()).matrix();
             GRAD(other)(0) += (
                 GET_MAT(matrix).unaryExpr(utils::log_or_zero<R>()).array() * GET_MAT(out).array() * GET_GRAD(out).array()
             ).sum();
@@ -555,13 +618,14 @@ Mat<R> MatOps<R>::sigmoid(Mat<R> matrix) {
 template<typename R>
 Mat<R> MatOps<R>::softmax_no_grad(Mat<R> matrix, R temperature) {
     auto out = Mat<R>::empty_like(matrix);
-    auto layer_max = matrix.w().colwise().maxCoeff().array().matrix();
+
+    auto layer_max = GET_MAT(matrix).colwise().maxCoeff().array().matrix();
     auto exped_distributions = (
-        (matrix.w().rowwise() - layer_max.row(0)) / temperature
+        (GET_MAT(matrix).rowwise() - layer_max.row(0)) / temperature
     ).array().exp().matrix();
 
     auto total_distribution = exped_distributions.colwise().sum().array().matrix();
-    out.w() = (exped_distributions.array().rowwise() / total_distribution.row(0).array());
+    GET_MAT(out) = (exped_distributions.array().rowwise() / total_distribution.row(0).array());
     return out;
 }
 
@@ -583,11 +647,39 @@ Mat<R> MatOps<R>::softmax(Mat<R> matrix, R temperature) {
 }
 
 template<typename R>
+Mat<R> MatOps<R>::softmax_transpose(Mat<R> matrix, R temperature) {
+    Mat<R> out = MatOps<R>::softmax_no_grad_transpose(matrix, temperature);
+    if (graph::backprop_enabled && !matrix.constant)
+        graph::emplace_back([matrix, temperature, out]() {
+            auto& dw = GET_GRAD(matrix);
+            auto& sm = GET_MAT(out);
+            auto& dy = GET_GRAD(out);
+            eigen_mat sm_times_dy = (sm.array() * dy.array());
+            auto rowwise_sums                      = sm_times_dy.rowwise().sum();
+            for (size_t i = 0; i < matrix.dims(0); ++i) {
+                dw.row(i) += sm_times_dy.row(i) - sm.row(i) * rowwise_sums(i);
+            }
+        });
+    return out;
+}
+
+template<typename R>
+Mat<R> MatOps<R>::softmax_no_grad_transpose(Mat<R> matrix, R temperature) {
+    auto out = Mat<R>::empty_like(matrix);
+    auto layer_max = GET_MAT(matrix).rowwise().maxCoeff().array().matrix();
+    auto exped_distributions = (GET_MAT(matrix).colwise() - layer_max.row(0)).array().exp().matrix();
+
+    auto total_distribution = exped_distributions.rowwise().sum().array().matrix();
+    GET_MAT(out) = (exped_distributions.array().colwise() / total_distribution.col(0).array());
+    return out;
+}
+
+template<typename R>
 vector<Mat<R>> MatOps<R>::softmax_no_grad(const vector<Mat<R>>& matrices, R temperature) {
     vector<Mat<R>> out;
     out.reserve(matrices.size());
     assert2(matrices.size() > 0, "Must be a non empty list of vectors to softmax.");
-    R layer_max = matrices[0].w()(0);
+    R layer_max = GET_MAT(matrices[0])(0);
 
     for (auto& mat : matrices) {
         assert2(mat.dims(0) == 1 && mat.dims(1) == 1, "Softmax on a vector must be made on 1x1 matrices only.");
@@ -613,17 +705,17 @@ vector<Mat<R>> MatOps<R>::softmax(const vector<Mat<R>>& matrices, R temperature)
             R colwise_sums = 0.0;
 
             for (int i = 0; i < out.size(); i++) {
-                auto& dw = matrices[i].dw();
-                auto& sm = out[i].w();
-                auto& dy = out[i].dw();
+                auto& dw = GET_GRAD(matrices[i]);
+                auto& sm = GET_MAT(out[i]);
+                auto& dy = GET_GRAD(out[i]);
                 colwise_sums += sm(0) * dy(0);
             }
 
             for (int i = 0; i < out.size(); i++) {
                 if (!matrices[i].constant) {
-                    auto& dw = matrices[i].dw();
-                    auto& sm = out[i].w();
-                    auto& dy = out[i].dw();
+                    auto& dw = GET_GRAD(matrices[i]);
+                    auto& sm = GET_MAT(out[i]);
+                    auto& dy = GET_GRAD(out[i]);
                     dw(0) += ((sm(0) * dy(0)) - (sm(0) * colwise_sums)) / temperature;
                 }
             }
@@ -634,7 +726,7 @@ vector<Mat<R>> MatOps<R>::softmax(const vector<Mat<R>>& matrices, R temperature)
 template<typename R>
 Mat<R> MatOps<R>::steep_sigmoid(Mat<R> matrix, R aggressiveness) {
     auto out = Mat<R>::empty_like(matrix);
-    GET_MAT(out) = matrix.w().unaryExpr(utils::steep_sigmoid_operator<R>(aggressiveness));
+    GET_MAT(out) = GET_MAT(matrix).unaryExpr(utils::steep_sigmoid_operator<R>(aggressiveness));
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out, aggressiveness](){
             GRAD(matrix).noalias() += (aggressiveness * ((GET_MAT(out)).array() - GET_MAT(out).array().square()) * GET_GRAD(out).array()).matrix();
@@ -674,7 +766,7 @@ Mat<R> MatOps<R>::sigmoid_binary_cross_entropy(Mat<R> matrix, R t) {
     auto out = Mat<R>::empty_like(matrix);
 
     auto sigmoided_input = std::make_shared<eigen_mat>(
-        matrix.w().array().unaryExpr(utils::sigmoid_operator<R>())
+        GET_MAT(matrix).array().unaryExpr(utils::sigmoid_operator<R>())
     );
 
     GET_MAT(out) = -(
@@ -698,7 +790,7 @@ Mat<R> MatOps<R>::binary_cross_entropy(Mat<R> matrix, R t) {
         matrix.dims(1),
         false);
 
-    auto x = matrix.w().array();
+    auto x = GET_MAT(matrix).array();
 
     GET_MAT(out) = (-(t * (x + EPS).log() + (1.0-t) * (1.0 - x + EPS).log())).matrix();
 
@@ -706,9 +798,14 @@ Mat<R> MatOps<R>::binary_cross_entropy(Mat<R> matrix, R t) {
 
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, t, out](){
-            auto x = matrix.w().array();
-            GRAD(matrix).array() += (t-x) / (x*(x- 1.0) + EPS)* GET_GRAD(out).array();
-            DEBUG_ASSERT_GRAD_NOT_NAN(matrix));
+            auto x = GET_MAT(matrix).array();
+            GRAD(matrix).array() += (
+                (
+                    (t - x) /
+                    (x * (x - 1.0) + EPS)
+                ) * GET_GRAD(out).array()
+            );
+            DEBUG_ASSERT_GRAD_NOT_NAN(matrix);
         });
 
     return out;
@@ -716,7 +813,7 @@ Mat<R> MatOps<R>::binary_cross_entropy(Mat<R> matrix, R t) {
 
 template<typename R>
 Mat<R> MatOps<R>::cross_entropy(Mat<R> matrix, uint answer_idx) {
-    DEBUG_ASSERT_BOUNDS(matrix.w(),0.0,1.0 + EPS);
+    DEBUG_ASSERT_BOUNDS(GET_MAT(matrix),0.0,1.0 + EPS);
     assert(matrix.dims().size() > 1);
     assert(answer_idx < matrix.dims(0));
     Mat<R> out =  Mat<R>(
@@ -841,12 +938,12 @@ Mat<R> MatOps<R>::hstack(Mat<R> matrix1, Mat<R> matrix2) {
         matrix1.dims(1) + matrix2.dims(1),
         false
     );
-    out.w().block(0,0, matrix1.dims(0), matrix1.dims(1)) = matrix1.w();
-    out.w().block(0,matrix1.dims(1), matrix2.dims(0), matrix2.dims(1)) = matrix2.w();
+    GET_MAT(out).block(0,0, matrix1.dims(0), matrix1.dims(1)) = GET_MAT(matrix1);
+    GET_MAT(out).block(0,matrix1.dims(1), matrix2.dims(0), matrix2.dims(1)) = GET_MAT(matrix2);
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
-            GRAD(matrix1).noalias() += out.dw().block(0,0, matrix1.dims(0), matrix1.dims(1));
-            GRAD(matrix2).noalias() += out.dw().block(0,matrix1.dims(1), matrix2.dims(0), matrix2.dims(1));
+            GRAD(matrix1).noalias() += GET_GRAD(out).block(0,0, matrix1.dims(0), matrix1.dims(1));
+            GRAD(matrix2).noalias() += GET_GRAD(out).block(0,matrix1.dims(1), matrix2.dims(0), matrix2.dims(1));
         });
     return out;
 }
@@ -878,14 +975,14 @@ Mat<R> MatOps<R>::hstack(const std::vector<Mat<R>>& matrices) {
     );
     int offset = 0;
     for (auto& mat : matrices) {
-        out.w().block(0, offset, mat.dims(0), mat.dims(1)) = mat.w();
+        GET_MAT(out).block(0, offset, mat.dims(0), mat.dims(1)) = GET_MAT(mat);
         offset += mat.dims(1);
     }
     if (graph::backprop_enabled)
         graph::emplace_back([matrices, out]() {
             int offset = 0;
             for (auto & mat : matrices) {
-                GRAD(mat).noalias() += out.dw().block(0, offset, mat.dims(0), mat.dims(1));
+                GRAD(mat).noalias() += GET_GRAD(out).block(0, offset, mat.dims(0), mat.dims(1));
                 offset += mat.dims(1);
             }
         });
@@ -901,12 +998,12 @@ Mat<R> MatOps<R>::vstack(Mat<R> matrix1, Mat<R> matrix2) {
         matrix1.dims(1),
         false
     );
-    out.w().block(0,0, matrix1.dims(0), matrix1.dims(1)) = matrix1.w();
-    out.w().block(matrix1.dims(0),0, matrix2.dims(0), matrix2.dims(1)) = matrix2.w();
+    GET_MAT(out).block(0,0, matrix1.dims(0), matrix1.dims(1)) = GET_MAT(matrix1);
+    GET_MAT(out).block(matrix1.dims(0),0, matrix2.dims(0), matrix2.dims(1)) = GET_MAT(matrix2);
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
-            GRAD(matrix1).noalias() += out.dw().block(0,0, matrix1.dims(0), matrix1.dims(1));
-            GRAD(matrix2).noalias() += out.dw().block(matrix1.dims(0),0, matrix2.dims(0), matrix2.dims(1));
+            GRAD(matrix1).noalias() += GET_GRAD(out).block(0,0, matrix1.dims(0), matrix1.dims(1));
+            GRAD(matrix2).noalias() += GET_GRAD(out).block(matrix1.dims(0),0, matrix2.dims(0), matrix2.dims(1));
         });
     return out;
 }
@@ -936,14 +1033,14 @@ Mat<R> MatOps<R>::vstack(const std::vector<Mat<R>>& matrices) {
     );
     int offset = 0;
     for (auto& mat : matrices) {
-        out.w().block(offset, 0, mat.dims(0), mat.dims(1)) = mat.w();
+        GET_MAT(out).block(offset, 0, mat.dims(0), mat.dims(1)) = GET_MAT(mat);
         offset += mat.dims(0);
     }
     if (graph::backprop_enabled)
         graph::emplace_back([matrices, out]() {
             int offset = 0;
             for (auto & mat : matrices) {
-                GRAD(mat).noalias() += out.dw().block(offset,0, mat.dims(0), mat.dims(1));
+                GRAD(mat).noalias() += GET_GRAD(out).block(offset,0, mat.dims(0), mat.dims(1));
                 offset += mat.dims(0);
             }
         });
@@ -957,10 +1054,10 @@ Mat<R> MatOps<R>::transpose(Mat<R> matrix) {
         matrix.dims(1),
         matrix.dims(0),
         false);
-    out.w() = matrix.w().transpose();
+    GET_MAT(out) = GET_MAT(matrix).transpose();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out](){
-            GRAD(matrix).noalias() += (out.dw()).transpose();
+            GRAD(matrix).noalias() += (GET_GRAD(out)).transpose();
         });
     return out;
 }
@@ -968,10 +1065,10 @@ Mat<R> MatOps<R>::transpose(Mat<R> matrix) {
 template<typename R>
 Mat<R> MatOps<R>::tanh(Mat<R> matrix) {
     auto out = Mat<R>::empty_like(matrix);
-    out.w() = matrix.w().unaryExpr(utils::tanh_operator<R>());
+    GET_MAT(out) = GET_MAT(matrix).unaryExpr(utils::tanh_operator<R>());
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out](){
-            GRAD(matrix).noalias() += (out.w().unaryExpr(utils::dtanh_operator<R>()).array() * out.dw().array()).matrix();
+            GRAD(matrix).noalias() += (GET_MAT(out).unaryExpr(utils::dtanh_operator<R>()).array() * GET_GRAD(out).array()).matrix();
         });
     return out;
 }
@@ -979,10 +1076,10 @@ Mat<R> MatOps<R>::tanh(Mat<R> matrix) {
 template<typename R>
 Mat<R> MatOps<R>::relu(Mat<R> matrix) {
     auto out = Mat<R>::empty_like(matrix);
-    out.w() = matrix.w().unaryExpr(utils::relu_operator<R>());
+    GET_MAT(out) = GET_MAT(matrix).unaryExpr(utils::relu_operator<R>());
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out](){
-            GRAD(matrix).noalias() += (out.w().unaryExpr(utils::max_operator<R>()).array() * out.dw().array()).matrix();
+            GRAD(matrix).noalias() += (GET_MAT(out).unaryExpr(utils::max_operator<R>()).array() * GET_GRAD(out).array()).matrix();
         });
     return out;
 }
@@ -990,10 +1087,10 @@ Mat<R> MatOps<R>::relu(Mat<R> matrix) {
 template<typename R>
 Mat<R> MatOps<R>::abs(Mat<R> matrix) {
     auto out = Mat<R>::empty_like(matrix);
-    out.w() = matrix.w().array().abs().matrix();
+    GET_MAT(out) = GET_MAT(matrix).array().abs().matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out](){
-            GRAD(matrix).noalias() += (matrix.w().unaryExpr(utils::sign_operator<R>()).array() * out.dw().array()).matrix();
+            GRAD(matrix).noalias() += (GET_MAT(matrix).unaryExpr(utils::sign_operator<R>()).array() * GET_GRAD(out).array()).matrix();
         });
     return out;
 }
@@ -1007,11 +1104,11 @@ Mat<R> MatOps<R>::mul(
         matrix1.dims(0),
         matrix2.dims(1),
         false);
-    out.w() = matrix1.w() * matrix2.w();
+    GET_MAT(out) = GET_MAT(matrix1) * GET_MAT(matrix2);
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out](){
-            GRAD(matrix1).noalias() += (out.dw()) * ((matrix2.w()).transpose());
-            GRAD(matrix2).noalias() += matrix1.w().transpose() * (out.dw());
+            GRAD(matrix1).noalias() += (GET_GRAD(out)) * ((GET_MAT(matrix2)).transpose());
+            GRAD(matrix2).noalias() += GET_MAT(matrix1).transpose() * (GET_GRAD(out));
         });
     return out;
 }
@@ -1033,18 +1130,18 @@ Mat<R> MatOps<R>::quadratic_form(
         auto left_side_mul = std::make_shared<Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>>(
             left.dims(1), weights.dims(1)
         );
-        (*left_side_mul) = left.w().transpose() * weights.w();
-        out.w() = (*left_side_mul) * right.w();
+        (*left_side_mul) = GET_MAT(left).transpose() * GET_MAT(weights);
+        GET_MAT(out) = (*left_side_mul) * GET_MAT(right);
         graph::emplace_back([left_side_mul, left, weights, right, out](){
-            GRAD(right).noalias() += (*left_side_mul).transpose() * out.dw();
-            auto LeftT_dot_weights_grad = out.dw() * (right.w().transpose());
+            GRAD(right).noalias() += (*left_side_mul).transpose() * GET_GRAD(out);
+            auto LeftT_dot_weights_grad = GET_GRAD(out) * (GET_MAT(right).transpose());
             GRAD(left).noalias() += (
-                LeftT_dot_weights_grad * weights.w().transpose()
+                LeftT_dot_weights_grad * GET_MAT(weights).transpose()
             ).transpose();
-            GRAD(weights).noalias() += left.w() * LeftT_dot_weights_grad;
+            GRAD(weights).noalias() += GET_MAT(left) * LeftT_dot_weights_grad;
         });
     } else {
-        out.w() = left.w().transpose() * weights.w() * right.w();
+        GET_MAT(out) = GET_MAT(left).transpose() * GET_MAT(weights) * GET_MAT(right);
     }
     return out;
 }
@@ -1061,12 +1158,12 @@ Mat<R> MatOps<R>::mul_with_bias(
             matrix1.dims(0),
             matrix2.dims(1),
             false);
-    out.w() = ((matrix1.w() * matrix2.w()).colwise() + bias.w().col(0)).matrix();
+    GET_MAT(out) = ((GET_MAT(matrix1) * GET_MAT(matrix2)).colwise() + GET_MAT(bias).col(0)).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, bias, out]() {
-            GRAD(matrix1).noalias() += (out.dw()) * ((matrix2.w()).transpose());
-            GRAD(matrix2).noalias() += matrix1.w().transpose() * (out.dw());
-            GRAD(bias).noalias()    += out.dw().rowwise().sum().matrix();
+            GRAD(matrix1).noalias() += (GET_GRAD(out)) * ((GET_MAT(matrix2)).transpose());
+            GRAD(matrix2).noalias() += GET_MAT(matrix1).transpose() * (GET_GRAD(out));
+            GRAD(bias).noalias()    += GET_GRAD(out).rowwise().sum().matrix();
         });
     return out;
 }
@@ -1090,28 +1187,28 @@ Mat<R> MatOps<R>::mul_add_broadcast_mul_with_bias(
     // both input to 1 and bias are columns,
     // so we add both of those before adding the true matrix
     // product in broadcasted form
-    out.w() = (
+    GET_MAT(out) = (
           (
               (
-                  (matrix2.w() * input_to_2.w())
+                  (GET_MAT(matrix2) * GET_MAT(input_to_2))
               )
-          ).colwise() + (bias.w() + (matrix1.w() * input_to_1.w())).col(0)
+          ).colwise() + (GET_MAT(bias) + (GET_MAT(matrix1) * GET_MAT(input_to_1))).col(0)
       ).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, input_to_1, matrix2, input_to_2, bias, out] () {
             // first multiply:
             // broadcasting input means taking outer product here:
-            GRAD(matrix1) += ((out.dw()).rowwise().sum() * ((input_to_1.w()).transpose()));
+            GRAD(matrix1) += ((GET_GRAD(out)).rowwise().sum() * ((GET_MAT(input_to_1)).transpose()));
             // broadcasting output means sum after the reverse product here:
             GRAD(input_to_1).noalias() += (
-                matrix1.w().transpose() * (out.dw())
+                GET_MAT(matrix1).transpose() * (GET_GRAD(out))
             ).rowwise().sum();
             // second multiply:
-            GRAD(matrix2).noalias() += (out.dw()) * ((input_to_2.w()).transpose());
+            GRAD(matrix2).noalias() += (GET_GRAD(out)) * ((GET_MAT(input_to_2)).transpose());
 
-            GRAD(input_to_2).noalias() += matrix2.w().transpose() * (out.dw());
+            GRAD(input_to_2).noalias() += GET_MAT(matrix2).transpose() * (GET_GRAD(out));
             // bias vector:
-            GRAD(bias).noalias() += out.dw().rowwise().sum();
+            GRAD(bias).noalias() += GET_GRAD(out).rowwise().sum();
         });
     return out;
 }
@@ -1145,38 +1242,38 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(const vector<Mat<R>>& matrices) {
         // inner dimension be 1 (a column vector essentially)
         assert(((matrices_ptr+1)->dims(1) == max_broadcast) || ((matrices_ptr+1)->dims(1) == 1));
         if ((matrices_ptr+1)->dims(1) == max_broadcast) {
-            out.w() += (*matrices_ptr).w() * (*(matrices_ptr + 1)).w();
+            GET_MAT(out) += GET_MAT(*matrices_ptr) * GET_MAT(*(matrices_ptr + 1));
         } else {
-            auto el = ((*matrices_ptr).w() * (*(matrices_ptr + 1)).w());
-            out.w().colwise() += el.col(0);
+            auto el = GET_MAT(*matrices_ptr) * GET_MAT(*(matrices_ptr + 1));
+            GET_MAT(out).colwise() += el.col(0);
         }
         DEBUG_ASSERT_MAT_NOT_NAN(out)
         matrices_ptr+=2;
     }
 
-    DEBUG_ASSERT_NOT_NAN(matrices.back().w());
-    out.w().colwise() += matrices.back().w().col(0);
+    DEBUG_ASSERT_MAT_NOT_NAN(matrices.back());
+    GET_MAT(out).colwise() += GET_MAT(matrices.back()).col(0);
     if (graph::backprop_enabled)
         graph::emplace_back([matrices, out, max_broadcast](){
             auto matrices_ptr = matrices.begin();
             while (matrices_ptr != (matrices.end() - 1)) {
                 if ((matrices_ptr+1)->dims(1) == max_broadcast) {
-                    GRAD(*matrices_ptr).noalias()   += out.dw() * (*(matrices_ptr+1)).w().transpose();
-                    GRAD(*(matrices_ptr+1)).noalias() += (*matrices_ptr).w().transpose() * (out.dw());
+                    GRAD(*matrices_ptr).noalias()   += GET_GRAD(out) * GET_MAT(*(matrices_ptr+1)).transpose();
+                    GRAD(*(matrices_ptr+1)).noalias() += GET_MAT(*matrices_ptr).transpose() * (GET_GRAD(out));
                 } else {
                     // broadcasting input means taking outer product here:
-                    GRAD(*matrices_ptr).noalias() += (out.dw().rowwise().sum() * ((*(matrices_ptr+1)).w().transpose()));
+                    GRAD(*matrices_ptr).noalias() += (GET_GRAD(out).rowwise().sum() * (GET_MAT(*(matrices_ptr+1)).transpose()));
                     // broadcasting output means sum after the reverse product here:
                     GRAD(*(matrices_ptr+1)).noalias() += (
-                        (*matrices_ptr).w().transpose() * out.dw()
+                        GET_MAT(*matrices_ptr).transpose() * GET_GRAD(out)
                     ).rowwise().sum();
                 }
                 matrices_ptr+=2;
             }
-            GRAD(matrices.back()).noalias() += out.dw().rowwise().sum();
+            GRAD(matrices.back()).noalias() += GET_GRAD(out).rowwise().sum();
         });
 
-    DEBUG_ASSERT_NOT_NAN(out.w());
+    DEBUG_ASSERT_NOT_NAN(GET_MAT(out));
     return out;
 }
 
@@ -1188,7 +1285,7 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(
     Mat<R> matrix2,
     Mat<R> input_to_2,
     Mat<R> bias) {
-    DEBUG_ASSERT_NOT_NAN(bias.w());
+    DEBUG_ASSERT_NOT_NAN(GET_MAT(bias));
     assert2(matrix1.dims(1) == input_to_1.dims(0), "matmul 1 dimensions misaligned.");
     if (matrix2.dims(1) != input_to_2.dims(0))
         throw std::invalid_argument("matmul 2 dimensions misaligned.");
@@ -1204,27 +1301,27 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(
             matrix1.dims(0),
             input_to_1.dims(1),
             false);
-    out.w() = (
+    GET_MAT(out) = (
                   (
                       (
-                          (matrix1.w() * input_to_1.w()) +
-                          (matrix2.w() * input_to_2.w())
+                          (GET_MAT(matrix1) * GET_MAT(input_to_1)) +
+                          (GET_MAT(matrix2) * GET_MAT(input_to_2))
                       )
-                  ).colwise() + bias.w().col(0)
+                  ).colwise() + GET_MAT(bias).col(0)
               ).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, input_to_1, matrix2, input_to_2, bias, out](){
             // first multiply:
             // broadcasting input means taking outer product here:
-            GRAD(matrix1)               += (out.dw() * (input_to_1.w()).transpose());
+            GRAD(matrix1)               += (GET_GRAD(out) * (GET_MAT(input_to_1)).transpose());
             // broadcasting output means sum after the reverse product here:
-            GRAD(input_to_1).noalias() += matrix1.w().transpose() * (out.dw());
+            GRAD(input_to_1).noalias() += GET_MAT(matrix1).transpose() * (GET_GRAD(out));
             // second multiply:
-            GRAD(matrix2).noalias()     += (out.dw()) * (input_to_2.w()).transpose();
+            GRAD(matrix2).noalias()     += (GET_GRAD(out)) * (GET_MAT(input_to_2)).transpose();
 
-            GRAD(input_to_2).noalias()  += matrix2.w().transpose() * (out.dw());
+            GRAD(input_to_2).noalias()  += GET_MAT(matrix2).transpose() * (GET_GRAD(out));
             // bias vector:
-            GRAD(bias).noalias()        += out.dw().rowwise().sum();
+            GRAD(bias).noalias()        += GET_GRAD(out).rowwise().sum();
         });
     return out;
 }
@@ -1240,14 +1337,14 @@ Mat<R> MatOps<R>::rows_pluck(
         false);
 
     for (std::size_t offset = 0; offset < indices.size(); ++offset) {
-        out.w().col(offset) = matrix.w().row(indices[offset]).transpose();
+        GET_MAT(out).col(offset) = GET_MAT(matrix).row(indices[offset]).transpose();
     }
     if (graph::backprop_enabled) {
         graph::emplace_back([matrix, out, indices](){
             auto index_ptr = indices.data();
             for (std::size_t i = 0; i < out.dims(1); ++i) {
                 // for each row do the same operation as for row_pluck:
-                GRAD(matrix).row(*index_ptr).noalias() += out.dw().col(i).transpose();
+                GRAD(matrix).row(*index_ptr).noalias() += GET_GRAD(out).col(i).transpose();
                 index_ptr++;
             }
         });
@@ -1275,8 +1372,8 @@ Mat<R> MatOps<R>::dropout(
     std::random_device rd;
     generator.seed(rd());
 
-    auto data_ptr = matrix.w().data();
-    auto out_ptr  = out.w().data();
+    auto data_ptr = GET_MAT(matrix).data();
+    auto out_ptr  = GET_MAT(out).data();
     auto bool_ptr = bool_mat->data();
 
     for (int i = 0; i < matrix.number_of_elements();++i) {
@@ -1289,7 +1386,7 @@ Mat<R> MatOps<R>::dropout(
 
     if (graph::backprop_enabled) {
         graph::emplace_back([matrix, out, bool_mat](){
-            GRAD(matrix) += (out.dw().array() * (*bool_mat).array()).matrix();
+            GRAD(matrix) += (GET_GRAD(out).array() * (*bool_mat).array()).matrix();
         });
     }
     return out;
@@ -1315,8 +1412,8 @@ Mat<R> MatOps<R>::dropout_normalized(
     std::random_device rd;
     generator.seed(rd());
 
-    auto data_ptr = matrix.w().data();
-    auto out_ptr  = out.w().data();
+    auto data_ptr = GET_MAT(matrix).data();
+    auto out_ptr  = GET_MAT(out).data();
     auto bool_ptr = bool_mat->data();
 
     R normalized_drop_prob = 1.0 / (1.0 - drop_prob);
@@ -1330,7 +1427,7 @@ Mat<R> MatOps<R>::dropout_normalized(
 
     if (graph::backprop_enabled) {
         graph::emplace_back([matrix, out, bool_mat](){
-            GRAD(matrix) += (out.dw().array() * (*bool_mat).array()).matrix();
+            GRAD(matrix) += (GET_GRAD(out).array() * (*bool_mat).array()).matrix();
         });
     }
     return out;
@@ -1371,8 +1468,8 @@ Mat<R> MatOps<R>::fast_dropout(Mat<R> matrix) {
     std::random_device rd;
     generator.seed(rd());
 
-    auto data_ptr = matrix.w().data();
-    auto out_ptr  = out.w().data();
+    auto data_ptr = GET_MAT(matrix).data();
+    auto out_ptr  = GET_MAT(out).data();
     auto randn_ptr = randn_mat->data();
 
     for (unsigned int i = 0; i < matrix.number_of_elements();++i) {
@@ -1385,7 +1482,7 @@ Mat<R> MatOps<R>::fast_dropout(Mat<R> matrix) {
 
     if (graph::backprop_enabled) {
         graph::emplace_back([matrix, out, randn_mat](){
-            GRAD(matrix) += (out.dw().array() * (*randn_mat).array()).matrix();
+            GRAD(matrix) += (GET_GRAD(out).array() * (*randn_mat).array()).matrix();
         });
     }
     return out;
@@ -1403,14 +1500,14 @@ Mat<R> MatOps<R>::rows_cols_pluck(
             row_indices.size(),
             false);
         for (int offset = 0; offset < row_indices.size(); ++offset)
-            out.w()(offset) = matrix.w()(row_indices[offset], col_indices[offset]);
+            GET_MAT(out)(offset) = GET_MAT(matrix)(row_indices[offset], col_indices[offset]);
     if (graph::backprop_enabled && !matrix.constant) {
         graph::emplace_back([matrix, out, row_indices, col_indices](){
             auto row_index_ptr = row_indices.data();
             auto col_index_ptr = col_indices.data();
             for (int i = 0; i < out.dims(1); ++i) {
                 // for each row do the same operation as for row_pluck:
-                matrix.dw()(*row_index_ptr, *col_index_ptr) += out.dw()(i);
+                GET_GRAD(matrix)(*row_index_ptr, *col_index_ptr) += GET_GRAD(out)(i);
                 row_index_ptr++;
                 col_index_ptr++;
             }
@@ -1424,10 +1521,10 @@ Mat<R> MatOps<R>::row_pluck(
         Mat<R> matrix,
         int row) {
     Mat<R> out (matrix.dims(1), 1, false);
-    out.w() = matrix.w().row(row).transpose();
+    GET_MAT(out) = GET_MAT(matrix).row(row).transpose();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out, row]() {
-            GRAD(matrix).row(row).noalias() += out.dw().col(0).transpose();
+            GRAD(matrix).row(row).noalias() += GET_GRAD(out).col(0).transpose();
         });
     return out;
 }
@@ -1437,10 +1534,10 @@ Mat<R> MatOps<R>::col_pluck(
         Mat<R> matrix,
         int col) {
     Mat<R> out (matrix.dims(0), 1, false);
-    out.w() = matrix.w().col(col);
+    GET_MAT(out) = GET_MAT(matrix).col(col);
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out, col]() {
-            GRAD(matrix).col(col).noalias() += out.dw().col(0).transpose();
+            GRAD(matrix).col(col).noalias() += GET_GRAD(out).col(0).transpose();
         });
     return out;
 }
@@ -1473,7 +1570,7 @@ vector<size_t> MatOps<R>::argsort_rowwise(Mat<R> m) {
 
     // sort indexes based on comparing values in v
     sort(idx.begin(), idx.end(), [&m](size_t i1, size_t i2) {
-        return m.w()(i1) < m.w()(i2);
+        return GET_MAT(m)(i1) < GET_MAT(m)(i2);
     });
     return idx;
 }

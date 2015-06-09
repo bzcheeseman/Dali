@@ -13,20 +13,16 @@ typedef double R;
 #define NUM_RETRIES 10
 #define EXPERIMENT_REPEAT for(int __repetition=0; __repetition < NUM_RETRIES; ++__repetition)
 
-template<typename T, typename K>
-bool matrix_equals (const T& A, const K& B) {
-    return (A.array() == B.array()).all();
+template<typename T>
+bool buffer_equals (T* buffer1, T* buffer2, uint size1, uint size2) {
+    if (size1 != size2)
+        return false;
+    for (int i=0; i<size1; ++i) {
+        if (buffer1[i] != buffer2[i])
+            return false;
+    }
+    return true;
 }
-
-template<typename R>
-bool matrix_equals (Mat<R> A, Mat<R> B) {
-    return (A.w().array() == B.w().array()).all();
-}
-
-template<typename T, typename K, typename J>
-bool matrix_almost_equals (const T& A, const K& B, J eps) {
-    return (A.array() - B.array()).abs().array().maxCoeff() < eps;
-}\
 
 template<typename T, typename J>
 bool buffer_almost_equals(T* buffer1, T* buffer2, uint size, J eps) {
@@ -37,18 +33,15 @@ bool buffer_almost_equals(T* buffer1, T* buffer2, uint size, J eps) {
     return true;
 }
 
-template<typename R>
-bool matrix_almost_equals (Mat<R> A, Mat<R> B, R eps) {
-    return (A.w().array() - B.w().array()).abs().array().maxCoeff() < eps;
-}
+#define ASSERT_MATRIX_EQ(A, B) ASSERT_TRUE(buffer_equals((A).w()->data(), (B).w()->data(), (A).number_of_elements(), (B).number_of_elements()))
+#define ASSERT_MATRIX_NEQ(A, B) ASSERT_FALSE(buffer_equals((A).w()->data(), (B).w()->data(), (A).number_of_elements(), (B).number_of_elements()))
+#define ASSERT_MATRIX_CLOSE(A, B, eps) ASSERT_TRUE(buffer_almost_equals((A).w()->data(), (B).w()->data(), (A).number_of_elements(), (eps)))
+#define ASSERT_MATRIX_GRAD_CLOSE(A, B, eps) ASSERT_TRUE(buffer_almost_equals((A).dw()->data(), (B).dw()->data(), (A).number_of_elements(), (eps)))
 
-#define ASSERT_MATRIX_EQ(A, B) ASSERT_TRUE(matrix_equals((A), (B)))
-#define ASSERT_MATRIX_NEQ(A, B) ASSERT_FALSE(matrix_equals((A), (B)))
-#define ASSERT_MATRIX_CLOSE(A, B, eps) ASSERT_TRUE(matrix_almost_equals((A), (B), (eps)))
-
-#define EXPECT_MATRIX_EQ(A, B) EXPECT_TRUE(matrix_equals((A), (B)))
-#define EXPECT_MATRIX_NEQ(A, B) EXPECT_FALSE(matrix_equals((A), (B)))
-#define EXPECT_MATRIX_CLOSE(A, B, eps) EXPECT_TRUE(matrix_almost_equals((A), (B), (eps)))
+#define EXPECT_MATRIX_EQ(A, B) EXPECT_TRUE(buffer_equals((A).w()->data(), (B).w()->data(), (A).number_of_elements(), (B).number_of_elements()))
+#define EXPECT_MATRIX_NEQ(A, B) EXPECT_FALSE(buffer_equals((A).w()->data(), (B).w()->data(), (A).number_of_elements(), (B).number_of_elements()))
+#define EXPECT_MATRIX_CLOSE(A, B, eps) EXPECT_TRUE(buffer_almost_equals((A).w()->data(), (B).w()->data(), (A).number_of_elements(), (eps)))
+#define EXPECT_MATRIX_GRAD_CLOSE(A, B, eps) EXPECT_TRUE(buffer_almost_equals((A).dw()->data(), (B).dw()->data(), (A).number_of_elements(), (eps)))
 
 /**
 Gradient Same
@@ -77,17 +70,17 @@ bool gradient_same(
 
     for (auto& arg : arguments) {
         R  Arg_prime[arg.number_of_elements()];
-        R* arg_buffer = arg.w().data();
+        R* arg_buffer = arg.w()->data();
         for (int i = 0; i < arg.number_of_elements(); i++) {
             auto prev_val = arg_buffer[i];
             arg_buffer[i] = prev_val +  grad_epsilon;
-            auto obj_positive = functor(arguments).w().array().sum();
+            auto obj_positive = functor(arguments).w()->w.array().sum();
             arg_buffer[i] = prev_val - grad_epsilon;
-            auto obj_negative = functor(arguments).w().array().sum();
+            auto obj_negative = functor(arguments).w()->w.array().sum();
             arg_buffer[i] = prev_val;
             Arg_prime[i] = (obj_positive - obj_negative) / (2.0 * grad_epsilon);
         }
-        bool did_work_out = buffer_almost_equals((R*)Arg_prime, arg.dw().data(), arg.number_of_elements(), tolerance);
+        bool did_work_out = buffer_almost_equals((R*)Arg_prime, arg.dw()->data(), arg.number_of_elements(), tolerance);
         worked_out = worked_out && did_work_out;
         if (!did_work_out) {
             std::cout << "-----------\nArg_prime:" << std::endl;
@@ -318,9 +311,9 @@ TEST_F(MatrixTests, matrix_divide_scalar) {
 
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(-20.0, 20.0));
-        auto scalar = Mat<R>(1, 1, weights<R>::uniform(0.1, 20.0));
+        auto scalar = (R) utils::randdouble(0.1, 20.0);
         auto functor = [&scalar](vector<Mat<R>> Xs)-> Mat<R> {
-            return Xs[0] / scalar.w()(0);
+            return Xs[0] / scalar;
         };
         ASSERT_TRUE(gradient_same<R>(functor, {A}, 1e-3));
     }
@@ -375,6 +368,8 @@ TEST_F(MatOpsTests, matrix_mul_add_mul_with_bias) {
 }
 
 TEST_F(MatOpsTests, matrix_conv2d) {
+    graph::NoBackprop nb;
+
     auto image = Mat<R>(10, 10);
     int block_width  = 4,
         block_offset = 3,
@@ -382,7 +377,7 @@ TEST_F(MatOpsTests, matrix_conv2d) {
         kernel_height = 3;
     R filler = 2.0;
 
-    image.w().block(
+    image.w()->w.block(
         block_offset,
         block_offset,
         block_width,
@@ -390,7 +385,7 @@ TEST_F(MatOpsTests, matrix_conv2d) {
 
     auto kernel = Mat<R>(kernel_width, kernel_height);
 
-    kernel.w().fill(1);
+    kernel = MatOps<R>::fill(kernel, 1);
 
     auto out = MatOps<R>::conv2d(image, kernel);
 
@@ -398,26 +393,26 @@ TEST_F(MatOpsTests, matrix_conv2d) {
         image.dims(0) - kernel.dims(0) + 1,
         image.dims(1) - kernel.dims(1) + 1);
 
-    expected.w().block(
+    expected.w()->w.block(
         block_offset,
         block_offset,
         block_width - kernel_width + 1,
         block_width - kernel_height + 1).fill(filler);
 
-    ASSERT_EQ( out.w().sum(), (block_width * block_width * filler)) << "Sum of convolution with image should be sum of image";
+    ASSERT_EQ( (*out.sum().w())(0), (block_width * block_width * filler)) << "Sum of convolution with image should be sum of image";
 
     // TODO: test more properties here.
-    ASSERT_MATRIX_EQ(
-        expected.w().block(
+    ASSERT_TRUE((
+        expected.w()->w.block(
             block_offset,
             block_offset,
             block_width - kernel_width + 1,
-            block_width - kernel_height + 1),
-        out.w().block(
+            block_width - kernel_height + 1).array() ==
+        out.w()->w.block(
             block_offset,
             block_offset,
             block_width - kernel_width + 1,
-            block_width - kernel_height + 1)) << "Center of kernel activations should match up.";
+            block_width - kernel_height + 1).array()).all()) << "Center of kernel activations should match up.";
 }
 
 TEST_F(MatOpsTests, matrix_conv2d_grad) {
@@ -732,10 +727,10 @@ TEST_F(LayerTests, RNN_gradient_vs_Stacked_gradient) {
 
         for (auto it1 = params.begin(),
                   it2 = stacked_params.begin(); (it1 != params.end()) && (it2 != stacked_params.end()); it1++, it2++) {
-            ASSERT_MATRIX_CLOSE((*it1).dw(), (*it2).dw(), 1e-6);
+            ASSERT_MATRIX_GRAD_CLOSE((*it1), (*it2), 1e-6);
         }
-        ASSERT_MATRIX_CLOSE(X.dw(), X_s.dw(), 1e-6);
-        ASSERT_MATRIX_CLOSE(H.dw(), H_s.dw(), 1e-6);
+        ASSERT_MATRIX_GRAD_CLOSE(X, X_s, 1e-6);
+        ASSERT_MATRIX_GRAD_CLOSE(H, H_s, 1e-6);
     }
 }
 
@@ -751,8 +746,8 @@ TEST_F(LayerTests, matrix_constant_check) {
     error.grad();
     graph::backward();
 
-    EXPECT_MATRIX_EQ(X.dw(), Mat<R>::zeros_like(X).w());
-    EXPECT_MATRIX_NEQ(B.dw(), Mat<R>::zeros_like(X).w());
+    EXPECT_TRUE((X.dw()->dw.array() == Mat<R>::zeros_like(X).w()->w.array()).all());
+    EXPECT_TRUE((B.dw()->dw.array() == Mat<R>::zeros_like(X).w()->w.array()).all());
 }
 
 TEST_F(LayerTests, shortcut_test) {
@@ -858,7 +853,7 @@ TEST_F(MatrixTests, powtest) {
         auto mat = Mat<R>(height, width, weights<R>::uniform(0.1, 20.0));
 
         auto exponent = Mat<R>(1,1);
-        exponent.w()(0) = 2.0;
+        MatOps<R>::fill(exponent, 2.0);
 
         auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
             return Xs[0] ^ Xs[1];
@@ -903,13 +898,13 @@ TEST_F(MatrixTests, abs) {
 TEST_F(MatrixTests, argsort) {
     vector<Mat<R>> mats;
     Mat<R> A(1,1);
-    A.w() << 3;
+    MatOps<R>::fill(A, 3);
     mats.push_back(A);
     Mat<R> B(1,1);
-    B.w() << 9;
+    MatOps<R>::fill(B, 9);
     mats.push_back(B);
     Mat<R> C(1,1);
-    C.w() << 1;
+    MatOps<R>::fill(C, 1);
     mats.push_back(C);
     auto sorted = utils::argsort(mats);
     ASSERT_EQ(sorted, std::vector<size_t>({2, 0, 1}));

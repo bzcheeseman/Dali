@@ -10,7 +10,6 @@
 #include <unordered_map>
 
 #include "dali/mat/CrossEntropy.h"
-#include "dali/mat/Softmax.h"
 #include "dali/models/RecurrentEmbeddingModel.h"
 #include "dali/models/ReconstructModel.h"
 #include "dali/core.h"

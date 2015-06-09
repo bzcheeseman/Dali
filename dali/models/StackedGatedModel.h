@@ -8,7 +8,6 @@
 #include <unordered_map>
 
 #include "dali/mat/CrossEntropy.h"
-#include "dali/mat/Softmax.h"
 #include "dali/models/StackedModel.h"
 #include "dali/core.h"
 #include "dali/utils.h"

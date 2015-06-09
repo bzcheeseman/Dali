@@ -1,6 +1,5 @@
 #ifdef INSANITY
 
-
 #include "dali/utils.h"
 #include "dali/mat/MatOps.h"
 #include "dali/mat/Tape.h"

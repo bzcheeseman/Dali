@@ -4,7 +4,6 @@
 #include "dali/mat/MatOps.h"
 #include "dali/mat/Tape.h"
 #include "dali/mat/CrossEntropy.h"
-#include "dali/mat/Softmax.h"
 #include "dali/mat/LSTM.h"
 #include "dali/mat/GRU.h"
 #include "dali/execution/SequenceProbability.h"

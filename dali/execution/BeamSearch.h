@@ -95,7 +95,7 @@ namespace beam_search {
                             continue;
                         if (candidates_remaining-- <= 0)
                             break;
-                        auto candidate_score = scores.w()(candidate_idx);
+                        auto candidate_score = (*scores.w())(candidate_idx);
                         proposals.push_back(proposal_t::solution_candidate(
                                 result, result.score + candidate_score, candidate_idx));
                     }

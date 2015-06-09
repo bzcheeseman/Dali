@@ -1,3 +1,5 @@
+#ifdef INSANITY
+
 #include "CrossEntropy.h"
 
 template<typename Z, typename M>
@@ -654,3 +656,6 @@ Z masked_sum_no_grad(Mat<Z> values,
 // [const RETURN_TYPE&]
 
 // END TEMPLATE SPECIALIZATIONS
+
+
+#endif

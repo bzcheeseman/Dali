@@ -1,5 +1,7 @@
 #include "Solver.h"
 
+#ifdef INSANITY
+
 using std::vector;
 #define PARAM_KEY_FOR_LOOKUP_TABLE param.id()
 
@@ -508,3 +510,5 @@ namespace Solver {
 
     DECLARE_TYPENAME_GETTER(Adam, adam, true)
 }
+
+#endif

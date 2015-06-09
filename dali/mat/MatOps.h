@@ -11,15 +11,82 @@
 #include "dali/mat/Mat.h"
 #include "dali/utils.h"
 
+typedef unsigned int dim_t;
+
 template<typename R> class Mat;
 namespace Indexing {
     class Index;
 }
 
+#ifdef NDEBUG
+    #define DEBUG_ASSERT_POSITIVE(X) ;
+    #define DEBUG_ASSERT_BOUNDS(X,a,b) ;
+    #define DEBUG_ASSERT_NONZERO(X) ;
+    #define DEBUG_ASSERT_MAT_NOT_NAN(X)
+    #define DEBUG_ASSERT_GRAD_NOT_NAN(X)
+#else
+    #define DEBUG_ASSERT_POSITIVE(X) assert(((X).array() >= 0).all())
+    #define DEBUG_ASSERT_BOUNDS(X,a,b) assert(((X).array() >= (a)).all()  &&  ((X).array() <=(b)).all())
+    #define DEBUG_ASSERT_NONZERO(X) assert(((X).array().abs() >= 1e-10).all())
+    #define DEBUG_ASSERT_NOT_NAN(X) assert(!utils::contains_NaN(((X).array().abs().sum())))
+    #define DEBUG_ASSERT_MAT_NOT_NAN(X) if ( utils::contains_NaN((X).w()->w.norm()) ) { \
+        (X).print(); \
+        throw std::runtime_error(utils::explain_mat_bug((((X).name != nullptr) ? *(X).name : "?"), __FILE__,  __LINE__)); \
+    }
+    #define DEBUG_ASSERT_GRAD_NOT_NAN(X) if ( utils::contains_NaN((X).dw()->dw.norm()) ) { \
+        (X).print(); \
+        throw std::runtime_error(utils::explain_mat_bug((((X).name != nullptr) ? *(X).name : "?"), __FILE__,  __LINE__)); \
+    }
+#endif
+
+template<typename R>
+class MatInternal {
+    private:
+        static std::atomic<int> next_matrix;
+    public:
+        typedef Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
+        typedef Eigen::Map<eigen_mat> eigen_mat_view;
+
+        eigen_mat w;
+        std::vector<dim_t> dims;
+        const size_t id;
+
+        MatInternal(dim_t n, dim_t d, bool empty=false);
+        MatInternal(const MatInternal<R>& m);
+
+        R& operator()(int i, int j);
+        R operator()(int i, int j) const;
+
+        const R* data() const;
+        R* data();
+
+        void print() const;
+
+        operator eigen_mat();
+};
+
+template<typename R>
+class GradInternal {
+    public:
+        typedef Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
+        typedef Eigen::Map<eigen_mat> eigen_mat_view;
+
+        eigen_mat dw;
+
+        GradInternal(dim_t n, dim_t d, bool empty=true);
+        GradInternal(const GradInternal<R>& g);
+
+        operator eigen_mat();
+};
+
+
 // this is only a class so that it is easier to instantiate
 // templates. In principle this should be a namespace.
 template<typename R>
 struct MatOps {
+
+    typedef Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
+
     static Mat<R> eltmul_broadcast(Mat<R>, Mat<R>);
     static Mat<R> eltdivide_broadcast(Mat<R>, Mat<R>);
     static Mat<R> eltdivide_broadcast_reversed(Mat<R>, Mat<R>);
@@ -246,6 +313,13 @@ struct MatOps {
 
     static Mat<R> consider_constant(Mat<R>);
     static Mat<R> consider_constant_if(Mat<R>, bool should_consider_constant);
+
+    static std::vector<size_t> argsort_rowwise(Mat<R>);
+    static std::vector<size_t> argsort(const std::vector<Mat<R>>& mats);
+
+    static void resize(const Mat<R>& mat, dim_t rows, dim_t cols);
+    static int argmax(const Mat<R>& mat);
+    static int argmax_slice(const Mat<R>& mat, int lower, int upper);
 };
 
 

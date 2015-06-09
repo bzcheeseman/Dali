@@ -9,7 +9,7 @@ using utils::from_string;
 namespace glove {
     template<typename T>
     void load(string fname, Mat<T>& underlying_mat, Vocab& vocab, int threshold) {
-        if (!utils::file_exists(fname)) {
+       /* if (!utils::file_exists(fname)) {
             throw std::runtime_error("Cannot open file with glove vectors.");
         }
         std::fstream fp(fname);
@@ -67,7 +67,7 @@ namespace glove {
         // now final update is made to matrix
         underlying_mat.resize(vocab_size  + 1, observed_size);
         mat.row(vocab_size).fill(0.0);
-        vocab = Vocab(vocabulary);
+        vocab = Vocab(vocabulary);*/
     }
 
     template<typename T>
@@ -112,7 +112,7 @@ namespace glove {
                     }
                     // store the embedding
                     for (int eidx = 0; eidx < embedding_size; ++ eidx)
-                        target.w()(word_index, eidx) = embedding[eidx];
+                        (*target.w())(word_index, eidx) = embedding[eidx];
                     ++words_matched_so_far;
                 }
                 if (threshold != -1 && ++words_read_so_far >= threshold) break;

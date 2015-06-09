@@ -185,9 +185,6 @@ typename LSTM<R>::State LSTM<R>::activate(
     // compute hidden state as gated, saturated cell activations
     auto hidden_d = output_gate * cell_d.tanh();
 
-    DEBUG_ASSERT_NOT_NAN(hidden_d.w());
-    DEBUG_ASSERT_NOT_NAN(cell_d.w());
-
     return State(cell_d, hidden_d);
 }
 

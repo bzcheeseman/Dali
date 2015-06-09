@@ -2,7 +2,6 @@
 #define CORE_MAT_H
 
 #include <atomic>
-#include <Eigen/Eigen>
 #include <functional>
 #include <initializer_list>
 #include <iostream>
@@ -24,56 +23,20 @@
 
 typedef unsigned int dim_t;
 
+template<typename R> class MatInternal;
+template<typename R> class GradInternal;
 template<typename R> class Mat;
-
-template<typename R>
-class MatInternal {
-    private:
-        static std::atomic<int> next_matrix;
-    public:
-        typedef Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
-        typedef Eigen::Map<eigen_mat> eigen_mat_view;
-
-
-        eigen_mat w;
-        std::vector<dim_t> dims;
-        const size_t id;
-
-        MatInternal(dim_t n, dim_t d, bool empty=false);
-        MatInternal(const MatInternal<R>& m);
-
-};
-
-template<typename R>
-class GradInternal {
-    public:
-        typedef Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
-        typedef Eigen::Map<eigen_mat> eigen_mat_view;
-
-
-        eigen_mat dw;
-
-        GradInternal(dim_t n, dim_t d, bool empty=true);
-        GradInternal(const GradInternal<R>& g);
-
-};
 
 template<typename R>
 struct weights {
     typedef std::function<void(Mat<R>&)> initializer_t;
 
     static initializer_t uninitialized();
-
     static initializer_t zeros();
-
     static initializer_t uniform(R lower, R upper);
-
     static initializer_t uniform(R bound);
-
     static initializer_t gaussian(R mean, R std);
-
     static initializer_t gaussian(R std);
-
     static initializer_t eye(R diag = 1.0);
 
     // Preinitializer is first run on the matrix and then SVD initialization
@@ -112,12 +75,13 @@ broadcasting across other operations).
 **/
 template<typename R>
 class Mat {
-    private:
-        std::shared_ptr<MatInternal<R>> m;
-        std::shared_ptr<GradInternal<R>> g;
     public:
-        typedef Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
-        typedef Eigen::Map<eigen_mat> eigen_mat_view;
+        typedef std::shared_ptr<MatInternal<R>> mat_internal_t;
+        typedef std::shared_ptr<GradInternal<R>> grad_internal_t;
+    private:
+        mat_internal_t  m;
+        grad_internal_t g;
+    public:
 
         std::shared_ptr<std::string> name = nullptr;
 
@@ -162,8 +126,8 @@ class Mat {
         **/
         void grad();
 
-        eigen_mat& w() const;
-        eigen_mat& dw() const;
+        mat_internal_t  w() const;
+        grad_internal_t dw() const;
 
         const std::vector<dim_t>& dims() const;
         const dim_t dims(int idx) const;

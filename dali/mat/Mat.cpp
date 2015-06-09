@@ -1,6 +1,5 @@
 #include "dali/mat/Mat.h"
 
-using namespace Eigen;
 using std::vector;
 using std::string;
 using std::stringstream;
@@ -8,43 +7,6 @@ using utils::assert2;
 using std::make_shared;
 
 const vector<dim_t> mat_missing_dimensions({0,0});
-
-/* MatInternal */
-
-template<typename R>
-std::atomic<int> MatInternal<R>::next_matrix(0);
-
-template<typename R>
-MatInternal<R>::MatInternal(dim_t n, dim_t d, bool fill_zeros) :
-        w(n, d),
-        dims({n, d}),
-        id(next_matrix.fetch_add(1)) {
-    if (fill_zeros) {
-        w.fill(0);
-    }
-}
-
-template<typename R>
-MatInternal<R>::MatInternal(const MatInternal<R>& m) :
-        w(m.w),
-        dims(m.dims),
-        id(m.id) {
-}
-
-/* GradInternal */
-
-template<typename R>
-GradInternal<R>::GradInternal(dim_t n, dim_t d, bool fill_zeros) :
-        dw(n, d) {
-    if (fill_zeros) {
-        dw.fill(0);
-    }
-}
-
-template<typename R>
-GradInternal<R>::GradInternal(const GradInternal<R>& g) :
-        dw(g.dw) {
-}
 
 
 /* weights */
@@ -57,18 +19,18 @@ typename weights<R>::initializer_t weights<R>::uninitialized() {
 template<typename R>
 typename weights<R>::initializer_t weights<R>::zeros() {
     return [](Mat<R>& matrix){
-        matrix.w().fill(0);
+        // matrix.w().fill(0);
     };
 };
 
 template<typename R>
 typename weights<R>::initializer_t weights<R>::eye(R diag) {
     return [diag](Mat<R>& matrix){
-        assert2(matrix.dims(0) == matrix.dims(1), "Identity initialization requires square matrix.");
-        auto& mat = matrix.w();
-        mat.fill(0);
-        for (int i = 0; i < matrix.dims(0); i++)
-            mat(i,i) = diag;
+        // assert2(matrix.dims(0) == matrix.dims(1), "Identity initialization requires square matrix.");
+        // auto& mat = matrix.w();
+        // mat.fill(0);
+        // for (int i = 0; i < matrix.dims(0); i++)
+        //     mat(i,i) = diag;
     };
 };
 
@@ -76,14 +38,14 @@ template<typename R>
 typename weights<R>::initializer_t weights<R>::uniform(R lower, R upper) {
     return [lower, upper](Mat<R>& matrix){
         // TODO(szymon): scale by row length.
-        std::default_random_engine generator;
+        /*std::default_random_engine generator;
         std::uniform_real_distribution<R> distribution(lower, upper);
         std::random_device rd;
         generator.seed(rd());
         auto randn = [&] (int) {return distribution(generator);};
         matrix.w() = Mat<R>::eigen_mat::NullaryExpr(matrix.dims(0),
                                             matrix.dims(1),
-                                            randn);
+                                            randn);*/
     };
 };
 
@@ -95,7 +57,7 @@ typename weights<R>::initializer_t weights<R>::uniform(R bound) {
 template<typename R>
 typename weights<R>::initializer_t weights<R>::gaussian(R mean, R std) {
     return [mean, std](Mat<R>& matrix){
-        std::default_random_engine generator;
+        /*std::default_random_engine generator;
         std::normal_distribution<R> distribution(mean, std);
         std::random_device rd;
         generator.seed(rd());
@@ -103,7 +65,7 @@ typename weights<R>::initializer_t weights<R>::gaussian(R mean, R std) {
         matrix.w() = Mat<R>::eigen_mat::NullaryExpr(
             matrix.dims(0),
             matrix.dims(1),
-            randn);
+            randn);*/
     };
 };
 
@@ -115,7 +77,7 @@ typename weights<R>::initializer_t weights<R>::gaussian(R std) {
 template<typename R>
 typename weights<R>::initializer_t weights<R>::svd(initializer_t preinitializer) {
     return [preinitializer](Mat<R>& matrix) {
-        assert(matrix.dims().size() == 2);
+        /*assert(matrix.dims().size() == 2);
         preinitializer(matrix);
         auto svd = matrix.w().jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV);
         int n = matrix.dims(0);
@@ -124,7 +86,7 @@ typename weights<R>::initializer_t weights<R>::svd(initializer_t preinitializer)
             matrix.w() = svd.matrixV().block(0, 0, n, d);
         } else {
             matrix.w() = svd.matrixU().block(0, 0, n, d);
-        }
+        }*/
     };
 }
 
@@ -135,13 +97,13 @@ Mat<R>::Mat() : Mat(0,0) {
 }
 
 template<typename R>
-typename Mat<R>::eigen_mat& Mat<R>::w() const {
-    return m->w;
+typename Mat<R>::mat_internal_t Mat<R>::w() const {
+    return m;
 }
 
 template<typename R>
-typename Mat<R>::eigen_mat& Mat<R>::dw() const {
-    return g->dw;
+typename Mat<R>::grad_internal_t Mat<R>::dw() const {
+    return g;
 }
 
 template<typename R>
@@ -176,10 +138,7 @@ Mat<R>::Mat(dim_t n, dim_t d) : Mat(n,d, true) {
 
 template<typename R>
 void Mat<R>::resize(dim_t n, dim_t d) {
-    m->dims[0] = n;
-    m->dims[1] = d;
-    w().conservativeResize(n, d);
-    dw().conservativeResize(n, d);
+    MatOps<R>::resize(*this, n, d);
 }
 
 /**
@@ -215,7 +174,7 @@ template<typename R>
 Mat<R>::Mat(string fname) :
         name(nullptr),
         constant(false) {
-    auto arr = cnpy::npy_load(fname);
+    /*auto arr = cnpy::npy_load(fname);
     vector<uint> npy_dims = {arr.shape[0], arr.shape.size() > 1 ? arr.shape[1] : 1};
     m = make_shared<MatInternal<R>>(npy_dims[0], npy_dims[1], false);
     g = make_shared<GradInternal<R>>(npy_dims[0], npy_dims[1], true);
@@ -244,7 +203,7 @@ Mat<R>::Mat(string fname) :
            << fname << "\". File dtype (" << arr.word_size << ") not recognized as float or double.";
         throw std::invalid_argument(error_msg.str());
     }
-    arr.destruct();
+    arr.destruct();*/
 }
 
 template<typename R>
@@ -292,18 +251,7 @@ void Mat<R>::set_name(const char * _name) {
 
 template<typename R>
 void Mat<R>::print() const {
-    for (int i = 0; i < dims(0) ; ++i) {
-            std::cout << (i == 0 ? "[" : " ");
-            for (int j = 0; j < dims(1); ++j) {
-                    std::cout << std::fixed
-                              << std::setw( 7 ) // keep 7 digits
-                              << std::setprecision( 3 ) // use 3 decimals
-                              << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
-                              << this->w()(i,j) << " ";
-            }
-            std::cout << (i == dims(0) - 1 ? "]" : "\n");
-    }
-    std::cout << std::endl;
+    w()->print();
 }
 
 template<typename R>
@@ -317,7 +265,7 @@ void Mat<R>::grad() {
 
 template<typename R>
 void Mat<R>::npy_save (string fname, string mode) {
-    cnpy::npy_save(fname, w().data(), dims().data(), dims().size(), mode);
+    cnpy::npy_save(fname, w()->data(), dims().data(), dims().size(), mode);
 }
 
 template<typename R>
@@ -509,16 +457,16 @@ Mat<R> Mat<R>::operator()(
 
 template<typename R>
 void Mat<R>::npy_save (FILE * fp) {
-    std::vector<char> header = cnpy::create_npy_header(w().data(),dims().data(),dims().size());
+    std::vector<char> header = cnpy::create_npy_header(w()->data(),dims().data(),dims().size());
     fwrite(&header[0],sizeof(char),header.size(),fp);
-    fwrite(w().data(),sizeof(R), number_of_elements(), fp);
+    fwrite(w()->data(),sizeof(R), number_of_elements(), fp);
 }
 
 template<typename R>
 void Mat<R>::npy_load(cnpy::NpyArray& arr) {
     m = make_shared<MatInternal<R>>(arr.shape[0], arr.shape.size() > 1 ? arr.shape[1] : 1);
 
-    if (arr.word_size == sizeof(double)) {
+    /*if (arr.word_size == sizeof(double)) {
         double* loaded_data_double = reinterpret_cast<double*>(arr.data);
         if (arr.fortran_order) {
             Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_double_ft(loaded_data_double, dims(0), dims(1));
@@ -538,7 +486,7 @@ void Mat<R>::npy_load(cnpy::NpyArray& arr) {
         }
     } else {
         throw std::invalid_argument("Could not load numpy matrix : not recognized as float or double.");
-    }
+    }*/
 }
 
 template<typename R>
@@ -805,35 +753,13 @@ template bool operator==<double>(const Mat<double>&, const Mat<double>&);
 
 template<typename R>
 int Mat<R>::argmax() const {
-    int i = 0;
-    R current_max = -std::numeric_limits<R>::infinity();
-    auto ptr = w().data();
-    for (int j = 0; j < number_of_elements(); j++) {
-        if (*ptr > current_max) {
-            current_max = *ptr;
-            i = j;
-        }
-        ptr++;
-    }
-    return i;
+    return MatOps<R>::argmax(*this);
 }
 
 template<typename R>
 int Mat<R>::argmax_slice(int lower, int upper) const {
-    int i = 0;
-    R current_max = -std::numeric_limits<R>::infinity();
-    auto ptr = w().data();
-    for (int j = lower; j < upper; j++) {
-        if (*ptr > current_max) {
-            current_max = *ptr;
-            i = j;
-        }
-        ptr++;
-    }
-    return i;
+    return MatOps<R>::argmax_slice(*this, lower, upper);
 }
-
-
 
 namespace utils {
     template<typename R>
@@ -864,16 +790,7 @@ namespace utils {
 
     template <typename T>
     vector<size_t> argsort_rowwise(Mat<T> &m) {
-        // initialize original index locations
-        vector<size_t> idx(m.dims(0));
-        for (size_t i = 0; i != idx.size(); ++i) idx[i] = i;
-
-        // sort indexes based on comparing values in v
-        sort(idx.begin(), idx.end(), [&m](size_t i1, size_t i2) {
-            return m.w()(i1) < m.w()(i2);
-        });
-
-        return idx;
+        return MatOps<T>::argsort_rowwise(m);
     }
 
     template vector<size_t> argsort_rowwise(Mat<float>&);
@@ -881,28 +798,12 @@ namespace utils {
 
     template <>
     vector<size_t> argsort(const vector<Mat<float>> &v) {
-        // initialize original index locations
-        vector<size_t> idx(v.size());
-        for (size_t i = 0; i != idx.size(); ++i) idx[i] = i;
-
-        // sort indexes based on comparing values in v
-        sort(idx.begin(), idx.end(),
-           [&v](size_t i1, size_t i2) {return v[i1].w()(0) < v[i2].w()(0);});
-
-        return idx;
+        return MatOps<float>::argsort(v);
     }
 
     template <>
     vector<size_t> argsort(const vector<Mat<double>> &v) {
-        // initialize original index locations
-        vector<size_t> idx(v.size());
-        for (size_t i = 0; i != idx.size(); ++i) idx[i] = i;
-
-        // sort indexes based on comparing values in v
-        sort(idx.begin(), idx.end(),
-           [&v](size_t i1, size_t i2) {return v[i1].w()(0) < v[i2].w()(0);});
-
-        return idx;
+        return MatOps<double>::argsort(v);
     }
 
     template void save_matrices(vector<Mat<float> >, string);
@@ -916,7 +817,7 @@ namespace utils {
         const Mat<R>& probs,
         const vector<string>& labels) {
         assert2(probs.dims(1) == 1, MS() << "Probabilities must be a column vector");
-        vector<R> distribution(probs.w().data(), probs.w().data() + probs.dims(0));
+        vector<R> distribution(probs.w()->data(), probs.w()->data() + probs.dims(0));
         return json11::Json::object {
             { "type", "finite_distribution"},
             { "probabilities", distribution },

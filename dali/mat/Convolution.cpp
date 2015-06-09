@@ -1,3 +1,6 @@
+#ifdef INSANITY
+
+
 #include "dali/utils.h"
 #include "dali/mat/MatOps.h"
 #include "dali/mat/Tape.h"
@@ -262,3 +265,6 @@ Mat<R> MatOps<R>::conv1d(Mat<R> image, const vector<Mat<R>>& kernels, bool pad) 
 
 template class MatOps<float>;
 template class MatOps<double>;
+
+
+#endif

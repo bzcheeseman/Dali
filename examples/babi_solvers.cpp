@@ -574,10 +574,7 @@ void train(const vector<babi::Story>& data, float training_fraction = 0.8) {
     auto params = model->parameters();
 
     Solver::Adam<REAL_t> solver(params); // , 0.1, 0.0001);
-    // Solver::AdaDelta<REAL_t> solver(params, 0.9, 1e-9, 100.0);
-    // Solver::SGD<REAL_t> solver(params, 100.0, 1e-6);
-    // Solver::RMSProp<REAL_t> solver(params, 0.5, Solver::SMOOTH_DEFAULT, 100.0, 1e-6);
-    //solver.step_size = 10.0;
+
     solver.regc = 1e-6;
 
     double best_validation_accuracy = 0.0;

@@ -4,7 +4,13 @@
 
 using namespace mshadow;
 
+template<typename xpu>
+void Print1DTensor(Tensor<xpu, 1, float> const &ts);
 
+template<typename xpu>
+void Print2DTensor(Tensor<xpu, 2, float> const &ts);
+
+template<>
 void Print1DTensor(Tensor<cpu, 1, float> const &ts) {
   for (index_t i = 0; i < ts.size(0); ++i) {
     printf("%.2f ", ts[i]);
@@ -12,13 +18,29 @@ void Print1DTensor(Tensor<cpu, 1, float> const &ts) {
   printf("\n");
 }
 
-
-void Print2DTensor(Tensor<cpu, 2, float> const &ts) {
-  for (index_t i = 0; i < ts.size(0); ++i) {
-    Print1DTensor(ts[i]);
-  }
+template<>
+void Print1DTensor(Tensor<gpu, 1, float> const &tg) {
+    Tensor<cpu, 1, float> tc = NewTensor<cpu, float>(tg.shape_, 0.0f);
+    Copy(tc, tg);
+    Print1DTensor(tc);
+    FreeSpace(&tc);
 }
 
+template<>
+void Print2DTensor(Tensor<cpu, 2, float> const &ts) {
+    std::cout << "hello world" << std::endl;
+    for (index_t i = 0; i < ts.size(0); ++i) {
+        Print1DTensor(ts[i]);
+    }
+}
+
+template<>
+void Print2DTensor(Tensor<gpu, 2, float> const &tg) {
+    Tensor<cpu, 2, float> tc = NewTensor<cpu, float>(tg.shape_, 0.0f);
+    Copy(tc, tg);
+    Print2DTensor(tc);
+    FreeSpace(&tc);
+}
 
 #define PRINT2D_SMALL(X) if ((X).shape_[0] <= 20 && (X).shape_[1] <= 20) Print2DTensor((X))
 #define PRINT1D_SMALL(X) if ((X).shape_[0] <= 30) Print1DTensor((X))
@@ -29,7 +51,7 @@ int main () {
     int second_dim = 1000;
     int third_dim = 2000;
 
-    InitTensorEngine<cpu>();
+    InitTensorEngine<gpu>();
     Tensor<cpu, 3, float> tc = NewTensor<cpu, float>(Shape3(first_dim, second_dim, third_dim), 0.0f);
     // init
     for (index_t i = 0; i < tc.size(0); ++i) {
@@ -65,14 +87,24 @@ int main () {
     Tensor<cpu, 2, float> B = NewTensor<cpu, float>(Shape2(5, 5), 0.3f);
     auto bob = NewTensor<cpu, float>(Shape2(5, 5), 0.0f);
 
+    auto joe = NewTensor<gpu, float>(Shape2(5, 5), 0.0f);
+
+
+
     std::cout << "expected => " <<  0.2 + 0.3 + 0.3 * 2.0 + 0.2 * 0.3 + 1.0 << std::endl;
     bob = A + B + B * 2.0 + A * B + 1.0;
+    Copy(joe, bob);
 
     //bob += B;
 
     //Tensor<cpu, 2, float> bob = A + B;
 
     Print2DTensor(bob);
+    Print2DTensor(joe);
 
+    FreeSpace(&joe);
+    FreeSpace(&bob);
+
+    ShutdownTensorEngine<gpu>();
     return 0;
 }

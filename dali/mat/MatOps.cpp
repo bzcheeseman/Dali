@@ -650,6 +650,25 @@ Mat<R> MatOps<R>::cross_entropy(Mat<R> matrix, uint answer_idx) {
     return out;
 }
 
+template<typename R>
+Mat<R> MatOps<R>::cross_entropy(Mat<R> matrix, Mat<R> target) {
+    assert2(matrix.dims(0) == target.dims(0) && matrix.dims(1) == target.dims(1),
+        "Matrix and target must have same dimension");
+
+    Mat<R> out = Mat<R>::empty_like(matrix);
+    out.w() = -(target.w().array() * ((matrix.w().array() + EPS).log())).matrix();
+
+    DEBUG_ASSERT_NOT_NAN(out.w());
+
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, target, out](){
+            auto x = matrix.w().array();
+            GRAD(matrix).noalias() -= (((x + EPS).inverse()) * target.w().array() * out.dw().array()).matrix();
+            GRAD(target).noalias() -= ((x.log()) * out.dw().array()).matrix();
+        });
+    return out;
+}
+
 
 template<typename R>
 Mat<R> MatOps<R>::softmax_cross_entropy(Mat<R> matrix, uint answer_idx) {

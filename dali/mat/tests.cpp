@@ -436,6 +436,42 @@ TEST_F(MatOpsTests, matrix_conv2d_grad) {
     }
 }
 
+TEST_F(MatOpsTests, softmax_temperature) {
+    graph::NoBackprop nb;
+
+    auto mat = Mat<R>(10, 1);
+    for (int i = 0; i < 10; i++) mat.w()(i) = i;
+
+    auto base_prob = MatOps<R>::softmax(mat, 1.0);
+
+    auto flat = MatOps<R>::softmax(
+        MatOps<R>::fill(
+            Mat<R>::empty_like(mat),
+            1.0
+        )
+    );
+
+    auto kl = MatOps<R>::cross_entropy(
+        base_prob,
+        flat
+    ).sum();
+
+    // gets flatter with higher temperature
+    for (int i = 2; i < 11; i++) {
+        R temperature = 1.0 * i;
+        auto new_prob = MatOps<R>::softmax(
+            mat,
+            temperature
+        );
+        auto new_kl = MatOps<R>::cross_entropy(
+            new_prob,
+            flat
+        ).sum();
+        ASSERT_TRUE(new_kl.w()(0) < kl.w()(0));
+        kl = new_kl;
+    }
+}
+
 TEST_F(MatOpsTests, cross_entropy_grad) {
     double temperature;
     int target = 8;

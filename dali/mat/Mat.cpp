@@ -107,6 +107,26 @@ typename Mat<R>::grad_internal_t Mat<R>::dw() const {
 }
 
 template<typename R>
+R Mat<R>::w(int i) const {
+    return (*w())(i);
+}
+
+template<typename R>
+R Mat<R>::w(int i, int j) const {
+    return (*w())(i,j);
+}
+
+template<typename R>
+R Mat<R>::dw(int i) const {
+    return (*dw())(i);
+}
+
+template<typename R>
+R Mat<R>::dw(int i, int j) const {
+    return (*dw())(i,j);
+}
+
+template<typename R>
 const vector<dim_t>& Mat<R>::dims() const {
     if (m != nullptr)
         return m->dims;

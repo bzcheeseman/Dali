@@ -127,6 +127,11 @@ class Mat {
         void grad();
 
         mat_internal_t  w() const;
+        R w(int i) const;
+        R dw(int i) const;
+        R w(int i, int j) const;
+        R dw(int i, int j) const;
+
         grad_internal_t dw() const;
 
         const std::vector<dim_t>& dims() const;

@@ -453,11 +453,11 @@ class LstmBabiModel {
                 vector<REAL_t> words_weights;
 
                 for (Mat<T> weight: activation.word_gate_memory[fidx]) {
-                    words_weights.push_back(weight.w()(0,0));
+                    words_weights.push_back(weight.w(0,0));
                 }
                 vfact->set_weights(words_weights);
                 facts_sentences.push_back(vfact);
-                facts_weights.push_back(activation.fact_gate_memory[fidx].w()(0,0));
+                facts_weights.push_back(activation.fact_gate_memory[fidx].w(0,0));
             }
 
             auto vcontext = make_shared<visualizable::Sentences<T>>(facts_sentences);
@@ -526,7 +526,9 @@ double run_epoch(const vector<babi::Story>& dataset,
                                                           qa->supporting_facts);
                     error.grad();
 
-                    thread_error[ThreadPool::get_thread_number()] += error.w()(0,0);
+
+                    thread_error[ThreadPool::get_thread_number()] += error.w(0,0);
+
 
                     num_questions += 1;
 

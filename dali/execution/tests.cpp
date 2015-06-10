@@ -1,9 +1,11 @@
+#ifdef INSANITY
+
 #include <gtest/gtest.h>
 #include <map>
 #include <stdexcept>
 
 #include "dali/mat/Mat.h"
-#include "dali/mat/MatOps.h"
+#include "dali/mat/math/MatOps.h"
 #include "dali/execution/BeamSearch.h"
 #include "dali/execution/Solver.h"
 
@@ -257,3 +259,5 @@ TEST(beam_search, beam_search_score_test) {
         {res_ba, res_aa, res_ab, res_bb}
     ));
 }
+
+#endif

@@ -14,7 +14,7 @@
 #include <json11.hpp>
 
 #include "dali/utils.h"
-#include "dali/mat/MatOps.h"
+#include "dali/mat/math/MatOps.h"
 #include "dali/mat/Index.h"
 #include "dali/mat/Tape.h"
 

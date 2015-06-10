@@ -1,3 +1,5 @@
+#ifdef INSANITY
+
 #include <vector>
 #include <gtest/gtest.h>
 #include "dali/test_utils.h"
@@ -59,3 +61,4 @@ TEST(utils, shallow_copy_multi_params) {
     ASSERT_EQ(std::get<1>(copies)[0].size(), 1);
     ASSERT_EQ(std::get<2>(copies)[0].size(), params.size() - 1);
 }
+#endif

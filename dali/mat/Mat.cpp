@@ -850,10 +850,6 @@ namespace utils {
 
 }
 
-template class MatInternal<float>;
-template class MatInternal<double>;
-template class GradInternal<float>;
-template class GradInternal<double>;
 template class weights<float>;
 template class weights<double>;
 template class Mat<float>;

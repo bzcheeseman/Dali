@@ -4,7 +4,7 @@
 #include <initializer_list>
 
 #include "dali/mat/Mat.h"
-#include "dali/mat/MatOps.h"
+#include "dali/mat/math/MatOps.h"
 
 template<typename R>
 class AbstractLayer {

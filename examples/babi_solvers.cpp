@@ -39,7 +39,7 @@ using utils::Timer;
 using utils::Vocab;
 
 DEFINE_int32(j,                        1,      "Number of threads");
-DEFINE_int32(minibatch,                10,    "How many stories to put in a single batch.");
+DEFINE_int32(minibatch,                25,    "How many stories to put in a single batch.");
 DEFINE_int32(max_epochs,               2000,   "maximum number of epochs for training");
 DEFINE_int32(patience,                 200,    "after <patience> epochs of performance decrease we stop.");
 DEFINE_int32(beam_width,               5,      "width of the beam for prediction.");
@@ -563,9 +563,9 @@ void visualize_examples(const vector<babi::Story>& data, int num_examples) {
 }
 
 void train(const vector<babi::Story>& data, float training_fraction = 0.8) {
-    /*for (auto param: model->parameters()) {
+    for (auto param: model->parameters()) {
         weights<REAL_t>::svd(weights<REAL_t>::gaussian(1.0))(param);
-    }*/
+    }
 
     int training_size = (int)(training_fraction * data.size());
     std::vector<babi::Story> train(data.begin(), data.begin() + training_size);

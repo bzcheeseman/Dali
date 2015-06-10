@@ -77,6 +77,13 @@ namespace babi {
         int last_story_id = -1, story_id;
         int questions_so_far = 0;
 
+        int questions_in_story = 0;
+        int facts_in_story = 0;
+
+        vector<int> index_to_fact_number;
+        index_to_fact_number.push_back(-1);
+
+
         string line_buffer;
         while(std::getline(file, line_buffer)) {
             // Read story id. Non-increasing id is indication
@@ -89,6 +96,10 @@ namespace babi {
                     break;
                 result.push_back(current_story);
                 current_story.clear();
+                questions_in_story = 0;
+                facts_in_story = 0;
+                index_to_fact_number.clear();
+                index_to_fact_number.push_back(-1);
             }
             last_story_id = story_id;
 
@@ -104,12 +115,16 @@ namespace babi {
                 if (lastc == '.') {
                     tokens.push_back(token.substr(0, token.size()-1));
                     tokens.push_back(".");
+                    facts_in_story += 1;
+                    index_to_fact_number.push_back(facts_in_story - 1);
                     is_question = false;
                     break;
                 } else if (lastc == '?') {
                     tokens.push_back(token.substr(0, token.size()-1));
                     tokens.push_back("?");
                     questions_so_far += 1;
+                    questions_in_story += 1;
+                    index_to_fact_number.push_back(-1);
                     is_question = true;
                     break;
                 } else {
@@ -125,7 +140,15 @@ namespace babi {
                 int supporting_fact;
                 while(line >> supporting_fact) {
                     // make it 0 indexed.
-                    supporting_facts.push_back(supporting_fact - 1);
+                    // and not include previous questions when counting
+
+                    int fact_number = index_to_fact_number[supporting_fact];
+
+                    utils::assert2(fact_number != -1,
+                            "Error: Supporting fact is a question.");
+                    utils::assert2(fact_number < facts_in_story,
+                            "Error in babi parsing");
+                    supporting_facts.push_back(fact_number);
                 }
                 current_story.push_back(make_shared<QA>(tokens,
                                                         answer,

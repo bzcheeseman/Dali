@@ -258,7 +258,7 @@ TEST_F(MatrixTests, norm_gradient) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(20.0));
-        ASSERT_TRUE(gradient_same<R>(functor, {A}, 1e-5));
+        ASSERT_TRUE(gradient_same<R>(functor, {A}, 1e-4));
     }
 }
 
@@ -315,7 +315,7 @@ TEST_F(MatrixTests, matrix_divide_broadcast) {
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(-20.0, 20.0));
         auto B = Mat<R>(10, 1, weights<R>::uniform(0.1, 20.0));
-        ASSERT_TRUE(gradient_same<R>(functor, {A, B}, 1e-4));
+        ASSERT_TRUE(gradient_same<R>(functor, {A, B}, 1e-3));
     }
 }
 
@@ -437,16 +437,19 @@ TEST_F(MatOpsTests, matrix_conv2d_grad) {
 }
 
 TEST_F(MatOpsTests, cross_entropy_grad) {
+    double temperature;
     int target = 8;
-    auto functor = [&target](vector<Mat<R>> Xs)-> Mat<R> {
+    auto functor = [&target, &temperature](vector<Mat<R>> Xs)-> Mat<R> {
         auto soft = MatOps<R>::softmax(
-                Xs[1].dot(Xs[0])
+                Xs[1].dot(Xs[0]),
+                temperature
             );
         return MatOps<R>::cross_entropy(
             soft,
             target);
     };
     EXPERIMENT_REPEAT {
+        temperature = utils::randdouble(0.1, 100);
         auto input = Mat<R>(5,  3, weights<R>::uniform(-2.0, 2.0));
         auto layer = Mat<R>(10, 5, weights<R>::uniform(-2.0, 2.0));
         ASSERT_TRUE(gradient_same<R>(functor, {input, layer}, 1e-4));

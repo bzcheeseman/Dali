@@ -509,7 +509,7 @@ vector<Mat<R>> MatOps<R>::softmax_no_grad(const vector<Mat<R>>& matrices, R temp
     R total = 0.0;
     for (auto& mat : matrices) {
         out.emplace_back(1,1);
-        out.back().w()(0) = std::exp(mat.w()(0) - layer_max);
+        out.back().w()(0) = std::exp((mat.w()(0) - layer_max) / temperature);
         total += out.back().w()(0);
     }
     for (auto& mat : out) {
@@ -537,7 +537,7 @@ vector<Mat<R>> MatOps<R>::softmax(const vector<Mat<R>>& matrices, R temperature)
                     auto& dw = matrices[i].dw();
                     auto& sm = out[i].w();
                     auto& dy = out[i].dw();
-                    dw(0) += (sm(0) * dy(0)) - (sm(0) * colwise_sums);
+                    dw(0) += ((sm(0) * dy(0)) - (sm(0) * colwise_sums)) / temperature;
                 }
             }
         });

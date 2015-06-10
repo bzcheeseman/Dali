@@ -471,12 +471,13 @@ TEST_F(MatOpsTests, matrix_conv1d_grad) {
 TEST_F(MatOpsTests, vector_softmax) {
     int softmax_size = 15;
     EXPERIMENT_REPEAT {
+        double temperature = utils::randdouble(0.1, 100.0);
         vector<Mat<R>> matrices;
         for (int i = 0; i < softmax_size; i++) {
             matrices.emplace_back(1,1, weights<R>::uniform(-20.0, 20.0));
         }
-        auto functor = [&matrices](vector<Mat<R>> Xs)-> Mat<R> {
-            auto mats = MatOps<R>::softmax(matrices);
+        auto functor = [&matrices, &temperature](vector<Mat<R>> Xs)-> Mat<R> {
+            auto mats = MatOps<R>::softmax(matrices, temperature);
             return (mats[4] - 1.0) ^ 2;
         };
         ASSERT_TRUE(gradient_same<R>(functor, {matrices}, 1e-4));

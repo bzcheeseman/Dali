@@ -653,14 +653,34 @@ template<typename R>
 Mat<R> MatOps<R>::softmax_cross_entropy(Mat<R> matrix, uint answer_idx) {
     Mat<R> out =  Mat<R>(1, 1, false);
 
-    Mat<R> probs = softmax(matrix);
+    Mat<R> probs = softmax_no_grad(matrix);
     out.w()(0,0) = -std::log(probs.w()(answer_idx, 0));
 
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, probs, answer_idx, out](){
             GRAD(matrix) += probs.w()* out.dw()(0,0);
             // write gradients into log probabilities
-            GRAD(matrix)(answer_idx, 0) -= 1 * out.dw()(0,0);
+            GRAD(matrix)(answer_idx, 0) -= 1.0 * out.dw()(0,0);
+        });
+    return out;
+}
+
+template<typename R>
+Mat<R> MatOps<R>::softmax_cross_entropy(Mat<R> matrix, Indexing::Index targets) {
+    Mat<R> out =  Mat<R>(1, targets.size(), false);
+    Mat<R> probs = softmax_no_grad(matrix);
+    for (int i = 0; i < targets.size(); i++) {
+        out.w()(i) = -std::log(probs.w()(targets[i], i));
+    }
+
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, probs, out, targets](){
+            if (!matrix.constant) {
+                GRAD(matrix).noalias() += (probs.w().array().rowwise() * out.dw().row(0).array()).matrix();
+                for (int i = 0; i < targets.size(); i++) {
+                    matrix.dw()(targets[i],i) -= 1.0 * out.dw()(i);
+                }
+            }
         });
     return out;
 }

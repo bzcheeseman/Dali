@@ -95,7 +95,7 @@ namespace beam_search {
                             continue;
                         if (candidates_remaining-- <= 0)
                             break;
-                        auto candidate_score = (*scores.w())(candidate_idx);
+                        auto candidate_score = scores.w(candidate_idx);
                         proposals.push_back(proposal_t::solution_candidate(
                                 result, result.score + candidate_score, candidate_idx));
                     }
@@ -144,8 +144,8 @@ namespace beam_search {
         std::pair<typename model_t::state_type, std::vector<ProbabilityPair<T>>> out;
         out.first = std::get<0>(out_state_and_prob);
         std::vector<T> probabilities(
-            std::get<1>(out_state_and_prob).w().data(),
-            std::get<1>(out_state_and_prob).w().data() + std::get<1>(out_state_and_prob).dims(0));
+            std::get<1>(out_state_and_prob).w()->data(),
+            std::get<1>(out_state_and_prob).w()->data() + std::get<1>(out_state_and_prob).dims(0));
         auto sorted_probs = utils::argsort(probabilities);
 
         // we pass along the new state, and the "winning" k predictions

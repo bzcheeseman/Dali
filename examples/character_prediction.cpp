@@ -81,7 +81,7 @@ T validation_error(
             error = error + MatOps<T>::softmax_cross_entropy(logprobs, example[i+1]);
 
         }
-        cost += error.w()(0) / (n-1);
+        cost += error.w(0) / (n-1);
     }
     return cost / data_set.size();
 }

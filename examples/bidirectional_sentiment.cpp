@@ -14,6 +14,7 @@
 #include "dali/models/StackedModel.h"
 #include "dali/models/StackedGatedModel.h"
 #include "dali/visualizer/visualizer.h"
+#include "dali/mat/math/__MatMacros__.h"
 
 using std::vector;
 using std::make_shared;
@@ -52,30 +53,31 @@ DEFINE_string(pretrained_vectors, "",    "Load pretrained word vectors?");
 DEFINE_string(memory_penalty_curve, "flat",   "Type of annealing used on gate memory penalty (flat, linear, square)");
 DEFINE_int32(validation_metric,   0,          "Use root (1) or overall (0) objective to choose best validation parameters?");
 
+// Error in this computation
 template<typename T>
 Mat<T> softmax_categorical_surprise(Mat<T> logprobs, int target) {
     auto out = Mat<T>(1, 1, false);
     auto probs = MatOps<T>::softmax_no_grad(logprobs);
 
-    out.w()(0) = -(
-        std::log1p(-std::sqrt(1.0 - probs.w()(target, 0))) -
-        std::log1p( std::sqrt(1.0 - probs.w()(target, 0)))
+    out.w(0) = -(
+        std::log1p(-std::sqrt(1.0 - probs.w(target, 0))) -
+        std::log1p( std::sqrt(1.0 - probs.w(target, 0)))
     );
 
     if (graph::backprop_enabled) {
         if (!logprobs.constant) {
             graph::emplace_back([logprobs, probs, target]() {
-                auto root_coeff = std::sqrt(std::max(EPS, 1.0 - probs.w()(target, 0)));
-                logprobs.dw().noalias() += (
+                auto root_coeff = std::sqrt(std::max(MatOps<T>::EPS, (T) (1.0 - probs.w(target, 0))));
+                GET_GRAD(logprobs).noalias() += (
                     (
-                        (0.5 * probs.w()(target, 0) / (root_coeff * (root_coeff + 1.0)) + EPS) +
-                        (0.5 * probs.w()(target, 0) / (root_coeff * (1.0 - root_coeff)) + EPS)
+                        (0.5 * probs.w(target, 0) / (root_coeff * (root_coeff + 1.0)) + MatOps<T>::EPS) +
+                        (0.5 * probs.w(target, 0) / (root_coeff * (1.0 - root_coeff)) + MatOps<T>::EPS)
 
-                    ) * probs.w()
+                    ) * GET_MAT(probs)
                 );
-                logprobs.dw()(target, 0) -= probs.w()(target, 0) * (
-                    (0.5 / (root_coeff * (root_coeff + 1.0)) + EPS) +
-                    (0.5 / (root_coeff * (1.0 - root_coeff)) + EPS)
+                GET_GRAD(logprobs)(target, 0) -= probs.w(target, 0) * (
+                    (0.5 / (root_coeff * (root_coeff + 1.0)) + MatOps<T>::EPS) +
+                    (0.5 / (root_coeff * (1.0 - root_coeff)) + MatOps<T>::EPS)
                 );
             });
         }
@@ -343,7 +345,7 @@ class BidirectionalLSTM {
                     }).sigmoid();
 
                     // add this memory to output:
-                    std::get<0>(prediction_tuple).w()(step) = new_memory.w()(0);
+                    std::get<0>(prediction_tuple).w(step) = new_memory.w(0);
                     step++;
 
                     // Make a new prediction:

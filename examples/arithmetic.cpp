@@ -124,7 +124,7 @@ int main (int argc,  char* argv[]) {
             }
             error.grad();
             graph::backward();
-            minibatch_error += error.w()(0);
+            minibatch_error += error.w(0);
             // </training>
             throttled1.maybe_run(seconds(2), [&]() {
                 auto random_example_index = utils::randint(0, examples.size() -1);

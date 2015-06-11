@@ -348,7 +348,7 @@ class BeamTree {
 
             // sort indexes based on comparing values in v
             sort(idx.begin(), idx.end(), [&possible_joins](size_t i1, size_t i2) {
-                return possible_joins[i1].log_probability.w()(0) > possible_joins[i2].log_probability.w()(0);
+                return possible_joins[i1].log_probability.w(0) > possible_joins[i2].log_probability.w(0);
             });
             vector<PartialTree> results;
 
@@ -374,7 +374,7 @@ class BeamTree {
         T candidate_log_probability(PartialTree candidate) const {
             T result = 0.0;
             for (auto& node: candidate.nodes) {
-                result += node.log_probability.w()(0);
+                result += node.log_probability.w(0);
             }
             return result;
         }
@@ -564,7 +564,7 @@ class ArithmeticModel {
 
                         std::sort(predicted_symbols.begin(), predicted_symbols.end(),
                                 [&next_symbol_distribution](const uint& a, const uint& b) {
-                            return next_symbol_distribution.w()(a) > next_symbol_distribution.w()(b);
+                            return next_symbol_distribution.w(a) > next_symbol_distribution.w(b);
                         });
                         int n_generated_candidates = std::min(
                             (uint) beam_width,
@@ -592,7 +592,7 @@ class ArithmeticModel {
 
                 std::sort(new_candidates.begin(), new_candidates.end(),
                         [](const PredictionNode<T>& a, const PredictionNode<T> b) {
-                    return a.get_probability().w()(0) > b.get_probability().w()(0);
+                    return a.get_probability().w(0) > b.get_probability().w(0);
                 });
                 if (new_candidates.size() > beam_width)
                     new_candidates.resize(beam_width);
@@ -685,7 +685,7 @@ void training_loop(std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver,
             auto error = model.error(example, beam_width);
             error.grad();
             graph::backward();
-            minibatch_error += error.w()(0);
+            minibatch_error += error.w(0);
             // </training>
             // // <reporting>
             throttled_examples.maybe_run(seconds(10), [&]() {
@@ -710,8 +710,8 @@ void training_loop(std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver,
                     if (validate[random_example_index].second == prediction.prediction) {
                         std::cout << utils::green;
                     }
-                    prediction_probability.push_back(prediction.get_probability().w()(0));
-                    std::cout << "= (" << std::setprecision( 3 ) << prediction.get_probability().log().w()(0) << ") ";
+                    prediction_probability.push_back(prediction.get_probability().w(0));
+                    std::cout << "= (" << std::setprecision( 3 ) << prediction.get_probability().log().w(0) << ") ";
                     auto digits = vocab.decode(prediction.prediction);
                     if (digits.back() == utils::end_symbol)
                         digits.pop_back();
@@ -730,7 +730,7 @@ void training_loop(std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver,
                             predictions[0].derivations[didx],
                             vocab.decode(expression)
                     );
-                    auto tree_prob = predictions[0].nodes[didx].log_probability.exp().w()(0,0);
+                    auto tree_prob = predictions[0].nodes[didx].log_probability.exp().w(0,0);
                     vgrid->add_in_column(0, make_shared<visualizable::Probability<double>>(tree_prob));
                     vgrid->add_in_column(0, visualization);
                 }

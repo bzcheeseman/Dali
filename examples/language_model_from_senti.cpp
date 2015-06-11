@@ -130,7 +130,7 @@ REAL_t average_error(const vector<model_t>& models, const vector<vector<Databatc
                     double best_prob = (FLAGS_use_surprise ? 1.0 : -1.0) * std::numeric_limits<REAL_t>::infinity();
                     if (FLAGS_use_surprise) {
                         for (int k = 0; k < models.size();k++) {
-                            auto prob = probs[k].w()(row_num);
+                            auto prob = probs[k].w(row_num);
                             if (prob < best_prob) {
                                 best_prob = prob;
                                 best_model = k;
@@ -138,7 +138,7 @@ REAL_t average_error(const vector<model_t>& models, const vector<vector<Databatc
                         }
                     } else {
                         for (int k = 0; k < models.size();k++) {
-                            auto prob = probs[k].w()(row_num);
+                            auto prob = probs[k].w(row_num);
                             if (prob > best_prob) {
                                 best_prob = prob;
                                 best_model = k;

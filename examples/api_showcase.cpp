@@ -37,7 +37,7 @@ int main () {
         numpy_mat = Mat<R>(name);
     } else {
         numpy_mat = Mat<R>(3, 3);
-        for (int i = 0; i < 9; i++) numpy_mat.w()(i) = i;
+        for (int i = 0; i < 9; i++) numpy_mat.w(i) = i;
         numpy_mat.npy_save(name);
     }
     std::cout << "\"" << name << "\"=" << std::endl;
@@ -60,7 +60,7 @@ int main () {
     getchar();
 
     Mat<R> A(3, 5);
-    A.w() = (A.w().array() + 1.2).matrix();
+    A += 1.2;
     A = A + Mat<R>(3, 5, weights<R>::uniform(-0.5, 0.5));
     // build random matrix of double type with standard deviation 2:
     Mat<R> B(A.dims(0), A.dims(1), U);
@@ -81,7 +81,7 @@ int main () {
 
     // add some random singularity and use exponential
     // normalization:
-    A_plucked.w()(2,0) += 3.0;
+    A_plucked.w(2,0) += 3.0;
     auto A_plucked_normed = MatOps<R>::softmax(A_plucked);
     auto A_plucked_normed_t = MatOps<R>::softmax(A_plucked.T());
     A_plucked_normed.print();
@@ -120,10 +120,11 @@ int main () {
     std::cout << "using MAT::hstack(\"upper\", \"lower\") :" << std::endl;
     MatOps<R>::hstack(upper, lower).print();
 
-    inputs[0].w().fill(3);
-    inputs[0].w().row(1).fill(1);
-    inputs[0].w().row(2).fill(2);
-    inputs[0].w().row(3).fill(3);
+    inputs[0] = MatOps<R>::fill(inputs[0], 3);
+    // TODO(jonathan): put in a test.
+    // inputs[0].w().row(1).fill(1);
+    // inputs[0].w().row(2).fill(2);
+    // inputs[0].w().row(3).fill(3);
 
     Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> bob_indices = Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic>::Zero(3,3);
 
@@ -181,11 +182,11 @@ int main () {
     std::cout <<( (A_ptr == A_ptr_T)  ? "t" : "f" ) << std::endl;
 
     Mat<R> X(3,3);
-    X.w()(0,0) = 1.0;
-    X.w()(1,2) = -123.0;
+    X.w(0,0) = 1.0;
+    X.w(1,2) = -123.0;
     X.print();
     Mat<R> Y = Mat<R>(X, true, true);
-    Y.w()(1,2) = 512.0;
+    Y.w(1,2) = 512.0;
     X.print();
     Y.print();
 

@@ -18,11 +18,9 @@ bool buffer_equals (T* buffer1, T* buffer2, uint size1, uint size2) {
     if (size1 != size2)
         return false;
     for (int i=0; i<size1; ++i) {
-        std::cout << buffer1[i] << " " <<buffer2[i] << std::endl;
         if (buffer1[i] != buffer2[i])
             return false;
     }
-    std::cout << " END OF CMP " << std::endl << std::endl;
     return true;
 }
 

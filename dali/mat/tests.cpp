@@ -984,3 +984,61 @@ TEST_F(MatrixTests, argsort) {
     auto sorted = utils::argsort(mats);
     ASSERT_EQ(sorted, std::vector<size_t>({2, 0, 1}));
 }
+
+
+TEST(Solver, adagrad) {
+    int num_points = 20;
+    int num_dimensions = 5;
+    // create data
+    auto dataset = Mat<R>();
+
+    {
+        graph::NoBackprop nb;
+        auto pointsA = Mat<R>(
+            num_dimensions,
+            num_points,
+            weights<R>::gaussian(0.0, 2.0)
+        );
+        auto pointsB = Mat<R>(
+            num_dimensions,
+            num_points,
+            weights<R>::gaussian(0.0, 2.0)
+        );
+        auto point = Mat<R>(num_dimensions, 1);
+        for (int i = 0; i < num_dimensions; i++)
+            point.w(i) = 2;
+        pointsA += point;
+
+        for (int i = 0; i < num_dimensions; i++)
+            point.w(i) = -2;
+        pointsB += point;
+        dataset = MatOps<R>::hstack({pointsA, pointsB});
+    }
+
+    int num_classes = 2;
+    auto mat = Mat<R>(num_classes, num_dimensions, weights<R>::uniform(2.0));
+    auto bias = Mat<R>(num_classes, 1, weights<R>::uniform(2.0));
+    auto params = vector<Mat<R>>({mat, bias});
+    Solver::AdaGrad<R> solver(params);
+    solver.step_size = 0.1;
+    auto labels = vector<uint>();
+    for (int i = 0; i < num_points * 2; i++)
+        labels.emplace_back(i < num_points ? 0 : 1);
+
+    R original_error = 0;
+    {
+        graph::NoBackprop nb;
+        auto mat_err = MatOps<R>::softmax_cross_entropy((mat.dot(dataset) + bias), labels).sum();
+        original_error = mat_err.w(0);
+    }
+    R error = original_error;
+    for (int e = 0; e < 100; e++) {
+        auto KL = MatOps<R>::softmax_cross_entropy((mat.dot(dataset) + bias), labels).sum();
+        KL.grad();
+        graph::backward();
+        solver.step(params);
+        error = KL.w(0);
+    }
+    // make 10x improvements (or else no VC funding)
+    ASSERT_TRUE(original_error / 10.0 > error);
+}

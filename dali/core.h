@@ -8,5 +8,5 @@
 #include "dali/mat/GRU.h"
 #include "dali/execution/SequenceProbability.h"
 #include "dali/execution/BeamSearch.h"
-#include "dali/execution/Solver.h"
+#include "dali/mat/math/Solver.h"
 #include "dali/models/shallow_copy.h"

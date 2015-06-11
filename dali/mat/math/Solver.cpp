@@ -1,6 +1,6 @@
 #include "Solver.h"
 
-#ifdef INSANITY
+#include "dali/mat/math/__MatMacros__.h"
 
 using std::vector;
 #define PARAM_KEY_FOR_LOOKUP_TABLE param.id()
@@ -47,27 +47,27 @@ namespace Solver {
     template<typename R>
     void SGD<R>::step (vector<Mat<R>>& parameters, R step_size) {
         for (auto& param : parameters) {
-            DEBUG_ASSERT_NOT_NAN(param.w());
+            DEBUG_ASSERT_NOT_NAN(GET_MAT(param));
             if (param.sparse) {
                 for (auto& i : *(param.sparse_row_keys)) {
                     if (this->regc > 0) {
-                        param.w().row(i) -= (step_size * param.dw().row(i).array().min(this->clipval).max(-this->clipval)).matrix() - (this->regc * param.w().row(i));
+                        GET_MAT(param).row(i) -= (step_size * GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval)).matrix() - (this->regc * GET_MAT(param).row(i));
                     } else {
-                        param.w().row(i) -= (step_size * param.dw().row(i).array().min(this->clipval).max(-this->clipval)).matrix();
+                        GET_MAT(param).row(i) -= (step_size * GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval)).matrix();
                     }
                     // reset gradient
-                    param.dw().row(i).fill(0);
+                    GET_GRAD(param).row(i).fill(0);
                 }
             } else {
                 if (this->regc > 0) {
-                    param.w() -= (step_size * param.dw().array().min(this->clipval).max(-this->clipval)).matrix() - (this->regc * param.w());
+                    GET_MAT(param) -= (step_size * GET_GRAD(param).array().min(this->clipval).max(-this->clipval)).matrix() - (this->regc * GET_MAT(param));
                 } else {
-                    param.w() -= (step_size * param.dw().array().min(this->clipval).max(-this->clipval)).matrix();
+                    GET_MAT(param) -= (step_size * GET_GRAD(param).array().min(this->clipval).max(-this->clipval)).matrix();
                 }
                 // reset gradient
-                param.dw().fill(0);
+                GET_GRAD(param).fill(0);
             }
-            DEBUG_ASSERT_NOT_NAN(param.w());
+            DEBUG_ASSERT_NOT_NAN(GET_MAT(param));
         }
     }
 
@@ -134,35 +134,35 @@ namespace Solver {
             if (param.sparse) {
                 for (auto& i : *(param.sparse_row_keys)) {
                 if (this->regc > 0) {
-                    param.dw().row(i) = param.dw().row(i).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * param.w().row(i));
+                    GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * GET_MAT(param).row(i));
                 } else {
-                    param.dw().row(i) = param.dw().row(i).array().min(this->clipval).max(-this->clipval).matrix();
+                    GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix();
                 }
                 // update gradient cache using decay rule:
-                s.row(i) += param.dw().row(i).array().square().matrix();
+                s.row(i) += GET_GRAD(param).row(i).array().square().matrix();
                 // clip the gradient to prevent explosions:
                 // update gradient using RMSprop rule
                 DEBUG_ASSERT_POSITIVE((s.row(i).array() + this->smooth_eps).matrix());
-                param.w().row(i) -= step_size * (param.dw().row(i).array() / (s.row(i).array() + this->smooth_eps).sqrt() ).matrix();
+                GET_MAT(param).row(i) -= step_size * (GET_GRAD(param).row(i).array() / (s.row(i).array() + this->smooth_eps).sqrt() ).matrix();
                 // reset gradient
-                param.dw().row(i).fill(0);
+                GET_GRAD(param).row(i).fill(0);
                 }
             } else {
                 if (this->regc > 0) {
-                    param.dw() = param.dw().array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * param.w());
+                    GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * GET_MAT(param));
                 } else {
-                    param.dw() = param.dw().array().min(this->clipval).max(-this->clipval).matrix();
+                    GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix();
                 }
                 // update gradient cache using decay rule:
-                s += param.dw().array().square().matrix();
+                s += GET_GRAD(param).array().square().matrix();
                 // clip the gradient to prevent explosions:
                 // update gradient using RMSprop rule
                 DEBUG_ASSERT_POSITIVE((s.array() + this->smooth_eps).matrix());
-                param.w() -= step_size * (param.dw().array() / (s.array() + this->smooth_eps).sqrt() ).matrix();
+                GET_MAT(param) -= step_size * (GET_GRAD(param).array() / (s.array() + this->smooth_eps).sqrt() ).matrix();
                 // reset gradient
-                param.dw().fill(0);
+                GET_GRAD(param).fill(0);
             }
-            DEBUG_ASSERT_NOT_NAN(param.w());
+            DEBUG_ASSERT_NOT_NAN(GET_MAT(param));
         }
     }
 
@@ -203,34 +203,34 @@ namespace Solver {
 
             if (param.sparse) {
                 for (auto& i : *(param.sparse_row_keys)) {
-                    s.row(i) = s.row(i) * decay_rate + (1.0 - decay_rate) * param.dw().row(i).array().square().matrix();
+                    s.row(i) = s.row(i) * decay_rate + (1.0 - decay_rate) * GET_GRAD(param).row(i).array().square().matrix();
                     // clip the gradient to prevent explosions:
                     if (this->regc > 0) {
-                        param.dw().row(i) = param.dw().row(i).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * param.w().row(i));
+                        GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * GET_MAT(param).row(i));
                     } else {
-                        param.dw().row(i) = param.dw().row(i).array().min(this->clipval).max(-this->clipval).matrix();
+                        GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix();
                     }
                     // update gradient using RMSprop rule
                     DEBUG_ASSERT_POSITIVE((s.row(i).array() + this->smooth_eps).matrix());
-                    param.w().row(i) -= step_size * (param.dw().row(i).array() / (s.row(i).array() + this->smooth_eps).sqrt() ).matrix()  - (this->regc * param.w().row(i));
+                    GET_MAT(param).row(i) -= step_size * (GET_GRAD(param).row(i).array() / (s.row(i).array() + this->smooth_eps).sqrt() ).matrix()  - (this->regc * GET_MAT(param).row(i));
                     // reset gradient
-                    param.dw().row(i).fill(0);
+                    GET_GRAD(param).row(i).fill(0);
                 }
             } else {
-                s = s * decay_rate + (1.0 - decay_rate) * param.dw().array().square().matrix();
+                s = s * decay_rate + (1.0 - decay_rate) * GET_GRAD(param).array().square().matrix();
                 // clip the gradient to prevent explosions:
                 if (this->regc > 0) {
-                    param.dw() = param.dw().array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * param.w());
+                    GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * GET_MAT(param));
                 } else {
-                    param.dw() = param.dw().array().min(this->clipval).max(-this->clipval).matrix();
+                    GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix();
                 }
                 // update gradient using RMSprop rule
                 DEBUG_ASSERT_POSITIVE((s.array() + this->smooth_eps).matrix());
-                param.w() -= step_size * (param.dw().array() / (s.array() + this->smooth_eps).sqrt() ).matrix()  - (this->regc * param.w());
+                GET_MAT(param) -= step_size * (GET_GRAD(param).array() / (s.array() + this->smooth_eps).sqrt() ).matrix()  - (this->regc * GET_MAT(param));
                 // reset gradient
-                param.dw().fill(0);
+                GET_GRAD(param).fill(0);
             }
-            DEBUG_ASSERT_NOT_NAN(param.w());
+            DEBUG_ASSERT_NOT_NAN(GET_MAT(param));
         }
     }
 
@@ -307,44 +307,44 @@ namespace Solver {
             if (param.sparse) {
                 for (auto& i : *(param.sparse_row_keys)) {
                     if (this->regc > 0) {
-                        param.dw().row(i) = param.dw().row(i).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * param.w().row(i));
+                        GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * GET_MAT(param).row(i));
                     } else {
-                        param.dw().row(i) = param.dw().row(i).array().min(this->clipval).max(-this->clipval).matrix();
+                        GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix();
                     }
                     // update gradient cache using decay rule:
                     DEBUG_ASSERT_POSITIVE(gsum.row(i).matrix());
-                    gsum.row(i) = (gsum.row(i) * rho) + ((1.0 - rho) * (param.dw().row(i).array().square()).matrix());
+                    gsum.row(i) = (gsum.row(i) * rho) + ((1.0 - rho) * (GET_GRAD(param).row(i).array().square()).matrix());
 
                     DEBUG_ASSERT_NOT_NAN(((gsum.row(i).array()  + this->smooth_eps).matrix()));
                     DEBUG_ASSERT_POSITIVE(((gsum.row(i).array() + this->smooth_eps)).matrix());
                     DEBUG_ASSERT_POSITIVE(((xsum.row(i).array() + this->smooth_eps) / (gsum.row(i).array() + this->smooth_eps)).matrix());
-                    auto dparam = -(((xsum.row(i).array() + this->smooth_eps) / (gsum.row(i).array() + this->smooth_eps)).sqrt() * param.dw().row(i).array()).matrix();
+                    auto dparam = -(((xsum.row(i).array() + this->smooth_eps) / (gsum.row(i).array() + this->smooth_eps)).sqrt() * GET_GRAD(param).row(i).array()).matrix();
 
                     xsum.row(i) = (xsum.row(i) * rho) + ((1.0 - rho) * (dparam.array().square())).matrix();
                     // update gradient using AdaDelta rule
-                    param.w().row(i) += dparam;
+                    GET_MAT(param).row(i) += dparam;
                     // reset gradient
-                    param.dw().row(i).fill(0);
+                    GET_GRAD(param).row(i).fill(0);
                 }
             } else {
                 if (this->regc > 0) {
-                    param.dw() = param.dw().array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * param.w());
+                    GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * GET_MAT(param));
                 } else {
-                    param.dw() = param.dw().array().min(this->clipval).max(-this->clipval).matrix();
+                    GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix();
                 }
                 // update gradient cache using decay rule:
-                gsum = (gsum * rho) + ((1.0 - rho) * (param.dw().array().square()).matrix());
+                gsum = (gsum * rho) + ((1.0 - rho) * (GET_GRAD(param).array().square()).matrix());
                 DEBUG_ASSERT_POSITIVE((gsum.array()  + this->smooth_eps).matrix());
                 DEBUG_ASSERT_POSITIVE(((xsum.array() + this->smooth_eps) / (gsum.array() + this->smooth_eps)).matrix());
-                auto dparam = -(((xsum.array() + this->smooth_eps) / (gsum.array() + this->smooth_eps)).sqrt() * param.dw().array()).matrix();
+                auto dparam = -(((xsum.array() + this->smooth_eps) / (gsum.array() + this->smooth_eps)).sqrt() * GET_GRAD(param).array()).matrix();
 
                 xsum = (xsum * rho) + ((1.0 - rho) * (dparam.array().square())).matrix();
                 // update gradient using AdaDelta rule
-                param.w() += dparam;
+                GET_MAT(param) += dparam;
                 // reset gradient
-                param.dw().fill(0);
+                GET_GRAD(param).fill(0);
             }
-            DEBUG_ASSERT_NOT_NAN(param.w());
+            DEBUG_ASSERT_NOT_NAN(GET_MAT(param));
         }
     }
 
@@ -427,48 +427,48 @@ namespace Solver {
 
             if (param.sparse) {
                 for (auto& i : *(param.sparse_row_keys)) {
-                    param.dw().row(i) = param.dw().row(i).array().min(this->clipval).max(-this->clipval).matrix();
+                    GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix();
                     // update m acculumulator
-                    m.row(i) = ((b1 * param.dw().row(i).array()) + ((1. - b1) * m.row(i).array())).matrix();
+                    m.row(i) = ((b1 * GET_GRAD(param).row(i).array()) + ((1. - b1) * m.row(i).array())).matrix();
 
                     // update v acculumulator
-                    v.row(i) = ((b2 * param.dw().row(i).array().square()) + ((1. - b2) * v.row(i).array())).matrix();
+                    v.row(i) = ((b2 * GET_GRAD(param).row(i).array().square()) + ((1. - b2) * v.row(i).array())).matrix();
 
                     // regularize using L2 norm:
                     if (this->regc > 0) {
-                        param.dw().row(i)  = (m.row(i).array() / (v.row(i).array().sqrt() + this->smooth_eps)).matrix() + (this->regc * param.w().row(i));
+                        GET_GRAD(param).row(i)  = (m.row(i).array() / (v.row(i).array().sqrt() + this->smooth_eps)).matrix() + (this->regc * GET_MAT(param).row(i));
                     } else {
-                        param.dw().row(i)  = (m.row(i).array() / (v.row(i).array().sqrt() + this->smooth_eps)).matrix();
+                        GET_GRAD(param).row(i)  = (m.row(i).array() / (v.row(i).array().sqrt() + this->smooth_eps)).matrix();
                     }
 
                     // take gradient step
-                    param.w().row(i) -= lr_t * param.dw().row(i);
+                    GET_MAT(param).row(i) -= lr_t * GET_GRAD(param).row(i);
 
                     // reset gradient
-                    param.dw().row(i).fill(0);
+                    GET_GRAD(param).row(i).fill(0);
                 }
             } else {
 
-                param.dw() = param.dw().array().min(this->clipval).max(-this->clipval).matrix();
+                GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix();
 
                 // update m acculumulator
-                m = ((b1 * param.dw().array()) + ((1. - b1) * m.array())).matrix();
+                m = ((b1 * GET_GRAD(param).array()) + ((1. - b1) * m.array())).matrix();
 
                 // update v acculumulator
-                v = ((b2 * param.dw().array().square()) + ((1. - b2) * v.array())).matrix();
+                v = ((b2 * GET_GRAD(param).array().square()) + ((1. - b2) * v.array())).matrix();
 
                 // regularize using L2 norm:
                 if (this->regc > 0) {
-                    param.dw()  = (m.array() / (v.array().sqrt() + this->smooth_eps)).matrix() + (this->regc * param.w());
+                    GET_GRAD(param)  = (m.array() / (v.array().sqrt() + this->smooth_eps)).matrix() + (this->regc * GET_MAT(param));
                 } else {
-                    param.dw()  = (m.array() / (v.array().sqrt() + this->smooth_eps)).matrix();
+                    GET_GRAD(param)  = (m.array() / (v.array().sqrt() + this->smooth_eps)).matrix();
                 }
 
                 // take gradient step
-                param.w() -= lr_t * param.dw();
+                GET_MAT(param) -= lr_t * GET_GRAD(param);
 
                 // reset gradient
-                param.dw().fill(0);
+                GET_GRAD(param).fill(0);
             }
         }
     }
@@ -510,5 +510,3 @@ namespace Solver {
 
     DECLARE_TYPENAME_GETTER(Adam, adam, true)
 }
-
-#endif

@@ -106,9 +106,13 @@ class Mat {
 
         mat_internal_t  w() const;
         R w(int i) const;
+        R& w(int i);
         R dw(int i) const;
+        R& dw(int i);
         R w(int i, int j) const;
+        R& w(int i, int j);
         R dw(int i, int j) const;
+        R& dw(int i, int j);
 
         grad_internal_t dw() const;
 

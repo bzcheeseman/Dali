@@ -31,7 +31,17 @@ R Mat<R>::w(int i) const {
 }
 
 template<typename R>
+R& Mat<R>::w(int i) {
+    return (*w())(i);
+}
+
+template<typename R>
 R Mat<R>::w(int i, int j) const {
+    return (*w())(i,j);
+}
+
+template<typename R>
+R& Mat<R>::w(int i, int j) {
     return (*w())(i,j);
 }
 
@@ -41,7 +51,17 @@ R Mat<R>::dw(int i) const {
 }
 
 template<typename R>
+R& Mat<R>::dw(int i) {
+    return (*dw())(i);
+}
+
+template<typename R>
 R Mat<R>::dw(int i, int j) const {
+    return (*dw())(i,j);
+}
+
+template<typename R>
+R& Mat<R>::dw(int i, int j) {
     return (*dw())(i,j);
 }
 

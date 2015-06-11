@@ -785,10 +785,8 @@ TEST_F(LayerTests, RNN_gradient_vs_Stacked_gradient) {
         for (auto it1 = params.begin(),
                   it2 = stacked_params.begin(); (it1 != params.end()) && (it2 != stacked_params.end()); it1++, it2++) {
             ASSERT_EQ((*it1).dims(), (*it2).dims());
-            auto copy = Mat<R>(*it2, true, true);
-            // it1->w()->w = it2->w()->w;
-            it1->w() = copy.w();
-            // (*it1) = Mat<R>(*it2, true, false); // have the same parameters for both layers
+            std::copy(it2->w()->data(), it2->w()->data() + it2->number_of_elements(),
+                      it1->w()->data());
         }
 
         auto error = ((rnn_layer.activate(X, H).tanh() - 1) ^ 2).sum();

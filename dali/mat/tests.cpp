@@ -734,20 +734,30 @@ TEST_F(LayerTests, RNN_gradient_vs_Stacked_gradient) {
     }
 }
 
-TEST_F(LayerTests, matrix_constant_check) {
+TEST_F(MatrixTests, matrix_constant_check) {
     int num_examples           = 10;
     int input_size             = 3;
-    auto X  = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
 
+    auto X  = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
+    // THE ONLY VARIABLE CONSIDERED CONSTANT IN THIS TEST IS X HERE
     auto X_const = MatOps<R>::consider_constant(X);
     auto B = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
-
     auto error = (((X_const * B) - 2.0) ^ 2).sum();
     error.grad();
     graph::backward();
 
     EXPECT_TRUE((X.dw()->dw.array() == Mat<R>::zeros_like(X).w()->w.array()).all());
-    EXPECT_TRUE((B.dw()->dw.array() == Mat<R>::zeros_like(X).w()->w.array()).all());
+    EXPECT_FALSE((B.dw()->dw.array() == Mat<R>::zeros_like(X).w()->w.array()).all());
+
+    // HERE X IS NO LONGER CONST
+    X = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
+    B = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
+    error = (((X * B) - 2.0) ^ 2).sum();
+    error.grad();
+    graph::backward();
+
+    EXPECT_FALSE((X.dw()->dw.array() == Mat<R>::zeros_like(X).w()->w.array()).all());
+    EXPECT_FALSE((B.dw()->dw.array() == Mat<R>::zeros_like(X).w()->w.array()).all());
 }
 
 TEST_F(LayerTests, shortcut_test) {
@@ -896,16 +906,11 @@ TEST_F(MatrixTests, abs) {
 }
 
 TEST_F(MatrixTests, argsort) {
-    vector<Mat<R>> mats;
-    Mat<R> A(1,1);
-    MatOps<R>::fill(A, 3);
-    mats.push_back(A);
-    Mat<R> B(1,1);
-    MatOps<R>::fill(B, 9);
-    mats.push_back(B);
-    Mat<R> C(1,1);
-    MatOps<R>::fill(C, 1);
-    mats.push_back(C);
+    auto mats = vector<Mat<R>>({
+        MatOps<R>::fill(Mat<R>(1,1), 3),
+        MatOps<R>::fill(Mat<R>(1,1), 9),
+        MatOps<R>::fill(Mat<R>(1,1), 1),
+    });
     auto sorted = utils::argsort(mats);
     ASSERT_EQ(sorted, std::vector<size_t>({2, 0, 1}));
 }

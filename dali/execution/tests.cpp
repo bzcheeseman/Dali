@@ -64,11 +64,11 @@ TEST(Solver, adagrad) {
         );
         auto point = Mat<R>(num_dimensions, 1);
         for (int i = 0; i < num_dimensions; i++)
-            point.w()(i) = 2;
+            point.w(i) = 2;
         pointsA += point;
 
         for (int i = 0; i < num_dimensions; i++)
-            point.w()(i) = -2;
+            point.w(i) = -2;
         pointsB += point;
         dataset = MatOps<R>::hstack({pointsA, pointsB});
     }
@@ -87,7 +87,7 @@ TEST(Solver, adagrad) {
     {
         graph::NoBackprop nb;
         auto mat_err = MatOps<R>::softmax_cross_entropy((mat.dot(dataset) + bias), labels).sum();
-        original_error = mat_err.w()(0);
+        original_error = mat_err.w(0);
     }
     R error = original_error;
     for (int e = 0; e < 10; e++) {
@@ -95,7 +95,7 @@ TEST(Solver, adagrad) {
         KL.grad();
         graph::backward();
         solver.step(params);
-        error = KL.w()(0);
+        error = KL.w(0);
     }
     // make 10x improvements (or else no VC funding)
     ASSERT_TRUE(original_error / 10.0 > error);

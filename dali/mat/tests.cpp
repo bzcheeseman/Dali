@@ -470,7 +470,7 @@ TEST_F(MatOpsTests, softmax_temperature) {
     graph::NoBackprop nb;
 
     auto mat = Mat<R>(10, 1);
-    for (int i = 0; i < 10; i++) mat.w()(i) = i;
+    for (int i = 0; i < 10; i++) mat.w(i) = i;
 
     auto base_prob = MatOps<R>::softmax(mat, 1.0);
 
@@ -497,7 +497,7 @@ TEST_F(MatOpsTests, softmax_temperature) {
             new_prob,
             flat
         ).sum();
-        ASSERT_TRUE(new_kl.w()(0) < kl.w()(0));
+        ASSERT_TRUE(new_kl.w(0) < kl.w(0));
         kl = new_kl;
     }
 }

@@ -1,5 +1,7 @@
 #include "MatOps.h"
+
 #include "dali/mat/math/__MatMacros.h"
+
 
 using std::vector;
 using std::string;
@@ -490,8 +492,11 @@ Mat<R> MatOps<R>::sigmoid(Mat<R> matrix) {
 template<typename R>
 Mat<R> MatOps<R>::softmax_no_grad(Mat<R> matrix, R temperature) {
     auto out = Mat<R>::empty_like(matrix);
+
     auto layer_max = GET_MAT(matrix).colwise().maxCoeff().array().matrix();
-    auto exped_distributions = (GET_MAT(matrix).rowwise() - layer_max.row(0)).array().exp().matrix();
+    auto exped_distributions = (
+        (GET_MAT(matrix).rowwise() - layer_max.row(0)) / temperature
+    ).array().exp().matrix();
 
     auto total_distribution = exped_distributions.colwise().sum().array().matrix();
     GET_MAT(out) = (exped_distributions.array().rowwise() / total_distribution.row(0).array());
@@ -509,7 +514,7 @@ Mat<R> MatOps<R>::softmax(Mat<R> matrix, R temperature) {
             eigen_mat sm_times_dy = (sm.array() * dy.array());
             auto colwise_sums                      = sm_times_dy.colwise().sum();
             for (size_t i = 0; i < matrix.dims(1); ++i) {
-                dw.col(i) += sm_times_dy.col(i) - sm.col(i) * colwise_sums(i);
+                dw.col(i) += (sm_times_dy.col(i) - sm.col(i) * colwise_sums(i)) / temperature;
             }
         });
     return out;
@@ -557,7 +562,7 @@ vector<Mat<R>> MatOps<R>::softmax_no_grad(const vector<Mat<R>>& matrices, R temp
     R total = 0.0;
     for (auto& mat : matrices) {
         out.emplace_back(1,1);
-        GET_MAT(out.back())(0) = std::exp(GET_MAT(mat)(0) - layer_max);
+        GET_MAT(out.back())(0) = std::exp((GET_MAT(mat)(0) - layer_max) / temperature);
         total += GET_MAT(out.back())(0);
     }
     for (auto& mat : out) {
@@ -585,7 +590,7 @@ vector<Mat<R>> MatOps<R>::softmax(const vector<Mat<R>>& matrices, R temperature)
                     auto& dw = GET_GRAD(matrices[i]);
                     auto& sm = GET_MAT(out[i]);
                     auto& dy = GET_GRAD(out[i]);
-                    dw(0) += (sm(0) * dy(0)) - (sm(0) * colwise_sums);
+                    dw(0) += ((sm(0) * dy(0)) - (sm(0) * colwise_sums)) / temperature;
                 }
             }
         });
@@ -703,11 +708,30 @@ Mat<R> MatOps<R>::cross_entropy(Mat<R> matrix, uint answer_idx) {
     return out;
 }
 
+template<typename R>
+Mat<R> MatOps<R>::cross_entropy(Mat<R> matrix, Mat<R> target) {
+    assert2(matrix.dims(0) == target.dims(0) && matrix.dims(1) == target.dims(1),
+        "Matrix and target must have same dimension");
+
+    Mat<R> out = Mat<R>::empty_like(matrix);
+    GET_MAT(out) = -(GET_MAT(target).array() * ((GET_MAT(matrix).array() + EPS).log())).matrix();
+
+    DEBUG_ASSERT_NOT_NAN(GET_MAT(out));
+
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, target, out](){
+            auto x = GET_MAT(matrix).array();
+            GRAD(matrix).noalias() -= (((x + EPS).inverse()) * GET_MAT(target).array() * GET_GRAD(out).array()).matrix();
+            GRAD(target).noalias() -= ((x.log()) * GET_GRAD(out).array()).matrix();
+        });
+    return out;
+}
+
 
 template<typename R>
 Mat<R> MatOps<R>::softmax_cross_entropy(Mat<R> matrix, uint answer_idx) {
     Mat<R> out =  Mat<R>(1, 1, false);
-    Mat<R> probs = softmax(matrix);
+    Mat<R> probs = softmax_no_grad(matrix);
     GET_MAT(out)(0,0) = -std::log(GET_MAT(probs)(answer_idx, 0));
 
     if (graph::backprop_enabled)
@@ -715,6 +739,26 @@ Mat<R> MatOps<R>::softmax_cross_entropy(Mat<R> matrix, uint answer_idx) {
             GRAD(matrix) += GET_MAT(probs) * GET_GRAD(out)(0,0);
             // write gradients into log probabilities
             GRAD(matrix)(answer_idx, 0) -= 1 * GET_GRAD(out)(0,0);
+        });
+    return out;
+}
+
+template<typename R>
+Mat<R> MatOps<R>::softmax_cross_entropy(Mat<R> matrix, Indexing::Index targets) {
+    Mat<R> out =  Mat<R>(1, targets.size(), false);
+    Mat<R> probs = softmax_no_grad(matrix);
+    for (int i = 0; i < targets.size(); i++) {
+        GET_MAT(out)(i) = -std::log(GET_MAT(probs)(targets[i], i));
+    }
+
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, probs, out, targets](){
+            if (!matrix.constant) {
+                GRAD(matrix).noalias() += (GET_MAT(probs).array().rowwise() * GET_GRAD(out).row(0).array()).matrix();
+                for (int i = 0; i < targets.size(); i++) {
+                    GET_GRAD(matrix)(targets[i],i) -= 1.0 * GET_GRAD(out)(i);
+                }
+            }
         });
     return out;
 }
@@ -1414,6 +1458,7 @@ vector<size_t> MatOps<R>::argsort(const vector<Mat<R>>& v) {
     // sort indexes based on comparing values in v
     sort(idx.begin(), idx.end(),
        [&v](size_t i1, size_t i2) {return GET_MAT(v[i1])(0) < GET_MAT(v[i2])(0);});
+
     return idx;
 }
 

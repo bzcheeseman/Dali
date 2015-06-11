@@ -13,18 +13,17 @@
 // For handling json_finite_distribution
 #include <json11.hpp>
 
-#include "dali/utils.h"
-#include "dali/mat/math/MatOps.h"
 #include "dali/mat/Index.h"
+#include "dali/mat/math/MatInternal.h"
+#include "dali/mat/math/MatOps.h"
 #include "dali/mat/Tape.h"
+#include "dali/utils.h"
 
 
 #define EPS 1e-9
 
 typedef unsigned int dim_t;
 
-template<typename R> class MatInternal;
-template<typename R> class GradInternal;
 template<typename R> class Mat;
 
 template<typename R>

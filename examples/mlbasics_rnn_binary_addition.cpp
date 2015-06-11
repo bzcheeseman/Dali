@@ -112,8 +112,8 @@ int main( int argc, char* argv[]) {
                 // soon we will support constant and need for converting this
                 // to matrix class will disappear.
                 Mat<R> input_i(INPUT_SIZE, 1);
-                input_i.w()(0,0) = a_bits[i];
-                input_i.w()(1,0) = b_bits[i];
+                input_i.w(0) = a_bits[i];
+                input_i.w(1) = b_bits[i];
 
                 // advance RNN. We have a choice to use different nonlinearities,
                 // but in this case we use tanh.
@@ -121,7 +121,7 @@ int main( int argc, char* argv[]) {
                 // compute the output bit, apply sigmoid to trap it in [0,1] interval.
                 Mat<R> output_i = classifier.activate(prev_hidden).sigmoid();
                 // output bit can be any number between 0, 1, so we round it.
-                predicted_res_bits[i] = output_i.w()(0,0) < 0.5 ? 0 : 1;
+                predicted_res_bits[i] = output_i.w(0) < 0.5 ? 0 : 1;
 
                 // update errors
                 epoch_bit_error += res_bits[i] != predicted_res_bits[i];
@@ -133,7 +133,7 @@ int main( int argc, char* argv[]) {
             // Make sure we are looking at average error.
             error = error / (R)NUM_BITS;
             predicted_res = predicted_res_bits.to_ulong();
-            epoch_error += error.w()(0,0);
+            epoch_error += error.w()(0);
             // compute gradient
             error.grad();
 
@@ -149,7 +149,7 @@ int main( int argc, char* argv[]) {
             // so it's important to scale by the number of examples
             param.w() -= (LR / ITERATIONS_PER_EPOCH) * param.dw();
             // Reset gradient accumulation.
-            param.dw().fill(0);
+            param.dw().dw.fill(0);
         }
 
         // Output status update every 500 ms.

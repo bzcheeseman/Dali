@@ -76,6 +76,11 @@ void MatInternal<R>::print() const {
     std::cout << std::endl;
 }
 
+template<typename R>
+void MatInternal<R>::clear() {
+    w.fill(0);
+}
+
 /* GradInternal */
 
 template<typename R>
@@ -126,6 +131,11 @@ const R* GradInternal<R>::data() const {
 template<typename R>
 R* GradInternal<R>::data() {
     return dw.data();
+}
+
+template<typename R>
+void GradInternal<R>::clear() {
+    dw.fill(0);
 }
 
 template class MatInternal<float>;

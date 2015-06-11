@@ -104,6 +104,8 @@ class Mat {
         **/
         void grad();
 
+        void clear_grad();
+
         mat_internal_t  w() const;
         R w(int i) const;
         R& w(int i);

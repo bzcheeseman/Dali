@@ -37,6 +37,8 @@ class MatInternal {
 
         void print() const;
 
+        void clear();
+
         operator eigen_mat();
 };
 
@@ -59,6 +61,8 @@ class GradInternal {
 
         const R* data() const;
         R* data();
+
+        void clear();
 
         operator eigen_mat();
 };

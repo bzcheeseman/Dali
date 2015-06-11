@@ -28,7 +28,8 @@ int main( int argc, char* argv[]) {
     // like the network to output.
     mat Y(NUM_EXAMPLES, 1);
 
-    Y.w() = X.w().rowwise().sum().matrix();
+    auto Y = X.dot(MatOps<R>::fill(Mat<R>(X.dims(0),1), 1);
+    Y = X.w().w.rowwise().sum().matrix();
 
     // Those are our parameters: y_output = W1*X1 + ... + Wn*Xn
     // We initialize them to random numbers between 0 and 1.
@@ -48,10 +49,10 @@ int main( int argc, char* argv[]) {
         // Perform backpropagation algorithm.
         graph::backward();
         // Use gradient descent to update network parameters.
-        W.w() -= LR * W.dw();
+        W.w().w -= LR * W.dw().dw;
         // Reset gradients
-        W.dw().fill(0);
-        Y.dw().fill(0);
+        W.dw()->dw.fill(0);
+        Y.dw()->dw.fill(0);
     }
     // Print the weights after we are done. The should all be close to one.
     W.print();

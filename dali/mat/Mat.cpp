@@ -223,6 +223,14 @@ void Mat<R>::grad() {
 }
 
 template<typename R>
+void Mat<R>::clear_grad() {
+    dw()->clear();
+}
+
+
+
+
+template<typename R>
 void Mat<R>::npy_save (string fname, string mode) {
     cnpy::npy_save(fname, w()->data(), dims().data(), dims().size(), mode);
 }

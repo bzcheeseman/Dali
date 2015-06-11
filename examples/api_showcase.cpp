@@ -151,7 +151,6 @@ int main () {
 
     /**
     Orthogonal Initialization:
-
     Code sourced from:
     https://github.com/IndicoDataSolutions/Passage/blob/fcc4037632721e63e5e2473e577e3e6f367e64f8/passage/inits.py
 
@@ -174,21 +173,6 @@ int main () {
 
     std::cout << "U dimensions = (" << svd.matrixU().cols() << " " << svd.matrixU().rows() << ")" << std::endl;
     std::cout << "V dimensions = (" << svd.matrixV().cols() << " " << svd.matrixV().rows() << ")" << std::endl;
-
-
-    auto A_ptr = A.w().data();
-    auto A_ptr_T = A.w().transpose().data();
-
-    std::cout <<( (A_ptr == A_ptr_T)  ? "t" : "f" ) << std::endl;
-
-    Mat<R> X(3,3);
-    X.w(0,0) = 1.0;
-    X.w(1,2) = -123.0;
-    X.print();
-    Mat<R> Y = Mat<R>(X, true, true);
-    Y.w(1,2) = 512.0;
-    X.print();
-    Y.print();
 
     return 0;
 }

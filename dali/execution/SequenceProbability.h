@@ -2,6 +2,7 @@
 #define SEQUENCE_PROBABILITY_MAT_H
 
 #include <vector>
+#include "dali/mat/math/__MatMacros__.h"
 
 namespace sequence_probability {
 
@@ -71,10 +72,10 @@ namespace sequence_probability {
 
         auto data_pluck = Indexing::Index::arange(0, data.rows());
 
-        log_prob.w().col(0) = std::get<1>(out_state_and_prob)(
+        GET_MAT(log_prob).col(0) = GET_MAT(std::get<1>(out_state_and_prob)(
             data.col(1),
             data_pluck
-        ).w().row(0).transpose().array().log();
+        )).row(0).transpose().array().log();
 
         for (int i = 1; i < n-1; i++) {
             out_state_and_prob = model.activate(
@@ -85,7 +86,7 @@ namespace sequence_probability {
                 data.col(i+1),
                 data_pluck
             );
-            log_prob.w().col(i).array() += plucked_activations.w().row(0).transpose().array().log() + log_prob.w().col(i-1).array();
+            GET_MAT(log_prob).col(i).array() += GET_MAT(plucked_activations).row(0).transpose().array().log() + GET_MAT(log_prob).col(i-1).array();
         }
 
         // inelegant manner of dealing with scalar corrections on codelens:
@@ -119,7 +120,7 @@ namespace sequence_probability {
 
         auto data_pluck = Indexing::Index::arange(0, data.rows());
 
-        log_prob.w().col(0) = SURPRISE( std::get<1>(out_state_and_prob)(data.col(1), data_pluck).w().row(0).transpose() );
+        GET_MAT(log_prob).col(0) = SURPRISE( GET_MAT(std::get<1>(out_state_and_prob)(data.col(1), data_pluck)).row(0).transpose() );
 
         for (int i = 1; i < n-1; i++) {
             out_state_and_prob = model.activate(
@@ -130,7 +131,7 @@ namespace sequence_probability {
                 data.col(i+1),
                 data_pluck
             );
-            log_prob.w().col(i).array() += SURPRISE(plucked_activations.w().row(0).transpose().array()) + log_prob.w().col(i-1).array();
+            GET_MAT(log_prob).col(i).array() += SURPRISE(GET_MAT(plucked_activations).row(0).transpose().array()) + GET_MAT(log_prob).col(i-1).array();
         }
 
         // inelegant manner of dealing with scalar corrections on codelens:

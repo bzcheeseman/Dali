@@ -144,7 +144,7 @@ int main (int argc,  char* argv[]) {
     vector<vector<Mat<REAL_t>>>       thread_embedding_params;
     vector<StackedGatedModel<REAL_t>> thread_models;
     std::tie(thread_models, thread_embedding_params, thread_params) = utils::shallow_copy_multi_params(model, FLAGS_j, [&model](const Mat<REAL_t>& mat) {
-        return &mat.w() == &model.embedding.w();
+        return mat.w()->data() == model.embedding.w()->data();
     });
 
     vector<Mat<REAL_t>> params = model.parameters();

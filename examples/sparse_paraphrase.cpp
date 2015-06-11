@@ -220,7 +220,7 @@ class ParaphraseModel : public RecurrentEmbeddingModel<T> {
             std::tie(similarity_mat, memory1_mat, memory2_mat) =
                     similarity(sentence1, sentence2, 0.0);
 
-            auto extract_double  = [](Mat<T> m) { return m.w()(0,0); };
+            auto extract_double  = [](Mat<T> m) { return m.w(0,0); };
             vector<double> memory1, memory2;
 
             std::transform(memory1_mat.begin(), memory1_mat.end(), std::back_inserter(memory1), extract_double);
@@ -308,7 +308,7 @@ void backprop_example(
     }
 
     partial_error = partial_error / minibatch_size;
-    minibatch_error += partial_error.w()(0,0);
+    minibatch_error += partial_error.w(0,0);
 
     partial_error.grad();
     graph::backward(); // backpropagate
@@ -558,7 +558,7 @@ int main (int argc,  char* argv[]) {
                                     return (double) thread_model.cosine_distance(
                                         std::get<0>(original_encoded),
                                         std::get<0>(other_encoded)
-                                    ).w()(0,0);
+                                    ).w(0,0);
                             };
                             if (FLAGS_use_characters) {
                                 return paraphrase::nearest_neighbors(

@@ -140,7 +140,7 @@ int main(int argc, char** argv) {
                                                     question.answers,
                                                     question.correct_answer);
 
-                        partial_error += e.w()(0,0);
+                        partial_error += e.w(0,0);
                         partial_error_updates += 1;
                         e.grad();
                         graph::backward();

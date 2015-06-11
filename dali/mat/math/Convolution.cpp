@@ -1,4 +1,4 @@
-#include "dali/mat/math/__MatMacros.h"
+#include "dali/mat/math/__MatMacros__.h"
 #include "dali/mat/math/MatOps.h"
 #include "dali/mat/Tape.h"
 #include "dali/utils.h"

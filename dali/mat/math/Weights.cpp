@@ -1,6 +1,6 @@
 #include "Weights.h"
 
-#include "dali/mat/math/__MatMacros.h"
+#include "dali/mat/math/__MatMacros__.h"
 
 using utils::assert2;
 

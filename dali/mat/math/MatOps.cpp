@@ -1,6 +1,5 @@
 #include "MatOps.h"
-
-#include "dali/mat/math/__MatMacros.h"
+#include "dali/mat/math/__MatMacros__.h"
 
 
 using std::vector;

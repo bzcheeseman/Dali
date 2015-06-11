@@ -26,10 +26,9 @@ int main( int argc, char* argv[]) {
 
     // Compute sums of elements for each example. This is what we would
     // like the network to output.
-    mat Y(NUM_EXAMPLES, 1);
-
-    auto Y = X.dot(MatOps<R>::fill(Mat<R>(X.dims(0),1), 1);
-    Y = X.w().w.rowwise().sum().matrix();
+    // TODO(szymon): this should really be X.rowwise().sum()
+    auto ones = MatOps<double>::fill(mat(X.dims(1),1), 1);
+    auto Y = X.dot(ones);
 
     // Those are our parameters: y_output = W1*X1 + ... + Wn*Xn
     // We initialize them to random numbers between 0 and 1.
@@ -49,10 +48,13 @@ int main( int argc, char* argv[]) {
         // Perform backpropagation algorithm.
         graph::backward();
         // Use gradient descent to update network parameters.
-        W.w().w -= LR * W.dw().dw;
+        // This is slightly obnoxious, but fear not - we
+        // provide an excellent solver class, so that you
+        // never how to do it on your own!
+        W.w()->w -= LR * W.dw()->dw;
         // Reset gradients
-        W.dw()->dw.fill(0);
-        Y.dw()->dw.fill(0);
+        W.clear_grad();
+        Y.clear_grad();
     }
     // Print the weights after we are done. The should all be close to one.
     W.print();

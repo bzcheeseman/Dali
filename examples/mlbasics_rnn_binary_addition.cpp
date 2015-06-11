@@ -133,7 +133,7 @@ int main( int argc, char* argv[]) {
             // Make sure we are looking at average error.
             error = error / (R)NUM_BITS;
             predicted_res = predicted_res_bits.to_ulong();
-            epoch_error += error.w()(0);
+            epoch_error += error.w(0);
             // compute gradient
             error.grad();
 
@@ -147,9 +147,9 @@ int main( int argc, char* argv[]) {
         for (auto param: params) {
             // We are computing a gradient for multiple examples at the same time
             // so it's important to scale by the number of examples
-            param.w() -= (LR / ITERATIONS_PER_EPOCH) * param.dw();
+            param.w()->w -= (LR / ITERATIONS_PER_EPOCH) * param.dw()->dw;
             // Reset gradient accumulation.
-            param.dw().dw.fill(0);
+            param.clear_grad();
         }
 
         // Output status update every 500 ms.

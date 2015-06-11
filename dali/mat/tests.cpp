@@ -7,6 +7,9 @@
 
 using std::vector;
 using std::chrono::milliseconds;
+using ::testing::AssertionResult;
+using ::testing::AssertionSuccess;
+using ::testing::AssertionFailure;
 
 typedef double R;
 
@@ -14,34 +17,65 @@ typedef double R;
 #define EXPERIMENT_REPEAT for(int __repetition=0; __repetition < NUM_RETRIES; ++__repetition)
 
 template<typename T>
-bool buffer_equals (T* buffer1, T* buffer2, uint size1, uint size2) {
+AssertionResult buffer_equals (T* buffer1, T* buffer2, uint size1, uint size2) {
     if (size1 != size2)
-        return false;
+        return AssertionFailure() << "Sizes differ first matrix is " << size1 << ", while second is " << size2;
     for (int i=0; i<size1; ++i) {
         if (buffer1[i] != buffer2[i])
-            return false;
+            return AssertionFailure() << "Difference in datum " << i << " first tensor has "
+                                      << buffer1[i] << ", while second has " << buffer2[i];
     }
-    return true;
+    return AssertionSuccess();
 }
 
 template<typename T, typename J>
-bool buffer_almost_equals(T* buffer1, T* buffer2, uint size, J eps) {
-    for (int i=0; i<size; ++i) {
+AssertionResult buffer_almost_equals(T* buffer1, T* buffer2, uint size1, uint size2, J eps) {
+    if (size1 != size2)
+        return AssertionFailure() << "Sizes differ first matrix is " << size1 << ", while second is " << size2;
+    for (int i=0; i<size1; ++i) {
         if (abs(buffer1[i] - buffer2[i]) > eps)
-            return false;
+            return AssertionFailure() << "Difference in datum " << i << " first tensor has "
+                                      << buffer1[i] << ", while second has " << buffer2[i]
+                                      << "(tolerance = " << eps << ")";
     }
-    return true;
+    return AssertionSuccess();
 }
 
 #define ASSERT_MATRIX_EQ(A, B) ASSERT_TRUE(buffer_equals((A).w()->data(), (B).w()->data(), (A).number_of_elements(), (B).number_of_elements()))
 #define ASSERT_MATRIX_NEQ(A, B) ASSERT_FALSE(buffer_equals((A).w()->data(), (B).w()->data(), (A).number_of_elements(), (B).number_of_elements()))
-#define ASSERT_MATRIX_CLOSE(A, B, eps) ASSERT_TRUE(buffer_almost_equals((A).w()->data(), (B).w()->data(), (A).number_of_elements(), (eps)))
-#define ASSERT_MATRIX_GRAD_CLOSE(A, B, eps) ASSERT_TRUE(buffer_almost_equals((A).dw()->data(), (B).dw()->data(), (A).number_of_elements(), (eps)))
+#define ASSERT_MATRIX_CLOSE(A, B, eps) ASSERT_TRUE(buffer_almost_equals((A).w()->data(), \
+                                                                        (B).w()->data(), \
+                                                                        (A).number_of_elements(), \
+                                                                        (B).number_of_elements(), \
+                                                                        (eps)))
+#define ASSERT_MATRIX_GRAD_CLOSE(A, B, eps) ASSERT_TRUE(buffer_almost_equals((A).dw()->data(), \
+                                                                             (B).dw()->data(), \
+                                                                             (A).number_of_elements(), \
+                                                                             (B).number_of_elements(), \
+                                                                             (eps)))
+#define ASSERT_MATRIX_GRAD_NOT_CLOSE(A, B, eps) ASSERT_FALSE(buffer_almost_equals((A).dw()->data(), \
+                                                                                  (B).dw()->data(), \
+                                                                                  (A).number_of_elements(), \
+                                                                                  (B).number_of_elements(), \
+                                                                                  (eps)))
 
 #define EXPECT_MATRIX_EQ(A, B) EXPECT_TRUE(buffer_equals((A).w()->data(), (B).w()->data(), (A).number_of_elements(), (B).number_of_elements()))
 #define EXPECT_MATRIX_NEQ(A, B) EXPECT_FALSE(buffer_equals((A).w()->data(), (B).w()->data(), (A).number_of_elements(), (B).number_of_elements()))
-#define EXPECT_MATRIX_CLOSE(A, B, eps) EXPECT_TRUE(buffer_almost_equals((A).w()->data(), (B).w()->data(), (A).number_of_elements(), (eps)))
-#define EXPECT_MATRIX_GRAD_CLOSE(A, B, eps) EXPECT_TRUE(buffer_almost_equals((A).dw()->data(), (B).dw()->data(), (A).number_of_elements(), (eps)))
+#define EXPECT_MATRIX_CLOSE(A, B, eps) EXPECT_TRUE(buffer_almost_equals((A).w()->data(), \
+                                                                        (B).w()->data(), \
+                                                                        (A).number_of_elements(), \
+                                                                        (B).number_of_elements(), \
+                                                                        (B).n(eps)))
+#define EXPECT_MATRIX_GRAD_CLOSE(A, B, eps) EXPECT_TRUE(buffer_almost_equals((A).dw()->data(), \
+                                                                             (B).dw()->data(), \
+                                                                             (A).number_of_elements(), \
+                                                                             (B).number_of_elements(), \
+                                                                             (eps)))
+#define EXPECT_MATRIX_GRAD_NOT_CLOSE(A, B, eps) EXPECT_FALSe(buffer_almost_equals((A).dw()->data(), \
+                                                                                  (B).dw()->data(), \
+                                                                                  (A).number_of_elements(), \
+                                                                                  (B).number_of_elements(), \
+                                                                                  (eps)))
 
 /**
 Gradient Same
@@ -80,8 +114,14 @@ bool gradient_same(
             arg_buffer[i] = prev_val;
             Arg_prime[i] = (obj_positive - obj_negative) / (2.0 * grad_epsilon);
         }
-        bool did_work_out = buffer_almost_equals((R*)Arg_prime, arg.dw()->data(), arg.number_of_elements(), tolerance);
-        worked_out = worked_out && did_work_out;
+        AssertionResult did_work_out = buffer_almost_equals(
+                (R*)Arg_prime,
+                arg.dw()->data(),
+                arg.number_of_elements(),
+                arg.number_of_elements(),
+                tolerance);
+        // AssertionResult is a GoogleTest magic and it's castable to bool.
+        worked_out = worked_out && (bool)did_work_out;
         if (!did_work_out) {
             std::cout << "-----------\nArg_prime:" << std::endl;
             std::cout << Arg_prime << std::endl;
@@ -694,6 +734,35 @@ TEST_F(LayerTests, LSTM_Zaremba_shortcut_gradient) {
     }
 }
 
+void copy_constructor_helper(bool copy_w, bool copy_dw) {
+    Mat<R> original(10,10, weights<R>::uniform(20.0));
+    Mat<R> copy(original, copy_w, copy_dw);
+
+    copy.w(0,0) += 1.0;
+    copy.dw(0,0) += 1.0;
+
+    if (copy_w) {
+        ASSERT_MATRIX_NEQ(original, copy);
+    } else {
+        ASSERT_MATRIX_EQ(original, copy);
+    }
+
+    if (copy_dw) {
+        ASSERT_MATRIX_GRAD_NOT_CLOSE(original, copy, 1e-5);
+    } else {
+        ASSERT_MATRIX_GRAD_CLOSE(original, copy, 1e-5);
+    }
+
+
+}
+
+TEST_F(MatrixTests, copy_constructor) {
+    copy_constructor_helper(false, false);
+    copy_constructor_helper(false, true);
+    copy_constructor_helper(true, false);
+    copy_constructor_helper(true, true);
+}
+
 TEST_F(LayerTests, RNN_gradient_vs_Stacked_gradient) {
     int num_examples           = 10;
     int hidden_size            = 5;
@@ -716,7 +785,10 @@ TEST_F(LayerTests, RNN_gradient_vs_Stacked_gradient) {
         for (auto it1 = params.begin(),
                   it2 = stacked_params.begin(); (it1 != params.end()) && (it2 != stacked_params.end()); it1++, it2++) {
             ASSERT_EQ((*it1).dims(), (*it2).dims());
-            it1->w() = it2->w(); // have the same parameters for both layers
+            auto copy = Mat<R>(*it2, true, true);
+            // it1->w()->w = it2->w()->w;
+            it1->w() = copy.w();
+            // (*it1) = Mat<R>(*it2, true, false); // have the same parameters for both layers
         }
 
         auto error = ((rnn_layer.activate(X, H).tanh() - 1) ^ 2).sum();

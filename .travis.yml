@@ -1,0 +1,19 @@
+language: cpp
+before_install:
+    - brew update
+    - brew install eigen
+    - brew install cmake
+    - brew install gflags
+    - brew install hiredis
+    - HOMEBREW_CC=clang HOMEBREW_CXX=clang++ brew install protobuf
+    - brew install libev
+    - HOMEBREW_CC=clang HOMEBREW_CXX=clang++ brew install hiredis
+    - wget https://googletest.googlecode.com/files/gtest-1.7.0.zip
+    - cd gtest-1.7.0
+    - mkdir mybuild
+    - cd mybuild
+    - cmake ..
+    - make -j 9
+    - cp libgtest_main.a /usr/local/lib/libgtest_main.a
+    - cp libgtest.a /usr/local/lib/libgtest.a
+    - cp -R ../include/* /usr/local/include/

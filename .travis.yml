@@ -59,3 +59,5 @@ notifications:
     email:
         on_success: change
         on_failure: always
+matrix:
+    - CUDA=7.0-28 GHC=head

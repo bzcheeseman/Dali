@@ -5,7 +5,6 @@ project("recurrentjs")
 
 message(${EIGEN3_INCLUDE_DIR})
 
-
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 # REQUIRED PACKAGES

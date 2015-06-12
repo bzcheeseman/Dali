@@ -161,8 +161,7 @@ IF (GFLAGS_INCLUDE_DIR)
     ENDIF (GFLAGS_IN_GFLAGS_NAMESPACE)
   ENDIF (GFLAGS_IN_GOOGLE_NAMESPACE)
   IF (NOT GFLAGS_NAMESPACE)
-    GFLAGS_REPORT_NOT_FOUND(
-      "Failed to determine gflags namespace, it is not google or gflags.")
+    SET(GFLAGS_NAMESPACE "google")
   ENDIF (NOT GFLAGS_NAMESPACE)
 ENDIF (GFLAGS_INCLUDE_DIR)
 # gflags does not seem to provide any record of the version in its

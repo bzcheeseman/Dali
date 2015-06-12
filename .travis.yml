@@ -18,6 +18,14 @@ before_install:
     - sudo apt-get update
     - sudo apt-get install clang
     - sudo apt-get install zlib1g-dev
+    - # newer version of cmake needed to install gflags
+    - wget http://www.cmake.org/files/v3.3/cmake-3.3.0-rc2-Linux-x86_64.tar.gz
+    - tar xzf cmake-3.3.0-rc2-Linux-x86_64.tar.gz
+    - cd cmake-3.3.0-rc2-Linux-x86_64/
+    - sudo cp bin/* /usr/bin/
+    - sudo cp -R share/* /usr/share/
+    - cd ..
+    - rm -rf cmake-3.3.0-rc2-Linux-x86_64 cmake-3.3.0-rc2-Linux-x86_64.tar.gz
     - #
     - wget https://github.com/gflags/gflags/archive/master.zip
     - unzip master.zip

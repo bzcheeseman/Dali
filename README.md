@@ -146,19 +146,20 @@ make -j 9 run_tests
 
 ###### 2.a Install Gtest on Mac OSX
 
-Homebrew does not offer a way of installing gtest, however in a few steps you can get it running. First go to the directory where you downloaded Gtests:
+Homebrew does not offer a way of installing gtest, however in a few steps you can get it running:
 
 ```bash
+wget https://googletest.googlecode.com/files/gtest-1.7.0.zip
 cd gtest-1.7.0
 mkdir mybuild
 cd mybuild
 cmake ..
+make -j 9
 cp libgtest_main.a /usr/local/lib/libgtest_main.a
 cp libgtest.a /usr/local/lib/libgtest.a
 cp -R ../include/* /usr/local/include/
+rm -rf gtest-1.7.0
 ```
-
-Now cmake should be able to find gtest (go back to step 1).
 
 ###### 2.b Install Gtest on Fedora Linux
 
@@ -240,7 +241,7 @@ backtrace
 A stack trace for the assertion error should now appear.
 
 
-### Theme song 
+### Theme song
 
 *Warning: for development purposes only!*
 

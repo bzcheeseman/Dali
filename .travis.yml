@@ -17,3 +17,15 @@ before_install:
     - cp libgtest_main.a /usr/local/lib/libgtest_main.a
     - cp libgtest.a /usr/local/lib/libgtest.a
     - cp -R ../include/* /usr/local/include/
+    - rm -rf gtest-1.7.0
+compiler:
+    - clang
+    - gcc
+script:
+    - scripts/travis_tests.sh
+notifications:
+    recipients:
+        - szymon.sidor@gmail.com
+    email:
+        on_success: change
+        on_failure: always

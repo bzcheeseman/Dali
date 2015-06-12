@@ -4,10 +4,10 @@ using std::string;
 using std::stringstream;
 
 string ReconstructModel::reconstruct_string(
-    Indexing::Index example,
-    const utils::Vocab& lookup_table,
-    int eval_steps,
-    int symbol_offset) const {
+        Indexing::Index example,
+        const utils::Vocab& lookup_table,
+        int eval_steps,
+        int symbol_offset) const {
     auto reconstruction = reconstruct(example, eval_steps, symbol_offset);
     stringstream rec;
     for (auto& cat : reconstruction) {
@@ -23,9 +23,9 @@ string ReconstructModel::reconstruct_string(
 }
 
 string ReconstructModel::reconstruct_lattice_string(
-    Indexing::Index example,
-    utils::OntologyBranch::shared_branch root,
-    int eval_steps) const {
+        Indexing::Index example,
+        utils::OntologyBranch::shared_branch root,
+        int eval_steps) const {
     auto reconstruction = reconstruct_lattice(example, root, eval_steps);
     stringstream rec;
     for (auto& cat : reconstruction)

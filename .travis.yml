@@ -1,15 +1,34 @@
 language: cpp
 os:
-    - osx
+    - linux
 before_install:
-    - brew update
-    - brew install eigen
-    - brew install cmake
-    - brew install gflags
-    - brew install hiredis
-    - HOMEBREW_CC=clang HOMEBREW_CXX=clang++ brew install protobuf
-    - brew install libev
-    - HOMEBREW_CC=clang HOMEBREW_CXX=clang++ brew install hiredis
+    - sudo apt-get install cmake
+    - wget http://bitbucket.org/eigen/eigen/get/3.2.4.tar.bz2
+    - tar xjf 3.2.4.tar.bz2
+    - #
+    - cd eigen-eigen-10219c95fe65
+    - mkdir build
+    - cd build
+    - cmake ..
+    - sudo make install
+    - cd ../..
+    - rm -rf eigen-eigen-10219c95fe65 3.2.4.tar.bz2
+    - #
+    - sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) universe"
+    - sudo apt-get update
+    - sudo apt-get install clang
+    - sudo apt-get install zlib1g-dev
+    - #
+    - wget https://github.com/gflags/gflags/archive/master.zip
+    - unzip master.zip
+    - cd gflags-master
+    - mkdir build && cd build
+    - export CXXFLAGS="-fPIC" && cmake .. && make VERBOSE=1
+    - make
+    - sudo make install
+    - cd ../../
+    - rm -rf master.zip && gflags-master
+    - #
     - wget https://googletest.googlecode.com/files/gtest-1.7.0.zip
     - cd gtest-1.7.0
     - mkdir mybuild
@@ -19,6 +38,7 @@ before_install:
     - cp libgtest_main.a /usr/local/lib/libgtest_main.a
     - cp libgtest.a /usr/local/lib/libgtest.a
     - cp -R ../include/* /usr/local/include/
+    - cd ../..
     - rm -rf gtest-1.7.0
 compiler:
     - clang

@@ -161,6 +161,7 @@ make -j 9
 cp libgtest_main.a /usr/local/lib/libgtest_main.a
 cp libgtest.a /usr/local/lib/libgtest.a
 cp -R ../include/* /usr/local/include/
+cd ../..
 rm -rf gtest-1.7.0
 ```
 

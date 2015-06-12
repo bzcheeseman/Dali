@@ -1,4 +1,5 @@
 language: cpp
+os: osx
 before_install:
     - brew update
     - brew install eigen

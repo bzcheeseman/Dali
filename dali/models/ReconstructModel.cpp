@@ -15,7 +15,7 @@ string ReconstructModel::reconstruct_string(
             (cat < lookup_table.size()) ?
                 lookup_table.index2word.at(cat) :
                 (
-                    cat == lookup_table.size() ? "**END**" : "??"
+                    cat == lookup_table.size() ? utils::end_symbol : "??"
                 )
             ) << ", ";
     }

@@ -335,7 +335,6 @@ namespace utils {
             T operator() (T) const;
         };
 
-
         template<typename T>
         struct sigmoid_operator {
             T operator() (T) const;

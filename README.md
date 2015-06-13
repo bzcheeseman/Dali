@@ -171,6 +171,22 @@ Using `yum` it's a piece of cake:
 sudo yum install gtest gtest-devel
 ```
 
+#### Mac OSX compiler issues
+
+Until Apple decides to fully embrace thread_local abstraction we are sadly forced to update our compilers manually (and no replacing with __thread is not enough...). Here are steps for updating your compiler:
+
+```bash
+    # Go to http://llvm.org/releases/download.html
+    # Download "Clang for OSX" (tarball). Use version
+    # 3.6.0 or above
+    # Unpack .tar.xz (which will by default be in ~/Downloads)
+    tar xf CLANG.tar.xz
+    # Then cd into clang and copy to /usr/local:
+    cd CLANG
+    cp -R ./* /usr/local/
+```
+
+
 #### MKL Zaziness Problems
 
 On Mac OSX, or more generally when using [Intel's gracious MKL Library](https://software.intel.com/en-us/intel-mkl) you may encounter an interesting bug with [`Eigen`](http://eigen.tuxfamily.org/bz/show_bug.cgi?id=874) where `MKL_BLAS` is shown as undefined during compilation.

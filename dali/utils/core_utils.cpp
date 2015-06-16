@@ -1163,6 +1163,8 @@ namespace utils {
     template vector<size_t> reversed(const vector<size_t>& vec);
     template vector<string> reversed(const vector<string>& vec);
     template vector<vector<string>> reversed(const vector<vector<string>>& vec);
+    template vector<Mat<float>> reversed(const vector<Mat<float>>& vec);
+    template vector<Mat<double>> reversed(const vector<Mat<double>>& vec);
 
 
     std::unordered_map<std::string, std::atomic<int>> Timer::timers;

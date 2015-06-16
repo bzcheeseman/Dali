@@ -3,8 +3,6 @@ set(CMAKE_LEGACY_CYGWIN_WIN32 0)
 
 project("recurrentjs")
 
-message(${EIGEN3_INCLUDE_DIR})
-
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 # REQUIRED PACKAGES

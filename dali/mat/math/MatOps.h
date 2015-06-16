@@ -22,8 +22,9 @@ namespace Indexing {
     #define DEBUG_ASSERT_POSITIVE(X) ;
     #define DEBUG_ASSERT_BOUNDS(X,a,b) ;
     #define DEBUG_ASSERT_NONZERO(X) ;
-    #define DEBUG_ASSERT_MAT_NOT_NAN(X)
-    #define DEBUG_ASSERT_GRAD_NOT_NAN(X)
+    #define DEBUG_ASSERT_MAT_NOT_NAN(X) ;
+    #define DEBUG_ASSERT_NOT_NAN(X) ;
+    #define DEBUG_ASSERT_GRAD_NOT_NAN(X) ;
 #else
     #define DEBUG_ASSERT_POSITIVE(X) assert(((X).array() >= 0).all())
     #define DEBUG_ASSERT_BOUNDS(X,a,b) assert(((X).array() >= (a)).all()  &&  ((X).array() <=(b)).all())

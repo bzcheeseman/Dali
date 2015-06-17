@@ -33,12 +33,18 @@ foreach(program ${EXAMPLE_PROGRAMS})
     endif (MKL_FOUND AND BLAS_FOUND)
 endforeach(program)
 
+# Example programs that use Cuda
 if (WITH_CUDA)
-    SET(OLD_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-    SET(CMAKE_CXX_FLAGS "-O3 -w -fPIC ${CUDA_EXTRA_FLAGS}")
+    set(EXAMPLE_CUDA_PROGRAMS mshadow
+                              templator)
 
-    cuda_add_executable(mshadow ${EXAMPLES_DIR}/mshadow.cu)
-    target_link_libraries(mshadow ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES})
+    foreach(program ${EXAMPLE_CUDA_PROGRAMS})
+        SET(OLD_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+        SET(CMAKE_CXX_FLAGS "-O3 -w -fPIC ${CUDA_EXTRA_FLAGS}")
 
-    SET(CMAKE_CXX_FLAGS ${OLD_CXX_FLAGS})
+        cuda_add_executable(${program} ${EXAMPLES_DIR}/${program}.cu)
+        target_link_libraries(${program} ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES})
+
+        SET(CMAKE_CXX_FLAGS ${OLD_CXX_FLAGS})
+    endforeach(program)
 endif (WITH_CUDA)

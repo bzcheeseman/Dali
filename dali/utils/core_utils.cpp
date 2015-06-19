@@ -1138,6 +1138,8 @@ namespace utils {
     template double vsum(const vector<double>& vec);
     template int vsum(const vector<int>& vec);
     template uint vsum(const vector<uint>& vec);
+    template unsigned long long vsum(const vector<unsigned long long >& vec);
+    template long long vsum(const vector<long long>& vec);
 
 
 

@@ -17,16 +17,19 @@ namespace babi {
         assert(0 <= target_question_idx &&
                target_question_idx < question_fidx.size());
 
+        std::unordered_map<uint, uint> mapped_fidx;
         uint start_idx = 0;
         for (uint qidx = 0; qidx <= target_question_idx; ++qidx) {
             for (uint fidx = start_idx; fidx < question_fidx[qidx]; ++fidx) {
                 result.facts.push_back(facts[fidx]);
-                if (utils::in_vector(supporting_facts[target_question_idx], fidx)) {
-                    result.supporting_facts.emplace_back(result.facts.size() - 1);
-                }
+                mapped_fidx[fidx] = result.facts.size() - 1;
             }
             start_idx = question_fidx[qidx] + 1;
         }
+        for(auto supporting_fact : supporting_facts[target_question_idx]) {
+            result.supporting_facts.emplace_back(mapped_fidx[supporting_fact]);
+        }
+
         result.question = facts[question_fidx[target_question_idx]];
         result.answer = answers[target_question_idx];
 

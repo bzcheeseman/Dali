@@ -1,6 +1,7 @@
 #ifndef DALI_DATA_PROCESSING_BABI2_H
 #define DALI_DATA_PROCESSING_BABI2_H
 
+#include <map>
 #include <string>
 #include <vector>
 

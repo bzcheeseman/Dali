@@ -334,17 +334,22 @@ TEST(babi, extract_qa) {
     ASSERT_EQ(datasets[0].size(), 1);
     ASSERT_EQ(datasets[1].size(), 3);
 
-
-    SCOPED_TRACE("Story 1 - question 1");
-    compare_qa(datasets[0].get(0), qa1);
-
-    SCOPED_TRACE("Story 2 - question 1");
-    compare_qa(datasets[1].get(0), qa2);
-    SCOPED_TRACE("Story 2 - question 2");
-    compare_qa(datasets[1].get(1), qa3);
-    SCOPED_TRACE("Story 2 - question 3");
-    compare_qa(datasets[1].get(2), qa4);
-
+    {
+        SCOPED_TRACE("Story 1 - question 1");
+        compare_qa(datasets[0].get(0), qa1);
+    }
+    {
+        SCOPED_TRACE("Story 2 - question 1");
+        compare_qa(datasets[1].get(0), qa2);
+    }
+    {
+        SCOPED_TRACE("Story 2 - question 2");
+        compare_qa(datasets[1].get(1), qa3);
+    }
+    {
+        SCOPED_TRACE("Story 2 - question 3");
+        compare_qa(datasets[1].get(2), qa4);
+    }
 }
 
 TEST(babi, encode) {

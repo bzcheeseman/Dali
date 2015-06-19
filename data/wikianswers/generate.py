@@ -13,7 +13,7 @@ from utils import print_progress, execute_bash
 
 
 # important
-TARBALL = 'http://www.ark.cs.cmu.edu/QA-data/data/Question_Answer_Dataset_v1.2.tar.gz'
+TARBALL = 'http://www.cs.cmu.edu/~ark/QA-data/data/Question_Answer_Dataset_v1.2.tar.gz'
 TRAIN_FILE = 'wikianswer_train.txt'
 VALIDATE_FILE = 'wikianswer_validate.txt'
 VALIDATION_SIZE = 0.1

@@ -100,8 +100,9 @@ bool SynchronizedTensor<R>::prefers_gpu() const {
     template<typename R>
     void SynchronizedTensor<R>::to_gpu() const {
         if (!gpu_fresh) {
-            if (mem_gpu.stream_ == NULL)
+            if (mem_gpu.dptr_ == NULL && mem_gpu.stream_ == NULL) {
                 AllocSpace(&mem_gpu, false);
+            }
             if (cpu_fresh) {
                 Copy(mem_gpu, mem_cpu);
             }
@@ -113,11 +114,13 @@ bool SynchronizedTensor<R>::prefers_gpu() const {
 template<typename R>
 void SynchronizedTensor<R>::to_cpu() const {
     if (!cpu_fresh) {
-        if (mem_cpu.stream_ == NULL)
+        if (mem_cpu.stream_ == NULL) {
             AllocSpace(&mem_cpu, false);
+        }
 #ifdef DALI_USE_CUDA
-        if (gpu_fresh)
+        if (gpu_fresh) {
             Copy(mem_cpu, mem_gpu);
+        }
 #endif
         cpu_fresh = true;
     }

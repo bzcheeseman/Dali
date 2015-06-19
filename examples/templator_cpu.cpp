@@ -38,7 +38,7 @@ int main() {
     wrapped_t a(A.w()->w);
     wrapped_t b(B.w()->w);
 
-    auto c = a;// + b;
+    auto c = a + b;
 
     auto d   = c + b;
     auto g   = a.T();

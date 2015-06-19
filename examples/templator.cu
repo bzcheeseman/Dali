@@ -22,6 +22,9 @@ typedef float R;
 typedef LazyTensor<cpu_t, gpu_t, R, type::kRValue> wrapped_t;
 
 int main() {
+    dali_init();
+
+
     Mat<R> A(2, 3, weights<R>::gaussian(2.0));
     Mat<R> B(2, 3);
 
@@ -59,5 +62,7 @@ int main() {
     ELOG(A.w()->w.cpu_fresh);
 
     out.print();
+
+    mshadow::ShutdownTensorEngine<mshadow::gpu>();
 
 }

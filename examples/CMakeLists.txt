@@ -21,6 +21,7 @@ set(EXAMPLE_PROGRAMS api_showcase
                      sparse_ner
                      sparse_paraphrase
                      visualizer
+                     templator_cpu
                      )
 
 foreach(program ${EXAMPLE_PROGRAMS})
@@ -43,7 +44,7 @@ if (WITH_CUDA)
         SET(CMAKE_CXX_FLAGS "-O3 -w -fPIC ${CUDA_EXTRA_FLAGS}")
 
         cuda_add_executable(${program} ${EXAMPLES_DIR}/${program}.cu)
-        target_link_libraries(${program} ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES})
+        target_link_libraries(${program} dali ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES})
 
         SET(CMAKE_CXX_FLAGS ${OLD_CXX_FLAGS})
     endforeach(program)

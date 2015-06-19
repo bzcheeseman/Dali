@@ -102,8 +102,9 @@ bool SynchronizedTensor<R>::prefers_gpu() const {
         if (!gpu_fresh) {
             if (mem_gpu.stream_ == NULL)
                 AllocSpace(&mem_gpu, false);
-            if (cpu_fresh)
+            if (cpu_fresh) {
                 Copy(mem_gpu, mem_cpu);
+            }
             gpu_fresh = true;
         }
     }
@@ -161,10 +162,38 @@ bool should_compute_on_gpu(
 #endif
 }
 
+template<typename R>
+bool should_compute_on_gpu(
+        const std::vector<std::reference_wrapper<SynchronizedTensor<R>>>& sts) {
+
+#ifdef DALI_USE_CUDA
+    bool everybody_cpu = true;
+    bool everybody_gpu = true;
+    for (auto& st : sts) {
+        everybody_gpu = everybody_gpu && st.get().prefers_gpu();
+        everybody_cpu = everybody_cpu && st.get().prefers_cpu();
+    }
+    if (everybody_cpu) {
+        return false;
+    } else if (everybody_gpu) {
+        return true;
+    } else {
+        return SynchronizedTensor<R>::tie_breaker_device == DEVICE_GPU;
+    }
+#else
+    return false;
+#endif
+}
+
 template bool should_compute_on_gpu(
         std::initializer_list<std::reference_wrapper<SynchronizedTensor<float>>>);
 template bool should_compute_on_gpu(
         std::initializer_list<std::reference_wrapper<SynchronizedTensor<double>>>);
+
+template bool should_compute_on_gpu(
+        const std::vector<std::reference_wrapper<SynchronizedTensor<float>>>& );
+template bool should_compute_on_gpu(
+        const std::vector<std::reference_wrapper<SynchronizedTensor<double>>>& );
 
 
 template class SynchronizedTensor<float>;

@@ -1219,7 +1219,7 @@ Mat<R> MatOps<R>::mul(
         Mat<R> matrix1,
         Mat<R> matrix2) {
     assert2(matrix1.dims(1) == matrix2.dims(0), "matrix product dimensions misaligned.");
-    Mat<R> out (matrix1.dims(0), matrix2.dims(1), false);
+    Mat<R> out (matrix1.dims(0), matrix2.dims(1), weights<R>::empty());
 
     DALI_FUNCTION_3_MUT(TensorOps::dot, MAT(matrix1), MAT(matrix2), MAT(out),
                                         NO_TRANSPOSE, NO_TRANSPOSE, OVERWRITE);

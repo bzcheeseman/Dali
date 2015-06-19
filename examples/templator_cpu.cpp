@@ -9,7 +9,6 @@ using namespace mshadow::expr;
 using std::vector;
 
 typedef Tensor<cpu, 2, float> cpu_t;
-typedef Tensor<gpu, 2, float> gpu_t;
 
 struct sigmoid {
     MSHADOW_XINLINE static float Map(float a) {
@@ -19,13 +18,12 @@ struct sigmoid {
 
 typedef float R;
 
-typedef LazyTensor<cpu_t, gpu_t, R, type::kRValue> wrapped_t;
+typedef LazyTensor<cpu_t, R, type::kRValue> wrapped_t;
 
 int main() {
     Mat<R> A(2, 3, weights<R>::gaussian(2.0));
     Mat<R> B(2, 3);
 
-    ELOG(A.w()->w.gpu_fresh);
     ELOG(A.w()->w.cpu_fresh);
 
     A.print();
@@ -35,7 +33,6 @@ int main() {
 
     A.print();
 
-    ELOG(A.w()->w.gpu_fresh);
     ELOG(A.w()->w.cpu_fresh);
 
     wrapped_t a(A.w()->w);
@@ -49,13 +46,11 @@ int main() {
     auto f   = c * b;
     auto sig = F<sigmoid>(a);
 
-    ELOG(A.w()->w.gpu_fresh);
     ELOG(A.w()->w.cpu_fresh);
 
     auto out = Mat<R>::empty_like(A);
     out.w()->w = c;
 
-    ELOG(A.w()->w.gpu_fresh);
     ELOG(A.w()->w.cpu_fresh);
 
     out.print();

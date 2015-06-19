@@ -93,7 +93,7 @@ namespace utils {
                 public:
                     typedef uint ind_t;
                     ind_t unknown_word;
-                    std::map<std::string, ind_t> word2index;
+                    std::unordered_map<std::string, ind_t> word2index;
                     str_sequence index2word;
 
                     std::vector<ind_t> encode(const str_sequence& words, bool with_end_symbol = false) const;

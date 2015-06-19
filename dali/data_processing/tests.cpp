@@ -4,9 +4,12 @@
 #include "dali/data_processing/Arithmetic.h"
 #include "dali/data_processing/NER.h"
 #include "dali/data_processing/Paraphrase.h"
+#include "dali/data_processing/babi2.h"
 #include <vector>
 
+using std::string;
 using std::vector;
+
 
 TEST(Glove, load) {
     auto embedding = glove::load<double>( STR(DALI_DATA_DIR) "/glove/test_data.txt");
@@ -150,4 +153,199 @@ TEST(paraphrase, convert_to_indexed_minibatches) {
 
 }
 
+template<typename T>
+::testing::AssertionResult VECTORS_EQUAL(const vector<T>& a,
+                                         const vector<T>& b) {
+    if (a.size() != b.size()) {
+        return ::testing::AssertionFailure() << "Vectors of different length "
+                << "first is " << a.size() << ", but second is " << b.size() << ".";
+    }
 
+    for (int idx = 0; idx < a.size(); ++idx) {
+        if (a[idx] != b[idx]) {
+            return ::testing::AssertionFailure() << "Vectors differ at "
+                    << idx << "-th index: first is " << a[idx]
+                    << ", but second is " << b[idx] << ".";
+        }
+    }
+    return ::testing::AssertionSuccess();
+}
+
+
+TEST(babi, parse) {
+    auto test_file = utils::dir_join({ STR(DALI_DATA_DIR),
+                                      "tests",
+                                      "babi.sample" });
+
+    auto datasets = babi::parse_file(test_file);
+    ASSERT_EQ(datasets.size(), 2);
+
+    vector<vector<string>> facts[2] = {
+        {
+            {"The", "office", "is", "east", "of", "the", "hallway", "."},
+            {"The", "kitchen", "is", "north", "of", "the", "office", "."},
+            {"The", "garden", "is", "west", "of", "the", "bedroom", "."},
+            {"The", "office", "is", "west", "of", "the", "garden", "."},
+            {"The", "bathroom", "is", "north", "of", "the", "garden", "."},
+            {"How", "do", "you", "go", "from", "the", "kitchen", "to", "the", "garden", "?"}
+        },
+        {
+            {"This", "morning", "Mary", "moved", "to", "the", "kitchen", "."},
+            {"This", "afternoon", "Mary", "moved", "to", "the", "cinema", "."},
+            {"Yesterday", "Bill", "went", "to", "the", "bedroom", "."},
+            {"Yesterday", "Mary", "journeyed", "to", "the", "school", "."},
+            {"Where", "was", "Mary", "before", "the", "cinema", "?"},
+            {"Yesterday", "Fred", "went", "back", "to", "the", "cinema", "."},
+            {"Bill", "journeyed", "to", "the", "office", "this", "morning", "."},
+            {"Where", "was", "Bill", "before", "the", "office", "?"},
+            {"Mary", "went", "to", "the", "school", "this", "evening", "."},
+            {"This", "afternoon", "Bill", "journeyed", "to", "the", "kitchen", "."},
+            {"Where", "was", "Bill", "before", "the", "office", "?"}
+        }
+    };
+    vector<uint> question_fidx[2] = {
+        { 5 },
+        { 4, 7, 10 },
+    };
+    vector<vector<uint>> supporting_facts[2] = {
+        {
+            { 1, 3 }
+        },
+        {
+            { 1, 0 },
+            { 6, 2 },
+            { 6, 2 }
+        },
+    };
+    vector<vector<string>> answers[2] = {
+        {
+            {"s", "e"}
+        },
+        {
+            {"kitchen"},
+            {"bedroom"},
+            {"bedroom"}
+        }
+    };
+
+    vector<string> scope = { "dataset1", "dataset2"};
+    for (int didx = 0; didx < 2; ++didx) {
+        SCOPED_TRACE(scope[didx]);
+        auto& dataset = datasets[didx];
+        auto& expected_facts            = facts[didx];
+        auto& expected_question_fidx    = question_fidx[didx];
+        auto& expected_supporting_facts = supporting_facts[didx];
+        auto& expected_answers          = answers[didx];
+
+        ASSERT_EQ(dataset.facts.size(), expected_facts.size());
+        for (int fidx = 0; fidx < expected_facts.size(); ++fidx) {
+            EXPECT_TRUE(VECTORS_EQUAL(dataset.facts[fidx], expected_facts[fidx]));
+        };
+
+        EXPECT_TRUE(VECTORS_EQUAL(dataset.question_fidx, expected_question_fidx));
+
+        ASSERT_EQ(dataset.supporting_facts.size(), expected_supporting_facts.size());
+        for (int sidx = 0; sidx < dataset.supporting_facts.size(); ++sidx) {
+            EXPECT_TRUE(VECTORS_EQUAL(dataset.supporting_facts[sidx],
+                                      expected_supporting_facts[sidx]));
+        }
+
+        ASSERT_EQ(dataset.answers.size(), expected_answers.size());
+        for (int aidx = 0; aidx < expected_answers.size(); ++aidx) {
+            EXPECT_TRUE(VECTORS_EQUAL(dataset.answers[aidx], expected_answers[aidx]));
+        };
+    };
+};
+
+TEST(babi, extract_qa) {
+    auto test_file = utils::dir_join({ STR(DALI_DATA_DIR),
+                                      "tests",
+                                      "babi.sample" });
+    babi::QA<string> qa1;
+    qa1.facts = {
+        {"The", "office", "is", "east", "of", "the", "hallway", "."},
+        {"The", "kitchen", "is", "north", "of", "the", "office", "."},
+        {"The", "garden", "is", "west", "of", "the", "bedroom", "."},
+        {"The", "office", "is", "west", "of", "the", "garden", "."},
+        {"The", "bathroom", "is", "north", "of", "the", "garden", "."},
+    };
+    qa1.question = {"How", "do", "you", "go", "from", "the", "kitchen", "to", "the", "garden", "?"};
+    qa1.answer = {"s", "e"};
+    qa1.supporting_facts = { 1, 3 };
+
+
+    babi::QA<string> qa2;
+    qa2.facts = {
+        {"This", "morning", "Mary", "moved", "to", "the", "kitchen", "."},
+        {"This", "afternoon", "Mary", "moved", "to", "the", "cinema", "."},
+        {"Yesterday", "Bill", "went", "to", "the", "bedroom", "."},
+        {"Yesterday", "Mary", "journeyed", "to", "the", "school", "."},
+    };
+    qa2.question = {"Where", "was", "Mary", "before", "the", "cinema", "?"};
+    qa2.answer = { "kitchen" };
+    qa2.supporting_facts = { 1, 0 };
+
+    babi::QA<string> qa3;
+    qa3.facts = {
+        {"This", "morning", "Mary", "moved", "to", "the", "kitchen", "."},
+        {"This", "afternoon", "Mary", "moved", "to", "the", "cinema", "."},
+        {"Yesterday", "Bill", "went", "to", "the", "bedroom", "."},
+        {"Yesterday", "Mary", "journeyed", "to", "the", "school", "."},
+        {"Yesterday", "Fred", "went", "back", "to", "the", "cinema", "."},
+        {"Bill", "journeyed", "to", "the", "office", "this", "morning", "."},
+    };
+    qa3.question = {"Where", "was", "Bill", "before", "the", "office", "?"};
+    qa3.answer = { "bedroom" };
+    qa3.supporting_facts = { 5, 2 };
+
+
+    babi::QA<string> qa4;
+    qa4.facts = {
+        {"This", "morning", "Mary", "moved", "to", "the", "kitchen", "."},
+        {"This", "afternoon", "Mary", "moved", "to", "the", "cinema", "."},
+        {"Yesterday", "Bill", "went", "to", "the", "bedroom", "."},
+        {"Yesterday", "Mary", "journeyed", "to", "the", "school", "."},
+
+        {"Yesterday", "Fred", "went", "back", "to", "the", "cinema", "."},
+        {"Bill", "journeyed", "to", "the", "office", "this", "morning", "."},
+
+        {"Mary", "went", "to", "the", "school", "this", "evening", "."},
+        {"This", "afternoon", "Bill", "journeyed", "to", "the", "kitchen", "."},
+    };
+    qa4.question = {"Where", "was", "Bill", "before", "the", "office", "?"};
+    qa4.answer = { "bedroom" };
+    qa4.supporting_facts = { 5, 2 };
+
+    auto compare_qa = [](babi::QA<string> given, babi::QA<string> expected) {
+        ASSERT_EQ(given.facts.size(), expected.facts.size());
+        for (int fidx = 0; fidx < given.facts.size(); ++fidx) {
+            EXPECT_TRUE(VECTORS_EQUAL(given.facts[fidx], expected.facts[fidx]));
+        };
+
+        EXPECT_TRUE(VECTORS_EQUAL(given.question, expected.question));
+
+        EXPECT_TRUE(VECTORS_EQUAL(given.supporting_facts, expected.supporting_facts));
+
+        EXPECT_TRUE(VECTORS_EQUAL(given.answer, expected.answer));
+    };
+
+    auto datasets = babi::parse_file(test_file);
+    ASSERT_EQ(datasets.size(), 2);
+    ASSERT_EQ(datasets[0].size(), 1);
+    ASSERT_EQ(datasets[1].size(), 3);
+
+
+    SCOPED_TRACE("Story 1 - question 1");
+    compare_qa(datasets[0].get(0), qa1);
+
+    SCOPED_TRACE("Story 2 - question 1");
+    compare_qa(datasets[1].get(0), qa2);
+    SCOPED_TRACE("Story 2 - question 2");
+    compare_qa(datasets[1].get(1), qa3);
+    SCOPED_TRACE("Story 2 - question 3");
+    compare_qa(datasets[1].get(2), qa4);
+
+}
+
+TEST(babi, encode) {
+}

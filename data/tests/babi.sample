@@ -1,0 +1,17 @@
+1 The office is east of the hallway.
+2 The kitchen is north of the office.
+3 The garden is west of the bedroom.
+4 The office is west of the garden.
+5 The bathroom is north of the garden.
+6 How do you go from the kitchen to the garden? s,e 2 4
+1 This morning Mary moved to the kitchen.
+2 This afternoon Mary moved to the cinema.
+3 Yesterday Bill went to the bedroom.
+4 Yesterday Mary journeyed to the school.
+5 Where was Mary before the cinema?     kitchen 2 1
+6 Yesterday Fred went back to the cinema.
+7 Bill journeyed to the office this morning.
+8 Where was Bill before the office?     bedroom 7 3
+9 Mary went to the school this evening.
+10 This afternoon Bill journeyed to the kitchen.
+11 Where was Bill before the office?    bedroom 7 3

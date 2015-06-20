@@ -25,9 +25,9 @@ namespace babi {
 		std::vector<std::vector<uint>> supporting_facts;
 		std::vector<std::vector<word_t>> answers;
 
-        uint size();
+        uint size() const;
 
-		QA<word_t> get(int target_question_idx);
+		QA<word_t> get(int target_question_idx) const;
 	};
 
 	std::tuple<std::vector<Story<uint>>, utils::Vocab> encode_dataset(

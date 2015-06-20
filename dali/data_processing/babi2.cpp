@@ -6,12 +6,12 @@ using utils::Vocab;
 
 namespace babi {
     template<typename word_t>
-    uint Story<word_t>::size() {
+    uint Story<word_t>::size() const {
         return question_fidx.size();
     }
 
     template<typename word_t>
-    QA<word_t> Story<word_t>::get(int target_question_idx) {
+    QA<word_t> Story<word_t>::get(int target_question_idx) const {
         QA<word_t> result;
 
         assert(0 <= target_question_idx &&

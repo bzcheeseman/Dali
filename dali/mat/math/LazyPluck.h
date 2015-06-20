@@ -20,18 +20,23 @@ namespace dali_expr {
     };
 }
 
-template<typename SrcExp, typename DType, int dstdim>
-struct mshadow::expr::Plan<dali_expr::PluckExpression<SrcExp, DType, dstdim>, DType> {
-    public:
-        explicit Plan(const dali_expr::PluckExpression<SrcExp, DType, dstdim> &e)
-            : src_(MakePlan(e.src_)) {}
 
-        MSHADOW_XINLINE DType Eval(mshadow::index_t y, mshadow::index_t x) const {
-            return src_.Eval(y, x);
-        }
+namespace mshadow {
+namespace expr {
+    template<typename SrcExp, typename DType, int dstdim>
+    struct mshadow::expr::Plan<dali_expr::PluckExpression<SrcExp, DType, dstdim>, DType> {
+        public:
+            explicit Plan(const dali_expr::PluckExpression<SrcExp, DType, dstdim> &e)
+                : src_(MakePlan(e.src_)) {}
 
-    private:
-        mshadow::expr::Plan<SrcExp, DType> src_;
-};
+            MSHADOW_XINLINE DType Eval(mshadow::index_t y, mshadow::index_t x) const {
+                return src_.Eval(y, x);
+            }
+
+        private:
+            mshadow::expr::Plan<SrcExp, DType> src_;
+    };
+}
+}
 
 #endif

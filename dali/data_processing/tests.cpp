@@ -1,11 +1,11 @@
+#include <vector>
 #include <gtest/gtest.h>
 
 #include "dali/data_processing/Glove.h"
 #include "dali/data_processing/Arithmetic.h"
 #include "dali/data_processing/NER.h"
 #include "dali/data_processing/Paraphrase.h"
-#include "dali/data_processing/babi2.h"
-#include <vector>
+#include "dali/data_processing/babi.h"
 
 using std::string;
 using std::vector;

@@ -14,10 +14,6 @@
 
 using namespace std::placeholders;
 
-using babi::Fact;
-using babi::Item;
-using babi::QA;
-using babi::Story;
 using beam_search::BeamSearchResult;
 using Eigen::MatrixXd;
 using std::chrono::seconds;
@@ -75,6 +71,7 @@ static bool dummy3 = GFLAGS_NAMESPACE::RegisterFlagValidator(
 typedef float REAL_t;
 // Visualizer
 std::shared_ptr<Visualizer> visualizer;
+Vocab vocab;
 
 template<typename T>
 struct StoryActivation {
@@ -137,8 +134,6 @@ class LstmBabiModel {
     Layer<T>            decoder;
 
     public:
-        shared_ptr<Vocab> vocab;
-
         vector<Mat<T>> parameters() {
             vector<Mat<T>> res;
             for (auto model: std::vector<AbstractLayer<T>*>({
@@ -184,10 +179,9 @@ class LstmBabiModel {
                 fact_gate_embeddings(model.fact_gate_embeddings, copy_w, copy_dw),
                 answer_embeddings(model.answer_embeddings, copy_w, copy_dw),
                 please_start_prediction(model.please_start_prediction, copy_w, copy_dw) {
-            vocab = model.vocab;
         }
 
-        LstmBabiModel(shared_ptr<Vocab> vocabulary) :
+        LstmBabiModel() :
                 // first true - shortcut, second true - feed memory to gates
                 fact_model(FLAGS_text_repr_input,
                            vector<int>(FLAGS_text_repr_stack, FLAGS_text_repr_hidden),
@@ -210,10 +204,9 @@ class LstmBabiModel {
                          FLAGS_lstm_shortcut,
                          FLAGS_lstm_feed_mry),
                 decoder(utils::vsum(vector<int>(FLAGS_hl_stack, FLAGS_hl_hidden)),
-                        vocabulary->word2index.size()) {
+                        vocab.size()) {
 
-            vocab = vocabulary;
-            size_t n_words = vocab->size();
+            size_t n_words = vocab.size();
             size_t hl_model_input = utils::vsum(vector<int>(FLAGS_text_repr_stack, FLAGS_text_repr_hidden));
 
             word_gate_embeddings =
@@ -239,7 +232,7 @@ class LstmBabiModel {
                                       Mat<T> embedding_matrix) const {
             vector<Mat<T>> seq;
             for (auto& word: words) {
-                auto question_idx = vocab->word2index.at(word);
+                auto question_idx = vocab.word2index.at(word);
                 auto embedding = embedding_matrix[question_idx];
                 seq.push_back(embedding);
                 // We don't need explicitly start prediction token because
@@ -335,7 +328,7 @@ class LstmBabiModel {
         Mat<T> error(const vector<vector<string>>& facts,
                      const vector<string>& question,
                      const vector<string>& answer,
-                     vector<int> supporting_facts) const {
+                     vector<uint> supporting_facts) const {
 
             auto activation = activate_story(facts, question, true);
 
@@ -346,7 +339,8 @@ class LstmBabiModel {
 
             vector<Mat<T>> prediction_errors;
 
-            auto answer_idxes = vocab->encode(answer, true);
+            auto answer_idxes = vocab.encode(answer, true);
+
             for (auto& word_idx: answer_idxes) { // for word idxes with end token
                 Mat<T> partial_error;
                 if (FLAGS_margin_loss) {
@@ -371,7 +365,7 @@ class LstmBabiModel {
 
             Mat<REAL_t> fact_selection_error(1,1);
 
-            for (int i=0; i < activation.fact_gate_memory.size(); ++i) {
+            for (uint i=0; i < activation.fact_gate_memory.size(); ++i) {
                 bool supporting = in_vector(supporting_facts, i);
                 auto partial_error = MatOps<REAL_t>::binary_cross_entropy(
                                             activation.fact_gate_memory[i],
@@ -402,12 +396,13 @@ class LstmBabiModel {
             auto make_choice = [this](lstm_state_t state, uint candidate) -> lstm_state_t {
                 return answer_model.activate(state, answer_embeddings[candidate]);
             };
+
             auto beam_search_results = beam_search::beam_search2<T, lstm_state_t>(
                     initial_state,
                     FLAGS_beam_width,
                     candidate_scores,
                     make_choice,
-                    vocab->word2index.at(utils::end_symbol),
+                    vocab.word2index.at(utils::end_symbol),
                     MAX_ANSWER_LENGTH);
 
             return beam_search_results;
@@ -419,7 +414,7 @@ class LstmBabiModel {
 
             auto activation = activate_story(facts, question, false);
             auto result_as_idxes = my_beam_search(activation)[0].solution;
-            auto result = vocab->decode(result_as_idxes, true);
+            auto result = vocab.decode(result_as_idxes, true);
 
             return result;
         }
@@ -437,7 +432,7 @@ class LstmBabiModel {
             for (auto& result: beam_search_results) {
                 scores_as_vec.push_back(
                         FLAGS_margin_loss ? result.score : std::exp(result.score));
-                auto answer_str = vocab->decode(result.solution, true);
+                auto answer_str = vocab.decode(result.solution, true);
                 beam_search_results_solutions.push_back(utils::join(answer_str, " "));
             }
             auto distribution_as_vec =
@@ -485,7 +480,7 @@ shared_ptr<model_t> best_model;
 int best_model_epoch = 0;
 
 // returns the errors;
-double run_epoch(const vector<babi::Story>& dataset,
+double run_epoch(const vector<babi::Story<string>>& dataset,
                  Solver::AbstractSolver<REAL_t>* solver) {
     const int NUM_THREADS = FLAGS_j;
     ThreadPool pool(NUM_THREADS);
@@ -514,24 +509,17 @@ double run_epoch(const vector<babi::Story>& dataset,
             model_t& thread_model = thread_models[ThreadPool::get_thread_number()];
             auto params = thread_model.parameters();
             for (auto story_id: batch) {
-                auto story = dataset[story_id];
-                vector<vector<string>> facts_so_far;
-                QA* qa;
-                for (auto substory : babi::story_parser(story)) {
-                    std::tie(facts_so_far, qa) = substory;
+                auto& story = dataset[story_id];
 
-                    auto error      = thread_model.error(facts_so_far,
-                                                          qa->question,
-                                                          qa->answer,
-                                                          qa->supporting_facts);
+                for (int qa_idx = 0; qa_idx < story.size(); ++qa_idx) {
+                    auto qa = story.get(qa_idx);
+                    auto error = thread_model.error(qa.facts,
+                                                    qa.question,
+                                                    qa.answer,
+                                                    qa.supporting_facts);
                     error.grad();
-
-
-                    thread_error[ThreadPool::get_thread_number()] += error.w(0,0);
-
-
+                    thread_error[ThreadPool::get_thread_number()] += error.w(0);
                     num_questions += 1;
-
                     graph::backward();
                 }
             }
@@ -544,34 +532,40 @@ double run_epoch(const vector<babi::Story>& dataset,
     return utils::vsum(thread_error) / num_questions;
 }
 
-void visualize_examples(const vector<babi::Story>& data, int num_examples) {
-    while(num_examples--) {
-        int example = rand()%data.size();
-        int question_no = utils::randint(0, 5);
-        vector<vector<string>> facts_so_far;
-        QA* qa;
-        bool example_sent = false;
-        for (auto story : babi::story_parser(data[example])) {
-            std::tie(facts_so_far, qa) = story;
-            if (question_no == 0) {
-                model->visualize_example(facts_so_far, qa->question, qa->answer);
-                example_sent = true;
-                break;
-            }
-            question_no--;
+double accuracy(const vector<babi::Story<string>> dataset,
+                std::shared_ptr<model_t> model) {
+    graph::NoBackprop nb;
+    int num_correct   = 0;
+    int num_questions = 0;
+    for (auto& story: dataset) {
+        for (int qa_idx = 0; qa_idx < story.size(); ++ qa_idx) {
+            auto qa = story.get(qa_idx);
+
+            auto predicted_answer = model->predict(qa.facts, qa.question);
+            if (predicted_answer == qa.answer)
+                ++num_correct;
+            ++num_questions;
         }
-        if (!example_sent) ++num_examples;
+    }
+    return (double)num_correct/num_questions;
+}
+
+
+void visualize_examples(const vector<babi::Story<string>>& data, int num_examples) {
+    while(num_examples--) {
+        int example_idx = rand()%data.size();
+        auto& story = data[example_idx];
+        int question_no = utils::randint(0, story.size() - 1);
+        auto qa = story.get(question_no);
+        model->visualize_example(qa.facts, qa.question, qa.answer);
     }
 }
 
-void train(const vector<babi::Story>& data, float training_fraction = 0.8) {
+void train(const vector<babi::Story<string>>& train,
+           const vector<babi::Story<string>>& validate) {
     for (auto param: model->parameters()) {
         weights<REAL_t>::svd(weights<REAL_t>::gaussian(1.0))(param);
     }
-
-    int training_size = (int)(training_fraction * data.size());
-    std::vector<babi::Story> train(data.begin(), data.begin() + training_size);
-    std::vector<babi::Story> validate(data.begin() + training_size, data.end());
 
     auto params = model->parameters();
 
@@ -597,10 +591,7 @@ void train(const vector<babi::Story>& data, float training_fraction = 0.8) {
             });
         }
 
-        double validation_accuracy = babi::accuracy(
-            validate,
-            std::bind(&model_t::predict, model.get(), _1, _2),
-            FLAGS_j);
+        double validation_accuracy = accuracy(validate, model);
 
         bool best_so_far = best_validation_accuracy < validation_accuracy;
 
@@ -628,31 +619,38 @@ void train(const vector<babi::Story>& data, float training_fraction = 0.8) {
     }
 }
 
-void reset(const vector<babi::Story>& data) {
-    auto vocab_vector = babi::vocab_from_data(data);
-    vocab_vector.push_back(utils::end_symbol);
-    model.reset();
-    best_model.reset();
-    model = std::make_shared<model_t>(make_shared<Vocab> (vocab_vector));
-}
 
 double benchmark_task(const std::string task) {
     std::cout << "Solving the most important problem in the world: " << task << std::endl;
-    auto data = babi::Parser::training_data(task);
-    std::cout << "EXAMPLE STORY" << std::endl;
-    for(auto& babi_item: data[0]) {
+    auto str_training_data = babi::dataset(FLAGS_babi_problem, "train");
+    auto str_testing_data = babi::dataset(FLAGS_babi_problem, "test");
+    /*std::cout << "EXAMPLE STORY" << std::endl;
+    for(auto& babi_item: training_data[0]) {
         std::cout << *babi_item << std::endl;
-    }
-    reset(data);
+    }*/
 
-    train(data, 0.8);
+    vector<babi::Story<uint>> encoded_data;
+    std::tie(encoded_data, vocab) = encode_dataset(str_training_data);
+
+
+
+    model.reset();
+    best_model.reset();
+    model = std::make_shared<model_t>();
+
+    const float validation_fraction = 0.2;
+
+    std::random_shuffle(str_training_data.begin(), str_training_data.end());
+    int training_size = (int)((1.0 - validation_fraction) * str_training_data.size());
+    vector<babi::Story<string>> train_data(str_training_data.begin(), str_training_data.begin() + training_size);
+    vector<babi::Story<string>> validate_data(str_training_data.begin() + training_size, str_training_data.end());
+
+    train(train_data, validate_data);
     std::cout << "[RESULTS] Best model was achieved at epoch " << best_model_epoch << " ." << std::endl;
-    double accuracy = babi::task_accuracy(
-        task,
-        std::bind(&model_t::predict, model.get(), _1, _2),
-        FLAGS_j);
-    std::cout << "[RESULTS] Accuracy on " << task << " is " << 100.0 * accuracy << " ." << std::endl;
-    return accuracy;
+    model = best_model;
+    double test_accuracy = accuracy(str_testing_data, best_model);
+    std::cout << "[RESULTS] Accuracy on " << task << " is " << 100.0 * test_accuracy << " ." << std::endl;
+    return test_accuracy;
 }
 
 int main(int argc, char** argv) {
@@ -674,6 +672,6 @@ int main(int argc, char** argv) {
         for (auto& task: babi::tasks())
             benchmark_task(task);
     } else {
-        benchmark_task(utils::prefix_match(babi::tasks(), FLAGS_babi_problem));
+        benchmark_task(FLAGS_babi_problem);
     }
 }

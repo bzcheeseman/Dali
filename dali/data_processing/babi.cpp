@@ -1,65 +1,83 @@
 #include "babi.h"
 
-#include <atomic>
-
-#include "dali/utils.h"
-
-using std::atomic;
-using std::make_shared;
 using std::string;
 using std::vector;
-using utils::random_minibatches;
+using utils::Vocab;
 
 namespace babi {
-    void Item::to_stream(std::ostream& str) const {
-        assert(NULL == "Item should be subclassed.");
+    template<typename word_t>
+    uint Story<word_t>::size() const {
+        return question_fidx.size();
     }
 
+    template<typename word_t>
+    QA<word_t> Story<word_t>::get(int target_question_idx) const {
+        QA<word_t> result;
 
-    std::ostream& operator<<(std::ostream& str, const Item& data) {
-        data.to_stream(str);
-        return str;
+        assert(0 <= target_question_idx &&
+               target_question_idx < question_fidx.size());
+
+        std::unordered_map<uint, uint> mapped_fidx;
+        uint start_idx = 0;
+        for (uint qidx = 0; qidx <= target_question_idx; ++qidx) {
+            for (uint fidx = start_idx; fidx < question_fidx[qidx]; ++fidx) {
+                result.facts.push_back(facts[fidx]);
+                mapped_fidx[fidx] = result.facts.size() - 1;
+            }
+            start_idx = question_fidx[qidx] + 1;
+        }
+        for(auto supporting_fact : supporting_facts[target_question_idx]) {
+            result.supporting_facts.emplace_back(mapped_fidx[supporting_fact]);
+        }
+
+        result.question = facts[question_fidx[target_question_idx]];
+        result.answer = answers[target_question_idx];
+
+        return result;
     }
 
-    QA::QA(const VS question,
-           const VS answer,
-           const std::vector<int> supporting_facts) :
-            question(question),
-            answer(answer),
-            supporting_facts(supporting_facts) {
+    template class QA<uint>;
+    template class QA<string>;
+    template class Story<uint>;
+    template class Story<string>;
+
+
+    std::tuple<vector<Story<uint>>, Vocab> encode_dataset(const vector<Story<string>>& input) {
+        vector<string> words;
+        for (auto& story : input) {
+            for (auto& fact: story.facts) {
+                for (auto& word: fact) {
+                    words.push_back(word);
+                }
+            }
+            for (auto& answer: story.answers) {
+                for (auto& word: answer) {
+                    words.push_back(word);
+                }
+            }
+        }
+        std::sort(words.begin(), words.end());
+        words.erase(std::unique(words.begin(), words.end()), words.end());
+        words.push_back(utils::end_symbol);
+        Vocab vocab(words, false);
+
+        vector<Story<uint>> results;
+        for (auto& story: input) {
+            Story<uint> output;
+            output.question_fidx = story.question_fidx;
+            output.supporting_facts = story.supporting_facts;
+            for (auto& fact: story.facts) {
+                output.facts.emplace_back(vocab.encode(fact));
+            }
+            for (auto& answer: story.answers) {
+                output.answers.emplace_back(vocab.encode(answer));
+            }
+            results.push_back(output);
+        }
+        return std::make_tuple(results, vocab);
     }
 
-    void QA::to_stream(std::ostream& str) const {
-        str << utils::join(question, " ")   << "\t";
-        str << utils::join(answer,",") << "\t";
-        vector<string> s;
-        std::transform(supporting_facts.begin(), supporting_facts.end(),
-                       std::back_inserter(s), [](int x) {
-            return std::to_string(x);
-        });
-        str << utils::join(s, " ");
-    }
-
-    Fact::Fact(const VS fact) :
-        fact(fact) {
-    }
-
-    void Fact::to_stream(std::ostream& str) const {
-        str << utils::join(fact, " ");
-    }
-
-    /* Parser */
-
-    vector<Story> Parser::parse_file(const string& filename,
-                                     const int& num_questions) {
-        // std::cout << file << std::endl;
-        // auto f = make_shared<Fact>(vector<string>({"here", "i", "am"}));
-        // auto q = make_shared<QA>(vector<string>({"where","is","wally"}),
-        //                                vector<string>{"kitchen"},
-        //                                vector<int>({0}));
-        // Story story = {f, q};
-        // vector<Story> res = { story };
-        // return res;
+    vector<Story<string>> parse_file(const string& filename) {
 
         if (!utils::file_exists(filename)) {
             std::stringstream error_msg;
@@ -71,100 +89,80 @@ namespace babi {
         // file exists
         assert(file.good());
 
-        vector<Story> result;
-        Story current_story;
-
-        int last_story_id = -1, story_id;
-        int questions_so_far = 0;
-
-        int questions_in_story = 0;
-        int facts_in_story = 0;
-
-        vector<int> index_to_fact_number;
-        index_to_fact_number.push_back(-1);
-
-
+        vector<Story<string>> results;
         string line_buffer;
+        int last_line_no = -1;
+
         while(std::getline(file, line_buffer)) {
             // Read story id. Non-increasing id is indication
             // of new story.
             std::stringstream line(line_buffer);
-
-            line >> story_id;
-            if (last_story_id != -1 && last_story_id >= story_id) {
-                if (questions_so_far >= num_questions)
-                    break;
-                result.push_back(current_story);
-                current_story.clear();
-                questions_in_story = 0;
-                facts_in_story = 0;
-                index_to_fact_number.clear();
-                index_to_fact_number.push_back(-1);
+            int line_number;
+            line >> line_number;
+            if (last_line_no == -1 || line_number <= last_line_no) {
+                results.emplace_back();
             }
-            last_story_id = story_id;
+            last_line_no = line_number;
 
-            // Parse question or fact.
-            vector<string> tokens;
-            bool is_question;
-
+            // parse the fact.
+            vector<string> fact;
             while(true) {
                 string token;
                 line >> token;
-                assert(!token.empty());
-                char lastc = token[token.size()-1];
-                if (lastc == '.') {
-                    tokens.push_back(token.substr(0, token.size()-1));
-                    tokens.push_back(".");
-                    facts_in_story += 1;
-                    index_to_fact_number.push_back(facts_in_story - 1);
-                    is_question = false;
-                    break;
-                } else if (lastc == '?') {
-                    tokens.push_back(token.substr(0, token.size()-1));
-                    tokens.push_back("?");
-                    questions_so_far += 1;
-                    questions_in_story += 1;
-                    index_to_fact_number.push_back(-1);
-                    is_question = true;
+                if (token.back() == '.' || token.back() == '?') {
+                    fact.emplace_back(token.begin(), token.end() - 1);
+                    fact.emplace_back(token.end()-1, token.end());
                     break;
                 } else {
-                    tokens.push_back(token);
+                    fact.push_back(token);
                 }
             }
-            if (is_question) {
+
+            // store the fact.
+            results.back().facts.push_back(fact);
+
+            // if this is a question store its index.
+            if (fact.back().back() == '?') {
+                results.back().question_fidx.push_back(
+                        results.back().facts.size() - 1);
+            }
+
+            // if this ia question do read in the answer and supporting facts.
+            if (fact.back().back() == '?') {
                 string comma_separated_answer;
                 line >> comma_separated_answer;
 
                 vector<string> answer = utils::split(comma_separated_answer, ',');
-                vector<int> supporting_facts;
+                results.back().answers.push_back(answer);
+
+                results.back().supporting_facts.emplace_back();
+
                 int supporting_fact;
                 while(line >> supporting_fact) {
-                    // make it 0 indexed.
-                    // and not include previous questions when counting
-
-                    int fact_number = index_to_fact_number[supporting_fact];
-
-                    utils::assert2(fact_number != -1,
-                            "Error: Supporting fact is a question.");
-                    utils::assert2(fact_number < facts_in_story,
-                            "Error in babi parsing");
-                    supporting_facts.push_back(fact_number);
+                    results.back().supporting_facts.back().push_back(supporting_fact - 1);
                 }
-                current_story.push_back(make_shared<QA>(tokens,
-                                                        answer,
-                                                        supporting_facts));
-            } else {
-                current_story.push_back(make_shared<Fact>(tokens));
             }
         }
-        result.push_back(current_story);
 
-
-        return result;
+        return results;
     }
 
-    string Parser::data_dir() {
-        return utils::dir_join({ STR(DALI_DATA_DIR), "babi", "babi" });
+    string data_dir() {
+        return utils::dir_join({ STR(DALI_DATA_DIR), "babi", "tasks" });
+    }
+
+
+    std::vector<Story<std::string>> dataset(std::string task_prefix,
+                                            std::string train_or_test,
+                                            std::string dataset_type) {
+        auto dataset_path = utils::dir_join({
+            data_dir(),
+            dataset_type,
+            utils::prefix_match(tasks(), task_prefix) + "_" + train_or_test + ".txt"
+        });
+        assert2(utils::file_exists(dataset_path),
+                utils::MS() << "File " << dataset_path << " does not exist.");
+        return parse_file(dataset_path);
     }
 
     vector<string> tasks() {
@@ -191,115 +189,6 @@ namespace babi {
             "qa19_path-finding",
             "qa20_agents-motivations"
         };
-    }
-
-    vector<Story> Parser::training_data(const string& task,
-                                        const int& num_questions,
-                                        bool shuffled) {
-        if (task == "multitasking") {
-            vector<Story> stories;
-            for (std::string sub_task : tasks()) {
-                auto task_stories = training_data(sub_task, num_questions, shuffled);
-                stories.insert(stories.end(), task_stories.begin(), task_stories.end());
-            }
-            return stories;
-        }
-        string filename = utils::join({task, "_train.txt"});
-        string filepath = utils::dir_join({data_dir(),
-                                           shuffled ? "shuffled" : "en",
-                                           filename});
-        return parse_file(filepath, num_questions);
-    }
-
-    vector<Story> Parser::testing_data(const string& task,
-                         const int& num_questions,
-                         bool shuffled) {
-        if (task == "multitasking") {
-            vector<Story> stories;
-            for (std::string sub_task : tasks()) {
-                auto task_stories = testing_data(sub_task, num_questions, shuffled);
-                stories.insert(stories.end(), task_stories.begin(), task_stories.end());
-            }
-            return stories;
-        }
-
-        string filename = utils::join({task, "_test.txt"});
-        string filepath = utils::dir_join({data_dir(),
-                                           shuffled ? "shuffled" : "en",
-                                           filename});
-        return parse_file(filepath, num_questions);
-    }
-
-    utils::Generator<sp_ret_t> story_parser(const Story& story) {
-        return utils::Generator<sp_ret_t>([&story](utils::yield_t<sp_ret_t> yield) {
-            int story_idx = 0;
-            vector<vector<string>> facts_so_far;
-            while (story_idx < story.size()) {
-                auto item_ptr = story[story_idx++];
-                if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
-                    facts_so_far.push_back(f->fact);
-                } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
-                    yield(std::make_tuple(facts_so_far, qa));
-                }
-            }
-        });
-    }
-
-    /* helper functions */
-
-    double task_accuracy(const std::string& task, prediction_fun predict, int num_threads) {
-        return accuracy(Parser::testing_data(task), predict, num_threads);
-    }
-
-    double accuracy(const vector<Story>& data, prediction_fun predict, int num_threads) {
-        ThreadPool pool(num_threads);
-
-        atomic<int> correct_questions(0);
-        atomic<int> total_questions(0);
-
-        auto batches = random_minibatches(data.size(), num_threads);
-
-        for (int bidx = 0; bidx < batches.size(); ++bidx) {
-            pool.run([&batches, &data, &correct_questions, &total_questions,
-                      &predict, bidx]() {
-                auto batch = batches[bidx];
-                for (auto& story_idx : batch) {
-                    auto& stories = data[story_idx];
-                    vector<VS> facts_so_far;
-                    QA* qa;
-                    for (auto story : story_parser(stories)) {
-                        std::tie(facts_so_far, qa) = story;
-                        VS answer = predict(facts_so_far, qa->question);
-                        if(answer == qa->answer)
-                            ++correct_questions;
-                        ++total_questions;
-                    }
-                }
-            });
-        }
-
-        pool.wait_until_idle();
-
-        double accuracy = (double)correct_questions/total_questions;
-
-        return accuracy;
-    }
-
-    vector<string> vocab_from_data(const vector<babi::Story>& data) {
-        std::set<string> vocab_set;
-        for (auto& story : data) {
-            for(auto& item_ptr : story) {
-                if (Fact* f = dynamic_cast<Fact*>(item_ptr.get())) {
-                    vocab_set.insert(f->fact.begin(), f->fact.end());
-                } else if (QA* qa = dynamic_cast<QA*>(item_ptr.get())) {
-                    vocab_set.insert(qa->question.begin(), qa->question.end());
-                    vocab_set.insert(qa->answer.begin(), qa->answer.end());
-                }
-            }
-        }
-        vector<string> vocab_as_vector;
-        vocab_as_vector.insert(vocab_as_vector.end(), vocab_set.begin(), vocab_set.end());
-        return vocab_as_vector;
     }
 
     void compare_results(std::vector<double> our_results) {
@@ -347,7 +236,4 @@ namespace babi {
         }
     }
 
-
-};
-
-
+}

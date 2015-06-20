@@ -30,12 +30,12 @@ int main() {
 
     ELOG(A.w()->w.gpu_fresh);
     ELOG(A.w()->w.cpu_fresh);
-
+    std::cout << "A=" << std::endl;
     A.print();
 
     A.w(0) = 1.0;
     A.w(1) = 2.0;
-
+    std::cout << "A=" << std::endl;
     A.print();
 
     ELOG(A.w()->w.gpu_fresh);
@@ -60,24 +60,27 @@ int main() {
 
     ELOG(A.w()->w.gpu_fresh);
     ELOG(A.w()->w.cpu_fresh);
-
+    std::cout << "out=" << std::endl;
     out.print();
 
 
     auto out2 = Mat<R>::empty_like(A);
 
     out2.w()->w = c.softmax();
+    std::cout << "out2=" << std::endl;
     out2.print();
     Mat<R> C(3, 1);
 
     C.w()->w = c[0].broadcast<0>(C.w()->w.shape());
-
+    std::cout << "C=" << std::endl;
     C.print();
 
     Mat<R> D(4, 3);
 
-    D.w()->w = c[0].repmat(4);
+    std::cout << c[0].repmat(4).left.shape_[0] << ", " << c[0].repmat(4).left.shape_[1] << std::endl;
 
+    D.w()->w = c[0].repmat(4);
+    std::cout << "D=" << std::endl;
     D.print();
 
     mshadow::ShutdownTensorEngine<mshadow::gpu>();

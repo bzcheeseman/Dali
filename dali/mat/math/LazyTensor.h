@@ -3,10 +3,12 @@
 
 #include <functional>
 #include <vector>
+
+#include "mshadow/tensor.h"
+
 #include "dali/mat/math/LazySoftmax.h"
 #include "dali/mat/math/LazyUtils.h"
 #include "dali/mat/math/LazyPluck.h"
-#include "mshadow/tensor.h"
 
 template<typename DType>
 class SynchronizedTensor;
@@ -92,7 +94,28 @@ class LazyTensor {
                     );
             }
 
-            /*inline LazyTensor<
+            /* Future Lazy plucking
+            inline LazyTensor<
+                    dali_expr::PluckExpression<
+                        LeftType,
+                        DType,
+                        mshadow::expr::ExpInfo<LeftType>::kDim - 1>,
+                    dali_expr::PluckExpression<
+                        RightType,
+                        DType,
+                        mshadow::expr::ExpInfo<RightType>::kDim - 1>,
+                    DType,
+                    mshadow::expr::type::kChainer
+                    > operator[](mshadow::index_t idx) const {
+                auto cpu_pluck = dali_expr::PluckExpression<LeftType, DType, mshadow::expr::ExpInfo<LeftType>::kDim - 1>(
+                    left,
+                    idx);
+                auto gpu_pluck = dali_expr::PluckExpression<RightType, DType, mshadow::expr::ExpInfo<RightType>::kDim - 1>(
+                    right,
+                    idx);
+            */
+
+            inline LazyTensor<
                 mshadow::Tensor<
                     typename extract_tensor_arguments<LeftType>::device_t,
                     extract_tensor_arguments<LeftType>::subdim,
@@ -100,28 +123,12 @@ class LazyTensor {
                 mshadow::Tensor<
                     typename extract_tensor_arguments<RightType>::device_t,
                     extract_tensor_arguments<RightType>::subdim,
-                    DType >, DType, ktype> operator[](mshadow::index_t idx) const {*/
+                    DType >, DType, ktype> operator[](mshadow::index_t idx) const {
 
-                // auto cpu_pluck = left[idx];
-                // auto gpu_pluck = right[idx];
-            inline LazyTensor<
-                    dali_expr::PluckExpression<
-                        LeftType,
-                        DType>,
-                    dali_expr::PluckExpression<
-                        RightType,
-                        DType>,
-                    DType,
-                    (ktype|mshadow::expr::type::kComplex)
-                    > operator[](mshadow::index_t idx) const {
-                auto cpu_pluck = dali_expr::PluckExpression<LeftType, DType>(
-                    left,
-                    idx);
-                auto gpu_pluck = dali_expr::PluckExpression<RightType, DType>(
-                    right,
-                    idx);
+                auto cpu_pluck = left[idx];
+                auto gpu_pluck = right[idx];
 
-                return LazyTensor<decltype(cpu_pluck), decltype(gpu_pluck), DType, (ktype|mshadow::expr::type::kComplex)>(
+                return LazyTensor<decltype(cpu_pluck), decltype(gpu_pluck), DType, ktype>(
                     cpu_pluck,
                     gpu_pluck, sync_tensors
                 );

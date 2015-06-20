@@ -6,45 +6,32 @@
 #include "dali/mat/math/LazyUtils.h"
 
 namespace dali_expr {
-    template<typename EType, typename DType>
-    struct PluckExpression: public mshadow::expr::Exp<PluckExpression<EType, DType>,
-                                      DType, mshadow::expr::type::kComplex> {
-        const EType &exp;
-        int idx;
-        explicit PluckExpression(const EType &e, int _idx) : exp(e), idx(_idx) {}
+    template<typename SrcExp, typename DType, int dstdim>
+    struct PluckExpression:
+        public mshadow::expr::MakeTensorExp<
+            PluckExpression<SrcExp, DType, dstdim>,
+            SrcExp,
+            dstdim,
+            DType > {
+        const SrcExp &src_;
+        mshadow::index_t idx_;
+        explicit PluckExpression(const SrcExp &src, mshadow::index_t idx)
+            : src_(src), idx_(idx) {}
     };
 }
 
-template<typename E, typename DType>
-struct mshadow::expr::ExpInfo< dali_expr::PluckExpression<E, DType> > {
-  static const int kDim = ExpInfo<E>::kDim - 1;
-  static const int kDevMask = ExpInfo<E>::kDevMask;
+template<typename SrcExp, typename DType, int dstdim>
+struct mshadow::expr::Plan<dali_expr::PluckExpression<SrcExp, DType, dstdim>, DType> {
+    public:
+        explicit Plan(const dali_expr::PluckExpression<SrcExp, DType, dstdim> &e)
+            : src_(MakePlan(e.src_)) {}
+
+        MSHADOW_XINLINE DType Eval(mshadow::index_t y, mshadow::index_t x) const {
+            return src_.Eval(y, x);
+        }
+
+    private:
+        mshadow::expr::Plan<SrcExp, DType> src_;
 };
-
-template<typename SV, typename EType, typename DType>
-struct mshadow::expr::ExpComplexEngine<SV,
-                        typename extract_tensor_arguments<EType>::sub_tensor_t,
-                        dali_expr::PluckExpression< EType, DType >,
-                        DType > {
-    inline static void Eval(typename extract_tensor_arguments<EType>::sub_tensor_t *dst,
-                            const dali_expr::SoftmaxExpression< EType, DType > &exp) {
-
-        *dst = exp.exp[exp.idx];
-    }
-};
-/*
-template<typename T, typename DType>
-inline mshadow::expr::Plan<T, DType> mshadow::expr::MakePlan(const dali_expr::PluckExpression<T, DType> &e) {
-    //return mshadow::expr::Plan<T, DType>(e.exp);
-    return void
-}*/
-
-
-template<typename T, typename DType>
-inline mshadow::expr::Plan<dali_expr::PluckExpression<T, DType>, DType>
-MakePlan(const dali_expr::PluckExpression<T, DType> &e) {
-    return mshadow::expr::Plan<dali_expr::PluckExpression<T, DType>, DType>(mshadow::expr::MakePlan(e.exp));
-}
-
 
 #endif

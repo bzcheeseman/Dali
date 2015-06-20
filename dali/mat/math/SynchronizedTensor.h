@@ -37,7 +37,8 @@ class SynchronizedTensor {
         template<typename SourceType>
         void copy_data_from(SourceType& src);
     public:
-        typedef mshadow::Tensor<mshadow::cpu, 2, R> cpu_tensor_t;
+        static const int dimension = 2;
+        typedef mshadow::Tensor<mshadow::cpu, dimension, R> cpu_tensor_t;
         mutable cpu_tensor_t mem_cpu;
         const cpu_tensor_t&   cpu_data() const;
         cpu_tensor_t& mutable_cpu_data();
@@ -51,12 +52,14 @@ class SynchronizedTensor {
         SynchronizedTensor(const SynchronizedTensor& other);
         ~SynchronizedTensor();
 
+        mshadow::Shape<dimension> shape() const;
+
         mutable bool cpu_fresh;
 #ifdef DALI_USE_CUDA
     private:
         void to_gpu() const;
     public:
-        typedef mshadow::Tensor<mshadow::gpu, 2, R> gpu_tensor_t;
+        typedef mshadow::Tensor<mshadow::gpu, dimension, R> gpu_tensor_t;
         mutable gpu_tensor_t mem_gpu;
         mutable bool gpu_fresh;
         const gpu_tensor_t&   gpu_data() const;
@@ -85,8 +88,8 @@ class SynchronizedTensor {
             }
 #else
     #define DALI_SYNC_TENSOR_ASSIGN_OP(op_symbol) \
-        template <template <typename, typename, typename, int> class wrapper_t, typename TA, typename TB, typename DType, int ta> \
-        SynchronizedTensor& operator op_symbol (const wrapper_t<TA, TB, DType, ta>& expr) { \
+        template <template <typename, typename, int> class wrapper_t, typename TA, typename DType, int ta> \
+        SynchronizedTensor& operator op_symbol (const wrapper_t<TA, DType, ta>& expr) { \
             for (auto& participant : expr.sync_tensors) { \
                 const auto& data = participant.get().cpu_data(); \
             }\

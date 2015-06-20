@@ -4,6 +4,8 @@
 #include <functional>
 #include <vector>
 #include "dali/mat/math/LazySoftmax.h"
+#include "dali/mat/math/LazyUtils.h"
+#include "dali/mat/math/LazyPluck.h"
 #include "mshadow/tensor.h"
 
 template<typename DType>
@@ -43,7 +45,6 @@ class LazyTensorTransposed {
             : left(_left), sync_tensors({st}) {}
 
         inline LazyTensor<LeftType, DType, ktype> T(void) const;
-
         #endif
 };
 
@@ -79,12 +80,91 @@ class LazyTensor {
             inline LazyTensor<dali_expr::SoftmaxExpression<LeftType, DType>, dali_expr::SoftmaxExpression<RightType, DType>, DType, (ktype|mshadow::expr::type::kComplex)> softmax(void) const {
                 auto cpu_soft = dali_expr::SoftmaxExpression<LeftType, DType>(left);
                 auto gpu_soft = dali_expr::SoftmaxExpression<RightType, DType>(right);
-                return LazyTensor<decltype(cpu_soft), decltype(gpu_soft), DType, (ktype|mshadow::expr::type::kComplex)>(
-                    cpu_soft,
-                    gpu_soft, sync_tensors
+                return LazyTensor<
+                    decltype(cpu_soft),
+                    decltype(gpu_soft),
+                    DType,
+                    (ktype|mshadow::expr::type::kComplex)
+                    >(
+                        cpu_soft,
+                        gpu_soft,
+                        sync_tensors
+                    );
+            }
+
+            /*inline LazyTensor<
+                mshadow::Tensor<
+                    typename extract_tensor_arguments<LeftType>::device_t,
+                    extract_tensor_arguments<LeftType>::subdim,
+                    DType >,
+                mshadow::Tensor<
+                    typename extract_tensor_arguments<RightType>::device_t,
+                    extract_tensor_arguments<RightType>::subdim,
+                    DType >, DType, ktype> operator[](mshadow::index_t idx) const {*/
+
+                // auto cpu_pluck = left[idx];
+                // auto gpu_pluck = right[idx];
+            inline LazyTensor<
+                    dali_expr::PluckExpression<
+                        LeftType,
+                        DType>,
+                    dali_expr::PluckExpression<
+                        RightType,
+                        DType>,
+                    DType,
+                    (ktype|mshadow::expr::type::kComplex)
+                    > operator[](mshadow::index_t idx) const {
+                auto cpu_pluck = dali_expr::PluckExpression<LeftType, DType>(
+                    left,
+                    idx);
+                auto gpu_pluck = dali_expr::PluckExpression<RightType, DType>(
+                    right,
+                    idx);
+
+                return LazyTensor<decltype(cpu_pluck), decltype(gpu_pluck), DType, (ktype|mshadow::expr::type::kComplex)>(
+                    cpu_pluck,
+                    gpu_pluck, sync_tensors
+                );
+            }
+
+            // Expression that replicate a 1 dimension tensor in
+            // dimension dimcast
+            template<int dimcast, int dimdst>
+            inline LazyTensor<
+                mshadow::expr::Broadcast1DExp<LeftType, DType, dimdst, dimdst - dimcast>,
+                mshadow::expr::Broadcast1DExp<RightType, DType, dimdst, dimdst - dimcast>,
+                DType,
+                ktype >broadcast(mshadow::Shape<dimdst> shape) const {
+
+                auto cpu_broad = mshadow::expr::broadcast<dimcast>(left, shape);
+                auto gpu_broad = mshadow::expr::broadcast<dimcast>(right, shape);
+
+                return LazyTensor<decltype(cpu_broad), decltype(gpu_broad), DType, ktype>(
+                    cpu_broad,
+                    gpu_broad, sync_tensors
+                );
+            }
+
+            // Expression that replicate a 1 dimension tensor for
+            // nrow times
+            inline LazyTensor<
+                mshadow::expr::Broadcast1DExp<LeftType, DType, 2, 1>,
+                mshadow::expr::Broadcast1DExp<RightType, DType, 2, 1>,
+                DType,
+                ktype >
+            repmat(mshadow::index_t nrow) {
+                return broadcast<1>(
+                    mshadow::Shape2(
+                        nrow,
+                        mshadow::expr::ShapeCheck<1, LeftType>::Check(
+                            left.self()
+                        )[0]
+                    )
                 );
             }
         #else
+            // Same expression with the gpu twin
+            // ignored.
             LazyTensor(
                 const LeftType& _left,
                 const sync_tensors_t& _sync_tensors)
@@ -98,10 +178,60 @@ class LazyTensor {
                 return LazyTensorTransposed<LeftType, DType, ktype>(cpu_T, sync_tensors);
             }
 
-            inline LazyTensor<dali_expr::SoftmaxExpression<LeftType, DType>, DType, (ktype|mshadow::expr::type::kComplex)> softmax(void) const {
-                auto cpu_soft = dali_expr::SoftmaxExpression(left);
-                return LazyTensor<decltype(cpu_soft), DType, (ktype|mshadow::expr::type::kComplex)>(
-                    cpu_soft, sync_tensors
+            inline LazyTensor<dali_expr::SoftmaxExpression<LeftType, DType>,
+                              DType,
+                              (ktype|mshadow::expr::type::kComplex)
+                              > softmax(void) const {
+                auto cpu_soft = dali_expr::SoftmaxExpression<LeftType, DType>(left);
+                return LazyTensor<
+                    decltype(cpu_soft),
+                    DType,
+                    (ktype|mshadow::expr::type::kComplex)
+                    >(
+                        cpu_soft,
+                        sync_tensors
+                    );
+            }
+
+            inline LazyTensor<
+                mshadow::Tensor<
+                    typename extract_tensor_arguments<LeftType>::device_t,
+                    extract_tensor_arguments<LeftType>::subdim,
+                    DType >, DType, ktype> operator[](mshadow::index_t idx) const {
+
+                auto cpu_pluck = left[idx];
+                return LazyTensor<decltype(cpu_pluck), DType, ktype>(
+                    cpu_pluck, sync_tensors
+                );
+            }
+
+            // Expression that replicate a 1 dimension tensor in
+            // dimension dimcast
+            template<int dimcast, int dimdst>
+            inline LazyTensor<
+                mshadow::expr::Broadcast1DExp<LeftType, DType, dimdst, dimdst - dimcast>,
+                DType,
+                ktype >broadcast(mshadow::Shape<dimdst> shape) const {
+                auto cpu_broad = mshadow::expr::broadcast<dimcast>(left, shape);
+                return LazyTensor<decltype(cpu_broad), DType, ktype>(
+                    cpu_broad, sync_tensors
+                );
+            }
+
+            // Expression that replicate a 1 dimension tensor for
+            // nrow times
+            inline LazyTensor<
+                mshadow::expr::Broadcast1DExp<LeftType, DType, 2, 1>,
+                DType,
+                ktype >
+            repmat(mshadow::index_t nrow) {
+                return broadcast<1>(
+                    mshadow::Shape2(
+                        nrow,
+                        mshadow::expr::ShapeCheck<1, LeftType>::Check(
+                            left.self()
+                        )[0]
+                    )
                 );
             }
         #endif

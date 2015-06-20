@@ -41,6 +41,11 @@ SynchronizedTensor<R>::SynchronizedTensor(const SynchronizedTensor& other) :
     }
 }
 
+template<typename R>
+mshadow::Shape<SynchronizedTensor<R>::dimension> SynchronizedTensor<R>::shape() const {
+    return mem_cpu.shape_;
+}
+
 #ifdef DALI_USE_CUDA
     template<typename R>
     PreferredDevice SynchronizedTensor<R>::tie_breaker_device = DEVICE_GPU;
@@ -57,13 +62,13 @@ SynchronizedTensor<R>::~SynchronizedTensor() {
 }
 
 template<typename R>
-const Tensor<mshadow::cpu, 2, R>& SynchronizedTensor<R>::cpu_data() const {
+const typename SynchronizedTensor<R>::cpu_tensor_t & SynchronizedTensor<R>::cpu_data() const {
     to_cpu();
     return mem_cpu;
 }
 
 template<typename R>
-Tensor<mshadow::cpu, 2, R>& SynchronizedTensor<R>::mutable_cpu_data() {
+typename SynchronizedTensor<R>::cpu_tensor_t & SynchronizedTensor<R>::mutable_cpu_data() {
     to_cpu();
 #ifdef DALI_USE_CUDA
     gpu_fresh = false;

@@ -42,31 +42,38 @@ namespace babi {
     template class Story<string>;
 
 
-    std::tuple<Story<uint>, Vocab> encode_dataset(Story<string> input) {
+    std::tuple<vector<Story<uint>>, Vocab> encode_dataset(const vector<Story<string>>& input) {
         vector<string> words;
-        for (auto& fact: input.facts) {
-            for (auto& word: fact) {
-                words.push_back(word);
+        for (auto& story : input) {
+            for (auto& fact: story.facts) {
+                for (auto& word: fact) {
+                    words.push_back(word);
+                }
             }
-        }
-        for (auto& answer: input.answers) {
-            for (auto& word: answer) {
-                words.push_back(word);
+            for (auto& answer: story.answers) {
+                for (auto& word: answer) {
+                    words.push_back(word);
+                }
             }
         }
         std::sort(words.begin(), words.end());
         words.erase(std::unique(words.begin(), words.end()), words.end());
         Vocab vocab(words, false);
-        Story<uint> output;
-        output.question_fidx = input.question_fidx;
-        output.supporting_facts = input.supporting_facts;
-        for (auto& fact: input.facts) {
-            output.facts.emplace_back(vocab.encode(fact));
+
+        vector<Story<uint>> results;
+        for (auto& story: input) {
+            Story<uint> output;
+            output.question_fidx = story.question_fidx;
+            output.supporting_facts = story.supporting_facts;
+            for (auto& fact: story.facts) {
+                output.facts.emplace_back(vocab.encode(fact));
+            }
+            for (auto& answer: story.answers) {
+                output.answers.emplace_back(vocab.encode(answer));
+            }
+            results.push_back(output);
         }
-        for (auto& answer: input.answers) {
-            output.answers.emplace_back(vocab.encode(answer));
-        }
-        return std::make_tuple(output, vocab);
+        return std::make_tuple(results, vocab);
     }
 
     vector<Story<string>> parse_file(const string& filename) {

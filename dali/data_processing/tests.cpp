@@ -353,4 +353,39 @@ TEST(babi, extract_qa) {
 }
 
 TEST(babi, encode) {
+    auto test_file = utils::dir_join({ STR(DALI_DATA_DIR),
+                                      "tests",
+                                      "babi.sample" });
+    auto datasets = babi::parse_file(test_file);
+
+    utils::Vocab vocab;
+    vector<babi::Story<uint>> encoded_datasets;
+
+    std::tie(encoded_datasets,vocab) = babi::encode_dataset(datasets);
+
+    ASSERT_EQ(datasets.size(), encoded_datasets.size());
+    for (int i = 0; i < datasets.size(); ++i) {
+        auto& dataset         = datasets[i];
+        auto& encoded_dataset = encoded_datasets[i];
+        ASSERT_EQ(dataset.facts.size(), encoded_dataset.facts.size());
+        for (int fidx = 0; fidx < dataset.facts.size(); ++fidx) {
+            auto decoded_fact = vocab.decode(encoded_dataset.facts[fidx]);
+            EXPECT_TRUE(VECTORS_EQUAL(decoded_fact, dataset.facts[fidx]));
+        };
+
+        EXPECT_TRUE(VECTORS_EQUAL(dataset.question_fidx, encoded_dataset.question_fidx));
+
+        ASSERT_EQ(dataset.supporting_facts.size(), encoded_dataset.supporting_facts.size());
+        for (int sidx = 0; sidx < dataset.supporting_facts.size(); ++sidx) {
+            EXPECT_TRUE(VECTORS_EQUAL(dataset.supporting_facts[sidx],
+                                      encoded_dataset.supporting_facts[sidx]));
+        }
+
+        ASSERT_EQ(dataset.answers.size(), encoded_dataset.answers.size());
+        for (int aidx = 0; aidx < dataset.answers.size(); ++aidx) {
+            auto decoded_answer = vocab.decode(encoded_dataset.answers[aidx]);
+            EXPECT_TRUE(VECTORS_EQUAL(dataset.answers[aidx], decoded_answer));
+        };
+    }
+
 }

@@ -30,8 +30,8 @@ namespace babi {
 		QA<word_t> get(int target_question_idx);
 	};
 
-	std::tuple<Story<uint>, utils::Vocab> encode_dataset(Story<std::string> input);
-
+	std::tuple<std::vector<Story<uint>>, utils::Vocab> encode_dataset(
+			const std::vector<Story<std::string>>& input);
     std::vector<Story<std::string>> parse_file(const std::string& filename);
 }
 

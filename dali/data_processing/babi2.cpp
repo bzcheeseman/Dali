@@ -146,5 +146,93 @@ namespace babi {
         return results;
     }
 
+    string data_dir() {
+        return utils::dir_join({ STR(DALI_DATA_DIR), "babi", "tasks" });
+    }
+
+
+    std::vector<Story<std::string>> dataset(std::string task_prefix,
+                                            std::string train_or_test,
+                                            std::string dataset_type) {
+        auto dataset_path = utils::dir_join({
+            data_dir(),
+            dataset_type,
+            utils::prefix_match(tasks(), task_prefix) + "_" + train_or_test + ".txt"
+        });
+        assert2(utils::file_exists(dataset_path),
+                utils::MS() << "File " << dataset_path << " does not exist.");
+        return parse_file(dataset_path);
+    }
+
+    vector<string> tasks() {
+        // TODO read from disk.
+        return {
+            "qa1_single-supporting-fact",
+            "qa2_two-supporting-facts",
+            "qa3_three-supporting-facts",
+            "qa4_two-arg-relations",
+            "qa5_three-arg-relations",
+            "qa6_yes-no-questions",
+            "qa7_counting",
+            "qa8_lists-sets",
+            "qa9_simple-negation",
+            "qa10_indefinite-knowledge",
+            "qa11_basic-coreference",
+            "qa12_conjunction",
+            "qa13_compound-coreference",
+            "qa14_time-reasoning",
+            "qa15_basic-deduction",
+            "qa16_basic-induction",
+            "qa17_positional-reasoning",
+            "qa18_size-reasoning",
+            "qa19_path-finding",
+            "qa20_agents-motivations"
+        };
+    }
+
+    void compare_results(std::vector<double> our_results) {
+        std::vector<double> facebook_lstm_results = {
+            50,  20,  20,  61,  70, 48,  49, 45, 64,  44, 72,  74,  94,  27, 21,  23,  51, 52, 8,  91
+        };
+
+        std::vector<double> facebook_best_results = {
+            100, 100, 100, 100, 98, 100, 85, 91, 100, 98, 100, 100, 100, 99, 100, 100, 65, 95, 36, 100
+        };
+
+        std::vector<double> facebook_multitask_results = {
+            100, 100, 98,  80,  99, 100, 86, 93, 100, 98, 100, 100, 100, 99, 100, 94,  72, 93, 19, 100
+        };
+
+        std::cout << "Babi Benchmark Results" << std::endl
+                  << std::endl
+                  << "Columns are (from left): task name, our result," << std::endl
+                  << "Facebook's LSTM result, Facebook's best result," << std::endl
+                  << "Facebook's multitask result." << std::endl
+                  << "===============================================" << std::endl;
+
+        std::function<std::string(std::string)> moar_whitespace = [](std::string input,
+                                                                     int num_whitespace=30) {
+            assert(input.size() < num_whitespace);
+            std::stringstream ss;
+            ss << input;
+            num_whitespace -= input.size();
+            while(num_whitespace--) ss << ' ';
+            return ss.str();
+        };
+        auto task_list = tasks();
+        for (int task_id = 0; task_id < task_list.size(); ++task_id) {
+            char special = ' ';
+            if (our_results[task_id] >= facebook_lstm_results[task_id]) special = '*';
+            if (our_results[task_id] >= facebook_best_results[task_id]) special = '!';
+
+
+            std::cout << std::setprecision(1) << std::fixed
+                      << moar_whitespace(task_list[task_id]) << "\t"
+                      << special << our_results[task_id] << special << "\t"
+                      << facebook_lstm_results[task_id] << "\t"
+                      << facebook_best_results[task_id] << "\t"
+                      << facebook_multitask_results[task_id] << std::endl;
+        }
+    }
 
 }

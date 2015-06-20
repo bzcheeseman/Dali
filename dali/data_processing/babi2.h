@@ -32,7 +32,21 @@ namespace babi {
 
 	std::tuple<std::vector<Story<uint>>, utils::Vocab> encode_dataset(
 			const std::vector<Story<std::string>>& input);
+
     std::vector<Story<std::string>> parse_file(const std::string& filename);
+
+    std::string data_dir();
+
+    std::vector<Story<std::string>> dataset(std::string task_prefix,
+    			                            std::string train_or_test,
+    			                            std::string dataset_prefix="en");
+
+    // List of all the babi tasks
+    std::vector<std::string> tasks();
+
+    // Takes as argument list of results for all the 20 tasks
+    // and prints them side by side with facebook results.
+    void compare_results(std::vector<double> our_results);
 }
 
 

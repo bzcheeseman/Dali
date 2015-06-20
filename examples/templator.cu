@@ -63,6 +63,13 @@ int main() {
 
     out.print();
 
+
+    auto out2 = Mat<R>::empty_like(A);
+
+    out2.w()->w = c.softmax();
+
+    out2.print();
+
     mshadow::ShutdownTensorEngine<mshadow::gpu>();
 
 }

@@ -124,6 +124,11 @@ namespace TensorOps {
         return std::accumulate(a.dptr_, a.dptr_ + num_elts, 0.0);
     }
 
+    template<typename Device, typename R>
+    void softmax(const mshadow::Tensor<Device, 2, R>& src, mshadow::Tensor<Device, 2, R>& dest) {
+        mshadow::Softmax(dest, src);
+    }
+
     template<typename tensor_t, typename R>
     void fill(tensor_t& ts, R filler) {
         mshadow::MapExp<mshadow::sv::saveto>(&ts,

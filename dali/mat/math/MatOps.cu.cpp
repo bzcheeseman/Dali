@@ -623,20 +623,9 @@ Mat<R> MatOps<R>::sigmoid(Mat<R> matrix) {
 
 template<typename R>
 Mat<R> MatOps<R>::softmax_no_grad(Mat<R> matrix, R temperature) {
-    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
-
-    auto layer_max = MAT(matrix).colwise().maxCoeff().array().matrix();
-    auto exped_distributions = (
-        (MAT(matrix).rowwise() - layer_max.row(0)) / temperature
-    ).array().exp().matrix();
-
-    auto total_distribution = exped_distributions.colwise().sum().array().matrix();
-    MAT(out) = (exped_distributions.array().rowwise() / total_distribution.row(0).array());
+    DALI_FUNCTION_2_MUT(TensorOps::softmax, MAT(matrix), MAT(out));
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>

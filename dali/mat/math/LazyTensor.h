@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <vector>
+#include "dali/mat/math/LazySoftmax.h"
 #include "mshadow/tensor.h"
 
 template<typename DType>
@@ -46,6 +47,7 @@ class LazyTensorTransposed {
         #endif
 };
 
+
 #ifdef DALI_USE_CUDA
     template<typename LeftType, typename RightType, typename DType, int ktype>
 #else
@@ -73,6 +75,15 @@ class LazyTensor {
                 auto gpu_T = right.T();
                 return LazyTensorTransposed<LeftType, RightType, DType, ktype>(cpu_T, gpu_T, sync_tensors);
             }
+
+            inline LazyTensor<dali_expr::SoftmaxExpression<LeftType, DType>, dali_expr::SoftmaxExpression<RightType, DType>, DType, (ktype|mshadow::expr::type::kComplex)> softmax(void) const {
+                auto cpu_soft = dali_expr::SoftmaxExpression<LeftType, DType>(left);
+                auto gpu_soft = dali_expr::SoftmaxExpression<RightType, DType>(right);
+                return LazyTensor<decltype(cpu_soft), decltype(gpu_soft), DType, (ktype|mshadow::expr::type::kComplex)>(
+                    cpu_soft,
+                    gpu_soft, sync_tensors
+                );
+            }
         #else
             LazyTensor(
                 const LeftType& _left,
@@ -85,6 +96,13 @@ class LazyTensor {
             inline LazyTensorTransposed<LeftType, DType, ktype> T(void) const {
                 auto cpu_T = left.T();
                 return LazyTensorTransposed<LeftType, DType, ktype>(cpu_T, sync_tensors);
+            }
+
+            inline LazyTensor<dali_expr::SoftmaxExpression<LeftType, DType>, DType, (ktype|mshadow::expr::type::kComplex)> softmax(void) const {
+                auto cpu_soft = dali_expr::SoftmaxExpression(left);
+                return LazyTensor<decltype(cpu_soft), DType, (ktype|mshadow::expr::type::kComplex)>(
+                    cpu_soft, sync_tensors
+                );
             }
         #endif
 };
@@ -134,7 +152,6 @@ class LazyTensor {
         return LazyTensor<decltype(res_cpu), DType, (ta|tb|mshadow::expr::type::kMapper)>(res_cpu, joined_sts); \
     }
 #endif
-
 
 BINARY_OP(mshadow::op::plus,  +);
 BINARY_OP(mshadow::op::mul,   *);

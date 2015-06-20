@@ -1,4 +1,5 @@
 #include "dali/mat/math/SynchronizedTensor.h"
+#include "dali/mat/math/LazyTensor.h"
 
 using mshadow::AllocSpace;
 using mshadow::FreeSpace;
@@ -10,8 +11,10 @@ template<typename R>
 SynchronizedTensor<R>::SynchronizedTensor(int n, int d, PreferredDevice _preferred_device) :
 #ifdef DALI_USE_CUDA
     mem_gpu(Shape2(n, d)),
+    allocated_gpu(false),
     gpu_fresh(false),
 #endif
+    allocated_cpu(false),
     mem_cpu(Shape2(n, d)),
     cpu_fresh(false),
     preferred_device(_preferred_device) {
@@ -20,9 +23,11 @@ SynchronizedTensor<R>::SynchronizedTensor(int n, int d, PreferredDevice _preferr
 template<typename R>
 SynchronizedTensor<R>::SynchronizedTensor(const SynchronizedTensor& other) :
 #ifdef DALI_USE_CUDA
+        allocated_gpu(false),
         mem_gpu(other.mem_gpu.shape_),
         gpu_fresh(false),
 #endif
+        allocated_cpu(false),
         mem_cpu(other.mem_cpu.shape_),
         cpu_fresh(false),
         preferred_device(other.preferred_device) {
@@ -41,6 +46,32 @@ SynchronizedTensor<R>::SynchronizedTensor(const SynchronizedTensor& other) :
     }
 }
 
+#ifdef DALI_USE_CUDA
+template<typename R>
+LazyTensor<
+    typename SynchronizedTensor<R>::cpu_tensor_t,
+    typename SynchronizedTensor<R>::gpu_tensor_t,
+    R,
+    mshadow::expr::type::kRValue> SynchronizedTensor<R>::wrapper() {
+    return LazyTensor<
+        cpu_tensor_t,
+        gpu_tensor_t,
+        R,
+        mshadow::expr::type::kRValue
+        >(*this);
+}
+#else
+template<typename R>
+LazyTensor<
+    typename SynchronizedTensor<R>::cpu_tensor_t,
+    R, mshadow::expr::type::kRValue> SynchronizedTensor<R>::wrapper() {
+    return LazyTensor<
+        cpu_tensor_t,
+        R,
+        mshadow::expr::type::kRValue>(*this);
+}
+#endif
+
 template<typename R>
 mshadow::Shape<SynchronizedTensor<R>::dimension> SynchronizedTensor<R>::shape() const {
     return mem_cpu.shape_;
@@ -53,10 +84,10 @@ mshadow::Shape<SynchronizedTensor<R>::dimension> SynchronizedTensor<R>::shape() 
 
 template<typename R>
 SynchronizedTensor<R>::~SynchronizedTensor() {
-    if (mem_cpu.stream_ != NULL)
+    if (allocated_cpu)
         FreeSpace(&mem_cpu);
 #ifdef DALI_USE_CUDA
-    if (mem_gpu.stream_ != NULL)
+    if (allocated_gpu)
         FreeSpace(&mem_gpu);
 #endif
 }
@@ -105,8 +136,9 @@ bool SynchronizedTensor<R>::prefers_gpu() const {
     template<typename R>
     void SynchronizedTensor<R>::to_gpu() const {
         if (!gpu_fresh) {
-            if (mem_gpu.dptr_ == NULL && mem_gpu.stream_ == NULL) {
+            if (!allocated_gpu) {
                 AllocSpace(&mem_gpu, false);
+                allocated_gpu = true;
             }
             if (cpu_fresh) {
                 Copy(mem_gpu, mem_cpu);
@@ -119,8 +151,9 @@ bool SynchronizedTensor<R>::prefers_gpu() const {
 template<typename R>
 void SynchronizedTensor<R>::to_cpu() const {
     if (!cpu_fresh) {
-        if (mem_cpu.stream_ == NULL) {
+        if (!allocated_cpu) {
             AllocSpace(&mem_cpu, false);
+            allocated_cpu = true;
         }
 #ifdef DALI_USE_CUDA
         if (gpu_fresh) {
@@ -136,11 +169,13 @@ template<typename SourceType>
 void SynchronizedTensor<R>::copy_data_from(SourceType& data_source) {
     if (prefers_cpu()) {
         AllocSpace(&mem_cpu, false);
+        allocated_cpu = true;
         Copy(mem_cpu, data_source);
         cpu_fresh = true;
     } else {
 #ifdef DALI_USE_CUDA
         AllocSpace(&mem_gpu, false);
+        allocated_gpu = true;
         Copy(mem_gpu, data_source);
         gpu_fresh = true;
 #endif

@@ -20,6 +20,14 @@ template<typename R>
 bool should_compute_on_gpu(
         std::initializer_list<std::reference_wrapper<SynchronizedTensor<R>>> sts);
 
+#ifdef DALI_USE_CUDA
+    template<typename LeftType, typename RightType, typename DType, int ktype>
+    class LazyTensor;
+#else
+    template<typename LeftType, typename DType, int ktype>
+    class LazyTensor;
+#endif
+
 template<typename R>
 bool should_compute_on_gpu(const std::vector<std::reference_wrapper<SynchronizedTensor<R>>>& sts);
 
@@ -32,6 +40,7 @@ template<typename R>
 class SynchronizedTensor {
     private:
         PreferredDevice preferred_device;
+        mutable bool allocated_cpu;
         void to_cpu() const;
         // only used by copy constructor.
         template<typename SourceType>
@@ -57,9 +66,13 @@ class SynchronizedTensor {
         mutable bool cpu_fresh;
 #ifdef DALI_USE_CUDA
     private:
+        mutable bool allocated_gpu;
         void to_gpu() const;
     public:
         typedef mshadow::Tensor<mshadow::gpu, dimension, R> gpu_tensor_t;
+
+        LazyTensor<cpu_tensor_t, gpu_tensor_t, R, mshadow::expr::type::kRValue> wrapper();
+
         mutable gpu_tensor_t mem_gpu;
         mutable bool gpu_fresh;
         const gpu_tensor_t&   gpu_data() const;
@@ -87,6 +100,8 @@ class SynchronizedTensor {
                 return *this;\
             }
 #else
+    public:
+        LazyTensor<cpu_tensor_t, R, mshadow::expr::type::kRValue> wrapper();
     #define DALI_SYNC_TENSOR_ASSIGN_OP(op_symbol) \
         template <template <typename, typename, int> class wrapper_t, typename TA, typename DType, int ta> \
         SynchronizedTensor& operator op_symbol (const wrapper_t<TA, DType, ta>& expr) { \

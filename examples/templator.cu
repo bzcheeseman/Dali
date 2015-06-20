@@ -41,8 +41,8 @@ int main() {
     ELOG(A.w()->w.gpu_fresh);
     ELOG(A.w()->w.cpu_fresh);
 
-    wrapped_t a(A.w()->w);
-    wrapped_t b(B.w()->w);
+    auto a = A.w()->w.wrapper();
+    auto b = A.w()->w.wrapper();
 
     auto c = a;// + b;
 
@@ -56,7 +56,7 @@ int main() {
     ELOG(A.w()->w.cpu_fresh);
 
     auto out = Mat<R>::empty_like(A);
-    out.w()->w = c;
+    out.w()->w = c * (float)3.0;
 
     ELOG(A.w()->w.gpu_fresh);
     ELOG(A.w()->w.cpu_fresh);

@@ -275,6 +275,50 @@ class LazyTensor {
         joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end()); \
         return LazyTensor<decltype(res_cpu), decltype(res_gpu), DType, (ta|tb|mshadow::expr::type::kMapper)>(res_cpu, res_gpu, joined_sts); \
     }
+
+    #define BINARY_SCALAR_OP(opname, opsymbol) \
+    template<template <typename, typename, typename, int> class wrapper_t1, typename TA, typename TB, typename DType, int ta> \
+    LazyTensor< mshadow::expr::BinaryMapExp<opname, TA, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, mshadow::expr::BinaryMapExp<opname, TB, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, DType, (ta|mshadow::expr::type::kMapper)> operator opsymbol( \
+            const wrapper_t1<TA, TB, DType, ta> &left, \
+            const mshadow::expr::ScalarExp<DType> &right) { \
+        const auto& l_cpu = left.left; \
+        auto res_cpu = l_cpu opsymbol right; \
+        const auto& l_gpu = left.right; \
+        auto res_gpu = l_gpu opsymbol right; \
+        return LazyTensor<decltype(res_cpu), decltype(res_gpu), DType, (ta|mshadow::expr::type::kMapper)>(res_cpu, res_gpu, left.sync_tensors); \
+    } \
+    \
+    template<template <typename, typename, typename, int> class wrapper_t1, typename TA, typename TB, typename DType, int ta> \
+    LazyTensor< mshadow::expr::BinaryMapExp<opname, TA, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, mshadow::expr::BinaryMapExp<opname, TB, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, DType, (ta|mshadow::expr::type::kMapper)> operator opsymbol( \
+            const mshadow::expr::ScalarExp<DType> &left, \
+            const wrapper_t1<TA, TB, DType, ta> &right) { \
+        const auto& l_cpu = right.left; \
+        auto res_cpu = left opsymbol l_cpu; \
+        const auto& l_gpu = right.right; \
+        auto res_gpu = left opsymbol l_gpu; \
+        return LazyTensor<decltype(res_cpu), decltype(res_gpu), DType, (ta|mshadow::expr::type::kMapper)>(res_cpu, res_gpu, left.sync_tensors); \
+    } \
+    template<template <typename, typename, typename, int> class wrapper_t1, typename TA, typename TB, typename DType, int ta> \
+    LazyTensor< mshadow::expr::BinaryMapExp<opname, TA, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, mshadow::expr::BinaryMapExp<opname, TB, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, DType, (ta|mshadow::expr::type::kMapper)> operator opsymbol( \
+            const wrapper_t1<TA, TB, DType, ta> &left, \
+            DType right) { \
+        const auto& l_cpu = left.left; \
+        auto res_cpu = l_cpu opsymbol mshadow::expr::ScalarExp<DType>(right); \
+        const auto& l_gpu = left.right; \
+        auto res_gpu = l_gpu opsymbol mshadow::expr::ScalarExp<DType>(right); \
+        return LazyTensor<decltype(res_cpu), decltype(res_gpu), DType, (ta|mshadow::expr::type::kMapper)>(res_cpu, res_gpu, left.sync_tensors); \
+    } \
+    \
+    template<template <typename, typename, typename, int> class wrapper_t1, typename TA, typename TB, typename DType, int ta> \
+    LazyTensor< mshadow::expr::BinaryMapExp<opname, TA, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, mshadow::expr::BinaryMapExp<opname, TB, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, DType, (ta|mshadow::expr::type::kMapper)> operator opsymbol( \
+            DType left, \
+            const wrapper_t1<TA, TB, DType, ta> &right) { \
+        const auto& l_cpu = right.left; \
+        auto res_cpu = mshadow::expr::ScalarExp<DType>(left) opsymbol l_cpu; \
+        const auto& l_gpu = right.right; \
+        auto res_gpu = mshadow::expr::ScalarExp<DType>(left) opsymbol l_gpu; \
+        return LazyTensor<decltype(res_cpu), decltype(res_gpu), DType, (ta|mshadow::expr::type::kMapper)>(res_cpu, res_gpu, left.sync_tensors); \
+    }
 #else
     #define BINARY_OP(opname, opsymbol) \
     template<template <typename, typename, int> class wrapper_t1, template <typename, typename, int> class wrapper_t2, typename TA, typename TC, typename DType, int ta, int tb> \
@@ -293,6 +337,12 @@ class LazyTensor {
 BINARY_OP(mshadow::op::plus,  +);
 BINARY_OP(mshadow::op::mul,   *);
 BINARY_OP(mshadow::op::minus, -);
+
+BINARY_SCALAR_OP(mshadow::op::plus,  +);
+BINARY_SCALAR_OP(mshadow::op::mul,  *);
+BINARY_SCALAR_OP(mshadow::op::minus,  -);
+BINARY_SCALAR_OP(mshadow::op::div,  /);
+
 
 #ifdef DALI_USE_CUDA
     template<typename OP, template <typename, typename, typename, int> class wrapper_t, typename TA, typename TB, typename DType, int ta>

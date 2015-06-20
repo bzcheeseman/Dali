@@ -1,6 +1,7 @@
 #include "dali/mat/math/MatOps.h"
 #include "dali/mat/math/__MatMacros__.h"
 #include "dali/mat/math/TensorOps.h"
+#include "dali/mat/math/LazyTensor.h"
 
 using std::vector;
 using std::string;
@@ -334,16 +335,12 @@ Mat<R> MatOps<R>::add(
         "Matrices cannot be added, they do not have the same dimensions.");
 
     auto out = Mat<R>::empty_like(matrix1);
-    DALI_FUNCTION_3_MUT(TensorOps::add, MAT(matrix1), MAT(matrix2), MAT(out), OVERWRITE);
+    MAT(out) = MAT(matrix1).wrapper() + MAT(matrix2).wrapper();
 
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
-            if (!matrix1.constant)
-                // matrix1.dw() += out.dw()
-                DALI_FUNCTION_2_MUT(TensorOps::add_inplace, GRAD(out), GRAD(matrix1));
-            if (!matrix2.constant)
-                // matrix1.dw() += out.dw()
-                DALI_FUNCTION_2_MUT(TensorOps::add_inplace, GRAD(out), GRAD(matrix2));
+            SAFE_GRAD(matrix1) += GRAD(out).wrapper();
+            SAFE_GRAD(matrix2) += GRAD(out).wrapper();
         });
     return out;
 }
@@ -360,22 +357,16 @@ Mat<R> MatOps<R>::sub(
         return sub_broadcast(matrix1, matrix2);
     }
 
-
     assert2((matrix1.dims(0) == matrix2.dims(0)) && (matrix1.dims(1) == matrix2.dims(1)),
         "Matrices cannot be subtracted, they do not have the same dimensions.");
 
     auto out = Mat<R>::empty_like(matrix1);
-
-    DALI_FUNCTION_3_MUT(TensorOps::sub, MAT(matrix1), MAT(matrix2), MAT(out), OVERWRITE);
+    MAT(out) = MAT(matrix1).wrapper() - MAT(matrix2).wrapper();
 
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
-            if (!matrix1.constant)
-                // matrix1.dw() += out.dw()
-                DALI_FUNCTION_2_MUT(TensorOps::add_inplace, GRAD(out), GRAD(matrix1));
-            if (!matrix2.constant)
-                // matrix1.dw() += out.dw()
-                DALI_FUNCTION_2_MUT(TensorOps::sub_inplace, GRAD(out), GRAD(matrix2));
+            SAFE_GRAD(matrix1) += GRAD(out).wrapper();
+            SAFE_GRAD(matrix2) -= GRAD(out).wrapper();
         });
 
     return out;
@@ -495,9 +486,17 @@ Mat<R> MatOps<R>::add(const std::vector<Mat<R>>& matrices) {
 }
 
 template<typename R>
+struct square_f {
+    MSHADOW_XINLINE static R Map(const R& a) {
+        return a * a;
+    }
+};
+
+template<typename R>
 Mat<R> MatOps<R>::square(Mat<R> matrix) {
     auto out = Mat<R>::empty_like(matrix);
-    DALI_FUNCTION_2_MUT(TensorOps::square, MAT(matrix), MAT(out), OVERWRITE);
+
+    MAT(out) = F<square_f<R>>(MAT(matrix).wrapper());
 
     if (graph::backprop_enabled && !matrix.constant)
         graph::emplace_back([matrix, out]() {

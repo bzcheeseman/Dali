@@ -304,55 +304,43 @@ class LazyTensor {
 
     #define BINARY_SCALAR_OP(opname, opsymbol) \
     template<template <typename, typename, typename, int> class wrapper_t1, typename TA, typename TB, typename DType, int ta> \
-    LazyTensor< mshadow::expr::BinaryMapExp<opname, TA, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, \
-                mshadow::expr::BinaryMapExp<opname, TB, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, \
-                DType, (ta|mshadow::expr::type::kMapper)> operator opsymbol( \
-            const wrapper_t1<TA, TB, DType, ta> &left, \
-            const mshadow::expr::ScalarExp<DType> &right) { \
-        const auto& l_cpu = left.left; \
-        auto res_cpu = l_cpu opsymbol right; \
-        const auto& l_gpu = left.right; \
-        auto res_gpu = l_gpu opsymbol right; \
-        return LazyTensor<decltype(res_cpu), decltype(res_gpu), DType, (ta|mshadow::expr::type::kMapper)>(res_cpu, res_gpu, left.sync_tensors); \
+    auto operator opsymbol( \
+            const wrapper_t1<TA, TB, DType, ta> &tensor, \
+            const mshadow::expr::ScalarExp<DType> &scalar) -> LazyTensor<decltype(tensor.left opsymbol scalar), \
+                                                                         decltype(tensor.right opsymbol scalar), \
+                                                                         DType, \
+                                                                         (ta|mshadow::expr::type::kMapper)> { \
+        const auto& l_cpu = tensor.left; \
+        auto res_cpu = l_cpu opsymbol scalar; \
+        const auto& l_gpu = tensor.right; \
+        auto res_gpu = l_gpu opsymbol scalar; \
+        return LazyTensor<decltype(res_cpu), decltype(res_gpu), DType, (ta|mshadow::expr::type::kMapper)>(res_cpu, res_gpu, tensor.sync_tensors); \
     } \
     \
-    template<template <typename, typename, typename, int> class wrapper_t1, typename TA, typename TB, typename DType, int ta> \
-    LazyTensor< mshadow::expr::BinaryMapExp<opname, TA, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, \
-                mshadow::expr::BinaryMapExp<opname, TB, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, \
-                DType, (ta|mshadow::expr::type::kMapper)> operator opsymbol( \
-            const mshadow::expr::ScalarExp<DType> &left, \
-            const wrapper_t1<TA, TB, DType, ta> &right) { \
-        const auto& l_cpu = right.left; \
-        auto res_cpu = left opsymbol l_cpu; \
-        const auto& l_gpu = right.right; \
-        auto res_gpu = left opsymbol l_gpu; \
-        return LazyTensor<decltype(res_cpu), decltype(res_gpu), DType, (ta|mshadow::expr::type::kMapper)>(res_cpu, res_gpu, left.sync_tensors); \
-    } \
     template<template <typename, typename, typename, int> class wrapper_t1, typename TA, typename TB, typename DType, int ta> \
     auto operator opsymbol( \
-            const wrapper_t1<TA, TB, DType, ta> &left, \
-            DType right) -> LazyTensor<decltype(left.left opsymbol right), \
-                                       decltype(left.right opsymbol right), \
-                                       DType, \
-                                       (ta|mshadow::expr::type::kMapper)> { \
-        const auto& l_cpu = left.left; \
-        auto res_cpu = l_cpu opsymbol mshadow::expr::ScalarExp<DType>(right); \
-        const auto& l_gpu = left.right; \
-        auto res_gpu = l_gpu opsymbol mshadow::expr::ScalarExp<DType>(right); \
-        return LazyTensor<decltype(res_cpu), decltype(res_gpu), DType, (ta|mshadow::expr::type::kMapper)>(res_cpu, res_gpu, left.sync_tensors); \
+            const mshadow::expr::ScalarExp<DType> &scalar, \
+            const wrapper_t1<TA, TB, DType, ta>   &tensor) -> LazyTensor<decltype(scalar opsymbol tensor.left), \
+                                                                        decltype(scalar opsymbol tensor.right), \
+                                                                        DType, \
+                                                                        (ta|mshadow::expr::type::kMapper)> { \
+        const auto& l_cpu = tensor.left; \
+        auto res_cpu = scalar opsymbol l_cpu; \
+        const auto& l_gpu = tensor.right; \
+        auto res_gpu = scalar opsymbol l_gpu; \
+        return LazyTensor<decltype(res_cpu), decltype(res_gpu), DType, (ta|mshadow::expr::type::kMapper)>(res_cpu, res_gpu, tensor.sync_tensors); \
+    } \
+    template<template <typename, typename, typename, int> class wrapper_t1, typename TA, typename TB, typename DType, int ta> \
+    inline auto operator opsymbol( \
+            const wrapper_t1<TA, TB, DType, ta> &tensor, DType scalar) -> \
+                decltype(tensor opsymbol mshadow::expr::ScalarExp<DType>(scalar)) { \
+        return tensor opsymbol mshadow::expr::ScalarExp<DType>(scalar); \
     } \
     \
     template<template <typename, typename, typename, int> class wrapper_t1, typename TA, typename TB, typename DType, int ta> \
-    LazyTensor< mshadow::expr::BinaryMapExp<opname, TA, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, \
-                mshadow::expr::BinaryMapExp<opname, TB, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, \
-                DType, (ta|mshadow::expr::type::kMapper)> operator opsymbol( \
-            DType left, \
-            const wrapper_t1<TA, TB, DType, ta> &right) { \
-        const auto& l_cpu = right.left; \
-        auto res_cpu = mshadow::expr::ScalarExp<DType>(left) opsymbol l_cpu; \
-        const auto& l_gpu = right.right; \
-        auto res_gpu = mshadow::expr::ScalarExp<DType>(left) opsymbol l_gpu; \
-        return LazyTensor<decltype(res_cpu), decltype(res_gpu), DType, (ta|mshadow::expr::type::kMapper)>(res_cpu, res_gpu, left.sync_tensors); \
+    inline auto operator opsymbol(DType scalar,  const wrapper_t1<TA, TB, DType, ta> &tensor) -> \
+            decltype(mshadow::expr::ScalarExp<DType>(scalar) opsymbol tensor) { \
+        return mshadow::expr::ScalarExp<DType>(scalar) opsymbol tensor; \
     }
 #else
     #define BINARY_OP(opname, opsymbol) \

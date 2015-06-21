@@ -6,7 +6,6 @@ file(GLOB_RECURSE DaliTemplates         "${DaliDir}/*.cpp.template")
 file(GLOB_RECURSE DaliMaybeCudaSources  "${DaliDir}/*.cu.cpp")
 file(GLOB_RECURSE DaliCudaSources       "${DaliDir}/*.cu")
 
-
 if (WITH_CUDA)
     foreach(DaliCudaFile ${DaliMaybeCudaSources})
         file(RELATIVE_PATH DaliCudaFilePath "${DaliDir}" "${DaliCudaFile}")
@@ -29,7 +28,6 @@ if (WITH_CUDA)
 endif(WITH_CUDA)
 
 # todo: move file with add_custom_command
-
 
 # Remove tests from compilation
 file(GLOB_RECURSE DaliTests "${DaliDir}/tests.cpp")
@@ -80,6 +78,5 @@ endif (GPERFTOOLS_FOUND)
 if (WITH_CUDA)
     target_link_libraries(dali dali_cuda)
 endif (WITH_CUDA)
-
 
 add_testsuite("test_dali" "dali" "${DaliTests}")

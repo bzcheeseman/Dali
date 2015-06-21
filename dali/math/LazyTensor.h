@@ -16,42 +16,6 @@
 template<typename DType, int dimension>
 class TensorInternal;
 
-#ifdef DALI_USE_CUDA
-    template<typename LeftType, typename RightType, typename DType, int ktype>
-    class LazyTensor;
-
-    template<typename LeftType, typename RightType, typename DType, int ktype>
-#else
-    template<typename LeftType, typename DType, int ktype>
-    class LazyTensor;
-
-    template<typename LeftType, typename DType, int ktype>
-#endif
-class LazyTensorTransposed {
-    public:
-        typedef std::vector<std::reference_wrapper<const TensorInternal<DType,2>>> sync_tensors_t;
-        mshadow::expr::TransposeExp<LeftType, DType>              left;
-        sync_tensors_t sync_tensors;
-
-        #ifdef DALI_USE_CUDA
-        mshadow::expr::TransposeExp<RightType, DType>            right;
-        LazyTensorTransposed(
-            const mshadow::expr::TransposeExp<LeftType, DType>& _left,
-            const mshadow::expr::TransposeExp<RightType, DType>& _right,
-            const sync_tensors_t& st)
-            : left(_left), right(_right), sync_tensors({st}) {}
-
-        inline LazyTensor<LeftType, RightType, DType, ktype> T(void) const;
-
-        #else
-        LazyTensorTransposed(
-            const mshadow::expr::TransposeExp<LeftType, DType>& _left,
-            const sync_tensors_t& st)
-            : left(_left), sync_tensors({st}) {}
-
-        inline LazyTensor<LeftType, DType, ktype> T(void) const;
-        #endif
-};
 
 
 #ifdef DALI_USE_CUDA
@@ -76,10 +40,9 @@ class LazyTensor {
             LazyTensor(std::reference_wrapper<const TensorInternal<DType,2>> st)
                 : left(st.get().mem_cpu), right(st.get().mem_gpu), sync_tensors({st}) {}
 
-            inline LazyTensorTransposed<LeftType, RightType, DType, ktype> T(void) const {
-                auto cpu_T = left.T();
-                auto gpu_T = right.T();
-                return LazyTensorTransposed<LeftType, RightType, DType, ktype>(cpu_T, gpu_T, sync_tensors);
+            inline auto T(void) const -> LazyTensor<decltype(left.T()), decltype(right.T()), DType, ktype> {
+                return LazyTensor<decltype(left.T()), decltype(right.T()), DType, ktype>(
+                        left.T(), right.T(), sync_tensors);
             }
 
             inline LazyTensor<dali_expr::SoftmaxExpression<LeftType, DType>, dali_expr::SoftmaxExpression<RightType, DType>, DType, (ktype|mshadow::expr::type::kComplex)> softmax(void) const {
@@ -187,9 +150,9 @@ class LazyTensor {
             LazyTensor(std::reference_wrapper<const TensorInternal<DType,2>> st)
                 : left(st.get().mem_cpu), sync_tensors({st}) {}
 
-            inline LazyTensorTransposed<LeftType, DType, ktype> T(void) const {
+            inline auto T(void) -> LazyTensor<decltype(left.T()), DType, ktype> const {
                 auto cpu_T = left.T();
-                return LazyTensorTransposed<LeftType, DType, ktype>(cpu_T, sync_tensors);
+                return LazyTensor<decltype(cpu_T), DType, ktype>(cpu_T, sync_tensors);
             }
 
             inline LazyTensor<dali_expr::SoftmaxExpression<LeftType, DType>,
@@ -251,39 +214,6 @@ class LazyTensor {
         #endif
 };
 
-#ifdef DALI_USE_CUDA
-    template<typename LeftType, typename RightType, typename DType, int ktype>
-    inline LazyTensor<LeftType, RightType, DType, ktype> LazyTensorTransposed<LeftType, RightType, DType, ktype>::T(void) const {
-        auto cpu_T = left.T();
-        auto gpu_T = right.T();
-        return LazyTensor<decltype(cpu_T), decltype(gpu_T), DType, ktype>(cpu_T, gpu_T, sync_tensors);
-    }
-#else
-    template<typename LeftType, typename DType, int ktype>
-    inline LazyTensor<LeftType, DType, ktype> LazyTensorTransposed<LeftType, DType, ktype>::T(void) const {
-        auto cpu_T = left.T();
-        return LazyTensor<decltype(cpu_T), DType, ktype>(cpu_T, sync_tensors);
-    }
-#endif
-
-// /*! \brief dot operator def */
-// template<typename TA, typename TB, typename DType>
-// inline DotExp<TA, TB, true, false, DType>
-// dot(const TransposeExp<TA, DType> &lhs, const RValueExp<TB, DType> &rhs) {
-//   return DotExp<TA, TB, true, false, DType>(lhs.exp, rhs.self(), 1.0f);
-// }
-// /*! \brief dot operator def */
-// template<typename TA, typename TB, typename DType>
-// inline DotExp<TA, TB, false, true, DType>
-// dot(const RValueExp<TA, DType> &lhs, const TransposeExp<TB, DType> &rhs) {
-//   return DotExp<TA, TB, false, true, DType>(lhs.self(), rhs.exp, 1.0f);
-// }
-// /*! \brief dot operator def */
-// template<typename TA, typename TB, typename DType>
-// inline DotExp<TA, TB, true, true, DType>
-// dot(const TransposeExp<TA, DType> &lhs, const TransposeExp<TB, DType> &rhs) {
-//   return DotExp<TA, TB, true, true, DType>(lhs.exp, rhs.exp, 1.0f);
-// }
 
 #ifdef DALI_USE_CUDA
     #define BINARY_OP(opname, opsymbol) \

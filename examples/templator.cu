@@ -42,7 +42,16 @@ int main() {
     ELOG(A.w().cpu_fresh);
 
     auto a = A.w().wrapper();
-    auto b = A.w().wrapper();
+    auto b = B.w().wrapper();
+
+
+    auto XXXX = ((a+b).T());
+    auto YYYY = Mat<R>(3,2);
+    YYYY.w() = XXXX;
+
+    std::cout << "YYYY equals" << std::endl;
+    YYYY.print();
+
 
     auto c = a;// + b;
 

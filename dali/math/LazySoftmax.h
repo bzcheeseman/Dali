@@ -9,6 +9,9 @@ namespace dali_expr {
                                       DType, mshadow::expr::type::kComplex> {
         const EType &exp;
         explicit SoftmaxExpression(const EType &e) : exp(e) {}
+        inline auto T(void) const -> const mshadow::expr::TransposeExp<decltype(*this), DType> {
+            return mshadow::expr::TransposeExp<decltype(*this), DType>(this->self());
+        }
     };
 }
 

@@ -57,65 +57,6 @@ unsigned int SynchronizedMemory<R,dimension>::number_of_elements() const {
 }
 
 template<typename R, int dimension>
-R SynchronizedMemory<R, dimension>::sum() const {
-    #ifdef DALI_USE_CUDA
-        if (should_compute_on_gpu({std::cref(*this)})) {
-            return TensorOps::sum(gpu_data(), number_of_elements() );
-        } else {
-            return TensorOps::sum(cpu_data(), number_of_elements() );
-        }
-    #else
-        return TensorOps::sum(cpu_data(), number_of_elements());
-    #endif
-}
-
-template<typename R, int dimension>
-bool SynchronizedMemory<R,dimension>::operator==(const SynchronizedMemory<R,dimension>& other) const {
-    #ifdef DALI_USE_CUDA
-        if (should_compute_on_gpu({std::cref(*this), std::cref(other)})) {
-            return TensorOps::equals(gpu_data(), other.gpu_data(), number_of_elements());
-        }
-    #endif
-    return TensorOps::equals(cpu_data(), other.cpu_data(), number_of_elements());
-}
-
-template<typename R, int dimension>
-bool SynchronizedMemory<R,dimension>::allclose(const SynchronizedMemory<R,dimension>& other, R tol) const {
-    #ifdef DALI_USE_CUDA
-        if (should_compute_on_gpu({std::cref(*this), std::cref(other)})) {
-            return TensorOps::allclose(gpu_data(), other.gpu_data(), number_of_elements(), tol);
-        }
-    #endif
-    return TensorOps::allclose(cpu_data(), other.cpu_data(), number_of_elements(), tol);
-}
-
-#ifdef DALI_USE_CUDA
-template<typename R, int dimension>
-LazyTensor<
-    typename SynchronizedMemory<R,dimension>::cpu_tensor_t,
-    typename SynchronizedMemory<R,dimension>::gpu_tensor_t,
-    R,
-    mshadow::expr::type::kRValue> SynchronizedMemory<R,dimension>::wrapper() {
-    return LazyTensor<
-        cpu_tensor_t,
-        gpu_tensor_t,
-        R,
-        mshadow::expr::type::kRValue
-        >(*this);
-}
-#else
-template<typename R, int dimension>
-LazyTensor<
-    typename SynchronizedMemory<R,dimension>::cpu_tensor_t,
-    R, mshadow::expr::type::kRValue> SynchronizedMemory<R,dimension>::wrapper() {
-    return LazyTensor<
-        cpu_tensor_t,
-        R,
-        mshadow::expr::type::kRValue>(*this);
-}
-#endif
-
-template<typename R, int dimension>
 mshadow::Shape<dimension> SynchronizedMemory<R,dimension>::shape() const {
     return mem_cpu.shape_;
 }
@@ -224,70 +165,6 @@ void SynchronizedMemory<R,dimension>::copy_data_from(SourceType& data_source) {
 #endif
     }
 }
-
-template<typename R, int dimension>
-bool should_compute_on_gpu(
-        std::initializer_list<std::reference_wrapper<const SynchronizedMemory<R,dimension>>> sts) {
-
-#ifdef DALI_USE_CUDA
-    if (sts.size() == 1) {
-        const auto& mat = (*sts.begin()).get();
-        return (mat.prefers_gpu() && (mat.gpu_fresh || !mat.cpu_fresh && !mat.gpu_fresh));
-    }
-    bool everybody_cpu = true;
-    bool everybody_gpu = true;
-    for (auto& st : sts) {
-        everybody_gpu = everybody_gpu && st.get().prefers_gpu();
-        everybody_cpu = everybody_cpu && st.get().prefers_cpu();
-    }
-    if (everybody_cpu) {
-        return false;
-    } else if (everybody_gpu) {
-        return true;
-    } else {
-        return SynchronizedMemory<R,dimension>::tie_breaker_device == DEVICE_GPU;
-    }
-#else
-    return false;
-#endif
-}
-
-template<typename R, int dimension>
-bool should_compute_on_gpu(
-        const std::vector<std::reference_wrapper<const SynchronizedMemory<R,dimension>>>& sts) {
-
-#ifdef DALI_USE_CUDA
-    if (sts.size() == 1) {
-        const auto& mat = (*sts.begin()).get();
-        return (mat.prefers_gpu() && (mat.gpu_fresh || !mat.cpu_fresh && !mat.gpu_fresh));
-    }
-    bool everybody_cpu = true;
-    bool everybody_gpu = true;
-    for (auto& st : sts) {
-        everybody_gpu = everybody_gpu && st.get().prefers_gpu();
-        everybody_cpu = everybody_cpu && st.get().prefers_cpu();
-    }
-    if (everybody_cpu) {
-        return false;
-    } else if (everybody_gpu) {
-        return true;
-    } else {
-        return SynchronizedMemory<R,dimension>::tie_breaker_device == DEVICE_GPU;
-    }
-#else
-    return false;
-#endif
-}
-
-template bool should_compute_on_gpu(
-        std::initializer_list<std::reference_wrapper<const SynchronizedMemory<float,2>>>);
-template bool should_compute_on_gpu(
-        std::initializer_list<std::reference_wrapper<const SynchronizedMemory<double,2>>>);
-
-template bool should_compute_on_gpu(
-        const std::vector<std::reference_wrapper<const SynchronizedMemory<float,2>>>& );
-template bool should_compute_on_gpu(
-        const std::vector<std::reference_wrapper<const SynchronizedMemory<double,2>>>& );
 
 template class SynchronizedMemory<float,2>;
 template class SynchronizedMemory<double,2>;

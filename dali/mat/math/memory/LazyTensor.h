@@ -11,7 +11,7 @@
 #include "dali/mat/math/memory/LazyPluck.h"
 
 template<typename DType, int dimension>
-class SynchronizedMemory;
+class TensorInternal;
 
 #ifdef DALI_USE_CUDA
     template<typename LeftType, typename RightType, typename DType, int ktype>
@@ -26,7 +26,7 @@ class SynchronizedMemory;
 #endif
 class LazyTensorTransposed {
     public:
-        typedef std::vector<std::reference_wrapper<const SynchronizedMemory<DType,2>>> sync_tensors_t;
+        typedef std::vector<std::reference_wrapper<const TensorInternal<DType,2>>> sync_tensors_t;
         mshadow::expr::TransposeExp<LeftType, DType>              left;
         sync_tensors_t sync_tensors;
 
@@ -58,7 +58,7 @@ class LazyTensorTransposed {
 #endif
 class LazyTensor {
     public:
-        typedef std::vector<std::reference_wrapper<const SynchronizedMemory<DType,2>>> sync_tensors_t;
+        typedef std::vector<std::reference_wrapper<const TensorInternal<DType,2>>> sync_tensors_t;
         LeftType               left;
         sync_tensors_t sync_tensors;
 
@@ -70,7 +70,7 @@ class LazyTensor {
                 const sync_tensors_t& _sync_tensors)
                 : left(_left), right(_right), sync_tensors(_sync_tensors) {}
 
-            LazyTensor(std::reference_wrapper<const SynchronizedMemory<DType,2>> st)
+            LazyTensor(std::reference_wrapper<const TensorInternal<DType,2>> st)
                 : left(st.get().mem_cpu), right(st.get().mem_gpu), sync_tensors({st}) {}
 
             inline LazyTensorTransposed<LeftType, RightType, DType, ktype> T(void) const {
@@ -177,7 +177,7 @@ class LazyTensor {
                 const sync_tensors_t& _sync_tensors)
                 : left(_left), sync_tensors(_sync_tensors) {}
 
-            LazyTensor(std::reference_wrapper<SynchronizedMemory<DType,2>> st)
+            LazyTensor(std::reference_wrapper<const TensorInternal<DType,2>> st)
                 : left(st.get().mem_cpu), sync_tensors({st}) {}
 
             inline LazyTensorTransposed<LeftType, DType, ktype> T(void) const {
@@ -455,7 +455,6 @@ BINARY_SCALAR_OP(mshadow::op::plus,  +);
 BINARY_SCALAR_OP(mshadow::op::mul,  *);
 BINARY_SCALAR_OP(mshadow::op::minus,  -);
 BINARY_SCALAR_OP(mshadow::op::div,  /);
-
 
 #ifdef DALI_USE_CUDA
     template<typename OP, template <typename, typename, typename, int> class wrapper_t, typename TA, typename TB, typename DType, int ta>

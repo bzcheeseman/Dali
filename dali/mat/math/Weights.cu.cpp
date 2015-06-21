@@ -1,8 +1,6 @@
 #include "dali/mat/math/Weights.h"
-#include "mshadow/random.h"
-#include "dali/mat/math/__MatMacros__.h"
 #include "dali/mat/math/memory/TensorOps.h"
-#include "dali/mat/math/memory/SynchronizedMemory.h"
+#include "dali/mat/math/memory/TensorInternal.h"
 
 template<typename R>
 typename weights<R>::initializer_t weights<R>::empty() {
@@ -12,21 +10,33 @@ typename weights<R>::initializer_t weights<R>::empty() {
 template<typename R>
 typename weights<R>::initializer_t weights<R>::zeros() {
     return [](sync_t& matrix){
-        DALI_FUNCTION_1_MUT(TensorOps::fill, matrix, (R)0.0);
+        matrix = (R)0.0;
     };
 };
 
 template<typename R>
 typename weights<R>::initializer_t weights<R>::eye(R diag) {
     return [diag](sync_t& matrix) {
-        DALI_FUNCTION_1_MUT(TensorOps::eye, matrix, diag);
+        #ifdef DALI_USE_CUDA
+            if (matrix.compute_me_on_gpu()) {
+                TensorOps::eye(matrix.mutable_gpu_data(), diag);
+                return;
+            }
+        #endif
+        TensorOps::eye(matrix.mutable_cpu_data(), diag);
     };
 };
 
 template<typename R>
 typename weights<R>::initializer_t weights<R>::uniform(R lower, R upper) {
     return [lower, upper](sync_t& matrix) {
-        DALI_FUNCTION_1_MUT(TensorOps::random::uniform, matrix, lower, upper);
+        #ifdef DALI_USE_CUDA
+            if (matrix.compute_me_on_gpu()) {
+                TensorOps::random::uniform(matrix.mutable_gpu_data(), lower, upper);
+                return;
+            }
+        #endif
+        TensorOps::random::uniform(matrix.mutable_cpu_data(), lower, upper);
     };
 };
 
@@ -38,7 +48,13 @@ typename weights<R>::initializer_t weights<R>::uniform(R bound) {
 template<typename R>
 typename weights<R>::initializer_t weights<R>::gaussian(R mean, R std) {
     return [mean, std](sync_t& matrix) {
-        DALI_FUNCTION_1_MUT(TensorOps::random::gaussian, matrix, mean, std);
+        #ifdef DALI_USE_CUDA
+            if (matrix.compute_me_on_gpu()) {
+                TensorOps::random::gaussian(matrix.mutable_gpu_data(), mean, std);
+                return;
+            }
+        #endif
+        TensorOps::random::gaussian(matrix.mutable_cpu_data(), mean, std);
     };
 };
 

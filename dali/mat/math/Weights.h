@@ -5,11 +5,11 @@
 #include "dali/utils/core_utils.h"
 
 template<typename R, int dimension>
-class SynchronizedMemory;
+class TensorInternal;
 
 template<typename R>
 struct weights {
-    typedef SynchronizedMemory<R,2> sync_t;
+    typedef TensorInternal<R,2> sync_t;
 
     typedef std::function<void(sync_t&)> initializer_t;
 

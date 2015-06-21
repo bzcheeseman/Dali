@@ -25,7 +25,7 @@ typename weights<R>::initializer_t weights<R>::eye(R diag) {
 
 template<typename R>
 typename weights<R>::initializer_t weights<R>::uniform(R lower, R upper) {
-    return [lower, upper](SynchronizedTensor<R>& matrix){
+    return [lower, upper](SynchronizedTensor<R>& matrix) {
         DALI_FUNCTION_1_MUT(TensorOps::random::uniform, matrix, lower, upper);
     };
 };

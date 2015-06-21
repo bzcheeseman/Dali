@@ -83,8 +83,8 @@ class SynchronizedTensor {
         static PreferredDevice tie_breaker_device;
 
         #define DALI_SYNC_TENSOR_ASSIGN_OP(op_symbol) \
-            template <template <typename, typename, typename, int> class wrapper_t, typename TA, typename TB, typename DType, int ta> \
-            SynchronizedTensor& operator op_symbol (const wrapper_t<TA, TB, DType, ta>& expr) { \
+            template <template <typename, typename, typename, int> class wrapper_t, typename TA, typename TB, int ta> \
+            SynchronizedTensor& operator op_symbol (const wrapper_t<TA, TB, R, ta>& expr) { \
                 if (should_compute_on_gpu(expr.sync_tensors)) { \
                     /* refresh the gpu memory from cpu*/ \
                     for (auto& participant : expr.sync_tensors) { \
@@ -99,16 +99,32 @@ class SynchronizedTensor {
                 };\
                 return *this;\
             }
+
+        #define DALI_SYNC_TENSOR_ASSIGN_SCALAR_OP(op_symbol) \
+        SynchronizedTensor& operator op_symbol (R scalar) { \
+            if (should_compute_on_gpu({std::ref(*this)})) {\
+                mutable_gpu_data() op_symbol scalar;\
+            } else {\
+                mutable_cpu_data() op_symbol scalar;\
+            }\
+            return *this;\
+        }
 #else
     public:
         LazyTensor<cpu_tensor_t, R, mshadow::expr::type::kRValue> wrapper();
     #define DALI_SYNC_TENSOR_ASSIGN_OP(op_symbol) \
-        template <template <typename, typename, int> class wrapper_t, typename TA, typename DType, int ta> \
-        SynchronizedTensor& operator op_symbol (const wrapper_t<TA, DType, ta>& expr) { \
+        template <template <typename, typename, int> class wrapper_t, typename TA, int ta> \
+        SynchronizedTensor& operator op_symbol (const wrapper_t<TA, R, ta>& expr) { \
             for (auto& participant : expr.sync_tensors) { \
                 const auto& data = participant.get().cpu_data(); \
             }\
             mutable_cpu_data() op_symbol expr.left;\
+            return *this;\
+        }
+
+    #define DALI_SYNC_TENSOR_ASSIGN_SCALAR_OP(op_symbol) \
+        SynchronizedTensor& operator op_symbol (R scalar) { \
+            mutable_cpu_data() op_symbol scalar;\
             return *this;\
         }
 #endif
@@ -117,6 +133,13 @@ class SynchronizedTensor {
         DALI_SYNC_TENSOR_ASSIGN_OP(+=)
         DALI_SYNC_TENSOR_ASSIGN_OP(-=)
         DALI_SYNC_TENSOR_ASSIGN_OP(/=)
+        DALI_SYNC_TENSOR_ASSIGN_OP(*=)
+
+        DALI_SYNC_TENSOR_ASSIGN_SCALAR_OP(=)
+        DALI_SYNC_TENSOR_ASSIGN_SCALAR_OP(+=)
+        DALI_SYNC_TENSOR_ASSIGN_SCALAR_OP(-=)
+        DALI_SYNC_TENSOR_ASSIGN_SCALAR_OP(/=)
+        DALI_SYNC_TENSOR_ASSIGN_SCALAR_OP(*=)
 };
 
 #endif

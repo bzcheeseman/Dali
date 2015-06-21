@@ -500,7 +500,7 @@ Mat<R> MatOps<R>::square(Mat<R> matrix) {
 
     if (graph::backprop_enabled && !matrix.constant)
         graph::emplace_back([matrix, out]() {
-            DALI_FUNCTION_3_MUT(TensorOps::eltmul_coefficient, MAT(matrix), GRAD(out), GRAD(matrix), (R)2.0, ADD_TO_EXISTING);
+            GRAD(matrix) += MAT(matrix).wrapper() * GRAD(out).wrapper() * (R) 2.0;
         });
     return out;
 }
@@ -622,8 +622,9 @@ Mat<R> MatOps<R>::sigmoid(Mat<R> matrix) {
 
 template<typename R>
 Mat<R> MatOps<R>::softmax_no_grad(Mat<R> matrix, R temperature) {
+    utils::assert2(temperature == 1.0, "Not implemented yet (Temperature != 1.0 for softmax).");
     auto out = Mat<R>::empty_like(matrix);
-    DALI_FUNCTION_2_MUT(TensorOps::softmax, MAT(matrix), MAT(out));
+    MAT(out) = MAT(matrix).wrapper().softmax();
     return out;
 }
 
@@ -763,13 +764,19 @@ Mat<R> MatOps<R>::sum(Mat<R> matrix) {
     if (matrix.dims(0) == 1 && matrix.dims(1) == 1)
         return matrix;
     Mat<R> out(1,1, weights<R>::empty());
-    out.w(0) = DALI_FUNCTION_1(TensorOps::sum, MAT(matrix), matrix.number_of_elements());
+
+    #ifdef DALI_USE_CUDA
+        if (should_compute_on_gpu({std::ref(MAT(matrix))})) {
+            out.w(0) = TensorOps::sum(MAT(matrix).gpu_data(), matrix.number_of_elements());
+        } else {
+            out.w(0) = TensorOps::sum(MAT(matrix).cpu_data(), matrix.number_of_elements());
+        }
+    #else
+        out.w(0) = TensorOps::sum(MAT(matrix).cpu_data(), matrix.number_of_elements());
+    #endif
     if (backprop_enabled() && !matrix.constant)
         emplace_back([matrix, out](){
-            DALI_FUNCTION_1_MUT(TensorOps::add_inplace,
-                                GRAD(matrix),
-                                matrix.number_of_elements(),
-                                out.dw(0));
+            GRAD(matrix) += out.dw(0);
         });
     return out;
 }
@@ -1825,22 +1832,36 @@ bool MatOps<R>::equals(Mat<R> a, Mat<R> b) {
     // wrong dimensions
     if (a.dims() != b.dims())
         return false;
-
-    return DALI_FUNCTION_2(TensorOps::equals, MAT(a), MAT(b), a.number_of_elements());
+    #ifdef DALI_USE_CUDA
+        if (should_compute_on_gpu({std::ref(MAT(a)), std::ref(MAT(b))})) {
+            return TensorOps::equals(MAT(a).gpu_data(), MAT(b).gpu_data(), a.number_of_elements());
+        }
+    #endif
+    return TensorOps::equals(MAT(a).cpu_data(), MAT(b).cpu_data(), a.number_of_elements());
 }
 
 template<typename R>
 bool MatOps<R>::allclose(Mat<R> a, Mat<R> b, R tol) {
     if (a.dims() != b.dims())
         return false;
-    return DALI_FUNCTION_2(TensorOps::allclose, MAT(a), MAT(b), a.number_of_elements(), tol);
+    #ifdef DALI_USE_CUDA
+        if (should_compute_on_gpu({std::ref(MAT(a)), std::ref(MAT(b))})) {
+            return TensorOps::allclose(MAT(a).gpu_data(), MAT(b).gpu_data(), a.number_of_elements(), tol);
+        }
+    #endif
+    return TensorOps::allclose(MAT(a).cpu_data(), MAT(b).cpu_data(), a.number_of_elements(), tol);
 }
 
 template<typename R>
 bool MatOps<R>::grad_allclose(Mat<R> a, Mat<R> b, R tol) {
     if (a.dims() != b.dims())
         return false;
-    return DALI_FUNCTION_2(TensorOps::allclose, GRAD(a), GRAD(b), a.number_of_elements(), tol);
+    #ifdef DALI_USE_CUDA
+        if (should_compute_on_gpu({std::ref(MAT(a)), std::ref(MAT(b))})) {
+            return TensorOps::allclose(GRAD(a).gpu_data(), GRAD(b).gpu_data(), a.number_of_elements(), tol);
+        }
+    #endif
+    return TensorOps::allclose(GRAD(a).cpu_data(), GRAD(b).cpu_data(), a.number_of_elements(), tol);
 }
 
 

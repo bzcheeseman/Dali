@@ -187,6 +187,10 @@ bool should_compute_on_gpu(
         std::initializer_list<std::reference_wrapper<SynchronizedTensor<R>>> sts) {
 
 #ifdef DALI_USE_CUDA
+    if (sts.size() == 1) {
+        auto& mat = (*sts.begin()).get();
+        return (mat.prefers_gpu() && (mat.gpu_fresh || !mat.cpu_fresh && !mat.gpu_fresh));
+    }
     bool everybody_cpu = true;
     bool everybody_gpu = true;
     for (auto& st : sts) {
@@ -210,6 +214,10 @@ bool should_compute_on_gpu(
         const std::vector<std::reference_wrapper<SynchronizedTensor<R>>>& sts) {
 
 #ifdef DALI_USE_CUDA
+    if (sts.size() == 1) {
+        auto& mat = (*sts.begin()).get();
+        return (mat.prefers_gpu() && (mat.gpu_fresh || !mat.cpu_fresh && !mat.gpu_fresh));
+    }
     bool everybody_cpu = true;
     bool everybody_gpu = true;
     for (auto& st : sts) {

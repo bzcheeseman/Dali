@@ -53,64 +53,35 @@ namespace TensorOps {
     using mshadow::gpu;
     using mshadow::cpu;
 
-    #ifdef DALI_USE_CUDA
-    template<int ndims, typename R>
-    bool equals(const mshadow::Tensor<gpu, ndims, R>& a, const mshadow::Tensor<gpu, ndims, R>& b, int num_elts) {
-        return thrust::equal(to_thrust(a), to_thrust(a) + num_elts, to_thrust(b));
-    }
-    #endif
-    template<int ndims, typename R>
-    bool equals(const mshadow::Tensor<cpu, ndims, R>& a, const mshadow::Tensor<cpu, ndims, R>& b, int num_elts) {
-        return std::equal(a.dptr_, a.dptr_ + num_elts, b.dptr_);
-    }
+    namespace comparison {
+        #ifdef DALI_USE_CUDA
+        template<int ndims, typename R>
+        bool equals(const mshadow::Tensor<gpu, ndims, R>& a, const mshadow::Tensor<gpu, ndims, R>& b, int num_elts) {
+            return thrust::equal(to_thrust(a), to_thrust(a) + num_elts, to_thrust(b));
+        }
+        #endif
+        template<int ndims, typename R>
+        bool equals(const mshadow::Tensor<cpu, ndims, R>& a, const mshadow::Tensor<cpu, ndims, R>& b, int num_elts) {
+            return std::equal(a.dptr_, a.dptr_ + num_elts, b.dptr_);
+        }
 
 
-    #ifdef DALI_USE_CUDA
-    template<int ndims, typename R>
-    bool allclose(const mshadow::Tensor<gpu, ndims, R>& a, const mshadow::Tensor<gpu, ndims, R>& b, int num_elts, R tol) {
-        return thrust::equal(to_thrust(a),
-                             to_thrust(a) + num_elts,
-                             to_thrust(b),
-                             near_equal<R>(tol));
-    }
-    #endif
-    template<int ndims, typename R>
-    bool allclose(const mshadow::Tensor<cpu, ndims, R>& a, const mshadow::Tensor<cpu, ndims, R>& b, int num_elts, R tol) {
-        return std::equal(a.dptr_, a.dptr_ + num_elts, b.dptr_,
-        [tol](const R & lhs, const R & rhs) {
-            return std::fabs(lhs - rhs) < tol;
-        });
-    }
-
-    template<typename tensor_t>
-    void add(tensor_t& a, tensor_t& b, tensor_t& out, OperationType op) {
-        DALI_ASSIGN(op, out, a + b)
-    }
-
-    template<typename tensor_t>
-    void sub(tensor_t& a, tensor_t& b, tensor_t& out, OperationType op) {
-        DALI_ASSIGN(op, out, a - b)
-    }
-
-
-    template<typename Device, int ndims, typename R>
-    void add_inplace(mshadow::Tensor<Device,ndims,R> a, int num_elts, R summand) {
-        a += mshadow::expr::scalar<R>(summand);
-    }
-
-    template<typename Device, int ndims, typename R>
-    void sub_inplace(mshadow::Tensor<Device,ndims,R> a, int num_elts, R summand) {
-        a -= mshadow::expr::scalar<R>(summand);
-    }
-
-    template<typename tensor_t>
-    void add_inplace(tensor_t& a, tensor_t& dest) {
-        dest += a;
-    }
-
-    template<typename tensor_t>
-    void sub_inplace(tensor_t& a, tensor_t& dest) {
-        dest -= a;
+        #ifdef DALI_USE_CUDA
+        template<int ndims, typename R>
+        bool allclose(const mshadow::Tensor<gpu, ndims, R>& a, const mshadow::Tensor<gpu, ndims, R>& b, int num_elts, R tol) {
+            return thrust::equal(to_thrust(a),
+                                 to_thrust(a) + num_elts,
+                                 to_thrust(b),
+                                 near_equal<R>(tol));
+        }
+        #endif
+        template<int ndims, typename R>
+        bool allclose(const mshadow::Tensor<cpu, ndims, R>& a, const mshadow::Tensor<cpu, ndims, R>& b, int num_elts, R tol) {
+            return std::equal(a.dptr_, a.dptr_ + num_elts, b.dptr_,
+            [tol](const R & lhs, const R & rhs) {
+                return std::fabs(lhs - rhs) < tol;
+            });
+        }
     }
 
     #ifdef DALI_USE_CUDA
@@ -124,24 +95,12 @@ namespace TensorOps {
         return std::accumulate(a.dptr_, a.dptr_ + num_elts, 0.0);
     }
 
-    template<typename Device, typename R>
-    void softmax(const mshadow::Tensor<Device, 2, R>& src, mshadow::Tensor<Device, 2, R>& dest) {
-        mshadow::Softmax(dest, src);
-    }
-
-    template<typename tensor_t, typename R>
-    void fill(tensor_t& ts, R filler) {
-        mshadow::MapExp<mshadow::sv::saveto>(&ts,
-            mshadow::expr::ScalarExp<R>(filler)
-        );
-    }
-
     template<int ndims, typename R>
     void eye(mshadow::Tensor<cpu,ndims,R>& tc, R diag) {
         if (tc.shape_[0] != tc.shape_[1]) {
             throw std::runtime_error("Identity initialization must be called on a square matrix.");
         }
-        fill(tc, (R)0.0);
+        tc = 0.0;
         for (int i = 0; i < tc.shape_[0]; i++)
             tc[i][i] = diag;
     }
@@ -194,46 +153,20 @@ namespace TensorOps {
         }
     };
 
-    template<typename tensor_t>
-    void dot(tensor_t& a, tensor_t& b, tensor_t& out, OptionalTranspose t_a, OptionalTranspose t_b, OperationType op) {
-        bool transpose_a = (t_a == TRANSPOSE);
-        bool transpose_b = (t_b == TRANSPOSE);
-        if (!transpose_a && !transpose_b) {
-            DALI_ASSIGN(op, out, mshadow::expr::dot(a,b))
-        } else if (transpose_a && !transpose_b) {
-            DALI_ASSIGN(op, out, mshadow::expr::dot(a.T(),b))
-        } else if (!transpose_a && transpose_b) {
-            DALI_ASSIGN(op, out, mshadow::expr::dot(a,b.T()))
-        } else if (transpose_a && transpose_b) {
-            DALI_ASSIGN(op, out, mshadow::expr::dot(a.T(),b.T()))
-        }
-    }
+    namespace op {
+        template<typename R>
+        struct square_f {
+            MSHADOW_XINLINE static R Map(const R& a) {
+                return a * a;
+            }
+        };
 
-    template<typename R>
-    struct square_f {
-        MSHADOW_XINLINE static R Map(const R& a) {
-            return a * a;
-        }
-    };
-
-    template<typename Device, int dims, typename R>
-    void square(mshadow::Tensor<Device,dims,R>& a, mshadow::Tensor<Device,dims,R>& out, OperationType op) {
-        DALI_ASSIGN(op, out, mshadow::expr::F<square_f<R>>(a));
-    }
-
-
-    template<typename tensor_t>
-    void eltmul(tensor_t& a, tensor_t& b, tensor_t& out, OperationType op) {
-        DALI_ASSIGN(op, out, a * b)
-    }
-
-    template<typename Device, int dims, typename R>
-    void eltmul_coefficient(mshadow::Tensor<Device,dims,R>& a,
-                            mshadow::Tensor<Device,dims,R>& b,
-                            mshadow::Tensor<Device,dims,R>& out,
-                            R coeff,
-                            OperationType op) {
-        DALI_ASSIGN(op, out, coeff * (a * b));
+        template<typename R>
+        struct inv_f {
+            MSHADOW_XINLINE static R Map(const R& a) {
+                return ((R)1.0) / a;
+            }
+        };
     }
 };
 

@@ -19,20 +19,20 @@ template<typename R, int dimension>
 bool TensorInternal<R,dimension>::operator==(const TensorInternal<R,dimension>& other) const {
     #ifdef DALI_USE_CUDA
         if (should_compute_on_gpu({std::cref(*this), std::cref(other)})) {
-            return TensorOps::equals(this->gpu_data(), other.gpu_data(), this->number_of_elements());
+            return TensorOps::comparison::equals(this->gpu_data(), other.gpu_data(), this->number_of_elements());
         }
     #endif
-    return TensorOps::equals(this->cpu_data(), other.cpu_data(), this->number_of_elements());
+    return TensorOps::comparison::equals(this->cpu_data(), other.cpu_data(), this->number_of_elements());
 }
 
 template<typename R, int dimension>
 bool TensorInternal<R,dimension>::allclose(const TensorInternal<R,dimension>& other, R tol) const {
     #ifdef DALI_USE_CUDA
         if (should_compute_on_gpu({std::cref(*this), std::cref(other)})) {
-            return TensorOps::allclose(this->gpu_data(), other.gpu_data(), this->number_of_elements(), tol);
+            return TensorOps::comparison::allclose(this->gpu_data(), other.gpu_data(), this->number_of_elements(), tol);
         }
     #endif
-    return TensorOps::allclose(this->cpu_data(), other.cpu_data(), this->number_of_elements(), tol);
+    return TensorOps::comparison::allclose(this->cpu_data(), other.cpu_data(), this->number_of_elements(), tol);
 }
 
 template<typename R, int dimension>

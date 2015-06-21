@@ -14,11 +14,11 @@ using ::testing::AssertionFailure;
 
 #ifdef DALI_USE_CUDA
 // most gpus don't support double
-typedef float R;
-const float DEFAULT_GRAD_EPS=1e-3;
+typedef double R;
+const double DEFAULT_GRAD_EPS=1e-3;
 #else
 typedef double R;
-const float DEFAULT_GRAD_EPS=1e-7;
+const double DEFAULT_GRAD_EPS=1e-7;
 #endif
 
 #ifdef DALI_USE_CUDA
@@ -174,14 +174,11 @@ bool gradient_same(
                 tolerance);
         if (fail_on_zero_gradient) {
             auto is_nonzero = buffer_is_nonzero((R*)Arg_prime, arg.number_of_elements());
-            print_buffer((R*)Arg_prime, std::min(arg.number_of_elements(), (uint)12));
-            print_buffer((R*)arg.dw().data(), std::min(arg.number_of_elements(), (uint)12));
             if (((bool)is_nonzero) == false) {
                 return false;
             }
         }
         // AssertionResult is a GoogleTest magic and it's castable to bool.
-        worked_out = worked_out && (bool)did_work_out;
         if (!did_work_out) {
             std::cout << std::fixed
                       << std::setw( 7 ) // keep 7 digits
@@ -195,6 +192,22 @@ bool gradient_same(
                 std::cout << "arg.name = " << *arg.name << std::endl;
             }
             std::cout << "-----------" << std::endl;
+            R max_disagreement = 0;
+            for (int i = 0; i < arg.number_of_elements(); i++) {
+                max_disagreement = std::max(
+                    max_disagreement,
+                    std::abs(Arg_prime[i] - arg.dw(i))
+                );
+            }
+            std::cout << "Largest disparity = "
+                      << std::setw( 7 ) // keep 7 digits
+                      << std::setprecision( 5 ) // use 3 decimals
+                      << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
+                      << max_disagreement << std::endl;
+        }
+        worked_out = worked_out && (bool)did_work_out;
+        if (!worked_out) {
+            break;
         }
     }
     return worked_out;
@@ -283,8 +296,8 @@ TEST_F(MatrixTests, inplace_sum) {
 
 TEST_F(MatrixTests, inplace_substract) {
     EXPERIMENT_REPEAT {
-        auto A = Mat<R>(3, 4, weights<R>::uniform(2.0));
-        auto B = Mat<R>(3, 4, weights<R>::uniform(2.0));
+        auto A = Mat<R>(3, 4, weights<R>::uniform(1.0, 2.0));
+        auto B = Mat<R>(3, 4, weights<R>::uniform(1.0, 2.0));
 
         auto functor = [&A, &B](vector<Mat<R>>& Xs)-> Mat<R> {
             auto A_temp = A;
@@ -298,8 +311,8 @@ TEST_F(MatrixTests, inplace_substract) {
 
 TEST_F(MatrixTests, inplace_divide) {
     EXPERIMENT_REPEAT {
-        auto A = Mat<R>(3, 4, weights<R>::uniform(2.0));
-        auto B = Mat<R>(3, 4, weights<R>::uniform(2.0));
+        auto A = Mat<R>(3, 4, weights<R>::uniform(0.1, 20.0));
+        auto B = Mat<R>(3, 4, weights<R>::uniform(1.0, 2.0));
 
         auto functor = [&A, &B](vector<Mat<R>>& Xs)-> Mat<R> {
             auto A_temp = A;
@@ -307,7 +320,7 @@ TEST_F(MatrixTests, inplace_divide) {
             A_temp /= B_temp;
             return A_temp;
         };
-        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-5, DEFAULT_GRAD_EPS, true));
+        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-3, DEFAULT_GRAD_EPS, true));
     }
 }
 
@@ -464,18 +477,19 @@ TEST_F(MatrixTests, DISABLED_matrix_dot_plus_bias) {
     }
 }
 
-/*
+
 TEST_F(MatrixTests, matrix_divide) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] / Xs[1];
     };
     EXPERIMENT_REPEAT {
-        auto A = Mat<R>(10, 20, weights<R>::uniform(-20.0, 20.0));
-        auto B = Mat<R>(10, 20, weights<R>::uniform(0.1, 20.0));
-        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-4));
+        auto A = Mat<R>(10, 20, weights<R>::uniform(10.0, 20.0));
+        auto B = Mat<R>(10, 20, weights<R>::uniform(5.0, 15.0));
+        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-3));
     }
 }
 
+/*
 TEST_F(MatrixTests, matrix_divide_broadcast) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] / Xs[1];

@@ -450,6 +450,7 @@ class LazyTensor {
 BINARY_OP(mshadow::op::plus,  +);
 BINARY_OP(mshadow::op::mul,   *);
 BINARY_OP(mshadow::op::minus, -);
+BINARY_OP(mshadow::op::div,   /);
 
 BINARY_SCALAR_OP(mshadow::op::plus,  +);
 BINARY_SCALAR_OP(mshadow::op::mul,  *);

@@ -13,6 +13,8 @@ using graph::emplace_back;
 using mshadow::expr::ExpEngine;
 using mshadow::expr::scalar;
 
+using namespace TensorOps::op;
+
 template<typename R>
 R MatOps<R>::EPS = 1e-9;
 
@@ -120,8 +122,8 @@ Mat<R> MatOps<R>::eltmul(
     MAT(out) = MAT(matrix1).wrapper() * MAT(matrix2).wrapper();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() mutable {
-            //SAFE_GRAD(matrix1).noalias() += ((MAT(matrix2)).array() * (GRAD(out)).array()).matrix();
-            //SAFE_GRAD(matrix2).noalias() += ((MAT(matrix1)).array() * (GRAD(out)).array()).matrix();
+            SAFE_GRAD(matrix1) += MAT(matrix2).wrapper() * GRAD(out).wrapper();
+            SAFE_GRAD(matrix2) += MAT(matrix1).wrapper() * GRAD(out).wrapper();
         });
     return out;
 }
@@ -190,7 +192,6 @@ template<typename R>
 Mat<R> MatOps<R>::eltdivide(
     Mat<R> matrix1,
     Mat<R> matrix2) {
-    #ifndef DONT_COMPILE
     if (matrix1.dims(1) != matrix2.dims(1) && (matrix1.dims(1) == 1 || matrix2.dims(1) == 1)) {
         if (matrix1.dims(1) == 1) {
             return eltdivide_broadcast_reversed(matrix2, matrix1);
@@ -200,24 +201,19 @@ Mat<R> MatOps<R>::eltdivide(
     assert2(matrix1.dims(0) == matrix2.dims(0) && matrix1.dims(1) == matrix2.dims(1),
             "Matrices cannot be element-wise divided, they do not have the same dimensions.");
     auto out = Mat<R>::empty_like(matrix1);
-    MAT(out) = (MAT(matrix1).array() / MAT(matrix2).array()).matrix();
+    MAT(out) = MAT(matrix1).wrapper() / MAT(matrix2).wrapper();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() mutable {
-            SAFE_GRAD(matrix1).noalias() += (
-                MAT(matrix2).array().inverse() *
-                GRAD(out).array()
-            ).matrix();
-            SAFE_GRAD(matrix2).noalias() -= (
-                (
-                    MAT(matrix1).array() /
-                    MAT(matrix2).array().square()
-                ) * GRAD(out).array()
-            ).matrix();
+            SAFE_GRAD(matrix1) += (
+                F<inv_f<R>>(MAT(matrix2).wrapper()) *
+                GRAD(out).wrapper()
+            );
+            SAFE_GRAD(matrix2) -= (
+                MAT(matrix1).wrapper() /
+                F<square_f<R>>(MAT(matrix2).wrapper())
+            ) * GRAD(out).wrapper();
         });
     return out;
-    #else
-    return {Mat<R>(1,1)};
-    #endif
 }
 
 
@@ -480,13 +476,6 @@ Mat<R> MatOps<R>::add(const std::vector<Mat<R>>& matrices) {
     return Mat<R>(1,1);
     #endif
 }
-
-template<typename R>
-struct square_f {
-    MSHADOW_XINLINE static R Map(const R& a) {
-        return a * a;
-    }
-};
 
 template<typename R>
 Mat<R> MatOps<R>::square(Mat<R> matrix) {

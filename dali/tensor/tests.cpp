@@ -384,18 +384,19 @@ TEST_F(MatrixTests, square_gradient) {
     }
 }
 
-/*
+
 TEST_F(MatrixTests, addition_broadcast_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] + Xs[1];
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
-        auto B = Mat<R>(10, 1,  weights<R>::uniform(0.5));
+        auto B = Mat<R>(1,  10, weights<R>::uniform(0.5));
         ASSERT_TRUE(gradient_same(functor, {A, B}));
     }
 }
 
+/*
 TEST_F(MatrixTests, sigmoid_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].sigmoid();
@@ -489,7 +490,7 @@ TEST_F(MatrixTests, matrix_divide) {
     }
 }
 
-/*
+
 TEST_F(MatrixTests, matrix_divide_broadcast) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] / Xs[1];
@@ -501,6 +502,7 @@ TEST_F(MatrixTests, matrix_divide_broadcast) {
     }
 }
 
+/*
 TEST_F(MatrixTests, matrix_divide_scalar) {
 
     EXPERIMENT_REPEAT {

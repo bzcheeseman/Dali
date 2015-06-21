@@ -317,14 +317,15 @@ template<typename R>
 Mat<R> MatOps<R>::add(
         Mat<R> matrix1,
         Mat<R> matrix2) {
-    if (matrix1.dims(1) != matrix2.dims(1) && (matrix1.dims(1) == 1 || matrix2.dims(1) == 1)) {
-        if (matrix1.dims(1) == 1) {
+    if (matrix1.dims(0) != matrix2.dims(0) && (matrix1.dims(0) == 1 || matrix2.dims(0) == 1)) {
+        if (matrix1.dims(0) == 1) {
+            // consider matrix1 to be a vector
             return add_broadcast(matrix2, matrix1);
         }
+        // consider matrix2 to be a vector
         return add_broadcast(matrix1, matrix2);
     }
-    assert2((matrix1.dims(0) == matrix2.dims(0)) && (matrix1.dims(1) == matrix2.dims(1)),
-        "Matrices cannot be added, they do not have the same dimensions.");
+    assert2(matrix1.dims() == matrix2.dims(), "Matrices cannot be added, they do not have the same dimensions.");
 
     auto out = Mat<R>::empty_like(matrix1);
     MAT(out) = MAT(matrix1).wrapper() + MAT(matrix2).wrapper();
@@ -342,15 +343,16 @@ template<typename R>
 Mat<R> MatOps<R>::sub(
         Mat<R> matrix1,
         Mat<R> matrix2) {
-    if (matrix1.dims(1) != matrix2.dims(1) && (matrix1.dims(1) == 1 || matrix2.dims(1) == 1)) {
-        if (matrix1.dims(1) == 1) {
+    if (matrix1.dims(0) != matrix2.dims(0) && (matrix1.dims(0) == 1 || matrix2.dims(0) == 1)) {
+        if (matrix1.dims(0) == 1) {
+            // consider matrix1 to be a vector
             return sub_broadcast_reversed(matrix2, matrix1);
         }
+        // consider matrix2 to be a vector
         return sub_broadcast(matrix1, matrix2);
     }
 
-    assert2((matrix1.dims(0) == matrix2.dims(0)) && (matrix1.dims(1) == matrix2.dims(1)),
-        "Matrices cannot be subtracted, they do not have the same dimensions.");
+    assert2(matrix1.dims() == matrix2.dims(), "Matrices cannot be subtracted, they do not have the same dimensions.");
 
     auto out = Mat<R>::empty_like(matrix1);
     MAT(out) = MAT(matrix1).wrapper() - MAT(matrix2).wrapper();
@@ -383,29 +385,43 @@ Mat<R> MatOps<R>::add(
 
 template<typename R>
 Mat<R> MatOps<R>::add_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
-    #ifndef DONT_COMPILE
     // broadcast matrix 2:
-    if (matrix1.dims(0) != matrix2.dims(0) || matrix2.dims(1) != 1)
-            throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
+    utils::assert2(matrix2.dims(0) == 1, "Second argument to add_broadcast must be a vector (first dimension=1)");
+    if (matrix1.dims(0) != matrix2.dims(1)) {
+        utils::assert2(matrix1.dims(0) == matrix2.dims(1),
+            MS() << "vector-like argument to add_broadcast must have outer dimension (" << matrix2.dims(1)
+                 << ") equal to inner dimension of first argument (" << matrix1.dims(0) << ").");
+    }
     auto out = Mat<R>::empty_like(matrix1);
-    MAT(out) = (MAT(matrix1).colwise() + MAT(matrix2).col(0)).matrix();
+    MAT(out) = (
+        MAT(matrix1).wrapper() +
+        MAT(matrix2).wrapper()[0].template broadcast<0>(
+            MAT(matrix1).shape()
+        )
+    );
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() mutable {
-            SAFE_GRAD(matrix1).noalias() += GRAD(out);
-            SAFE_GRAD(matrix2).noalias() += GRAD(out).rowwise().sum();
+            SAFE_GRAD(matrix1) += GRAD(out).wrapper();
+
+            // temporary:
+            //typename Mat<R>::storage_t temp(GRAD(out).shape());
+            //temp = sum_rows(GRAD(out).wrapper());
+
+            //SAFE_GRAD(matrix2) += temp.wrapper()[0].template broadcast<0>(MAT(matrix2).shape());
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::sub_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
     #ifndef DONT_COMPILE
     // broadcast matrix 2:
-    if (matrix1.dims(0) != matrix2.dims(0) || matrix2.dims(1) != 1)
-        throw std::invalid_argument("Matrices cannot be substracted with broadcast, they do not have the same dimensions.");
+    utils::assert2(matrix2.dims(0) == 1, "Second argument to sub_broadcast must be a vector (first dimension=1)");
+    if (matrix1.dims(0) != matrix2.dims(1)) {
+        utils::assert2(matrix1.dims(0) == matrix2.dims(1),
+            MS() << "vector-like argument to sub_broadcast must have outer dimension (" << matrix2.dims(1)
+                 << ") equal to inner dimension of first argument (" << matrix1.dims(0) << ").");
+    }
     auto out = Mat<R>::empty_like(matrix1);
     MAT(out) = (MAT(matrix1).colwise() - MAT(matrix2).col(0)).matrix();
     if (graph::backprop_enabled)

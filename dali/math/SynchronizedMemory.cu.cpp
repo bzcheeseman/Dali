@@ -15,18 +15,24 @@ void dali_init() {
     #endif
 }
 
+
 template<typename R, int dimension>
-SynchronizedMemory<R, dimension>::SynchronizedMemory(int n, int d, PreferredDevice _preferred_device) :
+SynchronizedMemory<R, dimension>::SynchronizedMemory(mshadow::Shape<dimension> dim, PreferredDevice _preferred_device) :
 #ifdef DALI_USE_CUDA
-    mem_gpu(Shape2(n, d)),
+    mem_gpu(dim),
     allocated_gpu(false),
     gpu_fresh(false),
 #endif
     allocated_cpu(false),
-    mem_cpu(Shape2(n, d)),
+    mem_cpu(dim),
     cpu_fresh(false),
     preferred_device(_preferred_device) {
 }
+
+
+template<typename R, int dimension>
+SynchronizedMemory<R, dimension>::SynchronizedMemory(int n, int d, PreferredDevice _preferred_device)
+    : SynchronizedMemory<R, dimension>(Shape2(n,d), _preferred_device) {}
 
 template<typename R, int dimension>
 SynchronizedMemory<R,dimension>::SynchronizedMemory(const SynchronizedMemory& other) :

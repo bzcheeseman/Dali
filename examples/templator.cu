@@ -28,8 +28,8 @@ int main() {
     Mat<R> A(2, 3, weights<R>::gaussian(2.0));
     Mat<R> B(2, 3);
 
-    ELOG(A.w()->w.gpu_fresh);
-    ELOG(A.w()->w.cpu_fresh);
+    ELOG(A.w().gpu_fresh);
+    ELOG(A.w().cpu_fresh);
     std::cout << "A=" << std::endl;
     A.print();
 
@@ -38,11 +38,11 @@ int main() {
     std::cout << "A=" << std::endl;
     A.print();
 
-    ELOG(A.w()->w.gpu_fresh);
-    ELOG(A.w()->w.cpu_fresh);
+    ELOG(A.w().gpu_fresh);
+    ELOG(A.w().cpu_fresh);
 
-    auto a = A.w()->w.wrapper();
-    auto b = A.w()->w.wrapper();
+    auto a = A.w().wrapper();
+    auto b = A.w().wrapper();
 
     auto c = a;// + b;
 
@@ -52,26 +52,26 @@ int main() {
     auto f   = c * b;
     auto sig = F<sigmoid>(a);
 
-    ELOG(A.w()->w.gpu_fresh);
-    ELOG(A.w()->w.cpu_fresh);
+    ELOG(A.w().gpu_fresh);
+    ELOG(A.w().cpu_fresh);
 
     auto out = Mat<R>::empty_like(A);
-    out.w()->w = c * (float)3.0;
+    out.w() = c * (float)3.0;
 
-    ELOG(A.w()->w.gpu_fresh);
-    ELOG(A.w()->w.cpu_fresh);
+    ELOG(A.w().gpu_fresh);
+    ELOG(A.w().cpu_fresh);
     std::cout << "out=" << std::endl;
     out.print();
 
 
     auto out2 = Mat<R>::empty_like(A);
 
-    out2.w()->w = c.softmax();
+    out2.w() = c.softmax();
     std::cout << "out2=" << std::endl;
     out2.print();
     Mat<R> C(3, 1);
 
-    C.w()->w = c[0].broadcast<0>(C.w()->w.shape());
+    C.w() = c[0].broadcast<0>(C.w().shape());
     std::cout << "C=" << std::endl;
     C.print();
 
@@ -79,7 +79,7 @@ int main() {
 
     std::cout << c[0].repmat(4).left.shape_[0] << ", " << c[0].repmat(4).left.shape_[1] << std::endl;
 
-    D.w()->w = c[0].repmat(4);
+    D.w() = c[0].repmat(4);
     std::cout << "D=" << std::endl;
     D.print();
 
@@ -97,11 +97,10 @@ int main() {
 
     Mat<R> out3(1,1);
 
-    out3.w()->w = dot(lhs.w()->w.wrapper(), rhs.w()->w.wrapper().T());
+    out3.w() = dot(lhs.w().wrapper(), rhs.w().wrapper().T());
 
     std::cout << "out3=" << std::endl;
     out3.print();
-
 
     mshadow::ShutdownTensorEngine<mshadow::gpu>();
 

@@ -4,7 +4,9 @@
 #include <functional>
 #include <vector>
 
+#include "mshadow/extension/reduceto1d.h"
 #include "mshadow/tensor.h"
+
 
 #include "dali/math/LazySoftmax.h"
 #include "dali/math/LazyUtils.h"
@@ -137,11 +139,7 @@ class LazyTensor {
             // Expression that replicate a 1 dimension tensor in
             // dimension dimcast
             template<int dimcast, int dimdst>
-            inline LazyTensor<
-                mshadow::expr::Broadcast1DExp<LeftType, DType, dimdst, dimdst - dimcast>,
-                mshadow::expr::Broadcast1DExp<RightType, DType, dimdst, dimdst - dimcast>,
-                DType,
-                ktype >broadcast(mshadow::Shape<dimdst> shape) const {
+            inline auto broadcast(mshadow::Shape<dimdst> shape) -> LazyTensor<decltype(mshadow::expr::broadcast<dimcast>(left, shape)), decltype(mshadow::expr::broadcast<dimcast>(right, shape)), DType, ktype> const {
 
                 auto cpu_broad = mshadow::expr::broadcast<dimcast>(left, shape);
                 auto gpu_broad = mshadow::expr::broadcast<dimcast>(right, shape);
@@ -154,12 +152,20 @@ class LazyTensor {
 
             // Expression that replicate a 1 dimension tensor for
             // nrow times
-            inline LazyTensor<
-                mshadow::expr::Broadcast1DExp<LeftType, DType, 2, 1>,
-                mshadow::expr::Broadcast1DExp<RightType, DType, 2, 1>,
-                DType,
-                ktype >
-            repmat(mshadow::index_t nrow) {
+            // inline LazyTensor<
+            //     mshadow::expr::MakeTensorExp<
+            //         mshadow::expr::Broadcast1DExp<LeftType, DType, 2, 1>,
+            //         LeftType,
+            //         2,
+            //         DType>,
+            //     mshadow::expr::MakeTensorExp<
+            //         mshadow::expr::Broadcast1DExp<RightType, DType, 2, 1>,
+            //         RightType,
+            //         2,
+            //         DType>,
+            //     DType,
+            //     ktype >
+            inline auto repmat(mshadow::index_t nrow) -> LazyTensor<decltype(mshadow::expr::repmat(left, nrow)), decltype(mshadow::expr::repmat(right, nrow)), DType, ktype> const{
                 return broadcast<1>(
                     mshadow::Shape2(
                         nrow,
@@ -375,9 +381,9 @@ class LazyTensor {
 #ifdef DALI_USE_CUDA
     #define BINARY_OP(opname, opsymbol) \
     template<template <typename, typename, typename, int> class wrapper_t1, template <typename, typename, typename, int> class wrapper_t2, typename TA, typename TB, typename TC, typename TD, typename DType, int ta, int tb> \
-    LazyTensor< mshadow::expr::BinaryMapExp<opname, TA, TC, DType, (ta|tb|mshadow::expr::type::kMapper)>, mshadow::expr::BinaryMapExp<opname, TB, TD, DType, (ta|tb|mshadow::expr::type::kMapper)>, DType, (ta|tb|mshadow::expr::type::kMapper)> operator opsymbol( \
+    auto operator opsymbol( \
             const wrapper_t1<TA, TB, DType, ta> &left, \
-            const wrapper_t2<TC, TD, DType, tb> &right) { \
+            const wrapper_t2<TC, TD, DType, tb> &right) -> LazyTensor< decltype(left.left opsymbol right.left), decltype(left.right opsymbol right.right), DType, (ta|tb|mshadow::expr::type::kMapper)>   { \
         const auto& l_cpu = left.left; \
         const auto& r_cpu = right.left; \
         auto res_cpu = l_cpu opsymbol r_cpu; \
@@ -483,6 +489,56 @@ BINARY_SCALAR_OP(mshadow::op::div,  /);
     inline wrapper_t<mshadow::expr::UnaryMapExp<OP, TA, DType, (ta|mshadow::expr::type::kMapper)>, DType, (ta|mshadow::expr::type::kMapper)>
     F(const wrapper_t<TA, DType, ta> &src) {
         return MakeExp<OP>(src);
+    }
+#endif
+
+#ifdef DALI_USE_CUDA
+    template<int dimkeep, template <typename, typename, typename, int> class wrapper_t, typename TA, typename TB, typename DType, int ta>
+    inline wrapper_t<
+        mshadow::expr::ReduceTo1DExp<
+            TA, DType, mshadow::red::sum,
+            mshadow::expr::ExpInfo<TA>::kDim - dimkeep >,
+        mshadow::expr::ReduceTo1DExp<
+            TB, DType, mshadow::red::sum,
+            mshadow::expr::ExpInfo<TA>::kDim - dimkeep >,
+        DType,
+        mshadow::expr::type::kComplex>
+    sumall_except_dim(const wrapper_t<TA, TB, DType, ta> &exp) {
+        auto cpu_sumall = sumall_except_dim<dimkeep>(exp.left);
+        auto gpu_sumall = sumall_except_dim<dimkeep>(exp.right);
+        return LazyTensor<
+            decltype(cpu_sumall),
+            decltype(gpu_sumall), DType, mshadow::expr::type::kComplex
+            >(cpu_sumall, gpu_sumall, exp.sync_tensors);
+    }
+
+    template<template <typename, typename, typename, int> class wrapper_t, typename TA, typename TB, typename DType, int ta>
+    inline wrapper_t<
+        mshadow::expr::ReduceTo1DExp<
+            TA, DType, mshadow::red::sum,
+            mshadow::expr::ExpInfo<TA>::kDim - 1 >,
+        mshadow::expr::ReduceTo1DExp<
+            TB, DType, mshadow::red::sum,
+            mshadow::expr::ExpInfo<TA>::kDim - 1 >,
+        DType,
+        mshadow::expr::type::kComplex>
+    sum_rows(const wrapper_t<TA, TB, DType, ta> &exp) {
+      mshadow::expr::TypeCheckPass<mshadow::expr::ExpInfo<TA>::kDim == 2>
+          ::Error_Expression_Does_Not_Meet_Dimension_Req();
+      return sumall_except_dim<1>(exp);
+    }
+#else
+    template<template <typename, typename, int> class wrapper_t, typename TA, typename DType, int ta>
+    inline wrapper_t<
+        mshadow::expr::ReduceTo1DExp<
+            TA, DType, mshadow::red::sum,
+            mshadow::expr::ExpInfo<TA>::kDim - 1 >,
+        DType,
+        mshadow::expr::type::kComplex>
+    sum_rows(const wrapper_t<TA, DType, ta> &exp) {
+      mshadow::expr::TypeCheckPass<mshadow::expr::ExpInfo<TA>::kDim == 2>
+          ::Error_Expression_Does_Not_Meet_Dimension_Req();
+      return sumall_except_dim<1>(exp);
     }
 #endif
 

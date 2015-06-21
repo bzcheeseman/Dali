@@ -109,14 +109,32 @@ void TensorInternal<R,dimension>::clear() {
 }
 
 template<typename R, int dimension>
-TensorInternal<R,dimension> TensorInternal<R, dimension>::zeros(int n, int d) {
-    auto tensor = TensorInternal<R,dimension>(n, d);
+TensorInternal<R,dimension> TensorInternal<R, dimension>::zeros(mshadow::Shape<dimension> shape) {
+    auto tensor = TensorInternal<R,dimension>(shape);
     tensor.clear();
     return tensor;
 }
 
-template class TensorInternal<float,2>;
+// template class TensorInternal<float, 1>;
+// template class TensorInternal<double,1>;
+template class TensorInternal<float, 2>;
 template class TensorInternal<double,2>;
+// template class TensorInternal<float, 3>;
+// template class TensorInternal<double,3>;
+// template class TensorInternal<float, 4>;
+// template class TensorInternal<double,4>;
+// template class TensorInternal<float, 5>;
+// template class TensorInternal<double,5>;
+// template class TensorInternal<float, 6>;
+// template class TensorInternal<double,6>;
+// template class TensorInternal<float, 7>;
+// template class TensorInternal<double,7>;
+// template class TensorInternal<float, 8>;
+// template class TensorInternal<double,8>;
+// template class TensorInternal<float, 9>;
+// template class TensorInternal<double,9>;
+
+
 
 
 

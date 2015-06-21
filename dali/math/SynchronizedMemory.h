@@ -45,7 +45,6 @@ class SynchronizedMemory {
         bool prefers_gpu() const;
         SynchronizedMemory& operator=(const SynchronizedMemory&) = delete;
 
-        SynchronizedMemory(int n, int d, PreferredDevice preferred_device = default_preferred_device);
         SynchronizedMemory(mshadow::Shape<dimension> dim, PreferredDevice preferred_device = default_preferred_device);
         // inherits preferred device and copies memory to it.
         SynchronizedMemory(const SynchronizedMemory& other);

@@ -122,9 +122,9 @@ template<typename R>
 Mat<R>::Mat(dim_t n, dim_t d, typename weights<R>::initializer_t wi) :
         name(nullptr), constant(false) {
     // Don't fill with zeros - it's initializer's job.
-    m = make_shared<TensorInternal<R,2>>(n, d);
+    m = make_shared<TensorInternal<R,2>>(mshadow::Shape2(n, d));
     // We always reset the grad calculation
-    g = make_shared<TensorInternal<R,2>>(n, d);
+    g = make_shared<TensorInternal<R,2>>(mshadow::Shape2(n, d));
     g->clear();
     wi(w());
 }
@@ -140,8 +140,8 @@ Mat<R>::Mat(string fname) :
         constant(false) {
     /*auto arr = cnpy::npy_load(fname);
     vector<uint> npy_dims = {arr.shape[0], arr.shape.size() > 1 ? arr.shape[1] : 1};
-    m = make_shared<TensorInternal<R,2>>(npy_dims[0], npy_dims[1]);
-    g = make_shared<TensorInternal<R,2>>(npy_dims[0], npy_dims[1]);
+    m = make_shared<TensorInternal<R,2>>(mshadow::Shape2(npy_dims[0], npy_dims[1]));
+    g = make_shared<TensorInternal<R,2>>(mshadow::Shape2(npy_dims[0], npy_dims[1]));
     g->clear();
 
     if (arr.word_size == sizeof(double)) {
@@ -432,7 +432,9 @@ void Mat<R>::npy_save (FILE * fp) {
 
 template<typename R>
 void Mat<R>::npy_load(cnpy::NpyArray& arr) {
-    m = make_shared<TensorInternal<R,2>>(arr.shape[0], arr.shape.size() > 1 ? arr.shape[1] : 1);
+    int n = arr.shape[0];
+    int d = arr.shape.size() > 1 ? arr.shape[1] : 1;
+    m = make_shared<TensorInternal<R,2>>(mshadow::Shape2(n,d));
 
     /*if (arr.word_size == sizeof(double)) {
         double* loaded_data_double = reinterpret_cast<double*>(arr.data);

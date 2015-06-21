@@ -29,11 +29,6 @@ SynchronizedMemory<R, dimension>::SynchronizedMemory(mshadow::Shape<dimension> d
     preferred_device(_preferred_device) {
 }
 
-
-template<typename R, int dimension>
-SynchronizedMemory<R, dimension>::SynchronizedMemory(int n, int d, PreferredDevice _preferred_device)
-    : SynchronizedMemory<R, dimension>(Shape2(n,d), _preferred_device) {}
-
 template<typename R, int dimension>
 SynchronizedMemory<R,dimension>::SynchronizedMemory(const SynchronizedMemory& other) :
 #ifdef DALI_USE_CUDA
@@ -179,5 +174,22 @@ void SynchronizedMemory<R,dimension>::copy_data_from(SourceType& data_source) {
     }
 }
 
-template class SynchronizedMemory<float,2>;
+// template class SynchronizedMemory<float, 1>;
+// template class SynchronizedMemory<double,1>;
+template class SynchronizedMemory<float, 2>;
 template class SynchronizedMemory<double,2>;
+// template class SynchronizedMemory<float, 3>;
+// template class SynchronizedMemory<double,3>;
+// template class SynchronizedMemory<float, 4>;
+// template class SynchronizedMemory<double,4>;
+// template class SynchronizedMemory<float, 5>;
+// template class SynchronizedMemory<double,5>;
+// template class SynchronizedMemory<float, 6>;
+// template class SynchronizedMemory<double,6>;
+// template class SynchronizedMemory<float, 7>;
+// template class SynchronizedMemory<double,7>;
+// template class SynchronizedMemory<float, 8>;
+// template class SynchronizedMemory<double,8>;
+// template class SynchronizedMemory<float, 9>;
+// template class SynchronizedMemory<double,9>;
+

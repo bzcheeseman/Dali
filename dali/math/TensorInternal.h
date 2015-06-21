@@ -121,7 +121,7 @@ class TensorInternal : public SynchronizedMemory<R, dimension> {
         void print() const;
         void clear();
 
-        static TensorInternal<R,dimension> zeros(int n, int d);
+        static TensorInternal<R,dimension> zeros(mshadow::Shape<dimension>);
 
 };
 

@@ -398,18 +398,13 @@ BINARY_SCALAR_OP(mshadow::op::div,  /);
 
 #ifdef DALI_USE_CUDA
     template<int dimkeep, template <typename, typename, typename, int> class wrapper_t, typename TA, typename TB, typename DType, int ta>
-    inline wrapper_t<
-        mshadow::expr::ReduceTo1DExp<
-            TA, DType, mshadow::red::sum,
-            mshadow::expr::ExpInfo<TA>::kDim - dimkeep >,
-        mshadow::expr::ReduceTo1DExp<
-            TB, DType, mshadow::red::sum,
-            mshadow::expr::ExpInfo<TA>::kDim - dimkeep >,
-        DType,
-        mshadow::expr::type::kComplex>
-    sumall_except_dim(const wrapper_t<TA, TB, DType, ta> &exp) {
-        auto cpu_sumall = sumall_except_dim<dimkeep>(exp.left);
-        auto gpu_sumall = sumall_except_dim<dimkeep>(exp.right);
+    auto  sumall_except_dim(const wrapper_t<TA, TB, DType, ta> &exp) ->
+            LazyTensor<decltype(mshadow::expr::sumall_except_dim<dimkeep>(exp.left)),
+                       decltype(mshadow::expr::sumall_except_dim<dimkeep>(exp.right)),
+                       DType,
+                       mshadow::expr::type::kComplex> {
+        auto cpu_sumall = mshadow::expr::sumall_except_dim<dimkeep>(exp.left);
+        auto gpu_sumall = mshadow::expr::sumall_except_dim<dimkeep>(exp.right);
         return LazyTensor<
             decltype(cpu_sumall),
             decltype(gpu_sumall), DType, mshadow::expr::type::kComplex
@@ -417,18 +412,7 @@ BINARY_SCALAR_OP(mshadow::op::div,  /);
     }
 
     template<template <typename, typename, typename, int> class wrapper_t, typename TA, typename TB, typename DType, int ta>
-    inline wrapper_t<
-        mshadow::expr::ReduceTo1DExp<
-            TA, DType, mshadow::red::sum,
-            mshadow::expr::ExpInfo<TA>::kDim - 1 >,
-        mshadow::expr::ReduceTo1DExp<
-            TB, DType, mshadow::red::sum,
-            mshadow::expr::ExpInfo<TA>::kDim - 1 >,
-        DType,
-        mshadow::expr::type::kComplex>
-    sum_rows(const wrapper_t<TA, TB, DType, ta> &exp) {
-      mshadow::expr::TypeCheckPass<mshadow::expr::ExpInfo<TA>::kDim == 2>
-          ::Error_Expression_Does_Not_Meet_Dimension_Req();
+    auto sum_rows(const wrapper_t<TA, TB, DType, ta> &exp) -> decltype(sumall_except_dim<1>(exp)) {
       return sumall_except_dim<1>(exp);
     }
 #else

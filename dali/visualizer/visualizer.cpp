@@ -47,8 +47,8 @@ namespace visualizable {
     template<typename R>
     void Sentence<R>::set_weights(const Mat<R>& _weights) {
         weights = std::vector<R>(
-            _weights.w()->data(),
-            _weights.w()->data() + _weights.number_of_elements());
+            _weights.w().data(),
+            _weights.w().data() + _weights.number_of_elements());
     }
 
     template<typename R>
@@ -81,8 +81,8 @@ namespace visualizable {
     template<typename R>
     void Sentences<R>::set_weights(const Mat<R>& _weights) {
         weights = std::vector<R>(
-            _weights.w()->data(),
-            _weights.w()->data() + _weights.number_of_elements());
+            _weights.w().data(),
+            _weights.w().data() + _weights.number_of_elements());
     }
 
     template<typename R>

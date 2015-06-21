@@ -13,10 +13,18 @@
 // To minimize transfers between host and GPU device, we
 // keep track of which device has the master copy.
 
+void dali_init();
+
 enum PreferredDevice {
     DEVICE_GPU,
     DEVICE_CPU
 };
+
+#ifdef DALI_USE_CUDA
+    static const PreferredDevice default_preferred_device = DEVICE_GPU;
+#else
+    static const PreferredDevice default_preferred_device = DEVICE_CPU;
+#endif
 
 template<typename R, int dimension>
 class SynchronizedMemory {
@@ -37,7 +45,7 @@ class SynchronizedMemory {
         bool prefers_gpu() const;
         SynchronizedMemory& operator=(const SynchronizedMemory&) = delete;
 
-        SynchronizedMemory(int n, int d, PreferredDevice preferred_device);
+        SynchronizedMemory(int n, int d, PreferredDevice preferred_device = default_preferred_device);
         // inherits preferred device and copies memory to it.
         SynchronizedMemory(const SynchronizedMemory& other);
         ~SynchronizedMemory();

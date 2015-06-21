@@ -3,9 +3,14 @@
 
 #include "dali/mat/math/memory/SynchronizedMemory.h"
 #include <initializer_list>
+#include <iomanip>
+#include <iostream>
+#include <string>
 
 // Defines mathematical operations on Synchronized Memory
 // and also interfaces / and handles assignment from LazyTensor
+
+typedef unsigned int dim_t;
 
 template<typename R, int dimension>
 class TensorInternal;
@@ -104,9 +109,20 @@ class TensorInternal : public SynchronizedMemory<R, dimension> {
         operator lazy_t();
         lazy_t wrapper();
 
-        // filling methods:
-        void eye(R diag);
-        void uniform(R diag);
+        R& operator()(int i, int j);
+        R operator()(int i, int j) const;
+
+        R& operator()(int i);
+        R operator()(int i) const;
+
+        const R* data() const;
+        R* data();
+
+        void print() const;
+        void clear();
+
+        static TensorInternal<R,dimension> zeros(int n, int d);
+
 };
 
 #endif

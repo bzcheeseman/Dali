@@ -55,8 +55,73 @@ bool TensorInternal<R, dimension>::compute_me_on_gpu() const {
     return false;
 }
 
+
+template<typename R, int dimension>
+R& TensorInternal<R,dimension>::operator()(int i, int j) {
+    return this->mutable_cpu_data()[i][j];
+}
+
+template<typename R, int dimension>
+R TensorInternal<R,dimension>::operator()(int i, int j) const {
+    return this->cpu_data()[i][j];
+}
+
+template<typename R, int dimension>
+R& TensorInternal<R,dimension>::operator()(int i) {
+    return *(this->mutable_cpu_data().dptr_ + i);
+}
+
+template<typename R, int dimension>
+R TensorInternal<R,dimension>::operator()(int i) const {
+    return *(this->cpu_data().dptr_ + i);
+}
+
+template<typename R, int dimension>
+const R* TensorInternal<R,dimension>::data() const {
+    return this->cpu_data().dptr_;
+}
+
+template<typename R, int dimension>
+R* TensorInternal<R,dimension>::data() {
+    return this->mutable_cpu_data().dptr_;
+}
+
+template<typename R, int dimension>
+void TensorInternal<R,dimension>::print() const {
+    const auto& data = this->cpu_data();
+    for (int i = 0; i < data.shape_[0] ; ++i) {
+        std::cout << (i == 0 ? "[" : " ");
+        for (int j = 0; j < data.shape_[1]; ++j) {
+            std::cout << std::fixed
+                      << std::setw( 7 ) // keep 7 digits
+                      << std::setprecision( 3 ) // use 3 decimals
+                      << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
+                      << data[i][j] << " ";
+        }
+        std::cout << (i == data.shape_[0] - 1 ? "]" : "\n");
+    }
+    std::cout << std::endl;
+}
+
+template<typename R, int dimension>
+void TensorInternal<R,dimension>::clear() {
+    *this = (R) 0.0;
+}
+
+template<typename R, int dimension>
+TensorInternal<R,dimension> TensorInternal<R, dimension>::zeros(int n, int d) {
+    auto tensor = TensorInternal<R,dimension>(n, d);
+    tensor.clear();
+    return tensor;
+}
+
 template class TensorInternal<float,2>;
 template class TensorInternal<double,2>;
+
+
+
+
+/**** SHOULD COMPUTE GPU-land **/
 
 template<typename R, int dimension>
 bool should_compute_on_gpu(

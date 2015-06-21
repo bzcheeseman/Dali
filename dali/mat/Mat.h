@@ -13,12 +13,11 @@
 // For handling json_finite_distribution
 #include <json11.hpp>
 
-#include "dali/mat/math/MatInternal.h"
+#include "dali/mat/math/memory/TensorInternal.h"
 #include "dali/mat/math/MatOps.h"
 #include "dali/mat/math/Weights.h"
 #include "dali/mat/Tape.h"
 #include "dali/utils.h"
-
 
 template<typename R> class Mat;
 
@@ -54,14 +53,15 @@ is inefficient, and inadequate for good
 broadcasting across other operations).
 
 **/
+
 template<typename R>
 class Mat {
     public:
-        typedef std::shared_ptr<MatInternal<R>> mat_internal_t;
-        typedef std::shared_ptr<GradInternal<R>> grad_internal_t;
+        typedef TensorInternal<R,2>            storage_t;
+        typedef std::shared_ptr<storage_t> storage_ref_t;
     private:
-        mat_internal_t  m;
-        grad_internal_t g;
+        storage_ref_t m;
+        storage_ref_t g;
     public:
 
         std::shared_ptr<std::string> name = nullptr;
@@ -109,7 +109,9 @@ class Mat {
 
         void clear_grad();
 
-        mat_internal_t  w() const;
+        const storage_t& w() const;
+        storage_t& w();
+
         R w(int i) const;
         R& w(int i);
         R dw(int i) const;
@@ -119,7 +121,8 @@ class Mat {
         R dw(int i, int j) const;
         R& dw(int i, int j);
 
-        grad_internal_t dw() const;
+        const storage_t& dw() const;
+        storage_t& dw();
 
         const std::vector<dim_t>& dims() const;
         dim_t dims(int idx) const;
@@ -127,8 +130,6 @@ class Mat {
         unsigned int number_of_elements() const;
 
         bool empty() const;
-
-        int id() const;
 
         void set_name(std::string& newname);
         void set_name(char* newname);
@@ -259,7 +260,7 @@ std::ostream& operator<<(std::ostream&, const Mat<R>&);
 // define hash code for matrices:
 namespace std {
     template <typename R> struct hash<Mat<R>> {
-            std::size_t operator()(const Mat<R>&) const;
+        std::size_t operator()(const Mat<R>&) const;
     };
 }
 

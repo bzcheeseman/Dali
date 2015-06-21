@@ -143,7 +143,7 @@ bool gradient_same(
         }
         AssertionResult did_work_out = buffer_almost_equals(
                 (R*)Arg_prime,
-                arg.dw()->data(),
+                arg.dw().data(),
                 arg.number_of_elements(),
                 arg.number_of_elements(),
                 tolerance);
@@ -849,6 +849,7 @@ TEST_F(LayerTests, LSTM_Zaremba_shortcut_gradient) {
         ASSERT_TRUE(gradient_same(functor, params, 0.0003));
     }
 }
+*/
 
 void copy_constructor_helper(bool copy_w, bool copy_dw) {
     Mat<R> original(10,10, weights<R>::uniform(20.0));
@@ -868,17 +869,17 @@ void copy_constructor_helper(bool copy_w, bool copy_dw) {
     } else {
         ASSERT_MATRIX_GRAD_CLOSE(original, copy, 1e-5);
     }
-
-
 }
+
 
 TEST_F(MatrixTests, copy_constructor) {
     copy_constructor_helper(false, false);
     copy_constructor_helper(false, true);
-    copy_constructor_helper(true, false);
-    copy_constructor_helper(true, true);
+    copy_constructor_helper(true,  false);
+    copy_constructor_helper(true,  true);
 }
 
+/*
 TEST_F(LayerTests, RNN_gradient_vs_Stacked_gradient) {
     int num_examples           = 10;
     int hidden_size            = 5;

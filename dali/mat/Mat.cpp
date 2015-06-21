@@ -17,79 +17,84 @@ Mat<R>::Mat() : Mat(0,0) {
 }
 
 template<typename R>
-typename Mat<R>::mat_internal_t Mat<R>::w() const {
-    return m;
+typename Mat<R>::storage_t& Mat<R>::w() {
+    return *m;
 }
 
 template<typename R>
-typename Mat<R>::grad_internal_t Mat<R>::dw() const {
-    return g;
+typename Mat<R>::storage_t& Mat<R>::dw() {
+    return *g;
+}
+
+template<typename R>
+const typename Mat<R>::storage_t& Mat<R>::w() const {
+    return *m;
+}
+
+template<typename R>
+const typename Mat<R>::storage_t& Mat<R>::dw() const {
+    return *g;
 }
 
 template<typename R>
 R Mat<R>::w(int i) const {
-    return (*w())(i);
+    return w()(i);
 }
 
 template<typename R>
 R& Mat<R>::w(int i) {
-    return (*w())(i);
+    return w()(i);
 }
 
 template<typename R>
 R Mat<R>::w(int i, int j) const {
-    return (*w())(i,j);
+    return w()(i,j);
 }
 
 template<typename R>
 R& Mat<R>::w(int i, int j) {
-    return (*w())(i,j);
+    return w()(i,j);
 }
 
 template<typename R>
 R Mat<R>::dw(int i) const {
-    return (*dw())(i);
+    return dw()(i);
 }
 
 template<typename R>
 R& Mat<R>::dw(int i) {
-    return (*dw())(i);
+    return dw()(i);
 }
 
 template<typename R>
 R Mat<R>::dw(int i, int j) const {
-    return (*dw())(i,j);
+    return dw()(i,j);
 }
 
 template<typename R>
 R& Mat<R>::dw(int i, int j) {
-    return (*dw())(i,j);
+    return dw()(i,j);
 }
 
 template<typename R>
 const vector<dim_t>& Mat<R>::dims() const {
-    if (m != nullptr)
-        return m->dims;
+    if (m != nullptr) {
+        auto shape = m->shape().shape_;
+        return std::vector<dim_t>(shape, shape + 2);
+    }
     return mat_missing_dimensions;
 }
 
 template<typename R>
 dim_t Mat<R>::dims(int idx) const {
     if (m != nullptr)
-        return m->dims[idx];
+        return m->shape()[idx];
     return (dim_t) 0;
 }
 
 template<typename R>
 bool Mat<R>::empty() const {
     return number_of_elements() == 0;
-}
-
-template<typename R>
-int Mat<R>::id() const {
-    if (m != nullptr)
-        return m->id;
-    return -1;
 }
 
 template<typename R>
@@ -118,10 +123,11 @@ template<typename R>
 Mat<R>::Mat(dim_t n, dim_t d, typename weights<R>::initializer_t wi) :
         name(nullptr), constant(false) {
     // Don't fill with zeros - it's initializer's job.
-    m = make_shared<MatInternal<R>>(n, d, false);
+    m = make_shared<TensorInternal<R,2>>(n, d);
     // We always reset the grad calculation
-    g = make_shared<GradInternal<R>>(n, d, true);
-    wi(w()->w);
+    g = make_shared<TensorInternal<R,2>>(n, d);
+    g->clear();
+    wi(w());
 }
 
 template<typename R>
@@ -135,8 +141,9 @@ Mat<R>::Mat(string fname) :
         constant(false) {
     /*auto arr = cnpy::npy_load(fname);
     vector<uint> npy_dims = {arr.shape[0], arr.shape.size() > 1 ? arr.shape[1] : 1};
-    m = make_shared<MatInternal<R>>(npy_dims[0], npy_dims[1], false);
-    g = make_shared<GradInternal<R>>(npy_dims[0], npy_dims[1], true);
+    m = make_shared<TensorInternal<R,2>>(npy_dims[0], npy_dims[1]);
+    g = make_shared<TensorInternal<R,2>>(npy_dims[0], npy_dims[1]);
+    g->clear();
 
     if (arr.word_size == sizeof(double)) {
         double* loaded_data_double = reinterpret_cast<double*>(arr.data);
@@ -174,7 +181,7 @@ Mat<R>::Mat(const Mat<R>& other, bool copy_w, bool copy_dw) :
         // This copies memory using copy constructor
         // The copy is only executed if matrix was actually initialized
         // hence the && other.m part.
-        m = make_shared<MatInternal<R>>(*other.m);
+        m = make_shared<TensorInternal<R,2>>(*other.m);
     } else {
         // This does not. (only shared_ptr is copied).
         m = other.m;
@@ -182,7 +189,7 @@ Mat<R>::Mat(const Mat<R>& other, bool copy_w, bool copy_dw) :
 
     if (copy_dw && other.g != nullptr) {
         // see comment for copy_w.
-        g = make_shared<GradInternal<R>>(*other.g);
+        g = make_shared<TensorInternal<R,2>>(*other.g);
     } else {
         g = other.g;
     }
@@ -210,7 +217,7 @@ void Mat<R>::set_name(const char * _name) {
 
 template<typename R>
 void Mat<R>::print() const {
-    w()->print();
+    w().print();
 }
 
 template<typename R>
@@ -225,17 +232,17 @@ void Mat<R>::grad() {
 
 template<typename R>
 void Mat<R>::clear_grad() {
-    dw()->clear();
+    dw().clear();
 }
 
 template<typename R>
 void Mat<R>::npy_save (string fname, string mode) {
-    cnpy::npy_save(fname, w()->data(), dims().data(), dims().size(), mode);
+    cnpy::npy_save(fname, w().data(), dims().data(), dims().size(), mode);
 }
 
 template<typename R>
 unsigned int Mat<R>::number_of_elements() const {
-    return w()->number_of_elements();
+    return w().number_of_elements();
 }
 
 template<typename R>
@@ -419,14 +426,14 @@ Mat<R> Mat<R>::operator()(
 
 template<typename R>
 void Mat<R>::npy_save (FILE * fp) {
-    std::vector<char> header = cnpy::create_npy_header(w()->data(),dims().data(),dims().size());
+    std::vector<char> header = cnpy::create_npy_header(w().data(),dims().data(),dims().size());
     fwrite(&header[0],sizeof(char),header.size(),fp);
-    fwrite(w()->data(),sizeof(R), number_of_elements(), fp);
+    fwrite(w().data(),sizeof(R), number_of_elements(), fp);
 }
 
 template<typename R>
 void Mat<R>::npy_load(cnpy::NpyArray& arr) {
-    m = make_shared<MatInternal<R>>(arr.shape[0], arr.shape.size() > 1 ? arr.shape[1] : 1);
+    m = make_shared<TensorInternal<R,2>>(arr.shape[0], arr.shape.size() > 1 ? arr.shape[1] : 1);
 
     /*if (arr.word_size == sizeof(double)) {
         double* loaded_data_double = reinterpret_cast<double*>(arr.data);
@@ -691,7 +698,9 @@ template std::ostream& operator<< <float>(std::ostream& strm, const Mat<float>& 
 
 template <typename R>
 std::size_t std::hash<Mat<R>>::operator()(const Mat<R>& k) const {
-    return k.id();
+    auto ptr = &(k.w());
+    auto hasher = std::hash<decltype(ptr)>();
+    return hasher(ptr);
 }
 
 template std::size_t std::hash<Mat<float>>::operator()(const Mat<float>& k)   const;
@@ -699,7 +708,7 @@ template std::size_t std::hash<Mat<double>>::operator()(const Mat<double>& k) co
 
 template <typename R>
 bool operator!=(const Mat<R>& A, const Mat<R>& B) {
-    return A.id() != B.id();
+    return &(A.w()) != &(B.w());
 }
 
 template bool operator!=(const Mat<float>&, const Mat<float>&);
@@ -707,7 +716,7 @@ template bool operator!=(const Mat<double>&, const Mat<double>&);
 
 template <typename R>
 bool operator==(const Mat<R>& A, const Mat<R>& B) {
-    return A.id() == B.id();
+    return &(A.w()) == &(B.w());
 }
 
 template bool operator==<float>(const Mat<float>&, const Mat<float>&);
@@ -779,7 +788,7 @@ namespace utils {
         const Mat<R>& probs,
         const vector<string>& labels) {
         assert2(probs.dims(1) == 1, MS() << "Probabilities must be a column vector");
-        vector<R> distribution(probs.w()->data(), probs.w()->data() + probs.dims(0));
+        vector<R> distribution(probs.w().data(), probs.w().data() + probs.dims(0));
         return json11::Json::object {
             { "type", "finite_distribution"},
             { "probabilities", distribution },

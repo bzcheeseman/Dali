@@ -38,7 +38,7 @@ Mat<R> MatOps<R>::eltmul_broadcast(
     auto out = Mat<R>::empty_like(matrix1);
     MAT(out) = (MAT(matrix1).array().colwise() * MAT(matrix2).col(0).array()).matrix();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, matrix2, out]() {
+        graph::emplace_back([matrix1, matrix2, out]() mutable {
             SAFE_GRAD(matrix1).noalias() += ((GRAD(out)).array().colwise() * (MAT(matrix2)).col(0).array()).matrix();
             SAFE_GRAD(matrix2).noalias() += ((MAT(matrix1)).array() * (GRAD(out)).array()).matrix().rowwise().sum();
         });
@@ -64,7 +64,7 @@ Mat<R> MatOps<R>::eltdivide_broadcast(
         MAT(matrix2).col(0).array()
     ).matrix();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, matrix2, out]() {
+        graph::emplace_back([matrix1, matrix2, out]() mutable {
             SAFE_GRAD(matrix1).noalias() += (
                 (GRAD(out)).array().colwise() *
                 (MAT(matrix2)).col(0).array().inverse()
@@ -94,7 +94,7 @@ Mat<R> MatOps<R>::eltdivide_broadcast_reversed(
     auto out = Mat<R>::empty_like(matrix1);
     MAT(out) = (MAT(matrix1).array().inverse().colwise() * MAT(matrix2).col(0).array()).matrix();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, matrix2, out]() {
+        graph::emplace_back([matrix1, matrix2, out]() mutable {
             SAFE_GRAD(matrix1).noalias() -= ((MAT(matrix1).array().square().inverse().colwise() * MAT(matrix2).col(0).array()).matrix().array() * GRAD(out).array()).matrix();
             SAFE_GRAD(matrix2).noalias() += (MAT(matrix1).array().inverse() * GRAD(out).array()).rowwise().sum().matrix();
         });
@@ -120,7 +120,7 @@ Mat<R> MatOps<R>::eltmul(
     auto out = Mat<R>::empty_like(matrix1);
     MAT(out) = (MAT(matrix1).array() * MAT(matrix2).array()).matrix();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, matrix2, out]() {
+        graph::emplace_back([matrix1, matrix2, out]() mutable {
             SAFE_GRAD(matrix1).noalias() += ((MAT(matrix2)).array() * (GRAD(out)).array()).matrix();
             SAFE_GRAD(matrix2).noalias() += ((MAT(matrix1)).array() * (GRAD(out)).array()).matrix();
         });
@@ -140,7 +140,7 @@ Mat<R> MatOps<R>::max(Mat<R> matrix, R lower_bound) {
             return std::max(item, lower_bound);
         }));
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out, lower_bound]() {
+        graph::emplace_back([matrix, out, lower_bound]() mutable {
             if (!matrix.constant) {
                 // mask = (matrix >= lower_bound) ? 1.0 : 0:0;
 
@@ -165,7 +165,7 @@ Mat<R> MatOps<R>::eltmul(
     auto out = Mat<R>::empty_like(matrix);
     MAT(out) = (MAT(matrix).array() * alpha).matrix();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, alpha, out]() {
+        graph::emplace_back([matrix, alpha, out]() mutable {
             SAFE_GRAD(matrix).noalias() += (alpha * (GRAD(out)).array()).matrix();
         });
     return out;
@@ -206,7 +206,7 @@ Mat<R> MatOps<R>::eltdivide(
     auto out = Mat<R>::empty_like(matrix1);
     MAT(out) = (MAT(matrix1).array() / MAT(matrix2).array()).matrix();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, matrix2, out]() {
+        graph::emplace_back([matrix1, matrix2, out]() mutable {
             SAFE_GRAD(matrix1).noalias() += (
                 MAT(matrix2).array().inverse() *
                 GRAD(out).array()
@@ -233,7 +233,7 @@ Mat<R> MatOps<R>::eltdivide(
     auto out = Mat<R>::empty_like(matrix);
     MAT(out) = (MAT(matrix).array() / alpha).matrix();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, alpha, out]() {
+        graph::emplace_back([matrix, alpha, out]() mutable {
             SAFE_GRAD(matrix).noalias() += ((1.0 / alpha) * (GRAD(out)).array()).matrix();
         });
     return out;
@@ -253,7 +253,7 @@ Mat<R> MatOps<R>::eltmul_broadcast_rowwise(
     auto out = Mat<R>::empty_like(matrix1);
     MAT(out) = (MAT(matrix1).array().rowwise() * MAT(row_vector).row(0).array()).matrix();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, row_vector, out]() {
+        graph::emplace_back([matrix1, row_vector, out]() mutable {
             SAFE_GRAD(matrix1).noalias() += ((GRAD(out)).array().rowwise() * (MAT(row_vector)).row(0).array()).matrix();
             SAFE_GRAD(row_vector).noalias() += (((MAT(matrix1)).array() * (GRAD(out)).array()).matrix().colwise().sum()).matrix();
         });
@@ -289,7 +289,7 @@ Mat<R> MatOps<R>::eltmul_rowwise(
     auto out = Mat<R>::empty_like(matrix1);
     MAT(out) = (MAT(matrix1).array() * MAT(matrix2).transpose().array()).matrix();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, matrix2, out]() {
+        graph::emplace_back([matrix1, matrix2, out]() mutable {
             SAFE_GRAD(matrix1).noalias() += (
                 MAT(matrix2).transpose().array() *
                 GRAD(out).array()
@@ -338,7 +338,7 @@ Mat<R> MatOps<R>::add(
     MAT(out) = MAT(matrix1).wrapper() + MAT(matrix2).wrapper();
 
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, matrix2, out]() {
+        graph::emplace_back([matrix1, matrix2, out]() mutable {
             SAFE_GRAD(matrix1) += GRAD(out).wrapper();
             SAFE_GRAD(matrix2) += GRAD(out).wrapper();
         });
@@ -364,7 +364,7 @@ Mat<R> MatOps<R>::sub(
     MAT(out) = MAT(matrix1).wrapper() - MAT(matrix2).wrapper();
 
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, matrix2, out]() {
+        graph::emplace_back([matrix1, matrix2, out]() mutable {
             SAFE_GRAD(matrix1) += GRAD(out).wrapper();
             SAFE_GRAD(matrix2) -= GRAD(out).wrapper();
         });
@@ -380,7 +380,7 @@ Mat<R> MatOps<R>::add(
     auto out = Mat<R>::empty_like(matrix1);
     MAT(out).array() = MAT(matrix1).array() + alpha;
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, out]() {
+        graph::emplace_back([matrix1, out]() mutable {
             SAFE_GRAD(matrix1).noalias() += GRAD(out);
         });
     return out;
@@ -398,7 +398,7 @@ Mat<R> MatOps<R>::add_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
     auto out = Mat<R>::empty_like(matrix1);
     MAT(out) = (MAT(matrix1).colwise() + MAT(matrix2).col(0)).matrix();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, matrix2, out]() {
+        graph::emplace_back([matrix1, matrix2, out]() mutable {
             SAFE_GRAD(matrix1).noalias() += GRAD(out);
             SAFE_GRAD(matrix2).noalias() += GRAD(out).rowwise().sum();
         });
@@ -417,7 +417,7 @@ Mat<R> MatOps<R>::sub_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
     auto out = Mat<R>::empty_like(matrix1);
     MAT(out) = (MAT(matrix1).colwise() - MAT(matrix2).col(0)).matrix();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, matrix2, out]() {
+        graph::emplace_back([matrix1, matrix2, out]() mutable {
             SAFE_GRAD(matrix1).noalias() += GRAD(out);
             SAFE_GRAD(matrix2).noalias() -= GRAD(out).rowwise().sum();
         });
@@ -436,7 +436,7 @@ Mat<R> MatOps<R>::sub_broadcast_reversed(Mat<R> matrix1, Mat<R> matrix2) {
     auto out = Mat<R>::empty_like(matrix1);
     MAT(out) = ((-MAT(matrix1)).colwise() + MAT(matrix2).col(0)).matrix();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, matrix2, out] () {
+        graph::emplace_back([matrix1, matrix2, out] () mutable {
             SAFE_GRAD(matrix1).noalias() -= GRAD(out);
             SAFE_GRAD(matrix2).noalias() += GRAD(out).rowwise().sum();
         });
@@ -452,7 +452,7 @@ Mat<R> MatOps<R>::sub_broadcast_reversed(Mat<R> matrix, R other) {
     auto out = Mat<R>::empty_like(matrix);
     MAT(out) = (other - MAT(matrix).array()).matrix();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out] () {
+        graph::emplace_back([matrix, out] () mutable {
             SAFE_GRAD(matrix).noalias() -= GRAD(out);
         });
     return out;
@@ -474,7 +474,7 @@ Mat<R> MatOps<R>::add(const std::vector<Mat<R>>& matrices) {
     for (auto& matrix : matrices)
         MAT(out) += MAT(matrix);
     if (graph::backprop_enabled)
-        graph::emplace_back([matrices, out]() {
+        graph::emplace_back([matrices, out]() mutable {
             for (auto& matrix : matrices) {
                 SAFE_GRAD(matrix).noalias() += GRAD(out);
             }
@@ -499,7 +499,7 @@ Mat<R> MatOps<R>::square(Mat<R> matrix) {
     MAT(out) = F<square_f<R>>(MAT(matrix).wrapper());
 
     if (graph::backprop_enabled && !matrix.constant)
-        graph::emplace_back([matrix, out]() {
+        graph::emplace_back([matrix, out]() mutable {
             GRAD(matrix) += MAT(matrix).wrapper() * GRAD(out).wrapper() * (R) 2.0;
         });
     return out;
@@ -511,7 +511,7 @@ Mat<R> MatOps<R>::L2_norm(Mat<R> matrix) {
     auto out = Mat<R>(1, 1, false);
     MAT(out)(0) = MAT(matrix).norm();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out]() {
+        graph::emplace_back([matrix, out]() mutable {
             SAFE_GRAD(matrix).noalias() += ((MAT(matrix).array() / MAT(out)(0)) * GRAD(out)(0)).matrix();
         });
     return out;
@@ -526,7 +526,7 @@ Mat<R> MatOps<R>::sqrt(Mat<R> matrix) {
     auto out = Mat<R>::empty_like(matrix);
     MAT(out) = MAT(matrix).array().sqrt();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out]() {
+        graph::emplace_back([matrix, out]() mutable {
             SAFE_GRAD(matrix).noalias() += 0.5 * ((MAT(out)).array().inverse() * (GRAD(out)).array()).matrix();
         });
     return out;
@@ -541,7 +541,7 @@ Mat<R> MatOps<R>::elt_inv(Mat<R> matrix) {
     auto out = Mat<R>::empty_like(matrix);
     MAT(out) = MAT(matrix).array().inverse();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out]() {
+        graph::emplace_back([matrix, out]() mutable {
             SAFE_GRAD(matrix).noalias() += -((MAT(out)).array().square() * GRAD(out).array()).matrix();
         });
     return out;
@@ -575,7 +575,7 @@ Mat<R> MatOps<R>::pow(Mat<R> matrix, R other) {
     auto out = Mat<R>::empty_like(matrix);
     MAT(out) = MAT(matrix).array().pow(other);
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out, other]() {
+        graph::emplace_back([matrix, out, other]() mutable {
             SAFE_GRAD(matrix).noalias() += other * ((MAT(matrix)).array().pow(other - 1.0) * (GRAD(out)).array()).matrix();
         });
     return out;
@@ -591,7 +591,7 @@ Mat<R> MatOps<R>::pow(Mat<R> matrix, Mat<R> other) {
     auto out = Mat<R>::empty_like(matrix);
     MAT(out) = MAT(matrix).array().pow(MAT(other)(0));
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out, other]() {
+        graph::emplace_back([matrix, out, other]() mutable {
             SAFE_GRAD(matrix).noalias() += MAT(other)(0) * ((MAT(matrix)).array().pow(MAT(other)(0) - 1.0) * (MAT(out)).array()).matrix();
             SAFE_GRAD(other)(0) += (
                 MAT(matrix).unaryExpr(utils::log_or_zero<R>()).array() * MAT(out).array() * GRAD(out).array()
@@ -609,7 +609,7 @@ Mat<R> MatOps<R>::sigmoid(Mat<R> matrix) {
     auto out = Mat<R>::empty_like(matrix);
     MAT(out) = MAT(matrix).unaryExpr(utils::sigmoid_operator<R>());
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out](){
+        graph::emplace_back([matrix, out]() mutable {
             SAFE_GRAD(matrix).noalias() += (((MAT(out)).array() - MAT(out).array().square()) * GRAD(out).array()).matrix();
         });
     return out;
@@ -632,7 +632,7 @@ Mat<R> MatOps<R>::softmax(Mat<R> matrix, R temperature) {
     #ifndef DONT_COMPILE
     Mat<R> out = MatOps<R>::softmax_no_grad(matrix, temperature);
     if (graph::backprop_enabled && !matrix.constant)
-        graph::emplace_back([matrix, temperature, out]() {
+        graph::emplace_back([matrix, temperature, out]() mutable {
             auto& dw = GRAD(matrix);
             auto& sm = MAT(out);
             auto& dy = GRAD(out);
@@ -653,7 +653,7 @@ Mat<R> MatOps<R>::softmax_transpose(Mat<R> matrix, R temperature) {
     #ifndef DONT_COMPILE
     Mat<R> out = MatOps<R>::softmax_no_grad_transpose(matrix, temperature);
     if (graph::backprop_enabled && !matrix.constant)
-        graph::emplace_back([matrix, temperature, out]() {
+        graph::emplace_back([matrix, temperature, out]() mutable {
             auto& dw = GRAD(matrix);
             auto& sm = MAT(out);
             auto& dy = GRAD(out);
@@ -716,7 +716,7 @@ vector<Mat<R>> MatOps<R>::softmax(const vector<Mat<R>>& matrices, R temperature)
     #ifndef DONT_COMPILE
     vector<Mat<R>> out = MatOps<R>::softmax_no_grad(matrices, temperature);
     if (graph::backprop_enabled)
-        graph::emplace_back([temperature, out, matrices]() {
+        graph::emplace_back([temperature, out, matrices]() mutable {
             R colwise_sums = 0.0;
 
             for (int i = 0; i < out.size(); i++) {
@@ -747,7 +747,7 @@ Mat<R> MatOps<R>::steep_sigmoid(Mat<R> matrix, R aggressiveness) {
     auto out = Mat<R>::empty_like(matrix);
     MAT(out) = MAT(matrix).unaryExpr(utils::steep_sigmoid_operator<R>(aggressiveness));
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out, aggressiveness](){
+        graph::emplace_back([matrix, out, aggressiveness]() mutable {
             SAFE_GRAD(matrix).noalias() += (aggressiveness * ((MAT(out)).array() - MAT(out).array().square()) * GRAD(out).array()).matrix();
         });
     return out;
@@ -766,7 +766,7 @@ Mat<R> MatOps<R>::sum(Mat<R> matrix) {
     out.w(0) = MAT(matrix).sum();
 
     if (backprop_enabled() && !matrix.constant)
-        emplace_back([matrix, out](){
+        emplace_back([matrix, out]() mutable {
             GRAD(matrix) += out.dw(0);
         });
     return out;
@@ -778,7 +778,7 @@ Mat<R> MatOps<R>::mean(Mat<R> matrix) {
     auto ne = matrix.number_of_elements();
     out.w(0) = MAT(matrix).sum() / ne;
     if (backprop_enabled() && !matrix.constant)
-        emplace_back([matrix, out, ne](){
+        emplace_back([matrix, out, ne]() mutable {
             GRAD(matrix) += out.dw(0) / ne;
         });
 
@@ -802,7 +802,7 @@ Mat<R> MatOps<R>::sigmoid_binary_cross_entropy(Mat<R> matrix, R t) {
     ).matrix();
 
     if (graph::backprop_enabled())
-        graph::emplace_back([matrix, t, out, sigmoided_input](){
+        graph::emplace_back([matrix, t, out, sigmoided_input]() mutable {
             SAFE_GRAD(matrix).array() += (sigmoided_input->array() - t) * GRAD(out).array();
         });
     return out;
@@ -828,7 +828,7 @@ Mat<R> MatOps<R>::binary_cross_entropy(Mat<R> matrix, R t) {
     DEBUG_ASSERT_MAT_NOT_NAN(out);
 
     if (graph::backprop_enabled())
-        graph::emplace_back([matrix, t, out](){
+        graph::emplace_back([matrix, t, out]() mutable {
             auto x = MAT(matrix).array();
             SAFE_GRAD(matrix).array() += (
                 (
@@ -862,7 +862,7 @@ Mat<R> MatOps<R>::cross_entropy(Mat<R> matrix, uint answer_idx) {
     DEBUG_ASSERT_MAT_NOT_NAN(out);
 
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, answer_idx, out](){
+        graph::emplace_back([matrix, answer_idx, out]() mutable {
             auto x = MAT(matrix).array();
             SAFE_GRAD(matrix).row(answer_idx).array() += -(x.row(answer_idx).array() + EPS).inverse() * GRAD(out).array();
         });
@@ -884,7 +884,7 @@ Mat<R> MatOps<R>::cross_entropy(Mat<R> matrix, Mat<R> target) {
     DEBUG_ASSERT_NOT_NAN(MAT(out));
 
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, target, out](){
+        graph::emplace_back([matrix, target, out]() mutable {
             auto x = MAT(matrix).array();
             SAFE_GRAD(matrix).noalias() -= (((x + EPS).inverse()) * MAT(target).array() * GRAD(out).array()).matrix();
             SAFE_GRAD(target).noalias() -= ((x.log()) * GRAD(out).array()).matrix();
@@ -904,7 +904,7 @@ Mat<R> MatOps<R>::softmax_cross_entropy(Mat<R> matrix, uint answer_idx) {
     MAT(out)(0,0) = -std::log(MAT(probs)(answer_idx, 0));
 
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, probs, answer_idx, out](){
+        graph::emplace_back([matrix, probs, answer_idx, out]() mutable {
             SAFE_GRAD(matrix) += MAT(probs) * GRAD(out)(0,0);
             // write gradients into log probabilities
             SAFE_GRAD(matrix)(answer_idx, 0) -= 1 * GRAD(out)(0,0);
@@ -925,7 +925,7 @@ Mat<R> MatOps<R>::softmax_cross_entropy(Mat<R> matrix, Indexing::Index targets) 
     }
 
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, probs, out, targets](){
+        graph::emplace_back([matrix, probs, out, targets]() mutable {
             if (!matrix.constant) {
                 SAFE_GRAD(matrix).noalias() += (MAT(probs).array().rowwise() * GRAD(out).row(0).array()).matrix();
                 for (int i = 0; i < targets.size(); i++) {
@@ -963,7 +963,7 @@ Mat<R> MatOps<R>::log(Mat<R> matrix) {
     auto out = Mat<R>::empty_like(matrix);
     MAT(out) = MAT(matrix).array().log();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out](){
+        graph::emplace_back([matrix, out]() mutable {
             SAFE_GRAD(matrix).noalias() += (
                 (1.0 / MAT(matrix).array()) *
                 GRAD(out).array()
@@ -982,7 +982,7 @@ Mat<R> MatOps<R>::exp(Mat<R> matrix) {
     auto out = Mat<R>::empty_like(matrix);
     MAT(out) = MAT(matrix).array().exp();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out](){
+        graph::emplace_back([matrix, out]() mutable {
             SAFE_GRAD(matrix).noalias() += (MAT(out).array() * GRAD(out).array()).matrix();
         });
     return out;
@@ -1004,7 +1004,7 @@ Mat<R> MatOps<R>::hstack(Mat<R> matrix1, Mat<R> matrix2) {
     MAT(out).block(0,0, matrix1.dims(0), matrix1.dims(1)) = MAT(matrix1);
     MAT(out).block(0,matrix1.dims(1), matrix2.dims(0), matrix2.dims(1)) = MAT(matrix2);
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, matrix2, out]() {
+        graph::emplace_back([matrix1, matrix2, out]() mutable {
             SAFE_GRAD(matrix1).noalias() += GRAD(out).block(0,0, matrix1.dims(0), matrix1.dims(1));
             SAFE_GRAD(matrix2).noalias() += GRAD(out).block(0,matrix1.dims(1), matrix2.dims(0), matrix2.dims(1));
         });
@@ -1050,7 +1050,7 @@ Mat<R> MatOps<R>::hstack(const std::vector<Mat<R>>& matrices) {
         offset += mat.dims(1);
     }
     if (graph::backprop_enabled)
-        graph::emplace_back([matrices, out]() {
+        graph::emplace_back([matrices, out]() mutable {
             int offset = 0;
             for (auto & mat : matrices) {
                 SAFE_GRAD(mat).noalias() += GRAD(out).block(0, offset, mat.dims(0), mat.dims(1));
@@ -1076,7 +1076,7 @@ Mat<R> MatOps<R>::vstack(Mat<R> matrix1, Mat<R> matrix2) {
     MAT(out).block(0,0, matrix1.dims(0), matrix1.dims(1)) = MAT(matrix1);
     MAT(out).block(matrix1.dims(0),0, matrix2.dims(0), matrix2.dims(1)) = MAT(matrix2);
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, matrix2, out]() {
+        graph::emplace_back([matrix1, matrix2, out]() mutable {
             SAFE_GRAD(matrix1).noalias() += GRAD(out).block(0,0, matrix1.dims(0), matrix1.dims(1));
             SAFE_GRAD(matrix2).noalias() += GRAD(out).block(matrix1.dims(0),0, matrix2.dims(0), matrix2.dims(1));
         });
@@ -1120,7 +1120,7 @@ Mat<R> MatOps<R>::vstack(const std::vector<Mat<R>>& matrices) {
         offset += mat.dims(0);
     }
     if (graph::backprop_enabled)
-        graph::emplace_back([matrices, out]() {
+        graph::emplace_back([matrices, out]() mutable {
             int offset = 0;
             for (auto & mat : matrices) {
                 SAFE_GRAD(mat).noalias() += GRAD(out).block(offset,0, mat.dims(0), mat.dims(1));
@@ -1143,7 +1143,7 @@ Mat<R> MatOps<R>::transpose(Mat<R> matrix) {
         false);
     MAT(out) = MAT(matrix).transpose();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out](){
+        graph::emplace_back([matrix, out]() mutable {
             SAFE_GRAD(matrix).noalias() += (GRAD(out)).transpose();
         });
     return out;
@@ -1158,7 +1158,7 @@ Mat<R> MatOps<R>::tanh(Mat<R> matrix) {
     auto out = Mat<R>::empty_like(matrix);
     MAT(out) = MAT(matrix).unaryExpr(utils::tanh_operator<R>());
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out](){
+        graph::emplace_back([matrix, out]() mutable {
             SAFE_GRAD(matrix).noalias() += (MAT(out).unaryExpr(utils::dtanh_operator<R>()).array() * GRAD(out).array()).matrix();
         });
     return out;
@@ -1173,7 +1173,7 @@ Mat<R> MatOps<R>::relu(Mat<R> matrix) {
     auto out = Mat<R>::empty_like(matrix);
     MAT(out) = MAT(matrix).unaryExpr(utils::relu_operator<R>());
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out](){
+        graph::emplace_back([matrix, out]() mutable {
             SAFE_GRAD(matrix).noalias() += (MAT(out).unaryExpr(utils::max_operator<R>()).array() * GRAD(out).array()).matrix();
         });
     return out;
@@ -1188,7 +1188,7 @@ Mat<R> MatOps<R>::abs(Mat<R> matrix) {
     auto out = Mat<R>::empty_like(matrix);
     MAT(out) = MAT(matrix).array().abs().matrix();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out](){
+        graph::emplace_back([matrix, out]() mutable {
             SAFE_GRAD(matrix).noalias() += (MAT(matrix).unaryExpr(utils::sign_operator<R>()).array() * GRAD(out).array()).matrix();
         });
     return out;
@@ -1207,7 +1207,7 @@ Mat<R> MatOps<R>::mul(
     MAT(out) = dot( MAT(matrix1).wrapper(), MAT(matrix2).wrapper() );
 
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, matrix2, out]() {
+        graph::emplace_back([matrix1, matrix2, out]() mutable {
             SAFE_GRAD(matrix1) += dot( GRAD(out).wrapper(),        MAT(matrix2).wrapper().T() );
             SAFE_GRAD(matrix2) += dot( MAT(matrix1).wrapper().T(), GRAD(out).wrapper() );
         });
@@ -1234,7 +1234,7 @@ Mat<R> MatOps<R>::quadratic_form(
         );
         (*left_side_mul) = MAT(left).transpose() * MAT(weights);
         MAT(out) = (*left_side_mul) * MAT(right);
-        graph::emplace_back([left_side_mul, left, weights, right, out](){
+        graph::emplace_back([left_side_mul, left, weights, right, out]() mutable {
             SAFE_GRAD(right).noalias() += (*left_side_mul).transpose() * GRAD(out);
             auto LeftT_dot_weights_grad = GRAD(out) * (MAT(right).transpose());
             SAFE_GRAD(left).noalias() += (
@@ -1266,7 +1266,7 @@ Mat<R> MatOps<R>::mul_with_bias(
             false);
     MAT(out) = ((MAT(matrix1) * MAT(matrix2)).colwise() + MAT(bias).col(0)).matrix();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, matrix2, bias, out]() {
+        graph::emplace_back([matrix1, matrix2, bias, out]() mutable {
             SAFE_GRAD(matrix1).noalias() += (GRAD(out)) * ((MAT(matrix2)).transpose());
             SAFE_GRAD(matrix2).noalias() += MAT(matrix1).transpose() * (GRAD(out));
             SAFE_GRAD(bias).noalias()    += GRAD(out).rowwise().sum().matrix();
@@ -1305,7 +1305,7 @@ Mat<R> MatOps<R>::mul_add_broadcast_mul_with_bias(
           ).colwise() + (MAT(bias) + (MAT(matrix1) * MAT(input_to_1))).col(0)
       ).matrix();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, input_to_1, matrix2, input_to_2, bias, out] () {
+        graph::emplace_back([matrix1, input_to_1, matrix2, input_to_2, bias, out] () mutable {
             // first multiply:
             // broadcasting input means taking outer product here:
             SAFE_GRAD(matrix1) += ((GRAD(out)).rowwise().sum() * ((MAT(input_to_1)).transpose()));
@@ -1368,7 +1368,7 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(const vector<Mat<R>>& matrices) {
     DEBUG_ASSERT_MAT_NOT_NAN(matrices.back());
     MAT(out).colwise() += MAT(matrices.back()).col(0);
     if (graph::backprop_enabled)
-        graph::emplace_back([matrices, out, max_broadcast](){
+        graph::emplace_back([matrices, out, max_broadcast]() mutable {
             auto matrices_ptr = matrices.begin();
             while (matrices_ptr != (matrices.end() - 1)) {
                 if ((matrices_ptr+1)->dims(1) == max_broadcast) {
@@ -1428,7 +1428,7 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(
                   ).colwise() + MAT(bias).col(0)
               ).matrix();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, input_to_1, matrix2, input_to_2, bias, out](){
+        graph::emplace_back([matrix1, input_to_1, matrix2, input_to_2, bias, out]() mutable {
             // first multiply:
             // broadcasting input means taking outer product here:
             SAFE_GRAD(matrix1)               += (GRAD(out) * (MAT(input_to_1)).transpose());
@@ -1462,7 +1462,7 @@ Mat<R> MatOps<R>::rows_pluck(
         MAT(out).col(offset) = MAT(matrix).row(indices[offset]).transpose();
     }
     if (graph::backprop_enabled) {
-        graph::emplace_back([matrix, out, indices](){
+        graph::emplace_back([matrix, out, indices]() mutable {
             auto index_ptr = indices.data();
             for (std::size_t i = 0; i < out.dims(1); ++i) {
                 // for each row do the same operation as for row_pluck:
@@ -1514,7 +1514,7 @@ Mat<R> MatOps<R>::dropout(
     }
 
     if (graph::backprop_enabled) {
-        graph::emplace_back([matrix, out, bool_mat](){
+        graph::emplace_back([matrix, out, bool_mat]() mutable {
             SAFE_GRAD(matrix) += (GRAD(out).array() * (*bool_mat).array()).matrix();
         });
     }
@@ -1562,7 +1562,7 @@ Mat<R> MatOps<R>::dropout_normalized(
     }
 
     if (graph::backprop_enabled) {
-        graph::emplace_back([matrix, out, bool_mat](){
+        graph::emplace_back([matrix, out, bool_mat]() mutable {
             SAFE_GRAD(matrix) += (GRAD(out).array() * (*bool_mat).array()).matrix();
         });
     }
@@ -1632,7 +1632,7 @@ Mat<R> MatOps<R>::fast_dropout(Mat<R> matrix) {
     }
 
     if (graph::backprop_enabled) {
-        graph::emplace_back([matrix, out, randn_mat](){
+        graph::emplace_back([matrix, out, randn_mat]() mutable {
             SAFE_GRAD(matrix) += (GRAD(out).array() * (*randn_mat).array()).matrix();
         });
     }
@@ -1658,7 +1658,7 @@ Mat<R> MatOps<R>::rows_cols_pluck(
         for (int offset = 0; offset < row_indices.size(); ++offset)
             MAT(out)(offset) = MAT(matrix)(row_indices[offset], col_indices[offset]);
     if (graph::backprop_enabled && !matrix.constant) {
-        graph::emplace_back([matrix, out, row_indices, col_indices](){
+        graph::emplace_back([matrix, out, row_indices, col_indices]() mutable {
             auto row_index_ptr = row_indices.data();
             auto col_index_ptr = col_indices.data();
             for (int i = 0; i < out.dims(1); ++i) {
@@ -1683,7 +1683,7 @@ Mat<R> MatOps<R>::row_pluck(
     Mat<R> out (matrix.dims(1), 1, false);
     MAT(out) = MAT(matrix).row(row).transpose();
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out, row]() {
+        graph::emplace_back([matrix, out, row]() mutable {
             SAFE_GRAD(matrix).row(row).noalias() += GRAD(out).col(0).transpose();
         });
     return out;
@@ -1700,7 +1700,7 @@ Mat<R> MatOps<R>::col_pluck(
     Mat<R> out (matrix.dims(0), 1, false);
     MAT(out) = MAT(matrix).col(col);
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out, col]() {
+        graph::emplace_back([matrix, out, col]() mutable {
             SAFE_GRAD(matrix).col(col).noalias() += GRAD(out).col(0).transpose();
         });
     return out;

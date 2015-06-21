@@ -9,8 +9,6 @@
 #include "dali/mat/Mat.h"
 #include "dali/utils.h"
 
-typedef unsigned int dim_t;
-
 template<typename R> class Mat;
 
 namespace Indexing {

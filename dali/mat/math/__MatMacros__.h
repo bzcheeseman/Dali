@@ -6,8 +6,8 @@
 
 #include "dali/mat/math/memory/SynchronizedMemory.h"
 
-#define MAT(matrix) ((matrix).w()->w)
-#define GRAD(X) ((X).dw()->dw)
+#define MAT(matrix) ((matrix).w())
+#define GRAD(X) ((X).dw())
 
 #define SAFE_GRAD(X) if (!(X).constant) GRAD(X)
 

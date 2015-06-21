@@ -8,6 +8,13 @@ using mshadow::Shape2;
 using mshadow::Tensor;
 using mshadow::Copy;
 
+void dali_init() {
+    mshadow::InitTensorEngine<mshadow::cpu>();
+    #ifdef DALI_USE_CUDA
+        mshadow::InitTensorEngine<mshadow::gpu>();
+    #endif
+}
+
 template<typename R, int dimension>
 SynchronizedMemory<R, dimension>::SynchronizedMemory(int n, int d, PreferredDevice _preferred_device) :
 #ifdef DALI_USE_CUDA

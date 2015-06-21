@@ -11,6 +11,7 @@
 #include "dali/math/LazySoftmax.h"
 #include "dali/math/LazyUtils.h"
 #include "dali/math/LazyPluck.h"
+#include "dali/math/LazyDot.h"
 
 template<typename DType, int dimension>
 class TensorInternal;
@@ -265,100 +266,6 @@ class LazyTensor {
     }
 #endif
 
-#ifdef DALI_USE_CUDA
-    template<typename TA, typename TB, typename TC, typename TD, typename DType, int ta, int tb>
-    inline LazyTensor<
-        mshadow::expr::DotExp<TA, TC, false, false, DType>,
-        mshadow::expr::DotExp<TB, TD, false, false, DType>,
-        DType,
-        mshadow::expr::type::kComplex>
-    dot(
-        const LazyTensor<TA, TB, DType, ta> &left,
-        const LazyTensor<TC, TD, DType, tb> &right) {
-        auto cpu_dot = dot(left.left, right.left);
-        auto gpu_dot = dot(left.right, right.right);
-        auto joined_sts = decltype(left.sync_tensors)(left.sync_tensors);
-        joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end());
-        return LazyTensor<
-            decltype(cpu_dot),
-            decltype(gpu_dot),
-            DType,
-            mshadow::expr::type::kComplex>(
-                cpu_dot,
-                gpu_dot,
-                joined_sts
-            );
-    }
-    template<typename TA, typename TB, typename TC, typename TD, typename DType, int ta, int tb>
-    inline LazyTensor<
-        mshadow::expr::DotExp<TA, TC, true, false, DType>,
-        mshadow::expr::DotExp<TB, TD, true, false, DType>,
-        DType,
-        mshadow::expr::type::kComplex>
-    dot(
-        const LazyTensorTransposed<TA, TB, DType, ta> &left,
-        const LazyTensor<TC, TD, DType, tb> &right) {
-        auto cpu_dot = dot(left.left, right.left);
-        auto gpu_dot = dot(left.right, right.right);
-        auto joined_sts = decltype(left.sync_tensors)(left.sync_tensors);
-        joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end());
-        return LazyTensor<
-            decltype(cpu_dot),
-            decltype(gpu_dot),
-            DType,
-            mshadow::expr::type::kComplex>(
-                cpu_dot,
-                gpu_dot,
-                joined_sts
-            );
-    }
-    template<typename TA, typename TB, typename TC, typename TD, typename DType, int ta, int tb>
-    inline LazyTensor<
-        mshadow::expr::DotExp<TA, TC, false, true, DType>,
-        mshadow::expr::DotExp<TB, TD, false, true, DType>,
-        DType,
-        mshadow::expr::type::kComplex>
-    dot(
-        const LazyTensor<TA, TB, DType, ta> &left,
-        const LazyTensorTransposed<TC, TD, DType, tb> &right) {
-        auto cpu_dot = dot(left.left, right.left);
-        auto gpu_dot = dot(left.right, right.right);
-        auto joined_sts = decltype(left.sync_tensors)(left.sync_tensors);
-        joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end());
-        return LazyTensor<
-            decltype(cpu_dot),
-            decltype(gpu_dot),
-            DType,
-            mshadow::expr::type::kComplex>(
-                cpu_dot,
-                gpu_dot,
-                joined_sts
-            );
-    }
-    template<typename TA, typename TB, typename TC, typename TD, typename DType, int ta, int tb>
-    inline LazyTensor<
-        mshadow::expr::DotExp<TA, TC, true, true, DType>,
-        mshadow::expr::DotExp<TB, TD, true, true, DType>,
-        DType,
-        mshadow::expr::type::kComplex>
-    dot(
-        const LazyTensorTransposed<TA, TB, DType, ta> &left,
-        const LazyTensorTransposed<TC, TD, DType, tb> &right) {
-        auto cpu_dot = dot(left.left, right.left);
-        auto gpu_dot = dot(left.right, right.right);
-        auto joined_sts = decltype(left.sync_tensors)(left.sync_tensors);
-        joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end());
-        return LazyTensor<
-            decltype(cpu_dot),
-            decltype(gpu_dot),
-            DType,
-            mshadow::expr::type::kComplex>(
-                cpu_dot,
-                gpu_dot,
-                joined_sts
-            );
-    }
-#endif
 // /*! \brief dot operator def */
 // template<typename TA, typename TB, typename DType>
 // inline DotExp<TA, TB, true, false, DType>

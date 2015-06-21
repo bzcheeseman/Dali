@@ -2,7 +2,7 @@
 #include <vector>
 #include "mshadow/tensor.h"
 #include "dali/mat/Mat.h"
-#include "dali/mat/math/LazyTensor.h"
+#include "dali/mat/math/memory/LazyTensor.h"
 
 using namespace mshadow;
 using namespace mshadow::expr;

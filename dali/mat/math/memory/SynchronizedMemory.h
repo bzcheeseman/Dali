@@ -1,5 +1,5 @@
-#ifndef DALI_MAT_MATH_SYNCHRONIZED_TENSOR_H
-#define DALI_MAT_MATH_SYNCHRONIZED_TENSOR_H
+#ifndef DALI_MAT_MATH_SYNCHRONIZED_MEMORY_H
+#define DALI_MAT_MATH_SYNCHRONIZED_MEMORY_H
 
 #include <functional>
 #include <initializer_list>
@@ -16,9 +16,9 @@
 template<typename R, int dimension>
 class SynchronizedMemory;
 
-template<typename R>
+template<typename R, int dimension>
 bool should_compute_on_gpu(
-        std::initializer_list<std::reference_wrapper<const SynchronizedMemory<R,>>> sts);
+        std::initializer_list<std::reference_wrapper<const SynchronizedMemory<R, dimension>>> sts);
 
 #ifdef DALI_USE_CUDA
     template<typename LeftType, typename RightType, typename DType, int ktype>
@@ -28,15 +28,15 @@ bool should_compute_on_gpu(
     class LazyTensor;
 #endif
 
-template<typename R>
-bool should_compute_on_gpu(const std::vector<std::reference_wrapper<const SynchronizedMemory<R>>>& sts);
+template<typename R, int dimension>
+bool should_compute_on_gpu(const std::vector<std::reference_wrapper<const SynchronizedMemory<R, dimension>>>& sts);
 
 enum PreferredDevice {
     DEVICE_GPU,
     DEVICE_CPU
 };
 
-template<typename R>
+template<typename R, int dimension>
 class SynchronizedMemory {
     private:
         PreferredDevice preferred_device;
@@ -46,7 +46,6 @@ class SynchronizedMemory {
         template<typename SourceType>
         void copy_data_from(SourceType& src);
     public:
-        static const int dimension = 2;
         typedef mshadow::Tensor<mshadow::cpu, dimension, R> cpu_tensor_t;
         mutable cpu_tensor_t mem_cpu;
         const cpu_tensor_t&   cpu_data() const;
@@ -64,8 +63,8 @@ class SynchronizedMemory {
         unsigned int number_of_elements() const;
 
         R sum() const;
-        bool allclose(const SynchronizedMemory<R>& other) const;
-        bool operator==(const SynchronizedMemory<R>& other) const;
+        bool allclose(const SynchronizedMemory<R, dimension>& other, R tol) const;
+        bool operator==(const SynchronizedMemory<R, dimension>& other) const;
 
         mshadow::Shape<dimension> shape() const;
 

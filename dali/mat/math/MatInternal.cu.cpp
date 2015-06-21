@@ -1,7 +1,7 @@
 #include "dali/mat/math/MatInternal.h"
 
 #include "dali/mat/math/__MatMacros__.h"
-#include "dali/mat/math/TensorOps.h"
+#include "dali/mat/math/memory/TensorOps.h"
 
 using std::vector;
 using std::string;
@@ -45,7 +45,7 @@ MatInternal<R>::MatInternal(const MatInternal<R>& m) :
 
 template<typename R>
 MatInternal<R>::~MatInternal() {
-    // SynchronizedTensor handles the destruction.
+    // SynchronizedMemory handles the destruction.
 }
 
 template<typename R>
@@ -130,9 +130,8 @@ GradInternal<R>::GradInternal(const GradInternal<R>& g) :
 
 template<typename R>
 GradInternal<R>::~GradInternal() {
-    // SynchronizedTensor handles the destruction.
+    // SynchronizedMemory handles the destruction.
 }
-
 
 template<typename R>
 GradInternal<R>::operator typename GradInternal<R>::mat_storage_t () {

@@ -4,12 +4,14 @@
 #include <functional>
 #include "dali/utils/core_utils.h"
 
-template<typename R>
-class SynchronizedTensor;
+template<typename R, int dimension>
+class SynchronizedMemory;
 
 template<typename R>
 struct weights {
-    typedef std::function<void(SynchronizedTensor<R>&)> initializer_t;
+    typedef SynchronizedMemory<R,2> sync_t;
+
+    typedef std::function<void(sync_t&)> initializer_t;
 
     static initializer_t empty();
     static initializer_t zeros();

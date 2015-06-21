@@ -6,12 +6,12 @@
 
 #include "mshadow/tensor.h"
 
-#include "dali/mat/math/LazySoftmax.h"
-#include "dali/mat/math/LazyUtils.h"
-#include "dali/mat/math/LazyPluck.h"
+#include "dali/mat/math/memory/LazySoftmax.h"
+#include "dali/mat/math/memory/LazyUtils.h"
+#include "dali/mat/math/memory/LazyPluck.h"
 
-template<typename DType>
-class SynchronizedTensor;
+template<typename DType, int dimension>
+class SynchronizedMemory;
 
 #ifdef DALI_USE_CUDA
     template<typename LeftType, typename RightType, typename DType, int ktype>
@@ -26,7 +26,7 @@ class SynchronizedTensor;
 #endif
 class LazyTensorTransposed {
     public:
-        typedef std::vector<std::reference_wrapper<SynchronizedTensor<DType>>> sync_tensors_t;
+        typedef std::vector<std::reference_wrapper<const SynchronizedMemory<DType,2>>> sync_tensors_t;
         mshadow::expr::TransposeExp<LeftType, DType>              left;
         sync_tensors_t sync_tensors;
 
@@ -58,7 +58,7 @@ class LazyTensorTransposed {
 #endif
 class LazyTensor {
     public:
-        typedef std::vector<std::reference_wrapper<SynchronizedTensor<DType>>> sync_tensors_t;
+        typedef std::vector<std::reference_wrapper<const SynchronizedMemory<DType,2>>> sync_tensors_t;
         LeftType               left;
         sync_tensors_t sync_tensors;
 
@@ -70,7 +70,7 @@ class LazyTensor {
                 const sync_tensors_t& _sync_tensors)
                 : left(_left), right(_right), sync_tensors(_sync_tensors) {}
 
-            LazyTensor(std::reference_wrapper<SynchronizedTensor<DType>> st)
+            LazyTensor(std::reference_wrapper<const SynchronizedMemory<DType,2>> st)
                 : left(st.get().mem_cpu), right(st.get().mem_gpu), sync_tensors({st}) {}
 
             inline LazyTensorTransposed<LeftType, RightType, DType, ktype> T(void) const {
@@ -177,7 +177,7 @@ class LazyTensor {
                 const sync_tensors_t& _sync_tensors)
                 : left(_left), sync_tensors(_sync_tensors) {}
 
-            LazyTensor(std::reference_wrapper<SynchronizedTensor<DType>> st)
+            LazyTensor(std::reference_wrapper<SynchronizedMemory<DType,2>> st)
                 : left(st.get().mem_cpu), sync_tensors({st}) {}
 
             inline LazyTensorTransposed<LeftType, DType, ktype> T(void) const {
@@ -271,7 +271,7 @@ class LazyTensor {
         const LazyTensor<TC, TD, DType, tb> &right) {
         auto cpu_dot = dot(left.left, right.left);
         auto gpu_dot = dot(left.right, right.right);
-        auto joined_sts = std::vector<std::reference_wrapper<SynchronizedTensor<DType>>>(left.sync_tensors);
+        auto joined_sts = decltype(left.sync_tensors)(left.sync_tensors);
         joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end());
         return LazyTensor<
             decltype(cpu_dot),
@@ -294,7 +294,7 @@ class LazyTensor {
         const LazyTensor<TC, TD, DType, tb> &right) {
         auto cpu_dot = dot(left.left, right.left);
         auto gpu_dot = dot(left.right, right.right);
-        auto joined_sts = std::vector<std::reference_wrapper<SynchronizedTensor<DType>>>(left.sync_tensors);
+        auto joined_sts = decltype(left.sync_tensors)(left.sync_tensors);
         joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end());
         return LazyTensor<
             decltype(cpu_dot),
@@ -317,7 +317,7 @@ class LazyTensor {
         const LazyTensorTransposed<TC, TD, DType, tb> &right) {
         auto cpu_dot = dot(left.left, right.left);
         auto gpu_dot = dot(left.right, right.right);
-        auto joined_sts = std::vector<std::reference_wrapper<SynchronizedTensor<DType>>>(left.sync_tensors);
+        auto joined_sts = decltype(left.sync_tensors)(left.sync_tensors);
         joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end());
         return LazyTensor<
             decltype(cpu_dot),
@@ -340,7 +340,7 @@ class LazyTensor {
         const LazyTensorTransposed<TC, TD, DType, tb> &right) {
         auto cpu_dot = dot(left.left, right.left);
         auto gpu_dot = dot(left.right, right.right);
-        auto joined_sts = std::vector<std::reference_wrapper<SynchronizedTensor<DType>>>(left.sync_tensors);
+        auto joined_sts = decltype(left.sync_tensors)(left.sync_tensors);
         joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end());
         return LazyTensor<
             decltype(cpu_dot),
@@ -384,7 +384,7 @@ class LazyTensor {
         const auto& l_gpu = left.right; \
         const auto& r_gpu = right.right; \
         auto res_gpu = l_gpu opsymbol r_gpu; \
-        auto joined_sts = std::vector<std::reference_wrapper<SynchronizedTensor<DType>>>(left.sync_tensors); \
+        auto joined_sts = decltype(left.sync_tensors)(left.sync_tensors); \
         joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end()); \
         return LazyTensor<decltype(res_cpu), decltype(res_gpu), DType, (ta|tb|mshadow::expr::type::kMapper)>(res_cpu, res_gpu, joined_sts); \
     }
@@ -441,7 +441,7 @@ class LazyTensor {
         const auto& l_cpu = left.left; \
         const auto& r_cpu = right.left; \
         auto res_cpu = l_cpu opsymbol r_cpu; \
-        auto joined_sts = std::vector<std::reference_wrapper<SynchronizedTensor<DType>>>(left.sync_tensors); \
+        auto joined_sts = decltype(left.sync_tensors)(left.sync_tensors); \
         joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end()); \
         return LazyTensor<decltype(res_cpu), DType, (ta|tb|mshadow::expr::type::kMapper)>(res_cpu, joined_sts); \
     }

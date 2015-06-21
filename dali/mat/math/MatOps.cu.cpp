@@ -1,7 +1,7 @@
 #include "dali/mat/math/MatOps.h"
 #include "dali/mat/math/__MatMacros__.h"
-#include "dali/mat/math/TensorOps.h"
-#include "dali/mat/math/LazyTensor.h"
+#include "dali/mat/math/memory/TensorOps.h"
+#include "dali/mat/math/memory/LazyTensor.h"
 
 using std::vector;
 using std::string;
@@ -553,9 +553,8 @@ Mat<R> MatOps<R>::elt_inv(Mat<R> matrix) {
 template<typename R>
 Mat<R> MatOps<R>::fill(Mat<R> matrix, R filler) {
     auto out = Mat<R>::empty_like(matrix);
-    DALI_FUNCTION_1_MUT(TensorOps::fill, MAT(out), filler);
+    MAT(out) = filler;
     return out;
-
 }
 
 template<typename R>
@@ -764,16 +763,8 @@ Mat<R> MatOps<R>::sum(Mat<R> matrix) {
     if (matrix.dims(0) == 1 && matrix.dims(1) == 1)
         return matrix;
     Mat<R> out(1,1, weights<R>::empty());
+    out.w(0) = MAT(matrix).sum();
 
-    #ifdef DALI_USE_CUDA
-        if (should_compute_on_gpu({std::ref(MAT(matrix))})) {
-            out.w(0) = TensorOps::sum(MAT(matrix).gpu_data(), matrix.number_of_elements());
-        } else {
-            out.w(0) = TensorOps::sum(MAT(matrix).cpu_data(), matrix.number_of_elements());
-        }
-    #else
-        out.w(0) = TensorOps::sum(MAT(matrix).cpu_data(), matrix.number_of_elements());
-    #endif
     if (backprop_enabled() && !matrix.constant)
         emplace_back([matrix, out](){
             GRAD(matrix) += out.dw(0);
@@ -785,13 +776,10 @@ template<typename R>
 Mat<R> MatOps<R>::mean(Mat<R> matrix) {
     Mat<R> out (1,1, weights<R>::empty());
     auto ne = matrix.number_of_elements();
-    out.w(0) = DALI_FUNCTION_1(TensorOps::sum, MAT(matrix), ne) / ne;
+    out.w(0) = MAT(matrix).sum() / ne;
     if (backprop_enabled() && !matrix.constant)
         emplace_back([matrix, out, ne](){
-            DALI_FUNCTION_1_MUT(TensorOps::add_inplace,
-                                GRAD(matrix),
-                                ne,
-                                out.dw(0) / ne);
+            GRAD(matrix) += out.dw(0) / ne;
         });
 
     return out;
@@ -1825,43 +1813,26 @@ int MatOps<R>::argmax_slice(const Mat<R>& mat, int lower, int upper) {
     #endif
 }
 
-
-
 template<typename R>
 bool MatOps<R>::equals(Mat<R> a, Mat<R> b) {
     // wrong dimensions
     if (a.dims() != b.dims())
         return false;
-    #ifdef DALI_USE_CUDA
-        if (should_compute_on_gpu({std::ref(MAT(a)), std::ref(MAT(b))})) {
-            return TensorOps::equals(MAT(a).gpu_data(), MAT(b).gpu_data(), a.number_of_elements());
-        }
-    #endif
-    return TensorOps::equals(MAT(a).cpu_data(), MAT(b).cpu_data(), a.number_of_elements());
+    return MAT(a) == MAT(b);
 }
 
 template<typename R>
 bool MatOps<R>::allclose(Mat<R> a, Mat<R> b, R tol) {
     if (a.dims() != b.dims())
         return false;
-    #ifdef DALI_USE_CUDA
-        if (should_compute_on_gpu({std::ref(MAT(a)), std::ref(MAT(b))})) {
-            return TensorOps::allclose(MAT(a).gpu_data(), MAT(b).gpu_data(), a.number_of_elements(), tol);
-        }
-    #endif
-    return TensorOps::allclose(MAT(a).cpu_data(), MAT(b).cpu_data(), a.number_of_elements(), tol);
+    return MAT(a).allclose(MAT(b), tol);
 }
 
 template<typename R>
 bool MatOps<R>::grad_allclose(Mat<R> a, Mat<R> b, R tol) {
     if (a.dims() != b.dims())
         return false;
-    #ifdef DALI_USE_CUDA
-        if (should_compute_on_gpu({std::ref(MAT(a)), std::ref(MAT(b))})) {
-            return TensorOps::allclose(GRAD(a).gpu_data(), GRAD(b).gpu_data(), a.number_of_elements(), tol);
-        }
-    #endif
-    return TensorOps::allclose(GRAD(a).cpu_data(), GRAD(b).cpu_data(), a.number_of_elements(), tol);
+    return GRAD(a).allclose(GRAD(b), tol);
 }
 
 

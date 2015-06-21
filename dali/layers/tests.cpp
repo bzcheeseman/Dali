@@ -1,5 +1,6 @@
 #include <chrono>
 #include <vector>
+#include <iomanip>
 #include <gtest/gtest.h>
 
 #include "dali/test_utils.h"
@@ -40,15 +41,39 @@ AssertionResult buffer_equals (T* buffer1, T* buffer2, uint size1, uint size2) {
     return AssertionSuccess();
 }
 
+template<typename T>
+AssertionResult buffer_is_nonzero(T* buffer, uint size) {
+    for (int i=0; i<size; ++i) {
+        if (std::abs(buffer[i]) > 1e-5) {
+            return AssertionSuccess();
+        }
+    }
+    return AssertionFailure() << "buffer is all zeros";
+}
+
+template<typename T>
+void print_buffer(T* buffer, int num) {
+    std::cout << "[";
+    for (uint i = 0; i < num; ++i) {
+        std::cout << std::setw( 7 ) // keep 7 digits
+                  << std::setprecision( 3 ) // use 3 decimals
+                  << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
+                  << buffer[i];
+        if (i != num - 1) std::cout << ", ";
+    }
+    std::cout << "]" << std::endl;
+}
+
 template<typename T, typename J>
 AssertionResult buffer_almost_equals(T* buffer1, T* buffer2, uint size1, uint size2, J eps) {
     if (size1 != size2)
         return AssertionFailure() << "Sizes differ first matrix is " << size1 << ", while second is " << size2;
     for (int i=0; i<size1; ++i) {
-        if (abs(buffer1[i] - buffer2[i]) > eps)
+        if (std::abs(buffer1[i] - buffer2[i]) > eps) {
             return AssertionFailure() << "Difference in datum " << i << " first tensor has "
                                       << buffer1[i] << ", while second has " << buffer2[i]
                                       << "(tolerance = " << eps << ")";
+        }
     }
     return AssertionSuccess();
 }
@@ -114,12 +139,12 @@ void expect_args_remain_on_gpu(
     }
 }
 
-
 bool gradient_same(
         std::function<Mat<R>(std::vector<Mat<R>>&)> functor,
         std::vector<Mat<R>> arguments,
         R tolerance    = 1e-5,
-        R grad_epsilon = DEFAULT_GRAD_EPS) {
+        R grad_epsilon = DEFAULT_GRAD_EPS,
+        bool fail_on_zero_gradient = false) {
 
     auto error = functor(arguments).sum();
     error.grad();
@@ -135,9 +160,9 @@ bool gradient_same(
         for (int i = 0; i < arg.number_of_elements(); i++) {
             const auto prev_val = arg.w(i);
             arg.w(i)            = prev_val +  grad_epsilon;
-            auto obj_positive   = functor(arguments).sum().w(0);
+            auto obj_positive   = functor(arguments).w().sum();
             arg.w(i)            = prev_val - grad_epsilon;
-            auto obj_negative   = functor(arguments).sum().w(0);
+            auto obj_negative   = functor(arguments).w().sum();
             arg.w(i)            = prev_val;
             Arg_prime[i]        = (obj_positive - obj_negative) / (2.0 * grad_epsilon);
         }
@@ -147,6 +172,14 @@ bool gradient_same(
                 arg.number_of_elements(),
                 arg.number_of_elements(),
                 tolerance);
+        if (fail_on_zero_gradient) {
+            auto is_nonzero = buffer_is_nonzero((R*)Arg_prime, arg.number_of_elements());
+            print_buffer((R*)Arg_prime, std::min(arg.number_of_elements(), (uint)12));
+            print_buffer((R*)arg.dw().data(), std::min(arg.number_of_elements(), (uint)12));
+            if (((bool)is_nonzero) == false) {
+                return false;
+            }
+        }
         // AssertionResult is a GoogleTest magic and it's castable to bool.
         worked_out = worked_out && (bool)did_work_out;
         if (!did_work_out) {
@@ -155,22 +188,15 @@ bool gradient_same(
                       << std::setprecision( 3 ) // use 3 decimals
                       << std::setfill( ' ' ); // pad values with blanks this->w(i,j)
             std::cout << "-----------\nArg_prime:" << std::endl;
-            for (uint i = 0; i < std::min(arg.number_of_elements(), (uint)12); ++i) {
-                std::cout << Arg_prime[i] << " ";
-            }
-            std::cout << std::endl;
+            print_buffer((R*)Arg_prime, std::min(arg.number_of_elements(), (uint)12));
             std::cout << "-----------\narg.dw():" << std::endl;
-            for (uint i = 0; i < std::min(arg.number_of_elements(), (uint)12); ++i) {
-                std::cout << arg.dw(i) << " ";
-            }
-            std::cout << std::endl;
+            print_buffer((R*)arg.dw().data(), std::min(arg.number_of_elements(), (uint)12));
             if (arg.name != nullptr) {
                 std::cout << "arg.name = " << *arg.name << std::endl;
             }
             std::cout << "-----------" << std::endl;
         }
     }
-
     return worked_out;
 }
 
@@ -228,80 +254,77 @@ TEST_F(MatrixTests, identity_init) {
     }
 }
 
+TEST_F(MatrixTests, recursive_sum) {
+    auto functor = [](vector<Mat<R>>& Xs)-> Mat<R> {
+        auto doubled = Xs[0] + Xs[0];
+        return doubled.sum();
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, DEFAULT_GRAD_EPS, true));
+    }
+}
 
-// TEST_F(MatrixTests, recursive_sum) {
-//     auto functor = [](vector<Mat<R>>& Xs)-> Mat<R> {
-//         auto doubled = Xs[0] + Xs[0];
-//         return doubled.sum();
-//     };
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
-//         ASSERT_TRUE(gradient_same(functor, {A}, 1e-2));
-//     }
-// }
+TEST_F(MatrixTests, inplace_sum) {
 
-// TEST_F(MatrixTests, inplace_sum) {
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(3, 4, weights<R>::uniform(2.0));
+        auto B = Mat<R>(3, 4, weights<R>::uniform(2.0));
 
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(3, 4, weights<R>::uniform(2.0));
-//         auto B = Mat<R>(3, 4, weights<R>::uniform(2.0));
+        auto functor = [&A, &B](vector<Mat<R>>& Xs)-> Mat<R> {
+            auto A_temp = A;
+            auto B_temp = B;
+            A_temp += B_temp;
+            return A_temp;
+        };
+        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-2, DEFAULT_GRAD_EPS, true));
+    }
+}
 
-//         auto functor = [&A, &B](vector<Mat<R>>& Xs)-> Mat<R> {
-//             auto A_temp = A;
-//             auto B_temp = B;
-//             A_temp += B_temp;
-//             return A_temp;
-//         };
-//         ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-2));
-//     }
-// }
+TEST_F(MatrixTests, inplace_substract) {
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(3, 4, weights<R>::uniform(2.0));
+        auto B = Mat<R>(3, 4, weights<R>::uniform(2.0));
 
-// TEST_F(MatrixTests, inplace_substract) {
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(3, 4, weights<R>::uniform(2.0));
-//         auto B = Mat<R>(3, 4, weights<R>::uniform(2.0));
+        auto functor = [&A, &B](vector<Mat<R>>& Xs)-> Mat<R> {
+            auto A_temp = A;
+            auto B_temp = B;
+            A_temp -= B_temp;
+            return A_temp;
+        };
+        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-5, DEFAULT_GRAD_EPS, true));
+    }
+}
 
-//         auto functor = [&A, &B](vector<Mat<R>>& Xs)-> Mat<R> {
-//             auto A_temp = A;
-//             auto B_temp = B;
-//             A_temp -= B_temp;
-//             return A_temp;
-//         };
-//         ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-2));
-//     }
-// }
+TEST_F(MatrixTests, inplace_divide) {
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(3, 4, weights<R>::uniform(2.0));
+        auto B = Mat<R>(3, 4, weights<R>::uniform(2.0));
 
-// TEST_F(MatrixTests, inplace_divide) {
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(3, 4, weights<R>::uniform(2.0));
-//         auto B = Mat<R>(3, 4, weights<R>::uniform(2.0));
+        auto functor = [&A, &B](vector<Mat<R>>& Xs)-> Mat<R> {
+            auto A_temp = A;
+            auto B_temp = B;
+            A_temp /= B_temp;
+            return A_temp;
+        };
+        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-5, DEFAULT_GRAD_EPS, true));
+    }
+}
 
-//         auto functor = [&A, &B](vector<Mat<R>>& Xs)-> Mat<R> {
-//             auto A_temp = A;
-//             auto B_temp = B;
-//             A_temp /= B_temp;
-//             return A_temp;
-//         };
-//         ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-2));
-//     }
-// }
+TEST_F(MatrixTests, inplace_multiply) {
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(3, 4, weights<R>::uniform(2.0));
+        auto B = Mat<R>(3, 4, weights<R>::uniform(2.0));
 
-// TEST_F(MatrixTests, inplace_multiply) {
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(3, 4, weights<R>::uniform(2.0));
-//         auto B = Mat<R>(3, 4, weights<R>::uniform(2.0));
-
-//         auto functor = [&A, &B](vector<Mat<R>>& Xs)-> Mat<R> {
-//             auto A_temp = A;
-//             auto B_temp = B;
-//             A_temp *= B_temp;
-//             return A_temp;
-//         };
-//         ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-2));
-//     }
-// }
-
-
+        auto functor = [&A, &B](vector<Mat<R>>& Xs)-> Mat<R> {
+            auto A_temp = A;
+            auto B_temp = B;
+            A_temp *= B_temp;
+            return A_temp;
+        };
+        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-5, DEFAULT_GRAD_EPS, true));
+    }
+}
 
 TEST_F(MatrixTests, addition_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
@@ -310,7 +333,7 @@ TEST_F(MatrixTests, addition_gradient) {
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
         auto B = Mat<R>(10, 20,  weights<R>::uniform(0.5));
-        ASSERT_TRUE(gradient_same(functor, {A, B}));
+        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-5, DEFAULT_GRAD_EPS, true));
     }
 }
 
@@ -344,7 +367,7 @@ TEST_F(MatrixTests, square_gradient) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(0.5, 5.0));
-        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-5));
     }
 }
 

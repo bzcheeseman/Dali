@@ -108,7 +108,6 @@ template<typename R>
 Mat<R> MatOps<R>::eltmul(
         Mat<R> matrix1,
         Mat<R> matrix2) {
-    #ifndef DONT_COMPILE
     if (matrix1.dims(1) != matrix2.dims(1) && (matrix1.dims(1) == 1 || matrix2.dims(1) == 1)) {
         if (matrix1.dims(1) == 1) {
             return eltmul_broadcast(matrix2, matrix1);
@@ -118,16 +117,13 @@ Mat<R> MatOps<R>::eltmul(
     assert2(matrix1.dims(0) == matrix2.dims(0) && matrix1.dims(1) == matrix2.dims(1),
             "Matrices cannot be element-wise multiplied, they do not have the same dimensions.");
     auto out = Mat<R>::empty_like(matrix1);
-    MAT(out) = (MAT(matrix1).array() * MAT(matrix2).array()).matrix();
+    MAT(out) = MAT(matrix1).wrapper() * MAT(matrix2).wrapper();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() mutable {
-            SAFE_GRAD(matrix1).noalias() += ((MAT(matrix2)).array() * (GRAD(out)).array()).matrix();
-            SAFE_GRAD(matrix2).noalias() += ((MAT(matrix1)).array() * (GRAD(out)).array()).matrix();
+            //SAFE_GRAD(matrix1).noalias() += ((MAT(matrix2)).array() * (GRAD(out)).array()).matrix();
+            //SAFE_GRAD(matrix2).noalias() += ((MAT(matrix1)).array() * (GRAD(out)).array()).matrix();
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>

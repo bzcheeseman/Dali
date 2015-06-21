@@ -308,11 +308,7 @@ namespace visualizable {
             };
         }
     }
-
-
 }
-
-
 
 #ifdef DALI_USE_VISUALIZER
     bool Visualizer::ensure_connection() {

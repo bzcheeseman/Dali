@@ -9,7 +9,6 @@ using std::make_shared;
 
 const vector<dim_t> mat_missing_dimensions({0,0});
 
-
 /* Mat */
 // this does not need to initialize anything once we get rid of w and dw.
 template<typename R>

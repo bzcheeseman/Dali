@@ -83,6 +83,26 @@ int main() {
     std::cout << "D=" << std::endl;
     D.print();
 
+    Mat<R> lhs(1, 3);
+
+    lhs.w(0) = 1;
+    lhs.w(1) = 2;
+    lhs.w(2) = 3;
+
+    Mat<R> rhs(1, 3);
+
+    rhs.w(0) = 4;
+    rhs.w(1) = 5;
+    rhs.w(2) = 6;
+
+    Mat<R> out3(1,1);
+
+    out3.w()->w = dot(lhs.w()->w.wrapper(), rhs.w()->w.wrapper().T());
+
+    std::cout << "out3=" << std::endl;
+    out3.print();
+
+
     mshadow::ShutdownTensorEngine<mshadow::gpu>();
 
 }

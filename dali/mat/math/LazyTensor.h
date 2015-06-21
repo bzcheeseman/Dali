@@ -260,6 +260,119 @@ class LazyTensor {
 #endif
 
 #ifdef DALI_USE_CUDA
+    template<typename TA, typename TB, typename TC, typename TD, typename DType, int ta, int tb>
+    inline LazyTensor<
+        mshadow::expr::DotExp<TA, TC, false, false, DType>,
+        mshadow::expr::DotExp<TB, TD, false, false, DType>,
+        DType,
+        mshadow::expr::type::kComplex>
+    dot(
+        const LazyTensor<TA, TB, DType, ta> &left,
+        const LazyTensor<TC, TD, DType, tb> &right) {
+        auto cpu_dot = dot(left.left, right.left);
+        auto gpu_dot = dot(left.right, right.right);
+        auto joined_sts = std::vector<std::reference_wrapper<SynchronizedTensor<DType>>>(left.sync_tensors);
+        joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end());
+        return LazyTensor<
+            decltype(cpu_dot),
+            decltype(gpu_dot),
+            DType,
+            mshadow::expr::type::kComplex>(
+                cpu_dot,
+                gpu_dot,
+                joined_sts
+            );
+    }
+    template<typename TA, typename TB, typename TC, typename TD, typename DType, int ta, int tb>
+    inline LazyTensor<
+        mshadow::expr::DotExp<TA, TC, true, false, DType>,
+        mshadow::expr::DotExp<TB, TD, true, false, DType>,
+        DType,
+        mshadow::expr::type::kComplex>
+    dot(
+        const LazyTensorTransposed<TA, TB, DType, ta> &left,
+        const LazyTensor<TC, TD, DType, tb> &right) {
+        auto cpu_dot = dot(left.left, right.left);
+        auto gpu_dot = dot(left.right, right.right);
+        auto joined_sts = std::vector<std::reference_wrapper<SynchronizedTensor<DType>>>(left.sync_tensors);
+        joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end());
+        return LazyTensor<
+            decltype(cpu_dot),
+            decltype(gpu_dot),
+            DType,
+            mshadow::expr::type::kComplex>(
+                cpu_dot,
+                gpu_dot,
+                joined_sts
+            );
+    }
+    template<typename TA, typename TB, typename TC, typename TD, typename DType, int ta, int tb>
+    inline LazyTensor<
+        mshadow::expr::DotExp<TA, TC, false, true, DType>,
+        mshadow::expr::DotExp<TB, TD, false, true, DType>,
+        DType,
+        mshadow::expr::type::kComplex>
+    dot(
+        const LazyTensor<TA, TB, DType, ta> &left,
+        const LazyTensorTransposed<TC, TD, DType, tb> &right) {
+        auto cpu_dot = dot(left.left, right.left);
+        auto gpu_dot = dot(left.right, right.right);
+        auto joined_sts = std::vector<std::reference_wrapper<SynchronizedTensor<DType>>>(left.sync_tensors);
+        joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end());
+        return LazyTensor<
+            decltype(cpu_dot),
+            decltype(gpu_dot),
+            DType,
+            mshadow::expr::type::kComplex>(
+                cpu_dot,
+                gpu_dot,
+                joined_sts
+            );
+    }
+    template<typename TA, typename TB, typename TC, typename TD, typename DType, int ta, int tb>
+    inline LazyTensor<
+        mshadow::expr::DotExp<TA, TC, true, true, DType>,
+        mshadow::expr::DotExp<TB, TD, true, true, DType>,
+        DType,
+        mshadow::expr::type::kComplex>
+    dot(
+        const LazyTensorTransposed<TA, TB, DType, ta> &left,
+        const LazyTensorTransposed<TC, TD, DType, tb> &right) {
+        auto cpu_dot = dot(left.left, right.left);
+        auto gpu_dot = dot(left.right, right.right);
+        auto joined_sts = std::vector<std::reference_wrapper<SynchronizedTensor<DType>>>(left.sync_tensors);
+        joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end());
+        return LazyTensor<
+            decltype(cpu_dot),
+            decltype(gpu_dot),
+            DType,
+            mshadow::expr::type::kComplex>(
+                cpu_dot,
+                gpu_dot,
+                joined_sts
+            );
+    }
+#endif
+// /*! \brief dot operator def */
+// template<typename TA, typename TB, typename DType>
+// inline DotExp<TA, TB, true, false, DType>
+// dot(const TransposeExp<TA, DType> &lhs, const RValueExp<TB, DType> &rhs) {
+//   return DotExp<TA, TB, true, false, DType>(lhs.exp, rhs.self(), 1.0f);
+// }
+// /*! \brief dot operator def */
+// template<typename TA, typename TB, typename DType>
+// inline DotExp<TA, TB, false, true, DType>
+// dot(const RValueExp<TA, DType> &lhs, const TransposeExp<TB, DType> &rhs) {
+//   return DotExp<TA, TB, false, true, DType>(lhs.self(), rhs.exp, 1.0f);
+// }
+// /*! \brief dot operator def */
+// template<typename TA, typename TB, typename DType>
+// inline DotExp<TA, TB, true, true, DType>
+// dot(const TransposeExp<TA, DType> &lhs, const TransposeExp<TB, DType> &rhs) {
+//   return DotExp<TA, TB, true, true, DType>(lhs.exp, rhs.exp, 1.0f);
+// }
+
+#ifdef DALI_USE_CUDA
     #define BINARY_OP(opname, opsymbol) \
     template<template <typename, typename, typename, int> class wrapper_t1, template <typename, typename, typename, int> class wrapper_t2, typename TA, typename TB, typename TC, typename TD, typename DType, int ta, int tb> \
     LazyTensor< mshadow::expr::BinaryMapExp<opname, TA, TC, DType, (ta|tb|mshadow::expr::type::kMapper)>, mshadow::expr::BinaryMapExp<opname, TB, TD, DType, (ta|tb|mshadow::expr::type::kMapper)>, DType, (ta|tb|mshadow::expr::type::kMapper)> operator opsymbol( \

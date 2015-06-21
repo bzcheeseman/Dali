@@ -304,7 +304,9 @@ class LazyTensor {
 
     #define BINARY_SCALAR_OP(opname, opsymbol) \
     template<template <typename, typename, typename, int> class wrapper_t1, typename TA, typename TB, typename DType, int ta> \
-    LazyTensor< mshadow::expr::BinaryMapExp<opname, TA, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, mshadow::expr::BinaryMapExp<opname, TB, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, DType, (ta|mshadow::expr::type::kMapper)> operator opsymbol( \
+    LazyTensor< mshadow::expr::BinaryMapExp<opname, TA, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, \
+                mshadow::expr::BinaryMapExp<opname, TB, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, \
+                DType, (ta|mshadow::expr::type::kMapper)> operator opsymbol( \
             const wrapper_t1<TA, TB, DType, ta> &left, \
             const mshadow::expr::ScalarExp<DType> &right) { \
         const auto& l_cpu = left.left; \
@@ -315,7 +317,9 @@ class LazyTensor {
     } \
     \
     template<template <typename, typename, typename, int> class wrapper_t1, typename TA, typename TB, typename DType, int ta> \
-    LazyTensor< mshadow::expr::BinaryMapExp<opname, TA, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, mshadow::expr::BinaryMapExp<opname, TB, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, DType, (ta|mshadow::expr::type::kMapper)> operator opsymbol( \
+    LazyTensor< mshadow::expr::BinaryMapExp<opname, TA, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, \
+                mshadow::expr::BinaryMapExp<opname, TB, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, \
+                DType, (ta|mshadow::expr::type::kMapper)> operator opsymbol( \
             const mshadow::expr::ScalarExp<DType> &left, \
             const wrapper_t1<TA, TB, DType, ta> &right) { \
         const auto& l_cpu = right.left; \
@@ -325,9 +329,12 @@ class LazyTensor {
         return LazyTensor<decltype(res_cpu), decltype(res_gpu), DType, (ta|mshadow::expr::type::kMapper)>(res_cpu, res_gpu, left.sync_tensors); \
     } \
     template<template <typename, typename, typename, int> class wrapper_t1, typename TA, typename TB, typename DType, int ta> \
-    LazyTensor< mshadow::expr::BinaryMapExp<opname, TA, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, mshadow::expr::BinaryMapExp<opname, TB, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, DType, (ta|mshadow::expr::type::kMapper)> operator opsymbol( \
+    auto operator opsymbol( \
             const wrapper_t1<TA, TB, DType, ta> &left, \
-            DType right) { \
+            DType right) -> LazyTensor<decltype(left.left opsymbol right), \
+                                       decltype(left.right opsymbol right), \
+                                       DType, \
+                                       (ta|mshadow::expr::type::kMapper)> { \
         const auto& l_cpu = left.left; \
         auto res_cpu = l_cpu opsymbol mshadow::expr::ScalarExp<DType>(right); \
         const auto& l_gpu = left.right; \
@@ -336,7 +343,9 @@ class LazyTensor {
     } \
     \
     template<template <typename, typename, typename, int> class wrapper_t1, typename TA, typename TB, typename DType, int ta> \
-    LazyTensor< mshadow::expr::BinaryMapExp<opname, TA, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, mshadow::expr::BinaryMapExp<opname, TB, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, DType, (ta|mshadow::expr::type::kMapper)> operator opsymbol( \
+    LazyTensor< mshadow::expr::BinaryMapExp<opname, TA, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, \
+                mshadow::expr::BinaryMapExp<opname, TB, mshadow::expr::ScalarExp<DType>, DType, (ta|mshadow::expr::type::kMapper)>, \
+                DType, (ta|mshadow::expr::type::kMapper)> operator opsymbol( \
             DType left, \
             const wrapper_t1<TA, TB, DType, ta> &right) { \
         const auto& l_cpu = right.left; \

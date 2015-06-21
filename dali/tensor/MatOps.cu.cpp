@@ -501,7 +501,8 @@ Mat<R> MatOps<R>::square(Mat<R> matrix) {
 
     if (graph::backprop_enabled && !matrix.constant)
         graph::emplace_back([matrix, out]() mutable {
-            GRAD(matrix) += MAT(matrix).wrapper() * GRAD(out).wrapper() * (R) 2.0;
+            GRAD(matrix) += MAT(matrix).wrapper() * GRAD(out).wrapper() * (R)2.0;
+                //mshadow::expr::ScalarExp<R>((R) 2.0);
         });
     return out;
 }

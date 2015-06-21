@@ -24,7 +24,7 @@ namespace dali_expr {
 namespace mshadow {
 namespace expr {
     template<typename SrcExp, typename DType, int dstdim>
-    struct mshadow::expr::Plan<dali_expr::PluckExpression<SrcExp, DType, dstdim>, DType> {
+    struct Plan<dali_expr::PluckExpression<SrcExp, DType, dstdim>, DType> {
         public:
             explicit Plan(const dali_expr::PluckExpression<SrcExp, DType, dstdim> &e)
                 : src_(MakePlan(e.src_)) {}

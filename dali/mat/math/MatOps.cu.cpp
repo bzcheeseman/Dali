@@ -1209,24 +1209,12 @@ Mat<R> MatOps<R>::mul(
     assert2(matrix1.dims(1) == matrix2.dims(0), "matrix product dimensions misaligned.");
     Mat<R> out (matrix1.dims(0), matrix2.dims(1), weights<R>::empty());
 
-    DALI_FUNCTION_3_MUT(TensorOps::dot, MAT(matrix1), MAT(matrix2), MAT(out),
-                                        NO_TRANSPOSE, NO_TRANSPOSE, OVERWRITE);
+    MAT(out) = dot( MAT(matrix1).wrapper(), MAT(matrix2).wrapper() );
 
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
-            if (!matrix1.constant) {
-
-
-                // matrix1.g += out.g <dot> matrix2.T
-                DALI_FUNCTION_3_MUT(TensorOps::dot, GRAD(out),    MAT(matrix2), GRAD(matrix1),
-                                                    NO_TRANSPOSE, TRANSPOSE,    ADD_TO_EXISTING);
-            }
-            if (!matrix2.constant) {
-                // matrix2.g += matrix1.T <dot> out.g
-                DALI_FUNCTION_3_MUT(TensorOps::dot, MAT(matrix1), GRAD(out),       GRAD(matrix2),
-                                                    TRANSPOSE,     NO_TRANSPOSE,    ADD_TO_EXISTING);
-
-            }
+            SAFE_GRAD(matrix1) += dot( GRAD(out).wrapper(),        MAT(matrix2).wrapper().T() );
+            SAFE_GRAD(matrix2) += dot( MAT(matrix1).wrapper().T(), GRAD(out).wrapper() );
         });
     return out;
 }

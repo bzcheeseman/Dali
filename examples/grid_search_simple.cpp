@@ -2,7 +2,7 @@
 #include <iostream>
 #include <memory>
 
-#include "dali/mat/model.h"
+#include "dali/layer/model.h"
 #include "dali/utils/configuration.h"
 #include "dali/utils/grid_search.h"
 #include "dali/utils/core_utils.h"

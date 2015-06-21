@@ -4,8 +4,9 @@
 #include <algorithm>
 #include <functional>
 #include <vector>
-#include <dali/mat/Mat.h>
-#include <dali/utils/core_utils.h>
+
+#include "dali/tensor/Mat.h"
+#include "dali/utils/core_utils.h"
 
 namespace beam_search {
     template<typename REAL_t,typename state_t>

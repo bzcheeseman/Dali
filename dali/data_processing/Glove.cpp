@@ -1,5 +1,5 @@
 #include "dali/data_processing/Glove.h"
-#include "dali/mat/math/__MatMacros__.h"
+#include "dali/tensor/__MatMacros__.h"
 
 using std::string;
 using utils::Vocab;

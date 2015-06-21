@@ -4,9 +4,9 @@
 #include <initializer_list>
 #include <vector>
 #include <memory>
-#include "dali/mat/Mat.h"
-#include "dali/mat/Tape.h"
-#include "dali/mat/Mat.h"
+#include "dali/tensor/Mat.h"
+#include "dali/tensor/Tape.h"
+#include "dali/tensor/Mat.h"
 #include "dali/utils.h"
 
 template<typename R> class Mat;

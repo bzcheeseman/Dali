@@ -2,7 +2,7 @@
 #define SEQUENCE_PROBABILITY_MAT_H
 
 #include <vector>
-#include "dali/mat/math/__MatMacros__.h"
+#include "dali/tensor/__MatMacros__.h"
 
 namespace sequence_probability {
 

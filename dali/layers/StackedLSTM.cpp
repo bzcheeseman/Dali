@@ -1,4 +1,4 @@
-#include "dali/mat/LSTM.h"
+#include "dali/layers/LSTM.h"
 
 using std::vector;
 using utils::assert2;

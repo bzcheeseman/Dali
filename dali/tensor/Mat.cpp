@@ -1,5 +1,5 @@
-#include "dali/mat/Mat.h"
-#include "dali/mat/Index.h"
+#include "dali/tensor/Mat.h"
+#include "dali/tensor/Index.h"
 
 using std::vector;
 using std::string;

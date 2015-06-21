@@ -14,7 +14,7 @@
 #include "dali/models/StackedModel.h"
 #include "dali/models/StackedGatedModel.h"
 #include "dali/visualizer/visualizer.h"
-#include "dali/mat/math/__MatMacros__.h"
+#include "dali/tensor/__MatMacros__.h"
 
 using std::vector;
 using std::make_shared;

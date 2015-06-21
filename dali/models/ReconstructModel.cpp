@@ -1,5 +1,5 @@
 #include "dali/models/ReconstructModel.h"
-#include "dali/mat/Index.h"
+#include "dali/tensor/Index.h"
 
 using std::string;
 using std::stringstream;

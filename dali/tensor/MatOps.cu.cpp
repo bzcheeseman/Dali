@@ -1,7 +1,7 @@
-#include "dali/mat/math/MatOps.h"
-#include "dali/mat/math/__MatMacros__.h"
-#include "dali/mat/math/memory/TensorOps.h"
-#include "dali/mat/math/memory/LazyTensor.h"
+#include "dali/tensor/MatOps.h"
+#include "dali/tensor/__MatMacros__.h"
+#include "dali/math/TensorOps.h"
+#include "dali/math/LazyTensor.h"
 
 using std::vector;
 using std::string;

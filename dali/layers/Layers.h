@@ -3,8 +3,8 @@
 
 #include <initializer_list>
 
-#include "dali/mat/Mat.h"
-#include "dali/mat/math/MatOps.h"
+#include "dali/tensor/Mat.h"
+#include "dali/tensor/MatOps.h"
 
 template<typename R>
 class AbstractLayer {

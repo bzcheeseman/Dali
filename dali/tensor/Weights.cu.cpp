@@ -1,6 +1,6 @@
-#include "dali/mat/math/Weights.h"
-#include "dali/mat/math/memory/TensorOps.h"
-#include "dali/mat/math/memory/TensorInternal.h"
+#include "dali/tensor/Weights.h"
+#include "dali/math/TensorOps.h"
+#include "dali/math/TensorInternal.h"
 
 template<typename R>
 typename weights<R>::initializer_t weights<R>::empty() {

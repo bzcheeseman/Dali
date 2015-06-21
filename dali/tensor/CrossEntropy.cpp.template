@@ -1,7 +1,7 @@
 
 #include "CrossEntropy.h"
 
-#include "dali/mat/math/__MatMacros__.h"
+#include "dali/tensor/__MatMacros__.h"
 
 template<typename Z, typename M>
 Z masked_cross_entropy(Mat<Z> logprobs,

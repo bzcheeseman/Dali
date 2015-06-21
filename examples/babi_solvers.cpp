@@ -8,7 +8,7 @@
 #include "dali/data_processing/babi.h"
 #include "dali/core.h"
 #include "dali/utils.h"
-#include "dali/mat/model.h"
+#include "dali/tensormodel.h"
 #include "dali/execution/BeamSearch.h"
 #include "dali/visualizer/visualizer.h"
 

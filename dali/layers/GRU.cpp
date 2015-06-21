@@ -1,4 +1,4 @@
-#include "dali/mat/GRU.h"
+#include "dali/layers/GRU.h"
 
 using std::vector;
 

@@ -6,9 +6,9 @@
 
 #include "mshadow/tensor.h"
 
-#include "dali/mat/math/memory/LazySoftmax.h"
-#include "dali/mat/math/memory/LazyUtils.h"
-#include "dali/mat/math/memory/LazyPluck.h"
+#include "dali/math/LazySoftmax.h"
+#include "dali/math/LazyUtils.h"
+#include "dali/math/LazyPluck.h"
 
 template<typename DType, int dimension>
 class TensorInternal;

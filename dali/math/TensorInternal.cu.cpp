@@ -1,6 +1,6 @@
-#include "dali/mat/math/memory/TensorInternal.h"
-#include "dali/mat/math/memory/TensorOps.h"
-#include "dali/mat/math/memory/LazyTensor.h"
+#include "dali/math/TensorInternal.h"
+#include "dali/math/TensorOps.h"
+#include "dali/math/LazyTensor.h"
 
 template<typename R, int dimension>
 R TensorInternal<R, dimension>::sum() const {

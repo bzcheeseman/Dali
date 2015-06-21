@@ -1,6 +1,6 @@
-#include "dali/mat/math/memory/SynchronizedMemory.h"
-#include "dali/mat/math/memory/LazyTensor.h"
-#include "dali/mat/math/memory/TensorOps.h"
+#include "dali/math/SynchronizedMemory.h"
+#include "dali/math/LazyTensor.h"
+#include "dali/math/TensorOps.h"
 
 using mshadow::AllocSpace;
 using mshadow::FreeSpace;

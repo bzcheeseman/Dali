@@ -1,8 +1,8 @@
 #include <iostream>
 #include <vector>
 #include "mshadow/tensor.h"
-#include "dali/mat/Mat.h"
-#include "dali/mat/math/memory/LazyTensor.h"
+#include "dali/tensor/Mat.h"
+#include "dali/math/LazyTensor.h"
 
 using namespace mshadow;
 using namespace mshadow::expr;

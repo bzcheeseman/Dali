@@ -1,4 +1,5 @@
-#include "Layers.h"
+#include "dali/layers/Layers.h"
+
 using std::vector;
 
 template<typename R>

@@ -1,7 +1,7 @@
 #ifndef CORE_LSTM_H
 #define CORE_LSTM_H
 
-#include "dali/mat/Layers.h"
+#include "dali/layers/Layers.h"
 
 template<typename R>
 class LSTM : public AbstractLayer<R> {

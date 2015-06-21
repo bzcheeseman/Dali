@@ -13,7 +13,7 @@
 
 #include "dali/visualizer/EventQueue.h"
 #include "dali/utils/core_utils.h"
-#include "dali/mat/Mat.h"
+#include "dali/tensor/Mat.h"
 
 // to import Throttled
 #include "dali/utils/Reporting.h"

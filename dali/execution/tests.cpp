@@ -2,8 +2,8 @@
 #include <map>
 #include <stdexcept>
 
-#include "dali/mat/Mat.h"
-#include "dali/mat/math/MatOps.h"
+#include "dali/tensor/Mat.h"
+#include "dali/tensor/MatOps.h"
 #include "dali/execution/BeamSearch.h"
 
 using std::make_tuple;

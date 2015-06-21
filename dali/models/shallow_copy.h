@@ -2,7 +2,8 @@
 #define SHALLOW_COPY_MAT_H
 #include <vector>
 #include <functional>
-#include <dali/mat/Mat.h>
+
+#include "dali/tensor/Mat.h"
 /**
 Header only shallow copy creator
 for handling hogwild copies of models

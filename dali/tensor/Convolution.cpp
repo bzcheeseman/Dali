@@ -1,6 +1,6 @@
-#include "dali/mat/math/__MatMacros__.h"
-#include "dali/mat/math/MatOps.h"
-#include "dali/mat/Tape.h"
+#include "dali/tensor/__MatMacros__.h"
+#include "dali/tensor/MatOps.h"
+#include "dali/tensor/Tape.h"
 #include "dali/utils.h"
 #include "SQLiteCpp/Database.h"
 

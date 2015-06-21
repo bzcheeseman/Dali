@@ -6,7 +6,7 @@
 #include <memory>
 
 #include "dali/utils/configuration.h"
-#include "dali/mat/model.h"
+#include "dali/layers/model.h"
 
 
 typedef std::chrono::high_resolution_clock grid_clock_t;

@@ -1,6 +1,6 @@
 #include "Solver.h"
 
-#include "dali/mat/math/__MatMacros__.h"
+#include "dali/tensor/__MatMacros__.h"
 
 using std::vector;
 #define PARAM_KEY_FOR_LOOKUP_TABLE param.id()

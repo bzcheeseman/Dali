@@ -1,7 +1,7 @@
 #ifndef DALI_MAT_MATH_TENSOR_INTERNAL_H
 #define DALI_MAT_MATH_TENSOR_INTERNAL_H
 
-#include "dali/mat/math/memory/SynchronizedMemory.h"
+#include "dali/math/SynchronizedMemory.h"
 #include <initializer_list>
 #include <iomanip>
 #include <iostream>

@@ -3,7 +3,7 @@
 
 #include "mshadow/tensor.h"
 #include "mshadow/expr_engine-inl.h"
-#include "dali/mat/math/memory/LazyUtils.h"
+#include "dali/math/LazyUtils.h"
 
 namespace dali_expr {
     template<typename SrcExp, typename DType, int dstdim>

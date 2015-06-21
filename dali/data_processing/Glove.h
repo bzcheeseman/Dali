@@ -3,7 +3,7 @@
 
 #include <string>
 #include <vector>
-#include "dali/mat/Mat.h"
+#include "dali/tensor/Mat.h"
 #include "dali/utils/core_utils.h"
 #include "dali/utils/ParseUtils.h"
 

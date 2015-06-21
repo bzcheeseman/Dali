@@ -2,7 +2,7 @@
 #define SOLVER_MAT_H
 
 #include <Eigen/Eigen>
-#include "dali/mat/Mat.h"
+#include "dali/tensor/Mat.h"
 #include "dali/utils/core_utils.h"
 
 #define SOLVER_MAT_TYPEDEF_H typedef Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;

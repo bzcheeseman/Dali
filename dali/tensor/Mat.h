@@ -13,10 +13,10 @@
 // For handling json_finite_distribution
 #include <json11.hpp>
 
-#include "dali/mat/math/memory/TensorInternal.h"
-#include "dali/mat/math/MatOps.h"
-#include "dali/mat/math/Weights.h"
-#include "dali/mat/Tape.h"
+#include "dali/math/TensorInternal.h"
+#include "dali/tensor/MatOps.h"
+#include "dali/tensor/Weights.h"
+#include "dali/tensor/Tape.h"
 #include "dali/utils.h"
 
 template<typename R> class Mat;

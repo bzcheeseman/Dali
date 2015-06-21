@@ -2,8 +2,8 @@
 #define CORE_GRU_H
 
 #include <vector>
-#include "dali/mat/Mat.h"
-#include "dali/mat/Layers.h"
+#include "dali/tensor/Mat.h"
+#include "dali/layers/Layers.h"
 
 template<typename R>
 class GRU {

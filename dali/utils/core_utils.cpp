@@ -200,6 +200,7 @@ namespace utils {
     template bool in_vector(const vector<int>&,    const int&);
     template bool in_vector(const vector<uint>&,   const uint&);
     template bool in_vector(const vector<string>&, const string&);
+    template bool in_vector(const vector<char>&, const char&);
 
     template<typename T>
     vector<T> concatenate(initializer_list<vector<T>> lists) {

@@ -8,6 +8,33 @@ using mshadow::Shape2;
 using mshadow::Tensor;
 using mshadow::Copy;
 
+template<int dimension>
+std::ostream &operator <<(std::ostream &os, const mshadow::Shape<dimension> &shape) {
+    if (dimension == 0) {
+        return os << "<shape ()>";
+    } else {
+        os << "<shape (";
+        for (int i = 0; i < dimension;i++) {
+            os << shape[i];
+            if (i != dimension - 1) os << ", ";
+        }
+        os << ")>";
+        return os;
+    }
+}
+
+template std::ostream& operator<< <0>(std::ostream& strm, const mshadow::Shape<0>& a);
+template std::ostream& operator<< <1>(std::ostream& strm, const mshadow::Shape<1>& a);
+template std::ostream& operator<< <2>(std::ostream& strm, const mshadow::Shape<2>& a);
+template std::ostream& operator<< <3>(std::ostream& strm, const mshadow::Shape<3>& a);
+template std::ostream& operator<< <4>(std::ostream& strm, const mshadow::Shape<4>& a);
+template std::ostream& operator<< <5>(std::ostream& strm, const mshadow::Shape<5>& a);
+template std::ostream& operator<< <6>(std::ostream& strm, const mshadow::Shape<6>& a);
+template std::ostream& operator<< <7>(std::ostream& strm, const mshadow::Shape<7>& a);
+template std::ostream& operator<< <8>(std::ostream& strm, const mshadow::Shape<8>& a);
+template std::ostream& operator<< <9>(std::ostream& strm, const mshadow::Shape<9>& a);
+
+
 void dali_init() {
     mshadow::InitTensorEngine<mshadow::cpu>();
     #ifdef DALI_USE_CUDA
@@ -77,9 +104,9 @@ SynchronizedMemory<R, dimension>::SynchronizedMemory(mshadow::Shape<dimension> d
 #endif
 #ifdef DALI_USE_CUDA
     mem_gpu(dim),
-    allocated_gpu(false),
+    allocated_gpu_(false),
 #endif
-    allocated_cpu(false),
+    allocated_cpu_(false),
     mem_cpu(dim) {
 }
 
@@ -91,10 +118,10 @@ SynchronizedMemory<R,dimension>::SynchronizedMemory(const SynchronizedMemory& ot
     MemoryMover(false, other.preferred_device),
 #endif
 #ifdef DALI_USE_CUDA
-        allocated_gpu(false),
+        allocated_gpu_(false),
         mem_gpu(other.mem_gpu.shape_),
 #endif
-        allocated_cpu(false),
+        allocated_cpu_(false),
         mem_cpu(other.mem_cpu.shape_) {
     if (other.cpu_fresh) {
         const auto& data_source = other.cpu_data();
@@ -128,11 +155,12 @@ mshadow::Shape<dimension> SynchronizedMemory<R,dimension>::shape() const {
 
 template<typename R, int dimension>
 SynchronizedMemory<R,dimension>::~SynchronizedMemory() {
-    if (allocated_cpu)
+    if (allocated_cpu_)
         FreeSpace(&mem_cpu);
 #ifdef DALI_USE_CUDA
-    if (allocated_gpu)
+    if (allocated_gpu_) {
         FreeSpace(&mem_gpu);
+    }
 #endif
 }
 
@@ -170,9 +198,9 @@ typename SynchronizedMemory<R,dimension>::cpu_tensor_t & SynchronizedMemory<R,di
     template<typename R, int dimension>
     void SynchronizedMemory<R,dimension>::to_gpu() const {
         if (!this->gpu_fresh) {
-            if (!allocated_gpu) {
-                AllocSpace(&mem_gpu, false);
-                allocated_gpu = true;
+            if (!allocated_gpu_) {
+                AllocSpace(&mem_gpu);
+                allocated_gpu_ = true;
             }
             if (this->cpu_fresh) {
                 Copy(mem_gpu, mem_cpu);
@@ -185,9 +213,9 @@ typename SynchronizedMemory<R,dimension>::cpu_tensor_t & SynchronizedMemory<R,di
 template<typename R, int dimension>
 void SynchronizedMemory<R,dimension>::to_cpu() const {
     if (!this->cpu_fresh) {
-        if (!allocated_cpu) {
-            AllocSpace(&mem_cpu, false);
-            allocated_cpu = true;
+        if (!allocated_cpu_) {
+            AllocSpace(&mem_cpu);
+            allocated_cpu_ = true;
         }
 #ifdef DALI_USE_CUDA
         if (this->gpu_fresh) {
@@ -199,17 +227,28 @@ void SynchronizedMemory<R,dimension>::to_cpu() const {
 }
 
 template<typename R, int dimension>
+bool SynchronizedMemory<R, dimension>::allocated_cpu() const {
+    return allocated_cpu_;
+}
+#ifdef DALI_USE_CUDA
+template<typename R, int dimension>
+bool SynchronizedMemory<R, dimension>::allocated_gpu() const {
+    return allocated_gpu_;
+}
+#endif
+
+template<typename R, int dimension>
 template<typename SourceType>
 void SynchronizedMemory<R,dimension>::copy_data_from(SourceType& data_source) {
     if (this->prefers_cpu()) {
-        AllocSpace(&mem_cpu, false);
-        allocated_cpu = true;
+        AllocSpace(&mem_cpu);
+        allocated_cpu_ = true;
         Copy(mem_cpu, data_source);
         this->cpu_fresh = true;
     } else {
 #ifdef DALI_USE_CUDA
-        AllocSpace(&mem_gpu, false);
-        allocated_gpu = true;
+        AllocSpace(&mem_gpu);
+        allocated_gpu_ = true;
         Copy(mem_gpu, data_source);
         this->gpu_fresh = true;
 #endif

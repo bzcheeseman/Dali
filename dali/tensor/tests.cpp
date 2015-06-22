@@ -524,7 +524,7 @@ TEST_F(MatrixTests, divide_inplace_scalar) {
         return (temp - 2.0) ^ 2;
     };
     EXPERIMENT_REPEAT {
-        auto A = Mat<R>(10, 20, weights<R>::uniform(0.001, 20.0));
+        auto A = Mat<R>(3, 4, weights<R>::uniform(0.001, 20.0));
         ASSERT_TRUE(gradient_same(functor, {A}, 1e-4, DEFAULT_GRAD_EPS, false));
     }
 }

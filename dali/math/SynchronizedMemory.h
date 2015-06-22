@@ -5,6 +5,7 @@
 #include <initializer_list>
 #include <iostream>
 #include <vector>
+#include <ostream>
 #include <mshadow/tensor.h>
 
 // This a small file keeping track of freshness of memory on CPU.
@@ -53,14 +54,19 @@ bool should_compute_on_gpu(const std::vector<const MemoryMover*>& sts);
     static const PreferredDevice default_preferred_device = DEVICE_CPU;
 #endif
 
+
+template<int dimension>
+std::ostream& operator<<(std::ostream&, const mshadow::Shape<dimension>&);
+
 template<typename R, int dimension>
 class SynchronizedMemory : public MemoryMover {
     private:
-        mutable bool allocated_cpu;
+        mutable bool allocated_cpu_;
         // only used by copy constructor.
         template<typename SourceType>
         void copy_data_from(SourceType& src);
     public:
+        bool allocated_cpu() const;
         void to_cpu() const override;
         typedef mshadow::Tensor<mshadow::cpu, dimension, R> cpu_tensor_t;
         mutable cpu_tensor_t mem_cpu;
@@ -79,8 +85,9 @@ class SynchronizedMemory : public MemoryMover {
         mshadow::Shape<dimension> shape() const;
 #ifdef DALI_USE_CUDA
     private:
-        mutable bool allocated_gpu;
+        mutable bool allocated_gpu_;
     public:
+        bool allocated_gpu() const;
         void to_gpu() const override;
         typedef mshadow::Tensor<mshadow::gpu, dimension, R> gpu_tensor_t;
 

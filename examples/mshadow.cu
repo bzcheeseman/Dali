@@ -124,6 +124,7 @@ int main () {
     FreeSpace(&joe);
     FreeSpace(&bob);
 
+
     ShutdownTensorEngine<gpu>();
     return 0;
 }

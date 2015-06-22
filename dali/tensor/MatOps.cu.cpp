@@ -485,6 +485,13 @@ Mat<R> MatOps<R>::square(Mat<R> matrix) {
 
     if (graph::backprop_enabled && !matrix.constant)
         graph::emplace_back([matrix, out]() mutable {
+            ELOG(GRAD(matrix).allocated_gpu());
+            ELOG(GRAD(matrix).gpu_fresh);
+            ELOG(MAT(matrix).allocated_gpu());
+            ELOG(MAT(matrix).gpu_fresh);
+            ELOG(GRAD(out).allocated_gpu());
+            ELOG(GRAD(out).gpu_fresh);
+            MAT(matrix).to_gpu();
             GRAD(matrix) += MAT(matrix).wrapper() * GRAD(out).wrapper() * (R) 2.0;
         });
     return out;

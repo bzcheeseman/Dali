@@ -152,9 +152,9 @@ class LazyTensor {
             LazyTensor(const TensorInternal<DType,dimension>& st)
                 : left(st.mem_cpu), sync_tensors({&st}) {}
 
-            inline auto T(void) -> LazyTensor<decltype(left.T()), DType, ktype> const {
-                auto cpu_T = left.T();
-                return LazyTensor<decltype(cpu_T), DType, ktype>(cpu_T, sync_tensors);
+            inline auto T(void) const -> LazyTensor<decltype(left.T()), DType, dimension, ktype> {
+                return LazyTensor<decltype(left.T()), DType, dimension, ktype>(
+                        left.T(), sync_tensors);
             }
 
             inline LazyTensor<dali_expr::SoftmaxExpression<LeftType, DType>,
@@ -178,32 +178,29 @@ class LazyTensor {
                 mshadow::Tensor<
                     typename extract_tensor_arguments<LeftType>::device_t,
                     extract_tensor_arguments<LeftType>::subdim,
-                    DType >, DType, ktype> operator[](mshadow::index_t idx) const {
-
+                    DType >, DType, dimension - 1, ktype> operator[](mshadow::index_t idx) const {
                 auto cpu_pluck = left[idx];
-                return LazyTensor<decltype(cpu_pluck), DType, ktype>(
+                return LazyTensor<decltype(cpu_pluck), DType, dimension -1, ktype>(
                     cpu_pluck, sync_tensors
                 );
             }
 
-            // Expression that replicate a 1 dimension tensor in
-            // dimension dimcast
             template<int dimcast, int dimdst>
             inline LazyTensor<
                 mshadow::expr::Broadcast1DExp<LeftType, DType, dimdst, dimdst - dimcast>,
                 DType,
+                dimdst,
                 ktype >broadcast(mshadow::Shape<dimdst> shape) const {
                 auto cpu_broad = mshadow::expr::broadcast<dimcast>(left, shape);
-                return LazyTensor<decltype(cpu_broad), DType, ktype>(
+                return LazyTensor<decltype(cpu_broad), DType, dimdst, ktype>(
                     cpu_broad, sync_tensors
                 );
             }
 
-            // Expression that replicate a 1 dimension tensor for
-            // nrow times
             inline LazyTensor<
                 mshadow::expr::Broadcast1DExp<LeftType, DType, 2, 1>,
                 DType,
+                2,
                 ktype >
             repmat(mshadow::index_t nrow) {
                 return broadcast<1>(
@@ -297,16 +294,66 @@ class LazyTensor {
         }
 #else
     #define BINARY_OP(opname, opsymbol) \
-        template<template <typename, typename, int> class wrapper_t1, template <typename, typename, int> class wrapper_t2, typename TA, typename TC, typename DType, int ta, int tb> \
-        LazyTensor< mshadow::expr::BinaryMapExp<opname, TA, TC, DType, (ta|tb|mshadow::expr::type::kMapper)>, DType, (ta|tb|mshadow::expr::type::kMapper)> operator opsymbol( \
-                const wrapper_t1<TA, DType, ta> &left, \
-                const wrapper_t2<TC, DType, tb> &right) { \
-            const auto& l_cpu = left.left; \
-            const auto& r_cpu = right.left; \
-            auto res_cpu = l_cpu opsymbol r_cpu; \
-            auto joined_sts = decltype(left.sync_tensors)(left.sync_tensors); \
-            joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end()); \
-            return LazyTensor<decltype(res_cpu), DType, (ta|tb|mshadow::expr::type::kMapper)>(res_cpu, joined_sts); \
+    template<typename TA, typename TC, typename DType, int dimension, int ta, int tb> \
+    auto operator opsymbol( \
+            const LazyTensor<TA, DType, dimension, ta> &left, \
+            const LazyTensor<TC, DType, dimension, tb> &right) -> \
+                LazyTensor< decltype(left.left opsymbol right.left), \
+                            DType, \
+                            dimension, \
+                            (ta|tb|mshadow::expr::type::kMapper)>   { \
+        const auto& l_cpu = left.left; \
+        const auto& r_cpu = right.left; \
+        auto res_cpu = l_cpu opsymbol r_cpu; \
+        auto joined_sts = decltype(left.sync_tensors)(left.sync_tensors); \
+        joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end()); \
+        return LazyTensor<decltype(res_cpu), \
+                          DType, \
+                          dimension, \
+                          (ta|tb|mshadow::expr::type::kMapper)>(res_cpu, joined_sts); \
+    }
+
+    #define BINARY_SCALAR_OP(opname, opsymbol) \
+        template<typename TA, typename DType, int dimension, int ta> \
+        auto operator opsymbol( \
+                const LazyTensor<TA, DType, dimension, ta> &tensor, \
+                const mshadow::expr::ScalarExp<DType> &scalar) -> LazyTensor<decltype(tensor.left opsymbol scalar), \
+                                                                             DType, \
+                                                                             dimension, \
+                                                                             (ta|mshadow::expr::type::kMapper)> { \
+            const auto& l_cpu = tensor.left; \
+            auto res_cpu = l_cpu opsymbol scalar; \
+            return LazyTensor<decltype(res_cpu), \
+                              DType, \
+                              dimension, \
+                              (ta|mshadow::expr::type::kMapper)>(res_cpu, tensor.sync_tensors); \
+        } \
+        \
+        template<typename TA, typename DType, int dimension, int ta> \
+        auto operator opsymbol( \
+                const mshadow::expr::ScalarExp<DType> &scalar, \
+                const LazyTensor<TA, DType, dimension, ta>   &tensor) -> LazyTensor<decltype(scalar opsymbol tensor.left), \
+                                                                             DType, \
+                                                                             dimension, \
+                                                                             (ta|mshadow::expr::type::kMapper)> { \
+            const auto& l_cpu = tensor.left; \
+            auto res_cpu = scalar opsymbol l_cpu; \
+            return LazyTensor<decltype(res_cpu), \
+                              DType, \
+                              dimension, \
+                              (ta|mshadow::expr::type::kMapper)>(res_cpu, tensor.sync_tensors); \
+        } \
+        template<typename TA, typename DType, int dimension, int ta> \
+        inline auto operator opsymbol( \
+                const LazyTensor<TA, DType, dimension, ta> &tensor, DType scalar) -> \
+                    decltype(tensor opsymbol mshadow::expr::ScalarExp<DType>(scalar)) { \
+            return tensor opsymbol mshadow::expr::ScalarExp<DType>(scalar); \
+        } \
+        \
+        template<typename TA, typename DType, int dimension, int ta> \
+        inline auto operator opsymbol(DType scalar,  const LazyTensor<TA, DType, dimension, ta> &tensor) -> \
+                decltype(mshadow::expr::ScalarExp<DType>(scalar) opsymbol tensor) { \
+            return mshadow::expr::ScalarExp<DType>(scalar) opsymbol tensor; \
         }
 #endif
 
@@ -347,16 +394,25 @@ BINARY_SCALAR_OP(mshadow::op::div,  /);
         return MakeExp<OP>(src);
     }
 #else
-    template<typename OP, template <typename, typename, int> class wrapper_t, typename TA, typename DType, int ta>
-    inline wrapper_t<mshadow::expr::UnaryMapExp<OP, TA, DType, (ta|mshadow::expr::type::kMapper)>, DType, (ta|mshadow::expr::type::kMapper)>
-    MakeExp(const wrapper_t<TA, DType, ta> &src) {
+    template<typename OP, typename TA, typename DType, int dimension, int ta>
+    inline LazyTensor<mshadow::expr::UnaryMapExp<OP, TA, DType, (ta|mshadow::expr::type::kMapper)>,
+                      DType,
+                      dimension,
+                      (ta|mshadow::expr::type::kMapper)>
+    MakeExp(const LazyTensor<TA, DType, dimension, ta> &src) {
         auto unary_l = mshadow::expr::UnaryMapExp<OP, TA, DType, (ta|mshadow::expr::type::kMapper)>(src.left);
-        return wrapper_t<decltype(unary_l), DType, (ta|mshadow::expr::type::kMapper)>(unary_l, src.sync_tensors);;
+        return LazyTensor<decltype(unary_l),
+                          DType,
+                          dimension,
+                          (ta|mshadow::expr::type::kMapper)>(unary_l, src.sync_tensors);
     }
 
-    template<typename OP, template <typename, typename, int> class wrapper_t, typename TA, typename DType, int ta>
-    inline wrapper_t<mshadow::expr::UnaryMapExp<OP, TA, DType, (ta|mshadow::expr::type::kMapper)>, DType, (ta|mshadow::expr::type::kMapper)>
-    F(const wrapper_t<TA, DType, ta> &src) {
+    template<typename OP, typename TA, typename DType, int dimension, int ta>
+    inline LazyTensor<mshadow::expr::UnaryMapExp<OP, TA, DType, (ta|mshadow::expr::type::kMapper)>,
+                        DType,
+                        dimension,
+                        (ta|mshadow::expr::type::kMapper)>
+    F(const LazyTensor<TA, DType, dimension, ta> &src) {
         return MakeExp<OP>(src);
     }
 #endif
@@ -390,13 +446,28 @@ BINARY_SCALAR_OP(mshadow::op::div,  /);
         return sumall_except_dim<0>(exp);
     }
 #else
+    template<int dimkeep, typename TA, typename DType, int dimension, int ta>
+    auto  sumall_except_dim(const LazyTensor<TA, DType, dimension, ta> &exp) ->
+            LazyTensor<decltype(mshadow::expr::sumall_except_dim<dimkeep>(exp.left)),
+                       DType,
+                       1,
+                       mshadow::expr::type::kComplex> {
+        auto cpu_sumall = mshadow::expr::sumall_except_dim<dimkeep>(exp.left);
+        return LazyTensor<
+            decltype(cpu_sumall),
+            DType,
+            1,
+            mshadow::expr::type::kComplex
+            >(cpu_sumall, exp.sync_tensors);
+    }
+
     template<typename TA, typename DType, int ta>
     auto sum_rows(const LazyTensor<TA, DType, 2, ta> &exp) -> decltype(sumall_except_dim<1>(exp)) {
         return sumall_except_dim<1>(exp);
     }
 
-    template<typename TA, typename TB, typename DType, int ta>
-    auto sum_cols(const LazyTensor<TA, TB, DType, 2, ta> &exp) -> decltype(sumall_except_dim<0>(exp)) {
+    template<typename TA, typename DType, int ta>
+    auto sum_cols(const LazyTensor<TA, DType, 2, ta> &exp) -> decltype(sumall_except_dim<0>(exp)) {
         return sumall_except_dim<0>(exp);
     }
 #endif

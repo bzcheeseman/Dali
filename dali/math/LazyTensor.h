@@ -380,14 +380,24 @@ BINARY_SCALAR_OP(mshadow::op::div,  /);
             >(cpu_sumall, gpu_sumall, exp.sync_tensors);
     }
 
-    template<typename TA, typename TB, typename DType, int dimension, int ta>
-    auto sum_rows(const LazyTensor<TA, TB, DType, dimension, ta> &exp) -> decltype(sumall_except_dim<1>(exp)) {
-      return sumall_except_dim<1>(exp);
+    template<typename TA, typename TB, typename DType, int ta>
+    auto sum_rows(const LazyTensor<TA, TB, DType, 2, ta> &exp) -> decltype(sumall_except_dim<1>(exp)) {
+        return sumall_except_dim<1>(exp);
+    }
+
+    template<typename TA, typename TB, typename DType, int ta>
+    auto sum_cols(const LazyTensor<TA, TB, DType, 2, ta> &exp) -> decltype(sumall_except_dim<0>(exp)) {
+        return sumall_except_dim<0>(exp);
     }
 #else
-    template<typename TA, typename DType, int dimension, int ta>
-    auto sum_rows(const LazyTensor<TA, DType, dimension, ta> &exp) -> decltype(sumall_except_dim<1>(exp)) {
-      return sumall_except_dim<1>(exp);
+    template<typename TA, typename DType, int ta>
+    auto sum_rows(const LazyTensor<TA, DType, 2, ta> &exp) -> decltype(sumall_except_dim<1>(exp)) {
+        return sumall_except_dim<1>(exp);
+    }
+
+    template<typename TA, typename TB, typename DType, int ta>
+    auto sum_cols(const LazyTensor<TA, TB, DType, 2, ta> &exp) -> decltype(sumall_except_dim<0>(exp)) {
+        return sumall_except_dim<0>(exp);
     }
 #endif
 

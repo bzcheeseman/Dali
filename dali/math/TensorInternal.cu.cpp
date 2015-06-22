@@ -1,6 +1,7 @@
 #include "dali/math/TensorInternal.h"
 #include "dali/math/TensorOps.h"
 #include "dali/math/LazyTensor.h"
+#include "dali/utils/core_utils.h"
 
 template<typename R, int dimension>
 R TensorInternal<R, dimension>::sum() const {
@@ -55,15 +56,37 @@ bool TensorInternal<R, dimension>::compute_me_on_gpu() const {
     return false;
 }
 
+template<typename R, int dimension>
+inline R& get_val(TensorInternal<R,dimension>& source, int i, int j) {
+    utils::assert2(false, utils::MS() << "Trying to access 2D address on Tensor of dim" << dimension);
+}
 
-template<typename R>
-R& TensorInternal<R,2>::operator()(int i, int j) {
-    return this->mutable_cpu_data()[i][j];
+template<typename R, int dimension>
+inline const R& get_val(const TensorInternal<R,dimension>& source, int i, int j) {
+    utils::assert2(false, utils::MS() << "Trying to access 2D address on Tensor of dim" << dimension);
 }
 
 template<typename R>
-R TensorInternal<R,2>::operator()(int i, int j) const {
-    return this->cpu_data()[i][j];
+inline R& get_val(TensorInternal<R,2>& source, int i, int j) {
+    return source.mutable_cpu_data()[i][j];
+}
+
+template<typename R>
+inline const R& get_val(const TensorInternal<R,2>& source, int i, int j) {
+    return source.cpu_data()[i][j];
+}
+
+
+
+
+template<typename R, int dimension>
+R& TensorInternal<R,dimension>::operator()(int i, int j) {
+    return get_val<R, dimension>(*this, i, j);
+}
+
+template<typename R, int dimension>
+R TensorInternal<R,dimension>::operator()(int i, int j) const {
+    return get_val<R, dimension>(*this, i, j);
 }
 
 template<typename R, int dimension>
@@ -86,8 +109,8 @@ R* TensorInternal<R,dimension>::data() {
     return this->mutable_cpu_data().dptr_;
 }
 
-template<typename R>
-void TensorInternal<R,1>::print() const {
+template<typename R, int dimension>
+void TensorInternal<R,dimension>::print() const {
     const auto& data = this->cpu_data();
     for (int i = 0; i < data.shape_[0] ; ++i) {
         std::cout << (i == 0 ? "[" : " ");
@@ -96,7 +119,7 @@ void TensorInternal<R,1>::print() const {
                       << std::setw( 7 ) // keep 7 digits
                       << std::setprecision( 3 ) // use 3 decimals
                       << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
-                      << data[i][j] << " ";
+                      << (*this)(i, j) << " ";
         }
         std::cout << (i == data.shape_[0] - 1 ? "]" : "\n");
     }

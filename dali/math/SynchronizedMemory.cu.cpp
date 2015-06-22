@@ -199,13 +199,17 @@ typename SynchronizedMemory<R,dimension>::cpu_tensor_t & SynchronizedMemory<R,di
     void SynchronizedMemory<R,dimension>::to_gpu() const {
         if (!this->gpu_fresh) {
             if (!allocated_gpu_) {
+                std::cout << utils::blue << "    allocating gpu" << utils::reset_color << std::endl;
                 AllocSpace(&mem_gpu);
                 allocated_gpu_ = true;
             }
             if (this->cpu_fresh) {
+                std::cout << utils::blue <<  "    copying from cpu" << utils::reset_color << std::endl;
                 Copy(mem_gpu, mem_cpu);
             }
             this->gpu_fresh = true;
+        } else {
+            std::cout << utils::blue << "    gpu fresh" << utils::reset_color << std::endl;
         }
     }
 #endif

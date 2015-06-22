@@ -2,10 +2,13 @@
 #define DALI_MAT_MATH_TENSOR_INTERNAL_H
 
 #include "dali/math/SynchronizedMemory.h"
+#include "dali/utils/core_utils.h"
 #include <initializer_list>
 #include <iomanip>
 #include <iostream>
 #include <string>
+#include <chrono>
+#include <thread>
 
 // Defines mathematical operations on Synchronized Memory
 // and also interfaces / and handles assignment from LazyTensor
@@ -20,13 +23,16 @@ class TensorInternal;
         template <typename TA, typename TB, int ta> \
         TensorInternal& operator op_symbol (const LazyTensor<TA, TB, R, dimension, ta>& expr) { \
             if (should_compute_on_gpu(expr.sync_tensors)) { \
+                std::cout << "[assign::wakeup] start" << std::endl;\
                 /* refresh the gpu memory from cpu*/ \
-                for (auto& participant : expr.sync_tensors) { \
+                for (auto participant : expr.sync_tensors) { \
                     participant->to_gpu(); \
                 } \
+                std::cout << "[assign::wakeup] end" << std::endl;\
+                this->to_gpu(); \
                 this->mutable_gpu_data() op_symbol expr.right; \
             } else {/* refresh the cpu memory from gpu*/ \
-                for (auto& participant : expr.sync_tensors) { \
+                for (auto participant : expr.sync_tensors) { \
                     participant->to_cpu(); \
                 }\
                 this->mutable_cpu_data() op_symbol expr.left;\

@@ -491,8 +491,22 @@ Mat<R> MatOps<R>::square(Mat<R> matrix) {
             ELOG(MAT(matrix).gpu_fresh);
             ELOG(GRAD(out).allocated_gpu());
             ELOG(GRAD(out).gpu_fresh);
+
+            std::cout << utils::red << "    <forced wake-up>" << utils::reset_color << std::endl;
             MAT(matrix).to_gpu();
-            GRAD(matrix) += MAT(matrix).wrapper() * GRAD(out).wrapper() * (R) 2.0;
+            std::cout << utils::red << "    </forced wake-up>" << utils::reset_color << std::endl;
+
+
+            std::cout << "[square::backward] start" << std::endl;
+
+            ELOG(&GRAD(matrix));
+            ELOG(&MAT(matrix));
+            ELOG(&GRAD(out));
+
+            //GRAD(matrix) += GRAD(out).wrapper() * MAT(matrix).wrapper() * (R) 2.0;
+            GRAD(matrix).mutable_gpu_data() += GRAD(out).gpu_data() * MAT(matrix).gpu_data() * ((R) 2.0);
+
+            std::cout << "[square::backward] end" << std::endl;
         });
     return out;
 }

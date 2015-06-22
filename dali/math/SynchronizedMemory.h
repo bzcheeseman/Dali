@@ -7,12 +7,13 @@
 #include <vector>
 #include <ostream>
 #include <mshadow/tensor.h>
+#include "dali/utils/core_utils.h"
 
-// This a small file keeping track of freshness of memory on CPU.
-// The whole reason this is done is because some operations are
-// implemented for GPU while others only exist for CPU.
-// To minimize transfers between host and GPU device, we
-// keep track of which device has the master copy.
+// SynchronizedMemory wraps two tensors for GPU and CPU and
+// remembers the freshness of each version.
+// This class helps minimize the transfers between GPU and CPU
+// by remembering if the master copy is available on either device
+// or if it should be copied over.
 
 void dali_init();
 
@@ -61,13 +62,14 @@ std::ostream& operator<<(std::ostream&, const mshadow::Shape<dimension>&);
 template<typename R, int dimension>
 class SynchronizedMemory : public MemoryMover {
     private:
-        mutable bool allocated_cpu_;
+
         // only used by copy constructor.
         template<typename SourceType>
         void copy_data_from(SourceType& src);
     public:
+        mutable bool allocated_cpu_;
         bool allocated_cpu() const;
-        void to_cpu() const override;
+        virtual void to_cpu() const override;
         typedef mshadow::Tensor<mshadow::cpu, dimension, R> cpu_tensor_t;
         mutable cpu_tensor_t mem_cpu;
         const cpu_tensor_t&   cpu_data() const;
@@ -84,11 +86,11 @@ class SynchronizedMemory : public MemoryMover {
 
         mshadow::Shape<dimension> shape() const;
 #ifdef DALI_USE_CUDA
-    private:
-        mutable bool allocated_gpu_;
+
     public:
+        mutable bool allocated_gpu_;
         bool allocated_gpu() const;
-        void to_gpu() const override;
+        virtual void to_gpu() const override;
         typedef mshadow::Tensor<mshadow::gpu, dimension, R> gpu_tensor_t;
 
         mutable gpu_tensor_t mem_gpu;

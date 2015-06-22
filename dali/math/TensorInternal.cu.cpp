@@ -115,8 +115,8 @@ TensorInternal<R,dimension> TensorInternal<R, dimension>::zeros(mshadow::Shape<d
     return tensor;
 }
 
-// template class TensorInternal<float, 1>;
-// template class TensorInternal<double,1>;
+template class TensorInternal<float, 1>;
+template class TensorInternal<double,1>;
 template class TensorInternal<float, 2>;
 template class TensorInternal<double,2>;
 // template class TensorInternal<float, 3>;

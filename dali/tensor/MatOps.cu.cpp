@@ -404,15 +404,15 @@ Mat<R> MatOps<R>::add_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
             SAFE_GRAD(matrix1) += GRAD(out).wrapper();
 
             // temporary:
-           // TensorInternal<R,1> out_row_sum(mshadow::Shape1(out.dims(0)));
+            TensorInternal<R,1> out_row_sum(mshadow::Shape1(out.dims(0)));
 
-            //out_row_sum = sum_rows(GRAD(out).wrapper());
+            out_row_sum = sum_rows(GRAD(out).wrapper());
 
             // mshadow::Tensor<mshadow::gpu, 2, R> ttt = mshadow::NewTensor<mshadow::gpu,R>(mshadow::Shape2(3,4), (R)0.0);
             // mshadow::Tensor<mshadow::gpu, 1, R> rrr = mshadow::NewTensor<mshadow::gpu,R>(mshadow::Shape1(3), (R)0.0);
             // rrr = mshadow::expr::sum_rows(ttt);
 
-            // SAFE_GRAD(matrix2) += out_row_sum.wrapper().template broadcast<1>(MAT(matrix2).shape());
+            SAFE_GRAD(matrix2) += out_row_sum.wrapper().template broadcast<1>(MAT(matrix2).shape());
         });
     return out;
 }

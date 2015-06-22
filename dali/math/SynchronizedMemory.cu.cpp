@@ -216,8 +216,8 @@ void SynchronizedMemory<R,dimension>::copy_data_from(SourceType& data_source) {
     }
 }
 
-// template class SynchronizedMemory<float, 1>;
-// template class SynchronizedMemory<double,1>;
+template class SynchronizedMemory<float, 1>;
+template class SynchronizedMemory<double,1>;
 template class SynchronizedMemory<float, 2>;
 template class SynchronizedMemory<double,2>;
 // template class SynchronizedMemory<float, 3>;

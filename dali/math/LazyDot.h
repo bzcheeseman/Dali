@@ -2,21 +2,22 @@
 #define DALI_MATH_LAZY_DOT_H
 
 #ifdef DALI_USE_CUDA
-    template<typename LeftType, typename RightType, typename DType, int ktype>
+    template<typename LeftType, typename RightType, typename DType, int dimension, int ktype>
     class LazyTensor;
 #else
-    template<typename LeftType, typename DType, int ktype>
+    template<typename LeftType, typename DType, int dimension, int ktype>
     class LazyTensor;
 #endif
 
 #ifdef DALI_USE_CUDA
-    template<template <typename, typename, typename, int> class wrapper_t1, template <typename, typename, typename, int> class wrapper_t2, typename TA, typename TB, typename TC, typename TD, typename DType, int ta, int tb>
+    template<typename TA, typename TB, typename TC, typename TD, typename DType, int dimension, int ta, int tb>
     inline auto
-    dot(const wrapper_t1<TA, TB, DType, ta> &left,
-        const wrapper_t2<TC, TD, DType, tb> &right) -> LazyTensor<
+    dot(const LazyTensor<TA, TB, DType, dimension, ta> &left,
+        const LazyTensor<TC, TD, DType, dimension, tb> &right) -> LazyTensor<
             decltype(dot(left.left, right.left)),
             decltype(dot(left.right, right.right)),
             DType,
+            dimension,
             mshadow::expr::type::kComplex> {
         auto cpu_dot = dot(left.left, right.left);
         auto gpu_dot = dot(left.right, right.right);
@@ -26,6 +27,7 @@
             decltype(cpu_dot),
             decltype(gpu_dot),
             DType,
+            dimension,
             mshadow::expr::type::kComplex>(
                 cpu_dot,
                 gpu_dot,
@@ -33,17 +35,19 @@
             );
     }
 #else
-    template<template <typename, typename, int> class wrapper_t1, template <typename, typename, int> class wrapper_t2, typename TA, typename TC, typename DType, int ta, int tb>
+    template<typename TA, typename TC, typename DType, int dimension, int ta, int tb>
     inline auto
-    dot(const wrapper_t1<TA, DType, ta> &left,
-        const wrapper_t2<TC, DType, tb> &right) -> LazyTensor<
+    dot(const LazyTensor<TA, DType, dimension, ta> &left,
+        const LazyTensor<TC, DType, dimension, tb> &right) -> LazyTensor<
             decltype(dot(left.left, right.left)),
             DType,
+            dimension,
             mshadow::expr::type::kComplex> {
         auto cpu_dot = dot(left.left, right.left);
         return LazyTensor<
             decltype(cpu_dot),
             DType,
+            dimension,
             mshadow::expr::type::kComplex>(
                 cpu_dot,
                 left.sync_tensors

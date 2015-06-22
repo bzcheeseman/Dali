@@ -17,8 +17,8 @@ class TensorInternal;
 
 #ifdef DALI_USE_CUDA
     #define DALI_SYNC_TENSOR_ASSIGN_OP(op_symbol) \
-        template <template <typename, typename, typename, int> class wrapper_t, typename TA, typename TB, int ta> \
-        TensorInternal& operator op_symbol (const wrapper_t<TA, TB, R, ta>& expr) { \
+        template <typename TA, typename TB, int ta> \
+        TensorInternal& operator op_symbol (const LazyTensor<TA, TB, R, dimension, ta>& expr) { \
             if (should_compute_on_gpu(expr.sync_tensors)) { \
                 /* refresh the gpu memory from cpu*/ \
                 for (auto& participant : expr.sync_tensors) { \
@@ -44,8 +44,8 @@ class TensorInternal;
         }
 #else
     #define DALI_SYNC_TENSOR_ASSIGN_OP(op_symbol) \
-        template <template <typename, typename, int> class wrapper_t, typename TA, int ta> \
-        TensorInternal& operator op_symbol (const wrapper_t<TA, R, ta>& expr) { \
+        template <typename TA, int ta> \
+        TensorInternal& operator op_symbol (const LazyTensor<TA, R, dimension,ta>& expr) { \
             for (auto& participant : expr.sync_tensors) { \
                 participant->to_cpu(); \
             }\
@@ -61,10 +61,10 @@ class TensorInternal;
 #endif
 
 #ifdef DALI_USE_CUDA
-    template<typename LeftType, typename RightType, typename DType, int ktype>
+    template<typename LeftType, typename RightType, typename DType, int dimension, int ktype>
     class LazyTensor;
 #else
-    template<typename LeftType, typename DType, int ktype>
+    template<typename LeftType, typename DType, int dimension, int ktype>
     class LazyTensor;
 #endif
 
@@ -79,9 +79,9 @@ class TensorInternal : public SynchronizedMemory<R, dimension> {
         typedef typename SynchronizedMemory<R, dimension>::cpu_tensor_t cpu_tensor_t;
         #ifdef DALI_USE_CUDA
             typedef typename SynchronizedMemory<R, dimension>::gpu_tensor_t gpu_tensor_t;
-            typedef LazyTensor<cpu_tensor_t, gpu_tensor_t, R, mshadow::expr::type::kRValue> lazy_t;
+            typedef LazyTensor<cpu_tensor_t, gpu_tensor_t, R, dimension, mshadow::expr::type::kRValue> lazy_t;
         #else
-            typedef LazyTensor<cpu_tensor_t, R, mshadow::expr::type::kRValue> lazy_t;
+            typedef LazyTensor<cpu_tensor_t, R, dimension, mshadow::expr::type::kRValue> lazy_t;
         #endif
         DALI_SYNC_TENSOR_ASSIGN_OP(=)
         DALI_SYNC_TENSOR_ASSIGN_OP(+=)

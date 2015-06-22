@@ -15,12 +15,6 @@ typedef unsigned int dim_t;
 template<typename R, int dimension>
 class TensorInternal;
 
-template<typename R, int dimension>
-bool should_compute_on_gpu(std::initializer_list<std::reference_wrapper<const TensorInternal<R, dimension>>> sts);
-
-template<typename R, int dimension>
-bool should_compute_on_gpu(const std::vector<std::reference_wrapper<const TensorInternal<R, dimension>>>& sts);
-
 #ifdef DALI_USE_CUDA
     #define DALI_SYNC_TENSOR_ASSIGN_OP(op_symbol) \
         template <template <typename, typename, typename, int> class wrapper_t, typename TA, typename TB, int ta> \
@@ -28,12 +22,12 @@ bool should_compute_on_gpu(const std::vector<std::reference_wrapper<const Tensor
             if (should_compute_on_gpu(expr.sync_tensors)) { \
                 /* refresh the gpu memory from cpu*/ \
                 for (auto& participant : expr.sync_tensors) { \
-                    const auto& data = participant.get().gpu_data(); \
+                    participant->to_gpu(); \
                 } \
                 this->mutable_gpu_data() op_symbol expr.right; \
             } else {/* refresh the cpu memory from gpu*/ \
                 for (auto& participant : expr.sync_tensors) { \
-                    const auto& data = participant.get().cpu_data(); \
+                    participant->to_cpu(); \
                 }\
                 this->mutable_cpu_data() op_symbol expr.left;\
             };\
@@ -53,7 +47,7 @@ bool should_compute_on_gpu(const std::vector<std::reference_wrapper<const Tensor
         template <template <typename, typename, int> class wrapper_t, typename TA, int ta> \
         TensorInternal& operator op_symbol (const wrapper_t<TA, R, ta>& expr) { \
             for (auto& participant : expr.sync_tensors) { \
-                const auto& data = participant.get().cpu_data(); \
+                participant->to_cpu(); \
             }\
             this->mutable_cpu_data() op_symbol expr.left;\
             return *this;\

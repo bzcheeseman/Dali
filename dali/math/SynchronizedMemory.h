@@ -20,6 +20,33 @@ enum PreferredDevice {
     DEVICE_CPU
 };
 
+class MemoryMover {
+    protected:
+        PreferredDevice preferred_device;
+    public:
+        virtual void to_cpu() const = 0;
+        mutable bool cpu_fresh;
+        bool prefers_cpu() const;
+        bool prefers_gpu() const;
+#ifdef DALI_USE_CUDA
+    public:
+        virtual void to_gpu() const = 0;
+        mutable bool gpu_fresh;
+
+        // tie-breaker for operations involving multiple tensors
+        // on mixed devices.
+        static PreferredDevice tie_breaker_device;
+#endif
+
+#ifdef DALI_USE_CUDA
+    MemoryMover(bool cpu_fresh, bool gpu_fresh, PreferredDevice preferred_device);
+#else
+    MemoryMover(bool cpu_fresh, PreferredDevice preferred_device);
+#endif
+};
+
+bool should_compute_on_gpu(const std::vector<const MemoryMover*>& sts);
+
 #ifdef DALI_USE_CUDA
     static const PreferredDevice default_preferred_device = DEVICE_GPU;
 #else
@@ -27,22 +54,19 @@ enum PreferredDevice {
 #endif
 
 template<typename R, int dimension>
-class SynchronizedMemory {
+class SynchronizedMemory : public MemoryMover {
     private:
-        PreferredDevice preferred_device;
         mutable bool allocated_cpu;
-        void to_cpu() const;
         // only used by copy constructor.
         template<typename SourceType>
         void copy_data_from(SourceType& src);
     public:
+        void to_cpu() const override;
         typedef mshadow::Tensor<mshadow::cpu, dimension, R> cpu_tensor_t;
         mutable cpu_tensor_t mem_cpu;
         const cpu_tensor_t&   cpu_data() const;
         cpu_tensor_t& mutable_cpu_data();
 
-        bool prefers_cpu() const;
-        bool prefers_gpu() const;
         SynchronizedMemory& operator=(const SynchronizedMemory&) = delete;
 
         SynchronizedMemory(mshadow::Shape<dimension> dim, PreferredDevice preferred_device = default_preferred_device);
@@ -53,23 +77,16 @@ class SynchronizedMemory {
         unsigned int number_of_elements() const;
 
         mshadow::Shape<dimension> shape() const;
-
-        mutable bool cpu_fresh;
 #ifdef DALI_USE_CUDA
     private:
         mutable bool allocated_gpu;
-        void to_gpu() const;
     public:
+        void to_gpu() const override;
         typedef mshadow::Tensor<mshadow::gpu, dimension, R> gpu_tensor_t;
 
         mutable gpu_tensor_t mem_gpu;
-        mutable bool gpu_fresh;
         const gpu_tensor_t&   gpu_data() const;
         gpu_tensor_t&       mutable_gpu_data();
-
-        // tie-breaker for operations involving multiple tensors
-        // on mixed devices.
-        static PreferredDevice tie_breaker_device;
 #endif
 };
 

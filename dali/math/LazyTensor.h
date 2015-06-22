@@ -16,7 +16,7 @@
 template<typename DType, int dimension>
 class TensorInternal;
 
-
+class MemoryMover;
 
 #ifdef DALI_USE_CUDA
     template<typename LeftType, typename RightType, typename DType, int ktype>
@@ -25,7 +25,7 @@ class TensorInternal;
 #endif
 class LazyTensor {
     public:
-        typedef std::vector<std::reference_wrapper<const TensorInternal<DType,2>>> sync_tensors_t;
+        typedef std::vector<const MemoryMover*> sync_tensors_t;
         LeftType               left;
         sync_tensors_t sync_tensors;
 
@@ -37,8 +37,8 @@ class LazyTensor {
                 const sync_tensors_t& _sync_tensors)
                 : left(_left), right(_right), sync_tensors(_sync_tensors) {}
 
-            LazyTensor(std::reference_wrapper<const TensorInternal<DType,2>> st)
-                : left(st.get().mem_cpu), right(st.get().mem_gpu), sync_tensors({st}) {}
+            LazyTensor(const TensorInternal<DType,2>& st)
+                : left(st.mem_cpu), right(st.mem_gpu), sync_tensors({&st}) {}
 
             inline auto T(void) const -> LazyTensor<decltype(left.T()), decltype(right.T()), DType, ktype> {
                 return LazyTensor<decltype(left.T()), decltype(right.T()), DType, ktype>(

@@ -18,7 +18,7 @@ R TensorInternal<R, dimension>::sum() const {
 template<typename R, int dimension>
 bool TensorInternal<R,dimension>::operator==(const TensorInternal<R,dimension>& other) const {
     #ifdef DALI_USE_CUDA
-        if (should_compute_on_gpu({std::cref(*this), std::cref(other)})) {
+        if (should_compute_on_gpu({this, &other})) {
             return TensorOps::comparison::equals(this->gpu_data(), other.gpu_data(), this->number_of_elements());
         }
     #endif
@@ -28,7 +28,7 @@ bool TensorInternal<R,dimension>::operator==(const TensorInternal<R,dimension>& 
 template<typename R, int dimension>
 bool TensorInternal<R,dimension>::allclose(const TensorInternal<R,dimension>& other, R tol) const {
     #ifdef DALI_USE_CUDA
-        if (should_compute_on_gpu({std::cref(*this), std::cref(other)})) {
+        if (should_compute_on_gpu({this, &other})) {
             return TensorOps::comparison::allclose(this->gpu_data(), other.gpu_data(), this->number_of_elements(), tol);
         }
     #endif
@@ -37,7 +37,7 @@ bool TensorInternal<R,dimension>::allclose(const TensorInternal<R,dimension>& ot
 
 template<typename R, int dimension>
 typename TensorInternal<R, dimension>::lazy_t TensorInternal<R,dimension>::wrapper() {
-    return lazy_t(std::cref(*this));
+    return lazy_t(*this);
 }
 
 template<typename R, int dimension>
@@ -48,7 +48,7 @@ TensorInternal<R,dimension>::operator lazy_t() {
 template<typename R, int dimension>
 bool TensorInternal<R, dimension>::compute_me_on_gpu() const {
     #ifdef DALI_USE_CUDA
-        if (should_compute_on_gpu({std::cref(*this)})) {
+        if (should_compute_on_gpu({this})) {
             return true;
         }
     #endif
@@ -133,89 +133,3 @@ template class TensorInternal<double,2>;
 // template class TensorInternal<double,8>;
 // template class TensorInternal<float, 9>;
 // template class TensorInternal<double,9>;
-
-
-
-
-
-
-/**** SHOULD COMPUTE GPU-land **/
-
-template<typename R, int dimension>
-bool should_compute_on_gpu(
-        std::initializer_list<std::reference_wrapper<const TensorInternal<R,dimension>>> sts) {
-
-#ifdef DALI_USE_CUDA
-    if (sts.size() == 1) {
-        const auto& mat = (*sts.begin()).get();
-        return (mat.prefers_gpu() && (mat.gpu_fresh || !mat.cpu_fresh && !mat.gpu_fresh));
-    }
-    bool everybody_cpu = true;
-    bool everybody_gpu = true;
-    for (auto& st : sts) {
-        everybody_gpu = everybody_gpu && st.get().prefers_gpu();
-        everybody_cpu = everybody_cpu && st.get().prefers_cpu();
-    }
-    if (everybody_cpu) {
-        return false;
-    } else if (everybody_gpu) {
-        return true;
-    } else {
-        return SynchronizedMemory<R,dimension>::tie_breaker_device == DEVICE_GPU;
-    }
-#else
-    return false;
-#endif
-}
-
-template<typename R, int dimension>
-bool should_compute_on_gpu(const std::vector<std::reference_wrapper<const TensorInternal<R,dimension>>>& sts) {
-
-#ifdef DALI_USE_CUDA
-    if (sts.size() == 1) {
-        const auto& mat = (*sts.begin()).get();
-        return (mat.prefers_gpu() && (mat.gpu_fresh || !mat.cpu_fresh && !mat.gpu_fresh));
-    }
-    bool everybody_cpu = true;
-    bool everybody_gpu = true;
-    for (auto& st : sts) {
-        everybody_gpu = everybody_gpu && st.get().prefers_gpu();
-        everybody_cpu = everybody_cpu && st.get().prefers_cpu();
-    }
-    if (everybody_cpu) {
-        return false;
-    } else if (everybody_gpu) {
-        return true;
-    } else {
-        return SynchronizedMemory<R,dimension>::tie_breaker_device == DEVICE_GPU;
-    }
-#else
-    return false;
-#endif
-}
-
-template bool should_compute_on_gpu(
-        std::initializer_list<
-            std::reference_wrapper<
-                const TensorInternal<float,2>
-            >
-        >);
-template bool should_compute_on_gpu(
-        std::initializer_list<
-            std::reference_wrapper<
-                const TensorInternal<double,2>
-            >
-        >);
-
-template bool should_compute_on_gpu(
-        const std::vector<
-            std::reference_wrapper<
-                const TensorInternal<float,2>
-            >
-        >&);
-template bool should_compute_on_gpu(
-        const std::vector<
-            std::reference_wrapper<
-                const TensorInternal<double,2>
-            >
-        >&);

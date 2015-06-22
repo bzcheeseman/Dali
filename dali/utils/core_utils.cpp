@@ -969,7 +969,13 @@ namespace utils {
     steep_sigmoid_operator<T>::steep_sigmoid_operator(T _aggressiveness) : aggressiveness(_aggressiveness) {};
 
     template<typename T>
-    T tanh_operator<T>::operator() (T x) const { return std::tanh(x); }
+    T tanh_operator<T>::operator() (T x) const {
+        if (x < -30.0)
+            return -1.0;
+        if (x >  30.0)
+            return 1.0;
+        return std::tanh(x);
+    }
 
     template<typename T>
     T relu_operator<T>::operator() (T x) const { return std::max(x, (T) 0.0); }

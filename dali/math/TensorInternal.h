@@ -71,6 +71,7 @@ class TensorInternal;
 template<typename R, int dimension>
 class TensorInternal : public SynchronizedMemory<R, dimension> {
     public:
+        static const int ndimensions =  dimension;
         // inherit SynchronizedMemory's constructors (C++11)
         using SynchronizedMemory<R, dimension>::SynchronizedMemory;
 

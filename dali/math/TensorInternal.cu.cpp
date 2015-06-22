@@ -56,37 +56,19 @@ bool TensorInternal<R, dimension>::compute_me_on_gpu() const {
     return false;
 }
 
-template<typename R, int dimension>
-inline R& get_val(TensorInternal<R,dimension>& source, int i, int j) {
-    utils::assert2(false, utils::MS() << "Trying to access 2D address on Tensor of dim" << dimension);
-}
-
-template<typename R, int dimension>
-inline const R& get_val(const TensorInternal<R,dimension>& source, int i, int j) {
-    utils::assert2(false, utils::MS() << "Trying to access 2D address on Tensor of dim" << dimension);
-}
-
-template<typename R>
-inline R& get_val(TensorInternal<R,2>& source, int i, int j) {
-    return source.mutable_cpu_data()[i][j];
-}
-
-template<typename R>
-inline const R& get_val(const TensorInternal<R,2>& source, int i, int j) {
-    return source.cpu_data()[i][j];
-}
-
-
-
 
 template<typename R, int dimension>
 R& TensorInternal<R,dimension>::operator()(int i, int j) {
-    return get_val<R, dimension>(*this, i, j);
+    // TODO(szymon): use mshadow abstractions instead.
+    int offset = this->shape()[0] * i + j;
+    return *(this->mutable_cpu_data().dptr_ + offset);
 }
 
 template<typename R, int dimension>
 R TensorInternal<R,dimension>::operator()(int i, int j) const {
-    return get_val<R, dimension>(*this, i, j);
+    // TODO(szymon): use mshadow abstractions instead.
+    int offset = this->shape()[0] * i + j;
+    return *(this->cpu_data().dptr_ + offset);
 }
 
 template<typename R, int dimension>

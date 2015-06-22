@@ -159,32 +159,23 @@ template<typename R>
 Mat<R> MatOps<R>::eltmul(
     Mat<R> matrix,
     R alpha) {
-    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = (MAT(matrix).array() * alpha).matrix();
+    MAT(out) = MAT(matrix).wrapper() * alpha;
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, alpha, out]() mutable {
-            SAFE_GRAD(matrix).noalias() += (alpha * (GRAD(out)).array()).matrix();
+            SAFE_GRAD(matrix) += alpha * GRAD(out).wrapper();
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>
 vector<Mat<R>> MatOps<R>::eltmul(const vector<Mat<R>>& seq1, const vector<Mat<R>>& seq2) {
-    #ifndef DONT_COMPILE
     assert2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
-
     vector<Mat<R>> result(seq1.size());
     for (int i = 0; i < seq1.size(); ++i) {
         result[i] = seq1[i] * seq2[i];
     }
     return result;
-    #else
-    return {Mat<R>(1,1)};
-    #endif
 }
 
 
@@ -221,19 +212,14 @@ template<typename R>
 Mat<R> MatOps<R>::eltdivide(
     Mat<R> matrix,
     R alpha) {
-    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = (MAT(matrix).array() / alpha).matrix();
+    MAT(out) = MAT(matrix).wrapper() / alpha;
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, alpha, out]() mutable {
-            SAFE_GRAD(matrix).noalias() += ((1.0 / alpha) * (GRAD(out)).array()).matrix();
+            SAFE_GRAD(matrix) += ((R)1.0 / alpha) * GRAD(out).wrapper();
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
-
 
 template<typename R>
 Mat<R> MatOps<R>::eltmul_broadcast_rowwise(
@@ -299,7 +285,6 @@ Mat<R> MatOps<R>::eltmul_rowwise(
 
 template<typename R>
 vector<Mat<R>> MatOps<R>::eltmul_rowwise(const vector<Mat<R>>& seq1, const vector<Mat<R>>& seq2) {
-    #ifndef DONT_COMPILE
     assert2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
 
     vector<Mat<R>> result(seq1.size());
@@ -307,9 +292,6 @@ vector<Mat<R>> MatOps<R>::eltmul_rowwise(const vector<Mat<R>>& seq1, const vecto
         result[i] = eltmul_rowwise(seq1[i], seq2[i]);
     }
     return result;
-    #else
-    return {Mat<R>(1,1)};
-    #endif
 }
 
 
@@ -370,17 +352,13 @@ template<typename R>
 Mat<R> MatOps<R>::add(
         Mat<R> matrix1,
         R alpha) {
-    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix1);
-    MAT(out).array() = MAT(matrix1).array() + alpha;
-    if (graph::backprop_enabled)
+    MAT(out) = MAT(matrix1).wrapper() + alpha;
+    if (graph::backprop_enabled && !matrix1.constant)
         graph::emplace_back([matrix1, out]() mutable {
-            SAFE_GRAD(matrix1).noalias() += GRAD(out);
+            GRAD(matrix1) += GRAD(out).wrapper();
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>
@@ -403,22 +381,18 @@ Mat<R> MatOps<R>::add_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
         graph::emplace_back([matrix1, matrix2, out]() mutable {
             SAFE_GRAD(matrix1) += GRAD(out).wrapper();
             // temporary:
-            TensorInternal<R,1> out_row_sum(mshadow::Shape1(out.dims(0)));
+            if (!matrix2.constant) {
+                TensorInternal<R,1> out_row_sum(mshadow::Shape1(out.dims(0)));
+                out_row_sum = sum_cols(GRAD(out).wrapper());
 
-            out_row_sum = sum_cols(GRAD(out).wrapper());
-
-            // mshadow::Tensor<mshadow::gpu, 2, R> ttt = mshadow::NewTensor<mshadow::gpu,R>(mshadow::Shape2(3,4), (R)0.0);
-            // mshadow::Tensor<mshadow::gpu, 1, R> rrr = mshadow::NewTensor<mshadow::gpu,R>(mshadow::Shape1(3), (R)0.0);
-            // rrr = mshadow::expr::sum_rows(ttt);
-
-            SAFE_GRAD(matrix2) += out_row_sum.wrapper().template broadcast<1>(MAT(matrix2).shape());
+                GRAD(matrix2) += out_row_sum.wrapper().template broadcast<1>(MAT(matrix2).shape());
+            }
         });
     return out;
 }
 
 template<typename R>
 Mat<R> MatOps<R>::sub_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
-    #ifndef DONT_COMPILE
     // broadcast matrix 2:
     utils::assert2(matrix2.dims(0) == 1, "Second argument to sub_broadcast must be a vector (first dimension=1)");
     if (matrix1.dims(0) != matrix2.dims(1)) {
@@ -427,16 +401,22 @@ Mat<R> MatOps<R>::sub_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
                  << ") equal to inner dimension of first argument (" << matrix1.dims(0) << ").");
     }
     auto out = Mat<R>::empty_like(matrix1);
-    MAT(out) = (MAT(matrix1).colwise() - MAT(matrix2).col(0)).matrix();
+    MAT(out) = (
+        MAT(matrix1).wrapper() -
+        MAT(matrix2).wrapper()[0].template broadcast<0>(
+            MAT(matrix1).shape()
+        )
+    );
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() mutable {
-            SAFE_GRAD(matrix1).noalias() += GRAD(out);
-            SAFE_GRAD(matrix2).noalias() -= GRAD(out).rowwise().sum();
+            SAFE_GRAD(matrix1) += GRAD(out).wrapper();
+            // temporary:
+            TensorInternal<R,1> out_row_sum(mshadow::Shape1(out.dims(0)));
+            out_row_sum = sum_cols(GRAD(out).wrapper());
+
+            SAFE_GRAD(matrix2) -= out_row_sum.wrapper().template broadcast<1>(MAT(matrix2).shape());
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>
@@ -505,7 +485,7 @@ Mat<R> MatOps<R>::square(Mat<R> matrix) {
 
     if (graph::backprop_enabled && !matrix.constant)
         graph::emplace_back([matrix, out]() mutable {
-            GRAD(matrix) += (R)2.0 * MAT(matrix).wrapper() * GRAD(out).wrapper();
+            GRAD(matrix) += MAT(matrix).wrapper() * GRAD(out).wrapper() * (R) 2.0;
         });
     return out;
 }

@@ -613,7 +613,6 @@ Mat<R> Mat<R>::empty_like(Mat<R> other) {
     return Mat<R>(other.dims(0), other.dims(1), false);
 }
 
-
 /* External operators */
 template<typename R>
 Mat<R> operator+(int other, Mat<R> mat) {

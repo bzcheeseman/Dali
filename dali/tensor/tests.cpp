@@ -175,6 +175,10 @@ bool gradient_same(
         if (fail_on_zero_gradient) {
             auto is_nonzero = buffer_is_nonzero((R*)Arg_prime, arg.number_of_elements());
             if (((bool)is_nonzero) == false) {
+                std::cout << "Gradient for parameter should not be all zeros." << std::endl;
+                if (arg.name != nullptr) {
+                    std::cout << "arg.name = " << *arg.name << std::endl;
+                }
                 return false;
             }
         }
@@ -306,21 +310,6 @@ TEST_F(MatrixTests, inplace_substract) {
             return A_temp;
         };
         ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-5, DEFAULT_GRAD_EPS, true));
-    }
-}
-
-TEST_F(MatrixTests, inplace_divide) {
-    EXPERIMENT_REPEAT {
-        auto A = Mat<R>(3, 4, weights<R>::uniform(0.1, 20.0));
-        auto B = Mat<R>(3, 4, weights<R>::uniform(1.0, 2.0));
-
-        auto functor = [&A, &B](vector<Mat<R>>& Xs)-> Mat<R> {
-            auto A_temp = A;
-            auto B_temp = B;
-            A_temp /= B_temp;
-            return A_temp;
-        };
-        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-3, DEFAULT_GRAD_EPS, true));
     }
 }
 
@@ -461,7 +450,6 @@ TEST_F(MatrixTests, dot_gradient) {
     }
 }
 
-
 // requires sum broadcast
 TEST_F(MatrixTests, DISABLED_matrix_dot_plus_bias) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
@@ -478,7 +466,6 @@ TEST_F(MatrixTests, DISABLED_matrix_dot_plus_bias) {
     }
 }
 
-
 TEST_F(MatrixTests, matrix_divide) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] / Xs[1];
@@ -489,7 +476,6 @@ TEST_F(MatrixTests, matrix_divide) {
         ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-3));
     }
 }
-
 
 TEST_F(MatrixTests, matrix_divide_broadcast) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
@@ -502,31 +488,48 @@ TEST_F(MatrixTests, matrix_divide_broadcast) {
     }
 }
 
-/*
-TEST_F(MatrixTests, matrix_divide_scalar) {
 
+TEST_F(MatrixTests, matrix_divide_scalar) {
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(-20.0, 20.0));
         auto scalar = (R) utils::randdouble(0.1, 20.0);
         auto functor = [&scalar](vector<Mat<R>> Xs)-> Mat<R> {
             return Xs[0] / scalar;
         };
-        ASSERT_TRUE(gradient_same(functor, {A}, 1e-3));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, DEFAULT_GRAD_EPS, true));
     }
 }
 
 
-// TEST_F(MatrixTests, divide_inplace) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         Xs[0] /= 20.0;
-//         return (Xs[0] - 2.0) ^ 2;
-//     };
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(10, 20, weights<R>::uniform(0.001, 20.0));
-//         ASSERT_TRUE(gradient_same(functor, {A}, 1e-4));
-//     }
-// }
+TEST_F(MatrixTests, divide_inplace_matrix) {
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(3, 4, weights<R>::uniform(0.1, 20.0));
+        auto B = Mat<R>(3, 4, weights<R>::uniform(1.0, 2.0));
 
+        auto functor = [&A, &B](vector<Mat<R>>& Xs)-> Mat<R> {
+            auto A_temp = A;
+            auto B_temp = B;
+            A_temp /= B_temp;
+            return A_temp;
+        };
+        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-3, DEFAULT_GRAD_EPS, true));
+    }
+}
+
+
+TEST_F(MatrixTests, divide_inplace_scalar) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        auto temp = Xs[0];
+        temp /= (R)20.0;
+        return (temp - 2.0) ^ 2;
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(0.001, 20.0));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4, DEFAULT_GRAD_EPS, false));
+    }
+}
+
+/*
 typedef MemorySafeTest MatOpsTests;
 
 TEST_F(MatOpsTests, matrix_mul_with_bias) {

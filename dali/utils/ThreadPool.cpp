@@ -79,11 +79,20 @@ bool ThreadPool::wait_until_idle(Duration timeout) {
 }
 
 bool ThreadPool::wait_until_idle() {
-    std::unique_lock<decltype(queue_mutex)> lock(queue_mutex);
-    is_idle.wait(lock, [this]{
-        return active_count == 0 && work.empty();
-    });
-    return idle();
+    int retries = 3;
+    while (retries--) {
+        try {
+            std::unique_lock<decltype(queue_mutex)> lock(queue_mutex);
+            is_idle.wait(lock, [this]{
+                return active_count == 0 && work.empty();
+            });
+            return idle();
+        } catch (...) {}
+    }
+    throw std::runtime_error(
+        "exceeded retries when waiting until idle."
+    );
+    return false;
 }
 
 bool ThreadPool::idle() const {
@@ -91,8 +100,17 @@ bool ThreadPool::idle() const {
 }
 
 void ThreadPool::run(function<void()> f) {
-    std::unique_lock<decltype(queue_mutex)> lock(queue_mutex);
-    work.push_back(f);
+    int retries = 3;
+    while (retries--) {
+        try {
+            std::unique_lock<decltype(queue_mutex)> lock(queue_mutex);
+            work.push_back(f);
+            return;
+        } catch (...) {}
+    }
+    throw std::runtime_error(
+        "exceeded retries when trying to run operation on thread pool."
+    );
 }
 
 ThreadPool::~ThreadPool() {

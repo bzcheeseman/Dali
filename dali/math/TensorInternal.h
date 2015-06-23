@@ -23,18 +23,21 @@ class TensorInternal;
         template <typename TA, typename TB, int ta> \
         TensorInternal& operator op_symbol (const LazyTensor<TA, TB, R, dimension, ta>& expr) { \
             if (should_compute_on_gpu(expr.sync_tensors)) { \
-                std::cout << "[assign::wakeup] start" << std::endl;\
                 /* refresh the gpu memory from cpu*/ \
                 for (auto participant : expr.sync_tensors) { \
                     participant->to_gpu(); \
                 } \
-                std::cout << "[assign::wakeup] end" << std::endl;\
-                this->to_gpu(); \
+                for (auto participant : expr.dependent_tensors) { \
+                    participant->update_tensor(); \
+                } \
                 this->mutable_gpu_data() op_symbol expr.right; \
             } else {/* refresh the cpu memory from gpu*/ \
                 for (auto participant : expr.sync_tensors) { \
                     participant->to_cpu(); \
                 }\
+                for (auto participant : expr.dependent_tensors) { \
+                    participant->update_tensor(); \
+                } \
                 this->mutable_cpu_data() op_symbol expr.left;\
             };\
             return *this;\
@@ -54,6 +57,9 @@ class TensorInternal;
         TensorInternal& operator op_symbol (const LazyTensor<TA, R, dimension,ta>& expr) { \
             for (auto& participant : expr.sync_tensors) { \
                 participant->to_cpu(); \
+            }\
+            for (auto& participant : expr.dependent_tensors) { \
+                participant->update_tensor(); \
             }\
             this->mutable_cpu_data() op_symbol expr.left;\
             return *this;\

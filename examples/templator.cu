@@ -17,9 +17,24 @@ struct sigmoid {
     }
 };
 
+
+void Print1DTensor(Tensor<cpu, 1, float> const &ts) {
+  for (index_t i = 0; i < ts.size(0); ++i) {
+    printf("%.2f ", ts[i]);
+  }
+  printf("\n");
+}
+
+void Print2DTensor(Tensor<cpu, 2, float> const &ts) {
+    for (index_t i = 0; i < ts.size(0); ++i) {
+        Print1DTensor(ts[i]);
+    }
+}
+
+
 typedef float R;
 
-typedef LazyTensor<cpu_t, gpu_t, R, type::kRValue> wrapped_t;
+typedef LazyTensor<cpu_t, gpu_t, R, 2, type::kRValue> wrapped_t;
 
 int main() {
     dali_init();
@@ -43,14 +58,6 @@ int main() {
 
     auto a = A.w().wrapper();
     auto b = B.w().wrapper();
-
-
-    auto XXXX = ((a+b).T());
-    auto YYYY = Mat<R>(3,2);
-    YYYY.w() = XXXX;
-
-    std::cout << "YYYY equals" << std::endl;
-    YYYY.print();
 
 
     auto c = a;// + b;
@@ -91,6 +98,7 @@ int main() {
     D.w() = c[0].repmat(4);
     std::cout << "D=" << std::endl;
     D.print();
+    Print2DTensor(D.w().cpu_data());
 
     Mat<R> lhs(1, 3);
 
@@ -110,6 +118,9 @@ int main() {
 
     std::cout << "out3=" << std::endl;
     out3.print();
+
+
+
 
     mshadow::ShutdownTensorEngine<mshadow::gpu>();
 

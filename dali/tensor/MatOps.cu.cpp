@@ -485,28 +485,7 @@ Mat<R> MatOps<R>::square(Mat<R> matrix) {
 
     if (graph::backprop_enabled && !matrix.constant)
         graph::emplace_back([matrix, out]() mutable {
-            ELOG(GRAD(matrix).allocated_gpu());
-            ELOG(GRAD(matrix).gpu_fresh);
-            ELOG(MAT(matrix).allocated_gpu());
-            ELOG(MAT(matrix).gpu_fresh);
-            ELOG(GRAD(out).allocated_gpu());
-            ELOG(GRAD(out).gpu_fresh);
-
-            std::cout << utils::red << "    <forced wake-up>" << utils::reset_color << std::endl;
-            MAT(matrix).to_gpu();
-            std::cout << utils::red << "    </forced wake-up>" << utils::reset_color << std::endl;
-
-
-            std::cout << "[square::backward] start" << std::endl;
-
-            ELOG(&GRAD(matrix));
-            ELOG(&MAT(matrix));
-            ELOG(&GRAD(out));
-
             GRAD(matrix) += GRAD(out).wrapper() * MAT(matrix).wrapper() * (R) 2.0;
-            //GRAD(matrix).mutable_gpu_data() += GRAD(out).gpu_data() * MAT(matrix).gpu_data() * ((R) 2.0);
-
-            std::cout << "[square::backward] end" << std::endl;
         });
     return out;
 }
@@ -1214,6 +1193,7 @@ Mat<R> MatOps<R>::mul(
 
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() mutable {
+
             SAFE_GRAD(matrix1) += dot( GRAD(out).wrapper(),        MAT(matrix2).wrapper().T() );
             SAFE_GRAD(matrix2) += dot( MAT(matrix1).wrapper().T(), GRAD(out).wrapper() );
         });

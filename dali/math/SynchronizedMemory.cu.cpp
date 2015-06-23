@@ -34,7 +34,6 @@ template std::ostream& operator<< <7>(std::ostream& strm, const mshadow::Shape<7
 template std::ostream& operator<< <8>(std::ostream& strm, const mshadow::Shape<8>& a);
 template std::ostream& operator<< <9>(std::ostream& strm, const mshadow::Shape<9>& a);
 
-
 void dali_init() {
     mshadow::InitTensorEngine<mshadow::cpu>();
     #ifdef DALI_USE_CUDA
@@ -199,17 +198,13 @@ typename SynchronizedMemory<R,dimension>::cpu_tensor_t & SynchronizedMemory<R,di
     void SynchronizedMemory<R,dimension>::to_gpu() const {
         if (!this->gpu_fresh) {
             if (!allocated_gpu_) {
-                std::cout << utils::blue << "    allocating gpu" << utils::reset_color << std::endl;
-                AllocSpace(&mem_gpu);
+                AllocSpace(&mem_gpu, false);
                 allocated_gpu_ = true;
             }
             if (this->cpu_fresh) {
-                std::cout << utils::blue <<  "    copying from cpu" << utils::reset_color << std::endl;
                 Copy(mem_gpu, mem_cpu);
             }
             this->gpu_fresh = true;
-        } else {
-            std::cout << utils::blue << "    gpu fresh" << utils::reset_color << std::endl;
         }
     }
 #endif
@@ -218,7 +213,7 @@ template<typename R, int dimension>
 void SynchronizedMemory<R,dimension>::to_cpu() const {
     if (!this->cpu_fresh) {
         if (!allocated_cpu_) {
-            AllocSpace(&mem_cpu);
+            AllocSpace(&mem_cpu, false);
             allocated_cpu_ = true;
         }
 #ifdef DALI_USE_CUDA
@@ -245,13 +240,13 @@ template<typename R, int dimension>
 template<typename SourceType>
 void SynchronizedMemory<R,dimension>::copy_data_from(SourceType& data_source) {
     if (this->prefers_cpu()) {
-        AllocSpace(&mem_cpu);
+        AllocSpace(&mem_cpu, false);
         allocated_cpu_ = true;
         Copy(mem_cpu, data_source);
         this->cpu_fresh = true;
     } else {
 #ifdef DALI_USE_CUDA
-        AllocSpace(&mem_gpu);
+        AllocSpace(&mem_gpu, false);
         allocated_gpu_ = true;
         Copy(mem_gpu, data_source);
         this->gpu_fresh = true;

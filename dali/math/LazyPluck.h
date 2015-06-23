@@ -1,9 +1,35 @@
 #ifndef DALI_MAT_MATH_LAZY_PLUCK_H
 #define DALI_MAT_MATH_LAZY_PLUCK_H
+#ifdef DOT_NOT_COMPILE_ME
+
 
 #include "mshadow/tensor.h"
 #include "mshadow/expr_engine-inl.h"
 #include "dali/math/LazyUtils.h"
+
+
+// This will go inside LazyTensor if it is used
+/* Future Lazy plucking
+inline LazyTensor<
+        dali_expr::PluckExpression<
+            LeftType,
+            DType,
+            mshadow::expr::ExpInfo<LeftType>::kDim - 1>,
+        dali_expr::PluckExpression<
+            RightType,
+            DType,
+            mshadow::expr::ExpInfo<RightType>::kDim - 1>,
+        DType,
+        mshadow::expr::type::kChainer
+        > operator[](mshadow::index_t idx) const {
+    auto cpu_pluck = dali_expr::PluckExpression<LeftType, DType, mshadow::expr::ExpInfo<LeftType>::kDim - 1>(
+        left,
+        idx);
+    auto gpu_pluck = dali_expr::PluckExpression<RightType, DType, mshadow::expr::ExpInfo<RightType>::kDim - 1>(
+        right,
+        idx);
+*/
+
 
 namespace dali_expr {
     template<typename SrcExp, typename DType, int dstdim>
@@ -38,5 +64,5 @@ namespace expr {
     };
 }
 }
-
+#endif
 #endif

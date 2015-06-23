@@ -95,6 +95,9 @@ int main () {
     printf("\n#Sum\n");
     Tensor<cpu, 2, float> A = NewTensor<cpu, float>(Shape2(5, 5), 0.2f);
     Tensor<cpu, 2, float> B = NewTensor<cpu, float>(Shape2(5, 5), 0.3f);
+
+
+
     auto bob = NewTensor<cpu, float>(Shape2(5, 5), 0.0f);
     auto joe = NewTensor<gpu, float>(Shape2(5, 5), 0.0f);
 

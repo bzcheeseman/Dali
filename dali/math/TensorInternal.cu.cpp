@@ -59,15 +59,14 @@ bool TensorInternal<R, dimension>::compute_me_on_gpu() const {
 
 template<typename R, int dimension>
 R& TensorInternal<R,dimension>::operator()(int i, int j) {
-    // TODO(szymon): use mshadow abstractions instead.
-    int offset = this->shape()[0] * i + j;
+    int offset = this->cpu_data().stride_  * i + j;
     return *(this->mutable_cpu_data().dptr_ + offset);
 }
 
 template<typename R, int dimension>
 R TensorInternal<R,dimension>::operator()(int i, int j) const {
-    // TODO(szymon): use mshadow abstractions instead.
-    int offset = this->shape()[0] * i + j;
+    // this is wrong for dimension > 2 or == 1
+    int offset = this->cpu_data().stride_  * i + j;
     return *(this->cpu_data().dptr_ + offset);
 }
 

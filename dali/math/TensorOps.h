@@ -155,16 +155,44 @@ namespace TensorOps {
 
     namespace op {
         template<typename R>
-        struct square_f {
+        struct square {
             MSHADOW_XINLINE static R Map(const R& a) {
                 return a * a;
             }
         };
 
         template<typename R>
-        struct inv_f {
+        struct inv {
             MSHADOW_XINLINE static R Map(const R& a) {
                 return ((R)1.0) / a;
+            }
+        };
+
+        template<typename R>
+        struct sigmoid {
+          MSHADOW_XINLINE static R Map(const R& a) {
+                return ((R)1.0) / (((R)1.0) + std::exp(-a));
+          }
+        };
+
+        template<typename R>
+        struct dsigmoid {
+            MSHADOW_XINLINE static R Map(const R& a) {
+                return a * (((R)1.0) - a);
+            }
+        };
+
+        template<typename R>
+        struct tanh {
+            MSHADOW_XINLINE static R Map(const R& a) {
+                return std::tanh( a );
+            }
+        };
+
+        template<typename R>
+        struct dtanh {
+            MSHADOW_XINLINE static R Map(const R& a) {
+                return ((R)1.0) - a * a;
             }
         };
     }

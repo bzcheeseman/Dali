@@ -385,7 +385,7 @@ TEST_F(MatrixTests, addition_broadcast_gradient) {
     }
 }
 
-/*
+
 TEST_F(MatrixTests, sigmoid_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].sigmoid();
@@ -402,7 +402,7 @@ TEST_F(MatrixTests, tanh_gradient) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(20.0));
-        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4, DEFAULT_GRAD_EPS, true));
     }
 }
 
@@ -412,7 +412,7 @@ TEST_F(MatrixTests, norm_gradient) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(20.0));
-        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4, DEFAULT_GRAD_EPS, true));
     }
 }
 
@@ -422,7 +422,7 @@ TEST_F(MatrixTests, exp_gradient) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(20.0));
-        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4, DEFAULT_GRAD_EPS, true));
     }
 }
 
@@ -432,25 +432,24 @@ TEST_F(MatrixTests, log_gradient) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(0.001, 20.0));
-        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4, DEFAULT_GRAD_EPS, true));
     }
-}*/
+}
 
 TEST_F(MatrixTests, dot_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[1].dot(Xs[0]);
     };
-    int num_examples = 3;
-    int hidden_size = 4;
-    int input_size = 2;
-    //EXPERIMENT_REPEAT {
+    int num_examples = 5;
+    int hidden_size = 10;
+    int input_size = 3;
+    EXPERIMENT_REPEAT {
         auto X = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
         auto W = Mat<R>(hidden_size, input_size, weights<R>::uniform(2.0));
         ASSERT_TRUE(gradient_same(functor, {X, W}, 1e-4));
-    //}
+    }
 }
 
-// requires sum broadcast
 TEST_F(MatrixTests, DISABLED_matrix_dot_plus_bias) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         auto res = Xs[1].dot(Xs[0]) + Xs[2];

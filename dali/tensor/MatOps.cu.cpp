@@ -13,7 +13,7 @@ using graph::emplace_back;
 using mshadow::expr::ExpEngine;
 using mshadow::expr::scalar;
 
-using namespace TensorOps::op;
+using namespace TensorOps;
 
 template<typename R>
 R MatOps<R>::EPS = 1e-9;
@@ -196,12 +196,12 @@ Mat<R> MatOps<R>::eltdivide(
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() mutable {
             SAFE_GRAD(matrix1) += (
-                F<inv_f<R>>(MAT(matrix2).wrapper()) *
+                F<op::inv<R>>(MAT(matrix2).wrapper()) *
                 GRAD(out).wrapper()
             );
             SAFE_GRAD(matrix2) -= (
                 MAT(matrix1).wrapper() /
-                F<square_f<R>>(MAT(matrix2).wrapper())
+                F<op::square<R>>(MAT(matrix2).wrapper())
             ) * GRAD(out).wrapper();
         });
     return out;
@@ -481,7 +481,7 @@ template<typename R>
 Mat<R> MatOps<R>::square(Mat<R> matrix) {
     auto out = Mat<R>::empty_like(matrix);
 
-    MAT(out) = F<square_f<R>>(MAT(matrix).wrapper());
+    MAT(out) = F<op::square<R>>(MAT(matrix).wrapper());
 
     if (graph::backprop_enabled && !matrix.constant)
         graph::emplace_back([matrix, out]() mutable {
@@ -590,17 +590,15 @@ Mat<R> MatOps<R>::pow(Mat<R> matrix, Mat<R> other) {
 
 template<typename R>
 Mat<R> MatOps<R>::sigmoid(Mat<R> matrix) {
-    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = MAT(matrix).unaryExpr(utils::sigmoid_operator<R>());
-    if (graph::backprop_enabled)
+    MAT(out) = F<op::sigmoid<R>>(MAT(matrix).wrapper());
+    if (graph::backprop_enabled && !matrix.constant)
         graph::emplace_back([matrix, out]() mutable {
-            SAFE_GRAD(matrix).noalias() += (((MAT(out)).array() - MAT(out).array().square()) * GRAD(out).array()).matrix();
+            GRAD(matrix) += (
+                F<op::dsigmoid<R>>(MAT(out).wrapper()) * GRAD(out).wrapper()
+            );
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 
@@ -1120,36 +1118,29 @@ Mat<R> MatOps<R>::vstack(const std::vector<Mat<R>>& matrices) {
 
 template<typename R>
 Mat<R> MatOps<R>::transpose(Mat<R> matrix) {
-    #ifndef DONT_COMPILE
-    assert(matrix.dims().size() > 1);
     Mat<R> out (
         matrix.dims(1),
         matrix.dims(0),
         false);
-    MAT(out) = MAT(matrix).transpose();
-    if (graph::backprop_enabled)
+    MAT(out) = MAT(matrix).wrapper().T();
+    if (graph::backprop_enabled && !matrix.constant)
         graph::emplace_back([matrix, out]() mutable {
-            SAFE_GRAD(matrix).noalias() += (GRAD(out)).transpose();
+            GRAD(matrix) += (GRAD(out).wrapper()).T();
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::tanh(Mat<R> matrix) {
-    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = MAT(matrix).unaryExpr(utils::tanh_operator<R>());
-    if (graph::backprop_enabled)
+    MAT(out) = F<op::tanh<R>>(MAT(matrix).wrapper());
+    if (graph::backprop_enabled && !matrix.constant)
         graph::emplace_back([matrix, out]() mutable {
-            SAFE_GRAD(matrix).noalias() += (MAT(out).unaryExpr(utils::dtanh_operator<R>()).array() * GRAD(out).array()).matrix();
+            GRAD(matrix) += (
+                F<op::dtanh<R>>(MAT(out).wrapper()) * GRAD(out).wrapper()
+            );
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>

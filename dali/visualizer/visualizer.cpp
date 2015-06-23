@@ -312,23 +312,29 @@ namespace visualizable {
 
 #ifdef DALI_USE_VISUALIZER
     bool Visualizer::ensure_connection() {
-        std::unique_lock<std::mutex> guard(connection_mutex);
-        if (rdx_state.load() != redox::Redox::CONNECTED &&
-                rdx_state.load() != redox::Redox::NOT_YET_CONNECTED) {
-            rdx.reset();
-            rdx = std::make_shared<redox::Redox>(std::cout, redox::log::Off);
+        try {
+            std::unique_lock<std::mutex> guard(connection_mutex);
+            if (rdx_state.load() != redox::Redox::CONNECTED &&
+                    rdx_state.load() != redox::Redox::NOT_YET_CONNECTED) {
+                rdx.reset();
+                rdx = std::make_shared<redox::Redox>(std::cout, redox::log::Off);
 
-            rdx_state.store(redox::Redox::NOT_YET_CONNECTED);
+                rdx_state.store(redox::Redox::NOT_YET_CONNECTED);
 
-            rdx->connect(FLAGS_visualizer_hostname,
-                     FLAGS_visualizer_port,
-                     std::bind(&Visualizer::connected_callback, this, _1));
+                rdx->connect(FLAGS_visualizer_hostname,
+                         FLAGS_visualizer_port,
+                         std::bind(&Visualizer::connected_callback, this, _1));
+            }
+            return rdx_state.load() == redox::Redox::CONNECTED;
+        } catch (std::system_error) {
+            return false;
         }
-        return rdx_state.load() == redox::Redox::CONNECTED;
     }
+
     void Visualizer::connected_callback(int status) {
         rdx_state.store(status);
     }
+
     Visualizer::Visualizer(std::string my_namespace,
                            bool rename_if_needed) :
             my_namespace(my_namespace),

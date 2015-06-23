@@ -503,8 +503,8 @@ Mat<R> MatOps<R>::square(Mat<R> matrix) {
             ELOG(&MAT(matrix));
             ELOG(&GRAD(out));
 
-            //GRAD(matrix) += GRAD(out).wrapper() * MAT(matrix).wrapper() * (R) 2.0;
-            GRAD(matrix).mutable_gpu_data() += GRAD(out).gpu_data() * MAT(matrix).gpu_data() * ((R) 2.0);
+            GRAD(matrix) += GRAD(out).wrapper() * MAT(matrix).wrapper() * (R) 2.0;
+            //GRAD(matrix).mutable_gpu_data() += GRAD(out).gpu_data() * MAT(matrix).gpu_data() * ((R) 2.0);
 
             std::cout << "[square::backward] end" << std::endl;
         });

@@ -203,14 +203,22 @@ namespace TensorOps {
         template<typename R>
         struct sigmoid {
             MSHADOW_XINLINE static R Map(const R& a) {
+                #ifdef DALI_USE_CUDA
                 return 1.0 / (1.0 + expf(-a));
+                #else
+                return 1.0 / (1.0 + std::exp(-a));
+                #endif
             }
         };
 
         template<typename R>
         struct exp {
             MSHADOW_XINLINE static R Map(const R& a) {
+                #ifdef DALI_USE_CUDA
                 return expf(a);
+                #else
+                return std::exp(a);
+                #endif
             }
         };
 
@@ -224,7 +232,11 @@ namespace TensorOps {
         template<typename R>
         struct tanh {
             MSHADOW_XINLINE static R Map(const R& a) {
-                return tanhf( a );
+                #ifdef DALI_USE_CUDA
+                return tanhf(a);
+                #else
+                return std::tanh(a);
+                #endif
             }
         };
 

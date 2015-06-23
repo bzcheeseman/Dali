@@ -108,6 +108,7 @@ class TensorInternal : public SynchronizedMemory<R, dimension> {
         DALI_SYNC_TENSOR_ASSIGN_SCALAR_OP(*=)
 
         R sum() const;
+        R L2_norm() const;
         bool allclose(const TensorInternal<R, dimension>& other, R tol) const;
         bool operator==(const TensorInternal<R, dimension>& other) const;
 
@@ -129,7 +130,6 @@ class TensorInternal : public SynchronizedMemory<R, dimension> {
         void clear();
 
         static TensorInternal<R,dimension> zeros(mshadow::Shape<dimension>);
-
 };
 
 #endif

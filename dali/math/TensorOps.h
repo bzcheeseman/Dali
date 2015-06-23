@@ -4,6 +4,7 @@
 #include <mshadow/tensor.h>
 #include <random>
 #include <functional>
+#include <math.h>
 
 
 #ifdef DALI_USE_CUDA
@@ -13,6 +14,7 @@
 #include <thrust/functional.h>
 #include <thrust/reduce.h>
 #include <thrust/transform.h>
+#include <thrust/transform_reduce.h>
 
 
 /* CUDA UTILS START HERE */
@@ -90,9 +92,39 @@ namespace TensorOps {
         return thrust::reduce(to_thrust(a), to_thrust(a) + num_elts, 0.0, thrust::plus<R>());
     }
     #endif
+
     template<int ndims, typename R>
     R sum(const mshadow::Tensor<cpu, ndims, R>& a, int num_elts) {
         return std::accumulate(a.dptr_, a.dptr_ + num_elts, 0.0);
+    }
+
+
+    #ifdef DALI_USE_CUDA
+    template <typename T>
+    struct thrust_square {
+        __host__ __device__
+        T operator()(const T& x) const {
+            return x * x;
+        }
+    };
+
+    template<int ndims, typename R>
+    R L2_norm(const mshadow::Tensor<gpu, ndims, R>& a, int num_elts) {
+        return std::sqrt(thrust::transform_reduce(to_thrust(a), to_thrust(a) + num_elts, thrust_square<R>(), 0.0, thrust::plus<R>()));
+    }
+    #endif
+
+
+    template <typename T>
+    struct thrust_square_reduce {
+        T operator()(const T& x, const T& y) const {
+            return x + (y * y);
+        }
+    };
+
+    template<int ndims, typename R>
+    R L2_norm(const mshadow::Tensor<cpu, ndims, R>& a, int num_elts) {
+        return std::sqrt(std::accumulate(a.dptr_, a.dptr_ + num_elts, 0.0, thrust_square_reduce<R>()));
     }
 
     template<int ndims, typename R>
@@ -170,9 +202,16 @@ namespace TensorOps {
 
         template<typename R>
         struct sigmoid {
-          MSHADOW_XINLINE static R Map(const R& a) {
-                return ((R)1.0) / (((R)1.0) + std::exp(-a));
-          }
+            MSHADOW_XINLINE static R Map(const R& a) {
+                return 1.0 / (1.0 + expf(-a));
+            }
+        };
+
+        template<typename R>
+        struct exp {
+            MSHADOW_XINLINE static R Map(const R& a) {
+                return expf(a);
+            }
         };
 
         template<typename R>
@@ -185,14 +224,14 @@ namespace TensorOps {
         template<typename R>
         struct tanh {
             MSHADOW_XINLINE static R Map(const R& a) {
-                return std::tanh( a );
+                return tanhf( a );
             }
         };
 
         template<typename R>
         struct dtanh {
             MSHADOW_XINLINE static R Map(const R& a) {
-                return ((R)1.0) - a * a;
+                return 1.0 - a * a;
             }
         };
     }

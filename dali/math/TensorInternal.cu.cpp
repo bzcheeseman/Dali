@@ -17,6 +17,19 @@ R TensorInternal<R, dimension>::sum() const {
 }
 
 template<typename R, int dimension>
+R TensorInternal<R, dimension>::L2_norm() const {
+    #ifdef DALI_USE_CUDA
+        if (compute_me_on_gpu()) {
+            return TensorOps::L2_norm(this->gpu_data(), this->number_of_elements() );
+        } else {
+            return TensorOps::L2_norm(this->cpu_data(), this->number_of_elements() );
+        }
+    #else
+        return TensorOps::L2_norm(this->cpu_data(), this->number_of_elements());
+    #endif
+}
+
+template<typename R, int dimension>
 bool TensorInternal<R,dimension>::operator==(const TensorInternal<R,dimension>& other) const {
     #ifdef DALI_USE_CUDA
         if (should_compute_on_gpu({this, &other})) {

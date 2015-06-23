@@ -492,17 +492,15 @@ Mat<R> MatOps<R>::square(Mat<R> matrix) {
 
 template<typename R>
 Mat<R> MatOps<R>::L2_norm(Mat<R> matrix) {
-    #ifndef DONT_COMPILE
-    auto out = Mat<R>(1, 1, false);
-    MAT(out)(0) = MAT(matrix).norm();
-    if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out]() mutable {
-            SAFE_GRAD(matrix).noalias() += ((MAT(matrix).array() / MAT(out)(0)) * GRAD(out)(0)).matrix();
+    auto out = Mat<R>(1, 1, weights<R>::empty());
+    auto norm = MAT(matrix).L2_norm();
+    out.w(0) = norm;
+
+    if (graph::backprop_enabled && !matrix.constant)
+        graph::emplace_back([matrix, out, norm]() mutable {
+            GRAD(matrix) += (MAT(matrix).wrapper() * (out.dw(0) / norm) );
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>
@@ -802,7 +800,7 @@ Mat<R> MatOps<R>::binary_cross_entropy(Mat<R> matrix, R t) {
     Mat<R> out =  Mat<R>(
         matrix.dims(0),
         matrix.dims(1),
-        false);
+        weights<R>::empty());
 
     auto x = MAT(matrix).array();
 
@@ -834,10 +832,7 @@ Mat<R> MatOps<R>::cross_entropy(Mat<R> matrix, uint answer_idx) {
     DEBUG_ASSERT_BOUNDS(MAT(matrix),0.0,1.0 + EPS);
     assert(matrix.dims().size() > 1);
     assert(answer_idx < matrix.dims(0));
-    Mat<R> out =  Mat<R>(
-        1,
-        matrix.dims(1),
-        false);
+    Mat<R> out =  Mat<R>(1, matrix.dims(1), weights<R>::empty());
 
     auto x = MAT(matrix).array();
     MAT(out) = - (x.row(answer_idx).array() + EPS).log();
@@ -882,7 +877,7 @@ Mat<R> MatOps<R>::cross_entropy(Mat<R> matrix, Mat<R> target) {
 template<typename R>
 Mat<R> MatOps<R>::softmax_cross_entropy(Mat<R> matrix, uint answer_idx) {
     #ifndef DONT_COMPILE
-    Mat<R> out =  Mat<R>(1, 1, false);
+    Mat<R> out =  Mat<R>(1, 1, weights<R>::empty());
     Mat<R> probs = softmax_no_grad(matrix);
     MAT(out)(0,0) = -std::log(MAT(probs)(answer_idx, 0));
 
@@ -901,7 +896,7 @@ Mat<R> MatOps<R>::softmax_cross_entropy(Mat<R> matrix, uint answer_idx) {
 template<typename R>
 Mat<R> MatOps<R>::softmax_cross_entropy(Mat<R> matrix, Indexing::Index targets) {
     #ifndef DONT_COMPILE
-    Mat<R> out =  Mat<R>(1, targets.size(), false);
+    Mat<R> out =  Mat<R>(1, targets.size(), weights<R>::empty());
     Mat<R> probs = softmax_no_grad(matrix);
     for (int i = 0; i < targets.size(); i++) {
         MAT(out)(i) = -std::log(MAT(probs)(targets[i], i));
@@ -960,18 +955,14 @@ Mat<R> MatOps<R>::log(Mat<R> matrix) {
 
 template<typename R>
 Mat<R> MatOps<R>::exp(Mat<R> matrix) {
-    #ifndef DONT_COMPILE
-    assert(matrix.dims().size() > 1);
     auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = MAT(matrix).array().exp();
-    if (graph::backprop_enabled)
+    MAT(out) = F<op::exp<R>>(MAT(matrix).wrapper());
+
+    if (graph::backprop_enabled && !matrix.constant)
         graph::emplace_back([matrix, out]() mutable {
-            SAFE_GRAD(matrix).noalias() += (MAT(out).array() * GRAD(out).array()).matrix();
+            GRAD(matrix) += (MAT(out).wrapper() * GRAD(out).wrapper());
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>
@@ -982,7 +973,7 @@ Mat<R> MatOps<R>::hstack(Mat<R> matrix1, Mat<R> matrix2) {
     Mat<R> out (
         matrix1.dims(0),
         matrix1.dims(1) + matrix2.dims(1),
-        false
+        weights<R>::empty()
     );
     MAT(out).block(0,0, matrix1.dims(0), matrix1.dims(1)) = MAT(matrix1);
     MAT(out).block(0,matrix1.dims(1), matrix2.dims(0), matrix2.dims(1)) = MAT(matrix2);
@@ -1025,7 +1016,7 @@ Mat<R> MatOps<R>::hstack(const std::vector<Mat<R>>& matrices) {
     Mat<R> out (
         n,
         d_total,
-        false
+        weights<R>::empty()
     );
     int offset = 0;
     for (auto& mat : matrices) {
@@ -1054,7 +1045,7 @@ Mat<R> MatOps<R>::vstack(Mat<R> matrix1, Mat<R> matrix2) {
     Mat<R> out (
         matrix1.dims(0) + matrix2.dims(0),
         matrix1.dims(1),
-        false
+        weights<R>::empty()
     );
     MAT(out).block(0,0, matrix1.dims(0), matrix1.dims(1)) = MAT(matrix1);
     MAT(out).block(matrix1.dims(0),0, matrix2.dims(0), matrix2.dims(1)) = MAT(matrix2);
@@ -1071,12 +1062,8 @@ Mat<R> MatOps<R>::vstack(Mat<R> matrix1, Mat<R> matrix2) {
 
 template<typename R>
 Mat<R> MatOps<R>::vstack(std::initializer_list<Mat<R>> matrices) {
-    #ifndef DONT_COMPILE
     vector<Mat<R>> matrices_vector(matrices);
     return vstack(matrices_vector);
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>
@@ -1095,7 +1082,7 @@ Mat<R> MatOps<R>::vstack(const std::vector<Mat<R>>& matrices) {
     Mat<R> out (
         n_total,
         d,
-        false
+        weights<R>::empty()
     );
     int offset = 0;
     for (auto& mat : matrices) {
@@ -1121,7 +1108,7 @@ Mat<R> MatOps<R>::transpose(Mat<R> matrix) {
     Mat<R> out (
         matrix.dims(1),
         matrix.dims(0),
-        false);
+        weights<R>::empty());
     MAT(out) = MAT(matrix).wrapper().T();
     if (graph::backprop_enabled && !matrix.constant)
         graph::emplace_back([matrix, out]() mutable {
@@ -1204,7 +1191,7 @@ Mat<R> MatOps<R>::quadratic_form(
     Mat<R> out (
         left.dims(1),
         right.dims(1),
-        false);
+        weights<R>::empty());
     if (graph::backprop_enabled) {
         auto left_side_mul = std::make_shared<Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>>(
             left.dims(1), weights.dims(1)
@@ -1240,7 +1227,7 @@ Mat<R> MatOps<R>::mul_with_bias(
     Mat<R> out (
             matrix1.dims(0),
             matrix2.dims(1),
-            false);
+            weights<R>::empty());
     MAT(out) = ((MAT(matrix1) * MAT(matrix2)).colwise() + MAT(bias).col(0)).matrix();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, bias, out]() mutable {
@@ -1270,7 +1257,7 @@ Mat<R> MatOps<R>::mul_add_broadcast_mul_with_bias(
     Mat<R> out (
             matrix1.dims(0),
             input_to_2.dims(1),
-            false);
+            weights<R>::empty());
     // both input to 1 and bias are columns,
     // so we add both of those before adding the true matrix
     // product in broadcasted form
@@ -1395,7 +1382,7 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(
     Mat<R> out (
             matrix1.dims(0),
             input_to_1.dims(1),
-            false);
+            weights<R>::empty());
     MAT(out) = (
                   (
                       (
@@ -1433,7 +1420,7 @@ Mat<R> MatOps<R>::rows_pluck(
     Mat<R> out (
         matrix.dims(1),
         indices.size(),
-        false);
+        weights<R>::empty());
 
     for (std::size_t offset = 0; offset < indices.size(); ++offset) {
         MAT(out).col(offset) = MAT(matrix).row(indices[offset]).transpose();
@@ -1631,7 +1618,7 @@ Mat<R> MatOps<R>::rows_cols_pluck(
         Mat<R> out (
             1,
             row_indices.size(),
-            false);
+            weights<R>::empty());
         for (int offset = 0; offset < row_indices.size(); ++offset)
             MAT(out)(offset) = MAT(matrix)(row_indices[offset], col_indices[offset]);
     if (graph::backprop_enabled && !matrix.constant) {
@@ -1657,7 +1644,7 @@ Mat<R> MatOps<R>::row_pluck(
         Mat<R> matrix,
         int row) {
     #ifndef DONT_COMPILE
-    Mat<R> out (matrix.dims(1), 1, false);
+    Mat<R> out (matrix.dims(1), 1, weights<R>::empty());
     MAT(out) = MAT(matrix).row(row).transpose();
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out, row]() mutable {
@@ -1674,7 +1661,7 @@ Mat<R> MatOps<R>::col_pluck(
         Mat<R> matrix,
         int col) {
     #ifndef DONT_COMPILE
-    Mat<R> out (matrix.dims(0), 1, false);
+    Mat<R> out (matrix.dims(0), 1, weights<R>::empty());
     MAT(out) = MAT(matrix).col(col);
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out, col]() mutable {

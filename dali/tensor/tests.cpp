@@ -426,13 +426,13 @@ TEST_F(MatrixTests, exp_gradient) {
     }
 }
 
-TEST_F(MatrixTests, DISABLED_log_gradient) {
+TEST_F(MatrixTests, log_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].log();
     };
     EXPERIMENT_REPEAT {
-        auto A = Mat<R>(10, 20, weights<R>::uniform(0.001, 20.0));
-        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4, 1e-3, true));
+        auto A = Mat<R>(10, 20, weights<R>::uniform(0.1, 20.0));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-3, true));
     }
 }
 
@@ -450,9 +450,10 @@ TEST_F(MatrixTests, dot_gradient) {
     }
 }
 
-TEST_F(MatrixTests, DISABLED_matrix_dot_plus_bias) {
+TEST_F(MatrixTests, matrix_dot_plus_bias) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         auto res = Xs[1].dot(Xs[0]) + Xs[2];
+        return res;
     };
     int num_examples = 20;
     int hidden_size = 10;
@@ -460,7 +461,7 @@ TEST_F(MatrixTests, DISABLED_matrix_dot_plus_bias) {
     EXPERIMENT_REPEAT {
         auto X = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
         auto W = Mat<R>(hidden_size, input_size, weights<R>::uniform(2.0));
-        auto bias = Mat<R>(hidden_size, 1, weights<R>::uniform(2.0));
+        auto bias = Mat<R>(1, hidden_size, weights<R>::uniform(2.0));
         ASSERT_TRUE(gradient_same(functor, {X, W, bias}, 1e-4));
     }
 }
@@ -478,13 +479,13 @@ TEST_F(MatrixTests, matrix_divide) {
 
 
 
-TEST_F(MatrixTests, DISABLED_matrix_divide_broadcast) {
+TEST_F(MatrixTests, matrix_divide_broadcast) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] / Xs[1];
     };
     EXPERIMENT_REPEAT {
-        auto A = Mat<R>(10, 20, weights<R>::uniform(-20.0, 20.0));
-        auto B = Mat<R>(1, 10, weights<R>::uniform(0.1, 20.0));
+        auto A = Mat<R>(10, 20, weights<R>::uniform(0.1, 20.0));
+        auto B = Mat<R>(1, 10, weights<R>::uniform(0.01, 20.0));
         ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-3));
     }
 }

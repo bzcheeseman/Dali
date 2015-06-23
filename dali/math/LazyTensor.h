@@ -414,6 +414,35 @@ BINARY_SCALAR_OP(mshadow::op::div,  /);
     F(const LazyTensor<TA, TB, DType, dimension, ta> &exp) {
         return MakeExp<OP>(exp);
     }
+
+    template<typename OP, typename TA, typename TB, typename TC, typename TD, typename DType, int dimension, int ta, int tb>
+    inline auto
+    MakeExp(const LazyTensor<TA, TB, DType, dimension, ta> &left,
+            const LazyTensor<TC, TD, DType, dimension, tb> &right) ->
+                        LazyTensor<decltype(mshadow::expr::F<OP>(left.left,  right.left)),
+                                   decltype(mshadow::expr::F<OP>(left.right, right.right)),
+                                   DType, dimension,
+                                   (ta|tb|mshadow::expr::type::kMapper)>{
+
+        auto cpu_res = mshadow::expr::F<OP>(left.left,  right.left);
+        auto gpu_res = mshadow::expr::F<OP>(left.right, right.right);
+        auto joined_sts = sync_tensors_t(left.sync_tensors);
+        joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end());
+        auto joined_dts = dependent_tensors_t(left.dependent_tensors);
+        joined_dts.insert(joined_dts.end(), right.dependent_tensors.begin(), right.dependent_tensors.end());
+        return LazyTensor<decltype(cpu_res),
+                          decltype(gpu_res),
+                          DType, dimension,
+                          (ta|tb|mshadow::expr::type::kMapper)>(
+                            cpu_res, gpu_res, joined_sts, joined_dts
+                        );
+    }
+
+    template<typename OP, typename TA, typename TB, typename TC, typename TD, typename DType, int dimension, int ta, int tb>
+    inline auto F(const LazyTensor<TA, TB, DType, dimension, ta> &left,
+                  const LazyTensor<TC, TD, DType, dimension, tb> &right) -> decltype(MakeExp<OP>(left, right)) {
+        return MakeExp<OP>(left, right);
+    }
 #else
     template<typename OP, typename TA, typename DType, int dimension, int ta>
     inline LazyTensor<mshadow::expr::UnaryMapExp<OP, TA, DType, (ta|mshadow::expr::type::kMapper)>,

@@ -212,6 +212,17 @@ namespace TensorOps {
         };
 
         template<typename R>
+        struct log {
+            MSHADOW_XINLINE static R Map(const R& a) {
+                #ifdef DALI_USE_CUDA
+                return logf(a);
+                #else
+                return std::log(a);
+                #endif
+            }
+        };
+
+        template<typename R>
         struct exp {
             MSHADOW_XINLINE static R Map(const R& a) {
                 #ifdef DALI_USE_CUDA
@@ -219,6 +230,13 @@ namespace TensorOps {
                 #else
                 return std::exp(a);
                 #endif
+            }
+        };
+
+        template<typename R>
+        struct div_grad {
+            MSHADOW_XINLINE static R Map(const R& a, const R& b) {
+                return a / (b * b);
             }
         };
 

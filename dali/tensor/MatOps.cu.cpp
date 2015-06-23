@@ -54,34 +54,34 @@ template<typename R>
 Mat<R> MatOps<R>::eltdivide_broadcast(
         Mat<R> matrix1,
         Mat<R> matrix2) {
-    #ifndef DONT_COMPILE
-    assert2(matrix1.dims(0) == matrix2.dims(0) && matrix2.dims(1) == 1,
+    assert2(matrix1.dims(0) == matrix2.dims(1) && matrix2.dims(0) == 1,
             MS() << "Matrices " << matrix1 << " and " << matrix2
                  << " cannot be element divided with broadcast,"
                  << " they do not have the same dimensions.");
     auto out = Mat<R>::empty_like(matrix1);
     MAT(out) = (
-        MAT(matrix1).array().colwise()
+        MAT(matrix1).wrapper()
         /
-        MAT(matrix2).col(0).array()
-    ).matrix();
+        MAT(matrix2).wrapper()[0].template broadcast<0>(MAT(matrix1).shape())
+    );
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() mutable {
-            SAFE_GRAD(matrix1).noalias() += (
-                (GRAD(out)).array().colwise() *
-                (MAT(matrix2)).col(0).array().inverse()
-            ).matrix();
-            SAFE_GRAD(matrix2).noalias() -= (
-                (
-                    MAT(matrix1).array().colwise() /
-                    MAT(matrix2).col(0).array().square()
-                ).matrix().array() * GRAD(out).array()
-            ).matrix().rowwise().sum();
+            SAFE_GRAD(matrix1) += (
+                (GRAD(out)).wrapper() /
+                MAT(matrix2).wrapper()[0].template broadcast<0>(GRAD(out).shape())
+            );
+            if (!matrix2.constant) {
+                TensorInternal<R,1> mat2_grad(mshadow::Shape1(out.dims(0)));
+                mat2_grad = sum_cols((
+                    F<op::div_grad<R>>(
+                        MAT(matrix1).wrapper(),
+                        MAT(matrix2).wrapper()[0].template broadcast<0>(MAT(matrix1).shape())
+                    )
+                ) * GRAD(out).wrapper());
+                GRAD(matrix2) -= mat2_grad.wrapper().template broadcast<1>(MAT(matrix2).shape());
+            }
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>
@@ -183,8 +183,8 @@ template<typename R>
 Mat<R> MatOps<R>::eltdivide(
     Mat<R> matrix1,
     Mat<R> matrix2) {
-    if (matrix1.dims(1) != matrix2.dims(1) && (matrix1.dims(1) == 1 || matrix2.dims(1) == 1)) {
-        if (matrix1.dims(1) == 1) {
+    if (matrix1.dims(1) != matrix2.dims(1) && (matrix1.dims(0) == 1 || matrix2.dims(0) == 1)) {
+        if (matrix1.dims(0) == 1) {
             return eltdivide_broadcast_reversed(matrix2, matrix1);
         }
         return eltdivide_broadcast(matrix1, matrix2);
@@ -936,21 +936,15 @@ Mat<R> MatOps<R>::margin_loss(Mat<R> matrix, uint answer_idx, R margin) {
 
 template<typename R>
 Mat<R> MatOps<R>::log(Mat<R> matrix) {
-    #ifndef DONT_COMPILE
-    assert(matrix.dims().size() > 1);
     auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = MAT(matrix).array().log();
-    if (graph::backprop_enabled)
+    MAT(out) = F<op::log<R>>(MAT(matrix).wrapper());
+    if (graph::backprop_enabled && !matrix.constant)
         graph::emplace_back([matrix, out]() mutable {
-            SAFE_GRAD(matrix).noalias() += (
-                (1.0 / MAT(matrix).array()) *
-                GRAD(out).array()
-            ).matrix();
+            GRAD(matrix) += (
+                F<op::inv<R>>(MAT(matrix).wrapper()) * GRAD(out).wrapper()
+            );
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>

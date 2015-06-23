@@ -1,4 +1,6 @@
 HIGH PRIORITY:
+-> mutable_gpu_data should copy data from cpu vs. gpu if the operation is incremental
+   else, only allocate since operation overwrites
 -> mshadow and tensors (mutli gpu support etc.)
 -> visualizer - web frontend for error visualization (60% done)
 -> Move Redis visualizer example to tests with check for redis presence

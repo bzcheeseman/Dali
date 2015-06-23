@@ -465,6 +465,32 @@ BINARY_SCALAR_OP(mshadow::op::div,  /);
     F(const LazyTensor<TA, DType, dimension, ta> &exp) {
         return MakeExp<OP>(exp);
     }
+
+    template<typename OP, typename TA, typename TC, typename DType, int dimension, int ta, int tb>
+    inline auto
+    MakeExp(const LazyTensor<TA, DType, dimension, ta> &left,
+            const LazyTensor<TC, DType, dimension, tb> &right) ->
+                        LazyTensor<decltype(mshadow::expr::F<OP>(left.left,  right.left)),
+                                   DType, dimension,
+                                   (ta|tb|mshadow::expr::type::kMapper)>{
+
+        auto cpu_res = mshadow::expr::F<OP>(left.left,  right.left);
+        auto joined_sts = sync_tensors_t(left.sync_tensors);
+        joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end());
+        auto joined_dts = dependent_tensors_t(left.dependent_tensors);
+        joined_dts.insert(joined_dts.end(), right.dependent_tensors.begin(), right.dependent_tensors.end());
+        return LazyTensor<decltype(cpu_res),
+                          DType, dimension,
+                          (ta|tb|mshadow::expr::type::kMapper)>(
+                            cpu_res, joined_sts, joined_dts
+                        );
+    }
+
+    template<typename OP, typename TA, typename TC, typename DType, int dimension, int ta, int tb>
+    inline auto F(const LazyTensor<TA, DType, dimension, ta> &left,
+                  const LazyTensor<TC, DType, dimension, tb> &right) -> decltype(MakeExp<OP>(left, right)) {
+        return MakeExp<OP>(left, right);
+    }
 #endif
 
 #ifdef DALI_USE_CUDA

@@ -68,7 +68,7 @@ class AveragingModel {
             if (!FLAGS_pretrained_vectors.empty()) {
                 assert(!SEPARATE_EMBEDDINGS);
                 int num_loaded = glove::load_relevant_vectors(
-                        FLAGS_pretrained_vectors, embedding, *vocab, 1000000);
+                        FLAGS_pretrained_vectors, embedding, vocab.get(), 1000000);
                 std::cout << num_loaded << " out of " << vocab->word2index.size()
                           << " word embeddings preloaded from glove." << std::endl;
                 assert (embedding.dims(1) == EMBEDDING_SIZE);

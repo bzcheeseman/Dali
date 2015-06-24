@@ -134,6 +134,7 @@ namespace glove {
 
     template std::tuple<Mat<float>, Vocab> load(string, int );
     template std::tuple<Mat<double>, Vocab> load(string, int );
+
     template void load(string fname, Mat<float>* underlying_mat, Vocab* vocab, int );
     template void load(string fname, Mat<double>* underlying_mat, Vocab* vocab, int );
     template int load_relevant_vectors(std::string, Mat<float>*,  const utils::Vocab* vocab, int);

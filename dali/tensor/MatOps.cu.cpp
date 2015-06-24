@@ -553,23 +553,24 @@ Mat<R> MatOps<R>::pow(Mat<R> matrix, R other) {
     return out;
 }
 
+// not GPU friendly.
 template<typename R>
 Mat<R> MatOps<R>::pow(Mat<R> matrix, Mat<R> other) {
-    #ifndef DONT_COMPILE
     assert2(other.dims(0) == 1 && other.dims(1) == 1, "exponent must be a 1x1 matrix.");
     auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = MAT(matrix).array().pow(MAT(other)(0));
+    // TODO (szymon): it would be better it was done completely on GPU.
+    R exponent_val = MAT(other)(0);
+    MAT(out) = F<op::power<R>>(MAT(matrix).wrapper(), exponent_val);
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out, other]() mutable {
-            SAFE_GRAD(matrix).noalias() += MAT(other)(0) * ((MAT(matrix)).array().pow(MAT(other)(0) - 1.0) * (MAT(out)).array()).matrix();
-            SAFE_GRAD(other)(0) += (
-                MAT(matrix).unaryExpr(utils::log_or_zero<R>()).array() * MAT(out).array() * GRAD(out).array()
-            ).sum();
+        graph::emplace_back([matrix, out, other, exponent_val]() mutable {
+            SAFE_GRAD(matrix) += exponent_val * F<op::power<R>>(MAT(matrix).wrapper(), exponent_val - (R)1.0) * GRAD(out).wrapper();
+            if (!other.constant) {
+                TensorInternal<R,2> temp(MAT(matrix).shape());
+                temp = F<op::log_or_zero<R>>(MAT(matrix).wrapper()) * MAT(out).wrapper() * GRAD(out).wrapper();
+                GRAD(other) += temp.sum();
+            }
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>

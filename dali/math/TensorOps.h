@@ -282,6 +282,18 @@ namespace TensorOps {
                 #endif
             }
         };
+
+        template<typename R>
+        struct log_or_zero {
+            MSHADOW_XINLINE static R Map(const R& a) {
+                #ifdef DALI_USE_CUDA
+                    return a > 0 ? logf(a)      : 0;
+                #else
+                    return a > 0 ? std::log(a) : 0;
+                #endif
+            }
+        };
+
     }
 };
 

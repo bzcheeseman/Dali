@@ -517,8 +517,8 @@ TEST_F(MatrixTests, matrix_divide_broadcast) {
         return Xs[0] / Xs[1];
     };
     EXPERIMENT_REPEAT {
-        auto A = Mat<R>(10, 20, weights<R>::uniform(0.1, 20.0));
-        auto B = Mat<R>(1, 10, weights<R>::uniform(0.1, 20.0));
+        auto A = Mat<R>(10, 20, weights<R>::uniform(0.5, 4.0));
+        auto B = Mat<R>(1, 10, weights<R>::uniform(0.5, 4.0));
         ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-3));
     }
 }
@@ -1139,10 +1139,9 @@ TEST_F(MatrixTests, pow_gradient) {
 
     EXPERIMENT_REPEAT {
 
-        auto mat = Mat<R>(height, width, weights<R>::uniform(0.1, 20.0));
-
+        auto mat = Mat<R>(height, width, weights<R>::uniform(0.5, 1.5));
         auto exponent = Mat<R>(1,1);
-        MatOps<R>::fill(exponent, 2.0);
+        exponent = MatOps<R>::fill(exponent, 2.4);
 
         auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
             return Xs[0] ^ Xs[1];

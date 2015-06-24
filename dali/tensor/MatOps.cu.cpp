@@ -512,17 +512,13 @@ Mat<R> MatOps<R>::sqrt(Mat<R> matrix) {
 
 template<typename R>
 Mat<R> MatOps<R>::elt_inv(Mat<R> matrix) {
-    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = MAT(matrix).array().inverse();
+    MAT(out) = F<op::inv<R>>(MAT(matrix).wrapper());
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out]() mutable {
-            SAFE_GRAD(matrix).noalias() += -((MAT(out)).array().square() * GRAD(out).array()).matrix();
+            SAFE_GRAD(matrix) -= F<op::square<R>>(MAT(out).wrapper()) * GRAD(out).wrapper();
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>

@@ -395,6 +395,17 @@ TEST_F(MatrixTests, sqrt_gradient) {
     }
 }
 
+TEST_F(MatrixTests, elt_inv_gradient) {
+    sane_crashes::activate();
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return MatOps<R>::elt_inv(Xs[0]);
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(0.5, 5.0));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-5));
+    }
+}
+
 
 TEST_F(MatrixTests, addition_broadcast_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {

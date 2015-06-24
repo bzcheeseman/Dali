@@ -119,7 +119,7 @@ struct MatOps {
     static Mat<R> sub_broadcast_reversed(Mat<R>, R);
 
     static Mat<R> add(std::initializer_list<Mat<R>>);
-    static Mat<R> add(const std::vector<Mat<R>>&);
+    static Mat<R> add(std::vector<Mat<R>>&);
     static Mat<R> square(Mat<R>);
     static Mat<R> L2_norm(Mat<R>);
 

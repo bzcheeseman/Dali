@@ -460,21 +460,17 @@ Mat<R> MatOps<R>::add(std::initializer_list<Mat<R>> matrices) {
 }
 
 template<typename R>
-Mat<R> MatOps<R>::add(const std::vector<Mat<R>>& matrices) {
-    #ifndef DONT_COMPILE
+Mat<R> MatOps<R>::add(std::vector<Mat<R>>& matrices) {
     auto out = Mat<R>::zeros_like(*matrices.begin());
     for (auto& matrix : matrices)
-        MAT(out) += MAT(matrix);
+        MAT(out) += MAT(matrix).wrapper();
     if (graph::backprop_enabled)
         graph::emplace_back([matrices, out]() mutable {
             for (auto& matrix : matrices) {
-                SAFE_GRAD(matrix).noalias() += GRAD(out);
+                SAFE_GRAD(matrix) += GRAD(out).wrapper();
             }
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>

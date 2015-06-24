@@ -339,6 +339,18 @@ TEST_F(MatrixTests, addition_gradient) {
     }
 }
 
+TEST_F(MatrixTests, addition_vector) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return MatOps<R>::add({ Xs[0], Xs[1], Xs[2] });
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
+        auto B = Mat<R>(10, 20,  weights<R>::uniform(0.5));
+        auto C = Mat<R>(10, 20,  weights<R>::uniform(0.5));
+        ASSERT_TRUE(gradient_same(functor, {A, B, C}, 1e-5, DEFAULT_GRAD_EPS, true));
+    }
+}
+
 
 TEST_F(MatrixTests, subtraction_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {

@@ -194,6 +194,13 @@ namespace TensorOps {
         };
 
         template<typename R>
+        struct sqrt_f {
+            MSHADOW_XINLINE static R Map(const R& a) {
+                return sqrt(a);
+            }
+        };
+
+        template<typename R>
         struct inv {
             MSHADOW_XINLINE static R Map(const R& a) {
                 return ((R)1.0) / a;

@@ -501,17 +501,13 @@ Mat<R> MatOps<R>::L2_norm(Mat<R> matrix) {
 
 template<typename R>
 Mat<R> MatOps<R>::sqrt(Mat<R> matrix) {
-    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = MAT(matrix).array().sqrt();
+    MAT(out) = F<op::sqrt_f<R>>(MAT(matrix).wrapper());
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out]() mutable {
-            SAFE_GRAD(matrix).noalias() += 0.5 * ((MAT(out)).array().inverse() * (GRAD(out)).array()).matrix();
+            SAFE_GRAD(matrix) += ((R)0.5 / MAT(out).wrapper()) * GRAD(out).wrapper();
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>

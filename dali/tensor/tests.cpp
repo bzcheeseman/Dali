@@ -385,6 +385,16 @@ TEST_F(MatrixTests, square_gradient) {
     }
 }
 
+TEST_F(MatrixTests, sqrt_gradient) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return Xs[0].sqrt();
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(0.5, 5.0));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-5));
+    }
+}
+
 
 TEST_F(MatrixTests, addition_broadcast_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
@@ -497,7 +507,7 @@ TEST_F(MatrixTests, matrix_divide_broadcast) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(0.1, 20.0));
-        auto B = Mat<R>(1, 10, weights<R>::uniform(0.01, 20.0));
+        auto B = Mat<R>(1, 10, weights<R>::uniform(0.1, 20.0));
         ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-3));
     }
 }

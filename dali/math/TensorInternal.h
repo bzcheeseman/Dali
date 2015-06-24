@@ -83,7 +83,7 @@ class TensorInternal;
 template<typename R, int dimension>
 class TensorInternal : public SynchronizedMemory<R, dimension> {
     public:
-        static const int ndimensions =  dimension;
+        static const int ndimensions = dimension;
         // inherit SynchronizedMemory's constructors (C++11)
         using SynchronizedMemory<R, dimension>::SynchronizedMemory;
 
@@ -114,8 +114,8 @@ class TensorInternal : public SynchronizedMemory<R, dimension> {
 
         bool compute_me_on_gpu() const;
 
-        operator lazy_t();
-        lazy_t wrapper();
+        operator lazy_t() const;
+        lazy_t wrapper() const;
 
         R& operator()(int i, int j);
         R operator()(int i, int j) const;

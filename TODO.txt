@@ -7,6 +7,7 @@ HIGH PRIORITY:
 -> switch "from unique words" in Vocab to "add_words"
 -> graceful connection / reconnection / deconnection in redox
 -> flatten folder structure (memory goes top level, mat / automatic diff in separate folder, layers (LSTM,GRU, etc..) in third folder)
+-> add test for whether operator[] on LazyTensor truly gets pointer updated on update_tensor (else could cause previous bugs with stale memory)
 
 MEDIUM PRIORITY:
 -> Improve NlpUtils. More generally agree on common set of practices for all the examples.

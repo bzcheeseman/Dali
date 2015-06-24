@@ -573,4 +573,6 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
     extern std::string bold;
 }
 
+#define ASSERT2(condition, message) if (!(condition)) utils::assert2(false, (message))
+
 #endif

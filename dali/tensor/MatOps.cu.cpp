@@ -5,7 +5,6 @@
 
 using std::vector;
 using std::string;
-using utils::assert2;
 using utils::MS;
 using utils::LambdaOperator;
 using graph::backprop_enabled;
@@ -32,29 +31,25 @@ template<typename R>
 Mat<R> MatOps<R>::eltmul_broadcast(
         Mat<R> matrix1,
         Mat<R> matrix2) {
-    #ifndef DONT_COMPILE
-    assert2(matrix1.dims(0) == matrix2.dims(0) && matrix2.dims(1) == 1,
+    ASSERT2(matrix1.dims(0) == matrix2.dims(0) && matrix2.dims(1) == 1,
             MS() << "Matrices " << matrix1 << " and " << matrix2
                  << " cannot be element multiplied with broadcast,"
                  << " they do not have the same dimensions.");
     auto out = Mat<R>::empty_like(matrix1);
-    MAT(out) = (MAT(matrix1).array().colwise() * MAT(matrix2).col(0).array()).matrix();
+    MAT(out) = MAT(matrix1).wrapper() * MAT(matrix2).wrapper()[0].template broadcast<0>(MAT(matrix1).shape());
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() mutable {
-            SAFE_GRAD(matrix1).noalias() += ((GRAD(out)).array().colwise() * (MAT(matrix2)).col(0).array()).matrix();
-            SAFE_GRAD(matrix2).noalias() += ((MAT(matrix1)).array() * (GRAD(out)).array()).matrix().rowwise().sum();
+            SAFE_GRAD(matrix1) += GRAD(out).wrapper() * (MAT(matrix2).wrapper()[0].template broadcast<0>(GRAD(out).shape()));
+            SAFE_GRAD(matrix2).wrapper()[0] += sum_cols(MAT(matrix1).wrapper() * GRAD(out).wrapper());
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::eltdivide_broadcast(
         Mat<R> matrix1,
         Mat<R> matrix2) {
-    assert2(matrix1.dims(0) == matrix2.dims(1) && matrix2.dims(0) == 1,
+    ASSERT2(matrix1.dims(0) == matrix2.dims(1) && matrix2.dims(0) == 1,
             MS() << "Matrices " << matrix1 << " and " << matrix2
                  << " cannot be element divided with broadcast,"
                  << " they do not have the same dimensions.");
@@ -89,7 +84,7 @@ Mat<R> MatOps<R>::eltdivide_broadcast_reversed(
         Mat<R> matrix1,
         Mat<R> matrix2) {
     #ifndef DONT_COMPILE
-    assert2(matrix1.dims(0) == matrix2.dims(0) && matrix2.dims(1) == 1,
+    ASSERT2(matrix1.dims(0) == matrix2.dims(0) && matrix2.dims(1) == 1,
             MS() << "Matrices " << matrix1 << " and " << matrix2
                  << " cannot be element divided with broadcast,"
                  << " they do not have the same dimensions.");
@@ -116,7 +111,7 @@ Mat<R> MatOps<R>::eltmul(
         }
         return eltmul_broadcast(matrix1, matrix2);
     }
-    assert2(matrix1.dims(0) == matrix2.dims(0) && matrix1.dims(1) == matrix2.dims(1),
+    ASSERT2(matrix1.dims(0) == matrix2.dims(0) && matrix1.dims(1) == matrix2.dims(1),
             "Matrices cannot be element-wise multiplied, they do not have the same dimensions.");
     auto out = Mat<R>::empty_like(matrix1);
     MAT(out) = MAT(matrix1).wrapper() * MAT(matrix2).wrapper();
@@ -157,8 +152,8 @@ Mat<R> MatOps<R>::max(Mat<R> matrix, R lower_bound) {
 
 template<typename R>
 Mat<R> MatOps<R>::eltmul(
-    Mat<R> matrix,
-    R alpha) {
+        Mat<R> matrix,
+        R alpha) {
     auto out = Mat<R>::empty_like(matrix);
     MAT(out) = MAT(matrix).wrapper() * alpha;
     if (graph::backprop_enabled)
@@ -170,7 +165,7 @@ Mat<R> MatOps<R>::eltmul(
 
 template<typename R>
 vector<Mat<R>> MatOps<R>::eltmul(const vector<Mat<R>>& seq1, const vector<Mat<R>>& seq2) {
-    assert2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
+    ASSERT2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
     vector<Mat<R>> result(seq1.size());
     for (int i = 0; i < seq1.size(); ++i) {
         result[i] = seq1[i] * seq2[i];
@@ -181,15 +176,15 @@ vector<Mat<R>> MatOps<R>::eltmul(const vector<Mat<R>>& seq1, const vector<Mat<R>
 
 template<typename R>
 Mat<R> MatOps<R>::eltdivide(
-    Mat<R> matrix1,
-    Mat<R> matrix2) {
+        Mat<R> matrix1,
+        Mat<R> matrix2) {
     if (matrix1.dims(1) != matrix2.dims(1) && (matrix1.dims(0) == 1 || matrix2.dims(0) == 1)) {
         if (matrix1.dims(0) == 1) {
             return eltdivide_broadcast_reversed(matrix2, matrix1);
         }
         return eltdivide_broadcast(matrix1, matrix2);
     }
-    assert2(matrix1.dims(0) == matrix2.dims(0) && matrix1.dims(1) == matrix2.dims(1),
+    ASSERT2(matrix1.dims(0) == matrix2.dims(0) && matrix1.dims(1) == matrix2.dims(1),
             "Matrices cannot be element-wise divided, they do not have the same dimensions.");
     auto out = Mat<R>::empty_like(matrix1);
     MAT(out) = MAT(matrix1).wrapper() / MAT(matrix2).wrapper();
@@ -210,8 +205,8 @@ Mat<R> MatOps<R>::eltdivide(
 
 template<typename R>
 Mat<R> MatOps<R>::eltdivide(
-    Mat<R> matrix,
-    R alpha) {
+        Mat<R> matrix,
+        R alpha) {
     auto out = Mat<R>::empty_like(matrix);
     MAT(out) = MAT(matrix).wrapper() / alpha;
     if (graph::backprop_enabled)
@@ -223,11 +218,11 @@ Mat<R> MatOps<R>::eltdivide(
 
 template<typename R>
 Mat<R> MatOps<R>::eltmul_broadcast_rowwise(
-    Mat<R> matrix1,
-    Mat<R> row_vector) {
+        Mat<R> matrix1,
+        Mat<R> row_vector) {
     #ifndef DONT_COMPILE
-    if (matrix1.dims(1) != row_vector.dims(1) || row_vector.dims(0) != 1)
-        throw std::invalid_argument("Matrices A and B^T cannot be element multiplied with broadcast, they do not have the same dimensions.");
+    ASSERT2(matrix1.dims(1) != row_vector.dims(1) || row_vector.dims(0) != 1,
+        "Matrices A and B^T cannot be element multiplied with broadcast, they do not have the same dimensions.");
     auto out = Mat<R>::empty_like(matrix1);
     MAT(out) = (MAT(matrix1).array().rowwise() * MAT(row_vector).row(0).array()).matrix();
     if (graph::backprop_enabled)
@@ -244,7 +239,7 @@ Mat<R> MatOps<R>::eltmul_broadcast_rowwise(
 template<typename R>
 vector<Mat<R>> MatOps<R>::eltmul_broadcast_rowwise(const vector<Mat<R>>& seq1, const vector<Mat<R>>& seq2) {
     #ifndef DONT_COMPILE
-    assert2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
+    ASSERT2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
 
     vector<Mat<R>> result(seq1.size());
     for (int i = 0; i < seq1.size(); ++i) {
@@ -262,8 +257,8 @@ Mat<R> MatOps<R>::eltmul_rowwise(
     Mat<R> matrix2) {
     #ifndef DONT_COMPILE
 
-    if (matrix1.dims(0) != matrix2.dims(1) || matrix1.dims(1) != matrix2.dims(0))
-        throw std::invalid_argument("Matrices A and B^T cannot be element-wise multiplied, they do not have the same dimensions.");
+    ASSERT2(matrix1.dims(0) != matrix2.dims(1) || matrix1.dims(1) != matrix2.dims(0),
+        "Matrices A and B^T cannot be element-wise multiplied, they do not have the same dimensions.");
     auto out = Mat<R>::empty_like(matrix1);
     MAT(out) = (MAT(matrix1).array() * MAT(matrix2).transpose().array()).matrix();
     if (graph::backprop_enabled)
@@ -285,7 +280,7 @@ Mat<R> MatOps<R>::eltmul_rowwise(
 
 template<typename R>
 vector<Mat<R>> MatOps<R>::eltmul_rowwise(const vector<Mat<R>>& seq1, const vector<Mat<R>>& seq2) {
-    assert2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
+    ASSERT2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
 
     vector<Mat<R>> result(seq1.size());
     for (int i = 0; i < seq1.size(); ++i) {
@@ -307,7 +302,7 @@ Mat<R> MatOps<R>::add(
         // consider matrix2 to be a vector
         return add_broadcast(matrix1, matrix2);
     }
-    assert2(matrix1.dims() == matrix2.dims(), "Matrices cannot be added, they do not have the same dimensions.");
+    ASSERT2(matrix1.dims() == matrix2.dims(), "Matrices cannot be added, they do not have the same dimensions.");
 
     auto out = Mat<R>::empty_like(matrix1);
     MAT(out) = MAT(matrix1).wrapper() + MAT(matrix2).wrapper();
@@ -334,7 +329,7 @@ Mat<R> MatOps<R>::sub(
         return sub_broadcast(matrix1, matrix2);
     }
 
-    assert2(matrix1.dims() == matrix2.dims(), "Matrices cannot be subtracted, they do not have the same dimensions.");
+    ASSERT2(matrix1.dims() == matrix2.dims(), "Matrices cannot be subtracted, they do not have the same dimensions.");
 
     auto out = Mat<R>::empty_like(matrix1);
     MAT(out) = MAT(matrix1).wrapper() - MAT(matrix2).wrapper();
@@ -364,12 +359,10 @@ Mat<R> MatOps<R>::add(
 template<typename R>
 Mat<R> MatOps<R>::add_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
     // broadcast matrix 2:
-    utils::assert2(matrix2.dims(0) == 1, "Second argument to add_broadcast must be a vector (first dimension=1)");
-    if (matrix1.dims(0) != matrix2.dims(1)) {
-        utils::assert2(matrix1.dims(0) == matrix2.dims(1),
+    ASSERT2(matrix2.dims(0) == 1, "Second argument to add_broadcast must be a vector (first dimension=1)");
+    ASSERT2(matrix1.dims(0) == matrix2.dims(1),
             MS() << "vector-like argument to add_broadcast must have outer dimension (" << matrix2.dims(1)
                  << ") equal to inner dimension of first argument (" << matrix1.dims(0) << ").");
-    }
     auto out = Mat<R>::empty_like(matrix1);
     MAT(out) = (
         MAT(matrix1).wrapper() +
@@ -380,13 +373,7 @@ Mat<R> MatOps<R>::add_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() mutable {
             SAFE_GRAD(matrix1) += GRAD(out).wrapper();
-            // temporary:
-            if (!matrix2.constant) {
-                TensorInternal<R,1> out_row_sum(mshadow::Shape1(out.dims(0)));
-                out_row_sum = sum_cols(GRAD(out).wrapper());
-
-                GRAD(matrix2) += out_row_sum.wrapper().template broadcast<1>(MAT(matrix2).shape());
-            }
+            SAFE_GRAD(matrix2).wrapper()[0] += sum_cols(GRAD(out).wrapper());
         });
     return out;
 }
@@ -394,9 +381,9 @@ Mat<R> MatOps<R>::add_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
 template<typename R>
 Mat<R> MatOps<R>::sub_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
     // broadcast matrix 2:
-    utils::assert2(matrix2.dims(0) == 1, "Second argument to sub_broadcast must be a vector (first dimension=1)");
+    ASSERT2(matrix2.dims(0) == 1, "Second argument to sub_broadcast must be a vector (first dimension=1)");
     if (matrix1.dims(0) != matrix2.dims(1)) {
-        utils::assert2(matrix1.dims(0) == matrix2.dims(1),
+        ASSERT2(matrix1.dims(0) == matrix2.dims(1),
             MS() << "vector-like argument to sub_broadcast must have outer dimension (" << matrix2.dims(1)
                  << ") equal to inner dimension of first argument (" << matrix1.dims(0) << ").");
     }
@@ -410,11 +397,7 @@ Mat<R> MatOps<R>::sub_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() mutable {
             SAFE_GRAD(matrix1) += GRAD(out).wrapper();
-            // temporary:
-            TensorInternal<R,1> out_row_sum(mshadow::Shape1(out.dims(0)));
-            out_row_sum = sum_cols(GRAD(out).wrapper());
-
-            SAFE_GRAD(matrix2) -= out_row_sum.wrapper().template broadcast<1>(MAT(matrix2).shape());
+            SAFE_GRAD(matrix2).wrapper()[0] -= sum_cols(GRAD(out).wrapper());
         });
     return out;
 }
@@ -423,8 +406,8 @@ template<typename R>
 Mat<R> MatOps<R>::sub_broadcast_reversed(Mat<R> matrix1, Mat<R> matrix2) {
     #ifndef DONT_COMPILE
     // broadcast matrix 2:
-    if (matrix1.dims(0) != matrix2.dims(0) || matrix2.dims(1) != 1)
-        throw std::invalid_argument("Matrices cannot be substracted with broadcast, they do not have the same dimensions.");
+    ASSERT2(matrix1.dims(0) != matrix2.dims(0) || matrix2.dims(1) != 1,
+        "Matrices cannot be substracted with broadcast, they do not have the same dimensions.");
     auto out = Mat<R>::empty_like(matrix1);
     MAT(out) = ((-MAT(matrix1)).colwise() + MAT(matrix2).col(0)).matrix();
     if (graph::backprop_enabled)
@@ -440,17 +423,13 @@ Mat<R> MatOps<R>::sub_broadcast_reversed(Mat<R> matrix1, Mat<R> matrix2) {
 
 template<typename R>
 Mat<R> MatOps<R>::sub_broadcast_reversed(Mat<R> matrix, R other) {
-    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = (other - MAT(matrix).array()).matrix();
+    MAT(out) = (other - MAT(matrix).wrapper());
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out] () mutable {
-            SAFE_GRAD(matrix).noalias() -= GRAD(out);
+            SAFE_GRAD(matrix) -= GRAD(out).wrapper();
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>
@@ -461,7 +440,8 @@ Mat<R> MatOps<R>::add(std::initializer_list<Mat<R>> matrices) {
 
 template<typename R>
 Mat<R> MatOps<R>::add(std::vector<Mat<R>>& matrices) {
-    auto out = Mat<R>::zeros_like(*matrices.begin());
+    ASSERT2(matrices.size() > 0, "Got 0 matrices to add.");
+    auto out = Mat<R>::zeros_like(matrices.front());
     for (auto& matrix : matrices)
         MAT(out) += MAT(matrix).wrapper();
     if (graph::backprop_enabled)
@@ -476,7 +456,6 @@ Mat<R> MatOps<R>::add(std::vector<Mat<R>>& matrices) {
 template<typename R>
 Mat<R> MatOps<R>::square(Mat<R> matrix) {
     auto out = Mat<R>::empty_like(matrix);
-
     MAT(out) = F<op::square<R>>(MAT(matrix).wrapper());
 
     if (graph::backprop_enabled && !matrix.constant)
@@ -556,7 +535,7 @@ Mat<R> MatOps<R>::pow(Mat<R> matrix, R other) {
 // not GPU friendly.
 template<typename R>
 Mat<R> MatOps<R>::pow(Mat<R> matrix, Mat<R> other) {
-    assert2(other.dims(0) == 1 && other.dims(1) == 1, "exponent must be a 1x1 matrix.");
+    ASSERT2(other.dims(0) == 1 && other.dims(1) == 1, "exponent must be a 1x1 matrix.");
     auto out = Mat<R>::empty_like(matrix);
     // TODO (szymon): it would be better it was done completely on GPU.
     R exponent_val = MAT(other)(0);
@@ -589,7 +568,7 @@ Mat<R> MatOps<R>::sigmoid(Mat<R> matrix) {
 
 template<typename R>
 Mat<R> MatOps<R>::softmax_no_grad(Mat<R> matrix, R temperature) {
-    utils::assert2(temperature == 1.0, "Not implemented yet (Temperature != 1.0 for softmax).");
+    ASSERT2(temperature == 1.0, "Not implemented yet (Temperature != 1.0 for softmax).");
     auto out = Mat<R>::empty_like(matrix);
     MAT(out) = MAT(matrix).wrapper().softmax();
     return out;
@@ -657,11 +636,11 @@ vector<Mat<R>> MatOps<R>::softmax_no_grad(const vector<Mat<R>>& matrices, R temp
     #ifndef DONT_COMPILE
     vector<Mat<R>> out;
     out.reserve(matrices.size());
-    assert2(matrices.size() > 0, "Must be a non empty list of vectors to softmax.");
+    ASSERT2(matrices.size() > 0, "Must be a non empty list of vectors to softmax.");
     R layer_max = MAT(matrices[0])(0);
 
     for (auto& mat : matrices) {
-        assert2(mat.dims(0) == 1 && mat.dims(1) == 1, "Softmax on a vector must be made on 1x1 matrices only.");
+        ASSERT2(mat.dims(0) == 1 && mat.dims(1) == 1, "Softmax on a vector must be made on 1x1 matrices only.");
         layer_max = std::max(layer_max, MAT(mat)(0));
     }
     R total = 0.0;
@@ -840,7 +819,7 @@ Mat<R> MatOps<R>::cross_entropy(Mat<R> matrix, uint answer_idx) {
 template<typename R>
 Mat<R> MatOps<R>::cross_entropy(Mat<R> matrix, Mat<R> target) {
     #ifndef DONT_COMPILE
-    assert2(matrix.dims(0) == target.dims(0) && matrix.dims(1) == target.dims(1),
+    ASSERT2(matrix.dims(0) == target.dims(0) && matrix.dims(1) == target.dims(1),
         "Matrix and target must have same dimension");
 
     Mat<R> out = Mat<R>::empty_like(matrix);
@@ -949,8 +928,8 @@ Mat<R> MatOps<R>::exp(Mat<R> matrix) {
 template<typename R>
 Mat<R> MatOps<R>::hstack(Mat<R> matrix1, Mat<R> matrix2) {
     #ifndef DONT_COMPILE
-    if (matrix1.dims(0) != matrix2.dims(0))
-        throw std::invalid_argument("Matrices cannot be joined -- they do not have the same number of rows.");
+    ASSERT2(matrix1.dims(0) != matrix2.dims(0),
+        "Matrices cannot be joined -- they do not have the same number of rows.");
     Mat<R> out (
         matrix1.dims(0),
         matrix1.dims(1) + matrix2.dims(1),
@@ -971,58 +950,66 @@ Mat<R> MatOps<R>::hstack(Mat<R> matrix1, Mat<R> matrix2) {
 
 template<typename R>
 Mat<R> MatOps<R>::hstack(std::initializer_list<Mat<R>> matrices) {
-    #ifndef DONT_COMPILE
     vector<Mat<R>> matrices_vector(matrices);
     return hstack(matrices_vector);
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>
-Mat<R> MatOps<R>::hstack(const std::vector<Mat<R>>& matrices) {
-    #ifndef DONT_COMPILE
+Mat<R> MatOps<R>::hstack(std::vector<Mat<R>>& matrices) {
     int n = -1;
     int d_total = 0;
     for (auto& mat : matrices) {
         if (n == -1) {
             n = mat.dims(0);
         } else {
-            if (mat.dims(0) != n) {
-                throw std::invalid_argument("Matrices cannot be joined -- they do not have the same number of rows.");
-            }
+            ASSERT2(mat.dims(0) == n, "Matrices cannot be joined -- they do not have the same number of rows.");
         }
         d_total+= mat.dims(1);
     }
     Mat<R> out (
-        n,
-        d_total,
-        weights<R>::empty()
+        n, d_total, weights<R>::empty()
     );
     int offset = 0;
-    for (auto& mat : matrices) {
-        MAT(out).block(0, offset, mat.dims(0), mat.dims(1)) = MAT(mat);
-        offset += mat.dims(1);
+    int col, row;
+    auto& out_data = out.w().mutable_cpu_data();
+
+    for (row = 0; row < n; row++) {
+        offset = 0;
+        for (auto& mat : matrices) {
+            const int col_size = mat.dims(1);
+            const auto& mat_data = mat.w().cpu_data();
+            for (col = 0; col < col_size; col++) {
+                *(out_data.dptr_ + (out_data.stride_ * row) + (col + offset)) = *(mat_data.dptr_ + (mat_data.stride_ * row) + col);
+            }
+            offset += col_size;
+        }
     }
+
     if (graph::backprop_enabled)
-        graph::emplace_back([matrices, out]() mutable {
+        graph::emplace_back([matrices, out, n]() mutable {
             int offset = 0;
-            for (auto & mat : matrices) {
-                SAFE_GRAD(mat).noalias() += GRAD(out).block(0, offset, mat.dims(0), mat.dims(1));
-                offset += mat.dims(1);
+            auto& out_data = out.dw().cpu_data();
+            int row, col;
+            for (row = 0; row < n; row++) {
+                offset = 0;
+                for (auto& mat : matrices) {
+                    const int col_size = mat.dims(1);
+                    auto& mat_data = mat.dw().mutable_cpu_data();
+                    for (col = 0; col < col_size; col++) {
+                        *(mat_data.dptr_ + (mat_data.stride_ * row) + col ) += *(out_data.dptr_ + (out_data.stride_ * row) + (col + offset));
+                    }
+                    offset += col_size;
+                }
             }
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::vstack(Mat<R> matrix1, Mat<R> matrix2) {
     #ifndef DONT_COMPILE
-    if (matrix1.dims(1) != matrix2.dims(1))
-        throw std::invalid_argument("Matrices cannot be horizontally stacked -- they do not have the same number of cols.");
+    ASSERT2(matrix1.dims(1) != matrix2.dims(1),
+        "Matrices cannot be horizontally stacked -- they do not have the same number of cols.");
     Mat<R> out (
         matrix1.dims(0) + matrix2.dims(0),
         matrix1.dims(1),
@@ -1055,9 +1042,8 @@ Mat<R> MatOps<R>::vstack(const std::vector<Mat<R>>& matrices) {
     int d = matrices[0].dims(1);
     int n_total = 0;
     for (auto& mat : matrices) {
-        if (mat.dims(1) != d) {
-            throw std::invalid_argument("Matrices cannot be horizontally stacked -- they do not have the same number of cols.");
-        }
+        ASSERT2(mat.dims(1) != d,
+            "Matrices cannot be horizontally stacked -- they do not have the same number of cols.");
         n_total += mat.dims(0);
     }
     Mat<R> out (
@@ -1128,24 +1114,21 @@ Mat<R> MatOps<R>::relu(Mat<R> matrix) {
 
 template<typename R>
 Mat<R> MatOps<R>::abs(Mat<R> matrix) {
-    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = MAT(matrix).array().abs().matrix();
-    if (graph::backprop_enabled)
+
+    MAT(out) = F<op::abs<R>>(MAT(matrix).wrapper());
+    if (graph::backprop_enabled && !matrix.constant)
         graph::emplace_back([matrix, out]() mutable {
-            SAFE_GRAD(matrix).noalias() += (MAT(matrix).unaryExpr(utils::sign_operator<R>()).array() * GRAD(out).array()).matrix();
+            GRAD(matrix) += F<op::sign<R>>(MAT(matrix).wrapper()) * GRAD(out).wrapper();
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::mul(
         Mat<R> matrix1,
         Mat<R> matrix2) {
-    assert2(matrix1.dims(1) == matrix2.dims(0), "matrix product dimensions misaligned.");
+    ASSERT2(matrix1.dims(1) == matrix2.dims(0), "matrix product dimensions misaligned.");
     Mat<R> out (matrix1.dims(0), matrix2.dims(1), weights<R>::empty());
 
     MAT(out) = dot( MAT(matrix1).wrapper(), MAT(matrix2).wrapper() );
@@ -1166,8 +1149,8 @@ Mat<R> MatOps<R>::quadratic_form(
         Mat<R> right) {
     #ifndef DONT_COMPILE
 
-    assert2(weights.dims(1) == right.dims(0), "Quadratic form right matrix has wrong dimensions.");
-    assert2(left.dims(0) == weights.dims(0) , "Quadratic form left matrix has wrong dimensions.");
+    ASSERT2(weights.dims(1) == right.dims(0), "Quadratic form right matrix has wrong dimensions.");
+    ASSERT2(left.dims(0) == weights.dims(0) , "Quadratic form left matrix has wrong dimensions.");
 
     Mat<R> out (
         left.dims(1),
@@ -1201,25 +1184,22 @@ Mat<R> MatOps<R>::mul_with_bias(
         Mat<R> matrix1,
         Mat<R> matrix2,
         Mat<R> bias) {
-    #ifndef DONT_COMPILE
-    assert2(matrix1.dims(1) == matrix2.dims(0), "matmul dimensions misaligned.");
-    if (matrix1.dims(0) != bias.dims(0) || bias.dims(1) != 1)
-        throw std::invalid_argument("Matrices cannot be multiplied with broadcast, they do not have the same dimensions.");
-    Mat<R> out (
-            matrix1.dims(0),
-            matrix2.dims(1),
-            weights<R>::empty());
-    MAT(out) = ((MAT(matrix1) * MAT(matrix2)).colwise() + MAT(bias).col(0)).matrix();
+    ASSERT2(matrix1.dims(1) == matrix2.dims(0), "matmul dimensions misaligned.");
+    ASSERT2(matrix1.dims(0) != bias.dims(1) || bias.dims(1) != 1,
+        "Matrices cannot be multiplied with broadcast, they do not have the same dimensions.");
+    Mat<R> out(matrix1.dims(0), matrix2.dims(1), weights<R>::empty());
+    MAT(out) = dot(MAT(matrix1).wrapper(), MAT(matrix2).wrapper());
+    MAT(out) += MAT(bias).wrapper()[0].template broadcast<0>(MAT(out).shape());
+
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, bias, out]() mutable {
-            SAFE_GRAD(matrix1).noalias() += (GRAD(out)) * ((MAT(matrix2)).transpose());
-            SAFE_GRAD(matrix2).noalias() += MAT(matrix1).transpose() * (GRAD(out));
-            SAFE_GRAD(bias).noalias()    += GRAD(out).rowwise().sum().matrix();
+            SAFE_GRAD(matrix1) += dot(GRAD(out).wrapper(),        MAT(matrix2).wrapper().T());
+            SAFE_GRAD(matrix2) += dot(MAT(matrix1).wrapper().T(), GRAD(out).wrapper());
+            SAFE_GRAD(bias).wrapper()[0] += (
+                sum_cols(GRAD(out).wrapper())
+            );
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>
@@ -1229,46 +1209,53 @@ Mat<R> MatOps<R>::mul_add_broadcast_mul_with_bias(
         Mat<R> matrix2,
         Mat<R> input_to_2,
         Mat<R> bias) {
-    #ifndef DONT_COMPILE
-    assert2(matrix1.dims(1) == input_to_1.dims(0), "matmul 1 dimensions misaligned.");
-    if (matrix2.dims(1) != input_to_2.dims(0))
-        throw std::invalid_argument("matmul 2 dimensions misaligned.");
-    if (matrix2.dims(0) != bias.dims(0) || matrix1.dims(0) != bias.dims(0) || input_to_1.dims(1) != 1 || bias.dims(1) != 1)
-        throw std::invalid_argument("Matrices cannot be shigamizood, they do not have the same dimensions.");
-    Mat<R> out (
-            matrix1.dims(0),
-            input_to_2.dims(1),
-            weights<R>::empty());
+    ASSERT2(matrix1.dims(1) == input_to_1.dims(0), "matmul 1 dimensions misaligned.");
+    ASSERT2(matrix2.dims(1) == input_to_2.dims(0), "matmul 2 dimensions misaligned.");
+    ASSERT2(matrix2.dims(0) == bias.dims(0) && matrix1.dims(0) == bias.dims(1) && input_to_1.dims(1) == 1 && bias.dims(0) == 1,
+        "Matrices cannot be operated on together, they do not have the same output dimensions.");
+
+    Mat<R> out (matrix1.dims(0), input_to_2.dims(1), weights<R>::empty());
+    MAT(out) = MAT(bias).wrapper()[0].template broadcast<0>(MAT(out).shape());
+    MAT(out) += dot(MAT(matrix2).wrapper(), MAT(input_to_2).wrapper());
+
+    MAT(out) += dot(MAT(matrix1).wrapper(), MAT(input_to_1).wrapper());
+
     // both input to 1 and bias are columns,
     // so we add both of those before adding the true matrix
     // product in broadcasted form
-    MAT(out) = (
-          (
-              (
-                  (MAT(matrix2) * MAT(input_to_2))
-              )
-          ).colwise() + (MAT(bias) + (MAT(matrix1) * MAT(input_to_1))).col(0)
-      ).matrix();
+    {
+        TensorInternal<R, 2> temp(mshadow::Shape2(1, input_to_2.dims(1)));
+        temp = dot(MAT(matrix1).wrapper(), MAT(input_to_1).wrapper());
+        MAT(out) += temp.wrapper()[0].template broadcast<0>(MAT(out).shape());
+    }
+
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, input_to_1, matrix2, input_to_2, bias, out] () mutable {
             // first multiply:
             // broadcasting input means taking outer product here:
-            SAFE_GRAD(matrix1) += ((GRAD(out)).rowwise().sum() * ((MAT(input_to_1)).transpose()));
-            // broadcasting output means sum after the reverse product here:
-            SAFE_GRAD(input_to_1).noalias() += (
-                MAT(matrix1).transpose() * (GRAD(out))
-            ).rowwise().sum();
-            // second multiply:
-            SAFE_GRAD(matrix2).noalias() += (GRAD(out)) * ((MAT(input_to_2)).transpose());
 
-            SAFE_GRAD(input_to_2).noalias() += MAT(matrix2).transpose() * (GRAD(out));
+            if (!matrix1.constant) {
+                TensorInternal<R, 2> temp(mshadow::Shape2(1, input_to_2.dims(1)));
+                temp.wrapper()[0] = sum_cols(GRAD(out).wrapper());
+                GRAD(matrix1) += dot(temp.wrapper(), MAT(input_to_1).wrapper().T());
+            }
+
+            // broadcasting output means sum after the reverse product here:
+            if (!input_to_1.constant) {
+                TensorInternal<R, 2> temp(mshadow::Shape2(matrix1.dims(0), input_to_2.dims(1)));
+                temp = dot(MAT(matrix1).wrapper().T(), GRAD(out).wrapper());
+                GRAD(input_to_1).wrapper()[0] += sum_cols(temp.wrapper());
+            }
+
+
+            // broadcasting input means taking outer product here:
+            SAFE_GRAD(matrix2) += dot(GRAD(out).wrapper(), MAT(input_to_2).wrapper().T());
+            // broadcasting output means sum after the reverse product here:
+            SAFE_GRAD(input_to_2) += dot(MAT(matrix2).wrapper().T(), GRAD(out).wrapper());
             // bias vector:
-            SAFE_GRAD(bias).noalias() += GRAD(out).rowwise().sum();
+            SAFE_GRAD(bias).wrapper()[0] += sum_cols(GRAD(out).wrapper());
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 
@@ -1279,64 +1266,62 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(std::initializer_list<Mat<R>> matrices) 
 }
 
 template<typename R>
-Mat<R> MatOps<R>::mul_add_mul_with_bias(const vector<Mat<R>>& matrices) {
-    #ifndef DONT_COMPILE
+Mat<R> MatOps<R>::mul_add_mul_with_bias(vector<Mat<R>>& matrices) {
     // broacast to largest input size
     dim_t max_broadcast = matrices[1].dims(1);
     for (auto matrices_ptr = matrices.begin()+1; matrices_ptr < matrices.end(); matrices_ptr+=2) {
         max_broadcast = std::max(max_broadcast, matrices_ptr->dims(1));
     }
 
-    Mat<R> out(
-            matrices[0].dims(0),
-            max_broadcast,
-            true);
-    DEBUG_ASSERT_MAT_NOT_NAN(out)
+    Mat<R> out(matrices[0].dims(0), max_broadcast, weights<R>::zeros());
     auto matrices_ptr = matrices.begin();
     while (matrices_ptr != (matrices.end() - 1)) {
-        DEBUG_ASSERT_MAT_NOT_NAN(*matrices_ptr)
-        DEBUG_ASSERT_MAT_NOT_NAN(*(matrices_ptr + 1))
-        DEBUG_ASSERT_MAT_NOT_NAN(out)
         // inputs must either match the broadcasted size, or be broadcastable by having their
-        // inner dimension be 1 (a column vector essentially)
-        assert(((matrices_ptr+1)->dims(1) == max_broadcast) || ((matrices_ptr+1)->dims(1) == 1));
+        // outer dimension be 1 (a column vector essentially)
+        ASSERT2(((matrices_ptr+1)->dims(1) == max_broadcast) || ((matrices_ptr+1)->dims(0) == 1 && (matrices_ptr+1)->dims(1) == max_broadcast),
+            "incompatible broadcast dimensions for mul_add_mul_with_bias");
         if ((matrices_ptr+1)->dims(1) == max_broadcast) {
-            MAT(out) += MAT(*matrices_ptr) * MAT(*(matrices_ptr + 1));
+            MAT(out) += dot(MAT(*matrices_ptr).wrapper(), MAT(*(matrices_ptr + 1)).wrapper());
         } else {
-            auto el = MAT(*matrices_ptr) * MAT(*(matrices_ptr + 1));
-            MAT(out).colwise() += el.col(0);
+            TensorInternal<R, 2> temp(mshadow::Shape2(1, max_broadcast));
+            temp = dot(MAT(*matrices_ptr).wrapper(), MAT(*(matrices_ptr + 1)).wrapper());
+            MAT(out) += temp.wrapper()[0].template broadcast<0>(MAT(out).shape());
         }
         DEBUG_ASSERT_MAT_NOT_NAN(out)
         matrices_ptr+=2;
     }
 
-    DEBUG_ASSERT_MAT_NOT_NAN(matrices.back());
-    MAT(out).colwise() += MAT(matrices.back()).col(0);
+    MAT(out) += MAT(matrices.back()).wrapper()[0].template broadcast<0>(MAT(out).shape());
+
     if (graph::backprop_enabled)
         graph::emplace_back([matrices, out, max_broadcast]() mutable {
             auto matrices_ptr = matrices.begin();
             while (matrices_ptr != (matrices.end() - 1)) {
                 if ((matrices_ptr+1)->dims(1) == max_broadcast) {
-                    SAFE_GRAD(*matrices_ptr).noalias()   += GRAD(out) * MAT(*(matrices_ptr+1)).transpose();
-                    SAFE_GRAD(*(matrices_ptr+1)).noalias() += MAT(*matrices_ptr).transpose() * (GRAD(out));
+                    SAFE_GRAD(*matrices_ptr)     += dot(GRAD(out).wrapper(),              MAT(*(matrices_ptr+1)).wrapper().T());
+                    SAFE_GRAD(*(matrices_ptr+1)) += dot(MAT(*matrices_ptr).wrapper().T(), GRAD(out).wrapper());
                 } else {
                     // broadcasting input means taking outer product here:
-                    SAFE_GRAD(*matrices_ptr).noalias() += (GRAD(out).rowwise().sum() * (MAT(*(matrices_ptr+1)).transpose()));
+                    {
+                        TensorInternal<R, 2> temp(mshadow::Shape2(1, max_broadcast));
+                        temp.wrapper()[0] = sum_cols(GRAD(out).wrapper());
+                        SAFE_GRAD(*matrices_ptr) += dot(
+                            temp.wrapper(), MAT(*(matrices_ptr+1)).wrapper().T()
+                        );
+                    }
                     // broadcasting output means sum after the reverse product here:
-                    SAFE_GRAD(*(matrices_ptr+1)).noalias() += (
-                        MAT(*matrices_ptr).transpose() * GRAD(out)
-                    ).rowwise().sum();
+                    {
+                        TensorInternal<R, 2> temp(mshadow::Shape2((*matrices_ptr).dims(0), max_broadcast));
+                        temp = dot(MAT(*matrices_ptr).wrapper().T(), GRAD(out).wrapper());
+                        SAFE_GRAD(*(matrices_ptr+1)).wrapper()[0] += sum_cols(temp.wrapper());
+                    }
                 }
                 matrices_ptr+=2;
             }
-            SAFE_GRAD(matrices.back()).noalias() += GRAD(out).rowwise().sum();
+            SAFE_GRAD(matrices.back()).wrapper()[0] += sum_cols(GRAD(out).wrapper());
         });
 
-    DEBUG_ASSERT_NOT_NAN(MAT(out));
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 // operation of the form (A * x + B * y) + C, called with mul_add_mul_with_bias(A, x, B, y, C)
@@ -1347,49 +1332,42 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(
         Mat<R> matrix2,
         Mat<R> input_to_2,
         Mat<R> bias) {
-    #ifndef DONT_COMPILE
-    DEBUG_ASSERT_NOT_NAN(MAT(bias));
-    assert2(matrix1.dims(1) == input_to_1.dims(0), "matmul 1 dimensions misaligned.");
-    if (matrix2.dims(1) != input_to_2.dims(0))
-        throw std::invalid_argument("matmul 2 dimensions misaligned.");
-    if (matrix2.dims(0) != bias.dims(0) || matrix1.dims(0) != bias.dims(0) || bias.dims(1) != 1)
-        throw std::invalid_argument("Matrices cannot be shigamizood, they do not have the same dimensions.");
+    ASSERT2(matrix1.dims(1) == input_to_1.dims(0), "matmul 1 dimensions misaligned.");
+    ASSERT2(matrix2.dims(1) == input_to_2.dims(0), "matmul 2 dimensions misaligned.");
+    ASSERT2(matrix2.dims(0) == bias.dims(1) && matrix1.dims(0) == bias.dims(1) && bias.dims(0) == 1,
+        "Matrices cannot be computed in mul_add_mul_with_bias, they do not have the correct output dimensions.");
+
     if (input_to_1.dims(1) != input_to_2.dims(1)) {
         if (input_to_1.dims(1) == 1) {
             return mul_add_broadcast_mul_with_bias(matrix1, input_to_1, matrix2, input_to_2, bias);
+        } else if (input_to_2.dims(1) == 1) {
+            return mul_add_broadcast_mul_with_bias(matrix2, input_to_2, matrix1, input_to_1, bias);
+        } else {
+            ASSERT2(input_to_1.dims(1) == input_to_2.dims(1), "different output dimensions for inputs 1 and 2 to mul_add_mul_with_bias");
         }
-        return mul_add_broadcast_mul_with_bias(matrix2, input_to_2, matrix1, input_to_1, bias);
     }
-    Mat<R> out (
-            matrix1.dims(0),
-            input_to_1.dims(1),
-            weights<R>::empty());
-    MAT(out) = (
-                  (
-                      (
-                          (MAT(matrix1) * MAT(input_to_1)) +
-                          (MAT(matrix2) * MAT(input_to_2))
-                      )
-                  ).colwise() + MAT(bias).col(0)
-              ).matrix();
+
+    Mat<R> out (matrix1.dims(0), input_to_1.dims(1), weights<R>::empty());
+
+    MAT(out) = MAT(bias).wrapper()[0].template broadcast<0>(MAT(out).shape());
+    MAT(out) += dot(MAT(matrix1).wrapper(), MAT(input_to_1).wrapper());
+    MAT(out) += dot(MAT(matrix2).wrapper(), MAT(input_to_2).wrapper());
+
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, input_to_1, matrix2, input_to_2, bias, out]() mutable {
             // first multiply:
             // broadcasting input means taking outer product here:
-            SAFE_GRAD(matrix1)               += (GRAD(out) * (MAT(input_to_1)).transpose());
+            SAFE_GRAD(matrix1) += dot(GRAD(out).wrapper(), MAT(input_to_1).wrapper().T());
             // broadcasting output means sum after the reverse product here:
-            SAFE_GRAD(input_to_1).noalias() += MAT(matrix1).transpose() * (GRAD(out));
-            // second multiply:
-            SAFE_GRAD(matrix2).noalias()     += (GRAD(out)) * (MAT(input_to_2)).transpose();
-
-            SAFE_GRAD(input_to_2).noalias()  += MAT(matrix2).transpose() * (GRAD(out));
+            SAFE_GRAD(input_to_1) += dot(MAT(matrix1).wrapper().T(), GRAD(out).wrapper());
+            // broadcasting input means taking outer product here:
+            SAFE_GRAD(matrix2) += dot(GRAD(out).wrapper(), MAT(input_to_2).wrapper().T());
+            // broadcasting output means sum after the reverse product here:
+            SAFE_GRAD(input_to_2) += dot(MAT(matrix2).wrapper().T(), GRAD(out).wrapper());
             // bias vector:
-            SAFE_GRAD(bias).noalias()        += GRAD(out).rowwise().sum();
+            SAFE_GRAD(bias).wrapper()[0] += sum_cols(GRAD(out).wrapper());
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>
@@ -1593,8 +1571,7 @@ Mat<R> MatOps<R>::rows_cols_pluck(
         Indexing::Index row_indices,
         Indexing::Index col_indices) {
     #ifndef DONT_COMPILE
-    if (row_indices.size() != col_indices.size())
-        throw std::invalid_argument("Cannot pluck column row pairs, not the "
+    ASSERT2(row_indices.size() != col_indices.size(),"Cannot pluck column row pairs, not the "
             "same amount of row and column indices.");
         Mat<R> out (
             1,

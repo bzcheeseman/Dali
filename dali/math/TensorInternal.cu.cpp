@@ -50,12 +50,12 @@ bool TensorInternal<R,dimension>::allclose(const TensorInternal<R,dimension>& ot
 }
 
 template<typename R, int dimension>
-typename TensorInternal<R, dimension>::lazy_t TensorInternal<R,dimension>::wrapper() {
+typename TensorInternal<R, dimension>::lazy_t TensorInternal<R,dimension>::wrapper() const {
     return lazy_t(*this);
 }
 
 template<typename R, int dimension>
-TensorInternal<R,dimension>::operator lazy_t() {
+TensorInternal<R,dimension>::operator lazy_t() const {
     return wrapper();
 }
 

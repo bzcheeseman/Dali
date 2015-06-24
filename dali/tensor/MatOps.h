@@ -105,7 +105,7 @@ struct MatOps {
     // operation of the form (A * x + B * y) + C, called with mul_add_mul_with_bias(A, x, B, y, C)
     static Mat<R> mul_add_mul_with_bias(Mat<R>, Mat<R>, Mat<R>, Mat<R>, Mat<R>);
     static Mat<R> mul_add_mul_with_bias(std::initializer_list<Mat<R>>);
-    static Mat<R> mul_add_mul_with_bias(const std::vector<Mat<R>>&);
+    static Mat<R> mul_add_mul_with_bias(std::vector<Mat<R>>&);
     // operation of the form (A * x + B * y) + C, called with mul_add_mul_with_bias(A, x, B, y, C)
     // and with caveat that x is actually a column, and should be broadcasted
     static Mat<R> mul_add_broadcast_mul_with_bias(Mat<R>, Mat<R>, Mat<R>, Mat<R>, Mat<R>);
@@ -146,7 +146,7 @@ struct MatOps {
 
     static Mat<R> hstack(Mat<R>, Mat<R>);
     static Mat<R> hstack(std::initializer_list<Mat<R>>);
-    static Mat<R> hstack(const std::vector<Mat<R>>&);
+    static Mat<R> hstack(std::vector<Mat<R>>&);
     static Mat<R> vstack(Mat<R>, Mat<R>);
     static Mat<R> vstack(std::initializer_list<Mat<R>>);
     static Mat<R> vstack(const std::vector<Mat<R>>&);

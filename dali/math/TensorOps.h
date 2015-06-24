@@ -284,6 +284,13 @@ namespace TensorOps {
         };
 
         template<typename R>
+        struct abs {
+            MSHADOW_XINLINE static R Map(const R& a) {
+                return std::abs(a);
+            }
+        };
+
+        template<typename R>
         struct log_or_zero {
             MSHADOW_XINLINE static R Map(const R& a) {
                 #ifdef DALI_USE_CUDA
@@ -294,7 +301,13 @@ namespace TensorOps {
             }
         };
 
-    }
+        template<typename R>
+        struct sign {
+            MSHADOW_XINLINE static R Map(const R& x) {
+                return x > 0.0 ? 1.0 : -1.0;
+            }
+        };
+    };
 };
 
 #endif

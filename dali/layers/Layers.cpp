@@ -78,7 +78,7 @@ const vector<int>& StackedInputLayer<R>::input_sizes() const {
 
 template<typename R>
 void StackedInputLayer<R>::input_sizes(vector<int> new_sizes) {
-    utils::assert2(new_sizes.size() > 0, "StackedInputLayer must have at least one input (0 provided)");
+    ASSERT2(new_sizes.size() > 0, "StackedInputLayer must have at least one input (0 provided)");
     // optimistic exit
     if (new_sizes == _input_sizes)
         return;
@@ -124,7 +124,7 @@ StackedInputLayer<R>::StackedInputLayer (std::initializer_list<int> input_sizes,
 
 template<typename R>
 vector<Mat<R>> StackedInputLayer<R>::zip_inputs_with_matrices_and_bias(const vector<Mat<R>>& inputs) const {
-    assert2(inputs.size() == matrices.size(),
+    ASSERT2(inputs.size() == matrices.size(),
         utils::MS() << "Not an equal number of inputs to stack (" << inputs.size()
                     << ") and matrices in StackedInputLayer (" << this->matrices.size() << ")");
     vector<Mat<R>> zipped;
@@ -143,8 +143,7 @@ template<typename R>
 vector<Mat<R>> StackedInputLayer<R>::zip_inputs_with_matrices_and_bias(
         Mat<R> input,
         const vector<Mat<R>>& inputs) const {
-
-    assert2((1 + inputs.size()) == matrices.size(),
+    ASSERT2((1 + inputs.size()) == matrices.size(),
         utils::MS() << "Not an equal number of inputs to stack (" << (1 + inputs.size())
                     << ") and matrices in StackedInputLayer (" << this->matrices.size() << ")");
     vector<Mat<R>> zipped;
@@ -243,7 +242,7 @@ template<typename R>
 MultiLayerPerceptron<R>::MultiLayerPerceptron(vector<int> hidden_sizes, vector<activation_t> activations) :
         hidden_sizes(hidden_sizes),
         activations(activations) {
-    utils::assert2(activations.size() == hidden_sizes.size() - 1,
+    ASSERT2(activations.size() == hidden_sizes.size() - 1,
             "Wrong number of activations for MultiLayerPerceptron");
 
     for (int lidx = 0; lidx < hidden_sizes.size() - 1; ++lidx) {

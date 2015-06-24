@@ -25,6 +25,7 @@ class DormantTensor {
         // call this method with a new tensor that should be placed here.
         virtual void update_tensor() = 0;
 };
+
 typedef std::vector<DormantTensor*> dependent_tensors_t;
 
 #ifdef DALI_USE_CUDA
@@ -171,6 +172,113 @@ class LazyTensor : DormantTensor {
                 );
             }
         #endif
+
+        #ifdef DALI_USE_CUDA
+            inline LazyTensor<
+                mshadow::Tensor<
+                    typename extract_tensor_arguments<LeftType>::device_t,
+                    dimension,
+                    DType
+                >,
+                mshadow::Tensor<
+                    typename extract_tensor_arguments<RightType>::device_t,
+                    dimension,
+                    DType
+                >, DType, dimension, ktype> Slice(mshadow::index_t begin, mshadow::index_t end) const {
+                return LazyTensor<decltype(left.Slice(begin, end)), decltype(right.Slice(begin, end)), DType, dimension, ktype>(
+                    left.Slice(begin, end), right.Slice(begin, end),
+                    sync_tensors,
+                    dependent_tensors
+                );
+            }
+        #else
+            inline LazyTensor<
+                mshadow::Tensor<
+                    typename extract_tensor_arguments<LeftType>::device_t,
+                    dimension,
+                    DType
+                >, DType, dimension, ktype> Slice(mshadow::index_t begin, mshadow::index_t end) const {
+                return LazyTensor<decltype(left.Slice(begin, end)), DType, dimension, ktype>(
+                    left.Slice(begin, end),
+                    sync_tensors,
+                    dependent_tensors
+                );
+            }
+        #endif
+
+        #ifdef DALI_USE_CUDA
+            #define CUDA_LAZY_TENSOR_ASSIGN_EVAL_OPERATOR(opsymbol)\
+                template<typename TA, typename TB, int ta>\
+                LazyTensor<LeftType, RightType, DType, dimension, ktype>& operator opsymbol (const LazyTensor<TA,TB,DType,dimension,ta>& expr) {\
+                    assert(sync_tensors.size() == 1);                     \
+                    auto participants = sync_tensors_t(sync_tensors);     \
+                    participants.insert(                                  \
+                        participants.end(),                               \
+                        expr.sync_tensors.begin(),                        \
+                        expr.sync_tensors.end()                           \
+                    );                                                    \
+                    auto deps = dependent_tensors_t(dependent_tensors);   \
+                    deps.insert(                                          \
+                        deps.end(),                                       \
+                        expr.dependent_tensors.begin(),                   \
+                        expr.dependent_tensors.end()                      \
+                    );                                                    \
+                                                                          \
+                    if (should_compute_on_gpu(participants)) {            \
+                        /* refresh the gpu memory from cpu*/              \
+                        for (auto participant : participants) {           \
+                            participant->to_gpu();                        \
+                        }                                                 \
+                        for (auto participant : dependent_tensors) {      \
+                            participant->update_tensor();                 \
+                        }                                                 \
+                        sync_tensors[0]->cpu_fresh = false;               \
+                        right opsymbol expr.right;                        \
+                    } else {/* refresh the cpu memory from gpu*/          \
+                        for (auto participant : participants) {           \
+                            participant->to_cpu();                        \
+                        }                                                 \
+                        for (auto participant : dependent_tensors) {      \
+                            participant->update_tensor();                 \
+                        }                                                 \
+                        sync_tensors[0]->gpu_fresh = false;               \
+                        left opsymbol expr.left;                          \
+                    };\
+                    return *this;\
+                }
+        #else
+            #define CUDA_LAZY_TENSOR_ASSIGN_EVAL_OPERATOR( opsymbol )\
+                template<typename TA, int ta>\
+                LazyTensor<LeftType, DType, dimension, ktype>& operator opsymbol (const LazyTensor<TA,DType,dimension,ta>& expr) {\
+                    assert(sync_tensors.size() == 1);                     \
+                    auto participants = sync_tensors_t(sync_tensors);     \
+                    participants.insert(                                  \
+                        participants.end(),                               \
+                        expr.sync_tensors.begin(),                        \
+                        expr.sync_tensors.end()                           \
+                    );                                                    \
+                    auto deps = dependent_tensors_t(dependent_tensors);   \
+                    deps.insert(                                          \
+                        deps.end(),                                       \
+                        expr.dependent_tensors.begin(),                   \
+                        expr.dependent_tensors.end()                      \
+                    );                                                    \
+                    for (auto participant : participants) {               \
+                        participant->to_cpu();                            \
+                    }                                                     \
+                    for (auto participant : dependent_tensors) {          \
+                        participant->update_tensor();                     \
+                    }                                                     \
+                    left opsymbol expr.left;                              \
+                    return *this;\
+                }
+        #endif
+
+        CUDA_LAZY_TENSOR_ASSIGN_EVAL_OPERATOR(=)
+        CUDA_LAZY_TENSOR_ASSIGN_EVAL_OPERATOR(+=)
+        CUDA_LAZY_TENSOR_ASSIGN_EVAL_OPERATOR(-=)
+        CUDA_LAZY_TENSOR_ASSIGN_EVAL_OPERATOR(/=)
+        CUDA_LAZY_TENSOR_ASSIGN_EVAL_OPERATOR(*=)
 
         #ifdef DALI_USE_CUDA
             // Expression that replicate a 1 dimension tensor in

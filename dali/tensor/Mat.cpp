@@ -21,13 +21,13 @@ typename Mat<R>::storage_t& Mat<R>::w() {
 }
 
 template<typename R>
-typename Mat<R>::storage_t& Mat<R>::dw() {
-    return *g;
+const typename Mat<R>::storage_t& Mat<R>::w() const {
+    return *m;
 }
 
 template<typename R>
-const typename Mat<R>::storage_t& Mat<R>::w() const {
-    return *m;
+typename Mat<R>::storage_t& Mat<R>::dw() {
+    return *g;
 }
 
 template<typename R>

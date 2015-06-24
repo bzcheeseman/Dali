@@ -154,7 +154,7 @@ bool gradient_same(
 
     // from now on gradient is purely numerical:
     graph::NoBackprop nb;
-
+    int param_idx = 1;
     for (auto& arg : arguments) {
         R  Arg_prime[arg.number_of_elements()];
         for (int i = 0; i < arg.number_of_elements(); i++) {
@@ -175,7 +175,7 @@ bool gradient_same(
         if (fail_on_zero_gradient) {
             auto is_nonzero = buffer_is_nonzero((R*)Arg_prime, arg.number_of_elements());
             if (((bool)is_nonzero) == false) {
-                std::cout << "Gradient for parameter should not be all zeros." << std::endl;
+                std::cout << "Gradient for parameter " << param_idx << " (" << arg << ") should not be all zeros." << std::endl;
                 if (arg.name != nullptr) {
                     std::cout << "arg.name = " << *arg.name << std::endl;
                 }
@@ -213,6 +213,7 @@ bool gradient_same(
         if (!worked_out) {
             break;
         }
+        param_idx++;
     }
     return worked_out;
 }
@@ -517,9 +518,9 @@ TEST_F(MatrixTests, matrix_divide_broadcast) {
         return Xs[0] / Xs[1];
     };
     EXPERIMENT_REPEAT {
-        auto A = Mat<R>(10, 20, weights<R>::uniform(0.5, 4.0));
+        auto A = Mat<R>(10, 20, weights<R>::uniform(0.1, 20.0));
         auto B = Mat<R>(1, 10, weights<R>::uniform(0.5, 4.0));
-        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-3));
+        ASSERT_TRUE(gradient_same(functor, {A, B}, 5e-3, 1e-3));
     }
 }
 
@@ -564,7 +565,6 @@ TEST_F(MatrixTests, divide_inplace_scalar) {
     }
 }
 
-/*
 typedef MemorySafeTest MatOpsTests;
 
 TEST_F(MatOpsTests, matrix_mul_with_bias) {
@@ -577,7 +577,7 @@ TEST_F(MatOpsTests, matrix_mul_with_bias) {
     EXPERIMENT_REPEAT {
         auto X = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
         auto W = Mat<R>(hidden_size, input_size, weights<R>::uniform(2.0));
-        auto bias = Mat<R>(hidden_size, 1, weights<R>::uniform(2.0));
+        auto bias = Mat<R>(1, hidden_size, weights<R>::uniform(2.0));
         ASSERT_TRUE(gradient_same(functor, {X, W, bias}, 1e-4));
     }
 }
@@ -591,15 +591,69 @@ TEST_F(MatOpsTests, matrix_mul_add_mul_with_bias) {
     int input_size = 5;
     int other_input_size = 7;
     EXPERIMENT_REPEAT {
-        auto X       = Mat<R>(input_size, num_examples,       weights<R>::uniform(20.0));
-        auto X_other = Mat<R>(other_input_size, num_examples, weights<R>::uniform(20.0));
         auto W       = Mat<R>(hidden_size, input_size,        weights<R>::uniform(2.0));
+        auto X       = Mat<R>(input_size, num_examples,       weights<R>::uniform(20.0));
+
         auto W_other = Mat<R>(hidden_size, other_input_size,  weights<R>::uniform(2.0));
-        auto bias    = Mat<R>(hidden_size, 1,                 weights<R>::uniform(2.0));
+        auto X_other = Mat<R>(other_input_size, num_examples, weights<R>::uniform(20.0));
+
+        auto bias    = Mat<R>(1, hidden_size,                 weights<R>::uniform(2.0));
         ASSERT_TRUE(gradient_same(functor, {W, X, W_other, X_other, bias}, 0.0003));
     }
 }
 
+
+TEST_F(MatrixTests, log_exp) {
+    EXPERIMENT_REPEAT {
+        graph::NoBackprop nb;
+        auto mat = Mat<R>(10, 10, weights<R>::uniform(0.1, 20.0));
+        auto log_mat = mat.log();
+        auto exp_log_mat = log_mat.exp();
+        #ifdef DALI_USE_CUDA
+        ASSERT_MATRIX_CLOSE(mat, exp_log_mat, 1e-3);
+        #else
+        ASSERT_MATRIX_CLOSE(mat, exp_log_mat, 1e-6);
+        #endif
+    }
+}
+
+TEST_F(MatrixTests, hstack) {
+    graph::NoBackprop nb;
+
+    Mat<R> a(2, 3);
+    Mat<R> b(2, 4);
+
+    for (int i = 0; i < 3; i++)
+        a.w(i) = i;
+    for (int i = 0; i < 4; i++)
+        b.w(i) = i + 3;
+    for (int i = 3; i < 6; i++)
+        a.w(i) = i + 4;
+    for (int i = 4; i < 8; i++)
+        b.w(i) = i + 6;
+
+    auto c = MatOps<R>::hstack({a, b});
+    for (int i = 0; i < 14;i++) {
+        ASSERT_EQ(c.w(i), i);
+    }
+}
+
+TEST_F(MatrixTests, abs) {
+    int input_size = 5;
+    int hidden_size = 3;
+
+    EXPERIMENT_REPEAT {
+        auto mat = Mat<R>(input_size, hidden_size, weights<R>::uniform(0.1, 20.0));
+        auto mat2 = Mat<R>(input_size, hidden_size, weights<R>::uniform(-20.0, -0.1));
+
+        auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+            return MatOps<R>::hstack(Xs).abs();
+        };
+        ASSERT_TRUE(gradient_same(functor, {mat, mat2}, 1e-4));
+    }
+}
+
+/*
 TEST_F(MatOpsTests, matrix_conv2d) {
     graph::NoBackprop nb;
 
@@ -1075,16 +1129,6 @@ TEST_F(LayerTests, multi_input_lstm_test) {
     }
 }
 
-TEST_F(MatrixTests, log_exp) {
-    EXPERIMENT_REPEAT {
-        graph::NoBackprop nb;
-        auto mat = Mat<R>(10, 10, weights<R>::uniform(0.1, 20.0));
-        auto log_mat = mat.log();
-        auto exp_log_mat = log_mat.exp();
-        ASSERT_MATRIX_CLOSE(mat, exp_log_mat, 1e-6);
-    }
-}
-
 TEST_F(LayerTests, activate_sequence) {
     vector<int> hidden_sizes = {7, 10};
     int input_size = 5;
@@ -1166,21 +1210,6 @@ TEST_F(MatrixTests, quadratic_form) {
             return MatOps<R>::quadratic_form(Xs[0], Xs[1], Xs[2]);
         };
         ASSERT_TRUE(gradient_same(functor, {left, middle, right}, 1e-3));
-    }
-}
-
-TEST_F(MatrixTests, abs) {
-    int input_size = 5;
-    int hidden_size = 3;
-
-    EXPERIMENT_REPEAT {
-        auto mat = Mat<R>(input_size, hidden_size, weights<R>::uniform(0.1, 20.0));
-        auto mat2 = Mat<R>(input_size, hidden_size, weights<R>::uniform(-20.0, -0.1));
-
-        auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-            return MatOps<R>::hstack(Xs).abs();
-        };
-        ASSERT_TRUE(gradient_same(functor, {mat, mat2}, 1e-4));
     }
 }
 

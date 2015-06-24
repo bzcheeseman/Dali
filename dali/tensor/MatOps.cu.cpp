@@ -542,17 +542,15 @@ Mat<R> MatOps<R>::pow(Mat<R> matrix, R other) {
         return MatOps<R>::square(matrix);
     }
 
-    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = MAT(matrix).array().pow(other);
+
+    MAT(out) = F<op::power<R>>(MAT(matrix).wrapper(), other);
+
     if (graph::backprop_enabled)
         graph::emplace_back([matrix, out, other]() mutable {
-            SAFE_GRAD(matrix).noalias() += other * ((MAT(matrix)).array().pow(other - 1.0) * (GRAD(out)).array()).matrix();
+            SAFE_GRAD(matrix) += other * F<op::power<R>>(MAT(matrix).wrapper(), other - (R)1.0) * GRAD(out).wrapper();
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>

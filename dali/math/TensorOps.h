@@ -271,6 +271,17 @@ namespace TensorOps {
                 return 1.0 - a * a;
             }
         };
+
+        template<typename R>
+        struct power {
+            MSHADOW_XINLINE static R Map(const R& a, const R& b) {
+                #ifdef DALI_USE_CUDA
+                    return powf(a, b);
+                #else
+                    return pow(a, b);
+                #endif
+            }
+        };
     }
 };
 

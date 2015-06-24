@@ -388,6 +388,10 @@ BINARY_SCALAR_OP(mshadow::op::mul,  *);
 BINARY_SCALAR_OP(mshadow::op::minus,  -);
 BINARY_SCALAR_OP(mshadow::op::div,  /);
 
+
+/////////////////////////////// UNARY EXPRESSION FUNCTIONS ///////////////////////////////////////////////////////////////
+
+
 #ifdef DALI_USE_CUDA
     template<typename OP, typename TA, typename TB, typename DType, int dimension, int ta>
     inline LazyTensor<mshadow::expr::UnaryMapExp<OP, TA, DType, (ta|mshadow::expr::type::kMapper)>,
@@ -414,7 +418,34 @@ BINARY_SCALAR_OP(mshadow::op::div,  /);
     F(const LazyTensor<TA, TB, DType, dimension, ta> &exp) {
         return MakeExp<OP>(exp);
     }
+#else
 
+    template<typename OP, typename TA, typename DType, int dimension, int ta>
+    inline LazyTensor<mshadow::expr::UnaryMapExp<OP, TA, DType, (ta|mshadow::expr::type::kMapper)>,
+                      DType,
+                      dimension,
+                      (ta|mshadow::expr::type::kMapper)>
+    MakeExp(const LazyTensor<TA, DType, dimension, ta> &exp) {
+        auto unary_l = mshadow::expr::UnaryMapExp<OP, TA, DType, (ta|mshadow::expr::type::kMapper)>(exp.left);
+        return LazyTensor<decltype(unary_l),
+                          DType,
+                          dimension,
+                          (ta|mshadow::expr::type::kMapper)>(unary_l, exp.sync_tensors, exp.dependent_tensors);
+    }
+
+    template<typename OP, typename TA, typename DType, int dimension, int ta>
+    inline LazyTensor<mshadow::expr::UnaryMapExp<OP, TA, DType, (ta|mshadow::expr::type::kMapper)>,
+                        DType,
+                        dimension,
+                        (ta|mshadow::expr::type::kMapper)>
+    F(const LazyTensor<TA, DType, dimension, ta> &exp) {
+        return MakeExp<OP>(exp);
+    }
+#endif
+
+/////////////////////////////// BINARY EXPRESSION FUNCTIONS ///////////////////////////////////////////////////////////////
+
+#ifdef DALI_USE_CUDA
     template<typename OP, typename TA, typename TB, typename TC, typename TD, typename DType, int dimension, int ta, int tb>
     inline auto
     MakeExp(const LazyTensor<TA, TB, DType, dimension, ta> &left,
@@ -438,33 +469,63 @@ BINARY_SCALAR_OP(mshadow::op::div,  /);
                         );
     }
 
+    template<typename OP, typename TA, typename TB, typename DType, int dimension, int ta>
+    inline auto
+    MakeExp(const LazyTensor<TA, TB, DType, dimension, ta> &left,
+            const mshadow::expr::ScalarExp<DType> right) ->
+                        LazyTensor<decltype(mshadow::expr::F<OP>(left.left,  right)),
+                                   decltype(mshadow::expr::F<OP>(left.right, right)),
+                                   DType, dimension,
+                                   (ta|mshadow::expr::type::kMapper)>{
+
+        auto cpu_res = mshadow::expr::F<OP>(left.left,  right);
+        auto gpu_res = mshadow::expr::F<OP>(left.right, right);
+        return LazyTensor<decltype(cpu_res),
+                          decltype(gpu_res),
+                          DType, dimension,
+                          (ta|mshadow::expr::type::kMapper)>(
+                            cpu_res, gpu_res, left.sync_tensors, left.dependent_tensors
+                        );
+    }
+
+    template<typename OP, typename TA, typename TB, typename DType, int dimension, int ta>
+    inline auto
+    MakeExp(const mshadow::expr::ScalarExp<DType> left,
+            const LazyTensor<TA, TB, DType, dimension, ta> &right) ->
+                        LazyTensor<decltype(mshadow::expr::F<OP>(left, right.left)),
+                                   decltype(mshadow::expr::F<OP>(left, right.left)),
+                                   DType, dimension,
+                                   (ta|mshadow::expr::type::kMapper)>{
+
+        auto cpu_res = mshadow::expr::F<OP>(left, right.left);
+        auto gpu_res = mshadow::expr::F<OP>(left, right.right);
+        return LazyTensor<decltype(cpu_res),
+                          decltype(gpu_res),
+                          DType, dimension,
+                          (ta|mshadow::expr::type::kMapper)>(
+                            cpu_res, gpu_res, right.sync_tensors, right.dependent_tensors
+                        );
+    }
+
     template<typename OP, typename TA, typename TB, typename TC, typename TD, typename DType, int dimension, int ta, int tb>
     inline auto F(const LazyTensor<TA, TB, DType, dimension, ta> &left,
                   const LazyTensor<TC, TD, DType, dimension, tb> &right) -> decltype(MakeExp<OP>(left, right)) {
         return MakeExp<OP>(left, right);
     }
-#else
-    template<typename OP, typename TA, typename DType, int dimension, int ta>
-    inline LazyTensor<mshadow::expr::UnaryMapExp<OP, TA, DType, (ta|mshadow::expr::type::kMapper)>,
-                      DType,
-                      dimension,
-                      (ta|mshadow::expr::type::kMapper)>
-    MakeExp(const LazyTensor<TA, DType, dimension, ta> &exp) {
-        auto unary_l = mshadow::expr::UnaryMapExp<OP, TA, DType, (ta|mshadow::expr::type::kMapper)>(exp.left);
-        return LazyTensor<decltype(unary_l),
-                          DType,
-                          dimension,
-                          (ta|mshadow::expr::type::kMapper)>(unary_l, exp.sync_tensors, exp.dependent_tensors);
+
+    template<typename OP, typename TA, typename TB, typename DType, int dimension, int ta>
+    inline auto F(const DType left,
+                  const LazyTensor<TA, TB, DType, dimension, ta> &right)
+            -> decltype(MakeExp<OP>(mshadow::expr::ScalarExp<DType>(left), right)) {
+        return MakeExp<OP>(mshadow::expr::ScalarExp<DType>(left), right);
     }
 
-    template<typename OP, typename TA, typename DType, int dimension, int ta>
-    inline LazyTensor<mshadow::expr::UnaryMapExp<OP, TA, DType, (ta|mshadow::expr::type::kMapper)>,
-                        DType,
-                        dimension,
-                        (ta|mshadow::expr::type::kMapper)>
-    F(const LazyTensor<TA, DType, dimension, ta> &exp) {
-        return MakeExp<OP>(exp);
+    template<typename OP, typename TA, typename TB, typename DType, int dimension, int ta>
+    inline auto F(const LazyTensor<TA, TB, DType, dimension, ta> &left,
+                  const DType right) -> decltype(MakeExp<OP>(left, mshadow::expr::ScalarExp<DType>(right))) {
+        return MakeExp<OP>(left, mshadow::expr::ScalarExp<DType>(right));
     }
+#else
 
     template<typename OP, typename TA, typename TC, typename DType, int dimension, int ta, int tb>
     inline auto
@@ -486,10 +547,55 @@ BINARY_SCALAR_OP(mshadow::op::div,  /);
                         );
     }
 
+    template<typename OP, typename TA, typename DType, int dimension, int ta>
+    inline auto
+    MakeExp(const LazyTensor<TA, DType, dimension, ta> &left,
+            mshadow::expr::ScalarExp<DType> right) ->
+                        LazyTensor<decltype(mshadow::expr::F<OP>(left.left, right)),
+                                   DType, dimension,
+                                   (ta|mshadow::expr::type::kMapper)>{
+        auto cpu_res = mshadow::expr::F<OP>(left.left, right);
+        return LazyTensor<decltype(cpu_res),
+                          DType, dimension,
+                          (ta|mshadow::expr::type::kMapper)>(
+                              cpu_res, left.sync_tensors, left.dependent_tensors
+                          );
+    }
+
+    template<typename OP, typename TA, typename DType, int dimension, int ta>
+    inline auto
+    MakeExp(const mshadow::expr::ScalarExp<DType> left,
+            const LazyTensor<TA, DType, dimension, ta> &right) ->
+                        LazyTensor<decltype(mshadow::expr::F<OP>(left,  right.left)),
+                                   DType, dimension,
+                                   (ta|mshadow::expr::type::kMapper)>{
+        auto cpu_res = mshadow::expr::F<OP>(left,  right.left);
+        return LazyTensor<decltype(cpu_res),
+                          DType, dimension,
+                          (ta|mshadow::expr::type::kMapper)>(
+                              cpu_res, right.sync_tensors, right.dependent_tensors
+                          );
+    }
+
+
     template<typename OP, typename TA, typename TC, typename DType, int dimension, int ta, int tb>
     inline auto F(const LazyTensor<TA, DType, dimension, ta> &left,
                   const LazyTensor<TC, DType, dimension, tb> &right) -> decltype(MakeExp<OP>(left, right)) {
         return MakeExp<OP>(left, right);
+    }
+
+    template<typename OP, typename TA, typename DType, int dimension, int ta>
+    inline auto F(const DType left,
+                  const LazyTensor<TA, DType, dimension, ta> &right)
+            -> decltype(MakeExp<OP>(mshadow::expr::ScalarExp<DType>(left), right)) {
+        return MakeExp<OP>(mshadow::expr::ScalarExp<DType>(left), right);
+    }
+
+    template<typename OP, typename TA, typename DType, int dimension, int ta>
+    inline auto F(const LazyTensor<TA, DType, dimension, ta> &left,
+                  const DType right)
+            -> decltype(MakeExp<OP>(left, mshadow::expr::ScalarExp<DType>(right))) {
+        return MakeExp<OP>(left, mshadow::expr::ScalarExp<DType>(right));
     }
 #endif
 

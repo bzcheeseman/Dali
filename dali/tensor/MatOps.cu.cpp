@@ -125,29 +125,18 @@ Mat<R> MatOps<R>::eltmul(
 
 template<typename R>
 Mat<R> MatOps<R>::max(Mat<R> matrix, R lower_bound) {
-    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
-    // out = max(matrix, lower_bound);
-    MAT(out) = MAT(matrix).unaryExpr(
-        LambdaOperator<R>([&lower_bound](R item) {
-            return std::max(item, lower_bound);
-        }));
-    if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out, lower_bound]() mutable {
-            if (!matrix.constant) {
-                // mask = (matrix >= lower_bound) ? 1.0 : 0:0;
 
-                auto mask = MAT(matrix).unaryExpr(
-                    LambdaOperator<R>([&lower_bound](R item) {
-                        return item >= lower_bound ? 1.0 : 0.0;
-                    }));
-                GRAD(matrix).noalias() += (mask.array() * (GRAD(out)).array()).matrix();
-            }
+    MAT(out) = F<op::max_scalar<R>>(MAT(matrix).wrapper(), lower_bound);
+
+    if (graph::backprop_enabled && !matrix.constant)
+        graph::emplace_back([matrix, out, lower_bound]() mutable {
+            // mask = (matrix >= lower_bound) ? 1.0 : 0:0;
+            TensorInternal<R, 2> mask(MAT(matrix).shape());
+            mask = F<op::max_scalar_mask<R>>(MAT(matrix).wrapper(), lower_bound);
+            GRAD(matrix) += mask.wrapper() * GRAD(out).wrapper();
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>

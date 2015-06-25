@@ -307,7 +307,21 @@ namespace TensorOps {
                 return x > 0.0 ? 1.0 : -1.0;
             }
         };
-    };
+
+        template<typename R>
+        struct max_scalar {
+            MSHADOW_XINLINE static R Map(const R& x, const R& y) {
+                return x > y ? x : y;
+            }
+        };
+
+        template<typename R>
+        struct  max_scalar_mask {
+            MSHADOW_XINLINE static R Map(const R& m, const R& lower_bound) {
+                return (m >= lower_bound) ? 1.0 : 0.0;
+            }
+        };
+    }
 };
 
 #endif

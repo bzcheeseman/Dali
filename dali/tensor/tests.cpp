@@ -299,6 +299,17 @@ TEST_F(MatrixTests, inplace_sum) {
     }
 }
 
+TEST_F(MatrixTests, max_scalar) {
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(3, 4, weights<R>::uniform(1.0, 1.6));
+        R maxxand = 1.3;
+        auto functor = [maxxand](vector<Mat<R>>& Xs)-> Mat<R> {
+            return MatOps<R>::max(Xs[0], maxxand);
+        };
+        ASSERT_TRUE(gradient_same(functor, {A}));
+    }
+}
+
 TEST_F(MatrixTests, inplace_substract) {
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(3, 4, weights<R>::uniform(1.0, 2.0));

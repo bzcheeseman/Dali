@@ -186,6 +186,7 @@ class Mat {
         Mat<R> sqrt() const;
         Mat<R> elt_inv() const;
         int argmax() const;
+        int argmin() const;
 
         std::vector<int> argmin(int dimension) const;
         std::vector<int> argmax(int dimension) const;

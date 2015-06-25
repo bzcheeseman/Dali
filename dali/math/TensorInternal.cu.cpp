@@ -39,6 +39,30 @@ std::vector<int> TensorInternal<R, dimension>::argmax(int reduce_dim) const {
 }
 
 template<typename R, int dimension>
+int TensorInternal<R, dimension>::argmin() const {
+    // reduce colwise
+    #ifdef DALI_USE_CUDA
+    if (compute_me_on_gpu()) {
+        return TensorOps::arg::argmin( TensorOps::to_thrust(this->gpu_data()), this->number_of_elements() )[0];
+    }
+    #endif
+
+    return TensorOps::arg::argmin(this->cpu_data().dptr_, this->number_of_elements() )[0];
+}
+
+template<typename R, int dimension>
+int TensorInternal<R, dimension>::argmax() const {
+    // reduce colwise
+    #ifdef DALI_USE_CUDA
+    if (compute_me_on_gpu()) {
+        return TensorOps::arg::argmax( TensorOps::to_thrust(this->gpu_data()), this->number_of_elements() )[0];
+    }
+    #endif
+
+    return TensorOps::arg::argmax(this->cpu_data().dptr_, this->number_of_elements() )[0];
+}
+
+template<typename R, int dimension>
 R TensorInternal<R, dimension>::L2_norm() const {
     #ifdef DALI_USE_CUDA
         if (compute_me_on_gpu()) {

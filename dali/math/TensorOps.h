@@ -237,13 +237,24 @@ namespace TensorOps {
 
         // following the advice from this Stackoverflow:
         // http://stackoverflow.com/questions/7709181/finding-the-maximum-element-value-and-its-position-using-cuda-thrust
+
+
+        #define THRUST_KERNEL_ROWWISE_FROM_1D_GPU_PTR( thrust_op_name, fname) \
+            template <typename R> \
+            std::vector<int> fname (thrust::device_ptr<R> start, int n_elements) { \
+                auto idx = thrust_op_name (start, start + n_elements);\
+                return { (int) (&idx[0] - &start[0]) };\
+            }
+
         #define THRUST_KERNEL_ROWWISE_FROM_1D_MSHADOW( thrust_op_name, fname ) \
             template <typename R> \
             std::vector<int> fname (const mshadow::Tensor<gpu, 1, R>& A, int reduce_dim) { \
                 auto start = to_thrust(A);\
-                auto idx = thrust_op_name (start, start + A.shape_[0]);\
-                return { (int) (&idx[0] - &start[0]) };\
+                return fname ( start, A.shape_[0] );\
             }
+
+        THRUST_KERNEL_ROWWISE_FROM_1D_GPU_PTR( thrust::min_element , argmin )
+        THRUST_KERNEL_ROWWISE_FROM_1D_GPU_PTR( thrust::max_element , argmax )
 
         THRUST_KERNEL_ROWWISE_FROM_1D_MSHADOW( thrust::min_element , argmin )
         THRUST_KERNEL_ROWWISE_FROM_1D_MSHADOW( thrust::max_element , argmax )
@@ -252,11 +263,11 @@ namespace TensorOps {
 
         // declare this operation exists for every dimension (then specialize)
         template <typename R, int dimension>
-        std::vector<int> argmin(const mshadow::Tensor<cpu, dimension, R>& A);
+        std::vector<int> argmin(const mshadow::Tensor<cpu, dimension, R>& A, int reduce_dim);
 
         // declare this operation exists for every dimension (then specialize)
         template <typename R, int dimension>
-        std::vector<int> argmax(const mshadow::Tensor<cpu, dimension, R>& A);
+        std::vector<int> argmax(const mshadow::Tensor<cpu, dimension, R>& A, int reduce_dim);
 
         #define CPU_KERNEL_ROWWISE_FROM_2D_MSHADOW( fname , opsymbol ) \
             template <typename R> \
@@ -290,25 +301,33 @@ namespace TensorOps {
                 }\
             }
 
-        #define CPU_KERNEL_ROWWISE_FROM_1D_MSHADOW( fname, opsymbol ) \
+        #define CPU_KERNEL_ROWWISE_FROM_1D_PTR( fname, opsymbol ) \
             template <typename R>\
-            std::vector<int> fname (const mshadow::Tensor<cpu, 1, R>& A, int reduce_dim) { \
+            std::vector<int> fname (const R* start, const int num_elts) { \
                 std::vector<int> offset_row(1, 0);\
                 int& offset = offset_row[0];\
-                const int num_rows = A.shape_[0];\
-                for (int i = 0; i < A.shape_[0]; i++) {\
-                    if (*(A.dptr_ + i) opsymbol *(A.dptr_ + offset)) {\
+                for (int i = 0; i < num_elts; i++) {\
+                    if (*(start + i) opsymbol *(start + offset)) {\
                         offset = i;\
                     }\
                 }\
                 return offset_row;\
             }
 
+        #define CPU_KERNEL_ROWWISE_FROM_1D_MSHADOW( fname ) \
+            template <typename R>\
+            std::vector<int> fname (const mshadow::Tensor<cpu, 1, R>& A, int reduce_dim) { \
+                return fname (A.dptr_ , A.shape_[0] );\
+            }
+
         CPU_KERNEL_ROWWISE_FROM_2D_MSHADOW( argmax, > )
         CPU_KERNEL_ROWWISE_FROM_2D_MSHADOW( argmin, < )
 
-        CPU_KERNEL_ROWWISE_FROM_1D_MSHADOW( argmax, > )
-        CPU_KERNEL_ROWWISE_FROM_1D_MSHADOW( argmin, < )
+        CPU_KERNEL_ROWWISE_FROM_1D_PTR(  argmax, > )
+        CPU_KERNEL_ROWWISE_FROM_1D_PTR(  argmin, < )
+
+        CPU_KERNEL_ROWWISE_FROM_1D_MSHADOW( argmax )
+        CPU_KERNEL_ROWWISE_FROM_1D_MSHADOW( argmin )
     }
 
     template <typename T>

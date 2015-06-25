@@ -94,22 +94,13 @@ namespace matops {
     }
 
     template<typename R>
+    int Other<R>::argmin(const Mat<R>& mat) {
+        return MAT(mat).argmin();
+    }
+
+    template<typename R>
     int Other<R>::argmax(const Mat<R>& mat) {
-        #ifndef DONT_COMPILE
-        int i = 0;
-        R current_max = -std::numeric_limits<R>::infinity();
-        auto ptr = mat.w()->data();
-        for (int j = 0; j < mat.number_of_elements(); j++) {
-            if (*ptr > current_max) {
-                current_max = *ptr;
-                i = j;
-            }
-            ptr++;
-        }
-        return i;
-        #else
-        return 0;
-        #endif
+        return MAT(mat).argmax();
     }
 
     template<typename R>

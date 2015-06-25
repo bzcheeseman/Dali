@@ -19,6 +19,15 @@ R MatOps<R>::EPS = 1e-9;
 
 #define DONT_COMPILE
 
+namespace Indexing {
+    typedef uint ind_t;
+    class Index {
+        ind_t& operator[](std::size_t idx);
+        ind_t  operator[](std::size_t idx) const;
+    };
+}
+
+
 /////////////////////////////////////  ELEMENTWISE OPERATIONS /////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -63,6 +72,22 @@ DALI_UNARY_OP1(max, lower_bound, op::max_scalar,
 DALI_UNARY_OP1(steep_sigmoid, aggressiveness, op::steep_sigmoid,
         F<op::steep_sigmoid_backward<R>>(MAT(out).wrapper(), aggressiveness));
 
+
+
+template<typename R>
+Mat<R> MatOps<R>::relu(Mat<R> matrix) {
+    #ifndef DONT_COMPILE
+    auto out = Mat<R>::empty_like(matrix);
+    MAT(out) = MAT(matrix).unaryExpr(utils::relu_operator<R>());
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, out]() mutable {
+            SAFE_GRAD(matrix).noalias() += (MAT(out).unaryExpr(utils::max_operator<R>()).array() * GRAD(out).array()).matrix();
+        });
+    return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
+}
 
 template<typename R>
 Mat<R> MatOps<R>::exp(Mat<R> matrix) {
@@ -149,6 +174,11 @@ Mat<R> MatOps<R>::pow(Mat<R> matrix, R other) {
     return out;
 }
 
+/////////////////////////////////////  SCALAR ARITHMETIC //////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
 template<typename R>
 Mat<R> MatOps<R>::add(
         Mat<R> matrix1,
@@ -186,18 +216,22 @@ Mat<R> MatOps<R>::eltdivide(
     return out;
 }
 
-/////////////////////////////////////  OTHER OPERATIONS ///////////////////////////////////////////////////
+template<typename R>
+Mat<R> MatOps<R>::eltmul(
+        Mat<R> matrix,
+        R alpha) {
+    auto out = Mat<R>::empty_like(matrix);
+    MAT(out) = MAT(matrix).wrapper() * alpha;
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, alpha, out]() mutable {
+            SAFE_GRAD(matrix) += alpha * GRAD(out).wrapper();
+        });
+    return out;
+}
+
+/////////////////////////////////////  BINARY ARITHMETIC //////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-
-namespace Indexing {
-    typedef uint ind_t;
-    class Index {
-        ind_t& operator[](std::size_t idx);
-        ind_t  operator[](std::size_t idx) const;
-    };
-}
 
 template<typename R>
 Mat<R> MatOps<R>::eltmul_broadcast(
@@ -296,19 +330,6 @@ Mat<R> MatOps<R>::eltmul(
 }
 
 template<typename R>
-Mat<R> MatOps<R>::eltmul(
-        Mat<R> matrix,
-        R alpha) {
-    auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = MAT(matrix).wrapper() * alpha;
-    if (graph::backprop_enabled)
-        graph::emplace_back([matrix, alpha, out]() mutable {
-            SAFE_GRAD(matrix) += alpha * GRAD(out).wrapper();
-        });
-    return out;
-}
-
-template<typename R>
 vector<Mat<R>> MatOps<R>::eltmul(const vector<Mat<R>>& seq1, const vector<Mat<R>>& seq2) {
     ASSERT2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
     vector<Mat<R>> result(seq1.size());
@@ -368,17 +389,6 @@ Mat<R> MatOps<R>::eltmul_broadcast_rowwise(
 }
 
 template<typename R>
-vector<Mat<R>> MatOps<R>::eltmul_broadcast_rowwise(const vector<Mat<R>>& seq1, const vector<Mat<R>>& seq2) {
-    ASSERT2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
-
-    vector<Mat<R>> result(seq1.size());
-    for (int i = 0; i < seq1.size(); ++i) {
-        result[i] = eltmul_broadcast_rowwise(seq1[i], seq2[i]);
-    }
-    return result;
-}
-
-template<typename R>
 Mat<R> MatOps<R>::eltmul_rowwise(
     Mat<R> matrix1,
     Mat<R> matrix2) {
@@ -403,17 +413,6 @@ Mat<R> MatOps<R>::eltmul_rowwise(
     #else
     return Mat<R>(1,1);
     #endif
-}
-
-template<typename R>
-vector<Mat<R>> MatOps<R>::eltmul_rowwise(const vector<Mat<R>>& seq1, const vector<Mat<R>>& seq2) {
-    ASSERT2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
-
-    vector<Mat<R>> result(seq1.size());
-    for (int i = 0; i < seq1.size(); ++i) {
-        result[i] = eltmul_rowwise(seq1[i], seq2[i]);
-    }
-    return result;
 }
 
 
@@ -469,7 +468,6 @@ Mat<R> MatOps<R>::sub(
 
     return out;
 }
-
 
 
 template<typename R>
@@ -537,6 +535,54 @@ Mat<R> MatOps<R>::sub_broadcast_reversed(Mat<R> matrix1, Mat<R> matrix2) {
     #endif
 }
 
+// not GPU friendly.
+template<typename R>
+Mat<R> MatOps<R>::pow(Mat<R> matrix, Mat<R> other) {
+    ASSERT2(other.dims(0) == 1 && other.dims(1) == 1, "exponent must be a 1x1 matrix.");
+    auto out = Mat<R>::empty_like(matrix);
+    // TODO (szymon): it would be better it was done completely on GPU.
+    R exponent_val = MAT(other)(0);
+    MAT(out) = F<op::power<R>>(MAT(matrix).wrapper(), exponent_val);
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, out, other, exponent_val]() mutable {
+            SAFE_GRAD(matrix) += exponent_val * F<op::power<R>>(MAT(matrix).wrapper(), exponent_val - (R)1.0) * GRAD(out).wrapper();
+            if (!other.constant) {
+                TensorInternal<R,2> temp(MAT(matrix).shape());
+                temp = F<op::log_or_zero<R>>(MAT(matrix).wrapper()) * MAT(out).wrapper() * GRAD(out).wrapper();
+                GRAD(other) += temp.sum();
+            }
+        });
+    return out;
+}
+
+/////////////////////////////////////  VECTOR HELPERS /////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+template<typename R>
+vector<Mat<R>> MatOps<R>::eltmul_broadcast_rowwise(const vector<Mat<R>>& seq1, const vector<Mat<R>>& seq2) {
+    ASSERT2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
+
+    vector<Mat<R>> result(seq1.size());
+    for (int i = 0; i < seq1.size(); ++i) {
+        result[i] = eltmul_broadcast_rowwise(seq1[i], seq2[i]);
+    }
+    return result;
+}
+
+template<typename R>
+vector<Mat<R>> MatOps<R>::eltmul_rowwise(const vector<Mat<R>>& seq1, const vector<Mat<R>>& seq2) {
+    ASSERT2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
+
+    vector<Mat<R>> result(seq1.size());
+    for (int i = 0; i < seq1.size(); ++i) {
+        result[i] = eltmul_rowwise(seq1[i], seq2[i]);
+    }
+    return result;
+}
+
+
+
 template<typename R>
 Mat<R> MatOps<R>::add(std::initializer_list<Mat<R>> matrices) {
     auto matrices_vector = vector<Mat<R>>(matrices);
@@ -559,6 +605,29 @@ Mat<R> MatOps<R>::add(std::vector<Mat<R>>& matrices) {
 }
 
 template<typename R>
+Mat<R> MatOps<R>::mul(
+        Mat<R> matrix1,
+        Mat<R> matrix2) {
+    ASSERT2(matrix1.dims(1) == matrix2.dims(0), "matrix product dimensions misaligned.");
+    Mat<R> out (matrix1.dims(0), matrix2.dims(1), weights<R>::empty());
+
+    MAT(out) = dot( MAT(matrix1).wrapper(), MAT(matrix2).wrapper() );
+
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix1, matrix2, out]() mutable {
+
+            SAFE_GRAD(matrix1) += dot( GRAD(out).wrapper(),        MAT(matrix2).wrapper().T() );
+            SAFE_GRAD(matrix2) += dot( MAT(matrix1).wrapper().T(), GRAD(out).wrapper() );
+        });
+    return out;
+}
+
+/////////////////////////////////////  RECUCERS ///////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+template<typename R>
 Mat<R> MatOps<R>::L2_norm(Mat<R> matrix) {
     auto out = Mat<R>(1, 1, weights<R>::empty());
     auto norm = MAT(matrix).L2_norm();
@@ -573,33 +642,34 @@ Mat<R> MatOps<R>::L2_norm(Mat<R> matrix) {
 
 
 template<typename R>
-Mat<R> MatOps<R>::fill(Mat<R> matrix, R filler) {
-    auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = filler;
-    return out;
-}
+Mat<R> MatOps<R>::sum(Mat<R> matrix) {
+    if (matrix.dims(0) == 1 && matrix.dims(1) == 1)
+        return matrix;
+    Mat<R> out(1,1, weights<R>::empty());
+    out.w(0) = MAT(matrix).sum();
 
-// not GPU friendly.
-template<typename R>
-Mat<R> MatOps<R>::pow(Mat<R> matrix, Mat<R> other) {
-    ASSERT2(other.dims(0) == 1 && other.dims(1) == 1, "exponent must be a 1x1 matrix.");
-    auto out = Mat<R>::empty_like(matrix);
-    // TODO (szymon): it would be better it was done completely on GPU.
-    R exponent_val = MAT(other)(0);
-    MAT(out) = F<op::power<R>>(MAT(matrix).wrapper(), exponent_val);
-    if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out, other, exponent_val]() mutable {
-            SAFE_GRAD(matrix) += exponent_val * F<op::power<R>>(MAT(matrix).wrapper(), exponent_val - (R)1.0) * GRAD(out).wrapper();
-            if (!other.constant) {
-                TensorInternal<R,2> temp(MAT(matrix).shape());
-                temp = F<op::log_or_zero<R>>(MAT(matrix).wrapper()) * MAT(out).wrapper() * GRAD(out).wrapper();
-                GRAD(other) += temp.sum();
-            }
+    if (backprop_enabled() && !matrix.constant)
+        emplace_back([matrix, out]() mutable {
+            GRAD(matrix) += out.dw(0);
         });
     return out;
 }
 
+template<typename R>
+Mat<R> MatOps<R>::mean(Mat<R> matrix) {
+    Mat<R> out (1,1, weights<R>::empty());
+    auto ne = matrix.number_of_elements();
+    out.w(0) = MAT(matrix).sum() / ne;
+    if (backprop_enabled() && !matrix.constant)
+        emplace_back([matrix, out, ne]() mutable {
+            GRAD(matrix) += out.dw(0) / ne;
+        });
 
+    return out;
+}
+
+/////////////////////////////////////  ERROR FUNCTIONS, SOFTMAX ETC. //////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 template<typename R>
@@ -724,33 +794,6 @@ vector<Mat<R>> MatOps<R>::softmax(const vector<Mat<R>>& matrices, R temperature)
     #endif
 }
 
-
-template<typename R>
-Mat<R> MatOps<R>::sum(Mat<R> matrix) {
-    if (matrix.dims(0) == 1 && matrix.dims(1) == 1)
-        return matrix;
-    Mat<R> out(1,1, weights<R>::empty());
-    out.w(0) = MAT(matrix).sum();
-
-    if (backprop_enabled() && !matrix.constant)
-        emplace_back([matrix, out]() mutable {
-            GRAD(matrix) += out.dw(0);
-        });
-    return out;
-}
-
-template<typename R>
-Mat<R> MatOps<R>::mean(Mat<R> matrix) {
-    Mat<R> out (1,1, weights<R>::empty());
-    auto ne = matrix.number_of_elements();
-    out.w(0) = MAT(matrix).sum() / ne;
-    if (backprop_enabled() && !matrix.constant)
-        emplace_back([matrix, out, ne]() mutable {
-            GRAD(matrix) += out.dw(0) / ne;
-        });
-
-    return out;
-}
 
 template<typename R>
 Mat<R> MatOps<R>::sigmoid_binary_cross_entropy(Mat<R> matrix, R t) {
@@ -921,6 +964,40 @@ Mat<R> MatOps<R>::margin_loss(Mat<R> matrix, uint answer_idx, R margin) {
 }
 
 
+///////////////////////////////////// RESHAPING ///////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+template<typename R>
+Mat<R> MatOps<R>::rows_pluck(
+        Mat<R> matrix,
+        Indexing::Index indices
+        ) {
+    #ifndef DONT_COMPILE
+    Mat<R> out (
+        matrix.dims(1),
+        indices.size(),
+        weights<R>::empty());
+
+    for (std::size_t offset = 0; offset < indices.size(); ++offset) {
+        MAT(out).col(offset) = MAT(matrix).row(indices[offset]).transpose();
+    }
+    if (graph::backprop_enabled) {
+        graph::emplace_back([matrix, out, indices]() mutable {
+            auto index_ptr = indices.data();
+            for (std::size_t i = 0; i < out.dims(1); ++i) {
+                // for each row do the same operation as for row_pluck:
+                SAFE_GRAD(matrix).row(*index_ptr).noalias() += GRAD(out).col(i).transpose();
+                index_ptr++;
+            }
+        });
+    }
+    return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
+}
+
 
 template<typename R>
 Mat<R> MatOps<R>::hstack(Mat<R> matrix1, Mat<R> matrix2) {
@@ -1049,6 +1126,74 @@ Mat<R> MatOps<R>::vstack(const std::vector<Mat<R>>& matrices) {
     #endif
 }
 
+
+template<typename R>
+Mat<R> MatOps<R>::rows_cols_pluck(
+        Mat<R> matrix,
+        Indexing::Index row_indices,
+        Indexing::Index col_indices) {
+    #ifndef DONT_COMPILE
+    ASSERT2(row_indices.size() != col_indices.size(),"Cannot pluck column row pairs, not the "
+            "same amount of row and column indices.");
+        Mat<R> out (
+            1,
+            row_indices.size(),
+            weights<R>::empty());
+        for (int offset = 0; offset < row_indices.size(); ++offset)
+            MAT(out)(offset) = MAT(matrix)(row_indices[offset], col_indices[offset]);
+    if (graph::backprop_enabled && !matrix.constant) {
+        graph::emplace_back([matrix, out, row_indices, col_indices]() mutable {
+            auto row_index_ptr = row_indices.data();
+            auto col_index_ptr = col_indices.data();
+            for (int i = 0; i < out.dims(1); ++i) {
+                // for each row do the same operation as for row_pluck:
+                GRAD(matrix)(*row_index_ptr, *col_index_ptr) += GRAD(out)(i);
+                row_index_ptr++;
+                col_index_ptr++;
+            }
+        });
+    }
+    return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
+}
+
+template<typename R>
+Mat<R> MatOps<R>::row_pluck(
+        Mat<R> matrix,
+        int row) {
+    #ifndef DONT_COMPILE
+    Mat<R> out (matrix.dims(1), 1, weights<R>::empty());
+    MAT(out) = MAT(matrix).row(row).transpose();
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, out, row]() mutable {
+            SAFE_GRAD(matrix).row(row).noalias() += GRAD(out).col(0).transpose();
+        });
+    return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
+}
+
+template<typename R>
+Mat<R> MatOps<R>::col_pluck(
+        Mat<R> matrix,
+        int col) {
+    #ifndef DONT_COMPILE
+    Mat<R> out (matrix.dims(0), 1, weights<R>::empty());
+    MAT(out) = MAT(matrix).col(col);
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, out, col]() mutable {
+            SAFE_GRAD(matrix).col(col).noalias() += GRAD(out).col(0).transpose();
+        });
+    return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
+}
+
+
 template<typename R>
 Mat<R> MatOps<R>::transpose(Mat<R> matrix) {
     Mat<R> out (
@@ -1063,17 +1208,51 @@ Mat<R> MatOps<R>::transpose(Mat<R> matrix) {
     return out;
 }
 
+///////////////////////////////////// DROPOUT /////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 template<typename R>
-Mat<R> MatOps<R>::relu(Mat<R> matrix) {
+Mat<R> MatOps<R>::dropout(
+        Mat<R> matrix,
+        R drop_prob) {
     #ifndef DONT_COMPILE
+
+    assert(0.0 <= drop_prob && drop_prob <= 1.0);
+
+    // no dropout happens.
+    if (drop_prob < 1e-6)
+        return matrix;
+
     auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = MAT(matrix).unaryExpr(utils::relu_operator<R>());
-    if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out]() mutable {
-            SAFE_GRAD(matrix).noalias() += (MAT(out).unaryExpr(utils::max_operator<R>()).array() * GRAD(out).array()).matrix();
+
+    auto bool_mat = std::make_shared<Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>>(
+        matrix.dims(0),
+        matrix.dims(1)
+    );
+
+    std::default_random_engine generator;
+    std::bernoulli_distribution distribution(1.0 - drop_prob);
+    std::random_device rd;
+    generator.seed(rd());
+
+    auto data_ptr = MAT(matrix).data();
+    auto out_ptr  = MAT(out).data();
+    auto bool_ptr = bool_mat->data();
+
+    for (int i = 0; i < matrix.number_of_elements();++i) {
+        (*bool_ptr) = distribution(generator) ? 1.0 : 0.0;
+        (*out_ptr) = (*bool_ptr) > 0 ? *data_ptr : 0.0;
+        out_ptr++;
+        data_ptr++;
+        bool_ptr++;
+    }
+
+    if (graph::backprop_enabled) {
+        graph::emplace_back([matrix, out, bool_mat]() mutable {
+            SAFE_GRAD(matrix) += (GRAD(out).array() * (*bool_mat).array()).matrix();
         });
+    }
     return out;
     #else
     return Mat<R>(1,1);
@@ -1081,22 +1260,122 @@ Mat<R> MatOps<R>::relu(Mat<R> matrix) {
 }
 
 template<typename R>
-Mat<R> MatOps<R>::mul(
-        Mat<R> matrix1,
-        Mat<R> matrix2) {
-    ASSERT2(matrix1.dims(1) == matrix2.dims(0), "matrix product dimensions misaligned.");
-    Mat<R> out (matrix1.dims(0), matrix2.dims(1), weights<R>::empty());
+Mat<R> MatOps<R>::dropout_normalized(
+        Mat<R> matrix,
+        R drop_prob) {
+    #ifndef DONT_COMPILE
 
-    MAT(out) = dot( MAT(matrix1).wrapper(), MAT(matrix2).wrapper() );
+    assert(0.0 <= drop_prob && drop_prob <= 1.0);
 
-    if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, matrix2, out]() mutable {
+    // no dropout happens.
+    if (drop_prob < 1e-6)
+        return matrix;
 
-            SAFE_GRAD(matrix1) += dot( GRAD(out).wrapper(),        MAT(matrix2).wrapper().T() );
-            SAFE_GRAD(matrix2) += dot( MAT(matrix1).wrapper().T(), GRAD(out).wrapper() );
+    auto out = Mat<R>::empty_like(matrix);
+
+    auto bool_mat = std::make_shared<Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>>(
+        matrix.dims(0),
+        matrix.dims(1)
+    );
+
+    std::default_random_engine generator;
+    std::bernoulli_distribution distribution(1.0 - drop_prob);
+    std::random_device rd;
+    generator.seed(rd());
+
+    auto data_ptr = MAT(matrix).data();
+    auto out_ptr  = MAT(out).data();
+    auto bool_ptr = bool_mat->data();
+
+    R normalized_drop_prob = 1.0 / (1.0 - drop_prob);
+    for (unsigned int i = 0; i < matrix.number_of_elements();++i) {
+        (*bool_ptr) = distribution(generator) ? normalized_drop_prob : 0.0;
+        (*out_ptr) = (*bool_ptr) > 0 ? *data_ptr : 0.0;
+        out_ptr++;
+        data_ptr++;
+        bool_ptr++;
+    }
+
+    if (graph::backprop_enabled) {
+        graph::emplace_back([matrix, out, bool_mat]() mutable {
+            SAFE_GRAD(matrix) += (GRAD(out).array() * (*bool_mat).array()).matrix();
         });
+    }
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
+
+template<typename R>
+vector<Mat<R>> MatOps<R>::dropout_normalized(
+        const vector<Mat<R>>& matrices,
+        R drop_prob) {
+    #ifndef DONT_COMPILE
+    vector<Mat<R>> dropped_matrices;
+    dropped_matrices.reserve(matrices.size());
+    for (auto& mat : matrices) {
+        dropped_matrices.emplace_back(dropout_normalized(mat, drop_prob));
+    }
+    return dropped_matrices;
+    #else
+    return {Mat<R>(1,1)};
+    #endif
+}
+
+template<typename R>
+vector<Mat<R>> MatOps<R>::dropout(
+        const vector<Mat<R>>& matrices,
+        R drop_prob) {
+    vector<Mat<R>> dropped_matrices;
+    dropped_matrices.reserve(matrices.size());
+    for (auto& mat : matrices) {
+        dropped_matrices.emplace_back(dropout(mat, drop_prob));
+    }
+    return dropped_matrices;
+}
+
+template<typename R>
+Mat<R> MatOps<R>::fast_dropout(Mat<R> matrix) {
+    #ifndef DONT_COMPILE
+    auto out = Mat<R>::empty_like(matrix);
+
+    auto randn_mat = std::make_shared<Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>>(
+        matrix.dims(0),
+        matrix.dims(1)
+    );
+
+    std::default_random_engine generator;
+    std::normal_distribution<R> distribution(1.0, 1.0);
+    std::random_device rd;
+    generator.seed(rd());
+
+    auto data_ptr = MAT(matrix).data();
+    auto out_ptr  = MAT(out).data();
+    auto randn_ptr = randn_mat->data();
+
+    for (unsigned int i = 0; i < matrix.number_of_elements();++i) {
+        (*randn_ptr) = distribution(generator);
+        (*out_ptr) = (*randn_ptr) * *data_ptr;
+        out_ptr++;
+        data_ptr++;
+        randn_ptr++;
+    }
+
+    if (graph::backprop_enabled) {
+        graph::emplace_back([matrix, out, randn_mat]() mutable {
+            SAFE_GRAD(matrix) += (GRAD(out).array() * (*randn_mat).array()).matrix();
+        });
+    }
+    return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
+}
+
+///////////////////////////////////// COMPOSITE ///////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 template<typename R>
 Mat<R> MatOps<R>::quadratic_form(
@@ -1326,261 +1605,16 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(
     return out;
 }
 
-template<typename R>
-Mat<R> MatOps<R>::rows_pluck(
-        Mat<R> matrix,
-        Indexing::Index indices
-        ) {
-    #ifndef DONT_COMPILE
-    Mat<R> out (
-        matrix.dims(1),
-        indices.size(),
-        weights<R>::empty());
 
-    for (std::size_t offset = 0; offset < indices.size(); ++offset) {
-        MAT(out).col(offset) = MAT(matrix).row(indices[offset]).transpose();
-    }
-    if (graph::backprop_enabled) {
-        graph::emplace_back([matrix, out, indices]() mutable {
-            auto index_ptr = indices.data();
-            for (std::size_t i = 0; i < out.dims(1); ++i) {
-                // for each row do the same operation as for row_pluck:
-                SAFE_GRAD(matrix).row(*index_ptr).noalias() += GRAD(out).col(i).transpose();
-                index_ptr++;
-            }
-        });
-    }
-    return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
-}
+/////////////////////////////////////  NOT DIFFERENTIALBLE ////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 template<typename R>
-Mat<R> MatOps<R>::dropout(
-        Mat<R> matrix,
-        R drop_prob) {
-    #ifndef DONT_COMPILE
-
-    assert(0.0 <= drop_prob && drop_prob <= 1.0);
-
-    // no dropout happens.
-    if (drop_prob < 1e-6)
-        return matrix;
-
+Mat<R> MatOps<R>::fill(Mat<R> matrix, R filler) {
     auto out = Mat<R>::empty_like(matrix);
-
-    auto bool_mat = std::make_shared<Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>>(
-        matrix.dims(0),
-        matrix.dims(1)
-    );
-
-    std::default_random_engine generator;
-    std::bernoulli_distribution distribution(1.0 - drop_prob);
-    std::random_device rd;
-    generator.seed(rd());
-
-    auto data_ptr = MAT(matrix).data();
-    auto out_ptr  = MAT(out).data();
-    auto bool_ptr = bool_mat->data();
-
-    for (int i = 0; i < matrix.number_of_elements();++i) {
-        (*bool_ptr) = distribution(generator) ? 1.0 : 0.0;
-        (*out_ptr) = (*bool_ptr) > 0 ? *data_ptr : 0.0;
-        out_ptr++;
-        data_ptr++;
-        bool_ptr++;
-    }
-
-    if (graph::backprop_enabled) {
-        graph::emplace_back([matrix, out, bool_mat]() mutable {
-            SAFE_GRAD(matrix) += (GRAD(out).array() * (*bool_mat).array()).matrix();
-        });
-    }
+    MAT(out) = filler;
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
-}
-
-template<typename R>
-Mat<R> MatOps<R>::dropout_normalized(
-        Mat<R> matrix,
-        R drop_prob) {
-    #ifndef DONT_COMPILE
-
-    assert(0.0 <= drop_prob && drop_prob <= 1.0);
-
-    // no dropout happens.
-    if (drop_prob < 1e-6)
-        return matrix;
-
-    auto out = Mat<R>::empty_like(matrix);
-
-    auto bool_mat = std::make_shared<Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>>(
-        matrix.dims(0),
-        matrix.dims(1)
-    );
-
-    std::default_random_engine generator;
-    std::bernoulli_distribution distribution(1.0 - drop_prob);
-    std::random_device rd;
-    generator.seed(rd());
-
-    auto data_ptr = MAT(matrix).data();
-    auto out_ptr  = MAT(out).data();
-    auto bool_ptr = bool_mat->data();
-
-    R normalized_drop_prob = 1.0 / (1.0 - drop_prob);
-    for (unsigned int i = 0; i < matrix.number_of_elements();++i) {
-        (*bool_ptr) = distribution(generator) ? normalized_drop_prob : 0.0;
-        (*out_ptr) = (*bool_ptr) > 0 ? *data_ptr : 0.0;
-        out_ptr++;
-        data_ptr++;
-        bool_ptr++;
-    }
-
-    if (graph::backprop_enabled) {
-        graph::emplace_back([matrix, out, bool_mat]() mutable {
-            SAFE_GRAD(matrix) += (GRAD(out).array() * (*bool_mat).array()).matrix();
-        });
-    }
-    return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
-}
-
-template<typename R>
-vector<Mat<R>> MatOps<R>::dropout_normalized(
-        const vector<Mat<R>>& matrices,
-        R drop_prob) {
-    #ifndef DONT_COMPILE
-    vector<Mat<R>> dropped_matrices;
-    dropped_matrices.reserve(matrices.size());
-    for (auto& mat : matrices) {
-        dropped_matrices.emplace_back(dropout_normalized(mat, drop_prob));
-    }
-    return dropped_matrices;
-    #else
-    return {Mat<R>(1,1)};
-    #endif
-}
-
-template<typename R>
-vector<Mat<R>> MatOps<R>::dropout(
-        const vector<Mat<R>>& matrices,
-        R drop_prob) {
-    vector<Mat<R>> dropped_matrices;
-    dropped_matrices.reserve(matrices.size());
-    for (auto& mat : matrices) {
-        dropped_matrices.emplace_back(dropout(mat, drop_prob));
-    }
-    return dropped_matrices;
-}
-
-template<typename R>
-Mat<R> MatOps<R>::fast_dropout(Mat<R> matrix) {
-    #ifndef DONT_COMPILE
-    auto out = Mat<R>::empty_like(matrix);
-
-    auto randn_mat = std::make_shared<Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>>(
-        matrix.dims(0),
-        matrix.dims(1)
-    );
-
-    std::default_random_engine generator;
-    std::normal_distribution<R> distribution(1.0, 1.0);
-    std::random_device rd;
-    generator.seed(rd());
-
-    auto data_ptr = MAT(matrix).data();
-    auto out_ptr  = MAT(out).data();
-    auto randn_ptr = randn_mat->data();
-
-    for (unsigned int i = 0; i < matrix.number_of_elements();++i) {
-        (*randn_ptr) = distribution(generator);
-        (*out_ptr) = (*randn_ptr) * *data_ptr;
-        out_ptr++;
-        data_ptr++;
-        randn_ptr++;
-    }
-
-    if (graph::backprop_enabled) {
-        graph::emplace_back([matrix, out, randn_mat]() mutable {
-            SAFE_GRAD(matrix) += (GRAD(out).array() * (*randn_mat).array()).matrix();
-        });
-    }
-    return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
-}
-
-template<typename R>
-Mat<R> MatOps<R>::rows_cols_pluck(
-        Mat<R> matrix,
-        Indexing::Index row_indices,
-        Indexing::Index col_indices) {
-    #ifndef DONT_COMPILE
-    ASSERT2(row_indices.size() != col_indices.size(),"Cannot pluck column row pairs, not the "
-            "same amount of row and column indices.");
-        Mat<R> out (
-            1,
-            row_indices.size(),
-            weights<R>::empty());
-        for (int offset = 0; offset < row_indices.size(); ++offset)
-            MAT(out)(offset) = MAT(matrix)(row_indices[offset], col_indices[offset]);
-    if (graph::backprop_enabled && !matrix.constant) {
-        graph::emplace_back([matrix, out, row_indices, col_indices]() mutable {
-            auto row_index_ptr = row_indices.data();
-            auto col_index_ptr = col_indices.data();
-            for (int i = 0; i < out.dims(1); ++i) {
-                // for each row do the same operation as for row_pluck:
-                GRAD(matrix)(*row_index_ptr, *col_index_ptr) += GRAD(out)(i);
-                row_index_ptr++;
-                col_index_ptr++;
-            }
-        });
-    }
-    return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
-}
-
-template<typename R>
-Mat<R> MatOps<R>::row_pluck(
-        Mat<R> matrix,
-        int row) {
-    #ifndef DONT_COMPILE
-    Mat<R> out (matrix.dims(1), 1, weights<R>::empty());
-    MAT(out) = MAT(matrix).row(row).transpose();
-    if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out, row]() mutable {
-            SAFE_GRAD(matrix).row(row).noalias() += GRAD(out).col(0).transpose();
-        });
-    return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
-}
-
-template<typename R>
-Mat<R> MatOps<R>::col_pluck(
-        Mat<R> matrix,
-        int col) {
-    #ifndef DONT_COMPILE
-    Mat<R> out (matrix.dims(0), 1, weights<R>::empty());
-    MAT(out) = MAT(matrix).col(col);
-    if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out, col]() mutable {
-            SAFE_GRAD(matrix).col(col).noalias() += GRAD(out).col(0).transpose();
-        });
-    return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>

@@ -377,8 +377,8 @@ TEST_F(MatrixTests, subtraction_gradient) {
 
 TEST_F(MatrixTests, argmax_argmin) {
     auto A = Mat<R>(5, 5, weights<R>::eye());
-    // auto indices_max_col = A.argmax(0);
-    // EXPECT_EQ(indices_max_col, std::vector<int>({0, 1, 2, 3, 4}));
+    auto indices_max_col = A.argmax(0);
+    EXPECT_EQ(indices_max_col, std::vector<int>({0, 1, 2, 3, 4}));
     auto indices_max_row = A.argmax(1);
     EXPECT_EQ(indices_max_row, std::vector<int>({0, 1, 2, 3, 4}));
 
@@ -389,12 +389,15 @@ TEST_F(MatrixTests, argmax_argmin) {
     B.w(3,0) = -35.0;
     B.w(4,2) = -32.0;
     B.w(5,3) = -27.0;
+    #ifdef DALI_USE_CUDA
+    B.w().to_gpu();
+    #endif
 
-    // auto indices_min_col = B.argmin(0);
-    // EXPECT_EQ(indices_min_col, std::vector<int>({3, 0, 4, 1, 2}));
+    auto indices_min_col = B.argmin(0);
+    EXPECT_EQ(indices_min_col, std::vector<int>({3, 0, 4, 1, 2}));
 
-    auto indices_min_row = B.argmin(1);
-    EXPECT_EQ(indices_min_row, std::vector<int>({0, 3, 4, 0, 2, 3}));
+    // auto indices_min_row = B.argmin(1);
+    // EXPECT_EQ(indices_min_row, std::vector<int>({0, 3, 4, 0, 2, 3}));
 }
 
 

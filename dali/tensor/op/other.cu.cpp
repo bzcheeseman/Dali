@@ -8,7 +8,6 @@
 
 using std::vector;
 
-
 namespace matops {
     template<typename R>
     Mat<R> Other<R>::fill(Mat<R> matrix, R filler) {
@@ -56,6 +55,8 @@ namespace matops {
 
     template<typename R>
     vector<size_t> Other<R>::argsort(const vector<Mat<R>>& v) {
+        // https://www.linux.com/news/software/developer/81090-c-the-gpu-and-thrust-sorting-numbers-on-the-gpu
+        // should switch to gpu when more than 10,000 elements to sort.
         #ifndef DONT_COMPILE
         // initialize original index locations
         vector<size_t> idx(v.size());
@@ -83,15 +84,14 @@ namespace matops {
     }
 
     template<typename R>
-    vector<int> Other<R>::argmax(const Mat<R>& mat, int dimension) {
-        return MAT(mat).argmax(dimension);
+    vector<int> Other<R>::argmax(const Mat<R>& mat, int reduce_dim) {
+        return MAT(mat).argmax(reduce_dim);
     }
 
     template<typename R>
-    vector<int> Other<R>::argmin(const Mat<R>& mat, int dimension) {
-        return MAT(mat).argmin(dimension);
+    vector<int> Other<R>::argmin(const Mat<R>& mat, int reduce_dim) {
+        return MAT(mat).argmin(reduce_dim);
     }
-
 
     template<typename R>
     int Other<R>::argmax(const Mat<R>& mat) {

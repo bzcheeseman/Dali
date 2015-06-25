@@ -4,6 +4,14 @@
 #include "dali/tensor/Mat.h"
 #include "dali/math/LazyTensor.h"
 
+#include <thrust/device_vector.h>
+#include <thrust/equal.h>
+#include <thrust/functional.h>
+#include <thrust/reduce.h>
+#include <thrust/sort.h>
+#include <thrust/transform.h>
+#include <thrust/transform_reduce.h>
+
 using namespace mshadow;
 using namespace mshadow::expr;
 using std::vector;
@@ -38,8 +46,6 @@ typedef LazyTensor<cpu_t, gpu_t, R, 2, type::kRValue> wrapped_t;
 
 int main() {
     dali_init();
-
-
     Mat<R> A(2, 3, weights<R>::gaussian(2.0));
     Mat<R> B(2, 3);
 
@@ -118,9 +124,6 @@ int main() {
 
     std::cout << "out3=" << std::endl;
     out3.print();
-
-
-
 
     mshadow::ShutdownTensorEngine<mshadow::gpu>();
 

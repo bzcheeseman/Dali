@@ -16,6 +16,8 @@
 #include <thrust/transform.h>
 #include <thrust/transform_reduce.h>
 
+#define STR(x) __THIS_IS_VERY_ABNOXIOUS(x)
+#define __THIS_IS_VERY_ABNOXIOUS(tok) #tok
 
 /* CUDA UTILS START HERE */
 namespace TensorOps {
@@ -119,14 +121,23 @@ namespace TensorOps {
         // Convert a linear index to a row index
         template <typename R>
         struct linear_index_to_row_index : public thrust::unary_function<R,R> {
-            R C; // number of columns
-
+            R cols; // number of columns
             __host__ __device__
-            linear_index_to_row_index(R C) : C(C) {}
-
+            linear_index_to_row_index(R _cols) : cols(_cols) {}
             __host__ __device__
             R operator()(R i) {
-                return i / C;
+                return i / cols;
+            }
+        };
+
+        // convert a linear index to a row index
+        template <typename T>
+        struct linear_index_to_col_index: public thrust::unary_function<T, T> {
+            T rows; // number of rows
+            __host__ __device__ linear_index_to_col_index(T rows) : rows(rows) {}
+
+            __host__ __device__ T operator() (T i) {
+                return i % rows;
             }
         };
 
@@ -164,8 +175,8 @@ namespace TensorOps {
             }
         };
 
-        THRUST_COMP_KERNEL(<, argmin_op);
-        THRUST_COMP_KERNEL(>, argmax_op);
+        THRUST_COMP_KERNEL(<=, argmin_op);
+        THRUST_COMP_KERNEL(>=, argmax_op);
 
         // declare this operation exists for every dimension (then specialize)
         template <typename R, int dimension>
@@ -180,29 +191,43 @@ namespace TensorOps {
             std::vector<int> fname (const mshadow::Tensor<gpu, 2, R>& A, int reduce_dim) { \
                 int num_rows = A.shape_[0]; \
                 int num_cols = A.shape_[1]; \
-                /* allocate storage for row argmins and indices */ \
-                thrust::device_vector<THRUST_COMP_KERNEL_RESULT_T> row_arguments(num_rows); \
-                thrust::device_vector<int> row_indices(num_rows); \
-                /* compute row arguments by finding argmin values with equal row indices */ \
-                thrust::reduce_by_key \
-                  (thrust::make_transform_iterator(thrust::counting_iterator<int>(0), linear_index_to_row_index<int>(num_cols)), \
-                   thrust::make_transform_iterator(thrust::counting_iterator<int>(0), linear_index_to_row_index<int>(num_cols)) + (num_rows * num_cols), \
-                   thrust::make_zip_iterator(thrust::make_tuple(thrust::counting_iterator<int>(0), to_thrust(A))), \
-                   row_indices.begin(),    \
-                   row_arguments.begin(),  \
-                   thrust::equal_to<int>(),\
-                   kernel_name<R>());      \
-                std::vector<int> host_arguments(num_rows); \
-                thrust::device_vector<int> row_indices2(num_rows); \
-                \
-                thrust::transform(                                      \
-                    row_arguments.begin(),                              \
-                    row_arguments.end(),                                \
-                    row_indices2.begin(),                               \
-                    thrust_extract_arg_divide<0, int, R, int>(num_cols) \
-                );\
-                thrust::copy(row_indices2.begin(), row_indices2.end(), host_arguments.begin());\
-                return host_arguments; \
+                if (reduce_dim == 0) {\
+                    /* reduce_by_key for thrust only works for contiguous portions, since */\
+                    /* row-major memory breaks this assumption, we cannot do this without */\
+                    /* many intermediate steps; we instead transpose & switch reduce dim  */\
+                    mshadow::Tensor<gpu, 2, R> A_T( mshadow::Shape2(num_cols, num_rows));\
+                    mshadow::AllocSpace(&A_T, false);\
+                    A_T = A.T();\
+                    auto sorted = fname ( A_T , 1 );\
+                    mshadow::FreeSpace(&A_T);\
+                    return sorted;\
+                } else if (reduce_dim == 1) {\
+                    /* allocate storage for row arguments and indices */ \
+                    thrust::device_vector<THRUST_COMP_KERNEL_RESULT_T> row_arguments(num_rows); \
+                    thrust::device_vector<int> row_indices(num_rows); \
+                    /* compute row arguments by finding argmin values with equal row indices */ \
+                    thrust::reduce_by_key(\
+                        thrust::make_transform_iterator(thrust::counting_iterator<int>(0), linear_index_to_row_index<int>(num_cols)), \
+                        thrust::make_transform_iterator(thrust::counting_iterator<int>(0), linear_index_to_row_index<int>(num_cols)) + (num_rows * num_cols), \
+                        thrust::make_zip_iterator(thrust::make_tuple(thrust::counting_iterator<int>(0), to_thrust(A))), \
+                        row_indices.begin(),                                \
+                        row_arguments.begin(),                              \
+                        thrust::equal_to<int>(),                            \
+                        kernel_name<R>()                                    \
+                    );                                                      \
+                    std::vector<int> host_arguments(num_rows);              \
+                    thrust::device_vector<int> row_indices2(num_rows);      \
+                    thrust::transform(                                      \
+                        row_arguments.begin(),                              \
+                        row_arguments.end(),                                \
+                        row_indices2.begin(),                               \
+                        thrust_extract_arg_divide<0, int, R, int>(num_cols) \
+                    );\
+                    thrust::copy(row_indices2.begin(), row_indices2.end(), host_arguments.begin());\
+                    return host_arguments; \
+                } else {\
+                    throw std::runtime_error(STR(fname) " can only be used with axis equal to 0 or 1.");\
+                }\
             }
 
         THRUST_KERNEL_ROWWISE_FROM_2D_MSHADOW( argmin_op, argmin )
@@ -225,44 +250,62 @@ namespace TensorOps {
         template <typename R, int dimension>
         std::vector<int> argmin(const mshadow::Tensor<cpu, dimension, R>& A);
 
-
-        template <typename R>
-        std::vector<int> argmin (const mshadow::Tensor<cpu, 2, R>& A, int reduce_dim) {
-            assert(false);
-            std::vector<int> host_arguments;
-            return host_arguments;
-        }
-
-        template <typename R>
-        std::vector<int> argmin (const mshadow::Tensor<cpu, 1, R>& A, int reduce_dim) {
-            assert(false);
-            std::vector<int> host_arguments;
-            return host_arguments;
-        }
-
         // declare this operation exists for every dimension (then specialize)
         template <typename R, int dimension>
         std::vector<int> argmax(const mshadow::Tensor<cpu, dimension, R>& A);
 
+        #define CPU_KERNEL_ROWWISE_FROM_2D_MSHADOW( fname , opsymbol ) \
+            template <typename R> \
+            std::vector<int> fname (const mshadow::Tensor<cpu, 2, R>& A, int reduce_dim) {\
+                const int num_rows = A.shape_[0];\
+                const int num_cols = A.shape_[1];\
+                if (reduce_dim == 1) {\
+                    std::vector<int> arguments(num_rows);\
+                    for (int i = 0; i < num_rows; i++) {\
+                        arguments[i] = 0;\
+                        for (int j = 0; j < num_cols; j++) {\
+                            if (*(A.dptr_ + (A.stride_ * i) + j) opsymbol *(A.dptr_ + (A.stride_ * i) + arguments[i])) {\
+                                arguments[i] = j;\
+                            }\
+                        }\
+                    }\
+                    return arguments;\
+                } else if (reduce_dim == 0) {\
+                    std::vector<int> arguments(num_cols);\
+                    for (int j = 0; j < num_cols; j++) {\
+                        arguments[j] = 0;\
+                        for (int i = 0; i < num_rows; i++) {\
+                            if (*(A.dptr_ + (A.stride_ * i) + j) opsymbol *(A.dptr_ + (A.stride_ * i) + arguments[j])) {\
+                                arguments[j] = i;\
+                            }\
+                        }\
+                    }\
+                    return arguments;\
+                } else {\
+                    throw std::runtime_error("argmax can only be used with axis equal to 0 or 1.");\
+                }\
+            }
 
-        template <typename R>
-        std::vector<int> argmax (const mshadow::Tensor<cpu, 2, R>& A, int reduce_dim) {
-            assert(false);
-            std::vector<int> host_arguments;
-            return host_arguments;
-        }
+        #define CPU_KERNEL_ROWWISE_FROM_1D_MSHADOW( fname, opsymbol ) \
+            template <typename R>\
+            std::vector<int> fname (const mshadow::Tensor<cpu, 1, R>& A, int reduce_dim) { \
+                std::vector<int> offset_row(1, 0);\
+                int& offset = offset_row[0];\
+                const int num_rows = A.shape_[0];\
+                for (int i = 0; i < A.shape_[0]; i++) {\
+                    if (*(A.dptr_ + i) opsymbol *(A.dptr_ + offset)) {\
+                        offset = i;\
+                    }\
+                }\
+                return offset_row;\
+            }
 
-        template <typename R>
-        std::vector<int> argmax (const mshadow::Tensor<cpu, 1, R>& A, int reduce_dim) {
-            assert(false);
-            std::vector<int> host_arguments;
-            return host_arguments;
-        }
+        CPU_KERNEL_ROWWISE_FROM_2D_MSHADOW( argmax, >= )
+        CPU_KERNEL_ROWWISE_FROM_2D_MSHADOW( argmin, <= )
 
-
+        CPU_KERNEL_ROWWISE_FROM_1D_MSHADOW( argmax, >=)
+        CPU_KERNEL_ROWWISE_FROM_1D_MSHADOW( argmin, <=)
     }
-
-
 
     template <typename T>
     struct thrust_square_reduce {

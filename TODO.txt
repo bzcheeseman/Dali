@@ -1,6 +1,8 @@
 HIGH PRIORITY:
--> mutable_gpu_data should copy data from cpu vs. gpu if the operation is incremental
-   else, only allocate since operation overwrites
+-> implement 3 different ways of accessing data in TensorInternal:
+    - mutable
+    - read
+    - overwrite (only allocate, do not refresh)
 -> mshadow and tensors (mutli gpu support etc.)
 -> visualizer - web frontend for error visualization (60% done)
 -> Move Redis visualizer example to tests with check for redis presence
@@ -10,6 +12,7 @@ HIGH PRIORITY:
 -> add test for whether operator[] on LazyTensor truly gets pointer updated on update_tensor (else could cause previous bugs with stale memory)
 
 MEDIUM PRIORITY:
+-> add test for numpy loading / saving
 -> Improve NlpUtils. More generally agree on common set of practices for all the examples.
 -> print method of TensorInternal must be n-dimensional aware
 

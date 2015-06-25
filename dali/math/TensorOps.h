@@ -160,7 +160,7 @@ namespace TensorOps {
 
             __host__ __device__
             auto operator()(const thrust::tuple<TA, TB>& x) -> typename thrust::tuple_element<extraction,thrust::tuple<TA, TB>>::type const {
-                return thrust::get<extraction>(x) / divisor;
+                return thrust::get<extraction>(x) % divisor;
             }
         };
 
@@ -178,28 +178,28 @@ namespace TensorOps {
         #define THRUST_KERNEL_ROWWISE_FROM_2D_MSHADOW( kernel_name, fname ) \
             template <typename R> \
             std::vector<int> fname (const mshadow::Tensor<gpu, 2, R>& A, int reduce_dim) { \
-                int nRows    = A.shape_[0]; \
-                int nColumns = A.shape_[1]; \
+                int num_rows = A.shape_[0]; \
+                int num_cols = A.shape_[1]; \
                 /* allocate storage for row argmins and indices */ \
-                thrust::device_vector<THRUST_COMP_KERNEL_RESULT_T> row_arguments(nRows); \
-                thrust::device_vector<int> row_indices(nRows); \
+                thrust::device_vector<THRUST_COMP_KERNEL_RESULT_T> row_arguments(num_rows); \
+                thrust::device_vector<int> row_indices(num_rows); \
                 /* compute row arguments by finding argmin values with equal row indices */ \
                 thrust::reduce_by_key \
-                  (thrust::make_transform_iterator(thrust::counting_iterator<int>(0), linear_index_to_row_index<int>(nColumns)), \
-                   thrust::make_transform_iterator(thrust::counting_iterator<int>(0), linear_index_to_row_index<int>(nColumns)) + (nRows*nColumns), \
+                  (thrust::make_transform_iterator(thrust::counting_iterator<int>(0), linear_index_to_row_index<int>(num_cols)), \
+                   thrust::make_transform_iterator(thrust::counting_iterator<int>(0), linear_index_to_row_index<int>(num_cols)) + (num_rows * num_cols), \
                    thrust::make_zip_iterator(thrust::make_tuple(thrust::counting_iterator<int>(0), to_thrust(A))), \
-                   row_indices.begin(), \
-                   row_arguments.begin(), \
+                   row_indices.begin(),    \
+                   row_arguments.begin(),  \
                    thrust::equal_to<int>(),\
-                   kernel_name<R>()); \
-                std::vector<int> host_arguments(nRows); \
-                thrust::device_vector<int> row_indices2(nRows); \
+                   kernel_name<R>());      \
+                std::vector<int> host_arguments(num_rows); \
+                thrust::device_vector<int> row_indices2(num_rows); \
                 \
-                thrust::transform(                  \
-                    row_arguments.begin(),          \
-                    row_arguments.end(),            \
-                    row_indices2.begin(),            \
-                    thrust_extract_arg_divide<0, int, R, int>(nColumns) \
+                thrust::transform(                                      \
+                    row_arguments.begin(),                              \
+                    row_arguments.end(),                                \
+                    row_indices2.begin(),                               \
+                    thrust_extract_arg_divide<0, int, R, int>(num_cols) \
                 );\
                 thrust::copy(row_indices2.begin(), row_indices2.end(), host_arguments.begin());\
                 return host_arguments; \
@@ -228,12 +228,16 @@ namespace TensorOps {
 
         template <typename R>
         std::vector<int> argmin (const mshadow::Tensor<cpu, 2, R>& A, int reduce_dim) {
-
+            assert(false);
+            std::vector<int> host_arguments;
+            return host_arguments;
         }
 
         template <typename R>
         std::vector<int> argmin (const mshadow::Tensor<cpu, 1, R>& A, int reduce_dim) {
-
+            assert(false);
+            std::vector<int> host_arguments;
+            return host_arguments;
         }
 
         // declare this operation exists for every dimension (then specialize)
@@ -243,12 +247,16 @@ namespace TensorOps {
 
         template <typename R>
         std::vector<int> argmax (const mshadow::Tensor<cpu, 2, R>& A, int reduce_dim) {
-
+            assert(false);
+            std::vector<int> host_arguments;
+            return host_arguments;
         }
 
         template <typename R>
         std::vector<int> argmax (const mshadow::Tensor<cpu, 1, R>& A, int reduce_dim) {
-
+            assert(false);
+            std::vector<int> host_arguments;
+            return host_arguments;
         }
 
 

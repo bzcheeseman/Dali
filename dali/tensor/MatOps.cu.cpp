@@ -238,7 +238,6 @@ Mat<R> MatOps<R>::eltmul_broadcast_rowwise(
 
 template<typename R>
 vector<Mat<R>> MatOps<R>::eltmul_broadcast_rowwise(const vector<Mat<R>>& seq1, const vector<Mat<R>>& seq2) {
-    #ifndef DONT_COMPILE
     ASSERT2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
 
     vector<Mat<R>> result(seq1.size());
@@ -246,9 +245,6 @@ vector<Mat<R>> MatOps<R>::eltmul_broadcast_rowwise(const vector<Mat<R>>& seq1, c
         result[i] = eltmul_broadcast_rowwise(seq1[i], seq2[i]);
     }
     return result;
-    #else
-    return {Mat<R>(1,1)};
-    #endif
 }
 
 template<typename R>
@@ -927,25 +923,7 @@ Mat<R> MatOps<R>::exp(Mat<R> matrix) {
 
 template<typename R>
 Mat<R> MatOps<R>::hstack(Mat<R> matrix1, Mat<R> matrix2) {
-    #ifndef DONT_COMPILE
-    ASSERT2(matrix1.dims(0) != matrix2.dims(0),
-        "Matrices cannot be joined -- they do not have the same number of rows.");
-    Mat<R> out (
-        matrix1.dims(0),
-        matrix1.dims(1) + matrix2.dims(1),
-        weights<R>::empty()
-    );
-    MAT(out).block(0,0, matrix1.dims(0), matrix1.dims(1)) = MAT(matrix1);
-    MAT(out).block(0,matrix1.dims(1), matrix2.dims(0), matrix2.dims(1)) = MAT(matrix2);
-    if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, matrix2, out]() mutable {
-            SAFE_GRAD(matrix1).noalias() += GRAD(out).block(0,0, matrix1.dims(0), matrix1.dims(1));
-            SAFE_GRAD(matrix2).noalias() += GRAD(out).block(0,matrix1.dims(1), matrix2.dims(0), matrix2.dims(1));
-        });
-    return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
+    return MatOps<R>::hstack({matrix1, matrix2});
 }
 
 template<typename R>
@@ -1515,16 +1493,12 @@ template<typename R>
 vector<Mat<R>> MatOps<R>::dropout(
         const vector<Mat<R>>& matrices,
         R drop_prob) {
-    #ifndef DONT_COMPILE
     vector<Mat<R>> dropped_matrices;
     dropped_matrices.reserve(matrices.size());
     for (auto& mat : matrices) {
         dropped_matrices.emplace_back(dropout(mat, drop_prob));
     }
     return dropped_matrices;
-    #else
-    return {Mat<R>(1,1)};
-    #endif
 }
 
 template<typename R>

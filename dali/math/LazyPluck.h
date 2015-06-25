@@ -2,11 +2,9 @@
 #define DALI_MAT_MATH_LAZY_PLUCK_H
 #ifdef DOT_NOT_COMPILE_ME
 
-
 #include "mshadow/tensor.h"
 #include "mshadow/expr_engine-inl.h"
 #include "dali/math/LazyUtils.h"
-
 
 // This will go inside LazyTensor if it is used
 /* Future Lazy plucking
@@ -29,7 +27,6 @@ inline LazyTensor<
         right,
         idx);
 */
-
 
 namespace dali_expr {
     template<typename SrcExp, typename DType, int dstdim>

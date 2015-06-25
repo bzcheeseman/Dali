@@ -47,9 +47,6 @@ class LazyTensor : DormantTensor {
         cpu_tensor_t*   left_source;
         sync_tensors_t sync_tensors;
 
-
-
-
         #ifdef DALI_USE_CUDA
             typedef mshadow::Tensor<mshadow::gpu, dimension, DType> gpu_tensor_t;
             gpu_tensor_t*  right_source;

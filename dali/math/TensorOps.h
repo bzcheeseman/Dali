@@ -15,6 +15,8 @@
 #include <thrust/reduce.h>
 #include <thrust/transform.h>
 #include <thrust/transform_reduce.h>
+// contains thrust::max_element & thrust::min_element
+#include <thrust/extrema.h>
 
 #define STR(x) __THIS_IS_VERY_ABNOXIOUS(x)
 #define __THIS_IS_VERY_ABNOXIOUS(tok) #tok
@@ -233,16 +235,18 @@ namespace TensorOps {
         THRUST_KERNEL_ROWWISE_FROM_2D_MSHADOW( argmin_op, argmin )
         THRUST_KERNEL_ROWWISE_FROM_2D_MSHADOW( argmax_op, argmax )
 
-        #define THRUST_KERNEL_ROWWISE_FROM_1D_MSHADOW( kernel_name, fname ) \
+        // following the advice from this Stackoverflow:
+        // http://stackoverflow.com/questions/7709181/finding-the-maximum-element-value-and-its-position-using-cuda-thrust
+        #define THRUST_KERNEL_ROWWISE_FROM_1D_MSHADOW( thrust_op_name, fname ) \
             template <typename R> \
             std::vector<int> fname (const mshadow::Tensor<gpu, 1, R>& A, int reduce_dim) { \
-                assert(false); \
-                std::vector<int> host_arguments; \
-                return host_arguments; \
+                auto start = to_thrust(A);\
+                auto idx = thrust_op_name (start, start + A.shape_[0]);\
+                return { (int) (&idx[0] - &start[0]) };\
             }
 
-        THRUST_KERNEL_ROWWISE_FROM_1D_MSHADOW( argmin_op, argmin )
-        THRUST_KERNEL_ROWWISE_FROM_1D_MSHADOW( argmax_op, argmax )
+        THRUST_KERNEL_ROWWISE_FROM_1D_MSHADOW( thrust::min_element , argmin )
+        THRUST_KERNEL_ROWWISE_FROM_1D_MSHADOW( thrust::max_element , argmax )
 
         #endif
 
@@ -264,7 +268,7 @@ namespace TensorOps {
                     for (int i = 0; i < num_rows; i++) {\
                         arguments[i] = 0;\
                         for (int j = 0; j < num_cols; j++) {\
-                            if (*(A.dptr_ + (A.stride_ * i) + j) opsymbol *(A.dptr_ + (A.stride_ * i) + arguments[i])) {\
+                            if (  *(A.dptr_ + (A.stride_ * i) + j) opsymbol *(A.dptr_ + (A.stride_ * i) + arguments[i]) ) {\
                                 arguments[i] = j;\
                             }\
                         }\
@@ -275,7 +279,7 @@ namespace TensorOps {
                     for (int j = 0; j < num_cols; j++) {\
                         arguments[j] = 0;\
                         for (int i = 0; i < num_rows; i++) {\
-                            if (*(A.dptr_ + (A.stride_ * i) + j) opsymbol *(A.dptr_ + (A.stride_ * i) + arguments[j])) {\
+                            if ( *(A.dptr_ + (A.stride_ * i) + j) opsymbol *(A.dptr_ + (A.stride_ * arguments[j]) + j) ) {\
                                 arguments[j] = i;\
                             }\
                         }\
@@ -300,11 +304,11 @@ namespace TensorOps {
                 return offset_row;\
             }
 
-        CPU_KERNEL_ROWWISE_FROM_2D_MSHADOW( argmax, >= )
-        CPU_KERNEL_ROWWISE_FROM_2D_MSHADOW( argmin, <= )
+        CPU_KERNEL_ROWWISE_FROM_2D_MSHADOW( argmax, > )
+        CPU_KERNEL_ROWWISE_FROM_2D_MSHADOW( argmin, < )
 
-        CPU_KERNEL_ROWWISE_FROM_1D_MSHADOW( argmax, >=)
-        CPU_KERNEL_ROWWISE_FROM_1D_MSHADOW( argmin, <=)
+        CPU_KERNEL_ROWWISE_FROM_1D_MSHADOW( argmax, > )
+        CPU_KERNEL_ROWWISE_FROM_1D_MSHADOW( argmin, < )
     }
 
     template <typename T>

@@ -16,17 +16,17 @@ namespace dali_expr {
 }
 
 namespace mshadow {
-namespace expr {
-    template<typename SV, typename Device, typename DType, template <typename, int, typename> class tensor_t>
-    struct ExpComplexEngine<SV,
-                            tensor_t<Device, 2, DType>,
-                            dali_expr::SoftmaxExpression< tensor_t<Device, 2, DType>, DType >,
-                            DType > {
-        inline static void Eval(tensor_t<Device, 2, DType> *dst,
-                                const dali_expr::SoftmaxExpression< tensor_t<Device, 2, DType>, DType > &exp) {
-            mshadow::Softmax(*dst, exp.exp);
-        }
-    };
-}
+    namespace expr {
+        template<typename SV, typename Device, typename DType, template <typename, int, typename> class tensor_t>
+        struct ExpComplexEngine<SV,
+                                tensor_t<Device, 2, DType>,
+                                dali_expr::SoftmaxExpression< tensor_t<Device, 2, DType>, DType >,
+                                DType > {
+            inline static void Eval(tensor_t<Device, 2, DType> *dst,
+                                    const dali_expr::SoftmaxExpression< tensor_t<Device, 2, DType>, DType > &exp) {
+                mshadow::Softmax(*dst, exp.exp);
+            }
+        };
+    }
 }
 #endif

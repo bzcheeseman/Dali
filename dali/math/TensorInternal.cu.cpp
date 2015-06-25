@@ -8,12 +8,10 @@ R TensorInternal<R, dimension>::sum() const {
     #ifdef DALI_USE_CUDA
         if (compute_me_on_gpu()) {
             return TensorOps::sum(this->gpu_data(), this->number_of_elements() );
-        } else {
-            return TensorOps::sum(this->cpu_data(), this->number_of_elements() );
         }
-    #else
-        return TensorOps::sum(this->cpu_data(), this->number_of_elements());
     #endif
+
+    return TensorOps::sum(this->cpu_data(), this->number_of_elements() );
 }
 
 template<typename R, int dimension>
@@ -22,12 +20,10 @@ std::vector<int> TensorInternal<R, dimension>::argmin(int reduce_dim) const {
     #ifdef DALI_USE_CUDA
     if (compute_me_on_gpu()) {
         return TensorOps::arg::argmin(this->gpu_data(), reduce_dim);
-    } else {
-        return TensorOps::arg::argmin(this->gpu_data(), reduce_dim);
     }
-    #else
-        return TensorOps::arg::argmin(this->gpu_data(), reduce_dim);
     #endif
+
+    return TensorOps::arg::argmin(this->cpu_data(), reduce_dim);
 }
 
 template<typename R, int dimension>
@@ -36,12 +32,10 @@ std::vector<int> TensorInternal<R, dimension>::argmax(int reduce_dim) const {
     #ifdef DALI_USE_CUDA
     if (compute_me_on_gpu()) {
         return TensorOps::arg::argmax(this->gpu_data(), reduce_dim);
-    } else {
-        return TensorOps::arg::argmax(this->gpu_data(), reduce_dim);
     }
-    #else
-        return TensorOps::arg::argmax(this->gpu_data(), reduce_dim);
     #endif
+
+    return TensorOps::arg::argmax(this->cpu_data(), reduce_dim);
 }
 
 template<typename R, int dimension>
@@ -49,12 +43,10 @@ R TensorInternal<R, dimension>::L2_norm() const {
     #ifdef DALI_USE_CUDA
         if (compute_me_on_gpu()) {
             return TensorOps::L2_norm(this->gpu_data(), this->number_of_elements() );
-        } else {
-            return TensorOps::L2_norm(this->cpu_data(), this->number_of_elements() );
         }
-    #else
-        return TensorOps::L2_norm(this->cpu_data(), this->number_of_elements());
     #endif
+
+    return TensorOps::L2_norm(this->cpu_data(), this->number_of_elements() );
 }
 
 template<typename R, int dimension>

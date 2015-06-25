@@ -113,9 +113,10 @@ namespace TensorOps {
     }
     #endif
 
-    // Convert a linear index to a row index
-    #ifdef DALI_USE_CUDA
+
     namespace arg {
+        #ifdef DALI_USE_CUDA
+        // Convert a linear index to a row index
         template <typename R>
         struct linear_index_to_row_index : public thrust::unary_function<R,R> {
             R C; // number of columns
@@ -169,6 +170,9 @@ namespace TensorOps {
         // declare this operation exists for every dimension (then specialize)
         template <typename R, int dimension>
         std::vector<int> argmin(const mshadow::Tensor<gpu, dimension, R>& A);
+        // declare this operation exists for every dimension (then specialize)
+        template <typename R, int dimension>
+        std::vector<int> argmax(const mshadow::Tensor<gpu, dimension, R>& A);
 
         // specialize for kernel
         #define THRUST_KERNEL_ROWWISE_FROM_2D_MSHADOW( kernel_name, fname ) \
@@ -215,9 +219,40 @@ namespace TensorOps {
         THRUST_KERNEL_ROWWISE_FROM_1D_MSHADOW( argmin_op, argmin )
         THRUST_KERNEL_ROWWISE_FROM_1D_MSHADOW( argmax_op, argmax )
 
-    }
+        #endif
 
-    #endif
+        // declare this operation exists for every dimension (then specialize)
+        template <typename R, int dimension>
+        std::vector<int> argmin(const mshadow::Tensor<cpu, dimension, R>& A);
+
+
+        template <typename R>
+        std::vector<int> argmin (const mshadow::Tensor<cpu, 2, R>& A, int reduce_dim) {
+
+        }
+
+        template <typename R>
+        std::vector<int> argmin (const mshadow::Tensor<cpu, 1, R>& A, int reduce_dim) {
+
+        }
+
+        // declare this operation exists for every dimension (then specialize)
+        template <typename R, int dimension>
+        std::vector<int> argmax(const mshadow::Tensor<cpu, dimension, R>& A);
+
+
+        template <typename R>
+        std::vector<int> argmax (const mshadow::Tensor<cpu, 2, R>& A, int reduce_dim) {
+
+        }
+
+        template <typename R>
+        std::vector<int> argmax (const mshadow::Tensor<cpu, 1, R>& A, int reduce_dim) {
+
+        }
+
+
+    }
 
 
 

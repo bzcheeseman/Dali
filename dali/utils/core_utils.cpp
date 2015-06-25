@@ -726,6 +726,8 @@ namespace utils {
             index2word.emplace_back(unknown_word_symbol);
             word2index[unknown_word_symbol] = index2word.size() - 1;
             unknown_word = index2word.size() - 1;
+        } else {
+            unknown_word = word2index.at(unknown_word_symbol);
         }
     }
 

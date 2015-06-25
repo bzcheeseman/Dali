@@ -1,0 +1,21 @@
+#ifndef DALI_TENSOR_OP_CONVOLUTION_H
+#define DALI_TENSOR_OP_CONVOLUTION_H
+
+#include "dali/tensor/Mat.h"
+#include "dali/tensor/Tape.h"
+#include "dali/utils.h"
+
+template<typename R> class Mat;
+
+namespace matops {
+    template<typename R>
+    struct Convolution{
+        static Mat<R> conv2d(Mat<R> image, Mat<R> kernel);
+        static Mat<R> conv1d(Mat<R> image, Mat<R> kernel);
+        static Mat<R> conv1d(Mat<R> image, Mat<R> kernel, bool pad);
+        static Mat<R> conv1d(Mat<R> image, const std::vector<Mat<R>>& kernels);
+        static Mat<R> conv1d(Mat<R> image, const std::vector<Mat<R>>& kernels, bool pad);
+    };
+}
+
+#endif

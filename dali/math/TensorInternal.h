@@ -120,6 +120,9 @@ class TensorInternal : public SynchronizedMemory<R, dimension> {
         R& operator()(int i, int j);
         R operator()(int i, int j) const;
 
+        std::vector<int> argmin(int dim) const;
+        std::vector<int> argmax(int dim) const;
+
         R& operator()(int i);
         R operator()(int i) const;
 

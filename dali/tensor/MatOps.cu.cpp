@@ -1648,6 +1648,16 @@ void MatOps<R>::resize(const Mat<R>& mat, dim_t n, dim_t d) {
     #endif
 }
 
+template<typename R>
+vector<int> MatOps<R>::argmax(const Mat<R>& mat, int dimension) {
+    return MAT(mat).argmax(dimension);
+}
+
+template<typename R>
+vector<int> MatOps<R>::argmin(const Mat<R>& mat, int dimension) {
+    return MAT(mat).argmin(dimension);
+}
+
 
 template<typename R>
 int MatOps<R>::argmax(const Mat<R>& mat) {

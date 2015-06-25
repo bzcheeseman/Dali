@@ -736,6 +736,16 @@ int Mat<R>::argmax() const {
 }
 
 template<typename R>
+vector<int> Mat<R>::argmin(int dimension) const {
+    return MatOps<R>::argmin(*this, dimension);
+}
+
+template<typename R>
+vector<int> Mat<R>::argmax(int dimension) const {
+    return MatOps<R>::argmax(*this, dimension);
+}
+
+template<typename R>
 int Mat<R>::argmax_slice(int lower, int upper) const {
     return MatOps<R>::argmax_slice(*this, lower, upper);
 }

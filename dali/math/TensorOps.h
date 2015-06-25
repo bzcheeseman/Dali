@@ -18,7 +18,6 @@
 
 
 /* CUDA UTILS START HERE */
-
 namespace TensorOps {
     template<typename R, int ndims>
     thrust::device_ptr<R> to_thrust(const mshadow::Tensor<mshadow::gpu, ndims, R>& tg) {
@@ -113,6 +112,113 @@ namespace TensorOps {
         return std::sqrt(thrust::transform_reduce(to_thrust(a), to_thrust(a) + num_elts, thrust_square<R>(), 0.0, thrust::plus<R>()));
     }
     #endif
+
+    // Convert a linear index to a row index
+    #ifdef DALI_USE_CUDA
+    namespace arg {
+        template <typename R>
+        struct linear_index_to_row_index : public thrust::unary_function<R,R> {
+            R C; // number of columns
+
+            __host__ __device__
+            linear_index_to_row_index(R C) : C(C) {}
+
+            __host__ __device__
+            R operator()(R i) {
+                return i / C;
+            }
+        };
+
+        #define THRUST_COMP_KERNEL_RESULT_T thrust::tuple<int, R>
+
+        #define THRUST_COMP_KERNEL(compsymbol, kernel_name) \
+            template<typename R> \
+            struct kernel_name : public thrust::binary_function<THRUST_COMP_KERNEL_RESULT_T ,THRUST_COMP_KERNEL_RESULT_T , THRUST_COMP_KERNEL_RESULT_T > {\
+                __host__ __device__ \
+                THRUST_COMP_KERNEL_RESULT_T operator()(const THRUST_COMP_KERNEL_RESULT_T & a, const THRUST_COMP_KERNEL_RESULT_T & b) const {\
+                    if (thrust::get<1>(a) compsymbol thrust::get<1>(b)){\
+                        return a;\
+                    } else {\
+                        return b;\
+                    }\
+                }\
+            }\
+
+        template <int extraction, typename TA, typename TB>
+        struct thrust_extract_arg : public thrust::unary_function<TA,TB> {
+            __host__ __device__
+            auto operator()(const thrust::tuple<TA, TB>& x) -> decltype(thrust::get<extraction>(x)) const {
+                return thrust::get<extraction>(x);
+            }
+        };
+
+        template <int extraction, typename TA, typename TB, typename T>
+        struct thrust_extract_arg_divide : public thrust::unary_function<TA,TB> {
+            T divisor;
+            thrust_extract_arg_divide(T _divisor) : divisor(_divisor) {}
+
+            __host__ __device__
+            auto operator()(const thrust::tuple<TA, TB>& x) -> typename thrust::tuple_element<extraction,thrust::tuple<TA, TB>>::type const {
+                return thrust::get<extraction>(x) / divisor;
+            }
+        };
+
+        THRUST_COMP_KERNEL(<, argmin_op);
+        THRUST_COMP_KERNEL(>, argmax_op);
+
+        // declare this operation exists for every dimension (then specialize)
+        template <typename R, int dimension>
+        std::vector<int> argmin(const mshadow::Tensor<gpu, dimension, R>& A);
+
+        // specialize for kernel
+        #define THRUST_KERNEL_ROWWISE_FROM_2D_MSHADOW( kernel_name, fname ) \
+            template <typename R> \
+            std::vector<int> fname (const mshadow::Tensor<gpu, 2, R>& A, int reduce_dim) { \
+                int nRows    = A.shape_[0]; \
+                int nColumns = A.shape_[1]; \
+                /* allocate storage for row argmins and indices */ \
+                thrust::device_vector<THRUST_COMP_KERNEL_RESULT_T> row_arguments(nRows); \
+                thrust::device_vector<int> row_indices(nRows); \
+                /* compute row arguments by finding argmin values with equal row indices */ \
+                thrust::reduce_by_key \
+                  (thrust::make_transform_iterator(thrust::counting_iterator<int>(0), linear_index_to_row_index<int>(nColumns)), \
+                   thrust::make_transform_iterator(thrust::counting_iterator<int>(0), linear_index_to_row_index<int>(nColumns)) + (nRows*nColumns), \
+                   thrust::make_zip_iterator(thrust::make_tuple(thrust::counting_iterator<int>(0), to_thrust(A))), \
+                   row_indices.begin(), \
+                   row_arguments.begin(), \
+                   thrust::equal_to<int>(),\
+                   kernel_name<R>()); \
+                std::vector<int> host_arguments(nRows); \
+                thrust::device_vector<int> row_indices2(nRows); \
+                \
+                thrust::transform(                  \
+                    row_arguments.begin(),          \
+                    row_arguments.end(),            \
+                    row_indices2.begin(),            \
+                    thrust_extract_arg_divide<0, int, R, int>(nColumns) \
+                );\
+                thrust::copy(row_indices2.begin(), row_indices2.end(), host_arguments.begin());\
+                return host_arguments; \
+            }
+
+        THRUST_KERNEL_ROWWISE_FROM_2D_MSHADOW( argmin_op, argmin )
+        THRUST_KERNEL_ROWWISE_FROM_2D_MSHADOW( argmax_op, argmax )
+
+        #define THRUST_KERNEL_ROWWISE_FROM_1D_MSHADOW( kernel_name, fname ) \
+            template <typename R> \
+            std::vector<int> fname (const mshadow::Tensor<gpu, 1, R>& A, int reduce_dim) { \
+                assert(false); \
+                std::vector<int> host_arguments; \
+                return host_arguments; \
+            }
+
+        THRUST_KERNEL_ROWWISE_FROM_1D_MSHADOW( argmin_op, argmin )
+        THRUST_KERNEL_ROWWISE_FROM_1D_MSHADOW( argmax_op, argmax )
+
+    }
+
+    #endif
+
 
 
     template <typename T>
@@ -211,9 +317,9 @@ namespace TensorOps {
         struct sigmoid {
             MSHADOW_XINLINE static R Map(const R& a) {
                 #ifdef DALI_USE_CUDA
-                return 1.0 / (1.0 + expf(-a));
+                    return 1.0 / (1.0 + expf(-a));
                 #else
-                return 1.0 / (1.0 + std::exp(-a));
+                    return 1.0 / (1.0 + std::exp(-a));
                 #endif
             }
         };
@@ -222,9 +328,9 @@ namespace TensorOps {
         struct log {
             MSHADOW_XINLINE static R Map(const R& a) {
                 #ifdef DALI_USE_CUDA
-                return logf(a);
+                    return logf(a);
                 #else
-                return std::log(a);
+                    return std::log(a);
                 #endif
             }
         };
@@ -233,9 +339,9 @@ namespace TensorOps {
         struct exp {
             MSHADOW_XINLINE static R Map(const R& a) {
                 #ifdef DALI_USE_CUDA
-                return expf(a);
+                    return expf(a);
                 #else
-                return std::exp(a);
+                    return std::exp(a);
                 #endif
             }
         };
@@ -258,9 +364,9 @@ namespace TensorOps {
         struct tanh {
             MSHADOW_XINLINE static R Map(const R& a) {
                 #ifdef DALI_USE_CUDA
-                return tanhf(a);
+                    return tanhf(a);
                 #else
-                return std::tanh(a);
+                    return std::tanh(a);
                 #endif
             }
         };

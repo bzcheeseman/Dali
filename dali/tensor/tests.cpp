@@ -375,6 +375,24 @@ TEST_F(MatrixTests, subtraction_gradient) {
     }
 }
 
+TEST_F(MatrixTests, argmax) {
+    auto A = Mat<R>(5, 5, weights<R>::eye());
+    auto indices = A.argmax(0);
+    ASSERT_EQ(indices, std::vector<int>({0, 1, 2, 3, 4}));
+
+
+    auto A = Mat<R>(5, 5);
+
+    A.w(0,0) = -12.0;
+    A.w(1,3) = -32.0;
+    A.w(2,3) = -32.0;
+    A.w(3,3) = -32.0;
+    A.w(4,2) = -32.0;
+
+    auto indices = A.argmax(0);
+    ASSERT_EQ(indices, std::vector<int>({0, 1, 2, 3, 4}));
+}
+
 
 
 TEST_F(MatrixTests, mean_gradient) {

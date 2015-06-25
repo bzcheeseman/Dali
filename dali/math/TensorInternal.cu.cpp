@@ -17,6 +17,34 @@ R TensorInternal<R, dimension>::sum() const {
 }
 
 template<typename R, int dimension>
+std::vector<int> TensorInternal<R, dimension>::argmin(int reduce_dim) const {
+    // reduce colwise
+    #ifdef DALI_USE_CUDA
+    if (compute_me_on_gpu()) {
+        return TensorOps::arg::argmin(this->gpu_data(), reduce_dim);
+    } else {
+        return TensorOps::arg::argmin(this->gpu_data(), reduce_dim);
+    }
+    #else
+        return TensorOps::arg::argmin(this->gpu_data(), reduce_dim);
+    #endif
+}
+
+template<typename R, int dimension>
+std::vector<int> TensorInternal<R, dimension>::argmax(int reduce_dim) const {
+    // reduce colwise
+    #ifdef DALI_USE_CUDA
+    if (compute_me_on_gpu()) {
+        return TensorOps::arg::argmax(this->gpu_data(), reduce_dim);
+    } else {
+        return TensorOps::arg::argmax(this->gpu_data(), reduce_dim);
+    }
+    #else
+        return TensorOps::arg::argmax(this->gpu_data(), reduce_dim);
+    #endif
+}
+
+template<typename R, int dimension>
 R TensorInternal<R, dimension>::L2_norm() const {
     #ifdef DALI_USE_CUDA
         if (compute_me_on_gpu()) {

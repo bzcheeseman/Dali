@@ -186,6 +186,9 @@ class Mat {
         Mat<R> sqrt() const;
         Mat<R> elt_inv() const;
         int argmax() const;
+
+        std::vector<int> argmin(int dimension) const;
+        std::vector<int> argmax(int dimension) const;
         /*
         Restricted range argmax: returns the index of the
         highest value between two indices, lower and upper

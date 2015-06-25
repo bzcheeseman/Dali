@@ -722,9 +722,11 @@ namespace utils {
             word2index[s] = i++;
     }
     void Vocab::add_unknown_word() {
-        index2word.emplace_back(unknown_word_symbol);
-        word2index[unknown_word_symbol] = index2word.size() - 1;
-        unknown_word = index2word.size() - 1;
+        if (word2index.find(unknown_word_symbol) == word2index.end()) {
+            index2word.emplace_back(unknown_word_symbol);
+            word2index[unknown_word_symbol] = index2word.size() - 1;
+            unknown_word = index2word.size() - 1;
+        }
     }
 
     size_t Vocab::size() const {

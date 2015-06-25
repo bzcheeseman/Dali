@@ -441,6 +441,18 @@ TEST_F(MatrixTests, sigmoid_gradient) {
     }
 }
 
+TEST_F(MatrixTests, steep_sigmoid_gradient) {
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(20.0));
+
+        R aggresiveness = utils::randdouble(1.0, 2.0);
+        auto functor = [aggresiveness](vector<Mat<R>> Xs)-> Mat<R> {
+            return MatOps<R>::steep_sigmoid(Xs[0], aggresiveness);
+        };
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4, 1e-3));
+    }
+}
+
 TEST_F(MatrixTests, tanh_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].tanh();

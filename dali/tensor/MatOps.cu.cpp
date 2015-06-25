@@ -19,6 +19,178 @@ R MatOps<R>::EPS = 1e-9;
 
 #define DONT_COMPILE
 
+/////////////////////////////////////  ELEMENTWISE OPERATIONS /////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define DALI_UNARY_OP0(name, forward_op, backward) \
+    template<typename R>                                                                                  \
+    Mat<R> MatOps<R>::name(Mat<R> matrix) {                                                               \
+        auto out = Mat<R>::empty_like(matrix);                                                            \
+                                                                                                          \
+        MAT(out) = F<forward_op<R>>(MAT(matrix).wrapper());                                               \
+                                                                                                          \
+        if (graph::backprop_enabled && !matrix.constant)                                                  \
+            graph::emplace_back([matrix, out]() mutable {                                                 \
+                GRAD(matrix) += (backward) * GRAD(out).wrapper();                                         \
+            });                                                                                           \
+        return out;                                                                                       \
+    }
+
+#define DALI_UNARY_OP1(name, arg1, forward_op, backward) \
+    template<typename R>                                                                                  \
+    Mat<R> MatOps<R>::name(Mat<R> matrix, R arg1) {                                                       \
+        auto out = Mat<R>::empty_like(matrix);                                                            \
+                                                                                                          \
+        MAT(out) = F<forward_op<R>>(MAT(matrix).wrapper(), arg1);                                         \
+                                                                                                          \
+        if (graph::backprop_enabled && !matrix.constant)                                                  \
+            graph::emplace_back([matrix, out, arg1]() mutable {                                           \
+                GRAD(matrix) += (backward) * GRAD(out).wrapper();                                         \
+            });                                                                                           \
+        return out;                                                                                       \
+    }
+
+
+DALI_UNARY_OP0(tanh, op::tanh,
+        F<op::dtanh<R>>(MAT(out).wrapper()));
+DALI_UNARY_OP0(abs, op::abs,
+        F<op::sign<R>>(MAT(matrix).wrapper()));
+DALI_UNARY_OP0(log, op::log,
+        F<op::inv<R>>(MAT(matrix).wrapper()));
+
+DALI_UNARY_OP1(max, lower_bound, op::max_scalar,
+        F<op::max_scalar_mask<R>>(MAT(matrix).wrapper(), lower_bound));
+DALI_UNARY_OP1(steep_sigmoid, aggressiveness, op::steep_sigmoid,
+        F<op::steep_sigmoid_backward<R>>(MAT(out).wrapper(), aggressiveness));
+
+
+template<typename R>
+Mat<R> MatOps<R>::exp(Mat<R> matrix) {
+    auto out = Mat<R>::empty_like(matrix);
+    MAT(out) = F<op::exp<R>>(MAT(matrix).wrapper());
+
+    if (graph::backprop_enabled && !matrix.constant)
+        graph::emplace_back([matrix, out]() mutable {
+            GRAD(matrix) += (MAT(out).wrapper() * GRAD(out).wrapper());
+        });
+    return out;
+}
+
+template<typename R>
+Mat<R> MatOps<R>::sigmoid(Mat<R> matrix) {
+    auto out = Mat<R>::empty_like(matrix);
+    MAT(out) = F<op::sigmoid<R>>(MAT(matrix).wrapper());
+    if (graph::backprop_enabled && !matrix.constant)
+        graph::emplace_back([matrix, out]() mutable {
+            GRAD(matrix) += (
+                F<op::dsigmoid<R>>(MAT(out).wrapper()) * GRAD(out).wrapper()
+            );
+        });
+    return out;
+}
+
+template<typename R>
+Mat<R> MatOps<R>::sqrt(Mat<R> matrix) {
+    auto out = Mat<R>::empty_like(matrix);
+    MAT(out) = F<op::sqrt_f<R>>(MAT(matrix).wrapper());
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, out]() mutable {
+            SAFE_GRAD(matrix) += ((R)0.5 / MAT(out).wrapper()) * GRAD(out).wrapper();
+        });
+    return out;
+}
+
+template<typename R>
+Mat<R> MatOps<R>::elt_inv(Mat<R> matrix) {
+    auto out = Mat<R>::empty_like(matrix);
+    MAT(out) = F<op::inv<R>>(MAT(matrix).wrapper());
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, out]() mutable {
+            SAFE_GRAD(matrix) -= F<op::square<R>>(MAT(out).wrapper()) * GRAD(out).wrapper();
+        });
+    return out;
+}
+
+
+template<typename R>
+Mat<R> MatOps<R>::square(Mat<R> matrix) {
+    auto out = Mat<R>::empty_like(matrix);
+    MAT(out) = F<op::square<R>>(MAT(matrix).wrapper());
+
+    if (graph::backprop_enabled && !matrix.constant)
+        graph::emplace_back([matrix, out]() mutable {
+            GRAD(matrix) += GRAD(out).wrapper() * MAT(matrix).wrapper() * (R) 2.0;
+        });
+    return out;
+}
+
+template<typename R>
+Mat<R> MatOps<R>::pow(Mat<R> matrix, R other) {
+    if (std::abs(other - (R)-1.0) < 1e-9) {
+        return MatOps<R>::elt_inv(matrix);
+    } else if (std::abs(other - (R)0.0) < 1e-9) {
+        return MatOps<R>::fill(matrix, 1.0);
+    } else if (std::abs(other - (R)0.5) < 1e-9) {
+        return MatOps<R>::sqrt(matrix);
+    } else if (std::abs(other - (R)1.0) < 1e-9) {
+        return matrix;
+    } else if (std::abs(other - (R)2.0) < 1e-9) {
+        return MatOps<R>::square(matrix);
+    }
+
+    auto out = Mat<R>::empty_like(matrix);
+
+    MAT(out) = F<op::power<R>>(MAT(matrix).wrapper(), other);
+
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, out, other]() mutable {
+            SAFE_GRAD(matrix) += other * F<op::power<R>>(MAT(matrix).wrapper(), other - (R)1.0) * GRAD(out).wrapper();
+        });
+    return out;
+}
+
+template<typename R>
+Mat<R> MatOps<R>::add(
+        Mat<R> matrix1,
+        R alpha) {
+    auto out = Mat<R>::empty_like(matrix1);
+    MAT(out) = MAT(matrix1).wrapper() + alpha;
+    if (graph::backprop_enabled && !matrix1.constant)
+        graph::emplace_back([matrix1, out]() mutable {
+            GRAD(matrix1) += GRAD(out).wrapper();
+        });
+    return out;
+}
+
+template<typename R>
+Mat<R> MatOps<R>::sub_broadcast_reversed(Mat<R> matrix, R other) {
+    auto out = Mat<R>::empty_like(matrix);
+    MAT(out) = (other - MAT(matrix).wrapper());
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, out] () mutable {
+            SAFE_GRAD(matrix) -= GRAD(out).wrapper();
+        });
+    return out;
+}
+
+template<typename R>
+Mat<R> MatOps<R>::eltdivide(
+        Mat<R> matrix,
+        R alpha) {
+    auto out = Mat<R>::empty_like(matrix);
+    MAT(out) = MAT(matrix).wrapper() / alpha;
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix, alpha, out]() mutable {
+            SAFE_GRAD(matrix) += ((R)1.0 / alpha) * GRAD(out).wrapper();
+        });
+    return out;
+}
+
+/////////////////////////////////////  OTHER OPERATIONS ///////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
 namespace Indexing {
     typedef uint ind_t;
     class Index {
@@ -124,22 +296,6 @@ Mat<R> MatOps<R>::eltmul(
 }
 
 template<typename R>
-Mat<R> MatOps<R>::max(Mat<R> matrix, R lower_bound) {
-    auto out = Mat<R>::empty_like(matrix);
-
-    MAT(out) = F<op::max_scalar<R>>(MAT(matrix).wrapper(), lower_bound);
-
-    if (graph::backprop_enabled && !matrix.constant)
-        graph::emplace_back([matrix, out, lower_bound]() mutable {
-            // mask = (matrix >= lower_bound) ? 1.0 : 0:0;
-            TensorInternal<R, 2> mask(MAT(matrix).shape());
-            mask = F<op::max_scalar_mask<R>>(MAT(matrix).wrapper(), lower_bound);
-            GRAD(matrix) += mask.wrapper() * GRAD(out).wrapper();
-        });
-    return out;
-}
-
-template<typename R>
 Mat<R> MatOps<R>::eltmul(
         Mat<R> matrix,
         R alpha) {
@@ -187,20 +343,6 @@ Mat<R> MatOps<R>::eltdivide(
                 MAT(matrix1).wrapper() /
                 F<op::square<R>>(MAT(matrix2).wrapper())
             ) * GRAD(out).wrapper();
-        });
-    return out;
-}
-
-
-template<typename R>
-Mat<R> MatOps<R>::eltdivide(
-        Mat<R> matrix,
-        R alpha) {
-    auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = MAT(matrix).wrapper() / alpha;
-    if (graph::backprop_enabled)
-        graph::emplace_back([matrix, alpha, out]() mutable {
-            SAFE_GRAD(matrix) += ((R)1.0 / alpha) * GRAD(out).wrapper();
         });
     return out;
 }
@@ -328,18 +470,7 @@ Mat<R> MatOps<R>::sub(
     return out;
 }
 
-template<typename R>
-Mat<R> MatOps<R>::add(
-        Mat<R> matrix1,
-        R alpha) {
-    auto out = Mat<R>::empty_like(matrix1);
-    MAT(out) = MAT(matrix1).wrapper() + alpha;
-    if (graph::backprop_enabled && !matrix1.constant)
-        graph::emplace_back([matrix1, out]() mutable {
-            GRAD(matrix1) += GRAD(out).wrapper();
-        });
-    return out;
-}
+
 
 template<typename R>
 Mat<R> MatOps<R>::add_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
@@ -407,17 +538,6 @@ Mat<R> MatOps<R>::sub_broadcast_reversed(Mat<R> matrix1, Mat<R> matrix2) {
 }
 
 template<typename R>
-Mat<R> MatOps<R>::sub_broadcast_reversed(Mat<R> matrix, R other) {
-    auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = (other - MAT(matrix).wrapper());
-    if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out] () mutable {
-            SAFE_GRAD(matrix) -= GRAD(out).wrapper();
-        });
-    return out;
-}
-
-template<typename R>
 Mat<R> MatOps<R>::add(std::initializer_list<Mat<R>> matrices) {
     auto matrices_vector = vector<Mat<R>>(matrices);
     return add(matrices_vector);
@@ -439,18 +559,6 @@ Mat<R> MatOps<R>::add(std::vector<Mat<R>>& matrices) {
 }
 
 template<typename R>
-Mat<R> MatOps<R>::square(Mat<R> matrix) {
-    auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = F<op::square<R>>(MAT(matrix).wrapper());
-
-    if (graph::backprop_enabled && !matrix.constant)
-        graph::emplace_back([matrix, out]() mutable {
-            GRAD(matrix) += GRAD(out).wrapper() * MAT(matrix).wrapper() * (R) 2.0;
-        });
-    return out;
-}
-
-template<typename R>
 Mat<R> MatOps<R>::L2_norm(Mat<R> matrix) {
     auto out = Mat<R>(1, 1, weights<R>::empty());
     auto norm = MAT(matrix).L2_norm();
@@ -463,57 +571,11 @@ Mat<R> MatOps<R>::L2_norm(Mat<R> matrix) {
     return out;
 }
 
-template<typename R>
-Mat<R> MatOps<R>::sqrt(Mat<R> matrix) {
-    auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = F<op::sqrt_f<R>>(MAT(matrix).wrapper());
-    if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out]() mutable {
-            SAFE_GRAD(matrix) += ((R)0.5 / MAT(out).wrapper()) * GRAD(out).wrapper();
-        });
-    return out;
-}
-
-template<typename R>
-Mat<R> MatOps<R>::elt_inv(Mat<R> matrix) {
-    auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = F<op::inv<R>>(MAT(matrix).wrapper());
-    if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out]() mutable {
-            SAFE_GRAD(matrix) -= F<op::square<R>>(MAT(out).wrapper()) * GRAD(out).wrapper();
-        });
-    return out;
-}
 
 template<typename R>
 Mat<R> MatOps<R>::fill(Mat<R> matrix, R filler) {
     auto out = Mat<R>::empty_like(matrix);
     MAT(out) = filler;
-    return out;
-}
-
-template<typename R>
-Mat<R> MatOps<R>::pow(Mat<R> matrix, R other) {
-    if (std::abs(other - (R)-1.0) < 1e-9) {
-        return MatOps<R>::elt_inv(matrix);
-    } else if (std::abs(other - (R)0.0) < 1e-9) {
-        return MatOps<R>::fill(matrix, 1.0);
-    } else if (std::abs(other - (R)0.5) < 1e-9) {
-        return MatOps<R>::sqrt(matrix);
-    } else if (std::abs(other - (R)1.0) < 1e-9) {
-        return matrix;
-    } else if (std::abs(other - (R)2.0) < 1e-9) {
-        return MatOps<R>::square(matrix);
-    }
-
-    auto out = Mat<R>::empty_like(matrix);
-
-    MAT(out) = F<op::power<R>>(MAT(matrix).wrapper(), other);
-
-    if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out, other]() mutable {
-            SAFE_GRAD(matrix) += other * F<op::power<R>>(MAT(matrix).wrapper(), other - (R)1.0) * GRAD(out).wrapper();
-        });
     return out;
 }
 
@@ -537,18 +599,7 @@ Mat<R> MatOps<R>::pow(Mat<R> matrix, Mat<R> other) {
     return out;
 }
 
-template<typename R>
-Mat<R> MatOps<R>::sigmoid(Mat<R> matrix) {
-    auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = F<op::sigmoid<R>>(MAT(matrix).wrapper());
-    if (graph::backprop_enabled && !matrix.constant)
-        graph::emplace_back([matrix, out]() mutable {
-            GRAD(matrix) += (
-                F<op::dsigmoid<R>>(MAT(out).wrapper()) * GRAD(out).wrapper()
-            );
-        });
-    return out;
-}
+
 
 
 template<typename R>
@@ -672,22 +723,6 @@ vector<Mat<R>> MatOps<R>::softmax(const vector<Mat<R>>& matrices, R temperature)
     return {Mat<R>(1,1)};
     #endif
 }
-
-template<typename R>
-Mat<R> MatOps<R>::steep_sigmoid(Mat<R> matrix, R aggressiveness) {
-    #ifndef DONT_COMPILE
-    auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = MAT(matrix).unaryExpr(utils::steep_sigmoid_operator<R>(aggressiveness));
-    if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out, aggressiveness]() mutable {
-            SAFE_GRAD(matrix).noalias() += (aggressiveness * ((MAT(out)).array() - MAT(out).array().square()) * GRAD(out).array()).matrix();
-        });
-    return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
-}
-
 
 
 template<typename R>
@@ -885,30 +920,7 @@ Mat<R> MatOps<R>::margin_loss(Mat<R> matrix, uint answer_idx, R margin) {
     #endif
 }
 
-template<typename R>
-Mat<R> MatOps<R>::log(Mat<R> matrix) {
-    auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = F<op::log<R>>(MAT(matrix).wrapper());
-    if (graph::backprop_enabled && !matrix.constant)
-        graph::emplace_back([matrix, out]() mutable {
-            GRAD(matrix) += (
-                F<op::inv<R>>(MAT(matrix).wrapper()) * GRAD(out).wrapper()
-            );
-        });
-    return out;
-}
 
-template<typename R>
-Mat<R> MatOps<R>::exp(Mat<R> matrix) {
-    auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = F<op::exp<R>>(MAT(matrix).wrapper());
-
-    if (graph::backprop_enabled && !matrix.constant)
-        graph::emplace_back([matrix, out]() mutable {
-            GRAD(matrix) += (MAT(out).wrapper() * GRAD(out).wrapper());
-        });
-    return out;
-}
 
 template<typename R>
 Mat<R> MatOps<R>::hstack(Mat<R> matrix1, Mat<R> matrix2) {
@@ -1051,18 +1063,7 @@ Mat<R> MatOps<R>::transpose(Mat<R> matrix) {
     return out;
 }
 
-template<typename R>
-Mat<R> MatOps<R>::tanh(Mat<R> matrix) {
-    auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = F<op::tanh<R>>(MAT(matrix).wrapper());
-    if (graph::backprop_enabled && !matrix.constant)
-        graph::emplace_back([matrix, out]() mutable {
-            GRAD(matrix) += (
-                F<op::dtanh<R>>(MAT(out).wrapper()) * GRAD(out).wrapper()
-            );
-        });
-    return out;
-}
+
 
 template<typename R>
 Mat<R> MatOps<R>::relu(Mat<R> matrix) {
@@ -1077,18 +1078,6 @@ Mat<R> MatOps<R>::relu(Mat<R> matrix) {
     #else
     return Mat<R>(1,1);
     #endif
-}
-
-template<typename R>
-Mat<R> MatOps<R>::abs(Mat<R> matrix) {
-    auto out = Mat<R>::empty_like(matrix);
-
-    MAT(out) = F<op::abs<R>>(MAT(matrix).wrapper());
-    if (graph::backprop_enabled && !matrix.constant)
-        graph::emplace_back([matrix, out]() mutable {
-            GRAD(matrix) += F<op::sign<R>>(MAT(matrix).wrapper()) * GRAD(out).wrapper();
-        });
-    return out;
 }
 
 template<typename R>

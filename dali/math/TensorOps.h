@@ -321,6 +321,25 @@ namespace TensorOps {
                 return (m >= lower_bound) ? 1.0 : 0.0;
             }
         };
+
+        template<typename R>
+        struct  steep_sigmoid {
+            MSHADOW_XINLINE static R Map(const R& x, const R& aggressiveness) {
+                #ifdef DALI_USE_CUDA
+                    return 1.0 / (1.0 + expf( - aggressiveness * x));
+                #else
+                    return 1.0 / (1.0 + std::exp( - aggressiveness * x));
+                #endif
+            }
+        };
+
+        template<typename R>
+        struct  steep_sigmoid_backward {
+            MSHADOW_XINLINE static R Map(const R& x, const R& aggressiveness) {
+                return aggressiveness * (x - x * x);
+            }
+        };
+
     }
 };
 

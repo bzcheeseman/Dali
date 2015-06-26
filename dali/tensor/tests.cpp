@@ -500,6 +500,28 @@ TEST_F(MatrixTests, addition_broadcast_gradient) {
     }
 }
 
+TEST_F(MatrixTests, substraction_broadcast_gradient) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return Xs[0] - Xs[1];
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
+        auto B = Mat<R>(1,  10, weights<R>::uniform(0.5));
+        ASSERT_TRUE(gradient_same(functor, {A, B}));
+    }
+}
+
+TEST_F(MatrixTests, substraction_reversed_broadcast_gradient) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return Xs[1] - Xs[0];
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
+        auto B = Mat<R>(1,  10, weights<R>::uniform(0.5));
+        ASSERT_TRUE(gradient_same(functor, {A, B}));
+    }
+}
+
 
 TEST_F(MatrixTests, sigmoid_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {

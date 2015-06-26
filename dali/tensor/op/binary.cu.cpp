@@ -6,13 +6,11 @@
 #include "dali/math/LazyTensor.h"
 #include "dali/utils/core_utils.h"
 
-
 using utils::MS;
 using std::vector;
 using namespace TensorOps;
 
 #define DONT_COMPILE
-
 
 namespace matops {
     template<typename R>
@@ -65,28 +63,6 @@ namespace matops {
                 }
             });
         return out;
-    }
-
-    template<typename R>
-    Mat<R> Binary<R>::eltdivide_broadcast_reversed(
-            Mat<R> matrix1,
-            Mat<R> matrix2) {
-        #ifndef DONT_COMPILE
-        ASSERT2(matrix1.dims(0) == matrix2.dims(0) && matrix2.dims(1) == 1,
-                MS() << "Matrices " << matrix1 << " and " << matrix2
-                     << " cannot be element divided with broadcast,"
-                     << " they do not have the same dimensions.");
-        auto out = Mat<R>::empty_like(matrix1);
-        MAT(out) = (MAT(matrix1).array().inverse().colwise() * MAT(matrix2).col(0).array()).matrix();
-        if (graph::backprop_enabled)
-            graph::emplace_back([matrix1, matrix2, out]() mutable {
-                SAFE_GRAD(matrix1).noalias() -= ((MAT(matrix1).array().square().inverse().colwise() * MAT(matrix2).col(0).array()).matrix().array() * GRAD(out).array()).matrix();
-                SAFE_GRAD(matrix2).noalias() += (MAT(matrix1).array().inverse() * GRAD(out).array()).rowwise().sum().matrix();
-            });
-        return out;
-        #else
-        return Mat<R>(1,1);
-        #endif
     }
 
     template<typename R>
@@ -149,54 +125,6 @@ namespace matops {
             });
         return out;
     }
-
-    template<typename R>
-    Mat<R> Binary<R>::eltmul_broadcast_rowwise(
-            Mat<R> matrix1,
-            Mat<R> row_vector) {
-        #ifndef DONT_COMPILE
-        ASSERT2(matrix1.dims(1) != row_vector.dims(1) || row_vector.dims(0) != 1,
-            "Matrices A and B^T cannot be element multiplied with broadcast, they do not have the same dimensions.");
-        auto out = Mat<R>::empty_like(matrix1);
-        MAT(out) = (MAT(matrix1).array().rowwise() * MAT(row_vector).row(0).array()).matrix();
-        if (graph::backprop_enabled)
-            graph::emplace_back([matrix1, row_vector, out]() mutable {
-                SAFE_GRAD(matrix1).noalias() += ((GRAD(out)).array().rowwise() * (MAT(row_vector)).row(0).array()).matrix();
-                SAFE_GRAD(row_vector).noalias() += (((MAT(matrix1)).array() * (GRAD(out)).array()).matrix().colwise().sum()).matrix();
-            });
-        return out;
-        #else
-        return Mat<R>(1,1);
-        #endif
-    }
-
-    template<typename R>
-    Mat<R> Binary<R>::eltmul_rowwise(
-        Mat<R> matrix1,
-        Mat<R> matrix2) {
-        #ifndef DONT_COMPILE
-
-        ASSERT2(matrix1.dims(0) != matrix2.dims(1) || matrix1.dims(1) != matrix2.dims(0),
-            "Matrices A and B^T cannot be element-wise multiplied, they do not have the same dimensions.");
-        auto out = Mat<R>::empty_like(matrix1);
-        MAT(out) = (MAT(matrix1).array() * MAT(matrix2).transpose().array()).matrix();
-        if (graph::backprop_enabled)
-            graph::emplace_back([matrix1, matrix2, out]() mutable {
-                SAFE_GRAD(matrix1).noalias() += (
-                    MAT(matrix2).transpose().array() *
-                    GRAD(out).array()
-                ).matrix();
-                SAFE_GRAD(matrix2).noalias() += (
-                    MAT(matrix1).array() *
-                    GRAD(out).array()
-                ).matrix().transpose();
-            });
-        return out;
-        #else
-        return Mat<R>(1,1);
-        #endif
-    }
-
 
     template<typename R>
     Mat<R> Binary<R>::add(
@@ -300,21 +228,25 @@ namespace matops {
 
     template<typename R>
     Mat<R> Binary<R>::sub_broadcast_reversed(Mat<R> matrix1, Mat<R> matrix2) {
-        #ifndef DONT_COMPILE
         // broadcast matrix 2:
-        ASSERT2(matrix1.dims(0) != matrix2.dims(0) || matrix2.dims(1) != 1,
-            "Matrices cannot be substracted with broadcast, they do not have the same dimensions.");
+        ASSERT2(matrix2.dims(0) == 1, "Second argument to sub_broadcast_reversed must be a vector (first dimension=1)");
+        if (matrix1.dims(0) != matrix2.dims(1)) {
+            ASSERT2(matrix1.dims(0) == matrix2.dims(1),
+                MS() << "vector-like argument to sub_broadcast_reversed must have outer dimension (" << matrix2.dims(1)
+                     << ") equal to inner dimension of first argument (" << matrix1.dims(0) << ").");
+        }
         auto out = Mat<R>::empty_like(matrix1);
-        MAT(out) = ((-MAT(matrix1)).colwise() + MAT(matrix2).col(0)).matrix();
+        MAT(out) = (
+            MAT(matrix2).wrapper()[0].template broadcast<0>(
+                MAT(matrix1).shape()
+            ) - MAT(matrix1).wrapper()
+        );
         if (graph::backprop_enabled)
-            graph::emplace_back([matrix1, matrix2, out] () mutable {
-                SAFE_GRAD(matrix1).noalias() -= GRAD(out);
-                SAFE_GRAD(matrix2).noalias() += GRAD(out).rowwise().sum();
+            graph::emplace_back([matrix1, matrix2, out]() mutable {
+                SAFE_GRAD(matrix1) -= GRAD(out).wrapper();
+                SAFE_GRAD(matrix2).wrapper()[0] += sum_cols(GRAD(out).wrapper());
             });
         return out;
-        #else
-        return Mat<R>(1,1);
-        #endif
     }
 
     // not GPU friendly.
@@ -400,7 +332,76 @@ namespace matops {
         return out;
     }
 
+
+    template<typename R>
+    Mat<R> Binary<R>::eltdivide_broadcast_reversed(
+            Mat<R> matrix1,
+            Mat<R> matrix2) {
+        #ifndef DONT_COMPILE
+        ASSERT2(matrix1.dims(0) == matrix2.dims(0) && matrix2.dims(1) == 1,
+                MS() << "Matrices " << matrix1 << " and " << matrix2
+                     << " cannot be element divided with broadcast,"
+                     << " they do not have the same dimensions.");
+        auto out = Mat<R>::empty_like(matrix1);
+        MAT(out) = (MAT(matrix1).array().inverse().colwise() * MAT(matrix2).col(0).array()).matrix();
+        if (graph::backprop_enabled)
+            graph::emplace_back([matrix1, matrix2, out]() mutable {
+                SAFE_GRAD(matrix1).noalias() -= ((MAT(matrix1).array().square().inverse().colwise() * MAT(matrix2).col(0).array()).matrix().array() * GRAD(out).array()).matrix();
+                SAFE_GRAD(matrix2).noalias() += (MAT(matrix1).array().inverse() * GRAD(out).array()).rowwise().sum().matrix();
+            });
+        return out;
+        #else
+        return Mat<R>(1,1);
+        #endif
+    }
+
+    template<typename R>
+    Mat<R> Binary<R>::eltmul_broadcast_rowwise(
+            Mat<R> matrix1,
+            Mat<R> row_vector) {
+        #ifndef DONT_COMPILE
+        ASSERT2(matrix1.dims(1) != row_vector.dims(1) || row_vector.dims(0) != 1,
+            "Matrices A and B^T cannot be element multiplied with broadcast, they do not have the same dimensions.");
+        auto out = Mat<R>::empty_like(matrix1);
+        MAT(out) = (MAT(matrix1).array().rowwise() * MAT(row_vector).row(0).array()).matrix();
+        if (graph::backprop_enabled)
+            graph::emplace_back([matrix1, row_vector, out]() mutable {
+                SAFE_GRAD(matrix1).noalias() += ((GRAD(out)).array().rowwise() * (MAT(row_vector)).row(0).array()).matrix();
+                SAFE_GRAD(row_vector).noalias() += (((MAT(matrix1)).array() * (GRAD(out)).array()).matrix().colwise().sum()).matrix();
+            });
+        return out;
+        #else
+        return Mat<R>(1,1);
+        #endif
+    }
+
+    template<typename R>
+    Mat<R> Binary<R>::eltmul_rowwise(
+        Mat<R> matrix1,
+        Mat<R> matrix2) {
+        #ifndef DONT_COMPILE
+
+        ASSERT2(matrix1.dims(0) != matrix2.dims(1) || matrix1.dims(1) != matrix2.dims(0),
+            "Matrices A and B^T cannot be element-wise multiplied, they do not have the same dimensions.");
+        auto out = Mat<R>::empty_like(matrix1);
+        MAT(out) = (MAT(matrix1).array() * MAT(matrix2).transpose().array()).matrix();
+        if (graph::backprop_enabled)
+            graph::emplace_back([matrix1, matrix2, out]() mutable {
+                SAFE_GRAD(matrix1).noalias() += (
+                    MAT(matrix2).transpose().array() *
+                    GRAD(out).array()
+                ).matrix();
+                SAFE_GRAD(matrix2).noalias() += (
+                    MAT(matrix1).array() *
+                    GRAD(out).array()
+                ).matrix().transpose();
+            });
+        return out;
+        #else
+        return Mat<R>(1,1);
+        #endif
+    }
+
     template class Binary<float>;
     template class Binary<double>;
-
 }

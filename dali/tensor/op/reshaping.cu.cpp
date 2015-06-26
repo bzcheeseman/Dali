@@ -134,6 +134,18 @@ namespace matops {
         #endif
     }
 
+
+    template<typename R>
+    void Reshaping<R>::resize(const Mat<R>& mat, dim_t n, dim_t d) {
+        #ifndef DONT_COMPILE
+        mat.w()->dims[0] = n;
+        mat.w()->dims[1] = d;
+        MAT(mat).conservativeResize(n, d);
+        GRAD(mat).conservativeResize(n, d);
+        #else
+        #endif
+    }
+
     template<typename R>
     Mat<R> Reshaping<R>::vstack(std::initializer_list<Mat<R>> matrices) {
         vector<Mat<R>> matrices_vector(matrices);

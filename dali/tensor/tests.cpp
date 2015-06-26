@@ -419,7 +419,33 @@ TEST_F(MatrixTests, argmax_argmin) {
     EXPECT_EQ(Z.argmax(), 12);
 }
 
+TEST_F(MatrixTests, argsort) {
+    auto mats = vector<Mat<R>>({
+        MatOps<R>::fill(Mat<R>(1,1), 3),
+        MatOps<R>::fill(Mat<R>(1,1), 9),
+        MatOps<R>::fill(Mat<R>(1,1), 1),
+    });
+    auto sorted = utils::argsort(mats);
+    ASSERT_EQ(sorted, std::vector<size_t>({2, 0, 1}));
+}
 
+
+TEST_F(MatrixTests, mat_argsort) {
+    // shape of matrix has no influence on
+    // argsort
+    auto A = Mat<R>(2, 2);
+    A.w(0) = -5;
+    A.w(1) =  12.0;
+    A.w(2) = -33.0;
+    A.w(3) =  66.0;
+
+    #ifdef DALI_USE_CUDA
+    A.w().to_gpu();
+    #endif
+
+    auto sorted = A.argsort();
+    ASSERT_EQ(sorted, std::vector<int>({2, 0, 1, 3}));
+}
 
 TEST_F(MatrixTests, mean_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
@@ -1292,16 +1318,6 @@ TEST_F(MatrixTests, quadratic_form) {
 }
 
 /*
-TEST_F(MatrixTests, argsort) {
-    auto mats = vector<Mat<R>>({
-        MatOps<R>::fill(Mat<R>(1,1), 3),
-        MatOps<R>::fill(Mat<R>(1,1), 9),
-        MatOps<R>::fill(Mat<R>(1,1), 1),
-    });
-    auto sorted = utils::argsort(mats);
-    ASSERT_EQ(sorted, std::vector<size_t>({2, 0, 1}));
-}
-
 
 TEST(Solver, adagrad) {
     int num_points = 20;

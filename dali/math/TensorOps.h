@@ -14,6 +14,8 @@
 #include <thrust/functional.h>
 #include <thrust/reduce.h>
 #include <thrust/transform.h>
+#include <thrust/sort.h>
+#include <thrust/sequence.h>
 #include <thrust/transform_reduce.h>
 // contains thrust::max_element & thrust::min_element
 #include <thrust/extrema.h>
@@ -235,6 +237,23 @@ namespace TensorOps {
         THRUST_KERNEL_ROWWISE_FROM_2D_MSHADOW( argmin_op, argmin )
         THRUST_KERNEL_ROWWISE_FROM_2D_MSHADOW( argmax_op, argmax )
 
+        template <typename R, int dimension>
+        std::vector<int> argsort(const mshadow::Tensor<gpu, dimension, R>& A, int num_elts) {
+            thrust::device_vector<int> arguments(num_elts);
+            thrust::device_vector<R> values(num_elts);
+            // initialize ordering data:
+            thrust::sequence(arguments.begin(), arguments.end(), 0, 1);
+            // copy data for sorting:
+            thrust::copy(to_thrust(A), to_thrust(A) + num_elts, values.begin());
+            // sort arguments based on the values they correspond to:
+            thrust::sort_by_key(
+              values.begin(), values.end(), arguments.begin()
+            );
+            std::vector<int> host_arguments(num_elts);
+            thrust::copy(arguments.begin(), arguments.end(), host_arguments.begin());
+            return host_arguments;
+        }
+
         // following the advice from this Stackoverflow:
         // http://stackoverflow.com/questions/7709181/finding-the-maximum-element-value-and-its-position-using-cuda-thrust
 
@@ -260,6 +279,21 @@ namespace TensorOps {
         THRUST_KERNEL_ROWWISE_FROM_1D_MSHADOW( thrust::max_element , argmax )
 
         #endif
+
+        template <typename R, int dimension>
+        std::vector<int> argsort(const mshadow::Tensor<cpu, dimension, R>& A, int num_elts) {
+            std::vector<int> arguments(num_elts);
+            // initialize ordering data:
+            for (int i=0;i<num_elts;i++)
+                arguments[i] = i;
+
+            auto ptr = A.dptr_;
+            // sort in increasing order
+            std::sort(arguments.begin(), arguments.end(), [&ptr](const int& lhs, const int& rhs) {
+                return *(ptr + lhs) < *(ptr + rhs);
+            });
+            return arguments;
+        }
 
         // declare this operation exists for every dimension (then specialize)
         template <typename R, int dimension>

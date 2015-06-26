@@ -4,8 +4,6 @@
 #include "dali/math/TensorOps.h"
 #include "dali/math/LazyTensor.h"
 
-#define DONT_COMPILE
-
 using std::vector;
 
 namespace matops {
@@ -26,9 +24,7 @@ namespace matops {
     }
 
     template<typename R>
-    Mat<R> Other<R>::consider_constant(
-            Mat<R> matrix
-            ) {
+    Mat<R> Other<R>::consider_constant(Mat<R> matrix) {
         // perform a copy of the matrix that references
         // everything and owns nothing. A true nomad.
         Mat<R> out(matrix, false, false);
@@ -37,20 +33,8 @@ namespace matops {
     }
 
     template<typename R>
-    vector<size_t> Other<R>::argsort_rowwise(Mat<R> m) {
-        #ifndef DONT_COMPILE
-        // initialize original index locations
-        vector<size_t> idx(m.dims(0));
-        for (size_t i = 0; i != idx.size(); ++i) idx[i] = i;
-
-        // sort indexes based on comparing values in v
-        sort(idx.begin(), idx.end(), [&m](size_t i1, size_t i2) {
-            return MAT(m)(i1) < MAT(m)(i2);
-        });
-        return idx;
-        #else
-        return {};
-        #endif
+    vector<int> Other<R>::argsort(Mat<R> mat) {
+        return MAT(mat).argsort();
     }
 
     template<typename R>
@@ -66,17 +50,6 @@ namespace matops {
            [&v](size_t i1, size_t i2) {return MAT(v[i1])(0) < MAT(v[i2])(0);});
 
         return idx;
-    }
-
-    template<typename R>
-    void Other<R>::resize(const Mat<R>& mat, dim_t n, dim_t d) {
-        #ifndef DONT_COMPILE
-        mat.w()->dims[0] = n;
-        mat.w()->dims[1] = d;
-        MAT(mat).conservativeResize(n, d);
-        GRAD(mat).conservativeResize(n, d);
-        #else
-        #endif
     }
 
     template<typename R>
@@ -109,18 +82,6 @@ namespace matops {
     int Other<R>::argmin_slice(const Mat<R>& mat, int lower, int upper) {
         assert(lower <= upper);
         return MAT(mat).argmin_slice(lower, upper);
-
-        /*int i = 0;
-        R current_max = -std::numeric_limits<R>::infinity();
-        auto ptr = mat.w()->data();
-        for (int j = lower; j < upper; j++) {
-            if (*ptr > current_max) {
-                current_max = *ptr;
-                i = j;
-            }
-            ptr++;
-        }
-        return i;*/
     }
 
     template<typename R>

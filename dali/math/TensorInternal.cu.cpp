@@ -27,6 +27,17 @@ std::vector<int> TensorInternal<R, dimension>::argmin(int reduce_dim) const {
 }
 
 template<typename R, int dimension>
+std::vector<int> TensorInternal<R, dimension>::argsort() const {
+    #ifdef DALI_USE_CUDA
+    if (compute_me_on_gpu()) {
+        return TensorOps::arg::argsort(this->gpu_data(), this->number_of_elements());
+    }
+    #endif
+
+    return TensorOps::arg::argsort(this->cpu_data(), this->number_of_elements());
+}
+
+template<typename R, int dimension>
 std::vector<int> TensorInternal<R, dimension>::argmax(int reduce_dim) const {
     // reduce colwise
     #ifdef DALI_USE_CUDA

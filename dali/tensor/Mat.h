@@ -190,6 +190,7 @@ class Mat {
 
         std::vector<int> argmin(int dimension) const;
         std::vector<int> argmax(int dimension) const;
+        std::vector<int> argsort() const;
         /*
         Restricted range argmax: returns the index of the
         highest value between two indices, lower and upper
@@ -270,8 +271,6 @@ namespace std {
 }
 
 namespace utils {
-    template<typename T>
-    std::vector<size_t> argsort_rowwise(Mat<T> &m);
 
     template<typename R>
     void save_matrices(std::vector<Mat<R>>, std::string);

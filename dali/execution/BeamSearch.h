@@ -88,7 +88,7 @@ namespace beam_search {
                     proposals.push_back(proposal_t::finalized_solution(result));
                 } else {
                     auto scores = candidate_scores(result.state);
-                    auto sorted_candidates = utils::argsort_rowwise(scores);
+                    auto sorted_candidates = scores.argsort();
                     std::reverse(sorted_candidates.begin(), sorted_candidates.end());
                     auto candidates_remaining = beam_width;
                     for(auto& candidate_idx: sorted_candidates) {

@@ -674,6 +674,11 @@ vector<int> Mat<R>::argmax(int dimension) const {
     return MatOps<R>::argmax(*this, dimension);
 }
 
+template <typename R>
+vector<int> Mat<R>::argsort() const {
+    return MatOps<R>::argsort(*this);
+}
+
 template<typename R>
 int Mat<R>::argmax_slice(int lower, int upper) const {
     return MatOps<R>::argmax_slice(*this, lower, upper);
@@ -710,14 +715,6 @@ namespace utils {
             i++;
         }
     }
-
-    template <typename T>
-    vector<size_t> argsort_rowwise(Mat<T> &m) {
-        return MatOps<T>::argsort_rowwise(m);
-    }
-
-    template vector<size_t> argsort_rowwise(Mat<float>&);
-    template vector<size_t> argsort_rowwise(Mat<double>&);
 
     template <>
     vector<size_t> argsort(const vector<Mat<float>> &v) {

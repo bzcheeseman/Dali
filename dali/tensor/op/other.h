@@ -19,10 +19,9 @@ namespace matops {
         static bool allclose(Mat<R> a, Mat<R> b, R tol);
         static bool grad_allclose(Mat<R> a, Mat<R> b, R tol);
 
-        static std::vector<size_t> argsort_rowwise(Mat<R>);
+        static std::vector<int> argsort(Mat<R>);
         static std::vector<size_t> argsort(const std::vector<Mat<R>>& mats);
 
-        static void resize(const Mat<R>& mat, dim_t rows, dim_t cols);
         static int argmax(const Mat<R>& mat);
         static int argmin(const Mat<R>& mat);
         static std::vector<int> argmax(const Mat<R>& mat, int dimension);

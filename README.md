@@ -227,8 +227,12 @@ auto sorted_lengths = utils::argsort(lengths);
 
 * Switch matrix backend from **Eigen** to **[MShadow](https://github.com/dmlc/mshadow)**.
 * Add ImageNet, Caffe loading, broader ConvNet support (currently have `conv2d` and `conv1d`, but no pooling)
-* Web interface for managing experiments (today [Dali-visualizer](https://github.com/JonathanRaiman/dali-visualizer) only shows progress and sample predictions)
+* Web interface for managing experiments (today [Dali-visualizer](https://github.com/JonathanRaiman/dali-visualizer) only shows progress and sample predictions). 
+* Web interface for visualizing network activity.
 * Add some mathematical expressions from [Deepmind's Torch Cephes module](http://deepmind.github.io/torch-cephes/).
+* Improve hogwild with Natural Gradient Descent
+* Distribute training over multiple machines.
+* Add **Python** extension
 
 ## Additional Notes
 

@@ -332,27 +332,31 @@ namespace matops {
         return out;
     }
 
-
     template<typename R>
     Mat<R> Binary<R>::eltdivide_broadcast_reversed(
             Mat<R> matrix1,
             Mat<R> matrix2) {
-        #ifndef DONT_COMPILE
-        ASSERT2(matrix1.dims(0) == matrix2.dims(0) && matrix2.dims(1) == 1,
+        ASSERT2(matrix1.dims(0) == matrix2.dims(1) && matrix2.dims(0) == 1,
                 MS() << "Matrices " << matrix1 << " and " << matrix2
                      << " cannot be element divided with broadcast,"
                      << " they do not have the same dimensions.");
         auto out = Mat<R>::empty_like(matrix1);
-        MAT(out) = (MAT(matrix1).array().inverse().colwise() * MAT(matrix2).col(0).array()).matrix();
+        MAT(out) = (
+            MAT(matrix2).wrapper()[0].template broadcast<0>(MAT(matrix1).shape())
+            /
+            MAT(matrix1).wrapper()
+        );
         if (graph::backprop_enabled)
             graph::emplace_back([matrix1, matrix2, out]() mutable {
-                SAFE_GRAD(matrix1).noalias() -= ((MAT(matrix1).array().square().inverse().colwise() * MAT(matrix2).col(0).array()).matrix().array() * GRAD(out).array()).matrix();
-                SAFE_GRAD(matrix2).noalias() += (MAT(matrix1).array().inverse() * GRAD(out).array()).rowwise().sum().matrix();
+                SAFE_GRAD(matrix1) -= F<op::div_grad<R>>(
+                    MAT(matrix2).wrapper()[0].template broadcast<0>(MAT(matrix1).shape()),
+                    MAT(matrix1).wrapper()
+                ) * GRAD(out).wrapper();
+                SAFE_GRAD(matrix2).wrapper()[0] += sum_cols(
+                    GRAD(out).wrapper() / MAT(matrix1).wrapper()
+                );
             });
         return out;
-        #else
-        return Mat<R>(1,1);
-        #endif
     }
 
     template<typename R>

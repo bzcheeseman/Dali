@@ -3,48 +3,43 @@
 #include "dali/tensor/__MatMacros__.h"
 #include "dali/math/TensorOps.h"
 #include "dali/math/LazyTensor.h"
+#include "dali/tensor/Weights.h"
 
 using std::vector;
 
-
-#define DONT_COMPILE
 
 namespace matops {
     template<typename R>
     Mat<R> Composite<R>::quadratic_form(
             Mat<R> left,
-            Mat<R> weights,
+            Mat<R> middle,
             Mat<R> right) {
-        #ifndef DONT_COMPILE
+        ASSERT2(middle.dims(1) == right.dims(0), "Quadratic form right matrix has wrong dimensions.");
+        ASSERT2(left.dims(0) == middle.dims(0) , "Quadratic form left matrix has wrong dimensions.");
 
-        ASSERT2(weights.dims(1) == right.dims(0), "Quadratic form right matrix has wrong dimensions.");
-        ASSERT2(left.dims(0) == weights.dims(0) , "Quadratic form left matrix has wrong dimensions.");
+        Mat<R> out (left.dims(1), right.dims(1), weights<R>::empty());
 
-        Mat<R> out (
-            left.dims(1),
-            right.dims(1),
-            weights<R>::empty());
         if (graph::backprop_enabled) {
-            auto left_side_mul = std::make_shared<Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>>(
-                left.dims(1), weights.dims(1)
-            );
-            (*left_side_mul) = MAT(left).transpose() * MAT(weights);
-            MAT(out) = (*left_side_mul) * MAT(right);
-            graph::emplace_back([left_side_mul, left, weights, right, out]() mutable {
-                SAFE_GRAD(right).noalias() += (*left_side_mul).transpose() * GRAD(out);
-                auto LeftT_dot_weights_grad = GRAD(out) * (MAT(right).transpose());
-                SAFE_GRAD(left).noalias() += (
-                    LeftT_dot_weights_grad * MAT(weights).transpose()
-                ).transpose();
-                SAFE_GRAD(weights).noalias() += MAT(left) * LeftT_dot_weights_grad;
+            TensorInternal<R,2> left_side_mul(mshadow::Shape2(left.dims(1), middle.dims(1)));
+            // left_side_mul = left.T * middle;
+            left_side_mul = dot(MAT(left).wrapper().T(), MAT(middle).wrapper());
+            // out = left_side_mul * right;
+            MAT(out) = dot(left_side_mul.wrapper(), MAT(right).wrapper());
+            graph::emplace_back([left_side_mul, left, middle, right, out]() mutable {
+                // right.dw() += left_side_mul.T() * out.dw();
+                SAFE_GRAD(right) += dot(left_side_mul.wrapper().T(), GRAD(out).wrapper());
+                TensorInternal<R,2> LeftT_dot_middle_grad(mshadow::Shape2(left.dims(1), right.dims(0)));
+                // leftT_dot_middle_grad = out.dw() * right.T()
+                LeftT_dot_middle_grad = dot(GRAD(out).wrapper(), MAT(right).wrapper().T());
+                // left.dw() += leftT_dot_middle_grad * middle.T()
+                SAFE_GRAD(left) += dot(MAT(middle).wrapper(), LeftT_dot_middle_grad.wrapper().T());
+                // middle.dw() += left * LeftT_dot_middle_grad
+                SAFE_GRAD(middle) += dot(MAT(left).wrapper(), LeftT_dot_middle_grad.wrapper());
             });
         } else {
-            MAT(out) = MAT(left).transpose() * MAT(weights) * MAT(right);
+            MAT(out) = MAT(left).wrapper().T() * MAT(middle).wrapper() * MAT(right).wrapper();
         }
         return out;
-        #else
-        return Mat<R>(1,1);
-        #endif
     }
 
     template<typename R>

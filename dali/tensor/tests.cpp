@@ -1272,7 +1272,7 @@ TEST_F(MatrixTests, pow_gradient) {
     }
 }
 
-/*
+
 TEST_F(MatrixTests, quadratic_form) {
     int left_size = 2;
     int right_size = 3;
@@ -1291,6 +1291,7 @@ TEST_F(MatrixTests, quadratic_form) {
     }
 }
 
+/*
 TEST_F(MatrixTests, argsort) {
     auto mats = vector<Mat<R>>({
         MatOps<R>::fill(Mat<R>(1,1), 3),

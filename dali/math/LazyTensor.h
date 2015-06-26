@@ -365,7 +365,7 @@ class LazyTensor : DormantTensor {
         template<typename TA, typename TB, typename DType, int dimension, int ta> \
         auto operator opsymbol( \
                 const LazyTensor<TA, TB, DType, dimension, ta> &tensor, \
-                const mshadow::expr::ScalarExp<DType> &scalar) -> LazyTensor<decltype(tensor.left opsymbol scalar), \
+                const mshadow::expr::ScalarExp<DType> scalar) -> LazyTensor<decltype(tensor.left opsymbol scalar), \
                                                                              decltype(tensor.right opsymbol scalar), \
                                                                              DType, \
                                                                              dimension, \
@@ -384,7 +384,7 @@ class LazyTensor : DormantTensor {
         \
         template<typename TA, typename TB, typename DType, int dimension, int ta> \
         auto operator opsymbol( \
-                const mshadow::expr::ScalarExp<DType> &scalar, \
+                const mshadow::expr::ScalarExp<DType> scalar, \
                 const LazyTensor<TA, TB, DType, dimension, ta>   &tensor) -> LazyTensor<decltype(scalar opsymbol tensor.left), \
                                                                              decltype(scalar opsymbol tensor.right), \
                                                                              DType, \
@@ -441,7 +441,7 @@ class LazyTensor : DormantTensor {
         template<typename TA, typename DType, int dimension, int ta> \
         auto operator opsymbol( \
                 const LazyTensor<TA, DType, dimension, ta> &tensor, \
-                const mshadow::expr::ScalarExp<DType> &scalar) -> LazyTensor<decltype(tensor.left opsymbol scalar), \
+                const mshadow::expr::ScalarExp<DType> scalar) -> LazyTensor<decltype(tensor.left opsymbol scalar), \
                                                                              DType, \
                                                                              dimension, \
                                                                              (ta|mshadow::expr::type::kMapper)> { \
@@ -456,7 +456,7 @@ class LazyTensor : DormantTensor {
         \
         template<typename TA, typename DType, int dimension, int ta> \
         auto operator opsymbol( \
-                const mshadow::expr::ScalarExp<DType> &scalar, \
+                const mshadow::expr::ScalarExp<DType> scalar, \
                 const LazyTensor<TA, DType, dimension, ta>   &tensor) -> LazyTensor<decltype(scalar opsymbol tensor.left), \
                                                                              DType, \
                                                                              dimension, \

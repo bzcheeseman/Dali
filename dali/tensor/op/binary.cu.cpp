@@ -383,27 +383,22 @@ namespace matops {
     Mat<R> Binary<R>::eltmul_rowwise(
         Mat<R> matrix1,
         Mat<R> matrix2) {
-        #ifndef DONT_COMPILE
 
-        ASSERT2(matrix1.dims(0) != matrix2.dims(1) || matrix1.dims(1) != matrix2.dims(0),
+        ASSERT2(matrix1.dims(0) == matrix2.dims(1) && matrix1.dims(1) == matrix2.dims(0),
             "Matrices A and B^T cannot be element-wise multiplied, they do not have the same dimensions.");
         auto out = Mat<R>::empty_like(matrix1);
-        MAT(out) = (MAT(matrix1).array() * MAT(matrix2).transpose().array()).matrix();
+        MAT(out) = MAT(matrix1).wrapper() * MAT(matrix2).wrapper().T();
         if (graph::backprop_enabled)
             graph::emplace_back([matrix1, matrix2, out]() mutable {
-                SAFE_GRAD(matrix1).noalias() += (
-                    MAT(matrix2).transpose().array() *
-                    GRAD(out).array()
-                ).matrix();
-                SAFE_GRAD(matrix2).noalias() += (
-                    MAT(matrix1).array() *
-                    GRAD(out).array()
-                ).matrix().transpose();
+                SAFE_GRAD(matrix1) += (
+                    MAT(matrix2).wrapper().T() * GRAD(out).wrapper()
+                );
+                SAFE_GRAD(matrix2) += (
+                    MAT(matrix1).wrapper().T() *
+                    GRAD(out).wrapper().T()
+                );
             });
         return out;
-        #else
-        return Mat<R>(1,1);
-        #endif
     }
 
     template class Binary<float>;

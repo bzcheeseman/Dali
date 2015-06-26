@@ -671,6 +671,17 @@ TEST_F(MatrixTests, matrix_eltmul_rowwise) {
     }
 }
 
+TEST_F(MatrixTests, matrix_eltmul_broadcast_rowwise) {
+    // Operation of the form f(A,B) => A * B.T
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return MatOps<R>::eltmul_broadcast_rowwise(Xs[0], Xs[1]);
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(4, 5, weights<R>::uniform(10.0));
+        auto B = Mat<R>(5, 4, weights<R>::uniform(10.0));
+        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-3));
+    }
+}
 
 TEST_F(MatrixTests, matrix_divide_scalar) {
     EXPERIMENT_REPEAT {

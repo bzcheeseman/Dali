@@ -555,6 +555,19 @@ namespace TensorOps {
             }
         };
 
+        template<typename R>
+        struct relu {
+            MSHADOW_XINLINE static R Map(const R& x) {
+                return x > 0.0 ? x : 0.0;
+            }
+        };
+        template<typename R>
+        struct relu_backward {
+            MSHADOW_XINLINE static R Map(const R& x) {
+                return x > 0.0 ? 1.0 : 0.0;
+            }
+        };
+
     }
 };
 

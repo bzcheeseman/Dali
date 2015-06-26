@@ -4,8 +4,6 @@
 #include "dali/math/TensorOps.h"
 #include "dali/math/LazyTensor.h"
 
-#define DONT_COMPILE
-
 using namespace TensorOps;
 using std::vector;
 
@@ -45,28 +43,14 @@ namespace matops {
             F<op::sign<R>>(MAT(matrix).wrapper()));
     DALI_UNARY_OP0(log, op::log,
             F<op::inv<R>>(MAT(matrix).wrapper()));
+    DALI_UNARY_OP0(relu, op::relu,
+            F<op::relu_backward<R>>(MAT(out).wrapper()));
 
     DALI_UNARY_OP1(max, lower_bound, op::max_scalar,
             F<op::max_scalar_mask<R>>(MAT(matrix).wrapper(), lower_bound));
     DALI_UNARY_OP1(steep_sigmoid, aggressiveness, op::steep_sigmoid,
             F<op::steep_sigmoid_backward<R>>(MAT(out).wrapper(), aggressiveness));
 
-
-
-    template<typename R>
-    Mat<R> Elementwise<R>::relu(Mat<R> matrix) {
-        #ifndef DONT_COMPILE
-        auto out = Mat<R>::empty_like(matrix);
-        MAT(out) = MAT(matrix).unaryExpr(utils::relu_operator<R>());
-        if (graph::backprop_enabled)
-            graph::emplace_back([matrix, out]() mutable {
-                SAFE_GRAD(matrix).noalias() += (MAT(out).unaryExpr(utils::max_operator<R>()).array() * GRAD(out).array()).matrix();
-            });
-        return out;
-        #else
-        return Mat<R>(1,1);
-        #endif
-    }
 
     template<typename R>
     Mat<R> Elementwise<R>::exp(Mat<R> matrix) {

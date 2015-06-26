@@ -28,6 +28,7 @@ namespace matops {
         static std::vector<int> argmax(const Mat<R>& mat, int dimension);
         static std::vector<int> argmin(const Mat<R>& mat, int dimension);
         static int argmax_slice(const Mat<R>& mat, int lower, int upper);
+        static int argmin_slice(const Mat<R>& mat, int lower, int upper);
     };
 }
 

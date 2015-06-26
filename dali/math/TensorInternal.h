@@ -126,6 +126,9 @@ class TensorInternal : public SynchronizedMemory<R, dimension> {
         int argmin() const;
         int argmax() const;
 
+        int argmax_slice(int lower, int upper) const;
+        int argmin_slice(int lower, int upper) const;
+
         R& operator()(int i);
         R operator()(int i) const;
 

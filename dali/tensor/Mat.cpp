@@ -245,91 +245,13 @@ unsigned int Mat<R>::number_of_elements() const {
 }
 
 template<typename R>
-Mat<R> Mat<R>::eltmul_broadcast(Mat<R> matrix2) const {
-    return MatOps<R>::eltmul_broadcast(*this, matrix2);
-}
-
-template<typename R>
-Mat<R> Mat<R>::eltmul(Mat<R> matrix2) const {
-    return MatOps<R>::eltmul(*this, matrix2);
-}
-
-template<typename R>
 Mat<R> Mat<R>::eltmul(R alpha) const {
     return MatOps<R>::eltmul(*this, alpha);
 }
 
 template<typename R>
-Mat<R> Mat<R>::eltmul_broadcast_rowwise(
-        Mat<R> row_vector) const {
-    return MatOps<R>::eltmul_broadcast_rowwise(*this, row_vector);
-}
-
-template<typename R>
-Mat<R> Mat<R>::eltmul_rowwise(
-        Mat<R> matrix2) const {
-    return MatOps<R>::eltmul_rowwise(*this, matrix2);
-}
-
-template<typename R>
-Mat<R> Mat<R>::add(
-        Mat<R> matrix2) const {
-    return MatOps<R>::add(*this, matrix2);
-}
-
-template<typename R>
-Mat<R> Mat<R>::sub(
-        Mat<R> matrix2) const {
-    return MatOps<R>::sub(*this, matrix2);
-}
-
-template<typename R>
-Mat<R> Mat<R>::add_broadcast(Mat<R> matrix2) const {
-    return MatOps<R>::add_broadcast(*this, matrix2);
-}
-
-template<typename R>
-Mat<R> Mat<R>::sub_broadcast(Mat<R> matrix2) const {
-    return MatOps<R>::sub_broadcast(*this, matrix2);
-}
-
-template<typename R>
-Mat<R> Mat<R>::sub_broadcast_reversed(Mat<R> matrix2) const {
-    return MatOps<R>::sub_broadcast_reversed(*this, matrix2);
-}
-
-template<typename R>
-Mat<R> Mat<R>::square() const {
-    return MatOps<R>::square(*this);
-}
-
-template<typename R>
-Mat<R> Mat<R>::L2_norm() const {
-    return MatOps<R>::L2_norm(*this);
-}
-
-template<typename R>
-Mat<R> Mat<R>::sqrt() const {
-    return MatOps<R>::sqrt(*this);
-}
-
-template<typename R>
 Mat<R> Mat<R>::pow(R power) const {
     return MatOps<R>::pow(*this, power);
-}
-template<typename R>
-Mat<R> Mat<R>::pow(int power) const {
-    return MatOps<R>::pow(*this, (R) power);
-}
-
-template<typename R>
-Mat<R> Mat<R>::elt_inv() const {
-    return MatOps<R>::elt_inv(*this);
-}
-
-template<typename R>
-Mat<R> Mat<R>::sigmoid() const {
-    return MatOps<R>::sigmoid(*this);
 }
 
 template<typename R>
@@ -338,53 +260,55 @@ Mat<R> Mat<R>::steep_sigmoid(R aggressiveness) const {
 }
 
 template<typename R>
-Mat<R> Mat<R>::sum() const {
-    return MatOps<R>::sum(*this);
+Mat<R> Mat<R>::pow(int power) const {
+    return MatOps<R>::pow(*this, (R) power);
 }
 
+#define MAT_BINARY_OP( opname ) \
+    template<typename R> \
+    Mat<R> Mat<R>::opname(Mat<R> matrix) const {\
+        return MatOps<R>::opname(*this, matrix);\
+    }\
+
+MAT_BINARY_OP( eltmul_broadcast )
+MAT_BINARY_OP( eltmul )
+MAT_BINARY_OP( eltmul_broadcast_rowwise )
+MAT_BINARY_OP( eltmul_rowwise )
+MAT_BINARY_OP( add )
+MAT_BINARY_OP( sub )
+MAT_BINARY_OP( add_broadcast )
+MAT_BINARY_OP( sub_broadcast )
+MAT_BINARY_OP( sub_broadcast_reversed )
+MAT_BINARY_OP( mul )
+
+// syntactic sugar
 template<typename R>
-Mat<R> Mat<R>::mean() const {
-    return MatOps<R>::mean(*this);
+Mat<R> Mat<R>::dot(Mat<R> other) const {
+    return MatOps<R>::mul(*this, other);
 }
 
-template<typename R>
-Mat<R> Mat<R>::log() const {
-    return MatOps<R>::log(*this);
-}
+#define MAT_UNARY_OP( opname ) \
+    template<typename R> \
+    Mat<R> Mat<R>::opname() const {\
+        return MatOps<R>::opname(*this);\
+    }\
 
-template<typename R>
-Mat<R> Mat<R>::exp() const {
-    return MatOps<R>::exp(*this);
-}
-
-template<typename R>
-Mat<R> Mat<R>::abs() const {
-    return MatOps<R>::abs(*this);
-}
+MAT_UNARY_OP( square )
+MAT_UNARY_OP( L2_norm )
+MAT_UNARY_OP( sqrt )
+MAT_UNARY_OP( elt_inv )
+MAT_UNARY_OP( tanh )
+MAT_UNARY_OP( sigmoid )
+MAT_UNARY_OP( sum )
+MAT_UNARY_OP( mean )
+MAT_UNARY_OP( log )
+MAT_UNARY_OP( exp )
+MAT_UNARY_OP( abs )
+MAT_UNARY_OP( relu )
 
 template<typename R>
 Mat<R> Mat<R>::T() const {
     return MatOps<R>::transpose(*this);
-}
-
-template<typename R>
-Mat<R> Mat<R>::tanh() const {
-    return MatOps<R>::tanh(*this);
-}
-
-template<typename R>
-Mat<R> Mat<R>::relu() const {
-    return MatOps<R>::relu(*this);
-}
-
-template<typename R>
-Mat<R> Mat<R>::mul(Mat<R> other) const {
-    return MatOps<R>::mul(*this, other);
-}
-
-template<typename R>
-Mat<R> Mat<R>::dot(Mat<R> other) const {
-    return MatOps<R>::mul(*this, other);
 }
 
 template<typename R>
@@ -753,6 +677,11 @@ vector<int> Mat<R>::argmax(int dimension) const {
 template<typename R>
 int Mat<R>::argmax_slice(int lower, int upper) const {
     return MatOps<R>::argmax_slice(*this, lower, upper);
+}
+
+template<typename R>
+int Mat<R>::argmin_slice(int lower, int upper) const {
+    return MatOps<R>::argmin_slice(*this, lower, upper);
 }
 
 namespace utils {

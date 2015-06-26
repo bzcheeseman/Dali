@@ -63,6 +63,27 @@ int TensorInternal<R, dimension>::argmax() const {
 }
 
 template<typename R, int dimension>
+int TensorInternal<R, dimension>::argmax_slice(int lower, int upper) const {
+    #ifdef DALI_USE_CUDA
+    if (compute_me_on_gpu()) {
+        return TensorOps::arg::argmax( TensorOps::to_thrust(this->gpu_data()) + lower, upper - lower )[0];
+    }
+    #endif
+
+    return TensorOps::arg::argmax(this->cpu_data().dptr_ + lower, upper - lower)[0];
+}
+template<typename R, int dimension>
+int TensorInternal<R, dimension>::argmin_slice(int lower, int upper) const {
+    #ifdef DALI_USE_CUDA
+    if (compute_me_on_gpu()) {
+        return TensorOps::arg::argmin( TensorOps::to_thrust(this->gpu_data()) + lower, upper - lower )[0];
+    }
+    #endif
+
+    return TensorOps::arg::argmin(this->cpu_data().dptr_ + lower, upper - lower)[0];
+}
+
+template<typename R, int dimension>
 R TensorInternal<R, dimension>::L2_norm() const {
     #ifdef DALI_USE_CUDA
         if (compute_me_on_gpu()) {

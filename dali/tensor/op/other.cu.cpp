@@ -57,7 +57,6 @@ namespace matops {
     vector<size_t> Other<R>::argsort(const vector<Mat<R>>& v) {
         // https://www.linux.com/news/software/developer/81090-c-the-gpu-and-thrust-sorting-numbers-on-the-gpu
         // should switch to gpu when more than 10,000 elements to sort.
-        #ifndef DONT_COMPILE
         // initialize original index locations
         vector<size_t> idx(v.size());
         for (size_t i = 0; i != idx.size(); ++i) idx[i] = i;
@@ -67,9 +66,6 @@ namespace matops {
            [&v](size_t i1, size_t i2) {return MAT(v[i1])(0) < MAT(v[i2])(0);});
 
         return idx;
-        #else
-        return {};
-        #endif
     }
 
     template<typename R>
@@ -105,8 +101,16 @@ namespace matops {
 
     template<typename R>
     int Other<R>::argmax_slice(const Mat<R>& mat, int lower, int upper) {
-        #ifndef DONT_COMPILE
-        int i = 0;
+        assert(lower <= upper);
+        return MAT(mat).argmax_slice(lower, upper);
+    }
+
+    template<typename R>
+    int Other<R>::argmin_slice(const Mat<R>& mat, int lower, int upper) {
+        assert(lower <= upper);
+        return MAT(mat).argmin_slice(lower, upper);
+
+        /*int i = 0;
         R current_max = -std::numeric_limits<R>::infinity();
         auto ptr = mat.w()->data();
         for (int j = lower; j < upper; j++) {
@@ -116,10 +120,7 @@ namespace matops {
             }
             ptr++;
         }
-        return i;
-        #else
-        return 0;
-        #endif
+        return i;*/
     }
 
     template<typename R>

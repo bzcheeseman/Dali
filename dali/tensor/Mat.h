@@ -197,6 +197,7 @@ class Mat {
         so we are only considering a subset of predictions)
         */
         int argmax_slice(int lower, int upper) const;
+        int argmin_slice(int lower, int upper) const;
 
         Mat<R> operator-() const;
 

@@ -892,10 +892,9 @@ TEST_F(MatOpsTests, dropout) {
         auto Z = D + Xs[2];
         return Z;
     };
-    int num_examples = 20;
-    int hidden_size = 10;
+    int num_examples = 3;
+    int hidden_size = 4;
     int input_size = 5;
-    int other_input_size = 7;
     EXPERIMENT_REPEAT {
         seed = utils::randint(0, 2000);
         auto A = Mat<R>(input_size, hidden_size, weights<R>::uniform(2.0));
@@ -1032,8 +1031,9 @@ TEST_F(MatOpsTests, matrix_conv1d_grad) {
         ASSERT_TRUE(gradient_same(functor, {image, kernel1, kernel2}, 1e-2));
     }
 }
-
-TEST_F(MatOpsTests, vector_softmax) {
+*/
+TEST_F(MatOpsTests, DISABLED_vector_softmax) {
+    // TODO: requires row pluck
     int softmax_size = 15;
     EXPERIMENT_REPEAT {
         double temperature = utils::randdouble(0.1, 100.0);
@@ -1048,7 +1048,7 @@ TEST_F(MatOpsTests, vector_softmax) {
         ASSERT_TRUE(gradient_same(functor, {matrices}, 1e-4));
     }
 }
-
+/*
 typedef MemorySafeTest LayerTests;
 
 TEST_F(LayerTests, layer_tanh_gradient) {

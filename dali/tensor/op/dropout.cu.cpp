@@ -4,6 +4,8 @@
 #include "dali/math/TensorOps.h"
 #include "dali/math/LazyTensor.h"
 
+#include "dali/utils/core_utils.h"
+
 using std::vector;
 using std::make_shared;
 
@@ -25,7 +27,10 @@ namespace matops {
         auto out = Mat<R>::empty_like(matrix);
 
         auto mask = make_shared<TensorInternal<R, 2>>(MAT(matrix).shape());
-        weights<R>::bernoulli(1.0 - drop_prob)(*mask);
+        {
+            utils::Timer tbernoulli("tbernoulli");
+            weights<R>::bernoulli(1.0 - drop_prob)(*mask);
+        }
 
         MAT(out) = MAT(matrix).wrapper() * (*mask).wrapper();
 

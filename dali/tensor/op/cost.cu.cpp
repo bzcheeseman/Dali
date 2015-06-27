@@ -84,59 +84,48 @@ namespace matops {
 
     template<typename R>
     vector<Mat<R>> Cost<R>::softmax_no_grad(const vector<Mat<R>>& matrices, R temperature) {
-        #ifndef DONT_COMPILE
         vector<Mat<R>> out;
         out.reserve(matrices.size());
         ASSERT2(matrices.size() > 0, "Must be a non empty list of vectors to softmax.");
-        R layer_max = MAT(matrices[0])(0);
-
+        R layer_max = matrices.front().w(0);
         for (auto& mat : matrices) {
             ASSERT2(mat.dims(0) == 1 && mat.dims(1) == 1, "Softmax on a vector must be made on 1x1 matrices only.");
-            layer_max = std::max(layer_max, MAT(mat)(0));
+            layer_max = std::max(layer_max, mat.w(0));
         }
         R total = 0.0;
         for (auto& mat : matrices) {
             out.emplace_back(1,1);
-            MAT(out.back())(0) = std::exp((MAT(mat)(0) - layer_max) / temperature);
-            total += MAT(out.back())(0);
+            out.back().w(0) = std::exp(mat.w(0) - layer_max) / temperature;
+            total += out.back().w(0);
         }
         for (auto& mat : out) {
-            MAT(mat)(0) /= total;
+            mat.w(0) /= total;
         }
         return out;
-        #else
-        return {Mat<R>(1,1)};
-        #endif
     }
 
     template<typename R>
-    vector<Mat<R>> Cost<R>::softmax(const vector<Mat<R>>& matrices, R temperature) {
-        #ifndef DONT_COMPILE
+    vector<Mat<R>> Cost<R>::softmax(vector<Mat<R>>& matrices, R temperature) {
         vector<Mat<R>> out = Cost<R>::softmax_no_grad(matrices, temperature);
         if (graph::backprop_enabled)
             graph::emplace_back([temperature, out, matrices]() mutable {
                 R colwise_sums = 0.0;
 
                 for (int i = 0; i < out.size(); i++) {
-                    auto& dw = GRAD(matrices[i]);
-                    auto& sm = MAT(out[i]);
-                    auto& dy = GRAD(out[i]);
-                    colwise_sums += sm(0) * dy(0);
+                    colwise_sums += out[i].w(0) * out[i].dw(0);
                 }
 
                 for (int i = 0; i < out.size(); i++) {
                     if (!matrices[i].constant) {
-                        auto& dw = GRAD(matrices[i]);
-                        auto& sm = MAT(out[i]);
-                        auto& dy = GRAD(out[i]);
-                        dw(0) += ((sm(0) * dy(0)) - (sm(0) * colwise_sums)) / temperature;
+                        matrices[i].dw(0) += (
+                            out[i].w(0) * out[i].dw(0) - out[i].w(0) * colwise_sums
+                        ) / temperature;
+
+                        // dw.col(i) += (sm_times_dy.col(i) - sm.col(i) * colwise_sums(i)) / temperature;
                     }
                 }
             });
         return out;
-        #else
-        return {Mat<R>(1,1)};
-        #endif
     }
 
 

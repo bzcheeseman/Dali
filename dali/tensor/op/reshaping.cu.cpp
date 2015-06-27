@@ -135,36 +135,41 @@ namespace matops {
     }
 
     template<typename R>
-    Mat<R> Reshaping<R>::vstack(const std::vector<Mat<R>>& matrices) {
+    Mat<R> Reshaping<R>::vstack(std::vector<Mat<R>>& matrices) {
         #ifndef DONT_COMPILE
-        assert(matrices.size() > 0);
-        assert(matrices[0].dims().size() > 1);
-        int d = matrices[0].dims(1);
-        int n_total = 0;
-        for (auto& mat : matrices) {
-            ASSERT2(mat.dims(1) != d,
-                "Matrices cannot be horizontally stacked -- they do not have the same number of cols.");
-            n_total += mat.dims(0);
-        }
-        Mat<R> out (
-            n_total,
-            d,
-            weights<R>::empty()
-        );
-        int offset = 0;
-        for (auto& mat : matrices) {
-            MAT(out).block(offset, 0, mat.dims(0), mat.dims(1)) = MAT(mat);
-            offset += mat.dims(0);
-        }
-        if (graph::backprop_enabled)
-            graph::emplace_back([matrices, out]() mutable {
-                int offset = 0;
-                for (auto & mat : matrices) {
-                    SAFE_GRAD(mat).noalias() += GRAD(out).block(offset,0, mat.dims(0), mat.dims(1));
-                    offset += mat.dims(0);
-                }
-            });
-        return out;
+                        assert(matrices.size() > 0);
+                        int d = matrices[0].dims(1);
+                        int n_total = 0;
+                        for (auto& mat : matrices) {
+                            ASSERT2(mat.dims(1) == d,
+                                "Matrices cannot be vertically stacked -- "
+                                "they do not have the same number of cols.");
+                            n_total += mat.dims(0);
+                        }
+                        Mat<R> out (
+                            n_total,
+                            d,
+                            weights<R>::empty()
+                        );
+                        int offset = 0;
+                        for (auto& mat : matrices) {
+                                    std::cout << "Assigning to interval (" << offset << "," << offset + mat.dims(0) << ")" << std::endl;
+                            MAT(mat).print();
+                            MAT(out).wrapper().Slice(offset, offset + mat.dims(0)) = MAT(mat).wrapper() + (R)0.0;
+                            // MAT(out).mutable_cpu_data().Slice(offset, offset + mat.dims(0)) += MAT(mat).cpu_data();
+                            offset += mat.dims(0);
+                        }
+                        out.print();
+                        if (graph::backprop_enabled)
+                            graph::emplace_back([matrices, out]() mutable {
+                                int offset = 0;
+                                for (auto & mat : matrices) {
+                                    SAFE_GRAD(mat) +=
+                                            GRAD(out).wrapper().Slice(offset, offset + mat.dims(0));
+                                    offset += mat.dims(0);
+                                }
+                            });
+                        return out;
         #else
         return Mat<R>(1,1);
         #endif
@@ -190,7 +195,7 @@ namespace matops {
                 auto row_index_ptr = row_indices.data();
                 auto col_index_ptr = col_indices.data();
                 for (int i = 0; i < out.dims(1); ++i) {
-                    // for each row do the same operation as for row_pluck:
+                    // for each row do the same operatoitn as for row_pluck:
                     GRAD(matrix)(*row_index_ptr, *col_index_ptr) += GRAD(out)(i);
                     row_index_ptr++;
                     col_index_ptr++;

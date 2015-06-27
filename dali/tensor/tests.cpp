@@ -883,9 +883,12 @@ TEST_F(MatrixTests, abs) {
 
 
 TEST_F(MatOpsTests, dropout) {
-    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+    int seed = 1234;
+    auto functor = [&seed](vector<Mat<R>> Xs)-> Mat<R> {
         auto C = Xs[0] * Xs[1];
+        utils::random::set_seed(seed);
         auto D = MatOps<R>::dropout(C, 0.5);
+        utils::random::reseed();
         auto Z = D + Xs[2];
         return Z;
     };
@@ -894,6 +897,7 @@ TEST_F(MatOpsTests, dropout) {
     int input_size = 5;
     int other_input_size = 7;
     EXPERIMENT_REPEAT {
+        seed = utils::randint(0, 2000);
         auto A = Mat<R>(input_size, hidden_size, weights<R>::uniform(2.0));
         auto B = Mat<R>(input_size, hidden_size, weights<R>::uniform(20.0));
         auto C = Mat<R>(1, input_size, weights<R>::uniform(20.0));

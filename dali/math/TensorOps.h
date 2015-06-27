@@ -6,6 +6,7 @@
 #include <functional>
 #include <math.h>
 
+#include "dali/utils/random.h"
 
 #ifdef DALI_USE_CUDA
 
@@ -19,6 +20,8 @@
 #include <thrust/transform_reduce.h>
 // contains thrust::max_element & thrust::min_element
 #include <thrust/extrema.h>
+
+
 
 #define STR(x) __THIS_IS_VERY_ABNOXIOUS(x)
 #define __THIS_IS_VERY_ABNOXIOUS(tok) #tok
@@ -55,6 +58,7 @@ enum OperationType {
 /* CUDA UTILS END HERE */
 
 #define DALI_ASSIGN(op, out, expr) if ((op) == OVERWRITE) { out = (expr); } else {  out += (expr);  }
+
 
 namespace TensorOps {
     using mshadow::gpu;
@@ -597,15 +601,15 @@ namespace TensorOps {
     namespace random {
         template<typename Device, int ndims, typename R, template <typename,int,typename> class tensor_t>
         void uniform(tensor_t<Device, ndims, R>& t, R lower, R upper) {
-            std::random_device rd;
-            mshadow::Random<Device, R> generator((int)rd());
+            // std::random_device rd;
+            mshadow::Random<Device, R> generator(utils::randint(0,9999999999));
             generator.SampleUniform(&t, lower, upper);
         }
 
         template<typename Device, int ndims, typename R, template <typename,int,typename> class tensor_t>
         void gaussian(tensor_t<Device, ndims, R>& t, R mean, R std) {
-            std::random_device rd;
-            mshadow::Random<Device, R> generator((int)rd());
+            // std::random_device rd;
+            mshadow::Random<Device, R> generator(utils::randint(0,9999999999));
             generator.SampleGaussian(&t, mean, std);
         }
 

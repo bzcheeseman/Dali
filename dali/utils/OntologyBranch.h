@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include "dali/utils/core_utils.h"
+#include "dali/utils/random.h"
 #include <set>
 #include <fstream>
 #include <ostream>

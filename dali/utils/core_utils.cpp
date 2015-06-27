@@ -125,23 +125,6 @@ namespace utils {
     template bool contains_NaN(double);
     #endif
 
-    vector<size_t> random_arange(size_t size) {
-        vector<size_t> indices(size);
-        for (size_t i=0; i < size;i++) indices[i] = i;
-        std::random_shuffle( indices.begin(), indices.end() );
-        return indices;
-    }
-
-    vector<vector<size_t>> random_minibatches(size_t total_elements, size_t minibatch_size) {
-        vector<size_t> training_order = utils::random_arange(total_elements);
-        int num_minibatches = training_order.size() / minibatch_size;
-        vector<vector<size_t>> minibatches(num_minibatches);
-        for (int tidx = 0; tidx < total_elements; ++tidx) {
-            minibatches[tidx%num_minibatches].push_back(training_order[tidx]);
-        }
-        return minibatches;
-    }
-
     vector<uint> arange(uint start, uint end) {
         vector<uint> indices(end - start);
         for (uint i=0; i < indices.size();i++) indices[i] = i;
@@ -732,24 +715,6 @@ namespace utils {
         return true;
     }
 
-    int randint(int lower, int upper) {
-        assert2 (lower <= upper, "Lower bound must be smaller than upper bound.");
-        std::default_random_engine generator;
-        std::uniform_int_distribution<int> distribution(lower, upper);
-        std::random_device rd;
-        generator.seed(rd());
-        return distribution(generator);
-    }
-
-    double randdouble(double lower, double upper) {
-        assert2 (lower <= upper, "Lower bound must be smaller than upper bound.");
-        std::default_random_engine generator;
-        std::uniform_real_distribution<double> distribution(lower, upper);
-        std::random_device rd;
-        generator.seed(rd());
-        return distribution(generator);
-    }
-
     void Vocab::construct_word2index() {
         uint i = 0;
         for (auto& s : index2word)
@@ -1246,15 +1211,6 @@ namespace utils {
         timers.clear();
     }
 
-    void assert2(bool condition) {
-        assert2(condition, "");
-    }
-
-    void assert2(bool condition, std::string message) {
-        if (!condition) {
-            throw std::runtime_error(message);
-        }
-    }
     // color codes: http://www.codebuilder.me/2014/01/color-terminal-text-in-c/
     std::string green       = "\033[32m";
     std::string red         = "\033[31m";

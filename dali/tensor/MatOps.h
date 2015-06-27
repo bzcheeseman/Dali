@@ -73,8 +73,6 @@ struct MatOps : matops::Binary<R>,
         static Mat<R> eltdivide(Mat<R> x, R y) { return matops::Elementwise<R>::eltdivide(x,y) ; }
         static Mat<R> pow(Mat<R> x, R y) { return matops::Elementwise<R>::pow(x,y); }
 
-
-
         static Mat<R> add(Mat<R> x, Mat<R> y) { return matops::Binary<R>::add(x,y); }
         static Mat<R> sub_broadcast_reversed(Mat<R> x, Mat<R> y){
             return matops::Binary<R>::sub_broadcast_reversed(x,y);
@@ -82,7 +80,6 @@ struct MatOps : matops::Binary<R>,
         static Mat<R> eltmul(Mat<R> x, Mat<R> y) { return matops::Binary<R>::eltmul(x,y); }
         static Mat<R> eltdivide(Mat<R> x, Mat<R> y) { return matops::Binary<R>::eltdivide(x,y) ; }
         static Mat<R> pow(Mat<R> x, Mat<R> y) { return matops::Binary<R>::pow(x,y); }
-
 
         static Mat<R> add(std::initializer_list<Mat<R>> v) { return matops::Binary<R>::add(v); }
         static Mat<R> add(std::vector<Mat<R>>& v) { return matops::Binary<R>::add(v); }

@@ -5,6 +5,7 @@
 #include <vector>
 #include <atomic>
 #include "dali/utils/core_utils.h"
+#include "dali/utils/random.h"
 #include "dali/utils/ThreadPool.h"
 
 namespace arithmetic {

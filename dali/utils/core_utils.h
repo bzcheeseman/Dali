@@ -1,5 +1,5 @@
-#ifndef CORE_UTILS_DALI_H
-#define CORE_UTILS_DALI_H
+#ifndef DALI_CORE_UTILS_H
+#define DALI_CORE_UTILS_H
 
 #include <algorithm>
 #include <atomic>
@@ -32,6 +32,7 @@
 // need to include Index for typedef eigen_index_segment
 
 #include "dali/utils/gzstream.h"
+#include "dali/utils/assert2.h"
 #include "protobuf/corpus.pb.h"
 #include "dali/utils/ThreadPool.h"
 
@@ -293,26 +294,6 @@ namespace utils {
 
         std::map<std::string, std::string> load_redirection_list(const std::string&, std::function<std::string(std::string&&)>&&, int num_threads = 1);
 
-        /**
-        randint
-        -------
-        Sample integers from a uniform distribution between (and including)
-        lower and upper int values.
-
-        Inputs
-        ------
-        int lower
-        int upper
-
-        Outputs
-        -------
-        int sample
-        **/
-        int randint(int lower, int upper);
-
-
-        double randdouble(double lower=0.0, double upper=1.0);
-
 
         /**
         Is Gzip ?
@@ -448,10 +429,6 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
 
     str_sequence listdir(const std::string&);
 
-    std::vector<size_t> random_arange(size_t);
-
-    std::vector<std::vector<size_t>> random_minibatches(size_t total_elements, size_t minibatch_size);
-
     std::vector<uint> arange(uint, uint);
 
     template <class T> inline void hash_combine(std::size_t &, const T &);
@@ -560,8 +537,6 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
 
     std::string capitalize(const std::string& s);
 
-    void assert2(bool condition);
-    void assert2(bool condition, std::string message);
 
     extern std::string green;
     extern std::string red;
@@ -571,8 +546,7 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
     extern std::string black;
     extern std::string reset_color;
     extern std::string bold;
-}
 
-#define ASSERT2(condition, message) if (!(condition)) utils::assert2(false, (message))
+}
 
 #endif

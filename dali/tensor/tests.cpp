@@ -775,11 +775,18 @@ TEST_F(MatrixTests, log_exp) {
     }
 }
 
-TEST_F(MatrixTests, hstack) {
+TEST_F(MatrixTests, hstack_forward_correctness) {
     graph::NoBackprop nb;
 
     Mat<R> a(2, 3);
     Mat<R> b(2, 4);
+
+    // A:
+    // 0 1 2
+    // 7 8 9
+    // B:
+    // 3  4  5  6
+    // 10 11 12 13
 
     for (int i = 0; i < 3; i++)
         a.w(i) = i;
@@ -795,6 +802,69 @@ TEST_F(MatrixTests, hstack) {
         ASSERT_EQ(c.w(i), i);
     }
 }
+
+TEST_F(MatrixTests, hstack_grad) {
+    EXPERIMENT_REPEAT {
+        auto mat = Mat<R>(2, 3, weights<R>::uniform(20.0));
+        auto mat2 = Mat<R>(2, 4, weights<R>::uniform(20.0));
+
+        auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+            return MatOps<R>::hstack(Xs);
+        };
+        ASSERT_TRUE(gradient_same(functor, {mat, mat2}, 1e-4));
+    }
+}
+
+
+TEST_F(MatrixTests, vstack_forward_correctness) {
+    graph::NoBackprop nb;
+
+    Mat<R> a(2, 3);
+    Mat<R> b(4, 3);
+    // A:
+    // 0 1 2
+    // 1 2 3
+    // B:
+    // 2 3 4
+    // 3 4 5
+    // 4 5 6
+    // 5 6 7
+
+    for (int row=0; row < 2; ++row) {
+        for (int col = 0; col < 3; ++col) {
+            a.w(row,col) = (R)(row + col);
+        }
+    }
+
+    for (int row=0; row < 4; ++row) {
+        for (int col = 0; col < 3; ++col) {
+            b.w(row,col) = (R)(row + col + 2);
+        }
+    }
+
+    auto c = MatOps<R>::vstack(a,b);
+
+    for (int row = 0; row < 6; ++row) {
+        for (int col = 0; col < 3; ++col) {
+            SCOPED_TRACE("Index (" + std::to_string(row) + "," + std::to_string(col) + ")");
+            ASSERT_NEAR(c.w(row, col), (R)(row + col), 1e-9);
+        }
+    }
+}
+
+
+TEST_F(MatrixTests, vstack_grad) {
+    EXPERIMENT_REPEAT {
+        auto mat = Mat<R>(2, 3, weights<R>::uniform(20.0));
+        auto mat2 = Mat<R>(4, 3, weights<R>::uniform(20.0));
+
+        auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+            return MatOps<R>::vstack(Xs);
+        };
+        ASSERT_TRUE(gradient_same(functor, {mat, mat2}, 1e-4));
+    }
+}
+
 
 TEST_F(MatrixTests, abs) {
     int input_size = 5;

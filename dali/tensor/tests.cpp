@@ -678,7 +678,7 @@ TEST_F(MatrixTests, matrix_eltmul_broadcast_rowwise) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(4, 5, weights<R>::uniform(10.0));
-        auto B = Mat<R>(5, 4, weights<R>::uniform(10.0));
+        auto B = Mat<R>(4, 1, weights<R>::uniform(10.0));
         ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-3));
     }
 }

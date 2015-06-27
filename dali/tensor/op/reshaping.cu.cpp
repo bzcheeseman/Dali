@@ -113,25 +113,7 @@ namespace matops {
 
     template<typename R>
     Mat<R> Reshaping<R>::vstack(Mat<R> matrix1, Mat<R> matrix2) {
-        #ifndef DONT_COMPILE
-        ASSERT2(matrix1.dims(1) != matrix2.dims(1),
-            "Matrices cannot be horizontally stacked -- they do not have the same number of cols.");
-        Mat<R> out (
-            matrix1.dims(0) + matrix2.dims(0),
-            matrix1.dims(1),
-            weights<R>::empty()
-        );
-        MAT(out).block(0,0, matrix1.dims(0), matrix1.dims(1)) = MAT(matrix1);
-        MAT(out).block(matrix1.dims(0),0, matrix2.dims(0), matrix2.dims(1)) = MAT(matrix2);
-        if (graph::backprop_enabled)
-            graph::emplace_back([matrix1, matrix2, out]() mutable {
-                SAFE_GRAD(matrix1).noalias() += GRAD(out).block(0,0, matrix1.dims(0), matrix1.dims(1));
-                SAFE_GRAD(matrix2).noalias() += GRAD(out).block(matrix1.dims(0),0, matrix2.dims(0), matrix2.dims(1));
-            });
-        return out;
-        #else
-        return Mat<R>(1,1);
-        #endif
+        return Reshaping<R>::vstack({matrix1, matrix2});
     }
 
 

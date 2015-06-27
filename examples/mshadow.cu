@@ -32,7 +32,6 @@ void Print1DTensor(Tensor<gpu, 1, float> const &tg) {
 
 template<>
 void Print2DTensor(Tensor<cpu, 2, float> const &ts) {
-    std::cout << "hello world" << std::endl;
     for (index_t i = 0; i < ts.size(0); ++i) {
         Print1DTensor(ts[i]);
     }
@@ -55,7 +54,70 @@ thrust::device_ptr<float> to_thrust(Tensor<gpu, 2, float>& tg) {
 #define PRINT2D_SMALL(X) if ((X).shape_[0] <= 20 && (X).shape_[1] <= 20) Print2DTensor((X))
 #define PRINT1D_SMALL(X) if ((X).shape_[0] <= 30) Print1DTensor((X))
 
+
+void conv_showcase() {
+    std::cout << "CONV SHOWCASE" << std::endl;
+
+    int ksize = 2;
+    int kstride = 1;
+    int nkernels = 2;
+
+    int H = 3;
+    int W = 4;
+
+    Tensor<cpu, 3, float> src = NewTensor<cpu, float>(Shape3(1, H, W), 0.0f);
+    Tensor<cpu, 2, float> kernels = NewTensor<cpu, float>(Shape2(nkernels, ksize * ksize), 0.0f);
+
+
+    int o_height = (src.size(1)- ksize) / kstride + 1;
+    int o_width  = (src.size(2)- ksize) / kstride + 1;
+
+    for (int i=0; i<H; ++i) {
+        for (int j=0; j<W; ++j) {
+            src[0][i][j] = i*W +j;
+        }
+    }
+
+    for (int i=0; i <nkernels; ++i) {
+        for (int j=0; j <ksize*ksize; ++j) {
+            kernels[i][j] = i + 1;
+        }
+    }
+
+    std::cout << "== Image ==" << std::endl;
+    Print2DTensor(src[0]);
+    std::cout << "== Kernel ==" << std::endl;
+    Print2DTensor(kernels);
+
+
+    Tensor<cpu, 2> tmp_col = NewTensor<cpu, float>(Shape2(ksize * ksize, o_height * o_width), 0.0f);
+    tmp_col = unpack_patch2col(src, ksize, ksize, kstride);
+    std::cout << "== Image Patches ==" << std::endl;
+    Print2DTensor(tmp_col);
+
+    std::cout << "== Applied Kernels (packed) ==" << std::endl;
+    Tensor<cpu, 2> tmp_dst = NewTensor<cpu, float>(Shape2(nkernels, o_height * o_width), 0.0f);
+    tmp_dst = dot(kernels, tmp_col);
+    Print2DTensor(tmp_dst);
+
+    Tensor<cpu, 3, float> dst = NewTensor<cpu, float>(Shape3(nkernels, o_height, o_width), 0.0f);
+
+    dst = reshape(tmp_dst, dst.shape_);
+    std::cout << "== Applied Kernel 1 ==" << std::endl;
+    Print2DTensor(dst[0]);
+    std::cout << "== Applied Kernel 2 ==" << std::endl;
+    Print2DTensor(dst[1]);
+
+
+
+    FreeSpace(&src);
+    FreeSpace(&tmp_col);
+    FreeSpace(&tmp_dst);
+}
+
+
 int main () {
+    conv_showcase();
 
     int first_dim = 3;
     int second_dim = 1000;
@@ -126,7 +188,6 @@ int main () {
 
     FreeSpace(&joe);
     FreeSpace(&bob);
-
 
     ShutdownTensorEngine<gpu>();
     return 0;

@@ -19,6 +19,10 @@ struct weights {
     static initializer_t uniform(R bound);
     static initializer_t gaussian(R mean, R std);
     static initializer_t gaussian(R std);
+    // bernoulli random samples
+    static initializer_t bernoulli(R prob);
+    // bernoulli random samples, multiplied by 1.0 / prob
+    static initializer_t bernoulli_normalized(R prob);
     static initializer_t eye(R diag = 1.0);
 
     // Preinitializer is first run on the matrix and then SVD initialization

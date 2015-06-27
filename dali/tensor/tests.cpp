@@ -811,6 +811,26 @@ TEST_F(MatrixTests, abs) {
     }
 }
 
+
+TEST_F(MatOpsTests, dropout) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        auto C = Xs[0] * Xs[1];
+        auto D = MatOps<R>::dropout(C, 0.5);
+        auto Z = D + Xs[2];
+        return Z;
+    };
+    int num_examples = 20;
+    int hidden_size = 10;
+    int input_size = 5;
+    int other_input_size = 7;
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(input_size, hidden_size, weights<R>::uniform(2.0));
+        auto B = Mat<R>(input_size, hidden_size, weights<R>::uniform(20.0));
+        auto C = Mat<R>(1, input_size, weights<R>::uniform(20.0));
+        ASSERT_TRUE(gradient_same(functor, {A, B, C}, 0.0003));
+    }
+}
+
 /*
 TEST_F(MatOpsTests, matrix_conv2d) {
     graph::NoBackprop nb;

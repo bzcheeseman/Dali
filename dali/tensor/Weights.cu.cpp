@@ -59,6 +59,32 @@ typename weights<R>::initializer_t weights<R>::gaussian(R mean, R std) {
 };
 
 template<typename R>
+typename weights<R>::initializer_t weights<R>::bernoulli(R prob) {
+    return [prob](sync_t& matrix) {
+        #ifdef DALI_USE_CUDA
+            if (matrix.compute_me_on_gpu()) {
+                TensorOps::random::bernoulli(matrix.mutable_gpu_data(), prob);
+                return;
+            }
+        #endif
+        TensorOps::random::bernoulli(matrix.mutable_cpu_data(), prob);
+    };
+};
+
+template<typename R>
+typename weights<R>::initializer_t weights<R>::bernoulli_normalized(R prob) {
+    return [prob](sync_t& matrix) {
+        #ifdef DALI_USE_CUDA
+            if (matrix.compute_me_on_gpu()) {
+                TensorOps::random::bernoulli_normalized(matrix.mutable_gpu_data(), prob);
+                return;
+            }
+        #endif
+        TensorOps::random::bernoulli_normalized(matrix.mutable_cpu_data(), prob);
+    };
+};
+
+template<typename R>
 typename weights<R>::initializer_t weights<R>::gaussian(R std) {
     return gaussian(0.0, std);
 }

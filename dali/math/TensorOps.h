@@ -418,22 +418,6 @@ namespace TensorOps {
     }
     #endif
 
-    namespace random {
-        template<typename Device, int ndims, typename R, template <typename,int,typename> class tensor_t>
-        void uniform(tensor_t<Device, ndims, R>& t, R lower, R upper) {
-            std::random_device rd;
-            mshadow::Random<Device, R> generator((int)rd());
-            generator.SampleUniform(&t, lower, upper);
-        }
-
-        template<typename Device, int ndims, typename R, template <typename,int,typename> class tensor_t>
-        void gaussian(tensor_t<Device, ndims, R>& t, R mean, R std) {
-            std::random_device rd;
-            mshadow::Random<Device, R> generator((int)rd());
-            generator.SampleGaussian(&t, mean, std);
-        }
-    };
-
     namespace op {
         template<typename R>
         struct square {
@@ -558,6 +542,13 @@ namespace TensorOps {
         };
 
         template<typename R>
+        struct threshold {
+            MSHADOW_XINLINE static R Map(const R& a, const R& b) {
+                return a < b ? 1.0 : 0.0;
+            }
+        };
+
+        template<typename R>
         struct max_scalar {
             MSHADOW_XINLINE static R Map(const R& x, const R& y) {
                 return x > y ? x : y;
@@ -601,8 +592,35 @@ namespace TensorOps {
                 return x > 0.0 ? 1.0 : 0.0;
             }
         };
-
     }
+
+    namespace random {
+        template<typename Device, int ndims, typename R, template <typename,int,typename> class tensor_t>
+        void uniform(tensor_t<Device, ndims, R>& t, R lower, R upper) {
+            std::random_device rd;
+            mshadow::Random<Device, R> generator((int)rd());
+            generator.SampleUniform(&t, lower, upper);
+        }
+
+        template<typename Device, int ndims, typename R, template <typename,int,typename> class tensor_t>
+        void gaussian(tensor_t<Device, ndims, R>& t, R mean, R std) {
+            std::random_device rd;
+            mshadow::Random<Device, R> generator((int)rd());
+            generator.SampleGaussian(&t, mean, std);
+        }
+
+        template<typename Device, int ndims, typename R, template <typename,int,typename> class tensor_t>
+        void bernoulli(tensor_t<Device, ndims, R>& t, R prob) {
+            random::uniform(t, (R)0.0, (R)1.0);
+            t = mshadow::expr::F<op::threshold<R>>(t, prob);
+        }
+
+        template<typename Device, int ndims, typename R, template <typename,int,typename> class tensor_t>
+        void bernoulli_normalized(tensor_t<Device, ndims, R>& t, R prob) {
+            random::uniform(t, (R)0.0, (R)1.0);
+            t = mshadow::expr::F<op::threshold<R>>(t, prob) * (1.0 / prob);
+        }
+    };
 };
 
 #endif

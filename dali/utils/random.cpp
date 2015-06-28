@@ -2,10 +2,21 @@
 using std::vector;
 
 namespace utils {
-    int randint(int lower, int upper) {
+
+    template<typename T>
+    T randinteger(T lower, T upper) {
         assert2 (lower <= upper, "Lower bound must be smaller than upper bound.");
-        std::uniform_int_distribution<int> distribution(lower, upper);
+        std::uniform_int_distribution<T> distribution(lower, upper);
         return distribution(utils::random::generator());
+    }
+
+    template int          randinteger(int, int);
+    template unsigned int randinteger(unsigned int, unsigned int);
+    template long         randinteger(long, long);
+    template size_t       randinteger(size_t, size_t);
+
+    int randint(int lower, int upper) {
+        return randinteger<int>(lower, upper);
     }
 
     double randdouble(double lower, double upper) {

@@ -23,6 +23,8 @@ namespace utils {
     int sample
     **/
     int randint(int lower, int upper);
+    template<typename T>
+    T randinteger(T lower, T upper);
     double randdouble(double lower=0.0, double upper=1.0);
     // for shufflign datasets
     std::vector<size_t> random_arange(size_t);

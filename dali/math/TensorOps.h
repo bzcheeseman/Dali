@@ -15,6 +15,7 @@
 #include <thrust/functional.h>
 #include <thrust/reduce.h>
 #include <thrust/transform.h>
+#include <thrust/random.h>
 #include <thrust/sort.h>
 #include <thrust/sequence.h>
 #include <thrust/transform_reduce.h>
@@ -599,17 +600,60 @@ namespace TensorOps {
     }
 
     namespace random {
-        template<typename Device, int ndims, typename R, template <typename,int,typename> class tensor_t>
-        void uniform(tensor_t<Device, ndims, R>& t, R lower, R upper) {
+        #ifdef DALI_USE_CUDA
+        // from thrust Monte Carlo experiment
+        // here: https://github.com/thrust/thrust/blob/master/examples/monte_carlo.cu
+
+        template<typename R>
+        struct uniform_operator : public thrust::unary_function<unsigned int,R>{
+            const R lower;
+            const R upper;
+            const unsigned int seed;
+
+            __host__ __device__
+            static unsigned int hash_operator(unsigned int a) {
+                a = (a+0x7ed55d16) + (a<<12);
+                a = (a^0xc761c23c) ^ (a>>19);
+                a = (a+0x165667b1) + (a<<5);
+                a = (a+0xd3a2646c) ^ (a<<9);
+                a = (a+0xfd7046c5) + (a<<3);
+                a = (a^0xb55a4f09) ^ (a>>16);
+                return a;
+            }
+
+            uniform_operator(R _lower, R _upper, unsigned int _seed) : lower(_lower), upper(_upper), seed(_seed) {}
+            __host__ __device__
+            R operator () (unsigned int thread_id) {
+                unsigned int local_seed = seed + hash_operator(thread_id);
+                thrust::default_random_engine rng(local_seed);
+                thrust::uniform_real_distribution<R> dist(lower, upper);
+                return dist(rng);
+            }
+        };
+
+        template<int ndims, typename R, template <typename,int,typename> class tensor_t>
+        void uniform(tensor_t<mshadow::gpu, ndims, R>& A, R lower, R upper) {
+            // about 63x faster than SampleUniform for gpu
+            thrust::transform(
+                    thrust::make_counting_iterator(0),
+                    thrust::make_counting_iterator(0) + A.shape_.Size(),
+                    to_thrust(A),
+                    uniform_operator<R>(lower, upper, utils::randinteger<unsigned int>(0,999999)));
+
+        }
+        #endif
+
+        template<int ndims, typename R, template <typename,int,typename> class tensor_t>
+        void uniform(tensor_t<mshadow::cpu, ndims, R>& t, R lower, R upper) {
             // std::random_device rd;
-            mshadow::Random<Device, R> generator(utils::randint(0,9999999999));
+            mshadow::Random<mshadow::cpu, R> generator(utils::randint(0,999999));
             generator.SampleUniform(&t, lower, upper);
         }
 
         template<typename Device, int ndims, typename R, template <typename,int,typename> class tensor_t>
         void gaussian(tensor_t<Device, ndims, R>& t, R mean, R std) {
             // std::random_device rd;
-            mshadow::Random<Device, R> generator(utils::randint(0,9999999999));
+            mshadow::Random<Device, R> generator(utils::randint(0,999999));
             generator.SampleGaussian(&t, mean, std);
         }
 

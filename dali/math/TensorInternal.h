@@ -38,7 +38,6 @@ class TensorInternal;
                 for (auto participant : expr.dependent_tensors) { \
                     participant->update_tensor(); \
                 } \
-                expr.update_tensor();
                 this->mutable_cpu_data() op_symbol expr.left;\
             };\
             return *this;\

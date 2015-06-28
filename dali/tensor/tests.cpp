@@ -902,6 +902,7 @@ TEST_F(MatOpsTests, dropout) {
         auto C = Mat<R>(1, input_size, weights<R>::uniform(20.0));
         ASSERT_TRUE(gradient_same(functor, {A, B, C}, 0.0003));
     }
+
 }
 
 /*

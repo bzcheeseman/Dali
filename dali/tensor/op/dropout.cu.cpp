@@ -26,11 +26,12 @@ namespace matops {
 
         auto out = Mat<R>::empty_like(matrix);
 
-        auto mask = make_shared<TensorInternal<R, 2>>(MAT(matrix).shape());
+        auto mask = make_shared<TensorInternal<R, 2>>(MAT(matrix).shape);
         {
             utils::Timer tbernoulli("tbernoulli");
             weights<R>::bernoulli(1.0 - drop_prob)(*mask);
         }
+
 
         MAT(out) = MAT(matrix).wrapper() * (*mask).wrapper();
 
@@ -55,7 +56,7 @@ namespace matops {
 
         auto out = Mat<R>::empty_like(matrix);
 
-        auto mask = make_shared<TensorInternal<R, 2>>(MAT(matrix).shape());
+        auto mask = make_shared<TensorInternal<R, 2>>(MAT(matrix).shape);
         weights<R>::bernoulli_normalized(1.0 - drop_prob)(*mask);
 
         MAT(out) = MAT(matrix).wrapper() * (*mask).wrapper();
@@ -98,7 +99,7 @@ namespace matops {
 
         auto out = Mat<R>::empty_like(matrix);
 
-        auto mask = make_shared<TensorInternal<R, 2>>(MAT(matrix).shape());
+        auto mask = make_shared<TensorInternal<R, 2>>(MAT(matrix).shape);
         weights<R>::gaussian(1.0, 1.0)(*mask);
 
         MAT(out) = MAT(matrix).wrapper() * (*mask).wrapper();

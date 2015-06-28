@@ -8,6 +8,7 @@
 #include <iostream>
 #include <string>
 #include <chrono>
+#include <memory>
 #include <thread>
 
 // Defines mathematical operations on Synchronized Memory
@@ -22,21 +23,15 @@ class TensorInternal;
     #define DALI_SYNC_TENSOR_ASSIGN_OP(op_symbol) \
         template <typename TA, typename TB, int ta> \
         TensorInternal& operator op_symbol (const LazyTensor<TA, TB, R, dimension, ta>& expr) { \
-            if (should_compute_on_gpu(expr.sync_tensors)) { \
+            if (should_compute_on_gpu(extact_memory(expr.dependent_tensors))) { \
                 /* refresh the gpu memory from cpu*/ \
-                for (auto participant : expr.sync_tensors) { \
-                    participant->to_gpu(); \
-                } \
                 for (auto participant : expr.dependent_tensors) { \
-                    participant->update_tensor(); \
+                    participant->update_tensor(DEVICE_GPU); \
                 } \
                 this->mutable_gpu_data() op_symbol expr.right; \
             } else {/* refresh the cpu memory from gpu*/ \
-                for (auto participant : expr.sync_tensors) { \
-                    participant->to_cpu(); \
-                }\
                 for (auto participant : expr.dependent_tensors) { \
-                    participant->update_tensor(); \
+                    participant->update_tensor(DEVICE_CPU); \
                 } \
                 this->mutable_cpu_data() op_symbol expr.left;\
             };\
@@ -55,12 +50,9 @@ class TensorInternal;
     #define DALI_SYNC_TENSOR_ASSIGN_OP(op_symbol) \
         template <typename TA, int ta> \
         TensorInternal& operator op_symbol (const LazyTensor<TA, R, dimension,ta>& expr) { \
-            for (auto& participant : expr.sync_tensors) { \
-                participant->to_cpu(); \
-            }\
-            for (auto& participant : expr.dependent_tensors) { \
-                participant->update_tensor(); \
-            }\
+            for (auto participant : expr.dependent_tensors) { \
+                participant->update_tensor(DEVICE_CPU); \
+            } \
             this->mutable_cpu_data() op_symbol expr.left;\
             return *this;\
         }
@@ -81,21 +73,32 @@ class TensorInternal;
 #endif
 
 template<typename R, int dimension>
-class TensorInternal : public SynchronizedMemory<R, dimension> {
+class TensorInternal {
     public:
+        std::shared_ptr<SynchronizedMemory<R>> memory;
         static const int ndimensions = dimension;
-        // inherit SynchronizedMemory's constructors (C++11)
-        using SynchronizedMemory<R, dimension>::SynchronizedMemory;
 
-        typedef SynchronizedMemory<R, dimension> parent_t;
+        const mshadow::Shape<dimension> shape;
 
-        typedef typename SynchronizedMemory<R, dimension>::cpu_tensor_t cpu_tensor_t;
+        TensorInternal(mshadow::Shape<dimension> shape);
+
+
+        typedef mshadow::Tensor<mshadow::cpu, dimension, R> cpu_tensor_t;
         #ifdef DALI_USE_CUDA
-            typedef typename SynchronizedMemory<R, dimension>::gpu_tensor_t gpu_tensor_t;
+            typedef mshadow::Tensor<mshadow::gpu, dimension, R> gpu_tensor_t;
             typedef LazyTensor<cpu_tensor_t, gpu_tensor_t, R, dimension, mshadow::expr::type::kRValue> lazy_t;
         #else
             typedef LazyTensor<cpu_tensor_t, R, dimension, mshadow::expr::type::kRValue> lazy_t;
         #endif
+
+        const cpu_tensor_t   cpu_data() const;
+        cpu_tensor_t mutable_cpu_data();
+
+        #ifdef DALI_USE_CUDA
+            const gpu_tensor_t   gpu_data() const;
+            gpu_tensor_t       mutable_gpu_data();
+        #endif
+
         DALI_SYNC_TENSOR_ASSIGN_OP(=)
         DALI_SYNC_TENSOR_ASSIGN_OP(+=)
         DALI_SYNC_TENSOR_ASSIGN_OP(-=)
@@ -139,6 +142,8 @@ class TensorInternal : public SynchronizedMemory<R, dimension> {
 
         void print() const;
         void clear();
+
+        int number_of_elements() const;
 
         static TensorInternal<R,dimension> zeros(mshadow::Shape<dimension>);
 };

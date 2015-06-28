@@ -15,98 +15,110 @@
 
 template<typename DType, int dimension>
 class TensorInternal;
+template<typename DType>
+class SynchronizedMemory;
 
-class MemoryMover;
-
-typedef std::vector<const MemoryMover*> sync_tensors_t;
-
+template<typename DType>
 class DormantTensor {
     public:
+        std::shared_ptr<SynchronizedMemory<DType>> source;
         // call this method with a new tensor that should be placed here.
-        virtual void update_tensor() = 0;
+        virtual void update_tensor(Device where_to_update) = 0;
+        DormantTensor() : source(nullptr) {}
+        DormantTensor(std::shared_ptr<SynchronizedMemory<DType>> _source) : source(_source) {}
 };
 
-typedef std::vector<DormantTensor*> dependent_tensors_t;
+template<typename DType>
+using dependent_tensors_t = std::vector<DormantTensor<DType>*>;
+
+template<typename DType>
+std::vector<const SynchronizedMemory<DType>*> extract_memory(const dependent_tensors_t<DType>& dts) {
+    std::vector<const SynchronizedMemory<DType>*> res;
+    for (auto dt: dts) {
+        res.push_back(dt.source.get());
+    }
+    return res;
+}
+
 
 #ifdef DALI_USE_CUDA
     template<typename LeftType, typename RightType, typename DType, int dimension, int ktype>
 #else
     template<typename LeftType, typename DType, int dimension, int ktype>
 #endif
-class LazyTensor : DormantTensor {
+class LazyTensor : public DormantTensor<DType> {
     public:
         typedef mshadow::Tensor<mshadow::cpu, dimension, DType> cpu_tensor_t;
 
         // store list of dependant tensors whose memory
         // may need to be refreshed before evaluation
-        dependent_tensors_t dependent_tensors;
+        dependent_tensors_t<DType> dependent_tensors;
 
-        LeftType               left;
-        // for storing where the tensor came from
-        // if it was constructed from TensorInternal
-        cpu_tensor_t*   left_source;
-        sync_tensors_t sync_tensors;
+        LeftType                  left;
+        mshadow::Shape<dimension> source_shape;
 
         #ifdef DALI_USE_CUDA
             typedef mshadow::Tensor<mshadow::gpu, dimension, DType> gpu_tensor_t;
-            gpu_tensor_t*  right_source;
             RightType right;
+        #endif
+
+        #ifdef DALI_USE_CUDA
             LazyTensor(
                 const LeftType& _left,
                 const RightType& _right,
-                const sync_tensors_t& _sync_tensors,
-                const dependent_tensors_t& _dependent_tensors)
-                : left(_left), right(_right), sync_tensors(_sync_tensors),
-                dependent_tensors(_dependent_tensors) {}
+                const dependent_tensors_t<DType>& _dependent_tensors)
+                : DormantTensor<DType>(), left(_left), right(_right), dependent_tensors(_dependent_tensors) {}
         #else
             // Same expression with the gpu twin
             // ignored.
             LazyTensor(
                 const LeftType& _left,
-                const sync_tensors_t& _sync_tensors,
-                const dependent_tensors_t& _dependent_tensors)
-                : left(_left), sync_tensors(_sync_tensors),
+                const dependent_tensors_t<DType>& _dependent_tensors)
+                : DormantTensor<DType>(),
+                  left(_left),
                   dependent_tensors(_dependent_tensors) {}
         #endif
 
         #ifdef DALI_USE_CUDA
             LazyTensor(const TensorInternal<DType,dimension>& st)
-                : left(st.mem_cpu),
-                  right(st.mem_gpu),
-                  sync_tensors({&st}),
-                  left_source(&st.mem_cpu),
-                  right_source(&st.mem_gpu),
-                  // adding this LazyTensor to dependencies that
-                  // need their memory refreshed on eval
+                : DormantTensor<DType>(st.memory),
+                  source_shape(st.shape),
+                  left(LeftType(st.shape)),
+                  right(RightType(st.shape)),
                   dependent_tensors({this}) {}
         #else
             LazyTensor(const TensorInternal<DType,dimension>& st)
-                : left(st.mem_cpu), sync_tensors({&st}),
-                  dependent_tensors({this}),
-                  left_source(&st.mem_cpu) {}
+                : DormantTensor<DType>(st.memory),
+                  source_shape(st.shape),
+                  left(LeftType(st.shape)),
+                  dependent_tensors({this}) {}
         #endif
+
             // replace the tensors used in this LazyTensor
             // by a copy with fresh memory before evaluation.
-            virtual void update_tensor() override {
-                assert(left_source != NULL);
-                auto old_left_ptr    = (cpu_tensor_t*)(&left);
-                *old_left_ptr        = *left_source;
-            #ifdef DALI_USE_CUDA
-                assert(right_source != NULL);
-                auto old_right_ptr    = (gpu_tensor_t*)(&right);
-                *old_right_ptr        = *right_source;
-            #endif
+            virtual void update_tensor(Device where_to_update) override {
+                assert((bool)(this->source));
+                if (where_to_update == DEVICE_CPU) {
+                    cpu_tensor_t * bjarne_stop = (cpu_tensor_t*)&left;
+                    *bjarne_stop = cpu_tensor_t(this->source->cpu_data(), source_shape);
+                }
+                #ifdef DALI_USE_CUDA
+                else if (where_to_update == DEVICE_GPU) {
+                    gpu_tensor_t * bjarne_stop = (cpu_tensor_t*)&left;
+                    *bjarne_stop = gpu_tensor_t(this->source->gpu_data(), source_shape);
+                }
+                #endif
             }
 
         #ifdef DALI_USE_CUDA
             inline auto T(void) const -> LazyTensor<decltype(left.T()), decltype(right.T()), DType, dimension, ktype> {
                 return LazyTensor<decltype(left.T()), decltype(right.T()), DType, dimension, ktype>(
-                        left.T(), right.T(), sync_tensors, dependent_tensors);
+                        left.T(), right.T(), dependent_tensors);
             }
         #else
             inline auto T(void) const -> LazyTensor<decltype(left.T()), DType, dimension, ktype> {
                 return LazyTensor<decltype(left.T()), DType, dimension, ktype>(
-                        left.T(), sync_tensors, dependent_tensors);
+                        left.T(), dependent_tensors);
             }
         #endif
 
@@ -118,14 +130,14 @@ class LazyTensor : DormantTensor {
                 return LazyTensor<mshadow::Tensor<mshadow::cpu, 1, DType>, mshadow::Tensor<mshadow::gpu, 1, DType>, DType, 1, ktype>(
                         mshadow::Tensor<mshadow::cpu, 1, DType>(left.dptr_,  mshadow::Shape1(left.shape_.ProdShape(0, dimension)), left.stride_, left.stream_),
                         mshadow::Tensor<mshadow::gpu, 1, DType>(right.dptr_, mshadow::Shape1(right.shape_.ProdShape(0, dimension)), right.stride_, right.stream_),
-                        sync_tensors, dependent_tensors
+                        dependent_tensors
                 );
             }
         #else
             inline auto ravel(void) const -> LazyTensor<mshadow::Tensor<mshadow::cpu, 1, DType>, DType, 1, ktype> {
                 return LazyTensor<mshadow::Tensor<mshadow::cpu, 1, DType>, DType, 1, ktype>(
                         mshadow::Tensor<mshadow::cpu, 1, DType>(left.dptr_,  mshadow::Shape1(left.shape_.ProdShape(0, dimension)), left.stride_, left.stream_),
-                        sync_tensors, dependent_tensors
+                        dependent_tensors
                 );
             }
         #endif
@@ -142,7 +154,7 @@ class LazyTensor : DormantTensor {
                     decltype(cpu_soft), decltype(gpu_soft),
                     DType, dimension,
                     (ktype|mshadow::expr::type::kComplex)>(
-                        cpu_soft, gpu_soft, sync_tensors, dependent_tensors);
+                        cpu_soft, gpu_soft, dependent_tensors);
             }
         #else
             inline LazyTensor<dali_expr::SoftmaxExpression<LeftType, DType>,
@@ -154,7 +166,7 @@ class LazyTensor : DormantTensor {
                     decltype(cpu_soft),
                     DType, dimension,
                     (ktype|mshadow::expr::type::kComplex)
-                    >(cpu_soft, sync_tensors, dependent_tensors);
+                    >(cpu_soft, dependent_tensors);
             }
         #endif
 
@@ -173,7 +185,6 @@ class LazyTensor : DormantTensor {
                     ktype> operator[](mshadow::index_t idx) const {
                 return LazyTensor<decltype(left[idx]), decltype(right[idx]), DType, dimension - 1, ktype>(
                     left[idx], right[idx],
-                    sync_tensors,
                     dependent_tensors
                 );
             }
@@ -185,7 +196,7 @@ class LazyTensor : DormantTensor {
                     DType >, DType, dimension - 1, ktype> operator[](mshadow::index_t idx) const {
                 auto cpu_pluck = left[idx];
                 return LazyTensor<decltype(cpu_pluck), DType, dimension -1, ktype>(
-                    cpu_pluck, sync_tensors, dependent_tensors
+                    cpu_pluck, dependent_tensors
                 );
             }
         #endif
@@ -204,7 +215,6 @@ class LazyTensor : DormantTensor {
                 >, DType, dimension, ktype> Slice(mshadow::index_t begin, mshadow::index_t end) const {
                 return LazyTensor<decltype(left.Slice(begin, end)), decltype(right.Slice(begin, end)), DType, dimension, ktype>(
                     left.Slice(begin, end), right.Slice(begin, end),
-                    sync_tensors,
                     dependent_tensors
                 );
             }
@@ -217,85 +227,10 @@ class LazyTensor : DormantTensor {
                 >, DType, dimension, ktype> Slice(mshadow::index_t begin, mshadow::index_t end) const {
                 return LazyTensor<decltype(left.Slice(begin, end)), DType, dimension, ktype>(
                     left.Slice(begin, end),
-                    sync_tensors,
                     dependent_tensors
                 );
             }
         #endif
-
-        #ifdef DALI_USE_CUDA
-            #define CUDA_LAZY_TENSOR_ASSIGN_EVAL_OPERATOR(opsymbol)\
-                template<typename TA, typename TB, int ta>\
-                LazyTensor<LeftType, RightType, DType, dimension, ktype>& operator opsymbol (const LazyTensor<TA,TB,DType,dimension,ta>& expr) {\
-                    assert(sync_tensors.size() == 1);                     \
-                    auto participants = sync_tensors_t(sync_tensors);     \
-                    participants.insert(                                  \
-                        participants.end(),                               \
-                        expr.sync_tensors.begin(),                        \
-                        expr.sync_tensors.end()                           \
-                    );                                                    \
-                    auto deps = dependent_tensors_t(dependent_tensors);   \
-                    deps.insert(                                          \
-                        deps.end(),                                       \
-                        expr.dependent_tensors.begin(),                   \
-                        expr.dependent_tensors.end()                      \
-                    );                                                    \
-                                                                          \
-                    if (should_compute_on_gpu(participants)) {            \
-                        /* refresh the gpu memory from cpu*/              \
-                        for (auto participant : participants) {           \
-                            participant->to_gpu();                        \
-                        }                                                 \
-                        for (auto participant : dependent_tensors) {      \
-                            participant->update_tensor();                 \
-                        }                                                 \
-                        sync_tensors[0]->cpu_fresh = false;               \
-                        right opsymbol expr.right;                        \
-                    } else {/* refresh the cpu memory from gpu*/          \
-                        for (auto participant : participants) {           \
-                            participant->to_cpu();                        \
-                        }                                                 \
-                        for (auto participant : dependent_tensors) {      \
-                            participant->update_tensor();                 \
-                        }                                                 \
-                        sync_tensors[0]->gpu_fresh = false;               \
-                        left opsymbol expr.left;                          \
-                    };\
-                    return *this;\
-                }
-        #else
-            #define CUDA_LAZY_TENSOR_ASSIGN_EVAL_OPERATOR( opsymbol )\
-                template<typename TA, int ta>\
-                LazyTensor<LeftType, DType, dimension, ktype>& operator opsymbol (const LazyTensor<TA,DType,dimension,ta>& expr) {\
-                    assert(sync_tensors.size() == 1);                     \
-                    auto participants = sync_tensors_t(sync_tensors);     \
-                    participants.insert(                                  \
-                        participants.end(),                               \
-                        expr.sync_tensors.begin(),                        \
-                        expr.sync_tensors.end()                           \
-                    );                                                    \
-                    auto deps = dependent_tensors_t(dependent_tensors);   \
-                    deps.insert(                                          \
-                        deps.end(),                                       \
-                        expr.dependent_tensors.begin(),                   \
-                        expr.dependent_tensors.end()                      \
-                    );                                                    \
-                    for (auto participant : participants) {               \
-                        participant->to_cpu();                            \
-                    }                                                     \
-                    for (auto participant : dependent_tensors) {          \
-                        participant->update_tensor();                     \
-                    }                                                     \
-                    left opsymbol expr.left;                              \
-                    return *this;\
-                }
-        #endif
-
-        CUDA_LAZY_TENSOR_ASSIGN_EVAL_OPERATOR(=)
-        CUDA_LAZY_TENSOR_ASSIGN_EVAL_OPERATOR(+=)
-        CUDA_LAZY_TENSOR_ASSIGN_EVAL_OPERATOR(-=)
-        CUDA_LAZY_TENSOR_ASSIGN_EVAL_OPERATOR(/=)
-        CUDA_LAZY_TENSOR_ASSIGN_EVAL_OPERATOR(*=)
 
         #ifdef DALI_USE_CUDA
             // Expression that replicate a 1 dimension tensor in
@@ -309,7 +244,7 @@ class LazyTensor : DormantTensor {
                 auto gpu_broad = mshadow::expr::broadcast<dimcast>(right, shape);
                 return LazyTensor<decltype(cpu_broad), decltype(gpu_broad),
                                   DType, dimdst, ktype>(
-                    cpu_broad, gpu_broad, sync_tensors, dependent_tensors
+                    cpu_broad, gpu_broad, dependent_tensors
                 );
             }
         #else
@@ -319,7 +254,7 @@ class LazyTensor : DormantTensor {
                 DType, dimdst, ktype >broadcast(mshadow::Shape<dimdst> shape) const {
                 auto cpu_broad = mshadow::expr::broadcast<dimcast>(left, shape);
                 return LazyTensor<decltype(cpu_broad), DType, dimdst, ktype>(
-                    cpu_broad, sync_tensors, dependent_tensors
+                    cpu_broad, dependent_tensors
                 );
             }
         #endif
@@ -369,16 +304,14 @@ class LazyTensor : DormantTensor {
         const auto& l_gpu = left.right; \
         const auto& r_gpu = right.right; \
         auto res_gpu = l_gpu opsymbol r_gpu; \
-        auto joined_sts = sync_tensors_t(left.sync_tensors); \
-        joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end()); \
-        auto joined_dts = dependent_tensors_t(left.dependent_tensors); \
+        auto joined_dts = dependent_tensors_t<DType>(left.dependent_tensors); \
         joined_dts.insert(joined_dts.end(), right.dependent_tensors.begin(), right.dependent_tensors.end()); \
         return LazyTensor<decltype(res_cpu), \
                           decltype(res_gpu), \
                           DType, \
                           dimension, \
                           (ta|tb|mshadow::expr::type::kMapper)>(\
-                res_cpu, res_gpu, joined_sts, joined_dts); \
+                res_cpu, res_gpu, joined_dts); \
     }
 
     #define BINARY_SCALAR_OP(opname, opsymbol) \
@@ -399,7 +332,7 @@ class LazyTensor : DormantTensor {
                               DType, \
                               dimension, \
                               (ta|mshadow::expr::type::kMapper)>(\
-                res_cpu, res_gpu, tensor.sync_tensors, tensor.dependent_tensors); \
+                res_cpu, res_gpu, tensor.dependent_tensors); \
         } \
         \
         template<typename TA, typename TB, typename DType, int dimension, int ta> \
@@ -419,7 +352,7 @@ class LazyTensor : DormantTensor {
                               DType, \
                               dimension, \
                               (ta|mshadow::expr::type::kMapper)>(\
-                res_cpu, res_gpu, tensor.sync_tensors, tensor.dependent_tensors); \
+                res_cpu, res_gpu, tensor.dependent_tensors); \
         } \
         template<typename TA, typename TB, typename DType, int dimension, int ta> \
         inline auto operator opsymbol( \
@@ -446,15 +379,13 @@ class LazyTensor : DormantTensor {
         const auto& l_cpu = left.left; \
         const auto& r_cpu = right.left; \
         auto res_cpu = l_cpu opsymbol r_cpu; \
-        auto joined_sts = sync_tensors_t(left.sync_tensors); \
-        joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end()); \
-        auto joined_dts = dependent_tensors_t(left.dependent_tensors); \
+        auto joined_dts = dependent_tensors_t<DType>(left.dependent_tensors); \
         joined_dts.insert(joined_dts.end(), right.dependent_tensors.begin(), right.dependent_tensors.end()); \
         return LazyTensor<decltype(res_cpu), \
                           DType, \
                           dimension, \
                           (ta|tb|mshadow::expr::type::kMapper)>(\
-                res_cpu, joined_sts, joined_dts); \
+                res_cpu, joined_dts); \
     }
 
     #define BINARY_SCALAR_OP(opname, opsymbol) \
@@ -471,7 +402,7 @@ class LazyTensor : DormantTensor {
                               DType, \
                               dimension, \
                               (ta|mshadow::expr::type::kMapper)>(\
-                res_cpu, tensor.sync_tensors, tensor.dependent_tensors); \
+                res_cpu, tensor.dependent_tensors); \
         } \
         \
         template<typename TA, typename DType, int dimension, int ta> \
@@ -487,7 +418,7 @@ class LazyTensor : DormantTensor {
                               DType, \
                               dimension, \
                               (ta|mshadow::expr::type::kMapper)>(\
-                res_cpu, tensor.sync_tensors, tensor.dependent_tensors); \
+                res_cpu, tensor.dependent_tensors); \
         } \
         template<typename TA, typename DType, int dimension, int ta> \
         inline auto operator opsymbol( \
@@ -531,7 +462,7 @@ BINARY_SCALAR_OP(mshadow::op::div,  /);
                           decltype(unary_r),
                           DType,
                           dimension,
-                          (ta|mshadow::expr::type::kMapper)>(unary_l, unary_r, exp.sync_tensors, exp.dependent_tensors);
+                          (ta|mshadow::expr::type::kMapper)>(unary_l, unary_r, exp.dependent_tensors);
     }
 
     template<typename OP, typename TA, typename TB, typename DType, int dimension, int ta>
@@ -555,7 +486,7 @@ BINARY_SCALAR_OP(mshadow::op::div,  /);
         return LazyTensor<decltype(unary_l),
                           DType,
                           dimension,
-                          (ta|mshadow::expr::type::kMapper)>(unary_l, exp.sync_tensors, exp.dependent_tensors);
+                          (ta|mshadow::expr::type::kMapper)>(unary_l, exp.dependent_tensors);
     }
 
     template<typename OP, typename TA, typename DType, int dimension, int ta>
@@ -582,15 +513,13 @@ BINARY_SCALAR_OP(mshadow::op::div,  /);
 
         auto cpu_res = mshadow::expr::F<OP>(left.left,  right.left);
         auto gpu_res = mshadow::expr::F<OP>(left.right, right.right);
-        auto joined_sts = sync_tensors_t(left.sync_tensors);
-        joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end());
-        auto joined_dts = dependent_tensors_t(left.dependent_tensors);
+        auto joined_dts = dependent_tensors_t<DType>(left.dependent_tensors);
         joined_dts.insert(joined_dts.end(), right.dependent_tensors.begin(), right.dependent_tensors.end());
         return LazyTensor<decltype(cpu_res),
                           decltype(gpu_res),
                           DType, dimension,
                           (ta|tb|mshadow::expr::type::kMapper)>(
-                            cpu_res, gpu_res, joined_sts, joined_dts
+                            cpu_res, gpu_res, joined_dts
                         );
     }
 
@@ -609,7 +538,7 @@ BINARY_SCALAR_OP(mshadow::op::div,  /);
                           decltype(gpu_res),
                           DType, dimension,
                           (ta|mshadow::expr::type::kMapper)>(
-                            cpu_res, gpu_res, left.sync_tensors, left.dependent_tensors
+                            cpu_res, gpu_res, left.dependent_tensors
                         );
     }
 
@@ -628,7 +557,7 @@ BINARY_SCALAR_OP(mshadow::op::div,  /);
                           decltype(gpu_res),
                           DType, dimension,
                           (ta|mshadow::expr::type::kMapper)>(
-                            cpu_res, gpu_res, right.sync_tensors, right.dependent_tensors
+                            cpu_res, gpu_res, right.dependent_tensors
                         );
     }
 
@@ -661,14 +590,12 @@ BINARY_SCALAR_OP(mshadow::op::div,  /);
                                    (ta|tb|mshadow::expr::type::kMapper)>{
 
         auto cpu_res = mshadow::expr::F<OP>(left.left,  right.left);
-        auto joined_sts = sync_tensors_t(left.sync_tensors);
-        joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end());
-        auto joined_dts = dependent_tensors_t(left.dependent_tensors);
+        auto joined_dts = dependent_tensors_t<DType>(left.dependent_tensors);
         joined_dts.insert(joined_dts.end(), right.dependent_tensors.begin(), right.dependent_tensors.end());
         return LazyTensor<decltype(cpu_res),
                           DType, dimension,
                           (ta|tb|mshadow::expr::type::kMapper)>(
-                            cpu_res, joined_sts, joined_dts
+                            cpu_res, joined_dts
                         );
     }
 
@@ -683,7 +610,7 @@ BINARY_SCALAR_OP(mshadow::op::div,  /);
         return LazyTensor<decltype(cpu_res),
                           DType, dimension,
                           (ta|mshadow::expr::type::kMapper)>(
-                              cpu_res, left.sync_tensors, left.dependent_tensors
+                              cpu_res, left.dependent_tensors
                           );
     }
 
@@ -698,7 +625,7 @@ BINARY_SCALAR_OP(mshadow::op::div,  /);
         return LazyTensor<decltype(cpu_res),
                           DType, dimension,
                           (ta|mshadow::expr::type::kMapper)>(
-                              cpu_res, right.sync_tensors, right.dependent_tensors
+                              cpu_res, right.dependent_tensors
                           );
     }
 
@@ -736,7 +663,7 @@ inline auto swapaxis(const LazyTensor<TA, TB, DType, dimension, ta> &exp)
                           (ta|mshadow::expr::type::kMapper)>(
                               mshadow::expr::swapaxis<a1,a2>(exp.left),
                               mshadow::expr::swapaxis<a1,a2>(exp.right),
-                              exp.sync_tensors, exp.dependent_tensors
+                              exp.dependent_tensors
                 );
 
     }
@@ -748,7 +675,6 @@ inline auto swapaxis(const LazyTensor<TA, DType, dimension, ta> &exp)
                           DType, dimension,
                           (ta|mshadow::expr::type::kMapper)>(
             mshadow::expr::swapaxis<a1,a2>(exp.left),
-            exp.sync_tensors,
             exp.dependent_tensors
         );
     }
@@ -770,7 +696,7 @@ inline auto swapaxis(const LazyTensor<TA, DType, dimension, ta> &exp)
             DType,
             1,
             mshadow::expr::type::kComplex
-            >(cpu_sumall, gpu_sumall, exp.sync_tensors, exp.dependent_tensors);
+            >(cpu_sumall, gpu_sumall, exp.dependent_tensors);
     }
 
     template<typename TA, typename TB, typename DType, int ta>
@@ -795,7 +721,7 @@ inline auto swapaxis(const LazyTensor<TA, DType, dimension, ta> &exp)
             DType,
             1,
             mshadow::expr::type::kComplex
-            >(cpu_sumall, exp.sync_tensors, exp.dependent_tensors);
+            >(cpu_sumall, exp.dependent_tensors);
     }
 
     template<typename TA, typename DType, int ta>

@@ -2,6 +2,7 @@
 #define DALI_UTILS_ASSERT2_H
 
 #include <string>
+#include <stdexcept>
 
 // throw assertion errors with messages
 namespace utils {

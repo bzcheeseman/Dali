@@ -17,86 +17,81 @@
 
 void dali_init();
 
-enum PreferredDevice {
+enum Device {
     DEVICE_GPU,
     DEVICE_CPU
 };
 
-class MemoryMover {
-    protected:
-        PreferredDevice preferred_device;
-    public:
-        virtual void to_cpu() const = 0;
-        mutable bool cpu_fresh;
-        bool prefers_cpu() const;
-        bool prefers_gpu() const;
-#ifdef DALI_USE_CUDA
-    public:
-        virtual void to_gpu() const = 0;
-        mutable bool gpu_fresh;
+template<typename R> class SynchronizedMemory;
 
-        // tie-breaker for operations involving multiple tensors
-        // on mixed devices.
-        static PreferredDevice tie_breaker_device;
-#endif
+template<typename R>
+bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<R>*>& sts);
 
 #ifdef DALI_USE_CUDA
-    MemoryMover(bool cpu_fresh, bool gpu_fresh, PreferredDevice preferred_device);
+    static const Device default_preferred_device = DEVICE_GPU;
 #else
-    MemoryMover(bool cpu_fresh, PreferredDevice preferred_device);
-#endif
-};
-
-bool should_compute_on_gpu(const std::vector<const MemoryMover*>& sts);
-
-#ifdef DALI_USE_CUDA
-    static const PreferredDevice default_preferred_device = DEVICE_GPU;
-#else
-    static const PreferredDevice default_preferred_device = DEVICE_CPU;
+    static const Device default_preferred_device = DEVICE_CPU;
 #endif
 
 
 template<int dimension>
 std::ostream& operator<<(std::ostream&, const mshadow::Shape<dimension>&);
 
-template<typename R, int dimension>
-class SynchronizedMemory : public MemoryMover {
-    private:
-
-        // only used by copy constructor.
-        template<typename SourceType>
-        void copy_data_from(SourceType& src);
+template<typename R>
+class SynchronizedMemory {
     public:
-        mutable bool allocated_cpu_;
-        bool allocated_cpu() const;
-        virtual void to_cpu() const override;
-        typedef mshadow::Tensor<mshadow::cpu, dimension, R> cpu_tensor_t;
-        mutable cpu_tensor_t mem_cpu;
-        const cpu_tensor_t&   cpu_data() const;
-        cpu_tensor_t& mutable_cpu_data();
+        Device preferred_device;
+        // total amount of memory expressed in number or Dtypes
+        const int total_memory;
+        // hint for inner dimension. Must divide total_memory.
+        const int inner_dimension;
+
+        mutable bool allocated_cpu;
+        mutable bool cpu_fresh;
+        mutable R* cpu_ptr;
+
+        void to_cpu() const;
+        bool prefers_cpu() const;
+        bool prefers_gpu() const;
 
         SynchronizedMemory& operator=(const SynchronizedMemory&) = delete;
 
-        SynchronizedMemory(mshadow::Shape<dimension> dim, PreferredDevice preferred_device = default_preferred_device);
+        SynchronizedMemory(int total_size,
+                           int inner_dimension = 1,
+                           Device preferred_device = default_preferred_device);
         // inherits preferred device and copies memory to it.
         SynchronizedMemory(const SynchronizedMemory& other);
         ~SynchronizedMemory();
 
-        unsigned int number_of_elements() const;
+        R* cpu_data() const;
+        R* mutable_cpu_data();
 
-        mshadow::Shape<dimension> shape() const;
+    private:
+        mshadow::Tensor<mshadow::cpu, 2, R> dummy_cpu() const;
+        // only used by copy constructor.
+        template<typename SourceType>
+        void copy_data_from(SourceType& src);
 #ifdef DALI_USE_CUDA
-
     public:
-        mutable bool allocated_gpu_;
-        bool allocated_gpu() const;
-        virtual void to_gpu() const override;
-        typedef mshadow::Tensor<mshadow::gpu, dimension, R> gpu_tensor_t;
+        mutable bool gpu_fresh;
+        mutable bool allocated_gpu;
+        mutable R* gpu_ptr;
 
-        mutable gpu_tensor_t mem_gpu;
-        const gpu_tensor_t&   gpu_data() const;
-        gpu_tensor_t&       mutable_gpu_data();
+        void to_gpu() const;
+        // tie-breaker for operations involving multiple tensors
+        // on mixed devices.
+        static Device tie_breaker_device;
+
+        R* gpu_data() const;
+        R* mutable_gpu_data();
+    private:
+        mshadow::Tensor<mshadow::gpu, 2, R> dummy_gpu() const;
 #endif
+
 };
 
+
 #endif
+
+
+

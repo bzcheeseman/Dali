@@ -1,5 +1,7 @@
 #ifndef DALI_UTILS_RANDOM_H
 #define DALI_UTILS_RANDOM_H
+
+#include <algorithm>
 #include <random>
 #include <vector>
 #include "dali/utils/assert2.h"

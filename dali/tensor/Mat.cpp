@@ -78,7 +78,7 @@ R& Mat<R>::dw(int i, int j) {
 template<typename R>
 const vector<dim_t>& Mat<R>::dims() const {
     if (m != nullptr) {
-        auto shape = m->shape().shape_;
+        auto shape = m->shape.shape_;
         return std::vector<dim_t>(shape, shape + 2);
     }
     return mat_missing_dimensions;
@@ -87,7 +87,7 @@ const vector<dim_t>& Mat<R>::dims() const {
 template<typename R>
 dim_t Mat<R>::dims(int idx) const {
     if (m != nullptr)
-        return m->shape()[idx];
+        return m->shape[idx];
     return (dim_t) 0;
 }
 

@@ -77,13 +77,13 @@ namespace matops {
         );
         int offset = 0;
         int col, row;
-        auto& out_data = out.w().mutable_cpu_data();
+        auto out_data = out.w().mutable_cpu_data();
 
         for (row = 0; row < n; row++) {
             offset = 0;
             for (auto& mat : matrices) {
                 const int col_size = mat.dims(1);
-                const auto& mat_data = mat.w().cpu_data();
+                const auto mat_data = mat.w().cpu_data();
                 for (col = 0; col < col_size; col++) {
                     *(out_data.dptr_ + (out_data.stride_ * row) + (col + offset)) = *(mat_data.dptr_ + (mat_data.stride_ * row) + col);
                 }
@@ -94,13 +94,13 @@ namespace matops {
         if (graph::backprop_enabled)
             graph::emplace_back([matrices, out, n]() mutable {
                 int offset = 0;
-                auto& out_data = out.dw().cpu_data();
+                auto out_data = out.dw().cpu_data();
                 int row, col;
                 for (row = 0; row < n; row++) {
                     offset = 0;
                     for (auto& mat : matrices) {
                         const int col_size = mat.dims(1);
-                        auto& mat_data = mat.dw().mutable_cpu_data();
+                        auto mat_data = mat.dw().mutable_cpu_data();
                         for (col = 0; col < col_size; col++) {
                             *(mat_data.dptr_ + (mat_data.stride_ * row) + col ) += *(out_data.dptr_ + (out_data.stride_ * row) + (col + offset));
                         }

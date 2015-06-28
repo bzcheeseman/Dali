@@ -41,32 +41,11 @@ void dali_init() {
     #endif
 }
 
-bool MemoryMover::prefers_cpu() const {
-    return preferred_device == DEVICE_CPU;
-}
-
-bool MemoryMover::prefers_gpu() const {
-    return preferred_device == DEVICE_GPU;
-}
-
-#ifdef DALI_USE_CUDA
-    MemoryMover::MemoryMover(bool _cpu_fresh, bool _gpu_fresh, PreferredDevice _preferred_device) :
-            cpu_fresh(_cpu_fresh), gpu_fresh(_gpu_fresh), preferred_device(_preferred_device) {
-    }
-#else
-    MemoryMover::MemoryMover(bool _cpu_fresh, PreferredDevice _preferred_device) :
-            cpu_fresh(_cpu_fresh), preferred_device(_preferred_device) {
-    }
-#endif
-
-#ifdef DALI_USE_CUDA
-    PreferredDevice MemoryMover::tie_breaker_device = DEVICE_GPU;
-#endif
-
 
 /**** SHOULD COMPUTE GPU-land **/
 
-bool should_compute_on_gpu(const std::vector<const MemoryMover*>& sts) {
+template<typename R>
+bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<R>*>& sts) {
 
 #ifdef DALI_USE_CUDA
     if (sts.size() == 1) {
@@ -91,117 +70,108 @@ bool should_compute_on_gpu(const std::vector<const MemoryMover*>& sts) {
 #endif
 }
 
+template bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<float>*>& sts);
+template bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<double>*>& sts);
+
 /******************* SYNCHRONIZED MEMORY ************************************************/
 
-
-template<typename R, int dimension>
-SynchronizedMemory<R, dimension>::SynchronizedMemory(mshadow::Shape<dimension> dim, PreferredDevice _preferred_device) :
-#ifdef DALI_USE_CUDA
-    MemoryMover(false, false, _preferred_device),
-#else
-    MemoryMover(false, _preferred_device),
-#endif
-#ifdef DALI_USE_CUDA
-    mem_gpu(dim),
-    allocated_gpu_(false),
-#endif
-    allocated_cpu_(false),
-    mem_cpu(dim) {
+template<typename R>
+bool SynchronizedMemory<R>::prefers_cpu() const {
+    return preferred_device == DEVICE_CPU;
 }
 
-template<typename R, int dimension>
-SynchronizedMemory<R,dimension>::SynchronizedMemory(const SynchronizedMemory& other) :
+template<typename R>
+bool SynchronizedMemory<R>::prefers_gpu()  const {
+    return preferred_device == DEVICE_GPU;
+}
+
 #ifdef DALI_USE_CUDA
-    MemoryMover(false, false, other.preferred_device),
-#else
-    MemoryMover(false, other.preferred_device),
+    template<typename R>
+    Device SynchronizedMemory<R>::tie_breaker_device = DEVICE_GPU;
 #endif
+
+template<typename R>
+SynchronizedMemory<R>::SynchronizedMemory(int _total_memory,
+                                          int _inner_dimension,
+                                          Device _preferred_device) :
 #ifdef DALI_USE_CUDA
-        allocated_gpu_(false),
-        mem_gpu(other.mem_gpu.shape_),
+        gpu_fresh(false);
+        allocated_gpu(false),
+        gpu_ptr(NULL),
 #endif
-        allocated_cpu_(false),
-        mem_cpu(other.mem_cpu.shape_) {
+        cpu_fresh(false),
+        allocated_cpu(false),
+        cpu_ptr(NULL),
+        total_memory(_total_memory),
+        inner_dimension(_inner_dimension),
+        preferred_device(_preferred_device) {
+    assert(total_memory % inner_dimension == 0);
+}
+
+template<typename R>
+SynchronizedMemory<R>::SynchronizedMemory(const SynchronizedMemory& other) :
+        SynchronizedMemory(other.total_memory, other.inner_dimension, other.preferred_device) {
     if (other.cpu_fresh) {
-        const auto& data_source = other.cpu_data();
+        const auto& data_source = other.dummy_cpu();
         copy_data_from(data_source);
+    }
 #ifdef DALI_USE_CUDA
-    } else if (other.gpu_fresh) {
-        const auto& data_source = other.gpu_data();
+    else if (other.gpu_fresh) {
+        const auto& data_source = other.dummy_gpu();
         copy_data_from(data_source);
+    }
 #endif
-    } else {
+    else {
         // data was not initialized on the source
         // so we also choose not to initialize.
         return;
     }
 }
 
-template<typename R, int dimension>
-unsigned int SynchronizedMemory<R,dimension>::number_of_elements() const {
-    unsigned int dim = 1;
-    for (int i = 0; i < dimension;i++) {
-        dim *= mem_cpu.shape_.shape_[i];
+
+template<typename R>
+SynchronizedMemory<R>::~SynchronizedMemory() {
+    if (allocated_cpu) {
+        auto dummy = dummy_cpu();
+        FreeSpace(&dummy);
+        cpu_ptr = dummy.dptr_;
     }
-    return dim;
-}
-
-template<typename R, int dimension>
-mshadow::Shape<dimension> SynchronizedMemory<R,dimension>::shape() const {
-    return mem_cpu.shape_;
-}
-
-
-template<typename R, int dimension>
-SynchronizedMemory<R,dimension>::~SynchronizedMemory() {
-    if (allocated_cpu_)
-        FreeSpace(&mem_cpu);
 #ifdef DALI_USE_CUDA
-    if (allocated_gpu_) {
-        FreeSpace(&mem_gpu);
+    if (allocated_gpu) {
+        auto dummy = dummy_gpu();
+        FreeSpace(&dummy);
+        gpu_ptr = dummy.dptr_;
     }
 #endif
 }
 
-template<typename R, int dimension>
-const typename SynchronizedMemory<R,dimension>::cpu_tensor_t & SynchronizedMemory<R,dimension>::cpu_data() const {
-    to_cpu();
-    return mem_cpu;
-}
-
-template<typename R, int dimension>
-typename SynchronizedMemory<R,dimension>::cpu_tensor_t & SynchronizedMemory<R,dimension>::mutable_cpu_data() {
-    to_cpu();
 #ifdef DALI_USE_CUDA
-    this->gpu_fresh = false;
-#endif
-    return mem_cpu;
+template<typename R>
+mshadow::Tensor<mshadow::gpu, 2, R> SynchronizedMemory<R>::dummy_gpu() const {
+    return mshadow::Tensor<mshadow::gpu, 2, R>(gpu_ptr, mshadow::Shape2(
+            total_memory / inner_dimension, inner_dimension));
 }
-
-#ifdef DALI_USE_CUDA
-    template<typename R, int dimension>
-    const Tensor<mshadow::gpu, dimension, R>& SynchronizedMemory<R,dimension>::gpu_data() const {
-        to_gpu();
-        return mem_gpu;
-    }
-
-    template<typename R, int dimension>
-    Tensor<mshadow::gpu, dimension, R>& SynchronizedMemory<R,dimension>::mutable_gpu_data() {
-        to_gpu();
-        this->cpu_fresh = false;
-        return mem_gpu;
-    }
 #endif
 
+template<typename R>
+mshadow::Tensor<mshadow::cpu, 2, R> SynchronizedMemory<R>::dummy_cpu() const {
+     return mshadow::Tensor<mshadow::cpu, 2, R>(cpu_ptr, mshadow::Shape2(
+            total_memory / inner_dimension, inner_dimension));
+}
+
 #ifdef DALI_USE_CUDA
-    template<typename R, int dimension>
-    void SynchronizedMemory<R,dimension>::to_gpu() const {
+    template<typename R>
+    void SynchronizedMemory<R>::to_gpu() const {
         if (!this->gpu_fresh) {
-            if (!allocated_gpu_) {
-                AllocSpace(&mem_gpu, false);
-                allocated_gpu_ = true;
+            if (!allocated_gpu) {
+                auto dummy = dummy_gpu();
+                AllocSpace(&dummy, false);
+                allocated_gpu = true;
+                gpu_ptr = dummy.dptr_;
             }
             if (this->cpu_fresh) {
+                auto mem_gpu = dummy_gpu();
+                auto mem_cpu = dummy_cpu();
                 Copy(mem_gpu, mem_cpu);
             }
             this->gpu_fresh = true;
@@ -209,15 +179,19 @@ typename SynchronizedMemory<R,dimension>::cpu_tensor_t & SynchronizedMemory<R,di
     }
 #endif
 
-template<typename R, int dimension>
-void SynchronizedMemory<R,dimension>::to_cpu() const {
+template<typename R>
+void SynchronizedMemory<R>::to_cpu() const {
     if (!this->cpu_fresh) {
-        if (!allocated_cpu_) {
-            AllocSpace(&mem_cpu, false);
-            allocated_cpu_ = true;
+        if (!allocated_cpu) {
+            auto dummy = dummy_cpu();
+            AllocSpace(&dummy, false);
+            allocated_cpu = true;
+            cpu_ptr = dummy.dptr_;
         }
 #ifdef DALI_USE_CUDA
         if (this->gpu_fresh) {
+            auto mem_gpu = dummy_gpu();
+            auto mem_cpu = dummy_cpu();
             Copy(mem_cpu, mem_gpu);
         }
 #endif
@@ -225,52 +199,59 @@ void SynchronizedMemory<R,dimension>::to_cpu() const {
     }
 }
 
-template<typename R, int dimension>
-bool SynchronizedMemory<R, dimension>::allocated_cpu() const {
-    return allocated_cpu_;
+template <typename R>
+R* SynchronizedMemory<R>::cpu_data() const {
+    to_cpu();
+    return cpu_ptr;
 }
+template <typename R>
+R* SynchronizedMemory<R>::mutable_cpu_data() {
+    to_cpu();
+    #ifdef DALI_USE_CUDA
+        gpu_fresh = false;
+    #endif;
+    return cpu_ptr;
+}
+
+
 #ifdef DALI_USE_CUDA
-template<typename R, int dimension>
-bool SynchronizedMemory<R, dimension>::allocated_gpu() const {
-    return allocated_gpu_;
+template <typename R>
+R* SynchronizedMemory<R>::gpu_data() const {
+    to_gpu();
+    return gpu_ptr;
 }
+template <typename R>
+R* SynchronizedMemory<R>::mutable_gpu_data() {
+    to_gpu();
+    cpu_fresh = false;
+    return gpu_ptr;
+}
+
 #endif
 
-template<typename R, int dimension>
+template<typename R>
 template<typename SourceType>
-void SynchronizedMemory<R,dimension>::copy_data_from(SourceType& data_source) {
+void SynchronizedMemory<R>::copy_data_from(SourceType& data_source) {
     if (this->prefers_cpu()) {
-        AllocSpace(&mem_cpu, false);
-        allocated_cpu_ = true;
-        Copy(mem_cpu, data_source);
+        auto my_data = dummy_cpu();
+        AllocSpace(&my_data, false);
+        cpu_ptr = my_data.dptr_;
+        allocated_cpu = true;
+
+        Copy(my_data, data_source);
         this->cpu_fresh = true;
     } else {
 #ifdef DALI_USE_CUDA
-        AllocSpace(&mem_gpu, false);
-        allocated_gpu_ = true;
-        Copy(mem_gpu, data_source);
+        auto my_data = dummy_gpu();
+        AllocSpace(&my_data, false);
+        gpu_ptr = my_data.dptr_;
+        allocated_gpu = true;
+
+        Copy(my_data, data_source);
         this->gpu_fresh = true;
 #endif
     }
 }
 
-template class SynchronizedMemory<float, 1>;
-template class SynchronizedMemory<double,1>;
-template class SynchronizedMemory<float, 2>;
-template class SynchronizedMemory<double,2>;
-// template class SynchronizedMemory<float, 3>;
-// template class SynchronizedMemory<double,3>;
-// template class SynchronizedMemory<float, 4>;
-// template class SynchronizedMemory<double,4>;
-// template class SynchronizedMemory<float, 5>;
-// template class SynchronizedMemory<double,5>;
-// template class SynchronizedMemory<float, 6>;
-// template class SynchronizedMemory<double,6>;
-// template class SynchronizedMemory<float, 7>;
-// template class SynchronizedMemory<double,7>;
-// template class SynchronizedMemory<float, 8>;
-// template class SynchronizedMemory<double,8>;
-// template class SynchronizedMemory<float, 9>;
-// template class SynchronizedMemory<double,9>;
-
-
+template class SynchronizedMemory<float>;
+template class SynchronizedMemory<double>;

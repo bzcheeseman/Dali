@@ -30,7 +30,7 @@
 /* CUDA UTILS START HERE */
 namespace TensorOps {
     template<typename R, int ndims>
-    thrust::device_ptr<R> to_thrust(const mshadow::Tensor<mshadow::gpu, ndims, R>& tg) {
+    thrust::device_ptr<R> to_thrust(const mshadow::Tensor<mshadow::gpu, ndims, R> tg) {
         auto dev_ptr = thrust::device_pointer_cast(tg.dptr_);
         return dev_ptr;
     }
@@ -68,19 +68,19 @@ namespace TensorOps {
     namespace comparison {
         #ifdef DALI_USE_CUDA
         template<int ndims, typename R>
-        bool equals(const mshadow::Tensor<gpu, ndims, R>& a, const mshadow::Tensor<gpu, ndims, R>& b, int num_elts) {
+        bool equals(const mshadow::Tensor<gpu, ndims, R> a, const mshadow::Tensor<gpu, ndims, R> b, int num_elts) {
             return thrust::equal(to_thrust(a), to_thrust(a) + num_elts, to_thrust(b));
         }
         #endif
         template<int ndims, typename R>
-        bool equals(const mshadow::Tensor<cpu, ndims, R>& a, const mshadow::Tensor<cpu, ndims, R>& b, int num_elts) {
+        bool equals(const mshadow::Tensor<cpu, ndims, R> a, const mshadow::Tensor<cpu, ndims, R> b, int num_elts) {
             return std::equal(a.dptr_, a.dptr_ + num_elts, b.dptr_);
         }
 
 
         #ifdef DALI_USE_CUDA
         template<int ndims, typename R>
-        bool allclose(const mshadow::Tensor<gpu, ndims, R>& a, const mshadow::Tensor<gpu, ndims, R>& b, int num_elts, R tol) {
+        bool allclose(const mshadow::Tensor<gpu, ndims, R> a, const mshadow::Tensor<gpu, ndims, R> b, int num_elts, R tol) {
             return thrust::equal(to_thrust(a),
                                  to_thrust(a) + num_elts,
                                  to_thrust(b),
@@ -88,7 +88,7 @@ namespace TensorOps {
         }
         #endif
         template<int ndims, typename R>
-        bool allclose(const mshadow::Tensor<cpu, ndims, R>& a, const mshadow::Tensor<cpu, ndims, R>& b, int num_elts, R tol) {
+        bool allclose(const mshadow::Tensor<cpu, ndims, R> a, const mshadow::Tensor<cpu, ndims, R> b, int num_elts, R tol) {
             return std::equal(a.dptr_, a.dptr_ + num_elts, b.dptr_,
             [tol](const R & lhs, const R & rhs) {
                 return std::fabs(lhs - rhs) < tol;
@@ -98,13 +98,13 @@ namespace TensorOps {
 
     #ifdef DALI_USE_CUDA
     template<int ndims, typename R>
-    R sum(const mshadow::Tensor<gpu, ndims, R>& a, int num_elts) {
+    R sum(const mshadow::Tensor<gpu, ndims, R> a, int num_elts) {
         return thrust::reduce(to_thrust(a), to_thrust(a) + num_elts, 0.0, thrust::plus<R>());
     }
     #endif
 
     template<int ndims, typename R>
-    R sum(const mshadow::Tensor<cpu, ndims, R>& a, int num_elts) {
+    R sum(const mshadow::Tensor<cpu, ndims, R> a, int num_elts) {
         return std::accumulate(a.dptr_, a.dptr_ + num_elts, 0.0);
     }
 
@@ -119,7 +119,7 @@ namespace TensorOps {
     };
 
     template<int ndims, typename R>
-    R L2_norm(const mshadow::Tensor<gpu, ndims, R>& a, int num_elts) {
+    R L2_norm(const mshadow::Tensor<gpu, ndims, R> a, int num_elts) {
         return std::sqrt(thrust::transform_reduce(to_thrust(a), to_thrust(a) + num_elts, thrust_square<R>(), 0.0, thrust::plus<R>()));
     }
     #endif
@@ -189,15 +189,15 @@ namespace TensorOps {
 
         // declare this operation exists for every dimension (then specialize)
         template <typename R, int dimension>
-        std::vector<int> argmin(const mshadow::Tensor<gpu, dimension, R>& A);
+        std::vector<int> argmin(const mshadow::Tensor<gpu, dimension, R> A);
         // declare this operation exists for every dimension (then specialize)
         template <typename R, int dimension>
-        std::vector<int> argmax(const mshadow::Tensor<gpu, dimension, R>& A);
+        std::vector<int> argmax(const mshadow::Tensor<gpu, dimension, R> A);
 
         // specialize for kernel
         #define THRUST_KERNEL_ROWWISE_FROM_2D_MSHADOW( kernel_name, fname ) \
             template <typename R> \
-            std::vector<int> fname (const mshadow::Tensor<gpu, 2, R>& A, int reduce_dim) { \
+            std::vector<int> fname (const mshadow::Tensor<gpu, 2, R> A, int reduce_dim) { \
                 int num_rows = A.shape_[0]; \
                 int num_cols = A.shape_[1]; \
                 if (reduce_dim == 0) {\
@@ -243,7 +243,7 @@ namespace TensorOps {
         THRUST_KERNEL_ROWWISE_FROM_2D_MSHADOW( argmax_op, argmax )
 
         template <typename R, int dimension>
-        std::vector<int> argsort(const mshadow::Tensor<gpu, dimension, R>& A, int num_elts) {
+        std::vector<int> argsort(const mshadow::Tensor<gpu, dimension, R> A, int num_elts) {
             thrust::device_vector<int> arguments(num_elts);
             thrust::device_vector<R> values(num_elts);
             // initialize ordering data:
@@ -272,7 +272,7 @@ namespace TensorOps {
 
         #define THRUST_KERNEL_ROWWISE_FROM_1D_MSHADOW( thrust_op_name, fname ) \
             template <typename R> \
-            std::vector<int> fname (const mshadow::Tensor<gpu, 1, R>& A, int reduce_dim) { \
+            std::vector<int> fname (const mshadow::Tensor<gpu, 1, R> A, int reduce_dim) { \
                 auto start = to_thrust(A);\
                 return fname ( start, A.shape_[0] );\
             }
@@ -286,7 +286,7 @@ namespace TensorOps {
         #endif
 
         template <typename R, int dimension>
-        std::vector<int> argsort(const mshadow::Tensor<cpu, dimension, R>& A, int num_elts) {
+        std::vector<int> argsort(const mshadow::Tensor<cpu, dimension, R> A, int num_elts) {
             std::vector<int> arguments(num_elts);
             // initialize ordering data:
             for (int i=0;i<num_elts;i++)
@@ -302,15 +302,15 @@ namespace TensorOps {
 
         // declare this operation exists for every dimension (then specialize)
         template <typename R, int dimension>
-        std::vector<int> argmin(const mshadow::Tensor<cpu, dimension, R>& A, int reduce_dim);
+        std::vector<int> argmin(const mshadow::Tensor<cpu, dimension, R> A, int reduce_dim);
 
         // declare this operation exists for every dimension (then specialize)
         template <typename R, int dimension>
-        std::vector<int> argmax(const mshadow::Tensor<cpu, dimension, R>& A, int reduce_dim);
+        std::vector<int> argmax(const mshadow::Tensor<cpu, dimension, R> A, int reduce_dim);
 
         #define CPU_KERNEL_ROWWISE_FROM_2D_MSHADOW( fname , opsymbol ) \
             template <typename R> \
-            std::vector<int> fname (const mshadow::Tensor<cpu, 2, R>& A, int reduce_dim) {\
+            std::vector<int> fname (const mshadow::Tensor<cpu, 2, R> A, int reduce_dim) {\
                 const int num_rows = A.shape_[0];\
                 const int num_cols = A.shape_[1];\
                 if (reduce_dim == 1) {\
@@ -355,7 +355,7 @@ namespace TensorOps {
 
         #define CPU_KERNEL_ROWWISE_FROM_1D_MSHADOW( fname ) \
             template <typename R>\
-            std::vector<int> fname (const mshadow::Tensor<cpu, 1, R>& A, int reduce_dim) { \
+            std::vector<int> fname (const mshadow::Tensor<cpu, 1, R> A, int reduce_dim) { \
                 return fname (A.dptr_ , A.shape_[0] );\
             }
 
@@ -377,12 +377,12 @@ namespace TensorOps {
     };
 
     template<int ndims, typename R>
-    R L2_norm(const mshadow::Tensor<cpu, ndims, R>& a, int num_elts) {
+    R L2_norm(const mshadow::Tensor<cpu, ndims, R> a, int num_elts) {
         return std::sqrt(std::accumulate(a.dptr_, a.dptr_ + num_elts, 0.0, thrust_square_reduce<R>()));
     }
 
     template<int ndims, typename R>
-    void eye(mshadow::Tensor<cpu,ndims,R>& tc, R diag) {
+    void eye(mshadow::Tensor<cpu,ndims,R> tc, R diag) {
         if (tc.shape_[0] != tc.shape_[1]) {
             throw std::runtime_error("Identity initialization must be called on a square matrix.");
         }
@@ -403,7 +403,7 @@ namespace TensorOps {
     };
 
     template<int ndims, typename R>
-    void eye(mshadow::Tensor<gpu,ndims,R>& tg, R diag) {
+    void eye(mshadow::Tensor<gpu,ndims,R> tg, R diag) {
         if (tg.shape_[0] != tg.shape_[1]) {
             throw std::runtime_error("Identity initialization must be called on a square matrix.");
         }
@@ -632,7 +632,7 @@ namespace TensorOps {
         };
 
         template<int ndims, typename R, template <typename,int,typename> class tensor_t>
-        void uniform(tensor_t<mshadow::gpu, ndims, R>& A, R lower, R upper) {
+        void uniform(tensor_t<mshadow::gpu, ndims, R> A, R lower, R upper) {
             // about 63x faster than SampleUniform for gpu
             thrust::transform(
                     thrust::make_counting_iterator(0),
@@ -644,27 +644,28 @@ namespace TensorOps {
         #endif
 
         template<int ndims, typename R, template <typename,int,typename> class tensor_t>
-        void uniform(tensor_t<mshadow::cpu, ndims, R>& t, R lower, R upper) {
+        void uniform(tensor_t<mshadow::cpu, ndims, R> t, R lower, R upper) {
             // std::random_device rd;
             mshadow::Random<mshadow::cpu, R> generator(utils::randint(0,999999));
+
             generator.SampleUniform(&t, lower, upper);
         }
 
         template<typename Device, int ndims, typename R, template <typename,int,typename> class tensor_t>
-        void gaussian(tensor_t<Device, ndims, R>& t, R mean, R std) {
+        void gaussian(tensor_t<Device, ndims, R> t, R mean, R std) {
             // std::random_device rd;
             mshadow::Random<Device, R> generator(utils::randint(0,999999));
             generator.SampleGaussian(&t, mean, std);
         }
 
         template<typename Device, int ndims, typename R, template <typename,int,typename> class tensor_t>
-        void bernoulli(tensor_t<Device, ndims, R>& t, R prob) {
+        void bernoulli(tensor_t<Device, ndims, R> t, R prob) {
             random::uniform(t, (R)0.0, (R)1.0);
             t = mshadow::expr::F<op::threshold<R>>(t, prob);
         }
 
         template<typename Device, int ndims, typename R, template <typename,int,typename> class tensor_t>
-        void bernoulli_normalized(tensor_t<Device, ndims, R>& t, R prob) {
+        void bernoulli_normalized(tensor_t<Device, ndims, R> t, R prob) {
             random::uniform(t, (R)0.0, (R)1.0);
             t = mshadow::expr::F<op::threshold<R>>(t, prob) * (1.0 / prob);
         }

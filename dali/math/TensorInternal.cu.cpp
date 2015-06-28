@@ -1,7 +1,15 @@
 #include "dali/math/TensorInternal.h"
+
 #include "dali/math/TensorOps.h"
 #include "dali/math/LazyTensor.h"
 #include "dali/utils/core_utils.h"
+
+
+template<typename R, int dimension>
+TensorInternal<R,dimension>::TensorInternal(mshadow::Shape<dimension> _shape) :
+        shape(_shape) {
+    memory = std::make_shared<SynchronizedMemory<R>>(shape.Size(), shape[dimension - 1]);
+}
 
 template<typename R, int dimension>
 R TensorInternal<R, dimension>::sum() const {
@@ -207,6 +215,34 @@ TensorInternal<R,dimension> TensorInternal<R, dimension>::zeros(mshadow::Shape<d
     tensor.clear();
     return tensor;
 }
+
+template<typename R, int dimension>
+const typename TensorInternal<R,dimension>::cpu_tensor_t TensorInternal<R,dimension>::cpu_data() const {
+    return cpu_tensor_t(memory->cpu_data(), shape);
+}
+
+template<typename R, int dimension>
+typename TensorInternal<R,dimension>::cpu_tensor_t TensorInternal<R,dimension>::mutable_cpu_data() {
+    return cpu_tensor_t(memory->mutable_cpu_data(), shape);
+}
+
+#ifdef DALI_USE_CUDA
+    template<typename R, int dimension>
+    const typename TensorInternal<R,dimension>::gpu_tensor_t TensorInternal<R,dimension>::gpu_data() const {
+        return gpu_tensor_t(memory->gpu_data(, shape);
+    }
+
+    template<typename R, int dimension>
+    typename TensorInternal<R,dimension>::gpu_tensor_t TensorInternal<R,dimension>::mutable_gpu_data() {
+        return gpu_tensor_t(memory->mutable_gpu_data(), shape);
+    }
+#endif
+
+template<typename R, int dimension>
+int TensorInternal<R,dimension>::number_of_elements() const {
+    return shape.Size();
+}
+
 
 template class TensorInternal<float, 1>;
 template class TensorInternal<double,1>;

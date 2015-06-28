@@ -21,8 +21,6 @@
             mshadow::expr::type::kComplex> {
         auto cpu_dot = dot(left.left, right.left);
         auto gpu_dot = dot(left.right, right.right);
-        auto joined_sts = decltype(left.sync_tensors)(left.sync_tensors);
-        joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end());
         auto joined_dts = decltype(left.dependent_tensors)(left.dependent_tensors);
         joined_dts.insert(joined_dts.end(), right.dependent_tensors.begin(), right.dependent_tensors.end());
         return LazyTensor<
@@ -33,7 +31,6 @@
             mshadow::expr::type::kComplex>(
                 cpu_dot,
                 gpu_dot,
-                joined_sts,
                 joined_dts
             );
     }
@@ -47,8 +44,6 @@
             extract_tensor_arguments<decltype(dot(left.left, right.left))>::dimension,
             mshadow::expr::type::kComplex> {
         auto cpu_dot = dot(left.left, right.left);
-        auto joined_sts = decltype(left.sync_tensors)(left.sync_tensors);
-        joined_sts.insert(joined_sts.end(), right.sync_tensors.begin(), right.sync_tensors.end());
         auto joined_dts = decltype(left.dependent_tensors)(left.dependent_tensors);
         joined_dts.insert(joined_dts.end(), right.dependent_tensors.begin(), right.dependent_tensors.end());
         return LazyTensor<
@@ -57,7 +52,6 @@
             extract_tensor_arguments<decltype(cpu_dot)>::dimension,
             mshadow::expr::type::kComplex>(
                 cpu_dot,
-                joined_sts,
                 joined_dts
             );
     }

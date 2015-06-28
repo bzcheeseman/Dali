@@ -9,7 +9,6 @@
 using std::vector;
 using std::make_shared;
 
-#define DONT_COMPILE
 
 namespace matops {
 

@@ -10,8 +10,6 @@ using utils::MS;
 using std::vector;
 using namespace TensorOps;
 
-#define DONT_COMPILE
-
 namespace matops {
     template<typename R>
     Mat<R> Binary<R>::eltmul_broadcast(

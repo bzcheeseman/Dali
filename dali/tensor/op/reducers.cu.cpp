@@ -4,9 +4,6 @@
 #include "dali/math/TensorOps.h"
 #include "dali/math/LazyTensor.h"
 
-#define DONT_COMPILE
-
-
 namespace matops {
 
     template<typename R>

@@ -73,7 +73,7 @@ void print_buffer(T* buffer, int num, int highlight) {
                       << std::setprecision( 3 ) // use 3 decimals
                       << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
                       << buffer[i] << utils::reset_color;
-        } else {
+        } else {
             std::cout << std::setw( 7 ) // keep 7 digits
                       << std::setprecision( 3 ) // use 3 decimals
                       << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
@@ -1098,9 +1098,10 @@ TEST_F(MatOpsTests, DISABLED_vector_softmax) {
         ASSERT_TRUE(gradient_same(functor, {matrices}, 1e-4));
     }
 }
-/*
+
 typedef MemorySafeTest LayerTests;
 
+/*
 TEST_F(LayerTests, layer_tanh_gradient) {
     int num_examples = 10;
     int hidden_size = 10;
@@ -1117,6 +1118,7 @@ TEST_F(LayerTests, layer_tanh_gradient) {
         ASSERT_TRUE(gradient_same(functor, params, 0.0003));
     }
 }
+
 
 TEST_F(LayerTests, BroadcastMultiply) {
 

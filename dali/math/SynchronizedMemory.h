@@ -25,7 +25,7 @@ enum Device {
 template<typename R> class SynchronizedMemory;
 
 template<typename R>
-bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<R>*>& sts);
+bool should_compute_on_gpu(std::vector<SynchronizedMemory<R>*> sts);
 
 #ifdef DALI_USE_CUDA
     static const Device default_preferred_device = DEVICE_GPU;

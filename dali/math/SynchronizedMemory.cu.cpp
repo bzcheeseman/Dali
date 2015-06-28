@@ -45,7 +45,7 @@ void dali_init() {
 /**** SHOULD COMPUTE GPU-land **/
 
 template<typename R>
-bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<R>*>& sts) {
+bool should_compute_on_gpu(const std::vector<SynchronizedMemory<R>*>& sts) {
 
 #ifdef DALI_USE_CUDA
     if (sts.size() == 1) {
@@ -63,15 +63,15 @@ bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<R>*>& sts)
     } else if (everybody_gpu) {
         return true;
     } else {
-        return MemoryMover::tie_breaker_device == DEVICE_GPU;
+        return SynchronizedMemory<R>::tie_breaker_device == DEVICE_GPU;
     }
 #else
     return false;
 #endif
 }
 
-template bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<float>*>& sts);
-template bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<double>*>& sts);
+template bool should_compute_on_gpu(const std::vector<SynchronizedMemory<float>*>& sts);
+template bool should_compute_on_gpu(const std::vector<SynchronizedMemory<double>*>& sts);
 
 /******************* SYNCHRONIZED MEMORY ************************************************/
 
@@ -95,7 +95,7 @@ SynchronizedMemory<R>::SynchronizedMemory(int _total_memory,
                                           int _inner_dimension,
                                           Device _preferred_device) :
 #ifdef DALI_USE_CUDA
-        gpu_fresh(false);
+        gpu_fresh(false),
         allocated_gpu(false),
         gpu_ptr(NULL),
 #endif

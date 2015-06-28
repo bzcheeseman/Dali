@@ -103,7 +103,7 @@ class LazyTensor : public DormantTensor<DType> {
                 }
                 #ifdef DALI_USE_CUDA
                 else if (where_to_update == DEVICE_GPU) {
-                    gpu_tensor_t * bjarne_stop = (cpu_tensor_t*)&left;
+                    gpu_tensor_t * bjarne_stop = (gpu_tensor_t*)&right;
                     *bjarne_stop = gpu_tensor_t(this->source->gpu_data(), source_shape);
                 }
                 #endif

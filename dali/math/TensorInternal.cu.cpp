@@ -4,6 +4,7 @@
 #include "dali/math/LazyTensor.h"
 #include "dali/utils/core_utils.h"
 
+using std::vector;
 
 template<typename R, int dimension>
 TensorInternal<R,dimension>::TensorInternal(mshadow::Shape<dimension> _shape) :
@@ -134,7 +135,7 @@ R TensorInternal<R, dimension>::L2_norm() const {
 template<typename R, int dimension>
 bool TensorInternal<R,dimension>::operator==(const TensorInternal<R,dimension>& other) const {
     #ifdef DALI_USE_CUDA
-        if (should_compute_on_gpu({this, &other})) {
+        if (should_compute_on_gpu(vector<SynchronizedMemory<R>*>({memory.get(), other.memory.get()}))) {
             return TensorOps::comparison::equals(this->gpu_data(), other.gpu_data(), this->number_of_elements());
         }
     #endif
@@ -144,7 +145,7 @@ bool TensorInternal<R,dimension>::operator==(const TensorInternal<R,dimension>& 
 template<typename R, int dimension>
 bool TensorInternal<R,dimension>::allclose(const TensorInternal<R,dimension>& other, R tol) const {
     #ifdef DALI_USE_CUDA
-        if (should_compute_on_gpu({this, &other})) {
+        if (should_compute_on_gpu(vector<SynchronizedMemory<R>*>({memory.get(), other.memory.get()}))) {
             return TensorOps::comparison::allclose(this->gpu_data(), other.gpu_data(), this->number_of_elements(), tol);
         }
     #endif
@@ -164,7 +165,7 @@ TensorInternal<R,dimension>::operator lazy_t() const {
 template<typename R, int dimension>
 bool TensorInternal<R, dimension>::compute_me_on_gpu() const {
     #ifdef DALI_USE_CUDA
-        if (should_compute_on_gpu({this})) {
+        if (should_compute_on_gpu(vector<SynchronizedMemory<R>*>({memory.get()}))) {
             return true;
         }
     #endif

@@ -10,6 +10,7 @@
 #include <string>
 #include <chrono>
 #include <memory>
+#include <vector>
 #include <thread>
 
 // Defines mathematical operations on Synchronized Memory
@@ -24,7 +25,7 @@ class TensorInternal;
     #define DALI_SYNC_TENSOR_ASSIGN_OP(op_symbol) \
         template <typename TA, typename TB, int ta> \
         TensorInternal& operator op_symbol (const LazyTensor<TA, TB, R, dimension, ta>& expr) { \
-            if (should_compute_on_gpu(extact_memory(expr.dependent_tensors))) { \
+            if (should_compute_on_gpu(extract_memory(expr.dependent_tensors))) { \
                 /* refresh the gpu memory from cpu*/ \
                 for (auto participant : expr.dependent_tensors) { \
                     participant->update_tensor(DEVICE_GPU); \

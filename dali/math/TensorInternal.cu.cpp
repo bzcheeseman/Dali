@@ -7,8 +7,18 @@
 
 template<typename R, int dimension>
 TensorInternal<R,dimension>::TensorInternal(mshadow::Shape<dimension> _shape) :
-        shape(_shape) {
+        shape(_shape),
+        offset(0) {
     memory = std::make_shared<SynchronizedMemory<R>>(shape.Size(), shape[dimension - 1]);
+}
+
+template<typename R, int dimension>
+TensorInternal<R,dimension>::TensorInternal(mshadow::Shape<dimension> _shape,
+                                            std::shared_ptr<SynchronizedMemory<R>> _memory,
+                                            int _offset) :
+        shape(_shape),
+        memory(_memory),
+        offset(_offset) {
 }
 
 template<typename R, int dimension>
@@ -187,21 +197,37 @@ R* TensorInternal<R,dimension>::data() {
     return this->mutable_cpu_data().dptr_;
 }
 
-template<typename R, int dimension>
-void TensorInternal<R,dimension>::print() const {
-    const auto& data = this->cpu_data();
-    for (int i = 0; i < data.shape_[0] ; ++i) {
-        std::cout << (i == 0 ? "[" : " ");
-        for (int j = 0; j < data.shape_[1]; ++j) {
-            std::cout << std::fixed
-                      << std::setw( 7 ) // keep 7 digits
-                      << std::setprecision( 3 ) // use 3 decimals
-                      << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
-                      << (*this)(i, j) << " ";
-        }
-        std::cout << (i == data.shape_[0] - 1 ? "]" : "\n");
+template <> void TensorInternal<float, 1>::print(int indent) const {
+    std::cout << std::string(indent, ' ');
+    for(int i=0; i<shape[0]; ++i) {
+        std::cout << std::fixed
+                  << std::setw( 7 ) // keep 7 digits
+                  << std::setprecision( 3 ) // use 3 decimals
+                  << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
+                  << (*this)(i) << " ";
     }
     std::cout << std::endl;
+}
+template <> void TensorInternal<double, 1>::print(int indent) const {
+    std::cout << std::string(indent, ' ');
+    for(int i=0; i<shape[0]; ++i) {
+        std::cout << std::fixed
+                  << std::setw( 7 ) // keep 7 digits
+                  << std::setprecision( 3 ) // use 3 decimals
+                  << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
+                  << (*this)(i) << " ";
+    }
+    std::cout << std::endl;
+}
+
+
+template<typename R, int dimension>
+void TensorInternal<R,dimension>::print(int indent) const {
+    static_assert (dimension > 1, "Print called with wrong dimension.");
+    std::cout << std::string(indent, ' ') << "[" << std::endl;
+    for (int i=0; i < shape[0]; ++i)
+        (*this)[i].print(indent + 4);
+    std::cout << std::string(indent, ' ') <<"]" << std::endl;
 }
 
 template<typename R, int dimension>
@@ -218,29 +244,43 @@ TensorInternal<R,dimension> TensorInternal<R, dimension>::zeros(mshadow::Shape<d
 
 template<typename R, int dimension>
 const typename TensorInternal<R,dimension>::cpu_tensor_t TensorInternal<R,dimension>::cpu_data() const {
-    return cpu_tensor_t(memory->cpu_data(), shape);
+    return cpu_tensor_t(memory->cpu_data() + offset, shape);
 }
 
 template<typename R, int dimension>
 typename TensorInternal<R,dimension>::cpu_tensor_t TensorInternal<R,dimension>::mutable_cpu_data() {
-    return cpu_tensor_t(memory->mutable_cpu_data(), shape);
+    return cpu_tensor_t(memory->mutable_cpu_data() + offset, shape);
 }
 
 #ifdef DALI_USE_CUDA
     template<typename R, int dimension>
     const typename TensorInternal<R,dimension>::gpu_tensor_t TensorInternal<R,dimension>::gpu_data() const {
-        return gpu_tensor_t(memory->gpu_data(, shape);
+        return gpu_tensor_t(memory->gpu_data() + offset, shape);
     }
 
     template<typename R, int dimension>
     typename TensorInternal<R,dimension>::gpu_tensor_t TensorInternal<R,dimension>::mutable_gpu_data() {
-        return gpu_tensor_t(memory->mutable_gpu_data(), shape);
+        return gpu_tensor_t(memory->mutable_gpu_data() + offset, shape);
     }
 #endif
 
 template<typename R, int dimension>
 int TensorInternal<R,dimension>::number_of_elements() const {
     return shape.Size();
+}
+
+template<typename R, int dimension>
+TensorInternal<R, dimension - 1> TensorInternal<R,dimension>::operator[](mshadow::index_t idx) const {
+    auto subshape = shape.SubShape();
+    return TensorInternal<R, dimension - 1>(subshape,
+                                            memory,
+                                            offset + subshape.Size() * idx);
+}
+
+template<typename R, int dimension>
+TensorInternal<R, 1> TensorInternal<R,dimension>::ravel() const {
+    auto newshape = mshadow::Shape1(number_of_elements());
+    return TensorInternal<R, 1>(newshape, memory, offset);
 }
 
 

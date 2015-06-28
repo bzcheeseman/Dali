@@ -648,6 +648,17 @@ TEST_F(MatrixTests, matrix_divide_broadcast) {
     }
 }
 
+TEST_F(MatrixTests, matrix_eltmul_broadcast) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return Xs[0] * Xs[1];
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(0.1, 20.0));
+        auto B = Mat<R>(1, 10, weights<R>::uniform(0.5, 4.0));
+        ASSERT_TRUE(gradient_same(functor, {A, B}, 5e-3, 1e-3));
+    }
+}
+
 TEST_F(MatrixTests, matrix_divide_reversed_broadcast) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[1] / Xs[0];

@@ -10,7 +10,6 @@
 
 #include "dali/math/LazySoftmax.h"
 #include "dali/math/LazyUtils.h"
-#include "dali/math/LazyPluck.h"
 #include "dali/math/LazyDot.h"
 
 template<typename DType, int dimension>
@@ -122,26 +121,6 @@ class LazyTensor : public DormantTensor<DType> {
             }
         #endif
 
-        // Ravel takes a tensor and flattens it into a 1D vector (view)
-        #ifdef DALI_USE_CUDA
-            inline auto ravel(void) const -> LazyTensor<mshadow::Tensor<mshadow::cpu, 1, DType>,
-                                                        mshadow::Tensor<mshadow::gpu, 1, DType>,
-                                                        DType, 1, ktype> {
-                return LazyTensor<mshadow::Tensor<mshadow::cpu, 1, DType>, mshadow::Tensor<mshadow::gpu, 1, DType>, DType, 1, ktype>(
-                        mshadow::Tensor<mshadow::cpu, 1, DType>(left.dptr_,  mshadow::Shape1(left.shape_.ProdShape(0, dimension)), left.stride_, left.stream_),
-                        mshadow::Tensor<mshadow::gpu, 1, DType>(right.dptr_, mshadow::Shape1(right.shape_.ProdShape(0, dimension)), right.stride_, right.stream_),
-                        dependent_tensors
-                );
-            }
-        #else
-            inline auto ravel(void) const -> LazyTensor<mshadow::Tensor<mshadow::cpu, 1, DType>, DType, 1, ktype> {
-                return LazyTensor<mshadow::Tensor<mshadow::cpu, 1, DType>, DType, 1, ktype>(
-                        mshadow::Tensor<mshadow::cpu, 1, DType>(left.dptr_,  mshadow::Shape1(left.shape_.ProdShape(0, dimension)), left.stride_, left.stream_),
-                        dependent_tensors
-                );
-            }
-        #endif
-
         #ifdef DALI_USE_CUDA
             inline LazyTensor<dali_expr::SoftmaxExpression<LeftType, DType>,
                               dali_expr::SoftmaxExpression<RightType, DType>,
@@ -170,67 +149,6 @@ class LazyTensor : public DormantTensor<DType> {
             }
         #endif
 
-        #ifdef DALI_USE_CUDA
-            inline LazyTensor<
-                mshadow::Tensor<
-                    typename extract_tensor_arguments<LeftType>::device_t,
-                    extract_tensor_arguments<LeftType>::subdim,
-                    DType >,
-                mshadow::Tensor<
-                    typename extract_tensor_arguments<RightType>::device_t,
-                    extract_tensor_arguments<RightType>::subdim,
-                    DType >,
-                    DType,
-                    extract_tensor_arguments<LeftType>::subdim,
-                    ktype> operator[](mshadow::index_t idx) const {
-                return LazyTensor<decltype(left[idx]), decltype(right[idx]), DType, dimension - 1, ktype>(
-                    left[idx], right[idx],
-                    dependent_tensors
-                );
-            }
-        #else
-            inline LazyTensor<
-                mshadow::Tensor<
-                    typename extract_tensor_arguments<LeftType>::device_t,
-                    extract_tensor_arguments<LeftType>::subdim,
-                    DType >, DType, dimension - 1, ktype> operator[](mshadow::index_t idx) const {
-                auto cpu_pluck = left[idx];
-                return LazyTensor<decltype(cpu_pluck), DType, dimension -1, ktype>(
-                    cpu_pluck, dependent_tensors
-                );
-            }
-        #endif
-
-        #ifdef DALI_USE_CUDA
-            inline LazyTensor<
-                mshadow::Tensor<
-                    typename extract_tensor_arguments<LeftType>::device_t,
-                    dimension,
-                    DType
-                >,
-                mshadow::Tensor<
-                    typename extract_tensor_arguments<RightType>::device_t,
-                    dimension,
-                    DType
-                >, DType, dimension, ktype> Slice(mshadow::index_t begin, mshadow::index_t end) const {
-                return LazyTensor<decltype(left.Slice(begin, end)), decltype(right.Slice(begin, end)), DType, dimension, ktype>(
-                    left.Slice(begin, end), right.Slice(begin, end),
-                    dependent_tensors
-                );
-            }
-        #else
-            inline LazyTensor<
-                mshadow::Tensor<
-                    typename extract_tensor_arguments<LeftType>::device_t,
-                    dimension,
-                    DType
-                >, DType, dimension, ktype> Slice(mshadow::index_t begin, mshadow::index_t end) const {
-                return LazyTensor<decltype(left.Slice(begin, end)), DType, dimension, ktype>(
-                    left.Slice(begin, end),
-                    dependent_tensors
-                );
-            }
-        #endif
 
         #ifdef DALI_USE_CUDA
             // Expression that replicate a 1 dimension tensor in

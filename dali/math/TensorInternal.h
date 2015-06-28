@@ -6,6 +6,7 @@
 #include <initializer_list>
 #include <iomanip>
 #include <iostream>
+#include <type_traits>
 #include <string>
 #include <chrono>
 #include <memory>
@@ -79,9 +80,14 @@ class TensorInternal {
         static const int ndimensions = dimension;
 
         const mshadow::Shape<dimension> shape;
+        int offset;
 
         TensorInternal(mshadow::Shape<dimension> shape);
 
+
+        TensorInternal(mshadow::Shape<dimension> shape,
+                       std::shared_ptr<SynchronizedMemory<R>> memory,
+                       int offset);
 
         typedef mshadow::Tensor<mshadow::cpu, dimension, R> cpu_tensor_t;
         #ifdef DALI_USE_CUDA
@@ -137,15 +143,22 @@ class TensorInternal {
         R& operator()(int i);
         R operator()(int i) const;
 
+        TensorInternal<R, dimension - 1> operator[](mshadow::index_t idx) const;
+        TensorInternal<R, 1> ravel() const;
+
         const R* data() const;
         R* data();
 
-        void print() const;
+        void print(int indent=0) const;
+
         void clear();
 
         int number_of_elements() const;
 
         static TensorInternal<R,dimension> zeros(mshadow::Shape<dimension>);
 };
+
+template <> void TensorInternal<float, 1>::print(int indent) const;
+template <> void TensorInternal<double, 1>::print(int indent) const;
 
 #endif

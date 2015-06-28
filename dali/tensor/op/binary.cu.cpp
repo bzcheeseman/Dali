@@ -17,17 +17,17 @@ namespace matops {
     Mat<R> Binary<R>::eltmul_broadcast(
             Mat<R> matrix1,
             Mat<R> matrix2) {
-        ASSERT2(matrix1.dims(0) == matrix2.dims(0) && matrix2.dims(1) == 1,
+        ASSERT2(matrix1.dims(0) == matrix2.dims(1) && matrix2.dims(0) == 1,
                 MS() << "Matrices " << matrix1 << " and " << matrix2
                      << " cannot be element multiplied with broadcast,"
                      << " they do not have the same dimensions.");
         auto out = Mat<R>::empty_like(matrix1);
-        // MAT(out) = MAT(matrix1).wrapper() * MAT(matrix2).wrapper()[0].template broadcast<0>(MAT(matrix1).shape);
-        // if (graph::backprop_enabled)
-        //     graph::emplace_back([matrix1, matrix2, out]() mutable {
-        //         SAFE_GRAD(matrix1) += GRAD(out).wrapper() * (MAT(matrix2).wrapper()[0].template broadcast<0>(GRAD(out).shape));
-        //         SAFE_GRAD(matrix2).wrapper()[0] += sum_cols(MAT(matrix1).wrapper() * GRAD(out).wrapper());
-        //     });
+        MAT(out) = MAT(matrix1).wrapper() * MAT(matrix2)[0].wrapper().template broadcast<0>(MAT(matrix1).shape);
+        if (graph::backprop_enabled)
+            graph::emplace_back([matrix1, matrix2, out]() mutable {
+                SAFE_GRAD(matrix1) += GRAD(out).wrapper() * (MAT(matrix2)[0].wrapper().template broadcast<0>(GRAD(out).shape));
+                SAFE_GRAD(matrix2)[0] += sum_cols(MAT(matrix1).wrapper() * GRAD(out).wrapper());
+            });
         return out;
     }
 
@@ -40,28 +40,28 @@ namespace matops {
                      << " cannot be element divided with broadcast,"
                      << " they do not have the same dimensions.");
         auto out = Mat<R>::empty_like(matrix1);
-        // MAT(out) = (
-        //     MAT(matrix1).wrapper()
-        //     /
-        //     MAT(matrix2).wrapper()[0].template broadcast<0>(MAT(matrix1).shape)
-        // );
-        // if (graph::backprop_enabled)
-        //     graph::emplace_back([matrix1, matrix2, out]() mutable {
-        //         SAFE_GRAD(matrix1) += (
-        //             (GRAD(out)).wrapper() /
-        //             MAT(matrix2).wrapper()[0].template broadcast<0>(GRAD(out).shape)
-        //         );
-        //         if (!matrix2.constant) {
-        //             TensorInternal<R,1> mat2_grad(mshadow::Shape1(out.dims(0)));
-        //             mat2_grad = sum_cols((
-        //                 F<op::div_grad<R>>(
-        //                     MAT(matrix1).wrapper(),
-        //                     MAT(matrix2).wrapper()[0].template broadcast<0>(MAT(matrix1).shape)
-        //                 )
-        //             ) * GRAD(out).wrapper());
-        //             GRAD(matrix2) -= mat2_grad.wrapper().template broadcast<1>(MAT(matrix2).shape);
-        //         }
-        //     });
+        MAT(out) = (
+            MAT(matrix1).wrapper()
+            /
+            MAT(matrix2)[0].wrapper().template broadcast<0>(MAT(matrix1).shape)
+        );
+        if (graph::backprop_enabled)
+            graph::emplace_back([matrix1, matrix2, out]() mutable {
+                SAFE_GRAD(matrix1) += (
+                    (GRAD(out)).wrapper() /
+                    MAT(matrix2)[0].wrapper().template broadcast<0>(GRAD(out).shape)
+                );
+                if (!matrix2.constant) {
+                    TensorInternal<R,1> mat2_grad(mshadow::Shape1(out.dims(0)));
+                    mat2_grad = sum_cols((
+                        F<op::div_grad<R>>(
+                            MAT(matrix1).wrapper(),
+                            MAT(matrix2)[0].wrapper().template broadcast<0>(MAT(matrix1).shape)
+                        )
+                    ) * GRAD(out).wrapper());
+                    GRAD(matrix2) -= mat2_grad.wrapper().template broadcast<1>(MAT(matrix2).shape);
+                }
+            });
         return out;
     }
 
@@ -69,12 +69,14 @@ namespace matops {
     Mat<R> Binary<R>::eltmul(
             Mat<R> matrix1,
             Mat<R> matrix2) {
-        if (matrix1.dims(1) != matrix2.dims(1) && (matrix1.dims(1) == 1 || matrix2.dims(1) == 1)) {
+
+        if (matrix1.dims(1) != matrix2.dims(1) && (matrix1.dims(0) == 1 || matrix2.dims(0) == 1)) {
             if (matrix1.dims(1) == 1) {
                 return eltmul_broadcast(matrix2, matrix1);
             }
             return eltmul_broadcast(matrix1, matrix2);
         }
+
         ASSERT2(matrix1.dims(0) == matrix2.dims(0) && matrix1.dims(1) == matrix2.dims(1),
                 "Matrices cannot be element-wise multiplied, they do not have the same dimensions.");
         auto out = Mat<R>::empty_like(matrix1);
@@ -188,17 +190,17 @@ namespace matops {
                 MS() << "vector-like argument to add_broadcast must have outer dimension (" << matrix2.dims(1)
                      << ") equal to inner dimension of first argument (" << matrix1.dims(0) << ").");
         auto out = Mat<R>::empty_like(matrix1);
-        // MAT(out) = (
-        //     MAT(matrix1).wrapper() +
-        //     MAT(matrix2).wrapper()[0].template broadcast<0>(
-        //         MAT(matrix1).shape
-        //     )
-        // );
-        // if (graph::backprop_enabled)
-        //     graph::emplace_back([matrix1, matrix2, out]() mutable {
-        //         SAFE_GRAD(matrix1) += GRAD(out).wrapper();
-        //         SAFE_GRAD(matrix2).wrapper()[0] += sum_cols(GRAD(out).wrapper());
-        //     });
+        MAT(out) = (
+            MAT(matrix1).wrapper() +
+            MAT(matrix2)[0].wrapper().template broadcast<0>(
+                MAT(matrix1).shape
+            )
+        );
+        if (graph::backprop_enabled)
+            graph::emplace_back([matrix1, matrix2, out]() mutable {
+                SAFE_GRAD(matrix1) += GRAD(out).wrapper();
+                SAFE_GRAD(matrix2)[0] += sum_cols(GRAD(out).wrapper());
+            });
         return out;
     }
 
@@ -212,17 +214,17 @@ namespace matops {
                      << ") equal to inner dimension of first argument (" << matrix1.dims(0) << ").");
         }
         auto out = Mat<R>::empty_like(matrix1);
-        // MAT(out) = (
-        //     MAT(matrix1).wrapper() -
-        //     MAT(matrix2).wrapper()[0].template broadcast<0>(
-        //         MAT(matrix1).shape
-        //     )
-        // );
-        // if (graph::backprop_enabled)
-        //     graph::emplace_back([matrix1, matrix2, out]() mutable {
-        //         SAFE_GRAD(matrix1) += GRAD(out).wrapper();
-        //         SAFE_GRAD(matrix2).wrapper()[0] -= sum_cols(GRAD(out).wrapper());
-        //     });
+        MAT(out) = (
+            MAT(matrix1).wrapper() -
+            MAT(matrix2)[0].wrapper().template broadcast<0>(
+                MAT(matrix1).shape
+            )
+        );
+        if (graph::backprop_enabled)
+            graph::emplace_back([matrix1, matrix2, out]() mutable {
+                SAFE_GRAD(matrix1) += GRAD(out).wrapper();
+                SAFE_GRAD(matrix2)[0] -= sum_cols(GRAD(out).wrapper());
+            });
         return out;
     }
 
@@ -236,16 +238,16 @@ namespace matops {
                      << ") equal to inner dimension of first argument (" << matrix1.dims(0) << ").");
         }
         auto out = Mat<R>::empty_like(matrix1);
-        // MAT(out) = (
-        //     MAT(matrix2).wrapper()[0].template broadcast<0>(
-        //         MAT(matrix1).shape
-        //     ) - MAT(matrix1).wrapper()
-        // );
-        // if (graph::backprop_enabled)
-        //     graph::emplace_back([matrix1, matrix2, out]() mutable {
-        //         SAFE_GRAD(matrix1) -= GRAD(out).wrapper();
-        //         SAFE_GRAD(matrix2).wrapper()[0] += sum_cols(GRAD(out).wrapper());
-        //     });
+        MAT(out) = (
+            MAT(matrix2)[0].wrapper().template broadcast<0>(
+                MAT(matrix1).shape
+            ) - MAT(matrix1).wrapper()
+        );
+        if (graph::backprop_enabled)
+            graph::emplace_back([matrix1, matrix2, out]() mutable {
+                SAFE_GRAD(matrix1) -= GRAD(out).wrapper();
+                SAFE_GRAD(matrix2)[0] += sum_cols(GRAD(out).wrapper());
+            });
         return out;
     }
 
@@ -341,21 +343,21 @@ namespace matops {
                      << " cannot be element divided with broadcast,"
                      << " they do not have the same dimensions.");
         auto out = Mat<R>::empty_like(matrix1);
-        // MAT(out) = (
-        //     MAT(matrix2).wrapper()[0].template broadcast<0>(MAT(matrix1).shape)
-        //     /
-        //     MAT(matrix1).wrapper()
-        // );
-        // if (graph::backprop_enabled)
-        //     graph::emplace_back([matrix1, matrix2, out]() mutable {
-        //         SAFE_GRAD(matrix1) -= F<op::div_grad<R>>(
-        //             MAT(matrix2).wrapper()[0].template broadcast<0>(MAT(matrix1).shape),
-        //             MAT(matrix1).wrapper()
-        //         ) * GRAD(out).wrapper();
-        //         SAFE_GRAD(matrix2).wrapper()[0] += sum_cols(
-        //             GRAD(out).wrapper() / MAT(matrix1).wrapper()
-        //         );
-        //     });
+        MAT(out) = (
+            MAT(matrix2)[0].wrapper().template broadcast<0>(MAT(matrix1).shape)
+            /
+            MAT(matrix1).wrapper()
+        );
+        if (graph::backprop_enabled)
+            graph::emplace_back([matrix1, matrix2, out]() mutable {
+                SAFE_GRAD(matrix1) -= F<op::div_grad<R>>(
+                    MAT(matrix2)[0].wrapper().template broadcast<0>(MAT(matrix1).shape),
+                    MAT(matrix1).wrapper()
+                ) * GRAD(out).wrapper();
+                SAFE_GRAD(matrix2)[0] += sum_cols(
+                    GRAD(out).wrapper() / MAT(matrix1).wrapper()
+                );
+            });
         return out;
     }
 
@@ -366,12 +368,12 @@ namespace matops {
         ASSERT2(matrix1.dims(0) == row_vector.dims(0) && row_vector.dims(1) == 1,
             "Matrices A and B^T cannot be element multiplied with broadcast, they do not have the same dimensions.");
         auto out = Mat<R>::empty_like(matrix1);
-        // MAT(out) = MAT(matrix1).wrapper() * MAT(row_vector).wrapper().ravel().template broadcast<0>(MAT(matrix1).shape);
-        // if (graph::backprop_enabled)
-        //     graph::emplace_back([matrix1, row_vector, out]() mutable {
-        //         SAFE_GRAD(matrix1) += GRAD(out).wrapper() * MAT(row_vector).wrapper().ravel().template broadcast<0>(GRAD(out).shape);
-        //         SAFE_GRAD(row_vector).wrapper().ravel() += sum_cols(MAT(matrix1).wrapper() * GRAD(out).wrapper());
-        //     });
+        MAT(out) = MAT(matrix1).wrapper() * MAT(row_vector).ravel().wrapper().template broadcast<0>(MAT(matrix1).shape);
+        if (graph::backprop_enabled)
+            graph::emplace_back([matrix1, row_vector, out]() mutable {
+                SAFE_GRAD(matrix1) += GRAD(out).wrapper() * MAT(row_vector).ravel().wrapper().template broadcast<0>(GRAD(out).shape);
+                SAFE_GRAD(row_vector).ravel() += sum_cols(MAT(matrix1).wrapper() * GRAD(out).wrapper());
+            });
         return out;
     }
 

@@ -64,6 +64,26 @@ void print_buffer(T* buffer, int num) {
     std::cout << "]" << std::endl;
 }
 
+template<typename T>
+void print_buffer(T* buffer, int num, int highlight) {
+    std::cout << "[";
+    for (uint i = 0; i < num; ++i) {
+        if (i == highlight) {
+            std::cout << utils::red << std::setw( 7 ) // keep 7 digits
+                      << std::setprecision( 3 ) // use 3 decimals
+                      << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
+                      << buffer[i] << utils::reset_color;
+        } else {
+            std::cout << std::setw( 7 ) // keep 7 digits
+                      << std::setprecision( 3 ) // use 3 decimals
+                      << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
+                      << buffer[i];
+        }
+        if (i != num - 1) std::cout << ", ";
+    }
+    std::cout << "]" << std::endl;
+}
+
 template<typename T, typename J>
 AssertionResult buffer_almost_equals(T* buffer1, T* buffer2, uint size1, uint size2, J eps) {
     if (size1 != size2)
@@ -93,8 +113,8 @@ AssertionResult buffer_almost_equals(T* buffer1, T* buffer2, uint size1, uint si
 #define EXPECT_MATRIX_GRAD_NOT_CLOSE(A, B, eps) EXPECT_FALSE(MatOps<R>::grad_allclose((A),(B),(eps)))
 
 #ifdef DALI_USE_CUDA
-#define ASSERT_MAT_ON_GPU(A) ASSERT_TRUE(MAT(A).gpu_fresh)
-#define EXPECT_MAT_ON_GPU(A) EXPECT_TRUE(MAT(A).gpu_fresh)
+#define ASSERT_MAT_ON_GPU(A) ASSERT_TRUE(MAT(A).memory().gpu_fresh)
+#define EXPECT_MAT_ON_GPU(A) EXPECT_TRUE(MAT(A).memory().gpu_fresh)
 #else
 #define ASSERT_MAT_ON_GPU(A)
 #define EXPECT_MAT_ON_GPU(A)
@@ -184,25 +204,34 @@ bool gradient_same(
         }
         // AssertionResult is a GoogleTest magic and it's castable to bool.
         if (!did_work_out) {
-            std::cout << std::fixed
-                      << std::setw( 7 ) // keep 7 digits
-                      << std::setprecision( 3 ) // use 3 decimals
-                      << std::setfill( ' ' ); // pad values with blanks this->w(i,j)
+            R max_disagreement = 0;
+            int loc_disagreement = 0;
+            for (int i = 0; i < arg.number_of_elements(); i++) {
+                auto disagreement = std::abs(Arg_prime[i] - arg.dw(i));
+                if (disagreement > max_disagreement) {
+                    max_disagreement = disagreement;
+                    loc_disagreement = i;
+                }
+            }
+
+            auto start = (loc_disagreement - 6) > 0 ? loc_disagreement - 6 : 0;
+            int len;
+            if (start + 6 > arg.number_of_elements()) {
+                start = 0;
+                len = std::min(arg.number_of_elements(), (uint)12);
+            } else {
+                len = 12;
+            }
+
             std::cout << "-----------\nArg_prime:" << std::endl;
-            print_buffer((R*)Arg_prime, std::min(arg.number_of_elements(), (uint)12));
+            print_buffer((R*)Arg_prime + start, len, loc_disagreement - start);
             std::cout << "-----------\narg.dw():" << std::endl;
-            print_buffer((R*)arg.dw().data(), std::min(arg.number_of_elements(), (uint)12));
+            print_buffer((R*)arg.dw().data() + start, len, loc_disagreement - start);
             if (arg.name != nullptr) {
                 std::cout << "arg.name = " << *arg.name << std::endl;
             }
             std::cout << "-----------" << std::endl;
-            R max_disagreement = 0;
-            for (int i = 0; i < arg.number_of_elements(); i++) {
-                max_disagreement = std::max(
-                    max_disagreement,
-                    std::abs(Arg_prime[i] - arg.dw(i))
-                );
-            }
+
             std::cout << "Largest disparity = "
                       << std::setw( 7 ) // keep 7 digits
                       << std::setprecision( 5 ) // use 3 decimals
@@ -244,7 +273,7 @@ TEST_F(MatrixTests, equals) {
 }
 
 
-TEST_F(MatrixTests, sum_gradient) {
+TEST_F(MatrixTests, sum) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].sum();
     };
@@ -340,7 +369,7 @@ TEST_F(MatrixTests, inplace_multiply) {
     }
 }
 
-TEST_F(MatrixTests, addition_gradient) {
+TEST_F(MatrixTests, addition) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] + Xs[1];
     };
@@ -364,7 +393,7 @@ TEST_F(MatrixTests, addition_vector) {
 }
 
 
-TEST_F(MatrixTests, subtraction_gradient) {
+TEST_F(MatrixTests, subtraction) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] - Xs[1];
     };
@@ -395,7 +424,7 @@ TEST_F(MatrixTests, argmax_argmin) {
     B.w(5,3) = -27.0;
     #ifdef DALI_USE_CUDA
     // force computation to happen on device if possible
-    B.w().to_gpu();
+    B.w().memory().to_gpu();
     #endif
 
     auto indices_min_col = B.argmin(0);
@@ -410,7 +439,7 @@ TEST_F(MatrixTests, argmax_argmin) {
     Z.w(13) = -12;
     #ifdef DALI_USE_CUDA
     // force computation to happen on device if possible
-    Z.w().to_gpu();
+    Z.w().memory().to_gpu();
     #endif
 
     // argmin without dimension argument treats
@@ -440,14 +469,14 @@ TEST_F(MatrixTests, mat_argsort) {
     A.w(3) =  66.0;
 
     #ifdef DALI_USE_CUDA
-    A.w().to_gpu();
+    A.w().memory().to_gpu();
     #endif
 
     auto sorted = A.argsort();
     ASSERT_EQ(sorted, std::vector<int>({2, 0, 1, 3}));
 }
 
-TEST_F(MatrixTests, mean_gradient) {
+TEST_F(MatrixTests, mean) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].mean();
     };
@@ -457,7 +486,7 @@ TEST_F(MatrixTests, mean_gradient) {
     }
 }
 
-TEST_F(MatrixTests, square_gradient) {
+TEST_F(MatrixTests, square) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].square();
     };
@@ -467,7 +496,7 @@ TEST_F(MatrixTests, square_gradient) {
     }
 }
 
-TEST_F(MatrixTests, sqrt_gradient) {
+TEST_F(MatrixTests, sqrt) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].sqrt();
     };
@@ -477,7 +506,7 @@ TEST_F(MatrixTests, sqrt_gradient) {
     }
 }
 
-TEST_F(MatrixTests, elt_inv_gradient) {
+TEST_F(MatrixTests, elt_inv) {
     sane_crashes::activate();
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return MatOps<R>::elt_inv(Xs[0]);
@@ -489,7 +518,7 @@ TEST_F(MatrixTests, elt_inv_gradient) {
 }
 
 
-TEST_F(MatrixTests, addition_broadcast_gradient) {
+TEST_F(MatrixTests, addition_broadcast) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] + Xs[1];
     };
@@ -500,7 +529,7 @@ TEST_F(MatrixTests, addition_broadcast_gradient) {
     }
 }
 
-TEST_F(MatrixTests, substraction_broadcast_gradient) {
+TEST_F(MatrixTests, substraction_broadcast) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] - Xs[1];
     };
@@ -511,7 +540,7 @@ TEST_F(MatrixTests, substraction_broadcast_gradient) {
     }
 }
 
-TEST_F(MatrixTests, substraction_reversed_broadcast_gradient) {
+TEST_F(MatrixTests, substraction_reversed_broadcast) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[1] - Xs[0];
     };
@@ -523,7 +552,7 @@ TEST_F(MatrixTests, substraction_reversed_broadcast_gradient) {
 }
 
 
-TEST_F(MatrixTests, sigmoid_gradient) {
+TEST_F(MatrixTests, sigmoid) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].sigmoid();
     };
@@ -533,7 +562,7 @@ TEST_F(MatrixTests, sigmoid_gradient) {
     }
 }
 
-TEST_F(MatrixTests, steep_sigmoid_gradient) {
+TEST_F(MatrixTests, steep_sigmoid) {
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(20.0));
 
@@ -545,18 +574,27 @@ TEST_F(MatrixTests, steep_sigmoid_gradient) {
     }
 }
 
-TEST_F(MatrixTests, relu_gradient) {
+TEST_F(MatrixTests, relu) {
+    int input_size = 5;
+    int hidden_size = 3;
+
     EXPERIMENT_REPEAT {
-        auto A = Mat<R>(10, 20, weights<R>::uniform(5.0));
+        Mat<R> A;
+        {
+            graph::NoBackprop nb;
+            auto mat  = Mat<R>(input_size, hidden_size, weights<R>::uniform(0.1, 20.0));
+            auto mat2 = Mat<R>(input_size, hidden_size, weights<R>::uniform(-20.0, -0.1));
+            A = MatOps<R>::hstack({mat, mat2});
+        }
 
         auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-            return MatOps<R>::relu(Xs[0]);
+            return Xs[0].relu();
         };
         ASSERT_TRUE(gradient_same(functor, {A}, 1e-4));
     }
 }
 
-TEST_F(MatrixTests, tanh_gradient) {
+TEST_F(MatrixTests, tanh) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].tanh();
     };
@@ -566,7 +604,7 @@ TEST_F(MatrixTests, tanh_gradient) {
     }
 }
 
-TEST_F(MatrixTests, norm_gradient) {
+TEST_F(MatrixTests, norm) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].L2_norm();
     };
@@ -576,7 +614,7 @@ TEST_F(MatrixTests, norm_gradient) {
     }
 }
 
-TEST_F(MatrixTests, exp_gradient) {
+TEST_F(MatrixTests, exp) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].exp();
     };
@@ -586,7 +624,7 @@ TEST_F(MatrixTests, exp_gradient) {
     }
 }
 
-TEST_F(MatrixTests, log_gradient) {
+TEST_F(MatrixTests, log) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].log();
     };
@@ -596,7 +634,7 @@ TEST_F(MatrixTests, log_gradient) {
     }
 }
 
-TEST_F(MatrixTests, dot_gradient) {
+TEST_F(MatrixTests, dot) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[1].dot(Xs[0]);
     };
@@ -1431,7 +1469,7 @@ TEST_F(LayerTests, GRU) {
     }
 }*/
 
-TEST_F(MatrixTests, scalar_pow_gradient) {
+TEST_F(MatrixTests, scalar_pow) {
     int height = 3;
     int width = 4;
 
@@ -1446,7 +1484,7 @@ TEST_F(MatrixTests, scalar_pow_gradient) {
     }
 }
 
-TEST_F(MatrixTests, pow_gradient) {
+TEST_F(MatrixTests, pow) {
     int height = 3;
     int width = 4;
 

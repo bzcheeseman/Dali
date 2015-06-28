@@ -121,12 +121,14 @@ Note: the copy constructor below is only a sideshow,
 template<typename R>
 Mat<R>::Mat(dim_t n, dim_t d, typename weights<R>::initializer_t wi) :
         name(nullptr), constant(false) {
-    // Don't fill with zeros - it's initializer's job.
-    m = make_shared<TensorInternal<R,2>>(mshadow::Shape2(n, d));
-    // We always reset the grad calculation
-    g = make_shared<TensorInternal<R,2>>(mshadow::Shape2(n, d));
-    g->clear();
-    wi(w());
+    if (n * d > 0) {
+        // Don't fill with zeros - it's initializer's job.
+        m = make_shared<TensorInternal<R,2>>(mshadow::Shape2(n, d));
+        // We always reset the grad calculation
+        g = make_shared<TensorInternal<R,2>>(mshadow::Shape2(n, d));
+        g->clear();
+        wi(w());
+    }
 }
 
 template<typename R>

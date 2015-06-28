@@ -10,15 +10,27 @@ template<typename R, int dimension>
 TensorInternal<R,dimension>::TensorInternal(mshadow::Shape<dimension> _shape) :
         shape(_shape),
         offset(0) {
-    memory = std::make_shared<SynchronizedMemory<R>>(shape.Size(), shape[dimension - 1]);
+    // we treat the special case of empty matrix
+    // as uninitalized memory:
+    memory_ = std::make_shared<SynchronizedMemory<R>>(shape.Size(), shape[dimension - 1]);
 }
 
 template<typename R, int dimension>
 TensorInternal<R,dimension>::TensorInternal(const TensorInternal& other, bool copy_memory) :
-        TensorInternal(other.shape, other.memory, other.offset) {
+        TensorInternal(other.shape, other.memory_, other.offset) {
     if (copy_memory) {
-        memory = std::make_shared<SynchronizedMemory<R>>(*other.memory);
+        memory_ = std::make_shared<SynchronizedMemory<R>>(*other.memory_);
     }
+}
+
+template<typename R, int dimension>
+const SynchronizedMemory<R>& TensorInternal<R, dimension>::memory() const {
+    return *memory_;
+}
+
+template<typename R, int dimension>
+SynchronizedMemory<R>& TensorInternal<R, dimension>::memory() {
+    return *memory_;
 }
 
 template<typename R, int dimension>
@@ -26,7 +38,7 @@ TensorInternal<R,dimension>::TensorInternal(mshadow::Shape<dimension> _shape,
                                             std::shared_ptr<SynchronizedMemory<R>> _memory,
                                             int _offset) :
         shape(_shape),
-        memory(_memory),
+        memory_(_memory),
         offset(_offset) {
 }
 
@@ -135,7 +147,7 @@ R TensorInternal<R, dimension>::L2_norm() const {
 template<typename R, int dimension>
 bool TensorInternal<R,dimension>::operator==(const TensorInternal<R,dimension>& other) const {
     #ifdef DALI_USE_CUDA
-        if (should_compute_on_gpu(vector<SynchronizedMemory<R>*>({memory.get(), other.memory.get()}))) {
+        if (should_compute_on_gpu(vector<const SynchronizedMemory<R>*>({memory_.get(), other.memory_.get()}))) {
             return TensorOps::comparison::equals(this->gpu_data(), other.gpu_data(), this->number_of_elements());
         }
     #endif
@@ -145,7 +157,7 @@ bool TensorInternal<R,dimension>::operator==(const TensorInternal<R,dimension>& 
 template<typename R, int dimension>
 bool TensorInternal<R,dimension>::allclose(const TensorInternal<R,dimension>& other, R tol) const {
     #ifdef DALI_USE_CUDA
-        if (should_compute_on_gpu(vector<SynchronizedMemory<R>*>({memory.get(), other.memory.get()}))) {
+        if (should_compute_on_gpu(vector<const SynchronizedMemory<R>*>({memory_.get(), other.memory_.get()}))) {
             return TensorOps::comparison::allclose(this->gpu_data(), other.gpu_data(), this->number_of_elements(), tol);
         }
     #endif
@@ -165,7 +177,7 @@ TensorInternal<R,dimension>::operator lazy_t() const {
 template<typename R, int dimension>
 bool TensorInternal<R, dimension>::compute_me_on_gpu() const {
     #ifdef DALI_USE_CUDA
-        if (should_compute_on_gpu(vector<SynchronizedMemory<R>*>({memory.get()}))) {
+        if (should_compute_on_gpu(vector<const SynchronizedMemory<R>*>({memory_.get()}))) {
             return true;
         }
     #endif
@@ -253,23 +265,23 @@ TensorInternal<R,dimension> TensorInternal<R, dimension>::zeros(mshadow::Shape<d
 
 template<typename R, int dimension>
 const typename TensorInternal<R,dimension>::cpu_tensor_t TensorInternal<R,dimension>::cpu_data() const {
-    return cpu_tensor_t(memory->cpu_data() + offset, shape);
+    return cpu_tensor_t(memory_->cpu_data() + offset, shape);
 }
 
 template<typename R, int dimension>
 typename TensorInternal<R,dimension>::cpu_tensor_t TensorInternal<R,dimension>::mutable_cpu_data() {
-    return cpu_tensor_t(memory->mutable_cpu_data() + offset, shape);
+    return cpu_tensor_t(memory_->mutable_cpu_data() + offset, shape);
 }
 
 #ifdef DALI_USE_CUDA
     template<typename R, int dimension>
     const typename TensorInternal<R,dimension>::gpu_tensor_t TensorInternal<R,dimension>::gpu_data() const {
-        return gpu_tensor_t(memory->gpu_data() + offset, shape);
+        return gpu_tensor_t(memory_->gpu_data() + offset, shape);
     }
 
     template<typename R, int dimension>
     typename TensorInternal<R,dimension>::gpu_tensor_t TensorInternal<R,dimension>::mutable_gpu_data() {
-        return gpu_tensor_t(memory->mutable_gpu_data() + offset, shape);
+        return gpu_tensor_t(memory_->mutable_gpu_data() + offset, shape);
     }
 #endif
 
@@ -282,14 +294,14 @@ template<typename R, int dimension>
 TensorInternal<R, dimension - 1> TensorInternal<R,dimension>::operator[](mshadow::index_t idx) const {
     auto subshape = shape.SubShape();
     return TensorInternal<R, dimension - 1>(subshape,
-                                            memory,
+                                            memory_,
                                             offset + subshape.Size() * idx);
 }
 
 template<typename R, int dimension>
 TensorInternal<R, 1> TensorInternal<R,dimension>::ravel() const {
     auto newshape = mshadow::Shape1(number_of_elements());
-    return TensorInternal<R, 1>(newshape, memory, offset);
+    return TensorInternal<R, 1>(newshape, memory_, offset);
 }
 
 template<typename R, int dimension>
@@ -297,7 +309,9 @@ TensorInternal<R, dimension> TensorInternal<R,dimension>::Slice(
         mshadow::index_t begin, mshadow::index_t end) const {
     auto newshape = shape;
     newshape[0] = end - begin;
-    return TensorInternal<R, dimension>(newshape, memory, offset + shape.SubShape().Size() * begin);
+    return TensorInternal<R, dimension>(newshape,
+                                        memory_,
+                                        offset + shape.SubShape().Size() * begin);
 }
 
 

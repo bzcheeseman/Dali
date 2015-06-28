@@ -45,7 +45,7 @@ void dali_init() {
 /**** SHOULD COMPUTE GPU-land **/
 
 template<typename R>
-bool should_compute_on_gpu(const std::vector<SynchronizedMemory<R>*>& sts) {
+bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<R>*>& sts) {
 
 #ifdef DALI_USE_CUDA
     if (sts.size() == 1) {
@@ -70,8 +70,8 @@ bool should_compute_on_gpu(const std::vector<SynchronizedMemory<R>*>& sts) {
 #endif
 }
 
-template bool should_compute_on_gpu(const std::vector<SynchronizedMemory<float>*>& sts);
-template bool should_compute_on_gpu(const std::vector<SynchronizedMemory<double>*>& sts);
+template bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<float>*>& sts);
+template bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<double>*>& sts);
 
 /******************* SYNCHRONIZED MEMORY ************************************************/
 

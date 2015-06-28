@@ -77,8 +77,11 @@ class TensorInternal;
 template<typename R, int dimension>
 class TensorInternal {
     public:
-        std::shared_ptr<SynchronizedMemory<R>> memory;
+        std::shared_ptr<SynchronizedMemory<R>> memory_;
         static const int ndimensions = dimension;
+
+        const SynchronizedMemory<R>& memory() const;
+        SynchronizedMemory<R>& memory();
 
         const mshadow::Shape<dimension> shape;
         int offset;

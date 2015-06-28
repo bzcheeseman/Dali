@@ -20,21 +20,22 @@ class SynchronizedMemory;
 template<typename DType>
 class DormantTensor {
     public:
-        std::shared_ptr<SynchronizedMemory<DType>> source;
+        std::shared_ptr<SynchronizedMemory<DType>> memory;
         // call this method with a new tensor that should be placed here.
-        virtual void update_tensor(Device where_to_update) = 0;
-        DormantTensor() : source(nullptr) {}
-        DormantTensor(std::shared_ptr<SynchronizedMemory<DType>> _source) : source(_source) {}
+        virtual void update_tensor(Device where_to_update) const = 0;
+        DormantTensor() : memory(nullptr) {}
+        DormantTensor(std::shared_ptr<SynchronizedMemory<DType>> _memory) : memory(_memory) {}
 };
 
 template<typename DType>
-using dependent_tensors_t = std::vector<DormantTensor<DType>*>;
+using dependent_tensors_t = std::vector<const DormantTensor<DType>*>;
 
 template<typename DType>
 std::vector<const SynchronizedMemory<DType>*> extract_memory(const dependent_tensors_t<DType>& dts) {
     std::vector<const SynchronizedMemory<DType>*> res;
-    for (auto dt: dts) {
-        res.push_back(dt.source.get());
+    res.reserve(dts.size());
+    for (auto dt : dts) {
+        res.emplace_back(dt->memory.get());
     }
     return res;
 }
@@ -54,7 +55,7 @@ class LazyTensor : public DormantTensor<DType> {
         dependent_tensors_t<DType> dependent_tensors;
 
         LeftType                  left;
-        mshadow::Shape<dimension> source_shape;
+        mshadow::Shape<dimension> memory_shape;
 
         #ifdef DALI_USE_CUDA
             typedef mshadow::Tensor<mshadow::gpu, dimension, DType> gpu_tensor_t;
@@ -80,31 +81,31 @@ class LazyTensor : public DormantTensor<DType> {
 
         #ifdef DALI_USE_CUDA
             LazyTensor(const TensorInternal<DType,dimension>& st)
-                : DormantTensor<DType>(st.memory),
-                  source_shape(st.shape),
+                : DormantTensor<DType>(st.memory_),
+                  memory_shape(st.shape),
                   left(LeftType(st.shape)),
                   right(RightType(st.shape)),
                   dependent_tensors({this}) {}
         #else
             LazyTensor(const TensorInternal<DType,dimension>& st)
-                : DormantTensor<DType>(st.memory),
-                  source_shape(st.shape),
+                : DormantTensor<DType>(st.memory_),
+                  memory_shape(st.shape),
                   left(LeftType(st.shape)),
                   dependent_tensors({this}) {}
         #endif
 
             // replace the tensors used in this LazyTensor
             // by a copy with fresh memory before evaluation.
-            virtual void update_tensor(Device where_to_update) override {
-                assert((bool)(this->source));
+            virtual void update_tensor(Device where_to_update) const override {
+                assert((bool)(this->memory));
                 if (where_to_update == DEVICE_CPU) {
                     cpu_tensor_t * bjarne_stop = (cpu_tensor_t*)&left;
-                    *bjarne_stop = cpu_tensor_t(this->source->cpu_data(), source_shape);
+                    *bjarne_stop = cpu_tensor_t(this->memory->cpu_data(), memory_shape);
                 }
                 #ifdef DALI_USE_CUDA
                 else if (where_to_update == DEVICE_GPU) {
                     gpu_tensor_t * bjarne_stop = (gpu_tensor_t*)&right;
-                    *bjarne_stop = gpu_tensor_t(this->source->gpu_data(), source_shape);
+                    *bjarne_stop = gpu_tensor_t(this->memory->gpu_data(), memory_shape);
                 }
                 #endif
             }

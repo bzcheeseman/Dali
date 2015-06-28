@@ -223,9 +223,9 @@ bool gradient_same(
                 len = 12;
             }
 
-            std::cout << "-----------\nArg_prime:" << std::endl;
-            print_buffer((R*)Arg_prime + start, len, loc_disagreement - start);
-            std::cout << "-----------\narg.dw():" << std::endl;
+            std::cout << "-----------\nArg_prime[" << start << ":" << start + len << "] = " << std::endl;
+            print_buffer((R*)Arg_prime + start,       len, loc_disagreement - start);
+            std::cout << "-----------\n arg.dw()[" << start << ":" << start + len << "] = " << std::endl;
             print_buffer((R*)arg.dw().data() + start, len, loc_disagreement - start);
             if (arg.name != nullptr) {
                 std::cout << "arg.name = " << *arg.name << std::endl;
@@ -1082,20 +1082,33 @@ TEST_F(MatOpsTests, matrix_conv1d_grad) {
     }
 }
 */
-TEST_F(MatOpsTests, DISABLED_vector_softmax) {
-    // TODO: requires row pluck
-    int softmax_size = 15;
+TEST_F(MatrixTests, row_pluck) {
+
     EXPERIMENT_REPEAT {
-        double temperature = utils::randdouble(0.1, 100.0);
+        Mat<R> A(5, 3, weights<R>::uniform(20.0));
+        int row = utils::randint(0, A.dims(0) - 1);
+        auto functor = [row](vector<Mat<R>> Xs) {
+            return Xs[0][row];
+        };
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4));
+    }
+}
+
+
+TEST_F(MatOpsTests, vector_softmax) {
+    int softmax_size = 10;
+    EXPERIMENT_REPEAT {
         vector<Mat<R>> matrices;
         for (int i = 0; i < softmax_size; i++) {
-            matrices.emplace_back(1,1, weights<R>::uniform(-20.0, 20.0));
+            matrices.emplace_back(1,1, weights<R>::uniform(0.0, 2.0));
         }
-        auto functor = [&matrices, &temperature](vector<Mat<R>> Xs)-> Mat<R> {
-            auto mats = MatOps<R>::softmax(matrices, temperature);
-            return (mats[4] - 1.0) ^ 2;
+        int row = utils::randint(0, softmax_size-1);
+
+        auto functor = [row, softmax_size](vector<Mat<R>> Xs)-> Mat<R> {
+            auto mats = MatOps<R>::softmax(Xs);
+            return mats[row];
         };
-        ASSERT_TRUE(gradient_same(functor, {matrices}, 1e-4));
+        ASSERT_TRUE(gradient_same(functor, matrices, 5e-3));
     }
 }
 

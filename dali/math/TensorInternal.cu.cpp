@@ -220,24 +220,28 @@ R* TensorInternal<R,dimension>::data() {
 
 template <> void TensorInternal<float, 1>::print(int indent) const {
     std::cout << std::string(indent, ' ');
+    std::cout << "[";
     for(int i=0; i<shape[0]; ++i) {
         std::cout << std::fixed
                   << std::setw( 7 ) // keep 7 digits
                   << std::setprecision( 3 ) // use 3 decimals
-                  << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
-                  << (*this)(i) << " ";
+                  << std::setfill( ' ' ) << (*this)(i); // pad values with blanks this->w(i,j)
+        if (i != shape[0] - 1) std::cout << " ";
     }
+    std::cout << "]";
     std::cout << std::endl;
 }
 template <> void TensorInternal<double, 1>::print(int indent) const {
     std::cout << std::string(indent, ' ');
+    std::cout << "[";
     for(int i=0; i<shape[0]; ++i) {
         std::cout << std::fixed
                   << std::setw( 7 ) // keep 7 digits
                   << std::setprecision( 3 ) // use 3 decimals
-                  << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
-                  << (*this)(i) << " ";
+                  << std::setfill( ' ' ) << (*this)(i); // pad values with blanks this->w(i,j)
+        if (i != shape[0] - 1) std::cout << " ";
     }
+    std::cout << "]";
     std::cout << std::endl;
 }
 

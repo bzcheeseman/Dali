@@ -56,6 +56,7 @@ class LazyTensor : public DormantTensor<DType> {
 
         LeftType                  left;
         mshadow::Shape<dimension> memory_shape;
+        int offset;
 
         #ifdef DALI_USE_CUDA
             typedef mshadow::Tensor<mshadow::gpu, dimension, DType> gpu_tensor_t;
@@ -85,12 +86,14 @@ class LazyTensor : public DormantTensor<DType> {
                   memory_shape(st.shape),
                   left(LeftType(st.shape)),
                   right(RightType(st.shape)),
+                  offset(st.offset),
                   dependent_tensors({this}) {}
         #else
             LazyTensor(const TensorInternal<DType,dimension>& st)
                 : DormantTensor<DType>(st.memory_),
                   memory_shape(st.shape),
                   left(LeftType(st.shape)),
+                  offset(st.offset),
                   dependent_tensors({this}) {}
         #endif
 
@@ -100,12 +103,12 @@ class LazyTensor : public DormantTensor<DType> {
                 assert((bool)(this->memory));
                 if (where_to_update == DEVICE_CPU) {
                     cpu_tensor_t * bjarne_stop = (cpu_tensor_t*)&left;
-                    *bjarne_stop = cpu_tensor_t(this->memory->cpu_data(), memory_shape);
+                    *bjarne_stop = cpu_tensor_t(this->memory->cpu_data() + offset, memory_shape);
                 }
                 #ifdef DALI_USE_CUDA
                 else if (where_to_update == DEVICE_GPU) {
                     gpu_tensor_t * bjarne_stop = (gpu_tensor_t*)&right;
-                    *bjarne_stop = gpu_tensor_t(this->memory->gpu_data(), memory_shape);
+                    *bjarne_stop = gpu_tensor_t(this->memory->gpu_data() + offset, memory_shape);
                 }
                 #endif
             }

@@ -1,4 +1,5 @@
 HIGH PRIORITY:
+-> row pluck must use views, not copies
 -> implement 3 different ways of accessing data in TensorInternal:
     - mutable
     - read

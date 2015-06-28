@@ -120,8 +120,6 @@ namespace matops {
                         matrices[i].dw(0) += (
                             out[i].w(0) * out[i].dw(0) - out[i].w(0) * colwise_sums
                         ) / temperature;
-
-                        // dw.col(i) += (sm_times_dy.col(i) - sm.col(i) * colwise_sums(i)) / temperature;
                     }
                 }
             });

@@ -206,17 +206,20 @@ namespace matops {
     Mat<R> Reshaping<R>::row_pluck(
             Mat<R> matrix,
             int row) {
-        #ifndef DONT_COMPILE
-        Mat<R> out (matrix.dims(1), 1, weights<R>::empty());
-        MAT(out) = MAT(matrix).row(row).transpose();
+        ASSERT2(
+            row >= 0 && row < matrix.dims(0),
+            utils::MS() << "Row must be positive and less than number of rows in matrix ("
+                        << matrix.dims(0) << ")."
+        );
+        // performs a copy
+        Mat<R> out(1, matrix.dims(1), weights<R>::empty());
+        MAT(out) = MAT(matrix)[row].wrapper().template broadcast<1>(MAT(out).shape);
+
         if (graph::backprop_enabled)
             graph::emplace_back([matrix, out, row]() mutable {
-                SAFE_GRAD(matrix).row(row).noalias() += GRAD(out).col(0).transpose();
+                SAFE_GRAD(matrix)[row] += GRAD(out)[0].wrapper();
             });
         return out;
-        #else
-        return Mat<R>(1,1);
-        #endif
     }
 
     template<typename R>

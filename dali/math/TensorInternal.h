@@ -89,6 +89,8 @@ class TensorInternal {
                        std::shared_ptr<SynchronizedMemory<R>> memory,
                        int offset);
 
+        //TensorInternal(const TensorInternal& other);
+
         typedef mshadow::Tensor<mshadow::cpu, dimension, R> cpu_tensor_t;
         #ifdef DALI_USE_CUDA
             typedef mshadow::Tensor<mshadow::gpu, dimension, R> gpu_tensor_t;
@@ -145,7 +147,7 @@ class TensorInternal {
 
         TensorInternal<R, dimension - 1> operator[](mshadow::index_t idx) const;
         TensorInternal<R, 1> ravel() const;
-
+        TensorInternal<R, dimension> Slice(mshadow::index_t begin, mshadow::index_t end) const;
         const R* data() const;
         R* data();
 

@@ -12,6 +12,15 @@ TensorInternal<R,dimension>::TensorInternal(mshadow::Shape<dimension> _shape) :
     memory = std::make_shared<SynchronizedMemory<R>>(shape.Size(), shape[dimension - 1]);
 }
 
+// template<typename R, int dimension>
+// TensorInternal<R,dimension>::TensorInternal(const TensorInternal& other) :
+//         shape(other.shape),
+//         offset(other.offset) {
+//     // TODO(szymon): We could probably shrink memory here if it's offsetted.
+
+//     memory = std::make_shared<SynchronizedMemory<R>>(*other.memory);
+// }
+
 template<typename R, int dimension>
 TensorInternal<R,dimension>::TensorInternal(mshadow::Shape<dimension> _shape,
                                             std::shared_ptr<SynchronizedMemory<R>> _memory,
@@ -281,6 +290,14 @@ template<typename R, int dimension>
 TensorInternal<R, 1> TensorInternal<R,dimension>::ravel() const {
     auto newshape = mshadow::Shape1(number_of_elements());
     return TensorInternal<R, 1>(newshape, memory, offset);
+}
+
+template<typename R, int dimension>
+TensorInternal<R, dimension> TensorInternal<R,dimension>::Slice(
+        mshadow::index_t begin, mshadow::index_t end) const {
+    auto newshape = shape;
+    newshape[0] = end - begin;
+    return TensorInternal<R, dimension>(newshape, memory, offset + shape.SubShape().Size() * begin);
 }
 
 

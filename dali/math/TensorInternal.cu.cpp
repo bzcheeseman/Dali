@@ -12,14 +12,13 @@ TensorInternal<R,dimension>::TensorInternal(mshadow::Shape<dimension> _shape) :
     memory = std::make_shared<SynchronizedMemory<R>>(shape.Size(), shape[dimension - 1]);
 }
 
-// template<typename R, int dimension>
-// TensorInternal<R,dimension>::TensorInternal(const TensorInternal& other) :
-//         shape(other.shape),
-//         offset(other.offset) {
-//     // TODO(szymon): We could probably shrink memory here if it's offsetted.
-
-//     memory = std::make_shared<SynchronizedMemory<R>>(*other.memory);
-// }
+template<typename R, int dimension>
+TensorInternal<R,dimension>::TensorInternal(const TensorInternal& other, bool copy_memory) :
+        TensorInternal(other.shape, other.memory, other.offset) {
+    if (copy_memory) {
+        memory = std::make_shared<SynchronizedMemory<R>>(*other.memory);
+    }
+}
 
 template<typename R, int dimension>
 TensorInternal<R,dimension>::TensorInternal(mshadow::Shape<dimension> _shape,

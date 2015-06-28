@@ -152,13 +152,10 @@ namespace matops {
         );
         int offset = 0;
         for (auto& mat : matrices) {
-                    std::cout << "Assigning to interval (" << offset << "," << offset + mat.dims(0) << ")" << std::endl;
-            MAT(mat).print();
             MAT(out).Slice(offset, offset + mat.dims(0)) = MAT(mat).wrapper() + (R)0.0;
             // MAT(out).mutable_cpu_data().Slice(offset, offset + mat.dims(0)) += MAT(mat).cpu_data();
             offset += mat.dims(0);
         }
-        out.print();
         if (graph::backprop_enabled)
             graph::emplace_back([matrices, out]() mutable {
                 int offset = 0;

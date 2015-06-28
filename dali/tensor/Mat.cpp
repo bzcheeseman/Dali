@@ -180,7 +180,7 @@ Mat<R>::Mat(const Mat<R>& other, bool copy_w, bool copy_dw) :
         // This copies memory using copy constructor
         // The copy is only executed if matrix was actually initialized
         // hence the && other.m part.
-        m = make_shared<TensorInternal<R,2>>(*other.m);
+        m = make_shared<TensorInternal<R,2>>(*other.m, true);
     } else {
         // This does not. (only shared_ptr is copied).
         m = other.m;
@@ -188,7 +188,7 @@ Mat<R>::Mat(const Mat<R>& other, bool copy_w, bool copy_dw) :
 
     if (copy_dw && other.g != nullptr) {
         // see comment for copy_w.
-        g = make_shared<TensorInternal<R,2>>(*other.g);
+        g = make_shared<TensorInternal<R,2>>(*other.g, true);
     } else {
         g = other.g;
     }

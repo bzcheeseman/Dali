@@ -89,7 +89,7 @@ class TensorInternal {
                        std::shared_ptr<SynchronizedMemory<R>> memory,
                        int offset);
 
-        //TensorInternal(const TensorInternal& other);
+        TensorInternal(const TensorInternal& other, bool copy_memory=false);
 
         typedef mshadow::Tensor<mshadow::cpu, dimension, R> cpu_tensor_t;
         #ifdef DALI_USE_CUDA

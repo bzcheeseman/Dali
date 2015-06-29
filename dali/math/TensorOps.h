@@ -597,6 +597,19 @@ namespace TensorOps {
                 return x > 0.0 ? 1.0 : 0.0;
             }
         };
+
+        template<typename R>
+        struct clip {
+            MSHADOW_XINLINE static R Map(const R& x, const R& clipping_val) {
+                if (x > clipping_val) {
+                    return clipping_val;
+                } else if (x < -clipping_val) {
+                    return -clipping_val;
+                } else {
+                    return x;
+                }
+            }
+        };
     }
 
     namespace random {

@@ -1535,8 +1535,50 @@ TEST_F(MatrixTests, quadratic_form) {
     }
 }
 
-/*
+typedef std::function<std::shared_ptr<Solver::AbstractSolver<R>>(vector<Mat<R>>)> create_solver_t;
 
+void test_solver(create_solver_t create_solver) {
+    // minimize X.T() * W * X + W2 * X;
+    Mat<R> X(5, 1, weights<R>::uniform(20.0));
+    X = MatOps<R>::consider_constant(X);
+    Mat<R> W(5, 5, weights<R>::uniform(20.0));
+    Mat<R> W2(1, 5, weights<R>::uniform(20.0));
+
+    W = W.dot(W.T()); // ensure positive definite.
+
+    vector<Mat<R>> params({W, W2});
+    auto solver = create_solver(params);
+
+    int solver_iterations = 10;
+
+    R last_error;
+
+    for (int iter = 0; iter < solver_iterations; ++iter) {
+        auto error = MatOps<R>::quadratic_form(X, W, X) + W2.dot(X);
+        error.grad();
+        graph::backward();
+        solver->step(params);
+
+        if (iter > 0) {
+            ASSERT_LT(error.w(0) + 1e-5, last_error);
+        }
+        last_error = error.w(0);
+    }
+}
+
+TEST(Solver, sgd) {
+    test_solver([](vector<Mat<R>> params) {
+        auto ret = std::make_shared<Solver::SGD<R>>(params);
+        ret->step_size = 0.01;
+        return ret;
+    });
+}
+
+
+
+
+
+/*
 TEST(Solver, adagrad) {
     int num_points = 20;
     int num_dimensions = 5;
@@ -1593,5 +1635,6 @@ TEST(Solver, adagrad) {
     // make 10x improvements (or else no VC funding)
     ASSERT_TRUE(original_error / 10.0 > error);
 }
+
 
 */

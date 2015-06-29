@@ -66,9 +66,6 @@ class Mat {
 
         std::shared_ptr<std::string> name = nullptr;
 
-        // TODO(jonathan): wtf!
-        bool sparse = false;
-        std::shared_ptr<std::vector<uint>> sparse_row_keys;
         bool constant;
 
         Mat();

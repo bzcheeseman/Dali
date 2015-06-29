@@ -9,6 +9,7 @@
 
 
 #include "dali/math/LazySoftmax.h"
+#include "dali/math/LazySoftmaxTranspose.h"
 #include "dali/math/LazyUtils.h"
 #include "dali/math/LazyDot.h"
 
@@ -145,6 +146,35 @@ class LazyTensor : public DormantTensor<DType> {
                               (ktype|mshadow::expr::type::kComplex)
                               > softmax(void) const {
                 auto cpu_soft = dali_expr::SoftmaxExpression<LeftType, DType>(left);
+                return LazyTensor<
+                    decltype(cpu_soft),
+                    DType, dimension,
+                    (ktype|mshadow::expr::type::kComplex)
+                    >(cpu_soft, dependent_tensors);
+            }
+        #endif
+
+        // softmax_transpose( X ) = Softmax( X^T )^T;
+        #ifdef DALI_USE_CUDA
+            inline LazyTensor<dali_expr::SoftmaxTransposeExpression<LeftType, DType>,
+                              dali_expr::SoftmaxTransposeExpression<RightType, DType>,
+                              DType,
+                              dimension,
+                              (ktype|mshadow::expr::type::kComplex)> softmax_transpose(void) const {
+                auto cpu_soft = dali_expr::SoftmaxTransposeExpression<LeftType, DType>(left);
+                auto gpu_soft = dali_expr::SoftmaxTransposeExpression<RightType, DType>(right);
+                return LazyTensor<
+                    decltype(cpu_soft), decltype(gpu_soft),
+                    DType, dimension,
+                    (ktype|mshadow::expr::type::kComplex)>(
+                        cpu_soft, gpu_soft, dependent_tensors);
+            }
+        #else
+            inline LazyTensor<dali_expr::SoftmaxTransposeExpression<LeftType, DType>,
+                              DType, dimension,
+                              (ktype|mshadow::expr::type::kComplex)
+                              > softmax_transpose(void) const {
+                auto cpu_soft = dali_expr::SoftmaxTransposeExpression<LeftType, DType>(left);
                 return LazyTensor<
                     decltype(cpu_soft),
                     DType, dimension,

@@ -27,59 +27,47 @@ namespace matops {
 
     template<typename R>
     Mat<R> Cost<R>::softmax(Mat<R> matrix, R temperature) {
-        #ifndef DONT_COMPILE
         Mat<R> out = Cost<R>::softmax_no_grad(matrix, temperature);
         if (graph::backprop_enabled && !matrix.constant)
             graph::emplace_back([matrix, temperature, out]() mutable {
-                auto& dw = GRAD(matrix);
-                auto& sm = MAT(out);
-                auto& dy = GRAD(out);
-                eigen_mat sm_times_dy = (sm.array() * dy.array());
-                auto colwise_sums                      = sm_times_dy.colwise().sum();
-                for (size_t i = 0; i < matrix.dims(1); ++i) {
-                    dw.col(i) += (sm_times_dy.col(i) - sm.col(i) * colwise_sums(i)) / temperature;
-                }
+                TensorInternal<R, 1> sm_times_dy_colsum( mshadow::Shape1(matrix.dims(0)));
+                sm_times_dy_colsum = sum_cols(MAT(out).wrapper() * GRAD(out).wrapper());
+
+                GRAD(matrix) += (
+                      MAT(out).wrapper() * GRAD(out).wrapper()
+                    - MAT(out).wrapper() * sm_times_dy_colsum.wrapper().template broadcast<0>(GRAD(out).shape)
+                ) / temperature;
             });
         return out;
-        #else
-        return Mat<R>(1,1);
-        #endif
     }
 
     template<typename R>
     Mat<R> Cost<R>::softmax_transpose(Mat<R> matrix, R temperature) {
-        #ifndef DONT_COMPILE
         Mat<R> out = Cost<R>::softmax_no_grad_transpose(matrix, temperature);
         if (graph::backprop_enabled && !matrix.constant)
             graph::emplace_back([matrix, temperature, out]() mutable {
                 auto& dw = GRAD(matrix);
                 auto& sm = MAT(out);
                 auto& dy = GRAD(out);
-                eigen_mat sm_times_dy = (sm.array() * dy.array());
-                auto rowwise_sums                      = sm_times_dy.rowwise().sum();
-                for (size_t i = 0; i < matrix.dims(0); ++i) {
-                    dw.row(i) += sm_times_dy.row(i) - sm.row(i) * rowwise_sums(i);
-                }
+
+                TensorInternal<R, 1> sm_times_dy_rowsum( mshadow::Shape1(matrix.dims(1)));
+                sm_times_dy_rowsum = sum_rows(MAT(out).wrapper() * GRAD(out).wrapper());
+
+
+                GRAD(matrix) += (
+                      MAT(out).wrapper() * GRAD(out).wrapper()
+                    - MAT(out).wrapper() * sm_times_dy_rowsum.wrapper().template broadcast<1>(GRAD(out).shape)
+                ) / temperature;
             });
         return out;
-        #else
-        return Mat<R>(1,1);
-        #endif
     }
 
     template<typename R>
     Mat<R> Cost<R>::softmax_no_grad_transpose(Mat<R> matrix, R temperature) {
-        #ifndef DONT_COMPILE
+        ASSERT2(temperature == 1.0, "Not implemented yet (Temperature != 1.0 for softmax).");
         auto out = Mat<R>::empty_like(matrix);
-        auto layer_max = MAT(matrix).rowwise().maxCoeff().array().matrix();
-        auto exped_distributions = (MAT(matrix).colwise() - layer_max.row(0)).array().exp().matrix();
-
-        auto total_distribution = exped_distributions.rowwise().sum().array().matrix();
-        MAT(out) = (exped_distributions.array().colwise() / total_distribution.col(0).array());
+        MAT(out) = MAT(matrix).wrapper().softmax_transpose();
         return out;
-        #else
-        return Mat<R>(1,1);
-        #endif
     }
 
     template<typename R>

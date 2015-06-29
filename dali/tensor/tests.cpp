@@ -824,35 +824,35 @@ TEST_F(MatrixTests, log_exp) {
     }
 }
 
-TEST_F(MatrixTests, hstack_forward_correctness) {
-    graph::NoBackprop nb;
+TEST_F(MatrixTests, hstack) {
+    {
+        graph::NoBackprop nb;
 
-    Mat<R> a(2, 3);
-    Mat<R> b(2, 4);
+        Mat<R> a(2, 3);
+        Mat<R> b(2, 4);
 
-    // A:
-    // 0 1 2
-    // 7 8 9
-    // B:
-    // 3  4  5  6
-    // 10 11 12 13
+        // A:
+        // 0 1 2
+        // 7 8 9
+        // B:
+        // 3  4  5  6
+        // 10 11 12 13
 
-    for (int i = 0; i < 3; i++)
-        a.w(i) = i;
-    for (int i = 0; i < 4; i++)
-        b.w(i) = i + 3;
-    for (int i = 3; i < 6; i++)
-        a.w(i) = i + 4;
-    for (int i = 4; i < 8; i++)
-        b.w(i) = i + 6;
+        for (int i = 0; i < 3; i++)
+            a.w(i) = i;
+        for (int i = 0; i < 4; i++)
+            b.w(i) = i + 3;
+        for (int i = 3; i < 6; i++)
+            a.w(i) = i + 4;
+        for (int i = 4; i < 8; i++)
+            b.w(i) = i + 6;
 
-    auto c = MatOps<R>::hstack({a, b});
-    for (int i = 0; i < 14;i++) {
-        ASSERT_EQ(c.w(i), i);
+        auto c = MatOps<R>::hstack({a, b});
+        for (int i = 0; i < 14;i++) {
+            ASSERT_EQ(c.w(i), i);
+        }
     }
-}
 
-TEST_F(MatrixTests, hstack_grad) {
     EXPERIMENT_REPEAT {
         auto mat = Mat<R>(2, 3, weights<R>::uniform(20.0));
         auto mat2 = Mat<R>(2, 4, weights<R>::uniform(20.0));
@@ -865,44 +865,43 @@ TEST_F(MatrixTests, hstack_grad) {
 }
 
 
-TEST_F(MatrixTests, vstack_forward_correctness) {
-    graph::NoBackprop nb;
+TEST_F(MatrixTests, vstack) {
+    {
+        graph::NoBackprop nb;
 
-    Mat<R> a(2, 3);
-    Mat<R> b(4, 3);
-    // A:
-    // 0 1 2
-    // 1 2 3
-    // B:
-    // 2 3 4
-    // 3 4 5
-    // 4 5 6
-    // 5 6 7
+        Mat<R> a(2, 3);
+        Mat<R> b(4, 3);
+        // A:
+        // 0 1 2
+        // 1 2 3
+        // B:
+        // 2 3 4
+        // 3 4 5
+        // 4 5 6
+        // 5 6 7
 
-    for (int row=0; row < 2; ++row) {
-        for (int col = 0; col < 3; ++col) {
-            a.w(row,col) = (R)(row + col);
+        for (int row=0; row < 2; ++row) {
+            for (int col = 0; col < 3; ++col) {
+                a.w(row,col) = (R)(row + col);
+            }
+        }
+
+        for (int row=0; row < 4; ++row) {
+            for (int col = 0; col < 3; ++col) {
+                b.w(row,col) = (R)(row + col + 2);
+            }
+        }
+
+        auto c = MatOps<R>::vstack(a,b);
+
+        for (int row = 0; row < 6; ++row) {
+            for (int col = 0; col < 3; ++col) {
+                SCOPED_TRACE("Index (" + std::to_string(row) + "," + std::to_string(col) + ")");
+                ASSERT_NEAR(c.w(row, col), (R)(row + col), 1e-9);
+            }
         }
     }
 
-    for (int row=0; row < 4; ++row) {
-        for (int col = 0; col < 3; ++col) {
-            b.w(row,col) = (R)(row + col + 2);
-        }
-    }
-
-    auto c = MatOps<R>::vstack(a,b);
-
-    for (int row = 0; row < 6; ++row) {
-        for (int col = 0; col < 3; ++col) {
-            SCOPED_TRACE("Index (" + std::to_string(row) + "," + std::to_string(col) + ")");
-            ASSERT_NEAR(c.w(row, col), (R)(row + col), 1e-9);
-        }
-    }
-}
-
-
-TEST_F(MatrixTests, vstack_grad) {
     EXPERIMENT_REPEAT {
         auto mat = Mat<R>(2, 3, weights<R>::uniform(20.0));
         auto mat2 = Mat<R>(4, 3, weights<R>::uniform(20.0));
@@ -951,7 +950,78 @@ TEST_F(MatOpsTests, dropout) {
         auto C = Mat<R>(1, input_size, weights<R>::uniform(20.0));
         ASSERT_TRUE(gradient_same(functor, {A, B, C}, 0.0003));
     }
+}
 
+TEST_F(MatOpsTests, dropout_normalized) {
+    int seed = 1234;
+    auto functor = [&seed](vector<Mat<R>> Xs)-> Mat<R> {
+        auto C = Xs[0] * Xs[1];
+        utils::random::set_seed(seed);
+        auto D = MatOps<R>::dropout_normalized(C, 0.5);
+        utils::random::reseed();
+        auto Z = D + Xs[2];
+        return Z;
+    };
+    int num_examples = 3;
+    int hidden_size = 4;
+    int input_size = 5;
+    EXPERIMENT_REPEAT {
+        seed = utils::randint(0, 2000);
+        auto A = Mat<R>(input_size, hidden_size, weights<R>::uniform(2.0));
+        auto B = Mat<R>(input_size, hidden_size, weights<R>::uniform(20.0));
+        auto C = Mat<R>(1, input_size, weights<R>::uniform(20.0));
+        ASSERT_TRUE(gradient_same(functor, {A, B, C}, 0.0003));
+    }
+}
+
+TEST_F(MatOpsTests, fast_dropout) {
+    int seed = 1234;
+    auto functor = [&seed](vector<Mat<R>> Xs)-> Mat<R> {
+        auto C = Xs[0] * Xs[1];
+        utils::random::set_seed(seed);
+        auto D = MatOps<R>::fast_dropout(C);
+        utils::random::reseed();
+        auto Z = D + Xs[2];
+        return Z;
+    };
+    int num_examples = 3;
+    int hidden_size = 4;
+    int input_size = 5;
+    EXPERIMENT_REPEAT {
+        seed = utils::randint(0, 2000);
+        auto A = Mat<R>(input_size, hidden_size, weights<R>::uniform(2.0));
+        auto B = Mat<R>(input_size, hidden_size, weights<R>::uniform(20.0));
+        auto C = Mat<R>(1, input_size, weights<R>::uniform(20.0));
+        ASSERT_TRUE(gradient_same(functor, {A, B, C}, 0.0003));
+    }
+}
+
+TEST_F(MatOpsTests, softmax) {
+    int row_size = 5;
+    int col_size = 10;
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(row_size, col_size, weights<R>::uniform(-3.0, 3.0));
+        int col = utils::randint(0, col_size - 1);
+        auto functor = [col](vector<Mat<R>> Xs)-> Mat<R>{
+            auto soft = MatOps<R>::softmax(Xs[0]);
+            return soft.T()[col];
+        };
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-3));
+    }
+}
+
+TEST_F(MatOpsTests, softmax_transpose) {
+    int row_size = 5;
+    int col_size = 10;
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(row_size, col_size, weights<R>::uniform(-3.0, 3.0));
+        int row = utils::randint(0, row_size - 1);
+        auto functor = [row](vector<Mat<R>> Xs)-> Mat<R>{
+            auto soft = MatOps<R>::softmax_transpose(Xs[0]);
+            return soft[row];
+        };
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-3));
+    }
 }
 
 /*

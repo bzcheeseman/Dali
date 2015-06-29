@@ -10,13 +10,16 @@ template<typename R> class Mat;
 namespace matops {
     template<typename R>
     struct SolverUpdates {
-        static void sgd_update(Mat<R> matrix, R step_size, R clip_val, R regc);
+        static void clip_and_regularize(Mat<R> param, R clipval, R regc);
+
+
+        static void sgd_update(Mat<R> matrix, R step_size);
         static void adagrad_update(Mat<R> matrix,
                                    TensorInternal<R, 1>& cache,
                                    R step_size,
-                                   R clipval,
-                                   R regc,
                                    R smooth_eps);
+        static void rmsprop_update(Mat<R> param, TensorInternal<R,1>& cache,
+                R decay_rate, R step_size, R smooth_eps);
     };
 }
 

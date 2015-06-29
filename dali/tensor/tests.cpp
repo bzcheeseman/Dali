@@ -1658,6 +1658,28 @@ TEST(Solver, adagrad) {
     });
 }
 
+TEST(Solver, rmsprop) {
+    test_solver([](vector<Mat<R>> params) {
+        auto ret = std::make_shared<Solver::RMSProp<R>>(params);
+        ret->step_size = 0.1;
+        return ret;
+    });
+}
+
+TEST(Solver, adadelta) {
+    test_solver([](vector<Mat<R>> params) {
+        auto ret = std::make_shared<Solver::AdaDelta<R>>(params);
+        return ret;
+    });
+}
+
+TEST(Solver, adam) {
+    test_solver([](vector<Mat<R>> params) {
+        auto ret = std::make_shared<Solver::Adam<R>>(params);
+        return ret;
+    });
+}
+
 
 
 /*

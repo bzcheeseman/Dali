@@ -47,7 +47,8 @@ namespace Solver {
     template<typename R>
     void SGD<R>::step (vector<Mat<R>>& parameters, R step_size) {
         for (auto& param : parameters) {
-            MatOps<R>::sgd_update(param, this->step_size, this->clipval, this->regc);
+            MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
+            MatOps<R>::sgd_update(param, step_size);
             // reset gradient
             GRAD(param).clear();
         }
@@ -111,7 +112,9 @@ namespace Solver {
             vector<Mat<R>>& parameters, R step_size) {
         for (auto& param : parameters) {
             auto& s = gsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
-            MatOps<R>::adagrad_update(param, s, this->step_size, this->clipval, this->regc, this->smooth_eps);
+
+            MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
+            MatOps<R>::adagrad_update(param, s, step_size, this->smooth_eps);
             // reset gradient
             GRAD(param).clear();
         }
@@ -132,7 +135,7 @@ namespace Solver {
             R _decay_rate,
             R smooth_eps,
             R clipval,
-            R regc) : AdaGrad<R>(clipval, smooth_eps, regc),
+            R regc) : AdaGrad<R>(smooth_eps, clipval, regc),
                       decay_rate(_decay_rate) {
         this->type = TYPE_RMSPROP;
     }
@@ -143,7 +146,7 @@ namespace Solver {
             R _decay_rate,
             R smooth_eps,
             R clipval,
-            R regc) : AdaGrad<R>(parameters, clipval, smooth_eps, regc),
+            R regc) : AdaGrad<R>(parameters, smooth_eps, clipval, regc),
                       decay_rate(_decay_rate) {
         this->type = TYPE_RMSPROP;
     }
@@ -153,40 +156,15 @@ namespace Solver {
             vector<Mat<R>>& parameters,
             R step_size
             ) {
-        // for (auto& param : parameters) {
-        //     auto& s = this->gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+        for (auto& param : parameters) {
+            auto& s = this->gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+            MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
 
-        //     if (param.sparse) {
-        //         for (auto& i : *(param.sparse_row_keys)) {
-        //             s.row(i) = s.row(i) * decay_rate + (1.0 - decay_rate) * GET_GRAD(param).row(i).array().square().matrix();
-        //             // clip the gradient to prevent explosions:
-        //             if (this->regc > 0) {
-        //                 GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * GET_MAT(param).row(i));
-        //             } else {
-        //                 GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix();
-        //             }
-        //             // update gradient using RMSprop rule
-        //             DEBUG_ASSERT_POSITIVE((s.row(i).array() + this->smooth_eps).matrix());
-        //             GET_MAT(param).row(i) -= step_size * (GET_GRAD(param).row(i).array() / (s.row(i).array() + this->smooth_eps).sqrt() ).matrix()  - (this->regc * GET_MAT(param).row(i));
-        //             // reset gradient
-        //             GET_GRAD(param).row(i).fill(0);
-        //         }
-        //     } else {
-        //         s = s * decay_rate + (1.0 - decay_rate) * GET_GRAD(param).array().square().matrix();
-        //         // clip the gradient to prevent explosions:
-        //         if (this->regc > 0) {
-        //             GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * GET_MAT(param));
-        //         } else {
-        //             GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix();
-        //         }
-        //         // update gradient using RMSprop rule
-        //         DEBUG_ASSERT_POSITIVE((s.array() + this->smooth_eps).matrix());
-        //         GET_MAT(param) -= step_size * (GET_GRAD(param).array() / (s.array() + this->smooth_eps).sqrt() ).matrix()  - (this->regc * GET_MAT(param));
-        //         // reset gradient
-        //         GET_GRAD(param).fill(0);
-        //     }
-        //     DEBUG_ASSERT_NOT_NAN(GET_MAT(param));
-        // }
+            MatOps<R>::rmsprop_update(param, s, decay_rate, step_size, this->smooth_eps);
+            // reset gradient
+            GRAD(param).clear();
+            DEBUG_ASSERT_NOT_NAN(MAT(param));
+        }
     }
 
     template<typename R>

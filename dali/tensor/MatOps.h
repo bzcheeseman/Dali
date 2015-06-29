@@ -14,6 +14,7 @@
 #include "dali/tensor/op/convolution.h"
 #include "dali/tensor/op/cost.h"
 #include "dali/tensor/op/dropout.h"
+#include "dali/tensor/op/solver_updates.h"
 #include "dali/tensor/op/other.h"
 #include "dali/tensor/op/reducers.h"
 #include "dali/tensor/op/reshaping.h"
@@ -53,6 +54,7 @@ namespace matops {
     template<typename R> class Composite;
     template<typename R> class Other;
     template<typename R> class Convolution;
+    template<typename R> class SolverUpdates;
 }
 
 template<typename R>
@@ -62,6 +64,7 @@ struct MatOps : matops::Binary<R>,
                 matops::Cost<R>,
                 matops::Reshaping<R>,
                 matops::Dropout<R>,
+                matops::SolverUpdates<R>,
                 matops::Composite<R>,
                 matops::Other<R>,
                 matops::Convolution<R> {

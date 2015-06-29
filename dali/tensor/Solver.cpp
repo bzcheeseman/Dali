@@ -51,18 +51,9 @@ namespace Solver {
     template<typename R>
     void SGD<R>::step (vector<Mat<R>>& parameters, R step_size) {
         for (auto& param : parameters) {
-            DEBUG_ASSERT_NOT_NAN(MAT(param));
-
-            if (this->regc > 0) {
-                MAT(param) -= step_size * F<op::clip<R>>(GRAD(param).wrapper(), (R)this->clipval) - (this->regc * MAT(param).wrapper());
-            } else {
-                MAT(param) -= step_size * F<op::clip<R>>(GRAD(param).wrapper(), (R)this->clipval);
-            }
+            MatOps<R>::sgd_update(param, this->step_size, this->clipval, this->regc);
             // reset gradient
             GRAD(param).clear();
-
-            DEBUG_ASSERT_NOT_NAN(MAT(param));
-
         }
     }
 
@@ -124,24 +115,9 @@ namespace Solver {
             vector<Mat<R>>& parameters, R step_size) {
         for (auto& param : parameters) {
             auto& s = gsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
-            if (this->regc > 0) {
-                GRAD(param) = F<op::clip<R>>(GRAD(param).wrapper(), this->clipval) + (this->regc * MAT(param).wrapper());
-            } else {
-                GRAD(param) = F<op::clip<R>>(GRAD(param).wrapper(), this->clipval);
-            }
-            // update gradient cache using decay rule:
-            s += F<op::square<R>>(GRAD(param).ravel().wrapper());
-            // clip the gradient to prevent explosions:
-            // update gradient using RMSprop rule
-
-            // TODO: REENABLE
-            // DEBUG_ASSERT_POSITIVE(s + this->smooth_eps);
-
-            MAT(param).ravel() -= step_size * GRAD(param).ravel().wrapper() / F<op::sqrt_f<R>>(s.ravel().wrapper() + this->smooth_eps);
+            MatOps<R>::adagrad_update(param, s, this->step_size, this->clipval, this->regc, this->smooth_eps);
             // reset gradient
             GRAD(param).clear();
-
-            DEBUG_ASSERT_NOT_NAN(MAT(param));
         }
     }
 

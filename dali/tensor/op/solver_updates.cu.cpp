@@ -64,6 +64,31 @@ namespace matops {
         DEBUG_ASSERT_NOT_NAN(MAT(param));
     }
 
+    template<typename R>
+    void SolverUpdates<R>::adadelta_update(Mat<R> param,
+                                           TensorInternal<R,1>& gsum,
+                                           TensorInternal<R,1>& xsum,
+                                           R rho,
+                                           R smooth_eps) {
+        // update gradient cache using decay rule:
+        gsum *= rho;
+        gsum += ((R)1.0 - rho) * F<op::square<R>>(GRAD(param).ravel().wrapper());
+        // DEBUG_ASSERT_POSITIVE((gsum.array()  + this->smooth_eps).matrix());
+        // DEBUG_ASSERT_POSITIVE(((xsum.array() + this->smooth_eps) / (gsum.array() + this->smooth_eps)).matrix());
+        TensorInternal<R,1> dparam(xsum.shape);
+        dparam = -(R)1.0 * F<op::sqrt_f<R>>(
+                       (xsum.wrapper() + smooth_eps) /
+                       (gsum.wrapper() + smooth_eps)
+                ) * GRAD(param).ravel().wrapper();
+
+        xsum *= rho;
+        xsum += ((R)1.0 - rho) * F<op::square<R>>(dparam.wrapper());
+        // update gradient using AdaDelta rule
+        MAT(param).ravel() += dparam.wrapper();
+
+        DEBUG_ASSERT_NOT_NAN(MAT(param));
+    }
+
 
     template class SolverUpdates<float>;
     template class SolverUpdates<double>;

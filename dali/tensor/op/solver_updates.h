@@ -18,8 +18,15 @@ namespace matops {
                                    TensorInternal<R, 1>& cache,
                                    R step_size,
                                    R smooth_eps);
+
         static void rmsprop_update(Mat<R> param, TensorInternal<R,1>& cache,
                 R decay_rate, R step_size, R smooth_eps);
+
+        static void adadelta_update(Mat<R> param,
+                                    TensorInternal<R,1>& gsum,
+                                    TensorInternal<R,1>& xsum,
+                                    R rho,
+                                    R smooth_eps);
     };
 }
 

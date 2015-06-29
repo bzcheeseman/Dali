@@ -1635,7 +1635,7 @@ void test_solver(create_solver_t create_solver) {
         graph::backward();
         solver->step(params);
 
-        if (iter > 0) {
+        if (iter > 1) { // some solvers need an epoch to start up.
             ASSERT_LT(error.w(0) + 1e-5, last_error);
         }
         last_error = error.w(0);

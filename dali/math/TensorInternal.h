@@ -86,6 +86,8 @@ class TensorInternal {
         const mshadow::Shape<dimension> shape;
         int offset;
 
+        TensorInternal() = default;
+
         TensorInternal(mshadow::Shape<dimension> shape);
 
 

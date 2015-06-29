@@ -6,7 +6,7 @@
 
 
 using std::vector;
-#define PARAM_KEY_FOR_LOOKUP_TABLE param.id()
+#define PARAM_KEY_FOR_LOOKUP_TABLE &MAT(param)
 
 DEFINE_string(solver, "adadelta", "What solver to use (adadelta, sgd, adam, rmsprop, adagrad)");
 DEFINE_double(learning_rate, 0.01, "Learning rate for SGD and Adagrad.");
@@ -94,70 +94,55 @@ namespace Solver {
     template<typename R>
     void AdaGrad<R>::create_gradient_caches(
             vector<Mat<R>>& parameters) {
-        // for (auto& param : parameters) {
-        //     // this operation should be run once unless
-        //     // we expect the parameters of the model
-        //     // to change online (probably not the case)
+        for (auto& param : parameters) {
+            // this operation should be run once unless
+            // we expect the parameters of the model
+            // to change online (probably not the case)
 
-        //     if (gsums.count(PARAM_KEY_FOR_LOOKUP_TABLE) == 0) {
-        //         auto new_cache = gsums.emplace(
-        //             std::piecewise_construct,
-        //         std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
-        //         std::forward_as_tuple(param.dims(0), param.dims(1)));
-        //         // initialize values for step cache to zero:
-        //         new_cache.first->second.fill(0);
-        //     }
-
-        // }
+            if (gsums.count(PARAM_KEY_FOR_LOOKUP_TABLE) == 0) {
+                auto new_cache = gsums.emplace(
+                    std::piecewise_construct,
+                std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
+                std::forward_as_tuple(mshadow::Shape1(param.number_of_elements())));
+                // initialize values for step cache to zero:
+                new_cache.first->second.clear();
+            }
+        }
     }
 
     template<typename R>
     void AdaGrad<R>::reset_caches(
             vector<Mat<R>>& parameters) {
-        // for (auto& param : parameters) {
-        //     auto& s = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
-        //     s.fill(0);
-        // }
+        for (auto& param : parameters) {
+            auto& s = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+            s.clear();
+        }
     }
 
     template<typename R>
     void AdaGrad<R>::step(
             vector<Mat<R>>& parameters, R step_size) {
-        // for (auto& param : parameters) {
-        //     auto& s = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
-        //     if (param.sparse) {
-        //         for (auto& i : *(param.sparse_row_keys)) {
-        //         if (this->regc > 0) {
-        //             GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * GET_MAT(param).row(i));
-        //         } else {
-        //             GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix();
-        //         }
-        //         // update gradient cache using decay rule:
-        //         s.row(i) += GET_GRAD(param).row(i).array().square().matrix();
-        //         // clip the gradient to prevent explosions:
-        //         // update gradient using RMSprop rule
-        //         DEBUG_ASSERT_POSITIVE((s.row(i).array() + this->smooth_eps).matrix());
-        //         GET_MAT(param).row(i) -= step_size * (GET_GRAD(param).row(i).array() / (s.row(i).array() + this->smooth_eps).sqrt() ).matrix();
-        //         // reset gradient
-        //         GET_GRAD(param).row(i).fill(0);
-        //         }
-        //     } else {
-        //         if (this->regc > 0) {
-        //             GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * GET_MAT(param));
-        //         } else {
-        //             GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix();
-        //         }
-        //         // update gradient cache using decay rule:
-        //         s += GET_GRAD(param).array().square().matrix();
-        //         // clip the gradient to prevent explosions:
-        //         // update gradient using RMSprop rule
-        //         DEBUG_ASSERT_POSITIVE((s.array() + this->smooth_eps).matrix());
-        //         GET_MAT(param) -= step_size * (GET_GRAD(param).array() / (s.array() + this->smooth_eps).sqrt() ).matrix();
-        //         // reset gradient
-        //         GET_GRAD(param).fill(0);
-        //     }
-        //     DEBUG_ASSERT_NOT_NAN(GET_MAT(param));
-        // }
+        for (auto& param : parameters) {
+            auto& s = gsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
+            if (this->regc > 0) {
+                GRAD(param) = F<op::clip<R>>(GRAD(param).wrapper(), this->clipval) + (this->regc * MAT(param).wrapper());
+            } else {
+                GRAD(param) = F<op::clip<R>>(GRAD(param).wrapper(), this->clipval);
+            }
+            // update gradient cache using decay rule:
+            s += F<op::square<R>>(GRAD(param).ravel().wrapper());
+            // clip the gradient to prevent explosions:
+            // update gradient using RMSprop rule
+
+            // TODO: REENABLE
+            // DEBUG_ASSERT_POSITIVE(s + this->smooth_eps);
+
+            MAT(param).ravel() -= step_size * GRAD(param).ravel().wrapper() / F<op::sqrt_f<R>>(s.ravel().wrapper() + this->smooth_eps);
+            // reset gradient
+            GRAD(param).clear();
+
+            DEBUG_ASSERT_NOT_NAN(MAT(param));
+        }
     }
 
     template<typename R>

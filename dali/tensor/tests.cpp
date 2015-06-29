@@ -1574,12 +1574,18 @@ TEST(Solver, sgd) {
     });
 }
 
-
+TEST(Solver, adagrad) {
+    test_solver([](vector<Mat<R>> params) {
+        auto ret = std::make_shared<Solver::AdaGrad<R>>(params);
+        ret->step_size = 0.01;
+        return ret;
+    });
+}
 
 
 
 /*
-TEST(Solver, adagrad) {
+TEST(Solver, adagrad_epic_odyssey_by_jonathan_raiman) {
     int num_points = 20;
     int num_dimensions = 5;
     // create data

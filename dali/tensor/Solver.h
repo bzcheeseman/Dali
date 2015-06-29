@@ -11,6 +11,8 @@ DECLARE_double(learning_rate);
 
 namespace Solver {
     template<typename R>
+    using cache_key_t = void*;
+    template<typename R>
     using cache_t = TensorInternal<R, 1>;
 
     enum SolverType {
@@ -53,7 +55,7 @@ namespace Solver {
             // This can be overriden by parameter passed to step function.
             R step_size = SOLVER_MAT_DEFAULT_STEP_SIZE_H;
 
-            std::unordered_map<int, cache_t<R>> gsums;
+            std::unordered_map<cache_key_t<R>, cache_t<R>> gsums;
             AdaGrad (R smooth_eps = SMOOTH_DEFAULT, R clipval = 5.0, R regc = 0.0);
             AdaGrad (std::vector<Mat<R>>&, R smooth_eps = SMOOTH_DEFAULT, R clipval = 5.0, R regc = 0.0);
             virtual void step( std::vector<Mat<R>>&);
@@ -76,8 +78,8 @@ namespace Solver {
     template<typename R> class AdaDelta : public AbstractSolver<R> {
         public:
             R rho;
-            std::unordered_map<int, cache_t<R>> xsums;
-            std::unordered_map<int, cache_t<R>> gsums;
+            std::unordered_map<cache_key_t<R>, cache_t<R>> xsums;
+            std::unordered_map<cache_key_t<R>, cache_t<R>> gsums;
             AdaDelta (R rho= 0.95, R smooth_eps = SMOOTH_DEFAULT, R clipval = 5.0, R regc = 0.0);
             AdaDelta (std::vector<Mat<R>>&, R rho= 0.95, R smooth_eps =SMOOTH_DEFAULT, R clipval = 5.0, R regc = 0.0);
             virtual void step(std::vector<Mat<R>>&);
@@ -91,8 +93,8 @@ namespace Solver {
             R b2;
             // This is a large integer:
             unsigned long long epoch;
-            std::unordered_map<int, cache_t<R>> xsums;
-            std::unordered_map<int, cache_t<R>> gsums;
+            std::unordered_map<cache_key_t<R>, cache_t<R>> xsums;
+            std::unordered_map<cache_key_t<R>, cache_t<R>> gsums;
             Adam (R b1 = 0.1, R b2 = 0.001, R smooth_eps = SMOOTH_DEFAULT, R clipval = 5.0, R regc = 0.0);
             Adam (std::vector<Mat<R>>&, R b1 = 0.1, R b2 = 0.001, R smooth_eps = SMOOTH_DEFAULT, R clipval = 5.0, R regc = 0.0);
             virtual void step(std::vector<Mat<R>>&);

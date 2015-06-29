@@ -35,10 +35,8 @@
 #include "dali/utils/assert2.h"
 #include "protobuf/corpus.pb.h"
 #include "dali/utils/ThreadPool.h"
+#include "dali/tensor/Index.h"
 
-namespace Indexing {
-    class Index;
-}
 
 // MACRO DEFINITIONS
 #define ELOG(EXP) std::cout << #EXP "\t=\t" << (EXP) << std::endl

@@ -1,7 +1,8 @@
 #ifndef CROSSENTROPY_MAT_H
 #define CROSSENTROPY_MAT_H
 
-#include "dali/core.h"
+#include "dali/tensor/Mat.h"
+#include "dali/tensor/Index.h"
 
 /**
 Masked Cross Entropy Loss
@@ -18,8 +19,8 @@ Inputs
 
 Mat<Z> logprobs : the log probabilities (unnormalized)
 uint& T : the log probabilities (unnormalized)
-shared_eigen_index_vector loss_start : where to start picking up errors for channel k
-shared_eigen_index_vector codelens : how long does channel k pick up errors
+Indexing::Index loss_start : where to start picking up errors for channel k
+Indexing::Index codelens : how long does channel k pick up errors
 const M targets : the labels at time T
 
 Outputs
@@ -32,11 +33,11 @@ template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint
 template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint&, uint, uint, const M);
 template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint&, int,  uint, const M);
 template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint&, uint, int,  const M);
-template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const M);
-template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint&, shared_eigen_index_vector, int, const M);
-template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint&, shared_eigen_index_vector, uint, const M);
-template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint&, int, shared_eigen_index_vector, const M);
-template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint&, uint, shared_eigen_index_vector, const M);
+template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint&, Indexing::Index, Indexing::Index, const M);
+template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint&, Indexing::Index, int, const M);
+template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint&, Indexing::Index, uint, const M);
+template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint&, int, Indexing::Index, const M);
+template<typename T, typename M>             T masked_cross_entropy(Mat<T>, uint&, uint, Indexing::Index, const M);
 /**
 Masked Cross Entropy Loss
 -------------------------
@@ -49,11 +50,11 @@ template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<
 template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<T>, uint&, uint, uint, const M);
 template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<T>, uint&, int,  uint, const M);
 template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<T>, uint&, uint, int,  const M);
-template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<T>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const M);
-template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<T>, uint&, shared_eigen_index_vector, int, const M);
-template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<T>, uint&, shared_eigen_index_vector, uint, const M);
-template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<T>, uint&, int, shared_eigen_index_vector, const M);
-template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<T>, uint&, uint, shared_eigen_index_vector, const M);
+template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<T>, uint&, Indexing::Index, Indexing::Index, const M);
+template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<T>, uint&, Indexing::Index, int, const M);
+template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<T>, uint&, Indexing::Index, uint, const M);
+template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<T>, uint&, int, Indexing::Index, const M);
+template<typename T, typename M>             T masked_cross_entropy_no_grad(Mat<T>, uint&, uint, Indexing::Index, const M);
 /**
 Masked Sum
 ----------
@@ -67,8 +68,8 @@ Inputs:
 
 Mat<Z> values : the data columns subject to summing.
 uint& T : the log probabilities (unnormalized)
-shared_eigen_index_vector loss_start : where to start picking up errors for channel k
-shared_eigen_index_vector codelens : how long does channel k pick up errors
+Indexing::Index loss_start : where to start picking up errors for channel k
+Indexing::Index codelens : how long does channel k pick up errors
 
 Outputs:
 --------
@@ -79,11 +80,11 @@ template<typename T>                         T masked_sum(Mat<T>, uint&, uint, u
 template<typename T>                         T masked_sum(Mat<T>, uint&, int,  int, const T&);
 template<typename T>                         T masked_sum(Mat<T>, uint&, uint, int, const T&);
 template<typename T>                         T masked_sum(Mat<T>, uint&, int,  uint, const T&);
-template<typename T>                         T masked_sum(Mat<T>, uint&, int,  shared_eigen_index_vector, const T&);
-template<typename T>                         T masked_sum(Mat<T>, uint&, uint, shared_eigen_index_vector, const T&);
-template<typename T>                         T masked_sum(Mat<T>, uint&, shared_eigen_index_vector, uint, const T&);
-template<typename T>                         T masked_sum(Mat<T>, uint&, shared_eigen_index_vector, int, const T&);
-template<typename T>                         T masked_sum(Mat<T>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const T&);
+template<typename T>                         T masked_sum(Mat<T>, uint&, int,  Indexing::Index, const T&);
+template<typename T>                         T masked_sum(Mat<T>, uint&, uint, Indexing::Index, const T&);
+template<typename T>                         T masked_sum(Mat<T>, uint&, Indexing::Index, uint, const T&);
+template<typename T>                         T masked_sum(Mat<T>, uint&, Indexing::Index, int, const T&);
+template<typename T>                         T masked_sum(Mat<T>, uint&, Indexing::Index, Indexing::Index, const T&);
 
 /**
 Masked Sum No Grad
@@ -97,10 +98,10 @@ template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&,
 template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&, int,  int, const T&);
 template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&, uint, int, const T&);
 template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&, int,  uint, const T&);
-template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&, int,  shared_eigen_index_vector, const T&);
-template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&, uint, shared_eigen_index_vector, const T&);
-template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&, shared_eigen_index_vector, uint, const T&);
-template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&, shared_eigen_index_vector, int, const T&);
-template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&, shared_eigen_index_vector, shared_eigen_index_vector, const T&);
+template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&, int,  Indexing::Index, const T&);
+template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&, uint, Indexing::Index, const T&);
+template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&, Indexing::Index, uint, const T&);
+template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&, Indexing::Index, int, const T&);
+template<typename T>                         T masked_sum_no_grad(Mat<T>, uint&, Indexing::Index, Indexing::Index, const T&);
 
 #endif

@@ -6,47 +6,27 @@
 
 namespace sequence_probability {
 
-    inline eigen_index_vector convert_to_eigen_vector(const std::initializer_list<uint>& list) {
-        eigen_index_vector vec(list.size());
-        auto ptr = vec.data();
-        for (auto& i : list) {
-            (*(ptr++)) = i;
-        }
-        return vec;
-    }
-
-    inline const eigen_index_vector& convert_to_eigen_vector(const eigen_index_vector& list) {
-        return list;
-    }
-
-    inline const eigen_index_block_scalar& convert_to_eigen_vector(const eigen_index_block_scalar& list) {
-        return list;
-    }
-
-    inline const eigen_index_block& convert_to_eigen_vector(const eigen_index_block& list) {
-        return list;
-    }
-
     template<typename model_t, typename K>
     typename model_t::value_t sequence_probability(
         const model_t& model,
-        K example) {
+        Indexing::Index example) {
+        if (example.size() == 0) {
+            return 0.0;
+        }
 
-        auto ex = convert_to_eigen_vector(example);
         typedef std::vector<uint> seq_type;
         typedef std::tuple<std::vector<uint>, typename model_t::value_t, typename model_t::state_type > open_list_t;
 
         graph::NoBackprop nb;
-        int n = ex.cols() * ex.rows();
 
         auto initial_state      = model.initial_states();
-        auto out_state_and_prob = model.activate(initial_state, example(0));
+        auto out_state_and_prob = model.activate(initial_state, example[0]);
 
         typename model_t::value_t log_prob = 0.0;
 
-        for (int i = 1; i < n; i++) {
-            out_state_and_prob = model.activate(std::get<0>(out_state_and_prob), example(i));
-            log_prob += std::log(out_state_and_prob.second->w(example(i))) + log_prob;
+        for (auto& ex : example) {
+            out_state_and_prob = model.activate(std::get<0>(out_state_and_prob), ex);
+            log_prob += std::log(out_state_and_prob.second->w(ex)) + log_prob;
         }
         return log_prob;
     }

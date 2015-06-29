@@ -155,10 +155,10 @@ StackedModel<Z> StackedModel<Z>::load(std::string dirname) {
 
 template<typename Z>
 Z StackedModel<Z>::masked_predict_cost(
-    shared_index_mat data,
-    shared_index_mat target_data,
-    shared_eigen_index_vector start_loss,
-    shared_eigen_index_vector codelens,
+    Indexing::Index data,
+    Indexing::Index target_data,
+    Indexing::Index start_loss,
+    Indexing::Index codelens,
     uint offset,
     Z drop_prob) {
     auto initial_state    = this->initial_states();
@@ -167,7 +167,7 @@ Z StackedModel<Z>::masked_predict_cost(
     mat logprobs;
 
     Z cost = 0.0;
-
+    #ifdef DONT_COMPILE
     auto n = data->cols();
     for (uint i = 0; i < n-1; ++i) {
         // pick this letter from the embedding
@@ -201,6 +201,7 @@ Z StackedModel<Z>::masked_predict_cost(
             );
         }
     }
+    #endif
     return cost;
 }
 
@@ -253,10 +254,10 @@ Mat<Z> StackedModel<Z>::decode(
 
 template<typename Z>
 Z StackedModel<Z>::masked_predict_cost(
-    shared_index_mat data,
-    shared_index_mat target_data,
+    Indexing::Index data,
+    Indexing::Index target_data,
     uint start_loss,
-    shared_eigen_index_vector codelens,
+    Indexing::Index codelens,
     uint offset,
     Z drop_prob) {
 
@@ -267,6 +268,7 @@ Z StackedModel<Z>::masked_predict_cost(
     mat logprobs;
 
     Z cost = 0.0;
+    #ifdef DONT_COMPILE
 
     auto n = data->cols();
     for (uint i = 0; i < n-1; ++i) {
@@ -298,6 +300,7 @@ Z StackedModel<Z>::masked_predict_cost(
             );
         }
     }
+    #endif
     return cost;
 }
 
@@ -473,7 +476,7 @@ typename StackedModel<Z>::activation_t StackedModel<Z>::activate(
 template<typename Z>
 typename StackedModel<Z>::activation_t StackedModel<Z>::activate(
     state_type& previous_state,
-    const eigen_index_block indices) const {
+    Indexing::Index indices) const {
     activation_t out;
     auto input_vector = this->embedding[indices];
     std::get<0>(out)  = stacked_lstm.activate(previous_state, input_vector);

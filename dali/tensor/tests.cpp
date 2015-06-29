@@ -4,7 +4,13 @@
 #include <gtest/gtest.h>
 
 #include "dali/test_utils.h"
-#include "dali/core.h"
+#include "dali/tensor/Index.h"
+#include "dali/layers/Layers.h"
+#include "dali/tensor/Mat.h"
+#include "dali/tensor/MatOps.h"
+#include "dali/tensor/Tape.h"
+#include "dali/tensor/CrossEntropy.h"
+#include "dali/tensor/Solver.h"
 
 using std::vector;
 using std::chrono::milliseconds;

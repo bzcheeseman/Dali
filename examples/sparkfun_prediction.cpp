@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <Eigen/Eigen>
 #include <fstream>
 #include <iterator>
 #include <set>

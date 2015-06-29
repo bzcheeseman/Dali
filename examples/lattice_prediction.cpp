@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <Eigen/Eigen>
 #include <fstream>
 #include <gflags/gflags.h>
 #include <iterator>

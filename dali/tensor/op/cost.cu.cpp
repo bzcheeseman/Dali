@@ -8,14 +8,6 @@
 
 using std::vector;
 
-namespace Indexing {
-    typedef uint ind_t;
-    class Index {
-        ind_t& operator[](std::size_t idx);
-        ind_t  operator[](std::size_t idx) const;
-    };
-}
-
 namespace matops {
     template<typename R>
     Mat<R> Cost<R>::softmax_no_grad(Mat<R> matrix, R temperature) {

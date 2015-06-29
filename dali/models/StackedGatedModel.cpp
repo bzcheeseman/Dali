@@ -123,10 +123,10 @@ StackedGatedModel<Z> StackedGatedModel<Z>::load(std::string dirname) {
 
 template<typename Z>
 std::tuple<Z, Z> StackedGatedModel<Z>::masked_predict_cost(
-    shared_index_mat data,
-    shared_index_mat target_data,
-    shared_eigen_index_vector start_loss,
-    shared_eigen_index_vector codelens,
+    Indexing::Index data,
+    Indexing::Index target_data,
+    Indexing::Index start_loss,
+    Indexing::Index codelens,
     uint offset,
     Z drop_prob) {
 
@@ -136,6 +136,8 @@ std::tuple<Z, Z> StackedGatedModel<Z>::masked_predict_cost(
     mat memory;
     mat logprobs;
     std::tuple<Z, Z> cost(0.0, 0.0);
+
+    #ifdef DONT_COMPILE
 
     auto n = data->cols();
     for (uint i = 0; i < n-1; ++i) {
@@ -179,15 +181,16 @@ std::tuple<Z, Z> StackedGatedModel<Z>::masked_predict_cost(
             );
         }
     }
+    #endif
     return cost;
 }
 
 template<typename Z>
 std::tuple<Z, Z> StackedGatedModel<Z>::masked_predict_cost(
-    shared_index_mat data,
-    shared_index_mat target_data,
+    Indexing::Index data,
+    Indexing::Index target_data,
     uint start_loss,
-    shared_eigen_index_vector codelens,
+    Indexing::Index codelens,
     uint offset,
     Z drop_prob) {
 
@@ -196,6 +199,8 @@ std::tuple<Z, Z> StackedGatedModel<Z>::masked_predict_cost(
     mat memory;
     mat logprobs;
     std::tuple<Z, Z> cost(0.0, 0.0);
+
+    #ifdef DONT_COMPILE
 
     auto n = data->cols();
     for (uint i = 0; i < n-1; ++i) {
@@ -245,6 +250,7 @@ std::tuple<Z, Z> StackedGatedModel<Z>::masked_predict_cost(
                 );
             }
     }
+    #endif
     return cost;
 }
 
@@ -472,7 +478,7 @@ typename StackedGatedModel<Z>::activation_t StackedGatedModel<Z>::activate(
 template<typename Z>
 typename StackedGatedModel<Z>::activation_t StackedGatedModel<Z>::activate(
         state_type& previous_state,
-        const eigen_index_block indices) const {
+        const Indexing::Index indices) const {
     activation_t out;
     auto input_vector = this->embedding[indices];
     auto memory       = gate.activate(

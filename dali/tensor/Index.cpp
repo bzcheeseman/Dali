@@ -64,24 +64,6 @@ namespace Indexing {
     Index::Index(std::shared_ptr<OwnershipVectorIndex> internal) {
         w = internal;
     }
-    Index::Index(eigen_index_vector& vec) {
-        w = make_shared<EigenIndexVectorIndex>(vec);
-    }
-    Index::Index(eigen_index_block_scalar vec) {
-        w = make_shared<EigenIndexBlockIndex>(vec);
-    }
-    Index::Index(eigen_index_block vec) {
-        w = make_shared<EigenIndexBlockIndex>(vec);
-    }
-    Index::Index(eigen_segment vec) {
-        w = make_shared<EigenIndexBlockIndex>(vec);
-    }
-    Index::Index(eigen_segment_scalar vec) {
-        w = make_shared<EigenIndexBlockIndex>(vec);
-    }
-    Index::Index(eigen_index_block_scalar_from_row vec) {
-        w = make_shared<EigenIndexBlockIndex>(vec);
-    }
     Index Index::arange(uint start, uint end_non_inclusive) {
         assert(start < end_non_inclusive);
         auto internal = make_shared<OwnershipVectorIndex>(std::initializer_list<uint>({}));
@@ -139,57 +121,6 @@ namespace Indexing {
 
     OwnershipVectorIndex::OwnershipVectorIndex(std::initializer_list<ind_t> vec) : w(vec) {
     }
-
-    const ind_t* EigenIndexVectorIndex::data() const {
-        return w.data();
-    }
-
-    ind_t* EigenIndexVectorIndex::data() {
-        return w.data();
-    }
-
-    size_t EigenIndexVectorIndex::size() const {
-        return w.rows();
-    }
-
-    ind_t& EigenIndexVectorIndex::operator[](std::size_t idx) {
-        return w[idx];
-    }
-
-    ind_t EigenIndexVectorIndex::operator[](std::size_t idx) const {
-        return w[idx];
-    }
-
-    EigenIndexVectorIndex::EigenIndexVectorIndex(eigen_index_vector& vec) : w(vec) {
-    }
-
-
-    const ind_t* EigenIndexBlockIndex::data() const {
-        return w.data();
-    }
-
-    ind_t* EigenIndexBlockIndex::data() {
-        return w.data();
-    }
-
-    size_t EigenIndexBlockIndex::size() const {
-        return w.rows();
-    }
-
-    ind_t& EigenIndexBlockIndex::operator[](std::size_t idx) {
-        return w[idx];
-    }
-
-    ind_t EigenIndexBlockIndex::operator[](std::size_t idx) const {
-        return w[idx];
-    }
-
-    EigenIndexBlockIndex::EigenIndexBlockIndex(eigen_index_block_scalar vec)          : w(vec) {}
-    EigenIndexBlockIndex::EigenIndexBlockIndex(eigen_index_block vec)                 : w(vec) {}
-    EigenIndexBlockIndex::EigenIndexBlockIndex(eigen_segment vec)                     : w(vec) {}
-    EigenIndexBlockIndex::EigenIndexBlockIndex(eigen_segment_scalar vec)              : w(vec) {}
-    EigenIndexBlockIndex::EigenIndexBlockIndex(eigen_index_block_scalar_from_row vec) : w(vec) {}
-
 
     Index::iterator Index::begin() {
         return iterator(w->data());

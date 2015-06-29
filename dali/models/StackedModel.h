@@ -51,9 +51,6 @@ class StackedModel : public RecurrentEmbeddingModel<Z>, public ReconstructModel 
         const bool memory_feeds_gates;
 
         StackedLSTM<Z> stacked_lstm;
-
-        typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
-        typedef std::shared_ptr< index_mat > shared_index_mat;
         StackedInputLayer<Z> decoder;
         virtual std::vector<mat> parameters() const;
         /**
@@ -157,17 +154,17 @@ class StackedModel : public RecurrentEmbeddingModel<Z>, public ReconstructModel 
         **/
         StackedModel(const StackedModel<Z>&, bool, bool);
         Z masked_predict_cost(
-            shared_index_mat,
-            shared_index_mat,
-            shared_eigen_index_vector,
-            shared_eigen_index_vector,
+            Indexing::Index,
+            Indexing::Index,
+            Indexing::Index,
+            Indexing::Index,
             uint offset=0,
             Z drop_prob = 0.0);
         Z masked_predict_cost(
-            shared_index_mat,
-            shared_index_mat,
+            Indexing::Index,
+            Indexing::Index,
             uint,
-            shared_eigen_index_vector,
+            Indexing::Index,
             uint offset=0,
             Z drop_prob = 0.0);
 
@@ -202,7 +199,7 @@ class StackedModel : public RecurrentEmbeddingModel<Z>, public ReconstructModel 
 
         **/
         activation_t activate(state_type&, const uint& ) const;
-        activation_t activate(state_type&, const eigen_index_block ) const;
+        activation_t activate(state_type&, const Indexing::Index ) const;
 
         virtual std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(
             Indexing::Index,

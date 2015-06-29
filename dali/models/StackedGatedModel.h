@@ -46,8 +46,6 @@ class StackedGatedModel : public StackedModel<Z> {
         typedef std::vector< typename LSTM<Z>::State > state_type;
         typedef std::tuple<state_type, mat, mat> activation_t;
         typedef Z value_t;
-        typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
-        typedef std::shared_ptr< index_mat > shared_index_mat;
 
         const gate_t gate;
         Z memory_penalty;
@@ -94,17 +92,17 @@ class StackedGatedModel : public StackedModel<Z> {
         StackedGatedModel(const config_t&);
         StackedGatedModel(const StackedGatedModel<Z>&, bool, bool);
         std::tuple<Z, Z> masked_predict_cost(
-            shared_index_mat,
-            shared_index_mat,
-            shared_eigen_index_vector,
-            shared_eigen_index_vector,
+            Indexing::Index,
+            Indexing::Index,
+            Indexing::Index,
+            Indexing::Index,
             uint offset=0,
             Z drop_prob = 0.0);
         std::tuple<Z, Z> masked_predict_cost(
-            shared_index_mat,
-            shared_index_mat,
+            Indexing::Index,
+            Indexing::Index,
             uint,
-            shared_eigen_index_vector,
+            Indexing::Index,
             uint offset=0,
             Z drop_prob = 0.0);
 
@@ -112,7 +110,7 @@ class StackedGatedModel : public StackedModel<Z> {
         state_type get_final_activation(Indexing::Index, Z drop_prob=0.0) const;
 
         activation_t activate(state_type&, const uint&) const;
-        activation_t activate(state_type&, const eigen_index_block) const;
+        activation_t activate(state_type&, const Indexing::Index) const;
 
         virtual std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(
             Indexing::Index,

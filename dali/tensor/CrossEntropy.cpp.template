@@ -1,13 +1,11 @@
-
 #include "CrossEntropy.h"
-
 #include "dali/tensor/__MatMacros__.h"
 
 template<typename Z, typename M>
 Z masked_cross_entropy(Mat<Z> logprobs,
         uint& T,
-        shared_eigen_index_vector loss_start,
-        shared_eigen_index_vector codelens,
+        Indexing::Index loss_start,
+        Indexing::Index codelens,
         const M targets) {
     // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     // Z cost = 0.0;
@@ -52,7 +50,7 @@ template<typename Z, typename M>
 Z masked_cross_entropy(Mat<Z> logprobs,
         uint& T,
         uint loss_start,
-        shared_eigen_index_vector codelens,
+        Indexing::Index codelens,
         const M targets) {
     // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     // Z cost = 0.0;
@@ -71,7 +69,7 @@ template<typename Z, typename M>
 Z masked_cross_entropy(Mat<Z> logprobs,
         uint& T,
         int loss_start,
-        shared_eigen_index_vector codelens,
+        Indexing::Index codelens,
         const M targets) {
     // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     // Z cost = 0.0;
@@ -90,7 +88,7 @@ Z masked_cross_entropy(Mat<Z> logprobs,
 template<typename Z, typename M>
 Z masked_cross_entropy(Mat<Z> logprobs,
         uint& T,
-        shared_eigen_index_vector loss_start,
+        Indexing::Index loss_start,
         int codelens,
         const M targets) {
     // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
@@ -109,7 +107,7 @@ Z masked_cross_entropy(Mat<Z> logprobs,
 template<typename Z, typename M>
 Z masked_cross_entropy(Mat<Z> logprobs,
         uint& T,
-        shared_eigen_index_vector loss_start,
+        Indexing::Index loss_start,
         uint codelens,
         const M targets) {
     // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
@@ -207,8 +205,8 @@ Z masked_cross_entropy(Mat<Z> logprobs,
 template<typename Z, typename M>
 Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
         uint& T,
-        shared_eigen_index_vector loss_start,
-        shared_eigen_index_vector codelens,
+        Indexing::Index loss_start,
+        Indexing::Index codelens,
         const M targets) {
     // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     // Z cost = 0.0;
@@ -223,7 +221,7 @@ template<typename Z, typename M>
 Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
         uint& T,
         uint loss_start,
-        shared_eigen_index_vector codelens,
+        Indexing::Index codelens,
         const M targets) {
     // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     // Z cost = 0.0;
@@ -237,7 +235,7 @@ template<typename Z, typename M>
 Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
         uint& T,
         int loss_start,
-        shared_eigen_index_vector codelens,
+        Indexing::Index codelens,
         const M targets) {
     // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
     // Z cost = 0.0;
@@ -251,7 +249,7 @@ Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
 template<typename Z, typename M>
 Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
         uint& T,
-        shared_eigen_index_vector loss_start,
+        Indexing::Index loss_start,
         int codelens,
         const M targets) {
     // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
@@ -265,7 +263,7 @@ Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
 template<typename Z, typename M>
 Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
         uint& T,
-        shared_eigen_index_vector loss_start,
+        Indexing::Index loss_start,
         uint codelens,
         const M targets) {
     // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
@@ -336,8 +334,8 @@ Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
 template<typename Z>
 Z masked_sum(Mat<Z> values,
         uint& T,
-        shared_eigen_index_vector loss_start,
-        shared_eigen_index_vector codelens,
+        Indexing::Index loss_start,
+        Indexing::Index codelens,
         const Z& gparent) {
     // Z cost = 0.0;
     // assert(values.dims().size() > 1);
@@ -354,7 +352,7 @@ Z masked_sum(Mat<Z> values,
 template<typename Z>
 Z masked_sum(Mat<Z> values,
         uint& T,
-        shared_eigen_index_vector loss_start,
+        Indexing::Index loss_start,
         int codelens,
         const Z& gparent) {
     // Z cost = 0.0;
@@ -371,7 +369,7 @@ Z masked_sum(Mat<Z> values,
 template<typename Z>
 Z masked_sum(Mat<Z> values,
         uint& T,
-        shared_eigen_index_vector loss_start,
+        Indexing::Index loss_start,
         uint codelens,
         const Z& gparent) {
     // Z cost = 0.0;
@@ -390,7 +388,7 @@ template<typename Z>
 Z masked_sum(Mat<Z> values,
         uint& T,
         uint loss_start,
-        shared_eigen_index_vector codelens,
+        Indexing::Index codelens,
         const Z& gparent) {
     // Z cost = 0.0;
     // assert(values.dims().size() > 1);
@@ -407,7 +405,7 @@ template<typename Z>
 Z masked_sum(Mat<Z> values,
         uint& T,
         int loss_start,
-        shared_eigen_index_vector codelens,
+        Indexing::Index codelens,
         const Z& gparent) {
     // Z cost = 0.0;
     // assert(values.dims().size() > 1);
@@ -495,8 +493,8 @@ Z masked_sum(Mat<Z> values,
 template<typename Z>
 Z masked_sum_no_grad(Mat<Z> values,
         uint& T,
-        shared_eigen_index_vector loss_start,
-        shared_eigen_index_vector codelens,
+        Indexing::Index loss_start,
+        Indexing::Index codelens,
         const Z& gparent) {
     // Z cost = 0.0;
     // assert(values.dims().size() > 1);
@@ -510,7 +508,7 @@ Z masked_sum_no_grad(Mat<Z> values,
 template<typename Z>
 Z masked_sum_no_grad(Mat<Z> values,
         uint& T,
-        shared_eigen_index_vector loss_start,
+        Indexing::Index loss_start,
         int codelens,
         const Z& gparent) {
     // Z cost = 0.0;
@@ -524,7 +522,7 @@ Z masked_sum_no_grad(Mat<Z> values,
 template<typename Z>
 Z masked_sum_no_grad(Mat<Z> values,
         uint& T,
-        shared_eigen_index_vector loss_start,
+        Indexing::Index loss_start,
         uint codelens,
         const Z& gparent) {
     // Z cost = 0.0;
@@ -540,7 +538,7 @@ template<typename Z>
 Z masked_sum_no_grad(Mat<Z> values,
         uint& T,
         uint loss_start,
-        shared_eigen_index_vector codelens,
+        Indexing::Index codelens,
         const Z& gparent) {
     // Z cost = 0.0;
     // assert(values.dims().size() > 1);
@@ -554,7 +552,7 @@ template<typename Z>
 Z masked_sum_no_grad(Mat<Z> values,
         uint& T,
         int loss_start,
-        shared_eigen_index_vector codelens,
+        Indexing::Index codelens,
         const Z& gparent) {
     // Z cost = 0.0;
     // assert(values.dims().size() > 1);
@@ -628,32 +626,32 @@ Z masked_sum_no_grad(Mat<Z> values,
 // [float, double] masked_cross_entropy
 // [Mat<RETURN_TYPE>]
 // [uint&]
-// [shared_eigen_index_vector, uint, int]
-// [shared_eigen_index_vector, uint, int]
-// [const eigen_index_block, const eigen_index_block_scalar]
+// [Indexing::Index, uint, int]
+// [Indexing::Index, uint, int]
+// [Indexing::Index]
 
 // TEMPLATE
 // [float, double] masked_cross_entropy_no_grad
 // [Mat<RETURN_TYPE>]
 // [uint&]
-// [shared_eigen_index_vector, uint, int]
-// [shared_eigen_index_vector, uint, int]
-// [const eigen_index_block, const eigen_index_block_scalar]
+// [Indexing::Index, uint, int]
+// [Indexing::Index, uint, int]
+// [Indexing::Index]
 
 // TEMPLATE
 // [float, double] masked_sum
 // [Mat<RETURN_TYPE>]
 // [uint&]
-// [shared_eigen_index_vector, uint, int]
-// [shared_eigen_index_vector, uint, int]
+// [Indexing::Index, uint, int]
+// [Indexing::Index, uint, int]
 // [const RETURN_TYPE&]
 
 // TEMPLATE
 // [float, double] masked_sum_no_grad
 // [Mat<RETURN_TYPE>]
 // [uint&]
-// [shared_eigen_index_vector, uint, int]
-// [shared_eigen_index_vector, uint, int]
+// [Indexing::Index, uint, int]
+// [Indexing::Index, uint, int]
 // [const RETURN_TYPE&]
 
 // END TEMPLATE SPECIALIZATIONS

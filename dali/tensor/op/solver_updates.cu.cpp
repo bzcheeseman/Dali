@@ -89,6 +89,42 @@ namespace matops {
         DEBUG_ASSERT_NOT_NAN(MAT(param));
     }
 
+    template<typename R>
+    void SolverUpdates<R>::adam_update(Mat<R> param,
+                                           TensorInternal<R,1>& m,
+                                           TensorInternal<R,1>& v,
+                                           R b1,
+                                           R b2,
+                                           R smooth_eps,
+                                           R step_size,
+                                           unsigned long long epoch) {
+        // this affects the learning rate:
+        auto fix1 = 1.0 - std::pow(b1, epoch);
+        auto fix2 = 1.0 - std::pow(b2, epoch);
+        R lr_t = step_size * sqrt(fix2 / fix1);
+
+        assert(lr_t == lr_t);
+
+        // update m acculumulator
+
+        m *= ((R)1.0 - b1);
+        m += b1 * GRAD(param).ravel().wrapper();
+
+
+        // update v acculumulator
+        v *= ((R)1.0 - b2);
+        v += b2 * F<op::square<R>>(GRAD(param).ravel().wrapper());
+
+        GRAD(param).ravel() = m.wrapper() / (F<op::sqrt_f<R>>(v.wrapper()) + smooth_eps);
+
+        // take gradient step
+        MAT(param) -= lr_t * GRAD(param).wrapper();
+
+        DEBUG_ASSERT_NOT_NAN(MAT(param));
+    }
+
+
+
 
     template class SolverUpdates<float>;
     template class SolverUpdates<double>;

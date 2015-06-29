@@ -27,6 +27,15 @@ namespace matops {
                                     TensorInternal<R,1>& xsum,
                                     R rho,
                                     R smooth_eps);
+
+        static void adam_update(Mat<R> param,
+                                TensorInternal<R,1>& m,
+                                TensorInternal<R,1>& v,
+                                R b1,
+                                R b2,
+                                R smooth_eps,
+                                R step_size,
+                                unsigned long long epoch);
     };
 }
 

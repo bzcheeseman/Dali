@@ -304,76 +304,31 @@ namespace Solver {
     template<typename R>
     void Adam<R>::reset_caches(
             vector<Mat<R>>& parameters) {
-        // for (auto& param : parameters) {
-        //     auto& s = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
-        //     s.fill(0);
-        //     auto& x = xsums[PARAM_KEY_FOR_LOOKUP_TABLE];
-        //     x.fill(0);
-        // }
-        // epoch = 0;
+        for (auto& param : parameters) {
+            auto& s = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+            s.clear();
+            auto& x = xsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+            x.clear();
+        }
+        epoch = 0;
     }
 
     template<typename R>
     void Adam<R>::step (vector<Mat<R>>& parameters, R step_size) {
-        // // increase timesteps:
-        // epoch+=1;
-        // // this affects the learning rate:
-        // auto fix1 = 1.0 - std::pow(b1, epoch);
-        // auto fix2 = 1.0 - std::pow(b2, epoch);
-        // auto lr_t = step_size * sqrt(fix2 / fix1);
+        // increase timesteps:
+        epoch += 1;
 
-        // assert(lr_t == lr_t);
+        for (auto& param : parameters) {
+            auto& m = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+            auto& v = xsums[PARAM_KEY_FOR_LOOKUP_TABLE];
 
-        // for (auto& param : parameters) {
-        //     auto& m = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
-        //     auto& v = xsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+            MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
 
-        //     if (param.sparse) {
-        //         for (auto& i : *(param.sparse_row_keys)) {
-        //             GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix();
-        //             // update m acculumulator
-        //             m.row(i) = ((b1 * GET_GRAD(param).row(i).array()) + ((1. - b1) * m.row(i).array())).matrix();
+            MatOps<R>::adam_update(param, m, v, b1, b2, this->smooth_eps, step_size, epoch);
 
-        //             // update v acculumulator
-        //             v.row(i) = ((b2 * GET_GRAD(param).row(i).array().square()) + ((1. - b2) * v.row(i).array())).matrix();
-
-        //             // regularize using L2 norm:
-        //             if (this->regc > 0) {
-        //                 GET_GRAD(param).row(i)  = (m.row(i).array() / (v.row(i).array().sqrt() + this->smooth_eps)).matrix() + (this->regc * GET_MAT(param).row(i));
-        //             } else {
-        //                 GET_GRAD(param).row(i)  = (m.row(i).array() / (v.row(i).array().sqrt() + this->smooth_eps)).matrix();
-        //             }
-
-        //             // take gradient step
-        //             GET_MAT(param).row(i) -= lr_t * GET_GRAD(param).row(i);
-
-        //             // reset gradient
-        //             GET_GRAD(param).row(i).fill(0);
-        //         }
-        //     } else {
-
-        //         GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix();
-
-        //         // update m acculumulator
-        //         m = ((b1 * GET_GRAD(param).array()) + ((1. - b1) * m.array())).matrix();
-
-        //         // update v acculumulator
-        //         v = ((b2 * GET_GRAD(param).array().square()) + ((1. - b2) * v.array())).matrix();
-
-        //         // regularize using L2 norm:
-        //         if (this->regc > 0) {
-        //             GET_GRAD(param)  = (m.array() / (v.array().sqrt() + this->smooth_eps)).matrix() + (this->regc * GET_MAT(param));
-        //         } else {
-        //             GET_GRAD(param)  = (m.array() / (v.array().sqrt() + this->smooth_eps)).matrix();
-        //         }
-
-        //         // take gradient step
-        //         GET_MAT(param) -= lr_t * GET_GRAD(param);
-
-        //         // reset gradient
-        //         GET_GRAD(param).fill(0);
-        //     }
-        // }
+            // reset gradient
+            GRAD(param).clear();
+        }
     }
 
 

@@ -1,8 +1,6 @@
 #include "dali/tensor/Solver.h"
 
 #include "dali/tensor/__MatMacros__.h"
-#include "dali/math/TensorOps.h"
-#include "dali/math/LazyTensor.h"
 
 
 using std::vector;
@@ -12,7 +10,6 @@ DEFINE_string(solver, "adadelta", "What solver to use (adadelta, sgd, adam, rmsp
 DEFINE_double(learning_rate, 0.01, "Learning rate for SGD and Adagrad.");
 
 namespace Solver {
-    using namespace TensorOps;
     /* Abstract Solver */
     template<typename R>
     AbstractSolver<R>::AbstractSolver() :

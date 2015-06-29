@@ -119,8 +119,8 @@ AssertionResult buffer_almost_equals(T* buffer1, T* buffer2, uint size1, uint si
 #define EXPECT_MATRIX_GRAD_NOT_CLOSE(A, B, eps) EXPECT_FALSE(MatOps<R>::grad_allclose((A),(B),(eps)))
 
 #ifdef DALI_USE_CUDA
-#define ASSERT_MAT_ON_GPU(A) ASSERT_TRUE(MAT(A).memory().gpu_fresh)
-#define EXPECT_MAT_ON_GPU(A) EXPECT_TRUE(MAT(A).memory().gpu_fresh)
+#define ASSERT_MAT_ON_GPU(A) ASSERT_TRUE((A).w().memory().gpu_fresh)
+#define EXPECT_MAT_ON_GPU(A) EXPECT_TRUE((A).w().memory().gpu_fresh)
 #else
 #define ASSERT_MAT_ON_GPU(A)
 #define EXPECT_MAT_ON_GPU(A)

@@ -986,14 +986,11 @@ void copy_constructor_helper(bool copy_w, bool copy_dw) {
 
 
 TEST_F(MatrixTests, copy_constructor) {
-    //copy_constructor_helper(false, false);
+    copy_constructor_helper(false, false);
     copy_constructor_helper(false, true);
-    // copy_constructor_helper(true,  false);
-    // copy_constructor_helper(true,  true);
+    copy_constructor_helper(true,  false);
+    copy_constructor_helper(true,  true);
 }
-
-/*
-
 
 TEST_F(MatrixTests, matrix_constant_check) {
     int num_examples           = 10;
@@ -1007,9 +1004,8 @@ TEST_F(MatrixTests, matrix_constant_check) {
     error.grad();
     graph::backward();
 
-    EXPECT_TRUE((X.dw()->dw.array() == Mat<R>::zeros_like(X).w()->w.array()).all());
-    EXPECT_FALSE((B.dw()->dw.array() == Mat<R>::zeros_like(X).w()->w.array()).all());
-
+    EXPECT_TRUE(MatOps<R>::grad_allclose(X, Mat<R>::zeros_like(X), 1e-9));
+    EXPECT_FALSE(MatOps<R>::grad_allclose(B, Mat<R>::zeros_like(B), 1e-9));
     // HERE X IS NO LONGER CONST
     X = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
     B = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
@@ -1017,10 +1013,9 @@ TEST_F(MatrixTests, matrix_constant_check) {
     error.grad();
     graph::backward();
 
-    EXPECT_FALSE((X.dw()->dw.array() == Mat<R>::zeros_like(X).w()->w.array()).all());
-    EXPECT_FALSE((B.dw()->dw.array() == Mat<R>::zeros_like(X).w()->w.array()).all());
+    EXPECT_FALSE(MatOps<R>::grad_allclose(X, Mat<R>::zeros_like(X), 1e-9));
+    EXPECT_FALSE(MatOps<R>::grad_allclose(B, Mat<R>::zeros_like(B), 1e-9));
 }
-*/
 
 TEST_F(MatrixTests, scalar_pow) {
     int height = 3;

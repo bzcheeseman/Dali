@@ -300,7 +300,7 @@ TEST_F(MatrixTests, addition_broadcast) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
-        auto B = Mat<R>(1,  10, weights<R>::uniform(0.5));
+        auto B = Mat<R>(10, 1, weights<R>::uniform(0.5));
         ASSERT_TRUE(gradient_same(functor, {A, B}));
     }
 }
@@ -311,7 +311,7 @@ TEST_F(MatrixTests, substraction_broadcast) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
-        auto B = Mat<R>(1,  10, weights<R>::uniform(0.5));
+        auto B = Mat<R>(10, 1, weights<R>::uniform(0.5));
         ASSERT_TRUE(gradient_same(functor, {A, B}));
     }
 }
@@ -322,7 +322,7 @@ TEST_F(MatrixTests, substraction_reversed_broadcast) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
-        auto B = Mat<R>(1,  10, weights<R>::uniform(0.5));
+        auto B = Mat<R>(10, 1, weights<R>::uniform(0.5));
         ASSERT_TRUE(gradient_same(functor, {A, B}));
     }
 }
@@ -435,7 +435,7 @@ TEST_F(MatrixTests, matrix_dot_plus_bias) {
     EXPERIMENT_REPEAT {
         auto X = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
         auto W = Mat<R>(hidden_size, input_size, weights<R>::uniform(2.0));
-        auto bias = Mat<R>(1, hidden_size, weights<R>::uniform(2.0));
+        auto bias = Mat<R>(hidden_size, 1, weights<R>::uniform(2.0));
         ASSERT_TRUE(gradient_same(functor, {X, W, bias}, 1e-4));
     }
 }
@@ -457,7 +457,7 @@ TEST_F(MatrixTests, matrix_divide_broadcast) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(0.1, 20.0));
-        auto B = Mat<R>(1, 10, weights<R>::uniform(0.5, 4.0));
+        auto B = Mat<R>(10, 1,  weights<R>::uniform(0.5, 4.0));
         ASSERT_TRUE(gradient_same(functor, {A, B}, 5e-3, 1e-3));
     }
 }
@@ -468,7 +468,7 @@ TEST_F(MatrixTests, matrix_eltmul_broadcast) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(0.1, 20.0));
-        auto B = Mat<R>(1, 10, weights<R>::uniform(0.5, 4.0));
+        auto B = Mat<R>(10, 1,  weights<R>::uniform(0.5, 4.0));
         ASSERT_TRUE(gradient_same(functor, {A, B}, 5e-3, 1e-3));
     }
 }
@@ -479,7 +479,7 @@ TEST_F(MatrixTests, matrix_divide_reversed_broadcast) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(0.5, 5.0));
-        auto B = Mat<R>(1, 10, weights<R>::uniform(0.1, 20.0));
+        auto B = Mat<R>(10, 1,  weights<R>::uniform(0.1, 20.0));
         ASSERT_TRUE(gradient_same(functor, {A, B}, 5e-3, 1e-3));
     }
 }
@@ -503,7 +503,7 @@ TEST_F(MatrixTests, matrix_eltmul_broadcast_rowwise) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(4, 5, weights<R>::uniform(10.0));
-        auto B = Mat<R>(4, 1, weights<R>::uniform(10.0));
+        auto B = Mat<R>(1, 4, weights<R>::uniform(10.0));
         ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-3));
     }
 }
@@ -580,7 +580,7 @@ TEST_F(MatOpsTests, matrix_mul_add_mul_with_bias) {
         auto W_other = Mat<R>(hidden_size, other_input_size,  weights<R>::uniform(2.0));
         auto X_other = Mat<R>(other_input_size, num_examples, weights<R>::uniform(20.0));
 
-        auto bias    = Mat<R>(1, hidden_size,                 weights<R>::uniform(2.0));
+        auto bias    = Mat<R>(hidden_size, 1,                weights<R>::uniform(2.0));
         ASSERT_TRUE(gradient_same(functor, {W, X, W_other, X_other, bias}, 0.0003));
     }
 }

@@ -150,7 +150,7 @@ namespace Indexing {
     typename Index::const_iterator::self_type       Index::const_iterator::operator++() { self_type i = *this; ptr_++; return i; }
     typename Index::const_iterator::self_type       Index::const_iterator::operator++(int junk) { ptr_++; return *this; }
     typename Index::const_iterator::reference Index::const_iterator::operator*() { return *ptr_; }
-    const typename Index::const_iterator::pointer   Index::const_iterator::operator->() { return ptr_; }
+    typename Index::const_iterator::pointer   Index::const_iterator::operator->() { return ptr_; }
     bool Index::const_iterator::operator==(const self_type& rhs) {
         return ptr_ == rhs.ptr_;
     }

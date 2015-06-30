@@ -69,7 +69,7 @@ namespace Indexing {
                     self_type operator++();
                     self_type operator++(int junk);
                     reference operator*();
-                    const pointer operator->();
+                    pointer operator->();
                     bool operator==(const self_type& rhs);
                     bool operator!=(const self_type& rhs);
                 private:

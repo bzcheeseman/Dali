@@ -5,51 +5,53 @@
 
 namespace dali_expr {
     #ifdef DALI_USE_CUDA
-    template<int x_bits, typename DType,  typename DstPlan, typename SrcPlan>
-    __global__ void SoftmaxTransposeKernel(DstPlan dst, SrcPlan src, mshadow::index_t xmax) {
-      const unsigned x_size = 1 << x_bits;
-      const int y = blockIdx.y;
-      __shared__ DType s_rec[x_size];
+    // For some reason kernel does not write to any cell
+    // except first cell [0,0]
+    template<int y_bits, typename DType,  typename DstPlan, typename SrcPlan>
+    __global__ void SoftmaxTransposeKernel(DstPlan dst, SrcPlan src, mshadow::index_t ymax) {
+      const unsigned y_size = 1 << y_bits;
+      const int x = blockIdx.y;
+      __shared__ DType s_rec[y_size];
       // step 1: get max
-      if (threadIdx.x < xmax) {
-        s_rec[threadIdx.x] = src.Eval(y, threadIdx.x);
+      if (threadIdx.y < ymax) {
+        s_rec[threadIdx.y] = src.Eval(threadIdx.y, x);
       }
-      for (unsigned x = x_size; x < xmax; x += x_size) {
-        if (x + threadIdx.x < xmax) {
-          DType a = src.Eval(y, x + threadIdx.x);
-          s_rec[threadIdx.x] = max(a, s_rec[threadIdx.x]);
+      for (unsigned y = y_size; y < ymax; y += y_size) {
+        if (y + threadIdx.y < ymax) {
+          DType a = src.Eval(y + threadIdx.y, x);
+          s_rec[threadIdx.y] = max(a, s_rec[threadIdx.y]);
         }
       }
       __syncthreads();
-      if (threadIdx.x >= xmax) {
-        s_rec[threadIdx.x] = s_rec[0];
+      if (threadIdx.y >= ymax) {
+        s_rec[threadIdx.y] = s_rec[0];
       }
       __syncthreads();
-      mshadow::cuda::Reduce1D<mshadow::red::maximum, x_bits>(s_rec);
+      mshadow::cuda::Reduce1D<mshadow::red::maximum, y_bits>(s_rec);
       __syncthreads();
       DType smax = s_rec[0];
       __syncthreads();
-      s_rec[threadIdx.x] = 0.0f;
+      s_rec[threadIdx.y] = 0.0f;
       __syncthreads();
 
       // calculate normalizer, with writeback
-      for (unsigned x = 0; x < xmax; x += x_size) {
-        if (x + threadIdx.x < xmax) {
-          DType p = expf(src.Eval(y, x + threadIdx.x) - smax);
-          s_rec[threadIdx.x] += p;
+      for (unsigned y = 0; y < ymax; y += y_size) {
+        if (y + threadIdx.y < ymax) {
+          DType p = expf(src.Eval(y + threadIdx.y, x) - smax);
+          s_rec[threadIdx.y] += p;
           // write back first, will fetch later
-          dst.REval(y, x + threadIdx.x) = p;
+          dst.REval(y + threadIdx.y, x) = p;
         }
       }
       // calculate normalizer
       __syncthreads();
-      mshadow::cuda::Reduce1D<mshadow::red::sum, x_bits>(s_rec);
+      mshadow::cuda::Reduce1D<mshadow::red::sum, y_bits>(s_rec);
       __syncthreads();
       DType ssum = s_rec[0];
 
-      for (unsigned x = 0; x < xmax; x += x_size) {
-        if (x + threadIdx.x < xmax) {
-          dst.REval(y, x + threadIdx.x) /= ssum;
+      for (unsigned y = 0; y < ymax; y += y_size) {
+        if (y + threadIdx.y < ymax) {
+          dst.REval(y + threadIdx.y, x) /= ssum;
         }
       }
     }
@@ -58,15 +60,16 @@ namespace dali_expr {
     inline void SoftmaxTransposeCuda(mshadow::Tensor<mshadow::gpu, 2, DType> &dst,
                         const mshadow::Tensor<mshadow::gpu, 2, DType> &src) {
       dim3 dimBlock(mshadow::cuda::kBaseThreadNum);
-      dim3 dimGrid(dst.size(0));
-      mshadow::utils::Check(dst.shape_ == src.shape_, "Softmax: shape mismatch");
-      mshadow::cuda::CheckLaunchParam(dimGrid, dimBlock, "Softmax");
+      dim3 dimGrid(dst.size(1));
+      mshadow::utils::Check(dst.shape_ == src.shape_, "SoftmaxTranspose: shape mismatch");
+      mshadow::cuda::CheckLaunchParam(dimGrid, dimBlock, "SoftmaxTranspose");
       auto stream = mshadow::Stream<mshadow::gpu>::GetStream(dst.stream_);
       SoftmaxTransposeKernel<mshadow::cuda::kBaseThreadBits, DType>
           <<<dimGrid, dimBlock, 0, stream>>>
           (mshadow::expr::MakePlan(dst),
            mshadow::expr::MakePlan(src),
-           dst.size(0));
+           dst.size(0)
+          );
     }
     #endif
 

@@ -35,16 +35,13 @@ namespace matops {
 
     template<typename R>
     Mat<R> Cost<R>::softmax_transpose(Mat<R> matrix, R temperature) {
-        Mat<R> out = Cost<R>::softmax_no_grad_transpose(matrix, temperature);
+        Mat<R> out     = Cost<R>::softmax_no_grad_transpose(matrix, temperature);
+
         if (graph::backprop_enabled && !matrix.constant)
             graph::emplace_back([matrix, temperature, out]() mutable {
-                auto& dw = GRAD(matrix);
-                auto& sm = MAT(out);
-                auto& dy = GRAD(out);
 
                 TensorInternal<R, 1> sm_times_dy_rowsum( mshadow::Shape1(matrix.dims(1)));
                 sm_times_dy_rowsum = sum_rows(MAT(out).wrapper() * GRAD(out).wrapper());
-
 
                 GRAD(matrix) += (
                       MAT(out).wrapper() * GRAD(out).wrapper()
@@ -58,7 +55,8 @@ namespace matops {
     Mat<R> Cost<R>::softmax_no_grad_transpose(Mat<R> matrix, R temperature) {
         ASSERT2(temperature == 1.0, "Not implemented yet (Temperature != 1.0 for softmax).");
         auto out = Mat<R>::empty_like(matrix);
-        MAT(out) = MAT(matrix).wrapper().softmax_transpose();
+        dali_expr::SoftmaxTranspose(MAT(out).mutable_cpu_data(), MAT(matrix).cpu_data());
+        //MAT(out) = MAT(matrix).wrapper().softmax_transpose();
         return out;
     }
 

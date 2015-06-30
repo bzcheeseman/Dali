@@ -780,10 +780,10 @@ TEST_F(MatOpsTests, softmax) {
         int col = utils::randint(0, col_size - 1);
         auto functor = [col](vector<Mat<R>> Xs)-> Mat<R>{
             auto soft = MatOps<R>::softmax(Xs[0]);
-            soft.print();
-            return soft.T()[col];
+            auto g = soft.T()[col];
+            return g;
         };
-        ASSERT_TRUE(gradient_same(functor, {A}, 1e-3));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-3));
     }
 }
 
@@ -795,7 +795,8 @@ TEST_F(MatOpsTests, softmax_transpose) {
         int row = utils::randint(0, row_size - 1);
         auto functor = [row](vector<Mat<R>> Xs)-> Mat<R>{
             auto soft = MatOps<R>::softmax_transpose(Xs[0]);
-            return soft[row];
+            auto g = soft[row];
+            return g;
         };
         ASSERT_TRUE(gradient_same(functor, {A}, 1e-3));
     }

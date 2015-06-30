@@ -20,8 +20,7 @@ Mat<R> AbstractMultiInputLayer<R>::activate(Mat<R> first_input, const vector<Mat
 template<typename R>
 void Layer<R>::create_variables() {
     W = Mat<R>(hidden_size, input_size, weights<R>::uniform(2.0 / sqrt(input_size)));
-    this->b = Mat<R>(hidden_size, 1, weights<R>::uniform(2.0 / sqrt(input_size)));
-    // this->b = MatOps<R>::consider_constant(Mat<R>(hidden_size, 1));
+    this->b = Mat<R>(1, hidden_size, weights<R>::uniform(2.0 / sqrt(input_size)));
 }
 
 template<typename R>

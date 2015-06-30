@@ -8,15 +8,15 @@ namespace dali_expr {
     template<int x_bits, typename DType,  typename DstPlan, typename SrcPlan>
     __global__ void SoftmaxTransposeKernel(DstPlan dst, SrcPlan src, mshadow::index_t xmax) {
       const unsigned x_size = 1 << x_bits;
-      const int y = blockIdx.x;
+      const int y = blockIdx.y;
       __shared__ DType s_rec[x_size];
       // step 1: get max
       if (threadIdx.x < xmax) {
-        s_rec[threadIdx.x] = src.Eval(threadIdx.x, y);
+        s_rec[threadIdx.x] = src.Eval(y, threadIdx.x);
       }
       for (unsigned x = x_size; x < xmax; x += x_size) {
         if (x + threadIdx.x < xmax) {
-          DType a = src.Eval(x + threadIdx.x, y);
+          DType a = src.Eval(y, x + threadIdx.x);
           s_rec[threadIdx.x] = max(a, s_rec[threadIdx.x]);
         }
       }
@@ -35,10 +35,10 @@ namespace dali_expr {
       // calculate normalizer, with writeback
       for (unsigned x = 0; x < xmax; x += x_size) {
         if (x + threadIdx.x < xmax) {
-          DType p = expf(src.Eval(x + threadIdx.x, y) - smax);
+          DType p = expf(src.Eval(y, x + threadIdx.x) - smax);
           s_rec[threadIdx.x] += p;
           // write back first, will fetch later
-          dst.REval(x + threadIdx.x, y) = p;
+          dst.REval(y, x + threadIdx.x) = p;
         }
       }
       // calculate normalizer
@@ -49,7 +49,7 @@ namespace dali_expr {
 
       for (unsigned x = 0; x < xmax; x += x_size) {
         if (x + threadIdx.x < xmax) {
-          dst.REval(x + threadIdx.x, y) /= ssum;
+          dst.REval(y, x + threadIdx.x) /= ssum;
         }
       }
     }

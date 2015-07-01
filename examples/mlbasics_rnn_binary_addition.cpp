@@ -77,6 +77,9 @@ int main( int argc, char* argv[]) {
 
     uint patience = 0;
 
+    Solver::SGD<R> solver(params);
+    // solver.step_size = LR;
+
     for (int epoch = 0; ; ++epoch) {
         // Average cross entropy bit error per bit.
         double epoch_error = 0;
@@ -144,13 +147,7 @@ int main( int argc, char* argv[]) {
 
         epoch_error /= ITERATIONS_PER_EPOCH;
 
-        for (auto param: params) {
-            // We are computing a gradient for multiple examples at the same time
-            // so it's important to scale by the number of examples
-            param.w()->w -= (LR / ITERATIONS_PER_EPOCH) * param.dw()->dw;
-            // Reset gradient accumulation.
-            param.clear_grad();
-        }
+        solver.step(params);
 
         // Output status update every 500 ms.
         throttled.maybe_run(milliseconds(500), [&]() {

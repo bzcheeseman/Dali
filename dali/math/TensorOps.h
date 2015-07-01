@@ -9,41 +9,50 @@
 #include "dali/utils/random.h"
 
 #ifdef DALI_USE_CUDA
+    #define TANH_F tanhf
+    #define LOG_F  logf
+    #define EXP_F  expf
+    #define POW_F  powf
+#else
+    #define TANH_F std::tanh
+    #define LOG_F  std::log
+    #define EXP_F  std::exp
+    #define POW_F  pow
+#endif
 
-#include <thrust/device_vector.h>
-#include <thrust/equal.h>
-#include <thrust/functional.h>
-#include <thrust/reduce.h>
-#include <thrust/transform.h>
-#include <thrust/random.h>
-#include <thrust/sort.h>
-#include <thrust/sequence.h>
-#include <thrust/transform_reduce.h>
-// contains thrust::max_element & thrust::min_element
-#include <thrust/extrema.h>
+#ifdef DALI_USE_CUDA
+    #include <thrust/device_vector.h>
+    #include <thrust/equal.h>
+    #include <thrust/functional.h>
+    #include <thrust/reduce.h>
+    #include <thrust/transform.h>
+    #include <thrust/random.h>
+    #include <thrust/sort.h>
+    #include <thrust/sequence.h>
+    #include <thrust/transform_reduce.h>
+    // contains thrust::max_element & thrust::min_element
+    #include <thrust/extrema.h>
 
+    #define STR(x) __THIS_IS_VERY_ABNOXIOUS(x)
+    #define __THIS_IS_VERY_ABNOXIOUS(tok) #tok
 
-
-#define STR(x) __THIS_IS_VERY_ABNOXIOUS(x)
-#define __THIS_IS_VERY_ABNOXIOUS(tok) #tok
-
-/* CUDA UTILS START HERE */
-namespace TensorOps {
-    template<typename R, int ndims>
-    thrust::device_ptr<R> to_thrust(const mshadow::Tensor<mshadow::gpu, ndims, R> tg) {
-        auto dev_ptr = thrust::device_pointer_cast(tg.dptr_);
-        return dev_ptr;
-    }
-
-    template<typename T>
-    struct near_equal {
-        T tol;
-        near_equal(T _tol) : tol(_tol) {}
-        __host__ __device__ bool operator()(const T& lhs, const T& rhs) const {
-            return std::fabs(lhs - rhs) < tol;
+    /* CUDA UTILS START HERE */
+    namespace TensorOps {
+        template<typename R, int ndims>
+        thrust::device_ptr<R> to_thrust(const mshadow::Tensor<mshadow::gpu, ndims, R> tg) {
+            auto dev_ptr = thrust::device_pointer_cast(tg.dptr_);
+            return dev_ptr;
         }
-    };
-}
+
+        template<typename T>
+        struct near_equal {
+            T tol;
+            near_equal(T _tol) : tol(_tol) {}
+            __host__ __device__ bool operator()(const T& lhs, const T& rhs) const {
+                return std::fabs(lhs - rhs) < tol;
+            }
+        };
+    }
 #endif
 
 enum OptionalTranspose {
@@ -424,6 +433,8 @@ namespace TensorOps {
     #endif
 
     namespace op {
+        #define EPS 1e-9
+
         template<typename R>
         struct square {
             MSHADOW_XINLINE static R Map(const R& a) {
@@ -448,33 +459,21 @@ namespace TensorOps {
         template<typename R>
         struct sigmoid {
             MSHADOW_XINLINE static R Map(const R& a) {
-                #ifdef DALI_USE_CUDA
-                    return 1.0 / (1.0 + expf(-a));
-                #else
-                    return 1.0 / (1.0 + std::exp(-a));
-                #endif
+                return 1.0 / (1.0 + EXP_F(-a));
             }
         };
 
         template<typename R>
         struct log {
             MSHADOW_XINLINE static R Map(const R& a) {
-                #ifdef DALI_USE_CUDA
-                    return logf(a);
-                #else
-                    return std::log(a);
-                #endif
+                return LOG_F(a);
             }
         };
 
         template<typename R>
         struct exp {
             MSHADOW_XINLINE static R Map(const R& a) {
-                #ifdef DALI_USE_CUDA
-                    return expf(a);
-                #else
-                    return std::exp(a);
-                #endif
+                return EXP_F(a);
             }
         };
 
@@ -495,11 +494,7 @@ namespace TensorOps {
         template<typename R>
         struct tanh {
             MSHADOW_XINLINE static R Map(const R& a) {
-                #ifdef DALI_USE_CUDA
-                    return tanhf(a);
-                #else
-                    return std::tanh(a);
-                #endif
+                return TANH_F(a);
             }
         };
 
@@ -513,11 +508,7 @@ namespace TensorOps {
         template<typename R>
         struct power {
             MSHADOW_XINLINE static R Map(const R& a, const R& b) {
-                #ifdef DALI_USE_CUDA
-                    return powf(a, b);
-                #else
-                    return pow(a, b);
-                #endif
+                return POW_F(a, b);
             }
         };
 
@@ -531,11 +522,7 @@ namespace TensorOps {
         template<typename R>
         struct log_or_zero {
             MSHADOW_XINLINE static R Map(const R& a) {
-                #ifdef DALI_USE_CUDA
-                    return a > 0 ? logf(a)      : 0;
-                #else
-                    return a > 0 ? std::log(a) : 0;
-                #endif
+                return a > 0 ? LOG_F(a) : 0;
             }
         };
 
@@ -570,11 +557,7 @@ namespace TensorOps {
         template<typename R>
         struct  steep_sigmoid {
             MSHADOW_XINLINE static R Map(const R& x, const R& aggressiveness) {
-                #ifdef DALI_USE_CUDA
-                    return 1.0 / (1.0 + expf( - aggressiveness * x));
-                #else
-                    return 1.0 / (1.0 + std::exp( - aggressiveness * x));
-                #endif
+                return 1.0 / (1.0 + EXP_F( - aggressiveness * x));
             }
         };
 
@@ -608,6 +591,24 @@ namespace TensorOps {
                 } else {
                     return x;
                 }
+            }
+        };
+
+        template<typename R>
+        struct binary_cross_entropy {
+            MSHADOW_XINLINE static R Map(const R& x, const R& t ) {
+                R part1 = t * LOG_F(x + EPS);
+                R part2 = (1.0 - t) * LOG_F(1.0 - x + EPS);
+                return -(part1 + part2);
+            }
+        };
+
+        template<typename R>
+        struct binary_cross_entropy_backward {
+            MSHADOW_XINLINE static R Map(const R& x, const R& t ) {
+                R numerator = t - x;
+                R denominator = (x * (x - 1.0) + EPS);
+                return numerator / denominator;
             }
         };
     }

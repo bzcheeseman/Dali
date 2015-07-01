@@ -73,7 +73,7 @@ TEST_F(LayerTests, BroadcastMultiply) {
     }
 }
 
-TEST_F(LayerTests, DISABLED_stacked_layer_tanh_gradient) {
+TEST_F(LayerTests, stacked_layer_tanh_gradient) {
 
     int num_examples = 10;
     int hidden_size  = 10;

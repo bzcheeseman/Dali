@@ -7,6 +7,7 @@
 #define DONT_COMPILE
 
 using std::vector;
+using namespace TensorOps;
 
 namespace matops {
     template<typename R>
@@ -131,9 +132,25 @@ namespace matops {
         #endif
     }
 
+
+    template<typename R>
+    struct log {
+        MSHADOW_XINLINE static R Map(const R& x, const R& t ) {
+            #ifdef DALI_USE_CUDA
+                R part1 = t * logf(x + EPS);
+                R part2 = (1.0 - t) * logf(1.0 - x + EPS);
+                return -(part1 + part2);
+            #else
+                R part1 = t * logf(x + EPS);
+                R part2 = (1.0 - t) * logf(1.0 - x + EPS);
+                return -(part1 + part2);
+            #endif
+        }
+    };
+
+
     template<typename R>
     Mat<R> Cost<R>::binary_cross_entropy(Mat<R> matrix, R t) {
-        #ifndef DONT_COMPILE
         assert(0 <= t && t <= 1);
         assert(matrix.dims().size() > 1);
         Mat<R> out =  Mat<R>(
@@ -141,28 +158,18 @@ namespace matops {
             matrix.dims(1),
             weights<R>::empty());
 
-        auto x = MAT(matrix).array();
-
-        MAT(out) = (-(t * (x + EPS).log() + (1.0-t) * (1.0 - x + EPS).log())).matrix();
+        MAT(out) = F<op::binary_cross_entropy<R>>(MAT(matrix).wrapper(), t);
 
         DEBUG_ASSERT_MAT_NOT_NAN(out);
 
         if (graph::backprop_enabled())
             graph::emplace_back([matrix, t, out]() mutable {
-                auto x = MAT(matrix).array();
-                SAFE_GRAD(matrix).array() += (
-                    (
-                        (t - x) /
-                        (x * (x - 1.0) + EPS)
-                    ) * GRAD(out).array()
-                );
+                SAFE_GRAD(matrix) +=
+                    F<op::binary_cross_entropy_backward<R>>(MAT(matrix).wrapper(), t)
+                    * GRAD(out).wrapper();
                 DEBUG_ASSERT_GRAD_NOT_NAN(matrix);
             });
-
         return out;
-        #else
-        return Mat<R>(1,1);
-        #endif
     }
 
     template<typename R>

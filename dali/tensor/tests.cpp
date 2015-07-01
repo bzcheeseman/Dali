@@ -389,6 +389,18 @@ TEST_F(MatrixTests, tanh) {
     }
 }
 
+TEST_F(MatrixTests, binary_cross_entropy) {
+
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(0.01, 0.99));
+        R target = utils::randdouble(0.01, 0.99);
+        auto functor = [target](vector<Mat<R>> Xs)-> Mat<R> {
+            return MatOps<R>::binary_cross_entropy(Xs[0], target);
+        };
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4));
+    }
+}
+
 TEST_F(MatrixTests, norm) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].L2_norm();

@@ -110,7 +110,6 @@ namespace matops {
     Mat<R> Cost<R>::sigmoid_binary_cross_entropy(Mat<R> matrix, R t) {
         #ifndef DONT_COMPILE
         assert(0 <= t && t <= 1);
-        assert(matrix.dims().size() > 1);
         auto out = Mat<R>::empty_like(matrix);
 
         auto sigmoided_input = std::make_shared<eigen_mat>(

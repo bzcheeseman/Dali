@@ -338,7 +338,6 @@ Z masked_sum(Mat<Z> values,
         Indexing::Index codelens,
         const Z& gparent) {
     // Z cost = 0.0;
-    // assert(values.dims().size() > 1);
     // // get cost for each pair of target and datastream:
     // for (size_t i = 0; i < values.dims(1); i++) {
     //     if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + (*codelens)(i) )) {
@@ -356,7 +355,6 @@ Z masked_sum(Mat<Z> values,
         int codelens,
         const Z& gparent) {
     // Z cost = 0.0;
-    // assert(values.dims().size() > 1);
     // // get cost for each pair of target and datastream:
     // for (size_t i = 0; i < values.dims(1); i++) {
     //     if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens )) {
@@ -373,7 +371,6 @@ Z masked_sum(Mat<Z> values,
         uint codelens,
         const Z& gparent) {
     // Z cost = 0.0;
-    // assert(values.dims().size() > 1);
     // // get cost for each pair of target and datastream:
     // for (size_t i = 0; i < values.dims(1); i++) {
     //     if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens )) {
@@ -391,7 +388,6 @@ Z masked_sum(Mat<Z> values,
         Indexing::Index codelens,
         const Z& gparent) {
     // Z cost = 0.0;
-    // assert(values.dims().size() > 1);
     // // get cost for each pair of target and datastream:
     // for (size_t i = 0; i < values.dims(1); i++) {
     //     if (T >= loss_start && (T < loss_start + (*codelens)(i) )) {
@@ -408,7 +404,6 @@ Z masked_sum(Mat<Z> values,
         Indexing::Index codelens,
         const Z& gparent) {
     // Z cost = 0.0;
-    // assert(values.dims().size() > 1);
     // // get cost for each pair of target and datastream:
     // for (size_t i = 0; i < values.dims(1); i++) {
     //     if (T >= loss_start && (T < loss_start + (*codelens)(i) )) {
@@ -426,7 +421,6 @@ Z masked_sum(Mat<Z> values,
         uint codelens,
         const Z& gparent) {
     // Z cost = 0.0;
-    // assert(values.dims().size() > 1);
     // // get cost for each pair of target and datastream:
     // for (size_t i = 0; i < values.dims(1); i++) {
     //     if (T >= loss_start && (T < loss_start + codelens )) {
@@ -443,7 +437,6 @@ Z masked_sum(Mat<Z> values,
         int codelens,
         const Z& gparent) {
     // Z cost = 0.0;
-    // assert(values.dims().size() > 1);
     // // get cost for each pair of target and datastream:
     // for (size_t i = 0; i < values.dims(1); i++) {
     //     if (T >= loss_start && (T < loss_start + codelens )) {
@@ -460,7 +453,6 @@ Z masked_sum(Mat<Z> values,
         int codelens,
         const Z& gparent) {
     // Z cost = 0.0;
-    // assert(values.dims().size() > 1);
     // // get cost for each pair of target and datastream:
     // for (size_t i = 0; i < values.dims(1); i++) {
     //     if (T >= loss_start && (T < loss_start + codelens )) {
@@ -477,7 +469,6 @@ Z masked_sum(Mat<Z> values,
         uint codelens,
         const Z& gparent) {
     // Z cost = 0.0;
-    // assert(values.dims().size() > 1);
     // // get cost for each pair of target and datastream:
     // for (size_t i = 0; i < values.dims(1); i++) {
     //     if (T >= loss_start && (T < loss_start + codelens )) {
@@ -497,7 +488,6 @@ Z masked_sum_no_grad(Mat<Z> values,
         Indexing::Index codelens,
         const Z& gparent) {
     // Z cost = 0.0;
-    // assert(values.dims().size() > 1);
     // // get cost for each pair of target and datastream:
     // for (size_t i = 0; i < values.dims(1); i++)
     //     if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + (*codelens)(i) ))
@@ -512,7 +502,6 @@ Z masked_sum_no_grad(Mat<Z> values,
         int codelens,
         const Z& gparent) {
     // Z cost = 0.0;
-    // assert(values.dims().size() > 1);
     // // get cost for each pair of target and datastream:
     // for (size_t i = 0; i < values.dims(1); i++)
     //     if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens ))
@@ -526,7 +515,6 @@ Z masked_sum_no_grad(Mat<Z> values,
         uint codelens,
         const Z& gparent) {
     // Z cost = 0.0;
-    // assert(values.dims().size() > 1);
     // // get cost for each pair of target and datastream:
     // for (size_t i = 0; i < values.dims(1); i++)
     //     if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens ))
@@ -541,7 +529,6 @@ Z masked_sum_no_grad(Mat<Z> values,
         Indexing::Index codelens,
         const Z& gparent) {
     // Z cost = 0.0;
-    // assert(values.dims().size() > 1);
     // // get cost for each pair of target and datastream:
     // for (size_t i = 0; i < values.dims(1); i++)
     //     if (T >= loss_start && (T < loss_start + (*codelens)(i) ))
@@ -555,7 +542,6 @@ Z masked_sum_no_grad(Mat<Z> values,
         Indexing::Index codelens,
         const Z& gparent) {
     // Z cost = 0.0;
-    // assert(values.dims().size() > 1);
     // // get cost for each pair of target and datastream:
     // for (size_t i = 0; i < values.dims(1); i++)
     //     if (T >= loss_start && (T < loss_start + (*codelens)(i) ))
@@ -570,7 +556,6 @@ Z masked_sum_no_grad(Mat<Z> values,
         uint codelens,
         const Z& gparent) {
     // Z cost = 0.0;
-    // assert(values.dims().size() > 1);
     // // get cost for each pair of target and datastream:
     // for (size_t i = 0; i < values.dims(1); i++)
     //     if (T >= loss_start && (T < loss_start + codelens ))
@@ -584,7 +569,6 @@ Z masked_sum_no_grad(Mat<Z> values,
         int codelens,
         const Z& gparent) {
     // Z cost = 0.0;
-    // assert(values.dims().size() > 1);
     // // get cost for each pair of target and datastream:
     // for (size_t i = 0; i < values.dims(1); i++)
     //     if (T >= loss_start && (T < loss_start + codelens ))
@@ -598,7 +582,6 @@ Z masked_sum_no_grad(Mat<Z> values,
         int codelens,
         const Z& gparent) {
     // Z cost = 0.0;
-    // assert(values.dims().size() > 1);
     // // get cost for each pair of target and datastream:
     // for (size_t i = 0; i < values.dims(1); i++)
     //     if (T >= loss_start && (T < loss_start + codelens ))
@@ -612,7 +595,6 @@ Z masked_sum_no_grad(Mat<Z> values,
         uint codelens,
         const Z& gparent) {
     // Z cost = 0.0;
-    // assert(values.dims().size() > 1);
     // // get cost for each pair of target and datastream:
     // for (size_t i = 0; i < values.dims(1); i++)
     //     if (T >= loss_start && (T < loss_start + codelens ))

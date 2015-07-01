@@ -169,11 +169,26 @@ TEST_F(MatrixTests, addition_vector) {
 }
 
 TEST_F(MatrixTests, load_test) {
-    Mat<R> ARANGE(utils::dir_join({STR(DALI_DATA_DIR),    "tests", "arange12.npy"}));
-    Mat<R> ARANGE_FT(utils::dir_join({STR(DALI_DATA_DIR), "tests", "arange12.fortran.npy"}));
-    ASSERT_TRUE(MatOps<R>::equals(ARANGE, ARANGE_FT));
+    Mat<R> arange(utils::dir_join({STR(DALI_DATA_DIR),    "tests", "arange12.npy"}));
+    Mat<R> arange_fortran(utils::dir_join({STR(DALI_DATA_DIR), "tests", "arange12.fortran.npy"}));
+    ASSERT_TRUE(MatOps<R>::equals(arange, arange_fortran));
     for (int i = 0; i < 12; i++) {
-        ASSERT_EQ(ARANGE.w(i), i);
+        ASSERT_EQ(arange.w(i), i);
+    }
+}
+
+TEST_F(MatrixTests, save_load_test) {
+    // load arange, then save it to a new file
+    Mat<R> arange(utils::dir_join({STR(DALI_DATA_DIR),    "tests", "arange12.npy"}));
+    std::cout << "loaded" << std::endl;
+    std::cout << arange.dims() << std::endl;
+    arange.npy_save(utils::dir_join({STR(DALI_DATA_DIR),  "tests", "arange12.temp.npy"}));
+    std::cout << "saved" << std::endl;
+    Mat<R> reloaded(utils::dir_join({STR(DALI_DATA_DIR),  "tests", "arange12.temp.npy"}));
+    std::cout << "reloaded" << std::endl;
+    ASSERT_TRUE(MatOps<R>::equals(arange, reloaded));
+    for (int i = 0; i < 12; i++) {
+        ASSERT_EQ(arange.w(i), i);
     }
 }
 

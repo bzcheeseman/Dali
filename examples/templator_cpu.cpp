@@ -5,5 +5,4 @@ using std::vector;
 
 typedef float R;
 
-int main() {
-}
+int main() {}

@@ -101,8 +101,7 @@ namespace cnpy {
             fseek(fp,0,SEEK_END);
 
             delete[] tmp_shape;
-        }
-        else {
+        } else {
             fp = fopen(fname.c_str(),"wb");
             std::vector<char> header = create_npy_header(data,shape,ndims);
             fwrite(&header[0],sizeof(char),header.size(),fp);

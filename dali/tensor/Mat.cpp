@@ -78,8 +78,14 @@ R& Mat<R>::dw(int i, int j) {
 template<typename R>
 const vector<dim_t>& Mat<R>::dims() const {
     if (m != nullptr) {
-        auto shape = m->shape.shape_;
-        return std::vector<dim_t>(shape, shape + 2);
+        auto shape = m->shape;
+        std::vector<dim_t> dimensions;
+        dimensions.reserve(2);
+        for (int i = 0; i < 2;i++) {
+            dimensions.emplace_back(shape[i]);
+        }
+        std::cout << dimensions << std::endl;
+        return dimensions;
     }
     return mat_missing_dimensions;
 }
@@ -208,7 +214,14 @@ void Mat<R>::clear_grad() {
 
 template<typename R>
 void Mat<R>::npy_save (string fname, string mode) {
-    cnpy::npy_save(fname, w().data(), dims().data(), dims().size(), mode);
+    auto dimensions = dims();
+    cnpy::npy_save(
+        fname,
+        w().data(),
+        dimensions.data(),
+        dimensions.size(),
+        mode
+    );
 }
 
 template<typename R>

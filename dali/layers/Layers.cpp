@@ -63,7 +63,7 @@ void StackedInputLayer<R>::create_variables() {
     for (auto& input_size : _input_sizes) {
         matrices.emplace_back(hidden_size, input_size, U);
     }
-    this->b = Mat<R>(hidden_size, 1, U);
+    this->b = Mat<R>(1, hidden_size, U);
 }
 
 template<typename R>
@@ -122,75 +122,19 @@ StackedInputLayer<R>::StackedInputLayer (std::initializer_list<int> input_sizes,
 }
 
 template<typename R>
-vector<Mat<R>> StackedInputLayer<R>::zip_inputs_with_matrices_and_bias(const vector<Mat<R>>& inputs) const {
-    ASSERT2(inputs.size() == matrices.size(),
-        utils::MS() << "Not an equal number of inputs to stack (" << inputs.size()
-                    << ") and matrices in StackedInputLayer (" << this->matrices.size() << ")");
-    vector<Mat<R>> zipped;
-    zipped.reserve(matrices.size() * 2 + 1);
-    auto input_ptr = inputs.begin();
-    auto mat_ptr = matrices.begin();
-    while (mat_ptr != matrices.end()) {
-        zipped.emplace_back(*mat_ptr++);
-        zipped.emplace_back(*input_ptr++);
-    }
-    zipped.emplace_back(this->b);
-    return zipped;
-}
-
-template<typename R>
-vector<Mat<R>> StackedInputLayer<R>::zip_inputs_with_matrices_and_bias(
-        Mat<R> input,
-        const vector<Mat<R>>& inputs) const {
-    ASSERT2((1 + inputs.size()) == matrices.size(),
-        utils::MS() << "Not an equal number of inputs to stack (" << (1 + inputs.size())
-                    << ") and matrices in StackedInputLayer (" << this->matrices.size() << ")");
-    vector<Mat<R>> zipped;
-    zipped.reserve(matrices.size() * 2 + 1);
-    auto input_ptr = inputs.begin();
-    auto mat_ptr = matrices.begin();
-
-    // We are provided separately with another input vector
-    // that will go first in the zip, while the remainder will
-    // be loaded in "zip" form with the vector of inputs
-    zipped.emplace_back(*mat_ptr);
-    zipped.emplace_back(input);
-
-    mat_ptr++;
-
-    DEBUG_ASSERT_MAT_NOT_NAN((*mat_ptr))
-    DEBUG_ASSERT_MAT_NOT_NAN(input)
-
-    while (mat_ptr != matrices.end()) {
-
-        DEBUG_ASSERT_MAT_NOT_NAN((*mat_ptr))
-        DEBUG_ASSERT_MAT_NOT_NAN((*input_ptr))
-
-        zipped.emplace_back(*mat_ptr);
-        zipped.emplace_back(*input_ptr);
-        mat_ptr++;
-        input_ptr++;
-    }
-    zipped.emplace_back(this->b);
-    return zipped;
-}
-
-template<typename R>
 Mat<R> StackedInputLayer<R>::activate(std::initializer_list<Mat<R>> inputs) const {
     vector<Mat<R>> temp(inputs);
     return activate(temp);
 }
 
 template<typename R>
-Mat<R> StackedInputLayer<R>::activate(
-    const vector<Mat<R>>& inputs) const {
-    auto zipped = zip_inputs_with_matrices_and_bias(inputs);
-    return MatOps<R>::mul_add_mul_with_bias(zipped);
+Mat<R> StackedInputLayer<R>::activate(const vector<Mat<R>>& inputs) const {
+    return MatOps<R>::mul_add_mul_with_bias(matrices, inputs, this->b);
 }
 
 template<typename R>
 Mat<R> StackedInputLayer<R>::activate(
-    Mat<R> input_vector) const {
+        Mat<R> input_vector) const {
     if (matrices.size() == 1) {
         return MatOps<R>::mul_with_bias(matrices.front(), input_vector, this->b);
     } else {
@@ -200,12 +144,16 @@ Mat<R> StackedInputLayer<R>::activate(
 
 template<typename R>
 Mat<R> StackedInputLayer<R>::activate(
-    Mat<R> input,
-    const vector<Mat<R>>& inputs) const {
+        Mat<R> input,
+        const vector<Mat<R>>& inputs) const {
     DEBUG_ASSERT_MAT_NOT_NAN(input)
-    auto zipped = zip_inputs_with_matrices_and_bias(input, inputs);
 
-    auto out = MatOps<R>::mul_add_mul_with_bias(zipped);
+    vector<Mat<R>> zipped;
+    zipped.emplace_back(input);
+    for (auto& an_input : inputs )
+        zipped.emplace_back(an_input);
+
+    auto out = MatOps<R>::mul_add_mul_with_bias(matrices, zipped, this->b);
 
     DEBUG_ASSERT_MAT_NOT_NAN(out)
 
@@ -437,7 +385,7 @@ Mat<R> RNN<R>::activate(
     DEBUG_ASSERT_MAT_NOT_NAN(Wh)
     DEBUG_ASSERT_MAT_NOT_NAN(prev_hidden)
     DEBUG_ASSERT_MAT_NOT_NAN(b)
-    return MatOps<R>::mul_add_mul_with_bias(Wx, input_vector, Wh, prev_hidden, b);
+    return MatOps<R>::mul_add_mul_with_bias({Wx, Wh},  {input_vector, prev_hidden}, b);
 }
 
 template<typename R>

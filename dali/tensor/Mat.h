@@ -61,7 +61,7 @@ class Mat {
         typedef std::shared_ptr<storage_t> storage_ref_t;
     private:
         storage_ref_t m;
-        storage_ref_t g;
+        mutable storage_ref_t g;
     public:
 
         std::shared_ptr<std::string> name = nullptr;
@@ -118,7 +118,7 @@ class Mat {
         R dw(int i, int j) const;
         R& dw(int i, int j);
 
-        const storage_t& dw() const;
+        storage_t& dw() const;
         storage_t& dw();
 
         const std::vector<dim_t>& dims() const;

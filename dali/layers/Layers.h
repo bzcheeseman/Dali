@@ -53,16 +53,14 @@ class StackedInputLayer : public AbstractMultiInputLayer<R> {
     vector b (broadcasted), taking as inputs many different
     vectors of disparate sizes:
 
-        > y = [A_1, ..., A_n]^T * [x_1, ..., x_n] + b
+        > y = [A_1, ..., A_n] * [x_1, ..., x_n]^T + b
 
     */
     void create_variables();
-    std::vector<Mat<R>> zip_inputs_with_matrices_and_bias(const std::vector<Mat<R>>&) const;
-    std::vector<Mat<R>> zip_inputs_with_matrices_and_bias(Mat<R>, const std::vector<Mat<R>>&) const;
     std::vector<int> _input_sizes;
     public:
         typedef R value_t;
-        std::vector<Mat<R>> matrices;
+        mutable std::vector<Mat<R>> matrices;
         int hidden_size;
 
         virtual std::vector<Mat<R>> parameters() const;

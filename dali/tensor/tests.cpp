@@ -558,16 +558,16 @@ TEST_F(MatOpsTests, matrix_mul_with_bias) {
     int hidden_size = 10;
     int input_size = 5;
     EXPERIMENT_REPEAT {
-        auto X = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
         auto W = Mat<R>(hidden_size, input_size, weights<R>::uniform(2.0));
-        auto bias = Mat<R>(1, hidden_size, weights<R>::uniform(2.0));
+        auto X = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
+        auto bias = Mat<R>(hidden_size, 1, weights<R>::uniform(2.0));
         ASSERT_TRUE(gradient_same(functor, {X, W, bias}, 1e-4));
     }
 }
 
 TEST_F(MatOpsTests, matrix_mul_add_mul_with_bias) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-        return MatOps<R>::mul_add_mul_with_bias(Xs[0], Xs[1], Xs[2], Xs[3], Xs[4]);
+        return MatOps<R>::mul_add_mul_with_bias({Xs[0], Xs[2]}, {Xs[1], Xs[3]}, Xs[4]);
     };
     int num_examples = 20;
     int hidden_size = 10;
@@ -580,7 +580,7 @@ TEST_F(MatOpsTests, matrix_mul_add_mul_with_bias) {
         auto W_other = Mat<R>(hidden_size, other_input_size,  weights<R>::uniform(2.0));
         auto X_other = Mat<R>(other_input_size, num_examples, weights<R>::uniform(20.0));
 
-        auto bias    = Mat<R>(hidden_size, 1,                weights<R>::uniform(2.0));
+        auto bias    = Mat<R>(hidden_size, 1,                 weights<R>::uniform(2.0));
         ASSERT_TRUE(gradient_same(functor, {W, X, W_other, X_other, bias}, 0.0003));
     }
 }
@@ -787,7 +787,7 @@ TEST_F(MatOpsTests, softmax) {
     }
 }
 
-TEST_F(MatOpsTests, softmax_transpose) {
+TEST_F(MatOpsTests, DISABLED_softmax_transpose) {
     int row_size = 5;
     int col_size = 10;
     EXPERIMENT_REPEAT {
@@ -802,9 +802,9 @@ TEST_F(MatOpsTests, softmax_transpose) {
     }
 }
 
-/*
-TEST_F(MatOpsTests, matrix_conv2d) {
-    graph::NoBackprop nb;
+
+TEST_F(MatOpsTests, DISABLED_matrix_conv2d) {
+    /*graph::NoBackprop nb;
 
     auto image = Mat<R>(10, 10);
     int block_width  = 4,
@@ -849,9 +849,10 @@ TEST_F(MatOpsTests, matrix_conv2d) {
             block_offset,
             block_width - kernel_width + 1,
             block_width - kernel_height + 1).array()).all()) << "Center of kernel activations should match up.";
+*/
 }
 
-TEST_F(MatOpsTests, matrix_conv2d_grad) {
+TEST_F(MatOpsTests, DISABLED_matrix_conv2d_grad) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return MatOps<R>::conv2d(Xs[0], Xs[1]).tanh();
     };
@@ -862,7 +863,7 @@ TEST_F(MatOpsTests, matrix_conv2d_grad) {
     }
 }
 
-TEST_F(MatOpsTests, softmax_temperature) {
+TEST_F(MatOpsTests, DISABLED_softmax_temperature) {
     graph::NoBackprop nb;
 
     auto mat = Mat<R>(10, 1);
@@ -898,7 +899,7 @@ TEST_F(MatOpsTests, softmax_temperature) {
     }
 }
 
-TEST_F(MatOpsTests, cross_entropy_grad) {
+TEST_F(MatOpsTests, DISABLED_cross_entropy_grad) {
     double temperature;
     int target = 8;
     auto functor = [&target, &temperature](vector<Mat<R>> Xs)-> Mat<R> {
@@ -918,7 +919,7 @@ TEST_F(MatOpsTests, cross_entropy_grad) {
     }
 }
 
-TEST_F(MatOpsTests, matrix_conv1d_grad) {
+TEST_F(MatOpsTests, DISABLED_matrix_conv1d_grad) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return MatOps<R>::conv1d(Xs[0], std::initializer_list<Mat<R>>({Xs[1], Xs[2]})).tanh();
     };
@@ -929,7 +930,7 @@ TEST_F(MatOpsTests, matrix_conv1d_grad) {
         ASSERT_TRUE(gradient_same(functor, {image, kernel1, kernel2}, 1e-2));
     }
 }
-*/
+
 TEST_F(MatrixTests, row_pluck) {
 
     EXPERIMENT_REPEAT {
@@ -1141,8 +1142,8 @@ TEST(Solver, adam) {
 
 
 
-/*
-TEST(Solver, adagrad_epic_odyssey_by_jonathan_raiman) {
+
+TEST(Solver, DISABLED_adagrad_epic_odyssey_by_jonathan_raiman) {
     int num_points = 20;
     int num_dimensions = 5;
     // create data
@@ -1198,6 +1199,3 @@ TEST(Solver, adagrad_epic_odyssey_by_jonathan_raiman) {
     // make 10x improvements (or else no VC funding)
     ASSERT_TRUE(original_error / 10.0 > error);
 }
-
-
-*/

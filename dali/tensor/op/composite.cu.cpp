@@ -6,7 +6,7 @@
 #include "dali/tensor/Weights.h"
 
 using std::vector;
-
+using utils::MS;
 
 namespace matops {
     template<typename R>
@@ -47,194 +47,87 @@ namespace matops {
             Mat<R> matrix1,
             Mat<R> matrix2,
             Mat<R> bias) {
-        ASSERT2(matrix1.dims(1) == matrix2.dims(0), "matmul dimensions misaligned.");
-        ASSERT2(matrix1.dims(0) != bias.dims(1) || bias.dims(1) != 1,
-            "Matrices cannot be multiplied with broadcast, they do not have the same dimensions.");
-        Mat<R> out(matrix1.dims(0), matrix2.dims(1), weights<R>::empty());
-        MAT(out) = dot(MAT(matrix1).wrapper(), MAT(matrix2).wrapper());
-        MAT(out) += MAT(bias)[0].wrapper().template broadcast<0>(MAT(out).shape);
+        return mul_add_mul_with_bias({matrix1}, {matrix2}, bias);
+    }
 
-        if (graph::backprop_enabled)
-            graph::emplace_back([matrix1, matrix2, bias, out]() mutable {
-                SAFE_GRAD(matrix1) += dot(GRAD(out).wrapper(),        MAT(matrix2).wrapper().T());
-                SAFE_GRAD(matrix2) += dot(MAT(matrix1).wrapper().T(), GRAD(out).wrapper());
-                SAFE_GRAD(bias)[0] += (
-                    sum_cols(GRAD(out).wrapper())
-                );
-            });
-        return out;
+
+    template<typename R>
+    Mat<R> Composite<R>::mul_add_mul_with_bias(std::initializer_list<Mat<R>> weight_mats,
+                                               std::initializer_list<Mat<R>> inputs,
+                                               Mat<R> bias) {
+        vector<Mat<R>> weights_v(weight_mats);
+        vector<Mat<R>> inputs_v(inputs);
+        return mul_add_mul_with_bias(weights_v, inputs_v, bias);
     }
 
     template<typename R>
-    Mat<R> Composite<R>::mul_add_broadcast_mul_with_bias(
-            Mat<R> matrix1,
-            Mat<R> input_to_1,
-            Mat<R> matrix2,
-            Mat<R> input_to_2,
-            Mat<R> bias) {
-        ASSERT2(matrix1.dims(1) == input_to_1.dims(0), "matmul 1 dimensions misaligned.");
-        ASSERT2(matrix2.dims(1) == input_to_2.dims(0), "matmul 2 dimensions misaligned.");
-        ASSERT2(matrix2.dims(0) == bias.dims(0) && matrix1.dims(0) == bias.dims(1) && input_to_1.dims(1) == 1 && bias.dims(0) == 1,
-            "Matrices cannot be operated on together, they do not have the same output dimensions.");
+    Mat<R> Composite<R>::mul_add_mul_with_bias(const vector<Mat<R>>& weight_mats,
+                                               const vector<Mat<R>>& inputs,
+                                               Mat<R> bias) {
 
-        Mat<R> out (matrix1.dims(0), input_to_2.dims(1), weights<R>::empty());
-        MAT(out) = MAT(bias)[0].wrapper().template broadcast<0>(MAT(out).shape);
-        MAT(out) += dot(MAT(matrix2).wrapper(), MAT(input_to_2).wrapper());
-
-        MAT(out) += dot(MAT(matrix1).wrapper(), MAT(input_to_1).wrapper());
-
-        // both input to 1 and bias are columns,
-        // so we add both of those before adding the true matrix
-        // product in broadcasted form
-        {
-            TensorInternal<R, 2> temp(mshadow::Shape2(1, input_to_2.dims(1)));
-            temp = dot(MAT(matrix1).wrapper(), MAT(input_to_1).wrapper());
-            MAT(out) += temp[0].wrapper().template broadcast<0>(MAT(out).shape);
+        ASSERT2(weight_mats.size() == inputs.size(),
+                "Different number of weights and inputs passed to mul_add_mul_with_bias");
+        // broacast to largest number of examples
+        dim_t max_num_examples = 0;
+        for (auto input : inputs) {
+            max_num_examples = std::max(max_num_examples, input.dims(1));
         }
 
-        if (graph::backprop_enabled)
-            graph::emplace_back([matrix1, input_to_1, matrix2, input_to_2, bias, out] () mutable {
-                // first multiply:
-                // broadcasting input means taking outer product here:
-
-                if (!matrix1.constant) {
-                    TensorInternal<R, 2> temp(mshadow::Shape2(1, input_to_2.dims(1)));
-                    temp[0] = sum_cols(GRAD(out).wrapper());
-                    GRAD(matrix1) += dot(temp.wrapper(), MAT(input_to_1).wrapper().T());
-                }
-
-                // broadcasting output means sum after the reverse product here:
-                if (!input_to_1.constant) {
-                    TensorInternal<R, 2> temp(mshadow::Shape2(matrix1.dims(0), input_to_2.dims(1)));
-                    temp = dot(MAT(matrix1).wrapper().T(), GRAD(out).wrapper());
-                    GRAD(input_to_1)[0] += sum_cols(temp.wrapper());
-                }
-
-
-                // broadcasting input means taking outer product here:
-                SAFE_GRAD(matrix2) += dot(GRAD(out).wrapper(), MAT(input_to_2).wrapper().T());
-                // broadcasting output means sum after the reverse product here:
-                SAFE_GRAD(input_to_2) += dot(MAT(matrix2).wrapper().T(), GRAD(out).wrapper());
-                // bias vector:
-                SAFE_GRAD(bias)[0] += sum_cols(GRAD(out).wrapper());
-            });
-        return out;
-    }
-
-
-    template<typename R>
-    Mat<R> Composite<R>::mul_add_mul_with_bias(std::initializer_list<Mat<R>> matrices) {
-        vector<Mat<R>> matrices_vector(matrices);
-        return mul_add_mul_with_bias(matrices_vector);
-    }
-
-    template<typename R>
-    Mat<R> Composite<R>::mul_add_mul_with_bias(vector<Mat<R>>& matrices) {
-        // broacast to largest input size
-        dim_t max_broadcast = matrices[1].dims(1);
-        for (auto matrices_ptr = matrices.begin()+1; matrices_ptr < matrices.end(); matrices_ptr+=2) {
-            max_broadcast = std::max(max_broadcast, matrices_ptr->dims(1));
-        }
-
-        Mat<R> out(matrices[0].dims(0), max_broadcast, weights<R>::zeros());
-        auto matrices_ptr = matrices.begin();
-        while (matrices_ptr != (matrices.end() - 1)) {
+        Mat<R> out(weight_mats[0].dims(0), max_num_examples, weights<R>::zeros());
+        for (int i = 0; i < weight_mats.size(); ++i) {
             // inputs must either match the broadcasted size, or be broadcastable by having their
             // outer dimension be 1 (a column vector essentially)
-            ASSERT2(((matrices_ptr+1)->dims(1) == max_broadcast) || ((matrices_ptr+1)->dims(0) == 1 && (matrices_ptr+1)->dims(1) == max_broadcast),
-                "incompatible broadcast dimensions for mul_add_mul_with_bias");
-            if ((matrices_ptr+1)->dims(1) == max_broadcast) {
-                MAT(out) += dot(MAT(*matrices_ptr).wrapper(), MAT(*(matrices_ptr + 1)).wrapper());
+            ASSERT2((inputs[i].dims(1) == max_num_examples) || (inputs[i].dims(1) == 1),
+                    MS() << "incorrect outer dimension for input " << i);
+            ASSERT2(inputs[i].dims(0) == weight_mats[i].dims(1),
+                    MS() << "Disagreement on inner dimension on input pair " << i);
+
+            if (inputs[i].dims(1) == max_num_examples) {
+                MAT(out) += dot(MAT(weight_mats[i]).wrapper(), MAT(inputs[i]).wrapper());
             } else {
-                TensorInternal<R, 2> temp(mshadow::Shape2(1, max_broadcast));
-                temp = dot(MAT(*matrices_ptr).wrapper(), MAT(*(matrices_ptr + 1)).wrapper());
-                MAT(out) += temp[0].wrapper().template broadcast<0>(MAT(out).shape);
+                TensorInternal<R, 2> temp(mshadow::Shape2(weight_mats[i].dims(0), 1));
+                temp = dot(MAT(weight_mats[i]).wrapper(), MAT(inputs[i]).wrapper());
+                MAT(out) += temp.ravel().wrapper().template broadcast<0>(MAT(out).shape);
             }
+
             DEBUG_ASSERT_MAT_NOT_NAN(out)
-            matrices_ptr+=2;
         }
 
-        MAT(out) += MAT(matrices.back())[0].wrapper().template broadcast<0>(MAT(out).shape);
+        MAT(out) += MAT(bias).ravel().wrapper().template broadcast<0>(MAT(out).shape);
 
         if (graph::backprop_enabled)
-            graph::emplace_back([matrices, out, max_broadcast]() mutable {
-                auto matrices_ptr = matrices.begin();
-                while (matrices_ptr != (matrices.end() - 1)) {
-                    if ((matrices_ptr+1)->dims(1) == max_broadcast) {
-                        SAFE_GRAD(*matrices_ptr)     += dot(GRAD(out).wrapper(),              MAT(*(matrices_ptr+1)).wrapper().T());
-                        SAFE_GRAD(*(matrices_ptr+1)) += dot(MAT(*matrices_ptr).wrapper().T(), GRAD(out).wrapper());
+            graph::emplace_back([weight_mats, inputs, bias, out, max_num_examples]() mutable {
+
+                for (int i = 0; i < weight_mats.size(); ++i) {
+                    if (inputs[i].dims(1) == max_num_examples) {
+                        SAFE_GRAD(weight_mats[i]) += dot(GRAD(out).wrapper(),
+                                                         MAT(inputs[i]).wrapper().T());
+                        SAFE_GRAD(inputs[i]) += dot(MAT(weight_mats[i]).wrapper().T(),
+                                                    GRAD(out).wrapper());
                     } else {
                         // broadcasting input means taking outer product here:
                         {
-                            TensorInternal<R, 2> temp(mshadow::Shape2(1, max_broadcast));
+                            TensorInternal<R, 2> temp(mshadow::Shape2(1, out.dims(0)));
                             temp[0] = sum_cols(GRAD(out).wrapper());
-                            SAFE_GRAD(*matrices_ptr) += dot(
-                                temp.wrapper(), MAT(*(matrices_ptr+1)).wrapper().T()
+                            SAFE_GRAD(weight_mats[i]) += dot(
+                                temp.wrapper().T(), MAT(inputs[i]).wrapper().T()
                             );
                         }
                         // broadcasting output means sum after the reverse product here:
                         {
-                            TensorInternal<R, 2> temp(mshadow::Shape2((*matrices_ptr).dims(0), max_broadcast));
-                            temp = dot(MAT(*matrices_ptr).wrapper().T(), GRAD(out).wrapper());
-                            SAFE_GRAD(*(matrices_ptr+1))[0] += sum_cols(temp.wrapper());
+                            TensorInternal<R, 2> temp(mshadow::Shape2(weight_mats[i].dims(1), max_num_examples));
+                            temp = dot(MAT(weight_mats[i]).wrapper().T(), GRAD(out).wrapper());
+                            SAFE_GRAD(inputs[i]).ravel() += sum_cols(temp.wrapper());
                         }
                     }
-                    matrices_ptr+=2;
                 }
-                SAFE_GRAD(matrices.back())[0] += sum_cols(GRAD(out).wrapper());
+                SAFE_GRAD(bias).ravel() += sum_cols(GRAD(out).wrapper());
             });
 
         return out;
     }
 
-    // operation of the form (A * x + B * y) + C, called with mul_add_mul_with_bias(A, x, B, y, C)
-    template<typename R>
-    Mat<R> Composite<R>::mul_add_mul_with_bias(
-            Mat<R> matrix1,
-            Mat<R> input_to_1,
-            Mat<R> matrix2,
-            Mat<R> input_to_2,
-            Mat<R> bias) {
-        ASSERT2(matrix1.dims(1) == input_to_1.dims(0), "matmul 1 dimensions misaligned.");
-        ASSERT2(matrix2.dims(1) == input_to_2.dims(0), "matmul 2 dimensions misaligned.");
-        ASSERT2(matrix2.dims(0) == bias.dims(1) && matrix1.dims(0) == bias.dims(1) && bias.dims(0) == 1,
-            "Matrices cannot be computed in mul_add_mul_with_bias, they do not have the correct output dimensions.");
-
-        if (input_to_1.dims(1) != input_to_2.dims(1)) {
-            if (input_to_1.dims(1) == 1) {
-                return mul_add_broadcast_mul_with_bias(matrix1, input_to_1, matrix2, input_to_2, bias);
-            } else if (input_to_2.dims(1) == 1) {
-                return mul_add_broadcast_mul_with_bias(matrix2, input_to_2, matrix1, input_to_1, bias);
-            } else {
-                ASSERT2(input_to_1.dims(1) == input_to_2.dims(1), "different output dimensions for inputs 1 and 2 to mul_add_mul_with_bias");
-            }
-        }
-
-        Mat<R> out (matrix1.dims(0), input_to_1.dims(1), weights<R>::empty());
-
-        MAT(out) = MAT(bias)[0].wrapper().template broadcast<0>(MAT(out).shape);
-        MAT(out) += dot(MAT(matrix1).wrapper(), MAT(input_to_1).wrapper());
-        MAT(out) += dot(MAT(matrix2).wrapper(), MAT(input_to_2).wrapper());
-
-        if (graph::backprop_enabled)
-            graph::emplace_back([matrix1, input_to_1, matrix2, input_to_2, bias, out]() mutable {
-                // first multiply:
-                // broadcasting input means taking outer product here:
-                SAFE_GRAD(matrix1) += dot(GRAD(out).wrapper(), MAT(input_to_1).wrapper().T());
-                // broadcasting output means sum after the reverse product here:
-                SAFE_GRAD(input_to_1) += dot(MAT(matrix1).wrapper().T(), GRAD(out).wrapper());
-                // broadcasting input means taking outer product here:
-                SAFE_GRAD(matrix2) += dot(GRAD(out).wrapper(), MAT(input_to_2).wrapper().T());
-                // broadcasting output means sum after the reverse product here:
-                SAFE_GRAD(input_to_2) += dot(MAT(matrix2).wrapper().T(), GRAD(out).wrapper());
-                // bias vector:
-                SAFE_GRAD(bias)[0] += sum_cols(GRAD(out).wrapper());
-            });
-        return out;
-    }
 
     template class Composite<float>;
     template class Composite<double>;
-
-
 }

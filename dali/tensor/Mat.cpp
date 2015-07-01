@@ -31,7 +31,7 @@ typename Mat<R>::storage_t& Mat<R>::dw() {
 }
 
 template<typename R>
-const typename Mat<R>::storage_t& Mat<R>::dw() const {
+typename Mat<R>::storage_t& Mat<R>::dw() const {
     return *g;
 }
 

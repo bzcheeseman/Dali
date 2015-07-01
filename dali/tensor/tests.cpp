@@ -168,6 +168,15 @@ TEST_F(MatrixTests, addition_vector) {
     }
 }
 
+TEST_F(MatrixTests, load_test) {
+    Mat<R> ARANGE(utils::dir_join({STR(DALI_DATA_DIR),    "tests", "arange12.npy"}));
+    Mat<R> ARANGE_FT(utils::dir_join({STR(DALI_DATA_DIR), "tests", "arange12.fortran.npy"}));
+    ASSERT_TRUE(MatOps<R>::equals(ARANGE, ARANGE_FT));
+    for (int i = 0; i < 12; i++) {
+        ASSERT_EQ(ARANGE.w(i), i);
+    }
+}
+
 
 TEST_F(MatrixTests, subtraction) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {

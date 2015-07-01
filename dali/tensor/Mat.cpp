@@ -140,37 +140,7 @@ template<typename R>
 Mat<R>::Mat(string fname) :
         name(nullptr),
         constant(false) {
-    /*auto arr = cnpy::npy_load(fname);
-    vector<uint> npy_dims = {arr.shape[0], arr.shape.size() > 1 ? arr.shape[1] : 1};
-    m = make_shared<TensorInternal<R,2>>(mshadow::Shape2(npy_dims[0], npy_dims[1]));
-    g = make_shared<TensorInternal<R,2>>(mshadow::Shape2(npy_dims[0], npy_dims[1]));
-    g->clear();
-
-    if (arr.word_size == sizeof(double)) {
-        double* loaded_data_double = reinterpret_cast<double*>(arr.data);
-        if (arr.fortran_order) {
-            Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_double_ft(loaded_data_double, dims(0), dims(1));
-            w() = wrapped_mat_double_ft.cast<R>();
-        } else {
-            Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_double(loaded_data_double, dims(0), dims(1));
-            w() = wrapped_mat_double.cast<R>();
-        }
-    } else if (arr.word_size == sizeof(float)) {
-        float* loaded_data_float = reinterpret_cast<float*>(arr.data);
-        if (arr.fortran_order) {
-            Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_float_ft(loaded_data_float, dims(0), dims(1));
-            w() = wrapped_mat_float_ft.cast<R>();
-        } else {
-            Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_float(loaded_data_float, dims(0), dims(1));
-            w() = wrapped_mat_float.cast<R>();
-        }
-    } else {
-        stringstream error_msg;
-        error_msg << "Could not load numpy matrix : \""
-           << fname << "\". File dtype (" << arr.word_size << ") not recognized as float or double.";
-        throw std::invalid_argument(error_msg.str());
-    }
-    arr.destruct();*/
+    npy_load(fname);
 }
 
 template<typename R>
@@ -360,29 +330,48 @@ template<typename R>
 void Mat<R>::npy_load(cnpy::NpyArray& arr) {
     int n = arr.shape[0];
     int d = arr.shape.size() > 1 ? arr.shape[1] : 1;
-    m = make_shared<TensorInternal<R,2>>(mshadow::Shape2(n,d));
 
-    /*if (arr.word_size == sizeof(double)) {
-        double* loaded_data_double = reinterpret_cast<double*>(arr.data);
+    g = make_shared<storage_t>(mshadow::Shape2(n,d));
+    g->clear();
+
+    m = make_shared<storage_t>(mshadow::Shape2(n,d));
+    auto mut_data = w().mutable_cpu_data();
+    R* data_ptr = mut_data.dptr_;
+
+    if (arr.word_size == sizeof(double)) {
+        double* loaded_data = reinterpret_cast<double*>(arr.data);
         if (arr.fortran_order) {
-            Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_double_ft(loaded_data_double, dims(0), dims(1));
-            w() = wrapped_mat_double_ft.cast<R>();
+            for (int i = 0; i < dims(0); i++) {
+                for (int j = 0; j < dims(1); j++) {
+                    mut_data[i][j] = loaded_data[j * dims(0) + i];
+                }
+            }
         } else {
-            Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_double(loaded_data_double, dims(0), dims(1));
-            w() = wrapped_mat_double.cast<R>();
+            for (int i = 0; i < dims(0); i++) {
+                for (int j = 0; j < dims(1); j++) {
+                    mut_data[i][j] = loaded_data[i * dims(1) + j];
+                }
+            }
         }
     } else if (arr.word_size == sizeof(float)) {
-        float* loaded_data_float = reinterpret_cast<float*>(arr.data);
+        float* loaded_data = reinterpret_cast<float*>(arr.data);
         if (arr.fortran_order) {
-            Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> > wrapped_mat_float_ft(loaded_data_float, dims(0), dims(1));
-            w() = wrapped_mat_float_ft.cast<R>();
+            for (int i = 0; i < dims(0); i++) {
+                for (int j = 0; j < dims(1); j++) {
+                    mut_data[i][j] = loaded_data[j * dims(0) + i];
+                }
+            }
         } else {
-            Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic, Eigen::ColMajor> > wrapped_mat_float(loaded_data_float, dims(0), dims(1));
-            w() = wrapped_mat_float.cast<R>();
+            for (int i = 0; i < dims(0); i++) {
+                for (int j = 0; j < dims(1); j++) {
+                    mut_data[i][j] = loaded_data[i * dims(1) + j];
+                }
+            }
         }
     } else {
-        throw std::invalid_argument("Could not load numpy matrix : not recognized as float or double.");
-    }*/
+        ASSERT2(arr.word_size == sizeof(double) || arr.word_size == sizeof(float),
+            "Could not load numpy matrix : not recognized as float or double.");
+    }
 }
 
 template<typename R>

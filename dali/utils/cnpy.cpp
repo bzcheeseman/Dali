@@ -69,7 +69,7 @@ void cnpy::parse_npy_header(FILE* fp, unsigned int& word_size, unsigned int*& sh
 
     //fortran order
     loc1 = header.find("fortran_order")+16;
-    fortran_order = (header.substr(loc1,5) == "True" ? true : false);
+    fortran_order = (header.substr(loc1,4) == "True" ? true : false);
 
     //shape
     loc1 = header.find("(");
@@ -144,7 +144,7 @@ cnpy::NpyArray cnpy::load_the_npy_file(FILE* fp) {
 cnpy::npz_t cnpy::npz_load(std::string fname) {
     FILE* fp = fopen(fname.c_str(),"rb");
 
-    if(!fp) printf("npz_load: Error! Unable to open file %s!\n",fname.c_str());
+    if(!fp) printf("Error: Unable to open file \"%s\".\n",fname.c_str());
     assert(fp);
 
     cnpy::npz_t arrays;
@@ -188,7 +188,7 @@ cnpy::NpyArray cnpy::npz_load(std::string fname, std::string varname) {
     FILE* fp = fopen(fname.c_str(),"rb");
 
     if(!fp) {
-        printf("npz_load: Error! Unable to open file %s!\n",fname.c_str());
+        printf("Error: Unable to open file \"%s\".\n",fname.c_str());
         abort();
     }
 
@@ -235,7 +235,7 @@ cnpy::NpyArray cnpy::npy_load(std::string fname) {
     FILE* fp = fopen(fname.c_str(), "rb");
 
     if(!fp) {
-        printf("npy_load: Error! Unable to open file %s!\n",fname.c_str());
+        printf("Error: Unable to open file \"%s\".\n",fname.c_str());
         abort();
     }
 

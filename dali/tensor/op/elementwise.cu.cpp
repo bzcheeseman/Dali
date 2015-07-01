@@ -10,7 +10,7 @@ using std::vector;
 namespace matops {
     #define DALI_UNARY_OP0(name, forward_op, backward) \
         template<typename R>                                                                                  \
-        Mat<R> Elementwise<R>::name(Mat<R> matrix) {                                                               \
+        Mat<R> Elementwise<R>::name(Mat<R> matrix) {                                                          \
             auto out = Mat<R>::empty_like(matrix);                                                            \
                                                                                                               \
             MAT(out) = F<forward_op<R>>(MAT(matrix).wrapper());                                               \
@@ -24,7 +24,7 @@ namespace matops {
 
     #define DALI_UNARY_OP1(name, arg1, forward_op, backward) \
         template<typename R>                                                                                  \
-        Mat<R> Elementwise<R>::name(Mat<R> matrix, R arg1) {                                                       \
+        Mat<R> Elementwise<R>::name(Mat<R> matrix, R arg1) {                                                  \
             auto out = Mat<R>::empty_like(matrix);                                                            \
                                                                                                               \
             MAT(out) = F<forward_op<R>>(MAT(matrix).wrapper(), arg1);                                         \
@@ -35,7 +35,6 @@ namespace matops {
                 });                                                                                           \
             return out;                                                                                       \
         }
-
 
     DALI_UNARY_OP0(tanh, op::tanh,
             F<op::dtanh<R>>(MAT(out).wrapper()));
@@ -194,5 +193,4 @@ namespace matops {
 
     template class Elementwise<float>;
     template class Elementwise<double>;
-
 }

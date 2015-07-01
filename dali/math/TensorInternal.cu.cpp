@@ -218,33 +218,24 @@ R* TensorInternal<R,dimension>::data() {
     return this->mutable_cpu_data().dptr_;
 }
 
-template <> void TensorInternal<float, 1>::print(int indent) const {
-    std::cout << std::string(indent, ' ');
-    std::cout << "[";
-    for(int i=0; i<shape[0]; ++i) {
-        std::cout << std::fixed
-                  << std::setw( 7 ) // keep 7 digits
-                  << std::setprecision( 3 ) // use 3 decimals
-                  << std::setfill( ' ' ) << (*this)(i); // pad values with blanks this->w(i,j)
-        if (i != shape[0] - 1) std::cout << " ";
+#define DALI_TENSOR_INTERNAL_PRINT(dtype) \
+    template <> void TensorInternal<dtype, 1>::print(int indent) const {\
+        std::cout << std::string(indent, ' ');\
+        std::cout << "[";\
+        for(int i=0; i<shape[0]; ++i) {\
+            std::cout << std::fixed\
+                      << std::setw( 7 ) /* keep 7 digits*/\
+                      << std::setprecision( 3 ) /* use 3 decimals*/\
+                      << std::setfill( ' ' ) << (*this)(i); /* pad values with blanks this->w(i,j)*/\
+            if (i != shape[0] - 1) std::cout << " ";\
+        }\
+        std::cout << "]";\
+        std::cout << std::endl;\
     }
-    std::cout << "]";
-    std::cout << std::endl;
-}
-template <> void TensorInternal<double, 1>::print(int indent) const {
-    std::cout << std::string(indent, ' ');
-    std::cout << "[";
-    for(int i=0; i<shape[0]; ++i) {
-        std::cout << std::fixed
-                  << std::setw( 7 ) // keep 7 digits
-                  << std::setprecision( 3 ) // use 3 decimals
-                  << std::setfill( ' ' ) << (*this)(i); // pad values with blanks this->w(i,j)
-        if (i != shape[0] - 1) std::cout << " ";
-    }
-    std::cout << "]";
-    std::cout << std::endl;
-}
 
+DALI_TENSOR_INTERNAL_PRINT(float)
+DALI_TENSOR_INTERNAL_PRINT(double)
+DALI_TENSOR_INTERNAL_PRINT(int)
 
 template<typename R, int dimension>
 void TensorInternal<R,dimension>::print(int indent) const {
@@ -340,8 +331,10 @@ TensorInternal<R,dimension>& TensorInternal<R,dimension>::operator=(const lazy_t
 
 template class TensorInternal<float, 1>;
 template class TensorInternal<double,1>;
+template class TensorInternal<int,1>;
 template class TensorInternal<float, 2>;
 template class TensorInternal<double,2>;
+template class TensorInternal<int,2>;
 // template class TensorInternal<float, 3>;
 // template class TensorInternal<double,3>;
 // template class TensorInternal<float, 4>;

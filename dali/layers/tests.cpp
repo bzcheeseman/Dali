@@ -109,7 +109,7 @@ TEST_F(LayerTests, stacked_layer_tanh_gradient) {
     }
 }
 
-TEST_F(LayerTests, DISABLED_LSTM_Zaremba_gradient) {
+TEST_F(LayerTests, LSTM_Zaremba_gradient) {
 
     int num_examples           = 10;
     int hidden_size            = 5;
@@ -120,7 +120,9 @@ TEST_F(LayerTests, DISABLED_LSTM_Zaremba_gradient) {
         auto mylayer = LSTM<R>(input_size, hidden_size, false);
         auto params = mylayer.parameters();
         params.emplace_back(X);
-        auto initial_state = mylayer.initial_states();
+        auto initial_state = LSTM<R>::State(
+                Mat<R>(hidden_size, 1, weights<R>::uniform(0.1)),
+                Mat<R>(hidden_size, 1, weights<R>::uniform(0.1)));
         auto functor = [&mylayer, &X, &initial_state](vector<Mat<R>> Xs)-> Mat<R> {
             auto myout_state = mylayer.activate(X, initial_state);
             return myout_state.hidden;
@@ -129,8 +131,7 @@ TEST_F(LayerTests, DISABLED_LSTM_Zaremba_gradient) {
     }
 }
 
-TEST_F(LayerTests, DISABLED_LSTM_Graves_gradient) {
-
+TEST_F(LayerTests, LSTM_Graves_gradient) {
     int num_examples           = 10;
     int hidden_size            = 5;
     int input_size             = 3;
@@ -145,7 +146,9 @@ TEST_F(LayerTests, DISABLED_LSTM_Graves_gradient) {
         // it in a gate, but to test it here we set this to true
         mylayer.backprop_through_gates = true;
 
-        auto initial_state = mylayer.initial_states();
+        auto initial_state = LSTM<R>::State(
+                Mat<R>(hidden_size, 1, weights<R>::uniform(0.1)),
+                Mat<R>(hidden_size, 1, weights<R>::uniform(0.1)));
         auto functor = [&mylayer, &X, &initial_state](vector<Mat<R>> Xs)-> Mat<R> {
             auto myout_state = mylayer.activate(X, initial_state);
             return myout_state.hidden;
@@ -154,8 +157,7 @@ TEST_F(LayerTests, DISABLED_LSTM_Graves_gradient) {
     }
 }
 
-TEST_F(LayerTests, DISABLED_LSTM_Graves_shortcut_gradient) {
-
+TEST_F(LayerTests, LSTM_Graves_shortcut_gradient) {
     int num_examples           = 10;
     int hidden_size            = 5;
     int input_size             = 3;
@@ -173,7 +175,9 @@ TEST_F(LayerTests, DISABLED_LSTM_Graves_shortcut_gradient) {
         // it in a gate:
         mylayer.backprop_through_gates = true;
 
-        auto initial_state = mylayer.initial_states();
+        auto initial_state = LSTM<R>::State(
+                Mat<R>(hidden_size, 1, weights<R>::uniform(0.1)),
+                Mat<R>(hidden_size, 1, weights<R>::uniform(0.1)));
         auto functor = [&mylayer, &X, &X_s, &initial_state](vector<Mat<R>> Xs)-> Mat<R> {
             auto state = mylayer.activate_shortcut(X, X_s, initial_state);
             return state.hidden;
@@ -182,7 +186,7 @@ TEST_F(LayerTests, DISABLED_LSTM_Graves_shortcut_gradient) {
     }
 }
 
-TEST_F(LayerTests, DISABLED_LSTM_Zaremba_shortcut_gradient) {
+TEST_F(LayerTests, LSTM_Zaremba_shortcut_gradient) {
     int num_examples           = 10;
     int hidden_size            = 5;
     int input_size             = 3;
@@ -196,7 +200,9 @@ TEST_F(LayerTests, DISABLED_LSTM_Zaremba_shortcut_gradient) {
         params.emplace_back(X);
         params.emplace_back(X_s);
 
-        auto initial_state = mylayer.initial_states();
+        auto initial_state = LSTM<R>::State(
+                Mat<R>(hidden_size, 1, weights<R>::uniform(0.1)),
+                Mat<R>(hidden_size, 1, weights<R>::uniform(0.1)));
         auto functor = [&mylayer, &X, &X_s, &initial_state](vector<Mat<R>> Xs)-> Mat<R> {
             auto state = mylayer.activate_shortcut(X, X_s, initial_state);
             return state.hidden;
@@ -205,53 +211,55 @@ TEST_F(LayerTests, DISABLED_LSTM_Zaremba_shortcut_gradient) {
     }
 }
 
-TEST_F(LayerTests, DISABLED_RNN_gradient_vs_Stacked_gradient) {
-    // int num_examples           = 10;
-    // int hidden_size            = 5;
-    // int input_size             = 3;
+TEST_F(LayerTests, RNN_gradient_vs_Stacked_gradient) {
+    int num_examples           = 10;
+    int hidden_size            = 5;
+    int input_size             = 3;
 
-    // EXPERIMENT_REPEAT {
+    EXPERIMENT_REPEAT {
+        auto X  = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
+        auto H  = Mat<R>(hidden_size, num_examples, weights<R>::uniform(20.0));
 
-    //     auto X  = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
-    //     auto H  = Mat<R>(hidden_size, num_examples, weights<R>::uniform(20.0));
+        auto X_s  = Mat<R>(X, true, true); // perform full copies
+        auto H_s  = Mat<R>(H, true, true); // perform full copies
 
-    //     auto X_s  = Mat<R>(X, true, true); // perform full copies
-    //     auto H_s  = Mat<R>(H, true, true); // perform full copies
+        auto rnn_layer = RNN<R>(input_size, hidden_size);
+        auto stacked_layer = StackedInputLayer<R>({input_size, hidden_size}, hidden_size);
 
-    //     auto rnn_layer = RNN<R>(input_size, hidden_size);
-    //     auto stacked_layer = StackedInputLayer<R>({input_size, hidden_size}, hidden_size);
+        auto params = rnn_layer.parameters();
+        auto stacked_params = stacked_layer.parameters();
 
-    //     auto params = rnn_layer.parameters();
-    //     auto stacked_params = stacked_layer.parameters();
+        ASSERT_EQ(params.size(), stacked_params.size());
 
-    //     for (auto it1 = params.begin(),
-    //               it2 = stacked_params.begin(); (it1 != params.end()) && (it2 != stacked_params.end()); it1++, it2++) {
-    //         ASSERT_EQ((*it1).dims(), (*it2).dims());
-    //         std::copy(it2->w()->data(), it2->w()->data() + it2->number_of_elements(),
-    //                   it1->w()->data());
-    //     }
+        for (int i = 0; i < params.size(); ++i) {
+            ASSERT_EQ(params[i].dims(), stacked_params[i].dims());
+            MatOps<R>::copy(&stacked_params[i], params[i]);
+            // std::cout << "=======" << std::endl;
+            // stacked_params[i].print();
+            // params[i].print();
+            // std::cout << "=======" << std::endl;
+        }
 
-    //     auto error = ((rnn_layer.activate(X, H).tanh() - 1) ^ 2).sum();
-    //     error.grad();
-    //     auto error2 = ((stacked_layer.activate({X_s, H_s}).tanh() - 1) ^ 2).sum();
-    //     error2.grad();
-    //     graph::backward();
+        auto error = ((rnn_layer.activate(X, H).tanh() - 1) ^ 2).sum();
+        error.grad();
+        auto error2 = ((stacked_layer.activate({X_s, H_s}).tanh() - 1) ^ 2).sum();
+        error2.grad();
+        graph::backward();
 
-    //     for (auto it1 = params.begin(),
-    //               it2 = stacked_params.begin(); (it1 != params.end()) && (it2 != stacked_params.end()); it1++, it2++) {
-    //         ASSERT_MATRIX_GRAD_CLOSE((*it1), (*it2), 1e-6);
-    //     }
-    //     ASSERT_MATRIX_GRAD_CLOSE(X, X_s, 1e-6);
-    //     ASSERT_MATRIX_GRAD_CLOSE(H, H_s, 1e-6);
-    // }
+        for (int i = 0; i < params.size(); ++i) {
+            ASSERT_MATRIX_GRAD_CLOSE(stacked_params[i], params[i], 1e-6);
+        }
+        ASSERT_MATRIX_GRAD_CLOSE(X, X_s, 1e-6);
+        ASSERT_MATRIX_GRAD_CLOSE(H, H_s, 1e-6);
+    }
 }
 
 
 
-TEST_F(LayerTests, DISABLED_shortcut_test) {
+TEST_F(LayerTests, shortcut_test) {
     int input_size = 10;
     int num_examples = 2;
-    auto hidden_sizes = {40, 30};//{30, 13, 20, 1, 9, 2};
+    vector<int> hidden_sizes({40, 30});//{30, 13, 20, 1, 9, 2};
 
     auto model = StackedLSTM<R>(input_size, hidden_sizes, true, true);
     auto X = {Mat<R>(
@@ -260,9 +268,14 @@ TEST_F(LayerTests, DISABLED_shortcut_test) {
         weights<R>::uniform(20.0)
     )};
 
-    auto out_states = model.activate_sequence(model.initial_states(),
-                                              X,
-                                              0.2);
+    vector<LSTM<R>::State> initial_states;
+    for (int i = 0; i < hidden_sizes.size(); ++i) {
+        initial_states.emplace_back(
+            Mat<R>(hidden_sizes[i], 1, weights<R>::uniform(0.1)),
+            Mat<R>(hidden_sizes[i], 1, weights<R>::uniform(0.1)));
+    }
+
+    auto out_states = model.activate_sequence(initial_states, X, 0.2);
 }
 
 TEST_F(LayerTests, DISABLED_multi_input_lstm_test) {
@@ -299,7 +312,7 @@ TEST_F(LayerTests, DISABLED_multi_input_lstm_test) {
     }
 }
 
-TEST_F(LayerTests, DISABLED_activate_sequence) {
+TEST_F(LayerTests, activate_sequence) {
     vector<int> hidden_sizes = {7, 10};
     int input_size = 5;
     int num_out_states = hidden_sizes.size();
@@ -312,7 +325,7 @@ TEST_F(LayerTests, DISABLED_activate_sequence) {
     ASSERT_EQ(num_out_states, LSTM<R>::State::hiddens(out_states).size());
 }
 
-TEST_F(LayerTests, DISABLED_GRU) {
+TEST_F(LayerTests, GRU) {
     int input_size = 3;
     int hidden_size = 5;
     int tsteps = 5;

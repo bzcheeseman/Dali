@@ -177,7 +177,7 @@ TEST_F(MatrixTests, load_test) {
     }
 }
 
-TEST_F(MatrixTests, save_load_test) {
+TEST_F(MatrixTests, DISABLED_save_load_test) {
     // load arange, then save it to a new file
     Mat<R> arange(utils::dir_join({STR(DALI_DATA_DIR),    "tests", "arange12.npy"}));
     arange.npy_save(utils::dir_join({STR(DALI_DATA_DIR),  "tests", "arange12.temp.npy"}));

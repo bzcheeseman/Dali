@@ -318,6 +318,25 @@ TensorInternal<R, dimension> TensorInternal<R,dimension>::Slice(
                                         offset + shape.SubShape().Size() * begin);
 }
 
+template<typename R, int dimension>
+TensorInternal<R,dimension>& TensorInternal<R,dimension>::operator=(const lazy_t& expr) {
+    #ifdef DALI_USE_CUDA
+        if (should_compute_on_gpu(extract_memory(expr.dependent_tensors))) {
+            /* refresh the gpu memory from cpu*/
+            for (auto participant : expr.dependent_tensors) {
+                participant->update_tensor(DEVICE_GPU);
+            }
+            mshadow::Copy(this->mutable_gpu_data(), expr.right)
+            return;
+        }
+    #endif
+    for (auto participant : expr.dependent_tensors) {
+        participant->update_tensor(DEVICE_CPU);
+    }
+    mshadow::Copy(this->mutable_cpu_data(), expr.left);
+    return *this;
+}
+
 
 template class TensorInternal<float, 1>;
 template class TensorInternal<double,1>;

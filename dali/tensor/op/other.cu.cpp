@@ -106,6 +106,16 @@ namespace matops {
         return GRAD(a).allclose(GRAD(b), tol);
     }
 
+    template<typename R>
+    void Other<R>::copy(Mat<R>* dest, const Mat<R>& source) {
+        MAT(*dest)  = MAT(source).wrapper();
+    }
+
+    template<typename R>
+    void Other<R>::copy_grad(Mat<R>* dest, const Mat<R>& source) {
+        GRAD(*dest) = GRAD(source).wrapper();
+    }
+
     template class Other<float>;
     template class Other<double>;
 

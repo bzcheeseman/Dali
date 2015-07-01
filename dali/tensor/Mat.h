@@ -92,6 +92,9 @@ class Mat {
 
         ~Mat();
 
+        void copy_from(const Mat<R>& source);
+        void copy_grad_from(const Mat<R>& source);
+
         void print() const;
 
         /**

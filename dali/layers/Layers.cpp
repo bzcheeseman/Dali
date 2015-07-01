@@ -63,7 +63,7 @@ void StackedInputLayer<R>::create_variables() {
     for (auto& input_size : _input_sizes) {
         matrices.emplace_back(hidden_size, input_size, U);
     }
-    this->b = Mat<R>(1, hidden_size, U);
+    this->b = Mat<R>(hidden_size, 1, U);
 }
 
 template<typename R>

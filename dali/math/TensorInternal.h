@@ -21,6 +21,11 @@ typedef unsigned int dim_t;
 template<typename R, int dimension>
 class TensorInternal;
 
+
+
+
+
+
 #ifdef DALI_USE_CUDA
     #define DALI_SYNC_TENSOR_ASSIGN_OP(op_symbol) \
         template <typename TA, typename TB, int ta> \
@@ -124,6 +129,10 @@ class TensorInternal {
         DALI_SYNC_TENSOR_ASSIGN_SCALAR_OP(/=)
         DALI_SYNC_TENSOR_ASSIGN_SCALAR_OP(*=)
 
+        // specialization to avoid unintuitive behavior
+        // now it makes a copy.
+        TensorInternal& operator=(const lazy_t& expr);
+
         R sum() const;
         R L2_norm() const;
         bool allclose(const TensorInternal<R, dimension>& other, R tol) const;
@@ -168,5 +177,8 @@ class TensorInternal {
 
 template <> void TensorInternal<float, 1>::print(int indent) const;
 template <> void TensorInternal<double, 1>::print(int indent) const;
+
+
+
 
 #endif

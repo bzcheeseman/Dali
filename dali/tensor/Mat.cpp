@@ -403,6 +403,16 @@ template<typename R>
 Mat<R>::~Mat() {}
 
 template<typename R>
+void Mat<R>::copy_from(const Mat<R>& source) {
+    return MatOps<R>::copy(this, source);
+}
+
+template<typename R>
+void Mat<R>::copy_grad_from(const Mat<R>& source) {
+    return MatOps<R>::copy_grad(this, source);
+}
+
+template<typename R>
 Mat<R> Mat<R>::Empty(dim_t n, dim_t d) {
     // use an empty matrix and modify
     // it so as to not incur the filling

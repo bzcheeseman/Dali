@@ -38,7 +38,7 @@ int main( int argc, char* argv[]) {
     // Biggest number to add.
     const int NUM_BITS = 30;
     // What is the learning rate.
-    double LR = 1.0 ;
+    double LR = 0.1 ;
 
     const int SEED = 80085;
 
@@ -78,7 +78,7 @@ int main( int argc, char* argv[]) {
     uint patience = 0;
 
     Solver::SGD<R> solver(params);
-    // solver.step_size = LR;
+    solver.step_size = LR;
 
     for (int epoch = 0; ; ++epoch) {
         // Average cross entropy bit error per bit.

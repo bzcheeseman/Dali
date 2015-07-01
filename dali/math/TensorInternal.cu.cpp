@@ -317,8 +317,8 @@ TensorInternal<R,dimension>& TensorInternal<R,dimension>::operator=(const lazy_t
             for (auto participant : expr.dependent_tensors) {
                 participant->update_tensor(DEVICE_GPU);
             }
-            mshadow::Copy(this->mutable_gpu_data(), expr.right)
-            return;
+            mshadow::Copy(this->mutable_gpu_data(), expr.right);
+            return *this;
         }
     #endif
     for (auto participant : expr.dependent_tensors) {

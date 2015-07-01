@@ -76,15 +76,13 @@ R& Mat<R>::dw(int i, int j) {
 }
 
 template<typename R>
-const vector<dim_t>& Mat<R>::dims() const {
+vector<dim_t> Mat<R>::dims() const {
     if (m != nullptr) {
-        auto shape = m->shape;
-        std::vector<dim_t> dimensions;
-        dimensions.reserve(2);
-        for (int i = 0; i < 2;i++) {
-            dimensions.emplace_back(shape[i]);
+        auto& shape = m->shape;
+        std::vector<dim_t> dimensions(decltype(m->shape)::kDimension);
+        for (int i = 0; i < decltype(m->shape)::kDimension;i++) {
+            dimensions[i] = shape[i];
         }
-        std::cout << dimensions << std::endl;
         return dimensions;
     }
     return mat_missing_dimensions;

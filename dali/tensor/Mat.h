@@ -121,7 +121,7 @@ class Mat {
         storage_t& dw() const;
         storage_t& dw();
 
-        const std::vector<dim_t>& dims() const;
+        std::vector<dim_t> dims() const;
         dim_t dims(int idx) const;
 
         unsigned int number_of_elements() const;

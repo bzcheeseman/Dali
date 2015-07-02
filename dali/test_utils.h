@@ -260,6 +260,8 @@ namespace {
                           << std::setprecision( 5 ) // use 3 decimals
                           << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
                           << max_disagreement << std::endl;
+
+
             }
             worked_out = worked_out && (bool)did_work_out;
             if (!worked_out) {

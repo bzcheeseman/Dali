@@ -200,17 +200,23 @@ namespace matops {
         assert(targets.size() == matrix.dims(1));
         Mat<R> out =  Mat<R>(1, targets.size(), weights<R>::empty());
         Mat<R> probs = softmax_no_grad(matrix);
+
         select_from_cols(MAT(out), MAT(probs), targets);
 
         MAT(out) = (R)-1.0 * F<op::log<R>>(MAT(out).wrapper());
         if (graph::backprop_enabled)
             graph::emplace_back([matrix, probs, out, targets]() mutable {
-                // if (!matrix.constant) {
-                //     SAFE_GRAD(matrix).noalias() += (MAT(probs).array().rowwise() * GRAD(out).row(0).array()).matrix();
-                //     for (int i = 0; i < targets.size(); i++) {
-                //         GRAD(matrix)(targets[i],i) -= 1.0 * GRAD(out)(i);
-                //     }
-                // }
+                if (!matrix.constant) {
+                    GRAD(matrix) += MAT(probs).wrapper() *
+                            GRAD(out).ravel().wrapper().template broadcast<1>(MAT(probs).shape);
+
+                    utils::assert2(false, "Still needs debugging");
+
+                    softmax_cross_entropy_backward(GRAD(matrix), GRAD(out), targets);
+                    // for (int i = 0; i < targets.size(); i++) {
+                    //     GRAD(matrix)(targets[i],i) -= 1.0 * GRAD(out)(i);
+                    // }
+                }
             });
         return out;
     }

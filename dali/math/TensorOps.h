@@ -183,6 +183,77 @@ namespace TensorOps {
         select_from_cols(dest.mutable_cpu_data(), source.cpu_data(), targets);
     }
 
+
+
+
+    #ifdef DALI_USE_CUDA
+
+    template<typename R>
+    void softmax_cross_entropy_backward(mshadow::Tensor<gpu, 2, R> dest,
+                                        const mshadow::Tensor<gpu, 2, R>& source,
+                                        Indexing::Index targets) {
+        auto t_dest   = to_thrust(dest);
+        auto t_source = to_thrust(source);
+        std::vector<int> offsets(targets.size());
+
+        for (int i=0; i < targets.size(); ++i) {
+            // accessing index (targets[i], i)
+            offsets[i] = targets[i] * source.shape_[1] + i;
+        }
+        thrust::device_vector<uint> offsets_gpu(offsets);
+
+        typedef thrust::device_vector<uint>::iterator IndexIterator;
+        thrust::permutation_iterator<thrust::device_ptr<R>,IndexIterator>
+                dest_perm(t_dest, offsets_gpu.begin());
+
+        using namespace thrust::placeholders;
+
+        // dest[..., i] = dest[..., i] - source[i]
+        thrust::transform(
+                dest_perm, dest_perm + targets.size(),
+                t_source,
+                dest_perm,
+                _1 - _2);
+
+        thrust::copy(iter, iter + source.shape_[1], t_dest);
+    }
+    #endif
+
+    template<typename R>
+    void softmax_cross_entropy_backward(mshadow::Tensor<cpu, 2, R> dest,
+                          const mshadow::Tensor<cpu, 2, R>& source,
+                          Indexing::Index targets) {
+
+        R* source_ptr = dest.dptr_;
+
+        for (int col = 0; col < targets.size(); ++col) {
+            dest[targets[col]][col] -= *(source_ptr + col);
+        }
+    }
+
+
+    template<typename R>
+    void softmax_cross_entropy_backward(TensorInternal<R,2> dest,
+                          TensorInternal<R,2> source,
+                          Indexing::Index targets) {
+#ifdef DALI_USE_CUDA
+        if (source.compute_me_on_gpu()) {
+            softmax_cross_entropy_backward(dest.mutable_gpu_data(), source.gpu_data(), targets);
+            return;
+        }
+#endif
+        softmax_cross_entropy_backward(dest.mutable_cpu_data(), source.cpu_data(), targets);
+    }
+
+
+
+
+
+
+
+
+
+
     namespace arg {
         #ifdef DALI_USE_CUDA
         // Convert a linear index to a row index

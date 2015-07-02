@@ -1132,6 +1132,26 @@ TEST_F(MatOpsTests, cross_entropy_grad) {
     }
 }
 
+TEST_F(MatOpsTests, softmax_cross_entropy_grad) {
+    EXPERIMENT_REPEAT {
+        auto input = Mat<R>(5,  3, weights<R>::uniform(-2.0, 2.0));
+
+        vector<uint> targets;
+        for (int i = 0; i < input.dims(1); ++i)
+            targets.push_back(utils::randint(0, input.dims(0) - 1));
+        Indexing::Index indexed_targets(targets);
+
+
+        auto functor = [indexed_targets](vector<Mat<R>> Xs)-> Mat<R> {
+            return MatOps<R>::softmax_cross_entropy(
+                Xs[0],
+                indexed_targets);
+        };
+
+        ASSERT_TRUE(gradient_same(functor, {input}, 1e-2));
+    }
+}
+
 
 TEST_F(MatOpsTests, cross_entropy_multiindex) {
     EXPERIMENT_REPEAT {
@@ -1412,7 +1432,7 @@ TEST(Solver, adam) {
     });
 }
 
-TEST(Solver, DISABLED_adagrad_epic_odyssey_by_jonathan_raiman) {
+TEST(Solver, adagrad_epic_odyssey_by_jonathan_raiman) {
     int num_points = 20;
     int num_dimensions = 5;
     // create data

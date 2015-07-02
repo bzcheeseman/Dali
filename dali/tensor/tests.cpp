@@ -979,6 +979,41 @@ TEST_F(MatOpsTests, resize_decrease_rows_and_cols) {
     ASSERT_EQ(A.w().shape, new_shape);
 }
 
+TEST_F(MatOpsTests, resize_1D_decrease_rows) {
+    int row_size = 3;
+    // decrease number of rows by 1
+    TensorInternal<R,1> A(mshadow::Shape1(row_size));
+
+    for (int i = 0; i < row_size; i++) {
+        A(i) = i;
+    }
+
+    auto new_shape = mshadow::Shape1(row_size - 1);
+    A.resize(new_shape);
+    for (int i = 0; i < (row_size - 1); i++) {
+        ASSERT_EQ(A(i), i);
+    }
+    ASSERT_EQ(A.shape, new_shape);
+}
+
+// TEST_F(MatOpsTests, resize_1D_increase_rows) {
+//     int row_size = 3;
+//     // increase number of rows by 1
+//     auto A = Mat<R>(row_size, col_size);
+//     for (int i = 0; i < row_size * col_size; i++) {
+//         A.w(i) = i;
+//     }
+//     auto new_shape = mshadow::Shape2(row_size + 1, col_size);
+//     A.w().resize(new_shape, 3.5);
+//     for (int i = 0; i < row_size * col_size; i++) {
+//         ASSERT_EQ(A.w(i), i);
+//     }
+//     for (int i = row_size * col_size; i < (row_size + 1) * col_size; i++) {
+//         ASSERT_EQ(A.w(i), 3.5);
+//     }
+//     ASSERT_EQ(A.w().shape, new_shape);
+// }
+
 TEST_F(MatOpsTests, DISABLED_matrix_conv2d) {
     /*graph::NoBackprop nb;
 

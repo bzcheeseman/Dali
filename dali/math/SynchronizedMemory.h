@@ -50,6 +50,7 @@ class SynchronizedMemory {
         mutable bool cpu_fresh;
         mutable R* cpu_ptr;
 
+        void free_cpu() const;
         void to_cpu() const;
         bool prefers_cpu() const;
         bool prefers_gpu() const;
@@ -66,6 +67,8 @@ class SynchronizedMemory {
         R* cpu_data() const;
         R* mutable_cpu_data();
 
+
+
     private:
         mshadow::Tensor<mshadow::cpu, 2, R> dummy_cpu() const;
         // only used by copy constructor.
@@ -77,6 +80,7 @@ class SynchronizedMemory {
         mutable bool allocated_gpu;
         mutable R* gpu_ptr;
 
+        void free_gpu() const;
         void to_gpu() const;
         // tie-breaker for operations involving multiple tensors
         // on mixed devices.

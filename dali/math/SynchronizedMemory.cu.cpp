@@ -128,20 +128,33 @@ SynchronizedMemory<R>::SynchronizedMemory(const SynchronizedMemory& other) :
     }
 }
 
-
 template<typename R>
-SynchronizedMemory<R>::~SynchronizedMemory() {
+void SynchronizedMemory<R>::free_cpu() const {
     if (allocated_cpu) {
         auto dummy = dummy_cpu();
         FreeSpace(&dummy);
         cpu_ptr = dummy.dptr_;
     }
+    allocated_cpu = false;
+}
+
 #ifdef DALI_USE_CUDA
+template<typename R>
+void SynchronizedMemory<R>::free_gpu() const {
     if (allocated_gpu) {
         auto dummy = dummy_gpu();
         FreeSpace(&dummy);
         gpu_ptr = dummy.dptr_;
     }
+    allocated_gpu = false;
+}
+#endif
+
+template<typename R>
+SynchronizedMemory<R>::~SynchronizedMemory() {
+    free_cpu();
+#ifdef DALI_USE_CUDA
+    free_gpu();
 #endif
 }
 

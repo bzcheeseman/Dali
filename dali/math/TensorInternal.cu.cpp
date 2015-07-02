@@ -335,12 +335,18 @@ void TensorInternal<R, dimension>::resize(mshadow::Shape<dimension> newshape, R 
     // if same columns
     if (newshape[1] == shape[1]) {
         if (newshape[0] != shape[0]) {
+            // if we are only changing the number of rows
+            // then we can simply chop off or add memory
+            // at the tail end of this tensor's memory buffer.
             R* data_ptr = memory_->mutable_cpu_data();
             R* new_ptr  = (R*)realloc(data_ptr, newshape.Size() * sizeof(R));
             ASSERT2(new_ptr != NULL, "Error: Could not allocated memory for TensorInternal.");
             if (new_ptr != NULL) {
                 memory_->cpu_ptr = new_ptr;
                 memory_->total_memory = newshape.Size();
+                #ifdef DALI_USE_CUDA
+                memory_->free_gpu();
+                #endif
 
                 // fill new area with zeros.
                 for (int i = shape.Size(); i < newshape.Size(); i++) {
@@ -356,12 +362,18 @@ void TensorInternal<R, dimension>::resize(mshadow::Shape<dimension> newshape, R 
     } else {
         if (newshape[1] > shape[1]) {
             if (newshape[0] == shape[0]) {
+                // if we are increasing the columns, then
+                // we move the farthest rows & columns out to
+                // make room for closer columns
                 R* data_ptr = memory_->mutable_cpu_data();
                 R* new_ptr  = (R*)realloc(data_ptr, newshape.Size() * sizeof(R));
                 ASSERT2(new_ptr != NULL, "Error: Could not allocated memory for TensorInternal.");
                 if (new_ptr != NULL) {
                     memory_->cpu_ptr = new_ptr;
                     memory_->total_memory = newshape.Size();
+                    #ifdef DALI_USE_CUDA
+                    memory_->free_gpu();
+                    #endif
                     for (int i = shape[0] - 1; i >= 0; i--) {
                         for (int j = shape[1] - 1; j >= 0; j--) {
                             int old_offset = this->cpu_data().stride_ * i + j;
@@ -390,6 +402,8 @@ void TensorInternal<R, dimension>::resize(mshadow::Shape<dimension> newshape, R 
         } else {
             if (newshape[0] == shape[0]) {
                 R* data_ptr = memory_->mutable_cpu_data();
+                // if we are shrinking, then copy closest memory first
+                // then move to farther memory
                 for (int i = 0; i < newshape[0]; i++) {
                     for (int j = 0; j < newshape[1]; j++) {
                         int old_offset = this->cpu_data().stride_ * i + j;
@@ -402,6 +416,9 @@ void TensorInternal<R, dimension>::resize(mshadow::Shape<dimension> newshape, R 
                 if (new_ptr != NULL) {
                     memory_->cpu_ptr = new_ptr;
                     memory_->total_memory = newshape.Size();
+                    #ifdef DALI_USE_CUDA
+                    memory_->free_gpu();
+                    #endif
                     for (int i = 0; i < mshadow::Shape<dimension>::kDimension ; i++) {
                         shape.shape_[i] = newshape[i];
                     }
@@ -418,14 +435,47 @@ void TensorInternal<R, dimension>::resize(mshadow::Shape<dimension> newshape, R 
     }
 }
 
-template<>
-void TensorInternal<float, 1>::resize(mshadow::Shape<1> newshape, float filler) {
-    ASSERT2(false, "Not implemented");
-}
-template<>
-void TensorInternal<double, 1>::resize(mshadow::Shape<1> newshape, double filler) {
-    ASSERT2(false, "Not implemented");
-}
+// 1D resize
+#ifdef DALI_USE_CUDA
+    #define DALI_TENSOR_INTERNAL_RESIZE(dtype) \
+        template<> \
+        void TensorInternal<dtype, 1>::resize(mshadow::Shape<1> newshape, dtype filler) {\
+            if (newshape == shape)\
+                return;\
+            dtype* data_ptr = memory_->mutable_cpu_data();\
+            dtype* new_ptr  = (dtype*)realloc(data_ptr, newshape.Size() * sizeof(dtype));\
+            ASSERT2(new_ptr != NULL, "Error: Could not allocated memory for TensorInternal.");\
+            memory_->cpu_ptr = new_ptr;\
+            memory_->total_memory = newshape.Size();\
+            memory_->free_gpu();\
+            if (newshape[0] > shape[0]) {\
+                for (int i = shape.Size(); i < newshape.Size(); i++) {\
+                    *(new_ptr + i) = filler;\
+                }\
+            }\
+            shape.shape_[0] = newshape[0];\
+        }
+#else
+    #define DALI_TENSOR_INTERNAL_RESIZE(dtype) \
+        template<> \
+        void TensorInternal<dtype, 1>::resize(mshadow::Shape<1> newshape, dtype filler) {\
+            if (newshape == shape)\
+                return;\
+            dtype* data_ptr = memory_->mutable_cpu_data();\
+            dtype* new_ptr  = (dtype*)realloc(data_ptr, newshape.Size() * sizeof(dtype));\
+            ASSERT2(new_ptr != NULL, "Error: Could not allocated memory for TensorInternal.");\
+            memory_->cpu_ptr = new_ptr;\
+            memory_->total_memory = newshape.Size();\
+            if (newshape[0] > shape[0]) {\
+                for (int i = shape.Size(); i < newshape.Size(); i++) {\
+                    *(new_ptr + i) = filler;\
+                }\
+            }\
+            shape.shape_[0] = newshape[0];\
+        }
+#endif
+DALI_TENSOR_INTERNAL_RESIZE(float)
+DALI_TENSOR_INTERNAL_RESIZE(double)
 
 template class TensorInternal<float, 1>;
 template class TensorInternal<double,1>;

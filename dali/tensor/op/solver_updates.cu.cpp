@@ -123,9 +123,6 @@ namespace matops {
         DEBUG_ASSERT_NOT_NAN(MAT(param));
     }
 
-
-
-
     template class SolverUpdates<float>;
     template class SolverUpdates<double>;
 

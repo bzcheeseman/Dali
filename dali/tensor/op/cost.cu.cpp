@@ -8,6 +8,7 @@
 
 using std::vector;
 using namespace TensorOps;
+using std::make_shared;
 
 namespace matops {
     template<typename R>
@@ -105,48 +106,26 @@ namespace matops {
         return out;
     }
 
-
     template<typename R>
     Mat<R> Cost<R>::sigmoid_binary_cross_entropy(Mat<R> matrix, R t) {
-        #ifndef DONT_COMPILE
-        assert(0 <= t && t <= 1);
+        ASSERT2(0 <= t && t <= 1,
+            "Target value for sigmoid_binary_cross_entropy must be a probability between 0 and 1.");
         auto out = Mat<R>::empty_like(matrix);
 
-        auto sigmoided_input = std::make_shared<eigen_mat>(
-            MAT(matrix).array().unaryExpr(utils::sigmoid_operator<R>())
-        );
+        // take sigmoid and keep it for backprop
+        TensorInternal<R, 2> sigmoided_input(MAT(out).shape);
+        sigmoided_input = F<op::sigmoid<R>>(MAT(matrix).wrapper());
 
-        MAT(out) = -(
-                              t  * ( sigmoided_input->array()   + EPS      ).log()
-                    + ( 1.0 - t) * ( 1.00000001 - sigmoided_input->array() ).log()
-        ).matrix();
+        // take element wise binary cross entropy between target probability
+        // and obtained probability
+        MAT(out) = F<op::binary_cross_entropy<R>>(sigmoided_input.wrapper(), t);
 
         if (graph::backprop_enabled())
             graph::emplace_back([matrix, t, out, sigmoided_input]() mutable {
-                SAFE_GRAD(matrix).array() += (sigmoided_input->array() - t) * GRAD(out).array();
+                SAFE_GRAD(matrix) += (sigmoided_input.wrapper() - t) * GRAD(out).wrapper();
             });
         return out;
-        #else
-        return Mat<R>(1,1);
-        #endif
     }
-
-
-    template<typename R>
-    struct log {
-        MSHADOW_XINLINE static R Map(const R& x, const R& t ) {
-            #ifdef DALI_USE_CUDA
-                R part1 = t * logf(x + EPS);
-                R part2 = (1.0 - t) * logf(1.0 - x + EPS);
-                return -(part1 + part2);
-            #else
-                R part1 = t * logf(x + EPS);
-                R part2 = (1.0 - t) * logf(1.0 - x + EPS);
-                return -(part1 + part2);
-            #endif
-        }
-    };
-
 
     template<typename R>
     Mat<R> Cost<R>::binary_cross_entropy(Mat<R> matrix, R t) {
@@ -163,9 +142,11 @@ namespace matops {
 
         if (graph::backprop_enabled())
             graph::emplace_back([matrix, t, out]() mutable {
-                SAFE_GRAD(matrix) +=
-                    F<op::binary_cross_entropy_backward<R>>(MAT(matrix).wrapper(), t)
-                    * GRAD(out).wrapper();
+                SAFE_GRAD(matrix) += (
+                    F<op::binary_cross_entropy_grad<R>>(
+                        MAT(matrix).wrapper(), t
+                    ) * GRAD(out).wrapper()
+                );
                 DEBUG_ASSERT_GRAD_NOT_NAN(matrix);
             });
         return out;

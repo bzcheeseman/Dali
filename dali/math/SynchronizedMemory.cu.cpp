@@ -255,4 +255,3 @@ void SynchronizedMemory<R>::copy_data_from(SourceType& data_source) {
 
 template class SynchronizedMemory<float>;
 template class SynchronizedMemory<double>;
-template class SynchronizedMemory<int>;

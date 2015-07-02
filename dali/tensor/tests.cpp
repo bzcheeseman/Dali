@@ -401,7 +401,8 @@ TEST_F(MatrixTests, tanh) {
 }
 
 TEST_F(MatrixTests, binary_cross_entropy) {
-
+    // We observe the KL divergence to 0 or 1 for each unit
+    // in our input matrix with respect to the target.
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(0.01, 0.99));
         R target = utils::randdouble(0.01, 0.99);
@@ -409,6 +410,19 @@ TEST_F(MatrixTests, binary_cross_entropy) {
             return MatOps<R>::binary_cross_entropy(Xs[0], target);
         };
         ASSERT_TRUE(gradient_same(functor, {A}, 1e-4));
+    }
+}
+
+TEST_F(MatrixTests, sigmoid_binary_cross_entropy) {
+    // we can now extend the range of our random numbers to be beyond
+    // 0 and 1 since sigmoid will clamp them to 0 or 1.
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(5.0));
+        R target = utils::randdouble(0.01, 0.99);
+        auto functor = [target](vector<Mat<R>> Xs)-> Mat<R> {
+            return MatOps<R>::sigmoid_binary_cross_entropy(Xs[0], target);
+        };
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-4));
     }
 }
 
@@ -1176,9 +1190,6 @@ TEST(Solver, adam) {
         return ret;
     });
 }
-
-
-
 
 TEST(Solver, DISABLED_adagrad_epic_odyssey_by_jonathan_raiman) {
     int num_points = 20;

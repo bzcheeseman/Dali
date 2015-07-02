@@ -235,7 +235,6 @@ R* TensorInternal<R,dimension>::data() {
 
 DALI_TENSOR_INTERNAL_PRINT(float)
 DALI_TENSOR_INTERNAL_PRINT(double)
-DALI_TENSOR_INTERNAL_PRINT(int)
 
 template<typename R, int dimension>
 void TensorInternal<R,dimension>::print(int indent) const {

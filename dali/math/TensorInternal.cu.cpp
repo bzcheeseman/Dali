@@ -331,10 +331,8 @@ TensorInternal<R,dimension>& TensorInternal<R,dimension>::operator=(const lazy_t
 
 template class TensorInternal<float, 1>;
 template class TensorInternal<double,1>;
-template class TensorInternal<int,1>;
 template class TensorInternal<float, 2>;
 template class TensorInternal<double,2>;
-template class TensorInternal<int,2>;
 // template class TensorInternal<float, 3>;
 // template class TensorInternal<double,3>;
 // template class TensorInternal<float, 4>;

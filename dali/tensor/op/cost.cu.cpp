@@ -173,26 +173,19 @@ namespace matops {
 
     template<typename R>
     Mat<R> Cost<R>::cross_entropy(Mat<R> matrix, uint answer_idx) {
-        #ifndef DONT_COMPILE
         DEBUG_ASSERT_BOUNDS(MAT(matrix),0.0,1.0 + EPS);
         assert(matrix.dims().size() > 1);
         assert(answer_idx < matrix.dims(0));
         Mat<R> out =  Mat<R>(1, matrix.dims(1), weights<R>::empty());
-
-        auto x = MAT(matrix).array();
-        MAT(out) = - (x.row(answer_idx).array() + EPS).log();
+        MAT(out).ravel() =  (R)-1.0 * F<op::log<R>>(MAT(matrix)[answer_idx].wrapper() + (R)EPS);
 
         DEBUG_ASSERT_MAT_NOT_NAN(out);
 
         if (graph::backprop_enabled)
             graph::emplace_back([matrix, answer_idx, out]() mutable {
-                auto x = MAT(matrix).array();
-                SAFE_GRAD(matrix).row(answer_idx).array() += -(x.row(answer_idx).array() + EPS).inverse() * GRAD(out).array();
+                SAFE_GRAD(matrix)[answer_idx] -= F<op::inv<R>>(MAT(matrix)[answer_idx].wrapper() + (R)EPS) * GRAD(out).ravel().wrapper();
             });
         return out;
-        #else
-        return Mat<R>(1,1);
-        #endif
     }
 
     template<typename R>

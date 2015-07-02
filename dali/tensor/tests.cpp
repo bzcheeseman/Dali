@@ -931,22 +931,27 @@ TEST_F(MatOpsTests, DISABLED_softmax_temperature) {
     }
 }
 
-TEST_F(MatOpsTests, DISABLED_cross_entropy_grad) {
+TEST_F(MatOpsTests, cross_entropy_grad) {
     double temperature;
-    int target = 8;
-    auto functor = [&target, &temperature](vector<Mat<R>> Xs)-> Mat<R> {
-        auto soft = MatOps<R>::softmax(
-                Xs[1].dot(Xs[0]),
-                temperature
-            );
-        return MatOps<R>::cross_entropy(
-            soft,
-            target);
-    };
+    int target;
+
     EXPERIMENT_REPEAT {
-        temperature = utils::randdouble(0.1, 100);
+        const int hidden_size = 10;
+        double temperature = 1.0; // utils::randdouble(0.1, 100);
+        int target = utils::randint(0, hidden_size - 1);
+        auto layer = Mat<R>(hidden_size, 5, weights<R>::uniform(-2.0, 2.0));
         auto input = Mat<R>(5,  3, weights<R>::uniform(-2.0, 2.0));
-        auto layer = Mat<R>(10, 5, weights<R>::uniform(-2.0, 2.0));
+
+        auto functor = [target, temperature](vector<Mat<R>> Xs)-> Mat<R> {
+            auto soft = MatOps<R>::softmax(
+                    Xs[1].dot(Xs[0]),
+                    temperature
+                );
+            return MatOps<R>::cross_entropy(
+                soft,
+                target);
+        };
+
         ASSERT_TRUE(gradient_same(functor, {input, layer}, 1e-4));
     }
 }

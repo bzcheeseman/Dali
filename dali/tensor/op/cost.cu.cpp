@@ -233,21 +233,20 @@ namespace matops {
 
     template<typename R>
     Mat<R> Cost<R>::margin_loss(Mat<R> matrix, uint answer_idx, R margin) {
-        #ifndef DONT_COMPILE
         // Exprected input is a column vector
-        assert(answer_idx < matrix.dims(0));
-        assert(matrix.dims(1) == 1);
-        Mat<R> error(1,1);
+        ASSERT2(answer_idx < matrix.dims(0),
+            utils::MS() << "Target answer ("
+                        << answer_idx
+                        << ")must be less than number of "
+                           "rows of matrix ("
+                        << matrix.dims(0) << ").");
+        Mat<R> error(matrix.dims(1),1);
         for (int idx = 0; idx < matrix.dims(0); ++idx) {
             if (idx == answer_idx) continue;
             error = error + MatOps<R>::max(matrix[idx] - matrix[answer_idx] + margin, 0.0);
         }
         return error;
-        #else
-        return Mat<R>(1,1);
-        #endif
     }
-
     template class Cost<float>;
     template class Cost<double>;
 

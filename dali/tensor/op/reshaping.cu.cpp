@@ -204,12 +204,12 @@ namespace matops {
                         << matrix.dims(0) << ")."
         );
         // performs a copy
-        Mat<R> out(1, matrix.dims(1), weights<R>::empty());
-        MAT(out) = MAT(matrix)[row].wrapper().template broadcast<1>(MAT(out).shape);
+        Mat<R> out(matrix.dims(1), 1, weights<R>::empty());
+        MAT(out).ravel() = MAT(matrix)[row].wrapper();
 
         if (graph::backprop_enabled)
             graph::emplace_back([matrix, out, row]() mutable {
-                SAFE_GRAD(matrix)[row] += GRAD(out)[0].wrapper();
+                SAFE_GRAD(matrix)[row] += GRAD(out).ravel().wrapper();
             });
         return out;
     }
@@ -219,7 +219,7 @@ namespace matops {
             Mat<R> matrix,
             int col) {
         #ifndef DONT_COMPILE
-        Mat<R> out (matrix.dims(0), 1, weights<R>::empty());
+        Mat<R> out (1, matrix.dims(0), weights<R>::empty());
         MAT(out) = MAT(matrix).col(col);
         if (graph::backprop_enabled)
             graph::emplace_back([matrix, out, col]() mutable {

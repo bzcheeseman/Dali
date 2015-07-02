@@ -847,7 +847,7 @@ TEST_F(MatOpsTests, softmax) {
     }
 }
 
-TEST_F(MatOpsTests, DISABLED_softmax_transpose) {
+TEST_F(MatOpsTests, softmax_transpose) {
     int row_size = 5;
     int col_size = 10;
     EXPERIMENT_REPEAT {
@@ -862,6 +862,122 @@ TEST_F(MatOpsTests, DISABLED_softmax_transpose) {
     }
 }
 
+TEST_F(MatOpsTests, resize_decrease_rows) {
+    int row_size = 3, col_size = 4;
+    // decrease number of rows by 1
+    auto A = Mat<R>(row_size, col_size);
+    for (int i = 0; i < 12; i++) {
+        A.w(i) = i;
+    }
+
+    auto new_shape = mshadow::Shape2(row_size - 1, col_size);
+    A.w().resize(new_shape);
+    for (int i = 0; i < (row_size - 1) * col_size ; i++) {
+        ASSERT_EQ(A.w(i), i);
+    }
+    ASSERT_EQ(A.w().shape, new_shape);
+}
+
+TEST_F(MatOpsTests, resize_increase_rows) {
+    int row_size = 3, col_size = 4;
+    // increase number of rows by 1
+    auto A = Mat<R>(row_size, col_size);
+    for (int i = 0; i < row_size * col_size; i++) {
+        A.w(i) = i;
+    }
+    auto new_shape = mshadow::Shape2(row_size + 1, col_size);
+    A.w().resize(new_shape, 3.5);
+    for (int i = 0; i < row_size * col_size; i++) {
+        ASSERT_EQ(A.w(i), i);
+    }
+    for (int i = row_size * col_size; i < (row_size + 1) * col_size; i++) {
+        ASSERT_EQ(A.w(i), 3.5);
+    }
+    ASSERT_EQ(A.w().shape, new_shape);
+}
+
+TEST_F(MatOpsTests, resize_decrease_cols) {
+    int row_size = 3, col_size = 4;
+    // decrease number of columns by 1
+    auto A = Mat<R>(row_size, col_size);
+    for (int i = 0; i < row_size * col_size; i++) {
+        A.w(i) = i;
+    }
+    auto new_shape = mshadow::Shape2(row_size, col_size - 1);
+    A.w().resize(new_shape);
+    for (int i = 0; i < row_size; i++) {
+        for (int j = 0; j < col_size - 1; j++) {
+            ASSERT_EQ(A.w(i,j), i * col_size + j);
+        }
+    }
+    ASSERT_EQ(A.w().shape, new_shape);
+}
+
+TEST_F(MatOpsTests, resize_increase_cols) {
+    int row_size = 3, col_size = 4;
+    // increase number of columns by 1
+    auto A = Mat<R>(row_size, col_size);
+    for (int i = 0; i < row_size * col_size; i++) {
+        A.w(i) = i;
+    }
+    auto new_shape = mshadow::Shape2(row_size, col_size + 1);
+    A.w().resize(new_shape, 4.2);
+    for (int i = 0; i < row_size; i++) {
+        for (int j = 0; j < col_size; j++) {
+            ASSERT_EQ(A.w(i,j), i * col_size + j);
+        }
+    }
+    for (int i = 0; i < row_size; i++) {
+        for (int j = col_size; j < col_size + 1; j++) {
+            ASSERT_EQ(A.w(i,j), 4.2);
+        }
+    }
+    ASSERT_EQ(A.w().shape, new_shape);
+}
+
+TEST_F(MatOpsTests, resize_increase_rows_and_cols) {
+    int row_size = 3, col_size = 4;
+    // increase number of rows and columns by 1
+    auto A = Mat<R>(row_size, col_size);
+    for (int i = 0; i < row_size * col_size; i++) {
+        A.w(i) = i;
+    }
+    auto new_shape = mshadow::Shape2(row_size + 1, col_size + 1);
+    A.w().resize(new_shape, 4.2);
+    for (int i = 0; i < row_size; i++) {
+        for (int j = 0; j < col_size; j++) {
+            ASSERT_EQ(A.w(i,j), i * col_size + j);
+        }
+    }
+    for (int i = 0; i < row_size; i++) {
+        for (int j = col_size; j < col_size + 1; j++) {
+            ASSERT_EQ(A.w(i,j), 4.2);
+        }
+    }
+    for (int i = row_size; i < row_size + 1; i++) {
+        for (int j = 0; j < col_size + 1; j++) {
+            ASSERT_EQ(A.w(i,j), 4.2);
+        }
+    }
+    ASSERT_EQ(A.w().shape, new_shape);
+}
+
+TEST_F(MatOpsTests, resize_decrease_rows_and_cols) {
+    int row_size = 3, col_size = 4;
+    // decrease number of rows and columns by 1
+    auto A = Mat<R>(row_size, col_size);
+    for (int i = 0; i < row_size * col_size; i++) {
+        A.w(i) = i;
+    }
+    auto new_shape = mshadow::Shape2(row_size - 1, col_size - 1);
+    A.w().resize(new_shape, 4.2);
+    for (int i = 0; i < row_size - 1; i++) {
+        for (int j = 0; j < col_size - 1; j++) {
+            ASSERT_EQ(A.w(i,j), i * col_size + j);
+        }
+    }
+    ASSERT_EQ(A.w().shape, new_shape);
+}
 
 TEST_F(MatOpsTests, DISABLED_matrix_conv2d) {
     /*graph::NoBackprop nb;

@@ -88,7 +88,7 @@ class TensorInternal {
         const SynchronizedMemory<R>& memory() const;
         SynchronizedMemory<R>& memory();
 
-        const mshadow::Shape<dimension> shape;
+        mshadow::Shape<dimension> shape;
         int offset;
 
         TensorInternal() = default;
@@ -160,6 +160,9 @@ class TensorInternal {
         R& operator()(int i);
         R operator()(int i) const;
 
+        // conservatively resize a matrix.
+        void resize(mshadow::Shape<dimension> newshape, R filler = 0.0);
+
         TensorInternal<R, dimension - 1> operator[](mshadow::index_t idx) const;
         TensorInternal<R, 1> ravel() const;
         TensorInternal<R, dimension> Slice(mshadow::index_t begin, mshadow::index_t end) const;
@@ -177,6 +180,8 @@ class TensorInternal {
 
 template <> void TensorInternal<float, 1>::print(int indent) const;
 template <> void TensorInternal<double, 1>::print(int indent) const;
+template <> void TensorInternal<float, 1>::resize(mshadow::Shape<1> newshape, float filler);
+template <> void TensorInternal<double, 1>::resize(mshadow::Shape<1> newshape, double filler);
 
 
 

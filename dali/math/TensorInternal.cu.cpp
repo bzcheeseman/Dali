@@ -328,6 +328,105 @@ TensorInternal<R,dimension>& TensorInternal<R,dimension>::operator=(const lazy_t
 }
 
 
+template<typename R, int dimension>
+void TensorInternal<R, dimension>::resize(mshadow::Shape<dimension> newshape, R filler) {
+    if (newshape == shape)
+        return;
+    // if same columns
+    if (newshape[1] == shape[1]) {
+        if (newshape[0] != shape[0]) {
+            R* data_ptr = memory_->mutable_cpu_data();
+            R* new_ptr  = (R*)realloc(data_ptr, newshape.Size() * sizeof(R));
+            ASSERT2(new_ptr != NULL, "Error: Could not allocated memory for TensorInternal.");
+            if (new_ptr != NULL) {
+                memory_->cpu_ptr = new_ptr;
+                memory_->total_memory = newshape.Size();
+
+                // fill new area with zeros.
+                for (int i = shape.Size(); i < newshape.Size(); i++) {
+                    *(new_ptr + i) = filler;
+                }
+
+                for (int i = 0; i < mshadow::Shape<dimension>::kDimension ; i++) {
+                    shape.shape_[i] = newshape[i];
+                }
+
+            }
+        }
+    } else {
+        if (newshape[1] > shape[1]) {
+            if (newshape[0] == shape[0]) {
+                R* data_ptr = memory_->mutable_cpu_data();
+                R* new_ptr  = (R*)realloc(data_ptr, newshape.Size() * sizeof(R));
+                ASSERT2(new_ptr != NULL, "Error: Could not allocated memory for TensorInternal.");
+                if (new_ptr != NULL) {
+                    memory_->cpu_ptr = new_ptr;
+                    memory_->total_memory = newshape.Size();
+                    for (int i = shape[0] - 1; i >= 0; i--) {
+                        for (int j = shape[1] - 1; j >= 0; j--) {
+                            int old_offset = this->cpu_data().stride_ * i + j;
+                            int new_offset = newshape[1] * i + j;
+                            *(new_ptr + new_offset) = *(new_ptr + old_offset);
+                        }
+                    }
+                    for (int i = 0; i < newshape[0]; i++) {
+                        for (int j = shape[1]; j < newshape[1]; j++) {
+                            int offset = newshape[1] * i + j;
+                            *(new_ptr + offset) = filler;
+                        }
+                    }
+                    for (int i = 0; i < mshadow::Shape<dimension>::kDimension ; i++) {
+                        shape.shape_[i] = newshape[i];
+                    }
+                }
+            } else {
+                mshadow::Shape<dimension> temp_shape = newshape;
+                temp_shape.shape_[1] = shape[1];
+                // 1. Ensure that all other dimensions are identical
+                resize(temp_shape, filler);
+                // 2. Make shape[1] match newshape[1]
+                resize(newshape, filler);
+            }
+        } else {
+            if (newshape[0] == shape[0]) {
+                R* data_ptr = memory_->mutable_cpu_data();
+                for (int i = 0; i < newshape[0]; i++) {
+                    for (int j = 0; j < newshape[1]; j++) {
+                        int old_offset = this->cpu_data().stride_ * i + j;
+                        int new_offset = newshape[1] * i + j;
+                        *(data_ptr + new_offset) = *(data_ptr + old_offset);
+                    }
+                }
+                R* new_ptr = (R*)realloc(data_ptr, newshape.Size() * sizeof(R));
+                ASSERT2(new_ptr != NULL, "Error: Could not allocated memory for TensorInternal.");
+                if (new_ptr != NULL) {
+                    memory_->cpu_ptr = new_ptr;
+                    memory_->total_memory = newshape.Size();
+                    for (int i = 0; i < mshadow::Shape<dimension>::kDimension ; i++) {
+                        shape.shape_[i] = newshape[i];
+                    }
+                }
+            } else {
+                mshadow::Shape<dimension> temp_shape = newshape;
+                temp_shape.shape_[1] = shape[1];
+                // 1. Ensure that all other dimensions are identical
+                resize(temp_shape, filler);
+                // 2. Make shape[1] match newshape[1]
+                resize(newshape, filler);
+            }
+        }
+    }
+}
+
+template<>
+void TensorInternal<float, 1>::resize(mshadow::Shape<1> newshape, float filler) {
+    ASSERT2(false, "Not implemented");
+}
+template<>
+void TensorInternal<double, 1>::resize(mshadow::Shape<1> newshape, double filler) {
+    ASSERT2(false, "Not implemented");
+}
+
 template class TensorInternal<float, 1>;
 template class TensorInternal<double,1>;
 template class TensorInternal<float, 2>;

@@ -42,7 +42,7 @@ class SynchronizedMemory {
     public:
         Device preferred_device;
         // total amount of memory expressed in number or Dtypes
-        const int total_memory;
+        int total_memory;
         // hint for inner dimension. Must divide total_memory.
         const int inner_dimension;
 

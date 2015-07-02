@@ -10,17 +10,19 @@ using utils::from_string;
 namespace glove {
     template<typename T>
     void load(string fname, Mat<T>& underlying_mat, Vocab& vocab, int threshold) {
-        // if (!utils::file_exists(fname)) {
-        //     throw std::runtime_error("Cannot open file with glove vectors.");
-        // }
-        // std::fstream fp(fname);
-        // std::string line;
-        // int observed_size = underlying_mat.dims(1);
-        // int capacity      = underlying_mat.dims(0);
-        // if (capacity == 0) {
-        //     underlying_mat.resize(100, observed_size);
-        //     capacity = 100;
-        // }
+        if (!utils::file_exists(fname)) {
+            throw std::runtime_error("Cannot open file with glove vectors.");
+        }
+        std::fstream fp(fname);
+        std::string line;
+
+        int observed_size = underlying_mat.dims(1);
+        int capacity = underlying_mat.dims(0);
+
+        if (capacity == 0) {
+            underlying_mat.resize(100, observed_size);
+            capacity = 100;
+        }
         // int vocab_size    = 0;
         // vector<string> vocabulary;
         // std::string item;

@@ -171,25 +171,20 @@ namespace matops {
 
     template<typename R>
     Mat<R> Cost<R>::cross_entropy(Mat<R> matrix, Mat<R> target) {
-        #ifndef DONT_COMPILE
         ASSERT2(matrix.dims(0) == target.dims(0) && matrix.dims(1) == target.dims(1),
             "Matrix and target must have same dimension");
 
         Mat<R> out = Mat<R>::empty_like(matrix);
-        MAT(out) = -(MAT(target).array() * ((MAT(matrix).array() + EPS).log())).matrix();
+        MAT(out) = (R)-1.0 * MAT(target).wrapper() * F<op::log<R>>(MAT(matrix).wrapper() + (R)EPS);
 
         DEBUG_ASSERT_NOT_NAN(MAT(out));
 
         if (graph::backprop_enabled)
             graph::emplace_back([matrix, target, out]() mutable {
-                auto x = MAT(matrix).array();
-                SAFE_GRAD(matrix).noalias() -= (((x + EPS).inverse()) * MAT(target).array() * GRAD(out).array()).matrix();
-                SAFE_GRAD(target).noalias() -= ((x.log()) * GRAD(out).array()).matrix();
+                SAFE_GRAD(matrix) -= F<op::inv<R>>(MAT(matrix).wrapper() + (R)EPS) * MAT(target).wrapper() * GRAD(out).wrapper();
+                SAFE_GRAD(target) -= F<op::log<R>>(MAT(matrix).wrapper() + (R)EPS) * GRAD(out).wrapper();
             });
         return out;
-        #else
-        return Mat<R>(1,1);
-        #endif
     }
 
 

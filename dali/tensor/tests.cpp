@@ -404,12 +404,12 @@ TEST_F(MatrixTests, binary_cross_entropy) {
     // We observe the KL divergence to 0 or 1 for each unit
     // in our input matrix with respect to the target.
     EXPERIMENT_REPEAT {
-        auto A = Mat<R>(10, 20, weights<R>::uniform(0.01, 0.99));
+        auto A = Mat<R>(10, 20, weights<R>::uniform(0.1, 0.9));
         R target = utils::randdouble(0.01, 0.99);
         auto functor = [target](vector<Mat<R>> Xs)-> Mat<R> {
             return MatOps<R>::binary_cross_entropy(Xs[0], target);
         };
-        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-2));
     }
 }
 
@@ -418,11 +418,11 @@ TEST_F(MatrixTests, sigmoid_binary_cross_entropy) {
     // 0 and 1 since sigmoid will clamp them to 0 or 1.
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(5.0));
-        R target = utils::randdouble(0.01, 0.99);
+        R target = utils::randdouble(0.1, 0.9);
         auto functor = [target](vector<Mat<R>> Xs)-> Mat<R> {
             return MatOps<R>::sigmoid_binary_cross_entropy(Xs[0], target);
         };
-        ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-4));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-2, 1e-4));
     }
 }
 
@@ -1128,7 +1128,35 @@ TEST_F(MatOpsTests, cross_entropy_grad) {
                 target);
         };
 
-        ASSERT_TRUE(gradient_same(functor, {input, layer}, 1e-4));
+        ASSERT_TRUE(gradient_same(functor, {input, layer}, 1e-2));
+    }
+}
+
+
+TEST_F(MatOpsTests, cross_entropy_multiindex) {
+    EXPERIMENT_REPEAT {
+        graph::NoBackprop nb;
+
+        Mat<R> input (3, 5, weights<R>::uniform(0.01, 0.99));
+
+        vector<uint> targets;
+        for (int i = 0; i < input.dims(1); ++i)
+            targets.push_back(utils::randint(0, input.dims(0) - 1));
+        Mat<R> actual_res = MatOps<R>::softmax_cross_entropy(
+                input, Indexing::Index(targets));
+#ifdef DALI_USE_CUDA
+        EXPECT_TRUE(actual_res.w().memory().gpu_fresh);
+#endif
+
+        Mat<R> softmaxed = MatOps<R>::softmax(input);
+        Mat<R> cross_entropy_expected(1, targets.size());
+
+        for (int i=0; i < targets.size(); ++i) {
+            cross_entropy_expected.w(i) = - std::log(softmaxed.w(targets[i], i));
+        }
+
+
+        ASSERT_MATRIX_CLOSE(actual_res, cross_entropy_expected, 1e-4);
     }
 }
 
@@ -1145,7 +1173,7 @@ TEST_F(MatOpsTests, cross_entropy_grad_thought_target) {
         auto layer = Mat<R>(hidden_size, input_size,     weights<R>::uniform(-2.0, 2.0));
         auto input = Mat<R>(input_size,  num_examples,   weights<R>::uniform(-2.0, 2.0));
 
-        auto target = Mat<R>(hidden_size,  num_examples, weights<R>::uniform(0.01, 0.99));
+        auto target = Mat<R>(hidden_size,  num_examples, weights<R>::uniform(0.1, 0.9));
 
 
         auto functor = [target, temperature](vector<Mat<R>> Xs)-> Mat<R> {
@@ -1158,7 +1186,7 @@ TEST_F(MatOpsTests, cross_entropy_grad_thought_target) {
                 Xs[2]);
         };
 
-        ASSERT_TRUE(gradient_same(functor, {input, layer, target}, 1e-4));
+        ASSERT_TRUE(gradient_same(functor, {input, layer, target}, 1e-2));
     }
 }
 

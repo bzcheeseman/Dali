@@ -190,45 +190,29 @@ namespace matops {
 
     template<typename R>
     Mat<R> Cost<R>::softmax_cross_entropy(Mat<R> matrix, uint answer_idx) {
-        #ifndef DONT_COMPILE
-        Mat<R> out =  Mat<R>(1, 1, weights<R>::empty());
-        Mat<R> probs = softmax_no_grad(matrix);
-        MAT(out)(0,0) = -std::log(MAT(probs)(answer_idx, 0));
-
-        if (graph::backprop_enabled)
-            graph::emplace_back([matrix, probs, answer_idx, out]() mutable {
-                SAFE_GRAD(matrix) += MAT(probs) * GRAD(out)(0,0);
-                // write gradients into log probabilities
-                SAFE_GRAD(matrix)(answer_idx, 0) -= 1 * GRAD(out)(0,0);
-            });
-        return out;
-        #else
-        return Mat<R>(1,1);
-        #endif
+        std::vector<uint> targets(matrix.dims(1), answer_idx);
+        Indexing::Index indexed_targets(targets);
+        return softmax_cross_entropy(matrix, indexed_targets);
     }
 
     template<typename R>
     Mat<R> Cost<R>::softmax_cross_entropy(Mat<R> matrix, Indexing::Index targets) {
-        #ifndef DONT_COMPILE
+        assert(targets.size() == matrix.dims(1));
         Mat<R> out =  Mat<R>(1, targets.size(), weights<R>::empty());
         Mat<R> probs = softmax_no_grad(matrix);
-        for (int i = 0; i < targets.size(); i++) {
-            MAT(out)(i) = -std::log(MAT(probs)(targets[i], i));
-        }
+        select_from_cols(MAT(out), MAT(probs), targets);
 
+        MAT(out) = (R)-1.0 * F<op::log<R>>(MAT(out).wrapper());
         if (graph::backprop_enabled)
             graph::emplace_back([matrix, probs, out, targets]() mutable {
-                if (!matrix.constant) {
-                    SAFE_GRAD(matrix).noalias() += (MAT(probs).array().rowwise() * GRAD(out).row(0).array()).matrix();
-                    for (int i = 0; i < targets.size(); i++) {
-                        GRAD(matrix)(targets[i],i) -= 1.0 * GRAD(out)(i);
-                    }
-                }
+                // if (!matrix.constant) {
+                //     SAFE_GRAD(matrix).noalias() += (MAT(probs).array().rowwise() * GRAD(out).row(0).array()).matrix();
+                //     for (int i = 0; i < targets.size(); i++) {
+                //         GRAD(matrix)(targets[i],i) -= 1.0 * GRAD(out)(i);
+                //     }
+                // }
             });
         return out;
-        #else
-        return Mat<R>(1,1);
-        #endif
     }
 
     template<typename R>

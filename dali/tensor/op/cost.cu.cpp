@@ -155,8 +155,9 @@ namespace matops {
     template<typename R>
     Mat<R> Cost<R>::cross_entropy(Mat<R> matrix, uint answer_idx) {
         DEBUG_ASSERT_BOUNDS(MAT(matrix),0.0,1.0 + EPS);
-        assert(matrix.dims().size() > 1);
-        assert(answer_idx < matrix.dims(0));
+        ASSERT2(answer_idx < matrix.dims(0),
+            utils::MS() << "Cross entropy target (" << answer_idx << ") must be less than"
+                           " number of rows in predicted matrix (" << matrix.dims(0) << ").");
         Mat<R> out =  Mat<R>(1, matrix.dims(1), weights<R>::empty());
         MAT(out).ravel() =  (R)-1.0 * F<op::log<R>>(MAT(matrix)[answer_idx].wrapper() + (R)EPS);
 
@@ -199,9 +200,14 @@ namespace matops {
     Mat<R> Cost<R>::softmax_cross_entropy(Mat<R> matrix, Indexing::Index targets) {
         assert(targets.size() == matrix.dims(1));
         Mat<R> out =  Mat<R>(1, targets.size(), weights<R>::empty());
-        Mat<R> probs = softmax_no_grad(matrix);
+        Mat<R> probs = softmax_no_grad_transpose(matrix);
 
+        std::cout << "probabilities=" << std::endl;
+        probs.print();
+        ELOG(targets);
         select_from_cols(MAT(out), MAT(probs), targets);
+        std::cout << "plucked=" << std::endl;
+        out.print();
 
         MAT(out) = (R)-1.0 * F<op::log<R>>(MAT(out).wrapper());
         if (graph::backprop_enabled()) {

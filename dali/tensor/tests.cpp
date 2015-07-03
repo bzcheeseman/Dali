@@ -1134,7 +1134,7 @@ TEST_F(MatOpsTests, cross_entropy_grad) {
 
 TEST_F(MatOpsTests, softmax_cross_entropy_grad) {
     EXPERIMENT_REPEAT {
-        auto input = Mat<R>(5,  3, weights<R>::uniform(-2.0, 2.0));
+        auto input = Mat<R>(3,  2, weights<R>::uniform(-2.0, 2.0));
 
         vector<uint> targets;
         for (int i = 0; i < input.dims(1); ++i)
@@ -1173,16 +1173,16 @@ TEST_F(MatOpsTests, cross_entropy_multiindex) {
         graph::NoBackprop nb;
 
         Mat<R> input (3, 5, weights<R>::uniform(0.01, 0.99));
-        Mat<R> softmaxed = MatOps<R>::softmax(input);
+        Mat<R> softmaxed = MatOps<R>::softmax_transpose(input);
 
         vector<uint> targets;
         for (int i = 0; i < input.dims(1); ++i)
             targets.push_back(utils::randint(0, input.dims(0) - 1));
         Mat<R> actual_res = MatOps<R>::softmax_cross_entropy(
                 input, Indexing::Index(targets));
-#ifdef DALI_USE_CUDA
-        EXPECT_TRUE(actual_res.w().memory().gpu_fresh);
-#endif
+        #ifdef DALI_USE_CUDA
+            EXPECT_TRUE(actual_res.w().memory().gpu_fresh);
+        #endif
 
         for (int i = 0; i < targets.size(); ++i) {
             auto expected_res = MatOps<R>::cross_entropy(softmaxed.T()[i], targets[i]);

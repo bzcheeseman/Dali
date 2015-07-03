@@ -191,9 +191,7 @@ namespace matops {
 
     template<typename R>
     Mat<R> Cost<R>::softmax_cross_entropy(Mat<R> matrix, uint answer_idx) {
-        std::vector<uint> targets(matrix.dims(1), answer_idx);
-        Indexing::Index indexed_targets(targets);
-        return softmax_cross_entropy(matrix, indexed_targets);
+        return softmax_cross_entropy(matrix, {answer_idx});
     }
 
     template<typename R>
@@ -201,29 +199,18 @@ namespace matops {
         assert(targets.size() == matrix.dims(1));
         Mat<R> out =  Mat<R>(1, targets.size(), weights<R>::empty());
         Mat<R> probs = softmax_no_grad_transpose(matrix);
-
-        std::cout << "probabilities=" << std::endl;
-        probs.print();
-        ELOG(targets);
         select_from_cols(MAT(out), MAT(probs), targets);
-        std::cout << "plucked=" << std::endl;
-        out.print();
 
         MAT(out) = (R)-1.0 * F<op::log<R>>(MAT(out).wrapper());
         if (graph::backprop_enabled()) {
-            std::cout << "Mofo sent to the queue." << std::endl;
             graph::emplace_back([matrix, probs, out, targets]() mutable {
                 if (!matrix.constant) {
-                    GRAD(matrix) += MAT(probs).wrapper() *
-                            GRAD(out).ravel().wrapper().template broadcast<1>(MAT(probs).shape);
-
-                    //utils::assert2(false, "Still needs debugging");
+                    GRAD(matrix) += (
+                        MAT(probs).wrapper() *
+                        GRAD(out).ravel().wrapper().template broadcast<1>(MAT(probs).shape)
+                    );
 
                     softmax_cross_entropy_backward(GRAD(matrix), GRAD(out), targets);
-
-                    // for (int i = 0; i < targets.size(); i++) {
-                    //     GRAD(matrix)(targets[i],i) -= 1.0 * GRAD(out)(i);
-                    // }
                 }
             });
         }

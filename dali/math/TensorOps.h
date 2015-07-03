@@ -217,12 +217,11 @@ namespace TensorOps {
     void softmax_cross_entropy_backward(mshadow::Tensor<cpu, 2, R> dest,
                           const mshadow::Tensor<cpu, 2, R>& source,
                           Indexing::Index targets) {
-        R* source_ptr = dest.dptr_;
-        for (int col = 0; col < targets.size(); ++col) {
-            dest[targets[col]][col] -= *(source_ptr + col);
+        R* source_ptr = source.dptr_;
+        for (int target_idx = 0; target_idx < targets.size(); ++target_idx) {
+            dest[targets[target_idx]][target_idx] -= *(source_ptr + target_idx);
         }
     }
-
 
     template<typename R>
     void softmax_cross_entropy_backward(TensorInternal<R,2> dest,

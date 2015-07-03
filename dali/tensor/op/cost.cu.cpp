@@ -211,7 +211,7 @@ namespace matops {
                     GRAD(matrix) += MAT(probs).wrapper() *
                             GRAD(out).ravel().wrapper().template broadcast<1>(MAT(probs).shape);
 
-                    utils::assert2(false, "Still needs debugging");
+                    //utils::assert2(false, "Still needs debugging");
 
                     softmax_cross_entropy_backward(GRAD(matrix), GRAD(out), targets);
 

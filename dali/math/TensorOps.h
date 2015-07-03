@@ -219,7 +219,8 @@ namespace TensorOps {
                           Indexing::Index targets) {
         R* source_ptr = source.dptr_;
         for (int target_idx = 0; target_idx < targets.size(); ++target_idx) {
-            dest[targets[target_idx]][target_idx] -= *(source_ptr + target_idx);
+            uint row_idx = targets[target_idx];
+            dest[row_idx][target_idx] -= *(source_ptr + target_idx);
         }
     }
 

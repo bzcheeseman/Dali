@@ -492,13 +492,13 @@ namespace paraphrase {
         });
 
         // set up sentence 1 for visualization
-        auto input_sentence = make_shared<visualizable::Sentence<double>>(character_vocab.decode_characters(original));
+        auto input_sentence = make_shared<visualizable::Sentence<double>>(character_vocab.decode_characters(&original));
         vector<vector<string>> sentences;
         vector<double>         sims;
 
         for (int presented_sentence_idx = 0; presented_sentence_idx < std::min(sampled_idxes.size(), (size_t)5); presented_sentence_idx++) {
             auto& ex = sampled_idxes[presented_sentence_idx];
-            sentences.emplace_back(character_vocab.decode_characters(*std::get<0>(ex)));
+            sentences.emplace_back(character_vocab.decode_characters(std::get<0>(ex)));
             sims.emplace_back(std::get<1>(ex));
         }
         auto sentences_viz = make_shared<visualizable::Sentences<double>>(sentences);
@@ -555,13 +555,13 @@ namespace paraphrase {
         });
 
         // set up sentence 1 for visualization
-        auto input_sentence = make_shared<visualizable::Sentence<double>>(word_vocab.decode(original));
+        auto input_sentence = make_shared<visualizable::Sentence<double>>(word_vocab.decode(&original));
         vector<vector<string>> sentences;
         vector<double>         sims;
 
         for (int presented_sentence_idx = 0; presented_sentence_idx < std::min(sampled_idxes.size(), (size_t)5); presented_sentence_idx++) {
             auto& ex = sampled_idxes[presented_sentence_idx];
-            sentences.emplace_back(word_vocab.decode(*std::get<0>(ex)));
+            sentences.emplace_back(word_vocab.decode(std::get<0>(ex)));
             sims.emplace_back(std::get<1>(ex));
         }
         auto sentences_viz = make_shared<visualizable::Sentences<double>>(sentences);

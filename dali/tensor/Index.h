@@ -81,7 +81,7 @@ namespace Indexing {
             size_t size() const;
             ind_t& operator[](std::size_t idx);
             ind_t operator[](std::size_t idx) const;
-            Index(index_std_vector&);
+            Index(index_std_vector*);
             Index(std::initializer_list<ind_t>);
             Index(std::shared_ptr<OwnershipVectorIndex>);
             Index(const Index&);

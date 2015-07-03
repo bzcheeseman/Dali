@@ -55,8 +55,8 @@ namespace Indexing {
 
     Index::Index(const Index& original) : w(original.w) {}
 
-    Index::Index(index_std_vector& vec) {
-        w = make_shared<VectorIndex>(vec);
+    Index::Index(index_std_vector* vec) {
+        w = make_shared<VectorIndex>(*vec);
     }
     Index::Index(std::initializer_list<ind_t> vec) {
         w = make_shared<OwnershipVectorIndex>(vec);

@@ -267,10 +267,10 @@ TEST(utils, CharacterVocab) {
     auto chars    = vocab.encode(seq);
     auto seq_size = utils::join(seq, " ").size();
     ASSERT_EQ(chars.size(), seq_size);
-    ASSERT_EQ(seq, vocab.decode(chars));
+    ASSERT_EQ(seq, vocab.decode(&chars));
 
 
-    auto char_decoded_seq = vocab.decode_characters(chars);
+    auto char_decoded_seq = vocab.decode_characters(&chars);
     ASSERT_EQ(char_decoded_seq.size(), seq_size);
     ASSERT_EQ(utils::join(seq, " "), utils::join(char_decoded_seq));
 
@@ -279,9 +279,9 @@ TEST(utils, CharacterVocab) {
     // spaces get replaced by "█":
     auto spaceless_vocab = CharacterVocab(33, 255);
     auto spaceless_chars = spaceless_vocab.encode(seq);
-    ASSERT_NE(seq, spaceless_vocab.decode(spaceless_chars));
+    ASSERT_NE(seq, spaceless_vocab.decode(&spaceless_chars));
     auto special_seq = utils::join(seq, "\xFF");
-    ASSERT_EQ(special_seq, utils::join(spaceless_vocab.decode(spaceless_chars)));
+    ASSERT_EQ(special_seq, utils::join(spaceless_vocab.decode(&spaceless_chars)));
 }
 
 TEST(utils, prefix_match) {

@@ -222,7 +222,7 @@ R* SynchronizedMemory<R>::mutable_cpu_data() {
     to_cpu();
     #ifdef DALI_USE_CUDA
         gpu_fresh = false;
-    #endif;
+    #endif
     return cpu_ptr;
 }
 

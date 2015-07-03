@@ -837,10 +837,10 @@ TEST_F(MatOpsTests, softmax) {
     int col_size = 10;
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(row_size, col_size, weights<R>::uniform(-3.0, 3.0));
-        int col = utils::randint(0, col_size - 1);
-        auto functor = [col](vector<Mat<R>> Xs)-> Mat<R>{
+        int row = utils::randint(0, row_size - 1);
+        auto functor = [row](vector<Mat<R>> Xs)-> Mat<R>{
             auto soft = MatOps<R>::softmax(Xs[0]);
-            auto g = soft.T()[col];
+            auto g = soft[row];
             return g;
         };
         ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-3));
@@ -852,10 +852,10 @@ TEST_F(MatOpsTests, softmax_transpose) {
     int col_size = 10;
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(row_size, col_size, weights<R>::uniform(-3.0, 3.0));
-        int row = utils::randint(0, row_size - 1);
-        auto functor = [row](vector<Mat<R>> Xs)-> Mat<R>{
+        int col = utils::randint(0, col_size - 1);
+        auto functor = [col](vector<Mat<R>> Xs)-> Mat<R>{
             auto soft = MatOps<R>::softmax_transpose(Xs[0]);
-            auto g = soft[row];
+            auto g = soft.T()[col];
             return g;
         };
         ASSERT_TRUE(gradient_same(functor, {A}, 1e-3));
@@ -1173,7 +1173,7 @@ TEST_F(MatOpsTests, cross_entropy_multiindex) {
         graph::NoBackprop nb;
 
         Mat<R> input (3, 5, weights<R>::uniform(0.01, 0.99));
-        Mat<R> softmaxed = MatOps<R>::softmax_transpose(input);
+        Mat<R> softmaxed = MatOps<R>::softmax(input);
 
         vector<uint> targets;
         for (int i = 0; i < input.dims(1); ++i)
@@ -1185,6 +1185,7 @@ TEST_F(MatOpsTests, cross_entropy_multiindex) {
         #endif
 
         for (int i = 0; i < targets.size(); ++i) {
+            // take each column separately
             auto expected_res = MatOps<R>::cross_entropy(softmaxed.T()[i], targets[i]);
             ASSERT_NEAR(actual_res.w(i), expected_res.w(0), 1e-4);
         }

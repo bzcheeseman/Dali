@@ -1117,7 +1117,7 @@ TEST_F(MatOpsTests, cross_entropy_grad) {
         int target = utils::randint(0, hidden_size - 1);
         auto layer = Mat<R>(hidden_size, 5, weights<R>::uniform(-2.0, 2.0));
         auto input = Mat<R>(5,  3, weights<R>::uniform(-2.0, 2.0));
-
+        ELOG(target);
         auto functor = [target, temperature](vector<Mat<R>> Xs)-> Mat<R> {
             auto soft = MatOps<R>::softmax(
                     Xs[1].dot(Xs[0]),

@@ -239,19 +239,13 @@ namespace {
                     }
                 }
 
-                auto start = (loc_disagreement - 6) > 0 ? loc_disagreement - 6 : 0;
-                int len;
-                if (start + 6 > arg.number_of_elements()) {
-                    start = 0;
-                    len = std::min(arg.number_of_elements(), (uint)12);
-                } else {
-                    len = 12;
-                }
+                auto start = std::max(loc_disagreement - 6, 0);
+                auto length = std::min(arg.number_of_elements() - start, (uint)12);
 
-                std::cout << "-----------\nArg_prime[" << start << ":" << start + len << "] = " << std::endl;
-                print_buffer((R*)Arg_prime + start,       len, loc_disagreement - start);
-                std::cout << "-----------\n arg.dw()[" << start << ":" << start + len << "] = " << std::endl;
-                print_buffer((R*)arg.dw().data() + start, len, loc_disagreement - start);
+                std::cout << "-----------\nArg_prime[" << start << ":" << start + length << "] = " << std::endl;
+                print_buffer((R*)Arg_prime + start,       length, loc_disagreement - start);
+                std::cout << "-----------\n arg.dw()[" << start << ":" << start + length << "] = " << std::endl;
+                print_buffer((R*)arg.dw().data() + start, length, loc_disagreement - start);
                 if (arg.name != nullptr) {
                     std::cout << "arg.name = " << *arg.name << std::endl;
                 }

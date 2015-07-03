@@ -347,16 +347,13 @@ void TensorInternal<R, dimension>::resize(mshadow::Shape<dimension> newshape, R 
                 #ifdef DALI_USE_CUDA
                 memory_->free_gpu();
                 #endif
-
                 // fill new area with zeros.
                 for (int i = shape.Size(); i < newshape.Size(); i++) {
                     *(new_ptr + i) = filler;
                 }
-
                 for (int i = 0; i < mshadow::Shape<dimension>::kDimension ; i++) {
                     shape.shape_[i] = newshape[i];
                 }
-
             }
         }
     } else {

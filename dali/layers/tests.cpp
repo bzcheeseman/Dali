@@ -34,7 +34,7 @@ TEST_F(LayerTests, layer_tanh_gradient) {
         auto functor = [&mylayer](vector<Mat<R>> Xs)-> Mat<R> {
             return mylayer.activate(Xs.back()).tanh();
         };
-        ASSERT_TRUE(gradient_same(functor, params, 0.0003));
+        ASSERT_TRUE(gradient_same(functor, params, 1e-3));
     }
 }
 
@@ -105,7 +105,7 @@ TEST_F(LayerTests, stacked_layer_tanh_gradient) {
         auto functor = [&mylayer, &A, &B, &C](vector<Mat<R>> Xs)-> Mat<R> {
             return mylayer.activate({A, B, C}).tanh();
         };
-        ASSERT_TRUE(gradient_same(functor, params, 0.0003));
+        ASSERT_TRUE(gradient_same(functor, params, 1e-3));
     }
 }
 
@@ -127,7 +127,7 @@ TEST_F(LayerTests, LSTM_Zaremba_gradient) {
             auto myout_state = mylayer.activate(X, initial_state);
             return myout_state.hidden;
         };
-        ASSERT_TRUE(gradient_same(functor, params, 0.0003));
+        ASSERT_TRUE(gradient_same(functor, params, 1e-3));
     }
 }
 
@@ -153,7 +153,7 @@ TEST_F(LayerTests, LSTM_Graves_gradient) {
             auto myout_state = mylayer.activate(X, initial_state);
             return myout_state.hidden;
         };
-        ASSERT_TRUE(gradient_same(functor, params, 0.0003));
+        ASSERT_TRUE(gradient_same(functor, params, 1e-3));
     }
 }
 
@@ -341,6 +341,6 @@ TEST_F(LayerTests, GRU) {
                 state = gru.activate(inputs[i], state);
             return (state -1.0) ^ 2;
         };
-        ASSERT_TRUE(gradient_same(functor, params, 1e-5));
+        ASSERT_TRUE(gradient_same(functor, params, 1e-3));
     }
 }

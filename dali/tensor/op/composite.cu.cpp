@@ -16,9 +16,7 @@ namespace matops {
             Mat<R> right) {
         ASSERT2(middle.dims(1) == right.dims(0), "Quadratic form right matrix has wrong dimensions.");
         ASSERT2(left.dims(0) == middle.dims(0) , "Quadratic form left matrix has wrong dimensions.");
-
         Mat<R> out (left.dims(1), right.dims(1), weights<R>::empty());
-
         if (graph::backprop_enabled()) {
             TensorInternal<R,2> left_side_mul(mshadow::Shape2(left.dims(1), middle.dims(1)));
             // left_side_mul = left.T * middle;
@@ -37,7 +35,9 @@ namespace matops {
                 SAFE_GRAD(middle) += dot(MAT(left).wrapper(), LeftT_dot_middle_grad.wrapper());
             });
         } else {
-            MAT(out) = MAT(left).wrapper().T() * MAT(middle).wrapper() * MAT(right).wrapper();
+            TensorInternal<R,2> left_side_mul(mshadow::Shape2(left.dims(1), middle.dims(1)));
+            left_side_mul = dot(MAT(left).wrapper().T(), MAT(middle).wrapper());
+            MAT(out) = dot(left_side_mul.wrapper(), MAT(right).wrapper());
         }
         return out;
     }

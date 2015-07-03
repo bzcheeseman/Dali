@@ -1,5 +1,6 @@
 HIGH PRIORITY:
 -> row pluck must use views, not copies
+-> softmax cross entropy should happen on GPU
 -> implement 3 different ways of accessing data in TensorInternal:
     - mutable
     - read
@@ -8,7 +9,6 @@ HIGH PRIORITY:
 -> visualizer - web frontend for error visualization (60% done)
 -> Move Redis visualizer example to tests with check for redis presence
 -> switch "from unique words" in Vocab to "add_words"
--> graceful connection / reconnection / deconnection in redox
 
 MEDIUM PRIORITY:
 -> add test for numpy loading / saving

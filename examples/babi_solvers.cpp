@@ -14,7 +14,6 @@
 using namespace std::placeholders;
 
 using beam_search::BeamSearchResult;
-using Eigen::MatrixXd;
 using std::chrono::seconds;
 using std::get;
 using std::make_shared;
@@ -246,6 +245,7 @@ class LstmBabiModel {
             vector<Mat<T>> gated_seq;
             for(int i=0; i < memory.size(); ++i) {
                 gated_seq.push_back(seq[i].eltmul_broadcast_rowwise(memory[i]));
+
             }
             return gated_seq;
         }
@@ -263,6 +263,8 @@ class LstmBabiModel {
         StoryActivation<T> activate_story(const vector<vector<string>>& facts,
                                           const vector<string>& question,
                                           bool use_dropout) const {
+
+
             auto word_gate_embeddings_question = get_embeddings(question, word_gate_embeddings);
             auto word_gate_hidden_question = MatOps<T>::add(word_gate_embeddings_question) /
                                              (T)word_gate_embeddings_question.size();
@@ -278,6 +280,8 @@ class LstmBabiModel {
                         word_gate.activate(word_gate_hidden_question, gate_hidden_fact_word).sigmoid().sum().sigmoid()
                     );
                 }
+
+
                 word_gate_memories.push_back(word_gate_memory);
 
                 auto gated_embeddings = apply_gate(
@@ -358,8 +362,10 @@ class LstmBabiModel {
                 }
 
                 prediction_errors.push_back(partial_error);
+                std::cout << "siema" << std::endl;
                 current_state = answer_model.activate(
                         current_state, answer_embeddings[word_idx], FLAGS_answer_dropout);
+                std::cout << "siema" << std::endl;
             }
 
             Mat<REAL_t> fact_selection_error(1,1);
@@ -413,7 +419,7 @@ class LstmBabiModel {
 
             auto activation = activate_story(facts, question, false);
             auto result_as_idxes = my_beam_search(activation)[0].solution;
-            auto result = vocab.decode(result_as_idxes, true);
+            auto result = vocab.decode(&result_as_idxes, true);
 
             return result;
         }
@@ -431,7 +437,7 @@ class LstmBabiModel {
             for (auto& result: beam_search_results) {
                 scores_as_vec.push_back(
                         FLAGS_margin_loss ? result.score : std::exp(result.score));
-                auto answer_str = vocab.decode(result.solution, true);
+                auto answer_str = vocab.decode(&result.solution, true);
                 beam_search_results_solutions.push_back(utils::join(answer_str, " "));
             }
             auto distribution_as_vec =
@@ -563,7 +569,7 @@ void visualize_examples(const vector<babi::Story<string>>& data, int num_example
 void train(const vector<babi::Story<string>>& train,
            const vector<babi::Story<string>>& validate) {
     for (auto param: model->parameters()) {
-        weights<REAL_t>::svd(weights<REAL_t>::gaussian(1.0))(param);
+        weights<REAL_t>::svd(weights<REAL_t>::gaussian(1.0))(param.w());
     }
 
     auto params = model->parameters();
@@ -655,9 +661,6 @@ double benchmark_task(const std::string task) {
 int main(int argc, char** argv) {
     GFLAGS_NAMESPACE::SetUsageMessage("\nBabi!");
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
-
-    Eigen::setNbThreads(0);
-    Eigen::initParallel();
 
     int increment = 0;
     if (!FLAGS_visualizer.empty())

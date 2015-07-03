@@ -359,14 +359,14 @@ namespace matops {
     Mat<R> Binary<R>::eltmul_broadcast_rowwise(
             Mat<R> matrix1,
             Mat<R> row_vector) {
-        ASSERT2(matrix1.dims(0) == row_vector.dims(1) && row_vector.dims(0) == 1,
+        ASSERT2(matrix1.dims(1) == row_vector.dims(1) && row_vector.dims(0) == 1,
             "Matrices A and B^T cannot be element multiplied with broadcast, they do not have the same dimensions.");
         auto out = Mat<R>::empty_like(matrix1);
-        MAT(out) = MAT(matrix1).wrapper() * MAT(row_vector).ravel().wrapper().template broadcast<0>(MAT(matrix1).shape);
+        MAT(out) = MAT(matrix1).wrapper() * MAT(row_vector).ravel().wrapper().template broadcast<1>(MAT(matrix1).shape);
         if (graph::backprop_enabled())
             graph::emplace_back([matrix1, row_vector, out]() mutable {
-                SAFE_GRAD(matrix1) += GRAD(out).wrapper() * MAT(row_vector).ravel().wrapper().template broadcast<0>(GRAD(out).shape);
-                SAFE_GRAD(row_vector).ravel() += sum_cols(MAT(matrix1).wrapper() * GRAD(out).wrapper());
+                SAFE_GRAD(matrix1) += GRAD(out).wrapper() * MAT(row_vector).ravel().wrapper().template broadcast<1>(GRAD(out).shape);
+                SAFE_GRAD(row_vector).ravel() += sum_rows(MAT(matrix1).wrapper() * GRAD(out).wrapper());
             });
         return out;
     }

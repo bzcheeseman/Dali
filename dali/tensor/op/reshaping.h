@@ -12,10 +12,10 @@ namespace matops {
     struct Reshaping {
         static Mat<R> hstack(Mat<R>, Mat<R>);
         static Mat<R> hstack(std::initializer_list<Mat<R>>);
-        static Mat<R> hstack(std::vector<Mat<R>>&);
+        static Mat<R> hstack(const std::vector<Mat<R>>&);
         static Mat<R> vstack(Mat<R>, Mat<R>);
         static Mat<R> vstack(std::initializer_list<Mat<R>>);
-        static Mat<R> vstack(std::vector<Mat<R>>&);
+        static Mat<R> vstack(const std::vector<Mat<R>>&);
         static Mat<R> transpose(Mat<R>);
         static Mat<R> rows_pluck(Mat<R>, Indexing::Index);
         static Mat<R> rows_cols_pluck(Mat<R>, Indexing::Index, Indexing::Index);

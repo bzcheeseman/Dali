@@ -182,7 +182,7 @@ TEST_F(LayerTests, LSTM_Graves_shortcut_gradient) {
             auto state = mylayer.activate_shortcut(X, X_s, initial_state);
             return state.hidden;
         };
-        ASSERT_TRUE(gradient_same(functor, params, 0.0003));
+        ASSERT_TRUE(gradient_same(functor, params, 1e-3));
     }
 }
 
@@ -207,7 +207,7 @@ TEST_F(LayerTests, LSTM_Zaremba_shortcut_gradient) {
             auto state = mylayer.activate_shortcut(X, X_s, initial_state);
             return state.hidden;
         };
-        ASSERT_TRUE(gradient_same(functor, params, 0.0003));
+        ASSERT_TRUE(gradient_same(functor, params, 1e-3));
     }
 }
 

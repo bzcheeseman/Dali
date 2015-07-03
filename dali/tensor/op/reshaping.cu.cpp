@@ -53,7 +53,7 @@ namespace matops {
     }
 
     template<typename R>
-    Mat<R> Reshaping<R>::hstack(std::vector<Mat<R>>& matrices) {
+    Mat<R> Reshaping<R>::hstack(const std::vector<Mat<R>>& matrices) {
         int n = -1;
         int d_total = 0;
         for (auto& mat : matrices) {
@@ -127,7 +127,7 @@ namespace matops {
     }
 
     template<typename R>
-    Mat<R> Reshaping<R>::vstack(std::vector<Mat<R>>& matrices) {
+    Mat<R> Reshaping<R>::vstack(const std::vector<Mat<R>>& matrices) {
         assert(matrices.size() > 0);
         int d = matrices[0].dims(1);
         int n_total = 0;

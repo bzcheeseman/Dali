@@ -177,7 +177,7 @@ TEST_F(MatrixTests, load_test) {
     }
 }
 
-TEST_F(MatrixTests, DISABLED_save_load_test) {
+TEST_F(MatrixTests, save_load_test) {
     // load arange, then save it to a new file
     Mat<R> arange(utils::dir_join({STR(DALI_DATA_DIR),    "tests", "arange12.npy"}));
     arange.npy_save(utils::dir_join({STR(DALI_DATA_DIR),  "tests", "arange12.temp.npy"}));
@@ -187,7 +187,6 @@ TEST_F(MatrixTests, DISABLED_save_load_test) {
         ASSERT_EQ(arange.w(i), i);
     }
 }
-
 
 TEST_F(MatrixTests, subtraction) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
@@ -1014,6 +1013,19 @@ TEST_F(MatOpsTests, resize_1D_increase_rows) {
     ASSERT_EQ(A.shape, new_shape);
 }
 
+
+TEST_F(MatOpsTests, DISABLED_matrix_conv1d_grad) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return MatOps<R>::conv1d(Xs[0], std::initializer_list<Mat<R>>({Xs[1], Xs[2]})).tanh();
+    };
+    EXPERIMENT_REPEAT {
+        auto kernel1 = Mat<R>(5, 5, weights<R>::uniform(-20.0, 20.0));
+        auto kernel2 = Mat<R>(5, 5, weights<R>::uniform(-20.0, 20.0));
+        auto image = Mat<R>(5, 20, weights<R>::uniform(-20.0, 20.0));
+        ASSERT_TRUE(gradient_same(functor, {image, kernel1, kernel2}, 1e-2));
+    }
+}
+
 TEST_F(MatOpsTests, DISABLED_matrix_conv2d) {
     /*graph::NoBackprop nb;
 
@@ -1117,7 +1129,6 @@ TEST_F(MatOpsTests, cross_entropy_grad) {
         int target = utils::randint(0, hidden_size - 1);
         auto layer = Mat<R>(hidden_size, 5, weights<R>::uniform(-2.0, 2.0));
         auto input = Mat<R>(5,  3, weights<R>::uniform(-2.0, 2.0));
-        ELOG(target);
         auto functor = [target, temperature](vector<Mat<R>> Xs)-> Mat<R> {
             auto soft = MatOps<R>::softmax(
                     Xs[1].dot(Xs[0]),
@@ -1219,19 +1230,6 @@ TEST_F(MatOpsTests, cross_entropy_grad_thought_target) {
         };
 
         ASSERT_TRUE(gradient_same(functor, {input, layer, target}, 1e-2));
-    }
-}
-
-
-TEST_F(MatOpsTests, DISABLED_matrix_conv1d_grad) {
-    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-        return MatOps<R>::conv1d(Xs[0], std::initializer_list<Mat<R>>({Xs[1], Xs[2]})).tanh();
-    };
-    EXPERIMENT_REPEAT {
-        auto kernel1 = Mat<R>(5, 5, weights<R>::uniform(-20.0, 20.0));
-        auto kernel2 = Mat<R>(5, 5, weights<R>::uniform(-20.0, 20.0));
-        auto image = Mat<R>(5, 20, weights<R>::uniform(-20.0, 20.0));
-        ASSERT_TRUE(gradient_same(functor, {image, kernel1, kernel2}, 1e-2));
     }
 }
 

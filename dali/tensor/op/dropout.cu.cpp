@@ -34,7 +34,7 @@ namespace matops {
 
         MAT(out) = MAT(matrix).wrapper() * (*mask).wrapper();
 
-        if (graph::backprop_enabled) {
+        if (graph::backprop_enabled()) {
             graph::emplace_back([matrix, out, mask]() mutable {
                 SAFE_GRAD(matrix) += (GRAD(out).wrapper() * (*mask).wrapper());
             });
@@ -60,7 +60,7 @@ namespace matops {
 
         MAT(out) = MAT(matrix).wrapper() * (*mask).wrapper();
 
-        if (graph::backprop_enabled) {
+        if (graph::backprop_enabled()) {
             graph::emplace_back([matrix, out, mask]() mutable {
                 SAFE_GRAD(matrix) += (GRAD(out).wrapper() * (*mask).wrapper());
             });
@@ -103,7 +103,7 @@ namespace matops {
 
         MAT(out) = MAT(matrix).wrapper() * (*mask).wrapper();
 
-        if (graph::backprop_enabled) {
+        if (graph::backprop_enabled()) {
             graph::emplace_back([matrix, out, mask]() mutable {
                 SAFE_GRAD(matrix) += (GRAD(out).wrapper() * (*mask).wrapper());
             });

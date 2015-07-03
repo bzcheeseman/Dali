@@ -15,7 +15,7 @@ namespace matops {
                                                                                                               \
             MAT(out) = F<forward_op<R>>(MAT(matrix).wrapper());                                               \
                                                                                                               \
-            if (graph::backprop_enabled && !matrix.constant)                                                  \
+            if (graph::backprop_enabled() && !matrix.constant)                                                  \
                 graph::emplace_back([matrix, out]() mutable {                                                 \
                     GRAD(matrix) += (backward) * GRAD(out).wrapper();                                         \
                 });                                                                                           \
@@ -29,7 +29,7 @@ namespace matops {
                                                                                                               \
             MAT(out) = F<forward_op<R>>(MAT(matrix).wrapper(), arg1);                                         \
                                                                                                               \
-            if (graph::backprop_enabled && !matrix.constant)                                                  \
+            if (graph::backprop_enabled() && !matrix.constant)                                                  \
                 graph::emplace_back([matrix, out, arg1]() mutable {                                           \
                     GRAD(matrix) += (backward) * GRAD(out).wrapper();                                         \
                 });                                                                                           \
@@ -56,7 +56,7 @@ namespace matops {
         auto out = Mat<R>::empty_like(matrix);
         MAT(out) = F<op::exp<R>>(MAT(matrix).wrapper());
 
-        if (graph::backprop_enabled && !matrix.constant)
+        if (graph::backprop_enabled() && !matrix.constant)
             graph::emplace_back([matrix, out]() mutable {
                 GRAD(matrix) += (MAT(out).wrapper() * GRAD(out).wrapper());
             });
@@ -67,7 +67,7 @@ namespace matops {
     Mat<R> Elementwise<R>::sigmoid(Mat<R> matrix) {
         auto out = Mat<R>::empty_like(matrix);
         MAT(out) = F<op::sigmoid<R>>(MAT(matrix).wrapper());
-        if (graph::backprop_enabled && !matrix.constant)
+        if (graph::backprop_enabled() && !matrix.constant)
             graph::emplace_back([matrix, out]() mutable {
                 GRAD(matrix) += (
                     F<op::dsigmoid<R>>(MAT(out).wrapper()) * GRAD(out).wrapper()
@@ -80,7 +80,7 @@ namespace matops {
     Mat<R> Elementwise<R>::sqrt(Mat<R> matrix) {
         auto out = Mat<R>::empty_like(matrix);
         MAT(out) = F<op::sqrt_f<R>>(MAT(matrix).wrapper());
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix, out]() mutable {
                 SAFE_GRAD(matrix) += ((R)0.5 / MAT(out).wrapper()) * GRAD(out).wrapper();
             });
@@ -91,7 +91,7 @@ namespace matops {
     Mat<R> Elementwise<R>::elt_inv(Mat<R> matrix) {
         auto out = Mat<R>::empty_like(matrix);
         MAT(out) = F<op::inv<R>>(MAT(matrix).wrapper());
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix, out]() mutable {
                 SAFE_GRAD(matrix) -= F<op::square<R>>(MAT(out).wrapper()) * GRAD(out).wrapper();
             });
@@ -104,7 +104,7 @@ namespace matops {
         auto out = Mat<R>::empty_like(matrix);
         MAT(out) = F<op::square<R>>(MAT(matrix).wrapper());
 
-        if (graph::backprop_enabled && !matrix.constant)
+        if (graph::backprop_enabled() && !matrix.constant)
             graph::emplace_back([matrix, out]() mutable {
                 GRAD(matrix) += GRAD(out).wrapper() * MAT(matrix).wrapper() * (R) 2.0;
             });
@@ -129,7 +129,7 @@ namespace matops {
 
         MAT(out) = F<op::power<R>>(MAT(matrix).wrapper(), other);
 
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix, out, other]() mutable {
                 SAFE_GRAD(matrix) += other * F<op::power<R>>(MAT(matrix).wrapper(), other - (R)1.0) * GRAD(out).wrapper();
             });
@@ -147,7 +147,7 @@ namespace matops {
             R alpha) {
         auto out = Mat<R>::empty_like(matrix1);
         MAT(out) = MAT(matrix1).wrapper() + alpha;
-        if (graph::backprop_enabled && !matrix1.constant)
+        if (graph::backprop_enabled() && !matrix1.constant)
             graph::emplace_back([matrix1, out]() mutable {
                 GRAD(matrix1) += GRAD(out).wrapper();
             });
@@ -158,7 +158,7 @@ namespace matops {
     Mat<R> Elementwise<R>::sub_broadcast_reversed(Mat<R> matrix, R other) {
         auto out = Mat<R>::empty_like(matrix);
         MAT(out) = (other - MAT(matrix).wrapper());
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix, out] () mutable {
                 SAFE_GRAD(matrix) -= GRAD(out).wrapper();
             });
@@ -171,7 +171,7 @@ namespace matops {
             R alpha) {
         auto out = Mat<R>::empty_like(matrix);
         MAT(out) = MAT(matrix).wrapper() / alpha;
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix, alpha, out]() mutable {
                 SAFE_GRAD(matrix) += ((R)1.0 / alpha) * GRAD(out).wrapper();
             });
@@ -184,7 +184,7 @@ namespace matops {
             R alpha) {
         auto out = Mat<R>::empty_like(matrix);
         MAT(out) = MAT(matrix).wrapper() * alpha;
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix, alpha, out]() mutable {
                 SAFE_GRAD(matrix) += alpha * GRAD(out).wrapper();
             });

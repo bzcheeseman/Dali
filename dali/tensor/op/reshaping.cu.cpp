@@ -24,7 +24,7 @@ namespace matops {
         for (std::size_t offset = 0; offset < indices.size(); ++offset) {
             MAT(out).col(offset) = MAT(matrix).row(indices[offset]).transpose();
         }
-        if (graph::backprop_enabled) {
+        if (graph::backprop_enabled()) {
             graph::emplace_back([matrix, out, indices]() mutable {
                 auto index_ptr = indices.data();
                 for (std::size_t i = 0; i < out.dims(1); ++i) {
@@ -83,7 +83,7 @@ namespace matops {
             }
         }
 
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrices, out, n]() mutable {
                 int offset = 0;
                 auto out_data = out.dw().cpu_data();
@@ -148,7 +148,7 @@ namespace matops {
             // MAT(out).mutable_cpu_data().Slice(offset, offset + mat.dims(0)) += MAT(mat).cpu_data();
             offset += mat.dims(0);
         }
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrices, out]() mutable {
                 int offset = 0;
                 for (auto & mat : matrices) {
@@ -176,7 +176,7 @@ namespace matops {
                 weights<R>::empty());
             for (int offset = 0; offset < row_indices.size(); ++offset)
                 MAT(out)(offset) = MAT(matrix)(row_indices[offset], col_indices[offset]);
-        if (graph::backprop_enabled && !matrix.constant) {
+        if (graph::backprop_enabled() && !matrix.constant) {
             graph::emplace_back([matrix, out, row_indices, col_indices]() mutable {
                 auto row_index_ptr = row_indices.data();
                 auto col_index_ptr = col_indices.data();
@@ -207,7 +207,7 @@ namespace matops {
         Mat<R> out(matrix.dims(1), 1, weights<R>::empty());
         MAT(out).ravel() = MAT(matrix)[row].wrapper();
 
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix, out, row]() mutable {
                 SAFE_GRAD(matrix)[row] += GRAD(out).ravel().wrapper();
             });
@@ -221,7 +221,7 @@ namespace matops {
         #ifndef DONT_COMPILE
         Mat<R> out (1, matrix.dims(0), weights<R>::empty());
         MAT(out) = MAT(matrix).col(col);
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix, out, col]() mutable {
                 SAFE_GRAD(matrix).col(col).noalias() += GRAD(out).col(0).transpose();
             });
@@ -239,7 +239,7 @@ namespace matops {
             matrix.dims(0),
             weights<R>::empty());
         MAT(out) = MAT(matrix).wrapper().T();
-        if (graph::backprop_enabled && !matrix.constant)
+        if (graph::backprop_enabled() && !matrix.constant)
             graph::emplace_back([matrix, out]() mutable {
                 GRAD(matrix) += (GRAD(out).wrapper()).T();
             });

@@ -190,7 +190,9 @@ namespace {
             bool fail_on_zero_gradient = true) {
 
         auto error = functor(arguments).sum();
+
         error.grad();
+
         graph::backward();
 
         bool worked_out = true;

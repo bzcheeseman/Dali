@@ -1153,11 +1153,27 @@ TEST_F(MatOpsTests, softmax_cross_entropy_grad) {
 }
 
 
+TEST_F(MatOpsTests, weird_segfaulttest) {
+    {
+        Mat<R> input (3, 5, weights<R>::uniform(0.01, 0.99));
+        // interestingly commenting either softmax or
+        // softmax cross entropy, removes the bug.
+
+        Mat<R> softmaxed = MatOps<R>::softmax(input);
+
+        vector<uint> targets = { 1, 2, 2, 2, 2};
+        Mat<R> actual_res = MatOps<R>::softmax_cross_entropy(
+                input, Indexing::Index(targets));
+    }
+    graph::backward();
+}
+
 TEST_F(MatOpsTests, cross_entropy_multiindex) {
     EXPERIMENT_REPEAT {
         graph::NoBackprop nb;
 
         Mat<R> input (3, 5, weights<R>::uniform(0.01, 0.99));
+        Mat<R> softmaxed = MatOps<R>::softmax(input);
 
         vector<uint> targets;
         for (int i = 0; i < input.dims(1); ++i)
@@ -1168,15 +1184,10 @@ TEST_F(MatOpsTests, cross_entropy_multiindex) {
         EXPECT_TRUE(actual_res.w().memory().gpu_fresh);
 #endif
 
-        Mat<R> softmaxed = MatOps<R>::softmax(input);
-        Mat<R> cross_entropy_expected(1, targets.size());
-
-        for (int i=0; i < targets.size(); ++i) {
-            cross_entropy_expected.w(i) = - std::log(softmaxed.w(targets[i], i));
+        for (int i = 0; i < targets.size(); ++i) {
+            auto expected_res = MatOps<R>::cross_entropy(softmaxed.T()[i], targets[i]);
+            ASSERT_NEAR(actual_res.w(i), expected_res.w(0), 1e-4);
         }
-
-
-        ASSERT_MATRIX_CLOSE(actual_res, cross_entropy_expected, 1e-4);
     }
 }
 

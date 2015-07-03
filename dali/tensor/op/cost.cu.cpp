@@ -22,7 +22,7 @@ namespace matops {
     template<typename R>
     Mat<R> Cost<R>::softmax(Mat<R> matrix, R temperature) {
         Mat<R> out = Cost<R>::softmax_no_grad(matrix, temperature);
-        if (graph::backprop_enabled && !matrix.constant)
+        if (graph::backprop_enabled() && !matrix.constant)
             graph::emplace_back([matrix, temperature, out]() mutable {
                 TensorInternal<R, 1> sm_times_dy_colsum( mshadow::Shape1(matrix.dims(0)));
                 sm_times_dy_colsum = sum_cols(MAT(out).wrapper() * GRAD(out).wrapper());
@@ -39,7 +39,7 @@ namespace matops {
     Mat<R> Cost<R>::softmax_transpose(Mat<R> matrix, R temperature) {
         Mat<R> out     = Cost<R>::softmax_no_grad_transpose(matrix, temperature);
 
-        if (graph::backprop_enabled && !matrix.constant)
+        if (graph::backprop_enabled() && !matrix.constant)
             graph::emplace_back([matrix, temperature, out]() mutable {
 
                 TensorInternal<R, 1> sm_times_dy_rowsum( mshadow::Shape1(matrix.dims(1)));
@@ -87,7 +87,7 @@ namespace matops {
     template<typename R>
     vector<Mat<R>> Cost<R>::softmax(vector<Mat<R>>& matrices, R temperature) {
         vector<Mat<R>> out = Cost<R>::softmax_no_grad(matrices, temperature);
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([temperature, out, matrices]() mutable {
                 R colwise_sums = 0.0;
 
@@ -162,7 +162,7 @@ namespace matops {
 
         DEBUG_ASSERT_MAT_NOT_NAN(out);
 
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix, answer_idx, out]() mutable {
                 SAFE_GRAD(matrix)[answer_idx] -= F<op::inv<R>>(MAT(matrix)[answer_idx].wrapper() + (R)EPS) * GRAD(out).ravel().wrapper();
             });
@@ -179,7 +179,7 @@ namespace matops {
 
         DEBUG_ASSERT_NOT_NAN(MAT(out));
 
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix, target, out]() mutable {
                 SAFE_GRAD(matrix) -= F<op::inv<R>>(MAT(matrix).wrapper() + (R)EPS) * MAT(target).wrapper() * GRAD(out).wrapper();
                 SAFE_GRAD(target) -= F<op::log<R>>(MAT(matrix).wrapper() + (R)EPS) * GRAD(out).wrapper();
@@ -204,7 +204,8 @@ namespace matops {
         select_from_cols(MAT(out), MAT(probs), targets);
 
         MAT(out) = (R)-1.0 * F<op::log<R>>(MAT(out).wrapper());
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled()) {
+            std::cout << "Mofo sent to the queue." << std::endl;
             graph::emplace_back([matrix, probs, out, targets]() mutable {
                 if (!matrix.constant) {
                     GRAD(matrix) += MAT(probs).wrapper() *
@@ -213,11 +214,13 @@ namespace matops {
                     utils::assert2(false, "Still needs debugging");
 
                     softmax_cross_entropy_backward(GRAD(matrix), GRAD(out), targets);
+
                     // for (int i = 0; i < targets.size(); i++) {
                     //     GRAD(matrix)(targets[i],i) -= 1.0 * GRAD(out)(i);
                     // }
                 }
             });
+        }
         return out;
     }
 

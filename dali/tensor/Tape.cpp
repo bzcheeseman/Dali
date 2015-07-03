@@ -1,4 +1,5 @@
 #include "Tape.h"
+#include <iostream>
 
 namespace graph {
     thread_local bool _backprop_enabled = true;

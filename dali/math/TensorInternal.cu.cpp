@@ -449,7 +449,7 @@ void TensorInternal<R, dimension>::resize(mshadow::Shape<dimension> newshape, R 
             memory_->total_memory = newshape.Size();\
             memory_->free_gpu();\
             if (newshape[0] > shape[0]) {\
-                for (int i = shape.Size(); i < newshape.Size(); i++) {\
+                for (int i = shape.Size(); i < newshape.Size(); i++) {\
                     *(new_ptr + i) = filler;\
                 }\
             }\
@@ -467,13 +467,14 @@ void TensorInternal<R, dimension>::resize(mshadow::Shape<dimension> newshape, R 
             memory_->cpu_ptr = new_ptr;\
             memory_->total_memory = newshape.Size();\
             if (newshape[0] > shape[0]) {\
-                for (int i = shape.Size(); i < newshape.Size(); i++) {\
+                for (int i = shape.Size(); i < newshape.Size(); i++) {\
                     *(new_ptr + i) = filler;\
                 }\
             }\
             shape.shape_[0] = newshape[0];\
         }
 #endif
+
 DALI_TENSOR_INTERNAL_RESIZE(float)
 DALI_TENSOR_INTERNAL_RESIZE(double)
 

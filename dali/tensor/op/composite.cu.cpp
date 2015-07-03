@@ -19,7 +19,7 @@ namespace matops {
 
         Mat<R> out (left.dims(1), right.dims(1), weights<R>::empty());
 
-        if (graph::backprop_enabled) {
+        if (graph::backprop_enabled()) {
             TensorInternal<R,2> left_side_mul(mshadow::Shape2(left.dims(1), middle.dims(1)));
             // left_side_mul = left.T * middle;
             left_side_mul = dot(MAT(left).wrapper().T(), MAT(middle).wrapper());
@@ -95,7 +95,7 @@ namespace matops {
 
         MAT(out) += MAT(bias).ravel().wrapper().template broadcast<0>(MAT(out).shape);
 
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([weight_mats, inputs, bias, out, max_num_examples]() mutable {
 
                 for (int i = 0; i < weight_mats.size(); ++i) {

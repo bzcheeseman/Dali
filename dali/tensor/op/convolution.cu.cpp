@@ -48,7 +48,7 @@ namespace matops {
         //         out_mat(row,col) = (image_mat.block(row, col, KSizeX, KSizeY).array() * kernel_mat.array()).sum() / kernel_sum;
         //     }
         // }
-        // if (graph::backprop_enabled) {
+        // if (graph::backprop_enabled()) {
         //     graph::emplace_back([image, kernel, out, kernel_sum](){
         //         auto& image_mat = GET_MAT(image);
         //         auto& kernel_mat = GET_MAT(kernel);
@@ -139,7 +139,7 @@ namespace matops {
         //     }
         // }
 
-        // if (graph::backprop_enabled) {
+        // if (graph::backprop_enabled()) {
         //     graph::emplace_back([image, kernels, out, kernel_sums, kern_col_size](){
         //         auto& image_mat = GET_MAT(image);
         //         int col=0,
@@ -230,7 +230,7 @@ namespace matops {
         //         ).array()).sum() / kernel_sums[i];
         // }
 
-        // if (graph::backprop_enabled) {
+        // if (graph::backprop_enabled()) {
         //     graph::emplace_back([image, kernels, out, kernel_sums, kern_col_size](){
         //         auto& image_mat = GET_MAT(image);
         //         int col=0,

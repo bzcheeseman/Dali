@@ -12,7 +12,7 @@ namespace matops {
         auto norm = MAT(matrix).L2_norm();
         out.w(0) = norm;
 
-        if (graph::backprop_enabled && !matrix.constant)
+        if (graph::backprop_enabled() && !matrix.constant)
             graph::emplace_back([matrix, out, norm]() mutable {
                 GRAD(matrix) += (MAT(matrix).wrapper() * (out.dw(0) / norm) );
             });

@@ -21,7 +21,7 @@ namespace matops {
                      << " they do not have the same dimensions.");
         auto out = Mat<R>::empty_like(matrix1);
         MAT(out) = MAT(matrix1).wrapper() * MAT(matrix2).ravel().wrapper().template broadcast<0>(MAT(matrix1).shape);
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix1, matrix2, out]() mutable {
                 SAFE_GRAD(matrix1) += GRAD(out).wrapper() * (MAT(matrix2).ravel().wrapper().template broadcast<0>(GRAD(out).shape));
                 SAFE_GRAD(matrix2).ravel() += sum_cols(MAT(matrix1).wrapper() * GRAD(out).wrapper());
@@ -43,7 +43,7 @@ namespace matops {
             /
             MAT(matrix2).ravel().wrapper().template broadcast<0>(MAT(matrix1).shape)
         );
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix1, matrix2, out]() mutable {
                 SAFE_GRAD(matrix1) += (
                     (GRAD(out)).wrapper() /
@@ -75,7 +75,7 @@ namespace matops {
                 "Matrices cannot be element-wise multiplied, they do not have the same dimensions.");
         auto out = Mat<R>::empty_like(matrix1);
         MAT(out) = MAT(matrix1).wrapper() * MAT(matrix2).wrapper();
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix1, matrix2, out]() mutable {
                 SAFE_GRAD(matrix1) += MAT(matrix2).wrapper() * GRAD(out).wrapper();
                 SAFE_GRAD(matrix2) += MAT(matrix1).wrapper() * GRAD(out).wrapper();
@@ -108,7 +108,7 @@ namespace matops {
                 "Matrices cannot be element-wise divided, they do not have the same dimensions.");
         auto out = Mat<R>::empty_like(matrix1);
         MAT(out) = MAT(matrix1).wrapper() / MAT(matrix2).wrapper();
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix1, matrix2, out]() mutable {
                 SAFE_GRAD(matrix1) += (
                     F<op::inv<R>>(MAT(matrix2).wrapper()) *
@@ -139,7 +139,7 @@ namespace matops {
         auto out = Mat<R>::empty_like(matrix1);
         MAT(out) = MAT(matrix1).wrapper() + MAT(matrix2).wrapper();
 
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix1, matrix2, out]() mutable {
                 SAFE_GRAD(matrix1) += GRAD(out).wrapper();
                 SAFE_GRAD(matrix2) += GRAD(out).wrapper();
@@ -166,7 +166,7 @@ namespace matops {
         auto out = Mat<R>::empty_like(matrix1);
         MAT(out) = MAT(matrix1).wrapper() - MAT(matrix2).wrapper();
 
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix1, matrix2, out]() mutable {
                 SAFE_GRAD(matrix1) += GRAD(out).wrapper();
                 SAFE_GRAD(matrix2) -= GRAD(out).wrapper();
@@ -190,7 +190,7 @@ namespace matops {
                 MAT(matrix1).shape
             )
         );
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix1, matrix2, out]() mutable {
                 SAFE_GRAD(matrix1) += GRAD(out).wrapper();
                 SAFE_GRAD(matrix2).ravel() += sum_cols(GRAD(out).wrapper());
@@ -214,7 +214,7 @@ namespace matops {
                 MAT(matrix1).shape
             )
         );
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix1, matrix2, out]() mutable {
                 SAFE_GRAD(matrix1) += GRAD(out).wrapper();
                 SAFE_GRAD(matrix2).ravel() -= sum_cols(GRAD(out).wrapper());
@@ -237,7 +237,7 @@ namespace matops {
                 MAT(matrix1).shape
             ) - MAT(matrix1).wrapper()
         );
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix1, matrix2, out]() mutable {
                 SAFE_GRAD(matrix1) -= GRAD(out).wrapper();
                 SAFE_GRAD(matrix2).ravel() += sum_cols(GRAD(out).wrapper());
@@ -253,7 +253,7 @@ namespace matops {
         // TODO (szymon): it would be better it was done completely on GPU.
         R exponent_val = MAT(other)(0);
         MAT(out) = F<op::power<R>>(MAT(matrix).wrapper(), exponent_val);
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix, out, other, exponent_val]() mutable {
                 SAFE_GRAD(matrix) += exponent_val * F<op::power<R>>(MAT(matrix).wrapper(), exponent_val - (R)1.0) * GRAD(out).wrapper();
                 if (!other.constant) {
@@ -301,7 +301,7 @@ namespace matops {
         auto out = Mat<R>::zeros_like(matrices.front());
         for (auto& matrix : matrices)
             MAT(out) += MAT(matrix).wrapper();
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrices, out]() mutable {
                 for (auto& matrix : matrices) {
                     SAFE_GRAD(matrix) += GRAD(out).wrapper();
@@ -319,7 +319,7 @@ namespace matops {
 
         MAT(out) = dot( MAT(matrix1).wrapper(), MAT(matrix2).wrapper() );
 
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix1, matrix2, out]() mutable {
 
                 SAFE_GRAD(matrix1) += dot( GRAD(out).wrapper(),        MAT(matrix2).wrapper().T() );
@@ -342,7 +342,7 @@ namespace matops {
             /
             MAT(matrix1).wrapper()
         );
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix1, matrix2, out]() mutable {
                 SAFE_GRAD(matrix1) -= F<op::div_grad<R>>(
                     MAT(matrix2).ravel().wrapper().template broadcast<0>(MAT(matrix1).shape),
@@ -363,7 +363,7 @@ namespace matops {
             "Matrices A and B^T cannot be element multiplied with broadcast, they do not have the same dimensions.");
         auto out = Mat<R>::empty_like(matrix1);
         MAT(out) = MAT(matrix1).wrapper() * MAT(row_vector).ravel().wrapper().template broadcast<0>(MAT(matrix1).shape);
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix1, row_vector, out]() mutable {
                 SAFE_GRAD(matrix1) += GRAD(out).wrapper() * MAT(row_vector).ravel().wrapper().template broadcast<0>(GRAD(out).shape);
                 SAFE_GRAD(row_vector).ravel() += sum_cols(MAT(matrix1).wrapper() * GRAD(out).wrapper());
@@ -380,7 +380,7 @@ namespace matops {
             "Matrices A and B^T cannot be element-wise multiplied, they do not have the same dimensions.");
         auto out = Mat<R>::empty_like(matrix1);
         MAT(out) = MAT(matrix1).wrapper() * MAT(matrix2).wrapper().T();
-        if (graph::backprop_enabled)
+        if (graph::backprop_enabled())
             graph::emplace_back([matrix1, matrix2, out]() mutable {
                 SAFE_GRAD(matrix1) += (
                     MAT(matrix2).wrapper().T() * GRAD(out).wrapper()

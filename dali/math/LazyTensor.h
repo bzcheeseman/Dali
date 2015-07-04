@@ -7,9 +7,7 @@
 #include "mshadow/extension/reduceto1d.h"
 #include "mshadow/tensor.h"
 
-
 #include "dali/math/LazySoftmax.h"
-#include "dali/math/LazySoftmaxTranspose.h"
 #include "dali/math/LazyUtils.h"
 #include "dali/math/LazyDot.h"
 

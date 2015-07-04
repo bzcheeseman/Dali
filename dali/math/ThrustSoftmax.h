@@ -1,10 +1,10 @@
 #ifndef DALI_MATH_THRUST_SOFTMAX_TRANSPOSE_H
 #define DALI_MATH_THRUST_SOFTMAX_TRANSPOSE_H
-#ifdef DALI_USE_CUDA
 // so we have access to to_thrust
 #include "dali/math/TensorOps.h"
 
 namespace TensorOps {
+    #ifdef DALI_USE_CUDA
     namespace arg {
         // convert the indices of a 2d matrix in row major order to column major order
         template <typename T>
@@ -116,9 +116,26 @@ namespace TensorOps {
             dest_ptr,
             _1 / _2
         );
+    }
+    #endif
 
+    template<typename R>
+    void softmax(mshadow::Tensor<cpu,2,R> dst, mshadow::Tensor<cpu,2,R> src) {
+        for (mshadow::index_t col = 0; col < dst.size(1); ++col) {
+            R mmax = src[0][col];
+            for (mshadow::index_t row = 1; row < dst.size(0); ++row) {
+                if (mmax < src[row][col]) mmax = src[row][col];
+            }
+            R sum = 0.0f;
+            for (mshadow::index_t row = 0; row < dst.size(0); ++row) {
+                dst[row][col] = std::exp(src[row][col] - mmax);
+                sum += dst[row][col];
+            }
+            for (mshadow::index_t row = 0; row < dst.size(0); ++row) {
+                dst[row][col] /= sum;
+            }
+        }
     }
 }
 
-#endif
 #endif

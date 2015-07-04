@@ -17,7 +17,7 @@ namespace matops {
     Mat<R> Cost<R>::softmax_no_grad_transpose(Mat<R> matrix, R temperature) {
         ASSERT2(temperature == 1.0, "Not implemented yet (Temperature != 1.0 for softmax).");
         auto out = Mat<R>::empty_like(matrix);
-        MAT(out) = MAT(matrix).wrapper().softmax();
+        MAT(out) = MAT(matrix).wrapper().softmax_transpose();
         return out;
     }
 
@@ -95,7 +95,7 @@ namespace matops {
                 GRAD(matrix) += (
                       MAT(out).wrapper() * GRAD(out).wrapper()
                     - MAT(out).wrapper() * sm_times_dy_rowsum.wrapper().template broadcast<1>(GRAD(out).shape)
-                ) / temperature;
+                )       / temperature;
             });
         return out;
     }
@@ -104,8 +104,8 @@ namespace matops {
     Mat<R> Cost<R>::softmax_no_grad(Mat<R> matrix, R temperature) {
         ASSERT2(temperature == 1.0, "Not implemented yet (Temperature != 1.0 for softmax).");
         auto out = Mat<R>::empty_like(matrix);
-        dali_expr::SoftmaxTranspose(MAT(out).mutable_cpu_data(), MAT(matrix).cpu_data());
-        //MAT(out) = MAT(matrix).wrapper().softmax_transpose();
+        MAT(out) = MAT(matrix).wrapper().softmax();
+        //dali_expr::SoftmaxTranspose(MAT(out).mutable_cpu_data(), MAT(matrix).cpu_data());
         return out;
     }
 

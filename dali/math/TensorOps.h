@@ -6,6 +6,7 @@
 #include <functional>
 #include <math.h>
 
+#include "dali/math/TensorInternal.h"
 #include "dali/utils/random.h"
 
 #ifdef DALI_USE_CUDA

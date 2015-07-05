@@ -61,7 +61,7 @@ TEST(beam_search, beam_search_automata) {
     int max_size = 20;
 
     // Take greedy approach:
-    auto beam_search_results = beam_search::beam_search2<REAL_t, state_t>(
+    auto beam_search_results = beam_search::beam_search<REAL_t, state_t>(
             initial_state,
             1,
             prob_next_states,
@@ -76,7 +76,7 @@ TEST(beam_search, beam_search_automata) {
 
     // Take less greedy approach:
     int beam_width = 7;
-    beam_search_results = beam_search::beam_search2<REAL_t, state_t>(
+    beam_search_results = beam_search::beam_search<REAL_t, state_t>(
             initial_state,
             beam_width,
             prob_next_states,
@@ -96,7 +96,7 @@ TEST(beam_search, beam_search_automata) {
 }
 
 TEST(beam_search, beam_search_score_test) {
-    using beam_search::beam_search2;
+    using beam_search::beam_search;
     using beam_search::BeamSearchResult;
     using utils::iter_to_str;
     typedef double REAL_t;
@@ -142,7 +142,7 @@ TEST(beam_search, beam_search_score_test) {
     const uint FAKE_END_SYMBOL = 999;
 
     auto my_beam_search = [&](int beam_width) -> results_t {
-        return beam_search2<REAL_t,state_t>(initial_state,
+        return beam_search<REAL_t,state_t>(initial_state,
                                             beam_width,
                                             candidate_scores,
                                             make_choice,

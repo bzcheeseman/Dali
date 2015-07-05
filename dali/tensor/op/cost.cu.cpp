@@ -4,8 +4,6 @@
 #include "dali/math/TensorOps.h"
 #include "dali/math/LazyTensor.h"
 
-#define DONT_COMPILE
-
 using std::vector;
 using namespace TensorOps;
 using std::make_shared;
@@ -192,6 +190,12 @@ namespace matops {
     template<typename R>
     Mat<R> Cost<R>::softmax_cross_entropy(Mat<R> matrix, uint answer_idx) {
         return softmax_cross_entropy(matrix, Indexing::Index({answer_idx}));
+    }
+
+    template<typename R>
+    Mat<R> Cost<R>::softmax_cross_entropy(Mat<R> matrix, Mat<int> targets) {
+        // TODO(implement one version only for all three use cases)
+        throw std::runtime_error("Not yet implemented");
     }
 
     template<typename R>

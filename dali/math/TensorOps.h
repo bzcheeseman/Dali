@@ -8,6 +8,7 @@
 #include "dali/math/TensorInternal.h"
 #include "dali/math/MshadowIntegerOps.h"
 #include "dali/math/TensorFunctions.h"
+#include "dali/math/TensorAccessor.h"
 #include "dali/math/ThrustUtils.h"
 
 
@@ -152,56 +153,6 @@ namespace TensorOps {
         R L2_norm(const mshadow::Tensor<cpu, ndims, R> a, int num_elts) {
             return std::sqrt(std::accumulate(a.dptr_, a.dptr_ + num_elts, 0.0, thrust_square_reduce<R>()));
         }
-    }
-
-
-    #ifdef DALI_USE_CUDA
-
-    template<typename R>
-    void select_from_cols(mshadow::Tensor<gpu, 2, R> dest,
-                          const mshadow::Tensor<gpu, 2, R>& source,
-                          Indexing::Index targets) {
-        auto t_dest   = to_thrust(dest);
-        auto t_source = to_thrust(source);
-        std::vector<int> offsets(targets.size());
-        for (int i=0; i < targets.size(); ++i) {
-            // accessing index (targets[i], i)
-            offsets[i] = targets[i] * source.shape_[1] + i;
-        }
-        thrust::device_vector<uint> offsets_gpu(offsets);
-
-        // typedef thrust::device_vector<R>::iterator ElementIterator;
-        typedef thrust::device_vector<uint>::iterator IndexIterator;
-        thrust::permutation_iterator<thrust::device_ptr<R>,IndexIterator>
-                iter(t_source, offsets_gpu.begin());
-        thrust::copy(iter, iter + source.shape_[1], t_dest);
-    }
-    #endif
-
-    template<typename R>
-    void select_from_cols(mshadow::Tensor<cpu, 2, R> dest,
-                          const mshadow::Tensor<cpu, 2, R>& source,
-                          Indexing::Index targets) {
-
-        R* dest_ptr = dest.dptr_;
-
-        for (int col = 0; col < source.shape_[1]; ++col) {
-            *(dest_ptr + col) = source[targets[col]][col];
-        }
-    }
-
-
-    template<typename R>
-    void select_from_cols(TensorInternal<R,2> dest,
-                          TensorInternal<R,2> source,
-                          Indexing::Index targets) {
-        #ifdef DALI_USE_CUDA
-        if (source.compute_me_on_gpu()) {
-            select_from_cols(dest.mutable_gpu_data(), source.gpu_data(), targets);
-            return;
-        }
-        #endif
-        select_from_cols(dest.mutable_cpu_data(), source.cpu_data(), targets);
     }
 
     #ifdef DALI_USE_CUDA

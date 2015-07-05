@@ -1229,6 +1229,46 @@ TEST_F(MatrixTests, row_pluck) {
     }
 }
 
+TEST_F(MatrixTests, rows_pluck_forward_correctness) {
+
+    EXPERIMENT_REPEAT {
+        graph::NoBackprop nb;
+        const int num_plucks = 4;
+        Mat<R> A(10, 5, weights<R>::uniform(20.0));
+
+        vector<uint> plucks;
+        for (int i = 0; i < num_plucks; ++i) {
+            plucks.push_back(utils::randint(0, A.dims(0) - 1));
+        }
+        auto res = A[&plucks];
+        #ifdef DALI_USE_CUDA
+            EXPECT_TRUE(res.w().memory().gpu_fresh);
+        #endif
+
+        for (int pluck_idx = 0; pluck_idx < plucks.size(); ++pluck_idx) {
+            auto actual_row = res.T()[pluck_idx];
+            auto expected_row = A[plucks[pluck_idx]];
+            EXPECT_MATRIX_CLOSE(actual_row, expected_row, 1e-4);
+        }
+    }
+}
+
+TEST_F(MatrixTests, rows_pluck) {
+    EXPERIMENT_REPEAT {
+        const int num_plucks = 4;
+        Mat<R> A(10, 5, weights<R>::uniform(20.0));
+
+        vector<uint> plucks;
+        for (int i = 0; i < num_plucks; ++i) {
+            plucks.push_back(utils::randint(0, A.dims(0) - 1));
+        }
+
+        auto functor = [&plucks](vector<Mat<R>> Xs) {
+            return Xs[0][&plucks];
+        };
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4));
+    }
+}
 
 TEST_F(MatOpsTests, vector_softmax) {
     int softmax_size = 10;

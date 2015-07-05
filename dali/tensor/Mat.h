@@ -230,6 +230,7 @@ class Mat {
 
         // Plucking rows and columns:
         Mat<R> operator[](int) const;
+        Mat<R> operator[](Mat<int>) const;
         Mat<R> operator()(int) const;
         Mat<R> operator[](Indexing::Index) const;
         Mat<R> operator()(Indexing::Index) const;

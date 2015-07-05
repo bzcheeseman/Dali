@@ -16,6 +16,7 @@ namespace matops {
         static Mat<R> cross_entropy(Mat<R>, Mat<R> targets);
         static Mat<R> softmax_cross_entropy(Mat<R> matrix, uint answer_idx);
         static Mat<R> softmax_cross_entropy(Mat<R> matrix, Indexing::Index targets);
+        static Mat<R> softmax_cross_entropy(Mat<R> matrix, Mat<int> targets);
         static Mat<R> margin_loss(Mat<R> matrix, uint answer_idx, R margin=0.1);
 
         static Mat<R> softmax(Mat<R>, R temperature=1.0);

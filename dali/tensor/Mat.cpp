@@ -311,6 +311,13 @@ Mat<R> Mat<R>::operator[](
         Indexing::Index indices) const {
     return MatOps<R>::rows_pluck(*this, indices);
 }
+
+template<typename R>
+Mat<R> Mat<R>::operator[](
+        Mat<int> indices) const {
+    return MatOps<R>::rows_pluck(*this, indices);
+}
+
 template<typename R>
 Mat<R> Mat<R>::operator()(
         Indexing::Index indices) const {

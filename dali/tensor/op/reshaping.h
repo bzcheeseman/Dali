@@ -17,11 +17,12 @@ namespace matops {
         static Mat<R> vstack(std::initializer_list<Mat<R>>);
         static Mat<R> vstack(const std::vector<Mat<R>>&);
         static Mat<R> transpose(Mat<R>);
+        static Mat<R> rows_pluck(Mat<R> matrix, Mat<int> indices);
         static Mat<R> rows_pluck(Mat<R>, Indexing::Index);
         static Mat<R> rows_cols_pluck(Mat<R>, Indexing::Index, Indexing::Index);
         static Mat<R> row_pluck(Mat<R>, int);
         static Mat<R> col_pluck(Mat<R>, int);
-        static void resize(const Mat<R>& mat, dim_t rows, dim_t cols);
+        static void resize(Mat<R>& mat, dim_t rows, dim_t cols);
     };
 }
 

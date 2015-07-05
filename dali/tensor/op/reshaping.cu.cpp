@@ -15,39 +15,27 @@ namespace matops {
             Mat<R> matrix,
             Indexing::Index indices
             ) {
-        #ifndef DONT_COMPILE
         Mat<R> out (
             matrix.dims(1),
             indices.size(),
             weights<R>::empty());
 
-        auto row_shape = MAT(out).reshape(mshadow::Shape2(out.dims(1), out.dims(0)));
-
-        // for (std::size_t offset = 0; offset < indices.size(); ++offset) {
-        //     MAT(out).col(offset) = MAT(matrix).row(indices[offset]).transpose();
-        // }
-
-        for (std::size_t offset = 0; offset < indices.size(); ++offset) {
-            row_shape[offset] = MAT(matrix)[indices[offset]];
-        }
-
-        TensorOps::transpose_inplace(row_shape);
+        TensorOps::rows_pluck(MAT(out), MAT(matrix), indices);
 
 
-        if (graph::backprop_enabled()) {
+        if (graph::backprop_enabled() && !matrix.constant) {
             graph::emplace_back([matrix, out, indices]() mutable {
-                auto index_ptr = indices.data();
-                for (std::size_t i = 0; i < out.dims(1); ++i) {
-                    // for each row do the same operation as for row_pluck:
-                    SAFE_GRAD(matrix).row(*index_ptr).noalias() += GRAD(out).col(i).transpose();
-                    index_ptr++;
-                }
+                TensorOps::rows_pluck_backprop(GRAD(matrix), GRAD(out), indices);
             });
         }
         return out;
-        #else
-        return Mat<R>(1,1);
-        #endif
+    }
+
+    template<typename R>
+    Mat<R> Reshaping<R>::rows_pluck(
+            Mat<R> matrix,
+            Mat<int> indices) {
+        throw std::runtime_error("Not yet implemented :-(");
     }
 
 
@@ -120,14 +108,9 @@ namespace matops {
 
 
     template<typename R>
-    void Reshaping<R>::resize(const Mat<R>& mat, dim_t n, dim_t d) {
-        #ifndef DONT_COMPILE
-        mat.w()->dims[0] = n;
-        mat.w()->dims[1] = d;
-        MAT(mat).conservativeResize(n, d);
-        GRAD(mat).conservativeResize(n, d);
-        #else
-        #endif
+    void Reshaping<R>::resize(Mat<R>& matrix, dim_t n, dim_t d) {
+        MAT(matrix).resize(mshadow::Shape2(n, d));
+        GRAD(matrix).resize(mshadow::Shape2(n, d));
     }
 
     template<typename R>

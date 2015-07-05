@@ -131,6 +131,7 @@ int main (int argc,  char* argv[]) {
 
         // one minibatch
         for (auto indices_begin = indices.begin(); indices_begin < indices.begin() + std::min((size_t)FLAGS_minibatch, examples.size()); indices_begin++) {
+            utils::Timer training_timer("train");
             // <training>
             auto& example = examples[*indices_begin];
             auto initial_state = model.initial_states();
@@ -165,36 +166,38 @@ int main (int argc,  char* argv[]) {
             }
             error.grad();
             graph::backward();
+            training_timer.stop();
             minibatch_error += error.w(0);
             // </training>
-            throttled1.maybe_run(seconds(2), [&]() {
-                auto random_example_index = utils::randint(0, examples.size() -1);
+            // throttled1.maybe_run(seconds(2), [&]() {
+            //     auto random_example_index = utils::randint(0, examples.size() -1);
 
-                std::cout << arithmetic::vocabulary.decode(&examples[random_example_index].first) << std::endl;
+            //     std::cout << arithmetic::vocabulary.decode(&examples[random_example_index].first) << std::endl;
 
-                auto beams = arithmetic_beam_search(model, &examples[random_example_index].first);
+            //     auto beams = arithmetic_beam_search(model, &examples[random_example_index].first);
 
 
-                for (const auto& beam : beams) {
-                    std::cout << "= (" << std::setprecision( 3 ) << beam.score << ") ";
-                    for (const auto& word : beam.solution) {
-                        if (word != arithmetic::vocabulary.word2index.at(utils::end_symbol))
-                            std::cout << arithmetic::vocabulary.index2word.at(word);
-                    }
-                    std::cout << std::endl;
-                }
+            //     for (const auto& beam : beams) {
+            //         std::cout << "= (" << std::setprecision( 3 ) << beam.score << ") ";
+            //         for (const auto& word : beam.solution) {
+            //             if (word != arithmetic::vocabulary.word2index.at(utils::end_symbol))
+            //                 std::cout << arithmetic::vocabulary.index2word.at(word);
+            //         }
+            //         std::cout << std::endl;
+            //     }
 
-            });
-            throttled2.maybe_run(seconds(30), [&]() {
-                auto predict = [&model](const vector<uint>& example) {
-                    vector<uint> cpy(example);
-                    return arithmetic_beam_search(model, &cpy)[0].solution;
-                };
-                auto correct = arithmetic::average_recall(examples, predict, FLAGS_j);
-                std::cout << "epoch: " << epoch << " Percent correct = " << std::setprecision( 3 )  << 100.0 * correct << "%" << std::endl;
-            });
+            // });
+            // throttled2.maybe_run(seconds(30), [&]() {
+            //     auto predict = [&model](const vector<uint>& example) {
+            //         vector<uint> cpy(example);
+            //         return arithmetic_beam_search(model, &cpy)[0].solution;
+            //     };
+            //     auto correct = arithmetic::average_recall(examples, predict, FLAGS_j);
+            //     std::cout << "epoch: " << epoch << " Percent correct = " << std::setprecision( 3 )  << 100.0 * correct << "%" << std::endl;
+            // });
         }
         solver->step(params); // One step of gradient descent
         epoch++;
     }
+    utils::Timer::report();
 }

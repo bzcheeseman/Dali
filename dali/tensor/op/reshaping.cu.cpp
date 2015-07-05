@@ -13,29 +13,31 @@ namespace matops {
     template<typename R>
     Mat<R> Reshaping<R>::rows_pluck(
             Mat<R> matrix,
-            Indexing::Index indices
-            ) {
-        Mat<R> out (
-            matrix.dims(1),
-            indices.size(),
-            weights<R>::empty());
-
-        TensorOps::rows_pluck(MAT(out), MAT(matrix), indices);
-
-
-        if (graph::backprop_enabled() && !matrix.constant) {
-            graph::emplace_back([matrix, out, indices]() mutable {
-                TensorOps::rows_pluck_backprop(GRAD(matrix), GRAD(out), indices);
-            });
+            Indexing::Index indices) {
+        Mat<int> indices_mat(1, indices.size());
+        for (int i = 0; i < indices.size(); ++i) {
+            indices_mat.w(i) = indices[i];
         }
-        return out;
+        return Reshaping<R>::rows_pluck(matrix, indices_mat);
     }
 
     template<typename R>
     Mat<R> Reshaping<R>::rows_pluck(
             Mat<R> matrix,
             Mat<int> indices) {
-        throw std::runtime_error("Not yet implemented :-(");
+        Mat<R> out (
+            matrix.dims(1),
+            indices.number_of_elements(),
+            weights<R>::empty());
+
+        TensorOps::rows_pluck(MAT(out), MAT(matrix), indices.w().ravel());
+
+        if (graph::backprop_enabled() && !matrix.constant) {
+            graph::emplace_back([matrix, out, indices]() mutable {
+                TensorOps::rows_pluck_backprop(GRAD(matrix), GRAD(out), indices.w().ravel());
+            });
+        }
+        return out;
     }
 
 

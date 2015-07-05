@@ -71,13 +71,13 @@ namespace TensorOps {
     template<typename R>
     void rows_pluck(mshadow::Tensor<gpu, 2, R> dest,
                     const mshadow::Tensor<gpu, 2, R>& source,
-                    Indexing::Index indices) {
+                    TensorInternal<int,1> indices) {
         using namespace thrust::placeholders;
 
         auto t_dest   = to_thrust(dest);
         auto t_source = to_thrust(source);
 
-        for (int idx = 0; idx < indices.size(); ++idx) {
+        for (int idx = 0; idx < indices.number_of_elements(); ++idx) {
             int row_size =  source.shape_[1];
 
             auto dest_column_idx = thrust::make_transform_iterator(
@@ -86,7 +86,7 @@ namespace TensorOps {
             );
             auto dest_column = make_permutation_iterator(t_dest, dest_column_idx);
 
-            auto source_row_begin = t_source + indices[idx] * row_size;
+            auto source_row_begin = t_source + indices(idx) * row_size;
 
             thrust::copy(source_row_begin , source_row_begin + row_size, dest_column);
         }
@@ -96,10 +96,10 @@ namespace TensorOps {
     template<typename R>
     void rows_pluck(mshadow::Tensor<cpu, 2, R> dest,
                     const mshadow::Tensor<cpu, 2, R>& source,
-                    Indexing::Index indices) {
-        for (int idx = 0; idx < indices.size(); ++idx) {
+                    TensorInternal<int,1> indices) {
+        for (int idx = 0; idx < indices.number_of_elements(); ++idx) {
             for (int col_idx = 0; col_idx < dest.shape_[0]; ++col_idx) {
-                dest[col_idx][idx] = source[indices[idx]][col_idx];
+                dest[col_idx][idx] = source[indices(idx)][col_idx];
             }
         }
     }
@@ -108,7 +108,7 @@ namespace TensorOps {
     template<typename R>
     void rows_pluck(TensorInternal<R,2> dest,
                     TensorInternal<R,2> source,
-                    Indexing::Index indices) {
+                    TensorInternal<int,1> indices) {
         #ifdef DALI_USE_CUDA
         if (source.compute_me_on_gpu()) {
             rows_pluck(dest.mutable_gpu_data(), source.gpu_data(), indices);
@@ -127,13 +127,13 @@ namespace TensorOps {
     template<typename R>
     void rows_pluck_backprop(mshadow::Tensor<gpu, 2, R> dest,
                     const mshadow::Tensor<gpu, 2, R>& source,
-                    Indexing::Index indices) {
+                    TensorInternal<int,1> indices) {
         using namespace thrust::placeholders;
 
         auto t_dest   = to_thrust(dest);
         auto t_source = to_thrust(source);
 
-        for (int idx = 0; idx < indices.size(); ++idx) {
+        for (int idx = 0; idx < indices.number_of_elements(); ++idx) {
             int row_size =  dest.shape_[1];
 
             auto source_column_idx = thrust::make_transform_iterator(
@@ -142,7 +142,7 @@ namespace TensorOps {
             );
             auto source_column = make_permutation_iterator(t_source, source_column_idx);
 
-            auto dest_row_begin = t_dest + indices[idx] * row_size;
+            auto dest_row_begin = t_dest + indices(idx) * row_size;
             thrust::transform(dest_row_begin, dest_row_begin + row_size, source_column, dest_row_begin, _1 + _2);
         }
     }
@@ -151,10 +151,10 @@ namespace TensorOps {
     template<typename R>
     void rows_pluck_backprop(mshadow::Tensor<cpu, 2, R> dest,
                     const mshadow::Tensor<cpu, 2, R>& source,
-                    Indexing::Index indices) {
-        for (int idx = 0; idx < indices.size(); ++idx) {
+                    TensorInternal<int,1> indices) {
+        for (int idx = 0; idx < indices.number_of_elements(); ++idx) {
             for (int col_idx = 0; col_idx < dest.shape_[1]; ++col_idx) {
-                dest[indices[idx]][col_idx] += source[col_idx][idx];
+                dest[indices(idx)][col_idx] += source[col_idx][idx];
             }
         }
     }
@@ -163,7 +163,7 @@ namespace TensorOps {
     template<typename R>
     void rows_pluck_backprop(TensorInternal<R,2> dest,
                     TensorInternal<R,2> source,
-                    Indexing::Index indices) {
+                    TensorInternal<int,1> indices) {
         #ifdef DALI_USE_CUDA
         if (source.compute_me_on_gpu()) {
             rows_pluck_backprop(dest.mutable_gpu_data(), source.gpu_data(), indices);

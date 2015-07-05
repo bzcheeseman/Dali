@@ -64,7 +64,7 @@ Mat<T> softmax_categorical_surprise(Mat<T> logprobs, int target) {
         std::log1p( std::sqrt(1.0 - probs.w(target, 0)))
     );
 
-    if (graph::backprop_enabled) {
+    if (graph::backprop_enabled()) {
         if (!logprobs.constant) {
             graph::emplace_back([logprobs, probs, target]() {
                 auto root_coeff = std::sqrt(std::max(MatOps<T>::EPS, (T) (1.0 - probs.w(target, 0))));
@@ -359,7 +359,7 @@ class BidirectionalLSTM {
                         prediction.eltmul_broadcast_rowwise(1.0 - new_memory)
                     );
                     // penalize wavering memory (commit to something)
-                    if (graph::backprop_enabled && memory_penalty > 0) {
+                    if (graph::backprop_enabled() && memory_penalty > 0) {
                         // penalize memory
                         new_memory = new_memory * memory_penalty;
                         new_memory.grad();

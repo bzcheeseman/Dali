@@ -56,6 +56,9 @@ class SynchronizedMemory {
         int total_memory;
         // hint for inner dimension. Must divide total_memory.
         const int inner_dimension;
+        // whether memory must be filled with zeros on allocation
+        // defaults to false
+        bool clear_on_allocation;
 
         mutable bool allocated_cpu;
         mutable bool cpu_fresh;
@@ -66,6 +69,8 @@ class SynchronizedMemory {
         void to_cpu() const;
         bool prefers_cpu() const;
         bool prefers_gpu() const;
+
+        bool allocate_cpu() const;
 
         SynchronizedMemory& operator=(const SynchronizedMemory&) = delete;
 
@@ -95,6 +100,7 @@ class SynchronizedMemory {
         mutable bool allocated_gpu;
         mutable R* gpu_ptr;
 
+        bool allocate_gpu() const;
         void free_gpu() const;
         // Ensure a fresh copy of the memory is on the gpu
         void to_gpu() const;

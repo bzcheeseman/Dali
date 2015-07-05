@@ -100,6 +100,7 @@ SynchronizedMemory<R>::SynchronizedMemory(int _total_memory,
         allocated_gpu(false),
         gpu_ptr(NULL),
 #endif
+        clear_on_allocation(false),
         cpu_fresh(false),
         allocated_cpu(false),
         cpu_ptr(NULL),
@@ -111,7 +112,8 @@ SynchronizedMemory<R>::SynchronizedMemory(int _total_memory,
 
 template<typename R>
 SynchronizedMemory<R>::SynchronizedMemory(const SynchronizedMemory& other) :
-        SynchronizedMemory(other.total_memory, other.inner_dimension, other.preferred_device) {
+        SynchronizedMemory(other.total_memory, other.inner_dimension, other.preferred_device),
+        clear_on_allocation(other.clear_on_allocation) {
     if (other.cpu_fresh) {
         const auto& data_source = other.dummy_cpu();
         copy_data_from(data_source);
@@ -175,18 +177,31 @@ mshadow::Tensor<mshadow::cpu, 2, R> SynchronizedMemory<R>::dummy_cpu() const {
 
 #ifdef DALI_USE_CUDA
     template<typename R>
+    bool SynchronizedMemory<R>::allocate_gpu() const {
+        if (allocated_gpu) {
+            return false;
+        }
+        auto dummy = dummy_gpu();
+        AllocSpace(&dummy, false);
+        allocated_gpu = true;
+        gpu_ptr = dummy.dptr_;
+        return true;
+    }
+
+    template<typename R>
     void SynchronizedMemory<R>::to_gpu() const {
         if (!this->gpu_fresh) {
-            if (!allocated_gpu) {
-                auto dummy = dummy_gpu();
-                AllocSpace(&dummy, false);
-                allocated_gpu = true;
-                gpu_ptr = dummy.dptr_;
-            }
+            auto just_allocated_gpu = allocate_gpu();
+            // now that memory was freshly allocated
+            // on gpu we either copy the CPU data over
+            // or clear the buffer if the `clear_on_allocation`
+            // flag is true:
             if (this->cpu_fresh) {
                 auto mem_gpu = dummy_gpu();
                 auto mem_cpu = dummy_cpu();
                 Copy(mem_gpu, mem_cpu);
+            } else if (just_allocated_gpu && clear_on_allocation) {
+                dummy_gpu() = (R)0.0;
             }
             this->gpu_fresh = true;
         }
@@ -194,19 +209,32 @@ mshadow::Tensor<mshadow::cpu, 2, R> SynchronizedMemory<R>::dummy_cpu() const {
 #endif
 
 template<typename R>
+bool SynchronizedMemory<R>::allocate_cpu() const {
+    if (allocated_cpu) {
+        return false;
+    }
+    auto dummy = dummy_cpu();
+    AllocSpace(&dummy, false);
+    allocated_cpu = true;
+    cpu_ptr = dummy.dptr_;
+    return true;
+}
+
+template<typename R>
 void SynchronizedMemory<R>::to_cpu() const {
     if (!this->cpu_fresh) {
-        if (!allocated_cpu) {
-            auto dummy = dummy_cpu();
-            AllocSpace(&dummy, false);
-            allocated_cpu = true;
-            cpu_ptr = dummy.dptr_;
-        }
+        auto just_allocated_cpu = allocate_cpu();
 #ifdef DALI_USE_CUDA
         if (this->gpu_fresh) {
             auto mem_gpu = dummy_gpu();
             auto mem_cpu = dummy_cpu();
             Copy(mem_cpu, mem_gpu);
+        } else if (just_allocated_cpu && clear_on_allocation) {
+            dummy_cpu() = (R)0.0;
+        }
+#else
+        if (just_allocated_cpu && clear_on_allocation) {
+            dummy_cpu() = (R)0.0;
         }
 #endif
         this->cpu_fresh = true;
@@ -226,7 +254,6 @@ R* SynchronizedMemory<R>::mutable_cpu_data() {
     #endif
     return cpu_ptr;
 }
-
 
 #ifdef DALI_USE_CUDA
 template <typename R>

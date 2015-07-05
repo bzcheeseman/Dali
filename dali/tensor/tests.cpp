@@ -1458,6 +1458,7 @@ Mat<R> create_dataset() {
 
 
 void test_solver_optimization(std::string solvername) {
+    utils::random::set_seed(1234);
     int num_points = 20;
     int num_dimensions = 5;
     // create data

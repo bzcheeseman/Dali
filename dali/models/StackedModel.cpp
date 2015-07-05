@@ -183,7 +183,7 @@ Z StackedModel<Z>::masked_predict_cost(
             input_vector,
             initial_state
         );
-        if (graph::backprop_enabled) {
+        if (graph::backprop_enabled()) {
             cost += masked_cross_entropy(
                 logprobs,
                 i,
@@ -282,7 +282,7 @@ Z StackedModel<Z>::masked_predict_cost(
         );
         // classifier takes as input the final hidden layer's activation:
         logprobs = decode(input_vector, initial_state);
-        if (graph::backprop_enabled) {
+        if (graph::backprop_enabled()) {
             cost += masked_cross_entropy(
                 logprobs,
                 i,
@@ -457,7 +457,7 @@ typename StackedModel<Z>::activation_t StackedModel<Z>::activate(
     activation_t out;
     auto input_vector = this->embedding[index];
     std::get<0>(out)  = stacked_lstm.activate(previous_state, input_vector);
-    std::get<1>(out)  = graph::backprop_enabled ?
+    std::get<1>(out)  = graph::backprop_enabled() ?
         MatOps<Z>::softmax(
             decode(
                 input_vector,
@@ -480,7 +480,7 @@ typename StackedModel<Z>::activation_t StackedModel<Z>::activate(
     activation_t out;
     auto input_vector = this->embedding[indices];
     std::get<0>(out)  = stacked_lstm.activate(previous_state, input_vector);
-    std::get<1>(out)  = graph::backprop_enabled ?
+    std::get<1>(out)  = graph::backprop_enabled() ?
         MatOps<Z>::softmax(
             decode(
                 input_vector,

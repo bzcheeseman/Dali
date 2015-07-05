@@ -149,7 +149,7 @@ std::tuple<Z, Z> StackedGatedModel<Z>::masked_predict_cost(
         initial_state = this->stacked_lstm.activate(initial_state, input_vector, drop_prob);
         logprobs      = this->decode(input_vector, initial_state);
 
-        if (graph::backprop_enabled) {
+        if (graph::backprop_enabled()) {
             std::get<0>(cost) += masked_cross_entropy(
                 logprobs,
                 i,
@@ -218,7 +218,7 @@ std::tuple<Z, Z> StackedGatedModel<Z>::masked_predict_cost(
                 drop_prob
             );
             logprobs  = this->decode(input_vector, initial_state);
-            if (graph::backprop_enabled) {
+            if (graph::backprop_enabled()) {
                 std::get<0>(cost) += masked_cross_entropy(
                     logprobs,
                     i,
@@ -408,7 +408,7 @@ typename StackedGatedModel<Z>::state_type StackedGatedModel<Z>::get_final_activa
             input_vector,
             initial_state.back().hidden
         ).sigmoid();
-        if (graph::backprop_enabled && memory_penalty > 0) {
+        if (graph::backprop_enabled() && memory_penalty > 0) {
             // add this sum to objective function
             (memory * memory_penalty).grad();
         }
@@ -458,7 +458,7 @@ typename StackedGatedModel<Z>::activation_t StackedGatedModel<Z>::activate(
         previous_state,
         input_vector
     );
-    std::get<1>(out) = graph::backprop_enabled ?
+    std::get<1>(out) = graph::backprop_enabled() ?
         MatOps<Z>::softmax(
             this->decode(
                 input_vector,
@@ -490,7 +490,7 @@ typename StackedGatedModel<Z>::activation_t StackedGatedModel<Z>::activate(
     std::get<0>(out) = this->stacked_lstm.activate(
         previous_state,
         input_vector);
-    std::get<1>(out) = graph::backprop_enabled ?
+    std::get<1>(out) = graph::backprop_enabled() ?
         MatOps<Z>::softmax(
             this->decode(
                 input_vector,

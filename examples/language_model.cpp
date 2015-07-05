@@ -19,6 +19,7 @@ DEFINE_bool(sparse,                true, "Use sparse embedding");
 DEFINE_double(cutoff,              2.0,  "KL Divergence error where stopping is acceptable");
 DEFINE_int32(patience,             5,    "How many unimproving epochs to wait through before witnessing progress ?");
 DEFINE_int32(num_reconstructions,  5,    "How many sentences to demo after each epoch.");
+DEFINE_double(dropout,             0.3,  "How many Hintons to include in the neural network.");
 
 using std::ifstream;
 using std::istringstream;
@@ -40,95 +41,79 @@ using std::chrono::seconds;
 typedef float REAL_t;
 typedef Mat<REAL_t> mat;
 typedef float price_t;
-typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
-typedef Eigen::Matrix<REAL_t, Eigen::Dynamic, 1> float_vector;
 typedef std::pair<vector<string>, uint> labeled_pair;
 
 const string START = "**START**";
 
 ThreadPool* pool;
 
-class Databatch {
-    typedef shared_ptr<index_mat> shared_index_mat;
-    public:
-        shared_index_mat data;
-        shared_eigen_index_vector codelens;
-        shared_ptr<vector<uint>> row_keys;
-        int total_codes;
-        Databatch(int n, int d) {
-            data        = make_shared<index_mat>(n, d);
-            codelens    = make_shared<eigen_index_vector>(n);
-            row_keys    = make_shared<vector<uint>>();
-            total_codes = 0;
-            data->fill(0);
-        };
+template<typename R>
+struct Databatch {
+    Mat<int> data;
+    Mat<R> mask;
+    int total_codes;
+    Databatch(int max_example_length, int num_examples) {
+        data        = Mat<int>(max_example_length, num_examples);
+        mask        = Mat<R>(max_example_length, num_examples);
+        total_codes = 0;
+    };
+
+    void add_example(
+            Vocab& word_vocab,
+            const vector<string>& example,
+            size_t& example_idx) {
+        auto description_length = example.size();
+        databatch.data.w(0, example_idx) = word_vocab.word2index[START];
+        auto encoded = word_vocab.encode(example, true);
+        mask.w(0, example_idx) = 1.0;
+        for (size_t j = 0; j < encoded.size(); j++) {
+            databatch.data.w(j + 1, example_idx) = encoded[j];
+            mask.w(j + 1, example_idx) = (R)1.0;
+        }
+        databatch.total_codes += description_length + 1;
+    }
+
+    typedef vector<vector<string>*>::iterator data_ptr;
+
+    static Databatch<R> from_examples(data_ptr data_begin, data_ptr data_end, Vocab& vocab) {
+        size_t max_length = (*data_ptr)->size();
+        int num_elements = end - begin;
+        for (auto it = data_begin; it != data_end; ++it) {
+            max_length = std::max((*it)->size() + 2);
+        }
+
+        Databatch<R> databatch(max_length, num_elements);
+        for (size_t k = 0; k < num_elements; k++) {
+            databatch.add_example(vocab, **(data_begin + k), k);
+        }
+        return databatch;
+    }
 };
 
-void insert_example_indices_into_matrix(
-    Vocab& word_vocab,
-    Databatch& databatch,
-    const vector<string>& example,
-    size_t& row) {
-    auto description_length = example.size();
-    (*databatch.data)(row, 0) = word_vocab.word2index[START];
-    for (size_t j = 0; j < description_length; j++) {
-        (*databatch.data)(row, j + 1) = word_vocab.word2index.find(example[j]) != word_vocab.word2index.end() ? word_vocab.word2index[example[j]] : word_vocab.unknown_word;
-        utils::add_to_set(*databatch.row_keys, (*databatch.data)(row, j + 1));
-    }
-    (*databatch.data)(row, description_length + 1) = word_vocab.word2index[utils::end_symbol];
-    (*databatch.codelens)(row) = description_length + 1;
-    databatch.total_codes += description_length + 1;
-}
-
-Databatch convert_sentences_to_indices(
-    const vector<vector<string>>& examples,
-    Vocab& word_vocab,
-    size_t num_elements,
-    vector<size_t>::iterator indices,
-    vector<size_t>::iterator lengths_sorted) {
-
-    auto indices_begin = indices;
-    Databatch databatch(num_elements, *std::max_element(lengths_sorted, lengths_sorted + num_elements));
-    utils::add_to_set(*databatch.row_keys, word_vocab.word2index[utils::end_symbol]);
-    utils::add_to_set(*databatch.row_keys, word_vocab.word2index[START]);
-    for (size_t k = 0; k < num_elements; k++)
-        insert_example_indices_into_matrix(
-            word_vocab,
-            databatch,
-            examples[*(indices++)],
-            k);
-    return databatch;
-}
-
-vector<Databatch> create_dataset(
+template<typename R>
+vector<Databatch<R>> create_dataset(
     const vector<vector<string>>& examples,
     Vocab& word_vocab,
     size_t minibatch_size) {
 
     vector<Databatch> dataset;
-    vector<size_t> lengths = vector<size_t>(examples.size());
-    for (size_t i = 0; i != lengths.size(); ++i) lengths[i] = examples[i].size() + 2;
-    vector<size_t> lengths_sorted(lengths);
+    vector<vector<string>*> sorted_examples;
+    for (auto& example: examples) {
+        sorted_examples.emplace_back(&example);
+    }
+    std::sort(sorted_examples.begin(), sorted_examples.end(), [](vector<string>* a, vector<string>* b) {
+        return a->size() < b->size();
+    });
 
-    auto shortest = utils::argsort(lengths);
-    std::sort(lengths_sorted.begin(), lengths_sorted.end());
-    size_t piece_size = minibatch_size;
-    size_t so_far = 0;
+    for (int i = 0; i < sorted_examples.size(); i += minibatch_size) {
+        auto batch_begin = sorted_examples.begin() + i;
+        auto batch_end   = batch_begin + min(minibatch_size, lengths.size() - i);
 
-    auto shortest_ptr = lengths_sorted.begin();
-    auto end_ptr = lengths_sorted.end();
-    auto indices_ptr = shortest.begin();
-
-    while (shortest_ptr != end_ptr) {
-        dataset.emplace_back( convert_sentences_to_indices(
-            examples,
+        dataset.emplace_back(Databatch<R>::from_examples(
+            batch_begin,
+            batch_end,
             word_vocab,
-            min(piece_size, lengths.size() - so_far),
-            indices_ptr,
-            shortest_ptr) );
-        shortest_ptr += min(piece_size,          lengths.size() - so_far);
-        indices_ptr  += min(piece_size,          lengths.size() - so_far);
-        so_far        = min(so_far + piece_size, lengths.size());
+        ));
     }
     return dataset;
 }
@@ -139,6 +124,7 @@ Vocab get_vocabulary(const vector<vector<string>>& examples, int min_occurence) 
     vocab.index2word.emplace_back(START);
     return vocab;
 }
+
 
 template<typename model_t>
 REAL_t average_error(model_t& model, const vector<Databatch>& dataset) {
@@ -168,81 +154,20 @@ REAL_t average_error(model_t& model, const vector<Databatch>& dataset) {
     return cost / full_code_size;
 }
 
-template<typename model_t, typename S>
-void training_loop(model_t& model,
-    const vector<Databatch>& dataset,
-    const Vocab& word_vocab,
-    S& solver,
-    const int& epoch) {
-
-    double cost = 0.0;
-    std::atomic<int> full_code_size(0);
-    auto random_batch_order = utils::random_arange(dataset.size());
-
-    vector<model_t> thread_models;
-    for (int i = 0; i <FLAGS_j; ++i)
-        thread_models.emplace_back(model, false, true);
-
-    std::atomic<int> batches_processed(0);
-
-    stringstream ss;
-    ss << "Training epoch " << epoch;
-
-    ReportProgress<double> journalist(ss.str(), random_batch_order.size());
-
-    for (auto batch_id : random_batch_order) {
-        pool->run([&model, &dataset, &solver, &full_code_size,
-                   &cost, &thread_models, batch_id, &random_batch_order,
-                   &batches_processed, &journalist]() {
-
-            auto& thread_model = thread_models[ThreadPool::get_thread_number()];
-            auto thread_parameters = thread_model.parameters();
-            auto& minibatch = dataset[batch_id];
-
-            cost += thread_model.masked_predict_cost(
-                minibatch.data, // the sequence to draw from
-                minibatch.data, // what to predict (the words offset by 1)
-                0,
-                minibatch.codelens,
-                0
-            );
-            thread_model.embedding.sparse_row_keys = minibatch.row_keys;
-            full_code_size += minibatch.total_codes;
-
-            graph::backward(); // backpropagate
-            solver.step(thread_parameters);
-
-            journalist.tick(++batches_processed, cost / full_code_size);
-        });
-    }
-    while(!pool->idle()) {
-        int time_between_reconstructions_s = 10;
-        pool->wait_until_idle(seconds(time_between_reconstructions_s));
-
-        // Tell the journalist the news can wait
-        journalist.pause();
-        reconstruct_random_beams(model, dataset, word_vocab,
-            utils::randint(1, 6), // how many elements to use as a primer for beam
-            FLAGS_num_reconstructions, // how many beams
-            20 // max size of a sequence
-        );
-        journalist.resume();
-    }
-    journalist.done();
-}
-
-std::tuple<Vocab, vector<Databatch>> load_dataset_and_vocabulary(const string& fname, int min_occurence, int minibatch_size) {
+template<typename R>
+std::tuple<Vocab, vector<Databatch<R>>> load_dataset_and_vocabulary(const string& fname, int min_occurence, int minibatch_size) {
         std::tuple<Vocab, vector<Databatch>> pair;
 
         auto text_corpus  = utils::load_tokenized_unlabeled_corpus(fname);
         std::get<0>(pair) = get_vocabulary(text_corpus, min_occurence);
-        std::get<1>(pair) = create_dataset(text_corpus, std::get<0>(pair), minibatch_size);
+        std::get<1>(pair) = create_dataset<R>(text_corpus, std::get<0>(pair), minibatch_size);
         return pair;
 }
 
-vector<Databatch> load_dataset_with_vocabulary(const string& fname, Vocab& vocab, int minibatch_size) {
+template<typename R>
+vector<Databatch<R>> load_dataset_with_vocabulary(const string& fname, Vocab& vocab, int minibatch_size) {
         auto text_corpus        = utils::load_tokenized_unlabeled_corpus(fname);
-        return create_dataset(text_corpus, vocab, minibatch_size);
+        return create_dataset<R>(text_corpus, vocab, minibatch_size);
 }
 
 int main( int argc, char* argv[]) {
@@ -260,16 +185,16 @@ int main( int argc, char* argv[]) {
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
     utils::Vocab      word_vocab;
-    vector<Databatch> training;
-    vector<Databatch> validation;
+    vector<Databatch<REAL_t>> training;
+    vector<Databatch<REAL_t>> validation;
 
     Timer dl_timer("Dataset loading");
-    std::tie(word_vocab, training) = load_dataset_and_vocabulary(
+    std::tie(word_vocab, training) = load_dataset_and_vocabulary<REAL_t>(
         FLAGS_train,
         FLAGS_min_occurence,
         FLAGS_minibatch);
 
-    validation = load_dataset_with_vocabulary(
+    validation = load_dataset_with_vocabulary<REAL_t>(
         FLAGS_validation,
         word_vocab,
         FLAGS_minibatch);
@@ -300,7 +225,7 @@ int main( int argc, char* argv[]) {
         true);
 
     auto parameters = model.parameters();
-    Solver::AdaDelta<REAL_t> solver(parameters, FLAGS_rho, 1e-9, 5.0);
+    Solver::AdaDelta<REAL_t> solver(parameters, FLAGS_rho);
 
     // replicate model for each thread:
     vector<StackedModel<REAL_t>> thread_models;
@@ -336,11 +261,9 @@ int main( int argc, char* argv[]) {
                 thread_model.masked_predict_cost(
                     minibatch.data, // the sequence to draw from
                     minibatch.data, // what to predict (the words offset by 1)
-                    0,
-                    minibatch.codelens,
-                    0
+                    minibatch.mask,
+                    FLAGS_dropout
                 );
-                thread_model.embedding.sparse_row_keys = minibatch.row_keys;
 
                 graph::backward(); // backpropagate
                 solver.step(thread_parameters);
@@ -349,7 +272,7 @@ int main( int argc, char* argv[]) {
             });
         }
 
-        auto& dataset = training;
+        /*auto& dataset = training;
 
         while(!pool->idle()) {
             int time_between_reconstructions_s = 10;
@@ -432,7 +355,7 @@ int main( int argc, char* argv[]) {
                   << " patience = " << patience << std::endl;
         maybe_save_model(&model);
         epoch++;
-    }
+    }*/
 
     Timer::report();
     return 0;

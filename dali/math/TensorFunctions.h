@@ -24,7 +24,7 @@ namespace TensorOps {
     struct near_equal {
         T tol;
         near_equal(T _tol) : tol(_tol) {}
-        __host__ __device__ bool operator()(const T& lhs, const T& rhs) const {
+        MSHADOW_XINLINE bool operator()(const T& lhs, const T& rhs) const {
             return std::abs(lhs - rhs) < tol;
         }
     };

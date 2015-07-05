@@ -154,58 +154,6 @@ StackedModel<Z> StackedModel<Z>::load(std::string dirname) {
 }
 
 template<typename Z>
-Z StackedModel<Z>::masked_predict_cost(
-    Indexing::Index data,
-    Indexing::Index target_data,
-    Indexing::Index start_loss,
-    Indexing::Index codelens,
-    uint offset,
-    Z drop_prob) {
-    auto initial_state    = this->initial_states();
-    mat input_vector;
-    mat memory;
-    mat logprobs;
-
-    Z cost = 0.0;
-    #ifdef DONT_COMPILE
-    auto n = data->cols();
-    for (uint i = 0; i < n-1; ++i) {
-        // pick this letter from the embedding
-        input_vector = this->embedding[data->col(i)];
-        // pass this letter to the LSTM for processing
-        initial_state = stacked_lstm.activate(
-            initial_state,
-            input_vector,
-            drop_prob
-        );
-        // classifier takes as input the final hidden layer's activation:
-        logprobs      = decode(
-            input_vector,
-            initial_state
-        );
-        if (graph::backprop_enabled()) {
-            cost += masked_cross_entropy(
-                logprobs,
-                i,
-                start_loss,
-                codelens,
-                (target_data->col(i+1).array() - offset).matrix()
-            );
-        } else {
-            cost += masked_cross_entropy_no_grad(
-                logprobs,
-                i,
-                start_loss,
-                codelens,
-                (target_data->col(i+1).array() - offset).matrix()
-            );
-        }
-    }
-    #endif
-    return cost;
-}
-
-template<typename Z>
 Mat<Z> StackedModel<Z>::decode(
     Mat<Z> input_vector,
     state_type& states,
@@ -253,55 +201,45 @@ Mat<Z> StackedModel<Z>::decode(
 }
 
 template<typename Z>
-Z StackedModel<Z>::masked_predict_cost(
-    Indexing::Index data,
-    Indexing::Index target_data,
-    uint start_loss,
-    Indexing::Index codelens,
-    uint offset,
-    Z drop_prob) {
+Mat<Z> StackedModel<Z>::masked_predict_cost(
+        Mat<int> data,
+        Mat<int> target_data,
+        Mat<Z> mask,
+        Z drop_prob,
+        int temporal_offset,
+        uint softmax_offset) const {
 
-    auto initial_state = this->initial_states();
+    auto state = this->initial_states();
+    mat total_error(1,1);
 
-    mat input_vector;
-    mat memory;
-    mat logprobs;
+    auto n = data.dims(0);
+    assert (temporal_offset < n);
+    assert (target_data.dims(0) >= data.dims(0));
 
-    Z cost = 0.0;
-    #ifdef DONT_COMPILE
-
-    auto n = data->cols();
-    for (uint i = 0; i < n-1; ++i) {
+    for (uint timestep = 0; timestep < n - temporal_offset; ++timestep) {
         // pick this letter from the embedding
-        input_vector = this->embedding[data->col(i)];
+        auto input_vector = this->embedding[data[timestep]];
         // pass this letter to the LSTM for processing
-        initial_state = stacked_lstm.activate(
-            initial_state,
+        state = stacked_lstm.activate(
+            state,
             input_vector,
             drop_prob
         );
         // classifier takes as input the final hidden layer's activation:
-        logprobs = decode(input_vector, initial_state);
-        if (graph::backprop_enabled()) {
-            cost += masked_cross_entropy(
-                logprobs,
-                i,
-                start_loss,
-                codelens,
-                (target_data->col(i+1).array() - offset).matrix()
-            );
-        } else {
-            masked_cross_entropy_no_grad(
-                logprobs,
-                i,
-                start_loss,
-                codelens,
-                (target_data->col(i+1).array() - offset).matrix()
-            );
+        auto logprobs = decode(input_vector, state);
+
+        auto target = target_data[timestep + temporal_offset];
+        if (softmax_offset > 0) {
+            target -= softmax_offset;
         }
+
+        auto errors = MatOps<Z>::softmax_cross_entropy(logprobs, target);
+
+        errors *= mask[timestep + temporal_offset];
+        total_error += errors.sum();
     }
-    #endif
-    return cost;
+
+    return total_error;
 }
 
 // Private method that names the parameters

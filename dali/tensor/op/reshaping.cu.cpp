@@ -21,9 +21,19 @@ namespace matops {
             indices.size(),
             weights<R>::empty());
 
+        auto row_shape = MAT(out).reshape(mshadow::Shape2(out.dims(1), out.dims(0)));
+
+        // for (std::size_t offset = 0; offset < indices.size(); ++offset) {
+        //     MAT(out).col(offset) = MAT(matrix).row(indices[offset]).transpose();
+        // }
+
         for (std::size_t offset = 0; offset < indices.size(); ++offset) {
-            MAT(out).col(offset) = MAT(matrix).row(indices[offset]).transpose();
+            row_shape[offset] = MAT(matrix)[indices[offset]];
         }
+
+        TensorOps::transpose_inplace(row_shape);
+
+
         if (graph::backprop_enabled()) {
             graph::emplace_back([matrix, out, indices]() mutable {
                 auto index_ptr = indices.data();

@@ -72,6 +72,7 @@ bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<R>*>& sts)
 
 template bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<float>*>& sts);
 template bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<double>*>& sts);
+template bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<int>*>& sts);
 
 /******************* SYNCHRONIZED MEMORY ************************************************/
 
@@ -267,4 +268,5 @@ void SynchronizedMemory<R>::copy_data_from(SourceType& data_source) {
 }
 
 template class SynchronizedMemory<float>;
+template class SynchronizedMemory<int>;
 template class SynchronizedMemory<double>;

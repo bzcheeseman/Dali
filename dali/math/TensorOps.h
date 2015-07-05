@@ -2,12 +2,14 @@
 #define DALI_MAT_MATH_TENSOROPS_H
 
 #include <mshadow/tensor.h>
-#include <random>
-#include <functional>
 #include <math.h>
+#include <functional>
 
 #include "dali/math/TensorInternal.h"
-#include "dali/utils/random.h"
+#include "dali/math/MshadowIntegerOps.h"
+#include "dali/math/TensorFunctions.h"
+#include "dali/math/ThrustUtils.h"
+
 
 /**
 Tensor Operations
@@ -58,53 +60,6 @@ Kernels for MShadow
 
 **/
 
-#ifdef DALI_USE_CUDA
-    #define TANH_F tanhf
-    #define LOG_F  logf
-    #define EXP_F  expf
-    #define POW_F  powf
-#else
-    #define TANH_F std::tanh
-    #define LOG_F  std::log
-    #define EXP_F  std::exp
-    #define POW_F  pow
-#endif
-
-#ifdef DALI_USE_CUDA
-    #include <thrust/device_vector.h>
-    #include <thrust/equal.h>
-    #include <thrust/functional.h>
-    #include <thrust/reduce.h>
-    #include <thrust/transform.h>
-    #include <thrust/random.h>
-    #include <thrust/sort.h>
-    #include <thrust/sequence.h>
-    #include <thrust/transform_reduce.h>
-    // contains thrust::max_element & thrust::min_element
-    #include <thrust/extrema.h>
-
-    #define STR(x) __THIS_IS_VERY_ABNOXIOUS(x)
-    #define __THIS_IS_VERY_ABNOXIOUS(tok) #tok
-
-    /* CUDA UTILS START HERE */
-    namespace TensorOps {
-        template<typename R, int ndims>
-        thrust::device_ptr<R> to_thrust(const mshadow::Tensor<mshadow::gpu, ndims, R> tg) {
-            auto dev_ptr = thrust::device_pointer_cast(tg.dptr_);
-            return dev_ptr;
-        }
-
-        template<typename T>
-        struct near_equal {
-            T tol;
-            near_equal(T _tol) : tol(_tol) {}
-            __host__ __device__ bool operator()(const T& lhs, const T& rhs) const {
-                return std::fabs(lhs - rhs) < tol;
-            }
-        };
-    }
-#endif
-
 /* CUDA UTILS END HERE */
 #define DALI_ASSIGN(op, out, expr) if ((op) == OVERWRITE) { out = (expr); } else {  out += (expr);  }
 
@@ -134,6 +89,15 @@ namespace TensorOps {
                                  to_thrust(b),
                                  near_equal<R>(tol));
         }
+
+        // template<int ndims>
+        // bool allclose(const mshadow::Tensor<gpu, ndims, int> a, const mshadow::Tensor<gpu, ndims, int> b, int num_elts, int tol) {
+        //     using namespace thrust::placeholders;
+        //     return thrust::equal(to_thrust(a),
+        //                          to_thrust(a) + num_elts,
+        //                          to_thrust(b),
+        //                          thrust::abs(_1 - _2) < tol );
+        // }
         #endif
         template<int ndims, typename R>
         bool allclose(const mshadow::Tensor<cpu, ndims, R> a, const mshadow::Tensor<cpu, ndims, R> b, int num_elts, R tol) {
@@ -148,7 +112,11 @@ namespace TensorOps {
         #ifdef DALI_USE_CUDA
         template<int ndims, typename R>
         R sum(const mshadow::Tensor<gpu, ndims, R> a, int num_elts) {
-            return thrust::reduce(to_thrust(a), to_thrust(a) + num_elts, 0.0, thrust::plus<R>());
+            return thrust::reduce(
+                to_thrust(a),
+                to_thrust(a) + num_elts,
+                0.0,
+                thrust::plus<R>());
         }
         #endif
 
@@ -172,7 +140,6 @@ namespace TensorOps {
             return std::sqrt(thrust::transform_reduce(to_thrust(a), to_thrust(a) + num_elts, thrust_square<R>(), 0.0, thrust::plus<R>()));
         }
         #endif
-
 
         template <typename T>
         struct thrust_square_reduce {
@@ -576,281 +543,6 @@ namespace TensorOps {
         );
     }
     #endif
-
-    namespace op {
-        #define EPS 1e-9
-
-        template<typename R>
-        struct square {
-            MSHADOW_XINLINE static R Map(const R& a) {
-                return a * a;
-            }
-        };
-
-        template<typename R>
-        struct sqrt_f {
-            MSHADOW_XINLINE static R Map(const R& a) {
-                return sqrt(a);
-            }
-        };
-
-        template<typename R>
-        struct inv {
-            MSHADOW_XINLINE static R Map(const R& a) {
-                return ((R)1.0) / a;
-            }
-        };
-
-        template<typename R>
-        struct sigmoid {
-            MSHADOW_XINLINE static R Map(const R& a) {
-                return 1.0 / (1.0 + EXP_F(-a));
-            }
-        };
-
-        template<typename R>
-        struct log {
-            MSHADOW_XINLINE static R Map(const R& a) {
-                return LOG_F(a);
-            }
-        };
-
-        template<typename R>
-        struct exp {
-            MSHADOW_XINLINE static R Map(const R& a) {
-                return EXP_F(a);
-            }
-        };
-
-        template<typename R>
-        struct div_grad {
-            MSHADOW_XINLINE static R Map(const R& a, const R& b) {
-                return a / (b * b);
-            }
-        };
-
-        template<typename R>
-        struct dsigmoid {
-            MSHADOW_XINLINE static R Map(const R& a) {
-                return a * (((R)1.0) - a);
-            }
-        };
-
-        template<typename R>
-        struct tanh {
-            MSHADOW_XINLINE static R Map(const R& a) {
-                return TANH_F(a);
-            }
-        };
-
-        template<typename R>
-        struct dtanh {
-            MSHADOW_XINLINE static R Map(const R& a) {
-                return 1.0 - a * a;
-            }
-        };
-
-        template<typename R>
-        struct power {
-            MSHADOW_XINLINE static R Map(const R& a, const R& b) {
-                return POW_F(a, b);
-            }
-        };
-
-        template<typename R>
-        struct abs {
-            MSHADOW_XINLINE static R Map(const R& a) {
-                return std::abs(a);
-            }
-        };
-
-        template<typename R>
-        struct log_or_zero {
-            MSHADOW_XINLINE static R Map(const R& a) {
-                return a > 0 ? LOG_F(a) : 0;
-            }
-        };
-
-        template<typename R>
-        struct sign {
-            MSHADOW_XINLINE static R Map(const R& x) {
-                return x > 0.0 ? 1.0 : -1.0;
-            }
-        };
-
-        template<typename R>
-        struct threshold {
-            MSHADOW_XINLINE static R Map(const R& a, const R& b) {
-                return a < b ? 1.0 : 0.0;
-            }
-        };
-
-        template<typename R>
-        struct max_scalar {
-            MSHADOW_XINLINE static R Map(const R& x, const R& y) {
-                return x > y ? x : y;
-            }
-        };
-
-        template<typename R>
-        struct  max_scalar_mask {
-            MSHADOW_XINLINE static R Map(const R& m, const R& lower_bound) {
-                return (m >= lower_bound) ? 1.0 : 0.0;
-            }
-        };
-
-        template<typename R>
-        struct  steep_sigmoid {
-            MSHADOW_XINLINE static R Map(const R& x, const R& aggressiveness) {
-                return 1.0 / (1.0 + EXP_F( - aggressiveness * x));
-            }
-        };
-
-        template<typename R>
-        struct  steep_sigmoid_backward {
-            MSHADOW_XINLINE static R Map(const R& x, const R& aggressiveness) {
-                return aggressiveness * (x - x * x);
-            }
-        };
-
-        template<typename R>
-        struct relu {
-            MSHADOW_XINLINE static R Map(const R& x) {
-                return x > 0.0 ? x : 0.0;
-            }
-        };
-        template<typename R>
-        struct relu_backward {
-            MSHADOW_XINLINE static R Map(const R& x) {
-                return x > 0.0 ? 1.0 : 0.0;
-            }
-        };
-
-        template<typename R>
-        struct clip {
-            MSHADOW_XINLINE static R Map(const R& x, const R& clipping_val) {
-                if (x > clipping_val) {
-                    return clipping_val;
-                } else if (x < -clipping_val) {
-                    return -clipping_val;
-                } else {
-                    return x;
-                }
-            }
-        };
-
-        template<typename R>
-        struct binary_cross_entropy {
-            MSHADOW_XINLINE static R Map(const R& x, const R& t ) {
-                R distance_from1 =        t  * LOG_F(x        + EPS);
-                R distance_from0 = (1.0 - t) * LOG_F(1.00000001 - x);
-                return -(distance_from1 + distance_from0);
-            }
-        };
-
-        template<typename R>
-        struct binary_cross_entropy_grad {
-            MSHADOW_XINLINE static R Map(const R& x, const R& t ) {
-                R numerator   = t - x;
-                R denominator = (x * (x - 1.0) + EPS);
-                return numerator / denominator;
-            }
-        };
-    }
-
-    namespace random {
-        #ifdef DALI_USE_CUDA
-        // from thrust Monte Carlo experiment
-        // here: https://github.com/thrust/thrust/blob/master/examples/monte_carlo.cu
-        template<typename R>
-        struct hashable_operator {
-            __host__ __device__
-            static unsigned int hash_operator(unsigned int a) {
-                a = (a+0x7ed55d16) + (a<<12);
-                a = (a^0xc761c23c) ^ (a>>19);
-                a = (a+0x165667b1) + (a<<5);
-                a = (a+0xd3a2646c) ^ (a<<9);
-                a = (a+0xfd7046c5) + (a<<3);
-                a = (a^0xb55a4f09) ^ (a>>16);
-                return a;
-            }
-        };
-
-        template<typename R>
-        struct uniform_operator : public thrust::unary_function<unsigned int,R>,
-                                         hashable_operator<R> {
-            const R lower;
-            const R upper;
-            const unsigned int seed;
-            uniform_operator(R _lower, R _upper, unsigned int _seed) : lower(_lower), upper(_upper), seed(_seed) {}
-            __host__ __device__
-            R operator () (unsigned int thread_id) {
-                unsigned int local_seed = seed + this->hash_operator(thread_id);
-                thrust::default_random_engine rng(local_seed);
-                thrust::uniform_real_distribution<R> dist(lower, upper);
-                return dist(rng);
-            }
-        };
-
-        template<typename R>
-        struct gaussian_operator : public thrust::unary_function<unsigned int,R>,
-                                          hashable_operator<R> {
-            const R mean;
-            const R std;
-            const unsigned int seed;
-            gaussian_operator(R _mean, R _std, unsigned int _seed) : mean(_mean), std(_std), seed(_seed) {}
-            __host__ __device__
-            R operator () (unsigned int thread_id) {
-                unsigned int local_seed = seed + this->hash_operator(thread_id);
-                thrust::default_random_engine rng(local_seed);
-                thrust::normal_distribution<R> dist(mean, std);
-                return dist(rng);
-            }
-        };
-
-        template<int ndims, typename R, template <typename,int,typename> class tensor_t>
-        void uniform(tensor_t<mshadow::gpu, ndims, R> A, R lower, R upper) {
-            // about 63x faster than SampleUniform for gpu
-            thrust::transform(
-                    thrust::make_counting_iterator(0),
-                    thrust::make_counting_iterator(0) + A.shape_.Size(),
-                    to_thrust(A),
-                    uniform_operator<R>(lower, upper, utils::randinteger<unsigned int>(0,999999)));
-        }
-        template<int ndims, typename R, template <typename,int,typename> class tensor_t>
-        void gaussian(tensor_t<mshadow::gpu, ndims, R> A, R mean, R std) {
-            thrust::transform(
-                    thrust::make_counting_iterator(0),
-                    thrust::make_counting_iterator(0) + A.shape_.Size(),
-                    to_thrust(A),
-                    gaussian_operator<R>(mean, std, utils::randinteger<unsigned int>(0,999999)));
-        }
-        #endif
-
-        template<int ndims, typename R, template <typename,int,typename> class tensor_t>
-        void uniform(tensor_t<mshadow::cpu, ndims, R> t, R lower, R upper) {
-            mshadow::Random<mshadow::cpu, R> generator(utils::randint(0,999999));
-            generator.SampleUniform(&t, lower, upper);
-        }
-
-        template<int ndims, typename R, template <typename,int,typename> class tensor_t>
-        void gaussian(tensor_t<mshadow::cpu, ndims, R> t, R mean, R std) {
-            mshadow::Random<mshadow::cpu, R> generator(utils::randint(0,999999));
-            generator.SampleGaussian(&t, mean, std);
-        }
-
-        template<typename Device, int ndims, typename R, template <typename,int,typename> class tensor_t>
-        void bernoulli(tensor_t<Device, ndims, R> t, R prob) {
-            random::uniform(t, (R)0.0, (R)1.0);
-            t = mshadow::expr::F<op::threshold<R>>(t, prob);
-        }
-
-        template<typename Device, int ndims, typename R, template <typename,int,typename> class tensor_t>
-        void bernoulli_normalized(tensor_t<Device, ndims, R> t, R prob) {
-            random::uniform(t, (R)0.0, (R)1.0);
-            t = mshadow::expr::F<op::threshold<R>>(t, prob) * (1.0 / prob);
-        }
-    };
 };
 
 #endif

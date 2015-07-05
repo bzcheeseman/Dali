@@ -269,5 +269,6 @@ namespace matops {
 
     template class Convolution<float>;
     template class Convolution<double>;
+    template class Convolution<int>;
 
 }

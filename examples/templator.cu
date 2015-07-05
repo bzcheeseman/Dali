@@ -2,7 +2,7 @@
 #include <vector>
 #include "mshadow/tensor.h"
 #include "dali/tensor/Mat.h"
-#include "dali/math/ThrustSoftmaxTranspose.h"
+#include "dali/math/ThrustSoftmax.h"
 
 #include <thrust/device_vector.h>
 #include <thrust/equal.h>
@@ -33,8 +33,7 @@ typedef float R;
 
 int main() {
     dali_init();
-    Mat<R> A(3, 4, weights<R>::uniform(10.0));
-    A.w().print();
-    TensorOps::softmax(A.dw().mutable_gpu_data(), A.w().gpu_data());
-    A.dw().print();
+
+    auto bob = Mat<int>(3, 2, weights<int>::uniform(10, 20));
+    bob.print();
 }

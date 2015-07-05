@@ -395,4 +395,5 @@ namespace matops {
 
     template class Binary<float>;
     template class Binary<double>;
+    template class Binary<int>;
 }

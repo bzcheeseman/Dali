@@ -235,6 +235,7 @@ R* TensorInternal<R,dimension>::data() {
 
 DALI_TENSOR_INTERNAL_PRINT(float)
 DALI_TENSOR_INTERNAL_PRINT(double)
+DALI_TENSOR_INTERNAL_PRINT(int)
 
 template<typename R, int dimension>
 void TensorInternal<R,dimension>::print(int indent) const {
@@ -474,11 +475,14 @@ void TensorInternal<R, dimension>::resize(mshadow::Shape<dimension> newshape, R 
 
 DALI_TENSOR_INTERNAL_RESIZE(float)
 DALI_TENSOR_INTERNAL_RESIZE(double)
+DALI_TENSOR_INTERNAL_RESIZE(int)
 
 template class TensorInternal<float, 1>;
 template class TensorInternal<double,1>;
+template class TensorInternal<int,1>;
 template class TensorInternal<float, 2>;
 template class TensorInternal<double,2>;
+template class TensorInternal<int,2>;
 // template class TensorInternal<float, 3>;
 // template class TensorInternal<double,3>;
 // template class TensorInternal<float, 4>;

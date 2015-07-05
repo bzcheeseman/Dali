@@ -248,5 +248,6 @@ namespace matops {
     }
     template class Reshaping<float>;
     template class Reshaping<double>;
+    template class Reshaping<int>;
 
 }

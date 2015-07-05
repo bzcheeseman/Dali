@@ -232,20 +232,32 @@ Mat<R> Mat<R>::eltmul(R alpha) const {
     return MatOps<R>::eltmul(*this, alpha);
 }
 
-template<typename R>
-Mat<R> Mat<R>::pow(R power) const {
-    return MatOps<R>::pow(*this, power);
-}
+#define MAT_OP_SPECIALIZATION(fname, opname, R, ScalarType) \
+        template<>                                          \
+        template<>                                          \
+        Mat<R> Mat<R>::fname(ScalarType power) const {      \
+            return MatOps<R>::opname(*this, (R)power);      \
+        }
+
+#define MAT_OP_SPECIALIZATIONS(fname, opname)              \
+        MAT_OP_SPECIALIZATION(fname,opname,float,float);   \
+        MAT_OP_SPECIALIZATION(fname,opname,float,double);  \
+        MAT_OP_SPECIALIZATION(fname,opname,float,int);     \
+        MAT_OP_SPECIALIZATION(fname,opname,double,float);  \
+        MAT_OP_SPECIALIZATION(fname,opname,double,double); \
+        MAT_OP_SPECIALIZATION(fname,opname,double,int);    \
+        MAT_OP_SPECIALIZATION(fname,opname,int,float);     \
+        MAT_OP_SPECIALIZATION(fname,opname,int,double);    \
+        MAT_OP_SPECIALIZATION(fname,opname,int,int);
+
+MAT_OP_SPECIALIZATIONS(pow,pow);
+MAT_OP_SPECIALIZATIONS(operator^,pow);
 
 template<typename R>
 Mat<R> Mat<R>::steep_sigmoid(R aggressiveness) const {
     return MatOps<R>::steep_sigmoid(*this, aggressiveness);
 }
 
-template<typename R>
-Mat<R> Mat<R>::pow(int power) const {
-    return MatOps<R>::pow(*this, (R) power);
-}
 
 #define MAT_BINARY_OP( opname ) \
     template<typename R> \
@@ -533,19 +545,10 @@ Mat<R>& Mat<R>::operator/=(R other) {
 }
 
 template<typename R>
-Mat<R> Mat<R>::operator^(R other) const {
-    return MatOps<R>::pow(*this, other);
-}
-
-template<typename R>
 Mat<R> Mat<R>::operator^(Mat<R> other) const {
     return MatOps<R>::pow(*this, other);
 }
 
-template<typename R>
-Mat<R> Mat<R>::operator^(int other) const {
-    return MatOps<R>::pow(*this, (R) other);
-}
 
 template<typename R>
 Mat<R> Mat<R>::zeros_like(Mat<R> other) {
@@ -637,8 +640,9 @@ std::ostream& operator<<(std::ostream& strm, const Mat<R>& a) {
     }
 }
 
-template std::ostream& operator<< <double>(std::ostream& strm, const Mat<double>& a);
 template std::ostream& operator<< <float>(std::ostream& strm, const Mat<float>& a);
+template std::ostream& operator<< <double>(std::ostream& strm, const Mat<double>& a);
+template std::ostream& operator<< <int>(std::ostream& strm, const Mat<int>& a);
 
 template <typename R>
 std::size_t std::hash<Mat<R>>::operator()(const Mat<R>& k) const {
@@ -649,6 +653,7 @@ std::size_t std::hash<Mat<R>>::operator()(const Mat<R>& k) const {
 
 template std::size_t std::hash<Mat<float>>::operator()(const Mat<float>& k)   const;
 template std::size_t std::hash<Mat<double>>::operator()(const Mat<double>& k) const;
+template std::size_t std::hash<Mat<int>>::operator()(const Mat<int>& k) const;
 
 template <typename R>
 bool operator!=(const Mat<R>& A, const Mat<R>& B) {
@@ -766,3 +771,4 @@ template class weights<float>;
 template class weights<double>;
 template class Mat<float>;
 template class Mat<double>;
+template class Mat<int>;

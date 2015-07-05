@@ -113,5 +113,6 @@ namespace matops {
 
     template class Dropout<float>;
     template class Dropout<double>;
+    template class Dropout<int>;
 
 }

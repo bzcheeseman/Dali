@@ -193,4 +193,5 @@ namespace matops {
 
     template class Elementwise<float>;
     template class Elementwise<double>;
+    template class Elementwise<int>;
 }

@@ -1,7 +1,7 @@
 #include "dali/tensor/Weights.h"
 
-#include "dali/math/TensorOps.h"
 #include "dali/math/TensorInternal.h"
+#include "dali/math/TensorRandom.h"
 
 template<typename R>
 typename weights<R>::initializer_t weights<R>::empty() {
@@ -108,3 +108,4 @@ typename weights<R>::initializer_t weights<R>::svd(initializer_t preinitializer)
 
 template struct weights<float>;
 template struct weights<double>;
+template struct weights<int>;

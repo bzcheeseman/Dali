@@ -110,5 +110,6 @@ namespace matops {
 
     template class SolverUpdates<float>;
     template class SolverUpdates<double>;
+    template class SolverUpdates<int>;
 
 }

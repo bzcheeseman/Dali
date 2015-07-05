@@ -181,8 +181,8 @@ class Mat {
         Mat<R> relu() const;
         Mat<R> mul(Mat<R>) const;
         Mat<R> dot(Mat<R>) const;
-        Mat<R> pow(R) const;
-        Mat<R> pow(int) const;
+        template<typename ScalarType>
+        Mat<R> pow(ScalarType) const;
         Mat<R> sqrt() const;
         Mat<R> elt_inv() const;
         int argmax() const;
@@ -222,9 +222,11 @@ class Mat {
         Mat<R>& operator/=(Mat<R>);
         Mat<R>& operator/=(R);
 
-        Mat<R> operator^(R) const;
+        template<typename ScalarType>
+        Mat<R> operator^(ScalarType) const;
+
         Mat<R> operator^(Mat<R>) const;
-        Mat<R> operator^(int) const;
+
 
         // Plucking rows and columns:
         Mat<R> operator[](int) const;

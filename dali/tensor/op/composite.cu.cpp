@@ -130,4 +130,5 @@ namespace matops {
 
     template class Composite<float>;
     template class Composite<double>;
+    template class Composite<int>;
 }

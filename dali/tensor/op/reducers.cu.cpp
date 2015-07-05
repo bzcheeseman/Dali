@@ -48,5 +48,6 @@ namespace matops {
     }
     template class Reducers<float>;
     template class Reducers<double>;
+    template class Reducers<int>;
 
 }

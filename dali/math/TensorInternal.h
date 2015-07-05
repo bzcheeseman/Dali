@@ -192,8 +192,10 @@ class TensorInternal {
 
 template <> void TensorInternal<float, 1>::print(int indent) const;
 template <> void TensorInternal<double, 1>::print(int indent) const;
+template <> void TensorInternal<int, 1>::print(int indent) const;
 template <> void TensorInternal<float, 1>::resize(mshadow::Shape<1> newshape, float filler);
 template <> void TensorInternal<double, 1>::resize(mshadow::Shape<1> newshape, double filler);
+template <> void TensorInternal<int, 1>::resize(mshadow::Shape<1> newshape, int filler);
 
 
 

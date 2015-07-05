@@ -235,6 +235,7 @@ namespace matops {
     }
     template class Cost<float>;
     template class Cost<double>;
+    template class Cost<int>;
 
 
 }

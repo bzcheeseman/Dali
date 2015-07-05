@@ -118,5 +118,6 @@ namespace matops {
 
     template class Other<float>;
     template class Other<double>;
+    template class Other<int>;
 
 }

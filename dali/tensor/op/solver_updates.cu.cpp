@@ -48,12 +48,10 @@ namespace matops {
         DEBUG_ASSERT_NOT_NAN(MAT(param));
     }
 
-
     template<typename R>
     void SolverUpdates<R>::rmsprop_update(Mat<R> param, TensorInternal<R,1>& cache,
             R decay_rate, R step_size,  R smooth_eps) {
-        cache *= decay_rate;
-        cache += ((R)1.0 - decay_rate) * F<op::square<R>>(GRAD(param).ravel().wrapper());
+        cache = (cache * decay_rate) + ((R)1.0 - decay_rate) * F<op::square<R>>(GRAD(param).ravel().wrapper());
         // ELOG("graD");
         // GRAD(param).print();
         // update gradient using RMSprop rule
@@ -103,14 +101,9 @@ namespace matops {
         assert(lr_t == lr_t);
 
         // update m acculumulator
-
-        m *= ((R)1.0 - b1);
-        m += b1 * GRAD(param).ravel().wrapper();
-
-
+        m = m * (R)(1.0 - b1) + b1 * GRAD(param).ravel().wrapper();
         // update v acculumulator
-        v *= ((R)1.0 - b2);
-        v += b2 * F<op::square<R>>(GRAD(param).ravel().wrapper());
+        v = (v * (R)(1.0 - b2)) + b2 * F<op::square<R>>(GRAD(param).ravel().wrapper());
 
         GRAD(param).ravel() = m.wrapper() / (F<op::sqrt_f<R>>(v.wrapper()) + smooth_eps);
 

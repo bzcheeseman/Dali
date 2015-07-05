@@ -94,13 +94,14 @@ bool SynchronizedMemory<R>::prefers_gpu()  const {
 template<typename R>
 SynchronizedMemory<R>::SynchronizedMemory(int _total_memory,
                                           int _inner_dimension,
-                                          Device _preferred_device) :
+                                          Device _preferred_device,
+                                          bool _clear_on_allocation) :
 #ifdef DALI_USE_CUDA
         gpu_fresh(false),
         allocated_gpu(false),
         gpu_ptr(NULL),
 #endif
-        clear_on_allocation(false),
+        clear_on_allocation(_clear_on_allocation),
         cpu_fresh(false),
         allocated_cpu(false),
         cpu_ptr(NULL),
@@ -112,8 +113,7 @@ SynchronizedMemory<R>::SynchronizedMemory(int _total_memory,
 
 template<typename R>
 SynchronizedMemory<R>::SynchronizedMemory(const SynchronizedMemory& other) :
-        SynchronizedMemory(other.total_memory, other.inner_dimension, other.preferred_device),
-        clear_on_allocation(other.clear_on_allocation) {
+        SynchronizedMemory(other.total_memory, other.inner_dimension, other.preferred_device, other.clear_on_allocation) {
     if (other.cpu_fresh) {
         const auto& data_source = other.dummy_cpu();
         copy_data_from(data_source);

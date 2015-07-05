@@ -29,7 +29,6 @@ namespace TensorOps {
         }
     };
 
-
     namespace op {
         template<typename R>
         struct square {

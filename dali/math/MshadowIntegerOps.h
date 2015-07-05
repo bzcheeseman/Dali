@@ -14,7 +14,7 @@ struct DotEngine<SV, xpu, 2, 2, 2, transpose_left, transpose_right, int> {
                                                     const Tensor<xpu, 2, int> &lhs,
                                                     const Tensor<xpu, 2, int> &rhs,
                                                     int scale) {
-        throw std::runtime_error("Not implemented for integers :(");
+        throw std::runtime_error("Dot product is not implemented for integers.");
     }
 };
 template<typename SV, typename xpu, bool transpose_right>
@@ -23,7 +23,7 @@ struct DotEngine<SV, xpu, 1, 1, 2, false, transpose_right, int> {
                                                     const Tensor<xpu, 1, int> &lhs,
                                                     const Tensor<xpu, 2, int> &rhs,
                                                     int scale) {
-        throw std::runtime_error("Not implemented for integers :(");
+        throw std::runtime_error("Dot product is not implemented for integers.");
     }
 };
 template<typename SV, typename xpu>
@@ -32,7 +32,7 @@ struct DotEngine<SV, xpu, 2, 1, 1, true, false, int> {
                                                     const Tensor<xpu, 1, int> &lhs,
                                                     const Tensor<xpu, 1, int> &rhs,
                                                     int scale) {
-        throw std::runtime_error("Not implemented for integers :(");
+        throw std::runtime_error("Dot product is not implemented for integers.");
     }
 };
 

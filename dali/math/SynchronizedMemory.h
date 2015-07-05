@@ -14,10 +14,10 @@ Synchronized Memory
 -------------------
 
 SynchronizedMemory wraps two tensors for GPU and CPU and
-remembers the freshness of each version.
-This class helps minimize the transfers between GPU and CPU
-by remembering if the master copy is available on either device
-or if it should be copied over.
+remembers how fresh each version is.
+This class minimizes transfers between GPU and CPU by keeping
+track of which device the master copy is on, and if an inter-
+device copy is necessary.
 */
 
 void dali_init();
@@ -28,12 +28,18 @@ enum Device {
 
 template<typename R> class SynchronizedMemory;
 
-// Test where an operation should happen
-// Uses poor man's heuristics such as
-// where memory is located
-// In the future this method could also
-// use the size of the memory and the amount
-// that should be copied to make smarter decisions
+/*
+should_compute_on_gpu
+---------------------
+
+Test where an operation should happen
+Uses poor man's heuristics such as
+where memory is located
+
+Note: In the future this method could also
+use the size of the memory and the amount
+that should be copied to make smarter decisions
+*/
 template<typename R>
 bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<R>*>& sts);
 
@@ -81,7 +87,8 @@ class SynchronizedMemory {
 
         SynchronizedMemory(int total_size,
                            int inner_dimension = 1,
-                           Device preferred_device = default_preferred_device);
+                           Device preferred_device = default_preferred_device,
+                           bool clear_on_allocation = false);
         // inherits preferred device and copies memory to it.
         SynchronizedMemory(const SynchronizedMemory& other);
         ~SynchronizedMemory();

@@ -2,7 +2,7 @@
 #define DALI_MAT_MATH_WEIGHTS_H
 
 #include <functional>
-#include "dali/utils/core_utils.h"
+#include "dali/utils/assert2.h"
 
 template<typename R, int dimension>
 class TensorInternal;

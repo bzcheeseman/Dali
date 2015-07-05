@@ -11,7 +11,7 @@ typename weights<R>::initializer_t weights<R>::empty() {
 template<typename R>
 typename weights<R>::initializer_t weights<R>::zeros() {
     return [](sync_t matrix){
-        matrix = (R)0.0;
+        matrix.clear();
     };
 };
 
@@ -93,6 +93,8 @@ typename weights<R>::initializer_t weights<R>::gaussian(R std) {
 template<typename R>
 typename weights<R>::initializer_t weights<R>::svd(initializer_t preinitializer) {
     return [preinitializer](sync_t matrix) {
+        ASSERT2(false, "Not implemented yet");
+        /* Eigen implementation */
         // assert(matrix.dims().size() == 2);
         // preinitializer(matrix);
         // auto svd = GET_MAT(matrix).jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV);

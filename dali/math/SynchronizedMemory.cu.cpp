@@ -175,6 +175,43 @@ mshadow::Tensor<mshadow::cpu, 2, R> SynchronizedMemory<R>::dummy_cpu() const {
             total_memory / inner_dimension, inner_dimension));
 }
 
+template<typename R>
+void SynchronizedMemory<R>::clear() {
+    clear_on_allocation = true;
+    #ifdef DALI_USE_CUDA
+    if (preferred_device == DEVICE_GPU) {
+        allocate_gpu();
+        dummy_gpu() = (R)0.0;
+        this->cpu_fresh = false;
+        this->gpu_fresh = true;
+        return;
+    }
+    #endif
+    if (preferred_device == DEVICE_CPU) {
+        allocate_cpu();
+        dummy_cpu() = (R)0.0;
+        this->cpu_fresh = true;
+        #ifdef DALI_USE_CUDA
+            this->gpu_fresh = false;
+        #endif
+    }
+}
+
+template<typename R>
+void SynchronizedMemory<R>::lazy_clear() {
+    clear_on_allocation = true;
+    #ifdef DALI_USE_CUDA
+        if (!allocated_cpu && !allocated_cpu) {
+            return;
+        }
+    #else
+        if (!allocated_cpu) {
+            return;
+        }
+    #endif
+    clear();
+}
+
 #ifdef DALI_USE_CUDA
     template<typename R>
     bool SynchronizedMemory<R>::allocate_gpu() const {

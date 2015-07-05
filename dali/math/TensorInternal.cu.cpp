@@ -248,7 +248,7 @@ void TensorInternal<R,dimension>::print(int indent) const {
 
 template<typename R, int dimension>
 void TensorInternal<R,dimension>::clear() {
-    *this = (R) 0.0;
+    memory_.lazy_clear();
 }
 
 template<typename R, int dimension>

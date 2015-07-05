@@ -59,6 +59,11 @@ class SynchronizedMemory {
         // whether memory must be filled with zeros on allocation
         // defaults to false
         bool clear_on_allocation;
+        // fill memory with zeros if it's been allocated, else
+        // ask for memory to be cleared on allocation
+        void lazy_clear();
+        // immediately clear the memory and allocate if necessary
+        void clear();
 
         mutable bool allocated_cpu;
         mutable bool cpu_fresh;

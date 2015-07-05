@@ -1,4 +1,4 @@
-/*
+
 #include <vector>
 #include <gtest/gtest.h>
 
@@ -12,7 +12,7 @@ using std::string;
 using std::vector;
 
 
-TEST(Glove, load) {
+TEST(Glove, DISABLED_load) {
     auto embedding = glove::load<double>( STR(DALI_DATA_DIR) "/glove/test_data.txt");
     ASSERT_EQ(std::get<1>(embedding).size(), 21);
     ASSERT_EQ(std::get<0>(embedding).dims(0), 21);
@@ -120,7 +120,7 @@ TEST(paraphrase, load) {
     auto char_minibatches = paraphrase::convert_to_indexed_minibatches(char_vocab, paraphrase_data, 2);
 
     ASSERT_EQ(char_minibatches.size(), 2);
-    auto sentence = char_vocab.decode(std::get<0>(char_minibatches[0][0]));
+    auto sentence = char_vocab.decode(&std::get<0>(char_minibatches[0][0]));
     ASSERT_EQ(sentence, std::get<0>(paraphrase_data[0]));
 }
 
@@ -370,7 +370,7 @@ TEST(babi, encode) {
         auto& encoded_dataset = encoded_datasets[i];
         ASSERT_EQ(dataset.facts.size(), encoded_dataset.facts.size());
         for (int fidx = 0; fidx < dataset.facts.size(); ++fidx) {
-            auto decoded_fact = vocab.decode(encoded_dataset.facts[fidx]);
+            auto decoded_fact = vocab.decode(&encoded_dataset.facts[fidx]);
             EXPECT_TRUE(VECTORS_EQUAL(decoded_fact, dataset.facts[fidx]));
         };
 
@@ -384,10 +384,10 @@ TEST(babi, encode) {
 
         ASSERT_EQ(dataset.answers.size(), encoded_dataset.answers.size());
         for (int aidx = 0; aidx < dataset.answers.size(); ++aidx) {
-            auto decoded_answer = vocab.decode(encoded_dataset.answers[aidx]);
+            auto decoded_answer = vocab.decode(&encoded_dataset.answers[aidx]);
             EXPECT_TRUE(VECTORS_EQUAL(dataset.answers[aidx], decoded_answer));
         };
     }
 
 }
-*/
+

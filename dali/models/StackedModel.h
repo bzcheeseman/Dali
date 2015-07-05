@@ -238,7 +238,6 @@ class StackedModel : public RecurrentEmbeddingModel<Z>, public ReconstructModel 
         **/
         mat decode(mat input_vector, state_type& states, Z drop_prob = 0.0) const;
 
-
         /**
         Decoder initialization
         ----------------------

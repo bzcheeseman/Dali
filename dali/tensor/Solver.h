@@ -24,7 +24,7 @@ namespace Solver {
         TYPE_ADAM
     };
 
-    const double SMOOTH_DEFAULT = 1e-9;
+    const double SMOOTH_DEFAULT = 1e-4;
 
     template<typename R> class AbstractSolver {
         public:

@@ -2,6 +2,7 @@
 #include "dali/utils.h"
 #include "dali/models/StackedModel.h"
 #include "dali/data_processing/Arithmetic.h"
+#include "dali/execution/BeamSearch.h"
 
 using std::string;
 using std::vector;
@@ -22,6 +23,58 @@ DEFINE_int32(num_examples,      1500, "How much suffering to impose on our frien
 DEFINE_int32(max_number_in_expression, 100000, "Maximum number used in mathematical expressions.");
 
 ThreadPool* pool;
+
+typedef std::tuple<Mat<REAL_t>, typename StackedModel<REAL_t>::state_type> beam_search_state_t;
+typedef vector<beam_search::BeamSearchResult<REAL_t, beam_search_state_t>> beam_search_results_t;
+
+beam_search_results_t arithmetic_beam_search(
+        const StackedModel<REAL_t>& model, Indexing::Index indices) {
+    graph::NoBackprop nb;
+    const uint beam_width = 5;
+    const int max_len    = 20;
+
+    auto state = model.initial_states();
+    int last_index = 0;
+    for (auto index : indices) {
+        auto input_vector = model.embedding[(int)index];
+        state = model.stacked_lstm.activate(
+            state,
+            input_vector
+        );
+        last_index = index;
+    }
+
+    // state comprises of last input embedding and lstm state
+    beam_search_state_t initial_state = make_tuple(model.embedding[last_index], state);
+
+    auto candidate_scores = [&model](beam_search_state_t state) {
+        auto& input_vector = std::get<0>(state);
+        auto& lstm_state   = std::get<1>(state);
+        return MatOps<REAL_t>::softmax(model.decode(input_vector, lstm_state)).log();
+    };
+
+    auto make_choice = [&model](beam_search_state_t state, uint candidate) {
+        auto input_vector = model.embedding[candidate];
+        auto lstm_state = model.stacked_lstm.activate(
+            std::get<1>(state),
+            input_vector
+        );
+        return make_tuple(input_vector, lstm_state);
+    };
+
+    auto beams = beam_search::beam_search<REAL_t, beam_search_state_t>(
+        initial_state,
+        beam_width,
+        candidate_scores,
+        make_choice,
+        arithmetic::vocabulary.word2index.at(utils::end_symbol),
+        max_len);
+
+    return beams;
+}
+
+
+
 
 int main (int argc,  char* argv[]) {
     GFLAGS_NAMESPACE::SetUsageMessage(
@@ -47,18 +100,6 @@ int main (int argc,  char* argv[]) {
          arithmetic::vocabulary.size(),
          false,
          false);
-
-    auto pred_fun = [&model](vector<uint>& example) {
-        graph::NoBackprop nb;
-        auto beams = beam_search::beam_search(model,
-            example,
-            20,
-            0,  // offset symbols that are predicted before being refed (no = 0)
-            5,
-            arithmetic::vocabulary.word2index.at(utils::end_symbol)
-        );
-        return std::get<0>(beams[0]);
-    };
 
     auto params = model.parameters();
     auto solver = Solver::construct(FLAGS_solver, params, (REAL_t)FLAGS_learning_rate, (REAL_t)FLAGS_reg);
@@ -128,27 +169,28 @@ int main (int argc,  char* argv[]) {
             // </training>
             throttled1.maybe_run(seconds(2), [&]() {
                 auto random_example_index = utils::randint(0, examples.size() -1);
-                auto beams = beam_search::beam_search(model,
-                    examples[random_example_index].first,
-                    20,
-                    0,  // offset symbols that are predicted before being refed (no = 0)
-                    5,
-                    arithmetic::vocabulary.word2index.at(utils::end_symbol) // when to stop the sequence
-                );
 
-                std::cout << arithmetic::vocabulary.decode(examples[random_example_index].first) << std::endl;
+                std::cout << arithmetic::vocabulary.decode(&examples[random_example_index].first) << std::endl;
+
+                auto beams = arithmetic_beam_search(model, &examples[random_example_index].first);
+
 
                 for (const auto& beam : beams) {
-                    std::cout << "= (" << std::setprecision( 3 ) << std::get<1>(beam) << ") ";
-                    for (const auto& word : std::get<0>(beam)) {
+                    std::cout << "= (" << std::setprecision( 3 ) << beam.score << ") ";
+                    for (const auto& word : beam.solution) {
                         if (word != arithmetic::vocabulary.word2index.at(utils::end_symbol))
                             std::cout << arithmetic::vocabulary.index2word.at(word);
                     }
                     std::cout << std::endl;
                 }
+
             });
             throttled2.maybe_run(seconds(30), [&]() {
-                auto correct = arithmetic::average_recall(examples, pred_fun, FLAGS_j);
+                auto predict = [&model](const vector<uint>& example) {
+                    vector<uint> cpy(example);
+                    return arithmetic_beam_search(model, &cpy)[0].solution;
+                };
+                auto correct = arithmetic::average_recall(examples, predict, FLAGS_j);
                 std::cout << "epoch: " << epoch << " Percent correct = " << std::setprecision( 3 )  << 100.0 * correct << "%" << std::endl;
             });
         }

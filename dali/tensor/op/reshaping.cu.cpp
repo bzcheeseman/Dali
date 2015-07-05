@@ -199,9 +199,10 @@ namespace matops {
             Mat<R> matrix,
             int row) {
         ASSERT2(
-            row >= 0 && row < matrix.dims(0),
-            utils::MS() << "Row must be positive and less than number of rows in matrix ("
-                        << matrix.dims(0) << ")."
+            0 <= row && row < matrix.dims(0),
+            utils::MS() << "Row (" << row
+                    << ") must be positive and less than number of rows in matrix ("
+                    << matrix.dims(0) << ")."
         );
         // performs a copy
         Mat<R> out(matrix.dims(1), 1, weights<R>::empty());

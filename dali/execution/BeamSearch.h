@@ -62,17 +62,16 @@ namespace beam_search {
 
     };
 
-
     // attempts to find maximum sum of scores candidate.
     template<typename REAL_t, typename state_t>
     std::vector<BeamSearchResult<REAL_t,state_t>>
-    beam_search2(state_t initial_state,
-                 uint beam_width,
-                 std::function<Mat<REAL_t>(state_t)> candidate_scores,
-                 std::function<state_t(state_t, uint)> make_choice,
-                 uint end_symbol,
-                 int max_solution_length,
-                 std::vector<uint> forbidden_symbols=std::vector<uint>()) {
+    beam_search(state_t initial_state,
+                uint beam_width,
+                std::function<Mat<REAL_t>(state_t)> candidate_scores,
+                std::function<state_t(state_t, uint)> make_choice,
+                uint end_symbol,
+                int max_solution_length,
+                std::vector<uint> forbidden_symbols=std::vector<uint>()) {
         utils::assert2(beam_width > 0, "Beam width must be strictly positive.");
         typedef BeamSearchResult<REAL_t, state_t> result_t;
         typedef BeamSearchProposal<REAL_t, state_t> proposal_t;

@@ -401,7 +401,7 @@ class LstmBabiModel {
                 return answer_model.activate(state, answer_embeddings[candidate]);
             };
 
-            auto beam_search_results = beam_search::beam_search2<T, lstm_state_t>(
+            auto beam_search_results = beam_search::beam_search<T, lstm_state_t>(
                     initial_state,
                     FLAGS_beam_width,
                     candidate_scores,
@@ -573,9 +573,7 @@ void train(const vector<babi::Story<string>>& train,
 
     auto params = model->parameters();
 
-    Solver::Adam<REAL_t> solver(params); // , 0.1, 0.0001);
-
-    solver.regc = 1e-6;
+    Solver::AdaDelta<REAL_t> solver(params); // , 0.1, 0.0001);
 
     double best_validation_accuracy = 0.0;
     best_model = std::make_shared<model_t>(*model, true, true);

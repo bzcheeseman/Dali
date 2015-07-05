@@ -17,8 +17,6 @@
 using std::vector;
 using std::chrono::milliseconds;
 
-
-
 typedef MemorySafeTest LayerTests;
 
 TEST_F(LayerTests, layer_tanh_gradient) {
@@ -37,8 +35,6 @@ TEST_F(LayerTests, layer_tanh_gradient) {
         ASSERT_TRUE(gradient_same(functor, params, 1e-3));
     }
 }
-
-
 
 TEST_F(LayerTests, BroadcastMultiply) {
 
@@ -234,10 +230,6 @@ TEST_F(LayerTests, RNN_gradient_vs_Stacked_gradient) {
         for (int i = 0; i < params.size(); ++i) {
             ASSERT_EQ(params[i].dims(), stacked_params[i].dims());
             MatOps<R>::copy(&stacked_params[i], params[i]);
-            // std::cout << "=======" << std::endl;
-            // stacked_params[i].print();
-            // params[i].print();
-            // std::cout << "=======" << std::endl;
         }
 
         auto error = ((rnn_layer.activate(X, H).tanh() - 1) ^ 2).sum();

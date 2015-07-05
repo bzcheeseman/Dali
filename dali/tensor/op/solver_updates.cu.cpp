@@ -60,8 +60,6 @@ namespace matops {
         // DEBUG_ASSERT_POSITIVE((s.array() + smooth_eps).matrix());
         MAT(param).ravel() -= step_size * GRAD(param).ravel().wrapper() /
                 F<op::sqrt_f<R>>(cache.ravel().wrapper() + smooth_eps);
-
-        DEBUG_ASSERT_NOT_NAN(MAT(param));
     }
 
     template<typename R>
@@ -71,22 +69,21 @@ namespace matops {
                                            R rho,
                                            R smooth_eps) {
         // update gradient cache using decay rule:
-        gsum *= rho;
-        gsum += ((R)1.0 - rho) * F<op::square<R>>(GRAD(param).ravel().wrapper());
+        gsum = (gsum.wrapper() * rho) + ((R)((R)1.0 - rho)) * F<op::square<R>>(GRAD(param).ravel().wrapper());
         // DEBUG_ASSERT_POSITIVE((gsum.array()  + this->smooth_eps).matrix());
         // DEBUG_ASSERT_POSITIVE(((xsum.array() + this->smooth_eps) / (gsum.array() + this->smooth_eps)).matrix());
         TensorInternal<R,1> dparam(xsum.shape);
-        dparam = -(R)1.0 * F<op::sqrt_f<R>>(
-                       (xsum.wrapper() + smooth_eps) /
-                       (gsum.wrapper() + smooth_eps)
-                ) * GRAD(param).ravel().wrapper();
+        dparam = (
+            F<op::sqrt_f<R>>(xsum.wrapper() + smooth_eps) /
+            F<op::sqrt_f<R>>(gsum.wrapper() + smooth_eps)
+        ) * GRAD(param).ravel().wrapper();
 
-        xsum *= rho;
-        xsum += ((R)1.0 - rho) * F<op::square<R>>(dparam.wrapper());
+        xsum = (
+            rho * xsum.wrapper() +
+            ((R)(1.0 - rho)) * F<op::square<R>>(dparam.wrapper())
+        );
         // update gradient using AdaDelta rule
-        MAT(param).ravel() += dparam.wrapper();
-
-        DEBUG_ASSERT_NOT_NAN(MAT(param));
+        MAT(param).ravel() -= dparam.wrapper();
     }
 
     template<typename R>
@@ -119,8 +116,6 @@ namespace matops {
 
         // take gradient step
         MAT(param) -= lr_t * GRAD(param).wrapper();
-
-        DEBUG_ASSERT_NOT_NAN(MAT(param));
     }
 
     template class SolverUpdates<float>;

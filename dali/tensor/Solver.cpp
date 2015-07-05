@@ -342,9 +342,9 @@ namespace Solver {
         std::shared_ptr<AbstractSolver<R>> solver;
         std::transform(solver_name.begin(), solver_name.end(), solver_name.begin(), ::tolower);
         if (solver_name        == "adadelta") {
-            solver = std::make_shared<AdaDelta<R>>(params, 0.95, 1e-9, 100.0, regc);
+            solver = std::make_shared<AdaDelta<R>>(params, 0.95, 1e-4, 100.0, regc);
         } else if (solver_name == "adam") {
-            solver = std::make_shared<Adam<R>>(params, 0.1, 0.001, 1e-9, 100.0, regc);
+            solver = std::make_shared<Adam<R>>(params, 0.5, 1e-6, 1e-9, 100.0, regc);
         } else if (solver_name == "sgd") {
             solver = std::make_shared<SGD<R>>(params, 100.0, regc);
             dynamic_cast<SGD<R>*>(solver.get())->step_size = learning_rate;

@@ -35,7 +35,6 @@ DEFINE_int32(max_number_in_expression, 100000, "Maximum number used in mathemati
 
 #define MAX_OUTPUT_LENGTH 10
 
-ThreadPool* pool;
 shared_ptr<Visualizer> visualizer;
 
 template<typename T>
@@ -697,7 +696,7 @@ void training_loop(std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver,
                                                  MAX_OUTPUT_LENGTH,
                                                  vocab.word2index.at(utils::end_symbol));
 
-                auto expression_string = arithmetic::vocabulary.decode(expression);
+                auto expression_string = arithmetic::vocabulary.decode(&expression);
                 if (expression_string.back() == utils::end_symbol)
                     expression_string.resize(expression_string.size() - 1);
                 std::cout << utils::join(expression_string) << std::endl;
@@ -712,7 +711,7 @@ void training_loop(std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver,
                     }
                     prediction_probability.push_back(prediction.get_probability().w(0));
                     std::cout << "= (" << std::setprecision( 3 ) << prediction.get_probability().log().w(0) << ") ";
-                    auto digits = vocab.decode(prediction.prediction);
+                    auto digits = vocab.decode(&prediction.prediction);
                     if (digits.back() == utils::end_symbol)
                         digits.pop_back();
                     auto joined_digits = utils::join(digits);
@@ -728,7 +727,7 @@ void training_loop(std::shared_ptr<Solver::AbstractSolver<REAL_t>> solver,
                         ++didx) {
                     auto visualization = visualize_derivation(
                             predictions[0].derivations[didx],
-                            vocab.decode(expression)
+                            vocab.decode(&expression)
                     );
                     auto tree_prob = predictions[0].nodes[didx].log_probability.exp().w(0,0);
                     vgrid->add_in_column(0, make_shared<visualizable::Probability<double>>(tree_prob));
@@ -790,8 +789,6 @@ int main (int argc,  char* argv[]) {
 
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
-    pool = new ThreadPool(FLAGS_j);
-
     auto model = model_t(
         FLAGS_input_size,
         FLAGS_hidden,
@@ -799,6 +796,7 @@ int main (int argc,  char* argv[]) {
         FLAGS_memory_feeds_gates);
 
     auto pred_fun = [&model](vector<uint>& example) {
+        graph::NoBackprop nb;
         auto predictions = model.predict(example,
                                          FLAGS_beam_width,
                                          MAX_OUTPUT_LENGTH,

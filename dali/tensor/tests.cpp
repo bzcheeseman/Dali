@@ -187,6 +187,37 @@ TEST_F(MatrixTests, save_load_test) {
     }
 }
 
+TEST_F(MatrixTests, lazy_allocation) {
+    // if memory must be filled with zeros,
+    // then allocation is lazy
+    Mat<R> zero_mat(4, 5, weights<R>::zeros());
+
+    #ifdef DALI_USE_CUDA
+    ASSERT_TRUE((!zero_mat.w().memory_.allocated_cpu) && (!zero_mat.w().memory_.allocated_gpu));
+    #else
+    ASSERT_TRUE(!zero_mat.w().memory_.allocated_cpu);
+    #endif
+
+    // if memory must be filled with gaussian
+    // noise, allocation is immediate
+    Mat<R> gauss_mat(4, 5, weights<R>::gaussian(0.5));
+    #ifdef DALI_USE_CUDA
+    ASSERT_TRUE((!gauss_mat.w().memory_.allocated_cpu) && (gauss_mat.w().memory_.allocated_gpu));
+    #else
+    ASSERT_TRUE(gauss_mat.w().memory_.allocated_cpu);
+    #endif
+
+    // the gradients are set to 0, but are also lazily
+    // allocated and cleared.
+    #ifdef DALI_USE_CUDA
+    ASSERT_TRUE((!gauss_mat.dw().memory_.allocated_cpu) && (!gauss_mat.dw().memory_.allocated_gpu));
+    ASSERT_TRUE((!zero_mat.dw().memory_.allocated_cpu) && (!zero_mat.dw().memory_.allocated_gpu));
+    #else
+    ASSERT_TRUE(!gauss_mat.dw().memory_.allocated_cpu);
+    ASSERT_TRUE(!zero_mat.dw().memory_.allocated_cpu);
+    #endif
+}
+
 TEST_F(MatrixTests, subtraction) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] - Xs[1];

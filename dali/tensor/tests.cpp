@@ -193,28 +193,28 @@ TEST_F(MatrixTests, lazy_allocation) {
     Mat<R> zero_mat(4, 5, weights<R>::zeros());
 
     #ifdef DALI_USE_CUDA
-    ASSERT_TRUE((!zero_mat.w().memory_.allocated_cpu) && (!zero_mat.w().memory_.allocated_gpu));
+    ASSERT_TRUE((!zero_mat.w().memory_->allocated_cpu) && (!zero_mat.w().memory_->allocated_gpu));
     #else
-    ASSERT_TRUE(!zero_mat.w().memory_.allocated_cpu);
+    ASSERT_TRUE(!zero_mat.w().memory_->allocated_cpu);
     #endif
 
     // if memory must be filled with gaussian
     // noise, allocation is immediate
     Mat<R> gauss_mat(4, 5, weights<R>::gaussian(0.5));
     #ifdef DALI_USE_CUDA
-    ASSERT_TRUE((!gauss_mat.w().memory_.allocated_cpu) && (gauss_mat.w().memory_.allocated_gpu));
+    ASSERT_TRUE((!gauss_mat.w().memory_->allocated_cpu) && (gauss_mat.w().memory_->allocated_gpu));
     #else
-    ASSERT_TRUE(gauss_mat.w().memory_.allocated_cpu);
+    ASSERT_TRUE(gauss_mat.w().memory_->allocated_cpu);
     #endif
 
     // the gradients are set to 0, but are also lazily
     // allocated and cleared.
     #ifdef DALI_USE_CUDA
-    ASSERT_TRUE((!gauss_mat.dw().memory_.allocated_cpu) && (!gauss_mat.dw().memory_.allocated_gpu));
-    ASSERT_TRUE((!zero_mat.dw().memory_.allocated_cpu) && (!zero_mat.dw().memory_.allocated_gpu));
+    ASSERT_TRUE((!gauss_mat.dw().memory_->allocated_cpu) && (!gauss_mat.dw().memory_->allocated_gpu));
+    ASSERT_TRUE((!zero_mat.dw().memory_->allocated_cpu) && (!zero_mat.dw().memory_->allocated_gpu));
     #else
-    ASSERT_TRUE(!gauss_mat.dw().memory_.allocated_cpu);
-    ASSERT_TRUE(!zero_mat.dw().memory_.allocated_cpu);
+    ASSERT_TRUE(!gauss_mat.dw().memory_->allocated_cpu);
+    ASSERT_TRUE(!zero_mat.dw().memory_->allocated_cpu);
     #endif
 }
 

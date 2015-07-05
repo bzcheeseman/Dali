@@ -59,7 +59,6 @@ TEST_F(MatrixTests, sum) {
         expect_args_remain_on_gpu(functor, {A});
         EXPECT_TRUE(gradient_same(functor, {A}));
     }
-
 }
 
 TEST_F(MatrixTests, identity_init) {
@@ -1086,7 +1085,7 @@ TEST_F(MatOpsTests, DISABLED_matrix_conv2d_grad) {
     }
 }
 
-TEST_F(MatOpsTests, DISABLED_softmax_temperature) {
+TEST_F(MatOpsTests, softmax_temperature) {
     graph::NoBackprop nb;
 
     auto mat = Mat<R>(10, 1);
@@ -1162,21 +1161,6 @@ TEST_F(MatOpsTests, softmax_cross_entropy_grad) {
 
         ASSERT_TRUE(gradient_same(functor, {input}, 1e-2));
     }
-}
-
-
-TEST_F(MatOpsTests, weird_segfaulttest) {
-    {
-        Mat<R> input (3, 5, weights<R>::uniform(0.01, 0.99));
-        // interestingly commenting either softmax or
-        // softmax cross entropy, removes the bug.
-
-        Mat<R> softmaxed = MatOps<R>::softmax(input);
-
-        Mat<R> actual_res = MatOps<R>::softmax_cross_entropy(
-                input, {1, 2, 2, 2, 2});
-    }
-    graph::backward();
 }
 
 TEST_F(MatOpsTests, cross_entropy_multiindex) {
@@ -1526,7 +1510,7 @@ void test_solver_optimization(std::string solvername) {
         error = KL.w(0);
     }
     // make 10x improvements (or else no VC funding)
-    ASSERT_TRUE(original_error / 10.0 > error);
+    ASSERT_PRED_FORMAT2(SCALAR_COMP_LE, error, original_error / 10.0);
 }
 
 TEST(Solver, adagrad_optimization_test) {

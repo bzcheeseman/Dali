@@ -16,14 +16,26 @@
 // Defines mathematical operations on Synchronized Memory
 // and also interfaces / and handles assignment from LazyTensor
 
+/*
+Tensor Internal
+---------------
+
+Is a lightweight wrapper around memory. It holds
+a a shared pointer to Synchronized Memory, and
+adds some overloaded operators to allow for mathematical
+operations to be done on it.
+
+This tensor can also produce a LazyTensor by calling .wrapper()
+on it. Assigning or inplaced incrementing, decrementing, multiplying,
+etc... a LazyTensor to a TensorInternal will cause the evaluation
+of the lazy operation to execute.
+
+*/
+
 typedef unsigned int dim_t;
 
 template<typename R, int dimension>
 class TensorInternal;
-
-
-
-
 
 
 #ifdef DALI_USE_CUDA

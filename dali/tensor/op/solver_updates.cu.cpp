@@ -39,9 +39,6 @@ namespace matops {
         // clip the gradient to prevent explosions:
         // update gradient using RMSprop rule
 
-        // TODO: REENABLE
-        // DEBUG_ASSERT_POSITIVE(cache + smooth_eps);
-
         MAT(param).ravel() -= step_size * GRAD(param).ravel().wrapper() /
                 F<op::sqrt_f<R>>(cache.ravel().wrapper() + smooth_eps);
 
@@ -51,7 +48,7 @@ namespace matops {
     template<typename R>
     void SolverUpdates<R>::rmsprop_update(Mat<R> param, TensorInternal<R,1>& cache,
             R decay_rate, R step_size,  R smooth_eps) {
-        cache = (cache * decay_rate) + ((R)1.0 - decay_rate) * F<op::square<R>>(GRAD(param).ravel().wrapper());
+        cache = (cache.wrapper() * decay_rate) + ((R)1.0 - decay_rate) * F<op::square<R>>(GRAD(param).ravel().wrapper());
         // ELOG("graD");
         // GRAD(param).print();
         // update gradient using RMSprop rule
@@ -101,9 +98,9 @@ namespace matops {
         assert(lr_t == lr_t);
 
         // update m acculumulator
-        m = m * (R)(1.0 - b1) + b1 * GRAD(param).ravel().wrapper();
+        m = (m.wrapper() * (R)(1.0 - b1)) + b1 * GRAD(param).ravel().wrapper();
         // update v acculumulator
-        v = (v * (R)(1.0 - b2)) + b2 * F<op::square<R>>(GRAD(param).ravel().wrapper());
+        v = (v.wrapper() * (R)(1.0 - b2)) + b2 * F<op::square<R>>(GRAD(param).ravel().wrapper());
 
         GRAD(param).ravel() = m.wrapper() / (F<op::sqrt_f<R>>(v.wrapper()) + smooth_eps);
 

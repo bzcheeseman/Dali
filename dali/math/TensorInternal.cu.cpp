@@ -46,11 +46,11 @@ template<typename R, int dimension>
 R TensorInternal<R, dimension>::sum() const {
     #ifdef DALI_USE_CUDA
         if (compute_me_on_gpu()) {
-            return TensorOps::sum(this->gpu_data(), this->number_of_elements() );
+            return TensorOps::reduction::sum(this->gpu_data(), this->number_of_elements() );
         }
     #endif
 
-    return TensorOps::sum(this->cpu_data(), this->number_of_elements() );
+    return TensorOps::reduction::sum(this->cpu_data(), this->number_of_elements() );
 }
 
 template<typename R, int dimension>
@@ -137,11 +137,11 @@ template<typename R, int dimension>
 R TensorInternal<R, dimension>::L2_norm() const {
     #ifdef DALI_USE_CUDA
         if (compute_me_on_gpu()) {
-            return TensorOps::L2_norm(this->gpu_data(), this->number_of_elements() );
+            return TensorOps::reduction::L2_norm(this->gpu_data(), this->number_of_elements() );
         }
     #endif
 
-    return TensorOps::L2_norm(this->cpu_data(), this->number_of_elements() );
+    return TensorOps::reduction::L2_norm(this->cpu_data(), this->number_of_elements() );
 }
 
 template<typename R, int dimension>

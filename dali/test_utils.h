@@ -39,12 +39,16 @@ using ::testing::AssertionFailure;
 #endif
 
 #ifdef DALI_USE_CUDA
-// most gpus don't support double
+// most gpus often don't support double
 typedef double R;
 const double DEFAULT_GRAD_EPS=1e-3;
+#define SCALAR_COMP_LE ::testing::DoubleLE
+#define SCALAR_COMP_GE ::testing::DoubleGE
 #else
 typedef double R;
 const double DEFAULT_GRAD_EPS=1e-7;
+#define SCALAR_COMP_LE ::testing::DoubleLE
+#define SCALAR_COMP_GE ::testing::DoubleGE
 #endif
 
 #ifdef DALI_USE_CUDA
@@ -53,6 +57,7 @@ const double DEFAULT_GRAD_EPS=1e-7;
 #else
     #define NUM_RETRIES 10
 #endif
+
 #define EXPERIMENT_REPEAT for(int __repetition=0; __repetition < NUM_RETRIES; ++__repetition)
 
 template<typename T>

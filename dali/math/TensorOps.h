@@ -9,6 +9,55 @@
 #include "dali/math/TensorInternal.h"
 #include "dali/utils/random.h"
 
+/**
+Tensor Operations
+-----------------
+
+Implementations for GPU and CPU agnostic operations on
+Tensors. Using a combination of Thrust and MShadow this
+file has implementation for the major operations done
+on tensors.
+
+Each namespace covers an area of implementation that's
+syntactically sugared for Dali:
+
+random
+------
+
+Implements the following random samplers:
+
+* uniform
+* gaussian
+* bernoulli
+* bernoulli_normalized
+
+arg
+---
+
+* argmin
+* argmax
+* argmin row-wise & column-wise
+* argmax row-wise & column-wise
+
+comparison
+----------
+
+* equals
+* allclose
+
+reduction
+---------
+
+* sum
+* L2_norm
+
+op
+--
+
+Kernels for MShadow
+
+**/
+
 #ifdef DALI_USE_CUDA
     #define TANH_F tanhf
     #define LOG_F  logf
@@ -56,18 +105,7 @@
     }
 #endif
 
-enum OptionalTranspose {
-    TRANSPOSE,
-    NO_TRANSPOSE
-};
-
-enum OperationType {
-    OVERWRITE,
-    ADD_TO_EXISTING
-};
-
 /* CUDA UTILS END HERE */
-
 #define DALI_ASSIGN(op, out, expr) if ((op) == OVERWRITE) { out = (expr); } else {  out += (expr);  }
 
 
@@ -106,33 +144,48 @@ namespace TensorOps {
         }
     }
 
-    #ifdef DALI_USE_CUDA
-    template<int ndims, typename R>
-    R sum(const mshadow::Tensor<gpu, ndims, R> a, int num_elts) {
-        return thrust::reduce(to_thrust(a), to_thrust(a) + num_elts, 0.0, thrust::plus<R>());
-    }
-    #endif
-
-    template<int ndims, typename R>
-    R sum(const mshadow::Tensor<cpu, ndims, R> a, int num_elts) {
-        return std::accumulate(a.dptr_, a.dptr_ + num_elts, 0.0);
-    }
-
-
-    #ifdef DALI_USE_CUDA
-    template <typename T>
-    struct thrust_square {
-        __host__ __device__
-        T operator()(const T& x) const {
-            return x * x;
+    namespace reduction {
+        #ifdef DALI_USE_CUDA
+        template<int ndims, typename R>
+        R sum(const mshadow::Tensor<gpu, ndims, R> a, int num_elts) {
+            return thrust::reduce(to_thrust(a), to_thrust(a) + num_elts, 0.0, thrust::plus<R>());
         }
-    };
+        #endif
 
-    template<int ndims, typename R>
-    R L2_norm(const mshadow::Tensor<gpu, ndims, R> a, int num_elts) {
-        return std::sqrt(thrust::transform_reduce(to_thrust(a), to_thrust(a) + num_elts, thrust_square<R>(), 0.0, thrust::plus<R>()));
+        template<int ndims, typename R>
+        R sum(const mshadow::Tensor<cpu, ndims, R> a, int num_elts) {
+            return std::accumulate(a.dptr_, a.dptr_ + num_elts, 0.0);
+        }
+
+
+        #ifdef DALI_USE_CUDA
+        template <typename T>
+        struct thrust_square {
+            __host__ __device__
+            T operator()(const T& x) const {
+                return x * x;
+            }
+        };
+
+        template<int ndims, typename R>
+        R L2_norm(const mshadow::Tensor<gpu, ndims, R> a, int num_elts) {
+            return std::sqrt(thrust::transform_reduce(to_thrust(a), to_thrust(a) + num_elts, thrust_square<R>(), 0.0, thrust::plus<R>()));
+        }
+        #endif
+
+
+        template <typename T>
+        struct thrust_square_reduce {
+            T operator()(const T& x, const T& y) const {
+                return x + (y * y);
+            }
+        };
+
+        template<int ndims, typename R>
+        R L2_norm(const mshadow::Tensor<cpu, ndims, R> a, int num_elts) {
+            return std::sqrt(std::accumulate(a.dptr_, a.dptr_ + num_elts, 0.0, thrust_square_reduce<R>()));
+        }
     }
-    #endif
 
 
     #ifdef DALI_USE_CUDA
@@ -482,18 +535,6 @@ namespace TensorOps {
         CPU_KERNEL_ROWWISE_FROM_1D_MSHADOW( argmin )
     }
 
-    template <typename T>
-    struct thrust_square_reduce {
-        T operator()(const T& x, const T& y) const {
-            return x + (y * y);
-        }
-    };
-
-    template<int ndims, typename R>
-    R L2_norm(const mshadow::Tensor<cpu, ndims, R> a, int num_elts) {
-        return std::sqrt(std::accumulate(a.dptr_, a.dptr_ + num_elts, 0.0, thrust_square_reduce<R>()));
-    }
-
     template<int ndims, typename R>
     void eye(mshadow::Tensor<cpu,ndims,R> tc, R diag) {
         if (tc.shape_[0] != tc.shape_[1]) {
@@ -698,12 +739,6 @@ namespace TensorOps {
             }
         };
 
-
-        // MAT(out) = -(
-        //                       t  * ( sigmoided_input->array()   + EPS      ).log()
-        //             + ( 1.0 - t) * ( 1.00000001 - sigmoided_input->array() ).log()
-        // ).matrix();
-
         template<typename R>
         struct binary_cross_entropy {
             MSHADOW_XINLINE static R Map(const R& x, const R& t ) {
@@ -794,15 +829,12 @@ namespace TensorOps {
 
         template<int ndims, typename R, template <typename,int,typename> class tensor_t>
         void uniform(tensor_t<mshadow::cpu, ndims, R> t, R lower, R upper) {
-            // std::random_device rd;
             mshadow::Random<mshadow::cpu, R> generator(utils::randint(0,999999));
-
             generator.SampleUniform(&t, lower, upper);
         }
 
         template<int ndims, typename R, template <typename,int,typename> class tensor_t>
         void gaussian(tensor_t<mshadow::cpu, ndims, R> t, R mean, R std) {
-            // std::random_device rd;
             mshadow::Random<mshadow::cpu, R> generator(utils::randint(0,999999));
             generator.SampleGaussian(&t, mean, std);
         }

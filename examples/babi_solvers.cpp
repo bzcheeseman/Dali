@@ -359,6 +359,7 @@ class LstmBabiModel {
                     auto log_probs = decoder.activate(state_to_hidden(current_state));
                     partial_error =
                             MatOps<REAL_t>::softmax_cross_entropy(log_probs, word_idx);
+
                 }
 
                 prediction_errors.push_back(partial_error);

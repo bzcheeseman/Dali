@@ -194,7 +194,7 @@ namespace matops {
 
     template<typename R>
     Mat<R> Cost<R>::softmax_cross_entropy(Mat<R> matrix, uint answer_idx) {
-        return softmax_cross_entropy(matrix, {answer_idx});
+        return softmax_cross_entropy(matrix, Indexing::Index({answer_idx}));
     }
 
     template<typename R>

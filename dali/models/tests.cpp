@@ -1,4 +1,4 @@
-/*#include <vector>
+#include <vector>
 #include <gtest/gtest.h>
 #include "dali/test_utils.h"
 #include "dali/models/StackedGatedModel.h"
@@ -50,7 +50,7 @@ TEST(utils, shallow_copy_multi_params) {
 
     int num_copies = 3;
     auto copies = utils::shallow_copy_multi_params(base_model, num_copies, [&base_model](const Mat<R>& mat)->bool {
-        return mat.id() == base_model.embedding.id();
+        return &mat.w() == &base_model.embedding.w();
     });
 
     auto params = base_model.parameters();
@@ -59,4 +59,3 @@ TEST(utils, shallow_copy_multi_params) {
     ASSERT_EQ(std::get<1>(copies)[0].size(), 1);
     ASSERT_EQ(std::get<2>(copies)[0].size(), params.size() - 1);
 }
-*/

@@ -362,10 +362,8 @@ class LstmBabiModel {
                 }
 
                 prediction_errors.push_back(partial_error);
-                std::cout << "siema" << std::endl;
                 current_state = answer_model.activate(
                         current_state, answer_embeddings[word_idx], FLAGS_answer_dropout);
-                std::cout << "siema" << std::endl;
             }
 
             Mat<REAL_t> fact_selection_error(1,1);

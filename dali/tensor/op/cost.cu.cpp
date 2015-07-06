@@ -189,21 +189,17 @@ namespace matops {
 
     template<typename R>
     Mat<R> Cost<R>::softmax_cross_entropy(Mat<R> matrix, uint answer_idx) {
-        return softmax_cross_entropy(matrix, Indexing::Index({answer_idx}));
+        Mat<int> target(1,1);
+        target.w(0) = answer_idx;
+        return softmax_cross_entropy(matrix, target);
     }
 
     template<typename R>
     Mat<R> Cost<R>::softmax_cross_entropy(Mat<R> matrix, Mat<int> targets) {
-        // TODO(implement one version only for all three use cases)
-        throw std::runtime_error("Not yet implemented");
-    }
-
-    template<typename R>
-    Mat<R> Cost<R>::softmax_cross_entropy(Mat<R> matrix, Indexing::Index targets) {
-        assert(targets.size() == matrix.dims(1));
-        Mat<R> out =  Mat<R>(1, targets.size(), weights<R>::empty());
+        assert(targets.number_of_elements() == matrix.dims(1));
+        Mat<R> out =  Mat<R>(1, targets.number_of_elements(), weights<R>::empty());
         Mat<R> probs = softmax_no_grad(matrix);
-        select_from_cols(MAT(out), MAT(probs), targets);
+        select_from_cols(MAT(out), MAT(probs), targets.w().ravel());
 
         MAT(out) = (R)-1.0 * F<op::log<R>>(MAT(out).wrapper());
         if (graph::backprop_enabled()) {
@@ -214,11 +210,20 @@ namespace matops {
                         GRAD(out).ravel().wrapper().template broadcast<1>(MAT(probs).shape)
                     );
 
-                    softmax_cross_entropy_backward(GRAD(matrix), GRAD(out), targets);
+                    softmax_cross_entropy_backward(GRAD(matrix), GRAD(out), targets.w().ravel());
                 }
             });
         }
         return out;
+    }
+
+    template<typename R>
+    Mat<R> Cost<R>::softmax_cross_entropy(Mat<R> matrix, Indexing::Index targets) {
+        Mat<int> targets_mat(1, targets.size());
+        for (int i = 0; i < targets.size(); ++i) {
+            targets_mat.w(i) = targets[i];
+        }
+        return softmax_cross_entropy(matrix, targets_mat);
     }
 
     template<typename R>

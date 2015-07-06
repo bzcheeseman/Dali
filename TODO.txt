@@ -1,18 +1,17 @@
 HIGH PRIORITY:
--> row pluck must use views, not copies
 -> implement 3 different ways of accessing data in TensorInternal:
     - mutable
     - read
     - overwrite (only allocate, do not refresh)
 -> mshadow and tensors (mutli gpu support etc.)
+
+MEDIUM PRIORITY:
+-> random weights init should take doubles, not template typename.
+-> Improve NlpUtils. More generally agree on common set of practices for all the examples.
 -> visualizer - web frontend for error visualization (60% done)
 -> Move Redis visualizer example to tests with check for redis presence
 -> switch "from unique words" in Vocab to "add_words"
-
-MEDIUM PRIORITY:
--> add test for numpy loading / saving
--> Break up TensorOps into TensorOps/random TensorOps/reduction etc...
--> Improve NlpUtils. More generally agree on common set of practices for all the examples.
+-> improve numerical stability of Adadelta
 
 LOWER_PRIOTITY:
 -> add performance test

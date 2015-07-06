@@ -1,5 +1,5 @@
-#ifndef DALI_MATH_MEMORY_BANK_H
-#define DALI_MATH_MEMORY_BANK_H
+#ifndef DALI_MATH_MEMORY_BANK_MEMORY_BANK_INTERNAL_H
+#define DALI_MATH_MEMORY_BANK_MEMORY_BANK_INTERNAL_H
 #include <unordered_map>
 #include <vector>
 /*

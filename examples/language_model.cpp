@@ -343,9 +343,6 @@ int main( int argc, char* argv[]) {
         }*/
         journalist.done();
 
-        ELOG(SynchronizedMemory<REAL_t>::num_cpu_allocations);
-        ELOG(SynchronizedMemory<REAL_t>::num_gpu_allocations);
-
         new_cost = average_error(model, validation);
         if (new_cost >= cost) {
             patience += 1;
@@ -358,6 +355,12 @@ int main( int argc, char* argv[]) {
                   << std::setw(5) << std::setfill(' ') << new_cost
                   << " patience = " << patience << std::endl;
         maybe_save_model(&model);
+
+        ELOG(memory_bank<REAL_t>::num_cpu_allocations);
+        #ifdef DALI_USE_CUDA
+            ELOG(memory_bank<REAL_t>::num_gpu_allocations);
+        #endif
+
         epoch++;
     }
 

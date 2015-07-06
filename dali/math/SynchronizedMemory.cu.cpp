@@ -75,14 +75,6 @@ template bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<d
 template bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<int>*>& sts);
 
 /******************* SYNCHRONIZED MEMORY ************************************************/
-template<typename R>
-std::atomic<long long> SynchronizedMemory<R>::num_cpu_allocations(0);
-#ifdef DALI_USE_CUDA
-    template<typename R>
-    std::atomic<long long> SynchronizedMemory<R>::num_gpu_allocations(0);
-#endif
-
-
 
 template<typename R>
 bool SynchronizedMemory<R>::prefers_cpu() const {
@@ -142,9 +134,10 @@ SynchronizedMemory<R>::SynchronizedMemory(const SynchronizedMemory& other) :
 template<typename R>
 void SynchronizedMemory<R>::free_cpu() const {
     if (allocated_cpu) {
-        auto dummy = dummy_cpu();
-        FreeSpace(&dummy);
-        cpu_ptr = dummy.dptr_;
+        memory_bank<R>::deposit_cpu(total_memory, inner_dimension, cpu_ptr);
+        //auto dummy = dummy_cpu();
+        //FreeSpace(&dummy);
+        cpu_ptr = NULL;
     }
     allocated_cpu = false;
 }
@@ -153,9 +146,10 @@ void SynchronizedMemory<R>::free_cpu() const {
 template<typename R>
 void SynchronizedMemory<R>::free_gpu() const {
     if (allocated_gpu) {
-        auto dummy = dummy_gpu();
-        FreeSpace(&dummy);
-        gpu_ptr = dummy.dptr_;
+        memory_bank<R>::deposit_gpu(total_memory, inner_dimension, gpu_ptr);
+        //auto dummy = dummy_gpu();
+        //FreeSpace(&dummy);
+        gpu_ptr = NULL;
     }
     allocated_gpu = false;
 }
@@ -226,11 +220,10 @@ void SynchronizedMemory<R>::lazy_clear() {
         if (allocated_gpu) {
             return false;
         }
-        ++num_gpu_allocations;
-        auto dummy = dummy_gpu();
-        AllocSpace(&dummy, false);
+        //auto dummy = dummy_gpu();
+        //AllocSpace(&dummy, false);
+        gpu_ptr = memory_bank<R>::allocate_gpu( total_memory , inner_dimension );
         allocated_gpu = true;
-        gpu_ptr = dummy.dptr_;
         return true;
     }
 
@@ -259,11 +252,10 @@ bool SynchronizedMemory<R>::allocate_cpu() const {
     if (allocated_cpu) {
         return false;
     }
-    ++num_cpu_allocations;
-    auto dummy = dummy_cpu();
-    AllocSpace(&dummy, false);
+    //auto dummy = dummy_cpu();
+    //AllocSpace(&dummy, false);
+    cpu_ptr = memory_bank<R>::allocate_cpu( total_memory , inner_dimension );
     allocated_cpu = true;
-    cpu_ptr = dummy.dptr_;
     return true;
 }
 
@@ -321,21 +313,13 @@ template<typename R>
 template<typename SourceType>
 void SynchronizedMemory<R>::copy_data_from(SourceType& data_source) {
     if (this->prefers_cpu()) {
-        auto my_data = dummy_cpu();
-        AllocSpace(&my_data, false);
-        cpu_ptr = my_data.dptr_;
-        allocated_cpu = true;
-
-        Copy(my_data, data_source);
+        allocate_cpu();
+        Copy(dummy_cpu(), data_source);
         this->cpu_fresh = true;
     } else {
 #ifdef DALI_USE_CUDA
-        auto my_data = dummy_gpu();
-        AllocSpace(&my_data, false);
-        gpu_ptr = my_data.dptr_;
-        allocated_gpu = true;
-
-        Copy(my_data, data_source);
+        allocate_gpu();
+        Copy(dummy_gpu(), data_source);
         this->gpu_fresh = true;
 #endif
     }

@@ -1,4 +1,4 @@
-#include "MemoryBank.h"
+#include "MemoryBankInternal.h"
 using std::vector;
 
 #ifdef DALI_USE_CUDA

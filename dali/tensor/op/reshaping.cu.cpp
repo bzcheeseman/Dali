@@ -234,11 +234,16 @@ namespace matops {
             matrix.dims(1),
             matrix.dims(0),
             weights<R>::empty());
-        MAT(out) = MAT(matrix).wrapper().T();
-        if (graph::backprop_enabled() && !matrix.constant)
-            graph::emplace_back([matrix, out]() mutable {
-                GRAD(matrix) += (GRAD(out).wrapper()).T();
-            });
+        if (matrix.dims(0) == 1 || matrix.dims(1) == 1) {
+            out.w().memory_ = matrix.w().memory_;
+            out.dw().memory_ = matrix.dw().memory_;
+        } else {
+            MAT(out) = MAT(matrix).wrapper().T();
+            if (graph::backprop_enabled() && !matrix.constant)
+                graph::emplace_back([matrix, out]() mutable {
+                    GRAD(matrix) += (GRAD(out).wrapper()).T();
+                });
+        }
         return out;
     }
     template class Reshaping<float>;

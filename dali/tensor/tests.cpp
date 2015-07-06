@@ -218,6 +218,29 @@ TEST_F(MatrixTests, lazy_allocation) {
     #endif
 }
 
+TEST_F(MatrixTests, view_transpose) {
+    // For 1xN or Nx1 matrices, a transpose is simply a
+    // different view onto the memory
+    Mat<R> row_vector(1, 5, weights<R>::zeros());
+    auto transposed_row = row_vector.T();
+    for (int i = 0; i < 5; i++) {
+        transposed_row.w(i, 0) = i;
+    }
+    // see the changes reflected in the original matrix:
+    for (int i = 0; i < 5; i++) {
+        ASSERT_EQ(row_vector.w(0, i), i);
+    }
+    Mat<R> col_vector(5, 1, weights<R>::zeros());
+    auto transposed_col = col_vector.T();
+    for (int i = 0; i < 5; i++) {
+        transposed_col.w(0, i) = i;
+    }
+    // see the changes reflected in the original matrix:
+    for (int i = 0; i < 5; i++) {
+        ASSERT_EQ(col_vector.w(i, 0), i);
+    }
+}
+
 TEST_F(MatrixTests, subtraction) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] - Xs[1];

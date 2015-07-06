@@ -343,6 +343,9 @@ int main( int argc, char* argv[]) {
         }*/
         journalist.done();
 
+        ELOG(SynchronizedMemory<REAL_t>::num_cpu_allocations);
+        ELOG(SynchronizedMemory<REAL_t>::num_gpu_allocations);
+
         new_cost = average_error(model, validation);
         if (new_cost >= cost) {
             patience += 1;

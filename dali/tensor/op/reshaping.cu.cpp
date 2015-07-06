@@ -230,8 +230,8 @@ namespace matops {
             matrix.dims(0),
             weights<R>::empty());
         if (matrix.dims(0) == 1 || matrix.dims(1) == 1) {
-            out.w().memory_ = matrix.w().memory_;
-            out.dw().memory_ = matrix.dw().memory_;
+            MAT(out) = MAT(matrix).reshape(MAT(out).shape);
+            GRAD(out) = GRAD(matrix).reshape(GRAD(out).shape);
         } else {
             MAT(out) = MAT(matrix).wrapper().T();
             if (graph::backprop_enabled() && !matrix.constant)

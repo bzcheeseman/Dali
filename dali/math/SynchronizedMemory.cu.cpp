@@ -75,6 +75,13 @@ template bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<d
 template bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<int>*>& sts);
 
 /******************* SYNCHRONIZED MEMORY ************************************************/
+template<typename R>
+std::atomic<long long> SynchronizedMemory<R>::num_cpu_allocations(0);
+#ifdef DALI_USE_CUDA
+    std::atomic<long long> SynchronizedMemory<R>::num_gpu_allocations(0);
+#endif
+
+
 
 template<typename R>
 bool SynchronizedMemory<R>::prefers_cpu() const {
@@ -218,6 +225,7 @@ void SynchronizedMemory<R>::lazy_clear() {
         if (allocated_gpu) {
             return false;
         }
+        ++num_gpu_allocations;
         auto dummy = dummy_gpu();
         AllocSpace(&dummy, false);
         allocated_gpu = true;
@@ -250,6 +258,7 @@ bool SynchronizedMemory<R>::allocate_cpu() const {
     if (allocated_cpu) {
         return false;
     }
+    ++num_cpu_allocations;
     auto dummy = dummy_cpu();
     AllocSpace(&dummy, false);
     allocated_cpu = true;

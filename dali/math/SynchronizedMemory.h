@@ -1,6 +1,7 @@
 #ifndef DALI_MAT_MATH_SYNCHRONIZED_MEMORY_H
 #define DALI_MAT_MATH_SYNCHRONIZED_MEMORY_H
 
+#include <atomic>
 #include <functional>
 #include <initializer_list>
 #include <iostream>
@@ -57,6 +58,7 @@ std::ostream& operator<<(std::ostream&, const mshadow::Shape<dimension>&);
 template<typename R>
 class SynchronizedMemory {
     public:
+        static std::atomic<long long> num_cpu_allocations;
         Device preferred_device;
         // total amount of memory expressed in number or Dtypes
         int total_memory;
@@ -108,6 +110,8 @@ class SynchronizedMemory {
         void copy_data_from(SourceType& src);
 #ifdef DALI_USE_CUDA
     public:
+        static std::atomic<long long> num_gpu_allocations;
+
         mutable bool gpu_fresh;
         mutable bool allocated_gpu;
         mutable R* gpu_ptr;

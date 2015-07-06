@@ -78,6 +78,7 @@ template bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<i
 template<typename R>
 std::atomic<long long> SynchronizedMemory<R>::num_cpu_allocations(0);
 #ifdef DALI_USE_CUDA
+    template<typename R>
     std::atomic<long long> SynchronizedMemory<R>::num_gpu_allocations(0);
 #endif
 

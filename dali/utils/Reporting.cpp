@@ -23,11 +23,11 @@ void Throttled::maybe_run(Clock::duration time_between_actions, std::function<vo
 }
 
 template<typename T>
-ReportProgress<T>::ReportProgress(string name,
-               const double& total_work,
+ReportProgress<T>::ReportProgress(string _name,
+               const double& _total_work,
                Clock::duration report_frequency) :
-        name(name),
-        total_work(total_work),
+        name(_name),
+        total_work(_total_work),
         report_frequency(report_frequency) {
 }
 

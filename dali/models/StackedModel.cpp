@@ -218,6 +218,7 @@ Mat<Z> StackedModel<Z>::masked_predict_cost(
 
     for (uint timestep = 0; timestep < n - temporal_offset; ++timestep) {
         // pick this letter from the embedding
+
         auto input_vector = this->embedding[data[timestep]];
         // pass this letter to the LSTM for processing
         state = stacked_lstm.activate(
@@ -225,6 +226,7 @@ Mat<Z> StackedModel<Z>::masked_predict_cost(
             input_vector,
             drop_prob
         );
+
         // classifier takes as input the final hidden layer's activation:
         auto logprobs = decode(input_vector, state);
 
@@ -235,7 +237,9 @@ Mat<Z> StackedModel<Z>::masked_predict_cost(
 
         auto errors = MatOps<Z>::softmax_cross_entropy(logprobs, target);
 
-        errors *= mask[timestep + temporal_offset];
+
+        errors *= mask[timestep + temporal_offset].T();
+
         total_error += errors.sum();
     }
 

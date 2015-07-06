@@ -58,28 +58,30 @@ struct Databatch {
         total_codes = 0;
     };
 
+    Databatch() = default;
+
     void add_example(
             Vocab& word_vocab,
             const vector<string>& example,
             size_t& example_idx) {
         auto description_length = example.size();
-        databatch.data.w(0, example_idx) = word_vocab.word2index[START];
+        data.w(0, example_idx) = word_vocab.word2index[START];
         auto encoded = word_vocab.encode(example, true);
-        mask.w(0, example_idx) = 1.0;
+        mask.w(0, example_idx) = 0.0;
         for (size_t j = 0; j < encoded.size(); j++) {
-            databatch.data.w(j + 1, example_idx) = encoded[j];
+            data.w(j + 1, example_idx) = encoded[j];
             mask.w(j + 1, example_idx) = (R)1.0;
         }
-        databatch.total_codes += description_length + 1;
+        total_codes += description_length + 1;
     }
 
     typedef vector<vector<string>*>::iterator data_ptr;
 
     static Databatch<R> from_examples(data_ptr data_begin, data_ptr data_end, Vocab& vocab) {
-        size_t max_length = (*data_ptr)->size();
-        int num_elements = end - begin;
+        int num_elements = data_end - data_begin;
+        size_t max_length = (*data_begin)->size();
         for (auto it = data_begin; it != data_end; ++it) {
-            max_length = std::max((*it)->size() + 2);
+            max_length = std::max(max_length, (*it)->size() + 2);
         }
 
         Databatch<R> databatch(max_length, num_elements);
@@ -92,11 +94,10 @@ struct Databatch {
 
 template<typename R>
 vector<Databatch<R>> create_dataset(
-    const vector<vector<string>>& examples,
-    Vocab& word_vocab,
-    size_t minibatch_size) {
-
-    vector<Databatch> dataset;
+        vector<vector<string>>& examples,
+        Vocab& word_vocab,
+        size_t minibatch_size) {
+    vector<Databatch<R>> dataset;
     vector<vector<string>*> sorted_examples;
     for (auto& example: examples) {
         sorted_examples.emplace_back(&example);
@@ -107,12 +108,12 @@ vector<Databatch<R>> create_dataset(
 
     for (int i = 0; i < sorted_examples.size(); i += minibatch_size) {
         auto batch_begin = sorted_examples.begin() + i;
-        auto batch_end   = batch_begin + min(minibatch_size, lengths.size() - i);
+        auto batch_end   = batch_begin + min(minibatch_size, sorted_examples.size() - i);
 
         dataset.emplace_back(Databatch<R>::from_examples(
             batch_begin,
             batch_end,
-            word_vocab,
+            word_vocab
         ));
     }
     return dataset;
@@ -126,37 +127,35 @@ Vocab get_vocabulary(const vector<vector<string>>& examples, int min_occurence) 
 }
 
 
-template<typename model_t>
-REAL_t average_error(model_t& model, const vector<Databatch>& dataset) {
+template<typename model_t, typename R>
+REAL_t average_error(model_t& model, const vector<Databatch<R>>& dataset) {
     graph::NoBackprop nb;
     Timer t("average_error");
 
     int full_code_size = 0;
-    vector<double> costs(FLAGS_j);
+    vector<double> costs(FLAGS_j, 0.0);
     for (size_t i = 0; i < dataset.size();i++)
         full_code_size += dataset[i].total_codes;
+
     for (size_t batch_id = 0; batch_id < dataset.size(); ++batch_id) {
         pool->run([&costs, &dataset, &model, batch_id]() {
             costs[ThreadPool::get_thread_number()] += model.masked_predict_cost(
                 dataset[batch_id].data, // the sequence to draw from
                 dataset[batch_id].data, // what to predict (the words offset by 1)
-                1,
-                dataset[batch_id].codelens,
-                0
-            );
+                dataset[batch_id].mask,
+                0.0
+            ).w(0);
+
         });
     }
     pool->wait_until_idle();
 
-    REAL_t cost = 0.0;
-    for (auto& v : costs)
-        cost += v;
-    return cost / full_code_size;
+    return utils::vsum(costs) / full_code_size;
 }
 
 template<typename R>
 std::tuple<Vocab, vector<Databatch<R>>> load_dataset_and_vocabulary(const string& fname, int min_occurence, int minibatch_size) {
-        std::tuple<Vocab, vector<Databatch>> pair;
+        std::tuple<Vocab, vector<Databatch<R>>> pair;
 
         auto text_corpus  = utils::load_tokenized_unlabeled_corpus(fname);
         std::get<0>(pair) = get_vocabulary(text_corpus, min_occurence);
@@ -225,17 +224,18 @@ int main( int argc, char* argv[]) {
         true);
 
     auto parameters = model.parameters();
-    Solver::AdaDelta<REAL_t> solver(parameters, FLAGS_rho);
+    auto solver     = Solver::construct(FLAGS_solver, parameters, (REAL_t) FLAGS_learning_rate);
 
     // replicate model for each thread:
     vector<StackedModel<REAL_t>> thread_models;
-    for (int i = 0; i <FLAGS_j; ++i)
+    for (int i = 0; i < FLAGS_j; ++i)
         thread_models.emplace_back(model, false, true);
 
     int epoch       = 0;
     auto cost       = std::numeric_limits<REAL_t>::infinity();
     double new_cost = 0.0;
     int patience    = 0;
+
 
     while (cost > FLAGS_cutoff && epoch < FLAGS_epochs && patience < FLAGS_patience) {
 
@@ -244,13 +244,10 @@ int main( int argc, char* argv[]) {
 
         std::atomic<int> batches_processed(0);
 
-        stringstream ss;
-        ss << "Training epoch " << epoch;
-
-        ReportProgress<double> journalist(ss.str(), random_batch_order.size());
+        ReportProgress<double> journalist(utils::MS() << "Training epoch " << epoch, random_batch_order.size());
 
         for (auto batch_id : random_batch_order) {
-            pool->run([&model, &training, &solver, &full_code_size,
+            pool->run([&model, &training, solver, &full_code_size,
                        &cost, &thread_models, batch_id, &random_batch_order,
                        &batches_processed, &journalist]() {
 
@@ -258,19 +255,23 @@ int main( int argc, char* argv[]) {
                 auto thread_parameters = thread_model.parameters();
                 auto& minibatch = training[batch_id];
 
-                thread_model.masked_predict_cost(
+
+
+                auto error = thread_model.masked_predict_cost(
                     minibatch.data, // the sequence to draw from
                     minibatch.data, // what to predict (the words offset by 1)
                     minibatch.mask,
                     FLAGS_dropout
                 );
+                error.grad();
 
                 graph::backward(); // backpropagate
-                solver.step(thread_parameters);
-
-                journalist.tick(++batches_processed, cost);
+                solver->step(thread_parameters);
+                journalist.tick(++batches_processed, error.w(0) / minibatch.total_codes);
             });
         }
+
+        pool->wait_until_idle();
 
         /*auto& dataset = training;
 
@@ -339,7 +340,7 @@ int main( int argc, char* argv[]) {
             }
 
             journalist.resume();
-        }
+        }*/
         journalist.done();
 
         new_cost = average_error(model, validation);
@@ -355,7 +356,7 @@ int main( int argc, char* argv[]) {
                   << " patience = " << patience << std::endl;
         maybe_save_model(&model);
         epoch++;
-    }*/
+    }
 
     Timer::report();
     return 0;

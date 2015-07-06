@@ -178,6 +178,10 @@ class TensorInternal {
         TensorInternal<R, dimension - 1> operator[](mshadow::index_t idx) const;
         TensorInternal<R, 1> ravel() const;
         TensorInternal<R, dimension> Slice(mshadow::index_t begin, mshadow::index_t end) const;
+
+        template<int new_dimension>
+        TensorInternal<R, new_dimension> reshape(mshadow::Shape<new_dimension> new_shape, int offset = 0) const;
+
         const R* data() const;
         R* data();
 

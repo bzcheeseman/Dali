@@ -199,14 +199,9 @@ namespace matops {
                     << ") must be positive and less than number of rows in matrix ("
                     << matrix.dims(0) << ")."
         );
-        // performs a copy
         Mat<R> out(matrix.dims(1), 1, weights<R>::empty());
-        MAT(out).ravel() = MAT(matrix)[row].wrapper();
-
-        if (graph::backprop_enabled())
-            graph::emplace_back([matrix, out, row]() mutable {
-                SAFE_GRAD(matrix)[row] += GRAD(out).ravel().wrapper();
-            });
+        MAT(out) = MAT(matrix)[row].reshape(MAT(out).shape);
+        GRAD(out) = GRAD(matrix)[row].reshape(GRAD(out).shape);
         return out;
     }
 

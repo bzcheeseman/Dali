@@ -310,6 +310,20 @@ TensorInternal<R, dimension> TensorInternal<R,dimension>::Slice(
 }
 
 template<typename R, int dimension>
+template<int new_dimension>
+TensorInternal<R, new_dimension> TensorInternal<R,dimension>::reshape(mshadow::Shape<new_dimension> new_shape, int extra_offset) const {
+    ASSERT2(extra_offset + offset >= 0,
+            utils::MS() << "Reshaped TensorInternal's memory offset must be positive "
+                           "(was " << offset << " before reshape, and "
+                           "extra_offset + offset = " << extra_offset + offset << " < 0).");
+    ASSERT2(new_shape.Size() + extra_offset + offset <= memory_->total_memory,
+            "Reshape dimensions exceed the size of the underlying memory buffer.");
+    return TensorInternal<R, new_dimension>(new_shape,
+                                            memory_,
+                                            offset + extra_offset);
+}
+
+template<typename R, int dimension>
 TensorInternal<R,dimension>& TensorInternal<R,dimension>::operator=(const lazy_t& expr) {
     #ifdef DALI_USE_CUDA
         if (should_compute_on_gpu(extract_memory(expr.dependent_tensors))) {
@@ -473,9 +487,24 @@ void TensorInternal<R, dimension>::resize(mshadow::Shape<dimension> newshape, R 
         }
 #endif
 
-DALI_TENSOR_INTERNAL_RESIZE(float)
-DALI_TENSOR_INTERNAL_RESIZE(double)
-DALI_TENSOR_INTERNAL_RESIZE(int)
+DALI_TENSOR_INTERNAL_RESIZE(float);
+DALI_TENSOR_INTERNAL_RESIZE(double);
+DALI_TENSOR_INTERNAL_RESIZE(int);
+
+#define DALI_TENSOR_RESHAPE_INSTANTIATE(dtype, fromdim, todim)\
+    template \
+    TensorInternal<dtype,todim> TensorInternal<dtype,fromdim>::reshape<todim>(mshadow::Shape<todim> newshape, int) const\
+
+#define DALI_TENSOR_RESHAPE_INSTANTIATES(dtype)\
+    DALI_TENSOR_RESHAPE_INSTANTIATE(dtype, 2, 1);\
+    DALI_TENSOR_RESHAPE_INSTANTIATE(dtype, 2, 2);\
+    DALI_TENSOR_RESHAPE_INSTANTIATE(dtype, 1, 1);\
+    DALI_TENSOR_RESHAPE_INSTANTIATE(dtype, 1, 2);\
+
+DALI_TENSOR_RESHAPE_INSTANTIATES(float);
+DALI_TENSOR_RESHAPE_INSTANTIATES(int);
+DALI_TENSOR_RESHAPE_INSTANTIATES(double);
+
 
 template class TensorInternal<float, 1>;
 template class TensorInternal<double,1>;

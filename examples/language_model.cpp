@@ -228,14 +228,17 @@ int main( int argc, char* argv[]) {
 
     // replicate model for each thread:
     vector<StackedModel<REAL_t>> thread_models;
-    for (int i = 0; i < FLAGS_j; ++i)
-        thread_models.emplace_back(model, false, true);
+    if (FLAGS_j == 1) {
+        thread_models.emplace_back(model, false, false);
+    } else {
+        for (int i = 0; i < FLAGS_j; ++i)
+            thread_models.emplace_back(model, false, true);
+    }
 
     int epoch       = 0;
     auto cost       = std::numeric_limits<REAL_t>::infinity();
     double new_cost = 0.0;
     int patience    = 0;
-
 
     while (cost > FLAGS_cutoff && epoch < FLAGS_epochs && patience < FLAGS_patience) {
 
@@ -254,8 +257,6 @@ int main( int argc, char* argv[]) {
                 auto& thread_model = thread_models[ThreadPool::get_thread_number()];
                 auto thread_parameters = thread_model.parameters();
                 auto& minibatch = training[batch_id];
-
-
 
                 auto error = thread_model.masked_predict_cost(
                     minibatch.data, // the sequence to draw from
@@ -357,8 +358,10 @@ int main( int argc, char* argv[]) {
         maybe_save_model(&model);
 
         ELOG(memory_bank<REAL_t>::num_cpu_allocations);
+        ELOG(memory_bank<REAL_t>::total_cpu_memory);
         #ifdef DALI_USE_CUDA
             ELOG(memory_bank<REAL_t>::num_gpu_allocations);
+            ELOG(memory_bank<REAL_t>::total_gpu_memory);
         #endif
 
         epoch++;

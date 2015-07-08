@@ -6,6 +6,39 @@
 
 using std::vector;
 
+void dali_init() {
+    mshadow::InitTensorEngine<mshadow::cpu>();
+    #ifdef DALI_USE_CUDA
+        mshadow::InitTensorEngine<mshadow::gpu>();
+    #endif
+}
+
+template<int dimension>
+std::ostream &operator <<(std::ostream &os, const mshadow::Shape<dimension> &shape) {
+    if (dimension == 0) {
+        return os << "<shape ()>";
+    } else {
+        os << "<shape (";
+        for (int i = 0; i < dimension;i++) {
+            os << shape[i];
+            if (i != dimension - 1) os << ", ";
+        }
+        os << ")>";
+        return os;
+    }
+}
+
+template std::ostream& operator<< <0>(std::ostream& strm, const mshadow::Shape<0>& a);
+template std::ostream& operator<< <1>(std::ostream& strm, const mshadow::Shape<1>& a);
+template std::ostream& operator<< <2>(std::ostream& strm, const mshadow::Shape<2>& a);
+template std::ostream& operator<< <3>(std::ostream& strm, const mshadow::Shape<3>& a);
+template std::ostream& operator<< <4>(std::ostream& strm, const mshadow::Shape<4>& a);
+template std::ostream& operator<< <5>(std::ostream& strm, const mshadow::Shape<5>& a);
+template std::ostream& operator<< <6>(std::ostream& strm, const mshadow::Shape<6>& a);
+template std::ostream& operator<< <7>(std::ostream& strm, const mshadow::Shape<7>& a);
+template std::ostream& operator<< <8>(std::ostream& strm, const mshadow::Shape<8>& a);
+template std::ostream& operator<< <9>(std::ostream& strm, const mshadow::Shape<9>& a);
+
 template<typename R, int dimension>
 TensorInternal<R,dimension>::TensorInternal(mshadow::Shape<dimension> _shape) :
         shape(_shape),

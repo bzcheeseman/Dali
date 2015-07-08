@@ -3,6 +3,7 @@
 
 #include "dali/math/SynchronizedMemory.h"
 #include "dali/utils/core_utils.h"
+#include "mshadow/tensor.h"
 #include <initializer_list>
 #include <iomanip>
 #include <iostream>
@@ -31,6 +32,12 @@ etc... a LazyTensor to a TensorInternal will cause the evaluation
 of the lazy operation to execute.
 
 */
+
+void dali_init();
+
+// Make mshadow::Shape printable:
+template<int dimension>
+std::ostream& operator<<(std::ostream&, const mshadow::Shape<dimension>&);
 
 typedef unsigned int dim_t;
 

@@ -7,7 +7,7 @@
 #include <iostream>
 #include <vector>
 #include <ostream>
-#include <mshadow/tensor.h>
+
 #include "dali/utils/core_utils.h"
 #include "dali/math/memory_bank/MemoryBank.h"
 
@@ -22,7 +22,6 @@ track of which device the master copy is on, and if an inter-
 device copy is necessary.
 */
 
-void dali_init();
 enum Device {
     DEVICE_GPU,
     DEVICE_CPU
@@ -51,10 +50,6 @@ bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<R>*>& sts)
 #else
     static const Device default_preferred_device = DEVICE_CPU;
 #endif
-
-// Make mshadow::Shape printable:
-template<int dimension>
-std::ostream& operator<<(std::ostream&, const mshadow::Shape<dimension>&);
 
 template<typename R>
 class SynchronizedMemory {
@@ -103,11 +98,6 @@ class SynchronizedMemory {
         // will be modified, and thus will need to be resynchronized
         // if a different device needs it (cpu vs. gpu freshness)
         R* mutable_cpu_data();
-    private:
-        mshadow::Tensor<mshadow::cpu, 2, R> dummy_cpu() const;
-        // only used by copy constructor.
-        template<typename SourceType>
-        void copy_data_from(SourceType& src);
 #ifdef DALI_USE_CUDA
     public:
 
@@ -126,8 +116,6 @@ class SynchronizedMemory {
         // see cpu_data for explanation
         R* gpu_data() const;
         R* mutable_gpu_data();
-    private:
-        mshadow::Tensor<mshadow::gpu, 2, R> dummy_gpu() const;
 #endif
 };
 

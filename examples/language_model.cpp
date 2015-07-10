@@ -20,6 +20,8 @@ DEFINE_double(cutoff,              2.0,  "KL Divergence error where stopping is 
 DEFINE_int32(patience,             5,    "How many unimproving epochs to wait through before witnessing progress ?");
 DEFINE_int32(num_reconstructions,  5,    "How many sentences to demo after each epoch.");
 DEFINE_double(dropout,             0.3,  "How many Hintons to include in the neural network.");
+DEFINE_int32(max_sentence_length,  19,   "How many sentences to demo after each epoch.");
+
 
 using std::ifstream;
 using std::istringstream;
@@ -65,8 +67,11 @@ struct Databatch {
 
     void add_example(
             Vocab& word_vocab,
-            const vector<string>& example,
+            const vector<string>& example_orig,
             size_t& example_idx) {
+        int len = std::min(example_orig.size(), (size_t)FLAGS_max_sentence_length);
+        vector<string> example(example_orig.begin(), example_orig.begin() + len);
+
         auto description_length = example.size();
         data.w(0, example_idx) = word_vocab.word2index[START];
         auto encoded = word_vocab.encode(example, true);
@@ -87,6 +92,8 @@ struct Databatch {
         for (auto it = data_begin; it != data_end; ++it) {
             max_length = std::max(max_length, (*it)->size() + 2);
         }
+
+        max_length = std::min(max_length, (size_t)FLAGS_max_sentence_length + 2);
 
         Databatch<R> databatch(max_length, num_elements);
         for (size_t k = 0; k < num_elements; k++) {
@@ -219,7 +226,8 @@ beam_search_results_t the_beam_search(
         candidate_scores,
         make_choice,
         word_vocab.word2index.at(utils::end_symbol),
-        max_len);
+        max_len,
+        {word_vocab.unknown_word});
 
     return beams;
 }
@@ -377,13 +385,14 @@ int main( int argc, char* argv[]) {
 
                     journalist.resume();
 
-                    journalist.done();
                 });
 
             });
         }
 
         pool->wait_until_idle();
+        journalist.done();
+
 
         new_cost = average_error(model, validation);
         if (new_cost >= cost) {

@@ -7,6 +7,9 @@
 #include <unordered_map>
 
 #include "dali/math/memory_bank/MemoryBankInternal.h"
+#ifdef DALI_USE_CUDA
+#include <thrust/device_vector.h>
+#endif
 
 template<typename R>
 struct memory_bank {
@@ -27,7 +30,20 @@ struct memory_bank {
         static void deposit_gpu(int amount, int inner_dimension, R* ptr);
         static size_t cuda_available_memory();
         static R* allocate_gpu(int amount, int inner_dimension);
+
     #endif
 };
+
+#ifdef DALI_USE_CUDA
+template<typename R>
+struct temporary_array {
+    R* dptr_;
+    int amount;
+    int inner_dimension;
+    temporary_array(int amount, int inner_dimension);
+    ~temporary_array();
+    thrust::device_ptr<R> begin();
+};
+#endif
 
 #endif

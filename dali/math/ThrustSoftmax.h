@@ -1,6 +1,8 @@
 #ifndef DALI_MATH_THRUST_SOFTMAX_TRANSPOSE_H
 #define DALI_MATH_THRUST_SOFTMAX_TRANSPOSE_H
 #include "dali/math/TensorOps.h"
+#include "dali/math/memory_bank/MemoryBank.h"
+#include "dali/math/ThrustReduceByKey.h"
 /**
 Thrust Softmax
 --------------
@@ -76,17 +78,21 @@ namespace TensorOps {
         );
 
         // store the first reduction in here
-        thrust::device_vector<R> reduced_cols(num_cols);
+        // Ask the memory bank if this type of memory was allocated before
+        // and borrow it
+        auto reduced_cols = temporary_array<R>(num_cols, num_cols);
+        // wrap it in a Thrust pointer for convenience.
+        auto reduced_cols_begin = reduced_cols.begin();
 
         // gather the columwise maximums
         auto dest_ptr = to_thrust(dest);
 
-        thrust::reduce_by_key(
+        thrust::dali_reduce_by_key(
             index_back_to_column,
             index_back_to_column + total_size,
             reordered_values,
             thrust::make_discard_iterator(),
-            reduced_cols.begin(),
+            reduced_cols_begin,
             thrust::equal_to<ind_t>(),
             thrust::maximum<R>()
         );
@@ -97,7 +103,7 @@ namespace TensorOps {
         );
 
         auto repeated_max = thrust::make_permutation_iterator(
-            reduced_cols.begin(),
+            reduced_cols_begin,
             repeated_max_back_to_column_index
         );
 
@@ -114,12 +120,12 @@ namespace TensorOps {
             col_major_index
         );
 
-        thrust::reduce_by_key(
+        thrust::dali_reduce_by_key(
             index_back_to_column,
             index_back_to_column + total_size,
             reordered_exped_values,
             thrust::make_discard_iterator(),
-            reduced_cols.begin(),
+            reduced_cols_begin,
             thrust::equal_to<ind_t>(),
             thrust::plus<R>()
         );

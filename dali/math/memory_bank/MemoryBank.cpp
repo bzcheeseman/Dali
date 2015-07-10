@@ -72,6 +72,26 @@ std::atomic<long long> memory_bank<R>::total_cpu_memory(0);
         total_gpu_memory+= amount;
         return memory_operations<R>::allocate_gpu_memory(amount, inner_dimension);
     }
+
+    template<typename R>
+    temporary_array<R>::temporary_array(int _amount, int _inner_dimension) :
+        dptr_(memory_bank<R>::allocate_gpu(_amount, _inner_dimension)),
+        amount(_amount), inner_dimension(_inner_dimension) {
+    }
+
+    template<typename R>
+    temporary_array<R>::~temporary_array() {
+        memory_bank<R>::deposit_gpu(amount, inner_dimension, dptr_);
+    }
+    template<typename R>
+    thrust::device_ptr<R> temporary_array<R>::begin() {
+        return thrust::device_pointer_cast(dptr_);
+    }
+
+    template class temporary_array<float>;
+    template class temporary_array<double>;
+    template class temporary_array<int>;
+
 #endif
 
 template class memory_bank<float>;

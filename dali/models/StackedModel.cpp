@@ -209,6 +209,7 @@ Mat<Z> StackedModel<Z>::masked_predict_cost(
         int temporal_offset,
         uint softmax_offset) const {
 
+    utils::Timer mpc("masked_predict_cost");
     auto state = this->initial_states();
     mat total_error(1,1);
 
@@ -218,30 +219,40 @@ Mat<Z> StackedModel<Z>::masked_predict_cost(
 
     for (uint timestep = 0; timestep < n - temporal_offset; ++timestep) {
         // pick this letter from the embedding
-
+        utils::Timer gte("get the embeddings");
         auto input_vector = this->embedding[data[timestep]];
+        gte.stop();
         // pass this letter to the LSTM for processing
+
+        utils::Timer flstm("forward lstm");
         state = stacked_lstm.activate(
             state,
             input_vector,
             drop_prob
         );
+        flstm.stop();
 
         // classifier takes as input the final hidden layer's activation:
+        utils::Timer decode_tm("decode");
         auto logprobs = decode(input_vector, state);
+        decode_tm.stop();
 
         auto target = target_data[timestep + temporal_offset];
         if (softmax_offset > 0) {
             target -= softmax_offset;
         }
 
+        utils::Timer softmax_tm("softmax cross entropy");
         auto errors = MatOps<Z>::softmax_cross_entropy(logprobs, target);
+        softmax_tm.stop();
 
-
+        utils::Timer masking_tm("masking");
         errors *= mask[timestep + temporal_offset].T();
+        masking_tm.stop();
 
         total_error += errors.sum();
     }
+    mpc.stop();
 
     return total_error;
 }

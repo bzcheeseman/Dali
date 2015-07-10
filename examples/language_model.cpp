@@ -51,10 +51,13 @@ template<typename R>
 struct Databatch {
     Mat<int> data;
     Mat<R> mask;
+    vector<int> code_lengths;
     int total_codes;
     Databatch(int max_example_length, int num_examples) {
         data        = Mat<int>(max_example_length, num_examples);
         mask        = Mat<R>(max_example_length, num_examples);
+        code_lengths.clear();
+        code_lengths.resize(num_examples);
         total_codes = 0;
     };
 
@@ -72,6 +75,7 @@ struct Databatch {
             data.w(j + 1, example_idx) = encoded[j];
             mask.w(j + 1, example_idx) = (R)1.0;
         }
+        code_lengths[example_idx] = description_length + 1;
         total_codes += description_length + 1;
     }
 
@@ -169,6 +173,60 @@ vector<Databatch<R>> load_dataset_with_vocabulary(const string& fname, Vocab& vo
         return create_dataset<R>(text_corpus, vocab, minibatch_size);
 }
 
+typedef std::tuple<Mat<REAL_t>, typename StackedModel<REAL_t>::state_type> beam_search_state_t;
+typedef vector<beam_search::BeamSearchResult<REAL_t, beam_search_state_t>> beam_search_results_t;
+
+beam_search_results_t the_beam_search(
+        const StackedModel<REAL_t>& model,
+        const Vocab& word_vocab,
+        Indexing::Index indices) {
+    graph::NoBackprop nb;
+    const uint beam_width = 5;
+    const int max_len    = 20;
+
+    auto state = model.initial_states();
+    int last_index = 0;
+    for (auto index : indices) {
+        auto input_vector = model.embedding[(int)index];
+        state = model.stacked_lstm.activate(
+            state,
+            input_vector
+        );
+        last_index = index;
+    }
+
+    // state comprises of last input embedding and lstm state
+    beam_search_state_t initial_state = make_tuple(model.embedding[last_index], state);
+
+    auto candidate_scores = [&model](beam_search_state_t state) {
+        auto& input_vector = std::get<0>(state);
+        auto& lstm_state   = std::get<1>(state);
+        return MatOps<REAL_t>::softmax(model.decode(input_vector, lstm_state)).log();
+    };
+
+    auto make_choice = [&model](beam_search_state_t state, uint candidate) {
+        auto input_vector = model.embedding[candidate];
+        auto lstm_state = model.stacked_lstm.activate(
+            std::get<1>(state),
+            input_vector
+        );
+        return make_tuple(input_vector, lstm_state);
+    };
+
+    auto beams = beam_search::beam_search<REAL_t, beam_search_state_t>(
+        initial_state,
+        beam_width,
+        candidate_scores,
+        make_choice,
+        word_vocab.word2index.at(utils::end_symbol),
+        max_len);
+
+    return beams;
+}
+
+
+
+
 int main( int argc, char* argv[]) {
     GFLAGS_NAMESPACE::SetUsageMessage(
         "\n"
@@ -235,6 +293,8 @@ int main( int argc, char* argv[]) {
             thread_models.emplace_back(model, false, true);
     }
 
+    Throttled throttled;
+
     int epoch       = 0;
     auto cost       = std::numeric_limits<REAL_t>::infinity();
     double new_cost = 0.0;
@@ -250,10 +310,7 @@ int main( int argc, char* argv[]) {
         ReportProgress<double> journalist(utils::MS() << "Training epoch " << epoch, random_batch_order.size());
 
         for (auto batch_id : random_batch_order) {
-            pool->run([&model, &training, solver, &full_code_size,
-                       &cost, &thread_models, batch_id, &random_batch_order,
-                       &batches_processed, &journalist]() {
-
+            pool->run([&, solver, batch_id]() {
                 auto& thread_model = thread_models[ThreadPool::get_thread_number()];
                 auto thread_parameters = thread_model.parameters();
                 auto& minibatch = training[batch_id];
@@ -269,80 +326,64 @@ int main( int argc, char* argv[]) {
                 graph::backward(); // backpropagate
                 solver->step(thread_parameters);
                 journalist.tick(++batches_processed, error.w(0) / minibatch.total_codes);
+                throttled.maybe_run(seconds(10), [&]() {
+                    // Tell the journalist the news can wait
+                    journalist.pause();
+                    graph::NoBackprop nb;
+                    auto& random_batch = training[utils::randint(0, training.size() - 1)];
+                    auto random_example_index = utils::randint(0, random_batch.data.dims(1) - 1);
+                    std::cout << random_batch.code_lengths[random_example_index] << std::endl;
+
+                    int priming_size = utils::randint(1, std::min(6, random_batch.code_lengths[random_example_index]));
+
+                    vector<uint> priming;
+                    for (int i = 0; i < priming_size; ++i) {
+                        priming.push_back(random_batch.data.w(i, random_example_index));
+                    }
+
+                    auto beams = the_beam_search(model, word_vocab, &priming);
+
+                    vector<uint> priming_no_start(priming.begin() + 1, priming.end());
+
+                    std::cout << "Reconstructions: " << std::endl;
+                    for (auto& beam : beams) {
+                        std::cout << "=> (" << std::setprecision( 5 ) << beam.score << ") ";
+                        std::cout << utils::join(word_vocab.decode(&priming_no_start), " ") << " ";
+                        std::cout << utils::bold;
+                        std::cout << utils::join(word_vocab.decode(&beam.solution, true), " ") << std::endl;
+                        std::cout << utils::reset_color << std::endl;
+                    }
+
+                    if (visualizer != nullptr) {
+                        vector<vector<string>> sentences;
+                        vector<REAL_t>         probs;
+                        for (auto& beam : beams) {
+                            sentences.emplace_back(word_vocab.decode(&beam.solution, true));
+                            probs.emplace_back(beam.score);
+                        }
+
+                        auto input_sentence = make_shared<visualizable::Sentence<REAL_t>>(
+                                word_vocab.decode(&priming_no_start));
+                        auto sentences_viz = make_shared<visualizable::Sentences<REAL_t>>(sentences);
+                        sentences_viz->set_weights(probs);
+
+                        auto input_output_pair = visualizable::GridLayout();
+
+                        input_output_pair.add_in_column(0, input_sentence);
+                        input_output_pair.add_in_column(1, sentences_viz);
+
+                        visualizer->feed(input_output_pair.to_json());
+                    }
+
+                    journalist.resume();
+
+                    journalist.done();
+                });
+
             });
         }
 
         pool->wait_until_idle();
-
-        /*auto& dataset = training;
-
-        while(!pool->idle()) {
-            int time_between_reconstructions_s = 10;
-            pool->wait_until_idle(seconds(time_between_reconstructions_s));
-
-            // Tell the journalist the news can wait
-            journalist.pause();
-
-            int random_example_index;
-            int priming_size = utils::randint(1, 6);
-            const Databatch* random_batch;
-            while (true) {
-                random_batch = &dataset[utils::randint(0, dataset.size() - 1)];
-                random_example_index = utils::randint(0, random_batch->data->rows() - 1);
-                if ((*random_batch->codelens)(random_example_index) > priming_size) {
-                    break;
-                }
-            }
-            auto primer = random_batch->data->row(random_example_index).head(priming_size);
-
-            auto beams = beam_search::beam_search(model,
-                primer,
-                20, // max size of a sequence
-                0,  // offset symbols that are predicted
-                    // before being refed (no = 0)
-                FLAGS_num_reconstructions, // how many beams
-                word_vocab.word2index.at(utils::end_symbol), // when to stop the sequence
-                word_vocab.unknown_word
-            );
-
-            std::cout << "Reconstructions: \"";
-            for (int j = 1; j < priming_size; j++)
-                std::cout << word_vocab.index2word[(*random_batch->data)(random_example_index, j)] << " ";
-            std::cout << "\"" << std::endl;
-            for (const auto& beam : beams) {
-                std::cout << "=> (" << std::setprecision( 5 ) << std::get<1>(beam) << ") ";
-                for (const auto& word : std::get<0>(beam)) {
-                    if (word != word_vocab.word2index.at(utils::end_symbol))
-                        std::cout << word_vocab.index2word.at(word) << " ";
-                }
-                std::cout << std::endl;
-            }
-
-            if (visualizer != nullptr) {
-                visualizer->throttled_feed(seconds(10), [&visualizer, &beams, &word_vocab, &primer]() {
-                    vector<vector<string>> sentences;
-                    vector<REAL_t>         probs;
-                    for (auto& beam : beams) {
-                        sentences.emplace_back(word_vocab.decode(std::get<0>(beam)));
-                        probs.emplace_back(std::get<1>(beam));
-                    }
-
-                    auto input_sentence = make_shared<visualizable::Sentence<REAL_t>>(word_vocab.decode(primer));
-                    auto sentences_viz = make_shared<visualizable::Sentences<REAL_t>>(sentences);
-                    sentences_viz->set_weights(probs);
-
-                    auto input_output_pair = visualizable::GridLayout();
-
-                    input_output_pair.add_in_column(0, input_sentence);
-                    input_output_pair.add_in_column(1, sentences_viz);
-
-                    return input_output_pair.to_json();
-                });
-            }
-
-            journalist.resume();
-        }*/
-        journalist.done();
 
         new_cost = average_error(model, validation);
         if (new_cost >= cost) {
@@ -357,6 +398,9 @@ int main( int argc, char* argv[]) {
                   << " patience = " << patience << std::endl;
         maybe_save_model(&model);
 
+        Timer::report();
+
+
         ELOG(memory_bank<REAL_t>::num_cpu_allocations);
         ELOG(memory_bank<REAL_t>::total_cpu_memory);
         #ifdef DALI_USE_CUDA
@@ -367,6 +411,5 @@ int main( int argc, char* argv[]) {
         epoch++;
     }
 
-    Timer::report();
     return 0;
 }

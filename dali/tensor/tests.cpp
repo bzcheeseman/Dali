@@ -104,13 +104,18 @@ TEST_F(MatrixTests, inplace_sum) {
 }
 
 TEST_F(MatrixTests, max_scalar) {
+    int input_size = 5;
+    int hidden_size = 3;
+
     EXPERIMENT_REPEAT {
-        auto A = Mat<R>(3, 4, weights<R>::uniform(1.0, 1.6));
-        R maxxand = 1.3;
-        auto functor = [maxxand](vector<Mat<R>>& Xs)-> Mat<R> {
+        auto mat = Mat<R>(input_size, hidden_size, weights<R>::uniform(1.5, 20.0));
+        auto mat2 = Mat<R>(input_size, hidden_size, weights<R>::uniform(-20.0, 1.3));
+        auto combined = MatOps<R>::hstack({mat, mat2});
+        R maxxand = 1.4;
+        auto functor = [&maxxand](vector<Mat<R>> Xs)-> Mat<R> {
             return MatOps<R>::max(Xs[0], maxxand);
         };
-        ASSERT_TRUE(gradient_same(functor, {A}));
+        ASSERT_TRUE(gradient_same(functor, {combined}, 1e-4));
     }
 }
 

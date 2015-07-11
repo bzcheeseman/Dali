@@ -6,7 +6,7 @@
 
 #include "dali/math/TensorInternal.h"
 #include "dali/math/ThrustUtils.h"
-
+#include "dali/math/memory_bank/MemoryBank.h"
 
 
 namespace TensorOps {
@@ -23,17 +23,18 @@ namespace TensorOps {
         auto t_dest   = to_thrust(dest);
         auto t_source = to_thrust(source);
 
+
+
         std::vector<int> offsets(targets.number_of_elements());
         for (int i=0; i < targets.number_of_elements(); ++i) {
             // accessing index (targets[i], i)
             offsets[i] = targets(i) * source.shape_[1] + i;
         }
-        thrust::device_vector<uint> offsets_gpu(offsets);
+        thrust::device_vector<uint, cached_allocator<uint> > offsets_gpu(offsets);
 
-        // typedef thrust::device_vector<R>::iterator ElementIterator;
-        typedef thrust::device_vector<uint>::iterator IndexIterator;
-        thrust::permutation_iterator<thrust::device_ptr<R>,IndexIterator>
-                iter(t_source, offsets_gpu.begin());
+        auto iter = thrust::make_permutation_iterator(
+            t_source, offsets_gpu.begin()
+            );
         thrust::copy(iter, iter + source.shape_[1], t_dest);
     }
     #endif
@@ -80,11 +81,9 @@ namespace TensorOps {
                 // accessing index (targets[i], i)
                 offsets[i] = targets(i) * source.shape_[1] + i;
             }
-            thrust::device_vector<uint> offsets_gpu(offsets);
+            thrust::device_vector<uint, cached_allocator<uint> > offsets_gpu(offsets);
 
-            typedef thrust::device_vector<uint>::iterator IndexIterator;
-            thrust::permutation_iterator<thrust::device_ptr<R>,IndexIterator>
-                    dest_perm(t_dest, offsets_gpu.begin());
+            auto dest_perm = thrust::make_permutation_iterator(t_dest, offsets_gpu.begin());
 
             using namespace thrust::placeholders;
 

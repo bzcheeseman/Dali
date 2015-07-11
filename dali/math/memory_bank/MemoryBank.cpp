@@ -41,6 +41,8 @@ template<typename R>
 std::atomic<long long> memory_bank<R>::total_cpu_memory(0);
 
 #ifdef DALI_USE_CUDA
+
+
     template<typename R>
     std::unordered_map<unsigned long long,std::vector<R*>> memory_bank<R>::gpu_memory_bank;
 
@@ -73,24 +75,37 @@ std::atomic<long long> memory_bank<R>::total_cpu_memory(0);
         return memory_operations<R>::allocate_gpu_memory(amount, inner_dimension);
     }
 
+
     template<typename R>
-    temporary_array<R>::temporary_array(int _amount, int _inner_dimension) :
-        dptr_(memory_bank<R>::allocate_gpu(_amount, _inner_dimension)),
-        amount(_amount), inner_dimension(_inner_dimension) {
+    cached_allocator<R>::cached_allocator() {}
+
+    template<typename R>
+    cached_allocator<R>::~cached_allocator() {}
+
+    template<typename R>
+    typename cached_allocator<R>::pointer cached_allocator<R>::allocate(size_type num_bytes) {
+        auto ptr = memory_bank<float>::allocate_gpu(
+            num_bytes * sizeof(R) / sizeof(float),
+            num_bytes * sizeof(R) / sizeof(float)
+        );
+        return thrust::device_pointer_cast((R*)ptr);
     }
 
     template<typename R>
-    temporary_array<R>::~temporary_array() {
-        memory_bank<R>::deposit_gpu(amount, inner_dimension, dptr_);
-    }
-    template<typename R>
-    thrust::device_ptr<R> temporary_array<R>::begin() {
-        return thrust::device_pointer_cast(dptr_);
+    void cached_allocator<R>::deallocate(pointer ptr, size_type n) {
+        memory_bank<float>::deposit_gpu(
+            n * sizeof(R) / sizeof(float),
+            n * sizeof(R) / sizeof(float),
+            (float*)thrust::raw_pointer_cast(ptr)
+        );
     }
 
-    template class temporary_array<float>;
-    template class temporary_array<double>;
-    template class temporary_array<int>;
+    template class cached_allocator<float>;
+    template class cached_allocator<double>;
+    template class cached_allocator<int>;
+    template class cached_allocator<char>;
+    template class cached_allocator<uint>;
+
 
 #endif
 

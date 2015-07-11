@@ -2,7 +2,7 @@
 #define DALI_MATH_THRUST_SOFTMAX_TRANSPOSE_H
 #include "dali/math/TensorOps.h"
 #include "dali/math/memory_bank/MemoryBank.h"
-#include "dali/math/ThrustReduceByKey.h"
+#include <thrust/system/cuda/execution_policy.h>
 /**
 Thrust Softmax
 --------------
@@ -48,6 +48,8 @@ namespace TensorOps {
     template<typename R>
     void softmax(mshadow::Tensor<gpu,2,R> dest, mshadow::Tensor<gpu,2,R> src, R temperature = 1.0) {
         typedef int ind_t;
+        // use the memory bank to perform allocations
+        cached_allocator<char> alloc;
 
         using namespace thrust::placeholders;
 
@@ -80,21 +82,21 @@ namespace TensorOps {
         // store the first reduction in here
         // Ask the memory bank if this type of memory was allocated before
         // and borrow it
-        auto reduced_cols = temporary_array<R>(num_cols, num_cols);
+        thrust::device_vector<ind_t, cached_allocator<int> > reduced_cols(num_cols);
         // wrap it in a Thrust pointer for convenience.
-        auto reduced_cols_begin = reduced_cols.begin();
+
+        thrust::device_vector<ind_t, cached_allocator<int> > keys_output(total_size);
 
         // gather the columwise maximums
         auto dest_ptr = to_thrust(dest);
 
-        auto keys_output = temporary_array<ind_t>(total_size, total_size);
-
-        thrust::dali_reduce_by_key(
+        thrust::reduce_by_key(
+            thrust::cuda::par(alloc),
             index_back_to_column,
             index_back_to_column + total_size,
             reordered_values,
             keys_output.begin(),
-            reduced_cols_begin,
+            reduced_cols.begin(),
             thrust::equal_to<ind_t>(),
             thrust::maximum<R>()
         );
@@ -105,7 +107,7 @@ namespace TensorOps {
         );
 
         auto repeated_max = thrust::make_permutation_iterator(
-            reduced_cols_begin,
+            reduced_cols.begin(),
             repeated_max_back_to_column_index
         );
 
@@ -122,12 +124,13 @@ namespace TensorOps {
             col_major_index
         );
 
-        thrust::dali_reduce_by_key(
+        thrust::reduce_by_key(
+            thrust::cuda::par(alloc),
             index_back_to_column,
             index_back_to_column + total_size,
             reordered_exped_values,
             keys_output.begin(),
-            reduced_cols_begin,
+            reduced_cols.begin(),
             thrust::equal_to<ind_t>(),
             thrust::plus<R>()
         );

@@ -9,6 +9,7 @@
 #include "dali/math/memory_bank/MemoryBankInternal.h"
 #ifdef DALI_USE_CUDA
 #include <thrust/device_vector.h>
+#include <thrust/device_malloc_allocator.h>
 #endif
 
 template<typename R>
@@ -35,15 +36,19 @@ struct memory_bank {
 };
 
 #ifdef DALI_USE_CUDA
+// inspiration from
+// https://parallel-computing.pro/index.php/9-cuda/34-thrust-cuda-tip-reuse-temporary-buffers-across-transforms
 template<typename R>
-struct temporary_array {
-    R* dptr_;
-    int amount;
-    int inner_dimension;
-    temporary_array(int amount, int inner_dimension);
-    ~temporary_array();
-    thrust::device_ptr<R> begin();
+struct cached_allocator : thrust::device_malloc_allocator<R>{
+    typedef thrust::device_malloc_allocator<R> super_t;
+    typedef typename super_t::pointer   pointer;
+    typedef typename super_t::size_type size_type;
+    cached_allocator();
+    ~cached_allocator();
+    pointer allocate(size_type num_bytes);
+    void deallocate(pointer p, size_type n);
 };
+
 #endif
 
 #endif

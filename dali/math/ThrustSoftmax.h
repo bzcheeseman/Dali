@@ -87,11 +87,13 @@ namespace TensorOps {
         // gather the columwise maximums
         auto dest_ptr = to_thrust(dest);
 
+        auto keys_output = temporary_array<ind_t>(total_size, total_size);
+
         thrust::dali_reduce_by_key(
             index_back_to_column,
             index_back_to_column + total_size,
             reordered_values,
-            thrust::make_discard_iterator(),
+            keys_output.begin(),
             reduced_cols_begin,
             thrust::equal_to<ind_t>(),
             thrust::maximum<R>()
@@ -124,7 +126,7 @@ namespace TensorOps {
             index_back_to_column,
             index_back_to_column + total_size,
             reordered_exped_values,
-            thrust::make_discard_iterator(),
+            keys_output.begin(),
             reduced_cols_begin,
             thrust::equal_to<ind_t>(),
             thrust::plus<R>()

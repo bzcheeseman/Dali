@@ -208,7 +208,4 @@ template <> void TensorInternal<float, 1>::resize(mshadow::Shape<1> newshape, fl
 template <> void TensorInternal<double, 1>::resize(mshadow::Shape<1> newshape, double filler);
 template <> void TensorInternal<int, 1>::resize(mshadow::Shape<1> newshape, int filler);
 
-
-
-
 #endif

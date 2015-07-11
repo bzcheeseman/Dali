@@ -1,5 +1,8 @@
 #ifndef DALI_MATH_THRUST_REDUCE_BY_KEY_H
 #define DALI_MATH_THRUST_REDUCE_BY_KEY_H
+
+#ifdef DALI_USE_CUDA
+
 #include "dali/math/TensorOps.h"
 #include "dali/math/memory_bank/MemoryBank.h"
 
@@ -191,5 +194,7 @@ template<typename InputIterator1,
 }
 
 } // end thrust
+
+#endif
 
 #endif

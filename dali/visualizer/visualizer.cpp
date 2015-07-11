@@ -399,7 +399,7 @@ namespace visualizable {
         if (!ensure_connection())
             return;
 
-        rdx->publish(MS() << "feed_" << my_namespace, obj.dump());
+        rdx->publish(MS() << "updates_" << my_namespace, obj.dump());
     }
 
     void Visualizer::feed(const std::string& str) {

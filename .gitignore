@@ -25,7 +25,6 @@ build_cpu/
 *.jar
 *.rar
 *.tar
-*.zip
 *.gem
 *.pem
 

@@ -195,13 +195,13 @@ namespace TensorOps {
     template<typename R>
     inline void softmax_transpose(mshadow::Tensor<gpu, 2, R> dst,
                         const mshadow::Tensor<gpu, 2, R> src, R temperature = 1.0) {
-      dim3 dimBlock(mshadow::cuda::kBaseThreadNum);
-      dim3 dimGrid(dst.size(0));
+      dim3 num_threads(mshadow::cuda::kBaseThreadNum);
+      dim3 how_big_is_each_job_on_the_GPU(dst.size(0));
       mshadow::utils::Check(dst.shape_ == src.shape_, "SoftmaxTranspose: shape mismatch");
-      mshadow::cuda::CheckLaunchParam(dimGrid, dimBlock, "SoftmaxTranspose");
+      mshadow::cuda::CheckLaunchParam(how_big_is_each_job_on_the_GPU, num_threads, "SoftmaxTranspose");
       cudaStream_t stream = mshadow::Stream<gpu>::GetStream(dst.stream_);
       SoftmaxTransposeKernel<mshadow::cuda::kBaseThreadBits, R>
-          <<<dimGrid, dimBlock, 0, stream>>>
+          <<<how_big_is_each_job_on_the_GPU, num_threads, 0, stream>>>
           (mshadow::expr::MakePlan(dst),
            mshadow::expr::MakePlan(src),
            dst.size(1),

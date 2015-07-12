@@ -1,8 +1,11 @@
 #include <iostream>
 #include <vector>
+
+#include <thrust/device_vector.h>
 #include "dali/tensor/Mat.h"
 #include "dali/math/ThrustSoftmax.h"
 #include "dali/utils/core_utils.h"
+#include "dali/math/memory_bank/MemoryBank.h"
 
 using std::vector;
 
@@ -97,11 +100,9 @@ void softmax(mshadow::Tensor<mshadow::gpu, 2, R> dst,
 int main() {
     dali_init();
     auto bob = Mat<R>(5000, 5000, weights<R>::uniform(10, 20));
-
     auto bob_col_softmax = Mat<R>::zeros_like(bob);
 
     // set the computing streams
-
     softmax(bob_col_softmax.w().mutable_gpu_data(), bob.w().gpu_data());
     TensorOps::softmax(bob_col_softmax.w().mutable_gpu_data(), bob.w().gpu_data());
 

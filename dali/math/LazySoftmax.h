@@ -2,7 +2,7 @@
 #define DALI_MATH_LAZY_TRANSPOSE_SOFTMAX_H
 
 #include "mshadow/tensor.h"
-#include "dali/math/ThrustSoftmax.h"
+#include "dali/math/KernelizedSoftmax.h"
 /*
 Mshadow Lazy Softmax
 --------------------

@@ -5,7 +5,7 @@
 #include <mshadow/cuda/reduce.cuh>
 #include "dali/tensor/Mat.h"
 #include "dali/math/TensorInternal.h"
-#include "dali/math/ThrustSoftmax.h"
+#include "dali/math/KernelizedSoftmax.h"
 #include "dali/utils/core_utils.h"
 #include "dali/math/memory_bank/MemoryBank.h"
 
@@ -82,7 +82,7 @@ __global__ void SoftmaxKernel(DstPlan dst, SrcPlan src, mshadow::index_t num_col
 template<int x_bits, typename R,  typename DstPlan, typename SrcPlan>
 __global__ void SoftmaxKernelCached(DstPlan dst, SrcPlan src, mshadow::index_t num_cols, R temperature) {
     const unsigned buffer_size = 1 << x_bits;
-    const int num_offsets = num_cols/buffer_size;
+    const int num_offsets = num_cols/buffer_size + 1;
     const int row = blockIdx.x;
     const int thread_idx = threadIdx.x;
 
@@ -176,6 +176,7 @@ void softmax(mshadow::Tensor<mshadow::gpu, 2, R> dst,
     cudaStream_t stream = mshadow::Stream<mshadow::gpu>::GetStream(dst.stream_);
 
     if (dst.size(1) <= MAX_ROW_SIZE_FOR_CACHED) {
+        std::cout << "siema" << std::endl;
         SoftmaxKernelCached<thread_bits, R>
                 <<<tiles, within_tile, 0, stream>>>
                 (mshadow::expr::MakePlan(dst),
@@ -224,16 +225,17 @@ void softmax_transpose(mshadow::Tensor<mshadow::gpu, 2, R> dst,
 
 int main() {
     dali_init();
-    int N = 1000;
+    int N = 5;
     Mat<R> bob(N, N, weights<R>::uniform(20));
     Mat<R> bob_col_softmax(N, N);
 
     // set the computing streams
     softmax(bob_col_softmax.w().mutable_gpu_data(), bob.w().gpu_data());
     softmax_transpose(bob_col_softmax.w().mutable_gpu_data(), bob.w().gpu_data());
-    TensorOps::softmax(bob_col_softmax.w().mutable_gpu_data(), bob.w().gpu_data());
 
-    int iter = 1000;
+    int iter = 1;
+
+    bob.print();
 
     for (int i = 0; i < iter; i++) {
         //bob_col_softmax.w().clear();
@@ -245,29 +247,18 @@ int main() {
             cudaDeviceSynchronize();
         }
 
-        //bob_col_softmax.print();
+        bob_col_softmax.print();
 
-        bob_col_softmax.w().clear();
-        {
-            utils::Timer t1("Softmax col-wise (Dali)");
-            // our softmax
-            softmax_transpose(bob_col_softmax.w().mutable_gpu_data(), bob.w().gpu_data());
-            cudaDeviceSynchronize();
-        }
-
-        //bob_col_softmax.print();
+        // bob_col_softmax.w().clear();
         // {
-        //     utils::Timer t2("Softmax col-wise (Thrust)");
-        //     // thrust softmax
-        //     TensorOps::softmax(bob_col_softmax.mutable_gpu_data(), bob.gpu_data());
+        //     utils::Timer t1("Softmax col-wise (Dali)");
+        //     // our softmax
+        //     softmax_transpose(bob_col_softmax.w().mutable_gpu_data(), bob.w().gpu_data());
         //     cudaDeviceSynchronize();
         // }
-        {
-            utils::Timer t2("Softmax row-wise (mshadow)");
-            // thrust softmax
-            TensorOps::softmax_transpose(bob_col_softmax.w().mutable_gpu_data(), bob.w().gpu_data());
-            cudaDeviceSynchronize();
-        }
+
+        // bob_col_softmax.print();
+
     }
 
     utils::Timer::report();

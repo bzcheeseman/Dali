@@ -15,26 +15,26 @@ namespace Solver {
     template<typename R>
     using cache_t = TensorInternal<R, 1>;
 
-    enum SolverType {
-        TYPE_UNINITIALIZED,
-        TYPE_ADAGRAD,
-        TYPE_ADADELTA,
-        TYPE_SGD,
-        TYPE_RMSPROP,
-        TYPE_ADAM
+    enum Method {
+        METHOD_UNINITIALIZED,
+        METHOD_ADAGRAD,
+        METHOD_ADADELTA,
+        METHOD_SGD,
+        METHOD_RMSPROP,
+        METHOD_ADAM
     };
 
     const double SMOOTH_DEFAULT = 1e-4;
 
     template<typename R> class AbstractSolver {
         public:
-            SolverType type;
+            Method method;
 
             R clipval;
             R smooth_eps;
             R regc;
             AbstractSolver();
-            AbstractSolver(R clipval, R smooth_eps, R regc, SolverType type);
+            AbstractSolver(R clipval, R smooth_eps, R regc, Method method);
             virtual void step( std::vector<Mat<R>>& ) = 0;
             virtual void reset_caches( std::vector<Mat<R>>&);
     };

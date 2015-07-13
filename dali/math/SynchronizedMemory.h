@@ -45,11 +45,7 @@ template<typename R>
 bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<R>*>& sts);
 
 // Set the default device to GPU or CPU based on build type
-#ifdef DALI_USE_CUDA
-    static const Device default_preferred_device = DEVICE_GPU;
-#else
-    static const Device default_preferred_device = DEVICE_CPU;
-#endif
+extern Device default_preferred_device;
 
 template<typename R>
 class SynchronizedMemory {
@@ -98,6 +94,7 @@ class SynchronizedMemory {
         // will be modified, and thus will need to be resynchronized
         // if a different device needs it (cpu vs. gpu freshness)
         R* mutable_cpu_data();
+        R* overwrite_cpu_data();
 #ifdef DALI_USE_CUDA
     public:
 
@@ -116,6 +113,7 @@ class SynchronizedMemory {
         // see cpu_data for explanation
         R* gpu_data() const;
         R* mutable_gpu_data();
+        R* overwrite_gpu_data();
 #endif
 };
 

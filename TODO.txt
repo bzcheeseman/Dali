@@ -1,9 +1,6 @@
 HIGH PRIORITY:
--> implement 3 different ways of accessing data in TensorInternal:
-    - mutable
-    - read
-    - overwrite (only allocate, do not refresh)
 -> mshadow and tensors (mutli gpu support etc.)
+-> add Mat.Slice
 
 MEDIUM PRIORITY:
 -> random weights init should take doubles, not template typename.

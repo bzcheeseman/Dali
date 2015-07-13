@@ -73,7 +73,9 @@ namespace matops {
             max_num_examples = std::max(max_num_examples, input.dims(1));
         }
 
-        Mat<R> out(weight_mats[0].dims(0), max_num_examples, weights<R>::zeros());
+        Mat<R> out(weight_mats[0].dims(0), max_num_examples, weights<R>::empty());
+        MAT(out) = MAT(bias).ravel().wrapper().template broadcast<0>(MAT(out).shape);
+
         for (int i = 0; i < weight_mats.size(); ++i) {
             // inputs must either match the broadcasted size, or be broadcastable by having their
             // outer dimension be 1 (a column vector essentially)
@@ -92,8 +94,6 @@ namespace matops {
 
             DEBUG_ASSERT_MAT_NOT_NAN(out)
         }
-
-        MAT(out) += MAT(bias).ravel().wrapper().template broadcast<0>(MAT(out).shape);
 
         if (graph::backprop_enabled())
             graph::emplace_back([weight_mats, inputs, bias, out, max_num_examples]() mutable {

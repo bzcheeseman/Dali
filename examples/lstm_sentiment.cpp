@@ -26,7 +26,7 @@ using std::min;
 using utils::Vocab;
 using utils::assert2;
 
-typedef double REAL_t;
+typedef float REAL_t;
 typedef Mat<REAL_t> mat;
 
 DEFINE_int32(minibatch,           100,        "What size should be used for the minibatches ?");
@@ -44,6 +44,8 @@ DEFINE_double(embedding_learning_rate, -1.0,  "A separate learning rate for embe
 DEFINE_bool(svd_init,             true,       "Initialize weights using SVD?");
 DEFINE_bool(average_gradient,     false,      "Error during minibatch should be average or sum of errors.");
 
+DEFINE_bool(gpu,                  true,       "Run computation on GPU.");
+
 ThreadPool* pool;
 
 int main (int argc,  char* argv[]) {
@@ -56,13 +58,18 @@ int main (int argc,  char* argv[]) {
         " @date April 7th 2015"
     );
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+
+    #ifdef DALI_USE_CUDA
+    default_preferred_device = FLAGS_gpu ? DEVICE_GPU : DEVICE_CPU;
+    #endif
+
     auto epochs              = FLAGS_epochs;
 
     auto sentiment_treebank = SST::load(FLAGS_train);
     auto embedding          = Mat<REAL_t>(100, 0);
     auto word_vocab         = Vocab();
     if (!FLAGS_pretrained_vectors.empty())
-        glove::load(FLAGS_pretrained_vectors, embedding, word_vocab, 50000);
+        glove::load(FLAGS_pretrained_vectors, &embedding, &word_vocab, 50000);
     else
         word_vocab = SST::get_vocabulary(sentiment_treebank, FLAGS_min_occurence);
     auto vocab_size     = word_vocab.size();
@@ -123,18 +130,19 @@ int main (int argc,  char* argv[]) {
     vector<vector<Mat<REAL_t>>>       thread_embedding_params;
     vector<StackedModel<REAL_t>> thread_models;
     std::tie(thread_models, thread_embedding_params, thread_params) = utils::shallow_copy_multi_params(model, FLAGS_j, [&model](const Mat<REAL_t>& mat) {
-        return mat.w()->data() == model.embedding.w()->data();
+        return &mat.w() == &model.embedding.w();
     });
 
     vector<Mat<REAL_t>> params = model.parameters();
     vector<Mat<REAL_t>> embedding_params(params.begin(), params.begin() + 1);
     params = vector<Mat<REAL_t>>(params.begin() + 1, params.end());
 
-    auto svd_init = weights<REAL_t>::svd(weights<REAL_t>::gaussian(0.0, 1.0));
+    // auto svd_init = weights<REAL_t>::svd(weights<REAL_t>::gaussian(0.0, 1.0));
 
-    if (FLAGS_svd_init) {
-        for (auto& param : params) svd_init(param);
-    }
+    // if (FLAGS_svd_init) {
+    //     for (auto& param : params) svd_init(param);
+    // }
+
     auto solver = Solver::construct<REAL_t>(FLAGS_solver, params, FLAGS_learning_rate, (REAL_t) FLAGS_reg);
     auto embedding_solver = Solver::construct<REAL_t>(FLAGS_solver, embedding_params,
         FLAGS_embedding_learning_rate > 0 ? FLAGS_embedding_learning_rate : FLAGS_learning_rate, 0.0);
@@ -152,7 +160,7 @@ int main (int argc,  char* argv[]) {
     auto pred_fun = [&model](vector<uint>& example) {
         graph::NoBackprop nb;
         auto final_states = model.get_final_activation(
-            example, 0.0
+            &example, 0.0
         );
         // no softmax needed, simply get best guess
         return model.decode(
@@ -176,7 +184,7 @@ int main (int argc,  char* argv[]) {
                 auto& minibatch        = dataset[batch_id];
                 // many forward steps here:
                 for (auto & example : minibatch) {
-                    auto final_states = thread_model.get_final_activation(std::get<0>(example), FLAGS_dropout);
+                    auto final_states = thread_model.get_final_activation(&std::get<0>(example), FLAGS_dropout);
                     auto logprobs = thread_model.decode(
                         thread_model.embedding[std::get<0>(example).back()],
                         final_states,
@@ -205,7 +213,7 @@ int main (int argc,  char* argv[]) {
                             auto& example = std::get<0>(minibatch[utils::randint(0, minibatch.size()-1)]);
                             // visualization does not backpropagate.
                             graph::NoBackprop nb;
-                            auto final_states = thread_model.get_final_activation(example, 0.0);
+                            auto final_states = thread_model.get_final_activation(&example, 0.0);
                             // make prediction
                             auto probs = MatOps<REAL_t>::softmax(
                                 thread_model.decode(
@@ -215,7 +223,7 @@ int main (int argc,  char* argv[]) {
                                 )
                             );
                             return SST::json_classification(
-                                word_vocab.decode(example),
+                                word_vocab.decode(&example),
                                 probs
                             );
                         }
@@ -229,7 +237,7 @@ int main (int argc,  char* argv[]) {
         journalist.done();
         auto new_validation = SST::average_recall(validation_set, pred_fun, FLAGS_j);
         std::cout << "Root recall=" << std::get<1>(new_validation) << std::endl;
-        if (solver->is_adagrad()) {
+        if (solver->method == Solver::METHOD_ADAGRAD) {
             solver->reset_caches(params);
             embedding_solver->reset_caches(embedding_params);
         }

@@ -15,18 +15,18 @@ namespace Solver {
             clipval(std::numeric_limits<R>::infinity),
             smooth_eps(SMOOTH_DEFAULT),
             regc(0.0),
-            type(TYPE_UNINITIALIZED) {
+            method(METHOD_UNINITIALIZED) {
     }
 
     template<typename R>
     AbstractSolver<R>::AbstractSolver(R _clipval,
                                       R _smooth_eps,
                                       R _regc,
-                                      SolverType _type) :
+                                      Method _method) :
             clipval(_clipval),
             smooth_eps(_smooth_eps),
             regc(_regc),
-            type(_type) {
+            method(_method) {
     }
 
     template<typename R>
@@ -35,14 +35,14 @@ namespace Solver {
     /* SGD */
     template<typename R>
     SGD<R>::SGD (R clipval, R regc) :
-            AbstractSolver<R>(clipval, 0.0, regc, TYPE_SGD) {
+            AbstractSolver<R>(clipval, 0.0, regc, METHOD_SGD) {
     }
 
     template<typename R>
     SGD<R>::SGD (
         vector<Mat<R>>& parameters,
         R clipval,
-        R regc) : AbstractSolver<R>(clipval, 0.0, regc, TYPE_SGD) {};
+        R regc) : AbstractSolver<R>(clipval, 0.0, regc, METHOD_SGD) {};
 
     template<typename R>
     void SGD<R>::step (vector<Mat<R>>& parameters, R step_size) {
@@ -67,7 +67,7 @@ namespace Solver {
     AdaGrad<R>::AdaGrad (
             R smooth_eps,
             R clipval,
-            R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, TYPE_ADAGRAD) {
+            R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, METHOD_ADAGRAD) {
     }
 
     template<typename R>
@@ -75,7 +75,7 @@ namespace Solver {
             vector<Mat<R>>& parameters,
             R smooth_eps,
             R clipval,
-            R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, TYPE_ADAGRAD) {
+            R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, METHOD_ADAGRAD) {
         create_gradient_caches(parameters);
     }
 
@@ -137,7 +137,7 @@ namespace Solver {
             R clipval,
             R regc) : AdaGrad<R>(smooth_eps, clipval, regc),
                       decay_rate(_decay_rate) {
-        this->type = TYPE_RMSPROP;
+        this->method = METHOD_RMSPROP;
     }
 
     template<typename R>
@@ -148,7 +148,7 @@ namespace Solver {
             R clipval,
             R regc) : AdaGrad<R>(parameters, smooth_eps, clipval, regc),
                       decay_rate(_decay_rate) {
-        this->type = TYPE_RMSPROP;
+        this->method = METHOD_RMSPROP;
     }
 
     template<typename R>
@@ -182,7 +182,7 @@ namespace Solver {
             R _rho,
             R smooth_eps,
             R clipval,
-            R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, TYPE_ADADELTA),
+            R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, METHOD_ADADELTA),
                       rho(_rho) {
     }
 
@@ -192,7 +192,7 @@ namespace Solver {
             R _rho,
             R smooth_eps,
             R clipval,
-            R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, TYPE_ADADELTA),
+            R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, METHOD_ADADELTA),
                       rho(_rho) {
         create_gradient_caches(parameters);
     }
@@ -260,7 +260,7 @@ namespace Solver {
             R _b2,
             R smooth_eps,
             R clipval,
-            R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, TYPE_ADAM),
+            R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, METHOD_ADAM),
                       b1(_b1), b2(_b2), epoch(0) {
     }
 
@@ -271,7 +271,7 @@ namespace Solver {
             R _b2,
             R smooth_eps,
             R clipval,
-            R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, TYPE_ADAM),
+            R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, METHOD_ADAM),
                       b1(_b1), b2(_b2), epoch(0) {
         create_gradient_caches(parameters);
     }

@@ -1,5 +1,10 @@
 #include "dali/math/SynchronizedMemory.h"
 
+#ifdef DALI_USE_CUDA
+    Device default_preferred_device = DEVICE_GPU;
+#else
+    Device default_preferred_device = DEVICE_CPU;
+#endif
 
 /**** SHOULD COMPUTE GPU-land **/
 
@@ -241,6 +246,14 @@ R* SynchronizedMemory<R>::mutable_cpu_data() {
     #endif
     return cpu_ptr;
 }
+template <typename R>
+R* SynchronizedMemory<R>::overwrite_cpu_data() {
+    #ifdef DALI_USE_CUDA
+        gpu_fresh = false;
+    #endif
+    allocate_cpu();
+    return cpu_ptr;
+}
 
 #ifdef DALI_USE_CUDA
 template <typename R>
@@ -252,6 +265,12 @@ template <typename R>
 R* SynchronizedMemory<R>::mutable_gpu_data() {
     to_gpu();
     cpu_fresh = false;
+    return gpu_ptr;
+}
+template <typename R>
+R* SynchronizedMemory<R>::overwrite_gpu_data() {
+    cpu_fresh = false;
+    allocate_gpu();
     return gpu_ptr;
 }
 

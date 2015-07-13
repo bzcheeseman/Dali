@@ -72,6 +72,33 @@ class TensorInternal;
             }\
             return *this;\
         }
+
+    #define DALI_SYNC_TENSOR_OVERWRITE_OP(op_symbol) \
+        template <typename TA, typename TB, int ta> \
+        TensorInternal& operator op_symbol (const LazyTensor<TA, TB, R, dimension, ta>& expr) { \
+            if (should_compute_on_gpu(extract_memory(expr.dependent_tensors))) { \
+                /* refresh the gpu memory from cpu*/ \
+                for (auto participant : expr.dependent_tensors) { \
+                    participant->update_tensor(DEVICE_GPU); \
+                } \
+                this->overwrite_gpu_data() op_symbol expr.right; \
+            } else {/* refresh the cpu memory from gpu*/ \
+                for (auto participant : expr.dependent_tensors) { \
+                    participant->update_tensor(DEVICE_CPU); \
+                } \
+                this->overwrite_cpu_data() op_symbol expr.left;\
+            };\
+            return *this;\
+        }
+    #define DALI_SYNC_TENSOR_OVERWRITE_SCALAR_OP(op_symbol) \
+        TensorInternal& operator op_symbol (R scalar) { \
+            if (compute_me_on_gpu()) {\
+                this->overwrite_gpu_data() op_symbol scalar;\
+            } else {\
+                this->overwrite_cpu_data() op_symbol scalar;\
+            }\
+            return *this;\
+        }
 #else
     #define DALI_SYNC_TENSOR_ASSIGN_OP(op_symbol) \
         template <typename TA, int ta> \
@@ -82,10 +109,24 @@ class TensorInternal;
             this->mutable_cpu_data() op_symbol expr.left;\
             return *this;\
         }
+    #define DALI_SYNC_TENSOR_OVERWRITE_OP(op_symbol) \
+        template <typename TA, int ta> \
+        TensorInternal& operator op_symbol (const LazyTensor<TA, R, dimension,ta>& expr) { \
+            for (auto participant : expr.dependent_tensors) { \
+                participant->update_tensor(DEVICE_CPU); \
+            } \
+            this->overwrite_cpu_data() op_symbol expr.left;\
+            return *this;\
+        }
 
     #define DALI_SYNC_TENSOR_ASSIGN_SCALAR_OP(op_symbol) \
         TensorInternal& operator op_symbol (R scalar) { \
             this->mutable_cpu_data() op_symbol scalar;\
+            return *this;\
+        }
+    #define DALI_SYNC_TENSOR_OVERWRITE_SCALAR_OP(op_symbol) \
+        TensorInternal& operator op_symbol (R scalar) { \
+            this->overwrite_cpu_data() op_symbol scalar;\
             return *this;\
         }
 #endif
@@ -131,18 +172,20 @@ class TensorInternal {
 
         const cpu_tensor_t   cpu_data() const;
         cpu_tensor_t mutable_cpu_data();
+        cpu_tensor_t overwrite_cpu_data();
 
         #ifdef DALI_USE_CUDA
             const gpu_tensor_t   gpu_data() const;
             gpu_tensor_t       mutable_gpu_data();
+            gpu_tensor_t       overwrite_gpu_data();
         #endif
 
-        DALI_SYNC_TENSOR_ASSIGN_OP(=)
+        DALI_SYNC_TENSOR_OVERWRITE_OP(=)
         DALI_SYNC_TENSOR_ASSIGN_OP(+=)
         DALI_SYNC_TENSOR_ASSIGN_OP(-=)
         DALI_SYNC_TENSOR_ASSIGN_OP(/=)
         DALI_SYNC_TENSOR_ASSIGN_OP(*=)
-        DALI_SYNC_TENSOR_ASSIGN_SCALAR_OP(=)
+        DALI_SYNC_TENSOR_OVERWRITE_SCALAR_OP(=)
         DALI_SYNC_TENSOR_ASSIGN_SCALAR_OP(+=)
         DALI_SYNC_TENSOR_ASSIGN_SCALAR_OP(-=)
         DALI_SYNC_TENSOR_ASSIGN_SCALAR_OP(/=)

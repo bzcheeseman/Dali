@@ -45,7 +45,7 @@ TensorInternal<R,dimension>::TensorInternal(mshadow::Shape<dimension> _shape) :
         offset(0) {
     // we treat the special case of empty matrix
     // as uninitalized memory:
-    memory_ = std::make_shared<SynchronizedMemory<R>>(shape.Size(), shape[dimension - 1]);
+    memory_ = std::make_shared<SynchronizedMemory<R>>(shape.Size(), shape[dimension - 1], default_preferred_device);
 }
 
 template<typename R, int dimension>
@@ -301,6 +301,18 @@ typename TensorInternal<R,dimension>::cpu_tensor_t TensorInternal<R,dimension>::
     return cpu_tensor_t(memory_->mutable_cpu_data() + offset, shape);
 }
 
+template<typename R, int dimension>
+typename TensorInternal<R,dimension>::cpu_tensor_t TensorInternal<R,dimension>::overwrite_cpu_data() {
+    // if the memory requested covers the entirety of the span of memory
+    // then asking to overwrite is fair
+    if (number_of_elements() == memory_->total_memory) {
+        return cpu_tensor_t(memory_->overwrite_cpu_data() + offset, shape);
+    }
+    // if there is less memory being overwritten than the total, then we must ensure that the
+    // fresh remainder comes along too.
+    return cpu_tensor_t(memory_->mutable_cpu_data() + offset, shape);
+}
+
 #ifdef DALI_USE_CUDA
     template<typename R, int dimension>
     const typename TensorInternal<R,dimension>::gpu_tensor_t TensorInternal<R,dimension>::gpu_data() const {
@@ -309,6 +321,14 @@ typename TensorInternal<R,dimension>::cpu_tensor_t TensorInternal<R,dimension>::
 
     template<typename R, int dimension>
     typename TensorInternal<R,dimension>::gpu_tensor_t TensorInternal<R,dimension>::mutable_gpu_data() {
+        return gpu_tensor_t(memory_->mutable_gpu_data() + offset, shape);
+    }
+
+    template<typename R, int dimension>
+    typename TensorInternal<R,dimension>::gpu_tensor_t TensorInternal<R,dimension>::overwrite_gpu_data() {
+        if (number_of_elements() == memory_->total_memory) {
+            return gpu_tensor_t(memory_->overwrite_gpu_data() + offset, shape);
+        }
         return gpu_tensor_t(memory_->mutable_gpu_data() + offset, shape);
     }
 #endif

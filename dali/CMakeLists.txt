@@ -21,7 +21,7 @@ if (WITH_CUDA)
 
     SET(OLD_CXX_FLAGS ${CMAKE_CXX_FLAGS})
     SET(CMAKE_CXX_FLAGS "-O3 -w -fPIC ${CUDA_EXTRA_FLAGS}")
-    cuda_add_library(dali_cuda ${DaliCudaSources})
+    cuda_add_library(dali_cuda ${DaliCudaSources} SHARED)
     target_link_libraries(dali_cuda ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
     SET(CMAKE_CXX_FLAGS ${OLD_CXX_FLAGS})
     SET(CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
@@ -40,7 +40,7 @@ foreach(header ${DaliTemplates})
         DEPENDS ${header})
 endforeach(header)
 
-add_library(dali
+add_library(dali SHARED
         ${DaliSources}
         ${DaliHeaders}
 )

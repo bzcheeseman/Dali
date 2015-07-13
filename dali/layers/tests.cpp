@@ -270,14 +270,19 @@ TEST_F(LayerTests, shortcut_test) {
     auto out_states = model.activate_sequence(initial_states, X, 0.2);
 }
 
-TEST_F(LayerTests, DISABLED_multi_input_lstm_test) {
+using std::string;
+using std::make_shared;
+
+TEST_F(LayerTests, multi_input_lstm_test) {
+    utils::random::set_seed(5000);
+
     int num_children = 3;
     int input_size = 4;
     int hidden_size = 2;
     int num_examples = 3;
 
     EXPERIMENT_REPEAT {
-        auto input = Mat<R>(input_size,    num_examples, weights<R>::uniform(20.0));
+        auto input = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
         vector<LSTM<R>::State> states;
         for (int cidx = 0 ; cidx < num_children; ++cidx) {
             states.emplace_back(
@@ -287,21 +292,24 @@ TEST_F(LayerTests, DISABLED_multi_input_lstm_test) {
         }
 
         auto mylayer = LSTM<R>(input_size, hidden_size, num_children);
-        auto params = mylayer.parameters();
+        mylayer.name_internal_layers();
+
+        auto params  = mylayer.parameters();
         params.emplace_back(input);
-        for(auto& state: states) {
+        for(auto& state : states) {
+            state.memory.name = make_shared<string>("state_memory");
+            state.hidden.name = make_shared<string>("state_hidden");
             params.emplace_back(state.memory);
             params.emplace_back(state.hidden);
         }
 
         auto functor = [&mylayer, &input, &states](vector<Mat<R>> Xs)-> Mat<R> {
                 auto state = mylayer.activate(input, states);
-                return state.hidden;
+                return state.hidden * 100.0;
         };
-        ASSERT_TRUE(gradient_same(functor, params, 0.0003));
-
-        utils::Timer::report();
+        ASSERT_TRUE(gradient_ratio_same(functor, params, 0.05, 0.01));
     }
+    utils::random::reseed();
 }
 
 TEST_F(LayerTests, activate_sequence) {

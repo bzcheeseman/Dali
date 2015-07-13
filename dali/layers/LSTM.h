@@ -13,9 +13,9 @@ class LSTM : public AbstractLayer<R> {
     See `Layers.h`
     */
     typedef StackedInputLayer<R> layer_type;
-    void name_internal_layers();
 
     public:
+        void name_internal_layers();
 
         struct State {
             Mat<R> memory;

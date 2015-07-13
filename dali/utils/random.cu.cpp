@@ -28,7 +28,7 @@ namespace utils {
     vector<size_t> random_arange(size_t size) {
         vector<size_t> indices(size);
         for (size_t i=0; i < size;i++) indices[i] = i;
-        std::srand(randint(0, 9999999999));
+        std::srand(randint(0, 99999999));
         std::random_shuffle( indices.begin(), indices.end());
         return indices;
     }

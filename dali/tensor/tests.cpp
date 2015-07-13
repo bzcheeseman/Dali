@@ -484,6 +484,7 @@ TEST_F(MatrixTests, sigmoid_binary_cross_entropy) {
 }
 
 TEST_F(MatrixTests, margin_loss) {
+    utils::random::set_seed(100);
     // we can now extend the range of our random numbers to be beyond
     // 0 and 1 since sigmoid will clamp them to 0 or 1.
     EXPERIMENT_REPEAT {
@@ -495,6 +496,7 @@ TEST_F(MatrixTests, margin_loss) {
         };
         ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-4));
     }
+    utils::random::reseed();
 }
 
 TEST_F(MatrixTests, norm) {

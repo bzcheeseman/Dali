@@ -12,7 +12,7 @@ using std::string;
 using std::vector;
 
 
-TEST(Glove, DISABLED_load) {
+TEST(Glove, load) {
     auto embedding = glove::load<double>( STR(DALI_DATA_DIR) "/glove/test_data.txt");
     ASSERT_EQ(std::get<1>(embedding).size(), 21);
     ASSERT_EQ(std::get<0>(embedding).dims(0), 21);

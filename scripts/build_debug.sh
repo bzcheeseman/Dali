@@ -14,6 +14,6 @@ cat $SCRIPT_DIR/data/ascii_snail.txt
 
 pushd $PROJECT_DIR/build
     rm -rf ./*
-    cmake -DCMAKE_BUILD_TYPE=debug ..
+    cmake -DCMAKE_BUILD_TYPE=debug $@ ..
     make -j 9
 popd

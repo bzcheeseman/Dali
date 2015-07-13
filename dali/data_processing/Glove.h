@@ -5,6 +5,7 @@
 #include <vector>
 #include "dali/tensor/Mat.h"
 #include "dali/utils/core_utils.h"
+#include "dali/utils/assert2.h"
 #include "dali/utils/ParseUtils.h"
 
 namespace glove {
@@ -19,7 +20,7 @@ namespace glove {
     std::tuple<Mat<T>, utils::Vocab> load(std::string fname, int threshold = -1);
 
     template<typename T>
-    void load(std::string fname, Mat<T>& mat, utils::Vocab& vocab, int threshold = -1);
+    void load(std::string fname, Mat<T>* mat, utils::Vocab* vocab, int threshold = -1);
 
     // Loads relevant embeddings from glove vector fname,
     // stores the in matrix target (resized if necessary)
@@ -27,8 +28,8 @@ namespace glove {
     // Returns number of matched words.
     template<typename T>
     int load_relevant_vectors(std::string fname,
-                              Mat<T>& target,
-                              const utils::Vocab& vocab,
+                              Mat<T>* target,
+                              const utils::Vocab* vocab,
                               int threshold=-1);
 }
 

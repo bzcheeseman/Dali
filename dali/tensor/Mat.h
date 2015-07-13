@@ -121,6 +121,9 @@ class Mat {
         R dw(int i, int j) const;
         R& dw(int i, int j);
 
+        void forget_w();
+        void forget_dw();
+
         storage_t& dw() const;
         storage_t& dw();
 

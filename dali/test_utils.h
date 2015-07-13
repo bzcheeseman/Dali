@@ -129,6 +129,20 @@ AssertionResult buffer_almost_equals(T* buffer1, T* buffer2, uint size1, uint si
     return AssertionSuccess();
 }
 
+template<typename T, typename J>
+AssertionResult buffer_ratio_almost_equals(T* buffer1, T* buffer2, uint size1, uint size2, J eps) {
+    if (size1 != size2)
+        return AssertionFailure() << "Sizes differ first matrix is " << size1 << ", while second is " << size2;
+    for (int i=0; i<size1; ++i) {
+        if (std::abs(buffer2[i]) > eps && std::abs(buffer1[i]) > eps && std::abs((buffer1[i]/ buffer2[i]) - 1.0) > eps) {
+            return AssertionFailure() << "Difference in ratio datum " << i << " first tensor has "
+                                      << buffer1[i] << ", while second has " << buffer2[i]
+                                      << "(tolerance = " << 100.0 * eps << ")";
+        }
+    }
+    return AssertionSuccess();
+}
+
 #define ASSERT_MATRIX_EQ(A, B) ASSERT_TRUE(MatOps<R>::equals((A),(B)))
 #define ASSERT_MATRIX_NEQ(A, B) ASSERT_FALSE(MatOps<R>::equals((A),(B)))
 #define ASSERT_MATRIX_CLOSE(A, B, eps) ASSERT_TRUE(MatOps<R>::allclose((A),(B), (eps)))
@@ -238,6 +252,92 @@ namespace {
                 int loc_disagreement = 0;
                 for (int i = 0; i < arg.number_of_elements(); i++) {
                     auto disagreement = std::abs(Arg_prime[i] - arg.dw(i));
+                    if (disagreement > max_disagreement) {
+                        max_disagreement = disagreement;
+                        loc_disagreement = i;
+                    }
+                }
+
+                auto start = std::max(loc_disagreement - 6, 0);
+                auto length = std::min(arg.number_of_elements() - start, (uint)12);
+
+                std::cout << "-----------\nArg_prime[" << start << ":" << start + length << "] = " << std::endl;
+                print_buffer((R*)Arg_prime + start,       length, loc_disagreement - start);
+                std::cout << "-----------\n arg.dw()[" << start << ":" << start + length << "] = " << std::endl;
+                print_buffer((R*)arg.dw().data() + start, length, loc_disagreement - start);
+                if (arg.name != nullptr) {
+                    std::cout << "arg.name = " << *arg.name << std::endl;
+                }
+                std::cout << "-----------" << std::endl;
+
+                std::cout << "Largest disparity = "
+                          << std::setw( 7 ) // keep 7 digits
+                          << std::setprecision( 5 ) // use 3 decimals
+                          << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
+                          << max_disagreement << std::endl;
+
+
+            }
+            worked_out = worked_out && (bool)did_work_out;
+            if (!worked_out) {
+                break;
+            }
+            param_idx++;
+        }
+        return worked_out;
+    }
+
+    bool gradient_ratio_same(
+            std::function<Mat<R>(std::vector<Mat<R>>&)> functor,
+            std::vector<Mat<R>> arguments,
+            R tolerance    = 1e-5,
+            R grad_epsilon = DEFAULT_GRAD_EPS,
+            bool fail_on_zero_gradient = true) {
+
+        auto error = functor(arguments).sum();
+
+        error.grad();
+
+        graph::backward();
+
+        bool worked_out = true;
+
+        // from now on gradient is purely numerical:
+        graph::NoBackprop nb;
+        int param_idx = 1;
+        for (auto& arg : arguments) {
+            R  Arg_prime[arg.number_of_elements()];
+            for (int i = 0; i < arg.number_of_elements(); i++) {
+                const auto prev_val = arg.w(i);
+                arg.w(i)            = prev_val +  grad_epsilon;
+                auto obj_positive   = functor(arguments).w().sum();
+                arg.w(i)            = prev_val - grad_epsilon;
+                auto obj_negative   = functor(arguments).w().sum();
+                arg.w(i)            = prev_val;
+                Arg_prime[i]        = (obj_positive - obj_negative) / (2.0 * grad_epsilon);
+            }
+            AssertionResult did_work_out = buffer_ratio_almost_equals(
+                    (R*)Arg_prime,
+                    arg.dw().data(),
+                    arg.number_of_elements(),
+                    arg.number_of_elements(),
+                    tolerance);
+            if (fail_on_zero_gradient) {
+                auto is_nonzero = buffer_is_nonzero((R*)Arg_prime, arg.number_of_elements());
+                if (((bool)is_nonzero) == false) {
+                    std::cout << "Gradient for parameter " << param_idx << " (" << arg << ") should not be all zeros." << std::endl;
+                    if (arg.name != nullptr) {
+                        std::cout << "arg.name = " << *arg.name << std::endl;
+                    }
+                    return false;
+                }
+            }
+            // AssertionResult is a GoogleTest magic and it's castable to bool.
+            if (!did_work_out) {
+                R max_disagreement = 0;
+                int loc_disagreement = 0;
+                for (int i = 0; i < arg.number_of_elements(); i++) {
+                    auto disagreement = std::abs((Arg_prime[i] / arg.dw(i)) - (R)1.0);
                     if (disagreement > max_disagreement) {
                         max_disagreement = disagreement;
                         loc_disagreement = i;

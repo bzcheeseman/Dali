@@ -2,6 +2,8 @@
 
 using std::vector;
 using utils::assert2;
+using std::string;
+using std::make_shared;
 
 template<typename R>
 LSTM<R>::LSTM(int _input_size, int _hidden_size, bool _memory_feeds_gates) :
@@ -44,7 +46,6 @@ LSTM<R>::LSTM (vector<int> _input_sizes, int _hidden_size, int _num_children, bo
     // forget gate at high value
     // http://yyue.blogspot.fr/2015/01/a-brief-overview-of-deep-learning.html
     // forget_layer.b.w().array() += 2;
-    name_internal_layers();
 }
 
 template<typename R>
@@ -68,8 +69,6 @@ LSTM<R>::LSTM (const LSTM<R>& other, bool copy_w, bool copy_dw) :
             Wcells_to_inputs.emplace_back(other.Wcells_to_inputs[cidx],   copy_w, copy_dw);
         }
     }
-
-    name_internal_layers();
 }
 
 template<typename R>
@@ -79,6 +78,42 @@ LSTM<R> LSTM<R>::shallow_copy() const {
 
 template<typename R>
 void LSTM<R>::name_internal_layers() {
+    int i = 0;
+    for (auto& cell_to_input : Wcells_to_inputs) {
+        cell_to_input.name = make_shared<string>("Wcells_to_inputs[" + std::to_string(i++) + "]");
+    }
+    i = 0;
+    for (auto& cell_to_forget : Wcells_to_forgets) {
+        cell_to_forget.name = make_shared<string>("Wcells_to_forgets[" + std::to_string(i++) + "]");
+    }
+    Wco.name = make_shared<string>("Wco");
+    i = 0;
+    for (auto& mat : input_layer.matrices) {
+        mat.name =  make_shared<string>("input_layer.matrices[" + std::to_string(i++) + "]");
+    }
+    input_layer.b.name = make_shared<string>("input_layer.b");
+
+    i = 0;
+    for (auto& mat : cell_layer.matrices) {
+        mat.name =  make_shared<string>("cell_layer.matrices[" + std::to_string(i++) + "]");
+    }
+    cell_layer.b.name = make_shared<string>("cell_layer.b");
+
+    i = 0;
+    for (auto& mat : output_layer.matrices) {
+        mat.name =  make_shared<string>("output_layer.matrices[" + std::to_string(i++) + "]");
+    }
+    output_layer.b.name = make_shared<string>("output_layer.b");
+
+    int l = 0;
+    for (auto& forget_layer : forget_layers) {
+        i = 0;
+        for (auto& mat : forget_layer.matrices) {
+            mat.name =  make_shared<string>("forget_layers[" + std::to_string(l) + "].matrices[" + std::to_string(i++) + "]");
+        }
+        forget_layer.b.name = make_shared<string>("forget_layers[" + std::to_string(l) + "].b");
+        l++;
+    }
 }
 
 template<typename R>

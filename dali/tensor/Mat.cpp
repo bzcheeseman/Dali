@@ -26,6 +26,16 @@ const typename Mat<R>::storage_t& Mat<R>::w() const {
 }
 
 template<typename R>
+void Mat<R>::forget_w() {
+    m = NULL;
+}
+
+template<typename R>
+void Mat<R>::forget_dw() {
+    g = NULL;
+}
+
+template<typename R>
 typename Mat<R>::storage_t& Mat<R>::dw() {
     return *g;
 }
@@ -106,7 +116,20 @@ Mat<R>::Mat(dim_t n, dim_t d) : Mat(n,d, true) {
 
 template<typename R>
 void Mat<R>::resize(dim_t n, dim_t d) {
-    MatOps<R>::resize(*this, n, d);
+    if (m == nullptr || g == nullptr) {
+        if (n * d > 0) {
+            // Don't fill with zeros - it's initializer's job.
+            m = make_shared<TensorInternal<R,2>>(mshadow::Shape2(n, d));
+            // We always reset the grad calculation
+            g = make_shared<TensorInternal<R,2>>(mshadow::Shape2(n, d));
+            g->clear();
+        }
+    } else if (n * d > 0) {
+        MatOps<R>::resize(*this, n, d);
+    } else {
+        forget_w();
+        forget_dw();
+    }
 }
 
 /**

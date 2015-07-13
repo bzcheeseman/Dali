@@ -5,16 +5,18 @@
 
 #include "dali/core.h"
 #include "dali/utils.h"
-#include "dali/utils/NlpUtils.h"
 #include "dali/models/StackedGatedModel.h"
 
 DEFINE_string(index2target, "", "Location of Index2Target file with mapping from integer to target name.");
-DEFINE_string(lattice, "", "Where to load a lattice / Ontology from ?");
+DEFINE_string(lattice, utils::dir_join({ STR(DALI_DATA_DIR), "mini_wiki.txt"}), "Where to load a lattice / Ontology from ?");
+DEFINE_string(train, utils::dir_join({ STR(DALI_DATA_DIR) , "protobuf_sample"}), "Where should the protobuff dataset be loaded from?");
+DEFINE_int32(min_occurence, 2, "Minimum occurence of a word to be included in Vocabulary.");
+DEFINE_string(root_name, "__ROOT__", "How is the root called in the loaded lattice.");
 
 static bool dummy3 = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_lattice,
-                                                           &utils::validate_flag_nonempty);
+                                                             &utils::validate_flag_nonempty);
 static bool dummy4 = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_index2target,
-                                                   &utils::validate_flag_nonempty);
+                                                             &utils::validate_flag_nonempty);
 
 using std::ifstream;
 using std::istringstream;
@@ -29,8 +31,6 @@ using utils::Vocab;
 typedef float REAL_t;
 typedef Mat<REAL_t> mat;
 typedef float price_t;
-typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
-typedef Eigen::Matrix<REAL_t, Eigen::Dynamic, 1> float_vector;
 typedef std::pair<vector<string>, string> labeled_pair;
 typedef OntologyBranch lattice_t;
 typedef std::shared_ptr<lattice_t> shared_lattice_t;
@@ -65,7 +65,6 @@ int main( int argc, char* argv[]) {
         std::cout << "Loading Lattice" << std::endl;
         auto lattice_roots = OntologyBranch::load(FLAGS_lattice);
 
-
         int num_fixpoints            = 0;
         int num_concepts             = 0;
         double mean_fixpoint_degree  = 0.0;
@@ -86,27 +85,30 @@ int main( int argc, char* argv[]) {
                 mean_fixpoint_degree += kv.second->children.size();
                 if (kv.second->children.size() < min_fixpoint_degree) min_fixpoint_degree = kv.second->children.size();
                 if (kv.second->children.size() > max_fixpoint_degree) {
-                        max_fixpoint_degree = kv.second->children.size();
-                        max_fixpoint = kv.first;
+                    max_fixpoint_degree = kv.second->children.size();
+                    max_fixpoint = kv.first;
                 }
             } else {
                 num_concepts++;
                 mean_concept_indegree += kv.second->parents.size();
                 if (kv.second->parents.size() < min_concept_indegree) {
-                        min_concept_indegree = kv.second->parents.size();
+                    min_concept_indegree = kv.second->parents.size();
                 }
                 if (kv.second->parents.size() == 0) {
-                        num_disconnected_concepts++;
-                        disconnected.emplace_back(kv.first);
+                    num_disconnected_concepts++;
+                    disconnected.emplace_back(kv.first);
                 }
                 if (kv.second->parents.size() > max_concept_indegree) {
-                        max_concept_indegree = kv.second->parents.size();
-                        max_concept = kv.first;
+                    max_concept_indegree = kv.second->parents.size();
+                    max_concept = kv.first;
                 }
             }
         }
-        mean_fixpoint_degree /= num_fixpoints;
-        mean_concept_indegree /= num_concepts;
+
+        if (num_fixpoints > 0)
+            mean_fixpoint_degree /= num_fixpoints;
+        if (num_concepts > 0)
+            mean_concept_indegree /= num_concepts;
         std::cout << "Lattice Statistics\n"
                   << "------------------\n\n"
                   << "    Number of lattice roots : " << lattice_roots.size()  << "\n"
@@ -121,8 +123,8 @@ int main( int argc, char* argv[]) {
                   << "    Min degree of fixpoints : " << min_fixpoint_degree   << std::endl;
 
         std::cout << "Disconnected Concepts (" << num_disconnected_concepts << ")\n"
-                          << "---------------------\n"
-                          << disconnected << std::endl;
+                  << "---------------------\n"
+                  << disconnected << std::endl;
         // TODO: bug with certain concepts not being exported
         // from Neo4j and there might be a similar issue with fixpoints.
         return 0;

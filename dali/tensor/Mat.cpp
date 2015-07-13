@@ -126,7 +126,7 @@ void Mat<R>::resize(dim_t n, dim_t d) {
         }
     } else if (n * d > 0) {
         MatOps<R>::resize(*this, n, d);
-    } else {
+    } else {
         forget_w();
         forget_dw();
     }

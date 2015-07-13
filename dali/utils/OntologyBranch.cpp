@@ -196,22 +196,25 @@ namespace utils {
             while (std::getline(fp, line)) {
                     auto tokens = utils::split_str(line, right_arrow);
                     if (tokens.size() >= 2) {
-                            for (int i = 0; i < tokens.size()-1; i++) {
-                                    marked_branch = add_lattice_edge(trim(tokens[i]), trim(tokens[i+1]), branch_map, parentless).first;
-                                    last_edge_is_right_arrow = true;
-                            }
+                        for (int i = 0; i < tokens.size()-1; i++) {
+                            marked_branch = add_lattice_edge(trim(tokens[i]), trim(tokens[i+1]), branch_map, parentless).first;
+                            last_edge_is_right_arrow = true;
+                        }
                     } else {
                             tokens = utils::split_str(line, left_arrow);
                             if (tokens.size() >= 2)
-                                    for (int i = 0; i < tokens.size()-1; i++) {
-                                            marked_branch = add_lattice_edge(trim(tokens[i+1]), trim(tokens[i]), branch_map, parentless).second;
-                                            last_edge_is_right_arrow = false;
-                                    }
+                                for (int i = 0; i < tokens.size()-1; i++) {
+                                        marked_branch = add_lattice_edge(trim(tokens[i+1]), trim(tokens[i]), branch_map, parentless).second;
+                                        last_edge_is_right_arrow = false;
+                                }
                             else if (marked_branch != nullptr) {
+                                auto trimmed = trim(tokens[0]);
+                                if (!trimmed.empty()) {
                                     if (last_edge_is_right_arrow)
                                             add_lattice_edge(marked_branch, trim(tokens[0]), branch_map, parentless);
                                     else
                                             add_lattice_edge(trim(tokens[0]), marked_branch, branch_map, parentless);
+                                }
                             }
                     }
             }

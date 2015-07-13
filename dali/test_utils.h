@@ -5,6 +5,7 @@
     #include <gperftools/heap-checker.h>
 #endif
 
+
 #include <gtest/gtest.h>
 #include <memory>
 
@@ -199,6 +200,67 @@ namespace {
         for (auto& arg: arguments) {
             EXPECT_MAT_ON_GPU(arg);
         }
+    }
+
+    bool cpu_vs_gpu(
+            std::function<Mat<R>(std::vector<Mat<R>>&)> functor,
+            std::vector<Mat<R>> arguments,
+            R tolerance    = 1e-5) {
+        #ifdef DALI_USE_CUDA
+            for (auto arg: arguments) {
+                arg.w().memory().to_gpu();
+                arg.dw().memory().to_gpu();
+            }
+
+            auto res_gpu = functor(arguments);
+            if (!res_gpu.w().memory().gpu_fresh) {
+                std::cout << "Computation did not happen on GPU." << std::endl;
+                return false;
+            }
+            std::vector<Mat<R>> gpu_gradients;
+            for (auto arg: arguments) {
+                gpu_gradients.push_back(Mat<R>::zeros_like(arg));
+                for (int i = 0; i < arg.dims(0); ++i) {
+                    for (int j = 0; j < arg.dims(1); ++j) {
+                        gpu_gradients.back().dw(i,j) = arg.dw(i,j);
+                    }
+                }
+            }
+
+            auto old_tiebreaker = SynchronizedMemory<R>::tie_breaker_device;
+            SynchronizedMemory<R>::tie_breaker_device = DEVICE_CPU;
+            for (auto arg: arguments) {
+                arg.w().memory().to_cpu();
+                arg.dw().memory().to_cpu();
+            }
+            Mat<R> res_cpu = functor(arguments);
+
+            if (!buffer_almost_equals(
+                    res_cpu.w().data(),
+                    res_gpu.w().data(),
+                    res_cpu.number_of_elements(),
+                    res_gpu.number_of_elements(),
+                    tolerance)) {
+                std::cout << "Forward step produces different results on gpu and cpu.";
+                return false;
+            }
+            for (int i = 0; i < arguments.size(); ++i) {
+                if(!buffer_almost_equals(
+                        gpu_gradients[i].dw().data(),
+                        arguments[i].dw().data(), //cpu gradient
+                        gpu_gradients[i].dw().number_of_elements(),
+                        arguments[i].number_of_elements(),
+                        tolerance)) {
+                    std::cout << "backward step produces different results on gpu and cpu.";
+                    return false;
+                }
+            }
+            SynchronizedMemory<R>::tie_breaker_device = old_tiebreaker;
+            return true;
+        #else
+            return true;
+        #endif
+
     }
 
     bool gradient_same(

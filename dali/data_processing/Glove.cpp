@@ -70,8 +70,8 @@ namespace glove {
         (*vocab) = Vocab(vocabulary);
         if (observed_size > 0) {
             // // now final update is made to matrix
-            underlying_mat->resize(vocab_size + 1, observed_size);
-            mat[vocab_size] = 0.0;
+           underlying_mat->resize(vocab_size + 1, observed_size);
+           mat[vocab_size].clear();
         } else {
             underlying_mat->forget_w();
             underlying_mat->forget_dw();

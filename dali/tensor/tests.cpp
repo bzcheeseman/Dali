@@ -61,6 +61,17 @@ TEST_F(MatrixTests, sum) {
     }
 }
 
+TEST_F(MatrixTests, sigmoid_gpu_vs_cpu) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return Xs[0].sigmoid();
+    };
+
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
+        EXPECT_TRUE(cpu_vs_gpu(functor, {A}));
+    }
+}
+
 TEST_F(MatrixTests, identity_init) {
     R init_val = 2.0;
     auto A = Mat<R>(10, 10, weights<R>::eye(init_val));

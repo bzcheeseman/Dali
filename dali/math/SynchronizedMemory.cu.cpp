@@ -154,7 +154,10 @@ void SynchronizedMemory<R>::clear() {
 template<typename R>
 void SynchronizedMemory<R>::lazy_clear() {
     clear_on_allocation = true;
+    cpu_fresh = false;
+
     #ifdef DALI_USE_CUDA
+        gpu_fresh = false;
         if (!allocated_cpu && !allocated_cpu) {
             return;
         }

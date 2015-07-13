@@ -20,195 +20,213 @@ modifying one line from MShadow's version.
 
 namespace TensorOps {
     #ifdef DALI_USE_CUDA
-    namespace arg {
-        // convert the indices of a 2d matrix in row major order to column major order
-        template <typename T>
-        struct linear_index_row_major_to_col_major: public thrust::unary_function<T, T> {
-            T rows; // number of rows
-            T cols;
-            __host__ __device__
-            linear_index_row_major_to_col_major(T _rows, T _cols) :
-                    rows(_rows), cols(_cols) {}
-
-            __host__ __device__ T operator() (T i) {
-                return (i / rows) + ((i % rows) * cols);
+        template<int x_bits, typename R,  typename DstPlan, typename SrcPlan>
+        __global__ void SoftmaxKernel(DstPlan dst, SrcPlan src, mshadow::index_t num_cols, R temperature) {
+            const unsigned buffer_size = 1 << x_bits;
+            const int row = blockIdx.x;
+            const int thread_idx = threadIdx.x;
+            __shared__ R buffer[buffer_size];
+            // step 1: get max
+            if (thread_idx < num_cols) {
+                buffer[thread_idx] = src.Eval(row, thread_idx);
             }
-        };
-
-        template<typename T>
-        struct exp_difference: public thrust::binary_function<T, T, T> {
-            T temperature;
-            __host__ __device__
-            exp_difference(T _temperature) : temperature(_temperature) {}
-
-            __device__ T operator()(const T &a, const T &b) const {
-                return expf((a - b) / temperature);
+            for (unsigned x = buffer_size; x < num_cols; x += buffer_size) {
+                const int col = x + thread_idx;
+                if (col < num_cols) {
+                    R a = src.Eval(row, col);
+                    buffer[thread_idx] = max(a, buffer[thread_idx]);
+                }
             }
-        };
-    }
+            __syncthreads();
+            // if number of rows is smaller than buffer,
+            // fill buffer with copy of buffer[0] - this
+            // makes sure reduction does not use uninitialized
+            // values in the buffer and returns correct max.
+            if (thread_idx >= num_cols) {
+                buffer[thread_idx] = buffer[0];
+            }
+            __syncthreads();
+            mshadow::cuda::ReduceX<mshadow::red::maximum, x_bits>(buffer, thread_idx);
 
-    template<typename R>
-    void softmax(mshadow::Tensor<gpu,2,R> dest, mshadow::Tensor<gpu,2,R> src, R temperature = 1.0) {
-        typedef int ind_t;
-        // use the memory bank to perform allocations
-        cached_allocator<char> alloc;
+            __syncthreads();
+            // every thread memorizes max value in column,
+            // so that we can reuse the buffer, for next
+            // task
+            R max_in_row = buffer[0];
+            __syncthreads();
+            // clear buffer (so that sum works out later)
+            buffer[thread_idx] = 0.0f;
+            __syncthreads();
 
-        using namespace thrust::placeholders;
+            // calculate normalizer, with writeback
+            for (unsigned x = 0; x < num_cols; x += buffer_size) {
+                const int col = x + thread_idx;
+                if (col < num_cols) {
+                    R p = expf((src.Eval(row, col) - max_in_row) / temperature);
+                    // add sum to buffer, so that we can later reduce it to
+                    // column-wise sum of exps and use as normalizer.
+                    buffer[thread_idx] += p;
+                    // save exped value to the corresponding idx in destination.
+                    dst.REval(row, col) = p;
+                }
+            }
+            // calculate normalizer by reducing partial sums
+            __syncthreads();
+            mshadow::cuda::ReduceX<mshadow::red::sum, x_bits>(buffer, thread_idx);
+            __syncthreads();
+            R sum_in_row = buffer[0];
 
-        int total_size = dest.shape_.Size(),
-            num_rows = src.shape_[0],
-            num_cols = src.shape_[1];
+            for (unsigned x = 0; x < num_cols; x += buffer_size) {
+                const int col = x + thread_idx;
 
-        auto col_major_op  = arg::linear_index_row_major_to_col_major<ind_t>(
-            num_rows,
-            num_cols
-        );
-        auto col_major_index = thrust::make_transform_iterator(
-            thrust::counting_iterator<ind_t>(0),
-            col_major_op
-        );
-
-        auto src_ptr = to_thrust(src);
-
-        auto reordered_values = thrust::make_permutation_iterator(
-            src_ptr,
-            col_major_index
-        );
-
-        // index over which same keys will be softmaxed together (column-wise)
-        auto index_back_to_column = thrust::make_transform_iterator(
-            thrust::counting_iterator<ind_t>(0),
-            arg::linear_index_to_row_index<ind_t>(num_rows)
-        );
-
-        // store the first reduction in here
-        // Ask the memory bank if this type of memory was allocated before
-        // and borrow it
-        thrust::device_vector<ind_t, cached_allocator<int> > reduced_cols(num_cols);
-        // wrap it in a Thrust pointer for convenience.
-
-        thrust::device_vector<ind_t, cached_allocator<int> > keys_output(total_size);
-
-        // gather the columwise maximums
-        auto dest_ptr = to_thrust(dest);
-
-        thrust::reduce_by_key(
-            thrust::cuda::par(alloc),
-            index_back_to_column,
-            index_back_to_column + total_size,
-            reordered_values,
-            keys_output.begin(),
-            reduced_cols.begin(),
-            thrust::equal_to<ind_t>(),
-            thrust::maximum<R>()
-        );
-
-        auto repeated_max_back_to_column_index = thrust::make_transform_iterator(
-            thrust::counting_iterator<ind_t>(0),
-            arg::linear_index_to_col_index<ind_t>(num_cols)
-        );
-
-        auto repeated_max = thrust::make_permutation_iterator(
-            reduced_cols.begin(),
-            repeated_max_back_to_column_index
-        );
-
-        thrust::transform(
-            src_ptr,
-            src_ptr + total_size,
-            repeated_max,
-            dest_ptr,
-            arg::exp_difference<R>(temperature)
-        );
-
-        auto reordered_exped_values = thrust::make_permutation_iterator(
-            dest_ptr,
-            col_major_index
-        );
-
-        thrust::reduce_by_key(
-            thrust::cuda::par(alloc),
-            index_back_to_column,
-            index_back_to_column + total_size,
-            reordered_exped_values,
-            keys_output.begin(),
-            reduced_cols.begin(),
-            thrust::equal_to<ind_t>(),
-            thrust::plus<R>()
-        );
-
-        thrust::transform(
-            dest_ptr,
-            dest_ptr + total_size,
-            repeated_max,
-            dest_ptr,
-            _1 / _2
-        );
-    }
-
-    template<int x_bits, typename R,  typename DstPlan, typename SrcPlan>
-    __global__ void SoftmaxTransposeKernel(DstPlan dst, SrcPlan src, mshadow::index_t xmax, R temperature) {
-        const unsigned x_size = 1 << x_bits;
-        const int y = blockIdx.x;
-        __shared__ R s_rec[x_size];
-        // step 1: get max
-        if (threadIdx.x < xmax) {
-            s_rec[threadIdx.x] = src.Eval(y, threadIdx.x);
-        }
-        for (unsigned x = x_size; x < xmax; x += x_size) {
-            if (x + threadIdx.x < xmax) {
-                R a = src.Eval(y, x + threadIdx.x);
-                s_rec[threadIdx.x] = max(a, s_rec[threadIdx.x]);
+                if (col < num_cols) {
+                    dst.REval(row, col) /= sum_in_row;
+                }
             }
         }
-        __syncthreads();
-        if (threadIdx.x >= xmax) {
-            s_rec[threadIdx.x] = s_rec[0];
-        }
-        __syncthreads();
-        mshadow::cuda::Reduce1D<mshadow::red::maximum, x_bits>(s_rec);
-        __syncthreads();
-        R smax = s_rec[0];
-        __syncthreads();
-        s_rec[threadIdx.x] = 0.0f;
-        __syncthreads();
 
-        // calculate normalizer, with writeback
-        for (unsigned x = 0; x < xmax; x += x_size) {
-            if (x + threadIdx.x < xmax) {
-                R p = expf((src.Eval(y, x + threadIdx.x) - smax) / temperature);
-                s_rec[threadIdx.x] += p;
-                // write back first, will fetch later
-                dst.REval(y, x + threadIdx.x) = p;
+        template<int x_bits, typename R,  typename DstPlan, typename SrcPlan>
+        __global__ void SoftmaxKernelCached(DstPlan dst, SrcPlan src, mshadow::index_t num_cols, R temperature) {
+            const unsigned buffer_size = 1 << x_bits;
+            const int num_offsets = num_cols/buffer_size;
+            const int row = blockIdx.x;
+            const int thread_idx = threadIdx.x;
+
+            __shared__ R buffer[buffer_size];
+            R row_cache[20];
+            // step 0: copy the memory to cache.
+            for (unsigned offset = 0; offset < num_offsets; ++offset) {
+                const int col = offset * buffer_size + thread_idx;
+                if (col < num_cols) {
+                    row_cache[offset] = src.Eval(row, col);
+                }
+            }
+
+            // step 1: get max
+            if (thread_idx < num_cols) {
+                buffer[thread_idx] = row_cache[0];
+            }
+            for (unsigned offset = 0; offset < num_offsets; ++offset) {
+                const int col = offset * buffer_size + thread_idx;
+                if (col < num_cols) {
+                    buffer[thread_idx] = max(row_cache[offset], buffer[thread_idx]);
+                }
+            }
+            __syncthreads();
+            // if number of rows is smaller than buffer,
+            // fill buffer with copy of buffer[0] - this
+            // makes sure reduction does not use uninitialized
+            // values in the buffer and returns correct max.
+            if (thread_idx >= num_cols) {
+                buffer[thread_idx] = buffer[0];
+            }
+            __syncthreads();
+            mshadow::cuda::ReduceX<mshadow::red::maximum, x_bits>(buffer, thread_idx);
+
+            __syncthreads();
+            // every thread memorizes max value in column,
+            // so that we can reuse the buffer, for next
+            // task
+            R max_in_row = buffer[0];
+            __syncthreads();
+            // clear buffer (so that sum works out later)
+            buffer[thread_idx] = 0.0f;
+            __syncthreads();
+
+            // calculate normalizer, with writeback
+            for (unsigned offset = 0; offset < num_offsets; ++offset) {
+                const int col = offset * buffer_size + thread_idx;
+                if (col < num_cols) {
+                    const R p = expf((row_cache[offset] - max_in_row) / temperature);
+                    // add sum to buffer, so that we can later reduce it to
+                    // column-wise sum of exps and use as normalizer.
+                    buffer[thread_idx] += p;
+                    // save exped value to the corresponding idx in destination.
+                    row_cache[offset] = p;
+                }
+            }
+            // calculate normalizer by reducing partial sums
+            __syncthreads();
+            mshadow::cuda::ReduceX<mshadow::red::sum, x_bits>(buffer, thread_idx);
+            __syncthreads();
+            R sum_in_row = buffer[0];
+
+            for (unsigned offset = 0; offset < num_offsets; ++offset) {
+                const int col = offset * buffer_size + thread_idx;
+
+                if (col < num_cols) {
+                    dst.REval(row, col) = row_cache[offset] / sum_in_row;
+                }
             }
         }
-        // calculate normalizer
-        __syncthreads();
-        mshadow::cuda::Reduce1D<mshadow::red::sum, x_bits>(s_rec);
-        __syncthreads();
-        R ssum = s_rec[0];
 
-        for (unsigned x = 0; x < xmax; x += x_size) {
-            if (x + threadIdx.x < xmax) {
-                dst.REval(y, x + threadIdx.x) /= ssum;
+        // Note: in a dim3 (width, height, depth)
+        // every uninitialized dimension defaults to 1.
+
+        static const int MAX_ROW_SIZE_FOR_CACHED = 1000;
+
+        // Note: <<<Dg, Db, Ns, S>>> CUDA Language Extension is explained here:
+        // http://docs.nvidia.com/cuda/cuda-c-programming-guide/#execution-configuration
+        template<typename R>
+        void softmax(mshadow::Tensor<mshadow::gpu, 2, R> dst,
+                     const mshadow::Tensor<mshadow::gpu, 2, R> src,
+                     R temperature = 1.0) {
+            const int num_threads = mshadow::cuda::kBaseThreadNum;
+            const int thread_bits = mshadow::cuda::kBaseThreadBits;
+
+            dim3 tiles(dst.size(0));
+            // block size is a matrix column
+            dim3 within_tile(num_threads);
+            mshadow::utils::Check(dst.shape_ == src.shape_, "Softmax: shape mismatch");
+            mshadow::cuda::CheckLaunchParam(tiles, within_tile, "Softmax");
+            cudaStream_t stream = mshadow::Stream<mshadow::gpu>::GetStream(dst.stream_);
+
+            if (dst.size(1) <= MAX_ROW_SIZE_FOR_CACHED) {
+                SoftmaxKernelCached<thread_bits, R>
+                        <<<tiles, within_tile, 0, stream>>>
+                        (mshadow::expr::MakePlan(dst),
+                        mshadow::expr::MakePlan(src),
+                        dst.size(1),
+                        temperature);
+            } else {
+                SoftmaxKernel<thread_bits, R>
+                        <<<tiles, within_tile, 0, stream>>>
+                        (mshadow::expr::MakePlan(dst),
+                        mshadow::expr::MakePlan(src),
+                        dst.size(1),
+                        temperature);
             }
         }
-    }
-    template<typename R>
-    inline void softmax_transpose(mshadow::Tensor<gpu, 2, R> dst,
-                        const mshadow::Tensor<gpu, 2, R> src, R temperature = 1.0) {
-      dim3 num_threads(mshadow::cuda::kBaseThreadNum);
-      dim3 how_big_is_each_job_on_the_GPU(dst.size(0));
-      mshadow::utils::Check(dst.shape_ == src.shape_, "SoftmaxTranspose: shape mismatch");
-      mshadow::cuda::CheckLaunchParam(how_big_is_each_job_on_the_GPU, num_threads, "SoftmaxTranspose");
-      cudaStream_t stream = mshadow::Stream<gpu>::GetStream(dst.stream_);
-      SoftmaxTransposeKernel<mshadow::cuda::kBaseThreadBits, R>
-          <<<how_big_is_each_job_on_the_GPU, num_threads, 0, stream>>>
-          (mshadow::expr::MakePlan(dst),
-           mshadow::expr::MakePlan(src),
-           dst.size(1),
-           temperature);
-    }
+
+        template<typename R>
+        void softmax_transpose(mshadow::Tensor<mshadow::gpu, 2, R> dst,
+                     const mshadow::Tensor<mshadow::gpu, 2, R> src, R temperature = 1.0) {
+            const int num_threads = mshadow::cuda::kBaseThreadNum;
+            const int thread_bits = mshadow::cuda::kBaseThreadBits;
+
+            dim3 tiles(dst.size(1));
+            // block size is a matrix column
+            dim3 within_tile(num_threads);
+            mshadow::utils::Check(dst.shape_ == src.shape_, "Softmax: shape mismatch");
+            mshadow::cuda::CheckLaunchParam(tiles, within_tile, "Softmax");
+            cudaStream_t stream = mshadow::Stream<mshadow::gpu>::GetStream(dst.stream_);
+
+            if (dst.size(0) <= MAX_ROW_SIZE_FOR_CACHED) {
+                SoftmaxKernelCached<thread_bits, R>
+                        <<<tiles, within_tile, 0, stream>>>
+                        (mshadow::expr::MakePlan(dst.T()),
+                        mshadow::expr::MakePlan(src.T()),
+                        dst.size(0),
+                        temperature);
+            } else {
+                SoftmaxKernel<thread_bits, R>
+                        <<<tiles, within_tile, 0, stream>>>
+                        (mshadow::expr::MakePlan(dst.T()),
+                        mshadow::expr::MakePlan(src.T()),
+                        dst.size(0),
+                        temperature);
+            }
+        }
     #endif
 
     template<typename R>
@@ -228,6 +246,7 @@ namespace TensorOps {
             dst[x] /= sum;
         }
     }
+
     template<typename R>
     inline void softmax_transpose(mshadow::Tensor<cpu, 2, R> dst,
                           const mshadow::Tensor<cpu, 2, R> &src,

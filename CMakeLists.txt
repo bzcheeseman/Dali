@@ -129,8 +129,10 @@ add_definitions(-DBUILD_DIR=${CMAKE_BUILD_DIR})
 message("=> BUILD_TYPE " ${CMAKE_BUILD_TYPE})
 if (APPLE)
     set (CMAKE_CXX_COMPILER "clang++")
-#else (APPLE)
+    set (MAYBE_SHARED "")
+else(APPLE)
     # land of Linux or Windows
+    set (MAYBE_SHARED "SHARED")
 endif(APPLE)
 
 

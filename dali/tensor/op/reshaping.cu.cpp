@@ -209,17 +209,18 @@ namespace matops {
     Mat<R> Reshaping<R>::col_pluck(
             Mat<R> matrix,
             int col) {
-        #ifndef DONT_COMPILE
-        Mat<R> out (1, matrix.dims(0), weights<R>::empty());
-        MAT(out) = MAT(matrix).col(col);
+        ASSERT2 (0 <= col && col <= matrix.dims(1), "Wrong col index used in col_pluck");
+        Mat<R> out (matrix.dims(0), 1, weights<R>::empty());
+
+        MAT(matrix).print();
+        TensorOps::col_pluck(MAT(out).ravel(), MAT(matrix), col);
+        MAT(matrix).print();
+
         if (graph::backprop_enabled())
             graph::emplace_back([matrix, out, col]() mutable {
-                SAFE_GRAD(matrix).col(col).noalias() += GRAD(out).col(0).transpose();
+                TensorOps::col_pluck_backward(GRAD(matrix), GRAD(out).ravel(), col);
             });
         return out;
-        #else
-        return Mat<R>(1,1);
-        #endif
     }
 
 

@@ -1301,6 +1301,32 @@ TEST_F(MatrixTests, row_pluck) {
     }
 }
 
+TEST_F(MatrixTests, col_pluck) {
+    EXPERIMENT_REPEAT {
+        Mat<R> A(5, 3, weights<R>::uniform(20.0));
+        const int col = utils::randint(0, A.dims(1) - 1);
+        auto functor = [col](vector<Mat<R>> Xs) {
+            #ifdef DALI_USE_CUDA
+                Xs[0].w().memory().to_gpu();
+            #endif
+            auto res = MatOps<R>::col_pluck(Xs[0], col);
+            return res;
+        };
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4, 1e-2, true));
+    }
+}
+
+TEST_F(MatrixTests, col_pluck_gpu_vs_cpu) {
+    EXPERIMENT_REPEAT {
+        Mat<R> A(5, 3, weights<R>::uniform(20.0));
+        int col = utils::randint(0, A.dims(1) - 1);
+        auto functor = [col](vector<Mat<R>> Xs) {
+            return MatOps<R>::col_pluck(Xs[0], col);
+        };
+        ASSERT_TRUE(cpu_vs_gpu(functor, {A}, 1e-4));
+    }
+}
+
 TEST_F(MatrixTests, rows_pluck_forward_correctness) {
 
     EXPERIMENT_REPEAT {

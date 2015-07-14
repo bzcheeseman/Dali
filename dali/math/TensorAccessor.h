@@ -12,6 +12,132 @@
 namespace TensorOps {
     using mshadow::gpu;
     using mshadow::cpu;
+
+
+    /////////////////////// col_pluck ////////////////////////////////////////////////
+    #ifdef DALI_USE_CUDA
+
+    template<typename R,  typename DstPlan, typename SrcPlan>
+    __global__ void ColPluckKernel(DstPlan dst,
+                                   SrcPlan src,
+                                   mshadow::index_t num_rows,
+                                   mshadow::index_t plucked_col) {
+        const int num_threads = blockDim.x;
+        for (unsigned offset = 0; offset < num_rows; offset += num_threads) {
+
+            const int row = offset + threadIdx.x;
+            R a;
+            if (row < num_rows) {
+                a  = src[row][plucked_col];
+                dst[row] = a;
+            }
+        }
+    }
+
+    template<typename R>
+    void col_pluck(mshadow::Tensor<gpu, 1, R> dest,
+                  const mshadow::Tensor<gpu, 2, R>& source,
+                  int col) {
+        const int num_threads = mshadow::cuda::kBaseThreadNum;
+
+        dim3 tiles(1);
+        // block size is a matrix column
+        dim3 within_tile(num_threads);
+        ColPluckKernel<R>
+            <<<tiles, within_tile>>>
+            (dest,
+             source,
+             source.size(0),
+             col);
+    }
+
+    #endif
+
+    template<typename R>
+    void col_pluck(mshadow::Tensor<cpu, 1, R> dest,
+                  const mshadow::Tensor<cpu, 2, R>& source,
+                  int col) {
+
+        for (int row = 0; row < source.shape_[0]; ++row) {
+            dest[row] = source[row][col];
+        }
+    }
+
+    template<typename R>
+    void col_pluck(TensorInternal<R,1> dest,
+                   TensorInternal<R,2> source,
+                   int col) {
+
+        #ifdef DALI_USE_CUDA
+        if (source.compute_me_on_gpu()) {
+            col_pluck(dest.mutable_gpu_data(), source.gpu_data(), col);
+            return;
+        }
+        #endif
+        col_pluck(dest.mutable_cpu_data(), source.cpu_data(), col);
+    }
+
+    /////////////////////// col_pluck_backward //////////////////////////////
+    #ifdef DALI_USE_CUDA
+
+    template<typename R,  typename DstPlan, typename SrcPlan>
+    __global__ void ColPluckBackwardKernel(DstPlan dst,
+                                   SrcPlan src,
+                                   mshadow::index_t num_rows,
+                                   mshadow::index_t plucked_col) {
+        const int num_threads = blockDim.x;
+        for (unsigned offset = 0; offset < num_rows; offset += num_threads) {
+            const int row = offset + threadIdx.x;
+            if (row < num_rows) {
+                const R a = src[row];
+                dst[row][plucked_col] += a;
+            }
+        }
+    }
+
+    template<typename R>
+    void col_pluck_backward(mshadow::Tensor<gpu, 2, R> dest,
+                  const mshadow::Tensor<gpu, 1, R>& source,
+                  int col) {
+        const int num_threads = mshadow::cuda::kBaseThreadNum;
+
+        dim3 tiles(1);
+        // block size is a matrix column
+        dim3 within_tile(num_threads);
+        ELOG("lunching backward kernel");
+        ELOG(col);
+        ColPluckBackwardKernel<R>
+            <<<tiles, within_tile>>>
+            (dest,
+             source,
+             dest.size(0),
+             col);
+    }
+
+    #endif
+
+    template<typename R>
+    void col_pluck_backward(mshadow::Tensor<cpu, 2, R> dest,
+                  const mshadow::Tensor<cpu, 1, R>& source,
+                  int col) {
+        for (int row = 0; row < source.shape_[0]; ++row) {
+            dest[row][col] += source[row];
+        }
+    }
+
+    template<typename R>
+    void col_pluck_backward(TensorInternal<R,2> dest,
+                  TensorInternal<R,1> source,
+                  int col) {
+        #ifdef DALI_USE_CUDA
+        if (source.compute_me_on_gpu()) {
+            col_pluck_backward(dest.mutable_gpu_data(), source.gpu_data(), col);
+            return;
+        }
+        #endif
+        col_pluck_backward(dest.mutable_cpu_data(), source.cpu_data(), col);
+    }
+
     /////////////////////// select from cols /////////////////////////////////////////
 
     #ifdef DALI_USE_CUDA

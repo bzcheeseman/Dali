@@ -2,6 +2,7 @@
 #include <atomic>
 #include <fstream>
 #include <iterator>
+#include <stdexcept>
 #include <chrono>
 #include <fstream>
 #include <ostream>
@@ -53,37 +54,39 @@ DEFINE_string(pretrained_vectors, "",    "Load pretrained word vectors?");
 DEFINE_string(memory_penalty_curve, "flat",   "Type of annealing used on gate memory penalty (flat, linear, square)");
 DEFINE_int32(validation_metric,   0,          "Use root (1) or overall (0) objective to choose best validation parameters?");
 
-// Error in this computation
-template<typename T>
-Mat<T> softmax_categorical_surprise(Mat<T> logprobs, int target) {
-    auto out = Mat<T>(1, 1, false);
-    auto probs = MatOps<T>::softmax_no_grad(logprobs);
+const REAL_t EPS = 1e-6;
 
-    out.w(0) = -(
-        std::log1p(-std::sqrt(1.0 - probs.w(target, 0))) -
-        std::log1p( std::sqrt(1.0 - probs.w(target, 0)))
-    );
+// // Error in this computation
+// template<typename T>
+// Mat<T> softmax_categorical_surprise(Mat<T> logprobs, int target) {
+//     auto out = Mat<T>(1, 1, false);
+//     auto probs = MatOps<T>::softmax_no_grad(logprobs);
 
-    if (graph::backprop_enabled()) {
-        if (!logprobs.constant) {
-            graph::emplace_back([logprobs, probs, target]() {
-                auto root_coeff = std::sqrt(std::max(MatOps<T>::EPS, (T) (1.0 - probs.w(target, 0))));
-                GET_GRAD(logprobs).noalias() += (
-                    (
-                        (0.5 * probs.w(target, 0) / (root_coeff * (root_coeff + 1.0)) + MatOps<T>::EPS) +
-                        (0.5 * probs.w(target, 0) / (root_coeff * (1.0 - root_coeff)) + MatOps<T>::EPS)
+//     out.w(0) = -(
+//         std::log1p(-std::sqrt(1.0 - probs.w(target, 0))) -
+//         std::log1p( std::sqrt(1.0 - probs.w(target, 0)))
+//     );
 
-                    ) * GET_MAT(probs)
-                );
-                GET_GRAD(logprobs)(target, 0) -= probs.w(target, 0) * (
-                    (0.5 / (root_coeff * (root_coeff + 1.0)) + MatOps<T>::EPS) +
-                    (0.5 / (root_coeff * (1.0 - root_coeff)) + MatOps<T>::EPS)
-                );
-            });
-        }
-    }
-    return out;
-}
+//     if (graph::backprop_enabled()) {
+//         if (!logprobs.constant) {
+//             graph::emplace_back([logprobs, probs, target]() {
+//                 auto root_coeff = std::sqrt(std::max(MatOps<T>::EPS, (T) (1.0 - probs.w(target, 0))));
+//                 GET_GRAD(logprobs).noalias() += (
+//                     (
+//                         (0.5 * probs.w(target, 0) / (root_coeff * (root_coeff + 1.0)) + MatOps<T>::EPS) +
+//                         (0.5 * probs.w(target, 0) / (root_coeff * (1.0 - root_coeff)) + MatOps<T>::EPS)
+
+//                     ) * GET_MAT(probs)
+//                 );
+//                 GET_GRAD(logprobs)(target, 0) -= probs.w(target, 0) * (
+//                     (0.5 / (root_coeff * (root_coeff + 1.0)) + MatOps<T>::EPS) +
+//                     (0.5 / (root_coeff * (1.0 - root_coeff)) + MatOps<T>::EPS)
+//                 );
+//             });
+//         }
+//     }
+//     return out;
+// }
 
 ThreadPool* pool;
 
@@ -451,7 +454,7 @@ int main (int argc,  char* argv[]) {
     auto embedding          = Mat<REAL_t>(100, 0);
     auto word_vocab         = Vocab();
     if (!FLAGS_pretrained_vectors.empty()) {
-        glove::load(FLAGS_pretrained_vectors, embedding, word_vocab, 50000);
+        glove::load(FLAGS_pretrained_vectors, &embedding, &word_vocab, 50000);
     } else {
         word_vocab = SST::get_vocabulary(sentiment_treebank, FLAGS_min_occurence);
     }
@@ -510,7 +513,7 @@ int main (int argc,  char* argv[]) {
     auto pred_fun = [&model](vector<uint>& example){
         graph::NoBackprop nb;
         return std::get<1>(model.activate_sequence(
-            example, // see an example
+            &example, // see an example
             0.0      // activate without dropout
         )).argmax(); // no softmax needed, simply get best guess
     };
@@ -569,10 +572,12 @@ int main (int argc,  char* argv[]) {
                 // many forward steps here:
                 // REAL_t err = 0.0;
                 for (auto &example : minibatch) {
-                    auto probs = std::get<1>(thread_model.activate_sequence(std::get<0>(example), FLAGS_dropout));
+                    auto probs = std::get<1>(thread_model.activate_sequence(
+                            &std::get<0>(example), FLAGS_dropout));
                     Mat<REAL_t> error;
                     if (FLAGS_surprise) {
-                        error = softmax_categorical_surprise(probs, std::get<1>(example));
+                        throw std::runtime_error("Not Implemented!");
+                        //error = softmax_categorical_surprise(probs, std::get<1>(example));
                     } else {
                         error = MatOps<REAL_t>::cross_entropy(probs, std::get<1>(example));
                     }
@@ -592,11 +597,9 @@ int main (int argc,  char* argv[]) {
                             // visualization does not backpropagate.
                             graph::NoBackprop nb;
                             // make prediction
-                            auto model_out = thread_model.activate_sequence(
-                                example,
-                                0.0);
+                            auto model_out = thread_model.activate_sequence(&example, 0.0);
                             return SST::json_classification(
-                                word_vocab.decode(example),
+                                word_vocab.decode(&example),
                                 std::get<1>(model_out),
                                 std::get<0>(model_out)
                             );
@@ -611,7 +614,7 @@ int main (int argc,  char* argv[]) {
         journalist.done();
         auto new_validation = SST::average_recall(validation_set, pred_fun, FLAGS_j);
         std::cout << "Root recall=" << std::get<1>(new_validation) << std::endl;
-        if (solver->is_adagrad()) {
+        if (solver->method == Solver::METHOD_ADAGRAD) {
             solver->reset_caches(params);
             //embedding_solver->reset_caches(embedding_params);
         }

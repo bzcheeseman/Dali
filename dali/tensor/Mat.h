@@ -232,6 +232,7 @@ class Mat {
 
 
         // Plucking rows and columns:
+        Mat<R> col(int col);
         Mat<R> operator[](int) const;
         Mat<R> operator[](Mat<int>) const;
         Mat<R> operator()(int) const;

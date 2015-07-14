@@ -223,9 +223,8 @@ void Mat<R>::grad() {
     assert2(dims(0) == 1 && dims(1) == 1,
             "Grad only works on a \"scalar\" matrix, a 1x1 matrix. "
             "Call G.sum or G.mean before using grad.");
-    if (graph::backprop_enabled()) {
-        dw() += 1.0;
-    }
+    if (graph::backprop_enabled())
+        dw(0) += 1;
 }
 
 
@@ -328,6 +327,11 @@ MAT_UNARY_OP( relu )
 template<typename R>
 Mat<R> Mat<R>::T() const {
     return MatOps<R>::transpose(*this);
+}
+
+template<typename R>
+Mat<R> Mat<R>::col(int col) {
+    return MatOps<R>::col_pluck(*this, col);
 }
 
 template<typename R>

@@ -126,11 +126,11 @@ int main () {
     // inputs[0].w().row(2).fill(2);
     // inputs[0].w().row(3).fill(3);
 
-    Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> bob_indices = Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic>::Zero(3,3);
+    Mat<int> bob_indices(3,3);
 
-    bob_indices(0,0) = 1;
-    bob_indices(1,0) = 2;
-    bob_indices(2,0) = 3;
+    bob_indices.w(0,0) = 1;
+    bob_indices.w(1,0) = 2;
+    bob_indices.w(2,0) = 3;
 
     auto bob = inputs[0][bob_indices.col(0)];
 
@@ -146,33 +146,6 @@ int main () {
 
     graph::backward();
 
-    std::cout << "Press Enter to continue to Orthogonal Initialization" << std::endl;
-    getchar();
-
-    /**
-    Orthogonal Initialization:
-    Code sourced from:
-    https://github.com/IndicoDataSolutions/Passage/blob/fcc4037632721e63e5e2473e577e3e6f367e64f8/passage/inits.py
-
-    def orthogonal(shape, scale=1.1):
-        """ benanne lasagne ortho init (faster than qr approach)"""
-        flat_shape = (shape[0], np.prod(shape[1:]))
-        a = np.random.normal(0.0, 1.0, flat_shape)
-        u, _, v = np.linalg.svd(a, full_matrices=False)
-        q = u if u.shape == flat_shape else v # pick the one with the correct shape
-        q = q.reshape(shape)
-        return sharedX(scale * q[:shape[0], :shape[1]])
-    **/
-    std::default_random_engine generator;
-    std::normal_distribution<R> distribution(0.0, 1.0);
-    std::random_device rd;
-    generator.seed(rd());
-    auto randn = [&] (int) {return distribution(generator);};
-    auto mymat = Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>::NullaryExpr(10, 20, randn);
-    auto svd = mymat.jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV);
-
-    std::cout << "U dimensions = (" << svd.matrixU().cols() << " " << svd.matrixU().rows() << ")" << std::endl;
-    std::cout << "V dimensions = (" << svd.matrixV().cols() << " " << svd.matrixV().rows() << ")" << std::endl;
 
     return 0;
 }

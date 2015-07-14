@@ -143,7 +143,7 @@ else(CMAKE_BUILD_TYPE MATCHES "debug")
 endif(CMAKE_BUILD_TYPE MATCHES "debug")
 
 # mshadow
-add_definitions(-DMSHADOW_USE_CBLAS)
+add_definitions(-DMSHADOW_USE_EIGEN_DOT)
 add_definitions(-DMSHADOW_USE_MKL=0)
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/third_party/mshadow)
 

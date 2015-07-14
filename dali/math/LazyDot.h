@@ -1,6 +1,8 @@
 #ifndef DALI_MATH_LAZY_DOT_H
 #define DALI_MATH_LAZY_DOT_H
 
+#include "dali/math/MshadowEigenDot.h"
+
 #ifdef DALI_USE_CUDA
     template<typename LeftType, typename RightType, typename DType, int dimension, int ktype>
     class LazyTensor;

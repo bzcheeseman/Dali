@@ -158,6 +158,7 @@ endif(WITH_VISUALIZER)
 include_directories(${GFLAGS_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR}/third_party/SQLiteCpp/include)
 include_directories(${PROJECT_SOURCE_DIR}/third_party/json11)
+include_directories(${PROJECT_SOURCE_DIR}/third_party/libcuckoo/src)
 
 if (GPERFTOOLS_FOUND)
     include_directories(${GPERFTOOLS_INCLUDE_DIR})

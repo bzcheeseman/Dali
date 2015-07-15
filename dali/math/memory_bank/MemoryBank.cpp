@@ -4,7 +4,7 @@ using std::vector;
 static std::mutex memory_mutex;
 
 template<typename R>
-std::unordered_map<unsigned long long,std::vector<R*>> memory_bank<R>::cpu_memory_bank;
+cuckoohash_map<unsigned long long,std::vector<R*>> memory_bank<R>::cpu_memory_bank(100000);
 
 
 template<typename R>
@@ -12,25 +12,26 @@ void memory_bank<R>::deposit_cpu(int amount, int inner_dimension, R* ptr) {
     // make sure there is only one person
     // at a time in the vault to prevent
     // robberies
-    std::lock_guard<decltype(memory_mutex)> guard(memory_mutex);
-    cpu_memory_bank[amount].emplace_back(ptr);
+
+    cpu_memory_bank.upsert(amount, [ptr](std::vector<R*>& deposit_box) {
+        deposit_box.emplace_back(ptr);
+    }, {ptr});
 }
 
 template<typename R>
 R* memory_bank<R>::allocate_cpu(int amount, int inner_dimension) {
-    {
-        std::lock_guard<decltype(memory_mutex)> guard(memory_mutex);
-        if (cpu_memory_bank.find(amount) != cpu_memory_bank.end()) {
-            auto& deposit_box = cpu_memory_bank.at(amount);
-            if (deposit_box.size() > 0) {
-                auto preallocated_memory = deposit_box.back();
-                deposit_box.pop_back();
-                return preallocated_memory;
-            }
+    R* memory = NULL;
+    bool success = cpu_memory_bank.update_fn(amount, [&memory](std::vector<R*>& deposit_box) {
+        if (!deposit_box.empty()) {
+            memory = deposit_box.back();
+            deposit_box.pop_back();
         }
+    });
+    if (memory != NULL) {
+        return memory;
     }
     num_cpu_allocations++;
-    total_cpu_memory+= amount;
+    total_cpu_memory += amount;
     return memory_operations<R>::allocate_cpu_memory(amount, inner_dimension);
 }
 
@@ -44,7 +45,7 @@ std::atomic<long long> memory_bank<R>::total_cpu_memory(0);
 
 
     template<typename R>
-    std::unordered_map<unsigned long long,std::vector<R*>> memory_bank<R>::gpu_memory_bank;
+    cuckoohash_map<unsigned long long,std::vector<R*>> memory_bank<R>::gpu_memory_bank(100000);
 
     template<typename R>
     std::atomic<long long> memory_bank<R>::num_gpu_allocations(0);

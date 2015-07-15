@@ -9,6 +9,7 @@
 #include <sstream>
 #include <unordered_map>
 
+#include "dali/data_processing/Batch.h"
 #include "dali/tensor/CrossEntropy.h"
 #include "dali/models/RecurrentEmbeddingModel.h"
 #include "dali/models/ReconstructModel.h"
@@ -161,7 +162,7 @@ class StackedModel : public RecurrentEmbeddingModel<Z>, public ReconstructModel 
                                    int temporal_offset = 1,
                                    uint softmax_offset = 0) const;
 
-        Mat<Z> masked_predict_cost(const Batch<R>& data,
+        Mat<Z> masked_predict_cost(const Batch<Z>& data,
                                    Z drop_prob = 0.0,
                                    int temporal_offset = 1,
                                    uint softmax_offset = 0) const;

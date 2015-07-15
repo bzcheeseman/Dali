@@ -7,9 +7,9 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include <Eigen/Eigen>
-#include "dali/utils.h"
 
+#include "dali/utils.h"
+#include "dali/data_processing/Batch.h"
 // for outputting json
 #include "dali/visualizer/visualizer.h"
 
@@ -107,37 +107,29 @@ namespace SST {
         const std::vector<AnnotatedParseTree::shared_tree>& trees,
         int minibatch_size);
 
-    class Databatch {
-        public:
-            typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
-            typedef std::shared_ptr<index_mat> shared_index_mat;
-            typedef Eigen::Matrix<unsigned int, Eigen::Dynamic, 1> eigen_index_vector;
-            typedef std::shared_ptr<eigen_index_vector> shared_eigen_index_vector;
+    template<typename R>
+    struct SentimentBatch : public Batch<R> {
+        SentimentBatch(int max_example_length, int num_examples);
 
-            shared_index_mat data;
-            shared_eigen_index_vector targets;
-            shared_eigen_index_vector codelens;
-            int total_codes;
-            Databatch(int n, int d);
+        void add_example(
+            const utils::Vocab& word_vocab,
+            std::pair<std::vector<std::string>, uint>* example,
+            size_t row);
 
-            void insert_example_indices_into_matrix(
-                utils::Vocab& word_vocab,
-                std::pair<std::vector<std::string>, uint>& example,
-                size_t& row);
-            static Databatch convert_sentences_to_indices(
-                utils::tokenized_uint_labeled_dataset& examples,
-                utils::Vocab& word_vocab,
-                size_t num_elements,
-                std::vector<size_t>::iterator indices,
-                std::vector<size_t>::iterator lengths_sorted);
-            static std::vector<Databatch> create_labeled_dataset(
-                utils::tokenized_uint_labeled_dataset& examples,
-                utils::Vocab& word_vocab,
-                size_t minibatch_size);
-            static std::vector<Databatch> create_labeled_dataset(
-                std::vector<SST::AnnotatedParseTree::shared_tree>& examples,
-                utils::Vocab& word_vocab,
-                size_t minibatch_size);
+        typedef std::vector<std::pair<std::vector<std::string>, uint>*>::iterator data_ptr;
+
+        static SentimentBatch<R> from_examples(data_ptr data_begin,
+                                               data_ptr data_end,
+                                               const utils::Vocab& vocab);
+
+        static std::vector<SentimentBatch<R>> create_dataset(
+            const utils::tokenized_uint_labeled_dataset& examples,
+            const utils::Vocab& word_vocab,
+            size_t minibatch_size);
+        static std::vector<SentimentBatch> create_dataset(
+            const std::vector<SST::AnnotatedParseTree::shared_tree>& examples,
+            const utils::Vocab& word_vocab,
+            size_t minibatch_size);
     };
 
     extern const std::vector<std::string> label_names;

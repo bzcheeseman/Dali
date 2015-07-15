@@ -6,7 +6,6 @@ project("Dali")
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 # REQUIRED PACKAGES
-find_package(Eigen3 REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Gflags REQUIRED)
 
@@ -143,13 +142,12 @@ else(CMAKE_BUILD_TYPE MATCHES "debug")
 endif(CMAKE_BUILD_TYPE MATCHES "debug")
 
 # mshadow
-add_definitions(-DMSHADOW_USE_EIGEN_DOT)
+add_definitions(-DMSHADOW_USE_CBLAS)
 add_definitions(-DMSHADOW_USE_MKL=0)
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/third_party/mshadow)
 
 # INCLUDES
 include_directories(${MKL_INCLUDE_DIR})
-include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(${PROJECT_SOURCE_DIR})
 if (WITH_VISUALIZER)
     include_directories(${HIREDIS_INCLUDE_DIRS})

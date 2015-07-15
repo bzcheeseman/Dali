@@ -8,6 +8,7 @@
 #include <mutex>
 #include <thread>
 
+#include "dali/data_processing/Batch.h"
 #include "dali/core.h"
 #include "dali/utils.h"
 #include "dali/utils/NlpUtils.h"
@@ -50,43 +51,43 @@ const string START = "**START**";
 ThreadPool* pool;
 
 template<typename R>
-struct Databatch {
-    Mat<int> data;
-    Mat<R> mask;
-    vector<int> code_lengths;
-    int total_codes;
-    Databatch(int max_example_length, int num_examples) {
-        data        = Mat<int>(max_example_length, num_examples);
-        mask        = Mat<R>(max_example_length, num_examples);
-        code_lengths.clear();
-        code_lengths.resize(num_examples);
-        total_codes = 0;
+struct LanguageBatch : public Batch<R> {
+    LanguageBatch() = default;
+    LanguageBatch(int max_example_length, int num_examples) {
+        this->data   = Mat<int>(max_example_length, num_examples);
+        // in a language task, data is our target.
+        this->target = this->data;
+        this->mask   = Mat<R>(max_example_length, num_examples);
+        this->code_lengths.clear();
+        this->code_lengths.resize(num_examples);
+        this->total_codes = 0;
     };
 
-    Databatch() = default;
-
     void add_example(
-            Vocab& word_vocab,
+            const Vocab& vocab,
             const vector<string>& example_orig,
             size_t& example_idx) {
         int len = std::min(example_orig.size(), (size_t)FLAGS_max_sentence_length);
         vector<string> example(example_orig.begin(), example_orig.begin() + len);
 
         auto description_length = example.size();
-        data.w(0, example_idx) = word_vocab.word2index[START];
-        auto encoded = word_vocab.encode(example, true);
-        mask.w(0, example_idx) = 0.0;
+        this->data.w(0, example_idx) = vocab.word2index.at(START);
+        auto encoded = vocab.encode(example, true);
+        this->mask.w(0, example_idx) = 0.0;
         for (size_t j = 0; j < encoded.size(); j++) {
-            data.w(j + 1, example_idx) = encoded[j];
-            mask.w(j + 1, example_idx) = (R)1.0;
+            this->data.w(j + 1, example_idx) = encoded[j];
+            this->mask.w(j + 1, example_idx) = (R)1.0;
         }
-        code_lengths[example_idx] = description_length + 1;
-        total_codes += description_length + 1;
+        this->code_lengths[example_idx] = description_length + 1;
+        this->total_codes += description_length + 1;
     }
 
     typedef vector<vector<string>*>::iterator data_ptr;
 
-    static Databatch<R> from_examples(data_ptr data_begin, data_ptr data_end, Vocab& vocab) {
+    static LanguageBatch<R> from_examples(
+            data_ptr data_begin,
+            data_ptr data_end,
+            const Vocab& vocab) {
         int num_elements = data_end - data_begin;
         size_t max_length = (*data_begin)->size();
         for (auto it = data_begin; it != data_end; ++it) {
@@ -95,7 +96,7 @@ struct Databatch {
 
         max_length = std::min(max_length, (size_t)FLAGS_max_sentence_length + 2);
 
-        Databatch<R> databatch(max_length, num_elements);
+        LanguageBatch<R> databatch(max_length, num_elements);
         for (size_t k = 0; k < num_elements; k++) {
             databatch.add_example(vocab, **(data_begin + k), k);
         }
@@ -104,11 +105,11 @@ struct Databatch {
 };
 
 template<typename R>
-vector<Databatch<R>> create_dataset(
+vector<LanguageBatch<R>> create_dataset(
         vector<vector<string>>& examples,
-        Vocab& word_vocab,
+        const Vocab& vocab,
         size_t minibatch_size) {
-    vector<Databatch<R>> dataset;
+    vector<LanguageBatch<R>> dataset;
     vector<vector<string>*> sorted_examples;
     for (auto& example: examples) {
         sorted_examples.emplace_back(&example);
@@ -121,10 +122,10 @@ vector<Databatch<R>> create_dataset(
         auto batch_begin = sorted_examples.begin() + i;
         auto batch_end   = batch_begin + min(minibatch_size, sorted_examples.size() - i);
 
-        dataset.emplace_back(Databatch<R>::from_examples(
+        dataset.emplace_back(LanguageBatch<R>::from_examples(
             batch_begin,
             batch_end,
-            word_vocab
+            vocab
         ));
     }
     return dataset;
@@ -139,7 +140,7 @@ Vocab get_vocabulary(const vector<vector<string>>& examples, int min_occurence) 
 
 
 template<typename model_t, typename R>
-REAL_t average_error(model_t& model, const vector<Databatch<R>>& dataset) {
+REAL_t average_error(model_t& model, const vector<LanguageBatch<R>>& dataset) {
     graph::NoBackprop nb;
     Timer t("average_error");
 
@@ -165,8 +166,8 @@ REAL_t average_error(model_t& model, const vector<Databatch<R>>& dataset) {
 }
 
 template<typename R>
-std::tuple<Vocab, vector<Databatch<R>>> load_dataset_and_vocabulary(const string& fname, int min_occurence, int minibatch_size) {
-        std::tuple<Vocab, vector<Databatch<R>>> pair;
+std::tuple<Vocab, vector<LanguageBatch<R>>> load_dataset_and_vocabulary(const string& fname, int min_occurence, int minibatch_size) {
+        std::tuple<Vocab, vector<LanguageBatch<R>>> pair;
 
         auto text_corpus  = utils::load_tokenized_unlabeled_corpus(fname);
         std::get<0>(pair) = get_vocabulary(text_corpus, min_occurence);
@@ -175,7 +176,7 @@ std::tuple<Vocab, vector<Databatch<R>>> load_dataset_and_vocabulary(const string
 }
 
 template<typename R>
-vector<Databatch<R>> load_dataset_with_vocabulary(const string& fname, Vocab& vocab, int minibatch_size) {
+vector<LanguageBatch<R>> load_dataset_with_vocabulary(const string& fname, Vocab& vocab, int minibatch_size) {
         auto text_corpus        = utils::load_tokenized_unlabeled_corpus(fname);
         return create_dataset<R>(text_corpus, vocab, minibatch_size);
 }
@@ -250,8 +251,8 @@ int main( int argc, char* argv[]) {
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
     utils::Vocab      word_vocab;
-    vector<Databatch<REAL_t>> training;
-    vector<Databatch<REAL_t>> validation;
+    vector<LanguageBatch<REAL_t>> training;
+    vector<LanguageBatch<REAL_t>> validation;
 
     Timer dl_timer("Dataset loading");
     std::tie(word_vocab, training) = load_dataset_and_vocabulary<REAL_t>(

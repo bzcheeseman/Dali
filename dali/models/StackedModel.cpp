@@ -257,6 +257,15 @@ Mat<Z> StackedModel<Z>::masked_predict_cost(
     return total_error;
 }
 
+template<typename Z>
+Mat<Z> StackedModel<Z>::masked_predict_cost(const Batch<R>& batch,
+                                            Z drop_prob = 0.0,
+                                            int temporal_offset = 1,
+                                            uint softmax_offset = 0) const {
+    return masked_predict_cost(batch.data, batch.target, batch.mask,
+                               drop_prob, temporal_offset, softmax_offset);
+}
+
 // Private method that names the parameters
 // For better debugging and reference
 template<typename Z>

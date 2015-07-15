@@ -161,6 +161,11 @@ class StackedModel : public RecurrentEmbeddingModel<Z>, public ReconstructModel 
                                    int temporal_offset = 1,
                                    uint softmax_offset = 0) const;
 
+        Mat<Z> masked_predict_cost(const Batch<R>& data,
+                                   Z drop_prob = 0.0,
+                                   int temporal_offset = 1,
+                                   uint softmax_offset = 0) const;
+
 
         virtual std::vector<int> reconstruct(
             Indexing::Index,

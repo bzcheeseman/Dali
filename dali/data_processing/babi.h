@@ -27,13 +27,21 @@ namespace babi {
 
         uint size() const;
 
+        void print() const;
+
 		QA<word_t> get(int target_question_idx) const;
 	};
 
-	std::tuple<std::vector<Story<uint>>, utils::Vocab> encode_dataset(
-			const std::vector<Story<std::string>>& input);
+    Story<std::string> decode(Story<uint> story, const utils::Vocab& vocab, bool strip_eos=true);
+    Story<uint> encode(Story<std::string> story, const utils::Vocab& vocab, bool add_eos=false);
 
-    std::vector<Story<std::string>> parse_file(const std::string& filename);
+	std::tuple<std::vector<Story<uint>>, utils::Vocab> encode_dataset(
+			const std::vector<Story<std::string>>& input,
+			bool add_eos=false,
+			uint min_occurence=1);
+
+    std::vector<Story<std::string>> parse_file(const std::string& filename,
+    										   bool comma_separated_answer=true);
 
     std::string data_dir();
 

@@ -11,6 +11,33 @@ namespace babi {
     }
 
     template<typename word_t>
+    void Story<word_t>::print() const {
+        for (int i = 0; i <facts.size(); ++i) {
+            std::cout << i << " ";
+            for (auto& word: facts[i]) {
+                std::cout << word << " ";
+            }
+
+            int qidx = -1;
+            for (int q = 0; q < question_fidx.size(); ++q) {
+                if (i == question_fidx[q]) {
+                    qidx = q;
+                }
+            }
+            if (qidx != -1) {
+                for (auto& word: answers[qidx]) {
+                    std::cout << word << " ";
+                }
+                for (auto sf : supporting_facts[qidx]) {
+                    std::cout << sf << " ";
+                }
+            }
+            std::cout << std::endl;
+        }
+
+    }
+
+    template<typename word_t>
     QA<word_t> Story<word_t>::get(int target_question_idx) const {
         QA<word_t> result;
 
@@ -42,43 +69,67 @@ namespace babi {
     template class Story<string>;
 
 
-    std::tuple<vector<Story<uint>>, Vocab> encode_dataset(const vector<Story<string>>& input) {
-        vector<string> words;
+    Story<string> decode(Story<uint> story, const Vocab& vocab, bool strip_eos) {
+        Story<string> output;
+        output.question_fidx = story.question_fidx;
+        output.supporting_facts = story.supporting_facts;
+        for (auto& fact: story.facts) {
+            output.facts.emplace_back(vocab.decode(fact, strip_eos));
+        }
+        for (auto& answer: story.answers) {
+            output.answers.emplace_back(vocab.decode(answer, strip_eos));
+        }
+
+        return output;
+    }
+
+    Story<uint> encode(Story<string> story, const Vocab& vocab, bool add_eos) {
+        Story<uint> output;
+        output.question_fidx = story.question_fidx;
+        output.supporting_facts = story.supporting_facts;
+        for (auto& fact: story.facts) {
+            output.facts.emplace_back(vocab.encode(fact, add_eos));
+        }
+        for (auto& answer: story.answers) {
+            output.answers.emplace_back(vocab.encode(answer, add_eos));
+        }
+
+        return output;
+    }
+
+    std::tuple<vector<Story<uint>>, Vocab> encode_dataset(
+            const vector<Story<string>>& input, bool add_eos, uint min_occurence) {
+        std::unordered_map<string, uint> occurence;
         for (auto& story : input) {
             for (auto& fact: story.facts) {
                 for (auto& word: fact) {
-                    words.push_back(word);
+                    occurence[word] += 1;
                 }
             }
             for (auto& answer: story.answers) {
                 for (auto& word: answer) {
-                    words.push_back(word);
+                    occurence[word] += 1;
                 }
             }
         }
-        std::sort(words.begin(), words.end());
-        words.erase(std::unique(words.begin(), words.end()), words.end());
+        vector<string> words;
+
+        for (auto kv : occurence) {
+            if (kv.second >= min_occurence) {
+                words.push_back(kv.first);
+            }
+        }
         words.push_back(utils::end_symbol);
-        Vocab vocab(words, false);
+        Vocab vocab(words, true);
 
         vector<Story<uint>> results;
         for (auto& story: input) {
-            Story<uint> output;
-            output.question_fidx = story.question_fidx;
-            output.supporting_facts = story.supporting_facts;
-            for (auto& fact: story.facts) {
-                output.facts.emplace_back(vocab.encode(fact));
-            }
-            for (auto& answer: story.answers) {
-                output.answers.emplace_back(vocab.encode(answer));
-            }
-            results.push_back(output);
+            results.push_back(encode(story, vocab, add_eos));
         }
         return std::make_tuple(results, vocab);
     }
 
-    vector<Story<string>> parse_file(const string& filename) {
-
+    vector<Story<string>> parse_file(const string& filename, bool comma_separated_answer) {
         if (!utils::file_exists(filename)) {
             std::stringstream error_msg;
             error_msg << "Error: File \"" << filename << "\" does not exist, cannot parse file.";
@@ -129,17 +180,49 @@ namespace babi {
 
             // if this ia question do read in the answer and supporting facts.
             if (fact.back().back() == '?') {
-                string comma_separated_answer;
-                line >> comma_separated_answer;
+                // in first case (comma_separated_answer == true) we have
+                // answer as a list of items separated by a comma,
+                // in second case we have a sentence ending with a dot
+                // (last dot is the end of the sentence - it might have extra
+                // dots in the middle)
+                if (comma_separated_answer) {
+                    string comma_separated_answer;
+                    line >> comma_separated_answer;
 
-                vector<string> answer = utils::split(comma_separated_answer, ',');
-                results.back().answers.push_back(answer);
+                    vector<string> answer = utils::split(comma_separated_answer, ',');
+                    results.back().answers.push_back(answer);
 
-                results.back().supporting_facts.emplace_back();
+                    results.back().supporting_facts.emplace_back();
 
-                int supporting_fact;
-                while(line >> supporting_fact) {
-                    results.back().supporting_facts.back().push_back(supporting_fact - 1);
+                    int supporting_fact;
+                    while(line >> supporting_fact) {
+                        results.back().supporting_facts.back().push_back(supporting_fact - 1);
+                    }
+                } else {
+                    string token;
+                    vector<string> tokens;
+                    while(line >> token) {
+                        tokens.push_back(token);
+                    }
+                    int dot_idx = 0;
+                    for (int i = tokens.size() - 1; i >= 0; --i) {
+                        if (tokens[i] == ".") {
+                            dot_idx = i;
+                            break;
+                        }
+                    }
+                    vector<string> answer;
+                    for (int i = 0; i <= dot_idx; ++i) {
+                        answer.push_back(tokens[i]);
+                    }
+                    results.back().answers.push_back(answer);
+
+                    results.back().supporting_facts.emplace_back();
+
+                    for (int i = dot_idx + 1; i < tokens.size(); ++i) {
+                        int supporting_fact = utils::from_string<int>(tokens[i]);
+                        results.back().supporting_facts.back().push_back(supporting_fact - 1);
+                    }
                 }
             }
         }

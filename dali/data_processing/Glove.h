@@ -29,7 +29,7 @@ namespace glove {
     template<typename T>
     int load_relevant_vectors(std::string fname,
                               Mat<T>* target,
-                              const utils::Vocab* vocab,
+                              const utils::Vocab& vocab,
                               int threshold=-1);
 }
 

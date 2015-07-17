@@ -88,7 +88,7 @@ namespace glove {
     template<typename T>
     int load_relevant_vectors(std::string fname,
                               Mat<T>* target,
-                              const utils::Vocab* vocab,
+                              const utils::Vocab& vocab,
                               int threshold) {
         ASSERT2(utils::file_exists(fname), "Cannot open file with glove vectors.");
 
@@ -100,9 +100,10 @@ namespace glove {
             while(true) {
                 string line = sp.next_line();
                 vector<string> tokens = utils::split(line, ' ', false);
+                utils::assert2(tokens.size() > 0, "Glove file is damaged");
                 const string& word = tokens[0];
-                if (vocab->word2index.find(word) != vocab->word2index.end()) {
-                    int word_index = vocab->word2index.at(word);
+                if (vocab.word2index.find(word) != vocab.word2index.end()) {
+                    int word_index = vocab.word2index.at(word);
                     vector<T> embedding;
                     // parse embeddings
                     for (int tidx = 1; tidx < tokens.size(); ++tidx)
@@ -110,13 +111,11 @@ namespace glove {
                     // ensure matrix is the right size
                     if (embedding_size == 0) {
                         embedding_size = embedding.size();
-                        if (target->dims(0) != vocab->word2index.size() ||
+
+                        if (target->dims(0) != vocab.word2index.size() ||
                                 target->dims(1) !=  embedding_size) {
-                            (*target) = Mat<T>(
-                                vocab->size(),
-                                embedding_size,
-                                weights<T>::uniform(1.0/embedding_size)
-                            );
+                            *target = Mat<T>(vocab.size(), embedding_size,
+                                            weights<T>::uniform(1.0/embedding_size));
                         }
                     }
                     // store the embedding
@@ -137,6 +136,6 @@ namespace glove {
 
     template void load(string fname, Mat<float>* underlying_mat, Vocab* vocab, int );
     template void load(string fname, Mat<double>* underlying_mat, Vocab* vocab, int );
-    template int load_relevant_vectors(std::string, Mat<float>*,  const utils::Vocab* vocab, int);
-    template int load_relevant_vectors(std::string, Mat<double>*, const utils::Vocab* vocab, int);
+    template int load_relevant_vectors(std::string, Mat<float>*,const utils::Vocab& vocab, int);
+    template int load_relevant_vectors(std::string, Mat<double>*,const utils::Vocab& vocab, int);
 }

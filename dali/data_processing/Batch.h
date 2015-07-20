@@ -22,7 +22,12 @@ struct Batch {
 
     Batch() = default;
 
+    size_t size() const;
+    size_t max_length() const;
+
     void insert_example(const std::vector<std::string>& example, const utils::Vocab& vocab, size_t example_idx, int offset = 0);
+
+    int example_length(const int& idx) const;
 
 };
 

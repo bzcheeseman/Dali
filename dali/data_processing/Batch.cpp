@@ -27,5 +27,24 @@ void Batch<R>::insert_example(const std::vector<std::string>& example,
     }
 }
 
+template<typename R>
+int Batch<R>::example_length(const int& idx) const {
+    ASSERT2(idx < code_lengths.size(),
+        utils::MS() << "Asking for length of an example outside of the batch ("
+        << idx << "), batch size = "
+        <<  code_lengths.size() <<".");
+    return code_lengths[idx];
+}
+
+template<typename R>
+size_t Batch<R>::size() const {
+    return data.dims(1);
+}
+
+template<typename R>
+size_t Batch<R>::max_length() const {
+    return data.dims(0);
+}
+
 template class Batch<float>;
 template class Batch<double>;

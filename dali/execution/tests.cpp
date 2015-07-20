@@ -5,6 +5,7 @@
 #include "dali/tensor/Mat.h"
 #include "dali/tensor/MatOps.h"
 #include "dali/execution/BeamSearch.h"
+#include "dali/execution/SequenceProbability.h"
 
 using std::make_tuple;
 using std::map;
@@ -21,23 +22,36 @@ struct AutomataState {
     typedef float REAL_t;
 
     int state;
+
+    static REAL_t transition_prob(int from, int to) {
+        if (from == 0) {
+            if (to == 0)
+                return 0.5;
+            if (to == 1)
+                return 0.3;
+            if (to == 2)
+                return 0.2;
+        }
+        if (from == 1) {
+            if (to == 1)
+                return 0.5;
+            if (to == 2)
+                return 0.5;
+        }
+        return 0.0;
+    }
+
     AutomataState() : state(0) {}
     AutomataState(int j) : state(j) {};
     Mat<REAL_t> predict() const {
         // automata machine
         // 0 goes to [0, 1, 2], 1 goes to [1, 2], and 2 goes to 2.
         auto new_states = Mat<REAL_t>(3, 1);
-        if (state == 0) {
-            new_states.w(0, 0) = 0.5;
-            new_states.w(1, 0) = 0.3;
-            new_states.w(2, 0) = 0.2;
-        }
-        if (state == 1) {
-            new_states.w(1, 0) = 0.5;
-            new_states.w(2, 0) = 0.5;
+        for (int to = 0; to < 3; to++) {
+            new_states.w(to) = transition_prob(state, to);
         }
         if (state == 2) {
-            assert(false);
+            ASSERT2(false, "Should never reach this state");
         }
         return new_states;
     }
@@ -198,4 +212,57 @@ TEST(beam_search, beam_search_score_test) {
         my_beam_search(10),
         {res_ba, res_aa, res_ab, res_bb}
     ));
+}
+
+
+TEST(sequence_probability, score) {
+    Batch<R> batch;
+    int seq_length = 5;
+    batch.data = Mat<int>(seq_length, 1);
+    R expected_prob = 0.0;
+    int current_state = 0;
+    auto initial_state = AutomataState(current_state);
+
+    {
+        // generate data and obtain
+        // transition probability for sequence
+        // 0 0 1 1 2
+        int i = 1;
+        for (int state : {0, 1, 1, 2}) {
+            // store the transition probabilities
+            // by summing the log likelihood of
+            // the transition
+            expected_prob += std::log(
+                AutomataState::transition_prob(
+                    current_state,
+                    state
+                )
+            );
+            // store state at the next timestep
+            batch.data.w(i++) = state;
+            // enter the new state
+            current_state = state;
+        }
+    }
+    batch.target = batch.data;
+    batch.code_lengths.emplace_back(seq_length);
+
+    // test whether going forward in beam yields right solutions.
+    auto decode = [](state_t state) -> Mat<R> {
+        auto new_probs = state.predict();
+        return new_probs.log();
+    };
+    auto observe = [](Mat<int> candidate, state_t state) -> state_t {
+        return state_t((int)candidate.w(0));
+    };
+
+    auto scores = sequence_probability::sequence_score<R, state_t>(
+        batch,
+        initial_state, // start out with state = 0
+        decode,
+        observe,
+        1 // look 1 step ahead
+    );
+
+    ASSERT_EQ(scores.w(0), expected_prob);
 }

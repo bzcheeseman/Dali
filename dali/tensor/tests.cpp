@@ -1307,6 +1307,8 @@ TEST_F(MatrixTests, col_pluck) {
         const int col = utils::randint(0, A.dims(1) - 1);
         auto functor = [col](vector<Mat<R>> Xs) {
             #ifdef DALI_USE_CUDA
+                // to ensure op works on gpu we force memory
+                // freshness of the device
                 Xs[0].w().memory().to_gpu();
             #endif
             auto res = MatOps<R>::col_pluck(Xs[0], col);

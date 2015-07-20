@@ -212,9 +212,7 @@ namespace matops {
         ASSERT2 (0 <= col && col <= matrix.dims(1), "Wrong col index used in col_pluck");
         Mat<R> out (matrix.dims(0), 1, weights<R>::empty());
 
-        MAT(matrix).print();
         TensorOps::col_pluck(MAT(out).ravel(), MAT(matrix), col);
-        MAT(matrix).print();
 
         if (graph::backprop_enabled())
             graph::emplace_back([matrix, out, col]() mutable {

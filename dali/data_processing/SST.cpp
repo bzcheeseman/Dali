@@ -200,15 +200,15 @@ namespace SST {
     template<typename R>
     void SentimentBatch<R>::add_example(
             const Vocab& vocab,
-            std::pair<std::vector<std::string>, uint>* example,
+            const std::pair<std::vector<std::string>, uint>& example,
             size_t example_idx) {
-        this->insert_example(example->first, vocab, example_idx);
-        this->code_lengths[example_idx] = example->first.size();
-        this->total_codes += example->first.size();
+        this->insert_example(example.first, vocab, example_idx);
+        this->code_lengths[example_idx] = example.first.size();
+        this->total_codes += example.first.size();
         // add label for this example
-        this->target.w(example->first.size() - 1, example_idx) = example->second;
+        this->target.w(example.first.size() - 1, example_idx) = example.second;
         // ensure model collects error for this label position using non-zero mask.
-        this->mask.w(example->first.size() - 1, example_idx) = (R)1.0;
+        this->mask.w(example.first.size() - 1, example_idx) = (R)1.0;
     }
 
     template<typename R>
@@ -229,6 +229,12 @@ namespace SST {
     }
 
     template<typename R>
+    int SentimentBatch<R>::target_for_example(size_t example_idx) const {
+        return this->target.w(this->code_lengths[example_idx] - 1, example_idx);
+    }
+
+
+    template<typename R>
     vector<SentimentBatch<R>> SentimentBatch<R>::create_dataset(
             const utils::tokenized_uint_labeled_dataset& examples,
             const utils::Vocab& vocab,
@@ -237,13 +243,13 @@ namespace SST {
         typedef std::pair<vector<string>, uint> example_t;
 
         vector<SentimentBatch<R>> dataset;
-        vector<example_t*> sorted_examples;
+        vector<const example_t*> sorted_examples;
         for (auto& example: examples) {
             sorted_examples.emplace_back(&example);
         }
         // sort by length to make batches more packed.
         std::sort(sorted_examples.begin(), sorted_examples.end(),
-                [](example_t* a, example_t* b) {
+                [](const example_t* a, const example_t* b) {
             return a->first.size() < b->first.size();
         });
 
@@ -280,6 +286,10 @@ namespace SST {
         }
         return create_dataset(dataset, vocab, minibatch_size);
     }
+
+    template class SentimentBatch<float>;
+    template class SentimentBatch<double>;
+
 
     template<typename R>
     Json json_classification(const vector<string>& sentence, const Mat<R>& probs) {

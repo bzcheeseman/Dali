@@ -31,10 +31,11 @@ using utils::Vocab;
 using utils::tokenized_uint_labeled_dataset;
 using std::atomic;
 using std::chrono::seconds;
-using SST::Databatch;
 using utils::ConfusionMatrix;
 
 typedef float REAL_t;
+typedef SST::SentimentBatch<REAL_t> Databatch;
+
 typedef Mat<REAL_t> mat;
 
 ThreadPool* pool;
@@ -62,14 +63,14 @@ void reconstruct_random_beams(
     while (true) {
         const vector<Databatch>& dataset = datasets[utils::randint(0, datasets.size() - 1)];
         random_batch = &dataset[utils::randint(0, dataset.size() - 1)];
-        random_example_index = utils::randint(0, random_batch->data->rows() - 1);
-        if ((*random_batch->codelens)(random_example_index) > init_size) {
+        random_example_index = utils::randint(0, random_batch->size() - 1);
+        if (random_batch->code_lengths[random_example_index] > init_size) {
             break;
         }
     }
-    std::cout << "Reconstructions: \"";
+    /*std::cout << "Reconstructions: \"";
     for (int j = 1; j < init_size; j++)
-        std::cout << word_vocab.index2word[(*random_batch->data)(random_example_index, j)] << " ";
+        std::cout << word_vocab.index2word[(random_batch->data)(random_example_index, j)] << " ";
     std::cout << "\"" << std::endl;
     size_t name_num = 0;
     for (auto& model : models) {
@@ -91,7 +92,7 @@ void reconstruct_random_beams(
             }
             std::cout << std::endl;
         }
-    }
+    }*/
 }
 
 template<typename model_t>
@@ -114,23 +115,25 @@ REAL_t average_error(const vector<model_t>& models, const vector<vector<Databatc
                 auto& valid_set = validation_sets[validation_set_num][minibatch_num];
                 vector<mat> probs;
                 for (int k = 0; k < models.size();k++) {
-                    probs.emplace_back(FLAGS_use_surprise ?
-                        sequence_probability::sequence_surprises(
-                            models[k],
-                            *valid_set.data,
-                            *valid_set.codelens) :
-                        sequence_probability::sequence_probabilities(
-                            models[k],
-                            *valid_set.data,
-                            *valid_set.codelens));
+
+
+                    // probs.emplace_back(FLAGS_use_surprise
+                    //     ? sequence_probability::sequence_surprises(
+                    //         models[k],
+                    //         valid_set.data,
+                    //         valid_set.code_lengths)
+                    //     : sequence_probability::sequence_probabilities(
+                    //         models[k],
+                    //         valid_set.data,
+                    //         valid_set.code_lengths));
                 }
 
-                for (int row_num = 0; row_num < valid_set.data->rows(); ++row_num) {
+                for (size_t example_idx = 0; example_idx < valid_set.size(); ++example_idx) {
                     int best_model = -1;
                     double best_prob = (FLAGS_use_surprise ? 1.0 : -1.0) * std::numeric_limits<REAL_t>::infinity();
                     if (FLAGS_use_surprise) {
                         for (int k = 0; k < models.size();k++) {
-                            auto prob = probs[k].w(row_num);
+                            auto prob = probs[k].w(example_idx);
                             if (prob < best_prob) {
                                 best_prob = prob;
                                 best_model = k;
@@ -138,20 +141,21 @@ REAL_t average_error(const vector<model_t>& models, const vector<vector<Databatc
                         }
                     } else {
                         for (int k = 0; k < models.size();k++) {
-                            auto prob = probs[k].w(row_num);
+                            auto prob = probs[k].w(example_idx);
                             if (prob > best_prob) {
                                 best_prob = prob;
                                 best_model = k;
                             }
                         }
                     }
-                    confusion.classified_a_when_b(best_model, (*valid_set.targets)(row_num));
-                    if (best_model == (*valid_set.targets)(row_num)) {
+                    confusion.classified_a_when_b(best_model,
+                            valid_set.target_for_example(example_idx));
+                    if (best_model == valid_set.target_for_example(example_idx)) {
                         correct++;
                     }
                 }
                 seen_minibatches++;
-                total+= valid_set.codelens->rows();
+                total += valid_set.size();
                 journalist.tick(seen_minibatches, (REAL_t) 100.0 * correct / (REAL_t) total);
             });
         }
@@ -234,10 +238,10 @@ int main( int argc, char* argv[]) {
 
         i = 0;
         for (auto& tree_type : tree_types)
-            datasets[i++] = SST::Databatch::create_labeled_dataset(tree_type, word_vocab, FLAGS_minibatch);
+            datasets[i++] = Databatch::create_dataset(tree_type, word_vocab, FLAGS_minibatch);
         i = 0;
         for (auto& tree_type : validation_tree_types)
-            validation_sets[i++] = SST::Databatch::create_labeled_dataset(tree_type, word_vocab, FLAGS_minibatch);
+            validation_sets[i++] = Databatch::create_dataset(tree_type, word_vocab, FLAGS_minibatch);
     }
 
     std::cout     << "    Max training epochs = " << FLAGS_epochs << std::endl;
@@ -312,13 +316,7 @@ int main( int argc, char* argv[]) {
                     #endif
 
                     thread_model.masked_predict_cost(
-                        minibatch.data, // the sequence to draw from
-                        minibatch.data, // what to predict (the words offset by 1)
-                        1,
-                        minibatch.codelens,
-                        0,
-                        (REAL_t) FLAGS_dropout
-                    );
+                        minibatch, (REAL_t)FLAGS_dropout);
                     graph::backward(); // backpropagate
                     solver.step(thread_parameters); // One step of gradient descent
 

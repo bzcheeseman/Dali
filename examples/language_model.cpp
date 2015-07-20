@@ -152,7 +152,7 @@ REAL_t average_error(model_t& model, const vector<LanguageBatch<R>>& dataset) {
     for (size_t batch_id = 0; batch_id < dataset.size(); ++batch_id) {
         pool->run([&costs, &dataset, &model, batch_id]() {
             costs[ThreadPool::get_thread_number()] +=
-                    model.masked_predict_cost(dataset[batch_id], 0.0).w(0);
+                    model.masked_predict_cost(dataset[batch_id], 0.0, 1).w(0);
 
         });
     }
@@ -321,7 +321,9 @@ int main( int argc, char* argv[]) {
                 auto& minibatch = training[batch_id];
 
                 auto error = thread_model.masked_predict_cost(
-                    minibatch, FLAGS_dropout);
+                    minibatch, FLAGS_dropout,
+                    1 // sequence forecasting problem - predict target one step ahead
+                );
                 error.grad();
 
                 graph::backward(); // backpropagate

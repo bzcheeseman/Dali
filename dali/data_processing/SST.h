@@ -113,10 +113,12 @@ namespace SST {
 
         void add_example(
             const utils::Vocab& word_vocab,
-            std::pair<std::vector<std::string>, uint>* example,
-            size_t row);
+            const std::pair<std::vector<std::string>, uint>& example,
+            size_t example_idx);
 
-        typedef std::vector<std::pair<std::vector<std::string>, uint>*>::iterator data_ptr;
+        typedef std::vector<const std::pair<std::vector<std::string>, uint>*>::iterator data_ptr;
+
+        int target_for_example(size_t example_idx) const;
 
         static SentimentBatch<R> from_examples(data_ptr data_begin,
                                                data_ptr data_end,

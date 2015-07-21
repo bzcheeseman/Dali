@@ -576,14 +576,14 @@ int main (int argc,  char* argv[]) {
                                     thread_model.predict_with_memories(sentence1, sentence2);
 
                             auto vs1  = make_shared<visualizable::Sentence<REAL_t>>(
-                                FLAGS_use_characters ? char_vocab.decode_characters(sentence1) :
-                                                       word_vocab.decode(sentence1));
+                                FLAGS_use_characters ? char_vocab.decode_characters(&sentence1) :
+                                                       word_vocab.decode(&sentence1));
                             vs1->set_weights(memory1);
                             vs1->spaces = !FLAGS_use_characters;
 
                             auto vs2  = make_shared<visualizable::Sentence<REAL_t>>(
-                                FLAGS_use_characters ? char_vocab.decode_characters(sentence2) :
-                                                       word_vocab.decode(sentence2));
+                                FLAGS_use_characters ? char_vocab.decode_characters(&sentence2) :
+                                                       word_vocab.decode(&sentence2));
                             vs2->set_weights(memory2);
                             vs2->spaces = !FLAGS_use_characters;
 
@@ -610,7 +610,7 @@ int main (int argc,  char* argv[]) {
             std::bind(&model_t::predict, &model, _1, _2),
             FLAGS_j);
 
-        if (solver->is_adagrad()) solver->reset_caches(params);
+        if (solver->method == Solver::METHOD_ADAGRAD) solver->reset_caches(params);
 
         if (new_validation + 1e-6 < best_validation_score) {
             // lose patience:

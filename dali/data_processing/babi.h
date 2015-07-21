@@ -40,8 +40,7 @@ namespace babi {
 			bool add_eos=false,
 			uint min_occurence=1);
 
-    std::vector<Story<std::string>> parse_file(const std::string& filename,
-    										   bool comma_separated_answer=true);
+    std::vector<Story<std::string>> parse_file(const std::string& filename);
 
     std::string data_dir();
 

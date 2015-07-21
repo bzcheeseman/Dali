@@ -129,7 +129,54 @@ namespace babi {
         return std::make_tuple(results, vocab);
     }
 
-    vector<Story<string>> parse_file(const string& filename, bool comma_separated_answer) {
+    static std::tuple<int, vector<std::string>> parse_fact(std::string fact) {
+        std::stringstream line(fact);
+
+        int line_no;
+        vector<string> tokenized;
+
+        line >> line_no;
+        while(true) {
+            string token;
+            line >> token;
+            if (token.empty())
+                break;
+            tokenized.push_back(token);
+        }
+        return std::make_tuple(line_no, tokenized);
+    }
+
+    static vector<std::string> parse_answer(std::string answer) {
+        std::stringstream line(answer);
+
+        vector<string> tokenized;
+
+        while(true) {
+            string token;
+            line >> token;
+            if (token.empty())
+                break;
+            tokenized.push_back(token);
+        }
+        return tokenized;
+    }
+
+    static vector<uint> parse_supporting(std::string sup) {
+        std::stringstream line(sup);
+
+        vector<uint> supporting;
+
+        while(true) {
+            string token;
+            line >> token;
+            if (token.empty())
+                break;
+            supporting.push_back(utils::from_string<uint>(token) - 1);
+        }
+        return supporting;
+    }
+
+    vector<Story<string>> parse_file(const string& filename) {
         if (!utils::file_exists(filename)) {
             std::stringstream error_msg;
             error_msg << "Error: File \"" << filename << "\" does not exist, cannot parse file.";
@@ -148,82 +195,48 @@ namespace babi {
             // Read story id. Non-increasing id is indication
             // of new story.
             std::stringstream line(line_buffer);
+            vector<string> chunks;
+            while(true) {
+                string chunk;
+                std::getline(line, chunk, '\t');
+                if (chunk.empty()) {
+                    break;
+                } else {
+                    chunks.push_back(chunk);
+                }
+            }
+            utils::assert2(chunks.size() == 1 || chunks.size() == 3, "Error parsing QA file.");
+
             int line_number;
+            vector<string> fact;
+
+            std::tie(line_number, fact) = parse_fact(chunks[0]);
+
             line >> line_number;
             if (last_line_no == -1 || line_number <= last_line_no) {
                 results.emplace_back();
             }
             last_line_no = line_number;
 
-            // parse the fact.
-            vector<string> fact;
-            while(true) {
-                string token;
-                line >> token;
-                if (token.back() == '.' || token.back() == '?') {
-                    fact.emplace_back(token.begin(), token.end() - 1);
-                    fact.emplace_back(token.end()-1, token.end());
-                    break;
-                } else {
-                    fact.push_back(token);
-                }
-            }
-
             // store the fact.
             results.back().facts.push_back(fact);
 
+            bool is_question = chunks.size() == 3;
+
             // if this is a question store its index.
-            if (fact.back().back() == '?') {
+            if (is_question) {
                 results.back().question_fidx.push_back(
                         results.back().facts.size() - 1);
             }
 
             // if this ia question do read in the answer and supporting facts.
-            if (fact.back().back() == '?') {
-                // in first case (comma_separated_answer == true) we have
-                // answer as a list of items separated by a comma,
-                // in second case we have a sentence ending with a dot
-                // (last dot is the end of the sentence - it might have extra
-                // dots in the middle)
-                if (comma_separated_answer) {
-                    string comma_separated_answer;
-                    line >> comma_separated_answer;
+            if (is_question) {
+                auto answer = parse_answer(chunks[1]);
+                results.back().answers.push_back(answer);
 
-                    vector<string> answer = utils::split(comma_separated_answer, ',');
-                    results.back().answers.push_back(answer);
+                auto supporting = parse_supporting(chunks[2]);
 
-                    results.back().supporting_facts.emplace_back();
-
-                    int supporting_fact;
-                    while(line >> supporting_fact) {
-                        results.back().supporting_facts.back().push_back(supporting_fact - 1);
-                    }
-                } else {
-                    string token;
-                    vector<string> tokens;
-                    while(line >> token) {
-                        tokens.push_back(token);
-                    }
-                    int dot_idx = 0;
-                    for (int i = tokens.size() - 1; i >= 0; --i) {
-                        if (tokens[i] == ".") {
-                            dot_idx = i;
-                            break;
-                        }
-                    }
-                    vector<string> answer;
-                    for (int i = 0; i <= dot_idx; ++i) {
-                        answer.push_back(tokens[i]);
-                    }
-                    results.back().answers.push_back(answer);
-
-                    results.back().supporting_facts.emplace_back();
-
-                    for (int i = dot_idx + 1; i < tokens.size(); ++i) {
-                        int supporting_fact = utils::from_string<int>(tokens[i]);
-                        results.back().supporting_facts.back().push_back(supporting_fact - 1);
-                    }
-                }
+                results.back().supporting_facts.push_back(supporting);
             }
         }
 

@@ -30,7 +30,7 @@ using utils::Vocab;
 using utils::tokenized_uint_labeled_dataset;
 using std::atomic;
 using std::chrono::seconds;
-using SST::Databatch;
+using SST::SentimentBatch;
 using utils::assert2;
 using json11::Json;
 using std::to_string;

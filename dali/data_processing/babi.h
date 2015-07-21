@@ -28,6 +28,7 @@ namespace babi {
         uint size() const;
 
         void print() const;
+        void print_raw() const;
 
 		QA<word_t> get(int target_question_idx) const;
 	};

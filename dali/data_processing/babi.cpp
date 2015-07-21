@@ -38,6 +38,25 @@ namespace babi {
     }
 
     template<typename word_t>
+    void Story<word_t>::print_raw() const {
+        for (int i = 0; i <facts.size(); ++i) {
+            std::cout << "FACT " << i << " " << facts[i] << std::endl;
+
+            int qidx = -1;
+            for (int q = 0; q < question_fidx.size(); ++q) {
+                if (i == question_fidx[q]) {
+                    qidx = q;
+                }
+            }
+            if (qidx != -1) {
+
+                std::cout << "   ANSWER:     " << answers[qidx]          << std::endl;
+                std::cout << "   SUPPORTING: " << supporting_facts[qidx] << std::endl;
+            }
+        }
+    }
+
+    template<typename word_t>
     QA<word_t> Story<word_t>::get(int target_question_idx) const {
         QA<word_t> result;
 

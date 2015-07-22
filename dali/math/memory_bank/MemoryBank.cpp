@@ -43,7 +43,6 @@ std::atomic<long long> memory_bank<R>::total_cpu_memory(0);
 
 #ifdef DALI_USE_CUDA
 
-
     template<typename R>
     cuckoohash_map<unsigned long long,std::vector<R*>> memory_bank<R>::gpu_memory_bank(100000);
 
@@ -55,24 +54,25 @@ std::atomic<long long> memory_bank<R>::total_cpu_memory(0);
 
     template<typename R>
     void memory_bank<R>::deposit_gpu(int amount, int inner_dimension, R* ptr) {
-        std::lock_guard<decltype(memory_mutex)> guard(memory_mutex);
-        gpu_memory_bank[amount].emplace_back(ptr);
+        gpu_memory_bank.upsert(amount, [ptr](std::vector<R*>& deposit_box) {
+            deposit_box.emplace_back(ptr);
+        }, {ptr});
     }
 
     template<typename R>
     R* memory_bank<R>::allocate_gpu(int amount, int inner_dimension) {
-        std::lock_guard<decltype(memory_mutex)> guard(memory_mutex);
-        if (gpu_memory_bank.find(amount) != gpu_memory_bank.end()) {
-            auto& deposit_box = gpu_memory_bank.at(amount);
-            if (deposit_box.size() > 0) {
-                auto preallocated_memory = deposit_box.back();
+        R* memory = NULL;
+        bool success = gpu_memory_bank.update_fn(amount, [&memory](std::vector<R*>& deposit_box) {
+            if (!deposit_box.empty()) {
+                memory = deposit_box.back();
                 deposit_box.pop_back();
-                return preallocated_memory;
             }
+        });
+        if (memory != NULL) {
+            return memory;
         }
-
         num_gpu_allocations++;
-        total_gpu_memory+= amount;
+        total_gpu_memory += amount;
         return memory_operations<R>::allocate_gpu_memory(amount, inner_dimension);
     }
 #endif

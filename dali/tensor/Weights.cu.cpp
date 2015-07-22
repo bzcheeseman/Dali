@@ -93,7 +93,7 @@ typename weights<R>::initializer_t weights<R>::gaussian(R std) {
 template<typename R>
 typename weights<R>::initializer_t weights<R>::svd(initializer_t preinitializer) {
     return [preinitializer](sync_t matrix) {
-        ASSERT2(false, "Not implemented yet");
+        ASSERT2(false, "SVD INIT: Not implemented yet");
         /* Eigen implementation */
         // assert(matrix.dims().size() == 2);
         // preinitializer(matrix);

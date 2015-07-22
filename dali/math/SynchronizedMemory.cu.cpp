@@ -252,6 +252,7 @@ R* SynchronizedMemory<R>::overwrite_cpu_data() {
         gpu_fresh = false;
     #endif
     allocate_cpu();
+    cpu_fresh = true;
     return cpu_ptr;
 }
 
@@ -271,6 +272,7 @@ template <typename R>
 R* SynchronizedMemory<R>::overwrite_gpu_data() {
     cpu_fresh = false;
     allocate_gpu();
+    gpu_fresh = true;
     return gpu_ptr;
 }
 

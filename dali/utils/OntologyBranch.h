@@ -7,6 +7,7 @@
 #include "dali/utils/core_utils.h"
 #include "dali/utils/random.h"
 #include <set>
+#include <unordered_map>
 #include <fstream>
 #include <ostream>
 
@@ -32,7 +33,7 @@ namespace utils {
     public:
             typedef std::shared_ptr<OntologyBranch> shared_branch;
             typedef std::weak_ptr<OntologyBranch> shared_weak_branch;
-            typedef std::shared_ptr<std::map<std::string, shared_branch>> lookup_t;
+            typedef std::shared_ptr<std::unordered_map<std::string, shared_branch>> lookup_t;
 
             std::vector<shared_weak_branch> parents;
             std::vector<shared_branch> children;
@@ -73,21 +74,21 @@ namespace utils {
             static std::vector<shared_branch> load(std::string);
             template<typename T>
             static void load_branches_from_stream(T&, std::vector<shared_branch>&);
-            static std::pair<shared_branch, shared_branch> add_lattice_edge(const std::string&, const std::string&,
-                   std::shared_ptr<std::map<std::string, shared_branch>>&, std::vector<shared_branch>& parentless);
-            static std::pair<shared_branch, shared_branch> add_lattice_edge(shared_branch, const std::string&,
-                   std::shared_ptr<std::map<std::string, shared_branch>>&, std::vector<shared_branch>& parentless);
-            static std::pair<shared_branch, shared_branch> add_lattice_edge(const std::string&, shared_branch,
-                   std::shared_ptr<std::map<std::string, shared_branch>>&, std::vector<shared_branch>& parentless);
+            static std::pair<shared_branch, shared_branch> add_lattice_edge(const std::string& parent, const std::string& child,
+                   lookup_t&, std::vector<shared_branch>& parentless);
+            static std::pair<shared_branch, shared_branch> add_lattice_edge(shared_branch parent, const std::string& child,
+                   lookup_t&, std::vector<shared_branch>& parentless);
+            static std::pair<shared_branch, shared_branch> add_lattice_edge(const std::string& parent, shared_branch child,
+                   lookup_t&, std::vector<shared_branch>& parentless);
             OntologyBranch(const std::string&);
             void add_child(shared_branch);
             void add_parent(shared_branch);
             int get_index_of(shared_branch) const;
             std::string to_string(int indent = 0) const;
-            std::pair<std::vector<std::shared_ptr<OntologyBranch>>, std::vector<uint>> random_path_to_root(const std::string&);
-            std::pair<std::vector<std::shared_ptr<OntologyBranch>>, std::vector<uint>> random_path_to_root(const std::string&, const int);
-            std::pair<std::vector<std::shared_ptr<OntologyBranch>>, std::vector<uint>> random_path_from_root(const std::string&);
-            std::pair<std::vector<std::shared_ptr<OntologyBranch>>, std::vector<uint>> random_path_from_root(const std::string&, const int);
+            std::pair<std::vector<shared_branch>, std::vector<uint>> random_path_to_root(const std::string&);
+            std::pair<std::vector<shared_branch>, std::vector<uint>> random_path_to_root(const std::string&, const int);
+            std::pair<std::vector<shared_branch>, std::vector<uint>> random_path_from_root(const std::string&);
+            std::pair<std::vector<shared_branch>, std::vector<uint>> random_path_from_root(const std::string&, const int);
             static std::vector<std::string> split_str(const std::string&, const std::string&);
     };
 
@@ -103,5 +104,6 @@ namespace std {
     };
 }
 std::ostream& operator<<(std::ostream&, const utils::OntologyBranch&);
+std::ostream& operator<<(std::ostream&, const std::unordered_map<std::string, std::shared_ptr<utils::OntologyBranch>>&);
 
 #endif

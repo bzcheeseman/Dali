@@ -93,55 +93,40 @@ namespace utils {
     }
 
     std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> OntologyBranch::random_path_from_root(const string& nodename) {
-            auto up_node = lookup_table->at(nodename);
-            auto parent = up_node;
-            uint direction;
-            std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> path_pair;
-            // path_pair.first = vector<OntologyBranch::shared_branch>();
-            while ( &(*up_node) != this) {
-                    // find the parent:
-                    direction = randint(0, up_node->parents.size()-1);
-                    parent = up_node->parents[direction].lock();
-                    direction = parent->get_index_of(up_node);
-                    // assign an replace current with parent:
-                    path_pair.second.emplace(path_pair.second.begin(), direction);
-                    path_pair.first.emplace(path_pair.first.begin(), up_node);
-                    up_node = parent;
-            }
-            return path_pair;
+        return random_path_from_root(nodename, 0);
     }
 
     int OntologyBranch::get_index_of(OntologyBranch::shared_branch node) const {
-            int i = 0;
-            auto ptr = &(*node);
-            for (auto& child : children)
-                    if (&(*child) == ptr) return i;
-                    else i++;
-            return -1;
+        int i = 0;
+        auto ptr = &(*node);
+        for (auto& child : children)
+                if (&(*child) == ptr) return i;
+                else i++;
+        return -1;
     }
 
     std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> OntologyBranch::random_path_from_root(const string& nodename, const int offset) {
-            auto up_node = lookup_table->at(nodename);
-            auto parent = up_node;
-            uint direction;
-            std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> path_pair;
-            while ( &(*up_node) != this) {
-                    // find the parent:
-                    direction = randint(0, up_node->parents.size()-1);
-                    parent = up_node->parents[direction].lock();
-                    direction = parent->get_index_of(up_node);
-                    // assign an replace current with parent:
-                    path_pair.second.emplace(path_pair.second.begin(), direction + offset);
-                    path_pair.first.emplace(path_pair.first.begin(), up_node);
-                    up_node = parent;
-            }
-            return path_pair;
+        auto up_node = lookup_table->at(nodename);
+        auto parent = up_node;
+        uint direction;
+        std::pair<vector<OntologyBranch::shared_branch>, vector<uint>> path_pair;
+        while ( &(*up_node) != this) {
+            // find the parent:
+            direction = randint(0, up_node->parents.size()-1);
+            parent = up_node->parents[direction].lock();
+            direction = parent->get_index_of(up_node);
+            // assign an replace current with parent:
+            path_pair.second.emplace(path_pair.second.begin(), direction + offset);
+            path_pair.first.emplace(path_pair.first.begin(), up_node);
+            up_node = parent;
+        }
+        return path_pair;
     }
 
     std::pair<OntologyBranch::shared_branch, OntologyBranch::shared_branch> OntologyBranch::add_lattice_edge(
             const std::string& parent,
             const std::string& child,
-            std::shared_ptr<std::map<std::string, OntologyBranch::shared_branch>>& map,
+            lookup_t& map,
             std::vector<OntologyBranch::shared_branch>& parentless) {
             if (map->count(child) == 0)
                     (*map)[child] = make_shared<OntologyBranch>(child);
@@ -157,7 +142,7 @@ namespace utils {
     std::pair<OntologyBranch::shared_branch, OntologyBranch::shared_branch> OntologyBranch::add_lattice_edge(
             OntologyBranch::shared_branch parent,
             const std::string& child,
-            std::shared_ptr<std::map<std::string, OntologyBranch::shared_branch>>& map,
+            lookup_t& map,
             std::vector<OntologyBranch::shared_branch>& parentless) {
             if (map->count(child) == 0)
                     (*map)[child] = make_shared<OntologyBranch>(child);
@@ -169,7 +154,7 @@ namespace utils {
     std::pair<OntologyBranch::shared_branch, OntologyBranch::shared_branch> OntologyBranch::add_lattice_edge(
             const std::string& parent,
             OntologyBranch::shared_branch child,
-            std::shared_ptr<std::map<std::string, OntologyBranch::shared_branch>>& map,
+            lookup_t& map,
             std::vector<OntologyBranch::shared_branch>& parentless) {
             if (map->count(parent) == 0) {
                     (*map)[parent] = make_shared<OntologyBranch>(parent);
@@ -185,7 +170,7 @@ namespace utils {
                 std::vector<OntologyBranch::shared_branch>& roots) {
 
             std::vector<OntologyBranch::shared_branch> parentless;
-            auto branch_map = make_shared<std::map<std::string, OntologyBranch::shared_branch>>();
+            auto branch_map = make_shared<std::unordered_map<std::string, OntologyBranch::shared_branch>>();
             const string right_arrow = "->";
             const string left_arrow  = "<-";
             string line;
@@ -298,10 +283,23 @@ namespace utils {
     }
 }
 
-
-
 std::ostream& operator<<(std::ostream& strm, const utils::OntologyBranch& a) {
     return strm << a.to_string();
+}
+
+std::ostream& operator<<(std::ostream& strm, const std::unordered_map<std::string, std::shared_ptr<utils::OntologyBranch>>& a) {
+    int i = 0;
+    strm << "{";
+    for (auto& kv : a) {
+        strm << kv.first << " => \"" << kv.second->name << "\" (" << kv.second->id << ")";
+        if (i != a.size()) {
+            strm << ",";
+        }
+        strm << "\n";
+        i++;
+    }
+    strm << "}";
+    return strm;
 }
 
 std::size_t std::hash<utils::OntologyBranch>::operator()(const utils::OntologyBranch& k) const {

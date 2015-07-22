@@ -30,6 +30,6 @@ string ReconstructModel::reconstruct_lattice_string(
     auto reconstruction = reconstruct_lattice(example, root, eval_steps);
     stringstream rec;
     for (auto& cat : reconstruction)
-        rec << ((&(*cat) == &(*root)) ? "⟲" : cat->name) << ", ";
+        rec << (cat.get() == root.get() ? "⟲" : cat->name) << ", ";
     return rec.str();
 }

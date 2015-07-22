@@ -41,7 +41,7 @@ struct LatticeBatch : public Batch<R> {
     LatticeBatch(int max_example_length, int num_examples) {
         this->data   = Mat<int>(max_example_length, num_examples);
         // in a language task, data is our target.
-        this->target = this->data;
+        this->target = Mat<int>(max_example_length, num_examples);
         this->mask   = Mat<R>(max_example_length, num_examples);
         this->code_lengths.clear();
         this->code_lengths.resize(num_examples);
@@ -54,30 +54,33 @@ struct LatticeBatch : public Batch<R> {
             shared_lattice_t lattice,
             const vector<vector<string>>& example,
             size_t& example_idx) {
-        auto description_length = example[0].size();
+        auto& lattice_label = example[0].front();
+        auto& tokens        = example[1];
+        // example 1 is the sentence
+        // example 2 is the label from the lattice
+        auto description_length = tokens.size();
         for (size_t j = 0; j < description_length; j++)
-            this->data.w(j, example_idx) = word_vocab[example[0][j]];
+            this->data.w(j, example_idx) = word_vocab[tokens[j]];
 
         this->data.w(description_length, example_idx) = word_vocab.word2index.at(utils::end_symbol);
 
-        ELOG(example[0]);
-        ELOG(example[1]);
-        auto path = lattice->random_path_from_root(example[1].front(), 1);
-        std::cout << "got path" << std::endl;
+        auto path = lattice->random_path_from_root(lattice_label, 1);
 
         size_t j = 0;
         for (auto& node : path.first) {
             // lattice index is offset by all words +
             // offset using lattice_vocab indexing
-            this->data.w(description_length + 1 + j, example_idx) = lattice_vocab.word2index.at(node->name) + word_vocab.word2index.size();
-            this->target.w(description_length + 1 + j, example_idx) = path.second[j];
-            this->mask.w(description_length + 1 + j, example_idx) = 1.0;
+            this->data.w(description_length   + j + 1, example_idx) = lattice_vocab.word2index.at(node->name) + word_vocab.word2index.size();
+            this->target.w(description_length + j, example_idx) = path.second[j];
+            this->mask.w(description_length   + j, example_idx) = 1.0;
             j++;
         }
         // **END** for tokens is the next dimension after all the categories (the last one)
-        this->data.w(description_length + j + 1, example_idx) = word_vocab.word2index.at(utils::end_symbol);
-        this->target.w(description_length + j + 1, example_idx) = lattice_vocab.word2index.at(utils::end_symbol);
+        this->data.w(description_length   + j + 1, example_idx) = word_vocab.word2index.at(utils::end_symbol);
+        this->target.w(description_length + j, example_idx) = 0;
+        this->mask.w(description_length   + j, example_idx) = 1.0;
 
+        this->code_lengths[example_idx] = path.first.size() + 1;
         this->total_codes += path.first.size() + 1;
     }
 };
@@ -90,42 +93,14 @@ vector<string> ontology_path_to_pathnames(const vector<OntologyBranch::shared_br
 }
 
 template<typename R>
-void insert_example_indices_into_matrix(
-        Vocab& lattice_vocab,
-        Vocab& word_vocab,
-        shared_lattice_t lattice,
-        const LatticeBatch<R>& batch,
-        vector<vector<string>>& example,
-        size_t& row) {
-    auto description_length = example[0].size();
-    for (size_t j = 0; j < description_length; j++)
-            (*batch.data)(row, j) = word_vocab[example[0][j]];
-    (*batch.data)(row, description_length) = word_vocab.word2index[utils::end_symbol];
-
-    auto path = lattice->random_path_from_root(example[1].front(), 1);
-
-    size_t j = 0;
-    for (auto& node : path.first) {
-            (*batch.data)(row,        description_length + 1 + j)   = lattice_vocab.word2index[node->name] + word_vocab.word2index.size();
-            (*batch.target_data)(row, description_length + 1 + j)   = path.second[j];
-        j++;
-    }
-    // **END** for tokens is the next dimension after all the categories (the last one)
-    (*batch.data)(row, description_length + j + 1) = word_vocab.word2index[utils::end_symbol];
-    (*batch.target_data)(row, description_length + j + 1) = lattice_vocab.word2index[utils::end_symbol];
-    (*batch.codelens)(row)   = path.first.size() + 1;
-    (*batch.start_loss)(row) = description_length;
-}
-
-template<typename R>
 LatticeBatch<R> convert_sentences_to_indices(
-    tokenized_labeled_dataset& examples,
-    Vocab& lattice_vocab,
-    Vocab& word_vocab,
-    shared_lattice_t lattice,
-    size_t batch_size,
-    vector<size_t>::iterator indices,
-    vector<size_t>::iterator lengths_sorted) {
+        tokenized_labeled_dataset& examples,
+        const Vocab& lattice_vocab,
+        const Vocab& word_vocab,
+        shared_lattice_t lattice,
+        size_t batch_size,
+        vector<size_t>::iterator indices,
+        vector<size_t>::iterator lengths_sorted) {
 
     auto indices_begin = indices;
     LatticeBatch<R> batch(
@@ -154,7 +129,7 @@ vector<LatticeBatch<R>> create_labeled_dataset(
     vector<LatticeBatch<R>> dataset;
     vector<size_t> lengths = vector<size_t>(examples.size());
     for (size_t i = 0; i != lengths.size(); ++i)
-        lengths[i] = examples[i][0].size() + lattice->max_depth() + 2;
+        lengths[i] = examples[i][1].size() + lattice->max_depth() + 2;
     vector<size_t> lengths_sorted(lengths);
 
     auto shortest = utils::argsort(lengths);
@@ -265,17 +240,16 @@ int main( int argc, char* argv[]) {
     auto lattice     = OntologyBranch::load(FLAGS_lattice)[0];
 
     int number_of_columns = 2;
-    auto examples    = utils::load_tsv(
+    auto examples  = utils::load_tsv(
         FLAGS_train,
         number_of_columns
     );
-
-    auto index2word  = utils::get_vocabulary(examples, FLAGS_min_occurence);
+    int data_column = 1;
+    auto index2word  = utils::get_vocabulary(examples, FLAGS_min_occurence, data_column);
     auto index2label = utils::get_lattice_vocabulary(lattice);
     Vocab word_vocab(index2word);
     Vocab lattice_vocab(index2label, false);
     utils::assign_lattice_ids(lattice->lookup_table, lattice_vocab, word_vocab.size());
-    std::cout << *lattice << std::endl;
     auto dataset = create_labeled_dataset<REAL_t>(
         examples,
         lattice_vocab,

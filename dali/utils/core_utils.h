@@ -209,7 +209,7 @@ namespace utils {
 
         std::vector<str_sequence> load_tokenized_unlabeled_corpus(const std::string&);
         str_sequence tokenize(const std::string&);
-        str_sequence get_vocabulary(const tokenized_labeled_dataset&, int);
+        str_sequence get_vocabulary(const tokenized_labeled_dataset&, int min_occurence, int data_column);
         str_sequence get_vocabulary(const std::vector<str_sequence>&, int);
         str_sequence get_vocabulary(const tokenized_uint_labeled_dataset&, int);
         str_sequence get_label_vocabulary(const tokenized_labeled_dataset&);

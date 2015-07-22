@@ -147,7 +147,6 @@ std::tuple<Mat<Z>, Mat<Z>> StackedGatedModel<Z>::masked_predict_cost(
         memory = gate.activate(input_vector, state.back().hidden ).sigmoid();
         input_vector = input_vector.eltmul_broadcast_rowwise(memory);
         gte.stop();
-        // pass this letter to the LSTM for processing
 
         utils::Timer flstm("forward lstm");
         state = this->stacked_lstm.activate(
@@ -173,7 +172,7 @@ std::tuple<Mat<Z>, Mat<Z>> StackedGatedModel<Z>::masked_predict_cost(
 
         utils::Timer masking_tm("masking");
         errors *= mask[timestep + temporal_offset].T();
-        memory *= mask[timestep + temporal_offset];
+        memory *= mask[timestep + temporal_offset].T();
         masking_tm.stop();
 
         total_error += errors.sum();
@@ -493,7 +492,6 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<Z>::reconstr
     graph::NoBackprop nb;
     mat input_vector;
     mat memory;
-    auto pos = root;
     auto initial_state = this->initial_states();
     auto n = example.size();
     for (uint i = 0; i < n; ++i) {
@@ -507,6 +505,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<Z>::reconstr
     vector<utils::OntologyBranch::shared_branch> outputs;
     // Take the argmax over the available options (0 for go back to
     // root, and 1..n for the different children of the current position)
+    auto pos = root;
     auto last_turn = this->decode(
         input_vector,
         initial_state
@@ -519,7 +518,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<Z>::reconstr
     pos = (last_turn == 0) ? root : pos->children[last_turn-1];
     // add this decision to the output :
     outputs.emplace_back(pos);
-    for (uint j = 0; j < eval_steps - 1; j++) {
+    for (int step = 0; step < eval_steps - 1; step++) {
         input_vector  = this->embedding[pos->id];
         memory        = gate.activate(input_vector, initial_state.back().hidden).sigmoid();
         input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
@@ -531,6 +530,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<Z>::reconstr
             0,
             pos->children.size() + 1
         );
+        // take an action
         pos = (last_turn == 0) ? root : pos->children[last_turn-1];
         outputs.emplace_back(pos);
     }

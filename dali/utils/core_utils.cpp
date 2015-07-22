@@ -605,11 +605,11 @@ namespace utils {
         return list;
     }
 
-    vector<string> get_vocabulary(const tokenized_labeled_dataset& examples, int min_occurence) {
+    vector<string> get_vocabulary(const tokenized_labeled_dataset& examples, int min_occurence, int data_column) {
         std::map<string, uint> word_occurences;
         string word;
         for (auto& example : examples)
-            for (auto& word : example[0]) word_occurences[word] += 1;
+            for (auto& word : example[data_column]) word_occurences[word] += 1;
         vector<string> list;
         for (auto& key_val : word_occurences)
             if (key_val.second >= min_occurence)

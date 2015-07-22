@@ -12,8 +12,6 @@ MEDIUM PRIORITY:
 
 LOWER_PRIOTITY:
 -> add performance test
--> refactor masked entropy
--> sequence loss
 -> implement imagenet training
 -> load existing image net model from caffe
 -> make machine comprehension dataset inline with other loading system

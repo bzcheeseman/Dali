@@ -358,7 +358,7 @@ class GatedLstmsModel {
 
             if (!FLAGS_pretrained_vectors.empty()) {
                 int num_loaded = glove::load_relevant_vectors(
-                        FLAGS_pretrained_vectors, &embeddings, vocab.get(), 1000000);
+                        FLAGS_pretrained_vectors, &embeddings, *vocab, 1000000);
                 // consider glove embeddings a constant variable.
                 // embeddings = MatOps<R>::consider_constant(embeddings);
                 std::cout << num_loaded << " out of " << vocab->word2index.size()

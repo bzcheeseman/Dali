@@ -93,10 +93,10 @@ namespace babi {
         output.question_fidx = story.question_fidx;
         output.supporting_facts = story.supporting_facts;
         for (auto& fact: story.facts) {
-            output.facts.emplace_back(vocab.decode(fact, strip_eos));
+            output.facts.emplace_back(vocab.decode(&fact, strip_eos));
         }
         for (auto& answer: story.answers) {
-            output.answers.emplace_back(vocab.decode(answer, strip_eos));
+            output.answers.emplace_back(vocab.decode(&answer, strip_eos));
         }
 
         return output;

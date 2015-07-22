@@ -15,9 +15,7 @@ set(EXAMPLE_PROGRAMS api_showcase
                      lstm_sentiment
                      machine_comprehension
                      mlbasics_rnn_binary_addition
-                     sparkfun_prediction
                      sparse_lstm_sentiment
-                     sparse_lstm_predict_sentiment
                      sparse_ner
                      sparse_paraphrase
                      visualizer

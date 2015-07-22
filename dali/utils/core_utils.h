@@ -111,6 +111,7 @@ namespace utils {
                     Vocab(str_sequence&, bool);
                     Vocab(str_sequence&&, bool);
                     Vocab(str_sequence&&);
+                    ind_t operator[](const std::string&) const;
                     size_t size() const;
         };
 

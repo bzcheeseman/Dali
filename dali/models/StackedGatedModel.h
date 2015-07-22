@@ -9,6 +9,7 @@
 
 #include "dali/tensor/CrossEntropy.h"
 #include "dali/models/StackedModel.h"
+#include "dali/data_processing/Batch.h"
 #include "dali/core.h"
 #include "dali/utils.h"
 
@@ -91,20 +92,18 @@ class StackedGatedModel : public StackedModel<Z> {
             Z _memory_penalty);
         StackedGatedModel(const config_t&);
         StackedGatedModel(const StackedGatedModel<Z>&, bool, bool);
-        std::tuple<Z, Z> masked_predict_cost(
-            Indexing::Index,
-            Indexing::Index,
-            Indexing::Index,
-            Indexing::Index,
-            uint offset=0,
-            Z drop_prob = 0.0);
-        std::tuple<Z, Z> masked_predict_cost(
-            Indexing::Index,
-            Indexing::Index,
-            uint,
-            Indexing::Index,
-            uint offset=0,
-            Z drop_prob = 0.0);
+
+        std::tuple<Mat<Z>, Mat<Z>> masked_predict_cost(Mat<int> data,
+                                   Mat<int> target_data,
+                                   Mat<Z> prediction_mask,
+                                   Z drop_prob = 0.0,
+                                   int temporal_offset = 0,
+                                   uint softmax_offset = 0) const;
+
+        std::tuple<Mat<Z>, Mat<Z>> masked_predict_cost(const Batch<Z>& data,
+                                   Z drop_prob = 0.0,
+                                   int temporal_offset = 0,
+                                   uint softmax_offset = 0) const;
 
         virtual std::vector<int> reconstruct(Indexing::Index, int, int symbol_offset = 0) const;
         state_type get_final_activation(Indexing::Index, Z drop_prob=0.0) const;

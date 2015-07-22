@@ -31,27 +31,55 @@ using utils::tokenized_labeled_dataset;
 typedef float REAL_t;
 typedef Mat<REAL_t> mat;
 typedef float price_t;
-typedef Eigen::Matrix<uint, Eigen::Dynamic, Eigen::Dynamic> index_mat;
-typedef Eigen::Matrix<REAL_t, Eigen::Dynamic, 1> float_vector;
 typedef std::pair<vector<string>, string> labeled_pair;
 typedef OntologyBranch lattice_t;
 typedef std::shared_ptr<lattice_t> shared_lattice_t;
 
-class Databatch {
-    typedef shared_ptr<index_mat> shared_index_mat;
-    public:
-        shared_index_mat data;
-        shared_index_mat target_data;
-        shared_eigen_index_vector codelens;
-        shared_eigen_index_vector start_loss;
-        Databatch(int n, int d) {
-            data        = make_shared<index_mat>(n, d);
-            target_data = make_shared<index_mat>(n, d);
-            codelens    = make_shared<eigen_index_vector>(n);
-            start_loss  = make_shared<eigen_index_vector>(n);
-            data->fill(0);
-            target_data->fill(-1);
-        };
+template<typename R>
+struct LatticeBatch : public Batch<R> {
+    LatticeBatch() = default;
+    LatticeBatch(int max_example_length, int num_examples) {
+        this->data   = Mat<int>(max_example_length, num_examples);
+        // in a language task, data is our target.
+        this->target = this->data;
+        this->mask   = Mat<R>(max_example_length, num_examples);
+        this->code_lengths.clear();
+        this->code_lengths.resize(num_examples);
+        this->total_codes = 0;
+    };
+
+    void add_example(
+            const Vocab& lattice_vocab,
+            const Vocab& word_vocab,
+            shared_lattice_t lattice,
+            const vector<vector<string>>& example,
+            size_t& example_idx) {
+        auto description_length = example[0].size();
+        for (size_t j = 0; j < description_length; j++)
+            this->data.w(j, example_idx) = word_vocab[example[0][j]];
+
+        this->data.w(description_length, example_idx) = word_vocab.word2index.at(utils::end_symbol);
+
+        ELOG(example[0]);
+        ELOG(example[1]);
+        auto path = lattice->random_path_from_root(example[1].front(), 1);
+        std::cout << "got path" << std::endl;
+
+        size_t j = 0;
+        for (auto& node : path.first) {
+            // lattice index is offset by all words +
+            // offset using lattice_vocab indexing
+            this->data.w(description_length + 1 + j, example_idx) = lattice_vocab.word2index.at(node->name) + word_vocab.word2index.size();
+            this->target.w(description_length + 1 + j, example_idx) = path.second[j];
+            this->mask.w(description_length + 1 + j, example_idx) = 1.0;
+            j++;
+        }
+        // **END** for tokens is the next dimension after all the categories (the last one)
+        this->data.w(description_length + j + 1, example_idx) = word_vocab.word2index.at(utils::end_symbol);
+        this->target.w(description_length + j + 1, example_idx) = lattice_vocab.word2index.at(utils::end_symbol);
+
+        this->total_codes += path.first.size() + 1;
+    }
 };
 
 vector<string> ontology_path_to_pathnames(const vector<OntologyBranch::shared_branch>& path) {
@@ -61,63 +89,69 @@ vector<string> ontology_path_to_pathnames(const vector<OntologyBranch::shared_br
     return names;
 }
 
+template<typename R>
 void insert_example_indices_into_matrix(
         Vocab& lattice_vocab,
         Vocab& word_vocab,
         shared_lattice_t lattice,
-        Databatch& databatch,
+        const LatticeBatch<R>& batch,
         vector<vector<string>>& example,
         size_t& row) {
     auto description_length = example[0].size();
     for (size_t j = 0; j < description_length; j++)
-            (*databatch.data)(row, j) = word_vocab.word2index.find(example[0][j]) != word_vocab.word2index.end() ? word_vocab.word2index[example[0][j]] : word_vocab.unknown_word;
-    (*databatch.data)(row, description_length) = word_vocab.word2index[utils::end_symbol];
+            (*batch.data)(row, j) = word_vocab[example[0][j]];
+    (*batch.data)(row, description_length) = word_vocab.word2index[utils::end_symbol];
 
     auto path = lattice->random_path_from_root(example[1].front(), 1);
 
     size_t j = 0;
     for (auto& node : path.first) {
-            (*databatch.data)(row,        description_length + 1 + j)   = lattice_vocab.word2index[node->name] + word_vocab.word2index.size();
-            (*databatch.target_data)(row, description_length + 1 + j)   = path.second[j];
+            (*batch.data)(row,        description_length + 1 + j)   = lattice_vocab.word2index[node->name] + word_vocab.word2index.size();
+            (*batch.target_data)(row, description_length + 1 + j)   = path.second[j];
         j++;
     }
     // **END** for tokens is the next dimension after all the categories (the last one)
-    (*databatch.data)(row, description_length + j + 1) = word_vocab.word2index[utils::end_symbol];
-    (*databatch.target_data)(row, description_length + j + 1) = lattice_vocab.word2index[utils::end_symbol];
-    (*databatch.codelens)(row)   = path.first.size() + 1;
-    (*databatch.start_loss)(row) = description_length;
+    (*batch.data)(row, description_length + j + 1) = word_vocab.word2index[utils::end_symbol];
+    (*batch.target_data)(row, description_length + j + 1) = lattice_vocab.word2index[utils::end_symbol];
+    (*batch.codelens)(row)   = path.first.size() + 1;
+    (*batch.start_loss)(row) = description_length;
 }
 
-Databatch convert_sentences_to_indices(
+template<typename R>
+LatticeBatch<R> convert_sentences_to_indices(
     tokenized_labeled_dataset& examples,
     Vocab& lattice_vocab,
     Vocab& word_vocab,
     shared_lattice_t lattice,
-    size_t num_elements,
+    size_t batch_size,
     vector<size_t>::iterator indices,
     vector<size_t>::iterator lengths_sorted) {
 
     auto indices_begin = indices;
-    Databatch databatch(num_elements, *std::max_element(lengths_sorted, lengths_sorted + num_elements));
-    for (size_t k = 0; k < num_elements; k++)
-        insert_example_indices_into_matrix(
+    LatticeBatch<R> batch(
+        *std::max_element(lengths_sorted, lengths_sorted + batch_size),
+        batch_size
+    );
+    for (size_t example_idx = 0; example_idx < batch_size; example_idx++)
+        batch.add_example(
             lattice_vocab,
             word_vocab,
             lattice,
-            databatch,
             examples[*(indices++)],
-            k);
-    return databatch;
+            example_idx
+        );
+    return batch;
 }
 
-vector<Databatch> create_labeled_dataset(
+template<typename R>
+vector<LatticeBatch<R>> create_labeled_dataset(
         tokenized_labeled_dataset& examples,
         Vocab& lattice_vocab,
         Vocab& word_vocab,
         shared_lattice_t lattice,
         size_t subpieces) {
 
-    vector<Databatch> dataset;
+    vector<LatticeBatch<R>> dataset;
     vector<size_t> lengths = vector<size_t>(examples.size());
     for (size_t i = 0; i != lengths.size(); ++i)
         lengths[i] = examples[i][0].size() + lattice->max_depth() + 2;
@@ -134,7 +168,7 @@ vector<Databatch> create_labeled_dataset(
 
     while (shortest_ptr != end_ptr) {
         dataset.emplace_back(
-            convert_sentences_to_indices(
+            convert_sentences_to_indices<R>(
                 examples,
                 lattice_vocab,
                 word_vocab,
@@ -151,46 +185,65 @@ vector<Databatch> create_labeled_dataset(
     return dataset;
 }
 
+template<typename R>
 void reconstruct(
-        StackedGatedModel<REAL_t>& model,
-        Databatch& minibatch,
-        int& i,
+        StackedGatedModel<R>& model,
+        const LatticeBatch<R>& minibatch,
+        int& example_idx,
         const Vocab& word_vocab,
         shared_lattice_t lattice) {
     std::cout << "Reconstruction \"";
-    for (int j = 0; j < (*minibatch.start_loss)(i); j++)
-        std::cout << word_vocab.index2word[(*minibatch.data)(i, j)] << " ";
+    std::vector<typename utils::Vocab::ind_t> primer;
+    for (int t = 0; t < minibatch.max_length(); t++) {
+        if (minibatch.mask.w(t, example_idx) == 0.0) {
+            std::cout << word_vocab.index2word[minibatch.data.w(t, example_idx)] << " ";
+            primer.emplace_back(minibatch.data.w(t, example_idx));
+        } else {
+            break;
+        }
+    }
     std::cout << "\"\n => ";
+
     std::cout << model.reconstruct_lattice_string(
-        minibatch.data->row(i).head((*minibatch.start_loss)(i) + 1),
+        &primer,
         lattice,
-        (*minibatch.codelens)(i)) << std::endl;
+        minibatch.code_lengths[example_idx]
+    ) << std::endl;
 }
 
 template<typename T, typename S>
 void training_loop(StackedGatedModel<T>& model,
-        vector<Databatch>& dataset,
+        const vector<LatticeBatch<T>>& dataset,
         const Vocab& word_vocab,
         shared_lattice_t lattice,
         S& solver,
         vector<mat>& parameters,
         int& epoch,
         std::tuple<T, T>& cost) {
-    for (auto& minibatch : dataset) {
-        utils::tuple_sum(cost, model.masked_predict_cost(
-            minibatch.data, // the sequence to draw from
-            minibatch.target_data, // what to predict (the path down the lattice)
-            minibatch.start_loss,
-            minibatch.codelens,
+    mat prediction_error, memory_error;
+    for (auto& batch : dataset) {
+        std::tie(prediction_error, memory_error) = model.masked_predict_cost(
+            batch.data,
+            batch.target,
+            batch.mask,
+            0.0,
+            0,
             0
-        ));
+        );
+
+        std::get<0>(cost) = std::get<0>(cost) + prediction_error.w(0);
+        std::get<1>(cost) = std::get<1>(cost) + memory_error.w(0);
+
+        prediction_error.grad();
+        memory_error.grad();
+
         graph::backward(); // backpropagate
         solver.step(parameters); // One step of gradient descent
     }
     std::cout << "epoch (" << epoch << ") KL error = " << std::get<0>(cost)
                              << ", Memory cost = " << std::get<1>(cost) << std::endl;
     auto& random_batch = dataset[utils::randint(0, dataset.size() - 1)];
-    auto random_example_index = utils::randint(0, random_batch.data->rows() - 1);
+    auto random_example_index = utils::randint(0, random_batch.size() - 1);
 
     reconstruct(model, random_batch, random_example_index, word_vocab, lattice);
 }
@@ -222,12 +275,14 @@ int main( int argc, char* argv[]) {
     Vocab word_vocab(index2word);
     Vocab lattice_vocab(index2label, false);
     utils::assign_lattice_ids(lattice->lookup_table, lattice_vocab, word_vocab.size());
-    auto dataset = create_labeled_dataset(
+    std::cout << *lattice << std::endl;
+    auto dataset = create_labeled_dataset<REAL_t>(
         examples,
         lattice_vocab,
         word_vocab,
         lattice,
         FLAGS_subsets);
+
     auto max_branching_factor = lattice->max_branching_factor();
     auto vocab_size = word_vocab.size() + lattice_vocab.size();
     auto model = StackedGatedModel<REAL_t>::build_from_CLI(FLAGS_load, vocab_size, max_branching_factor + 1, true);
@@ -253,14 +308,14 @@ int main( int argc, char* argv[]) {
     while (std::get<0>(cost) > cutoff && i < epochs) {
         std::get<0>(cost) = 0.0;
         std::get<1>(cost) = 0.0;
-        model.memory_penalty = (memory_penalty / dataset[0].data->cols()) * std::min((REAL_t)1.0, ((REAL_t) (i*i) / ((REAL_t) memory_rampup * memory_rampup)));
+        model.memory_penalty = (memory_penalty / dataset[0].size()) * std::min((REAL_t)1.0, ((REAL_t) (i*i) / ((REAL_t) memory_rampup * memory_rampup)));
         training_loop(model, dataset, word_vocab, lattice, solver, parameters, i, cost);
         i++;
     }
     maybe_save_model(&model);
     std::cout <<"\nFinal Results\n=============\n" << std::endl;
     for (auto& minibatch : dataset)
-        for (int i = 0; i < minibatch.data->rows(); i++)
+        for (int i = 0; i < minibatch.size(); i++)
             reconstruct(model, minibatch, i, word_vocab, lattice);
     return 0;
 }

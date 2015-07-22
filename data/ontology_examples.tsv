@@ -1,9 +1,9 @@
-nil	. . .
-nil	is .
-nil	from .
-nil	of
-nil	the
-nil	stuff
+__ROOT__	. . .
+__ROOT__	is .
+__ROOT__	from .
+__ROOT__	of
+__ROOT__	the
+__ROOT__	stuff
 waterpolo	Waterpolo is a great sport .
 ping_pong	Ping Pong is a great sport .
 tennis	Tennis is a great sport .
@@ -60,7 +60,7 @@ football	A player takes a free kick , while the opposition form a " wall " to tr
 football	In the late 1990s and early 2000s , the IFAB experimented with ways of creating a winner without requiring a penalty shootout , which was often seen as an undesirable way to end a match .
 football	Association football has been played by women since at least the time of the first recorded women 's games in the late 19th century
 football	Today , football is played at a professional level all over the world . Millions of people regularly go to football stadiums to follow their favourite teams , while billions more watch the game on television or on the internet
-tennis	Roger Federer is now considered by many observers to have the most " complete " game in modern tennis . He has won 17 grand slam titles and 6 world tour finals , the most for any male player . 
+tennis	Roger Federer is now considered by many observers to have the most " complete " game in modern tennis . He has won 17 grand slam titles and 6 world tour finals , the most for any male player .
 tennis	McEnroe exacted revenge two months later , beating Borg in the five-set final of the 1980 US Open .
 polo	The recent surge of excitement in south-east Asia around the game has resulted in its popularity in cities such as Pattaya , Kuala Lumpur and Jakarta .
 polo	The mounts used are called ' polo ponies ' , although the term pony is purely traditional and the mount is actually a full-sized horse
@@ -74,7 +74,7 @@ mammals	cow milk has only recently been collected by humans
 reptiles	the Komodo dragon is not only poisonous but also very fast
 tennis	in tennis reflexes are critical
 rugby	most rugby players are not as muscular as football players
-baseball	Baseball grew in popularity during the second world war in the United States 
+baseball	Baseball grew in popularity during the second world war in the United States
 polo	In Argentina polo is very popular unlike in most other southern American countries
 mammals	Dogs and cats are mammals
 mammals	Dog is man 's best friend
@@ -89,7 +89,7 @@ alligator	There are only two countries on earth that have alligators : the Unite
 alligator	Although alligators have heavy bodies and slow metabolisms , they are capable of short bursts of speed that can exceed 30 miles per hour though this could more properly be classified as a short fast lunge rather than a dash . Alligators ' main prey are smaller animals that they can kill and eat with a single bite .
 alligator	Alligators may kill larger prey by grabbing it and dragging it in the water to drown .
 alligator	Alligators consume food that cannot be eaten in one bite by allowing it to rot or by biting and then spinning or convulsing wildly until bite size pieces are torn off . This is referred to as the " death roll . "
-frog	Adult frogs are characterised by long hind legs , a short body , webbed digits , protruding eyes and the absence of a tail . 
+frog	Adult frogs are characterised by long hind legs , a short body , webbed digits , protruding eyes and the absence of a tail .
 frog	Most frogs have a semi-aquatic lifestyle , but move easily on land by jumping or climbing .
 whale	The baleen whales are characterized by baleen , a sieve-like structure in the upper jaw made of keratin , which they use to filter plankton from the water . They are the largest species of whale
 whale	Like all mammals , whales breathe air into lungs , are warm-blooded , feed their young milk from mammary glands , and have some (although very little ) hair
@@ -100,5 +100,5 @@ alligator	There are only two countries on earth that have alligators : the Unite
 alligator	Although alligators have heavy bodies and slow metabolisms , they are capable of short bursts of speed that can exceed 30 miles per hour though this could more properly be classified as a short fast lunge rather than a dash . Alligators ' main prey are smaller animals that they can kill and eat with a single bite
 alligator	Alligators may kill larger prey by grabbing it and dragging it in the water to drown
 alligator	Alligators consume food that cannot be eaten in one bite by allowing it to rot or by biting and then spinning or convulsing wildly until bite size pieces are torn off . This is referred to as the " death roll .
-frog	Adult frogs are characterised by long hind legs , a short body , webbed digits , protruding eyes and the absence of a tail 
+frog	Adult frogs are characterised by long hind legs , a short body , webbed digits , protruding eyes and the absence of a tail
 frog	Most frogs have a semi-aquatic lifestyle , but move easily on land by jumping or climbing

@@ -272,22 +272,41 @@ namespace utils {
         for(auto& kv : *lookup_table)
             kv.second->id = lattice_vocab.word2index.at(kv.first) + offset;
     }
+
+    std::string OntologyBranch::to_string(int indent) const {
+        std::stringstream ss;
+        for (int j = 0; j < indent; j++) {
+            ss << " ";
+        }
+        ss << "<OntologyBranch name=\"" << name << "\"";
+        if (children.size() > 0) {
+            ss << " children={";
+            ss << "\n";
+            int i = 0;
+            for (int i = 0; i < children.size();i++) {
+                for (int j = 0; j < indent; j++) {
+                    ss << " ";
+                }
+                ss << children[i]->to_string(indent + 4);
+                if (i != children.size() - 1)
+                    ss << ",\n";
+            }
+            ss << "}";
+        }
+        ss << ">";
+        return ss.str();
+    }
 }
 
+
+
 std::ostream& operator<<(std::ostream& strm, const utils::OntologyBranch& a) {
-        strm << "<#OntologyBranch name=\"" << a.name << "\"";
-        if (a.children.size() > 0) {
-                strm << " children={ ";
-                for (auto& v : a.children)
-                        strm  << *v << ", ";
-                strm << "}";
-        }
-        return strm << ">";
+    return strm << a.to_string();
 }
 
 std::size_t std::hash<utils::OntologyBranch>::operator()(const utils::OntologyBranch& k) const {
-        size_t seed = 0;
-        std::hash<std::string> str_hasher;
-        seed ^= str_hasher(k.name) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-        return seed;
+    size_t seed = 0;
+    std::hash<std::string> str_hasher;
+    seed ^= str_hasher(k.name) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    return seed;
 }

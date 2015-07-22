@@ -122,136 +122,75 @@ StackedGatedModel<Z> StackedGatedModel<Z>::load(std::string dirname) {
 }
 
 template<typename Z>
-std::tuple<Z, Z> StackedGatedModel<Z>::masked_predict_cost(
-    Indexing::Index data,
-    Indexing::Index target_data,
-    Indexing::Index start_loss,
-    Indexing::Index codelens,
-    uint offset,
-    Z drop_prob) {
+std::tuple<Mat<Z>, Mat<Z>> StackedGatedModel<Z>::masked_predict_cost(
+        Mat<int> data,
+        Mat<int> target_data,
+        Mat<Z> mask,
+        Z drop_prob,
+        int temporal_offset,
+        uint softmax_offset) const {
 
-    auto initial_state    = this->initial_states();
-
-    mat input_vector;
+    utils::Timer mpc("masked_predict_cost");
+    auto state = this->initial_states();
+    mat total_error(1,1);
     mat memory;
-    mat logprobs;
-    std::tuple<Z, Z> cost(0.0, 0.0);
+    mat memory_error(1,1);
 
-    #ifdef DONT_COMPILE
+    auto n = data.dims(0);
+    assert (temporal_offset < n);
+    assert (target_data.dims(0) >= data.dims(0));
 
-    auto n = data->cols();
-    for (uint i = 0; i < n-1; ++i) {
+    for (uint timestep = 0; timestep < n - temporal_offset; ++timestep) {
         // pick this letter from the embedding
-        input_vector = this->embedding[data->col(i)];
-        memory = gate.activate(input_vector, initial_state.back().hidden ).sigmoid();
+        utils::Timer gte("get the embeddings");
+        auto input_vector = this->embedding[data[timestep]];
+        memory = gate.activate(input_vector, state.back().hidden ).sigmoid();
         input_vector = input_vector.eltmul_broadcast_rowwise(memory);
+        gte.stop();
         // pass this letter to the LSTM for processing
-        initial_state = this->stacked_lstm.activate(initial_state, input_vector, drop_prob);
-        logprobs      = this->decode(input_vector, initial_state);
 
-        if (graph::backprop_enabled()) {
-            std::get<0>(cost) += masked_cross_entropy(
-                logprobs,
-                i,
-                start_loss,
-                codelens,
-                (target_data->col(i+1).array() - offset).matrix()
-            );
-            std::get<1>(cost) += masked_sum(
-                memory,
-                i,
-                0,
-                start_loss,
-                memory_penalty
-            );
-        } else {
-            std::get<0>(cost) += masked_cross_entropy_no_grad(
-                logprobs,
-                i,
-                start_loss,
-                codelens,
-                (target_data->col(i+1).array() - offset).matrix()
-            );
-            std::get<1>(cost) += masked_sum_no_grad(
-                memory,
-                i,
-                0,
-                start_loss,
-                memory_penalty
-            );
+        utils::Timer flstm("forward lstm");
+        state = this->stacked_lstm.activate(
+            state,
+            input_vector,
+            drop_prob
+        );
+        flstm.stop();
+
+        // classifier takes as input the final hidden layer's activation:
+        utils::Timer decode_tm("decode");
+        auto logprobs = this->decode(input_vector, state);
+        decode_tm.stop();
+
+        auto target = target_data[timestep + temporal_offset];
+        if (softmax_offset > 0) {
+            target -= softmax_offset;
         }
+
+        utils::Timer softmax_tm("softmax cross entropy");
+        auto errors = MatOps<Z>::softmax_cross_entropy(logprobs, target);
+        softmax_tm.stop();
+
+        utils::Timer masking_tm("masking");
+        errors *= mask[timestep + temporal_offset].T();
+        memory *= mask[timestep + temporal_offset];
+        masking_tm.stop();
+
+        total_error += errors.sum();
+        memory_error += memory.sum() * memory_penalty;
     }
-    #endif
-    return cost;
+    mpc.stop();
+
+    return std::make_tuple(total_error, memory_error);
 }
 
 template<typename Z>
-std::tuple<Z, Z> StackedGatedModel<Z>::masked_predict_cost(
-    Indexing::Index data,
-    Indexing::Index target_data,
-    uint start_loss,
-    Indexing::Index codelens,
-    uint offset,
-    Z drop_prob) {
-
-    auto initial_state    = this->initial_states();
-    mat input_vector;
-    mat memory;
-    mat logprobs;
-    std::tuple<Z, Z> cost(0.0, 0.0);
-
-    #ifdef DONT_COMPILE
-
-    auto n = data->cols();
-    for (uint i = 0; i < n-1; ++i) {
-            // pick this letter from the embedding
-            input_vector = this->embedding[data->col(i)];
-            memory = gate.activate(
-                input_vector,
-                initial_state.back().hidden
-            ).sigmoid();
-            input_vector = input_vector.eltmul_broadcast_rowwise(memory);
-            // pass this letter to the LSTM for processing
-            initial_state = this->stacked_lstm.activate(
-                initial_state,
-                input_vector,
-                drop_prob
-            );
-            logprobs  = this->decode(input_vector, initial_state);
-            if (graph::backprop_enabled()) {
-                std::get<0>(cost) += masked_cross_entropy(
-                    logprobs,
-                    i,
-                    start_loss,
-                    codelens,
-                    (target_data->col(i+1).array() - offset).matrix()
-                );
-                std::get<1>(cost) += masked_sum(
-                    memory,
-                    i,
-                    0,
-                    start_loss,
-                    memory_penalty
-                );
-            } else {
-                std::get<0>(cost) += masked_cross_entropy_no_grad(
-                    logprobs,
-                    i,
-                    start_loss,
-                    codelens,
-                    (target_data->col(i+1).array() - offset).matrix()
-                );
-                std::get<1>(cost) += masked_sum_no_grad(
-                    memory,
-                    i,
-                    0,
-                    start_loss,
-                    memory_penalty
-                );
-            }
-    }
-    #endif
-    return cost;
+std::tuple<Mat<Z>, Mat<Z>> StackedGatedModel<Z>::masked_predict_cost(const Batch<Z>& batch,
+                                            Z drop_prob,
+                                            int temporal_offset,
+                                            uint softmax_offset) const {
+    return masked_predict_cost(batch.data, batch.target, batch.mask,
+                               drop_prob, temporal_offset, softmax_offset);
 }
 
 template<typename Z>
@@ -399,14 +338,14 @@ typename StackedGatedModel<Z>::state_type StackedGatedModel<Z>::get_final_activa
         Z drop_prob) const {
     mat input_vector;
     mat memory;
-    auto initial_state = this->initial_states();
+    auto state = this->initial_states();
     auto n = example.size();
     for (uint i = 0; i < n; ++i) {
         // pick this letter from the embedding
         input_vector  = this->embedding[example[i]];
         memory        = gate.activate(
             input_vector,
-            initial_state.back().hidden
+            state.back().hidden
         ).sigmoid();
         if (graph::backprop_enabled() && memory_penalty > 0) {
             // add this sum to objective function
@@ -414,9 +353,9 @@ typename StackedGatedModel<Z>::state_type StackedGatedModel<Z>::get_final_activa
         }
         input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
         // pass this letter to the LSTM for processing
-        initial_state = this->stacked_lstm.activate(initial_state, input_vector);
+        state = this->stacked_lstm.activate(state, input_vector);
     }
-    return initial_state;
+    return state;
 }
 
 /**
@@ -515,14 +454,14 @@ std::vector<int> StackedGatedModel<Z>::reconstruct(
         int symbol_offset) const {
 
     graph::NoBackprop nb;
-    auto initial_state = get_final_activation(example);
+    auto state = get_final_activation(example);
 
     mat input_vector;
     mat memory;
     vector<int> outputs;
     auto last_symbol = this->decode(
       input_vector,
-      initial_state
+      state
     ).argmax();
     outputs.emplace_back(last_symbol);
     last_symbol += symbol_offset;
@@ -530,15 +469,15 @@ std::vector<int> StackedGatedModel<Z>::reconstruct(
             input_vector  = this->embedding[last_symbol];
             memory        = gate.activate(
                 input_vector,
-                initial_state.back().hidden
+                state.back().hidden
             ).sigmoid();
             input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
-            initial_state = this->stacked_lstm.activate(
-                initial_state,
+            state = this->stacked_lstm.activate(
+                state,
                 input_vector);
             last_symbol   = this->decode(
                 input_vector,
-                initial_state
+                state
             ).argmax();
             outputs.emplace_back(last_symbol);
             last_symbol += symbol_offset;

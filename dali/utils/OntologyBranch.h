@@ -74,15 +74,16 @@ namespace utils {
             template<typename T>
             static void load_branches_from_stream(T&, std::vector<shared_branch>&);
             static std::pair<shared_branch, shared_branch> add_lattice_edge(const std::string&, const std::string&,
-                    std::shared_ptr<std::map<std::string, shared_branch>>&, std::vector<shared_branch>& parentless);
+                   std::shared_ptr<std::map<std::string, shared_branch>>&, std::vector<shared_branch>& parentless);
             static std::pair<shared_branch, shared_branch> add_lattice_edge(shared_branch, const std::string&,
-                    std::shared_ptr<std::map<std::string, shared_branch>>&, std::vector<shared_branch>& parentless);
+                   std::shared_ptr<std::map<std::string, shared_branch>>&, std::vector<shared_branch>& parentless);
             static std::pair<shared_branch, shared_branch> add_lattice_edge(const std::string&, shared_branch,
-                    std::shared_ptr<std::map<std::string, shared_branch>>&, std::vector<shared_branch>& parentless);
+                   std::shared_ptr<std::map<std::string, shared_branch>>&, std::vector<shared_branch>& parentless);
             OntologyBranch(const std::string&);
             void add_child(shared_branch);
             void add_parent(shared_branch);
             int get_index_of(shared_branch) const;
+            std::string to_string(int indent = 0) const;
             std::pair<std::vector<std::shared_ptr<OntologyBranch>>, std::vector<uint>> random_path_to_root(const std::string&);
             std::pair<std::vector<std::shared_ptr<OntologyBranch>>, std::vector<uint>> random_path_to_root(const std::string&, const int);
             std::pair<std::vector<std::shared_ptr<OntologyBranch>>, std::vector<uint>> random_path_from_root(const std::string&);

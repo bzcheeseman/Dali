@@ -716,6 +716,14 @@ namespace utils {
         return true;
     }
 
+    typename Vocab::ind_t Vocab::operator[](const std::string& word) const {
+        auto found = word2index.find(word);
+        if (found != word2index.end()) {
+            return found->second;
+        }
+        return unknown_word;
+    }
+
     void Vocab::construct_word2index() {
         uint i = 0;
         for (auto& s : index2word)

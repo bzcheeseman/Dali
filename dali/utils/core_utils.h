@@ -309,57 +309,9 @@ namespace utils {
         **/
         bool is_gzip(const std::string& fname);
 
-        /* Used for Eigen CwiseExpr - wraps a lambda expression */
-        template<typename T>
-        struct LambdaOperator {
-            std::function<T(T)> lambda_expr;
-            LambdaOperator(std::function<T(T)> lambda_expr);
-            T operator() (T) const;
-        };
 
-        template<typename T>
-        struct sigmoid_operator {
-            T operator() (T) const;
-        };
 
-        template<typename T>
-        struct log_or_zero {
-            T operator() (T) const;
-        };
-
-        template<typename T>
-        struct steep_sigmoid_operator {
-            // Sourced from Indico's Passage library's activations
-            // (Theano Python module)
-            // https://github.com/IndicoDataSolutions/Passage
-            // motivation in this Youtube video:
-            // https://www.youtube.com/watch?v=VINCQghQRuM
-            const T aggressiveness;
-            steep_sigmoid_operator(T aggressiveness);
-            T operator() (T) const;
-        };
-        template<typename T>
-        struct tanh_operator {
-                T operator() (T) const;
-        };
-        template<typename T>
-        struct relu_operator {
-                T operator() (T) const;
-        };
-        template<typename T>
-        struct sign_operator {
-                T operator() (T) const;
-        };
-        template<typename T>
-        struct max_operator {
-                T operator() (T) const;
-        };
-        template<typename T>
-        struct dtanh_operator {
-                T operator() (T) const;
-        };
-
-        template<typename T>
+    template<typename T>
     T from_string(const std::string&);
 
     bool is_number(const std::string&);

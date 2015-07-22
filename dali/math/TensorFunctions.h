@@ -102,6 +102,10 @@ namespace TensorOps {
         template<typename R>
         struct tanh {
             MSHADOW_XINLINE static R Map(const R& a) {
+                if (a < -30.0)
+                    return -1.0;
+                if (a >  30.0)
+                    return 1.0;
                 return TANH_F(a);
             }
         };

@@ -74,7 +74,7 @@ int main (int argc,  char* argv[]) {
     auto embedding      = Mat<REAL_t>(100, 0);
     auto word_vocab     = Vocab();
     if (!FLAGS_pretrained_vectors.empty()) {
-        glove::load(FLAGS_pretrained_vectors, embedding, word_vocab, 50000);
+        glove::load(FLAGS_pretrained_vectors, &embedding, &word_vocab, 50000);
     } else {
         word_vocab = Vocab(NER::get_vocabulary(ner_data, FLAGS_min_occurence), true);
     }
@@ -144,7 +144,7 @@ int main (int argc,  char* argv[]) {
     // what needs to be optimized:
     vector<StackedGatedModel<REAL_t>> thread_models;
     std::tie(thread_models, thread_embedding_params, thread_params) = utils::shallow_copy_multi_params(model, FLAGS_j, [&model](const Mat<REAL_t>& mat) {
-        return mat.w()->data() == model.embedding.w()->data();
+        return &mat.w().memory() == &model.embedding.w().memory();
     });
     vector<Mat<REAL_t>> params = model.parameters();
     vector<Mat<REAL_t>> embedding_params(params.begin(), params.begin() + 1);
@@ -276,9 +276,9 @@ int main (int argc,  char* argv[]) {
                             prediction.emplace_back(probs.argmax());
                         }
 
-                        auto input_sentence = make_shared<visualizable::Sentence<REAL_t>>(word_vocab.decode(example));
+                        auto input_sentence = make_shared<visualizable::Sentence<REAL_t>>(word_vocab.decode(&example));
                         input_sentence->set_weights(MatOps<REAL_t>::hstack(memories));
-                        auto decoded = label_vocab.decode(prediction);
+                        auto decoded = label_vocab.decode(&prediction);
                         for (auto it_decoded = decoded.begin(); it_decoded < decoded.end(); it_decoded++) {
                             if (*it_decoded == label_vocab.index2word[0]) {
                                 *it_decoded = " ";
@@ -299,7 +299,7 @@ int main (int argc,  char* argv[]) {
         pool->wait_until_idle();
         journalist.done();
         auto new_validation = NER::average_recall(validation_set, pred_fun, FLAGS_j);
-        if (solver->is_adagrad()) {
+        if (solver->method == Solver::METHOD_ADAGRAD) {
             solver->reset_caches(params);
             embedding_solver->reset_caches(embedding_params);
         }

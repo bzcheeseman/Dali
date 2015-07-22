@@ -224,7 +224,12 @@ namespace babi {
                     chunks.push_back(chunk);
                 }
             }
-            utils::assert2(chunks.size() == 1 || chunks.size() == 3, "Error parsing QA file.");
+            if (chunks.size() == 0) {
+                continue;
+            }
+
+            utils::assert2(chunks.size() == 1 || chunks.size() == 3,
+                utils::MS() << "Error parsing QA file: " << line_buffer);
 
             int line_number;
             vector<string> fact;

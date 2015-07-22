@@ -33,10 +33,11 @@ using utils::Timer;
 using utils::Vocab;
 
 DEFINE_int32(j,                        1,      "Number of threads");
-DEFINE_int32(minibatch,                25,    "How many stories to put in a single batch.");
+DEFINE_int32(minibatch,                25,     "How many stories to put in a single batch.");
 DEFINE_int32(max_epochs,               2000,   "maximum number of epochs for training");
 DEFINE_int32(patience,                 200,    "after <patience> epochs of performance decrease we stop.");
 DEFINE_int32(beam_width,               5,      "width of the beam for prediction.");
+DEFINE_bool(svd_init,                  false,  "Initialize weights using SVD?");
 // generic lstm properties
 DEFINE_bool(lstm_shortcut,             true,   "Should shortcut be used in LSTMs");
 DEFINE_bool(lstm_feed_mry,             true,   "Should memory be fed to gates in LSTMs");
@@ -567,8 +568,10 @@ void visualize_examples(const vector<babi::Story<string>>& data, int num_example
 
 void train(const vector<babi::Story<string>>& train,
            const vector<babi::Story<string>>& validate) {
-    for (auto param: model->parameters()) {
-        weights<REAL_t>::svd(weights<REAL_t>::gaussian(1.0))(param.w());
+    if (FLAGS_svd_init) {
+        for (auto param: model->parameters()) {
+            weights<REAL_t>::svd(weights<REAL_t>::gaussian(1.0))(param.w());
+        }
     }
 
     auto params = model->parameters();

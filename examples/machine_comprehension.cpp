@@ -24,7 +24,7 @@ vector<Section> train_data, validate_data, test_data;
 std::shared_ptr<Vocab> vocab;
 ThreadPool* pool;
 
-DECLARE_int32(j);
+DEFINE_int32(j,                  1,     "How many threads should be used ?");
 DEFINE_int32(minibatch, 50,             "Number of sections considered in every minibatch gradient step.");
 DEFINE_string(pretrained_vectors, "",   "Path to pretrained word vectors (Glove etc.)?");
 DEFINE_double(validation_fraction, 0.1, "How much of training set to use for validation.");

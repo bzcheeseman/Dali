@@ -40,7 +40,7 @@ DEFINE_string(results_file,       "",         "Where to save test performance.")
 DEFINE_string(save_location,      "",         "Where to save test performance.");
 DEFINE_int32(validation_metric,   0,          "Use root (1) or overall (0) objective to choose best validation parameters?");
 DEFINE_double(embedding_learning_rate, -1.0,  "A separate learning rate for embedding layer");
-DEFINE_bool(svd_init,             true,       "Initialize weights using SVD?");
+DEFINE_bool(svd_init,             false,       "Initialize weights using SVD?");
 DEFINE_bool(average_gradient,     false,      "Error during minibatch should be average or sum of errors.");
 DEFINE_string(memory_penalty_curve, "flat",   "Type of annealing used on gate memory penalty (flat, linear, square)");
 

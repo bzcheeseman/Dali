@@ -1,3 +1,4 @@
+import fnmatch
 import os
 import subprocess
 
@@ -5,6 +6,11 @@ def print_progress(fraction_completed, total_work=1.0):
     progress = fraction_completed/total_work
     print("█" * (int(20 * (progress))) + " %.1f%% \r" % (100 * progress,), end="", flush=True)
 
+
+def findfiles (path, filter):
+    for root, dirs, files in os.walk(path):
+        for file in fnmatch.filter(files, filter):
+            yield os.path.join(root, file)
 
 def execute_bash(command):
     """Executes bash command, prints output and throws an exception on failure."""

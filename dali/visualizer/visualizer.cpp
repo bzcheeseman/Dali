@@ -12,6 +12,7 @@ using utils::assert2;
 using namespace std::placeholders;
 using std::vector;
 using std::shared_ptr;
+using std::chrono::milliseconds;
 
 DEFINE_string(visualizer_hostname, "127.0.0.1", "Default hostname to be used by visualizer.");
 DEFINE_int32(visualizer_port, 6379, "Default port to be used by visualizer.");
@@ -317,103 +318,81 @@ namespace visualizable {
             if (rdx_state.load() != redox::Redox::CONNECTED &&
                     rdx_state.load() != redox::Redox::NOT_YET_CONNECTED) {
                 rdx.reset();
-                callcenter_main_phoneline.reset();
 
                 rdx = std::make_shared<redox::Redox>(std::cout, redox::log::Off);
-                callcenter_main_phoneline =
-                        std::make_shared<redox::Subscriber>(std::cout, redox::log::Off);
+
 
                 rdx_state.store(redox::Redox::NOT_YET_CONNECTED);
 
                 rdx->connect(FLAGS_visualizer_hostname,
                          FLAGS_visualizer_port,
-                         std::bind(&Visualizer::connected_callback, this, _1));
+                         std::bind(&Visualizer::rdx_connected_callback, this, _1));
+            }
+
+            if (callcenter_state.load() != redox::Redox::CONNECTED &&
+                    callcenter_state.load() != redox::Redox::NOT_YET_CONNECTED) {
+                callcenter_main_phoneline.reset();
+                callcenter_main_phoneline =
+                        std::make_shared<redox::Subscriber>(std::cout, redox::log::Off);
+                ELOG("Connect to callcenter");
                 callcenter_main_phoneline->connect(
                     FLAGS_visualizer_hostname,
-                    FLAGS_visualizer_port);
+                    FLAGS_visualizer_port,
+                    std::bind(&Visualizer::callcenter_connected_callback, this, _1));
             }
+
             return rdx_state.load() == redox::Redox::CONNECTED;
         } catch (std::system_error) {
             return false;
         }
     }
 
-    void Visualizer::connected_callback(int status) {
+    void Visualizer::rdx_connected_callback(int status) {
         rdx_state.store(status);
     }
 
-    Visualizer::Visualizer(std::string my_namespace,
-                           bool rename_if_needed) :
-            my_namespace(my_namespace),
-            rename_if_needed(rename_if_needed),
-            rdx_state(redox::Redox::DISCONNECTED) {
+    void Visualizer::callcenter_connected_callback(int status) {
+        callcenter_state.store(status);
+    }
+
+    Visualizer::Visualizer(std::string name) :
+            my_uuid(sole::uuid4().str()),
+            my_name(name),
+            rdx_state(redox::Redox::DISCONNECTED),
+            callcenter_state(redox::Redox::DISCONNECTED)  {
         // then we ping the visualizer regularly:
         pinging = eq.run_every([this]() {
             if (!ensure_connection()) {
-                name_initialized = false;
+                subscription_active = false;
                 return;
             }
 
-            if (!name_initialized)
-                name_initialized = update_name();
-
-            if (!name_initialized)
-                return;
+            if (!subscription_active && callcenter_state == redox::Redox::CONNECTED) {
+                update_subscriber();
+            }
 
             // Expire at 2 seconds
-            std::string namespace_key = MS() << "namespace_" << this->my_namespace;
+            std::string namespace_key = MS() << "namespace_" << this->my_uuid;
             rdx->command<string>({"SET", namespace_key, "1", "EX", "2"});
 
         }, std::chrono::seconds(1));
     }
 
-    bool Visualizer::update_name() {
-        int increment = 0;
-
-        while (true) {
-            std::string namespace_key;
-            if (increment == 0) {
-                namespace_key = MS() << "namespace_" << this->my_namespace;
-            } else {
-                namespace_key = MS() << "namespace_" << this->my_namespace << "_" << increment;
-            }
-            bool taken;
-            try {
-                auto& key_exists = rdx->commandSync<int>({"EXISTS", namespace_key});
-                if (!key_exists.ok())
-                    return false;
-                taken = (key_exists.reply() == 1);
-                key_exists.free();
-            } catch (std::runtime_error e) {
-                return false;
-            }
-
-            if(taken) {
-                if (rename_if_needed) {
-                    std::cout << "Duplicate Visualizer name : \"" << this->my_namespace  << "_" << increment
-                              << "\". Retrying with \"" << this->my_namespace << "_" << increment + 1 << "\"" << std::endl;
-                    increment++;
-                    continue;
-                } else {
-                    // give up immediately on renaming
-                    // and throw duplicate name error:
-                    throw Visualizer::duplicate_name_error(MS() << "VISUALIZER ERROR: visualizer name already in use: " << my_namespace);
-                }
-            } else {
-                if (increment != 0)
-                    my_namespace = MS() << my_namespace << "_" << increment;
-                break;
-            }
-        }
+    void Visualizer::update_subscriber() {
         // if we previously listened for requests for a different name, then
         // we stop
+        ELOG("UPDATE SUB");
+                std::this_thread::sleep_for(milliseconds(1000));
+
         for (auto &topic : callcenter_main_phoneline->subscribedTopics()) {
             callcenter_main_phoneline->unsubscribe(topic);
         }
-        auto requests_namespace = "callcenter_" + this->my_namespace;
+        ELOG("unsubscribe");
+        auto requests_namespace = "callcenter_" + this->my_uuid;
         // get ready to handle incoming requests:
         callcenter_main_phoneline->subscribe(requests_namespace,
                 [this, requests_namespace](const string& topic, const string& msg) {
+            ELOG("In delhi");
             std::lock_guard<std::mutex> guard(this->callcenter_mutex);
 
             assert2(topic == requests_namespace,
@@ -442,7 +421,8 @@ namespace visualizable {
             f(name, msg_json["payload"]);
 
         });
-        return true;
+        ELOG("UPDATE SUB - done");
+        subscription_active = true;
     }
 
     void Visualizer::register_function(std::string name, function_t lambda) {
@@ -455,7 +435,7 @@ namespace visualizable {
         if (!ensure_connection())
             return;
 
-        rdx->publish(MS() << "updates_" << my_namespace, obj.dump());
+        rdx->publish(MS() << "updates_" << my_uuid, obj.dump());
     }
 
     void Visualizer::feed(const std::string& str) {
@@ -475,20 +455,16 @@ namespace visualizable {
 
 #else
     bool Visualizer::ensure_connection() { return false; }
-    void Visualizer::connected_callback(int status) {}
-    Visualizer::Visualizer(std::string my_namespace,
-                           bool rename_if_needed) :
-            rename_if_needed(rename_if_needed) {
+    void Visualizer::rdx_connected_callback(int status) {}
+    void Visualizer::callcenter_connected_callback(int status) {}
+    Visualizer::Visualizer(std::string my_name) {
         std::cout << "WARNING: Dali was compiled without visualizer - Visualizer class won't work very well." << std::endl;
     }
     void Visualizer::register_function(std::string name, function_t lambda) {}
-    bool Visualizer::update_name() { return true; }
+    void Visualizer::update_subscriber() { }
     void Visualizer::feed(const json11::Json& obj) {}
     void Visualizer::feed(const std::string& str) {}
     void Visualizer::throttled_feed(Throttled::Clock::duration time_between_feeds, std::function<json11::Json()> f) {}
 #endif
 
-
-Visualizer::duplicate_name_error::duplicate_name_error(const std::string& what_arg) : std::runtime_error(what_arg) {}
-Visualizer::duplicate_name_error::duplicate_name_error(const char* what_arg) : std::runtime_error(what_arg) {}
 

@@ -10,6 +10,7 @@
 #include <chrono>
 #include <functional>
 #include <string>
+#include <sole.hpp>
 
 #include "dali/visualizer/EventQueue.h"
 #include "dali/utils/core_utils.h"
@@ -155,7 +156,10 @@ class Visualizer {
     public:
         typedef std::function<void(std::string,json11::Json)> function_t;
     private:
-        std::string my_namespace;
+        bool subscription_active = false;
+
+        std::string my_uuid;
+        std::string my_name;
 #ifdef DALI_USE_VISUALIZER
         std::shared_ptr<redox::Redox> rdx;
         std::shared_ptr<redox::Subscriber> callcenter_main_phoneline;
@@ -171,25 +175,18 @@ class Visualizer {
         std::unordered_map<std::string, function_t> callcenter_name_to_lambda;
 
         std::atomic<int> rdx_state;
+        std::atomic<int> callcenter_state;
 
-        bool name_initialized = false;
+        void update_subscriber();
 
-        const bool rename_if_needed;
-
-        bool update_name();
-
-        void connected_callback(int status);
+        void rdx_connected_callback(int status);
+        void callcenter_connected_callback(int status);
         bool ensure_connection();
     public:
-        class duplicate_name_error : public std::runtime_error {
-            public:
-                explicit duplicate_name_error(const std::string& what_arg);
-                explicit duplicate_name_error(const char* what_arg);
-        };
 
         void register_function(std::string name,  function_t lambda);
 
-        Visualizer(std::string my_namespace, bool rename_if_needed=false);
+        Visualizer(std::string name);
 
         void feed(const json11::Json& obj);
         void feed(const std::string& str);

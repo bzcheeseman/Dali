@@ -3,12 +3,19 @@
 #include <chrono>
 #include <thread>
 #include <json11.hpp>
+#include <sole.hpp>
+
 #include "dali/visualizer/visualizer.h"
 
 using json11::Json;
 
 int main(int argc, char* argv[]) {
     Visualizer v("vis_demo");
+
+    std::cout << sole::uuid4().str() << std::endl;
+    std::cout << sole::uuid4().str() << std::endl;
+    std::cout << sole::uuid4().str() << std::endl;
+    std::cout << sole::uuid4().str() << std::endl;
 
     Json my_json = Json::object {
         { "key1", "value1" },

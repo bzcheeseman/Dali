@@ -9,7 +9,6 @@
 #include "dali/tensor/Mat.h"
 #include "dali/tensor/MatOps.h"
 #include "dali/tensor/Tape.h"
-#include "dali/tensor/CrossEntropy.h"
 #include "dali/tensor/Solver.h"
 
 using std::vector;

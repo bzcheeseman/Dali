@@ -53,8 +53,6 @@ add_custom_target(fix_libiomp5
 add_dependencies(dali dali_templates proto)
 
 if (BLAS_FOUND AND MKL_FOUND)
-    add_definitions(-DEIGEN_USE_MKL_VML
-                    -DEIGEN_USE_BLAS)
     add_dependencies(dali fix_libiomp5)
 endif (BLAS_FOUND AND MKL_FOUND)
 

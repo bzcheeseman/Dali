@@ -10,7 +10,6 @@
 #include <unordered_map>
 
 #include "dali/data_processing/Batch.h"
-#include "dali/tensor/CrossEntropy.h"
 #include "dali/models/RecurrentEmbeddingModel.h"
 #include "dali/models/ReconstructModel.h"
 #include "dali/core.h"

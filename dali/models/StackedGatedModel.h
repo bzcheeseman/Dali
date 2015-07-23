@@ -7,7 +7,6 @@
 #include <sstream>
 #include <unordered_map>
 
-#include "dali/tensor/CrossEntropy.h"
 #include "dali/models/StackedModel.h"
 #include "dali/data_processing/Batch.h"
 #include "dali/core.h"

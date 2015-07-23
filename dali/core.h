@@ -5,7 +5,6 @@
 #include "dali/tensor/Mat.h"
 #include "dali/tensor/MatOps.h"
 #include "dali/tensor/Tape.h"
-#include "dali/tensor/CrossEntropy.h"
 #include "dali/layers/LSTM.h"
 #include "dali/layers/GRU.h"
 #include "dali/execution/SequenceProbability.h"

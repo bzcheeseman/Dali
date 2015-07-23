@@ -334,7 +334,6 @@ namespace visualizable {
                 callcenter_main_phoneline.reset();
                 callcenter_main_phoneline =
                         std::make_shared<redox::Subscriber>(std::cout, redox::log::Off);
-                ELOG("Connect to callcenter");
                 callcenter_main_phoneline->connect(
                     FLAGS_visualizer_hostname,
                     FLAGS_visualizer_port,
@@ -361,6 +360,8 @@ namespace visualizable {
             rdx_state(redox::Redox::DISCONNECTED),
             callcenter_state(redox::Redox::DISCONNECTED)  {
         // then we ping the visualizer regularly:
+
+        register_function("whoami", std::bind(&Visualizer::whoami, this, _1, _2));
         pinging = eq.run_every([this]() {
             if (!ensure_connection()) {
                 subscription_active = false;
@@ -378,21 +379,26 @@ namespace visualizable {
         }, std::chrono::seconds(1));
     }
 
+    void Visualizer::whoami(std::string fname, json11::Json ignored) {
+        feed(Json::object {
+                { "type", "whoami" },
+                { "name", my_name},
+        });
+    }
+
+
     void Visualizer::update_subscriber() {
         // if we previously listened for requests for a different name, then
         // we stop
-        ELOG("UPDATE SUB");
                 std::this_thread::sleep_for(milliseconds(1000));
 
         for (auto &topic : callcenter_main_phoneline->subscribedTopics()) {
             callcenter_main_phoneline->unsubscribe(topic);
         }
-        ELOG("unsubscribe");
         auto requests_namespace = "callcenter_" + this->my_uuid;
         // get ready to handle incoming requests:
         callcenter_main_phoneline->subscribe(requests_namespace,
                 [this, requests_namespace](const string& topic, const string& msg) {
-            ELOG("In delhi");
             std::lock_guard<std::mutex> guard(this->callcenter_mutex);
 
             assert2(topic == requests_namespace,
@@ -421,7 +427,6 @@ namespace visualizable {
             f(name, msg_json["payload"]);
 
         });
-        ELOG("UPDATE SUB - done");
         subscription_active = true;
     }
 
@@ -461,6 +466,7 @@ namespace visualizable {
         std::cout << "WARNING: Dali was compiled without visualizer - Visualizer class won't work very well." << std::endl;
     }
     void Visualizer::register_function(std::string name, function_t lambda) {}
+    void Visualizer::whoami(std::string fname, json11::Json ignored) {}
     void Visualizer::update_subscriber() { }
     void Visualizer::feed(const json11::Json& obj) {}
     void Visualizer::feed(const std::string& str) {}

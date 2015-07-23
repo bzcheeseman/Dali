@@ -372,9 +372,9 @@ namespace visualizable {
                 update_subscriber();
             }
 
-            // Expire at 2 seconds
-            std::string namespace_key = MS() << "namespace_" << this->my_uuid;
-            rdx->command<string>({"SET", namespace_key, "1", "EX", "2"});
+            feed(Json::object {
+                { "type", "heartbeat" },
+            });
 
         }, std::chrono::seconds(1));
     }

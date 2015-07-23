@@ -152,16 +152,24 @@ namespace visualizable {
 
 // TODO: explain what this does
 class Visualizer {
+    public:
+        typedef std::function<void(std::string,json11::Json)> function_t;
     private:
         std::string my_namespace;
 #ifdef DALI_USE_VISUALIZER
         std::shared_ptr<redox::Redox> rdx;
+        std::shared_ptr<redox::Subscriber> callcenter_main_phoneline;
+
 #endif
         EventQueue eq;
         EventQueue::repeating_t pinging;
         Throttled throttle;
 
         std::mutex connection_mutex;
+
+        std::mutex callcenter_mutex;
+        std::unordered_map<std::string, function_t> callcenter_name_to_lambda;
+
         std::atomic<int> rdx_state;
 
         bool name_initialized = false;
@@ -178,6 +186,9 @@ class Visualizer {
                 explicit duplicate_name_error(const std::string& what_arg);
                 explicit duplicate_name_error(const char* what_arg);
         };
+
+        void register_function(std::string name,  function_t lambda);
+
         Visualizer(std::string my_namespace, bool rename_if_needed=false);
 
         void feed(const json11::Json& obj);

@@ -317,13 +317,20 @@ namespace visualizable {
             if (rdx_state.load() != redox::Redox::CONNECTED &&
                     rdx_state.load() != redox::Redox::NOT_YET_CONNECTED) {
                 rdx.reset();
+                callcenter_main_phoneline.reset();
+
                 rdx = std::make_shared<redox::Redox>(std::cout, redox::log::Off);
+                callcenter_main_phoneline =
+                        std::make_shared<redox::Subscriber>(std::cout, redox::log::Off);
 
                 rdx_state.store(redox::Redox::NOT_YET_CONNECTED);
 
                 rdx->connect(FLAGS_visualizer_hostname,
                          FLAGS_visualizer_port,
                          std::bind(&Visualizer::connected_callback, this, _1));
+                callcenter_main_phoneline->connect(
+                    FLAGS_visualizer_hostname,
+                    FLAGS_visualizer_port);
             }
             return rdx_state.load() == redox::Redox::CONNECTED;
         } catch (std::system_error) {
@@ -398,8 +405,51 @@ namespace visualizable {
                 break;
             }
         }
+        // if we previously listened for requests for a different name, then
+        // we stop
+        for (auto &topic : callcenter_main_phoneline->subscribedTopics()) {
+            callcenter_main_phoneline->unsubscribe(topic);
+        }
+        auto requests_namespace = "callcenter_" + this->my_namespace;
+        // get ready to handle incoming requests:
+        callcenter_main_phoneline->subscribe(requests_namespace,
+                [this, requests_namespace](const string& topic, const string& msg) {
+            std::lock_guard<std::mutex> guard(this->callcenter_mutex);
+
+            assert2(topic == requests_namespace,
+                    "Visualizer: Received message from unexpected channel.");
+
+            std::string error;
+            auto msg_json = json11::Json::parse(msg, error);
+
+            if (!error.empty()) {
+                std::cout << "VISUALIZER WARNING: error in requestion json: " << error << std::endl;
+                return;
+            }
+
+            if (msg_json["name"].is_null()) {
+                std::cout << "VISUALIZER WARNING: received request without function name." << std::endl;
+                return;
+            }
+            auto& name = msg_json["name"].string_value();
+            if (this->callcenter_name_to_lambda.find(name) == this->callcenter_name_to_lambda.end()) {
+                std::cout << "VISUALIZER WARNING: Requested function <" << name << "> not supported (did you forget to register?)." << std::endl;
+                return;
+            }
+
+            auto& f = this->callcenter_name_to_lambda.at(name);
+
+            f(name, msg_json["payload"]);
+
+        });
         return true;
     }
+
+    void Visualizer::register_function(std::string name, function_t lambda) {
+        std::lock_guard<std::mutex> guard(callcenter_mutex);
+        callcenter_name_to_lambda[name] = lambda;
+    }
+
 
     void Visualizer::feed(const json11::Json& obj) {
         if (!ensure_connection())
@@ -415,7 +465,9 @@ namespace visualizable {
         };
         feed(str_as_json);
     }
-    void Visualizer::throttled_feed(Throttled::Clock::duration time_between_feeds, std::function<json11::Json()> f) {
+
+    void Visualizer::throttled_feed(Throttled::Clock::duration time_between_feeds,
+                                    std::function<json11::Json()> f) {
         throttle.maybe_run(time_between_feeds, [&f, this]() {
             feed(f());
         });
@@ -429,6 +481,7 @@ namespace visualizable {
             rename_if_needed(rename_if_needed) {
         std::cout << "WARNING: Dali was compiled without visualizer - Visualizer class won't work very well." << std::endl;
     }
+    void Visualizer::register_function(std::string name, function_t lambda) {}
     bool Visualizer::update_name() { return true; }
     void Visualizer::feed(const json11::Json& obj) {}
     void Visualizer::feed(const std::string& str) {}

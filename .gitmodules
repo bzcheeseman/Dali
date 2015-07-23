@@ -16,4 +16,4 @@
 	url = https://github.com/nivwusquorum/libcuckoo.git
 [submodule "third_party/sole"]
 	path = third_party/sole
-	url = git@github.com:r-lyeh/sole.git
+	url = https://github.com/r-lyeh/sole.git

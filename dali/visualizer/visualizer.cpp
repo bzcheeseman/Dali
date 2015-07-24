@@ -1,6 +1,7 @@
 #include "visualizer.h"
 
 #include <memory>
+#include <future>
 
 #include "dali/utils/core_utils.h"
 
@@ -362,9 +363,18 @@ namespace visualizable {
         // then we ping the visualizer regularly:
 
         register_function("whoami", std::bind(&Visualizer::whoami, this, _1, _2));
-        pinging = eq.run_every([this]() {
+        //ping_thread = std::thread(&Visualizer::ping, this);
+    }
+
+    void Visualizer::ping() {
+        std::cout << "My name is async" << std::endl;
+        while(true) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+
             if (!ensure_connection()) {
                 subscription_active = false;
+
+                ping();
                 return;
             }
 
@@ -375,8 +385,7 @@ namespace visualizable {
             feed(Json::object {
                 { "type", "heartbeat" },
             });
-
-        }, std::chrono::seconds(1));
+        }
     }
 
     void Visualizer::whoami(std::string fname, json11::Json ignored) {
@@ -459,6 +468,7 @@ namespace visualizable {
     }
 
 #else
+    void Visualizer::ping() {}
     bool Visualizer::ensure_connection() { return false; }
     void Visualizer::rdx_connected_callback(int status) {}
     void Visualizer::callcenter_connected_callback(int status) {}

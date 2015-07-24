@@ -165,11 +165,10 @@ class Visualizer {
         std::shared_ptr<redox::Subscriber> callcenter_main_phoneline;
 
 #endif
-        EventQueue eq;
-        EventQueue::repeating_t pinging;
         Throttled throttle;
 
         std::mutex connection_mutex;
+        std::thread ping_thread;
 
         std::mutex callcenter_mutex;
         std::unordered_map<std::string, function_t> callcenter_name_to_lambda;
@@ -182,6 +181,7 @@ class Visualizer {
         void rdx_connected_callback(int status);
         void callcenter_connected_callback(int status);
         bool ensure_connection();
+        void ping();
     public:
         void whoami(std::string, json11::Json);
 

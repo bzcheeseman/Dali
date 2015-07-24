@@ -168,7 +168,7 @@ class Visualizer {
         Throttled throttle;
 
         std::mutex connection_mutex;
-        std::thread ping_thread;
+        std::shared_ptr<std::thread> ping_thread;
 
         std::mutex callcenter_mutex;
         std::unordered_map<std::string, function_t> callcenter_name_to_lambda;

@@ -363,11 +363,10 @@ namespace visualizable {
         // then we ping the visualizer regularly:
 
         register_function("whoami", std::bind(&Visualizer::whoami, this, _1, _2));
-        //ping_thread = std::thread(&Visualizer::ping, this);
+        ping_thread = std::make_shared<std::thread>(&Visualizer::ping, this);
     }
 
     void Visualizer::ping() {
-        std::cout << "My name is async" << std::endl;
         while(true) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
 

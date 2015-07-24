@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <ostream>
 #include <unordered_map>
 
 // For handling json_finite_distribution
@@ -95,7 +96,7 @@ class Mat {
         void copy_from(const Mat<R>& source);
         void copy_grad_from(const Mat<R>& source);
 
-        void print() const;
+        void print(std::basic_ostream<char>& stream = std::cout) const;
 
         /**
         Adds 1 to the gradient (`dw`) of every element in this Matrix as long

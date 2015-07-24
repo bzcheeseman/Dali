@@ -13,6 +13,7 @@
 #include <memory>
 #include <vector>
 #include <thread>
+#include <ostream>
 
 // Defines mathematical operations on Synchronized Memory
 // and also interfaces / and handles assignment from LazyTensor
@@ -235,7 +236,7 @@ class TensorInternal {
         const R* data() const;
         R* data();
 
-        void print(int indent=0) const;
+        void print(std::basic_ostream<char>& stream = std::cout, int indent=0) const;
 
         void clear();
 
@@ -244,9 +245,9 @@ class TensorInternal {
         static TensorInternal<R,dimension> zeros(mshadow::Shape<dimension>);
 };
 
-template <> void TensorInternal<float, 1>::print(int indent) const;
-template <> void TensorInternal<double, 1>::print(int indent) const;
-template <> void TensorInternal<int, 1>::print(int indent) const;
+template <> void TensorInternal<float, 1>::print(std::basic_ostream<char>&, int indent) const;
+template <> void TensorInternal<double, 1>::print(std::basic_ostream<char>&, int indent) const;
+template <> void TensorInternal<int, 1>::print(std::basic_ostream<char>&, int indent) const;
 template <> void TensorInternal<float, 1>::resize(mshadow::Shape<1> newshape, float filler);
 template <> void TensorInternal<double, 1>::resize(mshadow::Shape<1> newshape, double filler);
 template <> void TensorInternal<int, 1>::resize(mshadow::Shape<1> newshape, int filler);

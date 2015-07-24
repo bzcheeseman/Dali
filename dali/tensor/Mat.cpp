@@ -214,8 +214,8 @@ void Mat<R>::set_name(const char * _name) {
 }
 
 template<typename R>
-void Mat<R>::print() const {
-    w().print();
+void Mat<R>::print(std::basic_ostream<char>& stream) const {
+    w().print(stream);
 }
 
 template<typename R>
@@ -662,8 +662,6 @@ template Mat<float> operator*(double, Mat<float>);
 template Mat<double> operator*(int, Mat<double>);
 template Mat<double> operator*(float, Mat<double>);
 template Mat<double> operator*(double, Mat<double>);
-
-
 
 
 template<typename R>

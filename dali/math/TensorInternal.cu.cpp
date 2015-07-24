@@ -252,18 +252,18 @@ R* TensorInternal<R,dimension>::data() {
 }
 
 #define DALI_TENSOR_INTERNAL_PRINT(dtype) \
-    template <> void TensorInternal<dtype, 1>::print(int indent) const {\
-        std::cout << std::string(indent, ' ');\
-        std::cout << "[";\
+    template <> void TensorInternal<dtype, 1>::print(std::basic_ostream<char>& stream, int indent) const {\
+        stream << std::string(indent, ' ');\
+        stream << "[";\
         for(int i=0; i<shape[0]; ++i) {\
-            std::cout << std::fixed\
+            stream << std::fixed\
                       << std::setw( 7 ) /* keep 7 digits*/\
                       << std::setprecision( 3 ) /* use 3 decimals*/\
                       << std::setfill( ' ' ) << (*this)(i); /* pad values with blanks this->w(i,j)*/\
-            if (i != shape[0] - 1) std::cout << " ";\
+            if (i != shape[0] - 1) stream << " ";\
         }\
-        std::cout << "]";\
-        std::cout << std::endl;\
+        stream << "]";\
+        stream << std::endl;\
     }
 
 DALI_TENSOR_INTERNAL_PRINT(float)
@@ -271,12 +271,12 @@ DALI_TENSOR_INTERNAL_PRINT(double)
 DALI_TENSOR_INTERNAL_PRINT(int)
 
 template<typename R, int dimension>
-void TensorInternal<R,dimension>::print(int indent) const {
+void TensorInternal<R,dimension>::print(std::basic_ostream<char>& stream, int indent) const {
     static_assert (dimension > 1, "Print called with wrong dimension.");
-    std::cout << std::string(indent, ' ') << "[" << std::endl;
+    stream << std::string(indent, ' ') << "[" << std::endl;
     for (int i=0; i < shape[0]; ++i)
-        (*this)[i].print(indent + 4);
-    std::cout << std::string(indent, ' ') <<"]" << std::endl;
+        (*this)[i].print(stream, indent + 4);
+    stream << std::string(indent, ' ') <<"]" << std::endl;
 }
 
 template<typename R, int dimension>

@@ -98,6 +98,7 @@ namespace matops {
 
         **/
         static Mat<R> fast_dropout(Mat<R>);
+        static std::vector<Mat<R>> fast_dropout(const std::vector<Mat<R>>&);
     };
 }
 

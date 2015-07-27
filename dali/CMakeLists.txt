@@ -6,7 +6,6 @@ file(GLOB_RECURSE DaliTemplates         "${DaliDir}/*.cpp.template")
 file(GLOB_RECURSE DaliMaybeCudaSources  "${DaliDir}/*.cu.cpp")
 file(GLOB_RECURSE DaliCudaSources       "${DaliDir}/*.cu")
 
-
 # sole has no build script - it is a sole lonely c++ file.
 list(APPEND DaliSources "${PROJECT_SOURCE_DIR}/third_party/sole/sole.cpp")
 

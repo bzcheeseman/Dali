@@ -111,6 +111,17 @@ namespace matops {
         return out;
     }
 
+    template<typename R>
+    vector<Mat<R>> Dropout<R>::fast_dropout(
+            const vector<Mat<R>>& matrices) {
+        vector<Mat<R>> dropped_matrices;
+        dropped_matrices.reserve(matrices.size());
+        for (auto& mat : matrices) {
+            dropped_matrices.emplace_back(fast_dropout(mat));
+        }
+        return dropped_matrices;
+    }
+
     template class Dropout<float>;
     template class Dropout<double>;
     template class Dropout<int>;

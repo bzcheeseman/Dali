@@ -468,7 +468,7 @@ int main (int argc,  char* argv[]) {
 
     shared_ptr<Visualizer> visualizer;
     if (!FLAGS_visualizer.empty())
-        visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
+        visualizer = make_shared<Visualizer>(FLAGS_visualizer);
 
     // if no training should occur then use the validation set
     // to see how good the loaded model is.

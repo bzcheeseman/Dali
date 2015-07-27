@@ -51,7 +51,7 @@ int main( int argc, char* argv[]) {
         std::cout << "Loaded " << index2concept.size() << " unique concept names " << std::endl;
         auto examples      = utils::load_protobuff_dataset(FLAGS_train, index2concept);
         std::cout << "Loaded " << examples.size() << " examples,";
-        auto index2word    = utils::get_vocabulary(examples, FLAGS_min_occurence);
+        auto index2word    = utils::get_vocabulary(examples, FLAGS_min_occurence, 0);
         Vocab word_vocab(index2word);
         std::cout <<" with a total vocabulary of " << word_vocab.size()
                   <<" words (occuring more than "  << FLAGS_min_occurence << " times)"<< std::endl << std::endl;

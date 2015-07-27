@@ -155,7 +155,7 @@ int main (int argc,  char* argv[]) {
 
     shared_ptr<Visualizer> visualizer;
     if (!FLAGS_visualizer.empty())
-        visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
+        visualizer = make_shared<Visualizer>(FLAGS_visualizer);
 
     auto pred_fun = [&model](vector<uint>& example) {
         graph::NoBackprop nb;

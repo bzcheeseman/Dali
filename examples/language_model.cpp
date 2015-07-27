@@ -274,7 +274,7 @@ int main( int argc, char* argv[]) {
 
     if (!FLAGS_visualizer.empty()) {
         try {
-            visualizer = make_shared<Visualizer>(FLAGS_visualizer, true);
+            visualizer = make_shared<Visualizer>(FLAGS_visualizer);
         } catch (std::runtime_error e) {
             std::cout << e.what() << std::endl; // could not connect to redis.
         }

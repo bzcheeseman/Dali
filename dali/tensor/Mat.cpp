@@ -247,7 +247,10 @@ void Mat<R>::npy_save (string fname, string mode) {
 
 template<typename R>
 unsigned int Mat<R>::number_of_elements() const {
-    return w().number_of_elements();
+    if (m != nullptr) {
+        return w().number_of_elements();
+    }
+    return 0;
 }
 
 template<typename R>

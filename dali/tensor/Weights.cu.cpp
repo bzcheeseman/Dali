@@ -16,6 +16,13 @@ typename weights<R>::initializer_t weights<R>::zeros() {
 };
 
 template<typename R>
+typename weights<R>::initializer_t weights<R>::ones() {
+    return [](sync_t matrix){
+        matrix = (R)1;
+    };
+};
+
+template<typename R>
 typename weights<R>::initializer_t weights<R>::eye(R diag) {
     return [diag](sync_t matrix) {
         #ifdef DALI_USE_CUDA

@@ -15,6 +15,7 @@ struct weights {
 
     static initializer_t empty();
     static initializer_t zeros();
+    static initializer_t ones();
     static initializer_t uniform(R lower, R upper);
     static initializer_t uniform(R bound);
     static initializer_t gaussian(R mean, R std);

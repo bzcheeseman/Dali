@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
     for (int tmidx = 0; tmidx < FLAGS_j; tmidx++)
         thread_models.emplace_back(model.shallow_copy());
 
-    auto thread_error = utils::ThreadError(FLAGS_j);
+    auto thread_error = utils::ThreadAverage(FLAGS_j);
 
     model_t best_model(model, false, false);
     float best_accuracy = 0.0;
@@ -145,7 +145,7 @@ int main(int argc, char** argv) {
                     }
                     processed_sections += 1;
 
-                    journalist.tick(processed_sections, thread_error.this_thread_average());
+                    journalist.tick(processed_sections, thread_error.average());
 
                 }
 

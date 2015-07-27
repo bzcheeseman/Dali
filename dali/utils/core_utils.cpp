@@ -1091,33 +1091,31 @@ namespace utils {
     std::mutex Timer::timers_mutex;
 
 
-    ThreadError::ThreadError(int num_threads) :
+    ThreadAverage::ThreadAverage(int num_threads) :
             num_threads(num_threads),
             thread_error(num_threads),
-            thread_error_updates(num_threads) {
+            total_updates(0) {
         reset();
     }
 
-    void ThreadError::update(double error) {
+    void ThreadAverage::update(double error) {
         thread_error[ThreadPool::get_thread_number()] += error;
-        thread_error_updates[ThreadPool::get_thread_number()] += 1;
+        total_updates += 1;
     }
 
-    double ThreadError::this_thread_average() {
-        int updates = thread_error_updates[ThreadPool::get_thread_number()];
-        double error = thread_error[ThreadPool::get_thread_number()];
-        return (updates == 0) ? 1.0/0.0 : error/updates;
+    double ThreadAverage::average() {
+        return vsum(thread_error) / total_updates;
     }
 
-    double ThreadError::average() {
-        return vsum(thread_error) / vsum(thread_error_updates);
+    int ThreadAverage::size() {
+        return total_updates;
     }
 
-    void ThreadError::reset() {
+    void ThreadAverage::reset() {
         for (int tidx = 0; tidx < num_threads; ++tidx) {
             thread_error[tidx] = 0;
-            thread_error_updates[tidx] = 0;
         }
+        total_updates.store(0);
     }
 
     Timer::Timer(std::string name, bool autostart) : name(name),

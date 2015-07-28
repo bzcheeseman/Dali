@@ -7,6 +7,7 @@ template<typename R>
 struct LSTMState {
     Mat<R> memory;
     Mat<R> hidden;
+    LSTMState() = default;
     LSTMState(Mat<R> _memory, Mat<R> _hidden);
     static std::vector<Mat<R>> hiddens (const std::vector<LSTMState<R>>&);
     static std::vector<Mat<R>> memories (const std::vector<LSTMState<R>>&);

@@ -74,6 +74,7 @@ class StackedGatedModel : public StackedModel<Z> {
                                                    int vocab_size,
                                                    int output_size,
                                                    bool verbose);
+        StackedGatedModel() = default;
         StackedGatedModel(
             int vocabulary_size,
             int input_size,

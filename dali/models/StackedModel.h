@@ -92,6 +92,8 @@ class StackedModel : public RecurrentEmbeddingModel<Z>, public ReconstructModel 
                                               int output_size,
                                               bool verbose = true);
 
+
+        StackedModel() = default;
         StackedModel(int vocabulary_size,
                      int input_size,
                      int hidden_size,

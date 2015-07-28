@@ -122,7 +122,16 @@ StackedGatedModel<Z> StackedGatedModel<Z>::load(std::string dirname) {
 }
 
 template<typename Z>
-std::tuple<Mat<Z>, Mat<Z>> StackedGatedModel<Z>::masked_predict_cost(
+StackedGatedModel<Z>::MaskedActivation::MaskedActivation(Mat<Z> _prediction_error, Mat<Z> _memory_error) :
+    prediction_error(_prediction_error), memory_error(_memory_error) {}
+
+template<typename Z>
+StackedGatedModel<Z>::MaskedActivation::operator std::tuple<Mat<Z>, Mat<Z>>() {
+    return std::make_tuple(prediction_error, memory_error);
+}
+
+template<typename Z>
+typename StackedGatedModel<Z>::MaskedActivation StackedGatedModel<Z>::masked_predict_cost(
         Mat<int> data,
         Mat<int> target_data,
         Mat<Z> mask,
@@ -180,11 +189,11 @@ std::tuple<Mat<Z>, Mat<Z>> StackedGatedModel<Z>::masked_predict_cost(
     }
     mpc.stop();
 
-    return std::make_tuple(total_error, memory_error);
+    return MaskedActivation(total_error, memory_error);
 }
 
 template<typename Z>
-std::tuple<Mat<Z>, Mat<Z>> StackedGatedModel<Z>::masked_predict_cost(const Batch<Z>& batch,
+typename StackedGatedModel<Z>::MaskedActivation StackedGatedModel<Z>::masked_predict_cost(const Batch<Z>& batch,
                                             Z drop_prob,
                                             int temporal_offset,
                                             uint softmax_offset) const {
@@ -247,13 +256,13 @@ StackedGatedModel<Z>::StackedGatedModel (
 
 template<typename Z>
 StackedGatedModel<Z>::StackedGatedModel (
-  int vocabulary_size,
-  int input_size,
-  int output_size,
-  const std::vector<int>& hidden_sizes,
-  bool use_shortcut,
-  bool memory_feeds_gates,
-  Z _memory_penalty)
+    int vocabulary_size,
+    int input_size,
+    int output_size,
+    const std::vector<int>& hidden_sizes,
+    bool use_shortcut,
+    bool memory_feeds_gates,
+    Z _memory_penalty)
         :
         StackedModel<Z>(
             vocabulary_size,

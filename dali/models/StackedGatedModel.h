@@ -43,7 +43,7 @@ class StackedGatedModel : public StackedModel<Z> {
 
     public:
         typedef Mat<Z> mat;
-        typedef std::vector< typename LSTM<Z>::State > state_type;
+        typedef std::vector< typename LSTM<Z>::activation_t > state_type;
 
         typedef StackedModelState<Z> State;
 

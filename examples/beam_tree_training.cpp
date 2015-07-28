@@ -39,7 +39,7 @@ shared_ptr<Visualizer> visualizer;
 
 template<typename T>
 class LeafModule {
-    typedef typename LSTM<T>::State lstm_state_t;
+    typedef typename LSTM<T>::activation_t lstm_state_t;
 
     public:
         int input_size;
@@ -113,7 +113,7 @@ answer.
 
 template<typename T>
 struct BeamNode {
-    typedef typename LSTM<T>::State lstm_state_t;
+    typedef typename LSTM<T>::activation_t lstm_state_t;
 
     Mat<T> log_probability;
     lstm_state_t state;
@@ -258,7 +258,7 @@ class BeamTree {
 
 
     public:
-        typedef typename LSTM<T>::State lstm_state_t;
+        typedef typename LSTM<T>::activation_t lstm_state_t;
 
         int input_size;
         int hidden_size;

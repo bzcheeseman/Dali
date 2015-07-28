@@ -32,7 +32,7 @@ AbstractStackedLSTM<R>::AbstractStackedLSTM(const AbstractStackedLSTM<R>& model,
 }
 
 template<typename R>
-std::vector<typename LSTM<R>::State> AbstractStackedLSTM<R>::initial_states() const {
+std::vector<typename LSTM<R>::activation_t> AbstractStackedLSTM<R>::initial_states() const {
     return LSTM<R>::initial_states(hidden_sizes);
 }
 
@@ -206,13 +206,13 @@ vector<celltype> StackedCells(const vector<celltype>& source_cells,
 }
 
 template<typename R>
-std::vector< typename LSTM<R>::State > forward_LSTMs(
+std::vector< typename LSTM<R>::activation_t > forward_LSTMs(
         Mat<R> base_input,
-        std::vector< typename LSTM<R>::State >& previous_state,
+        std::vector< typename LSTM<R>::activation_t >& previous_state,
         const vector<LSTM<R>>& cells,
         R drop_prob) {
 
-    std::vector< typename LSTM<R>::State> out_state;
+    std::vector< typename LSTM<R>::activation_t> out_state;
     out_state.reserve(cells.size());
 
     auto layer_input = base_input;
@@ -231,13 +231,13 @@ std::vector< typename LSTM<R>::State > forward_LSTMs(
 }
 
 template<typename R>
-std::vector< typename LSTM<R>::State > shortcut_forward_LSTMs(
+std::vector< typename LSTM<R>::activation_t > shortcut_forward_LSTMs(
         Mat<R> base_input,
-        std::vector< typename LSTM<R>::State >& previous_state,
+        std::vector< typename LSTM<R>::activation_t >& previous_state,
         const vector<LSTM<R>>& cells,
         R drop_prob) {
 
-    std::vector< typename LSTM<R>::State> out_state;
+    std::vector< typename LSTM<R>::activation_t> out_state;
     out_state.reserve(cells.size());
 
     auto layer_input = base_input;
@@ -269,13 +269,13 @@ std::vector< typename LSTM<R>::State > shortcut_forward_LSTMs(
 }
 
 template<typename R>
-std::vector< typename LSTM<R>::State > forward_LSTMs(
+std::vector< typename LSTM<R>::activation_t > forward_LSTMs(
     const std::vector<Mat<R>>& inputs,
-    std::vector< typename LSTM<R>::State >& previous_state,
+    std::vector< typename LSTM<R>::activation_t >& previous_state,
     const std::vector<LSTM<R>>& cells,
     R drop_prob) {
 
-    std::vector< typename LSTM<R>::State> out_state;
+    std::vector< typename LSTM<R>::activation_t> out_state;
     out_state.reserve(cells.size());
 
     Mat<R> layer_input;
@@ -305,13 +305,13 @@ std::vector< typename LSTM<R>::State > forward_LSTMs(
 }
 
 template<typename R>
-std::vector< typename LSTM<R>::State > shortcut_forward_LSTMs(
+std::vector< typename LSTM<R>::activation_t > shortcut_forward_LSTMs(
     const std::vector<Mat<R>>& inputs,
-    std::vector< typename LSTM<R>::State >& previous_state,
+    std::vector< typename LSTM<R>::activation_t >& previous_state,
     const std::vector<LSTM<R>>& cells,
     R drop_prob) {
 
-    std::vector< typename LSTM<R>::State> out_state;
+    std::vector< typename LSTM<R>::activation_t> out_state;
     out_state.reserve(cells.size());
 
     auto state_iter = previous_state.begin();

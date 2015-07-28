@@ -17,7 +17,7 @@ using std::stringstream;
 using std::string;
 using utils::from_string;
 
-#define GET_STATE_HIDDENS(X) LSTM<Z>::State::hiddens(X)
+#define GET_STATE_HIDDENS(X) LSTM<Z>::activation_t::hiddens(X)
 
 template<typename Z>
 vector<Mat<Z>> StackedModel<Z>::parameters() const {
@@ -162,7 +162,7 @@ Mat<Z> StackedModel<Z>::decode(
     if (use_shortcut) {
         if (drop_prob > 0.0) {
             vector<Mat<Z>> dropped_states;
-            std::transform(states.begin(), states.end(), std::back_inserter(dropped_states), [&drop_prob](const typename LSTM<Z>::State& state) {
+            std::transform(states.begin(), states.end(), std::back_inserter(dropped_states), [&drop_prob](const typename LSTM<Z>::activation_t& state) {
                 return MatOps<Z>::dropout_normalized(state.hidden, drop_prob);
             });
             if (_input_vector_to_decoder) {
@@ -179,11 +179,11 @@ Mat<Z> StackedModel<Z>::decode(
             if (_input_vector_to_decoder) {
                 return this->decoder.activate(
                     input_vector,
-                    LSTM<Z>::State::hiddens(states)
+                    LSTM<Z>::activation_t::hiddens(states)
                 );
             } else {
                 return this->decoder.activate(
-                    LSTM<Z>::State::hiddens(states)
+                    LSTM<Z>::activation_t::hiddens(states)
                 );
             }
         }

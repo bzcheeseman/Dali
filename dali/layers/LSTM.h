@@ -4,6 +4,16 @@
 #include "dali/layers/Layers.h"
 
 template<typename R>
+struct LSTMState {
+    Mat<R> memory;
+    Mat<R> hidden;
+    LSTMState(Mat<R> _memory, Mat<R> _hidden);
+    static std::vector<Mat<R>> hiddens (const std::vector<LSTMState<R>>&);
+    static std::vector<Mat<R>> memories (const std::vector<LSTMState<R>>&);
+    operator std::tuple<Mat<R> &, Mat<R> &>();
+};
+
+template<typename R>
 class LSTM : public AbstractLayer<R> {
     /*
     LSTM layer with forget, output, memory write, and input
@@ -17,16 +27,7 @@ class LSTM : public AbstractLayer<R> {
     public:
         void name_internal_layers();
 
-        struct State {
-            Mat<R> memory;
-            Mat<R> hidden;
-            State(Mat<R> _memory, Mat<R> _hidden);
-            static std::vector<Mat<R>> hiddens (const std::vector<State>&);
-            static std::vector<Mat<R>> memories (const std::vector<State>&);
-            operator std::tuple<Mat<R> &, Mat<R> &>();
-        };
-
-        typedef State activation_t;
+        typedef LSTMState<R> activation_t;
 
         // each child's memory to write controller for memory:
         std::vector<Mat<R>> Wcells_to_inputs;
@@ -70,36 +71,36 @@ class LSTM : public AbstractLayer<R> {
         LSTM (const LSTM&, bool, bool);
 
         virtual std::vector<Mat<R>> parameters() const;
-        static std::vector<State> initial_states(const std::vector<int>&);
+        static std::vector<activation_t> initial_states(const std::vector<int>&);
 
-        State activate(
+        activation_t activate(
             Mat<R> input_vector,
-            State previous_state) const;
+            activation_t previous_state) const;
 
-        State activate(
+        activation_t activate(
             Mat<R> input_vector,
-            std::vector<State> previous_children_states) const;
+            std::vector<activation_t> previous_children_states) const;
 
-        State activate(const std::vector<Mat<R>>&, const std::vector<State>&) const;
+        activation_t activate(const std::vector<Mat<R>>&, const std::vector<activation_t>&) const;
 
-        State activate_shortcut(
+        activation_t activate_shortcut(
             Mat<R> input_vector,
             Mat<R> shortcut_vector,
-            State prev_state) const;
+            activation_t prev_state) const;
 
         LSTM<R> shallow_copy() const;
 
-        State initial_states() const;
+        activation_t initial_states() const;
 
-        virtual State activate_sequence(
-            State initial_state,
+        virtual activation_t activate_sequence(
+            activation_t initial_state,
             const std::vector<Mat<R>>& sequence) const;
 };
 
 template<typename R>
 class AbstractStackedLSTM : public AbstractLayer<R> {
     public:
-        typedef std::vector < typename LSTM<R>::State > state_t;
+        typedef std::vector < typename LSTM<R>::activation_t > state_t;
 
         std::vector<int> input_sizes;
         std::vector<int> hidden_sizes;
@@ -126,7 +127,7 @@ template<typename R>
 class StackedLSTM : public AbstractStackedLSTM<R> {
     public:
         typedef LSTM<R> lstm_t;
-        typedef std::vector< typename LSTM<R>::State > state_t;
+        typedef std::vector< typename LSTM<R>::activation_t > state_t;
         bool shortcut;
         bool memory_feeds_gates;
 
@@ -198,30 +199,30 @@ template<typename celltype>
 std::vector<celltype> StackedCells(const std::vector<celltype>&, bool, bool);
 
 template<typename R>
-std::vector< typename LSTM<R>::State > forward_LSTMs(
+std::vector< typename LSTM<R>::activation_t > forward_LSTMs(
     Mat<R> input,
-    std::vector< typename LSTM<R>::State >&,
+    std::vector< typename LSTM<R>::activation_t >&,
     const std::vector<LSTM<R>>&,
     R drop_prob=0.0);
 
 template<typename R>
-std::vector< typename LSTM<R>::State > forward_LSTMs(
+std::vector< typename LSTM<R>::activation_t > forward_LSTMs(
     const std::vector<Mat<R>>& inputs,
-    std::vector< typename LSTM<R>::State >&,
+    std::vector< typename LSTM<R>::activation_t >&,
     const std::vector<LSTM<R>>&,
     R drop_prob=0.0);
 
 template<typename R>
-std::vector< typename LSTM<R>::State > shortcut_forward_LSTMs(
+std::vector< typename LSTM<R>::activation_t > shortcut_forward_LSTMs(
     Mat<R> input,
-    std::vector< typename LSTM<R>::State >&,
+    std::vector< typename LSTM<R>::activation_t >&,
     const std::vector<LSTM<R>>&,
     R drop_prob=0.0);
 
 template<typename R>
-std::vector< typename LSTM<R>::State > shortcut_forward_LSTMs(
+std::vector< typename LSTM<R>::activation_t > shortcut_forward_LSTMs(
     const std::vector<Mat<R>>& inputs,
-    std::vector< typename LSTM<R>::State >&,
+    std::vector< typename LSTM<R>::activation_t >&,
     const std::vector<LSTM<R>>&,
     R drop_prob=0.0);
 

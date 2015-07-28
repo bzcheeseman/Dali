@@ -7,7 +7,7 @@
 
 template<typename R>
 struct StackedModelState {
-    typedef std::vector<typename LSTM<R>::State> state_type;
+    typedef std::vector<typename LSTM<R>::activation_t> state_type;
 
     state_type lstm_state;
     Mat<R> prediction;

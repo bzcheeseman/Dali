@@ -252,13 +252,13 @@ class LstmBabiModel {
         }
 
         static Mat<T> state_to_hidden(lstm_state_t state) {
-            return MatOps<T>::vstack(LSTM<T>::State::hiddens(state));
+            return MatOps<T>::vstack(LSTM<T>::activation_t::hiddens(state));
         }
 
         static lstm_state_t flatten_state(lstm_state_t state) {
-            auto hidden = MatOps<T>::vstack(LSTM<T>::State::hiddens(state));
-            auto memory = MatOps<T>::vstack(LSTM<T>::State::memories(state));
-            return {typename LSTM<T>::State(memory, hidden)};
+            auto hidden = MatOps<T>::vstack(LSTM<T>::activation_t::hiddens(state));
+            auto memory = MatOps<T>::vstack(LSTM<T>::activation_t::memories(state));
+            return {typename LSTM<T>::activation_t(memory, hidden)};
         }
 
         StoryActivation<T> activate_story(const vector<vector<string>>& facts,

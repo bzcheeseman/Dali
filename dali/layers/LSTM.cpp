@@ -5,6 +5,47 @@ using utils::assert2;
 using std::string;
 using std::make_shared;
 
+///////////////////////////// LSTM STATE /////////////////////////////////////////////
+
+template<typename R>
+LSTMState<R>::LSTMState(Mat<R> _memory, Mat<R> _hidden) : memory(_memory), hidden(_hidden) {}
+
+template<typename R>
+LSTMState<R>::operator std::tuple<Mat<R> &, Mat<R> &>() {
+    return std::tuple<Mat<R>&, Mat<R>&>(memory, hidden);
+}
+
+template<typename R>
+vector<Mat<R>> LSTMState<R>::hiddens( const vector<LSTMState<R>>& states) {
+    vector<Mat<R>> hiddens;
+    std::transform(
+        states.begin(),
+        states.end(),
+        std::back_inserter(hiddens), [](const LSTMState<R>& s) {
+            return s.hidden;
+        }
+    );
+    return hiddens;
+}
+
+template<typename R>
+vector<Mat<R>> LSTMState<R>::memories( const vector<LSTMState<R>>& states) {
+    vector<Mat<R>> memories;
+    std::transform(
+        states.begin(),
+        states.end(),
+        std::back_inserter(memories), [](const LSTMState<R>& s) {
+            return s.memory;
+        }
+    );
+    return memories;
+}
+
+template class LSTMState<float>;
+template class LSTMState<double>;
+
+///////////////////////////// LSTM /////////////////////////////////////////////////////
+
 template<typename R>
 LSTM<R>::LSTM(int _input_size, int _hidden_size, bool _memory_feeds_gates) :
         LSTM<R>(vector<int>({_input_size}), _hidden_size, 1,_memory_feeds_gates) {
@@ -117,43 +158,9 @@ void LSTM<R>::name_internal_layers() {
 }
 
 template<typename R>
-LSTM<R>::State::State(Mat<R> _memory, Mat<R> _hidden) : memory(_memory), hidden(_hidden) {}
-
-template<typename R>
-LSTM<R>::State::operator std::tuple<Mat<R> &, Mat<R> &>() {
-    return std::tuple<Mat<R>&, Mat<R>&>(memory, hidden);
-}
-
-template<typename R>
-vector<Mat<R>> LSTM<R>::State::hiddens( const vector< typename LSTM<R>::State>& states) {
-    vector<Mat<R>> hiddens;
-    std::transform(
-        states.begin(),
-        states.end(),
-        std::back_inserter(hiddens), [](const State& s) {
-            return s.hidden;
-        }
-    );
-    return hiddens;
-}
-
-template<typename R>
-vector<Mat<R>> LSTM<R>::State::memories( const vector<typename LSTM<R>::State>& states) {
-    vector<Mat<R>> memories;
-    std::transform(
-        states.begin(),
-        states.end(),
-        std::back_inserter(memories), [](const State& s) {
-            return s.memory;
-        }
-    );
-    return memories;
-}
-
-template<typename R>
-typename LSTM<R>::State LSTM<R>::activate(
+typename LSTM<R>::activation_t LSTM<R>::activate(
         const vector<Mat<R>>& inputs,
-        const vector<State>& states) const {
+        const vector<activation_t>& states) const {
 
     Mat<R> input_gate, output_gate;
     vector<Mat<R>> forget_gates;
@@ -168,7 +175,7 @@ typename LSTM<R>::State LSTM<R>::activate(
     for (int iidx = 0; iidx < input_sizes.size(); ++iidx) {
         assert(inputs[iidx].dims(0) == input_sizes[iidx]);
     }
-    auto gate_input = utils::concatenate({inputs, State::hiddens(states)});
+    auto gate_input = utils::concatenate({inputs, activation_t::hiddens(states)});
 
     if (memory_feeds_gates) {
         input_gate  = input_layer.activate(gate_input);
@@ -220,23 +227,23 @@ typename LSTM<R>::State LSTM<R>::activate(
     // compute hidden state as gated, saturated cell activations
     auto hidden_d = output_gate * cell_d.tanh();
 
-    return State(cell_d, hidden_d);
+    return activation_t(cell_d, hidden_d);
 }
 
 template<typename R>
-typename LSTM<R>::State LSTM<R>::activate(
+typename LSTM<R>::activation_t LSTM<R>::activate(
         Mat<R> input_vector,
-        State  state) const {
+        activation_t  state) const {
     return activate(
         vector<Mat<R>>({input_vector}),
-        vector<State>({state})
+        vector<activation_t>({state})
     );
 }
 
 template<typename R>
-typename LSTM<R>::State LSTM<R>::activate(
+typename LSTM<R>::activation_t LSTM<R>::activate(
         Mat<R> input_vector,
-        vector<State> previous_children_states) const {
+        vector<activation_t> previous_children_states) const {
     return activate(
         vector<Mat<R>>({input_vector}),
         previous_children_states
@@ -244,24 +251,24 @@ typename LSTM<R>::State LSTM<R>::activate(
 }
 
 template<typename R>
-typename LSTM<R>::State LSTM<R>::activate_shortcut(
+typename LSTM<R>::activation_t LSTM<R>::activate_shortcut(
         Mat<R> input_vector,
         Mat<R> shortcut_vector,
-        State  state) const {
+        activation_t  state) const {
     return activate(
         vector<Mat<R>>({input_vector, shortcut_vector}),
-        vector<State>({state})
+        vector<activation_t>({state})
     );
 }
 
 template<typename R>
-typename LSTM<R>::State LSTM<R>::activate_sequence(
-        State state,
+typename LSTM<R>::activation_t LSTM<R>::activate_sequence(
+        activation_t state,
         const vector<Mat<R>>& sequence) const {
     for (auto& input_vector : sequence)
         state = activate(
             input_vector,
-            vector<State>({state})
+            vector<activation_t>({state})
         );
     return state;
 };
@@ -296,9 +303,9 @@ std::vector<Mat<R>> LSTM<R>::parameters() const {
 }
 
 template<typename R>
-typename std::vector< typename LSTM<R>::State > LSTM<R>::initial_states(
+typename std::vector<typename LSTM<R>::activation_t> LSTM<R>::initial_states(
         const std::vector<int>& hidden_sizes) {
-    std::vector< typename LSTM<R>::State >  initial_state;
+    std::vector<activation_t>  initial_state;
     initial_state.reserve(hidden_sizes.size());
     for (auto& size : hidden_sizes) {
         initial_state.emplace_back(Mat<R>(size, 1), Mat<R>(size, 1));
@@ -307,8 +314,8 @@ typename std::vector< typename LSTM<R>::State > LSTM<R>::initial_states(
 }
 
 template<typename R>
-typename LSTM<R>::State LSTM<R>::initial_states() const {
-    return LSTM<R>::State(Mat<R>(hidden_size, 1), Mat<R>(hidden_size, 1));
+typename LSTM<R>::activation_t LSTM<R>::initial_states() const {
+    return activation_t(Mat<R>(hidden_size, 1), Mat<R>(hidden_size, 1));
 }
 
 template class LSTM<float>;

@@ -423,7 +423,7 @@ class GatedLstmsModel {
                                                      embeddings,
                                                      dropout_value);
             // out_state.second corresponds to LSTM hidden (as opposed to memory).
-            return MatOps<R>::vstack(LSTM<R>::State::hiddens(out_states));
+            return MatOps<R>::vstack(LSTM<R>::activation_t::hiddens(out_states));
         }
 
         std::tuple<Mat<R>,Mat<R>,Mat<R>> answer_score(const vector<vector<string>>& facts,

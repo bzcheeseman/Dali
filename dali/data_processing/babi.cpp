@@ -116,8 +116,11 @@ namespace babi {
         return output;
     }
 
-    std::tuple<vector<Story<uint>>, Vocab> encode_dataset(
-            const vector<Story<string>>& input, bool add_eos, uint min_occurence) {
+    vector<Story<uint>> encode_dataset(
+            const vector<Story<string>>& input,
+            utils::Vocab* vocab,
+            bool add_eos,
+            uint min_occurence) {
         std::unordered_map<string, uint> occurence;
         for (auto& story : input) {
             for (auto& fact: story.facts) {
@@ -138,14 +141,26 @@ namespace babi {
                 words.push_back(kv.first);
             }
         }
+
         words.push_back(utils::end_symbol);
-        Vocab vocab(words, true);
+
+        for (auto& word : words) {
+            auto found = vocab->word2index.find(word);
+            if (found != vocab->word2index.end()) {
+                continue;
+            } else {
+                vocab->word2index[word] = vocab->word2index.size();
+                vocab->index2word.emplace_back(word);
+            }
+        }
+
+        vocab->add_unknown_word();
 
         vector<Story<uint>> results;
         for (auto& story: input) {
-            results.push_back(encode(story, vocab, add_eos));
+            results.push_back(encode(story, *vocab, add_eos));
         }
-        return std::make_tuple(results, vocab);
+        return results;
     }
 
     static std::tuple<int, vector<std::string>> parse_fact(std::string fact) {

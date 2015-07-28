@@ -36,8 +36,9 @@ namespace babi {
     Story<std::string> decode(Story<uint> story, const utils::Vocab& vocab, bool strip_eos=true);
     Story<uint> encode(Story<std::string> story, const utils::Vocab& vocab, bool add_eos=false);
 
-	std::tuple<std::vector<Story<uint>>, utils::Vocab> encode_dataset(
+	std::vector<Story<uint>> encode_dataset(
 			const std::vector<Story<std::string>>& input,
+            utils::Vocab* vocab,
 			bool add_eos=false,
 			uint min_occurence=1);
 

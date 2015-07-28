@@ -90,9 +90,9 @@ namespace utils {
 
         class Vocab {
                 private:
-                        void construct_word2index();
-                        void add_unknown_word();
+                    void construct_word2index();
                 public:
+                    void add_unknown_word();
                     typedef uint ind_t;
                     ind_t unknown_word;
                     std::unordered_map<std::string, ind_t> word2index;

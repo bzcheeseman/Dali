@@ -983,7 +983,7 @@ namespace utils {
     }
 
     std::string dir_parent(const std::string& path, int levels_up) {
-        auto file_path_split = split(__FILE__, '/');
+        auto file_path_split = split(path, '/');
         assert(levels_up < file_path_split.size());
         stringstream ss;
         if (path[0] == '/')

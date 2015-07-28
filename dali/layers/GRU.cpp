@@ -3,6 +3,9 @@
 using std::vector;
 
 template<typename R>
+GRU<R>::GRU() : GRU<R>(0,0) {}
+
+template<typename R>
 GRU<R>::GRU(int _input_size, int _hidden_size) :
     input_size(_input_size),
     hidden_size(_hidden_size),
@@ -48,12 +51,12 @@ Mat<R> GRU<R>::activate(
 }
 
 template<typename R>
-Mat<R> GRU<R>::activate_sequence(vector<Mat<R>> input_sequence) const {
+Mat<R> GRU<R>::activate_sequence(const vector<Mat<R>>& input_sequence) const {
     return activate_sequence(input_sequence, initial_states());
 }
 
 template<typename R>
-Mat<R> GRU<R>::activate_sequence(vector<Mat<R>> input_sequence, Mat<R> state) const {
+Mat<R> GRU<R>::activate_sequence(const vector<Mat<R>>& input_sequence, Mat<R> state) const {
     for (auto& input: input_sequence) {
         state = activate(input, state);
     }

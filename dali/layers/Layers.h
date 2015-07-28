@@ -205,12 +205,4 @@ class DelayedRNN : public AbstractLayer<R> {
         DelayedRNN<R> shallow_copy() const;
 };
 
-template<typename R>
-class GatedInput : public RNN<R> {
-    public:
-        GatedInput (int, int);
-        GatedInput (const GatedInput&, bool, bool);
-        GatedInput<R> shallow_copy() const;
-};
-
 #endif

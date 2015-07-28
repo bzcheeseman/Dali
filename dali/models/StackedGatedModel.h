@@ -38,7 +38,6 @@ template<typename Z>
 class StackedGatedModel : public StackedModel<Z> {
     typedef LSTM<Z>                                             lstm;
     typedef Layer<Z>                                    classifier_t;
-    typedef GatedInput<Z>                                     gate_t;
     typedef std::map<std::string, std::vector<std::string>> config_t;
 
     public:
@@ -49,7 +48,8 @@ class StackedGatedModel : public StackedModel<Z> {
 
         typedef Z value_t;
 
-        const gate_t gate;
+        StackedInputLayer<Z> gate;
+
         Z memory_penalty;
         virtual std::vector<mat> parameters() const;
         /**

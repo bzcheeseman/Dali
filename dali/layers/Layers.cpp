@@ -388,23 +388,6 @@ Mat<R> RNN<R>::activate(
     return MatOps<R>::mul_add_mul_with_bias({Wx, Wh},  {input_vector, prev_hidden}, b);
 }
 
-template<typename R>
-GatedInput<R>::GatedInput (int _input_size, int _hidden_size) :
-        RNN<R>(_input_size, _hidden_size, 1) {
-}
-
-template<typename R>
-GatedInput<R>::GatedInput (const GatedInput<R>& gate,
-                           bool copy_w,
-                           bool copy_dw) :
-        RNN<R>(gate, copy_w, copy_dw) {
-}
-
-template<typename R>
-GatedInput<R> GatedInput<R>::shallow_copy() const {
-    return GatedInput<R>(*this, false, true);
-}
-
 template class Layer<float>;
 template class Layer<double>;
 
@@ -413,8 +396,4 @@ template class StackedInputLayer<double>;
 
 template class RNN<float>;
 template class RNN<double>;
-
-template class GatedInput<float>;
-template class GatedInput<double>;
-
 

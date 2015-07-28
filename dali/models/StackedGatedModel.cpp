@@ -153,7 +153,11 @@ typename StackedGatedModel<Z>::MaskedActivation StackedGatedModel<Z>::masked_pre
         // pick this letter from the embedding
         utils::Timer gte("get the embeddings");
         auto input_vector = this->embedding[data[timestep]];
-        memory = gate.activate(input_vector, state.back().hidden ).sigmoid();
+        memory = gate.activate(
+            {
+                input_vector,
+                state.back().hidden
+            }).sigmoid();
         input_vector = input_vector.eltmul_broadcast_rowwise(memory);
         gte.stop();
 
@@ -220,7 +224,7 @@ StackedGatedModel<Z>::StackedGatedModel (
         use_shortcut,
         memory_feeds_gates),
       memory_penalty(_memory_penalty),
-      gate(input_size, hidden_size) {
+      gate({input_size, hidden_size}, 1) {
 }
 
 using utils::from_string;
@@ -246,11 +250,15 @@ StackedGatedModel<Z>::StackedGatedModel (
     memory_penalty(from_string<Z>(config.at("memory_penalty")[0])),
     StackedModel<Z>(config),
     gate(
-        from_string<int>(
-          config.at("input_size")[0]),
-        from_string<int>(
-          config.at("hidden_sizes")[config.at("hidden_sizes").size()-1]
-        )
+        {
+            from_string<int>(
+                config.at("input_size")[0]
+            ),
+            from_string<int>(
+                config.at("hidden_sizes")[config.at("hidden_sizes").size()-1]
+            )
+        },
+        1
     ) {
 }
 
@@ -272,7 +280,7 @@ StackedGatedModel<Z>::StackedGatedModel (
             use_shortcut,
             memory_feeds_gates),
         memory_penalty(_memory_penalty),
-        gate(input_size, hidden_sizes[0]) {
+        gate({input_size, hidden_sizes[0]}, 1) {
 }
 
 /**
@@ -352,8 +360,10 @@ typename StackedGatedModel<Z>::state_type StackedGatedModel<Z>::get_final_activa
         // pick this letter from the embedding
         input_vector  = this->embedding[example[i]];
         memory        = gate.activate(
-            input_vector,
-            state.back().hidden
+            {
+                input_vector,
+                state.back().hidden
+            }
         ).sigmoid();
         if (graph::backprop_enabled() && memory_penalty > 0) {
             // add this sum to objective function
@@ -402,8 +412,10 @@ typename StackedGatedModel<Z>::State StackedGatedModel<Z>::activate(
     State out;
     auto input_vector = this->embedding[indices];
     out.memory       = gate.activate(
-        input_vector,
-        previous_state.back().hidden
+        {
+            input_vector,
+            previous_state.back().hidden
+        }
     ).sigmoid();
     input_vector      = input_vector.eltmul_broadcast_rowwise(out.memory);
 
@@ -440,8 +452,10 @@ std::vector<int> StackedGatedModel<Z>::reconstruct(
     for (uint j = 0; j < eval_steps - 1; j++) {
             input_vector  = this->embedding[last_symbol];
             memory        = gate.activate(
-                input_vector,
-                state.back().hidden
+                {
+                    input_vector,
+                    state.back().hidden
+                }
             ).sigmoid();
             input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
             state = this->stacked_lstm.activate(
@@ -470,7 +484,11 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<Z>::reconstr
     for (uint i = 0; i < n; ++i) {
         // pick this letter from the embedding
         input_vector  = this->embedding[example[i]];
-        memory        = gate.activate(input_vector, initial_state.back().hidden).sigmoid();
+        memory        = gate.activate(
+            {
+                input_vector,
+                initial_state.back().hidden
+            }).sigmoid();
         input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
         // pass this letter to the LSTM for processing
         initial_state = this->stacked_lstm.activate(initial_state, input_vector);
@@ -493,7 +511,11 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<Z>::reconstr
     outputs.emplace_back(pos);
     for (int step = 0; step < eval_steps - 1; step++) {
         input_vector  = this->embedding[pos->id];
-        memory        = gate.activate(input_vector, initial_state.back().hidden).sigmoid();
+        memory        = gate.activate(
+            {
+                input_vector,
+                initial_state.back().hidden
+            }).sigmoid();
         input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
         initial_state = this->stacked_lstm.activate(initial_state, input_vector);
         last_turn     = this->decode(

@@ -16,6 +16,8 @@ class GRU {
         layer_type memory_to_memory_layer;
         typedef Mat<R> activation_t;
 
+        GRU();
+
         GRU(int _input_size, int _hidden_size);
 
         GRU(const GRU<R>& other, bool copy_w, bool copy_dw);
@@ -24,9 +26,9 @@ class GRU {
 
         Mat<R> activate(Mat<R> input_vector, Mat<R> previous_state) const;
 
-        Mat<R> activate_sequence(std::vector<Mat<R>> input_sequence) const;
+        Mat<R> activate_sequence(const std::vector<Mat<R>>& input_sequence) const;
 
-        Mat<R> activate_sequence(std::vector<Mat<R>> input_sequence, Mat<R> initial_state) const;
+        Mat<R> activate_sequence(const std::vector<Mat<R>>& input_sequence, Mat<R> initial_state) const;
 
         std::vector<Mat<R>> parameters() const;
 

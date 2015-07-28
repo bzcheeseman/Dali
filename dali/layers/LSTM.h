@@ -53,10 +53,12 @@ class LSTM : public AbstractLayer<R> {
         bool memory_feeds_gates;
 
         // In Alex Graves' slides / comments online you do not
-        // backpropagate through memory cells at the gates
+        // backpropagate through memory cells at the gatestype
         // this is a boolean, so you can retrieve the true
         // gradient by setting this to true:
         bool backprop_through_gates = false;
+
+        LSTM() = default;
 
         // This is a regular vanilla, but awesome LSTM constructor.
         LSTM (int _input_size, int _hidden_size, bool _memory_feeds_gates = false);
@@ -71,7 +73,7 @@ class LSTM : public AbstractLayer<R> {
         LSTM (const LSTM&, bool, bool);
 
         virtual std::vector<Mat<R>> parameters() const;
-        static std::vector<activation_t> initial_states(const std::vector<int>&);
+        static std::vector<activation_t> initial_states(const std::vector<int>& hidden_sizes);
 
         activation_t activate(
             Mat<R> input_vector,

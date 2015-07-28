@@ -94,14 +94,14 @@ class StackedGatedModel : public StackedModel<Z> {
         StackedGatedModel(const config_t&);
         StackedGatedModel(const StackedGatedModel<Z>&, bool, bool);
 
-        struct MaskedActivation {
+        struct MaskedActivation {
             Mat<Z> prediction_error;
             Mat<Z> memory_error;
             MaskedActivation(Mat<Z> prediction_error, Mat<Z> memory_error);
             operator std::tuple<Mat<Z>&, Mat<Z>&>();
         };
 
-        MaskedActivation masked_predict_cost(Mat<int> data,
+        MaskedActivation masked_predict_cost(Mat<int> data,
                                    Mat<int> target_data,
                                    Mat<Z> prediction_mask,
                                    Z drop_prob = 0.0,

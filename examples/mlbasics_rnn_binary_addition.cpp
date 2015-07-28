@@ -78,7 +78,7 @@ int main( int argc, char* argv[]) {
     uint patience = 0;
 
     Solver::SGD<R> solver(params);
-    solver.step_size = LR;
+    solver.step_size = FLAGS_learning_rate;
 
     for (int epoch = 0; ; ++epoch) {
         // Average cross entropy bit error per bit.

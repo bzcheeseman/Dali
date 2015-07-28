@@ -12,15 +12,15 @@ void memory_bank<R>::deposit_cpu(int amount, int inner_dimension, R* ptr) {
     // make sure there is only one person
     // at a time in the vault to prevent
     // robberies
-
-    cpu_memory_bank.upsert(amount, [ptr](std::vector<R*>& deposit_box) {
+    /*cpu_memory_bank.upsert(amount, [ptr](std::vector<R*>& deposit_box) {
         deposit_box.emplace_back(ptr);
-    }, {ptr});
+    }, {ptr});*/
+    memory_operations<R>::free_cpu_memory(ptr, amount, inner_dimension);
 }
 
 template<typename R>
 R* memory_bank<R>::allocate_cpu(int amount, int inner_dimension) {
-    R* memory = NULL;
+    /*R* memory = NULL;
     bool success = cpu_memory_bank.update_fn(amount, [&memory](std::vector<R*>& deposit_box) {
         if (!deposit_box.empty()) {
             memory = deposit_box.back();
@@ -29,7 +29,7 @@ R* memory_bank<R>::allocate_cpu(int amount, int inner_dimension) {
     });
     if (memory != NULL) {
         return memory;
-    }
+    }*/
     num_cpu_allocations++;
     total_cpu_memory += amount;
     return memory_operations<R>::allocate_cpu_memory(amount, inner_dimension);

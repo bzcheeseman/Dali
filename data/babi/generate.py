@@ -36,7 +36,7 @@ def fix_babi_file(fname):
                 answer = rest[0].replace(',', ' ')
                 rest = ' '.join(rest[1:])
                 line = '%s ?\t%s\t%s' % (no_and_question.strip(),
-                                           answer.strip(),
+                                           answer.strip()+ ' .',
                                            rest.strip())
             f.write(line + '\n')
         f.flush()

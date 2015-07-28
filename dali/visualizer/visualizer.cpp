@@ -358,6 +358,7 @@ namespace visualizable {
     Visualizer::Visualizer(std::string name) :
             my_uuid(sole::uuid4().str()),
             my_name(name),
+            running(true),
             rdx_state(redox::Redox::DISCONNECTED),
             callcenter_state(redox::Redox::DISCONNECTED)  {
         // then we ping the visualizer regularly:
@@ -365,9 +366,21 @@ namespace visualizable {
         register_function("whoami", std::bind(&Visualizer::whoami, this, _1, _2));
         ping_thread = std::make_shared<std::thread>(&Visualizer::ping, this);
     }
+    Visualizer::~Visualizer() {
+        running = false;
+        if (ping_thread != nullptr) {
+            ping_thread->join();
+        }
+        if (callcenter_state == redox::Redox::CONNECTED) {
+            callcenter_main_phoneline->disconnect();
+        }
+        if (rdx_state == redox::Redox::CONNECTED) {
+            rdx->disconnect();
+        }
+    }
 
     void Visualizer::ping() {
-        while(true) {
+        while (running) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
 
             if (!ensure_connection()) {
@@ -471,7 +484,7 @@ namespace visualizable {
     bool Visualizer::ensure_connection() { return false; }
     void Visualizer::rdx_connected_callback(int status) {}
     void Visualizer::callcenter_connected_callback(int status) {}
-    Visualizer::Visualizer(std::string my_name) {
+    Visualizer::Visualizer(std::string my_name) : running(false) {
         std::cout << "WARNING: Dali was compiled without visualizer - Visualizer class won't work very well." << std::endl;
     }
     void Visualizer::register_function(std::string name, function_t lambda) {}

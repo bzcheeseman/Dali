@@ -157,6 +157,7 @@ class Visualizer {
         typedef std::function<void(std::string,json11::Json)> function_t;
     private:
         bool subscription_active = false;
+        bool running;
 
         std::string my_uuid;
         std::string my_name;
@@ -188,6 +189,7 @@ class Visualizer {
         void register_function(std::string name,  function_t lambda);
 
         Visualizer(std::string name);
+        ~Visualizer();
 
         void feed(const json11::Json& obj);
         void feed(const std::string& str);

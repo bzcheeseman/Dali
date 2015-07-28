@@ -18,7 +18,6 @@ class RecurrentEmbeddingModel {
 
         int vocabulary_size;
         const int output_size;
-        const int stack_size;
         std::vector<int> hidden_sizes;
         mat embedding;
 

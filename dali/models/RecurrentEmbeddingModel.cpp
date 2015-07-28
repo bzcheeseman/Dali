@@ -39,11 +39,10 @@ template<typename R>
 RecurrentEmbeddingModel<R>::RecurrentEmbeddingModel(
     int _vocabulary_size, int _input_size, int hidden_size, int _stack_size, int _output_size) :
     vocabulary_size(_vocabulary_size),
-    stack_size(_stack_size),
     output_size(_output_size) {
 
     embedding = mat(vocabulary_size, _input_size, weights<R>::uniform(-0.05, 0.05));
-    for (int i = 0; i < stack_size;i++)
+    for (int i = 0; i < _stack_size;i++)
         hidden_sizes.emplace_back(hidden_size);
 }
 
@@ -51,7 +50,6 @@ template<typename R>
 RecurrentEmbeddingModel<R>::RecurrentEmbeddingModel(
     int _vocabulary_size, int _input_size, const std::vector<int>& _hidden_sizes, int _output_size) :
     vocabulary_size(_vocabulary_size),
-    stack_size(_hidden_sizes.size()),
     output_size(_output_size),
     hidden_sizes(_hidden_sizes) {
     embedding = mat(vocabulary_size, _input_size, weights<R>::uniform(-0.05, 0.05));
@@ -61,7 +59,6 @@ template<typename R>
 RecurrentEmbeddingModel<R>::RecurrentEmbeddingModel(const RecurrentEmbeddingModel& model, bool copy_w, bool copy_dw) :
     vocabulary_size(model.vocabulary_size),
     output_size(model.output_size),
-    stack_size(model.stack_size),
     hidden_sizes(model.hidden_sizes),
     embedding(model.embedding, copy_w, copy_dw) {
 }
@@ -70,7 +67,6 @@ template<typename R>
 RecurrentEmbeddingModel<R>::RecurrentEmbeddingModel(const typename RecurrentEmbeddingModel<R>::config_t& config) :
     vocabulary_size(from_string<int>(config.at("vocabulary_size")[0])),
     output_size(from_string<int>(config.at("output_size")[0])),
-    stack_size(config.at("hidden_sizes").size()),
     embedding(
         from_string<int>(config.at("vocabulary_size")[0]),
         from_string<int>(config.at("input_size")[0]),

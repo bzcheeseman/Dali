@@ -107,7 +107,7 @@ StackedModel<Z> StackedModel<Z>::build_from_CLI(
                   << model.output_size
                   << std::endl
                   << "Stack size            = "
-                  << model.stack_size
+                  << model.hidden_sizes.size()
                   << std::endl
                   << "Shortcut connections  = "
                   << (model.use_shortcut ? "true" : "false")

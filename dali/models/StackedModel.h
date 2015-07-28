@@ -11,6 +11,7 @@
 
 #include "dali/data_processing/Batch.h"
 #include "dali/models/RecurrentEmbeddingModel.h"
+#include "dali/models/StackedModelState.h"
 #include "dali/models/ReconstructModel.h"
 #include "dali/core.h"
 #include "dali/utils.h"
@@ -42,10 +43,12 @@ class StackedModel : public RecurrentEmbeddingModel<Z>, public ReconstructModel 
     inline void name_parameters();
 
     public:
-        typedef Mat<Z> mat;
 
+        typedef Mat<Z> mat;
         typedef std::vector< typename LSTM<Z>::State> state_type;
-        typedef std::tuple<state_type, mat, mat> activation_t;
+
+        typedef StackedModelState<Z> State;
+
         typedef Z value_t;
         const bool use_shortcut;
         const bool memory_feeds_gates;
@@ -197,8 +200,8 @@ class StackedModel : public RecurrentEmbeddingModel<Z>, public ReconstructModel 
             pair of LSTM hidden and cell states, and probabilities from the decoder.
 
         **/
-        activation_t activate(state_type&, const uint& ) const;
-        activation_t activate(state_type&, const Indexing::Index ) const;
+        State activate(state_type&, const uint& ) const;
+        State activate(state_type&, const Indexing::Index ) const;
 
         virtual std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(
             Indexing::Index,

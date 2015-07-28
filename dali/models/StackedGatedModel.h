@@ -44,7 +44,9 @@ class StackedGatedModel : public StackedModel<Z> {
     public:
         typedef Mat<Z> mat;
         typedef std::vector< typename LSTM<Z>::State > state_type;
-        typedef std::tuple<state_type, mat, mat> activation_t;
+
+        typedef StackedModelState<Z> State;
+
         typedef Z value_t;
 
         const gate_t gate;
@@ -96,7 +98,7 @@ class StackedGatedModel : public StackedModel<Z> {
             Mat<Z> prediction_error;
             Mat<Z> memory_error;
             MaskedActivation(Mat<Z> prediction_error, Mat<Z> memory_error);
-            operator std::tuple<Mat<Z>, Mat<Z>>();
+            operator std::tuple<Mat<Z>&, Mat<Z>&>();
         };
 
         MaskedActivation masked_predict_cost(Mat<int> data,
@@ -114,8 +116,8 @@ class StackedGatedModel : public StackedModel<Z> {
         virtual std::vector<int> reconstruct(Indexing::Index, int, int symbol_offset = 0) const;
         state_type get_final_activation(Indexing::Index, Z drop_prob=0.0) const;
 
-        activation_t activate(state_type&, const uint&) const;
-        activation_t activate(state_type&, const Indexing::Index) const;
+        State activate(state_type&, const uint&) const;
+        State activate(state_type&, const Indexing::Index) const;
 
         virtual std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(
             Indexing::Index,

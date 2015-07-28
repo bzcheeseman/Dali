@@ -126,8 +126,8 @@ StackedGatedModel<Z>::MaskedActivation::MaskedActivation(Mat<Z> _prediction_erro
     prediction_error(_prediction_error), memory_error(_memory_error) {}
 
 template<typename Z>
-StackedGatedModel<Z>::MaskedActivation::operator std::tuple<Mat<Z>, Mat<Z>>() {
-    return std::make_tuple(prediction_error, memory_error);
+StackedGatedModel<Z>::MaskedActivation::operator std::tuple<Mat<Z>&, Mat<Z>&>() {
+    return std::make_tuple(std::ref(prediction_error), std::ref(memory_error));
 }
 
 template<typename Z>
@@ -389,69 +389,33 @@ std::tuple<std::pair<vector<shared_ptr<Mat<Z>>>, vector<shared_ptr<Mat<Z>>>>, sh
 
 **/
 template<typename Z>
-typename StackedGatedModel<Z>::activation_t StackedGatedModel<Z>::activate(
+typename StackedGatedModel<Z>::State StackedGatedModel<Z>::activate(
         state_type& previous_state,
         const uint& index) const {
-    activation_t out;
-
-    auto input_vector = this->embedding[index];
-    auto memory       = gate.activate(
-        input_vector,
-        previous_state.back().hidden
-    ).sigmoid();
-    input_vector      = input_vector.eltmul_broadcast_rowwise(memory);
-
-    std::get<0>(out) = this->stacked_lstm.activate(
-        previous_state,
-        input_vector
-    );
-    std::get<1>(out) = graph::backprop_enabled() ?
-        MatOps<Z>::softmax(
-            this->decode(
-                input_vector,
-                std::get<0>(out)
-            )
-        ) :
-        MatOps<Z>::softmax_no_grad(
-            this->decode(
-                input_vector,
-                std::get<0>(out)
-            )
-        );
-    std::get<2>(out) = memory;
-    return out;
+    return activate(previous_state, {index});
 }
 
 template<typename Z>
-typename StackedGatedModel<Z>::activation_t StackedGatedModel<Z>::activate(
+typename StackedGatedModel<Z>::State StackedGatedModel<Z>::activate(
         state_type& previous_state,
         const Indexing::Index indices) const {
-    activation_t out;
+    State out;
     auto input_vector = this->embedding[indices];
-    auto memory       = gate.activate(
+    out.memory       = gate.activate(
         input_vector,
         previous_state.back().hidden
     ).sigmoid();
-    input_vector      = input_vector.eltmul_broadcast_rowwise(memory);
+    input_vector      = input_vector.eltmul_broadcast_rowwise(out.memory);
 
-    std::get<0>(out) = this->stacked_lstm.activate(
+    out.lstm_state = this->stacked_lstm.activate(
         previous_state,
         input_vector);
-    std::get<1>(out) = graph::backprop_enabled() ?
-        MatOps<Z>::softmax(
+    out.prediction = MatOps<Z>::softmax(
             this->decode(
                 input_vector,
-                std::get<0>(out)
-            )
-        ) :
-        MatOps<Z>::softmax_no_grad(
-            this->decode(
-                input_vector,
-                std::get<0>(out)
+                out.lstm_state
             )
         );
-    std::get<2>(out) = memory;
-
     return out;
 }
 

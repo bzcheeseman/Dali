@@ -85,7 +85,7 @@ class StackedGatedModel : public StackedModel<Z> {
             int vocabulary_size,
             int input_size,
             int output_size,
-            std::vector<int>& hiddens_sizes,
+            const std::vector<int>& hiddens_sizes,
             bool use_shortcut,
             bool memory_feeds_gates,
             Z _memory_penalty);

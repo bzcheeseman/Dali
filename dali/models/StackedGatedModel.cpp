@@ -250,7 +250,7 @@ StackedGatedModel<Z>::StackedGatedModel (
   int vocabulary_size,
   int input_size,
   int output_size,
-  std::vector<int>& hidden_sizes,
+  const std::vector<int>& hidden_sizes,
   bool use_shortcut,
   bool memory_feeds_gates,
   Z _memory_penalty)

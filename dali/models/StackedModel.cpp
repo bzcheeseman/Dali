@@ -324,7 +324,7 @@ StackedModel<Z>::StackedModel(
     int vocabulary_size,
     int input_size,
     int output_size,
-    std::vector<int>& hidden_sizes,
+    const std::vector<int>& hidden_sizes,
     bool _use_shortcut,
     bool _memory_feeds_gates)
     : RecurrentEmbeddingModel<Z>(vocabulary_size, input_size, hidden_sizes, output_size),

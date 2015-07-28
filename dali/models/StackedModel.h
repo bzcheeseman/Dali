@@ -99,7 +99,7 @@ class StackedModel : public RecurrentEmbeddingModel<Z>, public ReconstructModel 
         StackedModel(int vocabulary_size,
                      int input_size,
                      int output_size,
-                     std::vector<int>& hidden_sizes,
+                     const std::vector<int>& hidden_sizes,
                      bool use_shortcut = false,
                      bool memory_feeds_gates = false);
         /**StackedModel Constructor from configuration map

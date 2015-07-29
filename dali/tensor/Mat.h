@@ -160,6 +160,8 @@ class Mat {
         // Various operations on matrix.
         // Soon to be replaced by legitimate operators
         // See MatOps for documentation.
+        bool is_nan() const;
+        bool is_grad_nan() const;
         Mat<R> eltmul_broadcast(Mat<R>) const;
         Mat<R> eltmul(Mat<R>) const;
         Mat<R> eltmul(R) const;

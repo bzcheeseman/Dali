@@ -15,6 +15,8 @@ namespace matops {
         static Mat<R> consider_constant(Mat<R>);
         static Mat<R> consider_constant_if(Mat<R>, bool should_consider_constant);
 
+        static bool is_nan(Mat<R> a);
+        static bool is_grad_nan(Mat<R> a);
         static bool equals(Mat<R> a, Mat<R> b);
         static bool allclose(Mat<R> a, Mat<R> b, R tol);
         static bool grad_allclose(Mat<R> a, Mat<R> b, R tol);

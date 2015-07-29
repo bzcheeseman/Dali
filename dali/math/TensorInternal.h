@@ -209,6 +209,8 @@ class TensorInternal {
         R& operator()(int i, int j);
         R operator()(int i, int j) const;
 
+        bool is_nan() const;
+
         std::vector<int> argmin(int dim) const;
         std::vector<int> argmax(int dim) const;
 

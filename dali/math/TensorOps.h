@@ -111,6 +111,22 @@ namespace TensorOps {
 
     namespace reduction {
         #ifdef DALI_USE_CUDA
+            template <typename R, int dimension>
+            bool is_nan(const mshadow::Tensor<gpu, dimension, R> a, int num_elts) {
+                return std::isnan(thrust::reduce(
+                    to_thrust(a),
+                    to_thrust(a) + num_elts,
+                    0.0,
+                    thrust::plus<R>()));
+            }
+        #endif
+
+        template <typename R, int dimension>
+        bool is_nan(const mshadow::Tensor<cpu, dimension, R> a, int num_elts) {
+            return std::isnan(std::accumulate(a.dptr_, a.dptr_ + num_elts, 0.0));
+        }
+
+        #ifdef DALI_USE_CUDA
         template<int ndims, typename R>
         R sum(const mshadow::Tensor<gpu, ndims, R> a, int num_elts) {
             return thrust::reduce(

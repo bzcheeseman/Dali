@@ -288,6 +288,16 @@ Mat<R> Mat<R>::steep_sigmoid(R aggressiveness) const {
     return MatOps<R>::steep_sigmoid(*this, aggressiveness);
 }
 
+template<typename R>
+bool Mat<R>::is_nan() const {
+    return MatOps<R>::is_nan(*this);
+}
+
+template<typename R>
+bool Mat<R>::is_grad_nan() const {
+    return MatOps<R>::is_grad_nan(*this);
+}
+
 
 #define MAT_BINARY_OP( opname ) \
     template<typename R> \

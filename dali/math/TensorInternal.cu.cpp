@@ -87,6 +87,18 @@ R TensorInternal<R, dimension>::sum() const {
 }
 
 template<typename R, int dimension>
+bool TensorInternal<R,dimension>::is_nan() const {
+    #ifdef DALI_USE_CUDA
+        if (compute_me_on_gpu()) {
+            return TensorOps::reduction::is_nan(this->gpu_data(), this->number_of_elements() );
+        }
+    #endif
+
+    return TensorOps::reduction::is_nan(this->cpu_data(), this->number_of_elements() );
+}
+
+
+template<typename R, int dimension>
 std::vector<int> TensorInternal<R, dimension>::argmin(int reduce_dim) const {
     // reduce colwise
     #ifdef DALI_USE_CUDA

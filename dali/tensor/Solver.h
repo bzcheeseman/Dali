@@ -24,6 +24,8 @@ namespace Solver {
         METHOD_ADAM
     };
 
+    extern bool nan_protection;
+
     const double SMOOTH_DEFAULT = 1e-4;
 
     template<typename R> class AbstractSolver {

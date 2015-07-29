@@ -85,6 +85,16 @@ namespace matops {
     }
 
     template<typename R>
+    bool Other<R>::is_nan(Mat<R> a) {
+        return MAT(a).is_nan();
+    }
+
+    template<typename R>
+    bool Other<R>::is_grad_nan(Mat<R> a) {
+        return GRAD(a).is_nan();
+    }
+
+    template<typename R>
     bool Other<R>::equals(Mat<R> a, Mat<R> b) {
         // wrong dimensions
         if (a.dims() != b.dims())

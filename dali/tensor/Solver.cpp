@@ -9,6 +9,8 @@ DEFINE_string(solver, "adadelta", "What solver to use (adadelta, sgd, adam, rmsp
 DEFINE_double(learning_rate, 0.01, "Learning rate for SGD and Adagrad.");
 
 namespace Solver {
+    bool nan_protection = true;
+
     /* Abstract Solver */
     template<typename R>
     AbstractSolver<R>::AbstractSolver() :
@@ -47,8 +49,12 @@ namespace Solver {
     template<typename R>
     void SGD<R>::step (vector<Mat<R>>& parameters, R step_size) {
         for (auto& param : parameters) {
-            MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
-            MatOps<R>::sgd_update(param, step_size);
+            if (nan_protection && param.is_grad_nan()) {
+                std::cout << "WARNING: Ignoring gradient update because of NaNs." << std::endl;
+            } else {
+                MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
+                MatOps<R>::sgd_update(param, step_size);
+            }
             // reset gradient
             GRAD(param).clear();
         }
@@ -111,10 +117,16 @@ namespace Solver {
     void AdaGrad<R>::step(
             vector<Mat<R>>& parameters, R step_size) {
         for (auto& param : parameters) {
-            auto& s = gsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
 
-            MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
-            MatOps<R>::adagrad_update(param, s, step_size, this->smooth_eps);
+            if (nan_protection && param.is_grad_nan()) {
+                std::cout << "WARNING: Ignoring gradient update because of NaNs." << std::endl;
+            } else {
+                auto& s = gsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
+
+                MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
+                MatOps<R>::adagrad_update(param, s, step_size, this->smooth_eps);
+            }
+
             // reset gradient
             GRAD(param).clear();
         }
@@ -157,10 +169,16 @@ namespace Solver {
             R step_size
             ) {
         for (auto& param : parameters) {
-            auto& s = this->gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
-            MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
 
-            MatOps<R>::rmsprop_update(param, s, decay_rate, step_size, this->smooth_eps);
+            if (nan_protection && param.is_grad_nan()) {
+                std::cout << "WARNING: Ignoring gradient update because of NaNs." << std::endl;
+            } else {
+                auto& s = this->gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+
+                MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
+                MatOps<R>::rmsprop_update(param, s, decay_rate, step_size, this->smooth_eps);
+            }
+
             // reset gradient
             GRAD(param).clear();
             DEBUG_ASSERT_NOT_NAN(MAT(param));
@@ -237,12 +255,17 @@ namespace Solver {
     template<typename R>
     void AdaDelta<R>::step (vector<Mat<R>>& parameters) {
         for (auto& param : parameters) {
-            auto& gsum = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
-            auto& xsum = xsums[PARAM_KEY_FOR_LOOKUP_TABLE];
 
-            MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
+            if (nan_protection && param.is_grad_nan()) {
+                std::cout << "WARNING: Ignoring gradient update because of NaNs." << std::endl;
+            } else {
+                auto& gsum = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+                auto& xsum = xsums[PARAM_KEY_FOR_LOOKUP_TABLE];
 
-            MatOps<R>::adadelta_update(param, gsum, xsum, rho, this->smooth_eps);
+                MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
+                MatOps<R>::adadelta_update(param, gsum, xsum, rho, this->smooth_eps);
+            }
+
             // reset gradient
             GRAD(param).clear();
 
@@ -319,12 +342,16 @@ namespace Solver {
         epoch += 1;
 
         for (auto& param : parameters) {
-            auto& m = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
-            auto& v = xsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+            if (nan_protection && param.is_grad_nan()) {
+                std::cout << "WARNING: Ignoring gradient update because of NaNs." << std::endl;
+            } else {
+                auto& m = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+                auto& v = xsums[PARAM_KEY_FOR_LOOKUP_TABLE];
 
-            MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
+                MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
 
-            MatOps<R>::adam_update(param, m, v, b1, b2, this->smooth_eps, step_size, epoch);
+                MatOps<R>::adam_update(param, m, v, b1, b2, this->smooth_eps, step_size, epoch);
+            }
 
             // reset gradient
             GRAD(param).clear();

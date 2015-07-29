@@ -183,6 +183,7 @@ class Visualizer {
         void callcenter_connected_callback(int status);
         bool ensure_connection();
         void ping();
+        bool verify_subscription_active();
     public:
         void whoami(std::string, json11::Json);
 

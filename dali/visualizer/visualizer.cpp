@@ -332,6 +332,7 @@ namespace visualizable {
 
             if (callcenter_state.load() != redox::Redox::CONNECTED &&
                     callcenter_state.load() != redox::Redox::NOT_YET_CONNECTED) {
+                subscription_active = false;
                 callcenter_main_phoneline.reset();
                 callcenter_main_phoneline =
                         std::make_shared<redox::Subscriber>(std::cout, redox::log::Off);
@@ -384,11 +385,10 @@ namespace visualizable {
             std::this_thread::sleep_for(std::chrono::seconds(1));
 
             if (!ensure_connection()) {
-                subscription_active = false;
-
-                ping();
                 return;
             }
+
+            subscription_active = subscription_active && verify_subscription_active();
 
             if (!subscription_active && callcenter_state == redox::Redox::CONNECTED) {
                 update_subscriber();
@@ -407,6 +407,16 @@ namespace visualizable {
         });
     }
 
+    bool Visualizer::verify_subscription_active() {
+        auto requests_namespace = "callcenter_" + this->my_uuid;
+
+        for (auto& topic: callcenter_main_phoneline->subscribedTopics()) {
+            if (topic == requests_namespace) {
+                return true;
+            }
+        }
+        return true;
+    }
 
     void Visualizer::update_subscriber() {
         // if we previously listened for requests for a different name, then
@@ -480,6 +490,7 @@ namespace visualizable {
     }
 
 #else
+    bool Visualizer::verify_subscription_active() {return false;}
     void Visualizer::ping() {}
     bool Visualizer::ensure_connection() { return false; }
     void Visualizer::rdx_connected_callback(int status) {}

@@ -207,12 +207,12 @@ MultiLayerPerceptron<R>::MultiLayerPerceptron(const MultiLayerPerceptron& other,
 }
 
 template<typename R>
-MultiLayerPerceptron<R> MultiLayerPerceptron<R>::shallow_copy() {
+MultiLayerPerceptron<R> MultiLayerPerceptron<R>::shallow_copy() const {
     return MultiLayerPerceptron(*this, false, true);
 }
 
 template<typename R>
-Mat<R> MultiLayerPerceptron<R>::activate(Mat<R> input) {
+Mat<R> MultiLayerPerceptron<R>::activate(Mat<R> input) const {
     Mat<R> last_output = input;
     for (int i = 0; i < hidden_sizes.size() - 1; ++i)
         last_output = activations[i](layers[i].activate(last_output));
@@ -221,7 +221,7 @@ Mat<R> MultiLayerPerceptron<R>::activate(Mat<R> input) {
 }
 
 template<typename R>
-vector<Mat<R>> MultiLayerPerceptron<R>::parameters() {
+vector<Mat<R>> MultiLayerPerceptron<R>::parameters() const {
     vector<Mat<R>> params;
     for (auto& layer: layers) {
         auto layer_params = layer.parameters();

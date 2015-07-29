@@ -103,11 +103,11 @@ class MultiLayerPerceptron {
 
         MultiLayerPerceptron(const MultiLayerPerceptron& other, bool copy_w, bool copy_dw);
 
-        MultiLayerPerceptron shallow_copy();
+        MultiLayerPerceptron<R> shallow_copy() const;
 
-        Mat<R> activate(Mat<R> input);
+        Mat<R> activate(Mat<R> input) const;
 
-        std::vector<Mat<R>> parameters();
+        std::vector<Mat<R>> parameters() const;
 
         static Mat<R> identity(Mat<R> m);
 };

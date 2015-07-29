@@ -215,7 +215,11 @@ void Mat<R>::set_name(const char * _name) {
 
 template<typename R>
 void Mat<R>::print(std::basic_ostream<char>& stream) const {
-    w().print(stream);
+    if (m != nullptr) {
+        w().print(stream);
+    } else {
+        stream << "[]";
+    }
 }
 
 template<typename R>

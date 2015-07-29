@@ -362,7 +362,7 @@ TEST(babi, encode) {
     utils::Vocab vocab;
     vector<babi::Story<uint>> encoded_datasets;
 
-    std::tie(encoded_datasets,vocab) = babi::encode_dataset(datasets);
+    encoded_datasets = babi::encode_dataset(datasets, &vocab);
 
     ASSERT_EQ(datasets.size(), encoded_datasets.size());
     for (int i = 0; i < datasets.size(); ++i) {

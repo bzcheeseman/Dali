@@ -635,9 +635,7 @@ double benchmark_task(const std::string task) {
     }*/
 
     vector<babi::Story<uint>> encoded_data;
-    std::tie(encoded_data, vocab) = encode_dataset(str_training_data);
-
-
+    encoded_data = encode_dataset(str_training_data, &vocab);
 
     model.reset();
     best_model.reset();

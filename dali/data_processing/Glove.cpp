@@ -75,11 +75,7 @@ namespace glove {
         vector<T> embedding;
         // // use mat for assigning elements
         while (std::getline(fp, line)) {
-            std::tie(word, embedding) = convert_line_to_embedding(line);
-
-            bool found_name = false;
-            int i = 0; // count how many numbers are in this row
-            std::stringstream tokenizer(line);
+            std::tie(word, embedding) = convert_line_to_embedding<T>(line);
 
             vocabulary.emplace_back(word);
             vocab_size += 1;
@@ -98,11 +94,12 @@ namespace glove {
 
             if (observed_size == 0) {
                 // actualize size of matrix
-                observed_size = i;
+                observed_size = embedding.size();
                 mat.resize(mshadow::Shape2(capacity, observed_size));
             }
-            ASSERT2(i == observed_size,
-                utils::MS() << "Vectors in Glove file are of different sizes. Expected " << observed_size << " but found " << i
+            ASSERT2(embedding.size() == observed_size,
+                utils::MS() << "Vectors in Glove file are of different sizes. Expected "
+                            << observed_size << " but found " << embedding.size()
             );
             // got all the vocab needed.
             if (vocab_size == threshold) {
@@ -112,8 +109,8 @@ namespace glove {
         (*vocab) = Vocab(vocabulary);
         if (observed_size > 0) {
             // // now final update is made to matrix
-           underlying_mat->resize(vocab_size + 1, observed_size);
-           mat[vocab_size].clear();
+            underlying_mat->resize(vocab_size + 1, observed_size);
+            mat[vocab_size].clear();
         } else {
             underlying_mat->forget_w();
             underlying_mat->forget_dw();

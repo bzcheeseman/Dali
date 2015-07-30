@@ -109,6 +109,7 @@ class Mat {
         void grad();
 
         void clear_grad();
+        void clear();
 
         const storage_t& w() const;
         storage_t& w();

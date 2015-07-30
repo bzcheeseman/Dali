@@ -238,6 +238,12 @@ void Mat<R>::clear_grad() {
 }
 
 template<typename R>
+void Mat<R>::clear() {
+    w().clear();
+    dw().clear();
+}
+
+template<typename R>
 void Mat<R>::npy_save (string fname, string mode) {
     auto dimensions = dims();
     cnpy::npy_save(

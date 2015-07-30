@@ -63,7 +63,7 @@ int main( int argc, char* argv[]) {
     // Defines a mapping from memory to result bit. It computes a mapping Y=W*X+b
     Layer<R>  classifier(MEMORY_SIZE, OUTPUT_SIZE);
     // Defines initial state of a memory (HINT: it's also a parameter)
-    Mat<R>    rnn_initial(MEMORY_SIZE, 1);
+    Mat<R>    rnn_initial(1, MEMORY_SIZE);
 
     // For convenience we store all the parameters that we are going to update during training
     // in a vector params. Rnn and classifier are Layers and already provide a piece
@@ -114,7 +114,7 @@ int main( int argc, char* argv[]) {
             for (int i=0; i< NUM_BITS; ++i) {
                 // soon we will support constant and need for converting this
                 // to matrix class will disappear.
-                Mat<R> input_i(INPUT_SIZE, 1);
+                Mat<R> input_i(1, INPUT_SIZE);
                 input_i.w(0) = a_bits[i];
                 input_i.w(1) = b_bits[i];
 

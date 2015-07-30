@@ -281,7 +281,7 @@ TEST_F(LayerTests, multi_input_lstm_test) {
     int num_examples = 3;
 
     EXPERIMENT_REPEAT {
-        auto input = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
+        auto input = Mat<R>(num_examples, input_size, weights<R>::uniform(20.0));
         vector<LSTM<R>::activation_t> states;
         for (int cidx = 0 ; cidx < num_children; ++cidx) {
             states.emplace_back(
@@ -306,7 +306,7 @@ TEST_F(LayerTests, multi_input_lstm_test) {
                 auto state = mylayer.activate(input, states);
                 return state.hidden * 100.0;
         };
-        ASSERT_TRUE(gradient_ratio_same(functor, params, 0.05, 0.01));
+        ASSERT_TRUE(gradient_ratio_same(functor, params, 0.05, 0.0001));
     }
     utils::random::reseed();
 }

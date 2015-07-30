@@ -727,9 +727,9 @@ TEST_F(MatOpsTests, matrix_mul_with_bias) {
     int hidden_size = 10;
     int input_size = 5;
     EXPERIMENT_REPEAT {
-        auto W = Mat<R>(hidden_size, input_size, weights<R>::uniform(2.0));
-        auto X = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
-        auto bias = Mat<R>(hidden_size, 1, weights<R>::uniform(2.0));
+        auto X = Mat<R>(num_examples, input_size,  weights<R>::uniform(20.0));
+        auto W = Mat<R>(input_size, hidden_size,  weights<R>::uniform(2.0));
+        auto bias = Mat<R>(1, hidden_size, weights<R>::uniform(2.0));
         ASSERT_TRUE(gradient_same(functor, {X, W, bias}, 1e-4));
     }
 }

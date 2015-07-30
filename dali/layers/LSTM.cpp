@@ -77,7 +77,7 @@ LSTM<R>::LSTM (vector<int> _input_sizes, int _hidden_size, int _num_children, bo
 
     if (memory_feeds_gates) {
 
-        Wco = Mat<R>(hidden_size, 1, weights<R>::uniform(2. / sqrt(hidden_size)));
+        Wco = Mat<R>(1, hidden_size, weights<R>::uniform(2. / sqrt(hidden_size)));
         for (int cidx=0; cidx < num_children; ++cidx) {
             Wcells_to_forgets.emplace_back(1, hidden_size, weights<R>::uniform(2. / sqrt(hidden_size)));
             Wcells_to_inputs.emplace_back(1, hidden_size,  weights<R>::uniform(2. / sqrt(hidden_size)));
@@ -161,7 +161,6 @@ template<typename R>
 typename LSTM<R>::activation_t LSTM<R>::activate(
         const vector<Mat<R>>& inputs,
         const vector<activation_t>& states) const {
-
     Mat<R> input_gate, output_gate;
     vector<Mat<R>> forget_gates;
 
@@ -208,6 +207,7 @@ typename LSTM<R>::activation_t LSTM<R>::activate(
             forget_gates.emplace_back(forget_layers[cidx].activate(gate_input).sigmoid());
         }
     }
+
     // write operation on cells
     auto cell_write  = cell_layer.activate(gate_input).tanh();
 
@@ -216,6 +216,7 @@ typename LSTM<R>::activation_t LSTM<R>::activate(
     for (int cidx = 0; cidx < num_children; ++cidx) {
         memory_contributions.emplace_back(forget_gates[cidx] * states[cidx].memory);
     }
+
     auto retain_cell = MatOps<R>::add(memory_contributions);
     auto write_cell  = input_gate  * cell_write; // what do we write to cell
     auto cell_d      = retain_cell + write_cell; // new cell contents

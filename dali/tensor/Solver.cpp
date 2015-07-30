@@ -33,6 +33,8 @@ namespace Solver {
 
     template<typename R>
     void AbstractSolver<R>::reset_caches(vector<Mat<R>>& parameters) {}
+    template<typename R>
+    void AbstractSolver<R>::create_gradient_caches(vector<Mat<R>>& parameters) {}
 
     /* SGD */
     template<typename R>

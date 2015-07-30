@@ -39,6 +39,7 @@ namespace Solver {
             AbstractSolver(R clipval, R smooth_eps, R regc, Method method);
             virtual void step( std::vector<Mat<R>>& ) = 0;
             virtual void reset_caches( std::vector<Mat<R>>&);
+            virtual void create_gradient_caches(std::vector<Mat<R>>&);
     };
 
     template<typename R> class SGD : public AbstractSolver<R> {

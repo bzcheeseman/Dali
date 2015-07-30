@@ -71,33 +71,29 @@ namespace glove {
         auto& mat         = underlying_mat->w();
         int vocab_size = 0;
         vector<string> vocabulary;
-        std::string item;
+        std::string word;
+        vector<T> embedding;
         // // use mat for assigning elements
         while (std::getline(fp, line)) {
+            std::tie(word, embedding) = convert_line_to_embedding(line);
+
             bool found_name = false;
             int i = 0; // count how many numbers are in this row
             std::stringstream tokenizer(line);
-            while (std::getline(tokenizer, item, ' ')) {
-                if (!found_name) {
-                    vocabulary.emplace_back(item);
-                    vocab_size += 1;
-                    if (vocab_size > capacity) {
-                        // increase matrix by 10%
-                        mat.resize(mshadow::Shape2(std::max((int)(capacity * 1.1), capacity + 1), observed_size));
-                        capacity = std::max((int)(capacity * 1.1), capacity + 1);
-                    }
-                    found_name = true;
-                } else {
-                    if (!item.empty()) {
-                        if (observed_size == 0 && i+1 > mat.shape[1]) {
-                            mat.resize(mshadow::Shape2(capacity, std::max(100, (int) (mat.shape[1] * 1.5))));
-                            mat(vocab_size-1, i) = from_string<T>(item);
-                        } else {
-                            mat(vocab_size-1, i) = from_string<T>(item);
-                        }
-                        i += 1;
-                    }
-                }
+
+            vocabulary.emplace_back(word);
+            vocab_size += 1;
+            if (vocab_size > capacity) {
+                // increase matrix by 10%
+                mat.resize(mshadow::Shape2(std::max((int)(capacity * 1.1), capacity + 1), observed_size));
+                capacity = std::max((int)(capacity * 1.1), capacity + 1);
+            }
+
+            if (observed_size == 0 && embedding.size() > mat.shape[1]) {
+                mat.resize(mshadow::Shape2(capacity, embedding.size()));
+            }
+            for (int col_idx = 0 ; col_idx < embedding.size(); ++col_idx) {
+                mat(vocab_size-1, col_idx) = embedding[col_idx];
             }
 
             if (observed_size == 0) {

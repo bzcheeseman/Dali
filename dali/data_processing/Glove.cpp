@@ -1,5 +1,6 @@
 #include "dali/data_processing/Glove.h"
 #include "dali/tensor/__MatMacros__.h"
+#include <cstdlib>
 
 using std::string;
 using utils::Vocab;
@@ -8,6 +9,51 @@ using std::vector;
 using utils::from_string;
 
 namespace glove {
+    template<typename T>
+    void collect_numericals_from_line(const std::string& line, int* offset_ptr, vector<T>* res) {
+        int& offset = *offset_ptr;
+        while (offset < line.size()) {
+            res->push_back(atof(line.c_str() + offset));
+            offset++;
+            while (offset < line.size() && *(line.begin() + offset) != ' ') {
+                offset++;
+            }
+        }
+    }
+
+    std::string collect_name_from_line(const std::string& line, int* offset_ptr) {
+        int& offset = *offset_ptr;
+        for (const char& c : line) {
+            offset++;
+            if (c == ' ')
+                break;
+        }
+        return std::string(line.begin(), line.begin() + (offset > 0 ? offset - 1 : 0));
+    }
+
+    template<typename T>
+    std::tuple<std::string, std::vector<T>> convert_line_to_embedding(const std::string& line) {    // int offset = 0;
+        int offset = 0;
+        auto word = collect_name_from_line(line, &offset);
+        vector<T> embedding;
+        collect_numericals_from_line(line, &offset, &embedding);
+        return make_tuple(word, embedding);
+    }
+
+    template<typename T>
+    std::tuple<std::string, std::vector<T>> convert_line_to_embedding_if(const std::string& line, std::function<bool(const std::string&)> checker) {
+        int offset = 0;
+        auto word = collect_name_from_line(line, &offset);
+        vector<T> embedding;
+        if (checker(word)) {
+            collect_numericals_from_line(line, &offset, &embedding);
+        }
+        return make_tuple(word, embedding);
+    }
+
+
+
+
     template<typename T>
     void load(string fname, Mat<T>* underlying_mat, Vocab* vocab, int threshold) {
         ASSERT2(utils::file_exists(fname), "Cannot open file with glove vectors.");
@@ -96,22 +142,19 @@ namespace glove {
         int embedding_size = 0;
         int words_read_so_far = 0;
         int words_matched_so_far = 0;
+        vector<T> embedding;
+        std::string word;
         try {
             while(true) {
                 string line = sp.next_line();
-                vector<string> tokens = utils::split(line, ' ', false);
-                utils::assert2(tokens.size() > 0, "Glove file is damaged");
-                const string& word = tokens[0];
-                if (vocab.word2index.find(word) != vocab.word2index.end()) {
+                std::tie(word, embedding) = convert_line_to_embedding_if<T>(line, [&vocab](const string& word) {
+                    return vocab.word2index.find(word) != vocab.word2index.end();
+                });
+                if (embedding.size() > 0) {
                     int word_index = vocab.word2index.at(word);
-                    vector<T> embedding;
-                    // parse embeddings
-                    for (int tidx = 1; tidx < tokens.size(); ++tidx)
-                        embedding.push_back(from_string<T>(tokens[tidx]));
                     // ensure matrix is the right size
                     if (embedding_size == 0) {
                         embedding_size = embedding.size();
-
                         if (target->dims(0) != vocab.word2index.size() ||
                                 target->dims(1) !=  embedding_size) {
                             *target = Mat<T>(vocab.size(), embedding_size,

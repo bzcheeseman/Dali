@@ -17,6 +17,18 @@ TEST(Glove, load) {
     ASSERT_EQ(std::get<1>(embedding).size(), 21);
     ASSERT_EQ(std::get<0>(embedding).dims(0), 21);
     ASSERT_EQ(std::get<0>(embedding).dims(1), 300);
+
+    Mat<double> relevant_mat;
+    glove::load_relevant_vectors(STR(DALI_DATA_DIR) "/glove/test_data.txt",
+        &relevant_mat, std::get<1>(embedding), -1);
+
+    ASSERT_EQ(relevant_mat.dims(1), std::get<0>(embedding).dims(1));
+    ASSERT_EQ(relevant_mat.dims(0), std::get<0>(embedding).dims(0));
+
+    relevant_mat.print();
+    std::get<0>(embedding).print();
+
+    ASSERT_TRUE(MatOps<double>::equals(relevant_mat,  std::get<0>(embedding)));
 }
 
 // exposing internal functions from arithmetic for testing.

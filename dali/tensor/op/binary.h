@@ -14,7 +14,8 @@ namespace matops {
     template<typename R>
     struct Binary : matops::Elementwise<R> {
         static Mat<R> add(Mat<R>, Mat<R>);
-        static Mat<R> add_broadcast(Mat<R>, Mat<R>);
+        static Mat<R> add_broadcast_rowwise(Mat<R>, Mat<R>);
+        static Mat<R> add_broadcast_colwise(Mat<R>, Mat<R>);
         static Mat<R> sub(Mat<R>, Mat<R>);
         static Mat<R> sub_broadcast(Mat<R>, Mat<R>);
         static Mat<R> sub_broadcast_reversed(Mat<R>, Mat<R>);

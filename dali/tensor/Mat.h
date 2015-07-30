@@ -168,7 +168,8 @@ class Mat {
         Mat<R> eltmul(R) const;
         Mat<R> eltmul_broadcast_rowwise(Mat<R>) const;
         Mat<R> eltmul_rowwise(Mat<R>) const;
-        Mat<R> add_broadcast(Mat<R>) const;
+        Mat<R> add_broadcast_rowwise(Mat<R>) const;
+        Mat<R> add_broadcast_colwise(Mat<R>) const;
         Mat<R> add(Mat<R>) const;
         Mat<R> sub(Mat<R>) const;
         Mat<R> sub_broadcast(Mat<R>) const;

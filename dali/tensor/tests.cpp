@@ -397,10 +397,22 @@ TEST_F(MatrixTests, elt_inv) {
     }
 }
 
-
-TEST_F(MatrixTests, addition_broadcast) {
+TEST_F(MatrixTests, addition_broadcast_rowwise) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] + Xs[1];
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(20, 10, weights<R>::uniform(2.0));
+        auto B = Mat<R>(1, 10, weights<R>::uniform(0.5));
+        ASSERT_TRUE(gradient_same(functor, {A, B}));
+    }
+}
+
+
+
+TEST_F(MatrixTests, addition_broadcast_colwise) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return MatOps<R>::add_broadcast_colwise(Xs[0], Xs[1]);
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
@@ -579,10 +591,10 @@ TEST_F(MatrixTests, matrix_dot_plus_bias) {
     int hidden_size = 10;
     int input_size = 5;
     EXPERIMENT_REPEAT {
-        auto X = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
-        auto W = Mat<R>(hidden_size, input_size, weights<R>::uniform(2.0));
-        auto bias = Mat<R>(hidden_size, 1, weights<R>::uniform(2.0));
-        ASSERT_TRUE(gradient_same(functor, {X, W, bias}, 1e-4));
+        auto X = Mat<R>(num_examples, input_size,   weights<R>::uniform(20.0));
+        auto W = Mat<R>(input_size,   hidden_size,  weights<R>::uniform(2.0));
+        auto bias = Mat<R>(1, hidden_size, weights<R>::uniform(2.0));
+        ASSERT_TRUE(gradient_same(functor, {W, X, bias}, 1e-4));
     }
 }
 
@@ -608,9 +620,20 @@ TEST_F(MatrixTests, matrix_divide_broadcast) {
     }
 }
 
-TEST_F(MatrixTests, matrix_eltmul_broadcast) {
+TEST_F(MatrixTests, matrix_eltmul_broadcast_rowwise_default) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] * Xs[1];
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(20, 10, weights<R>::uniform(0.1, 20.0));
+        auto B = Mat<R>(1,  10,  weights<R>::uniform(0.5, 4.0));
+        ASSERT_TRUE(gradient_same(functor, {A, B}, 5e-3, 1e-3));
+    }
+}
+
+TEST_F(MatrixTests, matrix_eltmul_broadcast_colwise) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return MatOps<R>::eltmul_broadcast_colwise(Xs[0], Xs[1]);
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(0.1, 20.0));

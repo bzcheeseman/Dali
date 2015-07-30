@@ -127,13 +127,13 @@ namespace matops {
     Mat<R> Binary<R>::add(
             Mat<R> matrix1,
             Mat<R> matrix2) {
-        if (matrix1.dims(1) != matrix2.dims(1) && (matrix1.dims(1) == 1 || matrix2.dims(1) == 1)) {
-            if (matrix1.dims(1) == 1) {
+        if (matrix1.dims(0) != matrix2.dims(0) && (matrix1.dims(0) == 1 || matrix2.dims(0) == 1)) {
+            if (matrix1.dims(0) == 1) {
                 // consider matrix1 to be a vector
-                return add_broadcast(matrix2, matrix1);
+                return add_broadcast_rowwise(matrix2, matrix1);
             }
             // consider matrix2 to be a vector
-            return add_broadcast(matrix1, matrix2);
+            return add_broadcast_rowwise(matrix1, matrix2);
         }
         ASSERT2(matrix1.dims() == matrix2.dims(), "Matrices cannot be added, they do not have the same dimensions.");
 
@@ -176,13 +176,34 @@ namespace matops {
         return out;
     }
 
+    template<typename R>
+    Mat<R> Binary<R>::add_broadcast_rowwise(Mat<R> matrix1, Mat<R> matrix2) {
+        // broadcast matrix 2:
+        ASSERT2(matrix2.dims(0) == 1, "Second argument to add_broadcast must be a row vector (first dimension=1)");
+        ASSERT2(matrix1.dims(1) == matrix2.dims(1),
+                MS() << "vector-like argument to add_broadcast_rowwise must have length (" << matrix2.dims(1)
+                     << ") equal to outer dimension of first argument (" << matrix1.dims(1) << ").");
+        auto out = Mat<R>::empty_like(matrix1);
+        MAT(out) = (
+            MAT(matrix1).wrapper() +
+            MAT(matrix2).ravel().wrapper().template broadcast<1>(
+                MAT(matrix1).shape
+            )
+        );
+        if (graph::backprop_enabled())
+            graph::emplace_back([matrix1, matrix2, out]() mutable {
+                SAFE_GRAD(matrix1) += GRAD(out).wrapper();
+                SAFE_GRAD(matrix2).ravel() += sum_rows(GRAD(out).wrapper());
+            });
+        return out;
+    }
 
     template<typename R>
-    Mat<R> Binary<R>::add_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
+    Mat<R> Binary<R>::add_broadcast_colwise(Mat<R> matrix1, Mat<R> matrix2) {
         // broadcast matrix 2:
-        ASSERT2(matrix2.dims(1) == 1, "Second argument to add_broadcast must be a vector (second dimension=1)");
+        ASSERT2(matrix2.dims(1) == 1, "Second argument to add_broadcast must be a col vector (second dimension=1)");
         ASSERT2(matrix1.dims(0) == matrix2.dims(0),
-                MS() << "vector-like argument to add_broadcast must have outer dimension (" << matrix2.dims(0)
+                MS() << "vector-like argument to add_broadcast_colwise must have outer dimension (" << matrix2.dims(0)
                      << ") equal to inner dimension of first argument (" << matrix1.dims(0) << ").");
         auto out = Mat<R>::empty_like(matrix1);
         MAT(out) = (

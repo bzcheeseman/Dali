@@ -239,10 +239,9 @@ template class MultiLayerPerceptron<double>;
 
 template<typename R>
 void RNN<R>::create_variables() {
-    Wx = Mat<R>(output_size, input_size,  weights<R>::uniform(2.0 / sqrt(input_size)));
-
-    Wh = Mat<R>(output_size, hidden_size, weights<R>::uniform(2.0 / sqrt(hidden_size)));
-    b  = Mat<R>(output_size, 1, weights<R>::uniform(2.0 / sqrt(hidden_size)));
+    Wx = Mat<R>(input_size,  output_size,  weights<R>::uniform(2.0 / sqrt(input_size)));
+    Wh = Mat<R>(hidden_size, output_size,  weights<R>::uniform(2.0 / sqrt(hidden_size)));
+    b  = Mat<R>(1, output_size, weights<R>::uniform(2.0 / sqrt(hidden_size)));
 }
 
 template<typename R>
@@ -307,9 +306,9 @@ SecondOrderCombinator<R>::SecondOrderCombinator() {
 template<typename R>
 SecondOrderCombinator<R>::SecondOrderCombinator(int input1_size, int input2_size, int output_size) :
         input1_size(input1_size), input2_size(input2_size), output_size(output_size) {
-    W1 = Mat<R>(output_size, input1_size, weights<R>::uniform(2.0/sqrt(input1_size)));
-    W2 = Mat<R>(output_size, input2_size, weights<R>::uniform(2.0/sqrt(input2_size)));
-    b =  Mat<R>(output_size, 1,           weights<R>::uniform(2.0/sqrt(input1_size)));
+    W1 = Mat<R>(input1_size, output_size,  weights<R>::uniform(2.0/sqrt(input1_size)));
+    W2 = Mat<R>(input2_size, output_size,  weights<R>::uniform(2.0/sqrt(input2_size)));
+    b =  Mat<R>(1, output_size,           weights<R>::uniform(2.0/sqrt(input1_size)));
 }
 template<typename R>
 SecondOrderCombinator<R>::SecondOrderCombinator(const SecondOrderCombinator& m,

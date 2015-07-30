@@ -144,15 +144,7 @@ namespace babi {
 
         words.push_back(utils::end_symbol);
 
-        for (auto& word : words) {
-            auto found = vocab->word2index.find(word);
-            if (found != vocab->word2index.end()) {
-                continue;
-            } else {
-                vocab->word2index[word] = vocab->word2index.size();
-                vocab->index2word.emplace_back(word);
-            }
-        }
+        vocab->add(words);
 
         vocab->add_unknown_word();
 

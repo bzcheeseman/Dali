@@ -92,6 +92,10 @@ namespace utils {
                 private:
                     void construct_word2index();
                 public:
+
+                    void add(const std::vector<std::string>& words);
+                    void add(const std::string& word);
+
                     void add_unknown_word();
                     typedef uint ind_t;
                     ind_t unknown_word;

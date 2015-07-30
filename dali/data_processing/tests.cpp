@@ -381,7 +381,7 @@ TEST(babi, encode) {
         auto& encoded_dataset = encoded_datasets[i];
         ASSERT_EQ(dataset.facts.size(), encoded_dataset.facts.size());
         for (int fidx = 0; fidx < dataset.facts.size(); ++fidx) {
-            auto decoded_fact = vocab.decode(&encoded_dataset.facts[fidx]);
+            auto decoded_fact = vocab.decode(&encoded_dataset.facts[fidx], false);
             EXPECT_TRUE(VECTORS_EQUAL(decoded_fact, dataset.facts[fidx]));
         };
 

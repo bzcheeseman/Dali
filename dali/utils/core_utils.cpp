@@ -760,6 +760,22 @@ namespace utils {
         return result;
     }
 
+    void Vocab::add(const std::vector<std::string>& words) {
+        for (auto& word : words) {
+            add(word);
+        }
+    }
+
+    void Vocab::add(const std::string& word) {
+        auto found = word2index.find(word) != word2index.end();
+        if (!found) {
+            uint next_index = word2index.size();
+            word2index[word] = next_index;
+            index2word.emplace_back(word);
+        }
+    }
+
+
     vector<string> Vocab::decode(Indexing::Index indices, bool remove_end_symbol) const {
         vector<string> result;
         result.reserve(indices.size());

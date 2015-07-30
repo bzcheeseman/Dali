@@ -9,6 +9,8 @@ namespace graph {
 
     void backward();
 
+    void clear();
+
     bool backprop_enabled();
 
     class Tape {

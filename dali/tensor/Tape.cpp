@@ -13,6 +13,10 @@ namespace graph {
         tape.backward();
     }
 
+    void clear() {
+        tape.backprop.clear();
+    }
+
     bool backprop_enabled() {
         return _backprop_enabled;
     }

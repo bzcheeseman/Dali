@@ -353,6 +353,11 @@ Mat<R> Mat<R>::T() const {
 }
 
 template<typename R>
+Mat<R> Mat<R>::slice(int rowstart, int rowwend) const {
+    return MatOps<R>::slice(*this, rowstart, rowwend);
+}
+
+template<typename R>
 Mat<R> Mat<R>::col(int col) {
     return MatOps<R>::col_pluck(*this, col);
 }

@@ -192,6 +192,8 @@ class Mat {
         Mat<R> pow(ScalarType) const;
         Mat<R> sqrt() const;
         Mat<R> elt_inv() const;
+        Mat<R> slice(int rowstart, int rowend) const;
+
         int argmax() const;
         int argmin() const;
 

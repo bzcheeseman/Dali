@@ -221,6 +221,26 @@ namespace matops {
         return out;
     }
 
+    template<typename R>
+    Mat<R> Reshaping<R>::slice(
+            Mat<R> matrix,
+            int rowstart, int rowwend
+            ) {
+        if (rowstart == rowwend) {
+            return Mat<R>(0, matrix.dims(1));
+        }
+        ASSERT2(rowstart < rowwend,
+            utils::MS()
+            << "slice end must be greater than or equal to slice start (got "
+            << rowstart << " > " <<  rowwend << ")");
+        Mat<R> out(
+            rowwend - rowstart,
+            matrix.dims(1),
+            weights<R>::empty());
+        MAT(out) = MAT(matrix).Slice(rowstart, rowwend);
+        GRAD(out) = GRAD(matrix).Slice(rowstart, rowwend);
+        return out;
+    }
 
     template<typename R>
     Mat<R> Reshaping<R>::transpose(Mat<R> matrix) {

@@ -256,6 +256,23 @@ TEST_F(MatrixTests, view_transpose) {
     }
 }
 
+TEST_F(MatrixTests, slice) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return Xs[0].slice(2, 5);
+    };
+    EXPERIMENT_REPEAT {
+        Mat<R> block(10, 2, weights<R>::uniform(2.0));
+        ASSERT_TRUE(gradient_same(functor, {block}));
+    }
+
+    Mat<R> block(10, 2, weights<R>::uniform(2.0));
+    auto subblock = block.slice(2, 5);
+
+    // ensure the slice is a view!
+    ASSERT_EQ(&subblock.w().memory() , &block.w().memory());
+    ASSERT_EQ(&subblock.dw().memory() , &block.dw().memory());
+}
+
 TEST_F(MatrixTests, subtraction) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] - Xs[1];

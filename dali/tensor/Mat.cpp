@@ -309,9 +309,9 @@ bool Mat<R>::is_grad_nan() const {
     template<typename R> \
     Mat<R> Mat<R>::opname(Mat<R> matrix) const {\
         return MatOps<R>::opname(*this, matrix);\
-    }\
+    }
 
-MAT_BINARY_OP( eltmul_broadcast )
+MAT_BINARY_OP( eltmul_broadcast_colwise )
 MAT_BINARY_OP( eltmul )
 MAT_BINARY_OP( eltmul_broadcast_rowwise )
 MAT_BINARY_OP( eltmul_rowwise )

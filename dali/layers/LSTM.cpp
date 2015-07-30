@@ -79,8 +79,8 @@ LSTM<R>::LSTM (vector<int> _input_sizes, int _hidden_size, int _num_children, bo
 
         Wco = Mat<R>(hidden_size, 1, weights<R>::uniform(2. / sqrt(hidden_size)));
         for (int cidx=0; cidx < num_children; ++cidx) {
-            Wcells_to_forgets.emplace_back(hidden_size, 1, weights<R>::uniform(2. / sqrt(hidden_size)));
-            Wcells_to_inputs.emplace_back(hidden_size,  1, weights<R>::uniform(2. / sqrt(hidden_size)));
+            Wcells_to_forgets.emplace_back(1, hidden_size, weights<R>::uniform(2. / sqrt(hidden_size)));
+            Wcells_to_inputs.emplace_back(1, hidden_size,  weights<R>::uniform(2. / sqrt(hidden_size)));
         }
     }
     // Note: Ilya Sutskever recommends initializing with
@@ -166,14 +166,20 @@ typename LSTM<R>::activation_t LSTM<R>::activate(
     vector<Mat<R>> forget_gates;
 
     for (auto& state: states) {
-        assert(state.memory.dims(0) == hidden_size);
-        assert(state.hidden.dims(0) == hidden_size);
+        assert2(state.memory.dims(1) == hidden_size,
+            utils::MS() << "LSTM: State memory should have hidden size "
+                        << hidden_size << " not " << state.memory.dims(1));
+        assert2(state.hidden.dims(1) == hidden_size,
+            utils::MS() << "LSTM: State hidden should have hidden size "
+                        << hidden_size << " not " << state.memory.dims(1));
     }
     assert2(input_sizes.size() == inputs.size(),
-        utils::MS() << "Got " << inputs.size() << " inputs but expected " << input_sizes.size() << " instead."
+        utils::MS() << "LSTM: Got " << inputs.size() << " inputs but expected " << input_sizes.size() << " instead."
     );
     for (int iidx = 0; iidx < input_sizes.size(); ++iidx) {
-        assert(inputs[iidx].dims(0) == input_sizes[iidx]);
+        assert2(inputs[iidx].dims(1) == input_sizes[iidx],
+                utils::MS() << "LSTM: " << iidx << "-th input to LSTM should have size "
+                            << input_sizes[iidx] << " not " << inputs[iidx].dims(1));
     }
     auto gate_input = utils::concatenate({inputs, activation_t::hiddens(states)});
 
@@ -308,14 +314,14 @@ typename std::vector<typename LSTM<R>::activation_t> LSTM<R>::initial_states(
     std::vector<activation_t>  initial_state;
     initial_state.reserve(hidden_sizes.size());
     for (auto& size : hidden_sizes) {
-        initial_state.emplace_back(Mat<R>(size, 1), Mat<R>(size, 1));
+        initial_state.emplace_back(Mat<R>(1, size), Mat<R>(1, size));
     }
     return initial_state;
 }
 
 template<typename R>
 typename LSTM<R>::activation_t LSTM<R>::initial_states() const {
-    return activation_t(Mat<R>(hidden_size, 1), Mat<R>(hidden_size, 1));
+    return activation_t(Mat<R>(1, hidden_size), Mat<R>(1, hidden_size));
 }
 
 template class LSTM<float>;

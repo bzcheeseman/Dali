@@ -12,7 +12,7 @@ using namespace TensorOps;
 
 namespace matops {
     template<typename R>
-    Mat<R> Binary<R>::eltmul_broadcast(
+    Mat<R> Binary<R>::eltmul_broadcast_colwise(
             Mat<R> matrix1,
             Mat<R> matrix2) {
         ASSERT2(matrix1.dims(0) == matrix2.dims(0) && matrix2.dims(1) == 1,
@@ -64,11 +64,11 @@ namespace matops {
             Mat<R> matrix1,
             Mat<R> matrix2) {
 
-        if (matrix1.dims(1) != matrix2.dims(1) && (matrix1.dims(1) == 1 || matrix2.dims(1) == 1)) {
-            if (matrix1.dims(1) == 1) {
-                return eltmul_broadcast(matrix2, matrix1);
+        if (matrix1.dims(0) != matrix2.dims(0) && (matrix1.dims(0) == 1 || matrix2.dims(0) == 1)) {
+            if (matrix1.dims(0) == 1) {
+                return eltmul_broadcast_rowwise(matrix2, matrix1);
             }
-            return eltmul_broadcast(matrix1, matrix2);
+            return eltmul_broadcast_rowwise(matrix1, matrix2);
         }
 
         ASSERT2(matrix1.dims(0) == matrix2.dims(0) && matrix1.dims(1) == matrix2.dims(1),
@@ -82,6 +82,7 @@ namespace matops {
             });
         return out;
     }
+
 
     template<typename R>
     vector<Mat<R>> Binary<R>::eltmul(const vector<Mat<R>>& seq1, const vector<Mat<R>>& seq2) {

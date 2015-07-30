@@ -163,7 +163,7 @@ class Mat {
         // See MatOps for documentation.
         bool is_nan() const;
         bool is_grad_nan() const;
-        Mat<R> eltmul_broadcast(Mat<R>) const;
+        Mat<R> eltmul_broadcast_colwise(Mat<R>) const;
         Mat<R> eltmul(Mat<R>) const;
         Mat<R> eltmul(R) const;
         Mat<R> eltmul_broadcast_rowwise(Mat<R>) const;

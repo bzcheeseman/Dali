@@ -18,7 +18,7 @@ namespace matops {
         static Mat<R> sub(Mat<R>, Mat<R>);
         static Mat<R> sub_broadcast(Mat<R>, Mat<R>);
         static Mat<R> sub_broadcast_reversed(Mat<R>, Mat<R>);
-        static Mat<R> eltmul_broadcast(Mat<R>, Mat<R>);
+        static Mat<R> eltmul_broadcast_colwise(Mat<R>, Mat<R>);
         static Mat<R> eltdivide_broadcast(Mat<R>, Mat<R>);
         static Mat<R> eltdivide_broadcast_reversed(Mat<R>, Mat<R>);
         static Mat<R> eltmul(Mat<R>, Mat<R>);

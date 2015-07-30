@@ -19,7 +19,7 @@ Mat<R> AbstractMultiInputLayer<R>::activate(Mat<R> first_input, const vector<Mat
 
 template<typename R>
 void Layer<R>::create_variables() {
-    W = Mat<R>(hidden_size, input_size, weights<R>::uniform(2.0 / sqrt(input_size)));
+    W = Mat<R>(input_size, hidden_size, weights<R>::uniform(2.0 / sqrt(input_size)));
     this->b = Mat<R>(1, hidden_size, weights<R>::uniform(2.0 / sqrt(input_size)));
 }
 
@@ -61,9 +61,9 @@ void StackedInputLayer<R>::create_variables() {
     matrices.reserve(_input_sizes.size());
     auto U = weights<R>::uniform(2.0 / sqrt(total_input_size));
     for (auto& input_size : _input_sizes) {
-        matrices.emplace_back(hidden_size, input_size, U);
+        matrices.emplace_back(input_size, hidden_size, U);
     }
-    this->b = Mat<R>(hidden_size, 1, U);
+    this->b = Mat<R>(1, hidden_size, U);
 }
 
 template<typename R>
@@ -90,7 +90,7 @@ void StackedInputLayer<R>::input_sizes(vector<int> new_sizes) {
     // construct matrices
     matrices = vector<Mat<R>>();
     for (auto& input_size : new_sizes) {
-        matrices.emplace_back(hidden_size, input_size, U);
+        matrices.emplace_back(input_size, hidden_size, U);
     }
 
     // save new size

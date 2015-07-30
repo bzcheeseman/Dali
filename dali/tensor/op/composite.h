@@ -17,6 +17,11 @@ namespace matops {
         static Mat<R> mul_add_mul_with_bias(std::initializer_list<Mat<R>> weights,
                                             std::initializer_list<Mat<R>> inputs,
                                             Mat<R> bias);
+
+        static Mat<R> mul_add_mul_with_bias_colwise(const std::vector<Mat<R>>& weight_mats,
+                                                    const std::vector<Mat<R>>& inputs,
+                                                    Mat<R> bias);
+
         static Mat<R> mul_add_mul_with_bias(const std::vector<Mat<R>>& weights,
                                             const std::vector<Mat<R>>& inputs,
                                             Mat<R> bias);

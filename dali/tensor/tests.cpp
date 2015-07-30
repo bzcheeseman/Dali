@@ -720,14 +720,62 @@ TEST_F(MatOpsTests, matrix_mul_add_mul_with_bias) {
     int input_size = 5;
     int other_input_size = 7;
     EXPERIMENT_REPEAT {
-        auto W       = Mat<R>(hidden_size, input_size,        weights<R>::uniform(2.0));
-        auto X       = Mat<R>(input_size, num_examples,       weights<R>::uniform(20.0));
+        auto X       = Mat<R>(num_examples, input_size,       weights<R>::uniform(20.0));
+        auto W       = Mat<R>(input_size,   hidden_size,      weights<R>::uniform(2.0));
 
-        auto W_other = Mat<R>(hidden_size, other_input_size,  weights<R>::uniform(2.0));
-        auto X_other = Mat<R>(other_input_size, num_examples, weights<R>::uniform(20.0));
+        auto X_other = Mat<R>(num_examples, other_input_size, weights<R>::uniform(20.0));
+        auto W_other = Mat<R>(other_input_size, hidden_size,  weights<R>::uniform(2.0));
 
         auto bias    = Mat<R>(hidden_size, 1,                 weights<R>::uniform(2.0));
         ASSERT_TRUE(gradient_same(functor, {W, X, W_other, X_other, bias}, 0.0003));
+    }
+}
+
+TEST_F(MatOpsTests, matrix_mul_add_mul_with_bias_fancy_broadcast) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return MatOps<R>::mul_add_mul_with_bias({Xs[0], Xs[2], Xs[4]}, {Xs[1], Xs[3], Xs[5]}, Xs[6]);
+    };
+    int num_examples = 20;
+    int hidden_size = 10;
+    int input_size = 5;
+    int other_input_size = 7;
+    EXPERIMENT_REPEAT {
+        auto X       = Mat<R>(num_examples, input_size,       weights<R>::uniform(20.0));
+        auto W       = Mat<R>(input_size,   hidden_size,      weights<R>::uniform(2.0));
+
+        auto Xfancy   = Mat<R>(1,            input_size,       weights<R>::uniform(20.0));
+        auto Wfancy   = Mat<R>(input_size,   hidden_size,      weights<R>::uniform(2.0));
+
+
+        auto X_other = Mat<R>(num_examples, other_input_size, weights<R>::uniform(20.0));
+        auto W_other = Mat<R>(other_input_size, hidden_size,  weights<R>::uniform(2.0));
+
+        auto bias    = Mat<R>(1,  hidden_size,                weights<R>::uniform(2.0));
+        ASSERT_TRUE(gradient_same(functor, {W, X, Wfancy, Xfancy, W_other, X_other, bias}, 0.0003));
+    }
+}
+
+TEST_F(MatOpsTests, matrix_mul_add_mul_with_bias_colwise) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return MatOps<R>::mul_add_mul_with_bias_colwise({Xs[0], Xs[2], Xs[4]}, {Xs[1], Xs[3], Xs[5]}, Xs[6]);
+    };
+    int num_examples = 20;
+    int hidden_size = 10;
+    int input_size = 5;
+    int other_input_size = 7;
+    EXPERIMENT_REPEAT {
+        auto W       = Mat<R>(hidden_size,  input_size,         weights<R>::uniform(2.0));
+        auto X       = Mat<R>(input_size,   num_examples,       weights<R>::uniform(20.0));
+
+        auto Wfancy   = Mat<R>(hidden_size, input_size,         weights<R>::uniform(2.0));
+        auto Xfancy   = Mat<R>(input_size,  1,                  weights<R>::uniform(20.0));
+
+
+        auto X_other = Mat<R>(other_input_size, num_examples,      weights<R>::uniform(20.0));
+        auto W_other = Mat<R>(hidden_size,      other_input_size,  weights<R>::uniform(2.0));
+
+        auto bias    = Mat<R>(1,      hidden_size,                 weights<R>::uniform(2.0));
+        ASSERT_TRUE(gradient_same(functor, {W, X, Wfancy, Xfancy, W_other, X_other, bias}, 0.0003));
     }
 }
 

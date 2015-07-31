@@ -269,6 +269,29 @@ TEST(babi, parse) {
     };
 };
 
+
+TEST(babi, parse_properties) {
+    auto test_file = utils::dir_join({ STR(DALI_DATA_DIR),
+                                      "tests",
+                                      "babi2.sample" });
+
+    auto datasets = babi::parse_file(test_file);
+    ASSERT_EQ(datasets.size(), 1);
+
+    auto& story = datasets[0];
+
+    ASSERT_EQ(story.size(), 3);
+
+    ASSERT_EQ(story.get(0).properties.size(), 2);
+    ASSERT_EQ(story.get(0).properties.at("rating"), "10");
+    ASSERT_EQ(story.get(0).properties.at("source"), "3");
+
+    ASSERT_EQ(story.get(1).properties.size(), 0);
+
+    ASSERT_EQ(story.get(2).properties.size(), 1);
+    ASSERT_EQ(story.get(2).properties.at("awesomeness"), "600");
+};
+
 TEST(babi, extract_qa) {
     auto test_file = utils::dir_join({ STR(DALI_DATA_DIR),
                                       "tests",
@@ -399,6 +422,5 @@ TEST(babi, encode) {
             EXPECT_TRUE(VECTORS_EQUAL(dataset.answers[aidx], decoded_answer));
         };
     }
-
 }
 

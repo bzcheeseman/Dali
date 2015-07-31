@@ -12,7 +12,7 @@ namespace babi {
 
     template<typename word_t>
     void Story<word_t>::print() const {
-        for (int i = 0; i <facts.size(); ++i) {
+        for (int i = 0; i < facts.size(); ++i) {
             std::cout << i << " ";
             for (auto& word: facts[i]) {
                 std::cout << word << " ";
@@ -31,10 +31,12 @@ namespace babi {
                 for (auto sf : supporting_facts[qidx]) {
                     std::cout << sf << " ";
                 }
+                for (auto& kv: properties[qidx]) {
+                    std::cout << kv.first << ":" << kv.second << " ";
+                }
             }
             std::cout << std::endl;
         }
-
     }
 
     template<typename word_t>
@@ -49,9 +51,11 @@ namespace babi {
                 }
             }
             if (qidx != -1) {
-
                 std::cout << "   ANSWER:     " << answers[qidx]          << std::endl;
                 std::cout << "   SUPPORTING: " << supporting_facts[qidx] << std::endl;
+                for (auto& kv: properties[qidx]) {
+                    std::cout << "   properties[" << kv.first << "] = " << kv.second << std::endl;
+                }
             }
         }
     }
@@ -78,6 +82,7 @@ namespace babi {
 
         result.question = facts[question_fidx[target_question_idx]];
         result.answer = answers[target_question_idx];
+        result.properties = properties[target_question_idx];
 
         return result;
     }
@@ -92,6 +97,7 @@ namespace babi {
         Story<string> output;
         output.question_fidx = story.question_fidx;
         output.supporting_facts = story.supporting_facts;
+        output.properties = story.properties;
         for (auto& fact: story.facts) {
             output.facts.emplace_back(vocab.decode(&fact, strip_eos));
         }
@@ -106,6 +112,7 @@ namespace babi {
         Story<uint> output;
         output.question_fidx = story.question_fidx;
         output.supporting_facts = story.supporting_facts;
+        output.properties = story.properties;
         for (auto& fact: story.facts) {
             output.facts.emplace_back(vocab.encode(fact, add_eos));
         }
@@ -235,7 +242,7 @@ namespace babi {
                 continue;
             }
 
-            utils::assert2(chunks.size() == 1 || chunks.size() == 3,
+            utils::assert2(chunks.size() == 1 || chunks.size() >= 3,
                 utils::MS() << "Error parsing QA file: " << line_buffer);
 
             int line_number;
@@ -252,7 +259,7 @@ namespace babi {
             // store the fact.
             results.back().facts.push_back(fact);
 
-            bool is_question = chunks.size() == 3;
+            bool is_question = chunks.size() >= 3;
 
             // if this is a question store its index.
             if (is_question) {
@@ -268,6 +275,17 @@ namespace babi {
                 auto supporting = parse_supporting(chunks[2]);
 
                 results.back().supporting_facts.push_back(supporting);
+
+                results.back().properties.emplace_back();
+
+                for (int i = 3; i < chunks.size(); ++i) {
+                    auto splitted = utils::split(chunks[i], ':', true);
+                    assert2(splitted.size() == 2, utils::MS()
+                            << "Question properties must have format PROPERTY:VALUE."
+                            << "Invalid property encountered: \"" << chunks << "\".");
+                    results.back().properties.back()[splitted[0]] = splitted[1];
+                }
+
             }
         }
 

@@ -1,0 +1,11 @@
+1 This morning Mary moved to the kitchen .
+2 This afternoon Mary moved to the cinema .
+3 Yesterday Bill went to the bedroom .
+4 Yesterday Mary journeyed to the school .
+5 Where was Mary before the cinema ?	kitchen	2 1	rating:10	source:3
+6 Yesterday Fred went back to the cinema .
+7 Bill journeyed to the office this morning .
+8 Where was Bill before the office ?	bedroom	7 3
+9 Mary went to the school this evening .
+10 This afternoon Bill journeyed to the kitchen .
+11 Where was Bill before the office ?	bedroom	7 3	awesomeness:600

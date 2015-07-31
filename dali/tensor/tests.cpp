@@ -938,9 +938,9 @@ TEST_F(MatOpsTests, dropout) {
     int input_size = 5;
     EXPERIMENT_REPEAT {
         seed = utils::randint(0, 2000);
-        auto A = Mat<R>(input_size, hidden_size, weights<R>::uniform(2.0));
-        auto B = Mat<R>(input_size, hidden_size, weights<R>::uniform(20.0));
-        auto C = Mat<R>(input_size, 1, weights<R>::uniform(20.0));
+        auto A = Mat<R>(hidden_size, input_size, weights<R>::uniform(2.0));
+        auto B = Mat<R>(hidden_size, input_size, weights<R>::uniform(20.0));
+        auto C = Mat<R>(1,           input_size, weights<R>::uniform(20.0));
         ASSERT_TRUE(gradient_same(functor, {A, B, C}, 0.0003));
     }
 }
@@ -960,9 +960,9 @@ TEST_F(MatOpsTests, dropout_normalized) {
     int input_size = 5;
     EXPERIMENT_REPEAT {
         seed = utils::randint(0, 2000);
-        auto A = Mat<R>(input_size, hidden_size, weights<R>::uniform(2.0));
-        auto B = Mat<R>(input_size, hidden_size, weights<R>::uniform(20.0));
-        auto C = Mat<R>(input_size, 1, weights<R>::uniform(20.0));
+        auto A = Mat<R>(hidden_size, input_size, weights<R>::uniform(2.0));
+        auto B = Mat<R>(hidden_size, input_size, weights<R>::uniform(20.0));
+        auto C = Mat<R>(1,           input_size, weights<R>::uniform(20.0));
         ASSERT_TRUE(gradient_same(functor, {A, B, C}, 0.0003));
     }
 }
@@ -982,9 +982,9 @@ TEST_F(MatOpsTests, fast_dropout) {
     int input_size = 5;
     EXPERIMENT_REPEAT {
         seed = utils::randint(0, 2000);
-        auto A = Mat<R>(input_size, hidden_size, weights<R>::uniform(2.0));
-        auto B = Mat<R>(input_size, hidden_size, weights<R>::uniform(20.0));
-        auto C = Mat<R>(input_size, 1, weights<R>::uniform(20.0));
+        auto A = Mat<R>(hidden_size, input_size, weights<R>::uniform(2.0));
+        auto B = Mat<R>(hidden_size, input_size, weights<R>::uniform(20.0));
+        auto C = Mat<R>(1,           input_size, weights<R>::uniform(20.0));
         ASSERT_TRUE(gradient_same(functor, {A, B, C}, 0.0003));
     }
 }

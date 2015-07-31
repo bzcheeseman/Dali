@@ -191,6 +191,63 @@ namespace TensorOps {
         select_from_cols(dest.mutable_cpu_data(), source.cpu_data(), targets.cpu_data());
     }
 
+
+
+
+    /////////////////////// select from cols /////////////////////////////////////////
+
+    #ifdef DALI_USE_CUDA
+
+    template<typename R>
+    void select_from_rows(mshadow::Tensor<gpu, 2, R> dest,
+                          const mshadow::Tensor<gpu, 2, R>& source,
+                          TensorInternal<int,1> targets) {
+        auto t_dest   = to_thrust(dest);
+        auto t_source = to_thrust(source);
+
+        std::vector<int> offsets(targets.number_of_elements());
+        for (int i=0; i < targets.number_of_elements(); ++i) {
+            // accessing index (targets[i], i)
+            offsets[i] = i * source.shape_[1] + targets(i);
+        }
+        thrust::device_vector<uint, cached_allocator<uint> > offsets_gpu(offsets);
+
+        auto iter = thrust::make_permutation_iterator(
+            t_source, offsets_gpu.begin()
+            );
+        thrust::copy(iter, iter + targets.number_of_elements(), t_dest);
+    }
+    #endif
+
+    template<typename R>
+    void select_from_rows(mshadow::Tensor<cpu, 2, R> dest,
+                          const mshadow::Tensor<cpu, 2, R>& source,
+                          const mshadow::Tensor<cpu, 1, int>& targets) {
+
+        R* dest_ptr = dest.dptr_;
+
+        for (int row = 0; row < source.shape_[0]; ++row) {
+            *(dest_ptr + row) = source[row][targets[row]];
+        }
+    }
+
+
+    template<typename R>
+    void select_from_rows(TensorInternal<R,2> dest,
+                          TensorInternal<R,2> source,
+                          TensorInternal<int,1> targets) {
+        #ifdef DALI_USE_CUDA
+        if (source.compute_me_on_gpu()) {
+            select_from_rows(dest.mutable_gpu_data(), source.gpu_data(), targets);
+            return;
+        }
+        #endif
+        select_from_rows(dest.overwrite_cpu_data(), source.cpu_data(), targets.cpu_data());
+    }
+
+
+
+
     /////////////////////// softmax_cross_entropy_colwise_backward ///////////
 
 
@@ -245,6 +302,64 @@ namespace TensorOps {
         }
         #endif
         softmax_cross_entropy_colwise_backward(dest.mutable_cpu_data(), source.cpu_data(), targets.cpu_data());
+    }
+
+    /////////////////////// softmax_cross_entropy_rowwise_backward ///////////
+
+
+    #ifdef DALI_USE_CUDA
+        template<typename R>
+        void softmax_cross_entropy_rowwise_backward(mshadow::Tensor<gpu, 2, R> dest,
+                                                    const mshadow::Tensor<gpu, 2, R>& out_grad,
+                                                    TensorInternal<int, 1> targets) {
+            auto t_dest   = to_thrust(dest);
+            auto t_out_grad = to_thrust(out_grad);
+            std::vector<int> offsets(targets.number_of_elements());
+
+            for (int i=0; i < targets.number_of_elements(); ++i) {
+                // accessing index (targets[i], i)
+                offsets[i] = i * out_grad.shape_[1] + targets(i);
+            }
+            thrust::device_vector<uint, cached_allocator<uint> > offsets_gpu(offsets);
+
+            auto dest_perm = thrust::make_permutation_iterator(t_dest, offsets_gpu.begin());
+
+            using namespace thrust::placeholders;
+
+            // dest[..., i] = dest[..., i] - out_grad[i]
+            thrust::transform(
+                    dest_perm,
+                    dest_perm + targets.number_of_elements(),
+                    t_out_grad,
+                    dest_perm,
+                    _1 - _2);
+        }
+    #endif
+
+    template<typename R>
+    void softmax_cross_entropy_rowwise_backward(mshadow::Tensor<cpu, 2, R> dest,
+                          const mshadow::Tensor<cpu, 2, R>& out_grad,
+                          const mshadow::Tensor<cpu, 1, int>& targets) {
+        R* out_grad_ptr = out_grad.dptr_;
+        for (int target_idx = 0; target_idx < targets.shape_.Size(); ++target_idx) {
+            uint col_idx = targets[target_idx];
+            // for every example (target_idx) corresponding error is the target_idx-th
+            // element of out_grad (1D vector for errors for every example.)
+            dest[target_idx][col_idx] -= *(out_grad_ptr + target_idx);
+        }
+    }
+
+    template<typename R>
+    void softmax_cross_entropy_rowwise_backward(TensorInternal<R,2> dest,
+                          TensorInternal<R,2> out_grad,
+                          TensorInternal<int,1> targets) {
+        #ifdef DALI_USE_CUDA
+        if (out_grad.compute_me_on_gpu()) {
+            softmax_cross_entropy_rowwise_backward(dest.mutable_gpu_data(), out_grad.gpu_data(), targets);
+            return;
+        }
+        #endif
+        softmax_cross_entropy_rowwise_backward(dest.mutable_cpu_data(), out_grad.cpu_data(), targets.cpu_data());
     }
 
 

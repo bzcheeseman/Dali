@@ -187,10 +187,15 @@ namespace matops {
     }
 
 
+
+
+    /////////////////////// SOFTMAX CROSSENTROPY COLWISE //////////////////////////////////
+
+
     template<typename R>
     Mat<R> Cost<R>::softmax_cross_entropy_colwise(Mat<R> matrix, uint answer_idx) {
         Mat<int> target(1,1);
-        target.w(0) = answer_idx;
+        MAT(target) = answer_idx;
         return softmax_cross_entropy_colwise(matrix, target);
     }
 
@@ -225,6 +230,60 @@ namespace matops {
         }
         return softmax_cross_entropy_colwise(matrix, targets_mat);
     }
+
+
+    /////////////////////// SOFTMAX CROSSENTROPY ROWWISE //////////////////////////////////
+
+
+    template<typename R>
+    Mat<R> Cost<R>::softmax_cross_entropy_rowwise(Mat<R> matrix, uint answer_idx) {
+        Mat<int> target(1,1);
+        MAT(target) = answer_idx;
+        return softmax_cross_entropy_rowwise(matrix, target);
+    }
+
+    template<typename R>
+    Mat<R> Cost<R>::softmax_cross_entropy_rowwise(Mat<R> matrix, Mat<int> targets) {
+        ASSERT2(targets.number_of_elements() == matrix.dims(0), "Number of rows must be equal to the number of target in Softmax Cross Entropy");
+        Mat<R> out =  Mat<R>(targets.number_of_elements(), 1, weights<R>::empty());
+
+        Mat<R> probs = softmax_no_grad_rowwise(matrix);
+
+        select_from_rows(MAT(out), MAT(probs), targets.w().ravel());
+
+
+        MAT(out) = (R)-1.0 * F<op::log<R>>(MAT(out).wrapper());
+
+        if (graph::backprop_enabled()) {
+            graph::emplace_back([matrix, probs, out, targets]() mutable {
+
+                if (!matrix.constant) {
+                    GRAD(matrix) += (
+                        MAT(probs).wrapper() *
+                        GRAD(out).ravel().wrapper().template broadcast<0>(MAT(probs).shape)
+                    );
+
+                    softmax_cross_entropy_rowwise_backward(GRAD(matrix), GRAD(out), targets.w().ravel());
+                }
+            });
+        }
+        return out;
+    }
+
+    template<typename R>
+    Mat<R> Cost<R>::softmax_cross_entropy_rowwise(Mat<R> matrix, Indexing::Index targets) {
+        Mat<int> targets_mat(targets.size(), 1);
+        for (int i = 0; i < targets.size(); ++i) {
+            targets_mat.w(i) = targets[i];
+        }
+        return softmax_cross_entropy_rowwise(matrix, targets_mat);
+    }
+
+
+
+
+
+
 
     template<typename R>
     Mat<R> Cost<R>::margin_loss(Mat<R> matrix, uint answer_idx, R margin) {

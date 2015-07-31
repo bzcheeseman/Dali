@@ -1322,7 +1322,7 @@ TEST_F(MatOpsTests, softmax_cross_entropy_colwise_grad) {
     }
 }
 
-TEST_F(MatOpsTests, cross_entropy_multiindex) {
+TEST_F(MatOpsTests, cross_entropy_colwise_multiindex) {
     EXPERIMENT_REPEAT {
         graph::NoBackprop nb;
 
@@ -1345,6 +1345,55 @@ TEST_F(MatOpsTests, cross_entropy_multiindex) {
         }
     }
 }
+
+
+
+TEST_F(MatOpsTests, softmax_cross_entropy_rowwise_grad) {
+    EXPERIMENT_REPEAT {
+        auto input = Mat<R>(2, 3, weights<R>::uniform(-2.0, 2.0));
+
+        vector<uint> targets;
+        for (int i = 0; i < input.dims(0); ++i)
+            targets.push_back(utils::randint(0, input.dims(1) - 1));
+        Indexing::Index indexed_targets(&targets);
+
+
+        auto functor = [indexed_targets](vector<Mat<R>> Xs)-> Mat<R> {
+            return MatOps<R>::softmax_cross_entropy_rowwise(
+                Xs[0],
+                indexed_targets);
+        };
+
+        ASSERT_TRUE(gradient_same(functor, {input}, 1e-2));
+    }
+}
+
+TEST_F(MatOpsTests, cross_entropy_rowwise_multiindex) {
+    EXPERIMENT_REPEAT {
+        graph::NoBackprop nb;
+
+        Mat<R> input (5, 3, weights<R>::uniform(0.01, 0.99));
+        Mat<R> softmaxed = MatOps<R>::softmax_rowwise(input);
+
+        vector<uint> targets;
+        for (int i = 0; i < input.dims(0); ++i)
+            targets.push_back(utils::randint(0, input.dims(1) - 1));
+        Mat<R> actual_res = MatOps<R>::softmax_cross_entropy_rowwise(
+                input, Indexing::Index(&targets));
+        #ifdef DALI_USE_CUDA
+            EXPECT_TRUE(actual_res.w().memory().gpu_fresh);
+        #endif
+
+        for (int i = 0; i < targets.size(); ++i) {
+            // take each column separately
+            auto expected_res = MatOps<R>::cross_entropy(softmaxed[i], targets[i]);
+            ASSERT_NEAR(actual_res.w(i), expected_res.w(0), 1e-4);
+        }
+    }
+}
+
+
+
 
 TEST_F(MatOpsTests, cross_entropy_grad_thought_target) {
     double temperature;
@@ -1693,16 +1742,16 @@ void test_solver_optimization(std::string solvername) {
     {
         graph::NoBackprop nb;
         auto pointsA = Mat<R>(
-            num_dimensions,
             num_points,
+            num_dimensions,
             weights<R>::gaussian(0.0, 2.0)
         );
         auto pointsB = Mat<R>(
-            num_dimensions,
             num_points,
+            num_dimensions,
             weights<R>::gaussian(0.0, 2.0)
         );
-        auto point = Mat<R>(num_dimensions, 1);
+        auto point = Mat<R>(1, num_dimensions);
         for (int i = 0; i < num_dimensions; i++)
             point.w(i) = 2;
         pointsA += point;
@@ -1710,12 +1759,12 @@ void test_solver_optimization(std::string solvername) {
         for (int i = 0; i < num_dimensions; i++)
             point.w(i) = -2;
         pointsB += point;
-        dataset = MatOps<R>::hstack({pointsA, pointsB});
+        dataset = MatOps<R>::vstack({pointsA, pointsB});
     }
 
     int num_classes = 2;
-    auto mat = Mat<R>(num_classes, num_dimensions, weights<R>::uniform(2.0));
-    auto bias = Mat<R>(num_classes, 1, weights<R>::uniform(2.0));
+    auto mat = Mat<R>(num_dimensions, num_classes, weights<R>::uniform(2.0));
+    auto bias = Mat<R>(1,             num_classes, weights<R>::uniform(2.0));
     auto params = vector<Mat<R>>({mat, bias});
 
     auto solver = Solver::construct(solvername, params, 0.1);
@@ -1726,12 +1775,12 @@ void test_solver_optimization(std::string solvername) {
     R original_error = 0;
     {
         graph::NoBackprop nb;
-        auto mat_err = MatOps<R>::softmax_cross_entropy_colwise((mat.dot(dataset) + bias), &labels).sum();
+        auto mat_err = MatOps<R>::softmax_cross_entropy_rowwise((dataset.dot(mat) + bias), &labels).sum();
         original_error = mat_err.w(0);
     }
     R error = original_error;
     for (int e = 0; e < 100; e++) {
-        auto KL = MatOps<R>::softmax_cross_entropy_colwise((mat.dot(dataset) + bias), &labels).sum();
+        auto KL = MatOps<R>::softmax_cross_entropy_rowwise((dataset.dot(mat) + bias), &labels).sum();
         KL.grad();
         graph::backward();
         solver->step(params);

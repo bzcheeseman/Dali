@@ -14,9 +14,9 @@ namespace matops {
         static Mat<R> sigmoid_binary_cross_entropy(Mat<R>, R);
         static Mat<R> cross_entropy(Mat<R>, uint answer_idx);
         static Mat<R> cross_entropy(Mat<R>, Mat<R> targets);
-        static Mat<R> softmax_cross_entropy(Mat<R> matrix, uint answer_idx);
-        static Mat<R> softmax_cross_entropy(Mat<R> matrix, Indexing::Index targets);
-        static Mat<R> softmax_cross_entropy(Mat<R> matrix, Mat<int> targets);
+        static Mat<R> softmax_cross_entropy_colwise(Mat<R> matrix, uint answer_idx);
+        static Mat<R> softmax_cross_entropy_colwise(Mat<R> matrix, Indexing::Index targets);
+        static Mat<R> softmax_cross_entropy_colwise(Mat<R> matrix, Mat<int> targets);
         static Mat<R> margin_loss(Mat<R> matrix, uint answer_idx, R margin=0.1);
 
         static Mat<R> softmax_colwise(Mat<R>, R temperature=1.0);

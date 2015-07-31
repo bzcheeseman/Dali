@@ -190,7 +190,7 @@ int main (int argc,  char* argv[]) {
                         final_states,
                         FLAGS_dropout
                     );
-                    auto error = MatOps<REAL_t>::softmax_cross_entropy(logprobs, std::get<1>(example));
+                    auto error = MatOps<REAL_t>::softmax_cross_entropy_colwise(logprobs, std::get<1>(example));
                     if (FLAGS_average_gradient) {
                         error = error/ minibatch.size();
                     }

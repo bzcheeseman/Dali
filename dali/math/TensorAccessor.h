@@ -191,12 +191,12 @@ namespace TensorOps {
         select_from_cols(dest.mutable_cpu_data(), source.cpu_data(), targets.cpu_data());
     }
 
-    /////////////////////// softmax_cross_entropy_backward ///////////
+    /////////////////////// softmax_cross_entropy_colwise_backward ///////////
 
 
     #ifdef DALI_USE_CUDA
         template<typename R>
-        void softmax_cross_entropy_backward(mshadow::Tensor<gpu, 2, R> dest,
+        void softmax_cross_entropy_colwise_backward(mshadow::Tensor<gpu, 2, R> dest,
                                             const mshadow::Tensor<gpu, 2, R>& source,
                                             TensorInternal<int, 1> targets) {
             auto t_dest   = to_thrust(dest);
@@ -224,7 +224,7 @@ namespace TensorOps {
     #endif
 
     template<typename R>
-    void softmax_cross_entropy_backward(mshadow::Tensor<cpu, 2, R> dest,
+    void softmax_cross_entropy_colwise_backward(mshadow::Tensor<cpu, 2, R> dest,
                           const mshadow::Tensor<cpu, 2, R>& source,
                           const mshadow::Tensor<cpu, 1, int>& targets) {
         R* source_ptr = source.dptr_;
@@ -235,16 +235,16 @@ namespace TensorOps {
     }
 
     template<typename R>
-    void softmax_cross_entropy_backward(TensorInternal<R,2> dest,
+    void softmax_cross_entropy_colwise_backward(TensorInternal<R,2> dest,
                           TensorInternal<R,2> source,
                           TensorInternal<int,1> targets) {
         #ifdef DALI_USE_CUDA
         if (source.compute_me_on_gpu()) {
-            softmax_cross_entropy_backward(dest.mutable_gpu_data(), source.gpu_data(), targets);
+            softmax_cross_entropy_colwise_backward(dest.mutable_gpu_data(), source.gpu_data(), targets);
             return;
         }
         #endif
-        softmax_cross_entropy_backward(dest.mutable_cpu_data(), source.cpu_data(), targets.cpu_data());
+        softmax_cross_entropy_colwise_backward(dest.mutable_cpu_data(), source.cpu_data(), targets.cpu_data());
     }
 
 

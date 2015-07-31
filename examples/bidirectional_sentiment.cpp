@@ -582,7 +582,7 @@ int main (int argc,  char* argv[]) {
                         error = MatOps<REAL_t>::cross_entropy(probs, std::get<1>(example));
                     }
                     // err += error.w()(0);
-                    // auto error = MatOps<REAL_t>::softmax_cross_entropy(logprobs, std::get<1>(example));
+                    // auto error = MatOps<REAL_t>::softmax_cross_entropy_colwise(logprobs, std::get<1>(example));
                     if (std::get<2>(example) && FLAGS_root_weight != 1.0) {
                         error = error * FLAGS_root_weight;
                     }

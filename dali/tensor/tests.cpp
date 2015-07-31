@@ -1302,7 +1302,7 @@ TEST_F(MatOpsTests, cross_entropy_grad) {
     }
 }
 
-TEST_F(MatOpsTests, softmax_cross_entropy_grad) {
+TEST_F(MatOpsTests, softmax_cross_entropy_colwise_grad) {
     EXPERIMENT_REPEAT {
         auto input = Mat<R>(3,  2, weights<R>::uniform(-2.0, 2.0));
 
@@ -1313,7 +1313,7 @@ TEST_F(MatOpsTests, softmax_cross_entropy_grad) {
 
 
         auto functor = [indexed_targets](vector<Mat<R>> Xs)-> Mat<R> {
-            return MatOps<R>::softmax_cross_entropy(
+            return MatOps<R>::softmax_cross_entropy_colwise(
                 Xs[0],
                 indexed_targets);
         };
@@ -1332,7 +1332,7 @@ TEST_F(MatOpsTests, cross_entropy_multiindex) {
         vector<uint> targets;
         for (int i = 0; i < input.dims(1); ++i)
             targets.push_back(utils::randint(0, input.dims(0) - 1));
-        Mat<R> actual_res = MatOps<R>::softmax_cross_entropy(
+        Mat<R> actual_res = MatOps<R>::softmax_cross_entropy_colwise(
                 input, Indexing::Index(&targets));
         #ifdef DALI_USE_CUDA
             EXPECT_TRUE(actual_res.w().memory().gpu_fresh);
@@ -1726,12 +1726,12 @@ void test_solver_optimization(std::string solvername) {
     R original_error = 0;
     {
         graph::NoBackprop nb;
-        auto mat_err = MatOps<R>::softmax_cross_entropy((mat.dot(dataset) + bias), &labels).sum();
+        auto mat_err = MatOps<R>::softmax_cross_entropy_colwise((mat.dot(dataset) + bias), &labels).sum();
         original_error = mat_err.w(0);
     }
     R error = original_error;
     for (int e = 0; e < 100; e++) {
-        auto KL = MatOps<R>::softmax_cross_entropy((mat.dot(dataset) + bias), &labels).sum();
+        auto KL = MatOps<R>::softmax_cross_entropy_colwise((mat.dot(dataset) + bias), &labels).sum();
         KL.grad();
         graph::backward();
         solver->step(params);

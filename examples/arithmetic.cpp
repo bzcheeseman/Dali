@@ -143,7 +143,7 @@ int main (int argc,  char* argv[]) {
                     input_vector
                 );
             }
-            auto error = MatOps<REAL_t>::softmax_cross_entropy(
+            auto error = MatOps<REAL_t>::softmax_cross_entropy_colwise(
                 model.decode(
                     input_vector,
                     initial_state
@@ -156,7 +156,7 @@ int main (int argc,  char* argv[]) {
                     initial_state,
                     input_vector
                 );
-                error = error + MatOps<REAL_t>::softmax_cross_entropy(
+                error = error + MatOps<REAL_t>::softmax_cross_entropy_colwise(
                     model.decode(
                         input_vector,
                         initial_state

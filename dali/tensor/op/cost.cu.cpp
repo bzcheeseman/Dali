@@ -188,14 +188,14 @@ namespace matops {
 
 
     template<typename R>
-    Mat<R> Cost<R>::softmax_cross_entropy(Mat<R> matrix, uint answer_idx) {
+    Mat<R> Cost<R>::softmax_cross_entropy_colwise(Mat<R> matrix, uint answer_idx) {
         Mat<int> target(1,1);
         target.w(0) = answer_idx;
-        return softmax_cross_entropy(matrix, target);
+        return softmax_cross_entropy_colwise(matrix, target);
     }
 
     template<typename R>
-    Mat<R> Cost<R>::softmax_cross_entropy(Mat<R> matrix, Mat<int> targets) {
+    Mat<R> Cost<R>::softmax_cross_entropy_colwise(Mat<R> matrix, Mat<int> targets) {
         assert(targets.number_of_elements() == matrix.dims(1));
         Mat<R> out =  Mat<R>(1, targets.number_of_elements(), weights<R>::empty());
         Mat<R> probs = softmax_no_grad_colwise(matrix);
@@ -210,7 +210,7 @@ namespace matops {
                         GRAD(out).ravel().wrapper().template broadcast<1>(MAT(probs).shape)
                     );
 
-                    softmax_cross_entropy_backward(GRAD(matrix), GRAD(out), targets.w().ravel());
+                    softmax_cross_entropy_colwise_backward(GRAD(matrix), GRAD(out), targets.w().ravel());
                 }
             });
         }
@@ -218,12 +218,12 @@ namespace matops {
     }
 
     template<typename R>
-    Mat<R> Cost<R>::softmax_cross_entropy(Mat<R> matrix, Indexing::Index targets) {
+    Mat<R> Cost<R>::softmax_cross_entropy_colwise(Mat<R> matrix, Indexing::Index targets) {
         Mat<int> targets_mat(1, targets.size());
         for (int i = 0; i < targets.size(); ++i) {
             targets_mat.w(i) = targets[i];
         }
-        return softmax_cross_entropy(matrix, targets_mat);
+        return softmax_cross_entropy_colwise(matrix, targets_mat);
     }
 
     template<typename R>

@@ -243,7 +243,7 @@ Mat<Z> StackedModel<Z>::masked_predict_cost(
         }
 
         utils::Timer softmax_tm("softmax cross entropy");
-        auto errors = MatOps<Z>::softmax_cross_entropy(logprobs, target);
+        auto errors = MatOps<Z>::softmax_cross_entropy_colwise(logprobs, target);
         softmax_tm.stop();
 
         utils::Timer masking_tm("masking");

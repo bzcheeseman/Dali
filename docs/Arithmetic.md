@@ -240,7 +240,7 @@ network as inputs to the decoder using
 `LSTM<REAL_t>::State::hiddens(state)`:
 
 ```cpp
-auto error = MatOps<REAL_t>::softmax_cross_entropy(
+auto error = MatOps<REAL_t>::softmax_cross_entropy_colwise(
     model.decoder->activate(
         input_vector,
         LSTM<REAL_t>::State::hiddens(state)
@@ -267,7 +267,7 @@ for (auto label_ptr = example.second.begin(); label_ptr < example.second.end() -
         input_vector
     );
     // sum the errors at each step
-    error = error + MatOps<REAL_t>::softmax_cross_entropy(
+    error = error + MatOps<REAL_t>::softmax_cross_entropy_colwise(
         model.decoder->activate(
             input_vector,
             LSTM<REAL_t>::State::hiddens(state)

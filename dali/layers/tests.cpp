@@ -92,7 +92,7 @@ TEST_F(LayerTests, second_order_combinator) {
         params.emplace_back(A);
         params.emplace_back(B);
         auto functor = [&](vector<Mat<R>> Xs)-> Mat<R> {
-            return mylayer.activate(A, B).tanh();
+            return mylayer.activate(A, B);
         };
         ASSERT_TRUE(gradient_same(functor, params, 1e-3));
     }
@@ -335,7 +335,7 @@ TEST_F(LayerTests, multi_input_lstm_test) {
 
         auto functor = [&mylayer, &input, &states](vector<Mat<R>> Xs)-> Mat<R> {
                 auto state = mylayer.activate(input, states);
-                return state.hidden * 100.0;
+                return state.hidden;
         };
         ASSERT_TRUE(gradient_ratio_same(functor, params, 0.05, 0.0001));
     }

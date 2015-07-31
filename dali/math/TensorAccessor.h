@@ -261,7 +261,7 @@ namespace TensorOps {
             std::vector<int> offsets(targets.number_of_elements());
 
             for (int i=0; i < targets.number_of_elements(); ++i) {
-                // accessing index (targets[i], i)
+                // accessing index (i, targets[i])
                 offsets[i] = targets(i) * source.shape_[1] + i;
             }
             thrust::device_vector<uint, cached_allocator<uint> > offsets_gpu(offsets);
@@ -317,8 +317,8 @@ namespace TensorOps {
             std::vector<int> offsets(targets.number_of_elements());
 
             for (int i=0; i < targets.number_of_elements(); ++i) {
-                // accessing index (targets[i], i)
-                offsets[i] = i * out_grad.shape_[1] + targets(i);
+                // accessing index (i, targets[i])
+                offsets[i] = i * dest.shape_[1] + targets(i);
             }
             thrust::device_vector<uint, cached_allocator<uint> > offsets_gpu(offsets);
 
@@ -326,7 +326,6 @@ namespace TensorOps {
 
             using namespace thrust::placeholders;
 
-            // dest[..., i] = dest[..., i] - out_grad[i]
             thrust::transform(
                     dest_perm,
                     dest_perm + targets.number_of_elements(),

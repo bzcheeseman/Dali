@@ -68,6 +68,37 @@ TEST_F(LayerTests, BroadcastMultiply) {
     }
 }
 
+TEST_F(LayerTests, second_order_combinator) {
+
+    int num_examples = 10;
+    int hidden_size  = 10;
+    int input_size_1 = 5;
+    int input_size_2 = 8;
+
+    EXPERIMENT_REPEAT {
+        auto A  = Mat<R>(
+            num_examples,
+            input_size_1,
+            weights<R>::uniform(20.0));
+        auto B  = Mat<R>(
+            num_examples,
+            input_size_2,
+            weights<R>::uniform(20.0));
+        auto mylayer = SecondOrderCombinator<R>(
+            input_size_1,
+            input_size_2,
+            hidden_size);
+        auto params = mylayer.parameters();
+        params.emplace_back(A);
+        params.emplace_back(B);
+        auto functor = [&](vector<Mat<R>> Xs)-> Mat<R> {
+            return mylayer.activate(A, B).tanh();
+        };
+        ASSERT_TRUE(gradient_same(functor, params, 1e-3));
+    }
+}
+
+
 TEST_F(LayerTests, stacked_layer_tanh_gradient) {
 
     int num_examples = 10;

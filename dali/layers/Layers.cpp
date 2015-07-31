@@ -308,7 +308,7 @@ SecondOrderCombinator<R>::SecondOrderCombinator(int input1_size, int input2_size
         input1_size(input1_size), input2_size(input2_size), output_size(output_size) {
     W1 = Mat<R>(input1_size, output_size,  weights<R>::uniform(2.0/sqrt(input1_size)));
     W2 = Mat<R>(input2_size, output_size,  weights<R>::uniform(2.0/sqrt(input2_size)));
-    b =  Mat<R>(1, output_size,           weights<R>::uniform(2.0/sqrt(input1_size)));
+    b =  Mat<R>(1, output_size,            weights<R>::uniform(2.0/sqrt(input1_size)));
 }
 template<typename R>
 SecondOrderCombinator<R>::SecondOrderCombinator(const SecondOrderCombinator& m,
@@ -330,7 +330,7 @@ vector<Mat<R>> SecondOrderCombinator<R>::parameters() const {
 template<typename R>
 Mat<R> SecondOrderCombinator<R>::activate(Mat<R> i1, Mat<R> i2) const {
     // TODO(jonathan): should be replaced with mul_mul_mul_with_mul
-    return W1.dot(i1) * W2.dot(i2) + b;
+    return i1.dot(W1) * i2.dot(W2) + b;
 }
 
 template class SecondOrderCombinator<float>;

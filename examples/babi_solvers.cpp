@@ -224,7 +224,7 @@ class LstmBabiModel {
                     Mat<T>(n_words, FLAGS_answer_input,
                            weights<T>::uniform(1.0/hl_model_input));
             please_start_prediction =
-                    Mat<T>(FLAGS_answer_input, 1, weights<T>::uniform(1.0));
+                    Mat<T>(1, FLAGS_answer_input, weights<T>::uniform(1.0));
         }
 
         vector<Mat<T>> get_embeddings(const vector<string>& words,
@@ -245,19 +245,19 @@ class LstmBabiModel {
             assert(memory.size() == seq.size());
             vector<Mat<T>> gated_seq;
             for(int i=0; i < memory.size(); ++i) {
-                gated_seq.push_back(seq[i].eltmul_broadcast_rowwise(memory[i]));
+                gated_seq.push_back(seq[i].eltmul_broadcast_colwise(memory[i]));
 
             }
             return gated_seq;
         }
 
         static Mat<T> state_to_hidden(lstm_state_t state) {
-            return MatOps<T>::vstack(LSTM<T>::activation_t::hiddens(state));
+            return MatOps<T>::hstack(LSTM<T>::activation_t::hiddens(state));
         }
 
         static lstm_state_t flatten_state(lstm_state_t state) {
-            auto hidden = MatOps<T>::vstack(LSTM<T>::activation_t::hiddens(state));
-            auto memory = MatOps<T>::vstack(LSTM<T>::activation_t::memories(state));
+            auto hidden = MatOps<T>::hstack(LSTM<T>::activation_t::hiddens(state));
+            auto memory = MatOps<T>::hstack(LSTM<T>::activation_t::memories(state));
             return {typename LSTM<T>::activation_t(memory, hidden)};
         }
 
@@ -333,7 +333,6 @@ class LstmBabiModel {
                      const vector<string>& question,
                      const vector<string>& answer,
                      vector<uint> supporting_facts) const {
-
             auto activation = activate_story(facts, question, true);
 
             auto current_state = answer_model.activate(
@@ -345,6 +344,7 @@ class LstmBabiModel {
 
             auto answer_idxes = vocab.encode(answer, true);
 
+
             for (auto& word_idx: answer_idxes) { // for word idxes with end token
                 Mat<T> partial_error;
                 if (FLAGS_margin_loss) {
@@ -355,11 +355,11 @@ class LstmBabiModel {
 
                     auto scores = decoder.activate(state_to_hidden(current_state));
                     partial_error =
-                            MatOps<REAL_t>::margin_loss(scores, word_idx, FLAGS_margin);
+                            MatOps<REAL_t>::margin_loss_rowwise(scores, word_idx, FLAGS_margin);
                 } else {
                     auto log_probs = decoder.activate(state_to_hidden(current_state));
                     partial_error =
-                            MatOps<REAL_t>::softmax_cross_entropy_colwise(log_probs, word_idx);
+                            MatOps<REAL_t>::softmax_cross_entropy_rowwise(log_probs, word_idx);
 
                 }
 
@@ -396,7 +396,7 @@ class LstmBabiModel {
 
             auto candidate_scores = [this](lstm_state_t state) -> Mat<T> {
                 auto scores = decoder.activate(LstmBabiModel<T>::state_to_hidden(state));
-                return MatOps<T>::softmax_colwise(scores).log();
+                return MatOps<T>::softmax_rowwise(scores).log();
             };
             auto make_choice = [this](lstm_state_t state, uint candidate) -> lstm_state_t {
                 return answer_model.activate(state, answer_embeddings[candidate]);

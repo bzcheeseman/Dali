@@ -26,8 +26,8 @@ namespace matops {
             Mat<R> matrix,
             Mat<int> indices) {
         Mat<R> out (
-            matrix.dims(1),
             indices.number_of_elements(),
+            matrix.dims(1),
             weights<R>::empty());
 
         TensorOps::rows_pluck(MAT(out), MAT(matrix), indices.w().ravel());

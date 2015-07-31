@@ -1503,7 +1503,7 @@ TEST_F(MatrixTests, rows_pluck_forward_correctness) {
         #endif
 
         for (int pluck_idx = 0; pluck_idx < plucks.size(); ++pluck_idx) {
-            auto actual_row = res.T()[pluck_idx];
+            auto actual_row = res[pluck_idx];
             auto expected_row = A[plucks[pluck_idx]];
             EXPECT_MATRIX_CLOSE(actual_row, expected_row, 1e-4);
         }

@@ -205,7 +205,7 @@ beam_search_results_t the_beam_search(
     auto candidate_scores = [&model](beam_search_state_t state) {
         auto& input_vector = std::get<0>(state);
         auto& lstm_state   = std::get<1>(state);
-        return MatOps<REAL_t>::softmax(model.decode(input_vector, lstm_state)).log();
+        return MatOps<REAL_t>::softmax_rowwise(model.decode(input_vector, lstm_state)).log();
     };
 
     auto make_choice = [&model](beam_search_state_t state, uint candidate) {

@@ -16,3 +16,4 @@ LOWER_PRIOTITY:
 -> load existing image net model from caffe
 -> make machine comprehension dataset inline with other loading system
 -> made n-d print visually closer to numpy's n-d print
+-> fix ravel/slice/row_pluck etc. assignments

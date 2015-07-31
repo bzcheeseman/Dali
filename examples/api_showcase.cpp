@@ -45,7 +45,7 @@ int main () {
     numpy_mat.print();
     // take softmax
     std::cout << "We now take a softmax of this matrix:" << std::endl;
-    auto softmaxed = MatOps<R>::softmax(numpy_mat);
+    auto softmaxed = MatOps<R>::softmax_colwise(numpy_mat);
     softmaxed.print();
     uint idx = 2;
     std::cout << "let us now compute the Kullback-Leibler divergence\n"
@@ -82,8 +82,8 @@ int main () {
     // add some random singularity and use exponential
     // normalization:
     A_plucked.w(2,0) += 3.0;
-    auto A_plucked_normed = MatOps<R>::softmax(A_plucked);
-    auto A_plucked_normed_t = MatOps<R>::softmax(A_plucked.T());
+    auto A_plucked_normed = MatOps<R>::softmax_colwise(A_plucked);
+    auto A_plucked_normed_t = MatOps<R>::softmax_colwise(A_plucked.T());
     A_plucked_normed.print();
     A_plucked_normed_t.print();
 

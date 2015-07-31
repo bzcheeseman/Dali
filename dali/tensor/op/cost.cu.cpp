@@ -151,7 +151,7 @@ namespace matops {
     }
 
     template<typename R>
-    Mat<R> Cost<R>::cross_entropy(Mat<R> matrix, uint answer_idx) {
+    Mat<R> Cost<R>::cross_entropy_colwise(Mat<R> matrix, uint answer_idx) {
         DEBUG_ASSERT_BOUNDS(MAT(matrix),0.0,1.0 + EPS);
         ASSERT2(answer_idx < matrix.dims(0),
             utils::MS() << "Cross entropy target (" << answer_idx << ") must be less than"
@@ -167,6 +167,33 @@ namespace matops {
             });
         return out;
     }
+
+    template<typename R>
+    Mat<R> Cost<R>::cross_entropy_rowwise(Mat<R> matrix, uint answer_idx) {
+        DEBUG_ASSERT_BOUNDS(MAT(matrix),0.0,1.0 + EPS);
+        ASSERT2(answer_idx < matrix.dims(1),
+            utils::MS() << "Cross entropy target (" << answer_idx << ") must be less than"
+                           " number of columns in predicted matrix (" << matrix.dims(1) << ").");
+        Mat<R> out =  Mat<R>(matrix.dims(0), 1, weights<R>::empty());
+        TensorOps::col_pluck(MAT(out).ravel(), MAT(matrix), answer_idx);
+
+        MAT(out).ravel() =  (R)-1.0 * F<op::log<R>>(MAT(out).ravel().wrapper() + (R)EPS);
+
+        DEBUG_ASSERT_MAT_NOT_NAN(out);
+
+        if (graph::backprop_enabled())
+            graph::emplace_back([matrix, answer_idx, out]() mutable {
+                TensorInternal<R,1> temp(mshadow::Shape1(matrix.dims(0)));
+                TensorOps::col_pluck(temp, MAT(matrix), answer_idx);
+
+                temp = (R)-1.0 * F<op::inv<R>>(temp.wrapper() + (R)EPS) * GRAD(out).ravel().wrapper();
+
+                TensorOps::col_pluck_backward(GRAD(matrix), temp, answer_idx);
+            });
+        return out;
+    }
+
+
 
     template<typename R>
     Mat<R> Cost<R>::cross_entropy(Mat<R> matrix, Mat<R> target) {
@@ -281,12 +308,30 @@ namespace matops {
 
 
 
+    template<typename R>
+    Mat<R> Cost<R>::margin_loss_rowwise(Mat<R> matrix, uint answer_idx, R margin) {
+        // Exprected input is a column vector
+        ASSERT2(answer_idx < matrix.dims(1),
+            utils::MS() << "Target answer ("
+                        << answer_idx
+                        << ")must be less than number of "
+                           "cols of matrix ("
+                        << matrix.dims(1) << ").");
+        Mat<R> error(matrix.dims(0), 1);
 
+        auto target_column = matrix(NULL, answer_idx);
+
+        for (int idx = 0; idx < matrix.dims(1); ++idx) {
+            if (idx == answer_idx) continue;
+            error = error + MatOps<R>::max(matrix(NULL, idx) - target_column + margin, 0.0);
+        }
+        return error;
+    }
 
 
 
     template<typename R>
-    Mat<R> Cost<R>::margin_loss(Mat<R> matrix, uint answer_idx, R margin) {
+    Mat<R> Cost<R>::margin_loss_colwise(Mat<R> matrix, uint answer_idx, R margin) {
         // Exprected input is a column vector
         ASSERT2(answer_idx < matrix.dims(0),
             utils::MS() << "Target answer ("
@@ -294,13 +339,16 @@ namespace matops {
                         << ")must be less than number of "
                            "rows of matrix ("
                         << matrix.dims(0) << ").");
-        Mat<R> error(matrix.dims(1),1);
+        Mat<R> error(1, matrix.dims(1));
         for (int idx = 0; idx < matrix.dims(0); ++idx) {
             if (idx == answer_idx) continue;
             error = error + MatOps<R>::max(matrix[idx] - matrix[answer_idx] + margin, 0.0);
         }
         return error;
     }
+
+
+
     template class Cost<float>;
     template class Cost<double>;
     template class Cost<int>;

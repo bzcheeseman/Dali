@@ -396,7 +396,7 @@ class LstmBabiModel {
 
             auto candidate_scores = [this](lstm_state_t state) -> Mat<T> {
                 auto scores = decoder.activate(LstmBabiModel<T>::state_to_hidden(state));
-                return MatOps<T>::softmax(scores).log();
+                return MatOps<T>::softmax_colwise(scores).log();
             };
             auto make_choice = [this](lstm_state_t state, uint candidate) -> lstm_state_t {
                 return answer_model.activate(state, answer_embeddings[candidate]);

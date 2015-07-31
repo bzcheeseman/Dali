@@ -522,7 +522,7 @@ TEST_F(MatrixTests, sigmoid_binary_cross_entropy) {
     }
 }
 
-TEST_F(MatrixTests, margin_loss) {
+TEST_F(MatrixTests, margin_loss_colwise) {
     utils::random::set_seed(100);
     // we can now extend the range of our random numbers to be beyond
     // 0 and 1 since sigmoid will clamp them to 0 or 1.
@@ -531,12 +531,31 @@ TEST_F(MatrixTests, margin_loss) {
         R margin = utils::randdouble(0.01, 0.1);
         uint target = utils::randinteger<uint>(0, A.dims(0) - 1);
         auto functor = [target, margin](vector<Mat<R>> Xs)-> Mat<R> {
-            return MatOps<R>::margin_loss(Xs[0], target, margin);
+            return MatOps<R>::margin_loss_colwise(Xs[0], target, margin);
         };
         ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-4));
     }
     utils::random::reseed();
 }
+
+
+TEST_F(MatrixTests, margin_loss_rowwise) {
+    utils::random::set_seed(100);
+    // we can now extend the range of our random numbers to be beyond
+    // 0 and 1 since sigmoid will clamp them to 0 or 1.
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(5.0));
+        R margin = utils::randdouble(0.01, 0.1);
+        uint target = utils::randinteger<uint>(0, A.dims(1) - 1);
+        auto functor = [target, margin](vector<Mat<R>> Xs)-> Mat<R> {
+            return MatOps<R>::margin_loss_rowwise(Xs[0], target, margin);
+        };
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-4));
+    }
+    utils::random::reseed();
+}
+
+
 
 TEST_F(MatrixTests, norm) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
@@ -997,7 +1016,9 @@ TEST_F(MatOpsTests, softmax_colwise) {
         int row = utils::randint(0, row_size - 1);
         auto functor = [row](vector<Mat<R>> Xs)-> Mat<R>{
             auto soft = MatOps<R>::softmax_colwise(Xs[0]);
+            //soft.print();
             auto g = soft[row];
+            //g.print();
             return g;
         };
         ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-3));
@@ -1293,7 +1314,7 @@ TEST_F(MatOpsTests, cross_entropy_grad) {
                     Xs[1].dot(Xs[0]),
                     temperature
                 );
-            return MatOps<R>::cross_entropy(
+            return MatOps<R>::cross_entropy_colwise(
                 soft,
                 target);
         };
@@ -1340,7 +1361,7 @@ TEST_F(MatOpsTests, cross_entropy_colwise_multiindex) {
 
         for (int i = 0; i < targets.size(); ++i) {
             // take each column separately
-            auto expected_res = MatOps<R>::cross_entropy(softmaxed.T()[i], targets[i]);
+            auto expected_res = MatOps<R>::cross_entropy_colwise(softmaxed(NULL,i), targets[i]);
             ASSERT_NEAR(actual_res.w(i), expected_res.w(0), 1e-4);
         }
     }
@@ -1386,7 +1407,7 @@ TEST_F(MatOpsTests, cross_entropy_rowwise_multiindex) {
 
         for (int i = 0; i < targets.size(); ++i) {
             // take each column separately
-            auto expected_res = MatOps<R>::cross_entropy(softmaxed[i], targets[i]);
+            auto expected_res = MatOps<R>::cross_entropy_rowwise(softmaxed[i], targets[i]);
             ASSERT_NEAR(actual_res.w(i), expected_res.w(0), 1e-4);
         }
     }

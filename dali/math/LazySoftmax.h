@@ -15,22 +15,22 @@ evaluation engine specializations.
 
 namespace dali_expr {
     template<typename EType, typename DType>
-    struct SoftmaxExpression: public mshadow::expr::Exp<SoftmaxExpression<EType, DType>,
+    struct SoftmaxColwiseExpression: public mshadow::expr::Exp<SoftmaxColwiseExpression<EType, DType>,
                                       DType, mshadow::expr::type::kComplex> {
         const EType &exp;
         const DType temperature;
-        explicit SoftmaxExpression(const EType &e, DType _temperature) : exp(e), temperature(_temperature) {}
+        explicit SoftmaxColwiseExpression(const EType &e, DType _temperature) : exp(e), temperature(_temperature) {}
         inline auto T(void) const -> const mshadow::expr::TransposeExp<decltype(*this), DType> {
             return mshadow::expr::TransposeExp<decltype(*this), DType>(this->self());
         }
     };
 
     template<typename EType, typename DType>
-    struct SoftmaxTransposeExpression: public mshadow::expr::Exp<SoftmaxTransposeExpression<EType, DType>,
+    struct SoftmaxRowwiseExpression: public mshadow::expr::Exp<SoftmaxRowwiseExpression<EType, DType>,
                                       DType, mshadow::expr::type::kComplex> {
         const EType &exp;
         const DType temperature;
-        explicit SoftmaxTransposeExpression(const EType &e, DType _temperature) : exp(e), temperature(_temperature) {}
+        explicit SoftmaxRowwiseExpression(const EType &e, DType _temperature) : exp(e), temperature(_temperature) {}
         inline auto T(void) const -> const mshadow::expr::TransposeExp<decltype(*this), DType> {
             return mshadow::expr::TransposeExp<decltype(*this), DType>(this->self());
         }
@@ -42,22 +42,22 @@ namespace mshadow {
         template<typename SV, typename Device, typename DType, template <typename, int, typename> class tensor_t>
         struct ExpComplexEngine<SV,
                                 tensor_t<Device, 2, DType>,
-                                dali_expr::SoftmaxExpression< tensor_t<Device, 2, DType>, DType >,
+                                dali_expr::SoftmaxColwiseExpression< tensor_t<Device, 2, DType>, DType >,
                                 DType > {
             inline static void Eval(tensor_t<Device, 2, DType> *dst,
-                                    const dali_expr::SoftmaxExpression< tensor_t<Device, 2, DType>, DType > &exp) {
-                TensorOps::softmax(*dst, exp.exp, exp.temperature);
+                                    const dali_expr::SoftmaxColwiseExpression< tensor_t<Device, 2, DType>, DType > &exp) {
+                TensorOps::softmax_colwise(*dst, exp.exp, exp.temperature);
             }
         };
 
         template<typename SV, typename Device, typename DType, template <typename, int, typename> class tensor_t>
         struct ExpComplexEngine<SV,
                                 tensor_t<Device, 2, DType>,
-                                dali_expr::SoftmaxTransposeExpression< tensor_t<Device, 2, DType>, DType >,
+                                dali_expr::SoftmaxRowwiseExpression< tensor_t<Device, 2, DType>, DType >,
                                 DType > {
             inline static void Eval(tensor_t<Device, 2, DType> *dst,
-                                    const dali_expr::SoftmaxTransposeExpression< tensor_t<Device, 2, DType>, DType > &exp) {
-                TensorOps::softmax_transpose(*dst, exp.exp, exp.temperature);
+                                    const dali_expr::SoftmaxRowwiseExpression< tensor_t<Device, 2, DType>, DType > &exp) {
+                TensorOps::softmax_rowwise(*dst, exp.exp, exp.temperature);
             }
         };
     }

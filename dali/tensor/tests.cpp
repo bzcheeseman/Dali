@@ -989,14 +989,14 @@ TEST_F(MatOpsTests, fast_dropout) {
     }
 }
 
-TEST_F(MatOpsTests, softmax) {
+TEST_F(MatOpsTests, softmax_colwise) {
     int row_size = 5;
     int col_size = 10;
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(row_size, col_size, weights<R>::uniform(-3.0, 3.0));
         int row = utils::randint(0, row_size - 1);
         auto functor = [row](vector<Mat<R>> Xs)-> Mat<R>{
-            auto soft = MatOps<R>::softmax(Xs[0]);
+            auto soft = MatOps<R>::softmax_colwise(Xs[0]);
             auto g = soft[row];
             return g;
         };
@@ -1004,14 +1004,14 @@ TEST_F(MatOpsTests, softmax) {
     }
 }
 
-TEST_F(MatOpsTests, softmax_transpose) {
+TEST_F(MatOpsTests, softmax_rowwise) {
     int row_size = 5;
     int col_size = 10;
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(row_size, col_size, weights<R>::uniform(-3.0, 3.0));
         int col = utils::randint(0, col_size - 1);
         auto functor = [col](vector<Mat<R>> Xs)-> Mat<R>{
-            auto soft = MatOps<R>::softmax_transpose(Xs[0]);
+            auto soft = MatOps<R>::softmax_rowwise(Xs[0]);
             auto g = soft.T()[col];
             return g;
         };
@@ -1250,9 +1250,9 @@ TEST_F(MatOpsTests, softmax_temperature) {
     auto mat = Mat<R>(10, 1);
     for (int i = 0; i < 10; i++) mat.w(i) = i;
 
-    auto base_prob = MatOps<R>::softmax(mat, 1.0);
+    auto base_prob = MatOps<R>::softmax_colwise(mat, 1.0);
 
-    auto flat = MatOps<R>::softmax(
+    auto flat = MatOps<R>::softmax_colwise(
         MatOps<R>::fill(
             Mat<R>::empty_like(mat),
             1.0
@@ -1267,7 +1267,7 @@ TEST_F(MatOpsTests, softmax_temperature) {
     // gets flatter with higher temperature
     for (int i = 2; i < 11; i++) {
         R temperature = 1.0 * i;
-        auto new_prob = MatOps<R>::softmax(
+        auto new_prob = MatOps<R>::softmax_colwise(
             mat,
             temperature
         );
@@ -1289,7 +1289,7 @@ TEST_F(MatOpsTests, cross_entropy_grad) {
         auto input = Mat<R>(5,  3, weights<R>::uniform(-2.0, 2.0));
 
         auto functor = [target, temperature](vector<Mat<R>> Xs)-> Mat<R> {
-            auto soft = MatOps<R>::softmax(
+            auto soft = MatOps<R>::softmax_colwise(
                     Xs[1].dot(Xs[0]),
                     temperature
                 );
@@ -1327,7 +1327,7 @@ TEST_F(MatOpsTests, cross_entropy_multiindex) {
         graph::NoBackprop nb;
 
         Mat<R> input (3, 5, weights<R>::uniform(0.01, 0.99));
-        Mat<R> softmaxed = MatOps<R>::softmax(input);
+        Mat<R> softmaxed = MatOps<R>::softmax_colwise(input);
 
         vector<uint> targets;
         for (int i = 0; i < input.dims(1); ++i)
@@ -1363,7 +1363,7 @@ TEST_F(MatOpsTests, cross_entropy_grad_thought_target) {
 
 
         auto functor = [target, temperature](vector<Mat<R>> Xs)-> Mat<R> {
-            auto soft = MatOps<R>::softmax(
+            auto soft = MatOps<R>::softmax_colwise(
                     Xs[1].dot(Xs[0]),
                     temperature
                 );

@@ -60,7 +60,7 @@ const REAL_t EPS = 1e-6;
 // template<typename T>
 // Mat<T> softmax_categorical_surprise(Mat<T> logprobs, int target) {
 //     auto out = Mat<T>(1, 1, false);
-//     auto probs = MatOps<T>::softmax_no_grad(logprobs);
+//     auto probs = MatOps<T>::softmax_no_grad_colwise(logprobs);
 
 //     out.w(0) = -(
 //         std::log1p(-std::sqrt(1.0 - probs.w(target, 0))) -

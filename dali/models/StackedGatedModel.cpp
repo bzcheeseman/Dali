@@ -422,7 +422,7 @@ typename StackedGatedModel<Z>::State StackedGatedModel<Z>::activate(
     out.lstm_state = this->stacked_lstm.activate(
         previous_state,
         input_vector);
-    out.prediction = MatOps<Z>::softmax(
+    out.prediction = MatOps<Z>::softmax_colwise(
             this->decode(
                 input_vector,
                 out.lstm_state

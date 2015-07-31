@@ -426,7 +426,7 @@ typename StackedModel<Z>::State StackedModel<Z>::activate(
     State out;
     auto input_vector = this->embedding[indices];
     out.lstm_state  = stacked_lstm.activate(previous_state, input_vector);
-    out.prediction  = MatOps<Z>::softmax(
+    out.prediction  = MatOps<Z>::softmax_colwise(
             decode(
                 input_vector,
                 out.lstm_state

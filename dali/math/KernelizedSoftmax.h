@@ -14,7 +14,7 @@ support for temperature (controls the roll off of the
 exponentiation during Softmax).
 
 The column-wise softmax is done using Thrust, while the
-row-wise softmax (`softmax_transpose`) is achieved by
+row-wise softmax (`softmax_rowwise`) is achieved by
 modifying one line from MShadow's version.
 **/
 
@@ -168,7 +168,7 @@ namespace TensorOps {
         // Note: <<<Dg, Db, Ns, S>>> CUDA Language Extension is explained here:
         // http://docs.nvidia.com/cuda/cuda-c-programming-guide/#execution-configuration
         template<typename R>
-        void softmax_transpose(mshadow::Tensor<mshadow::gpu, 2, R> dst,
+        void softmax_rowwise(mshadow::Tensor<mshadow::gpu, 2, R> dst,
                      const mshadow::Tensor<mshadow::gpu, 2, R> src,
                      R temperature = 1.0) {
             const int num_threads = mshadow::cuda::kBaseThreadNum;
@@ -199,7 +199,7 @@ namespace TensorOps {
         }
 
         template<typename R>
-        void softmax(mshadow::Tensor<mshadow::gpu, 2, R> dst,
+        void softmax_colwise(mshadow::Tensor<mshadow::gpu, 2, R> dst,
                      const mshadow::Tensor<mshadow::gpu, 2, R> src, R temperature = 1.0) {
             const int num_threads = mshadow::cuda::kBaseThreadNum;
             const int thread_bits = mshadow::cuda::kBaseThreadBits;
@@ -230,7 +230,7 @@ namespace TensorOps {
     #endif
 
     template<typename R>
-    inline void softmax_transpose(mshadow::Tensor<cpu, 1, R> dst,
+    inline void softmax_rowwise(mshadow::Tensor<cpu, 1, R> dst,
                         const mshadow::Tensor<cpu, 1, R> &src,
                         R& temperature) {
         R mmax = src[0];
@@ -248,17 +248,17 @@ namespace TensorOps {
     }
 
     template<typename R>
-    inline void softmax_transpose(mshadow::Tensor<cpu, 2, R> dst,
+    inline void softmax_rowwise(mshadow::Tensor<cpu, 2, R> dst,
                           const mshadow::Tensor<cpu, 2, R> &src,
                           R temperature) {
         mshadow::utils::Check(dst.shape_ == src.shape_, "SoftmaxTranspose: shape mismatch");
         for (mshadow::index_t y = 0; y < dst.size(0); ++y) {
-            softmax_transpose(dst[y], src[y], temperature);
+            softmax_rowwise(dst[y], src[y], temperature);
         }
     }
 
     template<typename R>
-    void softmax(mshadow::Tensor<cpu,2,R> dst, mshadow::Tensor<cpu,2,R> src, R temperature = 1.0) {
+    void softmax_colwise(mshadow::Tensor<cpu,2,R> dst, mshadow::Tensor<cpu,2,R> src, R temperature = 1.0) {
         for (mshadow::index_t col = 0; col < dst.size(1); ++col) {
             R mmax = src[0][col];
             for (mshadow::index_t row = 1; row < dst.size(0); ++row) {

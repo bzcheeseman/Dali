@@ -125,13 +125,13 @@ class LazyTensor : public DormantTensor<DType> {
         #endif
 
         #ifdef DALI_USE_CUDA
-            inline LazyTensor<dali_expr::SoftmaxExpression<LeftType, DType>,
-                              dali_expr::SoftmaxExpression<RightType, DType>,
+            inline LazyTensor<dali_expr::SoftmaxColwiseExpression<LeftType, DType>,
+                              dali_expr::SoftmaxColwiseExpression<RightType, DType>,
                               DType,
                               dimension,
-                              (ktype|mshadow::expr::type::kComplex)> softmax(DType temperature = 1.0) const {
-                auto cpu_soft = dali_expr::SoftmaxExpression<LeftType, DType>(left, temperature);
-                auto gpu_soft = dali_expr::SoftmaxExpression<RightType, DType>(right, temperature);
+                              (ktype|mshadow::expr::type::kComplex)> softmax_colwise(DType temperature = 1.0) const {
+                auto cpu_soft = dali_expr::SoftmaxColwiseExpression<LeftType, DType>(left, temperature);
+                auto gpu_soft = dali_expr::SoftmaxColwiseExpression<RightType, DType>(right, temperature);
                 return LazyTensor<
                     decltype(cpu_soft), decltype(gpu_soft),
                     DType, dimension,
@@ -139,11 +139,11 @@ class LazyTensor : public DormantTensor<DType> {
                         cpu_soft, gpu_soft, dependent_tensors);
             }
         #else
-            inline LazyTensor<dali_expr::SoftmaxExpression<LeftType, DType>,
+            inline LazyTensor<dali_expr::SoftmaxColwiseExpression<LeftType, DType>,
                               DType, dimension,
                               (ktype|mshadow::expr::type::kComplex)
-                              > softmax(DType temperature = 1.0) const {
-                auto cpu_soft = dali_expr::SoftmaxExpression<LeftType, DType>(left, temperature);
+                              > softmax_colwise(DType temperature = 1.0) const {
+                auto cpu_soft = dali_expr::SoftmaxColwiseExpression<LeftType, DType>(left, temperature);
                 return LazyTensor<
                     decltype(cpu_soft),
                     DType, dimension,
@@ -152,15 +152,15 @@ class LazyTensor : public DormantTensor<DType> {
             }
         #endif
 
-        // softmax_transpose( X ) = Softmax( X^T )^T;
+        // softmax_rowwise( X ) = Softmax( X^T )^T;
         #ifdef DALI_USE_CUDA
-            inline LazyTensor<dali_expr::SoftmaxTransposeExpression<LeftType, DType>,
-                              dali_expr::SoftmaxTransposeExpression<RightType, DType>,
+            inline LazyTensor<dali_expr::SoftmaxRowwiseExpression<LeftType, DType>,
+                              dali_expr::SoftmaxRowwiseExpression<RightType, DType>,
                               DType,
                               dimension,
-                              (ktype|mshadow::expr::type::kComplex)> softmax_transpose(DType temperature = 1.0) const {
-                auto cpu_soft = dali_expr::SoftmaxTransposeExpression<LeftType, DType>(left, temperature);
-                auto gpu_soft = dali_expr::SoftmaxTransposeExpression<RightType, DType>(right, temperature);
+                              (ktype|mshadow::expr::type::kComplex)> softmax_rowwise(DType temperature = 1.0) const {
+                auto cpu_soft = dali_expr::SoftmaxRowwiseExpression<LeftType, DType>(left, temperature);
+                auto gpu_soft = dali_expr::SoftmaxRowwiseExpression<RightType, DType>(right, temperature);
                 return LazyTensor<
                     decltype(cpu_soft), decltype(gpu_soft),
                     DType, dimension,
@@ -168,11 +168,11 @@ class LazyTensor : public DormantTensor<DType> {
                         cpu_soft, gpu_soft, dependent_tensors);
             }
         #else
-            inline LazyTensor<dali_expr::SoftmaxTransposeExpression<LeftType, DType>,
+            inline LazyTensor<dali_expr::SoftmaxRowwiseExpression<LeftType, DType>,
                               DType, dimension,
                               (ktype|mshadow::expr::type::kComplex)
-                              > softmax_transpose(DType temperature = 1.0) const {
-                auto cpu_soft = dali_expr::SoftmaxTransposeExpression<LeftType, DType>(left, temperature);
+                              > softmax_rowwise(DType temperature = 1.0) const {
+                auto cpu_soft = dali_expr::SoftmaxRowwiseExpression<LeftType, DType>(left, temperature);
                 return LazyTensor<
                     decltype(cpu_soft),
                     DType, dimension,

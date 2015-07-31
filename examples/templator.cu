@@ -194,7 +194,7 @@ void softmax(mshadow::Tensor<mshadow::gpu, 2, R> dst,
 }
 
 template<typename R>
-void softmax_transpose(mshadow::Tensor<mshadow::gpu, 2, R> dst,
+void softmax_rowwise(mshadow::Tensor<mshadow::gpu, 2, R> dst,
              const mshadow::Tensor<mshadow::gpu, 2, R> src, R temperature = 1.0) {
     const int num_threads = mshadow::cuda::kBaseThreadNum;
     const int thread_bits = mshadow::cuda::kBaseThreadBits;
@@ -231,7 +231,7 @@ int main() {
 
     // set the computing streams
     softmax(bob_col_softmax.w().mutable_gpu_data(), bob.w().gpu_data());
-    softmax_transpose(bob_col_softmax.w().mutable_gpu_data(), bob.w().gpu_data());
+    softmax_rowwise(bob_col_softmax.w().mutable_gpu_data(), bob.w().gpu_data());
 
     int iter = 1;
 
@@ -253,7 +253,7 @@ int main() {
         // {
         //     utils::Timer t1("Softmax col-wise (Dali)");
         //     // our softmax
-        //     softmax_transpose(bob_col_softmax.w().mutable_gpu_data(), bob.w().gpu_data());
+        //     softmax_rowwise(bob_col_softmax.w().mutable_gpu_data(), bob.w().gpu_data());
         //     cudaDeviceSynchronize();
         // }
 

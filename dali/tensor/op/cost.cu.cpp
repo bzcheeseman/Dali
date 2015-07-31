@@ -12,15 +12,15 @@ namespace matops {
 
     // performs row wise normalization
     template<typename R>
-    Mat<R> Cost<R>::softmax_no_grad_transpose(Mat<R> matrix, R temperature) {
+    Mat<R> Cost<R>::softmax_no_grad_rowwise(Mat<R> matrix, R temperature) {
         auto out = Mat<R>::empty_like(matrix);
-        MAT(out) = MAT(matrix).wrapper().softmax_transpose(temperature);
+        MAT(out) = MAT(matrix).wrapper().softmax_rowwise(temperature);
         return out;
     }
 
     template<typename R>
-    Mat<R> Cost<R>::softmax_transpose(Mat<R> matrix, R temperature) {
-        Mat<R> out = Cost<R>::softmax_no_grad_transpose(matrix, temperature);
+    Mat<R> Cost<R>::softmax_rowwise(Mat<R> matrix, R temperature) {
+        Mat<R> out = Cost<R>::softmax_no_grad_rowwise(matrix, temperature);
         if (graph::backprop_enabled() && !matrix.constant)
             graph::emplace_back([matrix, temperature, out]() mutable {
                 TensorInternal<R, 1> sm_times_dy_colsum( mshadow::Shape1(matrix.dims(0)));
@@ -35,7 +35,7 @@ namespace matops {
     }
 
     template<typename R>
-    vector<Mat<R>> Cost<R>::softmax_no_grad(const vector<Mat<R>>& matrices, R temperature) {
+    vector<Mat<R>> Cost<R>::softmax_no_grad_colwise(const vector<Mat<R>>& matrices, R temperature) {
         vector<Mat<R>> out;
         out.reserve(matrices.size());
         ASSERT2(matrices.size() > 0, "Must be a non empty list of vectors to softmax.");
@@ -59,7 +59,7 @@ namespace matops {
     // performs column wise normalization
     template<typename R>
     vector<Mat<R>> Cost<R>::softmax(vector<Mat<R>>& matrices, R temperature) {
-        vector<Mat<R>> out = Cost<R>::softmax_no_grad(matrices, temperature);
+        vector<Mat<R>> out = Cost<R>::softmax_no_grad_colwise(matrices, temperature);
         if (graph::backprop_enabled())
             graph::emplace_back([temperature, out, matrices]() mutable {
                 R colwise_sums = 0.0;
@@ -80,8 +80,8 @@ namespace matops {
     }
 
     template<typename R>
-    Mat<R> Cost<R>::softmax(Mat<R> matrix, R temperature) {
-        Mat<R> out     = Cost<R>::softmax_no_grad(matrix, temperature);
+    Mat<R> Cost<R>::softmax_colwise(Mat<R> matrix, R temperature) {
+        Mat<R> out     = Cost<R>::softmax_no_grad_colwise(matrix, temperature);
 
         if (graph::backprop_enabled() && !matrix.constant)
             graph::emplace_back([matrix, temperature, out]() mutable {
@@ -98,9 +98,9 @@ namespace matops {
     }
 
     template<typename R>
-    Mat<R> Cost<R>::softmax_no_grad(Mat<R> matrix, R temperature) {
+    Mat<R> Cost<R>::softmax_no_grad_colwise(Mat<R> matrix, R temperature) {
         auto out = Mat<R>::empty_like(matrix);
-        MAT(out) = MAT(matrix).wrapper().softmax(temperature);
+        MAT(out) = MAT(matrix).wrapper().softmax_colwise(temperature);
         return out;
     }
 
@@ -198,7 +198,7 @@ namespace matops {
     Mat<R> Cost<R>::softmax_cross_entropy(Mat<R> matrix, Mat<int> targets) {
         assert(targets.number_of_elements() == matrix.dims(1));
         Mat<R> out =  Mat<R>(1, targets.number_of_elements(), weights<R>::empty());
-        Mat<R> probs = softmax_no_grad(matrix);
+        Mat<R> probs = softmax_no_grad_colwise(matrix);
         select_from_cols(MAT(out), MAT(probs), targets.w().ravel());
 
         MAT(out) = (R)-1.0 * F<op::log<R>>(MAT(out).wrapper());

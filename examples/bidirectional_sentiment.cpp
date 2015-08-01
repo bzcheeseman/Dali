@@ -9,6 +9,7 @@
 
 #include "dali/core.h"
 #include "dali/utils.h"
+#include "dali/utils/stacked_model_builder.h"
 #include "dali/utils/NlpUtils.h"
 #include "dali/data_processing/SST.h"
 #include "dali/data_processing/Glove.h"
@@ -146,6 +147,7 @@ class BidirectionalLSTM {
         StackedInputLayer<T> decoder;
         bool use_recursive_gates;
         int output_size;
+        int hidden_size;
         int stack_size;
         bool convolution;
         bool bidirectional;
@@ -163,6 +165,7 @@ class BidirectionalLSTM {
             decoder({hidden_size, hidden_size}, output_size),
             use_recursive_gates(use_recursive_gates),
             stack_size(stack_size),
+            hidden_size(hidden_size),
             output_size(output_size) {
 
             if (use_recursive_gates) {
@@ -217,6 +220,8 @@ class BidirectionalLSTM {
               stacked_lstm(model.stacked_lstm, copy_w, copy_dw),
               decoder(model.decoder, copy_w, copy_dw),
               use_recursive_gates(model.use_recursive_gates),
+              hidden_size(model.hidden_size),
+              stack_size(model.stack_size),
               output_size(model.output_size) {
             if (use_recursive_gates) {
                 prediction_gate = make_shared<StackedInputLayer<T>>(*model.prediction_gate, copy_w, copy_dw);
@@ -262,7 +267,6 @@ class BidirectionalLSTM {
                     backwardX.push_back(forwardX.back());
                 }
             }
-
             auto state = stacked_lstm.cells[0].initial_states();
             for (auto& cell : stacked_lstm.cells) {
                 if (pass != 0) {
@@ -328,7 +332,7 @@ class BidirectionalLSTM {
                 // Create a flat distribution
                 auto prediction = MatOps<T>::consider_constant(
                                     MatOps<T>::fill(
-                                        Mat<T>(output_size, 1),
+                                        Mat<T>(1, output_size),
                                         1.0 / output_size
                                     )
                                 );
@@ -341,6 +345,7 @@ class BidirectionalLSTM {
                         ++it_back, ++it_forward, ++it_embed)                                      {
                     // get a value between 0 and 1 for how much we keep
                     // update the current prediction
+
                     auto new_memory = prediction_gate->activate({
                         *it_forward,
                         bidirectional ? *it_back : *it_embed,
@@ -350,16 +355,16 @@ class BidirectionalLSTM {
                     // add this memory to output:
                     std::get<0>(prediction_tuple).w(step) = new_memory.w(0);
                     step++;
-
                     // Make a new prediction:
-                    auto new_prediction = MatOps<T>::softmax(decoder.activate({
+                    auto new_prediction = MatOps<T>::softmax_rowwise(decoder.activate({
                         apply_dropout(*it_forward, drop_prob),
                         apply_dropout(bidirectional ? *it_back : *it_embed, drop_prob)
                     }));
+
                     // Update the prediction using the alpha value (tradeoff between old and new)
                     prediction = (
-                        new_prediction.eltmul_broadcast_rowwise(new_memory) +
-                        prediction.eltmul_broadcast_rowwise(1.0 - new_memory)
+                        new_prediction.eltmul_broadcast_colwise(new_memory) +
+                        prediction.eltmul_broadcast_colwise(1.0 - new_memory)
                     );
                     // penalize wavering memory (commit to something)
                     if (graph::backprop_enabled() && memory_penalty > 0) {
@@ -371,18 +376,18 @@ class BidirectionalLSTM {
                 std::get<1>(prediction_tuple) = prediction;
             } else {
                 if (!bidirectional) {
-                    std::get<1>(prediction_tuple) = MatOps<T>::softmax(decoder.activate(
+                    std::get<1>(prediction_tuple) = MatOps<T>::softmax_rowwise(decoder.activate(
                             apply_dropout(forwardX.back(), drop_prob)
                     ));
                 } else if (pass % 2 == 0) {
                     // then we ended with backward pass
-                    std::get<1>(prediction_tuple) = MatOps<T>::softmax(decoder.activate({
+                    std::get<1>(prediction_tuple) = MatOps<T>::softmax_rowwise(decoder.activate({
                         apply_dropout(backwardX.front(), drop_prob),
                         apply_dropout(forwardX.back(), drop_prob)
                     }));
                 } else {
                     // then we ended with forward pass
-                    std::get<1>(prediction_tuple) = MatOps<T>::softmax(decoder.activate({
+                    std::get<1>(prediction_tuple) = MatOps<T>::softmax_rowwise(decoder.activate({
                         apply_dropout(forwardX.back(), drop_prob),
                         apply_dropout(backwardX.front(), drop_prob)
                     }));
@@ -579,7 +584,7 @@ int main (int argc,  char* argv[]) {
                         throw std::runtime_error("Not Implemented!");
                         //error = softmax_categorical_surprise(probs, std::get<1>(example));
                     } else {
-                        error = MatOps<REAL_t>::cross_entropy(probs, std::get<1>(example));
+                        error = MatOps<REAL_t>::cross_entropy_rowwise(probs, std::get<1>(example));
                     }
                     // err += error.w()(0);
                     // auto error = MatOps<REAL_t>::softmax_cross_entropy_colwise(logprobs, std::get<1>(example));

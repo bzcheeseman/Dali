@@ -1429,7 +1429,7 @@ TEST_F(MatOpsTests, cross_entropy_grad_thought_target) {
         auto layer = Mat<R>(hidden_size, input_size,     weights<R>::uniform(-2.0, 2.0));
         auto input = Mat<R>(input_size,  num_examples,   weights<R>::uniform(-2.0, 2.0));
 
-        auto target = Mat<R>(hidden_size,  num_examples, weights<R>::uniform(0.1, 0.9));
+        auto target = Mat<R>(hidden_size,  num_examples, weights<R>::uniform(0.15, 0.85));
 
 
         auto functor = [target, temperature](vector<Mat<R>> Xs)-> Mat<R> {
@@ -1442,7 +1442,7 @@ TEST_F(MatOpsTests, cross_entropy_grad_thought_target) {
                 Xs[2]);
         };
 
-        ASSERT_TRUE(gradient_same(functor, {input, layer, target}, 1e-2));
+        ASSERT_TRUE(gradient_same(functor, {input, layer, target}, 1e-1));
     }
 }
 

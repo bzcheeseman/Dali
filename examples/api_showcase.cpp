@@ -53,7 +53,7 @@ int main () {
               << "one-hot distribution peaking at index " << idx + 1 << "." << std::endl;
 
     // print softmax:
-    auto divergence = MatOps<R>::cross_entropy(softmaxed, idx);
+    auto divergence = MatOps<R>::cross_entropy_colwise(softmaxed, idx);
     divergence.print();
 
     std::cout << "Press Enter to continue" << std::endl;
@@ -82,8 +82,8 @@ int main () {
     // add some random singularity and use exponential
     // normalization:
     A_plucked.w(2,0) += 3.0;
-    auto A_plucked_normed = MatOps<R>::softmax_colwise(A_plucked);
-    auto A_plucked_normed_t = MatOps<R>::softmax_colwise(A_plucked.T());
+    auto A_plucked_normed = MatOps<R>::softmax_rowwise(A_plucked);
+    auto A_plucked_normed_t = MatOps<R>::softmax_rowwise(A_plucked.T());
     A_plucked_normed.print();
     A_plucked_normed_t.print();
 
@@ -94,16 +94,16 @@ int main () {
     StackedInputLayer<R> superclassifier({20, 20, 10, 2}, 5);
 
     vector<Mat<R>> inputs;
-    inputs.emplace_back(20, 5, U);
-    inputs.emplace_back(20, 5, U);
-    inputs.emplace_back(10, 5, U);
-    inputs.emplace_back(2,  5, U);
+    inputs.emplace_back(5, 20, U);
+    inputs.emplace_back(5, 20, U);
+    inputs.emplace_back(5, 10, U);
+    inputs.emplace_back(5, 2,  U);
 
     auto out2 = superclassifier.activate(inputs);
 
 
-    auto stacked = MatOps<R>::vstack(inputs);
-    auto stacked_a_b = MatOps<R>::vstack(inputs[0], inputs[1]);
+    auto stacked = MatOps<R>::hstack(inputs);
+    auto stacked_a_b = MatOps<R>::hstack(inputs[0], inputs[1]);
 
     stacked.print();
     stacked_a_b.print();

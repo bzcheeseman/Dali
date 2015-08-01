@@ -104,8 +104,6 @@ namespace TensorOps {
         dim3 tiles(1);
         // block size is a matrix column
         dim3 within_tile(num_threads);
-        ELOG("lunching backward kernel");
-        ELOG(col);
         ColPluckBackwardKernel<R>
             <<<tiles, within_tile>>>
             (dest,

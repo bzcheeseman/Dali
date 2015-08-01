@@ -50,7 +50,7 @@ beam_search_results_t arithmetic_beam_search(
     auto candidate_scores = [&model](beam_search_state_t state) {
         auto& input_vector = std::get<0>(state);
         auto& lstm_state   = std::get<1>(state);
-        return MatOps<REAL_t>::softmax(model.decode(input_vector, lstm_state)).log();
+        return MatOps<REAL_t>::softmax_rowwise(model.decode(input_vector, lstm_state)).log();
     };
 
     auto make_choice = [&model](beam_search_state_t state, uint candidate) {
@@ -125,16 +125,17 @@ int main (int argc,  char* argv[]) {
 
     while (epoch < FLAGS_epochs) {
         auto indices = utils::random_arange(examples.size());
-        auto indices_begin = indices.begin();
 
         REAL_t minibatch_error = 0.0;
-
         // one minibatch
-        for (auto indices_begin = indices.begin(); indices_begin < indices.begin() + std::min((size_t)FLAGS_minibatch, examples.size()); indices_begin++) {
+        for (auto indices_begin = indices.begin();
+                indices_begin < indices.begin() + std::min((size_t)FLAGS_minibatch, examples.size());
+                indices_begin++) {
             utils::Timer training_timer("train");
             // <training>
             auto& example = examples[*indices_begin];
             auto initial_state = model.initial_states();
+
             Mat<REAL_t> input_vector;
             for (auto& c : example.first) {
                 input_vector = model.embedding[c];
@@ -143,7 +144,7 @@ int main (int argc,  char* argv[]) {
                     input_vector
                 );
             }
-            auto error = MatOps<REAL_t>::softmax_cross_entropy_colwise(
+            auto error = MatOps<REAL_t>::softmax_cross_entropy_rowwise(
                 model.decode(
                     input_vector,
                     initial_state
@@ -156,7 +157,7 @@ int main (int argc,  char* argv[]) {
                     initial_state,
                     input_vector
                 );
-                error = error + MatOps<REAL_t>::softmax_cross_entropy_colwise(
+                error = error + MatOps<REAL_t>::softmax_cross_entropy_rowwise(
                     model.decode(
                         input_vector,
                         initial_state
@@ -169,32 +170,32 @@ int main (int argc,  char* argv[]) {
             training_timer.stop();
             minibatch_error += error.w(0);
             // </training>
-            // throttled1.maybe_run(seconds(2), [&]() {
-            //     auto random_example_index = utils::randint(0, examples.size() -1);
+            throttled1.maybe_run(seconds(2), [&]() {
+                auto random_example_index = utils::randint(0, examples.size() -1);
 
-            //     std::cout << arithmetic::vocabulary.decode(&examples[random_example_index].first) << std::endl;
+                std::cout << arithmetic::vocabulary.decode(&examples[random_example_index].first) << std::endl;
 
-            //     auto beams = arithmetic_beam_search(model, &examples[random_example_index].first);
+                auto beams = arithmetic_beam_search(model, &examples[random_example_index].first);
 
 
-            //     for (const auto& beam : beams) {
-            //         std::cout << "= (" << std::setprecision( 3 ) << beam.score << ") ";
-            //         for (const auto& word : beam.solution) {
-            //             if (word != arithmetic::vocabulary.word2index.at(utils::end_symbol))
-            //                 std::cout << arithmetic::vocabulary.index2word.at(word);
-            //         }
-            //         std::cout << std::endl;
-            //     }
+                for (const auto& beam : beams) {
+                    std::cout << "= (" << std::setprecision( 3 ) << beam.score << ") ";
+                    for (const auto& word : beam.solution) {
+                        if (word != arithmetic::vocabulary.word2index.at(utils::end_symbol))
+                            std::cout << arithmetic::vocabulary.index2word.at(word);
+                    }
+                    std::cout << std::endl;
+                }
 
-            // });
-            // throttled2.maybe_run(seconds(30), [&]() {
-            //     auto predict = [&model](const vector<uint>& example) {
-            //         vector<uint> cpy(example);
-            //         return arithmetic_beam_search(model, &cpy)[0].solution;
-            //     };
-            //     auto correct = arithmetic::average_recall(examples, predict, FLAGS_j);
-            //     std::cout << "epoch: " << epoch << " Percent correct = " << std::setprecision( 3 )  << 100.0 * correct << "%" << std::endl;
-            // });
+            });
+            throttled2.maybe_run(seconds(30), [&]() {
+                auto predict = [&model](const vector<uint>& example) {
+                    vector<uint> cpy(example);
+                    return arithmetic_beam_search(model, &cpy)[0].solution;
+                };
+                auto correct = arithmetic::average_recall(examples, predict, FLAGS_j);
+                std::cout << "epoch: " << epoch << " Percent correct = " << std::setprecision( 3 )  << 100.0 * correct << "%" << std::endl;
+            });
         }
         solver->step(params); // One step of gradient descent
         epoch++;

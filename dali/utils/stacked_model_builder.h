@@ -5,6 +5,7 @@
 #include "dali/models/StackedModel.h"
 #include "dali/models/StackedGatedModel.h"
 
+
 DEFINE_int32(stack_size,        4,    "How many LSTMs should I stack ?");
 DEFINE_int32(input_size,        100,  "Size of the word vectors");
 DEFINE_int32(hidden,            100,  "How many Cells and Hidden Units should each LSTM have ?");

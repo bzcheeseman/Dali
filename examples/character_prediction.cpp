@@ -7,13 +7,18 @@
 #include <thread>
 
 #include "dali/core.h"
-#include "dali/utils/NlpUtils.h"
 #include "dali/models/StackedModel.h"
+#include "dali/utils/stacked_model_builder.h"
+
+auto default_paul_graham_location = utils::dir_join({ STR(DALI_DATA_DIR) , "paul_graham", "train.txt" });
+
 
 DEFINE_int32(num_threads,     5, "How many threads to run ?");
+DEFINE_int32(epochs,       2000, "How many epochs to run for ?");
 DEFINE_int32(minibatch_size, 20, "How big is the minibatch ?");
 DEFINE_int32(hidden_size,    20, "How many hidden states and cells should network use?");
 DEFINE_int32(vocab_size,    300, "How many characters should be modeled in the embedding.");
+DEFINE_string(train,        default_paul_graham_location, "Location of the dataset");
 
 // test file for character prediction
 using std::vector;
@@ -27,7 +32,7 @@ typedef LSTM<REAL_t>          lstm;
 typedef Layer<REAL_t> classifier_t;
 typedef Mat<REAL_t>            mat;
 
-vector<vector<uint>> get_character_sequences(const char* filename, uint& prepad, uint& postpad, uint& vocab_size) {
+vector<vector<uint>> get_character_sequences(std::string filename, uint& prepad, uint& postpad, uint& vocab_size) {
     char ch;
     char linebreak = '\n';
     fstream file;
@@ -78,7 +83,7 @@ T validation_error(
             initial_state = model.stacked_lstm.activate(initial_state, input_vector);
             // classifier takes as input the final hidden layer's activation:
             logprobs      = model.decode(input_vector, initial_state);
-            error = error + MatOps<T>::softmax_cross_entropy_colwise(logprobs, example[i+1]);
+            error = error + MatOps<T>::softmax_cross_entropy_rowwise(logprobs, example[i+1]);
 
         }
         cost += error.w(0) / (n-1);
@@ -109,7 +114,7 @@ Mat<T> cost_fun(
         initial_state = model.stacked_lstm.activate(initial_state, input_vector);
         // classifier takes as input the final hidden layer's activation:
         logprobs      = model.decode(input_vector, initial_state);
-        cost          = cost + MatOps<T>::softmax_cross_entropy_colwise(logprobs, indices[i+1]);
+        cost          = cost + MatOps<T>::softmax_cross_entropy_rowwise(logprobs, indices[i+1]);
     }
     return cost / (n-1);
 }
@@ -135,7 +140,7 @@ int main (int argc, char *argv[]) {
         uint postpad = FLAGS_vocab_size-1;
         uint vocab_size = FLAGS_vocab_size;
         auto sentences = get_character_sequences(
-            "../paulgraham_text.txt",
+            FLAGS_train,
             prepad,
             postpad,
             vocab_size

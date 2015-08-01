@@ -282,7 +282,7 @@ int main( int argc, char* argv[]) {
         }
     }
 
-    auto model = StackedModel<REAL_t>::build_from_CLI(
+     auto model = StackedModel<REAL_t>::build_from_CLI(
         FLAGS_load,
         word_vocab.size(),
         word_vocab.size(),
@@ -344,7 +344,7 @@ int main( int argc, char* argv[]) {
                 if (FLAGS_show_wps) {
                     journalist.tick(++batches_processed, average_words_per_second);
                 } else {
-                    journalist.tick(++batches_processed, error.w(0) / minibatch.total_codes);
+                    journalist.tick(++batches_processed, error.sum().w(0) / minibatch.total_codes);
 
                 }
                 if (FLAGS_show_reconstructions) {

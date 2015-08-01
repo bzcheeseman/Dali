@@ -15,6 +15,13 @@ namespace matops {
     }
 
     template<typename R>
+    void Other<R>::grad(Mat<R>* mat) {
+        if (graph::backprop_enabled()) {
+            mat->dw() += 1;
+        }
+    }
+
+    template<typename R>
     Mat<R> Other<R>::consider_constant_if(
             Mat<R> matrix,
             bool should_consider_constant) {

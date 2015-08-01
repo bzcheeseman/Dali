@@ -12,6 +12,8 @@ namespace matops {
     struct Other {
         static Mat<R> fill(Mat<R>, R);
 
+        static void grad(Mat<R>* mat);
+
         static Mat<R> consider_constant(Mat<R>);
         static Mat<R> consider_constant_if(Mat<R>, bool should_consider_constant);
 

@@ -257,7 +257,6 @@ namespace Solver {
     template<typename R>
     void AdaDelta<R>::step (vector<Mat<R>>& parameters) {
         for (auto& param : parameters) {
-
             if (nan_protection && param.is_grad_nan()) {
                 std::cout << "WARNING: Ignoring gradient update because of NaNs." << std::endl;
             } else {

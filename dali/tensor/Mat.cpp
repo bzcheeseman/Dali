@@ -224,11 +224,7 @@ void Mat<R>::print(std::basic_ostream<char>& stream) const {
 
 template<typename R>
 void Mat<R>::grad() {
-    assert2(dims(0) == 1 && dims(1) == 1,
-            "Grad only works on a \"scalar\" matrix, a 1x1 matrix. "
-            "Call G.sum or G.mean before using grad.");
-    if (graph::backprop_enabled())
-        dw(0) += 1;
+    MatOps<R>::grad(this);
 }
 
 

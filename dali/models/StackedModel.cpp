@@ -211,9 +211,10 @@ Mat<Z> StackedModel<Z>::masked_predict_cost(
 
     utils::Timer mpc("masked_predict_cost");
     auto state = this->initial_states();
-    mat total_error(1,1);
 
     auto n = data.dims(0);
+    mat total_error(data.dims(1),1);
+
     assert (temporal_offset < n);
     assert (target_data.dims(0) >= data.dims(0));
 
@@ -250,7 +251,7 @@ Mat<Z> StackedModel<Z>::masked_predict_cost(
         errors *= mask[timestep + temporal_offset].T();
         masking_tm.stop();
 
-        total_error += errors.sum();
+        total_error += errors;
     }
     mpc.stop();
 

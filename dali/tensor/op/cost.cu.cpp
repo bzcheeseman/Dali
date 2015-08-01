@@ -157,7 +157,7 @@ namespace matops {
             utils::MS() << "Cross entropy target (" << answer_idx << ") must be less than"
                            " number of rows in predicted matrix (" << matrix.dims(0) << ").");
         Mat<R> out =  Mat<R>(1, matrix.dims(1), weights<R>::empty());
-        MAT(out).ravel() =  (R)-1.0 * F<op::log<R>>(MAT(matrix)[answer_idx].wrapper() + (R)EPS);
+        MAT(out).ravel() =  (R)-1.0 * F<op::safe_entropy_log<R>>(MAT(matrix)[answer_idx].wrapper() + (R)EPS);
 
         DEBUG_ASSERT_MAT_NOT_NAN(out);
 
@@ -177,7 +177,7 @@ namespace matops {
         Mat<R> out =  Mat<R>(matrix.dims(0), 1, weights<R>::empty());
         TensorOps::col_pluck(MAT(out).ravel(), MAT(matrix), answer_idx);
 
-        MAT(out).ravel() =  (R)-1.0 * F<op::log<R>>(MAT(out).ravel().wrapper() + (R)EPS);
+        MAT(out).ravel() =  (R)-1.0 * F<op::safe_entropy_log<R>>(MAT(out).ravel().wrapper() + (R)EPS);
 
         DEBUG_ASSERT_MAT_NOT_NAN(out);
 
@@ -201,14 +201,14 @@ namespace matops {
             "Matrix and target must have same dimension");
 
         Mat<R> out = Mat<R>::empty_like(matrix);
-        MAT(out) = (R)-1.0 * MAT(target).wrapper() * F<op::log<R>>(MAT(matrix).wrapper() + (R)EPS);
+        MAT(out) = (R)-1.0 * MAT(target).wrapper() * F<op::safe_entropy_log<R>>(MAT(matrix).wrapper());
 
         DEBUG_ASSERT_NOT_NAN(MAT(out));
 
         if (graph::backprop_enabled())
             graph::emplace_back([matrix, target, out]() mutable {
                 SAFE_GRAD(matrix) -= F<op::inv<R>>(MAT(matrix).wrapper() + (R)EPS) * MAT(target).wrapper() * GRAD(out).wrapper();
-                SAFE_GRAD(target) -= F<op::log<R>>(MAT(matrix).wrapper() + (R)EPS) * GRAD(out).wrapper();
+                SAFE_GRAD(target) -= F<op::safe_entropy_log<R>>(MAT(matrix).wrapper()) * GRAD(out).wrapper();
             });
         return out;
     }
@@ -233,7 +233,7 @@ namespace matops {
         Mat<R> probs = softmax_no_grad_colwise(matrix);
         select_from_cols(MAT(out), MAT(probs), targets.w().ravel());
 
-        MAT(out) = (R)-1.0 * F<op::log<R>>(MAT(out).wrapper());
+        MAT(out) = (R)-1.0 * F<op::safe_entropy_log<R>>(MAT(out).wrapper());
         if (graph::backprop_enabled()) {
             graph::emplace_back([matrix, probs, out, targets]() mutable {
                 if (!matrix.constant) {
@@ -279,7 +279,7 @@ namespace matops {
         select_from_rows(MAT(out), MAT(probs), targets.w().ravel());
 
 
-        MAT(out) = (R)-1.0 * F<op::log<R>>(MAT(out).wrapper());
+        MAT(out) = (R)-1.0 * F<op::safe_entropy_log<R>>(MAT(out).wrapper());
 
         if (graph::backprop_enabled()) {
             graph::emplace_back([matrix, probs, out, targets]() mutable {

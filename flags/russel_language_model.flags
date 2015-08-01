@@ -1,0 +1,13 @@
+--train ../data/norvig/big.txt
+--validation ../data/paul_graham/validation.txt
+--min_occurence 10
+--hidden 250
+--stack_size 2
+--max_sentence_length 8
+--noshow_reconstructions
+--input_size 250
+--minibatch 128
+--nomemory_feeds_gates
+--noshortcut
+--show_wps
+--solver=sgd

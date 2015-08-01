@@ -79,6 +79,22 @@ namespace TensorOps {
         };
 
         template<typename R>
+        struct safe_entropy_log {
+            MSHADOW_XINLINE static R Map(const R& a) {
+                R a_safe = a;
+                const R lower_bound = (R)EPS;
+                const R upper_bound = (R)(1.0 - EPS);
+                if (a_safe > upper_bound) {
+                    a_safe = upper_bound;
+                }
+                if (a_safe < lower_bound) {
+                    a_safe = lower_bound;
+                }
+                return LOG_F(a_safe);
+            }
+        };
+
+        template<typename R>
         struct exp {
             MSHADOW_XINLINE static R Map(const R& a) {
                 return EXP_F(a);

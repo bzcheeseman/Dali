@@ -17,7 +17,7 @@
 
 DEFINE_int32(minibatch,            100,  "What size should be used for the minibatches ?");
 DEFINE_bool(sparse,                true, "Use sparse embedding");
-DEFINE_double(cutoff,              2.0,  "KL Divergence error where stopping is acceptable");
+DEFINE_double(cutoff,              -1.0,  "KL Divergence error where stopping is acceptable");
 DEFINE_int32(patience,             5,    "How many unimproving epochs to wait through before witnessing progress ?");
 DEFINE_int32(num_reconstructions,  5,    "How many sentences to demo after each epoch.");
 DEFINE_double(dropout,             0.3,  "How many Hintons to include in the neural network.");
@@ -311,6 +311,8 @@ int main( int argc, char* argv[]) {
     double average_words_per_second = 0;
     int word_done_in_past_second = 0;
 
+    utils::ThreadAverage avg_error(FLAGS_j);
+
     while (cost > FLAGS_cutoff && epoch < FLAGS_epochs && patience < FLAGS_patience) {
 
         std::atomic<int> full_code_size(0);
@@ -344,7 +346,8 @@ int main( int argc, char* argv[]) {
                 if (FLAGS_show_wps) {
                     journalist.tick(++batches_processed, average_words_per_second);
                 } else {
-                    journalist.tick(++batches_processed, error.sum().w(0) / minibatch.total_codes);
+                    avg_error.update(error.sum().w(0) / minibatch.total_codes);
+                    journalist.tick(++batches_processed, avg_error.average());
 
                 }
                 if (FLAGS_show_reconstructions) {
@@ -406,7 +409,6 @@ int main( int argc, char* argv[]) {
 
         pool->wait_until_idle();
         journalist.done();
-
 
         new_cost = average_error(model, validation);
         if (new_cost >= cost) {

@@ -8,6 +8,7 @@
 #include <chrono>
 
 #include "dali/utils.h"
+#include "dali/utils/model_saving.h"
 #include "dali/core.h"
 
 template<typename R>

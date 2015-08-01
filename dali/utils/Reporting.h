@@ -15,10 +15,6 @@
 #include <unordered_map>
 #include <vector>
 
-DECLARE_string(save);
-DECLARE_string(load);
-DECLARE_int32(save_frequency_s);
-
 class Throttled {
     std::chrono::high_resolution_clock::time_point last_report;
     std::mutex lock;
@@ -30,6 +26,8 @@ class Throttled {
 
 template<typename T>
 class ReportProgress {
+    std::mutex lock;
+
     static const int RESOLUTION = 30;
     Throttled t;
     std::string name;
@@ -37,6 +35,11 @@ class ReportProgress {
     size_t max_line_length = 0;
     Throttled::Clock::duration report_frequency;
     bool printing_on = true;
+
+    Throttled::Clock::time_point last_tick;
+    double last_completed_work_report;
+    std::chrono::duration<double, std::ratio<1l, 1000000000l> > estimated_total_time;
+
 
     void finish_line(const std::string& text);
     public:

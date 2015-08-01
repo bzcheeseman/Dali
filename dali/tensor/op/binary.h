@@ -33,6 +33,7 @@ namespace matops {
         static Mat<R> add(std::vector<Mat<R>>&);
         static std::vector<Mat<R>> eltmul(const std::vector<Mat<R>>&, const std::vector<Mat<R>>&);
         static std::vector<Mat<R>> eltmul_broadcast_rowwise(const std::vector<Mat<R>>&, const std::vector<Mat<R>>&);
+        static std::vector<Mat<R>> eltmul_broadcast_colwise(const std::vector<Mat<R>>&, const std::vector<Mat<R>>&);
         static std::vector<Mat<R>> eltmul_rowwise(const std::vector<Mat<R>>&, const std::vector<Mat<R>>&);
     };
 }

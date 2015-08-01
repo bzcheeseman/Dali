@@ -184,7 +184,7 @@ class BeamLSTM : public LSTM<T> {
 
             for (auto& node: states) {
                 distributions.emplace_back(
-                    MatOps<T>::softmax(
+                    MatOps<T>::softmax_rowwise(
                         decoder.activate(node.state.hidden)
                     )
                 );
@@ -199,7 +199,7 @@ class BeamLSTM : public LSTM<T> {
             } else {
                 auto probabilites = MatOps<T>::softmax(scores);
 
-                auto weighted_distributions = MatOps<T>::eltmul_broadcast_rowwise(
+                auto weighted_distributions = MatOps<T>::eltmul_broadcast_colwise(
                     distributions,
                     probabilites
                 );
@@ -512,7 +512,8 @@ class ArithmeticModel {
             for (int aidx = 0; aidx < targets.size(); ++aidx) {
                 // TODO: each error should act individually (ErrorTotal = Sum { error[idx] * prob[idx] } )
                 Mat<T> prediction = decoder_lstm.decode(candidates);
-                error = error + MatOps<T>::cross_entropy(prediction, targets[aidx]);
+                error = error + MatOps<T>::cross_entropy_rowwise(prediction, targets[aidx]);
+
                 if (aidx + 1 < targets.size()) {
                     candidates = decoder_lstm.activate(embedding[targets[aidx]], candidates);
                 }
@@ -558,7 +559,7 @@ class ArithmeticModel {
                         auto next_symbol_distribution = decoder_lstm.decode(candidate.nodes);
 
                         vector<uint> predicted_symbols;
-                        for (size_t pidx = 0; pidx < next_symbol_distribution.dims(0); ++pidx)
+                        for (size_t pidx = 0; pidx < next_symbol_distribution.dims(1); ++pidx)
                             predicted_symbols.push_back(pidx);
 
                         std::sort(predicted_symbols.begin(), predicted_symbols.end(),
@@ -567,7 +568,7 @@ class ArithmeticModel {
                         });
                         int n_generated_candidates = std::min(
                             (uint) beam_width,
-                            next_symbol_distribution.dims(0)
+                            next_symbol_distribution.dims(1)
                         );
                         for (int ncidx = 0; ncidx < n_generated_candidates; ++ncidx) {
                             uint candidate_idx = predicted_symbols[ncidx];
@@ -577,7 +578,7 @@ class ArithmeticModel {
                             // probability of this fork, and update the predictions list.
                             auto new_nodes = decoder_lstm.activate(embedding[candidate_idx], candidate.nodes);
                             for (auto& node: new_nodes) {
-                                node.log_probability = node.log_probability + next_symbol_distribution[candidate_idx].log();
+                                node.log_probability = node.log_probability + next_symbol_distribution(NULL, candidate_idx).log();
                             }
                             new_candidates.emplace_back(
                                 candidate.make_choice(

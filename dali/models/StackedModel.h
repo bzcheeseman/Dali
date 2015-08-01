@@ -25,13 +25,6 @@ The objective function is built using masked cross entropy (only certain
 input channels collect error over small intervals).
 
 **/
-DECLARE_int32(stack_size);
-DECLARE_int32(input_size);
-DECLARE_int32(hidden);
-DECLARE_double(decay_rate);
-DECLARE_double(rho);
-DECLARE_bool(shortcut);
-DECLARE_bool(memory_feeds_gates);
 
 template<typename Z>
 class StackedModel : public RecurrentEmbeddingModel<Z>, public ReconstructModel {
@@ -86,11 +79,6 @@ class StackedModel : public RecurrentEmbeddingModel<Z>, public ReconstructModel 
 
         **/
         static StackedModel<Z> load(std::string);
-
-        static StackedModel<Z> build_from_CLI(std::string load_location,
-                                              int vocab_size,
-                                              int output_size,
-                                              bool verbose = true);
 
 
         StackedModel() = default;

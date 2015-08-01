@@ -1,6 +1,5 @@
 #include "StackedGatedModel.h"
 
-DEFINE_double(memory_penalty, 0.3, "L1 Penalty on Input Gate activation.");
 
 using std::shared_ptr;
 using std::vector;
@@ -25,56 +24,6 @@ typename StackedGatedModel<Z>::config_t StackedGatedModel<Z>::configuration() co
     return config;
 }
 
-template<typename Z>
-StackedGatedModel<Z> StackedGatedModel<Z>::build_from_CLI(
-        string load_location,
-        int vocab_size,
-        int output_size,
-        bool verbose) {
-    if (verbose)
-        std::cout << "Load location         = "
-                  << ((load_location == "") ? "N/A" : load_location)
-                  << std::endl;
-    // Load or Construct the model
-    auto model = (load_location != "") ?
-        StackedGatedModel<Z>::load(load_location) :
-        StackedGatedModel<Z>(
-            vocab_size,
-            FLAGS_input_size,
-            FLAGS_hidden,
-            FLAGS_stack_size < 1 ? 1 : FLAGS_stack_size,
-            output_size,
-            FLAGS_shortcut,
-            FLAGS_memory_feeds_gates,
-            FLAGS_memory_penalty);
-    if (verbose) {
-        std::cout << (
-                    (load_location == "") ?
-                        "Constructed Stacked LSTMs" :
-                        "Loaded Model"
-                    )
-                  << std::endl
-                  << "Vocabulary size       = "
-                  << model.embedding.dims(0)
-                  << std::endl
-                  << "Input size            = "
-                  << model.embedding.dims(1)
-                  << std::endl
-                  << "Output size           = "
-                  << model.output_size
-                  << std::endl
-                  << "Stack size            = "
-                  << model.hidden_sizes.size()
-                  << std::endl
-                  << "Shortcut connections  = "
-                  << (model.use_shortcut ? "true" : "false")
-                  << std::endl
-                  << "Memory feeds gates    = "
-                  << (model.memory_feeds_gates ? "true" : "false")
-                  << std::endl;
-    }
-    return model;
-}
 /**
 Load
 ----

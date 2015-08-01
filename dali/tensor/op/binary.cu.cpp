@@ -299,6 +299,17 @@ namespace matops {
     }
 
     template<typename R>
+    vector<Mat<R>> Binary<R>::eltmul_broadcast_colwise(const vector<Mat<R>>& seq1, const vector<Mat<R>>& seq2) {
+        ASSERT2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
+
+        vector<Mat<R>> result(seq1.size());
+        for (int i = 0; i < seq1.size(); ++i) {
+            result[i] = eltmul_broadcast_colwise(seq1[i], seq2[i]);
+        }
+        return result;
+    }
+
+    template<typename R>
     vector<Mat<R>> Binary<R>::eltmul_rowwise(const vector<Mat<R>>& seq1, const vector<Mat<R>>& seq2) {
         ASSERT2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
 
@@ -320,6 +331,7 @@ namespace matops {
     template<typename R>
     Mat<R> Binary<R>::add(std::vector<Mat<R>>& matrices) {
         ASSERT2(matrices.size() > 0, "Got 0 matrices to add.");
+
         auto out = Mat<R>::zeros_like(matrices.front());
         for (auto& matrix : matrices)
             MAT(out) += MAT(matrix).wrapper();
@@ -329,6 +341,7 @@ namespace matops {
                     SAFE_GRAD(matrix) += GRAD(out).wrapper();
                 }
             });
+
         return out;
     }
 

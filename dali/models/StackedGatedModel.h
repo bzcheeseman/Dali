@@ -70,10 +70,7 @@ class StackedGatedModel : public StackedModel<Z> {
         **/
         virtual config_t configuration() const;
         static StackedGatedModel<Z> load(std::string);
-        static StackedGatedModel<Z> build_from_CLI(std::string load_location,
-                                                   int vocab_size,
-                                                   int output_size,
-                                                   bool verbose);
+
         StackedGatedModel() = default;
         StackedGatedModel(
             int vocabulary_size,

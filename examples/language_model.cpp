@@ -22,6 +22,8 @@ DEFINE_int32(patience,             5,    "How many unimproving epochs to wait th
 DEFINE_int32(num_reconstructions,  5,    "How many sentences to demo after each epoch.");
 DEFINE_double(dropout,             0.3,  "How many Hintons to include in the neural network.");
 DEFINE_int32(max_sentence_length,  19,   "How many sentences to demo after each epoch.");
+DEFINE_bool(show_reconstructions,  true, "Show example reconstructions during phase.");
+DEFINE_bool(show_wps,              false,"LSTM's memory cell also control gate outputs");
 
 
 using std::ifstream;
@@ -299,11 +301,15 @@ int main( int argc, char* argv[]) {
     }
 
     Throttled throttled;
+    Throttled throttled_wps;
 
     int epoch       = 0;
     auto cost       = std::numeric_limits<REAL_t>::infinity();
     double new_cost = 0.0;
     int patience    = 0;
+
+    double average_words_per_second = 0;
+    int word_done_in_past_second = 0;
 
     while (cost > FLAGS_cutoff && epoch < FLAGS_epochs && patience < FLAGS_patience) {
 
@@ -328,60 +334,73 @@ int main( int argc, char* argv[]) {
 
                 graph::backward(); // backpropagate
                 solver->step(thread_parameters);
-                journalist.tick(++batches_processed, error.w(0) / minibatch.total_codes);
-                throttled.maybe_run(seconds(10), [&]() {
-                    // Tell the journalist the news can wait
-                    journalist.pause();
-                    graph::NoBackprop nb;
-                    auto& random_batch = training[utils::randint(0, training.size() - 1)];
-                    auto random_example_index = utils::randint(0, random_batch.data.dims(1) - 1);
-                    std::cout << random_batch.code_lengths[random_example_index] << std::endl;
 
-                    int priming_size = utils::randint(1, std::min(6, random_batch.code_lengths[random_example_index]));
-
-                    vector<uint> priming;
-                    for (int i = 0; i < priming_size; ++i) {
-                        priming.push_back(random_batch.data.w(i, random_example_index));
-                    }
-
-                    auto beams = the_beam_search(model, word_vocab, &priming);
-
-                    vector<uint> priming_no_start(priming.begin() + 1, priming.end());
-
-                    std::cout << "Reconstructions: " << std::endl;
-                    for (auto& beam : beams) {
-                        std::cout << "=> (" << std::setprecision( 5 ) << beam.score << ") ";
-                        std::cout << utils::join(word_vocab.decode(&priming_no_start), " ") << " ";
-                        std::cout << utils::bold;
-                        std::cout << utils::join(word_vocab.decode(&beam.solution, true), " ") << std::endl;
-                        std::cout << utils::reset_color << std::endl;
-                    }
-
-                    if (visualizer != nullptr) {
-                        vector<vector<string>> sentences;
-                        vector<REAL_t>         probs;
-                        for (auto& beam : beams) {
-                            sentences.emplace_back(word_vocab.decode(&beam.solution, true));
-                            probs.emplace_back(beam.score);
-                        }
-
-                        auto input_sentence = make_shared<visualizable::Sentence<REAL_t>>(
-                                word_vocab.decode(&priming_no_start));
-                        auto sentences_viz = make_shared<visualizable::Sentences<REAL_t>>(sentences);
-                        sentences_viz->set_weights(probs);
-
-                        auto input_output_pair = visualizable::GridLayout();
-
-                        input_output_pair.add_in_column(0, input_sentence);
-                        input_output_pair.add_in_column(1, sentences_viz);
-
-                        visualizer->feed(input_output_pair.to_json());
-                    }
-
-                    journalist.resume();
-
+                word_done_in_past_second += minibatch.total_codes;
+                throttled_wps.maybe_run(seconds(1), [&]() {
+                    average_words_per_second = 0.5 * average_words_per_second + 0.5 * word_done_in_past_second;
+                    word_done_in_past_second = 0;
                 });
 
+                if (FLAGS_show_wps) {
+                    journalist.tick(++batches_processed, average_words_per_second);
+                } else {
+                    journalist.tick(++batches_processed, error.w(0) / minibatch.total_codes);
+
+                }
+                if (FLAGS_show_reconstructions) {
+                    throttled.maybe_run(seconds(10), [&]() {
+                        // Tell the journalist the news can wait
+                        journalist.pause();
+                        graph::NoBackprop nb;
+                        auto& random_batch = training[utils::randint(0, training.size() - 1)];
+                        auto random_example_index = utils::randint(0, random_batch.data.dims(1) - 1);
+                        std::cout << random_batch.code_lengths[random_example_index] << std::endl;
+
+                        int priming_size = utils::randint(1, std::min(6, random_batch.code_lengths[random_example_index]));
+
+                        vector<uint> priming;
+                        for (int i = 0; i < priming_size; ++i) {
+                            priming.push_back(random_batch.data.w(i, random_example_index));
+                        }
+
+                        auto beams = the_beam_search(model, word_vocab, &priming);
+
+                        vector<uint> priming_no_start(priming.begin() + 1, priming.end());
+
+                        std::cout << "Reconstructions: " << std::endl;
+                        for (auto& beam : beams) {
+                            std::cout << "=> (" << std::setprecision( 5 ) << beam.score << ") ";
+                            std::cout << utils::join(word_vocab.decode(&priming_no_start), " ") << " ";
+                            std::cout << utils::bold;
+                            std::cout << utils::join(word_vocab.decode(&beam.solution, true), " ") << std::endl;
+                            std::cout << utils::reset_color << std::endl;
+                        }
+
+                        if (visualizer != nullptr) {
+                            vector<vector<string>> sentences;
+                            vector<REAL_t>         probs;
+                            for (auto& beam : beams) {
+                                sentences.emplace_back(word_vocab.decode(&beam.solution, true));
+                                probs.emplace_back(beam.score);
+                            }
+
+                            auto input_sentence = make_shared<visualizable::Sentence<REAL_t>>(
+                                    word_vocab.decode(&priming_no_start));
+                            auto sentences_viz = make_shared<visualizable::Sentences<REAL_t>>(sentences);
+                            sentences_viz->set_weights(probs);
+
+                            auto input_output_pair = visualizable::GridLayout();
+
+                            input_output_pair.add_in_column(0, input_sentence);
+                            input_output_pair.add_in_column(1, sentences_viz);
+
+                            visualizer->feed(input_output_pair.to_json());
+                        }
+
+                        journalist.resume();
+
+                    });
+                }
             });
         }
 

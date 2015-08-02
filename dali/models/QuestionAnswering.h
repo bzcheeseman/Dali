@@ -185,7 +185,7 @@ class AveragingModel {
                     const vector<vector<string>>& answers) {
             auto scores = answer_scores(text, question, answers);
 
-            return MatOps<R>::vstack(scores).argmax();
+            return MatOps<R>::hstack(scores).argmax();
         }
 };
 
@@ -373,7 +373,7 @@ class GatedLstmsModel {
             facts_model = StackedLSTM<R>(3*vsum(TEXT_STACKS), HL_STACKS, true, true);
             fact_gate = LolGate<R>(vsum(TEXT_STACKS), 2*vsum(TEXT_STACKS), GATE_SECOND_ORDER);
             fact_word_gate = LolGate<R>(EMBEDDING_SIZE, 2*vsum(TEXT_STACKS), GATE_SECOND_ORDER);
-            please_start_prediction = Mat<R>(3*vsum(TEXT_STACKS), 1, weights<R>::uniform(1.0));
+            please_start_prediction = Mat<R>(1, 3*vsum(TEXT_STACKS), weights<R>::uniform(1.0));
 
             decoder = Layer<R>(vsum(HL_STACKS), 1);
         }
@@ -411,7 +411,7 @@ class GatedLstmsModel {
             assert(memory.size() == seq.size());
             vector<Mat<R>> gated_seq;
             for(int i=0; i < memory.size(); ++i) {
-                gated_seq.push_back(seq[i].eltmul_broadcast_rowwise(memory[i]));
+                gated_seq.push_back(seq[i].eltmul_broadcast_colwise(memory[i]));
             }
             return gated_seq;
         }
@@ -423,7 +423,7 @@ class GatedLstmsModel {
                                                      embeddings,
                                                      dropout_value);
             // out_state.second corresponds to LSTM hidden (as opposed to memory).
-            return MatOps<R>::vstack(LSTM<R>::activation_t::hiddens(out_states));
+            return MatOps<R>::hstack(LSTM<R>::activation_t::hiddens(out_states));
         }
 
         std::tuple<Mat<R>,Mat<R>,Mat<R>> answer_score(const vector<vector<string>>& facts,
@@ -437,7 +437,7 @@ class GatedLstmsModel {
             auto answer_hidden = lstm_final_activation(get_embeddings(reversed(answer)),
                                                        answer_model,
                                                        use_dropout ? TEXT_DROPOUT : 0.0);
-            Mat<R> reading_context = MatOps<R>::vstack(question_hidden, answer_hidden);
+            Mat<R> reading_context = MatOps<R>::hstack(question_hidden, answer_hidden);
 
             vector<Mat<R>> fact_representations;
             Mat<R> word_fact_gate_memory_sum(1,1);
@@ -466,7 +466,7 @@ class GatedLstmsModel {
 
             vector<Mat<R>> hl_input;
             for (auto& gate_fact : gated_facts) {
-                hl_input.push_back(MatOps<R>::vstack(reading_context, gate_fact));
+                hl_input.push_back(MatOps<R>::hstack(reading_context, gate_fact));
             }
 
             hl_input.push_back(please_start_prediction);
@@ -526,7 +526,7 @@ class GatedLstmsModel {
                 scores.push_back(score);
             }
 
-            return MatOps<R>::vstack(scores).argmax();
+            return MatOps<R>::hstack(scores).argmax();
         }
 };
 

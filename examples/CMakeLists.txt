@@ -14,6 +14,7 @@ set(EXAMPLE_PROGRAMS api_showcase
                      loading_from_sqlite
                      lstm_sentiment
                      machine_comprehension
+                     mlbasics_learn_to_add
                      mlbasics_rnn_binary_addition
                      sparse_lstm_sentiment
                      sparse_ner
@@ -35,8 +36,7 @@ endforeach(program)
 # Example programs that use Cuda
 if (WITH_CUDA)
     set(EXAMPLE_CUDA_PROGRAMS mshadow
-                              templator
-                              mlbasics_learn_to_add)
+                              templator)
 
     foreach(program ${EXAMPLE_CUDA_PROGRAMS})
         SET(OLD_CXX_FLAGS ${CMAKE_CXX_FLAGS})

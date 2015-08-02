@@ -8,6 +8,7 @@
 
 #include "dali/core.h"
 #include "dali/utils.h"
+#include "dali/utils/stacked_model_builder.h"
 #include "dali/utils/NlpUtils.h"
 #include "dali/data_processing/NER.h"
 #include "dali/data_processing/Glove.h"
@@ -139,6 +140,7 @@ int main (int argc,  char* argv[]) {
         model.embedding = embedding;
     }
 
+
     vector<vector<Mat<REAL_t>>> thread_params;
     vector<vector<Mat<REAL_t>>> thread_embedding_params;
     // what needs to be optimized:
@@ -146,6 +148,7 @@ int main (int argc,  char* argv[]) {
     std::tie(thread_models, thread_embedding_params, thread_params) = utils::shallow_copy_multi_params(model, FLAGS_j, [&model](const Mat<REAL_t>& mat) {
         return &mat.w().memory() == &model.embedding.w().memory();
     });
+
     vector<Mat<REAL_t>> params = model.parameters();
     vector<Mat<REAL_t>> embedding_params(params.begin(), params.begin() + 1);
     params = vector<Mat<REAL_t>>(params.begin() + 1, params.end());
@@ -239,7 +242,8 @@ int main (int argc,  char* argv[]) {
                     for (int ex_idx = 0; ex_idx < std::get<0>(example).size(); ex_idx++) {
                         std::tie(state, probs, memory) = thread_model.activate(state, std::get<0>(example)[ex_idx]);
                         memories.emplace_back(memory);
-                        error = error + MatOps<REAL_t>::cross_entropy(
+
+                        error = error + MatOps<REAL_t>::cross_entropy_rowwise(
                             probs,
                             std::get<1>(example)[ex_idx]
                         );

@@ -103,9 +103,9 @@ class SparseStackedLSTM : public StackedLSTM<T> {
 
         // returns next state and memory
         std::tuple<state_t, Mat<T>> activate(Mat<T> input, state_t prev_state, T dropout_probability) const {
-            auto current_hiddens =  MatOps<T>::vstack(LSTM<T>::activation_t::hiddens(prev_state));
+            auto current_hiddens =  MatOps<T>::hstack(LSTM<T>::activation_t::hiddens(prev_state));
             auto gate_memory     =  activate_gate(input, current_hiddens);
-            auto gated_input     =  input.eltmul_broadcast_rowwise(gate_memory);
+            auto gated_input     =  input.eltmul_broadcast_colwise(gate_memory);
             auto next_state      =  StackedLSTM<T>::activate(prev_state, gated_input, dropout_probability);
 
             return std::make_tuple(next_state, gate_memory);
@@ -144,7 +144,7 @@ class ParaphraseModel : public RecurrentEmbeddingModel<T> {
                                  gate_second_order,
                                  FLAGS_lstm_shortcut,
                                  FLAGS_lstm_memory_feeds_gates),
-                end_of_sentence_token(_input_size, 1, weights<T>::uniform(1.0 / _input_size)) {}
+                end_of_sentence_token(1, _input_size, weights<T>::uniform(1.0 / _input_size)) {}
 
         ParaphraseModel(const ParaphraseModel& other, bool copy_w, bool copy_dw) :
                 RecurrentEmbeddingModel<T>(other, copy_w, copy_dw),
@@ -178,7 +178,7 @@ class ParaphraseModel : public RecurrentEmbeddingModel<T> {
                 embeddings,
                 state,
                 drop_prob);
-            auto sentence_hidden = MatOps<T>::vstack(LSTM<T>::activation_t::hiddens(state));
+            auto sentence_hidden = MatOps<T>::hstack(LSTM<T>::activation_t::hiddens(state));
             return std::make_tuple(sentence_hidden, memories);
         }
 

@@ -7,6 +7,7 @@
 #include <chrono>
 
 #include "dali/core.h"
+#include "dali/utils/stacked_model_builder.h"
 #include "dali/utils/NlpUtils.h"
 #include "dali/data_processing/SST.h"
 #include "dali/data_processing/Glove.h"
@@ -237,7 +238,7 @@ int main (int argc,  char* argv[]) {
                         final_states,
                         FLAGS_dropout
                     );
-                    auto error = MatOps<REAL_t>::softmax_cross_entropy_colwise(logprobs, std::get<1>(example));
+                    auto error = MatOps<REAL_t>::softmax_cross_entropy_rowwise(logprobs, std::get<1>(example));
                     if (FLAGS_average_gradient)
                         error = error/ minibatch.size();
                     if (std::get<2>(example) && FLAGS_root_weight != 1.0)
@@ -260,7 +261,7 @@ int main (int argc,  char* argv[]) {
                             graph::NoBackprop nb;
                             auto final_states = thread_model.get_final_activation(&example, 0.0);
                             // make prediction
-                            auto probs = MatOps<REAL_t>::softmax(
+                            auto probs = MatOps<REAL_t>::softmax_rowwise(
                                 thread_model.decode(
                                     thread_model.embedding[example.back()],
                                     final_states,

@@ -351,7 +351,7 @@ template<typename Z>
 typename StackedGatedModel<Z>::State StackedGatedModel<Z>::activate(
         state_type& previous_state,
         const uint& index) const {
-    return activate(previous_state, {index});
+    return activate(previous_state, Indexing::Index({index}));
 }
 
 template<typename Z>
@@ -360,23 +360,27 @@ typename StackedGatedModel<Z>::State StackedGatedModel<Z>::activate(
         const Indexing::Index indices) const {
     State out;
     auto input_vector = this->embedding[indices];
+
     out.memory       = gate.activate(
         {
             input_vector,
             previous_state.back().hidden
         }
     ).sigmoid();
+
     input_vector      = input_vector.eltmul_broadcast_colwise(out.memory);
 
     out.lstm_state = this->stacked_lstm.activate(
         previous_state,
         input_vector);
+
     out.prediction = MatOps<Z>::softmax_rowwise(
             this->decode(
                 input_vector,
                 out.lstm_state
             )
         );
+
     return out;
 }
 

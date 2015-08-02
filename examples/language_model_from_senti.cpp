@@ -6,6 +6,7 @@
 
 #include "dali/core.h"
 #include "dali/utils.h"
+#include "dali/utils/stacked_model_builder.h"
 #include "dali/utils/NlpUtils.h"
 #include "dali/data_processing/SST.h"
 #include "dali/models/StackedModel.h"
@@ -27,6 +28,7 @@ using std::istringstream;
 using std::stringstream;
 using std::string;
 using std::min;
+using std::make_tuple;
 using utils::Vocab;
 using utils::tokenized_uint_labeled_dataset;
 using std::atomic;
@@ -116,7 +118,35 @@ REAL_t average_error(const vector<model_t>& models, const vector<vector<Databatc
                 vector<mat> probs;
                 for (int k = 0; k < models.size();k++) {
 
+                    typedef decltype(models[k].initial_states()) state_t;
+                    typedef std::tuple<state_t, Mat<REAL_t>> decode_state_t;
 
+
+                    // TODO(Jonathan): This is currently incorrect mathematically.
+                    // To make it correct we need to replace valid_set by valid_set.Slice(1:)
+                    // (which is not yet implemented)
+
+                    auto initial_state = make_tuple<state_t, Mat<REAL_t>>(
+                            models[k].initial_states(),
+                            models[k].embedding[valid_set.data[0]]);
+
+                    probs.emplace_back(sequence_probability::sequence_score<REAL_t, decode_state_t>(
+                        valid_set,
+                        initial_state,
+                        [&](decode_state_t state) -> Mat<REAL_t> {
+                            return MatOps<REAL_t>::softmax_rowwise(models[k].decode(
+                                std::get<1>(state),
+                                std::get<0>(state)
+                            )).log();
+                        },
+                        [&](Mat<int> obs, decode_state_t state) -> decode_state_t {
+                            return make_tuple<state_t, Mat<REAL_t>>(
+                                models[k].activate(std::get<0>(state), obs).lstm_state,
+                                models[k].embedding[obs]
+                            );
+                        },
+                        1
+                    ));
                     // probs.emplace_back(FLAGS_use_surprise
                     //     ? sequence_probability::sequence_surprises(
                     //         models[k],
@@ -235,13 +265,14 @@ int main( int argc, char* argv[]) {
         for (auto& tree_type : validation_tree_types) {
             std::cout << "Label type " << i++ << " has " << tree_type.size() << " validation examples" << std::endl;
         }
+        i = 0;
+        for (auto& tree_type : tree_types) {
+            datasets[i++] = Databatch::create_dataset(tree_type, word_vocab, FLAGS_minibatch, true);
+        }
 
         i = 0;
-        for (auto& tree_type : tree_types)
-            datasets[i++] = Databatch::create_dataset(tree_type, word_vocab, FLAGS_minibatch);
-        i = 0;
         for (auto& tree_type : validation_tree_types)
-            validation_sets[i++] = Databatch::create_dataset(tree_type, word_vocab, FLAGS_minibatch);
+            validation_sets[i++] = Databatch::create_dataset(tree_type, word_vocab, FLAGS_minibatch, true);
     }
 
     std::cout     << "    Max training epochs = " << FLAGS_epochs << std::endl;
@@ -295,6 +326,7 @@ int main( int argc, char* argv[]) {
     REAL_t accuracy = 0.0;
     REAL_t new_accuracy;
     Throttled t;
+
     while (accuracy < FLAGS_cutoff && patience < FLAGS_patience) {
         stringstream ss;
         ss << "Epoch " << ++epoch;
@@ -316,7 +348,12 @@ int main( int argc, char* argv[]) {
                     #endif
 
                     thread_model.masked_predict_cost(
-                        minibatch, (REAL_t)FLAGS_dropout);
+                        minibatch.data,
+                        minibatch.data,
+                        minibatch.mask,
+                        FLAGS_dropout,
+                        1,
+                        0);
                     graph::backward(); // backpropagate
                     solver.step(thread_parameters); // One step of gradient descent
 

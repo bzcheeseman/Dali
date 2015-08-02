@@ -114,7 +114,8 @@ namespace SST {
         void add_example(
             const utils::Vocab& word_vocab,
             const std::pair<std::vector<std::string>, uint>& example,
-            size_t example_idx);
+            size_t example_idx,
+            bool add_start_symbol = false);
 
         typedef std::vector<const std::pair<std::vector<std::string>, uint>*>::iterator data_ptr;
 
@@ -122,16 +123,19 @@ namespace SST {
 
         static SentimentBatch<R> from_examples(data_ptr data_begin,
                                                data_ptr data_end,
-                                               const utils::Vocab& vocab);
+                                               const utils::Vocab& vocab,
+                                               bool add_start_symbol = false);
 
         static std::vector<SentimentBatch<R>> create_dataset(
             const utils::tokenized_uint_labeled_dataset& examples,
             const utils::Vocab& word_vocab,
-            size_t minibatch_size);
+            size_t minibatch_size,
+            bool add_start_symbol = false);
         static std::vector<SentimentBatch> create_dataset(
             const std::vector<SST::AnnotatedParseTree::shared_tree>& examples,
             const utils::Vocab& word_vocab,
-            size_t minibatch_size);
+            size_t minibatch_size,
+            bool add_start_symbol = false);
     };
 
     extern const std::vector<std::string> label_names;

@@ -18,12 +18,7 @@ void Batch<R>::insert_example(const std::vector<std::string>& example,
             << data.dims(0) << ")");
 
     for (size_t j = 0; j < example_length; j++) {
-
-        data.w(offset + j, example_idx) = (
-            vocab.word2index.find(example[j]) != vocab.word2index.end()
-            ? vocab.word2index.at(example[j])
-            : vocab.unknown_word
-        );
+        data.w(offset + j, example_idx) = vocab[example[j]];
     }
 }
 

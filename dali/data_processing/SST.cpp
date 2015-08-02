@@ -190,7 +190,7 @@ namespace SST {
     template<typename R>
     SentimentBatch<R>::SentimentBatch(int max_example_length, int num_examples) {
         this->data        = Mat<int>(max_example_length, num_examples);
-        this->target      = Mat<int>(1, num_examples);
+        this->target      = Mat<int>(num_examples, 1);
         this->mask        = Mat<R>(max_example_length, num_examples);
         this->code_lengths.clear();
         this->code_lengths.resize(num_examples);
@@ -201,12 +201,21 @@ namespace SST {
     void SentimentBatch<R>::add_example(
             const Vocab& vocab,
             const std::pair<std::vector<std::string>, uint>& example,
-            size_t example_idx) {
-        this->insert_example(example.first, vocab, example_idx);
+            size_t example_idx,
+            bool add_start_symbol) {
+        int offset = 0;
+        if (add_start_symbol) {
+            this->insert_example({START}, vocab, example_idx, offset);
+            offset += 1;
+        }
+        this->insert_example(example.first, vocab, example_idx, offset);
+
         this->code_lengths[example_idx] = example.first.size();
+
         this->total_codes += example.first.size();
         // add label for this example
-        this->target.w(example.first.size() - 1, example_idx) = example.second;
+        this->target.w(example_idx) = example.second;
+
         // ensure model collects error for this label position using non-zero mask.
         this->mask.w(example.first.size() - 1, example_idx) = (R)1.0;
     }
@@ -215,22 +224,25 @@ namespace SST {
     SentimentBatch<R> SentimentBatch<R>::from_examples(
             data_ptr data_begin,
             data_ptr data_end,
-            const Vocab& vocab) {
+            const Vocab& vocab,
+            bool add_start_symbol) {
         int num_examples = data_end - data_begin;
         size_t max_length = (*data_begin)->first.size();
         for (auto it = data_begin; it != data_end; ++it) {
             max_length = std::max(max_length, (*it)->first.size());
         }
+        if (add_start_symbol) max_length++;
+
         SentimentBatch<R> batch(max_length, num_examples);
         for (size_t example_idx = 0; example_idx < num_examples; example_idx++) {
-            batch.add_example(vocab, **(data_begin + example_idx), example_idx);
+            batch.add_example(vocab, **(data_begin + example_idx), example_idx, add_start_symbol);
         }
         return batch;
     }
 
     template<typename R>
     int SentimentBatch<R>::target_for_example(size_t example_idx) const {
-        return this->target.w(this->code_lengths[example_idx] - 1, example_idx);
+        return this->target.w(example_idx);
     }
 
 
@@ -238,7 +250,8 @@ namespace SST {
     vector<SentimentBatch<R>> SentimentBatch<R>::create_dataset(
             const utils::tokenized_uint_labeled_dataset& examples,
             const utils::Vocab& vocab,
-            size_t minibatch_size) {
+            size_t minibatch_size,
+            bool add_start_symbol) {
 
         typedef std::pair<vector<string>, uint> example_t;
 
@@ -260,11 +273,14 @@ namespace SST {
                     sorted_examples.size() - i
                 );
 
-            dataset.emplace_back(SentimentBatch<R>::from_examples(
+            auto res = SentimentBatch<R>::from_examples(
                 batch_begin,
                 batch_end,
-                vocab
-            ));
+                vocab,
+                add_start_symbol
+            );
+
+            dataset.emplace_back(res);
         }
         return dataset;
     }
@@ -273,7 +289,8 @@ namespace SST {
     vector<SentimentBatch<R>> SentimentBatch<R>::create_dataset(
             const vector<SST::AnnotatedParseTree::shared_tree>& trees,
             const Vocab& vocab,
-            size_t minibatch_size) {
+            size_t minibatch_size,
+            bool add_start_symbol) {
 
         utils::tokenized_uint_labeled_dataset dataset;
         for (auto& tree : trees) {
@@ -284,7 +301,7 @@ namespace SST {
                 dataset.emplace_back(child->to_labeled_pair());
             }
         }
-        return create_dataset(dataset, vocab, minibatch_size);
+        return create_dataset(dataset, vocab, minibatch_size, add_start_symbol);
     }
 
     template class SentimentBatch<float>;

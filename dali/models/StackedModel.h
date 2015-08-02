@@ -192,6 +192,7 @@ class StackedModel : public RecurrentEmbeddingModel<Z>, public ReconstructModel 
         **/
         State activate(state_type&, const uint& ) const;
         State activate(state_type&, const Indexing::Index ) const;
+        State activate(state_type&, Mat<int> ) const;
 
         virtual std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(
             Indexing::Index,

@@ -362,15 +362,33 @@ std::vector<int> StackedModel<Z>::reconstruct(
 
 template<typename Z>
 typename StackedModel<Z>::State StackedModel<Z>::activate(
-    state_type& previous_state,
-    const uint& index) const {
-    return activate(previous_state, {index});
+        state_type& previous_state,
+        const uint& index) const {
+    Mat<int> index_mat(1,1);
+    index_mat.w(0) = index;
+    return activate(previous_state, index_mat);
 }
 
 template<typename Z>
 typename StackedModel<Z>::State StackedModel<Z>::activate(
-    state_type& previous_state,
-    Indexing::Index indices) const {
+        state_type& previous_state,
+        Indexing::Index indices) const {
+
+    Mat<int> indices_mat(1, indices.size());
+    for (int i = 0; i < indices.size(); ++i) {
+        indices_mat.w(i) = indices[i];
+    }
+
+    return activate(previous_state, indices_mat);
+}
+
+
+
+template<typename Z>
+typename StackedModel<Z>::State StackedModel<Z>::activate(
+        state_type& previous_state,
+        Mat<int> indices) const {
+
     State out;
     auto input_vector = this->embedding[indices];
     out.lstm_state  = stacked_lstm.activate(previous_state, input_vector);

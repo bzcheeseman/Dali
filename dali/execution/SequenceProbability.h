@@ -9,10 +9,9 @@
 #include "dali/tensor/Mat.h"
 namespace sequence_probability {
 
-
     template<typename R, typename state_t>
     Mat<R> sequence_score(
-            const Batch<R>& batch,
+            Batch<R> batch,
             state_t state,
             std::function<Mat<R>(state_t)> decode,
             std::function<state_t(Mat<int>, state_t)> observe,

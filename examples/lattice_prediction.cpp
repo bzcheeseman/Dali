@@ -5,6 +5,7 @@
 
 #include "dali/core.h"
 #include "dali/utils.h"
+#include "dali/utils/stacked_model_builder.h"
 #include "dali/utils/NlpUtils.h"
 #include "dali/models/StackedGatedModel.h"
 
@@ -12,6 +13,8 @@
 DEFINE_string(lattice, "", "Where to load a lattice / Ontology from ?");
 
 static bool dummy3 = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_lattice,
+                                               &utils::validate_flag_nonempty);
+static bool dummy4 = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_train,
                                                &utils::validate_flag_nonempty);
 
 DEFINE_int32(memory_rampup, 1000, "Over how many epochs should the memory grow ?");
@@ -259,7 +262,7 @@ int main( int argc, char* argv[]) {
 
     auto max_branching_factor = lattice->max_branching_factor();
     auto vocab_size = word_vocab.size() + lattice_vocab.size();
-    auto model = StackedGatedModel<REAL_t>::build_from_CLI(FLAGS_load, vocab_size, max_branching_factor + 1, true);
+    auto model = stacked_gated_model_from_CLI<REAL_t>(FLAGS_load, vocab_size, max_branching_factor + 1, true);
     auto memory_penalty = FLAGS_memory_penalty;
     auto rho = FLAGS_rho;
     auto epochs = FLAGS_epochs;

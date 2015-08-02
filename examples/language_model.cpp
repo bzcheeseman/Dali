@@ -12,6 +12,7 @@
 #include "dali/core.h"
 #include "dali/utils.h"
 #include "dali/utils/NlpUtils.h"
+#include "dali/utils/stacked_model_builder.h"
 #include "dali/models/StackedModel.h"
 #include "dali/visualizer/visualizer.h"
 
@@ -282,7 +283,7 @@ int main( int argc, char* argv[]) {
         }
     }
 
-     auto model = StackedModel<REAL_t>::build_from_CLI(
+     auto model = stacked_model_from_CLI<REAL_t>(
         FLAGS_load,
         word_vocab.size(),
         word_vocab.size(),

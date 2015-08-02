@@ -107,7 +107,7 @@ typename StackedGatedModel<Z>::MaskedActivation StackedGatedModel<Z>::masked_pre
                 input_vector,
                 state.back().hidden
             }).sigmoid();
-        input_vector = input_vector.eltmul_broadcast_rowwise(memory);
+        input_vector = input_vector.eltmul_broadcast_colwise(memory);
         gte.stop();
 
         utils::Timer flstm("forward lstm");
@@ -129,7 +129,7 @@ typename StackedGatedModel<Z>::MaskedActivation StackedGatedModel<Z>::masked_pre
         }
 
         utils::Timer softmax_tm("softmax cross entropy");
-        auto errors = MatOps<Z>::softmax_cross_entropy_colwise(logprobs, target);
+        auto errors = MatOps<Z>::softmax_cross_entropy_rowwise(logprobs, target);
         softmax_tm.stop();
 
         utils::Timer masking_tm("masking");
@@ -318,7 +318,7 @@ typename StackedGatedModel<Z>::state_type StackedGatedModel<Z>::get_final_activa
             // add this sum to objective function
             (memory * memory_penalty).grad();
         }
-        input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
+        input_vector  = input_vector.eltmul_broadcast_colwise(memory);
         // pass this letter to the LSTM for processing
         state = this->stacked_lstm.activate(state, input_vector);
     }
@@ -366,12 +366,12 @@ typename StackedGatedModel<Z>::State StackedGatedModel<Z>::activate(
             previous_state.back().hidden
         }
     ).sigmoid();
-    input_vector      = input_vector.eltmul_broadcast_rowwise(out.memory);
+    input_vector      = input_vector.eltmul_broadcast_colwise(out.memory);
 
     out.lstm_state = this->stacked_lstm.activate(
         previous_state,
         input_vector);
-    out.prediction = MatOps<Z>::softmax_colwise(
+    out.prediction = MatOps<Z>::softmax_rowwise(
             this->decode(
                 input_vector,
                 out.lstm_state
@@ -406,7 +406,7 @@ std::vector<int> StackedGatedModel<Z>::reconstruct(
                     state.back().hidden
                 }
             ).sigmoid();
-            input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
+            input_vector  = input_vector.eltmul_broadcast_colwise(memory);
             state = this->stacked_lstm.activate(
                 state,
                 input_vector);
@@ -438,7 +438,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<Z>::reconstr
                 input_vector,
                 initial_state.back().hidden
             }).sigmoid();
-        input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
+        input_vector  = input_vector.eltmul_broadcast_colwise(memory);
         // pass this letter to the LSTM for processing
         initial_state = this->stacked_lstm.activate(initial_state, input_vector);
     }
@@ -465,7 +465,7 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<Z>::reconstr
                 input_vector,
                 initial_state.back().hidden
             }).sigmoid();
-        input_vector  = input_vector.eltmul_broadcast_rowwise(memory);
+        input_vector  = input_vector.eltmul_broadcast_colwise(memory);
         initial_state = this->stacked_lstm.activate(initial_state, input_vector);
         last_turn     = this->decode(
             input_vector,

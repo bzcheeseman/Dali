@@ -20,8 +20,8 @@ namespace matops {
         static bool is_nan(Mat<R> a);
         static bool is_grad_nan(Mat<R> a);
         static bool equals(Mat<R> a, Mat<R> b);
-        static bool allclose(Mat<R> a, Mat<R> b, R tol);
-        static bool grad_allclose(Mat<R> a, Mat<R> b, R tol);
+        static bool allclose(Mat<R> a, Mat<R> b, double tol);
+        static bool grad_allclose(Mat<R> a, Mat<R> b, double tol);
 
         static std::vector<int> argsort(Mat<R>);
         static std::vector<size_t> argsort(const std::vector<Mat<R>>& mats);

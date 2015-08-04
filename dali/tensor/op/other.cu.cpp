@@ -110,14 +110,14 @@ namespace matops {
     }
 
     template<typename R>
-    bool Other<R>::allclose(Mat<R> a, Mat<R> b, R tol) {
+    bool Other<R>::allclose(Mat<R> a, Mat<R> b, double tol) {
         if (a.dims() != b.dims())
             return false;
         return MAT(a).allclose(MAT(b), tol);
     }
 
     template<typename R>
-    bool Other<R>::grad_allclose(Mat<R> a, Mat<R> b, R tol) {
+    bool Other<R>::grad_allclose(Mat<R> a, Mat<R> b, double tol) {
         if (a.dims() != b.dims())
             return false;
         return GRAD(a).allclose(GRAD(b), tol);

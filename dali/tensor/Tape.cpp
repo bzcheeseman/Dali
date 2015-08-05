@@ -21,6 +21,14 @@ namespace graph {
         return _backprop_enabled;
     }
 
+    void _set_backprop_enabled(bool value) {
+        _backprop_enabled = value;
+    }
+
+    size_t size() {
+        return tape.backprop.size();
+    }
+
 
     /* Tape */
 

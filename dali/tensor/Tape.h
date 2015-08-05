@@ -13,6 +13,11 @@ namespace graph {
 
     bool backprop_enabled();
 
+    // avoid using explicitly - use NoBackprop object instead
+    void _set_backprop_enabled(bool value);
+
+    size_t ize();
+
     class Tape {
         public:
             std::vector<std::function<void()>>  backprop;

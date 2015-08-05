@@ -16,7 +16,7 @@ namespace graph {
     // avoid using explicitly - use NoBackprop object instead
     void _set_backprop_enabled(bool value);
 
-    size_t ize();
+    size_t size();
 
     class Tape {
         public:

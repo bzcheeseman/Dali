@@ -95,7 +95,7 @@ namespace matops {
         auto fix2 = 1.0 - std::pow(b2, epoch);
         R lr_t = step_size * sqrt(fix2 / fix1);
 
-        assert(lr_t == lr_t);
+        ASSERT2(lr_t == lr_t, "Epoch learning rate is NaN. Try changing b1 or b2.");
 
         // update m acculumulator
         m = (m.wrapper() * (R)(1.0 - b1)) + b1 * GRAD(param).ravel().wrapper();

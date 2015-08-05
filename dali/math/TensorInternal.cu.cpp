@@ -293,17 +293,19 @@ void TensorInternal<R,dimension>::print(std::basic_ostream<char>& stream, int in
 
 template<typename R, int dimension>
 void TensorInternal<R,dimension>::clear() {
-    if (offset > 0 || number_of_elements() != memory().total_memory) {
-        // only clear subset of memory
-        #ifdef DALI_USE_CUDA
-        if (compute_me_on_gpu()) {
-            overwrite_gpu_data() = 0;
-            return;
+    if (memory_ != nullptr) {
+        if (offset > 0 || number_of_elements() != memory().total_memory) {
+            // only clear subset of memory
+            #ifdef DALI_USE_CUDA
+            if (compute_me_on_gpu()) {
+                overwrite_gpu_data() = 0;
+                return;
+            }
+            #endif
+            overwrite_cpu_data() = 0;
+        } else {
+            memory().lazy_clear();
         }
-        #endif
-        overwrite_cpu_data() = 0;
-    } else {
-        memory().lazy_clear();
     }
 }
 

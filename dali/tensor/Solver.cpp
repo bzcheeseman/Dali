@@ -110,7 +110,7 @@ namespace Solver {
     void AdaGrad<R>::reset_caches(
             vector<Mat<R>>& parameters) {
         for (auto& param : parameters) {
-            auto& s = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+            auto& s = gsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
             s.clear();
         }
     }
@@ -246,9 +246,9 @@ namespace Solver {
     void AdaDelta<R>::reset_caches(
             vector<Mat<R>>& parameters) {
         for (auto& param : parameters) {
-            auto& s = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+            auto& s = gsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
             s.clear();
-            auto& x = xsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+            auto& x = xsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
             x.clear();
         }
     }
@@ -329,9 +329,9 @@ namespace Solver {
     void Adam<R>::reset_caches(
             vector<Mat<R>>& parameters) {
         for (auto& param : parameters) {
-            auto& s = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+            auto& s = gsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
             s.clear();
-            auto& x = xsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+            auto& x = xsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
             x.clear();
         }
         epoch = 0;

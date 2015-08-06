@@ -15,6 +15,9 @@
 #include "dali/utils/stacked_model_builder.h"
 #include "dali/models/StackedModel.h"
 #include "dali/visualizer/visualizer.h"
+#ifdef DALI_USE_CUDA
+    #include "dali/utils/gpu_utils.h"
+#endif
 
 DEFINE_int32(minibatch,            100,  "What size should be used for the minibatches ?");
 DEFINE_bool(sparse,                true, "Use sparse embedding");
@@ -25,6 +28,9 @@ DEFINE_double(dropout,             0.3,  "How many Hintons to include in the neu
 DEFINE_int32(max_sentence_length,  19,   "How many sentences to demo after each epoch.");
 DEFINE_bool(show_reconstructions,  true, "Show example reconstructions during phase.");
 DEFINE_bool(show_wps,              false,"LSTM's memory cell also control gate outputs");
+#ifdef DALI_USE_CUDA
+    DEFINE_int32(device,           0,    "Which gpu to use for computation.");
+#endif
 
 
 using std::ifstream;
@@ -249,6 +255,10 @@ int main( int argc, char* argv[]) {
 
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
+#ifdef DALI_USE_CUDA
+    gpu_utils::set_default_gpu(FLAGS_device);
+#endif
+
     utils::Vocab      word_vocab;
     vector<LanguageBatch<REAL_t>> training;
     vector<LanguageBatch<REAL_t>> validation;
@@ -271,7 +281,9 @@ int main( int argc, char* argv[]) {
               << "  Number of threads = " << FLAGS_j                << std::endl
               << "     minibatch size = " << FLAGS_minibatch        << std::endl
               << "       max_patience = " << FLAGS_patience         << std::endl;
-
+#ifdef DALI_USE_CUDA
+    std::cout << "             device = " << gpu_utils::get_gpu_name(FLAGS_device) << std::endl;
+#endif
     pool = new ThreadPool(FLAGS_j);
     shared_ptr<Visualizer> visualizer;
 
@@ -315,7 +327,6 @@ int main( int argc, char* argv[]) {
     utils::ThreadAverage avg_error(FLAGS_j);
 
     while (cost > FLAGS_cutoff && epoch < FLAGS_epochs && patience < FLAGS_patience) {
-
         std::atomic<int> full_code_size(0);
         auto random_batch_order = utils::random_arange(training.size());
 
@@ -338,7 +349,8 @@ int main( int argc, char* argv[]) {
                 graph::backward(); // backpropagate
                 solver->step(thread_parameters);
 
-                word_done_in_past_second += minibatch.total_codes;
+                // word_done_in_past_second += minibatch.total_codes;
+                word_done_in_past_second += (minibatch.data.dims(0)-1) * (minibatch.data.dims(1));
                 throttled_wps.maybe_run(seconds(1), [&]() {
                     average_words_per_second = 0.5 * average_words_per_second + 0.5 * word_done_in_past_second;
                     word_done_in_past_second = 0;

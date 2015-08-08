@@ -276,25 +276,24 @@ namespace utils {
             std::vector<char> token;
             char ch;
             while (ss) {
-                    ch = ss.get();
-                    if (ch == *delimiter_ptr) {
-                            delimiter_ptr++;
-                            inside++;
-                            if (delimiter_ptr == delimiter.end()) {
-                                    tokens.emplace_back(token.begin(), token.end());
-                                    token.clear();
-                                    inside = 0;
-                                    delimiter_ptr = delimiter.begin();
-                            }
-                    } else {
-                            if (inside > 0) {
-                                    token.insert(token.end(), delimiter.begin(), delimiter_ptr);
-                                    delimiter_ptr = delimiter.begin();
-                                    inside = 0;
-                            } else {
-                                    token.push_back(ch);
-                            }
+                ch = ss.get();
+                if (ch == *delimiter_ptr) {
+                    delimiter_ptr++;
+                    inside++;
+                    if (delimiter_ptr == delimiter.end()) {
+                        tokens.emplace_back(token.begin(), token.end());
+                        token.clear();
+                        inside = 0;
+                        delimiter_ptr = delimiter.begin();
                     }
+                } else {
+                    if (inside > 0) {
+                        token.insert(token.end(), delimiter.begin(), delimiter_ptr);
+                        delimiter_ptr = delimiter.begin();
+                        inside = 0;
+                    }
+                    token.push_back(ch);
+                }
             }
             if (inside > 0) {
                     token.insert(token.end(), delimiter.begin(), delimiter_ptr);

@@ -2,15 +2,15 @@ root 3->root
         root->Joe
 	    root->Jane
 	    root->Bob
-	    root->Goodwin
+	    root->Good-win
 	    root->Max
 root 3->root 2->Joe
 
 root 2->Jane
 		Bob
-		Goodwin
+		Good-win
 		Max	
 
-Mary<-root 2
-Mary<-root 4
-Mary<-root
+Mary-Stephanie<-root 2
+Mary-Stephanie<-root 4
+Mary-Stephanie<-root

@@ -78,7 +78,7 @@ int main( int argc, char* argv[]) {
         int num_disconnected_concepts = 0;
         vector<string> disconnected;
         for (auto& kv : *lattice_roots[0]->lookup_table) {
-            if (kv.first == "__ROOT__")
+            if (kv.first == FLAGS_root_name)
                 continue;
             if (utils::startswith(kv.first, "fp:")) {
                 num_fixpoints++;

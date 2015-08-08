@@ -106,6 +106,13 @@ TEST(utils, split_str) {
     ASSERT_EQ(tokens.size(), 2);
     ASSERT_EQ(tokens[0], "hello");
     ASSERT_EQ(tokens[1], "howareyou?");
+
+    string dashed_input = "Category:Plantain-eaters->Western plantain-eater";
+
+    tokens = utils::split_str(dashed_input, "->");
+    ASSERT_EQ(tokens[0], "Category:Plantain-eaters");
+    ASSERT_EQ(tokens[1], "Western plantain-eater");
+    ASSERT_EQ(tokens.size(), 2);
 }
 
 TEST(utils, trim) {
@@ -215,10 +222,12 @@ TEST(utils, load_lattice) {
     ASSERT_EQ(ss.str(), "root 3 root 4 ");
     // find root 2
     ASSERT_TRUE(loaded_tree[0]->lookup_table->find("root 2") != loaded_tree[0]->lookup_table->end());
+    ASSERT_TRUE(loaded_tree[0]->lookup_table->find("Mary-Stephanie") != loaded_tree[0]->lookup_table->end());
+    ASSERT_TRUE(loaded_tree[0]->lookup_table->find("Good-win") != loaded_tree[0]->lookup_table->end());
 
     // compare with the original tree
     auto root = make_shared<OntologyBranch>("root");
-    for (auto& v : {"Joe", "Bob", "Max", "Mary", "Jane", "Goodwin"})
+    for (auto& v : {"Joe", "Bob", "Max", "Mary-Stephanie", "Jane", "Good-win"})
         make_shared<OntologyBranch>(v)->add_parent(root);
 
     // iterate through children of root 2

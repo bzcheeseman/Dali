@@ -12,6 +12,7 @@ DEFINE_string(lattice, utils::dir_join({ STR(DALI_DATA_DIR), "mini_wiki.txt"}), 
 DEFINE_string(train, utils::dir_join({ STR(DALI_DATA_DIR) , "protobuf_sample"}), "Where should the protobuff dataset be loaded from?");
 DEFINE_int32(min_occurence, 2, "Minimum occurence of a word to be included in Vocabulary.");
 DEFINE_string(root_name, "__ROOT__", "How is the root called in the loaded lattice.");
+DEFINE_string(branch_prefix, "Category:", "With what string do branches in the lattice begin with.");
 
 static bool dummy3 = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_lattice,
                                                              &utils::validate_flag_nonempty);
@@ -80,7 +81,7 @@ int main( int argc, char* argv[]) {
         for (auto& kv : *lattice_roots[0]->lookup_table) {
             if (kv.first == FLAGS_root_name)
                 continue;
-            if (utils::startswith(kv.first, "fp:")) {
+            if (utils::startswith(kv.first, FLAGS_branch_prefix)) {
                 num_fixpoints++;
                 mean_fixpoint_degree += kv.second->children.size();
                 if (kv.second->children.size() < min_fixpoint_degree) min_fixpoint_degree = kv.second->children.size();

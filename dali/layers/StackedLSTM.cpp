@@ -6,32 +6,6 @@ using utils::assert2;
 /** Abstract Stacked LSTM **/
 
 template<typename R>
-AbstractStackedLSTM<R>::AbstractStackedLSTM() : input_sizes({0}) {
-}
-
-template<typename R>
-AbstractStackedLSTM<R>::AbstractStackedLSTM(
-        const int& input_size,
-        const std::vector<int>& _hidden_sizes) :
-        input_sizes({input_size}),
-        hidden_sizes(_hidden_sizes) {
-}
-
-template<typename R>
-AbstractStackedLSTM<R>::AbstractStackedLSTM(
-        const std::vector<int>& _input_sizes,
-        const std::vector<int>& _hidden_sizes) :
-        input_sizes(_input_sizes),
-        hidden_sizes(_hidden_sizes) {
-}
-
-template<typename R>
-AbstractStackedLSTM<R>::AbstractStackedLSTM(const AbstractStackedLSTM<R>& model, bool copy_w, bool copy_dw) :
-    input_sizes(model.input_sizes),
-    hidden_sizes(model.hidden_sizes) {
-}
-
-template<typename R>
 std::vector<typename LSTM<R>::activation_t> StackedLSTM<R>::initial_states() const {
     state_t init_states;
     init_states.reserve(cells.size());
@@ -58,8 +32,7 @@ StackedLSTM<R>::StackedLSTM(
     const int& input_size,
     const std::vector<int>& hidden_sizes,
     bool _shortcut,
-    bool _memory_feeds_gates) : shortcut(_shortcut), memory_feeds_gates(_memory_feeds_gates),
-        AbstractStackedLSTM<R>(input_size, hidden_sizes) {
+    bool _memory_feeds_gates) : shortcut(_shortcut), memory_feeds_gates(_memory_feeds_gates) {
     cells = StackedCells<lstm_t>(input_size, hidden_sizes, shortcut, memory_feeds_gates);
 };
 
@@ -68,21 +41,18 @@ StackedLSTM<R>::StackedLSTM(
     const std::vector<int>& input_sizes,
     const std::vector<int>& hidden_sizes,
     bool _shortcut,
-    bool _memory_feeds_gates) : shortcut(_shortcut), memory_feeds_gates(_memory_feeds_gates),
-        AbstractStackedLSTM<R>(input_sizes, hidden_sizes) {
+    bool _memory_feeds_gates) : shortcut(_shortcut), memory_feeds_gates(_memory_feeds_gates) {
     cells = StackedCells<lstm_t>(input_sizes, hidden_sizes, shortcut, memory_feeds_gates);
 };
 
 template<typename R>
-StackedLSTM<R>::StackedLSTM() : AbstractStackedLSTM<R>(),
-                                shortcut(false),
+StackedLSTM<R>::StackedLSTM() : shortcut(false),
                                 memory_feeds_gates(false) {
 }
 
 template<typename R>
 StackedLSTM<R>::StackedLSTM(const StackedLSTM<R>& model, bool copy_w, bool copy_dw) :
-         shortcut(model.shortcut), memory_feeds_gates(model.memory_feeds_gates),
-        AbstractStackedLSTM<R>(model, copy_w, copy_dw) {
+         shortcut(model.shortcut), memory_feeds_gates(model.memory_feeds_gates) {
     cells = StackedCells<lstm_t>(model.cells, copy_w, copy_dw);
 };
 

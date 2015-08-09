@@ -103,18 +103,9 @@ template<typename R>
 class AbstractStackedLSTM : public AbstractLayer<R> {
     public:
         typedef std::vector < typename LSTM<R>::activation_t > state_t;
-
-        std::vector<int> input_sizes;
-        std::vector<int> hidden_sizes;
-        AbstractStackedLSTM();
-        AbstractStackedLSTM(const int& input_size, const std::vector<int>& hidden_sizes);
-        AbstractStackedLSTM(const std::vector<int>& input_sizes, const std::vector<int>& hidden_sizes);
-        AbstractStackedLSTM(const AbstractStackedLSTM<R>& model, bool copy_w, bool copy_dw);
-
+        AbstractStackedLSTM() = default;
         virtual state_t initial_states() const = 0;
-
         virtual std::vector<Mat<R>> parameters() const = 0;
-
         virtual state_t activate(
             state_t previous_state,
             Mat<R> input_vector,

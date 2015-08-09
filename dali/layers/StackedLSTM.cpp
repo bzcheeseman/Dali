@@ -187,6 +187,10 @@ std::vector< typename LSTM<R>::activation_t > forward_LSTMs(
         const vector<LSTM<R>>& cells,
         R drop_prob) {
 
+    ASSERT2(cells.size() == previous_state.size(),
+        utils::MS() << "Activating LSTM stack of size " << cells.size()
+        << " with different number of states " << previous_state.size());
+
     std::vector< typename LSTM<R>::activation_t> out_state;
     out_state.reserve(cells.size());
 
@@ -211,6 +215,10 @@ std::vector< typename LSTM<R>::activation_t > shortcut_forward_LSTMs(
         std::vector< typename LSTM<R>::activation_t >& previous_state,
         const vector<LSTM<R>>& cells,
         R drop_prob) {
+
+    ASSERT2(cells.size() == previous_state.size(),
+        utils::MS() << "Activating LSTM stack of size " << cells.size()
+        << " with different number of states " << previous_state.size());
 
     std::vector< typename LSTM<R>::activation_t> out_state;
     out_state.reserve(cells.size());
@@ -245,10 +253,14 @@ std::vector< typename LSTM<R>::activation_t > shortcut_forward_LSTMs(
 
 template<typename R>
 std::vector< typename LSTM<R>::activation_t > forward_LSTMs(
-    const std::vector<Mat<R>>& inputs,
-    std::vector< typename LSTM<R>::activation_t >& previous_state,
-    const std::vector<LSTM<R>>& cells,
-    R drop_prob) {
+        const std::vector<Mat<R>>& inputs,
+        std::vector< typename LSTM<R>::activation_t >& previous_state,
+        const std::vector<LSTM<R>>& cells,
+        R drop_prob) {
+
+    ASSERT2(cells.size() == previous_state.size(),
+        utils::MS() << "Activating LSTM stack of size " << cells.size()
+        << " with different number of states " << previous_state.size());
 
     std::vector< typename LSTM<R>::activation_t> out_state;
     out_state.reserve(cells.size());
@@ -281,10 +293,14 @@ std::vector< typename LSTM<R>::activation_t > forward_LSTMs(
 
 template<typename R>
 std::vector< typename LSTM<R>::activation_t > shortcut_forward_LSTMs(
-    const std::vector<Mat<R>>& inputs,
-    std::vector< typename LSTM<R>::activation_t >& previous_state,
-    const std::vector<LSTM<R>>& cells,
-    R drop_prob) {
+        const std::vector<Mat<R>>& inputs,
+        std::vector< typename LSTM<R>::activation_t >& previous_state,
+        const std::vector<LSTM<R>>& cells,
+        R drop_prob) {
+
+    ASSERT2(cells.size() == previous_state.size(),
+        utils::MS() << "Activating LSTM stack of size " << cells.size()
+        << " with different number of states " << previous_state.size());
 
     std::vector< typename LSTM<R>::activation_t> out_state;
     out_state.reserve(cells.size());

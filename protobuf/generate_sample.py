@@ -1,7 +1,28 @@
 import sqlite3
 import wikipedia_ner.parse
 import gzip, pickle
-def write_samples():
+import random
+import argparse
+from os.path import join, isdir, exists
+
+def uber_decode(s):
+    try:
+        return s.decode("unicode_escape")
+    except:
+        return s.decode("utf-8")
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input', type=str, required=True)
+    parser.add_argument('--out',   type =str, required=True)
+    parser.add_argument('--index2target',   type =str, required=True)
+    parser.add_argument('--total', type=int, default=500)
+    parser.add_argument('--max_labels', type=int, default=100)
+    parser.add_argument('--tsv', action="store_true", default=False)
+    args = parser.parse_args()
+    return args
+
+def write_samples(inpath, outpath, index2target, total=500, tsv=False, max_labels=100):
     """
     Write Samples
     -------------
@@ -17,8 +38,11 @@ def write_samples():
     with the destination Wikipedia article.
 
     """
+    if not tsv:
+        assert(isdir(outpath)), "For protobuff output, out path must be a directory."
+
     sqlite_conn = sqlite3.connect(
-        "/Users/jonathanraiman/Desktop/crawl_results/crawl_results/dump.db",
+        inpath,
         detect_types=sqlite3.PARSE_DECLTYPES)
     insert_into_db, update_in_db, update_lines_in_db, get_obj_from_db, get_lines_from_db = wikipedia_ner.parse.sqlite_utils.create_schema(sqlite_conn, [
             ("lines", "pickle"),
@@ -26,24 +50,47 @@ def write_samples():
         ],
         "articles")
 
-    f = gzip.open("/Users/jonathanraiman/Desktop/crawl_results/targets.gz")
-    targets = pickle.load(f)
+    f = gzip.open(index2target, "rb")
+    targets = [uber_decode(line).strip() for line in f]
     f.close()
 
-    max_acc = 50
+    print("Got all possible labels")
+
+    random.shuffle(targets)
+
+    print("Shuffled labels")
+
     curr = 0
     corpuses = []
-    for k, value in enumerate(targets.values()):
-        if curr > max_acc:
+    print("Collecting corpus")
+    for k, value in enumerate(targets):
+        if curr > total:
             break
         objs = get_lines_from_db(value)
         if objs is not None and type(objs[0]) is not list:
             corpuses.append(objs[0])
             curr += 1
+    if tsv:
+        outpath_fname = outpath
+        if isdir(outpath_fname):
+            outpath_fname = join(outpath_fname, "train.tsv.gz")
 
-    for k, corpus in enumerate(corpuses):
-        with gzip.open("sample/%d.gz" % (k), "wb") as f:
-            f.write(corpus.SerializeToString())
+        with gzip.open(outpath_fname, "wt") as fout:
+            for k, corpus in enumerate(corpuses):
+                print("Saving corpus %d/%d\r" % (k,total), flush=True, end="")
+                for example in corpus.examples:
+                    if len(example.triggers) <= max_labels:
+                        fout.write(" ".join(example.words))
+                        for trigger in example.triggers:
+                            fout.write("\t")
+                            fout.write(trigger.trigger)
+                        fout.write("\n")
+    else:
+        for k, corpus in enumerate(corpuses):
+            print("Saving corpus %d/%d\r" % (k,total), flush=True, end="")
+            with gzip.open(join(outpath, "%d.gz" % (k,)), "wb") as f:
+                f.write(corpus.SerializeToString())
 
 if __name__ == "__main__":
-    write_samples()
+    args = parse_args()
+    write_samples(args.input, args.out, args.index2target, total=args.total, tsv=args.tsv, max_labels=args.max_labels)

@@ -45,6 +45,7 @@ int main( int argc, char* argv[]) {
         " @author Jonathan Raiman\n"
         " @date February 10th 2015"
     );
+    ELOG(default_preferred_device == DEVICE_GPU);
 
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -126,7 +127,5 @@ int main( int argc, char* argv[]) {
         std::cout << "Disconnected Concepts (" << num_disconnected_concepts << ")\n"
                   << "---------------------\n"
                   << disconnected << std::endl;
-        // TODO: bug with certain concepts not being exported
-        // from Neo4j and there might be a similar issue with fixpoints.
         return 0;
 }

@@ -22,6 +22,11 @@ vector<Mat<Z>> StackedModel<Z>::parameters() const {
     return parameters;
 }
 
+template<typename R>
+typename StackedModel<R>::state_t StackedModel<R>::initial_states() const {
+    return stacked_lstm.initial_states();
+}
+
 template<typename Z>
 typename StackedModel<Z>::config_t StackedModel<Z>::configuration() const  {
     auto config = RecurrentEmbeddingModel<Z>::configuration();
@@ -103,7 +108,7 @@ StackedModel<Z> StackedModel<Z>::load(std::string dirname) {
 template<typename Z>
 Mat<Z> StackedModel<Z>::decode(
     Mat<Z> input_vector,
-    state_type& states,
+    state_t& states,
     Z drop_prob
     ) const {
     if (use_shortcut) {
@@ -310,7 +315,7 @@ StackedModel<Z> StackedModel<Z>::shallow_copy() const {
 }
 
 template<typename Z>
-typename StackedModel<Z>::state_type StackedModel<Z>::get_final_activation(
+typename StackedModel<Z>::state_t StackedModel<Z>::get_final_activation(
     Indexing::Index example,
     Z drop_prob) const {
     mat input_vector;
@@ -362,7 +367,7 @@ std::vector<int> StackedModel<Z>::reconstruct(
 
 template<typename Z>
 typename StackedModel<Z>::State StackedModel<Z>::activate(
-        state_type& previous_state,
+        state_t& previous_state,
         const uint& index) const {
     Mat<int> index_mat(1,1);
     index_mat.w(0) = index;
@@ -371,7 +376,7 @@ typename StackedModel<Z>::State StackedModel<Z>::activate(
 
 template<typename Z>
 typename StackedModel<Z>::State StackedModel<Z>::activate(
-        state_type& previous_state,
+        state_t& previous_state,
         Indexing::Index indices) const {
 
     Mat<int> indices_mat(1, indices.size());
@@ -386,7 +391,7 @@ typename StackedModel<Z>::State StackedModel<Z>::activate(
 
 template<typename Z>
 typename StackedModel<Z>::State StackedModel<Z>::activate(
-        state_type& previous_state,
+        state_t& previous_state,
         Mat<int> indices) const {
 
     State out;

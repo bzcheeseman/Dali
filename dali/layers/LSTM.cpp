@@ -310,17 +310,6 @@ std::vector<Mat<R>> LSTM<R>::parameters() const {
 }
 
 template<typename R>
-typename std::vector<typename LSTM<R>::activation_t> LSTM<R>::initial_states(
-        const std::vector<int>& hidden_sizes) {
-    std::vector<activation_t>  initial_state;
-    initial_state.reserve(hidden_sizes.size());
-    for (auto& size : hidden_sizes) {
-        initial_state.emplace_back(Mat<R>(1, size), Mat<R>(1, size));
-    }
-    return initial_state;
-}
-
-template<typename R>
 typename LSTM<R>::activation_t LSTM<R>::initial_states() const {
     return activation_t(Mat<R>(1, hidden_size), Mat<R>(1, hidden_size));
 }

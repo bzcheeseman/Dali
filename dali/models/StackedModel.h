@@ -38,7 +38,7 @@ class StackedModel : public RecurrentEmbeddingModel<Z>, public ReconstructModel 
     public:
 
         typedef Mat<Z> mat;
-        typedef std::vector< typename LSTM<Z>::activation_t> state_type;
+        typedef std::vector< typename LSTM<Z>::activation_t> state_t;
 
         typedef StackedModelState<Z> State;
 
@@ -79,6 +79,7 @@ class StackedModel : public RecurrentEmbeddingModel<Z>, public ReconstructModel 
 
         **/
         static StackedModel<Z> load(std::string);
+        state_t initial_states() const;
 
 
         StackedModel() = default;
@@ -165,7 +166,7 @@ class StackedModel : public RecurrentEmbeddingModel<Z>, public ReconstructModel 
             int,
             int symbol_offset = 0) const;
 
-        state_type get_final_activation(
+        state_t get_final_activation(
             Indexing::Index,
             Z drop_prob=0.0) const;
         /**
@@ -190,9 +191,9 @@ class StackedModel : public RecurrentEmbeddingModel<Z>, public ReconstructModel 
             pair of LSTM hidden and cell states, and probabilities from the decoder.
 
         **/
-        State activate(state_type&, const uint& ) const;
-        State activate(state_type&, const Indexing::Index ) const;
-        State activate(state_type&, Mat<int> ) const;
+        State activate(state_t&, const uint& ) const;
+        State activate(state_t&, const Indexing::Index ) const;
+        State activate(state_t&, Mat<int> ) const;
 
         virtual std::vector<utils::OntologyBranch::shared_branch> reconstruct_lattice(
             Indexing::Index,
@@ -229,7 +230,7 @@ class StackedModel : public RecurrentEmbeddingModel<Z>, public ReconstructModel 
         to use in the decoder. Adapts to shortcut connections, input_vector fed
         to decoder, and extracting hidden states from LSTM States.
         **/
-        mat decode(mat input_vector, state_type& states, Z drop_prob = 0.0) const;
+        mat decode(mat input_vector, state_t& states, Z drop_prob = 0.0) const;
 
         /**
         Decoder initialization

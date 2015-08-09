@@ -74,7 +74,6 @@ class LSTM : public AbstractLayer<R> {
         LSTM (const LSTM&, bool, bool);
 
         virtual std::vector<Mat<R>> parameters() const;
-        static std::vector<activation_t> initial_states(const std::vector<int>& hidden_sizes);
 
         activation_t activate(
             Mat<R> input_vector,
@@ -112,7 +111,7 @@ class AbstractStackedLSTM : public AbstractLayer<R> {
         AbstractStackedLSTM(const std::vector<int>& input_sizes, const std::vector<int>& hidden_sizes);
         AbstractStackedLSTM(const AbstractStackedLSTM<R>& model, bool copy_w, bool copy_dw);
 
-        virtual state_t initial_states() const;
+        virtual state_t initial_states() const = 0;
 
         virtual std::vector<Mat<R>> parameters() const = 0;
 
@@ -133,6 +132,8 @@ class StackedLSTM : public AbstractStackedLSTM<R> {
         typedef std::vector< typename LSTM<R>::activation_t > state_t;
         bool shortcut;
         bool memory_feeds_gates;
+
+        virtual state_t initial_states() const;
 
         std::vector<lstm_t> cells;
         virtual state_t activate(

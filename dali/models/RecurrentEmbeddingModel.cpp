@@ -18,11 +18,6 @@ void RecurrentEmbeddingModel<R>::save(std::string dirname) const {
 }
 
 template<typename R>
-typename RecurrentEmbeddingModel<R>::state_type RecurrentEmbeddingModel<R>::initial_states() const {
-    return LSTM<R>::initial_states(hidden_sizes);
-}
-
-template<typename R>
 vector<typename RecurrentEmbeddingModel<R>::mat> RecurrentEmbeddingModel<R>::parameters() const {
     vector<mat> parameters;
     parameters.push_back(this->embedding);

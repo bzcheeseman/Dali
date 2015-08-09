@@ -599,8 +599,12 @@ namespace utils {
         ifstream fp(fname.c_str());
         string l;
         vector<vector<string>> list;
-        while (std::getline(fp, l))
-            list.emplace_back(tokenize(string(l.begin(), l.end())));
+        while (std::getline(fp, l)) {
+            auto tokenized = tokenize(string(l.begin(), l.end()));
+            if (tokenized.size() > 0 ) {
+                list.emplace_back(tokenized);
+            }
+        }
         return list;
     }
 

@@ -59,7 +59,7 @@ class RecurrentEmbeddingModel {
         void save(std::string) const;
 
         typedef std::vector<typename LSTM<R>::activation_t> state_type;
-        virtual state_type initial_states() const;
+        virtual state_type initial_states() const = 0;
         /**
         Save Configuration
         ------------------

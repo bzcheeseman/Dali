@@ -32,8 +32,13 @@ AbstractStackedLSTM<R>::AbstractStackedLSTM(const AbstractStackedLSTM<R>& model,
 }
 
 template<typename R>
-std::vector<typename LSTM<R>::activation_t> AbstractStackedLSTM<R>::initial_states() const {
-    return LSTM<R>::initial_states(hidden_sizes);
+std::vector<typename LSTM<R>::activation_t> StackedLSTM<R>::initial_states() const {
+    state_t init_states;
+    init_states.reserve(cells.size());
+    for (const auto& cell : cells) {
+        init_states.emplace_back(cell.initial_states());
+    }
+    return init_states;
 }
 
 template<typename R>

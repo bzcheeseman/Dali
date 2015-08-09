@@ -247,8 +247,8 @@ int main( int argc, char* argv[]) {
         FLAGS_train,
         number_of_columns
     );
-    int data_column = 1;
-    auto index2word  = utils::get_vocabulary(examples, FLAGS_min_occurence, data_column);
+    int fact_column = 0;
+    auto index2word  = utils::get_vocabulary(examples, FLAGS_min_occurence, fact_column);
     auto index2label = utils::get_lattice_vocabulary(lattice);
     Vocab word_vocab(index2word);
     Vocab lattice_vocab(index2label, false);

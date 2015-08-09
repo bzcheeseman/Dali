@@ -78,10 +78,10 @@ def write_samples(inpath, outpath, index2target, total=500, tsv=False, max_label
         with gzip.open(outpath_fname, "wt") as fout:
             for k, corpus in enumerate(corpuses):
                 print("Saving corpus %d/%d\r" % (k,total), flush=True, end="")
-                for example in corpus.examples:
-                    if len(example.triggers) <= max_labels:
+                for example in corpus.example:
+                    if len(example.trigger) <= max_labels:
                         fout.write(" ".join(example.words))
-                        for trigger in example.triggers:
+                        for trigger in example.trigger:
                             fout.write("\t")
                             fout.write(trigger.trigger)
                         fout.write("\n")

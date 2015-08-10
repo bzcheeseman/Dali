@@ -435,7 +435,6 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<Z>::reconstr
     auto initial_state = this->initial_states();
     auto n = example.size();
     for (uint i = 0; i < n; ++i) {
-        // pick this letter from the embedding
         input_vector  = this->embedding[example[i]];
         memory        = gate.activate(
             {
@@ -443,7 +442,6 @@ std::vector<utils::OntologyBranch::shared_branch> StackedGatedModel<Z>::reconstr
                 initial_state.back().hidden
             }).sigmoid();
         input_vector  = input_vector.eltmul_broadcast_colwise(memory);
-        // pass this letter to the LSTM for processing
         initial_state = this->stacked_lstm.activate(initial_state, input_vector);
     }
     vector<utils::OntologyBranch::shared_branch> outputs;

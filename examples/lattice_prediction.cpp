@@ -66,7 +66,7 @@ struct LatticeBatch : public Batch<R> {
         auto description_length = tokens.size();
         for (size_t j = 0; j < description_length; j++)
             this->data.w(j, example_idx) = word_vocab[tokens[j]];
-        this->data.w(description_length, example_idx) = 0;//word_vocab.word2index.at(utils::end_symbol);
+        this->data.w(description_length, example_idx) = word_vocab.word2index.at(utils::end_symbol);
 
         size_t j = 0;
         for (auto& node : path.first) {
@@ -212,14 +212,20 @@ void training_loop(StackedGatedModel<T>& model,
     ReportProgress<double> journalist(utils::MS() << "Training epoch " << epoch, dataset.size());
     int progress = 0;
 
-    for (auto& batch : dataset) {
+    vector<const LatticeBatch<T>*> shuffled_dataset(dataset.size());
+    for (int i = 0; i < dataset.size();i++) {
+        shuffled_dataset[i] = &dataset[i];
+    }
+    std::random_shuffle(shuffled_dataset.begin(), shuffled_dataset.end());
+
+    for (auto batch : shuffled_dataset) {
         std::tie(prediction_error, memory_error) = model.masked_predict_cost(
-            batch.data,
-            batch.target,
-            batch.mask,
+            batch->data,
+            batch->target,
+            batch->mask,
             0.0,
             0, // predict current point in time
-            0 // lattices are offset from vocab
+            0
         );
 
         std::get<0>(cost) = std::get<0>(cost) + prediction_error.w(0);
@@ -235,10 +241,12 @@ void training_loop(StackedGatedModel<T>& model,
     journalist.done();
     std::cout << "epoch (" << epoch << ") KL error = " << std::get<0>(cost)
                              << ", Memory cost = " << std::get<1>(cost) << std::endl;
-    auto& random_batch = dataset[utils::randint(0, dataset.size() - 1)];
-    auto random_example_index = utils::randint(0, random_batch.size() - 1);
 
-    reconstruct(model, random_batch, random_example_index, word_vocab, lattice);
+    for (int i = 0; i < 10; i++) {
+        auto& random_batch = dataset[utils::randint(0, dataset.size() - 1)];
+        auto random_example_index = utils::randint(0, random_batch.size() - 1);
+        reconstruct(model, random_batch, random_example_index, word_vocab, lattice);
+    }
 }
 
 int main( int argc, char* argv[]) {

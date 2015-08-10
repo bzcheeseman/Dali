@@ -56,25 +56,34 @@ struct LatticeBatch : public Batch<R> {
             const Vocab& word_vocab,
             shared_lattice_t lattice,
             const vector<vector<string>>& example,
+            const OntologyBranch::path_t& path,
             size_t& example_idx) {
-        auto& lattice_label = example[0].front();
-        auto& tokens        = example[1];
+        auto lattice_label = utils::join(example[1], " ");
+        auto& tokens       = example.at(0);
         // example 1 is the sentence
         // example 2 is the label from the lattice
         auto description_length = tokens.size();
         for (size_t j = 0; j < description_length; j++)
             this->data.w(j, example_idx) = word_vocab[tokens[j]];
-
         this->data.w(description_length, example_idx) = word_vocab.word2index.at(utils::end_symbol);
 
-        auto path = lattice->random_path_from_root(lattice_label, 1);
 
         size_t j = 0;
         for (auto& node : path.first) {
+            utils::assert2(description_length + j < this->data.dims(0),   utils::MS()
+                << "outside of bounds 0 -(" << description_length + j << ")"
+                << " and max depth was said to be " << lattice->max_depth() << " however this path has "
+                << "length = " << path.first.size() << ".");
+            utils::assert2(description_length + j < this->target.dims(0), utils::MS() << "outside of bounds 0 --(" << description_length + j << ")");
+            utils::assert2(description_length + j < this->mask.dims(0),   utils::MS() << "outside of bounds 0 ---(" << description_length + j << ")");
+
+            utils::assert2(example_idx < this->data.dims(1),   "outside of bounds 1");
+            utils::assert2(example_idx < this->target.dims(1), "outside of bounds 1");
+            utils::assert2(example_idx < this->mask.dims(1),   "outside of bounds 1");
             // lattice index is offset by all words +
             // offset using lattice_vocab indexing
             this->data.w(description_length   + j + 1, example_idx) = lattice_vocab.word2index.at(node->name) + word_vocab.word2index.size();
-            this->target.w(description_length + j, example_idx) = path.second[j];
+            this->target.w(description_length + j, example_idx) = path.second.at(j);
             this->mask.w(description_length   + j, example_idx) = 1.0;
             j++;
         }
@@ -98,6 +107,7 @@ vector<string> ontology_path_to_pathnames(const vector<OntologyBranch::shared_br
 template<typename R>
 LatticeBatch<R> convert_sentences_to_indices(
         tokenized_labeled_dataset& examples,
+        const vector<OntologyBranch::path_t>& paths,
         const Vocab& lattice_vocab,
         const Vocab& word_vocab,
         shared_lattice_t lattice,
@@ -106,18 +116,22 @@ LatticeBatch<R> convert_sentences_to_indices(
         vector<size_t>::iterator lengths_sorted) {
 
     auto indices_begin = indices;
+
     LatticeBatch<R> batch(
         *std::max_element(lengths_sorted, lengths_sorted + batch_size),
         batch_size
     );
-    for (size_t example_idx = 0; example_idx < batch_size; example_idx++)
+    for (size_t example_idx = 0; example_idx < batch_size; example_idx++) {
         batch.add_example(
             lattice_vocab,
             word_vocab,
             lattice,
-            examples[*(indices++)],
+            examples[*(indices)],
+            paths[*(indices)],
             example_idx
         );
+        indices++;
+    }
     return batch;
 }
 
@@ -127,17 +141,21 @@ vector<LatticeBatch<R>> create_labeled_dataset(
         Vocab& lattice_vocab,
         Vocab& word_vocab,
         shared_lattice_t lattice,
-        size_t subpieces) {
+        int minibatch_size) {
 
     vector<LatticeBatch<R>> dataset;
     vector<size_t> lengths = vector<size_t>(examples.size());
-    for (size_t i = 0; i != lengths.size(); ++i)
-        lengths[i] = examples[i][1].size() + lattice->max_depth() + 2;
+    vector<OntologyBranch::path_t> paths(examples.size());
+    for (size_t i = 0; i != lengths.size(); ++i) {
+        auto lattice_label = utils::join(examples[i][1], " ");
+        paths[i]   = lattice->random_path_from_root(lattice_label, 1);
+        lengths[i] = examples[i][0].size() + paths[i].first.size() + 2;
+    }
+
     vector<size_t> lengths_sorted(lengths);
 
     auto shortest = utils::argsort(lengths);
     std::sort(lengths_sorted.begin(), lengths_sorted.end());
-    size_t piece_size = ceil(((float)lengths.size()) / (float)subpieces);
     size_t so_far = 0;
 
     auto shortest_ptr = lengths_sorted.begin();
@@ -148,17 +166,18 @@ vector<LatticeBatch<R>> create_labeled_dataset(
         dataset.emplace_back(
             convert_sentences_to_indices<R>(
                 examples,
+                paths,
                 lattice_vocab,
                 word_vocab,
                 lattice,
-                min(piece_size, lengths.size() - so_far),
+                min(minibatch_size, lengths.size() - so_far),
                 indices_ptr,
                 shortest_ptr
             )
         );
-        shortest_ptr += min(piece_size, lengths.size() - so_far);
-        indices_ptr  += min(piece_size, lengths.size() - so_far);
-        so_far       = min(so_far + piece_size, lengths.size());
+        shortest_ptr += min(minibatch_size, lengths.size() - so_far);
+        indices_ptr  += min(minibatch_size, lengths.size() - so_far);
+        so_far       = min(so_far + minibatch_size, lengths.size());
     }
     return dataset;
 }
@@ -199,6 +218,10 @@ void training_loop(StackedGatedModel<T>& model,
         int& epoch,
         std::tuple<T, T>& cost) {
     mat prediction_error, memory_error;
+
+    ReportProgress<double> journalist(utils::MS() << "Training epoch " << epoch, dataset.size());
+    int progress = 0;
+
     for (auto& batch : dataset) {
         std::tie(prediction_error, memory_error) = model.masked_predict_cost(
             batch.data,
@@ -217,6 +240,7 @@ void training_loop(StackedGatedModel<T>& model,
 
         graph::backward(); // backpropagate
         solver.step(parameters); // One step of gradient descent
+        journalist.tick(++progress, prediction_error.w(0));
     }
     std::cout << "epoch (" << epoch << ") KL error = " << std::get<0>(cost)
                              << ", Memory cost = " << std::get<1>(cost) << std::endl;
@@ -240,13 +264,16 @@ int main( int argc, char* argv[]) {
 
     GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
-    auto lattice     = OntologyBranch::load(FLAGS_lattice)[0];
+    auto lattice = OntologyBranch::load(FLAGS_lattice)[0];
+    auto max_branching_factor = lattice->max_branching_factor();
+    std::cout << "Max branching factor in lattice = " << max_branching_factor << std::endl;
 
     int number_of_columns = 2;
     auto examples  = utils::load_tsv(
         FLAGS_train,
         number_of_columns
     );
+
     int fact_column = 0;
     auto index2word  = utils::get_vocabulary(examples, FLAGS_min_occurence, fact_column);
     auto index2label = utils::get_lattice_vocabulary(lattice);
@@ -258,12 +285,12 @@ int main( int argc, char* argv[]) {
         lattice_vocab,
         word_vocab,
         lattice,
-        FLAGS_subsets);
+        FLAGS_minibatch);
 
-    auto max_branching_factor = lattice->max_branching_factor();
     auto vocab_size = word_vocab.size() + lattice_vocab.size();
     auto model = stacked_gated_model_from_CLI<REAL_t>(FLAGS_load, vocab_size, max_branching_factor + 1, true);
     auto memory_penalty = FLAGS_memory_penalty;
+
     auto rho = FLAGS_rho;
     auto epochs = FLAGS_epochs;
     auto cutoff = FLAGS_cutoff;
@@ -277,6 +304,7 @@ int main( int argc, char* argv[]) {
 
     //Gradient descent optimizer:
     Solver::AdaDelta<REAL_t> solver(parameters, rho, 1e-9, 5.0);
+
     // Main training loop:
     std::tuple<REAL_t,REAL_t> cost(std::numeric_limits<REAL_t>::infinity(), std::numeric_limits<REAL_t>::infinity());
     int i = 0;

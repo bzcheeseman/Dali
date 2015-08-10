@@ -236,12 +236,36 @@ namespace utils {
             children.emplace_back(child);
     }
 
+    // int OntologyBranch::max_branching_factor() const {
+    //     if (children.size() == 0)
+    //         return 0;
+    //     std::vector<int> child_maxes(children.size());
+    //     auto child_factors = [](const int& a, const shared_branch b) {
+    //         return b->max_branching_factor();
+    //     };
+    //     int child_idx = 0;
+    //     for (auto& child_max : child_maxes) {
+    //         child_max = children[child_idx]->max_branching_factor();
+    //         child_idx++;
+    //     }
+    //     // std::transform (child_maxes.begin(), child_maxes.end(), children.begin(), child_maxes.begin(), child_factors);
+    //     return std::max((int)children.size(), *std::max_element(child_maxes.begin(), child_maxes.end()));
+    // }
+
     int OntologyBranch::max_branching_factor() const {
-            if (children.size() == 0) return 0;
-            std::vector<int> child_maxes(children.size());
-            auto child_factors = [](const int& a, const shared_branch b) { return b->max_branching_factor(); };
-            std::transform (child_maxes.begin(), child_maxes.end(), children.begin(), child_maxes.begin(), child_factors);
-            return std::max((int)children.size(), *std::max_element(child_maxes.begin(), child_maxes.end()));
+        auto vis = visited_t();
+        return max_branching_factor(&vis);
+    }
+
+    int OntologyBranch::max_branching_factor(visited_t* visited) const {
+        visited->insert(const_cast<OntologyBranch*>(this));
+        int res = children.size();
+        for (auto& child: children) {
+            if (visited->find(child.get()) != visited->end()) {
+                res = std::max(res, child->max_branching_factor(visited));
+            }
+        }
+        return res;
     }
 
     std::vector<string> get_lattice_vocabulary(const OntologyBranch::shared_branch lattice) {

@@ -7,6 +7,7 @@
 #include "dali/utils/core_utils.h"
 #include "dali/utils/random.h"
 #include <set>
+#include <unordered_set>
 #include <unordered_map>
 #include <fstream>
 #include <ostream>
@@ -34,6 +35,8 @@ namespace utils {
             typedef std::shared_ptr<OntologyBranch> shared_branch;
             typedef std::weak_ptr<OntologyBranch> shared_weak_branch;
             typedef std::shared_ptr<std::unordered_map<std::string, shared_branch>> lookup_t;
+            typedef std::pair<std::vector<shared_branch>, std::vector<uint>> path_t;
+            typedef std::unordered_set<OntologyBranch*> visited_t;
 
             std::vector<shared_weak_branch> parents;
             std::vector<shared_branch> children;
@@ -54,7 +57,10 @@ namespace utils {
             **/
             int& max_depth();
             int id;
+
             int max_branching_factor() const;
+
+            int max_branching_factor(visited_t* visted) const;
             /**
             OntologyBranch::save
             --------------------
@@ -85,10 +91,10 @@ namespace utils {
             void add_parent(shared_branch);
             int get_index_of(shared_branch) const;
             std::string to_string(int indent = 0) const;
-            std::pair<std::vector<shared_branch>, std::vector<uint>> random_path_to_root(const std::string&);
-            std::pair<std::vector<shared_branch>, std::vector<uint>> random_path_to_root(const std::string&, const int);
-            std::pair<std::vector<shared_branch>, std::vector<uint>> random_path_from_root(const std::string&);
-            std::pair<std::vector<shared_branch>, std::vector<uint>> random_path_from_root(const std::string&, const int);
+            path_t random_path_to_root(const std::string&);
+            path_t random_path_to_root(const std::string&, const int);
+            path_t random_path_from_root(const std::string&);
+            path_t random_path_from_root(const std::string&, const int);
             static std::vector<std::string> split_str(const std::string&, const std::string&);
     };
 

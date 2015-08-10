@@ -80,11 +80,17 @@ def write_samples(inpath, outpath, index2target, total=500, tsv=False, max_label
                 print("Saving corpus %d/%d\r" % (k,total), flush=True, end="")
                 for example in corpus.example:
                     if len(example.trigger) <= max_labels:
-                        fout.write(" ".join(example.words))
+                        num_non_empty_triggers = 0
                         for trigger in example.trigger:
-                            fout.write("\t")
-                            fout.write(trigger.trigger)
-                        fout.write("\n")
+                            if len(trigger.trigger.strip()) > 0:
+                                num_non_empty_triggers += 1
+
+                        if num_non_empty_triggers > 0:
+                            fout.write(" ".join(example.words))
+                            for trigger in example.trigger:
+                                fout.write("\t")
+                                fout.write(trigger.trigger)
+                            fout.write("\n")
     else:
         for k, corpus in enumerate(corpuses):
             print("Saving corpus %d/%d\r" % (k,total), flush=True, end="")

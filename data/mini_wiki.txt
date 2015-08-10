@@ -25,10 +25,10 @@ __ROOT__->sport->racket_sport
                     ball_sport->baseball
                     ball_sport->rugby
                     ball_sport->polo
-                    ball_sport->water-polo
+                    ball_sport->waterpolo
 
 
-                    watersport->water-polo
+                    watersport->waterpolo
 
 
 __ROOT__->animal_kingdown->mammals

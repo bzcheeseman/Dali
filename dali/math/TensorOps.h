@@ -156,6 +156,17 @@ namespace TensorOps {
         R L2_norm(const mshadow::Tensor<gpu, ndims, R> a, int num_elts) {
             return std::sqrt(thrust::transform_reduce(to_thrust(a), to_thrust(a) + num_elts, thrust_square<R>(), 0.0, thrust::plus<R>()));
         }
+
+
+        template<int ndims, typename R>
+        R min(const mshadow::Tensor<gpu, ndims, R> a, int num_elts) {
+            return thrust::reduce(to_thrust(a), to_thrust(a) + num_elts, std::numeric_limits<R>::infinity(), thrust::minimum<R>());
+        }
+
+        template<int ndims, typename R>
+        R max(const mshadow::Tensor<gpu, ndims, R> a, int num_elts) {
+            return thrust::reduce(to_thrust(a), to_thrust(a) + num_elts, -std::numeric_limits<R>::infinity(), thrust::maximum<R>());
+        }
         #endif
 
         template <typename T>
@@ -169,6 +180,31 @@ namespace TensorOps {
         R L2_norm(const mshadow::Tensor<cpu, ndims, R> a, int num_elts) {
             return std::sqrt(std::accumulate(a.dptr_, a.dptr_ + num_elts, 0.0, thrust_square_reduce<R>()));
         }
+
+        template <typename T>
+        struct min_kernel {
+            T operator()(const T& x, const T& y) const {
+                return x > y ? y : x;
+            }
+        };
+
+        template <typename T>
+        struct max_kernel {
+            T operator()(const T& x, const T& y) const {
+                return x > y ? x : y;
+            }
+        };
+
+        template<int ndims, typename R>
+        R min(const mshadow::Tensor<cpu, ndims, R> a, int num_elts) {
+            return std::accumulate(a.dptr_, a.dptr_ + num_elts, std::numeric_limits<R>::infinity(), min_kernel<R>());
+        }
+
+        template<int ndims, typename R>
+        R max(const mshadow::Tensor<cpu, ndims, R> a, int num_elts) {
+            return std::accumulate(a.dptr_, a.dptr_ + num_elts, -std::numeric_limits<R>::infinity(), max_kernel<R>());
+        }
+
     }
 
     namespace arg {

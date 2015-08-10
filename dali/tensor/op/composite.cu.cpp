@@ -179,20 +179,15 @@ namespace matops {
                         SAFE_GRAD(weight_mats[i]) += dot(MAT(inputs[i]).wrapper().T(),
                                                          GRAD(out).wrapper());
                     } else {
-                        TensorInternal<R, 2> sum_rows_out_grad(mshadow::Shape2(1, out.dims(1)));
-                        sum_rows_out_grad.ravel() = sum_rows(GRAD(out).wrapper());
+                        TensorInternal<R, 2> temp(mshadow::Shape2(1, out.dims(1)));
+                        temp[0] = sum_rows(GRAD(out).wrapper());
 
 
                         SAFE_GRAD(inputs[i]) += dot(
-                            sum_rows_out_grad.wrapper(), MAT(weight_mats[i]).wrapper().T()
+                            temp.wrapper(), MAT(weight_mats[i]).wrapper().T()
                         );
 
-                        // Transposing sum_rows_out_grad
-                        sum_rows_out_grad.reshape(mshadow::Shape2(out.dims(1), 1));
-
-                        TensorInternal<R, 2> input_transposed_view = MAT(inputs[i]).reshape(mshadow::Shape2(inputs[i].dims(1), 1));
-
-                        SAFE_GRAD(weight_mats[i]) += dot(input_transposed_view.wrapper(), sum_rows_out_grad.wrapper());
+                        SAFE_GRAD(weight_mats[i]) += dot(MAT(inputs[i]).wrapper().T(), temp.wrapper());
                     }
                 }
                 SAFE_GRAD(bias).ravel() += sum_rows(GRAD(out).wrapper());

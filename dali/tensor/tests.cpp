@@ -32,6 +32,15 @@ TEST_F(MatrixTests, sum_test) {
     ASSERT_NEAR(sum, res.w(0), 1e-4);
 }
 
+TEST_F(MatrixTests, max_min_test) {
+    auto A = Mat<R>(5, 5);
+    for (int i = 0; i < 25; i++) {
+        A.w(i) = i - 15;
+    }
+    ASSERT_NEAR(A.w().min(), -15, 1e-6);
+    ASSERT_NEAR(A.w().max(), 9, 1e-6);
+}
+
 
 TEST_F(MatrixTests, equals) {
     auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));

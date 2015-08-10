@@ -1,7 +1,6 @@
 #include "dali/math/memory_bank/MemoryBankInternal.h"
-
 #include <mshadow/tensor.h>
-
+#include <cassert>
 
 #ifdef DALI_USE_CUDA
     template<typename R>
@@ -36,7 +35,6 @@ void memory_operations<R>::free_cpu_memory(R* addr, int amount, int inner_dimens
     auto dummy = dummy_cpu<R>(addr, amount, inner_dimension);
     mshadow::FreeSpace(&dummy);
 }
-
 
 template<typename R>
 void memory_operations<R>::copy_memory_cpu_to_cpu(R* dest, R* source, int amount, int inner_dimension) {

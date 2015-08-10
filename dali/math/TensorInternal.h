@@ -197,6 +197,8 @@ class TensorInternal {
         TensorInternal& operator=(const lazy_t& expr);
 
         R sum() const;
+        R max() const;
+        R min() const;
         R L2_norm() const;
         bool allclose(const TensorInternal<R, dimension>& other, R tol) const;
         bool operator==(const TensorInternal<R, dimension>& other) const;

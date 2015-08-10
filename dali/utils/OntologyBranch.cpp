@@ -261,7 +261,7 @@ namespace utils {
         visited->insert(const_cast<OntologyBranch*>(this));
         int res = children.size();
         for (auto& child: children) {
-            if (visited->find(child.get()) != visited->end()) {
+            if (visited->find(child.get()) == visited->end()) {
                 res = std::max(res, child->max_branching_factor(visited));
             }
         }

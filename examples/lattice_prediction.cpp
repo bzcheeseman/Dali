@@ -19,6 +19,7 @@ static bool dummy4 = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_train,
 
 DEFINE_int32(memory_rampup, 1000, "Over how many epochs should the memory grow ?");
 DEFINE_double(cutoff, 10.0, "KL Divergence error where stopping is acceptable");
+DEFINE_int32(minibatch, 100,  "What size should be used for the minibatches ?");
 
 using std::vector;
 using std::make_shared;
@@ -65,31 +66,20 @@ struct LatticeBatch : public Batch<R> {
         auto description_length = tokens.size();
         for (size_t j = 0; j < description_length; j++)
             this->data.w(j, example_idx) = word_vocab[tokens[j]];
-        this->data.w(description_length, example_idx) = word_vocab.word2index.at(utils::end_symbol);
-
+        this->data.w(description_length, example_idx) = 0;//word_vocab.word2index.at(utils::end_symbol);
 
         size_t j = 0;
         for (auto& node : path.first) {
-            utils::assert2(description_length + j < this->data.dims(0),   utils::MS()
-                << "outside of bounds 0 -(" << description_length + j << ")"
-                << " and max depth was said to be " << lattice->max_depth() << " however this path has "
-                << "length = " << path.first.size() << ".");
-            utils::assert2(description_length + j < this->target.dims(0), utils::MS() << "outside of bounds 0 --(" << description_length + j << ")");
-            utils::assert2(description_length + j < this->mask.dims(0),   utils::MS() << "outside of bounds 0 ---(" << description_length + j << ")");
-
-            utils::assert2(example_idx < this->data.dims(1),   "outside of bounds 1");
-            utils::assert2(example_idx < this->target.dims(1), "outside of bounds 1");
-            utils::assert2(example_idx < this->mask.dims(1),   "outside of bounds 1");
             // lattice index is offset by all words +
             // offset using lattice_vocab indexing
             this->data.w(description_length   + j + 1, example_idx) = lattice_vocab.word2index.at(node->name) + word_vocab.word2index.size();
-            this->target.w(description_length + j, example_idx) = path.second.at(j);
-            this->mask.w(description_length   + j, example_idx) = 1.0;
+            this->target.w(description_length + j, example_idx)     = path.second.at(j);
+            this->mask.w(description_length   + j, example_idx)     = 1.0;
             j++;
         }
         // **END** for tokens is the next dimension after all the categories (the last one)
         this->data.w(description_length   + j + 1, example_idx) = word_vocab.word2index.at(utils::end_symbol);
-        this->target.w(description_length + j, example_idx) = 0;
+        this->target.w(description_length + j, example_idx) = 0; // end predictions for path
         this->mask.w(description_length   + j, example_idx) = 1.0;
 
         this->code_lengths[example_idx] = path.first.size() + 1;
@@ -156,7 +146,7 @@ vector<LatticeBatch<R>> create_labeled_dataset(
 
     auto shortest = utils::argsort(lengths);
     std::sort(lengths_sorted.begin(), lengths_sorted.end());
-    size_t so_far = 0;
+    int so_far = 0;
 
     auto shortest_ptr = lengths_sorted.begin();
     auto end_ptr = lengths_sorted.end();
@@ -170,14 +160,14 @@ vector<LatticeBatch<R>> create_labeled_dataset(
                 lattice_vocab,
                 word_vocab,
                 lattice,
-                min(minibatch_size, lengths.size() - so_far),
+                min(minibatch_size, (int) (lengths.size() - so_far)),
                 indices_ptr,
                 shortest_ptr
             )
         );
-        shortest_ptr += min(minibatch_size, lengths.size() - so_far);
-        indices_ptr  += min(minibatch_size, lengths.size() - so_far);
-        so_far       = min(so_far + minibatch_size, lengths.size());
+        shortest_ptr += min(minibatch_size, (int) (lengths.size() - so_far));
+        indices_ptr  += min(minibatch_size, (int) (lengths.size() - so_far));
+        so_far       = min(so_far + minibatch_size, (int)lengths.size());
     }
     return dataset;
 }
@@ -208,12 +198,12 @@ void reconstruct(
     ) << std::endl;
 }
 
-template<typename T, typename S>
+template<typename T>
 void training_loop(StackedGatedModel<T>& model,
         const vector<LatticeBatch<T>>& dataset,
         const Vocab& word_vocab,
         shared_lattice_t lattice,
-        S& solver,
+        std::shared_ptr<Solver::AbstractSolver<T>> solver,
         vector<mat>& parameters,
         int& epoch,
         std::tuple<T, T>& cost) {
@@ -228,8 +218,8 @@ void training_loop(StackedGatedModel<T>& model,
             batch.target,
             batch.mask,
             0.0,
-            0,
-            0
+            0, // predict current point in time
+            0 // lattices are offset from vocab
         );
 
         std::get<0>(cost) = std::get<0>(cost) + prediction_error.w(0);
@@ -239,9 +229,10 @@ void training_loop(StackedGatedModel<T>& model,
         memory_error.grad();
 
         graph::backward(); // backpropagate
-        solver.step(parameters); // One step of gradient descent
+        solver->step(parameters); // One step of gradient descent
         journalist.tick(++progress, prediction_error.w(0));
     }
+    journalist.done();
     std::cout << "epoch (" << epoch << ") KL error = " << std::get<0>(cost)
                              << ", Memory cost = " << std::get<1>(cost) << std::endl;
     auto& random_batch = dataset[utils::randint(0, dataset.size() - 1)];
@@ -277,6 +268,14 @@ int main( int argc, char* argv[]) {
     int fact_column = 0;
     auto index2word  = utils::get_vocabulary(examples, FLAGS_min_occurence, fact_column);
     auto index2label = utils::get_lattice_vocabulary(lattice);
+
+    {
+        auto index2label2  = utils::get_vocabulary(examples, 0, 1);
+        std::cout << "got "<< index2label2.size()
+                  << " unique labels out of a total of "
+                  << index2label.size() << " total labels " << std::endl;
+    }
+
     Vocab word_vocab(index2word);
     Vocab lattice_vocab(index2label, false);
     utils::assign_lattice_ids(lattice->lookup_table, lattice_vocab, word_vocab.size());
@@ -303,7 +302,7 @@ int main( int argc, char* argv[]) {
     auto parameters = model.parameters();
 
     //Gradient descent optimizer:
-    Solver::AdaDelta<REAL_t> solver(parameters, rho, 1e-9, 5.0);
+    auto solver = Solver::construct(FLAGS_solver, parameters);
 
     // Main training loop:
     std::tuple<REAL_t,REAL_t> cost(std::numeric_limits<REAL_t>::infinity(), std::numeric_limits<REAL_t>::infinity());

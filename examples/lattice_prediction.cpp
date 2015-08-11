@@ -18,8 +18,9 @@ static bool dummy4 = GFLAGS_NAMESPACE::RegisterFlagValidator(&FLAGS_train,
                                                &utils::validate_flag_nonempty);
 
 DEFINE_int32(memory_rampup, 1000, "Over how many epochs should the memory grow ?");
-DEFINE_double(cutoff, 10.0, "KL Divergence error where stopping is acceptable");
-DEFINE_int32(minibatch, 100,  "What size should be used for the minibatches ?");
+DEFINE_double(cutoff,       10.0, "KL Divergence error where stopping is acceptable");
+DEFINE_int32(minibatch,     100,  "What size should be used for the minibatches ?");
+DEFINE_int32(repeats,       1,    "How many alternate paths should be shown.");
 
 using std::vector;
 using std::make_shared;
@@ -96,7 +97,7 @@ vector<string> ontology_path_to_pathnames(const vector<OntologyBranch::shared_br
 
 template<typename R>
 LatticeBatch<R> convert_sentences_to_indices(
-        tokenized_labeled_dataset& examples,
+        const vector<vector<vector<string>>*>& examples,
         const vector<OntologyBranch::path_t>& paths,
         const Vocab& lattice_vocab,
         const Vocab& word_vocab,
@@ -116,7 +117,7 @@ LatticeBatch<R> convert_sentences_to_indices(
             lattice_vocab,
             word_vocab,
             lattice,
-            examples[*(indices)],
+            *examples[*(indices)],
             paths[*(indices)],
             example_idx
         );
@@ -127,7 +128,7 @@ LatticeBatch<R> convert_sentences_to_indices(
 
 template<typename R>
 vector<LatticeBatch<R>> create_labeled_dataset(
-        tokenized_labeled_dataset& examples,
+        const vector<vector<vector<string>>*>& examples,
         Vocab& lattice_vocab,
         Vocab& word_vocab,
         shared_lattice_t lattice,
@@ -137,20 +138,20 @@ vector<LatticeBatch<R>> create_labeled_dataset(
     vector<size_t> lengths = vector<size_t>(examples.size());
     vector<OntologyBranch::path_t> paths(examples.size());
     for (size_t i = 0; i != lengths.size(); ++i) {
-        auto lattice_label = utils::join(examples[i][1], " ");
+        const auto& example = (*examples[i]);
+        auto lattice_label = utils::join(example[1], " ");
         paths[i]   = lattice->random_path_from_root(lattice_label, 1);
-        lengths[i] = examples[i][0].size() + paths[i].first.size() + 2;
+        lengths[i] = example[0].size() + paths[i].first.size() + 2;
     }
 
     vector<size_t> lengths_sorted(lengths);
-
     auto shortest = utils::argsort(lengths);
     std::sort(lengths_sorted.begin(), lengths_sorted.end());
     int so_far = 0;
 
     auto shortest_ptr = lengths_sorted.begin();
-    auto end_ptr = lengths_sorted.end();
-    auto indices_ptr = shortest.begin();
+    auto end_ptr      = lengths_sorted.end();
+    auto indices_ptr  = shortest.begin();
 
     while (shortest_ptr != end_ptr) {
         dataset.emplace_back(
@@ -236,7 +237,7 @@ void training_loop(StackedGatedModel<T>& model,
 
         graph::backward(); // backpropagate
         solver->step(parameters); // One step of gradient descent
-        journalist.tick(++progress, prediction_error.w(0));
+        journalist.tick(++progress, prediction_error.w(0) );
     }
     journalist.done();
     std::cout << "epoch (" << epoch << ") KL error = " << std::get<0>(cost)
@@ -279,20 +280,37 @@ int main( int argc, char* argv[]) {
 
     {
         auto index2label2  = utils::get_vocabulary(examples, 0, 1);
-        std::cout << "got "<< index2label2.size()
-                  << " unique labels out of a total of "
-                  << index2label.size() << " total labels " << std::endl;
+        std::cout << "# unique labels = " << index2label2.size() << std::endl;
+        std::cout << "# total labels  = " << index2label.size()  << std::endl;
+    }
+
+    vector<vector<vector<string>>*> examples_ptr(FLAGS_repeats * examples.size());
+
+    int pos = 0;
+    for (int i = 0; i < examples.size(); i++) {
+        for (int rep = 0; rep < FLAGS_repeats; rep++) {
+            examples_ptr[pos] = &examples[i];
+            pos++;
+        }
     }
 
     Vocab word_vocab(index2word);
     Vocab lattice_vocab(index2label, false);
     utils::assign_lattice_ids(lattice->lookup_table, lattice_vocab, word_vocab.size());
     auto dataset = create_labeled_dataset<REAL_t>(
-        examples,
+        examples_ptr,
         lattice_vocab,
         word_vocab,
         lattice,
         FLAGS_minibatch);
+    {
+        int total_num_examples = 0;
+        for (int i = 0; i < dataset.size(); i++) {
+            total_num_examples += dataset[i].size();
+        }
+        std::cout << "# examples            = " << examples.size()    << std::endl;
+        std::cout << "# examples with paths = " << total_num_examples << std::endl;
+    }
 
     auto vocab_size = word_vocab.size() + lattice_vocab.size();
     auto model = stacked_gated_model_from_CLI<REAL_t>(FLAGS_load, vocab_size, max_branching_factor + 1, true);

@@ -168,6 +168,8 @@ namespace matops {
         return out;
     }
 
+
+
     template<typename R>
     Mat<R> Cost<R>::cross_entropy_rowwise(Mat<R> matrix, uint answer_idx) {
         DEBUG_ASSERT_BOUNDS(MAT(matrix),0.0,1.0 + EPS);
@@ -193,7 +195,39 @@ namespace matops {
         return out;
     }
 
+    template<typename R>
+    Mat<R> Cost<R>::cross_entropy_colwise(Mat<R> matrix, Mat<int> targets) {
+        ASSERT2(targets.number_of_elements() == matrix.dims(1), "Number of cols must be equal to the number of target in Cross Entropy colwise");
+        Mat<R> out =  Mat<R>(1, targets.number_of_elements(), weights<R>::empty());
 
+        select_from_cols(MAT(out), MAT(matrix), targets.w().ravel());
+
+        MAT(out) = (R)-1.0 * F<op::safe_entropy_log<R>>(MAT(out).wrapper());
+
+        if (graph::backprop_enabled() && !matrix.constant) {
+            graph::emplace_back([matrix, out, targets]() mutable {
+                cross_entropy_colwise_backward(MAT(matrix), GRAD(matrix), GRAD(out), targets.w().ravel());
+            });
+        }
+        return out;
+    }
+
+    template<typename R>
+    Mat<R> Cost<R>::cross_entropy_rowwise(Mat<R> matrix, Mat<int> targets) {
+        ASSERT2(targets.number_of_elements() == matrix.dims(0), "Number of rows must be equal to the number of target in Cross Entropy rowwise");
+        Mat<R> out =  Mat<R>(targets.number_of_elements(), 1, weights<R>::empty());
+
+        select_from_rows(MAT(out), MAT(matrix), targets.w().ravel());
+
+        MAT(out) = (R)-1.0 * F<op::safe_entropy_log<R>>(MAT(out).wrapper());
+
+        if (graph::backprop_enabled() && !matrix.constant) {
+            graph::emplace_back([matrix, out, targets]() mutable {
+                cross_entropy_rowwise_backward(MAT(matrix), GRAD(matrix), GRAD(out), targets.w().ravel());
+            });
+        }
+        return out;
+    }
 
     template<typename R>
     Mat<R> Cost<R>::cross_entropy(Mat<R> matrix, Mat<R> target) {
@@ -213,11 +247,7 @@ namespace matops {
         return out;
     }
 
-
-
-
     /////////////////////// SOFTMAX CROSSENTROPY COLWISE //////////////////////////////////
-
 
     template<typename R>
     Mat<R> Cost<R>::softmax_cross_entropy_colwise(Mat<R> matrix, uint answer_idx) {
@@ -328,8 +358,6 @@ namespace matops {
         return error;
     }
 
-
-
     template<typename R>
     Mat<R> Cost<R>::margin_loss_colwise(Mat<R> matrix, uint answer_idx, R margin) {
         // Exprected input is a column vector
@@ -347,11 +375,7 @@ namespace matops {
         return error;
     }
 
-
-
     template class Cost<float>;
     template class Cost<double>;
     template class Cost<int>;
-
-
 }

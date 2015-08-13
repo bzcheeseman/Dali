@@ -250,17 +250,32 @@ namespace TensorOps {
 
 
     #ifdef DALI_USE_CUDA
+        // gradient for -log(x) ->  1/x * g(out)
+        template<typename R>
+        struct NegativeLogGradient {
+            __host__ __device__
+            R operator()(const thrust::tuple<R, R, R>& x) const {
+                return (
+                    thrust::get<0>(x) - (
+                        thrust::get<2>(x) /
+                        (thrust::get<1>(x) + 1e-9)
+                        )
+                );
+            }
+        };
+
+
         template<typename R>
         void softmax_cross_entropy_colwise_backward(mshadow::Tensor<gpu, 2, R> dest,
-                                            const mshadow::Tensor<gpu, 2, R>& source,
+                                            const mshadow::Tensor<gpu, 2, R>& grad_out,
                                             TensorInternal<int, 1> targets) {
             auto t_dest   = to_thrust(dest);
-            auto t_source = to_thrust(source);
+            auto t_grad_out = to_thrust(grad_out);
             std::vector<int> offsets(targets.number_of_elements());
 
             for (int i=0; i < targets.number_of_elements(); ++i) {
                 // accessing index (i, targets[i])
-                offsets[i] = targets(i) * source.shape_[1] + i;
+                offsets[i] = targets(i) * grad_out.shape_[1] + i;
             }
             thrust::device_vector<uint, cached_allocator<uint> > offsets_gpu(offsets);
 
@@ -268,38 +283,97 @@ namespace TensorOps {
 
             using namespace thrust::placeholders;
 
-            // dest[..., i] = dest[..., i] - source[i]
+            // dest[..., i] = dest[..., i] - grad_out[i]
             thrust::transform(
                     dest_perm,
                     dest_perm + targets.number_of_elements(),
-                    t_source,
+                    t_grad_out,
                     dest_perm,
                     _1 - _2);
+        }
+
+        template<typename R>
+        void cross_entropy_colwise_backward(mshadow::Tensor<gpu, 2, R> probs,
+                                            mshadow::Tensor<gpu, 2, R> dest,
+                                            const mshadow::Tensor<gpu, 2, R>& out_grad,
+                                            TensorInternal<int, 1> targets) {
+            auto t_dest   = to_thrust(dest);
+            auto t_probs  = to_thrust(probs);
+            auto t_out_grad = to_thrust(out_grad);
+            std::vector<int> offsets(targets.number_of_elements());
+
+            for (int i=0; i < targets.number_of_elements(); ++i) {
+                // accessing index (i, targets[i])
+                offsets[i] = targets(i) * out_grad.shape_[1] + i;
+            }
+            thrust::device_vector<uint, cached_allocator<uint> > offsets_gpu(offsets);
+
+            auto dest_perm = thrust::make_permutation_iterator(t_dest, offsets_gpu.begin());
+            auto probs_perm = thrust::make_permutation_iterator(t_probs, offsets_gpu.begin());
+
+            auto dest_probs_perm = thrust::make_zip_iterator(thrust::make_tuple(
+                dest_perm,
+                probs_perm,
+                t_out_grad
+                ));
+
+            // dest[..., i] -= (1/ prob(i]) * gout[i]
+            thrust::transform(
+                    dest_probs_perm,
+                    dest_probs_perm + targets.number_of_elements(),
+                    dest_perm,
+                    NegativeLogGradient<R>());
         }
     #endif
 
     template<typename R>
     void softmax_cross_entropy_colwise_backward(mshadow::Tensor<cpu, 2, R> dest,
-                          const mshadow::Tensor<cpu, 2, R>& source,
+                          const mshadow::Tensor<cpu, 2, R>& out_grad,
                           const mshadow::Tensor<cpu, 1, int>& targets) {
-        R* source_ptr = source.dptr_;
+        R* out_grad_ptr = out_grad.dptr_;
         for (int target_idx = 0; target_idx < targets.shape_.Size(); ++target_idx) {
             uint row_idx = targets[target_idx];
-            dest[row_idx][target_idx] -= *(source_ptr + target_idx);
+            dest[row_idx][target_idx] -= *(out_grad_ptr + target_idx);
+        }
+    }
+
+    template<typename R>
+    void cross_entropy_colwise_backward(mshadow::Tensor<cpu, 2, R> probs,
+                                        mshadow::Tensor<cpu, 2, R> dest,
+                                        const mshadow::Tensor<cpu, 2, R>& out_grad,
+                                        const mshadow::Tensor<cpu, 1, int>& targets) {
+        R* out_grad_ptr = out_grad.dptr_;
+        for (int target_idx = 0; target_idx < targets.shape_.Size(); ++target_idx) {
+            uint row_idx = targets[target_idx];
+            dest[row_idx][target_idx] -= *(out_grad_ptr + target_idx) / (probs[row_idx][target_idx]+ 1e-9);
         }
     }
 
     template<typename R>
     void softmax_cross_entropy_colwise_backward(TensorInternal<R,2> dest,
-                          TensorInternal<R,2> source,
+                          TensorInternal<R,2> out_grad,
                           TensorInternal<int,1> targets) {
         #ifdef DALI_USE_CUDA
-        if (source.compute_me_on_gpu()) {
-            softmax_cross_entropy_colwise_backward(dest.mutable_gpu_data(), source.gpu_data(), targets);
+        if (out_grad.compute_me_on_gpu()) {
+            softmax_cross_entropy_colwise_backward(dest.mutable_gpu_data(), out_grad.gpu_data(), targets);
             return;
         }
         #endif
-        softmax_cross_entropy_colwise_backward(dest.mutable_cpu_data(), source.cpu_data(), targets.cpu_data());
+        softmax_cross_entropy_colwise_backward(dest.mutable_cpu_data(), out_grad.cpu_data(), targets.cpu_data());
+    }
+
+    template<typename R>
+    void cross_entropy_colwise_backward(TensorInternal<R,2> probs,
+                          TensorInternal<R,2> dest,
+                          TensorInternal<R,2> out_grad,
+                          TensorInternal<int,1> targets) {
+        #ifdef DALI_USE_CUDA
+        if (out_grad.compute_me_on_gpu()) {
+            cross_entropy_colwise_backward(probs.gpu_data(), dest.mutable_gpu_data(), out_grad.gpu_data(), targets);
+            return;
+        }
+        #endif
+        cross_entropy_colwise_backward(probs.cpu_data(), dest.mutable_cpu_data(), out_grad.cpu_data(), targets.cpu_data());
     }
 
     /////////////////////// softmax_cross_entropy_rowwise_backward ///////////
@@ -331,6 +405,38 @@ namespace TensorOps {
                     dest_perm,
                     _1 - _2);
         }
+
+        template<typename R>
+        void cross_entropy_rowwise_backward(mshadow::Tensor<gpu, 2, R> probs,
+                                            mshadow::Tensor<gpu, 2, R> dest,
+                                            const mshadow::Tensor<gpu, 2, R>& out_grad,
+                                            TensorInternal<int, 1> targets) {
+            auto t_dest     = to_thrust(dest);
+            auto t_out_grad = to_thrust(out_grad);
+            auto t_probs    = to_thrust(probs);
+            std::vector<int> offsets(targets.number_of_elements());
+
+            for (int i=0; i < targets.number_of_elements(); ++i) {
+                // accessing index (i, targets[i])
+                offsets[i] = i * dest.shape_[1] + targets(i);
+            }
+            thrust::device_vector<uint, cached_allocator<uint> > offsets_gpu(offsets);
+
+            auto dest_perm = thrust::make_permutation_iterator(t_dest, offsets_gpu.begin());
+            auto probs_perm = thrust::make_permutation_iterator(t_probs, offsets_gpu.begin());
+
+            auto dest_probs_perm = thrust::make_zip_iterator(thrust::make_tuple(
+                dest_perm,
+                probs_perm,
+                t_out_grad
+                ));
+
+            thrust::transform(
+                    dest_probs_perm,
+                    dest_probs_perm + targets.number_of_elements(),
+                    dest_perm,
+                    NegativeLogGradient<R>());
+        }
     #endif
 
     template<typename R>
@@ -357,6 +463,36 @@ namespace TensorOps {
         }
         #endif
         softmax_cross_entropy_rowwise_backward(dest.mutable_cpu_data(), out_grad.cpu_data(), targets.cpu_data());
+    }
+
+    template<typename R>
+    void cross_entropy_rowwise_backward(
+                            mshadow::Tensor<cpu, 2, R> probs,
+                            mshadow::Tensor<cpu, 2, R> dest,
+                          const mshadow::Tensor<cpu, 2, R>& out_grad,
+                          const mshadow::Tensor<cpu, 1, int>& targets) {
+        R* out_grad_ptr = out_grad.dptr_;
+        for (int target_idx = 0; target_idx < targets.shape_.Size(); ++target_idx) {
+            uint col_idx = targets[target_idx];
+            // for every example (target_idx) corresponding error is the target_idx-th
+            // element of out_grad (1D vector for errors for every example.)
+            dest[target_idx][col_idx] -=  *(out_grad_ptr + target_idx) / (probs[target_idx][col_idx] + 1e-9);
+        }
+    }
+
+    template<typename R>
+    void cross_entropy_rowwise_backward(
+                          TensorInternal<R,2> probs,
+                          TensorInternal<R,2> dest,
+                          TensorInternal<R,2> out_grad,
+                          TensorInternal<int,1> targets) {
+        #ifdef DALI_USE_CUDA
+        if (out_grad.compute_me_on_gpu()) {
+            cross_entropy_rowwise_backward(probs.gpu_data(), dest.mutable_gpu_data(), out_grad.gpu_data(), targets);
+            return;
+        }
+        #endif
+        cross_entropy_rowwise_backward(probs.cpu_data(), dest.mutable_cpu_data(), out_grad.cpu_data(), targets.cpu_data());
     }
 
 

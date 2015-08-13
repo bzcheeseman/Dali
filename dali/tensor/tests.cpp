@@ -1422,8 +1422,41 @@ TEST_F(MatOpsTests, cross_entropy_rowwise_multiindex) {
     }
 }
 
+TEST_F(MatOpsTests, cross_entropy_rowwise_grad) {
+    EXPERIMENT_REPEAT {
+        auto input = Mat<R>(2, 3, weights<R>::uniform(0.01, 1.0));
 
+        auto targets = Mat<int>(2, 1);
+        for (int i = 0; i < input.dims(0); ++i)
+            targets.w(i) = utils::randint(0, input.dims(1) - 1);
 
+        auto functor = [&targets](vector<Mat<R>> Xs)-> Mat<R> {
+            return MatOps<R>::cross_entropy_rowwise(
+                Xs[0],
+                targets);
+        };
+
+        ASSERT_TRUE(gradient_same(functor, {input}, 1e-2));
+    }
+}
+
+TEST_F(MatOpsTests, cross_entropy_colwise_grad) {
+    EXPERIMENT_REPEAT {
+        auto input = Mat<R>(3, 2, weights<R>::uniform(0.01, 1.0));
+
+        auto targets = Mat<int>(2, 1);
+        for (int i = 0; i < input.dims(1); ++i)
+            targets.w(i) = utils::randint(0, input.dims(0) - 1);
+
+        auto functor = [&targets](vector<Mat<R>> Xs)-> Mat<R> {
+            return MatOps<R>::cross_entropy_colwise(
+                Xs[0],
+                targets);
+        };
+
+        ASSERT_TRUE(gradient_same(functor, {input}, 1e-2));
+    }
+}
 
 TEST_F(MatOpsTests, cross_entropy_grad_thought_target) {
     double temperature;

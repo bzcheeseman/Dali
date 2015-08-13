@@ -17,6 +17,7 @@ struct memory_bank {
 
     static void deposit_cpu(int amount, int inner_dimension, R* ptr);
     static R* allocate_cpu(int amount, int inner_dimension);
+    static void clear_cpu();
 
     #ifdef DALI_USE_CUDA
         // find out how many bytes of memory are still available
@@ -24,6 +25,7 @@ struct memory_bank {
         static cuckoohash_map<unsigned long long,std::vector<R*>> gpu_memory_bank;
         static std::atomic<long long> num_gpu_allocations;
         static std::atomic<long long> total_gpu_memory;
+        static void clear_gpu();
 
         static void deposit_gpu(int amount, int inner_dimension, R* ptr);
         static size_t cuda_available_memory();

@@ -36,12 +36,35 @@ R* memory_bank<R>::allocate_cpu(int amount, int inner_dimension) {
 }
 
 template<typename R>
+void memory_bank<R>::clear_cpu() {
+    for (auto it = cpu_memory_bank.cbegin(); !it.is_end(); it++) {
+        auto& ptrs = it->second;
+        for (auto ptr : ptrs) {
+            memory_operations<R>::free_cpu_memory(ptr, it->first, 1);
+        }
+        total_cpu_memory -= (it->first) * ptrs.size();
+    }
+    cpu_memory_bank.clear();
+}
+
+template<typename R>
 std::atomic<long long> memory_bank<R>::num_cpu_allocations(0);
 
 template<typename R>
 std::atomic<long long> memory_bank<R>::total_cpu_memory(0);
 
 #ifdef DALI_USE_CUDA
+    template<typename R>
+    void memory_bank<R>::clear_gpu() {
+        for (auto it = gpu_memory_bank.cbegin(); !it.is_end(); it++) {
+            auto& ptrs = it->second;
+            for (auto ptr : ptrs) {
+                memory_operations<R>::free_gpu_memory(ptr, it->first, 1);
+            }
+            total_gpu_memory -= (it->first) * ptrs.size();
+        }
+        gpu_memory_bank.clear();
+    }
 
     template<typename R>
     cuckoohash_map<unsigned long long,std::vector<R*>> memory_bank<R>::gpu_memory_bank(100000);

@@ -30,61 +30,65 @@ namespace matops {
 
     template<typename R>
     void SolverUpdates<R>::adagrad_update(Mat<R> param,
-                                          TensorInternal<R, 1>& cache,
+                                          Mat<R>& cache,
                                           R step_size,
                                           R smooth_eps) {
 
         // update gradient cache using decay rule:
-        cache += F<op::square<R>>(GRAD(param).ravel().wrapper());
+        MAT(cache) += F<op::square<R>>(GRAD(param).wrapper());
         // clip the gradient to prevent explosions:
         // update gradient using RMSprop rule
 
-        MAT(param).ravel() -= step_size * GRAD(param).ravel().wrapper() /
-                F<op::sqrt_f<R>>(cache.ravel().wrapper() + smooth_eps);
+        MAT(param) -= step_size * GRAD(param).wrapper() /
+                F<op::sqrt_f<R>>(MAT(cache).wrapper() + smooth_eps);
 
         DEBUG_ASSERT_NOT_NAN(MAT(param));
     }
 
     template<typename R>
-    void SolverUpdates<R>::rmsprop_update(Mat<R> param, TensorInternal<R,1>& cache,
+    void SolverUpdates<R>::rmsprop_update(Mat<R> param, Mat<R>& cache,
             R decay_rate, R step_size,  R smooth_eps) {
-        cache = (cache.wrapper() * decay_rate) + ((R)1.0 - decay_rate) * F<op::square<R>>(GRAD(param).ravel().wrapper());
-        // ELOG("graD");
-        // GRAD(param).print();
+        MAT(cache) = (
+            decay_rate            * MAT(cache).wrapper() +
+            ((R)1.0 - decay_rate) * F<op::square<R>>(GRAD(param).wrapper())
+        );
         // update gradient using RMSprop rule
         // DEBUG_ASSERT_POSITIVE((s.array() + smooth_eps).matrix());
-        MAT(param).ravel() -= step_size * GRAD(param).ravel().wrapper() /
-                F<op::sqrt_f<R>>(cache.ravel().wrapper() + smooth_eps);
+        MAT(param) -= step_size * GRAD(param).wrapper() /
+                F<op::sqrt_f<R>>(MAT(cache).wrapper() + smooth_eps);
     }
 
     template<typename R>
     void SolverUpdates<R>::adadelta_update(Mat<R> param,
-                                           TensorInternal<R,1>& gsum,
-                                           TensorInternal<R,1>& xsum,
+                                           Mat<R>& gsum,
+                                           Mat<R>& xsum,
                                            R rho,
                                            R smooth_eps) {
         // update gradient cache using decay rule:
-        gsum = (gsum.wrapper() * rho) + ((R)((R)1.0 - rho)) * F<op::square<R>>(GRAD(param).ravel().wrapper());
-        // DEBUG_ASSERT_POSITIVE((gsum.array()  + this->smooth_eps).matrix());
-        // DEBUG_ASSERT_POSITIVE(((xsum.array() + this->smooth_eps) / (gsum.array() + this->smooth_eps)).matrix());
-        TensorInternal<R,1> dparam(xsum.shape);
+        MAT(gsum) = (
+            rho                 * MAT(gsum).wrapper() +
+            ((R)((R)1.0 - rho)) * F<op::square<R>>(GRAD(param).wrapper())
+        );
+        // DEBUG_ASSERT_POSITIVE((MAT(gsum).array()  + this->smooth_eps).matrix());
+        // DEBUG_ASSERT_POSITIVE(((xsum.array() + this->smooth_eps) / (MAT(gsum).array() + this->smooth_eps)).matrix());
+        TensorInternal<R, 2> dparam(MAT(xsum).shape);
         dparam = (
-            F<op::sqrt_f<R>>(xsum.wrapper() + smooth_eps) /
-            F<op::sqrt_f<R>>(gsum.wrapper() + smooth_eps)
-        ) * GRAD(param).ravel().wrapper();
+            F<op::sqrt_f<R>>(MAT(xsum).wrapper() + smooth_eps) /
+            F<op::sqrt_f<R>>(MAT(gsum).wrapper() + smooth_eps)
+        ) * GRAD(param).wrapper();
 
-        xsum = (
-            rho * xsum.wrapper() +
+        MAT(xsum) = (
+            rho * MAT(xsum).wrapper() +
             ((R)(1.0 - rho)) * F<op::square<R>>(dparam.wrapper())
         );
         // update gradient using AdaDelta rule
-        MAT(param).ravel() -= dparam.wrapper();
+        MAT(param) -= dparam.wrapper();
     }
 
     template<typename R>
     void SolverUpdates<R>::adam_update(Mat<R> param,
-                                           TensorInternal<R,1>& m,
-                                           TensorInternal<R,1>& v,
+                                           Mat<R>& m,
+                                           Mat<R>& v,
                                            R b1,
                                            R b2,
                                            R smooth_eps,
@@ -98,11 +102,11 @@ namespace matops {
         ASSERT2(lr_t == lr_t, "Epoch learning rate is NaN. Try changing b1 or b2.");
 
         // update m acculumulator
-        m = (m.wrapper() * (R)(1.0 - b1)) + b1 * GRAD(param).ravel().wrapper();
+        MAT(m) = (MAT(m).wrapper() * (R)(1.0 - b1)) + b1 * GRAD(param).wrapper();
         // update v acculumulator
-        v = (v.wrapper() * (R)(1.0 - b2)) + b2 * F<op::square<R>>(GRAD(param).ravel().wrapper());
+        MAT(v) = (MAT(v).wrapper() * (R)(1.0 - b2)) + b2 * F<op::square<R>>(GRAD(param).wrapper());
 
-        GRAD(param).ravel() = m.wrapper() / (F<op::sqrt_f<R>>(v.wrapper()) + smooth_eps);
+        GRAD(param) = MAT(m).wrapper() / (F<op::sqrt_f<R>>(MAT(v).wrapper()) + smooth_eps);
 
         // take gradient step
         MAT(param) -= lr_t * GRAD(param).wrapper();

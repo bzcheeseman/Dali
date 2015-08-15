@@ -15,22 +15,22 @@ namespace matops {
 
         static void sgd_update(Mat<R> matrix, R step_size);
         static void adagrad_update(Mat<R> matrix,
-                                   TensorInternal<R, 1>& cache,
+                                   Mat<R>& cache,
                                    R step_size,
                                    R smooth_eps);
 
-        static void rmsprop_update(Mat<R> param, TensorInternal<R,1>& cache,
+        static void rmsprop_update(Mat<R> param, Mat<R>& cache,
                 R decay_rate, R step_size, R smooth_eps);
 
         static void adadelta_update(Mat<R> param,
-                                    TensorInternal<R,1>& gsum,
-                                    TensorInternal<R,1>& xsum,
+                                    Mat<R>& gsum,
+                                    Mat<R>& xsum,
                                     R rho,
                                     R smooth_eps);
 
         static void adam_update(Mat<R> param,
-                                TensorInternal<R,1>& m,
-                                TensorInternal<R,1>& v,
+                                Mat<R>& m,
+                                Mat<R>& v,
                                 R b1,
                                 R b2,
                                 R smooth_eps,

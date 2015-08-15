@@ -13,7 +13,7 @@ namespace Solver {
     template<typename R>
     using cache_key_t = void*;
     template<typename R>
-    using cache_t = TensorInternal<R, 1>;
+    using cache_t = Mat<R>;
 
     enum Method {
         METHOD_UNINITIALIZED,

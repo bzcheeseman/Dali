@@ -49,6 +49,7 @@ namespace TensorOps {
              source,
              source.size(0),
              col);
+        cudaDeviceSynchronize();
     }
 
     #endif
@@ -110,6 +111,7 @@ namespace TensorOps {
              source,
              dest.size(0),
              col);
+        cudaDeviceSynchronize();
     }
 
     #endif
@@ -160,6 +162,7 @@ namespace TensorOps {
             t_source, offsets_gpu.begin()
             );
         thrust::copy(iter, iter + source.shape_[1], t_dest);
+        cudaDeviceSynchronize();
     }
     #endif
 
@@ -214,6 +217,7 @@ namespace TensorOps {
             t_source, offsets_gpu.begin()
             );
         thrust::copy(iter, iter + targets.number_of_elements(), t_dest);
+        cudaDeviceSynchronize();
     }
     #endif
 
@@ -290,6 +294,7 @@ namespace TensorOps {
                     t_grad_out,
                     dest_perm,
                     _1 - _2);
+            cudaDeviceSynchronize();
         }
 
         template<typename R>
@@ -323,6 +328,7 @@ namespace TensorOps {
                     dest_probs_perm + targets.number_of_elements(),
                     dest_perm,
                     NegativeLogGradient<R>());
+            cudaDeviceSynchronize();
         }
     #endif
 
@@ -404,6 +410,7 @@ namespace TensorOps {
                     t_out_grad,
                     dest_perm,
                     _1 - _2);
+            cudaDeviceSynchronize();
         }
 
         template<typename R>
@@ -436,6 +443,7 @@ namespace TensorOps {
                     dest_probs_perm + targets.number_of_elements(),
                     dest_perm,
                     NegativeLogGradient<R>());
+            cudaDeviceSynchronize();
         }
     #endif
 
@@ -517,6 +525,7 @@ namespace TensorOps {
 
             thrust::copy(source_row_begin , source_row_begin + row_size, t_dest + idx * row_size);
         }
+        cudaDeviceSynchronize();
     }
     #endif
 
@@ -566,6 +575,7 @@ namespace TensorOps {
             auto dest_row_begin = t_dest + indices(idx) * row_size;
             thrust::transform(dest_row_begin, dest_row_begin + row_size, t_out_grad + idx * row_size, dest_row_begin, _1 + _2);
         }
+        cudaDeviceSynchronize();
     }
     #endif
 

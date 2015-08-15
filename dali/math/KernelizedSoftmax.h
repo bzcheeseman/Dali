@@ -196,6 +196,7 @@ namespace TensorOps {
                         dst.size(1),
                         temperature);
             }
+            cudaDeviceSynchronize();
         }
 
         template<typename R>
@@ -226,6 +227,7 @@ namespace TensorOps {
                         dst.size(0),
                         temperature);
             }
+            cudaDeviceSynchronize();
         }
     #endif
 

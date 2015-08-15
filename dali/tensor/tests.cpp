@@ -1609,7 +1609,7 @@ void copy_constructor_helper(bool copy_w, bool copy_dw) {
     copy.w(0,0) -= 1.0;
     copy.dw(0,0) -= 1.0;
     ASSERT_MATRIX_GRAD_CLOSE(original, copy, 1e-5);
-    ASSERT_MATRIX_EQ(original, copy);
+    ASSERT_MATRIX_CLOSE(original, copy, 1e-5);
 }
 
 

@@ -20,6 +20,22 @@ namespace matops {
     }
 
     template<typename R>
+    void SolverUpdates<R>::regularize(Mat<R> param, R regc) {
+        if (regc > 0) {
+            GRAD(param) += (regc * MAT(param).wrapper());
+        }
+    }
+
+    template<typename R>
+    void SolverUpdates<R>::normalize(Mat<R> param, R norm_threshold) {
+        R norm = param.dw().L2_norm();
+        if (norm > norm_threshold) {
+            GRAD(param) = (norm_threshold / norm) * GRAD(param).wrapper();
+        }
+    }
+
+
+    template<typename R>
     void SolverUpdates<R>::sgd_update(Mat<R> param, R step_size) {
         DEBUG_ASSERT_NOT_NAN(MAT(param));
 

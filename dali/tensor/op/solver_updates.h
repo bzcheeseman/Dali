@@ -12,6 +12,11 @@ namespace matops {
     struct SolverUpdates {
         static void clip_and_regularize(Mat<R> param, R clipval, R regc);
 
+        static void regularize(Mat<R> param, R regc);
+
+        static void normalize(Mat<R> param, R norm_threshold);
+
+
 
         static void sgd_update(Mat<R> matrix, R step_size);
         static void adagrad_update(Mat<R> matrix,

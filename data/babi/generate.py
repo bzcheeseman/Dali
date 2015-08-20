@@ -55,5 +55,3 @@ if __name__ == '__main__':
     for f in findfiles(NORMALIZED_OUTPUT_DIR, "qa*.txt"):
         print("Converting %s to common QA format..." % (f,))
         fix_babi_file(f)
-
-    fix_babi_file(join(THIS_DATA_DIR, "tasks/en/qa11_basic-coreference_test.txt"))

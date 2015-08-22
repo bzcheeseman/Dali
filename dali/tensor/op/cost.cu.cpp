@@ -126,6 +126,29 @@ namespace matops {
     }
 
     template<typename R>
+    Mat<R> Cost<R>::sigmoid_binary_cross_entropy(Mat<R> matrix, Mat<R> target) {
+        ASSERT2(matrix.dims(0) == target.dims(0) && matrix.dims(1) == target.dims(1),
+            "Matrix and target must have same dimension");
+
+        Mat<R> out = Mat<R>::empty_like(matrix);
+
+        // take sigmoid and keep it for backprop
+        TensorInternal<R, 2> sigmoided_input(MAT(out).shape);
+        sigmoided_input = F<op::sigmoid<R>>(MAT(matrix).wrapper());
+
+        MAT(out) = F<op::binary_cross_entropy<R>>(sigmoided_input.wrapper(), MAT(target).wrapper());
+
+        DEBUG_ASSERT_NOT_NAN(MAT(out));
+
+        if (graph::backprop_enabled())
+            graph::emplace_back([matrix, target, out, sigmoided_input]() mutable {
+                SAFE_GRAD(matrix) += (sigmoided_input.wrapper() - MAT(target).wrapper()) * GRAD(out).wrapper();
+                DEBUG_ASSERT_GRAD_NOT_NAN(matrix);
+            });
+        return out;
+    }
+
+    template<typename R>
     Mat<R> Cost<R>::binary_cross_entropy(Mat<R> matrix, R t) {
         assert(0 <= t && t <= 1);
         assert(matrix.dims().size() > 1);
@@ -149,6 +172,30 @@ namespace matops {
             });
         return out;
     }
+
+    template<typename R>
+    Mat<R> Cost<R>::binary_cross_entropy(Mat<R> matrix, Mat<R> target) {
+        ASSERT2(matrix.dims(0) == target.dims(0) && matrix.dims(1) == target.dims(1),
+            "Matrix and target must have same dimension");
+
+        Mat<R> out = Mat<R>::empty_like(matrix);
+        MAT(out) = F<op::binary_cross_entropy<R>>(MAT(matrix).wrapper(), MAT(target).wrapper());
+
+        DEBUG_ASSERT_NOT_NAN(MAT(out));
+
+        if (graph::backprop_enabled())
+            graph::emplace_back([matrix, target, out]() mutable {
+                SAFE_GRAD(matrix) += (
+                    F<op::binary_cross_entropy_grad<R>>(
+                        MAT(matrix).wrapper(), MAT(target).wrapper()
+                    ) * GRAD(out).wrapper()
+                );
+                DEBUG_ASSERT_GRAD_NOT_NAN(matrix);
+            });
+        return out;
+    }
+
+
 
     template<typename R>
     Mat<R> Cost<R>::cross_entropy_colwise(Mat<R> matrix, uint answer_idx) {

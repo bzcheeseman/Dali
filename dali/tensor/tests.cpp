@@ -1229,6 +1229,17 @@ TEST_F(MatOpsTests, resize_1D_increase_rows) {
     ASSERT_EQ(A.shape, new_shape);
 }
 
+TEST_F(MatOpsTests, circular_convolution) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return MatOps<R>::circular_convolution(Xs[0], Xs[1]);
+    };
+    EXPERIMENT_REPEAT {
+        auto matrix = Mat<R>(4, 5, weights<R>::uniform(-20.0, 20.0));
+        auto shift  = Mat<R>(4, 5, weights<R>::uniform(-20.0, 20.0));
+        ASSERT_TRUE(gradient_same(functor, {matrix, shift}, 1e-4));
+    }
+}
+
 
 TEST_F(MatOpsTests, DISABLED_matrix_conv1d_grad) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {

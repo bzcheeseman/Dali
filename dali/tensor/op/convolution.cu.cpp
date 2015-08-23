@@ -3,6 +3,7 @@
 #include "dali/tensor/__MatMacros__.h"
 #include "dali/math/TensorOps.h"
 #include "dali/math/LazyTensor.h"
+#include "dali/math/TensorConvolution.h"
 
 using utils::assert2;
 using utils::MS;
@@ -11,7 +12,6 @@ using std::shared_ptr;
 using std::vector;
 
 #define DONT_COMPILE
-
 
 namespace matops {
     // Note if kernel is 3D (as in multi kernel)
@@ -265,6 +265,25 @@ namespace matops {
         // }
         // return out;
         return Mat<R>(1,1);
+    }
+
+    template<typename R>
+    Mat<R> Convolution<R>::circular_convolution(Mat<R> matrix, Mat<R> shift) {
+        assert2(matrix.dims(0) == shift.dims(0) && matrix.dims(1) == shift.dims(1),
+                "Cannot perform circular convolution: matrix and shift must be of the same size.");
+        auto out = Mat<R>::zeros_like(matrix);
+        TensorOps::circular_convolution(MAT(out), MAT(matrix), MAT(shift));
+        if (graph::backprop_enabled()) {
+            graph::emplace_back([out, matrix, shift]() mutable {
+                if (!matrix.constant) {
+                    TensorOps::circular_convolution(GRAD(matrix), GRAD(out), MAT(shift));
+                }
+                if (!shift.constant) {
+                    TensorOps::circular_convolution(GRAD(shift), MAT(matrix), GRAD(out));
+                }
+            });
+        }
+        return out;
     }
 
     template class Convolution<float>;

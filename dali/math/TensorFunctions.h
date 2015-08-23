@@ -225,8 +225,8 @@ namespace TensorOps {
         template<typename R>
         struct binary_cross_entropy {
             MSHADOW_XINLINE static R Map(const R& x, const R& t ) {
-                R distance_from1 =        t  * LOG_F(x        + EPS);
-                R distance_from0 = (1.0 - t) * LOG_F(1.00000001 - x);
+                R distance_from1 =        t  * LOG_F(x);
+                R distance_from0 = (1.0 - t) * LOG_F(1. - x);
                 return -(distance_from1 + distance_from0);
             }
         };
@@ -235,7 +235,7 @@ namespace TensorOps {
         struct binary_cross_entropy_grad {
             MSHADOW_XINLINE static R Map(const R& x, const R& t ) {
                 R numerator   = t - x;
-                R denominator = (x * (x - 1.0) + EPS);
+                R denominator = (x * (x - 1.0));
                 return numerator / denominator;
             }
         };

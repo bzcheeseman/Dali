@@ -1,3 +1,5 @@
+#ifndef DALI_MATH_THRUSTALLOCATOR_H
+#define DALI_MATH_THRUSTALLOCATOR_H
 #ifdef DALI_USE_CUDA
 
 #include <thrust/device_vector.h>
@@ -18,4 +20,5 @@ struct cached_allocator : thrust::device_malloc_allocator<R>{
     void deallocate(pointer p, size_type n);
 };
 
+#endif
 #endif

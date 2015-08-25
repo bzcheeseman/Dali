@@ -12,6 +12,8 @@ namespace matops {
     struct Reducers {
         static Mat<R> L2_norm(Mat<R>);
         static Mat<R> sum(Mat<R>);
+        static Mat<R> sum_colwise(Mat<R>);
+        static Mat<R> sum_rowwise(Mat<R>);
         static Mat<R> mean(Mat<R>);
     };
 }

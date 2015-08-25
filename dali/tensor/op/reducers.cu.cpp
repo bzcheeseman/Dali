@@ -35,6 +35,36 @@ namespace matops {
     }
 
     template<typename R>
+    Mat<R> Reducers<R>::sum_colwise(Mat<R> matrix) {
+        if (matrix.dims(1) == 1)
+            return matrix;
+        Mat<R> out(matrix.dims(0), 1, weights<R>::empty());
+        MAT(out).ravel() = reduce_to_1d<0, mshadow::red::sum>(MAT(matrix).wrapper());
+
+        if (graph::backprop_enabled() && !matrix.constant)
+            graph::emplace_back([matrix, out]() mutable {
+                GRAD(matrix) += GRAD(out).ravel().wrapper().template broadcast<0>(GRAD(matrix).shape);
+            });
+        return out;
+    }
+
+    template<typename R>
+    Mat<R> Reducers<R>::sum_rowwise(Mat<R> matrix) {
+        if (matrix.dims(0) == 1)
+            return matrix;
+        Mat<R> out(1, matrix.dims(1), weights<R>::empty());
+        MAT(out).ravel() = reduce_to_1d<1, mshadow::red::sum>(MAT(matrix).wrapper());
+
+        if (graph::backprop_enabled() && !matrix.constant)
+            graph::emplace_back([matrix, out]() mutable {
+                GRAD(matrix) += GRAD(out).ravel().wrapper().template broadcast<1>(GRAD(matrix).shape);
+            });
+        return out;
+    }
+
+
+
+    template<typename R>
     Mat<R> Reducers<R>::mean(Mat<R> matrix) {
         Mat<R> out (1,1, weights<R>::empty());
         auto ne = matrix.number_of_elements();

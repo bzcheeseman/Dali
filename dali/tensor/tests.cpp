@@ -191,6 +191,26 @@ TEST_F(MatrixTests, addition_vector) {
     }
 }
 
+TEST_F(MatrixTests, broadcast_row_vector) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return MatOps<R>::broadcast_row_vector(Xs[0], 10);
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(1,  20,  weights<R>::uniform(2.0));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-5, DEFAULT_GRAD_EPS, true));
+    }
+}
+
+TEST_F(MatrixTests, broadcast_col_vector) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return MatOps<R>::broadcast_col_vector(Xs[0], 10);
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(20,  1,  weights<R>::uniform(2.0));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-5, DEFAULT_GRAD_EPS, true));
+    }
+}
+
 TEST_F(MatrixTests, load_test) {
     Mat<R> arange(utils::dir_join({STR(DALI_DATA_DIR),    "tests", "arange12.npy"}));
     Mat<R> arange_fortran(utils::dir_join({STR(DALI_DATA_DIR), "tests", "arange12.fortran.npy"}));

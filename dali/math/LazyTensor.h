@@ -631,57 +631,59 @@ inline auto swapaxis(const LazyTensor<TA, DType, dimension, ta> &exp)
 #endif
 
 #ifdef DALI_USE_CUDA
-    template<int dimkeep, typename TA, typename TB, typename DType, int dimension, int ta>
-    auto  sumall_except_dim(const LazyTensor<TA, TB, DType, dimension, ta> &exp) ->
-            LazyTensor<decltype(mshadow::expr::sumall_except_dim<dimkeep>(exp.left)),
-                       decltype(mshadow::expr::sumall_except_dim<dimkeep>(exp.right)),
+    template<int dimkeep, typename reduction, typename TA, typename TB, typename DType, int dimension, int ta>
+    auto reduce_to_1d(const LazyTensor<TA, TB, DType, dimension, ta> &exp) ->
+            LazyTensor<decltype(mshadow::expr::ReduceTo1DExp<TA, DType, reduction, mshadow::expr::ExpInfo<TA>::kDim - dimkeep>(exp.left, 1)),
+                       decltype(mshadow::expr::ReduceTo1DExp<TB, DType, reduction, mshadow::expr::ExpInfo<TB>::kDim - dimkeep>(exp.right, 1)),
                        DType,
                        1,
                        mshadow::expr::type::kComplex> {
-        auto cpu_sumall = mshadow::expr::sumall_except_dim<dimkeep>(exp.left);
-        auto gpu_sumall = mshadow::expr::sumall_except_dim<dimkeep>(exp.right);
+
+        auto cpu_reduce = mshadow::expr::ReduceTo1DExp<TA, DType, reduction, mshadow::expr::ExpInfo<TA>::kDim - dimkeep>(exp.left, 1);
+        auto gpu_reduce = mshadow::expr::ReduceTo1DExp<TB, DType, reduction, mshadow::expr::ExpInfo<TB>::kDim - dimkeep>(exp.right, 1);
         return LazyTensor<
-            decltype(cpu_sumall),
-            decltype(gpu_sumall),
+            decltype(cpu_reduce),
+            decltype(gpu_reduce),
             DType,
             1,
             mshadow::expr::type::kComplex
-            >(cpu_sumall, gpu_sumall, exp.dependent_tensors);
+            >(cpu_reduce, gpu_reduce, exp.dependent_tensors);
     }
 
     template<typename TA, typename TB, typename DType, int ta>
-    auto sum_rows(const LazyTensor<TA, TB, DType, 2, ta> &exp) -> decltype(sumall_except_dim<1>(exp)) {
-        return sumall_except_dim<1>(exp);
+    auto sum_rows(const LazyTensor<TA, TB, DType, 2, ta> &exp) -> decltype(reduce_to_1d<1, mshadow::red::sum>(exp)) {
+        return reduce_to_1d<1, mshadow::red::sum>(exp);
     }
 
     template<typename TA, typename TB, typename DType, int ta>
-    auto sum_cols(const LazyTensor<TA, TB, DType, 2, ta> &exp) -> decltype(sumall_except_dim<0>(exp)) {
-        return sumall_except_dim<0>(exp);
+    auto sum_cols(const LazyTensor<TA, TB, DType, 2, ta> &exp) -> decltype(reduce_to_1d<0, mshadow::red::sum>(exp)) {
+        return reduce_to_1d<0, mshadow::red::sum>(exp);
     }
 #else
-    template<int dimkeep, typename TA, typename DType, int dimension, int ta>
-    auto  sumall_except_dim(const LazyTensor<TA, DType, dimension, ta> &exp) ->
-            LazyTensor<decltype(mshadow::expr::sumall_except_dim<dimkeep>(exp.left)),
+    template<int dimkeep, typename reduction, typename TA, typename DType, int dimension, int ta>
+    auto reduce_to_1d(const LazyTensor<TA, DType, dimension, ta> &exp) ->
+            LazyTensor<decltype(mshadow::expr::ReduceTo1DExp<TA, DType, reduction, mshadow::expr::ExpInfo<TA>::kDim - dimkeep>(exp.left, 1)),
                        DType,
                        1,
                        mshadow::expr::type::kComplex> {
-        auto cpu_sumall = mshadow::expr::sumall_except_dim<dimkeep>(exp.left);
+
+        auto cpu_reduce = mshadow::expr::ReduceTo1DExp<TA, DType, reduction, mshadow::expr::ExpInfo<TA>::kDim - dimkeep>(exp.left, 1);
         return LazyTensor<
-            decltype(cpu_sumall),
+            decltype(cpu_reduce),
             DType,
             1,
             mshadow::expr::type::kComplex
-            >(cpu_sumall, exp.dependent_tensors);
+            >(cpu_reduce, exp.dependent_tensors);
     }
 
     template<typename TA, typename DType, int ta>
-    auto sum_rows(const LazyTensor<TA, DType, 2, ta> &exp) -> decltype(sumall_except_dim<1>(exp)) {
-        return sumall_except_dim<1>(exp);
+    auto sum_rows(const LazyTensor<TA, DType, 2, ta> &exp) -> decltype(reduce_to_1d<1, mshadow::red::sum>(exp)) {
+        return reduce_to_1d<1, mshadow::red::sum>(exp);
     }
 
     template<typename TA, typename DType, int ta>
-    auto sum_cols(const LazyTensor<TA, DType, 2, ta> &exp) -> decltype(sumall_except_dim<0>(exp)) {
-        return sumall_except_dim<0>(exp);
+    auto sum_cols(const LazyTensor<TA, DType, 2, ta> &exp) -> decltype(reduce_to_1d<0, mshadow::red::sum>(exp)) {
+        return reduce_to_1d<0, mshadow::red::sum>(exp);
     }
 #endif
 

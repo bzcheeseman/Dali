@@ -13,6 +13,8 @@ namespace matops {
         static Mat<R> hstack(Mat<R>, Mat<R>);
         static Mat<R> hstack(std::initializer_list<Mat<R>>);
         static Mat<R> hstack(const std::vector<Mat<R>>&);
+        static Mat<R> broadcast_row_vector(Mat<R> input, int num_rows);
+        static Mat<R> broadcast_col_vector(Mat<R> input, int num_cols);
         static Mat<R> vstack(Mat<R>, Mat<R>);
         static Mat<R> vstack(std::initializer_list<Mat<R>>);
         static Mat<R> vstack(const std::vector<Mat<R>>&);

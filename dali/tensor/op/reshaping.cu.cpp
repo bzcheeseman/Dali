@@ -3,10 +3,12 @@
 #include "dali/tensor/__MatMacros__.h"
 #include "dali/math/TensorOps.h"
 #include "dali/math/LazyTensor.h"
+#include "dali/utils/assert2.h"
 
 #define DONT_COMPILE
 
 using std::vector;
+using utils::assert2;
 
 namespace matops {
 
@@ -35,6 +37,32 @@ namespace matops {
         if (graph::backprop_enabled() && !matrix.constant) {
             graph::emplace_back([matrix, out, indices]() mutable {
                 TensorOps::rows_pluck_backprop(GRAD(matrix), GRAD(out), indices.w().ravel());
+            });
+        }
+        return out;
+    }
+
+    template<typename R>
+    Mat<R> Reshaping<R>::broadcast_row_vector(Mat<R> matrix, int num_rows) {
+        assert2(matrix.dims(0) == 1, "broadcast: expected a row vector");
+        Mat<R> out(num_rows, matrix.dims(1), weights<R>::empty());
+        MAT(out) = MAT(matrix).ravel().wrapper().template broadcast<1>(MAT(out).shape);
+        if (graph::backprop_enabled() && !matrix.constant) {
+            graph::emplace_back([matrix, out]() mutable {
+                GRAD(matrix).ravel() += sum_rows(GRAD(out).wrapper());
+            });
+        }
+        return out;
+    }
+
+    template<typename R>
+    Mat<R> Reshaping<R>::broadcast_col_vector(Mat<R> matrix, int num_cols) {
+        assert2(matrix.dims(1) == 1, "broadcast: expected a column vector.");
+        Mat<R> out(matrix.dims(0), num_cols, weights<R>::empty());
+        MAT(out) = MAT(matrix).ravel().wrapper().template broadcast<0>(MAT(out).shape);
+        if (graph::backprop_enabled() && !matrix.constant) {
+            graph::emplace_back([matrix, out]() mutable {
+                GRAD(matrix).ravel() += sum_cols(GRAD(out).wrapper());
             });
         }
         return out;

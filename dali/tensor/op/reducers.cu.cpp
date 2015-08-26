@@ -19,6 +19,42 @@ namespace matops {
         return out;
     }
 
+    template<typename R>
+    Mat<R> Reducers<R>::L2_norm_rowwise(Mat<R> matrix) {
+        if (matrix.dims(1) == 1)
+            return matrix;
+        Mat<R> out(matrix.dims(0), 1);
+        MAT(out).ravel() = reduce_to_1d<0, mshadow::red::sum>(F<TensorOps::op::square<R>>(MAT(matrix).wrapper()));
+
+        MAT(out) = F<TensorOps::op::sqrt_f<R>>(MAT(out).wrapper());
+
+        if (graph::backprop_enabled() && !matrix.constant)
+            graph::emplace_back([matrix, out]() mutable {
+                TensorInternal<R,2> temp(MAT(out).shape);
+                temp = GRAD(out).wrapper() / MAT(out).wrapper();
+                GRAD(matrix) += MAT(matrix).wrapper() * (temp.ravel().wrapper().template broadcast<0>(GRAD(matrix).shape));
+            });
+        return out;
+    }
+
+    template<typename R>
+    Mat<R> Reducers<R>::L2_norm_colwise(Mat<R> matrix) {
+        if (matrix.dims(0) == 1)
+            return matrix;
+        Mat<R> out(1, matrix.dims(1), weights<R>::empty());
+        MAT(out).ravel() = reduce_to_1d<1, mshadow::red::sum>(F<TensorOps::op::square<R>>(MAT(matrix).wrapper()));
+        MAT(out)         = F<TensorOps::op::sqrt_f<R>>(MAT(out).wrapper());
+
+        if (graph::backprop_enabled() && !matrix.constant)
+            graph::emplace_back([matrix, out]() mutable {
+                TensorInternal<R,2> temp(MAT(out).shape);
+                temp = GRAD(out).wrapper() / MAT(out).wrapper();
+                GRAD(matrix) += MAT(matrix).wrapper() * (temp).ravel().wrapper().template broadcast<1>(GRAD(matrix).shape);
+            });
+        return out;
+    }
+
+
 
     template<typename R>
     Mat<R> Reducers<R>::sum(Mat<R> matrix) {
@@ -35,7 +71,7 @@ namespace matops {
     }
 
     template<typename R>
-    Mat<R> Reducers<R>::sum_colwise(Mat<R> matrix) {
+    Mat<R> Reducers<R>::sum_rowwise(Mat<R> matrix) {
         if (matrix.dims(1) == 1)
             return matrix;
         Mat<R> out(matrix.dims(0), 1, weights<R>::empty());
@@ -49,7 +85,7 @@ namespace matops {
     }
 
     template<typename R>
-    Mat<R> Reducers<R>::sum_rowwise(Mat<R> matrix) {
+    Mat<R> Reducers<R>::sum_colwise(Mat<R> matrix) {
         if (matrix.dims(0) == 1)
             return matrix;
         Mat<R> out(1, matrix.dims(1), weights<R>::empty());
@@ -61,8 +97,6 @@ namespace matops {
             });
         return out;
     }
-
-
 
     template<typename R>
     Mat<R> Reducers<R>::mean(Mat<R> matrix) {

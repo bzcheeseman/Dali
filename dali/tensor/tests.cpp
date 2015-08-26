@@ -80,6 +80,30 @@ TEST_F(MatrixTests, equals) {
 
 }
 
+TEST_F(MatrixTests, L2_norm_rowwise) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return MatOps<R>::L2_norm_rowwise(Xs[0]);
+    };
+
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
+        expect_args_remain_on_gpu(functor, {A});
+        EXPECT_TRUE(gradient_same(functor, {A}));
+    }
+}
+
+TEST_F(MatrixTests, L2_norm_colwise) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return MatOps<R>::L2_norm_colwise(Xs[0]);
+    };
+
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(2, 3, weights<R>::ones());
+        expect_args_remain_on_gpu(functor, {A});
+        EXPECT_TRUE(gradient_same(functor, {A}));
+    }
+}
+
 
 TEST_F(MatrixTests, sum) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {

@@ -305,7 +305,10 @@ namespace matops {
 
     template<typename R>
     Mat<R> Cost<R>::softmax_cross_entropy_colwise(Mat<R> matrix, Mat<int> targets) {
-        assert(targets.number_of_elements() == matrix.dims(1));
+        ASSERT2(targets.number_of_elements() == matrix.dims(1),
+                utils::MS() << "Softmax cross entropy: Number of targets ("
+                            << targets.number_of_elements() << ") should equal number of input columns ("
+                            << matrix.dims(1) << ")");
         Mat<R> out =  Mat<R>(1, targets.number_of_elements(), weights<R>::empty());
         Mat<R> probs = softmax_no_grad_colwise(matrix);
         select_from_cols(MAT(out), MAT(probs), targets.w().ravel());
@@ -348,7 +351,11 @@ namespace matops {
 
     template<typename R>
     Mat<R> Cost<R>::softmax_cross_entropy_rowwise(Mat<R> matrix, Mat<int> targets) {
-        ASSERT2(targets.number_of_elements() == matrix.dims(0), "Number of rows must be equal to the number of target in Softmax Cross Entropy");
+        ASSERT2(targets.number_of_elements() == matrix.dims(0),
+                utils::MS() << "Softmax cross entropy: Number of targets ("
+                            << targets.number_of_elements() << ") should equal number of input rows ("
+                            << matrix.dims(0) << ")");
+
         Mat<R> out =  Mat<R>(targets.number_of_elements(), 1, weights<R>::empty());
 
         Mat<R> probs = softmax_no_grad_rowwise(matrix);

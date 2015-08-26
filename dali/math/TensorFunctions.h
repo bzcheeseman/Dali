@@ -240,22 +240,6 @@ namespace TensorOps {
             }
         };
     }
-
-    namespace red {
-        struct l2_norm2 {
-            /*! \brief do reduction into dst */
-            template<typename DType>
-            MSHADOW_XINLINE static void Reduce(volatile DType& dst,  volatile DType src) { // NOLINT(*)
-                using namespace std;
-                dst += src * src;
-            }
-
-            template<typename DType>
-                MSHADOW_XINLINE static void SetInitValue(DType &initv) { // NOLINT(*)
-                initv = 0;
-            }
-        };
-    } // namespace red
 } //namespace TensorOps
 
 #endif

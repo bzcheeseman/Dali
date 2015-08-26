@@ -38,6 +38,8 @@ namespace matops {
 
     DALI_UNARY_OP0(tanh, op::tanh,
             F<op::dtanh<R>>(MAT(out).wrapper()));
+    DALI_UNARY_OP0(softplus, op::softplus,
+            F<op::softplus_backward<R>>(MAT(matrix).wrapper()));
     DALI_UNARY_OP0(abs, op::abs,
             F<op::sign<R>>(MAT(matrix).wrapper()));
     DALI_UNARY_OP0(log, op::log,

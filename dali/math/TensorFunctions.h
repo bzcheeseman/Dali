@@ -239,6 +239,29 @@ namespace TensorOps {
                 return numerator / denominator;
             }
         };
+
+        template<typename R>
+        struct softplus {
+            MSHADOW_XINLINE static R Map(const R& x) {
+                if (x > 20.0) {
+                    return x;
+                } else {
+                    return LOG_F((R)1.0 + EXP_F(x));
+                }
+            }
+        };
+
+        template<typename R>
+        struct softplus_backward {
+            MSHADOW_XINLINE static R Map(const R& x) {
+                if (x > 40.0) {
+                    return 1.0;
+                } else {
+                    return EXP_F(x) / ((R)1.0 + EXP_F(x));
+                }
+            }
+        };
+
     }
 } //namespace TensorOps
 

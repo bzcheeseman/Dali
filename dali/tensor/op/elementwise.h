@@ -22,6 +22,7 @@ namespace matops {
         static Mat<R> sigmoid(Mat<R>);
         static Mat<R> steep_sigmoid(Mat<R>, R aggressiveness = 3.75);
         static Mat<R> tanh(Mat<R>);
+        static Mat<R> softplus(Mat<R>);
         static Mat<R> relu(Mat<R>);
         static Mat<R> abs(Mat<R>);
         static Mat<R> pow(Mat<R>, R);

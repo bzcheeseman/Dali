@@ -706,6 +706,16 @@ TEST_F(MatrixTests, exp) {
     }
 }
 
+TEST_F(MatrixTests, softplus) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return Xs[0].softplus();
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(3.0));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-3, true));
+    }
+}
+
 TEST_F(MatrixTests, log) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].log();

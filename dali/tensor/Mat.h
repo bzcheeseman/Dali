@@ -186,6 +186,7 @@ class Mat {
         // Warning: transpose makes a copy, uses extra memory
         Mat<R> T() const;
         Mat<R> tanh() const;
+        Mat<R> softplus() const;
         Mat<R> relu() const;
         Mat<R> mul(Mat<R>) const;
         Mat<R> dot(Mat<R>) const;

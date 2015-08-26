@@ -19,6 +19,8 @@ namespace matops {
         static Mat<R> sum_rowwise(Mat<R>);
 
         static Mat<R> mean(Mat<R>);
+        static Mat<R> mean_colwise(Mat<R>);
+        static Mat<R> mean_rowwise(Mat<R>);
     };
 }
 

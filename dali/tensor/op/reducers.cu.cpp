@@ -110,6 +110,43 @@ namespace matops {
 
         return out;
     }
+
+
+    template<typename R>
+    Mat<R> Reducers<R>::mean_rowwise(Mat<R> matrix) {
+        if (matrix.dims(1) == 1)
+            return matrix;
+        Mat<R> out(matrix.dims(0), 1, weights<R>::empty());
+        R ne = matrix.number_of_elements();
+
+        MAT(out).ravel() = reduce_to_1d<0, mshadow::red::sum>(MAT(matrix).wrapper());
+        MAT(out).ravel() /= ne;
+
+        if (graph::backprop_enabled() && !matrix.constant)
+            graph::emplace_back([matrix, out, ne]() mutable {
+                GRAD(matrix) += GRAD(out).ravel().wrapper().template broadcast<0>(GRAD(matrix).shape) / (R)ne;
+            });
+        return out;
+    }
+
+    template<typename R>
+    Mat<R> Reducers<R>::mean_colwise(Mat<R> matrix) {
+        if (matrix.dims(0) == 1)
+            return matrix;
+        Mat<R> out(1, matrix.dims(1), weights<R>::empty());
+        R ne = matrix.number_of_elements();
+        MAT(out).ravel() = reduce_to_1d<1, mshadow::red::sum>(MAT(matrix).wrapper());
+        MAT(out).ravel() /= ne;
+
+        if (graph::backprop_enabled() && !matrix.constant)
+            graph::emplace_back([matrix, out, ne]() mutable {
+                GRAD(matrix) += GRAD(out).ravel().wrapper().template broadcast<1>(GRAD(matrix).shape) / ne;
+            });
+        return out;
+    }
+
+
+
     template class Reducers<float>;
     template class Reducers<double>;
     template class Reducers<int>;

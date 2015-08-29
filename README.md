@@ -1,6 +1,6 @@
 # Dali
 
-An automatic differentiation library that uses reverse-mode differentation (backpropgation) to differentiate recurrent neural networks, or most mathematical expressions through control flow, while loops, recursion.
+An automatic differentiation library that uses reverse-mode differentation (backpropagation) to differentiate recurrent neural networks, or most mathematical expressions through control flow, while loops, recursion.
 
 <img src="https://raw.github.com/JonathanRaiman/Dali/master/misc/salvador.jpg" width="50%" />
 

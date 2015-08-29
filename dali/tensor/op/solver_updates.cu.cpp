@@ -56,7 +56,7 @@ namespace matops {
         // update gradient using RMSprop rule
 
         MAT(param) -= step_size * GRAD(param).wrapper() /
-                F<op::sqrt_f<R>>(MAT(cache).wrapper() + smooth_eps);
+                (F<op::sqrt_f<R>>(MAT(cache).wrapper()) + smooth_eps);
 
         DEBUG_ASSERT_NOT_NAN(MAT(param));
     }

@@ -11,15 +11,22 @@ This is an reimagination of [Andrej Kaparthy](http://cs.stanford.edu/people/karp
 ### Features
 
 * Automatic differentiation
-* Matrix Broadcasting (elementwise multiply, elementwise product)
-* Multiple index slicing
-* Speed
+* Broadcasting between matrices and vectors
+* Speed (Language model trained using a 2-Layer LSTM processes 25,000 words per second on a Nvidia GTX 780 TI -- vs. [15,000 words per second on Russel Stewart's NLP-Caffe](https://github.com/Russell91/NLPCaffe))
 * Clarity of API
+* Lazy evaluation of matrix operations
+* Hybrid GPU-CPU computation, with **best device for each operation selected at runtime**
 * [Visualize Neural Network output in real time](https://github.com/JonathanRaiman/dali-visualizer)
 
-### Why ?
+### Why not use Theano?
 
-While there are existing great automatic differentiation libraries, a fast simple **multithreaded** **compile-less** version is missing. Hogwild-style training provides huge speedups in data-parallel model training, and so far Torch and Theano do not provide an accessible way of having this.
+Theano is a fantastic tensor and automatic differentiation library, with excellent packages for Deep Learning. Unfortunately, it cannot differentiate through control flow, and computation graphs with many nodes and recurrence require long compilation time (this may somewhat change with the arrival of [Josh Schulman's Graph Computation Toolkit](https://github.com/joschu/cgt)). Long compilation times can be alleviated by moving most operations out of scan loops, however this strongly limits expressivity or complicates the code. Finally, because of the separation between the computation and the mathematical description, debugging can be hard. 
+
+(Note: [Hypergrad](https://github.com/HIPS/hypergrad/) offers gradient through control flow, but does not match the performance of Theano)
+
+### Why not use Torch?
+
+Torch has excellent community support and a wide variety of packages for Deep Learning, including the popular [NN](https://github.com/torch/nn) and [NN Graph](https://github.com/torch/nngraph) packages, which permit automatic differentiation of Torch Tensors. However, use of these packages requires the definition of `forward` and `backward` passes, [module / param cloning (See the Torch utilities inside Andrej Karpathy's Char-RNN code)](https://github.com/karpathy/char-rnn/blob/master/util/model_utils.lua), pre-allocation of memory when performing recurrence, and the requirement that all parameters be [concatenated when optimizing in Optim](https://github.com/torch/optim), the defacto solver for Torch. Additionally, transfering computation to the GPU demands pre-allocation of memory, which can be problematic in the case of memory-hungry tasks. Finally, running computations in parallel (Hogwild or otherwise) is tricky in Lua / Torch.
 
 ## Usage
 
@@ -222,17 +229,14 @@ Sort the arguments of a list [np.argsort](http://docs.scipy.org/doc/numpy/refere
 auto sorted_lengths = utils::argsort(lengths);
 ```
 
-
 ### Future steps
 
-* Switch matrix backend from **Eigen** to **[MShadow](https://github.com/dmlc/mshadow)**.
 * Add ImageNet, Caffe loading, broader ConvNet support (currently have `conv2d` and `conv1d`, but no pooling)
 * Web interface for managing experiments (today [Dali-visualizer](https://github.com/JonathanRaiman/dali-visualizer) only shows progress and sample predictions). 
 * Web interface for visualizing network activity.
 * Add some mathematical expressions from [Deepmind's Torch Cephes module](http://deepmind.github.io/torch-cephes/).
-* Improve hogwild with Natural Gradient Descent
 * Distribute training over multiple machines.
-* Add **Python** extension
+* Ensure feature parity with [**Python** extension](https://github.com/JonathanRaiman/dali-cython-stub)
 
 ## Additional Notes
 

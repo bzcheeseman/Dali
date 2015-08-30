@@ -1,4 +1,6 @@
 #include "babi.h"
+#include "dali/utils/core_utils.h"
+#include <iostream>
 
 using std::string;
 using std::vector;

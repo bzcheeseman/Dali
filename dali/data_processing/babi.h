@@ -1,14 +1,11 @@
 #ifndef DALI_DATA_PROCESSING_BABI2_H
 #define DALI_DATA_PROCESSING_BABI2_H
 
-#include <map>
 #include <string>
 #include <vector>
-#include <map>
+#include <unordered_map>
 
-#include "dali/utils/core_utils.h"
-
-
+#include "dali/utils/vocab.h"
 
 namespace babi {
     typedef std::unordered_map<std::string, std::string> properties_t;

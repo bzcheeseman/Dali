@@ -1,4 +1,6 @@
 #include "dali/utils/OntologyBranch.h"
+#include "dali/utils/core_utils.h"
+
 using std::string;
 using std::vector;
 using std::make_shared;

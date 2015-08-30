@@ -1,16 +1,17 @@
 HIGH PRIORITY:
--> mshadow and tensors (mutli gpu support etc.)
--> add Mat.Slice
+-> Namespace dali
+-> make Dali brew installable
+-> Document broadcasting behavior
+-> Take steps towards convolution and n-d support
 
 MEDIUM PRIORITY:
--> random weights init should take doubles, not template typename.
--> Improve NlpUtils. More generally agree on common set of practices for all the examples.
+-> Random weights init should take doubles, not template typename.
+-> Improve NLP-Utils. Agree on common set of practices for all the examples.
 -> visualizer - web frontend for error visualization (60% done)
 -> Move Redis visualizer example to tests with check for redis presence
--> switch "from unique words" in Vocab to "add_words"
 -> improve numerical stability of Adadelta
 
-LOWER_PRIOTITY:
+LOWER_PRIORITY:
 -> add performance test
 -> implement imagenet training
 -> load existing image net model from caffe

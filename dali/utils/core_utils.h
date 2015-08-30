@@ -34,9 +34,6 @@
 #include "dali/utils/gzstream.h"
 #include "dali/utils/assert2.h"
 #include "protobuf/corpus.pb.h"
-#include "dali/utils/ThreadPool.h"
-#include "dali/tensor/Index.h"
-
 
 // MACRO DEFINITIONS
 #define ELOG(EXP) std::cout << #EXP "\t=\t" << (EXP) << std::endl
@@ -67,252 +64,204 @@ std::ostream& operator<<(std::ostream&, const std::vector<T>&);
 typedef std::vector<std::string> VS;
 
 namespace utils {
-        #ifndef NDEBUG
-            std::string explain_mat_bug(const std::string&, const char*, const int&);
-            template<typename T>
-            bool contains_NaN(T);
-        #endif
-
-        /** Utility function to create directory tree */
-        bool makedirs(const char* path, mode_t mode = DEFAULT_MODE);
-        typedef std::vector<std::string> str_sequence;
-
-        /**
-        type tokenized_labeled_dataset
-        a vector of vectors of string sequences (e.g. loading a tsv with many rows,
-        and each row has whitespace separated words for each column)
-        **/
-        typedef std::vector<std::vector<str_sequence>> tokenized_labeled_dataset;
-        typedef std::vector<std::pair<str_sequence, uint>> tokenized_uint_labeled_dataset;
-
-        extern const char* end_symbol;
-        extern const char* unknown_word_symbol;
-
-        class Vocab {
-                private:
-                    void construct_word2index();
-                public:
-
-                    void add(const std::vector<std::string>& words);
-                    void add(const std::string& word);
-
-                    void add_unknown_word();
-                    typedef uint ind_t;
-                    ind_t unknown_word;
-                    std::unordered_map<std::string, ind_t> word2index;
-                    str_sequence index2word;
-
-                    std::vector<ind_t> encode(const str_sequence& words, bool with_end_symbol = false) const;
-                    std::vector<std::string> decode(Indexing::Index, bool remove_end_symbol = false) const;
-
-                    // create vocabulary from many vectors of words. Vectors do not
-                    // need to contain unique words. They need not be sorted.
-                    // Standard use case is combining train/validate/test sets.
-                    static Vocab from_many_nonunique(std::initializer_list<str_sequence>,
-                                                     bool add_unknown_word=true);
-                    Vocab();
-                    Vocab(str_sequence&);
-                    Vocab(str_sequence&, bool);
-                    Vocab(str_sequence&&, bool);
-                    Vocab(str_sequence&&);
-                    ind_t operator[](const std::string&) const;
-                    size_t size() const;
-        };
-
-        class CharacterVocab {
-                public:
-                    typedef uint ind_t;
-                    ind_t min_char;
-                    ind_t max_char;
-
-                    std::vector<ind_t>       encode(const str_sequence& words) const;
-                    std::vector<std::string> decode(Indexing::Index) const;
-                    std::vector<std::string> decode_characters(Indexing::Index) const;
-
-                    CharacterVocab(int min_char, int max_char);
-                    size_t size() const;
-        };
-
+    #ifndef NDEBUG
+        std::string explain_mat_bug(const std::string&, const char*, const int&);
         template<typename T>
-        void tuple_sum(std::tuple<T, T>&, std::tuple<T,T>);
-        /**
-        Ends With
-        ---------
+        bool contains_NaN(T);
+    #endif
 
-        Check whether a string ends with the same contents as another.
+    /** Utility function to create directory tree */
+    bool makedirs(const char* path, mode_t mode = DEFAULT_MODE);
+    typedef std::vector<std::string> str_sequence;
 
-        Inputs
-        ------
+    /**
+    type tokenized_labeled_dataset
+    a vector of vectors of string sequences (e.g. loading a tsv with many rows,
+    and each row has whitespace separated words for each column)
+    **/
+    typedef std::vector<std::vector<str_sequence>> tokenized_labeled_dataset;
+    typedef std::vector<std::pair<str_sequence, uint>> tokenized_uint_labeled_dataset;
 
-        std::string const& full: where to look
-        std::string const& ending: what to look for
+    template<typename T>
+    void tuple_sum(std::tuple<T, T>&, std::tuple<T,T>);
+    /**
+    Ends With
+    ---------
 
-        Outputs
-        -------
+    Check whether a string ends with the same contents as another.
 
-        bool endswith : whether the second string ends the first.
-        */
-        bool endswith(const std::string&, const std::string&);
-        /**
-        Starts With
-        -----------
+    Inputs
+    ------
 
-        Check whether a string ends with the same contents as another.
+    std::string const& full: where to look
+    std::string const& ending: what to look for
 
-        Inputs
-        ------
+    Outputs
+    -------
 
-        std::string const& full: where to look
-        std::string const& beginning: what to look for
+    bool endswith : whether the second string ends the first.
+    */
+    bool endswith(const std::string&, const std::string&);
+    /**
+    Starts With
+    -----------
 
-        Outputs
-        -------
+    Check whether a string ends with the same contents as another.
 
-        bool startswith : whether the second string starts the first.
+    Inputs
+    ------
 
-        */
-        bool startswith(const std::string&, const std::string&);
+    std::string const& full: where to look
+    std::string const& beginning: what to look for
 
-        template<typename T>
-        bool add_to_set(std::vector<T>&, T&);
+    Outputs
+    -------
 
-        template<typename T>
-        bool in_vector(const std::vector<T>&, const T&);
+    bool startswith : whether the second string starts the first.
 
-        template<typename T>
-        std::vector<T> concatenate(std::initializer_list<std::vector<T>>);
+    */
+    bool startswith(const std::string&, const std::string&);
 
-        template<typename IN, typename OUT>
-        std::vector<OUT> fmap(std::vector<IN> in_list,
-                              std::function<OUT(IN)> f);
+    template<typename T>
+    bool add_to_set(std::vector<T>&, T&);
 
+    template<typename T>
+    bool in_vector(const std::vector<T>&, const T&);
 
-        /**
-        Load Labeled Corpus
-        -------------------
+    template<typename T>
+    std::vector<T> concatenate(std::initializer_list<std::vector<T>>);
 
-        Read text file line by line and extract pairs of labeled text
-        by splitting on the first space character. Whatever is before
-        the first space is the label and is stored second in the returned
-        pairs, and after the space is the example, and this is returned
-        first in the pairs.
-
-        Inputs
-        ------
-
-        const std::string& fname : labeled corpus file
-
-        Outputs
-        -------
-
-        std::vector<std::pair<std::string, std::string>> pairs : labeled corpus pairs
-
-        **/
-        std::vector<std::pair<std::string, std::string>> load_labeled_corpus(const std::string&);
+    template<typename IN, typename OUT>
+    std::vector<OUT> fmap(std::vector<IN> in_list,
+                          std::function<OUT(IN)> f);
 
 
-        std::vector<str_sequence> load_tokenized_unlabeled_corpus(const std::string&);
-        str_sequence tokenize(const std::string&);
-        str_sequence get_vocabulary(const tokenized_labeled_dataset&, int min_occurence, int data_column);
-        str_sequence get_vocabulary(const std::vector<str_sequence>&, int);
-        str_sequence get_vocabulary(const tokenized_uint_labeled_dataset&, int);
-        str_sequence get_label_vocabulary(const tokenized_labeled_dataset&);
+    /**
+    Load Labeled Corpus
+    -------------------
 
-        template<typename T>
-        void load_corpus_from_stream(Corpus& corpus, T& stream);
-        Corpus load_corpus_protobuff(const std::string&);
-        /**
-        Load Protobuff Dataset
-        ----------------------
+    Read text file line by line and extract pairs of labeled text
+    by splitting on the first space character. Whatever is before
+    the first space is the label and is stored second in the returned
+    pairs, and after the space is the example, and this is returned
+    first in the pairs.
 
-        Load a set of protocol buffer serialized files from ordinary
-        or gzipped files, and conver their labels from an index
-        to their string representation using an index2label mapping.
+    Inputs
+    ------
 
-        Inputs
-        ------
+    const std::string& fname : labeled corpus file
 
-        std::string directory : where the protocol buffer files are stored
-        const std::vector<std::string>& index2label : mapping from numericals to
-                                                      string labels
+    Outputs
+    -------
 
-        Outputs
-        -------
+    std::vector<std::pair<std::string, std::string>> pairs : labeled corpus pairs
 
-        utils::tokenized_multilabeled_dataset dataset : pairs of tokenized strings
-                                                        and vector of string labels
-
-        **/
-        tokenized_labeled_dataset load_protobuff_dataset(std::string, const std::vector<std::string>&);
-        tokenized_labeled_dataset load_protobuff_dataset(SQLite::Statement& query, const std::vector<std::string>&, int max_elements = 100, int column = 0);
-
-        std::string& trim(std::string&);
-        std::string& ltrim(std::string&);
-        std::string& rtrim(std::string&);
-
-        void map_to_file(const std::map<std::string, str_sequence>&, const std::string&);
-
-        void ensure_directory(std::string&);
-
-        std::vector<std::string> split_str(const std::string&, const std::string&);
-
-        /**
-        Text To Map
-        -----------
-        Read a text file, extract all key value pairs and
-        ignore markdown decoration characters such as =, -,
-        and #
-
-        Inputs
-        ------
-        std::string fname : the file to read
-
-        Outputs
-        -------
-        std::map<string, std::vector<string> > map : the extracted key value pairs.
-
-        **/
-        std::map<std::string, str_sequence> text_to_map(const std::string&);
-        template<typename T, typename K>
-        void stream_to_hashmap(T&, std::map<std::string, K>&);
-        template<typename T>
-        std::map<std::string, T> text_to_hashmap(const std::string&);
-
-        template<typename T>
-        void stream_to_list(T&, str_sequence&);
-
-        str_sequence load_list(const std::string&);
-        void save_list(const std::vector<std::string>& list, std::string fname, std::ios_base::openmode = std::ios::out);
-
-        template<typename T>
-        void save_list_to_stream(const std::vector<std::string>& list, T&);
-
-        template<typename T>
-        void stream_to_redirection_list(T&, std::map<std::string, std::string>&);
-
-        std::map<std::string, std::string> load_redirection_list(const std::string&);
-
-        template<typename T>
-        void stream_to_redirection_list(T&, std::map<std::string, std::string>&, std::function<std::string(std::string&&)>&, int num_threads = 1);
-
-        std::map<std::string, std::string> load_redirection_list(const std::string&, std::function<std::string(std::string&&)>&&, int num_threads = 1);
+    **/
+    std::vector<std::pair<std::string, std::string>> load_labeled_corpus(const std::string&);
 
 
-        /**
-        Is Gzip ?
-        ---------
-        Check whether a file has the header information for a GZIP
-        file or not.
+    std::vector<str_sequence> load_tokenized_unlabeled_corpus(const std::string&);
+    str_sequence tokenize(const std::string&);
+    str_sequence get_vocabulary(const tokenized_labeled_dataset&, int min_occurence, int data_column);
+    str_sequence get_vocabulary(const std::vector<str_sequence>&, int);
+    str_sequence get_vocabulary(const tokenized_uint_labeled_dataset&, int);
+    str_sequence get_label_vocabulary(const tokenized_labeled_dataset&);
 
-        Inputs
-        ------
-        fname : potential gzip file's path
+    template<typename T>
+    void load_corpus_from_stream(Corpus& corpus, T& stream);
+    Corpus load_corpus_protobuff(const std::string&);
+    /**
+    Load Protobuff Dataset
+    ----------------------
 
-        Outputs
-        -------
-        whether header matches gzip header
-        **/
-        bool is_gzip(const std::string& fname);
+    Load a set of protocol buffer serialized files from ordinary
+    or gzipped files, and conver their labels from an index
+    to their string representation using an index2label mapping.
+
+    Inputs
+    ------
+
+    std::string directory : where the protocol buffer files are stored
+    const std::vector<std::string>& index2label : mapping from numericals to
+                                                  string labels
+
+    Outputs
+    -------
+
+    utils::tokenized_multilabeled_dataset dataset : pairs of tokenized strings
+                                                    and vector of string labels
+
+    **/
+    tokenized_labeled_dataset load_protobuff_dataset(std::string, const std::vector<std::string>&);
+    tokenized_labeled_dataset load_protobuff_dataset(SQLite::Statement& query, const std::vector<std::string>&, int max_elements = 100, int column = 0);
+
+    std::string& trim(std::string&);
+    std::string& ltrim(std::string&);
+    std::string& rtrim(std::string&);
+
+    void map_to_file(const std::map<std::string, str_sequence>&, const std::string&);
+
+    void ensure_directory(std::string&);
+
+    std::vector<std::string> split_str(const std::string&, const std::string&);
+
+    /**
+    Text To Map
+    -----------
+    Read a text file, extract all key value pairs and
+    ignore markdown decoration characters such as =, -,
+    and #
+
+    Inputs
+    ------
+    std::string fname : the file to read
+
+    Outputs
+    -------
+    std::map<string, std::vector<string> > map : the extracted key value pairs.
+
+    **/
+    std::map<std::string, str_sequence> text_to_map(const std::string&);
+    template<typename T, typename K>
+    void stream_to_hashmap(T&, std::map<std::string, K>&);
+    template<typename T>
+    std::map<std::string, T> text_to_hashmap(const std::string&);
+
+    template<typename T>
+    void stream_to_list(T&, str_sequence&);
+
+    str_sequence load_list(const std::string&);
+    void save_list(const std::vector<std::string>& list, std::string fname, std::ios_base::openmode = std::ios::out);
+
+    template<typename T>
+    void save_list_to_stream(const std::vector<std::string>& list, T&);
+
+    template<typename T>
+    void stream_to_redirection_list(T&, std::map<std::string, std::string>&);
+
+    std::map<std::string, std::string> load_redirection_list(const std::string&);
+
+    template<typename T>
+    void stream_to_redirection_list(T&, std::map<std::string, std::string>&, std::function<std::string(std::string&&)>&, int num_threads = 1);
+
+    std::map<std::string, std::string> load_redirection_list(const std::string&, std::function<std::string(std::string&&)>&&, int num_threads = 1);
+
+
+    /**
+    Is Gzip ?
+    ---------
+    Check whether a file has the header information for a GZIP
+    file or not.
+
+    Inputs
+    ------
+    fname : potential gzip file's path
+
+    Outputs
+    -------
+    whether header matches gzip header
+    **/
+    bool is_gzip(const std::string& fname);
 
 
 

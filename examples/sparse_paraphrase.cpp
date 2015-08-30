@@ -133,6 +133,10 @@ class ParaphraseModel : public RecurrentEmbeddingModel<T> {
         SparseStackedLSTM<T> sentence_encoder;
         Mat<T> end_of_sentence_token;
 
+        vector<LSTMState<T>> initial_states() const {
+            return sentence_encoder.initial_states();
+        }
+
         ParaphraseModel(int _vocabulary_size,
                         int _input_size,
                         vector<int> _hidden_sizes,

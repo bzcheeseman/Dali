@@ -1,4 +1,5 @@
 #include "dali/data_processing/NER.h"
+#include "dali/utils/ThreadPool.h"
 
 using std::string;
 using std::vector;

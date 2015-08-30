@@ -4,7 +4,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "dali/utils/core_utils.h"
+#include "dali/utils/vocab.h"
 #include "dali/utils/random.h"
 #include <set>
 #include <unordered_set>
@@ -98,7 +98,7 @@ namespace utils {
             static std::vector<std::string> split_str(const std::string&, const std::string&);
     };
 
-    str_sequence get_lattice_vocabulary(const OntologyBranch::shared_branch);
+    std::vector<std::string> get_lattice_vocabulary(const OntologyBranch::shared_branch);
     void assign_lattice_ids(OntologyBranch::lookup_t, Vocab&, int offset = 0);
 }
 

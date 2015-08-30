@@ -193,9 +193,6 @@ class BidirectionalLSTM {
                     stacked_lstm.cells.begin(),
                     LSTM<T>(hidden_size, hidden_size, memory_feeds_gates)
                 );
-                stacked_lstm.hidden_sizes.insert(
-                    stacked_lstm.hidden_sizes.begin(),
-                    hidden_size);
             }
         }
 
@@ -207,8 +204,8 @@ class BidirectionalLSTM {
             config["use_recursive_gates"].emplace_back(use_recursive_gates ? "true" : "false");
             config["convolution"].emplace_back(convolution ? "true" : "false");
             config["bidirectional"].emplace_back(bidirectional ? "true" : "false");
-            for (auto& v : stacked_lstm.hidden_sizes)
-                config["hidden_sizes"].emplace_back(to_string(v));
+            for (auto& cell : stacked_lstm.cells)
+                config["hidden_sizes"].emplace_back(to_string(cell.hidden_size));
             return config;
         }
 

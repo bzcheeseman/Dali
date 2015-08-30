@@ -65,7 +65,7 @@ T validation_error(
 
     graph::NoBackprop nb;
 
-    auto initial_state = lstm::initial_states(model.hidden_sizes);
+    auto initial_state = model.initial_states();
     auto num_hidden_sizes = model.hidden_sizes.size();
 
     mat input_vector;
@@ -97,8 +97,7 @@ Mat<T> cost_fun(
     StackedModel<T>& model,
     vector<uint>& indices) {
 
-    auto initial_state = lstm::initial_states(model.hidden_sizes);
-    auto num_hidden_sizes = model.hidden_sizes.size();
+    auto initial_state    = model.initial_states();
 
     mat input_vector;
     mat logprobs;

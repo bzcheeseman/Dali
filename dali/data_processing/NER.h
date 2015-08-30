@@ -7,6 +7,7 @@
 #include <set>
 #include "dali/utils/tsv_utils.h"
 #include "dali/utils/Reporting.h"
+#include "dali/utils/vocab.h"
 
 namespace NER {
     typedef std::pair< std::vector<std::string>, std::vector<std::string> > example_t;

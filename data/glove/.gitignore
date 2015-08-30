@@ -2,3 +2,10 @@ glove.6B.300d.txt
 vectors.6B.50d.txt
 vocab20k.txt
 vocab100k.txt
+glove.840B.300d.txt
+
+glove.6B.300d.txt.gz
+vectors.6B.50d.txt.gz
+vocab20k.txt.gz
+vocab100k.txt.gz
+glove.840B.300d.txt.gz

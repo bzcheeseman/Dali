@@ -2,19 +2,22 @@ HIGH PRIORITY:
 -> Namespace dali
 -> make Dali brew installable
 -> Document broadcasting behavior
+-> Make all imports, namespace, and includes follow same style throughout Dali
+-> Separate data generation/loading scripts to separate codebase
 -> Take steps towards convolution and n-d support
 
 MEDIUM PRIORITY:
+-> data/glove should have a generate script to download vectors.
 -> Random weights init should take doubles, not template typename.
 -> Improve NLP-Utils. Agree on common set of practices for all the examples.
 -> visualizer - web frontend for error visualization (60% done)
 -> Move Redis visualizer example to tests with check for redis presence
--> improve numerical stability of Adadelta
 
 LOWER_PRIORITY:
--> add performance test
--> implement imagenet training
--> load existing image net model from caffe
+-> add performance test (e.g. num words processed in Language Model on GPU ~ 20,000 words/second)
+-> implement Imagenet training
+-> Proof of concept: load existing image net model from caffe
 -> make machine comprehension dataset inline with other loading system
 -> made n-d print visually closer to numpy's n-d print
--> fix ravel/slice/row_pluck etc. assignments
+-> Add warning or normalize assignments to temporaries created by ravel/slice/row_pluck etc.
+   (e.g. follow Numpy convention of non assignable types)

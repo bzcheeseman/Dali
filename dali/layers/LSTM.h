@@ -160,8 +160,8 @@ LSTMs that will be piled up. In a ShortcutLSTM scenario
 the input is provided to all layers not just the
 bottommost layer, so a new construction parameter
 is provided to this **special** LSTM, the "shorcut size",
-e.g. the size of the second input vector coming from father
-below (taking a shortcut upwards).
+e.g. the size of the second input vector coming from farther
+below (taking a shortcut or skip connection upwards).
 
 Inputs
 ------

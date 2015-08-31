@@ -11,6 +11,43 @@ DEFINE_double(learning_rate, 0.01, "Learning rate for SGD and Adagrad.");
 namespace Solver {
     bool nan_protection = true;
 
+    template<typename R>
+    void create_cache(Mat<R>& param,
+            std::unordered_map<cache_key_t<R>, cache_t<R>>& caches) {
+        if (caches.count(PARAM_KEY_FOR_LOOKUP_TABLE) == 0) {
+            auto new_cache = caches.emplace(
+                std::piecewise_construct,
+            std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
+            std::forward_as_tuple(param.dims(0), param.dims(1)));
+            // initialize values for step cache to zero:
+            new_cache.first->second.clear();
+        }
+    }
+
+    template<typename R>
+    void create_cache(vector<Mat<R>>& params,
+            std::unordered_map<cache_key_t<R>, cache_t<R>>& caches) {
+        for (auto& param: params) {
+            create_cache(param, caches);
+        }
+    }
+
+    template<typename R>
+    void reset_cache(Mat<R>& param,
+        std::unordered_map<cache_key_t<R>, cache_t<R>>& caches) {
+        auto& s = caches.at(PARAM_KEY_FOR_LOOKUP_TABLE);
+        s.clear();
+    }
+
+    template<typename R>
+    void reset_cache(vector<Mat<R>>& params,
+        std::unordered_map<cache_key_t<R>, cache_t<R>>& caches) {
+        for (auto& param: params) {
+            reset_cache(param, caches);
+        }
+    }
+
+
     /* Abstract Solver */
     template<typename R>
     AbstractSolver<R>::AbstractSolver() :
@@ -90,29 +127,13 @@ namespace Solver {
     template<typename R>
     void AdaGrad<R>::create_gradient_caches(
             vector<Mat<R>>& parameters) {
-        for (auto& param : parameters) {
-            // this operation should be run once unless
-            // we expect the parameters of the model
-            // to change online (probably not the case)
-
-            if (gsums.count(PARAM_KEY_FOR_LOOKUP_TABLE) == 0) {
-                auto new_cache = gsums.emplace(
-                    std::piecewise_construct,
-                std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
-                std::forward_as_tuple(param.dims(0), param.dims(1)));
-                // initialize values for step cache to zero:
-                new_cache.first->second.clear();
-            }
-        }
+        create_cache(parameters, gsums);
     }
 
     template<typename R>
     void AdaGrad<R>::reset_caches(
             vector<Mat<R>>& parameters) {
-        for (auto& param : parameters) {
-            auto& s = gsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
-            s.clear();
-        }
+        reset_cache(parameters, gsums);
     }
 
     template<typename R>
@@ -196,6 +217,85 @@ namespace Solver {
     template class RMSProp<float>;
     template class RMSProp<double>;
 
+    /* RMSPropMomentum */
+    template<typename R>
+    RMSPropMomentum<R>::RMSPropMomentum (
+            R decay_rate,
+            R momentum,
+            R step_size,
+            R smooth_eps,
+            R clipval,
+            R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, METHOD_RMSPROPMOMENTUM),
+                      decay_rate(decay_rate),
+                      momentum(momentum),
+                      step_size(step_size) {
+    }
+
+    template<typename R>
+    RMSPropMomentum<R>::RMSPropMomentum (
+            vector<Mat<R>>& parameters,
+            R decay_rate,
+            R momentum,
+            R step_size,
+            R smooth_eps,
+            R clipval,
+            R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, METHOD_RMSPROPMOMENTUM),
+                      decay_rate(decay_rate),
+                      momentum(momentum),
+                      step_size(step_size) {
+        create_gradient_caches(parameters);
+    }
+
+
+    template<typename R>
+    void RMSPropMomentum<R>::create_gradient_caches(
+            vector<Mat<R>>& parameters) {
+        create_cache(parameters, n_cache);
+        create_cache(parameters, g_cache);
+        create_cache(parameters, momentum_cache);
+    }
+
+    template<typename R>
+    void RMSPropMomentum<R>::reset_caches(
+            vector<Mat<R>>& parameters) {
+
+        reset_cache(parameters, n_cache);
+        reset_cache(parameters, g_cache);
+        reset_cache(parameters, momentum_cache);
+    }
+
+    template<typename R>
+    void RMSPropMomentum<R>::step(
+            vector<Mat<R>>& parameters, R step_size_override) {
+        for (auto& param : parameters) {
+
+            if (nan_protection && param.is_grad_nan()) {
+                std::cout << "WARNING: Ignoring gradient update because of NaNs." << std::endl;
+            } else {
+                auto& n = n_cache.at(PARAM_KEY_FOR_LOOKUP_TABLE);
+                auto& g = g_cache.at(PARAM_KEY_FOR_LOOKUP_TABLE);
+                auto& m = momentum_cache.at(PARAM_KEY_FOR_LOOKUP_TABLE);
+
+                MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
+                MatOps<R>::rmsprop_momentum_update(
+                        param, n, g, m, decay_rate, momentum,
+                        step_size_override, this->smooth_eps);
+            }
+
+            // reset gradient
+            GRAD(param).clear();
+        }
+    }
+
+    template<typename R>
+    void RMSPropMomentum<R>::step(vector<Mat<R>>& parameters) {
+        return step(parameters, this->step_size);
+    }
+
+    template class RMSPropMomentum<float>;
+    template class RMSPropMomentum<double>;
+
+
     /* AdaDelta */
     template<typename R>
     AdaDelta<R>::AdaDelta (
@@ -220,37 +320,15 @@ namespace Solver {
     template<typename R>
     void AdaDelta<R>::create_gradient_caches(
             vector<Mat<R>>& parameters) {
-        for (auto& param : parameters) {
-            // this operation should be run once unless
-            // we expect the parameters of the model
-            // to change online (probably not the case)
-            if (!(gsums.count(PARAM_KEY_FOR_LOOKUP_TABLE) > 0)) {
-                auto new_cache = gsums.emplace(
-                    std::piecewise_construct,
-                std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
-                std::forward_as_tuple(param.dims(0), param.dims(1)));
-                // initialize values for step cache to zero:
-                new_cache.first->second.clear();
-
-                new_cache = xsums.emplace(
-                    std::piecewise_construct,
-                std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
-                std::forward_as_tuple(param.dims(0), param.dims(1)));
-                // initialize values for step cache to zero:
-                new_cache.first->second.clear();
-            }
-        }
+        create_cache(parameters, gsums);
+        create_cache(parameters, xsums);
     }
 
     template<typename R>
     void AdaDelta<R>::reset_caches(
             vector<Mat<R>>& parameters) {
-        for (auto& param : parameters) {
-            auto& s = gsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
-            s.clear();
-            auto& x = xsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
-            x.clear();
-        }
+        reset_cache(parameters, gsums);
+        reset_cache(parameters, xsums);
     }
 
 
@@ -303,37 +381,15 @@ namespace Solver {
     template<typename R>
     void Adam<R>::create_gradient_caches(
             vector<Mat<R>>& parameters) {
-        for (auto& param : parameters) {
-            // this operation should be run once unless
-            // we expect the parameters of the model
-            // to change online (probably not the case)
-            if (!(gsums.count(PARAM_KEY_FOR_LOOKUP_TABLE) > 0)) {
-                auto new_cache = gsums.emplace(
-                    std::piecewise_construct,
-                std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
-                std::forward_as_tuple(param.dims(0), param.dims(1)));
-                // initialize values for step cache to zero:
-                new_cache.first->second.clear();
-
-                new_cache = xsums.emplace(
-                    std::piecewise_construct,
-                std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
-                std::forward_as_tuple(param.dims(0), param.dims(1)));
-                // initialize values for step cache to zero:
-                new_cache.first->second.clear();
-            }
-        }
+        create_cache(parameters, gsums);
+        create_cache(parameters, xsums);
     }
 
     template<typename R>
     void Adam<R>::reset_caches(
             vector<Mat<R>>& parameters) {
-        for (auto& param : parameters) {
-            auto& s = gsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
-            s.clear();
-            auto& x = xsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
-            x.clear();
-        }
+        reset_cache(parameters, gsums);
+        reset_cache(parameters, xsums);
         epoch = 0;
     }
 
@@ -366,7 +422,11 @@ namespace Solver {
     }
 
     template<typename R>
-    std::shared_ptr<AbstractSolver<R>> construct(std::string solver_name, std::vector<Mat<R>>& params, R learning_rate, R regc) {
+    std::shared_ptr<AbstractSolver<R>> construct(
+            std::string solver_name,
+            std::vector<Mat<R>>& params,
+            R learning_rate,
+            R regc) {
         std::shared_ptr<AbstractSolver<R>> solver;
         std::transform(solver_name.begin(), solver_name.end(), solver_name.begin(), ::tolower);
         if (solver_name        == "adadelta") {
@@ -382,6 +442,10 @@ namespace Solver {
         } else if (solver_name == "rmsprop") {
             solver = std::make_shared<RMSProp<R>>(params, 0.999, 1e-9, 100.0, regc);
             dynamic_cast<Solver::RMSProp<R>*>(solver.get())->step_size = learning_rate;
+        } else if (solver_name == "rmspropmomentum") {
+            solver = std::make_shared<RMSPropMomentum<R>>(params);
+            dynamic_cast<Solver::RMSPropMomentum<R>*>(solver.get())->step_size = learning_rate;
+            dynamic_cast<Solver::RMSPropMomentum<R>*>(solver.get())->regc = regc;
         } else {
             utils::exit_with_message("Did not recognize this solver type.");
         }

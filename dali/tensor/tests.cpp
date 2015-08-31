@@ -1892,6 +1892,14 @@ TEST(Solver, rmsprop) {
     });
 }
 
+TEST(Solver, rmspropmomentum) {
+    test_solver([](vector<Mat<R>> params) {
+        auto ret = std::make_shared<Solver::RMSPropMomentum<R>>(params);
+        // ret->step_size = 0.001;
+        return ret;
+    });
+}
+
 TEST(Solver, adadelta) {
     test_solver([](vector<Mat<R>> params) {
         auto ret = std::make_shared<Solver::AdaDelta<R>>(params);
@@ -2008,4 +2016,7 @@ TEST(Solver, adam_optimization_test) {
 }
 TEST(Solver, rmsprop_optimization_test) {
     test_solver_optimization("rmsprop");
+}
+TEST(Solver, rmspropmomentum_optimization_test) {
+    test_solver_optimization("RMSPropMomentum");
 }

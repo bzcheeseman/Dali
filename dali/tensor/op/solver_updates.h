@@ -27,6 +27,16 @@ namespace matops {
         static void rmsprop_update(Mat<R> param, Mat<R>& cache,
                 R decay_rate, R step_size, R smooth_eps);
 
+        static void rmsprop_momentum_update(
+            Mat<R> param, Mat<R>& n_cache,
+                          Mat<R>& g_cache,
+                          Mat<R>& momentum_cache,
+                          R decay_rate,
+                          R momentum,
+                          R step_size,
+                          R smooth_eps);
+
+
         static void adadelta_update(Mat<R> param,
                                     Mat<R>& gsum,
                                     Mat<R>& xsum,

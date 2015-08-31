@@ -21,7 +21,8 @@ namespace Solver {
         METHOD_ADADELTA,
         METHOD_SGD,
         METHOD_RMSPROP,
-        METHOD_ADAM
+        METHOD_ADAM,
+        METHOD_RMSPROPMOMENTUM,
     };
 
     extern bool nan_protection;
@@ -78,6 +79,24 @@ namespace Solver {
             virtual void step(std::vector<Mat<R>>&, R step_size);
     };
 
+    template<typename R> class RMSPropMomentum : public AbstractSolver<R> {
+        public:
+            R step_size = SOLVER_MAT_DEFAULT_STEP_SIZE_H;
+            R decay_rate;
+            R momentum;
+
+            std::unordered_map<cache_key_t<R>, cache_t<R>> n_cache;
+            std::unordered_map<cache_key_t<R>, cache_t<R>> g_cache;
+            std::unordered_map<cache_key_t<R>, cache_t<R>> momentum_cache;
+
+            RMSPropMomentum (R decay_rate= 0.95, R momentum=0.9, R step_size=1e-4, R smooth_eps = 1e-4, R clipval = 100.0, R regc = 0.0);
+            RMSPropMomentum (std::vector<Mat<R>>&, R decay_rate= 0.95, R momentum=0.9, R step_size=1e-4, R smooth_eps = 1e-4, R clipval = 100.0, R regc = 0.0);
+            virtual void step(std::vector<Mat<R>>&);
+            virtual void step(std::vector<Mat<R>>&, R step_size);
+            virtual void create_gradient_caches(std::vector<Mat<R>>&);
+            virtual void reset_caches(std::vector<Mat<R>>&);
+    };
+
     template<typename R> class AdaDelta : public AbstractSolver<R> {
         public:
             R rho;
@@ -107,7 +126,10 @@ namespace Solver {
     };
 
     template<typename R>
-    std::shared_ptr<AbstractSolver<R>> construct(std::string solver_name, std::vector<Mat<R>>& params, R learning_rate = 0.01, R regc = 0.0);
+    std::shared_ptr<AbstractSolver<R>> construct(std::string solver_name,
+                                                 std::vector<Mat<R>>& params,
+                                                 R learning_rate = 0.01,
+                                                 R regc = 0.0);
 
 }
 #endif

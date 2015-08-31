@@ -74,6 +74,39 @@ namespace matops {
                 F<op::sqrt_f<R>>(MAT(cache).wrapper() + smooth_eps);
     }
 
+    // Based on the "Generating Sequences With
+    // Recurrent Neural Networks" paper:
+    //     http://arxiv.org/pdf/1308.0850v5.pdf
+    template<typename R>
+    void SolverUpdates<R>::rmsprop_momentum_update(
+            Mat<R> param, Mat<R>& n_cache,
+                          Mat<R>& g_cache,
+                          Mat<R>& momentum_cache,
+                          R decay_rate,       // eq. 42
+                          R momentum,         // eq. 43
+                          R step_size,        // eq. 44
+                          R smooth_eps) {     // eq. 45
+        MAT(n_cache) = (
+            decay_rate            * MAT(n_cache).wrapper() +
+            ((R)1.0 - decay_rate) * F<op::square<R>>(GRAD(param).wrapper())
+        );
+        MAT(g_cache) = (
+            decay_rate            * MAT(g_cache).wrapper() +
+            ((R)1.0 - decay_rate) * GRAD(param).wrapper()
+        );
+        MAT(momentum_cache) = (
+            momentum * MAT(momentum_cache).wrapper()
+            - step_size * GRAD(param).wrapper() / (
+                F<op::sqrt_f<R>>(
+                    MAT(n_cache).wrapper() -
+                    F<op::square<R>>(MAT(g_cache).wrapper())
+                    + smooth_eps
+                )
+            )
+        );
+        MAT(param) += MAT(momentum_cache).wrapper();
+    }
+
     template<typename R>
     void SolverUpdates<R>::adadelta_update(Mat<R> param,
                                            Mat<R>& gsum,

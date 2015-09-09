@@ -20,7 +20,6 @@ set(EXAMPLE_PROGRAMS api_showcase
                      sparse_ner
                      sparse_paraphrase
                      visualizer
-                     templator_cpu
                      )
 
 foreach(program ${EXAMPLE_PROGRAMS})

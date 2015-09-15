@@ -7,6 +7,14 @@
 namespace matops {
 
     template<typename R>
+    Mat<R> Reducers<R>::grad_norm(Mat<R> matrix) {
+        auto out = Mat<R>(1, 1, weights<R>::empty());
+        auto norm = GRAD(matrix).L2_norm();
+        out.w(0) = norm;
+        return out;
+    }
+
+    template<typename R>
     Mat<R> Reducers<R>::L2_norm(Mat<R> matrix) {
         auto out = Mat<R>(1, 1, weights<R>::empty());
         auto norm = MAT(matrix).L2_norm();

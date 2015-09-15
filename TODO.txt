@@ -5,6 +5,7 @@ HIGH PRIORITY:
 -> Make all imports, namespace, and includes follow same style throughout Dali
 -> Separate data generation/loading scripts to separate codebase
 -> Take steps towards convolution and n-d support
+-> Scoped subtape / autobackprop disconnected components of graph
 
 MEDIUM PRIORITY:
 -> data/glove should have a generate script to download vectors.

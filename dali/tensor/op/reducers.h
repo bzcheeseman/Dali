@@ -10,7 +10,9 @@ template<typename R> class Mat;
 namespace matops {
     template<typename R>
     struct Reducers {
-        static R grad_norm(Mat<R>);
+        static Mat<R> grad_norm(Mat<R>);
+        static Mat<R> grad_norm_colwise(Mat<R>);
+        static Mat<R> grad_norm_rowwise(Mat<R>);
 
         static Mat<R> L2_norm(Mat<R>);
         static Mat<R> L2_norm_colwise(Mat<R>);

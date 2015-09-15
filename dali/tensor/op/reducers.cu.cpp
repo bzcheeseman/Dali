@@ -5,9 +5,36 @@
 #include "dali/math/LazyTensor.h"
 
 namespace matops {
+
     template<typename R>
-    R Reducers<R>::grad_norm(Mat<R> matrix) {
-        return GRAD(matrix).L2_norm();
+    Mat<R> Reducers<R>::grad_norm(Mat<R> matrix) {
+        auto out = Mat<R>(1, 1, weights<R>::empty());
+        auto norm = GRAD(matrix).L2_norm();
+        out.w(0) = norm;
+        return out;
+    }
+
+    template<typename R>
+    Mat<R> Reducers<R>::grad_norm_rowwise(Mat<R> matrix) {
+        if (matrix.dims(1) == 1)
+            return matrix;
+        Mat<R> out(matrix.dims(0), 1);
+        MAT(out).ravel() = reduce_to_1d<0, mshadow::red::sum>(F<TensorOps::op::square<R>>(GRAD(matrix).wrapper()));
+
+        MAT(out) = F<TensorOps::op::sqrt_f<R>>(MAT(out).wrapper());
+
+        return out;
+    }
+
+    template<typename R>
+    Mat<R> Reducers<R>::grad_norm_colwise(Mat<R> matrix) {
+        if (matrix.dims(0) == 1)
+            return matrix;
+        Mat<R> out(1, matrix.dims(1), weights<R>::empty());
+        MAT(out).ravel() = reduce_to_1d<1, mshadow::red::sum>(F<TensorOps::op::square<R>>(GRAD(matrix).wrapper()));
+        MAT(out)         = F<TensorOps::op::sqrt_f<R>>(MAT(out).wrapper());
+
+        return out;
     }
 
     template<typename R>

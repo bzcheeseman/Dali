@@ -5,13 +5,9 @@
 #include "dali/math/LazyTensor.h"
 
 namespace matops {
-
     template<typename R>
-    Mat<R> Reducers<R>::grad_norm(Mat<R> matrix) {
-        auto out = Mat<R>(1, 1, weights<R>::empty());
-        auto norm = GRAD(matrix).L2_norm();
-        out.w(0) = norm;
-        return out;
+    R Reducers<R>::grad_norm(Mat<R> matrix) {
+        return GRAD(matrix).L2_norm();
     }
 
     template<typename R>

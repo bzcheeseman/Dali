@@ -198,19 +198,32 @@ Mat<R> Mat<R>::shallow_copy() {
     return Mat(*this, false, true);
 }
 
+
 template<typename R>
 void Mat<R>::set_name(string& _name) {
-    name = std::make_shared<string>(_name);
+    if (name != nullptr) {
+        *name = _name;
+    } else {
+        name = std::make_shared<string>(_name);
+    }
 }
 
 template<typename R>
 void Mat<R>::set_name(char * _name) {
-    name = std::make_shared<string>(_name);
+    if (name != nullptr) {
+        *name = _name;
+    } else {
+        name = std::make_shared<string>(_name);
+    }
 }
 
 template<typename R>
 void Mat<R>::set_name(const char * _name) {
-    name = std::make_shared<string>(_name);
+    if (name != nullptr) {
+        *name = _name;
+    } else {
+        name = std::make_shared<string>(_name);
+    }
 }
 
 template<typename R>

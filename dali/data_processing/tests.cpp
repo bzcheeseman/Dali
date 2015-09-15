@@ -7,6 +7,7 @@
 #include "dali/data_processing/NER.h"
 #include "dali/data_processing/Paraphrase.h"
 #include "dali/data_processing/babi.h"
+#include "dali/utils/vocab.h"
 
 using std::string;
 using std::vector;

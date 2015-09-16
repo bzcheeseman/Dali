@@ -20,7 +20,7 @@ This is an reimagination of [Andrej Kaparthy](http://cs.stanford.edu/people/karp
 
 ### Why not use Theano?
 
-Theano is a fantastic tensor and automatic differentiation library, with excellent packages for Deep Learning. Unfortunately, it cannot differentiate through control flow, and computation graphs with many nodes and recurrence require long compilation time (this may somewhat change with the arrival of [Josh Schulman's Graph Computation Toolkit](https://github.com/joschu/cgt)). Long compilation times can be alleviated by moving most operations out of scan loops, however this strongly limits expressivity or complicates the code. Finally, because of the separation between the computation and the mathematical description, debugging can be hard. 
+Theano is a fantastic tensor and automatic differentiation library, with excellent packages for Deep Learning. Unfortunately, it cannot differentiate through control flow, and computation graphs with many nodes and recurrence require long compilation time (this may somewhat change with the arrival of [Josh Schulman's Graph Computation Toolkit](https://github.com/joschu/cgt)). Long compilation times can be alleviated by moving most operations out of scan loops, however this strongly limits expressivity or complicates the code. Finally, because of the separation between the computation and the mathematical description, debugging can be hard.
 
 (Note: [Hypergrad](https://github.com/HIPS/hypergrad/) offers gradient through control flow, but does not match the performance of Theano)
 
@@ -106,7 +106,6 @@ You need the latest version of [Clang](http://llvm.org/releases/download.html) (
 ###### 1.a on Mac OSX
 
 ```bash
-brew install eigen
 brew install cmake
 brew install gflags
 HOMEBREW_CC=clang HOMEBREW_CXX=clang++ brew install protobuf
@@ -118,13 +117,21 @@ cmake ..
 ###### 1.b on Fedora Linux
 
 ```bash
-yum install eigen3-devel
+yum install make cmake
+yum install blas blas-devel
+yum install openblas openblas-devel
 yum install clang
 yum install gflags gflags-devel
 yum install sqlite-devel
 yum install protobuf protobuf-devel protobuf-compiler
 yum install libev libev-devel
 yum install hiredis hiredis-devel
+```
+
+If during compilation `cblas.h` is not found, install the Atlas SSE fixes the problem:
+
+```bash
+yum install atlas-sse2-devel
 ```
 
 ##### 2. Compilation
@@ -232,7 +239,7 @@ auto sorted_lengths = utils::argsort(lengths);
 ### Future steps
 
 * Add ImageNet, Caffe loading, broader ConvNet support (currently have `conv2d` and `conv1d`, but no pooling)
-* Web interface for managing experiments (today [Dali-visualizer](https://github.com/JonathanRaiman/dali-visualizer) only shows progress and sample predictions). 
+* Web interface for managing experiments (today [Dali-visualizer](https://github.com/JonathanRaiman/dali-visualizer) only shows progress and sample predictions).
 * Web interface for visualizing network activity.
 * Add some mathematical expressions from [Deepmind's Torch Cephes module](http://deepmind.github.io/torch-cephes/).
 * Distribute training over multiple machines.

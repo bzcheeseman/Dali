@@ -244,7 +244,9 @@ auto sorted_lengths = utils::argsort(lengths);
 * Add some mathematical expressions from [Deepmind's Torch Cephes module](http://deepmind.github.io/torch-cephes/).
 * Distribute training over multiple machines.
 * Ensure feature parity with [**Python** extension](https://github.com/JonathanRaiman/dali-cython-stub)
-
+* Implement multigpu support with [Fast Asynchronous Parallel SGD](http://arxiv.org/abs/1508.05711)
+* Make it brew, yum/dnf and apt-get installable
+* 
 ## Additional Notes
 
 ### Safety / Memory

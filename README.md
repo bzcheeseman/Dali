@@ -4,7 +4,7 @@ An automatic differentiation library that uses reverse-mode differentation (back
 
 <img src="https://raw.github.com/JonathanRaiman/Dali/master/misc/salvador.jpg" width="50%" />
 
-This is an reimagination of [Andrej Kaparthy](http://cs.stanford.edu/people/karpathy/)'s [recurrentJS](http://cs.stanford.edu/people/karpathy/recurrentjs/) ([Github](https://github.com/karpathy/recurrentjs)) in C++. It has similar API names but the backbones are using **Eigen** and C++11's standard library.
+This is an reimagination of [Andrej Kaparthy](http://cs.stanford.edu/people/karpathy/)'s [recurrentJS](http://cs.stanford.edu/people/karpathy/recurrentjs/) ([Github](https://github.com/karpathy/recurrentjs)) in C++. It has similar API names but the backbones are using **MShadow** and C++11's standard library.
 
 @authors **Jonathan Raiman** and **Szymon Sidor**
 

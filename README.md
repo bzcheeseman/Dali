@@ -89,15 +89,13 @@ Let's run a simple example. We will use data from [Paul Graham's blog](http://pa
 examples/language_model --flagfile ../flags/language_model_simple.flags
 ```
 
-That's it. Don't forget to checkout `examples/language_model.cpp`. It's not that scary!
-
-For a more extensive description of usage see the [character model tutorial](docs/CharacterModel.md)
-
-For a funny example where you teach stacked LSTMs about multiplication, substraction, and addition [check this out](docs/Arithmetic.md).
+* A more extensive example for training a language model can be found under: `examples/language_model.cpp`.
+* For a more in-depth description of usage see the [character model tutorial](docs/CharacterModel.md)
+* For a funny example where you teach stacked LSTMs about multiplication, substraction, and addition [check this out](docs/Arithmetic.md).
 
 ## Installation
 
-Get **[Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)** ([Download Link](http://bitbucket.org/eigen/eigen/get/3.2.4.tar.bz2)), **GFlags**, **HiRedis**, **Clang**, and **protobuf**, then head to the `cpp/build` folder and use `cmake` to configure and create the appropriate Makefiles.
+Get **GFlags**, **HiRedis**, **Clang**, and **protobuf**, then head to the `cpp/build` folder and use `cmake` to configure and create the appropriate Makefiles.
 
 You need the latest version of [Clang](http://llvm.org/releases/download.html) (>= 3.6.0).
 
@@ -139,6 +137,8 @@ yum install atlas-sse2-devel
 Then use `cmake` to create the `make` targets, and run `make` to compile the code:
 
 ```bash
+git submodule init
+git submodule update
 cmake ..
 make -j 9
 ```
@@ -185,7 +185,7 @@ Using `yum` it's a piece of cake:
 sudo yum install gtest gtest-devel
 ```
 
-#### Mac OSX compiler issues
+#### Latest Clang compiler on Mac OSX
 
 Until Apple decides to fully embrace thread_local abstraction we are sadly forced to update our compilers manually (and no replacing with __thread is not enough...). Here are steps for updating your compiler:
 
@@ -199,14 +199,6 @@ Until Apple decides to fully embrace thread_local abstraction we are sadly force
     cd CLANG
     cp -R ./* /usr/local/
 ```
-
-
-#### MKL Zaziness Problems
-
-On Mac OSX, or more generally when using [Intel's gracious MKL Library](https://software.intel.com/en-us/intel-mkl) you may encounter an interesting bug with [`Eigen`](http://eigen.tuxfamily.org/bz/show_bug.cgi?id=874) where `MKL_BLAS` is shown as undefined during compilation.
-
-To fix this bug (feature?) make the modifications listed [here](https://bitbucket.org/eigen/eigen/pull-request/82/fix-for-mkl_blas-not-defined-in-mkl-112/diff) to your Eigen header files and everything should be back to normal.
-
 
 ### Utils
 
@@ -246,19 +238,8 @@ auto sorted_lengths = utils::argsort(lengths);
 * Ensure feature parity with [**Python** extension](https://github.com/JonathanRaiman/dali-cython-stub)
 * Implement multigpu support with [Fast Asynchronous Parallel SGD](http://arxiv.org/abs/1508.05711)
 * Make it brew, yum/dnf and apt-get installable
-* 
+
 ## Additional Notes
-
-### Safety / Memory
-
-Zealous use of `std::shared_ptr` appears to be the way of the future for managing
-both the backpropagation; `<functional>`'s lambda functions keep track of previous memory use in other steps, and the overall forward structure of the operations.
-
-### Intel MKL Support
-
-On Mac OSX, or more generally when using [Intel's MKL Library](https://software.intel.com/en-us/intel-mkl) you may encounter an interesting bug with [`Eigen`](http://eigen.tuxfamily.org/bz/show_bug.cgi?id=874) where `MKL_BLAS` is shown as undefined during compilation.
-
-To fix this bug make the modifications listed [here](https://bitbucket.org/eigen/eigen/pull-request/82/fix-for-mkl_blas-not-defined-in-mkl-112/diff) to your Eigen header files and everything should return to normal.
 
 ### Debugging Assertion Failures
 
@@ -272,12 +253,8 @@ run
 ...
 backtrace
 ```
-
 A stack trace for the assertion error should now appear.
-
 
 ### Theme song
 
-*Warning: for development purposes only!*
-
-[![The theme song](https://i.ytimg.com/vi/c7BS4jbA_hw/mqdefault.jpg)](https://www.youtube.com/watch?v=c7BS4jbA_hwA)
+[![Suggested theme song](https://i.ytimg.com/vi/c7BS4jbA_hw/mqdefault.jpg)](https://www.youtube.com/watch?v=c7BS4jbA_hwA)

@@ -83,7 +83,7 @@ updated. Those are now [the gradients we we're looking for](http://youtu.be/DIzA
 
 #### Run a simple (yet advanced) example
 
-Let's run a simple example. We will use data from [Paul Graham's blog](http://paulgraham.com) to train a language model. This way we can generate random pieces of startup wisdom at will! After about 5-10 minutes of training time you should see it generate sentences that sort of make sense. To do this go to cpp/build and execute
+Let's run a simple example. We will use data from [Paul Graham's blog](http://paulgraham.com) to train a language model. This way we can generate random pieces of startup wisdom at will! After about 5-10 minutes of training time you should see it generate sentences that sort of make sense. To do this go to `build` and call:
 
 ```bash
 examples/language_model --flagfile ../flags/language_model_simple.flags
@@ -95,7 +95,7 @@ examples/language_model --flagfile ../flags/language_model_simple.flags
 
 ## Installation
 
-Get **GFlags**, **HiRedis**, **Clang**, and **protobuf**, then head to the `cpp/build` folder and use `cmake` to configure and create the appropriate Makefiles.
+Get **GFlags**, **HiRedis**, **Clang**, and **protobuf**, then head to the `build` folder and use `cmake` to configure and create the appropriate Makefiles.
 
 You need the latest version of [Clang](http://llvm.org/releases/download.html) (>= 3.6.0).
 
@@ -136,15 +136,28 @@ yum install atlas-sse2-devel
 
 Then use `cmake` to create the `make` targets, and run `make` to compile the code:
 
+###### With CUDA (if available)
+
 ```bash
 git submodule init
 git submodule update
+cd build
 cmake ..
 make -j 9
 ```
 
-That's it. Now built examples will be stored in `cpp/build/examples`.
-For instance a character prediction model using Stacked LSTMs is built under `cpp/build/examples/character_prediction`.
+###### Without CUDA:
+
+```bash
+git submodule init
+git submodule update
+cd build_cpu
+cmake .. -DWITH_CUDA=false
+make -j 9
+```
+
+That's it. Now built examples will be stored in `build/examples`.
+For instance a character prediction model using Stacked LSTMs is built under `build/examples/character_prediction`.
 
 ## Tests
 
@@ -152,7 +165,7 @@ To compile and run tests you need [Google Tests](https://code.google.com/p/googl
 
 #### 1. Compile and run tests
 
-From the build folder do the following:
+From the `build` (or `build_cpu`) folder do the following:
 
 ```bash
 cmake ..
@@ -187,17 +200,17 @@ sudo yum install gtest gtest-devel
 
 #### Latest Clang compiler on Mac OSX
 
-Until Apple decides to fully embrace thread_local abstraction we are sadly forced to update our compilers manually (and no replacing with __thread is not enough...). Here are steps for updating your compiler:
+Until Apple decides to fully embrace `thread_local` abstraction we are sadly forced to update our compilers manually (and no replacing with `__thread` is not enough...). Here are steps for updating your compiler:
 
 ```bash
-    # Go to http://llvm.org/releases/download.html
-    # Download "Clang for OSX" (tarball). Use version
-    # 3.6.0 or above
-    # Unpack .tar.xz (which will by default be in ~/Downloads)
-    tar xf CLANG.tar.xz
-    # Then cd into clang and copy to /usr/local:
-    cd CLANG
-    cp -R ./* /usr/local/
+# Go to http://llvm.org/releases/download.html
+# Download "Clang for OSX" (tarball). Use version
+# 3.6.0 or above
+# Unpack .tar.xz (which will by default be in ~/Downloads)
+tar xf CLANG.tar.xz
+# Then cd into clang and copy to /usr/local:
+cd CLANG
+cp -R ./* /usr/local/
 ```
 
 ### Utils

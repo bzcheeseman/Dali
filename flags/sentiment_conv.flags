@@ -14,4 +14,4 @@
 --shortcut
 --nomemory_feeds_gates
 --convolution
---pretrained_vectors=/Users/agilience/Desktop/glove.6B.300d.txt
+--pretrained_vectors=../data/glove/glove.6B.300d.txt

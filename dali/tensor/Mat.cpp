@@ -369,6 +369,11 @@ Mat<R> Mat<R>::slice(int rowstart, int rowwend) const {
 }
 
 template<typename R>
+Mat<R> Mat<R>::reshape(int rows, int cols) const {
+    return MatOps<R>::reshape(*this, rows, cols);
+}
+
+template<typename R>
 Mat<R> Mat<R>::col(int col) {
     return MatOps<R>::col_pluck(*this, col);
 }

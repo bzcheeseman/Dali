@@ -192,6 +192,7 @@ class Mat {
         Mat<R> sqrt() const;
         Mat<R> elt_inv() const;
         Mat<R> slice(int rowstart, int rowend) const;
+        Mat<R> reshape(int rows, int cols) const;
 
         int argmax() const;
         int argmin() const;

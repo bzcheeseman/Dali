@@ -25,6 +25,7 @@ namespace matops {
         static Mat<R> row_pluck(Mat<R>, int);
         static Mat<R> col_pluck(Mat<R>, int);
         static Mat<R> slice(Mat<R>, int, int);
+        static Mat<R> reshape(Mat<R>, int, int);
         static void resize(Mat<R>& mat, dim_t rows, dim_t cols);
     };
 }

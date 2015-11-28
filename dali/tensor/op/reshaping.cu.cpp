@@ -235,6 +235,22 @@ namespace matops {
     }
 
     template<typename R>
+    Mat<R> Reshaping<R>::reshape(
+            Mat<R> matrix,
+            int rows, int cols) {
+        ASSERT2(
+            ((rows * cols) == (matrix.dims(0) * matrix.dims(1))) && rows > 0 && cols > 0 ,
+            utils::MS() << "Not the same number of elements in original matrix (" << matrix.dims(0) * matrix.dims(1)
+                    << ") and reshaped matrix (" << (rows * cols) << ")."
+        );
+        Mat<R> out(rows, cols, weights<R>::empty());
+        MAT(out)  = MAT(matrix).reshape(mshadow::Shape2(rows, cols));
+        GRAD(out) = GRAD(matrix).reshape(mshadow::Shape2(rows, cols));
+
+        return out;
+    }
+
+    template<typename R>
     Mat<R> Reshaping<R>::col_pluck(
             Mat<R> matrix,
             int col) {

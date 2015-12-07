@@ -249,6 +249,13 @@ class Mat {
         Mat<R> operator()(void*, int) const;
         static Mat<R> zeros_like(Mat<R> shape);
         static Mat<R> empty_like(Mat<R> shape);
+
+        // forcing memory location
+        void to_cpu() const;
+
+        #ifdef DALI_USE_CUDA
+            void to_gpu() const;
+        #endif
 };
 extern const std::vector<dim_t> mat_missing_dimensions;
 

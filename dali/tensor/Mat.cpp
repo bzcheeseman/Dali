@@ -783,6 +783,24 @@ int Mat<R>::argmin_slice(int lower, int upper) const {
     return MatOps<R>::argmin_slice(*this, lower, upper);
 }
 
+template<typename R>
+void Mat<R>::to_cpu() const {
+    if (m != nullptr) {
+        w().memory().to_cpu();
+        dw().memory().to_cpu();
+    }
+}
+
+#ifdef DALI_USE_CUDA
+template<typename R>
+void Mat<R>::to_gpu() const {
+    if (m != nullptr) {
+        w().memory().to_gpu();
+        dw().memory().to_gpu();
+    }
+}
+#endif
+
 namespace utils {
     template<typename R>
     void save_matrices(vector<Mat<R>> parameters, string dirname) {

@@ -374,6 +374,11 @@ Mat<R> Mat<R>::reshape(int rows, int cols) const {
 }
 
 template<typename R>
+Mat<R> Mat<R>::ravel() const {
+    return MatOps<R>::reshape(*this, 1, number_of_elements());
+}
+
+template<typename R>
 Mat<R> Mat<R>::col(int col) {
     return MatOps<R>::col_pluck(*this, col);
 }

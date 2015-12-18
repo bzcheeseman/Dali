@@ -193,6 +193,7 @@ class Mat {
         Mat<R> elt_inv() const;
         Mat<R> slice(int rowstart, int rowend) const;
         Mat<R> reshape(int rows, int cols) const;
+        Mat<R> ravel() const;
 
         int argmax() const;
         int argmin() const;

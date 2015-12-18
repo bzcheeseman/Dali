@@ -178,6 +178,60 @@ namespace matops {
 
 
 
+    template<typename R>
+    Mat<R> Reducers<R>::max(Mat<R> matrix) {
+        auto mat_idx = MAT(matrix).argmax();
+        return matrix.ravel()[mat_idx];
+    }
+
+    template<typename R>
+    Mat<R> Reducers<R>::max_rowwise(Mat<R> matrix) {
+        if (matrix.dims(1) == 1)
+            return matrix;
+        Mat<int> argmax_mat(1, matrix.dims(0));
+        auto argmax_idx = matrix.argmax(1);
+        for (size_t idx = 0; idx < argmax_idx.size(); idx++) {
+            argmax_mat.w(idx) = argmax_idx[idx];
+        }
+        return matrix[argmax_mat];
+    }
+
+    template<typename R>
+    Mat<R> Reducers<R>::max_colwise(Mat<R> matrix) {
+        if (matrix.dims(0) == 1)
+            return matrix;
+        auto matrixT = matrix.T();
+        return max_rowwise(matrixT).T();
+    }
+
+
+    template<typename R>
+    Mat<R> Reducers<R>::min(Mat<R> matrix) {
+        auto mat_idx = MAT(matrix).argmin();
+        return matrix.ravel()[mat_idx];
+    }
+
+    template<typename R>
+    Mat<R> Reducers<R>::min_rowwise(Mat<R> matrix) {
+        if (matrix.dims(1) == 1)
+            return matrix;
+        Mat<int> argmin_mat(1, matrix.dims(0));
+        auto argmin_idx = matrix.argmin(1);
+        for (size_t idx = 0; idx < argmin_idx.size(); idx++) {
+            argmin_mat.w(idx) = argmin_idx[idx];
+        }
+        return matrix[argmin_mat];
+    }
+
+    template<typename R>
+    Mat<R> Reducers<R>::min_colwise(Mat<R> matrix) {
+        if (matrix.dims(0) == 1)
+            return matrix;
+        auto matrixT = matrix.T();
+        return min_rowwise(matrixT).T();
+    }
+
+
     template class Reducers<float>;
     template class Reducers<double>;
     template class Reducers<int>;

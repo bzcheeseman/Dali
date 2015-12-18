@@ -27,6 +27,14 @@ namespace matops {
         static Mat<R> mean(Mat<R>);
         static Mat<R> mean_colwise(Mat<R>);
         static Mat<R> mean_rowwise(Mat<R>);
+
+        static Mat<R> max(Mat<R>);
+        static Mat<R> max_colwise(Mat<R>);
+        static Mat<R> max_rowwise(Mat<R>);
+
+        static Mat<R> min(Mat<R>);
+        static Mat<R> min_colwise(Mat<R>);
+        static Mat<R> min_rowwise(Mat<R>);
     };
 }
 

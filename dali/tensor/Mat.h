@@ -175,6 +175,8 @@ class Mat {
         Mat<R> L2_norm() const;
         Mat<R> sum() const;
         Mat<R> mean() const;
+        Mat<R> max() const;
+        Mat<R> min() const;
         Mat<R> log() const;
         Mat<R> exp() const;
         Mat<R> abs() const;

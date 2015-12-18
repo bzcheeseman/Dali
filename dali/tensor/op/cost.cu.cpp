@@ -407,7 +407,7 @@ namespace matops {
 
         for (int idx = 0; idx < matrix.dims(1); ++idx) {
             if (idx == answer_idx) continue;
-            error = error + MatOps<R>::max(matrix(NULL, idx) - target_column + margin, 0.0);
+            error = error + MatOps<R>::eltmax(matrix(NULL, idx) - target_column + margin, 0.0);
         }
         return error;
     }
@@ -424,7 +424,7 @@ namespace matops {
         Mat<R> error(1, matrix.dims(1));
         for (int idx = 0; idx < matrix.dims(0); ++idx) {
             if (idx == answer_idx) continue;
-            error = error + MatOps<R>::max(matrix[idx] - matrix[answer_idx] + margin, 0.0);
+            error = error + MatOps<R>::eltmax(matrix[idx] - matrix[answer_idx] + margin, 0.0);
         }
         return error;
     }

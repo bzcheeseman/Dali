@@ -353,6 +353,8 @@ MAT_UNARY_OP( softplus )
 MAT_UNARY_OP( sigmoid )
 MAT_UNARY_OP( sum )
 MAT_UNARY_OP( mean )
+MAT_UNARY_OP( max )
+MAT_UNARY_OP( min )
 MAT_UNARY_OP( log )
 MAT_UNARY_OP( exp )
 MAT_UNARY_OP( abs )
@@ -375,7 +377,7 @@ Mat<R> Mat<R>::reshape(int rows, int cols) const {
 
 template<typename R>
 Mat<R> Mat<R>::ravel() const {
-    return MatOps<R>::reshape(*this, 1, number_of_elements());
+    return MatOps<R>::reshape(*this, number_of_elements(), 1);
 }
 
 template<typename R>

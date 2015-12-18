@@ -15,7 +15,7 @@ namespace matops {
         static Mat<R> eltmul(Mat<R>, R);
         static Mat<R> eltdivide(Mat<R>, R);
 
-        static Mat<R> max(Mat<R>, R);
+        static Mat<R> eltmax(Mat<R>, R);
         static Mat<R> square(Mat<R>);
         static Mat<R> log(Mat<R>);
         static Mat<R> exp(Mat<R>);

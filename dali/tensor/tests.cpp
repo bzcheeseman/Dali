@@ -204,7 +204,7 @@ TEST_F(MatrixTests, max_scalar) {
         auto combined = MatOps<R>::hstack({mat, mat2});
         R maxxand = 1.4;
         auto functor = [&maxxand](vector<Mat<R>> Xs)-> Mat<R> {
-            return MatOps<R>::max(Xs[0], maxxand);
+            return MatOps<R>::eltmax(Xs[0], maxxand);
         };
         ASSERT_TRUE(gradient_same(functor, {combined}, 1e-4));
     }
@@ -480,6 +480,38 @@ TEST_F(MatrixTests, mean) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
+        ASSERT_TRUE(gradient_same(functor, {A}));
+    }
+}
+
+TEST_F(MatrixTests, max) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return Xs[0].max();
+    };
+    EXPERIMENT_REPEAT {
+        Mat<R> A;
+        {
+            graph::NoBackprop nb;
+            auto mat  = Mat<R>(5, 10, weights<R>::uniform(0.1, 20.0));
+            auto mat2 = Mat<R>(5, 10, weights<R>::uniform(-20.0, -0.1));
+            A = MatOps<R>::hstack({mat, mat2});
+        }
+        ASSERT_TRUE(gradient_same(functor, {A}));
+    }
+}
+
+TEST_F(MatrixTests, min) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return Xs[0].min();
+    };
+    EXPERIMENT_REPEAT {
+        Mat<R> A;
+        {
+            graph::NoBackprop nb;
+            auto mat  = Mat<R>(5, 10, weights<R>::uniform(0.1, 20.0));
+            auto mat2 = Mat<R>(5, 10, weights<R>::uniform(-20.0, -0.1));
+            A = MatOps<R>::hstack({mat, mat2});
+        }
         ASSERT_TRUE(gradient_same(functor, {A}));
     }
 }

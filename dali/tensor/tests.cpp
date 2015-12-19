@@ -68,6 +68,78 @@ TEST_F(MatrixTests, mean_rowwise) {
     }
 }
 
+TEST_F(MatrixTests, max_rowwise) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return MatOps<R>::max_rowwise(Xs[0]);
+    };
+
+    EXPERIMENT_REPEAT {
+        Mat<R> A;
+        {
+            graph::NoBackprop nb;
+            auto mat  = Mat<R>(5, 10, weights<R>::uniform(0.1, 20.0));
+            auto mat2 = Mat<R>(5, 10, weights<R>::uniform(-20.0, -0.1));
+            A = MatOps<R>::vstack({mat, mat2});
+        }
+        expect_args_remain_on_gpu(functor, {A});
+        EXPECT_TRUE(gradient_same(functor, {A}));
+    }
+}
+
+TEST_F(MatrixTests, min_rowwise) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return MatOps<R>::min_rowwise(Xs[0]);
+    };
+
+    EXPERIMENT_REPEAT {
+        Mat<R> A;
+        {
+            graph::NoBackprop nb;
+            auto mat  = Mat<R>(5, 10, weights<R>::uniform(0.1, 20.0));
+            auto mat2 = Mat<R>(5, 10, weights<R>::uniform(-20.0, -0.1));
+            A = MatOps<R>::vstack({mat, mat2});
+        }
+        expect_args_remain_on_gpu(functor, {A});
+        EXPECT_TRUE(gradient_same(functor, {A}));
+    }
+}
+
+TEST_F(MatrixTests, max_colwise) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return MatOps<R>::max_colwise(Xs[0]);
+    };
+
+    EXPERIMENT_REPEAT {
+        Mat<R> A;
+        {
+            graph::NoBackprop nb;
+            auto mat  = Mat<R>(5, 10, weights<R>::uniform(0.1, 20.0));
+            auto mat2 = Mat<R>(5, 10, weights<R>::uniform(-20.0, -0.1));
+            A = MatOps<R>::vstack({mat, mat2});
+        }
+        expect_args_remain_on_gpu(functor, {A});
+        EXPECT_TRUE(gradient_same(functor, {A}));
+    }
+}
+
+TEST_F(MatrixTests, min_colwise) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return MatOps<R>::min_colwise(Xs[0]);
+    };
+
+    EXPERIMENT_REPEAT {
+        Mat<R> A;
+        {
+            graph::NoBackprop nb;
+            auto mat  = Mat<R>(5, 10, weights<R>::uniform(0.1, 20.0));
+            auto mat2 = Mat<R>(5, 10, weights<R>::uniform(-20.0, -0.1));
+            A = MatOps<R>::vstack({mat, mat2});
+        }
+        expect_args_remain_on_gpu(functor, {A});
+        EXPECT_TRUE(gradient_same(functor, {A}));
+    }
+}
+
 TEST_F(MatrixTests, sum_colwise) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return MatOps<R>::sum_colwise(Xs[0]);
@@ -1569,6 +1641,7 @@ TEST_F(MatOpsTests, cross_entropy_colwise_multiindex) {
 
 
 TEST_F(MatOpsTests, softmax_cross_entropy_rowwise_grad) {
+    // utils::random::set_seed(1234);
     EXPERIMENT_REPEAT {
         auto input = Mat<R>(2, 3, weights<R>::uniform(-2.0, 2.0));
 
@@ -1584,8 +1657,9 @@ TEST_F(MatOpsTests, softmax_cross_entropy_rowwise_grad) {
                 indexed_targets);
         };
 
-        ASSERT_TRUE(gradient_same(functor, {input}, 1e-2));
+        ASSERT_TRUE(gradient_ratio_same(functor, {input}, 1e-2));
     }
+    // utils::random::reseed();
 }
 
 TEST_F(MatOpsTests, cross_entropy_rowwise_multiindex) {

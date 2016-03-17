@@ -104,6 +104,9 @@ You need the latest version of [Clang](http://llvm.org/releases/download.html) (
 ###### 1.a on Mac OSX
 
 ```bash
+brew install openblas
+brew link openblas --force
+brew brew install llvm --with-clang
 brew install cmake
 brew install gflags
 HOMEBREW_CC=clang HOMEBREW_CXX=clang++ brew install protobuf

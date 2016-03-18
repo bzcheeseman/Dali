@@ -7,7 +7,7 @@ using std::ifstream;
 namespace utils {
 
     Generator<row_t> generate_tsv_rows(const std::string& fname, const char& delimiter) {
-        assert2(file_exists(fname), "Cannot open tsv file.");
+        assert2(file_exists(fname), utils::MS() << "Cannot open tsv file: " << fname);
         if (utils::is_gzip(fname)) {
             auto fpgz = std::make_shared<igzstream>(fname.c_str());
             // igzstream fpgz(fname.c_str());

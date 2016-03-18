@@ -5,7 +5,7 @@
 
 #cmakedefine DALI_USE_CUDA        ${DALI_USE_CUDA}
 #cmakedefine DALI_USE_VISUALIZER  ${DALI_USE_VISUALIZER}
-#cmakedefine DALI_DATA_DIR        "${DALI_DATA_DIR}"
+#cmakedefine DALI_DATA_DIR        ${DALI_DATA_DIR}
 
 
 #cmakedefine MSHADOW_USE_CUDA     ${MSHADOW_USE_CUDA}

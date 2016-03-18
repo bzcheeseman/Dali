@@ -5,6 +5,8 @@
 #include <sstream>
 #include <cstdio>
 #include <string>
+
+#include "dali/config.h"
 #include "dali/utils.h"
 
 using std::chrono::milliseconds;
@@ -177,9 +179,7 @@ TEST(utils, load_save_lattice) {
 
     for (auto& child : root->children)
         child->add_parent(root2);
-
-    string data_folder = STR(DALI_DATA_DIR) "/";
-    string fname       = data_folder + "/lattice2.txt";
+    string fname       = STR(DALI_DATA_DIR) "/tests/lattice2.txt";
     string fname_gz    = fname + ".gz";
 
     if (utils::file_exists(fname))
@@ -200,7 +200,7 @@ TEST(utils, load_save_lattice) {
 }
 
 TEST(utils, load_tsv) {
-    string tsv_file = STR(DALI_DATA_DIR) "/CoNLL_NER/NER_dummy_dataset.tsv";
+    string tsv_file = STR(DALI_DATA_DIR) "/tests/CoNLL_NER_dummy_dataset.tsv";
     ASSERT_THROW(
         utils::load_tsv(tsv_file, 3, '\t'), std::runtime_error
     );
@@ -210,8 +210,7 @@ TEST(utils, load_tsv) {
 }
 
 TEST(utils, load_lattice) {
-    string data_folder = STR(DALI_DATA_DIR) "/";
-    auto loaded_tree = OntologyBranch::load(data_folder + "lattice.txt");
+    auto loaded_tree = OntologyBranch::load(STR(DALI_DATA_DIR) "/tests/lattice.txt");
 
     // find 2 roots
     ASSERT_EQ(loaded_tree.size(), 2);
@@ -426,4 +425,3 @@ TEST(utils, combine_generators) {
     ASSERT_EQ(vals, vector<int>({1,2,3,4,5,6,7,8,9,10}));
 
 }
-

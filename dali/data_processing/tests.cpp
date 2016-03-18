@@ -14,13 +14,13 @@ using std::vector;
 
 
 TEST(Glove, load) {
-    auto embedding = glove::load<double>( STR(DALI_DATA_DIR) "/glove/test_data.txt");
+    auto embedding = glove::load<double>( STR(DALI_DATA_DIR) "/tests/glove_dummy_test_data.txt");
     ASSERT_EQ(std::get<1>(embedding).size(), 21);
     ASSERT_EQ(std::get<0>(embedding).dims(0), 21);
     ASSERT_EQ(std::get<0>(embedding).dims(1), 300);
 
     Mat<double> relevant_mat;
-    glove::load_relevant_vectors(STR(DALI_DATA_DIR) "/glove/test_data.txt",
+    glove::load_relevant_vectors(STR(DALI_DATA_DIR) "/tests/glove_dummy_test_data.txt",
         &relevant_mat, std::get<1>(embedding), -1);
 
     relevant_mat[relevant_mat.dims(0) - 1].clear();
@@ -87,7 +87,7 @@ TEST(arithmetic, generate) {
 }
 
 TEST(NER, load) {
-    auto NER_data = NER::load( STR(DALI_DATA_DIR) "/Stanford_NER/NER_dummy_dataset.tsv");
+    auto NER_data = NER::load( STR(DALI_DATA_DIR) "/tests/Stanford_NER_dummy_dataset.tsv");
     ASSERT_EQ(NER_data.size(), 2);
 
     auto loader = NER::NER_Loader();
@@ -95,7 +95,7 @@ TEST(NER, load) {
     loader.label_column = -1;
     NER_data = loader.convert_tsv(
         utils::load_tsv(
-            STR(DALI_DATA_DIR) "/CoNLL_NER/NER_dummy_dataset.tsv", 4, '\t'
+            STR(DALI_DATA_DIR) "/tests/CoNLL_NER_dummy_dataset.tsv", 4, '\t'
         )
     );
     // how many examples
@@ -138,20 +138,20 @@ TEST(paraphrase, load) {
 
 
 TEST(paraphrase, generator_load) {
-    auto gen_data = paraphrase::STS_2015::generate_train(STR(DALI_DATA_DIR) "/paraphrase_STS_2015/paraphrase_dummy_data.tsv");
+    auto gen_data = paraphrase::STS_2015::generate_train(STR(DALI_DATA_DIR) "/tests/paraphrase_dummy_data.tsv");
     int ex_seen = 0;
     for (auto ex : gen_data) ex_seen++;
     ASSERT_EQ(ex_seen, 4);
     // TODO: find why when gen_data is overwritten a segfault occurs!!
-    auto gen_data2 = paraphrase::STS_2015::generate_train(STR(DALI_DATA_DIR) "/paraphrase_STS_2015/paraphrase_dummy_data.tsv");
-    auto paraphrase_data = paraphrase::STS_2015::load_train( STR(DALI_DATA_DIR) "/paraphrase_STS_2015/paraphrase_dummy_data.tsv");
+    auto gen_data2 = paraphrase::STS_2015::generate_train(STR(DALI_DATA_DIR) "/tests/paraphrase_dummy_data.tsv");
+    auto paraphrase_data = paraphrase::STS_2015::load_train( STR(DALI_DATA_DIR) "/tests/paraphrase_dummy_data.tsv");
     auto vocab_gen = paraphrase::get_vocabulary(gen_data2, 1);
     auto vocab     = paraphrase::get_vocabulary(paraphrase_data, 1);
     ASSERT_EQ(vocab_gen, vocab);
 }
 
 TEST(paraphrase, convert_to_indexed_minibatches) {
-    auto gen_data = paraphrase::STS_2015::generate_train(STR(DALI_DATA_DIR) "/paraphrase_STS_2015/paraphrase_dummy_data.tsv");
+    auto gen_data = paraphrase::STS_2015::generate_train(STR(DALI_DATA_DIR) "/tests/paraphrase_dummy_data.tsv");
     auto vocab_gen = utils::Vocab(paraphrase::get_vocabulary(gen_data, 1));
 
     // deadlock when generator inside generator is run.

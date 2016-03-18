@@ -87,7 +87,7 @@ if (WITH_CUDA)
 endif (WITH_CUDA)
 
 INSTALL(TARGETS dali DESTINATION lib)
-install(DIRECTORY dali/ DESTINATION include
+install(DIRECTORY ${DaliDir}  DESTINATION include
         FILES_MATCHING PATTERN "*.h")
 
 add_testsuite("test_dali" "dali" "${DaliTests}")

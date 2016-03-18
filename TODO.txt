@@ -1,4 +1,5 @@
 HIGH PRIORITY:
+-> step size in adam
 -> Namespace dali
 -> make Dali brew installable
 -> Document broadcasting behavior

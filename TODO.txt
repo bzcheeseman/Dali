@@ -23,3 +23,18 @@ LOWER_PRIORITY:
 -> made n-d print visually closer to numpy's n-d print
 -> Add warning or normalize assignments to temporaries created by ravel/slice/row_pluck etc.
    (e.g. follow Numpy convention of non assignable types)
+-> make zlib optional
+
+
+
+THE BIG REFACTOR:
+- examples
+- data
+- visualizer
+
+- tensor
+- autodiff
+
+- neuralnet
+
+- figure out what to do with utils

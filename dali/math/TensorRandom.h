@@ -1,6 +1,7 @@
 #ifndef DALI_MATH_TENSOR_RANDOM_H
 #define DALI_MATH_TENSOR_RANDOM_H
 
+#include "dali/config.h"
 #include <mshadow/tensor.h>
 #include <math.h>
 #include <random>

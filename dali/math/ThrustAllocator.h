@@ -5,6 +5,8 @@
 #include <thrust/device_vector.h>
 #include <thrust/device_malloc_allocator.h>
 
+#include "dali/config.h"
+
 #include "dali/math/memory_bank/MemoryBank.h"
 
 // inspiration from

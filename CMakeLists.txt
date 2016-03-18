@@ -18,6 +18,7 @@ find_package(CUDA)
 find_package(HiRedis)
 
 
+
 if (DEFINED WITH_VISUALIZER)
     message("WITH_VISUALIZER ${WITH_VISUALIZER}")
 else()
@@ -31,7 +32,8 @@ endif(DEFINED WITH_VISUALIZER)
 
 if (WITH_VISUALIZER)
     message("adding definitions")
-    add_definitions(-DDALI_USE_VISUALIZER)
+    set(DALI_USE_VISUALIZER 1)
+    #add_definitions(-DDALI_USE_VISUALIZER)
 endif(WITH_VISUALIZER)
 
 # CUDA BEGINS HERE
@@ -48,15 +50,18 @@ endif(DEFINED WITH_CUDA)
 
 
 if (WITH_CUDA)
-    add_definitions(-DDALI_USE_CUDA)
+    SET(DALI_USE_CUDA 1)
+    # add_definitions(-DDALI_USE_CUDA)
     INCLUDE_DIRECTORIES(${CUDA_INCLUDE_DIR})
     LIST(APPEND CUDA_NVCC_FLAGS --compiler-options ${CUDA_EXTRA_FLAGS} -lineinfo -Xptxas -dlcm=cg  -use_fast_math -std=c++11)
     SET(CUDA_EXTRA_FLAGS "-fno-strict-aliasing")
     SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -L/usr/local/cuda/lib")
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CUDA_EXTRA_FLAGS}")
-    add_definitions(-DMSHADOW_USE_CUDA=1)
+    SET(MSHADOW_USE_CUDA 1)
+    # add_definitions(-DMSHADOW_USE_CUDA=1)
 else (WITH_CUDA)
-    add_definitions(-DMSHADOW_USE_CUDA=0)
+    SET(MSHADOW_USE_CUDA 0)
+    # add_definitions(-DMSHADOW_USE_CUDA=0)
 endif (WITH_CUDA)
 
 # CUDA ENDS HERE
@@ -95,10 +100,6 @@ else(GTEST_FOUND)
     message("WARNING: GTESTS not found - install gtests to be able to run tests")
 endif(GTEST_FOUND)
 
-if (GPERFTOOLS_FOUND)
-    add_definitions(-DGPERFTOOLS_FOUND)
-endif(GPERFTOOLS_FOUND)
-
 # CLEANING UP AFTER FINDERS
 # some library list variables are FALSE by default if libs are not found,
 # but it is much more useful to keep it empty.
@@ -117,13 +118,14 @@ endif(WITH_VISUALIZER)
 add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/json11)
 
 # Relative path in C++ are hard. Adding a macro:
-add_definitions(-DDALI_DATA_DIR=${PROJECT_SOURCE_DIR}/data)
+# add_definitions(-DDALI_DATA_DIR=${PROJECT_SOURCE_DIR}/data)
+set(DALI_DATA_DIR "${PROJECT_SOURCE_DIR}/data")
 
 # GFLAGS STUFF
-add_definitions(-DGFLAGS_NAMESPACE=${GFLAGS_NAMESPACE})
+# add_definitions(-DGFLAGS_NAMESPACE=${GFLAGS_NAMESPACE})
 
 # COMPILER SETUP
-add_definitions(-DBUILD_DIR=${CMAKE_BUILD_DIR})
+# add_definitions(-DBUILD_DIR=${CMAKE_BUILD_DIR})
 
 message("=> BUILD_TYPE " ${CMAKE_BUILD_TYPE})
 if (APPLE)
@@ -142,8 +144,11 @@ else(CMAKE_BUILD_TYPE MATCHES "debug")
 endif(CMAKE_BUILD_TYPE MATCHES "debug")
 
 # mshadow
-add_definitions(-DMSHADOW_USE_CBLAS)
-add_definitions(-DMSHADOW_USE_MKL=0)
+set(MSHADOW_USE_CBLAS 1)
+set(MSHADOW_USE_MKL 0)
+
+# add_definitions(-DMSHADOW_USE_CBLAS)
+# add_definitions(-DMSHADOW_USE_MKL=0)
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/third_party/mshadow)
 
 # INCLUDES
@@ -163,10 +168,10 @@ if (GPERFTOOLS_FOUND)
     include_directories(${GPERFTOOLS_INCLUDE_DIR})
 endif (GPERFTOOLS_FOUND)
 
+
 # ADDING DIRECTORIES WITH THEIR OWN CMAKELISTS FILES
 add_subdirectory(${PROJECT_SOURCE_DIR}/protobuf)
 add_subdirectory(${PROJECT_SOURCE_DIR}/dali)
-add_subdirectory(${PROJECT_SOURCE_DIR}/examples)
 
 
 # for special SQLiteCpp target:
@@ -178,4 +183,3 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/examples)
 #if (UNIX AND (CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang"))
 #    set_target_properties(SQLiteCpp PROPERTIES COMPILE_FLAGS "-fPIC")
 #endif (UNIX AND (CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang"))
-

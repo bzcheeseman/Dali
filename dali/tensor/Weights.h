@@ -2,6 +2,9 @@
 #define DALI_MAT_MATH_WEIGHTS_H
 
 #include <functional>
+
+#include "dali/config.h"
+
 #include "dali/utils/assert2.h"
 
 template<typename R, int dimension>

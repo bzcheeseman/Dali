@@ -1,5 +1,6 @@
 #include <mshadow/tensor.h>
 
+#include "dali/config.h"
 #include "dali/math/TensorInternal.h"
 #include "dali/math/ThrustUtils.h"
 #include "dali/math/memory_bank/MemoryBank.h"

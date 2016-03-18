@@ -4,6 +4,8 @@
 #include <functional>
 #include <vector>
 
+#include "dali/config.h"
+
 #include "mshadow/extension/reduceto1d.h"
 #include "mshadow/tensor.h"
 

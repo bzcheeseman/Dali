@@ -1,6 +1,8 @@
 #ifndef DALI_TENSOR_OP_REDUCERS_H
 #define DALI_TENSOR_OP_REDUCERS_H
 
+#include "dali/config.h"
+
 #include "dali/tensor/Mat.h"
 #include "dali/tensor/Tape.h"
 #include "dali/utils.h"

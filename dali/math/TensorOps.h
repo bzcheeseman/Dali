@@ -1,6 +1,8 @@
 #ifndef DALI_MAT_MATH_TENSOROPS_H
 #define DALI_MAT_MATH_TENSOROPS_H
 
+#include "dali/config.h"
+
 #include <mshadow/tensor.h>
 #include <math.h>
 #include <functional>

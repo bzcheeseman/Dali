@@ -1,9 +1,6 @@
 #ifndef DALI_MAT_MATH_TENSOR_INTERNAL_H
 #define DALI_MAT_MATH_TENSOR_INTERNAL_H
 
-#include "dali/math/SynchronizedMemory.h"
-#include "dali/utils/core_utils.h"
-#include "mshadow/tensor.h"
 #include <initializer_list>
 #include <iomanip>
 #include <iostream>
@@ -15,6 +12,10 @@
 #include <thread>
 #include <ostream>
 
+#include "dali/config.h"
+#include "mshadow/tensor.h"
+#include "dali/math/SynchronizedMemory.h"
+#include "dali/utils/core_utils.h"
 // Defines mathematical operations on Synchronized Memory
 // and also interfaces / and handles assignment from LazyTensor
 

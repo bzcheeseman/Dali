@@ -1,5 +1,7 @@
 set(DaliDir "${PROJECT_SOURCE_DIR}/dali")
 
+configure_file("${PROJECT_SOURCE_DIR}/dali/config.h.in" "${PROJECT_SOURCE_DIR}/dali/config.h")
+
 file(GLOB_RECURSE DaliHeaders           "${DaliDir}/*.h")
 file(GLOB_RECURSE DaliSources           "${DaliDir}/*.cpp")
 file(GLOB_RECURSE DaliTemplates         "${DaliDir}/*.cpp.template")
@@ -23,7 +25,7 @@ if (WITH_CUDA)
     # also remove sources from C compilation
 
     SET(OLD_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-    SET(CMAKE_CXX_FLAGS "-O3 -w -fPIC ${CUDA_EXTRA_FLAGS}")
+    SET(CMAKE_CXX_FLAGS "-O3 -w -fPIC -std=c++11 ${CUDA_EXTRA_FLAGS}")
 
     cuda_add_library(dali_cuda ${DaliCudaSources} ${MAYBE_SHARED})
     target_link_libraries(dali_cuda ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} openblas)

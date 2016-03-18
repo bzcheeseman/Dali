@@ -1,6 +1,8 @@
 #include "dali/math/memory_bank/MemoryBankInternal.h"
-#include <mshadow/tensor.h>
+
 #include <cassert>
+
+#include "mshadow/tensor.h"
 
 #ifdef DALI_USE_CUDA
     template<typename R>

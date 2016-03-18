@@ -8,6 +8,7 @@
 #include <vector>
 #include <ostream>
 
+#include "dali/config.h"
 #include "dali/utils/core_utils.h"
 #include "dali/math/memory_bank/MemoryBank.h"
 
@@ -119,6 +120,3 @@ class SynchronizedMemory {
 
 
 #endif
-
-
-

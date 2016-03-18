@@ -9,6 +9,8 @@
 #include <gtest/gtest.h>
 #include <memory>
 
+#include "dali/config.h"
+
 #include "dali/test_utils.h"
 #include "dali/tensor/Mat.h"
 #include "dali/tensor/MatOps.h"

@@ -1,6 +1,7 @@
 #ifndef DALI_MATH_THRUST_UTILS_H
 #define DALI_MATH_THRUST_UTILS_H
 
+#include "dali/config.h"
 
 #ifdef DALI_USE_CUDA
     #include <thrust/device_vector.h>

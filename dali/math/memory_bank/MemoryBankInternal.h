@@ -1,6 +1,8 @@
 #ifndef DALI_MATH_MEMORY_BANK_MEMORY_BANK_INTERNAL_H
 #define DALI_MATH_MEMORY_BANK_MEMORY_BANK_INTERNAL_H
 
+#include "dali/config.h"
+
 #include <vector>
 
 template<typename R>

@@ -2,6 +2,8 @@
 #define DALI_MATH_THRUST_SOFTMAX_TRANSPOSE_H
 #include "dali/math/TensorOps.h"
 #include "dali/math/memory_bank/MemoryBank.h"
+#include "dali/config.h"
+
 #ifdef DALI_USE_CUDA
 #include <thrust/system/cuda/execution_policy.h>
 #endif

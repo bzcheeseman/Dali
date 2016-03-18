@@ -52,7 +52,7 @@ endif(DEFINED WITH_CUDA)
 if (WITH_CUDA)
     SET(DALI_USE_CUDA 1)
     # add_definitions(-DDALI_USE_CUDA)
-    INCLUDE_DIRECTORIES(${CUDA_INCLUDE_DIR})
+    INCLUDE_DIRECTORIES(${CUDA_INCLUDE_DIRS})
     LIST(APPEND CUDA_NVCC_FLAGS --compiler-options ${CUDA_EXTRA_FLAGS} -lineinfo -Xptxas -dlcm=cg  -use_fast_math -std=c++11)
     SET(CUDA_EXTRA_FLAGS "-fno-strict-aliasing")
     SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -L/usr/local/cuda/lib")
@@ -111,7 +111,6 @@ foreach(libvar ${LIBVARS_TO_FIX})
 endforeach(libvar)
 
 # add submodule libraries
-add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/SQLiteCpp)
 if (WITH_VISUALIZER)
     add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/redox)
 endif(WITH_VISUALIZER)
@@ -159,7 +158,6 @@ if (WITH_VISUALIZER)
     include_directories(${PROJECT_SOURCE_DIR}/third_party/redox/include)
 endif(WITH_VISUALIZER)
 include_directories(${GFLAGS_INCLUDE_DIRS})
-include_directories(${PROJECT_SOURCE_DIR}/third_party/SQLiteCpp/include)
 include_directories(${PROJECT_SOURCE_DIR}/third_party/json11)
 include_directories(${PROJECT_SOURCE_DIR}/third_party/libcuckoo/src)
 include_directories(${PROJECT_SOURCE_DIR}/third_party/sole)
@@ -170,16 +168,8 @@ endif (GPERFTOOLS_FOUND)
 
 
 # ADDING DIRECTORIES WITH THEIR OWN CMAKELISTS FILES
-add_subdirectory(${PROJECT_SOURCE_DIR}/protobuf)
 add_subdirectory(${PROJECT_SOURCE_DIR}/dali)
 
-
-# for special SQLiteCpp target:
-#file(GLOB_RECURSE SQLITECPP_SRC "${PROJECT_SOURCE_DIR}/SQLiteCpp/src/*.cpp")
-# file(GLOB_RECURSE SQLITECPP_SRC "${PROJECT_SOURCE_DIR}/SQLiteCpp/include/SQLiteCpp/*.h")
-# add sources of the wrapper as a "SQLiteCpp" static library
-# add_library(SQLiteCpp ${SQLITECPP_SRC})
-
-#if (UNIX AND (CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang"))
-#    set_target_properties(SQLiteCpp PROPERTIES COMPILE_FLAGS "-fPIC")
-#endif (UNIX AND (CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang"))
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/third_party/mshadow/mshadow DESTINATION include
+        FILES_MATCHING PATTERN "*.h"
+    PATTERN "*.cuh")

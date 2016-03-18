@@ -33,7 +33,6 @@ endif(DEFINED WITH_VISUALIZER)
 if (WITH_VISUALIZER)
     message("adding definitions")
     set(DALI_USE_VISUALIZER 1)
-    #add_definitions(-DDALI_USE_VISUALIZER)
 endif(WITH_VISUALIZER)
 
 # CUDA BEGINS HERE
@@ -51,17 +50,14 @@ endif(DEFINED WITH_CUDA)
 
 if (WITH_CUDA)
     SET(DALI_USE_CUDA 1)
-    # add_definitions(-DDALI_USE_CUDA)
     INCLUDE_DIRECTORIES(${CUDA_INCLUDE_DIRS})
     LIST(APPEND CUDA_NVCC_FLAGS --compiler-options ${CUDA_EXTRA_FLAGS} -lineinfo -Xptxas -dlcm=cg  -use_fast_math -std=c++11)
     SET(CUDA_EXTRA_FLAGS "-fno-strict-aliasing")
     SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -L/usr/local/cuda/lib")
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CUDA_EXTRA_FLAGS}")
     SET(MSHADOW_USE_CUDA 1)
-    # add_definitions(-DMSHADOW_USE_CUDA=1)
 else (WITH_CUDA)
     SET(MSHADOW_USE_CUDA 0)
-    # add_definitions(-DMSHADOW_USE_CUDA=0)
 endif (WITH_CUDA)
 
 # CUDA ENDS HERE
@@ -117,14 +113,8 @@ endif(WITH_VISUALIZER)
 add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/json11)
 
 # Relative path in C++ are hard. Adding a macro:
-# add_definitions(-DDALI_DATA_DIR=${PROJECT_SOURCE_DIR}/data)
 set(DALI_DATA_DIR "${PROJECT_SOURCE_DIR}/data")
 
-# GFLAGS STUFF
-# add_definitions(-DGFLAGS_NAMESPACE=${GFLAGS_NAMESPACE})
-
-# COMPILER SETUP
-# add_definitions(-DBUILD_DIR=${CMAKE_BUILD_DIR})
 
 message("=> BUILD_TYPE " ${CMAKE_BUILD_TYPE})
 if (APPLE)
@@ -146,8 +136,6 @@ endif(CMAKE_BUILD_TYPE MATCHES "debug")
 set(MSHADOW_USE_CBLAS 1)
 set(MSHADOW_USE_MKL 0)
 
-# add_definitions(-DMSHADOW_USE_CBLAS)
-# add_definitions(-DMSHADOW_USE_MKL=0)
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/third_party/mshadow)
 
 # INCLUDES
@@ -173,3 +161,8 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/dali)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/third_party/mshadow/mshadow DESTINATION include
         FILES_MATCHING PATTERN "*.h"
     PATTERN "*.cuh")
+install(FILES ${PROJECT_SOURCE_DIR}/third_party/sole/sole.hpp DESTINATION include)
+
+file(GLOB_RECURSE CUCKOO_HEADERS       "${PROJECT_SOURCE_DIR}/third_party/libcuckoo/src/*.hh")
+message("CUCKOO_HEADERS " ${CUCKOO_HEADERS})
+install(FILES ${CUCKOO_HEADERS} DESTINATION include)

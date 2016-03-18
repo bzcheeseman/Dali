@@ -58,16 +58,13 @@ add_custom_target(fix_libiomp5
 	COMMAND sudo sh ${PROJECT_SOURCE_DIR}/scripts/fix_libiomp5.sh
 )
 
-add_dependencies(dali dali_templates proto)
+add_dependencies(dali dali_templates)
 
 if (BLAS_FOUND AND MKL_FOUND)
     add_dependencies(dali fix_libiomp5)
 endif (BLAS_FOUND AND MKL_FOUND)
 
 target_link_libraries(dali ${ZLIB_LIBRARIES}
-                           proto
-                           SQLiteCpp
-                           sqlite3
                            json11static
                            openblas
                            ${BLAS_LIBRARIES}
@@ -87,6 +84,7 @@ if (WITH_CUDA)
 endif (WITH_CUDA)
 
 INSTALL(TARGETS dali DESTINATION lib)
+INSTALL(TARGETS dali_cuda DESTINATION lib)
 install(DIRECTORY ${DaliDir}  DESTINATION include
         FILES_MATCHING PATTERN "*.h")
 

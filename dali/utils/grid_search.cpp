@@ -22,7 +22,7 @@ double perturb_for(grid_clock_t::duration duration,
 double perturbX(int times,
                 Conf& c,
                 std::function<double()> objective) {
-    assert(times >= 0);
+    utils::assert2(times >= 0, "times must be strictly positive.");
     double obj = objective();
 
     while(times--) {

@@ -41,7 +41,7 @@ std::string SmartParser::next_string() {
 }
 
 std::string SmartParser::next_line() {
-    assert(token_in_line >= line_tokens.size());
+    assert2(token_in_line >= line_tokens.size(), "You must finish reading tokens from current line, before requesting next one.");
     return next_line_internal();
 }
 

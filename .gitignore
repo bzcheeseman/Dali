@@ -1,5 +1,7 @@
 # For easy to do cpu builds
 build_cpu/
+dali/config.h
+
 # Compiled source #
 ###################
 *.com

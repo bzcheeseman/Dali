@@ -1,6 +1,8 @@
 #ifndef DALI_VISUALIZER_VISUALIZER_H
 #define DALI_VISUALIZER_VISUALIZER_H
 
+#include "dali/config.h"
+
 #include <gflags/gflags.h>
 #include <json11.hpp>
 #ifdef DALI_USE_VISUALIZER

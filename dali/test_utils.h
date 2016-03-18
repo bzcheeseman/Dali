@@ -1,15 +1,16 @@
 #ifndef DALI_TEST_UTILS_H
 #define DALI_TEST_UTILS_H
 
+
+#include "dali/config.h"
+
 #ifdef GPERFTOOLS_FOUND
     #include <gperftools/heap-checker.h>
 #endif
 
-
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "dali/config.h"
 
 #include "dali/test_utils.h"
 #include "dali/tensor/Mat.h"

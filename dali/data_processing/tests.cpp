@@ -109,7 +109,7 @@ TEST(NER, load) {
 }
 
 TEST(paraphrase, load) {
-    auto paraphrase_data = paraphrase::STS_2015::load_train( STR(DALI_DATA_DIR) "/paraphrase_STS_2015/paraphrase_dummy_data.tsv");
+    auto paraphrase_data = paraphrase::STS_2015::load_train( STR(DALI_DATA_DIR) "/tests/paraphrase_dummy_data.tsv");
     ASSERT_EQ(paraphrase_data.size(), 4);
 
     ASSERT_EQ(std::get<2>(paraphrase_data[0]), 1.0);
@@ -424,4 +424,3 @@ TEST(babi, encode) {
         };
     }
 }
-

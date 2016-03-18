@@ -1,11 +1,11 @@
 #ifndef DALI_MATH_THRUSTALLOCATOR_H
 #define DALI_MATH_THRUSTALLOCATOR_H
-#ifdef DALI_USE_CUDA
-
-#include <thrust/device_vector.h>
-#include <thrust/device_malloc_allocator.h>
 
 #include "dali/config.h"
+
+#ifdef DALI_USE_CUDA
+#include <thrust/device_vector.h>
+#include <thrust/device_malloc_allocator.h>
 
 #include "dali/math/memory_bank/MemoryBank.h"
 

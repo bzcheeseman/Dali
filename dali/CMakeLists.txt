@@ -86,4 +86,8 @@ if (WITH_CUDA)
     target_link_libraries(dali dali_cuda)
 endif (WITH_CUDA)
 
+INSTALL(TARGETS dali DESTINATION lib)
+install(DIRECTORY dali/ DESTINATION include
+        FILES_MATCHING PATTERN "*.h")
+
 add_testsuite("test_dali" "dali" "${DaliTests}")

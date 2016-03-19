@@ -64,10 +64,10 @@ if (BLAS_FOUND AND MKL_FOUND)
 endif (BLAS_FOUND AND MKL_FOUND)
 
 target_link_libraries(dali ${ZLIB_LIBRARIES}
-                           openblas
                            ${BLAS_LIBRARIES}
                            ${MKL_LIBRARIES}
-                           ${GFLAGS_LIBRARIES})
+                           ${GFLAGS_LIBRARIES}
+                           ${CMAKE_THREAD_LIBS_INIT})
 
 if (GPERFTOOLS_FOUND)
     target_link_libraries(dali ${GPERFTOOLS_LIBRARIES})

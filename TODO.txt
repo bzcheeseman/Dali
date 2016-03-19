@@ -14,7 +14,7 @@ MEDIUM PRIORITY:
 -> Random weights init should take doubles, not template typename.
 -> Improve NLP-Utils. Agree on common set of practices for all the examples.
 -> visualizer - web frontend for error visualization (60% done)
--> Move Redis visualizer example to tests with check for redis presence
+-> remove gflags from core dali
 
 LOWER_PRIORITY:
 -> add performance test (e.g. num words processed in Language Model on GPU ~ 20,000 words/second)
@@ -25,6 +25,7 @@ LOWER_PRIORITY:
 -> Add warning or normalize assignments to temporaries created by ravel/slice/row_pluck etc.
    (e.g. follow Numpy convention of non assignable types)
 -> make zlib optional
+-> check for clang version
 
 
 

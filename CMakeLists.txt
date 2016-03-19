@@ -2,8 +2,16 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 set(CMAKE_LEGACY_CYGWIN_WIN32 0)
 
 project("Dali")
+set(PROJECT_VERSION_MAJOR 1)
+set(PROJECT_VERSION_MINOR 0)
+set(PROJECT_VERSION_PATCH 0)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
+
+################################################################################
+##                            COMPILER SETUP                                  ##
+################################################################################
 
 # ensure correct GCC version
 set(GCC_MINIMUM_REQUIRED "4.9.2")
@@ -12,6 +20,27 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     message(FATAL_ERROR "Mimimum rquired version of gcc is ${GCC_MINIMUM_REQUIRED}")
   endif()
 endif()
+
+
+message("-- Build type: " ${CMAKE_BUILD_TYPE})
+if (APPLE)
+    set (CMAKE_CXX_COMPILER "clang++")
+    set (MAYBE_SHARED "")
+else(APPLE)
+    # land of Linux or Windows
+    set (MAYBE_SHARED "SHARED")
+endif(APPLE)
+
+if(CMAKE_BUILD_TYPE MATCHES "debug")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g -fPIC")
+else(CMAKE_BUILD_TYPE MATCHES "debug")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -w -fPIC")
+endif(CMAKE_BUILD_TYPE MATCHES "debug")
+
+
+################################################################################
+##                            PACKAGES                                        ##
+################################################################################
 
 # REQUIRED PACKAGES
 find_package(ZLIB REQUIRED)
@@ -23,6 +52,42 @@ find_package(GooglePerfTools)
 find_package(MKL)
 find_package(GTest)
 find_package(CUDA)
+
+if (NOT GPERFTOOLS_FOUND)
+    message("WARNING: consider installing gperftools for better multithreaded performance.\n    > brew install gperftools")
+endif(NOT GPERFTOOLS_FOUND)
+
+
+# CLEANING UP AFTER FINDERS
+# some library list variables are FALSE by default if libs are not found,
+# but it is much more useful to keep it empty.
+set(LIBVARS_TO_FIX MKL_LIBRARIES BLAS_LIBRARIES GPERFTOOLS_TCMALLOC_AND_PROFILER)
+foreach(libvar ${LIBVARS_TO_FIX})
+    if (NOT ${libvar})
+        set(${libvar} "")
+    endif (NOT ${libvar})
+endforeach(libvar)
+
+
+# mshadow
+set(MSHADOW_USE_CBLAS 1)
+set(MSHADOW_USE_MKL 0)
+
+# INCLUDES
+INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/third_party/mshadow)
+include_directories(${MKL_INCLUDE_DIR})
+include_directories(${PROJECT_SOURCE_DIR})
+
+include_directories(${GFLAGS_INCLUDE_DIRS})
+include_directories(${PROJECT_SOURCE_DIR}/third_party/libcuckoo/src)
+
+if (GPERFTOOLS_FOUND)
+    include_directories(${GPERFTOOLS_INCLUDE_DIR})
+endif (GPERFTOOLS_FOUND)
+
+################################################################################
+##                            CUDA SETUP                                      ##
+################################################################################
 
 # CUDA BEGINS HERE
 if (DEFINED WITH_CUDA)
@@ -49,10 +114,10 @@ else (WITH_CUDA)
     SET(MSHADOW_USE_CUDA 0)
 endif (WITH_CUDA)
 
-# CUDA ENDS HERE
-if (NOT GPERFTOOLS_FOUND)
-    message("WARNING: consider installing gperftools for better multithreaded performance.\n    > brew install gperftools")
-endif(NOT GPERFTOOLS_FOUND)
+
+################################################################################
+##                            TESTING SETUP                                   ##
+################################################################################
 
 # This monstrosity came to live to alleviate two conditions:
 #      1) ctest ignores colored output
@@ -85,55 +150,13 @@ else(GTEST_FOUND)
     message("WARNING: GTESTS not found - install gtests to be able to run tests")
 endif(GTEST_FOUND)
 
-# CLEANING UP AFTER FINDERS
-# some library list variables are FALSE by default if libs are not found,
-# but it is much more useful to keep it empty.
-set(LIBVARS_TO_FIX MKL_LIBRARIES BLAS_LIBRARIES GPERFTOOLS_TCMALLOC_AND_PROFILER)
-foreach(libvar ${LIBVARS_TO_FIX})
-    if (NOT ${libvar})
-        set(${libvar} "")
-    endif (NOT ${libvar})
-endforeach(libvar)
 
-# add submodule libraries
-
+################################################################################
+##                               DALI SETUP                                   ##
+################################################################################
 
 # Relative path in C++ are hard. Adding a macro:
 set(DALI_DATA_DIR "${PROJECT_SOURCE_DIR}/data")
-
-message("-- Build type: " ${CMAKE_BUILD_TYPE})
-if (APPLE)
-    set (CMAKE_CXX_COMPILER "clang++")
-    set (MAYBE_SHARED "")
-else(APPLE)
-    # land of Linux or Windows
-    set (MAYBE_SHARED "SHARED")
-endif(APPLE)
-
-
-if(CMAKE_BUILD_TYPE MATCHES "debug")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g -fPIC")
-else(CMAKE_BUILD_TYPE MATCHES "debug")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -w -fPIC")
-endif(CMAKE_BUILD_TYPE MATCHES "debug")
-
-# mshadow
-set(MSHADOW_USE_CBLAS 1)
-set(MSHADOW_USE_MKL 0)
-
-INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/third_party/mshadow)
-
-# INCLUDES
-include_directories(${MKL_INCLUDE_DIR})
-include_directories(${PROJECT_SOURCE_DIR})
-
-include_directories(${GFLAGS_INCLUDE_DIRS})
-include_directories(${PROJECT_SOURCE_DIR}/third_party/libcuckoo/src)
-
-if (GPERFTOOLS_FOUND)
-    include_directories(${GPERFTOOLS_INCLUDE_DIR})
-endif (GPERFTOOLS_FOUND)
-
 
 # ADDING DIRECTORIES WITH THEIR OWN CMAKELISTS FILES
 add_subdirectory(${PROJECT_SOURCE_DIR}/dali)
@@ -143,6 +166,27 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/dali)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/third_party/mshadow/mshadow DESTINATION include
         FILES_MATCHING PATTERN "*.h"
     PATTERN "*.cuh")
-# # install cuckoo
-# file(GLOB_RECURSE CUCKOO_HEADERS       "${PROJECT_SOURCE_DIR}/third_party/libcuckoo/src/*.hh")
-# install(FILES ${CUCKOO_HEADERS} DESTINATION include)
+
+
+################################################################################
+##                            PACKAGE CREATION                                ##
+################################################################################
+if (UNIX)
+    execute_process(COMMAND /usr/bin/lsb_release -i -s
+                            OUTPUT_VARIABLE LINUX_DISTRO
+                            OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if(${LINUX_DISTRO} STREQUAL "Ubuntu")
+        message("-- Package will be generated for Ubuntu Linux (DEB)")
+    	set(CPACK_GENERATOR "DEB")
+    	set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+    	set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+    	set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+    	set(CPACK_DEBIAN_PACKAGE_DEPENDS "zlib1g-dev,libgflags2,libgflags-dev,build-essential,libblas-dev gcc-4.9,g++-4.9,cpp-4.9")
+    	set(CPACK_PACKAGE_DESCRIPTION " Buttery Smooth Automatic Differentiation in C++")
+    	set(CPACK_PACKAGE_CONTACT "Szymon Sidor szymon.sidor@gmail.com")
+
+	    include(CPack)
+    elseif(LINUX_DISTRO STREQUAL "Fedora")
+        message("-- Package will be generated for Fedora Linux (RPM)")
+    endif()
+endif(UNIX)

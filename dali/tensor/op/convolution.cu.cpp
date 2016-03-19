@@ -11,8 +11,6 @@ using std::make_shared;
 using std::shared_ptr;
 using std::vector;
 
-#define DONT_COMPILE
-
 namespace matops {
     // Note if kernel is 3D (as in multi kernel)
     // Then result must also be a tensor (first dimension is kernel dimension)

@@ -27,10 +27,10 @@ if (WITH_CUDA)
     SET(OLD_CXX_FLAGS ${CMAKE_CXX_FLAGS})
     SET(CMAKE_CXX_FLAGS "-O3 -w -fPIC -std=c++11 ${CUDA_EXTRA_FLAGS}")
 
-    cuda_add_library(dali_cuda ${DaliCudaSources} ${MAYBE_SHARED})
+    cuda_add_library(dali_cuda ${DaliCudaSources} STATIC)
     target_link_libraries(dali_cuda ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} openblas)
 
-    message("${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY}")
+    # message("${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY}")
 
     SET(CMAKE_CXX_FLAGS ${OLD_CXX_FLAGS})
     SET(CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
@@ -58,7 +58,9 @@ add_custom_target(fix_libiomp5
 	COMMAND sudo sh ${PROJECT_SOURCE_DIR}/scripts/fix_libiomp5.sh
 )
 
-add_dependencies(dali dali_templates)
+if(dali_templates)
+    add_dependencies(dali dali_templates)
+endif(dali_templates)
 
 if (BLAS_FOUND AND MKL_FOUND)
     add_dependencies(dali fix_libiomp5)
@@ -80,11 +82,12 @@ if (GPERFTOOLS_FOUND)
 endif (GPERFTOOLS_FOUND)
 
 if (WITH_CUDA)
+    target_link_libraries(dali "-Wl,--whole-archive")
     target_link_libraries(dali dali_cuda)
+    target_link_libraries(dali "-Wl,--no-whole-archive")
 endif (WITH_CUDA)
 
 INSTALL(TARGETS dali DESTINATION lib)
-INSTALL(TARGETS dali_cuda DESTINATION lib)
 install(DIRECTORY ${DaliDir}  DESTINATION include
         FILES_MATCHING PATTERN "*.h")
 

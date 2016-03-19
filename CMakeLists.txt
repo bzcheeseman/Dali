@@ -31,7 +31,6 @@ else()
 endif(DEFINED WITH_VISUALIZER)
 
 if (WITH_VISUALIZER)
-    message("adding definitions")
     set(DALI_USE_VISUALIZER 1)
 endif(WITH_VISUALIZER)
 
@@ -116,7 +115,7 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/json11)
 set(DALI_DATA_DIR "${PROJECT_SOURCE_DIR}/data")
 
 
-message("=> BUILD_TYPE " ${CMAKE_BUILD_TYPE})
+message("-- Build type: " ${CMAKE_BUILD_TYPE})
 if (APPLE)
     set (CMAKE_CXX_COMPILER "clang++")
     set (MAYBE_SHARED "")
@@ -164,5 +163,4 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/third_party/mshadow/mshadow DESTINATION 
 install(FILES ${PROJECT_SOURCE_DIR}/third_party/sole/sole.hpp DESTINATION include)
 
 file(GLOB_RECURSE CUCKOO_HEADERS       "${PROJECT_SOURCE_DIR}/third_party/libcuckoo/src/*.hh")
-message("CUCKOO_HEADERS " ${CUCKOO_HEADERS})
 install(FILES ${CUCKOO_HEADERS} DESTINATION include)

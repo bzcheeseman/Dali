@@ -15,24 +15,6 @@ find_package(BLAS)
 find_package(MKL)
 find_package(GTest)
 find_package(CUDA)
-find_package(HiRedis)
-
-
-
-if (DEFINED WITH_VISUALIZER)
-    message("WITH_VISUALIZER ${WITH_VISUALIZER}")
-else()
-    # if user did not specify if they want visualizer try to build it if possible.
-    if (HIREDIS_FOUND STREQUAL TRUE)
-        SET(WITH_VISUALIZER TRUE)
-    else()
-        SET(WITH_VISUALIZER FALSE)
-    endif()
-endif(DEFINED WITH_VISUALIZER)
-
-if (WITH_VISUALIZER)
-    set(DALI_USE_VISUALIZER 1)
-endif(WITH_VISUALIZER)
 
 # CUDA BEGINS HERE
 if (DEFINED WITH_CUDA)
@@ -106,10 +88,7 @@ foreach(libvar ${LIBVARS_TO_FIX})
 endforeach(libvar)
 
 # add submodule libraries
-if (WITH_VISUALIZER)
-    add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/redox)
-endif(WITH_VISUALIZER)
-add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/json11)
+
 
 # Relative path in C++ are hard. Adding a macro:
 set(DALI_DATA_DIR "${PROJECT_SOURCE_DIR}/data")
@@ -140,14 +119,9 @@ INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/third_party/mshadow)
 # INCLUDES
 include_directories(${MKL_INCLUDE_DIR})
 include_directories(${PROJECT_SOURCE_DIR})
-if (WITH_VISUALIZER)
-    include_directories(${HIREDIS_INCLUDE_DIRS})
-    include_directories(${PROJECT_SOURCE_DIR}/third_party/redox/include)
-endif(WITH_VISUALIZER)
+
 include_directories(${GFLAGS_INCLUDE_DIRS})
-include_directories(${PROJECT_SOURCE_DIR}/third_party/json11)
 include_directories(${PROJECT_SOURCE_DIR}/third_party/libcuckoo/src)
-include_directories(${PROJECT_SOURCE_DIR}/third_party/sole)
 
 if (GPERFTOOLS_FOUND)
     include_directories(${GPERFTOOLS_INCLUDE_DIR})
@@ -157,10 +131,11 @@ endif (GPERFTOOLS_FOUND)
 # ADDING DIRECTORIES WITH THEIR OWN CMAKELISTS FILES
 add_subdirectory(${PROJECT_SOURCE_DIR}/dali)
 
+# THOSE HEADERS ARE REQUIRED FOR DALI HEADERS TO WORK, SO WE AUTOMATICALLY INSTALL THEM.
+# install mshadow
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/third_party/mshadow/mshadow DESTINATION include
         FILES_MATCHING PATTERN "*.h"
     PATTERN "*.cuh")
-install(FILES ${PROJECT_SOURCE_DIR}/third_party/sole/sole.hpp DESTINATION include)
-
-file(GLOB_RECURSE CUCKOO_HEADERS       "${PROJECT_SOURCE_DIR}/third_party/libcuckoo/src/*.hh")
-install(FILES ${CUCKOO_HEADERS} DESTINATION include)
+# # install cuckoo
+# file(GLOB_RECURSE CUCKOO_HEADERS       "${PROJECT_SOURCE_DIR}/third_party/libcuckoo/src/*.hh")
+# install(FILES ${CUCKOO_HEADERS} DESTINATION include)

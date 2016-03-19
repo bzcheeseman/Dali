@@ -9,10 +9,11 @@
 #include <algorithm>
 #include <map>
 
-#include "dali/utils/tsv_utils.h"
+#include "dali/tensor/Mat.h"
+#include "dali/utils/core_utils.h"
 #include "dali/utils/Reporting.h"
-#include "dali/visualizer/visualizer.h"
 #include "dali/utils/scoring_utils.h"
+#include "dali/utils/tsv_utils.h"
 
 namespace paraphrase {
     /* example_t is a tuple of the form is sentence 1, sentence 2,
@@ -145,22 +146,6 @@ namespace paraphrase {
         std::function<double(std::vector<uint>&, std::vector<uint>&)> predict,
         int num_threads = 9
         );
-
-    json11::Json nearest_neighbors(
-        const utils::CharacterVocab& character_vocab,
-        std::vector<uint>& original,
-        paraphrase_minibatch_dataset& dataset,
-        std::function<double(std::vector<uint>&, std::vector<uint>&)> distance,
-        int max_number_of_comparisons
-    );
-
-    json11::Json nearest_neighbors(
-        const utils::Vocab& word_vocab,
-        std::vector<uint>& original,
-        paraphrase_minibatch_dataset& dataset,
-        std::function<double(std::vector<uint>&, std::vector<uint>&)> distance,
-        int max_number_of_comparisons
-    );
 
 };
 

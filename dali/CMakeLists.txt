@@ -8,9 +8,6 @@ file(GLOB_RECURSE DaliTemplates         "${DaliDir}/*.cpp.template")
 file(GLOB_RECURSE DaliMaybeCudaSources  "${DaliDir}/*.cu.cpp")
 file(GLOB_RECURSE DaliCudaSources       "${DaliDir}/*.cu")
 
-# sole has no build script - it is a sole lonely c++ file.
-list(APPEND DaliSources "${PROJECT_SOURCE_DIR}/third_party/sole/sole.cpp")
-
 if (WITH_CUDA)
     foreach(DaliCudaFile ${DaliMaybeCudaSources})
         file(RELATIVE_PATH DaliCudaFilePath "${DaliDir}" "${DaliCudaFile}")
@@ -67,15 +64,10 @@ if (BLAS_FOUND AND MKL_FOUND)
 endif (BLAS_FOUND AND MKL_FOUND)
 
 target_link_libraries(dali ${ZLIB_LIBRARIES}
-                           json11static
                            openblas
                            ${BLAS_LIBRARIES}
                            ${MKL_LIBRARIES}
                            ${GFLAGS_LIBRARIES})
-
-if (WITH_VISUALIZER)
-    target_link_libraries(dali redox_static ${HIREDIS_LIBRARIES})
-endif (WITH_VISUALIZER)
 
 if (GPERFTOOLS_FOUND)
     target_link_libraries(dali ${GPERFTOOLS_LIBRARIES})

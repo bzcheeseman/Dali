@@ -11,9 +11,6 @@
 #include <ostream>
 #include <unordered_map>
 
-// For handling json_finite_distribution
-#include <json11.hpp>
-
 #include "dali/math/TensorInternal.h"
 #include "dali/tensor/MatOps.h"
 #include "dali/tensor/Weights.h"
@@ -292,9 +289,6 @@ namespace utils {
 
     template<typename R>
     void load_matrices(std::vector<Mat<R>>, std::string);
-
-    template<typename R>
-    json11::Json json_finite_distribution(const Mat<R>&, const std::vector<std::string>& labels);
 
 }
 

@@ -8,7 +8,6 @@ using std::make_shared;
 using utils::tokenized_uint_labeled_dataset;
 using utils::Vocab;
 using std::min;
-using json11::Json;
 using std::atomic;
 
 const string START = "**START**";
@@ -307,44 +306,6 @@ namespace SST {
     template class SentimentBatch<float>;
     template class SentimentBatch<double>;
 
-
-    template<typename R>
-    Json json_classification(const vector<string>& sentence, const Mat<R>& probs) {
-        // store sentence memory & tokens:
-        auto sentence_viz = visualizable::Sentence<R>(sentence);
-
-        // store sentence as input + distribution as output:
-        Json::object json_example = {
-            { "type", "classifier_example"},
-            { "input", sentence_viz.to_json()},
-            { "output",  utils::json_finite_distribution(probs, SST::label_names) },
-        };
-
-        return json_example;
-    }
-
-    template Json json_classification<float>(const vector<string>& sentence, const Mat<float>& probs);
-    template Json json_classification<double>(const vector<string>& sentence, const Mat<double>& probs);
-
-    template<typename R>
-    Json json_classification(const vector<string>& sentence, const Mat<R>& probs, const Mat<R>& word_weights) {
-
-        // store sentence memory & tokens:
-        auto sentence_viz = visualizable::Sentence<R>(sentence);
-        sentence_viz.set_weights(word_weights);
-
-        // store sentence as input + distribution as output:
-        Json::object json_example = {
-            { "type", "classifier_example"},
-            { "input", sentence_viz.to_json()},
-            { "output",  utils::json_finite_distribution(probs, SST::label_names) },
-        };
-
-        return json_example;
-    }
-
-    template Json json_classification<float>(const vector<string>& sentence, const Mat<float>& probs, const Mat<float>& word_weights);
-    template Json json_classification<double>(const vector<string>& sentence, const Mat<double>& probs, const Mat<double>& word_weights);
 
     Vocab get_vocabulary(vector<SST::AnnotatedParseTree::shared_tree>& trees, int min_occurence) {
         tokenized_uint_labeled_dataset examples;

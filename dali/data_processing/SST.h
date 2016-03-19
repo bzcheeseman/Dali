@@ -10,8 +10,7 @@
 
 #include "dali/utils.h"
 #include "dali/data_processing/Batch.h"
-// for outputting json
-#include "dali/visualizer/visualizer.h"
+
 
 /**
 Stanford Sentiment Treebank
@@ -140,11 +139,6 @@ namespace SST {
 
     extern const std::vector<std::string> label_names;
 
-    template<typename R>
-    json11::Json json_classification(const std::vector<std::string>& sentence, const Mat<R>& probs);
-
-    template<typename R>
-    json11::Json json_classification(const std::vector<std::string>& sentence, const Mat<R>& probs, const Mat<R>& word_weights);
 
     /**
     get word vocab

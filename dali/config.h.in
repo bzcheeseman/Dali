@@ -8,10 +8,10 @@
 #cmakedefine DALI_DATA_DIR        ${DALI_DATA_DIR}
 
 
-#cmakedefine MSHADOW_USE_CUDA     ${MSHADOW_USE_CUDA}
-#cmakedefine MSHADOW_USE_CBLAS    ${MSHADOW_USE_CBLAS}
-// when MKL is not used mshadow expects this to be 0
-#define      MSHADOW_USE_MKL      ${MSHADOW_USE_MKL}
+// when a library is not used mshadow expects this to be 0
+#define MSHADOW_USE_CUDA     ${MSHADOW_USE_CUDA}
+#define MSHADOW_USE_CBLAS    ${MSHADOW_USE_CBLAS}
+#define MSHADOW_USE_MKL      ${MSHADOW_USE_MKL}
 
 #cmakedefine GFLAGS_NAMESPACE     ${GFLAGS_NAMESPACE}
 #cmakedefine GPERFTOOLS_FOUND     ${GPERFTOOLS_FOUND}

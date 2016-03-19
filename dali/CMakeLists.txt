@@ -1,6 +1,10 @@
 set(DaliDir "${PROJECT_SOURCE_DIR}/dali")
 
-configure_file("${PROJECT_SOURCE_DIR}/dali/config.h.in" "${PROJECT_SOURCE_DIR}/dali/config.h")
+set(GENERATED_FILES_DIR ${CMAKE_BINARY_DIR}/generated)
+file(MAKE_DIRECTORY ${GENERATED_FILES_DIR})
+include_directories(${GENERATED_FILES_DIR})
+
+configure_file("${PROJECT_SOURCE_DIR}/dali/config.h.in" "${GENERATED_FILES_DIR}/dali/config.h")
 
 file(GLOB_RECURSE DaliHeaders           "${DaliDir}/*.h")
 file(GLOB_RECURSE DaliSources           "${DaliDir}/*.cpp")
@@ -84,7 +88,7 @@ if (WITH_CUDA)
 endif (WITH_CUDA)
 
 INSTALL(TARGETS dali DESTINATION lib)
-install(DIRECTORY ${DaliDir}  DESTINATION include
+install(DIRECTORY ${DaliDir} ${GENERATED_FILES_DIR}/dali  DESTINATION include
         FILES_MATCHING PATTERN "*.h")
 
 add_testsuite("test_dali" "dali" "${DaliTests}")

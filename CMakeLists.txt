@@ -5,6 +5,14 @@ project("Dali")
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
+# ensure correct GCC version
+set(GCC_MINIMUM_REQUIRED "4.9.2")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS ${GCC_MINIMUM_REQUIRED})
+    message(FATAL_ERROR "Mimimum rquired version of gcc is ${GCC_MINIMUM_REQUIRED}")
+  endif()
+endif()
+
 # REQUIRED PACKAGES
 find_package(ZLIB REQUIRED)
 find_package(Gflags REQUIRED)
@@ -92,7 +100,6 @@ endforeach(libvar)
 
 # Relative path in C++ are hard. Adding a macro:
 set(DALI_DATA_DIR "${PROJECT_SOURCE_DIR}/data")
-
 
 message("-- Build type: " ${CMAKE_BUILD_TYPE})
 if (APPLE)

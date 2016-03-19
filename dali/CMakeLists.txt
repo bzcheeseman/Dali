@@ -22,7 +22,7 @@ if (WITH_CUDA)
     # also remove sources from C compilation
 
     SET(OLD_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-    SET(CMAKE_CXX_FLAGS "-O3 -w -fPIC -std=c++11 ${CUDA_EXTRA_FLAGS}")
+    SET(CMAKE_CXX_FLAGS "-O3 -w -fPIC ${CUDA_EXTRA_FLAGS}")
 
     cuda_add_library(dali_cuda ${DaliCudaSources} STATIC)
     target_link_libraries(dali_cuda ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} openblas)
@@ -74,9 +74,13 @@ if (GPERFTOOLS_FOUND)
 endif (GPERFTOOLS_FOUND)
 
 if (WITH_CUDA)
-    target_link_libraries(dali "-Wl,--whole-archive")
-    target_link_libraries(dali dali_cuda)
-    target_link_libraries(dali "-Wl,--no-whole-archive")
+    IF (APPLE)
+        target_link_libraries(dali -force_load dali_cuda)
+    ELSE (APPLE)
+        target_link_libraries(dali "-Wl,--whole-archive")
+        target_link_libraries(dali dali_cuda)
+        target_link_libraries(dali "-Wl,--no-whole-archive")
+    ENDIF(APPLE)
 endif (WITH_CUDA)
 
 INSTALL(TARGETS dali DESTINATION lib)

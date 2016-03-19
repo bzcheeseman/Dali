@@ -1,5 +1,7 @@
 #include "dali/math/ThrustAllocator.h"
 
+#include "dali/math/memory_bank/MemoryBank.h"
+
 #ifdef DALI_USE_CUDA
     template<typename R>
     cached_allocator<R>::cached_allocator() {}

@@ -1,6 +1,6 @@
 #include "dali/math/memory_bank/MemoryBank.h"
-using std::vector;
 
+using std::vector;
 static std::mutex memory_mutex;
 
 template<typename R>

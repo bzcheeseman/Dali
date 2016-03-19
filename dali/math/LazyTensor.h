@@ -1,6 +1,7 @@
 #ifndef DALI_MAT_MATH_LAZY_TENSOR_H
 #define DALI_MAT_MATH_LAZY_TENSOR_H
 
+#include <cassert>
 #include <functional>
 #include <vector>
 

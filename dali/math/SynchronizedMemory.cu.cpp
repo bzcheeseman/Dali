@@ -1,5 +1,7 @@
 #include "dali/math/SynchronizedMemory.h"
 
+#include "dali/math/memory_bank/MemoryBank.h"
+
 #ifdef DALI_USE_CUDA
     Device default_preferred_device = DEVICE_GPU;
 #else

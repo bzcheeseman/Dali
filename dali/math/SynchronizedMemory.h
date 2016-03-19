@@ -10,7 +10,6 @@
 
 #include "dali/config.h"
 #include "dali/utils/core_utils.h"
-#include "dali/math/memory_bank/MemoryBank.h"
 
 /*
 Synchronized Memory

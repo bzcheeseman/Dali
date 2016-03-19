@@ -7,7 +7,10 @@
 #include <unordered_map>
 #include <cuckoohash_map.hh>
 
+#include "dali/config.h"
 #include "dali/math/memory_bank/MemoryBankInternal.h"
+
+
 
 template<typename R>
 struct memory_bank {

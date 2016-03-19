@@ -7,8 +7,6 @@
 #include <thrust/device_vector.h>
 #include <thrust/device_malloc_allocator.h>
 
-#include "dali/math/memory_bank/MemoryBank.h"
-
 // inspiration from
 // https://parallel-computing.pro/index.php/9-cuda/34-thrust-cuda-tip-reuse-temporary-buffers-across-transforms
 template<typename R>

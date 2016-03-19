@@ -8,10 +8,10 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 # REQUIRED PACKAGES
 find_package(ZLIB REQUIRED)
 find_package(Gflags REQUIRED)
+find_package(BLAS REQUIRED)
 
 # OPTIONAL PACKAGES
 find_package(GooglePerfTools)
-find_package(BLAS)
 find_package(MKL)
 find_package(GTest)
 find_package(CUDA)

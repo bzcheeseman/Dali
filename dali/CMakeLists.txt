@@ -76,6 +76,7 @@ endif (BLAS_FOUND AND MKL_FOUND)
 
 target_link_libraries(dali ${ZLIB_LIBRARIES}
                            ${BLAS_LIBRARIES}
+                           ${OpenBLAS_LIB}
                            ${MKL_LIBRARIES}
                            ${GFLAGS_LIBRARIES}
                            ${CMAKE_THREAD_LIBS_INIT})
@@ -95,7 +96,10 @@ if (WITH_CUDA)
 endif (WITH_CUDA)
 
 INSTALL(TARGETS dali DESTINATION lib)
-install(DIRECTORY ${DaliDir} ${GENERATED_FILES_DIR}/dali  DESTINATION include
+install(DIRECTORY ${DaliDir} ${PROJECT_SOURCE_DIR}/dali  DESTINATION include
         FILES_MATCHING PATTERN "*.h")
+# This potentially does not work on Apple, check out:
+# http://stackoverflow.com/questions/10765885/how-to-install-your-custom-cmake-find-module
+install(FILES ${PROJECT_SOURCE_DIR}/cmake/DaliConfig.cmake DESTINATION lib/dali/cmake)
 
 add_testsuite("test_dali" "dali" "${DaliTests}")

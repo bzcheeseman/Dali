@@ -8,6 +8,11 @@ set(PROJECT_VERSION_PATCH 0)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
+if( UNIX AND NOT APPLE )
+    execute_process(COMMAND /usr/bin/lsb_release -i -s
+                            OUTPUT_VARIABLE LINUX_DISTRO
+                            OUTPUT_STRIP_TRAILING_WHITESPACE)
+endif()
 
 ################################################################################
 ##                            COMPILER SETUP                                  ##
@@ -41,6 +46,9 @@ endif(CMAKE_BUILD_TYPE MATCHES "debug")
 ################################################################################
 ##                            PACKAGES                                        ##
 ################################################################################
+if( UNIX AND NOT APPLE AND LINUX_DISTRO STREQUAL Fedora)
+    set(WITH_BLAS "open")
+endif()
 
 # REQUIRED PACKAGES
 find_package(ZLIB REQUIRED)
@@ -48,6 +56,7 @@ find_package(Gflags REQUIRED)
 find_package(BLAS REQUIRED)
 
 # OPTIONAL PACKAGES
+find_package(OpenBlas)
 find_package(GooglePerfTools)
 find_package(MKL)
 find_package(GTest)
@@ -190,9 +199,6 @@ set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CP
 
 if( UNIX AND NOT APPLE )
     set(CPACK_PACKAGE_CONTACT "Szymon Sidor szymon.sidor@gmail.com")
-    execute_process(COMMAND /usr/bin/lsb_release -i -s
-                            OUTPUT_VARIABLE LINUX_DISTRO
-                            OUTPUT_STRIP_TRAILING_WHITESPACE)
     if(${LINUX_DISTRO} STREQUAL "Ubuntu")
         message("-- Package will be generated for Ubuntu Linux (DEB)")
     	set(CPACK_GENERATOR "DEB")

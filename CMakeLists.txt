@@ -171,22 +171,42 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/third_party/mshadow/mshadow DESTINATION 
 ################################################################################
 ##                            PACKAGE CREATION                                ##
 ################################################################################
-if (UNIX)
+set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
+set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
+set(CPACK_SYSTEM_NAME ${CMAKE_SYSTEM_NAME})
+set(CPACK_PACKAGE_DESCRIPTION " Buttery Smooth Automatic Differentiation in C++")
+
+# name package according to device support
+if (DALI_USE_CUDA)
+    set(CPACK_XPU "gpu")
+else (DALI_USE_CUDA)
+    set(CPACK_XPU "cpu")
+endif (DALI_USE_CUDA)
+
+set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}-${CPACK_XPU}")
+
+if( UNIX AND NOT APPLE )
+    set(CPACK_PACKAGE_CONTACT "Szymon Sidor szymon.sidor@gmail.com")
     execute_process(COMMAND /usr/bin/lsb_release -i -s
                             OUTPUT_VARIABLE LINUX_DISTRO
                             OUTPUT_STRIP_TRAILING_WHITESPACE)
     if(${LINUX_DISTRO} STREQUAL "Ubuntu")
         message("-- Package will be generated for Ubuntu Linux (DEB)")
     	set(CPACK_GENERATOR "DEB")
-    	set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
-    	set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
-    	set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
     	set(CPACK_DEBIAN_PACKAGE_DEPENDS "zlib1g-dev,libgflags2,libgflags-dev,build-essential,libblas-dev gcc-4.9,g++-4.9,cpp-4.9")
-    	set(CPACK_PACKAGE_DESCRIPTION " Buttery Smooth Automatic Differentiation in C++")
-    	set(CPACK_PACKAGE_CONTACT "Szymon Sidor szymon.sidor@gmail.com")
-
 	    include(CPack)
     elseif(LINUX_DISTRO STREQUAL "Fedora")
         message("-- Package will be generated for Fedora Linux (RPM)")
     endif()
+endif(UNIX)
+
+if( APPLE )
+    set(CPACK_PACKAGE_CONTACT "Jonathan Raiman jonathanraiman@gmail.com")
+    message("-- Package will be generated for Mac OSX")
+    SET(CPACK_GENERATOR "ZIP")
+    message(CPACK_PACKAGE_FILE_NAME " ${CPACK_PACKAGE_FILE_NAME}")
+    include(CPack)
 endif(UNIX)

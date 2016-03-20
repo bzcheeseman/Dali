@@ -27,7 +27,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 endif()
 
 
-message("-- Build type: " ${CMAKE_BUILD_TYPE})
 if (APPLE)
     set (CMAKE_CXX_COMPILER "clang++")
     set (MAYBE_SHARED "")
@@ -41,6 +40,11 @@ if(CMAKE_BUILD_TYPE MATCHES "debug")
 else(CMAKE_BUILD_TYPE MATCHES "debug")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -w -fPIC")
 endif(CMAKE_BUILD_TYPE MATCHES "debug")
+
+if (CMAKE_BUILD_TYPE MATCHES "")
+    set(CMAKE_BUILD_TYPE "default")
+endif (CMAKE_BUILD_TYPE MATCHES "")
+message("-- Build type: " ${CMAKE_BUILD_TYPE})
 
 
 ################################################################################
@@ -180,24 +184,30 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/third_party/mshadow/mshadow DESTINATION 
 ################################################################################
 ##                            PACKAGE CREATION                                ##
 ################################################################################
-set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
-set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
-set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
-set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
-set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
-set(CPACK_SYSTEM_NAME ${CMAKE_SYSTEM_NAME})
-set(CPACK_PACKAGE_DESCRIPTION " Buttery Smooth Automatic Differentiation in C++")
+set (CPACK_OUTPUT_CONFIG_FILE "${CMAKE_BINARY_DIR}/BundleConfig.cmake")
+set (CPACK_PACKAGE_NAME ${PROJECT_NAME})
+set (CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+set (CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+set (CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+set (CPACK_PACKAGE_VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
+set (CPACK_SYSTEM_NAME ${CMAKE_SYSTEM_NAME})
+set (CPACK_PACKAGE_DESCRIPTION "Buttery Smooth Automatic Differentiation in C++")
 
 # name package according to device support
 if (DALI_USE_CUDA)
     set(CPACK_XPU "gpu")
+    set(CPACK_FORMULA_CLASSNAME "DaliGpu")
+    set(CPACK_FORMULA_FNAME "dali-gpu")
 else (DALI_USE_CUDA)
     set(CPACK_XPU "cpu")
+    set(CPACK_FORMULA_CLASSNAME "DaliCpu")
+    set(CPACK_FORMULA_FNAME "dali-cpu")
 endif (DALI_USE_CUDA)
 
 set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}-${CPACK_XPU}")
 
-if( UNIX AND NOT APPLE )
+
+if ( UNIX AND NOT APPLE )
     set(CPACK_PACKAGE_CONTACT "Szymon Sidor szymon.sidor@gmail.com")
     if(${LINUX_DISTRO} STREQUAL "Ubuntu")
         message("-- Package will be generated for Ubuntu Linux (DEB)")
@@ -207,12 +217,30 @@ if( UNIX AND NOT APPLE )
     elseif(LINUX_DISTRO STREQUAL "Fedora")
         message("-- Package will be generated for Fedora Linux (RPM)")
     endif()
-endif(UNIX)
+endif (UNIX AND NOT APPLE)
 
-if( APPLE )
+if ( APPLE )
     set(CPACK_PACKAGE_CONTACT "Jonathan Raiman jonathanraiman@gmail.com")
     message("-- Package will be generated for Mac OSX")
     SET(CPACK_GENERATOR "ZIP")
-    message(CPACK_PACKAGE_FILE_NAME " ${CPACK_PACKAGE_FILE_NAME}")
+
+    add_custom_target(package_apple
+        COMMAND "${CMAKE_CPACK_COMMAND}"
+        "-C" "$<CONFIGURATION>" "--config" "${CMAKE_BINARY_DIR}/BundleConfig.cmake")
+
+    add_custom_command(
+        TARGET package_apple
+        POST_BUILD
+        COMMAND ${PROJECT_SOURCE_DIR}/scripts/homebrew_dali_template.sh
+                ${PROJECT_SOURCE_DIR}/misc/homebrew_dali_template.rb.in
+                ${CMAKE_BINARY_DIR}/${CPACK_FORMULA_FNAME}.rb
+                ${CMAKE_BINARY_DIR}/${CPACK_PACKAGE_FILE_NAME}.zip
+                "CPACK_PACKAGE_FILE_NAME:${CPACK_PACKAGE_FILE_NAME}"
+                "CPACK_PACKAGE_DESCRIPTION:${CPACK_PACKAGE_DESCRIPTION}"
+                "CPACK_PACKAGE_VERSION:${CPACK_PACKAGE_VERSION}"
+                "CPACK_FORMULA_CLASSNAME:${CPACK_FORMULA_CLASSNAME}"
+
+    )
     include(CPack)
-endif(UNIX)
+
+endif (APPLE)

@@ -74,9 +74,12 @@ if (BLAS_FOUND AND MKL_FOUND)
     add_dependencies(dali fix_libiomp5)
 endif (BLAS_FOUND AND MKL_FOUND)
 
+if (OpenBLAS_FOUND)
+    target_link_libraries(dali ${OpenBLAS_LIB}})
+endif (OpenBLAS_FOUND)
+
 target_link_libraries(dali ${ZLIB_LIBRARIES}
                            ${BLAS_LIBRARIES}
-                           ${OpenBLAS_LIB}
                            ${MKL_LIBRARIES}
                            ${GFLAGS_LIBRARIES}
                            ${CMAKE_THREAD_LIBS_INIT})

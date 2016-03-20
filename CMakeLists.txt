@@ -41,9 +41,9 @@ else(CMAKE_BUILD_TYPE MATCHES "debug")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -w -fPIC")
 endif(CMAKE_BUILD_TYPE MATCHES "debug")
 
-if (CMAKE_BUILD_TYPE MATCHES "")
+if (CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE "default")
-endif (CMAKE_BUILD_TYPE MATCHES "")
+endif (CMAKE_BUILD_TYPE STREQUAL "")
 message("-- Build type: " ${CMAKE_BUILD_TYPE})
 
 
@@ -104,7 +104,7 @@ endif (GPERFTOOLS_FOUND)
 
 # CUDA BEGINS HERE
 if (DEFINED WITH_CUDA)
-    message("WITH_CUDA ${WITH_CUDA}")
+    message("-- Cuda support: ${WITH_CUDA}")
 else()
     if (CUDA_FOUND STREQUAL TRUE)
         SET(WITH_CUDA TRUE)
@@ -157,8 +157,8 @@ if(GTEST_FOUND)
     add_custom_target(build_tests)
     add_dependencies(run_tests build_tests)
     ADD_CUSTOM_TARGET(run_tests_heapcheck
-        COMMAND ${PROJECT_SOURCE_DIR}/scripts/test_runner.sh ${CMAKE_BUILD_DIR}
-        WORKING_DIRECTORY ${CMAKE_BUILD_DIR})
+        COMMAND ${PROJECT_SOURCE_DIR}/scripts/test_runner.sh ${CMAKE_BINARY_DIR}
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 else(GTEST_FOUND)
     message("WARNING: GTESTS not found - install gtests to be able to run tests")
 endif(GTEST_FOUND)
@@ -184,7 +184,11 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/third_party/mshadow/mshadow DESTINATION 
 ################################################################################
 ##                            PACKAGE CREATION                                ##
 ################################################################################
+# Generic CPACK setttings
 set (CPACK_OUTPUT_CONFIG_FILE "${CMAKE_BINARY_DIR}/BundleConfig.cmake")
+set (CPACK_SOURCE_IGNORE_FILES "/data/;/docs/;/build/;/build2/;/build_2/;/build_cpu/;/.git/")
+message("CPACK_SOURCE_IGNORE_FILES " ${CPACK_SOURCE_IGNORE_FILES})
+
 set (CPACK_PACKAGE_NAME ${PROJECT_NAME})
 set (CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
 set (CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
@@ -192,6 +196,12 @@ set (CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
 set (CPACK_PACKAGE_VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
 set (CPACK_SYSTEM_NAME ${CMAKE_SYSTEM_NAME})
 set (CPACK_PACKAGE_DESCRIPTION "Buttery Smooth Automatic Differentiation in C++")
+
+if (X86_64_SUPPORTED)
+    set(CPACK_RPM_PACKAGE_ARCHITECTURE "x86_64")
+else (X86_64_SUPPORTED)
+    set(CPACK_RPM_PACKAGE_ARCHITECTURE "i386")
+endif (X86_64_SUPPORTED)
 
 # name package according to device support
 if (DALI_USE_CUDA)
@@ -206,17 +216,27 @@ endif (DALI_USE_CUDA)
 
 set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}-${CPACK_XPU}")
 
+list(APPEND CPACK_GENERATOR "TGZ")
 
 if ( UNIX AND NOT APPLE )
     set(CPACK_PACKAGE_CONTACT "Szymon Sidor szymon.sidor@gmail.com")
-    if(${LINUX_DISTRO} STREQUAL "Ubuntu")
-        message("-- Package will be generated for Ubuntu Linux (DEB)")
-    	set(CPACK_GENERATOR "DEB")
-    	set(CPACK_DEBIAN_PACKAGE_DEPENDS "zlib1g-dev,libgflags2,libgflags-dev,build-essential,libblas-dev gcc-4.9,g++-4.9,cpp-4.9")
-	    include(CPack)
-    elseif(LINUX_DISTRO STREQUAL "Fedora")
-        message("-- Package will be generated for Fedora Linux (RPM)")
-    endif()
+    message("-- Package will be generated for Linux (TGZ,DEB,RPM)")
+    # DEBIAN
+    list(APPEND CPACK_GENERATOR "DEB")
+	set(CPACK_DEBIAN_PACKAGE_DEPENDS "zlib1g-dev,libgflags2,libgflags-dev,build-essential,libblas-dev gcc-4.9,g++-4.9,cpp-4.9")
+    # FEDORA
+    list(APPEND CPACK_GENERATOR "RPM")
+    set(CPACK_RPM_PACKAGE_NAME ${PROJECT_NAME})
+    set(CPACK_RPM_PACKAGE_SUMMARY ${CPACK_PACKAGE_DESCRIPTION})
+    SET(CPACK_RPM_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION}")
+    SET(CPACK_RPM_PACKAGE_RELEASE "1")
+    SET(CPACK_RPM_PACKAGE_LICENSE "MIT")
+    SET(CPACK_RPM_PACKAGE_GROUP "Development/Libraries")  # FROM: https://fedoraproject.org/wiki/RPMGroups
+    SET(CPACK_RPM_PACKAGE_VENDOR "Dali Inc.")
+    # TODO(szymon): add fedora dependencies
+    #set(CPACK_RPM_PACKAGE_REQUIRES "python >= 2.5.0, cmake >= 2.8")
+
+    include(CPack)
 endif (UNIX AND NOT APPLE)
 
 if ( APPLE )
@@ -242,5 +262,4 @@ if ( APPLE )
 
     )
     include(CPack)
-
 endif (APPLE)

@@ -10,6 +10,9 @@ class @CPACK_FORMULA_CLASSNAME@ < Formula
     sha256 "@CMAKE_PACKAGE_SHA@"
     bottle :unneeded
 
+    depends_on "gflags"
+    depends_on "openblas"
+
     def install
         prefix.install Dir['*']
     end
@@ -28,5 +31,3 @@ class @CPACK_FORMULA_CLASSNAME@ < Formula
         EOS
     end
 end
-
-

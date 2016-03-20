@@ -98,6 +98,22 @@ examples/language_model --flagfile ../flags/language_model_simple.flags
 
 ## Installation
 
+### Homebrew
+
+With Cuda:
+
+```bash
+brew install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-gpu.rb
+```
+
+Without:
+
+```bash
+brew install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-cpu.rb
+```
+
+### From source
+
 Get **GFlags**, **HiRedis**, **Clang**, and **protobuf**, then head to the `build` folder and use `cmake` to configure and create the appropriate Makefiles.
 
 You need the latest version of [Clang](http://llvm.org/releases/download.html) (>= 3.6.0).

@@ -107,24 +107,26 @@ brew install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dal
 brew install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-cpu.rb
 ```
 
-# Fedora Linux (for 22 or newer replace yum with dnf)
+### Fedora Linux
+
+For 22 or newer replace `yum` with `dnf`.
 
 ```bash
 # with cuda
-brew install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-gpu.rpm
+sudo yum install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-gpu.rpm
 # without cuda
-brew install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-cpu.rpm
+sudo yum install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-cpu.rpm
 ```
 
-# Ubuntu (14.04 or newer)
+### Ubuntu (14.04 or newer)
 
 ... and maybe some other debians.
 
 ```bash
 # with cuda
-brew install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-gpu.deb
+sudo apt-get install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-gpu.deb
 # without cuda
-brew install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-cpu.deb
+sudo apt-get install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-cpu.deb
 ```
 
 ### From source

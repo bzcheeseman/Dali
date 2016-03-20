@@ -28,8 +28,15 @@ if (WITH_CUDA)
     SET(OLD_CXX_FLAGS ${CMAKE_CXX_FLAGS})
     SET(CMAKE_CXX_FLAGS "-O3 -w -fPIC ${CUDA_EXTRA_FLAGS}")
 
-    cuda_add_library(dali_cuda ${DaliCudaSources} STATIC)
+    cuda_add_library(dali_cuda STATIC ${DaliCudaSources})
     target_link_libraries(dali_cuda ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} openblas)
+
+    # Apple has trouble performing static linking between dali and dali_cuda
+    # to make the task easier we do the linking, while apple reaps the profits
+    # thanks.
+    IF (APPLE)
+        INSTALL(TARGETS dali_cuda DESTINATION lib)
+    ENDIF (APPLE)
 
     # message("${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY}")
 

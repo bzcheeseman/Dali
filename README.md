@@ -98,18 +98,33 @@ examples/language_model --flagfile ../flags/language_model_simple.flags
 
 ## Installation
 
-### Homebrew
-
-With Cuda:
+### Homebrew (MAC OS X)
 
 ```bash
+# with cuda
 brew install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-gpu.rb
+# without cuda
+brew install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-cpu.rb
 ```
 
-Without:
+# Fedora Linux (for 22 or newer replace yum with dnf)
 
 ```bash
-brew install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-cpu.rb
+# with cuda
+brew install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-gpu.rpm
+# without cuda
+brew install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-cpu.rpm
+```
+
+# Ubuntu (14.04 or newer)
+
+... and maybe some other debians.
+
+```bash
+# with cuda
+brew install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-gpu.deb
+# without cuda
+brew install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-cpu.deb
 ```
 
 ### From source

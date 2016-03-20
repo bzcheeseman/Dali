@@ -185,7 +185,6 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/third_party/mshadow/mshadow DESTINATION 
 ##                            PACKAGE CREATION                                ##
 ################################################################################
 # Generic CPACK setttings
-set (CPACK_OUTPUT_CONFIG_FILE "${CMAKE_BINARY_DIR}/BundleConfig.cmake")
 set (CPACK_SOURCE_IGNORE_FILES "/data/;/docs/;/build/;/build2/;/build_2/;/build_cpu/;/.git/")
 message("CPACK_SOURCE_IGNORE_FILES " ${CPACK_SOURCE_IGNORE_FILES})
 
@@ -196,12 +195,6 @@ set (CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
 set (CPACK_PACKAGE_VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
 set (CPACK_SYSTEM_NAME ${CMAKE_SYSTEM_NAME})
 set (CPACK_PACKAGE_DESCRIPTION "Buttery Smooth Automatic Differentiation in C++")
-
-if (X86_64_SUPPORTED)
-    set(CPACK_RPM_PACKAGE_ARCHITECTURE "x86_64")
-else (X86_64_SUPPORTED)
-    set(CPACK_RPM_PACKAGE_ARCHITECTURE "i386")
-endif (X86_64_SUPPORTED)
 
 # name package according to device support
 if (DALI_USE_CUDA)
@@ -214,13 +207,19 @@ else (DALI_USE_CUDA)
     set(CPACK_FORMULA_FNAME "dali-cpu")
 endif (DALI_USE_CUDA)
 
-set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}-${CPACK_XPU}")
 
 list(APPEND CPACK_GENERATOR "TGZ")
 
-if ( UNIX AND NOT APPLE )
-    set(CPACK_PACKAGE_CONTACT "Szymon Sidor szymon.sidor@gmail.com")
+if ( UNIX AND NOT APPLE AND NOT WIN32 )
     message("-- Package will be generated for Linux (TGZ,DEB,RPM)")
+    if (CMAKE_SIZEOF_VOID_P MATCHES "8")
+        set(CPACK_ARCHITECTURE "x86_64")
+    else()
+        set(CPACK_ARCHITECTURE "i386")
+    endif()
+    set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}-${CPACK_ARCHITECTURE}-${CPACK_XPU}")
+
+    set(CPACK_PACKAGE_CONTACT "Szymon Sidor szymon.sidor@gmail.com")
     # DEBIAN
     list(APPEND CPACK_GENERATOR "DEB")
 	set(CPACK_DEBIAN_PACKAGE_DEPENDS "zlib1g-dev,libgflags2,libgflags-dev,build-essential,libblas-dev gcc-4.9,g++-4.9,cpp-4.9")
@@ -240,13 +239,14 @@ if ( UNIX AND NOT APPLE )
 endif (UNIX AND NOT APPLE)
 
 if ( APPLE )
-    set(CPACK_PACKAGE_CONTACT "Jonathan Raiman jonathanraiman@gmail.com")
     message("-- Package will be generated for Mac OSX")
+    set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}-${CPACK_XPU}")
+    set(CPACK_PACKAGE_CONTACT "Jonathan Raiman jonathanraiman@gmail.com")
     SET(CPACK_GENERATOR "ZIP")
 
     add_custom_target(package_apple
         COMMAND "${CMAKE_CPACK_COMMAND}"
-        "-C" "$<CONFIGURATION>" "--config" "${CMAKE_BINARY_DIR}/BundleConfig.cmake")
+    "-C" "$<CONFIGURATION>" "--config" "${CMAKE_BINARY_DIR}/CpackConfig.cmake")
 
     add_custom_command(
         TARGET package_apple

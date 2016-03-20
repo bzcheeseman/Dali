@@ -75,7 +75,7 @@ if (BLAS_FOUND AND MKL_FOUND)
 endif (BLAS_FOUND AND MKL_FOUND)
 
 if (OpenBLAS_FOUND)
-    target_link_libraries(dali ${OpenBLAS_LIB}})
+    target_link_libraries(dali ${OpenBLAS_LIB})
 endif (OpenBLAS_FOUND)
 
 target_link_libraries(dali ${ZLIB_LIBRARIES}

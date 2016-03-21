@@ -33,6 +33,7 @@ endif (OpenBLAS_FOUND)
 find_package(Gflags REQUIRED)
 
 list(APPEND DALI_LIBRARIES ${GFLAGS_LIBRARIES})
+list(APPEND DALI_LIBRARIES "gflags")
 
 # find cuda
 find_package(CUDA)

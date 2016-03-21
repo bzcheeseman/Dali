@@ -38,8 +38,6 @@ if (WITH_CUDA)
         INSTALL(TARGETS dali_cuda DESTINATION lib)
     ENDIF (APPLE)
 
-    # message("${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY}")
-
     SET(CMAKE_CXX_FLAGS ${OLD_CXX_FLAGS})
     SET(CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
 endif(WITH_CUDA)
@@ -99,7 +97,7 @@ if (WITH_CUDA)
 endif (WITH_CUDA)
 
 INSTALL(TARGETS dali DESTINATION lib)
-install(DIRECTORY ${DaliDir} ${PROJECT_SOURCE_DIR}/dali  DESTINATION include
+install(DIRECTORY ${DaliDir} ${GENERATED_FILES_DIR}/dali DESTINATION include
         FILES_MATCHING PATTERN "*.h")
 # This potentially does not work on Apple, check out:
 # http://stackoverflow.com/questions/10765885/how-to-install-your-custom-cmake-find-module

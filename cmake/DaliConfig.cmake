@@ -30,7 +30,7 @@ endif(CUDA_FOUND STREQUAL TRUE)
 find_library(DALI_CORE_LIBRARIES dali)
 if(DALI_CORE_LIBRARIES)
     list(APPEND DALI_LIBRARIES ${DALI_CORE_LIBRARIES})
-    message("-- Found Dali: " ${DALI_CORE_LIBRARIES})
+    message(STATUS "Found Dali: " ${DALI_CORE_LIBRARIES})
     set(DALI_FOUND TRUE)
 
     IF (APPLE)
@@ -62,12 +62,22 @@ else(DALI_CORE_LIBRARIES)
     else()
         # Neither QUIETLY nor REQUIRED, use no priority which emits a message
         # but continues configuration and allows generation.
-        message("-- Failed to find Dali   " ${REASON_MSG} ${ARGN})
+        message(WARNING "Failed to find Dali   " ${REASON_MSG} ${ARGN})
     endif()
 endif(DALI_CORE_LIBRARIES)
 
 find_path(DALI_CONFIG_PATH "dali/config.h" ${CMAKE_INCLUDE_PATH})
-list(APPEND DALI_INCLUDE_DIRS ${DALI_CONFIG_PATH})
+if (NOT DALI_CONFIG_PATH)
+    if (Dali_FIND_REQUIRED)
+        message(FATAL_ERROR "${Red} Failed to find Dali headers  ${ColorReset}" ${REASON_MSG} ${ARGN})
+    else()
+        message(WARNING "Failed to find Dali headers" ${REASON_MSG} ${ARGN})
+    endif(Dali_FIND_REQUIRED)
+
+    set(DALI_FOUND FALSE)
+else()
+    list(APPEND DALI_INCLUDE_DIRS ${DALI_CONFIG_PATH})
+endif(NOT DALI_CONFIG_PATH)
 
 if(DALI_FOUND)
     MARK_AS_ADVANCED(DALI_INCLUDE_DIRS DALI_LIBRARIES)

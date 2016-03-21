@@ -44,7 +44,7 @@ endif(CMAKE_BUILD_TYPE MATCHES "debug")
 if (CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE "default")
 endif (CMAKE_BUILD_TYPE STREQUAL "")
-message("-- Build type: " ${CMAKE_BUILD_TYPE})
+message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
 
 
 ################################################################################
@@ -67,7 +67,7 @@ find_package(GTest)
 find_package(CUDA)
 
 if (NOT GPERFTOOLS_FOUND)
-    message("WARNING: consider installing gperftools for better multithreaded performance.\n    > brew install gperftools")
+    message(WARNING "consider installing gperftools for better multithreaded performance.\n    > brew install gperftools")
 endif(NOT GPERFTOOLS_FOUND)
 
 
@@ -104,13 +104,13 @@ endif (GPERFTOOLS_FOUND)
 
 # CUDA BEGINS HERE
 if (DEFINED WITH_CUDA)
-    message("-- Cuda support: ${WITH_CUDA}")
+    message(STATUS "Cuda support: ${WITH_CUDA}")
 else()
     if (CUDA_FOUND STREQUAL TRUE)
         SET(WITH_CUDA TRUE)
     else()
         SET(WITH_CUDA FALSE)
-        message("CUDA not found - did you know that Dali has GPU support?")
+        message(WARNING "CUDA not found - did you know that Dali has GPU support?")
     endif()
 endif(DEFINED WITH_CUDA)
 
@@ -160,7 +160,7 @@ if(GTEST_FOUND)
         COMMAND ${PROJECT_SOURCE_DIR}/scripts/test_runner.sh ${CMAKE_BINARY_DIR}
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 else(GTEST_FOUND)
-    message("WARNING: GTESTS not found - install gtests to be able to run tests")
+    message(WARNING "GTESTS not found - install gtests to be able to run tests")
 endif(GTEST_FOUND)
 
 
@@ -186,7 +186,6 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/third_party/mshadow/mshadow DESTINATION 
 ################################################################################
 # Generic CPACK setttings
 set (CPACK_SOURCE_IGNORE_FILES "/data/;/docs/;/build/;/build2/;/build_2/;/build_cpu/;/.git/")
-message("CPACK_SOURCE_IGNORE_FILES " ${CPACK_SOURCE_IGNORE_FILES})
 
 set (CPACK_PACKAGE_NAME ${PROJECT_NAME})
 set (CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
@@ -211,7 +210,7 @@ endif (DALI_USE_CUDA)
 list(APPEND CPACK_GENERATOR "TGZ")
 
 if ( UNIX AND NOT APPLE AND NOT WIN32 )
-    message("-- Package will be generated for Linux (TGZ,DEB,RPM)")
+    message(STATUS "Package will be generated for Linux (TGZ,DEB,RPM)")
     if (CMAKE_SIZEOF_VOID_P MATCHES "8")
         set(CPACK_ARCHITECTURE "x86_64")
     else()
@@ -236,10 +235,10 @@ if ( UNIX AND NOT APPLE AND NOT WIN32 )
     #set(CPACK_RPM_PACKAGE_REQUIRES "python >= 2.5.0, cmake >= 2.8")
 
     include(CPack)
-endif (UNIX AND NOT APPLE)
+endif (UNIX AND NOT APPLE AND NOT WIN32 )
 
 if ( APPLE )
-    message("-- Package will be generated for Mac OSX")
+    message(STATUS "Package will be generated for Mac OSX")
     set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}-${CPACK_XPU}")
     set(CPACK_PACKAGE_CONTACT "Jonathan Raiman jonathanraiman@gmail.com")
     SET(CPACK_GENERATOR "ZIP")

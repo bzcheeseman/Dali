@@ -11,6 +11,26 @@
 /**** SHOULD COMPUTE GPU-land **/
 
 template<typename R>
+void clear_cpu() {
+    memory_bank<R>::clear_cpu();
+}
+template void clear_cpu<float>();
+template void clear_cpu<double>();
+template void clear_cpu<int>();
+
+#ifdef DALI_USE_CUDA
+    template<typename R>
+    void clear_gpu() {
+        memory_bank<R>::clear_gpu();
+    }
+    template void clear_gpu<float>();
+    template void clear_gpu<double>();
+    template void clear_gpu<int>();
+#endif
+
+
+
+template<typename R>
 bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<R>*>& sts) {
 
 #ifdef DALI_USE_CUDA

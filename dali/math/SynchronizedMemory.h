@@ -47,6 +47,13 @@ bool should_compute_on_gpu(const std::vector<const SynchronizedMemory<R>*>& sts)
 // Set the default device to GPU or CPU based on build type
 extern Device default_preferred_device;
 
+// allow control over clearing the cpu and gpu caches
+template<typename R> void clear_cpu();
+
+#ifdef DALI_USE_CUDA
+    template<typename R> void clear_gpu();
+#endif
+
 template<typename R>
 class SynchronizedMemory {
     public:

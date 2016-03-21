@@ -17,15 +17,29 @@ if(NOT WIN32)
   set(Red         "${Esc}[31m")
 endif(NOT WIN32)
 
+find_package(BLAS REQUIRED)
+list(APPEND DALI_LIBRARIES ${BLAS_LIBRARIES})
+
 # find zlib
 find_package(ZLIB REQUIRED)
 list(APPEND DALI_LIBRARIES ${ZLIB_LIBRARIES})
+
+find_package(OpenBLAS)
+
+if (OpenBLAS_FOUND)
+    list(APPEND DALI_LIBRARIES ${OpenBLAS_LIB})
+endif (OpenBLAS_FOUND)
+
+find_package(Gflags REQUIRED)
+
+list(APPEND DALI_LIBRARIES ${GFLAGS_LIBRARIES})
 
 # find cuda
 find_package(CUDA)
 if(CUDA_FOUND STREQUAL TRUE)
     list(APPEND DALI_INCLUDE_DIRS ${CUDA_INCLUDE_DIRS})
 endif(CUDA_FOUND STREQUAL TRUE)
+
 
 find_library(DALI_CORE_LIBRARIES dali)
 if(DALI_CORE_LIBRARIES)
@@ -51,7 +65,6 @@ if(DALI_CORE_LIBRARIES)
         ENDIF (DALI_CUDA_LIBRARIES)
 
         # BLAS not found:
-        list(APPEND DALI_LIBRARIES ${BLAS_LIBRARIES})
     ENDIF (APPLE)
 
 else(DALI_CORE_LIBRARIES)

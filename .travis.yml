@@ -33,6 +33,7 @@ notifications:
     email:
         recipients:
             - szymon.sidor@gmail.com
+            - jonathanraiman@gmail.com
         on_success: change
         on_failure: always
     slack:

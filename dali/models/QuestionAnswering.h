@@ -174,7 +174,7 @@ class AveragingModel {
             Mat<R> error(1,1);
             for (int aidx=0; aidx < answers.size(); ++aidx) {
                 if (aidx == correct_answer) continue;
-                error = error + MatOps<R>::max(scores[aidx] - scores[correct_answer] + margin, 0.0);
+                error = error + MatOps<R>::eltmax(scores[aidx] - scores[correct_answer] + margin, 0.0);
             }
 
             return error;
@@ -509,7 +509,7 @@ class GatedLstmsModel {
             for (int aidx=0; aidx < answers.size(); ++aidx) {
                 if (aidx == correct_answer) continue;
                 margin_loss = margin_loss +
-                        MatOps<R>::max(scores[aidx] - scores[correct_answer] + ERROR_MARGIN, 0.0);
+                        MatOps<R>::eltmax(scores[aidx] - scores[correct_answer] + ERROR_MARGIN, 0.0);
             }
 
             return margin_loss + total_fact_sparsity * 0.01 + total_word_sparsity * 0.0001;

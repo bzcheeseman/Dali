@@ -29,7 +29,10 @@ if (WITH_CUDA)
     SET(CMAKE_CXX_FLAGS "-O3 -w -fPIC ${CUDA_EXTRA_FLAGS}")
 
     cuda_add_library(dali_cuda STATIC ${DaliCudaSources})
-    target_link_libraries(dali_cuda ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} openblas)
+    target_link_libraries(dali_cuda ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_CUBLAS_LIBRARIES})
+    if (OpenBLAS_FOUND)
+        target_link_libraries(dali_cuda ${OpenBLAS_LIB})
+    endif(OpenBLAS_FOUND)
 
     # Apple has trouble performing static linking between dali and dali_cuda
     # to make the task easier we do the linking, while apple reaps the profits
@@ -72,15 +75,12 @@ if (BLAS_FOUND AND MKL_FOUND)
     add_dependencies(dali fix_libiomp5)
 endif (BLAS_FOUND AND MKL_FOUND)
 
-if (OpenBLAS_FOUND)
-    target_link_libraries(dali ${OpenBLAS_LIB})
-endif (OpenBLAS_FOUND)
-
 target_link_libraries(dali ${ZLIB_LIBRARIES}
                            ${BLAS_LIBRARIES}
                            ${MKL_LIBRARIES}
                            ${GFLAGS_LIBRARIES}
-                           ${CMAKE_THREAD_LIBS_INIT})
+                           ${CMAKE_THREAD_LIBS_INIT}
+                           ${OpenBLAS_LIB})
 
 if (GPERFTOOLS_FOUND)
     target_link_libraries(dali ${GPERFTOOLS_LIBRARIES})

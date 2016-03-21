@@ -355,7 +355,7 @@ TEST_F(MatrixTests, broadcast_col_vector) {
     }
 }
 
-TEST_F(MatrixTests, load_test) {
+TEST(MatrixIOTests, load_test) {
     Mat<R> arange(utils::dir_join({STR(DALI_DATA_DIR),    "tests", "arange12.npy"}));
     Mat<R> arange_fortran(utils::dir_join({STR(DALI_DATA_DIR), "tests", "arange12.fortran.npy"}));
     ASSERT_TRUE(MatOps<R>::equals(arange, arange_fortran));
@@ -364,7 +364,7 @@ TEST_F(MatrixTests, load_test) {
     }
 }
 
-TEST_F(MatrixTests, save_load_test) {
+TEST(MatrixIOTests, save_load_test) {
     // load arange, then save it to a new file
     Mat<R> arange(utils::dir_join({STR(DALI_DATA_DIR),    "tests", "arange12.npy"}));
     arange.npy_save(utils::dir_join({STR(DALI_DATA_DIR),  "tests", "arange12.temp.npy"}));

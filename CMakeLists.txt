@@ -26,7 +26,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   endif()
 endif()
 
-
 if (APPLE)
     set (CMAKE_CXX_COMPILER "clang++")
     set (MAYBE_SHARED "")
@@ -74,7 +73,7 @@ endif(NOT GPERFTOOLS_FOUND)
 # CLEANING UP AFTER FINDERS
 # some library list variables are FALSE by default if libs are not found,
 # but it is much more useful to keep it empty.
-set(LIBVARS_TO_FIX MKL_LIBRARIES BLAS_LIBRARIES GPERFTOOLS_TCMALLOC_AND_PROFILER)
+set(LIBVARS_TO_FIX MKL_LIBRARIES BLAS_LIBRARIES GPERFTOOLS_TCMALLOC_AND_PROFILER OpenBLAS_LIB)
 foreach(libvar ${LIBVARS_TO_FIX})
     if (NOT ${libvar})
         set(${libvar} "")

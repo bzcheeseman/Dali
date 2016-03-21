@@ -1,7 +1,7 @@
 # Dali
 
 [![Build Status](https://travis-ci.org/JonathanRaiman/Dali.svg?branch=master)](https://travis-ci.org/JonathanRaiman/Dali)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
 
 An automatic differentiation library that uses reverse-mode differentation (backpropagation) to differentiate recurrent neural networks, or most mathematical expressions through control flow, while loops, recursion.
 

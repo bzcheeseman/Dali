@@ -185,7 +185,6 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/third_party/mshadow/mshadow DESTINATION 
 ##                            PACKAGE CREATION                                ##
 ################################################################################
 # Generic CPACK setttings
-set (CPACK_SOURCE_IGNORE_FILES "/data/;/docs/;/build/;/build2/;/build_2/;/build_cpu/;/.git/")
 
 set (CPACK_PACKAGE_NAME ${PROJECT_NAME})
 set (CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
@@ -207,10 +206,12 @@ else (DALI_USE_CUDA)
 endif (DALI_USE_CUDA)
 
 
-list(APPEND CPACK_GENERATOR "TGZ")
+set (CPACK_SOURCE_GENERATOR "TGZ")
+set (CPACK_SOURCE_PACKAGE_FILE_NAME ${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION})
+set (CPACK_SOURCE_IGNORE_FILES "/data/;/docs/;/build/;/build2/;/build_2/;/build_cpu/;/.git/")
 
 if ( UNIX AND NOT APPLE AND NOT WIN32 )
-    message(STATUS "Package will be generated for Linux (TGZ,DEB,RPM)")
+    message(STATUS "Package will be generated for Linux (DEB,RPM)")
     if (CMAKE_SIZEOF_VOID_P MATCHES "8")
         set(CPACK_ARCHITECTURE "x86_64")
     else()

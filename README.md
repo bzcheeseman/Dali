@@ -39,9 +39,9 @@ sudo yum install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0
 
 ```bash
 # with cuda
-URL='https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-gpu.deb'; FILE=`mktemp`; wget "$URL" -qO $FILE && sudo dpkg -i $FILE; rm $FILE
+URL='https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-gpu.deb'; FILE=`mktemp`; wget "$URL" -O $FILE && sudo dpkg -i $FILE; rm $FILE
 # without cuda
-URL='https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-cpu.deb'; FILE=`mktemp`; wget "$URL" -qO $FILE && sudo dpkg -i $FILE; rm $FILE
+URL='https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-cpu.deb'; FILE=`mktemp`; wget "$URL" -O $FILE && sudo dpkg -i $FILE; rm $FILE
 ```
 
 

@@ -213,15 +213,18 @@ if ( UNIX AND NOT APPLE AND NOT WIN32 )
     message(STATUS "Package will be generated for Linux (DEB,RPM)")
     if (CMAKE_SIZEOF_VOID_P MATCHES "8")
         set(CPACK_ARCHITECTURE "x86_64")
+        set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
     else()
         set(CPACK_ARCHITECTURE "i386")
+        set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "i386")
     endif()
     set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}-${CPACK_ARCHITECTURE}-${CPACK_XPU}")
 
     set(CPACK_PACKAGE_CONTACT "Szymon Sidor szymon.sidor@gmail.com")
     # DEBIAN
     list(APPEND CPACK_GENERATOR "DEB")
-	set(CPACK_DEBIAN_PACKAGE_DEPENDS "zlib1g-dev,libgflags2,libgflags-dev,build-essential,libblas-dev gcc-4.9,g++-4.9,cpp-4.9")
+	set(CPACK_DEBIAN_PACKAGE_DEPENDS "zlib1g-dev,libgflags2,libgflags-dev,build-essential,libblas-dev,gcc-4.9,g++-4.9,cpp-4.9")
+
     # FEDORA
     list(APPEND CPACK_GENERATOR "RPM")
     set(CPACK_RPM_PACKAGE_NAME ${PROJECT_NAME})

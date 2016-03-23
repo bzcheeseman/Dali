@@ -78,7 +78,6 @@ endif (BLAS_FOUND AND MKL_FOUND)
 target_link_libraries(dali ${ZLIB_LIBRARIES}
                            ${BLAS_LIBRARIES}
                            ${MKL_LIBRARIES}
-                           ${GFLAGS_LIBRARIES}
                            ${CMAKE_THREAD_LIBS_INIT}
                            ${OpenBLAS_LIB})
 
@@ -102,7 +101,6 @@ install(DIRECTORY ${DaliDir} ${GENERATED_FILES_DIR}/dali DESTINATION include
 # This potentially does not work on Apple, check out:
 # http://stackoverflow.com/questions/10765885/how-to-install-your-custom-cmake-find-module
 install(FILES ${PROJECT_SOURCE_DIR}/cmake/DaliConfig.cmake   DESTINATION lib/dali/cmake)
-install(FILES ${PROJECT_SOURCE_DIR}/cmake/FindGflags.cmake   DESTINATION lib/gflags/cmake   RENAME GflagsConfig.cmake)
 install(FILES ${PROJECT_SOURCE_DIR}/cmake/FindOpenBlas.cmake DESTINATION lib/openblas/cmake RENAME OpenBlasConfig.cmake)
 
 add_testsuite("test_dali" "dali" "${DaliTests}")

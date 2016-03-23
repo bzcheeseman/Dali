@@ -55,7 +55,6 @@ endif()
 
 # REQUIRED PACKAGES
 find_package(ZLIB REQUIRED)
-find_package(Gflags REQUIRED)
 find_package(BLAS REQUIRED)
 
 # OPTIONAL PACKAGES
@@ -90,7 +89,6 @@ INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/third_party/mshadow)
 include_directories(${MKL_INCLUDE_DIR})
 include_directories(${PROJECT_SOURCE_DIR})
 
-include_directories(${GFLAGS_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR}/third_party/libcuckoo/src)
 
 if (GPERFTOOLS_FOUND)
@@ -223,7 +221,7 @@ if ( UNIX AND NOT APPLE AND NOT WIN32 )
     set(CPACK_PACKAGE_CONTACT "Szymon Sidor szymon.sidor@gmail.com")
     # DEBIAN
     list(APPEND CPACK_GENERATOR "DEB")
-	set(CPACK_DEBIAN_PACKAGE_DEPENDS "zlib1g-dev,libgflags2,libgflags-dev,build-essential,libblas-dev,gcc-4.9,g++-4.9,cpp-4.9")
+	set(CPACK_DEBIAN_PACKAGE_DEPENDS "zlib1g-dev,build-essential,libblas-dev,gcc-4.9,g++-4.9,cpp-4.9")
 
     # FEDORA
     list(APPEND CPACK_GENERATOR "RPM")

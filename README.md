@@ -1,3 +1,5 @@
+*If you are new to Dali, you are most likely to enjoy the [Python version](https://github.com/JonathanRaiman/dali-cython).*
+
 # Dali
 
 [![Build Status](https://travis-ci.org/JonathanRaiman/Dali.svg?branch=master)](https://travis-ci.org/JonathanRaiman/Dali)

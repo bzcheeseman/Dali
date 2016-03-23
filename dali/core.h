@@ -10,5 +10,4 @@
 #include "dali/execution/SequenceProbability.h"
 #include "dali/execution/BeamSearch.h"
 #include "dali/tensor/Solver.h"
-#include "dali/models/shallow_copy.h"
 #endif

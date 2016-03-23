@@ -15,6 +15,7 @@ MEDIUM PRIORITY:
 -> Improve NLP-Utils. Agree on common set of practices for all the examples.
 -> visualizer - web frontend for error visualization (60% done)
 -> remove gflags from core dali
+-> dali cmake finder should conform to standard notation, the automagic finder that finds the dependencies + dali should still be there, but under different variable name.
 
 LOWER_PRIORITY:
 -> add performance test (e.g. num words processed in Language Model on GPU ~ 20,000 words/second)

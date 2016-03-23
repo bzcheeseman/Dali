@@ -6,9 +6,6 @@
 
 #define SOLVER_MAT_DEFAULT_STEP_SIZE_H 0.035
 
-DECLARE_string(solver);
-DECLARE_double(learning_rate);
-
 namespace Solver {
     template<typename R>
     using cache_key_t = void*;

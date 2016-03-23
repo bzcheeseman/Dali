@@ -5,8 +5,7 @@
 using std::vector;
 #define PARAM_KEY_FOR_LOOKUP_TABLE &MAT(param)
 
-DEFINE_string(solver, "adadelta", "What solver to use (adadelta, sgd, adam, rmsprop, adagrad)");
-DEFINE_double(learning_rate, 0.01, "Learning rate for SGD and Adagrad.");
+
 
 namespace Solver {
     bool nan_protection = true;

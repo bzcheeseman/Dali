@@ -86,6 +86,7 @@ set(MSHADOW_USE_MKL 0)
 
 # INCLUDES
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/third_party/mshadow)
+INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/third_party/variant)
 include_directories(${MKL_INCLUDE_DIR})
 include_directories(${PROJECT_SOURCE_DIR})
 
@@ -174,8 +175,9 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/dali)
 # THOSE HEADERS ARE REQUIRED FOR DALI HEADERS TO WORK, SO WE AUTOMATICALLY INSTALL THEM.
 # install mshadow
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/third_party/mshadow/mshadow DESTINATION include
-        FILES_MATCHING PATTERN "*.h"
-    PATTERN "*.cuh")
+        FILES_MATCHING PATTERN "*.h" PATTERN "*.cuh")
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/third_party/variant DESTINATION include
+        FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
 
 
 ################################################################################

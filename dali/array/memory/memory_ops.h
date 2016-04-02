@@ -4,6 +4,8 @@
 #include "dali/config.h"
 
 #include <cstdlib>
+#include <map>
+#include <string>
 
 
 namespace memory_ops {
@@ -14,6 +16,10 @@ namespace memory_ops {
         DEVICE_GPU=2,
 #endif
     };
+
+    // allows conversion between a device enum
+    // and its printable name (e.g. cpu, gpu)
+    extern std::map<int, std::string> device_to_name;
 
     struct DevicePtr {
         Device device;

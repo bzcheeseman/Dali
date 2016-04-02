@@ -12,12 +12,20 @@ typedef uint8_t alloc_type;
 namespace memory_ops {
     DevicePtr::DevicePtr(Device _device, void* _ptr) : device(_device), ptr(_ptr) {}
 
-    #ifdef DALI_USE_CUDA
+    std::map<int,std::string> device_to_name = {
+        {DEVICE_CPU,    "cpu"},
+#ifdef DALI_USE_CUDA
+        {DEVICE_GPU,    "gpu"},
+#endif
+    };
+
+
+#ifdef DALI_USE_CUDA
         mshadow::Tensor<mshadow::gpu, 2, alloc_type> dummy_gpu(void* ptr, int total_memory, int inner_dimension) {
             return mshadow::Tensor<mshadow::gpu, 2, alloc_type>((alloc_type*)ptr, mshadow::Shape2(
                     total_memory / inner_dimension, inner_dimension));
         }
-    #endif
+#endif
 
     mshadow::Tensor<mshadow::cpu, 2, alloc_type> dummy_cpu(void* ptr, int total_memory, int inner_dimension) {
          return mshadow::Tensor<mshadow::cpu, 2, alloc_type>((alloc_type*)ptr, mshadow::Shape2(
@@ -104,12 +112,12 @@ namespace memory_ops {
 
     }
 
-    #ifdef DALI_USE_CUDA
+#ifdef DALI_USE_CUDA
         size_t cuda_available_memory() {
             size_t free_memory;
             size_t total_memory;
             cudaMemGetInfo(&free_memory, &total_memory);
             return free_memory;
         }
-    #endif
+#endif
 }

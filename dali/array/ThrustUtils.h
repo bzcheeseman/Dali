@@ -1,5 +1,5 @@
-#ifndef DALI_MATH_THRUST_UTILS_H
-#define DALI_MATH_THRUST_UTILS_H
+#ifndef DALI_ARRAY_THRUST_UTILS_H
+#define DALI_ARRAY_THRUST_UTILS_H
 
 #include "dali/config.h"
 

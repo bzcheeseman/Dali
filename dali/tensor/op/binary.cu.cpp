@@ -2,8 +2,8 @@
 
 #include "dali/tensor/Mat.h"
 #include "dali/tensor/__MatMacros__.h"
-#include "dali/math/TensorOps.h"
-#include "dali/math/LazyTensor.h"
+#include "dali/array/TensorOps.h"
+#include "dali/array/LazyTensor.h"
 #include "dali/utils/core_utils.h"
 
 using utils::MS;

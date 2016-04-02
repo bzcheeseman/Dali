@@ -1,7 +1,7 @@
-#include "dali/math/ThrustAllocator.h"
+#include "dali/array/ThrustAllocator.h"
 
-#include "dali/math/memory/memory_ops.h"
-#include "dali/math/memory/memory_bank.h"
+#include "dali/array/memory/memory_ops.h"
+#include "dali/array/memory/memory_bank.h"
 
 #ifdef DALI_USE_CUDA
     template<typename R>

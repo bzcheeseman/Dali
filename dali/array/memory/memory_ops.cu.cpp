@@ -1,4 +1,4 @@
-#include "dali/math/memory/memory_ops.h"
+#include "dali/array/memory/memory_ops.h"
 
 #include <mshadow/tensor.h>
 

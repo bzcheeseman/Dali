@@ -11,7 +11,7 @@
 #include <ostream>
 #include <unordered_map>
 
-#include "dali/math/TensorInternal.h"
+#include "dali/array/TensorInternal.h"
 #include "dali/tensor/MatOps.h"
 #include "dali/tensor/Weights.h"
 #include "dali/tensor/Tape.h"

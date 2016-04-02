@@ -1,8 +1,8 @@
-#ifndef DALI_MATH_LAZY_TRANSPOSE_SOFTMAX_H
-#define DALI_MATH_LAZY_TRANSPOSE_SOFTMAX_H
+#ifndef DALI_ARRAY_LAZY_TRANSPOSE_SOFTMAX_H
+#define DALI_ARRAY_LAZY_TRANSPOSE_SOFTMAX_H
 
 #include "mshadow/tensor.h"
-#include "dali/math/KernelizedSoftmax.h"
+#include "dali/array/KernelizedSoftmax.h"
 /*
 Mshadow Lazy Softmax
 --------------------

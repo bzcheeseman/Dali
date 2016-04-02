@@ -1,8 +1,8 @@
 #include "dali/tensor/op/composite.h"
 
 #include "dali/tensor/__MatMacros__.h"
-#include "dali/math/TensorOps.h"
-#include "dali/math/LazyTensor.h"
+#include "dali/array/TensorOps.h"
+#include "dali/array/LazyTensor.h"
 #include "dali/tensor/Weights.h"
 
 using std::vector;

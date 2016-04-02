@@ -1,14 +1,14 @@
-#ifndef DALI_MATH_TENSOR_ACCESSOR_H
-#define DALI_MATH_TENSOR_ACCESSOR_H
+#ifndef DALI_ARRAY_TENSOR_ACCESSOR_H
+#define DALI_ARRAY_TENSOR_ACCESSOR_H
 
 #include "dali/config.h"
 
 #include <mshadow/tensor.h>
 
-#include "dali/math/TensorInternal.h"
-#include "dali/math/ThrustUtils.h"
-#include "dali/math/memory_bank/MemoryBank.h"
-#include "dali/math/ThrustAllocator.h"
+#include "dali/array/TensorInternal.h"
+#include "dali/array/ThrustUtils.h"
+#include "dali/array/memory_bank/MemoryBank.h"
+#include "dali/array/ThrustAllocator.h"
 
 namespace TensorOps {
     using mshadow::gpu;

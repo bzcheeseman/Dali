@@ -1,9 +1,9 @@
 #include "dali/tensor/op/convolution.h"
 
 #include "dali/tensor/__MatMacros__.h"
-#include "dali/math/TensorOps.h"
-#include "dali/math/LazyTensor.h"
-#include "dali/math/TensorConvolution.h"
+#include "dali/array/TensorOps.h"
+#include "dali/array/LazyTensor.h"
+#include "dali/array/TensorConvolution.h"
 
 using utils::assert2;
 using utils::MS;

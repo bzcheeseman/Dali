@@ -1,9 +1,9 @@
 #include <mshadow/tensor.h>
 
 #include "dali/config.h"
-#include "dali/math/TensorInternal.h"
-#include "dali/math/ThrustUtils.h"
-#include "dali/math/memory_bank/MemoryBank.h"
+#include "dali/array/TensorInternal.h"
+#include "dali/array/ThrustUtils.h"
+#include "dali/array/memory_bank/MemoryBank.h"
 
 namespace TensorOps {
     using mshadow::gpu;

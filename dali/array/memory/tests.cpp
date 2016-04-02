@@ -4,8 +4,8 @@
 #include <gtest/gtest.h>
 
 #include "dali/config.h"
-#include "dali/math/memory/memory_ops.h"
-#include "dali/math/memory/memory_bank.h"
+#include "dali/array/memory/memory_ops.h"
+#include "dali/array/memory/memory_bank.h"
 
 using std::vector;
 using std::chrono::milliseconds;

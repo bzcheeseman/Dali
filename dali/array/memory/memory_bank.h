@@ -1,5 +1,5 @@
-#ifndef DALI_MATH_MEMORY_MEMORY_BANK_H
-#define DALI_MATH_MEMORY_MEMORY_BANK_H
+#ifndef DALI_ARRAY_MEMORY_MEMORY_BANK_H
+#define DALI_ARRAY_MEMORY_MEMORY_BANK_H
 
 #include <atomic>
 #include <vector>
@@ -7,7 +7,7 @@
 #include <unordered_map>
 
 #include "dali/config.h"
-#include "dali/math/memory/memory_ops.h"
+#include "dali/array/memory/memory_ops.h"
 
 
 

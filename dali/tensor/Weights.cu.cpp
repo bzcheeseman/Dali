@@ -1,7 +1,7 @@
 #include "dali/tensor/Weights.h"
 
-#include "dali/math/TensorInternal.h"
-#include "dali/math/TensorRandom.h"
+#include "dali/array/TensorInternal.h"
+#include "dali/array/TensorRandom.h"
 
 template<typename R>
 typename weights<R>::initializer_t weights<R>::empty() {

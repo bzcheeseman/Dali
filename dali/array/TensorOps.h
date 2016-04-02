@@ -7,11 +7,11 @@
 #include <math.h>
 #include <functional>
 
-#include "dali/math/TensorInternal.h"
-#include "dali/math/MshadowIntegerOps.h"
-#include "dali/math/TensorFunctions.h"
-#include "dali/math/TensorAccessor.h"
-#include "dali/math/ThrustUtils.h"
+#include "dali/array/TensorInternal.h"
+#include "dali/array/MshadowIntegerOps.h"
+#include "dali/array/TensorFunctions.h"
+#include "dali/array/TensorAccessor.h"
+#include "dali/array/ThrustUtils.h"
 
 
 /**

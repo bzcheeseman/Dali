@@ -10,9 +10,9 @@
 #include "mshadow/extension/reduceto1d.h"
 #include "mshadow/tensor.h"
 
-#include "dali/math/LazySoftmax.h"
-#include "dali/math/LazyUtils.h"
-#include "dali/math/LazyDot.h"
+#include "dali/array/LazySoftmax.h"
+#include "dali/array/LazyUtils.h"
+#include "dali/array/LazyDot.h"
 
 template<typename DType, int dimension>
 class TensorInternal;

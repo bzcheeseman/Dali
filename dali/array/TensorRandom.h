@@ -1,5 +1,5 @@
-#ifndef DALI_MATH_TENSOR_RANDOM_H
-#define DALI_MATH_TENSOR_RANDOM_H
+#ifndef DALI_ARRAY_TENSOR_RANDOM_H
+#define DALI_ARRAY_TENSOR_RANDOM_H
 
 #include "dali/config.h"
 #include <mshadow/tensor.h>
@@ -7,9 +7,9 @@
 #include <random>
 
 #include "dali/utils/random.h"
-#include "dali/math/TensorFunctions.h"
-#include "dali/math/TensorOps.h"
-#include "dali/math/ThrustUtils.h"
+#include "dali/array/TensorFunctions.h"
+#include "dali/array/TensorOps.h"
+#include "dali/array/ThrustUtils.h"
 
 
 namespace TensorOps {

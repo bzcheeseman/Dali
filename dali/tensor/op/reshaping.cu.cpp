@@ -1,8 +1,8 @@
 #include "dali/tensor/op/reshaping.h"
 
 #include "dali/tensor/__MatMacros__.h"
-#include "dali/math/TensorOps.h"
-#include "dali/math/LazyTensor.h"
+#include "dali/array/TensorOps.h"
+#include "dali/array/LazyTensor.h"
 #include "dali/utils/assert2.h"
 
 #define DONT_COMPILE

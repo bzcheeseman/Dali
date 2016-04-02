@@ -1,5 +1,5 @@
-#ifndef DALI_MATH_LAZY_DOT_H
-#define DALI_MATH_LAZY_DOT_H
+#ifndef DALI_ARRAY_LAZY_DOT_H
+#define DALI_ARRAY_LAZY_DOT_H
 
 #include "dali/config.h"
 

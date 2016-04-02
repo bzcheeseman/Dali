@@ -1,5 +1,5 @@
-#ifndef DALI_MATH_MSHADOW_INT_OPS_H
-#define DALI_MATH_MSHADOW_INT_OPS_H
+#ifndef DALI_ARRAY_MSHADOW_INT_OPS_H
+#define DALI_ARRAY_MSHADOW_INT_OPS_H
 
 #include <mshadow/tensor.h>
 #include <stdexcept>

@@ -1,7 +1,7 @@
-#ifndef DALI_MATH_THRUST_SOFTMAX_TRANSPOSE_H
-#define DALI_MATH_THRUST_SOFTMAX_TRANSPOSE_H
-#include "dali/math/TensorOps.h"
-#include "dali/math/memory_bank/MemoryBank.h"
+#ifndef DALI_ARRAY_THRUST_SOFTMAX_TRANSPOSE_H
+#define DALI_ARRAY_THRUST_SOFTMAX_TRANSPOSE_H
+#include "dali/array/TensorOps.h"
+#include "dali/array/memory_bank/MemoryBank.h"
 #include "dali/config.h"
 
 #ifdef DALI_USE_CUDA

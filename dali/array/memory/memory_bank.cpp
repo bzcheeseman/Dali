@@ -1,4 +1,4 @@
-#include "dali/math/memory/memory_bank.h"
+#include "dali/array/memory/memory_bank.h"
 
 #include <cuckoohash_map.hh>
 

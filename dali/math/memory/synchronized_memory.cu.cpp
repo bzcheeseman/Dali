@@ -1,3 +1,4 @@
+#ifdef DONT_COMPILE
 #include "dali/math/SynchronizedMemory.h"
 
 #include "dali/math/memory_bank/MemoryBank.h"
@@ -295,3 +296,6 @@ R* SynchronizedMemory<R>::overwrite_gpu_data() {
 template class SynchronizedMemory<float>;
 template class SynchronizedMemory<int>;
 template class SynchronizedMemory<double>;
+
+
+#endif

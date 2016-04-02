@@ -15,7 +15,7 @@ file(GLOB_RECURSE DaliTests             "${DaliDir}/tests.cpp")
 
 
 
-set(excluded_folders "${DaliDir}/tensor;${DaliDir}/data_processing;${DaliDir}/execution;${DaliDir}/layers;${DaliDir}/math")
+set(excluded_folders "${DaliDir}/tensor;${DaliDir}/data_processing;${DaliDir}/execution;${DaliDir}/layers")
 
 foreach(excluded_folder ${excluded_folders})
     file(GLOB_RECURSE ExcludedDaliHeaders           "${excluded_folder}/*.h")

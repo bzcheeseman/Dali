@@ -1,6 +1,7 @@
 #include "dali/math/ThrustAllocator.h"
 
-#include "dali/math/memory_bank/MemoryBank.h"
+#include "dali/math/memory/memory_ops.h"
+#include "dali/math/memory/memory_bank.h"
 
 #ifdef DALI_USE_CUDA
     template<typename R>
@@ -11,19 +12,20 @@
 
     template<typename R>
     typename cached_allocator<R>::pointer cached_allocator<R>::allocate(size_type num_bytes) {
-        auto ptr = memory_bank<float>::allocate_gpu(
-            num_bytes * sizeof(R) / sizeof(float),
-            num_bytes * sizeof(R) / sizeof(float)
+        auto device_ptr = memory_bank::allocate(
+            memory_ops::DEVICE_GPU,
+            num_bytes * sizeof(R),
+            num_bytes * sizeof(R)
         );
-        return thrust::device_pointer_cast((R*)ptr);
+        return thrust::device_pointer_cast((R*)device_ptr.ptr);
     }
 
     template<typename R>
     void cached_allocator<R>::deallocate(pointer ptr, size_type n) {
-        memory_bank<float>::deposit_gpu(
-            n * sizeof(R) / sizeof(float),
-            n * sizeof(R) / sizeof(float),
-            (float*)thrust::raw_pointer_cast(ptr)
+        memory_bank::deposit(
+            memory_ops::DevicePtr(memory_ops::DEVICE_GPU, thrust::raw_pointer_cast(ptr)),
+            n * sizeof(R),
+            n * sizeof(R)
         );
     }
 

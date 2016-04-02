@@ -1,3 +1,5 @@
+#ifdef DONT_COMPILE
+
 #ifndef DALI_MAT_MATH_SYNCHRONIZED_MEMORY_H
 #define DALI_MAT_MATH_SYNCHRONIZED_MEMORY_H
 
@@ -124,5 +126,7 @@ class SynchronizedMemory {
 #endif
 };
 
+
+#endif
 
 #endif

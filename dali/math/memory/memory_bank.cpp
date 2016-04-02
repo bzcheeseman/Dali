@@ -1,105 +1,82 @@
-#include "dali/math/memory_bank/MemoryBank.h"
+#include "dali/math/memory/memory_bank.h"
 
+#include <cuckoohash_map.hh>
+
+#include "dali/config.h"
+#include "dali/utils/assert2.h"
+
+using memory_ops::Device;
+using memory_ops::DevicePtr;
 using std::vector;
-static std::mutex memory_mutex;
+using utils::assert2;
 
-template<typename R>
-cuckoohash_map<unsigned long long,std::vector<R*>> memory_bank<R>::cpu_memory_bank(100000);
+namespace memory_bank {
+    const int INITIAL_HASHMAP_SIZE = 100000;
+    struct DeviceBank {
+        DeviceBank() : blobs(INITIAL_HASHMAP_SIZE), num_allocations(0), total_memory(0) {}
+        cuckoohash_map<unsigned long long, std::vector<void*>> blobs;
+        std::atomic<unsigned long long> num_allocations;
+        std::atomic<unsigned long long> total_memory;
+    };
 
+    DeviceBank cpu_bank;
+    DeviceBank gpu_bank;
 
-template<typename R>
-void memory_bank<R>::deposit_cpu(int amount, int inner_dimension, R* ptr) {
-    // make sure there is only one person
-    // at a time in the vault to prevent
-    // robberies
-    /*cpu_memory_bank.upsert(amount, [ptr](std::vector<R*>& deposit_box) {
-        deposit_box.emplace_back(ptr);
-    }, {ptr});*/
-    memory_operations<R>::free_cpu_memory(ptr, amount, inner_dimension);
-}
-
-template<typename R>
-R* memory_bank<R>::allocate_cpu(int amount, int inner_dimension) {
-    /*R* memory = NULL;
-    bool success = cpu_memory_bank.update_fn(amount, [&memory](std::vector<R*>& deposit_box) {
-        if (!deposit_box.empty()) {
-            memory = deposit_box.back();
-            deposit_box.pop_back();
+    DeviceBank& get_bank(Device device) {
+        if (device == memory_ops::DEVICE_CPU) {
+            return cpu_bank;
         }
-    });
-    if (memory != NULL) {
-        return memory;
-    }*/
-    num_cpu_allocations++;
-    total_cpu_memory += amount;
-    return memory_operations<R>::allocate_cpu_memory(amount, inner_dimension);
-}
-
-template<typename R>
-void memory_bank<R>::clear_cpu() {
-    for (auto it = cpu_memory_bank.cbegin(); !it.is_end(); it++) {
-        auto& ptrs = it->second;
-        for (auto ptr : ptrs) {
-            memory_operations<R>::free_cpu_memory(ptr, it->first, 1);
-        }
-        total_cpu_memory -= (it->first) * ptrs.size();
-    }
-    cpu_memory_bank.clear();
-}
-
-template<typename R>
-std::atomic<long long> memory_bank<R>::num_cpu_allocations(0);
-
-template<typename R>
-std::atomic<long long> memory_bank<R>::total_cpu_memory(0);
-
 #ifdef DALI_USE_CUDA
-    template<typename R>
-    void memory_bank<R>::clear_gpu() {
-        for (auto it = gpu_memory_bank.cbegin(); !it.is_end(); it++) {
-            auto& ptrs = it->second;
-            for (auto ptr : ptrs) {
-                memory_operations<R>::free_gpu_memory(ptr, it->first, 1);
-            }
-            total_gpu_memory -= (it->first) * ptrs.size();
+        else if (device == memory_ops::DEVICE_GPU) {
+            return gpu_bank;
         }
-        gpu_memory_bank.clear();
+#endif
+        else {
+            assert2(false, "Wrong device passed to Device enum");
+        }
     }
 
-    template<typename R>
-    cuckoohash_map<unsigned long long,std::vector<R*>> memory_bank<R>::gpu_memory_bank(100000);
 
-    template<typename R>
-    std::atomic<long long> memory_bank<R>::num_gpu_allocations(0);
-
-    template<typename R>
-    std::atomic<long long> memory_bank<R>::total_gpu_memory(0);
-
-    template<typename R>
-    void memory_bank<R>::deposit_gpu(int amount, int inner_dimension, R* ptr) {
-        gpu_memory_bank.upsert(amount, [ptr](std::vector<R*>& deposit_box) {
-            deposit_box.emplace_back(ptr);
-        }, {ptr});
+    void deposit(DevicePtr dev_ptr, int amount, int inner_dimension) {
+        get_bank(dev_ptr.device).blobs.upsert(amount, [dev_ptr](std::vector<void*>& deposit_box) {
+            deposit_box.emplace_back(dev_ptr.ptr);
+        }, {dev_ptr.ptr});
     }
 
-    template<typename R>
-    R* memory_bank<R>::allocate_gpu(int amount, int inner_dimension) {
-        R* memory = NULL;
-        bool success = gpu_memory_bank.update_fn(amount, [&memory](std::vector<R*>& deposit_box) {
+    DevicePtr allocate(Device device, int amount, int inner_dimension) {
+        void* memory = NULL;
+        auto& bank = get_bank(device);
+        bool success = bank.blobs.update_fn(amount, [&memory](std::vector<void*>& deposit_box) {
             if (!deposit_box.empty()) {
                 memory = deposit_box.back();
                 deposit_box.pop_back();
             }
         });
         if (memory != NULL) {
-            return memory;
+            return DevicePtr(device, memory);
+        } else {
+            bank.num_allocations++;
+            bank.total_memory += amount;
+            return memory_ops::allocate(device, amount, inner_dimension);
         }
-        num_gpu_allocations++;
-        total_gpu_memory += amount;
-        return memory_operations<R>::allocate_gpu_memory(amount, inner_dimension);
     }
-#endif
 
-template class memory_bank<float>;
-template class memory_bank<double>;
-template class memory_bank<int>;
+    void clear(Device device) {
+        auto& bank = get_bank(device);
+
+        vector<int> amounts_to_clear;
+        for (auto it = bank.blobs.cbegin(); !it.is_end(); it++) {
+            amounts_to_clear.push_back(it->first);
+        }
+        for (auto amount: amounts_to_clear) {
+            bank.blobs.update_fn(amount, [&bank, device, amount](std::vector<void*>& deposit_box) {
+                for (auto ptr: deposit_box) {
+                    memory_ops::free(DevicePtr(device, ptr), amount, 1);
+                }
+                bank.total_memory -= amount * deposit_box.size();
+                deposit_box.clear();
+            });
+        }
+    }
+
+}

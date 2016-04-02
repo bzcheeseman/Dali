@@ -1,6 +1,7 @@
 #include "core_utils.h"
 #include "dali/utils/ThreadPool.h"
-#include "dali/tensor/Mat.h"
+// #include "dali/tensor/Mat.h"
+#include "dali/utils/vocab.h"
 
 using std::vector;
 using std::string;
@@ -188,8 +189,8 @@ namespace utils {
     }
 
     template vector<int> concatenate(initializer_list<vector<int>>);
-    template vector<Mat<float>> concatenate(std::initializer_list<vector<Mat<float>>>);
-    template vector<Mat<double>> concatenate(std::initializer_list<vector<Mat<double>>>);
+    // template vector<Mat<float>> concatenate(std::initializer_list<vector<Mat<float>>>);
+    // template vector<Mat<double>> concatenate(std::initializer_list<vector<Mat<double>>>);
 
     template<typename IN, typename OUT>
     vector<OUT> fmap(vector<IN> in_list, function<OUT(IN)> f) {
@@ -847,8 +848,8 @@ namespace utils {
     template vector<size_t> reversed(const vector<size_t>& vec);
     template vector<string> reversed(const vector<string>& vec);
     template vector<vector<string>> reversed(const vector<vector<string>>& vec);
-    template vector<Mat<float>> reversed(const vector<Mat<float>>& vec);
-    template vector<Mat<double>> reversed(const vector<Mat<double>>& vec);
+    // template vector<Mat<float>> reversed(const vector<Mat<float>>& vec);
+    // template vector<Mat<double>> reversed(const vector<Mat<double>>& vec);
 
 
     std::unordered_map<std::string, std::atomic<int>> Timer::timers;

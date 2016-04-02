@@ -11,6 +11,40 @@ file(GLOB_RECURSE DaliSources           "${DaliDir}/*.cpp")
 file(GLOB_RECURSE DaliTemplates         "${DaliDir}/*.cpp.template")
 file(GLOB_RECURSE DaliMaybeCudaSources  "${DaliDir}/*.cu.cpp")
 file(GLOB_RECURSE DaliCudaSources       "${DaliDir}/*.cu")
+file(GLOB_RECURSE DaliTests             "${DaliDir}/tests.cpp")
+
+
+
+set(excluded_folders "${DaliDir}/tensor;${DaliDir}/data_processing;${DaliDir}/execution;${DaliDir}/layers;${DaliDir}/math")
+
+foreach(excluded_folder ${excluded_folders})
+    file(GLOB_RECURSE ExcludedDaliHeaders           "${excluded_folder}/*.h")
+    file(GLOB_RECURSE ExcludedDaliSources           "${excluded_folder}/*.cpp")
+    file(GLOB_RECURSE ExcludedDaliTemplates         "${excluded_folder}/*.cpp.template")
+    file(GLOB_RECURSE ExcludedDaliMaybeCudaSources  "${excluded_folder}/*.cu.cpp")
+    file(GLOB_RECURSE ExcludedDaliCudaSources       "${excluded_folder}/*.cu")
+    file(GLOB_RECURSE ExcludedDaliTests             "${excluded_folder}/tests.cpp")
+
+    foreach(file ${ExcludedDaliHeaders})
+        list(REMOVE_ITEM DaliHeaders ${file})
+    endforeach()
+    foreach(file ${ExcludedDaliSources})
+        list(REMOVE_ITEM DaliSources ${file})
+    endforeach()
+    foreach(file ${ExcludedDaliTemplates})
+        list(REMOVE_ITEM DaliTemplates ${file})
+    endforeach()
+    foreach(file ${ExcludedDaliMaybeCudaSources})
+        list(REMOVE_ITEM DaliMaybeCudaSources ${file})
+    endforeach()
+    foreach(file ${ExcludedDaliCudaSources})
+        list(REMOVE_ITEM DaliCudaSources ${file})
+    endforeach()
+    foreach(file ${ExcludedDaliTests})
+        list(REMOVE_ITEM DaliTests ${file})
+    endforeach()
+endforeach()
+
 
 if (WITH_CUDA)
     foreach(DaliCudaFile ${DaliMaybeCudaSources})
@@ -48,7 +82,6 @@ endif(WITH_CUDA)
 # todo: move file with add_custom_command
 
 # Remove tests from compilation
-file(GLOB_RECURSE DaliTests "${DaliDir}/tests.cpp")
 list(REMOVE_ITEM DaliSources ${DaliTests} ${TESTS_MAIN})
 foreach(header ${DaliTemplates})
     message(STATUS "Template instantiator will run for ${header}")

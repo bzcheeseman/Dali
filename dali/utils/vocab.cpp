@@ -1,4 +1,5 @@
 #include "vocab.h"
+
 #include "dali/utils/core_utils.h"
 #include <sstream>
 
@@ -8,6 +9,8 @@ using std::stringstream;
 
 const char* utils::end_symbol          = "**END**";
 const char* utils::unknown_word_symbol = "███████";
+
+#ifdef DONT_COMPILE
 
 namespace utils {
 	typename Vocab::ind_t Vocab::operator[](const string& word) const {
@@ -174,3 +177,5 @@ namespace utils {
         return result;
     }
 }
+
+#endif

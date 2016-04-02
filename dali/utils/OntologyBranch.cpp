@@ -1,3 +1,5 @@
+#ifdef DONT_COMPILE
+
 #include "dali/utils/OntologyBranch.h"
 #include "dali/utils/core_utils.h"
 
@@ -334,3 +336,5 @@ std::size_t std::hash<utils::OntologyBranch>::operator()(const utils::OntologyBr
     seed ^= str_hasher(k.name) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     return seed;
 }
+
+#endif // DONT_COMPILE

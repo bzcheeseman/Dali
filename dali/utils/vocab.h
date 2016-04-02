@@ -1,14 +1,18 @@
+
+
 #ifndef DALI_UTILS_VOCAB_H
 #define DALI_UTILS_VOCAB_H
 
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include "dali/tensor/Index.h"
+// #include "dali/tensor/Index.h"   <---- UNCOMMENT_ME
 
 namespace utils {
     extern const char* end_symbol;
     extern const char* unknown_word_symbol;
+} // remove me
+#ifdef DONT_COMPILE
 
     class Vocab {
         private:
@@ -52,3 +56,5 @@ namespace utils {
 }
 
 #endif
+
+#endif // DONT_COMPILE

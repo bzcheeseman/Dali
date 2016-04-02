@@ -1,3 +1,6 @@
+#ifdef DONT_COMPILE
+
+
 #ifndef ONTOLOGY_BRANCH_DALI_H
 #define ONTOLOGY_BRANCH_DALI_H
 
@@ -113,3 +116,6 @@ std::ostream& operator<<(std::ostream&, const utils::OntologyBranch&);
 std::ostream& operator<<(std::ostream&, const std::unordered_map<std::string, std::shared_ptr<utils::OntologyBranch>>&);
 
 #endif
+
+
+#endif // DONT_COMPILE

@@ -114,8 +114,6 @@ function is:
 error.grad();
 ```
 
-`error` needs to be a scalar (a 1x1 matrix in this implementation) to use `grad()`.
-Step 2 is to call `graph::backward()` and go through every operation executed so far
-in reverse using `graph::tape`'s record. When we run through the operations backward
-we update the gradients of each intermediary object until `A` and `B`'s `dw`s get
-updated. Those are now [the gradients we we're looking for](http://youtu.be/DIzAaY2Jm-s?t=3m12s).
+1. Call `grad()` on the variable `error` to define `J = sum(grad)` as the objective function to minimize.
+2. Run `graph::backward()` to backpropagate the gradient of J with respect to every intermediary variable.
+3. `A.dw()` and `B.dw()` now contain the gradient of J with respect to `A` and `B` respectively.

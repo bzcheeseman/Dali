@@ -3,80 +3,90 @@
 #include <cuckoohash_map.hh>
 
 #include "dali/config.h"
+#include "dali/array/memory/device.h"
 #include "dali/utils/assert2.h"
+#include "dali/utils/core_utils.h"
 
-using memory_ops::Device;
-using memory_ops::DevicePtr;
+using memory::Device;
+using memory::DevicePtr;
 using std::vector;
 using utils::assert2;
 
-namespace memory_bank {
-    const int INITIAL_HASHMAP_SIZE = 100000;
-    struct DeviceBank {
-        DeviceBank() : blobs(INITIAL_HASHMAP_SIZE), num_allocations(0), total_memory(0) {}
-        cuckoohash_map<unsigned long long, std::vector<void*>> blobs;
-        std::atomic<unsigned long long> num_allocations;
-        std::atomic<unsigned long long> total_memory;
-    };
+namespace memory {
+    namespace bank {
+        const int INITIAL_HASHMAP_SIZE = 100000;
+        const int MAX_GPU_DEVICES = 16;
 
-    DeviceBank cpu_bank;
-    DeviceBank gpu_bank;
-
-    DeviceBank& get_bank(Device device) {
-        if (device == memory_ops::DEVICE_CPU) {
-            return cpu_bank;
-        }
-#ifdef DALI_USE_CUDA
-        else if (device == memory_ops::DEVICE_GPU) {
-            return gpu_bank;
-        }
-#endif
-        else {
-            assert2(false, "Wrong device passed to Device enum");
-        }
-    }
+        struct DeviceBank {
+            DeviceBank() : blobs(INITIAL_HASHMAP_SIZE), num_allocations(0), total_memory(0) {}
+            cuckoohash_map<unsigned long long, std::vector<void*>> blobs;
+            std::atomic<unsigned long long> num_allocations;
+            std::atomic<unsigned long long> total_memory;
+        };
 
 
-    void deposit(DevicePtr dev_ptr, int amount, int inner_dimension) {
-        get_bank(dev_ptr.device).blobs.upsert(amount, [dev_ptr](std::vector<void*>& deposit_box) {
-            deposit_box.emplace_back(dev_ptr.ptr);
-        }, {dev_ptr.ptr});
-    }
+        DeviceBank cpu_bank;
+    #ifdef DALI_USE_CUDA
+        DeviceBank gpu_bank[MAX_GPU_DEVICES];
+    #endif
 
-    DevicePtr allocate(Device device, int amount, int inner_dimension) {
-        void* memory = NULL;
-        auto& bank = get_bank(device);
-        bool success = bank.blobs.update_fn(amount, [&memory](std::vector<void*>& deposit_box) {
-            if (!deposit_box.empty()) {
-                memory = deposit_box.back();
-                deposit_box.pop_back();
+        DeviceBank& get_bank(Device device) {
+            if (device.is_cpu()) {
+                return cpu_bank;
             }
-        });
-        if (memory != NULL) {
-            return DevicePtr(device, memory);
-        } else {
-            bank.num_allocations++;
-            bank.total_memory += amount;
-            return memory_ops::allocate(device, amount, inner_dimension);
+    #ifdef DALI_USE_CUDA
+            else if (device.is_gpu()) {
+                ASSERT2(0 <= device.number && device.number < MAX_GPU_DEVICES,
+                        utils::MS() << "GPU number must be between 0 and " << MAX_GPU_DEVICES - 1 << ".");
+                return gpu_bank[device.number];
+            }
+    #endif
+            else {
+                assert2(false, "Wrong device passed to Device enum");
+            }
         }
-    }
 
-    void clear(Device device) {
-        auto& bank = get_bank(device);
 
-        vector<int> amounts_to_clear;
-        for (auto it = bank.blobs.cbegin(); !it.is_end(); it++) {
-            amounts_to_clear.push_back(it->first);
+        void deposit(DevicePtr dev_ptr, int amount, int inner_dimension) {
+            get_bank(dev_ptr.device).blobs.upsert(amount, [dev_ptr](std::vector<void*>& deposit_box) {
+                deposit_box.emplace_back(dev_ptr.ptr);
+            }, {dev_ptr.ptr});
         }
-        for (auto amount: amounts_to_clear) {
-            bank.blobs.update_fn(amount, [&bank, device, amount](std::vector<void*>& deposit_box) {
-                for (auto ptr: deposit_box) {
-                    memory_ops::free(DevicePtr(device, ptr), amount, 1);
+
+        DevicePtr allocate(Device device, int amount, int inner_dimension) {
+            void* memory = NULL;
+            auto& bank = get_bank(device);
+            bool success = bank.blobs.update_fn(amount, [&memory](std::vector<void*>& deposit_box) {
+                if (!deposit_box.empty()) {
+                    memory = deposit_box.back();
+                    deposit_box.pop_back();
                 }
-                bank.total_memory -= amount * deposit_box.size();
-                deposit_box.clear();
             });
+            if (memory != NULL) {
+                return DevicePtr(device, memory);
+            } else {
+                bank.num_allocations++;
+                bank.total_memory += amount;
+                return memory::allocate(device, amount, inner_dimension);
+            }
+        }
+
+        void clear(Device device) {
+            auto& bank = get_bank(device);
+
+            vector<int> amounts_to_clear;
+            for (auto it = bank.blobs.cbegin(); !it.is_end(); it++) {
+                amounts_to_clear.push_back(it->first);
+            }
+            for (auto amount: amounts_to_clear) {
+                bank.blobs.update_fn(amount, [&bank, device, amount](std::vector<void*>& deposit_box) {
+                    for (auto ptr: deposit_box) {
+                        memory::free(DevicePtr(device, ptr), amount, 1);
+                    }
+                    bank.total_memory -= amount * deposit_box.size();
+                    deposit_box.clear();
+                });
+            }
         }
     }
-
 }

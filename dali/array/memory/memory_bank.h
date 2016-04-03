@@ -11,10 +11,16 @@
 
 
 
-namespace memory_bank {
-    void deposit(memory_ops::DevicePtr dev_ptr, int amount, int inner_dimension);
-    memory_ops::DevicePtr allocate(memory_ops::Device device, int amount, int inner_dimension);
-    void clear(memory_ops::Device device);
-};
+namespace memory {
+    struct Device;
+    struct DevicePtr;
 
+    namespace bank {
+        extern const int MAX_GPU_DEVICES;
+
+        void deposit(DevicePtr dev_ptr, int amount, int inner_dimension);
+        DevicePtr allocate(Device device, int amount, int inner_dimension);
+        void clear(Device device);
+    };
+}
 #endif

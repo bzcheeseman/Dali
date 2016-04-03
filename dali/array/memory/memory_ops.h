@@ -1,31 +1,15 @@
-#ifndef DALI_ARRAY_MEMORY_MEMORY_OPERATIONS_H
-#define DALI_ARRAY_MEMORY_MEMORY_OPERATIONS_H
-
-#include "dali/config.h"
+#ifndef DALI_ARRAY_MEMORY_MEMORY_OPS_H
+#define DALI_ARRAY_MEMORY_MEMORY_OPS_H
 
 #include <cstdlib>
 #include <map>
 #include <string>
 
+#include "dali/config.h"
 
-namespace memory_ops {
-    enum Device {
-        DEVICE_OF_DOOM=0,
-        DEVICE_CPU=1,
-#ifdef DALI_USE_CUDA
-        DEVICE_GPU=2,
-#endif
-    };
-
-    // allows conversion between a device enum
-    // and its printable name (e.g. cpu, gpu)
-    extern std::map<int, std::string> device_to_name;
-
-    struct DevicePtr {
-        Device device;
-        void* ptr;
-        DevicePtr(Device _device, void* _ptr);
-    };
+namespace memory {
+    struct Device;
+    struct DevicePtr;
 
     // allocates amount bytes of memory
     DevicePtr allocate(Device device, int amount, int inner_dimension);

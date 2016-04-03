@@ -1,8 +1,10 @@
 #ifndef DALI_RUNTIME_CONFIG
 #define DALI_RUNTIME_CONFIG
 
-#include "dali/array/memory/memory_ops.h"
+namespace memory {
+    struct Device;
+}
 
-extern memory_ops::Device preferred_device;
+extern memory::Device default_preferred_device;
 
 #endif

@@ -1,5 +1,6 @@
 #include "dali/array/ThrustAllocator.h"
 
+#include "dali/array/memory/device.h"
 #include "dali/array/memory/memory_ops.h"
 #include "dali/array/memory/memory_bank.h"
 
@@ -12,8 +13,11 @@
 
     template<typename R>
     typename cached_allocator<R>::pointer cached_allocator<R>::allocate(size_type num_bytes) {
-        auto device_ptr = memory_bank::allocate(
-            memory_ops::DEVICE_GPU,
+        int current_device_number;
+        cudaGetDevice(&current_device_number);
+
+        auto device_ptr = memory::bank::allocate(
+            memory::Device::gpu(current_device_number),
             num_bytes * sizeof(R),
             num_bytes * sizeof(R)
         );
@@ -22,8 +26,10 @@
 
     template<typename R>
     void cached_allocator<R>::deallocate(pointer ptr, size_type n) {
-        memory_bank::deposit(
-            memory_ops::DevicePtr(memory_ops::DEVICE_GPU, thrust::raw_pointer_cast(ptr)),
+        int current_device_number;
+        cudaGetDevice(&current_device_number);
+        memory::bank::deposit(
+            memory::DevicePtr(memory::Device::gpu(current_device_number), thrust::raw_pointer_cast(ptr)),
             n * sizeof(R),
             n * sizeof(R)
         );

@@ -1,4 +1,5 @@
 The MIT License (MIT)
+([TL;DR summary](https://tldrlegal.com/license/mit-license))
 
 Copyright (c) 2015 Jonathan Raiman, Szymon Sidor
 

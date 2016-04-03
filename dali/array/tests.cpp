@@ -15,6 +15,4 @@ TEST(ArrayTests, sigmoid) {
     res = sigmoid(x);
 
     ASSERT_EQ(1, 1);
-
-    auto y = Array((dtype::Dtype)12);
 }

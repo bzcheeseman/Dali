@@ -25,6 +25,7 @@ class Array : public TypedArrayVariant {
     public:
       Array();
       Array(dtype::Dtype dtype_);
+      Array(TypedArrayVariant&& typed_array);
 
 };
 

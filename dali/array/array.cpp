@@ -24,3 +24,5 @@ TypedArrayVariant&& dtype_variant(dtype::Dtype&& dtype_) {
 Array::Array() : Array(dtype::Float) {}
 
 Array::Array(dtype::Dtype dtype_) : TypedArrayVariant(dtype_variant(std::move(dtype_))) {}
+
+Array::Array(TypedArrayVariant&& typed_array) : TypedArrayVariant(std::move(typed_array)) {}

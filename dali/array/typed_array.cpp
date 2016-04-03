@@ -4,11 +4,16 @@
 #include "dali/config.h"
 
 template<int dev, typename T>
-TypedArray<dev, T>::TypedArray(int dim) {
+TypedArray<dev, T>::TypedArray(size_t dim_) : dim(dim_) {
 }
 
 template<int dev, typename T>
 TypedArray<dev, T>::TypedArray() : TypedArray(0) {
+}
+
+template<int dev, typename T>
+TypedArray<dev, T> TypedArray<dev, T>::empty_like(const TypedArray<dev, T>& other) {
+	return TypedArray<dev, T>(other.dim);
 }
 
 

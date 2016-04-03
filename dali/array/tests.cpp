@@ -8,11 +8,13 @@
 #include "dali/array/op/elementwise.h"
 
 TEST(ArrayTests, sigmoid) {
-    Array x(0);
+    Array x;
     auto res = sigmoid(x);
 
-    x = Array(1);
+    x = Array(dtype::Double);
     res = sigmoid(x);
 
     ASSERT_EQ(1, 1);
+
+    auto y = Array((dtype::Dtype)12);
 }

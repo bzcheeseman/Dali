@@ -11,10 +11,10 @@ struct Sigmoid : public Function<Sigmoid, Array, Array> {
     template<int dev, typename T>
     Array operator()(TypedArray<dev,T> a) {
         std::cout << "performing squaring : ("
-        	      << memory_ops::device_to_name[dev] << ", "
-        	      << type_to_name<T>()
-        	      << ")"
-			      << std::endl;
+                  << memory_ops::device_to_name[dev] << ", "
+                  << type_to_name<T>()
+                  << ")"
+                  << std::endl;
         return Array();
     }
 
@@ -29,5 +29,5 @@ struct Sigmoid : public Function<Sigmoid, Array, Array> {
 
 Array sigmoid(const Array& x) {
     ELOG("sigmoid sigmoid sigmoid");
-	return Sigmoid::eval(x);
+    return Sigmoid::eval(x);
 }

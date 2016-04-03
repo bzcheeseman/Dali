@@ -3,6 +3,7 @@
 
 #include <string>
 #include <variant.hpp>
+#include "dali/array/dtype.h"
 
 template< typename T >
 struct always_false {
@@ -24,7 +25,6 @@ struct Function {
     // }
 
     static Outtype eval(Args... args) {
-        std::cout << "about to apply some visitors. Shit gonna get real" << std::endl;
         // TODO(szymon): return lambda instead of returning
         return mapbox::util::apply_visitor(Class(), args...);
     }
@@ -40,9 +40,9 @@ template<typename T>
 std::string type_to_name() {
     static_assert(
         always_false<T>::value,
-        "type_to_name only works for int, float, or double."
+        "type_to_name only works for DALI_ACCEPTABLE_DTYPE_STR"
     );
-	return "unknown";
+    return "unknown";
 }
 
 template<> std::string type_to_name<int>(){return "int";}

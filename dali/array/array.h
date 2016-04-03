@@ -3,6 +3,7 @@
 
 #include <variant.hpp>
 
+#include "dali/array/dtype.h"
 #include "dali/array/memory/memory_ops.h"
 #include "dali/array/typed_array.h"
 
@@ -23,7 +24,7 @@
 class Array : public TypedArrayVariant {
     public:
       Array();
-      Array(int dtype);
+      Array(dtype::Dtype dtype_);
 
 };
 

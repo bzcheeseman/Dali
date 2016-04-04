@@ -37,6 +37,6 @@ struct Sigmoid : public Function<Sigmoid, Array, Array> {
 };
 
 Array sigmoid(const Array& x) {
-    ELOG("sigmoid sigmoid sigmoid");
+    // ELOG("sigmoid sigmoid sigmoid");
     return Sigmoid::eval(x);
 }

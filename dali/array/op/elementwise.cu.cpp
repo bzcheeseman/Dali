@@ -17,11 +17,9 @@ struct Sigmoid : public Function<Sigmoid, Array, Array> {
     Array run(Array input, Device dev) {
         Array out(input.shape(), input.dtype());
 
-        auto m_in = getmshadow<devT,T>::oned(input, dev);
-        auto m_out = getmshadow<devT,T>::oned(out, dev);
+        auto m = getmshadow<devT,T>{dev};
 
-
-        m_out = mshadow::expr::F<TensorOps::op::sigmoid<T>>(m_in);
+        m.d1(out) = mshadow::expr::F<TensorOps::op::sigmoid<T>>(m.d1(input));
         return out;
 
     }

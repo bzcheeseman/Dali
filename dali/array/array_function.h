@@ -9,6 +9,9 @@
 
 #include "dali/array/dtype.h"
 
+////////////////////////////////////////////////////////////////////////////////
+//         HELPER FUNCTION FOR EXTRACTING VARIOUS INFO ABOUT ARRAYS           //
+////////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
 memory::Device extract_device(T sth) {
@@ -35,6 +38,9 @@ MaybeDType extract_dtype(Array a) {
     return MaybeDType{a.dtype(), true};
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//                FUNCTION AND ITS SPECIALIZATIONS                            //
+////////////////////////////////////////////////////////////////////////////////
 
 template<typename Class, typename Outtype, typename... Args>
 struct Function {
@@ -109,14 +115,30 @@ struct Function {
     }
 };
 
+
+// special macro that allows function structs to
+// dynamically catch/fail unsupported cases
+#define FAIL_ON_OTHER_CASES(OP_NAME)     Outtype_t operator()(...) { \
+    throw std::string("ERROR: Unsupported types/devices for OP_NAME"); \
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+//                    EXTRACTING MSHADOW FROM ARRAYS                          //
+////////////////////////////////////////////////////////////////////////////////
+
 template<int devT, typename T>
 struct getmshadow {
-    static void oned(Array a, memory::Device d) {}
+    memory::Device d;
+    void d1(Array a) {}
 };
 
 template<typename T>
 struct getmshadow<memory::DEVICE_T_CPU, T> {
-    static mshadow::Tensor<mshadow::cpu, 1, T> oned(Array a, memory::Device d) {
+    memory::Device d;
+
+    mshadow::Tensor<mshadow::cpu, 1, T> d1(Array a) {
         return mshadow::Tensor<mshadow::cpu, 1, T>((T*)(a.memory()->data(d)), mshadow::Shape1(a.number_of_elements()));
     }
 };
@@ -124,17 +146,14 @@ struct getmshadow<memory::DEVICE_T_CPU, T> {
 #ifdef DALI_USE_CUDA
 template<typename T>
 struct getmshadow<memory::DEVICE_T_GPU, T> {
-    static mshadow::Tensor<mshadow::gpu, 1, T> oned(Array a, memory::Device d) {
+    memory::Device d;
+
+    mshadow::Tensor<mshadow::gpu, 1, T> d1(Array a) {
         return mshadow::Tensor<mshadow::gpu, 1, T>((T*)(a.memory()->data(d)),  mshadow::Shape1(a.number_of_elements()));
     }
 };
 #endif
 
-// special macro that allows function structs to
-// dynamically catch/fail unsupported cases
-#define FAIL_ON_OTHER_CASES(OP_NAME)     Outtype_t operator()(...) { \
-    throw std::string("ERROR: Unsupported types/devices for OP_NAME"); \
-}
 
 
 #endif

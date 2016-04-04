@@ -10,23 +10,6 @@
 
 using memory::Device;
 
+typedef Elementwise<TensorOps::op::sigmoid> Sigmoid;
 
-struct Sigmoid : public Function<Sigmoid, Array, Array> {
-
-    template<int devT, typename T>
-    Array run(Array input, Device dev) {
-        Array out(input.shape(), input.dtype());
-
-        auto m = getmshadow<devT,T>{dev};
-
-        m.d1(out) = mshadow::expr::F<TensorOps::op::sigmoid<T>>(m.d1(input));
-        return out;
-
-    }
-
-    FAIL_ON_OTHER_CASES(Sigmoid);
-};
-
-Array sigmoid(const Array& x) {
-    return Sigmoid::eval(x);
-}
+Array sigmoid(const Array& x) { return Sigmoid::eval(x); }

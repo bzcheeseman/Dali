@@ -8,6 +8,7 @@
 
 
 #include "dali/array/dtype.h"
+#include "dali/array/getmshadow.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 //         HELPER FUNCTION FOR EXTRACTING VARIOUS INFO ABOUT ARRAYS           //
@@ -116,43 +117,29 @@ struct Function {
 };
 
 
+
+template<template<class> class Functor>
+struct Elementwise : public Function<Elementwise<Functor>, Array, Array> {
+    template<int devT, typename T>
+    Array run(Array input, memory::Device dev) {
+        Array out(input.shape(), input.dtype());
+
+        auto m = getmshadow<devT,T>{dev};
+
+        m.d1(out) = mshadow::expr::F<Functor<T>>(m.d1(input));
+        return out;
+
+    }
+};
+
+
+
 // special macro that allows function structs to
 // dynamically catch/fail unsupported cases
 #define FAIL_ON_OTHER_CASES(OP_NAME)     Outtype_t operator()(...) { \
     throw std::string("ERROR: Unsupported types/devices for OP_NAME"); \
 }
 
-
-
-////////////////////////////////////////////////////////////////////////////////
-//                    EXTRACTING MSHADOW FROM ARRAYS                          //
-////////////////////////////////////////////////////////////////////////////////
-
-template<int devT, typename T>
-struct getmshadow {
-    memory::Device d;
-    void d1(Array a) {}
-};
-
-template<typename T>
-struct getmshadow<memory::DEVICE_T_CPU, T> {
-    memory::Device d;
-
-    mshadow::Tensor<mshadow::cpu, 1, T> d1(Array a) {
-        return mshadow::Tensor<mshadow::cpu, 1, T>((T*)(a.memory()->data(d)), mshadow::Shape1(a.number_of_elements()));
-    }
-};
-
-#ifdef DALI_USE_CUDA
-template<typename T>
-struct getmshadow<memory::DEVICE_T_GPU, T> {
-    memory::Device d;
-
-    mshadow::Tensor<mshadow::gpu, 1, T> d1(Array a) {
-        return mshadow::Tensor<mshadow::gpu, 1, T>((T*)(a.memory()->data(d)),  mshadow::Shape1(a.number_of_elements()));
-    }
-};
-#endif
 
 
 

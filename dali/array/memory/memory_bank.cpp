@@ -15,7 +15,6 @@ using utils::assert2;
 namespace memory {
     namespace bank {
         const int INITIAL_HASHMAP_SIZE = 100000;
-        const int MAX_GPU_DEVICES = 16;
 
         struct DeviceBank {
             DeviceBank() : blobs(INITIAL_HASHMAP_SIZE), num_allocations(0), total_memory(0) {}
@@ -36,8 +35,6 @@ namespace memory {
             }
     #ifdef DALI_USE_CUDA
             else if (device.is_gpu()) {
-                ASSERT2(0 <= device.number && device.number < MAX_GPU_DEVICES,
-                        utils::MS() << "GPU number must be between 0 and " << MAX_GPU_DEVICES - 1 << ".");
                 return gpu_bank[device.number];
             }
     #endif

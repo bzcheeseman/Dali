@@ -1,9 +1,10 @@
 #include "dali/array/memory/device.h"
 
+#include "dali/config.h"
 #include "dali/utils/assert2.h"
+#include "dali/utils/core_utils.h"
 
 namespace memory {
-
 #ifdef DALI_USE_CUDA
     std::map<DeviceT, std::string> device_type_to_name = {
         {DEVICE_T_CPU,    "cpu"},
@@ -43,6 +44,8 @@ namespace memory {
     }
 
     Device Device::gpu(int number) {
+        ASSERT2(0 <= number && number < MAX_GPU_DEVICES,
+                utils::MS() << "GPU number must be between 0 and " << MAX_GPU_DEVICES - 1 << ".");
         return Device(DEVICE_T_GPU, number);
     }
 #endif

@@ -28,6 +28,9 @@ LOWER_PRIORITY:
 -> make zlib optional
 -> check for clang version
 
+SUPER_LOW_PRIORITY:
+-> expose MAX_GPUS tocmake.
+
 
 
 THE BIG REFACTOR:

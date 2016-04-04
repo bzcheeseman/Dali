@@ -16,7 +16,6 @@ namespace memory {
     struct DevicePtr;
 
     namespace bank {
-        extern const int MAX_GPU_DEVICES;
 
         void deposit(DevicePtr dev_ptr, int amount, int inner_dimension);
         DevicePtr allocate(Device device, int amount, int inner_dimension);

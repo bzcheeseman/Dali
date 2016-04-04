@@ -8,6 +8,11 @@
 #include "dali/config.h"
 
 namespace memory {
+    #ifdef DALI_USE_CUDA
+        const int MAX_GPU_DEVICES = 16;
+    #else
+        const int MAX_GPU_DEVICES = 0;
+    #endif
 
 #ifdef DALI_USE_CUDA
     enum DeviceT {

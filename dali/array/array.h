@@ -30,7 +30,11 @@ class Array {
 
       Array(const Array& other, bool copy_memory=false);
 
+      std::shared_ptr<memory::SynchronizedMemory> memory() const;
+
+      DType dtype() const;
       int dimension() const;
+      int number_of_elements() const;
       const std::vector<int>& shape() const;
       std::vector<int> subshape() const;
 

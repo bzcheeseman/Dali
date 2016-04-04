@@ -6,7 +6,6 @@
 #include <initializer_list>
 #include <iostream>
 #include <ostream>
-#include <variant.hpp>
 #include <vector>
 
 #include "dali/config.h"

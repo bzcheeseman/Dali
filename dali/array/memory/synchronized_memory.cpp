@@ -1,5 +1,7 @@
 #include "dali/array/memory/synchronized_memory.h"
 
+#include <cassert>
+
 #include "dali/array/memory/memory_bank.h"
 
 namespace memory {

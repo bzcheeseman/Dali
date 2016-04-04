@@ -48,9 +48,10 @@ Array::Array(const std::vector<int>& shape, DType dtype) {
     state = std::make_shared<ArrayState>(shape, memory, 0, dtype);
 }
 
-Array::Array(std::initializer_list<int> shape, DType dtype) :
-        Array(vector<int>(shape), dtype) {
+Array::Array(std::initializer_list<int> shape_, DType dtype) :
+        Array(vector<int>(shape_), dtype) {
 }
+
 Array::Array(const std::vector<int>& shape, std::shared_ptr<SynchronizedMemory> memory, int offset, DType dtype) {
     state = std::make_shared<ArrayState>(shape, memory, offset, dtype);
 }
@@ -64,13 +65,38 @@ Array::Array(const Array& other, bool copy_memory) {
     }
 }
 
+std::shared_ptr<memory::SynchronizedMemory> Array::memory() const {
+    if (state == nullptr) {
+        return nullptr;
+    } else {
+        return state->memory;
+    }
+}
+
+DType Array::dtype() const {
+    ASSERT2(state != nullptr, " dtype must not be called on Array initialled with empty constructor");
+    return state->dtype;
+}
+
+
 int Array::dimension() const {
     return (state == nullptr) ? 0 : state->shape.size();
 
 }
 
+int Array::number_of_elements() const {
+    return (state == nullptr) ? 0 : hypercube_volume(state->shape);
+
+}
+
+static vector<int> empty_vector;
+
 const vector<int>& Array::shape() const {
-    return (state == nullptr) ? vector<int>() : state->shape;
+    if (state == nullptr) {
+        return empty_vector;
+    } else {
+        return state->shape;
+    }
 }
 
 vector<int> Array::subshape() const {
@@ -108,7 +134,7 @@ void Array::print(std::basic_ostream<char>& stream, int indent) const {
         }
         stream << "]";
         stream << std::endl;
-    } else { 
+    } else {
         stream << std::string(indent, ' ') << "[" << std::endl;
         for (int i = 0; i < state->shape[0]; ++i)
             (*this)[i].print(stream, indent + 4);

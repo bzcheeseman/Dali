@@ -32,9 +32,9 @@ namespace memory {
     extern std::map<DeviceT, std::string> device_type_to_name;
 
     struct Device {
-        const DeviceT type;
+        DeviceT type;
         // ignored for cpu:
-        const int number;
+        int number;
 
         bool is_cpu() const;
         static Device cpu();
@@ -46,7 +46,7 @@ namespace memory {
 #endif
 
         private:
-            Device(DeviceT _type, int _number=0);
+            Device()=default;
     };
 
     struct DevicePtr {

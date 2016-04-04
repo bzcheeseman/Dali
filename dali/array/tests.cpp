@@ -7,18 +7,11 @@
 #include "dali/array/op/elementwise.h"
 
 TEST(ArrayTests, sigmoid) {
-    // Array x;
-    // auto res = sigmoid(x);
-    //
-    // x = Array(dtype::Double);
-    // res = sigmoid(x);
-    //
     Array x({3,2,2});
     x.print();
+    auto y = sigmoid(x);
+    y.print();
 
-    auto subx = x[0];
-
-    subx.print();
 
     ASSERT_EQ(1, 1);
 }

@@ -11,5 +11,4 @@
 using memory::Device;
 
 typedef Elementwise<TensorOps::op::sigmoid> Sigmoid;
-
 Array sigmoid(const Array& x) { return Sigmoid::eval(x); }

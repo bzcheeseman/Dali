@@ -36,6 +36,23 @@ ArrayState::ArrayState(const std::vector<int>& _shape,
 //                                 ARRAY                                      //
 ////////////////////////////////////////////////////////////////////////////////
 
+template<typename T>
+T Array::scalar_value() {
+    ASSERT2(shape().size() == 0, "Scalar value can only be requested for scalar (dimension zero) Array.");
+    void* data = memory()->data(memory::Device::cpu());
+    if (dtype() == DTYPE_FLOAT) {
+        float res = *((float*)(data));
+        return (T)res;
+    } else if (dtype() == DTYPE_DOUBLE) {
+        double res = *((double*)(data));
+        return (T)res;
+    } else if (dtype() == DTYPE_INT32) {
+        int res = *((int*)(data));
+        return (T)res;
+    }
+}
+
+
 Array::Array() {}
 
 Array::Array(const std::vector<int>& shape, DType dtype) {
@@ -107,19 +124,34 @@ vector<int> Array::subshape() const {
 
 
 Array Array::operator[](index_t idx) const {
+    ASSERT2(0 <= idx && idx <= shape()[0], utils::MS() << "Index " << idx << " must be in [0," << shape()[0] << "].");
     return Array(subshape(),
                  state->memory,
-                 state->offset + hypercube_volume(subshape()) * idx);
+                 state->offset + hypercube_volume(subshape()) * idx,
+                 state->dtype);
 }
 
-void* Array::operator()(index_t idx) const {
-    auto data = (uint8_t*)state->memory->data(memory::Device::cpu()) + state->offset * size_of_dtype(state->dtype);
-    return data + idx * size_of_dtype(state->dtype);
+Array Array::operator()(index_t idx) const {
+    ASSERT2(0 <= idx && idx <= number_of_elements(), utils::MS() << "Index " << idx << " must be in [0," << number_of_elements() << "].");
+    return Array(vector<int>(),
+                 state->memory,
+                 state->offset + idx,
+                 state->dtype);
+}
+
+Array::operator float() {
+    return scalar_value<float>();
+}
+Array::operator double() {
+    return scalar_value<double>();
+}
+Array::operator int() {
+    return scalar_value<int>();
 }
 
 void Array::print(std::basic_ostream<char>& stream, int indent) const {
     if (dimension() == 0) {
-        return;
+        print_dtype(stream, state->dtype, memory()->data(memory::Device::cpu())); /* pad values with blanks this->w(i,j)*/
     } else if (dimension() == 1) {
         stream << std::string(indent, ' ');
         stream << "[";
@@ -129,7 +161,7 @@ void Array::print(std::basic_ostream<char>& stream, int indent) const {
                       << std::setw( 7 ) /* keep 7 digits*/
                       << std::setprecision( 3 ) /* use 3 decimals*/
                       << std::setfill( ' ' );
-            print_dtype(stream, state->dtype, (*this)(i)); /* pad values with blanks this->w(i,j)*/
+            (*this)[i].print(stream);
             if (i != state->shape[0] - 1) stream << " ";
         }
         stream << "]";

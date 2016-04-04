@@ -20,6 +20,9 @@ struct ArrayState {
 class Array {
     private:
         std::shared_ptr<ArrayState> state;
+
+        template<typename T>
+        T scalar_value();
     public:
       typedef uint index_t;
       Array();
@@ -39,8 +42,11 @@ class Array {
       std::vector<int> subshape() const;
 
       Array operator[](index_t idx) const;
-      void* operator()(index_t idx) const;
+      Array operator()(index_t idx) const;
 
+      operator float();
+      operator double();
+      operator int();
 
 
       void print(std::basic_ostream<char>& stream = std::cout, int indent=0) const;

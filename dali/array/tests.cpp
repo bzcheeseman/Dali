@@ -12,6 +12,9 @@ TEST(ArrayTests, sigmoid) {
     auto y = sigmoid(x);
     y.print();
 
+    double x_val = x(4);
+
+    std::cout << "x_val = " << x_val << std::endl;
 
     ASSERT_EQ(1, 1);
 }

@@ -7,12 +7,15 @@
 #include "dali/array/memory/device.h"
 #include "dali/array/memory/memory_ops.h"
 #include "dali/array/memory/memory_bank.h"
+#include "dali/array/memory/synchronized_memory.h"
 
 using std::vector;
 using std::chrono::milliseconds;
 
 
 using memory::Device;
+using memory::DevicePtr;
+using memory::SynchronizedMemory;
 
 TEST(MemoryTests, alloc_cpu) {
     for (int alloc_size = 100; alloc_size <= 10000000; alloc_size *= 7) {
@@ -94,4 +97,47 @@ TEST(MemoryTests, test_memory_bank_cpu) {
         memory::free(mem_gpu1, 4, 4);
         memory::free(mem_gpu2, 4, 4);
     }
+#endif
+
+    TEST(MemoryTests, synchronized_memory_copy) {
+        SynchronizedMemory s(12, 1, Device::cpu(), false);
+        auto data = (uint8_t*)s.overwrite_data(Device::cpu());
+        for (int i=0; i < 12; ++i) {
+            data[i] = i;
+        }
+
+        SynchronizedMemory copied(s);
+        auto copied_data = (uint8_t*)copied.data(Device::cpu());
+        for (int i=0; i < 12; ++i) {
+            ASSERT_EQ(copied_data[i], i);
+        }
+    }
+
+#ifdef DALI_USE_CUDA
+    TEST(MemoryTests, synchronized_memory_clear_on_alloc) {
+        SynchronizedMemory s(12, 1, Device::cpu(), true);
+        auto data = (uint8_t*)s.data(Device::cpu());
+        for (int i=0; i < 12; ++i) {
+            ASSERT_EQ(data[i], 0);
+        }
+    }
+
+    TEST(MemoryTests, synchronized_memory_cpu_gpu_sync) {
+        SynchronizedMemory s(12, 1, Device::cpu(), false);
+        auto data = (uint8_t*)s.overwrite_data(Device::cpu());
+        for (int i=0; i < 12; ++i) {
+            data[i] = i;
+        }
+
+        auto data_gpu = s.data(Device::gpu(0));
+
+        auto data_gpu_as_cpu = memory::allocate(Device::cpu(), 12, 1);
+        memory::copy(data_gpu_as_cpu, DevicePtr(Device::gpu(0), data_gpu), 12, 1);
+
+        auto data_gpu_as_cpu_ptr = (uint8_t*)data_gpu_as_cpu.ptr;
+        for (int i=0; i < 12; ++i) {
+            ASSERT_EQ(data_gpu_as_cpu_ptr[i], i);
+        }
+    }
+
 #endif

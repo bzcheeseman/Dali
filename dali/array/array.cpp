@@ -1,28 +1,117 @@
 #include "array.h"
 
-#include "dali/array/typed_array.h"
-#include "dali/utils.h"
+#include <iostream>
+#include <ostream>
 
-template< dtype::Dtype dtype >
-struct always_false {
-    enum { value = false };
-};
 
-TypedArrayVariant&& dtype_variant(dtype::Dtype&& dtype_) {
-    if (dtype_ == dtype::Float) {
-        return TypedArrayVariant(TypedArray<memory::DEVICE_T_CPU, float>());
-    } else if (dtype_ == dtype::Double) {
-        return TypedArrayVariant(TypedArray<memory::DEVICE_T_CPU, double>());
-    } else if (dtype_ == dtype::Int32) {
-        return TypedArrayVariant(TypedArray<memory::DEVICE_T_CPU, int>());
-    } else {
-        utils::assert2(false, "TypedArray can only be of type " DALI_ACCEPTABLE_DTYPE_STR ".");
-    }
-    return TypedArrayVariant();
+using std::vector;
+using memory::SynchronizedMemory;
+
+////////////////////////////////////////////////////////////////////////////////
+//               MISCELANEOUS UTILITIES (NOT EXPOSED)                         //
+////////////////////////////////////////////////////////////////////////////////
+
+int hypercube_volume(const vector<int>& shape) {
+    return std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
 }
 
-Array::Array() : Array(dtype::Float) {}
+////////////////////////////////////////////////////////////////////////////////
+//                              ARRAY STATE                                   //
+////////////////////////////////////////////////////////////////////////////////
 
-Array::Array(dtype::Dtype dtype_) : TypedArrayVariant(dtype_variant(std::move(dtype_))) {}
 
-Array::Array(TypedArrayVariant&& typed_array) : TypedArrayVariant(std::move(typed_array)) {}
+ArrayState::ArrayState(const std::vector<int>& _shape,
+                       std::shared_ptr<SynchronizedMemory> _memory,
+                       int _offset,
+                       DType _dtype) :
+        shape(_shape),
+        memory(_memory),
+        offset(_offset),
+        dtype(_dtype) {
+
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+//                                 ARRAY                                      //
+////////////////////////////////////////////////////////////////////////////////
+
+Array::Array() {}
+
+Array::Array(const std::vector<int>& shape, DType dtype) {
+    int number_of_elements = hypercube_volume(shape);
+
+    auto memory = std::make_shared<SynchronizedMemory>(
+            number_of_elements * size_of_dtype(dtype),
+            (shape.size() > 0) ? shape[shape.size()-1] : 1);
+
+    state = std::make_shared<ArrayState>(shape, memory, 0, dtype);
+}
+
+Array::Array(std::initializer_list<int> shape, DType dtype) :
+        Array(vector<int>(shape), dtype) {
+}
+Array::Array(const std::vector<int>& shape, std::shared_ptr<SynchronizedMemory> memory, int offset, DType dtype) {
+    state = std::make_shared<ArrayState>(shape, memory, offset, dtype);
+}
+
+Array::Array(const Array& other, bool copy_memory) {
+    if (copy_memory) {
+        state = std::make_shared<ArrayState>(*(other.state));
+        state->memory = std::make_shared<SynchronizedMemory>(*(other.state->memory));
+    } else {
+        state = other.state;
+    }
+}
+
+int Array::dimension() const {
+    return (state == nullptr) ? 0 : state->shape.size();
+
+}
+
+const vector<int>& Array::shape() const {
+    return (state == nullptr) ? vector<int>() : state->shape;
+}
+
+vector<int> Array::subshape() const {
+    if (state == nullptr) return vector<int>();
+    if (state->shape.size() == 0) return vector<int>();
+    return vector<int>(state->shape.begin() + 1, state->shape.end());
+}
+
+
+Array Array::operator[](index_t idx) const {
+    return Array(subshape(),
+                 state->memory,
+                 state->offset + hypercube_volume(subshape()) * idx);
+}
+
+void* Array::operator()(index_t idx) const {
+    auto data = (uint8_t*)state->memory->data(memory::Device::cpu()) + state->offset * size_of_dtype(state->dtype);
+    return data + idx * size_of_dtype(state->dtype);
+}
+
+void Array::print(std::basic_ostream<char>& stream, int indent) const {
+    if (dimension() == 0) {
+        return;
+    } else if (dimension() == 1) {
+        stream << std::string(indent, ' ');
+        stream << "[";
+
+        for(int i = 0; i < state->shape[0]; ++i) {
+            stream << std::fixed
+                      << std::setw( 7 ) /* keep 7 digits*/
+                      << std::setprecision( 3 ) /* use 3 decimals*/
+                      << std::setfill( ' ' );
+            print_dtype(stream, state->dtype, (*this)(i)); /* pad values with blanks this->w(i,j)*/
+            if (i != state->shape[0] - 1) stream << " ";
+        }
+        stream << "]";
+        stream << std::endl;
+    } else { 
+        stream << std::string(indent, ' ') << "[" << std::endl;
+        for (int i = 0; i < state->shape[0]; ++i)
+            (*this)[i].print(stream, indent + 4);
+        stream << std::string(indent, ' ') <<"]" << std::endl;
+    }
+}

@@ -1,33 +1,45 @@
 #ifndef DALI_ARRAY_ARRAY_H
 #define DALI_ARRAY_ARRAY_H
 
-#include <variant.hpp>
+#include <memory>
+#include <vector>
 
 #include "dali/array/memory/device.h"
 #include "dali/array/dtype.h"
 #include "dali/array/memory/memory_ops.h"
-#include "dali/array/typed_array.h"
+#include "dali/array/memory/synchronized_memory.h"
 
-// sorry about Syntax.
-#ifdef DALI_USE_CUDA
-    typedef mapbox::util::variant<TypedArray<memory::DEVICE_T_CPU, int>,
-                                  TypedArray<memory::DEVICE_T_CPU, float>,
-                                  TypedArray<memory::DEVICE_T_CPU, double>,
-                                  TypedArray<memory::DEVICE_T_GPU, int>,
-                                  TypedArray<memory::DEVICE_T_GPU, float>,
-                                  TypedArray<memory::DEVICE_T_GPU, double>> TypedArrayVariant;
-#else
-    typedef mapbox::util::variant<TypedArray<memory::DEVICE_T_CPU, int>,
-                                  TypedArray<memory::DEVICE_T_CPU, float>,
-                                  TypedArray<memory::DEVICE_T_CPU, double>> TypedArrayVariant;
-#endif
+struct ArrayState {
+    std::vector<int> shape;
+    std::shared_ptr<memory::SynchronizedMemory> memory;
+    int offset; // expressing in number of numbers (not bytes)
+    DType dtype;
+    ArrayState(const std::vector<int>& _shape, std::shared_ptr<memory::SynchronizedMemory> _memory, int _offset, DType _device);
+};
 
-class Array : public TypedArrayVariant {
+class Array {
+    private:
+        std::shared_ptr<ArrayState> state;
     public:
+      typedef uint index_t;
       Array();
-      Array(dtype::Dtype dtype_);
-      Array(TypedArrayVariant&& typed_array);
 
+      Array(const std::vector<int>& shape, DType dtype_=DTYPE_FLOAT);
+      Array(std::initializer_list<int> shape, DType dtype_=DTYPE_FLOAT);
+      Array(const std::vector<int>& shape, std::shared_ptr<memory::SynchronizedMemory>, int offset, DType dtype_=DTYPE_FLOAT);
+
+      Array(const Array& other, bool copy_memory=false);
+
+      int dimension() const;
+      const std::vector<int>& shape() const;
+      std::vector<int> subshape() const;
+
+      Array operator[](index_t idx) const;
+      void* operator()(index_t idx) const;
+
+
+
+      void print(std::basic_ostream<char>& stream = std::cout, int indent=0) const;
 };
 
 #endif

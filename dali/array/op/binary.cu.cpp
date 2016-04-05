@@ -5,13 +5,9 @@
 #include "dali/array/TensorFunctions.h"
 
 typedef BinaryElementwise<TensorOps::op::plus> Plus;
-
 Array add(const Array& a, const Array& b) {return Plus::eval(a, b);}
 Array operator+(const Array& a, const Array& b) {return add(a,b);}
 
 typedef BinaryElementwise<TensorOps::op::mul> EltMul;
 Array eltmul(const Array& a, const Array& b) {return EltMul::eval(a, b);}
 Array operator*(const Array& a, const Array& b) {return eltmul(a,b);}
-
-
-

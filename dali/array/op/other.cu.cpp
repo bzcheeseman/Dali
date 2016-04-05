@@ -1,5 +1,6 @@
 #include "dali/array/op/elementwise.h"
 
+#include <cmath>
 #include <iostream>
 
 #include "dali/config.h"
@@ -23,11 +24,11 @@ struct IsNan : public Function<IsNan, bool, Array> {
     bool run(MArray<memory::DEVICE_T_GPU, T> input) {
         int num_elts = input.array.number_of_elements();
 
-        return std::is_nan(thrust::reduce(
-            a.to_thrust(),
-            a.to_thrust() + num_elts,
+        return std::isnan(thrust::reduce(
+            input.to_thrust(),
+            input.to_thrust() + num_elts,
             0.0,
-            thrust::plus<R>()
+            thrust::plus<T>()
         ));
     }
 #endif

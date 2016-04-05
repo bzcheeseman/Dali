@@ -1,5 +1,7 @@
 #include "dali/array/getmshadow.h"
 
+#include "dali/config.h"
+
 template<int devT, typename T>
 void MArray<devT, T>::ptr(memory::AM) {}
 
@@ -40,8 +42,8 @@ template class MArray<memory::DEVICE_T_CPU, double>;
         );
     }
 
-    template<> class MArray<memory::DEVICE_T_GPU, int>;
-    template<> class MArray<memory::DEVICE_T_GPU, float>;
-    template<> class MArray<memory::DEVICE_T_GPU, double>;
+    template class MArray<memory::DEVICE_T_GPU, int>;
+    template class MArray<memory::DEVICE_T_GPU, float>;
+    template class MArray<memory::DEVICE_T_GPU, double>;
 
 #endif

@@ -138,7 +138,6 @@ struct Elementwise : public Function<Elementwise<Functor>, Array, Array> {
 };
 
 
-
 // special macro that allows function structs to
 // dynamically catch/fail unsupported cases
 #define FAIL_ON_OTHER_CASES(OP_NAME)     Outtype_t operator()(...) { \

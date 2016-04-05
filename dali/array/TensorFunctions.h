@@ -38,6 +38,20 @@ namespace TensorOps {
             }
         };
 
+        template<typename R>
+        struct plus {
+            MSHADOW_XINLINE static R Map(const R& a, const R& b) {
+                return a + b;
+            }
+        };
+
+        template<typename R>
+        struct mul {
+            MSHADOW_XINLINE static R Map(const R& a, const R& b) {
+                return a * b;
+            }
+        };
+
         template<>
         MSHADOW_XINLINE
         int square<int>::Map(const int& a) {

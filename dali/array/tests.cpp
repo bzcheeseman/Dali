@@ -3,8 +3,8 @@
 #include <iomanip>
 #include <gtest/gtest.h>
 
-#include "dali/array/array.h"
 #include "dali/array/op/elementwise.h"
+#include "dali/array/op/binary.h"
 
 TEST(ArrayTests, sigmoid) {
     Array x({3,2,2});
@@ -17,4 +17,19 @@ TEST(ArrayTests, sigmoid) {
     std::cout << "x_val = " << x_val << std::endl;
 
     ASSERT_EQ(1, 1);
+}
+
+
+TEST(ArrayTests, add) {
+    Array x({3,2,2});
+    Array y({12});
+
+    auto z = add(x, y);
+}
+
+TEST(ArrayTests, eltmul) {
+    Array x({3,2,2});
+    Array y({12});
+
+    auto z = eltmul(x, y);
 }

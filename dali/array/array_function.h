@@ -119,7 +119,7 @@ struct Function {
         } else if (device.type == memory::DEVICE_T_GPU && dtype == DTYPE_DOUBLE) {
             return Class().template run<memory::DEVICE_T_GPU,double>(ArrayWrapper<memory::DEVICE_T_GPU,double>::wrap(args, device)...);
         } else if (device.type == memory::DEVICE_T_GPU && dtype == DTYPE_INT32) {
-            return Class().template run<memory::DEVICE_T_GPU,int>(ArrayWrapper<memory::DEVICE_T_GPU,float>::int(args, device)...);
+            return Class().template run<memory::DEVICE_T_GPU,int>(ArrayWrapper<memory::DEVICE_T_GPU,int>::wrap(args, device)...);
         }
 #endif
         ASSERT2(false, "Should not get here.");

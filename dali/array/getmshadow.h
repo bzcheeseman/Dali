@@ -40,7 +40,7 @@ struct MArray<memory::DEVICE_T_CPU, T> {
         }
 
         thrust::device_ptr<T> to_thrust(memory::AM access_mode=memory::AM_READONLY) {
-           return thrust::device_pointer_cast(ptr(access_mode)));
+           return thrust::device_pointer_cast(ptr(access_mode));
         }
 
         mshadow::Tensor<mshadow::gpu, 1, T> d1(memory::AM access_mode=memory::AM_READONLY) {

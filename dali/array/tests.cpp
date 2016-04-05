@@ -25,6 +25,8 @@ TEST(ArrayTests, add) {
     Array y({12});
 
     auto z = add(x, y);
+
+    z = x * y;
 }
 
 TEST(ArrayTests, eltmul) {
@@ -32,4 +34,6 @@ TEST(ArrayTests, eltmul) {
     Array y({12});
 
     auto z = eltmul(x, y);
+
+    z = x + y;
 }

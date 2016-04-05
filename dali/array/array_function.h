@@ -122,8 +122,6 @@ struct Function {
     }
 };
 
-
-
 template<template<class> class Functor>
 struct Elementwise : public Function<Elementwise<Functor>, Array, Array> {
     template<int devT, typename T>
@@ -133,6 +131,19 @@ struct Elementwise : public Function<Elementwise<Functor>, Array, Array> {
         auto mout = MArray<devT,T>{out, input.device};
 
         mout.d1(memory::AM_OVERWRITE) = mshadow::expr::F<Functor<T>>(input.d1());
+        return out;
+    }
+};
+
+template<template<class> class Functor>
+struct BinaryElementwise : public Function<BinaryElementwise<Functor>, Array, Array, Array> {
+    template<int devT, typename T>
+    Array run(MArray<devT,T> left, MArray<devT,T> right) {
+        Array out(left.array.shape(), left.array.dtype());
+
+        auto mout = MArray<devT,T>{out, left.device};
+
+        mout.d1(memory::AM_OVERWRITE) = mshadow::expr::F<Functor<T>>(left.d1(), right.d1());
         return out;
     }
 };

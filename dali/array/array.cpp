@@ -38,7 +38,10 @@ ArrayState::ArrayState(const std::vector<int>& _shape,
 
 template<typename T>
 T Array::scalar_value() {
-    ASSERT2(shape().size() == 0, "Scalar value can only be requested for scalar (dimension zero) Array.");
+    ASSERT2(
+        shape().size() == 0,
+        "Scalar value can only be requested for scalar (dimension zero) Array."
+    );
     void* data = memory()->data(memory::Device::cpu());
     if (dtype() == DTYPE_FLOAT) {
         float res = *((float*)(data));

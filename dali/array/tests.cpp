@@ -20,13 +20,24 @@ TEST(ArrayTests, sigmoid) {
 }
 
 
+// TODO(Jonathan) = when scaffolding is cleaner,
+// check for actual outputs of sub, add, etc..
 TEST(ArrayTests, add) {
     Array x({3,2,2});
     Array y({12});
 
     auto z = add(x, y);
 
-    z = x * y;
+    z = x + y;
+}
+
+TEST(ArrayTests, sub) {
+    Array x({3,2,2});
+    Array y({12});
+
+    auto z = sub(x, y);
+
+    z = x - y;
 }
 
 TEST(ArrayTests, eltmul) {
@@ -35,5 +46,15 @@ TEST(ArrayTests, eltmul) {
 
     auto z = eltmul(x, y);
 
-    z = x + y;
+    z = x * y;
 }
+
+TEST(ArrayTests, eltdiv) {
+    Array x({3,2,2});
+    Array y({12});
+
+    auto z = eltdiv(x, y);
+
+    z = x / y;
+}
+

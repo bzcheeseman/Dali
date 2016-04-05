@@ -46,9 +46,23 @@ namespace TensorOps {
         };
 
         template<typename R>
+        struct sub {
+            MSHADOW_XINLINE static R Map(const R& a, const R& b) {
+                return a - b;
+            }
+        };
+
+        template<typename R>
         struct mul {
             MSHADOW_XINLINE static R Map(const R& a, const R& b) {
                 return a * b;
+            }
+        };
+
+        template<typename R>
+        struct div {
+            MSHADOW_XINLINE static R Map(const R& a, const R& b) {
+                return a / b;
             }
         };
 

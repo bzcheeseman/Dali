@@ -199,7 +199,20 @@ namespace memory {
         dev_memory.fresh = true;
     }
 
-    void* SynchronizedMemory::data(const Device& device) const {
+    void* SynchronizedMemory::data(const Device& device, AM access_mode) {
+        if (access_mode == AM_READONLY) {
+            return readonly_data(device);
+        } else if (access_mode == AM_MUTABLE) {
+            return mutable_data(device);
+        } else if (access_mode == AM_OVERWRITE) {
+            return overwrite_data(device);
+        } else {
+            ASSERT2(false, "Unsupported access mode passed to SynchronizedMemory::data.");
+        }
+    }
+
+
+    void* SynchronizedMemory::readonly_data(const Device& device) const {
         move_to(device);
         return get_device_memory(device).ptr;
     }

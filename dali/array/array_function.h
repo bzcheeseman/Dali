@@ -39,6 +39,17 @@ MaybeDType extract_dtype(Array a) {
     return MaybeDType{a.dtype(), true};
 }
 
+template<int devT, typename T>
+struct ArrayWrapper {
+    template<typename X>
+    static X wrap(X sth, memory::Device dev) {
+        return sth;
+    }
+
+    static MArray<devT,T> wrap(Array a, memory::Device dev) {
+        return MArray<devT,T>{a,dev};
+    }
+};
 ////////////////////////////////////////////////////////////////////////////////
 //                FUNCTION AND ITS SPECIALIZATIONS                            //
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,19 +107,19 @@ struct Function {
         auto dtype  = find_best_dtype(size, extract_dtype(args)...);
 
         if (device.type == memory::DEVICE_T_CPU && dtype == DTYPE_FLOAT) {
-            return Class().template run<memory::DEVICE_T_CPU,float>(args..., device);
+            return Class().template run<memory::DEVICE_T_CPU,float>(ArrayWrapper<memory::DEVICE_T_CPU,float>::wrap(args, device)...);
         } else if (device.type == memory::DEVICE_T_CPU && dtype == DTYPE_DOUBLE) {
-            return Class().template run<memory::DEVICE_T_CPU,double>(args..., device);
+            return Class().template run<memory::DEVICE_T_CPU,double>(ArrayWrapper<memory::DEVICE_T_CPU,double>::wrap(args, device)...);
         } else if (device.type == memory::DEVICE_T_CPU && dtype == DTYPE_INT32) {
-            return Class().template run<memory::DEVICE_T_CPU,int>(args..., device);
+            return Class().template run<memory::DEVICE_T_CPU,int>(ArrayWrapper<memory::DEVICE_T_CPU,int>::wrap(args, device)...);
         }
 #ifdef DALI_USE_CUDA
         else if (device.type == memory::DEVICE_T_GPU && dtype == DTYPE_FLOAT) {
-            return Class().template run<memory::DEVICE_T_GPU,float>(args..., device);
+            return Class().template run<memory::DEVICE_T_GPU,float>(ArrayWrapper<memory::DEVICE_T_GPU,float>::wrap(args, device)...);
         } else if (device.type == memory::DEVICE_T_GPU && dtype == DTYPE_DOUBLE) {
-            return Class().template run<memory::DEVICE_T_GPU,double>(args..., device);
+            return Class().template run<memory::DEVICE_T_GPU,double>(ArrayWrapper<memory::DEVICE_T_GPU,double>::wrap(args, device)...);
         } else if (device.type == memory::DEVICE_T_GPU && dtype == DTYPE_INT32) {
-            return Class().template run<memory::DEVICE_T_GPU,int>(args..., device);
+            return Class().template run<memory::DEVICE_T_GPU,int>(ArrayWrapper<memory::DEVICE_T_GPU,float>::int(args, device)...);
         }
 #endif
         ASSERT2(false, "Should not get here.");
@@ -121,14 +132,13 @@ struct Function {
 template<template<class> class Functor>
 struct Elementwise : public Function<Elementwise<Functor>, Array, Array> {
     template<int devT, typename T>
-    Array run(Array input, memory::Device dev) {
-        Array out(input.shape(), input.dtype());
+    Array run(MArray<devT,T> input) {
+        Array out(input.array.shape(), input.array.dtype());
 
-        auto m = getmshadow<devT,T>{dev};
+        auto mout = MArray<devT,T>{out, input.device};
 
-        m.d1(out) = mshadow::expr::F<Functor<T>>(m.d1(input));
+        mout.d1(memory::AM_OVERWRITE) = mshadow::expr::F<Functor<T>>(input.d1());
         return out;
-
     }
 };
 

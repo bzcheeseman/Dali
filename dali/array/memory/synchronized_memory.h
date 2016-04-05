@@ -27,7 +27,12 @@ device copy is necessary.
 
 
 namespace memory {
-
+    // access mode
+    enum AM {
+        AM_READONLY,
+        AM_MUTABLE,
+        AM_OVERWRITE
+    };
 
     class SynchronizedMemory {
         private:
@@ -88,11 +93,13 @@ namespace memory {
             void move_to(const Device& device) const;
 
 
-
+            // This function selects on of the 3 functions below based on
+            // access_mode value.
+            void* data(const Device& device, AM access_mode=AM_READONLY);
             // depending on how memory is accessed, its freshess changes:
             // calling `data` without mutable asks for a fresh copy
             // of the memory, but promises to not modify it
-            void* data(const Device& device) const;
+            void* readonly_data(const Device& device) const;
             // mutable_cpu_data on the other hand declares that the memory
             // will be modified, and thus will need to be resynchronized
             // if a different device needs it (cpu vs. gpu freshness)

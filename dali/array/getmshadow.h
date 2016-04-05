@@ -8,7 +8,7 @@
     #include <thrust/device_vector.h>
 #endif
 
-#include "dali/array/Array.h"
+#include "dali/array/array.h"
 
 
 template<int devT, typename T>

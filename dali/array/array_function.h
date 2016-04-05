@@ -1,11 +1,12 @@
 #ifndef DALI_ARRAY_ARRAY_FUNCTIONS_H
 #define DALI_ARRAY_ARRAY_FUNCTIONS_H
 
-#include <cstdarg>
-#include <mshadow/tensor.h>
-#include <string>
-#include <tuple>
+#include "dali/config.h"
 
+#include <cstdarg>
+#include <string>
+#include <mshadow/tensor.h>
+#include <tuple>
 
 #include "dali/array/dtype.h"
 #include "dali/array/getmshadow.h"
@@ -19,10 +20,7 @@ memory::Device extract_device(T sth) {
     return memory::Device::device_of_doom();
 }
 
-template<>
-memory::Device extract_device(Array a) {
-    return a.memory()->preferred_device;
-}
+memory::Device extract_device(Array a);
 
 struct MaybeDType {
     DType dtype;
@@ -34,10 +32,7 @@ MaybeDType extract_dtype(T sth) {
     return MaybeDType{DTYPE_FLOAT, false};
 }
 
-template<>
-MaybeDType extract_dtype(Array a) {
-    return MaybeDType{a.dtype(), true};
-}
+MaybeDType extract_dtype(Array a);
 
 template<int devT, typename T>
 struct ArrayWrapper {

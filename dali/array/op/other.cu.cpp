@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#include "dali/config.h"
 #include "dali/utils.h"
 #include "dali/array/array.h"
 #include "dali/array/array_function.h"
@@ -11,9 +12,6 @@
 using memory::Device;
 
 struct IsNan : public Function<IsNan, bool, Array> {
-    template<int devT, typename T>
-    bool run(Array input, memory::Device dev) {}
-
     template<typename T>
     bool run(MArray<memory::DEVICE_T_CPU, T> input) {
         int num_elts = input.array.number_of_elements();
@@ -23,7 +21,7 @@ struct IsNan : public Function<IsNan, bool, Array> {
 #ifdef DALI_USE_CUDA
     template<typename T>
     bool run(MArray<memory::DEVICE_T_GPU, T> input) {
-        int num_elts = input.number_of_elements();
+        int num_elts = input.array.number_of_elements();
 
         return std::is_nan(thrust::reduce(
             a.to_thrust(),
@@ -34,3 +32,5 @@ struct IsNan : public Function<IsNan, bool, Array> {
     }
 #endif
 };
+
+bool is_nan(const Array& x) { return IsNan::eval(x); }

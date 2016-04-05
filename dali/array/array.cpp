@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <ostream>
+#include <type_traits>
 
 
 using std::vector;
@@ -37,22 +38,37 @@ ArrayState::ArrayState(const std::vector<int>& _shape,
 ////////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
-T Array::scalar_value() {
+T Array::scalar_value() const {
+    static_assert(std::is_arithmetic<T>::value,
+            "Scalar value only available for arithemtic types (integer or real).");
     ASSERT2(
         shape().size() == 0,
         "Scalar value can only be requested for scalar (dimension zero) Array."
     );
     void* data = memory()->data(memory::Device::cpu());
     if (dtype() == DTYPE_FLOAT) {
-        float res = *((float*)(data));
+        float res = *((float*)(data) + offset());
         return (T)res;
     } else if (dtype() == DTYPE_DOUBLE) {
-        double res = *((double*)(data));
+        double res = *((double*)(data) + offset());
         return (T)res;
     } else if (dtype() == DTYPE_INT32) {
-        int res = *((int*)(data));
+        int res = *((int*)(data) + offset());
         return (T)res;
     }
+}
+
+template<typename T>
+T& Array::scalar_value() {
+    static_assert(std::is_arithmetic<T>::value,
+            "Scalar value only available for arithemtic types (integer or real).");
+    ASSERT2(
+        shape().size() == 0,
+        "Scalar value can only be requested for scalar (dimension zero) Array."
+    );
+    ASSERT2(dtype_is<T>(dtype()), "Scalar assign attempted with wrong type.");
+    void* data = memory()->mutable_data(memory::Device::cpu());
+    return *((T*)(data) + offset());
 }
 
 
@@ -85,6 +101,24 @@ Array::Array(const Array& other, bool copy_memory) {
     }
 }
 
+Array Array::zeros(const std::vector<int>& shape, DType dtype) {
+    Array ret(shape, dtype);
+    ret.memory()->lazy_clear();
+    return ret;
+}
+
+Array Array::zeros_like(const Array& other) {
+    return zeros(other.shape(), other.dtype());
+}
+
+static vector<int> empty_vector;
+
+const vector<int>& Array::shape() const {
+    ASSERT2(state != nullptr, "shape must not be called on Array initialled with empty constructor");
+    return state->shape;
+}
+
+
 std::shared_ptr<memory::SynchronizedMemory> Array::memory() const {
     if (state == nullptr) {
         return nullptr;
@@ -93,8 +127,13 @@ std::shared_ptr<memory::SynchronizedMemory> Array::memory() const {
     }
 }
 
+int Array::offset() const {
+    ASSERT2(state != nullptr, "offset must not be called on Array initialled with empty constructor");
+    return state->offset;
+}
+
 DType Array::dtype() const {
-    ASSERT2(state != nullptr, " dtype must not be called on Array initialled with empty constructor");
+    ASSERT2(state != nullptr, "dtype must not be called on Array initialled with empty constructor");
     return state->dtype;
 }
 
@@ -106,18 +145,8 @@ int Array::dimension() const {
 
 int Array::number_of_elements() const {
     return (state == nullptr) ? 0 : hypercube_volume(state->shape);
-
 }
 
-static vector<int> empty_vector;
-
-const vector<int>& Array::shape() const {
-    if (state == nullptr) {
-        return empty_vector;
-    } else {
-        return state->shape;
-    }
-}
 
 vector<int> Array::subshape() const {
     if (state == nullptr) return vector<int>();
@@ -142,19 +171,43 @@ Array Array::operator()(index_t idx) const {
                  state->dtype);
 }
 
-Array::operator float() {
-    return scalar_value<float>();
+template<typename T>
+Array::operator T() const {
+    return scalar_value<T>();
 }
-Array::operator double() {
-    return scalar_value<double>();
+
+template Array::operator float() const;
+template Array::operator double() const;
+template Array::operator int() const;
+
+template<typename T>
+Array& Array::operator=(T other) {
+    static_assert(std::is_arithmetic<T>::value,
+            "Scalar value can only be assigned from arithemtic type.");
+    if (dtype() == DTYPE_FLOAT) {
+        scalar_value<float>() = other;
+    } else if(dtype() == DTYPE_DOUBLE) {
+        scalar_value<double>() = other;
+    } else if(dtype() == DTYPE_INT32) {
+        scalar_value<int>() = other;
+    }
 }
-Array::operator int() {
-    return scalar_value<int>();
-}
+
+template Array& Array::operator=(float other);
+template Array& Array::operator=(double other);
+template Array& Array::operator=(int other);
 
 void Array::print(std::basic_ostream<char>& stream, int indent) const {
     if (dimension() == 0) {
-        print_dtype(stream, state->dtype, memory()->data(memory::Device::cpu())); /* pad values with blanks this->w(i,j)*/
+        if (dtype() == DTYPE_FLOAT) {
+            stream << (float)(*this);
+        } else if (dtype() == DTYPE_DOUBLE) {
+            stream << (double)(*this);
+        } else if (dtype() == DTYPE_INT32) {
+            stream << (int)(*this);
+        } else {
+            ASSERT2(false, "Wrong dtype for Array.");
+        }
     } else if (dimension() == 1) {
         stream << std::string(indent, ' ');
         stream << "[";

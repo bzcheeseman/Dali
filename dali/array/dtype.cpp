@@ -2,6 +2,23 @@
 
 #include "dali/utils/assert2.h"
 
+template<>
+bool dtype_is<float>(DType dtype) {
+    return dtype == DTYPE_FLOAT;
+}
+
+template<>
+bool dtype_is<double>(DType dtype) {
+    return dtype == DTYPE_DOUBLE;
+}
+
+template<> 
+bool dtype_is<int>(DType dtype) {
+    return dtype == DTYPE_INT32;
+}
+
+
+
 int size_of_dtype(DType dtype) {
     if (dtype == DTYPE_FLOAT) {
         return sizeof(float);

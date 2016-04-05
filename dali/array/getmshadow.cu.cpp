@@ -8,7 +8,7 @@ void MArray<devT, T>::d1(memory::AM) {}
 
 template<typename T>
 T*  MArray<memory::DEVICE_T_CPU, T>::ptr(memory::AM access_mode) {
-    return (T*)(array.memory()->data(device, access_mode));
+    return (T*)(array.memory()->data(device, access_mode)) + array.offset();
 }
 
 template<typename T>
@@ -24,7 +24,7 @@ template class MArray<memory::DEVICE_T_CPU, double>;
 #ifdef DALI_USE_CUDA
     template<typename T>
     T* MArray<memory::DEVICE_T_GPU, T>::ptr(memory::AM access_mode) {
-        return (T*)(array.memory()->data(device, access_mode));
+        return (T*)(array.memory()->data(device, access_mode)) + array.offset();
     }
 
     template<typename T>

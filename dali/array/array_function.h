@@ -102,19 +102,19 @@ struct Function {
         auto dtype  = find_best_dtype(size, extract_dtype(args)...);
 
         if (device.type == memory::DEVICE_T_CPU && dtype == DTYPE_FLOAT) {
-            return Class().template run<memory::DEVICE_T_CPU,float>(ArrayWrapper<memory::DEVICE_T_CPU,float>::wrap(args, device)...);
+            return Class().run(ArrayWrapper<memory::DEVICE_T_CPU,float>::wrap(args, device)...);
         } else if (device.type == memory::DEVICE_T_CPU && dtype == DTYPE_DOUBLE) {
-            return Class().template run<memory::DEVICE_T_CPU,double>(ArrayWrapper<memory::DEVICE_T_CPU,double>::wrap(args, device)...);
+            return Class().run(ArrayWrapper<memory::DEVICE_T_CPU,double>::wrap(args, device)...);
         } else if (device.type == memory::DEVICE_T_CPU && dtype == DTYPE_INT32) {
-            return Class().template run<memory::DEVICE_T_CPU,int>(ArrayWrapper<memory::DEVICE_T_CPU,int>::wrap(args, device)...);
+            return Class().run(ArrayWrapper<memory::DEVICE_T_CPU,int>::wrap(args, device)...);
         }
 #ifdef DALI_USE_CUDA
         else if (device.type == memory::DEVICE_T_GPU && dtype == DTYPE_FLOAT) {
-            return Class().template run<memory::DEVICE_T_GPU,float>(ArrayWrapper<memory::DEVICE_T_GPU,float>::wrap(args, device)...);
+            return Class().run(ArrayWrapper<memory::DEVICE_T_GPU,float>::wrap(args, device)...);
         } else if (device.type == memory::DEVICE_T_GPU && dtype == DTYPE_DOUBLE) {
-            return Class().template run<memory::DEVICE_T_GPU,double>(ArrayWrapper<memory::DEVICE_T_GPU,double>::wrap(args, device)...);
+            return Class().run(ArrayWrapper<memory::DEVICE_T_GPU,double>::wrap(args, device)...);
         } else if (device.type == memory::DEVICE_T_GPU && dtype == DTYPE_INT32) {
-            return Class().template run<memory::DEVICE_T_GPU,int>(ArrayWrapper<memory::DEVICE_T_GPU,int>::wrap(args, device)...);
+            return Class().run(ArrayWrapper<memory::DEVICE_T_GPU,int>::wrap(args, device)...);
         }
 #endif
         ASSERT2(false, "Should not get here.");

@@ -15,6 +15,15 @@ enum DType {
 #define DALI_ACCEPTABLE_DTYPE_STR "float, double, or int32"
 
 
+template<typename T>
+bool dtype_is(DType dtype) {
+    return false;
+}
+
+template<> bool dtype_is<float>(DType dtype);
+template<> bool dtype_is<double>(DType dtype);
+template<> bool dtype_is<int>(DType dtype);
+
 int size_of_dtype(DType dtype);
 
 void print_dtype(std::basic_ostream<char>& stream, DType dtype, void* memory);

@@ -5,16 +5,18 @@
 
 #include "dali/array/op/elementwise.h"
 #include "dali/array/op/binary.h"
+#include "dali/array/op/other.h"
 
 TEST(ArrayTests, sigmoid) {
     Array x({3,2,2});
+
+    x[2][1][0] = 42;
+
     x.print();
     auto y = sigmoid(x);
     y.print();
 
     double x_val = x(4);
-
-    std::cout << "x_val = " << x_val << std::endl;
 
     ASSERT_EQ(1, 1);
 }
@@ -78,3 +80,9 @@ TEST(ArrayTests, eltdiv) {
     z = x / y;
 }
 
+TEST(ArrayTests, is_nan) {
+    Array x = Array::zeros({4,3,5});
+    ASSERT_FALSE(is_nan(x));
+    x[2][3][1] = NAN;
+    ASSERT_TRUE(is_nan(x));
+}

@@ -19,6 +19,26 @@ TEST(ArrayTests, sigmoid) {
     ASSERT_EQ(1, 1);
 }
 
+TEST(ArrayTests, relu) {
+    Array x({3,2,2});
+    auto y = relu(x);
+}
+
+TEST(ArrayTests, log_or_zero) {
+    Array x({3,2,2});
+    log_or_zero(x);
+}
+
+TEST(ArrayTests, abs) {
+    Array x({3,2,2});
+    abs(x);
+}
+
+TEST(ArrayTests, sign) {
+    Array x({3,2,2});
+    sign(x);
+}
+
 
 // TODO(Jonathan) = when scaffolding is cleaner,
 // check for actual outputs of sub, add, etc..

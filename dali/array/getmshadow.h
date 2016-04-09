@@ -13,33 +13,39 @@
 
 template<int devT, typename T>
 struct MArray {
-    Array array;
+    mutable Array array;
     memory::Device device;
-    void ptr(memory::AM access_mode=memory::AM_READONLY);
-    void d1(memory::AM access_mode=memory::AM_READONLY);
+    void ptr(memory::AM access_mode=memory::AM_READONLY) const;
+    void d1(memory::AM access_mode=memory::AM_READONLY) const;
+
+    MArray(const Array& _array, const memory::Device& _device);
 };
 
 template<typename T>
 struct MArray<memory::DEVICE_T_CPU, T> {
-    Array array;
+    mutable Array array;
     memory::Device device;
 
-    T* ptr(memory::AM access_mode=memory::AM_READONLY);
+    T* ptr(memory::AM access_mode=memory::AM_READONLY) const;
 
-    mshadow::Tensor<mshadow::cpu, 1, T> d1(memory::AM access_mode=memory::AM_READONLY);
+    mshadow::Tensor<mshadow::cpu, 1, T> d1(memory::AM access_mode=memory::AM_READONLY) const;
+
+    MArray(const Array& _array, const memory::Device& _device);
 };
 
 #ifdef DALI_USE_CUDA
     template<typename T>
     struct MArray<memory::DEVICE_T_GPU, T> {
-        Array array;
+        mutable Array array;
         memory::Device device;
 
-        T* ptr(memory::AM access_mode=memory::AM_READONLY);
+        T* ptr(memory::AM access_mode=memory::AM_READONLY) const;
 
-        thrust::device_ptr<T> to_thrust(memory::AM access_mode=memory::AM_READONLY);
+        thrust::device_ptr<T> to_thrust(memory::AM access_mode=memory::AM_READONLY) const;
 
-        mshadow::Tensor<mshadow::gpu, 1, T> d1(memory::AM access_mode=memory::AM_READONLY);
+        mshadow::Tensor<mshadow::gpu, 1, T> d1(memory::AM access_mode=memory::AM_READONLY) const;
+
+        MArray(const Array& _array, const memory::Device& _device);
     };
 #endif
 

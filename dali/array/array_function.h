@@ -20,7 +20,7 @@ memory::Device extract_device(T sth) {
     return memory::Device::device_of_doom();
 }
 
-memory::Device extract_device(Array a);
+memory::Device extract_device(const Array& a);
 
 struct MaybeDType {
     DType dtype;
@@ -32,7 +32,7 @@ MaybeDType extract_dtype(T sth) {
     return MaybeDType{DTYPE_FLOAT, false};
 }
 
-MaybeDType extract_dtype(Array a);
+MaybeDType extract_dtype(const Array& a);
 
 template<int devT, typename T>
 struct ArrayWrapper {
@@ -41,8 +41,8 @@ struct ArrayWrapper {
         return sth;
     }
 
-    static MArray<devT,T> wrap(Array a, memory::Device dev) {
-        return MArray<devT,T>{a,dev};
+    static MArray<devT,T>&& wrap(const Array& a, memory::Device dev) {
+        return std::move(MArray<devT,T>(a,dev));
     }
 };
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +96,7 @@ struct Function {
         return common_dtype;
     }
 
-    static Outtype eval(Args... args) {
+    static Outtype eval(const Args&... args) {
         const int size = sizeof...(Args);
         auto device = find_best_device(size, extract_device(args)...);
         auto dtype  = find_best_dtype(size, extract_dtype(args)...);
@@ -125,10 +125,10 @@ struct Function {
 template<template<class> class Functor>
 struct Elementwise : public Function<Elementwise<Functor>, Array, Array> {
     template<int devT, typename T>
-    Array run(MArray<devT,T> input) {
+    Array run(const MArray<devT,T>& input) {
         Array out(input.array.shape(), input.array.dtype());
 
-        auto mout = MArray<devT,T>{out, input.device};
+        MArray<devT,T> mout(out, input.device);
 
         mout.d1(memory::AM_OVERWRITE) = mshadow::expr::F<Functor<T>>(input.d1());
         return out;
@@ -138,10 +138,10 @@ struct Elementwise : public Function<Elementwise<Functor>, Array, Array> {
 template<template<class> class Functor>
 struct BinaryElementwise : public Function<BinaryElementwise<Functor>, Array, Array, Array> {
     template<int devT, typename T>
-    Array run(MArray<devT,T> left, MArray<devT,T> right) {
+    Array run(const MArray<devT,T>& left, const MArray<devT,T>& right) {
         Array out(left.array.shape(), left.array.dtype());
 
-        auto mout = MArray<devT,T>{out, left.device};
+        MArray<devT,T> mout(out, left.device);
 
         mout.d1(memory::AM_OVERWRITE) = mshadow::expr::F<Functor<T>>(left.d1(), right.d1());
         return out;

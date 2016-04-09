@@ -40,7 +40,7 @@ ArrayState::ArrayState(const std::vector<int>& _shape,
 template<typename T>
 T Array::scalar_value() const {
     static_assert(std::is_arithmetic<T>::value,
-            "Scalar value only available for arithemtic types (integer or real).");
+            "Scalar value only available for arithmetic types (integer or real).");
     ASSERT2(
         shape().size() == 0,
         "Scalar value can only be requested for scalar (dimension zero) Array."
@@ -61,14 +61,14 @@ T Array::scalar_value() const {
 template<typename T>
 T& Array::scalar_value() {
     static_assert(std::is_arithmetic<T>::value,
-            "Scalar value only available for arithemtic types (integer or real).");
+            "Scalar value only available for arithmetic types (integer or real).");
     ASSERT2(
         shape().size() == 0,
         "Scalar value can only be requested for scalar (dimension zero) Array."
     );
     ASSERT2(dtype_is<T>(dtype()), "Scalar assign attempted with wrong type.");
     void* data = memory()->mutable_data(memory::Device::cpu());
-    return *((T*)(data) + offset());
+    return *(((T*)(data)) + offset());
 }
 
 
@@ -181,9 +181,10 @@ template Array::operator double() const;
 template Array::operator int() const;
 
 template<typename T>
-Array& Array::operator=(T other) {
+Array& Array::operator=(const T& other) {
     static_assert(std::is_arithmetic<T>::value,
-            "Scalar value can only be assigned from arithemtic type.");
+            "Scalar value can only be assigned from arithmetic type.");
+
     if (dtype() == DTYPE_FLOAT) {
         scalar_value<float>() = other;
     } else if(dtype() == DTYPE_DOUBLE) {
@@ -191,11 +192,12 @@ Array& Array::operator=(T other) {
     } else if(dtype() == DTYPE_INT32) {
         scalar_value<int>() = other;
     }
+    return *this;
 }
 
-template Array& Array::operator=(float other);
-template Array& Array::operator=(double other);
-template Array& Array::operator=(int other);
+template Array& Array::operator=(const float& other);
+template Array& Array::operator=(const double& other);
+template Array& Array::operator=(const int& other);
 
 void Array::print(std::basic_ostream<char>& stream, int indent) const {
     if (dimension() == 0) {

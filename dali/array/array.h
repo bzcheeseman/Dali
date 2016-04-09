@@ -26,7 +26,9 @@ class Array {
 
         template<typename T>
         T& scalar_value();
+
     public:
+
       typedef uint index_t;
       Array();
 
@@ -60,7 +62,7 @@ class Array {
       operator T() const;
 
       template<typename T>
-      Array& operator=(T other);
+      Array& operator=(const T& other);
 
 
       /* Debugging */

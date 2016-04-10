@@ -1,6 +1,7 @@
 #include "dali/array/getmshadow.h"
 
 #include "dali/config.h"
+#include "dali/utils/print_utils.h"
 
 template<int devT, typename T>
 void MArray<devT, T>::ptr(memory::AM) const {}
@@ -35,7 +36,7 @@ template class MArray<memory::DEVICE_T_CPU, double>;
 #ifdef DALI_USE_CUDA
     template<typename T>
     T* MArray<memory::DEVICE_T_GPU, T>::ptr(memory::AM access_mode) const {
-        return (T*)(array.memory()->data(device, access_mode)) + array.offset();
+        return (T*) ((array.memory())->data(device, access_mode)) + array.offset();;
     }
 
     template<typename T>

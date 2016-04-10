@@ -43,8 +43,8 @@ struct ArrayWrapper {
         return sth;
     }
 
-    static MArray<devT,T>&& wrap(const Array& a, memory::Device dev) {
-        return std::move(MArray<devT,T>(a,dev));
+    static MArray<devT,T> wrap(const Array& a, memory::Device dev) {
+        return MArray<devT,T>(a,dev);
     }
 };
 
@@ -227,7 +227,7 @@ struct Function {
         }
 #endif
         else {
-            ASSERT2(false, "Should not get here.");
+            ASSERT2(false, "Best device must be either cpu or gpu, and dtype must be in " DALI_ACCEPTABLE_DTYPE_STR);
         }
     }
 };

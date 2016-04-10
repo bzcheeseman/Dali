@@ -7,6 +7,8 @@
 #include "dali/array/op/binary.h"
 #include "dali/array/op/other.h"
 #include "dali/utils/print_utils.h"
+#include "dali/runtime_config.h"
+
 
 TEST(ArrayTests, sigmoid) {
     Array x({3,2,2});

@@ -21,8 +21,6 @@ TEST(ArrayTests, sigmoid) {
     y.print();
 
     double x_val = x(4);
-
-    ASSERT_EQ(1, 1);
 }
 
 TEST(ArrayTests, relu) {
@@ -45,6 +43,17 @@ TEST(ArrayTests, sign) {
     Array w = sign(x);
 }
 
+
+TEST(ArrayTests, chainable) {
+    Array x({3,2,2});
+    // sigmoid is run and stored,
+    // then relu, then tanh. the operations
+    // are not fused, but implicit casting to
+    // Array from AssignableArray occurs at
+    // every stage.
+    Array y = tanh(relu(sigmoid(x)));
+}
+
 template<typename T>
 void test_binary_shapes(T op_f) {
     Array x({3,2,2});
@@ -61,7 +70,7 @@ void test_binary_shapes(T op_f) {
     auto output_wrong_size = [&]() {   q = op_f(x, y.reshape(x.shape()));   };
     ASSERT_THROW(output_wrong_size(), std::runtime_error);
 
-    // reseting q to baby array makes it stateless again.
+    // resetting q to baby array makes it stateless again.
     q.reset() = x / y.reshape(x.shape());
 }
 
@@ -80,7 +89,7 @@ TEST(ArrayTests, eltmul) {
 }
 
 TEST(ArrayTests, eltdiv) {
-    test_binary_shapes([](const Array& a, const Array& b) { return a/b; });
+    test_binary_shapes([](const Array& a, const Array& b) { return a / b; });
 }
 
 TEST(ArrayTests, is_nan) {

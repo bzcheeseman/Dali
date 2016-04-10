@@ -7,6 +7,9 @@
 typedef Elementwise<TensorOps::op::sigmoid> Sigmoid;
 AssignableArray sigmoid(const Array& x) { return Sigmoid::run(x); }
 
+typedef Elementwise<TensorOps::op::tanh> Tanh;
+AssignableArray tanh(const Array& x) { return Tanh::run(x); }
+
 typedef Elementwise<TensorOps::op::relu> Relu;
 AssignableArray relu(const Array& x) { return Relu::run(x); }
 

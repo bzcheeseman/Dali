@@ -1,6 +1,7 @@
 #include "ParseUtils.h"
 
 #include "dali/utils/core_utils.h"
+#include "dali/utils/print_utils.h"
 
 using std::vector;
 using std::string;

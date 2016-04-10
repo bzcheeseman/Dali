@@ -1,5 +1,9 @@
 #include "Training.h"
 
+#include "dali/utils/assert2.h"
+#include "dali/utils/print_utils.h"
+
+
 using utils::assert2;
 using utils::MS;
 

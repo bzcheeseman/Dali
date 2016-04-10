@@ -1,0 +1,50 @@
+#ifndef DALI_UTILS_PRINT_UTILS_H
+#define DALI_UTILS_PRINT_UTILS_H
+
+#include <iostream>
+#include <map>
+#include <ostream>
+#include <sstream>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+// MACRO DEFINITIONS
+#define ELOG(EXP) std::cout << #EXP "\t=\t" << (EXP) << std::endl
+#define SELOG(STR,EXP) std::cout << #STR "\t=\t" << (EXP) << std::endl
+
+namespace utils {
+    class MS {
+        public:
+            std::stringstream stream;
+            operator std::string() const { return stream.str(); }
+
+            template<class T>
+            MS& operator<<(T const& VAR) { stream << VAR; return *this; }
+    };
+    
+    extern std::string green;
+    extern std::string red;
+    extern std::string blue;
+    extern std::string yellow;
+    extern std::string cyan;
+    extern std::string black;
+    extern std::string reset_color;
+    extern std::string bold;
+}
+
+std::ostream& operator<<(std::ostream&, const std::vector<std::string>&);
+std::ostream& operator<<(std::ostream&, const std::map<std::string, uint>&);
+std::ostream& operator<<(std::ostream&, const std::map<std::string, float>&);
+std::ostream& operator<<(std::ostream&, const std::map<std::string, double>&);
+std::ostream& operator<<(std::ostream&, const std::map<std::string, std::string>&);
+std::ostream& operator<<(std::ostream&, const std::unordered_map<std::string, uint>&);
+std::ostream& operator<<(std::ostream&, const std::unordered_map<std::string, float>&);
+std::ostream& operator<<(std::ostream&, const std::unordered_map<std::string, double>&);
+std::ostream& operator<<(std::ostream&, const std::unordered_map<std::string, std::string>&);
+
+template<typename T>
+std::ostream& operator<<(std::ostream&, const std::vector<T>&);
+
+
+#endif

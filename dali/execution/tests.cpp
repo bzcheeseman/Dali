@@ -18,6 +18,20 @@ using ::testing::AssertionFailure;
 
 typedef float R;
 
+template<typename T>
+std::string iter_to_str(T begin, T end) {
+    std::stringstream ss;
+    bool first = true;
+    for (; begin != end; begin++)
+    {
+        if (!first)
+            ss << ", ";
+        ss << *begin;
+        first = false;
+    }
+    return ss.str();
+}
+
 struct AutomataState {
     typedef float REAL_t;
 

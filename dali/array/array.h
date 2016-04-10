@@ -47,6 +47,7 @@ class Array {
 
       bool is_stateless() const;
       void initialize(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT);
+      Array& reset();
 
       /* Accesing internal state */
       const std::vector<int>& shape() const;
@@ -62,6 +63,8 @@ class Array {
       /* Creating a view into memory */
       Array operator[](index_t idx) const;
       Array operator()(index_t idx) const;
+      Array ravel() const;
+      Array reshape(const std::vector<int>& shape) const;
 
       /* Interpreting scalars as numbers */
       template<typename T>

@@ -97,9 +97,7 @@ Array::Array(const Array& other, bool copy_memory) {
 }
 
 Array::Array(const AssignableArray& assignable) {
-    ELOG("If it compilies");
     assignable.assign_to(*this);
-    ELOG("oh no!");
 }
 
 Array Array::zeros(const std::vector<int>& shape, DType dtype) {
@@ -125,6 +123,12 @@ void Array::initialize(const std::vector<int>& shape, DType dtype) {
 
     state = std::make_shared<ArrayState>(shape, memory, 0, dtype);
 }
+
+Array& Array::reset() {
+    state = nullptr;
+    return *this;
+}
+
 
 static vector<int> empty_vector;
 
@@ -185,6 +189,24 @@ Array Array::operator()(index_t idx) const {
                  state->offset + idx,
                  state->dtype);
 }
+
+Array Array::ravel() const {
+    return Array({number_of_elements()},
+                 state->memory,
+                 state->offset,
+                 state->dtype);
+}
+
+Array Array::reshape(const vector<int>& new_shape) const {
+    ASSERT2(hypercube_volume(new_shape) == number_of_elements(),
+            utils::MS() << "New shape (" << new_shape << ") must have the same nubmer of elements as previous shape (" << shape() << ")");
+    return Array(new_shape,
+                 state->memory,
+                 state->offset,
+                 state->dtype);
+}
+
+
 
 template<typename T>
 Array::operator T() const {

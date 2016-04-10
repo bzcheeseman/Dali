@@ -4,6 +4,9 @@
 //         HELPER FUNCTION FOR EXTRACTING VARIOUS INFO ABOUT ARRAYS           //
 ////////////////////////////////////////////////////////////////////////////////
 
+
+std::string ShapeProperty::name = "shape";
+
 memory::Device extract_device(const Array& a) {
     return a.memory()->preferred_device;
 }

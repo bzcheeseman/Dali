@@ -55,40 +55,65 @@ struct ArrayWrapper {
 ////////////////////////////////////////////////////////////////////////////////
 
 
-/// B
-/// I
-/// G
-///
-/// T
-/// O
-/// D
-/// O
-
-/// comon dtype
-
-std::vector<int> find_common_shape(bool ready, const std::vector<int>& candidate);
-
-template<typename... Args>
-std::vector<int> find_common_shape(bool ready, const std::vector<int>& candidate, const Array& arg, const Args& ... args) {
-    if (ready) {
-        ASSERT2(candidate == arg.shape(), utils::MS() << "All arguments should be of the same shape (MISMATCH between "
-                                                      << candidate << " and " << arg.shape() << ")");
-        return find_common_shape(ready, candidate, args...);
-    } else {
-        return find_common_shape(true, arg.shape(), args...);
+template<typename Child, typename Outtype, typename State>
+struct Reducer {
+    template<typename T>
+    static std::tuple<Outtype, State> reduce(const std::tuple<Outtype, State>& candidate_and_state, T elem) {
+        return candidate_and_state;
     }
-}
+};
 
-template<typename FirstArg, typename... Args>
-std::vector<int> find_common_shape(bool ready, const std::vector<int>& candidate, const FirstArg& arg, const Args& ... args) {
-    return find_common_shape(ready, candidate, args...);
-}
+template<typename Reducer>
+struct ReduceOverArgs {
+    typedef std::tuple<typename Reducer::outtype_t, typename Reducer::state_t> outtuple_t;
 
+    template<typename... Args>
+    static typename Reducer::outtype_t reduce(const Args&... args) {
+        auto initial_tuple = outtuple_t();
+        return std::get<0>(reduce_helper(initial_tuple, args...));
+    }
+
+    template<typename FirstArg, typename... Args>
+    static outtuple_t reduce_helper(const outtuple_t& candidate_and_state, const FirstArg& arg, const Args&... args) {
+        return reduce_helper(Reducer::reduce(candidate_and_state, arg), args...);
+    }
+
+    static outtuple_t reduce_helper(const outtuple_t& candidate_and_state) {
+        return candidate_and_state;
+    }
+};
+
+
+template<typename ArrayProperty>
+struct CommonPropertyExtractor : Reducer<CommonPropertyExtractor<ArrayProperty>,std::vector<int>,bool> {
+    typedef typename ArrayProperty::property_t outtype_t;
+    typedef bool state_t;
+
+    static std::tuple<outtype_t,state_t> reduce(const std::tuple<outtype_t, state_t>& candidate_and_state, const Array& arg) {
+        std::vector<int> candidate;
+        bool ready;
+        auto arg_property = ArrayProperty::extract(arg);
+        std::tie(candidate, ready) = candidate_and_state;
+        if (ready) {
+            ASSERT2(candidate == arg_property, utils::MS() << "All arguments should be of the same " << ArrayProperty::name << " (MISMATCH between "
+                                                          << candidate << " and " << arg_property << ")");
+            return candidate_and_state;
+        } else {
+            return std::make_tuple(arg_property, true);
+        }
+    }
+};
+
+struct ShapeProperty {
+    typedef std::vector<int> property_t;
+    static std::string name;
+    static std::vector<int> extract(const Array& x) { return x.shape(); }
+};
 
 
 template<typename... Args>
 void default_prepare_output(Array& out, const Args&... args) {
-    auto common_shape = find_common_shape(false, std::vector<int>(), args...);
+    auto common_shape = ReduceOverArgs<CommonPropertyExtractor<ShapeProperty>>::reduce(args...);
     if (out.is_stateless()) {
         out.initialize(common_shape);
     } else {
@@ -169,7 +194,6 @@ struct Function {
         const int size = sizeof...(Args);
         auto device = find_best_device(size, extract_device(out), extract_device(args)...);
         auto dtype  = find_best_dtype(size, extract_dtype(out), extract_dtype(args)...);
-
         if (device.type == memory::DEVICE_T_CPU && dtype == DTYPE_FLOAT) {
             typedef ArrayWrapper<memory::DEVICE_T_CPU,float> wrapper_t;
             Class().typed_eval(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
@@ -209,7 +233,7 @@ struct Elementwise : public Function<Elementwise<Functor>, Array, Array> {
 template<template<class> class Functor>
 struct BinaryElementwise : public Function<BinaryElementwise<Functor>, Array, Array, Array> {
     template<int devT, typename T>
-    Array typed_eval(const MArray<devT, T>& out, const MArray<devT,T>& left, const MArray<devT,T>& right) {
+    void typed_eval(const MArray<devT, T>& out, const MArray<devT,T>& left, const MArray<devT,T>& right) {
         out.d1(memory::AM_OVERWRITE) = mshadow::expr::F<Functor<T>>(left.d1(), right.d1());
     }
 };

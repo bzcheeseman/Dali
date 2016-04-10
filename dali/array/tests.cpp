@@ -6,6 +6,7 @@
 #include "dali/array/op/elementwise.h"
 #include "dali/array/op/binary.h"
 #include "dali/array/op/other.h"
+#include "dali/utils/print_utils.h"
 
 TEST(ArrayTests, sigmoid) {
     Array x({3,2,2});
@@ -24,61 +25,60 @@ TEST(ArrayTests, sigmoid) {
 
 TEST(ArrayTests, relu) {
     Array x({3,2,2});
-    auto y = relu(x);
+    Array y = relu(x);
 }
 
 TEST(ArrayTests, log_or_zero) {
     Array x({3,2,2});
-    log_or_zero(x);
+    Array w = log_or_zero(x);
 }
 
 TEST(ArrayTests, abs) {
     Array x({3,2,2});
-    abs(x);
+    Array w = abs(x);
 }
 
 TEST(ArrayTests, sign) {
     Array x({3,2,2});
-    sign(x);
+    Array w = sign(x);
 }
 
+template<typename T>
+void test_binary_shapes(T op_f) {
+    Array x({3,2,2});
+    Array y({12});
+    // binary op on args of different sizes
+    auto args_wrong_size = [&]() {     Array z = op_f(x, y);         };
+    ASSERT_THROW(args_wrong_size(), std::runtime_error);
+
+    // binary op on args with the same sized args
+    Array z = eltdiv(x.ravel(), y);
+
+    // assigning to preallocated output of wrong shape.
+    Array q({12});
+    auto output_wrong_size = [&]() {   q = op_f(x, y.reshape(x.shape()));   };
+    ASSERT_THROW(output_wrong_size(), std::runtime_error);
+
+    // reseting q to baby array makes it stateless again.
+    q.reset() = x / y.reshape(x.shape());
+}
 
 // TODO(Jonathan) = when scaffolding is cleaner,
 // check for actual outputs of sub, add, etc..
 TEST(ArrayTests, add) {
-    Array x({3,2,2});
-    Array y({12});
-
-    auto z = add(x, y);
-
-    z = x + y;
+    test_binary_shapes([](const Array& a, const Array& b) { return a + b; });
 }
 
 TEST(ArrayTests, sub) {
-    Array x({3,2,2});
-    Array y({12});
-
-    auto z = sub(x, y);
-
-    z = x - y;
+    test_binary_shapes([](const Array& a, const Array& b) { return a - b; });
 }
 
 TEST(ArrayTests, eltmul) {
-    Array x({3,2,2});
-    Array y({12});
-
-    auto z = eltmul(x, y);
-
-    z = x * y;
+    test_binary_shapes([](const Array& a, const Array& b) { return a * b; });
 }
 
 TEST(ArrayTests, eltdiv) {
-    Array x({3,2,2});
-    Array y({12});
-
-    auto z = eltdiv(x, y);
-
-    z = x / y;
+    test_binary_shapes([](const Array& a, const Array& b) { return a/b; });
 }
 
 TEST(ArrayTests, is_nan) {

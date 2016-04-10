@@ -13,7 +13,8 @@ TEST(ArrayTests, sigmoid) {
     x[2][1][0] = 42;
 
     x.print();
-    auto y = sigmoid(x);
+    Array y(x.shape(),x.dtype());
+    y = sigmoid(x);
     y.print();
 
     double x_val = x(4);

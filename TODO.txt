@@ -35,13 +35,11 @@ SUPER_LOW_PRIORITY:
 
 
 THE BIG REFACTOR:
-- examples
 - data
-- visualizer
 
 - tensor
 - autodiff
 
 - neuralnet
 
-- figure out what to do with utils
+- figure out what to do with utils (partially complete)

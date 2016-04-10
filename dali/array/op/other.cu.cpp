@@ -12,19 +12,19 @@
 
 using memory::Device;
 
-struct IsNan : public Function<IsNan, bool, Array> {
+struct IsNan : public NonArrayFunction<IsNan, bool, Array> {
     template<typename T>
-    bool run(MArray<memory::DEVICE_T_CPU, T> input) {
+    void typed_eval(bool* out, MArray<memory::DEVICE_T_CPU, T> input) {
         int num_elts = input.array.number_of_elements();
-        return std::isnan(std::accumulate(input.ptr(), input.ptr() + num_elts, 0.0));
+        *out = std::isnan(std::accumulate(input.ptr(), input.ptr() + num_elts, 0.0));
     }
 
 #ifdef DALI_USE_CUDA
     template<typename T>
-    bool run(MArray<memory::DEVICE_T_GPU, T> input) {
+    void typed_eval(bool* out, MArray<memory::DEVICE_T_GPU, T> input) {
         int num_elts = input.array.number_of_elements();
 
-        return std::isnan(thrust::reduce(
+        *out = std::isnan(thrust::reduce(
             input.to_thrust(),
             input.to_thrust() + num_elts,
             0.0,
@@ -34,4 +34,4 @@ struct IsNan : public Function<IsNan, bool, Array> {
 #endif
 };
 
-bool is_nan(const Array& x) { return IsNan::eval(x); }
+bool is_nan(const Array& x) { return IsNan::run(x); }

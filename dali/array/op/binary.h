@@ -3,14 +3,14 @@
 
 #include "dali/array/array.h"
 
-Array add(const Array& left, const Array& right);
-Array sub(const Array& left, const Array& right);
-Array eltmul(const Array& left, const Array& right);
-Array eltdiv(const Array& left, const Array& right);
+AssignableArray add(const Array& left, const Array& right);
+AssignableArray sub(const Array& left, const Array& right);
+AssignableArray eltmul(const Array& left, const Array& right);
+AssignableArray eltdiv(const Array& left, const Array& right);
 
-Array operator+(const Array& left, const Array& right);
-Array operator-(const Array& left, const Array& right);
-Array operator*(const Array& left, const Array& right);
-Array operator/(const Array& left, const Array& right);
+AssignableArray operator+(const Array& left, const Array& right);
+AssignableArray operator-(const Array& left, const Array& right);
+AssignableArray operator*(const Array& left, const Array& right);
+AssignableArray operator/(const Array& left, const Array& right);
 
 #endif

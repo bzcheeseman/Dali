@@ -3,10 +3,10 @@
 
 #include "dali/array/array.h"
 
-Array sigmoid(const Array& x);
-Array relu(const Array& x);
-Array log_or_zero(const Array& x);
-Array abs(const Array& x);
-Array sign(const Array& x);
+AssignableArray sigmoid(const Array& x);
+AssignableArray relu(const Array& x);
+AssignableArray log_or_zero(const Array& x);
+AssignableArray abs(const Array& x);
+AssignableArray sign(const Array& x);
 
 #endif

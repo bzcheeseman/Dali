@@ -4,6 +4,7 @@
 #include <ostream>
 #include <type_traits>
 
+#include "dali/utils/print_utils.h"
 
 using std::vector;
 using memory::SynchronizedMemory;
@@ -75,13 +76,7 @@ T& Array::scalar_value() {
 Array::Array() {}
 
 Array::Array(const std::vector<int>& shape, DType dtype) {
-    int number_of_elements = hypercube_volume(shape);
-
-    auto memory = std::make_shared<SynchronizedMemory>(
-            number_of_elements * size_of_dtype(dtype),
-            (shape.size() > 0) ? shape[shape.size()-1] : 1);
-
-    state = std::make_shared<ArrayState>(shape, memory, 0, dtype);
+    initialize(shape, dtype);
 }
 
 Array::Array(std::initializer_list<int> shape_, DType dtype) :
@@ -101,6 +96,12 @@ Array::Array(const Array& other, bool copy_memory) {
     }
 }
 
+Array::Array(const AssignableArray& assignable) {
+    ELOG("If it compilies");
+    assignable.assign_to(*this);
+    ELOG("oh no!");
+}
+
 Array Array::zeros(const std::vector<int>& shape, DType dtype) {
     Array ret(shape, dtype);
     ret.memory()->lazy_clear();
@@ -111,10 +112,24 @@ Array Array::zeros_like(const Array& other) {
     return zeros(other.shape(), other.dtype());
 }
 
+bool Array::is_stateless() const {
+    return state == nullptr;
+}
+
+void Array::initialize(const std::vector<int>& shape, DType dtype) {
+    int number_of_elements = hypercube_volume(shape);
+
+    auto memory = std::make_shared<SynchronizedMemory>(
+            number_of_elements * size_of_dtype(dtype),
+            (shape.size() > 0) ? shape[shape.size()-1] : 1);
+
+    state = std::make_shared<ArrayState>(shape, memory, 0, dtype);
+}
+
 static vector<int> empty_vector;
 
 const vector<int>& Array::shape() const {
-    ASSERT2(state != nullptr, "shape must not be called on Array initialled with empty constructor");
+    ASSERT2(state != nullptr, "shape must not be called on Array initialized with empty constructor");
     return state->shape;
 }
 
@@ -199,6 +214,12 @@ template Array& Array::operator=(const float& other);
 template Array& Array::operator=(const double& other);
 template Array& Array::operator=(const int& other);
 
+
+Array& Array::operator=(const AssignableArray& assignable) {
+    assignable.assign_to(*this);
+    return *this;
+}
+
 void Array::print(std::basic_ostream<char>& stream, int indent) const {
     if (dimension() == 0) {
         if (dtype() == DTYPE_FLOAT) {
@@ -230,4 +251,13 @@ void Array::print(std::basic_ostream<char>& stream, int indent) const {
             (*this)[i].print(stream, indent + 4);
         stream << std::string(indent, ' ') <<"]" << std::endl;
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//                        ASSIGNABLE ARRAY                                    //
+////////////////////////////////////////////////////////////////////////////////
+
+
+AssignableArray::AssignableArray(assign_t&& _assign_to) :
+        assign_to(_assign_to) {
 }

@@ -10,6 +10,8 @@
 
 #include "dali/array/dtype.h"
 #include "dali/array/getmshadow.h"
+#include "dali/utils/print_utils.h"
+#include "dali/runtime_config.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 //         HELPER FUNCTION FOR EXTRACTING VARIOUS INFO ABOUT ARRAYS           //
@@ -45,6 +47,61 @@ struct ArrayWrapper {
         return std::move(MArray<devT,T>(a,dev));
     }
 };
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+//                          PREPAR_OUTPUT                                     //
+////////////////////////////////////////////////////////////////////////////////
+
+
+/// B
+/// I
+/// G
+///
+/// T
+/// O
+/// D
+/// O
+
+/// comon dtype
+
+std::vector<int> find_common_shape(bool ready, const std::vector<int>& candidate);
+
+template<typename... Args>
+std::vector<int> find_common_shape(bool ready, const std::vector<int>& candidate, const Array& arg, const Args& ... args) {
+    if (ready) {
+        ASSERT2(candidate == arg.shape(), utils::MS() << "All arguments should be of the same shape (MISMATCH between "
+                                                      << candidate << " and " << arg.shape() << ")");
+        return find_common_shape(ready, candidate, args...);
+    } else {
+        return find_common_shape(true, arg.shape(), args...);
+    }
+}
+
+template<typename FirstArg, typename... Args>
+std::vector<int> find_common_shape(bool ready, const std::vector<int>& candidate, const FirstArg& arg, const Args& ... args) {
+    return find_common_shape(ready, candidate, args...);
+}
+
+
+
+template<typename... Args>
+void default_prepare_output(Array& out, const Args&... args) {
+    auto common_shape = find_common_shape(false, std::vector<int>(), args...);
+    if (out.is_stateless()) {
+        out.initialize(common_shape);
+    } else {
+        ASSERT2(out.shape() == common_shape,
+                utils::MS() << "Cannot assign result of shape " << common_shape << " to a location of shape " << out.shape() << ".");
+    }
+}
+
+template<typename Outtype, typename... Args>
+void default_prepare_output(Outtype& out, Args... args) {
+    // assume all the input arrays are of the same shape and output as well.
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //                FUNCTION AND ITS SPECIALIZATIONS                            //
 ////////////////////////////////////////////////////////////////////////////////
@@ -75,6 +132,7 @@ struct Function {
             }
         }
         va_end(args);
+        return default_preferred_device;
         ASSERT2(common_device.type != memory::DEVICE_T_ERROR, "Device of doom happened.");
         return common_device;
     }
@@ -96,54 +154,71 @@ struct Function {
         return common_dtype;
     }
 
-    static Outtype eval(const Args&... args) {
+    static void prepare_output(Outtype& out, const Args&... args) {
+        default_prepare_output(out, args...);
+    }
+
+    static AssignableArray run(const Args&... args) {
+        return AssignableArray([args...](Outtype& out) {
+            prepare_output(out, args...);
+            untyped_eval(out, args...);
+        });
+    }
+
+    static void untyped_eval(const Outtype& out, const Args&... args) {
         const int size = sizeof...(Args);
-        auto device = find_best_device(size, extract_device(args)...);
-        auto dtype  = find_best_dtype(size, extract_dtype(args)...);
+        auto device = find_best_device(size, extract_device(out), extract_device(args)...);
+        auto dtype  = find_best_dtype(size, extract_dtype(out), extract_dtype(args)...);
 
         if (device.type == memory::DEVICE_T_CPU && dtype == DTYPE_FLOAT) {
-            return Class().run(ArrayWrapper<memory::DEVICE_T_CPU,float>::wrap(args, device)...);
+            typedef ArrayWrapper<memory::DEVICE_T_CPU,float> wrapper_t;
+            Class().typed_eval(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
         } else if (device.type == memory::DEVICE_T_CPU && dtype == DTYPE_DOUBLE) {
-            return Class().run(ArrayWrapper<memory::DEVICE_T_CPU,double>::wrap(args, device)...);
+            typedef ArrayWrapper<memory::DEVICE_T_CPU,double> wrapper_t;
+            Class().typed_eval(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
         } else if (device.type == memory::DEVICE_T_CPU && dtype == DTYPE_INT32) {
-            return Class().run(ArrayWrapper<memory::DEVICE_T_CPU,int>::wrap(args, device)...);
+            typedef ArrayWrapper<memory::DEVICE_T_CPU,int> wrapper_t;
+            Class().typed_eval(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
         }
 #ifdef DALI_USE_CUDA
         else if (device.type == memory::DEVICE_T_GPU && dtype == DTYPE_FLOAT) {
-            return Class().run(ArrayWrapper<memory::DEVICE_T_GPU,float>::wrap(args, device)...);
+            typedef ArrayWrapper<memory::DEVICE_T_GPU,float> wrapper_t;
+            Class().typed_eval(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
         } else if (device.type == memory::DEVICE_T_GPU && dtype == DTYPE_DOUBLE) {
-            return Class().run(ArrayWrapper<memory::DEVICE_T_GPU,double>::wrap(args, device)...);
+            typedef ArrayWrapper<memory::DEVICE_T_GPU,double> wrapper_t;
+            Class().typed_eval(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
         } else if (device.type == memory::DEVICE_T_GPU && dtype == DTYPE_INT32) {
-            return Class().run(ArrayWrapper<memory::DEVICE_T_GPU,int>::wrap(args, device)...);
+            typedef ArrayWrapper<memory::DEVICE_T_GPU,int> wrapper_t;
+            Class().typed_eval(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
         }
 #endif
-        ASSERT2(false, "Should not get here.");
-        return Outtype();
+        else {
+            ASSERT2(false, "Should not get here.");
+        }
     }
 };
 
 template<template<class> class Functor>
 struct Elementwise : public Function<Elementwise<Functor>, Array, Array> {
     template<int devT, typename T>
-    Array run(const MArray<devT,T>& input) {
-        Array out(input.array.shape(), input.array.dtype());
-
-        MArray<devT,T> mout(out, input.device);
-
-        mout.d1(memory::AM_OVERWRITE) = mshadow::expr::F<Functor<T>>(input.d1());
-        return out;
+    void typed_eval(const MArray<devT, T>& out, const MArray<devT,T>& input) {
+        out.d1(memory::AM_OVERWRITE) = mshadow::expr::F<Functor<T>>(input.d1());
     }
 };
 
 template<template<class> class Functor>
 struct BinaryElementwise : public Function<BinaryElementwise<Functor>, Array, Array, Array> {
     template<int devT, typename T>
-    Array run(const MArray<devT,T>& left, const MArray<devT,T>& right) {
-        Array out(left.array.shape(), left.array.dtype());
+    Array typed_eval(const MArray<devT, T>& out, const MArray<devT,T>& left, const MArray<devT,T>& right) {
+        out.d1(memory::AM_OVERWRITE) = mshadow::expr::F<Functor<T>>(left.d1(), right.d1());
+    }
+};
 
-        MArray<devT,T> mout(out, left.device);
-
-        mout.d1(memory::AM_OVERWRITE) = mshadow::expr::F<Functor<T>>(left.d1(), right.d1());
+template<typename Class, typename Outtype, typename... Args>
+struct NonArrayFunction : public Function<Class,Outtype*,Args...> {
+    static Outtype run(const Args&... args) {
+        Outtype out;
+        Function<Class,Outtype*,Args...>::untyped_eval(&out, args...);
         return out;
     }
 };

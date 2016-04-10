@@ -17,6 +17,8 @@ struct ArrayState {
     ArrayState(const std::vector<int>& _shape, std::shared_ptr<memory::SynchronizedMemory> _memory, int _offset, DType _device);
 };
 
+struct AssignableArray;
+
 class Array {
     private:
         std::shared_ptr<ArrayState> state;
@@ -38,9 +40,13 @@ class Array {
       Array(const std::vector<int>& shape, std::shared_ptr<memory::SynchronizedMemory>, int offset, DType dtype_=DTYPE_FLOAT);
 
       Array(const Array& other, bool copy_memory=false);
+      Array(const AssignableArray& assignable);
 
       static Array zeros(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT);
       static Array zeros_like(const Array& other);
+
+      bool is_stateless() const;
+      void initialize(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT);
 
       /* Accesing internal state */
       const std::vector<int>& shape() const;
@@ -64,9 +70,17 @@ class Array {
       template<typename T>
       Array& operator=(const T& other);
 
+      Array& operator=(const AssignableArray& assignable);
 
       /* Debugging */
       void print(std::basic_ostream<char>& stream = std::cout, int indent=0) const;
+};
+
+
+struct AssignableArray {
+    typedef std::function<void(Array&)> assign_t;
+    assign_t assign_to;
+    AssignableArray(assign_t&& _assign_to);
 };
 
 #endif

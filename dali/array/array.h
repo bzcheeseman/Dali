@@ -76,11 +76,4 @@ class Array {
     void print(std::basic_ostream<char>& stream = std::cout, int indent=0) const;
 };
 
-
-struct AssignableArray {
-    typedef std::function<void(Array&)> assign_t;
-    assign_t assign_to;
-    AssignableArray(assign_t&& _assign_to);
-};
-
 #endif

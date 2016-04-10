@@ -9,6 +9,7 @@
 #include <tuple>
 
 #include "dali/array/dtype.h"
+#include "dali/array/assignable_array.h"
 #include "dali/array/getmshadow.h"
 #include "dali/utils/print_utils.h"
 #include "dali/runtime_config.h"

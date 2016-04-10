@@ -1,0 +1,9 @@
+#include "assignable_array.h"
+
+#include "dali/array/array.h"
+
+////////////////////////////////////////////////////////////////////////////////
+//                        ASSIGNABLE ARRAY                                    //
+////////////////////////////////////////////////////////////////////////////////
+
+AssignableArray::AssignableArray(assign_t&& _assign_to) : assign_to(_assign_to) {}

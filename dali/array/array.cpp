@@ -5,6 +5,7 @@
 #include <type_traits>
 
 #include "dali/utils/print_utils.h"
+#include "dali/array/assignable_array.h"
 
 using std::vector;
 using memory::SynchronizedMemory;
@@ -275,11 +276,3 @@ void Array::print(std::basic_ostream<char>& stream, int indent) const {
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-//                        ASSIGNABLE ARRAY                                    //
-////////////////////////////////////////////////////////////////////////////////
-
-
-AssignableArray::AssignableArray(assign_t&& _assign_to) :
-        assign_to(_assign_to) {
-}

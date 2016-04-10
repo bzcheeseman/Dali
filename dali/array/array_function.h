@@ -90,7 +90,7 @@ struct CommonPropertyExtractor : Reducer<CommonPropertyExtractor<ArrayProperty>,
     typedef bool state_t;
 
     static std::tuple<outtype_t,state_t> reduce(const std::tuple<outtype_t, state_t>& candidate_and_state, const Array& arg) {
-        std::vector<int> candidate;
+        outtype_t candidate;
         bool ready;
         auto arg_property = ArrayProperty::extract(arg);
         std::tie(candidate, ready) = candidate_and_state;
@@ -110,15 +110,25 @@ struct ShapeProperty {
     static std::vector<int> extract(const Array& x) { return x.shape(); }
 };
 
+struct DTypeProperty {
+    typedef DType property_t;
+    static std::string name;
+    static DType extract(const Array& x) { return x.dtype(); }
+};
+
 
 template<typename... Args>
 void default_prepare_output(Array& out, const Args&... args) {
     auto common_shape = ReduceOverArgs<CommonPropertyExtractor<ShapeProperty>>::reduce(args...);
+    auto common_dtype = ReduceOverArgs<CommonPropertyExtractor<DTypeProperty>>::reduce(args...);
+
     if (out.is_stateless()) {
-        out.initialize(common_shape);
+        out.initialize(common_shape, common_dtype);
     } else {
         ASSERT2(out.shape() == common_shape,
                 utils::MS() << "Cannot assign result of shape " << common_shape << " to a location of shape " << out.shape() << ".");
+        ASSERT2(out.dtype() == common_dtype,
+                utils::MS() << "Cannot assign result of dtype " << common_dtype << " to a location of dtype " << out.dtype() << ".");
     }
 }
 

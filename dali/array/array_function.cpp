@@ -6,6 +6,7 @@
 
 
 std::string ShapeProperty::name = "shape";
+std::string DTypeProperty::name = "dtype";
 
 memory::Device extract_device(const Array& a) {
     return a.memory()->preferred_device;

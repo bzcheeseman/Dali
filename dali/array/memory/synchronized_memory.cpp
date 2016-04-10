@@ -126,6 +126,25 @@ namespace memory {
         }
     }
 
+    bool SynchronizedMemory::is_fresh(const Device& device) {
+        return get_device_memory(device).fresh;
+    }
+
+    memory::Device SynchronizedMemory::find_some_fresh_device() {
+        for (int i=0; i < DEVICE_MEMORIES_SIZE; ++i) {
+            if (device_memories[i].fresh) {
+                return idx_to_device(i);
+            }
+        }
+        return memory::Device::device_of_doom();
+    }
+
+    bool SynchronizedMemory::is_any_fresh() {
+        for (int i=0; i < DEVICE_MEMORIES_SIZE; ++i) {
+            if (device_memories[i].fresh) return true;
+        }
+        return false;
+    }
 
     void SynchronizedMemory::clear() {
         clear_on_allocation = true;

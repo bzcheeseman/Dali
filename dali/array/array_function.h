@@ -15,53 +15,13 @@
 #include "dali/runtime_config.h"
 
 ////////////////////////////////////////////////////////////////////////////////
-//         HELPER FUNCTION FOR EXTRACTING VARIOUS INFO ABOUT ARRAYS           //
-////////////////////////////////////////////////////////////////////////////////
-
-template<typename T>
-memory::Device extract_device(T sth) {
-    return memory::Device::device_of_doom();
-}
-
-memory::Device extract_device(const Array& a);
-
-struct MaybeDType {
-    DType dtype;
-    bool is_present;
-};
-
-template<typename T>
-MaybeDType extract_dtype(T sth) {
-    return MaybeDType{DTYPE_FLOAT, false};
-}
-
-MaybeDType extract_dtype(const Array& a);
-
-template<int devT, typename T>
-struct ArrayWrapper {
-    template<typename X>
-    static X wrap(X sth, memory::Device dev) {
-        return sth;
-    }
-
-    static MArray<devT,T> wrap(const Array& a, memory::Device dev) {
-        return MArray<devT,T>(a,dev);
-    }
-};
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-//                          PREPAR_OUTPUT                                     //
+//                          PREPARE OUTPUT                                    //
 ////////////////////////////////////////////////////////////////////////////////
 
 
 template<typename Child, typename Outtype, typename State>
 struct Reducer {
-    template<typename T>
-    static std::tuple<Outtype, State> reduce(const std::tuple<Outtype, State>& candidate_and_state, T elem) {
-        return candidate_and_state;
-    }
+
 };
 
 template<typename Reducer>
@@ -86,9 +46,14 @@ struct ReduceOverArgs {
 
 
 template<typename ArrayProperty>
-struct CommonPropertyExtractor : Reducer<CommonPropertyExtractor<ArrayProperty>,std::vector<int>,bool> {
+struct CommonPropertyExtractor {
     typedef typename ArrayProperty::property_t outtype_t;
     typedef bool state_t;
+
+    template<typename T>
+    static std::tuple<outtype_t, state_t> reduce(const std::tuple<outtype_t, state_t>& candidate_and_state, T elem) {
+        return candidate_and_state;
+    }
 
     static std::tuple<outtype_t,state_t> reduce(const std::tuple<outtype_t, state_t>& candidate_and_state, const Array& arg) {
         outtype_t candidate;
@@ -138,9 +103,77 @@ void default_prepare_output(Outtype& out, Args... args) {
     // assume all the input arrays are of the same shape and output as well.
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+//                               FIND COMMON DEVICE                           //
+////////////////////////////////////////////////////////////////////////////////
+
+struct DeviceReducerState {
+    int args_read;
+    memory::Device common_preferred_device;
+};
+
+struct DeviceReducer : Reducer<DeviceReducer, memory::Device, DeviceReducerState> {
+    typedef memory::Device outtype_t;
+    typedef DeviceReducerState state_t;
+
+    template<typename T>
+    static std::tuple<outtype_t, state_t> reduce(const std::tuple<outtype_t, state_t>& candidate_and_state, T elem) {
+        return candidate_and_state;
+    }
+
+    static std::tuple<outtype_t,state_t> reduce(const std::tuple<outtype_t, state_t>& candidate_and_state, const Array& arg) {
+        auto state = std::get<1>(candidate_and_state);
+
+        if (state.args_read <= 0) {
+            auto mem = arg.memory();
+            memory::Device best_device_for_me_myself_and_i = mem->preferred_device;
+            bool is_best_option_fresh = mem->is_fresh(mem->preferred_device);
+            bool is_some_other_option_fresh = mem->is_any_fresh();
+
+            if (!is_best_option_fresh && is_some_other_option_fresh) {
+                best_device_for_me_myself_and_i = mem->find_some_fresh_device();
+            }
+            return std::make_tuple(best_device_for_me_myself_and_i, DeviceReducerState{state.args_read + 1, mem->preferred_device});
+        } else {
+            if (arg.memory()->preferred_device != state.common_preferred_device) {
+                return std::make_tuple(default_preferred_device, DeviceReducerState{state.args_read + 1, memory::Device::device_of_doom()});
+            } else {
+                return std::make_tuple(arg.memory()->preferred_device, DeviceReducerState{state.args_read + 1, arg.memory()->preferred_device});
+            }
+        }
+    }
+};
+
+template<typename T>
+memory::Device extract_device(T sth) {
+    return memory::Device::device_of_doom();
+}
+
+memory::Device extract_device(const Array& a);
+
+struct MaybeDType {
+    DType dtype;
+    bool is_present;
+};
+
+
 ////////////////////////////////////////////////////////////////////////////////
 //                FUNCTION AND ITS SPECIALIZATIONS                            //
 ////////////////////////////////////////////////////////////////////////////////
+
+template<int devT, typename T>
+struct ArrayWrapper {
+    template<typename X>
+    static X wrap(X sth, memory::Device dev) {
+        return sth;
+    }
+
+    static MArray<devT,T>&& wrap(const Array& a, memory::Device dev) {
+        return std::move(MArray<devT,T>(a,dev));
+    }
+};
+
 
 template<typename Class, typename Outtype, typename... Args>
 struct Function {
@@ -156,39 +189,6 @@ struct Function {
     //     return RpcRequest(Class::FUNCTION_ID, bundle);
     // }
 
-    // TODO(szymon): fix this
-    static memory::Device find_best_device(int num, ...) {
-        va_list args;
-        va_start(args, num);
-        memory::Device common_device = memory::Device::device_of_doom();
-        for (int i=0; i<num; ++i) {
-            auto device = va_arg(args, memory::Device);
-            if (device.type != memory::DEVICE_T_ERROR) {
-                common_device = device;
-            }
-        }
-        va_end(args);
-        return default_preferred_device;
-        ASSERT2(common_device.type != memory::DEVICE_T_ERROR, "Device of doom happened.");
-        return common_device;
-    }
-
-    static DType find_best_dtype(int num, ...) {
-        bool dtype_set = false;
-        DType common_dtype;
-        va_list args;
-        va_start(args, num);
-        for (int i=0; i<num; ++i) {
-            auto maybe_dtype = va_arg(args, MaybeDType);
-            if (maybe_dtype.is_present) {
-                ASSERT2(!dtype_set || maybe_dtype.dtype == common_dtype, "Inconsistent dtype passed to Dali Function.");
-                common_dtype = maybe_dtype.dtype;
-                dtype_set = true;
-            }
-        }
-        va_end(args);
-        return common_dtype;
-    }
 
     static void prepare_output(Outtype& out, const Args&... args) {
         default_prepare_output(out, args...);
@@ -202,9 +202,9 @@ struct Function {
     }
 
     static void untyped_eval(const Outtype& out, const Args&... args) {
-        const int size = sizeof...(Args);
-        auto device = find_best_device(size, extract_device(out), extract_device(args)...);
-        auto dtype  = find_best_dtype(size, extract_dtype(out), extract_dtype(args)...);
+        auto device = ReduceOverArgs<DeviceReducer>::reduce(out, args...);
+        auto dtype  = ReduceOverArgs<CommonPropertyExtractor<DTypeProperty>>::reduce(out, args...);
+
         if (device.type == memory::DEVICE_T_CPU && dtype == DTYPE_FLOAT) {
             typedef ArrayWrapper<memory::DEVICE_T_CPU,float> wrapper_t;
             Class().typed_eval(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
@@ -264,8 +264,5 @@ struct NonArrayFunction : public Function<Class,Outtype*,Args...> {
 #define FAIL_ON_OTHER_CASES(OP_NAME)     Outtype_t operator()(...) { \
     throw std::string("ERROR: Unsupported types/devices for OP_NAME"); \
 }
-
-
-
 
 #endif

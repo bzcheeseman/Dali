@@ -36,6 +36,8 @@ namespace memory {
         // ignored for cpu:
         int number;
 
+        Device();
+
         bool is_cpu() const;
         static Device cpu();
         static Device device_of_doom();
@@ -44,10 +46,12 @@ namespace memory {
         bool is_gpu() const;
         static Device gpu(int number);
 #endif
-
         private:
-            Device()=default;
+            Device(DeviceT type, int number);
     };
+
+    bool operator==(const Device& a, const Device& b);
+    bool operator!=(const Device& a, const Device& b);
 
     struct DevicePtr {
         Device device;

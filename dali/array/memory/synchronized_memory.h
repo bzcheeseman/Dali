@@ -67,8 +67,6 @@ namespace memory {
             // hint for inner dimension. Must divide total_memory.
             const int inner_dimension;
 
-
-
             SynchronizedMemory(int total_size,
                                int inner_dimension=1,
                                Device preferred_device=default_preferred_device,
@@ -78,36 +76,47 @@ namespace memory {
            SynchronizedMemory(const SynchronizedMemory& other);
            ~SynchronizedMemory();
 
-            SynchronizedMemory& operator=(const SynchronizedMemory&) = delete;
+           SynchronizedMemory& operator=(const SynchronizedMemory&) = delete;
 
-            // fill memory with zeros if it's been allocated, else
-            // ask for memory to be cleared on allocation
-            void lazy_clear();
-            // immediately clear the memory and allocate if necessary
-            void clear();
+           // returns true if memory is fresh on device
+           bool is_fresh(const Device& device);
 
-            bool allocate(const Device& device) const;
-            void free(const Device& device) const;
+           // returns first device in the list that is fresh
+           // and if no devices are fresh return device of
+           // DOOM.
+           memory::Device find_some_fresh_device();
 
-            // Ensure a fresh copy of the memory is on the device
-            void move_to(const Device& device) const;
+           // returns true if any of the devices has fresh memory.
+           bool is_any_fresh();
+
+           // fill memory with zeros if it's been allocated, else
+           // ask for memory to be cleared on allocation
+           void lazy_clear();
+           // immediately clear the memory and allocate if necessary
+           void clear();
+
+           bool allocate(const Device& device) const;
+           void free(const Device& device) const;
+
+           // Ensure a fresh copy of the memory is on the device
+           void move_to(const Device& device) const;
 
 
-            // This function selects on of the 3 functions below based on
-            // access_mode value.
-            void* data(const Device& device, AM access_mode=AM_READONLY);
-            // depending on how memory is accessed, its freshess changes:
-            // calling `data` without mutable asks for a fresh copy
-            // of the memory, but promises to not modify it
-            void* readonly_data(const Device& device) const;
-            // mutable_cpu_data on the other hand declares that the memory
-            // will be modified, and thus will need to be resynchronized
-            // if a different device needs it (cpu vs. gpu freshness)
-            void* mutable_data(const Device& device);
-            // just like mutable_data, except the memory is not guaranteed to
-            // be fresh (e.g. you should ignore its contents, as they could be
-            // stale).
-            void* overwrite_data(const Device& device);
+           // This function selects on of the 3 functions below based on
+           // access_mode value.
+           void* data(const Device& device, AM access_mode=AM_READONLY);
+           // depending on how memory is accessed, its freshess changes:
+           // calling `data` without mutable asks for a fresh copy
+           // of the memory, but promises to not modify it
+           void* readonly_data(const Device& device) const;
+           // mutable_cpu_data on the other hand declares that the memory
+           // will be modified, and thus will need to be resynchronized
+           // if a different device needs it (cpu vs. gpu freshness)
+           void* mutable_data(const Device& device);
+           // just like mutable_data, except the memory is not guaranteed to
+           // be fresh (e.g. you should ignore its contents, as they could be
+           // stale).
+           void* overwrite_data(const Device& device);
     };
 }  // namespace memory
 

@@ -139,7 +139,14 @@ function(add_testsuite TEST_TARGET RUN_TARGET TEST_DEPENDENCIES TEST_FILES DEVIC
         message(STATUS "RUN_TARGET -> ${RUN_TARGET}")
 
         if (DEVICE STREQUAL "GPU")
+            # keep copy of old compiler flags
+            SET(OLD_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+            # switch to specific cuda flags
+            SET(CMAKE_CXX_FLAGS "-O3 -w -fPIC ${CUDA_EXTRA_FLAGS}")
             cuda_add_executable(${TEST_TARGET} ${TEST_FILES})
+            # switch back to non-cuda specific cxx flags
+            SET(CMAKE_CXX_FLAGS ${OLD_CXX_FLAGS})
+            SET(CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
         else (DEVICE STREQUAL "GPU")
             add_executable(${TEST_TARGET} ${TEST_FILES})
         endif(DEVICE STREQUAL "GPU")

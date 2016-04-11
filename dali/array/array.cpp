@@ -82,12 +82,12 @@ T& Array::scalar_value() {
 
 Array::Array() {}
 
-Array::Array(const std::vector<int>& shape, DType dtype) {
-    initialize(shape, dtype);
+Array::Array(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
+    initialize(shape, dtype, preferred_device);
 }
 
-Array::Array(std::initializer_list<int> shape_, DType dtype) :
-        Array(vector<int>(shape_), dtype) {
+Array::Array(std::initializer_list<int> shape_, DType dtype, memory::Device preferred_device) :
+        Array(vector<int>(shape_), dtype, preferred_device) {
 }
 
 Array::Array(const std::vector<int>& shape, std::shared_ptr<SynchronizedMemory> memory, int offset, DType dtype) {
@@ -107,26 +107,32 @@ Array::Array(const AssignableArray& assignable) {
     assignable.assign_to(*this);
 }
 
-Array Array::zeros(const std::vector<int>& shape, DType dtype) {
-    Array ret(shape, dtype);
+Array Array::zeros(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
+    Array ret(shape, dtype, preferred_device);
     ret.memory()->lazy_clear();
     return ret;
 }
 
 Array Array::zeros_like(const Array& other) {
-    return zeros(other.shape(), other.dtype());
+    if (other.is_stateless()) {
+        return Array();
+    } else {
+        return zeros(other.shape(), other.dtype(), other.memory()->preferred_device);
+    }
 }
 
 bool Array::is_stateless() const {
     return state == nullptr;
 }
 
-void Array::initialize(const std::vector<int>& shape, DType dtype) {
+void Array::initialize(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
     int number_of_elements = hypercube_volume(shape);
 
     auto memory = std::make_shared<SynchronizedMemory>(
             number_of_elements * size_of_dtype(dtype),
-            (shape.size() > 0) ? shape[shape.size()-1] : 1);
+            (shape.size() > 0) ? shape[shape.size()-1] : 1,
+            preferred_device
+        );
 
     state = std::make_shared<ArrayState>(shape, memory, 0, dtype);
 }

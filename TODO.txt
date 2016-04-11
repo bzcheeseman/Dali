@@ -4,7 +4,6 @@ HIGH PRIORITY:
 -> ensure we have more relus than competition
 -> step size in adam
 -> Namespace dali
--> make Dali brew installable
 -> Document broadcasting behavior
 -> Make all imports, namespace, and includes follow same style throughout Dali
 -> Separate data generation/loading scripts to separate codebase
@@ -16,8 +15,6 @@ MEDIUM PRIORITY:
 -> data/glove should have a generate script to download vectors.
 -> Random weights init should take doubles, not template typename.
 -> Improve NLP-Utils. Agree on common set of practices for all the examples.
--> visualizer - web frontend for error visualization (60% done)
--> remove gflags from core dali
 -> dali cmake finder should conform to standard notation, the automagic finder that finds the dependencies + dali should still be there, but under different variable name.
 
 LOWER_PRIORITY:
@@ -30,6 +27,7 @@ LOWER_PRIORITY:
    (e.g. follow Numpy convention of non assignable types)
 -> make zlib optional
 -> check for clang version
+-> Array copy constructor, which copies directly to another device.
 
 SUPER_LOW_PRIORITY:
 -> expose MAX_GPUS tocmake.

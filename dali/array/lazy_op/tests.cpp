@@ -12,6 +12,12 @@ TEST(ArrayLazyOpsTests, imports) {
     ASSERT_TRUE(lazy::ops_loaded);
 }
 
+TEST(ArrayLazyOpsTests, lazy_device_deduction) {
+
+
+}
+
+
 TEST(ArrayLazyOpsTests, lazy_dtype_deduction) {
     Array x({16}, DTYPE_FLOAT);
     Array y({16}, DTYPE_FLOAT);

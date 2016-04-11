@@ -8,6 +8,7 @@
 #include "dali/array/dtype.h"
 #include "dali/array/memory/memory_ops.h"
 #include "dali/array/memory/synchronized_memory.h"
+#include "dali/runtime_config.h"
 
 class Array;
 
@@ -39,8 +40,8 @@ class Array {
     Array();
 
     /* Various ways of constructing array */
-    Array(const std::vector<int>& shape, DType dtype_=DTYPE_FLOAT);
-    Array(std::initializer_list<int> shape, DType dtype_=DTYPE_FLOAT);
+    Array(const std::vector<int>& shape, DType dtype_=DTYPE_FLOAT, memory::Device preferred_device=default_preferred_device);
+    Array(std::initializer_list<int> shape, DType dtype_=DTYPE_FLOAT, memory::Device preferred_device=default_preferred_device);
     Array(const std::vector<int>& shape, std::shared_ptr<memory::SynchronizedMemory>, int offset, DType dtype_=DTYPE_FLOAT);
 
     Array(const Array& other, bool copy_memory=false);
@@ -52,11 +53,11 @@ class Array {
     }
 
 
-    static Array zeros(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT);
+    static Array zeros(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=default_preferred_device);
     static Array zeros_like(const Array& other);
 
     bool is_stateless() const;
-    void initialize(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT);
+    void initialize(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=default_preferred_device);
     Array& reset();
 
     /* Accesing internal state */

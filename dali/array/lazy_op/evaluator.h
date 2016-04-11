@@ -2,16 +2,30 @@
 #define DALI_ARRAY_LAZY_OP_EVALUATOR_H
 
 #include "dali/array/function/function.h"
+#include "dali/array/dtype.h"
 
 template<class LazyExpr>
 struct Evaluator : public Function<Evaluator<LazyExpr>, Array, LazyExpr> {
-    static std::vector<int> deduce_output_shape(LazyExpr expr) {
+
+    static std::vector<int> deduce_output_shape(const LazyExpr& expr) {
         return expr.shape();
     }
 
-    static DType deduce_output_dtype(LazyExpr expr) {
-        return expr.dtype(); 
+    static DType deduce_output_dtype(const LazyExpr& expr) {
+        return expr.dtype();
     }
+
+    // static memory::Device deduce_computation_device(const Array& out, const LazyExpr& expr) {
+    //     return ReduceOverArgs<DeviceReducer>::reduce(out, args...);
+    // }
+
+    static DType deduce_computation_dtype(const Array& out, const LazyExpr& expr) {
+        ASSERT2(out.dtype() == expr.dtype(),
+            utils::MS() << "Output type (" << dtype_to_name(out.dtype())
+                        << ") and expression type (" << dtype_to_name(expr.dtype()) << ") differ");
+        return out.dtype();
+    }
+
 
     template<int devT, typename T>
     void typed_eval(MArray<devT,T> out, LazyExpr expr) {

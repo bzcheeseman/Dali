@@ -12,7 +12,7 @@ bool dtype_is<double>(DType dtype) {
     return dtype == DTYPE_DOUBLE;
 }
 
-template<> 
+template<>
 bool dtype_is<int>(DType dtype) {
     return dtype == DTYPE_INT32;
 }
@@ -40,5 +40,19 @@ void print_dtype(std::basic_ostream<char>& stream, DType dtype, void* memory) {
         stream << *((int*)memory);
     } else {
         ASSERT2(false, "print_dtype only accepts " DALI_ACCEPTABLE_DTYPE_STR);
+    }
+}
+
+std::string dtype_to_name(DType dtype) {
+    switch(dtype) {
+        case DTYPE_FLOAT:
+            return "float";
+        case DTYPE_DOUBLE:
+            return "double";
+        case DTYPE_INT32:
+            return "int32";
+        default:
+            ASSERT2(false, "dtype_to_name called with incorrect DType.");
+            return "unknown";
     }
 }

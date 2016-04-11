@@ -1,47 +1,8 @@
-#ifndef DALI_ARRAY_LAZY_OP_BINARY_OP
-#define DALI_ARRAY_LAZY_OP_BINARY_OP
+#ifndef DALI_ARRAY_LAZY_OP_BINARY_H
+#define DALI_ARRAY_LAZY_OP_BINARY_H
 
-#include <tuple>
-
-#include "dali/array/array_function.h"
-#include "dali/array/TensorOps.h"
-
-template<class LazyExpr>
-struct Evaluator : public Function<Evaluator<LazyExpr>, Array, LazyExpr> {
-
-    static std::vector<int> deduce_shape(LazyExpr i_could_not_care_less) {
-        return std::vector<int>{12};
-    }
-
-    static DType deduce_dtype(LazyExpr i_could_not_care_less) {
-        return DTYPE_FLOAT;
-    }
-
-
-    template<int devT, typename T>
-    void typed_eval(MArray<devT,T> out, LazyExpr expr) {
-        out.d1(memory::AM_OVERWRITE) =  expr.template eval<devT,T>();;
-    }
-};
-
-template<int devT,typename T>
-struct EvalLazy {
-    template<typename ExprT>
-    static inline auto eval(const ExprT& sth) -> decltype(sth.template eval<devT,T>()) {
-        return sth.template eval<devT,T>();
-    }
-
-    static inline auto eval(const Array& array) -> decltype(MArray<devT,T>(array, memory::Device::cpu()).d1()) {
-        return MArray<devT,T>(array, memory::Device::cpu()).d1();;
-    }
-
-    static inline float eval(const float& scalar) { return scalar; }
-
-    static inline double eval(const double& scalar) { return scalar; }
-
-    static inline int eval(const int& scalar) { return scalar; }
-};
-
+#include "dali/array/lazy_op/evaluator.h"
+#include "dali/array/TensorFunctions.h"
 
 template<template<class>class Functor, typename LeftT, typename RightT>
 struct Binary {
@@ -72,9 +33,24 @@ struct Binary {
     }
 };
 
-template <typename T, typename T2>
-Binary<TensorOps::op::mul, T, T2> lazy_mul(T a, T2 b) {
-    return Binary<TensorOps::op::mul, T, T2>(a, b);
+
+namespace lazy {
+    template <typename T, typename T2>
+    Binary<TensorOps::op::add, T, T2> add(T a, T2 b) {
+        return Binary<TensorOps::op::add, T, T2>(a, b);
+    }
+    template <typename T, typename T2>
+    Binary<TensorOps::op::sub, T, T2> sub(T a, T2 b) {
+        return Binary<TensorOps::op::sub, T, T2>(a, b);
+    }
+    template <typename T, typename T2>
+    Binary<TensorOps::op::eltmul, T, T2> eltmul(T a, T2 b) {
+        return Binary<TensorOps::op::eltmul, T, T2>(a, b);
+    }
+    template <typename T, typename T2>
+    Binary<TensorOps::op::eltdiv, T, T2> eltdiv(T a, T2 b) {
+        return Binary<TensorOps::op::eltdiv, T, T2>(a, b);
+    }
 }
 
 

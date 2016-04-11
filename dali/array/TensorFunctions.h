@@ -39,7 +39,7 @@ namespace TensorOps {
         };
 
         template<typename R>
-        struct plus {
+        struct add {
             MSHADOW_XINLINE static R Map(const R& a, const R& b) {
                 return a + b;
             }
@@ -53,14 +53,14 @@ namespace TensorOps {
         };
 
         template<typename R>
-        struct mul {
+        struct eltmul {
             MSHADOW_XINLINE static R Map(const R& a, const R& b) {
                 return a * b;
             }
         };
 
         template<typename R>
-        struct div {
+        struct eltdiv {
             MSHADOW_XINLINE static R Map(const R& a, const R& b) {
                 return a / b;
             }

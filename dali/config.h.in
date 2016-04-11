@@ -15,4 +15,6 @@
 
 #cmakedefine GPERFTOOLS_FOUND     ${GPERFTOOLS_FOUND}
 
+#define EXISTS_AND_TRUE(VAR) 7-VAR-7 == -1
+
 #endif

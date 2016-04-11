@@ -26,7 +26,8 @@ class Array {
     T scalar_value() const;
     template<typename T>
     T& scalar_value();
-
+    template<typename T>
+    Array& assign_constant(const T& other);
   public:
     typedef uint index_t;
     Array();
@@ -38,6 +39,11 @@ class Array {
 
     Array(const Array& other, bool copy_memory=false);
     Array(const AssignableArray& assignable);
+    template<typename T>
+    Array(const T& castable_to_assignable) :
+            Array((AssignableArray)castable_to_assignable) {
+    }
+
 
     static Array zeros(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT);
     static Array zeros_like(const Array& other);
@@ -65,11 +71,20 @@ class Array {
 
     /* Interpreting scalars as numbers */
     template<typename T>
-    operator T() const;
+    operator T&();
 
     template<typename T>
-    Array& operator=(const T& other);
+    operator const T&() const;
 
+    template<typename T>
+    Array& operator=(const T& other) {
+        auto assignable = (AssignableArray)other;
+        return (*this = assignable);
+    }
+
+    Array& operator=(const float& other);
+    Array& operator=(const double& other);
+    Array& operator=(const int& other);
     Array& operator=(const AssignableArray& assignable);
 
     /* Debugging */

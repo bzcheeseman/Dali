@@ -176,7 +176,8 @@ vector<int> Array::subshape() const {
 
 
 Array Array::operator[](index_t idx) const {
-    ASSERT2(0 <= idx && idx <= shape()[0], utils::MS() << "Index " << idx << " must be in [0," << shape()[0] << "].");
+    ASSERT2(shape().size() > 0, "Slicing a scalar array is not allowed.");
+    ASSERT2(0 <= idx && idx < shape()[0], utils::MS() << "Index " << idx << " must be in [0," << shape()[0] << "].");
     return Array(subshape(),
                  state->memory,
                  state->offset + hypercube_volume(subshape()) * idx,
@@ -184,7 +185,8 @@ Array Array::operator[](index_t idx) const {
 }
 
 Array Array::operator()(index_t idx) const {
-    ASSERT2(0 <= idx && idx <= number_of_elements(), utils::MS() << "Index " << idx << " must be in [0," << number_of_elements() << "].");
+    ASSERT2(0 <= idx && idx <= number_of_elements(),
+            utils::MS() << "Index " << idx << " must be in [0," << number_of_elements() << "].");
     return Array(vector<int>(),
                  state->memory,
                  state->offset + idx,
@@ -207,19 +209,26 @@ Array Array::reshape(const vector<int>& new_shape) const {
                  state->dtype);
 }
 
-
-
 template<typename T>
-Array::operator T() const {
+Array::operator const T&() const {
     return scalar_value<T>();
 }
 
-template Array::operator float() const;
-template Array::operator double() const;
-template Array::operator int() const;
+template Array::operator const float&() const;
+template Array::operator const double&() const;
+template Array::operator const int&() const;
 
 template<typename T>
-Array& Array::operator=(const T& other) {
+Array::operator T&() {
+    return scalar_value<T>();
+}
+
+template Array::operator float&();
+template Array::operator double&();
+template Array::operator int&();
+
+template<typename T>
+Array& Array::assign_constant(const T& other) {
     static_assert(std::is_arithmetic<T>::value,
             "Scalar value can only be assigned from arithmetic type.");
 
@@ -233,10 +242,17 @@ Array& Array::operator=(const T& other) {
     return *this;
 }
 
-template Array& Array::operator=(const float& other);
-template Array& Array::operator=(const double& other);
-template Array& Array::operator=(const int& other);
+Array& Array::operator=(const float& other) {
+    return assign_constant<float>(other);
+}
 
+Array& Array::operator=(const double& other) {
+    return assign_constant<double>(other);
+}
+
+Array& Array::operator=(const int& other) {
+    return assign_constant<int>(other);
+}
 
 Array& Array::operator=(const AssignableArray& assignable) {
     assignable.assign_to(*this);
@@ -246,11 +262,11 @@ Array& Array::operator=(const AssignableArray& assignable) {
 void Array::print(std::basic_ostream<char>& stream, int indent) const {
     if (dimension() == 0) {
         if (dtype() == DTYPE_FLOAT) {
-            stream << (float)(*this);
+            stream << (const float&)(*this);
         } else if (dtype() == DTYPE_DOUBLE) {
-            stream << (double)(*this);
+            stream << (const double&)(*this);
         } else if (dtype() == DTYPE_INT32) {
-            stream << (int)(*this);
+            stream << (const int&)(*this);
         } else {
             ASSERT2(false, "Wrong dtype for Array.");
         }
@@ -275,4 +291,3 @@ void Array::print(std::basic_ostream<char>& stream, int indent) const {
         stream << std::string(indent, ' ') <<"]" << std::endl;
     }
 }
-

@@ -80,23 +80,9 @@ struct DTypeProperty {
 
 template<typename... Args>
 void default_prepare_output(Array& out, const Args&... args) {
-    auto common_shape = ReduceOverArgs<CommonPropertyExtractor<ShapeProperty>>::reduce(args...);
-    auto common_dtype = ReduceOverArgs<CommonPropertyExtractor<DTypeProperty>>::reduce(args...);
 
-    if (out.is_stateless()) {
-        out.initialize(common_shape, common_dtype);
-    } else {
-        ASSERT2(out.shape() == common_shape,
-                utils::MS() << "Cannot assign result of shape " << common_shape << " to a location of shape " << out.shape() << ".");
-        ASSERT2(out.dtype() == common_dtype,
-                utils::MS() << "Cannot assign result of dtype " << common_dtype << " to a location of dtype " << out.dtype() << ".");
-    }
 }
 
-template<typename Outtype, typename... Args>
-void default_prepare_output(Outtype& out, Args... args) {
-    // assume all the input arrays are of the same shape and output as well.
-}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -156,18 +142,6 @@ struct DeviceReducer {
     }
 };
 
-template<typename T>
-memory::Device extract_device(T sth) {
-    return memory::Device::device_of_doom();
-}
-
-memory::Device extract_device(const Array& a);
-
-struct MaybeDType {
-    DType dtype;
-    bool is_present;
-};
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //                FUNCTION AND ITS SPECIALIZATIONS                            //
@@ -176,7 +150,7 @@ struct MaybeDType {
 template<int devT, typename T>
 struct ArrayWrapper {
     template<typename X>
-    static X wrap(X sth, memory::Device dev) {
+    static X wrap(const X& sth, memory::Device dev) {
         return sth;
     }
 
@@ -200,9 +174,26 @@ struct Function {
     //     return RpcRequest(Class::FUNCTION_ID, bundle);
     // }
 
+    static std::vector<int> deduce_shape(const Args&... args) {
+        return ReduceOverArgs<CommonPropertyExtractor<ShapeProperty>>::reduce(args...);
+    }
+
+    static DType deduce_dtype(const Args&... args) {
+        return ReduceOverArgs<CommonPropertyExtractor<DTypeProperty>>::reduce(args...);
+    }
 
     static void prepare_output(Outtype& out, const Args&... args) {
-        default_prepare_output(out, args...);
+        auto common_shape = Class::deduce_shape(args...);
+        auto common_dtype = Class::deduce_dtype(args...);
+
+        if (out.is_stateless()) {
+            out.initialize(common_shape, common_dtype);
+        } else {
+            ASSERT2(out.shape() == common_shape,
+                    utils::MS() << "Cannot assign result of shape " << common_shape << " to a location of shape " << out.shape() << ".");
+            ASSERT2(out.dtype() == common_dtype,
+                    utils::MS() << "Cannot assign result of dtype " << common_dtype << " to a location of dtype " << out.dtype() << ".");
+        }
     }
 
     static AssignableArray run(const Args&... args) {
@@ -262,6 +253,10 @@ struct BinaryElementwise : public Function<BinaryElementwise<Functor>, Array, Ar
 
 template<typename Class, typename Outtype, typename... Args>
 struct NonArrayFunction : public Function<Class,Outtype*,Args...> {
+
+    static void prepare_output(Outtype& out, const Args&... args) {
+    }
+
     static Outtype run(const Args&... args) {
         Outtype out;
         Function<Class,Outtype*,Args...>::untyped_eval(&out, args...);

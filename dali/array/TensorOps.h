@@ -7,10 +7,9 @@
 #include <math.h>
 #include <functional>
 
-#include "dali/array/TensorInternal.h"
 #include "dali/array/MshadowIntegerOps.h"
 #include "dali/array/TensorFunctions.h"
-#include "dali/array/TensorAccessor.h"
+// #include "dali/array/TensorAccessor.h"
 #include "dali/array/ThrustUtils.h"
 
 

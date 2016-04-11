@@ -32,6 +32,14 @@ namespace memory {
         return Device(DEVICE_T_CPU, -1);
     }
 
+    bool Device::is_fake() const {
+        return type == DEVICE_T_FAKE;
+    }
+
+    Device Device::fake(int number) {
+        return Device(DEVICE_T_FAKE, number);
+    }
+
     Device Device::device_of_doom() {
         return Device(DEVICE_T_ERROR, -1);
     }

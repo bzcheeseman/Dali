@@ -17,13 +17,15 @@ namespace memory {
 #ifdef DALI_USE_CUDA
     enum DeviceT {
         DEVICE_T_ERROR=0,
-        DEVICE_T_CPU=1,
-        DEVICE_T_GPU=2,
+        DEVICE_T_FAKE=1,
+        DEVICE_T_CPU=2,
+        DEVICE_T_GPU=3,
     };
 #else
     enum DeviceT {
         DEVICE_T_ERROR=0,
-        DEVICE_T_CPU=1,
+        DEVICE_T_FAKE=1,
+        DEVICE_T_CPU=2,
     };
 #endif
 
@@ -37,6 +39,9 @@ namespace memory {
         int number;
 
         Device();
+
+        bool is_fake() const;
+        static Device fake(int number);
 
         bool is_cpu() const;
         static Device cpu();

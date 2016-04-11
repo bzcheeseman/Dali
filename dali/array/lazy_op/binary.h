@@ -24,23 +24,23 @@ struct Evaluator : public Function<Evaluator<LazyExpr>, Array, LazyExpr> {
     }
 };
 
-struct LazyArray {
-    Array array;
-
-    template<int devT, typename T>
-    auto eval() -> decltype(MArray<devT,T>(array, memory::Device::cpu()).d1()) {
-        return MArray<devT,T>(array, memory::Device::cpu()).d1();
+template<int devT,typename T>
+struct EvalLazy {
+    template<typename ExprT>
+    static inline auto eval(const ExprT& sth) -> decltype(sth.template eval<devT,T>()) {
+        return sth.template eval<devT,T>();
     }
+
+    static inline auto eval(const Array& array) -> decltype(MArray<devT,T>(array, memory::Device::cpu()).d1()) {
+        return MArray<devT,T>(array, memory::Device::cpu()).d1();;
+    }
+
+    static inline float eval(const float& scalar) { return scalar; }
+
+    static inline double eval(const double& scalar) { return scalar; }
+
+    static inline int eval(const int& scalar) { return scalar; }
 };
-
-inline LazyArray wrap_lazy(const Array& sth) {
-    return LazyArray{sth};
-}
-
-template<typename ExprT>
-inline ExprT wrap_lazy(const ExprT& sth) {
-    return sth;
-}
 
 
 template<template<class>class Functor, typename LeftT, typename RightT>
@@ -56,12 +56,12 @@ struct Binary {
     template<int devT, typename T>
     inline auto eval() -> decltype(
                               mshadow::expr::F<Functor<T>>(
-                                   wrap_lazy(left).template eval<devT,T>(),
-                                   wrap_lazy(right).template eval<devT,T>()
+                                   EvalLazy<devT,T>::eval(left),
+                                   EvalLazy<devT,T>::eval(right)
                               )
                           ) {
-        auto left_expr  = wrap_lazy(left).template eval<devT,T>();
-        auto right_expr = wrap_lazy(right).template eval<devT,T>();
+        auto left_expr  = EvalLazy<devT,T>::eval(left);
+        auto right_expr = EvalLazy<devT,T>::eval(right);
 
         return mshadow::expr::F<Functor<T>>(left_expr, right_expr);
 

@@ -49,7 +49,7 @@ TEST(ArrayTests, lazy) {
     Array q({12});
     Array q2({16});
 
-    q = lazy_mul(x, lazy_mul(y,z));
+    q = lazy_mul(x, lazy_mul(lazy_mul(y,z), 1));
     Array qp = lazy_mul(x, lazy_mul(y,z));
     EXPECT_THROW(q2 = lazy_mul(x, lazy_mul(y,z)), std::runtime_error);
 }

@@ -19,7 +19,7 @@ struct ReduceOverArgs {
 
     template<typename FirstArg, typename... Args>
     static outtuple_t reduce_helper(const outtuple_t& candidate_and_state, const FirstArg& arg, const Args&... args) {
-        return reduce_helper(Reducer::reduce(candidate_and_state, arg), args...);
+        return reduce_helper(Reducer::reduce_step(candidate_and_state, arg), args...);
     }
 
     static outtuple_t reduce_helper(const outtuple_t& candidate_and_state) {
@@ -42,11 +42,11 @@ struct DeviceReducer {
     typedef DeviceReducerState state_t;
 
     template<typename T>
-    static std::tuple<outtype_t, state_t> reduce(const std::tuple<outtype_t, state_t>& candidate_and_state, const T& elem) {
+    static std::tuple<outtype_t, state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const T& elem) {
         return candidate_and_state;
     }
 
-    static std::tuple<outtype_t,state_t> reduce(const std::tuple<outtype_t, state_t>& candidate_and_state, const Array& arg);
+    static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const Array& arg);
 };
 
 #endif

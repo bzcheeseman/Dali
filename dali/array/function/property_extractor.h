@@ -17,11 +17,11 @@ struct CommonPropertyExtractor {
     typedef bool state_t;
 
     template<typename T>
-    static std::tuple<outtype_t, state_t> reduce(const std::tuple<outtype_t, state_t>& candidate_and_state, T elem) {
+    static std::tuple<outtype_t, state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, T elem) {
         return candidate_and_state;
     }
 
-    static std::tuple<outtype_t,state_t> reduce(const std::tuple<outtype_t, state_t>& candidate_and_state, const Array& arg) {
+    static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const Array& arg) {
         outtype_t candidate;
         bool ready;
         auto arg_property = ArrayProperty::extract(arg);

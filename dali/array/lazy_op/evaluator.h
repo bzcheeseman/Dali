@@ -4,6 +4,34 @@
 #include "dali/array/function/function.h"
 #include "dali/array/dtype.h"
 
+template<template<class>class Functor, typename LeftT, typename RightT>
+struct Binary;
+
+template<typename Reducer>
+struct UnfoldingReducer {
+    typedef std::tuple<typename Reducer::outtype_t, typename Reducer::state_t> outtuple_t;
+
+    template<template<class>class Functor, typename LeftT, typename RightT, typename... Args>
+    static outtuple_t unfold_helper(const outtuple_t& state, const Binary<Functor, LeftT,RightT>& binary_expr, const Args&... args) {
+        return unfold_helper(state, binary_expr.left, binary_expr.right, args...);
+    }
+
+    template<typename T, typename... Args>
+    static outtuple_t unfold_helper(const outtuple_t& state, const T& arg, const Args&... args) {
+        return unfold_helper(Reducer::reduce_step(state, arg), args...);
+    }
+
+    static outtuple_t unfold_helper(const outtuple_t& state) {
+        return state;
+    }
+
+    template<typename... Args>
+    static typename Reducer::outtype_t reduce(const Args&... args) {
+        auto initial_tuple = outtuple_t();
+        return std::get<0>(unfold_helper(initial_tuple, args...));
+    }
+};
+
 template<class LazyExpr>
 struct Evaluator : public Function<Evaluator<LazyExpr>, Array, LazyExpr> {
 
@@ -15,9 +43,9 @@ struct Evaluator : public Function<Evaluator<LazyExpr>, Array, LazyExpr> {
         return expr.dtype();
     }
 
-    // static memory::Device deduce_computation_device(const Array& out, const LazyExpr& expr) {
-    //     return ReduceOverArgs<DeviceReducer>::reduce(out, args...);
-    // }
+    static memory::Device deduce_computation_device(const Array& out, const LazyExpr& expr) {
+        return UnfoldingReducer<DeviceReducer>::reduce(out, expr);
+    }
 
     static DType deduce_computation_dtype(const Array& out, const LazyExpr& expr) {
         ASSERT2(out.dtype() == expr.dtype(),

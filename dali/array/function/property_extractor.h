@@ -40,6 +40,7 @@ struct CommonPropertyExtractor {
 struct ShapeDeducer {
     template<typename T>
     static std::tuple<bool,std::vector<int>> deduce_unary(const T& x) {
+        static_assert(!std::is_same<T,uint>::value, "blah");
         return std::make_tuple(true, x.shape());
     }
     static std::tuple<bool,std::vector<int>> deduce_unary(const float& x) {

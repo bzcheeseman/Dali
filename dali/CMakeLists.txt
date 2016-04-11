@@ -11,9 +11,16 @@ file(GLOB_RECURSE DaliSources           "${DaliDir}/*.cpp")
 file(GLOB_RECURSE DaliTemplates         "${DaliDir}/*.cpp.template")
 file(GLOB_RECURSE DaliMaybeCudaSources  "${DaliDir}/*.cu.cpp")
 file(GLOB_RECURSE DaliCudaSources       "${DaliDir}/*.cu")
+# test files
 file(GLOB_RECURSE DaliTests             "${DaliDir}/tests.cpp")
+file(GLOB_RECURSE DaliMaybeCudaTests    "${DaliDir}/tests.cu.cpp")
+list(APPEND DaliTests ${DaliMaybeCudaTests})
+file(GLOB_RECURSE DaliCudaTests         "${DaliDir}/tests.cu")
 
-
+# Remove tests from compilation (negative patterns)
+list(REMOVE_ITEM DaliSources ${DaliTests} ${TESTS_MAIN})
+list(REMOVE_ITEM DaliCudaSources ${DaliCudaTests} ${TESTS_MAIN})
+list(REMOVE_ITEM DaliMaybeCudaSources ${DaliMaybeCudaTests} ${TESTS_MAIN})
 
 set(excluded_folders "${DaliDir}/tensor;${DaliDir}/data_processing;${DaliDir}/execution;${DaliDir}/layers")
 
@@ -23,7 +30,11 @@ foreach(excluded_folder ${excluded_folders})
     file(GLOB_RECURSE ExcludedDaliTemplates         "${excluded_folder}/*.cpp.template")
     file(GLOB_RECURSE ExcludedDaliMaybeCudaSources  "${excluded_folder}/*.cu.cpp")
     file(GLOB_RECURSE ExcludedDaliCudaSources       "${excluded_folder}/*.cu")
+
     file(GLOB_RECURSE ExcludedDaliTests             "${excluded_folder}/tests.cpp")
+    file(GLOB_RECURSE ExcludedDaliMaybeCudaTests    "${excluded_folder}/tests.cu.cpp")
+    list(APPEND ExcludedDaliTests ${ExcludedDaliMaybeCudaTests})
+    file(GLOB_RECURSE ExcludedDaliCudaTests         "${excluded_folder}/tests.cu")
 
     foreach(file ${ExcludedDaliHeaders})
         list(REMOVE_ITEM DaliHeaders ${file})
@@ -40,13 +51,29 @@ foreach(excluded_folder ${excluded_folders})
     foreach(file ${ExcludedDaliCudaSources})
         list(REMOVE_ITEM DaliCudaSources ${file})
     endforeach()
+
     foreach(file ${ExcludedDaliTests})
         list(REMOVE_ITEM DaliTests ${file})
+    endforeach()
+    foreach(file ${ExcludedDaliMaybeCudaTests})
+        list(REMOVE_ITEM DaliMaybeCudaTests ${file})
+    endforeach()
+    foreach(file ${ExcludedDaliCudaTests})
+        list(REMOVE_ITEM DaliCudaTests ${file})
     endforeach()
 endforeach()
 
 
 if (WITH_CUDA)
+    # Basic logic for handling both nvcc and cpp compilation of
+    # hybrid files:
+    # 1. find cu.cpp files
+    # 2. copy them to a new directory with cu.cpp.cu extension (note double .cu)
+    # 3. remove them from their cpp source-list (duplicates)
+    # 4. add them to a cuda source-list (since the .cu file was just copied and renamed)
+
+    # Dali source code for-loop for ensuring cu.cpp files are compiled by nvcc and
+    # regular C++ compiler
     foreach(DaliCudaFile ${DaliMaybeCudaSources})
         file(RELATIVE_PATH DaliCudaFilePath "${DaliDir}" "${DaliCudaFile}")
         set(NEW_FILENAME "${CMAKE_BINARY_DIR}/cuda_files/${DaliCudaFilePath}.cu")
@@ -57,6 +84,20 @@ if (WITH_CUDA)
         list(REMOVE_ITEM DaliSources ${DaliCudaFile})
         list(APPEND DaliCudaSources ${NEW_FILENAME})
     endforeach(DaliCudaFile)
+
+    # Test source code for-loop for ensuring cu.cpp
+    # files are compiled by nvcc and regular C++ compiler
+    foreach(DaliCudaTestFile ${DaliMaybeCudaTests})
+        file(RELATIVE_PATH DaliCudaTestFilePath "${DaliDir}" "${DaliCudaTestFile}")
+        set(NEW_FILENAME "${CMAKE_BINARY_DIR}/cuda_files/${DaliCudaTestFilePath}.cu")
+        ADD_CUSTOM_COMMAND(OUTPUT ${NEW_FILENAME}
+                COMMAND ${CMAKE_COMMAND} -E copy ${DaliCudaTestFile} ${NEW_FILENAME}
+                WORKING_DIRECTORY ${DaliDir}
+                DEPENDS ${DaliCudaTestFile})
+        list(REMOVE_ITEM DaliTests ${DaliCudaTestFile})
+        list(APPEND DaliCudaTests ${NEW_FILENAME})
+    endforeach(DaliCudaTestFile)
+
     # also remove sources from C compilation
 
     SET(OLD_CXX_FLAGS ${CMAKE_CXX_FLAGS})
@@ -81,8 +122,6 @@ endif(WITH_CUDA)
 
 # todo: move file with add_custom_command
 
-# Remove tests from compilation
-list(REMOVE_ITEM DaliSources ${DaliTests} ${TESTS_MAIN})
 foreach(header ${DaliTemplates})
     message(STATUS "Template instantiator will run for ${header}")
     ADD_CUSTOM_TARGET(dali_templates
@@ -131,9 +170,14 @@ endif (WITH_CUDA)
 INSTALL(TARGETS dali DESTINATION lib)
 install(DIRECTORY ${DaliDir} ${GENERATED_FILES_DIR}/dali DESTINATION include
         FILES_MATCHING PATTERN "*.h")
-# This potentially does not work on Apple, check out:
-# http://stackoverflow.com/questions/10765885/how-to-install-your-custom-cmake-find-module
+
 install(FILES ${PROJECT_SOURCE_DIR}/cmake/DaliConfig.cmake   DESTINATION lib/dali/cmake)
 install(FILES ${PROJECT_SOURCE_DIR}/cmake/FindOpenBlas.cmake DESTINATION lib/openblas/cmake RENAME OpenBlasConfig.cmake)
 
-add_testsuite("test_dali" "dali" "${DaliTests}")
+if (WITH_CUDA)
+    add_testsuite("test_dali" "run_tests" "dali" "${DaliTests};${DaliCudaTests}" "GPU")
+    add_testsuite("test_dali_cpu_only" "run_cpu_tests" "dali" "${DaliTests}" "CPU")
+else (WITH_CUDA)
+    add_testsuite("test_dali" "run_tests" "dali" "${DaliTests}" "CPU")
+endif (WITH_CUDA)
+

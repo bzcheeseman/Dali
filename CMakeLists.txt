@@ -133,16 +133,23 @@ endif (WITH_CUDA)
 #      1) ctest ignores colored output
 #      2) make test does not build tests (wtf)
 set(TESTS_MAIN "${PROJECT_SOURCE_DIR}/dali/tests_main.cpp")
-function(add_testsuite TEST_TARGET TEST_DEPENDENCIES TEST_FILES)
+function(add_testsuite TEST_TARGET RUN_TARGET TEST_DEPENDENCIES TEST_FILES DEVICE)
     list(APPEND TEST_FILES ${TESTS_MAIN})
     if(GTEST_FOUND)
-        add_executable(${TEST_TARGET} ${TEST_FILES})
+        message(STATUS "RUN_TARGET -> ${RUN_TARGET}")
+
+        if (DEVICE STREQUAL "GPU")
+            cuda_add_executable(${TEST_TARGET} ${TEST_FILES})
+        else (DEVICE STREQUAL "GPU")
+            add_executable(${TEST_TARGET} ${TEST_FILES})
+        endif(DEVICE STREQUAL "GPU")
+
         add_dependencies(${TEST_TARGET} ${TEST_DEPENDENCIES})
         target_link_libraries(${TEST_TARGET} ${TEST_DEPENDENCIES} ${GTEST_BOTH_LIBRARIES})
         add_test(${TEST_TARGET} ${TEST_TARGET})
-        add_dependencies(build_tests ${TEST_TARGET})
-        add_custom_target(${TEST_TARGET}_run ${TEST_TARGET})
-        add_dependencies(run_tests ${TEST_TARGET}_run)
+        add_custom_target(${TEST_TARGET}_run_doom_hidden ${TEST_TARGET})
+        add_custom_target(${RUN_TARGET} true)
+        add_dependencies(${RUN_TARGET} ${TEST_TARGET}_run_doom_hidden )
     endif(GTEST_FOUND)
 endfunction(add_testsuite)
 
@@ -150,9 +157,9 @@ if(GTEST_FOUND)
     enable_testing()
     set(CTEST_OUTPUT_ON_FAILURE TRUE)
     include_directories(${GTEST_INCLUDE_DIRS})
-    add_custom_target(run_tests true)
-    add_custom_target(build_tests)
-    add_dependencies(run_tests build_tests)
+
+
+
     ADD_CUSTOM_TARGET(run_tests_heapcheck
         COMMAND ${PROJECT_SOURCE_DIR}/scripts/test_runner.sh ${CMAKE_BINARY_DIR}
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

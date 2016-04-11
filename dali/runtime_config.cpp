@@ -3,10 +3,19 @@
 #include "dali/config.h"
 #include "dali/array/memory/device.h"
 
-using memory::Device;
+namespace memory {
+    #ifdef DALI_USE_CUDA
+        Device default_preferred_device = Device::gpu(0);
+    #else
+        Device default_preferred_device = Device::cpu();
+    #endif
 
-#ifdef DALI_USE_CUDA
-    Device default_preferred_device = Device::gpu(0);
-#else
-    Device default_preferred_device = Device::cpu();
-#endif
+    WithDevicePreference::WithDevicePreference(Device new_device) :
+            old_value(default_preferred_device) {
+        default_preferred_device = new_device;
+    }
+
+    WithDevicePreference::~WithDevicePreference() {
+        default_preferred_device = old_value;
+    }
+}

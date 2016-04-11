@@ -13,10 +13,42 @@ TEST(ArrayLazyOpsTests, imports) {
 }
 
 TEST(ArrayLazyOpsTests, lazy_device_deduction) {
+    for (int i = 0; i < memory::debug::MAX_FAKE_DEVICES; ++i) {
+        memory::debug::fake_device_memories[i].fresh = false;
+    }
 
 
+    memory::debug::enable_fake_devices = true;
+    auto fake = [](int number) {
+        return Array({16}, DTYPE_FLOAT, memory::Device::fake(number));
+    };
+
+    // if everybody prefers the same device, return it.
+    auto fake_expression = fake(0) * fake(0) + fake(0) + 1;
+    EXPECT_EQ(Evaluator<decltype(fake_expression)>::deduce_computation_device(fake(0), fake_expression), memory::Device::fake(0));
+
+    // if everybody prefers the same device, return it.
+    auto fake_expression2 = fake(4) * fake(4) + fake(4) + 1;
+    EXPECT_EQ(Evaluator<decltype(fake_expression2)>::deduce_computation_device(fake(4), fake_expression2), memory::Device::fake(4));
+
+    memory::WithDevicePreference device_prefence(memory::Device::fake(6));
+
+    // if everybody prefereces differ fall back to default_preferred_device
+    auto fake_expression3 = fake(2) * fake(4) + fake(5) + 1;
+    EXPECT_EQ(Evaluator<decltype(fake_expression3)>::deduce_computation_device(fake(4), fake_expression3), memory::Device::fake(6));
+
+    // if the memory was not allocated yet and we have a single argument we fall back to preffered device
+    EXPECT_EQ(Evaluator<int>::deduce_computation_device(fake(1), 16), memory::Device::fake(1));
+
+    memory::debug::fake_device_memories[10].fresh = true;
+
+
+
+    EXPECT_EQ(Evaluator<int>::deduce_computation_device(fake(1), 16), memory::Device::fake(10));
+    memory::debug::fake_device_memories[10].fresh = false;
+
+    memory::debug::enable_fake_devices = false;
 }
-
 
 TEST(ArrayLazyOpsTests, lazy_dtype_deduction) {
     Array x({16}, DTYPE_FLOAT);
@@ -44,6 +76,17 @@ TEST(ArrayLazyOpsTests, lazy_dtype_deduction) {
     EXPECT_THROW(q2 = x * (y * z), std::runtime_error);
 }
 
+TEST(ArrayLazyOpsTests, lazy_binary_correctness) {
+    Array x({2,1});
+    Array y({2,1});
+    Array z({2,1});
+    x(0) = 1; y(0) = 4; z(0) = 3;
+    x(1) = 2; y(1) = 3; z(1) = 2;
+
+    Array res = x * y * 2 + z + 1;
+    ASSERT_EQ((float)(res(0)), 12);
+    ASSERT_EQ((float)(res(1)), 16);
+}
 
 TEST(ArrayLazyOpsTests, lazy_shape_deduction) {
     Array x({16});

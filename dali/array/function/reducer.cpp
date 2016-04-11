@@ -32,7 +32,7 @@ std::tuple<DeviceReducer::outtype_t,DeviceReducer::state_t> DeviceReducer::reduc
         if (arg.memory()->preferred_device != state.common_preferred_device) {
             // When considering other arguments, if the next argument prefers a different device,
             // then we fallback to the tie-breaker device
-            return std::make_tuple(default_preferred_device, DeviceReducerState{state.args_read + 1, memory::Device::device_of_doom()});
+            return std::make_tuple(memory::default_preferred_device, DeviceReducerState{state.args_read + 1, memory::Device::device_of_doom()});
         } else {
             // we can place the computation on the currently agreed device
             return std::make_tuple(arg.memory()->preferred_device, DeviceReducerState{state.args_read + 1, arg.memory()->preferred_device});

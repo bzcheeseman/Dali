@@ -113,6 +113,18 @@ TEST(MemoryTests, test_memory_bank_cpu) {
         }
     }
 
+    TEST(MemoryTests, fake_devices) {
+        memory::debug::enable_fake_devices = false;
+        SynchronizedMemory s(12, 1, Device::fake(1), true);
+        EXPECT_THROW(s.is_fresh(Device::fake(1)), std::runtime_error);
+        memory::debug::enable_fake_devices = true;
+        s.is_fresh(Device::fake(1));
+        memory::debug::fake_device_memories[1].fresh = true;
+        EXPECT_EQ(s.is_fresh(Device::fake(1)), true);
+        memory::debug::fake_device_memories[1].fresh = false;
+        EXPECT_EQ(s.is_fresh(Device::fake(1)), false);
+    }
+
 #ifdef DALI_USE_CUDA
     TEST(MemoryTests, synchronized_memory_clear_on_alloc) {
         SynchronizedMemory s(12, 1, Device::cpu(), true);

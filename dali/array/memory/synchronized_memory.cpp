@@ -36,11 +36,13 @@ namespace memory {
             return device_memories[memory::MAX_GPU_DEVICES];
         }
 #ifdef DALI_USE_CUDA
-        else if(device.is_gpu()) {
+        else if (device.is_gpu()) {
             return device_memories[device.number];
         }
 #endif
-        else {
+        else if (debug::enable_fake_devices && device.is_fake()) {
+            return debug::fake_device_memories[device.number];
+        } else {
             ASSERT2(false, "Unsupported device passed to SynchronizedMemory.");
             return device_memories[0];
         }
@@ -136,12 +138,27 @@ namespace memory {
                 return idx_to_device(i);
             }
         }
+        if (debug::enable_fake_devices) {
+            for (int i=0; i < debug::MAX_FAKE_DEVICES; ++i) {
+                if (debug::fake_device_memories[i].fresh) {
+                    return memory::Device::fake(i);
+                }
+            }
+        }
+
         return memory::Device::device_of_doom();
     }
 
     bool SynchronizedMemory::is_any_fresh() {
         for (int i=0; i < DEVICE_MEMORIES_SIZE; ++i) {
             if (device_memories[i].fresh) return true;
+        }
+        if (debug::enable_fake_devices) {
+            for (int i=0; i < debug::MAX_FAKE_DEVICES; ++i) {
+                if (debug::fake_device_memories[i].fresh) {
+                    return true;
+                }
+            }
         }
         return false;
     }
@@ -249,5 +266,10 @@ namespace memory {
         mark_fresh(device);
 
         return get_device_memory(device).ptr;
+    }
+
+    namespace debug {
+        bool enable_fake_devices = false;
+        SynchronizedMemory::DeviceMemory fake_device_memories[MAX_FAKE_DEVICES];
     }
 }

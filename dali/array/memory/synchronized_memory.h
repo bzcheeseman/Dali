@@ -35,15 +35,14 @@ namespace memory {
     };
 
     class SynchronizedMemory {
-        private:
+        public:
             struct DeviceMemory {
                 DeviceMemory();
                 void* ptr;
                 bool allocated;
                 bool fresh;
             };
-
-
+        private:
             // whether memory must be filled with zeros on allocation
             // defaults to false
             bool clear_on_allocation;
@@ -61,6 +60,7 @@ namespace memory {
             void mark_all_not_fresh();
             void free_device_memory(const Device& device, DeviceMemory& dev_memory) const;
         public:
+
             Device preferred_device;
             // total amount of memory expressed in number or Dtypes
             const int total_memory;
@@ -118,6 +118,12 @@ namespace memory {
            // stale).
            void* overwrite_data(const Device& device);
     };
+
+    namespace debug {
+        extern bool enable_fake_devices;
+        const int MAX_FAKE_DEVICES = 16;
+        extern SynchronizedMemory::DeviceMemory fake_device_memories[MAX_FAKE_DEVICES];
+    }
 }  // namespace memory
 
 #endif

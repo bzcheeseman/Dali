@@ -15,14 +15,14 @@ struct Binary {
     }
 
     template<int devT, typename T>
-    inline auto eval() -> decltype(
+    inline auto to_mshadow_expr() -> decltype(
                               mshadow::expr::F<Functor<T>>(
-                                   EvalLazy<devT,T>::eval(left),
-                                   EvalLazy<devT,T>::eval(right)
+                                   MshadowWrapper<devT,T>::to_expr(left),
+                                   MshadowWrapper<devT,T>::to_expr(right)
                               )
                           ) {
-        auto left_expr  = EvalLazy<devT,T>::eval(left);
-        auto right_expr = EvalLazy<devT,T>::eval(right);
+        auto left_expr  = MshadowWrapper<devT,T>::to_expr(left);
+        auto right_expr = MshadowWrapper<devT,T>::to_expr(right);
 
         return mshadow::expr::F<Functor<T>>(left_expr, right_expr);
 

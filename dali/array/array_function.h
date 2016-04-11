@@ -174,17 +174,25 @@ struct Function {
     //     return RpcRequest(Class::FUNCTION_ID, bundle);
     // }
 
-    static std::vector<int> deduce_shape(const Args&... args) {
+    static std::vector<int> deduce_output_shape(const Args&... args) {
         return ReduceOverArgs<CommonPropertyExtractor<ShapeProperty>>::reduce(args...);
     }
 
-    static DType deduce_dtype(const Args&... args) {
+    static DType deduce_output_dtype(const Args&... args) {
         return ReduceOverArgs<CommonPropertyExtractor<DTypeProperty>>::reduce(args...);
     }
 
+    static memory::Device deduce_computation_device(const Outtype& out, const Args&... args) {
+        return ReduceOverArgs<DeviceReducer>::reduce(out, args...);
+    }
+
+    static DType deduce_computation_dtype(const Outtype& out, const Args&... args) {
+        return ReduceOverArgs<CommonPropertyExtractor<DTypeProperty>>::reduce(out, args...);
+    }
+
     static void prepare_output(Outtype& out, const Args&... args) {
-        auto common_shape = Class::deduce_shape(args...);
-        auto common_dtype = Class::deduce_dtype(args...);
+        auto common_shape = Class::deduce_output_shape(args...);
+        auto common_dtype = Class::deduce_output_dtype(args...);
 
         if (out.is_stateless()) {
             out.initialize(common_shape, common_dtype);
@@ -204,8 +212,8 @@ struct Function {
     }
 
     static void untyped_eval(const Outtype& out, const Args&... args) {
-        auto device = ReduceOverArgs<DeviceReducer>::reduce(out, args...);
-        auto dtype  = ReduceOverArgs<CommonPropertyExtractor<DTypeProperty>>::reduce(out, args...);
+        auto device = Class::deduce_computation_device(out, args...);
+        auto dtype  = Class::deduce_computation_dtype(out, args...);
 
         if (device.type == memory::DEVICE_T_CPU && dtype == DTYPE_FLOAT) {
             typedef ArrayWrapper<memory::DEVICE_T_CPU,float> wrapper_t;

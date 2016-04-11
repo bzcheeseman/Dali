@@ -5,37 +5,37 @@
 
 template<class LazyExpr>
 struct Evaluator : public Function<Evaluator<LazyExpr>, Array, LazyExpr> {
-    static std::vector<int> deduce_shape(LazyExpr i_could_not_care_less) {
-        return std::vector<int>{12};
+    static std::vector<int> deduce_output_shape(LazyExpr expr) {
+        return {12}; //expr.deduce_shape();
     }
 
-    static DType deduce_dtype(LazyExpr i_could_not_care_less) {
-        return DTYPE_FLOAT;
+    static DType deduce_output_dtype(LazyExpr i_could_not_care_less) {
+        return DTYPE_FLOAT; // expr.deduce_shape();
     }
 
     template<int devT, typename T>
     void typed_eval(MArray<devT,T> out, LazyExpr expr) {
-        out.d1(memory::AM_OVERWRITE) =  expr.template eval<devT,T>();;
+        out.d1(memory::AM_OVERWRITE) =  expr.template to_mshadow_expr<devT,T>();;
     }
 };
 
 
 template<int devT,typename T>
-struct EvalLazy {
+struct MshadowWrapper {
     template<typename ExprT>
-    static inline auto eval(const ExprT& sth) -> decltype(sth.template eval<devT,T>()) {
-        return sth.template eval<devT,T>();
+    static inline auto to_expr(const ExprT& sth) -> decltype(sth.template to_mshadow_expr<devT,T>()) {
+        return sth.template to_mshadow_expr<devT,T>();
     }
 
-    static inline auto eval(const Array& array) -> decltype(MArray<devT,T>(array, memory::Device::cpu()).d1()) {
+    static inline auto to_expr(const Array& array) -> decltype(MArray<devT,T>(array, memory::Device::cpu()).d1()) {
         return MArray<devT,T>(array, memory::Device::cpu()).d1();;
     }
 
-    static inline float eval(const float& scalar) { return scalar; }
+    static inline float to_expr(const float& scalar) { return scalar; }
 
-    static inline double eval(const double& scalar) { return scalar; }
+    static inline double to_expr(const double& scalar) { return scalar; }
 
-    static inline int eval(const int& scalar) { return scalar; }
+    static inline int to_expr(const int& scalar) { return scalar; }
 };
 
 

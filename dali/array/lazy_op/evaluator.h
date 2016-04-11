@@ -70,6 +70,7 @@ struct MshadowWrapper {
     }
 
     static inline auto to_expr(const Array& array) -> decltype(MArray<devT,T>(array, memory::Device::cpu()).d1()) {
+        //TODO(szymon,jonathan): to_expr/to_mshadow_expr must receive target device to function correctly.
         return MArray<devT,T>(array, memory::Device::cpu()).d1();;
     }
 

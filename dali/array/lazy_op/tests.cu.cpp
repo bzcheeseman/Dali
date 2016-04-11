@@ -17,6 +17,7 @@ TEST(ArrayLazyOpsTests, lazy_device_deduction) {
         memory::debug::fake_device_memories[i].fresh = false;
     }
 
+
     memory::debug::enable_fake_devices = true;
     auto fake = [](int number) {
         return Array({16}, DTYPE_FLOAT, memory::Device::fake(number));

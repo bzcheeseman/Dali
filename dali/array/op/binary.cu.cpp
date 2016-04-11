@@ -1,5 +1,5 @@
 #include "dali/array/op/binary.h"
-#include "dali/array/array_function.h"
+#include "dali/array/function/function.h"
 #include "dali/array/TensorFunctions.h"
 
 typedef BinaryElementwise<TensorOps::op::add> Plus;

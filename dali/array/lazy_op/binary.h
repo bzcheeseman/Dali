@@ -39,19 +39,21 @@ namespace lazy {
     Binary<TensorOps::op::add, T, T2> add(T a, T2 b) {
         return Binary<TensorOps::op::add, T, T2>(a, b);
     }
+
     template <typename T, typename T2>
     Binary<TensorOps::op::sub, T, T2> sub(T a, T2 b) {
         return Binary<TensorOps::op::sub, T, T2>(a, b);
     }
+
     template <typename T, typename T2>
     Binary<TensorOps::op::eltmul, T, T2> eltmul(T a, T2 b) {
         return Binary<TensorOps::op::eltmul, T, T2>(a, b);
     }
+
     template <typename T, typename T2>
     Binary<TensorOps::op::eltdiv, T, T2> eltdiv(T a, T2 b) {
         return Binary<TensorOps::op::eltdiv, T, T2>(a, b);
     }
 }
-
 
 #endif

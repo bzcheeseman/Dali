@@ -1,5 +1,5 @@
-#ifndef DALI_ARRAY_ARRAY_FUNCTIONS_H
-#define DALI_ARRAY_ARRAY_FUNCTIONS_H
+#ifndef DALI_ARRAY_FUNCTION_FUNCTION_H
+#define DALI_ARRAY_FUNCTION_FUNCTION_H
 
 #include "dali/config.h"
 
@@ -12,135 +12,9 @@
 #include "dali/array/array.h"
 #include "dali/array/getmshadow.h"
 #include "dali/utils/print_utils.h"
-#include "dali/runtime_config.h"
+#include "dali/function/reducer.h"
+#include "dali/function/property_extractor.h"
 
-////////////////////////////////////////////////////////////////////////////////
-//                          PREPARE OUTPUT                                    //
-////////////////////////////////////////////////////////////////////////////////
-
-
-template<typename Reducer>
-struct ReduceOverArgs {
-    typedef std::tuple<typename Reducer::outtype_t, typename Reducer::state_t> outtuple_t;
-
-    template<typename... Args>
-    static typename Reducer::outtype_t reduce(const Args&... args) {
-        auto initial_tuple = outtuple_t();
-        return std::get<0>(reduce_helper(initial_tuple, args...));
-    }
-
-    template<typename FirstArg, typename... Args>
-    static outtuple_t reduce_helper(const outtuple_t& candidate_and_state, const FirstArg& arg, const Args&... args) {
-        return reduce_helper(Reducer::reduce(candidate_and_state, arg), args...);
-    }
-
-    static outtuple_t reduce_helper(const outtuple_t& candidate_and_state) {
-        return candidate_and_state;
-    }
-};
-
-
-template<typename ArrayProperty>
-struct CommonPropertyExtractor {
-    typedef typename ArrayProperty::property_t outtype_t;
-    typedef bool state_t;
-
-    template<typename T>
-    static std::tuple<outtype_t, state_t> reduce(const std::tuple<outtype_t, state_t>& candidate_and_state, T elem) {
-        return candidate_and_state;
-    }
-
-    static std::tuple<outtype_t,state_t> reduce(const std::tuple<outtype_t, state_t>& candidate_and_state, const Array& arg) {
-        outtype_t candidate;
-        bool ready;
-        auto arg_property = ArrayProperty::extract(arg);
-        std::tie(candidate, ready) = candidate_and_state;
-        if (ready) {
-            ASSERT2(candidate == arg_property, utils::MS() << "All arguments should be of the same " << ArrayProperty::name << " (MISMATCH between "
-                                                          << candidate << " and " << arg_property << ")");
-            return candidate_and_state;
-        } else {
-            return std::make_tuple(arg_property, true);
-        }
-    }
-};
-
-struct ShapeProperty {
-    typedef std::vector<int> property_t;
-    static std::string name;
-    static std::vector<int> extract(const Array& x) { return x.shape(); }
-};
-
-struct DTypeProperty {
-    typedef DType property_t;
-    static std::string name;
-    static DType extract(const Array& x) { return x.dtype(); }
-};
-
-
-template<typename... Args>
-void default_prepare_output(Array& out, const Args&... args) {
-
-}
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-//                               FIND COMMON DEVICE                           //
-////////////////////////////////////////////////////////////////////////////////
-
-struct DeviceReducerState {
-    int args_read;
-    memory::Device common_preferred_device;
-};
-
-struct DeviceReducer {
-    // Finds best device to run computation on
-    // based on the availability, freshness, preference, and position
-    // of the Array arguments in a function call.
-    typedef memory::Device outtype_t;
-    typedef DeviceReducerState state_t;
-
-    template<typename T>
-    static std::tuple<outtype_t, state_t> reduce(const std::tuple<outtype_t, state_t>& candidate_and_state, T elem) {
-        return candidate_and_state;
-    }
-
-    static std::tuple<outtype_t,state_t> reduce(const std::tuple<outtype_t, state_t>& candidate_and_state, const Array& arg) {
-        auto state = std::get<1>(candidate_and_state);
-
-        // When state args_read <= 0, then reduction is in its first Array argument
-        // while other non-Array arguments have been ignored by ReduceOverArgs<>::reduce_helper
-        // [Note: output is also an Array argument]
-        if (state.args_read <= 0) {
-            // *** When considering the first Array ***
-            auto mem = arg.memory();
-            // If there's only 1 Array involved, we can safely consider
-            // this Array's memory's preferred_device as a good option
-            memory::Device best_device_for_me_myself_and_i = mem->preferred_device;
-            // One caveat, we want preferred_device's memory to be fresh
-            bool is_best_option_fresh = mem->is_fresh(mem->preferred_device);
-            // Also we want to know whether any copy of memory is fresh
-            bool is_some_other_option_fresh = mem->is_any_fresh();
-            // if the preferred memory is not fresh, and there is
-            // a fresh alternative use it:
-            if (!is_best_option_fresh && is_some_other_option_fresh) {
-                best_device_for_me_myself_and_i = mem->find_some_fresh_device();
-            }// else, make the preferred device fresh
-            return std::make_tuple(best_device_for_me_myself_and_i, DeviceReducerState{state.args_read + 1, mem->preferred_device});
-        } else {
-
-            if (arg.memory()->preferred_device != state.common_preferred_device) {
-                // When considering other arguments, if the next argument prefers a different device,
-                // then we fallback to the tie-breaker device
-                return std::make_tuple(default_preferred_device, DeviceReducerState{state.args_read + 1, memory::Device::device_of_doom()});
-            } else {
-                // we can place the computation on the currently agreed device
-                return std::make_tuple(arg.memory()->preferred_device, DeviceReducerState{state.args_read + 1, arg.memory()->preferred_device});
-            }
-        }
-    }
-};
 
 
 ////////////////////////////////////////////////////////////////////////////////

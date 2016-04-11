@@ -9,6 +9,14 @@
 #include "dali/array/memory/memory_ops.h"
 #include "dali/array/memory/synchronized_memory.h"
 
+class Array;
+
+struct AssignableArray {
+    typedef std::function<void(Array&)> assign_t;
+    assign_t assign_to;
+    AssignableArray(assign_t&& _assign_to);
+};
+
 struct ArrayState {
     std::vector<int> shape;
     std::shared_ptr<memory::SynchronizedMemory> memory;
@@ -16,8 +24,6 @@ struct ArrayState {
     DType dtype;
     ArrayState(const std::vector<int>& _shape, std::shared_ptr<memory::SynchronizedMemory> _memory, int _offset, DType _device);
 };
-
-struct AssignableArray;
 
 class Array {
   private:
@@ -39,9 +45,10 @@ class Array {
 
     Array(const Array& other, bool copy_memory=false);
     Array(const AssignableArray& assignable);
+
     template<typename T>
-    Array(const T& castable_to_assignable) :
-            Array((AssignableArray)castable_to_assignable) {
+    Array(const T& castable_to_assignable)
+            : Array((AssignableArray)castable_to_assignable) {
     }
 
 

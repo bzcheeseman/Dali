@@ -5,7 +5,6 @@
 #include <type_traits>
 
 #include "dali/utils/print_utils.h"
-#include "dali/array/assignable_array.h"
 
 using std::vector;
 using memory::SynchronizedMemory;

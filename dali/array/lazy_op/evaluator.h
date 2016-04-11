@@ -1,16 +1,16 @@
 #ifndef DALI_ARRAY_LAZY_OP_EVALUATOR_H
 #define DALI_ARRAY_LAZY_OP_EVALUATOR_H
 
-#include "dali/array/array_function.h"
+#include "dali/array/function/function.h"
 
 template<class LazyExpr>
 struct Evaluator : public Function<Evaluator<LazyExpr>, Array, LazyExpr> {
     static std::vector<int> deduce_output_shape(LazyExpr expr) {
-        return {12}; //expr.deduce_shape();
+        return expr.shape();
     }
 
-    static DType deduce_output_dtype(LazyExpr i_could_not_care_less) {
-        return DTYPE_FLOAT; // expr.deduce_shape();
+    static DType deduce_output_dtype(LazyExpr expr) {
+        return expr.dtype(); 
     }
 
     template<int devT, typename T>

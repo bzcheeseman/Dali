@@ -3,7 +3,9 @@
 #include "dali/array/array.h"
 #include "dali/runtime_config.h"
 
-std::tuple<outtype_t,state_t> DeviceReducer::reduce(const std::tuple<outtype_t, state_t>& candidate_and_state, const Array& arg) {
+std::tuple<DeviceReducer::outtype_t,DeviceReducer::state_t> DeviceReducer::reduce(
+        const std::tuple<DeviceReducer::outtype_t, DeviceReducer::state_t>& candidate_and_state,
+        const Array& arg) {
     auto state = std::get<1>(candidate_and_state);
 
     // When state args_read <= 0, then reduction is in its first Array argument

@@ -4,14 +4,29 @@
 #include "dali/array/lazy_op/evaluator.h"
 #include "dali/array/TensorFunctions.h"
 
+#include "dali/array/function/property_extractor.h"
+
 template<template<class>class Functor, typename LeftT, typename RightT>
 struct Binary {
     typedef Binary<Functor,LeftT,RightT> self_t;
     LeftT  left;
     RightT right;
+    std::vector<int> shape_;
+    DType dtype_;
 
     Binary(const LeftT& _left, const RightT& _right) :
-            left(_left), right(_right) {
+            left(_left),
+            right(_right),
+            shape_(ShapeDeducer::deduce_binary(left, right)),
+            dtype_(DtypeDeducer::deduce_binary(left, right)) {
+    }
+
+    const std::vector<int>& shape() const {
+        return shape_;
+    }
+
+    const DType& dtype() const {
+        return dtype_;
     }
 
     template<int devT, typename T>

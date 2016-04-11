@@ -37,34 +37,84 @@ struct CommonPropertyExtractor {
 };
 
 
-template<template<class>class Functor, typename LeftT, typename RightT>
-struct Binary {
-    typedef Binary<Functor,LeftT,RightT> self_t;
-    LeftT  left;
-    RightT right;
-
-    Binary(const LeftT& _left, const RightT& _right) :
-            left(_left), right(_right) {
+struct ShapeDeducer {
+    template<typename T>
+    static std::tuple<bool,std::vector<int>> deduce_unary(const T& x) {
+        return std::make_tuple(true, x.shape());
+    }
+    static std::tuple<bool,std::vector<int>> deduce_unary(const float& x) {
+        return std::make_tuple(false, std::vector<int>());
+    }
+    static std::tuple<bool,std::vector<int>> deduce_unary(const double& x) {
+        return std::make_tuple(false, std::vector<int>());
+    }
+    static std::tuple<bool,std::vector<int>> deduce_unary(const int& x) {
+        return std::make_tuple(false, std::vector<int>());
     }
 
-    template<int devT, typename T>
-    inline auto to_mshadow_expr() -> decltype(
-                              mshadow::expr::F<Functor<T>>(
-                                   MshadowWrapper<devT,T>::to_expr(left),
-                                   MshadowWrapper<devT,T>::to_expr(right)
-                              )
-                          ) {
-        auto left_expr  = MshadowWrapper<devT,T>::to_expr(left);
-        auto right_expr = MshadowWrapper<devT,T>::to_expr(right);
+    template<typename T, typename T2>
+    static std::vector<int> deduce_binary(const T& left, const T2& right) {
+        bool left_matters, right_matters;
+        std::vector<int> left_shape, right_shape;
+        std::tie(left_matters, left_shape)   = deduce_unary(left);
+        std::tie(right_matters, right_shape) = deduce_unary(right);
 
-        return mshadow::expr::F<Functor<T>>(left_expr, right_expr);
+        ASSERT2(left_matters || right_matters,
+                "deduce_binary called with two shapeless entities.");
 
+        if (left_matters) {
+            if (right_matters) {
+                ASSERT2(left_shape == right_shape,
+                    utils::MS() << "Expressions of inconsistent shape passed to binary expression (" << left_shape << " VS " << right_shape <<  ")");
+            }
+            return left_shape;
+        } else if (right_matters) {
+            return right_shape;
+        }
+        return std::vector<int>();
     }
 
-    operator AssignableArray() const {
-        return Evaluator<self_t>::run(*this);
-    }
 };
+
+struct DtypeDeducer {
+    template<typename T>
+    static std::tuple<bool, DType> deduce_unary(const T& x) {
+        return std::make_tuple(true, x.dtype());
+    }
+    static std::tuple<bool,DType> deduce_unary(const float& x) {
+        return std::make_tuple(false, DTYPE_FLOAT);
+    }
+    static std::tuple<bool,DType> deduce_unary(const double& x) {
+        return std::make_tuple(false, DTYPE_FLOAT);
+    }
+    static std::tuple<bool,DType> deduce_unary(const int& x) {
+        return std::make_tuple(false, DTYPE_FLOAT);
+    }
+
+    template<typename T, typename T2>
+    static DType deduce_binary(const T& left, const T2& right) {
+        bool left_matters, right_matters;
+        DType left_dtype, right_dtype;
+        std::tie(left_matters, left_dtype)   = deduce_unary(left);
+        std::tie(right_matters, right_dtype) = deduce_unary(right);
+
+        ASSERT2(left_matters || right_matters,
+                "deduce_binary called with two dtypeless entities.");
+
+        if (left_matters) {
+            if (right_matters) {
+                ASSERT2(left_dtype == right_dtype,
+                    utils::MS() << "Expressions of inconsistent dtype passed to binary expression (" << left_dtype << " VS " << right_dtype <<  ")");
+            }
+            return left_dtype;
+        } else if (right_matters) {
+            return right_dtype;
+        }
+        return DTYPE_FLOAT;
+    }
+
+};
+
 
 
 struct ShapeProperty {

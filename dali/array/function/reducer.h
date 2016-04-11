@@ -1,6 +1,9 @@
 #ifndef DALI_ARRAY_FUNCTION_REDUCER_H
 #define DALI_ARRAY_FUNCTION_REDUCER_H
 
+#include <tuple>
+
+#include "dali/array/memory/device.h"
 
 class Array;
 

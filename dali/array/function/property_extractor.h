@@ -11,9 +11,9 @@
 
 class Array;
 
-template<typename ArrayProperty>
+template<typename Property>
 struct CommonPropertyExtractor {
-    typedef typename ArrayProperty::property_t outtype_t;
+    typedef typename Property::property_t outtype_t;
     typedef bool state_t;
 
     template<typename T>
@@ -24,10 +24,10 @@ struct CommonPropertyExtractor {
     static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const Array& arg) {
         outtype_t candidate;
         bool ready;
-        auto arg_property = ArrayProperty::extract(arg);
+        auto arg_property = Property::extract(arg);
         std::tie(candidate, ready) = candidate_and_state;
         if (ready) {
-            ASSERT2(candidate == arg_property, utils::MS() << "All arguments should be of the same " << ArrayProperty::name << " (MISMATCH between "
+            ASSERT2(candidate == arg_property, utils::MS() << "All arguments should be of the same " << Property::name << " (MISMATCH between "
                                                           << candidate << " and " << arg_property << ")");
             return candidate_and_state;
         } else {
@@ -37,96 +37,66 @@ struct CommonPropertyExtractor {
 };
 
 
-struct ShapeDeducer {
+template<typename Property>
+struct LazyCommonPropertyExtractor {
+    typedef typename Property::property_t property_t;
+
     template<typename T>
-    static std::tuple<bool,std::vector<int>> deduce_unary(const T& x) {
-        return std::make_tuple(true, x.shape());
+    static std::tuple<bool,property_t> extract_unary(const T& x) {
+        return std::make_tuple(true, Property::extract(x));
     }
-    static std::tuple<bool,std::vector<int>> deduce_unary(const float& x) {
-        return std::make_tuple(false, std::vector<int>());
+    static std::tuple<bool,property_t> extract_unary(const float& x) {
+        return std::make_tuple(false, property_t());
     }
-    static std::tuple<bool,std::vector<int>> deduce_unary(const double& x) {
-        return std::make_tuple(false, std::vector<int>());
+    static std::tuple<bool,property_t> extract_unary(const double& x) {
+        return std::make_tuple(false, property_t());
     }
-    static std::tuple<bool,std::vector<int>> deduce_unary(const int& x) {
-        return std::make_tuple(false, std::vector<int>());
+    static std::tuple<bool,property_t> extract_unary(const int& x) {
+        return std::make_tuple(false, property_t());
     }
 
     template<typename T, typename T2>
-    static std::vector<int> deduce_binary(const T& left, const T2& right) {
+    static property_t extract_binary(const T& left, const T2& right) {
         bool left_matters, right_matters;
-        std::vector<int> left_shape, right_shape;
-        std::tie(left_matters, left_shape)   = deduce_unary(left);
-        std::tie(right_matters, right_shape) = deduce_unary(right);
+        property_t left_property, right_property;
+        std::tie(left_matters, left_property)   = extract_unary(left);
+        std::tie(right_matters, right_property) = extract_unary(right);
 
         ASSERT2(left_matters || right_matters,
-                "deduce_binary called with two shapeless entities.");
+                utils::MS() << "deduce_binary called with two " << Property::name << "less entities.");
 
         if (left_matters) {
             if (right_matters) {
-                ASSERT2(left_shape == right_shape,
-                    utils::MS() << "Expressions of inconsistent shape passed to binary expression (" << left_shape << " VS " << right_shape <<  ")");
+                ASSERT2(left_property == right_property,
+                    utils::MS() << "Expressions of inconsistent " << Property::name << " passed to binary expression (" << left_property << " VS " << right_property <<  ")");
             }
-            return left_shape;
+            return left_property;
         } else if (right_matters) {
-            return right_shape;
+            return right_property;
         }
-        return std::vector<int>();
+        return property_t();
     }
 
 };
-
-struct DtypeDeducer {
-    template<typename T>
-    static std::tuple<bool, DType> deduce_unary(const T& x) {
-        return std::make_tuple(true, x.dtype());
-    }
-    static std::tuple<bool,DType> deduce_unary(const float& x) {
-        return std::make_tuple(false, DTYPE_FLOAT);
-    }
-    static std::tuple<bool,DType> deduce_unary(const double& x) {
-        return std::make_tuple(false, DTYPE_FLOAT);
-    }
-    static std::tuple<bool,DType> deduce_unary(const int& x) {
-        return std::make_tuple(false, DTYPE_FLOAT);
-    }
-
-    template<typename T, typename T2>
-    static DType deduce_binary(const T& left, const T2& right) {
-        bool left_matters, right_matters;
-        DType left_dtype, right_dtype;
-        std::tie(left_matters, left_dtype)   = deduce_unary(left);
-        std::tie(right_matters, right_dtype) = deduce_unary(right);
-
-        ASSERT2(left_matters || right_matters,
-                "deduce_binary called with two dtypeless entities.");
-
-        if (left_matters) {
-            if (right_matters) {
-                ASSERT2(left_dtype == right_dtype,
-                    utils::MS() << "Expressions of inconsistent dtype passed to binary expression (" << left_dtype << " VS " << right_dtype <<  ")");
-            }
-            return left_dtype;
-        } else if (right_matters) {
-            return right_dtype;
-        }
-        return DTYPE_FLOAT;
-    }
-
-};
-
-
 
 struct ShapeProperty {
     typedef std::vector<int> property_t;
     static std::string name;
-    static std::vector<int> extract(const Array& x);
+
+    template<typename T>
+    static property_t extract(const T& x) {
+        return x.shape();
+    }
 };
 
 struct DTypeProperty {
     typedef DType property_t;
     static std::string name;
-    static DType extract(const Array& x);
+
+    template<typename T>
+    static property_t extract(const T& x) {
+        return x.dtype();
+    }
 };
 
 #endif

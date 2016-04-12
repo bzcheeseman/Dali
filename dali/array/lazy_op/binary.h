@@ -17,8 +17,8 @@ struct Binary {
     Binary(const LeftT& _left, const RightT& _right) :
             left(_left),
             right(_right),
-            shape_(ShapeDeducer::deduce_binary(left, right)),
-            dtype_(DtypeDeducer::deduce_binary(left, right)) {
+            shape_(LazyCommonPropertyExtractor<ShapeProperty>::extract_binary(left, right)),
+            dtype_(LazyCommonPropertyExtractor<DTypeProperty>::extract_binary(left, right)) {
     }
 
     const std::vector<int>& shape() const {

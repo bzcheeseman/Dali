@@ -87,8 +87,6 @@ set(MSHADOW_USE_MKL 0)
 # INCLUDES
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/third_party/mshadow)
 include_directories(${MKL_INCLUDE_DIR})
-include_directories(${PROJECT_SOURCE_DIR})
-
 include_directories(${PROJECT_SOURCE_DIR}/third_party/libcuckoo/src)
 
 if (GPERFTOOLS_FOUND)
@@ -114,39 +112,176 @@ endif(DEFINED WITH_CUDA)
 
 if (WITH_CUDA)
     SET(DALI_USE_CUDA 1)
+    SET(MSHADOW_USE_CUDA 1)
     INCLUDE_DIRECTORIES(${CUDA_INCLUDE_DIRS})
     LIST(APPEND CUDA_NVCC_FLAGS --compiler-options ${CUDA_EXTRA_FLAGS} -lineinfo -Xptxas -dlcm=cg  -use_fast_math -std=c++11)
     SET(CUDA_EXTRA_FLAGS "-fno-strict-aliasing")
     SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -L/usr/local/cuda/lib")
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CUDA_EXTRA_FLAGS}")
-    SET(MSHADOW_USE_CUDA 1)
 else (WITH_CUDA)
     SET(MSHADOW_USE_CUDA 0)
 endif (WITH_CUDA)
 
+function(cuda_compile_on)
+    SET(OLD_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+    SET(CMAKE_CXX_FLAGS "-O3 -w -fPIC ${CUDA_EXTRA_FLAGS}")
+endfunction()
+
+function(cuda_compile_off)
+    SET(CMAKE_CXX_FLAGS ${OLD_CXX_FLAGS})
+    SET(CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
+endfunction()
 
 ################################################################################
-##                            TESTING SETUP                                   ##
+##                               DALI SETUP                                   ##
+##                                   ---                                      ##
+##                       GENERATING VIRTUAL SOURCE TREE                       ##
+################################################################################
+
+# Relative path in C++ are hard. Adding a macro:
+set(DALI_DATA_DIR "${PROJECT_SOURCE_DIR}/data")
+
+if (NOT DEFINED DALI_SOURCE_DIRS)
+    set(DALI_SOURCE_DIRS "dali")
+endif()
+if (NOT DEFINED DALI_SOURCE_DIRS_EXCLUDE)
+    set(DALI_SOURCE_DIRS_EXCLUDE "dali/tensor;dali/data_processing;dali/execution;dali/layers")
+endif()
+
+set(GENERATED_FILES_DIR ${CMAKE_BINARY_DIR}/generated)
+file(REMOVE_RECURSE ${GENERATED_FILES_DIR})
+file(MAKE_DIRECTORY ${GENERATED_FILES_DIR})
+
+function(dali_generate_file OldPath NewPath)
+    add_custom_command(OUTPUT ${NewPath}
+            COMMAND ${CMAKE_COMMAND} -E copy ${OldPath} ${NewPath}
+            WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+            DEPENDS ${OldPath})
+endfunction()
+
+foreach(SourceDir ${DALI_SOURCE_DIRS})
+    message(STATUS "Scanning sources in ${SourceDir}...")
+    file(GLOB_RECURSE FilesInDir "${PROJECT_SOURCE_DIR}/${SourceDir}/*")
+    foreach(FilePath ${FilesInDir})
+        get_filename_component(FileNameWe ${FilePath} NAME_WE)
+        get_filename_component(FileExt    ${FilePath} EXT)
+        get_filename_component(FileDir  ${FilePath} DIRECTORY)
+        file(RELATIVE_PATH FileRelDir  "${PROJECT_SOURCE_DIR}" "${FileDir}")
+        file(RELATIVE_PATH FileRelPath "${PROJECT_SOURCE_DIR}" "${FilePath}")
+        SET(IGNORE_FILE FALSE)
+        foreach(ExcludePattern ${DALI_SOURCE_DIRS_EXCLUDE})
+            if (FileRelPath MATCHES ${ExcludePattern})
+                message(STATUS "Ignoring: ${FileRelPath}")
+                SET(IGNORE_FILE TRUE)
+            endif()
+        endforeach()
+        if (NOT IGNORE_FILE)
+            if (FileExt STREQUAL ".cpp" OR (FileExt STREQUAL ".cu.cpp" AND NOT WITH_CUDA))
+                set(NewFilePath "${GENERATED_FILES_DIR}/${FileRelDir}/${FileNameWe}.cpp")
+                dali_generate_file("${FilePath}" "${NewFilePath}")
+                if ((FileNameWe STREQUAL "tests") OR (FileNameWe STREQUAL "tests_main"))
+                    list(APPEND DaliTests "${NewFilePath}")
+                    list(APPEND DaliCudaTests "${NewFilePath}")
+                else()
+                    list(APPEND DaliSources "${NewFilePath}")
+                endif()
+            elseif(FileExt STREQUAL ".cu" OR (FileExt STREQUAL ".cu.cpp" AND WITH_CUDA))
+                set(NewFilePath "${GENERATED_FILES_DIR}/${FileRelDir}/${FileNameWe}.cu")
+                dali_generate_file("${FilePath}" "${NewFilePath}")
+                if (FileNameWe STREQUAL "tests")
+                    list(APPEND DaliCudaTests "${NewFilePath}")
+                else()
+                    list(APPEND DaliCudaSources "${NewFilePath}")
+                endif()
+            elseif(FileExt STREQUAL ".h.in")
+                set(NewFilePath "${GENERATED_FILES_DIR}/${FileRelDir}/${FileNameWe}.h")
+                configure_file("${FilePath}" "${NewFilePath}")
+                list(APPEND DaliHeaders ${NewFilePath})
+            elseif(FileExt STREQUAL ".h")
+                set(NewFilePath "${GENERATED_FILES_DIR}/${FileRelDir}/${FileNameWe}.h")
+                dali_generate_file("${FilePath}" "${NewFilePath}")
+                list(APPEND DaliHeaders ${NewFilePath})
+            else()
+                message(Warning "File ignored by compiler ${FileRelPath}")
+            endif()
+        endif()
+    endforeach()
+endforeach()
+
+
+################################################################################
+##                               DALI SETUP                                   ##
+##                                   ---                                      ##
+##                      CONFIGURATION AND COMPILATION                         ##
+################################################################################
+
+include_directories(${GENERATED_FILES_DIR})
+
+## CUDA TARGET
+if (WITH_CUDA)
+    cuda_compile_on()
+    cuda_add_library(dali_cuda STATIC ${DaliCudaSources} ${DaliHeaders})
+    target_link_libraries(dali_cuda ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_CUBLAS_LIBRARIES})
+    if (OpenBLAS_FOUND)
+        target_link_libraries(dali_cuda ${OpenBLAS_LIB})
+    endif(OpenBLAS_FOUND)
+    cuda_compile_off()
+endif(WITH_CUDA)
+
+## CPP TARGET
+add_library(dali ${MAYBE_SHARED} ${DaliSources} ${DaliHeaders})
+
+target_link_libraries(dali ${ZLIB_LIBRARIES}
+                           ${BLAS_LIBRARIES}
+                           ${MKL_LIBRARIES}
+                           ${CMAKE_THREAD_LIBS_INIT}
+                           ${OpenBLAS_LIB})
+if (GPERFTOOLS_FOUND)
+    target_link_libraries(dali ${GPERFTOOLS_LIBRARIES})
+endif (GPERFTOOLS_FOUND)
+
+
+################################################################################
+##                               DALI SETUP                                   ##
+##                                   ---                                      ##
+##                              MISCELANEOUS                                  ##
+##                                                                            ##
+##            1. Fix MKL libraries                                            ##
+##            2. Making sure that cuda libraries symbols are                  ##
+##               not ignored when compiling Dali library                      ##
+################################################################################
+
+add_custom_target(fix_libiomp5
+	COMMAND sudo sh ${PROJECT_SOURCE_DIR}/scripts/fix_libiomp5.sh
+)
+if (BLAS_FOUND AND MKL_FOUND)
+   add_dependencies(dali fix_libiomp5)
+endif (BLAS_FOUND AND MKL_FOUND)
+
+if (WITH_CUDA)
+    IF (APPLE)
+        target_link_libraries(dali -force_load dali_cuda)
+    ELSE (APPLE)
+        target_link_libraries(dali "-Wl,--whole-archive")
+        target_link_libraries(dali dali_cuda)
+        target_link_libraries(dali "-Wl,--no-whole-archive")
+    ENDIF(APPLE)
+endif (WITH_CUDA)
+
+################################################################################
+##                               DALI SETUP                                   ##
+##                                   ---                                      ##
+##                                TESTING                                     ##
 ################################################################################
 
 # This monstrosity came to live to alleviate two conditions:
 #      1) ctest ignores colored output
 #      2) make test does not build tests (wtf)
-set(TESTS_MAIN "${PROJECT_SOURCE_DIR}/dali/tests_main.cpp")
 function(add_testsuite TEST_TARGET RUN_TARGET TEST_DEPENDENCIES TEST_FILES DEVICE)
-    list(APPEND TEST_FILES ${TESTS_MAIN})
-    if(GTEST_FOUND)
-        message(STATUS "RUN_TARGET -> ${RUN_TARGET}")
-
         if (DEVICE STREQUAL "GPU")
-            # keep copy of old compiler flags
-            SET(OLD_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-            # switch to specific cuda flags
-            SET(CMAKE_CXX_FLAGS "-O3 -w -fPIC ${CUDA_EXTRA_FLAGS}")
+            cuda_compile_on()
             cuda_add_executable(${TEST_TARGET} ${TEST_FILES})
-            # switch back to non-cuda specific cxx flags
-            SET(CMAKE_CXX_FLAGS ${OLD_CXX_FLAGS})
-            SET(CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
+            cuda_compile_off()
         else (DEVICE STREQUAL "GPU")
             add_executable(${TEST_TARGET} ${TEST_FILES})
         endif(DEVICE STREQUAL "GPU")
@@ -154,42 +289,51 @@ function(add_testsuite TEST_TARGET RUN_TARGET TEST_DEPENDENCIES TEST_FILES DEVIC
         add_dependencies(${TEST_TARGET} ${TEST_DEPENDENCIES})
         target_link_libraries(${TEST_TARGET} ${TEST_DEPENDENCIES} ${GTEST_BOTH_LIBRARIES})
         add_test(${TEST_TARGET} ${TEST_TARGET})
-        add_custom_target(${TEST_TARGET}_run_doom_hidden ${TEST_TARGET})
+        add_custom_target(${TEST_TARGET}_hidden_run_target ${TEST_TARGET})
         add_custom_target(${RUN_TARGET} true)
-        add_dependencies(${RUN_TARGET} ${TEST_TARGET}_run_doom_hidden )
-    endif(GTEST_FOUND)
+        add_dependencies(${RUN_TARGET} ${TEST_TARGET}_hidden_run_target )
 endfunction(add_testsuite)
 
 if(GTEST_FOUND)
     enable_testing()
     set(CTEST_OUTPUT_ON_FAILURE TRUE)
     include_directories(${GTEST_INCLUDE_DIRS})
-
-
-
     ADD_CUSTOM_TARGET(run_tests_heapcheck
         COMMAND ${PROJECT_SOURCE_DIR}/scripts/test_runner.sh ${CMAKE_BINARY_DIR}
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    if (WITH_CUDA)
+        add_testsuite("test_dali" "run_tests" "dali" "${DaliTests};${DaliCudaTests}" "GPU")
+        add_testsuite("test_dali_cpu_only" "run_cpu_tests" "dali" "${DaliTests}" "CPU")
+    else (WITH_CUDA)
+        add_testsuite("test_dali" "run_tests" "dali" "${DaliTests}" "CPU")
+    endif (WITH_CUDA)
 else(GTEST_FOUND)
     message(WARNING "GTESTS not found - install gtests to be able to run tests")
 endif(GTEST_FOUND)
 
-
 ################################################################################
 ##                               DALI SETUP                                   ##
+##                                   ---                                      ##
+##                             INSTALLATION                                   ##
 ################################################################################
 
-# Relative path in C++ are hard. Adding a macro:
-set(DALI_DATA_DIR "${PROJECT_SOURCE_DIR}/data")
-
-# ADDING DIRECTORIES WITH THEIR OWN CMAKELISTS FILES
-add_subdirectory(${PROJECT_SOURCE_DIR}/dali)
+if (WITH_CUDA)
+    IF (APPLE)
+        INSTALL(TARGETS dali_cuda DESTINATION lib)
+    ENDIF (APPLE)
+endif(WITH_CUDA)
 
 # THOSE HEADERS ARE REQUIRED FOR DALI HEADERS TO WORK, SO WE AUTOMATICALLY INSTALL THEM.
 # install mshadow
+install(TARGETS dali DESTINATION lib)
+install(DIRECTORY ${DaliDir} ${GENERATED_FILES_DIR}/dali DESTINATION include
+        FILES_MATCHING PATTERN "*.h")
+
+install(FILES ${PROJECT_SOURCE_DIR}/cmake/DaliConfig.cmake   DESTINATION lib/dali/cmake)
+install(FILES ${PROJECT_SOURCE_DIR}/cmake/FindOpenBlas.cmake DESTINATION lib/openblas/cmake RENAME OpenBlasConfig.cmake)
+
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/third_party/mshadow/mshadow DESTINATION include
         FILES_MATCHING PATTERN "*.h" PATTERN "*.cuh")
-
 
 ################################################################################
 ##                            PACKAGE CREATION                                ##

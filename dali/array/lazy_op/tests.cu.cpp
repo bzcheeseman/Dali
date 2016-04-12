@@ -10,6 +10,12 @@
 
 TEST(ArrayLazyOpsTests, imports) {
     ASSERT_TRUE(lazy::ops_loaded);
+
+    // // Array x({16}, DTYPE_FLOAT);
+    // Array y({16}, DTYPE_FLOAT);
+    //
+    // auto partial =  y + ScalarExp<float>(1);
+    // EXPECT_EQ(partial.dtype(), DTYPE_FLOAT);
 }
 
 TEST(ArrayLazyOpsTests, lazy_device_deduction) {

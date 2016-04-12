@@ -12,34 +12,34 @@ TEST(ArrayOpsTests, imports) {
 }
 
 TEST(ArrayOpsTests, sigmoid) {
-    Array x({3,2,2});
+    auto x = Array::zeros({3,2,2});
     Array y = sigmoid(x);
 }
 
 TEST(ArrayOpsTests, relu) {
-    Array x({3,2,2});
+    auto x = Array::zeros({3,2,2});
     Array y = relu(x);
 }
 
 TEST(ArrayOpsTests, log_or_zero) {
-    Array x({3,2,2});
+    auto x = Array::zeros({3,2,2});
     Array w = log_or_zero(x);
 }
 
 TEST(ArrayOpsTests, abs) {
-    Array x({3,2,2});
+    auto x = Array::zeros({3,2,2});
     Array w = abs(x);
 }
 
 TEST(ArrayOpsTests, sign) {
-    Array x({3,2,2});
+    auto x = Array::zeros({3,2,2});
     Array w = sign(x);
 }
 
 template<typename T>
 void test_binary_shapes(T op_f) {
-    Array x({3,2,2});
-    Array y({12});
+    auto x = Array::zeros({3,2,2});
+    auto y = Array::zeros({12});
     // binary op on args of different sizes
     auto args_wrong_size = [&]() {     Array z = op_f(x, y);         };
     ASSERT_THROW(args_wrong_size(), std::runtime_error);

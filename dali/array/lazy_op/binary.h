@@ -1,13 +1,13 @@
 #ifndef DALI_ARRAY_LAZY_OP_BINARY_H
 #define DALI_ARRAY_LAZY_OP_BINARY_H
 
+#include "dali/array/function/property_extractor.h"
 #include "dali/array/lazy_op/evaluator.h"
+#include "dali/array/lazy_op/expression.h"
 #include "dali/array/TensorFunctions.h"
 
-#include "dali/array/function/property_extractor.h"
-
 template<template<class>class Functor, typename LeftT, typename RightT>
-struct Binary {
+struct Binary : public Exp<Binary<Functor,LeftT,RightT>> {
     typedef Binary<Functor,LeftT,RightT> self_t;
     LeftT  left;
     RightT right;

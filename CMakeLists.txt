@@ -216,6 +216,7 @@ endforeach()
 ################################################################################
 
 include_directories(${GENERATED_FILES_DIR})
+cuda_include_directories(${GENERATED_FILES_DIR})
 
 ## CUDA TARGET
 if (WITH_CUDA)

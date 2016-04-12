@@ -8,6 +8,7 @@
 #include "dali/array/dtype.h"
 #include "dali/array/memory/memory_ops.h"
 #include "dali/array/memory/synchronized_memory.h"
+#include "dali/array/lazy_op/expression.h"
 #include "dali/runtime_config.h"
 
 class Array;
@@ -26,7 +27,7 @@ struct ArrayState {
     ArrayState(const std::vector<int>& _shape, std::shared_ptr<memory::SynchronizedMemory> _memory, int _offset, DType _device);
 };
 
-class Array {
+class Array : public Exp<Array> {
   private:
     std::shared_ptr<ArrayState> state;
     template<typename T>

@@ -216,10 +216,10 @@ endforeach()
 ################################################################################
 
 include_directories(${GENERATED_FILES_DIR})
-cuda_include_directories(${GENERATED_FILES_DIR})
 
 ## CUDA TARGET
 if (WITH_CUDA)
+    cuda_include_directories(${GENERATED_FILES_DIR})
     cuda_compile_on()
     cuda_add_library(dali_cuda STATIC ${DaliCudaSources} ${DaliHeaders})
     target_link_libraries(dali_cuda ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_CUBLAS_LIBRARIES})

@@ -1,10 +1,5 @@
 #include "dali/config.h"
 
-#include "dali/array/op/binary.h"
-#include "dali/array/op/elementwise.h"
-#include "dali/array/op/other.h"
-
-
 #if EXISTS_AND_TRUE(DALI_USE_LAZY)
     #include "dali/array/lazy_op/binary.h"
     namespace lazy {
@@ -38,6 +33,8 @@
     LAZY_BINARY_OPERATOR(*, lazy::eltmul)
     LAZY_BINARY_OPERATOR(/, lazy::eltdiv)
 #else
+    #include "dali/array/op/binary.h"
+    #include "dali/array/op/elementwise.h"
     namespace lazy {
         static bool ops_loaded = false;
     }
@@ -50,3 +47,5 @@
 
     AssignableArray operator/(const Array& left, const Array& right);
 #endif
+
+#include "dali/array/op/other.h"

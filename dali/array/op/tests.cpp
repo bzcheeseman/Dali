@@ -80,3 +80,13 @@ TEST(ArrayOpsTests, is_nan) {
     x[2][2][1] = NAN;
     ASSERT_TRUE(is_nan(x));
 }
+
+TEST(ArrayOpsTests, chainable) {
+    Array x({3,2,2});
+    // sigmoid is run and stored,
+    // then relu, then tanh. the operations
+    // are not fused, but implicit casting to
+    // Array from AssignableArray occurs at
+    // every stage.
+    Array y = tanh(relu(sigmoid(x)));
+}

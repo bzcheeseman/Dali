@@ -144,9 +144,8 @@ set(DALI_DATA_DIR "${PROJECT_SOURCE_DIR}/data")
 if (NOT DEFINED DALI_SOURCE_DIRS)
     set(DALI_SOURCE_DIRS "dali")
 endif()
-if (NOT DEFINED DALI_SOURCE_DIRS_EXCLUDE)
-    set(DALI_SOURCE_DIRS_EXCLUDE "dali/tensor;dali/data_processing;dali/execution;dali/layers")
-endif()
+
+list(APPEND DALI_SOURCE_DIRS_EXCLUDE "dali/tensor;dali/data_processing;dali/execution;dali/layers")
 
 set(GENERATED_FILES_DIR ${CMAKE_BINARY_DIR}/dali_generated)
 file(MAKE_DIRECTORY ${GENERATED_FILES_DIR})

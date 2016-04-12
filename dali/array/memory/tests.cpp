@@ -1,5 +1,6 @@
 #include <chrono>
 #include <vector>
+#include <thread>
 #include <iomanip>
 #include <gtest/gtest.h>
 
@@ -8,6 +9,7 @@
 #include "dali/array/memory/memory_ops.h"
 #include "dali/array/memory/memory_bank.h"
 #include "dali/array/memory/synchronized_memory.h"
+#include "dali/utils/print_utils.h"
 
 using std::vector;
 using std::chrono::milliseconds;
@@ -147,6 +149,7 @@ TEST(MemoryTests, test_memory_bank_cpu) {
         memory::copy(data_gpu_as_cpu, DevicePtr(Device::gpu(0), data_gpu), 12, 1);
 
         auto data_gpu_as_cpu_ptr = (uint8_t*)data_gpu_as_cpu.ptr;
+
         for (int i=0; i < 12; ++i) {
             ASSERT_EQ(data_gpu_as_cpu_ptr[i], i);
         }

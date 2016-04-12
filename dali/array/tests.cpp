@@ -39,15 +39,3 @@ TEST(ArrayTests, scalar_value) {
     x[3] = 56;
     EXPECT_EQ(x_val, 56);
 }
-
-
-
-TEST(ArrayTests, chainable) {
-    Array x({3,2,2});
-    // sigmoid is run and stored,
-    // then relu, then tanh. the operations
-    // are not fused, but implicit casting to
-    // Array from AssignableArray occurs at
-    // every stage.
-    Array y = tanh(relu(sigmoid(x)));
-}

@@ -74,11 +74,11 @@ struct MshadowWrapper {
         return MArray<devT,T>(array, memory::Device::cpu()).d1();;
     }
 
-    static inline float to_expr(const float& scalar) { return scalar; }
+    static inline T to_expr(const float& scalar) { return (T)scalar; }
 
-    static inline double to_expr(const double& scalar) { return scalar; }
+    static inline T to_expr(const double& scalar) { return (T)scalar; }
 
-    static inline int to_expr(const int& scalar) { return scalar; }
+    static inline T to_expr(const int& scalar) { return (T)scalar; }
 };
 
 

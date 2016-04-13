@@ -268,16 +268,15 @@ namespace memory {
         return get_device_memory(device).ptr;
     }
 
-    void SynchronizedMemory::print_debug_info(std::vector<memory::Device> devices,
-                                              bool print_contents,
+    void SynchronizedMemory::debug_info(bool print_contents,
                                               DType dtype) {
         std::cout << "Synchornized Memory (" << this << ")" << std::endl;
         std::cout << "    total_memory: " << total_memory << " bytes" << std::endl;
         std::cout << "    inner_dimension: " << inner_dimension << " bytes" << std::endl;
         std::cout << "    preferred_device: " << preferred_device.description() << std::endl;
         std::cout << "    clear_on_allocation: " << clear_on_allocation << std::endl;
-        for (auto device: devices) {
-            std::cout << "    Device " << device.description() << std::endl;
+        for (auto device: Device::installed_devices()) {
+            std::cout << "    Device " << device.description(true) << std::endl;
             std::cout << "        fresh: " << get_device_memory(device).fresh << std::endl;
             std::cout << "        allocated: " << get_device_memory(device).allocated << std::endl;
             std::cout << "        ptr: " << get_device_memory(device).ptr << std::endl;

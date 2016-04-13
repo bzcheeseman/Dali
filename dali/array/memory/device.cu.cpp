@@ -20,13 +20,19 @@ namespace memory {
             type(DEVICE_T_ERROR), number(-1) {
     }
 
-    std::string Device::description() {
+    std::string Device::description(bool real_gpu_name) {
         if (is_cpu()) {
             return "cpu";
         }
 #ifdef DALI_USE_CUDA
         else if(is_gpu()) {
-            return utils::MS() << "gpu" << number;
+            std::string real_name;
+            if (real_gpu_name) {
+                cudaDeviceProp props;
+                cudaGetDeviceProperties(&props, number);
+                real_name = utils::MS() << " (" << std::string(props.name) << ")";
+            }
+            return utils::MS() << "gpu" << number << real_name;
         }
 #endif
         else if(is_fake()) {
@@ -64,6 +70,17 @@ namespace memory {
     }
 
 
+    std::vector<memory::Device> Device::installed_devices() {
+        std::vector<memory::Device> result;
+        result.push_back(Device::cpu()); // the day this line will be iffed guared
+                                 // I will know the future is here.
+#ifdef DALI_USE_CUDA
+        for (int i=0; i < num_gpus(); ++i) {
+            result.push_back(Device::gpu(i));
+        }
+#endif
+        return result;
+    }
 
 #ifdef DALI_USE_CUDA
     void Device::set_cuda_device() const {
@@ -79,6 +96,12 @@ namespace memory {
         ASSERT2(0 <= number && number < MAX_GPU_DEVICES,
                 utils::MS() << "GPU number must be between 0 and " << MAX_GPU_DEVICES - 1 << ".");
         return Device(DEVICE_T_GPU, number);
+    }
+
+    int Device::num_gpus() {
+        int devices;
+        cudaGetDeviceCount(&devices);
+        return devices;
     }
 #endif
 

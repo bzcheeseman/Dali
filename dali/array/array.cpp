@@ -301,3 +301,7 @@ void Array::print(std::basic_ostream<char>& stream, int indent) const {
         stream << std::string(indent, ' ') <<"]" << std::endl;
     }
 }
+
+void Array::debug_memory(bool print_contents) {
+    memory()->debug_info(print_contents, dtype());
+}

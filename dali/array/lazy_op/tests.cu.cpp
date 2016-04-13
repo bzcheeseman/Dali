@@ -97,7 +97,6 @@ TEST(ArrayLazyOpsTests, lazy_shape_deduction) {
     Array y({16});
     Array z({16});
 
-
     // test deduction of shape of lazy expression
     auto partial = x * (y * z);
     EXPECT_EQ(partial.shape(), std::vector<int>({16}));
@@ -112,6 +111,8 @@ TEST(ArrayLazyOpsTests, lazy_shape_deduction) {
 
     // auto allocate memory
     Array qp = x * (y * z);
+
+    x.debug_memory();
 
     // cannot assign to memory of wrong shape
     Array q2({14, 5});

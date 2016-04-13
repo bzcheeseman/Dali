@@ -120,7 +120,7 @@ namespace memory {
            void* overwrite_data(const Device& device);
 
            // prints various memory statistics. For debug use only.
-           void print_debug_info(std::vector<memory::Device> devices, bool print_contents=false, DType dtype=DTYPE_FLOAT);
+           void debug_info(bool print_contents=false, DType dtype=DTYPE_FLOAT);
     };
 
     namespace debug {

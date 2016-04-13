@@ -99,6 +99,7 @@ class Array : public Exp<Array> {
 
     /* Debugging */
     void print(std::basic_ostream<char>& stream = std::cout, int indent=0) const;
+    void debug_memory(bool print_contents=true);
 };
 
 #endif

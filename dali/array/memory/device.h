@@ -5,6 +5,8 @@
 #define DALI_ARRAY_MEMORY_DEVICE_H
 
 #include <map>
+#include <vector>
+
 #include "dali/config.h"
 
 namespace memory {
@@ -40,7 +42,7 @@ namespace memory {
 
         Device();
 
-        std::string description();
+        std::string description(bool real_gpu_name=false);
 
         bool is_fake() const;
         static Device fake(int number);
@@ -48,10 +50,12 @@ namespace memory {
         bool is_cpu() const;
         static Device cpu();
         static Device device_of_doom();
+        static std::vector<memory::Device> installed_devices();
 #ifdef DALI_USE_CUDA
         void set_cuda_device() const;
         bool is_gpu() const;
         static Device gpu(int number);
+        static int num_gpus();
 #endif
         private:
             Device(DeviceT type, int number);

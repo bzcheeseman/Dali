@@ -92,24 +92,24 @@ struct Function {
     static void untyped_eval(const Outtype& out, const Args&... args) {
         auto device = Class::deduce_computation_device(out, args...);
         auto dtype  = Class::deduce_computation_dtype(out, args...);
-        if (device.type == memory::DEVICE_T_CPU && dtype == DTYPE_FLOAT) {
+        if (device.type() == memory::DEVICE_T_CPU && dtype == DTYPE_FLOAT) {
             typedef ArrayWrapper<memory::DEVICE_T_CPU,float> wrapper_t;
             Class().typed_eval(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
-        } else if (device.type == memory::DEVICE_T_CPU && dtype == DTYPE_DOUBLE) {
+        } else if (device.type() == memory::DEVICE_T_CPU && dtype == DTYPE_DOUBLE) {
             typedef ArrayWrapper<memory::DEVICE_T_CPU,double> wrapper_t;
             Class().typed_eval(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
-        } else if (device.type == memory::DEVICE_T_CPU && dtype == DTYPE_INT32) {
+        } else if (device.type() == memory::DEVICE_T_CPU && dtype == DTYPE_INT32) {
             typedef ArrayWrapper<memory::DEVICE_T_CPU,int> wrapper_t;
             Class().typed_eval(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
         }
 #ifdef DALI_USE_CUDA
-        else if (device.type == memory::DEVICE_T_GPU && dtype == DTYPE_FLOAT) {
+        else if (device.type() == memory::DEVICE_T_GPU && dtype == DTYPE_FLOAT) {
             typedef ArrayWrapper<memory::DEVICE_T_GPU,float> wrapper_t;
             Class().typed_eval(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
-        } else if (device.type == memory::DEVICE_T_GPU && dtype == DTYPE_DOUBLE) {
+        } else if (device.type() == memory::DEVICE_T_GPU && dtype == DTYPE_DOUBLE) {
             typedef ArrayWrapper<memory::DEVICE_T_GPU,double> wrapper_t;
             Class().typed_eval(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
-        } else if (device.type == memory::DEVICE_T_GPU && dtype == DTYPE_INT32) {
+        } else if (device.type() == memory::DEVICE_T_GPU && dtype == DTYPE_INT32) {
             typedef ArrayWrapper<memory::DEVICE_T_GPU,int> wrapper_t;
             Class().typed_eval(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
         }

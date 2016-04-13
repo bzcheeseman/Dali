@@ -21,11 +21,11 @@ namespace memory {
         }
 #ifdef DALI_USE_CUDA
         else if (device.is_gpu()) {
-            return gpu_memories[device.number];
+            return gpu_memories[device.number()];
         }
 #endif
         else if (debug::enable_fake_devices && device.is_fake()) {
-            return debug::fake_device_memories[device.number];
+            return debug::fake_device_memories[device.number()];
         } else {
             ASSERT2(false, "Unsupported device passed to SynchronizedMemory.");
             return cpu_memory;
@@ -90,8 +90,8 @@ namespace memory {
         other.iterate_device_memories([this,&best_device,&device_type_matching,&device_number_match]
                                       (const Device& device, DeviceMemory& device_memory) {
             if (device_memory.fresh) {
-                bool current_device_type_matching   = device.type   == this->preferred_device.type;
-                bool current_device_number_matching = device.number == this->preferred_device.number;
+                bool current_device_type_matching   = device.type()   == this->preferred_device.type();
+                bool current_device_number_matching = device.number() == this->preferred_device.number();
 
                 bool update = false;
                 if (best_device == Device::device_of_doom()) {
@@ -275,7 +275,7 @@ namespace memory {
             std::cout << "        fresh: " << get_device_memory(device).fresh << std::endl;
             std::cout << "        allocated: " << get_device_memory(device).allocated << std::endl;
             std::cout << "        ptr: " << get_device_memory(device).ptr << std::endl;
-            if(print_contents && device.type == DEVICE_T_CPU && get_device_memory(device).allocated) {
+            if(print_contents && device.is_cpu() && get_device_memory(device).allocated) {
                 std::cout << "        contents: [";
                 if (dtype == DTYPE_FLOAT) {
                     float* ptr = (float*)get_device_memory(device).ptr;

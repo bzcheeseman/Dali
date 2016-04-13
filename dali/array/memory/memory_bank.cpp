@@ -35,7 +35,7 @@ namespace memory {
             }
     #ifdef DALI_USE_CUDA
             else if (device.is_gpu()) {
-                return gpu_bank[device.number];
+                return gpu_bank[device.number()];
             }
     #endif
             else {

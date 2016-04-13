@@ -107,7 +107,7 @@ namespace memory {
         }
         else if (dest.device.is_gpu() && source.device.is_gpu()) {
             dest.device.set_cuda_device();
-            ASSERT2(dest.device.number == source.device.number,
+            ASSERT2(dest.device.number() == source.device.number(),
                     "GPU -> GPU memory movement not supported yet.");
             auto dummy_dest   = dummy_gpu(dest.ptr,   amount, inner_dimension);
             auto dummy_source = dummy_gpu(source.ptr, amount, inner_dimension);

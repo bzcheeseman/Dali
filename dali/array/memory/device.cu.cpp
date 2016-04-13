@@ -17,10 +17,21 @@ namespace memory {
 #endif
 
     Device::Device() :
-            type(DEVICE_T_ERROR), number(-1) {
+            mType(DEVICE_T_ERROR), mNumber(-1) {
     }
 
-    std::string Device::description(bool real_gpu_name) {
+    Device::Device(DeviceT _type, int _number) :
+            mType(_type), mNumber(_number) {
+    }
+
+    DeviceT Device::type() const {
+        return mType;
+    }
+    int Device::number() const {
+        return mNumber;
+    }
+
+    std::string Device::description(bool real_gpu_name) const {
         if (is_cpu()) {
             return "cpu";
         }
@@ -29,15 +40,15 @@ namespace memory {
             std::string real_name;
             if (real_gpu_name) {
                 cudaDeviceProp props;
-                cudaGetDeviceProperties(&props, number);
+                cudaGetDeviceProperties(&props, mNumber);
                 real_name = utils::MS() << " (" << std::string(props.name) << ")";
             }
-            return utils::MS() << "gpu" << number << real_name;
+            return utils::MS() << "gpu" << mNumber << real_name;
         }
 #endif
         else if(is_fake()) {
-            return utils::MS() << "fake_device" << number;
-        } else if(type==DEVICE_T_ERROR) {
+            return utils::MS() << "fake_device" << mNumber;
+        } else if(mType == DEVICE_T_ERROR) {
             return "device_of_doom";
         } else {
             ASSERT2(false, "Device::description: unknown device type stored in Device class.");
@@ -45,12 +56,9 @@ namespace memory {
         }
     }
 
-    Device::Device(DeviceT _type, int _number) :
-            type(_type), number(_number) {
-    }
 
     bool Device::is_cpu() const {
-        return type == DEVICE_T_CPU;
+        return mType == DEVICE_T_CPU;
     }
 
     Device Device::cpu() {
@@ -58,7 +66,7 @@ namespace memory {
     }
 
     bool Device::is_fake() const {
-        return type == DEVICE_T_FAKE;
+        return mType == DEVICE_T_FAKE;
     }
 
     Device Device::fake(int number) {
@@ -85,11 +93,11 @@ namespace memory {
 #ifdef DALI_USE_CUDA
     void Device::set_cuda_device() const {
         ASSERT2(is_gpu(), "set_cuda_device must only be called for GPU devices.");
-        cudaSetDevice(number);
+        cudaSetDevice(mNumber);
     }
 
     bool Device::is_gpu() const {
-        return type == DEVICE_T_GPU;
+        return mType == DEVICE_T_GPU;
     }
 
     Device Device::gpu(int number) {
@@ -107,7 +115,7 @@ namespace memory {
 
 
     bool operator==(const Device& a, const Device& b) {
-        return a.type == b.type && a.number == b.number;
+        return a.type() == b.type() && a.number() == b.number();
     }
     bool operator!=(const Device& a, const Device& b) {
         return !(a==b);

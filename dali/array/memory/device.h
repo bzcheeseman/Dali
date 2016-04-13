@@ -35,30 +35,37 @@ namespace memory {
     // and its printable name (e.g. cpu, gpu)
     extern std::map<DeviceT, std::string> device_type_to_name;
 
-    struct Device {
-        DeviceT type;
+    class Device {
+      private:
+        DeviceT mType;
         // ignored for cpu:
-        int number;
+        int mNumber;
 
+        Device(DeviceT type, int number);
+      public:
         Device();
 
-        std::string description(bool real_gpu_name=false);
+        DeviceT type() const;
+        int number() const;
+        std::string description(bool real_gpu_name=false) const;
 
+        // fake devices
         bool is_fake() const;
         static Device fake(int number);
 
+        // cpu devices
         bool is_cpu() const;
         static Device cpu();
         static Device device_of_doom();
+        // static functions
         static std::vector<memory::Device> installed_devices();
 #ifdef DALI_USE_CUDA
+        // gpu devices
         void set_cuda_device() const;
         bool is_gpu() const;
         static Device gpu(int number);
         static int num_gpus();
 #endif
-        private:
-            Device(DeviceT type, int number);
     };
 
     bool operator==(const Device& a, const Device& b);

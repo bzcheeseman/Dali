@@ -302,7 +302,6 @@ namespace memory {
     }
 
     namespace debug {
-        bool enable_fake_devices = false;
         SynchronizedMemory::DeviceMemory fake_device_memories[MAX_FAKE_DEVICES];
     }
 }

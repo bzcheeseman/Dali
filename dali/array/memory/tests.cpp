@@ -116,9 +116,9 @@ TEST(MemoryTests, test_memory_bank_cpu) {
 
     TEST(MemoryTests, fake_devices) {
         memory::debug::enable_fake_devices = false;
-        SynchronizedMemory s(12, 1, Device::fake(1), true);
-        EXPECT_THROW(s.is_fresh(Device::fake(1)), std::runtime_error);
+        EXPECT_THROW(Device::fake(1), std::runtime_error);
         memory::debug::enable_fake_devices = true;
+        SynchronizedMemory s(12, 1, Device::fake(1), true);
         s.is_fresh(Device::fake(1));
         memory::debug::fake_device_memories[1].fresh = true;
         EXPECT_EQ(s.is_fresh(Device::fake(1)), true);

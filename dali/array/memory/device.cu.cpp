@@ -70,6 +70,8 @@ namespace memory {
     }
 
     Device Device::fake(int number) {
+        ASSERT2(debug::enable_fake_devices,
+                "To create a fake device, you must first set memory::debug::enable_fake_devices to true.");
         return Device(DEVICE_T_FAKE, number);
     }
 
@@ -123,4 +125,7 @@ namespace memory {
 
     DevicePtr::DevicePtr(Device _device, void* _ptr) : device(_device), ptr(_ptr) {}
 
+    namespace debug {
+        bool enable_fake_devices = false;
+    }
 }  // namespace memory

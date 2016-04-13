@@ -123,8 +123,6 @@ namespace memory {
     };
 
     namespace debug {
-        extern bool enable_fake_devices;
-        const int MAX_FAKE_DEVICES = 16;
         extern SynchronizedMemory::DeviceMemory fake_device_memories[MAX_FAKE_DEVICES];
     }
 }  // namespace memory

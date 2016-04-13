@@ -78,6 +78,10 @@ namespace memory {
         DevicePtr(Device _device, void* _ptr);
     };
 
+    namespace debug {
+        extern bool enable_fake_devices;
+        const int MAX_FAKE_DEVICES = 16;
+    }
 
 };  // namespace memory
 

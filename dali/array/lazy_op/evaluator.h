@@ -57,7 +57,7 @@ struct Evaluator : public Function<Evaluator<LazyExpr>, Array, LazyExpr> {
 
     template<int devT, typename T>
     void typed_eval(MArray<devT,T> out, LazyExpr expr) {
-        out.d1(memory::AM_OVERWRITE) =  expr.template to_mshadow_expr<devT,T>();;
+        out.d1(memory::AM_OVERWRITE) =  expr.template to_mshadow_expr<devT,T>(out.device);
     }
 };
 
@@ -65,20 +65,19 @@ struct Evaluator : public Function<Evaluator<LazyExpr>, Array, LazyExpr> {
 template<int devT,typename T>
 struct MshadowWrapper {
     template<typename ExprT>
-    static inline auto to_expr(const ExprT& sth) -> decltype(sth.template to_mshadow_expr<devT,T>()) {
-        return sth.template to_mshadow_expr<devT,T>();
+    static inline auto to_expr(const ExprT& sth, memory::Device device) -> decltype(sth.template to_mshadow_expr<devT,T>()) {
+        return sth.template to_mshadow_expr<devT,T>(device);
     }
 
-    static inline auto to_expr(const Array& array) -> decltype(MArray<devT,T>(array, memory::Device::cpu()).d1()) {
-        //TODO(szymon,jonathan): to_expr/to_mshadow_expr must receive target device to function correctly.
-        return MArray<devT,T>(array, memory::Device::cpu()).d1();;
+    static inline auto to_expr(const Array& array, memory::Device device) -> decltype(MArray<devT,T>(array, device).d1()) {
+        return MArray<devT,T>(array, device).d1();;
     }
 
-    static inline T to_expr(const float& scalar) { return (T)scalar; }
+    static inline T to_expr(const float& scalar, memory::Device device) { return (T)scalar; }
 
-    static inline T to_expr(const double& scalar) { return (T)scalar; }
+    static inline T to_expr(const double& scalar, memory::Device device) { return (T)scalar; }
 
-    static inline T to_expr(const int& scalar) { return (T)scalar; }
+    static inline T to_expr(const int& scalar, memory::Device device) { return (T)scalar; }
 };
 
 

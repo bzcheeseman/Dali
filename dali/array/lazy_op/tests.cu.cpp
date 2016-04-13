@@ -84,8 +84,8 @@ TEST(ArrayLazyOpsTests, lazy_binary_correctness) {
     x(1) = 2; y(1) = 3; z(1) = 2;
 
     Array res = x * y * 2 + z + 1;
-    ASSERT_EQ((float)(res(0)), 12/*1 * 4 * 2 + 3 + 1*/);
-    ASSERT_EQ((float)(res(1)), 15/*2 * 3 * 2 + 2 + 1*/);
+    ASSERT_EQ((float)(res(0)), 1 * 4 * 2 + 3 + 1);
+    ASSERT_EQ((float)(res(1)), 2 * 3 * 2 + 2 + 1);
 }
 
 TEST(ArrayLazyOpsTests, lazy_shape_deduction) {

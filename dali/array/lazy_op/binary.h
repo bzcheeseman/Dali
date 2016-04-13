@@ -7,18 +7,18 @@
 #include "dali/array/TensorFunctions.h"
 
 template<template<class>class Functor, typename LeftT, typename RightT>
-struct Binary : public RValueExp<Binary<Functor,LeftT,RightT>> {
-    typedef Binary<Functor,LeftT,RightT> self_t;
+struct LazyBinaryElementwise : public RValueExp<LazyBinaryElementwise<Functor,LeftT,RightT>> {
+    typedef LazyBinaryElementwise<Functor,LeftT,RightT> self_t;
     LeftT  left;
     RightT right;
     std::vector<int> shape_;
     DType dtype_;
 
-    Binary(const LeftT& _left, const RightT& _right) :
+    LazyBinaryElementwise(const LeftT& _left, const RightT& _right) :
             left(_left),
             right(_right),
-            shape_(LazyCommonPropertyExtractor<ShapeProperty>::extract_binary(left, right)),
-            dtype_(LazyCommonPropertyExtractor<DTypeProperty>::extract_binary(left, right)) {
+            shape_(std::get<1>(LazyCommonPropertyExtractor<ShapeProperty>::extract_binary(left, right))),
+            dtype_(std::get<1>(LazyCommonPropertyExtractor<DTypeProperty>::extract_binary(left, right))) {
     }
 
     const std::vector<int>& shape() const {
@@ -50,23 +50,23 @@ struct Binary : public RValueExp<Binary<Functor,LeftT,RightT>> {
 
 namespace lazy {
     template <typename T, typename T2>
-    Binary<TensorOps::op::add, T, T2> add(T a, T2 b) {
-        return Binary<TensorOps::op::add, T, T2>(a, b);
+    LazyBinaryElementwise<TensorOps::op::add, T, T2> add(T a, T2 b) {
+        return LazyBinaryElementwise<TensorOps::op::add, T, T2>(a, b);
     }
 
     template <typename T, typename T2>
-    Binary<TensorOps::op::sub, T, T2> sub(T a, T2 b) {
-        return Binary<TensorOps::op::sub, T, T2>(a, b);
+    LazyBinaryElementwise<TensorOps::op::sub, T, T2> sub(T a, T2 b) {
+        return LazyBinaryElementwise<TensorOps::op::sub, T, T2>(a, b);
     }
 
     template <typename T, typename T2>
-    Binary<TensorOps::op::eltmul, T, T2> eltmul(T a, T2 b) {
-        return Binary<TensorOps::op::eltmul, T, T2>(a, b);
+    LazyBinaryElementwise<TensorOps::op::eltmul, T, T2> eltmul(T a, T2 b) {
+        return LazyBinaryElementwise<TensorOps::op::eltmul, T, T2>(a, b);
     }
 
     template <typename T, typename T2>
-    Binary<TensorOps::op::eltdiv, T, T2> eltdiv(T a, T2 b) {
-        return Binary<TensorOps::op::eltdiv, T, T2>(a, b);
+    LazyBinaryElementwise<TensorOps::op::eltdiv, T, T2> eltdiv(T a, T2 b) {
+        return LazyBinaryElementwise<TensorOps::op::eltdiv, T, T2>(a, b);
     }
 }
 

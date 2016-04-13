@@ -5,15 +5,29 @@
 #include "dali/array/dtype.h"
 
 template<template<class>class Functor, typename LeftT, typename RightT>
-struct Binary;
+struct LazyBinaryElementwise;
+
+template<template<class>class Functor, typename ExprT>
+struct LazyElementwise;
 
 template<typename Reducer>
 struct UnfoldingReducer {
     typedef std::tuple<typename Reducer::outtype_t, typename Reducer::state_t> outtuple_t;
 
     template<template<class>class Functor, typename LeftT, typename RightT, typename... Args>
-    static outtuple_t unfold_helper(const outtuple_t& state, const Binary<Functor, LeftT,RightT>& binary_expr, const Args&... args) {
+    static outtuple_t unfold_helper(
+            const outtuple_t& state,
+            const LazyBinaryElementwise<Functor, LeftT,RightT>& binary_expr,
+            const Args&... args) {
         return unfold_helper(state, binary_expr.left, binary_expr.right, args...);
+    }
+
+    template<template<class>class Functor, typename ExprT, typename... Args>
+    static outtuple_t unfold_helper(
+            const outtuple_t& state,
+            const LazyElementwise<Functor,ExprT>& elementwise_expr,
+            const Args&... args) {
+        return unfold_helper(state, elementwise_expr.expr, args...);
     }
 
     template<typename T, typename... Args>
@@ -64,6 +78,9 @@ struct MshadowWrapper<devT,T,int> {
     static inline T to_expr(const int& scalar, memory::Device device) { return (T)scalar; }
 };
 
+namespace debug {
+    extern int evaluator_calls;
+}
 
 template<class LazyExpr>
 struct Evaluator : public Function<Evaluator<LazyExpr>, Array, LazyExpr> {
@@ -94,6 +111,7 @@ struct Evaluator : public Function<Evaluator<LazyExpr>, Array, LazyExpr> {
 
     template<int devT, typename T>
     void typed_eval(MArray<devT,T> out, const LazyExpr& expr) {
+        debug::evaluator_calls += 1;
         out.d1(memory::AM_OVERWRITE) =
                 MshadowWrapper<devT,T,decltype(expr)>::to_expr(expr, out.device);
     }

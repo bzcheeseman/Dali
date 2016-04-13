@@ -56,7 +56,7 @@ struct LazyCommonPropertyExtractor {
     }
 
     template<typename T, typename T2>
-    static property_t extract_binary(const T& left, const T2& right) {
+    static std::tuple<bool,property_t> extract_binary(const T& left, const T2& right) {
         bool left_matters, right_matters;
         property_t left_property, right_property;
         std::tie(left_matters, left_property)   = extract_unary(left);
@@ -70,11 +70,11 @@ struct LazyCommonPropertyExtractor {
                 ASSERT2(left_property == right_property,
                     utils::MS() << "Expressions of inconsistent " << Property::name << " passed to binary expression (" << left_property << " VS " << right_property <<  ")");
             }
-            return left_property;
+            return std::make_tuple(true,left_property);
         } else if (right_matters) {
-            return right_property;
+            return std::make_tuple(true,right_property);
         }
-        return property_t();
+        return std::make_tuple(false, property_t());
     }
 
 };

@@ -2,6 +2,7 @@
 
 #if EXISTS_AND_TRUE(DALI_USE_LAZY)
     #include "dali/array/lazy_op/binary.h"
+    #include "dali/array/lazy_op/elementwise.h"
     namespace lazy {
         static bool ops_loaded = true;
     }

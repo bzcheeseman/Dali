@@ -23,9 +23,13 @@ namespace memory {
     std::string Device::description() {
         if (is_cpu()) {
             return "cpu";
-        } else if(is_gpu()) {
+        }
+#ifdef DALI_USE_CUDA
+        else if(is_gpu()) {
             return utils::MS() << "gpu" << number;
-        } else if(is_fake()) {
+        }
+#endif
+        else if(is_fake()) {
             return utils::MS() << "fake_device" << number;
         } else if(type==DEVICE_T_ERROR) {
             return "device_of_doom";

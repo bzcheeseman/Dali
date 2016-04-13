@@ -11,12 +11,14 @@
 #include "dali/array/lazy_op/expression.h"
 #include "dali/runtime_config.h"
 
+#include "dali/utils/print_utils.h" // delete me
+
 class Array;
 
 struct AssignableArray {
     typedef std::function<void(Array&)> assign_t;
     assign_t assign_to;
-    AssignableArray(assign_t&& _assign_to);
+    explicit AssignableArray(assign_t&& _assign_to);
 };
 
 struct ArrayState {
@@ -49,8 +51,8 @@ class Array : public Exp<Array> {
     Array(const AssignableArray& assignable);
 
     template<typename T>
-    Array(const T& castable_to_assignable)
-            : Array((AssignableArray)castable_to_assignable) {
+    Array(const RValueExp<T>& expr) :
+            Array(expr.as_assignable()) {
     }
 
 
@@ -83,12 +85,11 @@ class Array : public Exp<Array> {
     operator T&();
 
     template<typename T>
-    operator const T&() const;
+    operator  T() const;
 
     template<typename T>
-    Array& operator=(const T& other) {
-        auto assignable = (AssignableArray)other;
-        return (*this = assignable);
+    Array& operator=(const RValueExp<T>& other) {
+        return (*this = other.as_assignable());
     }
 
     Array& operator=(const float& other);

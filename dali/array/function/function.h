@@ -56,6 +56,10 @@ struct Function {
         return ReduceOverArgs<CommonPropertyExtractor<DTypeProperty>>::reduce(args...);
     }
 
+    static memory::Device deduce_output_device(const Args&... args) {
+        return ReduceOverArgs<DeviceReducer>::reduce(args...);
+    }
+
     static memory::Device deduce_computation_device(const Outtype& out, const Args&... args) {
         return ReduceOverArgs<DeviceReducer>::reduce(out, args...);
     }
@@ -69,7 +73,7 @@ struct Function {
         auto common_dtype = Class::deduce_output_dtype(args...);
 
         if (out.is_stateless()) {
-            out.initialize(common_shape, common_dtype);
+            out.initialize(common_shape, common_dtype, Class::deduce_output_device(args...));
         } else {
             ASSERT2(out.shape() == common_shape,
                     utils::MS() << "Cannot assign result of shape " << common_shape << " to a location of shape " << out.shape() << ".");
@@ -88,7 +92,6 @@ struct Function {
     static void untyped_eval(const Outtype& out, const Args&... args) {
         auto device = Class::deduce_computation_device(out, args...);
         auto dtype  = Class::deduce_computation_dtype(out, args...);
-
         if (device.type == memory::DEVICE_T_CPU && dtype == DTYPE_FLOAT) {
             typedef ArrayWrapper<memory::DEVICE_T_CPU,float> wrapper_t;
             Class().typed_eval(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);

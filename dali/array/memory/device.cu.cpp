@@ -20,6 +20,21 @@ namespace memory {
             type(DEVICE_T_ERROR), number(-1) {
     }
 
+    std::string Device::description() {
+        if (is_cpu()) {
+            return "cpu";
+        } else if(is_gpu()) {
+            return utils::MS() << "gpu" << number;
+        } else if(is_fake()) {
+            return utils::MS() << "fake_device" << number;
+        } else if(type==DEVICE_T_ERROR) {
+            return "device_of_doom";
+        } else {
+            ASSERT2(false, "Device::description: unknown device type stored in Device class.");
+            return "";
+        }
+    }
+
     Device::Device(DeviceT _type, int _number) :
             type(_type), number(_number) {
     }

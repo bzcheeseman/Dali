@@ -40,6 +40,8 @@ namespace memory {
 
         Device();
 
+        std::string description();
+
         bool is_fake() const;
         static Device fake(int number);
 

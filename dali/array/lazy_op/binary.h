@@ -2,12 +2,12 @@
 #define DALI_ARRAY_LAZY_OP_BINARY_H
 
 #include "dali/array/function/property_extractor.h"
-#include "dali/array/lazy_op/evaluator.h"
 #include "dali/array/lazy_op/expression.h"
+#include "dali/array/lazy_op/evaluator.h"
 #include "dali/array/TensorFunctions.h"
 
 template<template<class>class Functor, typename LeftT, typename RightT>
-struct Binary : public Exp<Binary<Functor,LeftT,RightT>> {
+struct Binary : public RValueExp<Binary<Functor,LeftT,RightT>> {
     typedef Binary<Functor,LeftT,RightT> self_t;
     LeftT  left;
     RightT right;
@@ -29,21 +29,20 @@ struct Binary : public Exp<Binary<Functor,LeftT,RightT>> {
         return dtype_;
     }
 
-    template<int devT, typename T>
-    inline auto to_mshadow_expr(memory::Device device) -> decltype(
-                              mshadow::expr::F<Functor<T>>(
-                                   MshadowWrapper<devT,T>::to_expr(left, device),
-                                   MshadowWrapper<devT,T>::to_expr(right, device)
-                              )
-                          ) {
-        auto left_expr  = MshadowWrapper<devT,T>::to_expr(left, device);
+    template<int devT,typename T>
+    auto to_mshadow_expr(memory::Device device) ->
+            decltype(
+                mshadow::expr::F<Functor<T>>(
+                     MshadowWrapper<devT,T>::to_expr(left, device),
+                     MshadowWrapper<devT,T>::to_expr(right, device)
+                )
+            ) {
+        auto left_expr  = MshadowWrapper<devT,T>::to_expr(left,  device);
         auto right_expr = MshadowWrapper<devT,T>::to_expr(right, device);
-
         return mshadow::expr::F<Functor<T>>(left_expr, right_expr);
-
     }
 
-    operator AssignableArray() const {
+    AssignableArray as_assignable() const {
         return Evaluator<self_t>::run(*this);
     }
 };

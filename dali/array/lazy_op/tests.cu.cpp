@@ -80,12 +80,16 @@ TEST(ArrayLazyOpsTests, lazy_binary_correctness) {
     Array x({2,1});
     Array y({2,1});
     Array z({2,1});
-    x(0) = 1; y(0) = 4; z(0) = 3;
-    x(1) = 2; y(1) = 3; z(1) = 2;
 
-    Array res = x * y * 2 + z + 1;
-    ASSERT_EQ((float)(res(0)), 1 * 4 * 2 + 3 + 1);
-    ASSERT_EQ((float)(res(1)), 2 * 3 * 2 + 2 + 1);
+    x(0) = 2; y(0) = 3;  z(0) = 5;
+    x(1) = 7; y(1) = 11; z(1) = 13;
+
+    auto partial = x * y * z;
+    Array res = partial;
+
+    // res.memory()->print_debug_info({memory::Device::cpu(), memory::Device::gpu(0)}, true, x.dtype());
+    EXPECT_EQ((float)(res(0)), 2 * 3  * 5);
+    EXPECT_EQ((float)(res(1)), 7 * 11 * 13);
 }
 
 TEST(ArrayLazyOpsTests, lazy_shape_deduction) {

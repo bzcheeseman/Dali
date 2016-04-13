@@ -10,6 +10,7 @@
 
 #include "dali/config.h"
 #include "dali/array/memory/device.h"
+#include "dali/array/dtype.h"
 #include "dali/utils/core_utils.h"
 #include "dali/runtime_config.h"
 
@@ -62,7 +63,7 @@ namespace memory {
         public:
 
             Device preferred_device;
-            // total amount of memory expressed in number or Dtypes
+            // total amount of memory expressed in number of bytes
             const int total_memory;
             // hint for inner dimension. Must divide total_memory.
             const int inner_dimension;
@@ -117,6 +118,9 @@ namespace memory {
            // be fresh (e.g. you should ignore its contents, as they could be
            // stale).
            void* overwrite_data(const Device& device);
+
+           // prints various memory statistics. For debug use only.
+           void print_debug_info(std::vector<memory::Device> devices, bool print_contents=false, DType dtype=DTYPE_FLOAT);
     };
 
     namespace debug {

@@ -55,14 +55,11 @@ T Array::scalar_value() const {
     );
     void* data = memory()->data(memory::Device::cpu());
     if (dtype() == DTYPE_FLOAT) {
-        float res = *((float*)(data) + offset());
-        return (T)res;
+        return *((float*)(data) + offset());
     } else if (dtype() == DTYPE_DOUBLE) {
-        double res = *((double*)(data) + offset());
-        return (T)res;
+        return *((double*)(data) + offset());
     } else if (dtype() == DTYPE_INT32) {
-        int res = *((int*)(data) + offset());
-        return (T)res;
+        return *((int*)(data) + offset());
     }
 }
 
@@ -76,6 +73,7 @@ T& Array::scalar_value() {
     );
     ASSERT2(dtype_is<T>(dtype()), "Scalar assign attempted with wrong type.");
     void* data = memory()->mutable_data(memory::Device::cpu());
+
     return *(((T*)(data)) + offset());
 }
 
@@ -222,13 +220,13 @@ Array Array::reshape(const vector<int>& new_shape) const {
 }
 
 template<typename T>
-Array::operator const T&() const {
+Array::operator T() const {
     return scalar_value<T>();
 }
 
-template Array::operator const float&() const;
-template Array::operator const double&() const;
-template Array::operator const int&() const;
+template Array::operator float() const;
+template Array::operator double() const;
+template Array::operator int() const;
 
 template<typename T>
 Array::operator T&() {
@@ -274,11 +272,11 @@ Array& Array::operator=(const AssignableArray& assignable) {
 void Array::print(std::basic_ostream<char>& stream, int indent) const {
     if (dimension() == 0) {
         if (dtype() == DTYPE_FLOAT) {
-            stream << (const float&)(*this);
+            stream << (float)(*this);
         } else if (dtype() == DTYPE_DOUBLE) {
-            stream << (const double&)(*this);
+            stream << (double)(*this);
         } else if (dtype() == DTYPE_INT32) {
-            stream << (const int&)(*this);
+            stream << (int)(*this);
         } else {
             ASSERT2(false, "Wrong dtype for Array.");
         }

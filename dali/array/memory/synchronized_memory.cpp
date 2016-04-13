@@ -15,36 +15,34 @@ namespace memory {
     //                     SYNCHRONIZED MEMORY                                    //
     ////////////////////////////////////////////////////////////////////////////////
 
-    Device SynchronizedMemory::idx_to_device(int idx) const {
-        if (idx == memory::MAX_GPU_DEVICES) {
-            return Device::cpu();
-        }
-#ifdef DALI_USE_CUDA
-        else if(0 <= idx && idx < memory::MAX_GPU_DEVICES) {
-            return Device::gpu(idx);
-        }
-#endif
-        else {
-            ASSERT2(false, "Wrong idx passed to idx_to_device");
-            return Device::device_of_doom();
-        }
-    }
-
-
     SynchronizedMemory::DeviceMemory& SynchronizedMemory::get_device_memory(Device device) const {
         if (device.is_cpu()) {
-            return device_memories[memory::MAX_GPU_DEVICES];
+            return cpu_memory;
         }
 #ifdef DALI_USE_CUDA
         else if (device.is_gpu()) {
-            return device_memories[device.number];
+            return gpu_memories[device.number];
         }
 #endif
         else if (debug::enable_fake_devices && device.is_fake()) {
             return debug::fake_device_memories[device.number];
         } else {
             ASSERT2(false, "Unsupported device passed to SynchronizedMemory.");
-            return device_memories[0];
+            return cpu_memory;
+        }
+    }
+
+    void SynchronizedMemory::iterate_device_memories(device_iterator_t f) const {
+        f(Device::cpu(), cpu_memory);
+#ifdef DALI_USE_CUDA
+        for (int i=0; i<MAX_GPU_DEVICES;++i) {
+            f(Device::gpu(i), gpu_memories[i]);
+        }
+#endif
+        if (debug::enable_fake_devices) {
+            for (int i=0; i<debug::MAX_FAKE_DEVICES; ++i) {
+                f(Device::fake(i), debug::fake_device_memories[i]);
+            }
         }
     }
 
@@ -53,9 +51,9 @@ namespace memory {
     }
 
     void SynchronizedMemory::mark_all_not_fresh() {
-        for (int i=0; i < DEVICE_MEMORIES_SIZE; ++i) {
-            device_memories[i].fresh = false;
-        }
+        iterate_device_memories([](const Device& device, DeviceMemory& device_memory) {
+            device_memory.fresh = false;
+        });
     }
 
     void SynchronizedMemory::free_device_memory(const Device& device, SynchronizedMemory::DeviceMemory& dev_memory) const {
@@ -85,18 +83,18 @@ namespace memory {
         auto dest = DevicePtr(preferred_device, get_device_memory(preferred_device).ptr);
 
         // find a source device, such that the copying process will have the least overhead.
-        int source_device_idx = -1;
+        Device best_device = Device::device_of_doom();
         bool device_type_matching = false;
         bool device_number_match = false;
 
-        for (int i = 0; i < DEVICE_MEMORIES_SIZE; ++i) {
-            if (other.device_memories[i].fresh) {
-                auto current_device                 = idx_to_device(i);
-                bool current_device_type_matching   = current_device.type == preferred_device.type;
-                bool current_device_number_matching = current_device.number == preferred_device.number;
+        other.iterate_device_memories([this,&best_device,&device_type_matching,&device_number_match]
+                                      (const Device& device, DeviceMemory& device_memory) {
+            if (device_memory.fresh) {
+                bool current_device_type_matching   = device.type   == this->preferred_device.type;
+                bool current_device_number_matching = device.number == this->preferred_device.number;
 
                 bool update = false;
-                if (source_device_idx == -1) {
+                if (best_device == Device::device_of_doom()) {
                     update = true;
                 } else if (!device_type_matching && current_device_type_matching) {
                     update = true;
@@ -105,27 +103,27 @@ namespace memory {
                 }
 
                 if (update) {
-                    source_device_idx        = i;
+                    best_device          = device;
                     device_type_matching = current_device_type_matching;
                     device_number_match  = current_device_number_matching;
                 }
             }
-        }
+        });
 
-        // TODO(szymon): if we do this with two different gpus death.
+        // TODO(szymon): if we do this with two different gpus then death.
 
-        if (source_device_idx == -1) return;
+        if (best_device == Device::device_of_doom()) return;
 
-        auto source = DevicePtr(idx_to_device(source_device_idx), other.device_memories[source_device_idx].ptr);
+        auto source = DevicePtr(best_device, other.get_device_memory(best_device).ptr);
 
         memory::copy(dest, source, total_memory, inner_dimension);
         get_device_memory(preferred_device).fresh = true;
     }
 
     SynchronizedMemory::~SynchronizedMemory() {
-        for (int i=0; i < DEVICE_MEMORIES_SIZE; ++i) {
-            free_device_memory(idx_to_device(i), device_memories[i]);
-        }
+        iterate_device_memories([this](const Device& device, DeviceMemory& device_memory) {
+            free_device_memory(device, device_memory);
+        });
     }
 
     bool SynchronizedMemory::is_fresh(const Device& device) {
@@ -133,34 +131,23 @@ namespace memory {
     }
 
     memory::Device SynchronizedMemory::find_some_fresh_device() {
-        for (int i=0; i < DEVICE_MEMORIES_SIZE; ++i) {
-            if (device_memories[i].fresh) {
-                return idx_to_device(i);
+        auto result = memory::Device::device_of_doom();
+        iterate_device_memories([&result](const Device& device, DeviceMemory& device_memory) {
+            if (device_memory.fresh) {
+                result = device;
             }
-        }
-        if (debug::enable_fake_devices) {
-            for (int i=0; i < debug::MAX_FAKE_DEVICES; ++i) {
-                if (debug::fake_device_memories[i].fresh) {
-                    return memory::Device::fake(i);
-                }
-            }
-        }
-
-        return memory::Device::device_of_doom();
+        });
+        return result;
     }
 
     bool SynchronizedMemory::is_any_fresh() {
-        for (int i=0; i < DEVICE_MEMORIES_SIZE; ++i) {
-            if (device_memories[i].fresh) return true;
-        }
-        if (debug::enable_fake_devices) {
-            for (int i=0; i < debug::MAX_FAKE_DEVICES; ++i) {
-                if (debug::fake_device_memories[i].fresh) {
-                    return true;
-                }
+        bool result = false;
+        iterate_device_memories([&result](const Device& device, DeviceMemory& device_memory) {
+            if (device_memory.fresh) {
+                result = true;
             }
-        }
-        return false;
+        });
+        return result;
     }
 
     void SynchronizedMemory::clear() {
@@ -181,12 +168,16 @@ namespace memory {
         mark_all_not_fresh();
 
         // clear immediately if some memory was already allocated.
-        for (int i=0; i < DEVICE_MEMORIES_SIZE; ++i) {
-            if (device_memories[i].allocated) {
-                clear();
-                return;
+        bool some_allocated = false;
+        iterate_device_memories([&some_allocated](const Device& device, DeviceMemory& device_memory) {
+            if (device_memory.allocated) {
+                some_allocated = true;
             }
+        });
+        if (some_allocated) {
+            clear();
         }
+
     }
 
     bool SynchronizedMemory::allocate(const Device& device) const {
@@ -207,32 +198,36 @@ namespace memory {
         free_device_memory(device, dev_memory);
     }
 
-    void SynchronizedMemory::move_to(const Device& device) const {
-        auto& dev_memory = get_device_memory(device);
+    void SynchronizedMemory::move_to(const Device& target_device) const {
+        auto& target_memory = get_device_memory(target_device);
 
         // if memory is fresh, we are done
-        if (dev_memory.fresh) return;
+        if (target_memory.fresh) return;
 
         // make sure memory is allocated.
-        bool just_allocated = allocate(device);
+        bool just_allocated = allocate(target_device);
 
         // if another piece of memory is fresh copy from it.
-        for (int i=0; i < DEVICE_MEMORIES_SIZE; ++i) {
-            if (device_memories[i].fresh) {
-                auto source = DevicePtr(idx_to_device(i), device_memories[i].ptr);
-                auto dest   = DevicePtr(device, dev_memory.ptr);
+        iterate_device_memories([this, &target_device,&target_memory]
+                                (const Device& device, DeviceMemory& device_memory) {
+            // important to check !target_memory.fresh, not to load fresh memory
+            // multiple times in case of more than one fresh devices.
+            if (!target_memory.fresh && device_memory.fresh) {
+                auto source = DevicePtr(device, device_memory.ptr);
+                auto dest   = DevicePtr(target_device, target_memory.ptr);
                 memory::copy(dest, source, total_memory, inner_dimension);
-                dev_memory.fresh = true;
-                return;
+                target_memory.fresh = true;
             }
-        }
+        });
 
         // if just allocated, and we need to clear the memory.
         // this only happens if we did not copy memory from elsewhere.
         if (just_allocated && clear_on_allocation) {
-            memory::clear(DevicePtr(device, dev_memory.ptr), total_memory, inner_dimension);
+            memory::clear(DevicePtr(target_device, target_memory.ptr), total_memory, inner_dimension);
         }
-        dev_memory.fresh = true;
+        // even if there was no fresh copy, then we just
+        // allocated and this copy becomes the fresh one.
+        target_memory.fresh = true;
     }
 
     void* SynchronizedMemory::data(const Device& device, AM access_mode) {

@@ -112,8 +112,6 @@ TEST(ArrayLazyOpsTests, lazy_shape_deduction) {
     // auto allocate memory
     Array qp = x * (y * z);
 
-    x.debug_memory();
-
     // cannot assign to memory of wrong shape
     Array q2({14, 5});
     EXPECT_THROW(q2 = x * (y * z), std::runtime_error);

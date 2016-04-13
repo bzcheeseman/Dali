@@ -48,15 +48,14 @@ namespace memory {
             // defaults to false
             bool clear_on_allocation;
 
-
-            // by convention device_memories[0..(MAX_GPU_DEVICES-1) are gpu
-            // devices and device_memories[MAX_GPU_DEVICES] is the cpu device.
-            static const int DEVICE_MEMORIES_SIZE = MAX_GPU_DEVICES + 1;
-
-            mutable DeviceMemory device_memories[DEVICE_MEMORIES_SIZE];
-
+            mutable DeviceMemory cpu_memory;
+#ifdef DALI_USE_CUDA
+            mutable DeviceMemory gpu_memories[MAX_GPU_DEVICES];
+#endif
+            // helper functions
             DeviceMemory& get_device_memory(Device device) const;
-            Device idx_to_device(int idx) const;
+            typedef std::function<void(const Device&,DeviceMemory&)> device_iterator_t;
+            void iterate_device_memories(device_iterator_t f) const;
             void mark_fresh(const Device& device);
             void mark_all_not_fresh();
             void free_device_memory(const Device& device, DeviceMemory& dev_memory) const;

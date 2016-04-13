@@ -107,7 +107,6 @@ TEST(MemoryTests, test_memory_bank_cpu) {
         for (int i=0; i < 12; ++i) {
             data[i] = i;
         }
-
         SynchronizedMemory copied(s);
         auto copied_data = (uint8_t*)copied.data(Device::cpu());
         for (int i=0; i < 12; ++i) {

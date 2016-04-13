@@ -30,15 +30,15 @@ struct Binary : public RValueExp<Binary<Functor,LeftT,RightT>> {
     }
 
     template<int devT,typename T>
-    auto to_mshadow_expr(memory::Device device) ->
+    auto to_mshadow_expr(memory::Device device) const ->
             decltype(
                 mshadow::expr::F<Functor<T>>(
-                     MshadowWrapper<devT,T>::to_expr(left, device),
-                     MshadowWrapper<devT,T>::to_expr(right, device)
+                     MshadowWrapper<devT,T,decltype(left)>::to_expr(left, device),
+                     MshadowWrapper<devT,T,decltype(right)>::to_expr(right, device)
                 )
             ) {
-        auto left_expr  = MshadowWrapper<devT,T>::to_expr(left,  device);
-        auto right_expr = MshadowWrapper<devT,T>::to_expr(right, device);
+        auto left_expr  = MshadowWrapper<devT,T,decltype(left)>::to_expr(left,  device);
+        auto right_expr = MshadowWrapper<devT,T,decltype(right)>::to_expr(right, device);
         return mshadow::expr::F<Functor<T>>(left_expr, right_expr);
     }
 

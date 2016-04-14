@@ -76,3 +76,31 @@ TEST(ArrayTests, scalar_construct) {
     ASSERT_EQ(scalar3.dtype(), DTYPE_INT32);
     ASSERT_EQ((int)scalar3(0), 314);
 }
+
+TEST(ArrayTests, spans_entire_memory) {
+    // an array is said to span its entire memory
+    // if it is not a "view" onto said memory.
+
+    // the following 3D tensor spans its entire memory
+    // (in fact it even allocated it!)
+    Array x = Array::zeros({3,2,2});
+    ASSERT_TRUE(x.spans_entire_memory());
+
+    // however a slice of x may not have the same property:
+    auto subx = x[0];
+    ASSERT_FALSE(subx.spans_entire_memory());
+
+    // Now let's take a corner case:
+    // the leading dimension of the following
+    // array is 1, so taking a view at "row" 0
+    // makes no difference in terms of underlying
+    // memory hence, both it and its subview will
+    // "span the entire memory"
+    Array y = Array::zeros({1,2,2});
+    ASSERT_TRUE(y.spans_entire_memory());
+
+    auto suby = y[0];
+    ASSERT_TRUE(suby.spans_entire_memory());
+
+
+}

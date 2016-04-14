@@ -263,40 +263,41 @@ namespace memory {
         return get_device_memory(device).ptr;
     }
 
-    void SynchronizedMemory::debug_info(bool print_contents,
-                                              DType dtype) {
-        std::cout << "Synchronized Memory (" << this << ")" << std::endl;
-        std::cout << "    total_memory: " << total_memory << " bytes" << std::endl;
-        std::cout << "    inner_dimension: " << inner_dimension << " bytes" << std::endl;
-        std::cout << "    preferred_device: " << preferred_device.description() << std::endl;
-        std::cout << "    clear_on_allocation: " << clear_on_allocation << std::endl;
+    void SynchronizedMemory::debug_info(std::basic_ostream<char>& stream,
+                                        bool print_contents,
+                                        DType dtype) {
+        stream << "Synchronized Memory (" << this << ")" << std::endl;
+        stream << "    total_memory: " << total_memory << " bytes" << std::endl;
+        stream << "    inner_dimension: " << inner_dimension << " bytes" << std::endl;
+        stream << "    preferred_device: " << preferred_device.description() << std::endl;
+        stream << "    clear_on_allocation: " << clear_on_allocation << std::endl;
         for (auto device: Device::installed_devices()) {
-            std::cout << "    Device " << device.description(true) << std::endl;
-            std::cout << "        fresh: " << get_device_memory(device).fresh << std::endl;
-            std::cout << "        allocated: " << get_device_memory(device).allocated << std::endl;
-            std::cout << "        ptr: " << get_device_memory(device).ptr << std::endl;
+            stream << "    Device " << device.description(true) << std::endl;
+            stream << "        fresh: " << get_device_memory(device).fresh << std::endl;
+            stream << "        allocated: " << get_device_memory(device).allocated << std::endl;
+            stream << "        ptr: " << get_device_memory(device).ptr << std::endl;
             if(print_contents && device.is_cpu() && get_device_memory(device).allocated) {
-                std::cout << "        contents: [";
+                stream << "        contents: [";
                 if (dtype == DTYPE_FLOAT) {
                     float* ptr = (float*)get_device_memory(device).ptr;
                     for (int i=0; i<total_memory / sizeof(float); ++i) {
-                        std::cout << *ptr << " ";
+                        stream << *ptr << " ";
                         ptr++;
                     }
                 } else if (dtype == DTYPE_DOUBLE) {
                     double* ptr = (double*)get_device_memory(device).ptr;
                     for (int i=0; i<total_memory / sizeof(double); ++i) {
-                        std::cout << *ptr << " ";
+                        stream << *ptr << " ";
                         ptr++;
                     }
                 } else if (dtype == DTYPE_INT32) {
                     int* ptr = (int*)get_device_memory(device).ptr;
                     for (int i=0; i<total_memory / sizeof(int); ++i) {
-                        std::cout << *ptr << " ";
+                        stream << *ptr << " ";
                         ptr++;
                     }
                 }
-                std::cout << "]" << std::endl;
+                stream << "]" << std::endl;
             }
         }
     }

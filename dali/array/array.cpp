@@ -310,7 +310,7 @@ void Array::print(std::basic_ostream<char>& stream, int indent) const {
 }
 
 void Array::debug_memory(bool print_contents) {
-    memory()->debug_info(print_contents, dtype());
+    memory()->debug_info(std::cout, print_contents, dtype());
 }
 
 void Array::clear() {

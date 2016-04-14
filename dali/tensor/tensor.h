@@ -85,13 +85,14 @@ class Tensor {
         objective function.
         **/
 
-        void grad();
+        void add_to_objective();
 
         void clear_grad();
         void clear();
 
         const std::vector<int>& shape() const;
         DType dtype() const;
+        DType preferred_device() const;
 
         int ndim() const;
         int number_of_elements() const;
@@ -220,16 +221,16 @@ class Tensor {
         // Mat<R> operator()(Indexing::Index, Indexing::Index) const;
         // // Mat<R> operator()(void*, Indexing::Index) const;
         // Mat<R> operator()(void*, int) const;
-        // static Mat<R> zeros_like(Mat<R> shape);
-        // static Mat<R> empty_like(Mat<R> shape);
+        static Mat<R> zeros_like(Mat<R> shape);
+        static Mat<R> empty_like(Mat<R> shape);
 
 
         // forcing memory location
-        void to_device(memory::Device);
+        void to_device(memory::Device) const;
         void to_cpu() const;
 
         #ifdef DALI_USE_CUDA
-            void to_gpu(int x) const;
+            void to_gpu(int number) const;
         #endif
 };
 //

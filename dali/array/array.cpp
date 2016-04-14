@@ -186,6 +186,14 @@ DType Array::dtype() const {
     return state->dtype;
 }
 
+memory::Device Array::preferred_device() const {
+    ASSERT2(!is_stateless(), "preferred_device must not be called on Array initialled with empty constructor");
+    return state->memory->preferred_device;
+}
+void Array::to_device(memory::Device device) const {
+    memory()->move_to(device)
+}
+
 
 int Array::ndim() const {
     return (state == nullptr) ? 0 : state->shape.size();

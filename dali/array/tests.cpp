@@ -101,6 +101,4 @@ TEST(ArrayTests, spans_entire_memory) {
 
     auto suby = y[0];
     ASSERT_TRUE(suby.spans_entire_memory());
-
-
 }

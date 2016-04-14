@@ -145,7 +145,7 @@ if (NOT DEFINED DALI_SOURCE_DIRS)
     set(DALI_SOURCE_DIRS "dali")
 endif()
 
-list(APPEND DALI_SOURCE_DIRS_EXCLUDE "dali/mat;dali/data_processing;dali/execution;dali/layers")
+list(APPEND DALI_SOURCE_DIRS_EXCLUDE "dali/mat;dali/tensor;dali/data_processing;dali/execution;dali/layers")
 
 
 

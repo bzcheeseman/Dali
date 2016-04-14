@@ -3,20 +3,19 @@
 #include "dali/utils/assert2.h"
 
 template<>
-bool dtype_is<float>(DType dtype) {
-    return dtype == DTYPE_FLOAT;
+DType template_to_dtype<float>() {
+    return DTYPE_FLOAT;
 }
 
 template<>
-bool dtype_is<double>(DType dtype) {
-    return dtype == DTYPE_DOUBLE;
+DType template_to_dtype<double>() {
+    return DTYPE_DOUBLE;
 }
 
 template<>
-bool dtype_is<int>(DType dtype) {
-    return dtype == DTYPE_INT32;
+DType template_to_dtype<int>() {
+    return DTYPE_INT32;
 }
-
 
 
 int size_of_dtype(DType dtype) {

@@ -4,6 +4,7 @@
 #include <ostream>
 #include <type_traits>
 
+#include "dali/array/op/other.h"
 #include "dali/utils/print_utils.h"
 
 using std::vector;
@@ -22,6 +23,18 @@ int hypercube_volume(const vector<int>& shape) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AssignableArray::AssignableArray(assign_t&& _assign_to) : assign_to(_assign_to) {}
+
+AssignableArray::AssignableArray(const float& constant) :
+        AssignableArray(fill(constant)) {
+}
+
+AssignableArray::AssignableArray(const double& constant) :
+        AssignableArray(fill(constant)) {
+}
+
+AssignableArray::AssignableArray(const int& constant) :
+        AssignableArray(fill(constant)) {
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,7 +64,7 @@ T Array::scalar_value() const {
             "Scalar value only available for arithmetic types (integer or real).");
     ASSERT2(
         shape().size() == 0,
-        "Scalar value can only be requested for scalar (dimension zero) Array."
+        "Scalar value can only be requested for scalar (ndim zero) Array."
     );
     void* data = memory()->data(memory::Device::cpu());
     if (dtype() == DTYPE_FLOAT) {
@@ -69,9 +82,9 @@ T& Array::scalar_value() {
             "Scalar value only available for arithmetic types (integer or real).");
     ASSERT2(
         shape().size() == 0,
-        "Scalar value can only be requested for scalar (dimension zero) Array."
+        "Scalar value can only be requested for scalar (ndim zero) Array."
     );
-    ASSERT2(dtype_is<T>(dtype()), "Scalar assign attempted with wrong type.");
+    ASSERT2(template_to_dtype<T>() == dtype(), "Scalar assign attempted with wrong type.");
     void* data = memory()->mutable_data(memory::Device::cpu());
 
     return *(((T*)(data)) + offset());
@@ -123,6 +136,12 @@ bool Array::is_stateless() const {
     return state == nullptr;
 }
 
+bool Array::spans_entire_memory() const {
+    ASSERT2(!is_stateless(), "spans_entire_memory must not be called with stateless Array.");
+    return offset() == 0 &&
+           number_of_elements() * size_of_dtype(dtype()) == memory()->total_memory;
+}
+
 void Array::initialize(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
     int number_of_elements = hypercube_volume(shape);
 
@@ -168,7 +187,7 @@ DType Array::dtype() const {
 }
 
 
-int Array::dimension() const {
+int Array::ndim() const {
     return (state == nullptr) ? 0 : state->shape.size();
 
 }
@@ -252,25 +271,13 @@ Array& Array::assign_constant(const T& other) {
     return *this;
 }
 
-Array& Array::operator=(const float& other) {
-    return assign_constant<float>(other);
-}
-
-Array& Array::operator=(const double& other) {
-    return assign_constant<double>(other);
-}
-
-Array& Array::operator=(const int& other) {
-    return assign_constant<int>(other);
-}
-
 Array& Array::operator=(const AssignableArray& assignable) {
     assignable.assign_to(*this);
     return *this;
 }
 
 void Array::print(std::basic_ostream<char>& stream, int indent) const {
-    if (dimension() == 0) {
+    if (ndim() == 0) {
         if (dtype() == DTYPE_FLOAT) {
             stream << (float)(*this);
         } else if (dtype() == DTYPE_DOUBLE) {
@@ -280,7 +287,7 @@ void Array::print(std::basic_ostream<char>& stream, int indent) const {
         } else {
             ASSERT2(false, "Wrong dtype for Array.");
         }
-    } else if (dimension() == 1) {
+    } else if (ndim() == 1) {
         stream << std::string(indent, ' ');
         stream << "[";
 
@@ -304,4 +311,12 @@ void Array::print(std::basic_ostream<char>& stream, int indent) const {
 
 void Array::debug_memory(bool print_contents) {
     memory()->debug_info(print_contents, dtype());
+}
+
+void Array::clear() {
+    if (spans_entire_memory()) {
+        memory()->lazy_clear();
+    } else {
+        *this = fill(0);
+    }
 }

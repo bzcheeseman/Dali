@@ -48,6 +48,9 @@ struct Function {
     //     return RpcRequest(Class::FUNCTION_ID, bundle);
     // }
 
+    static const bool disable_output_shape_check = false;
+    static const bool disable_output_dtype_check = false;
+
     static std::vector<int> deduce_output_shape(const Args&... args) {
         return ReduceOverArgs<CommonPropertyExtractor<ShapeProperty>>::reduce(args...);
     }
@@ -75,9 +78,9 @@ struct Function {
         if (out.is_stateless()) {
             out.initialize(common_shape, common_dtype, Class::deduce_output_device(args...));
         } else {
-            ASSERT2(out.shape() == common_shape,
+            ASSERT2(Class::disable_output_shape_check || out.shape() == common_shape,
                     utils::MS() << "Cannot assign result of shape " << common_shape << " to a location of shape " << out.shape() << ".");
-            ASSERT2(out.dtype() == common_dtype,
+            ASSERT2(Class::disable_output_dtype_check || out.dtype() == common_dtype,
                     utils::MS() << "Cannot assign result of dtype " << common_dtype << " to a location of dtype " << out.dtype() << ".");
         }
     }
@@ -115,7 +118,7 @@ struct Function {
         }
 #endif
         else {
-            ASSERT2(false, "Best device must be either cpu or gpu, and dtype must be in " DALI_ACCEPTABLE_DTYPE_STR);
+            ASSERT2(false, utils::MS() << "Best device must be either cpu or gpu, and dtype must be in " DALI_ACCEPTABLE_DTYPE_STR << " (got device: " << device.description() << ", dtype: " << dtype_to_name(dtype) <<  ")");
         }
     }
 };

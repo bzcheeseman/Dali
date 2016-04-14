@@ -18,7 +18,11 @@ class Array;
 struct AssignableArray {
     typedef std::function<void(Array&)> assign_t;
     assign_t assign_to;
+
     explicit AssignableArray(assign_t&& _assign_to);
+    AssignableArray(const float& constant);
+    AssignableArray(const double& constant);
+    AssignableArray(const int& constant);
 };
 
 struct ArrayState {
@@ -26,6 +30,7 @@ struct ArrayState {
     std::shared_ptr<memory::SynchronizedMemory> memory;
     int offset; // expressing in number of numbers (not bytes)
     DType dtype;
+    
     ArrayState(const std::vector<int>& _shape, std::shared_ptr<memory::SynchronizedMemory> _memory, int _offset, DType _device);
 };
 
@@ -59,7 +64,12 @@ class Array : public Exp<Array> {
     static Array zeros(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
     static Array zeros_like(const Array& other);
 
+    // true if just creted with empty constructor or reset
+    // (has no assossiated memory)
     bool is_stateless() const;
+    // true if Array's contents conver entirety of underlying
+    // memory (as opposed to offset memory, strided memory etc.).
+    bool spans_entire_memory() const;
     void initialize(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
     Array& reset();
 
@@ -70,7 +80,7 @@ class Array : public Exp<Array> {
     DType dtype() const;
 
     /* Shape-related convinence */
-    int dimension() const;
+    int ndim() const;
     int number_of_elements() const;
     std::vector<int> subshape() const;
 
@@ -92,14 +102,14 @@ class Array : public Exp<Array> {
         return (*this = other.as_assignable());
     }
 
-    Array& operator=(const float& other);
-    Array& operator=(const double& other);
-    Array& operator=(const int& other);
     Array& operator=(const AssignableArray& assignable);
 
     /* Debugging */
     void print(std::basic_ostream<char>& stream = std::cout, int indent=0) const;
     void debug_memory(bool print_contents=true);
+
+    /* Operations */
+    void clear();
 };
 
 #endif

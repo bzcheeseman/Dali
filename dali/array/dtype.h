@@ -16,13 +16,16 @@ enum DType {
 
 
 template<typename T>
-bool dtype_is(DType dtype) {
-    return false;
+DType template_to_dtype() {
+    static_assert(std::is_same<T,float>::value ||
+                  std::is_same<T,double>::value ||
+                  std::is_same<T,int>::value,
+            "template_to_dtype must be called with float, double or int.");
 }
 
-template<> bool dtype_is<float>(DType dtype);
-template<> bool dtype_is<double>(DType dtype);
-template<> bool dtype_is<int>(DType dtype);
+template<> DType template_to_dtype<float>();
+template<> DType template_to_dtype<double>();
+template<> DType template_to_dtype<int>();
 
 int size_of_dtype(DType dtype);
 

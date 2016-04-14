@@ -265,7 +265,7 @@ namespace memory {
 
     void SynchronizedMemory::debug_info(bool print_contents,
                                               DType dtype) {
-        std::cout << "Synchornized Memory (" << this << ")" << std::endl;
+        std::cout << "Synchronized Memory (" << this << ")" << std::endl;
         std::cout << "    total_memory: " << total_memory << " bytes" << std::endl;
         std::cout << "    inner_dimension: " << inner_dimension << " bytes" << std::endl;
         std::cout << "    preferred_device: " << preferred_device.description() << std::endl;

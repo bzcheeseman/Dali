@@ -191,7 +191,7 @@ memory::Device Array::preferred_device() const {
     return state->memory->preferred_device;
 }
 void Array::to_device(memory::Device device) const {
-    memory()->move_to(device)
+    memory()->move_to(device);
 }
 
 

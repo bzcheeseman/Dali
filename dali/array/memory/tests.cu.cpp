@@ -3,9 +3,10 @@
 #include <thread>
 #include <iomanip>
 #include <gtest/gtest.h>
-#include <mshadow/tensor.h>
 
 #include "dali/config.h"
+#include <mshadow/tensor.h>
+
 #include "dali/array/memory/device.h"
 #include "dali/array/memory/memory_ops.h"
 #include "dali/array/memory/memory_bank.h"

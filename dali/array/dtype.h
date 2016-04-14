@@ -21,6 +21,7 @@ DType template_to_dtype() {
                   std::is_same<T,double>::value ||
                   std::is_same<T,int>::value,
             "template_to_dtype must be called with float, double or int.");
+   	return DTYPE_FLOAT;
 }
 
 template<> DType template_to_dtype<float>();

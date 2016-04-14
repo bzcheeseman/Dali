@@ -42,11 +42,11 @@ TEST(ArrayTests, scalar_value) {
 
 TEST(ArrayTests, scalar_assign) {
     Array x = Array::zeros({3,2}, DTYPE_INT32);
-    x = fill(13);
+    x = 13;
 
     ASSERT_EQ(x.shape(), std::vector<int>({3,2}));
     ASSERT_EQ(x.dtype(), DTYPE_INT32);
-    for (int i=0; i <6; ++i) {
+    for (int i=0; i < 6; ++i) {
         ASSERT_EQ((int)x(i), 13);
     }
 
@@ -65,14 +65,14 @@ TEST(ArrayTests, scalar_construct) {
     ASSERT_EQ(scalar.dtype(), DTYPE_FLOAT);
     ASSERT_NEAR((float)scalar(0), 3.14, 1e-6);
 
-    // Array scalar2;
-    // scalar2 = fill((double)3.14);
-    // ASSERT_EQ(scalar2.shape(), std::vector<int>());
-    // ASSERT_EQ(scalar2.dtype(), DTYPE_DOUBLE);
-    // ASSERT_NEAR((double)scalar2(0), 3.14, 1e-6);
-    //
-    // Array scalar3 = fill(314);
-    // ASSERT_EQ(scalar3.shape(), std::vector<int>());
-    // ASSERT_EQ(scalar3.dtype(), DTYPE_INT32);
-    // ASSERT_EQ((int)scalar3(0), 314);
+    Array scalar2;
+    scalar2 = fill((double)3.14);
+    ASSERT_EQ(scalar2.shape(), std::vector<int>());
+    ASSERT_EQ(scalar2.dtype(), DTYPE_DOUBLE);
+    ASSERT_NEAR((double)scalar2(0), 3.14, 1e-6);
+
+    Array scalar3 = fill(314);
+    ASSERT_EQ(scalar3.shape(), std::vector<int>());
+    ASSERT_EQ(scalar3.dtype(), DTYPE_INT32);
+    ASSERT_EQ((int)scalar3(0), 314);
 }

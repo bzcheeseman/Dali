@@ -105,7 +105,13 @@ TEST(ArrayLazyOpsTests, long_chain) {
     Array z({2,1});
 
     debug::evaluator_calls = 0;
-    auto partial = lazy::sigmoid(lazy::tanh(x)) * 2 + x * y * lazy::sign(z) * 2 + 1 + x + lazy::log_or_zero(y);
+    auto partial = (
+        lazy::sigmoid(lazy::tanh(x)) * 2 +
+        x * y * lazy::sign(z) * 2 +
+        1 +
+        x +
+        lazy::log_or_zero(y)
+    );
 
     ASSERT_EQ(debug::evaluator_calls, 0);
     Array result = partial;

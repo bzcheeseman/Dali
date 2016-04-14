@@ -3,6 +3,7 @@
 #include <cassert>
 
 #include "dali/array/memory/memory_bank.h"
+#include "dali/utils/print_utils.h"
 
 namespace memory {
     ////////////////////////////////////////////////////////////////////////////////
@@ -202,18 +203,20 @@ namespace memory {
         auto& target_memory = get_device_memory(target_device);
 
         // if memory is fresh, we are done
-        if (target_memory.fresh) return;
+        if (target_memory.fresh) {
+            return;
+        }
 
         // make sure memory is allocated.
         bool just_allocated = allocate(target_device);
 
         // if another piece of memory is fresh copy from it.
-        iterate_device_memories([this, &target_device,&target_memory]
-                                (const Device& device, DeviceMemory& device_memory) {
+        iterate_device_memories([this, &target_device, &target_memory]
+                                (const Device& source_device, DeviceMemory& source_device_memory) {
             // important to check !target_memory.fresh, not to load fresh memory
             // multiple times in case of more than one fresh devices.
-            if (!target_memory.fresh && device_memory.fresh) {
-                auto source = DevicePtr(device, device_memory.ptr);
+            if (!target_memory.fresh && source_device_memory.fresh) {
+                auto source = DevicePtr(source_device, source_device_memory.ptr);
                 auto dest   = DevicePtr(target_device, target_memory.ptr);
                 memory::copy(dest, source, total_memory, inner_dimension);
                 target_memory.fresh = true;
@@ -222,7 +225,7 @@ namespace memory {
 
         // if just allocated, and we need to clear the memory.
         // this only happens if we did not copy memory from elsewhere.
-        if (just_allocated && clear_on_allocation) {
+        if (just_allocated && clear_on_allocation && !target_memory.fresh) {
             memory::clear(DevicePtr(target_device, target_memory.ptr), total_memory, inner_dimension);
         }
         // even if there was no fresh copy, then we just

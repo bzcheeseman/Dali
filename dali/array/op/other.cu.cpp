@@ -54,7 +54,7 @@ struct Fill : public Function<Fill<FillT>, Array, FillT> {
 
     template<int devT, typename T>
     void typed_eval(MArray<devT, T> input, const FillT& filler) {
-        input.d1(memory::AM_OVERWRITE) = filler;
+        input.d1(memory::AM_OVERWRITE) = (T) filler;
     }
 };
 

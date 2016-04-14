@@ -5,6 +5,7 @@
 #include "dali/array/memory/device.h"
 #include "dali/utils/assert2.h"
 #include "dali/utils/core_utils.h"
+#include "dali/utils/print_utils.h"
 
 using utils::assert2;
 
@@ -45,12 +46,10 @@ namespace memory {
         }
 #endif
         else {
-            assert2(false, "Wrong device passed to Device enum");
+            ASSERT2(false, "Wrong device passed to Device enum");
             return DevicePtr(Device::device_of_doom(), (void*)NULL);
         }
     }
-
-
 
     void free(DevicePtr dev_ptr, int amount, int inner_dimension) {
         if (dev_ptr.device.is_cpu()) {
@@ -65,7 +64,7 @@ namespace memory {
         }
 #endif
         else {
-            assert2(false, "Wrong device type passed to Device enum");
+            ASSERT2(false, "Wrong device type passed to Device enum");
         }
     }
 
@@ -82,7 +81,7 @@ namespace memory {
         }
 #endif
         else {
-            assert2(false, "Wrong device passed to Device enum");
+            ASSERT2(false, "Wrong device passed to Device enum");
         }
     }
 

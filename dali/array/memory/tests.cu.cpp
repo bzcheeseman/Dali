@@ -3,6 +3,7 @@
 #include <thread>
 #include <iomanip>
 #include <gtest/gtest.h>
+#include <mshadow/tensor.h>
 
 #include "dali/config.h"
 #include "dali/array/memory/device.h"
@@ -124,6 +125,7 @@ TEST(MemoryTests, test_memory_bank_cpu) {
         EXPECT_EQ(s.is_fresh(Device::fake(1)), true);
         memory::debug::fake_device_memories[1].fresh = false;
         EXPECT_EQ(s.is_fresh(Device::fake(1)), false);
+        memory::debug::enable_fake_devices = false;
     }
 
 #ifdef DALI_USE_CUDA
@@ -136,21 +138,62 @@ TEST(MemoryTests, test_memory_bank_cpu) {
     }
 
     TEST(MemoryTests, synchronized_memory_cpu_gpu_sync) {
+        // create CPU memory
         SynchronizedMemory s(12, 1, Device::cpu(), false);
+        // get pointer to cpu data
         auto data = (uint8_t*)s.overwrite_data(Device::cpu());
-        for (int i=0; i < 12; ++i) {
+        // and assign to it 0..11
+        for (int i = 0; i < 12; ++i) {
             data[i] = i;
         }
 
+        // we will now try to copy this data over to the gpu
         auto data_gpu = s.data(Device::gpu(0));
 
+        // we allocate a new chunk of CPU memory
+        // to receive the memory that round-triped through the gpu
         auto data_gpu_as_cpu = memory::allocate(Device::cpu(), 12, 1);
+        // execute the copy "manually"
         memory::copy(data_gpu_as_cpu, DevicePtr(Device::gpu(0), data_gpu), 12, 1);
 
+        // get a pointer to underlying memory buffer
         auto data_gpu_as_cpu_ptr = (uint8_t*)data_gpu_as_cpu.ptr;
 
+        // check that it is equal
         for (int i=0; i < 12; ++i) {
             ASSERT_EQ(data_gpu_as_cpu_ptr[i], i);
+        }
+    }
+
+    TEST(MemoryTests, synchronized_memory_gpu_cpu_sync) {
+        // In this test we make modifications to GPU
+        // memory and check that the copied values on the CPU
+        // line-up with what was done there.
+
+        // create GPU memory
+        SynchronizedMemory s(
+            12 * sizeof(int),
+            1,
+            Device::gpu(0),
+            /*clear_on_allocation=*/true
+        );
+
+        // we will use mshadow to copy memory over from the device to host
+        auto shadow_tensor = mshadow::Tensor<mshadow::gpu, 1, int>(
+            (int *) s.mutable_data(Device::gpu(0)),
+            mshadow::Shape1(12)
+        );
+
+        // make some modifications to mshadow copy of tensor
+        // (we assume correctness in their implementation)
+        shadow_tensor += 13;
+        // memory on device should now all be equal to 13
+        auto cpu_data = (int*)s.data(Device::cpu());
+
+
+        // check that it is equal
+        for (int i=0; i < 12; ++i) {
+            ASSERT_EQ(cpu_data[i], 13);
         }
     }
 

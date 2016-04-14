@@ -1,5 +1,5 @@
-#include "dali/tensor/Tensor.h"
-#include "dali/tensor/Index.h"
+#include "dali/tensor/tensor.h"
+// #include "dali/tensor/Index.h"
 
 using std::vector;
 using std::string;
@@ -12,16 +12,16 @@ using std::make_shared;
 Tensor::Tensor() {
 }
 
-Tensor(const std::vector<int>& shape,
+Tensor::Tensor(const std::vector<int>& shape,
        weights::initializer_t wi,
        DType dtype_,
        memory::Device preferred_device) :
     w(shape,dtype_,preferred_device),
     dw(shape,dtype_,preferred_device) {
-    wi()(w);
+    wi(w);
 }
 
-Tensor(const std::vector<int>& shape,
+Tensor::Tensor(const std::vector<int>& shape,
        DType dtype_,
        memory::Device preferred_device) :
    Tensor(shape,weights::zeros(),dtype_,preferred_device) {
@@ -35,7 +35,7 @@ Tensor::Tensor(const Tensor& other, bool copy_w, bool copy_dw) :
         // This copies memory using copy constructor
         // The copy is only executed if matrix was actually initialized
         // hence the && other.m part.
-        w = Array(*other.w, true);
+        w = Array(other.w, true);
     } else {
         // This does not.
         w = other.w;
@@ -43,7 +43,7 @@ Tensor::Tensor(const Tensor& other, bool copy_w, bool copy_dw) :
 
     if (copy_dw && !other.dw.is_stateless()) {
         // see comment for copy_w.
-        dw = Array(*other.dw, true);
+        dw = Array(other.dw, true);
     } else {
         dw = other.dw;
     }
@@ -68,7 +68,7 @@ void Tensor::print(std::basic_ostream<char>& stream) const {
 }
 
 void Tensor::add_to_objective() {
-    raise std::runtime_error("Not implemented");
+    throw std::runtime_error("Not implemented");
     // dw += 1;
 }
 
@@ -81,21 +81,28 @@ void Tensor::clear() {
     dw.clear();
 }
 
-const std::vector<int>& shape() const {
+const std::vector<int>& Tensor::shape() const {
     return w.shape();
 }
-DType dtype() const {
+
+DType Tensor::dtype() const {
     return w.dtype();
 }
 
-int ndim() const {
+
+memory::Device Tensor::preferred_device() const {
+    return w.preferred_device();
+}
+
+
+int Tensor::ndim() const {
     return w.ndim();
 }
-int number_of_elements() const {
+int Tensor::number_of_elements() const {
     return w.number_of_elements();
 }
 
-bool is_stateless() const {
+bool Tensor::is_stateless() const {
     return w.is_stateless();
 }
 
@@ -229,14 +236,14 @@ Tensor Tensor::shallow_copy() {
 
 
 // Tensor Tensor::eltmul(R alpha) const {
-//     return TensorOps<R>::eltmul(*this, alpha);
+//     return TensorOps::eltmul(*this, alpha);
 // }
 //
 // #define MAT_OP_SPECIALIZATION(fname, opname, R, ScalarType) \
 //         template<>                                          \
 //         template<>                                          \
 //         Tensor Tensor::fname(ScalarType power) const {      \
-//             return TensorOps<R>::opname(*this, (R)power);      \
+//             return TensorOps::opname(*this, (R)power);      \
 //         }
 //
 // #define MAT_OP_SPECIALIZATIONS(fname, opname)              \
@@ -254,22 +261,22 @@ Tensor Tensor::shallow_copy() {
 // MAT_OP_SPECIALIZATIONS(operator^,pow);
 //
 // Tensor Tensor::steep_sigmoid(R aggressiveness) const {
-//     return TensorOps<R>::steep_sigmoid(*this, aggressiveness);
+//     return TensorOps::steep_sigmoid(*this, aggressiveness);
 // }
 //
 // bool Tensor::is_nan() const {
-//     return TensorOps<R>::is_nan(*this);
+//     return TensorOps::is_nan(*this);
 // }
 //
 // bool Tensor::is_grad_nan() const {
-//     return TensorOps<R>::is_grad_nan(*this);
+//     return TensorOps::is_grad_nan(*this);
 // }
 //
 //
 // #define MAT_BINARY_OP( opname ) \
 //  \
 //     Tensor Tensor::opname(Tensor matrix) const {\
-//         return TensorOps<R>::opname(*this, matrix);\
+//         return TensorOps::opname(*this, matrix);\
 //     }
 //
 // MAT_BINARY_OP( eltmul_broadcast_colwise )
@@ -286,13 +293,13 @@ Tensor Tensor::shallow_copy() {
 //
 // // syntactic sugar
 // Tensor Tensor::dot(Tensor other) const {
-//     return TensorOps<R>::mul(*this, other);
+//     return TensorOps::mul(*this, other);
 // }
 //
 // #define MAT_UNARY_OP( opname ) \
 //  \
 //     Tensor Tensor::opname() const {\
-//         return TensorOps<R>::opname(*this);\
+//         return TensorOps::opname(*this);\
 //     }\
 //
 // MAT_UNARY_OP( square )
@@ -312,125 +319,125 @@ Tensor Tensor::shallow_copy() {
 // MAT_UNARY_OP( relu )
 //
 // Tensor Tensor::T() const {
-//     return TensorOps<R>::transpose(*this);
+//     return TensorOps::transpose(*this);
 // }
 //
 // Tensor Tensor::slice(int rowstart, int rowwend) const {
-//     return TensorOps<R>::slice(*this, rowstart, rowwend);
+//     return TensorOps::slice(*this, rowstart, rowwend);
 // }
 //
 // Tensor Tensor::reshape(int rows, int cols) const {
-//     return TensorOps<R>::reshape(*this, rows, cols);
+//     return TensorOps::reshape(*this, rows, cols);
 // }
 //
 // Tensor Tensor::ravel() const {
-//     return TensorOps<R>::reshape(*this, number_of_elements(), 1);
+//     return TensorOps::reshape(*this, number_of_elements(), 1);
 // }
 //
 // Tensor Tensor::col(int col) {
-//     return TensorOps<R>::col_pluck(*this, col);
+//     return TensorOps::col_pluck(*this, col);
 // }
 //
 // Tensor Tensor::operator[](
 //         Indexing::Index indices) const {
-//     return TensorOps<R>::rows_pluck(*this, indices);
+//     return TensorOps::rows_pluck(*this, indices);
 // }
 //
 // Tensor Tensor::operator[](
 //         Tensor<int> indices) const {
-//     return TensorOps<R>::rows_pluck(*this, indices);
+//     return TensorOps::rows_pluck(*this, indices);
 // }
 //
 // Tensor Tensor::operator()(
 //         Indexing::Index indices) const {
-//     return TensorOps<R>::rows_pluck(*this, indices);
+//     return TensorOps::rows_pluck(*this, indices);
 // }
 //
 // Tensor Tensor::operator()(
 //         Indexing::Index row_indices,
 //         Indexing::Index col_indices) const {
-//     return TensorOps<R>::rows_cols_pluck(*this, row_indices, col_indices);
+//     return TensorOps::rows_cols_pluck(*this, row_indices, col_indices);
 // }
 //
 // Tensor Tensor::operator[](
 //         int row) const {
-//     return TensorOps<R>::row_pluck(*this, row);
+//     return TensorOps::row_pluck(*this, row);
 // }
 // Tensor Tensor::operator()(
 //         int row) const {
-//     return TensorOps<R>::row_pluck(*this, row);
+//     return TensorOps::row_pluck(*this, row);
 // }
 //
 // Tensor Tensor::operator()(
 //         void* nothing,
 //         int col) const {
-//     return TensorOps<R>::col_pluck(*this, col);
+//     return TensorOps::col_pluck(*this, col);
 // }
 
 
 //
 //
 // Tensor Tensor::operator+(Tensor other) const {
-//     return TensorOps<R>::add(*this, other);
+//     return TensorOps::add(*this, other);
 // }
 //
 // Tensor Tensor::operator+(R other) const {
-//     return TensorOps<R>::add(*this, other);
+//     return TensorOps::add(*this, other);
 // }
 //
 // Tensor& Tensor::operator+=(Tensor other) {
-//     auto sum = TensorOps<R>::add(*this, other);
+//     auto sum = TensorOps::add(*this, other);
 //     this->m = sum.m;
 //     this->g = sum.g;
 //     return *this;
 // }
 //
 // Tensor& Tensor::operator+=(R other) {
-//     auto sum = TensorOps<R>::add(*this, other);
+//     auto sum = TensorOps::add(*this, other);
 //     this->m = sum.m;
 //     this->g = sum.g;
 //     return *this;
 // }
 //
 // Tensor Tensor::operator-(Tensor other) const {
-//     return TensorOps<R>::sub(*this, other);
+//     return TensorOps::sub(*this, other);
 // }
 //
 // Tensor Tensor::operator-(R other) const {
-//     return TensorOps<R>::add(*this, -other);
+//     return TensorOps::add(*this, -other);
 // }
 //
 // Tensor& Tensor::operator-=(Tensor other) {
-//     auto diff = TensorOps<R>::sub(*this, other);
+//     auto diff = TensorOps::sub(*this, other);
 //     this->m = diff.m;
 //     this->g = diff.g;
 //     return *this;
 // }
 //
 // Tensor& Tensor::operator-=(R other) {
-//     auto diff = TensorOps<R>::add(*this, -other);
+//     auto diff = TensorOps::add(*this, -other);
 //     this->m = diff.m;
 //     this->g = diff.g;
 //     return *this;
 // }
 //
 // Tensor Tensor::operator*(Tensor other) const {
-//     return TensorOps<R>::eltmul(*this, other);
+//     return TensorOps::eltmul(*this, other);
 // }
 //
 // Tensor Tensor::operator*(R alpha) const {
-//     return TensorOps<R>::eltmul(*this, alpha);
+//     return TensorOps::eltmul(*this, alpha);
 // }
 //
 // Tensor& Tensor::operator*=(Tensor other) {
-//     auto prod = TensorOps<R>::eltmul(*this, other);
+//     auto prod = TensorOps::eltmul(*this, other);
 //     this->m = prod.m;
 //     this->g = prod.g;
 //     return *this;
 // }
 //
 // Tensor& Tensor::operator*=(R other) {
-//     auto prod = TensorOps<R>::eltmul(*this, other);
+//     auto prod = TensorOps::eltmul(*this, other);
 //     this->m = prod.m;
 //     this->g = prod.g;
 //     return *this;
@@ -442,29 +449,29 @@ Tensor Tensor::shallow_copy() {
 // }
 //
 // Tensor Tensor::operator/(Tensor other) const {
-//     return TensorOps<R>::eltdivide(*this, other);
+//     return TensorOps::eltdivide(*this, other);
 // }
 //
 // Tensor Tensor::operator/(R alpha) const {
-//     return TensorOps<R>::eltdivide(*this, alpha);
+//     return TensorOps::eltdivide(*this, alpha);
 // }
 //
 // Tensor& Tensor::operator/=(Tensor other) {
-//     auto divided = TensorOps<R>::eltdivide(*this, other);
+//     auto divided = TensorOps::eltdivide(*this, other);
 //     this->m = divided.m;
 //     this->g = divided.g;
 //     return *this;
 // }
 //
 // Tensor& Tensor::operator/=(R other) {
-//     auto divided = TensorOps<R>::eltdivide(*this, other);
+//     auto divided = TensorOps::eltdivide(*this, other);
 //     this->m = divided.m;
 //     this->g = divided.g;
 //     return *this;
 // }
 //
 // Tensor Tensor::operator^(Tensor other) const {
-//     return TensorOps<R>::pow(*this, other);
+//     return TensorOps::pow(*this, other);
 // }
 //
 
@@ -482,47 +489,47 @@ void Tensor::to_device(memory::Device device) const {
     dw.to_device(device);
 }
 
-void to_cpu() const {
+void Tensor::to_cpu() const {
     to_device(memory::Device::cpu());
 }
 
 #ifdef DALI_USE_CUDA
-    void to_gpu(int number) const {
+    void Tensor::to_gpu(int number) const {
         to_device(memory::Device::gpu(number));
     }
 #endif
 
 // /* External operators */
 // Tensor operator+(int other, Tensor mat) {
-//     return TensorOps<R>::add(mat, (R) other);
+//     return TensorOps::add(mat, (R) other);
 // }
 // Tensor operator+(float other, Tensor mat) {
-//     return TensorOps<R>::add(mat, other);
+//     return TensorOps::add(mat, other);
 // }
 // Tensor operator+(double other, Tensor mat) {
-//     return TensorOps<R>::add(mat, other);
+//     return TensorOps::add(mat, other);
 // }
 //
 //
 // Tensor operator-(int other, Tensor mat) {
-//     return TensorOps<R>::sub_broadcast_reversed(mat, (R) other);
+//     return TensorOps::sub_broadcast_reversed(mat, (R) other);
 // }
 // Tensor operator-(float other, Tensor mat) {
-//     return TensorOps<R>::sub_broadcast_reversed(mat, other);
+//     return TensorOps::sub_broadcast_reversed(mat, other);
 // }
 // Tensor operator-(double other, Tensor mat) {
-//     return TensorOps<R>::sub_broadcast_reversed(mat, other);
+//     return TensorOps::sub_broadcast_reversed(mat, other);
 // }
 //
 //
 // Tensor operator*(int other, Tensor mat) {
-//     return TensorOps<R>::eltmul(mat, (R)other);
+//     return TensorOps::eltmul(mat, (R)other);
 // }
 // Tensor operator*(float other, Tensor mat) {
-//     return TensorOps<R>::eltmul(mat, other);
+//     return TensorOps::eltmul(mat, other);
 // }
 // Tensor operator*(double other, Tensor mat) {
-//     return TensorOps<R>::eltmul(mat, other);
+//     return TensorOps::eltmul(mat, other);
 // }
 //
 // template Tensor<float> operator+(int, Tensor<float>);
@@ -592,32 +599,32 @@ void to_cpu() const {
 // template bool operator==<double>(const Tensor<double>&, const Tensor<double>&);
 //
 // int Tensor::argmax() const {
-//     return TensorOps<R>::argmax(*this);
+//     return TensorOps::argmax(*this);
 // }
 //
 // int Tensor::argmin() const {
-//     return TensorOps<R>::argmin(*this);
+//     return TensorOps::argmin(*this);
 // }
 //
 // vector<int> Tensor::argmin(int dimension) const {
-//     return TensorOps<R>::argmin(*this, dimension);
+//     return TensorOps::argmin(*this, dimension);
 // }
 //
 // vector<int> Tensor::argmax(int dimension) const {
-//     return TensorOps<R>::argmax(*this, dimension);
+//     return TensorOps::argmax(*this, dimension);
 // }
 //
 // template <typename R>
 // vector<int> Tensor::argsort() const {
-//     return TensorOps<R>::argsort(*this);
+//     return TensorOps::argsort(*this);
 // }
 //
 // int Tensor::argmax_slice(int lower, int upper) const {
-//     return TensorOps<R>::argmax_slice(*this, lower, upper);
+//     return TensorOps::argmax_slice(*this, lower, upper);
 // }
 //
 // int Tensor::argmin_slice(int lower, int upper) const {
-//     return TensorOps<R>::argmin_slice(*this, lower, upper);
+//     return TensorOps::argmin_slice(*this, lower, upper);
 // }
 //
 // namespace utils {

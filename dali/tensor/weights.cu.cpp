@@ -1,115 +1,116 @@
-#include "dali/tensor/Weights.h"
+#include "dali/tensor/weights.h"
 
 #include "dali/array/array.h"
-// #include "dali/array/TensorRandom.h"
+// #include "dali/array/Tensordoubleandom.h"
+
 namespace weights {
     initializer_t empty() {
-        return [](const sync_t&){};
+        return [](sync_t&){};
     };
 
     initializer_t zeros() {
-        return [](const sync_t& tensor){
+        return [](sync_t& tensor){
             tensor.clear();
         };
     };
 
     initializer_t ones() {
-        return [](const sync_t& matrix){
+        return [](sync_t& tensor){
             tensor = 1;
         };
     };
 
-    initializer_t eye(R diag) {
-        return [diag](const sync_t& matrix) {
+    initializer_t eye(double diag) {
+        return [diag](sync_t& tensor) {
             ASSERT2(false, "eye: Not implemented yet");
 
             // #ifdef DALI_USE_CUDA
-            //     if (matrix.compute_me_on_gpu()) {
-            //         TensorOps::eye(matrix.mutable_gpu_data(), diag);
+            //     if (tensor.compute_me_on_gpu()) {
+            //         TensorOps::eye(tensor.mutable_gpu_data(), diag);
             //         return;
             //     }
             // #endif
-            // TensorOps::eye(matrix.mutable_cpu_data(), diag);
+            // TensorOps::eye(tensor.mutable_cpu_data(), diag);
         };
     };
 
-    initializer_t uniform(R lower, R upper) {
-        return [lower, upper](const sync_t& matrix) {
+    initializer_t uniform(double lower, double upper) {
+        return [lower, upper](sync_t& tensor) {
             ASSERT2(false, "uniform: Not implemented yet");
 
             // #ifdef DALI_USE_CUDA
-            //     if (matrix.compute_me_on_gpu()) {
-            //         TensorOps::random::uniform(matrix.mutable_gpu_data(), lower, upper);
+            //     if (tensor.compute_me_on_gpu()) {
+            //         TensorOps::random::uniform(tensor.mutable_gpu_data(), lower, upper);
             //         return;
             //     }
             // #endif
-            // TensorOps::random::uniform(matrix.mutable_cpu_data(), lower, upper);
+            // TensorOps::random::uniform(tensor.mutable_cpu_data(), lower, upper);
         };
     };
 
-    initializer_t uniform(R bound) {
+    initializer_t uniform(double bound) {
         return uniform(-bound/2.0, bound/2.0);
     }
 
-    initializer_t gaussian(R mean, R std) {
-        return [mean, std](const sync_t& matrix) {
+    initializer_t gaussian(double mean, double std) {
+        return [mean, std](sync_t& tensor) {
             ASSERT2(false, "gaussian: Not implemented yet");
 
             // #ifdef DALI_USE_CUDA
-            //     if (matrix.compute_me_on_gpu()) {
-            //         TensorOps::random::gaussian(matrix.mutable_gpu_data(), mean, std);
+            //     if (tensor.compute_me_on_gpu()) {
+            //         TensorOps::random::gaussian(tensor.mutable_gpu_data(), mean, std);
             //         return;
             //     }
             // #endif
-            // TensorOps::random::gaussian(matrix.mutable_cpu_data(), mean, std);
+            // TensorOps::random::gaussian(tensor.mutable_cpu_data(), mean, std);
         };
     };
 
-    initializer_t bernoulli(R prob) {
-        return [prob](const sync_t& matrix) {
+    initializer_t bernoulli(double prob) {
+        return [prob](sync_t& tensor) {
             ASSERT2(false, "bernoulli: Not implemented yet");
 
             // #ifdef DALI_USE_CUDA
-            //     if (matrix.compute_me_on_gpu()) {
-            //         TensorOps::random::bernoulli(matrix.mutable_gpu_data(), prob);
+            //     if (tensor.compute_me_on_gpu()) {
+            //         TensorOps::random::bernoulli(tensor.mutable_gpu_data(), prob);
             //         return;
             //     }
             // #endif
-            // TensorOps::random::bernoulli(matrix.mutable_cpu_data(), prob);
+            // TensorOps::random::bernoulli(tensor.mutable_cpu_data(), prob);
         };
     };
 
-    initializer_t bernoulli_normalized(R prob) {
-        return [prob](const sync_t& matrix) {
+    initializer_t bernoulli_normalized(double prob) {
+        return [prob](sync_t& tensor) {
             ASSERT2(false, "bernoulli_normalized: Not implemented yet");
 
             // #ifdef DALI_USE_CUDA
-            //     if (matrix.compute_me_on_gpu()) {
-            //         TensorOps::random::bernoulli_normalized(matrix.mutable_gpu_data(), prob);
+            //     if (tensor.compute_me_on_gpu()) {
+            //         TensorOps::random::bernoulli_normalized(tensor.mutable_gpu_data(), prob);
             //         return;
             //     }
             // #endif
-            // TensorOps::random::bernoulli_normalized(matrix.mutable_cpu_data(), prob);
+            // TensorOps::random::bernoulli_normalized(tensor.mutable_cpu_data(), prob);
         };
     };
 
-    initializer_t gaussian(R std) {
+    initializer_t gaussian(double std) {
         return gaussian(0.0, std);
     }
 
     initializer_t svd(initializer_t preinitializer) {
-        return [preinitializer](const sync_t& matrix) {
+        return [preinitializer](sync_t& tensor) {
             ASSERT2(false, "SVD INIT: Not implemented yet");
             /* Eigen implementation */
-            // assert(matrix.dims().size() == 2);
-            // preinitializer(matrix);
-            // auto svd = GET_MAT(matrix).jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV);
-            // int n = matrix.dims(0);
-            // int d = matrix.dims(1);
+            // assert(tensor.dims().size() == 2);
+            // preinitializer(tensor);
+            // auto svd = GET_MAT(tensor).jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV);
+            // int n = tensor.dims(0);
+            // int d = tensor.dims(1);
             // if (n < d) {
-            //     GET_MAT(matrix) = svd.matrixV().block(0, 0, n, d);
+            //     GET_MAT(tensor) = svd.tensorV().block(0, 0, n, d);
             // } else {
-            //     GET_MAT(matrix) = svd.matrixU().block(0, 0, n, d);
+            //     GET_MAT(tensor) = svd.tensorU().block(0, 0, n, d);
             // }
         };
     }

@@ -3,7 +3,7 @@
 #include <iomanip>
 #include <gtest/gtest.h>
 
-#include "dali/test_utils.h"
+// #include "dali/test_utils.h"
 // #include "dali/tensor/Index.h"
 // #include "dali/layers/Layers.h"
 #include "dali/tensor/tensor.h"

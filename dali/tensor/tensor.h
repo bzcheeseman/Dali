@@ -12,8 +12,8 @@
 #include <unordered_map>
 
 #include "dali/array/array.h"
-// #include "dali/tensor/MatOps.h"
-// #include "dali/tensor/Weights.h"
+// #include "dali/tensor/TensorOps.h"
+#include "dali/tensor/weights.h"
 // #include "dali/tensor/Tape.h"
 #include "dali/utils.h"
 
@@ -73,8 +73,8 @@ class Tensor {
 
         ~Tensor();
 
-        void copy_from(const Tensor<R>& source);
-        void copy_grad_from(const Tensor<R>& source);
+        void copy_from(const Tensor& source);
+        void copy_grad_from(const Tensor& source);
 
         void print(std::basic_ostream<char>& stream = std::cout) const;
 
@@ -92,7 +92,7 @@ class Tensor {
 
         const std::vector<int>& shape() const;
         DType dtype() const;
-        DType preferred_device() const;
+        memory::Device preferred_device() const;
 
         int ndim() const;
         int number_of_elements() const;
@@ -115,7 +115,7 @@ class Tensor {
                          DType dtype_=DTYPE_FLOAT,
                          memory::Device preferred_device=memory::default_preferred_device);
 
-        /* A copy constructor that perform shallow copies of a Mat.
+        /* A copy constructor that perform shallow copies of a Tensor.
         Key usage is for Hogwild style training of parameters
         where different computation threads share memory for
         the parameters but each compute their own gradients.
@@ -127,46 +127,46 @@ class Tensor {
 
         // Various operations on matrix.
         // Soon to be replaced by legitimate operators
-        // See MatOps for documentation.
+        // See TensorOps for documentation.
 
         // bool is_nan() const;
         // bool is_grad_nan() const;
-        // Mat<R> eltmul_broadcast_colwise(Mat<R>) const;
-        // Mat<R> eltmul(Mat<R>) const;
-        // Mat<R> eltmul(R) const;
-        // Mat<R> eltmul_broadcast_rowwise(Mat<R>) const;
-        // Mat<R> eltmul_rowwise(Mat<R>) const;
-        // Mat<R> add_broadcast_rowwise(Mat<R>) const;
-        // Mat<R> add_broadcast_colwise(Mat<R>) const;
-        // Mat<R> add(Mat<R>) const;
-        // Mat<R> sub(Mat<R>) const;
-        // Mat<R> sub_broadcast(Mat<R>) const;
-        // Mat<R> sub_broadcast_reversed(Mat<R>) const;
-        // Mat<R> square() const;
-        // Mat<R> L2_norm() const;
-        // Mat<R> sum() const;
-        // Mat<R> mean() const;
-        // Mat<R> max() const;
-        // Mat<R> min() const;
-        // Mat<R> log() const;
-        // Mat<R> exp() const;
-        // Mat<R> abs() const;
-        // Mat<R> sigmoid() const;
-        // Mat<R> steep_sigmoid(R aggressiveness = 3.75) const;
+        // Tensor eltmul_broadcast_colwise(Tensor) const;
+        // Tensor eltmul(Tensor) const;
+        // Tensor eltmul(R) const;
+        // Tensor eltmul_broadcast_rowwise(Tensor) const;
+        // Tensor eltmul_rowwise(Tensor) const;
+        // Tensor add_broadcast_rowwise(Tensor) const;
+        // Tensor add_broadcast_colwise(Tensor) const;
+        // Tensor add(Tensor) const;
+        // Tensor sub(Tensor) const;
+        // Tensor sub_broadcast(Tensor) const;
+        // Tensor sub_broadcast_reversed(Tensor) const;
+        // Tensor square() const;
+        // Tensor L2_norm() const;
+        // Tensor sum() const;
+        // Tensor mean() const;
+        // Tensor max() const;
+        // Tensor min() const;
+        // Tensor log() const;
+        // Tensor exp() const;
+        // Tensor abs() const;
+        // Tensor sigmoid() const;
+        // Tensor steep_sigmoid(R aggressiveness = 3.75) const;
         // // Warning: transpose makes a copy, uses extra memory
-        // Mat<R> T() const;
-        // Mat<R> tanh() const;
-        // Mat<R> softplus() const;
-        // Mat<R> relu() const;
-        // Mat<R> mul(Mat<R>) const;
-        // Mat<R> dot(Mat<R>) const;
+        // Tensor T() const;
+        // Tensor tanh() const;
+        // Tensor softplus() const;
+        // Tensor relu() const;
+        // Tensor mul(Tensor) const;
+        // Tensor dot(Tensor) const;
         // template<typename ScalarType>
-        // Mat<R> pow(ScalarType) const;
-        // Mat<R> sqrt() const;
-        // Mat<R> elt_inv() const;
-        // Mat<R> slice(int rowstart, int rowend) const;
-        // Mat<R> reshape(int rows, int cols) const;
-        // Mat<R> ravel() const;
+        // Tensor pow(ScalarType) const;
+        // Tensor sqrt() const;
+        // Tensor elt_inv() const;
+        // Tensor slice(int rowstart, int rowend) const;
+        // Tensor reshape(int rows, int cols) const;
+        // Tensor ravel() const;
         //
         // int argmax() const;
         // int argmin() const;
@@ -183,46 +183,46 @@ class Tensor {
         // int argmax_slice(int lower, int upper) const;
         // int argmin_slice(int lower, int upper) const;
         //
-        // Mat<R> operator-() const;
+        // Tensor operator-() const;
         //
-        // Mat<R> operator+(Mat<R>) const;
-        // Mat<R> operator+(R) const;
-        // Mat<R>& operator+=(Mat<R>);
-        // Mat<R>& operator+=(R);
+        // Tensor operator+(Tensor) const;
+        // Tensor operator+(R) const;
+        // Tensor& operator+=(Tensor);
+        // Tensor& operator+=(R);
         //
-        // Mat<R> operator-(Mat<R>) const;
-        // Mat<R> operator-(R) const;
-        // Mat<R>& operator-=(Mat<R>);
-        // Mat<R>& operator-=(R);
+        // Tensor operator-(Tensor) const;
+        // Tensor operator-(R) const;
+        // Tensor& operator-=(Tensor);
+        // Tensor& operator-=(R);
         //
-        // Mat<R> operator*(Mat<R> other) const;
-        // Mat<R> operator*(R alpha) const;
-        // Mat<R>& operator*=(Mat<R>);
-        // Mat<R>& operator*=(R);
+        // Tensor operator*(Tensor other) const;
+        // Tensor operator*(R alpha) const;
+        // Tensor& operator*=(Tensor);
+        // Tensor& operator*=(R);
         //
-        // Mat<R> operator/(Mat<R> other) const;
-        // Mat<R> operator/(R alpha) const;
-        // Mat<R>& operator/=(Mat<R>);
-        // Mat<R>& operator/=(R);
+        // Tensor operator/(Tensor other) const;
+        // Tensor operator/(R alpha) const;
+        // Tensor& operator/=(Tensor);
+        // Tensor& operator/=(R);
         //
         // template<typename ScalarType>
-        // Mat<R> operator^(ScalarType) const;
+        // Tensor operator^(ScalarType) const;
         //
-        // Mat<R> operator^(Mat<R>) const;
+        // Tensor operator^(Tensor) const;
         //
         //
         // // Plucking rows and columns:
-        // Mat<R> col(int col);
-        // Mat<R> operator[](int) const;
-        // Mat<R> operator[](Mat<int>) const;
-        // Mat<R> operator()(int) const;
-        // Mat<R> operator[](Indexing::Index) const;
-        // Mat<R> operator()(Indexing::Index) const;
-        // Mat<R> operator()(Indexing::Index, Indexing::Index) const;
-        // // Mat<R> operator()(void*, Indexing::Index) const;
-        // Mat<R> operator()(void*, int) const;
-        static Mat<R> zeros_like(Mat<R> shape);
-        static Mat<R> empty_like(Mat<R> shape);
+        // Tensor col(int col);
+        // Tensor operator[](int) const;
+        // Tensor operator[](Tensor<int>) const;
+        // Tensor operator()(int) const;
+        // Tensor operator[](Indexing::Index) const;
+        // Tensor operator()(Indexing::Index) const;
+        // Tensor operator()(Indexing::Index, Indexing::Index) const;
+        // // Tensor operator()(void*, Indexing::Index) const;
+        // Tensor operator()(void*, int) const;
+        static Tensor zeros_like(Tensor shape);
+        static Tensor empty_like(Tensor shape);
 
 
         // forcing memory location
@@ -235,50 +235,50 @@ class Tensor {
 };
 //
 // template<typename R>
-// Mat<R> operator+(int other, Mat<R> mat);
+// Tensor operator+(int other, Tensor mat);
 // template<typename R>
-// Mat<R> operator+(float other, Mat<R> mat);
+// Tensor operator+(float other, Tensor mat);
 // template<typename R>
-// Mat<R> operator+(double other, Mat<R> mat);
+// Tensor operator+(double other, Tensor mat);
 //
 // template<typename R>
-// Mat<R> operator-(int other, Mat<R> mat);
+// Tensor operator-(int other, Tensor mat);
 // template<typename R>
-// Mat<R> operator-(float other, Mat<R> mat);
+// Tensor operator-(float other, Tensor mat);
 // template<typename R>
-// Mat<R> operator-(double other, Mat<R> mat);
+// Tensor operator-(double other, Tensor mat);
 //
 // template<typename R>
-// Mat<R> operator*(int other, Mat<R> mat);
+// Tensor operator*(int other, Tensor mat);
 // template<typename R>
-// Mat<R> operator*(float other, Mat<R> mat);
+// Tensor operator*(float other, Tensor mat);
 // template<typename R>
-// Mat<R> operator*(double other, Mat<R> mat);
+// Tensor operator*(double other, Tensor mat);
 //
 // template<typename R>
-// std::ostream& operator<<(std::ostream&, const Mat<R>&);
+// std::ostream& operator<<(std::ostream&, const Tensor&);
 //
 // // define hash code for matrices:
 // namespace std {
-//     template <typename R> struct hash<Mat<R>> {
-//         std::size_t operator()(const Mat<R>&) const;
+//     template <typename R> struct hash<Tensor> {
+//         std::size_t operator()(const Tensor&) const;
 //     };
 // }
 //
 // namespace utils {
 //
 //     template<typename R>
-//     void save_matrices(std::vector<Mat<R>>, std::string);
+//     void save_matrices(std::vector<Tensor>, std::string);
 //
 //     template<typename R>
-//     void load_matrices(std::vector<Mat<R>>, std::string);
+//     void load_matrices(std::vector<Tensor>, std::string);
 //
 // }
 //
 // template <typename R>
-// bool operator!=(const Mat<R>&, const Mat<R>&);
+// bool operator!=(const Tensor&, const Tensor&);
 //
 // template <typename R>
-// bool operator==(const Mat<R>&, const Mat<R>&);
+// bool operator==(const Tensor&, const Tensor&);
 
 #endif

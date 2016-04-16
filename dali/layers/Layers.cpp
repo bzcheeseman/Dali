@@ -330,6 +330,7 @@ vector<Mat<R>> SecondOrderCombinator<R>::parameters() const {
 template<typename R>
 Mat<R> SecondOrderCombinator<R>::activate(Mat<R> i1, Mat<R> i2) const {
     // TODO(jonathan): should be replaced with mul_mul_mul_with_mul
+    // (to:szymon, from:jonathan, I'll try)
     return i1.dot(W1) * i2.dot(W2) + b;
 }
 

@@ -142,7 +142,7 @@ TEST(paraphrase, generator_load) {
     int ex_seen = 0;
     for (auto ex : gen_data) ex_seen++;
     ASSERT_EQ(ex_seen, 4);
-    // TODO: find why when gen_data is overwritten a segfault occurs!!
+    // TODO(szymon): find why when gen_data is overwritten a segfault occurs!!
     auto gen_data2 = paraphrase::STS_2015::generate_train(STR(DALI_DATA_DIR) "/tests/paraphrase_dummy_data.tsv");
     auto paraphrase_data = paraphrase::STS_2015::load_train( STR(DALI_DATA_DIR) "/tests/paraphrase_dummy_data.tsv");
     auto vocab_gen = paraphrase::get_vocabulary(gen_data2, 1);

@@ -22,9 +22,7 @@ LOWER_PRIORITY:
 -> implement Imagenet training
 -> Proof of concept: load existing image net model from caffe
 -> make machine comprehension dataset inline with other loading system
--> made n-d print visually closer to numpy's n-d print
--> Add warning or normalize assignments to temporaries created by ravel/slice/row_pluck etc.
-   (e.g. follow Numpy convention of non assignable types)
+-> make n-d print visually closer to numpy's n-d print
 -> make zlib optional
 -> check for clang version
 -> Array copy constructor, which copies directly to another device.

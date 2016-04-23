@@ -11,6 +11,5 @@ AssignableArray sub(const Array& a, const Array& b) {return Sub::run(a, b);}
 typedef BinaryElementwise<TensorOps::op::eltmul> EltMul;
 AssignableArray eltmul(const Array& a, const Array& b) {return EltMul::run(a, b);}
 
-
 typedef BinaryElementwise<TensorOps::op::eltdiv> EltDiv;
 AssignableArray eltdiv(const Array& a, const Array& b) {return EltDiv::run(a, b);}

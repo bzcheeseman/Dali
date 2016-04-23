@@ -3,7 +3,7 @@
 #include <iomanip>
 #include <gtest/gtest.h>
 
-// #include "dali/test_utils.h"
+#include "dali/test_utils.h"
 // #include "dali/tensor/Index.h"
 // #include "dali/layers/Layers.h"
 #include "dali/tensor/tensor.h"
@@ -14,7 +14,7 @@
 using std::vector;
 using std::chrono::milliseconds;
 
-class MatrixTests : public MemorySafeTest {
+class TensorTests : public MemorySafeTest {
   protected:
     static void SetUpTestCase() {
     }
@@ -374,35 +374,27 @@ class MatrixTests : public MemorySafeTest {
 //     }
 // }
 
-TEST_F(MatrixTests, lazy_allocation) {
+TEST_F(TensorTests, lazy_allocation) {
     // if memory must be filled with zeros,
     // then allocation is lazy
-    // Mat<R> zero_mat(4, 5, weights<R>::zeros());
-    //
-    // #ifdef DALI_USE_CUDA
-    // ASSERT_TRUE((!zero_mat.w().memory_->allocated_cpu) && (!zero_mat.w().memory_->allocated_gpu));
-    // #else
-    // ASSERT_TRUE(!zero_mat.w().memory_->allocated_cpu);
-    // #endif
-    //
-    // // if memory must be filled with gaussian
-    // // noise, allocation is immediate
-    // Mat<R> gauss_mat(4, 5, weights<R>::gaussian(0.5));
-    // #ifdef DALI_USE_CUDA
-    // ASSERT_TRUE((!gauss_mat.w().memory_->allocated_cpu) && (gauss_mat.w().memory_->allocated_gpu));
-    // #else
-    // ASSERT_TRUE(gauss_mat.w().memory_->allocated_cpu);
-    // #endif
-    //
-    // // the gradients are set to 0, but are also lazily
-    // // allocated and cleared.
-    // #ifdef DALI_USE_CUDA
-    // ASSERT_TRUE((!gauss_mat.dw().memory_->allocated_cpu) && (!gauss_mat.dw().memory_->allocated_gpu));
-    // ASSERT_TRUE((!zero_mat.dw().memory_->allocated_cpu) && (!zero_mat.dw().memory_->allocated_gpu));
-    // #else
-    // ASSERT_TRUE(!gauss_mat.dw().memory_->allocated_cpu);
-    // ASSERT_TRUE(!zero_mat.dw().memory_->allocated_cpu);
-    // #endif
+    auto zero_mat = Tensor::zeros({4,5});
+
+    ASSERT_TRUE(!zero_mat.w.memory()->is_any_allocated());
+    ASSERT_TRUE(!zero_mat.dw.memory()->is_any_allocated());
+
+    // if memory must be filled with gaussian
+    // noise, allocation is not lazy
+    Tensor gauss_mat({4, 5}, weights::gaussian(0.5));
+
+    #ifdef DALI_USE_CUDA
+    ASSERT_TRUE(gauss_mat.w.memory()->is_allocated(memory::Device::gpu(0)) && !gauss_mat.w.memory()->is_allocated(memory::Device::cpu()));
+    #else
+    ASSERT_TRUE(gauss_mat.w.memory()->is_allocated(memory::Device::cpu()));
+    #endif
+
+    // the gradients are set to 0, but are also lazily
+    // allocated and cleared.
+    ASSERT_TRUE(!gauss_mat.dw.memory()->is_any_allocated());
 }
 //
 // TEST_F(MatrixTests, view_transpose) {
@@ -1850,38 +1842,38 @@ typedef MemorySafeTest MatOpsTests;
 // }
 
 
-void copy_constructor_helper(bool copy_w, bool copy_dw) {
-    // Mat<R> original(3,3, weights<R>::uniform(20.0));
-    // Mat<R> copy(original, copy_w, copy_dw);
-    //
-    // copy.w(0,0) += 1.0;
-    // copy.dw(0,0) += 1.0;
-    //
-    // if (copy_w) {
-    //     ASSERT_MATRIX_NEQ(original, copy);
-    // } else {
-    //     ASSERT_MATRIX_EQ(original, copy);
-    // }
-    //
-    // if (copy_dw) {
-    //     ASSERT_MATRIX_GRAD_NOT_CLOSE(original, copy, 1e-5);
-    // } else {
-    //     ASSERT_MATRIX_GRAD_CLOSE(original, copy, 1e-5);
-    // }
-    //
-    // copy.w(0,0) -= 1.0;
-    // copy.dw(0,0) -= 1.0;
-    // ASSERT_MATRIX_GRAD_CLOSE(original, copy, 1e-5);
-    // ASSERT_MATRIX_CLOSE(original, copy, 1e-5);
-}
+// void copy_constructor_helper(bool copy_w, bool copy_dw) {
+//     Mat<R> original(3,3, weights<R>::uniform(20.0));
+//     Mat<R> copy(original, copy_w, copy_dw);
+
+//     copy.w(0,0) += 1.0;
+//     copy.dw(0,0) += 1.0;
+
+//     if (copy_w) {
+//         ASSERT_MATRIX_NEQ(original, copy);
+//     } else {
+//         ASSERT_MATRIX_EQ(original, copy);
+//     }
+
+//     if (copy_dw) {
+//         ASSERT_MATRIX_GRAD_NOT_CLOSE(original, copy, 1e-5);
+//     } else {
+//         ASSERT_MATRIX_GRAD_CLOSE(original, copy, 1e-5);
+//     }
+
+//     copy.w(0,0) -= 1.0;
+//     copy.dw(0,0) -= 1.0;
+//     ASSERT_MATRIX_GRAD_CLOSE(original, copy, 1e-5);
+//     ASSERT_MATRIX_CLOSE(original, copy, 1e-5);
+// }
 
 
-TEST_F(MatrixTests, copy_constructor) {
-    // copy_constructor_helper(false, false);
-    // copy_constructor_helper(false, true);
-    // copy_constructor_helper(true,  false);
-    // copy_constructor_helper(true,  true);
-}
+// TEST_F(TensorTests, copy_constructor) {
+//     copy_constructor_helper(false, false);
+//     copy_constructor_helper(false, true);
+//     copy_constructor_helper(true,  false);
+//     copy_constructor_helper(true,  true);
+// }
 //
 // TEST_F(MatrixTests, matrix_constant_check) {
 //     int num_examples           = 10;

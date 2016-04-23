@@ -9,5 +9,8 @@ AssignableArray relu(const Array& x);
 AssignableArray log_or_zero(const Array& x);
 AssignableArray abs(const Array& x);
 AssignableArray sign(const Array& x);
+AssignableArray scalar_add(const Array& x, const double& other);
+AssignableArray scalar_add(const Array& x, const float& other);
+AssignableArray scalar_add(const Array& x, const int& other);
 
 #endif

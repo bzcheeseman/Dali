@@ -127,11 +127,15 @@ namespace memory {
         });
     }
 
-    bool SynchronizedMemory::is_fresh(const Device& device) {
+    bool SynchronizedMemory::is_fresh(const Device& device) const {
         return get_device_memory(device).fresh;
     }
 
-    memory::Device SynchronizedMemory::find_some_fresh_device() {
+    bool SynchronizedMemory::is_allocated(const Device& device) const {
+        return get_device_memory(device).allocated;
+    }
+
+    memory::Device SynchronizedMemory::find_some_fresh_device() const {
         auto result = memory::Device::device_of_doom();
         iterate_device_memories([&result](const Device& device, DeviceMemory& device_memory) {
             if (device_memory.fresh) {
@@ -141,10 +145,20 @@ namespace memory {
         return result;
     }
 
-    bool SynchronizedMemory::is_any_fresh() {
+    bool SynchronizedMemory::is_any_fresh() const {
         bool result = false;
         iterate_device_memories([&result](const Device& device, DeviceMemory& device_memory) {
             if (device_memory.fresh) {
+                result = true;
+            }
+        });
+        return result;
+    }
+
+    bool SynchronizedMemory::is_any_allocated() const {
+        bool result = false;
+        iterate_device_memories([&result](const Device& device, DeviceMemory& device_memory) {
+            if (device_memory.allocated) {
                 result = true;
             }
         });
@@ -233,6 +247,16 @@ namespace memory {
         target_memory.fresh = true;
     }
 
+    void SynchronizedMemory::to_cpu() const {
+        move_to(memory::Device::cpu());
+    }
+
+#ifdef DALI_USE_CUDA
+    void SynchronizedMemory::to_gpu(const int& gpu_number) const {
+        move_to(memory::Device::gpu(gpu_number));
+    }
+#endif
+
     void* SynchronizedMemory::data(const Device& device, AM access_mode) {
         if (access_mode == AM_READONLY) {
             return readonly_data(device);
@@ -268,7 +292,7 @@ namespace memory {
 
     void SynchronizedMemory::debug_info(std::basic_ostream<char>& stream,
                                         bool print_contents,
-                                        DType dtype) {
+                                        DType dtype) const {
         stream << "Synchronized Memory (" << this << ")" << std::endl;
         stream << "    total_memory: " << total_memory << " bytes" << std::endl;
         stream << "    inner_dimension: " << inner_dimension << " bytes" << std::endl;

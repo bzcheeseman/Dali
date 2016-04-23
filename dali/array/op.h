@@ -40,6 +40,11 @@
         static bool ops_loaded = false;
     }
 
+    Array& operator+=(Array& left, const Array& right);
+    Array& operator+=(Array& left, const double& right);
+    Array& operator+=(Array& left, const float& right);
+    Array& operator+=(Array& left, const int& right);
+
     AssignableArray operator+(const Array& left, const Array& right);
 
     AssignableArray operator-(const Array& left, const Array& right);

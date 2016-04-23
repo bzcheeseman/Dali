@@ -94,6 +94,9 @@ class Array : public Exp<Array> {
     Array ravel() const;
     Array reshape(const std::vector<int>& shape) const;
 
+    AssignableArray sum() const;
+    AssignableArray mean() const;
+
     /* Interpreting scalars as numbers */
     template<typename T>
     operator T&();

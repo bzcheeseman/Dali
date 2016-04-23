@@ -1,4 +1,5 @@
 #include "dali/tensor/tensor.h"
+#include "dali/array/op.h"
 // #include "dali/tensor/Index.h"
 
 using std::vector;
@@ -67,9 +68,8 @@ void Tensor::print(std::basic_ostream<char>& stream) const {
     }
 }
 
-void Tensor::add_to_objective() {
-    throw std::runtime_error("Not implemented");
-    // dw += 1;
+void Tensor::grad() {
+    dw += 1;
 }
 
 void Tensor::clear_grad() {

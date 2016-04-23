@@ -79,15 +79,21 @@ namespace memory {
            SynchronizedMemory& operator=(const SynchronizedMemory&) = delete;
 
            // returns true if memory is fresh on device
-           bool is_fresh(const Device& device);
+           bool is_fresh(const Device& device) const;
+
+           // returns true if memory is allocated on device
+           bool is_allocated(const Device& device) const;
 
            // returns first device in the list that is fresh
            // and if no devices are fresh return device of
            // DOOM.
-           memory::Device find_some_fresh_device();
+           memory::Device find_some_fresh_device() const;
 
            // returns true if any of the devices has fresh memory.
-           bool is_any_fresh();
+           bool is_any_fresh() const;
+
+           // returns true if any of the devices has an allocation
+           bool is_any_allocated() const;
 
            // fill memory with zeros if it's been allocated, else
            // ask for memory to be cleared on allocation
@@ -100,10 +106,16 @@ namespace memory {
 
            // Ensure a fresh copy of the memory is on the device
            void move_to(const Device& device) const;
-
+#ifdef DALI_USE_CUDA
+           // Ensure a fresh copy of the memory is on gpu[number]
+           void to_gpu(const int& gpu_number) const;
+#endif
+           // Ensure a fresh copy of the memory is on the cpu
+           void to_cpu() const;
 
            // This function selects on of the 3 functions below based on
-           // access_mode value.
+           // access_mode value (so it is sometimes const even if not
+           // explicitly marked as such)
            void* data(const Device& device, AM access_mode=AM_READONLY);
            // depending on how memory is accessed, its freshess changes:
            // calling `data` without mutable asks for a fresh copy
@@ -119,7 +131,7 @@ namespace memory {
            void* overwrite_data(const Device& device);
 
            // prints various memory statistics. For debug use only.
-           void debug_info(std::basic_ostream<char>& stream = std::cout, bool print_contents=false, DType dtype=DTYPE_FLOAT);
+           void debug_info(std::basic_ostream<char>& stream = std::cout, bool print_contents=false, DType dtype=DTYPE_FLOAT) const;
     };
 
     namespace debug {

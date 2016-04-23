@@ -84,8 +84,7 @@ class Tensor {
         Equivalent to adding the sum of entries in this Tensor to the
         objective function.
         **/
-
-        void add_to_objective();
+        void grad();
 
         void clear_grad();
         void clear();

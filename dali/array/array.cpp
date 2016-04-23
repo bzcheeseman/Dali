@@ -245,6 +245,16 @@ Array Array::reshape(const vector<int>& new_shape) const {
                  state->offset,
                  state->dtype);
 }
+// TODO(jonathan,szymon): add axis argument to sum + write tests
+AssignableArray Array::sum() const {
+    return array_sum(*this);
+}
+
+// TODO(jonathan,szymon): add axis argument to mean + write tests
+AssignableArray Array::mean() const {
+    return array_mean(*this);
+}
+
 
 template<typename T>
 Array::operator T() const {

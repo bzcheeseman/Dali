@@ -5,6 +5,7 @@
 #include <type_traits>
 
 #include "dali/array/op/other.h"
+#include "dali/array/op/reducers.h"
 #include "dali/utils/print_utils.h"
 
 using std::vector;
@@ -247,12 +248,12 @@ Array Array::reshape(const vector<int>& new_shape) const {
 }
 // TODO(jonathan,szymon): add axis argument to sum + write tests
 AssignableArray Array::sum() const {
-    return array_sum(*this);
+    return sum_all(*this);
 }
 
 // TODO(jonathan,szymon): add axis argument to mean + write tests
 AssignableArray Array::mean() const {
-    return array_mean(*this);
+    return mean_all(*this);
 }
 
 

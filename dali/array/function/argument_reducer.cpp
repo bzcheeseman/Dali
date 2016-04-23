@@ -1,4 +1,4 @@
-#include "reducer.h"
+#include "argument_reducer.h"
 
 #include "dali/array/array.h"
 #include "dali/runtime_config.h"

@@ -12,7 +12,7 @@
 #include "dali/array/array.h"
 #include "dali/array/getmshadow.h"
 #include "dali/utils/print_utils.h"
-#include "dali/array/function/reducer.h"
+#include "dali/array/function/argument_reducer.h"
 #include "dali/array/function/property_extractor.h"
 
 

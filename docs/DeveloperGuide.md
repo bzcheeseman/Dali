@@ -30,12 +30,7 @@ cmake ..
 yum install make cmake
 yum install blas blas-devel
 yum install openblas openblas-devel
-yum install clang
-yum install gflags gflags-devel
-yum install sqlite-devel
-yum install protobuf protobuf-devel protobuf-compiler
-yum install libev libev-devel
-yum install hiredis hiredis-devel
+yum install zlib zlib-devel
 ```
 
 If during compilation `cblas.h` is not found, install the Atlas SSE fixes the problem:

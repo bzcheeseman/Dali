@@ -10,7 +10,6 @@
 #include <errno.h>
 #include <fstream>
 #include <functional>
-#include <gflags/gflags.h>
 #include <iomanip>
 #include <iostream>
 #include <locale>

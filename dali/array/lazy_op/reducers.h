@@ -15,17 +15,13 @@ struct LazyReducer : public RValueExp<LazyReducer<Functor,ExprT>> {
     std::vector<int> shape_;
     DType dtype_;
 
-    LazyReducer(const ExprT& _expr) :
-            expr(_expr) {
+    LazyReducer(const ExprT& _expr) : expr(_expr), shape_({}) {
         bool shape_good, dtype_good;
-        std::tie(shape_good, shape_) = LazyCommonPropertyExtractor<ShapeProperty>::extract_unary(expr);
         std::tie(dtype_good, dtype_) = LazyCommonPropertyExtractor<DTypeProperty>::extract_unary(expr);
-        ASSERT2(shape_good, "LazyReducer function called on shapeless expression.");
         ASSERT2(dtype_good, "LazyReducer function called on dtypeless expression.");
     }
 
     const std::vector<int>& shape() const {
-        // This is wrong.
         return shape_;
     }
 
@@ -40,7 +36,7 @@ struct LazyReducer : public RValueExp<LazyReducer<Functor,ExprT>> {
                     MshadowWrapper<devT,T,decltype(expr)>::to_expr(expr, device)
                 )
             ) {
-        auto left_expr  = MshadowWrapper<devT, T, decltype(expr)>::to_expr(expr,  device);
+        auto left_expr  = MshadowWrapper<devT, T, decltype(expr)>::to_expr(expr, device);
         return ReducerF<Functor>(left_expr);
     }
 

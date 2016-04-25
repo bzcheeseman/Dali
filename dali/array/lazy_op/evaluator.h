@@ -108,7 +108,6 @@ struct Evaluator : public Function<Evaluator<LazyExpr>, Array, LazyExpr> {
         return out.dtype();
     }
 
-
     template<int devT, typename T>
     void typed_eval(MArray<devT,T> out, const LazyExpr& expr) {
         debug::evaluator_calls += 1;

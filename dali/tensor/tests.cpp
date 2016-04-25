@@ -437,7 +437,7 @@ TEST_F(TensorTests, lazy_allocation) {
 //     ASSERT_EQ(&subblock.dw().memory() , &block.dw().memory());
 // }
 
-TEST_F(MatrixTests, reshape) {
+TEST_F(TensorTests, reshape) {
     // auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
     //     return Xs[0].slice(2, 10);
     // };

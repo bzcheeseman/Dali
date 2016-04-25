@@ -16,7 +16,7 @@ struct LazyReducer : public RValueExp<LazyReducer<Functor,ExprT>> {
     DType dtype_;
 
     LazyReducer(const ExprT& _expr) : expr(_expr), shape_({}) {
-        bool shape_good, dtype_good;
+        bool dtype_good;
         std::tie(dtype_good, dtype_) = LazyCommonPropertyExtractor<DTypeProperty>::extract_unary(expr);
         ASSERT2(dtype_good, "LazyReducer function called on dtypeless expression.");
     }

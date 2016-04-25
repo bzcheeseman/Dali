@@ -475,12 +475,24 @@ Tensor Tensor::shallow_copy() {
 // }
 //
 
-Tensor Tensor::zeros_like(Tensor other) {
+Tensor Tensor::zeros_like(const Tensor& other) {
     return Tensor(other.shape(), weights::zeros(), other.dtype(), other.preferred_device());
 }
 
-Tensor Tensor::empty_like(Tensor other) {
+Tensor Tensor::empty_like(const Tensor& other) {
     return Tensor(other.shape(), weights::empty(), other.dtype(), other.preferred_device());
+}
+
+Tensor Tensor::zeros(const std::vector<int>& shape,
+                     const DType& dtype,
+                     const memory::Device& preferred_device) {
+    return Tensor(shape, weights::zeros(), dtype, preferred_device);
+}
+
+Tensor Tensor::empty(const std::vector<int>& shape,
+                     const DType& dtype,
+                     const memory::Device& preferred_device) {
+    return Tensor(shape, weights::empty(), dtype, preferred_device);
 }
 
 
@@ -664,3 +676,8 @@ void Tensor::to_cpu() const {
 //         return TensorOps<double>::argsort(v);
 //     }
 // }
+
+std::ostream &operator <<(std::ostream &os, const Tensor& tensor) {
+    os << "Tensor(" << tensor.shape() << ", dtype=" << dtype_to_name(tensor.dtype()) << ")";
+    return os;
+}

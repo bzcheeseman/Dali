@@ -225,10 +225,8 @@ namespace {
             //TODO(jonathan,szymon): generalize to-ND
             for (auto arg : arguments) {
                 gpu_gradients.push_back(Tensor::zeros_like(arg));
-                for (int i = 0; i < arg.shape()[0]; ++i) {
-                    for (int j = 0; j < arg.shape()[1]; ++j) {
-                        gpu_gradients.back().dw(i)(j) = arg.dw(i)(j);
-                    }
+                for (int i = 0; i < arg.number_of_elements(); i++) {
+                    gpu_gradients.back().dw(i) = arg.dw(i);
                 }
             }
 
@@ -242,8 +240,8 @@ namespace {
                 Tensor res_cpu = functor(arguments);
 
                 if (!buffer_almost_equals(
-                        res_cpu.w.memory()->readonly_data(memory::Device::cpu()),
-                        res_gpu.w.memory()->readonly_data(memory::Device::cpu()),
+                        (R*)res_cpu.w.memory()->readonly_data(memory::Device::cpu()),
+                        (R*)res_gpu.w.memory()->readonly_data(memory::Device::cpu()),
                         res_cpu.number_of_elements(),
                         res_gpu.number_of_elements(),
                         tolerance)) {
@@ -252,8 +250,8 @@ namespace {
                 }
                 for (int i = 0; i < arguments.size(); ++i) {
                     if(!buffer_almost_equals(
-                            gpu_gradients[i].dw.memory()->data(memory::Device::cpu()),
-                            arguments[i].dw.memory()->data(memory::Device::cpu()), //cpu gradient
+                            (R*)gpu_gradients[i].dw.memory()->data(memory::Device::cpu()),
+                            (R*)arguments[i].dw.memory()->data(memory::Device::cpu()), //cpu gradient
                             gpu_gradients[i].dw.number_of_elements(),
                             arguments[i].number_of_elements(),
                             tolerance)) {
@@ -292,15 +290,15 @@ namespace {
             for (int i = 0; i < arg.number_of_elements(); i++) {
                 const R prev_val = arg.w(i);
                 arg.w(i)            = prev_val +  grad_epsilon;
-                auto obj_positive   = functor(arguments).w.sum();
+                R obj_positive      = (R)Array(functor(arguments).w.sum());
                 arg.w(i)            = prev_val - grad_epsilon;
-                auto obj_negative   = functor(arguments).w.sum();
+                R obj_negative      = (R)Array(functor(arguments).w.sum());
                 arg.w(i)            = prev_val;
                 Arg_prime[i]        = (obj_positive - obj_negative) / (2.0 * grad_epsilon);
             }
             AssertionResult did_work_out = buffer_almost_equals(
                     (R*)Arg_prime,
-                    arg.dw.memory()->readonly_data(memory::Device::cpu()),
+                    (R*)arg.dw.memory()->readonly_data(memory::Device::cpu()),
                     arg.number_of_elements(),
                     arg.number_of_elements(),
                     tolerance);
@@ -327,7 +325,7 @@ namespace {
                 }
 
                 auto start = std::max(loc_disagreement - 6, 0);
-                auto length = std::min(arg.number_of_elements() - start, (uint)12);
+                auto length = std::min(arg.number_of_elements() - start, 12);
 
                 std::cout << "-----------\nArg_prime[" << start << ":" << start + length << "] = " << std::endl;
                 print_buffer((R*)Arg_prime + start,       length, loc_disagreement - start);
@@ -382,15 +380,15 @@ namespace {
             for (int i = 0; i < arg.number_of_elements(); i++) {
                 const R prev_val    = arg.w(i);
                 arg.w(i)            = prev_val +  grad_epsilon;
-                auto obj_positive   = functor(arguments).w.sum();
+                auto obj_positive   = (R)Array(functor(arguments).w.sum());
                 arg.w(i)            = prev_val - grad_epsilon;
-                auto obj_negative   = functor(arguments).w.sum();
+                auto obj_negative   = (R)Array(functor(arguments).w.sum());
                 arg.w(i)            = prev_val;
                 Arg_prime[i]        = (obj_positive - obj_negative) / (2.0 * grad_epsilon);
             }
             AssertionResult did_work_out = buffer_ratio_almost_equals(
                     (R*)Arg_prime,
-                    arg.dw.memory()->readonly_data(memory::Device::cpu()),
+                    (R*)arg.dw.memory()->readonly_data(memory::Device::cpu()),
                     arg.number_of_elements(),
                     arg.number_of_elements(),
                     tolerance);
@@ -409,7 +407,7 @@ namespace {
                 R max_disagreement = 0;
                 int loc_disagreement = 0;
                 for (int i = 0; i < arg.number_of_elements(); i++) {
-                    auto disagreement = std::abs((Arg_prime[i] / arg.dw(i)) - (R)1.0);
+                    auto disagreement = std::abs((Arg_prime[i] / (R)arg.dw(i)) - (R)1.0);
                     if (disagreement > max_disagreement) {
                         max_disagreement = disagreement;
                         loc_disagreement = i;
@@ -417,7 +415,7 @@ namespace {
                 }
 
                 auto start = std::max(loc_disagreement - 6, 0);
-                auto length = std::min(arg.number_of_elements() - start, (uint)12);
+                auto length = std::min(arg.number_of_elements() - start, 12);
 
                 std::cout << "-----------\nArg_prime[" << start << ":" << start + length << "] = " << std::endl;
                 print_buffer((R*)Arg_prime + start,       length, loc_disagreement - start);

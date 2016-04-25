@@ -220,8 +220,14 @@ class Tensor {
         // Tensor operator()(Indexing::Index, Indexing::Index) const;
         // // Tensor operator()(void*, Indexing::Index) const;
         // Tensor operator()(void*, int) const;
-        static Tensor zeros_like(Tensor shape);
-        static Tensor empty_like(Tensor shape);
+        static Tensor zeros_like(const Tensor& other);
+        static Tensor empty_like(const Tensor& other);
+        static Tensor zeros(const std::vector<int>& shape,
+                            const DType& dtype=DTYPE_FLOAT,
+                            const memory::Device& preferred_device=memory::default_preferred_device);
+        static Tensor empty(const std::vector<int>& shape,
+                            const DType& dtype=DTYPE_FLOAT,
+                            const memory::Device& preferred_device=memory::default_preferred_device);
 
 
         // forcing memory location
@@ -232,6 +238,8 @@ class Tensor {
             void to_gpu(int number) const;
         #endif
 };
+
+std::ostream &operator <<(std::ostream &os, const Tensor& tensor);
 //
 // template<typename R>
 // Tensor operator+(int other, Tensor mat);

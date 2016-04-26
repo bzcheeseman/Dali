@@ -10,7 +10,7 @@
 #include "dali/array/MshadowIntegerOps.h"
 #include "dali/array/TensorFunctions.h"
 // #include "dali/array/TensorAccessor.h"
-#include "dali/array/ThrustUtils.h"
+#include "dali/array/op/impl/thrust_utils.h"
 
 
 /**
@@ -66,7 +66,7 @@ Kernels for MShadow
 #define DALI_ASSIGN(op, out, expr) if ((op) == OVERWRITE) { out = (expr); } else {  out += (expr);  }
 
 
-namespace TensorOps {
+namespace tensor_ops {
     using mshadow::gpu;
     using mshadow::cpu;
 

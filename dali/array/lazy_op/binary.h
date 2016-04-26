@@ -50,23 +50,23 @@ struct LazyBinaryElementwise : public RValueExp<LazyBinaryElementwise<Functor,Le
 
 namespace lazy {
     template <typename T, typename T2>
-    LazyBinaryElementwise<TensorOps::op::add, T, T2> add(T a, T2 b) {
-        return LazyBinaryElementwise<TensorOps::op::add, T, T2>(a, b);
+    LazyBinaryElementwise<tensor_ops::op::add, T, T2> add(T a, T2 b) {
+        return LazyBinaryElementwise<tensor_ops::op::add, T, T2>(a, b);
     }
 
     template <typename T, typename T2>
-    LazyBinaryElementwise<TensorOps::op::sub, T, T2> sub(T a, T2 b) {
-        return LazyBinaryElementwise<TensorOps::op::sub, T, T2>(a, b);
+    LazyBinaryElementwise<tensor_ops::op::sub, T, T2> sub(T a, T2 b) {
+        return LazyBinaryElementwise<tensor_ops::op::sub, T, T2>(a, b);
     }
 
     template <typename T, typename T2>
-    LazyBinaryElementwise<TensorOps::op::eltmul, T, T2> eltmul(T a, T2 b) {
-        return LazyBinaryElementwise<TensorOps::op::eltmul, T, T2>(a, b);
+    LazyBinaryElementwise<tensor_ops::op::eltmul, T, T2> eltmul(T a, T2 b) {
+        return LazyBinaryElementwise<tensor_ops::op::eltmul, T, T2>(a, b);
     }
 
     template <typename T, typename T2>
-    LazyBinaryElementwise<TensorOps::op::eltdiv, T, T2> eltdiv(T a, T2 b) {
-        return LazyBinaryElementwise<TensorOps::op::eltdiv, T, T2>(a, b);
+    LazyBinaryElementwise<tensor_ops::op::eltdiv, T, T2> eltdiv(T a, T2 b) {
+        return LazyBinaryElementwise<tensor_ops::op::eltdiv, T, T2>(a, b);
     }
 }
 

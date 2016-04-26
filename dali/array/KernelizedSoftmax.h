@@ -1,6 +1,6 @@
 #ifndef DALI_ARRAY_THRUST_SOFTMAX_TRANSPOSE_H
 #define DALI_ARRAY_THRUST_SOFTMAX_TRANSPOSE_H
-#include "dali/array/TensorOps.h"
+#include "dali/array/op/impl/ops.h"
 #include "dali/array/memory_bank/MemoryBank.h"
 #include "dali/config.h"
 
@@ -20,7 +20,7 @@ row-wise softmax (`softmax_rowwise`) is achieved by
 modifying one line from MShadow's version.
 **/
 
-namespace TensorOps {
+namespace tensor_ops {
     #ifdef DALI_USE_CUDA
         template<int x_bits, typename R,  typename DstPlan, typename SrcPlan>
         __global__ void SoftmaxKernel(DstPlan dst, SrcPlan src, mshadow::index_t num_cols, R temperature) {

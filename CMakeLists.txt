@@ -160,7 +160,7 @@ function(dali_generate_file OldPath NewPath)
 endfunction()
 
 foreach(SourceDir ${DALI_SOURCE_DIRS})
-    message(STATUS "Scanning sources in ${SourceDir}...")
+    message(STATUS "Scanning sources under ${SourceDir}...")
     file(GLOB_RECURSE FilesInDir "${PROJECT_SOURCE_DIR}/${SourceDir}/*")
     foreach(FilePath ${FilesInDir})
         get_filename_component(FileNameWe ${FilePath} NAME_WE)
@@ -231,6 +231,7 @@ if (WITH_CUDA)
 endif(WITH_CUDA)
 
 ## CPP TARGET
+include_directories(${DaliHeaders})
 add_library(dali ${MAYBE_SHARED} ${DaliSources} ${DaliHeaders})
 
 target_link_libraries(dali ${ZLIB_LIBRARIES}

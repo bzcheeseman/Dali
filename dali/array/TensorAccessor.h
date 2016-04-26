@@ -5,12 +5,11 @@
 
 #include <mshadow/tensor.h>
 
-#include "dali/array/TensorInternal.h"
-#include "dali/array/ThrustUtils.h"
-#include "dali/array/memory_bank/MemoryBank.h"
+#include "dali/array/op/impl/thrust_utils.h"
+#include "dali/array/memory/memory_bank.h"
 #include "dali/array/ThrustAllocator.h"
 
-namespace TensorOps {
+namespace tensor_ops {
     using mshadow::gpu;
     using mshadow::cpu;
 

@@ -19,8 +19,7 @@
 
 #define EPS 1e-6
 
-
-namespace TensorOps {
+namespace tensor_ops {
     template<typename T>
     struct near_equal {
         T tol;
@@ -292,6 +291,6 @@ namespace TensorOps {
         };
 
     }
-} //namespace TensorOps
+} //namespace tensor_ops
 
 #endif

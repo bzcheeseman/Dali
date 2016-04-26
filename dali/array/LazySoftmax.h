@@ -46,7 +46,7 @@ namespace mshadow {
                                 DType > {
             inline static void Eval(tensor_t<Device, 2, DType> *dst,
                                     const dali_expr::SoftmaxColwiseExpression< tensor_t<Device, 2, DType>, DType > &exp) {
-                TensorOps::softmax_colwise(*dst, exp.exp, exp.temperature);
+                tensor_ops::softmax_colwise(*dst, exp.exp, exp.temperature);
             }
         };
 
@@ -57,7 +57,7 @@ namespace mshadow {
                                 DType > {
             inline static void Eval(tensor_t<Device, 2, DType> *dst,
                                     const dali_expr::SoftmaxRowwiseExpression< tensor_t<Device, 2, DType>, DType > &exp) {
-                TensorOps::softmax_rowwise(*dst, exp.exp, exp.temperature);
+                tensor_ops::softmax_rowwise(*dst, exp.exp, exp.temperature);
             }
         };
     }

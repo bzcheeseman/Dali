@@ -5,7 +5,7 @@
 #include "dali/array/ThrustUtils.h"
 #include "dali/array/memory_bank/MemoryBank.h"
 
-namespace TensorOps {
+namespace tensor_ops {
     using mshadow::gpu;
     using mshadow::cpu;
     /////////////////////// circular_convolution /////////////////////////////////////////

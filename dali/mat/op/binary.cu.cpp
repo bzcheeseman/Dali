@@ -2,13 +2,13 @@
 
 #include "dali/tensor/Mat.h"
 #include "dali/tensor/__MatMacros__.h"
-#include "dali/array/TensorOps.h"
+#include "dali/array/op/impl/ops.h"
 #include "dali/array/LazyTensor.h"
 #include "dali/utils/core_utils.h"
 
 using utils::MS;
 using std::vector;
-using namespace TensorOps;
+using namespace tensor_ops;
 
 namespace matops {
     template<typename R>

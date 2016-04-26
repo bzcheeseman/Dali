@@ -7,22 +7,22 @@
 #define DALI_USE_LAZY 1
 #include "dali/array/op.h"
 
-typedef Elementwise<TensorOps::op::sigmoid> Sigmoid;
+typedef Elementwise<tensor_ops::op::sigmoid> Sigmoid;
 AssignableArray sigmoid(const Array& x) { return Sigmoid::run(x); }
 
-typedef Elementwise<TensorOps::op::tanh> Tanh;
+typedef Elementwise<tensor_ops::op::tanh> Tanh;
 AssignableArray tanh(const Array& x) { return Tanh::run(x); }
 
-typedef Elementwise<TensorOps::op::relu> Relu;
+typedef Elementwise<tensor_ops::op::relu> Relu;
 AssignableArray relu(const Array& x) { return Relu::run(x); }
 
-typedef Elementwise<TensorOps::op::log_or_zero> LogOrZero;
+typedef Elementwise<tensor_ops::op::log_or_zero> LogOrZero;
 AssignableArray log_or_zero(const Array& x) { return LogOrZero::run(x); }
 
-typedef Elementwise<TensorOps::op::abs> Abs;
+typedef Elementwise<tensor_ops::op::abs> Abs;
 AssignableArray abs(const Array& x)  { return Abs::run(x); }
 
-typedef Elementwise<TensorOps::op::sign> Sign;
+typedef Elementwise<tensor_ops::op::sign> Sign;
 AssignableArray sign(const Array& x) { return Sign::run(x); }
 
 AssignableArray scalar_add(const Array& x, const double& other) {

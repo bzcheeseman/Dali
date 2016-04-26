@@ -50,33 +50,33 @@ namespace lazy {
     }
 
     template<typename ExprT>
-    LazyElementwise<TensorOps::op::sigmoid,ExprT> sigmoid(const Exp<ExprT>& expr) {
-        return LazyElementwise<TensorOps::op::sigmoid,ExprT>(expr.self());
+    LazyElementwise<tensor_ops::op::sigmoid,ExprT> sigmoid(const Exp<ExprT>& expr) {
+        return LazyElementwise<tensor_ops::op::sigmoid,ExprT>(expr.self());
     }
 
     template<typename ExprT>
-    LazyElementwise<TensorOps::op::tanh,ExprT> tanh(const Exp<ExprT>& expr) {
-        return LazyElementwise<TensorOps::op::tanh,ExprT>(expr.self());
+    LazyElementwise<tensor_ops::op::tanh,ExprT> tanh(const Exp<ExprT>& expr) {
+        return LazyElementwise<tensor_ops::op::tanh,ExprT>(expr.self());
     }
 
     template<typename ExprT>
-    LazyElementwise<TensorOps::op::relu,ExprT> relu(const Exp<ExprT>& expr) {
-        return LazyElementwise<TensorOps::op::relu,ExprT>(expr.self());
+    LazyElementwise<tensor_ops::op::relu,ExprT> relu(const Exp<ExprT>& expr) {
+        return LazyElementwise<tensor_ops::op::relu,ExprT>(expr.self());
     }
 
     template<typename ExprT>
-    LazyElementwise<TensorOps::op::log_or_zero,ExprT> log_or_zero(const Exp<ExprT>& expr) {
-        return LazyElementwise<TensorOps::op::log_or_zero,ExprT>(expr.self());
+    LazyElementwise<tensor_ops::op::log_or_zero,ExprT> log_or_zero(const Exp<ExprT>& expr) {
+        return LazyElementwise<tensor_ops::op::log_or_zero,ExprT>(expr.self());
     }
 
     template<typename ExprT>
-    LazyElementwise<TensorOps::op::abs,ExprT> abs(const Exp<ExprT>& expr) {
-        return LazyElementwise<TensorOps::op::abs,ExprT>(expr.self());
+    LazyElementwise<tensor_ops::op::abs,ExprT> abs(const Exp<ExprT>& expr) {
+        return LazyElementwise<tensor_ops::op::abs,ExprT>(expr.self());
     }
 
     template<typename ExprT>
-    LazyElementwise<TensorOps::op::sign,ExprT> sign(const Exp<ExprT>& expr) {
-        return LazyElementwise<TensorOps::op::sign,ExprT>(expr.self());
+    LazyElementwise<tensor_ops::op::sign,ExprT> sign(const Exp<ExprT>& expr) {
+        return LazyElementwise<tensor_ops::op::sign,ExprT>(expr.self());
     }
 }
 #endif

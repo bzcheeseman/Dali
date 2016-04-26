@@ -27,25 +27,17 @@ namespace weights {
 
             // #ifdef DALI_USE_CUDA
             //     if (tensor.compute_me_on_gpu()) {
-            //         TensorOps::eye(tensor.mutable_gpu_data(), diag);
+            //         tensor_ops::eye(tensor.mutable_gpu_data(), diag);
             //         return;
             //     }
             // #endif
-            // TensorOps::eye(tensor.mutable_cpu_data(), diag);
+            // tensor_ops::eye(tensor.mutable_cpu_data(), diag);
         };
     };
 
     initializer_t uniform(double lower, double upper) {
         return [lower, upper](Array& tensor) {
-            ASSERT2(false, "uniform: Not implemented yet");
-
-            // #ifdef DALI_USE_CUDA
-            //     if (tensor.compute_me_on_gpu()) {
-            //         TensorOps::random::uniform(tensor.mutable_gpu_data(), lower, upper);
-            //         return;
-            //     }
-            // #endif
-            // TensorOps::random::uniform(tensor.mutable_cpu_data(), lower, upper);
+            tensor = tensor_ops::random::uniform(lower, upper);
         };
     };
 
@@ -55,45 +47,19 @@ namespace weights {
 
     initializer_t gaussian(double mean, double std) {
         return [mean, std](Array& tensor) {
-            tensor = random::gaussian(mean, std);
-
-            ASSERT2(false, "gaussian: Not implemented yet");
-
-            // #ifdef DALI_USE_CUDA
-            //     if (tensor.compute_me_on_gpu()) {
-            //         TensorOps::random::gaussian(tensor.mutable_gpu_data(), mean, std);
-            //         return;
-            //     }
-            // #endif
-            // TensorOps::random::gaussian(tensor.mutable_cpu_data(), mean, std);
+            tensor = tensor_ops::random::gaussian(mean, std);
         };
     };
 
     initializer_t bernoulli(double prob) {
         return [prob](Array& tensor) {
-            ASSERT2(false, "bernoulli: Not implemented yet");
-
-            // #ifdef DALI_USE_CUDA
-            //     if (tensor.compute_me_on_gpu()) {
-            //         TensorOps::random::bernoulli(tensor.mutable_gpu_data(), prob);
-            //         return;
-            //     }
-            // #endif
-            // TensorOps::random::bernoulli(tensor.mutable_cpu_data(), prob);
+            tensor = tensor_ops::random::bernoulli(prob);
         };
     };
 
     initializer_t bernoulli_normalized(double prob) {
         return [prob](Array& tensor) {
-            ASSERT2(false, "bernoulli_normalized: Not implemented yet");
-
-            // #ifdef DALI_USE_CUDA
-            //     if (tensor.compute_me_on_gpu()) {
-            //         TensorOps::random::bernoulli_normalized(tensor.mutable_gpu_data(), prob);
-            //         return;
-            //     }
-            // #endif
-            // TensorOps::random::bernoulli_normalized(tensor.mutable_cpu_data(), prob);
+            tensor = tensor_ops::random::bernoulli_normalized(prob);
         };
     };
 

@@ -93,7 +93,7 @@ TEST(ArrayLazyOpsTests, lazy_binary_correctness) {
 
 TEST(ArrayLazyOpsTests, elementwise_F) {
     auto x = Array::zeros({2,1});
-    auto expr = lazy::F<TensorOps::op::sigmoid>(x);
+    auto expr = lazy::F<tensor_ops::op::sigmoid>(x);
     Array y = expr;
     ASSERT_NEAR((float)y(0), 0.5, 1e-4);
     ASSERT_NEAR((float)y(1), 0.5, 1e-4);

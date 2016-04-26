@@ -14,7 +14,7 @@
     - translation
     - deepQ
     - adversarial
-    - spacial transformers
+    - spatial transformers
 - extensive documentation
 - optimize raw forward + backward performance on the models
 

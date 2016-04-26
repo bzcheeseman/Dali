@@ -8,13 +8,12 @@
 
 #include "dali/utils/random.h"
 #include "dali/array/TensorFunctions.h"
-#include "dali/array/TensorOps.h"
-#include "dali/array/ThrustUtils.h"
+#include "dali/array/op/impl/ops.h"
+#include "dali/array/op/impl/thrust_utils.h"
 
-
-namespace TensorOps {
+namespace tensor_ops {
     namespace random {
-        #ifdef DALI_USE_CUDA
+#ifdef DALI_USE_CUDA
         // from thrust Monte Carlo experiment
         // here: https://github.com/thrust/thrust/blob/master/examples/monte_carlo.cu
         template<typename R>
@@ -96,7 +95,7 @@ namespace TensorOps {
                     to_thrust(A),
                     gaussian_operator<R>(mean, std, utils::randinteger<unsigned int>(0,999999)));
         }
-        #endif
+#endif
 
         template<int ndims, typename R, template <typename,int,typename> class tensor_t>
         void uniform(tensor_t<mshadow::cpu, ndims, R> t, R lower, R upper) {
@@ -141,5 +140,4 @@ namespace TensorOps {
         }
     }
 }
-
 #endif

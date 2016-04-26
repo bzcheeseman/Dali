@@ -22,7 +22,7 @@ endif()
 set(GCC_MINIMUM_REQUIRED "4.9.2")
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS ${GCC_MINIMUM_REQUIRED})
-    message(FATAL_ERROR "Mimimum rquired version of gcc is ${GCC_MINIMUM_REQUIRED}")
+    message(FATAL_ERROR "Mimimum required version of gcc is ${GCC_MINIMUM_REQUIRED}")
   endif()
 endif()
 

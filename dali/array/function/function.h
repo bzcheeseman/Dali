@@ -24,11 +24,11 @@
 template<int devT, typename T>
 struct ArrayWrapper {
     template<typename X>
-    static X wrap(const X& sth, memory::Device dev) {
+    static inline X wrap(const X& sth, memory::Device dev) {
         return sth;
     }
 
-    static MArray<devT,T> wrap(const Array& a, memory::Device dev) {
+    static inline MArray<devT,T> wrap(const Array& a, memory::Device dev) {
         return MArray<devT,T>(a,dev);
     }
 };

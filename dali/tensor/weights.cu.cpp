@@ -1,27 +1,28 @@
 #include "dali/tensor/weights.h"
 
 #include "dali/array/array.h"
+#include "dali/array/op/random.h"
 // #include "dali/array/Tensordoubleandom.h"
 
 namespace weights {
     initializer_t empty() {
-        return [](sync_t&){};
+        return [](Array&){};
     };
 
     initializer_t zeros() {
-        return [](sync_t& tensor){
+        return [](Array& tensor){
             tensor.clear();
         };
     };
 
     initializer_t ones() {
-        return [](sync_t& tensor){
+        return [](Array& tensor){
             tensor = 1;
         };
     };
 
     initializer_t eye(double diag) {
-        return [diag](sync_t& tensor) {
+        return [diag](Array& tensor) {
             ASSERT2(false, "eye: Not implemented yet");
 
             // #ifdef DALI_USE_CUDA
@@ -35,7 +36,7 @@ namespace weights {
     };
 
     initializer_t uniform(double lower, double upper) {
-        return [lower, upper](sync_t& tensor) {
+        return [lower, upper](Array& tensor) {
             ASSERT2(false, "uniform: Not implemented yet");
 
             // #ifdef DALI_USE_CUDA
@@ -53,7 +54,9 @@ namespace weights {
     }
 
     initializer_t gaussian(double mean, double std) {
-        return [mean, std](sync_t& tensor) {
+        return [mean, std](Array& tensor) {
+            tensor = random::gaussian(mean, std);
+
             ASSERT2(false, "gaussian: Not implemented yet");
 
             // #ifdef DALI_USE_CUDA
@@ -67,7 +70,7 @@ namespace weights {
     };
 
     initializer_t bernoulli(double prob) {
-        return [prob](sync_t& tensor) {
+        return [prob](Array& tensor) {
             ASSERT2(false, "bernoulli: Not implemented yet");
 
             // #ifdef DALI_USE_CUDA
@@ -81,7 +84,7 @@ namespace weights {
     };
 
     initializer_t bernoulli_normalized(double prob) {
-        return [prob](sync_t& tensor) {
+        return [prob](Array& tensor) {
             ASSERT2(false, "bernoulli_normalized: Not implemented yet");
 
             // #ifdef DALI_USE_CUDA
@@ -99,7 +102,7 @@ namespace weights {
     }
 
     initializer_t svd(initializer_t preinitializer) {
-        return [preinitializer](sync_t& tensor) {
+        return [preinitializer](Array& tensor) {
             ASSERT2(false, "SVD INIT: Not implemented yet");
             /* Eigen implementation */
             // assert(tensor.dims().size() == 2);

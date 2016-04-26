@@ -20,9 +20,9 @@
     #define __THIS_IS_VERY_ABNOXIOUS(tok) #tok
 
     /* CUDA UTILS START HERE */
-    namespace TensorOps {
+    namespace tensor_ops {
         template<typename R, int ndims>
-        thrust::device_ptr<R> to_thrust(const mshadow::Tensor<mshadow::gpu, ndims, R> tg) {
+        thrust::device_ptr<R> to_thrust(const mshadow::Tensor<mshadow::gpu, ndims, R>& tg) {
             auto dev_ptr = thrust::device_pointer_cast(tg.dptr_);
             return dev_ptr;
         }

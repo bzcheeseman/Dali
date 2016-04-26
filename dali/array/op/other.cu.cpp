@@ -36,7 +36,6 @@ struct IsNan : public NonArrayFunction<IsNan, bool, Array> {
 
 //TODO(jonathan,szymon): add equality tests here (abs difference, and exact equals)
 
-
 template<typename FillT>
 struct Fill : public Function<Fill<FillT>, Array, FillT> {
     static const bool disable_output_shape_check = true;

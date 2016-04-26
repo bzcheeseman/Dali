@@ -10,7 +10,6 @@
 
 #include "dali/array/array.h"
 
-
 template<int devT, typename T>
 struct MArray {
     mutable Array array;
@@ -48,5 +47,4 @@ struct MArray<memory::DEVICE_T_CPU, T> {
         MArray(const Array& _array, const memory::Device& _device);
     };
 #endif
-
 #endif

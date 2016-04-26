@@ -9,8 +9,7 @@
 
 
 namespace weights {
-    typedef Array sync_t;
-    typedef std::function<void(sync_t&)> initializer_t;
+    typedef std::function<void(Array&)> initializer_t;
 
     initializer_t empty();
     initializer_t zeros();

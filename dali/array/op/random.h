@@ -1,7 +1,12 @@
 #ifndef DALI_ARRAY_OP_RANDOM_H
 #define DALI_ARRAY_OP_RANDOM_H
 
+#include <vector>
+
 #include "dali/array/array.h"
+#include "dali/array/dtype.h"
+#include "dali/array/memory/device.h"
+#include "dali/runtime_config.h"
 
 namespace tensor_ops {
     namespace random {

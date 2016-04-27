@@ -87,8 +87,8 @@ struct Function {
 
     static AssignableArray run(const Args&... args) {
         return AssignableArray([args...](Outtype& out) {
-            prepare_output(out, args...);
-            untyped_eval(out, args...);
+            Class::prepare_output(out, args...);
+            Class::untyped_eval(out, args...);
         });
     }
 

@@ -7,6 +7,7 @@
 #include "dali/array/op/other.h"
 #include "dali/array/op/reducers.h"
 #include "dali/utils/print_utils.h"
+#include "dali/array/op/initializer.h"
 
 using std::vector;
 using memory::SynchronizedMemory;
@@ -26,15 +27,15 @@ int hypercube_volume(const vector<int>& shape) {
 AssignableArray::AssignableArray(assign_t&& _assign_to) : assign_to(_assign_to) {}
 
 AssignableArray::AssignableArray(const float& constant) :
-        AssignableArray(fill(constant)) {
+        AssignableArray(initializer::fill(constant)) {
 }
 
 AssignableArray::AssignableArray(const double& constant) :
-        AssignableArray(fill(constant)) {
+        AssignableArray(initializer::fill(constant)) {
 }
 
 AssignableArray::AssignableArray(const int& constant) :
-        AssignableArray(fill(constant)) {
+        AssignableArray(initializer::fill(constant)) {
 }
 
 
@@ -336,6 +337,6 @@ void Array::clear() {
     if (spans_entire_memory()) {
         memory()->lazy_clear();
     } else {
-        *this = fill(0);
+        *this = initializer::fill(0.0);
     }
 }

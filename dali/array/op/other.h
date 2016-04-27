@@ -5,7 +5,5 @@
 
 bool is_nan(const Array& x);
 
-template<typename T>
-AssignableArray fill(const T& other);
 
 #endif

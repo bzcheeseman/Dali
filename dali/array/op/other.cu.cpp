@@ -34,39 +34,6 @@ struct IsNan : public NonArrayFunction<IsNan, bool, Array> {
 #endif
 };
 
-//TODO(jonathan,szymon): add equality tests here (abs difference, and exact equals)
-
-template<typename FillT>
-struct Fill : public Function<Fill<FillT>, Array, FillT> {
-    static const bool disable_output_shape_check = true;
-    static const bool disable_output_dtype_check = true;
-
-    static DType deduce_output_dtype(const FillT& filler) {
-        return template_to_dtype<FillT>();
-    }
-
-    static std::vector<int> deduce_output_shape(const FillT& filler) {
-        return {};
-    }
-
-    static memory::Device deduce_output_device(const FillT&) {
-        return memory::default_preferred_device;
-    }
-
-    template<int devT, typename T>
-    void typed_eval(MArray<devT, T> input, const FillT& filler) {
-        input.d1(memory::AM_OVERWRITE) = (T) filler;
-    }
-};
-
-
-template<typename T>
-AssignableArray fill(const T& other) {
-    return Fill<T>::run(other);
-}
-
-template AssignableArray fill(const float&);
-template AssignableArray fill(const double&);
-template AssignableArray fill(const int&);
-
 bool is_nan(const Array& x) { return IsNan::run(x); }
+
+//TODO(jonathan,szymon): add equality tests here (abs difference, and exact equals)

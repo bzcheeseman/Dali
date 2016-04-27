@@ -1,8 +1,6 @@
-#include "dali/array/op/random.h"
+#include "initializer.h"
 
 #include "dali/array/function/function.h"
-#include "dali/array/op/impl/ops.h"
-#include "dali/array/op/impl/random.h"
 #include "dali/utils/random.h"
 #include "dali/array/TensorFunctions.h"
 
@@ -97,19 +95,16 @@ using std::vector;
 
 // TODO(jonathan,szymon): merge this initializer with "fill" initializer in other.h
 template<typename Class, typename... Args>
-struct Initializer : public Function<Initializer<Class, Args...>, Array, Args...> {
+struct Initializer : public Function<Class, Array, Args...> {
     static void prepare_output(Array& out, const Args&... args) {
         ASSERT2(!out.is_stateless(),
                 "Weight initializer must only be used for an array which is not stateless");
     }
 
-
     template<int devT, typename T>
-    void typed_eval(MArray<devT, T> output, const Args&... args) {
-        ASSERT2(output.array.spans_entire_memory(),
+    void assert_spans_entire_memory(const MArray<devT,T>& out) {
+        ASSERT2(out.array.spans_entire_memory(),
                 "Currently array initialization is only supported for Arrays which own entire underlying memory (are not views)");
-        auto self = static_cast<Class*>(this);
-        self->template initialize(output, args...);
     }
 };
 
@@ -122,7 +117,8 @@ struct Initializer : public Function<Initializer<Class, Args...>, Array, Args...
 struct GaussianInitializer : public Initializer<GaussianInitializer, const double&, const double&> {
 #ifdef DALI_USE_CUDA
     template<typename T>
-    void initialize(MArray<memory::DEVICE_T_GPU, T> out, const double& mean, const double& std) {
+    void typed_eval(MArray<memory::DEVICE_T_GPU, T> out, const double& mean, const double& std) {
+        assert_spans_entire_memory(out);
         thrust::transform(
                 thrust::make_counting_iterator(0),
                 thrust::make_counting_iterator(0) + out.array.number_of_elements(),
@@ -132,13 +128,14 @@ struct GaussianInitializer : public Initializer<GaussianInitializer, const doubl
 #endif
 
     template<typename T>
-    void initialize(MArray<memory::DEVICE_T_CPU, T> out, const double& mean, const double& std) {
+    void typed_eval(MArray<memory::DEVICE_T_CPU, T> out, const double& mean, const double& std) {
         mshadow::Random<mshadow::cpu, T> generator(utils::randint(0,999999));
         auto m_out = out.d1(memory::AM_OVERWRITE);
         generator.SampleGaussian(&m_out, mean, std);
     }
 
-    void initialize(MArray<memory::DEVICE_T_CPU, int> out, const double& mean, const double& std) {
+    void typed_eval(MArray<memory::DEVICE_T_CPU, int> out, const double& mean, const double& std) {
+        assert_spans_entire_memory(out);
         std::normal_distribution<double> dist(mean, std);
         auto& gen = utils::random::generator();
         auto ptr = out.ptr(memory::AM_OVERWRITE);
@@ -152,46 +149,57 @@ struct UniformInitializer : public Initializer<UniformInitializer, const double&
 
 #ifdef DALI_USE_CUDA
     template<typename T>
-    void initialize(MArray<memory::DEVICE_T_GPU, T> out, const double& lower, const double& upper) {
-        // // about 63x faster than SampleUniform for gpu
-        // thrust::transform(
-        //         thrust::make_counting_iterator(0),
-        //         thrust::make_counting_iterator(0) + A.shape_.Size(),
-        //         to_thrust(A),
-        //         uniform_operator<R>(lower, upper, utils::randinteger<unsigned int>(0,999999)));
+    void typed_eval(MArray<memory::DEVICE_T_GPU, T> out, const double& lower, const double& upper) {
+        assert_spans_entire_memory(out);
+        // about 63x faster than SampleUniform for gpu
+        thrust::transform(
+                thrust::make_counting_iterator(0),
+                thrust::make_counting_iterator(0) + A.shape_.Size(),
+                to_thrust(A),
+                uniform_operator<R>(lower, upper, utils::randinteger<unsigned int>(0,999999)));
     }
 #endif
 
     template<typename T>
-    void initialize(MArray<memory::DEVICE_T_CPU, T> out, const double& lower, const double& upper) {
-        // mshadow::Random<mshadow::cpu, T> generator(utils::randint(0,999999));
-        // auto m_out = out.d1(memory::AM_OVERWRITE);
-        // generator.SampleUniform(&m_out, lower, upper);
+    void typed_eval(MArray<memory::DEVICE_T_CPU, T> out, const double& lower, const double& upper) {
+        mshadow::Random<mshadow::cpu, T> generator(utils::randint(0,999999));
+        auto m_out = out.d1(memory::AM_OVERWRITE);
+        generator.SampleUniform(&m_out, lower, upper);
     }
 
-    void initialize(MArray<memory::DEVICE_T_CPU, int> out, const double& lower, const double& upper) {
-        // std::uniform_int_distribution<double> dist(lower, upper);
-        // auto& gen = utils::random::generator();
-        // auto ptr = out.ptr(memory::AM_OVERWRITE);
-        // for (int i = 0; i < out.array.number_of_elements(); ++i) {
-        //     *(ptr + i) = (int)dist(gen);
-        // }
+    void typed_eval(MArray<memory::DEVICE_T_CPU, int> out, const double& lower, const double& upper) {
+        assert_spans_entire_memory(out);
+        // uniform_int_distribution can only tak ints as per standard
+        // clang is more permissive here.
+        std::uniform_int_distribution<int> dist(lower, upper);
+        auto& gen = utils::random::generator();
+        auto ptr = out.ptr(memory::AM_OVERWRITE);
+        for (int i = 0; i < out.array.number_of_elements(); ++i) {
+            *(ptr + i) = (int)dist(gen);
+        }
     }
 };
 
 struct BernoulliInitialzier : public Initializer<BernoulliInitialzier, const double&> {
     template<int devT, typename T>
-    void initialize(MArray<devT,T> out, const double& prob) {
-        UniformInitializer().initialize(out, 0.0, 1.0);
+    void typed_eval(MArray<devT,T> out, const double& prob) {
+        UniformInitializer().typed_eval(out, 0.0, 1.0);
         out.d1(memory::AM_OVERWRITE) = mshadow::expr::F<tensor_ops::op::threshold<T>>(out.d1(), prob);
     }
 };
 
 struct BernoulliNormalizerInitializer : public Initializer<BernoulliNormalizerInitializer, const double&> {
     template<int devT, typename T>
-    void initialize(MArray<devT,T> out, const double& prob) {
-        UniformInitializer().initialize(out, 0.0, 1.0);
+    void typed_eval(MArray<devT,T> out, const double& prob) {
+        UniformInitializer().typed_eval(out, 0.0, 1.0);
         out.d1(memory::AM_OVERWRITE) = mshadow::expr::F<tensor_ops::op::threshold<T>>(out.d1(), prob) * (1.0 / prob);
+    }
+};
+
+struct ConstantInitializer : public Initializer<ConstantInitializer, const double&> {
+    template<int devT, typename T>
+    void typed_eval(MArray<devT,T> out, const double& constant) {
+        out.d1(memory::AM_OVERWRITE) = constant;
     }
 };
 
@@ -199,23 +207,73 @@ struct BernoulliNormalizerInitializer : public Initializer<BernoulliNormalizerIn
 //                  WRAPPING STRUCTS INTO FUNCTIONS                           //
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace tensor_ops {
-    namespace random {
-        AssignableArray gaussian(const double& mean, const double& std) {
-            return GaussianInitializer::run(mean, std);
-        }
+namespace initializer {
 
-        AssignableArray uniform(const double& lower, const double& upper) {
-            return UniformInitializer::run(lower, upper);
-        }
+    AssignableArray empty() {
+        return AssignableArray([](Array&){
+            // do nothing
+        });
+    }
+    AssignableArray zeros() {
+        return AssignableArray([](Array& out){
+            // efficient lazy clearing of memory.
+            out.clear();
+        });
+    }
 
-        AssignableArray bernoulli(const double& prob) {
-            return BernoulliInitialzier::run(prob);
+    AssignableArray ones() {
+        return ConstantInitializer::run(1.0);
+    }
 
-        }
+    AssignableArray fill(const double& constant) {
+        return ConstantInitializer::run(constant);
+    }
 
-        AssignableArray bernoulli_normalized(const double& prob) {
-            return BernoulliNormalizerInitializer::run(prob);
-        }
-    } // namespace random
-} // namespace tensor_ops
+    AssignableArray gaussian(const double& mean, const double& std) {
+        return GaussianInitializer::run(mean, std);
+    }
+
+    AssignableArray uniform(const double& lower, const double& upper) {
+        return UniformInitializer::run(lower, upper);
+    }
+
+    AssignableArray bernoulli(const double& prob) {
+        return BernoulliInitialzier::run(prob);
+
+    }
+
+    AssignableArray bernoulli_normalized(const double& prob) {
+        return BernoulliNormalizerInitializer::run(prob);
+    }
+
+    AssignableArray eye(double diag) {
+        return AssignableArray([diag](Array& tensor) {
+            ASSERT2(false, "eye: Not implemented yet");
+
+            // #ifdef DALI_USE_CUDA
+            //     if (tensor.compute_me_on_gpu()) {
+            //         tensor_ops::eye(tensor.mutable_gpu_data(), diag);
+            //         return;
+            //     }
+            // #endif
+            // tensor_ops::eye(tensor.mutable_cpu_data(), diag);
+        });
+
+    }
+    AssignableArray svd(AssignableArray preinitializer) {
+        return AssignableArray([preinitializer](Array& tensor) {
+            ASSERT2(false, "SVD INIT: Not implemented yet");
+            /* Eigen implementation */
+            // assert(tensor.dims().size() == 2);
+            // preinitializer(tensor);
+            // auto svd = GET_MAT(tensor).jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV);
+            // int n = tensor.dims(0);
+            // int d = tensor.dims(1);
+            // if (n < d) {
+            //     GET_MAT(tensor) = svd.tensorV().block(0, 0, n, d);
+            // } else {
+            //     GET_MAT(tensor) = svd.tensorU().block(0, 0, n, d);
+            // }
+        });
+    }
+} // namespace initializer

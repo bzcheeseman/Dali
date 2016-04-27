@@ -1,6 +1,9 @@
 #ifndef DALI_MAT_MATH_TENSOROPS_H
 #define DALI_MAT_MATH_TENSOROPS_H
 
+// TODO(szymon): this file should probably die, and the specific code should
+// live closer to actual ops.
+
 #include "dali/config.h"
 
 #include <mshadow/tensor.h>
@@ -10,7 +13,6 @@
 #include "dali/array/MshadowIntegerOps.h"
 #include "dali/array/TensorFunctions.h"
 // #include "dali/array/TensorAccessor.h"
-#include "dali/array/op/impl/thrust_utils.h"
 
 
 /**

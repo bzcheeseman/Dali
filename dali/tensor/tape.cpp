@@ -1,4 +1,5 @@
-#include "Tape.h"
+#include "tape.h"
+
 #include <iostream>
 
 namespace graph {

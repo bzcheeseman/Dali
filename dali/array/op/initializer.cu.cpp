@@ -1,6 +1,8 @@
 #include "initializer.h"
 
-#include <thrust/random.h>
+#ifdef DALI_USE_CUDA
+    #include <thrust/random.h>
+#endif
 
 #include "dali/array/function/function.h"
 #include "dali/utils/random.h"

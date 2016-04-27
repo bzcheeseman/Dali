@@ -7,6 +7,7 @@
 // #include "dali/tensor/Index.h"
 // #include "dali/layers/Layers.h"
 #include "dali/tensor/tensor.h"
+#include "dali/array/op.h"
 // #include "dali/tensor/MatOps.h"
 // #include "dali/tensor/Tape.h"
 // #include "dali/tensor/Solver.h"
@@ -384,7 +385,7 @@ TEST_F(TensorTests, lazy_allocation) {
 
     // if memory must be filled with gaussian
     // noise, allocation is not lazy
-    Tensor gauss_mat({4, 5}, weights::gaussian(0.5));
+    Tensor gauss_mat({4, 5}, initializer::gaussian(0.0, 0.5));
 
     #ifdef DALI_USE_CUDA
     ASSERT_TRUE(gauss_mat.w.memory()->is_allocated(memory::Device::gpu(0)) && !gauss_mat.w.memory()->is_allocated(memory::Device::cpu()));

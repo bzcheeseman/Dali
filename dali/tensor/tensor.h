@@ -13,7 +13,6 @@
 
 #include "dali/array/array.h"
 // #include "dali/tensor/TensorOps.h"
-#include "dali/tensor/weights.h"
 // #include "dali/tensor/Tape.h"
 #include "dali/utils.h"
 
@@ -50,7 +49,7 @@ class Tensor {
         Tensor();
 
         Tensor(const std::vector<int>& shape,
-               weights::initializer_t wi,
+               AssignableArray weights_initialization,
                DType dtype_=DTYPE_FLOAT,
                memory::Device preferred_device=memory::default_preferred_device);
 

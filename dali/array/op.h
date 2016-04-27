@@ -37,6 +37,7 @@
 #else
     #include "dali/array/op/binary.h"
     #include "dali/array/op/elementwise.h"
+    #include "dali/array/op/initializer.h"
     namespace lazy {
         static bool ops_loaded = false;
     }

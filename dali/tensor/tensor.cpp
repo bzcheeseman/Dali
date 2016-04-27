@@ -1,5 +1,6 @@
 #include "dali/tensor/tensor.h"
 #include "dali/array/op.h"
+#include "dali/array/op/initializer.h"
 // #include "dali/tensor/Index.h"
 
 using std::vector;
@@ -14,18 +15,18 @@ Tensor::Tensor() {
 }
 
 Tensor::Tensor(const std::vector<int>& shape,
-       weights::initializer_t wi,
-       DType dtype_,
-       memory::Device preferred_device) :
-    w(shape,dtype_,preferred_device),
-    dw(shape,dtype_,preferred_device) {
-    wi(w);
+               AssignableArray weights_initialization,
+               DType dtype_,
+               memory::Device preferred_device) :
+        w(shape,dtype_,preferred_device),
+        dw(shape,dtype_,preferred_device) {
+    w = weights_initialization;
 }
 
 Tensor::Tensor(const std::vector<int>& shape,
        DType dtype_,
        memory::Device preferred_device) :
-   Tensor(shape,weights::zeros(),dtype_,preferred_device) {
+   Tensor(shape,initializer::zeros(),dtype_,preferred_device) {
 }
 
 Tensor::Tensor(const Tensor& other, bool copy_w, bool copy_dw) :
@@ -223,7 +224,7 @@ Tensor Tensor::empty(const std::vector<int>& shape,
     // use an empty matrix and modify
     // it so as to not incur the filling
     // with zeros cost.
-    return Tensor(shape, weights::empty(), dtype_, preferred_device);
+    return Tensor(shape, initializer::empty(), dtype_, preferred_device);
 }
 
 
@@ -476,23 +477,23 @@ Tensor Tensor::shallow_copy() {
 //
 
 Tensor Tensor::zeros_like(const Tensor& other) {
-    return Tensor(other.shape(), weights::zeros(), other.dtype(), other.preferred_device());
+    return Tensor(other.shape(), initializer::zeros(), other.dtype(), other.preferred_device());
 }
 
 Tensor Tensor::empty_like(const Tensor& other) {
-    return Tensor(other.shape(), weights::empty(), other.dtype(), other.preferred_device());
+    return Tensor(other.shape(), initializer::empty(), other.dtype(), other.preferred_device());
 }
 
 Tensor Tensor::zeros(const std::vector<int>& shape,
                      const DType& dtype,
                      const memory::Device& preferred_device) {
-    return Tensor(shape, weights::zeros(), dtype, preferred_device);
+    return Tensor(shape, initializer::zeros(), dtype, preferred_device);
 }
 
 Tensor Tensor::empty(const std::vector<int>& shape,
                      const DType& dtype,
                      const memory::Device& preferred_device) {
-    return Tensor(shape, weights::empty(), dtype, preferred_device);
+    return Tensor(shape, initializer::empty(), dtype, preferred_device);
 }
 
 

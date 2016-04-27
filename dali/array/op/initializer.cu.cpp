@@ -1,5 +1,7 @@
 #include "initializer.h"
 
+#include <thrust/random.h>
+
 #include "dali/array/function/function.h"
 #include "dali/utils/random.h"
 #include "dali/array/TensorFunctions.h"
@@ -154,9 +156,9 @@ struct UniformInitializer : public Initializer<UniformInitializer, const double&
         // about 63x faster than SampleUniform for gpu
         thrust::transform(
                 thrust::make_counting_iterator(0),
-                thrust::make_counting_iterator(0) + A.shape_.Size(),
-                to_thrust(A),
-                uniform_operator<R>(lower, upper, utils::randinteger<unsigned int>(0,999999)));
+                thrust::make_counting_iterator(0) + out.array.number_of_elements(),
+                out.to_thrust(memory::AM_OVERWRITE),
+                uniform_operator<T>(lower, upper, utils::randinteger<unsigned int>(0,999999)));
     }
 #endif
 

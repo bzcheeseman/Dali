@@ -14,14 +14,14 @@ using memory::Device;
 
 struct IsNan : public NonArrayFunction<IsNan, bool, Array> {
     template<typename T>
-    void typed_eval(bool* out, MArray<memory::DEVICE_T_CPU, T> input) {
+    void typed_eval(bool* out, TypedArray<memory::DEVICE_T_CPU, T> input) {
         int num_elts = input.array.number_of_elements();
         *out = std::isnan(std::accumulate(input.ptr(), input.ptr() + num_elts, 0.0));
     }
 
 #ifdef DALI_USE_CUDA
     template<typename T>
-    void typed_eval(bool* out, MArray<memory::DEVICE_T_GPU, T> input) {
+    void typed_eval(bool* out, TypedArray<memory::DEVICE_T_GPU, T> input) {
         int num_elts = input.array.number_of_elements();
 
         *out = std::isnan(thrust::reduce(

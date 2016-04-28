@@ -58,8 +58,8 @@ struct MshadowWrapper {
 template<int devT,typename T>
 struct MshadowWrapper<devT,T,Array> {
     static inline auto to_expr(const Array& array, memory::Device device) ->
-            decltype(MArray<devT,T>(array, device).d1()) {
-        return MArray<devT,T>(array, device).d1();
+            decltype(TypedArray<devT,T>(array, device).d1()) {
+        return TypedArray<devT,T>(array, device).d1();
     }
 };
 
@@ -109,7 +109,7 @@ struct Evaluator : public Function<Evaluator<LazyExpr>, Array, LazyExpr> {
     }
 
     template<int devT, typename T>
-    void typed_eval(MArray<devT,T> out, const LazyExpr& expr) {
+    void typed_eval(TypedArray<devT,T> out, const LazyExpr& expr) {
         debug::evaluator_calls += 1;
         out.d1(memory::AM_OVERWRITE) =
                 MshadowWrapper<devT,T,decltype(expr)>::to_expr(expr, out.device);

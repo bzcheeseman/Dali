@@ -106,7 +106,7 @@ struct Initializer : public Function<Class, Array, Args...> {
     }
 
     template<int devT, typename T>
-    void assert_spans_entire_memory(const MArray<devT,T>& out) {
+    void assert_spans_entire_memory(const TypedArray<devT,T>& out) {
         ASSERT2(out.array.spans_entire_memory(),
                 "Currently array initialization is only supported for Arrays which own entire underlying memory (are not views)");
     }
@@ -121,7 +121,7 @@ struct Initializer : public Function<Class, Array, Args...> {
 struct GaussianInitializer : public Initializer<GaussianInitializer, const double&, const double&> {
 #ifdef DALI_USE_CUDA
     template<typename T>
-    void typed_eval(MArray<memory::DEVICE_T_GPU, T> out, const double& mean, const double& std) {
+    void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out, const double& mean, const double& std) {
         assert_spans_entire_memory(out);
         thrust::transform(
                 thrust::make_counting_iterator(0),
@@ -132,13 +132,13 @@ struct GaussianInitializer : public Initializer<GaussianInitializer, const doubl
 #endif
 
     template<typename T>
-    void typed_eval(MArray<memory::DEVICE_T_CPU, T> out, const double& mean, const double& std) {
+    void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out, const double& mean, const double& std) {
         mshadow::Random<mshadow::cpu, T> generator(utils::randint(0,999999));
         auto m_out = out.d1(memory::AM_OVERWRITE);
         generator.SampleGaussian(&m_out, mean, std);
     }
 
-    void typed_eval(MArray<memory::DEVICE_T_CPU, int> out, const double& mean, const double& std) {
+    void typed_eval(TypedArray<memory::DEVICE_T_CPU, int> out, const double& mean, const double& std) {
         assert_spans_entire_memory(out);
         std::normal_distribution<double> dist(mean, std);
         auto& gen = utils::random::generator();
@@ -153,7 +153,7 @@ struct UniformInitializer : public Initializer<UniformInitializer, const double&
 
 #ifdef DALI_USE_CUDA
     template<typename T>
-    void typed_eval(MArray<memory::DEVICE_T_GPU, T> out, const double& lower, const double& upper) {
+    void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out, const double& lower, const double& upper) {
         assert_spans_entire_memory(out);
         // about 63x faster than SampleUniform for gpu
         thrust::transform(
@@ -165,13 +165,13 @@ struct UniformInitializer : public Initializer<UniformInitializer, const double&
 #endif
 
     template<typename T>
-    void typed_eval(MArray<memory::DEVICE_T_CPU, T> out, const double& lower, const double& upper) {
+    void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out, const double& lower, const double& upper) {
         mshadow::Random<mshadow::cpu, T> generator(utils::randint(0,999999));
         auto m_out = out.d1(memory::AM_OVERWRITE);
         generator.SampleUniform(&m_out, lower, upper);
     }
 
-    void typed_eval(MArray<memory::DEVICE_T_CPU, int> out, const double& lower, const double& upper) {
+    void typed_eval(TypedArray<memory::DEVICE_T_CPU, int> out, const double& lower, const double& upper) {
         assert_spans_entire_memory(out);
         // uniform_int_distribution can only tak ints as per standard
         // clang is more permissive here.
@@ -186,7 +186,7 @@ struct UniformInitializer : public Initializer<UniformInitializer, const double&
 
 struct BernoulliInitialzier : public Initializer<BernoulliInitialzier, const double&> {
     template<int devT, typename T>
-    void typed_eval(MArray<devT,T> out, const double& prob) {
+    void typed_eval(TypedArray<devT,T> out, const double& prob) {
         UniformInitializer().typed_eval(out, 0.0, 1.0);
         out.d1(memory::AM_OVERWRITE) = mshadow::expr::F<tensor_ops::op::threshold<T>>(out.d1(), prob);
     }
@@ -194,7 +194,7 @@ struct BernoulliInitialzier : public Initializer<BernoulliInitialzier, const dou
 
 struct BernoulliNormalizerInitializer : public Initializer<BernoulliNormalizerInitializer, const double&> {
     template<int devT, typename T>
-    void typed_eval(MArray<devT,T> out, const double& prob) {
+    void typed_eval(TypedArray<devT,T> out, const double& prob) {
         UniformInitializer().typed_eval(out, 0.0, 1.0);
         out.d1(memory::AM_OVERWRITE) = mshadow::expr::F<tensor_ops::op::threshold<T>>(out.d1(), prob) * (1.0 / prob);
     }
@@ -202,7 +202,7 @@ struct BernoulliNormalizerInitializer : public Initializer<BernoulliNormalizerIn
 
 struct ConstantInitializer : public Initializer<ConstantInitializer, const double&> {
     template<int devT, typename T>
-    void typed_eval(MArray<devT,T> out, const double& constant) {
+    void typed_eval(TypedArray<devT,T> out, const double& constant) {
         out.d1(memory::AM_OVERWRITE) = constant;
     }
 };

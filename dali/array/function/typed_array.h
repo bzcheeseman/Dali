@@ -11,17 +11,17 @@
 #include "dali/array/array.h"
 
 template<int devT, typename T>
-struct MArray {
+struct TypedArray {
     mutable Array array;
     memory::Device device;
     void ptr(memory::AM access_mode=memory::AM_READONLY) const;
     void d1(memory::AM access_mode=memory::AM_READONLY) const;
 
-    MArray(const Array& _array, const memory::Device& _device);
+    TypedArray(const Array& _array, const memory::Device& _device);
 };
 
 template<typename T>
-struct MArray<memory::DEVICE_T_CPU, T> {
+struct TypedArray<memory::DEVICE_T_CPU, T> {
     mutable Array array;
     memory::Device device;
 
@@ -29,12 +29,12 @@ struct MArray<memory::DEVICE_T_CPU, T> {
 
     mshadow::Tensor<mshadow::cpu, 1, T> d1(memory::AM access_mode=memory::AM_READONLY) const;
 
-    MArray(const Array& _array, const memory::Device& _device);
+    TypedArray(const Array& _array, const memory::Device& _device);
 };
 
 #ifdef DALI_USE_CUDA
     template<typename T>
-    struct MArray<memory::DEVICE_T_GPU, T> {
+    struct TypedArray<memory::DEVICE_T_GPU, T> {
         mutable Array array;
         memory::Device device;
 
@@ -44,7 +44,7 @@ struct MArray<memory::DEVICE_T_CPU, T> {
 
         mshadow::Tensor<mshadow::gpu, 1, T> d1(memory::AM access_mode=memory::AM_READONLY) const;
 
-        MArray(const Array& _array, const memory::Device& _device);
+        TypedArray(const Array& _array, const memory::Device& _device);
     };
 #endif
 #endif

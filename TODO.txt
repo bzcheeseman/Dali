@@ -28,7 +28,7 @@ LOWER_PRIORITY:
 -> Array copy constructor, which copies directly to another device.
 
 SUPER_LOW_PRIORITY:
--> expose MAX_GPUS tocmake.
+-> expose MAX_GPUS to cmake.
 
 
 

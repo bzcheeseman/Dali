@@ -10,10 +10,10 @@
 
 #include "dali/array/dtype.h"
 #include "dali/array/array.h"
-#include "dali/array/getmshadow.h"
 #include "dali/utils/print_utils.h"
 #include "dali/array/function/argument_reducer.h"
 #include "dali/array/function/property_extractor.h"
+#include "dali/array/function/typed_array.h"
 
 
 
@@ -28,8 +28,8 @@ struct ArrayWrapper {
         return sth;
     }
 
-    static inline MArray<devT,T> wrap(const Array& a, memory::Device dev) {
-        return MArray<devT,T>(a,dev);
+    static inline TypedArray<devT,T> wrap(const Array& a, memory::Device dev) {
+        return TypedArray<devT,T>(a,dev);
     }
 };
 
@@ -126,7 +126,7 @@ struct Function {
 template<template<class> class Functor>
 struct Elementwise : public Function<Elementwise<Functor>, Array, Array> {
     template<int devT, typename T>
-    void typed_eval(const MArray<devT, T>& out, const MArray<devT,T>& input) {
+    void typed_eval(const TypedArray<devT, T>& out, const TypedArray<devT,T>& input) {
         out.d1(memory::AM_OVERWRITE) = mshadow::expr::F<Functor<T>>(input.d1());
     }
 };
@@ -134,7 +134,7 @@ struct Elementwise : public Function<Elementwise<Functor>, Array, Array> {
 template<template<class> class Functor>
 struct BinaryElementwise : public Function<BinaryElementwise<Functor>, Array, Array, Array> {
     template<int devT, typename T>
-    void typed_eval(const MArray<devT, T>& out, const MArray<devT,T>& left, const MArray<devT,T>& right) {
+    void typed_eval(const TypedArray<devT, T>& out, const TypedArray<devT,T>& left, const TypedArray<devT,T>& right) {
         out.d1(memory::AM_OVERWRITE) = mshadow::expr::F<Functor<T>>(left.d1(), right.d1());
     }
 };

@@ -8,7 +8,7 @@
 #include "dali/array/dtype.h"
 #include "dali/array/memory/memory_ops.h"
 #include "dali/array/memory/synchronized_memory.h"
-#include "dali/array/lazy_op/expression.h"
+#include "dali/array/lazy/expression.h"
 #include "dali/runtime_config.h"
 
 #include "dali/utils/print_utils.h" // delete me
@@ -113,7 +113,7 @@ class Array : public Exp<Array> {
 
     /* Debugging */
     void print(std::basic_ostream<char>& stream = std::cout, int indent=0) const;
-    void debug_memory(bool print_contents=true);
+    void debug_memory(bool print_contents=true) const;
 
     /* Operations */
     void clear();

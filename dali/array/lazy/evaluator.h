@@ -1,14 +1,14 @@
-#ifndef DALI_ARRAY_LAZY_OP_EVALUATOR_H
-#define DALI_ARRAY_LAZY_OP_EVALUATOR_H
+#ifndef DALI_ARRAY_LAZY_EVALUATOR_H
+#define DALI_ARRAY_LAZY_EVALUATOR_H
 
 #include "dali/array/function/function.h"
 #include "dali/array/dtype.h"
 
 template<template<class>class Functor, typename LeftT, typename RightT>
-struct LazyBinaryElementwise;
+struct LazyBinary;
 
 template<template<class>class Functor, typename ExprT>
-struct LazyElementwise;
+struct LazyUnary;
 
 template<typename Reducer>
 struct UnfoldingReducer {
@@ -17,7 +17,7 @@ struct UnfoldingReducer {
     template<template<class>class Functor, typename LeftT, typename RightT, typename... Args>
     static outtuple_t unfold_helper(
             const outtuple_t& state,
-            const LazyBinaryElementwise<Functor, LeftT,RightT>& binary_expr,
+            const LazyBinary<Functor, LeftT,RightT>& binary_expr,
             const Args&... args) {
         return unfold_helper(state, binary_expr.left, binary_expr.right, args...);
     }
@@ -25,7 +25,7 @@ struct UnfoldingReducer {
     template<template<class>class Functor, typename ExprT, typename... Args>
     static outtuple_t unfold_helper(
             const outtuple_t& state,
-            const LazyElementwise<Functor,ExprT>& elementwise_expr,
+            const LazyUnary<Functor,ExprT>& elementwise_expr,
             const Args&... args) {
         return unfold_helper(state, elementwise_expr.expr, args...);
     }
@@ -45,7 +45,6 @@ struct UnfoldingReducer {
         return std::get<0>(unfold_helper(initial_tuple, args...));
     }
 };
-
 
 template<int devT,typename T, typename ExprT>
 struct MshadowWrapper {
@@ -94,7 +93,8 @@ struct Evaluator : public Function<Evaluator<LazyExpr>, Array, LazyExpr> {
     }
 
     static memory::Device deduce_output_device(const LazyExpr& expr) {
-        return UnfoldingReducer<DeviceReducer>::reduce(expr);
+        auto res = UnfoldingReducer<DeviceReducer>::reduce(expr);
+        return res;
     }
 
     static memory::Device deduce_computation_device(const Array& out, const LazyExpr& expr) {

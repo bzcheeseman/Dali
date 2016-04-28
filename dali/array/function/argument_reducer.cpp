@@ -7,7 +7,6 @@ std::tuple<DeviceReducer::outtype_t,DeviceReducer::state_t> DeviceReducer::reduc
         const std::tuple<DeviceReducer::outtype_t, DeviceReducer::state_t>& candidate_and_state,
         const Array& arg) {
     auto state = std::get<1>(candidate_and_state);
-
     // When state args_read <= 0, then reduction is in its first Array argument
     // while other non-Array arguments have been ignored by ReduceOverArgs<>::reduce_helper
     // [Note: output is also an Array argument]

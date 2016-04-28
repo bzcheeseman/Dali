@@ -3,14 +3,14 @@
 #include <iomanip>
 #include <gtest/gtest.h>
 
-#include "dali/array/op/elementwise.h"
+#include "dali/array/op/unary.h"
 #include "dali/array/op/binary.h"
 #include "dali/array/op/other.h"
 #include "dali/array/op/initializer.h"
 #include "dali/utils/print_utils.h"
 #include "dali/runtime_config.h"
 
-#include "dali/array/lazy_op/binary.h"
+#include "dali/array/lazy/binary.h"
 
 
 TEST(ArrayTests, slicing) {

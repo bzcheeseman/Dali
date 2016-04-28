@@ -1,15 +1,21 @@
-#include "dali/array/op/binary.h"
-#include "dali/array/function/function.h"
-#include "dali/array/TensorFunctions.h"
+#include "binary.h"
 
-typedef BinaryElementwise<tensor_ops::op::add> Plus;
-AssignableArray add(const Array& a, const Array& b) {return Plus::run(a, b);}
+#include "dali/array/lazy/binary.h"
 
-typedef BinaryElementwise<tensor_ops::op::sub> Sub;
-AssignableArray sub(const Array& a, const Array& b) {return Sub::run(a, b);}
+namespace op {
+    AssignableArray add(const Array& a, const Array& b) {
+        return lazy::add(a, b).as_assignable();
+    }
 
-typedef BinaryElementwise<tensor_ops::op::eltmul> EltMul;
-AssignableArray eltmul(const Array& a, const Array& b) {return EltMul::run(a, b);}
+    AssignableArray sub(const Array& a, const Array& b) {
+        return lazy::sub(a, b).as_assignable();
+    }
 
-typedef BinaryElementwise<tensor_ops::op::eltdiv> EltDiv;
-AssignableArray eltdiv(const Array& a, const Array& b) {return EltDiv::run(a, b);}
+    AssignableArray eltmul(const Array& a, const Array& b) {
+        return lazy::eltmul(a, b).as_assignable();
+    }
+
+    AssignableArray eltdiv(const Array& a, const Array& b) {
+        return lazy::eltdiv(a, b).as_assignable();
+    }
+}  // namespace op

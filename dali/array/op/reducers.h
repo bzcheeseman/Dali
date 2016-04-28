@@ -3,7 +3,8 @@
 
 #include "dali/array/array.h"
 
-AssignableArray sum_all(const Array& x);
-AssignableArray mean_all(const Array& x);
-
+namespace op {
+    AssignableArray sum_all(const Array& x);
+    AssignableArray mean_all(const Array& x);
+}; // namespace op
 #endif

@@ -1,15 +1,18 @@
-#ifndef DALI_ARRAY_LAZY_OP_ELEMENTWISE_H
-#define DALI_ARRAY_LAZY_OP_ELEMENTWISE_H
+#ifndef DALI_ARRAY_LAZY_UNARY_H
+#define DALI_ARRAY_LAZY_UNARY_H
+
+#include "dali/array/lazy/evaluator.h"
+#include "dali/array/TensorFunctions.h"
 
 template<template<class>class Functor, typename ExprT>
-struct LazyElementwise : public RValueExp<LazyElementwise<Functor,ExprT>> {
-    typedef LazyElementwise<Functor,ExprT> self_t;
+struct LazyUnary : public RValueExp<LazyUnary<Functor,ExprT>> {
+    typedef LazyUnary<Functor,ExprT> self_t;
 
     ExprT expr;
     std::vector<int> shape_;
     DType dtype_;
 
-    LazyElementwise(const ExprT& _expr) :
+    LazyUnary(const ExprT& _expr) :
             expr(_expr) {
         bool shape_good, dtype_good;
         std::tie(shape_good, shape_) = LazyCommonPropertyExtractor<ShapeProperty>::extract_unary(expr);
@@ -45,38 +48,38 @@ struct LazyElementwise : public RValueExp<LazyElementwise<Functor,ExprT>> {
 
 namespace lazy {
     template<template<class>class Functor, typename ExprT>
-    LazyElementwise<Functor,ExprT> F(const Exp<ExprT>& expr) {
-        return LazyElementwise<Functor,ExprT>(expr.self());
+    LazyUnary<Functor,ExprT> F(const Exp<ExprT>& expr) {
+        return LazyUnary<Functor,ExprT>(expr.self());
     }
 
     template<typename ExprT>
-    LazyElementwise<tensor_ops::op::sigmoid,ExprT> sigmoid(const Exp<ExprT>& expr) {
-        return LazyElementwise<tensor_ops::op::sigmoid,ExprT>(expr.self());
+    LazyUnary<tensor_ops::op::sigmoid,ExprT> sigmoid(const Exp<ExprT>& expr) {
+        return LazyUnary<tensor_ops::op::sigmoid,ExprT>(expr.self());
     }
 
     template<typename ExprT>
-    LazyElementwise<tensor_ops::op::tanh,ExprT> tanh(const Exp<ExprT>& expr) {
-        return LazyElementwise<tensor_ops::op::tanh,ExprT>(expr.self());
+    LazyUnary<tensor_ops::op::tanh,ExprT> tanh(const Exp<ExprT>& expr) {
+        return LazyUnary<tensor_ops::op::tanh,ExprT>(expr.self());
     }
 
     template<typename ExprT>
-    LazyElementwise<tensor_ops::op::relu,ExprT> relu(const Exp<ExprT>& expr) {
-        return LazyElementwise<tensor_ops::op::relu,ExprT>(expr.self());
+    LazyUnary<tensor_ops::op::relu,ExprT> relu(const Exp<ExprT>& expr) {
+        return LazyUnary<tensor_ops::op::relu,ExprT>(expr.self());
     }
 
     template<typename ExprT>
-    LazyElementwise<tensor_ops::op::log_or_zero,ExprT> log_or_zero(const Exp<ExprT>& expr) {
-        return LazyElementwise<tensor_ops::op::log_or_zero,ExprT>(expr.self());
+    LazyUnary<tensor_ops::op::log_or_zero,ExprT> log_or_zero(const Exp<ExprT>& expr) {
+        return LazyUnary<tensor_ops::op::log_or_zero,ExprT>(expr.self());
     }
 
     template<typename ExprT>
-    LazyElementwise<tensor_ops::op::abs,ExprT> abs(const Exp<ExprT>& expr) {
-        return LazyElementwise<tensor_ops::op::abs,ExprT>(expr.self());
+    LazyUnary<tensor_ops::op::abs,ExprT> abs(const Exp<ExprT>& expr) {
+        return LazyUnary<tensor_ops::op::abs,ExprT>(expr.self());
     }
 
     template<typename ExprT>
-    LazyElementwise<tensor_ops::op::sign,ExprT> sign(const Exp<ExprT>& expr) {
-        return LazyElementwise<tensor_ops::op::sign,ExprT>(expr.self());
+    LazyUnary<tensor_ops::op::sign,ExprT> sign(const Exp<ExprT>& expr) {
+        return LazyUnary<tensor_ops::op::sign,ExprT>(expr.self());
     }
-}
+}  // namespace lazy
 #endif

@@ -3,9 +3,10 @@
 
 #include "dali/array/array.h"
 
-AssignableArray add(const Array& left, const Array& right);
-AssignableArray sub(const Array& left, const Array& right);
-AssignableArray eltmul(const Array& left, const Array& right);
-AssignableArray eltdiv(const Array& left, const Array& right);
-
+namespace op {
+    AssignableArray add(const Array& left, const Array& right);
+    AssignableArray sub(const Array& left, const Array& right);
+    AssignableArray eltmul(const Array& left, const Array& right);
+    AssignableArray eltdiv(const Array& left, const Array& right);
+}  // namespace op
 #endif

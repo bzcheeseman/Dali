@@ -1,4 +1,4 @@
-#include "dali/array/op/elementwise.h"
+#include "other.h"
 
 #include <cmath>
 #include <iostream>
@@ -15,6 +15,7 @@ using memory::Device;
 struct IsNan : public NonArrayFunction<IsNan, bool, Array> {
     template<typename T>
     void typed_eval(bool* out, TypedArray<memory::DEVICE_T_CPU, T> input) {
+        ASSERT2(input.array.spans_entire_memory(), "At this time is_nan is not available for views");
         int num_elts = input.array.number_of_elements();
         *out = std::isnan(std::accumulate(input.ptr(), input.ptr() + num_elts, 0.0));
     }
@@ -22,6 +23,8 @@ struct IsNan : public NonArrayFunction<IsNan, bool, Array> {
 #ifdef DALI_USE_CUDA
     template<typename T>
     void typed_eval(bool* out, TypedArray<memory::DEVICE_T_GPU, T> input) {
+        ASSERT2(input.array.spans_entire_memory(), "At this time is_nan is not available for views");
+
         int num_elts = input.array.number_of_elements();
 
         *out = std::isnan(thrust::reduce(
@@ -34,6 +37,8 @@ struct IsNan : public NonArrayFunction<IsNan, bool, Array> {
 #endif
 };
 
-bool is_nan(const Array& x) { return IsNan::run(x); }
+namespace op {
+    bool is_nan(const Array& x) { return IsNan::run(x); }
+} // namespace op
 
 //TODO(jonathan,szymon): add equality tests here (abs difference, and exact equals)

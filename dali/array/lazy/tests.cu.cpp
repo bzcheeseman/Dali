@@ -99,24 +99,24 @@ TEST(ArrayLazyOpsTests, elementwise_F) {
     ASSERT_NEAR((float)y(1), 0.5, 1e-4);
 }
 
-TEST(ArrayLazyOpsTests, long_chain) {
-    Array x({2,1});
-    Array y({2,1});
-    Array z({2,1});
-
-    debug::evaluator_calls = 0;
-    auto partial = (
-        lazy::sigmoid(lazy::tanh(x)) * 2 +
-        x * y * lazy::sign(z) * 2 +
-        1 +
-        x +
-        lazy::log_or_zero(y)
-    );
-
-    ASSERT_EQ(debug::evaluator_calls, 0);
-    Array result = partial;
-    ASSERT_EQ(debug::evaluator_calls, 1);
-}
+// TEST(ArrayLazyOpsTests, long_chain) {
+//     Array x({2,1});
+//     Array y({2,1});
+//     Array z({2,1});
+//
+//     debug::evaluator_calls = 0;
+//     auto partial = (
+//         lazy::sigmoid(lazy::tanh(x)) * 2 +
+//         x * y * lazy::sign(z) * 2 +
+//         1 +
+//         x +
+//         lazy::log_or_zero(y)
+//     );
+//
+//     ASSERT_EQ(debug::evaluator_calls, 0);
+//     Array result = partial;
+//     ASSERT_EQ(debug::evaluator_calls, 1);
+// }
 
 TEST(ArrayLazyOpsTests, lazy_shape_deduction) {
     Array x({16});

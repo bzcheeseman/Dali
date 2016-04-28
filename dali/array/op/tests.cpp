@@ -7,6 +7,8 @@
 #define DALI_USE_LAZY 0
 #include "dali/array/op.h"
 
+using namespace op;
+
 TEST(ArrayOpsTests, imports) {
     ASSERT_FALSE(lazy::ops_loaded);
 }

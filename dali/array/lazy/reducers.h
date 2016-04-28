@@ -1,11 +1,7 @@
-#ifndef DALI_ARRAY_LAZY_OP_REDUCERS_H
-#define DALI_ARRAY_LAZY_OP_REDUCERS_H
+#ifndef DALI_ARRAY_LAZY_REDUCERS_H
+#define DALI_ARRAY_LAZY_REDUCERS_H
 
-template<typename OP, typename TA, typename DType, int ta>
-inline auto
-ReducerF(const mshadow::expr::Exp<TA, DType, ta> &src) -> decltype(OP::Reduce(src)) {
-    return OP::Reduce(src);
-}
+#include "dali/array/lazy/evaluator.h"
 
 template<class Functor, typename ExprT>
 struct LazyReducer : public RValueExp<LazyReducer<Functor,ExprT>> {
@@ -32,12 +28,12 @@ struct LazyReducer : public RValueExp<LazyReducer<Functor,ExprT>> {
     template<int devT,typename T>
     auto to_mshadow_expr(memory::Device device) const ->
             decltype(
-                ReducerF<Functor>(
+                Functor::reduce(
                     MshadowWrapper<devT,T,decltype(expr)>::to_expr(expr, device)
                 )
             ) {
         auto left_expr  = MshadowWrapper<devT, T, decltype(expr)>::to_expr(expr, device);
-        return ReducerF<Functor>(left_expr);
+        return Functor::reduce(left_expr);
     }
 
     AssignableArray as_assignable() const {
@@ -48,7 +44,7 @@ struct LazyReducer : public RValueExp<LazyReducer<Functor,ExprT>> {
 namespace myops {
     struct sum_all {
         template<typename T>
-        static inline auto Reduce(const T& expr) -> decltype(mshadow::expr::sum_all(expr)) {
+        static inline auto reduce(const T& expr) -> decltype(mshadow::expr::sum_all(expr)) {
             return mshadow::expr::sum_all(expr);
         }
     };
@@ -64,6 +60,6 @@ namespace lazy {
     LazyReducer<myops::sum_all, ExprT> sum_all(const Exp<ExprT>& expr) {
         return LazyReducer<myops::sum_all, ExprT>(expr.self());
     }
-}
+}  // namespace lazy
 
 #endif

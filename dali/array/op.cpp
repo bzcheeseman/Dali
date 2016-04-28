@@ -2,40 +2,40 @@
 #include "op.h"
 
 AssignableArray operator+(const Array& left, const Array& right) {
-    return add(left,right);
+    return op::add(left,right);
 }
 
 AssignableArray operator+(const Array& left, const double& right) {
-    return scalar_add(left, right);
+    return op::scalar_add(left, right);
 }
 
 Array& operator+=(Array& left, const double& right) {
-    left = scalar_add(left, right);
+    left = op::scalar_add(left, right);
     return left;
 }
 
 Array& operator+=(Array& left, const float& right) {
-    left = scalar_add(left, right);
+    left = op::scalar_add(left, right);
     return left;
 }
 
 Array& operator+=(Array& left, const int& right) {
-    left = scalar_add(left, right);
+    left = op::scalar_add(left, right);
     return left;
 }
 
 AssignableArray operator-(const Array& left, const Array& right) {
-    return sub(left,right);
+    return op::sub(left,right);
 }
 
 AssignableArray operator-(const Array& left, const double& right) {
-    return scalar_add(left, -right);
+    return op::scalar_add(left, -right);
 }
 
 AssignableArray operator*(const Array& left, const Array& right) {
-    return eltmul(left,right);
+    return op::eltmul(left,right);
 }
 
 AssignableArray operator/(const Array& left, const Array& right) {
-    return eltdiv(left,right);
+    return op::eltdiv(left,right);
 }

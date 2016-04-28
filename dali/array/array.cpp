@@ -249,12 +249,12 @@ Array Array::reshape(const vector<int>& new_shape) const {
 }
 // TODO(jonathan,szymon): add axis argument to sum + write tests
 AssignableArray Array::sum() const {
-    return sum_all(*this);
+    return op::sum_all(*this);
 }
 
 // TODO(jonathan,szymon): add axis argument to mean + write tests
 AssignableArray Array::mean() const {
-    return mean_all(*this);
+    return op::mean_all(*this);
 }
 
 
@@ -329,7 +329,7 @@ void Array::print(std::basic_ostream<char>& stream, int indent) const {
     }
 }
 
-void Array::debug_memory(bool print_contents) {
+void Array::debug_memory(bool print_contents) const {
     memory()->debug_info(std::cout, print_contents, dtype());
 }
 

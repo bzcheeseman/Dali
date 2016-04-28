@@ -3,7 +3,8 @@
 
 #include "dali/array/array.h"
 
-bool is_nan(const Array& x);
-
+namespace op {
+    bool is_nan(const Array& x);
+}
 
 #endif

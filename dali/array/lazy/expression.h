@@ -1,5 +1,5 @@
-#ifndef DALI_ARRAY_LAZY_OP_EXPRESSION
-#define DALI_ARRAY_LAZY_OP_EXPRESSION
+#ifndef DALI_ARRAY_LAZY_EXPRESSION
+#define DALI_ARRAY_LAZY_EXPRESSION
 
 // inspired by tqchen's mshadow
 

@@ -5,8 +5,9 @@
 #endif
 
 #include "dali/array/function/function.h"
-#include "dali/utils/random.h"
 #include "dali/array/TensorFunctions.h"
+#include "dali/utils/random.h"
+#include "dali/runtime_config.h"
 
 using std::vector;
 
@@ -100,9 +101,19 @@ using std::vector;
 // TODO(jonathan,szymon): merge this initializer with "fill" initializer in other.h
 template<typename Class, typename... Args>
 struct Initializer : public Function<Class, Array, Args...> {
-    static void prepare_output(Array& out, const Args&... args) {
-        ASSERT2(!out.is_stateless(),
-                "Weight initializer must only be used for an array which is not stateless");
+    static bool disable_output_shape_check; // = true;
+    static bool disable_output_dtype_check; // = true;
+
+    static DType deduce_output_dtype(const Args&... args) {
+        return DTYPE_FLOAT;
+    }
+
+    static vector<int> deduce_output_shape(const Args&... args) {
+        return {};
+    }
+
+    static memory::Device deduce_output_device(const Args&... args) {
+        return memory::default_preferred_device;
     }
 
     template<int devT, typename T>
@@ -111,6 +122,12 @@ struct Initializer : public Function<Class, Array, Args...> {
                 "Currently array initialization is only supported for Arrays which own entire underlying memory (are not views)");
     }
 };
+
+template<typename Class, typename... Args>
+bool Initializer<Class, Args...>::disable_output_shape_check = true;
+
+template<typename Class, typename... Args>
+bool Initializer<Class, Args...>::disable_output_dtype_check = true;
 
 ////////////////////////////////////////////////////////////////////////////////
 //                       INITIALIZER DEFINITIONS                              //
@@ -200,10 +217,17 @@ struct BernoulliNormalizerInitializer : public Initializer<BernoulliNormalizerIn
     }
 };
 
-struct ConstantInitializer : public Initializer<ConstantInitializer, const double&> {
+template<typename ConstT>
+struct ConstantInitializer : public Initializer<ConstantInitializer<ConstT>, const double&> {
+    static DType deduce_output_dtype(const ConstT& constant) {
+        return template_to_dtype<ConstT>();
+    }
+
+
     template<int devT, typename T>
-    void typed_eval(TypedArray<devT,T> out, const double& constant) {
-        out.d1(memory::AM_OVERWRITE) = constant;
+    void typed_eval(TypedArray<devT,T> out, const ConstT& constant) {
+        assert_dali_dtype<ConstT>();
+        out.d1(memory::AM_OVERWRITE) = (T)constant;
     }
 };
 
@@ -226,12 +250,17 @@ namespace initializer {
     }
 
     AssignableArray ones() {
-        return ConstantInitializer::run(1.0);
+        return ConstantInitializer<float>::run(1.0);
     }
 
-    AssignableArray fill(const double& constant) {
-        return ConstantInitializer::run(constant);
+    template<typename ConstT>
+    AssignableArray fill(const ConstT& constant) {
+        return ConstantInitializer<ConstT>::run(constant);
     }
+
+    template AssignableArray fill(const int&);
+    template AssignableArray fill(const float&);
+    template AssignableArray fill(const double&);
 
     AssignableArray gaussian(const double& mean, const double& std) {
         return GaussianInitializer::run(mean, std);

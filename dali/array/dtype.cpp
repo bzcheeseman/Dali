@@ -17,7 +17,6 @@ DType template_to_dtype<int>() {
     return DTYPE_INT32;
 }
 
-
 int size_of_dtype(DType dtype) {
     if (dtype == DTYPE_FLOAT) {
         return sizeof(float);

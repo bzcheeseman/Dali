@@ -7,7 +7,7 @@
 #include "dali/array/TensorFunctions.h"
 
 template<template<class>class Functor, typename LeftT, typename RightT>
-struct LazyBinary : public RValueExp<LazyBinary<Functor,LeftT,RightT>> {
+struct LazyBinary : public LazyExp<LazyBinary<Functor,LeftT,RightT>> {
     typedef LazyBinary<Functor,LeftT,RightT> self_t;
     LeftT  left;
     RightT right;

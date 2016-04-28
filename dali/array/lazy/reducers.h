@@ -4,7 +4,7 @@
 #include "dali/array/lazy/evaluator.h"
 
 template<class Functor, typename ExprT>
-struct LazyReducer : public RValueExp<LazyReducer<Functor,ExprT>> {
+struct LazyReducer : public LazyExp<LazyReducer<Functor,ExprT>> {
     typedef LazyReducer<Functor,ExprT> self_t;
 
     ExprT expr;

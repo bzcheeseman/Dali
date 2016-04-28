@@ -5,7 +5,7 @@
 #include "dali/array/TensorFunctions.h"
 
 template<template<class>class Functor, typename ExprT>
-struct LazyUnary : public RValueExp<LazyUnary<Functor,ExprT>> {
+struct LazyUnary : public LazyExp<LazyUnary<Functor,ExprT>> {
     typedef LazyUnary<Functor,ExprT> self_t;
 
     ExprT expr;

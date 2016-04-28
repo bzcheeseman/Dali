@@ -3,6 +3,9 @@
 #include "dali/array/array.h"
 #include "dali/runtime_config.h"
 
+
+
+
 std::tuple<DeviceReducer::outtype_t,DeviceReducer::state_t> DeviceReducer::reduce_step(
         const std::tuple<DeviceReducer::outtype_t, DeviceReducer::state_t>& candidate_and_state,
         const Array& arg) {

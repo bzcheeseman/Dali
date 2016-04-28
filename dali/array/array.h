@@ -56,7 +56,7 @@ class Array : public Exp<Array> {
     Array(const AssignableArray& assignable);
 
     template<typename T>
-    Array(const RValueExp<T>& expr) :
+    Array(const LazyExp<T>& expr) :
             Array(expr.as_assignable()) {
     }
 
@@ -105,7 +105,7 @@ class Array : public Exp<Array> {
     operator  T() const;
 
     template<typename T>
-    Array& operator=(const RValueExp<T>& other) {
+    Array& operator=(const LazyExp<T>& other) {
         return (*this = other.as_assignable());
     }
 

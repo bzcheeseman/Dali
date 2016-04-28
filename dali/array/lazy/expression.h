@@ -12,8 +12,14 @@ struct Exp {
     }
 };
 
+// this is used to quickly check that a class is a lazy expression
+// e.g. std::is_base_of<LazyExpType, Derived>::value
+// it is necessary, if we tried to use LazyExp directly, we would not
+// know the template argument for it.
+struct LazyExpType {};
+
 template<typename SubType>
-struct RValueExp : Exp<SubType>{
+struct LazyExp : Exp<SubType>, LazyExpType {
     virtual AssignableArray as_assignable() const = 0;
 };
 

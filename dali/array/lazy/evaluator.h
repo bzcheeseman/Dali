@@ -124,8 +124,10 @@ struct Evaluator : public Function<Evaluator<LazyExpr>, Array, LazyExpr> {
     template<int devT, typename T>
     void typed_eval(TypedArray<devT,T> out, const LazyExpr& expr) {
         debug::evaluator_calls += 1;
-        out.d1(memory::AM_OVERWRITE) =
-                MshadowWrapper<devT,T,decltype(expr)>::to_expr(expr, out.device);
+        out.d1(memory::AM_OVERWRITE) = MshadowWrapper<devT,T,decltype(expr)>::to_expr(
+            expr,
+            out.device
+        );
     }
 };
 

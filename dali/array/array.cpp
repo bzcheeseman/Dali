@@ -38,7 +38,6 @@ AssignableArray::AssignableArray(const int& constant) :
         AssignableArray(initializer::fill(constant)) {
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 //                              ARRAY STATE                                   //
 ////////////////////////////////////////////////////////////////////////////////
@@ -127,6 +126,20 @@ Array Array::zeros(const std::vector<int>& shape, DType dtype, memory::Device pr
 }
 
 Array Array::zeros_like(const Array& other) {
+    if (other.is_stateless()) {
+        return Array();
+    } else {
+        return zeros(other.shape(), other.dtype(), other.memory()->preferred_device);
+    }
+}
+
+Array Array::ones(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
+    Array ret(shape, dtype, preferred_device);
+    ret = initializer::ones();
+    return ret;
+}
+
+Array Array::ones_like(const Array& other) {
     if (other.is_stateless()) {
         return Array();
     } else {

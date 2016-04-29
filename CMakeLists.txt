@@ -231,7 +231,6 @@ if (WITH_CUDA)
 endif(WITH_CUDA)
 
 ## CPP TARGET
-include_directories(${DaliHeaders})
 add_library(dali ${MAYBE_SHARED} ${DaliSources} ${DaliHeaders})
 
 target_link_libraries(dali ${ZLIB_LIBRARIES}

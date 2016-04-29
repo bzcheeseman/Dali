@@ -31,7 +31,6 @@ struct LazyReducer : public LazyExp<LazyReducer<Functor,ExprT>> {
             ) {
         auto left_expr  = MshadowWrapper<devT, T, decltype(expr)>::to_expr(expr, device);
         auto ret = Functor::reduce(left_expr);
-        ELOG(ret.self().src_.real_self().src_.dptr_);
         return ret;
 
     }

@@ -1,8 +1,10 @@
 #include <gtest/gtest.h>
 
+
+#include "dali/array/function/lazy_evaluator.h"
+#include "dali/runtime_config.h"
 #include "dali/utils/print_utils.h"
 
-#include "dali/runtime_config.h"
 
 #define DALI_USE_LAZY 1
 #include "dali/array/op.h"
@@ -25,26 +27,26 @@ TEST(ArrayLazyOpsTests, lazy_device_deduction) {
 
     // if everybody prefers the same device, return it.
     auto fake_expression = fake(0) * fake(0) + fake(0) + 1;
-    EXPECT_EQ(Evaluator<decltype(fake_expression)>::deduce_computation_device(fake(0), fake_expression), memory::Device::fake(0));
+    EXPECT_EQ(LazyEvaluator<decltype(fake_expression)>::deduce_computation_device(fake(0), fake_expression), memory::Device::fake(0));
 
     // if everybody prefers the same device, return it.
     auto fake_expression2 = fake(4) * fake(4) + fake(4) + 1;
-    EXPECT_EQ(Evaluator<decltype(fake_expression2)>::deduce_computation_device(fake(4), fake_expression2), memory::Device::fake(4));
+    EXPECT_EQ(LazyEvaluator<decltype(fake_expression2)>::deduce_computation_device(fake(4), fake_expression2), memory::Device::fake(4));
 
     memory::WithDevicePreference device_prefence(memory::Device::fake(6));
 
     // if everybody prefereces differ fall back to default_preferred_device
     auto fake_expression3 = fake(2) * fake(4) + fake(5) + 1;
-    EXPECT_EQ(Evaluator<decltype(fake_expression3)>::deduce_computation_device(fake(4), fake_expression3), memory::Device::fake(6));
+    EXPECT_EQ(LazyEvaluator<decltype(fake_expression3)>::deduce_computation_device(fake(4), fake_expression3), memory::Device::fake(6));
 
     // if the memory was not allocated yet and we have a single argument we fall back to preffered device
-    EXPECT_EQ(Evaluator<int>::deduce_computation_device(fake(1), 16), memory::Device::fake(1));
+    EXPECT_EQ(LazyEvaluator<int>::deduce_computation_device(fake(1), 16), memory::Device::fake(1));
 
     memory::debug::fake_device_memories[10].fresh = true;
 
 
 
-    EXPECT_EQ(Evaluator<int>::deduce_computation_device(fake(1), 16), memory::Device::fake(10));
+    EXPECT_EQ(LazyEvaluator<int>::deduce_computation_device(fake(1), 16), memory::Device::fake(10));
     memory::debug::fake_device_memories[10].fresh = false;
 
     memory::debug::enable_fake_devices = false;
@@ -104,7 +106,7 @@ TEST(ArrayLazyOpsTests, long_chain) {
     Array y({2,1});
     Array z({2,1});
 
-    debug::evaluator_calls = 0;
+    debug::lazy_evaluator_calls = 0;
     auto partial = (
         lazy::sigmoid(lazy::tanh(x)) * 2 +
         x * y * lazy::sign(z) * 2 +
@@ -113,9 +115,9 @@ TEST(ArrayLazyOpsTests, long_chain) {
         lazy::log_or_zero(y)
     );
 
-    ASSERT_EQ(debug::evaluator_calls, 0);
+    ASSERT_EQ(debug::lazy_evaluator_calls, 0);
     Array result = partial;
-    ASSERT_EQ(debug::evaluator_calls, 1);
+    ASSERT_EQ(debug::lazy_evaluator_calls, 1);
 }
 
 TEST(ArrayLazyOpsTests, sum_all) {

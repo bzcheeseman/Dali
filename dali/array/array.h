@@ -4,11 +4,11 @@
 #include <memory>
 #include <vector>
 
-#include "dali/array/memory/device.h"
 #include "dali/array/dtype.h"
+#include "dali/array/function/expression.h"
+#include "dali/array/memory/device.h"
 #include "dali/array/memory/memory_ops.h"
 #include "dali/array/memory/synchronized_memory.h"
-#include "dali/array/lazy/expression.h"
 #include "dali/runtime_config.h"
 
 #include "dali/utils/print_utils.h" // delete me

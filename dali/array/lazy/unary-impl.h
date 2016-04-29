@@ -1,4 +1,6 @@
-#include "dali/array/lazy/evaluator.h"
+#include "dali/array/function/expression.h"
+#include "dali/array/function/lazy_evaluator.h"
+#include "dali/array/function/args/mshadow_wrapper.h"
 #include "dali/array/TensorFunctions.h"
 
 template<template<class>class Functor, typename ExprT>
@@ -30,15 +32,15 @@ struct LazyUnary : public LazyExp<LazyUnary<Functor,ExprT>> {
     auto to_mshadow_expr(memory::Device device) const ->
             decltype(
                 mshadow::expr::F<Functor<T>>(
-                     MshadowWrapper<devT,T,decltype(expr)>::to_expr(expr, device)
+                     MshadowWrapper<devT,T,decltype(expr)>::wrap(expr, device)
                 )
             ) {
-        auto left_expr  = MshadowWrapper<devT,T,decltype(expr)>::to_expr(expr,  device);
+        auto left_expr  = MshadowWrapper<devT,T,decltype(expr)>::wrap(expr,  device);
         return mshadow::expr::F<Functor<T>>(left_expr);
     }
 
     AssignableArray as_assignable() const {
-        return Evaluator<self_t>::run(*this);
+        return LazyEvaluator<self_t>::run(*this);
     }
 };
 

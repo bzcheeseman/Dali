@@ -1,4 +1,6 @@
-#include "dali/array/lazy/evaluator.h"
+#include "dali/array/function/args/mshadow_wrapper.h"
+#include "dali/array/function/expression.h"
+#include "dali/array/function/lazy_evaluator.h"
 
 template<class Functor, typename ExprT>
 struct LazyReducer : public LazyExp<LazyReducer<Functor,ExprT>> {
@@ -26,17 +28,17 @@ struct LazyReducer : public LazyExp<LazyReducer<Functor,ExprT>> {
     auto to_mshadow_expr(memory::Device device) const ->
             decltype(
                 Functor::reduce(
-                    MshadowWrapper<devT,T,decltype(expr)>::to_expr(expr, device)
+                    MshadowWrapper<devT,T,decltype(expr)>::wrap(expr, device)
                 )
             ) {
-        auto left_expr  = MshadowWrapper<devT, T, decltype(expr)>::to_expr(expr, device);
+        auto left_expr  = MshadowWrapper<devT, T, decltype(expr)>::wrap(expr, device);
         auto ret = Functor::reduce(left_expr);
         return ret;
 
     }
 
     AssignableArray as_assignable() const {
-        auto res = Evaluator<self_t>::run(*this);
+        auto res = LazyEvaluator<self_t>::run(*this);
         return res;
     }
 };

@@ -72,6 +72,8 @@ class Array : public Exp<Array> {
     // true if Array's contents conver entirety of underlying
     // memory (as opposed to offset memory, strided memory etc.).
     bool spans_entire_memory() const;
+    bool contiguous_memory() const;
+
     void initialize(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
     Array& reset();
 

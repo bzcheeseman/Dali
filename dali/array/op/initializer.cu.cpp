@@ -117,9 +117,9 @@ struct Initializer : public Function<Class, Array, Args...> {
     }
 
     template<int devT, typename T>
-    void assert_spans_entire_memory(const TypedArray<devT,T>& out) {
-        ASSERT2(out.array.spans_entire_memory(),
-                "Currently array initialization is only supported for Arrays which own entire underlying memory (are not views)");
+    void assert_contiguous_memory(const TypedArray<devT,T>& out) {
+        ASSERT2(out.array.contiguous_memory(),
+                "Currently array initialization is only supported for Arrays are contiguous view of underlying memory (no striding)");
     }
 };
 
@@ -139,7 +139,7 @@ struct GaussianInitializer : public Initializer<GaussianInitializer, const doubl
 #ifdef DALI_USE_CUDA
     template<typename T>
     void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out, const double& mean, const double& std) {
-        assert_spans_entire_memory(out);
+        assert_contiguous_memory(out);
         thrust::transform(
                 thrust::make_counting_iterator(0),
                 thrust::make_counting_iterator(0) + out.array.number_of_elements(),
@@ -156,7 +156,7 @@ struct GaussianInitializer : public Initializer<GaussianInitializer, const doubl
     }
 
     void typed_eval(TypedArray<memory::DEVICE_T_CPU, int> out, const double& mean, const double& std) {
-        assert_spans_entire_memory(out);
+        assert_contiguous_memory(out);
         std::normal_distribution<double> dist(mean, std);
         auto& gen = utils::random::generator();
         auto ptr = out.ptr(memory::AM_OVERWRITE);
@@ -171,7 +171,7 @@ struct UniformInitializer : public Initializer<UniformInitializer, const double&
 #ifdef DALI_USE_CUDA
     template<typename T>
     void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out, const double& lower, const double& upper) {
-        assert_spans_entire_memory(out);
+        assert_contiguous_memory(out);
         // about 63x faster than SampleUniform for gpu
         thrust::transform(
                 thrust::make_counting_iterator(0),
@@ -189,7 +189,7 @@ struct UniformInitializer : public Initializer<UniformInitializer, const double&
     }
 
     void typed_eval(TypedArray<memory::DEVICE_T_CPU, int> out, const double& lower, const double& upper) {
-        assert_spans_entire_memory(out);
+        assert_contiguous_memory(out);
         // uniform_int_distribution can only tak ints as per standard
         // clang is more permissive here.
         std::uniform_int_distribution<int> dist(lower, upper);

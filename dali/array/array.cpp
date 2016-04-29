@@ -157,6 +157,13 @@ bool Array::spans_entire_memory() const {
            number_of_elements() * size_of_dtype(dtype()) == memory()->total_memory;
 }
 
+bool Array::contiguous_memory() const {
+    ASSERT2(!is_stateless(), "contiguous_memory must not be called with stateless Array.");
+
+    // This function will come in handy once we add striding!
+    return true;
+}
+
 void Array::initialize(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
     int number_of_elements = hypercube_volume(shape);
 

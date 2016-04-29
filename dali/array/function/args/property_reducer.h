@@ -12,9 +12,43 @@
 
 class Array;
 
-// for extracting properties like shape or dtype
 template<typename Property>
 struct PropertyEqualForAllArgsReducer {
+    typedef typename Property::property_t outtype_t;
+    typedef bool state_t;
+
+    static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const float& arg) {
+        return candidate_and_state;
+    }
+
+    static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const double& arg) {
+        return candidate_and_state;
+    }
+
+    static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const int& arg) {
+        return candidate_and_state;
+    }
+
+    template<typename T>
+    static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const T& arg) {
+        outtype_t candidate;
+        bool ready;
+        auto arg_property = Property::extract(arg);
+        std::tie(candidate, ready) = candidate_and_state;
+        if (ready) {
+            ASSERT2(candidate == arg_property, utils::MS() << "All arguments should be of the same " << Property::name << " (MISMATCH between "
+                                                          << candidate << " and " << arg_property << ")");
+            return candidate_and_state;
+        } else {
+            return std::make_tuple(arg_property, true);
+        }
+    }
+};
+
+
+// for extracting properties like shape or dtype
+template<typename Property>
+struct PropertyEqualForAllArrayArgsReducer {
     typedef typename Property::property_t outtype_t;
     typedef bool state_t;
 
@@ -39,48 +73,6 @@ struct PropertyEqualForAllArgsReducer {
 };
 
 
-template<typename Property>
-struct LazyCommonPropertyExtractor {
-    typedef typename Property::property_t property_t;
-
-    template<typename T>
-    static std::tuple<bool,property_t> extract_unary(const T& x) {
-        return std::make_tuple(true, Property::extract(x));
-    }
-    static std::tuple<bool,property_t> extract_unary(const float& x) {
-        return std::make_tuple(false, property_t());
-    }
-    static std::tuple<bool,property_t> extract_unary(const double& x) {
-        return std::make_tuple(false, property_t());
-    }
-    static std::tuple<bool,property_t> extract_unary(const int& x) {
-        return std::make_tuple(false, property_t());
-    }
-
-    template<typename T, typename T2>
-    static std::tuple<bool,property_t> extract_binary(const T& left, const T2& right) {
-        bool left_matters, right_matters;
-        property_t left_property, right_property;
-        std::tie(left_matters, left_property)   = extract_unary(left);
-        std::tie(right_matters, right_property) = extract_unary(right);
-
-        ASSERT2(left_matters || right_matters,
-                utils::MS() << "deduce_binary called with two " << Property::name << "less entities.");
-
-        if (left_matters) {
-            if (right_matters) {
-                ASSERT2(left_property == right_property,
-                    utils::MS() << "Expressions of inconsistent " << Property::name << " passed to binary expression (" << left_property << " VS " << right_property <<  ")");
-            }
-            return std::make_tuple(true,left_property);
-        } else if (right_matters) {
-            return std::make_tuple(true,right_property);
-        }
-        return std::make_tuple(false, property_t());
-    }
-
-};
-
 struct ShapeProperty {
     typedef std::vector<int> property_t;
     static std::string name;
@@ -102,7 +94,10 @@ struct DTypeProperty {
 };
 
 typedef PropertyEqualForAllArgsReducer<DTypeProperty> DTypeEqualForAllArgsReducer;
-typedef PropertyEqualForAllArgsReducer<DTypeProperty> ShapeEqualForAllArgsReducer;
+typedef PropertyEqualForAllArgsReducer<ShapeProperty> ShapeEqualForAllArgsReducer;
+
+typedef PropertyEqualForAllArrayArgsReducer<DTypeProperty> DTypeEqualForAllArrayArgsReducer;
+typedef PropertyEqualForAllArrayArgsReducer<ShapeProperty> ShapeEqualForAllArrayArgsReducer;
 
 struct DeviceReducerState {
     int args_read;

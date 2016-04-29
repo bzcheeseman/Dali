@@ -52,11 +52,11 @@ struct Function {
     static const bool disable_output_dtype_check = false;
 
     static std::vector<int> deduce_output_shape(const Args&... args) {
-        return ReduceOverArgs<ShapeEqualForAllArgsReducer>::reduce(args...);
+        return ReduceOverArgs<ShapeEqualForAllArrayArgsReducer>::reduce(args...);
     }
 
     static DType deduce_output_dtype(const Args&... args) {
-        return ReduceOverArgs<ShapeEqualForAllArgsReducer>::reduce(args...);
+        return ReduceOverArgs<DTypeEqualForAllArrayArgsReducer>::reduce(args...);
     }
 
     static memory::Device deduce_output_device(const Args&... args) {
@@ -68,7 +68,7 @@ struct Function {
     }
 
     static DType deduce_computation_dtype(const Outtype& out, const Args&... args) {
-        return ReduceOverArgs<ShapeEqualForAllArgsReducer>::reduce(out, args...);
+        return ReduceOverArgs<DTypeEqualForAllArrayArgsReducer>::reduce(out, args...);
     }
 
     static void prepare_output(Outtype& out, const Args&... args) {

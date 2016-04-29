@@ -1,27 +1,14 @@
 #include "dali/array/function/args/mshadow_wrapper.h"
-#include "dali/array/function/expression.h"
-#include "dali/array/function/lazy_evaluator.h"
+#include "dali/array/function/lazy_function.h"
 
 template<class Functor, typename ExprT>
-struct LazyReducer : public LazyExp<LazyReducer<Functor,ExprT>> {
-    typedef LazyReducer<Functor,ExprT> self_t;
-
+struct LazyReducer : public LazyFunction<LazyReducer<Functor,ExprT>, ExprT> {
     ExprT expr;
-    std::vector<int> shape_;
-    DType dtype_;
 
-    LazyReducer(const ExprT& _expr) : expr(_expr), shape_({}) {
-        bool dtype_good;
-        std::tie(dtype_good, dtype_) = LazyCommonPropertyExtractor<DTypeProperty>::extract_unary(expr);
-        ASSERT2(dtype_good, "LazyReducer function called on dtypeless expression.");
-    }
-
-    const std::vector<int>& shape() const {
-        return shape_;
-    }
-
-    const DType& dtype() const {
-        return dtype_;
+    LazyReducer(const ExprT& expr_) :
+            LazyFunction<LazyReducer<Functor,ExprT>, ExprT>(expr_),
+            expr(expr_) {
+        this->shape_ = {};
     }
 
     template<int devT,typename T>
@@ -35,11 +22,6 @@ struct LazyReducer : public LazyExp<LazyReducer<Functor,ExprT>> {
         auto ret = Functor::reduce(left_expr);
         return ret;
 
-    }
-
-    AssignableArray as_assignable() const {
-        auto res = LazyEvaluator<self_t>::run(*this);
-        return res;
     }
 };
 

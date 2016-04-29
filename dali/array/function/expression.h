@@ -2,7 +2,6 @@
 #define DALI_ARRAY_LAZY_EXPRESSION
 
 // inspired by tqchen's mshadow
-
 class AssignableArray;
 
 template<typename SubType>

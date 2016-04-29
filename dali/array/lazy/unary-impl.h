@@ -1,31 +1,13 @@
-#include "dali/array/function/expression.h"
-#include "dali/array/function/lazy_evaluator.h"
+#include "dali/array/function/lazy_function.h"
 #include "dali/array/function/args/mshadow_wrapper.h"
 #include "dali/array/TensorFunctions.h"
 
 template<template<class>class Functor, typename ExprT>
-struct LazyUnary : public LazyExp<LazyUnary<Functor,ExprT>> {
-    typedef LazyUnary<Functor,ExprT> self_t;
-
+struct LazyUnary : public LazyFunction<LazyUnary<Functor,ExprT>, ExprT> {
     ExprT expr;
-    std::vector<int> shape_;
-    DType dtype_;
 
-    LazyUnary(const ExprT& _expr) :
-            expr(_expr) {
-        bool shape_good, dtype_good;
-        std::tie(shape_good, shape_) = LazyCommonPropertyExtractor<ShapeProperty>::extract_unary(expr);
-        std::tie(dtype_good, dtype_) = LazyCommonPropertyExtractor<DTypeProperty>::extract_unary(expr);
-        ASSERT2(shape_good, "Elementwise function called on shapeless expression.");
-        ASSERT2(dtype_good, "Elementwise function called on dtypeless expression.");
-    }
-
-    const std::vector<int>& shape() const {
-        return shape_;
-    }
-
-    const DType& dtype() const {
-        return dtype_;
+    LazyUnary(ExprT expr_) : LazyFunction<LazyUnary<Functor,ExprT>, ExprT>(expr_),
+                             expr(expr_) {
     }
 
     template<int devT,typename T>
@@ -37,10 +19,6 @@ struct LazyUnary : public LazyExp<LazyUnary<Functor,ExprT>> {
             ) {
         auto left_expr  = MshadowWrapper<devT,T,decltype(expr)>::wrap(expr,  device);
         return mshadow::expr::F<Functor<T>>(left_expr);
-    }
-
-    AssignableArray as_assignable() const {
-        return LazyEvaluator<self_t>::run(*this);
     }
 };
 

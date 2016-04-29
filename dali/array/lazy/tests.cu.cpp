@@ -150,22 +150,3 @@ TEST(ArrayLazyOpsTests, lazy_shape_deduction) {
     Array q2({14, 5});
     EXPECT_THROW(q2 = x * (y * z), std::runtime_error);
 }
-
-TEST(ArrayLazyOpsTests, sum_all) {
-    auto z = Array::zeros({2,4}, DTYPE_FLOAT);
-    z = 1;
-
-    ELOG(z.preferred_device().description());
-
-    z.print();
-
-    Array z_sum = lazy::sum_all(z);
-
-    ELOG(z_sum.preferred_device().description());
-    z_sum.debug_memory();
-
-    std::cout << "hello" << std::endl;
-
-    // ASSERT_NEAR((float)z_sum, 8.0, 1e-7);
-}
-

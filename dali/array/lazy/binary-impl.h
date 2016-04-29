@@ -1,4 +1,4 @@
-#include "dali/array/function/property_extractor.h"
+#include "dali/array/function/args/property_reducer.h"
 #include "dali/array/lazy/expression.h"
 #include "dali/array/lazy/evaluator.h"
 #include "dali/array/TensorFunctions.h"

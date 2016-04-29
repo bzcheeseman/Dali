@@ -11,8 +11,8 @@
 #include "dali/array/dtype.h"
 #include "dali/array/array.h"
 #include "dali/utils/print_utils.h"
-#include "dali/array/function/argument_reducer.h"
-#include "dali/array/function/property_extractor.h"
+#include "dali/array/function/args/reduce_over_args.h"
+#include "dali/array/function/args/property_reducer.h"
 #include "dali/array/function/typed_array.h"
 
 
@@ -52,11 +52,11 @@ struct Function {
     static const bool disable_output_dtype_check = false;
 
     static std::vector<int> deduce_output_shape(const Args&... args) {
-        return ReduceOverArgs<CommonPropertyExtractor<ShapeProperty>>::reduce(args...);
+        return ReduceOverArgs<ShapeEqualForAllArgsReducer>::reduce(args...);
     }
 
     static DType deduce_output_dtype(const Args&... args) {
-        return ReduceOverArgs<CommonPropertyExtractor<DTypeProperty>>::reduce(args...);
+        return ReduceOverArgs<ShapeEqualForAllArgsReducer>::reduce(args...);
     }
 
     static memory::Device deduce_output_device(const Args&... args) {
@@ -68,7 +68,7 @@ struct Function {
     }
 
     static DType deduce_computation_dtype(const Outtype& out, const Args&... args) {
-        return ReduceOverArgs<CommonPropertyExtractor<DTypeProperty>>::reduce(out, args...);
+        return ReduceOverArgs<ShapeEqualForAllArgsReducer>::reduce(out, args...);
     }
 
     static void prepare_output(Outtype& out, const Args&... args) {

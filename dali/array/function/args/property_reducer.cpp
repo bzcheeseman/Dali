@@ -1,9 +1,10 @@
-#include "argument_reducer.h"
+#include "property_reducer.h"
 
 #include "dali/array/array.h"
 #include "dali/runtime_config.h"
 
-
+std::string ShapeProperty::name = "shape";
+std::string DTypeProperty::name = "dtype";
 
 
 std::tuple<DeviceReducer::outtype_t,DeviceReducer::state_t> DeviceReducer::reduce_step(

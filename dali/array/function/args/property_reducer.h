@@ -1,5 +1,5 @@
-#ifndef DALI_ARRAY_FUNCTION_PROPERTY_EXTRACTOR_H
-#define DALI_ARRAY_FUNCTION_PROPERTY_EXTRACTOR_H
+#ifndef DALI_ARRAY_FUNCTION_ARGS_PROPERTY_REDUCER_H
+#define DALI_ARRAY_FUNCTION_ARGS_PROPERTY_REDUCER_H
 
 #include <string>
 #include <tuple>
@@ -8,11 +8,13 @@
 #include "dali/array/dtype.h"
 #include "dali/utils/assert2.h"
 #include "dali/utils/print_utils.h"
+#include "dali/array/memory/device.h"
 
 class Array;
 
+// for extracting properties like shape or dtype
 template<typename Property>
-struct CommonPropertyExtractor {
+struct PropertyEqualForAllArgsReducer {
     typedef typename Property::property_t outtype_t;
     typedef bool state_t;
 
@@ -97,6 +99,29 @@ struct DTypeProperty {
     static property_t extract(const T& x) {
         return x.dtype();
     }
+};
+
+typedef PropertyEqualForAllArgsReducer<DTypeProperty> DTypeEqualForAllArgsReducer;
+typedef PropertyEqualForAllArgsReducer<DTypeProperty> ShapeEqualForAllArgsReducer;
+
+struct DeviceReducerState {
+    int args_read;
+    memory::Device common_preferred_device;
+};
+
+struct DeviceReducer {
+    // Finds best device to run computation on
+    // based on the availability, freshness, preference, and position
+    // of the Array arguments in a function call.
+    typedef memory::Device outtype_t;
+    typedef DeviceReducerState state_t;
+
+    template<typename T>
+    static std::tuple<outtype_t, state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const T& elem) {
+        return candidate_and_state;
+    }
+
+    static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const Array& arg);
 };
 
 #endif

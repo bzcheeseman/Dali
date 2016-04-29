@@ -32,8 +32,12 @@ struct LazyReducer : public LazyExp<LazyReducer<Functor,ExprT>> {
                     MshadowWrapper<devT,T,decltype(expr)>::to_expr(expr, device)
                 )
             ) {
-        auto left_expr  = MshadowWrapper<devT, T, decltype(expr)>::to_expr(expr, device);
-        return Functor::reduce(left_expr);
+        return Functor::reduce(
+            MshadowWrapper<devT, T, decltype(expr)>::to_expr(
+                expr,
+                device
+            )
+        );
     }
 
     AssignableArray as_assignable() const {

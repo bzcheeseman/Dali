@@ -18,11 +18,11 @@ struct LazyFunction : public LazyExp<Class> {
             dtype_(Class::lazy_output_dtype(args...)) {
     }
 
-    static std::vector<int> lazy_output_shape(Args... args) {
+    static std::vector<int> lazy_output_shape(const Args&... args) {
         return ReduceOverArgs<ShapeEqualForAllArgsReducer>::reduce(args...);
     }
 
-    static DType lazy_output_dtype(Args... args) {
+    static DType lazy_output_dtype(const Args&... args) {
         return ReduceOverArgs<DTypeEqualForAllArgsReducer>::reduce(args...);
     }
 

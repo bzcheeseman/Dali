@@ -1,3 +1,5 @@
+#include <vector>
+
 #include "dali/array/function/args/mshadow_wrapper.h"
 #include "dali/array/function/lazy_function.h"
 
@@ -5,10 +7,13 @@ template<class Functor, typename ExprT>
 struct LazyReducer : public LazyFunction<LazyReducer<Functor,ExprT>, ExprT> {
     ExprT expr;
 
+    static std::vector<int> lazy_output_shape(const ExprT&) {
+        return {};
+    }
+
     LazyReducer(const ExprT& expr_) :
             LazyFunction<LazyReducer<Functor,ExprT>, ExprT>(expr_),
             expr(expr_) {
-        this->shape_ = {};
     }
 
     template<int devT,typename T>

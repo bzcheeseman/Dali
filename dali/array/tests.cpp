@@ -12,6 +12,7 @@
 
 #include "dali/array/lazy/binary.h"
 
+using std::vector;
 
 TEST(ArrayTests, slicing) {
     Array x({12});
@@ -103,4 +104,25 @@ TEST(ArrayTests, spans_entire_memory) {
 
     auto suby = y[0];
     ASSERT_TRUE(suby.spans_entire_memory());
+}
+
+TEST(ArrayTests, dim_pluck) {
+    Array x({2,3,4}, DTYPE_INT32);
+    x = initializer::arange();
+    EXPECT_TRUE(x.contiguous_memory());
+
+    auto x_plucked = x.dim_pluck(0, 1);
+    EXPECT_EQ(x_plucked.shape(),   vector<int>({3, 4}));
+    EXPECT_EQ(x_plucked.offset(),  12    );
+    EXPECT_EQ(x_plucked.strides(), vector<int>({}));
+
+    auto x_plucked2 = x.dim_pluck(1, 2);
+    EXPECT_EQ(x_plucked2.shape(),   vector<int>({2, 4}));
+    EXPECT_EQ(x_plucked2.offset(),   8    );
+    EXPECT_EQ(x_plucked2.strides(), vector<int>({3, 1}));
+
+    auto x_plucked3 = x.dim_pluck(2, 1);
+    EXPECT_EQ(x_plucked3.shape(),   vector<int>({2, 3}));
+    EXPECT_EQ(x_plucked3.offset(),  1);
+    EXPECT_EQ(x_plucked3.strides(), vector<int>({1, 4}));
 }

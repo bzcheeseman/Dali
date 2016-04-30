@@ -292,6 +292,49 @@ Array Array::reshape(const vector<int>& new_shape) const {
                  vector<int>(),
                  state->dtype);
 }
+
+Array Array::dim_pluck(int pluck_dim, int pluck_idx) const {
+    ASSERT2(contiguous_memory(),
+            "at the moment double striding is not supported.");
+    ASSERT2(pluck_dim < shape().size(),
+            utils::MS() << "dim_pluck dimension (" << pluck_dim << ") must be less the dimensionality of plucked tensor (" << shape().size() << ")");
+    ASSERT2(pluck_idx < shape()[pluck_dim],
+            utils::MS() << "dim_pluck index (" << pluck_idx << ") must be less than the size of corresponding tensor dimension (" << shape()[pluck_dim] << ").");
+
+    // TODO(szymon): in fact this guy should use more general striding!
+    // just make sure that remove all the ones at the end.
+    if (pluck_dim == 0) {
+        return (*this)[pluck_idx];
+    }
+
+    vector<int> new_shape;
+    for (int i = 0; i < shape().size(); ++i) {
+        if (i == pluck_dim)
+            continue;
+        new_shape.push_back(shape()[i]);
+    }
+
+    vector<int> new_strides(shape().size() - 1);
+    for (int dim = 0; dim < new_strides.size(); ++dim)
+        new_strides[dim] = 1;
+
+    if (pluck_dim > 0) {
+        new_strides[pluck_dim - 1] = shape()[pluck_dim];
+    }
+
+    int pluck_dim_jump = 1;
+    for (int dim = pluck_dim + 1; dim < shape().size(); ++dim) {
+        pluck_dim_jump *= shape()[dim];
+    }
+    int new_offset = offset() + pluck_dim_jump * pluck_idx;
+
+    return Array(new_shape,
+                 state->memory,
+                 new_offset,
+                 new_strides,
+                 state->dtype);
+}
+
 // TODO(jonathan,szymon): add axis argument to sum + write tests
 AssignableArray Array::sum() const {
     return op::sum_all(*this);

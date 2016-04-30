@@ -11,8 +11,6 @@
 #include "dali/array/memory/synchronized_memory.h"
 #include "dali/runtime_config.h"
 
-#include "dali/utils/print_utils.h" // delete me
-
 class Array;
 
 struct AssignableArray {
@@ -105,6 +103,8 @@ class Array : public Exp<Array> {
     Array operator()(index_t idx) const;
     Array ravel() const;
     Array reshape(const std::vector<int>& shape) const;
+    // TODO(szymon): look up what it's called in tensorflow/numpy and rename.
+    Array dim_pluck(int dim, int idx) const;
 
     AssignableArray sum() const;
     AssignableArray mean() const;

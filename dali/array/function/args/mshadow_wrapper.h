@@ -11,7 +11,14 @@
 //                                   ---                                      //
 //  This expression is used to inject Dali striding information to mshadow    //
 //  expression processor                                                      //
+//  TODO(szymon): make this code more efficient:                              //
+//     -> On CPU code is evaluated serially, so we can replace modulos with   //
+//        if statements => MAD_EFFICIENT                                      //
+//     -> On GPU we need to make sure that strides and shapes are in the      //
+//        lowest level of cache possible. I think __shared__ needs to be used //
+//        but injecting this into mshadow might cause insanity                //
 ////////////////////////////////////////////////////////////////////////////////
+
 
 template<typename SrcExp, typename DType, int srcdim>
 struct DaliWrapperExp: public mshadow::expr::MakeTensorExp<

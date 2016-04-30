@@ -92,3 +92,18 @@ TEST(ArrayOpsTests, chainable) {
     // every stage.
     Array y = tanh(relu(sigmoid(x)));
 }
+
+TEST(ArrayOpsTests, arange) {
+    Array x_float({2,3,3}, DTYPE_FLOAT);
+    x_float = initializer::arange();
+
+    Array x_double({2,3,3}, DTYPE_DOUBLE);
+    x_double = initializer::arange();
+
+    Array x_int({2,3,3}, DTYPE_INT32);
+    x_int = initializer::arange();
+
+    ASSERT_NEAR((float)(Array)x_float.sum(),  153, 1e-4);
+    ASSERT_NEAR((double)(Array)x_double.sum(), 153, 1e-4);
+    ASSERT_EQ(  (int)(Array)x_int.sum(),    153);
+}

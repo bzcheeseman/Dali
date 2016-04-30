@@ -12,6 +12,7 @@ namespace initializer {
     AssignableArray empty();
     AssignableArray zeros();
     AssignableArray ones();
+    AssignableArray arange();
     template<typename T>
     AssignableArray fill(const T& constant);
 

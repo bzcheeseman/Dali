@@ -86,7 +86,7 @@ using std::vector;
 
     template<int ndims, typename R, template <typename,int,typename> class tensor_t>
     void uniform(tensor_t<mshadow::gpu, ndims, R> A, const double& lower, const double& upper) {
-
+        ASSERT2(false, "I should never be called?");
     }
 #endif
 
@@ -201,6 +201,29 @@ struct UniformInitializer : public Initializer<UniformInitializer, const double&
     }
 };
 
+struct ArangeInitializer : public Initializer<ArangeInitializer> {
+
+#ifdef DALI_USE_CUDA
+    template<typename T>
+    void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out) {
+        assert_contiguous_memory(out);
+
+        auto cnt_iter = thrust::make_counting_iterator(0);
+        thrust::copy(cnt_iter,
+                     cnt_iter + out.array.number_of_elements(),
+                     out.to_thrust(memory::AM_OVERWRITE));
+    }
+#endif
+
+    template<typename T>
+    void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out) {
+        auto ptr = out.ptr(memory::AM_OVERWRITE);
+        for (int i = 0; i < out.array.number_of_elements(); ++i) {
+            *(ptr + i) = (T)i;
+        }
+    }
+};
+
 struct BernoulliInitialzier : public Initializer<BernoulliInitialzier, const double&> {
     template<int devT, typename T>
     void typed_eval(TypedArray<devT,T> out, const double& prob) {
@@ -252,6 +275,10 @@ namespace initializer {
     AssignableArray ones() {
         return ConstantInitializer<float>::run(1.0);
     }
+    AssignableArray arange() {
+        return ArangeInitializer::run();
+    }
+
 
     template<typename ConstT>
     AssignableArray fill(const ConstT& constant) {

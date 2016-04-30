@@ -1,5 +1,5 @@
-#ifndef DALI_MAT_MATH_TENSOROPS_H
-#define DALI_MAT_MATH_TENSOROPS_H
+#ifndef DALI_ARRAY_OP_IMPL_OPS_H
+#define DALI_ARRAY_OP_IMPL_OPS_H
 
 // TODO(szymon): this file should probably die, and the specific code should
 // live closer to actual ops.

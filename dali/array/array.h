@@ -29,9 +29,13 @@ struct ArrayState {
     std::vector<int> shape;
     std::shared_ptr<memory::SynchronizedMemory> memory;
     int offset; // expressing in number of numbers (not bytes)
+    std::vector<int> strides;
     DType dtype;
-
-    ArrayState(const std::vector<int>& _shape, std::shared_ptr<memory::SynchronizedMemory> _memory, int _offset, DType _device);
+    ArrayState(const std::vector<int>& _shape,
+               std::shared_ptr<memory::SynchronizedMemory> _memory,
+               int _offset,
+               const std::vector<int>& _strides,
+               DType _dtype);
 };
 
 class Array : public Exp<Array> {
@@ -50,8 +54,11 @@ class Array : public Exp<Array> {
     /* Various ways of constructing array */
     Array(const std::vector<int>& shape, DType dtype_=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
     Array(std::initializer_list<int> shape, DType dtype_=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
-    Array(const std::vector<int>& shape, std::shared_ptr<memory::SynchronizedMemory>, int offset, DType dtype_=DTYPE_FLOAT);
-
+    Array(const std::vector<int>& shape,
+          std::shared_ptr<memory::SynchronizedMemory>,
+          int offset,
+          const std::vector<int>& strides,
+          DType dtype_=DTYPE_FLOAT);
     Array(const Array& other, bool copy_memory=false);
     Array(const AssignableArray& assignable);
 
@@ -81,6 +88,7 @@ class Array : public Exp<Array> {
     const std::vector<int>& shape() const;
     std::shared_ptr<memory::SynchronizedMemory> memory() const;
     int offset() const;
+    const std::vector<int>& strides() const;
     DType dtype() const;
 
     /* memory moving logic */

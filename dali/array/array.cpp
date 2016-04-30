@@ -46,12 +46,13 @@ AssignableArray::AssignableArray(const int& constant) :
 ArrayState::ArrayState(const std::vector<int>& _shape,
                        std::shared_ptr<SynchronizedMemory> _memory,
                        int _offset,
+                       const std::vector<int>& _strides,
                        DType _dtype) :
         shape(_shape),
         memory(_memory),
         offset(_offset),
+        strides(_strides),
         dtype(_dtype) {
-
 }
 
 
@@ -102,12 +103,20 @@ Array::Array(std::initializer_list<int> shape_, DType dtype, memory::Device pref
         Array(vector<int>(shape_), dtype, preferred_device) {
 }
 
-Array::Array(const std::vector<int>& shape, std::shared_ptr<SynchronizedMemory> memory, int offset, DType dtype) {
-    state = std::make_shared<ArrayState>(shape, memory, offset, dtype);
+Array::Array(const std::vector<int>& shape,
+             std::shared_ptr<SynchronizedMemory> memory,
+             int offset,
+             const std::vector<int>& strides,
+             DType dtype) {
+    state = std::make_shared<ArrayState>(shape, memory, offset, strides, dtype);
 }
 
 Array::Array(const Array& other, bool copy_memory) {
     if (copy_memory) {
+        // TODO(jonathan, szymon):
+        // surely we can do better.
+        // if memory is broadcasted we do not want to copy
+        // entire underlying memory!
         state = std::make_shared<ArrayState>(*(other.state));
         state->memory = std::make_shared<SynchronizedMemory>(*(other.state->memory));
     } else {
@@ -160,8 +169,7 @@ bool Array::spans_entire_memory() const {
 bool Array::contiguous_memory() const {
     ASSERT2(!is_stateless(), "contiguous_memory must not be called with stateless Array.");
 
-    // This function will come in handy once we add striding!
-    return true;
+    return strides().empty() == true;
 }
 
 void Array::initialize(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
@@ -173,7 +181,7 @@ void Array::initialize(const std::vector<int>& shape, DType dtype, memory::Devic
             preferred_device
         );
 
-    state = std::make_shared<ArrayState>(shape, memory, 0, dtype);
+    state = std::make_shared<ArrayState>(shape, memory, 0, vector<int>(), dtype);
 }
 
 Array& Array::reset() {
@@ -181,8 +189,6 @@ Array& Array::reset() {
     return *this;
 }
 
-
-static vector<int> empty_vector;
 
 const vector<int>& Array::shape() const {
     ASSERT2(state != nullptr, "shape must not be called on Array initialized with empty constructor");
@@ -203,6 +209,12 @@ int Array::offset() const {
     return state->offset;
 }
 
+const std::vector<int>& Array::strides() const {
+    ASSERT2(state != nullptr, "strides must not be called on Array initialled with empty constructor");
+    return state->strides;
+}
+
+
 DType Array::dtype() const {
     ASSERT2(state != nullptr, "dtype must not be called on Array initialled with empty constructor");
     return state->dtype;
@@ -212,6 +224,7 @@ memory::Device Array::preferred_device() const {
     ASSERT2(!is_stateless(), "preferred_device must not be called on Array initialled with empty constructor");
     return state->memory->preferred_device;
 }
+
 void Array::to_device(memory::Device device) const {
     memory()->move_to(device);
 }
@@ -235,36 +248,48 @@ vector<int> Array::subshape() const {
 
 
 Array Array::operator[](index_t idx) const {
+    ASSERT2(contiguous_memory(),
+            "at the moment slicing is only supported for contiguous_memory");
     ASSERT2(shape().size() > 0, "Slicing a scalar array is not allowed.");
     ASSERT2(0 <= idx && idx < shape()[0], utils::MS() << "Index " << idx << " must be in [0," << shape()[0] << "].");
     return Array(subshape(),
                  state->memory,
                  state->offset + hypercube_volume(subshape()) * idx,
+                 vector<int>(),
                  state->dtype);
 }
 
 Array Array::operator()(index_t idx) const {
+    ASSERT2(contiguous_memory(),
+            "at the moment slicing is only supported for contiguous_memory");
     ASSERT2(0 <= idx && idx <= number_of_elements(),
             utils::MS() << "Index " << idx << " must be in [0," << number_of_elements() << "].");
     return Array(vector<int>(),
                  state->memory,
                  state->offset + idx,
+                 vector<int>(),
                  state->dtype);
 }
 
 Array Array::ravel() const {
+    ASSERT2(contiguous_memory(),
+            "at the moment ravel is only supported for contiguous_memory");
     return Array({number_of_elements()},
                  state->memory,
                  state->offset,
+                 vector<int>(),
                  state->dtype);
 }
 
 Array Array::reshape(const vector<int>& new_shape) const {
+    ASSERT2(contiguous_memory(),
+            "at the moment reshape is only supported for contiguous_memory");
     ASSERT2(hypercube_volume(new_shape) == number_of_elements(),
             utils::MS() << "New shape (" << new_shape << ") must have the same nubmer of elements as previous shape (" << shape() << ")");
     return Array(new_shape,
                  state->memory,
                  state->offset,
+                 vector<int>(),
                  state->dtype);
 }
 // TODO(jonathan,szymon): add axis argument to sum + write tests

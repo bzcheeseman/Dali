@@ -2,7 +2,10 @@
 #include <vector>
 #include <iomanip>
 #include <gtest/gtest.h>
+#include "dali/config.h"
+#include <mshadow/tensor.h>
 
+#include "dali/array/function/typed_array.h"
 #include "dali/array/op/unary.h"
 #include "dali/array/op/binary.h"
 #include "dali/array/op/other.h"
@@ -125,4 +128,43 @@ TEST(ArrayTests, dim_pluck) {
     EXPECT_EQ(x_plucked3.shape(),   vector<int>({2, 3}));
     EXPECT_EQ(x_plucked3.offset(),  1);
     EXPECT_EQ(x_plucked3.strides(), vector<int>({1, 4}));
+}
+
+TEST(ArrayTests, DISABLED_dim_pluck_eval) {
+    // [
+    //   [
+    //     [ 0  1  2  3 ],
+    //     [ 4  5  6  7 ],
+    //     [ 8  9  10 11],
+    //   ],
+    //   [
+    //     [ 12 13 14 15],
+    //     [ 16 17 18 19],
+    //     [ 20 21 22 23],
+    //   ]
+    // ]
+    Array x({2,3,4}, DTYPE_INT32);
+    x = initializer::arange();
+    EXPECT_TRUE(x.contiguous_memory());
+
+    auto x_plucked = x.dim_pluck(0, 0);
+    EXPECT_EQ(x.memory().get(), x_plucked.memory().get());
+    EXPECT_EQ((int)(Array)x_plucked.sum(), 0 + 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10 + 11);
+
+    auto x_plucked2 = x.dim_pluck(1, 2);
+    EXPECT_EQ(x.memory().get(), x_plucked2.memory().get());
+    EXPECT_FALSE(x_plucked2.contiguous_memory());
+    EXPECT_EQ((int)(Array)x_plucked2.sum(), 8 + 9 + 10 + 11 + 20 + 21 + 22 + 23);
+
+    auto x_plucked3 = x.dim_pluck(2, 1);
+    EXPECT_EQ(x.memory().get(), x_plucked3.memory().get());
+    EXPECT_FALSE(x_plucked3.contiguous_memory());
+    EXPECT_EQ((int)(Array)x_plucked3.sum(), 1 + 5 + 9 + 13 + 17 + 21);
+}
+
+TEST(ArrayTests, canonical_reshape) {
+    ASSERT_EQ(mshadow::Shape1(60),        internal::canonical_reshape<1>({3,4,5}));
+    ASSERT_EQ(mshadow::Shape2(12,5),      internal::canonical_reshape<2>({3,4,5}));
+    ASSERT_EQ(mshadow::Shape3(3,4,5),     internal::canonical_reshape<3>({3,4,5}));
+    ASSERT_EQ(mshadow::Shape4(1,3,4,5),   internal::canonical_reshape<4>({3,4,5}));
 }

@@ -385,6 +385,8 @@ Array& Array::operator=(const AssignableArray& assignable) {
 }
 
 void Array::print(std::basic_ostream<char>& stream, int indent) const {
+    ASSERT2(contiguous_memory(),
+            "At the moment printing is not supported for strided memory.");
     if (ndim() == 0) {
         if (dtype() == DTYPE_FLOAT) {
             stream << (float)(*this);
@@ -399,7 +401,7 @@ void Array::print(std::basic_ostream<char>& stream, int indent) const {
         stream << std::string(indent, ' ');
         stream << "[";
 
-        for(int i = 0; i < state->shape[0]; ++i) {
+        for(int i = 0; i < state->shape[0]; i += 1) {
             stream << std::fixed
                       << std::setw( 7 ) /* keep 7 digits*/
                       << std::setprecision( 3 ) /* use 3 decimals*/

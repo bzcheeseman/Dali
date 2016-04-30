@@ -10,6 +10,7 @@
 
 template<typename Class, typename... Args>
 struct LazyFunction : public LazyExp<Class> {
+    static const int evaluation_dim;
     std::vector<int> shape_;
     DType dtype_;
 
@@ -38,5 +39,9 @@ struct LazyFunction : public LazyExp<Class> {
         return LazyEvaluator<Class>::run(this->self());
     }
 };
+
+template<typename Class, typename... Args>
+const int LazyFunction<Class,Args...>::evaluation_dim = 2;
+
 
 #endif

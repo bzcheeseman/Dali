@@ -5,6 +5,7 @@
 
 template<class Functor, typename ExprT>
 struct LazyReducer : public LazyFunction<LazyReducer<Functor,ExprT>, ExprT> {
+    static const int evaluation_dim;
     ExprT expr;
 
     static std::vector<int> lazy_output_shape(const ExprT&) {
@@ -29,6 +30,9 @@ struct LazyReducer : public LazyFunction<LazyReducer<Functor,ExprT>, ExprT> {
 
     }
 };
+
+template<class Functor, typename ExprT>
+const int LazyReducer<Functor,ExprT>::evaluation_dim = 1;
 
 namespace myops {
     struct sum_all {

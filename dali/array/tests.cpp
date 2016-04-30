@@ -105,8 +105,8 @@ TEST(ArrayTests, spans_entire_memory) {
     Array y = Array::zeros({1,2,2});
     ASSERT_TRUE(y.spans_entire_memory());
 
-    auto suby = y[0];
-    ASSERT_TRUE(suby.spans_entire_memory());
+    auto view_onto_y = y[0];
+    ASSERT_TRUE(view_onto_y.spans_entire_memory());
 }
 
 TEST(ArrayTests, dim_pluck) {

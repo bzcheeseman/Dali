@@ -26,7 +26,7 @@ namespace memory {
 
         DeviceBank cpu_bank;
     #ifdef DALI_USE_CUDA
-        DeviceBank gpu_bank[MAX_GPU_DEVICES];
+        DeviceBank gpu_bank[DALI_MAX_GPU_DEVICES];
     #endif
 
         DeviceBank& get_bank(Device device) {

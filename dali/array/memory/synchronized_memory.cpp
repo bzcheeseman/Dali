@@ -36,7 +36,7 @@ namespace memory {
     void SynchronizedMemory::iterate_device_memories(device_iterator_t f) const {
         f(Device::cpu(), cpu_memory);
 #ifdef DALI_USE_CUDA
-        for (int i=0; i<MAX_GPU_DEVICES;++i) {
+        for (int i=0; i<DALI_MAX_GPU_DEVICES;++i) {
             f(Device::gpu(i), gpu_memories[i]);
         }
 #endif

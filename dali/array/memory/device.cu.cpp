@@ -103,8 +103,8 @@ namespace memory {
     }
 
     Device Device::gpu(int number) {
-        ASSERT2(0 <= number && number < MAX_GPU_DEVICES,
-                utils::MS() << "GPU number must be between 0 and " << MAX_GPU_DEVICES - 1 << ".");
+        ASSERT2(0 <= number && number < DALI_MAX_GPU_DEVICES,
+                utils::MS() << "GPU number must be between 0 and " << DALI_MAX_GPU_DEVICES - 1 << ".");
         return Device(DEVICE_T_GPU, number);
     }
 

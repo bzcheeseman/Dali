@@ -135,11 +135,34 @@ endfunction()
 ################################################################################
 ##                               DALI SETUP                                   ##
 ##                                   ---                                      ##
-##                       GENERATING VIRTUAL SOURCE TREE                       ##
+##                       COMPLIE TIME CONSTANTS                               ##
 ################################################################################
 
 # Relative path in C++ are hard. Adding a macro:
 set(DALI_DATA_DIR "${PROJECT_SOURCE_DIR}/data")
+
+if (NOT DEFINED DALI_MAX_GPU_DEVICES)
+    set(DALI_MAX_GPU_DEVICES 16)
+endif()
+
+if (NOT DALI_USE_CUDA)
+    set(DALI_MAX_GPU_DEVICES 0)
+endif()
+
+if (NOT DEFINED DALI_MAX_STRIDED_DIMENSION)
+    set(DALI_MAX_STRIDED_DIMENSION 9)
+endif()
+
+################################################################################
+##                               DALI SETUP                                   ##
+##                                   ---                                      ##
+##                       GENERATING VIRTUAL SOURCE TREE                       ##
+################################################################################
+
+
+
+
+
 
 if (NOT DEFINED DALI_SOURCE_DIRS)
     set(DALI_SOURCE_DIRS "dali")

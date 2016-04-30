@@ -27,8 +27,6 @@ LOWER_PRIORITY:
 -> check for clang version
 -> Array copy constructor, which copies directly to another device.
 
-SUPER_LOW_PRIORITY:
--> expose MAX_GPUS to cmake.
 
 
 

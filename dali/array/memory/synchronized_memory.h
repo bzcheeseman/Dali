@@ -50,7 +50,7 @@ namespace memory {
 
             mutable DeviceMemory cpu_memory;
 #ifdef DALI_USE_CUDA
-            mutable DeviceMemory gpu_memories[MAX_GPU_DEVICES];
+            mutable DeviceMemory gpu_memories[DALI_MAX_GPU_DEVICES];
 #endif
             // helper functions
             DeviceMemory& get_device_memory(Device device) const;

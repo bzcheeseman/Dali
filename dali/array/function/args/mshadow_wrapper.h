@@ -1,10 +1,9 @@
 #ifndef DALI_ARRAY_FUNCTION_ARGS_MSHADOW_WRAPPER_H
 #define DALI_ARRAY_FUNCTION_ARGS_MSHADOW_WRAPPER_H
 
-#include <cassert>
-
 #include "dali/array/function/typed_array.h"
 #include "dali/array/memory/device.h"
+#include "dali/config.h"
 #include "dali/utils/assert2.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -13,7 +12,6 @@
 //  This expression is used to inject Dali striding information to mshadow    //
 //  expression processor                                                      //
 ////////////////////////////////////////////////////////////////////////////////
-
 
 template<typename SrcExp, typename DType, int srcdim>
 struct DaliWrapperExp: public mshadow::expr::MakeTensorExp<
@@ -28,6 +26,8 @@ struct DaliWrapperExp: public mshadow::expr::MakeTensorExp<
             array(dali_src) {
         ASSERT2(src_.shape_[srcdim - 1] == src_.stride_,
                 "DaliWrapperExp should never reach that condition (only tensors should be passed as arguments).");
+        ASSERT2(array.shape().size() <= DALI_MAX_STRIDED_DIMENSION,
+                "Striding only supported for Tensors up to DALI_MAX_STRIDED_DIMENSION dimensions.");
         this->shape_ = mshadow::expr::ShapeCheck<srcdim, SrcExp>::Check(src_);
     }
 };
@@ -60,38 +60,37 @@ namespace mshadow {
         struct Plan<DaliWrapperExp<SrcExp, DType, srcdim>, DType> {
           public:
             explicit Plan(const DaliWrapperExp<SrcExp, DType, srcdim> &e) :
-                    src_(MakePlan(e.src_)) {
-                    // shape(e.array.shape()),
-                    // strides(e.array.strides()) {
-                // has_strides = !strides.empty();
-                has_strides = false;
+                    src_(MakePlan(e.src_)),
+                    ndim(e.array.shape().size()) {
+                has_strides = !e.array.strides().empty();
+                for (int i = 0; i < ndim; ++i) {
+                    shape[i] = e.array.shape()[i];
+                    if (has_strides) strides[i] = e.array.strides()[i];
+                }
             }
 
             MSHADOW_XINLINE DType Eval(index_t i, index_t j) const {
                 if (!has_strides) {
                     return src_.Eval(i, j);
                 } else {
-                    assert(false);
-                    // const int ndims = shape.size();
-                    //
-                    // index_t new_i = 0;
-                    // index_t residual_shape = strides[ndims-1];
-                    //
-                    // for (int dim_idx = ndims - 2; dim_idx >= 0; --dim_idx) {
-                    //     new_i += ((i % shape[dim_idx]) * strides[dim_idx]) * residual_shape;
-                    //     i /=  shape[dim_idx];
-                    //     residual_shape *= shape[dim_idx] * strides[dim_idx];
-                    // }
-                    //
-                    // return src_.Eval(new_i, j * strides[ndims - 1]);
-                    return 0;
+                    index_t new_i = 0;
+                    index_t residual_shape = strides[ndim-1];
+
+                    for (int dim_idx = ndim - 2; dim_idx >= 0; --dim_idx) {
+                        new_i += ((i % shape[dim_idx]) * strides[dim_idx]) * residual_shape;
+                        i /=  shape[dim_idx];
+                        residual_shape *= shape[dim_idx] * strides[dim_idx];
+                    }
+
+                    return src_.Eval(new_i, j * strides[ndim - 1]);
                 }
             }
 
           private:
             Plan<SrcExp, DType> src_;
-            // std::vector<int> shape;
-            // std::vector<int> strides;
+            int ndim;
+            int shape[DALI_MAX_STRIDED_DIMENSION];
+            int strides[DALI_MAX_STRIDED_DIMENSION];
             bool has_strides;
         };
     } //namespace expr

@@ -130,7 +130,7 @@ TEST(ArrayTests, dim_pluck) {
     EXPECT_EQ(x_plucked3.strides(), vector<int>({1, 4}));
 }
 
-TEST(ArrayTests, DISABLED_dim_pluck_eval) {
+TEST(ArrayTests, dim_pluck_eval) {
     // [
     //   [
     //     [ 0  1  2  3 ],

@@ -385,6 +385,26 @@ Array& Array::operator=(const AssignableArray& assignable) {
     return *this;
 }
 
+Array& Array::operator+=(const AssignableArray& assignable) {
+    assignable.assign_to(*this, OPERATOR_T_ADD);
+    return *this;
+}
+
+Array& Array::operator-=(const AssignableArray& assignable) {
+    assignable.assign_to(*this, OPERATOR_T_SUB);
+    return *this;
+}
+
+Array& Array::operator*=(const AssignableArray& assignable) {
+    assignable.assign_to(*this, OPERATOR_T_MUL);
+    return *this;
+}
+
+Array& Array::operator/=(const AssignableArray& assignable) {
+    assignable.assign_to(*this, OPERATOR_T_DIV);
+    return *this;
+}
+
 void Array::print(std::basic_ostream<char>& stream, int indent) const {
     ASSERT2(contiguous_memory(),
             "At the moment printing is not supported for strided memory.");

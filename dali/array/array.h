@@ -122,8 +122,28 @@ class Array : public Exp<Array> {
     Array& operator=(const LazyExp<T>& other) {
         return (*this = other.as_assignable());
     }
+    template<typename T>
+    Array& operator+=(const LazyExp<T>& other) {
+        return (*this += other.as_assignable());
+    }
+    template<typename T>
+    Array& operator-=(const LazyExp<T>& other) {
+        return (*this -= other.as_assignable());
+    }
+    template<typename T>
+    Array& operator/=(const LazyExp<T>& other) {
+        return (*this /= other.as_assignable());
+    }
+    template<typename T>
+    Array& operator*=(const LazyExp<T>& other) {
+        return (*this *= other.as_assignable());
+    }
 
     Array& operator=(const AssignableArray& assignable);
+    Array& operator+=(const AssignableArray& assignable);
+    Array& operator-=(const AssignableArray& assignable);
+    Array& operator*=(const AssignableArray& assignable);
+    Array& operator/=(const AssignableArray& assignable);
 
     /* Debugging */
     void print(std::basic_ostream<char>& stream = std::cout, int indent=0) const;

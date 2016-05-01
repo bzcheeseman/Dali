@@ -323,7 +323,7 @@ namespace initializer {
                 // add 0 or remove 0 does nothing
             } else if (operator_t == OPERATOR_T_DIV) {
                 // divide by zero...
-                // out /= 0.0;
+                out /= ConstantInitializer<double>::run(0.0);
             }
         });
     }

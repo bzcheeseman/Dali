@@ -143,6 +143,13 @@ Array Array::zeros_like(const Array& other) {
     }
 }
 
+
+Array Array::arange(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
+    Array ret(shape, dtype, preferred_device);
+    ret = initializer::arange();
+    return ret;
+}
+
 Array Array::ones(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
     Array ret(shape, dtype, preferred_device);
     ret = initializer::ones();

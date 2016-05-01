@@ -13,6 +13,12 @@ namespace op {
     AssignableArray scalar_add(const Array& x, const double& other);
     AssignableArray scalar_add(const Array& x, const float& other);
     AssignableArray scalar_add(const Array& x, const int& other);
+    AssignableArray scalar_mul(const Array& x, const double& other);
+    AssignableArray scalar_mul(const Array& x, const float& other);
+    AssignableArray scalar_mul(const Array& x, const int& other);
+    AssignableArray scalar_div(const Array& x, const double& other);
+    AssignableArray scalar_div(const Array& x, const float& other);
+    AssignableArray scalar_div(const Array& x, const int& other);
 } // namespace op
 
 #endif

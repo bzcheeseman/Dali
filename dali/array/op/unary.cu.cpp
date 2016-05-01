@@ -38,4 +38,22 @@ namespace op {
     AssignableArray scalar_add(const Array& x, const int& other) {
         return lazy::add(x, other).as_assignable();
     }
+    AssignableArray scalar_mul(const Array& x, const double& other) {
+        return lazy::eltmul(x, other).as_assignable();
+    }
+    AssignableArray scalar_mul(const Array& x, const float& other) {
+        return lazy::eltmul(x, other).as_assignable();
+    }
+    AssignableArray scalar_mul(const Array& x, const int& other) {
+        return lazy::eltmul(x, other).as_assignable();
+    }
+    AssignableArray scalar_div(const Array& x, const double& other) {
+        return lazy::eltdiv(x, other).as_assignable();
+    }
+    AssignableArray scalar_div(const Array& x, const float& other) {
+        return lazy::eltdiv(x, other).as_assignable();
+    }
+    AssignableArray scalar_div(const Array& x, const int& other) {
+        return lazy::eltdiv(x, other).as_assignable();
+    }
 };

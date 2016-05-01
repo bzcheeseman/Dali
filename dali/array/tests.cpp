@@ -64,6 +64,60 @@ TEST(ArrayTests, scalar_assign) {
     }
 }
 
+TEST(ArrayTests, inplace_addition) {
+    Array x = Array::zeros({3,2}, DTYPE_INT32);
+    x = 13;
+    x += 2;
+    ASSERT_EQ((int)(Array)x.sum(), 13 * 6 + 2 * 6);
+
+    auto prev_memory_ptr = &(*x.memory());
+    // add a different number in place to each element and check
+    // the result is correct
+    x += Array::arange({3, 2}, DTYPE_INT32);
+    // verify that memory pointer is the same
+    // (to be sure this was actually done in place)
+    ASSERT_EQ(prev_memory_ptr, &(*x.memory()));
+    for (int i = 0; i < x.number_of_elements(); i++) {
+        ASSERT_EQ((int)x(i), (13 + 2) + i);
+    }
+}
+
+TEST(ArrayTests, inplace_substraction) {
+    Array x = Array::zeros({3,2}, DTYPE_INT32);
+    x = 13;
+    x -= 2;
+    ASSERT_EQ((int)(Array)x.sum(), 13 * 6 - 2 * 6);
+
+    auto prev_memory_ptr = &(*x.memory());
+    // add a different number in place to each element and check
+    // the result is correct
+    x -= Array::arange({3, 2}, DTYPE_INT32);
+    // verify that memory pointer is the same
+    // (to be sure this was actually done in place)
+    ASSERT_EQ(prev_memory_ptr, &(*x.memory()));
+    for (int i = 0; i < x.number_of_elements(); i++) {
+        ASSERT_EQ((int)x(i), (13 - 2) - i);
+    }
+}
+
+TEST(ArrayTests, inplace_multiplication) {
+    Array x = Array::zeros({3,2}, DTYPE_INT32);
+    x = 13;
+    x *= 2;
+    ASSERT_EQ((int)(Array)x.sum(), 13 * 6 * 2);
+
+    auto prev_memory_ptr = &(*x.memory());
+    // add a different number in place to each element and check
+    // the result is correct
+    x *= Array::arange({3, 2}, DTYPE_INT32);
+    // verify that memory pointer is the same
+    // (to be sure this was actually done in place)
+    ASSERT_EQ(prev_memory_ptr, &(*x.memory()));
+    for (int i = 0; i < x.number_of_elements(); i++) {
+        ASSERT_EQ((int)x(i), (13 * 2) * i);
+    }
+}
+
 TEST(ArrayTests, scalar_construct) {
     auto assignable = initializer::fill((float)3.14);
     Array scalar = assignable;

@@ -87,7 +87,7 @@ using std::vector;
 
     template<int ndims, typename R, template <typename,int,typename> class tensor_t>
     void uniform(tensor_t<mshadow::gpu, ndims, R> A, const double& lower, const double& upper) {
-        ASSERT2(false, "I should never be called?");
+        ASSERT2(false, "Calling unspecialized uniform not allowed");
     }
 #endif
 
@@ -152,8 +152,14 @@ struct GaussianInitializer : public Initializer<GaussianInitializer, const doubl
     template<OPERATOR_T operator_t, typename T>
     void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out, const double& mean, const double& std) {
         mshadow::Random<mshadow::cpu, T> generator(utils::randint(0,999999));
-        auto m_out = out.d1(memory::AM_OVERWRITE);
-        generator.SampleGaussian(&m_out, mean, std);
+        if (operator_t == OPERATOR_T_EQL) {
+            auto m_out = out.d1(memory::AM_OVERWRITE);
+            generator.SampleGaussian(&m_out, mean, std);
+        } else {
+            ASSERT2(false,
+                utils::MS() << operator_to_name(operator_t)
+                            << " not yet implemented for GaussianInitializer");
+        }
     }
 
     template<OPERATOR_T operator_t>
@@ -161,9 +167,15 @@ struct GaussianInitializer : public Initializer<GaussianInitializer, const doubl
         assert_contiguous_memory(out);
         std::normal_distribution<double> dist(mean, std);
         auto& gen = utils::random::generator();
-        auto ptr = out.ptr(memory::AM_OVERWRITE);
-        for (int i = 0; i < out.array.number_of_elements(); ++i) {
-            *(ptr + i) = (int)dist(gen);
+        if (operator_t == OPERATOR_T_EQL) {
+            auto ptr = out.ptr(memory::AM_OVERWRITE);
+            for (int i = 0; i < out.array.number_of_elements(); ++i) {
+                *(ptr + i) = (int)dist(gen);
+            }
+        } else {
+            ASSERT2(false,
+                utils::MS() << operator_to_name(operator_t)
+                            << " not yet implemented for GaussianInitializer");
         }
     }
 };
@@ -175,11 +187,17 @@ struct UniformInitializer : public Initializer<UniformInitializer, const double&
     void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out, const double& lower, const double& upper) {
         assert_contiguous_memory(out);
         // about 63x faster than SampleUniform for gpu
-        thrust::transform(
-                thrust::make_counting_iterator(0),
-                thrust::make_counting_iterator(0) + out.array.number_of_elements(),
-                out.to_thrust(memory::AM_OVERWRITE),
-                uniform_operator<T>(lower, upper, utils::randinteger<unsigned int>(0,999999)));
+        if (operator_t == OPERATOR_T_EQL) {
+            thrust::transform(
+                    thrust::make_counting_iterator(0),
+                    thrust::make_counting_iterator(0) + out.array.number_of_elements(),
+                    out.to_thrust(memory::AM_OVERWRITE),
+                    uniform_operator<T>(lower, upper, utils::randinteger<unsigned int>(0,999999)));
+        } else {
+            ASSERT2(false,
+                utils::MS() << operator_to_name(operator_t)
+                            << " not yet implemented for UniformInitializer");
+        }
     }
 #endif
 
@@ -197,9 +215,15 @@ struct UniformInitializer : public Initializer<UniformInitializer, const double&
         // clang is more permissive here.
         std::uniform_int_distribution<int> dist(lower, upper);
         auto& gen = utils::random::generator();
-        auto ptr = out.ptr(memory::AM_OVERWRITE);
-        for (int i = 0; i < out.array.number_of_elements(); ++i) {
-            *(ptr + i) = (int)dist(gen);
+        if (operator_t == OPERATOR_T_EQL) {
+            auto ptr = out.ptr(memory::AM_OVERWRITE);
+            for (int i = 0; i < out.array.number_of_elements(); ++i) {
+                *(ptr + i) = (int)dist(gen);
+            }
+        } else {
+            ASSERT2(false,
+                utils::MS() << operator_to_name(operator_t)
+                            << " not yet implemented for UniformInitializer");
         }
     }
 };
@@ -209,37 +233,60 @@ struct ArangeInitializer : public Initializer<ArangeInitializer> {
 #ifdef DALI_USE_CUDA
     template<OPERATOR_T operator_t, typename T>
     void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out) {
-        assert_contiguous_memory(out);
-
-        auto cnt_iter = thrust::make_counting_iterator(0);
-        thrust::copy(cnt_iter,
-                     cnt_iter + out.array.number_of_elements(),
-                     out.to_thrust(memory::AM_OVERWRITE));
+        if (operator_t == OPERATOR_T_EQL) {
+            assert_contiguous_memory(out);
+            auto cnt_iter = thrust::make_counting_iterator(0);
+            thrust::copy(cnt_iter,
+                         cnt_iter + out.array.number_of_elements(),
+                         out.to_thrust(memory::AM_OVERWRITE));
+        } else {
+            ASSERT2(false,
+                utils::MS() << operator_to_name(operator_t)
+                            << " not yet implemented for ArangeInitializer");
+        }
     }
 #endif
 
     template<OPERATOR_T operator_t, typename T>
     void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out) {
-        auto ptr = out.ptr(memory::AM_OVERWRITE);
-        for (int i = 0; i < out.array.number_of_elements(); ++i) {
-            *(ptr + i) = (T)i;
+        if (operator_t == OPERATOR_T_EQL) {
+            auto ptr = out.ptr(memory::AM_OVERWRITE);
+            for (int i = 0; i < out.array.number_of_elements(); ++i) {
+                *(ptr + i) = (T)i;
+            }
+        } else {
+            ASSERT2(false,
+                utils::MS() << operator_to_name(operator_t)
+                            << " not yet implemented for ArangeInitializer");
         }
     }
 };
 
-struct BernoulliInitialzier : public Initializer<BernoulliInitialzier, const double&> {
+struct BernoulliInitializer : public Initializer<BernoulliInitializer, const double&> {
     template<OPERATOR_T operator_t, int devT, typename T>
     void typed_eval(TypedArray<devT,T> out, const double& prob) {
-        UniformInitializer().template typed_eval<operator_t>(out, 0.0, 1.0);
-        out.d1(memory::AM_OVERWRITE) = mshadow::expr::F<tensor_ops::op::threshold<T>>(out.d1(), prob);
+        if (operator_t == OPERATOR_T_EQL) {
+            UniformInitializer().template typed_eval<operator_t>(out, 0.0, 1.0);
+            operator_assign<operator_t, 1>(out, mshadow::expr::F<tensor_ops::op::threshold<T>>(out.d1(), prob));
+        } else {
+            ASSERT2(false,
+                utils::MS() << operator_to_name(operator_t)
+                            << " not yet implemented for BernoulliInitializer");
+        }
     }
 };
 
-struct BernoulliNormalizerInitializer : public Initializer<BernoulliNormalizerInitializer, const double&> {
+struct BernoulliNormalizedInitializer : public Initializer<BernoulliNormalizedInitializer, const double&> {
     template<OPERATOR_T operator_t, int devT, typename T>
     void typed_eval(TypedArray<devT,T> out, const double& prob) {
-        UniformInitializer().template typed_eval<operator_t>(out, 0.0, 1.0);
-        out.d1(memory::AM_OVERWRITE) = mshadow::expr::F<tensor_ops::op::threshold<T>>(out.d1(), prob) * (1.0 / prob);
+        if (operator_t == OPERATOR_T_EQL) {
+            UniformInitializer().template typed_eval<operator_t>(out, 0.0, 1.0);
+            operator_assign<operator_t, 1>(out, mshadow::expr::F<tensor_ops::op::threshold<T>>(out.d1(), prob) * (1.0 / prob));
+        } else {
+            ASSERT2(false,
+                utils::MS() << operator_to_name(operator_t)
+                            << " not yet implemented for BernoulliNormalizedInitializer");
+        }
     }
 };
 
@@ -253,7 +300,6 @@ struct ConstantInitializer : public Initializer<ConstantInitializer<ConstT>, con
     void typed_eval(TypedArray<devT,T> out, const ConstT& constant) {
         assert_dali_dtype<ConstT>();
         operator_assign<operator_t, 1>(out, (T)constant);
-        // out.d1(memory::AM_OVERWRITE) = (T)constant;
     }
 };
 
@@ -277,7 +323,6 @@ namespace initializer {
                 // add 0 or remove 0 does nothing
             } else if (operator_t == OPERATOR_T_DIV) {
                 // divide by zero...
-                // TODO(jonathan): fallback to scalar operation here
                 // out /= 0.0;
             }
         });
@@ -308,12 +353,12 @@ namespace initializer {
     }
 
     AssignableArray bernoulli(const double& prob) {
-        return BernoulliInitialzier::run(prob);
+        return BernoulliInitializer::run(prob);
 
     }
 
     AssignableArray bernoulli_normalized(const double& prob) {
-        return BernoulliNormalizerInitializer::run(prob);
+        return BernoulliNormalizedInitializer::run(prob);
     }
 
     AssignableArray eye(double diag) {

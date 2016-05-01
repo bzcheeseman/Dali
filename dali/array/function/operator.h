@@ -1,6 +1,7 @@
 #ifndef DALI_ARRAY_FUNCTION_OPERATOR_H
 #define DALI_ARRAY_FUNCTION_OPERATOR_H
 
+#include <string>
 #include "dali/array/memory/access_modes.h"
 
 // define different ways assignment between two expressions
@@ -18,6 +19,7 @@ struct OperatorAssignHelper {
     static inline void assign(LeftType& left, const RightType& right);
 };
 
+// ugly macro to define many inlined operators that should be removed
 #define DECLARE_OPERATOR_ASSIGN_HELPER_NDIM(NDIM, METHODNAME)\
     template<typename LeftType, typename RightType>\
     struct OperatorAssignHelper<OPERATOR_T_EQL, NDIM, LeftType, RightType> {\
@@ -61,5 +63,6 @@ void inline operator_assign(LeftType& left, const RightType& right) {
     OperatorAssignHelper<operator_t,ndim,LeftType,RightType>::assign(left, right);
 }
 
+std::string operator_to_name(const OPERATOR_T& operator_t);
 
 #endif

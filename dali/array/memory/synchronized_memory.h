@@ -10,6 +10,7 @@
 
 #include "dali/config.h"
 #include "dali/array/memory/device.h"
+#include "dali/array/memory/access_modes.h"
 #include "dali/array/dtype.h"
 #include "dali/utils/core_utils.h"
 #include "dali/runtime_config.h"
@@ -28,12 +29,6 @@ device copy is necessary.
 
 
 namespace memory {
-    // access mode
-    enum AM {
-        AM_READONLY,
-        AM_MUTABLE,
-        AM_OVERWRITE
-    };
 
     class SynchronizedMemory {
         public:

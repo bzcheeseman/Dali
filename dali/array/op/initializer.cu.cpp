@@ -249,15 +249,15 @@ struct ConstantInitializer : public Initializer<ConstantInitializer<ConstT>, con
         return template_to_dtype<ConstT>();
     }
 
-
     template<OPERATOR_T operator_t, int devT, typename T>
     void typed_eval(TypedArray<devT,T> out, const ConstT& constant) {
         assert_dali_dtype<ConstT>();
-        out.d1(memory::AM_OVERWRITE) = (T)constant;
+        operator_assign<operator_t, 1>(out, (T)constant);
+        // out.d1(memory::AM_OVERWRITE) = (T)constant;
     }
 };
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////AM_OVERWRITE/////////////////////////////////////////
 //                  WRAPPING STRUCTS INTO FUNCTIONS                           //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -271,7 +271,15 @@ namespace initializer {
     AssignableArray zeros() {
         return AssignableArray([](Array& out, const OPERATOR_T& operator_t){
             // efficient lazy clearing of memory.
-            out.clear();
+            if (operator_t == OPERATOR_T_EQL || operator_t == OPERATOR_T_MUL) {
+                out.clear();
+            } else if (operator_t == OPERATOR_T_ADD || operator_t == OPERATOR_T_SUB) {
+                // add 0 or remove 0 does nothing
+            } else if (operator_t == OPERATOR_T_DIV) {
+                // divide by zero...
+                // TODO(jonathan): fallback to scalar operation here
+                // out /= 0.0;
+            }
         });
     }
 
@@ -281,7 +289,6 @@ namespace initializer {
     AssignableArray arange() {
         return ArangeInitializer::run();
     }
-
 
     template<typename ConstT>
     AssignableArray fill(const ConstT& constant) {

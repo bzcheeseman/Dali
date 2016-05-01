@@ -12,6 +12,7 @@
 #include "dali/array/op/initializer.h"
 #include "dali/utils/print_utils.h"
 #include "dali/runtime_config.h"
+#include "dali/array/op.h"
 
 #include "dali/array/lazy/binary.h"
 
@@ -191,12 +192,13 @@ TEST(ArrayTests, inplace_strided_addition) {
     // strided dimension pluck is a view
     EXPECT_EQ(&(*x_plucked.memory()), &(*x.memory()));
     // we now modify this view by in-place incrementation:
-    // x_plucked += 1;
+    // sum was originally 66, should now be 72:
+    x_plucked += 1;
     // sum is now same as before + number of elements
-    // EXPECT_EQ(
-    //     (int)(Array)x_plucked.sum(),
-    //     (1 + 5 + 9 + 13 + 17 + 21) + x_plucked.number_of_elements()
-    // );
+    EXPECT_EQ(
+        (int)(Array)x_plucked.sum(),
+        (1 + 5 + 9 + 13 + 17 + 21) + x_plucked.number_of_elements()
+    );
 }
 
 TEST(ArrayTests, canonical_reshape) {

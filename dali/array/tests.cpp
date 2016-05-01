@@ -70,13 +70,13 @@ TEST(ArrayTests, inplace_addition) {
     x += 2;
     ASSERT_EQ((int)(Array)x.sum(), 13 * 6 + 2 * 6);
 
-    auto prev_memory_ptr = &(*x.memory());
+    auto prev_memory_ptr = x.memory().get();
     // add a different number in place to each element and check
     // the result is correct
     x += Array::arange({3, 2}, DTYPE_INT32);
     // verify that memory pointer is the same
     // (to be sure this was actually done in place)
-    ASSERT_EQ(prev_memory_ptr, &(*x.memory()));
+    ASSERT_EQ(prev_memory_ptr, x.memory().get());
     for (int i = 0; i < x.number_of_elements(); i++) {
         ASSERT_EQ((int)x(i), (13 + 2) + i);
     }
@@ -88,13 +88,13 @@ TEST(ArrayTests, inplace_substraction) {
     x -= 2;
     ASSERT_EQ((int)(Array)x.sum(), 13 * 6 - 2 * 6);
 
-    auto prev_memory_ptr = &(*x.memory());
+    auto prev_memory_ptr = x.memory().get();
     // add a different number in place to each element and check
     // the result is correct
     x -= Array::arange({3, 2}, DTYPE_INT32);
     // verify that memory pointer is the same
     // (to be sure this was actually done in place)
-    ASSERT_EQ(prev_memory_ptr, &(*x.memory()));
+    ASSERT_EQ(prev_memory_ptr, x.memory().get());
     for (int i = 0; i < x.number_of_elements(); i++) {
         ASSERT_EQ((int)x(i), (13 - 2) - i);
     }
@@ -106,13 +106,13 @@ TEST(ArrayTests, inplace_multiplication) {
     x *= 2;
     ASSERT_EQ((int)(Array)x.sum(), 13 * 6 * 2);
 
-    auto prev_memory_ptr = &(*x.memory());
+    auto prev_memory_ptr = x.memory().get();
     // add a different number in place to each element and check
     // the result is correct
     x *= Array::arange({3, 2}, DTYPE_INT32);
     // verify that memory pointer is the same
     // (to be sure this was actually done in place)
-    ASSERT_EQ(prev_memory_ptr, &(*x.memory()));
+    ASSERT_EQ(prev_memory_ptr, x.memory().get());
     for (int i = 0; i < x.number_of_elements(); i++) {
         ASSERT_EQ((int)x(i), (13 * 2) * i);
     }
@@ -258,7 +258,7 @@ TEST(ArrayTests, DISABLED_inplace_strided_addition) {
     auto x = build_234_arange();
     auto x_plucked = x.pluck_axis(2, 1);
     // strided dimension pluck is a view
-    EXPECT_EQ(&(*x_plucked.memory()), &(*x.memory()));
+    EXPECT_EQ(x_plucked.memory().get(), x.memory().get());
     // we now modify this view by in-place incrementation:
     // sum was originally 66, should now be 72:
     x_plucked += 1;

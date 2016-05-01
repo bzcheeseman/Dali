@@ -11,6 +11,7 @@
 #include "dali/array/memory/device.h"
 #include "dali/array/memory/memory_ops.h"
 #include "dali/array/memory/synchronized_memory.h"
+#include "dali/array/slice.h"
 #include "dali/runtime_config.h"
 
 class Array;
@@ -90,6 +91,7 @@ class Array : public Exp<Array> {
     std::shared_ptr<memory::SynchronizedMemory> memory() const;
     int offset() const;
     const std::vector<int>& strides() const;
+    std::vector<int> normalized_strides() const;
     DType dtype() const;
 
     /* memory moving logic */
@@ -106,8 +108,11 @@ class Array : public Exp<Array> {
     Array operator()(index_t idx) const;
     Array ravel() const;
     Array reshape(const std::vector<int>& shape) const;
+
     // TODO(szymon): look up what it's called in tensorflow/numpy and rename.
-    Array dim_pluck(int dim, int idx) const;
+    Array pluck_axis(int axis, const Slice& slice) const;
+    Array pluck_axis(int axis, int idx) const;
+    Array compact_axis(int axis) const;
 
     AssignableArray sum() const;
     AssignableArray mean() const;

@@ -192,38 +192,51 @@ TEST(ArrayTests, contiguous_memory) {
 TEST(ArrayTests, dim_pluck_stride_shape) {
     auto x = build_234_arange();
 
-    auto x_plucked = x.dim_pluck(0, 1);
+    auto x_plucked = x.pluck_axis(0, 1);
     EXPECT_EQ(x_plucked.shape(),   vector<int>({3, 4}));
     EXPECT_EQ(x_plucked.number_of_elements(), 12);
     EXPECT_EQ(x_plucked.offset(),  12    );
     // if all strides are 1, then return empty vector
     EXPECT_EQ(x_plucked.strides(), vector<int>({}));
 
-    auto x_plucked2 = x.dim_pluck(1, 2);
+    auto x_plucked2 = x.pluck_axis(1, 2);
     EXPECT_EQ(x_plucked2.shape(),   vector<int>({2, 4}));
     EXPECT_EQ(x_plucked2.number_of_elements(), 8);
     EXPECT_EQ(x_plucked2.offset(),   8    );
-    EXPECT_EQ(x_plucked2.strides(), vector<int>({3, 1}));
+    EXPECT_EQ(x_plucked2.strides(), vector<int>({12, 1}));
 
-    auto x_plucked3 = x.dim_pluck(2, 1);
+    auto x_plucked3 = x.pluck_axis(2, 1);
     EXPECT_EQ(x_plucked3.shape(),   vector<int>({2, 3}));
     EXPECT_EQ(x_plucked3.number_of_elements(), 6);
     EXPECT_EQ(x_plucked3.offset(),  1);
-    EXPECT_EQ(x_plucked3.strides(), vector<int>({1, 4}));
+    EXPECT_EQ(x_plucked3.strides(), vector<int>({12, 4}));
 }
 
 
-TEST(ArrayTests, strided_sum) {
+TEST(ArrayTests, slice_size) {
+    ASSERT_EQ(5, Slice(0,5).size());
+    ASSERT_EQ(2, Slice(2,4).size());
+    ASSERT_EQ(3, Slice(0,5,2).size());
+    ASSERT_EQ(3, Slice(0,5,-2).size());
+    ASSERT_EQ(2, Slice(0,6,3).size());
+    ASSERT_EQ(2, Slice(0,6,-3).size());
+    ASSERT_EQ(3, Slice(0,7,3).size());
+    ASSERT_EQ(3, Slice(0,7,-3).size());
+
+    ASSERT_THROW(Slice(0,2,0),  std::runtime_error);
+}
+
+TEST(ArrayTests, pluck_axis_eval) {
     auto x = build_234_arange();
 
-    auto x_plucked = x.dim_pluck(0, 0);
+    auto x_plucked = x.pluck_axis(0, 0);
     EXPECT_EQ(x.memory().get(), x_plucked.memory().get());
     EXPECT_EQ(
         (int)(Array)x_plucked.sum(),
         0 + 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10 + 11
     );
 
-    auto x_plucked2 = x.dim_pluck(1, 2);
+    auto x_plucked2 = x.pluck_axis(1, 2);
     EXPECT_EQ(x.memory().get(), x_plucked2.memory().get());
     EXPECT_FALSE(x_plucked2.contiguous_memory());
     EXPECT_EQ(
@@ -231,7 +244,7 @@ TEST(ArrayTests, strided_sum) {
         8 + 9 + 10 + 11 + 20 + 21 + 22 + 23
     );
 
-    auto x_plucked3 = x.dim_pluck(2, 1);
+    auto x_plucked3 = x.pluck_axis(2, 1);
     EXPECT_EQ(x.memory().get(), x_plucked3.memory().get());
     EXPECT_FALSE(x_plucked3.contiguous_memory());
     EXPECT_EQ(

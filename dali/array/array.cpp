@@ -21,6 +21,29 @@ int hypercube_volume(const vector<int>& shape) {
     return std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
 }
 
+vector<int> trivial_strides(const vector<int>& shape) {
+    vector<int> res(shape.size());
+    int residual_shape = 1;
+    for (int i = shape.size() - 1; i >= 0 ; --i) {
+        res[i] = residual_shape;
+        residual_shape *= shape[i];
+    }
+    return res;
+}
+
+// if strides are trivial (such that they would arrise from shape normally)
+// we remove them.
+void compact_strides(vector<int>& strides, const vector<int>& shape) {
+    if (strides.size() == 0)
+        return;
+    ASSERT2(strides.size() == shape.size(),
+            "Invalid strides passed to compact_strides.");
+    if (trivial_strides(shape) == strides) {
+        strides.clear();
+    }
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 //                        ASSIGNABLE ARRAY                                    //
 ////////////////////////////////////////////////////////////////////////////////
@@ -222,6 +245,9 @@ const std::vector<int>& Array::strides() const {
     return state->strides;
 }
 
+std::vector<int> Array::normalized_strides() const {
+    return (strides().size() > 0) ? strides() : trivial_strides(shape());
+}
 
 DType Array::dtype() const {
     ASSERT2(state != nullptr, "dtype must not be called on Array initialled with empty constructor");
@@ -256,15 +282,9 @@ vector<int> Array::subshape() const {
 
 
 Array Array::operator[](index_t idx) const {
-    ASSERT2(contiguous_memory(),
-            "at the moment slicing is only supported for contiguous_memory");
-    ASSERT2(shape().size() > 0, "Slicing a scalar array is not allowed.");
-    ASSERT2(0 <= idx && idx < shape()[0], utils::MS() << "Index " << idx << " must be in [0," << shape()[0] << "].");
-    return Array(subshape(),
-                 state->memory,
-                 state->offset + hypercube_volume(subshape()) * idx,
-                 vector<int>(),
-                 state->dtype);
+    ASSERT2(shape().size() > 0,
+        "Slicing a scalar array is not allowed.");
+    return pluck_axis(0, idx);
 }
 
 Array Array::operator()(index_t idx) const {
@@ -301,40 +321,62 @@ Array Array::reshape(const vector<int>& new_shape) const {
                  state->dtype);
 }
 
-Array Array::dim_pluck(int pluck_dim, int pluck_idx) const {
-    ASSERT2(contiguous_memory(),
-            "at the moment double striding is not supported.");
-    ASSERT2(pluck_dim < shape().size(),
-            utils::MS() << "dim_pluck dimension (" << pluck_dim << ") must be less the dimensionality of plucked tensor (" << shape().size() << ")");
-    ASSERT2(pluck_idx < shape()[pluck_dim],
-            utils::MS() << "dim_pluck index (" << pluck_idx << ") must be less than the size of corresponding tensor dimension (" << shape()[pluck_dim] << ").");
+Array Array::compact_axis(int axis) const {
+    ASSERT2(axis < shape().size(),
+            utils::MS() << "compact_axis dimension (" << axis << ") must be less the dimensionality of compacted tensor (" << shape().size() << ")");
+    ASSERT2(shape()[axis] == 1,
+            utils::MS() << "compact_axis(" << axis << ") requires tensor to be shaped like a bowtie.");
 
-    // TODO(szymon): in fact this guy should use more general striding!
-    // just make sure that remove all the ones at the end.
-    if (pluck_dim == 0) {
-        return (*this)[pluck_idx];
-    }
+    const vector<int>& old_shape = shape();
+    auto old_strides             = normalized_strides();
 
     vector<int> new_shape;
-    for (int i = 0; i < shape().size(); ++i) {
-        if (i == pluck_dim)
+    vector<int> new_strides;
+    for (int i = 0; i < old_shape.size(); ++i) {
+        if (i == axis) {
             continue;
-        new_shape.push_back(shape()[i]);
+        }
+        new_shape.push_back(old_shape[i]);
+        new_strides.push_back(old_strides[i]);
     }
 
-    vector<int> new_strides(shape().size() - 1);
-    for (int dim = 0; dim < new_strides.size(); ++dim)
-        new_strides[dim] = 1;
+    compact_strides(new_strides, new_shape);
 
-    if (pluck_dim > 0) {
-        new_strides[pluck_dim - 1] = shape()[pluck_dim];
-    }
+    return Array(new_shape,
+                 memory(),
+                 offset(),
+                 new_strides,
+                 dtype());
+}
 
-    int pluck_dim_jump = 1;
-    for (int dim = pluck_dim + 1; dim < shape().size(); ++dim) {
-        pluck_dim_jump *= shape()[dim];
-    }
-    int new_offset = offset() + pluck_dim_jump * pluck_idx;
+
+Array Array::pluck_axis(int axis, int pluck_idx) const {
+    auto single_item_slice = pluck_axis(axis, Slice(pluck_idx, pluck_idx + 1));
+    return single_item_slice.compact_axis(axis);
+}
+
+Array Array::pluck_axis(int axis, const Slice& slice_unnormalized) const {
+    // FEATURE REQUESTS:
+    ASSERT2(contiguous_memory(),
+            "at the moment double striding is not supported.");
+    ASSERT2(slice_unnormalized.step == 1,
+            "Slice step is not supported at the moment.");
+
+    ASSERT2(axis < shape().size(),
+            utils::MS() << "pluck_axis dimension (" << axis << ") must be less the dimensionality of plucked tensor (" << shape().size() << ")");
+
+    Slice slice = Slice::normalize_and_check(slice_unnormalized, shape()[axis]);
+
+    const vector<int>& old_shape = shape();
+    auto old_strides             = normalized_strides();
+
+    vector<int> new_shape(old_shape);
+    vector<int> new_strides(old_strides);
+
+    new_shape[axis] = slice.size();
+    int new_offset = offset() + old_strides[axis] * slice.start;
+
+    compact_strides(new_strides, new_shape);
 
     return Array(new_shape,
                  state->memory,

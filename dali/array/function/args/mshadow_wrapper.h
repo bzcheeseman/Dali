@@ -80,16 +80,15 @@ namespace mshadow {
                 if (!has_strides) {
                     return src_.Eval(i, j);
                 } else {
-                    index_t new_i = 0;
-                    index_t residual_shape = strides[ndim-1];
+                    index_t i_derived_offset = 0;
 
                     for (int dim_idx = ndim - 2; dim_idx >= 0; --dim_idx) {
-                        new_i += ((i % shape[dim_idx]) * strides[dim_idx]) * residual_shape;
+                        i_derived_offset += (i % shape[dim_idx]) * strides[dim_idx];
                         i /=  shape[dim_idx];
-                        residual_shape *= shape[dim_idx] * strides[dim_idx];
                     }
-
-                    return src_.Eval(new_i, j * strides[ndim - 1]);
+                    index_t new_i = i_derived_offset / shape[ndim - 1];
+                    index_t new_j = i_derived_offset % shape[ndim - 1] + j * strides[ndim - 1];
+                    return src_.Eval(new_i, new_j);
                 }
             }
 

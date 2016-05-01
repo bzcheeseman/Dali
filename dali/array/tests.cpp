@@ -189,7 +189,7 @@ TEST(ArrayTests, contiguous_memory) {
     EXPECT_TRUE(x.contiguous_memory());
 }
 
-TEST(ArrayTests, dim_pluck_stride_shape) {
+TEST(ArrayTests, pluck_axis_stride_shape) {
     auto x = build_234_arange();
 
     auto x_plucked = x.pluck_axis(0, 1);
@@ -245,6 +245,7 @@ TEST(ArrayTests, pluck_axis_eval) {
     );
 
     auto x_plucked3 = x.pluck_axis(2, 1);
+
     EXPECT_EQ(x.memory().get(), x_plucked3.memory().get());
     EXPECT_FALSE(x_plucked3.contiguous_memory());
     EXPECT_EQ(
@@ -253,9 +254,9 @@ TEST(ArrayTests, pluck_axis_eval) {
     );
 }
 
-TEST(ArrayTests, inplace_strided_addition) {
+TEST(ArrayTests, DISABLED_inplace_strided_addition) {
     auto x = build_234_arange();
-    auto x_plucked = x.dim_pluck(2, 1);
+    auto x_plucked = x.pluck_axis(2, 1);
     // strided dimension pluck is a view
     EXPECT_EQ(&(*x_plucked.memory()), &(*x.memory()));
     // we now modify this view by in-place incrementation:

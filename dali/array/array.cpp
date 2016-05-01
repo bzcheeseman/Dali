@@ -357,8 +357,6 @@ Array Array::pluck_axis(int axis, int pluck_idx) const {
 
 Array Array::pluck_axis(int axis, const Slice& slice_unnormalized) const {
     // FEATURE REQUESTS:
-    ASSERT2(contiguous_memory(),
-            "at the moment double striding is not supported.");
     ASSERT2(slice_unnormalized.step == 1,
             "Slice step is not supported at the moment.");
 
@@ -455,8 +453,6 @@ Array& Array::operator/=(const AssignableArray& assignable) {
 }
 
 void Array::print(std::basic_ostream<char>& stream, int indent) const {
-    ASSERT2(contiguous_memory(),
-            "At the moment printing is not supported for strided memory.");
     if (ndim() == 0) {
         if (dtype() == DTYPE_FLOAT) {
             stream << (float)(*this);

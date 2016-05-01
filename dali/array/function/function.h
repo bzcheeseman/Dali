@@ -14,7 +14,7 @@
 #include "dali/array/function/args/reduce_over_args.h"
 #include "dali/array/function/args/property_reducer.h"
 #include "dali/array/function/typed_array.h"
-
+#include "dali/array/function/operator.h"
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,7 +71,7 @@ struct Function {
         return ReduceOverArgs<DTypeEqualForAllArrayArgsReducer>::reduce(out, args...);
     }
 
-    static void prepare_output(Outtype& out, const Args&... args) {
+    static void prepare_output(const OPERATOR_T& operator_t, Outtype& out, const Args&... args) {
         auto common_shape = Class::deduce_output_shape(args...);
         auto common_dtype = Class::deduce_output_dtype(args...);
 
@@ -86,35 +86,54 @@ struct Function {
     }
 
     static AssignableArray run(const Args&... args) {
-        return AssignableArray([args...](Outtype& out) {
-            Class::prepare_output(out, args...);
-            Class::untyped_eval(out, args...);
+        return AssignableArray([args...](Outtype& out, const OPERATOR_T& operator_t) {
+            Class::prepare_output(operator_t, out, args...);
+            switch (operator_t) {
+                case OPERATOR_T_EQL:
+                    Class::template untyped_eval<OPERATOR_T_EQL>(out, args...);
+                    break;
+                case OPERATOR_T_ADD:
+                    Class::template untyped_eval<OPERATOR_T_ADD>(out, args...);
+                    break;
+                case OPERATOR_T_SUB:
+                    Class::template untyped_eval<OPERATOR_T_SUB>(out, args...);
+                    break;
+                case OPERATOR_T_MUL:
+                    Class::template untyped_eval<OPERATOR_T_MUL>(out, args...);
+                    break;
+                case OPERATOR_T_DIV:
+                    Class::template untyped_eval<OPERATOR_T_DIV>(out, args...);
+                    break;
+                default:
+                    ASSERT2(false, "OPERATOR_T for assignment between AssignableArray and output must be one of =,-=,+=,*=,/=");
+            }
         });
     }
 
+    template<OPERATOR_T operator_t>
     static void untyped_eval(const Outtype& out, const Args&... args) {
         auto device = Class::deduce_computation_device(out, args...);
         auto dtype  = Class::deduce_computation_dtype(out, args...);
         if (device.type() == memory::DEVICE_T_CPU && dtype == DTYPE_FLOAT) {
             typedef ArrayWrapper<memory::DEVICE_T_CPU,float> wrapper_t;
-            Class().typed_eval(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
+            Class().template typed_eval<operator_t>(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
         } else if (device.type() == memory::DEVICE_T_CPU && dtype == DTYPE_DOUBLE) {
             typedef ArrayWrapper<memory::DEVICE_T_CPU,double> wrapper_t;
-            Class().typed_eval(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
+            Class().template typed_eval<operator_t>(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
         } else if (device.type() == memory::DEVICE_T_CPU && dtype == DTYPE_INT32) {
             typedef ArrayWrapper<memory::DEVICE_T_CPU,int> wrapper_t;
-            Class().typed_eval(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
+            Class().template typed_eval<operator_t>(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
         }
 #ifdef DALI_USE_CUDA
         else if (device.type() == memory::DEVICE_T_GPU && dtype == DTYPE_FLOAT) {
             typedef ArrayWrapper<memory::DEVICE_T_GPU,float> wrapper_t;
-            Class().typed_eval(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
+            Class().template typed_eval<operator_t>(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
         } else if (device.type() == memory::DEVICE_T_GPU && dtype == DTYPE_DOUBLE) {
             typedef ArrayWrapper<memory::DEVICE_T_GPU,double> wrapper_t;
-            Class().typed_eval(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
+            Class().template typed_eval<operator_t>(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
         } else if (device.type() == memory::DEVICE_T_GPU && dtype == DTYPE_INT32) {
-            typedef ArrayWrapper<memory::DEVICE_T_GPU,int> wrapper_t;
-            Class().typed_eval(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
+            typedef ArrayWrapper<memory::DEVICE_T_GPU, int> wrapper_t;
+            Class().template typed_eval<operator_t>(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
         }
 #endif
         else {
@@ -125,7 +144,7 @@ struct Function {
 
 template<template<class> class Functor>
 struct Elementwise : public Function<Elementwise<Functor>, Array, Array> {
-    template<int devT, typename T>
+    template<OPERATOR_T operator_t, int devT, typename T>
     void typed_eval(const TypedArray<devT, T>& out, const TypedArray<devT,T>& input) {
         out.d1(memory::AM_OVERWRITE) = mshadow::expr::F<Functor<T>>(input.d1());
     }
@@ -133,7 +152,7 @@ struct Elementwise : public Function<Elementwise<Functor>, Array, Array> {
 
 template<template<class> class Functor>
 struct BinaryElementwise : public Function<BinaryElementwise<Functor>, Array, Array, Array> {
-    template<int devT, typename T>
+    template<OPERATOR_T operator_t, int devT, typename T>
     void typed_eval(const TypedArray<devT, T>& out, const TypedArray<devT,T>& left, const TypedArray<devT,T>& right) {
         out.d1(memory::AM_OVERWRITE) = mshadow::expr::F<Functor<T>>(left.d1(), right.d1());
     }
@@ -142,12 +161,13 @@ struct BinaryElementwise : public Function<BinaryElementwise<Functor>, Array, Ar
 template<typename Class, typename Outtype, typename... Args>
 struct NonArrayFunction : public Function<Class,Outtype*,Args...> {
 
-    static void prepare_output(Outtype& out, const Args&... args) {
+    static void prepare_output(const OPERATOR_T& operator_t, Outtype& out, const Args&... args) {
     }
 
     static Outtype run(const Args&... args) {
+        typedef Function<Class,Outtype*,Args...> func_t;
         Outtype out;
-        Function<Class,Outtype*,Args...>::untyped_eval(&out, args...);
+        func_t::template untyped_eval <OPERATOR_T_EQL>( &out, args... );
         return out;
     }
 };

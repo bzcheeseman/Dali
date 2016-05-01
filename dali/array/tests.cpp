@@ -109,28 +109,9 @@ TEST(ArrayTests, spans_entire_memory) {
     ASSERT_TRUE(view_onto_y.spans_entire_memory());
 }
 
-TEST(ArrayTests, dim_pluck) {
-    Array x({2,3,4}, DTYPE_INT32);
-    x = initializer::arange();
-    EXPECT_TRUE(x.contiguous_memory());
-
-    auto x_plucked = x.dim_pluck(0, 1);
-    EXPECT_EQ(x_plucked.shape(),   vector<int>({3, 4}));
-    EXPECT_EQ(x_plucked.offset(),  12    );
-    EXPECT_EQ(x_plucked.strides(), vector<int>({}));
-
-    auto x_plucked2 = x.dim_pluck(1, 2);
-    EXPECT_EQ(x_plucked2.shape(),   vector<int>({2, 4}));
-    EXPECT_EQ(x_plucked2.offset(),   8    );
-    EXPECT_EQ(x_plucked2.strides(), vector<int>({3, 1}));
-
-    auto x_plucked3 = x.dim_pluck(2, 1);
-    EXPECT_EQ(x_plucked3.shape(),   vector<int>({2, 3}));
-    EXPECT_EQ(x_plucked3.offset(),  1);
-    EXPECT_EQ(x_plucked3.strides(), vector<int>({1, 4}));
-}
-
-TEST(ArrayTests, dim_pluck_eval) {
+// Some example integer 3D tensor with
+// values from 0 to 23
+Array build_234_arange() {
     // [
     //   [
     //     [ 0  1  2  3 ],
@@ -145,21 +126,77 @@ TEST(ArrayTests, dim_pluck_eval) {
     // ]
     Array x({2,3,4}, DTYPE_INT32);
     x = initializer::arange();
+    return x;
+}
+
+TEST(ArrayTests, contiguous_memory) {
+    auto x = build_234_arange();
     EXPECT_TRUE(x.contiguous_memory());
+}
+
+TEST(ArrayTests, dim_pluck_stride_shape) {
+    auto x = build_234_arange();
+
+    auto x_plucked = x.dim_pluck(0, 1);
+    EXPECT_EQ(x_plucked.shape(),   vector<int>({3, 4}));
+    EXPECT_EQ(x_plucked.number_of_elements(), 12);
+    EXPECT_EQ(x_plucked.offset(),  12    );
+    // if all strides are 1, then return empty vector
+    EXPECT_EQ(x_plucked.strides(), vector<int>({}));
+
+    auto x_plucked2 = x.dim_pluck(1, 2);
+    EXPECT_EQ(x_plucked2.shape(),   vector<int>({2, 4}));
+    EXPECT_EQ(x_plucked2.number_of_elements(), 8);
+    EXPECT_EQ(x_plucked2.offset(),   8    );
+    EXPECT_EQ(x_plucked2.strides(), vector<int>({3, 1}));
+
+    auto x_plucked3 = x.dim_pluck(2, 1);
+    EXPECT_EQ(x_plucked3.shape(),   vector<int>({2, 3}));
+    EXPECT_EQ(x_plucked3.number_of_elements(), 6);
+    EXPECT_EQ(x_plucked3.offset(),  1);
+    EXPECT_EQ(x_plucked3.strides(), vector<int>({1, 4}));
+}
+
+
+TEST(ArrayTests, strided_sum) {
+    auto x = build_234_arange();
 
     auto x_plucked = x.dim_pluck(0, 0);
     EXPECT_EQ(x.memory().get(), x_plucked.memory().get());
-    EXPECT_EQ((int)(Array)x_plucked.sum(), 0 + 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10 + 11);
+    EXPECT_EQ(
+        (int)(Array)x_plucked.sum(),
+        0 + 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10 + 11
+    );
 
     auto x_plucked2 = x.dim_pluck(1, 2);
     EXPECT_EQ(x.memory().get(), x_plucked2.memory().get());
     EXPECT_FALSE(x_plucked2.contiguous_memory());
-    EXPECT_EQ((int)(Array)x_plucked2.sum(), 8 + 9 + 10 + 11 + 20 + 21 + 22 + 23);
+    EXPECT_EQ(
+        (int)(Array)x_plucked2.sum(),
+        8 + 9 + 10 + 11 + 20 + 21 + 22 + 23
+    );
 
     auto x_plucked3 = x.dim_pluck(2, 1);
     EXPECT_EQ(x.memory().get(), x_plucked3.memory().get());
     EXPECT_FALSE(x_plucked3.contiguous_memory());
-    EXPECT_EQ((int)(Array)x_plucked3.sum(), 1 + 5 + 9 + 13 + 17 + 21);
+    EXPECT_EQ(
+        (int)(Array)x_plucked3.sum(),
+        1 + 5 + 9 + 13 + 17 + 21
+    );
+}
+
+TEST(ArrayTests, inplace_strided_addition) {
+    auto x = build_234_arange();
+    auto x_plucked = x.dim_pluck(2, 1);
+    // strided dimension pluck is a view
+    EXPECT_EQ(&(*x_plucked.memory()), &(*x.memory()));
+    // we now modify this view by in-place incrementation:
+    // x_plucked += 1;
+    // sum is now same as before + number of elements
+    // EXPECT_EQ(
+    //     (int)(Array)x_plucked.sum(),
+    //     (1 + 5 + 9 + 13 + 17 + 21) + x_plucked.number_of_elements()
+    // );
 }
 
 TEST(ArrayTests, canonical_reshape) {

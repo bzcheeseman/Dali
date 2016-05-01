@@ -13,7 +13,7 @@
 using memory::Device;
 
 struct IsNan : public NonArrayFunction<IsNan, bool, Array> {
-    template<typename T>
+    template<OPERATOR_T operator_t, typename T>
     void typed_eval(bool* out, TypedArray<memory::DEVICE_T_CPU, T> input) {
         ASSERT2(input.array.spans_entire_memory(), "At this time is_nan is not available for views");
         int num_elts = input.array.number_of_elements();
@@ -21,7 +21,7 @@ struct IsNan : public NonArrayFunction<IsNan, bool, Array> {
     }
 
 #ifdef DALI_USE_CUDA
-    template<typename T>
+    template<OPERATOR_T operator_t, typename T>
     void typed_eval(bool* out, TypedArray<memory::DEVICE_T_GPU, T> input) {
         ASSERT2(input.array.contiguous_memory(), "At this time is_nan is not available for views");
 

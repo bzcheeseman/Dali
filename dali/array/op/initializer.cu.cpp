@@ -5,6 +5,7 @@
 #endif
 
 #include "dali/array/function/function.h"
+#include "dali/array/function/operator.h"
 #include "dali/array/TensorFunctions.h"
 #include "dali/utils/random.h"
 #include "dali/runtime_config.h"
@@ -137,7 +138,7 @@ bool Initializer<Class, Args...>::disable_output_dtype_check = true;
 
 struct GaussianInitializer : public Initializer<GaussianInitializer, const double&, const double&> {
 #ifdef DALI_USE_CUDA
-    template<typename T>
+    template<OPERATOR_T operator_t, typename T>
     void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out, const double& mean, const double& std) {
         assert_contiguous_memory(out);
         thrust::transform(
@@ -148,13 +149,14 @@ struct GaussianInitializer : public Initializer<GaussianInitializer, const doubl
     }
 #endif
 
-    template<typename T>
+    template<OPERATOR_T operator_t, typename T>
     void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out, const double& mean, const double& std) {
         mshadow::Random<mshadow::cpu, T> generator(utils::randint(0,999999));
         auto m_out = out.d1(memory::AM_OVERWRITE);
         generator.SampleGaussian(&m_out, mean, std);
     }
 
+    template<OPERATOR_T operator_t>
     void typed_eval(TypedArray<memory::DEVICE_T_CPU, int> out, const double& mean, const double& std) {
         assert_contiguous_memory(out);
         std::normal_distribution<double> dist(mean, std);
@@ -169,7 +171,7 @@ struct GaussianInitializer : public Initializer<GaussianInitializer, const doubl
 struct UniformInitializer : public Initializer<UniformInitializer, const double&, const double&> {
 
 #ifdef DALI_USE_CUDA
-    template<typename T>
+    template<OPERATOR_T operator_t, typename T>
     void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out, const double& lower, const double& upper) {
         assert_contiguous_memory(out);
         // about 63x faster than SampleUniform for gpu
@@ -181,13 +183,14 @@ struct UniformInitializer : public Initializer<UniformInitializer, const double&
     }
 #endif
 
-    template<typename T>
+    template<OPERATOR_T operator_t, typename T>
     void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out, const double& lower, const double& upper) {
         mshadow::Random<mshadow::cpu, T> generator(utils::randint(0,999999));
         auto m_out = out.d1(memory::AM_OVERWRITE);
         generator.SampleUniform(&m_out, lower, upper);
     }
 
+    template<OPERATOR_T operator_t>
     void typed_eval(TypedArray<memory::DEVICE_T_CPU, int> out, const double& lower, const double& upper) {
         assert_contiguous_memory(out);
         // uniform_int_distribution can only tak ints as per standard
@@ -204,7 +207,7 @@ struct UniformInitializer : public Initializer<UniformInitializer, const double&
 struct ArangeInitializer : public Initializer<ArangeInitializer> {
 
 #ifdef DALI_USE_CUDA
-    template<typename T>
+    template<OPERATOR_T operator_t, typename T>
     void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out) {
         assert_contiguous_memory(out);
 
@@ -215,7 +218,7 @@ struct ArangeInitializer : public Initializer<ArangeInitializer> {
     }
 #endif
 
-    template<typename T>
+    template<OPERATOR_T operator_t, typename T>
     void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out) {
         auto ptr = out.ptr(memory::AM_OVERWRITE);
         for (int i = 0; i < out.array.number_of_elements(); ++i) {
@@ -225,17 +228,17 @@ struct ArangeInitializer : public Initializer<ArangeInitializer> {
 };
 
 struct BernoulliInitialzier : public Initializer<BernoulliInitialzier, const double&> {
-    template<int devT, typename T>
+    template<OPERATOR_T operator_t, int devT, typename T>
     void typed_eval(TypedArray<devT,T> out, const double& prob) {
-        UniformInitializer().typed_eval(out, 0.0, 1.0);
+        UniformInitializer().template typed_eval<operator_t>(out, 0.0, 1.0);
         out.d1(memory::AM_OVERWRITE) = mshadow::expr::F<tensor_ops::op::threshold<T>>(out.d1(), prob);
     }
 };
 
 struct BernoulliNormalizerInitializer : public Initializer<BernoulliNormalizerInitializer, const double&> {
-    template<int devT, typename T>
+    template<OPERATOR_T operator_t, int devT, typename T>
     void typed_eval(TypedArray<devT,T> out, const double& prob) {
-        UniformInitializer().typed_eval(out, 0.0, 1.0);
+        UniformInitializer().template typed_eval<operator_t>(out, 0.0, 1.0);
         out.d1(memory::AM_OVERWRITE) = mshadow::expr::F<tensor_ops::op::threshold<T>>(out.d1(), prob) * (1.0 / prob);
     }
 };
@@ -247,7 +250,7 @@ struct ConstantInitializer : public Initializer<ConstantInitializer<ConstT>, con
     }
 
 
-    template<int devT, typename T>
+    template<OPERATOR_T operator_t, int devT, typename T>
     void typed_eval(TypedArray<devT,T> out, const ConstT& constant) {
         assert_dali_dtype<ConstT>();
         out.d1(memory::AM_OVERWRITE) = (T)constant;
@@ -261,12 +264,12 @@ struct ConstantInitializer : public Initializer<ConstantInitializer<ConstT>, con
 namespace initializer {
 
     AssignableArray empty() {
-        return AssignableArray([](Array&){
+        return AssignableArray([](Array&, const OPERATOR_T& operator_t){
             // do nothing
         });
     }
     AssignableArray zeros() {
-        return AssignableArray([](Array& out){
+        return AssignableArray([](Array& out, const OPERATOR_T& operator_t){
             // efficient lazy clearing of memory.
             out.clear();
         });
@@ -307,7 +310,7 @@ namespace initializer {
     }
 
     AssignableArray eye(double diag) {
-        return AssignableArray([diag](Array& tensor) {
+        return AssignableArray([diag](Array& tensor, const OPERATOR_T& operator_t) {
             ASSERT2(false, "eye: Not implemented yet");
 
             // #ifdef DALI_USE_CUDA
@@ -321,7 +324,7 @@ namespace initializer {
 
     }
     AssignableArray svd(AssignableArray preinitializer) {
-        return AssignableArray([preinitializer](Array& tensor) {
+        return AssignableArray([preinitializer](Array& tensor, const OPERATOR_T& operator_t) {
             ASSERT2(false, "SVD INIT: Not implemented yet");
             /* Eigen implementation */
             // assert(tensor.dims().size() == 2);

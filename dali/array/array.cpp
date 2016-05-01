@@ -8,6 +8,7 @@
 #include "dali/array/op/reducers.h"
 #include "dali/utils/print_utils.h"
 #include "dali/array/op/initializer.h"
+#include "dali/array/function/operator.h"
 
 using std::vector;
 using memory::SynchronizedMemory;
@@ -125,7 +126,7 @@ Array::Array(const Array& other, bool copy_memory) {
 }
 
 Array::Array(const AssignableArray& assignable) {
-    assignable.assign_to(*this);
+    assignable.assign_to(*this, OPERATOR_T_EQL);
 }
 
 Array Array::zeros(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
@@ -380,7 +381,7 @@ Array& Array::assign_constant(const T& other) {
 }
 
 Array& Array::operator=(const AssignableArray& assignable) {
-    assignable.assign_to(*this);
+    assignable.assign_to(*this, OPERATOR_T_EQL);
     return *this;
 }
 

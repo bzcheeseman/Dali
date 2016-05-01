@@ -5,7 +5,9 @@
 #include <vector>
 
 #include "dali/array/dtype.h"
+#include "dali/array/function/operator.h"
 #include "dali/array/function/expression.h"
+#include "dali/array/function/operator.h"
 #include "dali/array/memory/device.h"
 #include "dali/array/memory/memory_ops.h"
 #include "dali/array/memory/synchronized_memory.h"
@@ -14,7 +16,7 @@
 class Array;
 
 struct AssignableArray {
-    typedef std::function<void(Array&)> assign_t;
+    typedef std::function<void(Array&, const OPERATOR_T&)> assign_t;
     assign_t assign_to;
 
     explicit AssignableArray(assign_t&& _assign_to);

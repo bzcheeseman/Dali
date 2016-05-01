@@ -5,6 +5,7 @@
 #include "dali/array/function/args/mshadow_wrapper.h"
 #include "dali/array/function/args/reduce_over_lazy_expr.h"
 #include "dali/array/function/function.h"
+#include "dali/array/function/operator.h"
 
 namespace debug {
     extern int lazy_evaluator_calls;
@@ -37,11 +38,11 @@ struct LazyEvaluator : public Function<LazyEvaluator<LazyExpr>, Array, LazyExpr>
         return out.dtype();
     }
 
-    template<int devT, typename T>
+    template<OPERATOR_T operator_t, int devT, typename T>
     void typed_eval(TypedArray<devT,T> out, const LazyExpr& expr) {
         debug::lazy_evaluator_calls += 1;
 
-        out.template d<LazyExpr::evaluation_dim>(memory::AM_OVERWRITE) = 
+        out.template d<LazyExpr::evaluation_dim>(memory::AM_OVERWRITE) =
                 MshadowWrapper<devT,T,decltype(expr)>::wrap(expr, out.device);;
     }
 };

@@ -38,6 +38,11 @@ Slice Slice::normalize_and_check(const Slice& slice, const int& dim_size) {
     return Slice(slice, dim_size);
 }
 
+Slice::operator std::string() const {
+    std::stringstream ss;
+    ss << *this;
+    return ss.str();
+}
 
 int Slice::size() const {
     ASSERT2(start >= 0 && end >= 0,
@@ -64,4 +69,5 @@ std::ostream& operator<<(std::ostream& out, const Slice& slice) {
         out << "," << slice.step;
     }
     out << ")";
+    return out;
 }

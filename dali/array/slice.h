@@ -2,6 +2,7 @@
 #define DALI_ARRAY_SLICE_H
 
 #include <ostream>
+#include <string>
 
 struct Slice {
     const int start;
@@ -17,7 +18,7 @@ struct Slice {
 
     int size() const;
     bool contains(int index) const;
-
+    operator std::string() const;
 };
 
 std::ostream& operator<<(std::ostream&, const Slice&);

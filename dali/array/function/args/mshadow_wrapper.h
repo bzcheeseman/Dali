@@ -68,8 +68,9 @@ namespace mshadow {
           public:
             explicit Plan(const DaliWrapperExp<SrcExp, DType, srcdim> &e) :
                     src_(MakePlan(e.src_)),
-                    ndim(e.array.shape().size()) {
-                has_strides = !e.array.strides().empty();
+                    ndim(e.array.shape().size()),
+                    has_strides(!e.array.strides().empty()) {
+
                 for (int i = 0; i < ndim; ++i) {
                     shape[i] = e.array.shape()[i];
                     if (has_strides) strides[i] = e.array.strides()[i];
@@ -112,7 +113,7 @@ namespace mshadow {
             int ndim;
             int shape[DALI_MAX_STRIDED_DIMENSION];
             int strides[DALI_MAX_STRIDED_DIMENSION];
-            bool has_strides;
+            const bool has_strides;
         };
     } //namespace expr
 } // namespace mshadow

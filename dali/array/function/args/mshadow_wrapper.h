@@ -20,53 +20,56 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-template<typename SrcExp, typename DType, int srcdim>
-struct DaliWrapperExp: public mshadow::expr::MakeTensorExp<
-                                    DaliWrapperExp<SrcExp, DType, srcdim>,
-                                    SrcExp, srcdim, DType
-                                 > {
-    const SrcExp src_;
+template<typename Device, int srcdim, typename DType>
+struct DaliWrapperExp : public mshadow::TRValue<
+            DaliWrapperExp<Device, srcdim, DType>,
+            Device,
+            srcdim,
+            DType
+        > {
+    typedef mshadow::Tensor<Device, srcdim, DType> src_t;
+    const src_t src_;
+    mshadow::Shape<srcdim> shape_;
     const Array array;
 
-    DaliWrapperExp(const SrcExp &src, const Array& dali_src) :
+    DaliWrapperExp(const src_t& src, const Array& dali_src) :
             src_(src),
             array(dali_src) {
         ASSERT2(src_.shape_[srcdim - 1] == src_.stride_,
                 "DaliWrapperExp should never reach that condition (only tensors should be passed as arguments).");
         ASSERT2(array.shape().size() <= DALI_MAX_STRIDED_DIMENSION,
                 "Striding only supported for Tensors up to DALI_MAX_STRIDED_DIMENSION dimensions.");
-        this->shape_ = mshadow::expr::ShapeCheck<srcdim, SrcExp>::Check(src_);
+        this->shape_ = mshadow::expr::ShapeCheck<srcdim, src_t>::Check(src_);
     }
 };
 
-
 namespace mshadow {
     namespace expr {
-        template<typename SrcExp, typename DType, int etype>
-        inline DaliWrapperExp<SrcExp, DType, ExpInfo<SrcExp>::kDim>
-        MakeDaliWrapperExp(const Exp<SrcExp, DType, etype> &src, const Array& dali_src) {
-            return DaliWrapperExp<SrcExp, DType, ExpInfo<SrcExp>::kDim>(src.self(), dali_src);
+        template<typename Device, int srcdim, typename DType>
+        inline DaliWrapperExp<Device, srcdim, DType>
+        MakeDaliWrapperExp(const Tensor<Device, srcdim, DType> &src, const Array& dali_src) {
+            return DaliWrapperExp<Device, srcdim, DType>(src.self(), dali_src);
         }
 
-        template<typename SrcExp, typename DType, int srcdim>
-        struct ExpInfo<DaliWrapperExp<SrcExp, DType, srcdim> > {
-            static const int kDimSrc = ExpInfo<SrcExp>::kDim;
+        template<typename Device, int srcdim, typename DType>
+        struct ExpInfo<DaliWrapperExp<Device, srcdim, DType>> {
+            static const int kDimSrc = ExpInfo<typename DaliWrapperExp<Device, srcdim, DType>::src_t>::kDim;
             static const int kDim = kDimSrc >= 0 ? srcdim : -1;
-            static const int kDevMask = ExpInfo<SrcExp>::kDevMask;
+            static const int kDevMask = ExpInfo<typename DaliWrapperExp<Device, srcdim, DType>::src_t>::kDevMask;
         };
 
-        template<typename SrcExp, typename DType, int srcdim>
-        struct ShapeCheck<srcdim, DaliWrapperExp<SrcExp, DType, srcdim> > {
+        template<typename Device, int srcdim, typename DType>
+        struct ShapeCheck<srcdim, DaliWrapperExp<Device,srcdim,DType>> {
             inline static Shape<srcdim>
-            Check(const DaliWrapperExp<SrcExp, DType, srcdim> &t) {
+            Check(const DaliWrapperExp<Device, srcdim, DType> &t) {
                 return t.shape_;
             }
         };
 
-        template<typename SrcExp, typename DType, int srcdim>
-        struct Plan<DaliWrapperExp<SrcExp, DType, srcdim>, DType> {
+        template<typename Device, int srcdim, typename DType>
+        struct Plan<DaliWrapperExp<Device, srcdim, DType>, DType> {
           public:
-            explicit Plan(const DaliWrapperExp<SrcExp, DType, srcdim> &e) :
+            explicit Plan(const DaliWrapperExp<Device, srcdim, DType> &e) :
                     src_(MakePlan(e.src_)),
                     ndim(e.array.shape().size()),
                     has_strides(!e.array.strides().empty()) {
@@ -109,7 +112,7 @@ namespace mshadow {
             }
 
           private:
-            Plan<SrcExp, DType> src_;
+            Plan<typename DaliWrapperExp<Device, srcdim, DType>::src_t, DType> src_;
             int ndim;
             int shape[DALI_MAX_STRIDED_DIMENSION];
             int strides[DALI_MAX_STRIDED_DIMENSION];

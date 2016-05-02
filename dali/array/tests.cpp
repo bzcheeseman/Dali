@@ -302,8 +302,7 @@ std::vector<Slice> generate_interesting_slices(int dim_size) {
 TEST(ArrayTests, proper_slicing) {
     Array x = build_234_arange();
     Array sliced = x[Slice(0,-1)][2][Slice(0,4,-2)];
-    x.print();
-    sliced.print();
+
     Array sliced_sum = sliced.sum();
     ASSERT_EQ(20, (int)sliced_sum);
 }

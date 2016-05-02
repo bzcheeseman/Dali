@@ -13,7 +13,7 @@
 //  expression processor                                                      //
 //  TODO(szymon): make this code more efficient:                              //
 //     -> On CPU code is evaluated serially, so we can replace modulos with   //
-//        if statements => MAD_EFFICIENT                                      //
+//        if statements => MAD_EFFICIENT (also omp parallel?)                 //
 //     -> On GPU we need to make sure that strides and shapes are in the      //
 //        lowest level of cache possible. I think __shared__ needs to be used //
 //        but injecting this into mshadow might cause insanity                //
@@ -76,18 +76,33 @@ namespace mshadow {
                 }
             }
 
-            MSHADOW_XINLINE DType Eval(index_t i, index_t j) const {
+            MSHADOW_XINLINE void map_indices_using_stride(index_t& new_i, index_t& new_j, index_t i, index_t j) const {
+                index_t i_derived_offset = 0;
+
+                for (int dim_idx = ndim - 2; dim_idx >= 0; --dim_idx) {
+                    i_derived_offset += (i % shape[dim_idx]) * strides[dim_idx];
+                    i /=  shape[dim_idx];
+                }
+                new_i = i_derived_offset / shape[ndim - 1];
+                new_j = i_derived_offset % shape[ndim - 1] + j * strides[ndim - 1];
+            }
+
+            MSHADOW_XINLINE DType& REval(index_t i, index_t j) {
+                if (!has_strides) {
+                    return src_.REval(i, j);
+                } else {
+                    index_t new_i, new_j;
+                    map_indices_using_stride(new_i, new_j, i, j);
+                    return src_.REval(new_i, new_j);
+                }
+            }
+
+            MSHADOW_XINLINE const DType& Eval(index_t i, index_t j) const {
                 if (!has_strides) {
                     return src_.Eval(i, j);
                 } else {
-                    index_t i_derived_offset = 0;
-
-                    for (int dim_idx = ndim - 2; dim_idx >= 0; --dim_idx) {
-                        i_derived_offset += (i % shape[dim_idx]) * strides[dim_idx];
-                        i /=  shape[dim_idx];
-                    }
-                    index_t new_i = i_derived_offset / shape[ndim - 1];
-                    index_t new_j = i_derived_offset % shape[ndim - 1] + j * strides[ndim - 1];
+                    index_t new_i, new_j;
+                    map_indices_using_stride(new_i, new_j, i, j);
                     return src_.Eval(new_i, new_j);
                 }
             }

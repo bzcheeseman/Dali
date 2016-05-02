@@ -160,6 +160,15 @@ namespace mshadow {
                 MapReduceKeepLowest<SV, Reducer>(dst, exp.src_, exp.scale_);
             }
         };
+
+
+        template<typename Device, int srcdim, typename DType>
+        struct StreamInfo<Device, DaliWrapperExp<Device, srcdim, DType> > {
+            inline static Stream<Device> *Get(const DaliWrapperExp<Device, srcdim, DType>& t) {
+                return t.src_.stream_;
+            }
+        };
+
     } //namespace expr
 } // namespace mshadow
 ////////////////////////////////////////////////////////////////////////////////

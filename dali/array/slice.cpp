@@ -14,7 +14,7 @@ inline int division_ceil(int a, int b) {
 
 Slice::Slice(const int& start_, const int& end_, const int& step_) :
     start(start_), end(end_), step(step_) {
-    if ((start >= 0 && end >= 0) || (start <= 0 && end <= 0)) {
+    if ((start >= 0 && end >= 0) || (start < 0 && end < 0)) {
         // start and end have to have the same sign.
         ASSERT2(start <= end,
                 utils::MS() << "Slice start (" << start << ") must be less or equal than end (" << end << ")");

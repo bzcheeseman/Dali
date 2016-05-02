@@ -356,10 +356,6 @@ Array Array::pluck_axis(int axis, int pluck_idx) const {
 }
 
 Array Array::pluck_axis(int axis, const Slice& slice_unnormalized) const {
-    // FEATURE REQUESTS:
-    ASSERT2(slice_unnormalized.step == 1,
-            "Slice step is not supported at the moment.");
-
     ASSERT2(axis < shape().size(),
             utils::MS() << "pluck_axis dimension (" << axis << ") must be less the dimensionality of plucked tensor (" << shape().size() << ")");
 
@@ -371,8 +367,15 @@ Array Array::pluck_axis(int axis, const Slice& slice_unnormalized) const {
     vector<int> new_shape(old_shape);
     vector<int> new_strides(old_strides);
 
-    new_shape[axis] = slice.size();
-    int new_offset = offset() + old_strides[axis] * slice.start;
+    new_shape[axis]    = slice.size();
+    new_strides[axis] *= slice.step;
+
+    int new_offset;
+    if (slice.step > 0) {
+        new_offset = offset() + old_strides[axis] * slice.start;
+    } else {
+        new_offset = offset() + old_strides[axis] * (slice.end - 1);
+    }
 
     compact_strides(new_strides, new_shape);
 

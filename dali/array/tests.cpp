@@ -289,7 +289,8 @@ std::vector<Slice> generate_interesting_slices(int dim_size) {
     std::vector<Slice> interesting_slices;
     for (int start = 0; start < dim_size; ++start) {
         for (int end = start + 1; end <= dim_size; ++end) {
-            for (int step = 1; step < 2; ++step) {
+            for (int step = -2; step < 3; ++step) {
+                if (step == 0) continue;
                 interesting_slices.push_back(Slice(start,end,step));
             }
         }
@@ -299,13 +300,17 @@ std::vector<Slice> generate_interesting_slices(int dim_size) {
 }
 
 TEST(ArrayTests, double_striding) {
-    const int NRETRIES = 10;
+    const int NRETRIES = 2;
     for (int retry=0; retry < NRETRIES; ++retry) {
+
         Array x({2,3,4}, DTYPE_INT32);
         x = initializer::uniform(-1000, 1000);
+
         for (auto& slice0: generate_interesting_slices(2)) {
             for (auto& slice1: generate_interesting_slices(3)) {
                 for (auto& slice2: generate_interesting_slices(4)) {
+                    std::string trace_name = utils::MS() << "x[" << slice0 << "][" << slice1 << "][" << slice2 <<"]";
+                    SCOPED_TRACE(trace_name);
                     Array sliced = x.pluck_axis(0, slice0).pluck_axis(1, slice1).pluck_axis(2, slice2);
                     int actual_sum = (Array)sliced.sum();
                     int expected_sum = 0;
@@ -320,7 +325,7 @@ TEST(ArrayTests, double_striding) {
                             }
                         }
                     }
-                    EXPECT_EQ(expected_sum, actual_sum);
+                    ASSERT_EQ(expected_sum, actual_sum);
                 }
             }
         }

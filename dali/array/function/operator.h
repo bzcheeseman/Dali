@@ -19,44 +19,28 @@ struct OperatorAssignHelper {
     static inline void assign(LeftType& left, const RightType& right);
 };
 
-// ugly macro to define many inlined operators that should be removed
-#define DECLARE_OPERATOR_ASSIGN_HELPER_NDIM(NDIM, METHODNAME)\
+#define DECLARE_OPERATOR_ASSIGN_HELPER_NDIM(OPERATOR_ENUM, OPERATOR_SYMBOL, MEMORY_ACCESS, NDIM, METHODNAME, CONTIGUOUS_METHODNAME)\
     template<typename LeftType, typename RightType>\
-    struct OperatorAssignHelper<OPERATOR_T_EQL, NDIM, LeftType, RightType> {\
+    struct OperatorAssignHelper<OPERATOR_ENUM, NDIM, LeftType, RightType> {\
         static inline void assign(LeftType& left, const RightType& right) {\
-            left.METHODNAME (memory::AM_OVERWRITE) = right;\
-        }\
-    };\
-    template<typename LeftType, typename RightType>\
-    struct OperatorAssignHelper<OPERATOR_T_ADD, NDIM, LeftType, RightType> {\
-        static inline void assign(LeftType& left, const RightType& right) {\
-            left.METHODNAME (memory::AM_MUTABLE) += right;\
-        }\
-    };\
-    template<typename LeftType, typename RightType>\
-    struct OperatorAssignHelper<OPERATOR_T_SUB, NDIM, LeftType, RightType> {\
-        static inline void assign(LeftType& left, const RightType& right) {\
-            left.METHODNAME (memory::AM_MUTABLE) -= right;\
-        }\
-    };\
-    template<typename LeftType, typename RightType>\
-    struct OperatorAssignHelper<OPERATOR_T_DIV, NDIM, LeftType, RightType> {\
-        static inline void assign(LeftType& left, const RightType& right) {\
-            left.METHODNAME(memory::AM_MUTABLE) /= right;\
-        }\
-    };\
-    template<typename LeftType, typename RightType>\
-    struct OperatorAssignHelper<OPERATOR_T_MUL, NDIM, LeftType, RightType> {\
-        static inline void assign(LeftType& left, const RightType& right) {\
-            left.METHODNAME(memory::AM_MUTABLE) *= right;\
+            if (left.array.contiguous_memory()) {\
+                left.CONTIGUOUS_METHODNAME (MEMORY_ACCESS) OPERATOR_SYMBOL right;\
+            } else {\
+                left.METHODNAME (MEMORY_ACCESS) OPERATOR_SYMBOL right;\
+            }\
         }\
     }\
 
+// recursive macro to define many inlined operators that should be removed
+#define DECLARE_ALL_OPERATOR_ASSIGN_HELPER_NDIM(NDIM, METHODNAME, CONTIGUOUS_METHODNAME)\
+    DECLARE_OPERATOR_ASSIGN_HELPER_NDIM(OPERATOR_T_EQL, =,  memory::AM_OVERWRITE, NDIM, METHODNAME, CONTIGUOUS_METHODNAME);\
+    DECLARE_OPERATOR_ASSIGN_HELPER_NDIM(OPERATOR_T_ADD, +=, memory::AM_MUTABLE,   NDIM, METHODNAME, CONTIGUOUS_METHODNAME);\
+    DECLARE_OPERATOR_ASSIGN_HELPER_NDIM(OPERATOR_T_SUB, -=, memory::AM_MUTABLE,   NDIM, METHODNAME, CONTIGUOUS_METHODNAME);\
+    DECLARE_OPERATOR_ASSIGN_HELPER_NDIM(OPERATOR_T_MUL, *=, memory::AM_MUTABLE,   NDIM, METHODNAME, CONTIGUOUS_METHODNAME);\
+    DECLARE_OPERATOR_ASSIGN_HELPER_NDIM(OPERATOR_T_DIV, /=, memory::AM_MUTABLE,   NDIM, METHODNAME, CONTIGUOUS_METHODNAME);\
 
-DECLARE_OPERATOR_ASSIGN_HELPER_NDIM(1, d1);
-DECLARE_OPERATOR_ASSIGN_HELPER_NDIM(2, d2);
-DECLARE_OPERATOR_ASSIGN_HELPER_NDIM(3, d3);
-DECLARE_OPERATOR_ASSIGN_HELPER_NDIM(4, d4);
+DECLARE_ALL_OPERATOR_ASSIGN_HELPER_NDIM(1, d1, contiguous_d1);
+DECLARE_ALL_OPERATOR_ASSIGN_HELPER_NDIM(2, d2, contiguous_d2);
 
 template<OPERATOR_T operator_t, int ndim, typename LeftType, typename RightType>
 void inline operator_assign(LeftType& left, const RightType& right) {

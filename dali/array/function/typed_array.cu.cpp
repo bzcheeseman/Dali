@@ -22,7 +22,18 @@ mshadow::Tensor<mshadow::cpu, 2, T> TypedArray<memory::DEVICE_T_CPU, T>::d2(memo
     );
 }
 
+template<typename T>
+mshadow::Tensor<mshadow::cpu, 1, T> TypedArray<memory::DEVICE_T_CPU, T>::contiguous_d1(memory::AM access_mode) const {
+    return mshadow::Tensor<mshadow::cpu, 1, T>(ptr(access_mode), mshadow::Shape1(array.number_of_elements()));
+}
 
+template<typename T>
+mshadow::Tensor<mshadow::cpu, 2, T> TypedArray<memory::DEVICE_T_CPU, T>::contiguous_d2(memory::AM access_mode) const {
+    return mshadow::Tensor<mshadow::cpu, 2, T>(
+        ptr(access_mode),
+        mshadow::Shape2(array.number_of_elements() / array.shape().back(), array.shape().back())
+    );
+}
 
 
 template<typename T>
@@ -55,6 +66,22 @@ template class TypedArray<memory::DEVICE_T_CPU, double>;
 
     template<typename T>
     mshadow::Tensor<mshadow::gpu, 2, T> TypedArray<memory::DEVICE_T_GPU, T>::d2(memory::AM access_mode) const {
+        return mshadow::Tensor<mshadow::gpu, 2, T>(
+            ptr(access_mode),
+            mshadow::Shape2(array.number_of_elements() / array.shape().back(), array.shape().back())
+        );
+    }
+
+    template<typename T>
+    mshadow::Tensor<mshadow::gpu, 1, T> TypedArray<memory::DEVICE_T_GPU, T>::contiguous_d1(memory::AM access_mode) const {
+        return mshadow::Tensor<mshadow::gpu, 1, T>(
+            ptr(access_mode),
+            mshadow::Shape1(array.number_of_elements())
+        );
+    }
+
+    template<typename T>
+    mshadow::Tensor<mshadow::gpu, 2, T> TypedArray<memory::DEVICE_T_GPU, T>::contiguous_d2(memory::AM access_mode) const {
         return mshadow::Tensor<mshadow::gpu, 2, T>(
             ptr(access_mode),
             mshadow::Shape2(array.number_of_elements() / array.shape().back(), array.shape().back())

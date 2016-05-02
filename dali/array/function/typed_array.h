@@ -44,8 +44,19 @@ struct TypedArray<memory::DEVICE_T_CPU, T> {
     mshadow::Tensor<mshadow::cpu, 1, T> d1(memory::AM access_mode=memory::AM_READONLY) const;
     mshadow::Tensor<mshadow::cpu, 2, T> d2(memory::AM access_mode=memory::AM_READONLY) const;
 
+    mshadow::Tensor<mshadow::cpu, 1, T> contiguous_d1(memory::AM access_mode=memory::AM_READONLY) const;
+    mshadow::Tensor<mshadow::cpu, 2, T> contiguous_d2(memory::AM access_mode=memory::AM_READONLY) const;
+
     template<int dim>
     mshadow::Tensor<mshadow::cpu, dim, T> d(memory::AM access_mode) const {
+        return mshadow::Tensor<mshadow::cpu, dim, T>(
+            ptr(access_mode),
+            internal::canonical_reshape<dim>(array.shape())
+        );
+    }
+
+    template<int dim>
+    mshadow::Tensor<mshadow::cpu, dim, T> contiguous_d(memory::AM access_mode) const {
         return mshadow::Tensor<mshadow::cpu, dim, T>(
             ptr(access_mode),
             internal::canonical_reshape<dim>(array.shape())
@@ -68,8 +79,19 @@ struct TypedArray<memory::DEVICE_T_CPU, T> {
         mshadow::Tensor<mshadow::gpu, 1, T> d1(memory::AM access_mode=memory::AM_READONLY) const;
         mshadow::Tensor<mshadow::gpu, 2, T> d2(memory::AM access_mode=memory::AM_READONLY) const;
 
+        mshadow::Tensor<mshadow::gpu, 1, T> contiguous_d1(memory::AM access_mode=memory::AM_READONLY) const;
+        mshadow::Tensor<mshadow::gpu, 2, T> contiguous_d2(memory::AM access_mode=memory::AM_READONLY) const;
+
         template<int dim>
         mshadow::Tensor<mshadow::gpu, dim, T> d(memory::AM access_mode) const {
+            return mshadow::Tensor<mshadow::gpu, dim, T>(
+                ptr(access_mode),
+                internal::canonical_reshape<dim>(array.shape())
+            );
+        }
+
+        template<int dim>
+        mshadow::Tensor<mshadow::gpu, dim, T> contiguous_d(memory::AM access_mode) const {
             return mshadow::Tensor<mshadow::gpu, dim, T>(
                 ptr(access_mode),
                 internal::canonical_reshape<dim>(array.shape())

@@ -14,8 +14,13 @@ inline int division_ceil(int a, int b) {
 
 Slice::Slice(const int& start_, const int& end_, const int& step_) :
     start(start_), end(end_), step(step_) {
-    ASSERT2(start <= end,
-            utils::MS() << "Slice start (" << start << ") must be less or equal than end (" << end << ")");
+    if ((start >= 0 && end >= 0) || (start <= 0 && end <= 0)) {
+        // start and end have to have the same sign.
+        ASSERT2(start <= end,
+                utils::MS() << "Slice start (" << start << ") must be less or equal than end (" << end << ")");
+        ASSERT2(start != end,
+                "Slice must not be empty!");
+    }
     ASSERT2(step_ != 0, "slice step cannot be zero");
 }
 
@@ -38,4 +43,25 @@ int Slice::size() const {
     ASSERT2(start >= 0 && end >= 0,
             "slice length can only be use with positive indexing.");
     return division_ceil(end - start, std::abs(step));
+}
+
+bool Slice::contains(int index) const {
+    ASSERT2(start >= 0 && end >= 0,
+            "slice length can only be use with positive indexing.");
+    bool in_range = start <= index && index < end;
+    bool good_jump = false;
+    if (step > 0) {
+        good_jump = (index - start) % step == 0;
+    } else {
+        good_jump = (end - 1 - index) % (-step) == 0;
+    }
+    return in_range && good_jump;
+}
+
+std::ostream& operator<<(std::ostream& out, const Slice& slice) {
+    out << "slice(" << slice.start << "," << slice.end;
+    if (slice.step != 1) {
+        out << "," << slice.step;
+    }
+    out << ")";
 }

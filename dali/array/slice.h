@@ -1,6 +1,7 @@
 #ifndef DALI_ARRAY_SLICE_H
 #define DALI_ARRAY_SLICE_H
 
+#include <ostream>
 
 struct Slice {
     const int start;
@@ -15,9 +16,10 @@ struct Slice {
     static Slice normalize_and_check(const Slice&, const int& dim_size);
 
     int size() const;
+    bool contains(int index) const;
+
 };
 
+std::ostream& operator<<(std::ostream&, const Slice&);
 
-
-
-#endif
+#endif  // DALI_ARRAY_SLICE_H

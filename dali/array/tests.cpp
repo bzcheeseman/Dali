@@ -226,6 +226,15 @@ TEST(ArrayTests, slice_size) {
     ASSERT_THROW(Slice(0,2,0),  std::runtime_error);
 }
 
+TEST(ArrayTests, slice_contains) {
+    EXPECT_TRUE(Slice(0,12,2).contains(0));
+    EXPECT_FALSE(Slice(0,12,2).contains(1));
+
+    EXPECT_FALSE(Slice(0,12,-2).contains(0));
+    EXPECT_TRUE(Slice(0,12,-2).contains(1));
+}
+
+
 TEST(ArrayTests, pluck_axis_eval) {
     auto x = build_234_arange();
 
@@ -274,4 +283,46 @@ TEST(ArrayTests, canonical_reshape) {
     ASSERT_EQ(mshadow::Shape2(12,5),      internal::canonical_reshape<2>({3,4,5}));
     ASSERT_EQ(mshadow::Shape3(3,4,5),     internal::canonical_reshape<3>({3,4,5}));
     ASSERT_EQ(mshadow::Shape4(1,3,4,5),   internal::canonical_reshape<4>({3,4,5}));
+}
+
+std::vector<Slice> generate_interesting_slices(int dim_size) {
+    std::vector<Slice> interesting_slices;
+    for (int start = 0; start < dim_size; ++start) {
+        for (int end = start + 1; end <= dim_size; ++end) {
+            for (int step = 1; step < 2; ++step) {
+                interesting_slices.push_back(Slice(start,end,step));
+            }
+        }
+    }
+    EXPECT_TRUE(interesting_slices.size() < 50);
+    return interesting_slices;
+}
+
+TEST(ArrayTests, double_striding) {
+    const int NRETRIES = 10;
+    for (int retry=0; retry < NRETRIES; ++retry) {
+        Array x({2,3,4}, DTYPE_INT32);
+        x = initializer::uniform(-1000, 1000);
+        for (auto& slice0: generate_interesting_slices(2)) {
+            for (auto& slice1: generate_interesting_slices(3)) {
+                for (auto& slice2: generate_interesting_slices(4)) {
+                    Array sliced = x.pluck_axis(0, slice0).pluck_axis(1, slice1).pluck_axis(2, slice2);
+                    int actual_sum = (Array)sliced.sum();
+                    int expected_sum = 0;
+                    for (int i=0; i < 2; ++i) {
+                        for (int j=0; j<3; ++j) {
+                            for (int k=0; k<4; ++k) {
+                                if (slice0.contains(i) && slice1.contains(j) && slice2.contains(k)) {
+                                    // avoiding the use of [] here because [] itself
+                                    // does striding.
+                                    expected_sum += (int)x(i*12 + j*4 + k);
+                                }
+                            }
+                        }
+                    }
+                    EXPECT_EQ(expected_sum, actual_sum);
+                }
+            }
+        }
+    }
 }

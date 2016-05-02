@@ -2,24 +2,12 @@
 
 #include "dali/config.h"
 #include "dali/utils/print_utils.h"
+#include "dali/array/function/args/mshadow_wrapper.h"
 
 
 template<typename T>
 T*  TypedArray<memory::DEVICE_T_CPU, T>::ptr(memory::AM access_mode) const {
     return (T*)(array.memory()->data(device, access_mode)) + array.offset();
-}
-
-template<typename T>
-mshadow::Tensor<mshadow::cpu, 1, T> TypedArray<memory::DEVICE_T_CPU, T>::d1(memory::AM access_mode) const {
-    return mshadow::Tensor<mshadow::cpu, 1, T>(ptr(access_mode), mshadow::Shape1(array.number_of_elements()));
-}
-
-template<typename T>
-mshadow::Tensor<mshadow::cpu, 2, T> TypedArray<memory::DEVICE_T_CPU, T>::d2(memory::AM access_mode) const {
-    return mshadow::Tensor<mshadow::cpu, 2, T>(
-        ptr(access_mode),
-        mshadow::Shape2(array.number_of_elements() / array.shape().back(), array.shape().back())
-    );
 }
 
 template<typename T>
@@ -35,6 +23,15 @@ mshadow::Tensor<mshadow::cpu, 2, T> TypedArray<memory::DEVICE_T_CPU, T>::contigu
     );
 }
 
+template<typename T>
+DaliWrapperExp<mshadow::cpu, 1, T> TypedArray<memory::DEVICE_T_CPU, T>::d1(memory::AM access_mode) const {
+    return MakeDaliWrapperExp(contiguous_d1(access_mode), array);
+}
+
+template<typename T>
+DaliWrapperExp<mshadow::cpu, 2, T> TypedArray<memory::DEVICE_T_CPU, T>::d2(memory::AM access_mode) const {
+    return MakeDaliWrapperExp(contiguous_d2(access_mode), array);
+}
 
 template<typename T>
 TypedArray<memory::DEVICE_T_CPU, T>::TypedArray(const Array& _array, const memory::Device& _device)
@@ -56,21 +53,7 @@ template class TypedArray<memory::DEVICE_T_CPU, double>;
         return thrust::device_pointer_cast(ptr(access_mode));
     }
 
-    template<typename T>
-    mshadow::Tensor<mshadow::gpu, 1, T> TypedArray<memory::DEVICE_T_GPU, T>::d1(memory::AM access_mode) const {
-        return mshadow::Tensor<mshadow::gpu, 1, T>(
-            ptr(access_mode),
-            mshadow::Shape1(array.number_of_elements())
-        );
-    }
 
-    template<typename T>
-    mshadow::Tensor<mshadow::gpu, 2, T> TypedArray<memory::DEVICE_T_GPU, T>::d2(memory::AM access_mode) const {
-        return mshadow::Tensor<mshadow::gpu, 2, T>(
-            ptr(access_mode),
-            mshadow::Shape2(array.number_of_elements() / array.shape().back(), array.shape().back())
-        );
-    }
 
     template<typename T>
     mshadow::Tensor<mshadow::gpu, 1, T> TypedArray<memory::DEVICE_T_GPU, T>::contiguous_d1(memory::AM access_mode) const {
@@ -86,6 +69,16 @@ template class TypedArray<memory::DEVICE_T_CPU, double>;
             ptr(access_mode),
             mshadow::Shape2(array.number_of_elements() / array.shape().back(), array.shape().back())
         );
+    }
+
+    template<typename T>
+    DaliWrapperExp<mshadow::gpu, 1, T> TypedArray<memory::DEVICE_T_GPU, T>::d1(memory::AM access_mode) const {
+        return MakeDaliWrapperExp(contiguous_d1(access_mode), array);
+    }
+
+    template<typename T>
+    DaliWrapperExp<mshadow::gpu, 2, T> TypedArray<memory::DEVICE_T_GPU, T>::d2(memory::AM access_mode) const {
+        return MakeDaliWrapperExp(contiguous_d2(access_mode), array);
     }
 
     template<typename T>

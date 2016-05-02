@@ -2,6 +2,7 @@
 #define DALI_ARRAY_FUNCTION_OPERATOR_H
 
 #include <string>
+#include <iostream>
 #include "dali/array/memory/access_modes.h"
 
 // define different ways assignment between two expressions
@@ -41,6 +42,8 @@ struct OperatorAssignHelper {
 
 DECLARE_ALL_OPERATOR_ASSIGN_HELPER_NDIM(1, d1, contiguous_d1);
 DECLARE_ALL_OPERATOR_ASSIGN_HELPER_NDIM(2, d2, contiguous_d2);
+DECLARE_ALL_OPERATOR_ASSIGN_HELPER_NDIM(3, d<3>, contiguous_d<3>);
+DECLARE_ALL_OPERATOR_ASSIGN_HELPER_NDIM(4, d<4>, contiguous_d<4>);
 
 template<OPERATOR_T operator_t, int ndim, typename LeftType, typename RightType>
 void inline operator_assign(LeftType& left, const RightType& right) {

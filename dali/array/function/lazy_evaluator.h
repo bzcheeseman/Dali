@@ -42,8 +42,10 @@ struct LazyEvaluator : public Function<LazyEvaluator<LazyExpr>, Array, LazyExpr>
     void typed_eval(TypedArray<devT,T> out, const LazyExpr& expr) {
         debug::lazy_evaluator_calls += 1;
 
-        out.template d<LazyExpr::evaluation_dim>(memory::AM_OVERWRITE) =
-                MshadowWrapper<devT,T,decltype(expr)>::wrap(expr, out.device);;
+        operator_assign<operator_t, LazyExpr::evaluation_dim>(
+            out,
+            MshadowWrapper<devT,T,decltype(expr)>::wrap(expr, out.device)
+        );
     }
 };
 

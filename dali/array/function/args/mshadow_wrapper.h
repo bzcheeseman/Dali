@@ -1,6 +1,9 @@
 #ifndef DALI_ARRAY_FUNCTION_ARGS_MSHADOW_WRAPPER_H
 #define DALI_ARRAY_FUNCTION_ARGS_MSHADOW_WRAPPER_H
 
+template<int devT, typename T>
+struct TypedArray;
+
 #include "dali/array/function/typed_array.h"
 #include "dali/array/memory/device.h"
 #include "dali/config.h"
@@ -41,15 +44,28 @@ struct DaliWrapperExp : public mshadow::TRValue<
                 "Striding only supported for Tensors up to DALI_MAX_STRIDED_DIMENSION dimensions.");
         this->shape_ = mshadow::expr::ShapeCheck<srcdim, src_t>::Check(src_);
     }
+
+    template<typename E, int etype>
+    inline DaliWrapperExp<Device, srcdim, DType>&
+    operator=(const mshadow::expr::Exp<E, DType, etype>& exp) {
+        return this->__assign(exp);
+    }
+
+    inline DaliWrapperExp<Device, srcdim, DType>&
+    operator=(const DType& exp) {
+        return this->__assign(exp);
+    }
+
 };
+
+template<typename Device, int srcdim, typename DType>
+inline DaliWrapperExp<Device, srcdim, DType>
+MakeDaliWrapperExp(const mshadow::Tensor<Device, srcdim, DType> &src, const Array& dali_src) {
+    return DaliWrapperExp<Device, srcdim, DType>(src.self(), dali_src);
+}
 
 namespace mshadow {
     namespace expr {
-        template<typename Device, int srcdim, typename DType>
-        inline DaliWrapperExp<Device, srcdim, DType>
-        MakeDaliWrapperExp(const Tensor<Device, srcdim, DType> &src, const Array& dali_src) {
-            return DaliWrapperExp<Device, srcdim, DType>(src.self(), dali_src);
-        }
 
         template<typename Device, int srcdim, typename DType>
         struct ExpInfo<DaliWrapperExp<Device, srcdim, DType>> {
@@ -118,6 +134,32 @@ namespace mshadow {
             int strides[DALI_MAX_STRIDED_DIMENSION];
             const bool has_strides;
         };
+
+        template<typename SV, typename Device, typename DType,
+                 typename SrcExp, typename Reducer, int m_dimkeep>
+        struct ExpComplexEngine<SV,
+                                DaliWrapperExp<Device, 1, DType>,
+                                ReduceTo1DExp<SrcExp, DType, Reducer, m_dimkeep>,
+                                DType> {
+            static const int dimkeep = ExpInfo<SrcExp>::kDim - m_dimkeep;
+            inline static void Eval(DaliWrapperExp<Device, 1, DType> *dst,
+                                    const ReduceTo1DExp<SrcExp, DType,
+                                                        Reducer, m_dimkeep> &exp) {
+                TypeCheckPass<m_dimkeep != 1>
+                        ::Error_Expression_Does_Not_Meet_Dimension_Req();
+                MapReduceKeepHighDim<SV, Reducer, dimkeep>(dst, exp.src_, exp.scale_);
+            }
+        };
+        template<typename SV, typename Device, typename DType,
+                 typename SrcExp, typename Reducer>
+        struct ExpComplexEngine<SV,
+                                DaliWrapperExp<Device, 1, DType>,
+                                ReduceTo1DExp<SrcExp, DType, Reducer, 1>, DType> {
+            inline static void Eval(DaliWrapperExp<Device, 1, DType> *dst,
+                                    const ReduceTo1DExp<SrcExp, DType, Reducer, 1> &exp) {
+                MapReduceKeepLowest<SV, Reducer>(dst, exp.src_, exp.scale_);
+            }
+        };
     } //namespace expr
 } // namespace mshadow
 ////////////////////////////////////////////////////////////////////////////////
@@ -140,8 +182,8 @@ struct MshadowWrapper {
 template<int devT,typename T>
 struct MshadowWrapper<devT,T,Array> {
     static inline auto wrap(const Array& array, memory::Device device) ->
-            decltype(MakeDaliWrapperExp(TypedArray<devT,T>(array, device).d2(), array)) {
-        return MakeDaliWrapperExp(TypedArray<devT,T>(array, device).d2(), array);
+            decltype(TypedArray<devT,T>(array, device).d2()) {
+        return TypedArray<devT,T>(array, device).d2();
     }
 };
 

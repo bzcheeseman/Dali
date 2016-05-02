@@ -151,9 +151,10 @@ struct GaussianInitializer : public Initializer<GaussianInitializer, const doubl
 
     template<OPERATOR_T operator_t, typename T>
     void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out, const double& mean, const double& std) {
+        assert_contiguous_memory(out);
         mshadow::Random<mshadow::cpu, T> generator(utils::randint(0,999999));
         if (operator_t == OPERATOR_T_EQL) {
-            auto m_out = out.d1(memory::AM_OVERWRITE);
+            auto m_out = out.contiguous_d1(memory::AM_OVERWRITE);
             generator.SampleGaussian(&m_out, mean, std);
         } else {
             ASSERT2(false,
@@ -204,7 +205,7 @@ struct UniformInitializer : public Initializer<UniformInitializer, const double&
     template<OPERATOR_T operator_t, typename T>
     void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out, const double& lower, const double& upper) {
         mshadow::Random<mshadow::cpu, T> generator(utils::randint(0,999999));
-        auto m_out = out.d1(memory::AM_OVERWRITE);
+        auto m_out = out.contiguous_d1(memory::AM_OVERWRITE);
         generator.SampleUniform(&m_out, lower, upper);
     }
 
@@ -267,7 +268,7 @@ struct BernoulliInitializer : public Initializer<BernoulliInitializer, const dou
     void typed_eval(TypedArray<devT,T> out, const double& prob) {
         if (operator_t == OPERATOR_T_EQL) {
             UniformInitializer().template typed_eval<operator_t>(out, 0.0, 1.0);
-            operator_assign<operator_t, 1>(out, mshadow::expr::F<tensor_ops::op::threshold<T>>(out.d1(), prob));
+            operator_assign<operator_t, 1>(out, mshadow::expr::F<tensor_ops::op::threshold<T>>(out.contiguous_d1(), prob));
         } else {
             ASSERT2(false,
                 utils::MS() << operator_to_name(operator_t)
@@ -281,7 +282,7 @@ struct BernoulliNormalizedInitializer : public Initializer<BernoulliNormalizedIn
     void typed_eval(TypedArray<devT,T> out, const double& prob) {
         if (operator_t == OPERATOR_T_EQL) {
             UniformInitializer().template typed_eval<operator_t>(out, 0.0, 1.0);
-            operator_assign<operator_t, 1>(out, mshadow::expr::F<tensor_ops::op::threshold<T>>(out.d1(), prob) * (1.0 / prob));
+            operator_assign<operator_t, 1>(out, mshadow::expr::F<tensor_ops::op::threshold<T>>(out.contiguous_d1(), prob) * (1.0 / prob));
         } else {
             ASSERT2(false,
                 utils::MS() << operator_to_name(operator_t)
@@ -354,7 +355,6 @@ namespace initializer {
 
     AssignableArray bernoulli(const double& prob) {
         return BernoulliInitializer::run(prob);
-
     }
 
     AssignableArray bernoulli_normalized(const double& prob) {

@@ -263,7 +263,7 @@ TEST(ArrayTests, pluck_axis_eval) {
     );
 }
 
-TEST(ArrayTests, DISABLED_inplace_strided_addition) {
+TEST(ArrayTests, inplace_strided_addition) {
     auto x = build_234_arange();
     auto x_plucked = x.pluck_axis(2, 1);
     // strided dimension pluck is a view
@@ -274,7 +274,7 @@ TEST(ArrayTests, DISABLED_inplace_strided_addition) {
     // sum is now same as before + number of elements
     EXPECT_EQ(
         (int)(Array)x_plucked.sum(),
-        (1 + 5 + 9 + 13 + 17 + 21) + x_plucked.number_of_elements()
+        x_plucked.number_of_elements() + (1 + 5 + 9 + 13 + 17 + 21)
     );
 }
 
@@ -307,7 +307,7 @@ TEST(ArrayTests, proper_slicing) {
     ASSERT_EQ(20, (int)sliced_sum);
 }
 
-TEST(ArrayTests, double_striding) {
+TEST(ArrayTests, DISABLED_double_striding) {
     const int NRETRIES = 2;
     for (int retry=0; retry < NRETRIES; ++retry) {
 

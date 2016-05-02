@@ -10,6 +10,11 @@
 
 #include "dali/array/array.h"
 
+template<typename Device, int srcdim, typename DType>
+class DaliWrapperExp;
+
+#include "dali/array/function/args/mshadow_wrapper.h"
+
 namespace internal {
     template<int dstdim>
     mshadow::Shape<dstdim> canonical_reshape(const std::vector<int>& src_shape) {
@@ -41,11 +46,11 @@ struct TypedArray<memory::DEVICE_T_CPU, T> {
 
     T* ptr(memory::AM access_mode=memory::AM_READONLY) const;
 
-    mshadow::Tensor<mshadow::cpu, 1, T> d1(memory::AM access_mode=memory::AM_READONLY) const;
-    mshadow::Tensor<mshadow::cpu, 2, T> d2(memory::AM access_mode=memory::AM_READONLY) const;
-
     mshadow::Tensor<mshadow::cpu, 1, T> contiguous_d1(memory::AM access_mode=memory::AM_READONLY) const;
     mshadow::Tensor<mshadow::cpu, 2, T> contiguous_d2(memory::AM access_mode=memory::AM_READONLY) const;
+
+    DaliWrapperExp<mshadow::cpu, 1, T> d1(memory::AM access_mode=memory::AM_READONLY) const;
+    DaliWrapperExp<mshadow::cpu, 2, T> d2(memory::AM access_mode=memory::AM_READONLY) const;
 
     template<int dim>
     mshadow::Tensor<mshadow::cpu, dim, T> d(memory::AM access_mode) const {
@@ -76,11 +81,11 @@ struct TypedArray<memory::DEVICE_T_CPU, T> {
 
         thrust::device_ptr<T> to_thrust(memory::AM access_mode=memory::AM_READONLY) const;
 
-        mshadow::Tensor<mshadow::gpu, 1, T> d1(memory::AM access_mode=memory::AM_READONLY) const;
-        mshadow::Tensor<mshadow::gpu, 2, T> d2(memory::AM access_mode=memory::AM_READONLY) const;
-
         mshadow::Tensor<mshadow::gpu, 1, T> contiguous_d1(memory::AM access_mode=memory::AM_READONLY) const;
         mshadow::Tensor<mshadow::gpu, 2, T> contiguous_d2(memory::AM access_mode=memory::AM_READONLY) const;
+
+        DaliWrapperExp<mshadow::gpu, 1, T> d1(memory::AM access_mode=memory::AM_READONLY) const;
+        DaliWrapperExp<mshadow::gpu, 2, T> d2(memory::AM access_mode=memory::AM_READONLY) const;
 
         template<int dim>
         mshadow::Tensor<mshadow::gpu, dim, T> d(memory::AM access_mode) const {

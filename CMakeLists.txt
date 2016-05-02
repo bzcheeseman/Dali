@@ -246,6 +246,19 @@ if (WITH_CUDA)
     cuda_compile_on()
     cuda_include_directories(${DaliHeaders})
     cuda_add_library(dali_cuda STATIC ${DaliCudaSources} ${DaliHeaders})
+
+    # Cmake cuda will not execute virtual source tree copy of headers
+    # before attempting to compile individual cu files. To force headers
+    # to be copied from virtual source tree first, we create a special
+    # target specifically for copying header files:
+    ADD_CUSTOM_TARGET(dali_cuda_headers DEPENDS ${DaliHeaders})
+    # then we ensure that compiling dali for cuda DEPENDS on the headers
+    # being already copied:
+    add_dependencies(dali_cuda dali_cuda_headers)
+
+    foreach(DaliHeader ${DaliHeaders})
+        message(STATUS " * ${DaliHeader}")
+    endforeach()
     target_link_libraries(dali_cuda ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_CUBLAS_LIBRARIES})
     if (OpenBLAS_FOUND)
         target_link_libraries(dali_cuda ${OpenBLAS_LIB})

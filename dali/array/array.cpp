@@ -281,10 +281,13 @@ vector<int> Array::subshape() const {
 }
 
 
-Array Array::operator[](index_t idx) const {
-    ASSERT2(shape().size() > 0,
-        "Slicing a scalar array is not allowed.");
+Array Array::operator[](int idx) const {
     return pluck_axis(0, idx);
+}
+
+ArraySlice Array::operator[](Slice s) const {
+    auto ret = ArraySlice(*this);
+    return ret[s];
 }
 
 Array Array::operator()(index_t idx) const {
@@ -321,11 +324,11 @@ Array Array::reshape(const vector<int>& new_shape) const {
                  state->dtype);
 }
 
-Array Array::compact_axis(int axis) const {
+Array Array::collapse_axis(int axis) const {
     ASSERT2(axis < shape().size(),
-            utils::MS() << "compact_axis dimension (" << axis << ") must be less the dimensionality of compacted tensor (" << shape().size() << ")");
+            utils::MS() << "collapse_axis dimension (" << axis << ") must be less the dimensionality of compacted tensor (" << shape().size() << ")");
     ASSERT2(shape()[axis] == 1,
-            utils::MS() << "compact_axis(" << axis << ") requires tensor to be shaped like a bowtie.");
+            utils::MS() << "collapse_axis(" << axis << ") requires tensor to be shaped like a bowtie.");
 
     const vector<int>& old_shape = shape();
     auto old_strides             = normalized_strides();
@@ -352,7 +355,7 @@ Array Array::compact_axis(int axis) const {
 
 Array Array::pluck_axis(int axis, int pluck_idx) const {
     auto single_item_slice = pluck_axis(axis, Slice(pluck_idx, pluck_idx + 1));
-    return single_item_slice.compact_axis(axis);
+    return single_item_slice.collapse_axis(axis);
 }
 
 Array Array::pluck_axis(int axis, const Slice& slice_unnormalized) const {
@@ -475,15 +478,18 @@ void Array::print(std::basic_ostream<char>& stream, int indent) const {
                       << std::setw( 7 ) /* keep 7 digits*/
                       << std::setprecision( 3 ) /* use 3 decimals*/
                       << std::setfill( ' ' );
-            (*this)[i].print(stream);
+            Array scalar = (*this)[i];
+            scalar.print(stream);
             if (i != state->shape[0] - 1) stream << " ";
         }
         stream << "]";
         stream << std::endl;
     } else {
         stream << std::string(indent, ' ') << "[" << std::endl;
-        for (int i = 0; i < state->shape[0]; ++i)
-            (*this)[i].print(stream, indent + 4);
+        for (int i = 0; i < state->shape[0]; ++i) {
+            Array subtensor = (*this)[i];
+            subtensor.print(stream, indent + 4);
+        }
         stream << std::string(indent, ' ') <<"]" << std::endl;
     }
 }
@@ -498,4 +504,56 @@ void Array::clear() {
     } else {
         *this = initializer::fill(0.0);
     }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+//                        ARRAY SLICE                                         //
+////////////////////////////////////////////////////////////////////////////////
+
+ArraySlice::ArraySlice(const Array& input_) :
+        input(input_),
+        slice({}),
+        collapse({}) {
+}
+
+ArraySlice::ArraySlice(const ArraySlice& other) :
+        input(other.input),
+        slice(other.slice.begin(), other.slice.end()),
+        collapse(other.collapse.begin(), other.collapse.end()) {
+}
+
+
+ArraySlice ArraySlice::operator[](Slice s) {
+    ASSERT2(slice.size() < input.ndim(),
+        "Slicing a scalar array is not allowed.");
+    ArraySlice res(*this);
+    res.slice.push_back(s);
+    res.collapse.push_back(false);
+    return res;
+}
+
+ArraySlice ArraySlice::operator[](int idx) {
+    ASSERT2(slice.size() < input.ndim(),
+        "Slicing a scalar array is not allowed.");
+    ArraySlice res(*this);
+    res.slice.push_back(Slice(idx, idx+1));
+    res.collapse.push_back(true);
+    return res;
+}
+
+ArraySlice::operator Array() {
+    Array out = input;
+    ASSERT2(slice.size() == collapse.size(),
+            "Email szymon.sidor@gmail.com.");
+    int dim = 0;
+    for (int i = 0; i < slice.size(); ++i) {
+        out = out.pluck_axis(dim, slice[i]);
+        if (collapse[i]) {
+            out = out.collapse_axis(dim);
+        } else {
+            dim++;
+        }
+    }
+    return out;
 }

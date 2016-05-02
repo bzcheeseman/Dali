@@ -299,6 +299,15 @@ std::vector<Slice> generate_interesting_slices(int dim_size) {
     return interesting_slices;
 }
 
+TEST(ArrayTests, proper_slicing) {
+    Array x = build_234_arange();
+    Array sliced = x[Slice(0,-1)][2][Slice(0,4,-2)];
+    x.print();
+    sliced.print();
+    Array sliced_sum = sliced.sum();
+    ASSERT_EQ(20, (int)sliced_sum);
+}
+
 TEST(ArrayTests, double_striding) {
     const int NRETRIES = 2;
     for (int retry=0; retry < NRETRIES; ++retry) {
@@ -311,7 +320,7 @@ TEST(ArrayTests, double_striding) {
                 for (auto& slice2: generate_interesting_slices(4)) {
                     std::string trace_name = utils::MS() << "x[" << slice0 << "][" << slice1 << "][" << slice2 <<"]";
                     SCOPED_TRACE(trace_name);
-                    Array sliced = x.pluck_axis(0, slice0).pluck_axis(1, slice1).pluck_axis(2, slice2);
+                    Array sliced = x[slice0][slice1][slice2];
                     int actual_sum = (Array)sliced.sum();
                     int expected_sum = 0;
                     for (int i=0; i < 2; ++i) {

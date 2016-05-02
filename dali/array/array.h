@@ -39,6 +39,8 @@ struct ArrayState {
                DType _dtype);
 };
 
+class ArraySlice;
+
 class Array : public Exp<Array> {
   private:
     std::shared_ptr<ArrayState> state;
@@ -104,7 +106,9 @@ class Array : public Exp<Array> {
     std::vector<int> subshape() const;
 
     /* Creating a view into memory */
-    Array operator[](index_t idx) const;
+    Array operator[](int idx) const;
+    ArraySlice operator[](Slice s) const;
+
     Array operator()(index_t idx) const;
     Array ravel() const;
     Array reshape(const std::vector<int>& shape) const;
@@ -112,7 +116,7 @@ class Array : public Exp<Array> {
     // TODO(szymon): look up what it's called in tensorflow/numpy and rename.
     Array pluck_axis(int axis, const Slice& slice) const;
     Array pluck_axis(int axis, int idx) const;
-    Array compact_axis(int axis) const;
+    Array collapse_axis(int axis) const;
 
     AssignableArray sum() const;
     AssignableArray mean() const;
@@ -157,6 +161,19 @@ class Array : public Exp<Array> {
 
     /* Operations */
     void clear();
+};
+
+struct ArraySlice {
+  private:
+    std::vector<Slice> slice;
+    std::vector<bool>  collapse;
+    Array input;
+  public:
+    ArraySlice(const Array& input_);
+    ArraySlice(const ArraySlice& other);
+    ArraySlice operator[](Slice s);
+    ArraySlice operator[](int idx);
+    operator Array();
 };
 
 #endif

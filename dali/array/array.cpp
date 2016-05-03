@@ -399,24 +399,25 @@ AssignableArray Array::mean() const {
     return op::mean_all(*this);
 }
 
-
-template<typename T>
-Array::operator T() const {
-    return scalar_value<T>();
+Array::operator float() const {
+    return scalar_value<float>();
+}
+Array::operator double() const {
+    return scalar_value<double>();
+}
+Array::operator int() const {
+    return scalar_value<int>();
 }
 
-template Array::operator float() const;
-template Array::operator double() const;
-template Array::operator int() const;
-
-template<typename T>
-Array::operator T&() {
-    return scalar_value<T>();
+Array::operator float&() {
+    return scalar_value<float>();
 }
-
-template Array::operator float&();
-template Array::operator double&();
-template Array::operator int&();
+Array::operator double&() {
+    return scalar_value<double>();
+}
+Array::operator int&() {
+    return scalar_value<int>();
+}
 
 template<typename T>
 Array& Array::assign_constant(const T& other) {

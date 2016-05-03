@@ -20,18 +20,20 @@ class TensorTests : public MemorySafeTest {
     static void SetUpTestCase() {
     }
 };
-//
-//
-// TEST_F(MatrixTests, sum_test) {
-//     auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
-//     auto res = A.sum();
-//     R sum = 0.0;
-//     for (int i = 0; i < A.number_of_elements(); ++i) {
-//         sum += A.w(i);
-//     }
-//     ASSERT_NEAR(sum, res.w(0), 1e-4);
-// }
-//
+
+TEST_F(TensorTests, sum_test) {
+    auto A = Tensor({10, 20}, initializer::uniform(-2.0, 2.0), DTYPE_FLOAT);
+    ELOG("ah");
+    auto res = A.sum();
+    ELOG("bh");
+    float sum = 0.0;
+    for (int i = 0; i < A.number_of_elements(); ++i) {
+        sum += (float)A.w(i);
+    }
+    ELOG("ch");
+    ASSERT_NEAR(sum, (float)res.w(0), 1e-4);
+}
+
 // TEST_F(MatrixTests, sum_rowwise) {
 //     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
 //         return MatOps<R>::sum_rowwise(Xs[0]);
@@ -201,17 +203,17 @@ class TensorTests : public MemorySafeTest {
 // }
 //
 //
-// TEST_F(MatrixTests, sum) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return Xs[0].sum();
-//     };
-//
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
-//         expect_args_remain_on_gpu(functor, {A});
-//         EXPECT_TRUE(gradient_same(functor, {A}));
-//     }
-// }
+TEST_F(TensorTests, DISABLED_sum) {
+    auto functor = [](vector<Tensor> Xs)-> Tensor {
+        return Xs[0].sum();
+    };
+
+    EXPERIMENT_REPEAT {
+        auto A = Tensor({10, 20}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
+        expect_args_remain_on_gpu(functor, {A});
+        EXPECT_TRUE(gradient_same(functor, {A}));
+    }
+}
 //
 // TEST_F(MatrixTests, sigmoid_gpu_vs_cpu) {
 //     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
@@ -988,9 +990,9 @@ TEST_F(TensorTests, reshape) {
 //     }
 // }
 
-typedef MemorySafeTest MatOpsTests;
+typedef MemorySafeTest TensorOpsTests;
 //
-// TEST_F(MatOpsTests, matrix_mul_with_bias) {
+// TEST_F(TensorOpsTests, matrix_mul_with_bias) {
 //     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
 //         return MatOps<R>::mul_with_bias(Xs[1], Xs[0], Xs[2]);
 //     };
@@ -1005,7 +1007,7 @@ typedef MemorySafeTest MatOpsTests;
 //     }
 // }
 //
-// TEST_F(MatOpsTests, matrix_mul_add_mul_with_bias) {
+// TEST_F(TensorOpsTests, matrix_mul_add_mul_with_bias) {
 //     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
 //         return MatOps<R>::mul_add_mul_with_bias({Xs[0], Xs[2]}, {Xs[1], Xs[3]}, Xs[4]);
 //     };
@@ -1025,7 +1027,7 @@ typedef MemorySafeTest MatOpsTests;
 //     }
 // }
 //
-// TEST_F(MatOpsTests, matrix_mul_add_mul_with_bias_fancy_broadcast) {
+// TEST_F(TensorOpsTests, matrix_mul_add_mul_with_bias_fancy_broadcast) {
 //     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
 //         return MatOps<R>::mul_add_mul_with_bias({Xs[0], Xs[2], Xs[4]}, {Xs[1], Xs[3], Xs[5]}, Xs[6]);
 //     };
@@ -1049,7 +1051,7 @@ typedef MemorySafeTest MatOpsTests;
 //     }
 // }
 //
-// TEST_F(MatOpsTests, matrix_mul_add_mul_with_bias_colwise) {
+// TEST_F(TensorOpsTests, matrix_mul_add_mul_with_bias_colwise) {
 //     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
 //         return MatOps<R>::mul_add_mul_with_bias_colwise({Xs[0], Xs[2], Xs[4]}, {Xs[1], Xs[3], Xs[5]}, Xs[6]);
 //     };
@@ -1194,7 +1196,7 @@ typedef MemorySafeTest MatOpsTests;
 // }
 //
 //
-// TEST_F(MatOpsTests, dropout) {
+// TEST_F(TensorOpsTests, dropout) {
 //     int seed = 1234;
 //     auto functor = [&seed](vector<Mat<R>> Xs)-> Mat<R> {
 //         auto C = Xs[0] * Xs[1];
@@ -1216,7 +1218,7 @@ typedef MemorySafeTest MatOpsTests;
 //     }
 // }
 //
-// TEST_F(MatOpsTests, dropout_normalized) {
+// TEST_F(TensorOpsTests, dropout_normalized) {
 //     int seed = 1234;
 //     auto functor = [&seed](vector<Mat<R>> Xs)-> Mat<R> {
 //         auto C = Xs[0] * Xs[1];
@@ -1238,7 +1240,7 @@ typedef MemorySafeTest MatOpsTests;
 //     }
 // }
 //
-// TEST_F(MatOpsTests, fast_dropout) {
+// TEST_F(TensorOpsTests, fast_dropout) {
 //     int seed = 1234;
 //     auto functor = [&seed](vector<Mat<R>> Xs)-> Mat<R> {
 //         auto C = Xs[0] * Xs[1];
@@ -1260,7 +1262,7 @@ typedef MemorySafeTest MatOpsTests;
 //     }
 // }
 //
-// TEST_F(MatOpsTests, softmax_colwise) {
+// TEST_F(TensorOpsTests, softmax_colwise) {
 //     int row_size = 5;
 //     int col_size = 10;
 //     EXPERIMENT_REPEAT {
@@ -1277,7 +1279,7 @@ typedef MemorySafeTest MatOpsTests;
 //     }
 // }
 //
-// TEST_F(MatOpsTests, softmax_rowwise) {
+// TEST_F(TensorOpsTests, softmax_rowwise) {
 //     int row_size = 5;
 //     int col_size = 10;
 //     EXPERIMENT_REPEAT {
@@ -1292,7 +1294,7 @@ typedef MemorySafeTest MatOpsTests;
 //     }
 // }
 //
-// TEST_F(MatOpsTests, resize_decrease_rows) {
+// TEST_F(TensorOpsTests, resize_decrease_rows) {
 //     int row_size = 3, col_size = 4;
 //     // decrease number of rows by 1
 //     auto A = Mat<R>(row_size, col_size);
@@ -1308,7 +1310,7 @@ typedef MemorySafeTest MatOpsTests;
 //     ASSERT_EQ(A.w().shape, new_shape);
 // }
 //
-// TEST_F(MatOpsTests, resize_increase_rows) {
+// TEST_F(TensorOpsTests, resize_increase_rows) {
 //     int row_size = 3, col_size = 4;
 //     // increase number of rows by 1
 //     auto A = Mat<R>(row_size, col_size);
@@ -1326,7 +1328,7 @@ typedef MemorySafeTest MatOpsTests;
 //     ASSERT_EQ(A.w().shape, new_shape);
 // }
 //
-// TEST_F(MatOpsTests, resize_decrease_cols) {
+// TEST_F(TensorOpsTests, resize_decrease_cols) {
 //     int row_size = 3, col_size = 4;
 //     // decrease number of columns by 1
 //     auto A = Mat<R>(row_size, col_size);
@@ -1343,7 +1345,7 @@ typedef MemorySafeTest MatOpsTests;
 //     ASSERT_EQ(A.w().shape, new_shape);
 // }
 //
-// TEST_F(MatOpsTests, resize_increase_cols) {
+// TEST_F(TensorOpsTests, resize_increase_cols) {
 //     int row_size = 3, col_size = 4;
 //     // increase number of columns by 1
 //     auto A = Mat<R>(row_size, col_size);
@@ -1365,7 +1367,7 @@ typedef MemorySafeTest MatOpsTests;
 //     ASSERT_EQ(A.w().shape, new_shape);
 // }
 //
-// TEST_F(MatOpsTests, resize_increase_rows_and_cols) {
+// TEST_F(TensorOpsTests, resize_increase_rows_and_cols) {
 //     int row_size = 3, col_size = 4;
 //     // increase number of rows and columns by 1
 //     auto A = Mat<R>(row_size, col_size);
@@ -1392,7 +1394,7 @@ typedef MemorySafeTest MatOpsTests;
 //     ASSERT_EQ(A.w().shape, new_shape);
 // }
 //
-// TEST_F(MatOpsTests, resize_decrease_rows_and_cols) {
+// TEST_F(TensorOpsTests, resize_decrease_rows_and_cols) {
 //     int row_size = 3, col_size = 4;
 //     // decrease number of rows and columns by 1
 //     auto A = Mat<R>(row_size, col_size);
@@ -1409,7 +1411,7 @@ typedef MemorySafeTest MatOpsTests;
 //     ASSERT_EQ(A.w().shape, new_shape);
 // }
 //
-// TEST_F(MatOpsTests, resize_1D_decrease_rows) {
+// TEST_F(TensorOpsTests, resize_1D_decrease_rows) {
 //     int row_size = 3;
 //     // decrease number of rows by 1
 //     TensorInternal<R,1> A(mshadow::Shape1(row_size));
@@ -1426,7 +1428,7 @@ typedef MemorySafeTest MatOpsTests;
 //     ASSERT_EQ(A.shape, new_shape);
 // }
 //
-// TEST_F(MatOpsTests, resize_1D_increase_rows) {
+// TEST_F(TensorOpsTests, resize_1D_increase_rows) {
 //     int row_size = 3;
 //     // increase number of rows by 1
 //     TensorInternal<R,1> A(mshadow::Shape1(row_size));
@@ -1444,7 +1446,7 @@ typedef MemorySafeTest MatOpsTests;
 //     ASSERT_EQ(A.shape, new_shape);
 // }
 //
-// TEST_F(MatOpsTests, circular_convolution) {
+// TEST_F(TensorOpsTests, circular_convolution) {
 //     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
 //         return MatOps<R>::circular_convolution(Xs[0], Xs[1]);
 //     };
@@ -1456,7 +1458,7 @@ typedef MemorySafeTest MatOpsTests;
 // }
 //
 //
-// TEST_F(MatOpsTests, DISABLED_matrix_conv1d_grad) {
+// TEST_F(TensorOpsTests, DISABLED_matrix_conv1d_grad) {
 //     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
 //         return MatOps<R>::conv1d(Xs[0], std::initializer_list<Mat<R>>({Xs[1], Xs[2]})).tanh();
 //     };
@@ -1468,7 +1470,7 @@ typedef MemorySafeTest MatOpsTests;
 //     }
 // }
 //
-// TEST_F(MatOpsTests, DISABLED_matrix_conv2d) {
+// TEST_F(TensorOpsTests, DISABLED_matrix_conv2d) {
 //     /*graph::NoBackprop nb;
 //
 //     auto image = Mat<R>(10, 10);
@@ -1517,7 +1519,7 @@ typedef MemorySafeTest MatOpsTests;
 // */
 // }
 //
-// TEST_F(MatOpsTests, DISABLED_matrix_conv2d_grad) {
+// TEST_F(TensorOpsTests, DISABLED_matrix_conv2d_grad) {
 //     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
 //         return MatOps<R>::conv2d(Xs[0], Xs[1]).tanh();
 //     };
@@ -1528,7 +1530,7 @@ typedef MemorySafeTest MatOpsTests;
 //     }
 // }
 //
-// TEST_F(MatOpsTests, softmax_temperature) {
+// TEST_F(TensorOpsTests, softmax_temperature) {
 //     graph::NoBackprop nb;
 //
 //     auto mat = Mat<R>(10, 1);
@@ -1564,7 +1566,7 @@ typedef MemorySafeTest MatOpsTests;
 //     }
 // }
 //
-// TEST_F(MatOpsTests, cross_entropy_grad) {
+// TEST_F(TensorOpsTests, cross_entropy_grad) {
 //     EXPERIMENT_REPEAT {
 //         const int hidden_size = 10;
 //         double temperature = 1.0; // utils::randdouble(0.1, 100);
@@ -1586,7 +1588,7 @@ typedef MemorySafeTest MatOpsTests;
 //     }
 // }
 //
-// TEST_F(MatOpsTests, softmax_cross_entropy_colwise_grad) {
+// TEST_F(TensorOpsTests, softmax_cross_entropy_colwise_grad) {
 //     EXPERIMENT_REPEAT {
 //         auto input = Mat<R>(3,  2, weights<R>::uniform(-2.0, 2.0));
 //
@@ -1606,7 +1608,7 @@ typedef MemorySafeTest MatOpsTests;
 //     }
 // }
 //
-// TEST_F(MatOpsTests, cross_entropy_colwise_multiindex) {
+// TEST_F(TensorOpsTests, cross_entropy_colwise_multiindex) {
 //     EXPERIMENT_REPEAT {
 //         graph::NoBackprop nb;
 //
@@ -1632,7 +1634,7 @@ typedef MemorySafeTest MatOpsTests;
 //
 //
 //
-// TEST_F(MatOpsTests, softmax_cross_entropy_rowwise_grad) {
+// TEST_F(TensorOpsTests, softmax_cross_entropy_rowwise_grad) {
 //     // utils::random::set_seed(1234);
 //     EXPERIMENT_REPEAT {
 //         auto input = Mat<R>(2, 3, weights<R>::uniform(-2.0, 2.0));
@@ -1654,7 +1656,7 @@ typedef MemorySafeTest MatOpsTests;
 //     // utils::random::reseed();
 // }
 //
-// TEST_F(MatOpsTests, cross_entropy_rowwise_multiindex) {
+// TEST_F(TensorOpsTests, cross_entropy_rowwise_multiindex) {
 //     EXPERIMENT_REPEAT {
 //         graph::NoBackprop nb;
 //
@@ -1678,7 +1680,7 @@ typedef MemorySafeTest MatOpsTests;
 //     }
 // }
 //
-// TEST_F(MatOpsTests, cross_entropy_rowwise_grad) {
+// TEST_F(TensorOpsTests, cross_entropy_rowwise_grad) {
 //     EXPERIMENT_REPEAT {
 //         auto input = Mat<R>(2, 3, weights<R>::uniform(0.01, 1.0));
 //
@@ -1696,7 +1698,7 @@ typedef MemorySafeTest MatOpsTests;
 //     }
 // }
 //
-// TEST_F(MatOpsTests, cross_entropy_colwise_grad) {
+// TEST_F(TensorOpsTests, cross_entropy_colwise_grad) {
 //     EXPERIMENT_REPEAT {
 //         auto input = Mat<R>(3, 2, weights<R>::uniform(0.01, 1.0));
 //
@@ -1714,7 +1716,7 @@ typedef MemorySafeTest MatOpsTests;
 //     }
 // }
 //
-// TEST_F(MatOpsTests, cross_entropy_grad_thought_target) {
+// TEST_F(TensorOpsTests, cross_entropy_grad_thought_target) {
 //     double temperature;
 //     int target;
 //
@@ -1825,7 +1827,7 @@ typedef MemorySafeTest MatOpsTests;
 //     }
 // }
 //
-// TEST_F(MatOpsTests, vector_softmax) {
+// TEST_F(TensorOpsTests, vector_softmax) {
 //     int softmax_size = 10;
 //     EXPERIMENT_REPEAT {
 //         vector<Mat<R>> matrices;

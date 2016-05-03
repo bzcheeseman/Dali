@@ -30,9 +30,7 @@ namespace graph {
         return tape.backprop.size();
     }
 
-
     /* Tape */
-
     void Tape::backward () {
         for (auto it = backprop.rbegin(); it != backprop.rend(); ++it)
             (*it)();

@@ -277,7 +277,6 @@ namespace {
         auto error = functor(arguments);
 
         error.grad();
-
         graph::backward();
 
         bool worked_out = true;

@@ -122,11 +122,13 @@ class Array : public Exp<Array> {
     AssignableArray mean() const;
 
     /* Interpreting scalars as numbers */
-    template<typename T>
-    operator T&();
+    operator float&();
+    operator double&();
+    operator int&();
 
-    template<typename T>
-    operator  T() const;
+    operator float() const;
+    operator double() const;
+    operator int() const;
 
     template<typename T>
     Array& operator=(const LazyExp<T>& other) {

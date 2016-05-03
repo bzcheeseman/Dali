@@ -16,8 +16,6 @@
 // #include "dali/tensor/Tape.h"
 #include "dali/utils.h"
 
-// template<typename R>
-// struct weights;
 /**
 Tensor
 ---
@@ -142,7 +140,7 @@ class Tensor {
         // Tensor sub_broadcast_reversed(Tensor) const;
         // Tensor square() const;
         // Tensor L2_norm() const;
-        // Tensor sum() const;
+        Tensor sum() const;
         // Tensor mean() const;
         // Tensor max() const;
         // Tensor min() const;

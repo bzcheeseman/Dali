@@ -1,6 +1,9 @@
 #include "dali/tensor/tensor.h"
 #include "dali/array/op.h"
 #include "dali/array/op/initializer.h"
+
+#include "dali/tensor/op.h"
+
 // #include "dali/tensor/Index.h"
 
 using std::vector;
@@ -297,12 +300,11 @@ Tensor Tensor::shallow_copy() {
 //     return TensorOps::mul(*this, other);
 // }
 //
-// #define MAT_UNARY_OP( opname ) \
-//  \
-//     Tensor Tensor::opname() const {\
-//         return TensorOps::opname(*this);\
-//     }\
-//
+#define TENSOR_UNARY_OP( opname ) \
+    Tensor Tensor::opname() const {\
+        return tensor_ops::opname(*this);\
+    }\
+
 // MAT_UNARY_OP( square )
 // MAT_UNARY_OP( L2_norm )
 // MAT_UNARY_OP( sqrt )
@@ -310,8 +312,8 @@ Tensor Tensor::shallow_copy() {
 // MAT_UNARY_OP( tanh )
 // MAT_UNARY_OP( softplus )
 // MAT_UNARY_OP( sigmoid )
-// MAT_UNARY_OP( sum )
-// MAT_UNARY_OP( mean )
+TENSOR_UNARY_OP( sum );
+// TENSOR_UNARY_OP(mean);
 // MAT_UNARY_OP( max )
 // MAT_UNARY_OP( min )
 // MAT_UNARY_OP( log )

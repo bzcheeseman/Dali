@@ -1,4 +1,4 @@
-*If you are new to Dali, you are most likely to enjoy the [Python version](https://github.com/JonathanRaiman/dali-cython).*
+*If you are new to Dali, you are most likely to enjoy the [Python version](https://github.com/dali-ml/dali-cython).*
 
 # Dali
 
@@ -7,7 +7,7 @@
 
 An automatic differentiation library that uses reverse-mode differentation (backpropagation) to differentiate recurrent neural networks, or most mathematical expressions through control flow, while loops, recursion.
 
-<img src="https://raw.github.com/JonathanRaiman/Dali/master/misc/salvador.jpg" width="25%" />
+<img src="https://raw.github.com/dali-ml/Dali/master/misc/salvador.jpg" width="25%" />
 
 This is an reimagination of [Andrej Kaparthy](http://cs.stanford.edu/people/karpathy/)'s [recurrentJS](http://cs.stanford.edu/people/karpathy/recurrentjs/) ([Github](https://github.com/karpathy/recurrentjs)) in C++. It has similar API names but the backbones are using **MShadow** and C++11's standard library.
 
@@ -19,9 +19,9 @@ This is an reimagination of [Andrej Kaparthy](http://cs.stanford.edu/people/karp
 
 ```bash
 # with cuda
-brew install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-gpu.rb
+brew install https://github.com/dali-ml/Dali/releases/download/v1.0.0/dali-gpu.rb
 # without cuda
-brew install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-cpu.rb
+brew install https://github.com/dali-ml/Dali/releases/download/v1.0.0/dali-cpu.rb
 ```
 
 ### Fedora Linux
@@ -30,9 +30,9 @@ For 22 or newer replace `yum` with `dnf`.
 
 ```bash
 # with cuda
-sudo yum install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-gpu.rpm
+sudo yum install https://github.com/dali-ml/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-gpu.rpm
 # without cuda
-sudo yum install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-cpu.rpm
+sudo yum install https://github.com/dali-ml/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-cpu.rpm
 ```
 
 ### Ubuntu (14.04 or newer)
@@ -41,9 +41,9 @@ sudo yum install https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0
 
 ```bash
 # with cuda
-URL='https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-gpu.deb'; FILE=`mktemp`; wget "$URL" -O $FILE && sudo dpkg -i $FILE; rm $FILE
+URL='https://github.com/dali-ml/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-gpu.deb'; FILE=`mktemp`; wget "$URL" -O $FILE && sudo dpkg -i $FILE; rm $FILE
 # without cuda
-URL='https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-cpu.deb'; FILE=`mktemp`; wget "$URL" -O $FILE && sudo dpkg -i $FILE; rm $FILE
+URL='https://github.com/dali-ml/Dali/releases/download/v1.0.0/dali-1.0.0-Linux-x86_64-cpu.deb'; FILE=`mktemp`; wget "$URL" -O $FILE && sudo dpkg -i $FILE; rm $FILE
 ```
 
 
@@ -55,7 +55,7 @@ URL='https://github.com/JonathanRaiman/Dali/releases/download/v1.0.0/dali-1.0.0-
 * Clarity of API
 * Lazy evaluation of matrix operations
 * Hybrid GPU-CPU computation, with **best device for each operation selected at runtime**
-* [Visualize Neural Network output in real time](https://github.com/JonathanRaiman/dali-visualizer)
+* [Visualize Neural Network output in real time](https://github.com/dali-ml/dali-visualizer)
 
 ### Why not use Theano?
 

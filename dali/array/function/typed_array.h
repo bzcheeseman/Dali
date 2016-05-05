@@ -10,10 +10,7 @@
 
 #include "dali/array/array.h"
 
-template<typename Device, int srcdim, typename DType>
-class DaliWrapperExp;
-
-#include "dali/array/function/args/mshadow_wrapper.h"
+#include "dali/array/function/args/dali_wrapper_exp.h"
 
 namespace internal {
     template<int dstdim>

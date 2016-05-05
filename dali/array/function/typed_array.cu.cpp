@@ -2,7 +2,6 @@
 
 #include "dali/config.h"
 #include "dali/utils/print_utils.h"
-#include "dali/array/function/args/mshadow_wrapper.h"
 
 
 template<typename T>

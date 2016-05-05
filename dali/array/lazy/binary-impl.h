@@ -1,4 +1,3 @@
-#include "dali/array/function/args/mshadow_wrapper.h"
 #include "dali/array/function/lazy_function.h"
 #include "dali/array/TensorFunctions.h"
 

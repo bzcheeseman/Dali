@@ -408,7 +408,7 @@ Array Array::squeeze(int axis) const {
                  dtype());
 }
 
-Array Array::expand(int new_axis) const {
+Array Array::expand_dims(int new_axis) const {
     vector<int> new_shape   = shape();
     vector<int> new_strides = normalized_strides();
 
@@ -439,7 +439,7 @@ Array Array::broadcast_axis(int axis) const {
 }
 
 Array Array::insert_broadcast_axis(int new_axis) const {
-    return expand(new_axis).broadcast_axis(new_axis);
+    return expand_dims(new_axis).broadcast_axis(new_axis);
 }
 
 

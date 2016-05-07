@@ -342,8 +342,8 @@ TEST(ArrayTests, double_striding) {
 TEST(ArrayTests, strides_compacted_after_expansion) {
     Array x = Array::zeros({2,3,4});
 
-    EXPECT_EQ(x.expand(0).strides(), vector<int>());
-    EXPECT_EQ(x.expand(1).strides(), vector<int>());
-    EXPECT_EQ(x.expand(2).strides(), vector<int>());
-    EXPECT_EQ(x.expand(3).strides(), vector<int>());
+    EXPECT_EQ(x.expand_dims(0).strides(), vector<int>());
+    EXPECT_EQ(x.expand_dims(1).strides(), vector<int>());
+    EXPECT_EQ(x.expand_dims(2).strides(), vector<int>());
+    EXPECT_EQ(x.expand_dims(3).strides(), vector<int>());
 }

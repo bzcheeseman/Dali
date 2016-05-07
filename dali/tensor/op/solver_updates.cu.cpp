@@ -11,11 +11,40 @@ namespace matops {
     using namespace TensorOps;
 
     template<typename R>
-    void SolverUpdates<R>::clip_and_regularize(Mat<R> param, R clipval, R regc) {
-        if (regc > 0) {
-            GRAD(param) = F<op::clip<R>>(GRAD(param).wrapper(), clipval) + (regc * MAT(param).wrapper());
+    void SolverUpdates<R>::clip_and_regularize(Mat<R> param, R clip_abs, R clip_norm, R regc) {
+        bool use_regc = regc > 0;
+        bool use_abs_clip = clip_abs > 0;
+
+        bool use_norm_clip = clip_norm > 0;
+
+        R norm;
+        if (use_norm_clip) {
+            // compute norm conditionally
+            norm = param.dw().L2_norm();
+            // cancel normalization if norm is below threshold
+            if (norm <= clip_norm) {
+                use_norm_clip = false;
+            }
+        }
+
+        if (use_regc) {
+            if (!use_abs_clip && !use_norm_clip) {
+                GRAD(param) = GRAD(param).wrapper() + regc * MAT(param).wrapper();
+            } else if (use_abs_clip && !use_norm_clip) {
+                GRAD(param) = F<op::clip<R>>(GRAD(param).wrapper(), clip_abs) + (regc * MAT(param).wrapper());
+            } else if (!use_abs_clip && use_norm_clip) {
+                GRAD(param) = (clip_norm / norm) * GRAD(param).wrapper() + (regc * MAT(param).wrapper());
+            } else if (use_abs_clip && use_norm_clip) {
+                GRAD(param) = F<op::clip<R>>((clip_norm / norm) * GRAD(param).wrapper(), clip_abs) + (regc * MAT(param).wrapper());
+            }
         } else {
-            GRAD(param) = F<op::clip<R>>(GRAD(param).wrapper(), clipval);
+            if (use_abs_clip && !use_norm_clip) {
+                GRAD(param) = F<op::clip<R>>(GRAD(param).wrapper(), clip_abs);
+            } else if (!use_abs_clip && use_norm_clip) {
+                GRAD(param) = (clip_norm / norm) * GRAD(param).wrapper();
+            } else if (use_abs_clip && use_norm_clip) {
+                GRAD(param) = F<op::clip<R>>(GRAD(param).wrapper(), clip_abs);
+            }
         }
     }
 
@@ -49,7 +78,11 @@ namespace matops {
                                           Mat<R>& cache,
                                           R step_size,
                                           R smooth_eps) {
-
+        ASSERT2(cache.number_of_elements() == param.number_of_elements(),
+            utils::MS() << "cache parameter in adagrad_update has different "
+                        << "size than parameter (got " << cache.number_of_elements()
+                        << " and expected " << param.number_of_elements() << ")."
+        );
         // update gradient cache using decay rule:
         MAT(cache) += F<op::square<R>>(GRAD(param).wrapper());
         // clip the gradient to prevent explosions:
@@ -64,6 +97,11 @@ namespace matops {
     template<typename R>
     void SolverUpdates<R>::rmsprop_update(Mat<R> param, Mat<R>& cache,
             R decay_rate, R step_size,  R smooth_eps) {
+        ASSERT2(cache.number_of_elements() == param.number_of_elements(),
+            utils::MS() << "cache parameter in rmsprop_update has different "
+                        << "size than parameter (got " << cache.number_of_elements()
+                        << " and expected " << param.number_of_elements() << ")."
+        );
         MAT(cache) = (
             decay_rate            * MAT(cache).wrapper() +
             ((R)1.0 - decay_rate) * F<op::square<R>>(GRAD(param).wrapper())
@@ -86,6 +124,21 @@ namespace matops {
                           R momentum,         // eq. 43
                           R step_size,        // eq. 44
                           R smooth_eps) {     // eq. 45
+        ASSERT2(n_cache.number_of_elements() == param.number_of_elements(),
+            utils::MS() << "n_cache parameter in rmsprop_momentum_update has different "
+                        << "size than parameter (got " << n_cache.number_of_elements()
+                        << " and expected " << param.number_of_elements() << ")."
+        );
+        ASSERT2(g_cache.number_of_elements() == param.number_of_elements(),
+            utils::MS() << "g_cache parameter in rmsprop_momentum_update has different "
+                        << "size than parameter (got " << g_cache.number_of_elements()
+                        << " and expected " << param.number_of_elements() << ")."
+        );
+        ASSERT2(momentum_cache.number_of_elements() == param.number_of_elements(),
+            utils::MS() << "momentum_cache parameter in rmsprop_momentum_update has different "
+                        << "size than parameter (got " << momentum_cache.number_of_elements()
+                        << " and expected " << param.number_of_elements() << ")."
+        );
         MAT(n_cache) = (
             decay_rate            * MAT(n_cache).wrapper() +
             ((R)1.0 - decay_rate) * F<op::square<R>>(GRAD(param).wrapper())
@@ -113,6 +166,16 @@ namespace matops {
                                            Mat<R>& xsum,
                                            R rho,
                                            R smooth_eps) {
+        ASSERT2(gsum.number_of_elements() == param.number_of_elements(),
+            utils::MS() << "gsum parameter in adadelta_update has different "
+                        << "size than parameter (got " << gsum.number_of_elements()
+                        << " and expected " << param.number_of_elements() << ")."
+        );
+        ASSERT2(xsum.number_of_elements() == param.number_of_elements(),
+            utils::MS() << "xsum parameter in adadelta_update has different "
+                        << "size than parameter (got " << xsum.number_of_elements()
+                        << " and expected " << param.number_of_elements() << ")."
+        );
         // update gradient cache using decay rule:
         MAT(gsum) = (
             rho                 * MAT(gsum).wrapper() +
@@ -143,6 +206,16 @@ namespace matops {
                                            R smooth_eps,
                                            R step_size,
                                            unsigned long long epoch) {
+        ASSERT2(m.number_of_elements() == param.number_of_elements(),
+            utils::MS() << "m parameter in adam_update has different "
+                        << "size than parameter (got " << m.number_of_elements()
+                        << " and expected " << param.number_of_elements() << ")."
+        );
+        ASSERT2(v.number_of_elements() == param.number_of_elements(),
+            utils::MS() << "v parameter in adam_update has different "
+                        << "size than parameter (got " << v.number_of_elements()
+                        << " and expected " << param.number_of_elements() << ")."
+        );
         // this affects the learning rate:
         auto fix1 = 1.0 - std::pow(b1, epoch);
         auto fix2 = 1.0 - std::pow(b2, epoch);

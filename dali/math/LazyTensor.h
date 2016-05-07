@@ -7,8 +7,8 @@
 
 #include "dali/config.h"
 
-#include "mshadow/extension/reduceto1d.h"
-#include "mshadow/tensor.h"
+#include <mshadow/extension/reduceto1d.h>
+#include <mshadow/tensor.h>
 
 #include "dali/math/LazySoftmax.h"
 #include "dali/math/LazyUtils.h"
@@ -49,7 +49,10 @@ std::vector<const SynchronizedMemory<DType>*> extract_memory(const dependent_ten
     template<typename LeftType, typename DType, int dimension, int ktype>
 #endif
 class LazyTensor : public DormantTensor<DType> {
+
     public:
+        static const int kDim = mshadow::expr::ExpInfo<LeftType>::kDim;
+
         typedef mshadow::Tensor<mshadow::cpu, dimension, DType> cpu_tensor_t;
 
         // store list of dependant tensors whose memory
@@ -239,6 +242,14 @@ class LazyTensor : public DormantTensor<DType> {
         #endif
 };
 
+template<typename LazyType>
+auto shape(const LazyType& expr) -> decltype(mshadow::expr::ShapeCheck<LazyType::kDim, typename LazyType::left_t>::Check(
+                    expr.left
+                )) {
+    return mshadow::expr::ShapeCheck<LazyType::kDim, typename LazyType::left_t>::Check(
+        expr.left
+    );
+};
 
 #ifdef DALI_USE_CUDA
     #define BINARY_OP(opname, opsymbol) \
@@ -604,35 +615,6 @@ BINARY_SCALAR_OP(mshadow::op::div,  /);
     }
 #endif
 
-
-
-#ifdef DALI_USE_CUDA
-template<int a1, int a2, typename TA, typename TB, typename DType, int dimension, int ta>
-inline auto swapaxis(const LazyTensor<TA, TB, DType, dimension, ta> &exp)
-    -> LazyTensor<decltype(mshadow::expr::swapaxis<a1,a2>(exp.left)), decltype(mshadow::expr::swapaxis<a1,a2>(exp.right)), DType, dimension, ta> {
-        return LazyTensor<decltype(mshadow::expr::swapaxis<a1,a2>(exp.left)),
-                          decltype(mshadow::expr::swapaxis<a1,a2>(exp.right)),
-                          DType, dimension,
-                          (ta|mshadow::expr::type::kMapper)>(
-                              mshadow::expr::swapaxis<a1,a2>(exp.left),
-                              mshadow::expr::swapaxis<a1,a2>(exp.right),
-                              exp.dependent_tensors
-                );
-
-    }
-#else
-template<int a1, int a2, typename TA, typename DType, int dimension, int ta>
-inline auto swapaxis(const LazyTensor<TA, DType, dimension, ta> &exp)
-    -> LazyTensor<decltype(mshadow::expr::swapaxis<a1,a2>(exp.left)), DType, dimension, ta> {
-        return LazyTensor<decltype(mshadow::expr::swapaxis<a1,a2>(exp.left)),
-                          DType, dimension,
-                          (ta|mshadow::expr::type::kMapper)>(
-            mshadow::expr::swapaxis<a1,a2>(exp.left),
-            exp.dependent_tensors
-        );
-    }
-#endif
-
 #ifdef DALI_USE_CUDA
     template<int dimkeep, typename reduction, typename TA, typename TB, typename DType, int dimension, int ta>
     auto reduce_to_1d(const LazyTensor<TA, TB, DType, dimension, ta> &exp) ->
@@ -662,6 +644,26 @@ inline auto swapaxis(const LazyTensor<TA, DType, dimension, ta> &exp)
     auto sum_cols(const LazyTensor<TA, TB, DType, 2, ta> &exp) -> decltype(reduce_to_1d<0, mshadow::red::sum>(exp)) {
         return reduce_to_1d<0, mshadow::red::sum>(exp);
     }
+
+    template<typename TA, typename TB, typename DType, int ta>
+    auto max_rows(const LazyTensor<TA, TB, DType, 2, ta> &exp) -> decltype(reduce_to_1d<0, mshadow::red::maximum>(exp)) {
+        return reduce_to_1d<1, mshadow::red::maximum>(exp);
+    }
+
+    template<typename TA, typename TB, typename DType, int ta>
+    auto max_cols(const LazyTensor<TA, TB, DType, 2, ta> &exp) -> decltype(reduce_to_1d<0, mshadow::red::maximum>(exp)) {
+        return reduce_to_1d<0, mshadow::red::maximum>(exp);
+    }
+
+    template<typename TA, typename TB, typename DType, int ta>
+    auto min_rows(const LazyTensor<TA, TB, DType, 2, ta> &exp) -> decltype(reduce_to_1d<0, mshadow::red::minimum>(exp)) {
+        return reduce_to_1d<1, mshadow::red::minimum>(exp);
+    }
+
+    template<typename TA, typename TB, typename DType, int ta>
+    auto min_cols(const LazyTensor<TA, TB, DType, 2, ta> &exp) -> decltype(reduce_to_1d<0, mshadow::red::minimum>(exp)) {
+        return reduce_to_1d<0, mshadow::red::minimum>(exp);
+    }
 #else
     template<int dimkeep, typename reduction, typename TA, typename DType, int dimension, int ta>
     auto reduce_to_1d(const LazyTensor<TA, DType, dimension, ta> &exp) ->
@@ -687,6 +689,26 @@ inline auto swapaxis(const LazyTensor<TA, DType, dimension, ta> &exp)
     template<typename TA, typename DType, int ta>
     auto sum_cols(const LazyTensor<TA, DType, 2, ta> &exp) -> decltype(reduce_to_1d<0, mshadow::red::sum>(exp)) {
         return reduce_to_1d<0, mshadow::red::sum>(exp);
+    }
+
+    template<typename TA, typename DType, int ta>
+    auto max_rows(const LazyTensor<TA, DType, 2, ta> &exp) -> decltype(reduce_to_1d<0, mshadow::red::maximum>(exp)) {
+        return reduce_to_1d<1, mshadow::red::maximum>(exp);
+    }
+
+    template<typename TA, typename DType, int ta>
+    auto max_cols(const LazyTensor<TA, DType, 2, ta> &exp) -> decltype(reduce_to_1d<0, mshadow::red::maximum>(exp)) {
+        return reduce_to_1d<0, mshadow::red::maximum>(exp);
+    }
+
+    template<typename TA, typename DType, int ta>
+    auto min_rows(const LazyTensor<TA, DType, 2, ta> &exp) -> decltype(reduce_to_1d<0, mshadow::red::minimum>(exp)) {
+        return reduce_to_1d<1, mshadow::red::minimum>(exp);
+    }
+
+    template<typename TA, typename DType, int ta>
+    auto min_cols(const LazyTensor<TA, DType, 2, ta> &exp) -> decltype(reduce_to_1d<0, mshadow::red::minimum>(exp)) {
+        return reduce_to_1d<0, mshadow::red::minimum>(exp);
     }
 #endif
 

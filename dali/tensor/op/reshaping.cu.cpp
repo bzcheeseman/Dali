@@ -3,6 +3,8 @@
 #include "dali/tensor/__MatMacros__.h"
 #include "dali/math/TensorOps.h"
 #include "dali/math/LazyTensor.h"
+#include "dali/math/lazy_patch2col.h"
+#include "dali/math/lazy_swapaxis.h"
 #include "dali/utils/assert2.h"
 
 #define DONT_COMPILE
@@ -305,6 +307,209 @@ namespace matops {
         }
         return out;
     }
+
+    mshadow::Shape<2> patch2col_no_grad_size(
+            const std::vector<int>& four_d_shape,
+            const int& kernel_height,
+            const int& kernel_width,
+            const int& kernel_stride) {
+        mshadow::index_t oheight  = (four_d_shape[2] - kernel_height)/kernel_stride + 1;
+        mshadow::index_t owidth   = (four_d_shape[3] - kernel_width)/kernel_stride + 1;
+        mshadow::index_t nbatch   = four_d_shape[0];
+        return mshadow::Shape2(
+            four_d_shape[1] * kernel_height * kernel_width,
+            nbatch * oheight * owidth
+        );
+    }
+
+    template<typename R>
+    Mat<R> Reshaping<R>::patch2col_no_grad(
+            Mat<R> matrix,
+            const std::vector<int>& four_d_shape,
+            const int& kernel_height,
+            const int& kernel_width,
+            const int& kernel_stride) {
+        ASSERT2(four_d_shape.size() == 4,
+            utils::MS() << "four_d_shape argument to patch2col must be a size "
+                        << "4 vector (got " << four_d_shape.size() << ")"
+        );
+        ASSERT2(kernel_height > 0 && kernel_width > 0 && kernel_stride > 0,
+            utils::MS() << "kernel height, width, and stride should be strictly positive (got "
+                        << "height = " << kernel_height << ", width = " << kernel_width << ", and "
+                        << "stride = " << kernel_stride << " instead)."
+        );
+        ASSERT2(four_d_shape[0] > 0 && four_d_shape[1] > 0 && four_d_shape[2] > 0 && four_d_shape[3] > 0,
+            "4d shape dimensions should be strictly positive.");
+        int vol = (four_d_shape[0] * four_d_shape[1] * four_d_shape[2] * four_d_shape[3]);
+        ASSERT2(matrix.number_of_elements() == vol,
+            utils::MS() << "hypercube volume of 4d shape different (" << vol
+                        << ") from number of elements in matrix ("
+                        << matrix.number_of_elements() << ")."
+        );
+
+        ASSERT2(four_d_shape[3] >= kernel_width && four_d_shape[2] >= kernel_height,
+                utils::MS() << "patch2col requires kernel width and height to be less than or equal to image dimensions "
+                            << "(got kernel " << kernel_height << "x" << kernel_width << " with image shape "
+                            << four_d_shape[2] << "x" << four_d_shape[3] << ").");
+
+        int oheight  = (four_d_shape[2] - kernel_height) / kernel_stride + 1;
+        int owidth   = (four_d_shape[3] - kernel_width) / kernel_stride + 1;
+        int nbatch   = four_d_shape[0];
+        // we directly unpack all local patches and do a dot product
+        // this cost lots of memory, normally for large image, only unpack several image at a time
+        auto image_shape = mshadow::Shape4(
+            four_d_shape[0],
+            four_d_shape[1],
+            four_d_shape[2],
+            four_d_shape[3]
+        );
+        auto out_shape = patch2col_no_grad_size(
+            four_d_shape,
+            kernel_height,
+            kernel_width,
+            kernel_stride
+        );
+        Mat<R> out(
+            out_shape[0],
+            out_shape[1],
+            weights<R>::empty()
+        );
+        MAT(out) = unpack_patch2col(
+            MAT(matrix).reshape(image_shape).wrapper(),
+            kernel_height,
+            kernel_width,
+            kernel_stride
+        );
+        return out;
+    }
+
+    template<typename R>
+    Mat<R> Reshaping<R>::patch2col(
+            Mat<R> matrix,
+            const std::vector<int>& four_d_shape,
+            const int& kernel_height,
+            const int& kernel_width,
+            const int& kernel_stride) {
+
+        auto out = patch2col_no_grad(
+            matrix,
+            four_d_shape,
+            kernel_height,
+            kernel_width,
+            kernel_stride
+        );
+
+        if (graph::backprop_enabled() && !matrix.constant) {
+            graph::emplace_back([matrix, out, four_d_shape, kernel_width, kernel_height, kernel_stride]() {
+                auto image_shape = mshadow::Shape4(
+                    four_d_shape[0],
+                    four_d_shape[1],
+                    four_d_shape[2],
+                    four_d_shape[3]
+                );
+                GRAD(matrix).reshape(
+                    image_shape
+                ) = pack_col2patch(
+                    GRAD(out).wrapper(),
+                    image_shape,
+                    kernel_height,
+                    kernel_width,
+                    kernel_stride
+                );
+            });
+        }
+        return out;
+    }
+
+    template<int ndim>
+    mshadow::Shape<ndim> vector2shape(const std::vector<int>& vshape) {
+        mshadow::Shape<ndim> shape;
+        for (int i = 0; i < vshape.size(); i++) {
+            shape[i] = vshape[i];
+        }
+        return shape;
+    }
+
+    template<int operation_ndim, int axis1, int axis2, typename R>
+    Mat<R> swapaxes_impl(Mat<R> mat, const std::vector<int>& reshape) {
+        static_assert(axis1 >= 0 && axis1 < operation_ndim, "axis1 is outside of operation_ndim");
+        static_assert(axis2 >= 0 && axis2 < operation_ndim, "axis2 is outside of operation_ndim");
+        static_assert(axis1 > axis2, "axis1 must be greater than axis2");
+        static_assert(axis2 != axis1, "axis1 cannot equal axis2 (this is a no-op)");
+        // first assert that there is as much data in reshape as
+        // in mat.
+        int vol = 1;
+        ASSERT2(reshape.size() == operation_ndim,
+                utils::MS() << "Need a temporary shape of size " << operation_ndim
+                            << " but got " << reshape.size() << " instead"
+        );
+        for (const auto& val : reshape) {
+            ASSERT2(
+                val > 0,
+                utils::MS() << "all dimensions of reshape size must be strictly positive (got "
+                            << reshape << ")"
+            );
+            vol *= val;
+        }
+        ASSERT2(vol == mat.number_of_elements(),
+            utils::MS() << "swapaxes shape must have as many elements as original matrix (got "
+                        << vol << " but should be " << mat.number_of_elements() << ")"
+        );
+
+        auto outcome_shape = reshape;
+        std::swap(outcome_shape[axis1], outcome_shape[axis2]);
+
+        // output has dimensions of Prod(dim) x dim[-1]
+        Mat<R> out(
+            vol / outcome_shape.back(),
+            outcome_shape.back(), weights<R>::empty()
+        );
+
+        out.w().reshape(vector2shape<operation_ndim>(outcome_shape)) = swapaxis<axis1, axis2>(
+            mat.w().reshape(vector2shape<operation_ndim>(reshape)).wrapper()
+        );
+
+        if (graph::backprop_enabled() && !mat.constant)
+            graph::emplace_back([outcome_shape, reshape, mat, out]() {
+                mat.dw().reshape(vector2shape<operation_ndim>(reshape)) += swapaxis<axis1, axis2>(
+                    out.dw().reshape(vector2shape<operation_ndim>(outcome_shape)).wrapper()
+                );
+            });
+        return out;
+    }
+
+    template<typename R>
+    Mat<R> Reshaping<R>::swapaxes(Mat<R> mat, const std::vector<int>& reshape, const int& axis1, const int& axis2) {
+        if (axis2 > axis1) {
+            return swapaxes(mat, reshape, axis2, axis1);
+        }
+
+        #define SWAPAXES_NDIM_A1_A2(ndim, A1, A2)\
+            if (axis1 == A1 && axis2 == A2) {\
+                return swapaxes_impl<ndim, A1, A2>(mat, reshape);\
+            }\
+
+        switch (reshape.size()) {
+            case 2:
+                SWAPAXES_NDIM_A1_A2(2, 1, 0)
+                ASSERT2(false, utils::MS() << "axis out of bounds for swapaxes: " << axis1 << "-" << axis2 << ".");
+            case 3:
+                SWAPAXES_NDIM_A1_A2(3, 1, 0)
+                SWAPAXES_NDIM_A1_A2(3, 2, 0)
+                SWAPAXES_NDIM_A1_A2(3, 2, 1)
+                ASSERT2(false, utils::MS() << "axis out of bounds for swapaxes: " << axis1 << "-" << axis2 << ".");
+            case 4:
+                SWAPAXES_NDIM_A1_A2(4, 1, 0)
+                SWAPAXES_NDIM_A1_A2(4, 2, 0)
+                SWAPAXES_NDIM_A1_A2(4, 2, 1)
+                SWAPAXES_NDIM_A1_A2(4, 3, 1)
+                SWAPAXES_NDIM_A1_A2(4, 3, 2)
+                ASSERT2(false, utils::MS() << "axis out of bounds for swapaxes: " << axis1 << "-" << axis2 << ".");
+            default:
+                ASSERT2(false, utils::MS() << "swapaxes shape dimensionality must be between 2 and 4 (got " << reshape.size() << ").");
+        }
+    }
+
     template class Reshaping<float>;
     template class Reshaping<double>;
     template class Reshaping<int>;

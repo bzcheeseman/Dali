@@ -2,6 +2,7 @@
 
 #include "dali/math/TensorOps.h"
 #include "dali/math/LazyTensor.h"
+#include "dali/math/tensor_arg_ops.h"
 #include "dali/utils/core_utils.h"
 
 using std::vector;
@@ -160,7 +161,7 @@ int TensorInternal<R, dimension>::argmin() const {
     // reduce colwise
     #ifdef DALI_USE_CUDA
     if (compute_me_on_gpu()) {
-        return TensorOps::arg::argmin( TensorOps::to_thrust(this->gpu_data()), this->number_of_elements() )[0];
+        return TensorOps::arg::argmin(TensorOps::to_thrust(this->gpu_data()), this->number_of_elements())[0];
     }
     #endif
 
@@ -595,11 +596,17 @@ DALI_TENSOR_INTERNAL_RESIZE(int);
     template \
     TensorInternal<dtype,todim> TensorInternal<dtype,fromdim>::reshape<todim>(mshadow::Shape<todim> newshape, int) const\
 
+#define DALI_TENSOR_RESHAPE_INSTANTIATES_SUBSHAPE(dtype, primary_dim)\
+    DALI_TENSOR_RESHAPE_INSTANTIATE(dtype, primary_dim, 1);\
+    DALI_TENSOR_RESHAPE_INSTANTIATE(dtype, primary_dim, 2);\
+    DALI_TENSOR_RESHAPE_INSTANTIATE(dtype, primary_dim, 3);\
+    DALI_TENSOR_RESHAPE_INSTANTIATE(dtype, primary_dim, 4);\
+
 #define DALI_TENSOR_RESHAPE_INSTANTIATES(dtype)\
-    DALI_TENSOR_RESHAPE_INSTANTIATE(dtype, 2, 1);\
-    DALI_TENSOR_RESHAPE_INSTANTIATE(dtype, 2, 2);\
-    DALI_TENSOR_RESHAPE_INSTANTIATE(dtype, 1, 1);\
-    DALI_TENSOR_RESHAPE_INSTANTIATE(dtype, 1, 2);\
+    DALI_TENSOR_RESHAPE_INSTANTIATES_SUBSHAPE(dtype, 1);\
+    DALI_TENSOR_RESHAPE_INSTANTIATES_SUBSHAPE(dtype, 2);\
+    DALI_TENSOR_RESHAPE_INSTANTIATES_SUBSHAPE(dtype, 3);\
+    DALI_TENSOR_RESHAPE_INSTANTIATES_SUBSHAPE(dtype, 4);\
 
 DALI_TENSOR_RESHAPE_INSTANTIATES(float);
 DALI_TENSOR_RESHAPE_INSTANTIATES(int);
@@ -612,10 +619,12 @@ template class TensorInternal<int,1>;
 template class TensorInternal<float, 2>;
 template class TensorInternal<double,2>;
 template class TensorInternal<int,2>;
-// template class TensorInternal<float, 3>;
-// template class TensorInternal<double,3>;
-// template class TensorInternal<float, 4>;
-// template class TensorInternal<double,4>;
+template class TensorInternal<float, 3>;
+template class TensorInternal<double,3>;
+template class TensorInternal<int,3>;
+template class TensorInternal<float, 4>;
+template class TensorInternal<double,4>;
+template class TensorInternal<int,4>;
 // template class TensorInternal<float, 5>;
 // template class TensorInternal<double,5>;
 // template class TensorInternal<float, 6>;

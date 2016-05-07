@@ -132,7 +132,11 @@ Array::Array(const std::vector<int>& shape,
              int offset,
              const std::vector<int>& strides,
              DType dtype) {
-    state = std::make_shared<ArrayState>(shape, memory, offset, strides, dtype);
+    vector<int> new_strides(strides);
+    compact_strides(new_strides, shape);
+    ASSERT2(new_strides.size() == 0 || new_strides.size() == shape.size(),
+            "Stride and shape size must be the same (unless strides are compacted)");
+    state = std::make_shared<ArrayState>(shape, memory, offset, new_strides, dtype);
 }
 
 Array::Array(const Array& other, bool copy_memory) {
@@ -245,9 +249,6 @@ const std::vector<int>& Array::strides() const {
     return state->strides;
 }
 
-std::vector<int> Array::normalized_strides() const {
-    return (strides().size() > 0) ? strides() : trivial_strides(shape());
-}
 
 DType Array::dtype() const {
     ASSERT2(state != nullptr, "dtype must not be called on Array initialled with empty constructor");
@@ -257,6 +258,27 @@ DType Array::dtype() const {
 memory::Device Array::preferred_device() const {
     ASSERT2(!is_stateless(), "preferred_device must not be called on Array initialled with empty constructor");
     return state->memory->preferred_device;
+}
+
+
+std::vector<int> Array::normalized_strides() const {
+    return (strides().size() > 0) ? strides() : trivial_strides(shape());
+}
+
+
+std::vector<int> Array::bshape() const {
+    if (strides().size() == 0) {
+        return shape();
+    } else {
+        vector<int> result(shape());
+        for (int i=0; i < ndim(); ++i) {
+            if (strides()[i] == 0) {
+                // broadcasted dimensions are negated.
+                result[i] = -abs(result[i]);
+            }
+        }
+        return result;
+    }
 }
 
 void Array::to_device(memory::Device device) const {
@@ -324,38 +346,11 @@ Array Array::reshape(const vector<int>& new_shape) const {
                  dtype());
 }
 
-Array Array::collapse_axis(int axis) const {
-    ASSERT2(axis < shape().size(),
-            utils::MS() << "collapse_axis dimension (" << axis << ") must be less the dimensionality of compacted tensor (" << shape().size() << ")");
-    ASSERT2(shape()[axis] == 1,
-            utils::MS() << "collapse_axis(" << axis << ") requires tensor to be shaped like a bowtie.");
-
-    const vector<int>& old_shape = shape();
-    auto old_strides             = normalized_strides();
-
-    vector<int> new_shape;
-    vector<int> new_strides;
-    for (int i = 0; i < old_shape.size(); ++i) {
-        if (i == axis) {
-            continue;
-        }
-        new_shape.push_back(old_shape[i]);
-        new_strides.push_back(old_strides[i]);
-    }
-
-    compact_strides(new_strides, new_shape);
-
-    return Array(new_shape,
-                 memory(),
-                 offset(),
-                 new_strides,
-                 dtype());
-}
 
 
 Array Array::pluck_axis(int axis, int pluck_idx) const {
     auto single_item_slice = pluck_axis(axis, Slice(pluck_idx, pluck_idx + 1));
-    return single_item_slice.collapse_axis(axis);
+    return single_item_slice.squeeze(axis);
 }
 
 Array Array::pluck_axis(int axis, const Slice& slice_unnormalized) const {
@@ -380,7 +375,6 @@ Array Array::pluck_axis(int axis, const Slice& slice_unnormalized) const {
         new_offset = offset() + old_strides[axis] * (slice.end - 1);
     }
 
-    compact_strides(new_strides, new_shape);
 
     return Array(new_shape,
                  memory(),
@@ -388,17 +382,66 @@ Array Array::pluck_axis(int axis, const Slice& slice_unnormalized) const {
                  new_strides,
                  dtype());
 }
-Array Array::broadcast_axis(int new_axis) const {
-    vector<int> new_shape   = shape();
-    vector<int> new_strides = normalized_strides();
-    new_shape.insert(  new_shape.begin()   + new_axis, 1);
-    new_strides.insert(new_strides.begin() + new_axis, 0);
+Array Array::squeeze(int axis) const {
+    ASSERT2(axis < shape().size(),
+            utils::MS() << "squeeze dimension (" << axis << ") must be less the dimensionality of compacted tensor (" << shape().size() << ")");
+    ASSERT2(shape()[axis] == 1,
+            utils::MS() << "squeeze(" << axis << ") requires tensor to be shaped like a bowtie.");
+
+    const vector<int>& old_shape = shape();
+    auto old_strides             = normalized_strides();
+
+    vector<int> new_shape;
+    vector<int> new_strides;
+    for (int i = 0; i < old_shape.size(); ++i) {
+        if (i == axis) {
+            continue;
+        }
+        new_shape.push_back(old_shape[i]);
+        new_strides.push_back(old_strides[i]);
+    }
+
     return Array(new_shape,
                  memory(),
                  offset(),
                  new_strides,
                  dtype());
 }
+
+Array Array::expand(int new_axis) const {
+    vector<int> new_shape   = shape();
+    vector<int> new_strides = normalized_strides();
+
+    new_shape.insert(  new_shape.begin()   + new_axis, 1);
+    // It really does not matter what the new stride is going to be,
+    // because in we are only ever going to access it at index 0,
+    // so it will get cancelled out. We chose to set it to the stride that
+    // naturally arises in the trivial_strides, such that if other strides
+    // were already trivial it will get compacted.
+    new_strides.insert(new_strides.begin() + new_axis, trivial_strides(new_shape)[new_axis]);
+    return Array(new_shape,
+                 memory(),
+                 offset(),
+                 new_strides,
+                 dtype());
+}
+
+
+Array Array::broadcast_axis(int axis) const {
+    vector<int> new_strides = normalized_strides();
+    new_strides[axis] = 0;
+
+    return Array(shape(),
+                 memory(),
+                 offset(),
+                 new_strides,
+                 dtype());
+}
+
+Array Array::insert_broadcast_axis(int new_axis) const {
+    return expand(new_axis).broadcast_axis(new_axis);
+}
+
 
 
 // TODO(jonathan,szymon): add axis argument to sum + write tests
@@ -563,7 +606,7 @@ ArraySlice::operator Array() {
     for (int i = 0; i < slice.size(); ++i) {
         out = out.pluck_axis(dim, slice[i]);
         if (collapse[i]) {
-            out = out.collapse_axis(dim);
+            out = out.squeeze(dim);
         } else {
             dim++;
         }

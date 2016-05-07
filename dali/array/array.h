@@ -93,8 +93,13 @@ class Array : public Exp<Array> {
     std::shared_ptr<memory::SynchronizedMemory> memory() const;
     int offset() const;
     const std::vector<int>& strides() const;
-    std::vector<int> normalized_strides() const;
     DType dtype() const;
+
+    std::vector<int> normalized_strides() const;
+    // just like regular shape by broadcased dimensions are negated.
+    // for example if array has shape {2, 1, 3, 1} and dimension 1 is
+    // broadcasted then it retuns {2, -1, 3, 1}.
+    std::vector<int> bshape() const;
 
     /* memory moving logic */
     memory::Device preferred_device() const;
@@ -116,8 +121,10 @@ class Array : public Exp<Array> {
     // TODO(szymon): look up what it's called in tensorflow/numpy and rename.
     Array pluck_axis(int axis, const Slice& slice) const;
     Array pluck_axis(int axis, int idx) const;
-    Array collapse_axis(int axis) const;
-    Array broadcast_axis(int new_axis) const;
+    Array squeeze(int axis) const;
+    Array expand(int new_axis) const;
+    Array broadcast_axis(int axis) const;
+    Array insert_broadcast_axis(int new_axis) const;
 
     AssignableArray sum() const;
     AssignableArray mean() const;

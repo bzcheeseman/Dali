@@ -117,6 +117,7 @@ class Array : public Exp<Array> {
     Array pluck_axis(int axis, const Slice& slice) const;
     Array pluck_axis(int axis, int idx) const;
     Array collapse_axis(int axis) const;
+    Array broadcast_axis(int new_axis) const;
 
     AssignableArray sum() const;
     AssignableArray mean() const;

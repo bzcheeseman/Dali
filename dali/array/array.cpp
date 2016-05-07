@@ -296,20 +296,20 @@ Array Array::operator()(index_t idx) const {
     ASSERT2(0 <= idx && idx <= number_of_elements(),
             utils::MS() << "Index " << idx << " must be in [0," << number_of_elements() << "].");
     return Array(vector<int>(),
-                 state->memory,
-                 state->offset + idx,
+                 memory(),
+                 offset() + idx,
                  vector<int>(),
-                 state->dtype);
+                 dtype());
 }
 
 Array Array::ravel() const {
     ASSERT2(contiguous_memory(),
             "at the moment ravel is only supported for contiguous_memory");
     return Array({number_of_elements()},
-                 state->memory,
-                 state->offset,
+                 memory(),
+                 offset(),
                  vector<int>(),
-                 state->dtype);
+                 dtype());
 }
 
 Array Array::reshape(const vector<int>& new_shape) const {
@@ -318,10 +318,10 @@ Array Array::reshape(const vector<int>& new_shape) const {
     ASSERT2(hypercube_volume(new_shape) == number_of_elements(),
             utils::MS() << "New shape (" << new_shape << ") must have the same nubmer of elements as previous shape (" << shape() << ")");
     return Array(new_shape,
-                 state->memory,
-                 state->offset,
+                 memory(),
+                 offset(),
                  vector<int>(),
-                 state->dtype);
+                 dtype());
 }
 
 Array Array::collapse_axis(int axis) const {
@@ -383,11 +383,23 @@ Array Array::pluck_axis(int axis, const Slice& slice_unnormalized) const {
     compact_strides(new_strides, new_shape);
 
     return Array(new_shape,
-                 state->memory,
+                 memory(),
                  new_offset,
                  new_strides,
-                 state->dtype);
+                 dtype());
 }
+Array Array::broadcast_axis(int new_axis) const {
+    vector<int> new_shape   = shape();
+    vector<int> new_strides = normalized_strides();
+    new_shape.insert(  new_shape.begin()   + new_axis, 1);
+    new_strides.insert(new_strides.begin() + new_axis, 0);
+    return Array(new_shape,
+                 memory(),
+                 offset(),
+                 new_strides,
+                 dtype());
+}
+
 
 // TODO(jonathan,szymon): add axis argument to sum + write tests
 AssignableArray Array::sum() const {

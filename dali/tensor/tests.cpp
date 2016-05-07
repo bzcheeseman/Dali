@@ -23,14 +23,11 @@ class TensorTests : public MemorySafeTest {
 
 TEST_F(TensorTests, sum_test) {
     auto A = Tensor({10, 20}, initializer::uniform(-2.0, 2.0), DTYPE_FLOAT);
-    ELOG("ah");
     auto res = A.sum();
-    ELOG("bh");
     float sum = 0.0;
     for (int i = 0; i < A.number_of_elements(); ++i) {
         sum += (float)A.w(i);
     }
-    ELOG("ch");
     ASSERT_NEAR(sum, (float)res.w(0), 1e-4);
 }
 

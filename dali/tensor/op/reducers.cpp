@@ -10,19 +10,14 @@ namespace tensor_ops {
             out.w = tensor.w.reshape({});
             return out;
         } else {
-            ELOG("yo");
             // TODO(jonathan, szymon) also makes sure that device
             // of input tensor is also used here
             Tensor out({}, initializer::empty(), tensor.dtype());
-            ELOG("pre-yo");
             out.w = tensor.w.sum();
-            ELOG("post-yo");
 
             if (graph::backprop_enabled() && !tensor.constant)
                 graph::emplace_back([tensor, out]() mutable {
-                    ELOG("yo grad");
                     tensor.dw += out.dw;
-                    ELOG("post grad");
                 });
             return out;
         }

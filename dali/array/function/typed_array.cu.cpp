@@ -55,13 +55,9 @@ template class TypedArray<memory::DEVICE_T_CPU, double>;
 
 
 #ifdef DALI_USE_CUDA
-template<typename T>
-    TypedArray<memory::DEVICE_T_GPU, T>::TypedArray(const Array& _array, const memory::Device& _device)
-            : array(_array), device(_device) {}
-
     template<typename T>
     thrust::device_ptr<T> TypedArray<memory::DEVICE_T_GPU, T>::to_thrust(memory::AM access_mode) const {
-        return thrust::device_pointer_cast(ptr(access_mode));
+        return thrust::device_pointer_cast(this->ptr(access_mode));
     }
 
     template class TypedArray<memory::DEVICE_T_GPU, int>;

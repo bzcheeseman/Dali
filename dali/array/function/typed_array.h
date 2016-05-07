@@ -80,7 +80,7 @@ struct TypedArray<memory::DEVICE_T_CPU, T> : public internal::TypedArrayShared<m
 #ifdef DALI_USE_CUDA
     template<typename T>
     struct TypedArray<memory::DEVICE_T_GPU, T> : public internal::TypedArrayShared<mshadow::gpu,T> {
-        using internal::TypedArrayShared<mshadow::cpu,T>::TypedArrayShared; // inherit parent constructor
+        using internal::TypedArrayShared<mshadow::gpu,T>::TypedArrayShared; // inherit parent constructor
 
         thrust::device_ptr<T> to_thrust(memory::AM access_mode=memory::AM_READONLY) const;
     };

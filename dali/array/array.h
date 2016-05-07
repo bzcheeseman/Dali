@@ -50,6 +50,7 @@ class Array : public Exp<Array> {
     T& scalar_value();
     template<typename T>
     Array& assign_constant(const T& other);
+    void broadcast_axis_internal(int axis);
   public:
     typedef uint index_t;
     Array();
@@ -86,6 +87,7 @@ class Array : public Exp<Array> {
     bool contiguous_memory() const;
 
     void initialize(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
+    void initialize_with_bshape(const std::vector<int>& bshape, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
     Array& reset();
 
     /* Accesing internal state */
@@ -100,6 +102,7 @@ class Array : public Exp<Array> {
     // for example if array has shape {2, 1, 3, 1} and dimension 1 is
     // broadcasted then it retuns {2, -1, 3, 1}.
     std::vector<int> bshape() const;
+    bool compatible_with_bshape(const std::vector<int>& other_bshape);
 
     /* memory moving logic */
     memory::Device preferred_device() const;

@@ -43,6 +43,21 @@ void compact_strides(vector<int>& strides, const vector<int>& shape) {
     }
 }
 
+vector<int> bshape2shape(const vector<int>& bshape) {
+    vector<int> res;
+    std::transform(bshape.begin(), bshape.end(), res.begin(), [](int x) {
+        return std::abs(x);
+    });
+    return res;
+}
+
+// shape makes sense
+bool shape_strictly_positive(const std::vector<int>& shape) {
+    return std::all(shape.begin(), shape.end(), [](int x) {
+        return x > 0;
+    });
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //                        ASSIGNABLE ARRAY                                    //
@@ -116,6 +131,17 @@ T& Array::scalar_value() {
     return *(((T*)(data)) + offset());
 }
 
+void Array::broadcast_axis_internal(int axis) {
+    ASSERT2(0 < axis && axis < ndim(),
+            utils::MS() << "broadcast dimension (" << axis << ") must be less the dimensionality of broadcasted tensor (" << ndim() << ")");
+
+    vector<int> new_strides = normalized_strides();
+    new_strides[axis] = 0;
+    // this will never be needed:
+    // compact_strides(new_strides, shape());
+
+    state->strides = new_strides;
+}
 
 Array::Array() {}
 
@@ -132,6 +158,8 @@ Array::Array(const std::vector<int>& shape,
              int offset,
              const std::vector<int>& strides,
              DType dtype) {
+    ASSERT2(shape_strictly_positive(shape),
+            "Shape elements must be strictly positive");
     vector<int> new_strides(strides);
     compact_strides(new_strides, shape);
     ASSERT2(new_strides.size() == 0 || new_strides.size() == shape.size(),
@@ -207,7 +235,10 @@ bool Array::contiguous_memory() const {
     return strides().empty() == true;
 }
 
+
 void Array::initialize(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
+    ASSERT2(shape_strictly_positive(shape),
+            "Shape elements must be strictly positive");
     int number_of_elements = hypercube_volume(shape);
 
     auto memory = std::make_shared<SynchronizedMemory>(
@@ -218,6 +249,18 @@ void Array::initialize(const std::vector<int>& shape, DType dtype, memory::Devic
 
     state = std::make_shared<ArrayState>(shape, memory, 0, vector<int>(), dtype);
 }
+
+void Array::initialize_with_bshape(const std::vector<int>& bshape, DType dtype, memory::Device preferred_device) {
+    initialize(bshape2shape(bshape), dtype, preferred_device);
+    for (int i = 0; i < bshape.size(); ++i) {
+        if (common_bshape[i] < 0) {
+            ASSERT2(common_bshape[i] == -1,
+                    "Currently only one-sized broadcasting is supported");
+            out.broadcast_axis_internal(i);
+        }
+    }
+}
+
 
 Array& Array::reset() {
     state = nullptr;
@@ -280,6 +323,12 @@ std::vector<int> Array::bshape() const {
         return result;
     }
 }
+
+bool Array::compatible_with_bshape(const std::vector<int>& other_bshape) {
+    // to_mshadow_expr
+    raise std::runtime_error();
+}
+
 
 void Array::to_device(memory::Device device) const {
     memory()->move_to(device);
@@ -383,7 +432,7 @@ Array Array::pluck_axis(int axis, const Slice& slice_unnormalized) const {
                  dtype());
 }
 Array Array::squeeze(int axis) const {
-    ASSERT2(axis < shape().size(),
+    ASSERT2(0 <= axis && axis < shape().size(),
             utils::MS() << "squeeze dimension (" << axis << ") must be less the dimensionality of compacted tensor (" << shape().size() << ")");
     ASSERT2(shape()[axis] == 1,
             utils::MS() << "squeeze(" << axis << ") requires tensor to be shaped like a bowtie.");
@@ -428,21 +477,14 @@ Array Array::expand_dims(int new_axis) const {
 
 
 Array Array::broadcast_axis(int axis) const {
-    vector<int> new_strides = normalized_strides();
-    new_strides[axis] = 0;
-
-    return Array(shape(),
-                 memory(),
-                 offset(),
-                 new_strides,
-                 dtype());
+    Array out(*this, false);
+    out->broadcast_axis_internal(axis);
+    return out;
 }
 
 Array Array::insert_broadcast_axis(int new_axis) const {
     return expand_dims(new_axis).broadcast_axis(new_axis);
 }
-
-
 
 // TODO(jonathan,szymon): add axis argument to sum + write tests
 AssignableArray Array::sum() const {

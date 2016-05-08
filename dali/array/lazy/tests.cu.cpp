@@ -164,3 +164,28 @@ TEST(ArrayLazyOpsTests, broadcasted_add) {
 
     ASSERT_EQ((int)(Array)out.sum(), 2 * 3 * 4 * 3);
 }
+
+TEST(ArrayTests, DISABLED_sum_axis) {
+    Array x = Array::ones({2,3,4}, DTYPE_INT32);
+    for (int reduce_axis = 0; reduce_axis < x.ndim(); reduce_axis++) {
+        Array y = lazy::sum_axis(x, reduce_axis);
+        std::vector<int> expected_shape;
+        switch (reduce_axis) {
+            case 0:
+                expected_shape = {3, 4};
+                break;
+            case 1:
+                expected_shape = {2, 4};
+                break;
+            case 2:
+                expected_shape = {2, 3};
+                break;
+        }
+        EXPECT_EQ(expected_shape, y.shape());
+        y.print();
+        for (int i = 0; i < y.number_of_elements(); i++) {
+            EXPECT_EQ(x.shape()[reduce_axis], (int)y(i));
+        }
+    }
+}
+

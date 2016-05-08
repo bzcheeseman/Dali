@@ -14,6 +14,9 @@ struct LazyUnary;
 template<class Functor, typename ExprT>
 struct LazyAllReducer;
 
+template<class Functor, typename ExprT>
+struct LazyAxisReducer;
+
 template<typename Reducer>
 struct ReduceOverLazyExpr {
     typedef std::tuple<typename Reducer::outtype_t, typename Reducer::state_t> outtuple_t;
@@ -38,6 +41,14 @@ struct ReduceOverLazyExpr {
     static outtuple_t unfold_helper(
             const outtuple_t& state,
             const LazyAllReducer<Functor,ExprT>& reducer_expr,
+            const Args&... args) {
+        return unfold_helper(state, reducer_expr.expr, args...);
+    }
+
+    template<class Functor, typename ExprT, typename... Args>
+    static outtuple_t unfold_helper(
+            const outtuple_t& state,
+            const LazyAxisReducer<Functor,ExprT>& reducer_expr,
             const Args&... args) {
         return unfold_helper(state, reducer_expr.expr, args...);
     }

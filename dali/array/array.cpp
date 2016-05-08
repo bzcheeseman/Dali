@@ -394,10 +394,13 @@ Array Array::reshape_broadcasted(const std::vector<int>& new_shape) const {
 
     for (int i = 0; i < my_bshape.size(); ++i) {
         ASSERT2(new_shape[i] > 0,
-                utils::MS() << "shape must positive, got " << new_shape);
+                utils::MS() << "reshape_broadcasted's new_shape argument must be strictly positive (got "
+                            << new_shape << ")");
 
         ASSERT2(new_shape[i] == std::abs(my_bshape[i]) || my_bshape[i] == -1,
-                "reshape_broadcasted can only reshape broadcasted dimensions.");
+                utils::MS() << "reshape_broadcasted can only reshape broadcasted dimensions "
+                            << "(tried to reshape array with shape: "
+                            << my_bshape << " to new shape: " << new_shape << ")");
     }
     return Array(new_shape,
                  memory(),

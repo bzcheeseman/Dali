@@ -370,3 +370,8 @@ TEST(ArrayTests, strides_compacted_after_expansion) {
     EXPECT_EQ(x.expand_dims(2).strides(), vector<int>());
     EXPECT_EQ(x.expand_dims(3).strides(), vector<int>());
 }
+
+TEST(ArrayTests, sum_rows) {
+    Array x = Array::ones({2,3,4}, DTYPE_INT32);
+}
+

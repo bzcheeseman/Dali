@@ -3,6 +3,41 @@
 #include "dali/array/array.h"
 #include "dali/runtime_config.h"
 
+auto BShapeCompatibleForAllArrayArgsReducer::reduce_step(
+        const std::tuple<outtype_t, state_t>& candidate_and_state,
+        const Array& arg) -> std::tuple<outtype_t, state_t> {
+   outtype_t candidate;
+   bool ready;
+   std::tie(candidate, ready) = candidate_and_state;
+   if (ready) {
+       const auto& new_shape = arg.bshape();
+       // candidate
+       ASSERT2(candidate.size() == new_shape.size(),
+               utils::MS() << "All arguments must be of the same dimensionality" <<
+               " (MISMATCH between ndims="  << candidate.size() << " and ndims=" <<
+               new_shape.size() << ")");
+       std::vector<int> combined_shape(candidate.size(), 0);
+       for (int i = 0; i < candidate.size(); ++i) {
+           if (candidate[i] < 0) {
+               combined_shape[i] = new_shape[i];
+           } else if (new_shape[i] < 0) {
+               combined_shape[i] = candidate[i];
+           } else {
+               ASSERT2(new_shape[i] == candidate[i],
+                       utils::MS() << "Incompatible shape at dimension " << i << ": " << candidate << " VS " << new_shape << ".");
+               combined_shape[i] = new_shape[i];
+           }
+       }
+
+       return std::make_tuple(combined_shape, true);
+   } else {
+       return std::make_tuple(arg.bshape(), true);
+   }
+}
+
+
+
+
 std::string ShapeProperty::name = "shape";
 std::string DTypeProperty::name = "dtype";
 

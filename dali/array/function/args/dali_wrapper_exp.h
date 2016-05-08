@@ -38,8 +38,9 @@ struct DaliWrapperExp : public mshadow::TRValue<
             array(dali_src) {
         ASSERT2(src_.shape_[srcdim - 1] == src_.stride_,
                 "DaliWrapperExp should never reach that condition (only tensors should be passed as arguments).");
-        ASSERT2(array.shape().size() <= DALI_MAX_STRIDED_DIMENSION,
+        ASSERT2(array.ndim() <= DALI_MAX_STRIDED_DIMENSION,
                 "Striding only supported for Tensors up to DALI_MAX_STRIDED_DIMENSION dimensions.");
+
         this->shape_ = mshadow::expr::ShapeCheck<srcdim, src_t>::Check(src_);
     }
 
@@ -85,7 +86,7 @@ namespace mshadow {
           public:
             explicit Plan(const DaliWrapperExp<Device, srcdim, DType> &e) :
                     src_(MakePlan(e.src_)),
-                    ndim(e.array.shape().size()),
+                    ndim(e.array.ndim()),
                     has_strides(!e.array.strides().empty()) {
 
                 for (int i = 0; i < ndim; ++i) {

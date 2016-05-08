@@ -135,7 +135,7 @@ TEST(ArrayLazyOpsTests, lazy_shape_deduction) {
 
     // test deduction of shape of lazy expression
     auto partial = x * (y * z);
-    EXPECT_EQ(partial.shape(), std::vector<int>({16}));
+    EXPECT_EQ(partial.bshape(), std::vector<int>({16}));
 
     // detect wrong shape during lazy expression construction.
     Array z_wrong({20,4});
@@ -151,4 +151,16 @@ TEST(ArrayLazyOpsTests, lazy_shape_deduction) {
     // cannot assign to memory of wrong shape
     Array q2({14, 5});
     EXPECT_THROW(q2 = x * (y * z), std::runtime_error);
+}
+
+TEST(ArrayLazyOpsTests, broadcasted_add) {
+    auto out = Array::zeros({2,3,4}, DTYPE_INT32);
+    auto A = Array::ones({2,3,4}, DTYPE_INT32);
+    auto B = Array::ones({3},     DTYPE_INT32);
+
+    B = B[Broadcast()][Slice(0,3)][Broadcast()];
+
+    out = A +  2 * B;
+
+    ASSERT_EQ((int)(Array)out.sum(), 2 * 3 * 4 * 3);
 }

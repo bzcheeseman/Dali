@@ -43,17 +43,9 @@ void compact_strides(vector<int>& strides, const vector<int>& shape) {
     }
 }
 
-vector<int> bshape2shape(const vector<int>& bshape) {
-    vector<int> res;
-    std::transform(bshape.begin(), bshape.end(), res.begin(), [](int x) {
-        return std::abs(x);
-    });
-    return res;
-}
-
 // shape makes sense
 bool shape_strictly_positive(const std::vector<int>& shape) {
-    return std::all(shape.begin(), shape.end(), [](int x) {
+    return std::all_of(shape.begin(), shape.end(), [](int x) {
         return x > 0;
     });
 }
@@ -132,7 +124,7 @@ T& Array::scalar_value() {
 }
 
 void Array::broadcast_axis_internal(int axis) {
-    ASSERT2(0 < axis && axis < ndim(),
+    ASSERT2(0 <= axis && axis < ndim(),
             utils::MS() << "broadcast dimension (" << axis << ") must be less the dimensionality of broadcasted tensor (" << ndim() << ")");
 
     vector<int> new_strides = normalized_strides();
@@ -253,10 +245,10 @@ void Array::initialize(const std::vector<int>& shape, DType dtype, memory::Devic
 void Array::initialize_with_bshape(const std::vector<int>& bshape, DType dtype, memory::Device preferred_device) {
     initialize(bshape2shape(bshape), dtype, preferred_device);
     for (int i = 0; i < bshape.size(); ++i) {
-        if (common_bshape[i] < 0) {
-            ASSERT2(common_bshape[i] == -1,
+        if (bshape[i] < 0) {
+            ASSERT2(bshape[i] == -1,
                     "Currently only one-sized broadcasting is supported");
-            out.broadcast_axis_internal(i);
+            broadcast_axis_internal(i);
         }
     }
 }
@@ -324,12 +316,6 @@ std::vector<int> Array::bshape() const {
     }
 }
 
-bool Array::compatible_with_bshape(const std::vector<int>& other_bshape) {
-    // to_mshadow_expr
-    raise std::runtime_error();
-}
-
-
 void Array::to_device(memory::Device device) const {
     memory()->move_to(device);
 }
@@ -356,9 +342,14 @@ Array Array::operator[](int idx) const {
     return pluck_axis(0, idx);
 }
 
-ArraySlice Array::operator[](Slice s) const {
+ArraySlice Array::operator[](const Slice& s) const {
     auto ret = ArraySlice(*this);
     return ret[s];
+}
+
+ArraySlice Array::operator[](const Broadcast& b) const {
+    auto ret = ArraySlice(*this);
+    return ret[b];
 }
 
 Array Array::operator()(index_t idx) const {
@@ -395,6 +386,25 @@ Array Array::reshape(const vector<int>& new_shape) const {
                  dtype());
 }
 
+Array Array::reshape_broadcasted(const std::vector<int>& new_shape) const {
+    ASSERT2(new_shape.size() == ndim(),
+            utils::MS() << "reshape_broadcasted must receive a shape with the same dimensionality (current: " <<
+            shape() << ", got: " << new_shape << ")");
+    auto my_bshape = bshape();
+
+    for (int i = 0; i < my_bshape.size(); ++i) {
+        ASSERT2(new_shape[i] > 0,
+                utils::MS() << "shape must positive, got " << new_shape);
+
+        ASSERT2(new_shape[i] == std::abs(my_bshape[i]) || my_bshape[i] == -1,
+                "reshape_broadcasted can only reshape broadcasted dimensions.");
+    }
+    return Array(new_shape,
+                 memory(),
+                 offset(),
+                 strides(),
+                 dtype());
+}
 
 
 Array Array::pluck_axis(int axis, int pluck_idx) const {
@@ -478,7 +488,7 @@ Array Array::expand_dims(int new_axis) const {
 
 Array Array::broadcast_axis(int axis) const {
     Array out(*this, false);
-    out->broadcast_axis_internal(axis);
+    out.broadcast_axis_internal(axis);
     return out;
 }
 
@@ -611,46 +621,69 @@ void Array::clear() {
 
 ArraySlice::ArraySlice(const Array& input_) :
         input(input_),
+        consumed_dims(0),
         slice({}),
-        collapse({}) {
+        action({}) {
 }
 
 ArraySlice::ArraySlice(const ArraySlice& other) :
         input(other.input),
-        slice(other.slice.begin(), other.slice.end()),
-        collapse(other.collapse.begin(), other.collapse.end()) {
+        slice(other.slice),
+        consumed_dims(other.consumed_dims),
+        action(other.action) {
 }
 
 
-ArraySlice ArraySlice::operator[](Slice s) {
-    ASSERT2(slice.size() < input.ndim(),
+ArraySlice ArraySlice::operator[](const Slice& s) {
+    ASSERT2(consumed_dims < input.ndim(),
         "Slicing a scalar array is not allowed.");
     ArraySlice res(*this);
     res.slice.push_back(s);
-    res.collapse.push_back(false);
+    res.action.push_back(SLICE_RANGE);
+    res.consumed_dims += 1;
+    return res;
+}
+
+ArraySlice ArraySlice::operator[](const Broadcast& b) {
+    ArraySlice res(*this);
+    res.action.push_back(BROADCAST);
+    // res.consumed_dims remains unchanged during broadcast.
     return res;
 }
 
 ArraySlice ArraySlice::operator[](int idx) {
-    ASSERT2(slice.size() < input.ndim(),
+    ASSERT2(consumed_dims < input.ndim(),
         "Slicing a scalar array is not allowed.");
     ArraySlice res(*this);
     res.slice.push_back(Slice(idx, idx+1));
-    res.collapse.push_back(true);
+    res.action.push_back(SLICE_IDX);
+    res.consumed_dims += 1;
     return res;
 }
 
 ArraySlice::operator Array() {
     Array out = input;
-    ASSERT2(slice.size() == collapse.size(),
+    ASSERT2(consumed_dims <= input.ndim(),
             "Email szymon.sidor@gmail.com.");
-    int dim = 0;
-    for (int i = 0; i < slice.size(); ++i) {
-        out = out.pluck_axis(dim, slice[i]);
-        if (collapse[i]) {
-            out = out.squeeze(dim);
-        } else {
-            dim++;
+    auto next_slice = slice.begin();
+    int output_depth = 0;
+    for (const auto& a: action) {
+        switch(a) {
+            case SLICE_RANGE:
+                out = out.pluck_axis(output_depth, *(next_slice++));
+                output_depth += 1;
+                break;
+            case SLICE_IDX:
+                out = out.pluck_axis(output_depth, *(next_slice++));
+                out = out.squeeze(output_depth);
+                break;
+            case BROADCAST:
+                out = out.insert_broadcast_axis(output_depth);
+                output_depth += 1;
+                break;
+            default:
+                ASSERT2(false, "Unsupported value for ArraySliceAction.");
+                break;
         }
     }
     return out;

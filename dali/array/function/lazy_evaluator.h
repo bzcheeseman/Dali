@@ -22,33 +22,33 @@ namespace debug {
 
 template<int devT,typename T, typename ExprT>
 struct MshadowWrapper {
-    static inline auto wrap(const ExprT& sth, memory::Device device) ->
-            decltype(sth.template to_mshadow_expr<devT,T>(device)) {
-        return sth.template to_mshadow_expr<devT,T>(device);
+    static inline auto wrap(const ExprT& sth, memory::Device device, const std::vector<int>& output_shape) ->
+            decltype(sth.template to_mshadow_expr<devT,T>(device, output_shape)) {
+        return sth.template to_mshadow_expr<devT,T>(device, output_shape);
     }
 };
 
 template<int devT,typename T>
 struct MshadowWrapper<devT,T,Array> {
-    static inline auto wrap(const Array& array, memory::Device device) ->
-            decltype(TypedArray<devT,T>(array, device).d2()) {
-        return TypedArray<devT,T>(array, device).d2();
+    static inline auto wrap(const Array& array, memory::Device device, const std::vector<int>& output_shape) ->
+            decltype(TypedArray<devT,T>(array, device, output_shape).d2()) {
+        return TypedArray<devT,T>(array, device, output_shape).d2();
     }
 };
 
 template<int devT,typename T>
 struct MshadowWrapper<devT,T,float> {
-    static inline T wrap(const float& scalar, memory::Device device) { return (T)scalar; }
+    static inline T wrap(const float& scalar, memory::Device device, const std::vector<int>& output_shape) { return (T)scalar; }
 };
 
 template<int devT,typename T>
 struct MshadowWrapper<devT,T,double> {
-    static inline T wrap(const double& scalar, memory::Device device) { return (T)scalar; }
+    static inline T wrap(const double& scalar, memory::Device device, const std::vector<int>& output_shape) { return (T)scalar; }
 };
 
 template<int devT,typename T>
 struct MshadowWrapper<devT,T,int> {
-    static inline T wrap(const int& scalar, memory::Device device) { return (T)scalar; }
+    static inline T wrap(const int& scalar, memory::Device device, const std::vector<int>& output_shape) { return (T)scalar; }
 };
 
 
@@ -56,8 +56,8 @@ struct MshadowWrapper<devT,T,int> {
 template<class LazyExpr>
 struct LazyEvaluator : public Function<LazyEvaluator<LazyExpr>, Array, LazyExpr> {
 
-    static std::vector<int> deduce_output_shape(const LazyExpr& expr) {
-        return expr.shape();
+    static std::vector<int> deduce_output_bshape(const LazyExpr& expr) {
+        return expr.bshape();
     }
 
     static DType deduce_output_dtype(const LazyExpr& expr) {
@@ -84,9 +84,16 @@ struct LazyEvaluator : public Function<LazyEvaluator<LazyExpr>, Array, LazyExpr>
     void typed_eval(TypedArray<devT,T> out, const LazyExpr& expr) {
         debug::lazy_evaluator_calls += 1;
 
+
+        // out.array.shape() is passed to MshadowWrapper as final destination
+        // shape this means that all the input arguments will be broadcasted
+        // to fit out.array.shape(). Here we are assuming that out.array.shape()
+        // is not broadcasted, so when the computation actually happens
+        // the shape is already fully known every step of the way.
+
         operator_assign<operator_t, LazyExpr::evaluation_dim>(
             out,
-            MshadowWrapper<devT,T,decltype(expr)>::wrap(expr, out.device)
+            MshadowWrapper<devT,T,decltype(expr)>::wrap(expr, out.device, out.array.shape())
         );
     }
 };

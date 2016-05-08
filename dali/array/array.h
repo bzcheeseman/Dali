@@ -12,6 +12,7 @@
 #include "dali/array/memory/memory_ops.h"
 #include "dali/array/memory/synchronized_memory.h"
 #include "dali/array/slice.h"
+#include "dali/array/shape.h"
 #include "dali/runtime_config.h"
 
 class Array;
@@ -102,7 +103,6 @@ class Array : public Exp<Array> {
     // for example if array has shape {2, 1, 3, 1} and dimension 1 is
     // broadcasted then it retuns {2, -1, 3, 1}.
     std::vector<int> bshape() const;
-    bool compatible_with_bshape(const std::vector<int>& other_bshape);
 
     /* memory moving logic */
     memory::Device preferred_device() const;
@@ -115,11 +115,32 @@ class Array : public Exp<Array> {
 
     /* Creating a view into memory */
     Array operator[](int idx) const;
-    ArraySlice operator[](Slice s) const;
+    ArraySlice operator[](const Slice& s) const;
+    ArraySlice operator[](const Broadcast& b) const;
 
     Array operator()(index_t idx) const;
     Array ravel() const;
     Array reshape(const std::vector<int>& shape) const;
+    /*
+     * reshape_broadcasted can only be run on The
+     * the broadcastable dimensions of size 1.
+     *
+     * Note: An exception to this rule is when the
+     * array was previously 'reshape_broadcasted' to
+     * the same size, maa no-op):
+     * e.g. starting with {-1, 3, -1}, the following sequence
+     * of functions will NOT result in an error:
+     *    - reshape_broadcasted({2, 3, 1})
+     *    - reshape_broadcasted({2, 3, 1})
+     *    - reshape_broadcasted({2, 3, 5})
+     *    - reshape_broadcasted({2, 3, 5})
+     * but if we now call:
+     *    - reshape_broadcasted({5, 3, 5})
+     * or even:
+     *    - reshape_broadcasted({1, 3, 5})
+     * then we will see and error.
+     */
+    Array reshape_broadcasted(const std::vector<int>& new_shape) const;
 
     // TODO(szymon): look up what it's called in tensorflow/numpy and rename.
     Array pluck_axis(int axis, const Slice& slice) const;
@@ -176,15 +197,25 @@ class Array : public Exp<Array> {
     void clear();
 };
 
+
 struct ArraySlice {
   private:
-    std::vector<Slice> slice;
-    std::vector<bool>  collapse;
+    enum ArraySliceAction {
+        SLICE_RANGE,
+        SLICE_IDX,
+        BROADCAST
+    };
+
+    int consumed_dims;
+    std::vector<Slice>            slice;
+    std::vector<ArraySliceAction> action;
     Array input;
+
   public:
     ArraySlice(const Array& input_);
     ArraySlice(const ArraySlice& other);
-    ArraySlice operator[](Slice s);
+    ArraySlice operator[](const Slice& s);
+    ArraySlice operator[](const Broadcast& b);
     ArraySlice operator[](int idx);
     operator Array();
 };

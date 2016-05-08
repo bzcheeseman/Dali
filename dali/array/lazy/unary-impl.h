@@ -10,13 +10,13 @@ struct LazyUnary : public LazyFunction<LazyUnary<Functor,ExprT>, ExprT> {
     }
 
     template<int devT,typename T>
-    auto to_mshadow_expr(memory::Device device) const ->
+    auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape) const ->
             decltype(
                 mshadow::expr::F<Functor<T>>(
-                     MshadowWrapper<devT,T,decltype(expr)>::wrap(expr, device)
+                     MshadowWrapper<devT,T,decltype(expr)>::wrap(expr, device, output_shape)
                 )
             ) {
-        auto left_expr  = MshadowWrapper<devT,T,decltype(expr)>::wrap(expr,  device);
+        auto left_expr  = MshadowWrapper<devT,T,decltype(expr)>::wrap(expr,  device, output_shape);
         return mshadow::expr::F<Functor<T>>(left_expr);
     }
 };

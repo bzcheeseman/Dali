@@ -4,6 +4,10 @@
 #include <ostream>
 #include <string>
 
+
+struct Broadcast {
+};
+
 struct Slice {
     const int start;
     const int end;

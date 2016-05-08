@@ -29,7 +29,7 @@ struct ArrayWrapper {
     }
 
     static inline TypedArray<devT,T> wrap(const Array& a, memory::Device dev) {
-        return TypedArray<devT,T>(a,dev);
+        return TypedArray<devT,T>(a, dev, a.shape());
     }
 };
 
@@ -51,8 +51,8 @@ struct Function {
     static const bool disable_output_shape_check = false;
     static const bool disable_output_dtype_check = false;
 
-    static std::vector<int> deduce_output_shape(const Args&... args) {
-        return ReduceOverArgs<ShapeEqualForAllArrayArgsReducer>::reduce(args...);
+    static std::vector<int> deduce_output_bshape(const Args&... args) {
+        return ReduceOverArgs<BShapeCompatibleForAllArrayArgsReducer>::reduce(args...);
     }
 
     static DType deduce_output_dtype(const Args&... args) {
@@ -72,14 +72,42 @@ struct Function {
     }
 
     static void prepare_output(const OPERATOR_T& operator_t, Outtype& out, const Args&... args) {
-        auto common_shape = Class::deduce_output_shape(args...);
+        auto common_bshape = Class::deduce_output_bshape(args...);
         auto common_dtype = Class::deduce_output_dtype(args...);
 
         if (out.is_stateless()) {
-            out.initialize(common_shape, common_dtype, Class::deduce_output_device(args...));
+            out.initialize_with_bshape(common_bshape,
+                                       common_dtype,
+                                       Class::deduce_output_device(args...));
         } else {
-            ASSERT2(Class::disable_output_shape_check || out.shape() == common_shape,
-                    utils::MS() << "Cannot assign result of shape " << common_shape << " to a location of shape " << out.shape() << ".");
+            if (!Class::disable_output_shape_check) {
+                bool broadcast_reshaped_output = false;
+
+                for (const int& dim_size: out.bshape()) {
+                    if (dim_size < -1) {
+                        broadcast_reshaped_output = true;
+                        break;
+                    }
+                }
+
+                ASSERT2(!broadcast_reshaped_output,
+                        "Cannot assign to broadcasted output with broadcasted dimension"
+                        " bigger than 1, because it results in many-to-one mappings.");
+
+
+                bool output_bshape_compatible = out.ndim() == common_bshape.size();
+                if (output_bshape_compatible) {
+                    for (int i = 0; i < out.ndim(); ++i) {
+                        if (common_bshape[i] != -1 && common_bshape[i] != out.shape()[i]) {
+                            output_bshape_compatible = false;
+                            break;
+                        }
+                    }
+                }
+
+                ASSERT2(output_bshape_compatible,
+                        utils::MS() << "Cannot assign result of shape " << common_bshape << " to a location of shape " << out.shape() << ".");
+            }
             ASSERT2(Class::disable_output_dtype_check || out.dtype() == common_dtype,
                     utils::MS() << "Cannot assign result of dtype " << common_dtype << " to a location of dtype " << out.dtype() << ".");
         }
@@ -106,6 +134,7 @@ struct Function {
                     break;
                 default:
                     ASSERT2(false, "OPERATOR_T for assignment between AssignableArray and output must be one of =,-=,+=,*=,/=");
+                    break;
             }
         });
     }

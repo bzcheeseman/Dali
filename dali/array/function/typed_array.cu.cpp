@@ -18,8 +18,9 @@ namespace internal {
     }
 
     template<typename MDevT, typename T>
-    TypedArrayShared<MDevT, T>::TypedArrayShared(const Array& _array, const memory::Device& _device)
-            : array(_array), device(_device) {}
+    TypedArrayShared<MDevT, T>::TypedArrayShared(const Array& _array, const memory::Device& _device, const std::vector<int>& _output_shape)
+            : array(_array.reshape_broadcasted(_output_shape)), device(_device) {
+    }
 
     template<typename MDevT, typename T>
     mshadow::Tensor<MDevT, 1, T> TypedArrayShared<MDevT,T>::contiguous_d1(memory::AM access_mode) const { return contiguous_d<1>(access_mode); }

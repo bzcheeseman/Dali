@@ -25,16 +25,16 @@ TEST(ArrayTests, slicing) {
     EXPECT_THROW(x[0][0], std::runtime_error);
     EXPECT_THROW(y[3], std::runtime_error);
 
-    EXPECT_EQ(y[0].shape().size(), 2);
-    EXPECT_EQ(y[1].shape().size(), 2);
-    EXPECT_EQ(y[2].shape().size(), 2);
-    EXPECT_EQ(y[2][1].shape().size(), 1);
-    EXPECT_EQ(y[2][1][0].shape().size(), 0);
+    EXPECT_EQ(y[0].ndim(), 2);
+    EXPECT_EQ(y[1].ndim(), 2);
+    EXPECT_EQ(y[2].ndim(), 2);
+    EXPECT_EQ(y[2][1].ndim(), 1);
+    EXPECT_EQ(y[2][1][0].ndim(), 0);
 
-    EXPECT_EQ(x[0].shape().size(), 0);
+    EXPECT_EQ(x[0].ndim(), 0);
 
-    EXPECT_EQ(x(0).shape().size(), 0);
-    EXPECT_EQ(y(0).shape().size(), 0);
+    EXPECT_EQ(x(0).ndim(), 0);
+    EXPECT_EQ(y(0).ndim(), 0);
 }
 
 TEST(ArrayTests, scalar_value) {
@@ -337,6 +337,29 @@ TEST(ArrayTests, double_striding) {
             }
         }
     }
+}
+
+TEST(ArrayLazyOpsTests, reshape_broadcasted) {
+    auto B = Array::ones({3},     DTYPE_INT32);
+
+    B = B[Broadcast()][Slice(0,3)][Broadcast()];
+    B = B.reshape_broadcasted({2,3,4});
+
+    ASSERT_EQ((int)(Array)B.sum(), 2 * 3 * 4);
+}
+
+TEST(ArrayLazyOpsTests, reshape_broadcasted2) {
+    auto B = Array::ones({3},     DTYPE_INT32);
+    B = B[Broadcast()][Slice(0,3)][Broadcast()];
+
+    B = B.reshape_broadcasted({2, 3, 1});
+    B = B.reshape_broadcasted({2, 3, 1});
+    B = B.reshape_broadcasted({2, 3, 5});
+    B = B.reshape_broadcasted({2, 3, 5});
+
+    EXPECT_THROW(B.reshape_broadcasted({5,3,5}), std::runtime_error);
+    EXPECT_THROW(B.reshape_broadcasted({1,3,5}), std::runtime_error);
+    EXPECT_THROW(B.reshape_broadcasted({2,3,1}), std::runtime_error);
 }
 
 TEST(ArrayTests, strides_compacted_after_expansion) {

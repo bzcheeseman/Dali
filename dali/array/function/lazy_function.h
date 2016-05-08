@@ -11,24 +11,24 @@
 template<typename Class, typename... Args>
 struct LazyFunction : public LazyExp<Class> {
     static const int evaluation_dim;
-    std::vector<int> shape_;
+    std::vector<int> bshape_;
     DType dtype_;
 
     LazyFunction(Args... args) :
-            shape_(Class::lazy_output_shape(args...)),
+            bshape_(Class::lazy_output_bshape(args...)),
             dtype_(Class::lazy_output_dtype(args...)) {
     }
 
-    static std::vector<int> lazy_output_shape(const Args&... args) {
-        return ReduceOverArgs<ShapeEqualForAllArgsReducer>::reduce(args...);
+    static std::vector<int> lazy_output_bshape(const Args&... args) {
+        return ReduceOverArgs<BShapeCompatibleForAllArgsReducer>::reduce(args...);
     }
 
     static DType lazy_output_dtype(const Args&... args) {
         return ReduceOverArgs<DTypeEqualForAllArgsReducer>::reduce(args...);
     }
 
-    const std::vector<int>& shape() const {
-        return shape_;
+    const std::vector<int>& bshape() const {
+        return bshape_;
     }
 
     const DType& dtype() const {

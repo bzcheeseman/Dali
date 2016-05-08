@@ -15,15 +15,15 @@ struct LazyBinary : public LazyFunction<LazyBinary<Functor,LeftT,RightT>, LeftT,
     }
 
     template<int devT,typename T>
-    auto to_mshadow_expr(memory::Device device) const ->
+    auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape) const ->
             decltype(
                 mshadow::expr::F<Functor<T>>(
-                     MshadowWrapper<devT,T,decltype(left)>::wrap(left, device),
-                     MshadowWrapper<devT,T,decltype(right)>::wrap(right, device)
+                     MshadowWrapper<devT,T,decltype(left)>::wrap(left, device, output_shape),
+                     MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape)
                 )
             ) {
-        auto left_expr  = MshadowWrapper<devT,T,decltype(left)>::wrap(left,  device);
-        auto right_expr = MshadowWrapper<devT,T,decltype(right)>::wrap(right, device);
+        auto left_expr  = MshadowWrapper<devT,T,decltype(left)>::wrap(left,  device, output_shape);
+        auto right_expr = MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape);
         return mshadow::expr::F<Functor<T>>(left_expr, right_expr);
     }
 };

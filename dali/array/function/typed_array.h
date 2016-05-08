@@ -36,6 +36,7 @@ namespace internal {
       public:
         mutable Array array;
         memory::Device device;
+        std::vector<int> output_shape; 
 
         T* ptr(memory::AM access_mode=memory::AM_READONLY) const;
 
@@ -45,7 +46,7 @@ namespace internal {
         template<int dim>
         DaliWrapperExp<MDevT, dim, T> d(memory::AM access_mode=memory::AM_READONLY) const;
 
-        TypedArrayShared(const Array& _array, const memory::Device& _device);
+        TypedArrayShared(const Array& _array, const memory::Device& _device, const std::vector<int>& output_shape);
 
         ///////////////////// CONVINENCE WARPPERS //////////////////////////////////
         mshadow::Tensor<MDevT, 1, T> contiguous_d1(memory::AM access_mode=memory::AM_READONLY) const;

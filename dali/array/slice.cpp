@@ -16,10 +16,10 @@ Slice::Slice(const int& start_, const int& end_, const int& step_) :
     start(start_), end(end_), step(step_) {
     if ((start >= 0 && end >= 0) || (start < 0 && end < 0)) {
         // start and end have to have the same sign.
-        ASSERT2(start <= end,
-                utils::MS() << "Slice start (" << start << ") must be less or equal than end (" << end << ")");
-        ASSERT2(start != end,
-                "Slice must not be empty!");
+        ASSERT2(start < end,
+                utils::MS() << "Slice start (" << start <<
+                ") must be less than end (" << end << ")");
+
     }
     ASSERT2(step_ != 0, "slice step cannot be zero");
 }

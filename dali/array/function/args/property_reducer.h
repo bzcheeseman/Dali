@@ -73,6 +73,73 @@ struct PropertyEqualForAllArrayArgsReducer {
 };
 
 
+
+struct BShapeCompatibleForAllArgsReducer {
+    typedef std::vector<int> outtype_t;
+    typedef bool        state_t;
+
+    static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const float& arg) {
+        return candidate_and_state;
+    }
+
+    static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const double& arg) {
+        return candidate_and_state;
+    }
+
+    static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const int& arg) {
+        return candidate_and_state;
+    }
+
+    template<typename T>
+    static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const T& arg) {
+        outtype_t candidate;
+        bool ready;
+        std::tie(candidate, ready) = candidate_and_state;
+        if (ready) {
+            const auto& new_shape = arg.bshape();
+            // candidate
+            ASSERT2(candidate.size() == new_shape.size(),
+                    utils::MS() << "All arguments must be of the same dimensionality" <<
+                    " (MISMATCH between ndims="  << candidate.size() << " and ndims=" <<
+                    new_shape.size() << ")");
+            std::vector<int> combined_shape(candidate.size(), 0);
+            for (int i = 0; i < candidate.size(); ++i) {
+                if (candidate[i] < 0) {
+                    combined_shape[i] = new_shape[i];
+                } else if (new_shape[i] < 0) {
+                    combined_shape[i] = candidate[i];
+                } else {
+                    ASSERT2(new_shape[i] == candidate[i],
+                            utils::MS() << "Incompatible shape at dimension " << i << ": " << candidate << " VS " << new_shape << ".");
+                    combined_shape[i] = new_shape[i];
+                }
+            }
+
+            return std::make_tuple(combined_shape, true);
+        } else {
+            return std::make_tuple(arg.bshape(), true);
+        }
+    }
+};
+
+
+struct BShapeCompatibleForAllArrayArgsReducer {
+    typedef std::vector<int> outtype_t;
+    typedef bool        state_t;
+
+    template<typename T>
+    static std::tuple<outtype_t, state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, T elem) {
+        return candidate_and_state;
+    }
+
+    static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const Array& arg);
+};
+
+
+
+
+
+
 struct ShapeProperty {
     typedef std::vector<int> property_t;
     static std::string name;
@@ -94,10 +161,10 @@ struct DTypeProperty {
 };
 
 typedef PropertyEqualForAllArgsReducer<DTypeProperty> DTypeEqualForAllArgsReducer;
-typedef PropertyEqualForAllArgsReducer<ShapeProperty> ShapeEqualForAllArgsReducer;
+// typedef PropertyEqualForAllArgsReducer<ShapeProperty> ShapeEqualForAllArgsReducer;
 
 typedef PropertyEqualForAllArrayArgsReducer<DTypeProperty> DTypeEqualForAllArrayArgsReducer;
-typedef PropertyEqualForAllArrayArgsReducer<ShapeProperty> ShapeEqualForAllArrayArgsReducer;
+// typedef PropertyEqualForAllArrayArgsReducer<ShapeProperty> ShapeEqualForAllArrayArgsReducer;
 
 struct DeviceReducerState {
     int args_read;

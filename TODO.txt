@@ -1,6 +1,4 @@
 HIGH PRIORITY:
--> Rebase on the new additions to mshadow. Tq is a very busy man and works very hard and this is a serious business.
-      -> Especially look at adding broadcast which is dope. Thank You TqChen!
 -> ensure we have more relus than competition
 -> step size in adam
 -> Namespace dali

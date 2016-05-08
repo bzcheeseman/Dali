@@ -1,8 +1,6 @@
 #include "dali/array/function/lazy_function.h"
 #include "dali/array/TensorFunctions.h"
 
-
-
 template<template<class>class Functor, typename LeftT, typename RightT>
 struct LazyBinary : public LazyFunction<LazyBinary<Functor,LeftT,RightT>, LeftT, RightT> {
     LeftT  left;

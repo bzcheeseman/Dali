@@ -86,6 +86,11 @@ endforeach(libvar)
 
 # mshadow
 set(MSHADOW_USE_CBLAS 1)
+# whether to force an error when no stream
+# is used when calling cuda-functions (currently
+# we always use default stream, so this is
+# not yet needed)
+set(MSHADOW_FORCE_STREAM 0)
 set(MSHADOW_USE_MKL 0)
 
 # INCLUDES

@@ -2,7 +2,7 @@
 #define DALI_ARRAY_LAZY_REDUCERS_H
 
 template<class Functor, typename ExprT>
-struct LazyReducer;
+struct LazyAllReducer;
 
 namespace myops {
     struct sum_all;
@@ -10,7 +10,7 @@ namespace myops {
 
 namespace lazy {
     template<typename ExprT>
-    LazyReducer<myops::sum_all, ExprT> sum_all(const Exp<ExprT>& expr);
+    LazyAllReducer<myops::sum_all, ExprT> sum_all(const Exp<ExprT>& expr);
 }  // namespace lazy
 
 #include "dali/array/lazy/reducers-impl.h"

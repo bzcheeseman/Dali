@@ -12,7 +12,7 @@ template<template<class>class Functor, typename ExprT>
 struct LazyUnary;
 
 template<class Functor, typename ExprT>
-struct LazyReducer;
+struct LazyAllReducer;
 
 template<typename Reducer>
 struct ReduceOverLazyExpr {
@@ -37,7 +37,7 @@ struct ReduceOverLazyExpr {
     template<class Functor, typename ExprT, typename... Args>
     static outtuple_t unfold_helper(
             const outtuple_t& state,
-            const LazyReducer<Functor,ExprT>& reducer_expr,
+            const LazyAllReducer<Functor,ExprT>& reducer_expr,
             const Args&... args) {
         return unfold_helper(state, reducer_expr.expr, args...);
     }
@@ -45,7 +45,7 @@ struct ReduceOverLazyExpr {
     template<typename T, typename... Args>
     static outtuple_t unfold_helper(const outtuple_t& state, const T& arg, const Args&... args) {
         static_assert(!std::is_base_of<LazyExpType,T>::value,
-                "All Lazy expressions need to be explicitly expanded in ReduceOverLazyExpr. Did you forget to cover and expression?");
+                "All Lazy expressions need to be explicitly expanded in ReduceOverLazyExpr. Did you forget to cover an expression?");
         return unfold_helper(Reducer::reduce_step(state, arg), args...);
     }
 

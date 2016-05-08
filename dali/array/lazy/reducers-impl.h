@@ -4,7 +4,7 @@
 #include "dali/array/function/lazy_function.h"
 
 template<class Functor, typename ExprT>
-struct LazyReducer : public LazyFunction<LazyReducer<Functor,ExprT>, ExprT> {
+struct LazyAllReducer : public LazyFunction<LazyAllReducer<Functor,ExprT>, ExprT> {
     static const int evaluation_dim;
     ExprT expr;
 
@@ -12,8 +12,8 @@ struct LazyReducer : public LazyFunction<LazyReducer<Functor,ExprT>, ExprT> {
         return {};
     }
 
-    LazyReducer(const ExprT& expr_) :
-            LazyFunction<LazyReducer<Functor,ExprT>, ExprT>(expr_),
+    LazyAllReducer(const ExprT& expr_) :
+            LazyFunction<LazyAllReducer<Functor,ExprT>, ExprT>(expr_),
             expr(expr_) {
     }
 
@@ -31,12 +31,11 @@ struct LazyReducer : public LazyFunction<LazyReducer<Functor,ExprT>, ExprT> {
                 );
         auto ret = Functor::reduce(left_expr);
         return ret;
-
     }
 };
 
 template<class Functor, typename ExprT>
-const int LazyReducer<Functor,ExprT>::evaluation_dim = 1;
+const int LazyAllReducer<Functor,ExprT>::evaluation_dim = 1;
 
 namespace myops {
     struct sum_all {
@@ -48,13 +47,8 @@ namespace myops {
 }
 
 namespace lazy {
-    // template<template<class>class Functor, typename ExprT>
-    // LazyElementwise<Functor,ExprT> F(const Exp<ExprT>& expr) {
-    //     return LazyElementwise<Functor,ExprT>(expr.self());
-    // }
-
     template<typename ExprT>
-    LazyReducer<myops::sum_all, ExprT> sum_all(const Exp<ExprT>& expr) {
-        return LazyReducer<myops::sum_all, ExprT>(expr.self());
+    LazyAllReducer<myops::sum_all, ExprT> sum_all(const Exp<ExprT>& expr) {
+        return LazyAllReducer<myops::sum_all, ExprT>(expr.self());
     }
 }  // namespace lazy

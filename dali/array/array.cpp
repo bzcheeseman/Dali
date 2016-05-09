@@ -353,13 +353,26 @@ ArraySlice Array::operator[](const Broadcast& b) const {
 }
 
 Array Array::operator()(index_t idx) const {
-    ASSERT2(contiguous_memory(),
-            "at the moment slicing is only supported for contiguous_memory");
     ASSERT2(0 <= idx && idx <= number_of_elements(),
             utils::MS() << "Index " << idx << " must be in [0," << number_of_elements() << "].");
+
+    index_t delta_offset;
+    if (contiguous_memory()) {
+        delta_offset = idx;
+    } else {
+        vector<int> ns = normalized_strides();
+        delta_offset = 0;
+        for (int dim = ndim() - 1; dim >= 0; --dim) {
+            index_t index_at_dim  = idx % shape()[dim];
+            idx /= shape()[dim];
+            index_t stride_at_dim = ns[dim];
+            delta_offset += index_at_dim * stride_at_dim;
+        }
+    }
+
     return Array(vector<int>(),
                  memory(),
-                 offset() + idx,
+                 offset() + delta_offset,
                  vector<int>(),
                  dtype());
 }

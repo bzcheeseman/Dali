@@ -371,7 +371,43 @@ TEST(ArrayTests, strides_compacted_after_expansion) {
     EXPECT_EQ(x.expand_dims(3).strides(), vector<int>());
 }
 
-TEST(ArrayTests, sum_rows) {
-    Array x = Array::ones({2,3,4}, DTYPE_INT32);
+// use bracket to compute flat sequence of element in array.
+void sequence_array(Array x, std::vector<int>& output) {
+    if (x.ndim() == 0) {
+        output.push_back((int)x);
+    } else {
+        for (int i = 0; i < x.shape()[0]; ++i) {
+            sequence_array(x[i], output);
+        }
+    }
 }
 
+void ensure_call_operator_correct(Array x) {
+    std::vector<int> correct_elem_sequence;
+
+    sequence_array(x, correct_elem_sequence);
+    for (int i = 0; i < x.number_of_elements(); ++i) {
+        EXPECT_EQ(correct_elem_sequence[i], (int)x(i));
+    }
+}
+
+TEST(ArrayTest, strided_call_operator) {
+    Array x = build_234_arange();
+    ensure_call_operator_correct(x);
+
+    Array x2 = x[Slice(0,2)][2];
+    ensure_call_operator_correct(x2);
+
+    Array x3 = x[Slice(0,2, -1)][2];
+    ensure_call_operator_correct(x2);
+
+    Array y({2, 2}, DTYPE_INT32);
+    y = initializer::arange();
+    ensure_call_operator_correct(y);
+
+    Array y2 = y[Slice(0,2)][Broadcast()][Slice(0,2)];
+    ensure_call_operator_correct(y2);
+
+    Array y3 = y2.reshape_broadcasted({2,3,2});
+    ensure_call_operator_correct(y3);
+}

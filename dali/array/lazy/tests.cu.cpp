@@ -101,6 +101,9 @@ TEST(ArrayLazyOpsTests, elementwise_F) {
     ASSERT_NEAR((float)y(1), 0.5, 1e-4);
 }
 
+// Test below passes, but stresses the template deduction
+// of compiler, and takes much longer to compile than
+// rest of code.
 // TEST(ArrayLazyOpsTests, long_chain) {
 //     Array x({2,1});
 //     Array y({2,1});
@@ -182,9 +185,94 @@ TEST(ArrayTests, sum_axis) {
                 break;
         }
         EXPECT_EQ(expected_shape, y.shape());
-        y.print();
         for (int i = 0; i < y.number_of_elements(); i++) {
             EXPECT_EQ(x.shape()[reduce_axis], (int)y(i));
         }
     }
+}
+
+
+TEST(ArrayTests, sum_axis_broadcasted) {
+    Array x = Array::ones({2,3,4}, DTYPE_INT32)[Slice(0,2)][Slice(0,3)][Slice(0,4)][Broadcast()];
+
+    for (int reduce_axis = 0; reduce_axis < 3; reduce_axis++) {
+        Array y = lazy::sum_axis(x, reduce_axis);
+        std::vector<int> expected_shape;
+        switch (reduce_axis) {
+            case 0:
+                expected_shape = {3, 4, 1};
+                break;
+            case 1:
+                expected_shape = {2, 4, 1};
+                break;
+            case 2:
+                expected_shape = {2, 3, 1};
+                break;
+        }
+        EXPECT_EQ(expected_shape, y.shape());
+
+        for (int i = 0; i < y.number_of_elements(); i++) {
+            EXPECT_EQ(x.shape()[reduce_axis], (int)y(i));
+        }
+    }
+}
+
+TEST(ArrayTests, sum_axis_broadcasted2) {
+    Array x = Array::ones({2,4}, DTYPE_INT32)[Slice(0,2)][Broadcast()][Slice(0,4)];
+
+    for (int reduce_axis = 0; reduce_axis < 3; reduce_axis++) {
+        Array y = lazy::sum_axis(x, reduce_axis);
+        std::vector<int> expected_bshape;
+        switch (reduce_axis) {
+            case 0:
+                expected_bshape = {-1, 4};
+                break;
+            case 1:
+                expected_bshape = {2, 4};
+                break;
+            case 2:
+                expected_bshape = {2, -1};
+                break;
+        }
+        EXPECT_EQ(expected_bshape, y.bshape());
+
+        for (int i = 0; i < y.number_of_elements(); i++) {
+            EXPECT_EQ(x.shape()[reduce_axis], (int)y(i));
+        }
+    }
+}
+
+TEST(ArrayTests, sum_axis_broadcasted_2D) {
+    Array x = Array::ones({2,4}, DTYPE_INT32);
+
+    for (int reduce_axis = 0; reduce_axis < 2; reduce_axis++) {
+        Array y = lazy::sum_axis(x, reduce_axis);
+        std::vector<int> expected_shape;
+        switch (reduce_axis) {
+            case 0:
+                expected_shape = {4};
+                break;
+            case 1:
+                expected_shape = {2};
+                break;
+        }
+        EXPECT_EQ(expected_shape, y.bshape());
+
+        for (int i = 0; i < y.number_of_elements(); i++) {
+            EXPECT_EQ(x.shape()[reduce_axis], (int)y(i));
+        }
+    }
+}
+
+TEST(ArrayTests, sum_axis_broadcasted_1D) {
+    Array x = Array::ones({6,}, DTYPE_INT32);
+
+    EXPECT_THROW(lazy::sum_axis(x, 1), std::runtime_error);
+    EXPECT_THROW(lazy::sum_axis(x, -1), std::runtime_error);
+
+    Array y = lazy::sum_axis(x, 0);
+
+    EXPECT_EQ(0, y.ndim());
+
+    EXPECT_EQ(6, (int)y);
 }

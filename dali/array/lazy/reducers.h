@@ -4,7 +4,7 @@
 template<class Functor, typename ExprT>
 struct LazyAllReducer;
 
-template<class Functor, typename ExprT>
+template<class Functor, typename ExprT, bool return_indices>
 struct LazyAxisReducer;
 
 namespace myops {
@@ -15,6 +15,8 @@ namespace myops {
 namespace mshadow {
 	namespace red {
 		struct sum;
+        struct maximum;
+        struct minimum;
 	}
 };
 
@@ -23,7 +25,20 @@ namespace lazy {
     LazyAllReducer<myops::sum_all, ExprT> sum_all(const Exp<ExprT>& expr);
 
     template<typename ExprT>
-    LazyAxisReducer<mshadow::red::sum, ExprT> sum_axis(const Exp<ExprT>& expr, const int& reduce_axis);
+    LazyAxisReducer<mshadow::red::sum, ExprT, false> sum_axis(const Exp<ExprT>& expr, const int& reduce_axis);
+
+    template<typename ExprT>
+    LazyAxisReducer<mshadow::red::maximum, ExprT, true> argmax_axis(const Exp<ExprT>& expr, const int& reduce_axis);
+
+    template<typename ExprT>
+    LazyAxisReducer<mshadow::red::maximum, ExprT, false> max_axis(const Exp<ExprT>& expr, const int& reduce_axis);
+
+    template<typename ExprT>
+    LazyAxisReducer<mshadow::red::minimum, ExprT, true> argmin_axis(const Exp<ExprT>& expr, const int& reduce_axis);
+
+    template<typename ExprT>
+    LazyAxisReducer<mshadow::red::minimum, ExprT, false> min_axis(const Exp<ExprT>& expr, const int& reduce_axis);
+
 }  // namespace lazy
 
 #include "dali/array/lazy/reducers-impl.h"

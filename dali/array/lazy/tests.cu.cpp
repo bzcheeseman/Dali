@@ -131,6 +131,42 @@ TEST(ArrayLazyOpsTests, sum_all) {
    ASSERT_NEAR((float)(Array)o.sum(), 8.0, 1e-4);
 }
 
+// TODO(jonathan): make this test more gnarly
+TEST(ArrayLazyOpsTests, argmax_axis) {
+   auto z = Array::zeros({2,4}, DTYPE_FLOAT);
+
+   z[0][1] = 2.0;
+   z[1][3] = 3.0;
+   Array max_values = lazy::max_axis(z, 1);
+   Array max_indices = lazy::argmax_axis(z, 1);
+
+   ASSERT_NEAR(2.0, (float)max_values[0], 1e-6);
+   ASSERT_NEAR(3.0, (float)max_values[1], 1e-6);
+
+   ASSERT_EQ(DTYPE_INT32, max_indices.dtype());
+
+   ASSERT_EQ(1, (int)max_indices[0]);
+   ASSERT_EQ(3, (int)max_indices[1]);
+}
+
+TEST(ArrayLazyOpsTests, argmin_axis) {
+   auto z = Array::zeros({2,4}, DTYPE_FLOAT);
+   z[0][1] = -2.0;
+   z[1][3] = -3.0;
+   Array min_values = lazy::min_axis(z, 1);
+   Array min_indices = lazy::argmin_axis(z, 1);
+
+   ASSERT_NEAR(-2.0, (float)min_values[0], 1e-6);
+   ASSERT_NEAR(-3.0, (float)min_values[1], 1e-6);
+
+   ASSERT_EQ(DTYPE_INT32, min_indices.dtype());
+
+   ASSERT_EQ(1, (int)min_indices[0]);
+   ASSERT_EQ(3, (int)min_indices[1]);
+}
+
+
+
 TEST(ArrayLazyOpsTests, lazy_shape_deduction) {
     Array x({16});
     Array y({16});

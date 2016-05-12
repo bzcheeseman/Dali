@@ -52,9 +52,13 @@ static inline auto wrap_3d_around_axis(const ExprT& expr, const std::vector<int>
     return mshadow::expr::reshape(expr, mshadow::Shape3(before_size, real_expr_shape[kept_axis], after_size));
 }
 
+template<class Functor, typename ExprT, bool return_indices>
+struct LazyAxisReducer {
+};
 
-template<class Functor, typename ExprT>
-struct LazyAxisReducer : public LazyFunction<LazyAxisReducer<Functor,ExprT>, ExprT, int> {
+
+template<class Class, typename ExprT, typename Functor, bool return_indices>
+struct LazyAxisReducerShared : public LazyFunction<Class, ExprT, int> {
     static const int evaluation_dim;
     ExprT expr;
     const int reduce_axis;
@@ -71,8 +75,8 @@ struct LazyAxisReducer : public LazyFunction<LazyAxisReducer<Functor,ExprT>, Exp
         return output_bshape;
     }
 
-    LazyAxisReducer(const ExprT& expr_, const int& reduce_axis_) :
-            LazyFunction<LazyAxisReducer<Functor,ExprT>, ExprT, int>(expr_, reduce_axis_),
+    LazyAxisReducerShared(const ExprT& expr_, const int& reduce_axis_) :
+            LazyFunction<Class, ExprT, int>(expr_, reduce_axis_),
             reduce_axis(reduce_axis_),
             expr(expr_) {
         ASSERT2(0 <= reduce_axis && reduce_axis < expr_.bshape().size(),
@@ -83,7 +87,7 @@ struct LazyAxisReducer : public LazyFunction<LazyAxisReducer<Functor,ExprT>, Exp
     auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape) const ->
             decltype(
                 mshadow::expr::reshape(
-                    mshadow::expr::reduce_with_axis<Functor, false>(
+                    mshadow::expr::reduce_with_axis<Functor, return_indices>(
                         wrap_3d_around_axis(
                             MshadowWrapper<devT, T, decltype(expr)>::wrap(expr, device, output_shape),
                             output_shape,
@@ -101,7 +105,7 @@ struct LazyAxisReducer : public LazyFunction<LazyAxisReducer<Functor,ExprT>, Exp
                         expr, device, new_expr_shape
                 );
 
-        auto result_expr = mshadow::expr::reduce_with_axis<Functor, false>(
+        auto result_expr = mshadow::expr::reduce_with_axis<Functor, return_indices>(
             wrap_3d_around_axis(wrapped_expr, new_expr_shape, reduce_axis),
             1
         );
@@ -112,10 +116,24 @@ struct LazyAxisReducer : public LazyFunction<LazyAxisReducer<Functor,ExprT>, Exp
 };
 
 template<class Functor, typename ExprT>
-const int LazyAllReducer<Functor,ExprT>::evaluation_dim = 1;
+const int LazyAllReducer<Functor, ExprT>::evaluation_dim = 1;
+
+template<class Class, typename ExprT, typename Functor, bool return_indices>
+const int LazyAxisReducerShared<Class, ExprT, Functor, return_indices>::evaluation_dim = 2;
 
 template<class Functor, typename ExprT>
-const int LazyAxisReducer<Functor,ExprT>::evaluation_dim = 2;
+struct LazyAxisReducer<Functor, ExprT, false> : public LazyAxisReducerShared<LazyAxisReducer<Functor, ExprT, false>, ExprT, Functor, false> {
+    using LazyAxisReducerShared<LazyAxisReducer<Functor, ExprT, false>, ExprT, Functor, false>::LazyAxisReducerShared; // inherit parent constructor
+};
+
+template<class Functor, typename ExprT>
+struct LazyAxisReducer<Functor, ExprT, true> : public LazyAxisReducerShared<LazyAxisReducer<Functor, ExprT, true>, ExprT, Functor, true> {
+    using LazyAxisReducerShared<LazyAxisReducer<Functor, ExprT, true>, ExprT, Functor, true>::LazyAxisReducerShared; // inherit parent constructor
+
+    static DType lazy_output_dtype(const ExprT& expr_, const int& reduce_axis_) {
+        return DTYPE_INT32;
+    }
+};
 
 namespace myops {
     struct sum_all {
@@ -133,7 +151,27 @@ namespace lazy {
     }
 
     template<typename ExprT>
-    LazyAxisReducer<mshadow::red::sum, ExprT> sum_axis(const Exp<ExprT>& expr, const int& reduce_axis) {
-        return LazyAxisReducer<mshadow::red::sum, ExprT>(expr.self(), reduce_axis);
+    LazyAxisReducer<mshadow::red::sum, ExprT, false> sum_axis(const Exp<ExprT>& expr, const int& reduce_axis) {
+        return LazyAxisReducer<mshadow::red::sum, ExprT, false>(expr.self(), reduce_axis);
+    }
+
+    template<typename ExprT>
+    LazyAxisReducer<mshadow::red::maximum, ExprT, true> argmax_axis(const Exp<ExprT>& expr, const int& reduce_axis) {
+        return LazyAxisReducer<mshadow::red::maximum, ExprT, true>(expr.self(), reduce_axis);
+    }
+
+    template<typename ExprT>
+    LazyAxisReducer<mshadow::red::maximum, ExprT, false> max_axis(const Exp<ExprT>& expr, const int& reduce_axis) {
+        return LazyAxisReducer<mshadow::red::maximum, ExprT, false>(expr.self(), reduce_axis);
+    }
+
+    template<typename ExprT>
+    LazyAxisReducer<mshadow::red::minimum, ExprT, true> argmin_axis(const Exp<ExprT>& expr, const int& reduce_axis) {
+        return LazyAxisReducer<mshadow::red::minimum, ExprT, true>(expr.self(), reduce_axis);
+    }
+
+    template<typename ExprT>
+    LazyAxisReducer<mshadow::red::minimum, ExprT, false> min_axis(const Exp<ExprT>& expr, const int& reduce_axis) {
+        return LazyAxisReducer<mshadow::red::minimum, ExprT, false>(expr.self(), reduce_axis);
     }
 }  // namespace lazy

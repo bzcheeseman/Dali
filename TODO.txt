@@ -14,6 +14,7 @@ MEDIUM PRIORITY:
 -> Random weights init should take doubles, not template typename.
 -> Improve NLP-Utils. Agree on common set of practices for all the examples.
 -> dali cmake finder should conform to standard notation, the automagic finder that finds the dependencies + dali should still be there, but under different variable name.
+-> check that #define MSHADOW_HALF_MAX mshadow::half::half_t::Binary(0xfbff); is indeed the maximum in float16
 
 LOWER_PRIORITY:
 -> add performance test (e.g. num words processed in Language Model on GPU ~ 20,000 words/second)

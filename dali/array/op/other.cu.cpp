@@ -26,7 +26,7 @@ struct IsNan : public NonArrayFunction<IsNan, bool, Array> {
         ASSERT2(input.array.contiguous_memory(), "At this time is_nan is not available for views");
 
         int num_elts = input.array.number_of_elements();
-
+        // TODO(szymon, jonathan): switch to mshadow sum all (to avoid thrust overhead)
         *out = std::isnan(thrust::reduce(
             input.to_thrust(),
             input.to_thrust() + num_elts,

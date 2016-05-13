@@ -15,40 +15,67 @@ enum OPERATOR_T {
     OPERATOR_T_DIV = 4/* /= */
 };
 
+namespace internal {
+    template<OPERATOR_T operator_t>
+    struct UseOperator {
+        // static_assert(false, "this method should not be used ever.");
+    };
+
+    #define DECLARE_OPERATOR_ASSIGN_HELPER(OPERATOR_T_SOMETHING, OPERATOR_LITERAL) \
+        template<> \
+        struct UseOperator<OPERATOR_T_SOMETHING> { \
+            static memory::AM access_mode; \
+            template<typename LeftType, typename RightType> \
+            static inline auto apply(LeftType l, RightType r) -> decltype(l OPERATOR_LITERAL r) { \
+                return l OPERATOR_LITERAL r; \
+            } \
+        };
+
+    DECLARE_OPERATOR_ASSIGN_HELPER(OPERATOR_T_EQL, = );
+    DECLARE_OPERATOR_ASSIGN_HELPER(OPERATOR_T_ADD, +=);
+    DECLARE_OPERATOR_ASSIGN_HELPER(OPERATOR_T_SUB, -=);
+    DECLARE_OPERATOR_ASSIGN_HELPER(OPERATOR_T_MUL, *=);
+    DECLARE_OPERATOR_ASSIGN_HELPER(OPERATOR_T_DIV, /=);
+};  // namespace internal
+
+
 template<OPERATOR_T operator_t, int ndim, typename LeftType, typename RightType>
 struct OperatorAssignHelper {
-    static inline void assign(LeftType& left, const RightType& right);
+    static inline void assign_contiguous(LeftType& left, const RightType& right) {
+        internal::UseOperator<operator_t>::apply(
+            left.template contiguous_d<ndim>(internal::UseOperator<operator_t>::access_mode),
+            right
+        );
+    }
+
+    static inline void assign_noncontiguous(LeftType& left, const RightType& right) {
+        internal::UseOperator<operator_t>::apply(
+            left.template d<ndim>(internal::UseOperator<operator_t>::access_mode),
+            right
+        );
+    }
+
+    static inline void assign(LeftType& left, const RightType& right) {
+        if (left.array.contiguous_memory()) {
+            assign_contiguous(left, right);
+        } else {
+            assign_noncontiguous(left, right);
+        }
+    }
 };
-
-#define DECLARE_OPERATOR_ASSIGN_HELPER_NDIM(OPERATOR_ENUM, OPERATOR_SYMBOL, MEMORY_ACCESS, NDIM, METHODNAME, CONTIGUOUS_METHODNAME)\
-    template<typename LeftType, typename RightType>\
-    struct OperatorAssignHelper<OPERATOR_ENUM, NDIM, LeftType, RightType> {\
-        static inline void assign(LeftType& left, const RightType& right) {\
-            if (left.array.contiguous_memory()) {\
-                left.CONTIGUOUS_METHODNAME (MEMORY_ACCESS) OPERATOR_SYMBOL right;\
-            } else {\
-                left.METHODNAME (MEMORY_ACCESS) OPERATOR_SYMBOL right;\
-            }\
-        }\
-    }\
-
-// recursive macro to define many inlined operators that should be removed
-#define DECLARE_ALL_OPERATOR_ASSIGN_HELPER_NDIM(NDIM, METHODNAME, CONTIGUOUS_METHODNAME)\
-    DECLARE_OPERATOR_ASSIGN_HELPER_NDIM(OPERATOR_T_EQL, =,  memory::AM_OVERWRITE, NDIM, METHODNAME, CONTIGUOUS_METHODNAME);\
-    DECLARE_OPERATOR_ASSIGN_HELPER_NDIM(OPERATOR_T_ADD, +=, memory::AM_MUTABLE,   NDIM, METHODNAME, CONTIGUOUS_METHODNAME);\
-    DECLARE_OPERATOR_ASSIGN_HELPER_NDIM(OPERATOR_T_SUB, -=, memory::AM_MUTABLE,   NDIM, METHODNAME, CONTIGUOUS_METHODNAME);\
-    DECLARE_OPERATOR_ASSIGN_HELPER_NDIM(OPERATOR_T_MUL, *=, memory::AM_MUTABLE,   NDIM, METHODNAME, CONTIGUOUS_METHODNAME);\
-    DECLARE_OPERATOR_ASSIGN_HELPER_NDIM(OPERATOR_T_DIV, /=, memory::AM_MUTABLE,   NDIM, METHODNAME, CONTIGUOUS_METHODNAME);\
-
-DECLARE_ALL_OPERATOR_ASSIGN_HELPER_NDIM(1, d1, contiguous_d1);
-DECLARE_ALL_OPERATOR_ASSIGN_HELPER_NDIM(2, d2, contiguous_d2);
-DECLARE_ALL_OPERATOR_ASSIGN_HELPER_NDIM(3, template d<3>, template contiguous_d<3>);
-DECLARE_ALL_OPERATOR_ASSIGN_HELPER_NDIM(4, template d<4>, template contiguous_d<4>);
 
 template<OPERATOR_T operator_t, int ndim, typename LeftType, typename RightType>
 void inline operator_assign(LeftType& left, const RightType& right) {
     OperatorAssignHelper<operator_t,ndim,LeftType,RightType>::assign(left, right);
 }
+
+
+template<OPERATOR_T operator_t, int ndim, typename LeftType, typename RightType>
+void inline operator_assign_contiguous(LeftType& left, const RightType& right) {
+    OperatorAssignHelper<operator_t,ndim,LeftType,RightType>::assign_contiguous(left, right);
+}
+
+
 
 std::string operator_to_name(const OPERATOR_T& operator_t);
 

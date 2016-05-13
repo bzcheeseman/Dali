@@ -1,6 +1,7 @@
 #include "dali/config.h"
 
 #include "dali/array/op/other.h"
+#include "dali/array/op/dot.h"
 
 #if EXISTS_AND_TRUE(DALI_USE_LAZY)
     #include "dali/array/lazy/binary.h"

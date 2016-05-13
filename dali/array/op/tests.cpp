@@ -93,6 +93,14 @@ TEST(ArrayOpsTests, chainable) {
     Array y = tanh(relu(sigmoid(x)));
 }
 
+TEST(ArrayOpsTests, dot) {
+    Array a = Array::ones({2, 4}, DTYPE_FLOAT);
+    Array b = Array::ones({4, 5}, DTYPE_FLOAT);
+
+    Array c = op::dot(a, b);
+    c.print();
+}
+
 TEST(ArrayOpsTests, arange) {
     Array x_float({2,3,3}, DTYPE_FLOAT);
     x_float = initializer::arange();

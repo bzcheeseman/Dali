@@ -21,16 +21,6 @@ int hypercube_volume(const vector<int>& shape) {
     return std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
 }
 
-vector<int> trivial_strides(const vector<int>& shape) {
-    vector<int> res(shape.size());
-    int residual_shape = 1;
-    for (int i = shape.size() - 1; i >= 0 ; --i) {
-        res[i] = residual_shape;
-        residual_shape *= shape[i];
-    }
-    return res;
-}
-
 // if strides are trivial (such that they would arrise from shape normally)
 // we remove them.
 void compact_strides(vector<int>& strides, const vector<int>& shape) {
@@ -38,7 +28,7 @@ void compact_strides(vector<int>& strides, const vector<int>& shape) {
         return;
     ASSERT2(strides.size() == shape.size(),
             "Invalid strides passed to compact_strides.");
-    if (trivial_strides(shape) == strides) {
+    if (shape_to_trivial_strides(shape) == strides) {
         strides.clear();
     }
 }
@@ -297,7 +287,7 @@ memory::Device Array::preferred_device() const {
 
 
 std::vector<int> Array::normalized_strides() const {
-    return (strides().size() > 0) ? strides() : trivial_strides(shape());
+    return (strides().size() > 0) ? strides() : shape_to_trivial_strides(shape());
 }
 
 
@@ -519,9 +509,9 @@ Array Array::expand_dims(int new_axis) const {
     // It really does not matter what the new stride is going to be,
     // because in we are only ever going to access it at index 0,
     // so it will get cancelled out. We chose to set it to the stride that
-    // naturally arises in the trivial_strides, such that if other strides
+    // naturally arises in the shape_to_trivial_strides, such that if other strides
     // were already trivial it will get compacted.
-    new_strides.insert(new_strides.begin() + new_axis, trivial_strides(new_shape)[new_axis]);
+    new_strides.insert(new_strides.begin() + new_axis, shape_to_trivial_strides(new_shape)[new_axis]);
     return Array(new_shape,
                  memory(),
                  offset(),

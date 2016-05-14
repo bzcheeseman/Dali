@@ -6,10 +6,8 @@
 #include "dali/array/function/function.h"
 #include "dali/array/function/operator.h"
 #include "dali/array/function/typed_array.h"
+#include "dali/array/debug.h"
 
-namespace debug {
-    extern int lazy_evaluator_calls;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 //                             MSHADOW_WRAPPER                                //
@@ -82,8 +80,7 @@ struct LazyEvaluator : public Function<LazyEvaluator<LazyExpr>, Array, LazyExpr>
 
     template<OPERATOR_T operator_t, int devT, typename T>
     void typed_eval(TypedArray<devT,T> out, const LazyExpr& expr) {
-        debug::lazy_evaluator_calls += 1;
-
+        debug::lazy_evaluation_callback.activate(out.array);
 
         // out.array.shape() is passed to MshadowWrapper as final destination
         // shape this means that all the input arguments will be broadcasted

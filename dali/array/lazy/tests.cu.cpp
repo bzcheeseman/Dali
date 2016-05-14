@@ -109,7 +109,10 @@ TEST(ArrayLazyOpsTests, elementwise_F) {
 //     Array y({2,1});
 //     Array z({2,1});
 //
-//     debug::lazy_evaluator_calls = 0;
+//     int lazy_evaluator_calls = 0;
+//     auto callback_handle = debug::lazy_evaluation_callback.register_callback([&](const Array&) {
+//         lazy_evaluator_calls += 1;
+//     });
 //     auto partial = (
 //         lazy::sigmoid(lazy::tanh(x)) * 2 +
 //         x * y * lazy::sign(z) * 2 +
@@ -118,9 +121,10 @@ TEST(ArrayLazyOpsTests, elementwise_F) {
 //         lazy::log_or_zero(y)
 //     );
 //
-//     ASSERT_EQ(debug::lazy_evaluator_calls, 0);
+//     ASSERT_EQ(lazy_evaluator_calls, 0);
 //     Array result = partial;
-//     ASSERT_EQ(debug::lazy_evaluator_calls, 1);
+//     ASSERT_EQ(lazy_evaluator_calls, 1);
+//     debug::lazy_evaluation_callback.deregister_callback(callback_handle);
 // }
 
 TEST(ArrayLazyOpsTests, sum_all) {

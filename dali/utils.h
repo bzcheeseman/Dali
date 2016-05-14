@@ -14,3 +14,4 @@
 #include "dali/utils/tsv_utils.h"
 #include "dali/utils/OntologyBranch.h"
 #include "dali/utils/print_utils.h"
+#include "dali/utils/debug_callback.h"

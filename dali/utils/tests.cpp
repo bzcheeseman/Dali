@@ -435,3 +435,43 @@ TEST(utils, combine_generators) {
     ASSERT_EQ(vals, vector<int>({1,2,3,4,5,6,7,8,9,10}));
 
 }
+
+
+TEST(utils, debug_callback) {
+    DebugCallback<int> on_increase;
+
+    int a=0, b=0;
+
+    EXPECT_EQ(0, on_increase.activate(4));
+    EXPECT_EQ(a, 0);
+    EXPECT_EQ(b, 0);
+
+    auto a_handle = on_increase.register_callback([&](int inc) {
+        a += inc;
+    });
+
+    EXPECT_EQ(1, on_increase.activate(3));
+    EXPECT_EQ(a, 3);
+    EXPECT_EQ(b, 0);
+
+    auto b_handle = on_increase.register_callback([&](int inc) {
+        b += inc;
+    });
+
+    EXPECT_EQ(2, on_increase.activate(2));
+    EXPECT_EQ(a, 5);
+    EXPECT_EQ(b, 2);
+
+
+    on_increase.deregister_callback(a_handle);
+
+    EXPECT_EQ(1, on_increase.activate(3));
+    EXPECT_EQ(a, 5);
+    EXPECT_EQ(b, 5);
+
+    on_increase.deregister_callback(b_handle);
+
+    EXPECT_EQ(0, on_increase.activate(11));
+    EXPECT_EQ(a, 5);
+    EXPECT_EQ(b, 5);
+}

@@ -3,9 +3,10 @@
 #include <vector>
 
 #include "dali/array/function/function.h"
+#include "dali/array/shape.h"
 
 
-template<OPERATOR_T operator_t, int devT, typename T>
+template<OPERATOR_T operator_t, int devT, typename T, bool a_transposed, bool b_transposed>
 struct LazyDotRunner {
     template <
         OPERATOR_T var_operator_t = operator_t,
@@ -21,7 +22,17 @@ struct LazyDotRunner {
     static void run(TypedArray<devT, T> out, TypedArray<devT, T> a, TypedArray<devT, T> b) {
         operator_assign_contiguous<operator_t, 2>(
             out,
-            mshadow::expr::dot(a.contiguous_d2(), b.contiguous_d2())
+            mshadow::expr::DotExp<
+                decltype(a.contiguous_d2()),
+                decltype(b.contiguous_d2()),
+                a_transposed,
+                b_transposed,
+                T
+            >(
+                a.contiguous_d2(),
+                b.contiguous_d2(),
+                1.0f
+            )
         );
     }
 
@@ -43,8 +54,8 @@ struct LazyDotRunner {
     }
 };
 
-
-struct LazyDot : public Function<LazyDot, Array, Array, Array> {
+template<bool a_transposed, bool b_transposed>
+struct LazyDot : public Function<LazyDot<a_transposed,b_transposed>, Array, Array, Array> {
     static std::vector<int> deduce_output_bshape(const Array& a, const Array& b) {
         ASSERT2(a.ndim() == 2 && b.ndim() == 2,
                 utils::MS() << "Dot product is only supported for matrices, got " << a.ndim() << "D and " << b.ndim() << "D tensors.");
@@ -55,19 +66,47 @@ struct LazyDot : public Function<LazyDot, Array, Array, Array> {
 
     template<OPERATOR_T operator_t, int devT, typename T>
     void typed_eval(TypedArray<devT, T> out, TypedArray<devT, T> a, TypedArray<devT, T> b) {
-        LazyDotRunner<operator_t,devT,T>::run(out, a, b);
+        LazyDotRunner<operator_t,devT,T,a_transposed,b_transposed>::run(out, a, b);
     }
 };
 
-namespace op {
 
+
+namespace op {
+    namespace internal {
+        bool is_contiguous_2D_transpose(const Array& a) {
+            if (a.ndim() != 2) return false;
+            if (a.strides().size() == 0) return false;
+
+            const std::vector<int>& a_strides = a.strides();
+
+            std::vector<int> a_shape_before_transpose = {a.shape()[1], a.shape()[0]};
+            std::vector<int> strides_before_transpose = shape_to_trivial_strides(a_shape_before_transpose);
+
+            return a_strides[0] == strides_before_transpose[1] && a_strides[1] == strides_before_transpose[0];
+        }
+    }
+
+    // TODO (szymon): allow for scaling with Binary expression + template redundancy trick!
     AssignableArray dot(Array a, Array b) {
-        // TODO(use this experassion to enable transposes)
-        // DotExp<TA, TB, true, false, DType>(lhs.exp, rhs.self(), 1.0f);
-        // TODO (jaro): assert not strided, except if transposed and
-        // possibly strided on last dim.
-        // bool a_t = a.is_simple_transpose();
-        // bool b_t = b.is_simple_transpose();
-        return LazyDot::run(a, b);
+        // TODO(jonathan): implement the crazy transposes for cases > 2D.
+
+        bool a_transposed = internal::is_contiguous_2D_transpose(a);
+        bool b_transposed = internal::is_contiguous_2D_transpose(b);
+
+        ASSERT2(a_transposed || a.contiguous_memory(),
+                "Dot is only supported for contiguous_memory (except for 2D transpose)");
+        ASSERT2(b_transposed || b.contiguous_memory(),
+                "Dot is only supported for contiguous_memory (except for 2D transpose)");
+
+        if (a_transposed && b_transposed) {
+            return LazyDot<true, true>::run(a, b);
+        } else if(a_transposed && !b_transposed) {
+            return LazyDot<true, false>::run(a, b);
+        } else if(!a_transposed && b_transposed) {
+            return LazyDot<false, true>::run(a, b);
+        } else if(!a_transposed && !b_transposed) {
+            return LazyDot<false, false>::run(a, b);
+        }
     }
 }

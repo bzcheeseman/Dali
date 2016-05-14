@@ -3,7 +3,7 @@
 #include "dali/utils/print_utils.h"
 
 #include "dali/runtime_config.h"
-
+#include "dali/array/function/function.h"
 #define DALI_USE_LAZY 0
 #include "dali/array/op.h"
 
@@ -99,6 +99,23 @@ TEST(ArrayOpsTests, dot) {
 
     Array c = op::dot(a, b);
     c.print();
+}
+
+TEST(ArrayOpsTests, dot_T) {
+    Array a = Array::ones({2, 4}, DTYPE_FLOAT);
+    Array b = Array::ones({5, 4}, DTYPE_FLOAT);
+
+    int dali_function_computations = 0;
+    auto handle = debug::dali_function_computed.register_callback([&](bool ignored) {
+        dali_function_computations += 1;
+    });
+
+    Array c = op::dot(a, b.transpose());
+
+    c.print();
+
+    EXPECT_EQ(1, dali_function_computations);
+    debug::dali_function_computed.deregister_callback(handle);
 }
 
 TEST(ArrayOpsTests, arange) {

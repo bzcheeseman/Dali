@@ -8,13 +8,14 @@
 #include <mshadow/tensor.h>
 #include <tuple>
 
-#include "dali/array/dtype.h"
 #include "dali/array/array.h"
-#include "dali/utils/print_utils.h"
+#include "dali/array/debug.h"
+#include "dali/array/dtype.h"
 #include "dali/array/function/args/reduce_over_args.h"
 #include "dali/array/function/args/property_reducer.h"
 #include "dali/array/function/typed_array.h"
 #include "dali/array/function/operator.h"
+#include "dali/utils/print_utils.h"
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,6 +137,7 @@ struct Function {
                     ASSERT2(false, "OPERATOR_T for assignment between AssignableArray and output must be one of =,-=,+=,*=,/=");
                     break;
             }
+            debug::dali_function_computed.activate(true);
         });
     }
 

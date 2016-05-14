@@ -5,6 +5,10 @@
 
 
 namespace op {
+    AssignableArray identity(const Array& x) {
+        return lazy::identity(x).as_assignable();
+    }
+
     AssignableArray sigmoid(const Array& x) {
         return lazy::sigmoid(x).as_assignable();
     }

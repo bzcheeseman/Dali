@@ -11,6 +11,9 @@ namespace lazy {
     LazyUnary<Functor,ExprT> F(const Exp<ExprT>& expr);
 
     template<typename ExprT>
+    LazyUnary<tensor_ops::op::identity,ExprT> identity(const Exp<ExprT>& expr);
+
+    template<typename ExprT>
     LazyUnary<tensor_ops::op::sigmoid,ExprT> sigmoid(const Exp<ExprT>& expr);
 
     template<typename ExprT>

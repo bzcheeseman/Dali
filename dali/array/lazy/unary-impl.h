@@ -13,19 +13,23 @@ struct LazyUnary : public LazyFunction<LazyUnary<Functor,ExprT>, ExprT> {
     auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape) const ->
             decltype(
                 mshadow::expr::F<Functor<T>>(
-                     MshadowWrapper<devT,T,decltype(expr)>::wrap(expr, device, output_shape)
+                     MshadowWrapper<devT,T,ExprT>::wrap(expr, device, output_shape)
                 )
             ) {
-        auto left_expr  = MshadowWrapper<devT,T,decltype(expr)>::wrap(expr,  device, output_shape);
+        auto left_expr = MshadowWrapper<devT,T,ExprT>::wrap(expr, device, output_shape);
         return mshadow::expr::F<Functor<T>>(left_expr);
     }
 };
-
 
 namespace lazy {
     template<template<class>class Functor, typename ExprT>
     LazyUnary<Functor,ExprT> F(const Exp<ExprT>& expr) {
         return LazyUnary<Functor,ExprT>(expr.self());
+    }
+
+    template<typename ExprT>
+    LazyUnary<tensor_ops::op::identity,ExprT> identity(const Exp<ExprT>& expr) {
+        return LazyUnary<tensor_ops::op::identity,ExprT>(expr.self());
     }
 
     template<typename ExprT>

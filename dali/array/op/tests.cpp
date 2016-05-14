@@ -93,33 +93,65 @@ TEST(ArrayOpsTests, chainable) {
     Array y = tanh(relu(sigmoid(x)));
 }
 
+TEST(ArrayOpsTests, ascontiguousarray) {
+    Array x({3,2});
+    // create array is contiguous
+    EXPECT_EQ(true, x.contiguous_memory());
+    // contiguous version of an already
+    // contiguous array is just the same array:
+    Array x_contig = x.ascontiguousarray();
+    EXPECT_EQ(x.memory(), x_contig.memory());
+
+    Array x_T = x.transpose();
+    // transpose is not contiguous
+    EXPECT_EQ(false, x_T.contiguous_memory());
+    // is a view:
+    EXPECT_EQ(x.memory(), x_T.memory());
+
+    // we copy memory into a contiguous array
+    x_T = x_T.ascontiguousarray();
+    // now memory is contiguous:
+    EXPECT_EQ(true, x.contiguous_memory());
+    EXPECT_NE(x.memory(), x_T.memory());
+}
+
 TEST(ArrayOpsTests, dot) {
-    Array a = Array::ones({2, 4}, DTYPE_FLOAT);
-    Array b = Array::ones({4, 5}, DTYPE_FLOAT);
+    Array a = Array::ones({2, 3}, DTYPE_FLOAT);
+    Array b({4, 3}, DTYPE_FLOAT);
+    b = initializer::arange();
+    b = b.transpose().ascontiguousarray();
 
     Array c = op::dot(a, b);
-    c.print();
+    std::vector<float> expected = {
+        3, 12, 21, 30,
+        3, 12, 21, 30
+    };
+    for (int i = 0; i < c.number_of_elements(); i++) {
+        EXPECT_EQ(expected[i], (float)c(i));
+    }
 }
 
 TEST(ArrayOpsTests, dot_T) {
-    Array a = Array::ones({2, 4}, DTYPE_FLOAT);
-    Array b = Array::ones({5, 4}, DTYPE_FLOAT);
-
+    Array a = Array::ones({2, 3}, DTYPE_FLOAT);
+    Array b({4, 3}, DTYPE_FLOAT);
     b = initializer::arange();
 
+    // TODO(szymon): test the callback functionality separately
     int dali_function_computations = 0;
     auto handle = debug::dali_function_computed.register_callback([&](bool ignored) {
         dali_function_computations += 1;
     });
 
-    b.print();
-    b.transpose().print();
-
-
-
     Array c = op::dot(a, b.transpose());
 
-    c.print();
+    std::vector<float> expected = {
+        3, 12, 21, 30,
+        3, 12, 21, 30
+    };
+
+    for (int i = 0; i < c.number_of_elements(); i++) {
+        EXPECT_EQ(expected[i], (float)c(i));
+    }
 
     EXPECT_EQ(1, dali_function_computations);
     debug::dali_function_computed.deregister_callback(handle);

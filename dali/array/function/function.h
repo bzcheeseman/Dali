@@ -77,6 +77,18 @@ struct Function {
         auto common_dtype = Class::deduce_output_dtype(args...);
 
         if (out.is_stateless()) {
+
+            // when constructing a stateless
+            // output, we decide what the output
+            // shape will be. Broadcasted greater
+            // than one dimensions are expanded
+            // out:
+            for (auto& dim : common_bshape) {
+                if (dim < -1) {
+                    dim = std::abs(dim);
+                }
+            }
+
             out.initialize_with_bshape(common_bshape,
                                        common_dtype,
                                        Class::deduce_output_device(args...));

@@ -4,6 +4,7 @@
 #include "dali/array/array.h"
 
 namespace op {
+    AssignableArray identity(const Array& x);
     AssignableArray sigmoid(const Array& x);
     AssignableArray tanh(const Array& x);
     AssignableArray relu(const Array& x);

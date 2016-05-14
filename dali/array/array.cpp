@@ -6,6 +6,7 @@
 
 #include "dali/array/op/other.h"
 #include "dali/array/op/reducers.h"
+#include "dali/array/op/unary.h"
 #include "dali/utils/print_utils.h"
 #include "dali/array/op/initializer.h"
 #include "dali/array/function/operator.h"
@@ -16,6 +17,7 @@ using memory::SynchronizedMemory;
 ////////////////////////////////////////////////////////////////////////////////
 //               MISCELANEOUS UTILITIES (NOT EXPOSED)                         //
 ////////////////////////////////////////////////////////////////////////////////
+// TODO(szymon): create a namespace internal as you did elsewhere?
 
 int hypercube_volume(const vector<int>& shape) {
     return std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
@@ -155,8 +157,10 @@ Array::Array(const Array& other, bool copy_memory) {
         // surely we can do better.
         // if memory is broadcasted we do not want to copy
         // entire underlying memory!
-        state = std::make_shared<ArrayState>(*(other.state));
-        state->memory = std::make_shared<SynchronizedMemory>(*(other.state->memory));
+        //state = std::make_shared<ArrayState>(*(other.state));
+        //state->memory = std::make_shared<SynchronizedMemory>(*(other.state->memory));
+
+        *this = op::identity(other);
     } else {
         state = other.state;
     }
@@ -216,6 +220,14 @@ bool Array::contiguous_memory() const {
 
     return strides().empty() == true;
 }
+
+Array Array::ascontiguousarray() const {
+    if (contiguous_memory()) {
+        return *this;
+    }
+    return op::identity(*this);
+}
+
 
 
 void Array::initialize(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {

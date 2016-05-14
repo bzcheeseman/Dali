@@ -86,6 +86,7 @@ class Array : public Exp<Array> {
     // memory (as opposed to offset memory, strided memory etc.).
     bool spans_entire_memory() const;
     bool contiguous_memory() const;
+    Array ascontiguousarray() const;
 
     void initialize(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
     void initialize_with_bshape(const std::vector<int>& bshape, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);

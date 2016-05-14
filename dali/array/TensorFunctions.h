@@ -100,6 +100,13 @@ namespace tensor_ops {
         };
 
         template<typename R>
+        struct identity {
+            MSHADOW_XINLINE static R Map(const R& a) {
+                return a;
+            }
+        };
+
+        template<typename R>
         struct log {
             MSHADOW_XINLINE static R Map(const R& a) {
                 return LOG_F(a);

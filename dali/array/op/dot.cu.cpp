@@ -28,7 +28,7 @@ struct LazyDotRunner {
                     bool b_transposed) {
         operator_assign_contiguous<operator_t, 2>(
             out,
-            dali_dot(
+            dali_gemm(
                 a.contiguous_d2(),
                 b.contiguous_d2(),
                 a_transposed,

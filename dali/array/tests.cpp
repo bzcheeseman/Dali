@@ -186,6 +186,53 @@ Array build_234_arange() {
     return x;
 }
 
+
+void copy_constructor_helper(bool copy_w) {
+
+}
+
+TEST(ArrayTests, copy_constructor) {
+    for (auto&& copy_w : {true, false}) {
+        Array original({3,3}, DTYPE_INT32);
+        original = initializer::arange();
+        Array copy(original, copy_w);
+        copy += 1;
+
+        for (int i = 0;  i < original.number_of_elements(); i++) {
+            if (copy_w) {
+                // since +1 was done after copy
+                // change is not reflected
+                EXPECT_NE((int)original(i), (int)copy(i));
+            } else {
+                // copy is a view, so +1 affects both
+                EXPECT_EQ((int)original(i), (int)copy(i));
+            }
+        }
+    }
+
+    Array original = Array({3}, DTYPE_INT32)[Slice(0, 3)][Broadcast()];
+    // perform copy of broadcasted data
+    Array hard_copy(original, true);
+    EXPECT_EQ(original.bshape(), hard_copy.bshape());
+
+    Array soft_copy(original, false);
+    EXPECT_EQ(original.bshape(), soft_copy.bshape());
+
+    // 'operator=' uses soft copy too:
+    auto soft_copy_assign = original;
+    EXPECT_EQ(original.bshape(), soft_copy_assign.bshape());
+
+    // now give the broadcasted dimension
+    // a size, and assert that the copy
+    // doesn't replicate those useless dimensions
+    auto original_bigger = original.reshape_broadcasted({3, 20});
+    Array hard_copy_bigger(original_bigger, true);
+    EXPECT_EQ(hard_copy_bigger.shape(), original_bigger.shape());
+    EXPECT_NE(hard_copy_bigger.bshape(), original_bigger.bshape());
+}
+
+
+
 TEST(ArrayTests, contiguous_memory) {
     auto x = build_234_arange();
     EXPECT_TRUE(x.contiguous_memory());

@@ -36,7 +36,7 @@ namespace mshadow {
         };
 
         template<typename DType, typename Device>
-        inline DaliDotExp<DType, Device> dali_dot(
+        inline DaliDotExp<DType, Device> dali_gemm(
             const Tensor<Device, 2, DType> &lhs,
             const Tensor<Device, 2, DType> &rhs,
             bool ltransposed,
@@ -68,13 +68,13 @@ namespace mshadow {
             // use column major argument to compatible with most BLAS
             BLASEngine<xpu, DType>::gemm
                 (dst.stream_,
-                 transpose_right , transpose_left,
+                 transpose_right, transpose_left,
                  rhs.size(1),
                  lhs.size(0),
                  rhs.size(0),
                  DType(scale * SV::AlphaBLAS()),
-                 rhs.dptr_, rhs.stride_,
-                 lhs.dptr_, lhs.stride_,
+                 rhs.dptr_, transpose_right ? rhs.size(0) : rhs.size(1),
+                 lhs.dptr_, transpose_left ? lhs.size(0) : lhs.size(1),
                  DType(SV::BetaBLAS()),
                  dst.dptr_, dst.stride_);
           }

@@ -5,8 +5,10 @@
 #include "dali/array/function/function.h"
 #include "dali/array/shape.h"
 
+#include "dali/array/function/args/dali_gemm_engine_exp.h"
 
-template<OPERATOR_T operator_t, int devT, typename T, bool a_transposed, bool b_transposed>
+
+template<OPERATOR_T operator_t, int devT, typename T>
 struct LazyDotRunner {
     template <
         OPERATOR_T var_operator_t = operator_t,
@@ -19,19 +21,19 @@ struct LazyDotRunner {
             )
         >::type* = nullptr
     >
-    static void run(TypedArray<devT, T> out, TypedArray<devT, T> a, TypedArray<devT, T> b) {
+    static void run(TypedArray<devT, T>& out,
+                    const TypedArray<devT, T>& a,
+                    const TypedArray<devT, T>& b,
+                    bool a_transposed,
+                    bool b_transposed) {
         operator_assign_contiguous<operator_t, 2>(
             out,
-            mshadow::expr::DotExp<
-                decltype(a.contiguous_d2()),
-                decltype(b.contiguous_d2()),
-                a_transposed,
-                b_transposed,
-                T
-            >(
+            dali_dot(
                 a.contiguous_d2(),
                 b.contiguous_d2(),
-                1.0f
+                a_transposed,
+                b_transposed,
+                (T)1.0f
             )
         );
     }
@@ -45,7 +47,11 @@ struct LazyDotRunner {
             std::is_same<var_T, int>::value
         >::type* = nullptr
     >
-    static void run(TypedArray<devT, T> out, TypedArray<devT, T> a, TypedArray<devT, T> b) {
+    static void run(TypedArray<devT, T>& out,
+                    const TypedArray<devT, T>& a,
+                    const TypedArray<devT, T>& b,
+                    bool a_transposed,
+                    bool b_transposed) {
         ASSERT2(!(std::is_same<var_T, int>::value),
             "Matrix multiplication is not supported for integers yet.");
         ASSERT2(!(var_operator_t == OPERATOR_T_MUL) && !(var_operator_t == OPERATOR_T_MUL),
@@ -54,9 +60,12 @@ struct LazyDotRunner {
     }
 };
 
-template<bool a_transposed, bool b_transposed>
-struct LazyDot : public Function<LazyDot<a_transposed,b_transposed>, Array, Array, Array> {
-    static std::vector<int> deduce_output_bshape(const Array& a, const Array& b) {
+struct LazyDot : public Function<LazyDot, Array, Array, Array, bool, bool> {
+    static std::vector<int> deduce_output_bshape(
+            const Array& a,
+            const Array& b,
+            bool a_transposed,
+            bool b_transposed) {
         ASSERT2(a.ndim() == 2 && b.ndim() == 2,
                 utils::MS() << "Dot product is only supported for matrices, got " << a.ndim() << "D and " << b.ndim() << "D tensors.");
         ASSERT2(a.shape()[1] == b.shape()[0],
@@ -65,8 +74,13 @@ struct LazyDot : public Function<LazyDot<a_transposed,b_transposed>, Array, Arra
     }
 
     template<OPERATOR_T operator_t, int devT, typename T>
-    void typed_eval(TypedArray<devT, T> out, TypedArray<devT, T> a, TypedArray<devT, T> b) {
-        LazyDotRunner<operator_t,devT,T,a_transposed,b_transposed>::run(out, a, b);
+    void typed_eval(
+            TypedArray<devT, T> out,
+            TypedArray<devT, T> a,
+            TypedArray<devT, T> b,
+            bool a_transposed,
+            bool b_transposed) {
+        LazyDotRunner<operator_t,devT,T>::run(out, a, b, a_transposed, b_transposed);
     }
 };
 
@@ -90,23 +104,14 @@ namespace op {
     // TODO (szymon): allow for scaling with Binary expression + template redundancy trick!
     AssignableArray dot(Array a, Array b) {
         // TODO(jonathan): implement the crazy transposes for cases > 2D.
+        // from:jonathan, to:szymon, body: will do!
 
         bool a_transposed = internal::is_contiguous_2D_transpose(a);
         bool b_transposed = internal::is_contiguous_2D_transpose(b);
-
         ASSERT2(a_transposed || a.contiguous_memory(),
                 "Dot is only supported for contiguous_memory (except for 2D transpose)");
         ASSERT2(b_transposed || b.contiguous_memory(),
                 "Dot is only supported for contiguous_memory (except for 2D transpose)");
-
-        if (a_transposed && b_transposed) {
-            return LazyDot<true, true>::run(a, b);
-        } else if(a_transposed && !b_transposed) {
-            return LazyDot<true, false>::run(a, b);
-        } else if(!a_transposed && b_transposed) {
-            return LazyDot<false, true>::run(a, b);
-        } else if(!a_transposed && !b_transposed) {
-            return LazyDot<false, false>::run(a, b);
-        }
+        return LazyDot::run(a, b, a_transposed, b_transposed);
     }
 }

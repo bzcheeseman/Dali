@@ -18,9 +18,9 @@ std::string operator_to_name(const OPERATOR_T& operator_t) {
 }
 
 namespace internal {
-    template<> memory::AM UseOperator<OPERATOR_T_EQL>::access_mode = memory::AM_OVERWRITE;
-    template<> memory::AM UseOperator<OPERATOR_T_ADD>::access_mode = memory::AM_MUTABLE;
-    template<> memory::AM UseOperator<OPERATOR_T_SUB>::access_mode = memory::AM_MUTABLE;
-    template<> memory::AM UseOperator<OPERATOR_T_MUL>::access_mode = memory::AM_MUTABLE;
-    template<> memory::AM UseOperator<OPERATOR_T_DIV>::access_mode = memory::AM_MUTABLE;
+    memory::AM UseOperator<OPERATOR_T_EQL>::access_mode = memory::AM_OVERWRITE;
+    memory::AM UseOperator<OPERATOR_T_ADD>::access_mode = memory::AM_MUTABLE;
+    memory::AM UseOperator<OPERATOR_T_SUB>::access_mode = memory::AM_MUTABLE;
+    memory::AM UseOperator<OPERATOR_T_MUL>::access_mode = memory::AM_MUTABLE;
+    memory::AM UseOperator<OPERATOR_T_DIV>::access_mode = memory::AM_MUTABLE;
 }  // namespace internal

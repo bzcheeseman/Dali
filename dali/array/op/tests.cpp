@@ -105,10 +105,17 @@ TEST(ArrayOpsTests, dot_T) {
     Array a = Array::ones({2, 4}, DTYPE_FLOAT);
     Array b = Array::ones({5, 4}, DTYPE_FLOAT);
 
+    b = initializer::arange();
+
     int dali_function_computations = 0;
     auto handle = debug::dali_function_computed.register_callback([&](bool ignored) {
         dali_function_computations += 1;
     });
+
+    b.print();
+    b.transpose().print();
+
+
 
     Array c = op::dot(a, b.transpose());
 

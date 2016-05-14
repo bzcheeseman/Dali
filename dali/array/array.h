@@ -117,8 +117,9 @@ class Array : public Exp<Array> {
     Array operator[](int idx) const;
     ArraySlice operator[](const Slice& s) const;
     ArraySlice operator[](const Broadcast& b) const;
-
     Array operator()(index_t idx) const;
+    Array transpose() const;
+    Array transpose(const std::vector<int>& axes) const;
     Array ravel() const;
     Array reshape(const std::vector<int>& shape) const;
     /*

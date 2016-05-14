@@ -377,13 +377,41 @@ Array Array::operator()(index_t idx) const {
                  dtype());
 }
 
+
+Array Array::transpose() const {
+    std::vector<int> permuation(ndim(), 0);
+    for (int i = 0; i < ndim(); ++i) {
+        permuation[i] = ndim() - i - 1;
+    }
+    return transpose(permuation);
+}
+
+Array Array::transpose(const std::vector<int>& axes) const {
+    const std::vector<int>& old_shape   = shape();
+    std::vector<int>        old_strides = normalized_strides();
+
+    std::vector<int> new_shape(ndim());
+    std::vector<int> new_strides(ndim());
+
+    for (int i = 0; i < ndim(); ++i) {
+        new_shape[i]   = old_shape[axes[i]];
+        new_strides[i] = old_strides[axes[i]];
+    }
+
+    return Array(new_shape,
+                 memory(),
+                 offset(),
+                 new_strides,
+                 dtype());
+}
+
 Array Array::ravel() const {
     ASSERT2(contiguous_memory(),
             "at the moment ravel is only supported for contiguous_memory");
     return Array({number_of_elements()},
                  memory(),
                  offset(),
-                 vector<int>(),
+                 std::vector<int>(),
                  dtype());
 }
 

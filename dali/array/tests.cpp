@@ -18,6 +18,8 @@
 
 using std::vector;
 
+typedef vector<int> VI;
+
 TEST(ArrayTests, slicing) {
     Array x({12});
     Array y({3,2,2});
@@ -410,4 +412,48 @@ TEST(ArrayTest, strided_call_operator) {
 
     Array y3 = y2.reshape_broadcasted({2,3,2});
     ensure_call_operator_correct(y3);
+}
+
+TEST(ArrayTest, transpose) {
+    Array x = Array::zeros({2},     DTYPE_INT32);
+    Array y = Array::zeros({2,3},   DTYPE_INT32);
+    Array z = Array::zeros({2,3,4}, DTYPE_INT32);
+
+    auto x_T = x.transpose();
+    auto y_T = y.transpose();
+    auto z_T = z.transpose();
+
+    ASSERT_EQ(VI({2}),     x_T.shape());
+    ASSERT_EQ(VI({3,2}),   y_T.shape());
+    ASSERT_EQ(VI({4,3,2}), z_T.shape());
+
+    for (int i = 0; i < 2; ++i) {
+        ASSERT_EQ((int)x[i], (int)x_T[i]);
+    }
+
+    for (int i = 0; i < 2; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            ASSERT_EQ((int)y[i][j], (int)y_T[j][i]);
+        }
+    }
+
+    for (int i = 0; i < 2; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            for (int k = 0; k < 4; ++k) {
+                ASSERT_EQ((int)z[i][j][k], (int)z_T[k][j][i]);
+            }
+        }
+    }
+
+    auto z_T_funny = z.transpose({1,0,2});
+    ASSERT_EQ(VI({3,2,4}), z_T_funny.shape());
+
+    for (int i = 0; i < 2; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            for (int k = 0; k < 4; ++k) {
+                ASSERT_EQ((int)z[i][j][k], (int)z_T_funny[j][i][k]);
+            }
+        }
+    }
+
 }

@@ -23,6 +23,33 @@ namespace internal {
     }
 
     template<typename MDevT, typename T>
+    std::tuple<bool,mshadow::Tensor<MDevT, 2, T>> TypedArrayShared<MDevT, T>::blas_friendly_tensor() const {
+        ASSERT2(array.ndim() == 2,
+                utils::MS() << "blas_friendly_tensor is only available to 2D tensors ("
+                            << array.ndim() << "D tensor passed.)");
+        if (array.strides().size() == 0) {
+            return std::make_tuple(false, mtensor<2>());
+        }
+
+        const std::vector<int>& a_strides = array.strides();
+
+        if (a_strides[1] == 1) {
+            auto ret = mtensor<2>();
+            ret.stride_ = a_strides[0];
+            return std::make_tuple(false, ret);
+        } else if (a_strides[0] == 1) {
+            auto ret = mtensor<2>();
+            ret.stride_ = a_strides[1];
+            return std::make_tuple(true, ret);
+        } else {
+            ASSERT2(a_strides[0] == 1 || a_strides[1] == 1,
+                    utils::MS() << "gemm does not support doubly strided matrices (input strides: " << a_strides << ")");
+        }
+    }
+
+
+
+    template<typename MDevT, typename T>
     mshadow::Tensor<MDevT, 1, T> TypedArrayShared<MDevT,T>::contiguous_d1(memory::AM access_mode) const { return contiguous_d<1>(access_mode); }
     template<typename MDevT, typename T>
     mshadow::Tensor<MDevT, 2, T> TypedArrayShared<MDevT,T>::contiguous_d2(memory::AM access_mode) const { return contiguous_d<2>(access_mode); }

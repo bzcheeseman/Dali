@@ -136,7 +136,6 @@ TEST(ArrayOpsTests, dot_T) {
     Array b({4, 3}, DTYPE_FLOAT);
     b = initializer::arange();
 
-    // TODO(szymon): test the callback functionality separately
     int dali_function_computations = 0;
     auto handle = debug::dali_function_computed.register_callback([&](bool ignored) {
         dali_function_computations += 1;
@@ -153,8 +152,31 @@ TEST(ArrayOpsTests, dot_T) {
         EXPECT_EQ(expected[i], (float)c(i));
     }
 
+    // make sure that the function is lazy - no extra dali functions are run
+    // during computation.
     EXPECT_EQ(1, dali_function_computations);
     debug::dali_function_computed.deregister_callback(handle);
+}
+
+TEST(ArrayOpsTests, dot_strided) {
+    Array a = Array::ones({2, 3}, DTYPE_FLOAT);
+    Array b({8, 3}, DTYPE_FLOAT);
+    b = 999;
+    b = b[Slice(0, 8, 2)];
+    for (int i = 0; i < b.number_of_elements(); ++i) {
+        b(i) = i;
+    }
+
+    Array c = op::dot(a, b.transpose());
+
+    std::vector<float> expected = {
+        3, 12, 21, 30,
+        3, 12, 21, 30
+    };
+
+    for (int i = 0; i < c.number_of_elements(); i++) {
+        EXPECT_EQ(expected[i], (float)c(i));
+    }
 }
 
 TEST(ArrayOpsTests, arange) {

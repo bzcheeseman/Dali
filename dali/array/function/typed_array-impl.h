@@ -39,9 +39,8 @@ namespace internal {
     template<typename MDevT, typename T>
     template<int dim>
     mshadow::Tensor<MDevT, dim, T> TypedArrayShared<MDevT,T>::contiguous_d(memory::AM access_mode) const {
-        // TODO(jonathan,szymon) check if contiguous or transpose (both are kind of ok)
-        // ASSERT2(this->array.contiguous_memory(),
-        //         "This function is only supported for contiguous_memory");
+        ASSERT2(this->array.contiguous_memory(),
+                "This function is only supported for contiguous_memory");
         return mtensor<dim>(access_mode);
     }
 

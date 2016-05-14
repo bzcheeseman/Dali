@@ -36,7 +36,7 @@ namespace internal {
       public:
         mutable Array array;
         memory::Device device;
-        std::vector<int> output_shape; 
+        std::vector<int> output_shape;
 
         T* ptr(memory::AM access_mode=memory::AM_READONLY) const;
 
@@ -45,6 +45,18 @@ namespace internal {
 
         template<int dim>
         DaliWrapperExp<MDevT, dim, T> d(memory::AM access_mode=memory::AM_READONLY) const;
+
+
+        // returns pair (<transposed>, <tensor>), where <transposed> means that
+        // transpose flag needs to be given to gemm (<tensor> on its own is transpose
+        // of the original array). In addition <tensor> potentially encodes stride on
+        // the last dimension.
+        // WARNING: particular attention must be given to one of the many sketchy
+        // things that this function does - we set the mshadow::Tensor.stride_ to a value
+        // that is potentially inconsistent with mshadow conventions. Here it is
+        // fine because LazyDotExpr (which is an mshadow extension we wrote)
+        // respects this new convention.
+        std::tuple<bool,mshadow::Tensor<MDevT, 2, T>> blas_friendly_tensor() const;
 
         TypedArrayShared(const Array& _array, const memory::Device& _device, const std::vector<int>& output_shape);
 

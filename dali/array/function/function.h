@@ -84,7 +84,7 @@ struct Function {
             // than one dimensions are expanded
             // out:
             for (auto& dim : common_bshape) {
-                if (dim < -1) {
+                if (dim < -1) {
                     dim = std::abs(dim);
                 }
             }

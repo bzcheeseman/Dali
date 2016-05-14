@@ -63,8 +63,6 @@ namespace mshadow {
             Shape<2> sleft = lhs.shape_;
             Shape<2> sright = rhs.shape_;
 
-            CHECK(dst.size(0) == sleft[0] && dst.size(1) == sright[1] && sleft[1] == sright[0])
-              << "dot-gemm: matrix shape mismatch";
             // use column major argument to compatible with most BLAS
             BLASEngine<xpu, DType>::gemm
                 (dst.stream_,
@@ -73,8 +71,8 @@ namespace mshadow {
                  lhs.size(0),
                  rhs.size(0),
                  DType(scale * SV::AlphaBLAS()),
-                 rhs.dptr_, transpose_right ? rhs.size(0) : rhs.size(1),
-                 lhs.dptr_, transpose_left ? lhs.size(0) : lhs.size(1),
+                 rhs.dptr_, rhs.stride_,
+                 lhs.dptr_, lhs.stride_,
                  DType(SV::BetaBLAS()),
                  dst.dptr_, dst.stride_);
           }

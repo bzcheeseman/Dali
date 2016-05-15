@@ -1,15 +1,31 @@
 #ifndef DALI_ARRAY_FUNCTION_ARGS_DALI_GEMM_ENGINE_EXP_H
 #define DALI_ARRAY_FUNCTION_ARGS_DALI_GEMM_ENGINE_EXP_H
 
+#include "dali/config.h"
+
+#include <mshadow/tensor.h>
 #include <mshadow/dot_engine-inl.h>
 
 namespace mshadow {
     namespace expr {
+        extern mshadow::Stream<mshadow::gpu>* default_stream;
+
+        template<typename Device>
+        mshadow::Stream<Device>* get_default_gemm_stream() {
+        }
+
+        template<>
+        mshadow::Stream<mshadow::gpu>* get_default_gemm_stream();
+
+        template<>
+        mshadow::Stream<mshadow::cpu>* get_default_gemm_stream();
+
         // new DotExpr that removes transpose templating
         // in lieu of bool templating
         template<typename DType, typename Device>
         struct DaliDotExp: public Exp<DaliDotExp<DType, Device>,
                                   DType, type::kComplex> {
+
           /*! \brief left operand */
           const Tensor<Device, 2, DType> &lhs_;
           /*! \brief right operand */
@@ -57,6 +73,7 @@ namespace mshadow {
                                   bool transpose_right,
                                   DType scale) {
             Tensor<xpu, 2, DType> &dst = *p_dst;
+            dst.set_stream(get_default_gemm_stream<xpu>());
             // set kernel stream
             // if there is no stream, crush
             BLASEngine<xpu, DType>::SetStream(dst.stream_);

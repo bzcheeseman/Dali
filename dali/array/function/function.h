@@ -145,8 +145,11 @@ struct Function {
                 case OPERATOR_T_DIV:
                     Class::template untyped_eval<OPERATOR_T_DIV>(out, args...);
                     break;
+                case OPERATOR_T_LSE:
+                    Class::template untyped_eval<OPERATOR_T_LSE>(out, args...);
+                    break;
                 default:
-                    ASSERT2(false, "OPERATOR_T for assignment between AssignableArray and output must be one of =,-=,+=,*=,/=");
+                    ASSERT2(false, "OPERATOR_T for assignment between AssignableArray and output must be one of =,-=,+=,*=,/=,<<=");
                     break;
             }
             debug::dali_function_computed.activate(true);

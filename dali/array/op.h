@@ -65,6 +65,8 @@
     Array& operator*=(Array& left, const float& right);
     Array& operator*=(Array& left, const int& right);
 
+    Array& operator<<=(Array& left, const Array& right);
+
     AssignableArray operator+(const Array& left, const Array& right);
 
     AssignableArray operator-(const Array& left, const Array& right);

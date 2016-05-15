@@ -8,11 +8,12 @@
 // define different ways assignment between two expressions
 // can happen:
 enum OPERATOR_T {
-    OPERATOR_T_EQL = 0,/* =  */
-    OPERATOR_T_ADD = 1,/* += */
-    OPERATOR_T_SUB = 2,/* -= */
-    OPERATOR_T_MUL = 3,/* *= */
-    OPERATOR_T_DIV = 4/* /= */
+    OPERATOR_T_EQL  = 0,/* =   */
+    OPERATOR_T_ADD  = 1,/* +=  */
+    OPERATOR_T_SUB  = 2,/* -=  */
+    OPERATOR_T_MUL  = 3,/* *=  */
+    OPERATOR_T_DIV  = 4,/* /=  */
+    OPERATOR_T_LSE  = 5 /* <<= */
 };
 
 namespace internal {
@@ -53,6 +54,25 @@ struct OperatorAssignHelper {
             left.template d<ndim>(internal::UseOperator<operator_t>::access_mode),
             right
         );
+    }
+
+    static inline void assign(LeftType& left, const RightType& right) {
+        if (left.array.contiguous_memory()) {
+            assign_contiguous(left, right);
+        } else {
+            assign_noncontiguous(left, right);
+        }
+    }
+};
+
+template<int ndim, typename LeftType, typename RightType>
+struct OperatorAssignHelper<OPERATOR_T_LSE, ndim, LeftType, RightType> {
+    static inline void assign_contiguous(LeftType& left, const RightType& right) {
+        left.template contiguous_d<ndim>(memory::AM_MUTABLE) += right;
+    }
+
+    static inline void assign_noncontiguous(LeftType& left, const RightType& right) {
+        left.template d<ndim>(memory::AM_MUTABLE) += right;
     }
 
     static inline void assign(LeftType& left, const RightType& right) {

@@ -12,6 +12,8 @@ std::string operator_to_name(const OPERATOR_T& operator_t) {
             return "/=";
         case OPERATOR_T_MUL:
             return "*=";
+        case OPERATOR_T_LSE:
+            return "<<=";
         default:
             return "unknown operator";
     }

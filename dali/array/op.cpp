@@ -89,6 +89,11 @@ Array& operator/=(Array& left, const int& right) {
     return left;
 }
 
+Array& operator<<=(Array& left, const Array& right) {
+    left <<= op::identity(right);
+    return left;
+}
+
 AssignableArray operator-(const Array& left, const Array& right) {
     return op::sub(left,right);
 }

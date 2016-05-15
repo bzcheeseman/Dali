@@ -190,6 +190,7 @@ class Array : public Exp<Array> {
     Array& operator-=(const AssignableArray& assignable);
     Array& operator*=(const AssignableArray& assignable);
     Array& operator/=(const AssignableArray& assignable);
+    Array& operator<<=(const AssignableArray& assignable);
 
     /* Debugging */
     void print(std::basic_ostream<char>& stream = std::cout, int indent=0) const;

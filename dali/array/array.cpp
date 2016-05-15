@@ -612,6 +612,11 @@ Array& Array::operator/=(const AssignableArray& assignable) {
     return *this;
 }
 
+Array& Array::operator<<=(const AssignableArray& assignable) {
+    assignable.assign_to(*this, OPERATOR_T_LSE);
+    return *this;
+}
+
 void Array::print(std::basic_ostream<char>& stream, int indent) const {
     if (ndim() == 0) {
         if (dtype() == DTYPE_FLOAT) {

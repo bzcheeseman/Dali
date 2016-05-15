@@ -3,19 +3,23 @@
 
 #include "dali/config.h"
 
+#include <cassert>
+
 #include <mshadow/tensor.h>
 #include <mshadow/dot_engine-inl.h>
 
+
 namespace mshadow {
     namespace expr {
-        extern mshadow::Stream<mshadow::gpu>* default_stream;
-
         template<typename Device>
         mshadow::Stream<Device>* get_default_gemm_stream() {
+            assert(false);
         }
 
+#ifdef DALI_USE_CUDA
         template<>
         mshadow::Stream<mshadow::gpu>* get_default_gemm_stream();
+#endif
 
         template<>
         mshadow::Stream<mshadow::cpu>* get_default_gemm_stream();

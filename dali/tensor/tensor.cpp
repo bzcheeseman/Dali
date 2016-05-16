@@ -33,6 +33,15 @@ Tensor::Tensor(const std::vector<int>& shape,
    Tensor(shape,initializer::zeros(),dtype_,preferred_device) {
 }
 
+Tensor::Tensor(const Array& other, bool copy) {
+    if (copy && !other.is_stateless()) {
+        w = Array(other, true);
+    } else {
+        w = other;
+    }
+    dw = Array::zeros_like(w);
+}
+
 Tensor::Tensor(const Tensor& other, bool copy_w, bool copy_dw) :
         name(other.name),
         constant(other.constant) {

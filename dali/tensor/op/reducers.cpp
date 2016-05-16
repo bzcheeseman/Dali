@@ -12,8 +12,9 @@ namespace tensor_ops {
         } else {
             // TODO(jonathan, szymon) also makes sure that device
             // of input tensor is also used here
-            Tensor out({}, initializer::empty(), tensor.dtype());
-            out.w = tensor.w.sum();
+
+            auto out = Tensor(tensor.w.sum());
+
             if (graph::backprop_enabled() && !tensor.constant)
                 graph::emplace_back([tensor, out]() mutable {
                     tensor.dw <<= out.dw.broadcast_scalar_to_ndim(tensor.ndim());

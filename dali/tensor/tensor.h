@@ -55,6 +55,7 @@ class Tensor {
                DType dtype_=DTYPE_FLOAT,
                memory::Device preferred_device=memory::default_preferred_device);
 
+        Tensor(const Array& other, bool copy=false);
         /*
         A copy constructor that perform shallow and deep
         copies of a Tensor.

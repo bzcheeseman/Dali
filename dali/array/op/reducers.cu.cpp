@@ -12,4 +12,14 @@ namespace op {
     AssignableArray mean_all(const Array& x) {
         return (lazy::sum_all(x / x.number_of_elements()) ).as_assignable();
     }
+
+    AssignableArray sum(const Array& x, const int& axis) {
+        return lazy::sum_axis(x, axis).as_assignable();
+    }
+
+    AssignableArray mean(const Array& x, const int& axis) {
+    	auto reduced = lazy::sum_axis(x, axis);
+    	auto normalized = reduced / x.shape()[axis]; // size of reduced axis
+        return normalized.as_assignable();
+    }
 }; // namespace op

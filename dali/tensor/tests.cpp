@@ -31,16 +31,41 @@ TEST_F(TensorTests, sum_test) {
     ASSERT_NEAR(sum, (float)res.w(0), 1e-4);
 }
 
+
+TEST_F(TensorTests, sum_axis) {
+    int axis;
+    auto functor = [&axis](vector<Tensor> Xs)-> Tensor {
+        return Xs[0].sum(axis);
+    };
+
+    EXPERIMENT_REPEAT {
+        std:vector<int> shape = {2, 3,  5, 1, 2, 3};
+        for (axis = 0; axis < shape.size(); axis++) {
+            Tensor A(shape, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
+            expect_args_remain_on_gpu(functor, {A});
+            EXPECT_TRUE(gradient_same(functor, {A}));
+        }
+    }
+}
+
+TEST_F(TensorTests, mean_axis) {
+    int axis;
+    auto functor = [&axis](vector<Tensor> Xs)-> Tensor {
+        return Xs[0].mean(axis);
+    };
+
+    EXPERIMENT_REPEAT {
+        std:vector<int> shape = {2, 3,  5, 1, 2, 3};
+        for (axis = 0; axis < shape.size(); axis++) {
+            Tensor A(shape, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
+            expect_args_remain_on_gpu(functor, {A});
+            EXPECT_TRUE(gradient_same(functor, {A}));
+        }
+    }
+}
+
 // TEST_F(MatrixTests, sum_rowwise) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return MatOps<R>::sum_rowwise(Xs[0]);
-//     };
 //
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
-//         expect_args_remain_on_gpu(functor, {A});
-//         EXPECT_TRUE(gradient_same(functor, {A}));
-//     }
 // }
 //
 // TEST_F(MatrixTests, mean_colwise) {

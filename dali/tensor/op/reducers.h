@@ -6,6 +6,8 @@
 namespace tensor_ops {
 	Tensor sum(const Tensor& tensor);
 	Tensor mean(const Tensor& tensor);
+	Tensor sum(const Tensor& tensor, const int& axis);
+	Tensor mean(const Tensor& tensor, const int& axis);
 }
 
 #endif

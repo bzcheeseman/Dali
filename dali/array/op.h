@@ -42,6 +42,7 @@
         LAZY_BINARY_OPERATOR(/, lazy::eltdiv)
 #else
     #include "dali/array/op/binary.h"
+    #include "dali/array/op/reducers.h"
     #include "dali/array/op/initializer.h"
     #include "dali/array/op/unary.h"
     namespace lazy {

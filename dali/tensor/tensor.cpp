@@ -315,6 +315,11 @@ Tensor Tensor::shallow_copy() {
         return tensor_ops::opname(*this);\
     }\
 
+#define TENSOR_UNARY_OP_WITH_INT_ARG( opname ) \
+    Tensor Tensor::opname(const int& argname) const {\
+        return tensor_ops::opname(*this, argname);\
+    }\
+
 // MAT_UNARY_OP( square )
 // MAT_UNARY_OP( L2_norm )
 // MAT_UNARY_OP( sqrt )
@@ -322,8 +327,10 @@ Tensor Tensor::shallow_copy() {
 // MAT_UNARY_OP( tanh )
 // MAT_UNARY_OP( softplus )
 // MAT_UNARY_OP( sigmoid )
-TENSOR_UNARY_OP( sum );
-TENSOR_UNARY_OP( mean );
+TENSOR_UNARY_OP(sum);
+TENSOR_UNARY_OP_WITH_INT_ARG(sum);
+TENSOR_UNARY_OP(mean);
+TENSOR_UNARY_OP_WITH_INT_ARG(mean);
 // MAT_UNARY_OP( max )
 // MAT_UNARY_OP( min )
 // MAT_UNARY_OP( log )

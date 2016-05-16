@@ -8,6 +8,7 @@ namespace tensor_ops {
         if (tensor.number_of_elements() == 1) {
             auto out = tensor;
             out.w = tensor.w.reshape({});
+            out.dw = tensor.dw.reshape({});
             return out;
         } else {
             // TODO(jonathan, szymon) also makes sure that device
@@ -27,10 +28,10 @@ namespace tensor_ops {
         if (tensor.number_of_elements() == 1) {
             auto out = tensor;
             out.w = tensor.w.reshape({});
+            out.dw = tensor.dw.reshape({});
             return out;
         } else {
-            Tensor out({}, initializer::empty(), tensor.dtype());
-            out.w = tensor.w.mean();
+            Tensor out(tensor.w.mean());
             if (graph::backprop_enabled() && !tensor.constant)
                 graph::emplace_back([tensor, out]() mutable {
                     tensor.dw <<= (
@@ -40,5 +41,29 @@ namespace tensor_ops {
                 });
             return out;
         }
+    }
+
+    Tensor sum(const Tensor& tensor, const int& axis) {
+        Tensor out(op::sum(tensor.w, axis));
+        if (graph::backprop_enabled() && !tensor.constant)
+            graph::emplace_back([tensor, out, axis]() mutable {
+                // make sure output has same shape as input
+                // with the reduced dimension returned as
+                // broadcasted
+                auto reshaped_gradient = out.dw.insert_broadcast_axis(axis);
+                tensor.dw <<= reshaped_gradient;
+            });
+        return out;
+    }
+
+    Tensor mean(const Tensor& tensor, const int& axis) {
+        Tensor out(op::mean(tensor.w, axis));
+        if (graph::backprop_enabled() && !tensor.constant)
+            graph::emplace_back([tensor, out, axis]() mutable {
+                int axis_size = tensor.shape()[axis];
+                auto reshaped_gradient = out.dw.insert_broadcast_axis(axis);
+                tensor.dw <<= reshaped_gradient / axis_size;
+            });
+        return out;
     }
 }

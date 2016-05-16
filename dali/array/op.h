@@ -6,6 +6,8 @@
 #include "dali/array/op/other.h"
 #include "dali/array/op/dot.h"
 
+#include "dali/utils/print_utils.h"
+
 #if EXISTS_AND_TRUE(DALI_USE_LAZY)
     #include "dali/array/lazy/binary.h"
     #include "dali/array/lazy/reducers.h"
@@ -40,6 +42,17 @@
         LAZY_BINARY_OPERATOR(-, lazy::sub)
         LAZY_BINARY_OPERATOR(*, lazy::eltmul)
         LAZY_BINARY_OPERATOR(/, lazy::eltdiv)
+
+        template<typename ExprT>
+        auto operator-(const Exp<ExprT>& in) ->
+                decltype(lazy::eltmul(-1,in.self())) {
+            return lazy::eltmul(-1,in.self());
+        }
+
+        template<typename ExprT>
+        Array& operator <<=(Array& left, const LazyExp<ExprT>& right) {
+            return left <<= right.self().as_assignable();
+        }
 #else
     #include "dali/array/op/binary.h"
     #include "dali/array/op/reducers.h"
@@ -52,39 +65,43 @@
     #define DALI_DECLARE_ARRAY_INTERACTION(SYMBOL)\
         AssignableArray operator SYMBOL (const Array& left, const Array& right);\
 
-    #define DALI_DECLARE_ARRAY_INTERACTION_INPLACE(SYMBOL)\
-        Array& operator SYMBOL (Array& left, const Array& right);\
-
     #define DALI_DECLARE_SCALAR_INTERACTION(SYMBOL)\
         AssignableArray operator SYMBOL (const Array& left, const double& right);\
         AssignableArray operator SYMBOL (const Array& left, const float& right);\
         AssignableArray operator SYMBOL (const Array& left, const int& right);\
 
-    #define DALI_DECLARE_SCALAR_INTERACTION_INPLACE(SYMBOL)\
-        Array& operator SYMBOL (Array& left, const double& right);\
-        Array& operator SYMBOL (Array& left, const float& right);\
-        Array& operator SYMBOL (Array& left, const int& right);\
+
 
     DALI_DECLARE_ARRAY_INTERACTION(+);
     DALI_DECLARE_ARRAY_INTERACTION(-);
     DALI_DECLARE_ARRAY_INTERACTION(*);
     DALI_DECLARE_ARRAY_INTERACTION(/);
-    DALI_DECLARE_ARRAY_INTERACTION_INPLACE(+=);
-    DALI_DECLARE_ARRAY_INTERACTION_INPLACE(-=);
-    DALI_DECLARE_ARRAY_INTERACTION_INPLACE(*=);
-    DALI_DECLARE_ARRAY_INTERACTION_INPLACE(/=);
-
-    Array& operator<<=(Array& left, const Array& right);
 
     DALI_DECLARE_SCALAR_INTERACTION(-);
     DALI_DECLARE_SCALAR_INTERACTION(+);
     DALI_DECLARE_SCALAR_INTERACTION(*);
     DALI_DECLARE_SCALAR_INTERACTION(/);
-    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(-=);
-    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(+=);
-    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(*=);
-    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(/=);
 
 #endif
+
+#define DALI_DECLARE_ARRAY_INTERACTION_INPLACE(SYMBOL)\
+    Array& operator SYMBOL (Array& left, const Array& right);\
+
+#define DALI_DECLARE_SCALAR_INTERACTION_INPLACE(SYMBOL)\
+    Array& operator SYMBOL (Array& left, const double& right);\
+    Array& operator SYMBOL (Array& left, const float& right);\
+    Array& operator SYMBOL (Array& left, const int& right);\
+
+
+DALI_DECLARE_ARRAY_INTERACTION_INPLACE(+=);
+DALI_DECLARE_ARRAY_INTERACTION_INPLACE(-=);
+DALI_DECLARE_ARRAY_INTERACTION_INPLACE(*=);
+DALI_DECLARE_ARRAY_INTERACTION_INPLACE(/=);
+DALI_DECLARE_ARRAY_INTERACTION_INPLACE(<<=);
+
+DALI_DECLARE_SCALAR_INTERACTION_INPLACE(-=);
+DALI_DECLARE_SCALAR_INTERACTION_INPLACE(+=);
+DALI_DECLARE_SCALAR_INTERACTION_INPLACE(*=);
+DALI_DECLARE_SCALAR_INTERACTION_INPLACE(/=);
 
 #endif

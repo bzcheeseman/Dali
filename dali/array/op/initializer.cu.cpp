@@ -6,7 +6,7 @@
 
 #include "dali/array/function/function.h"
 #include "dali/array/function/operator.h"
-#include "dali/array/TensorFunctions.h"
+#include "dali/array/functor.h"
 #include "dali/utils/random.h"
 #include "dali/runtime_config.h"
 
@@ -268,7 +268,7 @@ struct BernoulliInitializer : public Initializer<BernoulliInitializer, const dou
     void typed_eval(TypedArray<devT,T> out, const double& prob) {
         if (operator_t == OPERATOR_T_EQL) {
             UniformInitializer().template typed_eval<operator_t>(out, 0.0, 1.0);
-            operator_assign<operator_t, 1>(out, mshadow::expr::F<tensor_ops::op::threshold<T>>(out.contiguous_d1(), prob));
+            operator_assign<operator_t, 1>(out, mshadow::expr::F<functor::threshold<T>>(out.contiguous_d1(), prob));
         } else {
             ASSERT2(false,
                 utils::MS() << operator_to_name(operator_t)
@@ -282,7 +282,7 @@ struct BernoulliNormalizedInitializer : public Initializer<BernoulliNormalizedIn
     void typed_eval(TypedArray<devT,T> out, const double& prob) {
         if (operator_t == OPERATOR_T_EQL) {
             UniformInitializer().template typed_eval<operator_t>(out, 0.0, 1.0);
-            operator_assign<operator_t, 1>(out, mshadow::expr::F<tensor_ops::op::threshold<T>>(out.contiguous_d1(), prob) * (1.0 / prob));
+            operator_assign<operator_t, 1>(out, mshadow::expr::F<functor::threshold<T>>(out.contiguous_d1(), prob) * (1.0 / prob));
         } else {
             ASSERT2(false,
                 utils::MS() << operator_to_name(operator_t)

@@ -10,6 +10,20 @@
 using namespace op;
 
 
+TEST(FunctionTests, lazy_lse) {
+    Array s1 = Array::ones({3,4}, DTYPE_INT32);
+    Array s2 = Array::ones({3,4}, DTYPE_INT32);
+
+    Array target = Array::zeros({3,4}, DTYPE_INT32);
+
+    target <<= s1 + s2;
+
+    for (int i = 0; i < target.number_of_elements(); ++i) {
+        EXPECT_EQ(2, (int)target(i));
+    }
+}
+
+
 TEST(FunctionTests, lse) {
     Array target = Array::zeros({3,4}, DTYPE_INT32);
     Array source = Array::arange({3,4}, DTYPE_INT32);

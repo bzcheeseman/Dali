@@ -8,7 +8,6 @@
 #include "dali/array/array.h"
 #include "dali/array/function/function.h"
 #include "dali/array/memory/device.h"
-#include "dali/array/TensorFunctions.h"
 
 using memory::Device;
 

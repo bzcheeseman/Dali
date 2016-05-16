@@ -89,8 +89,8 @@ T Array::scalar_value() const {
             "Scalar value only available for arithmetic types (integer or real).");
     ASSERT2(
         shape().size() == 0,
-        "Scalar value can only be requested for scalar (ndim zero) Array."
-    );
+        utils::MS() << "Attempting to case array of shape " << shape() << " to a scalar,"
+                    << " which is only allowed for a zero-dimensional array.");
     void* data = memory()->data(memory::Device::cpu());
     if (dtype() == DTYPE_FLOAT) {
         return *((float*)(data) + offset());
@@ -107,8 +107,8 @@ T& Array::scalar_value() {
             "Scalar value only available for arithmetic types (integer or real).");
     ASSERT2(
         shape().size() == 0,
-        "Scalar value can only be requested for scalar (ndim zero) Array."
-    );
+        utils::MS() << "Attempting to case array of shape " << shape() << " to a scalar,"
+                    << " which is only allowed for a zero-dimensional array.");
     ASSERT2(template_to_dtype<T>() == dtype(), "Scalar assign attempted with wrong type.");
     void* data = memory()->mutable_data(memory::Device::cpu());
 

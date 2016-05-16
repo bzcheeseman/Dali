@@ -1,5 +1,5 @@
 #include "dali/array/function/lazy_function.h"
-#include "dali/array/TensorFunctions.h"
+#include "dali/array/functor.h"
 
 template<template<class>class Functor, typename LeftT, typename RightT>
 struct LazyBinary : public LazyFunction<LazyBinary<Functor,LeftT,RightT>, LeftT, RightT> {
@@ -29,22 +29,27 @@ struct LazyBinary : public LazyFunction<LazyBinary<Functor,LeftT,RightT>, LeftT,
 
 namespace lazy {
     template <typename T, typename T2>
-    LazyBinary<tensor_ops::op::add, T, T2> add(T a, T2 b) {
-        return LazyBinary<tensor_ops::op::add, T, T2>(a, b);
+    LazyBinary<functor::add, T, T2> add(T a, T2 b) {
+        return LazyBinary<functor::add, T, T2>(a, b);
     }
 
     template <typename T, typename T2>
-    LazyBinary<tensor_ops::op::sub, T, T2> sub(T a, T2 b) {
-        return LazyBinary<tensor_ops::op::sub, T, T2>(a, b);
+    LazyBinary<functor::sub, T, T2> sub(T a, T2 b) {
+        return LazyBinary<functor::sub, T, T2>(a, b);
     }
 
     template <typename T, typename T2>
-    LazyBinary<tensor_ops::op::eltmul, T, T2> eltmul(T a, T2 b) {
-        return LazyBinary<tensor_ops::op::eltmul, T, T2>(a, b);
+    LazyBinary<functor::eltmul, T, T2> eltmul(T a, T2 b) {
+        return LazyBinary<functor::eltmul, T, T2>(a, b);
     }
 
     template <typename T, typename T2>
-    LazyBinary<tensor_ops::op::eltdiv, T, T2> eltdiv(T a, T2 b) {
-        return LazyBinary<tensor_ops::op::eltdiv, T, T2>(a, b);
+    LazyBinary<functor::eltdiv, T, T2> eltdiv(T a, T2 b) {
+        return LazyBinary<functor::eltdiv, T, T2>(a, b);
+    }
+
+    template <typename T, typename T2>
+    LazyBinary<functor::power, T, T2> pow(T a, T2 b) {
+        return LazyBinary<functor::power, T, T2>(a, b);
     }
 }  // namespace lazy

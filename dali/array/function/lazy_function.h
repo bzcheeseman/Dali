@@ -3,45 +3,46 @@
 
 #include <vector>
 
+#include "dali/array/array.h"
 #include "dali/array/dtype.h"
-#include "dali/array/function/lazy_evaluator.h"
-#include "dali/array/function/args/reduce_over_args.h"
-#include "dali/array/function/args/property_reducer.h"
+#include "dali/array/function/expression.h"
+
+namespace internal {
+    int requires_reduction(const Array& output, const std::vector<int>& in_bshape);
+}
 
 template<typename Class, typename... Args>
-struct LazyFunction : public LazyExp<Class> {
+struct BaseLazyFunction: public LazyExp<Class> {
     static const int evaluation_dim;
     std::vector<int> bshape_;
     DType dtype_;
 
-    LazyFunction(Args... args) :
-            bshape_(Class::lazy_output_bshape(args...)),
-            dtype_(Class::lazy_output_dtype(args...)) {
-    }
+    BaseLazyFunction(Args... args);
 
-    static std::vector<int> lazy_output_bshape(const Args&... args) {
-        return ReduceOverArgs<BShapeCompatibleForAllArgsReducer>::reduce(args...);
-    }
+    static std::vector<int> lazy_output_bshape(const Args&... args);
 
-    static DType lazy_output_dtype(const Args&... args) {
-        return ReduceOverArgs<DTypeEqualForAllArgsReducer>::reduce(args...);
-    }
+    static DType lazy_output_dtype(const Args&... args);
 
-    const std::vector<int>& bshape() const {
-        return bshape_;
-    }
+    const std::vector<int>& bshape() const;
 
-    const DType& dtype() const {
-        return dtype_;
-    }
-
-    AssignableArray as_assignable() const {
-        return LazyEvaluator<Class>::run(this->self());
-    }
+    const DType& dtype() const;
 };
 
 template<typename Class, typename... Args>
-const int LazyFunction<Class,Args...>::evaluation_dim = 2;
+struct LazyFunction : public BaseLazyFunction<Class, Args...> {
+    using BaseLazyFunction<Class, Args...>::BaseLazyFunction;
 
+    AssignableArray as_assignable() const;
+};
+
+template<typename Class, typename... Args>
+struct LazyFunctionNonRecusive : public BaseLazyFunction<Class, Args...> {
+    using BaseLazyFunction<Class, Args...>::BaseLazyFunction;
+
+    AssignableArray as_assignable() const;
+};
+
+
+#include "dali/array/function/lazy_function-impl.h"
 
 #endif

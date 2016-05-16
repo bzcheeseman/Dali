@@ -37,6 +37,8 @@ namespace internal {
     DECLARE_OPERATOR_ASSIGN_HELPER(OPERATOR_T_SUB, -=);
     DECLARE_OPERATOR_ASSIGN_HELPER(OPERATOR_T_MUL, *=);
     DECLARE_OPERATOR_ASSIGN_HELPER(OPERATOR_T_DIV, /=);
+    // TODO(jonathan): add a comment.
+    DECLARE_OPERATOR_ASSIGN_HELPER(OPERATOR_T_LSE, +=);
 };  // namespace internal
 
 
@@ -54,25 +56,6 @@ struct OperatorAssignHelper {
             left.template d<ndim>(internal::UseOperator<operator_t>::access_mode),
             right
         );
-    }
-
-    static inline void assign(LeftType& left, const RightType& right) {
-        if (left.array.contiguous_memory()) {
-            assign_contiguous(left, right);
-        } else {
-            assign_noncontiguous(left, right);
-        }
-    }
-};
-
-template<int ndim, typename LeftType, typename RightType>
-struct OperatorAssignHelper<OPERATOR_T_LSE, ndim, LeftType, RightType> {
-    static inline void assign_contiguous(LeftType& left, const RightType& right) {
-        left.template contiguous_d<ndim>(memory::AM_MUTABLE) += right;
-    }
-
-    static inline void assign_noncontiguous(LeftType& left, const RightType& right) {
-        left.template d<ndim>(memory::AM_MUTABLE) += right;
     }
 
     static inline void assign(LeftType& left, const RightType& right) {

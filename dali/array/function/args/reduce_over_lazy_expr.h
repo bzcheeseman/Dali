@@ -17,6 +17,11 @@ struct LazyAllReducer;
 template<class Functor, typename ExprT, bool return_indices>
 struct LazyAxisReducer;
 
+namespace internal {
+    template<typename ExprT>
+    struct NonRecursiveLazySumAxis;
+}  // namespace internal
+
 template<typename Reducer>
 struct ReduceOverLazyExpr {
     typedef std::tuple<typename Reducer::outtype_t, typename Reducer::state_t> outtuple_t;
@@ -27,6 +32,14 @@ struct ReduceOverLazyExpr {
             const LazyBinary<Functor, LeftT,RightT>& binary_expr,
             const Args&... args) {
         return unfold_helper(state, binary_expr.left, binary_expr.right, args...);
+    }
+
+    template<typename ExprT, typename... Args>
+    static outtuple_t unfold_helper(
+            const outtuple_t& state,
+            const internal::NonRecursiveLazySumAxis<ExprT>& reducer_expr,
+            const Args&... args) {
+        return unfold_helper(state, reducer_expr.expr, args...);
     }
 
     template<template<class>class Functor, typename ExprT, typename... Args>
@@ -56,7 +69,8 @@ struct ReduceOverLazyExpr {
     template<typename T, typename... Args>
     static outtuple_t unfold_helper(const outtuple_t& state, const T& arg, const Args&... args) {
         static_assert(!std::is_base_of<LazyExpType,T>::value,
-                "All Lazy expressions need to be explicitly expanded in ReduceOverLazyExpr. Did you forget to cover an expression?");
+                "Every lazy expression needs to have a corresponding `unfold_helper` method in " __FILE__
+                "Did you add an new lazy expression and forget to implement `unfold_helper`?");
         return unfold_helper(Reducer::reduce_step(state, arg), args...);
     }
 

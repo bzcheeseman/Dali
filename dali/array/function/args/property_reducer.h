@@ -29,6 +29,10 @@ struct PropertyEqualForAllArgsReducer {
         return candidate_and_state;
     }
 
+    static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const bool& arg) {
+        return candidate_and_state;
+    }
+
     template<typename T>
     static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const T& arg) {
         outtype_t candidate;
@@ -87,6 +91,10 @@ struct BShapeCompatibleForAllArgsReducer {
     }
 
     static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const int& arg) {
+        return candidate_and_state;
+    }
+
+    static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const bool& arg) {
         return candidate_and_state;
     }
 

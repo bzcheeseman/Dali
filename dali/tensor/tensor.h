@@ -142,7 +142,7 @@ class Tensor {
         // Tensor square() const;
         // Tensor L2_norm() const;
         Tensor sum() const;
-        // Tensor mean() const;
+        Tensor mean() const;
         // Tensor max() const;
         // Tensor min() const;
         // Tensor log() const;

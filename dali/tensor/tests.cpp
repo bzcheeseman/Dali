@@ -210,7 +210,6 @@ TEST_F(TensorTests, sum) {
     EXPERIMENT_REPEAT {
         auto A = Tensor({10, 20}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
         expect_args_remain_on_gpu(functor, {A});
-
         EXPECT_TRUE(gradient_same(functor, {A}));
     }
 }
@@ -540,15 +539,19 @@ TEST_F(TensorTests, reshape) {
 //     ASSERT_EQ(sorted, std::vector<int>({2, 0, 1, 3}));
 // }
 //
-// TEST_F(MatrixTests, mean) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return Xs[0].mean();
-//     };
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
-//         ASSERT_TRUE(gradient_same(functor, {A}));
-//     }
-// }
+TEST_F(TensorTests, mean) {
+    Tensor B({3, 4}, initializer::ones(), DTYPE_DOUBLE);
+    auto res = B.mean();
+    ASSERT_NEAR(1.0, (double)res.w, 1e-6);
+
+    auto functor = [](vector<Tensor> Xs)-> Tensor {
+        return Xs[0].mean();
+    };
+    EXPERIMENT_REPEAT {
+        Tensor A({10, 20}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
+        ASSERT_TRUE(gradient_same(functor, {A}));
+    }
+}
 //
 // TEST_F(MatrixTests, max) {
 //     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {

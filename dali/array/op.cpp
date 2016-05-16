@@ -1,111 +1,61 @@
 #define DALI_USE_LAZY 0
 #include "op.h"
 
-AssignableArray operator+(const Array& left, const Array& right) {
-    return op::add(left, right);
-}
+#define DALI_DEFINE_ARRAY_INTERACTION(OPNAME, SYMBOL)\
+    AssignableArray operator SYMBOL (const Array& left, const Array& right) {\
+        return OPNAME (left, right);\
+    }\
 
-AssignableArray operator+(const Array& left, const double& right) {
-    return op::scalar_add(left, right);
-}
+#define DALI_DEFINE_ARRAY_INTERACTION_INPLACE(OPNAME, SYMBOL)\
+    Array& operator SYMBOL (Array& left, const Array& right) {\
+        left = OPNAME (left, right);\
+        return left;\
+    }\
 
-Array& operator+=(Array& left, const Array& right) {
-    left = op::add(left, right);
-    return left;
-}
+#define DALI_DEFINE_SCALAR_INTERACTION(OPNAME, SYMBOL)\
+    AssignableArray operator SYMBOL (const Array& left, const double& right) {\
+        return OPNAME(left, right);\
+    }\
+    AssignableArray operator SYMBOL (const Array& left, const float& right) {\
+        return OPNAME(left, right);\
+    }\
+    AssignableArray operator SYMBOL (const Array& left, const int& right) {\
+        return OPNAME(left, right);\
+    }\
 
-Array& operator+=(Array& left, const double& right) {
-    left = op::scalar_add(left, right);
-    return left;
-}
+#define DALI_DEFINE_SCALAR_INTERACTION_INPLACE(OPNAME, SYMBOL)\
+    Array& operator SYMBOL (Array& left, const double& right) {\
+        left = OPNAME(left, right);\
+        return left;\
+    }\
+    Array& operator SYMBOL (Array& left, const float& right) {\
+        left = OPNAME(left, right);\
+        return left;\
+    }\
+    Array& operator SYMBOL (Array& left, const int& right) {\
+        left = OPNAME(left, right);\
+        return left;\
+    }\
 
-Array& operator+=(Array& left, const float& right) {
-    left = op::scalar_add(left, right);
-    return left;
-}
-
-Array& operator+=(Array& left, const int& right) {
-    left = op::scalar_add(left, right);
-    return left;
-}
-
-Array& operator-=(Array& left, const Array& right) {
-    left = op::sub(left, right);
-    return left;
-}
-
-Array& operator-=(Array& left, const double& right) {
-    left = op::scalar_add(left, -right);
-    return left;
-}
-
-Array& operator-=(Array& left, const float& right) {
-    left = op::scalar_add(left, -right);
-    return left;
-}
-
-Array& operator-=(Array& left, const int& right) {
-    left = op::scalar_add(left, -right);
-    return left;
-}
-
-Array& operator*=(Array& left, const Array& right) {
-    left = op::eltmul(left, right);
-    return left;
-}
-
-Array& operator*=(Array& left, const double& right) {
-    left = op::scalar_mul(left, right);
-    return left;
-}
-
-Array& operator*=(Array& left, const float& right) {
-    left = op::scalar_mul(left, right);
-    return left;
-}
-
-Array& operator*=(Array& left, const int& right) {
-    left = op::scalar_mul(left, right);
-    return left;
-}
-
-Array& operator/=(Array& left, const Array& right) {
-    left = op::eltdiv(left, right);
-    return left;
-}
-
-Array& operator/=(Array& left, const double& right) {
-    left = op::scalar_div(left, right);
-    return left;
-}
-
-Array& operator/=(Array& left, const float& right) {
-    left = op::scalar_div(left, right);
-    return left;
-}
-
-Array& operator/=(Array& left, const int& right) {
-    left = op::scalar_div(left, right);
-    return left;
-}
+DALI_DEFINE_ARRAY_INTERACTION(op::add, +);
+DALI_DEFINE_ARRAY_INTERACTION(op::sub, -);
+DALI_DEFINE_ARRAY_INTERACTION(op::eltmul, *);
+DALI_DEFINE_ARRAY_INTERACTION(op::eltdiv, /);
+DALI_DEFINE_ARRAY_INTERACTION_INPLACE(op::add, +=);
+DALI_DEFINE_ARRAY_INTERACTION_INPLACE(op::sub, -=);
+DALI_DEFINE_ARRAY_INTERACTION_INPLACE(op::eltmul, *=);
+DALI_DEFINE_ARRAY_INTERACTION_INPLACE(op::eltdiv, /=);
 
 Array& operator<<=(Array& left, const Array& right) {
     left <<= op::identity(right);
     return left;
 }
 
-AssignableArray operator-(const Array& left, const Array& right) {
-    return op::sub(left,right);
-}
-
-AssignableArray operator-(const Array& left, const double& right) {
-    return op::scalar_add(left, -right);
-}
-
-AssignableArray operator*(const Array& left, const Array& right) {
-    return op::eltmul(left,right);
-}
-
-AssignableArray operator/(const Array& left, const Array& right) {
-    return op::eltdiv(left,right);
-}
+DALI_DEFINE_SCALAR_INTERACTION(op::scalar_sub, -);
+DALI_DEFINE_SCALAR_INTERACTION(op::scalar_add, +);
+DALI_DEFINE_SCALAR_INTERACTION(op::scalar_mul, *);
+DALI_DEFINE_SCALAR_INTERACTION(op::scalar_div, /);
+DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::scalar_sub, -=);
+DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::scalar_add, +=);
+DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::scalar_mul, *=);
+DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::scalar_div, /=);

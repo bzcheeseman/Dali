@@ -1,3 +1,6 @@
+#ifndef DALI_ARRAY_OP_H
+#define DALI_ARRAY_OP_H
+
 #include "dali/config.h"
 
 #include "dali/array/op/other.h"
@@ -45,33 +48,42 @@
         static bool ops_loaded = false;
     }
 
-    Array& operator+=(Array& left, const Array& right);
-    Array& operator+=(Array& left, const double& right);
-    Array& operator+=(Array& left, const float& right);
-    Array& operator+=(Array& left, const int& right);
+    #define DALI_DECLARE_ARRAY_INTERACTION(SYMBOL)\
+        AssignableArray operator SYMBOL (const Array& left, const Array& right);\
 
-    Array& operator-=(Array& left, const Array& right);
-    Array& operator-=(Array& left, const double& right);
-    Array& operator-=(Array& left, const float& right);
-    Array& operator-=(Array& left, const int& right);
+    #define DALI_DECLARE_ARRAY_INTERACTION_INPLACE(SYMBOL)\
+        Array& operator SYMBOL (Array& left, const Array& right);\
 
-    Array& operator/=(Array& left, const Array& right);
-    Array& operator/=(Array& left, const double& right);
-    Array& operator/=(Array& left, const float& right);
-    Array& operator/=(Array& left, const int& right);
+    #define DALI_DECLARE_SCALAR_INTERACTION(SYMBOL)\
+        AssignableArray operator SYMBOL (const Array& left, const double& right);\
+        AssignableArray operator SYMBOL (const Array& left, const float& right);\
+        AssignableArray operator SYMBOL (const Array& left, const int& right);\
 
-    Array& operator*=(Array& left, const Array& right);
-    Array& operator*=(Array& left, const double& right);
-    Array& operator*=(Array& left, const float& right);
-    Array& operator*=(Array& left, const int& right);
+    #define DALI_DECLARE_SCALAR_INTERACTION_INPLACE(SYMBOL)\
+        Array& operator SYMBOL (Array& left, const double& right);\
+        Array& operator SYMBOL (Array& left, const float& right);\
+        Array& operator SYMBOL (Array& left, const int& right);\
+
+    DALI_DECLARE_ARRAY_INTERACTION(+);
+    DALI_DECLARE_ARRAY_INTERACTION(-);
+    DALI_DECLARE_ARRAY_INTERACTION(*);
+    DALI_DECLARE_ARRAY_INTERACTION(/);
+    DALI_DECLARE_ARRAY_INTERACTION_INPLACE(+=);
+    DALI_DECLARE_ARRAY_INTERACTION_INPLACE(-=);
+    DALI_DECLARE_ARRAY_INTERACTION_INPLACE(*=);
+    DALI_DECLARE_ARRAY_INTERACTION_INPLACE(/=);
 
     Array& operator<<=(Array& left, const Array& right);
 
-    AssignableArray operator+(const Array& left, const Array& right);
+    DALI_DECLARE_SCALAR_INTERACTION(-);
+    DALI_DECLARE_SCALAR_INTERACTION(+);
+    DALI_DECLARE_SCALAR_INTERACTION(*);
+    DALI_DECLARE_SCALAR_INTERACTION(/);
+    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(-=);
+    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(+=);
+    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(*=);
+    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(/=);
 
-    AssignableArray operator-(const Array& left, const Array& right);
+#endif
 
-    AssignableArray operator*(const Array& left, const Array& right);
-
-    AssignableArray operator/(const Array& left, const Array& right);
 #endif

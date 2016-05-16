@@ -22,4 +22,23 @@ namespace tensor_ops {
             return out;
         }
     }
+
+    Tensor mean(const Tensor& tensor) {
+        if (tensor.number_of_elements() == 1) {
+            auto out = tensor;
+            out.w = tensor.w.reshape({});
+            return out;
+        } else {
+            Tensor out({}, initializer::empty(), tensor.dtype());
+            out.w = tensor.w.mean();
+            if (graph::backprop_enabled() && !tensor.constant)
+                graph::emplace_back([tensor, out]() mutable {
+                    tensor.dw <<= (
+                        out.dw.broadcast_scalar_to_ndim(tensor.ndim()) /
+                        tensor.number_of_elements()
+                    );
+                });
+            return out;
+        }
+    }
 }

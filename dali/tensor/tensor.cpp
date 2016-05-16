@@ -323,7 +323,7 @@ Tensor Tensor::shallow_copy() {
 // MAT_UNARY_OP( softplus )
 // MAT_UNARY_OP( sigmoid )
 TENSOR_UNARY_OP( sum );
-// TENSOR_UNARY_OP(mean);
+TENSOR_UNARY_OP( mean );
 // MAT_UNARY_OP( max )
 // MAT_UNARY_OP( min )
 // MAT_UNARY_OP( log )

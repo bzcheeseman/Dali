@@ -41,7 +41,7 @@ class Tensor {
         storage_t w;
         mutable storage_t dw;
         std::shared_ptr<std::string> name = nullptr;
-        bool constant;
+        bool constant = false;
 
 
         Tensor();

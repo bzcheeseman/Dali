@@ -209,6 +209,10 @@ bool Array::is_stateless() const {
     return state == nullptr;
 }
 
+bool Array::is_scalar() const {
+    return ndim() == 0;
+}
+
 bool Array::spans_entire_memory() const {
     ASSERT2(!is_stateless(), "spans_entire_memory must not be called with stateless Array.");
     return offset() == 0 &&
@@ -542,6 +546,17 @@ Array Array::insert_broadcast_axis(int new_axis) const {
     return expand_dims(new_axis).broadcast_axis(new_axis);
 }
 
+
+Array Array::broadcast_scalar_to_ndim(int target_ndim) const {
+    ASSERT2(is_scalar(),
+            utils::MS() << "broadcast_scalar_to_ndim may only be called on scalars, got shape " << shape() << ".");
+    Array res = *this;
+    for (int i = 0; i < target_ndim; ++i) {
+        res = res.insert_broadcast_axis(0);
+    }
+    return res;
+}
+
 // TODO(jonathan,szymon): add axis argument to sum + write tests
 AssignableArray Array::sum() const {
     return op::sum_all(*this);
@@ -617,7 +632,9 @@ Array& Array::operator<<=(const AssignableArray& assignable) {
     return *this;
 }
 
-void Array::print(std::basic_ostream<char>& stream, int indent) const {
+void Array::print(std::basic_ostream<char>& stream, int indent, bool add_newlines) const {
+    std::string end_line_spacing = add_newlines ? "\n" : "";
+    int indent_increment = add_newlines ? 4 : 0;
     if (ndim() == 0) {
         if (dtype() == DTYPE_FLOAT) {
             stream << (float)(*this);
@@ -628,6 +645,7 @@ void Array::print(std::basic_ostream<char>& stream, int indent) const {
         } else {
             ASSERT2(false, "Wrong dtype for Array.");
         }
+        stream << end_line_spacing;
     } else if (ndim() == 1) {
         stream << std::string(indent, ' ');
         stream << "[";
@@ -638,18 +656,18 @@ void Array::print(std::basic_ostream<char>& stream, int indent) const {
                       << std::setprecision( 3 ) /* use 3 decimals*/
                       << std::setfill( ' ' );
             Array scalar = (*this)[i];
-            scalar.print(stream);
+            scalar.print(stream, 0, false);
             if (i != state->shape[0] - 1) stream << " ";
         }
         stream << "]";
-        stream << std::endl;
+        stream << end_line_spacing;
     } else {
-        stream << std::string(indent, ' ') << "[" << std::endl;
+        stream << std::string(indent, ' ') << "[" << end_line_spacing;
         for (int i = 0; i < state->shape[0]; ++i) {
             Array subtensor = (*this)[i];
-            subtensor.print(stream, indent + 4);
+            subtensor.print(stream, indent + indent_increment, add_newlines);
         }
-        stream << std::string(indent, ' ') <<"]" << std::endl;
+        stream << std::string(indent, ' ') << "]" << end_line_spacing;
     }
 }
 

@@ -24,6 +24,7 @@ Tensor::Tensor(const std::vector<int>& shape,
         w(shape,dtype_,preferred_device),
         dw(shape,dtype_,preferred_device) {
     w = weights_initialization;
+    dw.clear();
 }
 
 Tensor::Tensor(const std::vector<int>& shape,

@@ -82,6 +82,7 @@ class Array : public Exp<Array> {
     // true if just creted with empty constructor or reset
     // (has no assossiated memory)
     bool is_stateless() const;
+    bool is_scalar() const;
     // true if Array's contents conver entirety of underlying
     // memory (as opposed to offset memory, strided memory etc.).
     bool spans_entire_memory() const;
@@ -151,6 +152,7 @@ class Array : public Exp<Array> {
     Array expand_dims(int new_axis) const;
     Array broadcast_axis(int axis) const;
     Array insert_broadcast_axis(int new_axis) const;
+    Array broadcast_scalar_to_ndim(int ndim) const;
 
     AssignableArray sum() const;
     AssignableArray mean() const;
@@ -193,7 +195,7 @@ class Array : public Exp<Array> {
     Array& operator<<=(const AssignableArray& assignable);
 
     /* Debugging */
-    void print(std::basic_ostream<char>& stream = std::cout, int indent=0) const;
+    void print(std::basic_ostream<char>& stream = std::cout, int indent=0, bool add_newlines=true) const;
     void debug_memory(bool print_contents=true) const;
 
     /* Operations */

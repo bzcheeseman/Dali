@@ -14,10 +14,9 @@ namespace tensor_ops {
             // of input tensor is also used here
             Tensor out({}, initializer::empty(), tensor.dtype());
             out.w = tensor.w.sum();
-
             if (graph::backprop_enabled() && !tensor.constant)
                 graph::emplace_back([tensor, out]() mutable {
-                    tensor.dw += out.dw;
+                    tensor.dw <<= out.dw.broadcast_scalar_to_ndim(tensor.ndim());
                 });
             return out;
         }

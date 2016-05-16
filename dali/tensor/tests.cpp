@@ -200,7 +200,9 @@ TEST_F(TensorTests, sum_test) {
 // }
 //
 //
-TEST_F(TensorTests, DISABLED_sum) {
+
+
+TEST_F(TensorTests, sum) {
     auto functor = [](vector<Tensor> Xs)-> Tensor {
         return Xs[0].sum();
     };
@@ -208,6 +210,7 @@ TEST_F(TensorTests, DISABLED_sum) {
     EXPERIMENT_REPEAT {
         auto A = Tensor({10, 20}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
         expect_args_remain_on_gpu(functor, {A});
+
         EXPECT_TRUE(gradient_same(functor, {A}));
     }
 }

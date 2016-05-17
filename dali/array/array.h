@@ -179,7 +179,7 @@ class Array : public Exp<Array> {
     void clear();
 
     template<typename ExprT>
-    Array operator=(const LazyExp<ExprT>& expr);
+    Array& operator=(const LazyExp<ExprT>& expr);
 
 };
 
@@ -261,8 +261,8 @@ struct ArraySlice {
     #include "dali/array/function/lazy_evaluator.h"
 
     template<typename ExprT>
-    Array Array::operator=(const LazyExp<ExprT>& expr) {
-        *this = lazy::eval(expr.self());
+    Array& Array::operator=(const LazyExp<ExprT>& expr) {
+        return *this = lazy::eval(expr.self());
     }
 
     template<typename ExprT>

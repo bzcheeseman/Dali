@@ -8,7 +8,9 @@
 #include <mshadow/tensor.h>
 #include <tuple>
 
+#define DALI_ARRAY_HIDE_LAZY 1
 #include "dali/array/array.h"
+#undef DALI_ARRAY_HIDE_LAZY
 #include "dali/array/debug.h"
 #include "dali/array/dtype.h"
 #include "dali/array/function/args/reduce_over_args.h"

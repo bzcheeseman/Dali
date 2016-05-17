@@ -8,7 +8,9 @@
     #include <thrust/device_vector.h>
 #endif
 
+#define DALI_ARRAY_HIDE_LAZY 1
 #include "dali/array/array.h"
+#undef DALI_ARRAY_HIDE_LAZY
 #include "dali/array/function/args/dali_wrapper_exp.h"
 
 ////////////////////////////////////////////////////////////////////////////////

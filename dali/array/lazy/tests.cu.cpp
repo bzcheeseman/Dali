@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
-
-#include "dali/array/function/lazy_evaluator.h"
+#include "dali/array/array.h"
 #include "dali/runtime_config.h"
 #include "dali/utils/print_utils.h"
 #include "dali/array/functor.h"

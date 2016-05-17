@@ -12,6 +12,7 @@
 #include <unordered_map>
 
 #include "dali/array/array.h"
+#include "dali/array/function/lazy_evaluator.h"
 // #include "dali/tensor/TensorOps.h"
 // #include "dali/tensor/Tape.h"
 #include "dali/utils.h"
@@ -56,6 +57,12 @@ class Tensor {
                memory::Device preferred_device=memory::default_preferred_device);
 
         Tensor(const Array& other, bool copy=false);
+
+        template<typename ExprT>
+        Tensor(const LazyExp<ExprT>& expr) :
+                Tensor(lazy::eval(expr.self())) {
+        }
+
         /*
         A copy constructor that perform shallow and deep
         copies of a Tensor.

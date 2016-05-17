@@ -47,7 +47,9 @@ bool shape_strictly_positive(const std::vector<int>& shape) {
 //                        ASSIGNABLE ARRAY                                    //
 ////////////////////////////////////////////////////////////////////////////////
 
-AssignableArray::AssignableArray(assign_t&& _assign_to) : assign_to(_assign_to) {}
+AssignableArray::AssignableArray(assign_t&& _assign_to) :
+        assign_to(_assign_to) {
+}
 
 AssignableArray::AssignableArray(const float& constant) :
         AssignableArray(initializer::fill(constant)) {

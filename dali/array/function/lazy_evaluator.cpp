@@ -1,4 +1,4 @@
-#include "lazy_function.h"
+#include "lazy_evaluator.h"
 
 #include "dali/utils/assert2.h"
 

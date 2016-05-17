@@ -6,20 +6,19 @@
 
 namespace op {
     AssignableArray sum_all(const Array& x) {
-        return lazy::sum_all(x).as_assignable();
+        return lazy::sum_all(x);
     }
 
     AssignableArray mean_all(const Array& x) {
-        return (lazy::sum_all(x / x.number_of_elements()) ).as_assignable();
+        return lazy::sum_all(x / x.number_of_elements());
     }
 
     AssignableArray sum(const Array& x, const int& axis) {
-        return lazy::sum_axis(x, axis).as_assignable();
+        return lazy::sum_axis(x, axis);
     }
 
     AssignableArray mean(const Array& x, const int& axis) {
     	auto reduced = lazy::sum_axis(x, axis);
-    	auto normalized = reduced / x.shape()[axis]; // size of reduced axis
-        return normalized.as_assignable();
+    	return reduced / x.shape()[axis]; // size of reduced axis
     }
 }; // namespace op

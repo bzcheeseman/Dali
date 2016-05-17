@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "dali/array/dtype.h"
-#include "dali/array/function/operator.h"
 #include "dali/array/function/expression.h"
 #include "dali/array/function/operator.h"
 #include "dali/array/memory/device.h"
@@ -15,6 +14,7 @@
 #include "dali/array/shape.h"
 #include "dali/runtime_config.h"
 
+
 class Array;
 
 struct AssignableArray {
@@ -22,6 +22,8 @@ struct AssignableArray {
     assign_t assign_to;
 
     explicit AssignableArray(assign_t&& _assign_to);
+    template<typename ExprT>
+    AssignableArray(const LazyExp<ExprT>& expr);
     AssignableArray(const float& constant);
     AssignableArray(const double& constant);
     AssignableArray(const int& constant);
@@ -66,12 +68,8 @@ class Array : public Exp<Array> {
           DType dtype_=DTYPE_FLOAT);
     Array(const Array& other, bool copy_memory=false);
     Array(const AssignableArray& assignable);
-
-    template<typename T>
-    Array(const LazyExp<T>& expr) :
-            Array(expr.as_assignable()) {
-    }
-
+    template<typename ExprT>
+    Array(const LazyExp<ExprT>& expr);
 
     static Array arange(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
     static Array zeros(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
@@ -166,27 +164,6 @@ class Array : public Exp<Array> {
     operator double() const;
     operator int() const;
 
-    template<typename T>
-    Array& operator=(const LazyExp<T>& other) {
-        return (*this = other.as_assignable());
-    }
-    template<typename T>
-    Array& operator+=(const LazyExp<T>& other) {
-        return (*this += other.as_assignable());
-    }
-    template<typename T>
-    Array& operator-=(const LazyExp<T>& other) {
-        return (*this -= other.as_assignable());
-    }
-    template<typename T>
-    Array& operator/=(const LazyExp<T>& other) {
-        return (*this /= other.as_assignable());
-    }
-    template<typename T>
-    Array& operator*=(const LazyExp<T>& other) {
-        return (*this *= other.as_assignable());
-    }
-
     Array& operator=(const AssignableArray& assignable);
     Array& operator+=(const AssignableArray& assignable);
     Array& operator-=(const AssignableArray& assignable);
@@ -200,8 +177,11 @@ class Array : public Exp<Array> {
 
     /* Operations */
     void clear();
-};
 
+    template<typename ExprT>
+    Array operator=(const LazyExp<ExprT>& expr);
+
+};
 
 struct ArraySlice {
   private:
@@ -225,4 +205,75 @@ struct ArraySlice {
     operator Array();
 };
 
+#endif
+
+#ifndef DALI_ARRAY_HIDE_LAZY
+    // Terminology
+    //    * `lazy people` - all the files that you can find by searching for
+    //                      phrase DALI_ARRAY_HIDE_LAZY (but excluding array.h)
+    //                      those files are key for lazy expressions.
+    //    * `Bjarne`      - c++ language design philosophy.
+    //    * `may not be`  - definitely isn't
+    //    * `Header Extension` -
+    //                      the aberration that happens below this comment
+    //                      the author hopes that by giving it this friendly
+    //                      name the risk of going insane will be minimized.
+    //
+    // Currently bunch of lazy people depend on array. Even though they never
+    // use any of the functions specified below, array.h is included and used
+    // for data/strides/shape etc. access. The problem appears when g++ sees
+    // operator= in array.h it for some reason tries to expand what's inside
+    // the function (even though nobody uses it, but apparently we have
+    // inevitably hit template expansion phase of compilation or something like
+    // that where compiler gets really excited about contents of templated
+    // functions).
+    //
+    // CURRENT SOLUTION:
+    // This may not be the best solution to the issue we are facing.
+    // The current solution to this problem is to specify DALI_ARRAY_HIDE_LAZY
+    // which hides those function definitions from all the files related to lazy
+    // functions. The next time somebody includes array.h outside of those
+    // files, this templated functions will become available.
+    // The primary disadvantage of this solution is the fact that we are using
+    // a new paradigm of optional Header Extension, which may require extra
+    // cognitive effort.
+    //
+    // ALTERNATIVE SOLUTION I:
+    // Split Array class into BaseArray used by all the lazy functionality
+    // related files and Array which adds the lazy conversions, then all the
+    // lazy people must use BaseArray. The problems with this solution include:
+    //     * giving in to Bjarne
+    //     * the fact that sometimes we need to convert between BaseArray and
+    //       Array.
+    //     * we might need BaseAssignableArray (?!??)
+    // Honestly, this might be a better solution, but the only way to understand
+    // how much worse/better it is, is to implement it and try to gradually
+    // remove all the associated inconveniences.
+    //
+    // ALTERNATIVE SOLUTION II:
+    // add a bunch of lazy::eval in places where it is inferred automatically
+    // thanks to the function below. At the time of writing this is order of
+    // tens of occurrences.
+
+    #ifndef DALI_ARRAY_ARRAY_H_EXTENSION
+    #define DALI_ARRAY_ARRAY_H_EXTENSION
+
+    #include "dali/array/function/lazy_evaluator.h"
+
+    template<typename ExprT>
+    Array Array::operator=(const LazyExp<ExprT>& expr) {
+        *this = lazy::eval(expr.self());
+    }
+
+    template<typename ExprT>
+    Array::Array(const LazyExp<ExprT>& expr) :
+            Array(lazy::eval(expr.self())) {
+    }
+
+    template<typename ExprT>
+    AssignableArray::AssignableArray(const LazyExp<ExprT>& expr) :
+            AssignableArray(lazy::eval(expr.self())) {
+    }
+
+    #endif
 #endif

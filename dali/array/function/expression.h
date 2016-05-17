@@ -19,7 +19,6 @@ struct LazyExpType {};
 
 template<typename SubType>
 struct LazyExp : Exp<SubType>, LazyExpType {
-    virtual AssignableArray as_assignable() const = 0;
 };
 
 #endif

@@ -12,6 +12,8 @@
     #include "dali/array/lazy/binary.h"
     #include "dali/array/lazy/reducers.h"
     #include "dali/array/lazy/unary.h"
+    #include "dali/array/function/lazy_evaluator.h"
+
     namespace lazy {
         static bool ops_loaded = true;
     }
@@ -43,16 +45,23 @@
         LAZY_BINARY_OPERATOR(*, lazy::eltmul)
         LAZY_BINARY_OPERATOR(/, lazy::eltdiv)
 
-        template<typename ExprT>
-        auto operator-(const Exp<ExprT>& in) ->
-                decltype(lazy::eltmul(-1,in.self())) {
-            return lazy::eltmul(-1,in.self());
-        }
+    template<typename ExprT>
+    auto operator-(const Exp<ExprT>& in) ->
+            decltype(lazy::eltmul(-1,in.self())) {
+        return lazy::eltmul(-1,in.self());
+    }
 
-        template<typename ExprT>
-        Array& operator <<=(Array& left, const LazyExp<ExprT>& right) {
-            return left <<= right.self().as_assignable();
-        }
+    #define DALI_DECLARE_LAZY_INTERACTION_INPLACE(SYMBOL) \
+        template<typename ExprT> \
+        Array& operator SYMBOL(Array& left, const LazyExp<ExprT>& right) { \
+            return left SYMBOL lazy::eval(right.self()); \
+        } \
+
+    DALI_DECLARE_LAZY_INTERACTION_INPLACE(+=);
+    DALI_DECLARE_LAZY_INTERACTION_INPLACE(-=);
+    DALI_DECLARE_LAZY_INTERACTION_INPLACE(*=);
+    DALI_DECLARE_LAZY_INTERACTION_INPLACE(/=);
+    DALI_DECLARE_LAZY_INTERACTION_INPLACE(<<=);
 #else
     #include "dali/array/op/binary.h"
     #include "dali/array/op/reducers.h"

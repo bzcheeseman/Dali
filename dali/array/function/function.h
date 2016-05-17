@@ -74,6 +74,8 @@ struct Function {
         return ReduceOverArgs<DTypeEqualForAllArrayArgsReducer>::reduce(out, args...);
     }
 
+    static void preprocess_out(const OPERATOR_T& operator_t, Outtype& out, const Args&... args) {}
+    static void postprocess_out(const OPERATOR_T& operator_t, Outtype& out, const Args&... args) {}
     static void prepare_output(const OPERATOR_T& operator_t, Outtype& out, const Args&... args) {
         auto common_bshape = Class::deduce_output_bshape(args...);
         auto common_dtype = Class::deduce_output_dtype(args...);
@@ -131,6 +133,7 @@ struct Function {
     static AssignableArray run(const Args&... args) {
         return AssignableArray([args...](Outtype& out, const OPERATOR_T& operator_t) {
             Class::prepare_output(operator_t, out, args...);
+            Class::preprocess_out(operator_t, out, args...);
             switch (operator_t) {
                 case OPERATOR_T_EQL:
                     Class::template untyped_eval<OPERATOR_T_EQL>(out, args...);
@@ -154,6 +157,7 @@ struct Function {
                     ASSERT2(false, "OPERATOR_T for assignment between AssignableArray and output must be one of =,-=,+=,*=,/=,<<=");
                     break;
             }
+            Class::postprocess_out(operator_t, out, args...);
             debug::dali_function_computed.activate(true);
         });
     }

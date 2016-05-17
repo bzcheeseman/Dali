@@ -179,6 +179,17 @@ TEST(ArrayOpsTests, dot_strided) {
     }
 }
 
+// test off for now, requires reshaping non contiguous
+// memory (e.g. perform a copy)
+TEST(ArrayOpsTests, DISABLED_tensordot) {
+    Array a = Array::ones({3, 2, 1}, DTYPE_INT32);
+    Array b = Array::ones({3, 1, 2}, DTYPE_INT32);
+    Array c = dot(a, b);
+    c.print();
+    EXPECT_EQ(std::vector<int>({3, 2, 3, 2}), c.shape());
+}
+
+
 TEST(ArrayOpsTests, arange) {
     Array x_float({2,3,3}, DTYPE_FLOAT);
     x_float = initializer::arange();

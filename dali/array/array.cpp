@@ -387,30 +387,43 @@ Array Array::operator()(index_t idx) const {
 
 
 Array Array::transpose() const {
-    std::vector<int> permuation(ndim(), 0);
+    std::vector<int> permutation(ndim(), 0);
     for (int i = 0; i < ndim(); ++i) {
-        permuation[i] = ndim() - i - 1;
+        permutation[i] = ndim() - i - 1;
     }
-    return transpose(permuation);
+    return transpose(permutation);
 }
 
 Array Array::transpose(const std::vector<int>& axes) const {
-    const std::vector<int>& old_shape   = shape();
-    std::vector<int>        old_strides = normalized_strides();
+    return dimshuffle(axes);
+}
 
-    std::vector<int> new_shape(ndim());
-    std::vector<int> new_strides(ndim());
+Array Array::dimshuffle(const std::vector<int>& pattern) const {
+    int dimensionality = ndim();
+    ASSERT2(pattern.size() == dimensionality,
+        utils::MS() << "number of dimensions in dimshuffle does not correspond"
+                    << " to the dimensionality of the array (got pattern = " << pattern
+                    << " on array with dimensionality=" << dimensionality
+    );
+    std::vector<int> newstrides(dimensionality);
+    std::vector<int> newshape(dimensionality);
 
-    for (int i = 0; i < ndim(); ++i) {
-        new_shape[i]   = old_shape[axes[i]];
-        new_strides[i] = old_strides[axes[i]];
+    auto current_shape = shape();
+    auto current_strides = normalized_strides();
+
+    for (int i = 0; i < dimensionality; i++) {
+        const auto& pick_from = pattern[i];
+        ASSERT2(current_shape[pick_from] != -1,
+            utils::MS() << "duplicate dimension in dimshuffle pattern " << pattern
+        );
+        // grab strides and shape for the
+        // relevant dimension
+        newshape[i] = current_shape[pick_from];
+        newstrides[i] = current_strides[pick_from];
+        current_shape[pick_from] = -1;
     }
 
-    return Array(new_shape,
-                 memory(),
-                 offset(),
-                 new_strides,
-                 dtype());
+    return Array(newshape, memory(), offset(), newstrides, dtype());
 }
 
 Array Array::ravel() const {
@@ -547,7 +560,6 @@ Array Array::broadcast_axis(int axis) const {
 Array Array::insert_broadcast_axis(int new_axis) const {
     return expand_dims(new_axis).broadcast_axis(new_axis);
 }
-
 
 Array Array::broadcast_scalar_to_ndim(int target_ndim) const {
     ASSERT2(is_scalar(),

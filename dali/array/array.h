@@ -120,6 +120,10 @@ class Array : public Exp<Array> {
     Array operator()(index_t idx) const;
     Array transpose() const;
     Array transpose(const std::vector<int>& axes) const;
+    // a less flexible version of the dimension switching
+    // TODO(jonathan): add swapaxes + should allow insertion of
+    // broadcasts in dimshuffle (aka [1, 'x', 0], where 'x' is broadcasted)
+    Array dimshuffle(const std::vector<int>& pattern) const;
     Array ravel() const;
     Array reshape(const std::vector<int>& shape) const;
     /*

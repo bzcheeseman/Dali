@@ -502,5 +502,4 @@ TEST(ArrayTest, transpose) {
             }
         }
     }
-
 }

@@ -83,14 +83,190 @@ struct LazyDot : public Function<LazyDot, Array, Array, Array> {
 };
 
 
+void check_tensordot_reduce_axes(
+        const Array& operand,
+        char name,
+        const std::vector<int>& reduce_axes,
+        const bool& batched) {
+    ASSERT2(reduce_axes.size() <= operand.ndim(),
+        utils::MS() << "length of argument " << name << "_reduce_axes "
+                    << "should be less than the dimensions of " << name
+                    << " (" << name << ".ndim()=" << operand.ndim()
+                    << ", " << name << "_reduce_axes.size()="
+                    << reduce_axes.size() << ")."
+    );
+    auto max_reduce_dim = std::max_element(
+        reduce_axes.begin(), reduce_axes.end()
+    );
+    ASSERT2(reduce_axes.size() == 0 || (*max_reduce_dim) < operand.ndim(),
+        utils::MS() << name << "_reduce_axes contains reduction dimensions "
+                    << " that are greater than or equal to "
+                    << name << ".ndim() ("
+                    << name << ".ndim()=" << operand.ndim()
+                    << ", and found max(" << name << "_reduce_axes)="
+                    << *max_reduce_dim << ")."
+    );
+    ASSERT2(
+        (!batched ||
+        std::find(reduce_axes.begin(), reduce_axes.end(), 0) != reduce_axes.end()
+        ),
+        utils::MS() << "axes to sum over must not contain the batch axis "
+                    << "(" << name << "_reduce_axes="
+                    << reduce_axes << ")."
+    );
+}
+
+std::vector<int> get_tensordot_dimshuffle_axes(
+        const int& ndim,
+        const std::vector<int>& reduce_axes,
+        const bool& batched) {
+    std::vector<int> other_axes;
+    for (int x = 0; x < ndim; x++) {
+        // when batched, 0 is always kept
+        // as leading dim, and thus will not
+        // be dimshuffled
+        if (batched && x == 0) {
+            continue;
+        }
+        bool not_in_reduce_axes = (
+            std::find(
+                reduce_axes.begin(),
+                reduce_axes.end(),
+                x
+            ) == reduce_axes.end()
+        );
+
+        if (not_in_reduce_axes) {
+            other_axes.emplace_back(x);
+        }
+    }
+    return other_axes;
+}
+
+
 namespace op {
     // TODO (szymon): allow for scaling with Binary expression + template redundancy trick!
     AssignableArray dot(Array a, Array b) {
         // TODO(jonathan): implement the crazy transposes for cases > 2D.
         // from:jonathan, to:szymon, body: will do!
-        // TODO(dali_developer_community): make sure that copies happend at the right places.
-
-
+        // TODO(dali_developer_community): make sure that copies happened at the right places.
         return LazyDot::run(a, b);
+    }
+
+    AssignableArray _tensordot_as_dot(
+            Array a, Array b,
+            const std::vector<int>& a_reduce_axes,
+            const std::vector<int>& b_reduce_axes,
+            int dot_type,
+            bool batched) {
+
+        ASSERT2(a_reduce_axes.size() == b_reduce_axes.size(),
+            utils::MS() << "must have as many reduction axes for a than b "
+                        << "(got a_reduce_axes=" << a_reduce_axes << " and "
+                        << "b_reduce_axes=" << b_reduce_axes << ")."
+        );
+
+        check_tensordot_reduce_axes(a, 'a', a_reduce_axes, batched);
+        check_tensordot_reduce_axes(b, 'b', b_reduce_axes, batched);
+
+        auto a_other_axes = get_tensordot_dimshuffle_axes(
+            a.ndim(), a_reduce_axes, batched
+        );
+        auto b_other_axes = get_tensordot_dimshuffle_axes(
+            b.ndim(), b_reduce_axes, batched
+        );
+
+        a_other_axes.insert(a_other_axes.end(), a_reduce_axes.begin(), a_reduce_axes.end());
+        b_other_axes.insert(b_other_axes.begin(), b_reduce_axes.begin(), b_reduce_axes.end());
+
+        if (batched) {
+            a_other_axes.insert(a_other_axes.begin(), 0);
+            b_other_axes.insert(b_other_axes.begin(), 0);
+        }
+
+        // now call dimshuffle
+        auto a_shuffled = a.dimshuffle(a_other_axes);
+        auto b_shuffled = a.dimshuffle(b_other_axes);
+
+        return _tensordot_as_dot(
+            a_shuffled,
+            b_shuffled,
+            a_reduce_axes.size(),
+            dot_type,
+            batched
+        );
+    }
+
+    AssignableArray _tensordot_as_dot(
+            Array a,
+            Array b,
+            const int& axis,
+            int dot_type,
+            bool batched) {
+        // This code follows the logic from theano's tensordot as dot
+        // [source https://github.com/Theano/Theano/blob/master/theano/tensor/basic.py#L5628]
+        //
+        // Theano code was also originally based elsewhere on
+        // Tijmen Tieleman's gnumpy:
+        // [source http://www.cs.toronto.edu/~tijmen/gnumpy.html]
+
+        // if 'axes' is a single number of axes to multiply and sum over
+        // (trailing axes of a, leading axes of b), we can just reshape
+        // and use dot.
+        // validate that the axis used for summing
+        // is not out of bounds for the arguments a and b
+        ASSERT2(
+            axis >= 0,
+            utils::MS() << "axis must be a non-negative integer (got " << axis << ")."
+        );
+        for (int i = 0; i < 2; i++) {
+            auto& operand = i == 0 ? a : b;
+            char operand_name = i == 0 ? 'a' : 'b';
+            ASSERT2(
+                axis <= operand.ndim(),
+                utils::MS() << "axis can not be larger than the dimension of "
+                            << operand_name
+                            << " (" << operand_name << ".ndim()=" << operand.ndim()
+                            << ", axis=" << axis <<")."
+            );
+            ASSERT2(!(axis == operand.ndim() && batched),
+                utils::MS() << "axis to sum over must not include the batch axis "
+                            << "of " << operand_name
+                            << " (" << operand_name << ".ndim()=" << operand.ndim()
+                            << ", axis=" << axis <<")."
+            );
+        }
+        int batch_axes = batched ? 1 : 0;
+
+        std::vector<int> a_shape = {1, 1};
+        std::vector<int> b_shape = {1, 1};
+
+        const auto& a_old_shape = a.shape();
+        const auto& b_old_shape = b.shape();
+
+        // compute total size of summed axes
+        for (int i = 0; i < axis; i++) {
+            a_shape[1] *= a_old_shape[a_old_shape.size() - (i + 1)];
+            b_shape[0] *= b_old_shape[batch_axes + i];
+        }
+        // compute total size of other axes
+        for (int i = 0; i < (a.ndim() - axis - batch_axes); i++) {
+            a_shape[0] *= a_old_shape[batch_axes + i];
+        }
+        for (int i = 0; i < (b.ndim() - axis - batch_axes); i++) {
+            b_shape[1] *= b_old_shape[b_old_shape.size() -(i + 1)];
+        }
+
+        if (batched) {
+            a_shape.insert(a_shape.begin(), a_old_shape[0]);
+            b_shape.insert(b_shape.begin(), b_old_shape[0]);
+        }
+
+        auto a_reshaped = a.reshape(a_shape);
+        auto b_reshaped = b.reshape(b_shape);
+
+        return LazyDot::run(a_reshaped, b_reshaped);
+
+        //out = out_reshaped.reshape(outshape);
     }
 }

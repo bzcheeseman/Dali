@@ -436,16 +436,26 @@ Array Array::ravel() const {
                  dtype());
 }
 
-Array Array::reshape(const vector<int>& new_shape) const {
-    ASSERT2(contiguous_memory(),
-            "at the moment reshape is only supported for contiguous_memory");
+Array Array::copyless_reshape(const vector<int>& new_shape) const {
     ASSERT2(hypercube_volume(new_shape) == number_of_elements(),
-            utils::MS() << "New shape (" << new_shape << ") must have the same nubmer of elements as previous shape (" << shape() << ")");
+            utils::MS() << "New shape (" << new_shape
+                        << ") must have the same number of elements as previous shape ("
+                        << shape() << ")");
+    ASSERT2(contiguous_memory(),
+            utils::MS() << "Cannot perform reshape without a copy on non-contiguous memory "
+                        << "(strides() = " << strides() << ", shape=" << shape()
+                        << ", new shape=" << new_shape << ").");
+
     return Array(new_shape,
                  memory(),
                  offset(),
                  vector<int>(),
                  dtype());
+}
+
+
+Array Array::reshape(const vector<int>& new_shape) const {
+    return ascontiguousarray().copyless_reshape(new_shape);
 }
 
 Array Array::reshape_broadcasted(const std::vector<int>& new_shape) const {

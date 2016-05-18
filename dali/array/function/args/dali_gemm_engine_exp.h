@@ -7,7 +7,7 @@
 
 #include <mshadow/tensor.h>
 #include <mshadow/dot_engine-inl.h>
-
+#include "dali/array/function/args/igemm.h"
 
 namespace mshadow {
     namespace expr {
@@ -81,8 +81,6 @@ namespace mshadow {
             // set kernel stream
             // if there is no stream, crush
             BLASEngine<xpu, DType>::SetStream(dst.stream_);
-            Shape<2> sleft = lhs.shape_;
-            Shape<2> sright = rhs.shape_;
 
             // use column major argument to compatible with most BLAS
             BLASEngine<xpu, DType>::gemm

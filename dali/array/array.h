@@ -126,6 +126,9 @@ class Array : public Exp<Array> {
     Array dimshuffle(const std::vector<int>& pattern) const;
     Array ravel() const;
     Array reshape(const std::vector<int>& shape) const;
+    // only reshapes if underlying memory is contiguous
+    // ensures that no unexpected memory aliasing occurs
+    Array copyless_reshape(const std::vector<int>& shape) const;
     /*
      * reshape_broadcasted can only be run on The
      * the broadcastable dimensions of size 1.

@@ -16,8 +16,8 @@ struct LazyDotRunner {
         typename std::enable_if<
             !(
                 (var_operator_t == OPERATOR_T_MUL) ||
-                (var_operator_t == OPERATOR_T_DIV) ||
-                std::is_same<var_T,int>::value
+                (var_operator_t == OPERATOR_T_DIV)
+                // std::is_same<var_T,int>::value
             )
         >::type* = nullptr
     >
@@ -47,15 +47,15 @@ struct LazyDotRunner {
         typename var_T = T,
         typename std::enable_if<
             (var_operator_t == OPERATOR_T_MUL) ||
-            (var_operator_t == OPERATOR_T_DIV) ||
-            std::is_same<var_T, int>::value
+            (var_operator_t == OPERATOR_T_DIV)
+            // std::is_same<var_T, int>::value
         >::type* = nullptr
     >
     static void run(TypedArray<devT, T>& out,
                     const TypedArray<devT, T>& a,
                     const TypedArray<devT, T>& b) {
-        ASSERT2(!(std::is_same<var_T, int>::value),
-            "Matrix multiplication is not supported for integers yet.");
+        // ASSERT2(!(std::is_same<var_T, int>::value),
+        //     "Matrix multiplication is not supported for integers yet.");
         ASSERT2(!(var_operator_t == OPERATOR_T_MUL) && !(var_operator_t == OPERATOR_T_MUL),
                 "Matrix multiplication's result cannot be inplace-multiplied or inplace-divided.");
         ASSERT2(false, "If asserts above are complete this message should never be displayed");
@@ -97,17 +97,13 @@ struct LazyReshapedDot : public Function<LazyReshapedDot, Array, Array, Array, s
                 utils::MS() << "Dot product is only supported for matrices, got a.ndim()=" << a.ndim() << " and b.ndim()=" << b.ndim() << " tensors.");
         ASSERT2(a.shape()[1] == b.shape()[0],
             utils::MS() << "Dot product requires matching inner dimension (got shapes: " << a.shape() << ", " << b.shape() << ", which have incompatible inner dimensions)");
-        ELOG("preprocess_out: reshaping out");
-        out = out.reshape(
+        out = out.copyless_reshape(
             {a.shape()[0], b.shape()[1]}
         );
-        ELOG("preprocess_out: done");
     }
     static void postprocess_out(const OPERATOR_T& operator_t, Array& out, const Array& a, const Array& b, const std::vector<int>& output_shape) {
         // return to tensordot output shape
-        ELOG("postprocess_out: reshaping out");
-        out = out.reshape(output_shape);
-        ELOG("postprocess_out: done");
+        out = out.copyless_reshape(output_shape);
     }
 
     template<OPERATOR_T operator_t, int devT, typename T>
@@ -253,12 +249,8 @@ namespace op {
             b_shape.insert(b_shape.begin(), b_old_shape[0]);
         }
 
-        ELOG("dot assignable array stage: reshaping a");
         auto a_reshaped = a.reshape(a_shape);
-        ELOG("dot assignable array stage: reshaping b");
-        ELOG(b.strides());ELOG(b.shape());
         auto b_reshaped = b.reshape(b_shape);
-        ELOG("dot assignable array stage: done");
 
 
         std::vector<int> output_shape;
@@ -314,7 +306,6 @@ namespace op {
 
         // now call dimshuffle
         auto a_shuffled = a.dimshuffle(a_other_axes);
-        ELOG(b.normalized_strides());ELOG("b is dimshuffled"); ELOG(b_other_axes);
         auto b_shuffled = b.dimshuffle(b_other_axes);
 
         return _tensordot_as_dot(

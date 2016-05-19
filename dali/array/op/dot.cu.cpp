@@ -9,7 +9,7 @@
 
 
 template<OPERATOR_T operator_t, int devT, typename T>
-struct LazyDotRunner {
+struct LazyGemmRunner {
     template <
         OPERATOR_T var_operator_t = operator_t,
         typename var_T = T,
@@ -17,7 +17,6 @@ struct LazyDotRunner {
             !(
                 (var_operator_t == OPERATOR_T_MUL) ||
                 (var_operator_t == OPERATOR_T_DIV)
-                // std::is_same<var_T,int>::value
             )
         >::type* = nullptr
     >
@@ -48,42 +47,19 @@ struct LazyDotRunner {
         typename std::enable_if<
             (var_operator_t == OPERATOR_T_MUL) ||
             (var_operator_t == OPERATOR_T_DIV)
-            // std::is_same<var_T, int>::value
         >::type* = nullptr
     >
     static void run(TypedArray<devT, T>& out,
                     const TypedArray<devT, T>& a,
                     const TypedArray<devT, T>& b) {
-        // ASSERT2(!(std::is_same<var_T, int>::value),
-        //     "Matrix multiplication is not supported for integers yet.");
         ASSERT2(!(var_operator_t == OPERATOR_T_MUL) && !(var_operator_t == OPERATOR_T_MUL),
                 "Matrix multiplication's result cannot be inplace-multiplied or inplace-divided.");
         ASSERT2(false, "If asserts above are complete this message should never be displayed");
     }
 };
 
-// TODO(jonathan): merge both lazydot and lazyreshapedot
-struct LazyDot : public Function<LazyDot, Array, Array, Array> {
-    static std::vector<int> deduce_output_bshape(
-            const Array& a,
-            const Array& b) {
-        ASSERT2(a.ndim() == 2 && b.ndim() == 2,
-                utils::MS() << "Dot product is only supported for matrices, got a.ndim()=" << a.ndim() << " and b.ndim()=" << b.ndim() << " tensors.");
-        ASSERT2(a.shape()[1] == b.shape()[0],
-            utils::MS() << "Dot product requires matching inner dimension (got shapes: " << a.shape() << ", " << b.shape() << ", which have incompatible inner dimensions)");
-        return {a.shape()[0], b.shape()[1]};
-    }
 
-    template<OPERATOR_T operator_t, int devT, typename T>
-    void typed_eval(
-            TypedArray<devT, T> out,
-            TypedArray<devT, T> a,
-            TypedArray<devT, T> b) {
-        LazyDotRunner<operator_t,devT,T>::run(out, a, b);
-    }
-};
-
-struct LazyReshapedDot : public Function<LazyReshapedDot, Array, Array, Array, std::vector<int>> {
+struct LazyReshapedGemm : public Function<LazyReshapedGemm, Array, Array, Array, std::vector<int>> {
     static std::vector<int> deduce_output_bshape(
             const Array& a,
             const Array& b,
@@ -94,9 +70,10 @@ struct LazyReshapedDot : public Function<LazyReshapedDot, Array, Array, Array, s
     static void preprocess_out(const OPERATOR_T& operator_t, Array& out, const Array& a, const Array& b, const std::vector<int>& output_shape) {
         // make output look like 2D output
         ASSERT2(a.ndim() == 2 && b.ndim() == 2,
-                utils::MS() << "Dot product is only supported for matrices, got a.ndim()=" << a.ndim() << " and b.ndim()=" << b.ndim() << " tensors.");
+                utils::MS() << "Gemm inputs must be matrices, got a.ndim()=" << a.ndim() << " and b.ndim()=" << b.ndim() << " tensors.");
         ASSERT2(a.shape()[1] == b.shape()[0],
-            utils::MS() << "Dot product requires matching inner dimension (got shapes: " << a.shape() << ", " << b.shape() << ", which have incompatible inner dimensions)");
+            utils::MS() << "shapes " << a.shape() << " and " << b.shape() << " not aligned: "
+                        << a.shape()[1] << " (dim 1) != " << b.shape()[0] << " (dim 0)");
         out = out.copyless_reshape(
             {a.shape()[0], b.shape()[1]}
         );
@@ -112,7 +89,7 @@ struct LazyReshapedDot : public Function<LazyReshapedDot, Array, Array, Array, s
             TypedArray<devT, T> a,
             TypedArray<devT, T> b,
             const std::vector<int>& output_shape) {
-        LazyDotRunner<operator_t,devT,T>::run(out, a, b);
+        LazyGemmRunner<operator_t,devT,T>::run(out, a, b);
     }
 };
 
@@ -185,8 +162,8 @@ namespace op {
     };
 
     AssignableArray _tensordot_as_dot(
-            Array a,
-            Array b,
+            const Array& a,
+            const Array& b,
             const int& axis,
             DOT_TYPE_T dot_type,
             bool batched) {
@@ -267,14 +244,62 @@ namespace op {
             b_old_shape.end()
         );
 
-        return LazyReshapedDot::run(
+        return LazyReshapedGemm::run(
             a_reshaped, b_reshaped, output_shape
         );
     }
 
+    AssignableArray matrix_vector_dot(
+        const Array& a,
+        const Array& b) {
+        ASSERT2((a.ndim() == 1 && b.ndim() == 2) || (a.ndim() == 2 && b.ndim() == 1),
+                utils::MS() << "Gemv inputs must be a vector and a matrix, but got a.ndim()="
+                            << a.ndim() << " and b.ndim()=" << b.ndim() << " tensors.");
+        std::vector<int> outshape(1);
+        if (a.ndim() == 1 && b.ndim() == 2) {
+            ASSERT2(
+                a.bshape()[0] == -1 || b.bshape()[0] == a.bshape()[0] || b.bshape()[0] == -1,
+                utils::MS() << "shapes " << a.shape() << " and " << b.shape() << " not aligned: "
+                            << a.shape()[0] << " (dim 0) != " << b.shape()[0] << " (dim 0)");
+            outshape[0] = b.bshape()[1];
+            return LazyReshapedGemm::run(
+                a.copyless_reshape({1, a.number_of_elements()}),
+                b,
+                outshape
+            );
+        } else {
+            ASSERT2(
+                b.bshape()[0] == -1 || a.bshape()[1] == b.bshape()[0] || a.bshape()[0] == -1,
+                utils::MS() << "shapes " << a.shape() << " and " << b.shape() << " not aligned: "
+                            << a.shape()[1] << " (dim 1) != " << b.shape()[0] << " (dim 0)");
+            outshape[0] = a.bshape()[0];
+            return LazyReshapedGemm::run(
+                a,
+                b.copyless_reshape({b.number_of_elements(), 1}),
+                outshape
+            );
+        }
+    }
+
+    AssignableArray vector_dot(
+            const Array& a,
+            const Array& b) {
+        ASSERT2(a.ndim() == 1 && b.ndim() == 1,
+            utils::MS() << "VectorDot must be called on a pair of vectors, but got a.ndim()="
+                        << a.ndim() << " and b.ndim()=" << b.ndim() << " tensors.");
+        ASSERT2(a.bshape()[0] == b.bshape()[0] || (a.bshape()[0] == -1) || (b.bshape()[0] == -1),
+            utils::MS() << "shapes " << a.shape() << " and " << b.shape() << " not aligned: "
+                        << a.shape()[0] << " (dim 0) != " << b.shape()[0] << " (dim 0)");
+        return LazyReshapedGemm::run(
+            a.copyless_reshape({1, a.number_of_elements()}),
+            b.copyless_reshape({b.number_of_elements(), 1}),
+            {}
+        );
+    }
+
     AssignableArray _tensordot_as_dot(
-            Array a,
-            Array b,
+            const Array& a,
+            const Array& b,
             const std::vector<int>& a_reduce_axes,
             const std::vector<int>& b_reduce_axes,
             DOT_TYPE_T dot_type,
@@ -318,25 +343,31 @@ namespace op {
     }
 
     // TODO (szymon): allow for scaling with Binary expression + template redundancy trick!
-    AssignableArray dot(Array a, Array b) {
-        if (a.ndim() == 0 || b.ndim() == 0) {
-            if (a.ndim() == 0) {
-                return a.broadcast_scalar_to_ndim(b.ndim()) * b;
+    AssignableArray dot(const Array& a, const Array& b) {
+        auto a_ndim = a.ndim();
+        auto b_ndim = b.ndim();
+
+        if (a_ndim == 0 || b_ndim == 0) {
+            if (a_ndim == 0) {
+                return a.broadcast_scalar_to_ndim(b_ndim) * b;
             } else {
-                return a * b.broadcast_scalar_to_ndim(a.ndim());
+                return a * b.broadcast_scalar_to_ndim(a_ndim);
             }
-        } else if (a.ndim() > 2 || b.ndim() > 2) {
+        } else if (a_ndim > 2 || b_ndim > 2) {
             return _tensordot_as_dot(
                 a,
                 b,
-                {a.ndim() - 1},
-                {std::max(0, b.ndim() - 2)},
+                {a_ndim - 1},
+                {std::max(0, b_ndim - 2)},
                 DOT_TYPE_2D_T,
                 false
             );
+        } else if (a_ndim == 1 && b_ndim == 1) {
+            return vector_dot(a, b);
+        } else if (a_ndim == 2 && b_ndim == 2) {
+            return LazyReshapedGemm::run(a, b, {a.shape()[0], b.shape()[1]});
         } else {
-            return LazyDot::run(a, b);
+            return matrix_vector_dot(a, b);
         }
-        // TODO(dali_developer_community): make sure that copies happened at the right places.
     }
 }

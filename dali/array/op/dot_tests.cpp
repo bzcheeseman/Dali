@@ -81,8 +81,6 @@ TEST(ArrayDotTests, dot_strided) {
     check_strided_dot_result(DTYPE_INT32);
 }
 
-// test off for now, requires reshaping non contiguous
-// memory (e.g. perform a copy)
 TEST(ArrayDotTests, tensordot) {
     Array a = Array::ones({3, 2, 1}, DTYPE_INT32);
     Array b = Array::ones({3, 1, 2}, DTYPE_INT32);
@@ -90,3 +88,109 @@ TEST(ArrayDotTests, tensordot) {
     // c.print();
     EXPECT_EQ(std::vector<int>({3, 2, 3, 2}), c.shape());
 }
+
+struct ArrayCompatibilityCheck {
+    std::vector<int> leftshape;
+    std::vector<int> rightshape;
+    bool worked_out;
+    std::vector<int> outshape;
+
+    ArrayCompatibilityCheck(
+        const std::vector<int>& leftshape_,
+        const std::vector<int>& rightshape_,
+        bool worked_out_,
+        const std::vector<int>& outshape_) :
+            outshape(outshape_),
+            worked_out(worked_out_),
+            leftshape(leftshape_),
+            rightshape(rightshape_) {}
+};
+
+TEST(ArrayDotTests, matrix_vector_dot) {
+    auto left = Array::arange({4, 3}, DTYPE_FLOAT);
+    auto right = Array::arange({3}, DTYPE_FLOAT);
+
+    Array res = dot(left, right);
+    EXPECT_EQ(std::vector<int>({4}), res.shape());
+
+    std::vector<float> expected_result = {5, 14, 23, 32};
+    for (int i = 0; i < 4; i++) {
+        EXPECT_EQ_DTYPE(expected_result[i], res(i), DTYPE_FLOAT);
+    }
+}
+
+TEST(ArrayDotTests, vector_matrix_dot) {
+    auto left = Array::arange({4, 3}, DTYPE_FLOAT);
+    auto right = Array::arange({3}, DTYPE_FLOAT);
+
+    Array res = dot(right, left.transpose());
+    EXPECT_EQ(std::vector<int>({4}), res.shape());
+
+    std::vector<float> expected_result = {5, 14, 23, 32};
+    for (int i = 0; i < 4; i++) {
+        EXPECT_EQ_DTYPE(expected_result[i], res(i), DTYPE_FLOAT);
+    }
+}
+
+TEST(ArrayDotTests, tensordot_alignment_rules) {
+    std::vector<ArrayCompatibilityCheck> checks = {
+        ArrayCompatibilityCheck({2,}, {2,}, true, {}),
+
+        ArrayCompatibilityCheck({2,}, {4, 2}, false, {}),
+        ArrayCompatibilityCheck({2,}, {6, 4, 2}, false, {}),
+        ArrayCompatibilityCheck({2,}, {8, 6, 4, 2}, false, {}),
+        ArrayCompatibilityCheck({2,}, {10, 8, 6, 4, 2}, false, {}),
+
+        ArrayCompatibilityCheck({2, 4}, {2,}, false, {}),
+
+        ArrayCompatibilityCheck({2, 4}, {4, 2}, true, {2, 2}),
+        ArrayCompatibilityCheck({2, 4}, {6, 4, 2}, true, {2, 6, 2}),
+        ArrayCompatibilityCheck({2, 4}, {8, 6, 4, 2}, true, {2, 8, 6, 2}),
+        ArrayCompatibilityCheck({2, 4}, {10, 8, 6, 4, 2}, true, {2, 10, 8, 6, 2}),
+
+        ArrayCompatibilityCheck({6, 2, 4}, {2,}, false, {}),
+
+        ArrayCompatibilityCheck({6, 2, 4}, {4, 2,}, true, {6, 2, 2}),
+        ArrayCompatibilityCheck({6, 2, 4}, {6, 4, 2,}, true, {6, 2, 6, 2}),
+        ArrayCompatibilityCheck({6, 2, 4}, {8, 6, 4, 2,}, true, {6, 2, 8, 6, 2}),
+        ArrayCompatibilityCheck({6, 2, 4}, {10, 8, 6, 4, 2,}, true, {6, 2, 10, 8, 6, 2}),
+
+        ArrayCompatibilityCheck({8, 6, 2, 4}, {2,}, false, {}),
+
+        ArrayCompatibilityCheck({8, 6, 2, 4}, {4, 2,}, true, {8, 6, 2, 2}),
+        ArrayCompatibilityCheck({8, 6, 2, 4}, {6, 4, 2,}, true, {8, 6, 2, 6, 2}),
+        ArrayCompatibilityCheck({8, 6, 2, 4}, {8, 6, 4, 2,}, true, {8, 6, 2, 8, 6, 2}),
+        ArrayCompatibilityCheck({8, 6, 2, 4}, {10, 8, 6, 4, 2,}, true, {8, 6, 2, 10, 8, 6, 2}),
+
+        ArrayCompatibilityCheck({10, 8, 6, 2, 4}, {2,}, false, {}),
+
+        ArrayCompatibilityCheck({10, 8, 6, 2, 4}, {4, 2,}, true, {10, 8, 6, 2, 2}),
+        ArrayCompatibilityCheck({10, 8, 6, 2, 4}, {6, 4, 2,}, true, {10, 8, 6, 2, 6, 2}),
+        ArrayCompatibilityCheck({10, 8, 6, 2, 4}, {8, 6, 4, 2,}, true, {10, 8, 6, 2, 8, 6, 2}),
+        ArrayCompatibilityCheck({10, 8, 6, 2, 4}, {10, 8, 6, 4, 2,}, true, {10, 8, 6, 2, 10, 8, 6, 2}),
+    };
+
+
+    for (auto& check : checks) {
+        if (check.worked_out) {
+            EXPECT_NO_THROW({
+                Array res = dot(
+                    Array(check.leftshape),
+                    Array(check.rightshape)
+                );
+                EXPECT_EQ(check.outshape, res.shape());
+            });
+        } else {
+            EXPECT_THROW(
+                (Array)dot(
+                    Array(check.leftshape),
+                    Array(check.rightshape)
+                ),
+                std::runtime_error
+            );
+        }
+    }
+
+}
+
+

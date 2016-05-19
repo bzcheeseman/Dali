@@ -4,7 +4,8 @@
 #include "dali/array/array.h"
 
 namespace op {
-    AssignableArray dot(Array a, Array b);
+    AssignableArray dot(const Array& a, const Array& b);
+    AssignableArray vector_dot(const Array& a, const Array& b);
 }
 
 #endif  // DALI_ARRAY_LAZY_DOT_H

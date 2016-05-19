@@ -164,21 +164,21 @@ namespace expr {
                                 const int *B, int ldb,
                                 int beta, int *C, int ldc) {
 
-            const int num_threads = mshadow::cuda::kBaseThreadNum;
-            const int thread_bits = mshadow::cuda::kBaseThreadBits;
+            // const int num_threads = mshadow::cuda::kBaseThreadNum;
+            // const int thread_bits = mshadow::cuda::kBaseThreadBits;
 
-            dim3 tiles(dest.size(0));
-            // block size is a matrix column
-            dim3 within_tile(num_threads);
-            cudaStream_t stream = mshadow::Stream<mshadow::gpu>::GetStream(*stream);
+            // dim3 tiles(dest.size(0));
+            // // block size is a matrix column
+            // dim3 within_tile(num_threads);
+            // cudaStream_t stream = mshadow::Stream<mshadow::gpu>::GetStream(*stream);
 
-            igemmNT<thread_bits, int>
-                    <<<tiles, within_tile, 0, stream>>>
-                    (
-                        A, lda, B, ldb, C, ldc, num_threads, alpha, beta
-                    );
+            // igemmNT<thread_bits, int>
+            //         <<<tiles, within_tile, 0, stream>>>
+            //         (
+            //             A, lda, B, ldb, C, ldc, num_threads, alpha, beta
+            //         );
 
-            cudaDeviceSynchronize();
+            // cudaDeviceSynchronize();
         }
     };
 } // namespace expr

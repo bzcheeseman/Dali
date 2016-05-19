@@ -130,7 +130,7 @@ void check_tensordot_reduce_axes(
 std::vector<int> get_tensordot_dimshuffle_axes(
         const int& ndim,
         const std::vector<int>& reduce_axes,
-        const bool& batched) {
+        const bool& batched) {
     std::vector<int> other_axes;
     for (int x = 0; x < ndim; x++) {
         // when batched, 0 is always kept
@@ -202,8 +202,8 @@ namespace op {
         }
         int batch_axes = batched ? 1 : 0;
 
-        std::vector<int> a_shape = {1, 1};
-        std::vector<int> b_shape = {1, 1};
+        std::vector<int> a_shape = {1, 1};
+        std::vector<int> b_shape = {1, 1};
 
         const auto& a_old_shape = a.shape();
         const auto& b_old_shape = b.shape();
@@ -225,7 +225,6 @@ namespace op {
             a_shape.insert(a_shape.begin(), a_old_shape[0]);
             b_shape.insert(b_shape.begin(), b_old_shape[0]);
         }
-
         auto a_reshaped = a.reshape(a_shape);
         auto b_reshaped = b.reshape(b_shape);
 

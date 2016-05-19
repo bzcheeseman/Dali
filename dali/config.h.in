@@ -4,6 +4,7 @@
 #define DALI_CONFIG_H
 
 #cmakedefine DALI_USE_CUDA               ${DALI_USE_CUDA}
+#cmakedefine DALI_USE_CUDNN              ${DALI_USE_CUDNN}
 #cmakedefine DALI_USE_VISUALIZER         ${DALI_USE_VISUALIZER}
 #cmakedefine DALI_DATA_DIR               ${DALI_DATA_DIR}
 #cmakedefine DALI_MAX_STRIDED_DIMENSION  ${DALI_MAX_STRIDED_DIMENSION}

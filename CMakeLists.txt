@@ -141,6 +141,12 @@ function(cuda_compile_off)
     #SET(CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER} PARENT_SCOPE)
 endfunction()
 
+if (WITH_CUDA)
+    include("${CMAKE_MODULE_PATH}/DetectCudnn.cmake")
+    detect_cudnn()
+    set(DALI_USE_CUDNN CUDNN_FOUND)
+endif()
+
 ################################################################################
 ##                               DALI SETUP                                   ##
 ##                                   ---                                      ##
@@ -251,6 +257,10 @@ include_directories(${GENERATED_FILES_DIR})
 
 ## CUDA TARGET
 if (WITH_CUDA)
+    if (CUDNN_FOUND)
+        include_directories(${CUDNN_INCLUDE})
+    endif(CUDNN_FOUND)
+
     cuda_include_directories(${GENERATED_FILES_DIR})
     cuda_compile_on()
     cuda_include_directories(${DaliHeaders})
@@ -269,6 +279,10 @@ if (WITH_CUDA)
         message(STATUS " * ${DaliHeader}")
     endforeach()
     target_link_libraries(dali_cuda ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_CUBLAS_LIBRARIES})
+    if (CUDNN_FOUND)
+        target_link_libraries(dali_cuda ${CUDNN_LIBRARY})
+    endif (CUDNN_FOUND)
+
     if (OpenBLAS_FOUND)
         target_link_libraries(dali_cuda ${OpenBLAS_LIB})
     endif(OpenBLAS_FOUND)

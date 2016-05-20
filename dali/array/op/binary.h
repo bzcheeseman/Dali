@@ -8,5 +8,6 @@ namespace op {
     AssignableArray sub(const Array& left, const Array& right);
     AssignableArray eltmul(const Array& left, const Array& right);
     AssignableArray eltdiv(const Array& left, const Array& right);
+    AssignableArray pow(const Array& left, const Array& right);
 }  // namespace op
 #endif

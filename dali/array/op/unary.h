@@ -11,6 +11,9 @@ namespace op {
     AssignableArray log_or_zero(const Array& x);
     AssignableArray abs(const Array& x);
     AssignableArray sign(const Array& x);
+    AssignableArray square(const Array& x);
+    AssignableArray sqrt(const Array& x);
+    AssignableArray rsqrt(const Array& x);
     AssignableArray scalar_add(const Array& x, const double& other);
     AssignableArray scalar_add(const Array& x, const float& other);
     AssignableArray scalar_add(const Array& x, const int& other);
@@ -23,6 +26,9 @@ namespace op {
     AssignableArray scalar_div(const Array& x, const double& other);
     AssignableArray scalar_div(const Array& x, const float& other);
     AssignableArray scalar_div(const Array& x, const int& other);
+    AssignableArray scalar_pow(const Array& x, const double& other);
+    AssignableArray scalar_pow(const Array& x, const float& other);
+    AssignableArray scalar_pow(const Array& x, const int& other);
 } // namespace op
 
 #endif

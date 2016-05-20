@@ -15,7 +15,7 @@ using std::vector;
 void test_binary_function(std::function<Tensor(std::vector<Tensor>&)> functor) {
     EXPERIMENT_REPEAT {
         auto A = Tensor({10, 20}, initializer::uniform(-1.0, 1.0), DTYPE_DOUBLE);
-        auto B = Tensor({10, 20},  initializer::uniform(-1.0, 1.0), DTYPE_DOUBLE);
+        auto B = Tensor({10, 20}, initializer::uniform(-1.0, 1.0), DTYPE_DOUBLE);
 
         ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-5, DEFAULT_GRAD_EPS, true));
     }

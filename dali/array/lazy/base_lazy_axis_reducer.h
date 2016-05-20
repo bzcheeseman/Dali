@@ -67,9 +67,9 @@ struct BaseLazyAxisReducer : public BaseClass<Class, ExprT, int, bool> {
             ) {
         // Our reduction operates on an expression with the following shape:
         // (e.g. say we are reducing a matrix of size {3,4} over the last axis
-        //  thus we expect our output to have shape {3,})
+        // thus we expect our output to have shape {3,})
         std::vector<int> new_expr_shape(output_shape);
-        // in order to preprare our input expression to produce the right
+        // in order to prepare our input expression to produce the right
         // reduction, we re-insert the dimension that was reduced
         // (e.g. reduce of {3,4} with add back a 4 at the end so: {3,} -> {3,4})
         int input_expr_reduced_axis_size = std::abs(expr.bshape()[reduce_axis]);

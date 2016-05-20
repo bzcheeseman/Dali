@@ -33,6 +33,18 @@ namespace op {
         return lazy::sign(x);
     }
 
+    AssignableArray square(const Array& x) {
+        return lazy::square(x);
+    }
+
+    AssignableArray sqrt(const Array& x) {
+        return lazy::sqrt(x);
+    }
+
+    AssignableArray rsqrt(const Array& x) {
+        return lazy::rsqrt(x);
+    }
+
     AssignableArray scalar_add(const Array& x, const double& other) {
         return lazy::add(x, other);
     }
@@ -68,5 +80,15 @@ namespace op {
     }
     AssignableArray scalar_div(const Array& x, const int& other) {
         return lazy::eltdiv(x, other);
+    }
+
+    AssignableArray pow(const Array& x, const double& other) {
+        return lazy::pow(x, other);
+    }
+    AssignableArray pow(const Array& x, const float& other) {
+        return lazy::pow(x, other);
+    }
+    AssignableArray pow(const Array& x, const int& other) {
+        return lazy::pow(x, other);
     }
 };

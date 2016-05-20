@@ -21,6 +21,20 @@ namespace lazy {
 
     template <typename T, typename T2>
     LazyBinary<functor::power, T, T2> pow(T a, T2 b);
+
+    template <typename T, typename T2>
+    LazyBinary<functor::max_scalar, T, T2> max(T a, T2 b);
+
+    template <typename T, typename T2>
+    LazyBinary<functor::min_scalar, T, T2> min(T a, T2 b);
+
+    template <typename T, typename T2>
+    LazyBinary<functor::binary_cross_entropy, T, T2> binary_cross_entropy(T a, T2 b);
+
+    template <typename T, typename T2>
+    LazyBinary<functor::binary_cross_entropy_grad, T, T2> binary_cross_entropy_grad(T a, T2 b);
+
+
 }  // namespace lazy
 
 #include "dali/array/lazy/binary-impl.h"

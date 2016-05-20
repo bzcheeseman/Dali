@@ -37,6 +37,13 @@ namespace functor {
     };
 
     template<typename R>
+    struct cube {
+        MSHADOW_XINLINE static R Map(const R& a) {
+            return a * a * a;
+        }
+    };
+
+    template<typename R>
     struct add {
         MSHADOW_XINLINE static R Map(const R& a, const R& b) {
             return a + b;
@@ -81,6 +88,19 @@ namespace functor {
     MSHADOW_XINLINE
     int sqrt_f<int>::Map(const int& a) {
         return (int)sqrt((float)a);
+    }
+
+    template<typename R>
+    struct rsqrt {
+        MSHADOW_XINLINE static R Map(const R& a) {
+            return (1.0 / sqrt(a));
+        }
+    };
+
+    template<>
+    MSHADOW_XINLINE
+    int rsqrt<int>::Map(const int& a) {
+        return (int)(1.0 / sqrt((float)a));
     }
 
 
@@ -206,6 +226,13 @@ namespace functor {
     struct max_scalar {
         MSHADOW_XINLINE static R Map(const R& x, const R& y) {
             return x > y ? x : y;
+        }
+    };
+
+    template<typename R>
+    struct min_scalar {
+        MSHADOW_XINLINE static R Map(const R& x, const R& y) {
+            return x < y ? x : y;
         }
     };
 

@@ -26,30 +26,20 @@ struct LazyBinary : public LazyFunction<LazyBinary<Functor,LeftT,RightT>, LeftT,
     }
 };
 
-
 namespace lazy {
-    template <typename T, typename T2>
-    LazyBinary<functor::add, T, T2> add(T a, T2 b) {
-        return LazyBinary<functor::add, T, T2>(a, b);
-    }
+    #define DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(FUNCNAME, KERNELNAME)\
+        template <typename T, typename T2>\
+        LazyBinary<KERNELNAME, T, T2> FUNCNAME(T a, T2 b) {\
+            return LazyBinary<KERNELNAME, T, T2>(a, b);\
+        }\
 
-    template <typename T, typename T2>
-    LazyBinary<functor::sub, T, T2> sub(T a, T2 b) {
-        return LazyBinary<functor::sub, T, T2>(a, b);
-    }
-
-    template <typename T, typename T2>
-    LazyBinary<functor::eltmul, T, T2> eltmul(T a, T2 b) {
-        return LazyBinary<functor::eltmul, T, T2>(a, b);
-    }
-
-    template <typename T, typename T2>
-    LazyBinary<functor::eltdiv, T, T2> eltdiv(T a, T2 b) {
-        return LazyBinary<functor::eltdiv, T, T2>(a, b);
-    }
-
-    template <typename T, typename T2>
-    LazyBinary<functor::power, T, T2> pow(T a, T2 b) {
-        return LazyBinary<functor::power, T, T2>(a, b);
-    }
+    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(add, functor::add);
+    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(sub, functor::sub);
+    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(eltmul, functor::eltmul);
+    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(eltdiv, functor::eltdiv);
+    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(pow, functor::power);
+    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(binary_cross_entropy, functor::binary_cross_entropy);
+    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(binary_cross_entropy_grad, functor::binary_cross_entropy_grad);
+    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(max, functor::max_scalar);
+    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(min, functor::min_scalar);
 }  // namespace lazy

@@ -66,4 +66,20 @@ namespace lazy {
     LazyUnary<functor::square,ExprT> square(const Exp<ExprT>& expr) {
         return LazyUnary<functor::square,ExprT>(expr.self());
     }
+
+    template<typename ExprT>
+    LazyUnary<functor::cube,ExprT> cube(const Exp<ExprT>& expr) {
+        return LazyUnary<functor::cube,ExprT>(expr.self());
+    }
+
+    template<typename ExprT>
+    LazyUnary<functor::sqrt_f,ExprT> sqrt(const Exp<ExprT>& expr) {
+        return LazyUnary<functor::sqrt_f,ExprT>(expr.self());
+    }
+
+    template<typename ExprT>
+    LazyUnary<functor::rsqrt,ExprT> rsqrt(const Exp<ExprT>& expr) {
+        return LazyUnary<functor::rsqrt,ExprT>(expr.self());
+    }
+
 }  // namespace lazy

@@ -18,4 +18,8 @@ namespace op {
     AssignableArray eltdiv(const Array& a, const Array& b) {
         return lazy::eltdiv(a, b);
     }
+
+    AssignableArray pow(const Array& a, const Array& b) {
+        return lazy::pow(a, b);
+    }
 }  // namespace op

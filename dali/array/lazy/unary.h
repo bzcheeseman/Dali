@@ -33,6 +33,16 @@ namespace lazy {
 
     template<typename ExprT>
     LazyUnary<functor::square,ExprT> square(const Exp<ExprT>& expr);
+
+    template<typename ExprT>
+    LazyUnary<functor::cube,ExprT> cube(const Exp<ExprT>& expr);
+
+    template<typename ExprT>
+    LazyUnary<functor::sqrt_f,ExprT> sqrt(const Exp<ExprT>& expr);
+
+    // Reciprocal square root f(x) = x ^ -0.5
+    template<typename ExprT>
+    LazyUnary<functor::rsqrt,ExprT> rsqrt(const Exp<ExprT>& expr);
 }  // namespace lazy
 
 #include "dali/array/lazy/unary-impl.h"

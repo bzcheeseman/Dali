@@ -54,7 +54,7 @@ TEST(TensorBinaryTests, pow) {
         auto A = Tensor({10, 20}, initializer::uniform(0.5, 1.0), DTYPE_DOUBLE);
         auto B = Tensor({10, 20},  initializer::uniform(0.5, 1.0), DTYPE_DOUBLE);
 
-        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-5, DEFAULT_GRAD_EPS, true));
+        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-4, DEFAULT_GRAD_EPS, true));
     }
 }
 

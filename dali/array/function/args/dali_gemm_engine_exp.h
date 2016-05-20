@@ -14,6 +14,7 @@ namespace mshadow {
         template<typename Device>
         mshadow::Stream<Device>* get_default_gemm_stream() {
             assert(false);
+            return NULL;
         }
 
 #ifdef DALI_USE_CUDA
@@ -55,33 +56,6 @@ namespace mshadow {
           }
         };
 
-        // new DotExpr that removes transpose templating
-        // in lieu of bool templating
-        template<typename DType, typename Device>
-        struct DaliGemvExp: public Exp<DaliGemvExp<DType, Device>,
-                                  DType, type::kComplex> {
-
-          /*! \brief left operand */
-          const Tensor<Device, 1, DType> &lhs_;
-          /*! \brief right operand */
-          const Tensor<Device, 2, DType> &rhs_;
-          /*! \brief scale over result */
-          DType scale_;
-
-          bool rtransposed;
-
-          /*! \brief constructor */
-          explicit DaliGemvExp(const Tensor<Device, 1, DType> &lhs,
-                               const Tensor<Device, 2, DType> &rhs,
-                               bool rtransposed_,
-                               DType scale)
-                : lhs_(lhs),
-                  rhs_(rhs),
-                  scale_(scale),
-                  rtransposed(rtransposed_) {
-          }
-        };
-
         template<typename DType, typename Device>
         inline DaliGemmExp<DType, Device> dali_gemm(
             const Tensor<Device, 2, DType> &lhs,
@@ -90,15 +64,6 @@ namespace mshadow {
             bool rtransposed,
             DType scale) {
           return DaliGemmExp<DType, Device>(lhs, rhs, ltransposed, rtransposed, scale);
-        }
-
-        template<typename DType, typename Device>
-        inline DaliGemvExp<DType, Device> dali_gemv(
-            const Tensor<Device, 1, DType> &lhs,
-            const Tensor<Device, 2, DType> &rhs,
-            bool rtransposed,
-            DType scale) {
-          return DaliGemvExp<DType, Device>(lhs, rhs, rtransposed, scale);
         }
 
 
@@ -131,34 +96,6 @@ namespace mshadow {
                  DType(SV::BetaBLAS()),
                  dst.dptr_, dst.stride_);
           }
-
-          inline static void Eval(Tensor<xpu, 1, DType> *p_dst,
-                                  const Tensor<xpu, 1, DType> &lhs,
-                                  const Tensor<xpu, 2, DType> &rhs,
-                                  bool transpose_right,
-                                  DType scale) {
-            Tensor<xpu, 1, DType> &dst = *p_dst;
-            dst.set_stream(get_default_gemm_stream<xpu>());
-            // set kernel stream
-            // if there is no stream, crush
-            BLASEngine<xpu, DType>::SetStream(dst.stream_);
-
-            ELOG(rhs.stride_);
-            ELOG(lhs.stride_);
-            ELOG(dst.stride_);
-
-            // use column major argument to compatible with most BLAS
-            BLASEngine<xpu, DType>::gemv
-                (dst.stream_,
-                 transpose_right,
-                 rhs.size(1),
-                 rhs.size(0),
-                 DType(scale * SV::AlphaBLAS()),
-                 rhs.dptr_, rhs.stride_,
-                 lhs.dptr_, lhs.stride_,
-                 DType(SV::BetaBLAS()),
-                 dst.dptr_, dst.stride_);
-          }
         };
 
         // expression system kicks off eval here upon assignment
@@ -174,24 +111,6 @@ namespace mshadow {
                 exp.lhs_,
                 exp.rhs_,
                 exp.ltransposed,
-                exp.rtransposed,
-                exp.scale_
-            );
-          }
-        };
-
-        // expression system kicks off eval here upon assignment
-        template<typename SV, typename Device, typename DType>
-        struct ExpComplexEngine<SV,
-                                Tensor<Device, 1, DType>,
-                                DaliGemvExp<DType, Device>,
-                                DType> {
-          inline static void Eval(Tensor<Device, 1, DType> *dst,
-                                  const DaliGemvExp<DType, Device> &exp) {
-            GemmEngine<SV, Device, DType>::Eval(
-                dst,
-                exp.lhs_,
-                exp.rhs_,
                 exp.rtransposed,
                 exp.scale_
             );

@@ -6,7 +6,7 @@
 // cuda code from (with modifications/clarifications)
 // https://github.com/ctuning/ctuning-programs/blob/master/program/polybench-cuda-gemm/gemm.cu
 
-#include "dali/array/function/args/reference_gemm.h"
+#include "dali/array/mshadow_extension/reference_gemm.h"
 
 #ifdef DALI_USE_CUDA
 

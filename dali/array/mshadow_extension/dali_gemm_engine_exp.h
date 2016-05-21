@@ -7,7 +7,7 @@
 
 #include <mshadow/tensor.h>
 #include <mshadow/dot_engine-inl.h>
-#include "dali/array/function/args/igemm.h"
+#include "dali/array/mshadow_extension/igemm.h"
 
 namespace mshadow {
     namespace expr {

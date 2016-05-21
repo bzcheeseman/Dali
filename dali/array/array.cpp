@@ -408,7 +408,7 @@ Array Array::dimshuffle(const std::vector<int>& pattern) const {
     std::vector<int> newstrides(dimensionality);
     std::vector<int> newshape(dimensionality);
 
-    auto current_shape = shape();
+    auto current_shape   = shape();
     auto current_strides = normalized_strides();
 
     for (int i = 0; i < dimensionality; i++) {

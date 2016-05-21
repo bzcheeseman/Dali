@@ -4,12 +4,12 @@
 
 #include "dali/array/function/function.h"
 #include "dali/array/shape.h"
-#include "dali/array/function/args/dali_gemm_engine_exp.h"
+#include "dali/array/mshadow_extension/dali_gemm_engine_exp.h"
 #include "dali/array/op.h"
 
 
 template<OPERATOR_T operator_t, int devT, typename T>
-struct LazyGemmRunner {
+struct MatrixMultiplyHelper {
     template <
         OPERATOR_T var_operator_t = operator_t,
         typename var_T = T,
@@ -59,7 +59,7 @@ struct LazyGemmRunner {
 };
 
 
-struct LazyReshapedGemm : public Function<LazyReshapedGemm, Array, Array, Array, std::vector<int>> {
+struct ReshapedMatrixMultiplyFunction : public Function<ReshapedMatrixMultiplyFunction, Array, Array, Array, std::vector<int>> {
     static std::vector<int> deduce_output_bshape(
             const Array& a,
             const Array& b,
@@ -67,20 +67,22 @@ struct LazyReshapedGemm : public Function<LazyReshapedGemm, Array, Array, Array,
         return output_shape;
     }
 
-    static void preprocess_out(const OPERATOR_T& operator_t, Array& out, const Array& a, const Array& b, const std::vector<int>& output_shape) {
+    template< int devT, typename T>
+    static TypedArray<devT,T> preprocess_out(const TypedArray<devT, T>& out,
+                                const std::vector<int>& a_shape,
+                                const std::vector<int>& b_shape) {
         // make output look like 2D output
-        ASSERT2(a.ndim() == 2 && b.ndim() == 2,
-                utils::MS() << "Gemm inputs must be matrices, got a.ndim()=" << a.ndim() << " and b.ndim()=" << b.ndim() << " tensors.");
-        ASSERT2(a.shape()[1] == b.shape()[0],
-            utils::MS() << "shapes " << a.shape() << " and " << b.shape() << " not aligned: "
-                        << a.shape()[1] << " (dim 1) != " << b.shape()[0] << " (dim 0)");
-        out = out.copyless_reshape(
-            {a.shape()[0], b.shape()[1]}
+        ASSERT2(a_shape.size() == 2 && b_shape.size() == 2,
+                utils::MS() << "MatrixMultiply inputs must be matrices, got a.ndim()="
+                            << a_shape.size() << " and b.ndim()="
+                            << b_shape.size() << " tensors.");
+        ASSERT2(a_shape[1] == b_shape[0],
+            utils::MS() << "shapes " << a_shape << " and " << b_shape << " not aligned: "
+                        << a_shape[1] << " (dim 1) != " << b_shape[0] << " (dim 0)");
+        Array new_out_array = out.array.copyless_reshape(
+            {a_shape[0], b_shape[1]}
         );
-    }
-    static void postprocess_out(const OPERATOR_T& operator_t, Array& out, const Array& a, const Array& b, const std::vector<int>& output_shape) {
-        // return to tensordot output shape
-        out = out.copyless_reshape(output_shape);
+        return TypedArray<devT,T>(new_out_array, out.device, new_out_array.shape());
     }
 
     template<OPERATOR_T operator_t, int devT, typename T>
@@ -89,7 +91,8 @@ struct LazyReshapedGemm : public Function<LazyReshapedGemm, Array, Array, Array,
             TypedArray<devT, T> a,
             TypedArray<devT, T> b,
             const std::vector<int>& output_shape) {
-        LazyGemmRunner<operator_t,devT,T>::run(out, a, b);
+        auto new_out = preprocess_out(out, a.array.shape(), b.array.shape());
+        MatrixMultiplyHelper<operator_t,devT,T>::run(new_out, a, b);
     }
 };
 
@@ -99,6 +102,7 @@ void check_tensordot_reduce_axes(
         char name,
         const std::vector<int>& reduce_axes,
         const bool& batched) {
+    // Do not reduce over more dimensions than operand.ndim().
     ASSERT2(reduce_axes.size() <= operand.ndim(),
         utils::MS() << "length of argument " << name << "_reduce_axes "
                     << "should be less than the dimensions of " << name
@@ -106,6 +110,7 @@ void check_tensordot_reduce_axes(
                     << ", " << name << "_reduce_axes.size()="
                     << reduce_axes.size() << ")."
     );
+    // all reduction axes must be less than operand.ndim()
     auto max_reduce_dim = std::max_element(
         reduce_axes.begin(), reduce_axes.end()
     );
@@ -117,17 +122,19 @@ void check_tensordot_reduce_axes(
                     << ", and found max(" << name << "_reduce_axes)="
                     << *max_reduce_dim << ")."
     );
-    ASSERT2(
-        (!batched ||
-        std::find(reduce_axes.begin(), reduce_axes.end(), 0) != reduce_axes.end()
-        ),
-        utils::MS() << "axes to sum over must not contain the batch axis "
-                    << "(" << name << "_reduce_axes="
-                    << reduce_axes << ")."
-    );
+    if (batched) {
+        auto find_iter = std::find(reduce_axes.begin(), reduce_axes.end(), 0);
+        bool reducing_over_dim0 = find_iter != reduce_axes.end();
+        ASSERT2(reducing_over_dim0,
+            utils::MS() << "axes to sum over must not contain the batch axis "
+                        << "(" << name << "_reduce_axes="
+                        << reduce_axes << ")."
+        );
+    }
 }
 
-std::vector<int> get_tensordot_dimshuffle_axes(
+// Returns all the axes that are not being reduced.
+std::vector<int> tensordot_nonreduced_axes(
         const int& ndim,
         const std::vector<int>& reduce_axes,
         const bool& batched) {
@@ -156,16 +163,10 @@ std::vector<int> get_tensordot_dimshuffle_axes(
 
 
 namespace op {
-    enum DOT_TYPE_T {
-        DOT_TYPE_2D_T = 0,
-        DOT_TYPE_BATCHED_T = 1
-    };
-
     AssignableArray _tensordot_as_dot(
             const Array& a,
             const Array& b,
             const int& axis,
-            DOT_TYPE_T dot_type,
             bool batched) {
         // This code follows the logic from theano's tensordot as dot
         // [source https://github.com/Theano/Theano/blob/master/theano/tensor/basic.py#L5628]
@@ -243,14 +244,20 @@ namespace op {
             b_old_shape.end()
         );
 
-        return LazyReshapedGemm::run(
+        return ReshapedMatrixMultiplyFunction::run(
             a_reshaped, b_reshaped, output_shape
         );
     }
 
+    AssignableArray matrix_matrix_dot(
+            const Array& a,
+            const Array& b) {
+        return ReshapedMatrixMultiplyFunction::run(a, b, {a.shape()[0], b.shape()[1]});
+    }
+
     AssignableArray matrix_vector_dot(
-        const Array& a,
-        const Array& b) {
+            const Array& a,
+            const Array& b) {
         ASSERT2((a.ndim() == 1 && b.ndim() == 2) || (a.ndim() == 2 && b.ndim() == 1),
                 utils::MS() << "Gemv inputs must be a vector and a matrix, but got a.ndim()="
                             << a.ndim() << " and b.ndim()=" << b.ndim() << " tensors.");
@@ -261,7 +268,7 @@ namespace op {
                 utils::MS() << "shapes " << a.shape() << " and " << b.shape() << " not aligned: "
                             << a.shape()[0] << " (dim 0) != " << b.shape()[0] << " (dim 0)");
             outshape[0] = b.bshape()[1];
-            return LazyReshapedGemm::run(
+            return ReshapedMatrixMultiplyFunction::run(
                 a.copyless_reshape({1, a.number_of_elements()}),
                 b,
                 outshape
@@ -272,7 +279,7 @@ namespace op {
                 utils::MS() << "shapes " << a.shape() << " and " << b.shape() << " not aligned: "
                             << a.shape()[1] << " (dim 1) != " << b.shape()[0] << " (dim 0)");
             outshape[0] = a.bshape()[0];
-            return LazyReshapedGemm::run(
+            return ReshapedMatrixMultiplyFunction::run(
                 a,
                 b.copyless_reshape({b.number_of_elements(), 1}),
                 outshape
@@ -289,7 +296,7 @@ namespace op {
         ASSERT2(a.bshape()[0] == b.bshape()[0] || (a.bshape()[0] == -1) || (b.bshape()[0] == -1),
             utils::MS() << "shapes " << a.shape() << " and " << b.shape() << " not aligned: "
                         << a.shape()[0] << " (dim 0) != " << b.shape()[0] << " (dim 0)");
-        return LazyReshapedGemm::run(
+        return ReshapedMatrixMultiplyFunction::run(
             a.copyless_reshape({1, a.number_of_elements()}),
             b.copyless_reshape({b.number_of_elements(), 1}),
             {}
@@ -301,7 +308,6 @@ namespace op {
             const Array& b,
             const std::vector<int>& a_reduce_axes,
             const std::vector<int>& b_reduce_axes,
-            DOT_TYPE_T dot_type,
             bool batched) {
 
         ASSERT2(a_reduce_axes.size() == b_reduce_axes.size(),
@@ -313,33 +319,35 @@ namespace op {
         check_tensordot_reduce_axes(a, 'a', a_reduce_axes, batched);
         check_tensordot_reduce_axes(b, 'b', b_reduce_axes, batched);
 
-        auto a_other_axes = get_tensordot_dimshuffle_axes(
+        auto a_new_axes = tensordot_nonreduced_axes(
             a.ndim(), a_reduce_axes, batched
         );
-        auto b_other_axes = get_tensordot_dimshuffle_axes(
+        auto b_new_axes = tensordot_nonreduced_axes(
             b.ndim(), b_reduce_axes, batched
         );
 
-        a_other_axes.insert(a_other_axes.end(), a_reduce_axes.begin(), a_reduce_axes.end());
-        b_other_axes.insert(b_other_axes.begin(), b_reduce_axes.begin(), b_reduce_axes.end());
+        // for A: add reduction axis at the end of shape
+        a_new_axes.insert(a_new_axes.end(), a_reduce_axes.begin(), a_reduce_axes.end());
+        // for B: add reduction axis at the beginning of shape
+        b_new_axes.insert(b_new_axes.begin(), b_reduce_axes.begin(), b_reduce_axes.end());
 
         if (batched) {
-            a_other_axes.insert(a_other_axes.begin(), 0);
-            b_other_axes.insert(b_other_axes.begin(), 0);
+            a_new_axes.insert(a_new_axes.begin(), 0);
+            b_new_axes.insert(b_new_axes.begin(), 0);
         }
 
         // now call dimshuffle
-        auto a_shuffled = a.dimshuffle(a_other_axes);
-        auto b_shuffled = b.dimshuffle(b_other_axes);
+        auto a_shuffled = a.dimshuffle(a_new_axes);
+        auto b_shuffled = b.dimshuffle(b_new_axes);
 
         return _tensordot_as_dot(
             a_shuffled,
             b_shuffled,
             a_reduce_axes.size(),
-            dot_type,
             batched
         );
     }
+
 
     // TODO (szymon): allow for scaling with Binary expression + template redundancy trick!
     AssignableArray dot(const Array& a, const Array& b) {
@@ -356,15 +364,15 @@ namespace op {
             return _tensordot_as_dot(
                 a,
                 b,
-                {a_ndim - 1},
-                {std::max(0, b_ndim - 2)},
-                DOT_TYPE_2D_T,
+                {a_ndim - 1},              // reduce the last dimension
+                {std::max(0, b_ndim - 2)}, // reduce second to last dimension
+                                           // if exists, otherwise reduce last.
                 false
             );
         } else if (a_ndim == 1 && b_ndim == 1) {
             return vector_dot(a, b);
         } else if (a_ndim == 2 && b_ndim == 2) {
-            return LazyReshapedGemm::run(a, b, {a.shape()[0], b.shape()[1]});
+            return matrix_matrix_dot(a, b);
         } else {
             return matrix_vector_dot(a, b);
         }

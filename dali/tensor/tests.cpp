@@ -746,19 +746,6 @@ TEST_F(TensorTests, mean) {
 //     }
 // }
 //
-// TEST_F(MatrixTests, dot) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return Xs[1].dot(Xs[0]);
-//     };
-//     int num_examples = 5;
-//     int hidden_size = 10;
-//     int input_size = 3;
-//     EXPERIMENT_REPEAT {
-//         auto X = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
-//         auto W = Mat<R>(hidden_size, input_size, weights<R>::uniform(2.0));
-//         ASSERT_TRUE(gradient_same(functor, {X, W}, 1e-4));
-//     }
-// }
 //
 // TEST_F(MatrixTests, matrix_dot_plus_bias) {
 //     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {

@@ -7,7 +7,7 @@
 
 namespace tensor_ops {
     Tensor add(Tensor a, Tensor b) {
-        auto out = Tensor(a.w + b.w);
+        Tensor out(a.w + b.w);
 
         if (graph::backprop_enabled())
             graph::emplace_back([a, b, out]() mutable {
@@ -18,7 +18,7 @@ namespace tensor_ops {
     }
 
     Tensor sub(Tensor a, Tensor b) {
-        auto out = Tensor(a.w - b.w);
+        Tensor out(a.w - b.w);
 
         if (graph::backprop_enabled())
             graph::emplace_back([a, b, out]() mutable {
@@ -29,7 +29,7 @@ namespace tensor_ops {
     }
 
     Tensor eltmul(Tensor a, Tensor b) {
-        auto out = Tensor(a.w * b.w);
+        Tensor out(a.w * b.w);
 
         if (graph::backprop_enabled())
             graph::emplace_back([a, b, out]() mutable {
@@ -39,7 +39,7 @@ namespace tensor_ops {
         return out;
     }
     Tensor eltdiv(Tensor a, Tensor b) {
-        auto out = Tensor(a.w / b.w);
+        Tensor out(a.w / b.w);
 
         if (graph::backprop_enabled())
             graph::emplace_back([a, b, out]() mutable {
@@ -49,15 +49,26 @@ namespace tensor_ops {
         return out;
     }
 
-    Tensor pow(Tensor a, Tensor e) {
-        auto out = Tensor(lazy::pow(a.w, e.w));
+    Tensor pow(Tensor a, Tensor exponent) {
+        Tensor out(lazy::pow(a.w, exponent.w));
 
         if (graph::backprop_enabled())
-            graph::emplace_back([a, e, out]() mutable {
+            graph::emplace_back([a, exponent, out]() mutable {
                 MAYBE_GRAD(a) <<=
-                        e.w * lazy::pow(a.w, e.w - 1.0) * out.dw;
-                MAYBE_GRAD(e) <<=
+                        exponent.w * lazy::pow(a.w, exponent.w - 1.0) * out.dw;
+                MAYBE_GRAD(exponent) <<=
                         lazy::log_or_zero(a.w) * out.w * out.dw;
+            });
+        return out;
+    }
+
+    Tensor dot(Tensor a, Tensor b) {
+        Tensor out(op::dot(a.w, b.w));
+
+        if (graph::backprop_enabled())
+            graph::emplace_back([a, b, out]() mutable {
+                MAYBE_GRAD(a) <<= op::dot(out.dw, b.w.transpose());
+                MAYBE_GRAD(b) <<= op::dot(a.w.transpose(), out.dw);
             });
         return out;
     }

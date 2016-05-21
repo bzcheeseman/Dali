@@ -68,6 +68,23 @@ TEST(TensorBinaryTests, add_recursive) {
     }
 }
 
+TEST(TensorBinaryTests, DISABLED_dot) {
+    auto functor = [](vector<Tensor> Xs)-> Tensor {
+        return tensor_ops::dot(Xs[0], Xs[1]);
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Tensor({3, 4}, initializer::uniform(-1.0, 1.0), DTYPE_DOUBLE);
+        auto B = Tensor({4, 3},  initializer::uniform(-1.0, 1.0), DTYPE_DOUBLE);
+        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-4, DEFAULT_GRAD_EPS, true));
+    }
+
+    EXPERIMENT_REPEAT {
+        auto A = Tensor({2, 3, 4}, initializer::uniform(-1.0, 1.0), DTYPE_DOUBLE);
+        auto B = Tensor({2, 4, 3},  initializer::uniform(-1.0, 1.0), DTYPE_DOUBLE);
+        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-4, DEFAULT_GRAD_EPS, true));
+    }
+}
+
 // TEST_F(MatrixTests, recursive_sum) {
 //     auto functor = [](vector<Mat<R>>& Xs)-> Mat<R> {
 //         auto doubled = Xs[0] + Xs[0];
@@ -78,7 +95,6 @@ TEST(TensorBinaryTests, add_recursive) {
 //         ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, DEFAULT_GRAD_EPS, true));
 //     }
 // }
-\
 // TEST_F(MatrixTests, inplace_sum) {
 //
 //     EXPERIMENT_REPEAT {

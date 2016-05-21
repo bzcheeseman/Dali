@@ -8,7 +8,8 @@ namespace tensor_ops {
     Tensor sub(Tensor, Tensor);
     Tensor eltmul(Tensor, Tensor);
     Tensor eltdiv(Tensor, Tensor);
-    Tensor pow(Tensor, Tensor);
+    Tensor pow(Tensor, Tensor exponent);
+    Tensor dot(Tensor, Tensor);
 }
 
 #endif

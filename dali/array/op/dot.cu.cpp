@@ -369,4 +369,16 @@ namespace op {
             return matrix_vector_dot(a, b);
         }
     }
+
+    AssignableArray tensordot(const Array& a, const Array& b, const int& axis) {
+        return _tensordot_as_dot(
+            a, b, axis, /*dot=*/DOT_TYPE_2D_T, /*batched=*/false
+        );
+    }
+
+    AssignableArray tensordot(const Array& a, const Array& b, const std::vector<int>& a_reduce_axes, const std::vector<int>& b_reduce_axes) {
+        return _tensordot_as_dot(
+            a, b, a_reduce_axes, b_reduce_axes, /*dot=*/DOT_TYPE_2D_T, /*batched=*/false
+        );
+    }
 }

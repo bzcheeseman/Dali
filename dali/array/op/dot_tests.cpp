@@ -18,6 +18,17 @@ void EXPECT_EQ_DTYPE(const T& reference, const Array& result, const DType& dtype
     }
 }
 
+template<typename T>
+void EXPECT_NEAR_DTYPE(const T& reference, const Array& result, float eps, const DType& dtype) {
+    if (dtype == DTYPE_FLOAT) {
+        EXPECT_NEAR((float)reference, (float)result, (float)eps);
+    } else if (dtype == DTYPE_INT32) {
+        EXPECT_NEAR((int)reference, (int)result, eps);
+    } else if (dtype == DTYPE_DOUBLE) {
+        EXPECT_NEAR((double)reference, (double)result, (double)eps);
+    }
+}
+
 void check_dot_result(DType dtype, bool contiguous) {
     Array a = Array::ones({2, 3}, dtype);
     Array b({4, 3}, dtype);
@@ -132,6 +143,38 @@ TEST(ArrayDotTests, vector_matrix_dot) {
     }
 }
 
+
+Array reference_tensordot(const Array& a, const Array&b) {
+    ASSERT2(a.ndim() == 3, "a must have ndim == 3");
+    ASSERT2(b.ndim() == 4, "b must have ndim == 4");
+    ASSERT2(a.dtype() == b.dtype(), "a.dtype() must equal b.dtype()");
+    std::vector<int> outshape;
+    for (int i = 0; i < a.ndim() - 2;i++) {
+        outshape.emplace_back(a.shape()[i]);
+    }
+
+    for (int i = 0; i < b.ndim() - 2;i++) {
+        outshape.emplace_back(b.shape()[i]);
+    }
+
+    auto cloop = Array::zeros(outshape, a.dtype());
+
+    for (int i = 0; i < outshape[0]; i++) {
+        for (int j = 0; j < outshape[1]; j++) {
+            for (int k = 0; k < outshape[2]; k++) {
+                // loop over summed indices -- these don't exist
+                // in the tensor product.
+                for (int l = 0; l < a.shape().at(a.ndim() - 2); l++) {
+                    for (int m = 0; m < a.shape().at(a.ndim() - 1); m++) {
+                        cloop[i][j][k] += a[i][l][m] * b[j][k][m][l];
+                    }
+                }
+            }
+        }
+    }
+    return cloop;
+}
+
 TEST(ArrayDotTests, tensordot_alignment_rules) {
     std::vector<ArrayCompatibilityCheck> checks = {
         ArrayCompatibilityCheck({2,}, {2,}, true, {}),
@@ -191,6 +234,25 @@ TEST(ArrayDotTests, tensordot_alignment_rules) {
         }
     }
 
+    Array a({2, 3, 4}, DTYPE_FLOAT);
+    Array b({5, 6, 4, 3}, DTYPE_FLOAT);
+    a = initializer::gaussian(0.0, 1.0);
+    b = initializer::gaussian(0.0, 1.0);
+
+    Array c = tensordot(a, b, {1, 2}, {3, 2});
+
+    Array expected_c = reference_tensordot(a, b);
+
+    EXPECT_EQ(expected_c.shape(), c.shape());
+
+    expected_c.print();
+
+    for (int i = 0; i < expected_c.number_of_elements(); i++) {
+        EXPECT_NEAR_DTYPE((float)expected_c(i), c(i), (float)1e-6, c.dtype());
+    }
+
 }
+
+
 
 

@@ -13,8 +13,7 @@
 
 #include "dali/array/array.h"
 #include "dali/array/function/lazy_evaluator.h"
-// #include "dali/tensor/TensorOps.h"
-// #include "dali/tensor/Tape.h"
+#include "dali/array/slice.h"
 #include "dali/utils.h"
 
 /**
@@ -104,6 +103,10 @@ class Tensor {
         int number_of_elements() const;
 
         bool is_stateless() const;
+        bool is_scalar() const;
+        bool is_vector() const;
+        bool is_matrix() const;
+        Tensor vectorlike_to_vector() const;
 
         void set_name(std::string& newname);
         void set_name(char* newname);
@@ -116,10 +119,6 @@ class Tensor {
         //
         // static Tensor npy_load(File*);
         // static Tensor npy_load(const std::string&);
-
-        static Tensor empty(const std::vector<int>& shape,
-                         DType dtype_=DTYPE_FLOAT,
-                         memory::Device preferred_device=memory::default_preferred_device);
 
         /* A copy constructor that perform shallow copies of a Tensor.
         Key usage is for Hogwild style training of parameters
@@ -178,8 +177,20 @@ class Tensor {
         // Tensor elt_inv() const;
         // Tensor slice(int rowstart, int rowend) const;
 
+        Tensor operator[](int idx) const;
+        SlicingInProgress<Tensor> operator[](const Slice& s) const;
+        SlicingInProgress<Tensor> operator[](const Broadcast& b) const;
+
         Tensor reshape(const std::vector<int>&) const;
         Tensor copyless_reshape(const std::vector<int>&) const;
+
+        Tensor pluck_axis(int axis, const Slice& slice) const;
+        Tensor pluck_axis(int axis, int idx) const;
+        Tensor squeeze(int axis) const;
+        Tensor expand_dims(int new_axis) const;
+        Tensor broadcast_axis(int axis) const;
+        Tensor insert_broadcast_axis(int new_axis) const;
+
         Tensor broadcast_scalar_to_ndim(int ndim) const;
         Tensor dimshuffle(const std::vector<int>& axes) const;
         Tensor transpose(const std::vector<int>& axes) const;
@@ -223,9 +234,6 @@ class Tensor {
         //
         // // Plucking rows and columns:
         // Tensor col(int col);
-        // Tensor operator[](int) const;
-        // Tensor operator[](Tensor<int>) const;
-        // Tensor operator()(int) const;
         // Tensor operator[](Indexing::Index) const;
         // Tensor operator()(Indexing::Index) const;
         // Tensor operator()(Indexing::Index, Indexing::Index) const;

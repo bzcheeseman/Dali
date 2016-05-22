@@ -42,8 +42,6 @@ struct ArrayState {
                DType _dtype);
 };
 
-class ArraySlice;
-
 class Array : public Exp<Array> {
   private:
     std::shared_ptr<ArrayState> state;
@@ -77,9 +75,12 @@ class Array : public Exp<Array> {
 
     // true if just creted with empty constructor or reset
     // (has no assossiated memory)
+    bool is_nan() const;
     bool is_stateless() const;
     bool is_scalar() const;
-    bool is_nan() const;
+    bool is_vector() const;
+    bool is_matrix() const;
+    Array vectorlike_to_vector() const;
     // true if Array's contents conver entirety of underlying
     // memory (as opposed to offset memory, strided memory etc.).
     bool spans_entire_memory() const;
@@ -114,8 +115,8 @@ class Array : public Exp<Array> {
 
     /* Creating a view into memory */
     Array operator[](int idx) const;
-    ArraySlice operator[](const Slice& s) const;
-    ArraySlice operator[](const Broadcast& b) const;
+    SlicingInProgress<Array> operator[](const Slice& s) const;
+    SlicingInProgress<Array> operator[](const Broadcast& b) const;
     Array operator()(index_t idx) const;
     Array transpose() const;
     Array transpose(const std::vector<int>& axes) const;
@@ -202,9 +203,6 @@ class Array : public Exp<Array> {
     DALI_DECLARE_SCALAR_INTERACTION_INPLACE(*=);
     DALI_DECLARE_SCALAR_INTERACTION_INPLACE(/=);
 
-
-
-
     /* Debugging */
     void print(std::basic_ostream<char>& stream = std::cout, int indent=0, bool add_newlines=true) const;
     void debug_memory(bool print_contents=true) const;
@@ -217,28 +215,6 @@ class Array : public Exp<Array> {
 
     /* shortcuts for array ops */
     AssignableArray dot(const Array& other) const;
-};
-
-struct ArraySlice {
-  private:
-    enum ArraySliceAction {
-        SLICE_RANGE,
-        SLICE_IDX,
-        BROADCAST
-    };
-
-    int consumed_dims;
-    std::vector<Slice>            slice;
-    std::vector<ArraySliceAction> action;
-    Array input;
-
-  public:
-    ArraySlice(const Array& input_);
-    ArraySlice(const ArraySlice& other);
-    ArraySlice operator[](const Slice& s);
-    ArraySlice operator[](const Broadcast& b);
-    ArraySlice operator[](int idx);
-    operator Array();
 };
 
 #endif

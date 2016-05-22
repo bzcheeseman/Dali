@@ -197,6 +197,10 @@ Array Array::ones_like(const Array& other) {
     }
 }
 
+bool Array::is_nan() const {
+    return op::is_nan(*this);
+}
+
 bool Array::is_stateless() const {
     return state == nullptr;
 }
@@ -205,8 +209,22 @@ bool Array::is_scalar() const {
     return ndim() == 0;
 }
 
-bool Array::is_nan() const {
-    return op::is_nan(*this);
+
+bool Array::is_vector() const {
+    return ndim() == 1;
+}
+
+bool Array::is_matrix() const {
+    return ndim() == 2;
+}
+
+Array Array::vectorlike_to_vector() const {
+    int noe = number_of_elements();
+    for (int dim: shape()) {
+        ASSERT2(dim == 1 || dim == noe,
+                utils::MS() << "Tensor with shape" << shape() << " cannot be interpreted as a vector");
+    }
+    return ravel();
 }
 
 bool Array::spans_entire_memory() const {
@@ -344,13 +362,13 @@ Array Array::operator[](int idx) const {
     return pluck_axis(0, idx);
 }
 
-ArraySlice Array::operator[](const Slice& s) const {
-    auto ret = ArraySlice(*this);
+SlicingInProgress<Array> Array::operator[](const Slice& s) const {
+    auto ret = SlicingInProgress<Array>(*this);
     return ret[s];
 }
 
-ArraySlice Array::operator[](const Broadcast& b) const {
-    auto ret = ArraySlice(*this);
+SlicingInProgress<Array> Array::operator[](const Broadcast& b) const {
+    auto ret = SlicingInProgress<Array>(*this);
     return ret[b];
 }
 
@@ -754,78 +772,4 @@ void Array::clear() {
 
 AssignableArray Array::dot(const Array& other) const {
     return op::dot(*this, other);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-//                        ARRAY SLICE                                         //
-////////////////////////////////////////////////////////////////////////////////
-
-ArraySlice::ArraySlice(const Array& input_) :
-        input(input_),
-        consumed_dims(0),
-        slice({}),
-        action({}) {
-}
-
-ArraySlice::ArraySlice(const ArraySlice& other) :
-        input(other.input),
-        slice(other.slice),
-        consumed_dims(other.consumed_dims),
-        action(other.action) {
-}
-
-
-ArraySlice ArraySlice::operator[](const Slice& s) {
-    ASSERT2(consumed_dims < input.ndim(),
-        "Slicing a scalar array is not allowed.");
-    ArraySlice res(*this);
-    res.slice.push_back(s);
-    res.action.push_back(SLICE_RANGE);
-    res.consumed_dims += 1;
-    return res;
-}
-
-ArraySlice ArraySlice::operator[](const Broadcast& b) {
-    ArraySlice res(*this);
-    res.action.push_back(BROADCAST);
-    // res.consumed_dims remains unchanged during broadcast.
-    return res;
-}
-
-ArraySlice ArraySlice::operator[](int idx) {
-    ASSERT2(consumed_dims < input.ndim(),
-        "Slicing a scalar array is not allowed.");
-    ArraySlice res(*this);
-    res.slice.push_back(Slice(idx, idx+1));
-    res.action.push_back(SLICE_IDX);
-    res.consumed_dims += 1;
-    return res;
-}
-
-ArraySlice::operator Array() {
-    Array out = input;
-    ASSERT2(consumed_dims <= input.ndim(),
-            "Email szymon.sidor@gmail.com.");
-    auto next_slice = slice.begin();
-    int output_depth = 0;
-    for (const auto& a: action) {
-        switch(a) {
-            case SLICE_RANGE:
-                out = out.pluck_axis(output_depth, *(next_slice++));
-                output_depth += 1;
-                break;
-            case SLICE_IDX:
-                out = out.pluck_axis(output_depth, *(next_slice++));
-                out = out.squeeze(output_depth);
-                break;
-            case BROADCAST:
-                out = out.insert_broadcast_axis(output_depth);
-                output_depth += 1;
-                break;
-            default:
-                ASSERT2(false, "Unsupported value for ArraySliceAction.");
-                break;
-        }
-    }
-    return out;
 }

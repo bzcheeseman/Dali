@@ -131,6 +131,23 @@ bool Tensor::is_stateless() const {
 }
 
 
+bool Tensor::is_scalar() const {
+    return w.is_scalar();
+}
+
+bool Tensor::is_vector() const {
+    return w.is_vector();
+}
+
+bool Tensor::is_matrix() const {
+    return w.is_matrix();
+}
+Tensor Tensor::vectorlike_to_vector() const {
+    Tensor(w.vectorlike_to_vector(),
+           dw.vectorlike_to_vector(),
+           constant);
+}
+
 
 void Tensor::set_name(string& _name) {
     if (name != nullptr) {
@@ -238,19 +255,6 @@ void Tensor::set_name(const char * _name) {
 // }
 
 
-
-
-
-Tensor Tensor::empty(const std::vector<int>& shape,
-                     DType dtype_,
-                     memory::Device preferred_device) {
-    // use an empty matrix and modify
-    // it so as to not incur the filling
-    // with zeros cost.
-    return Tensor(shape, initializer::empty(), dtype_, preferred_device);
-}
-
-
 Tensor Tensor::shallow_copy() {
     return Tensor(*this, false, true);
 }
@@ -356,11 +360,21 @@ TENSOR_UNARY_OP_WITH_INT_ARG(L2_norm);
 // Tensor Tensor::T() const {
 //     return TensorOps::transpose(*this);
 // }
-//
-// Tensor Tensor::slice(int rowstart, int rowwend) const {
-//     return TensorOps::slice(*this, rowstart, rowwend);
-// }
-//
+
+Tensor Tensor::operator[](int idx) const {
+    return pluck_axis(0, idx);
+}
+
+SlicingInProgress<Tensor> Tensor::operator[](const Slice& s) const {
+    auto ret = SlicingInProgress<Tensor>(*this);
+    return ret[s];
+}
+
+SlicingInProgress<Tensor> Tensor::operator[](const Broadcast& b) const {
+    auto ret = SlicingInProgress<Tensor>(*this);
+    return ret[b];
+}
+
 Tensor Tensor::reshape(const std::vector<int>& new_shape) const {
     return tensor_ops::reshape(*this, new_shape);
 }
@@ -368,6 +382,36 @@ Tensor Tensor::reshape(const std::vector<int>& new_shape) const {
 Tensor Tensor::copyless_reshape(const std::vector<int>& new_shape) const {
     return Tensor::from_w_and_dw(w.copyless_reshape(new_shape), dw.copyless_reshape(new_shape), constant);
 }
+
+Tensor Tensor::pluck_axis(int axis, const Slice& slice) const {
+    return Tensor::from_w_and_dw(w.pluck_axis(axis, slice), dw.pluck_axis(axis, slice), constant);
+
+}
+
+Tensor Tensor::pluck_axis(int axis, int idx) const {
+    return Tensor::from_w_and_dw(w.pluck_axis(axis, idx), dw.pluck_axis(axis, idx), constant);
+
+}
+
+Tensor Tensor::squeeze(int axis) const {
+    return Tensor::from_w_and_dw(w.squeeze(axis), dw.squeeze(axis), constant);
+
+}
+
+Tensor Tensor::expand_dims(int new_axis) const {
+    return Tensor::from_w_and_dw(w.expand_dims(new_axis), dw.expand_dims(new_axis), constant);
+}
+
+Tensor Tensor::broadcast_axis(int axis) const {
+    return Tensor::from_w_and_dw(w.broadcast_axis(axis), dw.broadcast_axis(axis), constant);
+}
+
+Tensor Tensor::insert_broadcast_axis(int new_axis) const {
+    return Tensor::from_w_and_dw(w.insert_broadcast_axis(new_axis), dw.insert_broadcast_axis(new_axis), constant);
+}
+
+
+
 
 Tensor Tensor::dimshuffle(const std::vector<int>& axes) const {
     return Tensor::from_w_and_dw(w.dimshuffle(axes), dw.dimshuffle(axes), constant);
@@ -570,6 +614,9 @@ Tensor Tensor::zeros(const std::vector<int>& shape,
 Tensor Tensor::empty(const std::vector<int>& shape,
                      const DType& dtype,
                      const memory::Device& preferred_device) {
+    // use an empty matrix and modify
+    // it so as to not incur the filling
+    // with zeros cost.
     return Tensor(shape, initializer::empty(), dtype, preferred_device);
 }
 

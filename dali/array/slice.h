@@ -3,7 +3,7 @@
 
 #include <ostream>
 #include <string>
-
+#include <vector>
 
 struct Broadcast {
 };
@@ -25,6 +25,32 @@ struct Slice {
     operator std::string() const;
 };
 
+template<typename Container>
+struct SlicingInProgress {
+  private:
+    enum SliceAction {
+        SLICE_RANGE,
+        SLICE_IDX,
+        BROADCAST
+    };
+
+    int consumed_dims;
+    std::vector<Slice>            slice;
+    std::vector<SliceAction> action;
+    Container input;
+
+  public:
+    SlicingInProgress(const Container& input_);
+    SlicingInProgress(const SlicingInProgress& other);
+    SlicingInProgress<Container> operator[](const Slice& s);
+    SlicingInProgress<Container> operator[](const Broadcast& b);
+    SlicingInProgress<Container> operator[](int idx);
+    operator Container();
+};
+
+
 std::ostream& operator<<(std::ostream&, const Slice&);
+
+#include "dali/array/slice-impl.h"
 
 #endif  // DALI_ARRAY_SLICE_H

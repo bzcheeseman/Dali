@@ -550,6 +550,49 @@ Tensor Tensor::empty(const std::vector<int>& shape,
     return Tensor(shape, initializer::empty(), dtype, preferred_device);
 }
 
+Tensor Tensor::gaussian(const double& mean,
+                        const double& std,
+                        const std::vector<int>& shape,
+                        const DType& dtype,
+                        const memory::Device& preferred_device) {
+    return Tensor(shape, initializer::gaussian(mean, std), dtype, preferred_device);
+}
+
+Tensor Tensor::uniform(const double& lower,
+                       const double& upper,
+                       const std::vector<int>& shape,
+                       const DType& dtype,
+                       const memory::Device& preferred_device) {
+    return Tensor(shape, initializer::uniform(lower, upper), dtype, preferred_device);
+}
+
+Tensor Tensor::bernoulli(const double& prob,
+                         const std::vector<int>& shape,
+                         const DType& dtype,
+                         const memory::Device& preferred_device) {
+    return Tensor(shape, initializer::bernoulli(prob), dtype, preferred_device);
+}
+
+Tensor Tensor::bernoulli_normalized(const double& prob,
+                                    const std::vector<int>& shape,
+                                    const DType& dtype,
+                                    const memory::Device& preferred_device) {
+    return Tensor(shape, initializer::bernoulli_normalized(prob), dtype, preferred_device);
+}
+
+template<typename T>
+Tensor Tensor::fill(const T& scalar,
+                    const std::vector<int>& shape,
+                    const DType& dtype,
+                    const memory::Device& preferred_device) {
+    return Tensor(shape, initializer::fill(scalar), dtype, preferred_device);
+}
+
+template Tensor Tensor::fill(const int&,    const std::vector<int>&, const DType&, const memory::Device&);
+template Tensor Tensor::fill(const float&,  const std::vector<int>&, const DType&, const memory::Device&);
+template Tensor Tensor::fill(const double&, const std::vector<int>&, const DType&, const memory::Device&);
+
+
 Tensor Tensor::from_w_and_dw(const Array& w, const Array& dw, bool constant) {
     return Tensor(w, dw, constant);
 }

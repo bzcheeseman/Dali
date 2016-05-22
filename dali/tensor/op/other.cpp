@@ -24,7 +24,7 @@ namespace tensor_ops {
         out.w = filler;
         return out;
     }
-    Tensor fill(const Tensor& t, const float& filler) {
+    Tensor fill(const Tensor& t, const float& filler) {
         auto out = Tensor::empty_like(t);
         out.w = filler;
         return out;
@@ -39,12 +39,12 @@ namespace tensor_ops {
         t.grad();
     }
 
-    Tensor consider_constant_if(const Tensor& t, const bool& condition) {
-        if (condition) return consider_constant(t);
+    Tensor consider_constant_if(const Tensor& t, const bool& condition) {
+        if (condition) return consider_constant(t);
         return t;
     }
 
-    Tensor consider_constant(const Tensor& t) {
+    Tensor consider_constant(const Tensor& t) {
         auto out = t;
         out.constant = true;
         return out;

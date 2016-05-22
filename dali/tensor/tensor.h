@@ -247,6 +247,33 @@ class Tensor {
                             const DType& dtype=DTYPE_FLOAT,
                             const memory::Device& preferred_device=memory::default_preferred_device);
 
+
+        static Tensor gaussian(const double& mean,
+                               const double& std,
+                               const std::vector<int>& shape,
+                               const DType& dtype=DTYPE_FLOAT,
+                               const memory::Device& preferred_device=memory::default_preferred_device);
+        static Tensor uniform(const double& lower,
+                              const double& upper,
+                              const std::vector<int>& shape,
+                              const DType& dtype=DTYPE_FLOAT,
+                              const memory::Device& preferred_device=memory::default_preferred_device);
+        static Tensor bernoulli(const double& prob,
+                                const std::vector<int>& shape,
+                                const DType& dtype=DTYPE_FLOAT,
+                                const memory::Device& preferred_device=memory::default_preferred_device);
+        static Tensor bernoulli_normalized(const double& prob,
+                                           const std::vector<int>& shape,
+                                           const DType& dtype=DTYPE_FLOAT,
+                                           const memory::Device& preferred_device=memory::default_preferred_device);
+        template<typename T>
+        static Tensor fill(const T& scalar,
+                           const std::vector<int>& shape,
+                           const DType& dtype=DTYPE_FLOAT,
+                           const memory::Device& preferred_device=memory::default_preferred_device);
+
+
+
         static Tensor from_w_and_dw(const Array& w, const Array& dw, bool constant);
 
         // forcing memory location

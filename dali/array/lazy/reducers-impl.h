@@ -23,7 +23,7 @@ struct LazyAllReducer : public LazyFunctionNonRecusive<LazyAllReducer<Functor,Ex
     template<int devT, typename T>
     auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape) const ->
             decltype(
-                Functor::reduce(
+                mshadow::expr::reduce_all<Functor>(
                     MshadowWrapper<devT,T,decltype(expr)>::wrap(expr, device, output_shape)
                 )
             ) {
@@ -32,8 +32,8 @@ struct LazyAllReducer : public LazyFunctionNonRecusive<LazyAllReducer<Functor,Ex
                 MshadowWrapper<devT, T, decltype(expr)>::wrap(
                         expr, device, bshape2shape(expr.bshape())
                 );
-        auto ret = Functor::reduce(left_expr);
-        return ret;
+        // auto ret = Functor::reduce(left_expr);
+        return mshadow::expr::reduce_all<Functor>(left_expr);
     }
 };
 
@@ -59,43 +59,39 @@ struct LazyAxisReducer<Functor, ExprT, true> : public BaseLazyAxisReducer<LazyFu
     }
 };
 
-namespace myops {
-    struct sum_all {
-        template<typename T>
-        static inline auto reduce(const T& expr) -> decltype(mshadow::expr::sum_all(expr)) {
-            return mshadow::expr::sum_all(expr);
-        }
-    };
-}
-
 namespace lazy {
-    template<typename ExprT>
-    LazyAllReducer<myops::sum_all, ExprT> sum_all(const Exp<ExprT>& expr) {
-        return LazyAllReducer<myops::sum_all, ExprT>(expr.self());
-    }
+    #define DALI_LAZY_ARRAY_ALL_REDUCER(OPNAME, REDUCERNAME)\
+        template<typename ExprT>\
+        LazyAllReducer<REDUCERNAME, ExprT> OPNAME(const Exp<ExprT>& expr) {\
+            return LazyAllReducer<REDUCERNAME, ExprT>(expr.self());\
+        }\
+
+    DALI_LAZY_ARRAY_ALL_REDUCER(sum, mshadow::red::sum);
+    DALI_LAZY_ARRAY_ALL_REDUCER(min, mshadow::red::minimum);
+    DALI_LAZY_ARRAY_ALL_REDUCER(max, mshadow::red::maximum);
 
     template<typename ExprT>
-    LazyAxisReducer<mshadow::red::sum, ExprT, false> sum_axis(const Exp<ExprT>& expr, const int& axis, bool keepdims) {
+    LazyAxisReducer<mshadow::red::sum, ExprT, false> sum(const Exp<ExprT>& expr, const int& axis, bool keepdims) {
         return LazyAxisReducer<mshadow::red::sum, ExprT, false>(expr.self(), axis, keepdims);
     }
 
     template<typename ExprT>
-    LazyAxisReducer<mshadow::red::maximum, ExprT, true> argmax_axis(const Exp<ExprT>& expr, const int& axis, bool keepdims) {
+    LazyAxisReducer<mshadow::red::maximum, ExprT, true> argmax(const Exp<ExprT>& expr, const int& axis, bool keepdims) {
         return LazyAxisReducer<mshadow::red::maximum, ExprT, true>(expr.self(), axis, keepdims);
     }
 
     template<typename ExprT>
-    LazyAxisReducer<mshadow::red::maximum, ExprT, false> max_axis(const Exp<ExprT>& expr, const int& axis, bool keepdims) {
+    LazyAxisReducer<mshadow::red::maximum, ExprT, false> max(const Exp<ExprT>& expr, const int& axis, bool keepdims) {
         return LazyAxisReducer<mshadow::red::maximum, ExprT, false>(expr.self(), axis, keepdims);
     }
 
     template<typename ExprT>
-    LazyAxisReducer<mshadow::red::minimum, ExprT, true> argmin_axis(const Exp<ExprT>& expr, const int& axis, bool keepdims) {
+    LazyAxisReducer<mshadow::red::minimum, ExprT, true> argmin(const Exp<ExprT>& expr, const int& axis, bool keepdims) {
         return LazyAxisReducer<mshadow::red::minimum, ExprT, true>(expr.self(), axis, keepdims);
     }
 
     template<typename ExprT>
-    LazyAxisReducer<mshadow::red::minimum, ExprT, false> min_axis(const Exp<ExprT>& expr, const int& axis, bool keepdims) {
+    LazyAxisReducer<mshadow::red::minimum, ExprT, false> min(const Exp<ExprT>& expr, const int& axis, bool keepdims) {
         return LazyAxisReducer<mshadow::red::minimum, ExprT, false>(expr.self(), axis, keepdims);
     }
 }  // namespace lazy

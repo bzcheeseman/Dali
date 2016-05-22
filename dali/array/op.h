@@ -5,7 +5,10 @@
 
 #include "dali/array/op/other.h"
 #include "dali/array/op/dot.h"
-
+#include "dali/array/op/binary.h"
+#include "dali/array/op/reducers.h"
+#include "dali/array/op/initializer.h"
+#include "dali/array/op/unary.h"
 #include "dali/utils/print_utils.h"
 
 #if EXISTS_AND_TRUE(DALI_USE_LAZY)
@@ -63,10 +66,6 @@
     DALI_DECLARE_LAZY_INTERACTION_INPLACE(/=);
     DALI_DECLARE_LAZY_INTERACTION_INPLACE(<<=);
 #else
-    #include "dali/array/op/binary.h"
-    #include "dali/array/op/reducers.h"
-    #include "dali/array/op/initializer.h"
-    #include "dali/array/op/unary.h"
     namespace lazy {
         static bool ops_loaded = false;
     }

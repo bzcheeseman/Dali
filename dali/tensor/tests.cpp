@@ -176,14 +176,36 @@ TEST_F(TensorTests, mean_axis) {
 //     }
 // }
 //
-// TEST_F(MatrixTests, max_min_test) {
-//     auto A = Mat<R>(5, 5);
-//     for (int i = 0; i < 25; i++) {
-//         A.w(i) = i - 15;
-//     }
-//     ASSERT_NEAR(A.w().min(), -15, 1e-6);
-//     ASSERT_NEAR(A.w().max(), 9, 1e-6);
-// }
+TEST_F(TensorTests, max_min_test) {
+    Tensor A({5, 5}, DTYPE_INT32);
+    for (int i = 0; i < A.number_of_elements(); i++) {
+        A.w(i) = i - 15;
+    }
+
+    ASSERT_NEAR((int)A.min().w, -15, 1e-6);
+    ASSERT_NEAR((int)A.max().w, 9, 1e-6);
+
+    auto max_functor = [](vector<Tensor> Xs)-> Tensor {
+        return Xs[0].max();
+    };
+
+    EXPERIMENT_REPEAT {
+        Tensor A({2, 3, 4}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
+        expect_args_remain_on_gpu(max_functor, {A});
+        EXPECT_TRUE(gradient_same(max_functor, {A}));
+    }
+
+    auto min_functor = [](vector<Tensor> Xs)-> Tensor {
+        return Xs[0].max();
+    };
+
+    EXPERIMENT_REPEAT {
+        Tensor A({2, 3, 4}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
+        expect_args_remain_on_gpu(min_functor, {A});
+        EXPECT_TRUE(gradient_same(min_functor, {A}));
+    }
+
+}
 //
 //
 // TEST_F(MatrixTests, equals) {

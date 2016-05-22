@@ -152,8 +152,11 @@ class Tensor {
         Tensor sum(const int& axis) const;
         Tensor mean() const;
         Tensor mean(const int& axis) const;
-        // Tensor max() const;
-        // Tensor min() const;
+        Tensor max() const;
+        Tensor max(const int& axis) const;
+        Tensor min() const;
+        Tensor min(const int& axis) const;
+
         // Tensor log() const;
         // Tensor exp() const;
         // Tensor abs() const;

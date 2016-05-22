@@ -581,15 +581,15 @@ Array Array::broadcast_scalar_to_ndim(int target_ndim) const {
     return res;
 }
 
-// TODO(jonathan,szymon): add axis argument to sum + write tests
-AssignableArray Array::sum() const {
-    return op::sum_all(*this);
-}
+#define DALI_ARRAY_DEFINE_ALL_REDUCER(FUNCTION_NAME, OPNAME)\
+    AssignableArray Array::FUNCTION_NAME() const {\
+        return op::OPNAME(*this);\
+    }\
 
-// TODO(jonathan,szymon): add axis argument to mean + write tests
-AssignableArray Array::mean() const {
-    return op::mean_all(*this);
-}
+DALI_ARRAY_DEFINE_ALL_REDUCER(sum, sum);
+DALI_ARRAY_DEFINE_ALL_REDUCER(mean, mean);
+DALI_ARRAY_DEFINE_ALL_REDUCER(max, max);
+DALI_ARRAY_DEFINE_ALL_REDUCER(min, min);
 
 Array::operator float() const {
     return scalar_value<float>();

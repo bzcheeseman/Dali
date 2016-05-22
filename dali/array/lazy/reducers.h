@@ -7,11 +7,6 @@ struct LazyAllReducer;
 template<class Functor, typename ExprT, bool return_indices>
 struct LazyAxisReducer;
 
-namespace myops {
-    struct sum_all;
-    struct sum_axis;
-}
-
 namespace mshadow {
 	namespace red {
 		struct sum;
@@ -22,22 +17,28 @@ namespace mshadow {
 
 namespace lazy {
     template<typename ExprT>
-    LazyAllReducer<myops::sum_all, ExprT> sum_all(const Exp<ExprT>& expr);
+    LazyAllReducer<mshadow::red::sum, ExprT> sum(const Exp<ExprT>& expr);
 
     template<typename ExprT>
-    LazyAxisReducer<mshadow::red::sum, ExprT, false> sum_axis(const Exp<ExprT>& expr, const int& axis, bool keepdims=false);
+    LazyAllReducer<mshadow::red::minimum, ExprT> min(const Exp<ExprT>& expr);
 
     template<typename ExprT>
-    LazyAxisReducer<mshadow::red::maximum, ExprT, true> argmax_axis(const Exp<ExprT>& expr, const int& axis, bool keepdims=false);
+    LazyAllReducer<mshadow::red::maximum, ExprT> max(const Exp<ExprT>& expr);
 
     template<typename ExprT>
-    LazyAxisReducer<mshadow::red::maximum, ExprT, false> max_axis(const Exp<ExprT>& expr, const int& axis, bool keepdims=false);
+    LazyAxisReducer<mshadow::red::sum, ExprT, false> sum(const Exp<ExprT>& expr, const int& axis, bool keepdims=false);
 
     template<typename ExprT>
-    LazyAxisReducer<mshadow::red::minimum, ExprT, true> argmin_axis(const Exp<ExprT>& expr, const int& axis, bool keepdims=false);
+    LazyAxisReducer<mshadow::red::maximum, ExprT, true> argmax(const Exp<ExprT>& expr, const int& axis, bool keepdims=false);
 
     template<typename ExprT>
-    LazyAxisReducer<mshadow::red::minimum, ExprT, false> min_axis(const Exp<ExprT>& expr, const int& axis, bool keepdims=false);
+    LazyAxisReducer<mshadow::red::maximum, ExprT, false> max(const Exp<ExprT>& expr, const int& axis, bool keepdims=false);
+
+    template<typename ExprT>
+    LazyAxisReducer<mshadow::red::minimum, ExprT, true> argmin(const Exp<ExprT>& expr, const int& axis, bool keepdims=false);
+
+    template<typename ExprT>
+    LazyAxisReducer<mshadow::red::minimum, ExprT, false> min(const Exp<ExprT>& expr, const int& axis, bool keepdims=false);
 
 }  // namespace lazy
 

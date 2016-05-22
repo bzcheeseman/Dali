@@ -4,9 +4,13 @@
 #include "dali/array/array.h"
 
 namespace op {
-    AssignableArray sum_all(const Array& x);
-    AssignableArray mean_all(const Array& x);
+    AssignableArray sum(const Array& x);
+    AssignableArray mean(const Array& x);
+    AssignableArray min(const Array& x);
+    AssignableArray max(const Array& x);
     AssignableArray sum(const Array& x, const int& axis);
     AssignableArray mean(const Array& x, const int& axis);
+    AssignableArray min(const Array& x, const int& axis);
+    AssignableArray max(const Array& x, const int& axis);
 }; // namespace op
 #endif

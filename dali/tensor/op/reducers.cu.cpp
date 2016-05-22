@@ -1,6 +1,6 @@
 #include "reducers.h"
 #include "dali/tensor/tape.h"
-#include "dali/array/op.h"
+#include "dali/array/lazy_op.h"
 #include "dali/utils/print_utils.h"
 
 namespace tensor_ops {
@@ -14,7 +14,7 @@ namespace tensor_ops {
             // TODO(jonathan, szymon) also makes sure that device
             // of input tensor is also used here
 
-            auto out = Tensor(tensor.w.sum());
+            Tensor out(tensor.w.sum());
 
             if (graph::backprop_enabled() && !tensor.constant)
                 graph::emplace_back([tensor, out]() mutable {
@@ -66,4 +66,44 @@ namespace tensor_ops {
             });
         return out;
     }
+
+
+    #define DALI_TENSOR_SUBSAMPLE_ALL_REDUCTION(FUNCTION_NAME)\
+        Tensor FUNCTION_NAME(const Tensor& tensor) {\
+            if (tensor.number_of_elements() == 1) {\
+                auto out = tensor;\
+                out.w = tensor.w.reshape({});\
+                out.dw = tensor.dw.reshape({});\
+                return out;\
+            } else {\
+                Tensor out(tensor.w.FUNCTION_NAME());\
+                if (graph::backprop_enabled() && !tensor.constant)\
+                    graph::emplace_back([tensor, out]() mutable {\
+                        tensor.dw <<= lazy::subsample_partial_grad(\
+                            out.w.broadcast_scalar_to_ndim(tensor.ndim()),\
+                            tensor.w\
+                        ) * out.dw.broadcast_scalar_to_ndim(tensor.ndim());\
+                    });\
+                return out;\
+            }\
+        }\
+
+    DALI_TENSOR_SUBSAMPLE_ALL_REDUCTION(min);
+    DALI_TENSOR_SUBSAMPLE_ALL_REDUCTION(max);
+
+    #define DALI_TENSOR_SUBSAMPLE_AXIS_REDUCTION(FUNCTION_NAME, OPNAME)\
+        Tensor FUNCTION_NAME(const Tensor& tensor, const int& axis) {\
+            Tensor out(OPNAME(tensor.w, axis));\
+            if (graph::backprop_enabled() && !tensor.constant)\
+                graph::emplace_back([tensor, out, axis]() mutable {\
+                    tensor.dw <<= lazy::subsample_partial_grad(\
+                            out.w.insert_broadcast_axis(axis),\
+                            tensor.w\
+                        ) * out.dw.insert_broadcast_axis(axis);\
+                });\
+            return out;\
+        }\
+
+    DALI_TENSOR_SUBSAMPLE_AXIS_REDUCTION(min, op::min);
+    DALI_TENSOR_SUBSAMPLE_AXIS_REDUCTION(max, op::max);
 }

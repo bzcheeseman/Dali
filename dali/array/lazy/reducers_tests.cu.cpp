@@ -24,13 +24,13 @@ TEST(ArrayLazyOpsTests, sum_all) {
 }
 
 // TODO(jonathan): make this test more gnarly
-TEST(ArrayLazyOpsTests, argmax_axis) {
+TEST(ArrayLazyOpsTests, argmax) {
    auto z = Array::zeros({2,4}, DTYPE_FLOAT);
 
    z[0][1] = 2.0;
    z[1][3] = 3.0;
-   Array max_values = lazy::max_axis(z, 1);
-   Array max_indices = lazy::argmax_axis(z, 1);
+   Array max_values = lazy::max(z, 1);
+   Array max_indices = lazy::argmax(z, 1);
 
    ASSERT_NEAR(2.0, (float)max_values[0], 1e-6);
    ASSERT_NEAR(3.0, (float)max_values[1], 1e-6);
@@ -41,12 +41,12 @@ TEST(ArrayLazyOpsTests, argmax_axis) {
    ASSERT_EQ(3, (int)max_indices[1]);
 }
 
-TEST(ArrayLazyOpsTests, argmin_axis) {
+TEST(ArrayLazyOpsTests, argmin) {
    auto z = Array::zeros({2,4}, DTYPE_FLOAT);
    z[0][1] = -2.0;
    z[1][3] = -3.0;
-   Array min_values = lazy::min_axis(z, 1);
-   Array min_indices = lazy::argmin_axis(z, 1);
+   Array min_values = lazy::min(z, 1);
+   Array min_indices = lazy::argmin(z, 1);
 
    ASSERT_NEAR(-2.0, (float)min_values[0], 1e-6);
    ASSERT_NEAR(-3.0, (float)min_values[1], 1e-6);
@@ -57,10 +57,10 @@ TEST(ArrayLazyOpsTests, argmin_axis) {
    ASSERT_EQ(3, (int)min_indices[1]);
 }
 
-TEST(ArrayTests, sum_axis) {
+TEST(ArrayTests, sum) {
     Array x = Array::ones({2,3,4}, DTYPE_INT32);
     for (int reduce_axis = 0; reduce_axis < x.ndim(); reduce_axis++) {
-        Array y = lazy::sum_axis(x, reduce_axis);
+        Array y = lazy::sum(x, reduce_axis);
         std::vector<int> expected_shape;
         switch (reduce_axis) {
             case 0:
@@ -81,11 +81,11 @@ TEST(ArrayTests, sum_axis) {
 }
 
 
-TEST(ArrayTests, sum_axis_broadcasted) {
+TEST(ArrayTests, sum_broadcasted) {
     Array x = Array::ones({2,3,4}, DTYPE_INT32)[Slice(0,2)][Slice(0,3)][Slice(0,4)][Broadcast()];
 
     for (int reduce_axis = 0; reduce_axis < 3; reduce_axis++) {
-        Array y = lazy::sum_axis(x, reduce_axis);
+        Array y = lazy::sum(x, reduce_axis);
         std::vector<int> expected_shape;
         switch (reduce_axis) {
             case 0:
@@ -106,11 +106,11 @@ TEST(ArrayTests, sum_axis_broadcasted) {
     }
 }
 
-TEST(ArrayTests, sum_axis_broadcasted2) {
+TEST(ArrayTests, sum_broadcasted2) {
     Array x = Array::ones({2,4}, DTYPE_INT32)[Slice(0,2)][Broadcast()][Slice(0,4)];
 
     for (int reduce_axis = 0; reduce_axis < 3; reduce_axis++) {
-        Array y = lazy::sum_axis(x, reduce_axis);
+        Array y = lazy::sum(x, reduce_axis);
         std::vector<int> expected_bshape;
         switch (reduce_axis) {
             case 0:
@@ -131,11 +131,11 @@ TEST(ArrayTests, sum_axis_broadcasted2) {
     }
 }
 
-TEST(ArrayTests, sum_axis_broadcasted_2D) {
+TEST(ArrayTests, sum_broadcasted_2D) {
     Array x = Array::ones({2,4}, DTYPE_INT32);
 
     for (int reduce_axis = 0; reduce_axis < 2; reduce_axis++) {
-        Array y = lazy::sum_axis(x, reduce_axis);
+        Array y = lazy::sum(x, reduce_axis);
         std::vector<int> expected_shape;
         switch (reduce_axis) {
             case 0:
@@ -153,13 +153,13 @@ TEST(ArrayTests, sum_axis_broadcasted_2D) {
     }
 }
 
-TEST(ArrayTests, sum_axis_broadcasted_1D) {
+TEST(ArrayTests, sum_broadcasted_1D) {
     Array x = Array::ones({6,}, DTYPE_INT32);
 
-    EXPECT_THROW(lazy::sum_axis(x, 1), std::runtime_error);
-    EXPECT_THROW(lazy::sum_axis(x, -1), std::runtime_error);
+    EXPECT_THROW(lazy::sum(x, 1), std::runtime_error);
+    EXPECT_THROW(lazy::sum(x, -1), std::runtime_error);
 
-    Array y = lazy::sum_axis(x, 0);
+    Array y = lazy::sum(x, 0);
 
     EXPECT_EQ(0, y.ndim());
 

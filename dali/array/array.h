@@ -161,6 +161,8 @@ class Array : public Exp<Array> {
 
     AssignableArray sum() const;
     AssignableArray mean() const;
+    AssignableArray min() const;
+    AssignableArray max() const;
 
     /* Interpreting scalars as numbers */
     operator float&();

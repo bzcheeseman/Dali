@@ -51,6 +51,13 @@ namespace functor {
     };
 
     template<typename R>
+    struct subsample_partial_grad {
+        MSHADOW_XINLINE static R Map(const R& a, const R& b) {
+            return a == b ? 1 : 0;
+        }
+    };
+
+    template<typename R>
     struct sub {
         MSHADOW_XINLINE static R Map(const R& a, const R& b) {
             return a - b;

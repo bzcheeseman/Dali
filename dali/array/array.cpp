@@ -7,6 +7,7 @@
 #include "dali/array/op/other.h"
 #include "dali/array/op/reducers.h"
 #include "dali/array/op/unary.h"
+#include "dali/array/op/binary.h"
 #include "dali/array/op/dot.h"
 #include "dali/utils/print_utils.h"
 #include "dali/array/op/initializer.h"
@@ -687,6 +688,38 @@ Array& Array::operator<<=(const AssignableArray& assignable) {
     assignable.assign_to(*this, OPERATOR_T_LSE);
     return *this;
 }
+
+#define DALI_DEFINE_ARRAY_INTERACTION_INPLACE(OPNAME, SYMBOL)\
+    Array& Array::operator SYMBOL (const Array& right) {\
+        return *this = OPNAME (*this, right);\
+    }
+
+#define DALI_DEFINE_SCALAR_INTERACTION_INPLACE(OPNAME, SYMBOL)\
+    Array& Array::operator SYMBOL (const double& right) {\
+        return *this = OPNAME (*this, right);\
+    }\
+    Array& Array::operator SYMBOL (const float& right) {\
+        return *this = OPNAME (*this, right);\
+    }\
+    Array& Array::operator SYMBOL (const int& right) {\
+        return *this = OPNAME (*this, right);\
+    }
+
+DALI_DEFINE_ARRAY_INTERACTION_INPLACE(op::add, +=);
+DALI_DEFINE_ARRAY_INTERACTION_INPLACE(op::sub, -=);
+DALI_DEFINE_ARRAY_INTERACTION_INPLACE(op::eltmul, *=);
+DALI_DEFINE_ARRAY_INTERACTION_INPLACE(op::eltdiv, /=);
+
+Array& Array::operator<<=(const Array& right) {
+    *this <<= op::identity(right);
+    return *this;
+}
+
+DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::scalar_sub, -=);
+DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::scalar_add, +=);
+DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::scalar_mul, *=);
+DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::scalar_div, /=);
+
 
 void Array::print(std::basic_ostream<char>& stream, int indent, bool add_newlines) const {
     std::string end_line_spacing = add_newlines ? "\n" : "";

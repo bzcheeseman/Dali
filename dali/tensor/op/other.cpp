@@ -2,7 +2,6 @@
 
 #include "dali/tensor/tape.h"
 #include "dali/tensor/tensor_macros.h"
-#include "dali/array/op.h"
 
 namespace tensor_ops {
     Tensor reshape(const Tensor& t, const std::vector<int>& new_shape) {

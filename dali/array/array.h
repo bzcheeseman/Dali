@@ -140,7 +140,7 @@ class Array : public Exp<Array> {
      * array was previously 'reshape_broadcasted' to
      * the same size, maa no-op):
      * e.g. starting with {-1, 3, -1}, the following sequence
-     * of functions will NOT result in an error:
+     * of functions will NOToperator<<= result in an error:
      *    - reshape_broadcasted({2, 3, 1})
      *    - reshape_broadcasted({2, 3, 1})
      *    - reshape_broadcasted({2, 3, 5})
@@ -177,11 +177,29 @@ class Array : public Exp<Array> {
     operator int() const;
 
     Array& operator=(const AssignableArray& assignable);
-    Array& operator+=(const AssignableArray& assignable);
-    Array& operator-=(const AssignableArray& assignable);
-    Array& operator*=(const AssignableArray& assignable);
-    Array& operator/=(const AssignableArray& assignable);
-    Array& operator<<=(const AssignableArray& assignable);
+
+    #define DALI_DECLARE_ARRAY_INTERACTION_INPLACE(SYMBOL)\
+        Array& operator SYMBOL (const AssignableArray& right);\
+        Array& operator SYMBOL (const Array& right);\
+
+    #define DALI_DECLARE_SCALAR_INTERACTION_INPLACE(SYMBOL)\
+        Array& operator SYMBOL (const double& right);\
+        Array& operator SYMBOL (const float& right);\
+        Array& operator SYMBOL (const int& right);\
+
+    DALI_DECLARE_ARRAY_INTERACTION_INPLACE(+=);
+    DALI_DECLARE_ARRAY_INTERACTION_INPLACE(-=);
+    DALI_DECLARE_ARRAY_INTERACTION_INPLACE(*=);
+    DALI_DECLARE_ARRAY_INTERACTION_INPLACE(/=);
+    DALI_DECLARE_ARRAY_INTERACTION_INPLACE(<<=);
+
+    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(-=);
+    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(+=);
+    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(*=);
+    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(/=);
+
+
+
 
     /* Debugging */
     void print(std::basic_ostream<char>& stream = std::cout, int indent=0, bool add_newlines=true) const;

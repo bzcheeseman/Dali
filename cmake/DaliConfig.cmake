@@ -31,7 +31,7 @@ else()
         message(WARNING "Dali's dependencies are missing.")
     endif()
 endif()
-find_package(OpenBLAS)
+find_package(OpenBlas)
 
 if (BLAS_FOUND)
     list(APPEND DALI_AND_DEPS_LIBRARIES ${BLAS_LIBRARIES})
@@ -50,12 +50,39 @@ if(CUDA_FOUND STREQUAL TRUE)
 endif(CUDA_FOUND STREQUAL TRUE)
 
 
-find_library(DALI_LIBRARIES dali)
+if (DEFINED ENV{DALI_HOME} AND NOT "$ENV{DALI_HOME}" STREQUAL "")
+    message(STATUS "Looking for dali at custom path $ENV{DALI_HOME}")
+    set(DALI_CUSTOM_PATH TRUE)
+    # where to look for Dali libraries
+    LIST(APPEND DALI_LIBRARY_CUSTOM_PATHS "$ENV{DALI_HOME}/build")
+    LIST(APPEND DALI_LIBRARY_CUSTOM_PATHS "$ENV{DALI_HOME}/build_cpu")
+    LIST(APPEND DALI_LIBRARY_CUSTOM_PATHS "$ENV{DALI_HOME}/")
+
+    # where to look for Dali headers
+    LIST(APPEND DALI_HEADERS_CUSTOM_PATHS "$ENV{DALI_HOME}/build/dali_generated/")
+    LIST(APPEND DALI_HEADERS_CUSTOM_PATHS "$ENV{DALI_HOME}/build_cpu/dali_generated/")
+    LIST(APPEND DALI_HEADERS_CUSTOM_PATHS "$ENV{DALI_HOME}/dali_generated/")
+else()
+    set(DALI_CUSTOM_PATH FALSE)
+endif ()
+
+
+if (DALI_CUSTOM_PATH)
+    find_library(DALI_LIBRARIES dali PATHS ${DALI_LIBRARY_CUSTOM_PATHS} NO_DEFAULT_PATH)
+else()
+    find_library(DALI_LIBRARIES dali HINTS)
+endif()
+
 if(DALI_LIBRARIES)
     set(DALI_FOUND TRUE)
     IF (APPLE)
         # Apple has trouble static linking, and this is the remedy:
-        find_library(DALI_CUDA_LIBRARIES dali_cuda)
+        if (DALI_CUSTOM_PATH)
+            find_library(DALI_LIBRARIES dali_cuda PATHS ${DALI_LIBRARY_CUSTOM_PATHS} NO_DEFAULT_PATH)
+        else()
+            find_library(DALI_LIBRARIES dali_cuda HINTS)
+        endif()
+
 
         IF (DALI_CUDA_LIBRARIES)
             # Cuda is missing?
@@ -71,7 +98,7 @@ if(DALI_LIBRARIES)
 
     message(STATUS "Found Dali: " ${DALI_LIBRARIES})
     list(APPEND DALI_AND_DEPS_LIBRARIES ${DALI_LIBRARIES})
-else(DALI_CORE_LIBRARIES)
+else()
     if(Dali_FIND_QUIETLY)
         message(STATUS "Failed to find Dali   " ${REASON_MSG} ${ARGN})
     elseif(Dali_FIND_REQUIRED)
@@ -81,9 +108,14 @@ else(DALI_CORE_LIBRARIES)
         # but continues configuration and allows generation.
         message(WARNING "Failed to find Dali   " ${REASON_MSG} ${ARGN})
     endif()
-endif(DALI_CORE_LIBRARIES)
+endif()
 
-find_path(DALI_CONFIG_PATH "dali/config.h" ${CMAKE_INCLUDE_PATH})
+if (DALI_CUSTOM_PATH)
+    find_path(DALI_CONFIG_PATH "dali/config.h" PATHS ${DALI_HEADERS_CUSTOM_PATHS} NO_DEFAULT_PATH)
+else()
+    find_path(DALI_CONFIG_PATH "dali/config.h")
+endif()
+
 if (NOT DALI_CONFIG_PATH)
     if (Dali_FIND_REQUIRED)
         message(FATAL_ERROR "${Red} Failed to find Dali headers  ${ColorReset}" ${REASON_MSG} ${ARGN})

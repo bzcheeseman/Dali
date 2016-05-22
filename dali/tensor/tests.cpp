@@ -1771,7 +1771,7 @@ typedef MemorySafeTest TensorOpsTests;
 // }
 //
 //
-TEST_F(TensorTests, quadratic_form) {
+TEST_F(TensorTests, DISABLED_quadratic_form) {
     int left_size = 2;
     int right_size = 3;
     int left_size_outer = 4;
@@ -1820,7 +1820,7 @@ void test_solver(create_solver_t create_solver) {
     }
 }
 
-TEST(Solver, sgd) {
+TEST(Solver, DISABLED_sgd) {
     test_solver([](vector<Tensor> params) {
         auto ret = std::make_shared<solver::SGD>(params);
         ret->step_size = 0.01;

@@ -177,7 +177,11 @@ Array reference_tensordot(const Array& a, const Array&b) {
 
 TEST(ArrayDotTests, tensordot_alignment_rules) {
     std::vector<ArrayCompatibilityCheck> checks = {
+        ArrayCompatibilityCheck({4,}, {2,}, false, {}),
+        ArrayCompatibilityCheck({4,}, {4,}, true, {}),
+
         ArrayCompatibilityCheck({2,}, {2,}, true, {}),
+        ArrayCompatibilityCheck({2,}, {4,}, false, {}),
 
         ArrayCompatibilityCheck({2,}, {4, 2}, false, {}),
         ArrayCompatibilityCheck({2,}, {6, 4, 2}, false, {}),
@@ -185,6 +189,7 @@ TEST(ArrayDotTests, tensordot_alignment_rules) {
         ArrayCompatibilityCheck({2,}, {10, 8, 6, 4, 2}, false, {}),
 
         ArrayCompatibilityCheck({2, 4}, {2,}, false, {}),
+        ArrayCompatibilityCheck({2, 4}, {4,}, true, {2}),
 
         ArrayCompatibilityCheck({2, 4}, {4, 2}, true, {2, 2}),
         ArrayCompatibilityCheck({2, 4}, {6, 4, 2}, true, {2, 6, 2}),
@@ -192,6 +197,7 @@ TEST(ArrayDotTests, tensordot_alignment_rules) {
         ArrayCompatibilityCheck({2, 4}, {10, 8, 6, 4, 2}, true, {2, 10, 8, 6, 2}),
 
         ArrayCompatibilityCheck({6, 2, 4}, {2,}, false, {}),
+        ArrayCompatibilityCheck({6, 2, 4}, {4,}, true, {6, 2}),
 
         ArrayCompatibilityCheck({6, 2, 4}, {4, 2,}, true, {6, 2, 2}),
         ArrayCompatibilityCheck({6, 2, 4}, {6, 4, 2,}, true, {6, 2, 6, 2}),
@@ -199,6 +205,7 @@ TEST(ArrayDotTests, tensordot_alignment_rules) {
         ArrayCompatibilityCheck({6, 2, 4}, {10, 8, 6, 4, 2,}, true, {6, 2, 10, 8, 6, 2}),
 
         ArrayCompatibilityCheck({8, 6, 2, 4}, {2,}, false, {}),
+        ArrayCompatibilityCheck({8, 6, 2, 4}, {4,}, true, {8, 6, 2}),
 
         ArrayCompatibilityCheck({8, 6, 2, 4}, {4, 2,}, true, {8, 6, 2, 2}),
         ArrayCompatibilityCheck({8, 6, 2, 4}, {6, 4, 2,}, true, {8, 6, 2, 6, 2}),
@@ -206,6 +213,7 @@ TEST(ArrayDotTests, tensordot_alignment_rules) {
         ArrayCompatibilityCheck({8, 6, 2, 4}, {10, 8, 6, 4, 2,}, true, {8, 6, 2, 10, 8, 6, 2}),
 
         ArrayCompatibilityCheck({10, 8, 6, 2, 4}, {2,}, false, {}),
+        ArrayCompatibilityCheck({10, 8, 6, 2, 4}, {4,}, true, {10, 8, 6, 2}),
 
         ArrayCompatibilityCheck({10, 8, 6, 2, 4}, {4, 2,}, true, {10, 8, 6, 2, 2}),
         ArrayCompatibilityCheck({10, 8, 6, 2, 4}, {6, 4, 2,}, true, {10, 8, 6, 2, 6, 2}),

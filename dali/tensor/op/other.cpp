@@ -18,4 +18,36 @@ namespace tensor_ops {
         }
         return out;
     }
+
+    Tensor fill(const Tensor& t, const double& filler) {
+        auto out = Tensor::empty_like(t);
+        out.w = filler;
+        return out;
+    }
+    Tensor fill(const Tensor& t, const float& filler) {
+        auto out = Tensor::empty_like(t);
+        out.w = filler;
+        return out;
+    }
+    Tensor fill(const Tensor& t, const int& filler) {
+        auto out = Tensor::empty_like(t);
+        out.w = filler;
+        return out;
+    }
+
+    void grad(const Tensor& t) {
+        t.grad();
+    }
+
+    Tensor consider_constant_if(const Tensor& t, const bool& condition) {
+        if (condition) return consider_constant(t);
+        return t;
+    }
+
+    Tensor consider_constant(const Tensor& t) {
+        auto out = t;
+        out.constant = true;
+        return out;
+    }
+
 }  // namespace tensor_ops

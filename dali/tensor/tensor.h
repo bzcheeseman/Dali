@@ -91,9 +91,9 @@ class Tensor {
         Equivalent to adding the sum of entries in this Tensor to the
         objective function.
         **/
-        void grad();
+        void grad() const;
 
-        void clear_grad();
+        void clear_grad() const;
         void clear();
 
         const std::vector<int>& shape() const;

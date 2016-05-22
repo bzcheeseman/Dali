@@ -92,11 +92,11 @@ void Tensor::print(std::basic_ostream<char>& stream) const {
     }
 }
 
-void Tensor::grad() {
+void Tensor::grad() const {
     dw += 1;
 }
 
-void Tensor::clear_grad() {
+void Tensor::clear_grad() const {
     dw.clear();
 }
 

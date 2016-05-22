@@ -135,8 +135,8 @@ class Tensor {
         // Soon to be replaced by legitimate operators
         // See TensorOps for documentation.
 
-        // bool is_nan() const;
-        // bool is_grad_nan() const;
+        bool is_nan() const;
+        bool is_grad_nan() const;
         // Tensor eltmul_broadcast_colwise(Tensor) const;
         // Tensor eltmul(Tensor) const;
         // Tensor eltmul(R) const;

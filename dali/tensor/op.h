@@ -7,5 +7,6 @@
 #include "dali/tensor/op/unary.h"
 #include "dali/tensor/op/operators.h"
 #include "dali/tensor/op/dot.h"
+#include "dali/tensor/op/composite.h"
 
 #endif

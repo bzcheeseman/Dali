@@ -7,10 +7,9 @@
 // #include "dali/tensor/Index.h"
 // #include "dali/layers/Layers.h"
 #include "dali/tensor/tensor.h"
+#include "dali/tensor/op.h"
 #include "dali/array/op.h"
-// #include "dali/tensor/MatOps.h"
-// #include "dali/tensor/Tape.h"
-// #include "dali/tensor/Solver.h"
+#include "dali/tensor/solver.h"
 
 using std::vector;
 using std::chrono::milliseconds;
@@ -1772,62 +1771,62 @@ typedef MemorySafeTest TensorOpsTests;
 // }
 //
 //
-// TEST_F(MatrixTests, quadratic_form) {
-//     int left_size = 2;
-//     int right_size = 3;
-//     int left_size_outer = 4;
-//     int right_size_outer = 5;
+TEST_F(TensorTests, quadratic_form) {
+    int left_size = 2;
+    int right_size = 3;
+    int left_size_outer = 4;
+    int right_size_outer = 5;
+
+    EXPERIMENT_REPEAT {
+        Tensor left({left_size, left_size_outer}, initializer::uniform(-20.0, 20.0));
+        Tensor middle({left_size, right_size}, initializer::uniform(-20.0, 20.0));
+        Tensor right({right_size, right_size_outer}, initializer::uniform(-20.0, 20.0));
+
+        auto functor = [](vector<Tensor> Xs)-> Tensor {
+            return tensor_ops::quadratic_form(Xs[0], Xs[1], Xs[2]);
+        };
+        ASSERT_TRUE(gradient_same(functor, {left, middle, right}, 1e-3));
+    }
+}
 //
-//     EXPERIMENT_REPEAT {
-//         auto left = Mat<R>(left_size, left_size_outer, weights<R>::uniform(20.0));
-//         auto middle = Mat<R>(left_size, right_size, weights<R>::uniform(20.0));
-//         auto right = Mat<R>(right_size, right_size_outer, weights<R>::uniform(20.0));
+typedef std::function<std::shared_ptr<solver::AbstractSolver>(vector<Tensor>)> create_solver_t;
 //
-//         auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//             return MatOps<R>::quadratic_form(Xs[0], Xs[1], Xs[2]);
-//         };
-//         ASSERT_TRUE(gradient_same(functor, {left, middle, right}, 1e-3));
-//     }
-// }
-//
-// typedef std::function<std::shared_ptr<Solver::AbstractSolver<R>>(vector<Mat<R>>)> create_solver_t;
-//
-// void test_solver(create_solver_t create_solver) {
-//     // minimize X.T() * W * X + W2 * X;
-//     Mat<R> X(5, 1, weights<R>::uniform(20.0));
-//     X = MatOps<R>::consider_constant(X);
-//     Mat<R> W(5, 5, weights<R>::uniform(20.0));
-//     Mat<R> W2(1, 5, weights<R>::uniform(20.0));
-//
-//     W = W.dot(W.T()); // ensure positive definite.
-//
-//     vector<Mat<R>> params({W, W2});
-//     auto solver = create_solver(params);
-//
-//     int solver_iterations = 10;
-//
-//     R last_error;
-//
-//     for (int iter = 0; iter < solver_iterations; ++iter) {
-//         auto error = MatOps<R>::quadratic_form(X, W, X) + W2.dot(X);
-//         error.grad();
-//         graph::backward();
-//         solver->step(params);
-//
-//         if (iter > 1) { // some solvers need an epoch to start up.
-//             ASSERT_LT(error.w(0) + 1e-5, last_error);
-//         }
-//         last_error = error.w(0);
-//     }
-// }
-//
-// TEST(Solver, sgd) {
-//     test_solver([](vector<Mat<R>> params) {
-//         auto ret = std::make_shared<Solver::SGD<R>>(params);
-//         ret->step_size = 0.01;
-//         return ret;
-//     });
-// }
+void test_solver(create_solver_t create_solver) {
+    // minimize X.T() * W * X + W2 * X;
+    Tensor X({5, 1}, initializer::uniform(-20.0, 20.0));
+    X = tensor_ops::consider_constant(X);
+    Tensor W({5, 5}, initializer::uniform(-20.0, 20.0));
+    Tensor W2({1, 5}, initializer::uniform(-20.0, 20.0));
+
+    W = W.dot(W.transpose()); // ensure positive definite.
+
+    vector<Tensor> params({W, W2});
+    auto solver = create_solver(params);
+
+    int solver_iterations = 10;
+
+    float last_error;
+
+    for (int iter = 0; iter < solver_iterations; ++iter) {
+        auto error = tensor_ops::quadratic_form(X, W, X) + W2.dot(X);
+        error.grad();
+        graph::backward();
+        solver->step(params);
+
+        if (iter > 1) { // some solvers need an epoch to start up.
+            ASSERT_LT((float)error.w(0) + 1e-5, last_error);
+        }
+        last_error = (float)error.w(0);
+    }
+}
+
+TEST(Solver, sgd) {
+    test_solver([](vector<Tensor> params) {
+        auto ret = std::make_shared<solver::SGD>(params);
+        ret->step_size = 0.01;
+        return ret;
+    });
+}
 //
 // TEST(Solver, adagrad) {
 //     test_solver([](vector<Mat<R>> params) {

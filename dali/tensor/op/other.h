@@ -16,6 +16,9 @@ namespace tensor_ops {
     Tensor consider_constant_if(const Tensor& t, const bool& condition);
     Tensor consider_constant(const Tensor& t);
 
+    bool is_nan(const Tensor& t);
+    bool is_grad_nan(const Tensor& t);
+
 }  // namespace tensor_ops
 
 

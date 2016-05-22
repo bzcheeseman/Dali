@@ -13,6 +13,20 @@ namespace op {
         return lazy::sum(x / x.number_of_elements());
     }
 
+    AssignableArray L2_norm(const Array& x) {
+        return AssignableArray([x](Array& out, const OPERATOR_T& operator_t) {
+            Array temp = lazy::sum(lazy::square(x));
+            lazy::eval(lazy::sqrt(temp)).assign_to(out, operator_t);
+        });
+    }
+
+    AssignableArray L2_norm(const Array& x, const int& axis) {
+        return AssignableArray([x, axis](Array& out, const OPERATOR_T& operator_t) {
+            Array temp = lazy::sum(lazy::square(x), axis);
+            lazy::eval(lazy::sqrt(temp)).assign_to(out, operator_t);
+        });
+    }
+
     AssignableArray min(const Array& x) {
         return lazy::min(x);
     }

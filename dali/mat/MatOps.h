@@ -20,30 +20,6 @@
 #include "dali/tensor/op/reshaping.h"
 #include "dali/utils.h"
 
-
-// #ifdef NDEBUG
-    #define DEBUG_ASSERT_POSITIVE(X) ;
-    #define DEBUG_ASSERT_BOUNDS(X,a,b) ;
-    #define DEBUG_ASSERT_NONZERO(X) ;
-    #define DEBUG_ASSERT_MAT_NOT_NAN(X)
-    #define DEBUG_ASSERT_GRAD_NOT_NAN(X)
-    #define DEBUG_ASSERT_NOT_NAN(X) ;
-// #else
-//     #define DEBUG_ASSERT_POSITIVE(X) assert(((X).array() >= 0).all())
-//     #define DEBUG_ASSERT_BOUNDS(X,a,b) assert(((X).array() >= (a)).all()  &&  ((X).array() <=(b)).all())
-//     #define DEBUG_ASSERT_NONZERO(X) assert(((X).array().abs() >= 1e-10).all())
-//     #define DEBUG_ASSERT_NOT_NAN(X) assert(!utils::contains_NaN(((X).array().abs().sum())))
-//     #define DEBUG_ASSERT_MAT_NOT_NAN(X) if ( utils::contains_NaN((X).w()->w.norm()) ) { \
-//         (X).print(); \
-//         throw std::runtime_error(utils::explain_mat_bug((((X).name != nullptr) ? *(X).name : "?"), __FILE__,  __LINE__)); \
-//     }
-//     #define DEBUG_ASSERT_GRAD_NOT_NAN(X) if ( utils::contains_NaN((X).dw()->dw.norm()) ) { \
-//         (X).print(); \
-//         throw std::runtime_error(utils::explain_mat_bug((((X).name != nullptr) ? *(X).name : "?"), __FILE__,  __LINE__)); \
-//     }
-// #endif
-
-
 namespace matops {
     template<typename R> class Binary;
     template<typename R> class Elementwise;

@@ -29,6 +29,9 @@ namespace lazy {
     LazyBinary<functor::max_scalar, T, T2> eltmax(T a, T2 b);
 
     template <typename T, typename T2>
+    LazyBinary<functor::clip, T, T2> clip(T a, T2 b);
+
+    template <typename T, typename T2>
     LazyBinary<functor::min_scalar, T, T2> eltmin(T a, T2 b);
 
     template <typename T, typename T2>

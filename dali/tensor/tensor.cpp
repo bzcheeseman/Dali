@@ -288,13 +288,13 @@ Tensor Tensor::shallow_copy() {
 //     return TensorOps::steep_sigmoid(*this, aggressiveness);
 // }
 //
-// bool Tensor::is_nan() const {
-//     return TensorOps::is_nan(*this);
-// }
-//
-// bool Tensor::is_grad_nan() const {
-//     return TensorOps::is_grad_nan(*this);
-// }
+bool Tensor::is_nan() const {
+    return tensor_ops::is_nan(*this);
+}
+
+bool Tensor::is_grad_nan() const {
+    return tensor_ops::is_grad_nan(*this);
+}
 //
 //
 // #define MAT_BINARY_OP( opname ) \

@@ -83,6 +83,7 @@ class Array : public Exp<Array> {
     // (has no assossiated memory)
     bool is_stateless() const;
     bool is_scalar() const;
+    bool is_nan() const;
     // true if Array's contents conver entirety of underlying
     // memory (as opposed to offset memory, strided memory etc.).
     bool spans_entire_memory() const;
@@ -169,6 +170,7 @@ class Array : public Exp<Array> {
     AssignableArray mean() const;
     AssignableArray min() const;
     AssignableArray max() const;
+    AssignableArray L2_norm() const;
 
     /* Interpreting scalars as numbers */
     operator float&();

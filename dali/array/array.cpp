@@ -219,6 +219,10 @@ bool Array::is_scalar() const {
     return ndim() == 0;
 }
 
+bool Array::is_nan() const {
+    return op::is_nan(*this);
+}
+
 bool Array::spans_entire_memory() const {
     ASSERT2(!is_stateless(), "spans_entire_memory must not be called with stateless Array.");
     return offset() == 0 &&
@@ -624,6 +628,7 @@ Array Array::broadcast_scalar_to_ndim(int target_ndim) const {
     }\
 
 DALI_ARRAY_DEFINE_ALL_REDUCER(sum, sum);
+DALI_ARRAY_DEFINE_ALL_REDUCER(L2_norm, L2_norm);
 DALI_ARRAY_DEFINE_ALL_REDUCER(mean, mean);
 DALI_ARRAY_DEFINE_ALL_REDUCER(max, max);
 DALI_ARRAY_DEFINE_ALL_REDUCER(min, min);

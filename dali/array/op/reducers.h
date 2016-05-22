@@ -5,6 +5,8 @@
 
 namespace op {
     AssignableArray sum(const Array& x);
+    AssignableArray L2_norm(const Array& x);
+    AssignableArray L2_norm(const Array& x, const int& axis);
     AssignableArray mean(const Array& x);
     AssignableArray min(const Array& x);
     AssignableArray max(const Array& x);

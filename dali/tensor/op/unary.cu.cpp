@@ -17,6 +17,7 @@ namespace tensor_ops {
                 graph::emplace_back([t, out]() mutable { \
                     MAYBE_GRAD(t) <<= out.dw; \
                 }); \
+            return out; \
         }
 
     DALI_DEFINE_TENSOR_ADD_OP(const Tensor& t, double scalar)
@@ -37,6 +38,7 @@ namespace tensor_ops {
                 graph::emplace_back([t, out]() mutable { \
                     MAYBE_GRAD(t) <<= out.dw; \
                 }); \
+            return out; \
         }
 
     DALI_DEFINE_TENSOR_SUB_OP(const Tensor& t, double scalar)
@@ -50,6 +52,7 @@ namespace tensor_ops {
                 graph::emplace_back([t, out]() mutable { \
                     MAYBE_GRAD(t) <<= -out.dw; \
                 }); \
+            return out; \
         } \
 
     DALI_DEFINE_TENSOR_RSUB_OP(double scalar,   const Tensor& t)
@@ -67,6 +70,7 @@ namespace tensor_ops {
                 graph::emplace_back([t, out, scalar]() mutable { \
                     MAYBE_GRAD(t) <<= scalar * out.dw; \
                 }); \
+            return out; \
         }
 
     DALI_DEFINE_TENSOR_MUL_OP(const Tensor& t, double scalar)
@@ -87,8 +91,9 @@ namespace tensor_ops {
                 graph::emplace_back([t, out, scalar]() mutable { \
                     MAYBE_GRAD(t) <<= out.dw / scalar; \
                 }); \
+            return out; \
         }
-        
+
     DALI_DEFINE_TENSOR_DIV_OP(const Tensor& t, double scalar)
     DALI_DEFINE_TENSOR_DIV_OP(const Tensor& t, float scalar)
     DALI_DEFINE_TENSOR_DIV_OP(const Tensor& t, int scalar)
@@ -100,6 +105,7 @@ namespace tensor_ops {
                 graph::emplace_back([t, out, scalar]() mutable { \
                     MAYBE_GRAD(t) <<= -scalar / lazy::square(out.dw); \
                 }); \
+            return out; \
         }
 
     DALI_DEFINE_TENSOR_RDIV_OP(double scalar,   const Tensor& t)

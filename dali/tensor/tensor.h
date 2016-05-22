@@ -36,6 +36,8 @@ Automatic Differentiation in Dali.
 **/
 
 class Tensor {
+    private:
+        Tensor(const Array& w, const Array& dw, bool constant);
     public:
         typedef Array storage_t;
 
@@ -168,13 +170,19 @@ class Tensor {
         // Tensor softplus() const;
         // Tensor relu() const;
         // Tensor mul(Tensor) const;
-        // Tensor dot(Tensor) const;
+        Tensor dot(const Tensor&) const;
         // template<typename ScalarType>
         // Tensor pow(ScalarType) const;
         // Tensor sqrt() const;
         // Tensor elt_inv() const;
         // Tensor slice(int rowstart, int rowend) const;
-        // Tensor reshape(int rows, int cols) const;
+
+        Tensor reshape(const std::vector<int>&) const;
+        Tensor copyless_reshape(const std::vector<int>&) const;
+        Tensor broadcast_scalar_to_ndim(int ndim) const;
+        Tensor dimshuffle(const std::vector<int>& axes) const;
+        Tensor transpose(const std::vector<int>& axes) const;
+        Tensor transpose() const;
         // Tensor ravel() const;
         //
         // int argmax() const;
@@ -239,6 +247,7 @@ class Tensor {
                             const DType& dtype=DTYPE_FLOAT,
                             const memory::Device& preferred_device=memory::default_preferred_device);
 
+        static Tensor from_w_and_dw(const Array& w, const Array& dw, bool constant);
 
         // forcing memory location
         void to_device(memory::Device) const;

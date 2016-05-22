@@ -7,6 +7,7 @@
 #include "dali/array/op/other.h"
 #include "dali/array/op/reducers.h"
 #include "dali/array/op/unary.h"
+#include "dali/array/op/dot.h"
 #include "dali/utils/print_utils.h"
 #include "dali/array/op/initializer.h"
 #include "dali/array/function/operator.h"
@@ -84,6 +85,7 @@ ArrayState::ArrayState(const std::vector<int>& _shape,
 ////////////////////////////////////////////////////////////////////////////////
 //                                 ARRAY                                      //
 ////////////////////////////////////////////////////////////////////////////////
+#include <signal.h>
 
 template<typename T>
 T Array::scalar_value() const {
@@ -91,8 +93,9 @@ T Array::scalar_value() const {
             "Scalar value only available for arithmetic types (integer or real).");
     ASSERT2(
         shape().size() == 0,
-        utils::MS() << "Attempting to case array of shape " << shape() << " to a scalar,"
+        utils::MS() << "Attempting to cast array of shape " << shape() << " to a scalar,"
                     << " which is only allowed for a zero-dimensional array.");
+
     void* data = memory()->data(memory::Device::cpu());
     if (dtype() == DTYPE_FLOAT) {
         return *((float*)(data) + offset());
@@ -109,7 +112,7 @@ T& Array::scalar_value() {
             "Scalar value only available for arithmetic types (integer or real).");
     ASSERT2(
         shape().size() == 0,
-        utils::MS() << "Attempting to case array of shape " << shape() << " to a scalar,"
+        utils::MS() << "Attempting to cast array of shape " << shape() << " to a scalar,"
                     << " which is only allowed for a zero-dimensional array.");
     ASSERT2(template_to_dtype<T>() == dtype(), "Scalar assign attempted with wrong type.");
     void* data = memory()->mutable_data(memory::Device::cpu());
@@ -398,6 +401,26 @@ Array Array::transpose(const std::vector<int>& axes) const {
     return dimshuffle(axes);
 }
 
+Array Array::swapaxes(int axis1, int axis2) const {
+    axis1 = normalize_axis(axis1);
+    axis2 = normalize_axis(axis2);
+    ASSERT2(0 <= axis1 && axis1 < ndim(),
+        utils::MS() << "swapaxes axis1 (" << axis1 << ") must be less ndim (" << ndim() << ")");
+    ASSERT2(0 <= axis2 && axis2 < ndim(),
+        utils::MS() << "swapaxes axis2 (" << axis2 << ") must be less ndim (" << ndim() << ")");
+    vector<int> axis_permuation;
+    for (int i = 0; i < ndim(); ++i) {
+        if (i == axis1) {
+            axis_permuation.push_back(axis2);
+        } else if (i == axis2) {
+            axis_permuation.push_back(axis1);
+        } else {
+            axis_permuation.push_back(i);
+        }
+    }
+    return dimshuffle(axis_permuation);
+}
+
 Array Array::dimshuffle(const std::vector<int>& pattern) const {
     int dimensionality = ndim();
     ASSERT2(pattern.size() == dimensionality,
@@ -571,6 +594,15 @@ Array Array::insert_broadcast_axis(int new_axis) const {
     return expand_dims(new_axis).broadcast_axis(new_axis);
 }
 
+int Array::normalize_axis(int axis) const {
+    if (axis < 0) {
+        return ndim() + axis;
+    } else {
+        return axis;
+    }
+}
+
+
 Array Array::broadcast_scalar_to_ndim(int target_ndim) const {
     ASSERT2(is_scalar(),
             utils::MS() << "broadcast_scalar_to_ndim may only be called on scalars, got shape " << shape() << ".");
@@ -707,6 +739,10 @@ void Array::clear() {
     }
 }
 
+
+AssignableArray Array::dot(const Array& other) const {
+    return op::dot(*this, other);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 //                        ARRAY SLICE                                         //

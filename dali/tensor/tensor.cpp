@@ -1,8 +1,10 @@
-#include "dali/tensor/tensor.h"
+#include "tensor.h"
+
 #include "dali/array/op.h"
 #include "dali/array/op/initializer.h"
-
 #include "dali/tensor/op.h"
+#include "dali/tensor/op/other.h"
+#include "dali/tensor/op/dot.h"
 
 // #include "dali/tensor/Index.h"
 
@@ -12,7 +14,15 @@ using std::stringstream;
 using utils::assert2;
 using std::make_shared;
 
-/* Tensor */
+////////////////////////////////////////////////////////////////////////////////
+//                             TENSOR                                         //
+////////////////////////////////////////////////////////////////////////////////
+
+
+Tensor::Tensor(const Array& w_, const Array& dw_, bool constant_) :
+        w(w_), dw(dw_), constant(constant_), name(nullptr) {
+}
+
 // this does not need to initialize anything once we get rid of w and dw.
 Tensor::Tensor() {
 }
@@ -305,10 +315,11 @@ Tensor Tensor::shallow_copy() {
 // MAT_BINARY_OP( sub_broadcast_reversed )
 // MAT_BINARY_OP( mul )
 //
-// // syntactic sugar
-// Tensor Tensor::dot(Tensor other) const {
-//     return TensorOps::mul(*this, other);
-// }
+
+Tensor Tensor::dot(const Tensor& other) const {
+    return tensor_ops::dot(*this, other);
+}
+
 //
 #define TENSOR_UNARY_OP( opname ) \
     Tensor Tensor::opname() const {\
@@ -348,10 +359,32 @@ TENSOR_UNARY_OP_WITH_INT_ARG(max);
 //     return TensorOps::slice(*this, rowstart, rowwend);
 // }
 //
-// Tensor Tensor::reshape(int rows, int cols) const {
-//     return TensorOps::reshape(*this, rows, cols);
-// }
-//
+Tensor Tensor::reshape(const std::vector<int>& new_shape) const {
+    return tensor_ops::reshape(*this, new_shape);
+}
+
+Tensor Tensor::copyless_reshape(const std::vector<int>& new_shape) const {
+    return Tensor::from_w_and_dw(w.copyless_reshape(new_shape), dw.copyless_reshape(new_shape), constant);
+}
+
+Tensor Tensor::dimshuffle(const std::vector<int>& axes) const {
+    return Tensor::from_w_and_dw(w.dimshuffle(axes), dw.dimshuffle(axes), constant);
+}
+
+Tensor Tensor::transpose() const {
+    return Tensor::from_w_and_dw(w.transpose(), dw.transpose(), constant);
+}
+
+Tensor Tensor::transpose(const std::vector<int>& axes) const {
+    return Tensor::from_w_and_dw(w.transpose(axes), dw.transpose(axes), constant);
+}
+
+Tensor Tensor::broadcast_scalar_to_ndim(int ndim) const {
+    return Tensor::from_w_and_dw(w.broadcast_scalar_to_ndim(ndim),
+                  dw.broadcast_scalar_to_ndim(ndim),
+                  constant);
+}
+
 // Tensor Tensor::ravel() const {
 //     return TensorOps::reshape(*this, number_of_elements(), 1);
 // }
@@ -517,6 +550,9 @@ Tensor Tensor::empty(const std::vector<int>& shape,
     return Tensor(shape, initializer::empty(), dtype, preferred_device);
 }
 
+Tensor Tensor::from_w_and_dw(const Array& w, const Array& dw, bool constant) {
+    return Tensor(w, dw, constant);
+}
 
 void Tensor::to_device(memory::Device device) const {
     w.to_device(device);

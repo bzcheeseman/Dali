@@ -4,9 +4,8 @@
 #include "dali/tensor/tape.h"
 #include "dali/tensor/tensor_macros.h"
 
-
 namespace tensor_ops {
-    Tensor add(Tensor a, Tensor b) {
+    Tensor add(const Tensor& a, const Tensor& b) {
         Tensor out(a.w + b.w);
 
         if (graph::backprop_enabled())
@@ -17,7 +16,7 @@ namespace tensor_ops {
         return out;
     }
 
-    Tensor sub(Tensor a, Tensor b) {
+    Tensor sub(const Tensor& a, const Tensor& b) {
         Tensor out(a.w - b.w);
 
         if (graph::backprop_enabled())
@@ -28,7 +27,7 @@ namespace tensor_ops {
         return out;
     }
 
-    Tensor eltmul(Tensor a, Tensor b) {
+    Tensor eltmul(const Tensor& a, const Tensor& b) {
         Tensor out(a.w * b.w);
 
         if (graph::backprop_enabled())
@@ -38,7 +37,7 @@ namespace tensor_ops {
             });
         return out;
     }
-    Tensor eltdiv(Tensor a, Tensor b) {
+    Tensor eltdiv(const Tensor& a, const Tensor& b) {
         Tensor out(a.w / b.w);
 
         if (graph::backprop_enabled())
@@ -49,7 +48,7 @@ namespace tensor_ops {
         return out;
     }
 
-    Tensor pow(Tensor a, Tensor exponent) {
+    Tensor pow(const Tensor& a, const Tensor& exponent) {
         Tensor out(lazy::pow(a.w, exponent.w));
 
         if (graph::backprop_enabled())
@@ -61,15 +60,4 @@ namespace tensor_ops {
             });
         return out;
     }
-
-    Tensor dot(Tensor a, Tensor b) {
-        Tensor out(op::dot(a.w, b.w));
-
-        if (graph::backprop_enabled())
-            graph::emplace_back([a, b, out]() mutable {
-                MAYBE_GRAD(a) <<= op::dot(out.dw, b.w.transpose());
-                MAYBE_GRAD(b) <<= op::dot(a.w.transpose(), out.dw);
-            });
-        return out;
-    }
-}
+}  // namespace tensor_ops

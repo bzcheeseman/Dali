@@ -54,8 +54,10 @@ class Array : public Exp<Array> {
     template<typename T>
     Array& assign_constant(const T& other);
     void broadcast_axis_internal(int axis);
+    int normalize_axis(int axis) const;
   public:
-    typedef uint index_t;
+    typedef uint            index_t;
+
     Array();
 
     /* Various ways of constructing array */
@@ -120,6 +122,7 @@ class Array : public Exp<Array> {
     Array operator()(index_t idx) const;
     Array transpose() const;
     Array transpose(const std::vector<int>& axes) const;
+    Array swapaxes(int axis1, int axis2) const;
     // a less flexible version of the dimension switching
     // TODO(jonathan): add swapaxes + should allow insertion of
     // broadcasts in dimshuffle (aka [1, 'x', 0], where 'x' is broadcasted)
@@ -190,6 +193,8 @@ class Array : public Exp<Array> {
     template<typename ExprT>
     Array& operator=(const LazyExp<ExprT>& expr);
 
+    /* shortcuts for array ops */
+    AssignableArray dot(const Array& other) const;
 };
 
 struct ArraySlice {

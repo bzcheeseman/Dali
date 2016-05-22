@@ -24,6 +24,13 @@ TEST(FunctionTests, lazy_lse) {
 }
 
 
+TEST(FunctionTests, lse_3D) {
+    Array target = Array({3,2,2});
+    Array source = Array({3,2,2});
+
+    target <<= source;
+}
+
 TEST(FunctionTests, lse) {
     Array target = Array::zeros({3,4}, DTYPE_INT32);
     Array source = Array::arange({3,4}, DTYPE_INT32);

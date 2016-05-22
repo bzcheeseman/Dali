@@ -17,6 +17,7 @@ namespace tensor_ops {
     DALI_DECLARE_TENSOR_SCALAR_OP(scalar_sub)
     DALI_DECLARE_TENSOR_SCALAR_OP(scalar_eltmul)
     DALI_DECLARE_TENSOR_SCALAR_OP(scalar_eltdiv)
+    DALI_DECLARE_TENSOR_SCALAR_OP(scalar_pow)
 
     Tensor tanh(const Tensor&);
     Tensor softplus(const Tensor&);

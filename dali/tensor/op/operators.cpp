@@ -22,9 +22,11 @@ DALI_DEFINE_TENSOR_INTERACTION(tensor_ops::add,   +);
 DALI_DEFINE_TENSOR_INTERACTION(tensor_ops::sub,   -);
 DALI_DEFINE_TENSOR_INTERACTION(tensor_ops::eltmul,*);
 DALI_DEFINE_TENSOR_INTERACTION(tensor_ops::eltdiv,/);
+DALI_DEFINE_TENSOR_INTERACTION(tensor_ops::pow,   ^);
 
 DALI_DEFINE_TENSOR_SCALAR_INTERACTION(tensor_ops::scalar_add, +);
 DALI_DEFINE_TENSOR_SCALAR_INTERACTION(tensor_ops::scalar_sub, -);
 DALI_DEFINE_TENSOR_SCALAR_INTERACTION(tensor_ops::scalar_eltmul,*);
 DALI_DEFINE_TENSOR_SCALAR_INTERACTION(tensor_ops::scalar_eltdiv,/);
+DALI_DEFINE_TENSOR_SCALAR_INTERACTION(tensor_ops::scalar_pow,   ^);
 #endif

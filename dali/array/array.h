@@ -128,6 +128,9 @@ class Array : public Exp<Array> {
     // broadcasts in dimshuffle (aka [1, 'x', 0], where 'x' is broadcasted)
     Array dimshuffle(const std::vector<int>& pattern) const;
     Array ravel() const;
+    // only ravel if underlying memory is contiguous
+    // ensures that no unexpected memory aliasing occurs
+    Array copyless_ravel() const;
     Array reshape(const std::vector<int>& shape) const;
     // only reshapes if underlying memory is contiguous
     // ensures that no unexpected memory aliasing occurs

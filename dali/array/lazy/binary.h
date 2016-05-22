@@ -7,6 +7,9 @@ template<template<class>class Functor, typename LeftT, typename RightT>
 struct LazyBinary;
 
 namespace lazy {
+    template<template<class>class Functor, typename T, typename T2>
+    LazyBinary<Functor, T, T2> F(const Exp<T>& expr, const T2& expr2);
+
     template <typename T, typename T2>
     LazyBinary<functor::add, T, T2> add(T a, T2 b);
 

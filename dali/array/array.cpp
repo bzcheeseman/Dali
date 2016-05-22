@@ -450,7 +450,7 @@ Array Array::dimshuffle(const std::vector<int>& pattern) const {
     return Array(newshape, memory(), offset(), newstrides, dtype());
 }
 
-Array Array::ravel() const {
+Array Array::copyless_ravel() const {
     ASSERT2(contiguous_memory(),
             "at the moment ravel is only supported for contiguous_memory");
     return Array({number_of_elements()},
@@ -458,6 +458,10 @@ Array Array::ravel() const {
                  offset(),
                  std::vector<int>(),
                  dtype());
+}
+
+Array Array::ravel() const {
+    return ascontiguousarray().copyless_ravel();
 }
 
 Array Array::copyless_reshape(const vector<int>& new_shape) const {

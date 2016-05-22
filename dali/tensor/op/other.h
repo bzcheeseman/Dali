@@ -5,6 +5,7 @@
 
 namespace tensor_ops {
     Tensor reshape(const Tensor& t, const std::vector<int>& new_shape);
+    Tensor ravel(const Tensor& t);
 
     Tensor fill(const Tensor& t, const double& filler);
     Tensor fill(const Tensor& t, const float& filler);
@@ -14,6 +15,7 @@ namespace tensor_ops {
 
     Tensor consider_constant_if(const Tensor& t, const bool& condition);
     Tensor consider_constant(const Tensor& t);
+
 }  // namespace tensor_ops
 
 

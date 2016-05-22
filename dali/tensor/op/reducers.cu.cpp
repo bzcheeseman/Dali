@@ -106,4 +106,42 @@ namespace tensor_ops {
 
     DALI_TENSOR_SUBSAMPLE_AXIS_REDUCTION(min, op::min);
     DALI_TENSOR_SUBSAMPLE_AXIS_REDUCTION(max, op::max);
+
+
+    #define DALI_TENSOR_SUBSAMPLE_ALL_REDUCTION(FUNCTION_NAME)\
+        Tensor FUNCTION_NAME(const Tensor& tensor) {\
+            if (tensor.number_of_elements() == 1) {\
+                auto out = tensor;\
+                out.w = tensor.w.reshape({});\
+                out.dw = tensor.dw.reshape({});\
+                return out;\
+            } else {\
+                Tensor out(tensor.w.FUNCTION_NAME());\
+                if (graph::backprop_enabled() && !tensor.constant)\
+                    graph::emplace_back([tensor, out]() mutable {\
+                        tensor.dw <<= lazy::subsample_partial_grad(\
+                            out.w.broadcast_scalar_to_ndim(tensor.ndim()),\
+                            tensor.w\
+                        ) * out.dw.broadcast_scalar_to_ndim(tensor.ndim());\
+                    });\
+                return out;\
+            }\
+        }\
+
+    #define DALI_TENSOR_GETINDICES_ALL_REDUCTION(FUNCTION_NAME)\
+        Tensor FUNCTION_NAME(const Tensor& tensor) {\
+            return Tensor(op::FUNCTION_NAME(tensor.w.ravel(), 0));\
+        }\
+
+    DALI_TENSOR_GETINDICES_ALL_REDUCTION(argmin);
+    DALI_TENSOR_GETINDICES_ALL_REDUCTION(argmax);
+
+    #define DALI_TENSOR_GETINDICES_AXIS_REDUCTION(FUNCTION_NAME)\
+        Tensor FUNCTION_NAME(const Tensor& tensor, const int& axis) {\
+            return Tensor(op::FUNCTION_NAME(tensor.w, axis));\
+        }\
+
+    DALI_TENSOR_GETINDICES_AXIS_REDUCTION(argmin);
+    DALI_TENSOR_GETINDICES_AXIS_REDUCTION(argmax);
+
 }

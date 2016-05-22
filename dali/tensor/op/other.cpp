@@ -19,6 +19,21 @@ namespace tensor_ops {
         return out;
     }
 
+    Tensor ravel(const Tensor& t) {
+        auto out = Tensor::from_w_and_dw(t.w.ravel(),
+                                         t.dw.ravel(),
+                                         t.constant);
+
+        if (t.dw.memory() != out.dw.memory()) {
+            // if out.dw is no longer a view, we need backpropagation.
+            if (graph::backprop_enabled())
+                graph::emplace_back([t, out]() mutable {
+                    MAYBE_GRAD(t) <<= out.dw.reshape(t.shape());
+                });
+        }
+        return out;
+    }
+
     Tensor fill(const Tensor& t, const double& filler) {
         auto out = Tensor::empty_like(t);
         out.w = filler;

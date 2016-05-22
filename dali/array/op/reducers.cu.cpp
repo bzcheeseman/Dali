@@ -33,6 +33,14 @@ namespace op {
         return lazy::max(x, axis);
     }
 
+    AssignableArray argmin(const Array& x, const int& axis) {
+        return lazy::argmin(x, axis);
+    }
+
+    AssignableArray argmax(const Array& x, const int& axis) {
+        return lazy::argmax(x, axis);
+    }
+
     AssignableArray mean(const Array& x, const int& axis) {
     	auto reduced = lazy::sum(x, axis);
     	return reduced / x.shape()[axis]; // size of reduced axis

@@ -251,6 +251,13 @@ namespace functor {
     };
 
     template<typename R>
+    struct  min_scalar_mask {
+        MSHADOW_XINLINE static R Map(const R& m, const R& upper_bound) {
+            return (m < upper_bound) ? 1.0 : 0.0;
+        }
+    };
+
+    template<typename R>
     struct  steep_sigmoid {
         MSHADOW_XINLINE static R Map(const R& x, const R& aggressiveness) {
             return 1.0 / (1.0 + EXP_F( - aggressiveness * x));
@@ -270,10 +277,25 @@ namespace functor {
             return x > 0.0 ? x : 0.0;
         }
     };
+
+    template<typename R>
+    struct clipped_relu {
+        MSHADOW_XINLINE static R Map(const R& x, const R& clipfactor) {
+            return x > 0.0 ? ( x > clipfactor ? clipfactor : x) : 0.0;
+        }
+    };
+
     template<typename R>
     struct relu_backward {
         MSHADOW_XINLINE static R Map(const R& x) {
             return x > 0.0 ? 1.0 : 0.0;
+        }
+    };
+
+    template<typename R>
+    struct clipped_relu_backward {
+        MSHADOW_XINLINE static R Map(const R& x, const R& clipfactor) {
+            return x > 0.0 ? (x > clipfactor ? 0.0 : 1.0) : 0.0;
         }
     };
 

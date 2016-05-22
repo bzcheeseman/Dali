@@ -12,5 +12,7 @@ namespace op {
     AssignableArray mean(const Array& x, const int& axis);
     AssignableArray min(const Array& x, const int& axis);
     AssignableArray max(const Array& x, const int& axis);
+    AssignableArray argmin(const Array& x, const int& axis);
+    AssignableArray argmax(const Array& x, const int& axis);
 }; // namespace op
 #endif

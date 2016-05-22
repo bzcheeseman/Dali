@@ -385,9 +385,30 @@ Tensor Tensor::broadcast_scalar_to_ndim(int ndim) const {
                   constant);
 }
 
-// Tensor Tensor::ravel() const {
-//     return TensorOps::reshape(*this, number_of_elements(), 1);
-// }
+Tensor Tensor::copyless_ravel() const {
+    return Tensor::from_w_and_dw(w.copyless_ravel(), dw.copyless_ravel(), constant);
+}
+
+Tensor Tensor::ravel() const {
+    return tensor_ops::ravel(*this);
+}
+
+Tensor Tensor::argmin() const {
+    return tensor_ops::argmin(*this);
+}
+
+Tensor Tensor::argmax() const {
+    return tensor_ops::argmax(*this);
+}
+
+Tensor Tensor::argmin(const int& axis) const {
+    return tensor_ops::argmin(*this, axis);
+}
+
+Tensor Tensor::argmax(const int& axis) const {
+    return tensor_ops::argmax(*this, axis);
+}
+
 //
 // Tensor Tensor::col(int col) {
 //     return TensorOps::col_pluck(*this, col);

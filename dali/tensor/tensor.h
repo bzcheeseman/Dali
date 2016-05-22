@@ -169,7 +169,6 @@ class Tensor {
         // Tensor tanh() const;
         // Tensor softplus() const;
         // Tensor relu() const;
-        // Tensor mul(Tensor) const;
         Tensor dot(const Tensor&) const;
         // template<typename ScalarType>
         // Tensor pow(ScalarType) const;
@@ -183,23 +182,15 @@ class Tensor {
         Tensor dimshuffle(const std::vector<int>& axes) const;
         Tensor transpose(const std::vector<int>& axes) const;
         Tensor transpose() const;
-        // Tensor ravel() const;
-        //
-        // int argmax() const;
-        // int argmin() const;
-        //
-        // std::vector<int> argmin(int dimension) const;
-        // std::vector<int> argmax(int dimension) const;
+        Tensor ravel() const;
+        Tensor copyless_ravel() const;
+        // Returns the indices of the maximum values along an axis.
+        Tensor argmax() const;
+        Tensor argmax(const int& axis) const;
+        // Returns the indices of the minimum values along an axis.
+        Tensor argmin() const;
+        Tensor argmin(const int& axis) const;
         // std::vector<int> argsort() const;
-        // /*
-        // Restricted range argmax: returns the index of the
-        // highest value between two indices, lower and upper
-        // (useful if a range of predictions is inadmissible,
-        // so we are only considering a subset of predictions)
-        // */
-        // int argmax_slice(int lower, int upper) const;
-        // int argmin_slice(int lower, int upper) const;
-        //
         // Tensor operator-() const;
         //
         // Tensor operator+(Tensor) const;
@@ -236,8 +227,6 @@ class Tensor {
         // Tensor operator[](Indexing::Index) const;
         // Tensor operator()(Indexing::Index) const;
         // Tensor operator()(Indexing::Index, Indexing::Index) const;
-        // // Tensor operator()(void*, Indexing::Index) const;
-        // Tensor operator()(void*, int) const;
         static Tensor zeros_like(const Tensor& other);
         static Tensor empty_like(const Tensor& other);
         static Tensor zeros(const std::vector<int>& shape,

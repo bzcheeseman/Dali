@@ -23,6 +23,12 @@ namespace lazy {
     LazyBinary<functor::eltdiv, T, T2> eltdiv(T a, T2 b);
 
     template <typename T, typename T2>
+    LazyBinary<functor::lessthanequal, T, T2> lessthanequal(T a, T2 b);
+
+    template <typename T, typename T2>
+    LazyBinary<functor::greaterthanequal, T, T2> greaterthanequal(T a, T2 b);
+
+    template <typename T, typename T2>
     LazyBinary<functor::power, T, T2> pow(T a, T2 b);
 
     template <typename T, typename T2>

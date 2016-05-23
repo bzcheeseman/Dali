@@ -205,22 +205,20 @@ TEST_F(TensorTests, max_min_test) {
     }
 
 }
-//
-//
-// TEST_F(MatrixTests, equals) {
-//     auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
-//     auto B = Mat<R>(10, 20, weights<R>::uniform(2.0));
-//
-//     EXPECT_MATRIX_EQ(A, A)  << "A equals A.";
-//     EXPECT_MATRIX_NEQ(A, B) << "A different from B.";
-//     EXPECT_MATRIX_CLOSE(A, A, 1e-4)  << "A near A.";
-//     EXPECT_MATRIX_NOT_CLOSE(A, B, 1e-4) << "A not near B.";
-//
-//     EXPECT_MAT_ON_GPU(A);
-//     EXPECT_MAT_ON_GPU(B);
-//
-// }
-//
+
+TEST(MatrixTests, equals) {
+    Tensor A({10, 20}, initializer::uniform(-2.0, 2.0));
+    Tensor B({10, 20}, initializer::uniform(-2.0, 2.0));
+
+    EXPECT_TRUE(tensor_ops::equals(A, A)) << "A equals A.";
+    EXPECT_FALSE(tensor_ops::equals(A, B)) << "A different from B.";
+    EXPECT_TRUE(tensor_ops::allclose(A, A, 1e-4)) << "A near A.";
+    EXPECT_FALSE(tensor_ops::allclose(A, B, 1e-4)) << "A not near B.";
+
+    EXPECT_MAT_ON_GPU(A);
+    EXPECT_MAT_ON_GPU(B);
+}
+
 // TEST_F(MatrixTests, L2_norm_rowwise) {
 //     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
 //         return MatOps<R>::L2_norm_rowwise(Xs[0]);
@@ -337,25 +335,38 @@ TEST_F(TensorTests, sum) {
 //     }
 // }
 //
-// TEST(MatrixIOTests, load_test) {
-//     Mat<R> arange(utils::dir_join({STR(DALI_DATA_DIR),    "tests", "arange12.npy"}));
-//     Mat<R> arange_fortran(utils::dir_join({STR(DALI_DATA_DIR), "tests", "arange12.fortran.npy"}));
-//     ASSERT_TRUE(MatOps<R>::equals(arange, arange_fortran));
-//     for (int i = 0; i < 12; i++) {
-//         ASSERT_EQ(arange.w(i), i);
-//     }
-// }
-//
-// TEST(MatrixIOTests, save_load_test) {
-//     // load arange, then save it to a new file
-//     Mat<R> arange(utils::dir_join({STR(DALI_DATA_DIR),    "tests", "arange12.npy"}));
-//     arange.npy_save(utils::dir_join({STR(DALI_DATA_DIR),  "tests", "arange12.temp.npy"}));
-//     Mat<R> reloaded(utils::dir_join({STR(DALI_DATA_DIR),  "tests", "arange12.temp.npy"}));
-//     ASSERT_TRUE(MatOps<R>::equals(arange, reloaded));
-//     for (int i = 0; i < 12; i++) {
-//         ASSERT_EQ(arange.w(i), i);
-//     }
-// }
+
+
+TEST(TensorIOTests, load_fortran) {
+    auto arange = Tensor::load(
+        utils::dir_join({STR(DALI_DATA_DIR), "tests", "arange12.npy"})
+    );
+    auto arange_fortran = Tensor::load(
+        utils::dir_join({STR(DALI_DATA_DIR), "tests", "arange12.fortran.npy"})
+    );
+    ASSERT_TRUE(tensor_ops::equals(arange, arange_fortran));
+    for (int i = 0; i < 12; i++) {
+        EXPECT_EQ_DTYPE(i, arange_fortran.w(i), arange_fortran.dtype());
+    }
+}
+
+TEST(TensorIOTests, save_load_test) {
+    // load arange, then save it to a new file
+    auto arange = Tensor::load(
+        utils::dir_join({STR(DALI_DATA_DIR), "tests", "arange12.npy"})
+    );
+    Tensor::save(
+        utils::dir_join({STR(DALI_DATA_DIR),  "tests", "arange12.temp.npy"}),
+        arange
+    );
+    auto reloaded = Tensor::load(
+        utils::dir_join({STR(DALI_DATA_DIR),  "tests", "arange12.temp.npy"})
+    );
+    ASSERT_TRUE(tensor_ops::equals(arange, reloaded));
+    for (int i = 0; i < 12; i++) {
+        EXPECT_EQ_DTYPE(i, arange.w(i), arange.dtype());
+    }
+}
 
 TEST_F(TensorTests, lazy_allocation) {
     // if memory must be filled with zeros,

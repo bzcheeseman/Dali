@@ -39,6 +39,8 @@ namespace lazy {
         }\
 
     DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(add, functor::add);
+    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(lessthanequal, functor::lessthanequal);
+    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(greaterthanequal, functor::greaterthanequal);
     DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(sub, functor::sub);
     DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(eltmul, functor::eltmul);
     DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(eltdiv, functor::eltdiv);

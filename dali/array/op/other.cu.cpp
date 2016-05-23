@@ -10,6 +10,7 @@
 #include "dali/array/memory/device.h"
 #include "dali/array/lazy/binary.h"
 #include "dali/array/lazy/reducers.h"
+#include "dali/array/lazy/unary.h"
 
 using memory::Device;
 
@@ -42,6 +43,20 @@ namespace op {
     bool is_nan(const Array& x) { return IsNan::run(x); }
     AssignableArray all_equals(const Array& left, const Array& right) {
         return lazy::product(lazy::equals(left, right));
+    }
+
+    AssignableArray all_close(const Array& left, const Array& right, const double& atolerance) {
+        ASSERT2(atolerance >= 0,
+            utils::MS() << "atolerance must be a strictly positive number (got atolerance="
+                        << atolerance << ").");
+        return lazy::product(
+            lazy::lessthanequal(
+                lazy::abs(
+                    lazy::sub(left,right)
+                ),
+                atolerance
+            )
+        );
     }
 } // namespace op
 

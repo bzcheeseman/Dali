@@ -585,6 +585,25 @@ template Tensor Tensor::fill(const float&,  const std::vector<int>&, const DType
 template Tensor Tensor::fill(const double&, const std::vector<int>&, const DType&, const memory::Device&);
 
 
+Tensor Tensor::load(FILE * fp) {
+    auto loaded = Array::load(fp);
+    return Tensor(loaded, Array::zeros_like(loaded), false);
+}
+
+Tensor Tensor::load(const std::string& fname) {
+    auto loaded = Array::load(fname);
+    return Tensor(loaded, Array::zeros_like(loaded), false);
+}
+
+void Tensor::save(const std::string& fname, const Tensor& arr, const std::ios_base::openmode& mode) {
+    Array::save(fname, arr.w, mode);
+}
+
+void Tensor::save(std::basic_ostream<char>& stream, const Tensor& arr) {
+    Array::save(stream, arr.w);
+}
+
+
 Tensor Tensor::from_w_and_dw(const Array& w, const Array& dw, bool constant) {
     return Tensor(w, dw, constant);
 }

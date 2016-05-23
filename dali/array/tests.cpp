@@ -513,7 +513,7 @@ TEST(ArrayIOTests, load_fortran) {
     );
     ASSERT_TRUE(Array::equals(arange, arange_fortran));
     for (int i = 0; i < 12; i++) {
-        EXPECT_EQ_DTYPE(i, arange(i), arange.dtype());
+        EXPECT_EQ_DTYPE(i, arange_fortran(i), arange_fortran.dtype());
     }
 }
 

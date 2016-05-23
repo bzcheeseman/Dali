@@ -293,11 +293,31 @@ void Array::save(std::basic_ostream<char>& stream, const Array& arr) {
 }
 
 bool Array::equals(const Array& left, const Array& right) {
+    if (left.is_stateless() && right.is_stateless()) {
+        return true;
+    }
+    if (left.is_stateless() != right.is_stateless()) {
+        return false;
+    }
     if (left.shape() != right.shape()) {
         return false;
     }
     bool all_equals = ((float)(Array)op::all_equals(left, right)) > 0 ? true : false;
     return all_equals;
+}
+
+bool Array::allclose(const Array& left, const Array& right, const double& atolerance) {
+    if (left.is_stateless() && right.is_stateless()) {
+        return true;
+    }
+    if (left.is_stateless() != right.is_stateless()) {
+        return false;
+    }
+    if (left.shape() != right.shape()) {
+        return false;
+    }
+    bool is_all_close = ((float)(Array)op::all_close(left, right, atolerance)) > 0 ? true : false;
+    return is_all_close;
 }
 
 bool Array::is_nan() const {

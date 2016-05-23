@@ -79,6 +79,8 @@ class Array : public Exp<Array> {
     static void save(const std::string& fname, const Array& arr, const std::ios_base::openmode& mode=std::ios_base::out);
     static void save(std::basic_ostream<char>& stream, const Array& arr);
     static bool equals(const Array& left, const Array& right);
+    // compare two arrays and considered close if abs(left - right) <= atolerance
+    static bool allclose(const Array& left, const Array& right, const double& atolerance);
 
     // true if just creted with empty constructor or reset
     // (has no assossiated memory)

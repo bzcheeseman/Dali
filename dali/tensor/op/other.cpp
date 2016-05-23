@@ -73,5 +73,13 @@ namespace tensor_ops {
         return t.dw.is_nan();
     }
 
+    bool equals(const Tensor& left, const Tensor& right) {
+        return Array::equals(left.w, right.w);
+    }
+
+    bool allclose(const Tensor& left, const Tensor& right, const double& atolerance) {
+        return Array::allclose(left.w, right.w, atolerance);
+    }
+
 
 }  // namespace tensor_ops

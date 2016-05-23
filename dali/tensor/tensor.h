@@ -270,7 +270,10 @@ class Tensor {
                            const DType& dtype=DTYPE_FLOAT,
                            const memory::Device& preferred_device=memory::default_preferred_device);
 
-
+        static Tensor load(const std::string& fname);
+        static Tensor load(FILE * fp);
+        static void save(const std::string& fname, const Tensor& arr, const std::ios_base::openmode& mode=std::ios_base::out);
+        static void save(std::basic_ostream<char>& stream, const Tensor& arr);
 
         static Tensor from_w_and_dw(const Array& w, const Array& dw, bool constant);
 

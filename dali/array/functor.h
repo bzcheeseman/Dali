@@ -313,6 +313,20 @@ namespace functor {
     };
 
     template<typename R>
+    struct lessthanequal {
+        MSHADOW_XINLINE static R Map(const R& x, const R& upperbound) {
+            return x <= upperbound ? 1 : 0;
+        }
+    };
+
+    template<typename R>
+    struct greaterthanequal {
+        MSHADOW_XINLINE static R Map(const R& x, const R& lowerbound) {
+            return x >= lowerbound ? 1 : 0;
+        }
+    };
+
+    template<typename R>
     struct binary_cross_entropy {
         MSHADOW_XINLINE static R Map(const R& x, const R& t ) {
             R distance_from1 =        t  * LOG_F(x);

@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cstdlib>
 #include <vector>
+#include <functional>
+#include <numeric>
 
 int hypercube_volume(const std::vector<int>& shape) {
     return std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());

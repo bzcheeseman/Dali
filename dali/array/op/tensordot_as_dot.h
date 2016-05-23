@@ -21,9 +21,11 @@ namespace op {
     using matmul_result_t = decltype(Container().dot(Container()));
 
     template<typename Container>
-    matmul_result_t<Container> matrix_multiply_with_reshape(const Container& a,
-                                      const Container& b,
-                                      const std::vector<int>& out_shape);
+    matmul_result_t<Container> matrix_multiply_with_reshape(
+            const Container& a,
+            const Container& b,
+            const std::vector<int>& out_shape,
+            const std::vector<int>& out_shape_2d);
 
     template<typename Container>
     matmul_result_t<Container> tensordot_as_dot(

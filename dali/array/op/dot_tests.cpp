@@ -175,6 +175,35 @@ Array reference_tensordot(const Array& a, const Array&b) {
     return cloop;
 }
 
+TEST(ArrayDotTests, broadcasted_args) {
+    Array X = Array::arange({5}, DTYPE_DOUBLE)[Broadcast()];
+    auto W = Array::arange({5, 10}, DTYPE_DOUBLE);
+
+    auto out = Array({3, 10}, DTYPE_DOUBLE);
+
+    out = X.dot(W);
+}
+
+
+TEST(ArrayDotTests, broadcasted_args_explicit_reshape) {
+    Array X = Array::arange({5}, DTYPE_DOUBLE)[Broadcast()];
+    X = X.reshape_broadcasted({3,5});
+    auto W = Array::arange({5, 10}, DTYPE_DOUBLE);
+
+    auto out = Array({3, 10}, DTYPE_DOUBLE);
+
+    out = X.dot(W);
+}
+
+
+TEST(ArrayDotTests, broadcasted_args_inner) {
+    Array X = Array::arange({2}, DTYPE_DOUBLE)[Slice(0,2)][Broadcast()];
+    auto W = Array::arange({5, 10}, DTYPE_DOUBLE);
+
+    Array out = X.dot(W);
+}
+
+
 TEST(ArrayDotTests, tensordot_alignment_rules) {
     std::vector<ArrayCompatibilityCheck> checks = {
         ArrayCompatibilityCheck({4,}, {2,}, false, {}),
@@ -258,7 +287,3 @@ TEST(ArrayDotTests, tensordot_alignment_rules) {
     }
 
 }
-
-
-
-

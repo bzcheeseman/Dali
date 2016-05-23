@@ -6,13 +6,27 @@
 #include "dali/tensor/tensor_macros.h"
 #include "dali/array/op/dot.h"
 
+static Tensor matrixdot_with_custom_shape(const Tensor& a,
+                                          const Tensor& b,
+                                          std::vector<int> new_shape) {
+    auto out = Tensor::empty(new_shape, a.dtype(), a.preferred_device());
+    out.w = op::matrixdot(a.w, b.w);
+
+    if (graph::backprop_enabled())
+        graph::emplace_back([a, b, out]() mutable {
+            MAYBE_GRAD(a) <<= op::matrixdot(out.dw, b.w.transpose());
+            MAYBE_GRAD(b) <<= op::matrixdot(a.w.transpose(), out.dw);
+        });
+    return out;
+}
 
 namespace op {
     template<>
     Tensor matrix_multiply_with_reshape(const Tensor& a,
                                         const Tensor& b,
-                                        const std::vector<int>& out_shape) {
-        return tensor_ops::matrixdot(a, b).reshape(out_shape);
+                                        const std::vector<int>& out_shape,
+                                        const std::vector<int>& out_shape_2d) {
+        return matrixdot_with_custom_shape(a, b, out_shape_2d).reshape(out_shape);
     }
 }  // namespace op
 

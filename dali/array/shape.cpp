@@ -1,6 +1,13 @@
 #include "shape.h"
 
+#include <algorithm>
 #include <cstdlib>
+#include <vector>
+
+int hypercube_volume(const std::vector<int>& shape) {
+    return std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
+}
+
 
 std::vector<int> bshape2shape(const std::vector<int>& bshape) {
     std::vector<int> res(bshape.size(), 0);

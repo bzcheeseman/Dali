@@ -113,7 +113,7 @@ struct Function {
                 bool output_bshape_compatible = out.ndim() == common_bshape.size();
                 if (output_bshape_compatible) {
                     for (int i = 0; i < out.ndim(); ++i) {
-                        if (common_bshape[i] != -1 && common_bshape[i] != out.shape()[i]) {
+                        if (common_bshape[i] != -1 && abs(common_bshape[i]) != out.shape()[i]) {
                             output_bshape_compatible = false;
                             break;
                         }

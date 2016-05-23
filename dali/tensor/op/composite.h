@@ -7,6 +7,14 @@ namespace tensor_ops {
 
     Tensor quadratic_form(const Tensor& left, const Tensor& middle, const Tensor& right);
 
+    Tensor dot_with_bias(const Tensor& inputs,
+                         const Tensor& weight,
+                         const Tensor& bias);
+
+
+    Tensor multiple_dot_with_bias(const std::vector<Tensor>& inputs,
+                                  const std::vector<Tensor>& weights,
+                                  Tensor bias);
 } // namespace tensor_ops
 
 #endif

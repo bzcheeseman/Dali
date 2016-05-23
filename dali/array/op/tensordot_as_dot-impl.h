@@ -90,7 +90,11 @@ namespace op {
             b_old_shape.end()
         );
 
-        return matrix_multiply_with_reshape(a_reshaped, b_reshaped, output_shape);
+        return matrix_multiply_with_reshape(
+                a_reshaped,
+                b_reshaped,
+                output_shape,
+                {a_shape[0], b_shape[1]});
     }
 
     template<typename Container>

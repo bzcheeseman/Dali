@@ -37,7 +37,7 @@ Layer::Layer (int _input_size, int _hidden_size) : hidden_size(_hidden_size), in
 }
 
 Tensor Layer::activate(Tensor input_vector) const {
-    return tensor_ops::mul_with_bias(W, input_vector, this->b);
+    return tensor_ops::mul_with_bias(input_vector, W, this->b);
 }
 
 Layer::Layer (const Layer& layer, bool copy_w, bool copy_dw) :
@@ -129,13 +129,13 @@ Tensor StackedInputLayer::activate(std::initializer_list<Tensor> inputs) const {
 }
 
 Tensor StackedInputLayer::activate(const vector<Tensor>& inputs) const {
-    return tensor_ops::mul_add_mul_with_bias(tensors, inputs, this->b);
+    return tensor_ops::multiple_dot_with_bias(inputs, tensors, this->b);
 }
 
 Tensor StackedInputLayer::activate(
         Tensor input_vector) const {
     if (tensors.size() == 1) {
-        return tensor_ops::mul_with_bias(tensors.front(), input_vector, this->b);
+        return tensor_ops::mul_with_bias(input_vector, tensors.front(), this->b);
     } else {
         throw std::runtime_error("Error: Stacked Input Layer parametrized with more than 1 inputs only received 1 input vector.");
     }
@@ -151,7 +151,7 @@ Tensor StackedInputLayer::activate(
     for (auto& an_input : inputs )
         zipped.emplace_back(an_input);
 
-    auto out = tensor_ops::mul_add_mul_with_bias(tensors, zipped, this->b);
+    auto out = tensor_ops::multiple_dot_with_bias(zipped, tensors, this->b);
 
     DEBUG_ASSERT_MAT_NOT_NAN(out)
 
@@ -364,5 +364,5 @@ Tensor RNN::activate(
     DEBUG_ASSERT_MAT_NOT_NAN(Wh)
     DEBUG_ASSERT_MAT_NOT_NAN(prev_hidden)
     DEBUG_ASSERT_MAT_NOT_NAN(b)
-    return tensor_ops::mul_add_mul_with_bias({Wx, Wh},  {input_vector, prev_hidden}, b);
+    return tensor_ops::multiple_dot_with_bias({input_vector, prev_hidden}, {Wx, Wh}, b);
 }

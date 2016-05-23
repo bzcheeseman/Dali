@@ -21,10 +21,6 @@ using memory::SynchronizedMemory;
 ////////////////////////////////////////////////////////////////////////////////
 // TODO(szymon): create a namespace internal as you did elsewhere?
 
-int hypercube_volume(const vector<int>& shape) {
-    return std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
-}
-
 // if strides are trivial (such that they would arrise from shape normally)
 // we remove them.
 void compact_strides(vector<int>& strides, const vector<int>& shape) {
@@ -86,7 +82,6 @@ ArrayState::ArrayState(const std::vector<int>& _shape,
 ////////////////////////////////////////////////////////////////////////////////
 //                                 ARRAY                                      //
 ////////////////////////////////////////////////////////////////////////////////
-#include <signal.h>
 
 template<typename T>
 T Array::scalar_value() const {

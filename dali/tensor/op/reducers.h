@@ -8,7 +8,9 @@ namespace tensor_ops {
     Tensor mean(const Tensor& tensor);
     Tensor min(const Tensor& tensor);
     Tensor max(const Tensor& tensor);
+    Tensor L2_norm(const Tensor& tensor);
     Tensor sum(const Tensor& tensor, const int& axis);
+    Tensor L2_norm(const Tensor& tensor, const int& axis);
     Tensor mean(const Tensor& tensor, const int& axis);
     Tensor min(const Tensor& tensor, const int& axis);
     Tensor max(const Tensor& tensor, const int& axis);

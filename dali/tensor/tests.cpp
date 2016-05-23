@@ -1820,10 +1820,86 @@ void test_solver(create_solver_t create_solver) {
     }
 }
 
+void test_solver_trivial(create_solver_t create_solver) {
+    utils::random::set_seed(5000);
+    // minimize norm of X
+    Tensor X({5}, initializer::uniform(-20.0, 20.0));
+    vector<Tensor> params({X});
+    auto solver = create_solver(params);
+    int solver_iterations = 200;
+    float last_error;
+    EXPECT_LT(10.0, (double) X.L2_norm().w(0));
+    for (int iter = 0; iter < solver_iterations; ++iter) {
+        auto error = X.L2_norm();
+        error.grad();
+        graph::backward();
+        solver->step(params);
+        last_error = (float)error.w(0);
+        if (last_error < 0.1) {
+            break;
+        }
+    }
+    EXPECT_GT(0.1, last_error);
+}
+
+TEST(Solver, trivial_sgd) {
+    test_solver_trivial([](vector<Tensor> params) {
+        auto ret = std::make_shared<solver::SGD>(params);
+        ret->step_size = 0.5;
+        ret->clip_norm = 0;
+        return ret;
+    });
+}
+
 TEST(Solver, DISABLED_sgd) {
     test_solver([](vector<Tensor> params) {
         auto ret = std::make_shared<solver::SGD>(params);
         ret->step_size = 0.01;
+        return ret;
+    });
+}
+
+TEST(Solver, trivial_adagrad) {
+    test_solver_trivial([](vector<Tensor> params) {
+        auto ret = std::make_shared<solver::AdaGrad>(params);
+        ret->step_size = 1;
+        ret->clip_norm = 0.0;
+        return ret;
+    });
+}
+
+TEST(Solver, trivial_rmsprop) {
+    test_solver_trivial([](vector<Tensor> params) {
+        auto ret = std::make_shared<solver::RMSProp>(params);
+        ret->step_size = 1;
+        ret->clip_norm = 0.0;
+        return ret;
+    });
+}
+
+TEST(Solver, trivial_rmspropmomentum) {
+    test_solver_trivial([](vector<Tensor> params) {
+        auto ret = std::make_shared<solver::RMSPropMomentum>(params);
+        ret->step_size = 0.5;
+        ret->momentum = 0.2;
+        // ret->clip_norm = 0.0;
+        return ret;
+    });
+}
+
+TEST(Solver, trivial_adadelta) {
+    test_solver_trivial([](vector<Tensor> params) {
+        auto ret = std::make_shared<solver::AdaDelta>(params);
+        ret->clip_norm = 0.0;
+        ret->rho = 0.1;
+        return ret;
+    });
+}
+
+TEST(Solver, trivial_adam) {
+    test_solver_trivial([](vector<Tensor> params) {
+        auto ret = std::make_shared<solver::Adam>(params);
+        ret->step_size = 0.005;
         return ret;
     });
 }

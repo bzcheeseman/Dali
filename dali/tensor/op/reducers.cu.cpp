@@ -1,6 +1,7 @@
 #include "reducers.h"
 #include "dali/tensor/tape.h"
 #include "dali/array/lazy_op.h"
+#include "dali/tensor/tensor_macros.h"
 #include "dali/utils/print_utils.h"
 
 namespace tensor_ops {
@@ -41,6 +42,34 @@ namespace tensor_ops {
                 });
             return out;
         }
+    }
+
+    Tensor L2_norm(const Tensor& tensor) {
+        Tensor out(tensor.w.L2_norm());
+        if (graph::backprop_enabled() && !tensor.constant)
+            graph::emplace_back([tensor, out]() mutable {
+                MAYBE_GRAD(tensor) <<= (
+                    tensor.w * (
+                        out.dw.broadcast_scalar_to_ndim(tensor.ndim()) /
+                        out.w.broadcast_scalar_to_ndim(tensor.ndim())
+                    )
+                );
+            });
+        return out;
+    }
+
+    Tensor L2_norm(const Tensor& tensor, const int& axis) {
+        Tensor out(tensor.w.L2_norm(axis));
+        if (graph::backprop_enabled() && !tensor.constant)
+            graph::emplace_back([tensor, out, axis]() mutable {
+                MAYBE_GRAD(tensor) <<= (
+                    tensor.w * (
+                        tensor.dw.insert_broadcast_axis(axis) /
+                        out.w.insert_broadcast_axis(axis)
+                    )
+                );
+            });
+        return out;
     }
 
     Tensor sum(const Tensor& tensor, const int& axis) {

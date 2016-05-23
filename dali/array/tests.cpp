@@ -42,10 +42,9 @@ TEST(ArrayTests, slicing) {
 TEST(ArrayTests, scalar_value) {
     Array x({12}, DTYPE_INT32);
     x(3) = 42;
-    int& x_val = x(3);
-    EXPECT_EQ(x_val, 42);
+    EXPECT_EQ((int)x(3), 42);
     x[3] = 56;
-    EXPECT_EQ(x_val, 56);
+    EXPECT_EQ((int)x(3), 56);
 }
 
 TEST(ArrayTests, scalar_assign) {

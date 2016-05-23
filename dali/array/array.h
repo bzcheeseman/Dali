@@ -49,10 +49,6 @@ class Array : public Exp<Array> {
     std::shared_ptr<ArrayState> state;
     template<typename T>
     T scalar_value() const;
-    template<typename T>
-    T& scalar_value();
-    template<typename T>
-    Array& assign_constant(const T& other);
     void broadcast_axis_internal(int axis);
     int normalize_axis(int axis) const;
   public:
@@ -166,16 +162,19 @@ class Array : public Exp<Array> {
     Array insert_broadcast_axis(int new_axis) const;
     Array broadcast_scalar_to_ndim(int ndim) const;
 
+    // reduce over all axes
     AssignableArray sum() const;
     AssignableArray mean() const;
     AssignableArray min() const;
     AssignableArray max() const;
     AssignableArray L2_norm() const;
 
-    /* Interpreting scalars as numbers */
-    operator float&();
-    operator double&();
-    operator int&();
+    // reduce over one axis
+    AssignableArray sum(const int& axis) const;
+    AssignableArray mean(const int& axis) const;
+    AssignableArray min(const int& axis) const;
+    AssignableArray max(const int& axis) const;
+    AssignableArray L2_norm(const int& axis) const;
 
     operator float() const;
     operator double() const;

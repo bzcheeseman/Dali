@@ -149,14 +149,14 @@ namespace solver {
             unsigned long long epoch;
             std::unordered_map<cache_key_t, cache_t> xsums;
             std::unordered_map<cache_key_t, cache_t> gsums;
-            Adam(const double& step_size,
+            Adam(const double& step_size=0.0002,
                  const double& b1=0.5,
                  const double& b2=1e-6,
                  const double& smooth_eps = SMOOTH_DEFAULT,
                  const double& clip_norm=100.0,
                  const double& regc=0.0);
             Adam(const std::vector<Tensor>&,
-                 const double& step_size,
+                 const double& step_size=0.0002,
                  const double& b1=0.5,
                  const double& b2=1e-6,
                  const double& smooth_eps=SMOOTH_DEFAULT,

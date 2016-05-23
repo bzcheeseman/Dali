@@ -107,20 +107,6 @@ T Array::scalar_value() const {
     }
 }
 
-template<typename T>
-T& Array::scalar_value() {
-    static_assert(std::is_arithmetic<T>::value,
-            "Scalar value only available for arithmetic types (integer or real).");
-    ASSERT2(
-        shape().size() == 0,
-        utils::MS() << "Attempting to cast array of shape " << shape() << " to a scalar,"
-                    << " which is only allowed for a zero-dimensional array.");
-    ASSERT2(template_to_dtype<T>() == dtype(), "Scalar assign attempted with wrong type.");
-    void* data = memory()->mutable_data(memory::Device::cpu());
-
-    return *(((T*)(data)) + offset());
-}
-
 void Array::broadcast_axis_internal(int axis) {
     ASSERT2(0 <= axis && axis < ndim(),
             utils::MS() << "broadcast dimension (" << axis << ") must be less the dimensionality of broadcasted tensor (" << ndim() << ")");
@@ -627,11 +613,20 @@ Array Array::broadcast_scalar_to_ndim(int target_ndim) const {
         return op::OPNAME(*this);\
     }\
 
-DALI_ARRAY_DEFINE_ALL_REDUCER(sum, sum);
-DALI_ARRAY_DEFINE_ALL_REDUCER(L2_norm, L2_norm);
-DALI_ARRAY_DEFINE_ALL_REDUCER(mean, mean);
-DALI_ARRAY_DEFINE_ALL_REDUCER(max, max);
-DALI_ARRAY_DEFINE_ALL_REDUCER(min, min);
+#define DALI_ARRAY_DEFINE_AXIS_REDUCER(FUNCTION_NAME, OPNAME)\
+    AssignableArray Array::FUNCTION_NAME(const int& axis) const {\
+        return op::OPNAME(*this, axis);\
+    }\
+
+#define DALI_ARRAY_DEFINE_REDUCER(FUNCTION_NAME, OPNAME)\
+    DALI_ARRAY_DEFINE_ALL_REDUCER(FUNCTION_NAME, OPNAME);\
+    DALI_ARRAY_DEFINE_AXIS_REDUCER(FUNCTION_NAME, OPNAME);\
+
+DALI_ARRAY_DEFINE_REDUCER(sum, sum);
+DALI_ARRAY_DEFINE_REDUCER(L2_norm, L2_norm);
+DALI_ARRAY_DEFINE_REDUCER(mean, mean);
+DALI_ARRAY_DEFINE_REDUCER(max, max);
+DALI_ARRAY_DEFINE_REDUCER(min, min);
 
 Array::operator float() const {
     return scalar_value<float>();
@@ -641,31 +636,6 @@ Array::operator double() const {
 }
 Array::operator int() const {
     return scalar_value<int>();
-}
-
-Array::operator float&() {
-    return scalar_value<float>();
-}
-Array::operator double&() {
-    return scalar_value<double>();
-}
-Array::operator int&() {
-    return scalar_value<int>();
-}
-
-template<typename T>
-Array& Array::assign_constant(const T& other) {
-    static_assert(std::is_arithmetic<T>::value,
-            "Scalar value can only be assigned from arithmetic type.");
-
-    if (dtype() == DTYPE_FLOAT) {
-        scalar_value<float>() = other;
-    } else if(dtype() == DTYPE_DOUBLE) {
-        scalar_value<double>() = other;
-    } else if(dtype() == DTYPE_INT32) {
-        scalar_value<int>() = other;
-    }
-    return *this;
 }
 
 Array& Array::operator=(const AssignableArray& assignable) {

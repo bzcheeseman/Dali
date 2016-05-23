@@ -158,6 +158,8 @@ class Tensor {
         Tensor max(const int& axis) const;
         Tensor min() const;
         Tensor min(const int& axis) const;
+        Tensor L2_norm() const;
+        Tensor L2_norm(const int& axis) const;
 
         // Tensor log() const;
         // Tensor exp() const;

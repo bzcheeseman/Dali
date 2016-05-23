@@ -8,7 +8,7 @@
 
 
 namespace tensor_ops {
-    Tensor binary_cross_entropy(Tensor t, double target) {
+    Tensor binary_cross_entropy(const Tensor& t, const double& target) {
         ASSERT2(0 <= target && target <= 1,
                 "Target value for binary_cross_entropy must be a probability between 0 and 1.");
 
@@ -21,7 +21,7 @@ namespace tensor_ops {
         return out;
     }
 
-    Tensor binary_cross_entropy(Tensor t, Tensor target) {
+    Tensor binary_cross_entropy(const Tensor& t, const Tensor& target) {
         ASSERT2(t.shape() == target.shape(),
                 "binary_cross_entropy input and target must have the same shape.");
 

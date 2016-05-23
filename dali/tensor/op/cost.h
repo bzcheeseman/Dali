@@ -4,8 +4,8 @@
 #include "dali/tensor/tensor.h"
 
 namespace tensor_ops {
-    Tensor binary_cross_entropy(Tensor, double);
-    Tensor binary_cross_entropy(Tensor, Tensor);
+    Tensor binary_cross_entropy(const Tensor&, const double& target);
+    Tensor binary_cross_entropy(const Tensor&, const Tensor&);
 }  // namespace tensor_ops
 
 #endif

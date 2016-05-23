@@ -206,7 +206,7 @@ TEST_F(TensorTests, max_min_test) {
 
 }
 
-TEST(MatrixTests, equals) {
+TEST_F(TensorTests, equals) {
     Tensor A({10, 20}, initializer::uniform(-2.0, 2.0));
     Tensor B({10, 20}, initializer::uniform(-2.0, 2.0));
 
@@ -219,31 +219,41 @@ TEST(MatrixTests, equals) {
     EXPECT_MAT_ON_GPU(B);
 }
 
-// TEST_F(MatrixTests, L2_norm_rowwise) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return MatOps<R>::L2_norm_rowwise(Xs[0]);
-//     };
-//
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
-//         expect_args_remain_on_gpu(functor, {A});
-//         EXPECT_TRUE(gradient_same(functor, {A}));
-//     }
-// }
-//
-// TEST_F(MatrixTests, L2_norm_colwise) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return MatOps<R>::L2_norm_colwise(Xs[0]);
-//     };
-//
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(2, 3, weights<R>::ones());
-//         expect_args_remain_on_gpu(functor, {A});
-//         EXPECT_TRUE(gradient_same(functor, {A}));
-//     }
-// }
-//
-//
+TEST_F(TensorTests, L2_norm) {
+    auto functor = [](vector<Tensor> Xs)-> Tensor {
+        return tensor_ops::L2_norm(Xs[0]);
+    };
+
+    EXPERIMENT_REPEAT {
+        Tensor A({2, 3}, initializer::uniform(-2.0, 2.0));
+        expect_args_remain_on_gpu(functor, {A});
+        EXPECT_TRUE(gradient_same(functor, {A}));
+    }
+}
+
+TEST_F(TensorTests, L2_norm_rowwise) {
+    auto functor = [](vector<Tensor> Xs)-> Tensor {
+        return tensor_ops::L2_norm(Xs[0], 1);
+    };
+
+    EXPERIMENT_REPEAT {
+        Tensor A({2, 3}, initializer::uniform(-2.0, 2.0));
+        expect_args_remain_on_gpu(functor, {A});
+        EXPECT_TRUE(gradient_same(functor, {A}));
+    }
+}
+
+TEST_F(TensorTests, L2_norm_colwise) {
+    auto functor = [](vector<Tensor> Xs)-> Tensor {
+        return tensor_ops::L2_norm(Xs[0], 0);
+    };
+
+    EXPERIMENT_REPEAT {
+        Tensor A({2, 3}, initializer::uniform(-2.0, 2.0));
+        expect_args_remain_on_gpu(functor, {A});
+        EXPECT_TRUE(gradient_same(functor, {A}));
+    }
+}
 
 
 TEST_F(TensorTests, sum) {

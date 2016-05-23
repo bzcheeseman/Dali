@@ -64,7 +64,7 @@ namespace tensor_ops {
             graph::emplace_back([tensor, out, axis]() mutable {
                 MAYBE_GRAD(tensor) <<= (
                     tensor.w * (
-                        tensor.dw.insert_broadcast_axis(axis) /
+                        out.dw.insert_broadcast_axis(axis) /
                         out.w.insert_broadcast_axis(axis)
                     )
                 );

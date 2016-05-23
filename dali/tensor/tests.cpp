@@ -225,7 +225,7 @@ TEST_F(TensorTests, L2_norm) {
     };
 
     EXPERIMENT_REPEAT {
-        Tensor A({2, 3}, initializer::uniform(-2.0, 2.0));
+        Tensor A({2, 3}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
         expect_args_remain_on_gpu(functor, {A});
         EXPECT_TRUE(gradient_same(functor, {A}));
     }
@@ -237,7 +237,7 @@ TEST_F(TensorTests, L2_norm_rowwise) {
     };
 
     EXPERIMENT_REPEAT {
-        Tensor A({2, 3}, initializer::uniform(-2.0, 2.0));
+        Tensor A({2, 3}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
         expect_args_remain_on_gpu(functor, {A});
         EXPECT_TRUE(gradient_same(functor, {A}));
     }
@@ -249,7 +249,7 @@ TEST_F(TensorTests, L2_norm_colwise) {
     };
 
     EXPERIMENT_REPEAT {
-        Tensor A({2, 3}, initializer::uniform(-2.0, 2.0));
+        Tensor A({2, 3}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
         expect_args_remain_on_gpu(functor, {A});
         EXPECT_TRUE(gradient_same(functor, {A}));
     }

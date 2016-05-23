@@ -12,6 +12,7 @@
 #include "dali/utils/print_utils.h"
 #include "dali/array/op/initializer.h"
 #include "dali/array/function/operator.h"
+#include "dali/utils/cnpy.h"
 
 using std::vector;
 using memory::SynchronizedMemory;
@@ -192,6 +193,103 @@ Array Array::ones_like(const Array& other) {
     }
 }
 
+Array load_npy_from_npyarray(const cnpy::NpyArray& arr) {
+    DType dtype;
+    if (arr.word_size == sizeof(double)) {
+        dtype = DTYPE_DOUBLE;
+    } else if (arr.word_size == sizeof(float)) {
+        dtype = DTYPE_FLOAT;
+    } else {
+        ASSERT2(arr.word_size == sizeof(double) || arr.word_size == sizeof(float),
+            utils::MS() << "can only load numpy arrays with dtype float or double (got word_size = "
+                        << arr.word_size << ").");
+        return Array();
+    }
+
+    std::vector<int> shape(arr.shape.size());
+    for (int i = 0; i < arr.shape.size(); i++) {
+        shape[i] = arr.shape[i];
+    }
+
+    Array loaded;
+
+    if (arr.fortran_order) {
+        std::reverse(shape.begin(), shape.end());
+        loaded = Array(shape, dtype);
+        loaded = loaded.transpose();
+        // // in fortran strides are low to high
+        // auto fortran_strides = loaded.normalized_strides();
+        // loaded = Array(
+        //     shape,
+        //     loaded.memory(),
+        //     loaded.offset(),
+        //     fortran_strides,
+        //     loaded.dtype()
+        // );
+    } else {
+        loaded = Array(shape, dtype);
+    }
+    loaded.memory()->adopt_buffer(memory::Device::cpu(), arr.data);
+    return loaded;
+}
+
+Array Array::load(FILE * fp) {
+    auto arr = cnpy::load_the_npy_file(fp);
+    return load_npy_from_npyarray(arr);
+}
+
+Array Array::load(const std::string& fname) {
+    auto arr = cnpy::npy_load(fname);
+    return load_npy_from_npyarray(arr);
+}
+
+void Array::save(const std::string& fname, const Array& arr, const std::ios_base::openmode& mode) {
+    std::ofstream outfile(fname, std::ofstream::binary | mode);
+    Array::save(outfile, arr);
+    outfile.close();
+}
+
+void Array::save(std::basic_ostream<char>& stream, const Array& arr) {
+    auto contig_array = arr.ascontiguousarray();
+    const auto& dimensions = contig_array.shape();
+    const void* data = contig_array.memory()->readonly_data(memory::Device::cpu());
+    std::vector<unsigned int> dimensions_unsigned(dimensions.size());
+    for (int i = 0; i < dimensions.size(); i++) {
+        dimensions_unsigned[i] = dimensions[i];
+    }
+    std::vector<char> header;
+    switch(arr.dtype()) {
+        case DTYPE_FLOAT:
+            header = cnpy::create_npy_header((float*)data,
+                                             dimensions_unsigned.data(),
+                                             dimensions_unsigned.size());
+            break;
+        case DTYPE_DOUBLE:
+            header = cnpy::create_npy_header((double*)data,
+                                             dimensions_unsigned.data(),
+                                             dimensions_unsigned.size());
+            break;
+        case DTYPE_INT32:
+            header = cnpy::create_npy_header((int*)data,
+                                             dimensions_unsigned.data(),
+                                             dimensions_unsigned.size());
+            break;
+        default:
+            ASSERT2(false, "save called on an Array with incorrect DType.");
+            break;
+    }
+    stream.write(header.data(), header.size());
+    stream.write((char*)data, contig_array.memory()->total_memory);
+}
+
+bool Array::equals(const Array& left, const Array& right) {
+    if (left.shape() != right.shape()) {
+        return false;
+    }
+    bool all_equals = ((float)(Array)op::all_equals(left, right)) > 0 ? true : false;
+    return all_equals;
+}
+
 bool Array::is_nan() const {
     return op::is_nan(*this);
 }
@@ -203,7 +301,6 @@ bool Array::is_stateless() const {
 bool Array::is_scalar() const {
     return ndim() == 0;
 }
-
 
 bool Array::is_vector() const {
     return ndim() == 1;

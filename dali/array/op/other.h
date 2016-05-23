@@ -5,6 +5,7 @@
 
 namespace op {
     bool is_nan(const Array& x);
+    AssignableArray all_equals(const Array& left, const Array& right);
 }
 
 #endif

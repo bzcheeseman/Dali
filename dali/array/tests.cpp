@@ -13,6 +13,7 @@
 #include "dali/utils/print_utils.h"
 #include "dali/runtime_config.h"
 #include "dali/array/op.h"
+#include "dali/test_utils.h"
 
 #include "dali/array/lazy/binary.h"
 
@@ -502,3 +503,40 @@ TEST(ArrayTest, transpose) {
         }
     }
 }
+
+TEST(ArrayIOTests, load_fortran) {
+    auto arange = Array::load(
+        utils::dir_join({STR(DALI_DATA_DIR), "tests", "arange12.npy"})
+    );
+    auto arange_fortran = Array::load(
+        utils::dir_join({STR(DALI_DATA_DIR), "tests", "arange12.fortran.npy"})
+    );
+    arange.print();
+    arange_fortran.print();
+    ELOG(arange_fortran.strides());
+    ASSERT_TRUE(Array::equals(arange, arange_fortran));
+    for (int i = 0; i < 12; i++) {
+        EXPECT_EQ_DTYPE(i, arange(i), arange.dtype());
+    }
+}
+
+TEST(ArrayIOTests, save_load_test) {
+    // load arange, then save it to a new file
+    auto arange = Array::load(
+        utils::dir_join({STR(DALI_DATA_DIR), "tests", "arange12.npy"})
+    );
+    Array::save(
+        utils::dir_join({STR(DALI_DATA_DIR),  "tests", "arange12.temp.npy"}),
+        arange
+    );
+    auto reloaded = Array::load(
+        utils::dir_join({STR(DALI_DATA_DIR),  "tests", "arange12.temp.npy"})
+    );
+    ASSERT_TRUE(Array::equals(arange, reloaded));
+    for (int i = 0; i < 12; i++) {
+        EXPECT_EQ_DTYPE(i, arange(i), arange.dtype());
+    }
+}
+
+
+

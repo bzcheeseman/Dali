@@ -48,5 +48,5 @@ namespace lazy {
     DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(eltmax, functor::max_scalar);
     DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(eltmin, functor::min_scalar);
     DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(clip, functor::clip);
-    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(subsample_partial_grad, functor::subsample_partial_grad);
+    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(equals, functor::equals);
 }  // namespace lazy

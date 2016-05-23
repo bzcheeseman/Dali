@@ -73,6 +73,13 @@ class Array : public Exp<Array> {
     static Array ones(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
     static Array ones_like(const Array& other);
 
+    // IO methods
+    static Array load(const std::string& fname);
+    static Array load(FILE * fp);
+    static void save(const std::string& fname, const Array& arr, const std::ios_base::openmode& mode=std::ios_base::out);
+    static void save(std::basic_ostream<char>& stream, const Array& arr);
+    static bool equals(const Array& left, const Array& right);
+
     // true if just creted with empty constructor or reset
     // (has no assossiated memory)
     bool is_nan() const;

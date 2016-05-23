@@ -56,6 +56,7 @@ namespace memory {
             void free_device_memory(const Device& device, DeviceMemory& dev_memory) const;
         public:
 
+
             Device preferred_device;
             // total amount of memory expressed in number of bytes
             const int total_memory;
@@ -70,6 +71,10 @@ namespace memory {
            // inherits preferred device and copies memory to it.
            SynchronizedMemory(const SynchronizedMemory& other);
            ~SynchronizedMemory();
+
+           // ability to use memory from a separate source
+           // and assume ownership of it.
+           void adopt_buffer(const Device& device, void* memory_buffer);
 
            SynchronizedMemory& operator=(const SynchronizedMemory&) = delete;
 

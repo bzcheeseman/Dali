@@ -8,6 +8,8 @@
 #include "dali/array/array.h"
 #include "dali/array/function/function.h"
 #include "dali/array/memory/device.h"
+#include "dali/array/lazy/binary.h"
+#include "dali/array/lazy/reducers.h"
 
 using memory::Device;
 
@@ -38,6 +40,8 @@ struct IsNan : public NonArrayFunction<IsNan, bool, Array> {
 
 namespace op {
     bool is_nan(const Array& x) { return IsNan::run(x); }
+    AssignableArray all_equals(const Array& left, const Array& right) {
+        return lazy::product(lazy::equals(left, right));
+    }
 } // namespace op
 
-//TODO(jonathan,szymon): add equality tests here (abs difference, and exact equals)

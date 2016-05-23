@@ -108,7 +108,7 @@ namespace tensor_ops {
                 Tensor out(tensor.w.FUNCTION_NAME());\
                 if (graph::backprop_enabled() && !tensor.constant)\
                     graph::emplace_back([tensor, out]() mutable {\
-                        tensor.dw <<= lazy::subsample_partial_grad(\
+                        tensor.dw <<= lazy::equals(\
                             out.w.broadcast_scalar_to_ndim(tensor.ndim()),\
                             tensor.w\
                         ) * out.dw.broadcast_scalar_to_ndim(tensor.ndim());\
@@ -125,7 +125,7 @@ namespace tensor_ops {
             Tensor out(OPNAME(tensor.w, axis));\
             if (graph::backprop_enabled() && !tensor.constant)\
                 graph::emplace_back([tensor, out, axis]() mutable {\
-                    tensor.dw <<= lazy::subsample_partial_grad(\
+                    tensor.dw <<= lazy::equals(\
                             out.w.insert_broadcast_axis(axis),\
                             tensor.w\
                         ) * out.dw.insert_broadcast_axis(axis);\
@@ -148,7 +148,7 @@ namespace tensor_ops {
                 Tensor out(tensor.w.FUNCTION_NAME());\
                 if (graph::backprop_enabled() && !tensor.constant)\
                     graph::emplace_back([tensor, out]() mutable {\
-                        tensor.dw <<= lazy::subsample_partial_grad(\
+                        tensor.dw <<= lazy::equals(\
                             out.w.broadcast_scalar_to_ndim(tensor.ndim()),\
                             tensor.w\
                         ) * out.dw.broadcast_scalar_to_ndim(tensor.ndim());\

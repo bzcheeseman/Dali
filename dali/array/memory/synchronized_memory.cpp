@@ -47,6 +47,19 @@ namespace memory {
         }
     }
 
+    void SynchronizedMemory::adopt_buffer(const Device& device, void* buffer) {
+        // mark memory as about to be replaced by buffer
+        auto& dev_memory = get_device_memory(device);
+        free_device_memory(device, dev_memory);
+        // notify memory that a new buffer has taken over
+        mark_all_not_fresh();
+        // assign the pointer and make sure that the state
+        // reflects that this is now the freshest memory around
+        dev_memory.ptr = buffer;
+        dev_memory.allocated = true;
+        dev_memory.fresh = true;
+    }
+
     void SynchronizedMemory::mark_fresh(const Device& device) {
         get_device_memory(device).fresh = true;
     }

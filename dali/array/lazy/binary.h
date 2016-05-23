@@ -41,7 +41,7 @@ namespace lazy {
     LazyBinary<functor::binary_cross_entropy_grad, T, T2> binary_cross_entropy_grad(T a, T2 b);
 
     template<typename T, typename T2>
-    LazyBinary<functor::subsample_partial_grad, T, T2> subsample_partial_grad(T a, T2 b);
+    LazyBinary<functor::equals, T, T2> equals(T a, T2 b);
 
 
 }  // namespace lazy

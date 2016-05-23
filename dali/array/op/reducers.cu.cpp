@@ -9,6 +9,10 @@ namespace op {
         return lazy::sum(x);
     }
 
+    AssignableArray product(const Array& x) {
+        return lazy::product(x);
+    }
+
     AssignableArray mean(const Array& x) {
         return lazy::sum(x / x.number_of_elements());
     }
@@ -37,6 +41,10 @@ namespace op {
 
     AssignableArray sum(const Array& x, const int& axis) {
         return lazy::sum(x, axis);
+    }
+
+    AssignableArray product(const Array& x, const int& axis) {
+        return lazy::product(x, axis);
     }
 
     AssignableArray min(const Array& x, const int& axis) {

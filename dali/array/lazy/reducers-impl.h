@@ -7,7 +7,7 @@
 #include <mshadow/extension/reduce_with_axis.h>
 
 template<class Functor, typename ExprT>
-struct LazyAllReducer : public LazyFunctionNonRecusive<LazyAllReducer<Functor,ExprT>, ExprT> {
+struct LazyAllReducer : public LazyFunction<LazyAllReducer<Functor,ExprT>, ExprT> {
     static const int evaluation_dim;
     ExprT expr;
 
@@ -16,7 +16,7 @@ struct LazyAllReducer : public LazyFunctionNonRecusive<LazyAllReducer<Functor,Ex
     }
 
     LazyAllReducer(const ExprT& expr_) :
-            LazyFunctionNonRecusive<LazyAllReducer<Functor,ExprT>, ExprT>(expr_),
+            LazyFunction<LazyAllReducer<Functor,ExprT>, ExprT>(expr_),
             expr(expr_) {
     }
 

@@ -8,11 +8,11 @@ template<class Functor, typename ExprT, bool return_indices>
 struct LazyAxisReducer;
 
 namespace mshadow {
-	namespace red {
-		struct sum;
+    namespace red {
+        struct sum;
         struct maximum;
         struct minimum;
-	}
+    }
 };
 
 namespace lazy {

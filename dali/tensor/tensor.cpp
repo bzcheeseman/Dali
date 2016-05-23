@@ -324,7 +324,6 @@ Tensor Tensor::dot(const Tensor& other) const {
     return tensor_ops::dot(*this, other);
 }
 
-//
 #define TENSOR_UNARY_OP( opname ) \
     Tensor Tensor::opname() const {\
         return tensor_ops::opname(*this);\
@@ -335,13 +334,18 @@ Tensor Tensor::dot(const Tensor& other) const {
         return tensor_ops::opname(*this, argname);\
     }\
 
-// MAT_UNARY_OP( square )
-// MAT_UNARY_OP( L2_norm )
-// MAT_UNARY_OP( sqrt )
-// MAT_UNARY_OP( elt_inv )
-// MAT_UNARY_OP( tanh )
-// MAT_UNARY_OP( softplus )
-// MAT_UNARY_OP( sigmoid )
+#define TENSOR_UNARY_OP_WITH_DOUBLE_ARG( opname ) \
+    Tensor Tensor::opname(const double& argname) const {\
+        return tensor_ops::opname(*this, argname);\
+    }\
+
+TENSOR_UNARY_OP(square);
+TENSOR_UNARY_OP(sqrt);
+TENSOR_UNARY_OP(eltinv);
+TENSOR_UNARY_OP(tanh);
+TENSOR_UNARY_OP(softplus);
+TENSOR_UNARY_OP(sigmoid);
+TENSOR_UNARY_OP_WITH_DOUBLE_ARG(steep_sigmoid);
 TENSOR_UNARY_OP(sum);
 TENSOR_UNARY_OP_WITH_INT_ARG(sum);
 TENSOR_UNARY_OP(mean);
@@ -352,10 +356,10 @@ TENSOR_UNARY_OP(max);
 TENSOR_UNARY_OP_WITH_INT_ARG(max);
 TENSOR_UNARY_OP(L2_norm);
 TENSOR_UNARY_OP_WITH_INT_ARG(L2_norm);
-// MAT_UNARY_OP( log )
-// MAT_UNARY_OP( exp )
-// MAT_UNARY_OP( abs )
-// MAT_UNARY_OP( relu )
+TENSOR_UNARY_OP(log);
+TENSOR_UNARY_OP(exp);
+TENSOR_UNARY_OP(abs);
+TENSOR_UNARY_OP(relu);
 //
 // Tensor Tensor::T() const {
 //     return TensorOps::transpose(*this);

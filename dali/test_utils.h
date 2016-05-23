@@ -287,7 +287,7 @@ namespace {
         for (auto& arg : arguments) {
             R  Arg_prime[arg.number_of_elements()];
             for (int i = 0; i < arg.number_of_elements(); i++) {
-                const R prev_val = arg.w(i);
+                const R prev_val    = arg.w(i);
                 arg.w(i)            = prev_val +  grad_epsilon;
                 R obj_positive      = (R)Array(functor(arguments).w.sum());
                 arg.w(i)            = prev_val - grad_epsilon;
@@ -295,9 +295,10 @@ namespace {
                 arg.w(i)            = prev_val;
                 Arg_prime[i]        = (obj_positive - obj_negative) / (2.0 * grad_epsilon);
             }
+            auto dw_contig = arg.dw.ascontiguousarray();
             AssertionResult did_work_out = buffer_almost_equals(
                     (R*)Arg_prime,
-                    (R*)arg.dw.memory()->readonly_data(memory::Device::cpu()),
+                    (R*)dw_contig.memory()->readonly_data(memory::Device::cpu()),
                     arg.number_of_elements(),
                     arg.number_of_elements(),
                     tolerance);
@@ -330,7 +331,7 @@ namespace {
                 print_buffer((R*)Arg_prime + start,       length, loc_disagreement - start);
                 std::cout << "-----------\n arg.dw()[" << start << ":" << start + length << "] = " << std::endl;
                 print_buffer(
-                    (R*)arg.dw.memory()->readonly_data(memory::Device::cpu()) + start,
+                    (R*)dw_contig.memory()->readonly_data(memory::Device::cpu()) + start,
                     length, loc_disagreement - start
                 );
                 if (arg.name != nullptr) {
@@ -385,9 +386,10 @@ namespace {
                 arg.w(i)            = prev_val;
                 Arg_prime[i]        = (obj_positive - obj_negative) / (2.0 * grad_epsilon);
             }
+            auto dw_contig = arg.dw.ascontiguousarray();
             AssertionResult did_work_out = buffer_ratio_almost_equals(
                     (R*)Arg_prime,
-                    (R*)arg.dw.memory()->readonly_data(memory::Device::cpu()),
+                    (R*)dw_contig.memory()->readonly_data(memory::Device::cpu()),
                     arg.number_of_elements(),
                     arg.number_of_elements(),
                     tolerance);
@@ -406,7 +408,7 @@ namespace {
                 R max_disagreement = 0;
                 int loc_disagreement = 0;
                 for (int i = 0; i < arg.number_of_elements(); i++) {
-                    auto disagreement = std::abs((Arg_prime[i] / (R)arg.dw(i)) - (R)1.0);
+                    auto disagreement = std::abs((Arg_prime[i] / (R)dw_contig(i)) - (R)1.0);
                     if (disagreement > max_disagreement) {
                         max_disagreement = disagreement;
                         loc_disagreement = i;
@@ -419,7 +421,7 @@ namespace {
                 std::cout << "-----------\nArg_prime[" << start << ":" << start + length << "] = " << std::endl;
                 print_buffer((R*)Arg_prime + start,       length, loc_disagreement - start);
                 std::cout << "-----------\n arg.dw[" << start << ":" << start + length << "] = " << std::endl;
-                print_buffer((R*)arg.dw.memory()->readonly_data(memory::Device::cpu()) + start, length, loc_disagreement - start);
+                print_buffer((R*)dw_contig.memory()->readonly_data(memory::Device::cpu()) + start, length, loc_disagreement - start);
                 if (arg.name != nullptr) {
                     std::cout << "arg.name = " << *arg.name << std::endl;
                 }

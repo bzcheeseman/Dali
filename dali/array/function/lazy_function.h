@@ -77,10 +77,10 @@ struct LazyFunction : public BaseLazyFunction<Class, Args...> {
     using BaseLazyFunction<Class, Args...>::BaseLazyFunction;
 };
 
-template<typename Class, typename... Args>
-struct LazyFunctionNonRecusive : public BaseLazyFunction<Class, Args...> {
-    using BaseLazyFunction<Class, Args...>::BaseLazyFunction;
-};
+// template<typename Class, typename... Args>
+// struct LazyFunctionNonRecusive : public BaseLazyFunction<Class, Args...> {
+//     using BaseLazyFunction<Class, Args...>::BaseLazyFunction;
+// };
 
 
 #include "dali/array/function/lazy_function-impl.h"

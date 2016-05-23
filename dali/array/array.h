@@ -270,16 +270,26 @@ class Array : public Exp<Array> {
     #ifndef DALI_ARRAY_ARRAY_H_EXTENSION
     #define DALI_ARRAY_ARRAY_H_EXTENSION
 
-    #include "dali/array/function/lazy_evaluator.h"
+    #include "dali/array/function/lazy_eval.h"
 
     template<typename ExprT>
     Array& Array::operator=(const LazyExp<ExprT>& expr) {
         return *this = lazy::eval(expr.self());
     }
 
+    /* Array constructor from a Lazy Expression:
+     * here we evaluate the expression, construct an assignable array
+     * from it, and pass this assignable array to create a new Array
+     * as a destination for the computation in the expression.
+     * Since the destination has not been created yet, we evaluate
+     * the expression using `lazy::eval_no_autoreduce` instead of
+     * `lazy::eval`, since we know that no reductions will be needed
+     * when assigning to the same shape as the one dictated by the
+     * expression.
+     */
     template<typename ExprT>
     Array::Array(const LazyExp<ExprT>& expr) :
-            Array(lazy::eval(expr.self())) {
+            Array(lazy::eval_no_autoreduce(expr.self())) {
     }
 
     template<typename ExprT>

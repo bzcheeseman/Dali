@@ -160,27 +160,26 @@ class Tensor {
         Tensor L2_norm() const;
         Tensor L2_norm(const int& axis) const;
 
-        // Tensor log() const;
-        // Tensor exp() const;
-        // Tensor abs() const;
-        // Tensor sigmoid() const;
-        // Tensor steep_sigmoid(R aggressiveness = 3.75) const;
         // // Warning: transpose makes a copy, uses extra memory
         // Tensor T() const;
-        // Tensor tanh() const;
-        // Tensor softplus() const;
-        // Tensor relu() const;
+
+        Tensor log() const;
+        Tensor exp() const;
+        Tensor abs() const;
+        Tensor tanh() const;
+        Tensor softplus() const;
+        Tensor relu() const;
         Tensor dot(const Tensor&) const;
         // template<typename ScalarType>
         // Tensor pow(ScalarType) const;
-        // Tensor sqrt() const;
-        // Tensor elt_inv() const;
-        // Tensor slice(int rowstart, int rowend) const;
-
         Tensor operator[](int idx) const;
         SlicingInProgress<Tensor> operator[](const Slice& s) const;
         SlicingInProgress<Tensor> operator[](const Broadcast& b) const;
-
+        Tensor sqrt() const;
+        Tensor square() const;
+        Tensor eltinv() const;
+        Tensor sigmoid() const;
+        Tensor steep_sigmoid(const double& aggressiveness = 3.75) const;
         Tensor reshape(const std::vector<int>&) const;
         Tensor copyless_reshape(const std::vector<int>&) const;
 

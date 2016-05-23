@@ -12,5 +12,5 @@
 // #include "dali/layers/GRU.h"
 // #include "dali/execution/SequenceProbability.h"
 // #include "dali/execution/BeamSearch.h"
-// #include "dali/tensor/Solver.h"
+#include "dali/tensor/solver.h"
 #endif

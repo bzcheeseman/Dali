@@ -554,80 +554,28 @@ TEST_F(TensorTests, mean) {
 //     }
 // }
 //
-// TEST_F(MatrixTests, square) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return Xs[0].square();
-//     };
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(10, 20, weights<R>::uniform(0.5, 5.0));
-//         ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-5));
-//     }
-// }
-//
-// TEST_F(MatrixTests, sqrt) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return Xs[0].sqrt();
-//     };
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(10, 20, weights<R>::uniform(0.5, 5.0));
-//         ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-5));
-//     }
-// }
-//
-// TEST_F(MatrixTests, elt_inv) {
-//     sane_crashes::activate();
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return MatOps<R>::elt_inv(Xs[0]);
-//     };
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(10, 20, weights<R>::uniform(0.5, 5.0));
-//         ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-5));
-//     }
-// }
-//
-//
-// TEST_F(MatrixTests, sigmoid) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return Xs[0].sigmoid();
-//     };
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(10, 20, weights<R>::uniform(20.0));
-//         ASSERT_TRUE(gradient_same(functor, {A}, 1e-4, 1e-3));
-//     }
-// }
-//
-// TEST_F(MatrixTests, steep_sigmoid) {
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(10, 20, weights<R>::uniform(20.0));
-//
-//         R aggresiveness = utils::randdouble(1.0, 2.0);
-//         auto functor = [aggresiveness](vector<Mat<R>> Xs)-> Mat<R> {
-//             return MatOps<R>::steep_sigmoid(Xs[0], aggresiveness);
-//         };
-//         ASSERT_TRUE(gradient_same(functor, {A}, 1e-4, 1e-3));
-//     }
-// }
-//
-// TEST_F(MatrixTests, relu) {
-//     int input_size = 5;
-//     int hidden_size = 3;
-//
-//     EXPERIMENT_REPEAT {
-//         Mat<R> A;
-//         {
-//             graph::NoBackprop nb;
-//             auto mat  = Mat<R>(input_size, hidden_size, weights<R>::uniform(0.1, 20.0));
-//             auto mat2 = Mat<R>(input_size, hidden_size, weights<R>::uniform(-20.0, -0.1));
-//             A = MatOps<R>::hstack({mat, mat2});
-//         }
-//
-//         auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//             return Xs[0].relu();
-//         };
-//         ASSERT_TRUE(gradient_same(functor, {A}, 1e-4));
-//     }
-// }
-//
+
+#define DEFINE_UNARY_TENSOR_TEST(TESTNAME, UNARY, LOWER_BOUND, UPPER_BOUND, FAIL_ON_ZERO_GRADIENT)\
+    TEST_F(TensorTests, TESTNAME) {\
+        auto functor = [](vector<Tensor> Xs)-> Tensor {\
+            return Xs[0].UNARY();\
+        };\
+        EXPERIMENT_REPEAT {\
+            Tensor A({2, 3, 4},\
+                initializer::uniform(LOWER_BOUND, UPPER_BOUND),\
+                DTYPE_DOUBLE\
+            );\
+            ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-5, FAIL_ON_ZERO_GRADIENT));\
+        }\
+    }\
+
+DEFINE_UNARY_TENSOR_TEST(square, square, -5.0, 5.0, true);
+DEFINE_UNARY_TENSOR_TEST(sqrt, sqrt, 0.5, 5.0, true);
+DEFINE_UNARY_TENSOR_TEST(eltinv, eltinv, 0.5, 5.0, true);
+DEFINE_UNARY_TENSOR_TEST(sigmoid, sigmoid, -20.0, 20.0, true);
+DEFINE_UNARY_TENSOR_TEST(relu_positive, relu, 0.2, 20.0, true);
+DEFINE_UNARY_TENSOR_TEST(relu_negative, relu, -20.0, -0.2, false);
+
 // TEST_F(MatrixTests, tanh) {
 //     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
 //         return Xs[0].tanh();
@@ -1679,37 +1627,39 @@ typedef MemorySafeTest TensorOpsTests;
 //     EXPECT_FALSE(MatOps<R>::grad_allclose(B, Mat<R>::zeros_like(B), 1e-9));
 // }
 //
-// TEST_F(MatrixTests, scalar_pow) {
-//     int height = 3;
-//     int width = 4;
-//
-//     EXPERIMENT_REPEAT {
-//         auto mat = Mat<R>(height, width, weights<R>::uniform(1.0, 2.0));
-//         R exponent = utils::randdouble(0.4, 2.5);
-//
-//         auto functor = [exponent](vector<Mat<R>> Xs)-> Mat<R> {
-//             return Xs[0] ^ exponent;
-//         };
-//         ASSERT_TRUE(gradient_same(functor, {mat}, 1e-3));
-//     }
-// }
-//
-// TEST_F(MatrixTests, pow) {
-//     int height = 3;
-//     int width = 4;
-//
-//     EXPERIMENT_REPEAT {
-//
-//         auto mat = Mat<R>(height, width, weights<R>::uniform(0.5, 1.5));
-//         auto exponent = Mat<R>(1,1);
-//         exponent = MatOps<R>::fill(exponent, 2.4);
-//
-//         auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//             return Xs[0] ^ Xs[1];
-//         };
-//         ASSERT_TRUE(gradient_same(functor, {mat, exponent}, 1e-3));
-//     }
-// }
+TEST_F(TensorTests, scalar_pow) {
+    int height = 3;
+    int width = 4;
+
+    EXPERIMENT_REPEAT {
+        Tensor mat({height, width}, initializer::uniform(1.0, 2.0), DTYPE_DOUBLE);
+        R exponent = utils::randdouble(0.4, 2.5);
+
+        auto functor = [exponent](vector<Tensor> Xs)-> Tensor {
+            return Xs[0] ^ exponent;
+        };
+        ASSERT_TRUE(gradient_same(functor, {mat}, 1e-3));
+    }
+}
+
+TEST_F(TensorTests, pow) {
+    int height = 3;
+    int width = 4;
+
+    EXPERIMENT_REPEAT {
+
+        Tensor mat({height, width}, initializer::uniform(0.5, 1.5), DTYPE_DOUBLE);
+        Tensor exponent({}, DTYPE_DOUBLE);
+        exponent.w = 2.4;
+
+        exponent = exponent.broadcast_scalar_to_ndim(mat.ndim());
+
+        auto functor = [](vector<Tensor> Xs)-> Tensor {
+            return Xs[0] ^ Xs[1];
+        };
+        ASSERT_TRUE(gradient_same(functor, {mat, exponent}, 1e-3));
+    }
+}
 //
 //
 TEST_F(TensorTests, DISABLED_quadratic_form) {

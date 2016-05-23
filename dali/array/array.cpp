@@ -231,7 +231,28 @@ bool Array::spans_entire_memory() const {
 bool Array::contiguous_memory() const {
     ASSERT2(!is_stateless(), "contiguous_memory must not be called with stateless Array.");
 
-    return strides().empty() == true;
+    if (strides().empty()) {
+        // strides are trivial, stored as an empty vector
+        // hence memory can be accessed contiguously
+        return true;
+    } else {
+        // the strides may actually be set to non
+        // trivial values, however if on the dimensions
+        // where strides are set to a different value
+        // than what shape_to_trivial_strides would dictate
+        // (e.g. contiguous access, lowest stride as last dimension)
+        // the dimension happens to be 1, the memory access
+        // is still contiguous
+        const auto& ns = strides();
+        auto ts = shape_to_trivial_strides(shape());
+
+        for (int i = 0; i < ndim(); ++i) {
+            if (shape()[i] > 1 && ts[i] != ns[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
 }
 
 Array Array::ascontiguousarray() const {

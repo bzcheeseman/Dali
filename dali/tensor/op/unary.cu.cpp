@@ -189,8 +189,8 @@ namespace tensor_ops {
     DALI_UNARY_OP0(exp, functor::exp, out.w);
     DALI_UNARY_OP0(sigmoid, functor::sigmoid, lazy::F<functor::dsigmoid>(out.w));
     DALI_UNARY_OP0(eltinv, functor::inv, -lazy::square(out.w));
-    DALI_UNARY_OP0(sqrt, functor::sqrt_f, (0.5 / lazy::square(out.w)));
-    DALI_UNARY_OP0(square, functor::square, out.w * 2.0);
+    DALI_UNARY_OP0(sqrt, functor::sqrt_f, (0.5 / out.w));
+    DALI_UNARY_OP0(square, functor::square, t.w * 2.0);
     DALI_UNARY_OP0(cube, functor::cube, lazy::square(out.w) * 3.0);
     DALI_UNARY_OP0(rsqrt, functor::rsqrt, -0.5 * lazy::pow(t.w, -1.5));
     DALI_UNARY_OP1(eltmax, lower_bound, functor::max_scalar,

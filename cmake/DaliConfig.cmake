@@ -128,7 +128,6 @@ else()
     message(STATUS "mshadow headers found at ${DALI_MSHADOW_PATH}")
 endif()
 
-
 if (NOT DALI_CONFIG_PATH)
     if (Dali_FIND_REQUIRED)
         message(FATAL_ERROR "${Red} Failed to find Dali headers  ${ColorReset}" ${REASON_MSG} ${ARGN})
@@ -140,6 +139,7 @@ if (NOT DALI_CONFIG_PATH)
 else()
     list(APPEND DALI_INCLUDE_DIRS ${DALI_CONFIG_PATH})
     list(APPEND DALI_AND_DEPS_INCLUDE_DIRS ${DALI_INCLUDE_DIRS} ${DALI_MSHADOW_PATH})
+    message(STATUS "Found dali headers under: ${DALI_CONFIG_PATH}")
 endif(NOT DALI_CONFIG_PATH)
 
 if(DALI_FOUND)

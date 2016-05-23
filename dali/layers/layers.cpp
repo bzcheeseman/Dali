@@ -1,6 +1,26 @@
-#include "dali/layers/Layers.h"
+#include "layers.h"
+
+#include "dali/tensor/op.h"
 
 using std::vector;
+
+
+////////////////////////////////////////////////////////////////////////////////
+//                             AbstractLayer                                  //
+////////////////////////////////////////////////////////////////////////////////
+
+AbstractLayer::AbstractLayer() :
+        dtype(DTYPE_FLOAT),
+        device(memory::default_preferred_device) {
+}
+
+
+AbstractLayer::AbstractLayer(DType dtype, memory::Device device) :
+        dtype(dtype),
+        device(device) {
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //                        AbstractMultiInputLayer                             //
@@ -25,19 +45,22 @@ Tensor AbstractMultiInputLayer::activate(Tensor first_input, const vector<Tensor
 
 void Layer::create_variables() {
     double bound = 1.0 / sqrt(input_size);
-    W       = Tensor::uniform(-bound, bound, {input_size, hidden_size});
-    this->b = Tensor::zeros({1, hidden_size});
+    W       = Tensor::uniform(-bound, bound, {input_size, hidden_size}, dtype, device);
+    this->b = Tensor::zeros({hidden_size}, dtype, device)[Broadcast()];
 }
 
 Layer::Layer() {
 }
 
-Layer::Layer (int _input_size, int _hidden_size) : hidden_size(_hidden_size), input_size(_input_size) {
+Layer::Layer (int input_size_, int hidden_size_, DType dtype_, memory::Device device_) :
+        hidden_size(hidden_size_),
+        input_size(input_size_),
+        AbstractMultiInputLayer(dtype_, device_) {
     create_variables();
 }
 
 Tensor Layer::activate(Tensor input_vector) const {
-    return tensor_ops::mul_with_bias(input_vector, W, this->b);
+    return tensor_ops::dot_with_bias(input_vector, W, this->b);
 }
 
 Layer::Layer (const Layer& layer, bool copy_w, bool copy_dw) :
@@ -69,19 +92,19 @@ void StackedInputLayer::create_variables() {
 
     double bound = 1.0 / sqrt(total_input_size);
     for (auto& input_size : input_sizes) {
-        tensors.emplace_back(Tensor::uniform(-bound, bound, {input_size, hidden_size});
+        tensors.emplace_back(Tensor::uniform(-bound, bound, {input_size, hidden_size}, dtype, device));
     }
-    this->b = Tensor::zeros({1, hidden_size});
+    this->b = Tensor::zeros({hidden_size}, dtype, device)[Broadcast()];
 }
 
 StackedInputLayer::StackedInputLayer() {
 }
 
-const vector<int>& StackedInputLayer::input_sizes() const {
+const vector<int>& StackedInputLayer::get_input_sizes() const {
     return input_sizes;
 }
 
-void StackedInputLayer::input_sizes(vector<int> new_sizes) {
+void StackedInputLayer::set_input_sizes(vector<int> new_sizes) {
     ASSERT2(new_sizes.size() > 0, "StackedInputLayer must have at least one input (0 provided)");
     // optimistic exit
     if (new_sizes == input_sizes)
@@ -97,29 +120,33 @@ void StackedInputLayer::input_sizes(vector<int> new_sizes) {
     // construct tensors
     tensors = vector<Tensor>();
     for (auto& input_size : new_sizes) {
-        tensors.emplace_back(Tensor::uniform(-bound, bound, {input_size, hidden_size});
+        tensors.emplace_back(Tensor::uniform(-bound, bound,
+                                             {input_size, hidden_size},
+                                             dtype,
+                                             device));
     }
 
     // save new size
     input_sizes = new_sizes;
 }
 
-StackedInputLayer::StackedInputLayer (vector<int> input_sizes_, int hidden_size_) :
+StackedInputLayer::StackedInputLayer (vector<int> input_sizes_,
+                                      int hidden_size_,
+                                      DType dtype,
+                                      memory::Device device) :
         input_sizes(input_sizes_),
-        hidden_size(hidden_size_) {
-    create_variables();
-}
-
-StackedInputLayer::StackedInputLayer (int input_size, int output_size) :
-        hidden_size(output_size),
-        input_sizes({input_size}) {
-    create_variables();
-}
-
-StackedInputLayer::StackedInputLayer (std::initializer_list<int> input_sizes_,
-                                      int hidden_size_) :
         hidden_size(hidden_size_),
-        input_sizes(input_sizes_) {
+        AbstractMultiInputLayer(dtype, device) {
+    create_variables();
+}
+
+StackedInputLayer::StackedInputLayer (int input_size,
+                                      int output_size,
+                                      DType dtype,
+                                      memory::Device device) :
+        hidden_size(output_size),
+        input_sizes({input_size}),
+        AbstractMultiInputLayer(dtype, device) {
     create_variables();
 }
 
@@ -135,7 +162,7 @@ Tensor StackedInputLayer::activate(const vector<Tensor>& inputs) const {
 Tensor StackedInputLayer::activate(
         Tensor input_vector) const {
     if (tensors.size() == 1) {
-        return tensor_ops::mul_with_bias(input_vector, tensors.front(), this->b);
+        return tensor_ops::dot_with_bias(input_vector, tensors.front(), this->b);
     } else {
         throw std::runtime_error("Error: Stacked Input Layer parametrized with more than 1 inputs only received 1 input vector.");
     }
@@ -144,7 +171,6 @@ Tensor StackedInputLayer::activate(
 Tensor StackedInputLayer::activate(
         Tensor input,
         const vector<Tensor>& inputs) const {
-    DEBUG_ASSERT_MAT_NOT_NAN(input)
 
     vector<Tensor> zipped;
     zipped.emplace_back(input);
@@ -153,14 +179,12 @@ Tensor StackedInputLayer::activate(
 
     auto out = tensor_ops::multiple_dot_with_bias(zipped, tensors, this->b);
 
-    DEBUG_ASSERT_MAT_NOT_NAN(out)
-
     return out;
 }
 
 StackedInputLayer::StackedInputLayer (const StackedInputLayer& layer, bool copy_w, bool copy_dw) :
         hidden_size(layer.hidden_size),
-        input_sizes(layer.input_sizes()) {
+        input_sizes(layer.get_input_sizes()) {
     tensors.reserve(layer.tensors.size());
     for (auto& tensor : layer.tensors)
         tensors.emplace_back(tensor, copy_w, copy_dw);
@@ -224,51 +248,8 @@ vector<Tensor> MultiLayerPerceptron::parameters() const {
     }
     return params;
 }
+
 Tensor MultiLayerPerceptron::identity(Tensor m) { return m; }
-
-
-////////////////////////////////////////////////////////////////////////////////
-//                             DelayedRNN                                     //
-////////////////////////////////////////////////////////////////////////////////
-
-DelayedRNN::DelayedRNN(int input_size, int hidden_size, int output_size) :
-        hidden_rnn(input_size, hidden_size),
-        output_rnn(input_size, hidden_size, output_size) {
-}
-
-DelayedRNN::DelayedRNN (const DelayedRNN& rnn, bool copy_w, bool copy_dw) :
-        hidden_rnn(rnn.hidden_rnn, copy_w, copy_dw),
-        output_rnn(rnn.output_rnn, copy_w, copy_dw) {
-}
-
-vector<Tensor> DelayedRNN::parameters() const {
-    vector<Tensor> ret;
-    for (auto& model: {hidden_rnn, output_rnn}) {
-        auto params = model.parameters();
-        ret.insert(ret.end(), params.begin(), params.end());
-    }
-    return ret;
-}
-
-Tensor DelayedRNN::initial_states() const {
-    double bound = 1.0 / sqrt(hidden_rnn.hidden_size)
-    return Tensor(-bound, bound, {hidden_rnn.hidden_size, 1})
-}
-
-std::tuple<Tensor,Tensor> DelayedRNN::activate(
-        Tensor input_vector,
-        Tensor prev_hidden) const {
-
-    return std::make_tuple(
-        hidden_rnn.activate(input_vector, prev_hidden),
-        output_rnn.activate(input_vector, prev_hidden)
-    );
-}
-
-DelayedRNN DelayedRNN::shallow_copy() const {
-    return DelayedRNN(*this, false, true);
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //                       SecondOrderCombinator                                //
@@ -277,16 +258,29 @@ DelayedRNN DelayedRNN::shallow_copy() const {
 SecondOrderCombinator::SecondOrderCombinator() {
 }
 
-SecondOrderCombinator::SecondOrderCombinator(int input1_size, int input2_size, int output_size) :
-        input1_size(input1_size), input2_size(input2_size), output_size(output_size) {
-
-    W1 = Tensor::uniform(-1.0 / sqrt(input1_size), 1.0 / sqrt(input1_size), {input1_size, output_size});
-    21 = Tensor::uniform(-1.0 / sqrt(input1_size), 1.0 / sqrt(input2_size), {input2_size, output_size});
-    b =  Tensor::zeros({1, output_size});
+SecondOrderCombinator::SecondOrderCombinator(int input1_size,
+                                             int input2_size,
+                                             int output_size,
+                                             DType dtype_,
+                                             memory::Device device_) :
+        input1_size(input1_size),
+        input2_size(input2_size),
+        output_size(output_size),
+        AbstractLayer(dtype_, device_) {
+    W1 = Tensor::uniform(-1.0 / sqrt(input1_size), 1.0 / sqrt(input1_size),
+                         {input1_size, output_size},
+                         dtype,
+                         device);
+    W2 = Tensor::uniform(-1.0 / sqrt(input1_size), 1.0 / sqrt(input2_size),
+                         {input2_size, output_size},
+                         dtype,
+                         device);
+    b =  Tensor::zeros({output_size}, dtype, device)[Broadcast()];
 }
+
 SecondOrderCombinator::SecondOrderCombinator(const SecondOrderCombinator& m,
-                                                bool copy_w,
-                                                bool copy_dw) :
+                                             bool copy_w,
+                                             bool copy_dw) :
         input1_size(m.input1_size),
         input2_size(m.input2_size),
         output_size(m.output_size),
@@ -313,10 +307,15 @@ Tensor SecondOrderCombinator::activate(Tensor i1, Tensor i2) const {
 
 
 void RNN::create_variables() {
-    Wx = Tensor::uniform(-1.0 / sqrt(input_size), 1.0 / sqrt(input_size), {input_size, output_size});
-    Wx = Tensor::uniform(-1.0 / sqrt(hidden_size), 1.0 / sqrt(hidden_size), {hidden_size, output_size});
-
-    b  = Tensor::zeros({1, output_size});
+    Wx = Tensor::uniform(-1.0 / sqrt(input_size), 1.0 / sqrt(input_size),
+                         {input_size, output_size},
+                         dtype,
+                         device);
+    Wh = Tensor::uniform(-1.0 / sqrt(hidden_size), 1.0 / sqrt(hidden_size),
+                         {hidden_size, output_size},
+                         dtype,
+                         device);
+    b  = Tensor::zeros({output_size}, dtype, device)[Broadcast()];
 }
 
 vector<Tensor> RNN::parameters() const {
@@ -326,17 +325,19 @@ vector<Tensor> RNN::parameters() const {
 RNN::RNN() {
 }
 
-RNN::RNN (int input_size_, int hidden_size_) :
+RNN::RNN (int input_size_, int hidden_size_, DType dtype_, memory::Device device_) :
         hidden_size(hidden_size_),
         input_size(input_size_),
-        output_size(hidden_size_) {
+        output_size(hidden_size_),
+        AbstractLayer(dtype_, device_) {
     create_variables();
 }
 
-RNN::RNN (int input_size_, int hidden_size_, int output_size_) :\
+RNN::RNN (int input_size_, int hidden_size_, int output_size_, DType dtype_, memory::Device device_) :
         hidden_size(hidden_size_),
         input_size(input_size_),
-        output_size(output_size_) {
+        output_size(output_size_),
+        AbstractLayer(dtype_, device_) {
     create_variables();
 }
 
@@ -354,15 +355,15 @@ RNN RNN::shallow_copy() const {
 }
 
 Tensor RNN::activate(
-    Tensor input_vector,
-    Tensor prev_hidden) const {
+        Tensor input_vector,
+        Tensor prev_hidden) const {
     // takes 5% less time to run operations when grouping them (no big gains then)
     // 1.118s with explicit (& temporaries) vs 1.020s with grouped expression & backprop
-    // return G.add(G.mul(Wx, input_vector), G.mul_with_bias(Wh, prev_hidden, b));
-    DEBUG_ASSERT_MAT_NOT_NAN(Wx)
-    DEBUG_ASSERT_MAT_NOT_NAN(input_vector)
-    DEBUG_ASSERT_MAT_NOT_NAN(Wh)
-    DEBUG_ASSERT_MAT_NOT_NAN(prev_hidden)
-    DEBUG_ASSERT_MAT_NOT_NAN(b)
+    // return G.add(G.mul(Wx, input_vector), G.dot_with_bias(Wh, prev_hidden, b));
     return tensor_ops::multiple_dot_with_bias({input_vector, prev_hidden}, {Wx, Wh}, b);
+}
+
+
+Tensor RNN::initial_states() const {
+    return Tensor({hidden_size}, dtype, device)[Broadcast()];
 }

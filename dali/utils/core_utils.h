@@ -109,11 +109,26 @@ namespace utils {
     bool in_vector(const std::vector<T>&, const T&);
 
     template<typename T>
-    std::vector<T> concatenate(std::initializer_list<std::vector<T>>);
+    std::vector<T> concatenate(std::initializer_list<std::vector<T>> lists) {
+        std::vector<T> concatenated_list;
+        for (auto& list: lists) {
+            for (const T& el: list) {
+                concatenated_list.emplace_back(el);
+            }
+        }
+        return concatenated_list;
+    }
 
-    template<typename IN, typename OUT>
-    std::vector<OUT> fmap(std::vector<IN> in_list,
-                          std::function<OUT(IN)> f);
+    template<typename IN, typename Mapper>
+    auto fmap(const std::vector<IN>& in_list, Mapper f) ->
+            std::vector<decltype(f(std::declval<IN>()))> {
+        std::vector<decltype(f(std::declval<IN>()))> out_list;
+        out_list.reserve(in_list.size());
+        for (const IN& in_element: in_list) {
+            out_list.push_back(f(in_element));
+        }
+        return out_list;
+    }
 
 
     /**

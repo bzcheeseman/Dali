@@ -30,6 +30,8 @@ struct ScopedCallback {
     ScopedCallback(ScopedCallback&&);
     ScopedCallback(const ScopedCallback&) = delete;
     ScopedCallback& operator=(const ScopedCallback&) = delete;
+  private:
+    bool owns_handle;
 };
 
 template<typename... Args>

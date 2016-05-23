@@ -189,6 +189,13 @@ struct GaussianInitializer : public Initializer<GaussianInitializer, const doubl
 
 struct UniformInitializer : public Initializer<UniformInitializer, const double&, const double&> {
 
+    static void verify(const double& lower, const double& upper) {
+        ASSERT2(lower < upper,
+            utils::MS() << "Uniform initialzer must have nonempty interval, got ["
+                        << lower << "," << upper <<"]");
+    }
+
+
 #ifdef DALI_USE_CUDA
     template<OPERATOR_T operator_t, typename T>
     void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out, const double& lower, const double& upper) {

@@ -86,31 +86,6 @@ namespace utils {
     template bool in_vector(const vector<char>&, const char&);
 
     template<typename T>
-    vector<T> concatenate(initializer_list<vector<T>> lists) {
-        vector<T> concatenated_list;
-        for (auto& list: lists) {
-            for (auto& el: list) {
-                concatenated_list.emplace_back(el);
-            }
-        }
-        return concatenated_list;
-    }
-
-    template vector<int> concatenate(initializer_list<vector<int>>);
-    // template vector<Mat<float>> concatenate(std::initializer_list<vector<Mat<float>>>);
-    // template vector<Mat<double>> concatenate(std::initializer_list<vector<Mat<double>>>);
-
-    template<typename IN, typename OUT>
-    vector<OUT> fmap(vector<IN> in_list, function<OUT(IN)> f) {
-        vector<OUT> out_list;
-        for (IN& in_element: in_list)
-            out_list.push_back(f(in_element));
-        return out_list;
-    }
-
-    template vector<string> fmap(vector<int>, function<string(int)>);
-
-    template<typename T>
     void tuple_sum(std::tuple<T, T>& A, std::tuple<T, T> B) {
             std::get<0>(A) += std::get<0>(B);
             std::get<1>(A) += std::get<1>(B);

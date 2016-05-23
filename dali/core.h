@@ -8,9 +8,11 @@
 #include "dali/tensor/tensor.h"
 #include "dali/tensor/op.h"
 #include "dali/tensor/tape.h"
+#include "dali/layers/layers.h"
+#include "dali/tensor/solver.h"
 // #include "dali/layers/LSTM.h"
 // #include "dali/layers/GRU.h"
 // #include "dali/execution/SequenceProbability.h"
 // #include "dali/execution/BeamSearch.h"
-#include "dali/tensor/solver.h"
+
 #endif

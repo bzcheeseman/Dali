@@ -52,11 +52,11 @@ namespace tensor_ops {
         if (graph::backprop_enabled())
             graph::emplace_back([weights, inputs, bias, out, max_num_examples]() mutable {
                 for (int i = 0; i < weights.size(); ++i) {
-                    if (inputs[i].shape()[0] == max_num_examples) {
-                        MAYBE_GRAD(inputs[i]) <<= op::dot(out.dw, weights[i].w.transpose());
-                    } else {
+                    if (inputs[i].w.bshape()[0] < 0) {
                         Array temp = op::dot(out.dw, weights[i].w.transpose());
                         MAYBE_GRAD(inputs[i]) <<= temp;
+                    } else {
+                        MAYBE_GRAD(inputs[i]) <<= op::dot(out.dw, weights[i].w.transpose());
                     }
                     MAYBE_GRAD(weights[i]) <<= op::dot(inputs[i].w.transpose(), out.dw);
                 }

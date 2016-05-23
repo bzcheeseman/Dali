@@ -572,6 +572,13 @@ Tensor Tensor::uniform(const double& lower,
     return Tensor(shape, initializer::uniform(lower, upper), dtype, preferred_device);
 }
 
+Tensor Tensor::uniform(const double& limit,
+                       const std::vector<int>& shape,
+                       const DType& dtype,
+                       const memory::Device& preferred_device) {
+    return Tensor(shape, initializer::uniform(-limit, limit), dtype, preferred_device);
+}
+
 Tensor Tensor::bernoulli(const double& prob,
                          const std::vector<int>& shape,
                          const DType& dtype,

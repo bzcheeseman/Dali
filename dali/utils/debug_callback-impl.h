@@ -25,18 +25,23 @@ ScopedCallback<Args...>::ScopedCallback(
         typename DebugCallback<Args...>::callback_t callback,
         DebugCallback<Args...>* dc_) :
                 dc_handle(dc_->register_callback(callback)),
-                dc(dc_) {
+                dc(dc_),
+                owns_handle(true) {
 }
 
 template<typename... Args>
 ScopedCallback<Args...>::~ScopedCallback() {
-    dc->deregister_callback(dc_handle);
+    if (owns_handle) {
+        dc->deregister_callback(dc_handle);
+    }
 }
 
 template<typename... Args>
 ScopedCallback<Args...>::ScopedCallback(ScopedCallback&& other) :
         dc(std::move(other.dc)),
-        dc_handle(std::move(dc_handle)) {
+        dc_handle(std::move(other.dc_handle)),
+        owns_handle(std::move(other.owns_handle)) {
+    other.owns_handle = false;
 }
 
 

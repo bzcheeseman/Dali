@@ -1,12 +1,21 @@
-#include "dali/layers/LSTM.h"
+#include "dali/layers/lstm.h"
+
+#include "dali/tensor/op.h"
+#include "dali/utils/core_utils.h"
 
 using std::vector;
 using utils::assert2;
 
+
+vector<Tensor> dropout_many_tensors(const std::vector<Tensor>& tensors, double dropprob) {
+    return utils::fmap(tensors, [&](const Tensor& t) -> Tensor {
+        return tensor_ops::dropout(t, dropprob);
+    });
+}
+
 /** Abstract Stacked LSTM **/
 
-template<typename R>
-std::vector<typename LSTM<R>::activation_t> StackedLSTM<R>::initial_states() const {
+std::vector<LSTM::activation_t> StackedLSTM::initial_states() const {
     state_t init_states;
     init_states.reserve(cells.size());
     for (const auto& cell : cells) {
@@ -15,11 +24,10 @@ std::vector<typename LSTM<R>::activation_t> StackedLSTM<R>::initial_states() con
     return init_states;
 }
 
-template<typename R>
-typename AbstractStackedLSTM<R>::state_t AbstractStackedLSTM<R>::activate_sequence(
+typename AbstractStackedLSTM::state_t AbstractStackedLSTM::activate_sequence(
     state_t initial_state,
-    const vector<Mat<R>>& sequence,
-    R drop_prob) const {
+    const vector<Tensor>& sequence,
+    const double drop_prob) const {
     for (auto& input_vector : sequence)
         initial_state = activate(initial_state, input_vector, drop_prob);
     return initial_state;
@@ -27,43 +35,41 @@ typename AbstractStackedLSTM<R>::state_t AbstractStackedLSTM<R>::activate_sequen
 
 /** Stacked LSTM **/
 
-template<typename R>
-StackedLSTM<R>::StackedLSTM(
+StackedLSTM::StackedLSTM(
     const int& input_size,
     const std::vector<int>& hidden_sizes,
     bool _shortcut,
-    bool _memory_feeds_gates) : shortcut(_shortcut), memory_feeds_gates(_memory_feeds_gates) {
-    cells = StackedCells<lstm_t>(input_size, hidden_sizes, shortcut, memory_feeds_gates);
+    bool _memory_feeds_gates,
+    DType dtype,
+    memory::Device device) : shortcut(_shortcut), memory_feeds_gates(_memory_feeds_gates) {
+    cells = stacked_cells<lstm_t>(input_size, hidden_sizes, shortcut, memory_feeds_gates, dtype, device);
 };
 
-template<typename R>
-StackedLSTM<R>::StackedLSTM(
+StackedLSTM::StackedLSTM(
     const std::vector<int>& input_sizes,
     const std::vector<int>& hidden_sizes,
     bool _shortcut,
-    bool _memory_feeds_gates) : shortcut(_shortcut), memory_feeds_gates(_memory_feeds_gates) {
-    cells = StackedCells<lstm_t>(input_sizes, hidden_sizes, shortcut, memory_feeds_gates);
+    bool _memory_feeds_gates,
+    DType dtype,
+    memory::Device device) : shortcut(_shortcut), memory_feeds_gates(_memory_feeds_gates) {
+    cells = stacked_cells<lstm_t>(input_sizes, hidden_sizes, shortcut, memory_feeds_gates, dtype, device);
 };
 
-template<typename R>
-StackedLSTM<R>::StackedLSTM() : shortcut(false),
+StackedLSTM::StackedLSTM() : shortcut(false),
                                 memory_feeds_gates(false) {
 }
 
-template<typename R>
-StackedLSTM<R>::StackedLSTM(const StackedLSTM<R>& model, bool copy_w, bool copy_dw) :
+StackedLSTM::StackedLSTM(const StackedLSTM& model, bool copy_w, bool copy_dw) :
          shortcut(model.shortcut), memory_feeds_gates(model.memory_feeds_gates) {
-    cells = StackedCells<lstm_t>(model.cells, copy_w, copy_dw);
+    cells = stacked_cells<lstm_t>(model.cells, copy_w, copy_dw);
 };
 
-template<typename R>
-StackedLSTM<R> StackedLSTM<R>::shallow_copy() const {
-    return StackedLSTM<R>(*this, false, true);
+StackedLSTM StackedLSTM::shallow_copy() const {
+    return StackedLSTM(*this, false, true);
 }
 
-template<typename R>
-std::vector<Mat<R>> StackedLSTM<R>::parameters() const {
-    vector<Mat<R>> parameters;
+std::vector<Tensor> StackedLSTM::parameters() const {
+    vector<Tensor> parameters;
     for (auto& cell : cells) {
         auto cell_params = cell.parameters();
         parameters.insert(parameters.end(), cell_params.begin(), cell_params.end());
@@ -71,11 +77,10 @@ std::vector<Mat<R>> StackedLSTM<R>::parameters() const {
     return parameters;
 }
 
-template<typename R>
-typename StackedLSTM<R>::state_t StackedLSTM<R>::activate(
+typename StackedLSTM::state_t StackedLSTM::activate(
             state_t previous_state,
-            Mat<R> input_vector,
-            R drop_prob) const {
+            Tensor input_vector,
+            const double drop_prob) const {
     if (shortcut) {
         return shortcut_forward_LSTMs(input_vector, previous_state, cells, drop_prob);
     } else {
@@ -83,11 +88,10 @@ typename StackedLSTM<R>::state_t StackedLSTM<R>::activate(
     }
 };
 
-template<typename R>
-typename StackedLSTM<R>::state_t StackedLSTM<R>::activate(
+typename StackedLSTM::state_t StackedLSTM::activate(
             state_t previous_state,
-            const std::vector<Mat<R>>& inputs,
-            R drop_prob) const {
+            const std::vector<Tensor>& inputs,
+            const double drop_prob) const {
 
     if (shortcut) {
         return shortcut_forward_LSTMs(inputs, previous_state, cells, drop_prob);
@@ -97,27 +101,33 @@ typename StackedLSTM<R>::state_t StackedLSTM<R>::activate(
 };
 
 template<typename celltype>
-vector<celltype> StackedCells(
+vector<celltype> stacked_cells(
         const int& input_size,
         const vector<int>& hidden_sizes,
         bool shortcut,
-        bool memory_feeds_gates) {
-    return StackedCells<celltype>(
+        bool memory_feeds_gates,
+        DType dtype,
+        memory::Device device) {
+    return stacked_cells<celltype>(
         std::vector<int>({input_size}),
         hidden_sizes,
         shortcut,
-        memory_feeds_gates
+        memory_feeds_gates,
+        dtype,
+        device
     );
 }
 
 // TODO: make this a static method of StackedLSTM
 // since this class is only customer to stackedcells
 template<typename celltype>
-vector<celltype> StackedCells(
-    const vector<int>& input_sizes,
-    const vector<int>& hidden_sizes,
-    bool shortcut,
-    bool memory_feeds_gates) {
+vector<celltype> stacked_cells(
+        const vector<int>& input_sizes,
+        const vector<int>& hidden_sizes,
+        bool shortcut,
+        bool memory_feeds_gates,
+        DType dtype,
+        memory::Device device) {
     vector<celltype> cells;
     cells.reserve(hidden_sizes.size());
     int prev_size;
@@ -133,7 +143,9 @@ vector<celltype> StackedCells(
                     input_sizes,
                     hidden_size,
                     1,
-                    memory_feeds_gates);
+                    memory_feeds_gates,
+                    dtype,
+                    device);
             } else {
                 // other cells in a shorcut
                 // stack steal the input
@@ -146,7 +158,9 @@ vector<celltype> StackedCells(
                     }),
                     hidden_size,
                     1,
-                    memory_feeds_gates);
+                    memory_feeds_gates,
+                    dtype,
+                    device);
             }
         } else {
             if (i == 0) {
@@ -154,13 +168,17 @@ vector<celltype> StackedCells(
                     input_sizes,
                     hidden_size,
                     1,
-                    memory_feeds_gates);
+                    memory_feeds_gates,
+                    dtype,
+                    device);
             } else {
                 cells.emplace_back(
                     prev_size,
                     hidden_size,
                     1,
-                    memory_feeds_gates);
+                    memory_feeds_gates,
+                    dtype,
+                    device);
             }
         }
         prev_size = hidden_size;
@@ -170,9 +188,9 @@ vector<celltype> StackedCells(
 }
 
 template<typename celltype>
-vector<celltype> StackedCells(const vector<celltype>& source_cells,
-                              bool copy_w,
-                              bool copy_dw) {
+vector<celltype> stacked_cells(const vector<celltype>& source_cells,
+                               bool copy_w,
+                               bool copy_dw) {
     vector<celltype> cells;
     cells.reserve(source_cells.size());
     for (const auto& cell : source_cells)
@@ -180,18 +198,17 @@ vector<celltype> StackedCells(const vector<celltype>& source_cells,
     return cells;
 }
 
-template<typename R>
-std::vector< typename LSTM<R>::activation_t > forward_LSTMs(
-        Mat<R> base_input,
-        std::vector< typename LSTM<R>::activation_t >& previous_state,
-        const vector<LSTM<R>>& cells,
-        R drop_prob) {
+std::vector<LSTM::activation_t > forward_LSTMs(
+        Tensor base_input,
+        std::vector<LSTM::activation_t >& previous_state,
+        const vector<LSTM>& cells,
+        const double drop_prob) {
 
     ASSERT2(cells.size() == previous_state.size(),
         utils::MS() << "Activating LSTM stack of size " << cells.size()
         << " with different number of states " << previous_state.size());
 
-    std::vector< typename LSTM<R>::activation_t> out_state;
+    std::vector<LSTM::activation_t> out_state;
     out_state.reserve(cells.size());
 
     auto layer_input = base_input;
@@ -199,7 +216,7 @@ std::vector< typename LSTM<R>::activation_t > forward_LSTMs(
     for (auto& layer : cells) {
         out_state.emplace_back(
             layer.activate(
-                MatOps<R>::dropout_normalized(layer_input, drop_prob),
+                tensor_ops::dropout(layer_input, drop_prob),
                 *state_iter
             )
         );
@@ -209,18 +226,17 @@ std::vector< typename LSTM<R>::activation_t > forward_LSTMs(
     return out_state;
 }
 
-template<typename R>
-std::vector< typename LSTM<R>::activation_t > shortcut_forward_LSTMs(
-        Mat<R> base_input,
-        std::vector< typename LSTM<R>::activation_t >& previous_state,
-        const vector<LSTM<R>>& cells,
-        R drop_prob) {
+std::vector<LSTM::activation_t > shortcut_forward_LSTMs(
+        Tensor base_input,
+        std::vector<LSTM::activation_t >& previous_state,
+        const vector<LSTM>& cells,
+        const double drop_prob) {
 
     ASSERT2(cells.size() == previous_state.size(),
         utils::MS() << "Activating LSTM stack of size " << cells.size()
         << " with different number of states " << previous_state.size());
 
-    std::vector< typename LSTM<R>::activation_t> out_state;
+    std::vector<LSTM::activation_t> out_state;
     out_state.reserve(cells.size());
 
     auto layer_input = base_input;
@@ -231,15 +247,15 @@ std::vector< typename LSTM<R>::activation_t > shortcut_forward_LSTMs(
         if (level == 0) {
             out_state.emplace_back(
                 layer.activate(
-                    MatOps<R>::dropout_normalized(layer_input, drop_prob),
+                    tensor_ops::dropout(layer_input, drop_prob),
                     *state_iter
                 )
             );
         } else {
             out_state.emplace_back(
                 layer.activate_shortcut(
-                    MatOps<R>::dropout_normalized(layer_input, drop_prob),
-                    MatOps<R>::dropout_normalized(base_input, drop_prob),
+                    tensor_ops::dropout(layer_input, drop_prob),
+                    tensor_ops::dropout(base_input, drop_prob),
                     *state_iter
                 )
             );
@@ -251,21 +267,20 @@ std::vector< typename LSTM<R>::activation_t > shortcut_forward_LSTMs(
     return out_state;
 }
 
-template<typename R>
-std::vector< typename LSTM<R>::activation_t > forward_LSTMs(
-        const std::vector<Mat<R>>& inputs,
-        std::vector< typename LSTM<R>::activation_t >& previous_state,
-        const std::vector<LSTM<R>>& cells,
-        R drop_prob) {
+std::vector<LSTM::activation_t > forward_LSTMs(
+        const std::vector<Tensor>& inputs,
+        std::vector<LSTM::activation_t >& previous_state,
+        const std::vector<LSTM>& cells,
+        const double drop_prob) {
 
     ASSERT2(cells.size() == previous_state.size(),
         utils::MS() << "Activating LSTM stack of size " << cells.size()
         << " with different number of states " << previous_state.size());
 
-    std::vector< typename LSTM<R>::activation_t> out_state;
+    std::vector<LSTM::activation_t> out_state;
     out_state.reserve(cells.size());
 
-    Mat<R> layer_input;
+    Tensor layer_input;
     auto state_iter = previous_state.begin();
 
     int layer_idx = 0;
@@ -273,14 +288,14 @@ std::vector< typename LSTM<R>::activation_t > forward_LSTMs(
         if (layer_idx == 0) {
             out_state.emplace_back(
                 layer.activate(
-                    MatOps<R>::dropout_normalized(inputs, drop_prob),
+                    dropout_many_tensors(inputs, drop_prob),
                     {*state_iter}
                 )
             );
         } else {
             out_state.emplace_back(
                 layer.activate(
-                    MatOps<R>::dropout_normalized(out_state.back().hidden, drop_prob),
+                    tensor_ops::dropout(out_state.back().hidden, drop_prob),
                     *state_iter
                 )
             );
@@ -291,18 +306,17 @@ std::vector< typename LSTM<R>::activation_t > forward_LSTMs(
     return out_state;
 }
 
-template<typename R>
-std::vector< typename LSTM<R>::activation_t > shortcut_forward_LSTMs(
-        const std::vector<Mat<R>>& inputs,
-        std::vector< typename LSTM<R>::activation_t >& previous_state,
-        const std::vector<LSTM<R>>& cells,
-        R drop_prob) {
+std::vector<LSTM::activation_t > shortcut_forward_LSTMs(
+        const std::vector<Tensor>& inputs,
+        std::vector<LSTM::activation_t >& previous_state,
+        const std::vector<LSTM>& cells,
+        const double drop_prob) {
 
     ASSERT2(cells.size() == previous_state.size(),
         utils::MS() << "Activating LSTM stack of size " << cells.size()
         << " with different number of states " << previous_state.size());
 
-    std::vector< typename LSTM<R>::activation_t> out_state;
+    std::vector<LSTM::activation_t> out_state;
     out_state.reserve(cells.size());
 
     auto state_iter = previous_state.begin();
@@ -310,14 +324,14 @@ std::vector< typename LSTM<R>::activation_t > shortcut_forward_LSTMs(
 
     // each layer above the first receive the base inputs +
     // hidden from layer below:
-    vector<Mat<R>> layer_inputs(1);
+    vector<Tensor> layer_inputs(1);
     layer_inputs.insert(layer_inputs.end(), inputs.begin(), inputs.end());
 
     for (auto& layer : cells) {
         if (level == 0) {
             out_state.emplace_back(
                 layer.activate(
-                    MatOps<R>::dropout_normalized(inputs, drop_prob),
+                    dropout_many_tensors(inputs, drop_prob),
                     {*state_iter}
                 )
             );
@@ -325,7 +339,7 @@ std::vector< typename LSTM<R>::activation_t > shortcut_forward_LSTMs(
             layer_inputs[0] = out_state.back().hidden;
             out_state.emplace_back(
                 layer.activate(
-                    MatOps<R>::dropout_normalized(layer_inputs, drop_prob),
+                    dropout_many_tensors(layer_inputs, drop_prob),
                     {*state_iter}
                 )
             );
@@ -335,7 +349,3 @@ std::vector< typename LSTM<R>::activation_t > shortcut_forward_LSTMs(
     }
     return out_state;
 }
-
-template class StackedLSTM<float>;
-template class StackedLSTM<double>;
-

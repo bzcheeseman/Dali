@@ -261,6 +261,10 @@ class Tensor {
                               const std::vector<int>& shape,
                               const DType& dtype=DTYPE_FLOAT,
                               const memory::Device& preferred_device=memory::default_preferred_device);
+        static Tensor uniform(const double& limit,
+                              const std::vector<int>& shape,
+                              const DType& dtype=DTYPE_FLOAT,
+                              const memory::Device&   preferred_device=memory::default_preferred_device);
         static Tensor bernoulli(const double& prob,
                                 const std::vector<int>& shape,
                                 const DType& dtype=DTYPE_FLOAT,

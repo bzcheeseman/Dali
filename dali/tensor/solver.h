@@ -1,7 +1,7 @@
 #ifndef SOLVER_MAT_H
 #define SOLVER_MAT_H
 
-#include "dali/tensor/Tensor.h"
+#include "dali/tensor/tensor.h"
 
 #define SOLVER_MAT_DEFAULT_STEP_SIZE_H 0.035
 

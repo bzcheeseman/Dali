@@ -1812,7 +1812,7 @@ TEST(Solver, trivial_adagrad) {
 TEST(Solver, trivial_rmsprop) {
     test_solver_trivial([](vector<Tensor> params) {
         auto ret = std::make_shared<solver::RMSProp>(params);
-        ret->step_size = 1;
+        ret->step_size = 0.1;
         ret->clip_norm = 0.0;
         return ret;
     });

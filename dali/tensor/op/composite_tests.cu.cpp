@@ -59,7 +59,7 @@ TEST(TensorCompositeTests, matrix_multiple_dot_with_bias_fancy_broadcast) {
         auto X = Tensor::uniform(-10, 10, {num_examples, input_size}, DTYPE_DOUBLE);
         auto W = Tensor::uniform(-10, 10, {input_size, hidden_size}, DTYPE_DOUBLE);
 
-        auto X_fancy   = Tensor::uniform(-10, 10, {input_size}, DTYPE_DOUBLE)[Broadcast()];
+        Tensor X_fancy   = Tensor::uniform(-10, 10, {input_size}, DTYPE_DOUBLE)[Broadcast()];
         auto W_fancy = Tensor::uniform(-10, 10, {input_size, hidden_size}, DTYPE_DOUBLE);
 
         auto X_other = Tensor::uniform(-10, 10, {num_examples, other_input_size}, DTYPE_DOUBLE);

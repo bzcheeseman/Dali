@@ -325,7 +325,7 @@ namespace {
 
                 auto start = std::max(loc_disagreement - 6, 0);
                 auto length = std::min(arg.number_of_elements() - start, 12);
-
+                std::cout << "Gradient for parameter " << param_idx << " is incorrect:" << std::endl;
                 std::cout << "-----------\nArg_prime[" << start << ":" << start + length << "] = " << std::endl;
                 print_buffer((R*)Arg_prime + start,       length, loc_disagreement - start);
                 std::cout << "-----------\n arg.dw()[" << start << ":" << start + length << "] = " << std::endl;

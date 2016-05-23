@@ -195,6 +195,13 @@ Array Array::ones_like(const Array& other) {
 
 Array load_npy_from_npyarray(const cnpy::NpyArray& arr) {
     DType dtype;
+    // TODO(jonathan): here word size is a poor-man's measure
+    // of the saved data. Usually we want to know if the memory
+    // saved was of type float, double, int, long, etc... and then
+    // perform the adequate conversions to our dtypes (or fail)
+    // however here we use the size of one double or float to determine
+    // if the word size is of some type (but not that:
+    // sizeof(int64) == sizeof(double) and sizeof(float) == sizeof(int32))
     if (arr.word_size == sizeof(double)) {
         dtype = DTYPE_DOUBLE;
     } else if (arr.word_size == sizeof(float)) {
@@ -212,21 +219,24 @@ Array load_npy_from_npyarray(const cnpy::NpyArray& arr) {
     }
 
     Array loaded;
-
     if (arr.fortran_order) {
+        // in fortran the strides are reversed
+        // with respect to c-style memory layout
+        // hence we can obtain a similar memory
+        // layout by transposing an array
+        // that has the dimensions of fortran array
+        // reversed:
+        // e.g. to load Fortran(2, 3, 4) we:
+        // 1) create x = Array(4, 3, 2)
+        // 2) transpose x_T = x.transpose();
+        // 3) load memory into x_T using buffer
+        // => x_T is now a fortran-ordered view
+        // onto the memory in Fortran(2, 3, 4)
         std::reverse(shape.begin(), shape.end());
         loaded = Array(shape, dtype);
         loaded = loaded.transpose();
-        // // in fortran strides are low to high
-        // auto fortran_strides = loaded.normalized_strides();
-        // loaded = Array(
-        //     shape,
-        //     loaded.memory(),
-        //     loaded.offset(),
-        //     fortran_strides,
-        //     loaded.dtype()
-        // );
     } else {
+        // c-style memory layout
         loaded = Array(shape, dtype);
     }
     loaded.memory()->adopt_buffer(memory::Device::cpu(), arr.data);

@@ -511,9 +511,6 @@ TEST(ArrayIOTests, load_fortran) {
     auto arange_fortran = Array::load(
         utils::dir_join({STR(DALI_DATA_DIR), "tests", "arange12.fortran.npy"})
     );
-    arange.print();
-    arange_fortran.print();
-    ELOG(arange_fortran.strides());
     ASSERT_TRUE(Array::equals(arange, arange_fortran));
     for (int i = 0; i < 12; i++) {
         EXPECT_EQ_DTYPE(i, arange(i), arange.dtype());

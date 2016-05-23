@@ -12,6 +12,7 @@ namespace mshadow {
         struct sum;
         struct maximum;
         struct minimum;
+        struct product;
     }
 };
 
@@ -24,6 +25,12 @@ namespace lazy {
 
     template<typename ExprT>
     LazyAllReducer<mshadow::red::maximum, ExprT> max(const Exp<ExprT>& expr);
+
+    template<typename ExprT>
+    LazyAllReducer<mshadow::red::product, ExprT> product(const Exp<ExprT>& expr);
+
+    template<typename ExprT>
+    LazyAxisReducer<mshadow::red::product, ExprT, false> product(const Exp<ExprT>& expr, const int& axis, bool keepdims=false);
 
     template<typename ExprT>
     LazyAxisReducer<mshadow::red::sum, ExprT, false> sum(const Exp<ExprT>& expr, const int& axis, bool keepdims=false);

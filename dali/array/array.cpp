@@ -236,7 +236,7 @@ Array load_npy_from_npyarray(const cnpy::NpyArray& arr) {
         std::reverse(shape.begin(), shape.end());
         loaded = Array(shape, dtype);
         loaded = loaded.transpose();
-    } else {
+    } else {
         // c-style memory layout
         loaded = Array(shape, dtype);
     }

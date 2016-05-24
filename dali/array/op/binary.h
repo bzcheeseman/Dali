@@ -1,7 +1,8 @@
 #ifndef DALI_ARRAY_OP_BINARY_H
 #define DALI_ARRAY_OP_BINARY_H
 
-#include "dali/array/array.h"
+class Array;
+class AssignableArray;
 
 namespace op {
     AssignableArray add(const Array& left, const Array& right);

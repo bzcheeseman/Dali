@@ -1,5 +1,6 @@
 #include "binary.h"
 
+#include "dali/array/array.h"
 #include "dali/array/lazy/binary.h"
 
 namespace op {

@@ -7,6 +7,7 @@
 #include "dali/array/op/other.h"
 #include "dali/array/op/reducers.h"
 #include "dali/array/op/unary.h"
+#include "dali/array/op/unary_scalar.h"
 #include "dali/array/op/binary.h"
 #include "dali/array/op/dot.h"
 #include "dali/utils/print_utils.h"
@@ -69,7 +70,7 @@ AssignableArray::AssignableArray(const int& constant) :
 
 ArrayState::ArrayState(const std::vector<int>& _shape,
                        std::shared_ptr<SynchronizedMemory> _memory,
-                       int _offset,
+                       const int& _offset,
                        const std::vector<int>& _strides,
                        DType _dtype) :
         shape(_shape),
@@ -103,7 +104,7 @@ T Array::scalar_value() const {
     }
 }
 
-void Array::broadcast_axis_internal(int axis) {
+void Array::broadcast_axis_internal(const int& axis) {
     ASSERT2(0 <= axis && axis < ndim(),
             utils::MS() << "broadcast dimension (" << axis << ") must be less the dimensionality of broadcasted tensor (" << ndim() << ")");
 
@@ -127,7 +128,7 @@ Array::Array(std::initializer_list<int> shape_, DType dtype, memory::Device pref
 
 Array::Array(const std::vector<int>& shape,
              std::shared_ptr<SynchronizedMemory> memory,
-             int offset,
+             const int& offset,
              const std::vector<int>& strides,
              DType dtype) {
     ASSERT2(shape_strictly_positive(shape),
@@ -139,7 +140,7 @@ Array::Array(const std::vector<int>& shape,
     state = std::make_shared<ArrayState>(shape, memory, offset, new_strides, dtype);
 }
 
-Array::Array(const Array& other, bool copy_memory) {
+Array::Array(const Array& other, const bool& copy_memory) {
     if (copy_memory) {
         // TODO(jonathan, szymon):
         // surely we can do better.
@@ -501,7 +502,7 @@ vector<int> Array::subshape() const {
 }
 
 
-Array Array::operator[](int idx) const {
+Array Array::operator[](const int& idx) const {
     return pluck_axis(0, idx);
 }
 
@@ -661,12 +662,12 @@ Array Array::reshape_broadcasted(const std::vector<int>& new_shape) const {
 }
 
 
-Array Array::pluck_axis(int axis, int pluck_idx) const {
+Array Array::pluck_axis(const int& axis, const int& pluck_idx) const {
     auto single_item_slice = pluck_axis(axis, Slice(pluck_idx, pluck_idx + 1));
     return single_item_slice.squeeze(axis);
 }
 
-Array Array::pluck_axis(int axis, const Slice& slice_unnormalized) const {
+Array Array::pluck_axis(const int& axis, const Slice& slice_unnormalized) const {
     ASSERT2(axis < shape().size(),
             utils::MS() << "pluck_axis dimension (" << axis << ") must be less the dimensionality of plucked tensor (" << shape().size() << ")");
 
@@ -695,7 +696,7 @@ Array Array::pluck_axis(int axis, const Slice& slice_unnormalized) const {
                  new_strides,
                  dtype());
 }
-Array Array::squeeze(int axis) const {
+Array Array::squeeze(const int& axis) const {
     ASSERT2(0 <= axis && axis < shape().size(),
             utils::MS() << "squeeze dimension (" << axis << ") must be less the dimensionality of compacted tensor (" << shape().size() << ")");
     ASSERT2(shape()[axis] == 1,
@@ -721,7 +722,7 @@ Array Array::squeeze(int axis) const {
                  dtype());
 }
 
-Array Array::expand_dims(int new_axis) const {
+Array Array::expand_dims(const int& new_axis) const {
     vector<int> new_shape   = shape();
     vector<int> new_strides = normalized_strides();
 
@@ -740,17 +741,17 @@ Array Array::expand_dims(int new_axis) const {
 }
 
 
-Array Array::broadcast_axis(int axis) const {
+Array Array::broadcast_axis(const int& axis) const {
     Array out(*this, false);
     out.broadcast_axis_internal(axis);
     return out;
 }
 
-Array Array::insert_broadcast_axis(int new_axis) const {
+Array Array::insert_broadcast_axis(const int& new_axis) const {
     return expand_dims(new_axis).broadcast_axis(new_axis);
 }
 
-int Array::normalize_axis(int axis) const {
+int Array::normalize_axis(const int& axis) const {
     if (axis < 0) {
         return ndim() + axis;
     } else {
@@ -759,7 +760,7 @@ int Array::normalize_axis(int axis) const {
 }
 
 
-Array Array::broadcast_scalar_to_ndim(int target_ndim) const {
+Array Array::broadcast_scalar_to_ndim(const int& target_ndim) const {
     ASSERT2(is_scalar(),
             utils::MS() << "broadcast_scalar_to_ndim may only be called on scalars, got shape " << shape() << ".");
     Array res = *this;
@@ -861,7 +862,7 @@ DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::scalar_mul, *=);
 DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::scalar_div, /=);
 
 
-void Array::print(std::basic_ostream<char>& stream, int indent, bool add_newlines) const {
+void Array::print(std::basic_ostream<char>& stream, const int& indent, const bool& add_newlines) const {
     std::string end_line_spacing = add_newlines ? "\n" : "";
     int indent_increment = add_newlines ? 4 : 0;
     if (ndim() == 0) {
@@ -900,7 +901,7 @@ void Array::print(std::basic_ostream<char>& stream, int indent, bool add_newline
     }
 }
 
-void Array::debug_memory(bool print_contents) const {
+void Array::debug_memory(const bool& print_contents) const {
     memory()->debug_info(std::cout, print_contents, dtype());
 }
 

@@ -36,7 +36,7 @@ SlicingInProgress<Container> SlicingInProgress<Container>::operator[](const Broa
 }
 
 template<typename Container>
-SlicingInProgress<Container> SlicingInProgress<Container>::operator[](int idx) {
+SlicingInProgress<Container> SlicingInProgress<Container>::operator[](const int& idx) {
     ASSERT2(consumed_dims < input.ndim(),
         "Slicing a scalar container is not allowed.");
     SlicingInProgress<Container> res(*this);
@@ -50,7 +50,7 @@ template<typename Container>
 SlicingInProgress<Container>::operator Container() {
     Container out = input;
     ASSERT2(consumed_dims <= input.ndim(),
-            "Email szymon.sidor@gmail.com.");
+            "Slicing consumed more dimensions that the input dimensionality.");
     auto next_slice = slice.begin();
     int output_depth = 0;
     for (const auto& a: action) {

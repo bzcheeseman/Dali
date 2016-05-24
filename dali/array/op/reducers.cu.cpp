@@ -1,8 +1,9 @@
 #include "reducers.h"
-
+#include "dali/array/array.h"
 #include "dali/array/lazy/reducers.h"
 #define DALI_USE_LAZY 1
 #include "dali/array/op.h"
+
 
 namespace op {
     AssignableArray sum(const Array& x) {

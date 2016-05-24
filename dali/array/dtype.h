@@ -3,7 +3,6 @@
 
 #include <ostream>
 
-
 enum DType {
     DTYPE_FLOAT  = 0,
     DTYPE_DOUBLE = 1,
@@ -13,7 +12,6 @@ enum DType {
 // macro for including the human-readable acceptable dtypes
 // in Dali
 #define DALI_ACCEPTABLE_DTYPE_STR "float, double, or int32"
-
 
 template<typename T>
 void assert_dali_dtype() {

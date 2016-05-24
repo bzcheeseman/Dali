@@ -1,6 +1,8 @@
 #ifndef DALI_ARRAY_LAZY_REDUCERS_H
 #define DALI_ARRAY_LAZY_REDUCERS_H
 
+#include "dali/array/function/expression.h"
+
 template<class Functor, typename ExprT>
 struct LazyAllReducer;
 

@@ -1,5 +1,8 @@
-#define DALI_USE_LAZY 0
-#include "op.h"
+#include "operator_overload.h"
+
+#include "dali/array/array.h"
+#include "dali/array/op/binary.h"
+#include "dali/array/op/unary_scalar.h"
 
 #define DALI_DEFINE_ARRAY_INTERACTION(OPNAME, SYMBOL)\
     AssignableArray operator SYMBOL (const Array& left, const Array& right) {\

@@ -1,7 +1,10 @@
 #ifndef DALI_ARRAY_OP_DOT_H
 #define DALI_ARRAY_OP_DOT_H
 
-#include "dali/array/array.h"
+#include <vector>
+
+class Array;
+class AssignableArray;
 
 namespace op {
     AssignableArray dot(const Array& a, const Array& b);

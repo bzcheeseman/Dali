@@ -1,7 +1,8 @@
 #ifndef DALI_ARRAY_OP_REDUCERS_H
 #define DALI_ARRAY_OP_REDUCERS_H
 
-#include "dali/array/array.h"
+class Array;
+class AssignableArray;
 
 namespace op {
     AssignableArray sum(const Array& x);

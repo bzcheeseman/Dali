@@ -1,7 +1,8 @@
 #ifndef DALI_ARRAY_OP_UNARY_H
 #define DALI_ARRAY_OP_UNARY_H
 
-#include "dali/array/array.h"
+class Array;
+class AssignableArray;
 
 namespace op {
     AssignableArray identity(const Array& x);
@@ -14,21 +15,6 @@ namespace op {
     AssignableArray square(const Array& x);
     AssignableArray sqrt(const Array& x);
     AssignableArray rsqrt(const Array& x);
-    AssignableArray scalar_add(const Array& x, const double& other);
-    AssignableArray scalar_add(const Array& x, const float& other);
-    AssignableArray scalar_add(const Array& x, const int& other);
-    AssignableArray scalar_sub(const Array& x, const double& other);
-    AssignableArray scalar_sub(const Array& x, const float& other);
-    AssignableArray scalar_sub(const Array& x, const int& other);
-    AssignableArray scalar_mul(const Array& x, const double& other);
-    AssignableArray scalar_mul(const Array& x, const float& other);
-    AssignableArray scalar_mul(const Array& x, const int& other);
-    AssignableArray scalar_div(const Array& x, const double& other);
-    AssignableArray scalar_div(const Array& x, const float& other);
-    AssignableArray scalar_div(const Array& x, const int& other);
-    AssignableArray scalar_pow(const Array& x, const double& other);
-    AssignableArray scalar_pow(const Array& x, const float& other);
-    AssignableArray scalar_pow(const Array& x, const int& other);
 } // namespace op
 
 #endif

@@ -9,6 +9,7 @@
 #include "dali/array/op/reducers.h"
 #include "dali/array/op/initializer.h"
 #include "dali/array/op/unary.h"
+#include "dali/array/op/unary_scalar.h"
 #include "dali/utils/print_utils.h"
 
 #if EXISTS_AND_TRUE(DALI_USE_LAZY)
@@ -70,25 +71,7 @@
         static bool ops_loaded = false;
     }
 
-    #define DALI_DECLARE_ARRAY_INTERACTION(SYMBOL)\
-        AssignableArray operator SYMBOL (const Array& left, const Array& right);\
-
-    #define DALI_DECLARE_SCALAR_INTERACTION(SYMBOL)\
-        AssignableArray operator SYMBOL (const Array& left, const double& right);\
-        AssignableArray operator SYMBOL (const Array& left, const float& right);\
-        AssignableArray operator SYMBOL (const Array& left, const int& right);\
-
-
-
-    DALI_DECLARE_ARRAY_INTERACTION(+);
-    DALI_DECLARE_ARRAY_INTERACTION(-);
-    DALI_DECLARE_ARRAY_INTERACTION(*);
-    DALI_DECLARE_ARRAY_INTERACTION(/);
-
-    DALI_DECLARE_SCALAR_INTERACTION(-);
-    DALI_DECLARE_SCALAR_INTERACTION(+);
-    DALI_DECLARE_SCALAR_INTERACTION(*);
-    DALI_DECLARE_SCALAR_INTERACTION(/);
+    #include "dali/array/op/operator_overload.h"
 
 #endif
 

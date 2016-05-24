@@ -1,5 +1,10 @@
 #include "initializer.h"
 
+#include "dali/array/array.h"
+#include "dali/array/dtype.h"
+#include "dali/array/memory/device.h"
+#include "dali/runtime_config.h"
+
 #ifdef DALI_USE_CUDA
     #include <thrust/random.h>
 #endif
@@ -8,7 +13,6 @@
 #include "dali/array/function/operator.h"
 #include "dali/array/functor.h"
 #include "dali/utils/random.h"
-#include "dali/runtime_config.h"
 
 using std::vector;
 
@@ -361,7 +365,7 @@ namespace initializer {
         return BernoulliNormalizedInitializer::run(prob);
     }
 
-    AssignableArray eye(double diag) {
+    AssignableArray eye(const double& diag) {
         return AssignableArray([diag](Array& tensor, const OPERATOR_T& operator_t) {
             ASSERT2(false, "eye: Not implemented yet");
 
@@ -375,7 +379,10 @@ namespace initializer {
         });
 
     }
-    AssignableArray svd(AssignableArray preinitializer) {
+    AssignableArray svd() {
+        return svd(gaussian(0.0, 1.0));
+    }
+    AssignableArray svd(const AssignableArray& preinitializer) {
         return AssignableArray([preinitializer](Array& tensor, const OPERATOR_T& operator_t) {
             ASSERT2(false, "SVD INIT: Not implemented yet");
             /* Eigen implementation */

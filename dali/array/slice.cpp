@@ -50,7 +50,7 @@ int Slice::size() const {
     return division_ceil(end - start, std::abs(step));
 }
 
-bool Slice::contains(int index) const {
+bool Slice::contains(const int& index) const {
     ASSERT2(start >= 0 && end >= 0,
             "slice length can only be use with positive indexing.");
     bool in_range = start <= index && index < end;

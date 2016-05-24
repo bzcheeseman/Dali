@@ -37,7 +37,7 @@ struct ArrayState {
     DType dtype;
     ArrayState(const std::vector<int>& _shape,
                std::shared_ptr<memory::SynchronizedMemory> _memory,
-               int _offset,
+               const int& _offset,
                const std::vector<int>& _strides,
                DType _dtype);
 };
@@ -47,10 +47,10 @@ class Array : public Exp<Array> {
     std::shared_ptr<ArrayState> state;
     template<typename T>
     T scalar_value() const;
-    void broadcast_axis_internal(int axis);
-    int normalize_axis(int axis) const;
+    void broadcast_axis_internal(const int& axis);
+    int normalize_axis(const int& axis) const;
   public:
-    typedef uint            index_t;
+    typedef uint index_t;
 
     Array();
 
@@ -59,10 +59,10 @@ class Array : public Exp<Array> {
     Array(std::initializer_list<int> shape, DType dtype_=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
     Array(const std::vector<int>& shape,
           std::shared_ptr<memory::SynchronizedMemory>,
-          int offset,
+          const int& offset,
           const std::vector<int>& strides,
           DType dtype_=DTYPE_FLOAT);
-    Array(const Array& other, bool copy_memory=false);
+    Array(const Array& other, const bool& copy_memory=false);
     Array(const AssignableArray& assignable);
     template<typename ExprT>
     Array(const LazyExp<ExprT>& expr);
@@ -123,10 +123,12 @@ class Array : public Exp<Array> {
     std::vector<int> subshape() const;
 
     /* Creating a view into memory */
-    Array operator[](int idx) const;
+    Array operator[](const int& idx) const;
     SlicingInProgress<Array> operator[](const Slice& s) const;
     SlicingInProgress<Array> operator[](const Broadcast& b) const;
+    // Get scalar at this offset:
     Array operator()(index_t idx) const;
+    // create a view of the transposed memory
     Array transpose() const;
     Array transpose(const std::vector<int>& axes) const;
     Array swapaxes(int axis1, int axis2) const;
@@ -164,13 +166,13 @@ class Array : public Exp<Array> {
     Array reshape_broadcasted(const std::vector<int>& new_shape) const;
 
     // TODO(szymon): look up what it's called in tensorflow/numpy and rename.
-    Array pluck_axis(int axis, const Slice& slice) const;
-    Array pluck_axis(int axis, int idx) const;
-    Array squeeze(int axis) const;
-    Array expand_dims(int new_axis) const;
-    Array broadcast_axis(int axis) const;
-    Array insert_broadcast_axis(int new_axis) const;
-    Array broadcast_scalar_to_ndim(int ndim) const;
+    Array pluck_axis(const int& axis, const Slice& slice) const;
+    Array pluck_axis(const int& axis, const int& idx) const;
+    Array squeeze(const int& axis) const;
+    Array expand_dims(const int& new_axis) const;
+    Array broadcast_axis(const int& axis) const;
+    Array insert_broadcast_axis(const int& new_axis) const;
+    Array broadcast_scalar_to_ndim(const int& ndim) const;
 
     // reduce over all axes
     AssignableArray sum() const;
@@ -213,8 +215,8 @@ class Array : public Exp<Array> {
     DALI_DECLARE_SCALAR_INTERACTION_INPLACE(/=);
 
     /* Debugging */
-    void print(std::basic_ostream<char>& stream = std::cout, int indent=0, bool add_newlines=true) const;
-    void debug_memory(bool print_contents=true) const;
+    void print(std::basic_ostream<char>& stream = std::cout, const int& indent=0, const bool& add_newlines=true) const;
+    void debug_memory(const bool& print_contents=true) const;
 
     /* Operations */
     void clear();
@@ -246,15 +248,15 @@ class Array : public Exp<Array> {
     // operator= in array.h it for some reason tries to expand what's inside
     // the function (even though nobody uses it, but apparently we have
     // inevitably hit template expansion phase of compilation or something like
-    // that where compiler gets really excited about contents of templated
+    // that where compiler gets really excited about the contents of templated
     // functions).
     //
     // CURRENT SOLUTION:
     // This may not be the best solution to the issue we are facing.
     // The current solution to this problem is to specify DALI_ARRAY_HIDE_LAZY
-    // which hides those function definitions from all the files related to lazy
-    // functions. The next time somebody includes array.h outside of those
-    // files, this templated functions will become available.
+    // which hides the function definitions below from all the files related to lazy
+    // functions. The next time array.h is included outside of those
+    // files, the templated functions will be available.
     // The primary disadvantage of this solution is the fact that we are using
     // a new paradigm of optional Header Extension, which may require extra
     // cognitive effort.

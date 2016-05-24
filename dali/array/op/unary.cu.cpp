@@ -1,8 +1,7 @@
 #include "unary.h"
 
+#include "dali/array/array.h"
 #include "dali/array/lazy/unary.h"
-#include "dali/array/lazy/binary.h"
-
 
 namespace op {
     AssignableArray identity(const Array& x) {
@@ -43,52 +42,5 @@ namespace op {
 
     AssignableArray rsqrt(const Array& x) {
         return lazy::rsqrt(x);
-    }
-
-    AssignableArray scalar_add(const Array& x, const double& other) {
-        return lazy::add(x, other);
-    }
-    AssignableArray scalar_add(const Array& x, const float& other) {
-        return lazy::add(x, other);
-    }
-    AssignableArray scalar_add(const Array& x, const int& other) {
-        return lazy::add(x, other);
-    }
-    AssignableArray scalar_sub(const Array& x, const double& other) {
-        return lazy::sub(x, other);
-    }
-    AssignableArray scalar_sub(const Array& x, const float& other) {
-        return lazy::sub(x, other);
-    }
-    AssignableArray scalar_sub(const Array& x, const int& other) {
-        return lazy::sub(x, other);
-    }
-    AssignableArray scalar_mul(const Array& x, const double& other) {
-        return lazy::eltmul(x, other);
-    }
-    AssignableArray scalar_mul(const Array& x, const float& other) {
-        return lazy::eltmul(x, other);
-    }
-    AssignableArray scalar_mul(const Array& x, const int& other) {
-        return lazy::eltmul(x, other);
-    }
-    AssignableArray scalar_div(const Array& x, const double& other) {
-        return lazy::eltdiv(x, other);
-    }
-    AssignableArray scalar_div(const Array& x, const float& other) {
-        return lazy::eltdiv(x, other);
-    }
-    AssignableArray scalar_div(const Array& x, const int& other) {
-        return lazy::eltdiv(x, other);
-    }
-
-    AssignableArray pow(const Array& x, const double& other) {
-        return lazy::pow(x, other);
-    }
-    AssignableArray pow(const Array& x, const float& other) {
-        return lazy::pow(x, other);
-    }
-    AssignableArray pow(const Array& x, const int& other) {
-        return lazy::pow(x, other);
     }
 };

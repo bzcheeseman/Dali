@@ -5,6 +5,13 @@
 #include <string>
 #include <vector>
 
+// Empty struct, used for informing a sliced container to insert
+// a newaxis at the currently sliced dimensionality, e.g.:
+//
+// Tensor x = Tensor({3,4}, DTYPE_DOUBLE)[0][Broadcast()];
+// x.shape() => {1, 1, 4}
+//
+// With the second dimension broadcasted
 struct Broadcast {
 };
 
@@ -21,7 +28,7 @@ struct Slice {
     static Slice normalize_and_check(const Slice&, const int& dim_size);
 
     int size() const;
-    bool contains(int index) const;
+    bool contains(const int& index) const;
     operator std::string() const;
 };
 
@@ -44,7 +51,7 @@ struct SlicingInProgress {
     SlicingInProgress(const SlicingInProgress& other);
     SlicingInProgress<Container> operator[](const Slice& s);
     SlicingInProgress<Container> operator[](const Broadcast& b);
-    SlicingInProgress<Container> operator[](int idx);
+    SlicingInProgress<Container> operator[](const int& idx);
     operator Container();
 };
 

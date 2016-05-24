@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "dali/array/array.h"
 #include "dali/array/function/function.h"
 #include "dali/array/shape.h"
 #include "dali/array/mshadow_extension/dali_gemm_engine_exp.h"

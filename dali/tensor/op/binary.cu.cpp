@@ -6,7 +6,7 @@
 
 namespace tensor_ops {
     Tensor add(const Tensor& a, const Tensor& b) {
-        Tensor out(a.w + b.w);
+        Tensor out(op::add(a.w, b.w));
 
         if (graph::backprop_enabled())
             graph::emplace_back([a, b, out]() mutable {
@@ -17,7 +17,7 @@ namespace tensor_ops {
     }
 
     Tensor sub(const Tensor& a, const Tensor& b) {
-        Tensor out(a.w - b.w);
+        Tensor out(op::sub(a.w, b.w));
 
         if (graph::backprop_enabled())
             graph::emplace_back([a, b, out]() mutable {
@@ -28,7 +28,7 @@ namespace tensor_ops {
     }
 
     Tensor eltmul(const Tensor& a, const Tensor& b) {
-        Tensor out(a.w * b.w);
+        Tensor out(op::eltmul(a.w, b.w));
 
         if (graph::backprop_enabled())
             graph::emplace_back([a, b, out]() mutable {
@@ -38,7 +38,7 @@ namespace tensor_ops {
         return out;
     }
     Tensor eltdiv(const Tensor& a, const Tensor& b) {
-        Tensor out(a.w / b.w);
+        Tensor out(op::eltdiv(a.w, b.w));
 
         if (graph::backprop_enabled())
             graph::emplace_back([a, b, out]() mutable {

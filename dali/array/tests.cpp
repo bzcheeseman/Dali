@@ -164,6 +164,13 @@ TEST(ArrayTests, spans_entire_memory) {
 
     auto view_onto_y = y[0];
     ASSERT_TRUE(view_onto_y.spans_entire_memory());
+
+    // extreme corner case, reversed:
+    // TODO(jonathan): fix this case
+    // Array z = Array::zeros({4});
+
+    // Array z_reversed = z[Slice(0, 4, -1)];
+    // ASSERT_TRUE(z_reversed.spans_entire_memory());
 }
 
 // Some example integer 3D tensor with

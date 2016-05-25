@@ -8,5 +8,6 @@
 #include "dali/tensor/op/other.h"
 #include "dali/tensor/op/reducers.h"
 #include "dali/tensor/op/unary.h"
+#include "dali/tensor/op/unary_scalar.h"
 
 #endif

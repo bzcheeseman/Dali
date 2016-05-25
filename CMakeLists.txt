@@ -187,6 +187,9 @@ endif()
 
 list(APPEND DALI_SOURCE_DIRS_EXCLUDE "dali/mat;dali/data_processing;dali/execution;dali/layers")
 
+if (ARRAY_ONLY)
+    list(APPEND DALI_SOURCE_DIRS_EXCLUDE "dali/tensor")
+endif()
 
 
 set(GENERATED_FILES_DIR ${CMAKE_BINARY_DIR}/dali_generated)

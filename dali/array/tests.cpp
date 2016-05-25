@@ -13,7 +13,7 @@
 #include "dali/utils/print_utils.h"
 #include "dali/runtime_config.h"
 #include "dali/array/op.h"
-#include "dali/test_utils.h"
+#include "dali/array/test_utils.h"
 
 #include "dali/array/lazy/binary.h"
 
@@ -534,6 +534,3 @@ TEST(ArrayIOTests, save_load_test) {
         EXPECT_EQ_DTYPE(i, arange(i), arange.dtype());
     }
 }
-
-
-

@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "dali/utils/print_utils.h"
-#include "dali/test_utils.h"
+#include "dali/array/test_utils.h"
 #include "dali/runtime_config.h"
 #define DALI_USE_LAZY 0
 #include "dali/array/op.h"

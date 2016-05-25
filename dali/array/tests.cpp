@@ -166,11 +166,20 @@ TEST(ArrayTests, spans_entire_memory) {
     ASSERT_TRUE(view_onto_y.spans_entire_memory());
 
     // extreme corner case, reversed:
-    // TODO(jonathan): fix this case
-    // Array z = Array::zeros({4});
+    Array z = Array::zeros({4});
 
-    // Array z_reversed = z[Slice(0, 4, -1)];
-    // ASSERT_TRUE(z_reversed.spans_entire_memory());
+    Array z_reversed = z[Slice(0, 4, -1)];
+    ASSERT_TRUE(z_reversed.spans_entire_memory());
+
+    // another edge case:
+
+    Array z2 = Array::zeros({1, 4, 1});
+
+    Array z2_reversed = z2[Slice(0, 1, -1)][Slice(0, 4, -1)][Slice(0, 1, 2)];
+    ASSERT_TRUE(z2_reversed.spans_entire_memory());
+    Array z2_reversed_skip = z2[Slice(0, 1, -1)][Slice(0, 4, -2)][Slice(0, 1, 2)];
+    ASSERT_FALSE(z2_reversed_skip.spans_entire_memory());
+
 }
 
 // Some example integer 3D tensor with

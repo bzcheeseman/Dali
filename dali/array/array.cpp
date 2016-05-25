@@ -351,9 +351,21 @@ Array Array::vectorlike_to_vector() const {
 }
 
 bool Array::spans_entire_memory() const {
-    ASSERT2(!is_stateless(), "spans_entire_memory must not be called with stateless Array.");
-    return offset() == 0 &&
-           number_of_elements() * size_of_dtype(dtype()) == memory()->total_memory;
+    ASSERT2(!is_stateless(), "spans_entire_memory has undefined meaning on a stateless Array.");
+    int noe = number_of_elements();
+    if (offset() == 0 && noe * size_of_dtype(dtype()) == memory()->total_memory) {
+        return true;
+    }
+    if (offset() == noe - 1) {
+        const auto& arr_strides = strides();
+        const auto& arr_shape = shape();
+        for (int i = 0; i < arr_strides.size(); i++) {
+            if (std::abs(arr_strides[i]) == 1 && arr_shape[i] == noe) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 bool Array::contiguous_memory() const {

@@ -15,6 +15,15 @@ namespace op {
     DALI_DECLARE_ARRAY_SCALAR_OP(scalar_mul);
     DALI_DECLARE_ARRAY_SCALAR_OP(scalar_div);
     DALI_DECLARE_ARRAY_SCALAR_OP(scalar_pow);
+
+    #define DALI_DECLARE_ARRAY_SCALAR_OP_ARGS_REVERSED(FUNCTION_NAME)\
+    	AssignableArray FUNCTION_NAME(const double& other, const Array& x);\
+        AssignableArray FUNCTION_NAME(const float& other, const Array& x);\
+        AssignableArray FUNCTION_NAME(const int& other, const Array& x);\
+
+    DALI_DECLARE_ARRAY_SCALAR_OP_ARGS_REVERSED(scalar_sub);
+    DALI_DECLARE_ARRAY_SCALAR_OP_ARGS_REVERSED(scalar_div);
+    DALI_DECLARE_ARRAY_SCALAR_OP_ARGS_REVERSED(scalar_pow);
 } // namespace op
 
 #endif

@@ -16,8 +16,24 @@ namespace op {
         return lazy::tanh(x);
     }
 
+    AssignableArray exp(const Array& x) {
+        return lazy::exp(x);
+    }
+
+    AssignableArray softplus(const Array& x) {
+        return lazy::softplus(x);
+    }
+
+    AssignableArray eltinv(const Array& x) {
+        return lazy::eltinv(x);
+    }
+
     AssignableArray relu(const Array& x) {
         return lazy::relu(x);
+    }
+
+    AssignableArray log(const Array& x) {
+        return lazy::log(x);
     }
 
     AssignableArray log_or_zero(const Array& x) {
@@ -34,6 +50,10 @@ namespace op {
 
     AssignableArray square(const Array& x) {
         return lazy::square(x);
+    }
+
+    AssignableArray cube(const Array& x) {
+        return lazy::cube(x);
     }
 
     AssignableArray sqrt(const Array& x) {

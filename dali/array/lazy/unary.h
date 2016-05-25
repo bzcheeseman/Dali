@@ -20,7 +20,19 @@ namespace lazy {
     LazyUnary<functor::tanh,ExprT> tanh(const Exp<ExprT>& expr);
 
     template<typename ExprT>
+    LazyUnary<functor::exp,ExprT> exp(const Exp<ExprT>& expr);
+
+    template<typename ExprT>
+    LazyUnary<functor::inv,ExprT> eltinv(const Exp<ExprT>& expr);
+
+    template<typename ExprT>
+    LazyUnary<functor::softplus,ExprT> softplus(const Exp<ExprT>& expr);
+
+    template<typename ExprT>
     LazyUnary<functor::relu,ExprT> relu(const Exp<ExprT>& expr);
+
+    template<typename ExprT>
+    LazyUnary<functor::log,ExprT> log(const Exp<ExprT>& expr);
 
     template<typename ExprT>
     LazyUnary<functor::log_or_zero,ExprT> log_or_zero(const Exp<ExprT>& expr);

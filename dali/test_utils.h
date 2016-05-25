@@ -11,8 +11,6 @@
 #include <gtest/gtest.h>
 #include <memory>
 
-
-#include "dali/test_utils.h"
 #include "dali/tensor/tensor.h"
 #include "dali/tensor/tape.h"
 // #include "dali/tensor/MatOps.h"

@@ -12,7 +12,7 @@ namespace tensor_ops {
     ////////////////////////////////////////////////////////////////////////////
     #define DALI_DEFINE_TENSOR_ADD_OP(ARG1, ARG2)  \
         Tensor scalar_add(ARG1, ARG2) { \
-            Tensor out(lazy::add(t.w, scalar));\
+            Tensor out(op::scalar_add(t.w, scalar));\
             if (graph::backprop_enabled()) \
                 graph::emplace_back([t, out]() mutable { \
                     MAYBE_GRAD(t) <<= out.dw; \
@@ -33,7 +33,7 @@ namespace tensor_ops {
 
     #define DALI_DEFINE_TENSOR_SUB_OP(ARG1, ARG2) \
         Tensor scalar_sub(ARG1, ARG2) { \
-            Tensor out(lazy::sub(t.w, scalar)); \
+            Tensor out(op::scalar_sub(t.w, scalar)); \
             if (graph::backprop_enabled()) \
                 graph::emplace_back([t, out]() mutable { \
                     MAYBE_GRAD(t) <<= out.dw; \
@@ -47,7 +47,7 @@ namespace tensor_ops {
 
     #define DALI_DEFINE_TENSOR_RSUB_OP(ARG1, ARG2) \
         Tensor scalar_sub(ARG1, ARG2) { \
-            Tensor out(lazy::sub(scalar, t.w)); \
+            Tensor out(op::scalar_sub(scalar, t.w)); \
              if (graph::backprop_enabled()) \
                 graph::emplace_back([t, out]() mutable { \
                     MAYBE_GRAD(t) <<= -out.dw; \
@@ -65,7 +65,7 @@ namespace tensor_ops {
     ////////////////////////////////////////////////////////////////////////////
     #define DALI_DEFINE_TENSOR_MUL_OP(ARG1, ARG2) \
         Tensor scalar_eltmul(ARG1, ARG2) { \
-            Tensor out(lazy::eltmul(t.w, scalar)); \
+            Tensor out(op::scalar_mul(t.w, scalar)); \
             if (graph::backprop_enabled()) \
                 graph::emplace_back([t, out, scalar]() mutable { \
                     MAYBE_GRAD(t) <<= scalar * out.dw; \
@@ -85,8 +85,8 @@ namespace tensor_ops {
     ////////////////////////////////////////////////////////////////////////////
 
     #define DALI_DEFINE_TENSOR_DIV_OP(ARG1, ARG2) \
-        Tensor scalar_eltdiv(ARG1, ARG2) { \
-            Tensor out(lazy::eltdiv(t.w, scalar)); \
+        Tensor scalar_div(ARG1, ARG2) { \
+            Tensor out(op::scalar_div(t.w, scalar)); \
             if (graph::backprop_enabled()) \
                 graph::emplace_back([t, out, scalar]() mutable { \
                     MAYBE_GRAD(t) <<= out.dw / scalar; \
@@ -99,8 +99,8 @@ namespace tensor_ops {
     DALI_DEFINE_TENSOR_DIV_OP(const Tensor& t, const int& scalar)
 
     #define DALI_DEFINE_TENSOR_RDIV_OP(ARG1, ARG2) \
-        Tensor scalar_eltdiv(ARG1, ARG2) { \
-            Tensor out(lazy::eltdiv(scalar, t.w)); \
+        Tensor scalar_div(ARG1, ARG2) { \
+            Tensor out(op::scalar_div(scalar, t.w)); \
             if (graph::backprop_enabled()) \
                 graph::emplace_back([t, out, scalar]() mutable { \
                     MAYBE_GRAD(t) <<= -scalar / lazy::square(out.dw); \
@@ -120,8 +120,8 @@ namespace tensor_ops {
 
     #define DALI_DEFINE_TENSOR_POW_OP(ARG1, ARG2) \
         Tensor scalar_pow(ARG1, ARG2) { \
-            if (std::abs(scalar - 1) < 1e-9) { \
-                return scalar_eltdiv(1.0, t); \
+            if (std::abs(scalar + 1) < 1e-9) { \
+                return scalar_div(1.0, t); \
             } else if (std::abs((double)scalar - 0)   < 1e-9) { \
                 return Tensor::fill(1.0, t.shape(), t.dtype(), t.preferred_device()); \
             } else if (std::abs((double)scalar - 0.5) < 1e-9) { \
@@ -131,7 +131,7 @@ namespace tensor_ops {
             } else if (std::abs((double)scalar - 2.0) < 1e-9) { \
                 return tensor_ops::square(t); \
             } \
-            Tensor out(lazy::pow(t.w, scalar)); \
+            Tensor out(op::scalar_pow(t.w, scalar)); \
             if (graph::backprop_enabled()) \
                 graph::emplace_back([t, out, scalar]() mutable { \
                     MAYBE_GRAD(t) <<= scalar * lazy::pow(t.w, scalar - 1) * out.dw; \
@@ -145,7 +145,7 @@ namespace tensor_ops {
 
     #define DALI_DEFINE_TENSOR_RPOW_OP(ARG1, ARG2) \
     Tensor scalar_pow(ARG1, ARG2) { \
-        Tensor out(lazy::pow(scalar, t.w)); \
+        Tensor out(op::scalar_pow(scalar, t.w)); \
         if (graph::backprop_enabled()) \
             graph::emplace_back([t, out, scalar]() mutable { \
                 MAYBE_GRAD(t) <<= functor::log_or_zero<decltype(scalar)>::Map(scalar) * out.w * out.dw; \
@@ -163,7 +163,7 @@ namespace tensor_ops {
 
     #define DALI_UNARY_OP0(FUNCTION_NAME, FORWARD_OPNAME, BACKWARD_OPNAME) \
         Tensor FUNCTION_NAME(const Tensor& t) {\
-            Tensor out(lazy::F<FORWARD_OPNAME>(t.w));\
+            Tensor out(FORWARD_OPNAME(t.w));\
             if (graph::backprop_enabled() && !t.constant)\
                 graph::emplace_back([t, out]() mutable {\
                     MAYBE_GRAD(t) <<= (BACKWARD_OPNAME) * out.dw;\
@@ -180,19 +180,19 @@ namespace tensor_ops {
                 });\
             return out;\
         }
+    DALI_UNARY_OP0(tanh, op::tanh, lazy::F<functor::dtanh>(out.w));
+    DALI_UNARY_OP0(softplus, op::softplus, lazy::F<functor::softplus_backward>(t.w));
+    DALI_UNARY_OP0(abs, op::abs, lazy::F<functor::sign>(t.w));
+    DALI_UNARY_OP0(log, op::log, lazy::F<functor::inv>(t.w));
+    DALI_UNARY_OP0(relu, op::relu, lazy::F<functor::relu_backward>(out.w));
+    DALI_UNARY_OP0(exp, op::exp, out.w);
+    DALI_UNARY_OP0(sigmoid, op::sigmoid, lazy::F<functor::dsigmoid>(out.w));
+    DALI_UNARY_OP0(eltinv, op::eltinv, -lazy::square(out.w));
+    DALI_UNARY_OP0(sqrt, op::sqrt, (0.5 / out.w));
+    DALI_UNARY_OP0(square, op::square, t.w * 2.0);
+    DALI_UNARY_OP0(cube, op::cube, lazy::square(out.w) * 3.0);
+    DALI_UNARY_OP0(rsqrt, op::rsqrt, -0.5 * lazy::pow(t.w, -1.5));
 
-    DALI_UNARY_OP0(tanh, functor::tanh, lazy::F<functor::dtanh>(out.w));
-    DALI_UNARY_OP0(softplus, functor::softplus, lazy::F<functor::softplus_backward>(t.w));
-    DALI_UNARY_OP0(abs, functor::abs, lazy::F<functor::sign>(t.w));
-    DALI_UNARY_OP0(log, functor::log, lazy::F<functor::inv>(t.w));
-    DALI_UNARY_OP0(relu, functor::relu, lazy::F<functor::relu_backward>(out.w));
-    DALI_UNARY_OP0(exp, functor::exp, out.w);
-    DALI_UNARY_OP0(sigmoid, functor::sigmoid, lazy::F<functor::dsigmoid>(out.w));
-    DALI_UNARY_OP0(eltinv, functor::inv, -lazy::square(out.w));
-    DALI_UNARY_OP0(sqrt, functor::sqrt_f, (0.5 / out.w));
-    DALI_UNARY_OP0(square, functor::square, t.w * 2.0);
-    DALI_UNARY_OP0(cube, functor::cube, lazy::square(out.w) * 3.0);
-    DALI_UNARY_OP0(rsqrt, functor::rsqrt, -0.5 * lazy::pow(t.w, -1.5));
     DALI_UNARY_OP1(eltmax, lower_bound, functor::max_scalar,
             lazy::F<functor::max_scalar_mask>(t.w, lower_bound));
     DALI_UNARY_OP1(eltmin, upper_bound, functor::min_scalar,

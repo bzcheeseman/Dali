@@ -43,8 +43,28 @@ namespace lazy {
     }
 
     template<typename ExprT>
+    LazyUnary<functor::inv,ExprT> eltinv(const Exp<ExprT>& expr) {
+        return LazyUnary<functor::inv,ExprT>(expr.self());
+    }
+
+    template<typename ExprT>
+    LazyUnary<functor::exp,ExprT> exp(const Exp<ExprT>& expr) {
+        return LazyUnary<functor::exp,ExprT>(expr.self());
+    }
+
+    template<typename ExprT>
+    LazyUnary<functor::softplus,ExprT> softplus(const Exp<ExprT>& expr) {
+        return LazyUnary<functor::softplus,ExprT>(expr.self());
+    }
+
+    template<typename ExprT>
     LazyUnary<functor::relu,ExprT> relu(const Exp<ExprT>& expr) {
         return LazyUnary<functor::relu,ExprT>(expr.self());
+    }
+
+    template<typename ExprT>
+    LazyUnary<functor::log,ExprT> log(const Exp<ExprT>& expr) {
+        return LazyUnary<functor::log,ExprT>(expr.self());
     }
 
     template<typename ExprT>

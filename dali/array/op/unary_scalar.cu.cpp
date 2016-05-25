@@ -19,4 +19,20 @@ namespace op {
     DALI_DEFINE_ARRAY_SCALAR_OP(scalar_mul, lazy::eltmul);
     DALI_DEFINE_ARRAY_SCALAR_OP(scalar_div, lazy::eltdiv);
     DALI_DEFINE_ARRAY_SCALAR_OP(scalar_pow, lazy::pow);
+
+    #define DALI_DEFINE_ARRAY_SCALAR_OP_ARGS_REVERSED(FUNCTION_NAME, OPNAME)\
+        AssignableArray FUNCTION_NAME(const double& other, const Array& x) {\
+            return OPNAME(other, x);\
+        }\
+        AssignableArray FUNCTION_NAME(const float& other, const Array& x) {\
+            return OPNAME(other, x);\
+        }\
+        AssignableArray FUNCTION_NAME(const int& other, const Array& x) {\
+            return OPNAME(other, x);\
+        }\
+
+    DALI_DEFINE_ARRAY_SCALAR_OP_ARGS_REVERSED(scalar_sub, lazy::sub);
+    DALI_DEFINE_ARRAY_SCALAR_OP_ARGS_REVERSED(scalar_div, lazy::eltdiv);
+    DALI_DEFINE_ARRAY_SCALAR_OP_ARGS_REVERSED(scalar_pow, lazy::pow);
+
 };

@@ -35,17 +35,17 @@ namespace lazy {
                 reduction_dimension = internal::requires_reduction(out, this_bshape);
             }
             if (reduction_dimension.axis != -1) {
-                //auto reduced_expr = lazy::sum(
-                //        this_self,
-                //        /*axis=*/reduction_dimension.axis,
-                //        /*keepdims=*/true);
-                //auto computation_with_reduce = lazy::eval_no_autoreduce(reduced_expr);
-                //computation_with_reduce.assign_to(out, operator_t);
+                auto reduced_expr = lazy::sum(
+                       this_self,
+                       /*axis=*/reduction_dimension.axis,
+                       /*keepdims=*/true);
+                auto computation_with_reduce = lazy::eval_no_autoreduce(reduced_expr);
+                computation_with_reduce.assign_to(out, operator_t);
             } else if (reduction_dimension.all_reduce) {
-                //auto reduced_expr = lazy::sum(this_self);
-                //auto computation_with_reduce = lazy::eval_no_autoreduce(reduced_expr);
-                //auto out_as_scalar = out.copyless_reshape({});
-                //computation_with_reduce.assign_to(out_as_scalar, operator_t);
+                auto reduced_expr = lazy::sum(this_self);
+                auto computation_with_reduce = lazy::eval_no_autoreduce(reduced_expr);
+                auto out_as_scalar = out.copyless_reshape({});
+                computation_with_reduce.assign_to(out_as_scalar, operator_t);
             } else {
                 LazyEvaluator<Class>::run(this_self).assign_to(out, operator_t);
             }

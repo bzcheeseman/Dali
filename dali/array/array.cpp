@@ -102,6 +102,7 @@ T Array::scalar_value() const {
     } else if (dtype() == DTYPE_INT32) {
         return *((int*)(data) + offset());
     }
+    return 0;
 }
 
 void Array::broadcast_axis_internal(const int& axis) {

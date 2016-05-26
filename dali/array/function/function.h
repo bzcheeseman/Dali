@@ -128,6 +128,20 @@ struct Function {
         }
     }
 
+    template<OPERATOR_T intented_operator_t>
+    static AssignableArray run_with_operator(const Args&... args) {
+        return AssignableArray([args...](Outtype& out, const OPERATOR_T& operator_t) {
+            Class::prepare_output(operator_t, out, args...);
+            ASSERT2(operator_t == intented_operator_t,
+                utils::MS() << "AssignableArray constructed for operator "
+                            << operator_to_name(intented_operator_t)
+                            << " but got " << operator_to_name(operator_t)
+                            << " instead");
+            Class::template untyped_eval<intented_operator_t>(out, args...);
+            debug::dali_function_computed.activate(true);
+        });
+    }
+
     static AssignableArray run(const Args&... args) {
         return AssignableArray([args...](Outtype& out, const OPERATOR_T& operator_t) {
             Class::prepare_output(operator_t, out, args...);

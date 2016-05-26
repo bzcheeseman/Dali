@@ -44,6 +44,7 @@ namespace internal {
         } else {
             ASSERT2(a_strides[0] == 1 || a_strides[1] == 1,
                     utils::MS() << "gemm does not support doubly strided matrices (input strides: " << a_strides << ")");
+            return std::make_tuple(false, mtensor<2>());
         }
     }
 

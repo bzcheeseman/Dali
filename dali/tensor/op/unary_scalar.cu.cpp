@@ -14,7 +14,7 @@ namespace tensor_ops {
             Tensor out(op::scalar_add(t.w, scalar));\
             if (graph::backprop_enabled()) \
                 graph::emplace_back([t, out]() mutable { \
-                    MAYBE_GRAD(t) <<= out.dw; \
+                    MAYBE_GRAD(t) += out.dw; \
                 }); \
             return out; \
         }
@@ -35,7 +35,7 @@ namespace tensor_ops {
             Tensor out(op::scalar_sub(t.w, scalar)); \
             if (graph::backprop_enabled()) \
                 graph::emplace_back([t, out]() mutable { \
-                    MAYBE_GRAD(t) <<= out.dw; \
+                    MAYBE_GRAD(t) += out.dw; \
                 }); \
             return out; \
         }
@@ -49,7 +49,7 @@ namespace tensor_ops {
             Tensor out(op::scalar_sub(scalar, t.w)); \
              if (graph::backprop_enabled()) \
                 graph::emplace_back([t, out]() mutable { \
-                    MAYBE_GRAD(t) <<= -out.dw; \
+                    MAYBE_GRAD(t) += -out.dw; \
                 }); \
             return out; \
         } \
@@ -67,7 +67,7 @@ namespace tensor_ops {
             Tensor out(op::scalar_mul(t.w, scalar)); \
             if (graph::backprop_enabled()) \
                 graph::emplace_back([t, out, scalar]() mutable { \
-                    MAYBE_GRAD(t) <<= scalar * out.dw; \
+                    MAYBE_GRAD(t) += scalar * out.dw; \
                 }); \
             return out; \
         }
@@ -88,7 +88,7 @@ namespace tensor_ops {
             Tensor out(op::scalar_div(t.w, scalar)); \
             if (graph::backprop_enabled()) \
                 graph::emplace_back([t, out, scalar]() mutable { \
-                    MAYBE_GRAD(t) <<= out.dw / scalar; \
+                    MAYBE_GRAD(t) += out.dw / scalar; \
                 }); \
             return out; \
         }
@@ -102,7 +102,7 @@ namespace tensor_ops {
             Tensor out(op::scalar_div(scalar, t.w)); \
             if (graph::backprop_enabled()) \
                 graph::emplace_back([t, out, scalar]() mutable { \
-                    MAYBE_GRAD(t) <<= -scalar / lazy::square(out.dw); \
+                    MAYBE_GRAD(t) += -scalar / lazy::square(out.dw); \
                 }); \
             return out; \
         }
@@ -133,7 +133,7 @@ namespace tensor_ops {
             Tensor out(op::scalar_pow(t.w, scalar)); \
             if (graph::backprop_enabled()) \
                 graph::emplace_back([t, out, scalar]() mutable { \
-                    MAYBE_GRAD(t) <<= scalar * lazy::pow(t.w, scalar - 1) * out.dw; \
+                    MAYBE_GRAD(t) += scalar * lazy::pow(t.w, scalar - 1) * out.dw; \
                 }); \
             return out; \
         }
@@ -147,7 +147,7 @@ namespace tensor_ops {
         Tensor out(op::scalar_pow(scalar, t.w)); \
         if (graph::backprop_enabled()) \
             graph::emplace_back([t, out, scalar]() mutable { \
-                MAYBE_GRAD(t) <<= functor::log_or_zero<decltype(scalar)>::Map(scalar) * out.w * out.dw; \
+                MAYBE_GRAD(t) += functor::log_or_zero<decltype(scalar)>::Map(scalar) * out.w * out.dw; \
             }); \
         return out; \
     }

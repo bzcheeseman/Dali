@@ -55,17 +55,17 @@
         return lazy::eltmul(-1,in.self());
     }
 
-    #define DALI_DECLARE_LAZY_INTERACTION_INPLACE(SYMBOL) \
+    #define DALI_DECLARE_LAZY_INTERACTION_INPLACE(SYMBOL, SYMBOL_NAME) \
         template<typename ExprT> \
         Array& operator SYMBOL(Array& left, const LazyExp<ExprT>& right) { \
-            return left SYMBOL lazy::eval(right.self()); \
+            return left SYMBOL lazy::EvalWithOperator<SYMBOL_NAME>::eval(right.self()); \
         } \
 
-    DALI_DECLARE_LAZY_INTERACTION_INPLACE(+=);
-    DALI_DECLARE_LAZY_INTERACTION_INPLACE(-=);
-    DALI_DECLARE_LAZY_INTERACTION_INPLACE(*=);
-    DALI_DECLARE_LAZY_INTERACTION_INPLACE(/=);
-    DALI_DECLARE_LAZY_INTERACTION_INPLACE(<<=);
+    DALI_DECLARE_LAZY_INTERACTION_INPLACE(+=, OPERATOR_T_ADD);
+    DALI_DECLARE_LAZY_INTERACTION_INPLACE(-=, OPERATOR_T_SUB);
+    DALI_DECLARE_LAZY_INTERACTION_INPLACE(*=, OPERATOR_T_MUL);
+    DALI_DECLARE_LAZY_INTERACTION_INPLACE(/=, OPERATOR_T_DIV);
+    DALI_DECLARE_LAZY_INTERACTION_INPLACE(<<=, OPERATOR_T_LSE);
 #else
     namespace lazy {
         static bool ops_loaded = false;

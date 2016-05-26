@@ -285,7 +285,7 @@ class Array : public Exp<Array> {
 
     template<typename ExprT>
     Array& Array::operator=(const LazyExp<ExprT>& expr) {
-        return *this = lazy::eval(expr.self());
+        return *this = lazy::EvalWithOperator<OPERATOR_T_EQL>::eval(expr.self());
     }
 
     /* Array constructor from a Lazy Expression:
@@ -300,7 +300,7 @@ class Array : public Exp<Array> {
      */
     template<typename ExprT>
     Array::Array(const LazyExp<ExprT>& expr) :
-            Array(lazy::eval_no_autoreduce(expr.self())) {
+            Array(lazy::EvalWithOperator<OPERATOR_T_EQL>::eval_no_autoreduce(expr.self())) {
     }
 
     template<typename ExprT>

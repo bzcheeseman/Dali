@@ -11,7 +11,7 @@ namespace tensor_ops {
             Tensor out(FORWARD_OPNAME(t.w));\
             if (graph::backprop_enabled() && !t.constant)\
                 graph::emplace_back([t, out]() mutable {\
-                    MAYBE_GRAD(t) <<= (BACKWARD_OPNAME) * out.dw;\
+                    MAYBE_GRAD(t) += (BACKWARD_OPNAME) * out.dw;\
                 });\
             return out;\
         }
@@ -21,7 +21,7 @@ namespace tensor_ops {
             Tensor out(lazy::F<FORWARD_OPNAME>(t.w, arg1));\
             if (graph::backprop_enabled() && !t.constant)\
                 graph::emplace_back([t, out, arg1]() mutable {\
-                    MAYBE_GRAD(t) <<= (BACKWARD_OPNAME) * out.dw;\
+                    MAYBE_GRAD(t) += (BACKWARD_OPNAME) * out.dw;\
                 });\
             return out;\
         }

@@ -187,6 +187,15 @@ namespace functor {
         }
     };
 
+    // tanh^-1 (z) = 1/2 * (ln(1 + z) - ln(1 - z))
+    // http://mathworld.wolfram.com/InverseHyperbolicTangent.html
+    template<typename R>
+    struct inverse_tanh {
+        MSHADOW_XINLINE static R Map(const R& a) {
+            return (LOG_F(1 + a) - LOG_F(1 - a)) * 0.5;
+        }
+    };
+
     template<typename R>
     struct dtanh {
         MSHADOW_XINLINE static R Map(const R& a) {

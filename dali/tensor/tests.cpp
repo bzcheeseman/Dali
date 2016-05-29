@@ -1289,38 +1289,29 @@ TEST(Solver, trivial_adam) {
 //         return ret;
 //     });
 // }
-//
-// Mat<R> create_dataset() {
-//     int num_points     = 20;
-//     int num_dimensions = 5;
-//     // create data
-//     auto dataset = Mat<R>();
-//     {
-//         graph::NoBackprop nb;
-//         auto pointsA = Mat<R>(
-//             num_dimensions,
-//             num_points,
-//             weights<R>::gaussian(0.0, 2.0)
-//         );
-//         auto pointsB = Mat<R>(
-//             num_dimensions,
-//             num_points,
-//             weights<R>::gaussian(0.0, 2.0)
-//         );
-//         auto point = Mat<R>(num_dimensions, 1);
-//         for (int i = 0; i < num_dimensions; i++)
-//             point.w(i) = 2;
-//         pointsA += point;
-//
-//         for (int i = 0; i < num_dimensions; i++)
-//             point.w(i) = -2;
-//         pointsB += point;
-//         dataset = MatOps<R>::hstack({pointsA, pointsB});
-//     }
-//     return dataset;
-// }
-//
-//
+
+Tensor create_dataset() {
+    int num_points     = 20;
+    int num_dimensions = 5;
+    // create data
+    graph::NoBackprop nb;
+    Tensor pointsA({num_dimensions, num_points},
+        initializer::gaussian(0.0, 2.0)
+    );
+    Tensor pointsB({num_dimensions, num_points},
+        initializer::gaussian(0.0, 2.0)
+    );
+    Tensor point({num_dimensions, 1}, initializer::zeros());
+    for (int i = 0; i < num_dimensions; i++)
+        point.w(i) = 2;
+    pointsA = pointsA + point;
+    for (int i = 0; i < num_dimensions; i++)
+        point.w(i) = -2;
+    pointsB = pointsB + point;
+    pointsB.constant = true; pointsA.constant = true;
+    return tensor_ops::hstack({pointsA, pointsB});;
+}
+
 // void test_solver_optimization(std::string solvername) {
 //     utils::random::set_seed(1234);
 //     int num_points = 20;

@@ -251,23 +251,21 @@ TEST_F(TensorTests, reshape) {
     ASSERT_EQ(a.w.memory(), a_reshaped.w.memory());
 }
 
-//
-// TEST_F(MatrixTests, slice) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return Xs[0].slice(2, 5);
-//     };
-//     EXPERIMENT_REPEAT {
-//         Mat<R> block(10, 2, weights<R>::uniform(2.0));
-//         ASSERT_TRUE(gradient_same(functor, {block}));
-//     }
-//
-//     Mat<R> block(10, 2, weights<R>::uniform(2.0));
-//     auto subblock = block.slice(2, 5);
-//
-//     // ensure the slice is a view!
-//     ASSERT_EQ(&subblock.w().memory() , &block.w().memory());
-//     ASSERT_EQ(&subblock.dw().memory() , &block.dw().memory());
-// }
+TEST_F(TensorTests, slice) {
+    auto functor = [](vector<Tensor> Xs)-> Tensor {
+        return Xs[0][Slice(0, 1)][Slice(2, 4)];
+    };
+    EXPERIMENT_REPEAT {
+        Tensor block({2, 4, 1}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
+        ASSERT_TRUE(gradient_same(functor, {block}));
+    }
+
+    Tensor block({2, 4, 1}, initializer::uniform(-2.0, 2.0));
+    Tensor subblock = block[Slice(0, 1)][Slice(2, 4)];
+    // ensure the slice is a view:
+    ASSERT_EQ(subblock.w.memory(), block.w.memory());
+    ASSERT_EQ(subblock.dw.memory(), block.dw.memory());
+}
 
 // TEST_F(MatrixTests, argmax_argmin) {
 //     auto A = Mat<R>(5, 5, weights<R>::eye());
@@ -334,7 +332,7 @@ TEST_F(TensorTests, reshape) {
 //     A.w(3) =  66.0;
 //
 //     #ifdef DALI_USE_CUDA
-//     A.w().memory().to_gpu();
+//     A.w.memory().to_gpu(0);
 //     #endif
 //
 //     auto sorted = A.argsort();

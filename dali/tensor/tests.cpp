@@ -513,16 +513,16 @@ typedef MemorySafeTest TensorOpsTests;
 //
 TEST_F(TensorTests, hstack) {
     EXPERIMENT_REPEAT {
-        Tensor a({2, 1, 3}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
-        Tensor b({2, 1, 4}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
+        Tensor a({2, 1, 3}, initializer::uniform(-20.0, 20.0));
+        Tensor b({2, 1, 4}, initializer::uniform(-20.0, 20.0));
         ASSERT_TRUE(gradient_same(tensor_ops::hstack, {a, b}, 1e-4));
     }
 }
 
 TEST_F(TensorTests, vstack) {
     EXPERIMENT_REPEAT {
-        Tensor a({3, 2, 1}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
-        Tensor b({4, 2, 1}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
+        Tensor a({3, 2, 1}, initializer::uniform(-20.0, 20.0));
+        Tensor b({4, 2, 1}, initializer::uniform(-20.0, 20.0));
         ASSERT_TRUE(gradient_same(tensor_ops::vstack, {a, b}, 1e-4));
     }
 }
@@ -1258,7 +1258,7 @@ TEST_F(TensorTests, scalar_pow) {
 
     EXPERIMENT_REPEAT {
         Tensor mat({height, width}, initializer::uniform(1.0, 2.0), DTYPE_DOUBLE);
-        R exponent = utils::randdouble(0.4, 2.5);
+        double exponent = utils::randdouble(0.4, 2.5);
 
         auto functor = [exponent](vector<Tensor> Xs)-> Tensor {
             return Xs[0] ^ exponent;

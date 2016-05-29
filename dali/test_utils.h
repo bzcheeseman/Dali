@@ -43,13 +43,10 @@ using ::testing::AssertionFailure;
 #endif
 
 #ifdef DALI_USE_CUDA
-// most gpus often don't support double
-typedef double R;
 const double DEFAULT_GRAD_EPS=1e-3;
 #define SCALAR_COMP_LE ::testing::DoubleLE
 #define SCALAR_COMP_GE ::testing::DoubleGE
 #else
-typedef double R;
 const double DEFAULT_GRAD_EPS=1e-7;
 #define SCALAR_COMP_LE ::testing::DoubleLE
 #define SCALAR_COMP_GE ::testing::DoubleGE
@@ -63,91 +60,6 @@ const double DEFAULT_GRAD_EPS=1e-7;
 #endif
 
 #define EXPERIMENT_REPEAT for(int __repetition=0; __repetition < NUM_RETRIES; ++__repetition)
-
-template<typename T>
-AssertionResult buffer_equals (T* buffer1, T* buffer2, uint size1, uint size2) {
-    if (size1 != size2)
-        return AssertionFailure() << "Sizes differ first matrix is " << size1 << ", while second is " << size2;
-    for (int i=0; i<size1; ++i) {
-        if (buffer1[i] != buffer2[i])
-            return AssertionFailure() << "Difference in datum " << i << " first tensor has "
-                                      << buffer1[i] << ", while second has " << buffer2[i];
-    }
-    return AssertionSuccess();
-}
-
-template<typename T>
-AssertionResult buffer_is_nonzero(T* buffer, uint size) {
-    for (int i=0; i<size; ++i) {
-        if (std::abs(buffer[i]) > 1e-5) {
-            return AssertionSuccess();
-        }
-    }
-    return AssertionFailure() << "buffer is all zeros";
-}
-
-
-
-template<typename T>
-void print_buffer(T* buffer, int num) {
-    std::cout << "[";
-    for (uint i = 0; i < num; ++i) {
-        std::cout << std::setw( 7 ) // keep 7 digits
-                  << std::setprecision( 3 ) // use 3 decimals
-                  << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
-                  << buffer[i];
-        if (i != num - 1) std::cout << ", ";
-    }
-    std::cout << "]" << std::endl;
-}
-
-template<typename T>
-void print_buffer(T* buffer, int num, int highlight) {
-    std::cout << "[";
-    for (uint i = 0; i < num; ++i) {
-        if (i == highlight) {
-            std::cout << utils::red << std::setw( 7 ) // keep 7 digits
-                      << std::setprecision( 3 ) // use 3 decimals
-                      << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
-                      << buffer[i] << utils::reset_color;
-        } else {
-            std::cout << std::setw( 7 ) // keep 7 digits
-                      << std::setprecision( 3 ) // use 3 decimals
-                      << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
-                      << buffer[i];
-        }
-        if (i != num - 1) std::cout << ", ";
-    }
-    std::cout << "]" << std::endl;
-}
-
-template<typename T, typename J>
-AssertionResult buffer_almost_equals(T* buffer1, T* buffer2, uint size1, uint size2, J eps) {
-    if (size1 != size2)
-        return AssertionFailure() << "Sizes differ first matrix is " << size1 << ", while second is " << size2;
-    for (int i=0; i<size1; ++i) {
-        if (std::abs(buffer1[i] - buffer2[i]) > eps) {
-            return AssertionFailure() << "Difference in datum " << i << " first tensor has "
-                                      << buffer1[i] << ", while second has " << buffer2[i]
-                                      << "(tolerance = " << eps << ")";
-        }
-    }
-    return AssertionSuccess();
-}
-
-template<typename T, typename J>
-AssertionResult buffer_ratio_almost_equals(T* buffer1, T* buffer2, uint size1, uint size2, J eps) {
-    if (size1 != size2)
-        return AssertionFailure() << "Sizes differ first matrix is " << size1 << ", while second is " << size2;
-    for (int i=0; i<size1; ++i) {
-        if (std::abs(buffer2[i]) > eps && std::abs(buffer1[i]) > eps && std::abs((buffer1[i]/ buffer2[i]) - 1.0) > eps) {
-            return AssertionFailure() << "Difference in ratio datum " << i << " first tensor has "
-                                      << buffer1[i] << ", while second has " << buffer2[i]
-                                      << "(tolerance = " << 100.0 * eps << ")";
-        }
-    }
-    return AssertionSuccess();
-}
 
 #define ASSERT_MATRIX_EQ(A, B) ASSERT_TRUE(ArrayOps::equals((A).w,(B).w))
 #define ASSERT_MATRIX_NEQ(A, B) ASSERT_FALSE(ArrayOps::equals((A).w,(B).w))
@@ -176,6 +88,70 @@ AssertionResult buffer_ratio_almost_equals(T* buffer1, T* buffer2, uint size1, u
 
 // restrict to this compilation unit - avoid linking errors.
 namespace {
+
+    AssertionResult buffer_is_nonzero(const Array& buffer) {
+        for (int i=0; i<buffer.number_of_elements(); ++i) {
+            if (std::abs((double)buffer(i)) > 1e-5) {
+                return AssertionSuccess();
+            }
+        }
+        return AssertionFailure() << "buffer is all zeros";
+    }
+
+    void print_buffer(const Array& arr, int highlight) {
+        std::cout << "[";
+        int num = arr.number_of_elements();
+        for (uint i = 0; i < num; ++i) {
+            if (i == highlight) {
+                std::cout << utils::red << std::setw( 7 ) // keep 7 digits
+                          << std::setprecision( 3 ) // use 3 decimals
+                          << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
+                          << (double)arr(i) << utils::reset_color;
+            } else {
+                std::cout << std::setw( 7 ) // keep 7 digits
+                          << std::setprecision( 3 ) // use 3 decimals
+                          << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
+                          << (double)arr(i);
+            }
+            if (i != num - 1) std::cout << ", ";
+        }
+        std::cout << "]" << std::endl;
+    }
+
+    AssertionResult buffer_almost_equals(const Array& buffer1, const Array& buffer2, const double& eps) {
+        if (buffer1.number_of_elements() != buffer2.number_of_elements()) {
+            return AssertionFailure() << "Not the same number of elements in buffer1 as buffer2 (got "
+                                      << buffer1.number_of_elements() << " != " << buffer2.number_of_elements()
+                                      << ").";
+        }
+        for (int i = 0; i < buffer1.number_of_elements(); ++i) {
+            if (std::abs((double)buffer1(i) - (double)buffer2(i)) > eps) {
+                return AssertionFailure() << "Difference in datum " << i << " first tensor has "
+                                          << (double)buffer1(i) << ", while second has " << (double)buffer2(i)
+                                          << "(tolerance = " << eps << ")";
+            }
+        }
+        return AssertionSuccess();
+    }
+
+    AssertionResult buffer_ratio_almost_equals(const Array& buffer1, const Array& buffer2, const double& eps) {
+        if (buffer1.number_of_elements() != buffer2.number_of_elements()) {
+            return AssertionFailure() << "Not the same number of elements in buffer1 as buffer2 (got "
+                                      << buffer1.number_of_elements() << " != " << buffer2.number_of_elements()
+                                      << ").";
+        }
+        for (int i = 0; i < buffer1.number_of_elements(); ++i) {
+            if (std::abs((double)buffer2(i)) > eps &&
+                std::abs((double)buffer1(i)) > eps &&
+                std::abs(((double)buffer1(i) / (double)buffer2(i)) -1.0) > eps) {
+                return AssertionFailure() << "Difference in ratio at position " << i << " first tensor has "
+                                          << (double)buffer1(i) << ", while second has " << (double)buffer2(i)
+                                          << "(tolerance = " << 100.0 * eps << ")";
+            }
+        }
+        return AssertionSuccess();
+    }
+
     /**
     Gradient Same
     -------------
@@ -192,7 +168,7 @@ namespace {
         graph::NoBackprop nb;
         auto res = functor(arguments);
         EXPECT_MAT_ON_GPU(res);
-        for (auto& arg: arguments) {
+        for (auto& arg : arguments) {
             EXPECT_MAT_ON_GPU(arg);
         }
     }
@@ -202,15 +178,14 @@ namespace {
             std::vector<Tensor> arguments) {
         graph::NoBackprop nb;
         auto res = functor(arguments);
-        for (auto& arg: arguments) {
+        for (auto& arg : arguments) {
             EXPECT_MAT_ON_GPU(arg);
         }
     }
 
-    bool cpu_vs_gpu(
-            std::function<Tensor(std::vector<Tensor>&)> functor,
-            std::vector<Tensor> arguments,
-            R tolerance    = 1e-5) {
+    bool cpu_vs_gpu(std::function<Tensor(std::vector<Tensor>&)> functor,
+                    std::vector<Tensor> arguments,
+                    const double& tolerance = 1e-5) {
         #ifdef DALI_USE_CUDA
             for (auto arg: arguments) {
                 arg.w.memory()->to_gpu(0);
@@ -240,22 +215,12 @@ namespace {
                 }
                 Tensor res_cpu = functor(arguments);
 
-                if (!buffer_almost_equals(
-                        (R*)res_cpu.w.memory()->readonly_data(memory::Device::cpu()),
-                        (R*)res_gpu.w.memory()->readonly_data(memory::Device::cpu()),
-                        res_cpu.number_of_elements(),
-                        res_gpu.number_of_elements(),
-                        tolerance)) {
+                if (!buffer_almost_equals(res_cpu.w, res_gpu.w, tolerance)) {
                     std::cout << "Forward step produces different results on gpu and cpu.";
                     return false;
                 }
                 for (int i = 0; i < arguments.size(); ++i) {
-                    if(!buffer_almost_equals(
-                            (R*)gpu_gradients[i].dw.memory()->data(memory::Device::cpu()),
-                            (R*)arguments[i].dw.memory()->data(memory::Device::cpu()), //cpu gradient
-                            gpu_gradients[i].dw.number_of_elements(),
-                            arguments[i].number_of_elements(),
-                            tolerance)) {
+                    if(!buffer_almost_equals(gpu_gradients[i].dw, arguments[i].dw, tolerance)) {
                         std::cout << "backward step produces different results on gpu and cpu.";
                         return false;
                     }
@@ -268,181 +233,129 @@ namespace {
 
     }
 
-    bool gradient_same(
-            std::function<Tensor(std::vector<Tensor>&)> functor,
-            std::vector<Tensor> arguments,
-            R tolerance    = 1e-5,
-            R grad_epsilon = DEFAULT_GRAD_EPS,
-            bool fail_on_zero_gradient = true) {
+    void print_disagreement(const Array& fd_grad, const Array& arg_dw) {
+        ASSERT2(fd_grad.number_of_elements() == arg_dw.number_of_elements(),
+            "arguments to print_disagreement must have the same number_of_elements()");
+        // find biggest disagreement:
+        double max_disagreement = 0;
+        int loc_disagreement = 0;
+        for (int i = 0; i < fd_grad.number_of_elements(); i++) {
+            double disagreement = std::abs((double)fd_grad(i) - (double)arg_dw(i));
+            if (disagreement > max_disagreement) {
+                max_disagreement = disagreement;
+                loc_disagreement = i;
+            }
+        }
+        // print it:
+        auto start = std::max(loc_disagreement - 6, 0);
+        auto length = std::min(fd_grad.number_of_elements() - start, 12);
+        std::cout << "-----------\nfd_grad[" << start << ":" << start + length << "] = " << std::endl;
+        print_buffer((Array)fd_grad.ravel()[Slice(start, start + length)], loc_disagreement - start);
+        std::cout << "-----------\n arg.dw()[" << start << ":" << start + length << "] = " << std::endl;
+        print_buffer((Array)arg_dw.ravel()[Slice(start, start + length)], loc_disagreement - start);
+        std::cout << "-----------" << std::endl;
+        std::cout << "Largest disparity = "
+                  << std::setw( 7 ) // keep 7 digits
+                  << std::setprecision( 5 ) // use 3 decimals
+                  << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
+                  << max_disagreement << std::endl;
+    }
 
+
+    template<typename T>
+    Array finite_difference_dtype_helper(
+            std::function<Tensor()> functor,
+            Tensor& arg,
+            const double& grad_epsilon) {
+        Array res_grad(arg.shape(), arg.dtype());
+
+        for (int i = 0; i < arg.number_of_elements(); i++) {
+            const T prev_val    = (T)arg.w(i);
+            arg.w(i)            = prev_val + grad_epsilon;
+            T obj_positive      = (T)Array(functor().w.sum());
+            arg.w(i)            = prev_val - grad_epsilon;
+            T obj_negative      = (T)Array(functor().w.sum());
+            // return to previous value
+            arg.w(i)            = prev_val;
+            res_grad(i)         = (obj_positive - obj_negative) / (2.0 * grad_epsilon);
+        }
+        return res_grad;
+    }
+
+    Array finite_difference(std::function<Tensor()> functor,
+                            Tensor& arg, const double& grad_epsilon) {
+        if (arg.dtype() == DTYPE_FLOAT) {
+            return finite_difference_dtype_helper<float>(functor, arg, grad_epsilon);
+        } else if (arg.dtype() == DTYPE_DOUBLE) {
+            return finite_difference_dtype_helper<double>(functor, arg, grad_epsilon);
+        } else {
+            ASSERT2(false, "cannot take finite_difference derivative of an integer variable.");
+            return Array();
+        }
+    }
+
+    bool gradient_comparison_helper(std::function<AssertionResult(const Array&, const Array&, const double&)> checker,
+                                    std::function<Tensor(std::vector<Tensor>&)> functor,
+                                    std::vector<Tensor> arguments,
+                                    const double& tolerance,
+                                    const double& grad_epsilon,
+                                    const bool& fail_on_zero_gradient) {
         auto error = functor(arguments);
-
         error.grad();
         graph::backward();
-
         bool worked_out = true;
-
         // from now on gradient is purely numerical:
         graph::NoBackprop nb;
         int param_idx = 1;
+        auto bound_functor = [&functor,&arguments](){return functor(arguments);};
+
         for (auto& arg : arguments) {
-            R  Arg_prime[arg.number_of_elements()];
-            for (int i = 0; i < arg.number_of_elements(); i++) {
-                const R prev_val    = arg.w(i);
-                arg.w(i)            = prev_val +  grad_epsilon;
-                R obj_positive      = (R)Array(functor(arguments).w.sum());
-                arg.w(i)            = prev_val - grad_epsilon;
-                R obj_negative      = (R)Array(functor(arguments).w.sum());
-                arg.w(i)            = prev_val;
-                Arg_prime[i]        = (obj_positive - obj_negative) / (2.0 * grad_epsilon);
-            }
-            auto dw_contig = arg.dw.ascontiguousarray();
-            AssertionResult did_work_out = buffer_almost_equals(
-                    (R*)Arg_prime,
-                    (R*)dw_contig.memory()->readonly_data(memory::Device::cpu()),
-                    arg.number_of_elements(),
-                    arg.number_of_elements(),
-                    tolerance);
+            auto fd_grad = finite_difference(bound_functor, arg, grad_epsilon);
+            AssertionResult did_work_out = checker(fd_grad, arg.dw, tolerance);
             if (fail_on_zero_gradient) {
-                auto is_nonzero = buffer_is_nonzero((R*)Arg_prime, arg.number_of_elements());
-                if (((bool)is_nonzero) == false) {
+                auto is_nonzero = (bool)buffer_is_nonzero(fd_grad);
+                if (is_nonzero == false) {
+                    fd_grad.print();
                     std::cout << "Gradient for parameter " << param_idx << " (" << arg << ") should not be all zeros." << std::endl;
-                    if (arg.name != nullptr) {
-                        std::cout << "arg.name = " << *arg.name << std::endl;
-                    }
                     return false;
                 }
             }
             // AssertionResult is a GoogleTest magic and it's castable to bool.
             if (!did_work_out) {
-                R max_disagreement = 0;
-                int loc_disagreement = 0;
-                for (int i = 0; i < arg.number_of_elements(); i++) {
-                    auto disagreement = std::abs(Arg_prime[i] - (R)arg.dw(i));
-                    if (disagreement > max_disagreement) {
-                        max_disagreement = disagreement;
-                        loc_disagreement = i;
-                    }
-                }
-
-                auto start = std::max(loc_disagreement - 6, 0);
-                auto length = std::min(arg.number_of_elements() - start, 12);
                 std::cout << "Gradient for parameter " << param_idx << " is incorrect:" << std::endl;
-                std::cout << "-----------\nArg_prime[" << start << ":" << start + length << "] = " << std::endl;
-                print_buffer((R*)Arg_prime + start,       length, loc_disagreement - start);
-                std::cout << "-----------\n arg.dw()[" << start << ":" << start + length << "] = " << std::endl;
-                print_buffer(
-                    (R*)dw_contig.memory()->readonly_data(memory::Device::cpu()) + start,
-                    length, loc_disagreement - start
-                );
-                if (arg.name != nullptr) {
-                    std::cout << "arg.name = " << *arg.name << std::endl;
-                }
-                std::cout << "-----------" << std::endl;
-
-                std::cout << "Largest disparity = "
-                          << std::setw( 7 ) // keep 7 digits
-                          << std::setprecision( 5 ) // use 3 decimals
-                          << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
-                          << max_disagreement << std::endl;
-
-
+                print_disagreement(fd_grad, arg.dw);
             }
             worked_out = worked_out && (bool)did_work_out;
-            if (!worked_out) {
-                break;
-            }
+            if (!worked_out) break;
             param_idx++;
         }
         return worked_out;
     }
 
-    // TODO(jonathan) merge with function above
-    bool gradient_ratio_same(
-            std::function<Tensor(std::vector<Tensor>&)> functor,
-            std::vector<Tensor> arguments,
-            R tolerance    = 1e-5,
-            R grad_epsilon = DEFAULT_GRAD_EPS,
-            bool fail_on_zero_gradient = true) {
+    bool gradient_same(std::function<Tensor(std::vector<Tensor>&)> functor,
+                       std::vector<Tensor> arguments,
+                       const double& tolerance = 1e-5,
+                       const double& grad_epsilon = DEFAULT_GRAD_EPS,
+                       const bool& fail_on_zero_gradient = true) {
+        return gradient_comparison_helper(buffer_almost_equals,
+                                          functor,
+                                          arguments,
+                                          tolerance,
+                                          grad_epsilon,
+                                          fail_on_zero_gradient);
+    }
 
-        auto error = functor(arguments);
-
-        error.grad();
-
-        graph::backward();
-
-        bool worked_out = true;
-
-        // from now on gradient is purely numerical:
-        graph::NoBackprop nb;
-        int param_idx = 1;
-        for (auto& arg : arguments) {
-            R  Arg_prime[arg.number_of_elements()];
-            for (int i = 0; i < arg.number_of_elements(); i++) {
-                const R prev_val    = arg.w(i);
-                arg.w(i)            = prev_val +  grad_epsilon;
-                auto obj_positive   = (R)Array(functor(arguments).w.sum());
-                arg.w(i)            = prev_val - grad_epsilon;
-                auto obj_negative   = (R)Array(functor(arguments).w.sum());
-                arg.w(i)            = prev_val;
-                Arg_prime[i]        = (obj_positive - obj_negative) / (2.0 * grad_epsilon);
-            }
-            auto dw_contig = arg.dw.ascontiguousarray();
-            AssertionResult did_work_out = buffer_ratio_almost_equals(
-                    (R*)Arg_prime,
-                    (R*)dw_contig.memory()->readonly_data(memory::Device::cpu()),
-                    arg.number_of_elements(),
-                    arg.number_of_elements(),
-                    tolerance);
-            if (fail_on_zero_gradient) {
-                auto is_nonzero = buffer_is_nonzero((R*)Arg_prime, arg.number_of_elements());
-                if (((bool)is_nonzero) == false) {
-                    std::cout << "Gradient for parameter " << param_idx << " (" << arg << ") should not be all zeros." << std::endl;
-                    if (arg.name != nullptr) {
-                        std::cout << "arg.name = " << *arg.name << std::endl;
-                    }
-                    return false;
-                }
-            }
-            // AssertionResult is a GoogleTest magic and it's castable to bool.
-            if (!did_work_out) {
-                R max_disagreement = 0;
-                int loc_disagreement = 0;
-                for (int i = 0; i < arg.number_of_elements(); i++) {
-                    auto disagreement = std::abs((Arg_prime[i] / (R)dw_contig(i)) - (R)1.0);
-                    if (disagreement > max_disagreement) {
-                        max_disagreement = disagreement;
-                        loc_disagreement = i;
-                    }
-                }
-
-                auto start = std::max(loc_disagreement - 6, 0);
-                auto length = std::min(arg.number_of_elements() - start, 12);
-
-                std::cout << "-----------\nArg_prime[" << start << ":" << start + length << "] = " << std::endl;
-                print_buffer((R*)Arg_prime + start,       length, loc_disagreement - start);
-                std::cout << "-----------\n arg.dw[" << start << ":" << start + length << "] = " << std::endl;
-                print_buffer((R*)dw_contig.memory()->readonly_data(memory::Device::cpu()) + start, length, loc_disagreement - start);
-                if (arg.name != nullptr) {
-                    std::cout << "arg.name = " << *arg.name << std::endl;
-                }
-                std::cout << "-----------" << std::endl;
-
-                std::cout << "Largest disparity = "
-                          << std::setw( 7 ) // keep 7 digits
-                          << std::setprecision( 5 ) // use 3 decimals
-                          << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
-                          << max_disagreement << std::endl;
-
-
-            }
-            worked_out = worked_out && (bool)did_work_out;
-            if (!worked_out) {
-                break;
-            }
-            param_idx++;
-        }
-        return worked_out;
+    bool gradient_ratio_same(std::function<Tensor(std::vector<Tensor>&)> functor,
+                             std::vector<Tensor> arguments,
+                             const double& tolerance = 1e-5,
+                             const double& grad_epsilon = DEFAULT_GRAD_EPS,
+                             const bool& fail_on_zero_gradient = true) {
+        return gradient_comparison_helper(buffer_ratio_almost_equals,
+                                          functor,
+                                          arguments,
+                                          tolerance,
+                                          grad_epsilon,
+                                          fail_on_zero_gradient);
     }
 }
 

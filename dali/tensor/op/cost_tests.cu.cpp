@@ -17,7 +17,7 @@ TEST(TensorCostTests, binary_cross_entropy) {
     // in our input matrix with respect to the target.
     EXPERIMENT_REPEAT {
         auto A = Tensor::uniform(0.1, 0.9, {3, 4}, DTYPE_DOUBLE);
-        R target = utils::randdouble(0.01, 0.99);
+        double target = utils::randdouble(0.01, 0.99);
         auto functor = [target](vector<Tensor> Xs)-> Tensor {
             return tensor_ops::binary_cross_entropy(Xs[0], target);
         };
@@ -43,7 +43,7 @@ TEST(TensorCostTests, sigmoid_binary_cross_entropy) {
     // in our input matrix with respect to the target.
     EXPERIMENT_REPEAT {
         auto A = Tensor::uniform(-5.0, 5.0, {3, 4}, DTYPE_DOUBLE);
-        R target = utils::randdouble(0.01, 0.99);
+        double target = utils::randdouble(0.01, 0.99);
         auto functor = [target](vector<Tensor> Xs)-> Tensor {
             return tensor_ops::sigmoid_binary_cross_entropy(Xs[0], target);
         };

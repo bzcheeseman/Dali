@@ -299,21 +299,6 @@ TEST(TensorBinaryTests, add_recursive) {
 //         ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-3));
 //     }
 // }
-// TEST_F(MatrixTests, scalar_pow) {
-//     int height = 3;
-//     int width = 4;
-//
-//     EXPERIMENT_REPEAT {
-//         auto mat = Mat<R>(height, width, weights<R>::uniform(1.0, 2.0));
-//         R exponent = utils::randdouble(0.4, 2.5);
-//
-//         auto functor = [exponent](vector<Mat<R>> Xs)-> Mat<R> {
-//             return Xs[0] ^ exponent;
-//         };
-//         ASSERT_TRUE(gradient_same(functor, {mat}, 1e-3));
-//     }
-// }
-//
 
 // TEST_F(MatrixTests, pow) {
 //     int height = 3;

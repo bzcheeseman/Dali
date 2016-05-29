@@ -511,112 +511,40 @@ typedef MemorySafeTest TensorOpsTests;
 //     }
 // }
 //
-// TEST_F(MatrixTests, hstack) {
-//     {
-//         graph::NoBackprop nb;
-//
-//         Mat<R> a(2, 3);
-//         Mat<R> b(2, 4);
-//
-//         // A:
-//         // 0 1 2
-//         // 7 8 9
-//         // B:
-//         // 3  4  5  6
-//         // 10 11 12 13
-//
-//         for (int i = 0; i < 3; i++)
-//             a.w(i) = i;
-//         for (int i = 0; i < 4; i++)
-//             b.w(i) = i + 3;
-//         for (int i = 3; i < 6; i++)
-//             a.w(i) = i + 4;
-//         for (int i = 4; i < 8; i++)
-//             b.w(i) = i + 6;
-//
-//         auto c = MatOps<R>::hstack({a, b});
-//         for (int i = 0; i < 14;i++) {
-//             ASSERT_EQ(c.w(i), i);
-//         }
-//     }
-//
-//     EXPERIMENT_REPEAT {
-//         auto mat = Mat<R>(2, 3, weights<R>::uniform(20.0));
-//         auto mat2 = Mat<R>(2, 4, weights<R>::uniform(20.0));
-//
-//         auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//             return MatOps<R>::hstack(Xs);
-//         };
-//         ASSERT_TRUE(gradient_same(functor, {mat, mat2}, 1e-4));
-//     }
-// }
-//
-//
-// TEST_F(MatrixTests, vstack) {
-//     {
-//         graph::NoBackprop nb;
-//
-//         Mat<R> a(2, 3);
-//         Mat<R> b(4, 3);
-//         // A:
-//         // 0 1 2
-//         // 1 2 3
-//         // B:
-//         // 2 3 4
-//         // 3 4 5
-//         // 4 5 6
-//         // 5 6 7
-//
-//         for (int row=0; row < 2; ++row) {
-//             for (int col = 0; col < 3; ++col) {
-//                 a.w(row,col) = (R)(row + col);
-//             }
-//         }
-//
-//         for (int row=0; row < 4; ++row) {
-//             for (int col = 0; col < 3; ++col) {
-//                 b.w(row,col) = (R)(row + col + 2);
-//             }
-//         }
-//
-//         auto c = MatOps<R>::vstack(a,b);
-//
-//         for (int row = 0; row < 6; ++row) {
-//             for (int col = 0; col < 3; ++col) {
-//                 SCOPED_TRACE("Index (" + std::to_string(row) + "," + std::to_string(col) + ")");
-//                 ASSERT_NEAR(c.w(row, col), (R)(row + col), 1e-9);
-//             }
-//         }
-//     }
-//
-//     EXPERIMENT_REPEAT {
-//         auto mat = Mat<R>(2, 3, weights<R>::uniform(20.0));
-//         auto mat2 = Mat<R>(4, 3, weights<R>::uniform(20.0));
-//
-//         auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//             return MatOps<R>::vstack(Xs);
-//         };
-//         ASSERT_TRUE(gradient_same(functor, {mat, mat2}, 1e-4));
-//     }
-// }
-//
-//
-// TEST_F(MatrixTests, abs) {
-//     int input_size = 5;
-//     int hidden_size = 3;
-//
-//     EXPERIMENT_REPEAT {
-//         auto mat = Mat<R>(input_size, hidden_size, weights<R>::uniform(0.1, 20.0));
-//         auto mat2 = Mat<R>(input_size, hidden_size, weights<R>::uniform(-20.0, -0.1));
-//
-//         auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//             return MatOps<R>::hstack(Xs).abs();
-//         };
-//         ASSERT_TRUE(gradient_same(functor, {mat, mat2}, 1e-4));
-//     }
-// }
-//
-//
+TEST_F(TensorTests, hstack) {
+    EXPERIMENT_REPEAT {
+        Tensor a({2, 1, 3}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
+        Tensor b({2, 1, 4}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
+        ASSERT_TRUE(gradient_same(tensor_ops::hstack, {a, b}, 1e-4));
+    }
+}
+
+TEST_F(TensorTests, vstack) {
+    EXPERIMENT_REPEAT {
+        Tensor a({3, 2, 1}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
+        Tensor b({4, 2, 1}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
+        ASSERT_TRUE(gradient_same(tensor_ops::vstack, {a, b}, 1e-4));
+    }
+}
+
+TEST_F(TensorTests, concatenate) {
+    int axis;
+    auto functor = [&axis](vector<Tensor> Xs)-> Tensor {
+        return tensor_ops::concatenate(Xs, axis);
+    };
+    EXPERIMENT_REPEAT {
+        std:vector<int> shape = {2, 1, 1, 1, 2, 1};
+        for (axis = 0; axis < shape.size(); axis++) {
+            auto A_shape = shape; A_shape[axis] = 1;
+            auto B_shape = shape; B_shape[axis] = 2;
+            Tensor A(A_shape, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
+            Tensor B(B_shape, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
+            expect_args_remain_on_gpu(functor, {A, B});
+            EXPECT_TRUE(gradient_same(functor, {A, B}, 1e-4));
+        }
+    }
+}
+
 // TEST_F(TensorOpsTests, dropout) {
 //     int seed = 1234;
 //     auto functor = [&seed](vector<Mat<R>> Xs)-> Mat<R> {

@@ -7,6 +7,7 @@
 #include "dali/array/op/dot.h"
 #include "dali/array/op/binary.h"
 #include "dali/array/op/reducers.h"
+#include "dali/array/op/reshape.h"
 #include "dali/array/op/initializer.h"
 #include "dali/array/op/unary.h"
 #include "dali/array/op/unary_scalar.h"

@@ -426,21 +426,12 @@ TEST_F(TensorTests, view_transpose) {
 // }
 
 TEST_F(TensorTests, reshape) {
-    // auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-    //     return Xs[0].slice(2, 10);
-    // };
-    // EXPERIMENT_REPEAT {
-    //     Mat<R> block(10, 2, weights<R>::uniform(2.0));
-    //     ASSERT_TRUE(gradient_same(functor, {block}));
-    // }
-    //
-    // Mat<R> block(10, 2, weights<R>::uniform(2.0));
-    // auto subblock = block.reshape(20, 1);
-    //
-    // // ensure the slice is a view!
-    // ASSERT_EQ(&subblock.w().memory() , &block.w().memory());
-    // ASSERT_EQ(&subblock.dw().memory() , &block.dw().memory());
+    // reshape is a view
+    Tensor a({4, 5}, initializer::arange());
+    auto a_reshaped = a.reshape({2, 2, 1, 5});
+    ASSERT_EQ(a.w.memory(), a_reshaped.w.memory());
 }
+
 // TEST_F(MatrixTests, argmax_argmin) {
 //     auto A = Mat<R>(5, 5, weights<R>::eye());
 //     // orientation in an identity matrix does not matter

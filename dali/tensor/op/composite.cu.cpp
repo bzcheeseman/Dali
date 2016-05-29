@@ -7,30 +7,6 @@
 #include "dali/tensor/tensor_macros.h"
 
 namespace tensor_ops {
-    Tensor quadratic_form(const Tensor& left, const Tensor& middle, const Tensor& right) {
-        if (graph::backprop_enabled()) {
-            Array left_side_mul = op::dot(left.w.transpose(), middle.w);
-            Tensor out(op::dot(left_side_mul, right.w));
-            graph::emplace_back([left_side_mul, left, middle, right, out]() mutable {
-                MAYBE_GRAD(right) <<= op::dot(left_side_mul.transpose(), out.dw);
-                Array LeftT_dot_middle_grad = op::dot(out.dw, right.w.transpose());
-                MAYBE_GRAD(left) <<= op::dot(middle.w, LeftT_dot_middle_grad.transpose());
-                MAYBE_GRAD(middle) <<= op::dot(left.w, LeftT_dot_middle_grad);
-            });
-            return out;
-        } else {
-            return Tensor(
-                op::dot(
-                    op::dot(
-                        left.w.transpose(),
-                        middle.w
-                    ),
-                    right.w
-                )
-            );
-        }
-    }
-
     Tensor dot_with_bias(const Tensor& input,
                          const Tensor& weight,
                          const Tensor& bias) {
@@ -88,5 +64,37 @@ namespace tensor_ops {
             });
 
         return out;
+    }
+
+
+    Tensor quadratic_form(const Tensor& left, const Tensor& middle, const Tensor& right) {
+        if (graph::backprop_enabled()) {
+            if (left.is_matrix() && middle.is_matrix() && right.is_matrix()) {
+                Array left_side_mul = op::dot(left.w.transpose(), middle.w);
+                Tensor out(op::dot(left_side_mul, right.w));
+                graph::emplace_back([left_side_mul, left, middle, right, out]() mutable {
+                    MAYBE_GRAD(right) <<= op::dot(left_side_mul.transpose(), out.dw);
+                    Array LeftT_dot_middle_grad = op::dot(out.dw, right.w.transpose());
+                    MAYBE_GRAD(left) <<= op::dot(middle.w, LeftT_dot_middle_grad.transpose());
+                    MAYBE_GRAD(middle) <<= op::dot(left.w, LeftT_dot_middle_grad);
+                });
+                return out;
+            } else {
+                // gradient is different based on tensordot application
+                // defer to those gradients computations:
+                // TODO(jonathan): make this be memory efficient too through auto-reuse
+                return (left.transpose().dot(middle)).dot(right);
+            }
+        } else {
+            return Tensor(
+                op::dot(
+                    op::dot(
+                        left.w.transpose(),
+                        middle.w
+                    ),
+                    right.w
+                )
+            );
+        }
     }
 }  // namespace tensor_ops

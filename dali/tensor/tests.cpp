@@ -390,8 +390,7 @@ TEST_F(TensorTests, min) {
         };\
         EXPERIMENT_REPEAT {\
             Tensor A({2, 3, 4},\
-                initializer::uniform(LOWER_BOUND, UPPER_BOUND),\
-                DTYPE_DOUBLE\
+                initializer::uniform(LOWER_BOUND, UPPER_BOUND), DTYPE_DOUBLE\
             );\
             ASSERT_TRUE(gradient_same(functor, {A}, EPS, 1e-4, FAIL_ON_ZERO_GRADIENT));\
         }\

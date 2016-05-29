@@ -37,6 +37,8 @@ Tensor::Tensor(const std::vector<int>& shape,
     dw.clear();
 }
 
+Tensor::Tensor(const std::initializer_list<int>& shape_) : Tensor(std::vector<int>(shape_)) {}
+
 Tensor::Tensor(const std::vector<int>& shape,
        DType dtype_,
        memory::Device preferred_device) :

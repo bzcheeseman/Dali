@@ -251,7 +251,7 @@ namespace {
         auto length = std::min(fd_grad.number_of_elements() - start, 12);
         std::cout << "-----------\nfd_grad[" << start << ":" << start + length << "] = " << std::endl;
         print_buffer((Array)fd_grad.ravel()[Slice(start, start + length)], loc_disagreement - start);
-        std::cout << "-----------\n arg.dw()[" << start << ":" << start + length << "] = " << std::endl;
+        std::cout << "-----------\n arg.dw[" << start << ":" << start + length << "] = " << std::endl;
         print_buffer((Array)arg_dw.ravel()[Slice(start, start + length)], loc_disagreement - start);
         std::cout << "-----------" << std::endl;
         std::cout << "Largest disparity = "

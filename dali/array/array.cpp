@@ -174,6 +174,13 @@ Array Array::zeros_like(const Array& other) {
     }
 }
 
+Array Array::empty_like(const Array& other) {
+    if (other.is_stateless()) {
+        return Array();
+    } else {
+        return Array(other.shape(), other.dtype(), other.memory()->preferred_device);
+    }
+}
 
 Array Array::arange(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
     Array ret(shape, dtype, preferred_device);

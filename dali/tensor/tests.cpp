@@ -531,71 +531,47 @@ TEST_F(TensorTests, concatenate) {
     }
 }
 
-// TEST_F(TensorOpsTests, dropout) {
-//     int seed = 1234;
-//     auto functor = [&seed](vector<Mat<R>> Xs)-> Mat<R> {
-//         auto C = Xs[0] * Xs[1];
-//         utils::random::set_seed(seed);
-//         auto D = MatOps<R>::dropout(C, 0.5);
-//         utils::random::reseed();
-//         auto Z = D + Xs[2];
-//         return Z;
-//     };
-//     int num_examples = 3;
-//     int hidden_size = 4;
-//     int input_size = 5;
-//     EXPERIMENT_REPEAT {
-//         seed = utils::randint(0, 2000);
-//         auto A = Mat<R>(hidden_size, input_size, weights<R>::uniform(2.0));
-//         auto B = Mat<R>(hidden_size, input_size, weights<R>::uniform(20.0));
-//         auto C = Mat<R>(1,           input_size, weights<R>::uniform(20.0));
-//         ASSERT_TRUE(gradient_same(functor, {A, B, C}, 0.0003));
-//     }
-// }
-//
-// TEST_F(TensorOpsTests, dropout_normalized) {
-//     int seed = 1234;
-//     auto functor = [&seed](vector<Mat<R>> Xs)-> Mat<R> {
-//         auto C = Xs[0] * Xs[1];
-//         utils::random::set_seed(seed);
-//         auto D = MatOps<R>::dropout_normalized(C, 0.5);
-//         utils::random::reseed();
-//         auto Z = D + Xs[2];
-//         return Z;
-//     };
-//     int num_examples = 3;
-//     int hidden_size = 4;
-//     int input_size = 5;
-//     EXPERIMENT_REPEAT {
-//         seed = utils::randint(0, 2000);
-//         auto A = Mat<R>(hidden_size, input_size, weights<R>::uniform(2.0));
-//         auto B = Mat<R>(hidden_size, input_size, weights<R>::uniform(20.0));
-//         auto C = Mat<R>(1,           input_size, weights<R>::uniform(20.0));
-//         ASSERT_TRUE(gradient_same(functor, {A, B, C}, 0.0003));
-//     }
-// }
-//
-// TEST_F(TensorOpsTests, fast_dropout) {
-//     int seed = 1234;
-//     auto functor = [&seed](vector<Mat<R>> Xs)-> Mat<R> {
-//         auto C = Xs[0] * Xs[1];
-//         utils::random::set_seed(seed);
-//         auto D = MatOps<R>::fast_dropout(C);
-//         utils::random::reseed();
-//         auto Z = D + Xs[2];
-//         return Z;
-//     };
-//     int num_examples = 3;
-//     int hidden_size = 4;
-//     int input_size = 5;
-//     EXPERIMENT_REPEAT {
-//         seed = utils::randint(0, 2000);
-//         auto A = Mat<R>(hidden_size, input_size, weights<R>::uniform(2.0));
-//         auto B = Mat<R>(hidden_size, input_size, weights<R>::uniform(20.0));
-//         auto C = Mat<R>(1,           input_size, weights<R>::uniform(20.0));
-//         ASSERT_TRUE(gradient_same(functor, {A, B, C}, 0.0003));
-//     }
-// }
+TEST_F(TensorTests, dropout_unnormalized) {
+    int seed = 1234;
+    auto functor = [&seed](vector<Tensor> Xs)-> Tensor {
+        utils::random::set_seed(seed); // make dropout deterministic during testing
+        return tensor_ops::dropout_unnormalized(Xs[0], 0.5);
+    };
+    EXPERIMENT_REPEAT {
+        utils::random::reseed();
+        seed = utils::randint(0, 2000);
+        Tensor A({1, 2, 3}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
+        ASSERT_TRUE(gradient_same(functor, {A}, 0.0003));
+    }
+}
+
+TEST_F(TensorTests, dropout_normalized) {
+    int seed = 1234;
+    auto functor = [&seed](vector<Tensor> Xs)-> Tensor {
+        utils::random::set_seed(seed); // make dropout deterministic during testing
+        return tensor_ops::dropout(Xs[0], 0.5);;
+    };
+    EXPERIMENT_REPEAT {
+        utils::random::reseed();
+        seed = utils::randint(0, 2000);
+        Tensor A({1, 2, 3}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
+        ASSERT_TRUE(gradient_same(functor, {A}, 0.0003));
+    }
+}
+
+TEST_F(TensorTests, fast_dropout) {
+    int seed = 1234;
+    auto functor = [&seed](vector<Tensor> Xs)-> Tensor {
+        utils::random::set_seed(seed);
+        return tensor_ops::fast_dropout(Xs[0]);;
+    };
+    EXPERIMENT_REPEAT {
+        utils::random::reseed();
+        seed = utils::randint(0, 2000);
+        Tensor A({1, 2, 3}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
+        ASSERT_TRUE(gradient_same(functor, {A}, 0.0003));
+    }
+}
 //
 // TEST_F(TensorOpsTests, softmax_colwise) {
 //     int row_size = 5;
@@ -1295,13 +1271,10 @@ Tensor create_dataset() {
     int num_dimensions = 5;
     // create data
     graph::NoBackprop nb;
-    Tensor pointsA({num_dimensions, num_points},
-        initializer::gaussian(0.0, 2.0)
-    );
-    Tensor pointsB({num_dimensions, num_points},
-        initializer::gaussian(0.0, 2.0)
-    );
-    Tensor point({num_dimensions, 1}, initializer::zeros());
+    auto N_0_2 = initializer::gaussian(0.0, 2.0);
+    Tensor pointsA({num_dimensions, num_points}, N_0_2);
+    Tensor pointsB({num_dimensions, num_points}, N_0_2);
+    Tensor point({num_dimensions, 1});
     for (int i = 0; i < num_dimensions; i++)
         point.w(i) = 2;
     pointsA = pointsA + point;

@@ -38,6 +38,14 @@ TEST(ArrayOpsTests, sign) {
     Array w = sign(x);
 }
 
+
+TEST(ArrayOpsTests, log_exp) {
+    Array x({50}, DTYPE_DOUBLE);
+    x = initializer::uniform(0.1, 20.0);
+    Array exp_log_x = op::exp(op::log(x));
+    EXPECT_TRUE(Array::allclose(x, exp_log_x, 1e-3));
+}
+
 template<typename T>
 void test_binary_shapes(T op_f) {
     auto x = Array::zeros({3,2,2});

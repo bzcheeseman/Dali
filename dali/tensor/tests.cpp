@@ -495,22 +495,8 @@ typedef MemorySafeTest TensorOpsTests;
 //         ASSERT_TRUE(gradient_same(functor, {W, X, Wfancy, Xfancy, W_other, X_other, bias}, 0.0003));
 //     }
 // }
-//
-//
-// TEST_F(MatrixTests, log_exp) {
-//     EXPERIMENT_REPEAT {
-//         graph::NoBackprop nb;
-//         auto mat = Mat<R>(10, 10, weights<R>::uniform(0.1, 20.0));
-//         auto log_mat = mat.log();
-//         auto exp_log_mat = log_mat.exp();
-//         #ifdef DALI_USE_CUDA
-//         ASSERT_MATRIX_CLOSE(mat, exp_log_mat, 1e-3);
-//         #else
-//         ASSERT_MATRIX_CLOSE(mat, exp_log_mat, 1e-6);
-//         #endif
-//     }
-// }
-//
+
+
 TEST_F(TensorTests, hstack) {
     EXPERIMENT_REPEAT {
         Tensor a({2, 1, 3}, initializer::uniform(-20.0, 20.0));

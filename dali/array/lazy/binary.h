@@ -7,47 +7,47 @@ template<template<class>class Functor, typename LeftT, typename RightT>
 struct LazyBinary;
 
 namespace lazy {
-    template<template<class>class Functor, typename T, typename T2>
-    LazyBinary<Functor, T, T2> F(const Exp<T>& expr, const T2& expr2);
+    template<template<class>class Functor, typename T1, typename T2>
+    LazyBinary<Functor, T1, T2> F(const T1& expr, const T2& expr2);
 
     template <typename T, typename T2>
-    LazyBinary<functor::add, T, T2> add(T a, T2 b);
+    LazyBinary<functor::add, T, T2> add(const T& a, const T2& b);
 
     template <typename T, typename T2>
-    LazyBinary<functor::sub, T, T2> sub(T a, T2 b);
+    LazyBinary<functor::sub, T, T2> sub(const T& a, const T2& b);
 
     template <typename T, typename T2>
-    LazyBinary<functor::eltmul, T, T2> eltmul(T a, T2 b);
+    LazyBinary<functor::eltmul, T, T2> eltmul(const T& a, const T2& b);
 
     template <typename T, typename T2>
-    LazyBinary<functor::eltdiv, T, T2> eltdiv(T a, T2 b);
+    LazyBinary<functor::eltdiv, T, T2> eltdiv(const T& a, const T2& b);
 
     template <typename T, typename T2>
-    LazyBinary<functor::lessthanequal, T, T2> lessthanequal(T a, T2 b);
+    LazyBinary<functor::lessthanequal, T, T2> lessthanequal(const T& a, const T2& b);
 
     template <typename T, typename T2>
-    LazyBinary<functor::greaterthanequal, T, T2> greaterthanequal(T a, T2 b);
+    LazyBinary<functor::greaterthanequal, T, T2> greaterthanequal(const T& a, const T2& b);
 
     template <typename T, typename T2>
-    LazyBinary<functor::power, T, T2> pow(T a, T2 b);
+    LazyBinary<functor::power, T, T2> pow(const T& a, const T2& b);
 
     template <typename T, typename T2>
-    LazyBinary<functor::max_scalar, T, T2> eltmax(T a, T2 b);
+    LazyBinary<functor::max_scalar, T, T2> eltmax(const T& a, const T2& b);
 
     template <typename T, typename T2>
-    LazyBinary<functor::clip, T, T2> clip(T a, T2 b);
+    LazyBinary<functor::clip, T, T2> clip(const T& a, const T2& b);
 
     template <typename T, typename T2>
-    LazyBinary<functor::min_scalar, T, T2> eltmin(T a, T2 b);
+    LazyBinary<functor::min_scalar, T, T2> eltmin(const T& a, const T2& b);
 
     template <typename T, typename T2>
-    LazyBinary<functor::binary_cross_entropy, T, T2> binary_cross_entropy(T a, T2 b);
+    LazyBinary<functor::binary_cross_entropy, T, T2> binary_cross_entropy(const T& a, const T2& b);
 
     template <typename T, typename T2>
-    LazyBinary<functor::binary_cross_entropy_grad, T, T2> binary_cross_entropy_grad(T a, T2 b);
+    LazyBinary<functor::binary_cross_entropy_grad, T, T2> binary_cross_entropy_grad(const T& a, const T2& b);
 
     template<typename T, typename T2>
-    LazyBinary<functor::equals, T, T2> equals(T a, T2 b);
+    LazyBinary<functor::equals, T, T2> equals(const T& a, const T2& b);
 
 
 }  // namespace lazy

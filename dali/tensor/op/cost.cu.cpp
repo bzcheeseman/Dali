@@ -56,5 +56,40 @@ namespace tensor_ops {
         }
         return out;
     }
+    Tensor margin_loss(const Tensor& t, const int& target, const double& margin, const int& axis) {
+        // relevant slice:
+        auto t_plucked = t.pluck_axis(axis, target);
+        t_plucked = t_plucked.insert_broadcast_axis(axis);
+        // now compare slice to rest of elements:
+        Tensor out(lazy::eltmax(t_plucked.w - t.w + margin, 0.0));
+        out.pluck_axis(axis, target).w = 0;
+
+        // gradient is wherever the
+        if (graph::backprop_enabled()) {
+            graph::emplace_back([t, t_plucked, margin, out, axis, target]() mutable {
+
+                // TODO(szymon, jonathan): implement gradient -- previous gradient was not done explicitly
+
+                // MAYBE_GRAD(t) <<= -lazy::F<functor::greaterthanequal>(out.w, 0.0) * out.dw;
+
+                // auto t_at_target = t.pluck_axis(axis, target);
+                // MAYBE_GRAD(t_at_target) <<= (
+                //     lazy::F<functor::greaterthanequal>(out.pluck_axis(axis, target).w, 0.0) *
+                //     out.pluck_axis(axis, target).dw
+                // );
+
+                // auto out_subslice = out.pluck_axis(axis, target);
+                // out_subslice = out_subslice.insert_broadcast_axis(axis);
+                // MAYBE_GRAD(t_plucked) <<= out_subslice.dw;
+            });
+        }
+        return out;
+    }
+
+    Tensor margin_loss(const Tensor&, const Tensor& target, const double& margin, const int& axis) {
+        ASSERT2(false, "not implemented");
+        return Tensor();
+    }
+
 
 }  // namespace tensor_ops

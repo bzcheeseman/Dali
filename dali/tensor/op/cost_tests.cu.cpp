@@ -64,35 +64,18 @@ TEST(TensorCostTests, sigmoid_binary_cross_entropy_matrix_target) {
     }
 }
 
-// TEST_F(MatrixTests, margin_loss_colwise) {
-//     utils::random::set_seed(100);
-//     // we can now extend the range of our random numbers to be beyond
-//     // 0 and 1 since sigmoid will clamp them to 0 or 1.
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(10, 20, weights<R>::uniform(5.0));
-//         R margin = utils::randdouble(0.01, 0.1);
-//         uint target = utils::randinteger<uint>(0, A.dims(0) - 1);
-//         auto functor = [target, margin](vector<Mat<R>> Xs)-> Mat<R> {
-//             return MatOps<R>::margin_loss_colwise(Xs[0], target, margin);
-//         };
-//         ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-4));
-//     }
-//     utils::random::reseed();
-// }
-//
-//
-// TEST_F(MatrixTests, margin_loss_rowwise) {
-//     utils::random::set_seed(100);
-//     // we can now extend the range of our random numbers to be beyond
-//     // 0 and 1 since sigmoid will clamp them to 0 or 1.
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(10, 20, weights<R>::uniform(5.0));
-//         R margin = utils::randdouble(0.01, 0.1);
-//         uint target = utils::randinteger<uint>(0, A.dims(1) - 1);
-//         auto functor = [target, margin](vector<Mat<R>> Xs)-> Mat<R> {
-//             return MatOps<R>::margin_loss_rowwise(Xs[0], target, margin);
-//         };
-//         ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-4));
-//     }
-//     utils::random::reseed();
-// }
+TEST(TensorCostTests, DISABLED_margin_loss_colwise) {
+    utils::random::set_seed(100);
+    // we can now extend the range of our random numbers to be beyond
+    // 0 and 1 since sigmoid will clamp them to 0 or 1.
+    EXPERIMENT_REPEAT {
+        Tensor A({3, 4}, initializer::uniform(-5.0, 5.0));
+        double margin = utils::randdouble(0.01, 0.1);
+        int target = utils::randint(0, 2);
+        auto functor = [target, margin](vector<Tensor> Xs)-> Tensor {
+            return tensor_ops::margin_loss(Xs[0], target, margin, 0);
+        };
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-4));
+    }
+    utils::random::reseed();
+}

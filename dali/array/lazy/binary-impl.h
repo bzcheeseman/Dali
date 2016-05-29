@@ -27,15 +27,15 @@ struct LazyBinary : public LazyFunction<LazyBinary<Functor,LeftT,RightT>, LeftT,
 };
 
 namespace lazy {
-    template<template<class>class Functor, typename T, typename T2>
-    LazyBinary<Functor,T, T2> F(const Exp<T>& expr, const T2& expr2) {
-        return LazyBinary<Functor, T, T2>(expr.self(), expr2);
+    template<template<class>class Functor, typename T1, typename T2>
+    LazyBinary<Functor,T1, T2> F(const T1& expr, const T2& expr2) {
+        return LazyBinary<Functor, T1, T2>(expr, expr2);
     }
 
     #define DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(FUNCNAME, KERNELNAME)\
-        template <typename T, typename T2>\
-        LazyBinary<KERNELNAME, T, T2> FUNCNAME(T a, T2 b) {\
-            return LazyBinary<KERNELNAME, T, T2>(a, b);\
+        template <typename T1, typename T2>\
+        LazyBinary<KERNELNAME, T1, T2> FUNCNAME(const T1& a, const T2& b) {\
+            return LazyBinary<KERNELNAME, T1, T2>(a, b);\
         }\
 
     DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(add, functor::add);

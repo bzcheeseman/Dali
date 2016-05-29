@@ -94,7 +94,8 @@ TEST_F(TensorTests, sum) {
         }\
     }
 
-DEFINE_REDUCTION_TENSOR_TEST(L2_norm_axis, L2_norm, -2.0, 2.0, true);
+DEFINE_REDUCTION_TENSOR_TEST(L2_norm_axis_positive, L2_norm, -2.0, -0.1, true);
+DEFINE_REDUCTION_TENSOR_TEST(L2_norm_axis_negative, L2_norm, 0.1, 2.0, true);
 DEFINE_REDUCTION_TENSOR_TEST(sum_axis, sum, -2.0, 2.0, true);
 DEFINE_REDUCTION_TENSOR_TEST(mean_axis, mean, -2.0, 2.0, true);
 DEFINE_REDUCTION_TENSOR_TEST(min_axis_positive, min, 0.1, 20.0, true);

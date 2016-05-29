@@ -30,151 +30,6 @@ TEST_F(TensorTests, sum_test) {
     ASSERT_NEAR(sum, (float)res.w(0), 1e-4);
 }
 
-
-TEST_F(TensorTests, sum_axis) {
-    int axis;
-    auto functor = [&axis](vector<Tensor> Xs)-> Tensor {
-        return Xs[0].sum(axis);
-    };
-
-    EXPERIMENT_REPEAT {
-        std:vector<int> shape = {2, 3,  5, 1, 2, 3};
-        for (axis = 0; axis < shape.size(); axis++) {
-            Tensor A(shape, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
-            expect_args_remain_on_gpu(functor, {A});
-            EXPECT_TRUE(gradient_same(functor, {A}));
-        }
-    }
-}
-
-TEST_F(TensorTests, mean_axis) {
-    int axis;
-    auto functor = [&axis](vector<Tensor> Xs)-> Tensor {
-        return Xs[0].mean(axis);
-    };
-
-    EXPERIMENT_REPEAT {
-        std:vector<int> shape = {2, 3,  5, 1, 2, 3};
-        for (axis = 0; axis < shape.size(); axis++) {
-            Tensor A(shape, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
-            expect_args_remain_on_gpu(functor, {A});
-            EXPECT_TRUE(gradient_same(functor, {A}));
-        }
-    }
-}
-
-// TEST_F(MatrixTests, sum_rowwise) {
-//
-// }
-//
-// TEST_F(MatrixTests, mean_colwise) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return MatOps<R>::mean_colwise(Xs[0]);
-//     };
-//
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
-//         expect_args_remain_on_gpu(functor, {A});
-//         EXPECT_TRUE(gradient_same(functor, {A}));
-//     }
-// }
-//
-// TEST_F(MatrixTests, mean_rowwise) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return MatOps<R>::mean_rowwise(Xs[0]);
-//     };
-//
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
-//         expect_args_remain_on_gpu(functor, {A});
-//         EXPECT_TRUE(gradient_same(functor, {A}));
-//     }
-// }
-//
-// TEST_F(MatrixTests, max_rowwise) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return MatOps<R>::max_rowwise(Xs[0]);
-//     };
-//
-//     EXPERIMENT_REPEAT {
-//         Mat<R> A;
-//         {
-//             graph::NoBackprop nb;
-//             auto mat  = Mat<R>(5, 10, weights<R>::uniform(0.1, 20.0));
-//             auto mat2 = Mat<R>(5, 10, weights<R>::uniform(-20.0, -0.1));
-//             A = MatOps<R>::vstack({mat, mat2});
-//         }
-//         expect_args_remain_on_gpu(functor, {A});
-//         EXPECT_TRUE(gradient_same(functor, {A}));
-//     }
-// }
-//
-// TEST_F(MatrixTests, min_rowwise) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return MatOps<R>::min_rowwise(Xs[0]);
-//     };
-//
-//     EXPERIMENT_REPEAT {
-//         Mat<R> A;
-//         {
-//             graph::NoBackprop nb;
-//             auto mat  = Mat<R>(5, 10, weights<R>::uniform(0.1, 20.0));
-//             auto mat2 = Mat<R>(5, 10, weights<R>::uniform(-20.0, -0.1));
-//             A = MatOps<R>::vstack({mat, mat2});
-//         }
-//         expect_args_remain_on_gpu(functor, {A});
-//         EXPECT_TRUE(gradient_same(functor, {A}));
-//     }
-// }
-//
-// TEST_F(MatrixTests, max_colwise) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return MatOps<R>::max_colwise(Xs[0]);
-//     };
-//
-//     EXPERIMENT_REPEAT {
-//         Mat<R> A;
-//         {
-//             graph::NoBackprop nb;
-//             auto mat  = Mat<R>(5, 10, weights<R>::uniform(0.1, 20.0));
-//             auto mat2 = Mat<R>(5, 10, weights<R>::uniform(-20.0, -0.1));
-//             A = MatOps<R>::vstack({mat, mat2});
-//         }
-//         expect_args_remain_on_gpu(functor, {A});
-//         EXPECT_TRUE(gradient_same(functor, {A}));
-//     }
-// }
-//
-// TEST_F(MatrixTests, min_colwise) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return MatOps<R>::min_colwise(Xs[0]);
-//     };
-//
-//     EXPERIMENT_REPEAT {
-//         Mat<R> A;
-//         {
-//             graph::NoBackprop nb;
-//             auto mat  = Mat<R>(5, 10, weights<R>::uniform(0.1, 20.0));
-//             auto mat2 = Mat<R>(5, 10, weights<R>::uniform(-20.0, -0.1));
-//             A = MatOps<R>::vstack({mat, mat2});
-//         }
-//         expect_args_remain_on_gpu(functor, {A});
-//         EXPECT_TRUE(gradient_same(functor, {A}));
-//     }
-// }
-//
-// TEST_F(MatrixTests, sum_colwise) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return MatOps<R>::sum_colwise(Xs[0]);
-//     };
-//
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
-//         expect_args_remain_on_gpu(functor, {A});
-//         EXPECT_TRUE(gradient_same(functor, {A}));
-//     }
-// }
-//
 TEST_F(TensorTests, max_min_test) {
     Tensor A({5, 5}, DTYPE_INT32);
     for (int i = 0; i < A.number_of_elements(); i++) {
@@ -183,27 +38,6 @@ TEST_F(TensorTests, max_min_test) {
 
     ASSERT_NEAR((int)A.min().w, -15, 1e-6);
     ASSERT_NEAR((int)A.max().w, 9, 1e-6);
-
-    auto max_functor = [](vector<Tensor> Xs)-> Tensor {
-        return Xs[0].max();
-    };
-
-    EXPERIMENT_REPEAT {
-        Tensor A({2, 3, 4}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
-        expect_args_remain_on_gpu(max_functor, {A});
-        EXPECT_TRUE(gradient_same(max_functor, {A}));
-    }
-
-    auto min_functor = [](vector<Tensor> Xs)-> Tensor {
-        return Xs[0].max();
-    };
-
-    EXPERIMENT_REPEAT {
-        Tensor A({2, 3, 4}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
-        expect_args_remain_on_gpu(min_functor, {A});
-        EXPECT_TRUE(gradient_same(min_functor, {A}));
-    }
-
 }
 
 TEST_F(TensorTests, equals) {
@@ -231,30 +65,6 @@ TEST_F(TensorTests, L2_norm) {
     }
 }
 
-TEST_F(TensorTests, L2_norm_rowwise) {
-    auto functor = [](vector<Tensor> Xs)-> Tensor {
-        return tensor_ops::L2_norm(Xs[0], 1);
-    };
-
-    EXPERIMENT_REPEAT {
-        Tensor A({2, 3}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
-        expect_args_remain_on_gpu(functor, {A});
-        EXPECT_TRUE(gradient_same(functor, {A}));
-    }
-}
-
-TEST_F(TensorTests, L2_norm_colwise) {
-    auto functor = [](vector<Tensor> Xs)-> Tensor {
-        return tensor_ops::L2_norm(Xs[0], 0);
-    };
-
-    EXPERIMENT_REPEAT {
-        Tensor A({2, 3}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
-        expect_args_remain_on_gpu(functor, {A});
-        EXPECT_TRUE(gradient_same(functor, {A}));
-    }
-}
-
 
 TEST_F(TensorTests, sum) {
     auto functor = [](vector<Tensor> Xs)-> Tensor {
@@ -267,17 +77,41 @@ TEST_F(TensorTests, sum) {
         EXPECT_TRUE(gradient_same(functor, {A}));
     }
 }
-//
-// TEST_F(MatrixTests, sigmoid_gpu_vs_cpu) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return Xs[0].sigmoid();
-//     };
-//
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
-//         EXPECT_TRUE(cpu_vs_gpu(functor, {A}));
-//     }
-// }
+
+#define DEFINE_REDUCTION_TENSOR_TEST(TESTNAME, REDUCTION_NAME, LOWER_BOUND, UPPER_BOUND, FAIL_ON_ZERO_GRADIENT)\
+    TEST_F(TensorTests, TESTNAME) {\
+        int axis;\
+        auto functor = [&axis](vector<Tensor> Xs)-> Tensor {\
+            return tensor_ops::REDUCTION_NAME(Xs[0], axis);\
+        };\
+        EXPERIMENT_REPEAT {\
+            std:vector<int> shape = {2, 3, 1, 1, 2, 3};\
+            for (axis = 0; axis < shape.size(); axis++) {\
+                Tensor A(shape, initializer::uniform(LOWER_BOUND, UPPER_BOUND), DTYPE_DOUBLE);\
+                expect_args_remain_on_gpu(functor, {A});\
+                EXPECT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-4, FAIL_ON_ZERO_GRADIENT));\
+            }\
+        }\
+    }
+
+DEFINE_REDUCTION_TENSOR_TEST(L2_norm_axis, L2_norm, -2.0, 2.0, true);
+DEFINE_REDUCTION_TENSOR_TEST(sum_axis, sum, -2.0, 2.0, true);
+DEFINE_REDUCTION_TENSOR_TEST(mean_axis, mean, -2.0, 2.0, true);
+DEFINE_REDUCTION_TENSOR_TEST(min_axis_positive, min, 0.1, 20.0, true);
+DEFINE_REDUCTION_TENSOR_TEST(max_axis_positive, max, 0.1, 20.0, true);
+DEFINE_REDUCTION_TENSOR_TEST(min_axis_negative, min, -20.0, -0.1, true);
+DEFINE_REDUCTION_TENSOR_TEST(max_axis_negative, max, -20.0, -0.1, true);
+
+TEST_F(TensorTests, sigmoid_gpu_vs_cpu) {
+    auto functor = [](vector<Tensor> Xs)-> Tensor {
+        return Xs[0].sigmoid();
+    };
+
+    EXPERIMENT_REPEAT {
+        Tensor A({10, 20}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
+        EXPECT_TRUE(cpu_vs_gpu(functor, {A}));
+    }
+}
 
 // TEST_F(MatrixTests, identity_init) {
 //     R init_val = 2.0;
@@ -325,6 +159,7 @@ TEST_F(TensorTests, sum) {
 //     }
 // }
 //
+// TODO: implement repmat
 // TEST_F(MatrixTests, broadcast_row_vector) {
 //     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
 //         return MatOps<R>::broadcast_row_vector(Xs[0], 10);
@@ -407,6 +242,14 @@ TEST_F(TensorTests, view_transpose) {
     auto a_T = a.transpose();
     ASSERT_EQ(a.w.memory(), a_T.w.memory());
 }
+
+TEST_F(TensorTests, reshape) {
+    // reshape is a view
+    Tensor a({4, 5}, initializer::arange());
+    auto a_reshaped = a.reshape({2, 2, 1, 5});
+    ASSERT_EQ(a.w.memory(), a_reshaped.w.memory());
+}
+
 //
 // TEST_F(MatrixTests, slice) {
 //     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
@@ -424,13 +267,6 @@ TEST_F(TensorTests, view_transpose) {
 //     ASSERT_EQ(&subblock.w().memory() , &block.w().memory());
 //     ASSERT_EQ(&subblock.dw().memory() , &block.dw().memory());
 // }
-
-TEST_F(TensorTests, reshape) {
-    // reshape is a view
-    Tensor a({4, 5}, initializer::arange());
-    auto a_reshaped = a.reshape({2, 2, 1, 5});
-    ASSERT_EQ(a.w.memory(), a_reshaped.w.memory());
-}
 
 // TEST_F(MatrixTests, argmax_argmin) {
 //     auto A = Mat<R>(5, 5, weights<R>::eye());
@@ -517,42 +353,38 @@ TEST_F(TensorTests, mean) {
         ASSERT_TRUE(gradient_same(functor, {A}));
     }
 }
-//
-// TEST_F(MatrixTests, max) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return Xs[0].max();
-//     };
-//     EXPERIMENT_REPEAT {
-//         Mat<R> A;
-//         {
-//             graph::NoBackprop nb;
-//             auto mat  = Mat<R>(5, 10, weights<R>::uniform(0.1, 20.0));
-//             auto mat2 = Mat<R>(5, 10, weights<R>::uniform(-20.0, -0.1));
-//             A = MatOps<R>::hstack({mat, mat2});
-//         }
-//         ASSERT_TRUE(gradient_same(functor, {A}));
-//     }
-// }
-//
-// TEST_F(MatrixTests, min) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return Xs[0].min();
-//     };
-//     EXPERIMENT_REPEAT {
-//         Mat<R> A;
-//         {
-//             graph::NoBackprop nb;
-//             auto mat  = Mat<R>(5, 10, weights<R>::uniform(0.1, 20.0));
-//             auto mat2 = Mat<R>(5, 10, weights<R>::uniform(-20.0, -0.1));
-//             A = MatOps<R>::hstack({mat, mat2});
-//         }
-//         ASSERT_TRUE(gradient_same(functor, {A}));
-//     }
-// }
-//
 
-#define DEFINE_UNARY_TENSOR_TEST(TESTNAME, UNARY, LOWER_BOUND, UPPER_BOUND, FAIL_ON_ZERO_GRADIENT)\
-    TEST_F(TensorTests, TESTNAME) {\
+TEST_F(TensorTests, max) {
+    auto functor = [](vector<Tensor> Xs)-> Tensor {
+        return Xs[0].max();
+    };
+    Tensor B({2, 3}, initializer::arange(), DTYPE_DOUBLE);
+    auto res = B.max();
+    ASSERT_NEAR(5.0, (double)res.w, 1e-6);
+
+    EXPERIMENT_REPEAT {
+        Tensor A({2, 3}, initializer::arange(), DTYPE_DOUBLE);
+        ASSERT_TRUE(gradient_same(functor, {A}));
+    }
+}
+
+TEST_F(TensorTests, min) {
+    auto functor = [](vector<Tensor> Xs)-> Tensor {
+        return Xs[0].min();
+    };
+    Tensor B({2, 3}, initializer::arange(), DTYPE_DOUBLE);
+    auto res = B.min();
+    ASSERT_NEAR(0.0, (double)res.w, 1e-6);
+
+    EXPERIMENT_REPEAT {
+        Tensor A({2, 3}, initializer::arange(), DTYPE_DOUBLE);
+        ASSERT_TRUE(gradient_same(functor, {A}));
+    }
+}
+
+#define DEFINE_UNARY_TENSOR_TEST(TESTNAME, UNARY, LOWER_BOUND, UPPER_BOUND, EPS, FAIL_ON_ZERO_GRADIENT)\
+    TEST(TensorUnaryTests, TESTNAME) {\
+        utils::random::set_seed(100);\
         auto functor = [](vector<Tensor> Xs)-> Tensor {\
             return Xs[0].UNARY();\
         };\
@@ -561,27 +393,26 @@ TEST_F(TensorTests, mean) {
                 initializer::uniform(LOWER_BOUND, UPPER_BOUND),\
                 DTYPE_DOUBLE\
             );\
-            ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-4, FAIL_ON_ZERO_GRADIENT));\
+            ASSERT_TRUE(gradient_same(functor, {A}, EPS, 1e-4, FAIL_ON_ZERO_GRADIENT));\
         }\
+        utils::random::reseed();\
     }\
 
-DEFINE_UNARY_TENSOR_TEST(square, square, -5.0, 5.0, true);
-DEFINE_UNARY_TENSOR_TEST(sqrt, sqrt, 0.5, 5.0, true);
-DEFINE_UNARY_TENSOR_TEST(eltinv, eltinv, 0.5, 5.0, true);
-DEFINE_UNARY_TENSOR_TEST(sigmoid, sigmoid, -20.0, 20.0, true);
-DEFINE_UNARY_TENSOR_TEST(relu_positive, relu, 0.2, 20.0, true);
-DEFINE_UNARY_TENSOR_TEST(relu_negative, relu, -20.0, -0.2, false);
+DEFINE_UNARY_TENSOR_TEST(square, square, -5.0, 5.0, 1e-3, true);
+DEFINE_UNARY_TENSOR_TEST(sqrt, sqrt, 0.5, 5.0, 1e-3, true);
+DEFINE_UNARY_TENSOR_TEST(eltinv, eltinv, 0.5, 5.0, 1e-3, true);
+DEFINE_UNARY_TENSOR_TEST(sigmoid, sigmoid, -20.0, 20.0, 1e-3, true);
+DEFINE_UNARY_TENSOR_TEST(tanh, tanh, -20.0, 20.0, 1e-3, true);
+DEFINE_UNARY_TENSOR_TEST(softplus, softplus, -20.0, 20.0, 1e-2, true);
+DEFINE_UNARY_TENSOR_TEST(log, log, 0.1, 20.0, 1e-2, true);
 
-// TEST_F(MatrixTests, tanh) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return Xs[0].tanh();
-//     };
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(10, 20, weights<R>::uniform(20.0));
-//         ASSERT_TRUE(gradient_same(functor, {A}, 1e-4, 1e-3, true));
-//     }
-// }
-//
+DEFINE_UNARY_TENSOR_TEST(exp, exp, -20.0, 2.0, 0.1, true);
+
+DEFINE_UNARY_TENSOR_TEST(relu_positive, relu, 0.2, 20.0, 1e-3, true);
+DEFINE_UNARY_TENSOR_TEST(relu_negative, relu, -20.0, -0.2, 1e-3, false);
+DEFINE_UNARY_TENSOR_TEST(abs_positive, abs, 0.2, 20.0, 1e-3, true);
+DEFINE_UNARY_TENSOR_TEST(abs_negative, abs, -20.0, -0.2, 1e-3, true);
+
 // TEST_F(MatrixTests, binary_cross_entropy) {
 //     // We observe the KL divergence to 0 or 1 for each unit
 //     // in our input matrix with respect to the target.
@@ -680,38 +511,7 @@ DEFINE_UNARY_TENSOR_TEST(relu_negative, relu, -20.0, -0.2, false);
 //         ASSERT_TRUE(gradient_same(functor, {A}, 1e-4, DEFAULT_GRAD_EPS, true));
 //     }
 // }
-//
-// TEST_F(MatrixTests, exp) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return Xs[0].exp();
-//     };
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(10, 20, weights<R>::uniform(3.0));
-//         ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-3, true));
-//     }
-// }
-//
-// TEST_F(MatrixTests, softplus) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return Xs[0].softplus();
-//     };
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(10, 20, weights<R>::uniform(3.0));
-//         ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-3, true));
-//     }
-// }
-//
-// TEST_F(MatrixTests, log) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return Xs[0].log();
-//     };
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(10, 20, weights<R>::uniform(0.1, 20.0));
-//         ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-3, true));
-//     }
-// }
-//
-//
+
 // TEST_F(MatrixTests, matrix_dot_plus_bias) {
 //     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
 //         auto res = Xs[1].dot(Xs[0]) + Xs[2];
@@ -1656,8 +1456,7 @@ TEST_F(TensorTests, pow) {
         ASSERT_TRUE(gradient_same(functor, {mat, exponent}, 1e-3));
     }
 }
-//
-//
+
 TEST_F(TensorTests, DISABLED_quadratic_form) {
     int left_size = 2;
     int right_size = 3;
@@ -1675,9 +1474,9 @@ TEST_F(TensorTests, DISABLED_quadratic_form) {
         ASSERT_TRUE(gradient_same(functor, {left, middle, right}, 1e-3));
     }
 }
-//
+
 typedef std::function<std::shared_ptr<solver::AbstractSolver>(vector<Tensor>)> create_solver_t;
-//
+
 void test_solver(create_solver_t create_solver) {
     // minimize X.T() * W * X + W2 * X;
     Tensor X({5, 1}, initializer::uniform(-20.0, 20.0));

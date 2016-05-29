@@ -586,7 +586,7 @@ TEST_F(TensorTests, mean) {
                 initializer::uniform(LOWER_BOUND, UPPER_BOUND),\
                 DTYPE_DOUBLE\
             );\
-            ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-5, FAIL_ON_ZERO_GRADIENT));\
+            ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-4, FAIL_ON_ZERO_GRADIENT));\
         }\
     }\
 

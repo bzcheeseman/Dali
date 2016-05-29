@@ -5,7 +5,16 @@ class Array;
 class AssignableArray;
 
 namespace op {
-    AssignableArray identity(const Array& x);
+    // Assign one array to another piece of memory as-is
+    // this also has the side-effect of a strided memory view
+    // non-strided in the output (as it is no longer a view)
+    //
+    // if always_copy is true:  the input array x is always
+    //           element-wise copied to the destination
+    // if always_copy is false: input array is element-wise copied to
+    //           destination except if the output and
+    //           x are the same array.
+    AssignableArray identity(const Array& x, const bool& always_copy=true);
     AssignableArray sigmoid(const Array& x);
     AssignableArray tanh(const Array& x);
     AssignableArray relu(const Array& x);

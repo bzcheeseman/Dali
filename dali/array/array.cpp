@@ -295,17 +295,27 @@ void Array::save(std::basic_ostream<char>& stream, const Array& arr) {
 }
 
 bool Array::equals(const Array& left, const Array& right) {
-    if (left.is_stateless() && right.is_stateless()) {
+    if (state_equals(left, right)) {
         return true;
-    }
-    if (left.is_stateless() != right.is_stateless()) {
-        return false;
     }
     if (left.shape() != right.shape()) {
         return false;
     }
+    if (left.is_stateless() != right.is_stateless()) {
+        return false;
+    }
     bool all_equals = ((float)(Array)op::all_equals(left, right)) > 0 ? true : false;
     return all_equals;
+}
+
+
+bool Array::state_equals(const Array& left, const Array& right) {
+    if (left.is_stateless() && right.is_stateless())
+        return true;
+    if (left.is_stateless() != right.is_stateless()) {
+        return false;
+    }
+    return left.state == right.state;
 }
 
 bool Array::allclose(const Array& left, const Array& right, const double& atolerance) {
@@ -926,7 +936,10 @@ void Array::clear() {
     }
 }
 
-
 AssignableArray Array::dot(const Array& other) const {
     return op::dot(*this, other);
+}
+
+bool operator==(const Array& left, const Array& right) {
+    return Array::state_equals(left, right);
 }

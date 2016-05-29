@@ -79,6 +79,7 @@ class Array : public Exp<Array> {
     static void save(const std::string& fname, const Array& arr, const std::ios_base::openmode& mode=std::ios_base::out);
     static void save(std::basic_ostream<char>& stream, const Array& arr);
     static bool equals(const Array& left, const Array& right);
+    static bool state_equals(const Array& left, const Array& right);
     // compare two arrays and considered close if abs(left - right) <= atolerance
     static bool allclose(const Array& left, const Array& right, const double& atolerance);
 
@@ -227,6 +228,8 @@ class Array : public Exp<Array> {
     /* shortcuts for array ops */
     AssignableArray dot(const Array& other) const;
 };
+
+bool operator==(const Array& left, const Array& right);
 
 #endif
 

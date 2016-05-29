@@ -4,7 +4,27 @@
 #include "dali/array/lazy/unary.h"
 
 namespace op {
-    AssignableArray identity(const Array& x) {
+    AssignableArray identity(const Array& x, const bool& always_copy) {
+        if (always_copy) return lazy::identity(x);
+
+        return AssignableArray([x](Array& out, const OPERATOR_T& operator_t) {
+            // if always_copy is false and we are using operator= we can check
+            // whether the output is either identical to the input (out == x)
+            // or if out is a new array (out.is_stateless). In these cases no
+            // computation is needed, and we can simply copy or transfer state
+            // from x to out.
+            // if these conditions are not met we fall back to a regular
+            // assignment of memory from x to out with operator_t
+            if (out == x && operator_t == OPERATOR_T_EQL) return;
+            if (out.is_stateless() && operator_t == OPERATOR_T_EQL) {
+                out = x;
+                return;
+            }
+            ((AssignableArray)lazy::identity(x)).assign_to(out, operator_t);
+        });
+    }
+
+    AssignableArray identity_or_swap(const Array& x) {
         return lazy::identity(x);
     }
 

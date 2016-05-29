@@ -66,7 +66,6 @@ std::tuple<DeviceReducer::outtype_t,DeviceReducer::state_t> DeviceReducer::reduc
         }// else, make the preferred device fresh
         return std::make_tuple(best_device_for_me_myself_and_i, DeviceReducerState{state.args_read + 1, mem->preferred_device});
     } else {
-
         if (arg.memory()->preferred_device != state.common_preferred_device) {
             // When considering other arguments, if the next argument prefers a different device,
             // then we fallback to the tie-breaker device
@@ -76,4 +75,17 @@ std::tuple<DeviceReducer::outtype_t,DeviceReducer::state_t> DeviceReducer::reduc
             return std::make_tuple(arg.memory()->preferred_device, DeviceReducerState{state.args_read + 1, arg.memory()->preferred_device});
         }
     }
+}
+
+std::tuple<DeviceReducer::outtype_t,DeviceReducer::state_t> DeviceReducer::reduce_step(
+        const std::tuple<DeviceReducer::outtype_t, DeviceReducer::state_t>& candidate_and_state,
+        const std::vector<Array>& arg) {
+    auto candidate_and_state_out = candidate_and_state;
+    for (const auto& arr : arg) {
+      candidate_and_state_out = reduce_step(
+        candidate_and_state_out,
+        arr
+      );
+    }
+    return candidate_and_state_out;
 }

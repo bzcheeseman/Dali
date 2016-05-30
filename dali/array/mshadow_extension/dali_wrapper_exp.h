@@ -31,10 +31,12 @@ struct DaliWrapperExp : public mshadow::TRValue<
     typedef mshadow::Tensor<Device, srcdim, DType> src_t;
     const src_t src_;
     mshadow::Shape<srcdim> shape_;
+    mshadow::Stream<Device> * stream_;
     const Array array;
 
     DaliWrapperExp(const src_t& src, const Array& dali_src) :
             src_(src),
+            stream_(src.stream_),
             array(dali_src) {
         ASSERT2(src_.shape_[srcdim - 1] == src_.stride_,
                 "DaliWrapperExp should never reach that condition (only tensors should be passed as arguments).");

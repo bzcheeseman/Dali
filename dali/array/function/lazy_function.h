@@ -24,6 +24,16 @@ struct MshadowWrapper {
             decltype(sth.template to_mshadow_expr<devT,T>(device, output_shape)) {
         return sth.template to_mshadow_expr<devT,T>(device, output_shape);
     }
+
+    static inline auto wrapd1(const ExprT& sth, memory::Device device, const std::vector<int>& output_shape) ->
+            decltype(sth.template to_mshadow_expr<devT,T>(device, output_shape)) {
+        return sth.template to_mshadow_expr<devT,T>(device, output_shape);
+    }
+
+    static inline auto wrap_preserve_leading(const ExprT& sth, memory::Device device, const std::vector<int>& output_shape) ->
+            decltype(sth.template to_mshadow_expr<devT,T>(device, output_shape)) {
+        return sth.template to_mshadow_expr<devT,T>(device, output_shape);
+    }
 };
 
 template<int devT,typename T>
@@ -31,6 +41,33 @@ struct MshadowWrapper<devT,T,Array> {
     static inline auto wrap(const Array& array, memory::Device device, const std::vector<int>& output_shape) ->
             decltype(TypedArray<devT,T>(array, device, output_shape).d2()) {
         return TypedArray<devT,T>(array, device, output_shape).d2();
+    }
+
+    static inline auto wrapd1(const Array& array, memory::Device device, const std::vector<int>& output_shape) ->
+            decltype(TypedArray<devT,T>(array, device, output_shape).d1()) {
+        return TypedArray<devT,T>(array, device, output_shape).d1();
+    }
+
+    static inline auto wrap_preserve_leading(const Array& array, memory::Device device, const std::vector<int>& output_shape) ->
+            decltype(TypedArray<devT,T>(array, device, output_shape).d2()) {
+
+        if (array.ndim() == 2 || array.ndim() == 0) {
+            return TypedArray<devT,T>(array, device, output_shape).d2();
+        } else {
+            int subtensor_volume = 1;
+            for (int i = 1; i < array.ndim(); i++) {
+                subtensor_volume *= array.shape()[i];
+            }
+            // TODO(jonathan): review edge-case that could occur if the collapse of lower dimensions
+            //                 is not possible for a given array.
+            std::vector<int> new_shape = {array.shape()[0], subtensor_volume};
+
+            return TypedArray<devT,T>(
+                array.copyless_reshape(new_shape),
+                device,
+                output_shape
+            ).d2();
+        }
     }
 };
 

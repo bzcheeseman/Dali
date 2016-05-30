@@ -4,6 +4,7 @@
 #include "dali/array/function/operator.h"
 #include "dali/array/memory/device.h"
 #include "dali/array/lazy/unary.h"
+#include "dali/array/lazy/reshape.h"
 
 // TODO(jonathan, szymon): use stream wait events to ensure concatenation
 //                         kicks off when all predecessors are done working
@@ -150,6 +151,10 @@ namespace op {
 
     AssignableArray vstack(const std::vector<Array>& arrays) {
         return concatenate(arrays, 0);
+    }
+
+    AssignableArray take(const Array& source, const Array& indices) {
+        return lazy::take(source, indices);
     }
 
 } // namespace op

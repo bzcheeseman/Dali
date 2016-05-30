@@ -126,6 +126,7 @@ class Array : public Exp<Array> {
 
     /* Creating a view into memory */
     Array operator[](const int& idx) const;
+    AssignableArray operator[](const Array& indices) const;
     SlicingInProgress<Array> operator[](const Slice& s) const;
     SlicingInProgress<Array> operator[](const Broadcast& b) const;
     // Get scalar at this offset:

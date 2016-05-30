@@ -18,6 +18,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace internal {
+    /* Canonical Reshape
+     * =================
+     *
+     * construct a shape that grows leftwards by adding 1s, and shrinks
+     * through multiplication (e.g. right-most dimensions are preserved).
+     *
+     * e.g. Array with shape (2, 3, 4) has:
+     *
+     *   canonical_reshape<1> => Shape<1>(24)
+     *   canonical_reshape<2> => Shape<1>(6, 4)
+     *   canonical_reshape<3> => Shape<1>(2, 3, 4)
+     *   canonical_reshape<4> => Shape<1>(1, 2, 3, 4)
+     *   canonical_reshape<5> => Shape<1>(1, 1, 2, 3, 4)
+     *   etc...
+     *
+     */
     template<int dstdim>
     mshadow::Shape<dstdim> canonical_reshape(const std::vector<int>& src_shape);
 }

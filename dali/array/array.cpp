@@ -9,6 +9,7 @@
 #include "dali/array/op/unary.h"
 #include "dali/array/op/unary_scalar.h"
 #include "dali/array/op/binary.h"
+#include "dali/array/op/reshape.h"
 #include "dali/array/op/dot.h"
 #include "dali/utils/print_utils.h"
 #include "dali/array/op/initializer.h"
@@ -531,9 +532,12 @@ vector<int> Array::subshape() const {
     return vector<int>(state->shape.begin() + 1, state->shape.end());
 }
 
-
 Array Array::operator[](const int& idx) const {
     return pluck_axis(0, idx);
+}
+
+AssignableArray Array::operator[](const Array& indices) const {
+    return op::take(*this, indices);
 }
 
 SlicingInProgress<Array> Array::operator[](const Slice& s) const {

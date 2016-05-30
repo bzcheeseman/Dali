@@ -13,6 +13,8 @@ namespace op {
     AssignableArray hstack(const std::vector<Array>& arrays);
     // Stack arrays in sequence vertically (row wise).
     AssignableArray vstack(const std::vector<Array>& arrays);
+    // Pick indices from another array
+    AssignableArray take(const Array& source, const Array& indices);
 } // namespace op
 
 #endif

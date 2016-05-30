@@ -40,7 +40,7 @@ namespace internal {
     template<int dim>
     mshadow::Tensor<MDevT, dim, T> TypedArrayShared<MDevT,T>::contiguous_d(memory::AM access_mode) const {
         ASSERT2(this->array.contiguous_memory(),
-                "This function is only supported for contiguous_memory");
+            "contiguous_d can only be called on a TypedArray that has contiguous memory.");
         return mtensor<dim>(access_mode);
     }
 

@@ -537,6 +537,10 @@ Tensor Tensor::empty_like(const Tensor& other) {
     return Tensor(other.shape(), initializer::empty(), other.dtype(), other.preferred_device());
 }
 
+Tensor Tensor::fill_like(const double& scalar, const Tensor& other) {
+    return Tensor(other.shape(), initializer::fill(scalar), other.dtype(), other.preferred_device());
+}
+
 Tensor Tensor::zeros(const std::vector<int>& shape,
                      const DType& dtype,
                      const memory::Device& preferred_device) {
@@ -582,18 +586,12 @@ Tensor Tensor::bernoulli_normalized(const double& prob,
     return Tensor(shape, initializer::bernoulli_normalized(prob), dtype, preferred_device);
 }
 
-template<typename T>
-Tensor Tensor::fill(const T& scalar,
+Tensor Tensor::fill(const double& scalar,
                     const std::vector<int>& shape,
                     const DType& dtype,
                     const memory::Device& preferred_device) {
     return Tensor(shape, initializer::fill(scalar), dtype, preferred_device);
 }
-
-template Tensor Tensor::fill(const int&,    const std::vector<int>&, const DType&, const memory::Device&);
-template Tensor Tensor::fill(const float&,  const std::vector<int>&, const DType&, const memory::Device&);
-template Tensor Tensor::fill(const double&, const std::vector<int>&, const DType&, const memory::Device&);
-
 
 Tensor Tensor::load(FILE * fp) {
     auto loaded = Array::load(fp);

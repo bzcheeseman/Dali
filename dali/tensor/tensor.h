@@ -241,6 +241,8 @@ class Tensor {
         // Tensor operator()(Indexing::Index, Indexing::Index) const;
         static Tensor zeros_like(const Tensor& other);
         static Tensor empty_like(const Tensor& other);
+        static Tensor fill_like(const double& prob, const Tensor& other);
+
         static Tensor zeros(const std::vector<int>& shape,
                             const DType& dtype=DTYPE_FLOAT,
                             const memory::Device& preferred_device=memory::default_preferred_device);
@@ -267,8 +269,7 @@ class Tensor {
                                            const std::vector<int>& shape,
                                            const DType& dtype=DTYPE_FLOAT,
                                            const memory::Device& preferred_device=memory::default_preferred_device);
-        template<typename T>
-        static Tensor fill(const T& scalar,
+        static Tensor fill(const double& scalar,
                            const std::vector<int>& shape,
                            const DType& dtype=DTYPE_FLOAT,
                            const memory::Device& preferred_device=memory::default_preferred_device);

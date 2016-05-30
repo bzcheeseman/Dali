@@ -44,6 +44,10 @@ struct DaliWrapperExp : public mshadow::TRValue<
         this->shape_ = mshadow::expr::ShapeCheck<srcdim, src_t>::Check(src_);
     }
 
+    MSHADOW_XINLINE mshadow::index_t size(mshadow::index_t idx) const {
+        return shape_[idx];
+    }
+
     template<typename E, int etype>
     inline DaliWrapperExp<Device, srcdim, DType>&
     operator=(const mshadow::expr::Exp<E, DType, etype>& exp) {

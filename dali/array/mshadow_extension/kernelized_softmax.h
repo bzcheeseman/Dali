@@ -1,8 +1,8 @@
 #ifndef DALI_ARRAY_THRUST_SOFTMAX_TRANSPOSE_H
 #define DALI_ARRAY_THRUST_SOFTMAX_TRANSPOSE_H
-#include "dali/array/op/impl/ops.h"
-#include "dali/array/memory_bank/MemoryBank.h"
+//#include "dali/array/op/impl/ops.h"
 #include "dali/config.h"
+#include <mshadow/tensor.h>
 
 #ifdef DALI_USE_CUDA
 #include <thrust/system/cuda/execution_policy.h>
@@ -20,10 +20,10 @@ row-wise softmax (`softmax_rowwise`) is achieved by
 modifying one line from MShadow's version.
 **/
 
-namespace tensor_ops {
+namespace internal {
     #ifdef DALI_USE_CUDA
         template<int x_bits, typename R,  typename DstPlan, typename SrcPlan>
-        __global__ void SoftmaxKernel(DstPlan dst, SrcPlan src, mshadow::index_t num_cols, R temperature) {
+        __global__ void SoftmaxKernel(DstPlan dst, SrcPlan src, mshadow::index_t num_cols, const double& temperature) {
             const unsigned buffer_size = 1 << x_bits;
             const int row = blockIdx.x;
             const int thread_idx = threadIdx.x;
@@ -88,7 +88,7 @@ namespace tensor_ops {
         }
 
         template<int x_bits, typename R,  typename DstPlan, typename SrcPlan>
-        __global__ void SoftmaxKernelCached(DstPlan dst, SrcPlan src, mshadow::index_t num_cols, R temperature) {
+        __global__ void SoftmaxKernelCached(DstPlan dst, SrcPlan src, mshadow::index_t num_cols, const double& temperature) {
             const unsigned buffer_size = 1 << x_bits;
             const int num_offsets = num_cols/buffer_size + 1;
             const int row = blockIdx.x;
@@ -169,10 +169,8 @@ namespace tensor_ops {
 
         // Note: <<<Dg, Db, Ns, S>>> CUDA Language Extension is explained here:
         // http://docs.nvidia.com/cuda/cuda-c-programming-guide/#execution-configuration
-        template<typename R>
-        void softmax_rowwise(mshadow::Tensor<mshadow::gpu, 2, R> dst,
-                     const mshadow::Tensor<mshadow::gpu, 2, R> src,
-                     R temperature = 1.0) {
+        template<typename R, template<class,int,class>class LeftT, template<class,int,class>class RightT>
+        void softmax_rowwise(LeftT<mshadow::gpu, 2, R>& dst, const RightT<mshadow::gpu, 2, R>& src, const double& temperature = 1.0) {
             const int num_threads = mshadow::cuda::kBaseThreadNum;
             const int thread_bits = mshadow::cuda::kBaseThreadBits;
 
@@ -201,16 +199,14 @@ namespace tensor_ops {
             cudaDeviceSynchronize();
         }
 
-        template<typename R>
-        void softmax_colwise(mshadow::Tensor<mshadow::gpu, 2, R> dst,
-                     const mshadow::Tensor<mshadow::gpu, 2, R> src, R temperature = 1.0) {
+        template<typename R, template<class,int,class>class LeftT, template<class,int,class>class RightT>
+        void softmax_colwise(LeftT<mshadow::gpu, 2, R>& dst, const RightT<mshadow::gpu, 2, R>& src, const double& temperature = 1.0) {
             const int num_threads = mshadow::cuda::kBaseThreadNum;
             const int thread_bits = mshadow::cuda::kBaseThreadBits;
 
             dim3 tiles(dst.size(1));
             // block size is a matrix column
             dim3 within_tile(num_threads);
-            mshadow::utils::Check(dst.shape_ == src.shape_, "Softmax: shape mismatch");
             mshadow::cuda::CheckLaunchParam(tiles, within_tile, "Softmax");
             cudaStream_t stream = mshadow::Stream<mshadow::gpu>::GetStream(dst.stream_);
 
@@ -233,51 +229,42 @@ namespace tensor_ops {
         }
     #endif
 
-    template<typename R>
-    inline void softmax_rowwise(mshadow::Tensor<cpu, 1, R> dst,
-                        const mshadow::Tensor<cpu, 1, R> &src,
-                        R& temperature) {
-        R mmax = src[0];
-        for (mshadow::index_t x = 1; x < dst.size(0); ++x) {
-            if (mmax < src[x]) mmax = src[x];
-        }
-        R sum = 0.0f;
-        for (mshadow::index_t x = 0; x < dst.size(0); ++x) {
-            dst[x] = std::exp((src[x] - mmax) / temperature);
-            sum += dst[x];
-        }
-        for (mshadow::index_t x = 0; x < dst.size(0); ++x) {
-            dst[x] /= sum;
-        }
-    }
-
-    template<typename R>
-    inline void softmax_rowwise(mshadow::Tensor<cpu, 2, R> dst,
-                          const mshadow::Tensor<cpu, 2, R> &src,
-                          R temperature) {
-        mshadow::utils::Check(dst.shape_ == src.shape_, "SoftmaxTranspose: shape mismatch");
-        for (mshadow::index_t y = 0; y < dst.size(0); ++y) {
-            softmax_rowwise(dst[y], src[y], temperature);
-        }
-    }
-
-    template<typename R>
-    void softmax_colwise(mshadow::Tensor<cpu,2,R> dst, mshadow::Tensor<cpu,2,R> src, R temperature = 1.0) {
-        for (mshadow::index_t col = 0; col < dst.size(1); ++col) {
-            R mmax = src[0][col];
-            for (mshadow::index_t row = 1; row < dst.size(0); ++row) {
-                if (mmax < src[row][col]) mmax = src[row][col];
+    template<typename R, typename DstPlan, typename SrcPlan>
+    inline void softmax_rowwise(DstPlan dst, SrcPlan src, mshadow::index_t rows, mshadow::index_t cols, const double& temperature) {
+        for (mshadow::index_t y = 0; y < rows; ++y) {
+            R mmax = src.Eval(y, 0);
+            for (mshadow::index_t x = 1; x < cols; ++x) {
+                if (mmax < src.Eval(y, x)) mmax = src.Eval(y, x);
             }
             R sum = 0.0f;
-            for (mshadow::index_t row = 0; row < dst.size(0); ++row) {
-                dst[row][col] = std::exp((src[row][col] - mmax) / temperature);
-                sum += dst[row][col];
+            for (mshadow::index_t x = 0; x < cols; ++x) {
+                dst.REval(y, x) = std::exp((src.Eval(y, x) - mmax) / temperature);
+                sum += dst.Eval(y, x);
             }
-            for (mshadow::index_t row = 0; row < dst.size(0); ++row) {
-                dst[row][col] /= sum;
+            for (mshadow::index_t x = 0; x < cols; ++x) {
+                dst.REval(y, x) /= sum;
             }
         }
     }
-}
+
+    template<typename R, template<class,int,class>class LeftT, template<class,int,class>class RightT>
+    inline void softmax_rowwise(LeftT<mshadow::cpu, 2, R>& dst, const RightT<mshadow::cpu, 2, R>& src, const double& temperature) {
+        softmax_rowwise<R>(mshadow::expr::MakePlan(dst),
+                           mshadow::expr::MakePlan(src),
+                           dst.size(0),
+                           dst.size(1),
+                           temperature);
+
+    }
+
+    template<typename R, template<class,int,class>class LeftT, template<class,int,class>class RightT>
+    void softmax_colwise(LeftT<mshadow::cpu, 2, R>& dst, const RightT<mshadow::cpu, 2, R>& src, const double& temperature = 1.0) {
+        softmax_rowwise<R>(mshadow::expr::MakePlan(dst.T()),
+                           mshadow::expr::MakePlan(src.T()),
+                           dst.size(1),
+                           dst.size(0),
+                           temperature);
+    }
+} // namespace internal
 
 #endif

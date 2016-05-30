@@ -1,0 +1,73 @@
+#include "softmax.h"
+
+#include "dali/array/array.h"
+#include "dali/array/function/function.h"
+#include "dali/array/op.h"
+#include "dali/array/mshadow_extension/kernelized_softmax.h"
+
+template<OPERATOR_T operator_t, int devT, typename T>
+struct SoftmaxFunctionHelper {
+    template <
+        OPERATOR_T var_operator_t = operator_t,
+        typename var_T = T,
+        typename std::enable_if<var_operator_t==OPERATOR_T_EQL>::type* = nullptr
+    >
+    static void run(const TypedArray<devT, T>& out, const TypedArray<devT, T>& a, const int& axis, const double& temperature) {
+        if (axis == a.array.ndim() - 1) {
+            // softmax rowwise acts on last ndim
+            auto out_contig = out.contiguous_d2();
+            internal::softmax_rowwise(out_contig, a.contiguous_d2(), temperature);
+        } else if (axis == 0 && a.array.is_matrix()) {
+            // softmax colwise acts on first dimension (if viewing a matrix)
+            auto out_contig = out.contiguous_d2();
+            internal::softmax_colwise(out_contig, a.contiguous_d2(), temperature);
+        } else {
+            // any other axis can be swapped with the last one to turn the softmax into rowwise operation
+            auto new_a_array = a.array.swapaxes(axis, -1);
+            // we also swap the dimensions of the output to undo the swapaxes when viewed normally
+            // (TODO(jonathan,szymon): during prep it is also possible to make the output pre-swapped
+            // so that computation can run on contiguous data, while result is a swapaxis view -> better performance)
+            auto new_out_array = out.array.swapaxes(axis, -1);
+            // create new typed-arrays to wrap these swapped arrays:
+            TypedArray<devT,T> new_a_typedarray(new_a_array, a.device, new_a_array.shape());
+            TypedArray<devT,T> new_out_typedarray(new_out_array, out.device, new_out_array.shape());
+            // run op as usual (not contiguous anymore)
+            auto out_d2 = new_out_typedarray.d2();
+            internal::softmax_rowwise(out_d2, new_a_typedarray.d2(), temperature);
+        }
+    }
+
+    template <
+        OPERATOR_T var_operator_t = operator_t,
+        typename var_T = T,
+        typename std::enable_if<!(var_operator_t == OPERATOR_T_EQL)>::type* = nullptr
+    >
+    static void run(const TypedArray<devT, T>& out, const TypedArray<devT, T>& a, const int& axis, const double& temperature) {
+        ASSERT2(var_operator_t == OPERATOR_T_EQL, "Softmax can only be computed with operator=");
+        ASSERT2(false, "If asserts above are complete this message should never be displayed");
+    }
+};
+
+struct SoftmaxFunction : public Function<SoftmaxFunction,
+                                                Array,
+                                                Array,
+                                                int, double> {
+    static std::vector<int> deduce_output_bshape(const Array& a, const int& axis, const double& temperature) {
+        ASSERT2(0 <= axis && axis <= a.ndim(),
+            utils::MS() << "Softmax axis must be contained between 0 and dimensionality of input (got axis="
+                        << axis << ", while array.ndim()=" << a.ndim() << ").");
+        return a.bshape();
+    }
+
+    template<OPERATOR_T operator_t, int devT, typename T>
+    void typed_eval(TypedArray<devT, T> out, TypedArray<devT, T> a, const int& axis, const double& temperature) {
+        SoftmaxFunctionHelper<operator_t, devT,T>::run(out, a, axis, temperature);
+    }
+};
+
+namespace op {
+    AssignableArray softmax(const Array& array, int axis, const double& temperature) {
+        if (axis < 0) axis = array.ndim() + axis;
+        return SoftmaxFunction::run(array, axis, temperature);
+    }
+} // namespace op

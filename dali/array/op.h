@@ -10,6 +10,7 @@
 #include "dali/array/op/reshape.h"
 #include "dali/array/op/initializer.h"
 #include "dali/array/op/unary.h"
+#include "dali/array/op/softmax.h"
 #include "dali/array/op/unary_scalar.h"
 #include "dali/utils/print_utils.h"
 

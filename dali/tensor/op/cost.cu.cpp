@@ -109,4 +109,15 @@ namespace tensor_ops {
         return out;
     }
 
+    Tensor cross_entropy(const Tensor& probs, const Tensor& target) {
+        Tensor out(-1.0 * target.w * lazy::log(probs.w));
+
+        if (graph::backprop_enabled())
+            graph::emplace_back([probs, target, out]() {
+                MAYBE_GRAD(probs) <<= -lazy::eltinv(probs.w) * target.w * out.dw;
+                MAYBE_GRAD(target) <<= -lazy::log(probs.w) * out.dw;
+            });
+        return out;
+    }
+
 }  // namespace tensor_ops

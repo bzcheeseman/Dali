@@ -128,3 +128,40 @@ TEST(TensorCostTests, softmax_noncontig_axis) {
         }
     }
 }
+
+
+
+TEST(TensorCostTests, cross_entropy_grad_through_target) {
+    auto functor = [](vector<Tensor> Xs)-> Tensor {
+        return tensor_ops::cross_entropy(
+            tensor_ops::softmax(Xs[0], /*axis=*/0),
+            Xs[1]
+        );
+    };
+
+    EXPERIMENT_REPEAT {
+        Tensor input({10}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
+        Tensor target({10}, initializer::uniform(0.15, 0.85), DTYPE_DOUBLE);
+        ASSERT_TRUE(gradient_same(functor, {input, target}, 1e-1));
+    }
+}
+
+TEST(TensorCostTests, softmax_temperature) {
+    graph::NoBackprop nb;
+
+    Tensor logits({10}, initializer::arange(), DTYPE_DOUBLE);
+    auto uniform = Tensor::fill_like(1.0 / logits.number_of_elements(), logits);
+    // base entropy
+    auto kl = (double) tensor_ops::cross_entropy(tensor_ops::softmax(logits), uniform).sum().w;
+    // distribution becomes more uniform as temperature rises
+    for (int i = 2; i < 11; i++) {
+        double temperature = 1.0 * i;
+        auto hotter_distribution = tensor_ops::softmax(logits, 0, temperature);
+        auto new_kl = (double) tensor_ops::cross_entropy(hotter_distribution, uniform).sum().w;
+        ASSERT_LT(new_kl, kl);
+        kl = new_kl;
+    }
+}
+
+
+

@@ -655,42 +655,6 @@ TEST_F(TensorTests, fast_dropout) {
 //     }
 // }
 //
-// TEST_F(TensorOpsTests, softmax_temperature) {
-//     graph::NoBackprop nb;
-//
-//     auto mat = Mat<R>(10, 1);
-//     for (int i = 0; i < 10; i++) mat.w(i) = i;
-//
-//     auto base_prob = MatOps<R>::softmax_colwise(mat, 1.0);
-//
-//     auto flat = MatOps<R>::softmax_colwise(
-//         MatOps<R>::fill(
-//             Mat<R>::empty_like(mat),
-//             1.0
-//         )
-//     );
-//
-//     auto kl = MatOps<R>::cross_entropy(
-//         base_prob,
-//         flat
-//     ).sum();
-//
-//     // gets flatter with higher temperature
-//     for (int i = 2; i < 11; i++) {
-//         R temperature = 1.0 * i;
-//         auto new_prob = MatOps<R>::softmax_colwise(
-//             mat,
-//             temperature
-//         );
-//         auto new_kl = MatOps<R>::cross_entropy(
-//             new_prob,
-//             flat
-//         ).sum();
-//         ASSERT_TRUE(new_kl.w(0) < kl.w(0));
-//         kl = new_kl;
-//     }
-// }
-//
 // TEST_F(TensorOpsTests, cross_entropy_grad) {
 //     EXPERIMENT_REPEAT {
 //         const int hidden_size = 10;
@@ -841,35 +805,6 @@ TEST_F(TensorTests, fast_dropout) {
 //     }
 // }
 //
-// TEST_F(TensorOpsTests, cross_entropy_grad_thought_target) {
-//     double temperature;
-//     int target;
-//
-//     EXPERIMENT_REPEAT {
-//         const int hidden_size  = 10;
-//         const int num_examples = 3;
-//         const int input_size   = 5;
-//         double temperature = 1.0; // utils::randdouble(0.1, 100);
-//
-//         auto layer = Mat<R>(hidden_size, input_size,     weights<R>::uniform(-2.0, 2.0));
-//         auto input = Mat<R>(input_size,  num_examples,   weights<R>::uniform(-2.0, 2.0));
-//
-//         auto target = Mat<R>(hidden_size,  num_examples, weights<R>::uniform(0.15, 0.85));
-//
-//
-//         auto functor = [target, temperature](vector<Mat<R>> Xs)-> Mat<R> {
-//             auto soft = MatOps<R>::softmax_colwise(
-//                     Xs[1].dot(Xs[0]),
-//                     temperature
-//                 );
-//             return MatOps<R>::cross_entropy(
-//                 soft,
-//                 Xs[2]);
-//         };
-//
-//         ASSERT_TRUE(gradient_same(functor, {input, layer, target}, 1e-1));
-//     }
-// }
 //
 // TEST_F(MatrixTests, row_pluck) {
 //

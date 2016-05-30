@@ -11,5 +11,6 @@
 #include "dali/tensor/op/reshape.h"
 #include "dali/tensor/op/unary.h"
 #include "dali/tensor/op/unary_scalar.h"
+#include "dali/tensor/op/cost.h"
 
 #endif

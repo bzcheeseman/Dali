@@ -10,6 +10,10 @@ namespace tensor_ops {
     Tensor sigmoid_binary_cross_entropy(const Tensor&, const Tensor&);
     Tensor margin_loss(const Tensor&, const int& target, const double& margin, const int& axis);
     Tensor margin_loss(const Tensor&, const Tensor& target, const double& margin, const int& axis);
+    // Tensor softmax_cross_entropy(const Tensor& t, const int& answer_idx, const int& axis=-1);
+    // Tensor softmax_cross_entropy(const Tensor& t, Indexing::Index targets, const int& axis=-1);
+    // Tensor softmax_cross_entropy(const Tensor& t, const Tensor& targets, const int& axis=-1);
+    Tensor softmax(const Tensor&, int axis=-1, const double& temperature=1.0);
 }  // namespace tensor_ops
 
 #endif

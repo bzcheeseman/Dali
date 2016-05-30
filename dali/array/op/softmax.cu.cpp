@@ -14,15 +14,34 @@ struct SoftmaxFunctionHelper {
     >
     static void run(const TypedArray<devT, T>& out, const TypedArray<devT, T>& a, const int& axis, const double& temperature) {
         if (axis == a.array.ndim() - 1) {
-            // softmax rowwise acts on last ndim
+            // case 1: reduce over last dimension
+            if (out.array.contiguous_memory()) {
+                auto out_contig = out.contiguous_d2();
+                if (a.array.contiguous_memory()) {
+                    internal::softmax_rowwise(out_contig, a.contiguous_d2(), temperature);
+                } else {
+                    internal::softmax_rowwise(out_contig, a.d2(), temperature);
+                }
+            } else {
+                auto out_noncontig = out.d2();
+                if (a.array.contiguous_memory()) {
+                    internal::softmax_rowwise(out_noncontig, a.contiguous_d2(), temperature);
+                } else {
+                    internal::softmax_rowwise(out_noncontig, a.d2(), temperature);
+                }
+            }
+        } else if (axis == 0 && a.array.is_matrix() && out.array.contiguous_memory()) {
+            // case 2: reduce over first dimension & input has 2 dimensions
             auto out_contig = out.contiguous_d2();
-            internal::softmax_rowwise(out_contig, a.contiguous_d2(), temperature);
-        } else if (axis == 0 && a.array.is_matrix()) {
-            // softmax colwise acts on first dimension (if viewing a matrix)
-            auto out_contig = out.contiguous_d2();
-            internal::softmax_colwise(out_contig, a.contiguous_d2(), temperature);
+            if (out.array.contiguous_memory()) {
+                internal::softmax_colwise(out_contig, a.contiguous_d2(), temperature);
+            } else {
+                internal::softmax_colwise(out_contig, a.d2(), temperature);
+            }
         } else {
-            // any other axis can be swapped with the last one to turn the softmax into rowwise operation
+            // case 3: move reduction axis to the end, and recurse
+            // (any other axis can be swapped with the last one to turn
+            // the softmax into rowwise operation)
             auto new_a_array = a.array.swapaxes(axis, -1);
             // we also swap the dimensions of the output to undo the swapaxes when viewed normally
             // (TODO(jonathan,szymon): during prep it is also possible to make the output pre-swapped
@@ -31,9 +50,10 @@ struct SoftmaxFunctionHelper {
             // create new typed-arrays to wrap these swapped arrays:
             TypedArray<devT,T> new_a_typedarray(new_a_array, a.device, new_a_array.shape());
             TypedArray<devT,T> new_out_typedarray(new_out_array, out.device, new_out_array.shape());
-            // run op as usual (not contiguous anymore)
-            auto out_d2 = new_out_typedarray.d2();
-            internal::softmax_rowwise(out_d2, new_a_typedarray.d2(), temperature);
+
+            // run op as usual with different axis:
+            int newaxis = a.array.ndim() - 1;
+            run(new_out_typedarray, new_a_typedarray, newaxis, temperature);
         }
     }
 

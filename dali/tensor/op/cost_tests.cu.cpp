@@ -79,3 +79,52 @@ TEST(TensorCostTests, DISABLED_margin_loss_colwise) {
     }
     utils::random::reseed();
 }
+
+TEST(TensorCostTests, softmax_axis) {
+    int row;
+    int axis;
+    double temperature;
+    auto functor = [&row, &axis, &temperature](vector<Tensor> Xs)-> Tensor {
+        return tensor_ops::softmax(
+            Xs[0],
+            /*axis=*/axis,
+            /*temperature=*/temperature
+        ).pluck_axis(axis, row);
+    };
+
+    EXPERIMENT_REPEAT {
+        Tensor A({2, 3, 2}, initializer::uniform(-3.0, 3.0), DTYPE_DOUBLE);
+        for (axis = 0; axis < A.ndim(); axis++) {
+            for (temperature = 0.5; temperature <= 1.5; temperature += 0.5) {
+                row = utils::randint(0, A.shape()[axis] - 1);
+                ASSERT_TRUE(gradient_same(functor, {A}, 1e-5, 1e-5));
+                A.dw.clear();
+            }
+        }
+    }
+}
+
+TEST(TensorCostTests, softmax_noncontig_axis) {
+    int row;
+    int axis;
+    double temperature;
+    auto functor = [&row, &axis, &temperature](vector<Tensor> Xs)-> Tensor {
+        return tensor_ops::softmax(
+            Xs[0],
+            /*axis=*/axis,
+            /*temperature=*/temperature
+        ).pluck_axis(axis, row);
+    };
+
+    EXPERIMENT_REPEAT {
+        Tensor A({2, 3, 2}, initializer::uniform(-3.0, 3.0), DTYPE_DOUBLE);
+        A = A.swapaxes(0, 2);
+        for (axis = 0; axis < A.ndim(); axis++) {
+            for (temperature = 0.5; temperature <= 1.5; temperature += 0.5) {
+                row = utils::randint(0, A.shape()[axis] - 1);
+                ASSERT_TRUE(gradient_same(functor, {A}, 1e-5, 1e-5));
+                A.dw.clear();
+            }
+        }
+    }
+}

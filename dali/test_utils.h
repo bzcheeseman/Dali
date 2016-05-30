@@ -269,6 +269,8 @@ namespace {
             const double& grad_epsilon) {
         Array res_grad(arg.shape(), arg.dtype());
 
+        graph::NoBackprop nb;
+
         for (int i = 0; i < arg.number_of_elements(); i++) {
             const T prev_val    = (T)arg.w(i);
             arg.w(i)            = prev_val + grad_epsilon;
@@ -305,7 +307,7 @@ namespace {
         graph::backward();
         bool worked_out = true;
         // from now on gradient is purely numerical:
-        graph::NoBackprop nb;
+
         int param_idx = 1;
         auto bound_functor = [&functor,&arguments](){return functor(arguments);};
 

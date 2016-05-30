@@ -145,9 +145,9 @@ bool Tensor::is_matrix() const {
     return w.is_matrix();
 }
 Tensor Tensor::vectorlike_to_vector() const {
-    Tensor(w.vectorlike_to_vector(),
-           dw.vectorlike_to_vector(),
-           constant);
+    return Tensor(w.vectorlike_to_vector(),
+                  dw.vectorlike_to_vector(),
+                  constant);
 }
 
 
@@ -347,6 +347,14 @@ Tensor Tensor::transpose() const {
 
 Tensor Tensor::transpose(const std::vector<int>& axes) const {
     return Tensor::from_w_and_dw(w.transpose(axes), dw.transpose(axes), constant);
+}
+
+Tensor Tensor::swapaxes(const int& axis1, const int& axis2) const {
+    return Tensor::from_w_and_dw(
+        w.swapaxes(axis1, axis2),
+        dw.swapaxes(axis1, axis2),
+        constant
+    );
 }
 
 Tensor Tensor::broadcast_scalar_to_ndim(int ndim) const {

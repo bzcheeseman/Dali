@@ -194,6 +194,7 @@ class Tensor {
 
         Tensor broadcast_scalar_to_ndim(int ndim) const;
         Tensor dimshuffle(const std::vector<int>& axes) const;
+        Tensor swapaxes(const int& axis1, const int& axis2) const;
         Tensor transpose(const std::vector<int>& axes) const;
         Tensor transpose() const;
         Tensor ravel() const;

@@ -570,38 +570,6 @@ TEST_F(TensorTests, fast_dropout) {
         ASSERT_TRUE(gradient_same(functor, {A}, 0.0003));
     }
 }
-//
-// TEST_F(TensorOpsTests, softmax_colwise) {
-//     int row_size = 5;
-//     int col_size = 10;
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(row_size, col_size, weights<R>::uniform(-3.0, 3.0));
-//         int row = utils::randint(0, row_size - 1);
-//         auto functor = [row](vector<Mat<R>> Xs)-> Mat<R>{
-//             auto soft = MatOps<R>::softmax_colwise(Xs[0]);
-//             //soft.print();
-//             auto g = soft[row];
-//             //g.print();
-//             return g;
-//         };
-//         ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-3));
-//     }
-// }
-//
-// TEST_F(TensorOpsTests, softmax_rowwise) {
-//     int row_size = 5;
-//     int col_size = 10;
-//     EXPERIMENT_REPEAT {
-//         auto A = Mat<R>(row_size, col_size, weights<R>::uniform(-3.0, 3.0));
-//         int col = utils::randint(0, col_size - 1);
-//         auto functor = [col](vector<Mat<R>> Xs)-> Mat<R>{
-//             auto soft = MatOps<R>::softmax_rowwise(Xs[0]);
-//             auto g = soft.T()[col];
-//             return g;
-//         };
-//         ASSERT_TRUE(gradient_same(functor, {A}, 1e-3));
-//     }
-// }
 
 // TEST_F(TensorOpsTests, circular_convolution) {
 //     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {

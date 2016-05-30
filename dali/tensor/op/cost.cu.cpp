@@ -91,5 +91,22 @@ namespace tensor_ops {
         return Tensor();
     }
 
+    Tensor softmax(const Tensor& t, int axis, const double& temperature) {
+        if (axis < 0) axis = t.ndim() + axis;
+
+        Tensor out(op::softmax(t.w, axis, temperature));
+
+        if (graph::backprop_enabled() && !t.constant)
+            graph::emplace_back([t, out, axis, temperature]() {
+                Array softmax_times_grad_summed(lazy::sum(out.w * out.dw, axis));
+                auto expr = (out.w * out.dw) - (out.w * softmax_times_grad_summed.insert_broadcast_axis(axis));
+                if (std::abs(temperature - 1.0) < 1e-6) {
+                    MAYBE_GRAD(t) <<= expr;
+                } else {
+                    MAYBE_GRAD(t) <<= expr / temperature;
+                }
+            });
+        return out;
+    }
 
 }  // namespace tensor_ops

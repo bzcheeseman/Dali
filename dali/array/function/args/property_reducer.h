@@ -41,7 +41,7 @@ struct PropertyEqualForAllArgsReducer {
         std::tie(candidate, ready) = candidate_and_state;
         if (ready) {
             ASSERT2(candidate == arg_property, utils::MS() << "All arguments should be of the same " << Property::name << " (MISMATCH between "
-                                                          << candidate << " and " << arg_property << ")");
+                                                          << Property::pretty_name(candidate) << " and " << Property::pretty_name(arg_property) << ")");
             return candidate_and_state;
         } else {
             return std::make_tuple(arg_property, true);
@@ -68,7 +68,7 @@ struct PropertyEqualForAllArrayArgsReducer {
         std::tie(candidate, ready) = candidate_and_state;
         if (ready) {
             ASSERT2(candidate == arg_property, utils::MS() << "All arguments should be of the same " << Property::name << " (MISMATCH between "
-                                                          << candidate << " and " << arg_property << ")");
+                                                          << Property::pretty_name(candidate) << " and " << Property::pretty_name(arg_property) << ")");
             return candidate_and_state;
         } else {
             return std::make_tuple(arg_property, true);
@@ -156,6 +156,8 @@ struct ShapeProperty {
     static property_t extract(const T& x) {
         return x.shape();
     }
+
+    static property_t pretty_name(const property_t&);
 };
 
 struct DTypeProperty {
@@ -166,6 +168,8 @@ struct DTypeProperty {
     static property_t extract(const T& x) {
         return x.dtype();
     }
+
+    static std::string pretty_name(const property_t&);
 };
 
 typedef PropertyEqualForAllArgsReducer<DTypeProperty> DTypeEqualForAllArgsReducer;

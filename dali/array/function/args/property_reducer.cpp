@@ -36,7 +36,13 @@ auto BShapeCompatibleForAllArrayArgsReducer::reduce_step(
 }
 
 
+std::vector<int> ShapeProperty::pretty_name(const std::vector<int>& shape) {
+    return shape;
+}
 
+std::string DTypeProperty::pretty_name(const DType& dtype) {
+    return dtype_to_name(dtype);
+}
 
 std::string ShapeProperty::name = "shape";
 std::string DTypeProperty::name = "dtype";

@@ -177,7 +177,6 @@ namespace internal {
             dim3 tiles(dst.size(0));
             // block size is a matrix column
             dim3 within_tile(num_threads);
-            mshadow::utils::Check(dst.shape_ == src.shape_, "Softmax: shape mismatch");
             mshadow::cuda::CheckLaunchParam(tiles, within_tile, "Softmax");
             cudaStream_t stream = mshadow::Stream<mshadow::gpu>::GetStream(dst.stream_);
 

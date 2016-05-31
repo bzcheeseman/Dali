@@ -1,6 +1,7 @@
 # For easy to do cpu builds
 build/
 build_cpu/
+build_gpu/
 
 # Compiled source #
 ###################

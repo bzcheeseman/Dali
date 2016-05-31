@@ -12,16 +12,16 @@ struct LazyBinary : public LazyFunction<LazyBinary<Functor,LeftT,RightT>, LeftT,
             right(right_) {
     }
 
-    template<int devT,typename T>
-    auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape) const ->
+    template<int devT,typename T, typename WrappedArrayT>
+    auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape, ArrayTransformerT<WrappedArrayT> wrap_array) const ->
             decltype(
                 mshadow::expr::F<Functor<T>>(
-                     MshadowWrapper<devT,T,decltype(left)>::wrap(left, device, output_shape),
-                     MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape)
+                     MshadowWrapper<devT,T,decltype(left)>::wrap(left, device, output_shape, wrap_array),
+                     MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape, wrap_array)
                 )
             ) {
-        auto left_expr  = MshadowWrapper<devT,T,decltype(left)>::wrap(left,  device, output_shape);
-        auto right_expr = MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape);
+        auto left_expr  = MshadowWrapper<devT,T,decltype(left)>::wrap(left,  device, output_shape, wrap_array);
+        auto right_expr = MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape, wrap_array);
         return mshadow::expr::F<Functor<T>>(left_expr, right_expr);
     }
 };

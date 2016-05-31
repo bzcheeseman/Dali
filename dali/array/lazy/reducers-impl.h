@@ -20,17 +20,17 @@ struct LazyAllReducer : public LazyFunction<LazyAllReducer<Functor,ExprT>, ExprT
             expr(expr_) {
     }
 
-    template<int devT, typename T>
-    auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape) const ->
+    template<int devT, typename T, typename WrappedArrayT>
+    auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape, ArrayTransformerT<WrappedArrayT> wrap_array) const ->
             decltype(
                 mshadow::expr::reduce_all<Functor>(
-                    MshadowWrapper<devT,T,decltype(expr)>::wrap(expr, device, output_shape)
+                    MshadowWrapper<devT,T,decltype(expr)>::wrap(expr, device, output_shape,  wrap_array)
                 )
             ) {
 
         auto left_expr  =
-                MshadowWrapper<devT, T, decltype(expr)>::wrap(
-                        expr, device, bshape2shape(expr.bshape())
+                MshadowWrapper<devT,T,decltype(expr)>::wrap(
+                        expr, device, bshape2shape(expr.bshape()), wrap_array
                 );
         // auto ret = Functor::reduce(left_expr);
         return mshadow::expr::reduce_all<Functor>(left_expr);

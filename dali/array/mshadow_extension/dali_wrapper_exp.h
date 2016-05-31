@@ -69,6 +69,7 @@ MakeDaliWrapperExp(const mshadow::Tensor<Device, srcdim, DType> &src, const Arra
     return DaliWrapperExp<Device, srcdim, DType>(src.self(), dali_src);
 }
 
+
 namespace mshadow {
     namespace expr {
 
@@ -93,8 +94,8 @@ namespace mshadow {
             explicit Plan(const DaliWrapperExp<Device, srcdim, DType> &e) :
                     src_(MakePlan(e.src_)),
                     ndim(e.array.ndim()),
-                    has_strides(!e.array.strides().empty()) {
-
+                    has_strides(!e.array.strides().empty()),
+                    src_trailing_dim(e.src_.stride_) {
                 for (int i = 0; i < ndim; ++i) {
                     shape[i] = e.array.shape()[i];
                     if (has_strides) strides[i] = e.array.strides()[i];
@@ -102,14 +103,25 @@ namespace mshadow {
             }
 
             MSHADOW_XINLINE void map_indices_using_stride(index_t& new_i, index_t& new_j, index_t i, index_t j) const {
-                index_t i_derived_offset = 0;
+                j += i * src_trailing_dim;
 
-                for (int dim_idx = ndim - 2; dim_idx >= 0; --dim_idx) {
-                    i_derived_offset += (i % shape[dim_idx]) * strides[dim_idx];
-                    i /=  shape[dim_idx];
+                new_i = 0;
+                new_j = 0;
+                for (int dim_idx = ndim - 1; dim_idx >= 0; --dim_idx) {
+                    new_j += (j % shape[dim_idx]) * strides[dim_idx];
+                    j /=  shape[dim_idx];
                 }
-                new_i = i_derived_offset / shape[ndim - 1];
-                new_j = i_derived_offset % shape[ndim - 1] + j * strides[ndim - 1];
+
+                int old_new_j = new_j;
+                if (srcdim > 1) {
+                    if (new_j >= 0) {
+                        new_i = new_j / src_trailing_dim;
+                        new_j = new_j % src_trailing_dim;
+                    } else {
+                        new_i = -((-new_j) / src_trailing_dim);
+                        new_j = -((-new_j) % src_trailing_dim);
+                    }
+                }
             }
 
             MSHADOW_XINLINE DType& REval(index_t i, index_t j) {
@@ -128,6 +140,7 @@ namespace mshadow {
                 } else {
                     index_t new_i, new_j;
                     map_indices_using_stride(new_i, new_j, i, j);
+
                     return src_.Eval(new_i, new_j);
                 }
             }
@@ -137,6 +150,7 @@ namespace mshadow {
             int ndim;
             int shape[DALI_MAX_STRIDED_DIMENSION];
             int strides[DALI_MAX_STRIDED_DIMENSION];
+            int src_trailing_dim;
             const bool has_strides;
         };
 

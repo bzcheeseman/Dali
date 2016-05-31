@@ -17,75 +17,95 @@
 //  in cpp files whereever possible.                                          //
 ////////////////////////////////////////////////////////////////////////////////
 
+template<typename WrappedArrayT>
+using ArrayTransformerT = std::function<WrappedArrayT(const Array&,
+                                                      const memory::Device&,
+                                                      const std::vector<int>&)>;
 
-template<int devT,typename T, typename ExprT>
+template<int devT, typename T, int ndim>
+auto transform_array(const Array& array,
+                     const memory::Device& device,
+                     const std::vector<int>& output_shape) ->
+        decltype(TypedArray<devT,T>(array, device, output_shape).template d<ndim>()) {
+    return TypedArray<devT,T>(array, device, output_shape).template d<ndim>();
+};
+
+template<int devT, typename T, int ndim>
+auto make_transform_array() -> ArrayTransformerT<decltype(TypedArray<devT,T>(Array(), memory::Device::cpu(), std::vector<int>()).template d<ndim>())> {
+    return &transform_array<devT,T,ndim>;
+}
+
+template<int devT, typename T, int ndim>
+auto transform_array_collapse_trailing(const Array& array,
+                     const memory::Device& device,
+                     const std::vector<int>& output_shape) ->
+        decltype(TypedArray<devT,T>(array, device, output_shape).template d<ndim>()) {
+    return TypedArray<devT,T>(array, device, output_shape).template d<ndim>(memory::AM_READONLY, false);
+};
+
+
+template<int devT, typename T, int ndim>
+auto make_transform_array_collapse_trailing() -> ArrayTransformerT<decltype(TypedArray<devT,T>(Array(), memory::Device::cpu(), std::vector<int>()).template d<ndim>())> {
+    return &transform_array_collapse_trailing<devT,T,ndim>;
+}
+
+
+template<int devT, typename T, typename ExprT>
 struct MshadowWrapper {
-    static inline auto wrap(const ExprT& sth, memory::Device device, const std::vector<int>& output_shape) ->
-            decltype(sth.template to_mshadow_expr<devT,T>(device, output_shape)) {
-        return sth.template to_mshadow_expr<devT,T>(device, output_shape);
+    template<typename WrappedArrayT>
+    static inline auto wrap(const ExprT& sth,
+                            memory::Device device,
+                            const std::vector<int>& output_shape,
+                            ArrayTransformerT<WrappedArrayT> wrap_array) ->
+            decltype(sth.template to_mshadow_expr<devT,T>(device, output_shape, wrap_array)) {
+        return sth.template to_mshadow_expr<devT,T>(device, output_shape, wrap_array);
     }
 
-    static inline auto wrapd1(const ExprT& sth, memory::Device device, const std::vector<int>& output_shape) ->
-            decltype(sth.template to_mshadow_expr<devT,T>(device, output_shape)) {
-        return sth.template to_mshadow_expr<devT,T>(device, output_shape);
-    }
-
-    static inline auto wrap_preserve_leading(const ExprT& sth, memory::Device device, const std::vector<int>& output_shape) ->
-            decltype(sth.template to_mshadow_expr<devT,T>(device, output_shape)) {
-        return sth.template to_mshadow_expr<devT,T>(device, output_shape);
-    }
 };
 
 template<int devT,typename T>
 struct MshadowWrapper<devT,T,Array> {
-    static inline auto wrap(const Array& array, memory::Device device, const std::vector<int>& output_shape) ->
-            decltype(TypedArray<devT,T>(array, device, output_shape).d2()) {
-        return TypedArray<devT,T>(array, device, output_shape).d2();
-    }
-
-    static inline auto wrapd1(const Array& array, memory::Device device, const std::vector<int>& output_shape) ->
-            decltype(TypedArray<devT,T>(array, device, output_shape).d1()) {
-        return TypedArray<devT,T>(array, device, output_shape).d1();
-    }
-
-    static inline auto wrap_preserve_leading(const Array& array, memory::Device device, const std::vector<int>& output_shape) ->
-            decltype(TypedArray<devT,T>(array, device, output_shape).d2()) {
-
-        if (array.ndim() == 2 || array.ndim() == 0) {
-            return TypedArray<devT,T>(array, device, output_shape).d2();
-        } else {
-            int subtensor_volume = 1;
-            for (int i = 1; i < array.ndim(); i++) {
-                subtensor_volume *= array.shape()[i];
-            }
-            // TODO(jonathan): review edge-case that could occur if the collapse of lower dimensions
-            //                 is not possible for a given array.
-            std::vector<int> new_shape = {array.shape()[0], subtensor_volume};
-
-            return TypedArray<devT,T>(
-                array.copyless_reshape(new_shape),
-                device,
-                output_shape
-            ).d2();
-        }
+    template<typename WrappedArrayT>
+    static inline WrappedArrayT wrap(const Array& array,
+                                  memory::Device device,
+                                  const std::vector<int>& output_shape,
+                                  ArrayTransformerT<WrappedArrayT> wrap_array) {
+        return wrap_array(array, device, output_shape);
     }
 };
 
 template<int devT,typename T>
 struct MshadowWrapper<devT,T,float> {
-    static inline T wrap(const float& scalar, memory::Device device, const std::vector<int>& output_shape) { return (T)scalar; }
+    template<typename WrappedArrayT>
+    static inline T wrap(const float& scalar,
+                         memory::Device,
+                         const std::vector<int>&,
+                         ArrayTransformerT<WrappedArrayT>) {
+        return (T)scalar;
+    }
 };
 
 template<int devT,typename T>
 struct MshadowWrapper<devT,T,double> {
-    static inline T wrap(const double& scalar, memory::Device device, const std::vector<int>& output_shape) { return (T)scalar; }
+    template<typename WrappedArrayT>
+    static inline T wrap(const double& scalar,
+                         memory::Device,
+                         const std::vector<int>&,
+                         ArrayTransformerT<WrappedArrayT>) {
+        return (T)scalar;
+    }
 };
 
 template<int devT,typename T>
 struct MshadowWrapper<devT,T,int> {
-    static inline T wrap(const int& scalar, memory::Device device, const std::vector<int>& output_shape) { return (T)scalar; }
+    template<typename WrappedArrayT>
+    static inline T wrap(const int& scalar,
+                         memory::Device,
+                         const std::vector<int>&,
+                         ArrayTransformerT<WrappedArrayT>) {
+        return (T)scalar;
+    }
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //                             LAZY_FUNCTION                                  //
@@ -93,12 +113,13 @@ struct MshadowWrapper<devT,T,int> {
 
 
 template<typename Class, typename... Args>
-struct BaseLazyFunction: public LazyExp<Class> {
-    static const int evaluation_dim;
+struct LazyFunction: public LazyExp<Class> {
+    static const int  evaluation_dim;
+    static const bool collapse_leading;
     std::vector<int> bshape_;
     DType dtype_;
 
-    BaseLazyFunction(Args... args);
+    LazyFunction(Args... args);
 
     static std::vector<int> lazy_output_bshape(const Args&... args);
 
@@ -108,17 +129,6 @@ struct BaseLazyFunction: public LazyExp<Class> {
 
     const DType& dtype() const;
 };
-
-template<typename Class, typename... Args>
-struct LazyFunction : public BaseLazyFunction<Class, Args...> {
-    using BaseLazyFunction<Class, Args...>::BaseLazyFunction;
-};
-
-// template<typename Class, typename... Args>
-// struct LazyFunctionNonRecusive : public BaseLazyFunction<Class, Args...> {
-//     using BaseLazyFunction<Class, Args...>::BaseLazyFunction;
-// };
-
 
 #include "dali/array/function/lazy_function-impl.h"
 

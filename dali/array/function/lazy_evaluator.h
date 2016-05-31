@@ -53,7 +53,11 @@ struct LazyEvaluator : public Function<LazyEvaluator<LazyExpr>, Array, LazyExpr>
 
         operator_assign<operator_t, LazyExpr::evaluation_dim>(
             out,
-            MshadowWrapper<devT,T,decltype(expr)>::wrap(expr, out.device, out.array.shape())
+            MshadowWrapper<devT,T,decltype(expr)>::wrap(expr,
+                                                        out.device,
+                                                        out.array.shape(),
+                                                        make_transform_array<devT,T,LazyExpr::evaluation_dim>()),
+            LazyExpr::collapse_leading
         );
     }
 };

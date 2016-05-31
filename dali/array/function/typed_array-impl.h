@@ -4,19 +4,23 @@
 
 namespace internal {
     template<int dstdim>
-    mshadow::Shape<dstdim> canonical_reshape(const std::vector<int>& src_shape) {
+    mshadow::Shape<dstdim> canonical_reshape(const std::vector<int>& src_shape,
+                                             bool collapse_leading) {
         mshadow::Shape<dstdim> res;
         for (int i = 0; i < dstdim; i++) res[i] = 1;
 
-        int residual_shape = 1;
-        for (int i = 0; i < src_shape.size(); ++i) {
-            residual_shape *= src_shape[i];
-            int dst_index = i - src_shape.size() + dstdim;
-            if (dst_index >= 0) {
-                res[dst_index] = residual_shape;
-                residual_shape = 1;
+        int srcdim = src_shape.size();
+
+        if (collapse_leading) {
+            for (int i = 0; i < srcdim; ++i) {
+                res[std::max(dstdim - 1 - i, 0)] *= src_shape[srcdim - 1 - i];
+            }
+        } else {
+            for (int i = 0; i < srcdim; ++i) {
+                res[std::min(i, dstdim - 1)] *= src_shape[i];
             }
         }
+
         return res;
     }
 }
@@ -29,25 +33,25 @@ namespace internal {
 namespace internal {
     template<typename MDevT, typename T>
     template<int dim>
-    mshadow::Tensor<MDevT, dim, T> TypedArrayShared<MDevT,T>::mtensor(memory::AM access_mode) const {
+    mshadow::Tensor<MDevT, dim, T> TypedArrayShared<MDevT,T>::mtensor(memory::AM access_mode, bool collapse_leading) const {
         return mshadow::Tensor<MDevT, dim, T>(
             ptr_internal(access_mode),
-            internal::canonical_reshape<dim>(array.shape())
+            internal::canonical_reshape<dim>(array.shape(), collapse_leading)
         );
     }
 
     template<typename MDevT, typename T>
     template<int dim>
-    mshadow::Tensor<MDevT, dim, T> TypedArrayShared<MDevT,T>::contiguous_d(memory::AM access_mode) const {
+    mshadow::Tensor<MDevT, dim, T> TypedArrayShared<MDevT,T>::contiguous_d(memory::AM access_mode, bool collapse_leading) const {
         ASSERT2(this->array.contiguous_memory(),
             "contiguous_d can only be called on a TypedArray that has contiguous memory.");
-        return mtensor<dim>(access_mode);
+        return mtensor<dim>(access_mode, collapse_leading);
     }
 
     template<typename MDevT, typename T>
     template<int dim>
-    DaliWrapperExp<MDevT, dim, T> TypedArrayShared<MDevT,T>::d(memory::AM access_mode) const {
-        return MakeDaliWrapperExp(mtensor<dim>(access_mode), array);
+    DaliWrapperExp<MDevT, dim, T> TypedArrayShared<MDevT,T>::d(memory::AM access_mode, bool collapse_leading) const {
+        return MakeDaliWrapperExp(mtensor<dim>(access_mode, collapse_leading), array);
     }
 
 }  // namespace internal

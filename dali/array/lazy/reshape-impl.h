@@ -7,7 +7,9 @@
 
 template<typename SrcExp, typename IndexExp>
 struct LazyTake : public LazyFunction<LazyTake<SrcExp, IndexExp>, SrcExp, IndexExp> {
-    static const int evaluation_dim;
+    static const int  evaluation_dim;
+    static const bool collapse_leading;
+
     SrcExp src;
     IndexExp indices;
 
@@ -36,16 +38,20 @@ struct LazyTake : public LazyFunction<LazyTake<SrcExp, IndexExp>, SrcExp, IndexE
             src(src_), indices(indices_) {
     }
 
-    template<int devT, typename T>
-    auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape) const ->
+    template<int devT, typename T, typename WrappedArrayT>
+    auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape, ArrayTransformerT<WrappedArrayT> wrap_array) const ->
             decltype(mshadow::expr::take(
-                MshadowWrapper<devT, int, decltype(indices)>::wrapd1(indices, device, output_shape),
-                MshadowWrapper<devT, T, decltype(src)>::wrap(src, device, output_shape)
+                MshadowWrapper<devT, int, decltype(indices)>::wrap(indices, device, output_shape, make_transform_array<devT,int,(int)1>()),
+                MshadowWrapper<devT, T, decltype(src)>::wrap(src, device, output_shape, make_transform_array_collapse_trailing<devT,T,(int)2>())
             )) {
 
+        // TODO(szymon): Notice how this op completely ignores output shape? This can result in some catastrophic errors during broadcasting
+        //               but this is just a manifestation of a bigger problem - we need to make API to dali function more flexible and simpler
+        //               to use, so that automated broadcasting by default does something correct and inefficient and then we can explictily
+        //               if out the cases where we do some extra thinking to gain efficiency. 
         return mshadow::expr::take(
-            MshadowWrapper<devT, int, decltype(indices)>::wrapd1(indices, device, indices.bshape()),
-            MshadowWrapper<devT, T, decltype(src)>::wrap_preserve_leading(src, device, src.bshape())
+            MshadowWrapper<devT, int, decltype(indices)>::wrap(indices, device, indices.bshape(), make_transform_array<devT,int,(int)1>()),
+            MshadowWrapper<devT, T, decltype(src)>::wrap(src, device, src.bshape(), make_transform_array_collapse_trailing<devT,T,(int)2>())
         );
     }
 };
@@ -53,6 +59,10 @@ struct LazyTake : public LazyFunction<LazyTake<SrcExp, IndexExp>, SrcExp, IndexE
 
 template<typename SrcExp, typename IndexExp>
 const int LazyTake<SrcExp, IndexExp>::evaluation_dim = 2;
+
+
+template<typename SrcExp, typename IndexExp>
+const bool LazyTake<SrcExp, IndexExp>::collapse_leading = false;
 
 
 namespace lazy {

@@ -50,13 +50,13 @@ struct BaseLazyAxisReducer : public BaseClass<Class, ExprT, int, bool> {
                 utils::MS() << "Reduction axis (" << reduce_axis << ") must be less than input's ndims (" << expr_.bshape().size() << ")");
     }
 
-    template<int devT,typename T>
-    auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape) const ->
+    template<int devT,typename T, typename WrappedArrayT>
+    auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape, ArrayTransformerT<WrappedArrayT> wrap_array) const ->
             decltype(
                 mshadow::expr::reshape(
                     mshadow::expr::reduce_with_axis<Functor, return_indices>(
                         wrap_3d_around_axis(
-                            MshadowWrapper<devT, T, decltype(expr)>::wrap(expr, device, output_shape),
+                            MshadowWrapper<devT, T, decltype(expr)>::wrap(expr, device, output_shape, wrap_array),
                             output_shape,
                             reduce_axis
                         ),
@@ -88,7 +88,7 @@ struct BaseLazyAxisReducer : public BaseClass<Class, ExprT, int, bool> {
 
         auto wrapped_expr  =
                 MshadowWrapper<devT, T, decltype(expr)>::wrap(
-                        expr, device, new_expr_shape
+                        expr, device, new_expr_shape, wrap_array
                 );
         auto result_expr = mshadow::expr::reduce_with_axis<Functor, return_indices>(
             wrap_3d_around_axis(wrapped_expr, new_expr_shape, reduce_axis),

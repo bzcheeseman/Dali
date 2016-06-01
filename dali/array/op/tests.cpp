@@ -123,6 +123,49 @@ TEST(ArrayOpsTests, ascontiguousarray) {
     EXPECT_NE(x.memory(), x_T.memory());
 }
 
+TEST(ArrayOpsTests, add_vector) {
+    int lazy_evaluator_calls = 0;
+    auto callback_handle = debug::lazy_evaluation_callback.register_callback([&](const Array&) {
+        lazy_evaluator_calls += 1;
+    });
+
+    Array res = op::add({
+        Array::ones({1, 2}),
+        Array::ones({2})[Broadcast()],
+        Array::ones({1,1, 2})[0],
+        Array::ones({1, 2})
+    });
+
+    // one single function call performs all the additions above:
+    ASSERT_EQ(lazy_evaluator_calls, 1);
+
+
+    EXPECT_EQ(std::vector<int>({1, 2}), res.shape());
+    EXPECT_EQ(4, (int)res(0));
+    EXPECT_EQ(4, (int)res(1));
+
+    lazy_evaluator_calls = 0;
+
+    Array res2 = op::add({
+        Array::ones({1, 2}),
+        Array::ones({2})[Broadcast()],
+        Array::ones({1,1, 2})[0],
+        Array::ones({1, 2}),
+        Array::ones({1, 2}),
+        Array::ones({1, 2})
+    });
+
+    EXPECT_EQ(6, (int)res2(0));
+    EXPECT_EQ(6, (int)res2(1));
+
+    // Current add-vector will eagerly grab up to 5 arrays at a time. If there are more, then
+    // operation may perform more than one evaluation:
+    ASSERT_EQ(lazy_evaluator_calls, 2);
+
+    debug::lazy_evaluation_callback.deregister_callback(callback_handle);
+}
+
+
 TEST(ArrayOpsTests, arange) {
     Array x_float({2,3,3}, DTYPE_FLOAT);
     x_float = initializer::arange();

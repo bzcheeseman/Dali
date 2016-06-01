@@ -5,6 +5,7 @@
 
 namespace tensor_ops {
     Tensor add(const Tensor&, const Tensor&);
+    Tensor add(const std::vector<Tensor>& tensors);
     Tensor sub(const Tensor&, const Tensor&);
     Tensor eltmul(const Tensor&, const Tensor&);
     Tensor eltdiv(const Tensor&, const Tensor&);

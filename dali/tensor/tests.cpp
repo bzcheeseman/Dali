@@ -140,15 +140,15 @@ TEST_F(TensorTests, max_scalar) {
     }
 }
 
-TEST_F(MatrixTests, addition_vector) {
-    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+TEST_F(TensorTests, addition_vector) {
+    auto functor = [](vector<Tensor> Xs)-> Tensor {
         return tensor_ops::add({ Xs[0], Xs[1], Xs[2] });
     };
     EXPERIMENT_REPEAT {
-        auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
-        auto B = Mat<R>(10, 20,  weights<R>::uniform(0.5));
-        auto C = Mat<R>(10, 20,  weights<R>::uniform(0.5));
-        ASSERT_TRUE(gradient_same(functor, {A, B, C}, 1e-5, DEFAULT_GRAD_EPS, true));
+        Tensor A({1, 2, 3}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
+        Tensor B({1, 2, 3}, initializer::uniform(-0.5, 0.5), DTYPE_DOUBLE);
+        Tensor C({1, 2, 3}, initializer::uniform(-0.5, 0.5), DTYPE_DOUBLE);
+        ASSERT_TRUE(gradient_same(functor, {A, B, C}, 1e-4));
     }
 }
 //

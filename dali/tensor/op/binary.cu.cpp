@@ -16,6 +16,22 @@ namespace tensor_ops {
         return out;
     }
 
+    Tensor add(const std::vector<Tensor>& tensors) {
+        std::vector<Array> arrays(tensors.size());
+        for (const auto& t : tensors) {
+            arrays.emplace_back(t.dw);
+        }
+        Tensor out(op::add(arrays));
+
+        if (graph::backprop_enabled())
+            graph::emplace_back([tensors, out]() {
+                for (const auto& t : tensors) {
+                    MAYBE_GRAD(t) <<= out.dw;
+                }
+            });
+        return out;
+    }
+
     Tensor sub(const Tensor& a, const Tensor& b) {
         Tensor out(op::sub(a.w, b.w));
 

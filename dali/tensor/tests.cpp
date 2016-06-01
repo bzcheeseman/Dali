@@ -114,23 +114,17 @@ TEST_F(TensorTests, sigmoid_gpu_vs_cpu) {
     }
 }
 
-// TEST_F(MatrixTests, identity_init) {
-//     R init_val = 2.0;
-//     auto A = Mat<R>(10, 10, weights<R>::eye(init_val));
-//     EXPECT_MAT_ON_GPU(A);
-//     for (int i = 0; i < A.dims(0); i++) {
-//         for (int j = 0; j < A.dims(1); j++) {
-//             if (i == j) {
-//                 EXPECT_TRUE(A.w(i, j) == init_val);
-//             } else {
-//                 EXPECT_TRUE(A.w(i, j) == 0.0);
-//             }
-//         }
-//     }
-// }
-//
-//
-//
+TEST_F(TensorTests, identity_init) {
+    double init_val = 2.0;
+    Tensor A({10, 10}, initializer::eye(init_val));
+    EXPECT_MAT_ON_GPU(A);
+    for (int i = 0; i < A.shape()[0]; i++) {
+        for (int j = 0; j < A.shape()[0]; j++) {
+            EXPECT_EQ(i == j ? init_val : 0.0, (int)((Tensor)A[i][j]).w);
+        }
+    }
+}
+
 // TEST_F(MatrixTests, max_scalar) {
 //     int input_size = 5;
 //     int hidden_size = 3;

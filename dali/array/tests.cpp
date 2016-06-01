@@ -571,6 +571,20 @@ TEST(ArrayIOTests, crazy_striding_with_reductions2) {
     EXPECT_EQ(12, (int)z);
 }
 
+TEST(ArrayIOTests, detect_types_on_load) {
+    auto loaded_ints = Array::load(
+        utils::dir_join({STR(DALI_DATA_DIR), "tests", "vals_int.npy"})
+    );
+    EXPECT_EQ(DTYPE_INT32, loaded_ints.dtype());
+    auto loaded_floats = Array::load(
+        utils::dir_join({STR(DALI_DATA_DIR), "tests", "vals_float.npy"})
+    );
+    EXPECT_EQ(DTYPE_FLOAT, loaded_floats.dtype());
+    auto loaded_doubles = Array::load(
+        utils::dir_join({STR(DALI_DATA_DIR), "tests", "vals_double.npy"})
+    );
+    EXPECT_EQ(DTYPE_DOUBLE, loaded_doubles.dtype());
+}
 
 TEST(ArrayIOTests, load_fortran) {
     auto arange = Array::load(

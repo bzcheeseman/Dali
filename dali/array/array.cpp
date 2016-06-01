@@ -203,26 +203,42 @@ Array Array::ones_like(const Array& other) {
     }
 }
 
-Array load_npy_from_npyarray(const cnpy::NpyArray& arr) {
-    DType dtype;
-    // TODO(jonathan): here word size is a poor-man's measure
-    // of the saved data. Usually we want to know if the memory
-    // saved was of type float, double, int, long, etc... and then
-    // perform the adequate conversions to our dtypes (or fail)
-    // however here we use the size of one double or float to determine
-    // if the word size is of some type (but not that:
-    // sizeof(int64) == sizeof(double) and sizeof(float) == sizeof(int32))
-    if (arr.word_size == sizeof(double)) {
-        dtype = DTYPE_DOUBLE;
-    } else if (arr.word_size == sizeof(float)) {
-        dtype = DTYPE_FLOAT;
+/* NPY detect Dtype
+ * ================
+ * Use the numpy dtype chars (i -> integer type, f -> float type)
+ * and the size of a word (e.g. sizeof(float) = 4), determine the
+ * right Dali dtype.
+ */
+DType npy_detect_dtype(const char& dtype, const int& word_size) {
+    if (dtype == 'f') {
+        if (word_size == sizeof(double)) {
+            return DTYPE_DOUBLE;
+        } else if (word_size == sizeof(float)) {
+            return DTYPE_FLOAT;
+        } else {
+            ASSERT2(word_size == sizeof(double) || word_size == sizeof(float),
+                utils::MS() << "attempted to load a npy array of floats with dtype different from float or doubles (word size = "
+                            << word_size << ")."
+            );
+        }
+    } else if (dtype == 'i') {
+        if (word_size == sizeof(int32_t)) {
+            return DTYPE_INT32;
+        } else {
+            ASSERT2(word_size == sizeof(double) || word_size == sizeof(float),
+                utils::MS() << "can only load numpy arrays with dtype float or double (got word_size = "
+                            << word_size << ").");
+        }
     } else {
-        ASSERT2(arr.word_size == sizeof(double) || arr.word_size == sizeof(float),
-            utils::MS() << "can only load numpy arrays with dtype float or double (got word_size = "
-                        << arr.word_size << ").");
-        return Array();
+        ASSERT2(dtype == 'i' || dtype == 'f',
+            utils::MS() << "attempted to load a npy array with dtype different from float or int (got dtype = "
+                        << dtype << ").");
     }
+    return DTYPE_FLOAT;
+}
 
+Array load_npy_from_npyarray(const cnpy::NpyArray& arr) {
+    auto dtype = npy_detect_dtype(arr.dtype, arr.word_size);
     std::vector<int> shape(arr.shape.size());
     for (int i = 0; i < arr.shape.size(); i++) {
         shape[i] = arr.shape[i];

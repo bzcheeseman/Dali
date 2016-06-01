@@ -21,6 +21,7 @@ namespace cnpy {
     struct NpyArray {
         char* data;
         std::vector<unsigned int> shape;
+        char dtype;
         unsigned int word_size;
         bool fortran_order;
         void destruct() {delete[] data;}
@@ -28,10 +29,8 @@ namespace cnpy {
 
     NpyArray load_the_npy_file(FILE*);
 
-    struct npz_t : public std::map<std::string, NpyArray>
-    {
-        void destruct()
-        {
+    struct npz_t : public std::map<std::string, NpyArray> {
+        void destruct() {
             npz_t::iterator it = this->begin();
             for(; it != this->end(); ++it) (*it).second.destruct();
         }
@@ -40,8 +39,16 @@ namespace cnpy {
     char BigEndianTest();
     char map_type(const std::type_info& t);
     template<typename T> std::vector<char> create_npy_header(const T* data, const unsigned int* shape, const unsigned int ndims);
-    void parse_npy_header(FILE* fp,unsigned int& word_size, unsigned int*& shape, unsigned int& ndims, bool& fortran_order);
-    void parse_zip_footer(FILE* fp, unsigned short& nrecs, unsigned int& global_header_size, unsigned int& global_header_offset);
+    void parse_npy_header(FILE* fp,
+                          char& type,
+                          unsigned int& word_size,
+                          unsigned int*& shape,
+                          unsigned int& ndims,
+                          bool& fortran_order);
+    void parse_zip_footer(FILE* fp,
+                          unsigned short& nrecs,
+                          unsigned int& global_header_size,
+                          unsigned int& global_header_offset);
     npz_t npz_load(std::string fname);
     NpyArray npz_load(std::string fname, std::string varname);
     NpyArray npy_load(std::string fname);
@@ -65,17 +72,22 @@ namespace cnpy {
         return s.str();
     }
 
-    template<typename T> void npy_save(std::string fname, const T* data, const unsigned int* shape, const unsigned int ndims, std::string mode = "w") {
+    template<typename T> void npy_save(std::string fname,
+                                       const T* data,
+                                       const unsigned int* shape,
+                                       const unsigned int ndims,
+                                       std::string mode = "w") {
         FILE* fp = NULL;
 
         if(mode == "a") fp = fopen(fname.c_str(),"r+b");
 
-        if(fp) {
+        if (fp) {
             //file exists. we need to append to it. read the header, modify the array size
             unsigned int word_size, tmp_dims;
             unsigned int* tmp_shape = 0;
             bool fortran_order;
-            parse_npy_header(fp,word_size,tmp_shape,tmp_dims,fortran_order);
+            char dtype;
+            parse_npy_header(fp, dtype, word_size, tmp_shape, tmp_dims, fortran_order);
             assert(!fortran_order);
 
             if(word_size != sizeof(T)) {
@@ -114,11 +126,14 @@ namespace cnpy {
         fclose(fp);
     }
 
-    template<typename T> void npz_save(std::string zipname, std::string fname, const T* data, const unsigned int* shape, const unsigned int ndims, std::string mode = "w")
-    {
+    template<typename T> void npz_save(std::string zipname,
+                                       std::string fname,
+                                       const T* data,
+                                       const unsigned int* shape,
+                                       const unsigned int ndims,
+                                       std::string mode = "w") {
         //first, append a .npy to the fname
         fname += ".npy";
-
         //now, on with the show
         FILE* fp = NULL;
         unsigned short nrecs = 0;

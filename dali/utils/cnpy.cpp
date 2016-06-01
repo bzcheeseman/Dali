@@ -57,28 +57,42 @@ template<> std::vector<char>& cnpy::operator+=(std::vector<char>& lhs, const cha
     return lhs;
 }
 
-void cnpy::parse_npy_header(FILE* fp, unsigned int& word_size, unsigned int*& shape, unsigned int& ndims, bool& fortran_order) {
+void cnpy::parse_npy_header(FILE* fp,
+                            char& dtype,
+                            unsigned int& word_size,
+                            unsigned int*& shape,
+                            unsigned int& ndims,
+                            bool& fortran_order) {
     char buffer[256];
     size_t res = fread(buffer,sizeof(char),11,fp);
-    if(res != 11)
-        throw std::runtime_error("parse_npy_header: failed fread");
+    if (res != 11) {
+        throw std::runtime_error("Unable to read npy file header.");
+    }
     std::string header = fgets(buffer,256,fp);
     assert(header[header.size()-1] == '\n');
 
     int loc1, loc2;
 
     //fortran order
-    loc1 = header.find("fortran_order")+16;
+    loc1 = header.find("fortran_order") + 16;
     fortran_order = (header.substr(loc1,4) == "True" ? true : false);
 
     //shape
     loc1 = header.find("(");
     loc2 = header.find(")");
     std::string str_shape = header.substr(loc1+1,loc2-loc1-1);
-    if(str_shape[str_shape.size()-1] == ',') ndims = 1;
-    else ndims = std::count(str_shape.begin(),str_shape.end(),',')+1;
+    if (str_shape.size() == 0) {
+        // scalar shape
+        ndims = 0;
+    } else if (str_shape[str_shape.size()-1] == ',') {
+        // vector
+        ndims = 1;
+    } else {
+        // n-dimensional tensor (matrix or other)
+        ndims = std::count(str_shape.begin(), str_shape.end(), ',') + 1;
+    }
     shape = new unsigned int[ndims];
-    for(unsigned int i = 0;i < ndims;i++) {
+    for(unsigned int i = 0; i < ndims; i++) {
         loc1 = str_shape.find(",");
         shape[i] = atoi(str_shape.substr(0,loc1).c_str());
         str_shape = str_shape.substr(loc1+1);
@@ -87,20 +101,19 @@ void cnpy::parse_npy_header(FILE* fp, unsigned int& word_size, unsigned int*& sh
     //endian, word size, data type
     //byte order code | stands for not applicable.
     //not sure when this applies except for byte array
-    loc1 = header.find("descr")+9;
+    loc1 = header.find("descr") + 9;
     bool littleEndian = (header[loc1] == '<' || header[loc1] == '|' ? true : false);
     assert(littleEndian);
 
-    //char type = header[loc1+1];
-    //assert(type == map_type(T));
+    // look for i, f, etc...
+    dtype = header[loc1+1];
 
     std::string str_ws = header.substr(loc1+2);
     loc2 = str_ws.find("'");
     word_size = atoi(str_ws.substr(0,loc2).c_str());
 }
 
-void cnpy::parse_zip_footer(FILE* fp, unsigned short& nrecs, unsigned int& global_header_size, unsigned int& global_header_offset)
-{
+void cnpy::parse_zip_footer(FILE* fp, unsigned short& nrecs, unsigned int& global_header_size, unsigned int& global_header_offset) {
     std::vector<char> footer(22);
     fseek(fp,-22,SEEK_END);
     size_t res = fread(&footer[0],sizeof(char),22,fp);
@@ -126,18 +139,24 @@ cnpy::NpyArray cnpy::load_the_npy_file(FILE* fp) {
     unsigned int* shape;
     unsigned int ndims, word_size;
     bool fortran_order;
-    cnpy::parse_npy_header(fp,word_size,shape,ndims,fortran_order);
-    unsigned long long size = 1; //long long so no overflow when multiplying by word_size
-    for(unsigned int i = 0;i < ndims;i++) size *= shape[i];
+    char dtype;
+    cnpy::parse_npy_header(fp, dtype, word_size, shape, ndims, fortran_order);
+    // use a long long so no overflow occurs when multiplying by word_size:
+    unsigned long long size = 1;
+    for (unsigned int i = 0;i < ndims;i++) {
+        size *= shape[i];
+    }
 
     cnpy::NpyArray arr;
     arr.word_size = word_size;
+    arr.dtype = dtype;
     arr.shape = std::vector<unsigned int>(shape,shape+ndims);
     arr.data = new char[size*word_size];
     arr.fortran_order = fortran_order;
     size_t nread = fread(arr.data,word_size,size,fp);
-    if(nread != size)
-        throw std::runtime_error("load_the_npy_file: failed fread");
+    if (nread != size) {
+        throw std::runtime_error("Unable to read npy array contents.");
+    }
     return arr;
 }
 

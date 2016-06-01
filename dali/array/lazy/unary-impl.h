@@ -21,6 +21,26 @@ struct LazyUnary : public LazyFunction<LazyUnary<Functor,ExprT>, ExprT> {
     }
 };
 
+template<template<class>class Functor, typename ExprT>
+struct LazyUnaryIndexed : public LazyFunction<LazyUnaryIndexed<Functor,ExprT>, ExprT> {
+    ExprT expr;
+
+    LazyUnaryIndexed(ExprT expr_) : LazyFunction<LazyUnaryIndexed<Functor,ExprT>, ExprT>(expr_),
+                             expr(expr_) {
+    }
+
+    template<int devT,typename T>
+    auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape) const ->
+            decltype(
+                mshadow::expr::FIndexed<Functor<T>>(
+                     MshadowWrapper<devT,T,ExprT>::wrap(expr, device, output_shape)
+                )
+            ) {
+        auto left_expr = MshadowWrapper<devT,T,ExprT>::wrap(expr, device, output_shape);
+        return mshadow::expr::FIndexed<Functor<T>>(left_expr);
+    }
+};
+
 namespace lazy {
     template<template<class>class Functor, typename ExprT>
     LazyUnary<Functor,ExprT> F(const Exp<ExprT>& expr) {
@@ -31,6 +51,11 @@ namespace lazy {
     LazyUnary<functor::identity,ExprT> identity(const Exp<ExprT>& expr) {
         return LazyUnary<functor::identity,ExprT>(expr.self());
     }
+
+    // template<typename ExprT>
+    // LazyUnaryIndexed<functor::eye, ExprT> eye(const Exp<ExprT>& expr) {
+    //     return LazyUnaryIndexed<functor::eye, ExprT>(expr.self());
+    // }
 
     template<typename ExprT>
     LazyUnary<functor::sigmoid,ExprT> sigmoid(const Exp<ExprT>& expr) {

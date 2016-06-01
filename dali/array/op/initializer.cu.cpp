@@ -14,6 +14,8 @@
 #include "dali/array/functor.h"
 #include "dali/utils/random.h"
 
+#include "dali/array/lazy/binary.h"
+
 using std::vector;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -308,6 +310,19 @@ struct ConstantInitializer : public Initializer<ConstantInitializer<ConstT>, con
     }
 };
 
+struct EyeInitializer : public Initializer<EyeInitializer, const double&> {
+    template<OPERATOR_T operator_t, int devT, typename T>
+    void typed_eval(TypedArray<devT,T> out, const double& diag) {
+        operator_assign<operator_t, 2>(
+            out,
+            mshadow::expr::FIndexed<functor::eye<T>>(
+                out.d2(),
+                diag
+            )
+        );
+    }
+};
+
 ///////////////////////////////////////AM_OVERWRITE/////////////////////////////////////////
 //                  WRAPPING STRUCTS INTO FUNCTIONS                           //
 ////////////////////////////////////////////////////////////////////////////////
@@ -366,19 +381,9 @@ namespace initializer {
     }
 
     AssignableArray eye(const double& diag) {
-        return AssignableArray([diag](Array& tensor, const OPERATOR_T& operator_t) {
-            ASSERT2(false, "eye: Not implemented yet");
-
-            // #ifdef DALI_USE_CUDA
-            //     if (tensor.compute_me_on_gpu()) {
-            //         tensor_ops::eye(tensor.mutable_gpu_data(), diag);
-            //         return;
-            //     }
-            // #endif
-            // tensor_ops::eye(tensor.mutable_cpu_data(), diag);
-        });
-
+        return EyeInitializer::run(diag);
     }
+
     AssignableArray svd() {
         return svd(gaussian(0.0, 1.0));
     }

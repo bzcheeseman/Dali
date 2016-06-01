@@ -8,8 +8,14 @@
 template<template<class>class Functor, typename LeftT, typename RightT>
 struct LazyBinary;
 
+template<template<class>class Functor, typename LeftT, typename RightT>
+struct LazyBinaryIndexed;
+
 template<template<class>class Functor, typename ExprT>
 struct LazyUnary;
+
+template<template<class>class Functor, typename ExprT>
+struct LazyUnaryIndexed;
 
 template<class Functor, typename ExprT>
 struct LazyAllReducer;
@@ -37,6 +43,14 @@ struct ReduceOverLazyExpr {
         return unfold_helper(state, binary_expr.left, binary_expr.right, args...);
     }
 
+    template<template<class>class Functor, typename LeftT, typename RightT, typename... Args>
+    static outtuple_t unfold_helper(
+            const outtuple_t& state,
+            const LazyBinaryIndexed<Functor, LeftT,RightT>& binary_expr,
+            const Args&... args) {
+        return unfold_helper(state, binary_expr.left, binary_expr.right, args...);
+    }
+
     template<typename ExprT, typename... Args>
     static outtuple_t unfold_helper(
             const outtuple_t& state,
@@ -49,6 +63,14 @@ struct ReduceOverLazyExpr {
     static outtuple_t unfold_helper(
             const outtuple_t& state,
             const LazyUnary<Functor,ExprT>& elementwise_expr,
+            const Args&... args) {
+        return unfold_helper(state, elementwise_expr.expr, args...);
+    }
+
+    template<template<class>class Functor, typename ExprT, typename... Args>
+    static outtuple_t unfold_helper(
+            const outtuple_t& state,
+            const LazyUnaryIndexed<Functor,ExprT>& elementwise_expr,
             const Args&... args) {
         return unfold_helper(state, elementwise_expr.expr, args...);
     }

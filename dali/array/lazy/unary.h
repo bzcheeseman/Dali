@@ -6,12 +6,18 @@
 template<template<class>class Functor, typename ExprT>
 struct LazyUnary;
 
+template<template<class>class Functor, typename ExprT>
+struct LazyUnaryIndexed;
+
 namespace lazy {
     template<template<class>class Functor, typename ExprT>
     LazyUnary<Functor,ExprT> F(const Exp<ExprT>& expr);
 
     template<typename ExprT>
     LazyUnary<functor::identity,ExprT> identity(const Exp<ExprT>& expr);
+
+    // template<typename ExprT>
+    // LazyUnaryIndexed<functor::eye, ExprT> eye(const Exp<ExprT>& expr);
 
     template<typename ExprT>
     LazyUnary<functor::sigmoid,ExprT> sigmoid(const Exp<ExprT>& expr);

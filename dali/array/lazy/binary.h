@@ -6,6 +6,9 @@
 template<template<class>class Functor, typename LeftT, typename RightT>
 struct LazyBinary;
 
+template<template<class>class Functor, typename LeftT, typename RightT>
+struct LazyBinaryIndexed;
+
 namespace lazy {
     template<template<class>class Functor, typename T1, typename T2>
     LazyBinary<Functor, T1, T2> F(const T1& expr, const T2& expr2);
@@ -15,6 +18,9 @@ namespace lazy {
 
     template <typename T, typename T2>
     LazyBinary<functor::sub, T, T2> sub(const T& a, const T2& b);
+
+    template <typename T, typename T2>
+    LazyBinaryIndexed<functor::eye, T, T2> eye(const T& a, const T2& b);
 
     template <typename T, typename T2>
     LazyBinary<functor::eltmul, T, T2> eltmul(const T& a, const T2& b);

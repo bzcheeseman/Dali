@@ -139,6 +139,26 @@ TEST(ArrayTests, scalar_construct) {
     ASSERT_EQ((int)scalar3(0), 314);
 }
 
+TEST(ArrayTest, eye_init) {
+    Array myeye = Array({4, 5}, DTYPE_INT32)[Slice(0, 4)][Slice(0, 5, -1)];
+    double diag = 5.0;
+    // initialize with different diagonal values:
+    myeye = initializer::eye(diag);
+    for (int i = 0; i < myeye.shape()[0]; i++) {
+        for (int j = 0; j < myeye.shape()[1]; j++) {
+            ASSERT_EQ(i == j ? diag : 0.0, (int)myeye[i][j]);
+        }
+    }
+    // operate on Array using identity initialization:
+    myeye -= initializer::eye(1.0);
+
+    for (int i = 0; i < myeye.shape()[0]; i++) {
+        for (int j = 0; j < myeye.shape()[1]; j++) {
+            ASSERT_EQ(i == j ? (diag - 1.0) : 0.0, (int)myeye[i][j]);
+        }
+    }
+}
+
 
 TEST(ArrayTests, spans_entire_memory) {
     // an array is said to span its entire memory

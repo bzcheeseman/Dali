@@ -58,11 +58,6 @@ namespace lazy {
         return LazyBinary<Functor, T1, T2>(expr, expr2);
     }
 
-    template <typename T, typename T2>
-    LazyBinaryIndexed<functor::eye, T, T2> eye(const T& a, const T2& b) {
-        return LazyBinaryIndexed<functor::eye, T, T2>(a, b);
-    }
-
     #define DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(FUNCNAME, KERNELNAME)\
         template <typename T1, typename T2>\
         LazyBinary<KERNELNAME, T1, T2> FUNCNAME(const T1& a, const T2& b) {\

@@ -20,9 +20,6 @@ namespace lazy {
     LazyBinary<functor::sub, T, T2> sub(const T& a, const T2& b);
 
     template <typename T, typename T2>
-    LazyBinaryIndexed<functor::eye, T, T2> eye(const T& a, const T2& b);
-
-    template <typename T, typename T2>
     LazyBinary<functor::eltmul, T, T2> eltmul(const T& a, const T2& b);
 
     template <typename T, typename T2>

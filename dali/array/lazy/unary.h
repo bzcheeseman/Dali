@@ -16,9 +16,6 @@ namespace lazy {
     template<typename ExprT>
     LazyUnary<functor::identity,ExprT> identity(const Exp<ExprT>& expr);
 
-    // template<typename ExprT>
-    // LazyUnaryIndexed<functor::eye, ExprT> eye(const Exp<ExprT>& expr);
-
     template<typename ExprT>
     LazyUnary<functor::sigmoid,ExprT> sigmoid(const Exp<ExprT>& expr);
 

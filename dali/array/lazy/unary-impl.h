@@ -52,11 +52,6 @@ namespace lazy {
         return LazyUnary<functor::identity,ExprT>(expr.self());
     }
 
-    // template<typename ExprT>
-    // LazyUnaryIndexed<functor::eye, ExprT> eye(const Exp<ExprT>& expr) {
-    //     return LazyUnaryIndexed<functor::eye, ExprT>(expr.self());
-    // }
-
     template<typename ExprT>
     LazyUnary<functor::sigmoid,ExprT> sigmoid(const Exp<ExprT>& expr) {
         return LazyUnary<functor::sigmoid,ExprT>(expr.self());

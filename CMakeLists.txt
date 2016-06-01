@@ -96,8 +96,9 @@ set(MSHADOW_FORCE_STREAM 0)
 set(MSHADOW_USE_MKL 0)
 
 # INCLUDES
-INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/third_party/mshadow)
+include_directories(${PROJECT_SOURCE_DIR}/third_party/mshadow)
 include_directories(${MKL_INCLUDE_DIR})
+include_directories(${OpenBLAS_INCLUDE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/third_party/libcuckoo/src)
 
 if (GPERFTOOLS_FOUND)

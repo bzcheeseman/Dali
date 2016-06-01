@@ -540,7 +540,7 @@ TEST(ArrayTest, transpose) {
     }
 }
 
-TEST(ArrayIOTests, crazy_striding_with_reductions) {
+TEST(ArrayTest, advanced_striding_with_reductions) {
     Array x = Array::arange({3,4});
     Array y = Array::arange({3,4});
     y = y[Slice(0,3)][Slice(0,4,-1)];
@@ -550,7 +550,7 @@ TEST(ArrayIOTests, crazy_striding_with_reductions) {
     EXPECT_EQ(12, (int)z);
 }
 
-TEST(ArrayIOTests, crazy_striding_with_reductions1) {
+TEST(ArrayTest, advanced_striding_with_reductions1) {
     Array x = Array::arange({3,4});
     Array y = Array::arange({3,4});
     y = y[Slice(0,3,-1)];
@@ -560,7 +560,7 @@ TEST(ArrayIOTests, crazy_striding_with_reductions1) {
     EXPECT_EQ(12, (int)z);
 }
 
-TEST(ArrayIOTests, crazy_striding_with_reductions2) {
+TEST(ArrayTest, advanced_striding_with_reductions2) {
     Array x = Array::arange({12});
     Array y_source = Array::arange({12,2});
     Array y = y_source[Slice(0,12)][1];

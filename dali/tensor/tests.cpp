@@ -259,50 +259,6 @@ TEST_F(TensorTests, slice) {
     ASSERT_EQ(subblock.dw.memory(), block.dw.memory());
 }
 
-// TEST_F(MatrixTests, argmax_argmin) {
-//     auto A = Mat<R>(5, 5, weights<R>::eye());
-//     // orientation in an identity matrix does not matter
-//     // for argmax:
-//     auto indices_max_col = A.argmax(0);
-//     EXPECT_EQ(indices_max_col, std::vector<int>({0, 1, 2, 3, 4}));
-//     auto indices_max_row = A.argmax(1);
-//     EXPECT_EQ(indices_max_row, std::vector<int>({0, 1, 2, 3, 4}));
-//
-//     // however for an irregular assymetric pattern, then
-//     // orientation matters:
-//     auto B   = Mat<R>(6, 5);
-//     B.w(0,0) = -12.0;
-//     B.w(1,3) = -32.0;
-//     B.w(2,4) = -44.0;
-//     B.w(3,0) = -35.0;
-//     B.w(4,2) = -32.0;
-//     B.w(5,3) = -27.0;
-//     #ifdef DALI_USE_CUDA
-//     // force computation to happen on device if possible
-//     B.w().memory().to_gpu();
-//     #endif
-//
-//     auto indices_min_col = B.argmin(0);
-//     EXPECT_EQ(indices_min_col, std::vector<int>({3, 0, 4, 1, 2}));
-//
-//     auto indices_min_row = B.argmin(1);
-//     EXPECT_EQ(indices_min_row, std::vector<int>({0, 3, 4, 0, 2, 3}));
-//
-//     auto Z = Mat<R>(3, 9);
-//     Z.w(12) = 55;
-//
-//     Z.w(13) = -12;
-//     #ifdef DALI_USE_CUDA
-//     // force computation to happen on device if possible
-//     Z.w().memory().to_gpu();
-//     #endif
-//
-//     // argmin without dimension argument treats
-//     // matrix as one long strand of memory
-//     EXPECT_EQ(Z.argmin(), 13);
-//     EXPECT_EQ(Z.argmax(), 12);
-// }
-//
 // TEST_F(MatrixTests, argsort) {
 //     auto mats = vector<Mat<R>>({
 //         MatOps<R>::fill(Mat<R>(1,1), 3),
@@ -330,7 +286,7 @@ TEST_F(TensorTests, slice) {
 //     auto sorted = A.argsort();
 //     ASSERT_EQ(sorted, std::vector<int>({2, 0, 1, 3}));
 // }
-//
+
 TEST_F(TensorTests, mean) {
     Tensor B({3, 4}, initializer::ones(), DTYPE_DOUBLE);
     auto res = B.mean();
@@ -1123,7 +1079,6 @@ TEST(solver, DISABLED_rmsprop) {
 TEST(solver, DISABLED_rmspropmomentum) {
     test_solver([](vector<Tensor> params) {
         auto ret = std::make_shared<solver::RMSPropMomentum>(params);
-        // ret->step_size = 0.001;
         return ret;
     });
 }

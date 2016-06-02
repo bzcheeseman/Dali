@@ -126,31 +126,27 @@ TEST_F(TensorTests, identity_init) {
 }
 
 TEST_F(TensorTests, max_scalar) {
-    int input_size = 5;
-
     auto functor = [](vector<Tensor> Xs)-> Tensor {
         return tensor_ops::eltmax(Xs[0], 1.4);
     };
 
     EXPERIMENT_REPEAT {
-        Tensor mat({input_size}, initializer::uniform(1.5, 20.0), DTYPE_DOUBLE);
-        Tensor mat2({input_size}, initializer::uniform(-20.0, 1.3), DTYPE_DOUBLE);
+        Tensor mat({5}, initializer::uniform(1.5, 20.0), DTYPE_DOUBLE);
+        Tensor mat2({5}, initializer::uniform(-20.0, 1.3), DTYPE_DOUBLE);
         auto combined = tensor_ops::hstack({mat, mat2});
         ASSERT_TRUE(gradient_same(functor, {combined}, 1e-4));
     }
 }
 
 TEST_F(TensorTests, addition_vector) {
-    auto functor = [](vector<Tensor> Xs)-> Tensor {
-        return tensor_ops::add({ Xs[0], Xs[1], Xs[2] });
-    };
     EXPERIMENT_REPEAT {
         Tensor A({1, 2, 3}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
         Tensor B({1, 2, 3}, initializer::uniform(-0.5, 0.5), DTYPE_DOUBLE);
         Tensor C({1, 2, 3}, initializer::uniform(-0.5, 0.5), DTYPE_DOUBLE);
-        ASSERT_TRUE(gradient_same(functor, {A, B, C}, 1e-4));
+        ASSERT_TRUE(gradient_same((vector_tensor_op)tensor_ops::add, {A, B, C}, 1e-4));
     }
 }
+
 //
 // TODO: implement repmat
 // TEST_F(MatrixTests, broadcast_row_vector) {

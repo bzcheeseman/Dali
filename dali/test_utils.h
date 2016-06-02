@@ -42,6 +42,8 @@ using ::testing::AssertionFailure;
     };
 #endif
 
+typedef Tensor(* vector_tensor_op)(const std::vector<Tensor>&);
+
 #ifdef DALI_USE_CUDA
 const double DEFAULT_GRAD_EPS=1e-3;
 #define SCALAR_COMP_LE ::testing::DoubleLE
@@ -317,7 +319,6 @@ namespace {
             if (fail_on_zero_gradient) {
                 auto is_nonzero = (bool)buffer_is_nonzero(fd_grad);
                 if (is_nonzero == false) {
-                    fd_grad.print();
                     std::cout << "Gradient for parameter " << param_idx << " (" << arg << ") should not be all zeros." << std::endl;
                     return false;
                 }

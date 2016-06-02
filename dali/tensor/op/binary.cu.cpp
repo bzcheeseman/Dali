@@ -17,9 +17,10 @@ namespace tensor_ops {
     }
 
     Tensor add(const std::vector<Tensor>& tensors) {
-        std::vector<Array> arrays(tensors.size());
+        std::vector<Array> arrays;
+        arrays.reserve(tensors.size());
         for (const auto& t : tensors) {
-            arrays.emplace_back(t.dw);
+            arrays.emplace_back(t.w);
         }
         Tensor out(op::add(arrays));
 

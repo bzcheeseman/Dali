@@ -98,6 +98,7 @@ struct MatrixMultiplyFunction : public Function<MatrixMultiplyFunction,
         int left   = out.array.shape()[0],
             middle = std::max(a.array.shape()[1], b.array.shape()[0]),
             right  = out.array.shape()[1];
+
         // if the broadcasting fails let ReshapedMatrixMultiplyFunction
         // throw an error.
         auto new_a = a;

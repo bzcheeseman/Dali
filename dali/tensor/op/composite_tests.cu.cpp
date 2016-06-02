@@ -69,3 +69,17 @@ TEST(TensorCompositeTests, matrix_multiple_dot_with_bias_fancy_broadcast) {
         ASSERT_TRUE(gradient_same(functor, {X, W, X_fancy, W_fancy, X_other, W_other, bias}, 0.0003));
     }
 }
+
+TEST(TensorCompositeTests, DISABLED_matrix_multiple_dot_with_bias_breaking_mini) {
+    auto functor = [](vector<Tensor> Xs)-> Tensor {
+        return tensor_ops::multiple_dot_with_bias({Xs[0]}, {Xs[1]}, Xs[2]);
+    };
+
+    EXPERIMENT_REPEAT {
+        auto X = Tensor::uniform(-10, 10, {4}, DTYPE_DOUBLE)[Broadcast()];
+        auto W = Tensor::uniform(-10, 10, {4, 5}, DTYPE_DOUBLE);
+
+        auto bias = Tensor::uniform(-2, 2,  {5}, DTYPE_DOUBLE)[Broadcast()];
+        ASSERT_TRUE(gradient_same(functor, { X, W, bias}, 0.0003));
+    }
+}

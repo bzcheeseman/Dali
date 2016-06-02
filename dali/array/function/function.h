@@ -74,12 +74,11 @@ struct Function {
         return ReduceOverArgs<DTypeEqualForAllArrayArgsReducer>::reduce(out, args...);
     }
 
-    static void prepare_output(const OPERATOR_T& operator_t, Outtype& out, const Args&... args) {
+    static std::tuple<Outtype_t, Args...> prepare_output(const OPERATOR_T& operator_t, Outtype& out, const Args&... args) {
         auto common_bshape = Class::deduce_output_bshape(args...);
         auto common_dtype = Class::deduce_output_dtype(args...);
 
         if (out.is_stateless()) {
-
             // when constructing a stateless
             // output, we decide what the output
             // shape will be. Broadcasted greater
@@ -126,12 +125,13 @@ struct Function {
             ASSERT2(Class::disable_output_dtype_check || out.dtype() == common_dtype,
                     utils::MS() << "Cannot assign result of dtype " << common_dtype << " to a location of dtype " << out.dtype() << ".");
         }
+        return std::tuple<Outtype, Args...>(out, args...);
     }
 
     template<OPERATOR_T intented_operator_t>
     static AssignableArray run_with_operator(const Args&... args) {
         return AssignableArray([args...](Outtype& out, const OPERATOR_T& operator_t) {
-            Class::prepare_output(operator_t, out, args...);
+            auto prepped_args = Class::prepare_output(operator_t, out, args...);
             ASSERT2(operator_t == intented_operator_t,
                 utils::MS() << "AssignableArray constructed for operator "
                             << operator_to_name(intented_operator_t)
@@ -144,7 +144,7 @@ struct Function {
 
     static AssignableArray run(const Args&... args) {
         return AssignableArray([args...](Outtype& out, const OPERATOR_T& operator_t) {
-            Class::prepare_output(operator_t, out, args...);
+            auto prepped_args = Class::prepare_output(operator_t, out, args...);
             switch (operator_t) {
                 case OPERATOR_T_EQL:
                     Class::template untyped_eval<OPERATOR_T_EQL>(out, args...);
@@ -223,7 +223,8 @@ struct BinaryElementwise : public Function<BinaryElementwise<Functor>, Array, Ar
 template<typename Class, typename Outtype, typename... Args>
 struct NonArrayFunction : public Function<Class,Outtype*,Args...> {
 
-    static void prepare_output(const OPERATOR_T& operator_t, Outtype& out, const Args&... args) {
+    static std::tuple<Outtype, Args...> prepare_output(const OPERATOR_T& operator_t, Outtype& out, const Args&... args) {
+        return std::tuple<Outtype, Args...>(out, args...);
     }
 
     static Outtype run(const Args&... args) {

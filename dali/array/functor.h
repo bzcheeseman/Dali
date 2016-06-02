@@ -227,7 +227,7 @@ namespace functor {
     template<typename R>
     struct log_or_zero {
         MSHADOW_XINLINE static R Map(const R& a) {
-            return a > 0 ? LOG_F(a) : 0;
+            return (a > 0) ? ((R)LOG_F(a)) : (R)0;
         }
     };
 

@@ -18,6 +18,7 @@
 #include "dali/array/function/typed_array.h"
 #include "dali/array/function/operator.h"
 #include "dali/utils/print_utils.h"
+#include "dali/utils/unpack_tuple.h"
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,13 +132,14 @@ struct Function {
     template<OPERATOR_T intented_operator_t>
     static AssignableArray run_with_operator(const Args&... args) {
         return AssignableArray([args...](Outtype& out, const OPERATOR_T& operator_t) {
-            auto prepped_args = Class::prepare_output(operator_t, out, args...);
             ASSERT2(operator_t == intented_operator_t,
                 utils::MS() << "AssignableArray constructed for operator "
                             << operator_to_name(intented_operator_t)
                             << " but got " << operator_to_name(operator_t)
                             << " instead");
-            Class::template untyped_eval<intented_operator_t>(out, args...);
+
+            auto prepped_args = Class::prepare_output(operator_t, out, args...);
+            unpack_tuple(Class::template untyped_eval<intented_operator_t>, prepped_args);
             debug::dali_function_computed.activate(true);
         });
     }
@@ -147,22 +149,22 @@ struct Function {
             auto prepped_args = Class::prepare_output(operator_t, out, args...);
             switch (operator_t) {
                 case OPERATOR_T_EQL:
-                    Class::template untyped_eval<OPERATOR_T_EQL>(out, args...);
+                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_EQL>, prepped_args);
                     break;
                 case OPERATOR_T_ADD:
-                    Class::template untyped_eval<OPERATOR_T_ADD>(out, args...);
+                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_ADD>, prepped_args);
                     break;
                 case OPERATOR_T_SUB:
-                    Class::template untyped_eval<OPERATOR_T_SUB>(out, args...);
+                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_SUB>, prepped_args);
                     break;
                 case OPERATOR_T_MUL:
-                    Class::template untyped_eval<OPERATOR_T_MUL>(out, args...);
+                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_MUL>, prepped_args);
                     break;
                 case OPERATOR_T_DIV:
-                    Class::template untyped_eval<OPERATOR_T_DIV>(out, args...);
+                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_DIV>, prepped_args);
                     break;
                 case OPERATOR_T_LSE:
-                    Class::template untyped_eval<OPERATOR_T_LSE>(out, args...);
+                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_LSE>, prepped_args);
                     break;
                 default:
                     ASSERT2(false, "OPERATOR_T for assignment between AssignableArray and output must be one of =,-=,+=,*=,/=,<<=");

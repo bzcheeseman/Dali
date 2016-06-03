@@ -126,7 +126,21 @@ if (WITH_CUDA)
     SET(DALI_USE_CUDA 1)
     SET(MSHADOW_USE_CUDA 1)
     INCLUDE_DIRECTORIES(${CUDA_INCLUDE_DIRS})
-    LIST(APPEND CUDA_NVCC_FLAGS --compiler-options ${CUDA_EXTRA_FLAGS} -lineinfo -Xptxas -dlcm=cg  -use_fast_math -std=c++11)
+    LIST(APPEND CUDA_NVCC_FLAGS
+        --compiler-options ${CUDA_EXTRA_FLAGS}
+        -lineinfo
+        -Xptxas -dlcm=cg
+        -use_fast_math
+        -std=c++11
+        -gencode arch=compute_35,code=sm_35 # precompile JIT optimizations for specific architectures
+        -gencode arch=compute_52,code=sm_52
+        -gencode arch=compute_53,code=sm_53
+
+    )
+    if (${CUDA_VERSION} VERSION_GREATER "8.0" OR ${CUDA_VERSION} VERSION_EQUAL "8.0")
+        # for PASCAL architectures we require cuda 8.0
+        LIST(APPEND CUDA_NVCC_FLAGS -gencode arch=compute_62,code=sm_62)
+    endif()
     SET(CUDA_EXTRA_FLAGS "-fno-strict-aliasing")
     SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -L/usr/local/cuda/lib")
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CUDA_EXTRA_FLAGS}")

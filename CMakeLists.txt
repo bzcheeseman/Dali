@@ -277,13 +277,6 @@ else()
 endif()
 
 ## CPP TARGET
-foreach(source ${DaliSources})
-    message(STATUS "XXX added ${source} to dali target")
-endforeach(source ${DaliSources})
-foreach(source ${maybe_cuda_compiled_files})
-    message(STATUS "XXX added ${source} to dali target (maybe cuda")
-endforeach(source ${DaliSources})
-
 add_library(dali ${MAYBE_SHARED} "${DaliSources};${maybe_cuda_compiled_files}" ${DaliHeaders} )
 
 # ensure that headers are copied over before compilation

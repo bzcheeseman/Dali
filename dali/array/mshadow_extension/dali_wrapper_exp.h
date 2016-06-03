@@ -111,8 +111,6 @@ namespace mshadow {
                     new_j += (j % shape[dim_idx]) * strides[dim_idx];
                     j /=  shape[dim_idx];
                 }
-
-                int old_new_j = new_j;
                 if (srcdim > 1) {
                     if (new_j >= 0) {
                         new_i = new_j / src_trailing_dim;

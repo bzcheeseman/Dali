@@ -291,7 +291,7 @@ else()
 endif()
 
 ## CPP TARGET
-add_library(dali ${MAYBE_SHARED} "${DaliSources};${maybe_cuda_compiled_files}" ${DaliHeaders} )
+add_library(dali ${MAYBE_SHARED} ${DaliSources} ${maybe_cuda_compiled_files} ${DaliHeaders} )
 
 # ensure that headers are copied over before compilation
 add_custom_target(dali_cuda_headers DEPENDS ${DaliHeaders})

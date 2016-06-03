@@ -23,7 +23,7 @@ modifying one line from MShadow's version.
 namespace internal {
     #ifdef DALI_USE_CUDA
         template<int x_bits, typename R,  typename DstPlan, typename SrcPlan>
-        __global__ void SoftmaxKernel(DstPlan dst, SrcPlan src, mshadow::index_t num_cols, const double& temperature) {
+        __global__ void SoftmaxKernel(DstPlan dst, SrcPlan src, mshadow::index_t num_cols, const double temperature) {
             const unsigned buffer_size = 1 << x_bits;
             const int row = blockIdx.x;
             const int thread_idx = threadIdx.x;
@@ -88,7 +88,7 @@ namespace internal {
         }
 
         template<int x_bits, typename R,  typename DstPlan, typename SrcPlan>
-        __global__ void SoftmaxKernelCached(DstPlan dst, SrcPlan src, mshadow::index_t num_cols, const double& temperature) {
+        __global__ void SoftmaxKernelCached(DstPlan dst, SrcPlan src, mshadow::index_t num_cols, const double temperature) {
             const unsigned buffer_size = 1 << x_bits;
             const int num_offsets = num_cols/buffer_size + 1;
             const int row = blockIdx.x;

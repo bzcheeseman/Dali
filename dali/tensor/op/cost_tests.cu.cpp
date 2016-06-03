@@ -97,7 +97,7 @@ TEST(TensorCostTests, softmax_axis) {
         for (axis = 0; axis < A.ndim(); axis++) {
             for (temperature = 0.5; temperature <= 1.5; temperature += 0.5) {
                 row = utils::randint(0, A.shape()[axis] - 1);
-                ASSERT_TRUE(gradient_same(functor, {A}, 1e-5, 1e-5));
+                ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-3));
                 A.dw.clear();
             }
         }

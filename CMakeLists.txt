@@ -261,52 +261,55 @@ endforeach()
 
 include_directories(${GENERATED_FILES_DIR})
 
-## CUDA TARGET
+## CUDA FILES
 if (WITH_CUDA)
     if (CUDNN_FOUND)
         include_directories(${CUDNN_INCLUDE})
     endif(CUDNN_FOUND)
-
     cuda_include_directories(${GENERATED_FILES_DIR})
+
     cuda_compile_on()
     cuda_include_directories(${DaliHeaders})
-    cuda_add_library(dali_cuda STATIC ${DaliCudaSources} ${DaliHeaders})
-
-    # Cmake cuda will not execute virtual source tree copy of headers
-    # before attempting to compile individual cu files. To force headers
-    # to be copied from virtual source tree first, we create a special
-    # target specifically for copying header files:
-    ADD_CUSTOM_TARGET(dali_cuda_headers DEPENDS ${DaliHeaders})
-    # then we ensure that compiling dali for cuda DEPENDS on the headers
-    # being already copied:
-    add_dependencies(dali_cuda dali_cuda_headers)
-
-    foreach(DaliHeader ${DaliHeaders})
-        message(STATUS " * ${DaliHeader}")
-    endforeach()
-    target_link_libraries(dali_cuda ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_CUBLAS_LIBRARIES})
-    if (CUDNN_FOUND)
-        target_link_libraries(dali_cuda ${CUDNN_LIBRARY})
-    endif (CUDNN_FOUND)
-
-    if (OpenBLAS_FOUND)
-        target_link_libraries(dali_cuda ${OpenBLAS_LIB})
-    endif(OpenBLAS_FOUND)
+    cuda_compile(maybe_cuda_compiled_files ${DaliCudaSources} ${DaliHeaders})
     cuda_compile_off()
-endif(WITH_CUDA)
+else()
+    set(maybe_cuda_compiled_files "")
+endif()
 
 ## CPP TARGET
-add_library(dali ${MAYBE_SHARED} ${DaliSources} ${DaliHeaders})
+foreach(source ${DaliSources})
+    message(STATUS "XXX added ${source} to dali target")
+endforeach(source ${DaliSources})
+foreach(source ${maybe_cuda_compiled_files})
+    message(STATUS "XXX added ${source} to dali target (maybe cuda")
+endforeach(source ${DaliSources})
+
+add_library(dali ${MAYBE_SHARED} "${DaliSources};${maybe_cuda_compiled_files}" ${DaliHeaders} )
+
+# ensure that headers are copied over before compilation
+add_custom_target(dali_cuda_headers DEPENDS ${DaliHeaders})
+add_dependencies(dali dali_cuda_headers)
 
 target_link_libraries(dali ${ZLIB_LIBRARIES}
                            ${BLAS_LIBRARIES}
                            ${MKL_LIBRARIES}
                            ${CMAKE_THREAD_LIBS_INIT}
                            ${OpenBLAS_LIB})
+
 if (GPERFTOOLS_FOUND)
     target_link_libraries(dali ${GPERFTOOLS_LIBRARIES})
 endif (GPERFTOOLS_FOUND)
 
+if (OpenBLAS_FOUND)
+    target_link_libraries(dali ${OpenBLAS_LIB})
+endif(OpenBLAS_FOUND)
+
+if (WITH_CUDA)
+    target_link_libraries(dali ${CUDA_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_CUBLAS_LIBRARIES})
+    if (CUDNN_FOUND)
+        target_link_libraries(dali ${CUDNN_LIBRARY})
+    endif (CUDNN_FOUND)
+endif(WITH_CUDA)
 
 ################################################################################
 ##                               DALI SETUP                                   ##
@@ -325,15 +328,6 @@ if (BLAS_FOUND AND MKL_FOUND)
    add_dependencies(dali fix_libiomp5)
 endif (BLAS_FOUND AND MKL_FOUND)
 
-if (WITH_CUDA)
-    IF (APPLE)
-        target_link_libraries(dali -force_load dali_cuda)
-    ELSE (APPLE)
-        target_link_libraries(dali "-Wl,--whole-archive")
-        target_link_libraries(dali dali_cuda)
-        target_link_libraries(dali "-Wl,--no-whole-archive")
-    ENDIF(APPLE)
-endif (WITH_CUDA)
 
 ################################################################################
 ##                               DALI SETUP                                   ##
@@ -383,12 +377,6 @@ endif(GTEST_FOUND)
 ##                                   ---                                      ##
 ##                             INSTALLATION                                   ##
 ################################################################################
-
-if (WITH_CUDA)
-    IF (APPLE)
-        INSTALL(TARGETS dali_cuda DESTINATION lib)
-    ENDIF (APPLE)
-endif(WITH_CUDA)
 
 # THOSE HEADERS ARE REQUIRED FOR DALI HEADERS TO WORK, SO WE AUTOMATICALLY INSTALL THEM.
 # install mshadow

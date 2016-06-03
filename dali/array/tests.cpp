@@ -540,37 +540,6 @@ TEST(ArrayTest, transpose) {
     }
 }
 
-TEST(ArrayTest, advanced_striding_with_reductions) {
-    Array x = Array::arange({3,4});
-    Array y = Array::arange({3,4});
-    y = y[Slice(0,3)][Slice(0,4,-1)];
-    for (int i =0; i <12; ++i) y(i) = i;
-
-    Array z =  lazy::sum(lazy::equals(x, y));
-    EXPECT_EQ(12, (int)z);
-}
-
-TEST(ArrayTest, advanced_striding_with_reductions1) {
-    Array x = Array::arange({3,4});
-    Array y = Array::arange({3,4});
-    y = y[Slice(0,3,-1)];
-    for (int i =0; i <12; ++i) y(i) = i;
-
-    Array z =  lazy::sum(lazy::equals(x, y));
-    EXPECT_EQ(12, (int)z);
-}
-
-TEST(ArrayTest, advanced_striding_with_reductions2) {
-    Array x = Array::arange({12});
-    Array y_source = Array::arange({12,2});
-    Array y = y_source[Slice(0,12)][1];
-
-    for (int i =0; i <12; ++i) y(i) = i;
-
-    Array z =  lazy::sum(lazy::equals(x, y));
-    EXPECT_EQ(12, (int)z);
-}
-
 TEST(ArrayIOTests, detect_types_on_load) {
     auto loaded_ints = Array::load(
         utils::dir_join({STR(DALI_DATA_DIR), "tests", "vals_int.npy"})

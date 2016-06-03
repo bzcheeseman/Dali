@@ -9,7 +9,7 @@
 #include "dali/array/op.h"
 
 
-TEST(ArrayLazyOpsTests, lazy_binary_correctness) {
+TEST(ArrayBinaryTests, lazy_binary_correctness) {
     Array x({2,1});
     Array y({2,1});
     Array z({2,1});
@@ -25,7 +25,7 @@ TEST(ArrayLazyOpsTests, lazy_binary_correctness) {
 }
 
 
-TEST(ArrayLazyOpsTests, broadcasted_add) {
+TEST(ArrayBinaryTests, broadcasted_add) {
     auto out = Array::zeros({2,3,4}, DTYPE_INT32);
     auto A = Array::ones({2,3,4}, DTYPE_INT32);
     auto B = Array::ones({3},     DTYPE_INT32);
@@ -35,4 +35,35 @@ TEST(ArrayLazyOpsTests, broadcasted_add) {
     out = A +  2 * B;
 
     ASSERT_EQ((int)(Array)out.sum(), 2 * 3 * 4 * 3);
+}
+
+TEST(ArrayBinaryTests, advanced_striding_with_reductions) {
+    Array x = Array::arange({3,4});
+    Array y = Array::arange({3,4});
+    y = y[Slice(0,3)][Slice(0,4,-1)];
+    for (int i =0; i <12; ++i) y(i) = i;
+
+    Array z =  lazy::sum(lazy::equals(x, y));
+    EXPECT_EQ(12, (int)z);
+}
+
+TEST(ArrayBinaryTests, advanced_striding_with_reductions1) {
+    Array x = Array::arange({3,4});
+    Array y = Array::arange({3,4});
+    y = y[Slice(0,3,-1)];
+    for (int i =0; i <12; ++i) y(i) = i;
+
+    Array z =  lazy::sum(lazy::equals(x, y));
+    EXPECT_EQ(12, (int)z);
+}
+
+TEST(ArrayBinaryTests, advanced_striding_with_reductions2) {
+    Array x = Array::arange({12});
+    Array y_source = Array::arange({12,2});
+    Array y = y_source[Slice(0,12)][1];
+
+    for (int i =0; i <12; ++i) y(i) = i;
+
+    Array z =  lazy::sum(lazy::equals(x, y));
+    EXPECT_EQ(12, (int)z);
 }

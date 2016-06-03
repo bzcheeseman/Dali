@@ -15,7 +15,7 @@ Array reference_softmax(const Array& input, int axis, const double& temperature)
 
 TEST(ArraySoftmaxTests, softmax_axis) {
     Array A({2, 3, 1, 4, 5, 2}, DTYPE_DOUBLE);
-    A = initializer::uniform(-20.0, 20.0);
+    A = initializer::uniform(-2.0, 2.0);
     for (int axis = 0; axis < A.ndim(); axis++) {
         Array res = op::softmax(A, axis);
         Array ref = reference_softmax(A, axis, 1.0);
@@ -25,7 +25,7 @@ TEST(ArraySoftmaxTests, softmax_axis) {
 
 TEST(ArraySoftmaxTests, softmax_temperature) {
     Array A({4, 5}, DTYPE_DOUBLE);
-    A = initializer::uniform(-20.0, 20.0);
+    A = initializer::uniform(-2.0, 2.0);
     for (int axis = 0; axis < A.ndim(); axis++) {
         for (double temperature = 0.1; temperature < 3.0; temperature += 0.5) {
             Array res = op::softmax(A, axis, temperature);

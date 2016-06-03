@@ -976,7 +976,12 @@ void test_solver(create_solver_t create_solver) {
 void test_solver_trivial(create_solver_t create_solver) {
     utils::random::set_seed(5000);
     // minimize norm of X
-    Tensor X({5}, initializer::uniform(-20.0, 20.0));
+    Tensor X({5});
+    vector<int> X_initial({8.98117318,  1.38778046, -2.56764083,   7.99331316,   0.55424712});
+    for (int i = 0; i < 5; ++i) {
+        X.w(i) = X_initial[i];
+    }
+
     vector<Tensor> params({X});
     auto solver = create_solver(params);
     int solver_iterations = 200;
@@ -998,7 +1003,7 @@ void test_solver_trivial(create_solver_t create_solver) {
 TEST(solver, trivial_sgd) {
     test_solver_trivial([](vector<Tensor> params) {
         auto ret = std::make_shared<solver::SGD>(params);
-        ret->step_size = 0.5;
+        ret->step_size = 0.3;
         ret->clip_norm = 0;
         return ret;
     });

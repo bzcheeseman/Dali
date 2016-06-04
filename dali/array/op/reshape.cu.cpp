@@ -1,35 +1,18 @@
 #include "reshape.h"
+
 #include "dali/array/array.h"
-#include "dali/array/op/unary.h"
 #include "dali/array/function/operator.h"
-#include "dali/array/memory/device.h"
-#include "dali/array/lazy/unary.h"
+#include "dali/array/functor.h"
 #include "dali/array/lazy/reshape.h"
+#include "dali/array/memory/device.h"
+#include "dali/array/op/unary.h"
 
 // TODO(jonathan, szymon): use stream wait events to ensure concatenation
 //                         kicks off when all predecessors are done working
 //                         source: http://cedric-augonnet.com/declaring-dependencies-with-cudastreamwaitevent/
 
 
-/*
-Assign pairs of arrays to each other
-using a particular device an dtype
-*/
-namespace internal {
-    template<OPERATOR_T operator_t, int devT, typename T>
-    void multi_identity_assign(const std::vector<Array>& out_pieces,
-                               const std::vector<Array>& arrays,
-                               const memory::Device& device) {
-        typedef ArrayWrapper<devT,T> wrapper_t;
 
-        for (int arg_idx = 0; arg_idx < out_pieces.size(); arg_idx++) {
-            LazyEvaluator<LazyUnary<functor::identity, Array>>().template typed_eval<operator_t>(
-                wrapper_t::wrap(out_pieces[arg_idx], device),
-                wrapper_t::wrap(lazy::identity(arrays[arg_idx]), device)
-            );
-        }
-    }
-} // namespace internal
 struct ConcatenateFunction : public Function<ConcatenateFunction,
                                                         Array,
                                                         std::vector<Array>,
@@ -92,13 +75,25 @@ struct ConcatenateFunction : public Function<ConcatenateFunction,
         return common;
     }
 
+    // typedef std::tuple<std::vector<Array>, std::vector<Array>, int> modified_args_t;
+    //
+    // static modified_args_t prepare_output(const OPERATOR_T& operator_t,
+    //                                       Array& out,
+    //                                       const std::vector<Array>& arrays,
+    //                                       const int& axis) {
+    //     auto output_bshape = deduce_output_bshape(arrays, axis);
+    //     auto output_dtype  = deduce_output_dtype(arrays, axis);
+    //     auto output_device = deduce_output_device(arrays, axis);
+    //
+    //     initialize_output_array(out, output_dtype, output_device, &output_bshape);
+    //
+    //
+    //
+    //     return modified_args_t(std::move(out_pieces), arrays, axis);
+    // }
+
     template<OPERATOR_T operator_t>
-    static void untyped_eval(const Array& out, const std::vector<Array>& arrays, const int& axis) {
-        auto dtype = deduce_output_dtype(arrays, axis);
-        ASSERT2(out.dtype() == dtype,
-            utils::MS() << "Output type (" << dtype_to_name(out.dtype())
-                        << ") and concatenation type (" << dtype_to_name(dtype) << ") differ");
-        auto device = deduce_computation_device(out, arrays, axis);
+    static void compute(const Array& out, const std::vector<Array>& arrays, const int& axis) {
         // construct result chunks:
         std::vector<Array> out_pieces;
         out_pieces.reserve(arrays.size());
@@ -112,25 +107,19 @@ struct ConcatenateFunction : public Function<ConcatenateFunction,
             );
             so_far += arr.shape()[axis];
         }
-        if (device.type() == memory::DEVICE_T_CPU && dtype == DTYPE_FLOAT) {
-            internal::multi_identity_assign<operator_t, memory::DEVICE_T_CPU, float>(out_pieces, arrays, device);
-        } else if (device.type() == memory::DEVICE_T_CPU && dtype == DTYPE_DOUBLE) {
-            internal::multi_identity_assign<operator_t, memory::DEVICE_T_CPU, double>(out_pieces, arrays, device);
-        } else if (device.type() == memory::DEVICE_T_CPU && dtype == DTYPE_INT32) {
-            internal::multi_identity_assign<operator_t, memory::DEVICE_T_CPU, int>(out_pieces, arrays, device);
+
+        auto device = deduce_computation_device(out, arrays, axis);
+        auto dtype  = deduce_computation_dtype(out, arrays, axis);
+
+        for (int arg_idx = 0; arg_idx < out_pieces.size(); arg_idx++) {
+            untyped_eval<operator_t>(device, dtype, out_pieces[arg_idx], arrays[arg_idx]);
         }
-#ifdef DALI_USE_CUDA
-        else if (device.type() == memory::DEVICE_T_GPU && dtype == DTYPE_FLOAT) {
-            internal::multi_identity_assign<operator_t, memory::DEVICE_T_GPU, float>(out_pieces, arrays, device);
-        } else if (device.type() == memory::DEVICE_T_GPU && dtype == DTYPE_DOUBLE) {
-            internal::multi_identity_assign<operator_t, memory::DEVICE_T_GPU, double>(out_pieces, arrays, device);
-        } else if (device.type() == memory::DEVICE_T_GPU && dtype == DTYPE_INT32) {
-            internal::multi_identity_assign<operator_t, memory::DEVICE_T_GPU, int>(out_pieces, arrays, device);
-        }
-#endif
-        else {
-            ASSERT2(false, utils::MS() << "Best device must be either cpu or gpu, and dtype must be in " DALI_ACCEPTABLE_DTYPE_STR << " (got device: " << device.description() << ", dtype: " << dtype_to_name(dtype) <<  ")");
-        }
+    }
+
+    template<OPERATOR_T operator_t, int devT, typename T>
+    void typed_eval(TypedArray<devT,T> out,
+                    TypedArray<devT,T> chunk) {
+        operator_assign<operator_t, 1>(out, mshadow::expr::F<functor::identity<T>>(chunk.d1()));
     }
 };
 

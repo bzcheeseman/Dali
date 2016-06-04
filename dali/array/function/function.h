@@ -149,7 +149,7 @@ struct Function {
                             << " instead");
 
             auto prepped_args = Class::prepare_output(operator_t, out, args...);
-            unpack_tuple(Class::template untyped_eval<intented_operator_t>, prepped_args);
+            unpack_tuple(Class::template compute<intented_operator_t>, prepped_args);
             debug::dali_function_computed.activate(true);
         });
     }
@@ -159,22 +159,22 @@ struct Function {
             auto prepped_args = Class::prepare_output(operator_t, out, args...);
             switch (operator_t) {
                 case OPERATOR_T_EQL:
-                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_EQL>, prepped_args);
+                    unpack_tuple(Class::template compute<OPERATOR_T_EQL>, prepped_args);
                     break;
                 case OPERATOR_T_ADD:
-                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_ADD>, prepped_args);
+                    unpack_tuple(Class::template compute<OPERATOR_T_ADD>, prepped_args);
                     break;
                 case OPERATOR_T_SUB:
-                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_SUB>, prepped_args);
+                    unpack_tuple(Class::template compute<OPERATOR_T_SUB>, prepped_args);
                     break;
                 case OPERATOR_T_MUL:
-                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_MUL>, prepped_args);
+                    unpack_tuple(Class::template compute<OPERATOR_T_MUL>, prepped_args);
                     break;
                 case OPERATOR_T_DIV:
-                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_DIV>, prepped_args);
+                    unpack_tuple(Class::template compute<OPERATOR_T_DIV>, prepped_args);
                     break;
                 case OPERATOR_T_LSE:
-                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_LSE>, prepped_args);
+                    unpack_tuple(Class::template compute<OPERATOR_T_LSE>, prepped_args);
                     break;
                 default:
                     ASSERT2(false, "OPERATOR_T for assignment between AssignableArray and output must be one of =,-=,+=,*=,/=,<<=");
@@ -185,9 +185,17 @@ struct Function {
     }
 
     template<OPERATOR_T operator_t>
-    static void untyped_eval(const Outtype& out, const Args&... args) {
+    static void compute(const Outtype& out, const Args&... args) {
         auto device = Class::deduce_computation_device(out, args...);
         auto dtype  = Class::deduce_computation_dtype(out, args...);
+        Class::template untyped_eval<operator_t>(device, dtype, out, args...);
+    }
+
+    template<OPERATOR_T operator_t, typename... UpdatedArgs>
+    static void untyped_eval(const memory::Device& device,
+                             const DType& dtype,
+                             const Outtype& out,
+                             const UpdatedArgs&... args) {
         if (device.type() == memory::DEVICE_T_CPU && dtype == DTYPE_FLOAT) {
             typedef ArrayWrapper<memory::DEVICE_T_CPU,float> wrapper_t;
             Class().template typed_eval<operator_t>(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
@@ -242,7 +250,7 @@ struct NonArrayFunction : public Function<Class,Outtype*,Args...> {
     static Outtype run(const Args&... args) {
         typedef Function<Class,Outtype*,Args...> func_t;
         Outtype out;
-        func_t::template untyped_eval <OPERATOR_T_EQL>( &out, args... );
+        func_t::template compute <OPERATOR_T_EQL>( &out, args... );
         return out;
     }
 };

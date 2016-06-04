@@ -8,6 +8,9 @@
 template<template<class>class Functor, typename LeftT, typename RightT>
 struct LazyBinary;
 
+template<typename LeftT, typename RightT>
+struct LazyOuter;
+
 template<template<class>class Functor, typename LeftT, typename RightT>
 struct LazyBinaryIndexed;
 
@@ -39,6 +42,14 @@ struct ReduceOverLazyExpr {
     static outtuple_t unfold_helper(
             const outtuple_t& state,
             const LazyBinary<Functor, LeftT,RightT>& binary_expr,
+            const Args&... args) {
+        return unfold_helper(state, binary_expr.left, binary_expr.right, args...);
+    }
+
+    template<typename LeftT, typename RightT, typename... Args>
+    static outtuple_t unfold_helper(
+            const outtuple_t& state,
+            const LazyOuter<LeftT,RightT>& binary_expr,
             const Args&... args) {
         return unfold_helper(state, binary_expr.left, binary_expr.right, args...);
     }
@@ -103,7 +114,7 @@ struct ReduceOverLazyExpr {
     static outtuple_t unfold_helper(const outtuple_t& state, const T& arg, const Args&... args) {
         static_assert(!std::is_base_of<LazyExpType,T>::value,
                 "Every lazy expression needs to have a corresponding `unfold_helper` method in " __FILE__
-                "Did you add an new lazy expression and forget to implement `unfold_helper`?");
+                ". Did you add an new lazy expression and forget to implement `unfold_helper`?");
         return unfold_helper(Reducer::reduce_step(state, arg), args...);
     }
 

@@ -6,12 +6,18 @@
 template<template<class>class Functor, typename LeftT, typename RightT>
 struct LazyBinary;
 
+template<typename LeftT, typename RightT>
+struct LazyOuter;
+
 template<template<class>class Functor, typename LeftT, typename RightT>
 struct LazyBinaryIndexed;
 
 namespace lazy {
     template<template<class>class Functor, typename T1, typename T2>
     LazyBinary<Functor, T1, T2> F(const T1& expr, const T2& expr2);
+
+    template<typename T1, typename T2>
+    LazyOuter<T1, T2> outer(const T1& expr, const T2& expr2);
 
     template <typename T, typename T2>
     LazyBinary<functor::add, T, T2> add(const T& a, const T2& b);

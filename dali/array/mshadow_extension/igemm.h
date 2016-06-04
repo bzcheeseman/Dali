@@ -13,7 +13,7 @@
 // inefficient cuda matrix multiply of integers on gpu
 template<typename R>
 __global__
-void igemm(bool transpose_a, bool transpose_b, bool transpose_c, int m, int n, int k, R alpha, const R *A, int lda,
+void gemm(bool transpose_a, bool transpose_b, bool transpose_c, int m, int n, int k, R alpha, const R *A, int lda,
            const R *B, int ldb, R beta, R* C, int ldc) {
     int j = blockIdx.x * blockDim.x + threadIdx.x;
     int i = blockIdx.y * blockDim.y + threadIdx.y;
@@ -101,7 +101,7 @@ namespace expr {
             dim3 blocks(1,1);
             dim3 threads(16,16);
 
-            igemm<int><<<blocks, threads, 0, stream>>>(
+            gemm<int><<<blocks, threads, 0, stream>>>(
                 !transa, !transb, true, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc
             );
         }

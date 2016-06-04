@@ -132,15 +132,23 @@ if (WITH_CUDA)
         -Xptxas -dlcm=cg
         -use_fast_math
         -std=c++11
-        -gencode arch=compute_35,code=sm_35 # precompile JIT optimizations for specific architectures
-        -gencode arch=compute_52,code=sm_52
-        -gencode arch=compute_53,code=sm_53
-
     )
-    if (${CUDA_VERSION} VERSION_GREATER "8.0" OR ${CUDA_VERSION} VERSION_EQUAL "8.0")
-        # for PASCAL architectures we require cuda 8.0
-        LIST(APPEND CUDA_NVCC_FLAGS -gencode arch=compute_62,code=sm_62)
+    # precompile JIT optimizations for specific architectures
+    set(SUPPORTED_JIT_PRECOMPILATIONS "")
+    if (DEFINED ENV{DALI_GPU_ARCH})
+        string(REPLACE ":" ";" DALI_GPU_ARCH_LIST $ENV{DALI_GPU_ARCH})
+        list(APPEND SUPPORTED_JIT_PRECOMPILATIONS ${DALI_GPU_ARCH_LIST})
+    else()
+        list(APPEND SUPPORTED_JIT_PRECOMPILATIONS "35" "52" "53")
+        if (${CUDA_VERSION} VERSION_GREATER "8.0" OR ${CUDA_VERSION} VERSION_EQUAL "8.0")
+            list(APPEND SUPPORTED_JIT_PRECOMPILATIONS "61")
+        endif()
     endif()
+
+    foreach(gpu_arch ${SUPPORTED_JIT_PRECOMPILATIONS})
+        # for PASCAL architectures we require cuda 8.0
+        LIST(APPEND CUDA_NVCC_FLAGS -gencode arch=compute_${gpu_arch},code=sm_${gpu_arch})
+    endforeach()
     SET(CUDA_EXTRA_FLAGS "-fno-strict-aliasing")
     SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -L/usr/local/cuda/lib")
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CUDA_EXTRA_FLAGS}")

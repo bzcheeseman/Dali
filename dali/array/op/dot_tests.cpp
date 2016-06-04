@@ -262,7 +262,7 @@ TEST(ArrayDotTests, tensordot_alignment_rules) {
     EXPECT_EQ(expected_c.shape(), c.shape());
 
     for (int i = 0; i < expected_c.number_of_elements(); i++) {
-        EXPECT_NEAR_DTYPE((float)expected_c(i), c(i), (float)1e-6, c.dtype());
+        EXPECT_NEAR_DTYPE((float)expected_c(i), c(i), (float)1e-5, c.dtype());
     }
 
 }

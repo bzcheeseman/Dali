@@ -75,25 +75,26 @@ struct Function {
         return ReduceOverArgs<DTypeEqualForAllArrayArgsReducer>::reduce(out, args...);
     }
 
-    static std::tuple<Outtype_t, Args...> prepare_output(const OPERATOR_T& operator_t, Outtype& out, const Args&... args) {
-        auto common_bshape = Class::deduce_output_bshape(args...);
-        auto common_dtype = Class::deduce_output_dtype(args...);
-
+    static void initialize_output_array(Outtype& out,
+                                        const DType& output_dtype,
+                                        const memory::Device& output_device,
+                                        std::vector<int>* output_bshape_ptr) {
+        auto& output_bshape = *output_bshape_ptr;
         if (out.is_stateless()) {
             // when constructing a stateless
             // output, we decide what the output
             // shape will be. Broadcasted greater
             // than one dimensions are expanded
             // out:
-            for (auto& dim : common_bshape) {
+            for (auto& dim : output_bshape) {
                 if (dim < -1) {
                     dim = std::abs(dim);
                 }
             }
 
-            out.initialize_with_bshape(common_bshape,
-                                       common_dtype,
-                                       Class::deduce_output_device(args...));
+            out.initialize_with_bshape(output_bshape,
+                                       output_dtype,
+                                       output_device);
         } else {
             if (!Class::disable_output_shape_check) {
                 bool broadcast_reshaped_output = false;
@@ -110,10 +111,10 @@ struct Function {
                         " bigger than 1, because it results in many-to-one mappings.");
 
 
-                bool output_bshape_compatible = out.ndim() == common_bshape.size();
+                bool output_bshape_compatible = out.ndim() == output_bshape.size();
                 if (output_bshape_compatible) {
                     for (int i = 0; i < out.ndim(); ++i) {
-                        if (common_bshape[i] != -1 && abs(common_bshape[i]) != out.shape()[i]) {
+                        if (output_bshape[i] != -1 && abs(output_bshape[i]) != out.shape()[i]) {
                             output_bshape_compatible = false;
                             break;
                         }
@@ -121,11 +122,20 @@ struct Function {
                 }
 
                 ASSERT2(output_bshape_compatible,
-                        utils::MS() << "Cannot assign result of shape " << common_bshape << " to a location of shape " << out.shape() << ".");
+                        utils::MS() << "Cannot assign result of shape " << output_bshape << " to a location of shape " << out.shape() << ".");
             }
-            ASSERT2(Class::disable_output_dtype_check || out.dtype() == common_dtype,
-                    utils::MS() << "Cannot assign result of dtype " << common_dtype << " to a location of dtype " << out.dtype() << ".");
+            ASSERT2(Class::disable_output_dtype_check || out.dtype() == output_dtype,
+                    utils::MS() << "Cannot assign result of dtype " << output_dtype << " to a location of dtype " << out.dtype() << ".");
         }
+    }
+
+    static std::tuple<Outtype_t, Args...> prepare_output(const OPERATOR_T& operator_t, Outtype& out, const Args&... args) {
+        auto output_bshape = Class::deduce_output_bshape(args...);
+        auto output_dtype  = Class::deduce_output_dtype(args...);
+        auto output_device = Class::deduce_output_device(args...);
+
+        Class::initialize_output_array(out, output_dtype, output_device, &output_bshape);
+
         return std::tuple<Outtype, Args...>(out, args...);
     }
 

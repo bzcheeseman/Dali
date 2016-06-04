@@ -149,9 +149,37 @@ struct Function {
                             << " instead");
 
             auto prepped_args = Class::prepare_output(operator_t, out, args...);
-            unpack_tuple(Class::template compute<intented_operator_t>, prepped_args);
+            unpack_tuple(Class::template untyped_eval<intented_operator_t>, prepped_args);
             debug::dali_function_computed.activate(true);
         });
+    }
+
+
+    template<OPERATOR_T operator_t>
+    static void untyped_eval(const Outtype& out,
+                             const Args&... args) {
+        auto device = Class::deduce_computation_device(out, args...);
+        auto dtype  = Class::deduce_computation_dtype(out, args...);
+
+        if (device.type() == memory::DEVICE_T_CPU && dtype == DTYPE_FLOAT) {
+            Class().template compute<operator_t,memory::DEVICE_T_CPU,float>(out, device, args...);
+        } else if (device.type() == memory::DEVICE_T_CPU && dtype == DTYPE_DOUBLE) {
+            Class().template compute<operator_t,memory::DEVICE_T_CPU,double>(out, device, args...);
+        } else if (device.type() == memory::DEVICE_T_CPU && dtype == DTYPE_INT32) {
+            Class().template compute<operator_t,memory::DEVICE_T_CPU,int>(out, device, args...);
+        }
+#ifdef DALI_USE_CUDA
+        else if (device.type() == memory::DEVICE_T_GPU && dtype == DTYPE_FLOAT) {
+            Class().template compute<operator_t,memory::DEVICE_T_GPU,float>(out, device, args...);
+        } else if (device.type() == memory::DEVICE_T_GPU && dtype == DTYPE_DOUBLE) {
+            Class().template compute<operator_t,memory::DEVICE_T_GPU,double>(out, device, args...);
+        } else if (device.type() == memory::DEVICE_T_GPU && dtype == DTYPE_INT32) {
+            Class().template compute<operator_t,memory::DEVICE_T_GPU,int>(out, device, args...);
+        }
+#endif
+        else {
+            ASSERT2(false, utils::MS() << "Best device must be either cpu or gpu, and dtype must be in " DALI_ACCEPTABLE_DTYPE_STR << " (got device: " << device.description() << ", dtype: " << dtype_to_name(dtype) <<  ")");
+        }
     }
 
     static AssignableArray run(const Args&... args) {
@@ -159,22 +187,22 @@ struct Function {
             auto prepped_args = Class::prepare_output(operator_t, out, args...);
             switch (operator_t) {
                 case OPERATOR_T_EQL:
-                    unpack_tuple(Class::template compute<OPERATOR_T_EQL>, prepped_args);
+                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_EQL>, prepped_args);
                     break;
                 case OPERATOR_T_ADD:
-                    unpack_tuple(Class::template compute<OPERATOR_T_ADD>, prepped_args);
+                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_ADD>, prepped_args);
                     break;
                 case OPERATOR_T_SUB:
-                    unpack_tuple(Class::template compute<OPERATOR_T_SUB>, prepped_args);
+                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_SUB>, prepped_args);
                     break;
                 case OPERATOR_T_MUL:
-                    unpack_tuple(Class::template compute<OPERATOR_T_MUL>, prepped_args);
+                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_MUL>, prepped_args);
                     break;
                 case OPERATOR_T_DIV:
-                    unpack_tuple(Class::template compute<OPERATOR_T_DIV>, prepped_args);
+                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_DIV>, prepped_args);
                     break;
                 case OPERATOR_T_LSE:
-                    unpack_tuple(Class::template compute<OPERATOR_T_LSE>, prepped_args);
+                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_LSE>, prepped_args);
                     break;
                 default:
                     ASSERT2(false, "OPERATOR_T for assignment between AssignableArray and output must be one of =,-=,+=,*=,/=,<<=");
@@ -184,43 +212,13 @@ struct Function {
         });
     }
 
-    template<OPERATOR_T operator_t>
-    static void compute(const Outtype& out, const Args&... args) {
-        auto device = Class::deduce_computation_device(out, args...);
-        auto dtype  = Class::deduce_computation_dtype(out, args...);
-        Class::template untyped_eval<operator_t>(device, dtype, out, args...);
-    }
-
-    template<OPERATOR_T operator_t, typename... UpdatedArgs>
-    static void untyped_eval(const memory::Device& device,
-                             const DType& dtype,
-                             const Outtype& out,
-                             const UpdatedArgs&... args) {
-        if (device.type() == memory::DEVICE_T_CPU && dtype == DTYPE_FLOAT) {
-            typedef ArrayWrapper<memory::DEVICE_T_CPU,float> wrapper_t;
-            Class().template typed_eval<operator_t>(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
-        } else if (device.type() == memory::DEVICE_T_CPU && dtype == DTYPE_DOUBLE) {
-            typedef ArrayWrapper<memory::DEVICE_T_CPU,double> wrapper_t;
-            Class().template typed_eval<operator_t>(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
-        } else if (device.type() == memory::DEVICE_T_CPU && dtype == DTYPE_INT32) {
-            typedef ArrayWrapper<memory::DEVICE_T_CPU,int> wrapper_t;
-            Class().template typed_eval<operator_t>(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
-        }
-#ifdef DALI_USE_CUDA
-        else if (device.type() == memory::DEVICE_T_GPU && dtype == DTYPE_FLOAT) {
-            typedef ArrayWrapper<memory::DEVICE_T_GPU,float> wrapper_t;
-            Class().template typed_eval<operator_t>(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
-        } else if (device.type() == memory::DEVICE_T_GPU && dtype == DTYPE_DOUBLE) {
-            typedef ArrayWrapper<memory::DEVICE_T_GPU,double> wrapper_t;
-            Class().template typed_eval<operator_t>(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
-        } else if (device.type() == memory::DEVICE_T_GPU && dtype == DTYPE_INT32) {
-            typedef ArrayWrapper<memory::DEVICE_T_GPU, int> wrapper_t;
-            Class().template typed_eval<operator_t>(wrapper_t::wrap(out,device), wrapper_t::wrap(args, device)...);
-        }
-#endif
-        else {
-            ASSERT2(false, utils::MS() << "Best device must be either cpu or gpu, and dtype must be in " DALI_ACCEPTABLE_DTYPE_STR << " (got device: " << device.description() << ", dtype: " << dtype_to_name(dtype) <<  ")");
-        }
+    template<OPERATOR_T operator_t, int devT, typename T>
+    void compute(const Outtype& out, const memory::Device& device, const Args&... args) {
+        typedef ArrayWrapper<devT,T> wrapper_t;
+        ((Class*)this)->template typed_eval<operator_t>(
+            wrapper_t::wrap(out, device),
+            wrapper_t::wrap(args, device)...
+        );
     }
 };
 
@@ -250,7 +248,7 @@ struct NonArrayFunction : public Function<Class,Outtype*,Args...> {
     static Outtype run(const Args&... args) {
         typedef Function<Class,Outtype*,Args...> func_t;
         Outtype out;
-        func_t::template compute <OPERATOR_T_EQL>( &out, args... );
+        func_t::template untyped_eval <OPERATOR_T_EQL>( &out, args... );
         return out;
     }
 };

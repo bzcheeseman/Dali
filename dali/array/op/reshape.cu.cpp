@@ -75,25 +75,11 @@ struct ConcatenateFunction : public Function<ConcatenateFunction,
         return common;
     }
 
-    // typedef std::tuple<std::vector<Array>, std::vector<Array>, int> modified_args_t;
-    //
-    // static modified_args_t prepare_output(const OPERATOR_T& operator_t,
-    //                                       Array& out,
-    //                                       const std::vector<Array>& arrays,
-    //                                       const int& axis) {
-    //     auto output_bshape = deduce_output_bshape(arrays, axis);
-    //     auto output_dtype  = deduce_output_dtype(arrays, axis);
-    //     auto output_device = deduce_output_device(arrays, axis);
-    //
-    //     initialize_output_array(out, output_dtype, output_device, &output_bshape);
-    //
-    //
-    //
-    //     return modified_args_t(std::move(out_pieces), arrays, axis);
-    // }
-
-    template<OPERATOR_T operator_t>
-    static void compute(const Array& out, const std::vector<Array>& arrays, const int& axis) {
+    template<OPERATOR_T operator_t, int devT, typename T>
+    void compute(const Array& out,
+                        const memory::Device& device,
+                        const std::vector<Array>& arrays,
+                        const int& axis) {
         // construct result chunks:
         std::vector<Array> out_pieces;
         out_pieces.reserve(arrays.size());
@@ -108,11 +94,11 @@ struct ConcatenateFunction : public Function<ConcatenateFunction,
             so_far += arr.shape()[axis];
         }
 
-        auto device = deduce_computation_device(out, arrays, axis);
-        auto dtype  = deduce_computation_dtype(out, arrays, axis);
+        typedef ArrayWrapper<devT,T> wrapper_t;
 
         for (int arg_idx = 0; arg_idx < out_pieces.size(); arg_idx++) {
-            untyped_eval<operator_t>(device, dtype, out_pieces[arg_idx], arrays[arg_idx]);
+            typed_eval<operator_t>(wrapper_t::wrap(out_pieces[arg_idx], device),
+                                   wrapper_t::wrap(arrays[arg_idx], device));
         }
     }
 

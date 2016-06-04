@@ -69,3 +69,30 @@ TEST(TensorCompositeTests, matrix_multiple_dot_with_bias_fancy_broadcast) {
         ASSERT_TRUE(gradient_same(functor, {X, W, X_fancy, W_fancy, X_other, W_other, bias}, 0.0003));
     }
 }
+
+TEST(TensorCompositeTests, quadratic_form) {
+    EXPERIMENT_REPEAT {
+        Tensor left({2, 4}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
+        Tensor middle({2, 3}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
+        Tensor right({3, 5}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
+
+        auto functor = [](vector<Tensor> Xs)-> Tensor {
+            return tensor_ops::quadratic_form(Xs[0], Xs[1], Xs[2]);
+        };
+        ASSERT_TRUE(gradient_same(functor, {left, middle, right}, 1e-3));
+    }
+}
+
+TEST(TensorCompositeTests, DISABLED_quadratic_form_with_3D_input) {
+    //TODO(jonathan): quadratic form in 3D / N-D suffers from weird LDA to dgemm
+    EXPERIMENT_REPEAT {
+        Tensor left({2, 4, 1}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
+        Tensor middle({2, 3}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
+        Tensor right({3, 1}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
+
+        auto functor = [](vector<Tensor> Xs)-> Tensor {
+            return tensor_ops::quadratic_form(Xs[0], Xs[1], Xs[2]);
+        };
+        ASSERT_TRUE(gradient_same(functor, {left, middle, right}, 1e-3));
+    }
+}

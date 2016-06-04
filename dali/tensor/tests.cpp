@@ -918,29 +918,6 @@ TEST_F(TensorTests, pow) {
     }
 }
 
-TEST_F(TensorTests, quadratic_form) {
-    EXPERIMENT_REPEAT {
-        Tensor left({2, 4}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
-        Tensor middle({2, 3}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
-        Tensor right({3, 5}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
-
-        auto functor = [](vector<Tensor> Xs)-> Tensor {
-            return tensor_ops::quadratic_form(Xs[0], Xs[1], Xs[2]);
-        };
-        ASSERT_TRUE(gradient_same(functor, {left, middle, right}, 1e-3));
-    }
-    // TODO(jonathan): quadratic form in 3D / N-D suffers from weird LDA to dgemm
-    // EXPERIMENT_REPEAT {
-    //     Tensor left({2, 4, 1}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
-    //     Tensor middle({2, 3}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
-    //     Tensor right({3, 1}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
-
-    //     auto functor = [](vector<Tensor> Xs)-> Tensor {
-    //         return tensor_ops::quadratic_form(Xs[0], Xs[1], Xs[2]);
-    //     };
-    //     ASSERT_TRUE(gradient_same(functor, {left, middle, right}, 1e-3));
-    // }
-}
 
 typedef std::function<std::shared_ptr<solver::AbstractSolver>(vector<Tensor>)> create_solver_t;
 

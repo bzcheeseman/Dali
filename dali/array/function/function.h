@@ -136,7 +136,13 @@ struct Function {
 
         Class::initialize_output_array(out, output_dtype, output_device, &output_bshape);
 
+        Class::verify(args...);
+
         return std::tuple<Outtype, Args...>(out, args...);
+    }
+
+    static void verify(const Args&... args) {
+        //TODO(yupeng): remove this once all the functions respect it.
     }
 
     template<OPERATOR_T intented_operator_t>

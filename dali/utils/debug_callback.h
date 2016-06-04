@@ -17,6 +17,27 @@ struct DebugCallback {
     std::list<callback_t> callbacks;
 };
 
+template<typename... Args>
+struct ScopedCallback {
+    DebugCallback<Args...>* dc;
+    typename DebugCallback<Args...>::callback_handle_t dc_handle;
+
+    ScopedCallback(typename DebugCallback<Args...>::callback_t callback,
+                   DebugCallback<Args...>* dc_);
+
+    ~ScopedCallback();
+
+    ScopedCallback(ScopedCallback&&);
+    ScopedCallback(const ScopedCallback&) = delete;
+    ScopedCallback& operator=(const ScopedCallback&) = delete;
+};
+
+template<typename... Args>
+ScopedCallback<Args...> make_scoped_callback(
+        typename DebugCallback<Args...>::callback_t callback,
+        DebugCallback<Args...>* dc);
+
+
 #include "debug_callback-impl.h"
 
 #endif

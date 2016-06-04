@@ -434,6 +434,7 @@ Array Array::ascontiguousarray() const {
     if (contiguous_memory()) {
         return *this;
     }
+    debug::array_as_contiguous.activate(*this);
     return op::identity(*this);
 }
 
@@ -591,6 +592,31 @@ Array Array::operator()(index_t idx) const {
                  dtype());
 }
 
+
+bool Array::is_transpose() {
+    if (ndim() <= 1) {
+        // dims 0 and 1 do not change if we call a transpose
+        return true;
+    } else {
+        if (strides().size() == 0) {
+            // for dim greater than 2 if strides are trivial,
+            // then we are definitely not transposed.
+            return false;
+        }
+        // the condidtion for the transpose is that strides are in the order
+        // opposite to the trivial strides.
+        vector<int> reversed_shape(shape());
+        std::reverse(reversed_shape.begin(), reversed_shape.end());
+        auto reversed_strides = shape_to_trivial_strides(reversed_shape);
+
+        for (int i = 0; i < ndim(); ++i) {
+            if (reversed_strides[i] != strides()[ndim() - 1 - i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
 
 Array Array::transpose() const {
     std::vector<int> permutation(ndim(), 0);

@@ -154,16 +154,6 @@ Array reference_tensordot(const Array& a, const Array&b) {
     return cloop;
 }
 
-TEST(ArrayDotTests, broadcasted_args) {
-    Array X = Array::arange({5}, DTYPE_DOUBLE)[Broadcast()];
-    auto W = Array::arange({5, 10}, DTYPE_DOUBLE);
-
-    auto out = Array({3, 10}, DTYPE_DOUBLE);
-
-    out = X.dot(W);
-}
-
-
 TEST(ArrayDotTests, broadcasted_args_explicit_reshape) {
     Array X = Array::arange({5}, DTYPE_DOUBLE)[Broadcast()];
     X = X.reshape_broadcasted({3,5});
@@ -265,4 +255,45 @@ TEST(ArrayDotTests, tensordot_alignment_rules) {
         EXPECT_NEAR_DTYPE((float)expected_c(i), c(i), (float)1e-5, c.dtype());
     }
 
+}
+
+TEST(ArrayDotTests, broadcast_outer) {
+    auto X = Array::zeros({4}, DTYPE_DOUBLE)[Broadcast()];
+    auto W = Array::zeros({4, 5}, DTYPE_DOUBLE);
+
+
+    CountImplicitCopies implicit_copies;
+    Array y = op::dot(X,W);
+    ASSERT_EQ(0, implicit_copies.count);
+}
+
+TEST(ArrayDotTests, broadcast_inner) {
+    auto X = Array::zeros({3}, DTYPE_DOUBLE)[Slice(0,3)][Broadcast()];
+    auto W = Array::zeros({4, 5}, DTYPE_DOUBLE);
+
+    CountImplicitCopies implicit_copies;
+    Array y = op::dot(X,W);
+    ASSERT_EQ(1, implicit_copies.count);
+}
+
+TEST(ArrayDotTests, broadcast_to_out) {
+    Array X = Array::arange({5}, DTYPE_DOUBLE)[Broadcast()];
+    auto W = Array::arange({5, 10}, DTYPE_DOUBLE);
+
+    auto out = Array({3, 10}, DTYPE_DOUBLE);
+
+    out = X.dot(W);
+}
+
+TEST(ArrayDotTests, broadcast_outer_with_jumps) {
+    Array X = Array::arange({300, 5}, DTYPE_DOUBLE);
+    X = X[Slice(0, 300, 100)];
+
+    auto W = Array::arange({5, 10}, DTYPE_DOUBLE);
+
+    auto out = Array({3, 10}, DTYPE_DOUBLE);
+
+    CountImplicitCopies implicit_copies;
+    out = X.dot(W);
+    ASSERT_EQ(1, implicit_copies.count);
 }

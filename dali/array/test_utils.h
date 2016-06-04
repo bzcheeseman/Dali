@@ -24,3 +24,23 @@ void EXPECT_NEAR_DTYPE(const T& reference, const Array& result, float eps, const
         EXPECT_NEAR((double)reference, (double)result, (double)eps);
     }
 }
+
+
+using namespace std::placeholders;
+
+struct CountImplicitCopies {
+    ScopedCallback<Array> scoped_dc;
+    int count;
+
+    void mark_copy(const Array& arr) {
+        count += 1;
+    }
+
+    CountImplicitCopies() :
+            count(0),
+            scoped_dc(make_scoped_callback(
+                    // std::bind(&CountImplicitCopies::mark_copy, this, _1),
+                    [this](const Array& arr) { this->count += 1; },
+                    &debug::array_as_contiguous)) {
+    }
+};

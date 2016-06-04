@@ -131,6 +131,9 @@ class Array : public Exp<Array> {
     SlicingInProgress<Array> operator[](const Broadcast& b) const;
     // Get scalar at this offset:
     Array operator()(index_t idx) const;
+    // returns true if array is possibly a result of calling .transpose()
+    // on antoher array.
+    bool is_transpose();
     // create a view of the transposed memory
     Array transpose() const;
     Array transpose(const std::vector<int>& axes) const;

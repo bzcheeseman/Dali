@@ -18,3 +18,31 @@ int DebugCallback<Args...>::activate(Args... args) {
     }
     return num_called;
 }
+
+
+template<typename... Args>
+ScopedCallback<Args...>::ScopedCallback(
+        typename DebugCallback<Args...>::callback_t callback,
+        DebugCallback<Args...>* dc_) :
+                dc_handle(dc_->register_callback(callback)),
+                dc(dc_) {
+}
+
+template<typename... Args>
+ScopedCallback<Args...>::~ScopedCallback() {
+    dc->deregister_callback(dc_handle);
+}
+
+template<typename... Args>
+ScopedCallback<Args...>::ScopedCallback(ScopedCallback&& other) :
+        dc(std::move(other.dc)),
+        dc_handle(std::move(dc_handle)) {
+}
+
+
+template<typename... Args>
+ScopedCallback<Args...> make_scoped_callback(
+        typename DebugCallback<Args...>::callback_t callback,
+        DebugCallback<Args...>* dc) {
+    return ScopedCallback<Args...>(callback, dc);
+}

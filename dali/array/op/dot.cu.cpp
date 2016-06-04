@@ -76,56 +76,69 @@ struct MatrixMultiplyFunction : public Function<MatrixMultiplyFunction,
         return {a.bshape()[0], b.bshape()[1]};
     }
 
+
+    static std::tuple<Array, Array, Array> prepare_output(
+            const OPERATOR_T& operator_t,
+            Array& out,
+            const Array& left,
+            const Array& right) {
+        auto output_bshape = deduce_output_bshape(left, right);
+        auto output_dtype  = deduce_output_dtype(left, right);
+        auto output_device = deduce_output_device(left, right);
+
+        initialize_output_array(out, output_dtype, output_device, &output_bshape);
+
+        verify(left, right);
+
+
+        int left_dim  = std::abs(out.shape()[0]),
+            inner_dim = std::max(left.shape()[1], right.shape()[0]),
+            right_dim = std::abs(out.shape()[1]);
+
+        Array left_reshaped  = left.reshape_broadcasted({left_dim, inner_dim});
+        if (!left_reshaped.is_transpose()) {
+            left_reshaped = left_reshaped.reshape({left_dim, inner_dim});
+        }
+
+
+        Array right_reshaped  = right.reshape_broadcasted({inner_dim, right_dim});
+        if (!right_reshaped.is_transpose()) {
+            right_reshaped = right_reshaped.reshape({inner_dim, right_dim});
+        }
+
+        // TODO(szymon): change this to reshape (not copyless) and make sure
+        // that if the copy has occured we write back the result to out after
+        // computation is done.
+        // TODO(szymon): make sure that the test ArrayDotTests.broadcast_to_out
+        // does make a copy before assigning to out, so that the computation is
+        // 3x less.
+        Array out_reshaped   = out.copyless_reshape({left_dim, right_dim});
+
+        return std::tuple<Array,Array,Array>(out_reshaped, left_reshaped, right_reshaped);
+    }
+
+    static bool dimensions_compatible(int dim1, int dim2) {
+        return dim1 == dim2 || dim1 == -1 || dim2 == -1;
+    }
+
+    static void verify(const Array& a, const Array& b) {
+        ASSERT2(a.is_matrix() && b.is_matrix(),
+                utils::MS() << "Matrix multiply inputs must be matrices, got a.ndim()="
+                            << a.ndim() << " and b.ndim()="
+                            << b.ndim() << " tensors.");
+
+        ASSERT2(dimensions_compatible(a.bshape()[1], b.bshape()[0]),
+            utils::MS() << "Matrix multiply dissagreement on inner dimension for shapes "
+                        << a.shape() << " and " << b.shape());
+    }
+
     template<OPERATOR_T operator_t, int devT, typename T>
     void typed_eval(
             TypedArray<devT, T> out,
-            TypedArray<devT, T> a,
-            TypedArray<devT, T> b) {
-        // Comprehensive error checking
-        ASSERT2(a.array.is_matrix() && b.array.is_matrix(),
-                utils::MS() << "MatrixMultiply inputs must be matrices, got a.ndim()="
-                            << a.array.ndim() << " and b.ndim()="
-                            << b.array.ndim() << " tensors.");
+            TypedArray<devT, T> left,
+            TypedArray<devT, T> right) {
 
-
-        ASSERT2(a.array.shape()[1] == b.array.shape()[0] ||
-                a.array.bshape()[1] == -1 ||
-                b.array.bshape()[0] == -1,
-            utils::MS() << "MatrixMultiply: dissagreement on inner dimension for shapes "
-                        << a.array.shape() << " and " << b.array.shape());
-
-
-        int left   = out.array.shape()[0],
-            middle = std::max(a.array.shape()[1], b.array.shape()[0]),
-            right  = out.array.shape()[1];
-
-        // if the broadcasting fails let ReshapedMatrixMultiplyFunction
-        // throw an error.
-        auto new_a = a;
-        auto new_b = b;
-
-        const auto& a_strides = a.array.strides();
-        if (a_strides.size() != 0) {
-            bool broadcasted    = a_strides[0] == 0 || a_strides[1] == 0;
-            bool doubly_strided = !(a_strides[0] == 1 || a_strides[1] == 1);
-            if (broadcasted || doubly_strided) {
-                auto new_a_array = a.array.reshape_broadcasted({left, middle}).ascontiguousarray();
-                new_a = TypedArray<devT,T>(new_a_array, a.device, new_a_array.shape());
-            }
-        }
-
-        const auto& b_strides = b.array.strides();
-        if (b_strides.size() != 0) {
-            bool broadcasted    = b_strides[0] == 0 || b_strides[1] == 0;
-            bool doubly_strided = !(b_strides[0] == 1 || b_strides[1] == 1);
-            if (broadcasted || doubly_strided) {
-                auto new_b_array = b.array.reshape_broadcasted({middle, right}).ascontiguousarray();
-                new_b = TypedArray<devT,T>(new_b_array, b.device, new_b_array.shape());
-            }
-        }
-
-
-        MatrixMultiplyHelper<operator_t,devT,T>::run(out, new_a, new_b);
+        MatrixMultiplyHelper<operator_t,devT,T>::run(out, left, right);
     }
 };
 

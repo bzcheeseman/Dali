@@ -540,6 +540,27 @@ TEST(ArrayTest, transpose) {
     }
 }
 
+TEST(ArrayTests, is_transpose) {
+    Array a0 = Array::zeros({},     DTYPE_INT32);
+    Array a1 = Array::zeros({2},     DTYPE_INT32);
+    Array a2 = Array::zeros({2,3},     DTYPE_INT32);
+    Array a3 = Array::zeros({2,3,4},     DTYPE_INT32);
+    Array a4 = Array::zeros({2,3,4,5},     DTYPE_INT32);
+    ASSERT_TRUE(a0.transpose().is_transpose());
+    ASSERT_TRUE(a1.transpose().is_transpose());
+    ASSERT_TRUE(a2.transpose().is_transpose());
+    ASSERT_TRUE(a3.transpose().is_transpose());
+    ASSERT_TRUE(a4.transpose().is_transpose());
+
+    ASSERT_FALSE(a2.is_transpose());
+    ASSERT_FALSE(a3.is_transpose());
+    ASSERT_FALSE(a4.is_transpose());
+
+    Array a4_with_jumps = a4[Slice(0,2)][Slice(0,3)][Slice(0,4,2)];
+    ASSERT_FALSE(a4_with_jumps.is_transpose());
+    ASSERT_FALSE(a4_with_jumps.transpose().is_transpose());
+}
+
 TEST(ArrayIOTests, detect_types_on_load) {
     auto loaded_ints = Array::load(
         utils::dir_join({STR(DALI_DATA_DIR), "tests", "vals_int.npy"})

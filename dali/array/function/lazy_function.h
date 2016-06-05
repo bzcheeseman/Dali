@@ -75,18 +75,26 @@ struct MshadowWrapper {
             decltype(sth.template to_mshadow_expr<devT, T, ndim>(device, output_shape, eval_spec)) {
         typedef decltype(sth.template to_mshadow_expr<devT,T, ndim>(device, output_shape, eval_spec)) expected_return_t;
 
-        // static_assert(ndim != -1,
-        //               "Mshadow expression for WrappedArrayT has no mshadow::expr::ExpInfo kdim defined. "
-        //               "Specialize this classes ExpInfo to know the kDim.");
-        // static_assert(mshadow::expr::ExpInfo<expected_return_t>::kDim != -1,
-        //               "Mshadow expression for wrapped lazy expression no mshadow::expr::ExpInfo kdim defined. "
-        //               "Specialize this classes ExpInfo to know the kDim.");
-        // static_assert(!(mshadow::expr::ExpInfo<expected_return_t>::kDim == 1 && ndim == 2),
-        //               "Output expression has ndim = 1 while evaluation specifications require ndim = 2");
-        // static_assert(!(mshadow::expr::ExpInfo<expected_return_t>::kDim == 2 && ndim == 1),
-        //               "Output expression has ndim = 2 while evaluation specifications require ndim = 1");
-        // static_assert(mshadow::expr::ExpInfo<expected_return_t>::kDim == ndim,
-        //               "Output expression to wrap has wrong dimensionality.");
+        static const int the_dim_that_was_requested          = ndim;
+        static const int the_dim_that_expr_claims_it_returns = lazy::LazyEvaluationDim<ExprT>::value;
+        static const int the_dim_that_expr_actually_returned = mshadow::expr::ExpInfo<expected_return_t>::kDim;
+
+        static_assert(the_dim_that_expr_claims_it_returns != lazy::EVALUATION_DIM_ERROR,
+                "Lazy expression encountered an error when computing evaluation dim.");
+
+
+        static_assert(the_dim_that_expr_claims_it_returns == lazy::EVALUATION_DIM_ANY ||
+                      the_dim_that_expr_claims_it_returns == the_dim_that_was_requested,
+                  "Lazy expression is incapable of returing the requested dim.");
+
+        const bool fulfilled_return_any = (the_dim_that_expr_claims_it_returns == lazy::EVALUATION_DIM_ANY &&
+                                           the_dim_that_expr_actually_returned == the_dim_that_was_requested);
+
+        const bool returned_what_it_advertised = the_dim_that_expr_claims_it_returns == the_dim_that_expr_actually_returned;
+
+        static_assert(fulfilled_return_any || returned_what_it_advertised,
+                "Lazy expression did not return the lazy dim it claimed it could.");
+
         return sth.template to_mshadow_expr<devT, T, ndim>(device, output_shape, eval_spec);
     }
 };

@@ -32,6 +32,16 @@ namespace lazy {
     struct LazyEvaluationDim<Array> {
         static const int value = EVALUATION_DIM_ANY;
     };
-}
 
+    template<typename ExprT>
+    struct LazyEvaluationDim<const ExprT&> {
+        static const int value = LazyEvaluationDim<ExprT>::value;
+    };
+
+    template<typename Expr, int default_dim>
+    struct OptimalNdimForInput {
+        static const int exprdim = lazy::LazyEvaluationDim<Expr>::value;
+        static const int value = (exprdim == EVALUATION_DIM_ANY) ? default_dim : exprdim;
+    };
+}  // namespace lazy
 #endif

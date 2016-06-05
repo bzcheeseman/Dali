@@ -1,6 +1,8 @@
 #ifndef DALI_ARRAY_LAZY_BASE_AXIS_REDUCER_H
 #define DALI_ARRAY_LAZY_BASE_AXIS_REDUCER_H
 
+#include "dali/array/function/evaluation_dim.h"
+
 template<typename ExprT>
 static inline auto wrap_3d_around_axis(const ExprT& expr, const std::vector<int>& real_expr_shape, const int& kept_axis) ->
         decltype(mshadow::expr::reshape(expr, mshadow::Shape3(1,1,1))) {
@@ -58,7 +60,10 @@ struct BaseLazyAxisReducer : public LazyFunction<Class, ExprT, int, bool> {
                 mshadow::expr::reshape(
                     mshadow::expr::reduce_with_axis<Functor, return_indices>(
                         wrap_3d_around_axis(
-                            MshadowWrapper<devT, T, decltype(expr)>::wrap(expr, device, output_shape, wrap_array),
+                            MshadowWrapper<devT, T, decltype(expr)>::wrap(
+                                expr, device, output_shape,
+                                wrap_array.template d<lazy::OptimalNdimForInput<ExprT,3>::value>()
+                            ),
                             output_shape,
                             reduce_axis
                         ),
@@ -90,7 +95,7 @@ struct BaseLazyAxisReducer : public LazyFunction<Class, ExprT, int, bool> {
 
         auto wrapped_expr  =
                 MshadowWrapper<devT, T, decltype(expr)>::wrap(
-                        expr, device, new_expr_shape, wrap_array
+                        expr, device, new_expr_shape, wrap_array.template d<lazy::OptimalNdimForInput<ExprT,3>::value>()
                 );
         auto result_expr = mshadow::expr::reduce_with_axis<Functor, return_indices>(
             wrap_3d_around_axis(wrapped_expr, new_expr_shape, reduce_axis),

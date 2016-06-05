@@ -147,7 +147,8 @@ namespace tensor_ops {
         Tensor out(op::scalar_pow(scalar, t.w)); \
         if (graph::backprop_enabled()) \
             graph::emplace_back([t, out, scalar]() mutable { \
-                MAYBE_GRAD(t) += functor::log_or_zero<decltype(scalar)>::Map(scalar) * out.w * out.dw; \
+                typedef std::remove_reference<decltype(scalar)>::type scalar_t; \
+                MAYBE_GRAD(t) += functor::log_or_zero<scalar_t>::Map(scalar) * out.w * out.dw; \
             }); \
         return out; \
     }

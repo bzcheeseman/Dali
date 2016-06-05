@@ -24,13 +24,16 @@ struct LazyAllReducer : public LazyFunction<LazyAllReducer<Functor,ExprT>, ExprT
     auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape, const lazy::EvaluationSpec<devT, T, ndim>& wrap_array) const ->
             decltype(
                 mshadow::expr::reduce_all<Functor>(
-                    MshadowWrapper<devT,T,decltype(expr)>::wrap(expr, device, output_shape, wrap_array)
+                    MshadowWrapper<devT,T,decltype(expr)>::wrap(
+                        expr, device, output_shape,
+                        wrap_array.template d<lazy::OptimalNdimForInput<ExprT, ndim>::value>()
+                    )
                 )
             ) {
 
         auto left_expr  =
                 MshadowWrapper<devT,T,decltype(expr)>::wrap(
-                        expr, device, bshape2shape(expr.bshape()), wrap_array
+                        expr, device, bshape2shape(expr.bshape()), wrap_array.template d<lazy::OptimalNdimForInput<ExprT, ndim>::value>()
                 );
         return mshadow::expr::reduce_all<Functor>(left_expr);
     }

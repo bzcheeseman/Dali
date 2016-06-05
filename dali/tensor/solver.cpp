@@ -13,8 +13,9 @@ namespace solver {
         if (caches.count(get_param_key(param)) == 0) {
             auto new_cache = caches.emplace(
                 std::piecewise_construct,
-            std::forward_as_tuple(get_param_key(param)),
-            std::forward_as_tuple(param.shape()));
+                std::forward_as_tuple(get_param_key(param)),
+                std::forward_as_tuple(param.shape(), param.dtype(), param.preferred_device())
+            );
             // initialize values for step cache to zero:
             new_cache.first->second.clear();
         }

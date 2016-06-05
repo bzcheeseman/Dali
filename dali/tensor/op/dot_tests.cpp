@@ -34,3 +34,14 @@ TEST(TensorDotTests, dot_3D) {
         ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-4, DEFAULT_GRAD_EPS, true));
     }
 }
+TEST(TensorDotTests, self_dot) {
+    EXPERIMENT_REPEAT {
+        Tensor W({5, 5}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
+
+        auto functor = [&](vector<Tensor> Xs)-> Tensor {
+            return W.dot(W.transpose());
+        };
+
+        ASSERT_TRUE(gradient_same(functor, {W}, 1e-4, DEFAULT_GRAD_EPS, true));
+    }
+}

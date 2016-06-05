@@ -527,7 +527,7 @@ TEST_F(TensorTests, fast_dropout) {
 // }
 //
 //
-// TEST_F(TensorOpsTests, DISABLED_matrix_conv1d_grad) {
+// TEST_F(TensorOpsTests, matrix_conv1d_grad) {
 //     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
 //         return MatOps<R>::conv1d(Xs[0], std::initializer_list<Mat<R>>({Xs[1], Xs[2]})).tanh();
 //     };
@@ -539,7 +539,7 @@ TEST_F(TensorTests, fast_dropout) {
 //     }
 // }
 //
-// TEST_F(TensorOpsTests, DISABLED_matrix_conv2d) {
+// TEST_F(TensorOpsTests, matrix_conv2d) {
 //     /*graph::NoBackprop nb;
 //
 //     auto image = Mat<R>(10, 10);
@@ -588,7 +588,7 @@ TEST_F(TensorTests, fast_dropout) {
 // */
 // }
 //
-// TEST_F(TensorOpsTests, DISABLED_matrix_conv2d_grad) {
+// TEST_F(TensorOpsTests, matrix_conv2d_grad) {
 //     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
 //         return MatOps<R>::conv2d(Xs[0], Xs[1]).tanh();
 //     };
@@ -918,7 +918,6 @@ TEST_F(TensorTests, pow) {
     }
 }
 
-
 typedef std::function<std::shared_ptr<solver::AbstractSolver>(vector<Tensor>)> create_solver_t;
 
 void test_solver(create_solver_t create_solver) {
@@ -928,7 +927,7 @@ void test_solver(create_solver_t create_solver) {
     Tensor W({5, 5}, initializer::uniform(-20.0, 20.0));
     Tensor W2({1, 5}, initializer::uniform(-20.0, 20.0));
 
-    W = W.dot(W.transpose()); // ensure positive definite.
+    W.w = W.w.dot(W.w.transpose()); // ensure positive definite.
 
     vector<Tensor> params({W, W2});
     auto solver = create_solver(params);
@@ -986,7 +985,7 @@ TEST(solver, trivial_sgd) {
     });
 }
 
-TEST(solver, DISABLED_sgd) {
+TEST(solver, sgd) {
     test_solver([](vector<Tensor> params) {
         auto ret = std::make_shared<solver::SGD>(params);
         ret->step_size = 0.01;
@@ -1038,7 +1037,7 @@ TEST(solver, trivial_adam) {
     });
 }
 
-TEST(solver, DISABLED_adagrad) {
+TEST(solver, adagrad) {
     test_solver([](vector<Tensor> params) {
         auto ret = std::make_shared<solver::AdaGrad>(params);
         ret->step_size = 0.01;
@@ -1046,7 +1045,7 @@ TEST(solver, DISABLED_adagrad) {
     });
 }
 
-TEST(solver, DISABLED_rmsprop) {
+TEST(solver, rmsprop) {
     test_solver([](vector<Tensor> params) {
         auto ret = std::make_shared<solver::RMSProp>(params);
         ret->step_size = 0.1;
@@ -1054,21 +1053,21 @@ TEST(solver, DISABLED_rmsprop) {
     });
 }
 
-TEST(solver, DISABLED_rmspropmomentum) {
+TEST(solver, rmspropmomentum) {
     test_solver([](vector<Tensor> params) {
         auto ret = std::make_shared<solver::RMSPropMomentum>(params);
         return ret;
     });
 }
 
-TEST(solver, DISABLED_adadelta) {
+TEST(solver, adadelta) {
     test_solver([](vector<Tensor> params) {
         auto ret = std::make_shared<solver::AdaDelta>(params);
         return ret;
     });
 }
 
-TEST(solver, DISABLED_adam) {
+TEST(solver, adam) {
     test_solver([](vector<Tensor> params) {
         auto ret = std::make_shared<solver::Adam>(params);
         return ret;

@@ -99,21 +99,38 @@ struct MatrixMultiplyFunction : public Function<MatrixMultiplyFunction,
             left_reshaped = left_reshaped.reshape({left_dim, inner_dim});
         }
 
-
         Array right_reshaped  = right.reshape_broadcasted({inner_dim, right_dim});
         if (!right_reshaped.is_transpose()) {
             right_reshaped = right_reshaped.reshape({inner_dim, right_dim});
         }
 
-        // TODO(szymon): change this to reshape (not copyless) and make sure
-        // that if the copy has occured we write back the result to out after
-        // computation is done.
-        // TODO(szymon): make sure that the test ArrayDotTests.broadcast_to_out
-        // does make a copy before assigning to out, so that the computation is
-        // 3x less.
-        Array out_reshaped   = out.copyless_reshape({left_dim, right_dim});
+        Array out_reshaped  = out.reshape_broadcasted({left_dim, right_dim});
+        if (!out_reshaped.is_transpose()) {
+            // TODO(szymon): change this to reshape (not copyless) and make sure
+            // that if the copy has occured we write back the result to out after
+            // computation is done.
+            // TODO(szymon): make sure that the test ArrayDotTests.broadcast_to_out
+            // does make a copy before assigning to out, so that the computation is
+            // 3x less
+            out_reshaped   = out_reshaped.copyless_reshape({left_dim, right_dim});
+        }
 
-        return std::tuple<Array,Array,Array>(out_reshaped, left_reshaped, right_reshaped);
+        if (out_reshaped.is_transpose()) {
+            // some blas implementations do not allow tranposed output.
+            // we get around it by using a basic linear algebra identity:
+            //
+            //  C = (A dot B)
+            //
+            // is equivalent to
+            //
+            //  C^T = (A dot B)^T = B^T dot A^T
+
+            return std::tuple<Array,Array,Array>(out_reshaped.transpose(),
+                                                 right_reshaped.transpose(),
+                                                 left_reshaped.transpose());
+        } else {
+            return std::tuple<Array,Array,Array>(out_reshaped, left_reshaped, right_reshaped);
+        }
     }
 
     static bool dimensions_compatible(int dim1, int dim2) {

@@ -11,6 +11,7 @@
 #ifdef DALI_USE_CUDA
 
 // inefficient cuda matrix multiply of integers on gpu
+namespace custom_gemm {
 template<typename R>
 __global__
 void gemm(bool transpose_a, bool transpose_b, bool transpose_c, int m, int n, int k, R alpha, const R *A, int lda,
@@ -57,6 +58,7 @@ void gemm(bool transpose_a, bool transpose_b, bool transpose_c, int m, int n, in
         }
     }
 }
+}  // namespace custom_gemm
 
 
 namespace mshadow {
@@ -101,7 +103,7 @@ namespace expr {
             dim3 blocks(1,1);
             dim3 threads(16,16);
 
-            gemm<int><<<blocks, threads, 0, stream>>>(
+            custom_gemm::gemm<int><<<blocks, threads, 0, stream>>>(
                 !transa, !transb, true, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc
             );
         }

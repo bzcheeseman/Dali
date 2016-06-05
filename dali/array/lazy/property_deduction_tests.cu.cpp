@@ -47,7 +47,7 @@ TEST(ArrayLazyOpsTests, lazy_device_deduction) {
     memory::debug::enable_fake_devices = false;
 }
 
-TEST(ArrayLazyOpsTests, DISABLED_lazy_dtype_deduction) {
+TEST(ArrayLazyOpsTests, lazy_dtype_deduction) {
     Array x({16}, DTYPE_FLOAT);
     Array y({16}, DTYPE_FLOAT);
     Array z({16}, DTYPE_FLOAT);
@@ -73,7 +73,7 @@ TEST(ArrayLazyOpsTests, DISABLED_lazy_dtype_deduction) {
     EXPECT_THROW(q2 = x * (y * z), std::runtime_error);
 }
 
-TEST(ArrayLazyOpsTests, DISABLED_lazy_shape_deduction) {
+TEST(ArrayLazyOpsTests, lazy_shape_deduction) {
     Array x({16});
     Array y({16});
     Array z({16});

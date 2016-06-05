@@ -17,92 +17,118 @@
 //  in cpp files whereever possible.                                          //
 ////////////////////////////////////////////////////////////////////////////////
 
-template<typename WrappedArrayT>
-using ArrayTransformerT = std::function<WrappedArrayT(const Array&,
-                                                      const memory::Device&,
-                                                      const std::vector<int>&)>;
+namespace lazy {
+    template<int devT, typename T, int ndim>
+    struct EvaluationSpec {
+        EvaluationSpec(const bool& collapse_leading) : collapse_leading_(collapse_leading) {}
+        EvaluationSpec(const EvaluationSpec& other) : collapse_leading_(other.collapse_leading_) {}
+        EvaluationSpec(EvaluationSpec&& other) : collapse_leading_(other.collapse_leading_) {}
+        EvaluationSpec() : collapse_leading_(true) {}
 
-template<int devT, typename T, int ndim>
-auto transform_array(const Array& array,
-                     const memory::Device& device,
-                     const std::vector<int>& output_shape) ->
-        decltype(TypedArray<devT,T>(array, device, output_shape).template d<ndim>()) {
-    return TypedArray<devT,T>(array, device, output_shape).template d<ndim>();
-};
+        bool collapse_leading_;
+        auto fit_array_to_spec(const Array& array,
+                               const memory::Device& device,
+                               const std::vector<int>& output_shape) const ->
+                decltype(TypedArray<devT,T>(array, device, output_shape).template d<ndim>()) {
+            return TypedArray<devT,T>(array, device, output_shape).template d<ndim>(memory::AM_READONLY, collapse_leading_);
+        }
 
-template<int devT, typename T, int ndim>
-auto make_transform_array() -> ArrayTransformerT<decltype(TypedArray<devT,T>(Array(), memory::Device::cpu(), std::vector<int>()).template d<ndim>())> {
-    return &transform_array<devT,T,ndim>;
-}
+        template<int ndim_dst>
+        EvaluationSpec<devT, T, ndim_dst> d() const {
+            return EvaluationSpec<devT, T, ndim_dst>{collapse_leading_};
+        }
 
-template<int devT, typename T, int ndim>
-auto transform_array_collapse_trailing(const Array& array,
-                     const memory::Device& device,
-                     const std::vector<int>& output_shape) ->
-        decltype(TypedArray<devT,T>(array, device, output_shape).template d<ndim>()) {
-    return TypedArray<devT,T>(array, device, output_shape).template d<ndim>(memory::AM_READONLY, false);
-};
+        template<int ndim_dst>
+        EvaluationSpec<devT, T, ndim_dst> collapse_trailing_d() const {
+            // TODO(jonathan): check that the incoming EvaluationSpec has the
+            // same value for collapse leading or raise error
+            return EvaluationSpec<devT, T, ndim_dst>{false};
+        }
 
+        template<int ndim_dst>
+        EvaluationSpec<devT, T, ndim_dst> collapse_leading_d() const {
+            // TODO(jonathan): check that the incoming EvaluationSpec has the
+            // same value for collapse leading or raise error
+            return EvaluationSpec<devT, T, ndim_dst>{true};
+        }
 
-template<int devT, typename T, int ndim>
-auto make_transform_array_collapse_trailing() -> ArrayTransformerT<decltype(TypedArray<devT,T>(Array(), memory::Device::cpu(), std::vector<int>()).template d<ndim>())> {
-    return &transform_array_collapse_trailing<devT,T,ndim>;
-}
+        static EvaluationSpec<devT, T, ndim> collapse_trailing() {
+            return EvaluationSpec<devT, T, ndim>(false);
+        }
 
+        static EvaluationSpec<devT, T, ndim> collapse_leading() {
+            return EvaluationSpec<devT, T, ndim>(true);
+        }
+    };
+
+}  // namespace lazy
 
 template<int devT, typename T, typename ExprT>
 struct MshadowWrapper {
-    template<typename WrappedArrayT>
+    template<int ndim>
     static inline auto wrap(const ExprT& sth,
                             memory::Device device,
                             const std::vector<int>& output_shape,
-                            ArrayTransformerT<WrappedArrayT> wrap_array) ->
-            decltype(sth.template to_mshadow_expr<devT,T>(device, output_shape, wrap_array)) {
-        return sth.template to_mshadow_expr<devT,T>(device, output_shape, wrap_array);
+                            const lazy::EvaluationSpec<devT, T, ndim>& wrap_array) ->
+            decltype(sth.template to_mshadow_expr<devT, T, ndim>(device, output_shape, wrap_array)) {
+        // static_assert(mshadow::expr::ExpInfo<WrappedArrayT>::kDim != -1,
+        //     "Mshadow expression for WrappedArrayT has no mshadow::expr::ExpInfo kdim defined. Specialize this classes ExpInfo to know the kDim.");
+        // static_assert(mshadow::expr::ExpInfo<decltype(sth.template to_mshadow_expr<devT,T>(device, output_shape, wrap_array))>::kDim != -1,
+        //     "Mshadow expression for wrapped lazy expression no mshadow::expr::ExpInfo kdim defined. Specialize this classes ExpInfo to know the kDim.");
+        // static_assert(
+        //     !(mshadow::expr::ExpInfo<decltype(sth.template to_mshadow_expr<devT,T>(device, output_shape, wrap_array))>::kDim == 1 &&
+        //     mshadow::expr::ExpInfo<WrappedArrayT>::kDim == 2), "Input expression has ndim = 1 while wrap_array calls for ndim = 2");
+        // static_assert(
+        //     !(mshadow::expr::ExpInfo<decltype(sth.template to_mshadow_expr<devT,T>(device, output_shape, wrap_array))>::kDim == 2 &&
+        //     mshadow::expr::ExpInfo<WrappedArrayT>::kDim == 1), "Input expression has ndim = 2 while wrap_array calls for ndim = 1");
+        // static_assert(
+        //     mshadow::expr::ExpInfo<decltype(sth.template to_mshadow_expr<devT,T>(device, output_shape, wrap_array))>::kDim ==
+        //     mshadow::expr::ExpInfo<WrappedArrayT>::kDim, "Input expression to wrap has wrong dimensionality.");
+        return sth.template to_mshadow_expr<devT, T, ndim>(device, output_shape, wrap_array);
     }
-
 };
 
 template<int devT,typename T>
 struct MshadowWrapper<devT,T,Array> {
-    template<typename WrappedArrayT>
-    static inline WrappedArrayT wrap(const Array& array,
-                                  memory::Device device,
-                                  const std::vector<int>& output_shape,
-                                  ArrayTransformerT<WrappedArrayT> wrap_array) {
-        return wrap_array(array, device, output_shape);
+    template<int ndim>
+    static inline auto wrap(const Array& array,
+                            memory::Device device,
+                            const std::vector<int>& output_shape,
+                            const lazy::EvaluationSpec<devT, T, ndim>& wrap_array) ->
+            decltype(wrap_array.fit_array_to_spec(array, device, output_shape)) {
+        return wrap_array.fit_array_to_spec(array, device, output_shape);
     }
 };
 
 template<int devT,typename T>
 struct MshadowWrapper<devT,T,float> {
-    template<typename WrappedArrayT>
+    template<int ndim>
     static inline T wrap(const float& scalar,
                          memory::Device,
                          const std::vector<int>&,
-                         ArrayTransformerT<WrappedArrayT>) {
+                         const lazy::EvaluationSpec<devT, T, ndim>&) {
         return (T)scalar;
     }
 };
 
 template<int devT,typename T>
 struct MshadowWrapper<devT,T,double> {
-    template<typename WrappedArrayT>
+    template<int ndim>
     static inline T wrap(const double& scalar,
                          memory::Device,
                          const std::vector<int>&,
-                         ArrayTransformerT<WrappedArrayT>) {
+                         const lazy::EvaluationSpec<devT, T, ndim>&) {
         return (T)scalar;
     }
 };
 
 template<int devT,typename T>
 struct MshadowWrapper<devT,T,int> {
-    template<typename WrappedArrayT>
+    template<int ndim>
     static inline T wrap(const int& scalar,
                          memory::Device,
                          const std::vector<int>&,
-                         ArrayTransformerT<WrappedArrayT>) {
+                         const lazy::EvaluationSpec<devT, T, ndim>&) {
         return (T)scalar;
     }
 };

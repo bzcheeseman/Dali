@@ -12,8 +12,8 @@ struct LazyBinary : public LazyFunction<LazyBinary<Functor,LeftT,RightT>, LeftT,
             right(right_) {
     }
 
-    template<int devT,typename T, typename WrappedArrayT>
-    auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape, ArrayTransformerT<WrappedArrayT> wrap_array) const ->
+    template<int devT,typename T, int ndim>
+    auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape, const lazy::EvaluationSpec<devT, T, ndim>& wrap_array) const ->
             decltype(
                 mshadow::expr::F<Functor<T>>(
                      MshadowWrapper<devT,T,decltype(left)>::wrap(left, device, output_shape, wrap_array),
@@ -37,16 +37,16 @@ struct LazyBinaryIndexed : public LazyFunction<LazyBinaryIndexed<Functor,LeftT,R
             right(right_) {
     }
 
-    template<int devT,typename T>
-    auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape) const ->
+    template<int devT,typename T, int ndim>
+    auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape, const lazy::EvaluationSpec<devT, T, ndim>& wrap_array) const ->
             decltype(
                 mshadow::expr::FIndexed<Functor<T>>(
-                    MshadowWrapper<devT,T,decltype(left)>::wrap(left, device, output_shape),
-                    MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape)
+                    MshadowWrapper<devT,T,decltype(left)>::wrap(left, device, output_shape, wrap_array),
+                    MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape, wrap_array)
                 )
             ) {
-        auto left_expr  = MshadowWrapper<devT,T,decltype(left)>::wrap(left,  device, output_shape);
-        auto right_expr = MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape);
+        auto left_expr  = MshadowWrapper<devT,T,decltype(left)>::wrap(left,  device, output_shape, wrap_array);
+        auto right_expr = MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape, wrap_array);
         return mshadow::expr::FIndexed<Functor<T>>(left_expr, right_expr);
     }
 };
@@ -73,16 +73,16 @@ struct LazyOuter : public LazyFunction<LazyOuter<LeftT,RightT>, LeftT, RightT> {
         return {left_bshape[0], right_bshape[0]};
     }
 
-    template<int devT,typename T, typename WrappedArrayT>
-    auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape, ArrayTransformerT<WrappedArrayT> wrap_array) const ->
+    template<int devT,typename T, int ndim>
+    auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape, const lazy::EvaluationSpec<devT, T, ndim>& wrap_array) const ->
             decltype(
                 mshadow::expr::outer_product(
-                     mshadow::expr::reshape(MshadowWrapper<devT,T,decltype(left)>::wrap(left, device, output_shape, make_transform_array<devT,T,(int)1>()), mshadow::Shape1(1)),
-                     mshadow::expr::reshape(MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape, make_transform_array<devT,T,(int)1>()), mshadow::Shape1(1))
+                     mshadow::expr::reshape(MshadowWrapper<devT,T,decltype(left)>::wrap(left, device, output_shape, wrap_array.template d<1>()), mshadow::Shape1(1)),
+                     mshadow::expr::reshape(MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape, wrap_array.template d<1>()), mshadow::Shape1(1))
                 )
             ) {
-        auto left_expr  = MshadowWrapper<devT,T,decltype(left)>::wrap(left,   device, left.bshape(), make_transform_array<devT,T,(int)1>());
-        auto right_expr = MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, right.bshape(), make_transform_array<devT,T,(int)1>());
+        auto left_expr  = MshadowWrapper<devT,T,decltype(left)>::wrap(left,   device, left.bshape(), wrap_array.template d<1>());
+        auto right_expr = MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, right.bshape(), wrap_array.template d<1>());
         return mshadow::expr::outer_product(
             mshadow::expr::reshape(left_expr, mshadow::Shape1(std::abs(left.bshape()[0]))),
             mshadow::expr::reshape(right_expr, mshadow::Shape1(std::abs(right.bshape()[0])))

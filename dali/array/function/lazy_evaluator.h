@@ -56,7 +56,7 @@ struct LazyEvaluator : public Function<LazyEvaluator<LazyExpr>, Array, LazyExpr>
             MshadowWrapper<devT,T,decltype(expr)>::wrap(expr,
                                                         out.device,
                                                         out.array.shape(),
-                                                        make_transform_array<devT,T,LazyExpr::evaluation_dim>()),
+                                                        lazy::EvaluationSpec<devT,T,LazyExpr::evaluation_dim>()),
             LazyExpr::collapse_leading
         );
     }

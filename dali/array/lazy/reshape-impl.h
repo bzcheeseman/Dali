@@ -38,20 +38,45 @@ struct LazyTake : public LazyFunction<LazyTake<SrcExp, IndexExp>, SrcExp, IndexE
             src(src_), indices(indices_) {
     }
 
-    template<int devT, typename T, typename WrappedArrayT>
-    auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape, ArrayTransformerT<WrappedArrayT> wrap_array) const ->
+    template<int devT, typename T, int ndim>
+    auto to_mshadow_expr(memory::Device device,
+                         const std::vector<int>& output_shape,
+                         const lazy::EvaluationSpec<devT, T, ndim>& wrap_array) const ->
             decltype(mshadow::expr::take(
-                MshadowWrapper<devT, int, decltype(indices)>::wrap(indices, device, output_shape, make_transform_array<devT,int,(int)1>()),
-                MshadowWrapper<devT, T, decltype(src)>::wrap(src, device, output_shape, make_transform_array_collapse_trailing<devT,T,(int)2>())
+                MshadowWrapper<devT, int, decltype(indices)>::template wrap<1>(
+                    indices,
+                    device,
+                    indices.bshape(),
+                    lazy::EvaluationSpec<devT, int, 1>::collapse_leading()
+                ),
+                MshadowWrapper<devT, T, decltype(src)>::template wrap<2>(
+                    src,
+                    device,
+                    src.bshape(),
+                    wrap_array.template collapse_trailing_d<2>()
+                )
             )) {
 
         // TODO(szymon): Notice how this op completely ignores output shape? This can result in some catastrophic errors during broadcasting
         //               but this is just a manifestation of a bigger problem - we need to make API to dali function more flexible and simpler
         //               to use, so that automated broadcasting by default does something correct and inefficient and then we can explictily
-        //               if out the cases where we do some extra thinking to gain efficiency. 
+        //               if out the cases where we do some extra thinking to gain efficiency.
+
+        // static_assert(mshadow::expr::ExpInfo<cool_type>::kDim == 1, "release the kraken");
+
         return mshadow::expr::take(
-            MshadowWrapper<devT, int, decltype(indices)>::wrap(indices, device, indices.bshape(), make_transform_array<devT,int,(int)1>()),
-            MshadowWrapper<devT, T, decltype(src)>::wrap(src, device, src.bshape(), make_transform_array_collapse_trailing<devT,T,(int)2>())
+            MshadowWrapper<devT, int, decltype(indices)>::template wrap<1>(
+                indices,
+                device,
+                indices.bshape(),
+                lazy::EvaluationSpec<devT, int, 1>::collapse_leading()
+            ),
+            MshadowWrapper<devT, T, decltype(src)>::template wrap<2>(
+                src,
+                device,
+                src.bshape(),
+                wrap_array.template collapse_trailing_d<2>()
+            )
         );
     }
 };

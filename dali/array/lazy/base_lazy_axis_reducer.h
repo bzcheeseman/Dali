@@ -50,8 +50,10 @@ struct BaseLazyAxisReducer : public BaseClass<Class, ExprT, int, bool> {
                 utils::MS() << "Reduction axis (" << reduce_axis << ") must be less than input's ndims (" << expr_.bshape().size() << ")");
     }
 
-    template<int devT,typename T, typename WrappedArrayT>
-    auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape, ArrayTransformerT<WrappedArrayT> wrap_array) const ->
+    template<int devT,typename T, int ndim>
+    auto to_mshadow_expr(memory::Device device,
+                         const std::vector<int>& output_shape,
+                         const lazy::EvaluationSpec<devT, T, ndim>& wrap_array) const ->
             decltype(
                 mshadow::expr::reshape(
                     mshadow::expr::reduce_with_axis<Functor, return_indices>(

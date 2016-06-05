@@ -198,6 +198,7 @@ class Array : public Exp<Array> {
     operator double() const;
     operator int() const;
 
+    void copy_from(const Array& other);
     Array& operator=(const AssignableArray& assignable);
 
     #define DALI_DECLARE_ARRAY_INTERACTION_INPLACE(SYMBOL)\

@@ -3,12 +3,13 @@
 #include <iomanip>
 #include <gtest/gtest.h>
 
-#include "dali/test_utils.h"
-#include "dali/layers/layers.h"
+#include "dali/array/op/unary.h"
 #include "dali/layers/gru.h"
+#include "dali/layers/layers.h"
 #include "dali/layers/lstm.h"
-#include "dali/tensor/tensor.h"
 #include "dali/tensor/op.h"
+#include "dali/tensor/tensor.h"
+#include "dali/test_utils.h"
 
 using std::vector;
 using std::chrono::milliseconds;
@@ -303,7 +304,7 @@ TEST(LayerTests, LSTM_Zaremba_shortcut_gradient) {
     }
 }
 
-TEST(LayerTests, DISABLED_RNN_gradient_vs_Stacked_gradient) {
+TEST(LayerTests, RNN_gradient_vs_Stacked_gradient) {
     int num_examples           = 10;
     int hidden_size            = 5;
     int input_size             = 3;
@@ -325,12 +326,12 @@ TEST(LayerTests, DISABLED_RNN_gradient_vs_Stacked_gradient) {
 
         for (int i = 0; i < params.size(); ++i) {
             EXPECT_EQ(params[i].shape(), stacked_params[i].shape());
-            stacked_params[i] = Tensor(params[i], true, false);
-            // copy just the w, zero out dw.
+            stacked_params[i].w.copy_from(params[i].w);
         }
 
         auto error = ((rnn_layer.activate(X, H).tanh() - 1) ^ 2).sum();
         error.grad();
+
         auto error2 = ((stacked_layer.activate({X_s, H_s}).tanh() - 1) ^ 2).sum();
         error2.grad();
         graph::backward();

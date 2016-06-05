@@ -876,6 +876,10 @@ Array::operator int() const {
     return scalar_value<int>();
 }
 
+void Array::copy_from(const Array& other) {
+    *this = op::identity(other);
+}
+
 Array& Array::operator=(const AssignableArray& assignable) {
     assignable.assign_to(*this, OPERATOR_T_EQL);
     return *this;

@@ -20,7 +20,6 @@ namespace tensor_ops {
     bool is_grad_nan(const Tensor& t);
     bool equals(const Tensor& left, const Tensor& right);
     bool allclose(const Tensor& left, const Tensor& right, const double& atolerance);
-
 }  // namespace tensor_ops
 
 

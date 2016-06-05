@@ -77,13 +77,16 @@ struct LazyOuter : public LazyFunction<LazyOuter<LeftT,RightT>, LeftT, RightT> {
     auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape, ArrayTransformerT<WrappedArrayT> wrap_array) const ->
             decltype(
                 mshadow::expr::outer_product(
-                     MshadowWrapper<devT,T,decltype(left)>::wrap(left, device, output_shape, make_transform_array<devT,T,(int)1>()),
-                     MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape, make_transform_array<devT,T,(int)1>())
+                     mshadow::expr::reshape(MshadowWrapper<devT,T,decltype(left)>::wrap(left, device, output_shape, make_transform_array<devT,T,(int)1>()), mshadow::Shape1(1)),
+                     mshadow::expr::reshape(MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape, make_transform_array<devT,T,(int)1>()), mshadow::Shape1(1))
                 )
             ) {
         auto left_expr  = MshadowWrapper<devT,T,decltype(left)>::wrap(left,   device, left.bshape(), make_transform_array<devT,T,(int)1>());
         auto right_expr = MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, right.bshape(), make_transform_array<devT,T,(int)1>());
-        return mshadow::expr::outer_product(left_expr, right_expr);
+        return mshadow::expr::outer_product(
+            mshadow::expr::reshape(left_expr, mshadow::Shape1(std::abs(left.bshape()[0]))),
+            mshadow::expr::reshape(right_expr, mshadow::Shape1(std::abs(right.bshape()[0])))
+        );
     }
 };
 

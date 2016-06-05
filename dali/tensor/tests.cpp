@@ -953,8 +953,8 @@ void test_solver(create_solver_t create_solver) {
 void test_solver_trivial(create_solver_t create_solver) {
     utils::random::set_seed(5000);
     // minimize norm of X
-    Tensor X({5});
-    vector<int> X_initial({8.98117318,  1.38778046, -2.56764083,   7.99331316,   0.55424712});
+    Tensor X({5}, DTYPE_DOUBLE);
+    vector<double> X_initial({8.98117318,  1.38778046, -2.56764083,   7.99331316,   0.0});
     for (int i = 0; i < 5; ++i) {
         X.w(i) = X_initial[i];
     }

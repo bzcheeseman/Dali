@@ -439,11 +439,15 @@ bool Array::contiguous_memory() const {
 }
 
 Array Array::ascontiguousarray() const {
+    Array ret;
     if (contiguous_memory()) {
-        return *this;
+        ret = *this;
+    } else {
+        debug::array_as_contiguous.activate(*this);
+        ret = op::identity(*this);
     }
-    debug::array_as_contiguous.activate(*this);
-    return op::identity(*this);
+    ret.state->strides.clear();
+    return ret;
 }
 
 
@@ -687,6 +691,7 @@ Array Array::dimshuffle(const std::vector<int>& pattern) const {
 }
 
 Array Array::copyless_ravel() const {
+    if (ndim() == 1) return *this;
     ASSERT2(contiguous_memory(),
             "at the moment ravel is only supported for contiguous_memory");
     return Array({number_of_elements()},
@@ -697,10 +702,12 @@ Array Array::copyless_ravel() const {
 }
 
 Array Array::ravel() const {
+    if (ndim() == 1) return *this;
     return ascontiguousarray().copyless_ravel();
 }
 
 Array Array::copyless_reshape(const vector<int>& new_shape) const {
+    if (new_shape == shape()) return *this;
     ASSERT2(hypercube_volume(new_shape) == number_of_elements(),
             utils::MS() << "New shape (" << new_shape
                         << ") must have the same number of elements as previous shape ("
@@ -719,6 +726,7 @@ Array Array::copyless_reshape(const vector<int>& new_shape) const {
 
 
 Array Array::reshape(const vector<int>& new_shape) const {
+    if (new_shape == shape()) return *this;
     return ascontiguousarray().copyless_reshape(new_shape);
 }
 

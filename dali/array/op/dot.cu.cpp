@@ -89,19 +89,18 @@ struct MatrixMultiplyFunction : public Function<MatrixMultiplyFunction,
 
         verify(left, right);
 
-
         int left_dim  = std::abs(out.shape()[0]),
             inner_dim = std::max(left.shape()[1], right.shape()[0]),
             right_dim = std::abs(out.shape()[1]);
 
         Array left_reshaped  = left.reshape_broadcasted({left_dim, inner_dim});
         if (!left_reshaped.is_transpose()) {
-            left_reshaped = left_reshaped.reshape({left_dim, inner_dim});
+            left_reshaped = left_reshaped.ascontiguousarray();
         }
 
         Array right_reshaped  = right.reshape_broadcasted({inner_dim, right_dim});
         if (!right_reshaped.is_transpose()) {
-            right_reshaped = right_reshaped.reshape({inner_dim, right_dim});
+            right_reshaped = right_reshaped.ascontiguousarray();
         }
 
         Array out_reshaped  = out.reshape_broadcasted({left_dim, right_dim});
@@ -112,7 +111,7 @@ struct MatrixMultiplyFunction : public Function<MatrixMultiplyFunction,
             // TODO(szymon): make sure that the test ArrayDotTests.broadcast_to_out
             // does make a copy before assigning to out, so that the computation is
             // 3x less
-            out_reshaped   = out_reshaped.copyless_reshape({left_dim, right_dim});
+            // out_reshaped   = out_reshaped.copyless_reshape({left_dim, right_dim});
         }
 
         if (out_reshaped.is_transpose()) {

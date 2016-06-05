@@ -14,7 +14,6 @@
 //                         Matrix multiplication                              //
 ////////////////////////////////////////////////////////////////////////////////
 
-
 template<OPERATOR_T operator_t, int devT, typename T>
 struct MatrixMultiplyHelper {
     template <

@@ -83,7 +83,7 @@ TEST(TensorCompositeTests, quadratic_form) {
     }
 }
 
-TEST(TensorCompositeTests, DISABLED_quadratic_form_with_3D_input) {
+TEST(TensorCompositeTests, quadratic_form_with_3D_input) {
     //TODO(jonathan): quadratic form in 3D / N-D suffers from weird LDA to dgemm
     EXPERIMENT_REPEAT {
         Tensor left({2, 4, 1}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);

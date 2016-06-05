@@ -33,14 +33,14 @@ namespace internal {
 
         const std::vector<int>& a_strides = array.strides();
 
-        if (a_strides[1] == 1) {
-            auto ret = mtensor<2>();
-            ret.stride_ = a_strides[0];
-            return std::make_tuple(false, ret);
-        } else if (a_strides[0] == 1) {
+        if (a_strides[0] == 1) {
             auto ret = mtensor<2>();
             ret.stride_ = a_strides[1];
             return std::make_tuple(true, ret);
+        } else if (a_strides[1] == 1) {
+            auto ret = mtensor<2>();
+            ret.stride_ = a_strides[0];
+            return std::make_tuple(false, ret);
         } else {
             ASSERT2(a_strides[0] == 1 || a_strides[1] == 1,
                     utils::MS() << "gemm does not support doubly strided matrices (input strides: " << a_strides << ")");

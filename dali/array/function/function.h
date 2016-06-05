@@ -125,7 +125,7 @@ struct Function {
                         utils::MS() << "Cannot assign result of shape " << output_bshape << " to a location of shape " << out.shape() << ".");
             }
             ASSERT2(Class::disable_output_dtype_check || out.dtype() == output_dtype,
-                    utils::MS() << "Cannot assign result of dtype " << output_dtype << " to a location of dtype " << out.dtype() << ".");
+                    utils::MS() << "Cannot assign result of dtype " << dtype_to_name(output_dtype) << " to a location of dtype " << dtype_to_name(out.dtype()) << ".");
         }
     }
 

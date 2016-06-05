@@ -218,8 +218,8 @@ TEST(LayerTests, LSTM_Zaremba_gradient) {
     }
 }
 
-TEST(LayerTests, DISABLED_LSTM_Graves_gradient) {
-    int num_examples           = 10;
+TEST(LayerTests, LSTM_Graves_gradient) {
+    int num_examples           = 2;
     int hidden_size            = 5;
     int input_size             = 3;
 
@@ -245,7 +245,7 @@ TEST(LayerTests, DISABLED_LSTM_Graves_gradient) {
     }
 }
 
-TEST(LayerTests, DISABLED_LSTM_Graves_shortcut_gradient) {
+TEST(LayerTests, LSTM_Graves_shortcut_gradient) {
     int num_examples           = 10;
     int hidden_size            = 5;
     int input_size             = 3;
@@ -344,9 +344,7 @@ TEST(LayerTests, RNN_gradient_vs_Stacked_gradient) {
     }
 }
 
-
-
-TEST(LayerTests, DISABLED_shortcut_test) {
+TEST(LayerTests, shortcut_test) {
     int input_size = 10;
     int num_examples = 2;
     vector<int> hidden_sizes({40, 30});

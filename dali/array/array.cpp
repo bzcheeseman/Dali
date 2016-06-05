@@ -166,22 +166,28 @@ Array Array::zeros(const std::vector<int>& shape, DType dtype, memory::Device pr
     ret.memory()->lazy_clear();
     return ret;
 }
+Array Array::empty_like(const Array& other) {
+    if (other.is_stateless()) {
+        return Array();
+    } else {
+        Array ret;
+        ret.initialize_with_bshape(
+            other.bshape(), other.dtype(), other.memory()->preferred_device
+        );
+        return ret;
+    }
+}
 
 Array Array::zeros_like(const Array& other) {
     if (other.is_stateless()) {
         return Array();
     } else {
-        return zeros(other.shape(), other.dtype(), other.memory()->preferred_device);
+        Array ret = empty_like(other);
+        ret.memory()->lazy_clear();
+        return ret;
     }
 }
 
-Array Array::empty_like(const Array& other) {
-    if (other.is_stateless()) {
-        return Array();
-    } else {
-        return Array(other.shape(), other.dtype(), other.memory()->preferred_device);
-    }
-}
 
 Array Array::arange(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
     Array ret(shape, dtype, preferred_device);
@@ -199,7 +205,9 @@ Array Array::ones_like(const Array& other) {
     if (other.is_stateless()) {
         return Array();
     } else {
-        return zeros(other.shape(), other.dtype(), other.memory()->preferred_device);
+        Array ret = empty_like(other);
+        ret = initializer::ones();
+        return ret;
     }
 }
 

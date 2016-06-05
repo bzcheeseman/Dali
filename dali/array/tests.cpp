@@ -607,3 +607,26 @@ TEST(ArrayIOTests, save_load_test) {
         EXPECT_EQ_DTYPE(i, arange(i), arange.dtype());
     }
 }
+
+TEST(ArrayConstructorTests, shape_preservation) {
+    auto constructors = {
+        Array::zeros_like,
+        Array::empty_like,
+        Array::ones_like
+    };
+    for (auto constructor : constructors) {
+        Array x({3, 2, 5});
+        auto y = constructor(x);
+
+        EXPECT_EQ(x.dtype(), y.dtype());
+        EXPECT_EQ(x.shape(), y.shape());
+        EXPECT_EQ(x.bshape(), y.bshape());
+
+        Array x2 = x.insert_broadcast_axis(0).insert_broadcast_axis(3);
+        auto y2 = constructor(x2);
+
+        EXPECT_EQ(x2.dtype(), y2.dtype());
+        EXPECT_EQ(x2.shape(), y2.shape());
+        EXPECT_EQ(x2.bshape(), y2.bshape());
+    }
+}

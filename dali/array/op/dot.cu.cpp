@@ -111,8 +111,13 @@ struct MatrixMultiplyFunction : public Function<MatrixMultiplyFunction,
             // TODO(szymon): make sure that the test ArrayDotTests.broadcast_to_out
             // does make a copy before assigning to out, so that the computation is
             // 3x less
-            // out_reshaped   = out_reshaped.copyless_reshape({left_dim, right_dim});
+            ASSERT2(out_reshaped.contiguous_memory(),
+                    "assigning the result of matrix multiplication to array with noncontiguous memory is currently unsupported.");
         }
+
+        ASSERT2(out_reshaped.memory() != right_reshaped.memory() &&
+                out_reshaped.memory() != left_reshaped.memory(),
+            "inplace matrix multiply is not supported at the time.");
 
         if (out_reshaped.is_transpose()) {
             // some blas implementations do not allow tranposed output.

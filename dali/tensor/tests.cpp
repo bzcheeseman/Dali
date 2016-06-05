@@ -924,10 +924,11 @@ void test_solver(create_solver_t create_solver) {
     // minimize X.T() * W * X + W2 * X;
     Tensor X({5, 1}, initializer::uniform(-20.0, 20.0));
     X = tensor_ops::consider_constant(X);
+
     Tensor W({5, 5}, initializer::uniform(-20.0, 20.0));
     Tensor W2({1, 5}, initializer::uniform(-20.0, 20.0));
 
-    W.w = W.w.dot(W.w.transpose()); // ensure positive definite.
+    W = W.dot(W.transpose()); // ensure positive definite.
 
     vector<Tensor> params({W, W2});
     auto solver = create_solver(params);
@@ -985,14 +986,6 @@ TEST(solver, trivial_sgd) {
     });
 }
 
-TEST(solver, sgd) {
-    test_solver([](vector<Tensor> params) {
-        auto ret = std::make_shared<solver::SGD>(params);
-        ret->step_size = 0.01;
-        return ret;
-    });
-}
-
 TEST(solver, trivial_adagrad) {
     test_solver_trivial([](vector<Tensor> params) {
         auto ret = std::make_shared<solver::AdaGrad>(params);
@@ -1033,6 +1026,14 @@ TEST(solver, trivial_adam) {
     test_solver_trivial([](vector<Tensor> params) {
         auto ret = std::make_shared<solver::Adam>(params);
         ret->step_size = 0.005;
+        return ret;
+    });
+}
+
+TEST(solver, sgd) {
+    test_solver([](vector<Tensor> params) {
+        auto ret = std::make_shared<solver::SGD>(params);
+        ret->step_size = 0.01;
         return ret;
     });
 }

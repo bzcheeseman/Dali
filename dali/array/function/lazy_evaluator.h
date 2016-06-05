@@ -3,6 +3,7 @@
 
 #include "dali/array/debug.h"
 #include "dali/array/dtype.h"
+#include "dali/array/function/evaluation_dim.h"
 #include "dali/array/function/args/reduce_over_lazy_expr.h"
 #include "dali/array/function/function.h"
 #include "dali/array/function/lazy_function.h"
@@ -16,6 +17,8 @@
 
 template<class LazyExpr>
 struct LazyEvaluator : public Function<LazyEvaluator<LazyExpr>, Array, LazyExpr> {
+    static const int evaluation_dim = (lazy::LazyEvaluationDim<LazyExpr>::value == lazy::EVALUATION_DIM_ANY) ?
+                                       lazy::EVALUATION_DIM_DEFAULT : lazy::LazyEvaluationDim<LazyExpr>::value;
 
     static std::vector<int> deduce_output_bshape(const LazyExpr& expr) {
         return expr.bshape();
@@ -51,12 +54,12 @@ struct LazyEvaluator : public Function<LazyEvaluator<LazyExpr>, Array, LazyExpr>
         // is not broadcasted, so when the computation actually happens
         // the shape is already fully known every step of the way.
 
-        operator_assign<operator_t, LazyExpr::evaluation_dim>(
+        operator_assign<operator_t, evaluation_dim>(
             out,
             MshadowWrapper<devT,T,decltype(expr)>::wrap(expr,
                                                         out.device,
                                                         out.array.shape(),
-                                                        lazy::EvaluationSpec<devT,T,LazyExpr::evaluation_dim>()),
+                                                        lazy::EvaluationSpec<devT,T,evaluation_dim>()),
             LazyExpr::collapse_leading
         );
     }

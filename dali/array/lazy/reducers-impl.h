@@ -44,13 +44,13 @@ template<class Functor, typename ExprT>
 const int LazyAllReducer<Functor, ExprT>::evaluation_dim = 1;
 
 template<class Functor, typename ExprT>
-struct LazyAxisReducer<Functor, ExprT, false> : public BaseLazyAxisReducer<LazyFunction, LazyAxisReducer<Functor, ExprT, false>, ExprT, Functor, false> {
-    using BaseLazyAxisReducer<LazyFunction, LazyAxisReducer<Functor, ExprT, false>, ExprT, Functor, false>::BaseLazyAxisReducer; // inherit parent constructor
+struct LazyAxisReducer<Functor, ExprT, false> : public BaseLazyAxisReducer<LazyAxisReducer<Functor, ExprT, false>, ExprT, Functor, false> {
+    using BaseLazyAxisReducer<LazyAxisReducer<Functor, ExprT, false>, ExprT, Functor, false>::BaseLazyAxisReducer; // inherit parent constructor
 };
 
 template<class Functor, typename ExprT>
-struct LazyAxisReducer<Functor, ExprT, true> : public BaseLazyAxisReducer<LazyFunction, LazyAxisReducer<Functor, ExprT, true>, ExprT, Functor, true> {
-    using BaseLazyAxisReducer<LazyFunction, LazyAxisReducer<Functor, ExprT, true>, ExprT, Functor, true>::BaseLazyAxisReducer; // inherit parent constructor
+struct LazyAxisReducer<Functor, ExprT, true> : public BaseLazyAxisReducer<LazyAxisReducer<Functor, ExprT, true>, ExprT, Functor, true> {
+    using BaseLazyAxisReducer<LazyAxisReducer<Functor, ExprT, true>, ExprT, Functor, true>::BaseLazyAxisReducer; // inherit parent constructor
 
     static DType lazy_output_dtype(const ExprT& expr_, const int& reduce_axis_, bool) {
         return DTYPE_INT32;

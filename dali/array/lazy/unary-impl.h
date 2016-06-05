@@ -4,6 +4,7 @@
 template<template<class>class Functor, typename ExprT>
 struct LazyUnary : public LazyFunction<LazyUnary<Functor,ExprT>, ExprT> {
     ExprT expr;
+    static const int evaluation_dim;
 
     LazyUnary(ExprT expr_) : LazyFunction<LazyUnary<Functor,ExprT>, ExprT>(expr_),
                              expr(expr_) {
@@ -22,8 +23,12 @@ struct LazyUnary : public LazyFunction<LazyUnary<Functor,ExprT>, ExprT> {
 };
 
 template<template<class>class Functor, typename ExprT>
+const int LazyUnary<Functor, ExprT>::evaluation_dim = lazy::LazyEvaluationDim<ExprT>::value;
+
+template<template<class>class Functor, typename ExprT>
 struct LazyUnaryIndexed : public LazyFunction<LazyUnaryIndexed<Functor,ExprT>, ExprT> {
     ExprT expr;
+    static const int evaluation_dim;
 
     LazyUnaryIndexed(ExprT expr_) : LazyFunction<LazyUnaryIndexed<Functor,ExprT>, ExprT>(expr_),
                              expr(expr_) {
@@ -40,6 +45,9 @@ struct LazyUnaryIndexed : public LazyFunction<LazyUnaryIndexed<Functor,ExprT>, E
         return mshadow::expr::FIndexed<Functor<T>>(left_expr);
     }
 };
+
+template<template<class>class Functor, typename ExprT>
+const int LazyUnaryIndexed<Functor, ExprT>::evaluation_dim = lazy::LazyEvaluationDim<ExprT>::value;
 
 namespace lazy {
     template<template<class>class Functor, typename ExprT>

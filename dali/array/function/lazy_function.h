@@ -8,6 +8,7 @@
 #include "dali/array/dtype.h"
 #include "dali/array/function/expression.h"
 #include "dali/array/function/typed_array.h"
+#include "dali/array/function/evaluation_dim.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 //                             MSHADOW_WRAPPER                                //
@@ -26,6 +27,7 @@ namespace lazy {
         EvaluationSpec() : collapse_leading_(true) {}
 
         bool collapse_leading_;
+
         auto fit_array_to_spec(const Array& array,
                                const memory::Device& device,
                                const std::vector<int>& output_shape) const ->
@@ -69,22 +71,23 @@ struct MshadowWrapper {
     static inline auto wrap(const ExprT& sth,
                             memory::Device device,
                             const std::vector<int>& output_shape,
-                            const lazy::EvaluationSpec<devT, T, ndim>& wrap_array) ->
-            decltype(sth.template to_mshadow_expr<devT, T, ndim>(device, output_shape, wrap_array)) {
-        // static_assert(mshadow::expr::ExpInfo<WrappedArrayT>::kDim != -1,
-        //     "Mshadow expression for WrappedArrayT has no mshadow::expr::ExpInfo kdim defined. Specialize this classes ExpInfo to know the kDim.");
-        // static_assert(mshadow::expr::ExpInfo<decltype(sth.template to_mshadow_expr<devT,T>(device, output_shape, wrap_array))>::kDim != -1,
-        //     "Mshadow expression for wrapped lazy expression no mshadow::expr::ExpInfo kdim defined. Specialize this classes ExpInfo to know the kDim.");
-        // static_assert(
-        //     !(mshadow::expr::ExpInfo<decltype(sth.template to_mshadow_expr<devT,T>(device, output_shape, wrap_array))>::kDim == 1 &&
-        //     mshadow::expr::ExpInfo<WrappedArrayT>::kDim == 2), "Input expression has ndim = 1 while wrap_array calls for ndim = 2");
-        // static_assert(
-        //     !(mshadow::expr::ExpInfo<decltype(sth.template to_mshadow_expr<devT,T>(device, output_shape, wrap_array))>::kDim == 2 &&
-        //     mshadow::expr::ExpInfo<WrappedArrayT>::kDim == 1), "Input expression has ndim = 2 while wrap_array calls for ndim = 1");
-        // static_assert(
-        //     mshadow::expr::ExpInfo<decltype(sth.template to_mshadow_expr<devT,T>(device, output_shape, wrap_array))>::kDim ==
-        //     mshadow::expr::ExpInfo<WrappedArrayT>::kDim, "Input expression to wrap has wrong dimensionality.");
-        return sth.template to_mshadow_expr<devT, T, ndim>(device, output_shape, wrap_array);
+                            const lazy::EvaluationSpec<devT, T, ndim>& eval_spec) ->
+            decltype(sth.template to_mshadow_expr<devT, T, ndim>(device, output_shape, eval_spec)) {
+        typedef decltype(sth.template to_mshadow_expr<devT,T, ndim>(device, output_shape, eval_spec)) expected_return_t;
+
+        // static_assert(ndim != -1,
+        //               "Mshadow expression for WrappedArrayT has no mshadow::expr::ExpInfo kdim defined. "
+        //               "Specialize this classes ExpInfo to know the kDim.");
+        // static_assert(mshadow::expr::ExpInfo<expected_return_t>::kDim != -1,
+        //               "Mshadow expression for wrapped lazy expression no mshadow::expr::ExpInfo kdim defined. "
+        //               "Specialize this classes ExpInfo to know the kDim.");
+        // static_assert(!(mshadow::expr::ExpInfo<expected_return_t>::kDim == 1 && ndim == 2),
+        //               "Output expression has ndim = 1 while evaluation specifications require ndim = 2");
+        // static_assert(!(mshadow::expr::ExpInfo<expected_return_t>::kDim == 2 && ndim == 1),
+        //               "Output expression has ndim = 2 while evaluation specifications require ndim = 1");
+        // static_assert(mshadow::expr::ExpInfo<expected_return_t>::kDim == ndim,
+        //               "Output expression to wrap has wrong dimensionality.");
+        return sth.template to_mshadow_expr<devT, T, ndim>(device, output_shape, eval_spec);
     }
 };
 

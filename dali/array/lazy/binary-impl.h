@@ -1,8 +1,31 @@
+#include "dali/array/function/evaluation_dim.h"
 #include "dali/array/function/lazy_function.h"
 #include "dali/array/functor.h"
 
+namespace lazy {
+    template<typename LeftT, typename RightT>
+    struct LazyBinaryEvaluationDim {
+        static const int left_value = LazyEvaluationDim<LeftT>::value;
+        static const int right_value = LazyEvaluationDim<LeftT>::value;
+        static const bool values_disagree = left_value != right_value;
+        static const int value = (
+            (left_value == -1) ?
+                right_value :
+                ((right_value == -1) ?
+                     left_value :
+                     (values_disagree ?
+                        EVALUATION_DIM_ERROR :
+                        left_value
+                     )
+                )
+        );
+    };
+}
+
+
 template<template<class>class Functor, typename LeftT, typename RightT>
 struct LazyBinary : public LazyFunction<LazyBinary<Functor,LeftT,RightT>, LeftT, RightT> {
+    static const int evaluation_dim;
     LeftT  left;
     RightT right;
 
@@ -26,8 +49,13 @@ struct LazyBinary : public LazyFunction<LazyBinary<Functor,LeftT,RightT>, LeftT,
     }
 };
 
+
+template<template<class>class Functor, typename LeftT, typename RightT>
+const int LazyBinary<Functor, LeftT, RightT>::evaluation_dim = lazy::LazyBinaryEvaluationDim<LeftT, RightT>::value;
+
 template<template<class>class Functor, typename LeftT, typename RightT>
 struct LazyBinaryIndexed : public LazyFunction<LazyBinaryIndexed<Functor,LeftT,RightT>, LeftT, RightT> {
+    static const int evaluation_dim;
     LeftT  left;
     RightT right;
 
@@ -51,8 +79,12 @@ struct LazyBinaryIndexed : public LazyFunction<LazyBinaryIndexed<Functor,LeftT,R
     }
 };
 
+template<template<class>class Functor, typename LeftT, typename RightT>
+const int LazyBinaryIndexed<Functor, LeftT, RightT>::evaluation_dim = lazy::LazyBinaryEvaluationDim<LeftT, RightT>::value;
+
 template<typename LeftT, typename RightT>
 struct LazyOuter : public LazyFunction<LazyOuter<LeftT,RightT>, LeftT, RightT> {
+    static const int evaluation_dim;
     LeftT  left;
     RightT right;
 
@@ -89,6 +121,9 @@ struct LazyOuter : public LazyFunction<LazyOuter<LeftT,RightT>, LeftT, RightT> {
         );
     }
 };
+
+template<typename LeftT, typename RightT>
+const int LazyOuter<LeftT, RightT>::evaluation_dim = 2;
 
 namespace lazy {
     template<template<class>class Functor, typename T1, typename T2>

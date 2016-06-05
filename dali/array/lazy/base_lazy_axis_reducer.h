@@ -17,8 +17,8 @@ static inline auto wrap_3d_around_axis(const ExprT& expr, const std::vector<int>
     return mshadow::expr::reshape(expr, mshadow::Shape3(before_size, real_expr_shape[kept_axis], after_size));
 }
 
-template<template <typename, typename...> class BaseClass, class Class, typename ExprT, typename Functor, bool return_indices>
-struct BaseLazyAxisReducer : public BaseClass<Class, ExprT, int, bool> {
+template<class Class, typename ExprT, typename Functor, bool return_indices>
+struct BaseLazyAxisReducer : public LazyFunction<Class, ExprT, int, bool> {
     static const int evaluation_dim;
     ExprT expr;
     const int reduce_axis;
@@ -42,7 +42,7 @@ struct BaseLazyAxisReducer : public BaseClass<Class, ExprT, int, bool> {
     }
 
     BaseLazyAxisReducer(const ExprT& expr_, const int& reduce_axis_, bool keepdims_) :
-            BaseClass<Class, ExprT, int, bool>(expr_, reduce_axis_, keepdims_),
+            LazyFunction<Class, ExprT, int, bool>(expr_, reduce_axis_, keepdims_),
             reduce_axis(reduce_axis_),
             keepdims(keepdims_),
             expr(expr_) {
@@ -102,7 +102,7 @@ struct BaseLazyAxisReducer : public BaseClass<Class, ExprT, int, bool> {
     }
 };
 
-template<template <typename, typename...> class BaseClass, class Class, typename ExprT, typename Functor, bool return_indices>
-const int BaseLazyAxisReducer<BaseClass,Class, ExprT, Functor, return_indices>::evaluation_dim = 2;
+template<class Class, typename ExprT, typename Functor, bool return_indices>
+const int BaseLazyAxisReducer<Class, ExprT, Functor, return_indices>::evaluation_dim = 2;
 
 #endif

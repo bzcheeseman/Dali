@@ -217,7 +217,7 @@ TEST(LayerTests, LSTM_Zaremba_gradient) {
         ASSERT_TRUE(gradient_same(functor, params, 1e-3));
     }
 }
-//
+
 TEST(LayerTests, DISABLED_LSTM_Graves_gradient) {
     int num_examples           = 10;
     int hidden_size            = 5;

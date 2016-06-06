@@ -29,6 +29,9 @@ struct LazyAxisReducer;
 template<typename ExprT1, typename ExprT2>
 struct LazyTake;
 
+template<typename ExprT1, typename ExprT2>
+struct LazyTakeFromRows;
+
 namespace internal {
     template<typename ExprT>
     struct NonRecursiveLazySumAxis;
@@ -90,6 +93,14 @@ struct ReduceOverLazyExpr {
     static outtuple_t unfold_helper(
             const outtuple_t& state,
             const LazyTake<ExprT1, ExprT2>& take_expr,
+            const Args&... args) {
+        return unfold_helper(state, take_expr.src, take_expr.indices, args...);
+    }
+
+    template<typename ExprT1, typename ExprT2, typename... Args>
+    static outtuple_t unfold_helper(
+            const outtuple_t& state,
+            const LazyTakeFromRows<ExprT1, ExprT2>& take_expr,
             const Args&... args) {
         return unfold_helper(state, take_expr.src, take_expr.indices, args...);
     }

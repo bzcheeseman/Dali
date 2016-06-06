@@ -18,7 +18,9 @@
     #include "dali/array/lazy/binary.h"
     #include "dali/array/lazy/reducers.h"
     #include "dali/array/lazy/unary.h"
+    #include "dali/array/lazy/reshape.h"
     #include "dali/array/function/lazy_evaluator.h"
+
 
     namespace lazy {
         static bool ops_loaded = true;

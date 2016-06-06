@@ -43,5 +43,11 @@ namespace lazy {
         static const int exprdim = lazy::LazyEvaluationDim<Expr>::value;
         static const int value = (exprdim == EVALUATION_DIM_ANY) ? default_dim : exprdim;
     };
+
+    template<typename Expr, int offset, int default_dim>
+    struct ExprNdimPlusOffset {
+        static const int exprdim = lazy::LazyEvaluationDim<Expr>::value;
+        static const int value = (exprdim == EVALUATION_DIM_ANY) ? default_dim : (exprdim + offset);
+    };
 }  // namespace lazy
 #endif

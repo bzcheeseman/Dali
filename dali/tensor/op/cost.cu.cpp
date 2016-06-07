@@ -56,6 +56,7 @@ namespace tensor_ops {
         }
         return out;
     }
+
     Tensor margin_loss(const Tensor& t, const int& target, const double& margin, const int& axis) {
         // relevant slice:
         auto t_plucked = t.pluck_axis(axis, target);
@@ -108,6 +109,29 @@ namespace tensor_ops {
             });
         return out;
     }
+
+    // Tensor softmax_cross_entropy_rowwise(const Tensor& t, const Tensor& targets, int axis) {
+    //     if (axis < 0) axis = t.ndim() + axis;
+    //     Array probs(op::softmax(t.w, axis, 1.0));
+
+    //     Tensor out(-1.0 * lazy::negative_log(lazy::take(probs, targets.w)));
+
+    //     if (graph::backprop_enabled() && !t.constant) {
+    //         graph::emplace_back([t, probs, out, targets, axis]() mutable {
+    //             MAYBE_GRAD(t) <<= probs * out.insert_broadcast_axis(axis).w
+
+    //             if (!matrix.constant) {
+    //                 GRAD(matrix) += (
+    //                     MAT(probs).wrapper() *
+    //                     GRAD(out).ravel().wrapper().template broadcast<0>(MAT(probs).shape)
+    //                 );
+
+    //                 softmax_cross_entropy_rowwise_backward(GRAD(matrix), GRAD(out), targets.w().ravel());
+    //             }
+    //         });
+    //     }
+    //     return out;
+    // }
 
     Tensor cross_entropy(const Tensor& probs, const Tensor& target) {
         Tensor out(-1.0 * target.w * lazy::log(probs.w));

@@ -2,8 +2,10 @@
 #define DALI_ARRAY_OP_RESHAPE_H
 
 #include <vector>
+#include "dali/array/function/operator.h"
 
 class Array;
+class ArraySubtensor;
 class AssignableArray;
 
 namespace op {
@@ -15,6 +17,13 @@ namespace op {
     AssignableArray vstack(const std::vector<Array>& arrays);
     // Pick indices from another array
     AssignableArray take(const Array& source, const Array& indices);
+    // Pick indices from another array on each row
+    // (equivalent to source[np.arange(0, n), indices] in numpy)
+    AssignableArray take_from_rows(const Array& source, const Array& indices);
+
+    template<OPERATOR_T operator_t>
+    void assign_to_rows(const ArraySubtensor& destination,
+                        const Array& assignable);
 } // namespace op
 
 #endif

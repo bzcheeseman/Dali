@@ -72,15 +72,54 @@ namespace internal {
     template class TypedArrayShared<mshadow::cpu, int>;
     template class TypedArrayShared<mshadow::cpu, float>;
     template class TypedArrayShared<mshadow::cpu, double>;
-    template class TypedArrayShared<mshadow::gpu, int>;
-    template class TypedArrayShared<mshadow::gpu, float>;
-    template class TypedArrayShared<mshadow::gpu, double>;
+    #ifdef DALI_USE_CUDA
+        template class TypedArrayShared<mshadow::gpu, int>;
+        template class TypedArrayShared<mshadow::gpu, float>;
+        template class TypedArrayShared<mshadow::gpu, double>;
+    #endif
 
+    // Subtensor
+
+    template<typename MDevT, typename T, typename IndexT>
+    TypedArraySubtensorShared<MDevT, T, IndexT>::TypedArraySubtensorShared(const Array& _source, const Array& _indices, const memory::Device& _device, const std::vector<int>& _output_shape)
+            : source(_source, _device, _output_shape), indices(_indices, _device, _output_shape) {
+    }
+
+    template<typename MDevT, typename T, typename IndexT>
+    mshadow::expr::TakeFromRowsExp<mshadow::Tensor<MDevT, 0, IndexT>, mshadow::Tensor<MDevT, 1, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::contiguous_d1(memory::AM access_mode, bool collapse_leading) const { return contiguous_d<1>(access_mode, collapse_leading); }
+    template<typename MDevT, typename T, typename IndexT>
+    mshadow::expr::TakeFromRowsExp<mshadow::Tensor<MDevT, 1, IndexT>, mshadow::Tensor<MDevT, 2, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::contiguous_d2(memory::AM access_mode, bool collapse_leading) const { return contiguous_d<2>(access_mode, collapse_leading); }
+    template<typename MDevT, typename T, typename IndexT>
+    mshadow::expr::TakeFromRowsExp<mshadow::Tensor<MDevT, 2, IndexT>, mshadow::Tensor<MDevT, 3, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::contiguous_d3(memory::AM access_mode, bool collapse_leading) const { return contiguous_d<3>(access_mode, collapse_leading); }
+    template<typename MDevT, typename T, typename IndexT>
+    mshadow::expr::TakeFromRowsExp<mshadow::Tensor<MDevT, 3, IndexT>, mshadow::Tensor<MDevT, 4, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::contiguous_d4(memory::AM access_mode, bool collapse_leading) const { return contiguous_d<4>(access_mode, collapse_leading); }
+
+    template<typename MDevT, typename T, typename IndexT>
+    mshadow::expr::TakeFromRowsExp<DaliWrapperExp<MDevT, 0, IndexT>, DaliWrapperExp<MDevT, 1, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::d1(memory::AM access_mode, bool collapse_leading) const { return d<1>(access_mode, collapse_leading); }
+    template<typename MDevT, typename T, typename IndexT>
+    mshadow::expr::TakeFromRowsExp<DaliWrapperExp<MDevT, 1, IndexT>, DaliWrapperExp<MDevT, 2, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::d2(memory::AM access_mode, bool collapse_leading) const { return d<2>(access_mode, collapse_leading); }
+    template<typename MDevT, typename T, typename IndexT>
+    mshadow::expr::TakeFromRowsExp<DaliWrapperExp<MDevT, 2, IndexT>, DaliWrapperExp<MDevT, 3, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::d3(memory::AM access_mode, bool collapse_leading) const { return d<3>(access_mode, collapse_leading); }
+    template<typename MDevT, typename T, typename IndexT>
+    mshadow::expr::TakeFromRowsExp<DaliWrapperExp<MDevT, 3, IndexT>, DaliWrapperExp<MDevT, 4, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::d4(memory::AM access_mode, bool collapse_leading) const { return d<4>(access_mode, collapse_leading); }
+
+    template class TypedArraySubtensorShared<mshadow::cpu, int, int>;
+    template class TypedArraySubtensorShared<mshadow::cpu, float, int>;
+    template class TypedArraySubtensorShared<mshadow::cpu, double, int>;
+    #ifdef DALI_USE_CUDA
+        template class TypedArraySubtensorShared<mshadow::gpu, int, int>;
+        template class TypedArraySubtensorShared<mshadow::gpu, float, int>;
+        template class TypedArraySubtensorShared<mshadow::gpu, double, int>;
+    #endif
 } // namespace internal
 
 template class TypedArray<memory::DEVICE_T_CPU, int>;
 template class TypedArray<memory::DEVICE_T_CPU, float>;
 template class TypedArray<memory::DEVICE_T_CPU, double>;
+
+template class TypedArraySubtensor<memory::DEVICE_T_CPU, int, int>;
+template class TypedArraySubtensor<memory::DEVICE_T_CPU, float, int>;
+template class TypedArraySubtensor<memory::DEVICE_T_CPU, double, int>;
 
 
 #ifdef DALI_USE_CUDA
@@ -92,5 +131,9 @@ template class TypedArray<memory::DEVICE_T_CPU, double>;
     template class TypedArray<memory::DEVICE_T_GPU, int>;
     template class TypedArray<memory::DEVICE_T_GPU, float>;
     template class TypedArray<memory::DEVICE_T_GPU, double>;
+
+    template class TypedArraySubtensor<memory::DEVICE_T_GPU, int, int>;
+    template class TypedArraySubtensor<memory::DEVICE_T_GPU, float, int>;
+    template class TypedArraySubtensor<memory::DEVICE_T_GPU, double, int>;
 
 #endif

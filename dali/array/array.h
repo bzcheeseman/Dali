@@ -17,6 +17,8 @@
 
 class Array;
 
+struct ArraySubtensor;
+
 struct AssignableArray {
     typedef std::function<void(Array&, const OPERATOR_T&)> assign_t;
     assign_t assign_to;
@@ -64,6 +66,7 @@ class Array : public Exp<Array> {
           DType dtype_=DTYPE_FLOAT);
     Array(const Array& other, const bool& copy_memory=false);
     Array(const AssignableArray& assignable);
+    Array(const ArraySubtensor& substensor);
     template<typename ExprT>
     Array(const LazyExp<ExprT>& expr);
 
@@ -129,6 +132,7 @@ class Array : public Exp<Array> {
     AssignableArray operator[](const Array& indices) const;
     SlicingInProgress<Array> operator[](const Slice& s) const;
     SlicingInProgress<Array> operator[](const Broadcast& b) const;
+    ArraySubtensor take_from_rows(const Array& indices) const;
     // Get scalar at this offset:
     Array operator()(index_t idx) const;
     // returns true if array is possibly a result of calling .transpose()
@@ -236,6 +240,17 @@ class Array : public Exp<Array> {
 };
 
 bool operator==(const Array& left, const Array& right);
+
+struct ArraySubtensor {
+    Array source;
+    Array indices;
+    DType dtype() const;
+    const std::vector<int>& shape() const;
+    void print(std::basic_ostream<char>& stream = std::cout, const int& indent=0, const bool& add_newlines=true) const;
+    ArraySubtensor(const Array& source, const Array& indices);
+    ArraySubtensor& operator=(const AssignableArray& assignable);
+    ArraySubtensor& operator=(const Array& assignable);
+};
 
 #endif
 

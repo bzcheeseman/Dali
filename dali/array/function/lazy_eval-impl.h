@@ -86,6 +86,11 @@ namespace lazy {
         static inline AssignableArray eval(const LazyFunction<LazyAllReducer<Functor, ExprT>, Args...>& expr) {
             return EvalWithOperator<intented_operator_t>::eval_no_autoreduce(expr);
         }
+
+        template<typename Class, typename... Args>
+        static inline void assign(const ArraySubtensor& destination, const LazyFunction<Class, Args...>& expr) {
+            return LazyEvaluator<Class>::template subtensor_assign_with_operator<intented_operator_t>(destination, expr.self());
+        }
     };
 
     template<>

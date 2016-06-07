@@ -44,6 +44,18 @@ struct LazyEvaluator : public Function<LazyEvaluator<LazyExpr>, Array, LazyExpr>
         return out.dtype();
     }
 
+    template<OPERATOR_T operator_t, int devT, typename T, typename IndexT>
+    void subtensor_assign_with_operator(TypedArraySubtensor<devT, T, IndexT> out, const LazyExpr& expr) {
+        operator_assign<operator_t, evaluation_dim>(
+            out,
+            MshadowWrapper<devT,T,decltype(expr)>::wrap(expr,
+                                                        out.device,
+                                                        out.shape(),
+                                                        lazy::EvaluationSpec<devT,T,evaluation_dim>()),
+            LazyExpr::collapse_leading
+        );
+    }
+
     template<OPERATOR_T operator_t, int devT, typename T>
     void typed_eval(TypedArray<devT,T> out, const LazyExpr& expr) {
         debug::lazy_evaluation_callback.activate(out.array);

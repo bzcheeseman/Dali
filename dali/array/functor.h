@@ -147,6 +147,13 @@ namespace functor {
     };
 
     template<typename R>
+    struct negative_log {
+        MSHADOW_XINLINE static R Map(const R& a) {
+            return -LOG_F(a);
+        }
+    };
+
+    template<typename R>
     struct safe_entropy_log {
         MSHADOW_XINLINE static R Map(const R& a) {
             R a_safe = a;

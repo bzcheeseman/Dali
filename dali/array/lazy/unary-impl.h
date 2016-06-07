@@ -96,6 +96,11 @@ namespace lazy {
     }
 
     template<typename ExprT>
+    LazyUnary<functor::negative_log,ExprT> negative_log(const Exp<ExprT>& expr) {
+        return LazyUnary<functor::negative_log, ExprT>(expr.self());
+    }
+
+    template<typename ExprT>
     LazyUnary<functor::log_or_zero,ExprT> log_or_zero(const Exp<ExprT>& expr) {
         return LazyUnary<functor::log_or_zero,ExprT>(expr.self());
     }

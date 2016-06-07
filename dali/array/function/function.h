@@ -160,7 +160,6 @@ struct Function {
         });
     }
 
-
     template<OPERATOR_T operator_t>
     static void untyped_eval(const Outtype& out,
                              const Args&... args) {

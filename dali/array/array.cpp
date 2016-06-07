@@ -565,6 +565,10 @@ Array Array::operator[](const int& idx) const {
     return pluck_axis(0, idx);
 }
 
+ArraySubtensor Array::take_from_rows(const Array& indices) const {
+    return ArraySubtensor(*this, indices);
+}
+
 AssignableArray Array::operator[](const Array& indices) const {
     return op::take(*this, indices);
 }
@@ -1016,3 +1020,36 @@ AssignableArray Array::dot(const Array& other) const {
 bool operator==(const Array& left, const Array& right) {
     return Array::state_equals(left, right);
 }
+
+ArraySubtensor::ArraySubtensor(const Array& source_, const Array& indices_) : indices(indices_), source(source_) {}
+
+DType ArraySubtensor::dtype() const {
+    return source.dtype();
+}
+
+const std::vector<int>& ArraySubtensor::shape() const {
+    return source.shape();
+}
+
+ArraySubtensor& ArraySubtensor::operator=(const Array& assignable) {
+    op::assign_to_rows<OPERATOR_T_EQL>(*this, assignable);
+    return *this;
+}
+
+ArraySubtensor& ArraySubtensor::operator=(const AssignableArray& assignable) {
+    // TODO(jonathan, szymon): make more efficient
+    Array self_as_array(*this);
+    assignable.assign_to(self_as_array, OPERATOR_T_EQL);
+    return (*this = self_as_array);
+}
+
+void ArraySubtensor::print(std::basic_ostream<char>& stream,
+                           const int& indent,
+                           const bool& add_newlines) const {
+    ((Array)op::take_from_rows(source, indices)).print(
+        stream,
+        indent,
+        add_newlines
+    );
+}
+

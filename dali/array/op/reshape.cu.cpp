@@ -6,6 +6,7 @@
 #include "dali/array/lazy/reshape.h"
 #include "dali/array/memory/device.h"
 #include "dali/array/op/unary.h"
+#include "dali/array/lazy/unary.h"
 
 // TODO(jonathan, szymon): use stream wait events to ensure concatenation
 //                         kicks off when all predecessors are done working
@@ -131,5 +132,19 @@ namespace op {
     AssignableArray take(const Array& source, const Array& indices) {
         return lazy::take(source, indices);
     }
+
+    AssignableArray take_from_rows(const Array& source, const Array& indices) {
+        return lazy::take_from_rows(source, indices);
+    }
+
+    template<OPERATOR_T operator_t>
+    void assign_to_rows(const ArraySubtensor& destination, const Array& assignable) {
+        lazy::EvalWithOperator<operator_t>::assign(
+            destination,
+            lazy::identity(assignable)
+        );
+    }
+
+    template void assign_to_rows<OPERATOR_T_EQL>(const ArraySubtensor&, const Array&);
 
 } // namespace op

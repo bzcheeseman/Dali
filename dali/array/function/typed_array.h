@@ -119,4 +119,55 @@ struct TypedArray<memory::DEVICE_T_CPU, T> : public internal::TypedArrayShared<m
 
 #include "dali/array/function/typed_array-impl.h"
 
+namespace internal {
+    template<typename MDevT, typename T, typename IndexT>
+    struct TypedArraySubtensorShared {
+      public:
+        TypedArrayShared<MDevT, T> source;
+        TypedArrayShared<MDevT, IndexT> indices;
+
+        memory::Device device;
+        std::vector<int> output_shape;
+
+        template<int dim>
+        mshadow::expr::TakeFromRowsExp<mshadow::Tensor<MDevT, dim - 1, IndexT>, mshadow::Tensor<MDevT, dim, T>, T, IndexT> contiguous_d(memory::AM access_mode=memory::AM_READONLY, bool collapse_leading=true) const;
+
+        template<int dim>
+        mshadow::expr::TakeFromRowsExp<DaliWrapperExp<MDevT, dim - 1, IndexT>, DaliWrapperExp<MDevT, dim, T>, T, IndexT> d(memory::AM access_mode=memory::AM_READONLY, bool collapse_leading=true) const;
+
+        TypedArraySubtensorShared(const Array& _source, const Array& _indices, const memory::Device& _device, const std::vector<int>& output_shape);
+
+        ///////////////////// CONVINENCE WARPPERS //////////////////////////////////
+        mshadow::expr::TakeFromRowsExp<mshadow::Tensor<MDevT, 0, IndexT>, mshadow::Tensor<MDevT, 1, T>, T, IndexT> contiguous_d1(memory::AM access_mode=memory::AM_READONLY, bool collapse_leading=true) const;
+        mshadow::expr::TakeFromRowsExp<mshadow::Tensor<MDevT, 1, IndexT>, mshadow::Tensor<MDevT, 2, T>, T, IndexT> contiguous_d2(memory::AM access_mode=memory::AM_READONLY, bool collapse_leading=true) const;
+        mshadow::expr::TakeFromRowsExp<mshadow::Tensor<MDevT, 2, IndexT>, mshadow::Tensor<MDevT, 3, T>, T, IndexT> contiguous_d3(memory::AM access_mode=memory::AM_READONLY, bool collapse_leading=true) const;
+        mshadow::expr::TakeFromRowsExp<mshadow::Tensor<MDevT, 3, IndexT>, mshadow::Tensor<MDevT, 4, T>, T, IndexT> contiguous_d4(memory::AM access_mode=memory::AM_READONLY, bool collapse_leading=true) const;
+
+        mshadow::expr::TakeFromRowsExp<DaliWrapperExp<MDevT, 0, IndexT>, DaliWrapperExp<MDevT, 1, T>, T, IndexT> d1(memory::AM access_mode=memory::AM_READONLY, bool collapse_leading=true) const;
+        mshadow::expr::TakeFromRowsExp<DaliWrapperExp<MDevT, 1, IndexT>, DaliWrapperExp<MDevT, 2, T>, T, IndexT> d2(memory::AM access_mode=memory::AM_READONLY, bool collapse_leading=true) const;
+        mshadow::expr::TakeFromRowsExp<DaliWrapperExp<MDevT, 2, IndexT>, DaliWrapperExp<MDevT, 3, T>, T, IndexT> d3(memory::AM access_mode=memory::AM_READONLY, bool collapse_leading=true) const;
+        mshadow::expr::TakeFromRowsExp<DaliWrapperExp<MDevT, 3, IndexT>, DaliWrapperExp<MDevT, 4, T>, T, IndexT> d4(memory::AM access_mode=memory::AM_READONLY, bool collapse_leading=true) const;
+    };
+}  // namespace internal
+
+template<int devT, typename T, typename IndexT>
+struct TypedArraySubtensor {
+    TypedArray<devT, T> array;
+    TypedArray<devT, IndexT> indices;
+};
+
+template<typename T, typename IndexT>
+struct TypedArraySubtensor<memory::DEVICE_T_CPU, T, IndexT> : public internal::TypedArraySubtensorShared<mshadow::cpu,T,IndexT> {
+    using internal::TypedArraySubtensorShared<mshadow::cpu,T,IndexT>::TypedArraySubtensorShared; // inherit parent constructor
+};
+
+#ifdef DALI_USE_CUDA
+    template<typename T, typename IndexT>
+    struct TypedArraySubtensor<memory::DEVICE_T_GPU, T, IndexT> : public internal::TypedArraySubtensorShared<mshadow::gpu,T, IndexT> {
+        using internal::TypedArraySubtensorShared<mshadow::gpu,T, IndexT>::TypedArraySubtensorShared; // inherit parent constructor
+    };
+#endif
+
+#include "dali/array/function/typed_array_subtensor-impl.h"
+
 #endif // DALI_ARRAY_FUNCTION_TYPED_ARRAY_H

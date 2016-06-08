@@ -56,6 +56,8 @@ namespace internal {
         memory::Device device;
         std::vector<int> output_shape;
 
+        bool contiguous_memory() const;
+
         T* ptr(memory::AM access_mode=memory::AM_READONLY) const;
 
         template<int dim>
@@ -128,6 +130,8 @@ namespace internal {
 
         memory::Device device;
         std::vector<int> output_shape;
+
+        bool contiguous_memory() const;
 
         template<int dim>
         mshadow::expr::TakeFromRowsExp<mshadow::Tensor<MDevT, dim - 1, IndexT>, mshadow::Tensor<MDevT, dim, T>, T, IndexT> contiguous_d(memory::AM access_mode=memory::AM_READONLY, bool collapse_leading=true) const;

@@ -336,13 +336,13 @@ struct EyeInitializer : public Initializer<EyeInitializer, const double&> {
 
 namespace initializer {
 
-    AssignableArray empty() {
-        return AssignableArray([](Array&, const OPERATOR_T& operator_t){
+    Assignable<Array> empty() {
+        return Assignable<Array>([](Array&, const OPERATOR_T& operator_t){
             // do nothing
         });
     }
-    AssignableArray zeros() {
-        return AssignableArray([](Array& out, const OPERATOR_T& operator_t){
+    Assignable<Array> zeros() {
+        return Assignable<Array>([](Array& out, const OPERATOR_T& operator_t){
             // efficient lazy clearing of memory.
             if (operator_t == OPERATOR_T_EQL || operator_t == OPERATOR_T_MUL) {
                 out.clear();
@@ -355,47 +355,47 @@ namespace initializer {
         });
     }
 
-    AssignableArray ones() {
+    Assignable<Array> ones() {
         return ConstantInitializer<float>::run(1.0);
     }
-    AssignableArray arange() {
+    Assignable<Array> arange() {
         return ArangeInitializer::run();
     }
 
     template<typename ConstT>
-    AssignableArray fill(const ConstT& constant) {
+    Assignable<Array> fill(const ConstT& constant) {
         return ConstantInitializer<ConstT>::run(constant);
     }
 
-    template AssignableArray fill(const int&);
-    template AssignableArray fill(const float&);
-    template AssignableArray fill(const double&);
+    template Assignable<Array> fill(const int&);
+    template Assignable<Array> fill(const float&);
+    template Assignable<Array> fill(const double&);
 
-    AssignableArray gaussian(const double& mean, const double& std) {
+    Assignable<Array> gaussian(const double& mean, const double& std) {
         return GaussianInitializer::run(mean, std);
     }
 
-    AssignableArray uniform(const double& lower, const double& upper) {
+    Assignable<Array> uniform(const double& lower, const double& upper) {
         return UniformInitializer::run(lower, upper);
     }
 
-    AssignableArray bernoulli(const double& prob) {
+    Assignable<Array> bernoulli(const double& prob) {
         return BernoulliInitializer::run(prob);
     }
 
-    AssignableArray bernoulli_normalized(const double& prob) {
+    Assignable<Array> bernoulli_normalized(const double& prob) {
         return BernoulliNormalizedInitializer::run(prob);
     }
 
-    AssignableArray eye(const double& diag) {
+    Assignable<Array> eye(const double& diag) {
         return EyeInitializer::run(diag);
     }
 
-    AssignableArray svd() {
+    Assignable<Array> svd() {
         return svd(gaussian(0.0, 1.0));
     }
-    AssignableArray svd(const AssignableArray& preinitializer) {
-        return AssignableArray([preinitializer](Array& tensor, const OPERATOR_T& operator_t) {
+    Assignable<Array> svd(const Assignable<Array>& preinitializer) {
+        return Assignable<Array>([preinitializer](Array& tensor, const OPERATOR_T& operator_t) {
             ASSERT2(false, "SVD INIT: Not implemented yet");
             /* Eigen implementation */
             // assert(tensor.dims().size() == 2);

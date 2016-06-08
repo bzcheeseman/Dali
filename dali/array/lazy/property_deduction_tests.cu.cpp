@@ -22,26 +22,32 @@ TEST(ArrayLazyOpsTests, lazy_device_deduction) {
 
     // if everybody prefers the same device, return it.
     auto fake_expression = fake(0) * fake(0) + fake(0) + 1;
-    EXPECT_EQ(LazyEvaluator<decltype(fake_expression)>::deduce_computation_device(fake(0), fake_expression), memory::Device::fake(0));
+    typedef LazyEvaluator<Array,decltype(fake_expression)> fake_expr_eval1_t;
+    EXPECT_EQ(fake_expr_eval1_t::deduce_computation_device(fake(0), fake_expression), memory::Device::fake(0));
 
     // if everybody prefers the same device, return it.
     auto fake_expression2 = fake(4) * fake(4) + fake(4) + 1;
-    EXPECT_EQ(LazyEvaluator<decltype(fake_expression2)>::deduce_computation_device(fake(4), fake_expression2), memory::Device::fake(4));
+
+    typedef LazyEvaluator<Array,decltype(fake_expression2)> fake_expr_eval2_t;
+    EXPECT_EQ(fake_expr_eval2_t::deduce_computation_device(fake(4), fake_expression2), memory::Device::fake(4));
 
     memory::WithDevicePreference device_prefence(memory::Device::fake(6));
 
     // if everybody prefereces differ fall back to default_preferred_device
     auto fake_expression3 = fake(2) * fake(4) + fake(5) + 1;
-    EXPECT_EQ(LazyEvaluator<decltype(fake_expression3)>::deduce_computation_device(fake(4), fake_expression3), memory::Device::fake(6));
+
+    typedef LazyEvaluator<Array,decltype(fake_expression3)> fake_expr_eval3_t;
+    EXPECT_EQ(fake_expr_eval3_t::deduce_computation_device(fake(4), fake_expression3), memory::Device::fake(6));
 
     // if the memory was not allocated yet and we have a single argument we fall back to preffered device
-    EXPECT_EQ(LazyEvaluator<int>::deduce_computation_device(fake(1), 16), memory::Device::fake(1));
+    typedef LazyEvaluator<Array,int> lazy_eval_int_t;
+    EXPECT_EQ(lazy_eval_int_t::deduce_computation_device(fake(1), 16), memory::Device::fake(1));
 
     memory::debug::fake_device_memories[10].fresh = true;
 
 
 
-    EXPECT_EQ(LazyEvaluator<int>::deduce_computation_device(fake(1), 16), memory::Device::fake(10));
+    EXPECT_EQ(lazy_eval_int_t::deduce_computation_device(fake(1), 16), memory::Device::fake(10));
     memory::debug::fake_device_memories[10].fresh = false;
 
     memory::debug::enable_fake_devices = false;

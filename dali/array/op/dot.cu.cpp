@@ -216,7 +216,7 @@ struct ReshapedMatrixMultiplyFunction : public Function<ReshapedMatrixMultiplyFu
     }
 };
 
-static AssignableArray reshaped_matmul_fix_broadcasts(const Array& a,
+static Assignable<Array> reshaped_matmul_fix_broadcasts(const Array& a,
                                                       const Array& b,
                                                       const std::vector<int>& output_shape,
                                                       const std::vector<int>& output_shape_2d) {
@@ -254,7 +254,7 @@ static AssignableArray reshaped_matmul_fix_broadcasts(const Array& a,
     );
 }
 
-static AssignableArray reshaped_matmul_fix_broadcasts(const Array& a,
+static Assignable<Array> reshaped_matmul_fix_broadcasts(const Array& a,
                                                       const Array& b,
                                                       const std::vector<int>& output_shape) {
     return reshaped_matmul_fix_broadcasts(a,b,output_shape, output_shape);
@@ -265,7 +265,7 @@ namespace op {
     //                     Various flavors of dot products                        //
     ////////////////////////////////////////////////////////////////////////////////
 
-    AssignableArray outer(const Array& a, const Array& b) {
+    Assignable<Array> outer(const Array& a, const Array& b) {
         return reshaped_matmul_fix_broadcasts(
             a.reshape({a.number_of_elements(), 1}),
             b.reshape({1, b.number_of_elements()}),
@@ -273,7 +273,7 @@ namespace op {
         );
     }
 
-    AssignableArray vectordot(
+    Assignable<Array> vectordot(
             const Array& a,
             const Array& b) {
         ASSERT2(a.ndim() == 1 && b.ndim() == 1,
@@ -290,13 +290,13 @@ namespace op {
         );
     }
 
-    AssignableArray matrixdot(
+    Assignable<Array> matrixdot(
             const Array& a,
             const Array& b) {
         return MatrixMultiplyFunction::run(a, b);
     }
 
-    AssignableArray matrix_vector_dot(
+    Assignable<Array> matrix_vector_dot(
             const Array& a,
             const Array& b) {
         // TODO(jonathan): use correct blas subroutine whenever possible
@@ -333,20 +333,20 @@ namespace op {
     }
 
     template<>
-    AssignableArray matrix_multiply_with_reshape(const Array& a,
+    Assignable<Array> matrix_multiply_with_reshape(const Array& a,
                                                  const Array& b,
                                                  const std::vector<int>& out_shape,
                                                  const std::vector<int>& out_shape_2d) {
         return reshaped_matmul_fix_broadcasts(a, b, out_shape, out_shape_2d);
     }
 
-    AssignableArray tensordot(const Array& a, const Array& b, const int& axis) {
+    Assignable<Array> tensordot(const Array& a, const Array& b, const int& axis) {
         return tensordot_as_dot(
             a, b, axis, /*batched=*/false
         );
     }
 
-    AssignableArray tensordot(const Array& a, const Array& b, const std::vector<int>& a_reduce_axes, const std::vector<int>& b_reduce_axes) {
+    Assignable<Array> tensordot(const Array& a, const Array& b, const std::vector<int>& a_reduce_axes, const std::vector<int>& b_reduce_axes) {
         return tensordot_as_dot(
             a, b, a_reduce_axes, b_reduce_axes, /*batched=*/false
         );
@@ -357,7 +357,7 @@ namespace op {
 ////////////////////////////////////////////////////////////////////////////////
 
     // TODO (szymon): allow for scaling with Binary expression + template redundancy trick!
-    AssignableArray dot(const Array& a, const Array& b) {
+    Assignable<Array> dot(const Array& a, const Array& b) {
         auto a_ndim = a.ndim();
         auto b_ndim = b.ndim();
 

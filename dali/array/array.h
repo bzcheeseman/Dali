@@ -19,16 +19,28 @@ class Array;
 
 struct ArraySubtensor;
 
-struct AssignableArray {
-    typedef std::function<void(Array&, const OPERATOR_T&)> assign_t;
+template<typename OutType>
+struct BaseAssignable {
+    typedef std::function<void(OutType&, const OPERATOR_T&)> assign_t;
     assign_t assign_to;
 
-    explicit AssignableArray(assign_t&& _assign_to);
+    explicit BaseAssignable(assign_t&& _assign_to);
     template<typename ExprT>
-    AssignableArray(const LazyExp<ExprT>& expr);
-    AssignableArray(const float& constant);
-    AssignableArray(const double& constant);
-    AssignableArray(const int& constant);
+    BaseAssignable(const LazyExp<ExprT>& expr);
+};
+
+template<typename OutType>
+struct Assignable : public BaseAssignable<OutType> {
+    using BaseAssignable<OutType>::BaseAssignable;
+};
+
+template<>
+struct Assignable<Array> : public BaseAssignable<Array> {
+    using BaseAssignable<Array>::BaseAssignable;
+
+    Assignable(const float& constant);
+    Assignable(const double& constant);
+    Assignable(const int& constant);
 };
 
 struct ArrayState {
@@ -65,7 +77,7 @@ class Array : public Exp<Array> {
           const std::vector<int>& strides,
           DType dtype_=DTYPE_FLOAT);
     Array(const Array& other, const bool& copy_memory=false);
-    Array(const AssignableArray& assignable);
+    Array(const Assignable<Array>& assignable);
     Array(const ArraySubtensor& substensor);
     template<typename ExprT>
     Array(const LazyExp<ExprT>& expr);
@@ -129,7 +141,7 @@ class Array : public Exp<Array> {
 
     /* Creating a view into memory */
     Array operator[](const int& idx) const;
-    AssignableArray operator[](const Array& indices) const;
+    Assignable<Array> operator[](const Array& indices) const;
     SlicingInProgress<Array> operator[](const Slice& s) const;
     SlicingInProgress<Array> operator[](const Broadcast& b) const;
     ArraySubtensor take_from_rows(const Array& indices) const;
@@ -185,28 +197,28 @@ class Array : public Exp<Array> {
     Array broadcast_scalar_to_ndim(const int& ndim) const;
 
     // reduce over all axes
-    AssignableArray sum() const;
-    AssignableArray mean() const;
-    AssignableArray min() const;
-    AssignableArray max() const;
-    AssignableArray L2_norm() const;
+    Assignable<Array> sum() const;
+    Assignable<Array> mean() const;
+    Assignable<Array> min() const;
+    Assignable<Array> max() const;
+    Assignable<Array> L2_norm() const;
 
     // reduce over one axis
-    AssignableArray sum(const int& axis) const;
-    AssignableArray mean(const int& axis) const;
-    AssignableArray min(const int& axis) const;
-    AssignableArray max(const int& axis) const;
-    AssignableArray L2_norm(const int& axis) const;
+    Assignable<Array> sum(const int& axis) const;
+    Assignable<Array> mean(const int& axis) const;
+    Assignable<Array> min(const int& axis) const;
+    Assignable<Array> max(const int& axis) const;
+    Assignable<Array> L2_norm(const int& axis) const;
 
     operator float() const;
     operator double() const;
     operator int() const;
 
     void copy_from(const Array& other);
-    Array& operator=(const AssignableArray& assignable);
+    Array& operator=(const Assignable<Array>& assignable);
 
     #define DALI_DECLARE_ARRAY_INTERACTION_INPLACE(SYMBOL)\
-        Array& operator SYMBOL (const AssignableArray& right);\
+        Array& operator SYMBOL (const Assignable<Array>& right);\
         Array& operator SYMBOL (const Array& right);\
 
     #define DALI_DECLARE_SCALAR_INTERACTION_INPLACE(SYMBOL)\
@@ -236,7 +248,7 @@ class Array : public Exp<Array> {
     Array& operator=(const LazyExp<ExprT>& expr);
 
     /* shortcuts for array ops */
-    AssignableArray dot(const Array& other) const;
+    Assignable<Array> dot(const Array& other) const;
 };
 
 bool operator==(const Array& left, const Array& right);
@@ -248,8 +260,8 @@ struct ArraySubtensor {
     const std::vector<int>& shape() const;
     void print(std::basic_ostream<char>& stream = std::cout, const int& indent=0, const bool& add_newlines=true) const;
     ArraySubtensor(const Array& source, const Array& indices);
-    ArraySubtensor& operator=(const AssignableArray& assignable);
-    ArraySubtensor& operator=(const Array& assignable);
+    // ArraySubtensor& operator=(const Assignable<Array>& assignable);
+    // ArraySubtensor& operator=(const Array& assignable);
 };
 
 #endif
@@ -292,7 +304,7 @@ struct ArraySubtensor {
     //     * giving in to Bjarne
     //     * the fact that sometimes we need to convert between BaseArray and
     //       Array.
-    //     * we might need BaseAssignableArray (?!??)
+    //     * we might need BaseAssignable<Array> (?!??)
     // Honestly, this might be a better solution, but the only way to understand
     // how much worse/better it is, is to implement it and try to gradually
     // remove all the associated inconveniences.
@@ -327,9 +339,10 @@ struct ArraySubtensor {
             Array(lazy::EvalWithOperator<OPERATOR_T_EQL>::eval_no_autoreduce(expr.self())) {
     }
 
+    template<typename OutType>
     template<typename ExprT>
-    AssignableArray::AssignableArray(const LazyExp<ExprT>& expr) :
-            AssignableArray(lazy::eval(expr.self())) {
+    BaseAssignable<OutType>::BaseAssignable(const LazyExp<ExprT>& expr) :
+            BaseAssignable<OutType>(lazy::eval(expr.self())) {
     }
 
     #endif

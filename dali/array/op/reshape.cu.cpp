@@ -111,7 +111,7 @@ struct ConcatenateFunction : public Function<ConcatenateFunction,
 };
 
 namespace op {
-    AssignableArray concatenate(const std::vector<Array>& arrays, int axis) {
+    Assignable<Array> concatenate(const std::vector<Array>& arrays, int axis) {
         if (arrays.size() == 1) return op::identity(arrays[0], /*always_copy=*/false);
         if (axis < 0 && arrays.size() > 0) {
             // handle negative axes that wrap around and are
@@ -121,30 +121,30 @@ namespace op {
         return ConcatenateFunction::run(arrays, axis);
     }
 
-    AssignableArray hstack(const std::vector<Array>& arrays) {
+    Assignable<Array> hstack(const std::vector<Array>& arrays) {
         return concatenate(arrays, -1);
     }
 
-    AssignableArray vstack(const std::vector<Array>& arrays) {
+    Assignable<Array> vstack(const std::vector<Array>& arrays) {
         return concatenate(arrays, 0);
     }
 
-    AssignableArray take(const Array& source, const Array& indices) {
+    Assignable<Array> take(const Array& source, const Array& indices) {
         return lazy::take(source, indices);
     }
 
-    AssignableArray take_from_rows(const Array& source, const Array& indices) {
+    Assignable<Array> take_from_rows(const Array& source, const Array& indices) {
         return lazy::take_from_rows(source, indices);
     }
 
-    template<OPERATOR_T operator_t>
-    void assign_to_rows(const ArraySubtensor& destination, const Array& assignable) {
-        lazy::EvalWithOperator<operator_t>::assign(
-            destination,
-            lazy::identity(assignable)
-        );
-    }
+    // template<OPERATOR_T operator_t>
+    // void assign_to_rows(const ArraySubtensor& destination, const Array& assignable) {
+    //     lazy::EvalWithOperator<operator_t>::assign(
+    //         destination,
+    //         lazy::identity(assignable)
+    //     );
+    // }
 
-    template void assign_to_rows<OPERATOR_T_EQL>(const ArraySubtensor&, const Array&);
+    // template void assign_to_rows<OPERATOR_T_EQL>(const ArraySubtensor&, const Array&);
 
 } // namespace op

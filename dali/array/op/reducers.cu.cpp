@@ -6,65 +6,65 @@
 
 
 namespace op {
-    AssignableArray sum(const Array& x) {
+    Assignable<Array> sum(const Array& x) {
         return lazy::sum(x);
     }
 
-    AssignableArray product(const Array& x) {
+    Assignable<Array> product(const Array& x) {
         return lazy::product(x);
     }
 
-    AssignableArray mean(const Array& x) {
+    Assignable<Array> mean(const Array& x) {
         return lazy::sum(x / x.number_of_elements());
     }
 
-    AssignableArray L2_norm(const Array& x) {
-        return AssignableArray([x](Array& out, const OPERATOR_T& operator_t) {
+    Assignable<Array> L2_norm(const Array& x) {
+        return Assignable<Array>([x](Array& out, const OPERATOR_T& operator_t) {
             Array temp = lazy::sum(lazy::square(x));
             lazy::eval(lazy::sqrt(temp)).assign_to(out, operator_t);
         });
     }
 
-    AssignableArray L2_norm(const Array& x, const int& axis) {
-        return AssignableArray([x, axis](Array& out, const OPERATOR_T& operator_t) {
+    Assignable<Array> L2_norm(const Array& x, const int& axis) {
+        return Assignable<Array>([x, axis](Array& out, const OPERATOR_T& operator_t) {
             Array temp = lazy::sum(lazy::square(x), axis);
             lazy::eval(lazy::sqrt(temp)).assign_to(out, operator_t);
         });
     }
 
-    AssignableArray min(const Array& x) {
+    Assignable<Array> min(const Array& x) {
         return lazy::min(x);
     }
 
-    AssignableArray max(const Array& x) {
+    Assignable<Array> max(const Array& x) {
         return lazy::max(x);
     }
 
-    AssignableArray sum(const Array& x, const int& axis) {
+    Assignable<Array> sum(const Array& x, const int& axis) {
         return lazy::sum(x, axis);
     }
 
-    AssignableArray product(const Array& x, const int& axis) {
+    Assignable<Array> product(const Array& x, const int& axis) {
         return lazy::product(x, axis);
     }
 
-    AssignableArray min(const Array& x, const int& axis) {
+    Assignable<Array> min(const Array& x, const int& axis) {
         return lazy::min(x, axis);
     }
 
-    AssignableArray max(const Array& x, const int& axis) {
+    Assignable<Array> max(const Array& x, const int& axis) {
         return lazy::max(x, axis);
     }
 
-    AssignableArray argmin(const Array& x, const int& axis) {
+    Assignable<Array> argmin(const Array& x, const int& axis) {
         return lazy::argmin(x, axis);
     }
 
-    AssignableArray argmax(const Array& x, const int& axis) {
+    Assignable<Array> argmax(const Array& x, const int& axis) {
         return lazy::argmax(x, axis);
     }
 
-    AssignableArray mean(const Array& x, const int& axis) {
+    Assignable<Array> mean(const Array& x, const int& axis) {
     	auto reduced = lazy::sum(x, axis);
     	return reduced / x.shape()[axis]; // size of reduced axis
     }

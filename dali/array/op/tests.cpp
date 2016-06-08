@@ -96,7 +96,7 @@ TEST(ArrayOpsTests, chainable) {
     // sigmoid is run and stored,
     // then relu, then tanh. the operations
     // are not fused, but implicit casting to
-    // Array from AssignableArray occurs at
+    // Array from Assignable<Array> occurs at
     // every stage.
     Array y = tanh(relu(sigmoid(x)));
 }

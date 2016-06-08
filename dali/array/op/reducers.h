@@ -2,20 +2,21 @@
 #define DALI_ARRAY_OP_REDUCERS_H
 
 class Array;
-class AssignableArray;
+template<typename OutType>
+class Assignable;
 
 namespace op {
-    AssignableArray sum(const Array& x);
-    AssignableArray L2_norm(const Array& x);
-    AssignableArray L2_norm(const Array& x, const int& axis);
-    AssignableArray mean(const Array& x);
-    AssignableArray min(const Array& x);
-    AssignableArray max(const Array& x);
-    AssignableArray sum(const Array& x, const int& axis);
-    AssignableArray mean(const Array& x, const int& axis);
-    AssignableArray min(const Array& x, const int& axis);
-    AssignableArray max(const Array& x, const int& axis);
-    AssignableArray argmin(const Array& x, const int& axis);
-    AssignableArray argmax(const Array& x, const int& axis);
+    Assignable<Array> sum(const Array& x);
+    Assignable<Array> L2_norm(const Array& x);
+    Assignable<Array> L2_norm(const Array& x, const int& axis);
+    Assignable<Array> mean(const Array& x);
+    Assignable<Array> min(const Array& x);
+    Assignable<Array> max(const Array& x);
+    Assignable<Array> sum(const Array& x, const int& axis);
+    Assignable<Array> mean(const Array& x, const int& axis);
+    Assignable<Array> min(const Array& x, const int& axis);
+    Assignable<Array> max(const Array& x, const int& axis);
+    Assignable<Array> argmin(const Array& x, const int& axis);
+    Assignable<Array> argmax(const Array& x, const int& axis);
 }; // namespace op
 #endif

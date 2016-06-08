@@ -5,18 +5,18 @@
 #include "dali/array/op/unary.h"
 
 namespace op {
-    AssignableArray add(const Array& a, const Array& b) {
+    Assignable<Array> add(const Array& a, const Array& b) {
         return lazy::add(a, b);
     }
 
-    AssignableArray add(const std::vector<Array>& arrays) {
+    Assignable<Array> add(const std::vector<Array>& arrays) {
         ASSERT2(arrays.size() > 0, "op::add takes requires at least 1 array");
         if (arrays.size() == 1) {
             return op::identity(arrays[0], false);
         } else if (arrays.size() == 2) {
             return lazy::add(arrays[0], arrays[1]);
         } else {
-            return AssignableArray([arrays](Array& out, const OPERATOR_T& operator_t) {
+            return Assignable<Array>([arrays](Array& out, const OPERATOR_T& operator_t) {
                 Array res = arrays[0];
                 for (int i = 1; i < arrays.size(); i += 4) {
                     Array newres;
@@ -62,19 +62,19 @@ namespace op {
         }
     }
 
-    AssignableArray sub(const Array& a, const Array& b) {
+    Assignable<Array> sub(const Array& a, const Array& b) {
         return lazy::sub(a, b);
     }
 
-    AssignableArray eltmul(const Array& a, const Array& b) {
+    Assignable<Array> eltmul(const Array& a, const Array& b) {
         return lazy::eltmul(a, b);
     }
 
-    AssignableArray eltdiv(const Array& a, const Array& b) {
+    Assignable<Array> eltdiv(const Array& a, const Array& b) {
         return lazy::eltdiv(a, b);
     }
 
-    AssignableArray pow(const Array& a, const Array& b) {
+    Assignable<Array> pow(const Array& a, const Array& b) {
         return lazy::pow(a, b);
     }
 }  // namespace op

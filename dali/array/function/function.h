@@ -146,10 +146,10 @@ struct Function {
     }
 
     template<OPERATOR_T intented_operator_t>
-    static AssignableArray run_with_operator(const Args&... args) {
-        return AssignableArray([args...](Outtype& out, const OPERATOR_T& operator_t) {
+    static Assignable<Array> run_with_operator(const Args&... args) {
+        return Assignable<Array>([args...](Outtype& out, const OPERATOR_T& operator_t) {
             ASSERT2(operator_t == intented_operator_t,
-                utils::MS() << "AssignableArray constructed for operator "
+                utils::MS() << "Assignable<Array> constructed for operator "
                             << operator_to_name(intented_operator_t)
                             << " but got " << operator_to_name(operator_t)
                             << " instead");
@@ -187,8 +187,8 @@ struct Function {
         }
     }
 
-    static AssignableArray run(const Args&... args) {
-        return AssignableArray([args...](Outtype& out, const OPERATOR_T& operator_t) {
+    static Assignable<Array> run(const Args&... args) {
+        return Assignable<Array>([args...](Outtype& out, const OPERATOR_T& operator_t) {
             auto prepped_args = Class::prepare_output(operator_t, out, args...);
             switch (operator_t) {
                 case OPERATOR_T_EQL:
@@ -210,7 +210,7 @@ struct Function {
                     unpack_tuple(Class::template untyped_eval<OPERATOR_T_LSE>, prepped_args);
                     break;
                 default:
-                    ASSERT2(false, "OPERATOR_T for assignment between AssignableArray and output must be one of =,-=,+=,*=,/=,<<=");
+                    ASSERT2(false, "OPERATOR_T for assignment between Assignable<Array> and output must be one of =,-=,+=,*=,/=,<<=");
                     break;
             }
             debug::dali_function_computed.activate(true);

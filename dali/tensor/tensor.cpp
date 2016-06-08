@@ -28,7 +28,7 @@ Tensor::Tensor() {
 }
 
 Tensor::Tensor(const std::vector<int>& shape,
-               AssignableArray weights_initialization,
+               Assignable<Array> weights_initialization,
                DType dtype_,
                memory::Device preferred_device) :
         w(shape,dtype_,preferred_device),

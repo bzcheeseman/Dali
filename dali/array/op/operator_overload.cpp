@@ -5,18 +5,18 @@
 #include "dali/array/op/unary_scalar.h"
 
 #define DALI_DEFINE_ARRAY_INTERACTION(OPNAME, SYMBOL)\
-    AssignableArray operator SYMBOL (const Array& left, const Array& right) {\
+    Assignable<Array> operator SYMBOL (const Array& left, const Array& right) {\
         return OPNAME (left, right);\
     }\
 
 #define DALI_DEFINE_SCALAR_INTERACTION(OPNAME, SYMBOL)\
-    AssignableArray operator SYMBOL (const Array& left, const double& right) {\
+    Assignable<Array> operator SYMBOL (const Array& left, const double& right) {\
         return OPNAME(left, right);\
     }\
-    AssignableArray operator SYMBOL (const Array& left, const float& right) {\
+    Assignable<Array> operator SYMBOL (const Array& left, const float& right) {\
         return OPNAME(left, right);\
     }\
-    AssignableArray operator SYMBOL (const Array& left, const int& right) {\
+    Assignable<Array> operator SYMBOL (const Array& left, const int& right) {\
         return OPNAME(left, right);\
     }\
 

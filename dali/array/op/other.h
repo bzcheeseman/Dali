@@ -2,12 +2,13 @@
 #define DALI_ARRAY_OP_OTHER_H
 
 class Array;
-class AssignableArray;
+template<typename OutType>
+class Assignable;
 
 namespace op {
     bool is_nan(const Array& x);
-    AssignableArray all_equals(const Array& left, const Array& right);
-    AssignableArray all_close(const Array& left, const Array& right, const double& atolerance);
+    Assignable<Array> all_equals(const Array& left, const Array& right);
+    Assignable<Array> all_close(const Array& left, const Array& right, const double& atolerance);
 }
 
 #endif

@@ -18,6 +18,11 @@ namespace internal {
     }
 
     template<typename MDevT, typename T>
+    bool TypedArrayShared<MDevT,T>::contiguous_memory() const {
+        return this->array.contiguous_memory();
+    }
+
+    template<typename MDevT, typename T>
     TypedArrayShared<MDevT, T>::TypedArrayShared(const Array& _array, const memory::Device& _device, const std::vector<int>& _output_shape)
             : array(_array.reshape_broadcasted(_output_shape)), device(_device) {
     }
@@ -83,6 +88,11 @@ namespace internal {
     template<typename MDevT, typename T, typename IndexT>
     TypedArraySubtensorShared<MDevT, T, IndexT>::TypedArraySubtensorShared(const Array& _source, const Array& _indices, const memory::Device& _device, const std::vector<int>& _output_shape)
             : source(_source, _device, _output_shape), indices(_indices, _device, _output_shape) {
+    }
+
+    template<typename MDevT, typename T, typename IndexT>
+    bool TypedArraySubtensorShared<MDevT,T,IndexT>::contiguous_memory() const {
+        return this->source.contiguous_memory() && this->indices.contiguous_memory();
     }
 
     template<typename MDevT, typename T, typename IndexT>

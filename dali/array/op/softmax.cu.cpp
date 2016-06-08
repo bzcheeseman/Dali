@@ -86,7 +86,7 @@ struct SoftmaxFunction : public Function<SoftmaxFunction,
 };
 
 namespace op {
-    AssignableArray softmax(const Array& array, int axis, const double& temperature) {
+    Assignable<Array> softmax(const Array& array, int axis, const double& temperature) {
         if (axis < 0) axis = array.ndim() + axis;
         return SoftmaxFunction::run(array, axis, temperature);
     }

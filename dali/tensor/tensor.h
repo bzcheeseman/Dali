@@ -51,7 +51,7 @@ class Tensor {
         Tensor(const std::initializer_list<int>& shape_);
 
         Tensor(const std::vector<int>& shape,
-               AssignableArray weights_initialization,
+               Assignable<Array> weights_initialization,
                DType dtype_=DTYPE_FLOAT,
                memory::Device preferred_device=memory::default_preferred_device);
 

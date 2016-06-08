@@ -4,13 +4,13 @@
 
 namespace op {
     #define DALI_DEFINE_ARRAY_SCALAR_OP(FUNCTION_NAME, OPNAME)\
-        AssignableArray FUNCTION_NAME(const Array& x, const double& other) {\
+        Assignable<Array> FUNCTION_NAME(const Array& x, const double& other) {\
             return OPNAME(x, other);\
         }\
-        AssignableArray FUNCTION_NAME(const Array& x, const float& other) {\
+        Assignable<Array> FUNCTION_NAME(const Array& x, const float& other) {\
             return OPNAME(x, other);\
         }\
-        AssignableArray FUNCTION_NAME(const Array& x, const int& other) {\
+        Assignable<Array> FUNCTION_NAME(const Array& x, const int& other) {\
             return OPNAME(x, other);\
         }\
 
@@ -21,13 +21,13 @@ namespace op {
     DALI_DEFINE_ARRAY_SCALAR_OP(scalar_pow, lazy::pow);
 
     #define DALI_DEFINE_ARRAY_SCALAR_OP_ARGS_REVERSED(FUNCTION_NAME, OPNAME)\
-        AssignableArray FUNCTION_NAME(const double& other, const Array& x) {\
+        Assignable<Array> FUNCTION_NAME(const double& other, const Array& x) {\
             return OPNAME(other, x);\
         }\
-        AssignableArray FUNCTION_NAME(const float& other, const Array& x) {\
+        Assignable<Array> FUNCTION_NAME(const float& other, const Array& x) {\
             return OPNAME(other, x);\
         }\
-        AssignableArray FUNCTION_NAME(const int& other, const Array& x) {\
+        Assignable<Array> FUNCTION_NAME(const int& other, const Array& x) {\
             return OPNAME(other, x);\
         }\
 

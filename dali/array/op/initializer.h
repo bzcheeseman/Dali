@@ -4,29 +4,30 @@
 #include <vector>
 
 class Array;
-class AssignableArray;
+template<typename OutType>
+class Assignable;
 
 namespace initializer {
-    AssignableArray empty();
-    AssignableArray zeros();
-    AssignableArray ones();
-    AssignableArray arange();
+    Assignable<Array> empty();
+    Assignable<Array> zeros();
+    Assignable<Array> ones();
+    Assignable<Array> arange();
     template<typename T>
-    AssignableArray fill(const T& constant);
+    Assignable<Array> fill(const T& constant);
 
-    AssignableArray gaussian(const double& mean, const double& std);
-    AssignableArray uniform(const double& low, const double& high);
-    AssignableArray bernoulli(const double& prob);
-    AssignableArray bernoulli_normalized(const double& prob);
+    Assignable<Array> gaussian(const double& mean, const double& std);
+    Assignable<Array> uniform(const double& low, const double& high);
+    Assignable<Array> bernoulli(const double& prob);
+    Assignable<Array> bernoulli_normalized(const double& prob);
 
-    AssignableArray eye(const double& diag = 1.0);
+    Assignable<Array> eye(const double& diag = 1.0);
     // Preinitializer is first run on the matrix and then SVD initialization
     // happens. If you are unsure what kind of preinitializer to use, then try
     // weights<R>::uniform(m), were m is the number of columns in your matrix.
     // DISCLAIMER: do not use on big matrices (like embeddings) - faster
     // version is a subject of current research.
-    AssignableArray svd();
-    AssignableArray svd(const AssignableArray& preinitializer);
+    Assignable<Array> svd();
+    Assignable<Array> svd(const Assignable<Array>& preinitializer);
 
 
 } // namespace initializer

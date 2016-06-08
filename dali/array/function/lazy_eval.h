@@ -37,10 +37,10 @@ namespace lazy {
 		lazy_expression -> reduction -> unreducible_lazy_expression
 	*/
     template<typename Class, typename... Args>
-    AssignableArray eval_no_autoreduce(const LazyFunction<Class, Args...>& expr);
+    Assignable<Array> eval_no_autoreduce(const LazyFunction<Class, Args...>& expr);
 
     template<typename Class, typename... Args>
-    AssignableArray eval(const LazyFunction<Class, Args...>& expr);
+    Assignable<Array> eval(const LazyFunction<Class, Args...>& expr);
 
 }  // namespace lazy
 

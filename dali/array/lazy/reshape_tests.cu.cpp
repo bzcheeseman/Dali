@@ -86,16 +86,16 @@ TEST(ArrayReshapeTests, take_from_rows_3D) {
     }
 }
 
-TEST(ArrayTests, take_from_rows_assign) {
-   Array x({2, 4}, DTYPE_INT32);
-   x = initializer::arange();
-
-   x.print();
-   Array indices({2}, DTYPE_INT32);
-   indices[0] = 0;
-   indices[1] = 1;
-   auto res = x.take_from_rows(indices);
-   res = 2;
-   res.print();
-}
-
+// TEST(ArrayTests, take_from_rows_assign) {
+//    Array x({2, 4}, DTYPE_INT32);
+//    x = initializer::arange();
+//
+//    x.print();
+//    Array indices({2}, DTYPE_INT32);
+//    indices[0] = 0;
+//    indices[1] = 1;
+//    auto res = x.take_from_rows(indices);
+//    res = 2;
+//    res.print();
+// }
+//

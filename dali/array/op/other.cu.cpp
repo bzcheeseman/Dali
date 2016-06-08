@@ -41,11 +41,11 @@ struct IsNan : public NonArrayFunction<IsNan, bool, Array> {
 
 namespace op {
     bool is_nan(const Array& x) { return IsNan::run(x); }
-    AssignableArray all_equals(const Array& left, const Array& right) {
+    Assignable<Array> all_equals(const Array& left, const Array& right) {
         return lazy::product(lazy::equals(left, right));
     }
 
-    AssignableArray all_close(const Array& left, const Array& right, const double& atolerance) {
+    Assignable<Array> all_close(const Array& left, const Array& right, const double& atolerance) {
         ASSERT2(atolerance >= 0,
             utils::MS() << "atolerance must be a strictly positive number (got atolerance="
                         << atolerance << ").");

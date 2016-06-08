@@ -4,22 +4,23 @@
 #include <vector>
 
 class Array;
-class AssignableArray;
+template<typename OutType>
+class Assignable;
 
 namespace op {
-    AssignableArray dot(const Array& a, const Array& b);
+    Assignable<Array> dot(const Array& a, const Array& b);
 
-    AssignableArray outer(const Array& a, const Array& b);
+    Assignable<Array> outer(const Array& a, const Array& b);
 
-    AssignableArray vectordot(const Array& a, const Array& b);
+    Assignable<Array> vectordot(const Array& a, const Array& b);
 
-    AssignableArray matrixdot(const Array& a, const Array& b);
+    Assignable<Array> matrixdot(const Array& a, const Array& b);
 
-    AssignableArray matrix_vector_dot(const Array& a, const Array& b);
+    Assignable<Array> matrix_vector_dot(const Array& a, const Array& b);
 
-    AssignableArray tensordot(const Array& a, const Array& b, const int& axis);
+    Assignable<Array> tensordot(const Array& a, const Array& b, const int& axis);
 
-    AssignableArray tensordot(const Array& a,
+    Assignable<Array> tensordot(const Array& a,
                               const Array& b,
                               const std::vector<int>& a_reduce_axes,
                               const std::vector<int>& b_reduce_axes);

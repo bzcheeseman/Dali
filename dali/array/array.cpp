@@ -48,20 +48,24 @@ bool shape_strictly_positive(const std::vector<int>& shape) {
 //                        ASSIGNABLE ARRAY                                    //
 ////////////////////////////////////////////////////////////////////////////////
 
-AssignableArray::AssignableArray(assign_t&& _assign_to) :
+template<typename OutType>
+BaseAssignable<OutType>::BaseAssignable(assign_t&& _assign_to) :
         assign_to(_assign_to) {
 }
 
-AssignableArray::AssignableArray(const float& constant) :
-        AssignableArray(initializer::fill(constant)) {
+template class BaseAssignable<Array>;
+
+
+Assignable<Array>::Assignable(const float& constant) :
+        BaseAssignable<Array>(initializer::fill(constant)) {
 }
 
-AssignableArray::AssignableArray(const double& constant) :
-        AssignableArray(initializer::fill(constant)) {
+Assignable<Array>::Assignable(const double& constant) :
+        BaseAssignable<Array>(initializer::fill(constant)) {
 }
 
-AssignableArray::AssignableArray(const int& constant) :
-        AssignableArray(initializer::fill(constant)) {
+Assignable<Array>::Assignable(const int& constant) :
+        BaseAssignable<Array>(initializer::fill(constant)) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -157,7 +161,7 @@ Array::Array(const Array& other, const bool& copy_memory) {
     }
 }
 
-Array::Array(const AssignableArray& assignable) {
+Array::Array(const Assignable<Array>& assignable) {
     assignable.assign_to(*this, OPERATOR_T_EQL);
 }
 
@@ -569,7 +573,7 @@ ArraySubtensor Array::take_from_rows(const Array& indices) const {
     return ArraySubtensor(*this, indices);
 }
 
-AssignableArray Array::operator[](const Array& indices) const {
+Assignable<Array> Array::operator[](const Array& indices) const {
     return op::take(*this, indices);
 }
 
@@ -867,12 +871,12 @@ Array Array::broadcast_scalar_to_ndim(const int& target_ndim) const {
 }
 
 #define DALI_ARRAY_DEFINE_ALL_REDUCER(FUNCTION_NAME, OPNAME)\
-    AssignableArray Array::FUNCTION_NAME() const {\
+    Assignable<Array> Array::FUNCTION_NAME() const {\
         return op::OPNAME(*this);\
     }\
 
 #define DALI_ARRAY_DEFINE_AXIS_REDUCER(FUNCTION_NAME, OPNAME)\
-    AssignableArray Array::FUNCTION_NAME(const int& axis) const {\
+    Assignable<Array> Array::FUNCTION_NAME(const int& axis) const {\
         return op::OPNAME(*this, axis);\
     }\
 
@@ -900,32 +904,32 @@ void Array::copy_from(const Array& other) {
     *this = op::identity(other);
 }
 
-Array& Array::operator=(const AssignableArray& assignable) {
+Array& Array::operator=(const Assignable<Array>& assignable) {
     assignable.assign_to(*this, OPERATOR_T_EQL);
     return *this;
 }
 
-Array& Array::operator+=(const AssignableArray& assignable) {
+Array& Array::operator+=(const Assignable<Array>& assignable) {
     assignable.assign_to(*this, OPERATOR_T_ADD);
     return *this;
 }
 
-Array& Array::operator-=(const AssignableArray& assignable) {
+Array& Array::operator-=(const Assignable<Array>& assignable) {
     assignable.assign_to(*this, OPERATOR_T_SUB);
     return *this;
 }
 
-Array& Array::operator*=(const AssignableArray& assignable) {
+Array& Array::operator*=(const Assignable<Array>& assignable) {
     assignable.assign_to(*this, OPERATOR_T_MUL);
     return *this;
 }
 
-Array& Array::operator/=(const AssignableArray& assignable) {
+Array& Array::operator/=(const Assignable<Array>& assignable) {
     assignable.assign_to(*this, OPERATOR_T_DIV);
     return *this;
 }
 
-Array& Array::operator<<=(const AssignableArray& assignable) {
+Array& Array::operator<<=(const Assignable<Array>& assignable) {
     assignable.assign_to(*this, OPERATOR_T_LSE);
     return *this;
 }
@@ -1013,7 +1017,7 @@ void Array::clear() {
     }
 }
 
-AssignableArray Array::dot(const Array& other) const {
+Assignable<Array> Array::dot(const Array& other) const {
     return op::dot(*this, other);
 }
 
@@ -1031,17 +1035,17 @@ const std::vector<int>& ArraySubtensor::shape() const {
     return source.shape();
 }
 
-ArraySubtensor& ArraySubtensor::operator=(const Array& assignable) {
-    op::assign_to_rows<OPERATOR_T_EQL>(*this, assignable);
-    return *this;
-}
+// ArraySubtensor& ArraySubtensor::operator=(const Array& assignable) {
+//     op::assign_to_rows<OPERATOR_T_EQL>(*this, assignable);
+//     return *this;
+// }
 
-ArraySubtensor& ArraySubtensor::operator=(const AssignableArray& assignable) {
-    // TODO(jonathan, szymon): make more efficient
-    Array self_as_array(*this);
-    assignable.assign_to(self_as_array, OPERATOR_T_EQL);
-    return (*this = self_as_array);
-}
+// ArraySubtensor& ArraySubtensor::operator=(const Assignable<Array>& assignable) {
+//     // TODO(jonathan, szymon): make more efficient
+//     Array self_as_array(*this);
+//     assignable.assign_to(self_as_array, OPERATOR_T_EQL);
+//     return (*this = self_as_array);
+// }
 
 void ArraySubtensor::print(std::basic_ostream<char>& stream,
                            const int& indent,
@@ -1052,4 +1056,3 @@ void ArraySubtensor::print(std::basic_ostream<char>& stream,
         add_newlines
     );
 }
-

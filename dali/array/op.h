@@ -62,7 +62,7 @@
     #define DALI_DECLARE_LAZY_INTERACTION_INPLACE(SYMBOL, SYMBOL_NAME) \
         template<typename ExprT> \
         Array& operator SYMBOL(Array& left, const LazyExp<ExprT>& right) { \
-            return left SYMBOL lazy::EvalWithOperator<SYMBOL_NAME>::eval(right.self()); \
+            return left SYMBOL lazy::EvalWithOperator<SYMBOL_NAME,Array>::eval(right.self()); \
         } \
 
     DALI_DECLARE_LAZY_INTERACTION_INPLACE(+=, OPERATOR_T_ADD);

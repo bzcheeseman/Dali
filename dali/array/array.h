@@ -78,7 +78,6 @@ class Array : public Exp<Array> {
           DType dtype_=DTYPE_FLOAT);
     Array(const Array& other, const bool& copy_memory=false);
     Array(const Assignable<Array>& assignable);
-    Array(const ArraySubtensor& substensor);
     template<typename ExprT>
     Array(const LazyExp<ExprT>& expr);
 
@@ -260,8 +259,14 @@ struct ArraySubtensor {
     const std::vector<int>& shape() const;
     void print(std::basic_ostream<char>& stream = std::cout, const int& indent=0, const bool& add_newlines=true) const;
     ArraySubtensor(const Array& source, const Array& indices);
-    // ArraySubtensor& operator=(const Assignable<Array>& assignable);
-    // ArraySubtensor& operator=(const Array& assignable);
+
+    template<typename ExprT>
+    ArraySubtensor& operator=(const LazyExp<ExprT>& expr);
+    ArraySubtensor& operator=(const Array& assignable);
+    ArraySubtensor& operator=(const Assignable<Array>& assignable);
+    ArraySubtensor& operator=(const Assignable<ArraySubtensor>& assignable);
+    operator Array();
+
 };
 
 #endif
@@ -321,7 +326,7 @@ struct ArraySubtensor {
 
     template<typename ExprT>
     Array& Array::operator=(const LazyExp<ExprT>& expr) {
-        return *this = lazy::EvalWithOperator<OPERATOR_T_EQL>::eval(expr.self());
+        return *this = lazy::EvalWithOperator<OPERATOR_T_EQL,Array>::eval(expr.self());
     }
 
     /* Array constructor from a Lazy Expression:
@@ -336,13 +341,18 @@ struct ArraySubtensor {
      */
     template<typename ExprT>
     Array::Array(const LazyExp<ExprT>& expr) :
-            Array(lazy::EvalWithOperator<OPERATOR_T_EQL>::eval_no_autoreduce(expr.self())) {
+            Array(lazy::EvalWithOperator<OPERATOR_T_EQL,Array>::eval_no_autoreduce(expr.self())) {
     }
 
     template<typename OutType>
     template<typename ExprT>
     BaseAssignable<OutType>::BaseAssignable(const LazyExp<ExprT>& expr) :
-            BaseAssignable<OutType>(lazy::eval(expr.self())) {
+            BaseAssignable<OutType>(lazy::eval_as_array(expr.self())) {
+    }
+
+    template<typename ExprT>
+    ArraySubtensor& ArraySubtensor::operator=(const LazyExp<ExprT>& expr) {
+        return *this = lazy::EvalWithOperator<OPERATOR_T_EQL,ArraySubtensor>::eval(expr.self());
     }
 
     #endif

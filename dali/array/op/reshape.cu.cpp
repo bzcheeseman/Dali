@@ -136,15 +136,4 @@ namespace op {
     Assignable<Array> take_from_rows(const Array& source, const Array& indices) {
         return lazy::take_from_rows(source, indices);
     }
-
-    // template<OPERATOR_T operator_t>
-    // void assign_to_rows(const ArraySubtensor& destination, const Array& assignable) {
-    //     lazy::EvalWithOperator<operator_t>::assign(
-    //         destination,
-    //         lazy::identity(assignable)
-    //     );
-    // }
-
-    // template void assign_to_rows<OPERATOR_T_EQL>(const ArraySubtensor&, const Array&);
-
 } // namespace op

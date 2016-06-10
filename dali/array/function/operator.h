@@ -59,7 +59,7 @@ struct OperatorAssignHelper {
     }
 
     static inline void assign(LeftType& left, const RightType& right, bool collapse_leading=true) {
-        if (left.array.contiguous_memory()) {
+        if (left.contiguous_memory()) {
             assign_contiguous(left, right, collapse_leading);
         } else {
             assign_noncontiguous(left, right, collapse_leading);

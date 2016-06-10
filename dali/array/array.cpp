@@ -4,17 +4,18 @@
 #include <ostream>
 #include <type_traits>
 
+#include "dali/array/function/operator.h"
+#include "dali/array/lazy/unary.h"
+#include "dali/array/op/binary.h"
+#include "dali/array/op/dot.h"
+#include "dali/array/op/initializer.h"
 #include "dali/array/op/other.h"
 #include "dali/array/op/reducers.h"
+#include "dali/array/op/reshape.h"
 #include "dali/array/op/unary.h"
 #include "dali/array/op/unary_scalar.h"
-#include "dali/array/op/binary.h"
-#include "dali/array/op/reshape.h"
-#include "dali/array/op/dot.h"
-#include "dali/utils/print_utils.h"
-#include "dali/array/op/initializer.h"
-#include "dali/array/function/operator.h"
 #include "dali/utils/cnpy.h"
+#include "dali/utils/print_utils.h"
 
 using std::vector;
 using memory::SynchronizedMemory;
@@ -54,6 +55,7 @@ BaseAssignable<OutType>::BaseAssignable(assign_t&& _assign_to) :
 }
 
 template class BaseAssignable<Array>;
+template class BaseAssignable<ArraySubtensor>;
 
 
 Assignable<Array>::Assignable(const float& constant) :
@@ -1035,17 +1037,25 @@ const std::vector<int>& ArraySubtensor::shape() const {
     return source.shape();
 }
 
-// ArraySubtensor& ArraySubtensor::operator=(const Array& assignable) {
-//     op::assign_to_rows<OPERATOR_T_EQL>(*this, assignable);
-//     return *this;
-// }
 
-// ArraySubtensor& ArraySubtensor::operator=(const Assignable<Array>& assignable) {
-//     // TODO(jonathan, szymon): make more efficient
-//     Array self_as_array(*this);
-//     assignable.assign_to(self_as_array, OPERATOR_T_EQL);
-//     return (*this = self_as_array);
-// }
+
+ArraySubtensor& ArraySubtensor::operator=(const Array& assignable) {
+    *this = lazy::identity(assignable);
+    return *this;
+}
+
+ArraySubtensor& ArraySubtensor::operator=(const Assignable<Array>& assignable) {
+    // TODO(jonathan, szymon): make more efficient
+    Array self_as_array = *this;
+    self_as_array = assignable;
+    return (*this = self_as_array);
+}
+
+
+ArraySubtensor& ArraySubtensor::operator=(const Assignable<ArraySubtensor>& assignable) {
+    assignable.assign_to(*this, OPERATOR_T_EQL);
+    return *this;
+}
 
 void ArraySubtensor::print(std::basic_ostream<char>& stream,
                            const int& indent,
@@ -1055,4 +1065,8 @@ void ArraySubtensor::print(std::basic_ostream<char>& stream,
         indent,
         add_newlines
     );
+}
+
+ArraySubtensor::operator Array() {
+    return (Array)op::take_from_rows(source, indices);
 }

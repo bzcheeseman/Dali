@@ -86,16 +86,52 @@ TEST(ArrayReshapeTests, take_from_rows_3D) {
     }
 }
 
-// TEST(ArrayTests, take_from_rows_assign) {
-//    Array x({2, 4}, DTYPE_INT32);
-//    x = initializer::arange();
-//
-//    x.print();
-//    Array indices({2}, DTYPE_INT32);
-//    indices[0] = 0;
-//    indices[1] = 1;
-//    auto res = x.take_from_rows(indices);
-//    res = 2;
-//    res.print();
-// }
-//
+TEST(ArrayReshapeTests, take_from_rows_assign) {
+    Array x({2, 4}, DTYPE_INT32);
+    x = initializer::arange();
+
+
+    Array indices({2}, DTYPE_INT32);
+    indices[0] = 0;
+    indices[1] = 1;
+
+    auto x_view = x.take_from_rows(indices);
+    x_view = 36;
+
+    EXPECT_EQ(36, (int)x[0][0]);
+    EXPECT_EQ(1,  (int)x[0][1]);
+    EXPECT_EQ(2,  (int)x[0][2]);
+    EXPECT_EQ(3,  (int)x[0][3]);
+
+    EXPECT_EQ(4,  (int)x[1][0]);
+    EXPECT_EQ(36, (int)x[1][1]);
+    EXPECT_EQ(6,  (int)x[1][2]);
+    EXPECT_EQ(7,  (int)x[1][3]);
+}
+
+
+TEST(ArrayReshapeTests, take_from_rows_assign_lazy) {
+    auto x = Array::zeros({2, 4}, DTYPE_INT32);
+    x = initializer::arange();
+
+    Array y = Array({2}, DTYPE_INT32);
+    y[0] = 44;
+    y[1] = 31;
+
+    Array indices({2}, DTYPE_INT32);
+    indices[0] = 0;
+    indices[1] = 1;
+
+    ArraySubtensor x_view = x.take_from_rows(indices);
+    x_view = y + 2;
+
+    EXPECT_EQ(46, (int)x[0][0]);
+    EXPECT_EQ(1,  (int)x[0][1]);
+    EXPECT_EQ(2,  (int)x[0][2]);
+    EXPECT_EQ(3,  (int)x[0][3]);
+
+    EXPECT_EQ(4,  (int)x[1][0]);
+    EXPECT_EQ(33, (int)x[1][1]);
+    EXPECT_EQ(6,  (int)x[1][2]);
+    EXPECT_EQ(7,  (int)x[1][3]);
+}

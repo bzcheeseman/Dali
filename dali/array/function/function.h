@@ -35,6 +35,10 @@ struct ArrayWrapper {
     static inline TypedArray<devT,T> wrap(const Array& a, memory::Device dev) {
         return TypedArray<devT,T>(a, dev, a.shape());
     }
+
+    static inline TypedArraySubtensor<devT,T,int> wrap(const ArraySubtensor& a, memory::Device dev) {
+        return TypedArraySubtensor<devT,T,int>(a.source, a.indices, dev);
+    }
 };
 
 
@@ -129,6 +133,17 @@ struct Function {
         }
     }
 
+    template<typename var_Outtype=Outtype,
+             typename std::enable_if<!std::is_same<var_Outtype,Array>::value>::type* = nullptr>
+    static std::tuple<Outtype_t, Args...> prepare_output(const OPERATOR_T& operator_t, Outtype& out, const Args&... args) {
+        Class::verify(args...);
+
+        return std::tuple<Outtype, Args...>(out, args...);
+    }
+
+
+    template<typename var_Outtype=Outtype,
+             typename std::enable_if<std::is_same<var_Outtype,Array>::value>::type* = nullptr>
     static std::tuple<Outtype_t, Args...> prepare_output(const OPERATOR_T& operator_t, Outtype& out, const Args&... args) {
         auto output_bshape = Class::deduce_output_bshape(args...);
         auto output_dtype  = Class::deduce_output_dtype(args...);
@@ -146,10 +161,10 @@ struct Function {
     }
 
     template<OPERATOR_T intented_operator_t>
-    static Assignable<Array> run_with_operator(const Args&... args) {
-        return Assignable<Array>([args...](Outtype& out, const OPERATOR_T& operator_t) {
+    static Assignable<Outtype> run_with_operator(const Args&... args) {
+        return Assignable<Outtype>([args...](Outtype& out, const OPERATOR_T& operator_t) {
             ASSERT2(operator_t == intented_operator_t,
-                utils::MS() << "Assignable<Array> constructed for operator "
+                utils::MS() << "Assignable<Outtype> constructed for operator "
                             << operator_to_name(intented_operator_t)
                             << " but got " << operator_to_name(operator_t)
                             << " instead");
@@ -187,8 +202,8 @@ struct Function {
         }
     }
 
-    static Assignable<Array> run(const Args&... args) {
-        return Assignable<Array>([args...](Outtype& out, const OPERATOR_T& operator_t) {
+    static Assignable<Outtype> run(const Args&... args) {
+        return Assignable<Outtype>([args...](Outtype& out, const OPERATOR_T& operator_t) {
             auto prepped_args = Class::prepare_output(operator_t, out, args...);
             switch (operator_t) {
                 case OPERATOR_T_EQL:
@@ -210,7 +225,7 @@ struct Function {
                     unpack_tuple(Class::template untyped_eval<OPERATOR_T_LSE>, prepped_args);
                     break;
                 default:
-                    ASSERT2(false, "OPERATOR_T for assignment between Assignable<Array> and output must be one of =,-=,+=,*=,/=,<<=");
+                    ASSERT2(false, "OPERATOR_T for assignment between Assignable<Outtype> and output must be one of =,-=,+=,*=,/=,<<=");
                     break;
             }
             debug::dali_function_computed.activate(true);

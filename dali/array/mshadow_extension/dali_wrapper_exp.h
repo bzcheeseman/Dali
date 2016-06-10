@@ -122,16 +122,6 @@ namespace mshadow {
                 }
             }
 
-            MSHADOW_XINLINE DType& REval(index_t i, index_t j) {
-                if (!has_strides) {
-                    return src_.REval(i, j);
-                } else {
-                    index_t new_i, new_j;
-                    map_indices_using_stride(new_i, new_j, i, j);
-                    return src_.REval(new_i, new_j);
-                }
-            }
-
             MSHADOW_XINLINE const DType& Eval(index_t i, index_t j) const {
                 if (!has_strides) {
                     return src_.Eval(i, j);
@@ -143,6 +133,15 @@ namespace mshadow {
                 }
             }
 
+            MSHADOW_XINLINE DType& REval(index_t i, index_t j) {
+                if (!has_strides) {
+                    return src_.REval(i, j);
+                } else {
+                    index_t new_i, new_j;
+                    map_indices_using_stride(new_i, new_j, i, j);
+                    return src_.REval(new_i, new_j);
+                }
+            }
           private:
             Plan<typename DaliWrapperExp<Device, srcdim, DType>::src_t, DType> src_;
             int ndim;

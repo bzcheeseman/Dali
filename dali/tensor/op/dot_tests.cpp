@@ -16,8 +16,8 @@ TEST(TensorDotTests, dot_2D) {
         return tensor_ops::dot(Xs[0], Xs[1]);
     };
     EXPERIMENT_REPEAT {
-        auto A = Tensor({3, 4}, initializer::uniform(-1.0, 1.0), DTYPE_DOUBLE);
-        auto B = Tensor({4, 3},  initializer::uniform(-1.0, 1.0), DTYPE_DOUBLE);
+        auto A = Tensor::uniform(-1.0, 1.0, {3, 4}, DTYPE_DOUBLE);
+        auto B = Tensor::uniform(-1.0, 1.0, {4, 3}, DTYPE_DOUBLE);
         ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-4, DEFAULT_GRAD_EPS, true));
     }
 
@@ -29,14 +29,14 @@ TEST(TensorDotTests, dot_3D) {
     };
 
     EXPERIMENT_REPEAT {
-        auto A = Tensor({3, 5, 7}, initializer::uniform(-1.0, 1.0), DTYPE_DOUBLE);
-        auto B = Tensor({1, 7, 3}, initializer::uniform(-1.0, 1.0), DTYPE_DOUBLE);
+        auto A = Tensor::uniform(-1.0, 1.0, {3, 5, 7}, DTYPE_DOUBLE);
+        auto B = Tensor::uniform(-1.0, 1.0, {1, 7, 3}, DTYPE_DOUBLE);
         ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-4, DEFAULT_GRAD_EPS, true));
     }
 }
 TEST(TensorDotTests, self_dot) {
     EXPERIMENT_REPEAT {
-        Tensor W({5, 5}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
+        auto W = Tensor::uniform(-20.0, 20.0, {5, 5}, DTYPE_DOUBLE);
 
         auto functor = [&](vector<Tensor> Xs)-> Tensor {
             return W.dot(W.transpose());

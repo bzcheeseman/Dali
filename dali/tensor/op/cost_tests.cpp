@@ -69,7 +69,7 @@ TEST(TensorCostTests, DISABLED_margin_loss_colwise) {
     // we can now extend the range of our random numbers to be beyond
     // 0 and 1 since sigmoid will clamp them to 0 or 1.
     EXPERIMENT_REPEAT {
-        Tensor A({3, 4}, initializer::uniform(-5.0, 5.0));
+        auto A = Tensor::uniform(-5.0, 5.0, {3, 4});
         double margin = utils::randdouble(0.01, 0.1);
         int target = utils::randint(0, 2);
         auto functor = [target, margin](vector<Tensor> Xs)-> Tensor {
@@ -93,7 +93,7 @@ TEST(TensorCostTests, softmax_axis) {
     };
 
     EXPERIMENT_REPEAT {
-        Tensor A({2, 3, 2}, initializer::uniform(-3.0, 3.0), DTYPE_DOUBLE);
+        auto A = Tensor::uniform(-3.0, 3.0, {2, 3, 2}, DTYPE_DOUBLE);
         for (axis = 0; axis < A.ndim(); axis++) {
             for (temperature = 0.5; temperature <= 1.5; temperature += 0.5) {
                 row = utils::randint(0, A.shape()[axis] - 1);
@@ -117,7 +117,7 @@ TEST(TensorCostTests, softmax_noncontig_axis) {
     };
 
     EXPERIMENT_REPEAT {
-        Tensor A({2, 3, 2}, initializer::uniform(-3.0, 3.0), DTYPE_DOUBLE);
+        auto A = Tensor::uniform(-3.0, 3.0, {2, 3, 2}, DTYPE_DOUBLE);
         A = A.swapaxes(0, 2);
         for (axis = 0; axis < A.ndim(); axis++) {
             for (temperature = 0.5; temperature <= 1.5; temperature += 0.5) {
@@ -140,8 +140,8 @@ TEST(TensorCostTests, cross_entropy_grad_through_target) {
     };
 
     EXPERIMENT_REPEAT {
-        Tensor input({10}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
-        Tensor target({10}, initializer::uniform(0.15, 0.85), DTYPE_DOUBLE);
+        auto input  = Tensor::uniform(-2.0, 2.0,  {10}, DTYPE_DOUBLE);
+        auto target = Tensor::uniform(0.15, 0.85, {10}, DTYPE_DOUBLE);
         ASSERT_TRUE(gradient_same(functor, {input, target}, 1e-1));
     }
 }
@@ -175,10 +175,41 @@ TEST(TensorCostTests, cross_entropy_with_idxes) {
     }
 }
 
+TEST(TensorCostTests,  softmax_cross_entropy_with_probs) {
+    EXPERIMENT_REPEAT {
+        auto input   = Tensor::uniform(-10, 10.0, {2, 3}, DTYPE_DOUBLE);
+        auto targets = Tensor::uniform(0.1, 0.9, {2, 3}, DTYPE_DOUBLE);
+        double temperature = utils::randdouble(0.1, 10.0);
+
+
+        auto functor = [&](vector<Tensor> Xs)-> Tensor {
+            return tensor_ops::softmax_cross_entropy(input, targets, temperature);
+        };
+
+        ASSERT_TRUE(gradient_same(functor, {input, targets}, 1e-3));
+    }
+}
+
+TEST(TensorCostTests,  softmax_cross_entropy_with_idxes) {
+    EXPERIMENT_REPEAT {
+        auto input = Tensor::uniform(-10, 10.0, {2, 3}, DTYPE_DOUBLE);
+        auto idxes = Tensor::uniform(0, 2,      {2},    DTYPE_INT32);
+        double temperature = utils::randdouble(0.1, 10.0);
+
+        auto functor = [&](vector<Tensor> Xs)-> Tensor {
+            return tensor_ops::softmax_cross_entropy(input, idxes, temperature);
+        };
+
+        ASSERT_TRUE(gradient_same(functor, {input}, 1e-3));
+    }
+}
+
+
 TEST(TensorCostTests, softmax_temperature) {
     graph::NoBackprop nb;
 
-    Tensor logits({10}, initializer::arange(), DTYPE_DOUBLE);
+    Tensor logits({10}, DTYPE_DOUBLE);
+    logits.w = initializer::arange();
     auto uniform = Tensor::fill_like(1.0 / logits.number_of_elements(), logits);
     // base entropy
     auto kl = (double) tensor_ops::cross_entropy(tensor_ops::softmax(logits), uniform).sum().w;

@@ -17,16 +17,6 @@ using std::make_shared;
 ////////////////////////////////////////////////////////////////////////////////
 //                             TENSOR                                         //
 ////////////////////////////////////////////////////////////////////////////////
-
-
-Tensor::Tensor(const Array& w_, const Array& dw_, bool constant_) :
-        w(w_), dw(dw_), constant(constant_), name(nullptr) {
-}
-
-// this does not need to initialize anything once we get rid of w and dw.
-Tensor::Tensor() {
-}
-
 Tensor::Tensor(const std::vector<int>& shape,
                Assignable<Array> weights_initialization,
                DType dtype_,
@@ -37,7 +27,20 @@ Tensor::Tensor(const std::vector<int>& shape,
     dw.clear();
 }
 
-Tensor::Tensor(const std::initializer_list<int>& shape_) : Tensor(std::vector<int>(shape_)) {}
+
+Tensor::Tensor(const Array& w_, const Array& dw_, bool constant_) :
+        w(w_), dw(dw_), constant(constant_), name(nullptr) {
+}
+
+// this does not need to initialize anything once we get rid of w and dw.
+Tensor::Tensor() {
+}
+
+Tensor::Tensor(const std::initializer_list<int>& shape,
+       DType dtype_,
+       memory::Device preferred_device) :
+   Tensor(shape,initializer::zeros(),dtype_,preferred_device) {
+}
 
 Tensor::Tensor(const std::vector<int>& shape,
        DType dtype_,
@@ -533,6 +536,10 @@ Tensor Tensor::zeros_like(const Tensor& other) {
     return Tensor(other.shape(), initializer::zeros(), other.dtype(), other.preferred_device());
 }
 
+Tensor Tensor::ones_like(const Tensor& other) {
+    return Tensor(other.shape(), initializer::ones(), other.dtype(), other.preferred_device());
+}
+
 Tensor Tensor::empty_like(const Tensor& other) {
     return Tensor(other.shape(), initializer::empty(), other.dtype(), other.preferred_device());
 }
@@ -547,6 +554,12 @@ Tensor Tensor::zeros(const std::vector<int>& shape,
     return Tensor(shape, initializer::zeros(), dtype, preferred_device);
 }
 
+Tensor Tensor::ones(const std::vector<int>& shape,
+                     const DType& dtype,
+                     const memory::Device& preferred_device) {
+    return Tensor(shape, initializer::ones(), dtype, preferred_device);
+}
+
 Tensor Tensor::empty(const std::vector<int>& shape,
                      const DType& dtype,
                      const memory::Device& preferred_device) {
@@ -554,6 +567,12 @@ Tensor Tensor::empty(const std::vector<int>& shape,
     // it so as to not incur the filling
     // with zeros cost.
     return Tensor(shape, initializer::empty(), dtype, preferred_device);
+}
+
+Tensor Tensor::arange(const std::vector<int>& shape,
+                      const DType& dtype,
+                      const memory::Device& preferred_device) {
+    return Tensor(shape, initializer::arange(), dtype, preferred_device);
 }
 
 Tensor Tensor::gaussian(const double& mean,

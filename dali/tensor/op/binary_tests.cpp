@@ -14,8 +14,8 @@ using std::vector;
 
 void test_binary_function(std::function<Tensor(std::vector<Tensor>&)> functor) {
     EXPERIMENT_REPEAT {
-        auto A = Tensor({10, 20}, initializer::uniform(-1.0, 1.0), DTYPE_DOUBLE);
-        auto B = Tensor({10, 20}, initializer::uniform(-1.0, 1.0), DTYPE_DOUBLE);
+        auto A = Tensor::uniform(-1.0, 1.0, {10, 20}, DTYPE_DOUBLE);
+        auto B = Tensor::uniform(-1.0, 1.0, {10, 20}, DTYPE_DOUBLE);
 
         ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-5, DEFAULT_GRAD_EPS, true));
     }
@@ -51,8 +51,8 @@ TEST(TensorBinaryTests, pow) {
     };
 
     EXPERIMENT_REPEAT {
-        auto A = Tensor({10, 20}, initializer::uniform(0.5, 1.0), DTYPE_DOUBLE);
-        auto B = Tensor({10, 20},  initializer::uniform(0.5, 1.0), DTYPE_DOUBLE);
+        auto A = Tensor::uniform(0.5, 1.0, {10, 20}, DTYPE_DOUBLE);
+        auto B = Tensor::uniform(0.5, 1.0, {10, 20}, DTYPE_DOUBLE);
 
         ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-4, DEFAULT_GRAD_EPS, true));
     }
@@ -63,7 +63,7 @@ TEST(TensorBinaryTests, add_recursive) {
         return tensor_ops::add(Xs[0], Xs[0]);
     };
     EXPERIMENT_REPEAT {
-        auto A = Tensor({10, 20}, initializer::uniform(-1.0, 1.0), DTYPE_DOUBLE);
+        auto A = Tensor::uniform(-1.0, 1.0, {10, 20}, DTYPE_DOUBLE);
         ASSERT_TRUE(gradient_same(functor, {A}, 1e-3, DEFAULT_GRAD_EPS, true));
     }
 }

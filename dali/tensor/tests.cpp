@@ -21,7 +21,7 @@ class TensorTests : public MemorySafeTest {
 };
 
 TEST_F(TensorTests, sum_test) {
-    auto A = Tensor({10, 20}, initializer::uniform(-2.0, 2.0), DTYPE_FLOAT);
+    auto A = Tensor::uniform(-2.0, 2.0, {10, 20}, DTYPE_FLOAT);
     auto res = A.sum();
     float sum = 0.0;
     for (int i = 0; i < A.number_of_elements(); ++i) {
@@ -41,8 +41,8 @@ TEST_F(TensorTests, max_min_test) {
 }
 
 TEST_F(TensorTests, equals) {
-    Tensor A({10, 20}, initializer::uniform(-2.0, 2.0));
-    Tensor B({10, 20}, initializer::uniform(-2.0, 2.0));
+    auto A = Tensor::uniform(-2.0, 2.0, {10, 20});
+    auto B = Tensor::uniform(-2.0, 2.0, {10, 20});
 
     EXPECT_TRUE(tensor_ops::equals(A, A)) << "A equals A.";
     EXPECT_FALSE(tensor_ops::equals(A, B)) << "A different from B.";
@@ -59,7 +59,7 @@ TEST_F(TensorTests, L2_norm) {
     };
 
     EXPERIMENT_REPEAT {
-        Tensor A({2, 3}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
+        auto A = Tensor::uniform(-2.0, 2.0, {2, 3}, DTYPE_DOUBLE);
         expect_args_remain_on_gpu(functor, {A});
         EXPECT_TRUE(gradient_same(functor, {A}));
     }
@@ -72,7 +72,7 @@ TEST_F(TensorTests, sum) {
     };
 
     EXPERIMENT_REPEAT {
-        auto A = Tensor({10, 20}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
+        auto A = Tensor::uniform(-2.0, 2.0, {10, 20}, DTYPE_DOUBLE);
         expect_args_remain_on_gpu(functor, {A});
         EXPECT_TRUE(gradient_same(functor, {A}));
     }
@@ -87,7 +87,7 @@ TEST_F(TensorTests, sum) {
         EXPERIMENT_REPEAT {\
             std:vector<int> shape = {2, 3, 1, 1, 2, 3};\
             for (axis = 0; axis < shape.size(); axis++) {\
-                Tensor A(shape, initializer::uniform(LOWER_BOUND, UPPER_BOUND), DTYPE_DOUBLE);\
+                auto A = Tensor::uniform(LOWER_BOUND, UPPER_BOUND, shape, DTYPE_DOUBLE);\
                 expect_args_remain_on_gpu(functor, {A});\
                 EXPECT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-4, FAIL_ON_ZERO_GRADIENT));\
             }\
@@ -109,14 +109,15 @@ TEST_F(TensorTests, sigmoid_gpu_vs_cpu) {
     };
 
     EXPERIMENT_REPEAT {
-        Tensor A({10, 20}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
+        auto A = Tensor::uniform(-2.0, 2.0, {10, 20}, DTYPE_DOUBLE);
         EXPECT_TRUE(cpu_vs_gpu(functor, {A}));
     }
 }
 
 TEST_F(TensorTests, identity_init) {
     double init_val = 2.0;
-    Tensor A({10, 10}, initializer::eye(init_val));
+    Tensor A({10, 10});
+    A.w = initializer::eye(init_val);
     EXPECT_MAT_ON_GPU(A);
     for (int i = 0; i < A.shape()[0]; i++) {
         for (int j = 0; j < A.shape()[0]; j++) {
@@ -131,8 +132,8 @@ TEST_F(TensorTests, max_scalar) {
     };
 
     EXPERIMENT_REPEAT {
-        Tensor mat({5}, initializer::uniform(1.5, 20.0), DTYPE_DOUBLE);
-        Tensor mat2({5}, initializer::uniform(-20.0, 1.3), DTYPE_DOUBLE);
+        auto mat  = Tensor::uniform(1.5,   20.0, {5}, DTYPE_DOUBLE);
+        auto mat2 = Tensor::uniform(-20.0, 1.3,  {5}, DTYPE_DOUBLE);
         auto combined = tensor_ops::hstack({mat, mat2});
         ASSERT_TRUE(gradient_same(functor, {combined}, 1e-4));
     }
@@ -140,9 +141,9 @@ TEST_F(TensorTests, max_scalar) {
 
 TEST_F(TensorTests, addition_vector) {
     EXPERIMENT_REPEAT {
-        Tensor A({1, 2, 3}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
-        Tensor B({1, 2, 3}, initializer::uniform(-0.5, 0.5), DTYPE_DOUBLE);
-        Tensor C({1, 2, 3}, initializer::uniform(-0.5, 0.5), DTYPE_DOUBLE);
+        auto A = Tensor::uniform(-2.0, 2.0, {1, 2, 3}, DTYPE_DOUBLE);
+        auto B = Tensor::uniform(-0.5, 0.5, {1, 2, 3}, DTYPE_DOUBLE);
+        auto C = Tensor::uniform(-0.5, 0.5, {1, 2, 3}, DTYPE_DOUBLE);
         ASSERT_TRUE(gradient_same((vector_tensor_op)tensor_ops::add, {A, B, C}, 1e-4));
     }
 }
@@ -212,7 +213,7 @@ TEST_F(TensorTests, lazy_allocation) {
 
     // if memory must be filled with gaussian
     // noise, allocation is not lazy
-    Tensor gauss_mat({4, 5}, initializer::gaussian(0.0, 0.5));
+    auto gauss_mat = Tensor::gaussian(0.0, 0.5, {4, 5});
 
     #ifdef DALI_USE_CUDA
     ASSERT_TRUE(gauss_mat.w.memory()->is_allocated(memory::Device::gpu(0)) && !gauss_mat.w.memory()->is_allocated(memory::Device::cpu()));
@@ -227,14 +228,14 @@ TEST_F(TensorTests, lazy_allocation) {
 
 TEST_F(TensorTests, view_transpose) {
     // transpose is a view
-    Tensor a({4, 5}, initializer::arange());
+    auto a = Tensor::arange({4, 5});
     auto a_T = a.transpose();
     ASSERT_EQ(a.w.memory(), a_T.w.memory());
 }
 
 TEST_F(TensorTests, reshape) {
     // reshape is a view
-    Tensor a({4, 5}, initializer::arange());
+    auto a = Tensor::arange({4, 5});
     auto a_reshaped = a.reshape({2, 2, 1, 5});
     ASSERT_EQ(a.w.memory(), a_reshaped.w.memory());
 }
@@ -244,11 +245,11 @@ TEST_F(TensorTests, slice) {
         return Xs[0][Slice(0, 1)][Slice(2, 4)];
     };
     EXPERIMENT_REPEAT {
-        Tensor block({2, 4, 1}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
+        auto block = Tensor::uniform(-2.0, 2.0, {2, 4, 1}, DTYPE_DOUBLE);
         ASSERT_TRUE(gradient_same(functor, {block}));
     }
 
-    Tensor block({2, 4, 1}, initializer::uniform(-2.0, 2.0));
+    auto block = Tensor::uniform(-2.0, 2.0, {2, 4, 1});
     Tensor subblock = block[Slice(0, 1)][Slice(2, 4)];
     // ensure the slice is a view:
     ASSERT_EQ(subblock.w.memory(), block.w.memory());
@@ -284,7 +285,7 @@ TEST_F(TensorTests, slice) {
 // }
 
 TEST_F(TensorTests, mean) {
-    Tensor B({3, 4}, initializer::ones(), DTYPE_DOUBLE);
+    auto B = Tensor::ones({3, 4}, DTYPE_DOUBLE);
     auto res = B.mean();
     ASSERT_NEAR(1.0, (double)res.w, 1e-6);
 
@@ -292,7 +293,7 @@ TEST_F(TensorTests, mean) {
         return Xs[0].mean();
     };
     EXPERIMENT_REPEAT {
-        Tensor A({10, 20}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
+        auto A = Tensor::uniform(-2.0, 2.0, {10, 20}, DTYPE_DOUBLE);
         ASSERT_TRUE(gradient_same(functor, {A}));
     }
 }
@@ -301,12 +302,12 @@ TEST_F(TensorTests, max) {
     auto functor = [](vector<Tensor> Xs)-> Tensor {
         return Xs[0].max();
     };
-    Tensor B({2, 3}, initializer::arange(), DTYPE_DOUBLE);
+    auto B = Tensor::arange({2, 3}, DTYPE_DOUBLE);
     auto res = B.max();
     ASSERT_NEAR(5.0, (double)res.w, 1e-6);
 
     EXPERIMENT_REPEAT {
-        Tensor A({2, 3}, initializer::arange(), DTYPE_DOUBLE);
+        auto A = Tensor::arange({2, 3}, DTYPE_DOUBLE);
         ASSERT_TRUE(gradient_same(functor, {A}));
     }
 }
@@ -315,12 +316,12 @@ TEST_F(TensorTests, min) {
     auto functor = [](vector<Tensor> Xs)-> Tensor {
         return Xs[0].min();
     };
-    Tensor B({2, 3}, initializer::arange(), DTYPE_DOUBLE);
+    auto B = Tensor::arange({2, 3}, DTYPE_DOUBLE);
     auto res = B.min();
     ASSERT_NEAR(0.0, (double)res.w, 1e-6);
 
     EXPERIMENT_REPEAT {
-        Tensor A({2, 3}, initializer::arange(), DTYPE_DOUBLE);
+        auto A = Tensor::arange({2, 3}, DTYPE_DOUBLE);
         ASSERT_TRUE(gradient_same(functor, {A}));
     }
 }
@@ -332,9 +333,7 @@ TEST_F(TensorTests, min) {
             return Xs[0].UNARY();\
         };\
         EXPERIMENT_REPEAT {\
-            Tensor A({2, 3, 4},\
-                initializer::uniform(LOWER_BOUND, UPPER_BOUND), DTYPE_DOUBLE\
-            );\
+            auto A = Tensor::uniform(LOWER_BOUND, UPPER_BOUND, {2, 3, 4}, DTYPE_DOUBLE);\
             ASSERT_TRUE(gradient_same(functor, {A}, EPS, 1e-4, FAIL_ON_ZERO_GRADIENT));\
         }\
         utils::random::reseed();\
@@ -441,16 +440,16 @@ typedef MemorySafeTest TensorOpsTests;
 
 TEST_F(TensorTests, hstack) {
     EXPERIMENT_REPEAT {
-        Tensor a({2, 1, 3}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
-        Tensor b({2, 1, 4}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
+        auto a = Tensor::uniform(-20.0, 20.0, {2, 1, 3}, DTYPE_DOUBLE);
+        auto b = Tensor::uniform(-20.0, 20.0, {2, 1, 4}, DTYPE_DOUBLE);
         ASSERT_TRUE(gradient_same(tensor_ops::hstack, {a, b}, 1e-4));
     }
 }
 
 TEST_F(TensorTests, vstack) {
     EXPERIMENT_REPEAT {
-        Tensor a({3, 2, 1}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
-        Tensor b({4, 2, 1}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
+        auto a = Tensor::uniform(-20.0, 20.0, {3, 2, 1}, DTYPE_DOUBLE);
+        auto b = Tensor::uniform(-20.0, 20.0, {4, 2, 1}, DTYPE_DOUBLE);
         ASSERT_TRUE(gradient_same(tensor_ops::vstack, {a, b}, 1e-4));
     }
 }
@@ -465,8 +464,8 @@ TEST_F(TensorTests, concatenate) {
         for (axis = 0; axis < shape.size(); axis++) {
             auto A_shape = shape; A_shape[axis] = 1;
             auto B_shape = shape; B_shape[axis] = 2;
-            Tensor A(A_shape, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
-            Tensor B(B_shape, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
+            auto A = Tensor::uniform(-20.0, 20.0, A_shape, DTYPE_DOUBLE);
+            auto B = Tensor::uniform(-20.0, 20.0, B_shape, DTYPE_DOUBLE);
             expect_args_remain_on_gpu(functor, {A, B});
             EXPECT_TRUE(gradient_same(functor, {A, B}, 1e-4));
         }
@@ -482,7 +481,7 @@ TEST_F(TensorTests, dropout_unnormalized) {
     EXPERIMENT_REPEAT {
         utils::random::reseed();
         seed = utils::randint(0, 2000);
-        Tensor A({1, 4, 5}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
+        auto A = Tensor::uniform(-2.0, 2.0, {1, 4, 5}, DTYPE_DOUBLE);
         ASSERT_TRUE(gradient_same(functor, {A}, 0.0003));
     }
 }
@@ -496,7 +495,7 @@ TEST_F(TensorTests, dropout_normalized) {
     EXPERIMENT_REPEAT {
         utils::random::reseed();
         seed = utils::randint(0, 2000);
-        Tensor A({1, 4, 5}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
+        auto A = Tensor::uniform(-2.0, 2.0, {1, 4, 5}, DTYPE_DOUBLE);
         ASSERT_TRUE(gradient_same(functor, {A}, 0.0003));
     }
 }
@@ -510,7 +509,7 @@ TEST_F(TensorTests, fast_dropout) {
     EXPERIMENT_REPEAT {
         utils::random::reseed();
         seed = utils::randint(0, 2000);
-        Tensor A({1, 2, 3}, initializer::uniform(-2.0, 2.0), DTYPE_DOUBLE);
+        auto A = Tensor::uniform(-2.0, 2.0, {1, 2, 3}, DTYPE_DOUBLE);
         ASSERT_TRUE(gradient_same(functor, {A}, 0.0003));
     }
 }
@@ -889,7 +888,7 @@ TEST_F(TensorTests, scalar_pow) {
     int width = 4;
 
     EXPERIMENT_REPEAT {
-        Tensor mat({height, width}, initializer::uniform(1.0, 2.0), DTYPE_DOUBLE);
+        auto mat = Tensor::uniform(1.0, 2.0, {height, width}, DTYPE_DOUBLE);
         double exponent = utils::randdouble(0.4, 2.5);
 
         auto functor = [exponent](vector<Tensor> Xs)-> Tensor {
@@ -905,7 +904,7 @@ TEST_F(TensorTests, pow) {
 
     EXPERIMENT_REPEAT {
 
-        Tensor mat({height, width}, initializer::uniform(0.5, 1.5), DTYPE_DOUBLE);
+        auto mat = Tensor::uniform(0.5, 1.5, {height, width}, DTYPE_DOUBLE);
         Tensor exponent({}, DTYPE_DOUBLE);
         exponent.w = 2.4;
 
@@ -922,11 +921,11 @@ typedef std::function<std::shared_ptr<solver::AbstractSolver>(vector<Tensor>)> c
 
 void test_solver(create_solver_t create_solver) {
     // minimize X.T() * W * X + W2 * X;
-    Tensor X({5, 1}, initializer::uniform(-20.0, 20.0));
+    auto X = Tensor::uniform(-20, 20.0, {5, 1});
     X = tensor_ops::consider_constant(X);
 
-    Tensor W({5, 5}, initializer::uniform(-20.0, 20.0));
-    Tensor W2({1, 5}, initializer::uniform(-20.0, 20.0));
+    auto W = Tensor::uniform(-20, 20.0, {5, 5});
+    auto W2 = Tensor::uniform(-20, 20.0, {1, 5});
 
     W = W.dot(W.transpose()); // ensure positive definite.
 
@@ -1080,9 +1079,8 @@ Tensor create_dataset() {
     int num_dimensions = 5;
     // create data
     graph::NoBackprop nb;
-    auto N_0_2 = initializer::gaussian(0.0, 2.0);
-    Tensor pointsA({num_dimensions, num_points}, N_0_2);
-    Tensor pointsB({num_dimensions, num_points}, N_0_2);
+    auto pointsA = Tensor::gaussian(0.0, 2.0, {num_dimensions, num_points});
+    auto pointsB = Tensor::gaussian(0.0, 2.0, {num_dimensions, num_points});
     Tensor point({num_dimensions, 1});
     for (int i = 0; i < num_dimensions; i++)
         point.w(i) = 2;

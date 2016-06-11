@@ -37,6 +37,10 @@ Automatic Differentiation in Dali.
 class Tensor {
     private:
         Tensor(const Array& w, const Array& dw, bool constant);
+        Tensor(const std::vector<int>& shape,
+               Assignable<Array> weights_initialization,
+               DType dtype_=DTYPE_FLOAT,
+               memory::Device preferred_device=memory::default_preferred_device);
     public:
         typedef Array storage_t;
 
@@ -45,13 +49,9 @@ class Tensor {
         std::shared_ptr<std::string> name = nullptr;
         bool constant = false;
 
-
         Tensor();
 
-        Tensor(const std::initializer_list<int>& shape_);
-
-        Tensor(const std::vector<int>& shape,
-               Assignable<Array> weights_initialization,
+        Tensor(const std::initializer_list<int>& shape,
                DType dtype_=DTYPE_FLOAT,
                memory::Device preferred_device=memory::default_preferred_device);
 
@@ -240,16 +240,22 @@ class Tensor {
         // Tensor operator()(Indexing::Index) const;
         // Tensor operator()(Indexing::Index, Indexing::Index) const;
         static Tensor zeros_like(const Tensor& other);
+        static Tensor ones_like(const Tensor& other);
         static Tensor empty_like(const Tensor& other);
         static Tensor fill_like(const double& prob, const Tensor& other);
 
         static Tensor zeros(const std::vector<int>& shape,
                             const DType& dtype=DTYPE_FLOAT,
                             const memory::Device& preferred_device=memory::default_preferred_device);
+        static Tensor ones(const std::vector<int>& shape,
+                           const DType& dtype=DTYPE_FLOAT,
+                           const memory::Device& preferred_device=memory::default_preferred_device);
         static Tensor empty(const std::vector<int>& shape,
                             const DType& dtype=DTYPE_FLOAT,
                             const memory::Device& preferred_device=memory::default_preferred_device);
-
+        static Tensor arange(const std::vector<int>& shape,
+                             const DType& dtype=DTYPE_FLOAT,
+                             const memory::Device& preferred_device=memory::default_preferred_device);
 
         static Tensor gaussian(const double& mean,
                                const double& std,
@@ -277,6 +283,12 @@ class Tensor {
                            const std::vector<int>& shape,
                            const DType& dtype=DTYPE_FLOAT,
                            const memory::Device& preferred_device=memory::default_preferred_device);
+
+
+        template<typename T>
+        Tensor& operator=(const std::vector<T>& values) = delete;
+        template<typename T>
+        Tensor& operator=(const std::initializer_list<T>& values) = delete;
 
         static Tensor load(const std::string& fname);
         static Tensor load(FILE * fp);

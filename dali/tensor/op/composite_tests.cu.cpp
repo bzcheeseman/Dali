@@ -72,9 +72,9 @@ TEST(TensorCompositeTests, matrix_multiple_dot_with_bias_fancy_broadcast) {
 
 TEST(TensorCompositeTests, quadratic_form) {
     EXPERIMENT_REPEAT {
-        Tensor left({2, 4}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
-        Tensor middle({2, 3}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
-        Tensor right({3, 5}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
+        auto left = Tensor::uniform(-20.0, 20.0, {2, 4}, DTYPE_DOUBLE);
+        auto middle = Tensor::uniform(-20.0, 20.0, {2, 3}, DTYPE_DOUBLE);
+        auto right = Tensor::uniform(-20.0, 20.0, {3, 5}, DTYPE_DOUBLE);
 
         auto functor = [](vector<Tensor> Xs)-> Tensor {
             return tensor_ops::quadratic_form(Xs[0], Xs[1], Xs[2]);
@@ -86,9 +86,9 @@ TEST(TensorCompositeTests, quadratic_form) {
 TEST(TensorCompositeTests, quadratic_form_with_3D_input) {
     //TODO(jonathan): quadratic form in 3D / N-D suffers from weird LDA to dgemm
     EXPERIMENT_REPEAT {
-        Tensor left({2, 4, 1}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
-        Tensor middle({2, 3}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
-        Tensor right({3, 1}, initializer::uniform(-20.0, 20.0), DTYPE_DOUBLE);
+        auto left = Tensor::uniform(-20.0, 20.0, {2, 4, 1}, DTYPE_DOUBLE);
+        auto middle = Tensor::uniform(-20.0, 20.0, {2, 3}, DTYPE_DOUBLE);
+        auto right = Tensor::uniform(-20.0, 20.0, {3, 1}, DTYPE_DOUBLE);
 
         auto functor = [](vector<Tensor> Xs)-> Tensor {
             return tensor_ops::quadratic_form(Xs[0], Xs[1], Xs[2]);

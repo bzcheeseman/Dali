@@ -108,29 +108,62 @@ namespace tensor_ops {
         return out;
     }
 
-    // Tensor softmax_cross_entropy_rowwise(const Tensor& t, const Tensor& targets, int axis) {
-    //     if (axis < 0) axis = t.ndim() + axis;
-    //     Array probs(op::softmax(t.w, axis, 1.0));
+    Tensor softmax_cross_entropy_with_idxes(const Tensor& unnormalized_probs,
+                                            const Tensor& targets,
+                                            const double& temperature,
+                                            const int& axis) {
+        ASSERT2(axis == unnormalized_probs.ndim() -1,
+                "softmax_cross_entropy is not yet implemented for axes other than -1");
+        Array softmax_result = op::softmax(unnormalized_probs.w, axis, temperature);
+        Tensor out(-1.0 * lazy::log(lazy::take_from_rows(softmax_result, targets.w)));
 
-    //     Tensor out(-1.0 * lazy::negative_log(lazy::take(probs, targets.w)));
+        if (graph::backprop_enabled() && !unnormalized_probs.constant)
+            graph::emplace_back([unnormalized_probs, softmax_result, targets, temperature, axis, out]() {
+                unnormalized_probs.dw <<= softmax_result * out.dw.insert_broadcast_axis(axis) / temperature;
+                unnormalized_probs.dw.take_from_rows(targets.w) -= out.dw / temperature;
+            });
 
-    //     if (graph::backprop_enabled() && !t.constant) {
-    //         graph::emplace_back([t, probs, out, targets, axis]() mutable {
-    //             MAYBE_GRAD(t) <<= probs * out.insert_broadcast_axis(axis).w
+        return out;
+    }
 
-    //             if (!matrix.constant) {
-    //                 GRAD(matrix) += (
-    //                     MAT(probs).wrapper() *
-    //                     GRAD(out).ravel().wrapper().template broadcast<0>(MAT(probs).shape)
-    //                 );
 
-    //                 softmax_cross_entropy_rowwise_backward(GRAD(matrix), GRAD(out), targets.w().ravel());
-    //             }
-    //         });
-    //     }
-    //     return out;
-    // }
+    Tensor softmax_cross_entropy_with_probs(const Tensor& unnormalized_probs,
+                                            const Tensor& targets,
+                                            const double& temperature,
+                                            const int& axis) {
+        Array softmax_result = op::softmax(unnormalized_probs.w, axis, temperature);
+        Tensor out(-1.0 * targets.w * lazy::log(softmax_result));
 
+        if (graph::backprop_enabled())
+            graph::emplace_back([unnormalized_probs, softmax_result, targets, temperature, axis, out]() {
+                if (!unnormalized_probs.constant) {
+
+                    Array grad_times_target = lazy::sum(targets.w * out.dw, axis);
+                    grad_times_target = grad_times_target.insert_broadcast_axis(axis);
+
+                    unnormalized_probs.dw <<=
+                        softmax_result * grad_times_target / temperature
+                        - targets.w * out.dw / temperature;
+                }
+                MAYBE_GRAD(targets) <<= -lazy::log(softmax_result) * out.dw;
+            });
+        return out;
+    }
+
+
+    Tensor softmax_cross_entropy(const Tensor& unnormalized_probs,
+                                 const Tensor& targets,
+                                 const double& temperature,
+                                 int axis) {
+
+        if (axis < 0) axis = unnormalized_probs.ndim() + axis;
+
+        if (targets.dtype() == DTYPE_INT32) {
+            return softmax_cross_entropy_with_idxes(unnormalized_probs, targets, temperature, axis);
+        } else {
+            return softmax_cross_entropy_with_probs(unnormalized_probs, targets, temperature, axis);
+        }
+    }
 
     Tensor cross_entropy_with_idxes(const Tensor& probs, const Tensor& target) {
         Tensor out(-1.0 * lazy::log(lazy::take_from_rows(probs.w, target.w)));
@@ -144,7 +177,6 @@ namespace tensor_ops {
             });
         return out;
     }
-
 
     Tensor cross_entropy_with_probs(const Tensor& probs, const Tensor& target) {
         Tensor out(-1.0 * target.w * lazy::log(probs.w));

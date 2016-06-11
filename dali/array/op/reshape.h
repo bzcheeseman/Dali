@@ -21,6 +21,10 @@ namespace op {
     // Pick indices from another array on each row
     // (equivalent to source[np.arange(0, n), indices] in numpy)
     Assignable<Array> take_from_rows(const Array& source, const Array& indices);
-} // namespace op
+}  // namespace op
+
+namespace internal {
+    void assign_to_rows(const Array& source, ArraySubtensor* dst);
+}  // namespace internal
 
 #endif

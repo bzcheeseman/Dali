@@ -136,4 +136,11 @@ namespace op {
     Assignable<Array> take_from_rows(const Array& source, const Array& indices) {
         return lazy::take_from_rows(source, indices);
     }
-} // namespace op
+}  // namespace op
+
+
+namespace internal {
+    void assign_to_rows(const Array& source, ArraySubtensor* dst) {
+        *dst = lazy::identity(source);
+    }
+}  // namespace internal

@@ -1040,7 +1040,7 @@ const std::vector<int>& ArraySubtensor::shape() const {
 
 
 ArraySubtensor& ArraySubtensor::operator=(const Array& assignable) {
-    *this = lazy::identity(assignable);
+    internal::assign_to_rows(assignable, this);
     return *this;
 }
 

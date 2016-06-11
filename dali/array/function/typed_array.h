@@ -119,7 +119,6 @@ struct TypedArray<memory::DEVICE_T_CPU, T> : public internal::TypedArrayShared<m
     };
 #endif
 
-#include "dali/array/function/typed_array-impl.h"
 
 namespace internal {
     template<typename MDevT, typename T, typename IndexT>
@@ -173,6 +172,6 @@ struct TypedArraySubtensor<memory::DEVICE_T_CPU, T, IndexT> : public internal::T
     };
 #endif
 
-#include "dali/array/function/typed_array_subtensor-impl.h"
+#include "dali/array/function/typed_array-impl.h"
 
 #endif // DALI_ARRAY_FUNCTION_TYPED_ARRAY_H

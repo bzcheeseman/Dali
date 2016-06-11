@@ -64,6 +64,11 @@
         Array& operator SYMBOL(Array& left, const LazyExp<ExprT>& right) { \
             return left SYMBOL lazy::EvalWithOperator<SYMBOL_NAME,Array>::eval(right.self()); \
         } \
+        template<typename ExprT> \
+        ArraySubtensor& operator SYMBOL(ArraySubtensor& left, const LazyExp<ExprT>& right) { \
+            left SYMBOL lazy::EvalWithOperator<SYMBOL_NAME,ArraySubtensor>::eval(right.self()); \
+            return left; \
+        }
 
     DALI_DECLARE_LAZY_INTERACTION_INPLACE(+=, OPERATOR_T_ADD);
     DALI_DECLARE_LAZY_INTERACTION_INPLACE(-=, OPERATOR_T_SUB);

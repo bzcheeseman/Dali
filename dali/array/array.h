@@ -13,6 +13,7 @@
 #include "dali/array/slice.h"
 #include "dali/array/shape.h"
 #include "dali/runtime_config.h"
+#include "dali/utils/print_utils.h"
 
 
 class Array;
@@ -216,6 +217,17 @@ class Array : public Exp<Array> {
     void copy_from(const Array& other);
     Array& operator=(const Assignable<Array>& assignable);
 
+    template<typename T>
+    Array& operator=(const std::vector<T>& values) {
+        ASSERT2(values.size() == shape()[0],
+                utils::MS() << "mismatch when assigning to Array from vector, expected dim size "
+                            << shape()[0] << " got " << values.size() << ".");
+        for (int i = 0; i < values.size(); ++i) {
+            Array subarray = (*this)[i];
+            subarray = values[i];
+        }
+    }
+
     #define DALI_DECLARE_ARRAY_INTERACTION_INPLACE(SYMBOL)\
         Array& operator SYMBOL (const Assignable<Array>& right);\
         Array& operator SYMBOL (const Array& right);\
@@ -265,6 +277,14 @@ struct ArraySubtensor {
     ArraySubtensor& operator=(const Array& assignable);
     ArraySubtensor& operator=(const Assignable<Array>& assignable);
     ArraySubtensor& operator=(const Assignable<ArraySubtensor>& assignable);
+
+    ArraySubtensor& operator+=(const Assignable<ArraySubtensor>& assignable);
+    ArraySubtensor& operator-=(const Assignable<ArraySubtensor>& assignable);
+    ArraySubtensor& operator*=(const Assignable<ArraySubtensor>& assignable);
+    ArraySubtensor& operator/=(const Assignable<ArraySubtensor>& assignable);
+
+
+    ArraySubtensor copyless_reshape(std::vector<int>) const;
     operator Array();
 
 };
@@ -347,7 +367,7 @@ struct ArraySubtensor {
     template<typename OutType>
     template<typename ExprT>
     BaseAssignable<OutType>::BaseAssignable(const LazyExp<ExprT>& expr) :
-            BaseAssignable<OutType>(lazy::eval_as_array(expr.self())) {
+            BaseAssignable<OutType>(lazy::eval<OutType>(expr.self())) {
     }
 
     template<typename ExprT>

@@ -4,8 +4,6 @@
 #include "dali/array/lazy_op.h"
 #include "dali/tensor/tape.h"
 #include "dali/tensor/tensor_macros.h"
-#include "dali/array/lazy/binary.h"
-
 
 namespace tensor_ops {
     Tensor binary_cross_entropy(const Tensor& t, const double& target) {
@@ -133,7 +131,22 @@ namespace tensor_ops {
     //     return out;
     // }
 
-    Tensor cross_entropy(const Tensor& probs, const Tensor& target) {
+
+    Tensor cross_entropy_with_idxes(const Tensor& probs, const Tensor& target) {
+        Tensor out(-1.0 * lazy::log(lazy::take_from_rows(probs.w, target.w)));
+
+        if (graph::backprop_enabled())
+            graph::emplace_back([probs, target, out]() {
+                if (!probs.constant) {
+                    probs.dw.take_from_rows(target.w) +=
+                        -out.dw / lazy::take_from_rows(probs.w, target.w);
+                }
+            });
+        return out;
+    }
+
+
+    Tensor cross_entropy_with_probs(const Tensor& probs, const Tensor& target) {
         Tensor out(-1.0 * target.w * lazy::log(probs.w));
 
         if (graph::backprop_enabled())
@@ -143,5 +156,14 @@ namespace tensor_ops {
             });
         return out;
     }
+
+    Tensor cross_entropy(const Tensor& probs, const Tensor& target) {
+        if (target.dtype() == DTYPE_INT32) {
+            return cross_entropy_with_idxes(probs, target);
+        } else {
+            return cross_entropy_with_probs(probs, target);
+        }
+    }
+
 
 }  // namespace tensor_ops

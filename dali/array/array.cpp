@@ -1057,6 +1057,30 @@ ArraySubtensor& ArraySubtensor::operator=(const Assignable<ArraySubtensor>& assi
     return *this;
 }
 
+ArraySubtensor& ArraySubtensor::operator+=(const Assignable<ArraySubtensor>& assignable) {
+    assignable.assign_to(*this, OPERATOR_T_ADD);
+    return *this;
+}
+ArraySubtensor& ArraySubtensor::operator-=(const Assignable<ArraySubtensor>& assignable) {
+    assignable.assign_to(*this, OPERATOR_T_SUB);
+    return *this;
+}
+ArraySubtensor& ArraySubtensor::operator*=(const Assignable<ArraySubtensor>& assignable) {
+    assignable.assign_to(*this, OPERATOR_T_MUL);
+    return *this;
+}
+ArraySubtensor& ArraySubtensor::operator/=(const Assignable<ArraySubtensor>& assignable) {
+    assignable.assign_to(*this, OPERATOR_T_DIV);
+    return *this;
+}
+
+ArraySubtensor ArraySubtensor::copyless_reshape(std::vector<int> ignored) const {
+    ASSERT2(false, "ArraySubtensor::copyless_reshape not implemented.");
+    return *this;
+}
+
+
+
 void ArraySubtensor::print(std::basic_ostream<char>& stream,
                            const int& indent,
                            const bool& add_newlines) const {

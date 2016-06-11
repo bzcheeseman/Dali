@@ -146,6 +146,35 @@ TEST(TensorCostTests, cross_entropy_grad_through_target) {
     }
 }
 
+TEST(TensorCostTests, cross_entropy_with_idxes_forward) {
+    auto input = Tensor::uniform(0.1, 0.9, {2, 2, 3}, DTYPE_DOUBLE);
+    Tensor idxes({2, 2}, DTYPE_INT32);
+    idxes.w = vector<vector<int>> {
+        {2, 1},
+        {0, 2},
+    };
+
+    auto res = tensor_ops::cross_entropy(input, idxes);
+
+    EXPECT_NEAR((double)res[0][0].w, -std::log((double)input[0][0][2].w), 1e-3);
+    EXPECT_NEAR((double)res[0][1].w, -std::log((double)input[0][1][1].w), 1e-3);
+    EXPECT_NEAR((double)res[1][0].w, -std::log((double)input[1][0][0].w), 1e-3);
+    EXPECT_NEAR((double)res[1][1].w, -std::log((double)input[1][1][2].w), 1e-3);
+}
+
+TEST(TensorCostTests, cross_entropy_with_idxes) {
+    EXPERIMENT_REPEAT {
+        auto input = Tensor::uniform(0.1, 0.9, {2, 2, 3}, DTYPE_DOUBLE);
+        auto idxes = Tensor::uniform(0,   2,   {2, 2},    DTYPE_INT32);
+
+        auto functor = [&](vector<Tensor> Xs)-> Tensor {
+            return tensor_ops::cross_entropy(input, idxes);
+        };
+
+        ASSERT_TRUE(gradient_same(functor, {input}, 1e-3));
+    }
+}
+
 TEST(TensorCostTests, softmax_temperature) {
     graph::NoBackprop nb;
 

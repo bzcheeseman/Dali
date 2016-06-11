@@ -14,6 +14,25 @@ set(DALI_AND_DEPS_INCLUDE_DIRS)
 set(DALI_LIBRARIES)
 set(DALI_AND_DEPS_LIBRARIES)
 
+if (DEFINED ENV{DALI_HOME} AND NOT "$ENV{DALI_HOME}" STREQUAL "")
+    message(STATUS "Looking for dali at custom path $ENV{DALI_HOME}")
+    set(DALI_CUSTOM_PATH TRUE)
+    # where to look for Dali libraries
+    LIST(APPEND DALI_LIBRARY_CUSTOM_PATHS "$ENV{DALI_HOME}/build")
+    LIST(APPEND DALI_LIBRARY_CUSTOM_PATHS "$ENV{DALI_HOME}/build_cpu")
+    LIST(APPEND DALI_LIBRARY_CUSTOM_PATHS "$ENV{DALI_HOME}/")
+
+    # where to look for Dali headers
+    LIST(APPEND DALI_HEADERS_CUSTOM_PATHS "$ENV{DALI_HOME}/build/dali_generated/")
+    LIST(APPEND DALI_HEADERS_CUSTOM_PATHS "$ENV{DALI_HOME}/build_cpu/dali_generated/")
+    LIST(APPEND DALI_HEADERS_CUSTOM_PATHS "$ENV{DALI_HOME}/dali_generated/")
+
+    # where to look for mshadow
+    LIST(APPEND DALI_MSHADOW_CUSTOM_PATHS "$ENV{DALI_HOME}/third_party/mshadow/")
+    LIST(APPEND CMAKE_MODULE_PATH         "$ENV{DALI_HOME}/cmake")
+else()
+    set(DALI_CUSTOM_PATH FALSE)
+endif ()
 
 if(NOT WIN32)
   string(ASCII 27 Esc)
@@ -40,7 +59,8 @@ if (ZLIB_FOUND)
     list(APPEND DALI_AND_DEPS_LIBRARIES ${ZLIB_LIBRARIES})
 endif(ZLIB_FOUND)
 if (OpenBLAS_FOUND)
-    list(APPEND DALI_AND_DEPS_LIBRARIES ${OpenBLAS_LIB})
+    list(APPEND DALI_AND_DEPS_INCLUDE_DIRS ${OpenBLAS_INCLUDE_DIR})
+    list(APPEND DALI_AND_DEPS_LIBRARIES    ${OpenBLAS_LIB})
 endif (OpenBLAS_FOUND)
 
 # find cuda
@@ -48,26 +68,6 @@ find_package(CUDA)
 if(CUDA_FOUND STREQUAL TRUE)
     list(APPEND DALI_AND_DEPS_INCLUDE_DIRS ${CUDA_INCLUDE_DIRS})
 endif(CUDA_FOUND STREQUAL TRUE)
-
-
-if (DEFINED ENV{DALI_HOME} AND NOT "$ENV{DALI_HOME}" STREQUAL "")
-    message(STATUS "Looking for dali at custom path $ENV{DALI_HOME}")
-    set(DALI_CUSTOM_PATH TRUE)
-    # where to look for Dali libraries
-    LIST(APPEND DALI_LIBRARY_CUSTOM_PATHS "$ENV{DALI_HOME}/build")
-    LIST(APPEND DALI_LIBRARY_CUSTOM_PATHS "$ENV{DALI_HOME}/build_cpu")
-    LIST(APPEND DALI_LIBRARY_CUSTOM_PATHS "$ENV{DALI_HOME}/")
-
-    # where to look for Dali headers
-    LIST(APPEND DALI_HEADERS_CUSTOM_PATHS "$ENV{DALI_HOME}/build/dali_generated/")
-    LIST(APPEND DALI_HEADERS_CUSTOM_PATHS "$ENV{DALI_HOME}/build_cpu/dali_generated/")
-    LIST(APPEND DALI_HEADERS_CUSTOM_PATHS "$ENV{DALI_HOME}/dali_generated/")
-
-    # where to look for mshadow
-    LIST(APPEND DALI_MSHADOW_CUSTOM_PATHS "$ENV{DALI_HOME}/third_party/mshadow/")
-else()
-    set(DALI_CUSTOM_PATH FALSE)
-endif ()
 
 
 if (DALI_CUSTOM_PATH)

@@ -226,6 +226,7 @@ class Array : public Exp<Array> {
             Array subarray = (*this)[i];
             subarray = values[i];
         }
+        return *this;
     }
 
     #define DALI_DECLARE_ARRAY_INTERACTION_INPLACE(SYMBOL)\

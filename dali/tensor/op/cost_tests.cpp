@@ -149,10 +149,10 @@ TEST(TensorCostTests, cross_entropy_grad_through_target) {
 TEST(TensorCostTests, cross_entropy_with_idxes_forward) {
     auto input = Tensor::uniform(0.1, 0.9, {2, 2, 3}, DTYPE_DOUBLE);
     Tensor idxes({2, 2}, DTYPE_INT32);
-    idxes.w = vector<vector<int>> {
+    idxes.w = vector<vector<int>>({
         {2, 1},
         {0, 2},
-    };
+    });
 
     auto res = tensor_ops::cross_entropy(input, idxes);
 

@@ -69,7 +69,7 @@ namespace utils {
             self_type& operator++() { ptr = ptr + stride; return *this; }
             self_type& operator--() { ptr = ptr - stride; return *this; }
             reference operator*() { return *ptr; }
-            const pointer operator->() { return ptr; }
+            pointer operator->() { return ptr; }
             bool operator==(const self_type& rhs) { return ptr == rhs.ptr; }
             bool operator!=(const self_type& rhs) { return ptr != rhs.ptr; }
 

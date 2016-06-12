@@ -177,6 +177,11 @@ struct ArgSortFunction : public Function<ArgSortFunction, Array, Array, int> {
     void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out, TypedArray<memory::DEVICE_T_CPU, T> input, const int& axis) {
         ArgSortFunctionHelper<operator_t, memory::DEVICE_T_CPU, T>::run(out, input);
     }
+
+    template<OPERATOR_T operator_t, typename T>
+    void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out, TypedArray<memory::DEVICE_T_GPU, T> input, const int& axis) {
+        ASSERT2(false, "I should never be called");
+    }
 };
 
 namespace op {

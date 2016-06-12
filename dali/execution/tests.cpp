@@ -15,11 +15,11 @@ struct AutomataState {
     static double transition_prob(int from, int to) {
         if (from == 0) {
             if (to == 0)
-                return 0.5;
+                return 0.6;
             if (to == 1)
-                return 0.3;
+                return 0.25;
             if (to == 2)
-                return 0.2;
+                return 0.15;
         }
         if (from == 1) {
             if (to == 1)
@@ -87,13 +87,13 @@ TEST(beam_search, beam_search_automata) {
 
     ASSERT_EQ(beam_search_results.size(), beam_width);
     ASSERT_EQ(beam_search_results[0].solution, std::vector<uint>{2});
-    ASSERT_NEAR(std::exp(beam_search_results[0].score), 0.2, 1e-6);
+    ASSERT_NEAR(std::exp(beam_search_results[0].score), 0.15, 1e-6);
     ASSERT_EQ(beam_search_results[1].solution, std::vector<uint>({1, 2}));
-    ASSERT_NEAR(std::exp(beam_search_results[1].score), 0.3 * 0.5, 1e-6);
+    ASSERT_NEAR(std::exp(beam_search_results[1].score), 0.25 * 0.5, 1e-6);
     ASSERT_EQ(beam_search_results[2].solution, std::vector<uint>({0, 2}));
-    ASSERT_NEAR(std::exp(beam_search_results[2].score), 0.5 * 0.2, 1e-6);
+    ASSERT_NEAR(std::exp(beam_search_results[2].score), 0.6 * 0.15, 1e-6);
     ASSERT_EQ(beam_search_results.back().solution.size(), max_size);
-    ASSERT_NEAR(beam_search_results.back().score, std::log(0.5) * 20, 1e-5);
+    ASSERT_NEAR(beam_search_results.back().score, std::log(0.6) * 19 + std::log(0.25), 1e-5);
 }
 
 TEST(beam_search, beam_search_score_test) {

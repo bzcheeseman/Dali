@@ -83,7 +83,7 @@ std::vector<beam_search_helper::BeamSearchResult<state_t>> beam_search(state_t i
                     utils::MS() << "score function must return a vector (got scores.ndim() = "
                                 << scores.ndim() << ")."
                 );
-                Array sorted_candidates = scores.argsort();
+                Container sorted_candidates = scores.argsort();
                 sorted_candidates = sorted_candidates[Slice(0, sorted_candidates.shape()[0], -1)];
                 auto candidates_remaining = beam_width;
 

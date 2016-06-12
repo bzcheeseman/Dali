@@ -200,7 +200,7 @@ TEST(TensorCostTests,  softmax_cross_entropy_with_idxes) {
             return tensor_ops::softmax_cross_entropy(input, idxes, temperature);
         };
 
-        ASSERT_TRUE(gradient_same(functor, {input}, 1e-3, DEFAULT_GRAD_EPS, false));
+        ASSERT_TRUE(gradient_same(functor, {input}, 1e-2, DEFAULT_GRAD_EPS, false));
     }
 }
 

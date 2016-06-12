@@ -156,6 +156,20 @@ namespace utils {
         ret += value;
         return ret;
     }
+
+    template<typename T>
+    const_strided_iterator<T> operator-(const const_strided_iterator<T>& iter, const int& value) {
+        auto ret = iter;
+        ret -= value;
+        return ret;
+    }
+
+    template<typename T>
+    strided_iterator<T> operator-(const strided_iterator<T>& iter, const int& value) {
+        auto ret = iter;
+        ret -= value;
+        return ret;
+    }
 }  // namespace utils
 
 #endif

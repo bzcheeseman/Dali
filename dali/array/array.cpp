@@ -655,10 +655,14 @@ Array Array::transpose(const std::vector<int>& axes) const {
 Array Array::swapaxes(int axis1, int axis2) const {
     axis1 = normalize_axis(axis1);
     axis2 = normalize_axis(axis2);
+    // no-op
+    if (axis1 == axis2) return *this;
+
     ASSERT2(0 <= axis1 && axis1 < ndim(),
-        utils::MS() << "swapaxes axis1 (" << axis1 << ") must be less ndim (" << ndim() << ")");
+        utils::MS() << "swapaxes axis1 (" << axis1 << ") must be less than ndim (" << ndim() << ")");
     ASSERT2(0 <= axis2 && axis2 < ndim(),
-        utils::MS() << "swapaxes axis2 (" << axis2 << ") must be less ndim (" << ndim() << ")");
+        utils::MS() << "swapaxes axis2 (" << axis2 << ") must be less than ndim (" << ndim() << ")");
+
     vector<int> axis_permuation;
     for (int i = 0; i < ndim(); ++i) {
         if (i == axis1) {
@@ -891,6 +895,7 @@ DALI_ARRAY_DEFINE_REDUCER(L2_norm, L2_norm);
 DALI_ARRAY_DEFINE_REDUCER(mean, mean);
 DALI_ARRAY_DEFINE_REDUCER(max, max);
 DALI_ARRAY_DEFINE_REDUCER(min, min);
+DALI_ARRAY_DEFINE_REDUCER(argsort, argsort);
 
 Array::operator float() const {
     return scalar_value<float>();

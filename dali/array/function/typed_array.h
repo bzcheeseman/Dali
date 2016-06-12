@@ -78,7 +78,7 @@ namespace internal {
         // respects this new convention.
         std::tuple<bool,mshadow::Tensor<MDevT, 2, T>> blas_friendly_tensor() const;
 
-        TypedArrayShared(const Array& _array, const memory::Device& _device, const std::vector<int>& output_shape);
+        TypedArrayShared(const Array& array_, const memory::Device& device_, const std::vector<int>& output_shape_);
 
         ///////////////////// CONVINENCE WARPPERS //////////////////////////////////
         mshadow::Tensor<MDevT, 1, T> contiguous_d1(memory::AM access_mode=memory::AM_READONLY, bool collapse_leading=true) const;

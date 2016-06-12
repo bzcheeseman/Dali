@@ -36,6 +36,19 @@ namespace utils {
             MS& operator<<(T const& VAR) { stream << VAR; return *this; }
     };
 
+    template<typename T>
+    std::string iter_to_str(T begin, T end) {
+        std::stringstream ss;
+        bool first = true;
+        for (; begin != end; begin++) {
+            if (!first)
+                ss << ", ";
+            ss << *begin;
+            first = false;
+        }
+        return ss.str();
+    }
+
     extern std::string green;
     extern std::string red;
     extern std::string blue;

@@ -39,8 +39,284 @@ struct IsNan : public NonArrayFunction<IsNan, bool, Array> {
 #endif
 };
 
+
+void operator_eql_check(const OPERATOR_T& operator_t) {
+    ASSERT2(operator_t == OPERATOR_T_EQL,
+            utils::MS() << "argsort's result cannot be assigned using operator '=' (note: -=, +=, /=, *= disallowed, got operator = "
+                        << operator_to_name(operator_t) << ").");
+}
+
+namespace argsort_helper {
+
+    template<typename T>
+    class strided_iterator {
+        public:
+            typedef strided_iterator self_type;
+            typedef T value_type;
+            typedef T& reference;
+            typedef T* pointer;
+            typedef std::forward_iterator_tag iterator_category;
+            typedef int difference_type;
+            strided_iterator(pointer ptr_, int stride_) : ptr(ptr_), stride(stride_) { }
+            self_type operator++(int junk) { self_type i = *this; ptr = ptr + stride; return i; }
+            self_type operator--(int junk) { self_type i = *this; ptr = ptr - stride; return i; }
+            self_type& operator++() { ptr = ptr + stride; return *this; }
+            self_type& operator--() { ptr = ptr - stride; return *this; }
+            self_type& operator+=(const int& value) {ptr = ptr + stride * value; return *this;}
+            self_type& operator-=(const int& value) {ptr = ptr - stride * value; return *this;}
+            reference operator*() { return *ptr; }
+            pointer operator->() { return ptr; }
+            bool operator==(const self_type& rhs) { return ptr == rhs.ptr; }
+            bool operator!=(const self_type& rhs) { return ptr != rhs.ptr; }
+
+            pointer ptr;
+            int stride;
+        private:
+
+    };
+
+    template<typename T>
+    class const_strided_iterator {
+        public:
+            typedef const_strided_iterator self_type;
+            typedef T value_type;
+            typedef T& reference;
+            typedef T* pointer;
+            typedef int difference_type;
+            typedef std::forward_iterator_tag iterator_category;
+            const_strided_iterator(pointer ptr_, int stride_) : ptr(ptr_), stride(stride_) { }
+            self_type operator++(int junk) { self_type i = *this; ptr = ptr + stride; return i; }
+            self_type operator--(int junk) { self_type i = *this; ptr = ptr - stride; return i; }
+            self_type& operator+=(const int& value) {ptr = ptr + stride * value; return *this;}
+            self_type& operator-=(const int& value) {ptr = ptr - stride * value; return *this;}
+            self_type& operator++() { ptr = ptr + stride; return *this; }
+            self_type& operator--() { ptr = ptr - stride; return *this; }
+            reference operator*() { return *ptr; }
+            const pointer operator->() { return ptr; }
+            bool operator==(const self_type& rhs) { return ptr == rhs.ptr; }
+            bool operator!=(const self_type& rhs) { return ptr != rhs.ptr; }
+
+            pointer ptr;
+            int stride;
+        private:
+
+    };
+
+    template<typename T>
+    int operator-(const const_strided_iterator<T>& left, const const_strided_iterator<T>& right) {
+        return (left.ptr - right.ptr);
+    }
+
+    template<typename T>
+    int operator-(const strided_iterator<T>& left, const strided_iterator<T>& right) {
+        return (left.ptr - right.ptr);
+    }
+
+    template<typename T>
+    bool operator>=(const strided_iterator<T>& left, const strided_iterator<T>& right) {
+        if (left.stride < 0) {
+            return !(left.ptr >= right.ptr);
+        } else {
+            return left.ptr >= right.ptr;
+        }
+    }
+
+    template<typename T>
+    bool operator>=(const const_strided_iterator<T>& left, const const_strided_iterator<T>& right) {
+        if (left.stride < 0) {
+            return !(left.ptr >= right.ptr);
+        } else {
+            return left.ptr >= right.ptr;
+        }
+    }
+
+    template<typename T>
+    bool operator<(const strided_iterator<T>& left, const strided_iterator<T>& right) {
+        if (left.stride < 0) {
+            return !(left.ptr < right.ptr);
+        } else {
+            return left.ptr < right.ptr;
+        }
+    }
+
+    template<typename T>
+    bool operator<(const const_strided_iterator<T>& left, const const_strided_iterator<T>& right) {
+        if (left.stride < 0) {
+            return !(left.ptr < right.ptr);
+        } else {
+            return left.ptr < right.ptr;
+        }
+    }
+
+    template<typename T>
+    bool operator>(const strided_iterator<T>& left, const strided_iterator<T>& right) {
+        if (left.stride < 0) {
+            return !(left.ptr > right.ptr);
+        } else {
+            return left.ptr > right.ptr;
+        }
+    }
+
+    template<typename T>
+    bool operator>(const const_strided_iterator<T>& left, const const_strided_iterator<T>& right) {
+        if (left.stride < 0) {
+            return !(left.ptr > right.ptr);
+        } else {
+            return left.ptr > right.ptr;
+        }
+    }
+
+    template<typename T>
+    const_strided_iterator<T> operator+(const const_strided_iterator<T>& iter, const int& value) {
+        auto ret = iter;
+        ret += value;
+        return ret;
+    }
+
+    template<typename T>
+    strided_iterator<T> operator+(const strided_iterator<T>& iter, const int& value) {
+        auto ret = iter;
+        ret += value;
+        return ret;
+    }
+
+    template<typename T1, typename T2>
+    void sort_over_args(T1* index_ptr, T2* data_ptr,
+                        const std::vector<int>& shape,
+                        const std::vector<int>& index_strides,
+                        const std::vector<int>& data_strides,
+                        const int& dim = 0) {
+
+        if (dim + 1 == shape.size()) {
+            auto begin_indices = strided_iterator<T1>(index_ptr, index_strides[dim]);
+            auto end_indices = begin_indices + shape[dim];
+            auto begin_data = strided_iterator<T2>(data_ptr, data_strides[dim]);
+            auto assign_index = begin_indices;
+
+            for (int i = 0; i < shape[dim]; i++) {
+                *assign_index = i;
+                assign_index++;
+            }
+            std::sort(begin_indices, end_indices, [begin_data](const T1& lhs, const T1& rhs) {
+                return *(begin_data + lhs) < *(begin_data + rhs);
+            });
+            std::cout << std::flush;
+        } else {
+            // more dims to go
+            for (int idx = 0; idx < shape[dim]; idx++) {
+                sort_over_args(index_ptr + index_strides[dim] * idx,
+                               data_ptr + data_strides[dim] * idx,
+                               shape,
+                               index_strides,
+                               data_strides,
+                               dim + 1);
+            }
+        }
+    }
+}
+
+
+
+
+template<OPERATOR_T operator_t, int devT, typename T>
+struct ArgSortFunctionHelper {
+    template <
+        OPERATOR_T var_operator_t = operator_t,
+        typename var_T = T,
+        typename std::enable_if<
+            var_operator_t == OPERATOR_T_EQL
+        >::type* = nullptr
+    >
+    static void run(TypedArray<devT, T>& out,
+                    const TypedArray<devT, T>& in) {
+
+
+        auto out_int = TypedArray<devT, int>(
+            out.array, out.device, out.array.shape()
+        );
+        argsort_helper::sort_over_args(
+            out_int.ptr(memory::AM_MUTABLE),
+            in.ptr(),
+            in.array.shape(),
+            out.array.normalized_strides(),
+            in.array.normalized_strides(),
+            0
+        );
+    }
+
+    template <
+        OPERATOR_T var_operator_t = operator_t,
+        typename var_T = T,
+        typename std::enable_if<!(var_operator_t == OPERATOR_T_EQL)>::type* = nullptr
+    >
+    static void run(TypedArray<devT, T>& out,
+                    const TypedArray<devT, T>& a) {
+        operator_eql_check(operator_t);
+        ASSERT2(false, "If asserts above are complete this message should never be displayed");
+    }
+};
+
+struct ArgSortFunction : public Function<ArgSortFunction, Array, Array, int> {
+    static std::vector<int> deduce_output_bshape(const Array& arr, const int& axis) {
+        return arr.bshape();
+    };
+
+    static DType deduce_output_dtype(const Array& arr, const int& axis) {
+        return DTYPE_INT32;
+    }
+
+    static DType deduce_computation_dtype(const Array& out, const Array& arr, const int& axis) {
+        return arr.dtype();
+    }
+
+    static memory::Device deduce_output_device(const Array& arr, const int& axis) {
+        return memory::Device::cpu();
+    }
+
+    static memory::Device deduce_computation_device(const Array& out, const Array& arr, const int& axis) {
+        return memory::Device::cpu();
+    }
+
+    static void verify(const Array& arr, const int& axis) {
+        ASSERT2(axis >=0 && axis < arr.ndim(),
+            utils::MS() << "argsort axis must be non-negative and less than the number of dimensions of input (got axis = "
+                        << axis << ", with array.ndim() = " << arr.ndim() << ")."
+        );
+    }
+
+    static std::tuple<Array, Array, int> prepare_output(
+            const OPERATOR_T& operator_t,
+            Array& out,
+            const Array& arr,
+            const int& axis) {
+        operator_eql_check(operator_t);
+        auto output_bshape = deduce_output_bshape(arr, axis);
+        auto output_dtype  = deduce_output_dtype(arr, axis);
+        auto output_device = deduce_output_device(arr, axis);
+        initialize_output_array(out, output_dtype, output_device, &output_bshape);
+        verify(arr, axis);
+        // move axis to last dimension
+        auto arr_rearranged = arr.swapaxes(axis, -1);
+        // add a new tensor that has arange as a value
+        auto out_rearranged = out.swapaxes(axis, -1);
+        // proceed
+        return std::tuple<Array, Array, int>(
+            out_rearranged,
+            arr_rearranged,
+            axis
+        );
+    }
+
+    template<OPERATOR_T operator_t, typename T>
+    void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out, TypedArray<memory::DEVICE_T_CPU, T> input, const int& axis) {
+        ArgSortFunctionHelper<operator_t, memory::DEVICE_T_CPU, T>::run(out, input);
+    }
+};
+
 namespace op {
-    bool is_nan(const Array& x) { return IsNan::run(x); }
+    bool is_nan(const Array& x) {
+        return IsNan::run(x);
+    }
     Assignable<Array> all_equals(const Array& left, const Array& right) {
         return lazy::product(lazy::equals(left, right));
     }
@@ -58,5 +334,16 @@ namespace op {
             )
         );
     }
+
+    Assignable<Array> argsort(const Array& array, int axis) {
+        if (axis < 0) axis = array.ndim() + axis;
+        return ArgSortFunction::run(array, axis);
+    }
+
+    Assignable<Array> argsort(const Array& array) {
+        return ArgSortFunction::run(array.ravel(), 0);
+    }
+
+
 } // namespace op
 

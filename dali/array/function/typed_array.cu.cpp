@@ -12,8 +12,6 @@ namespace internal {
 
     template<typename MDevT, typename T>
     T* TypedArrayShared<MDevT,T>::ptr(memory::AM access_mode) const {
-        ASSERT2(this->array.contiguous_memory(),
-                "This function is only supported for contiguous_memory");
         return ptr_internal(access_mode);
     }
 

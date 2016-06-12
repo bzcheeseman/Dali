@@ -81,12 +81,12 @@ namespace utils {
 
     template<typename T>
     int operator-(const const_strided_iterator<T>& left, const const_strided_iterator<T>& right) {
-        return (left.ptr - right.ptr);
+        return (left.ptr - right.ptr) / left.stride;
     }
 
     template<typename T>
     int operator-(const strided_iterator<T>& left, const strided_iterator<T>& right) {
-        return (left.ptr - right.ptr);
+        return (left.ptr - right.ptr) / left.stride;
     }
 
     template<typename T>

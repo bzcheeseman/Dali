@@ -58,18 +58,18 @@ namespace argsort_helper {
 
         if (dim + 1 == shape.size()) {
             auto begin_indices = utils::strided_iterator<T1>(index_ptr, index_strides[dim]);
-            auto end_indices = begin_indices + shape[dim];
-            auto begin_data = utils::const_strided_iterator<T2>(data_ptr, data_strides[dim]);
-            auto assign_index = begin_indices;
+            auto end_indices   = begin_indices + shape[dim];
+            auto begin_data    = utils::strided_iterator<T2>(data_ptr, data_strides[dim]);
 
+            auto assign_index = begin_indices;
             for (int i = 0; i < shape[dim]; i++) {
                 *assign_index = i;
                 assign_index++;
             }
+
             std::sort(begin_indices, end_indices, [begin_data](const T1& lhs, const T1& rhs) {
                 return *(begin_data + lhs) < *(begin_data + rhs);
             });
-            std::cout << std::flush;
         } else {
             // more dims to go
             for (int idx = 0; idx < shape[dim]; idx++) {

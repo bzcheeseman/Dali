@@ -6,6 +6,8 @@
 
 #include "dali/array/function/operator.h"
 #include "dali/array/lazy/unary.h"
+#include "dali/array/lazy/binary.h"
+#include "dali/array/lazy_op.h"
 #include "dali/array/op/binary.h"
 #include "dali/array/op/dot.h"
 #include "dali/array/op/initializer.h"
@@ -1125,8 +1127,6 @@ std::vector<int> ArrayGather::shape() const {
     return res;
 }
 
-
-
 ArrayGather& ArrayGather::operator=(const Array& assignable) {
     internal::assign_to_gather(assignable, this);
     return *this;
@@ -1161,6 +1161,37 @@ ArrayGather& ArrayGather::operator/=(const Assignable<ArrayGather>& assignable) 
     assignable.assign_to(*this, OPERATOR_T_DIV);
     return *this;
 }
+
+#define DALI_DEFINE_ARRAYGATHER_ARRAY_INTERACTION_INPLACE(OPERATOR)\
+    ArrayGather& ArrayGather::operator OPERATOR (const Array& assignable) {\
+        return *this OPERATOR lazy::identity(assignable);\
+    } \
+    ArrayGather& ArrayGather::operator OPERATOR (const Assignable<Array>& assignable) {\
+        Array self_as_array = *this;\
+        self_as_array OPERATOR assignable;\
+        return (*this = self_as_array);\
+    }\
+
+#define DALI_DEFINE_ARRAYGATHER_SCALAR_INTERACTION_INPLACE(OPNAME, SYMBOL)\
+    ArrayGather& ArrayGather::operator SYMBOL (const double& right) {\
+        return *this = OPNAME (lazy::take(source, indices), right);\
+    }\
+    ArrayGather& ArrayGather::operator SYMBOL (const float& right) {\
+        return *this = OPNAME (lazy::take(source, indices), right);\
+    }\
+    ArrayGather& ArrayGather::operator SYMBOL (const int& right) {\
+        return *this = OPNAME (lazy::take(source, indices), right);\
+    }
+
+DALI_DEFINE_ARRAYGATHER_ARRAY_INTERACTION_INPLACE(+=);
+DALI_DEFINE_ARRAYGATHER_ARRAY_INTERACTION_INPLACE(-=);
+DALI_DEFINE_ARRAYGATHER_ARRAY_INTERACTION_INPLACE(*=);
+DALI_DEFINE_ARRAYGATHER_ARRAY_INTERACTION_INPLACE(/=);
+
+DALI_DEFINE_ARRAYGATHER_SCALAR_INTERACTION_INPLACE(lazy::sub, -=);
+DALI_DEFINE_ARRAYGATHER_SCALAR_INTERACTION_INPLACE(lazy::add, +=);
+DALI_DEFINE_ARRAYGATHER_SCALAR_INTERACTION_INPLACE(lazy::eltmul, *=);
+DALI_DEFINE_ARRAYGATHER_SCALAR_INTERACTION_INPLACE(lazy::eltdiv, /=);
 
 ArrayGather ArrayGather::copyless_reshape(std::vector<int> ignored) const {
     ASSERT2(false, "ArrayGather::copyless_reshape not implemented.");

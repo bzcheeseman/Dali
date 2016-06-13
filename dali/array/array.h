@@ -58,6 +58,15 @@ struct ArrayState {
                DType _dtype);
 };
 
+#define DALI_DECLARE_INTERACTION_INPLACE(SYMBOL, CONTAINER)\
+    CONTAINER& operator SYMBOL (const Assignable<CONTAINER>& right);\
+    CONTAINER& operator SYMBOL (const Array& right);\
+
+#define DALI_DECLARE_SCALAR_INTERACTION_INPLACE(SYMBOL, CONTAINER)\
+    CONTAINER& operator SYMBOL (const double& right);\
+    CONTAINER& operator SYMBOL (const float& right);\
+    CONTAINER& operator SYMBOL (const int& right);\
+
 class Array : public Exp<Array> {
   private:
     std::shared_ptr<ArrayState> state;
@@ -233,25 +242,16 @@ class Array : public Exp<Array> {
         return *this;
     }
 
-    #define DALI_DECLARE_ARRAY_INTERACTION_INPLACE(SYMBOL)\
-        Array& operator SYMBOL (const Assignable<Array>& right);\
-        Array& operator SYMBOL (const Array& right);\
+    DALI_DECLARE_INTERACTION_INPLACE(+=, Array)
+    DALI_DECLARE_INTERACTION_INPLACE(-=, Array)
+    DALI_DECLARE_INTERACTION_INPLACE(*=, Array)
+    DALI_DECLARE_INTERACTION_INPLACE(/=, Array)
+    DALI_DECLARE_INTERACTION_INPLACE(<<=, Array)
 
-    #define DALI_DECLARE_SCALAR_INTERACTION_INPLACE(SYMBOL)\
-        Array& operator SYMBOL (const double& right);\
-        Array& operator SYMBOL (const float& right);\
-        Array& operator SYMBOL (const int& right);\
-
-    DALI_DECLARE_ARRAY_INTERACTION_INPLACE(+=)
-    DALI_DECLARE_ARRAY_INTERACTION_INPLACE(-=)
-    DALI_DECLARE_ARRAY_INTERACTION_INPLACE(*=)
-    DALI_DECLARE_ARRAY_INTERACTION_INPLACE(/=)
-    DALI_DECLARE_ARRAY_INTERACTION_INPLACE(<<=)
-
-    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(-=)
-    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(+=)
-    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(*=)
-    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(/=)
+    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(-=, Array)
+    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(+=, Array)
+    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(*=, Array)
+    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(/=, Array)
 
     /* Debugging */
     void print(std::basic_ostream<char>& stream = std::cout, const int& indent=0, const bool& add_newlines=true) const;
@@ -307,11 +307,20 @@ struct ArrayGather {
     ArrayGather& operator=(const Assignable<Array>& assignable);
     ArrayGather& operator=(const Assignable<ArrayGather>& assignable);
 
-    ArrayGather& operator+=(const Assignable<ArrayGather>& assignable);
-    ArrayGather& operator-=(const Assignable<ArrayGather>& assignable);
-    ArrayGather& operator*=(const Assignable<ArrayGather>& assignable);
-    ArrayGather& operator/=(const Assignable<ArrayGather>& assignable);
+    DALI_DECLARE_INTERACTION_INPLACE(+=, ArrayGather)
+    DALI_DECLARE_INTERACTION_INPLACE(-=, ArrayGather)
+    DALI_DECLARE_INTERACTION_INPLACE(*=, ArrayGather)
+    DALI_DECLARE_INTERACTION_INPLACE(/=, ArrayGather)
 
+    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(-=, ArrayGather)
+    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(+=, ArrayGather)
+    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(*=, ArrayGather)
+    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(/=, ArrayGather)
+
+    ArrayGather& operator+=(const Assignable<Array>& assignable);
+    ArrayGather& operator-=(const Assignable<Array>& assignable);
+    ArrayGather& operator*=(const Assignable<Array>& assignable);
+    ArrayGather& operator/=(const Assignable<Array>& assignable);
 
     ArrayGather copyless_reshape(std::vector<int>) const;
     operator Array();

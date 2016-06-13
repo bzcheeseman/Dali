@@ -175,6 +175,7 @@ class Tensor {
         // template<typename ScalarType>
         // Tensor pow(ScalarType) const;
         Tensor operator[](int idx) const;
+        Tensor operator[](const Tensor& indices) const;
         SlicingInProgress<Tensor> operator[](const Slice& s) const;
         SlicingInProgress<Tensor> operator[](const Broadcast& b) const;
         Tensor sqrt() const;

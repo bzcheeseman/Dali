@@ -1,6 +1,7 @@
 #include "reshape.h"
 #include "dali/tensor/tape.h"
 #include "dali/array/op/reshape.h"
+#include "dali/array/lazy_op.h"
 #include "dali/tensor/tensor_macros.h"
 
 namespace tensor_ops {
@@ -46,4 +47,16 @@ namespace tensor_ops {
     Tensor vstack(const std::vector<Tensor>& tensors) {
         return concatenate(tensors, 0);
     }
+
+    Tensor gather(const Tensor& params, const Tensor& indices) {
+        Tensor out(params.w[indices.w]);
+
+        if (graph::backprop_enabled() && !params.constant) {
+            graph::emplace_back([out, params, indices]() {
+                params.dw[indices.w] += out.dw;
+            });
+        }
+        return out;
+    }
+
 }

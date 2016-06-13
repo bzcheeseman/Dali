@@ -292,6 +292,11 @@ Tensor Tensor::operator[](int idx) const {
     return pluck_axis(0, idx);
 }
 
+Tensor Tensor::operator[](const Tensor& indices) const {
+    return tensor_ops::gather(*this, indices);
+}
+
+
 SlicingInProgress<Tensor> Tensor::operator[](const Slice& s) const {
     auto ret = SlicingInProgress<Tensor>(*this);
     return ret[s];

@@ -19,6 +19,7 @@
 class Array;
 
 struct ArraySubtensor;
+struct ArrayGather;
 
 template<typename OutType>
 struct BaseAssignable {
@@ -141,7 +142,7 @@ class Array : public Exp<Array> {
 
     /* Creating a view into memory */
     Array operator[](const int& idx) const;
-    Assignable<Array> operator[](const Array& indices) const;
+    ArrayGather operator[](const Array& indices) const;
     SlicingInProgress<Array> operator[](const Slice& s) const;
     SlicingInProgress<Array> operator[](const Broadcast& b) const;
     ArraySubtensor take_from_rows(const Array& indices) const;
@@ -290,6 +291,30 @@ struct ArraySubtensor {
 
     ArraySubtensor copyless_reshape(std::vector<int>) const;
     operator Array();
+};
+
+struct ArrayGather {
+    Array source;
+    Array indices;
+    DType dtype() const;
+    std::vector<int> shape() const;
+    void print(std::basic_ostream<char>& stream = std::cout, const int& indent=0, const bool& add_newlines=true) const;
+    ArrayGather(const Array& source, const Array& indices);
+
+    template<typename ExprT>
+    ArrayGather& operator=(const LazyExp<ExprT>& expr);
+    ArrayGather& operator=(const Array& assignable);
+    ArrayGather& operator=(const Assignable<Array>& assignable);
+    ArrayGather& operator=(const Assignable<ArrayGather>& assignable);
+
+    ArrayGather& operator+=(const Assignable<ArrayGather>& assignable);
+    ArrayGather& operator-=(const Assignable<ArrayGather>& assignable);
+    ArrayGather& operator*=(const Assignable<ArrayGather>& assignable);
+    ArrayGather& operator/=(const Assignable<ArrayGather>& assignable);
+
+
+    ArrayGather copyless_reshape(std::vector<int>) const;
+    operator Array();
 
 };
 
@@ -377,6 +402,11 @@ struct ArraySubtensor {
     template<typename ExprT>
     ArraySubtensor& ArraySubtensor::operator=(const LazyExp<ExprT>& expr) {
         return *this = lazy::EvalWithOperator<OPERATOR_T_EQL,ArraySubtensor>::eval(expr.self());
+    }
+
+    template<typename ExprT>
+    ArrayGather& ArrayGather::operator=(const LazyExp<ExprT>& expr) {
+        return *this = lazy::EvalWithOperator<OPERATOR_T_EQL,ArrayGather>::eval(expr.self());
     }
 
     #endif

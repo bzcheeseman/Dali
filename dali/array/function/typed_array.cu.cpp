@@ -82,11 +82,11 @@ namespace internal {
     #endif
 
     // Subtensor
-
     template<typename MDevT, typename T, typename IndexT>
-    TypedArraySubtensorShared<MDevT, T, IndexT>::TypedArraySubtensorShared(const Array& _source, const Array& _indices, const memory::Device& _device)
+    TypedArraySubtensorShared<MDevT, T, IndexT>::TypedArraySubtensorShared(const Array& _source, const Array& _indices, const std::vector<int> _shape, const memory::Device& _device)
             : source(_source, _device, _source.shape()),
               indices(_indices, _device, _indices.shape()),
+              shape(_shape),
               device(_device) {
     }
 
@@ -121,6 +121,48 @@ namespace internal {
         template class TypedArraySubtensorShared<mshadow::gpu, float, int>;
         template class TypedArraySubtensorShared<mshadow::gpu, double, int>;
     #endif
+
+
+    // ArrayGather
+    template<typename MDevT, typename T, typename IndexT>
+    TypedArrayGatherShared<MDevT, T, IndexT>::TypedArrayGatherShared(const Array& _source, const Array& _indices, const std::vector<int> _shape, const memory::Device& _device)
+            : source(_source, _device, _source.shape()),
+              indices(_indices, _device, _indices.shape()),
+              shape(_shape),
+              device(_device) {
+    }
+
+    template<typename MDevT, typename T, typename IndexT>
+    bool TypedArrayGatherShared<MDevT,T,IndexT>::contiguous_memory() const {
+        return this->source.contiguous_memory() && this->indices.contiguous_memory();
+    }
+
+    template<typename MDevT, typename T, typename IndexT>
+    mshadow::expr::TakeExp<mshadow::Tensor<MDevT, 1, IndexT>, mshadow::Tensor<MDevT, 1, T>, T, IndexT> TypedArrayGatherShared<MDevT,T, IndexT>::contiguous_d1(memory::AM access_mode, bool collapse_leading) const { return contiguous_d<1>(access_mode, collapse_leading); }
+    template<typename MDevT, typename T, typename IndexT>
+    mshadow::expr::TakeExp<mshadow::Tensor<MDevT, 1, IndexT>, mshadow::Tensor<MDevT, 2, T>, T, IndexT> TypedArrayGatherShared<MDevT,T, IndexT>::contiguous_d2(memory::AM access_mode, bool collapse_leading) const { return contiguous_d<2>(access_mode, collapse_leading); }
+    template<typename MDevT, typename T, typename IndexT>
+    mshadow::expr::TakeExp<mshadow::Tensor<MDevT, 1, IndexT>, mshadow::Tensor<MDevT, 3, T>, T, IndexT> TypedArrayGatherShared<MDevT,T, IndexT>::contiguous_d3(memory::AM access_mode, bool collapse_leading) const { return contiguous_d<3>(access_mode, collapse_leading); }
+    template<typename MDevT, typename T, typename IndexT>
+    mshadow::expr::TakeExp<mshadow::Tensor<MDevT, 1, IndexT>, mshadow::Tensor<MDevT, 4, T>, T, IndexT> TypedArrayGatherShared<MDevT,T, IndexT>::contiguous_d4(memory::AM access_mode, bool collapse_leading) const { return contiguous_d<4>(access_mode, collapse_leading); }
+
+    template<typename MDevT, typename T, typename IndexT>
+    mshadow::expr::TakeExp<DaliWrapperExp<MDevT, 1, IndexT>, DaliWrapperExp<MDevT, 1, T>, T, IndexT> TypedArrayGatherShared<MDevT,T, IndexT>::d1(memory::AM access_mode, bool collapse_leading) const { return d<1>(access_mode, collapse_leading); }
+    template<typename MDevT, typename T, typename IndexT>
+    mshadow::expr::TakeExp<DaliWrapperExp<MDevT, 1, IndexT>, DaliWrapperExp<MDevT, 2, T>, T, IndexT> TypedArrayGatherShared<MDevT,T, IndexT>::d2(memory::AM access_mode, bool collapse_leading) const { return d<2>(access_mode, collapse_leading); }
+    template<typename MDevT, typename T, typename IndexT>
+    mshadow::expr::TakeExp<DaliWrapperExp<MDevT, 1, IndexT>, DaliWrapperExp<MDevT, 3, T>, T, IndexT> TypedArrayGatherShared<MDevT,T, IndexT>::d3(memory::AM access_mode, bool collapse_leading) const { return d<3>(access_mode, collapse_leading); }
+    template<typename MDevT, typename T, typename IndexT>
+    mshadow::expr::TakeExp<DaliWrapperExp<MDevT, 1, IndexT>, DaliWrapperExp<MDevT, 4, T>, T, IndexT> TypedArrayGatherShared<MDevT,T, IndexT>::d4(memory::AM access_mode, bool collapse_leading) const { return d<4>(access_mode, collapse_leading); }
+
+    template class TypedArrayGatherShared<mshadow::cpu, int, int>;
+    template class TypedArrayGatherShared<mshadow::cpu, float, int>;
+    template class TypedArrayGatherShared<mshadow::cpu, double, int>;
+    #ifdef DALI_USE_CUDA
+        template class TypedArrayGatherShared<mshadow::gpu, int, int>;
+        template class TypedArrayGatherShared<mshadow::gpu, float, int>;
+        template class TypedArrayGatherShared<mshadow::gpu, double, int>;
+    #endif
 } // namespace internal
 
 template class TypedArray<memory::DEVICE_T_CPU, int>;
@@ -130,6 +172,10 @@ template class TypedArray<memory::DEVICE_T_CPU, double>;
 template class TypedArraySubtensor<memory::DEVICE_T_CPU, int, int>;
 template class TypedArraySubtensor<memory::DEVICE_T_CPU, float, int>;
 template class TypedArraySubtensor<memory::DEVICE_T_CPU, double, int>;
+
+template class TypedArrayGather<memory::DEVICE_T_CPU, int, int>;
+template class TypedArrayGather<memory::DEVICE_T_CPU, float, int>;
+template class TypedArrayGather<memory::DEVICE_T_CPU, double, int>;
 
 
 #ifdef DALI_USE_CUDA
@@ -146,4 +192,7 @@ template class TypedArraySubtensor<memory::DEVICE_T_CPU, double, int>;
     template class TypedArraySubtensor<memory::DEVICE_T_GPU, float, int>;
     template class TypedArraySubtensor<memory::DEVICE_T_GPU, double, int>;
 
+    template class TypedArrayGather<memory::DEVICE_T_GPU, int, int>;
+    template class TypedArrayGather<memory::DEVICE_T_GPU, float, int>;
+    template class TypedArrayGather<memory::DEVICE_T_GPU, double, int>;
 #endif

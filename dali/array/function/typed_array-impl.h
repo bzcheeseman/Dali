@@ -56,8 +56,6 @@ namespace internal {
 
 ////////////////////////////////////////////////////////////////////////////////
 //                            TYPED SUBTENSOR SHARED                          //
-//                                   ---                                      //
-//  Common to both CPU and GPU implementations of TypedArray below.           //
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -86,4 +84,37 @@ namespace internal {
             source.template d<dim + 1>(access_mode, collapse_leading)
         );
     }
+
+
+////////////////////////////////////////////////////////////////////////////////
+//                            TYPED GATHER SHARED                             //
+////////////////////////////////////////////////////////////////////////////////
+
+
+    template<typename MDevT, typename T, typename IndexT>
+    template<int dim>
+    mshadow::expr::TakeExp<mshadow::Tensor<MDevT, 1, IndexT>,
+                           mshadow::Tensor<MDevT, dim, T>,
+                           T,
+                           IndexT>
+    TypedArrayGatherShared<MDevT,T,IndexT>::contiguous_d(memory::AM access_mode, bool collapse_leading) const {
+        return mshadow::expr::take(
+            indices.template contiguous_d<1>(access_mode, collapse_leading),
+            source.template contiguous_d<dim>(access_mode, collapse_leading)
+        );
+    }
+
+    template<typename MDevT, typename T, typename IndexT>
+    template<int dim>
+    mshadow::expr::TakeExp<DaliWrapperExp<MDevT, 1,   IndexT>,
+                           DaliWrapperExp<MDevT, dim, T>,
+                           T,
+                           IndexT>
+    TypedArrayGatherShared<MDevT,T,IndexT>::d(memory::AM access_mode, bool collapse_leading) const {
+        return mshadow::expr::take(
+            indices.template d<1>(access_mode, collapse_leading),
+            source.template d<dim>(access_mode, collapse_leading)
+        );
+    }
+
 }  // namespace internal

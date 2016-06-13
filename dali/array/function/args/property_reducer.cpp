@@ -89,6 +89,13 @@ std::tuple<DeviceReducer::outtype_t,DeviceReducer::state_t> DeviceReducer::reduc
     return reduce_step(reduce_step(candidate_and_state, arg.indices), arg.source);
 }
 
+
+std::tuple<DeviceReducer::outtype_t,DeviceReducer::state_t> DeviceReducer::reduce_step(
+        const std::tuple<DeviceReducer::outtype_t, DeviceReducer::state_t>& candidate_and_state,
+        const ArrayGather& arg) {
+    return reduce_step(reduce_step(candidate_and_state, arg.indices), arg.source);
+}
+
 std::tuple<DeviceReducer::outtype_t,DeviceReducer::state_t> DeviceReducer::reduce_step(
         const std::tuple<DeviceReducer::outtype_t, DeviceReducer::state_t>& candidate_and_state,
         const std::vector<Array>& arg) {

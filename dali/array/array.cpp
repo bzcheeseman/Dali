@@ -56,6 +56,7 @@ BaseAssignable<OutType>::BaseAssignable(assign_t&& _assign_to) :
 
 template class BaseAssignable<Array>;
 template class BaseAssignable<ArraySubtensor>;
+template class BaseAssignable<ArrayGather>;
 
 
 Assignable<Array>::Assignable(const float& constant) :
@@ -575,8 +576,8 @@ ArraySubtensor Array::take_from_rows(const Array& indices) const {
     return ArraySubtensor(*this, indices);
 }
 
-Assignable<Array> Array::operator[](const Array& indices) const {
-    return op::take(*this, indices);
+ArrayGather Array::operator[](const Array& indices) const {
+    return ArrayGather(*this, indices);
 }
 
 SlicingInProgress<Array> Array::operator[](const Slice& s) const {
@@ -1032,6 +1033,10 @@ bool operator==(const Array& left, const Array& right) {
     return Array::state_equals(left, right);
 }
 
+///////////////////////////////////////////////////////////////
+//                  ARRAY SUBTENSOR                          //
+///////////////////////////////////////////////////////////////
+
 ArraySubtensor::ArraySubtensor(const Array& source_, const Array& indices_) : indices(indices_), source(source_) {}
 
 DType ArraySubtensor::dtype() const {
@@ -1039,7 +1044,7 @@ DType ArraySubtensor::dtype() const {
 }
 
 const std::vector<int>& ArraySubtensor::shape() const {
-    return source.shape();
+    return indices.shape();
 }
 
 
@@ -1098,4 +1103,80 @@ void ArraySubtensor::print(std::basic_ostream<char>& stream,
 
 ArraySubtensor::operator Array() {
     return (Array)op::take_from_rows(source, indices);
+}
+
+
+
+///////////////////////////////////////////////////////////////
+//                  ARRAY SUBTENSOR                          //
+///////////////////////////////////////////////////////////////
+
+ArrayGather::ArrayGather(const Array& source_, const Array& indices_) : indices(indices_), source(source_) {
+}
+
+DType ArrayGather::dtype() const {
+    return source.dtype();
+}
+
+std::vector<int> ArrayGather::shape() const {
+    vector<int> res = indices.shape();
+    res.insert(res.end(), source.shape().begin() + 1, source.shape().end());
+
+    return res;
+}
+
+
+
+ArrayGather& ArrayGather::operator=(const Array& assignable) {
+    internal::assign_to_gather(assignable, this);
+    return *this;
+}
+
+ArrayGather& ArrayGather::operator=(const Assignable<Array>& assignable) {
+    // TODO(jonathan, szymon): make more efficient
+    Array self_as_array = *this;
+    self_as_array = assignable;
+    return (*this = self_as_array);
+}
+
+
+ArrayGather& ArrayGather::operator=(const Assignable<ArrayGather>& assignable) {
+    assignable.assign_to(*this, OPERATOR_T_EQL);
+    return *this;
+}
+
+ArrayGather& ArrayGather::operator+=(const Assignable<ArrayGather>& assignable) {
+    assignable.assign_to(*this, OPERATOR_T_ADD);
+    return *this;
+}
+ArrayGather& ArrayGather::operator-=(const Assignable<ArrayGather>& assignable) {
+    assignable.assign_to(*this, OPERATOR_T_SUB);
+    return *this;
+}
+ArrayGather& ArrayGather::operator*=(const Assignable<ArrayGather>& assignable) {
+    assignable.assign_to(*this, OPERATOR_T_MUL);
+    return *this;
+}
+ArrayGather& ArrayGather::operator/=(const Assignable<ArrayGather>& assignable) {
+    assignable.assign_to(*this, OPERATOR_T_DIV);
+    return *this;
+}
+
+ArrayGather ArrayGather::copyless_reshape(std::vector<int> ignored) const {
+    ASSERT2(false, "ArrayGather::copyless_reshape not implemented.");
+    return *this;
+}
+
+void ArrayGather::print(std::basic_ostream<char>& stream,
+                           const int& indent,
+                           const bool& add_newlines) const {
+    ((Array)op::take(source, indices)).print(
+        stream,
+        indent,
+        add_newlines
+    );
+}
+
+ArrayGather::operator Array() {
+    return (Array)op::take(source, indices);
 }

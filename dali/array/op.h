@@ -59,16 +59,17 @@
         return lazy::eltmul(-1,in.self());
     }
 
-    #define DALI_DECLARE_LAZY_INTERACTION_INPLACE(SYMBOL, SYMBOL_NAME) \
+
+    #define DALI_DECLARE_LAZY_INTERACTION_INPLACE_CONTAINER(CONTAINER, SYMBOL, SYMBOL_NAME) \
         template<typename ExprT> \
-        Array& operator SYMBOL(Array& left, const LazyExp<ExprT>& right) { \
-            return left SYMBOL lazy::EvalWithOperator<SYMBOL_NAME,Array>::eval(right.self()); \
-        } \
-        template<typename ExprT> \
-        ArraySubtensor& operator SYMBOL(ArraySubtensor& left, const LazyExp<ExprT>& right) { \
-            left SYMBOL lazy::EvalWithOperator<SYMBOL_NAME,ArraySubtensor>::eval(right.self()); \
-            return left; \
+        CONTAINER& operator SYMBOL(CONTAINER& left, const LazyExp<ExprT>& right) { \
+            return left SYMBOL lazy::EvalWithOperator<SYMBOL_NAME,CONTAINER>::eval(right.self()); \
         }
+
+    #define DALI_DECLARE_LAZY_INTERACTION_INPLACE(SYMBOL, SYMBOL_NAME) \
+        DALI_DECLARE_LAZY_INTERACTION_INPLACE_CONTAINER(Array, SYMBOL, SYMBOL_NAME) \
+        DALI_DECLARE_LAZY_INTERACTION_INPLACE_CONTAINER(ArraySubtensor, SYMBOL, SYMBOL_NAME) \
+        DALI_DECLARE_LAZY_INTERACTION_INPLACE_CONTAINER(ArrayGather, SYMBOL, SYMBOL_NAME)
 
     DALI_DECLARE_LAZY_INTERACTION_INPLACE(+=, OPERATOR_T_ADD);
     DALI_DECLARE_LAZY_INTERACTION_INPLACE(-=, OPERATOR_T_SUB);

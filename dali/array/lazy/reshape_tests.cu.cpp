@@ -135,3 +135,38 @@ TEST(ArrayReshapeTests, take_from_rows_assign_lazy) {
     EXPECT_EQ(6,  (int)x[1][2]);
     EXPECT_EQ(7,  (int)x[1][3]);
 }
+
+
+
+TEST(ArrayReshapeTests, gather_assign_lazy) {
+    auto x = Array::zeros({4, 2}, DTYPE_INT32);
+    x = initializer::arange();
+
+    Array y = Array({3, 2}, DTYPE_INT32);
+    y = std::vector<std::vector<int>> {
+        {10,   20},
+        {300,  400},
+        {5000, 6000}
+    };
+
+    Array indices({3}, DTYPE_INT32);
+    indices[0] = 0;
+    indices[1] = 1;
+    indices[2] = 0;
+
+    auto x_view = x[indices];
+
+    x_view += y + 2;
+
+    EXPECT_EQ(std::vector<int>({3,2}), x_view.shape());
+
+    EXPECT_EQ(0 + 10  + 5000 + 2 + 2, (int)x[0][0]);
+    EXPECT_EQ(1 + 20  + 6000 + 2 + 2, (int)x[0][1]);
+    EXPECT_EQ(2 + 300 + 2,            (int)x[1][0]);
+    EXPECT_EQ(3 + 400 + 2,            (int)x[1][1]);
+
+    EXPECT_EQ(4,  (int)x[2][0]);
+    EXPECT_EQ(5,  (int)x[2][1]);
+    EXPECT_EQ(6,  (int)x[3][0]);
+    EXPECT_EQ(7,  (int)x[3][1]);
+}

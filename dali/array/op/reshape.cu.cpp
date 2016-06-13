@@ -143,4 +143,8 @@ namespace internal {
     void assign_to_rows(const Array& source, ArraySubtensor* dst) {
         *dst = lazy::identity(source);
     }
+
+    void assign_to_gather(const Array& source, ArrayGather* dst) {
+        *dst = lazy::identity(source);
+    }
 }  // namespace internal

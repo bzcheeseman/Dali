@@ -37,7 +37,11 @@ struct ArrayWrapper {
     }
 
     static inline TypedArraySubtensor<devT,T,int> wrap(const ArraySubtensor& a, memory::Device dev) {
-        return TypedArraySubtensor<devT,T,int>(a.source, a.indices, dev);
+        return TypedArraySubtensor<devT,T,int>(a.source, a.indices, a.shape(), dev);
+    }
+
+    static inline TypedArrayGather<devT,T,int> wrap(const ArrayGather& a, memory::Device dev) {
+        return TypedArrayGather<devT,T,int>(a.source, a.indices, a.shape(), dev);
     }
 };
 

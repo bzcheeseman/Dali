@@ -6,6 +6,7 @@
 
 class Array;
 class ArraySubtensor;
+class ArrayGather;
 template<typename OutType>
 class Assignable;
 
@@ -25,6 +26,7 @@ namespace op {
 
 namespace internal {
     void assign_to_rows(const Array& source, ArraySubtensor* dst);
+    void assign_to_gather(const Array& source, ArrayGather* dst);
 }  // namespace internal
 
 #endif

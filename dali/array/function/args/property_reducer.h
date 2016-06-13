@@ -12,6 +12,7 @@
 
 class Array;
 class ArraySubtensor;
+class ArrayGather;
 
 template<typename Property>
 struct PropertyEqualForAllArgsReducer {
@@ -198,6 +199,7 @@ struct DeviceReducer {
 
     static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const Array& arg);
     static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const ArraySubtensor& arg);
+    static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const ArrayGather& arg);
     static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const std::vector<Array>& arg);
 };
 

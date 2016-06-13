@@ -85,7 +85,6 @@ struct LazyTake : public LazyFunction<LazyTake<SrcExp, IndexExp>, SrcExp, IndexE
 template<typename SrcExp, typename IndexExp>
 const int LazyTake<SrcExp, IndexExp>::evaluation_dim = 2;
 
-
 template<typename SrcExp, typename IndexExp>
 const bool LazyTake<SrcExp, IndexExp>::collapse_leading = false;
 
@@ -115,8 +114,9 @@ struct LazyTakeFromRows : public LazyFunction<LazyTakeFromRows<SrcExp, IndexExp>
             ASSERT2(indices_bshape[i] == -1 || src_bshape[i] == -1 || indices_bshape[i] == src_bshape[i],
                     utils::MS() << "Lazy take from rows: shapes incompatible (indices shape = "
                                 << indices_bshape << ", source expression shape = " << src_bshape << ").");
+            indices_bshape[i] = std::max(indices_bshape[i], src_bshape[i]);
         }
-        return indices.bshape();
+        return indices_bshape;
     }
 
     static DType lazy_output_dtype(const SrcExp& src_, const IndexExp& indices) {
@@ -140,7 +140,7 @@ struct LazyTakeFromRows : public LazyFunction<LazyTakeFromRows<SrcExp, IndexExp>
                 MshadowWrapper<devT, int, decltype(indices)>::wrap(
                     indices,
                     device,
-                    indices.bshape(),
+                    output_shape,
                     lazy::EvaluationSpec<devT, int, lazy::ExprNdimPlusOffset<self_t, 0, ndim>::value>::collapse_leading()
                 ),
                 MshadowWrapper<devT, T, decltype(src)>::wrap(
@@ -155,7 +155,7 @@ struct LazyTakeFromRows : public LazyFunction<LazyTakeFromRows<SrcExp, IndexExp>
             MshadowWrapper<devT, int, decltype(indices)>::wrap(
                 indices,
                 device,
-                indices.bshape(),
+                output_shape,
                 lazy::EvaluationSpec<devT, int, lazy::ExprNdimPlusOffset<self_t, 0, ndim>::value>::collapse_leading()
             ),
             MshadowWrapper<devT, T, decltype(src)>::wrap(

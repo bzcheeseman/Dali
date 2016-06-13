@@ -297,6 +297,18 @@ Tensor Tensor::operator[](const Tensor& indices) const {
 }
 
 
+Tensor Tensor::operator[](const std::vector<int>& indices) const {
+    Array indices_arr({indices.size()}, DTYPE_INT32);
+    indices_arr = indices;
+    return tensor_ops::gather(*this, indices_arr);
+}
+
+Tensor Tensor::operator[](const std::initializer_list<int>& indices) const {
+    Array indices_arr({indices.size()}, DTYPE_INT32);
+    indices_arr = indices;
+    return tensor_ops::gather(*this, indices_arr);
+}
+
 SlicingInProgress<Tensor> Tensor::operator[](const Slice& s) const {
     auto ret = SlicingInProgress<Tensor>(*this);
     return ret[s];

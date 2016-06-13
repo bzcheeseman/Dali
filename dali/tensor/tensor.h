@@ -176,6 +176,8 @@ class Tensor {
         // Tensor pow(ScalarType) const;
         Tensor operator[](int idx) const;
         Tensor operator[](const Tensor& indices) const;
+        Tensor operator[](const std::vector<int>& indices) const;
+        Tensor operator[](const std::initializer_list<int>& indices) const;
         SlicingInProgress<Tensor> operator[](const Slice& s) const;
         SlicingInProgress<Tensor> operator[](const Broadcast& b) const;
         Tensor sqrt() const;
@@ -208,33 +210,7 @@ class Tensor {
         Tensor argmin(const int& axis) const;
         // std::vector<int> argsort() const;
         // Tensor operator-() const;
-        //
-        // Tensor operator+(Tensor) const;
-        // Tensor operator+(R) const;
-        // Tensor& operator+=(Tensor);
-        // Tensor& operator+=(R);
-        //
-        // Tensor operator-(Tensor) const;
-        // Tensor operator-(R) const;
-        // Tensor& operator-=(Tensor);
-        // Tensor& operator-=(R);
-        //
-        // Tensor operator*(Tensor other) const;
-        // Tensor operator*(R alpha) const;
-        // Tensor& operator*=(Tensor);
-        // Tensor& operator*=(R);
-        //
-        // Tensor operator/(Tensor other) const;
-        // Tensor operator/(R alpha) const;
-        // Tensor& operator/=(Tensor);
-        // Tensor& operator/=(R);
-        //
-        // template<typename ScalarType>
-        // Tensor operator^(ScalarType) const;
-        //
-        // Tensor operator^(Tensor) const;
-        //
-        //
+
         // // Plucking rows and columns:
         // Tensor col(int col);
         // Tensor operator[](Indexing::Index) const;

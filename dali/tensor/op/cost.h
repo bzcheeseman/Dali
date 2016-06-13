@@ -15,7 +15,7 @@ namespace tensor_ops {
                                  const double& temperature = 1.0,
                                  int axis=-1);
     Tensor softmax(const Tensor&, int axis=-1, const double& temperature=1.0);
-    Tensor cross_entropy(const Tensor& probs, const Tensor& target);
+    Tensor cross_entropy(const Tensor& probs, const Tensor& target, int axis=-1);
 }  // namespace tensor_ops
 
 #endif

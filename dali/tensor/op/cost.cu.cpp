@@ -165,17 +165,18 @@ namespace tensor_ops {
         }
     }
 
-    Tensor cross_entropy_with_idxes(const Tensor& probs, const Tensor& target) {
-        Tensor out(-1.0 * lazy::log(lazy::take_from_rows(probs.w, target.w)));
+    Tensor cross_entropy_with_idxes(const Tensor& probs, const Tensor& target, int axis) {
+        auto permuted_probs = probs.swapaxes(-1, axis);
+        Tensor out(-1.0 * lazy::log(lazy::take_from_rows(permuted_probs.w, target.w)));
 
         if (graph::backprop_enabled())
-            graph::emplace_back([probs, target, out]() {
-                if (!probs.constant) {
-                    probs.dw.take_from_rows(target.w) +=
-                        -out.dw / lazy::take_from_rows(probs.w, target.w);
+            graph::emplace_back([permuted_probs, target, out]() {
+                if (!permuted_probs.constant) {
+                    permuted_probs.dw.take_from_rows(target.w) +=
+                        -out.dw / lazy::take_from_rows(permuted_probs.w, target.w);
                 }
             });
-        return out;
+        return out.swapaxes(axis, -1);
     }
 
     Tensor cross_entropy_with_probs(const Tensor& probs, const Tensor& target) {
@@ -189,9 +190,9 @@ namespace tensor_ops {
         return out;
     }
 
-    Tensor cross_entropy(const Tensor& probs, const Tensor& target) {
+    Tensor cross_entropy(const Tensor& probs, const Tensor& target, int axis) {
         if (target.dtype() == DTYPE_INT32) {
-            return cross_entropy_with_idxes(probs, target);
+            return cross_entropy_with_idxes(probs, target, axis);
         } else {
             return cross_entropy_with_probs(probs, target);
         }

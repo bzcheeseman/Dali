@@ -14,6 +14,12 @@ if( UNIX AND NOT APPLE )
                             OUTPUT_STRIP_TRAILING_WHITESPACE)
 endif()
 
+if (WITH_PRETTY_STACKTRACES OR ENV{DALI_PRETTY_STACKTRACES})
+    set(WITH_PRETTY_STACKTRACES TRUE)
+else()
+    set(WITH_PRETTY_STACKTRACES FALSE)
+endif()
+
 ################################################################################
 ##                            COMPILER SETUP                                  ##
 ################################################################################
@@ -51,6 +57,10 @@ if (CMAKE_BUILD_TYPE STREQUAL "")
 endif (CMAKE_BUILD_TYPE STREQUAL "")
 message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
 
+if (WITH_PRETTY_STACKTRACES)
+    message(STATUS "compiling with pretty stacktraces")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+endif()
 
 ################################################################################
 ##                            PACKAGES                                        ##
@@ -105,6 +115,11 @@ if (GPERFTOOLS_FOUND)
     include_directories(${GPERFTOOLS_INCLUDE_DIR})
 endif (GPERFTOOLS_FOUND)
 
+if (WITH_PRETTY_STACKTRACES)
+    add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/backward-cpp)
+endif()
+
+
 ################################################################################
 ##                            CUDA SETUP                                      ##
 ################################################################################
@@ -120,7 +135,6 @@ else()
         message(WARNING "CUDA not found - did you know that Dali has GPU support?")
     endif()
 endif(DEFINED WITH_CUDA)
-
 
 if (WITH_CUDA)
     SET(DALI_USE_CUDA 1)
@@ -269,6 +283,12 @@ foreach(SourceDir ${DALI_SOURCE_DIRS})
     endforeach()
 endforeach()
 
+if (WITH_PRETTY_STACKTRACES)
+    list(APPEND DaliSources "${PROJECT_SOURCE_DIR}/third_party/backward-cpp/backward.cpp")
+    foreach(def ${BACKWARD_DEFINITIONS})
+        add_definitions("-D${def}")
+    endforeach()
+endif()
 
 ################################################################################
 ##                               DALI SETUP                                   ##
@@ -293,8 +313,10 @@ else()
     set(maybe_cuda_compiled_files "")
 endif()
 
+
+
 ## CPP TARGET
-add_library(dali ${MAYBE_SHARED} ${DaliSources} ${maybe_cuda_compiled_files} ${DaliHeaders} )
+add_library(dali ${MAYBE_SHARED} ${DaliSources} ${maybe_cuda_compiled_files} ${DaliHeaders})
 
 # ensure that headers are copied over before compilation
 add_custom_target(dali_cuda_headers DEPENDS ${DaliHeaders})
@@ -304,7 +326,8 @@ target_link_libraries(dali ${ZLIB_LIBRARIES}
                            ${BLAS_LIBRARIES}
                            ${MKL_LIBRARIES}
                            ${CMAKE_THREAD_LIBS_INIT}
-                           ${OpenBLAS_LIB})
+                           ${OpenBLAS_LIB}
+                           ${BACKWARD_LIBRARIES})
 
 if (GPERFTOOLS_FOUND)
     target_link_libraries(dali ${GPERFTOOLS_LIBRARIES})
@@ -339,6 +362,7 @@ if (BLAS_FOUND AND MKL_FOUND)
 endif (BLAS_FOUND AND MKL_FOUND)
 
 
+
 ################################################################################
 ##                               DALI SETUP                                   ##
 ##                                   ---                                      ##
@@ -362,7 +386,7 @@ function(add_testsuite TEST_TARGET RUN_TARGET TEST_DEPENDENCIES TEST_FILES DEVIC
         add_test(${TEST_TARGET} ${TEST_TARGET})
         add_custom_target(${TEST_TARGET}_hidden_run_target ${TEST_TARGET})
         add_custom_target(${RUN_TARGET} true)
-        add_dependencies(${RUN_TARGET} ${TEST_TARGET}_hidden_run_target )
+        add_dependencies(${RUN_TARGET} ${TEST_TARGET}_hidden_run_target)
 endfunction(add_testsuite)
 
 if(GTEST_FOUND)

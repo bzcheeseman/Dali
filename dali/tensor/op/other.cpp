@@ -1,5 +1,6 @@
 #include "other.h"
 
+#include "dali/array/op.h"
 #include "dali/tensor/tape.h"
 #include "dali/tensor/tensor_macros.h"
 

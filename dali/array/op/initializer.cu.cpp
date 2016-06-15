@@ -14,7 +14,7 @@
 #include "dali/array/functor.h"
 #include "dali/utils/random.h"
 
-#include "dali/array/lazy/binary.h"
+#include "dali/array/lazy_op.h"
 
 using std::vector;
 

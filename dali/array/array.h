@@ -10,8 +10,8 @@
 #include "dali/array/memory/device.h"
 #include "dali/array/memory/memory_ops.h"
 #include "dali/array/memory/synchronized_memory.h"
-#include "dali/array/slice.h"
 #include "dali/array/shape.h"
+#include "dali/array/slice.h"
 #include "dali/runtime_config.h"
 #include "dali/utils/print_utils.h"
 
@@ -241,17 +241,6 @@ class Array : public Exp<Array> {
         }
         return *this;
     }
-
-    DALI_DECLARE_INTERACTION_INPLACE(+=, Array)
-    DALI_DECLARE_INTERACTION_INPLACE(-=, Array)
-    DALI_DECLARE_INTERACTION_INPLACE(*=, Array)
-    DALI_DECLARE_INTERACTION_INPLACE(/=, Array)
-    DALI_DECLARE_INTERACTION_INPLACE(<<=, Array)
-
-    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(-=, Array)
-    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(+=, Array)
-    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(*=, Array)
-    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(/=, Array)
 
     /* Debugging */
     void print(std::basic_ostream<char>& stream = std::cout, const int& indent=0, const bool& add_newlines=true) const;

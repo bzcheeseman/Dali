@@ -4,7 +4,7 @@
 #include "dali/tensor/op/operators.h"
 #include "dali/tensor/tape.h"
 #include "dali/tensor/tensor_macros.h"
-#include "dali/array/op/dot.h"
+#include "dali/array/op.h"
 
 static Tensor matrixdot_with_custom_shape(const Tensor& a,
                                           const Tensor& b,

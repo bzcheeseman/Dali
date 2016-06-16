@@ -34,6 +34,10 @@ class Assignable;
     template<typename ExprT> \
     CONTAINER& operator SYMBOL(CONTAINER& left, const LazyExp<ExprT>& right) { \
         return left SYMBOL lazy::EvalWithOperator<SYMBOL_NAME,CONTAINER>::eval(right.self()); \
+    }\
+    template<typename ExprT> \
+    void operator SYMBOL(CONTAINER&& left, const LazyExp<ExprT>& right) { \
+        left SYMBOL lazy::EvalWithOperator<SYMBOL_NAME,CONTAINER>::eval(right.self()); \
     }
 
 #define DALI_DECLARE_LAZY_INTERACTION_INPLACE(SYMBOL, SYMBOL_NAME) \

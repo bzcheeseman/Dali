@@ -27,6 +27,7 @@ struct BaseAssignable {
     assign_t assign_to;
 
     explicit BaseAssignable(assign_t&& _assign_to);
+
     template<typename ExprT>
     BaseAssignable(const LazyExp<ExprT>& expr);
 };
@@ -43,9 +44,6 @@ struct Assignable<Array> : public BaseAssignable<Array> {
     Assignable(const float& constant);
     Assignable(const double& constant);
     Assignable(const int& constant);
-
-    template<typename ExprT>
-    Assignable(const LazyExp<ExprT>& expr);
 };
 
 struct ArrayState {
@@ -265,13 +263,6 @@ struct ArraySubtensor {
     ArraySubtensor& operator=(const Array& assignable);
     ArraySubtensor& operator=(const Assignable<Array>& assignable);
     ArraySubtensor& operator=(const Assignable<ArraySubtensor>& assignable);
-
-    ArraySubtensor& operator+=(const Assignable<ArraySubtensor>& assignable);
-    ArraySubtensor& operator-=(const Assignable<ArraySubtensor>& assignable);
-    ArraySubtensor& operator*=(const Assignable<ArraySubtensor>& assignable);
-    ArraySubtensor& operator/=(const Assignable<ArraySubtensor>& assignable);
-
-
     ArraySubtensor copyless_reshape(std::vector<int>) const;
     operator Array();
 };
@@ -341,9 +332,9 @@ struct ArrayGather {
     // remove all the associated inconveniences.
     //
     // ALTERNATIVE SOLUTION II:
-    // add a bunch of lazy::eval in places where it is inferred automatically
-    // thanks to the function below. At the time of writing this is order of
-    // tens of occurrences.
+    // add a bunch of lazy::Eval<OutType>::eval in places where it is inferred
+    // automatically thanks to the function below. At the time of writing this
+    // is order of tens of occurrences.
 
     #ifndef DALI_ARRAY_ARRAY_H_EXTENSION
     #define DALI_ARRAY_ARRAY_H_EXTENSION
@@ -360,8 +351,8 @@ struct ArrayGather {
      * from it, and pass this assignable array to create a new Array
      * as a destination for the computation in the expression.
      * Since the destination has not been created yet, we evaluate
-     * the expression using `lazy::eval_no_autoreduce` instead of
-     * `lazy::eval`, since we know that no reductions will be needed
+     * the expression using `lazy::Eval<Array>::eval_no_autoreduce` instead of
+     * `lazy::Eval<Array>::eval`, since we know that no reductions will be needed
      * when assigning to the same shape as the one dictated by the
      * expression.
      */
@@ -374,11 +365,6 @@ struct ArrayGather {
     template<typename ExprT>
     BaseAssignable<OutType>::BaseAssignable(const LazyExp<ExprT>& expr) :
             BaseAssignable<OutType>(lazy::Eval<OutType>::eval(expr.self())) {
-    }
-
-    template<typename ExprT>
-    Assignable<Array>::Assignable(const LazyExp<ExprT>& expr) :
-            BaseAssignable<Array>(lazy::Eval<Array>::eval(expr.self())) {
     }
 
     template<typename ExprT>

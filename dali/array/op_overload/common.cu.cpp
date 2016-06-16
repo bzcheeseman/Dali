@@ -86,64 +86,74 @@ DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::scalar_div, /=);
 ////////////////////////////////////////////////////////////
 
 
-#define DALI_DEFINE_ARRAYGATHER_INTERACTION_INPLACE(OPERATOR, OPERATOR_NAME)\
-    ArrayGather& operator OPERATOR (ArrayGather& left, const Array& assignable) {\
-        return left OPERATOR (Assignable<ArrayGather>)lazy::identity(assignable);\
+#define DALI_DEFINE_CONTAINER_INTERACTION_INPLACE(OPERATOR, OPERATOR_NAME, CONTAINER)\
+    CONTAINER& operator OPERATOR (CONTAINER& left, const Array& assignable) {\
+        return left OPERATOR (Assignable<CONTAINER>)lazy::identity(assignable);\
     } \
-    void operator OPERATOR (ArrayGather&& left, const Array& assignable) {\
-        ArrayGather left_instance = left;\
-        left_instance OPERATOR (Assignable<ArrayGather>)lazy::identity(assignable);\
+    void operator OPERATOR (CONTAINER&& left, const Array& assignable) {\
+        CONTAINER left_instance = left;\
+        left_instance OPERATOR (Assignable<CONTAINER>)lazy::identity(assignable);\
     } \
-    ArrayGather& operator OPERATOR (ArrayGather& left, const Assignable<Array>& assignable) {\
+    CONTAINER& operator OPERATOR (CONTAINER& left, const Assignable<Array>& assignable) {\
         Array self_as_array = left;\
         self_as_array OPERATOR assignable;\
         return (left = self_as_array);\
     }\
-    void operator OPERATOR (ArrayGather&& left, const Assignable<Array>& assignable) {\
-        ArrayGather left_instance = left;\
+    void operator OPERATOR (CONTAINER&& left, const Assignable<Array>& assignable) {\
+        CONTAINER left_instance = left;\
         Array self_as_array = left_instance;\
         self_as_array OPERATOR assignable;\
         left = self_as_array;\
     }\
-    ArrayGather& operator OPERATOR(ArrayGather& left, const Assignable<ArrayGather>& assignable) {\
+    CONTAINER& operator OPERATOR(CONTAINER& left, const Assignable<CONTAINER>& assignable) {\
         assignable.assign_to(left, OPERATOR_NAME);\
         return left;\
     }\
-    void operator OPERATOR(ArrayGather&& left, const Assignable<ArrayGather>& assignable) {\
-        ArrayGather left_instance = left;\
+    void operator OPERATOR(CONTAINER&& left, const Assignable<CONTAINER>& assignable) {\
+        CONTAINER left_instance = left;\
         assignable.assign_to(left_instance, OPERATOR_NAME);\
     }\
 
 
-#define DALI_DEFINE_ARRAYGATHER_SCALAR_INTERACTION_INPLACE(OPNAME, SYMBOL)\
-    ArrayGather& operator SYMBOL (ArrayGather& left, const double right) {\
-        return left = OPNAME (lazy::take(left.source, left.indices), right);\
+#define DALI_DEFINE_CONTAINER_SCALAR_INTERACTION_INPLACE(OPNAME, SYMBOL, CONTAINER, EXTRACTOR)\
+    CONTAINER& operator SYMBOL (CONTAINER& left, const double right) {\
+        return left = OPNAME (EXTRACTOR(left.source, left.indices), right);\
     }\
-    void operator SYMBOL (ArrayGather&& left, const double right) {\
-        ArrayGather left_instance = left;\
-        left_instance = OPNAME (lazy::take(left_instance.source, left_instance.indices), right);\
+    void operator SYMBOL (CONTAINER&& left, const double right) {\
+        CONTAINER left_instance = left;\
+        left_instance = OPNAME (EXTRACTOR(left_instance.source, left_instance.indices), right);\
     }\
-    ArrayGather& operator SYMBOL (ArrayGather& left, const float right) {\
-        return left = OPNAME (lazy::take(left.source, left.indices), right);\
+    CONTAINER& operator SYMBOL (CONTAINER& left, const float right) {\
+        return left = OPNAME (EXTRACTOR(left.source, left.indices), right);\
     }\
-    void operator SYMBOL (ArrayGather&& left, const float right) {\
-        ArrayGather left_instance = left;\
-        left_instance = OPNAME (lazy::take(left_instance.source, left_instance.indices), right);\
+    void operator SYMBOL (CONTAINER&& left, const float right) {\
+        CONTAINER left_instance = left;\
+        left_instance = OPNAME (EXTRACTOR(left_instance.source, left_instance.indices), right);\
     }\
-    ArrayGather& operator SYMBOL (ArrayGather& left, const int right) {\
-        return left = OPNAME (lazy::take(left.source, left.indices), right);\
+    CONTAINER& operator SYMBOL (CONTAINER& left, const int right) {\
+        return left = OPNAME (EXTRACTOR(left.source, left.indices), right);\
     }\
-    void operator SYMBOL (ArrayGather&& left, const int right) {\
-        ArrayGather left_instance = left;\
-        left_instance = OPNAME (lazy::take(left_instance.source, left_instance.indices), right);\
+    void operator SYMBOL (CONTAINER&& left, const int right) {\
+        CONTAINER left_instance = left;\
+        left_instance = OPNAME (EXTRACTOR(left_instance.source, left_instance.indices), right);\
     }\
 
-DALI_DEFINE_ARRAYGATHER_INTERACTION_INPLACE(+=, OPERATOR_T_ADD);
-DALI_DEFINE_ARRAYGATHER_INTERACTION_INPLACE(-=, OPERATOR_T_SUB);
-DALI_DEFINE_ARRAYGATHER_INTERACTION_INPLACE(*=, OPERATOR_T_MUL);
-DALI_DEFINE_ARRAYGATHER_INTERACTION_INPLACE(/=, OPERATOR_T_DIV);
+DALI_DEFINE_CONTAINER_INTERACTION_INPLACE(+=, OPERATOR_T_ADD, ArrayGather);
+DALI_DEFINE_CONTAINER_INTERACTION_INPLACE(-=, OPERATOR_T_SUB, ArrayGather);
+DALI_DEFINE_CONTAINER_INTERACTION_INPLACE(*=, OPERATOR_T_MUL, ArrayGather);
+DALI_DEFINE_CONTAINER_INTERACTION_INPLACE(/=, OPERATOR_T_DIV, ArrayGather);
 
-DALI_DEFINE_ARRAYGATHER_SCALAR_INTERACTION_INPLACE(lazy::sub, -=);
-DALI_DEFINE_ARRAYGATHER_SCALAR_INTERACTION_INPLACE(lazy::add, +=);
-DALI_DEFINE_ARRAYGATHER_SCALAR_INTERACTION_INPLACE(lazy::eltmul, *=);
-DALI_DEFINE_ARRAYGATHER_SCALAR_INTERACTION_INPLACE(lazy::eltdiv, /=);
+DALI_DEFINE_CONTAINER_SCALAR_INTERACTION_INPLACE(lazy::sub, -=, ArrayGather, lazy::take);
+DALI_DEFINE_CONTAINER_SCALAR_INTERACTION_INPLACE(lazy::add, +=, ArrayGather, lazy::take);
+DALI_DEFINE_CONTAINER_SCALAR_INTERACTION_INPLACE(lazy::eltmul, *=, ArrayGather, lazy::take);
+DALI_DEFINE_CONTAINER_SCALAR_INTERACTION_INPLACE(lazy::eltdiv, /=, ArrayGather, lazy::take);
+
+DALI_DEFINE_CONTAINER_INTERACTION_INPLACE(+=, OPERATOR_T_ADD, ArraySubtensor);
+DALI_DEFINE_CONTAINER_INTERACTION_INPLACE(-=, OPERATOR_T_SUB, ArraySubtensor);
+DALI_DEFINE_CONTAINER_INTERACTION_INPLACE(*=, OPERATOR_T_MUL, ArraySubtensor);
+DALI_DEFINE_CONTAINER_INTERACTION_INPLACE(/=, OPERATOR_T_DIV, ArraySubtensor);
+
+DALI_DEFINE_CONTAINER_SCALAR_INTERACTION_INPLACE(lazy::sub, -=, ArraySubtensor, lazy::take_from_rows);
+DALI_DEFINE_CONTAINER_SCALAR_INTERACTION_INPLACE(lazy::add, +=, ArraySubtensor, lazy::take_from_rows);
+DALI_DEFINE_CONTAINER_SCALAR_INTERACTION_INPLACE(lazy::eltmul, *=, ArraySubtensor, lazy::take_from_rows);
+DALI_DEFINE_CONTAINER_SCALAR_INTERACTION_INPLACE(lazy::eltdiv, /=, ArraySubtensor, lazy::take_from_rows);

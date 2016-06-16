@@ -34,32 +34,43 @@ namespace lazy {
             if (operator_t == OPERATOR_T_LSE) {
                 reduction_dimension = internal::requires_reduction(out, this_bshape);
             }
-            if (reduction_dimension.axis != -1) {
-                auto reduced_expr = lazy::sum(
-                       this_self,
-                       /*axis=*/reduction_dimension.axis,
-                       /*keepdims=*/true);
-                auto computation_with_reduce = lazy::eval_no_autoreduce<OutType>(reduced_expr);
-                computation_with_reduce.assign_to(out, operator_t);
-            } else if (reduction_dimension.all_reduce) {
-                auto reduced_expr = lazy::sum(this_self);
-                auto computation_with_reduce = lazy::eval_no_autoreduce<OutType>(reduced_expr);
-                auto out_as_scalar = out.copyless_reshape({});
-                computation_with_reduce.assign_to(out_as_scalar, operator_t);
-            } else {
-                LazyEvaluator<OutType, Class>::run(this_self).assign_to(out, operator_t);
-            }
+            ASSERT2(!reduction_dimension.required,
+                    "Autoreduction for <<= can only be performed for Arrays.");
+            LazyEvaluator<OutType, Class>::run(this_self).assign_to(out, operator_t);
         });
     }
 
     template<typename Class, typename... Args>
     inline Assignable<Array> eval_as_array(const LazyFunction<Class, Args...>& expr) {
-        return eval<Array>(expr);
+        auto this_self   = expr.self();
+        auto this_bshape = expr.bshape();
+
+        return Assignable<Array>([this_self, this_bshape](Array& out, const OPERATOR_T& operator_t) {
+            internal::ReductionInstruction reduction_dimension;
+            if (operator_t == OPERATOR_T_LSE) {
+                reduction_dimension = internal::requires_reduction(out, this_bshape);
+            }
+            if (reduction_dimension.axis != -1) {
+                auto reduced_expr = lazy::sum(
+                       this_self,
+                       /*axis=*/reduction_dimension.axis,
+                       /*keepdims=*/true);
+                auto computation_with_reduce = lazy::eval_no_autoreduce<Array>(reduced_expr);
+                computation_with_reduce.assign_to(out, operator_t);
+            } else if (reduction_dimension.all_reduce) {
+                auto reduced_expr = lazy::sum(this_self);
+                auto computation_with_reduce = lazy::eval_no_autoreduce<Array>(reduced_expr);
+                auto out_as_scalar = out.copyless_reshape({});
+                computation_with_reduce.assign_to(out_as_scalar, operator_t);
+            } else {
+                LazyEvaluator<Array, Class>::run(this_self).assign_to(out, operator_t);
+            }
+        });
     }
 
     template<typename Class, typename... Args>
     inline Assignable<Array> eval_noreduce_as_array(const LazyFunction<Class, Args...>& expr) {
-        return eval_no_autoreduce<Array>(expr);
+        return LazyEvaluator<Array, Class>::run(expr.self());
     }
 
     // Eval with operator (only instantiate a single operator)

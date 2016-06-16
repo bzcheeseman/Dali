@@ -296,21 +296,6 @@ struct ArrayGather {
     ArrayGather& operator=(const Assignable<Array>& assignable);
     ArrayGather& operator=(const Assignable<ArrayGather>& assignable);
 
-    DALI_DECLARE_INTERACTION_INPLACE(+=, ArrayGather)
-    DALI_DECLARE_INTERACTION_INPLACE(-=, ArrayGather)
-    DALI_DECLARE_INTERACTION_INPLACE(*=, ArrayGather)
-    DALI_DECLARE_INTERACTION_INPLACE(/=, ArrayGather)
-
-    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(-=, ArrayGather)
-    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(+=, ArrayGather)
-    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(*=, ArrayGather)
-    DALI_DECLARE_SCALAR_INTERACTION_INPLACE(/=, ArrayGather)
-
-    ArrayGather& operator+=(const Assignable<Array>& assignable);
-    ArrayGather& operator-=(const Assignable<Array>& assignable);
-    ArrayGather& operator*=(const Assignable<Array>& assignable);
-    ArrayGather& operator/=(const Assignable<Array>& assignable);
-
     ArrayGather copyless_reshape(std::vector<int>) const;
     operator Array();
 

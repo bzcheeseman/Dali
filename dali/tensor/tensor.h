@@ -63,7 +63,7 @@ class Tensor {
 
         template<typename ExprT>
         Tensor(const LazyExp<ExprT>& expr) :
-                Tensor(lazy::eval_as_array(expr.self())) {
+                Tensor(lazy::Eval<Array>::eval_no_autoreduce(expr.self())) {
         }
 
         /*

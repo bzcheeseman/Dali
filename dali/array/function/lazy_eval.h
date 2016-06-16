@@ -9,7 +9,7 @@
 namespace lazy {
 
 	/* In order to make a Lazy Expression be assignable and computable into an array
-	or result we must call `lazy::eval` on the expression.
+	or result we must call `lazy::Eval<Outtype>::eval` on the expression.
 
 	The resulting expression is then of two types:
 
@@ -31,17 +31,25 @@ namespace lazy {
 	generated for other 'auto-reduce' partial expressions.
 
 	To prevent this recursion from occuring, we can evaluate an expression
-	using `lazy::eval_no_autoreduce`, telling the lazy expression to not generate
+	using `lazy::Eval<Outtype>::eval_no_autoreduce`, telling the lazy expression to not generate
 	automatic reduction code for the computation, thereby breaking the recursion:
 
 		lazy_expression -> reduction -> unreducible_lazy_expression
 	*/
-    template<typename Class, typename... Args>
-    Assignable<Array> eval_no_autoreduce(const LazyFunction<Class, Args...>& expr);
 
-    template<typename Class, typename... Args>
-    Assignable<Array> eval(const LazyFunction<Class, Args...>& expr);
+	template<typename OutType>
+    struct Eval {
+        template<typename Class, typename... Args>
+        static inline Assignable<OutType> eval_no_autoreduce(const LazyFunction<Class, Args...>& expr);
 
+        template<typename Class, typename... Args>
+        static inline Assignable<OutType> eval(const LazyFunction<Class, Args...>& expr);
+
+        // Here we specialize the lazy evaluation so that the resulting uncomputed expression
+        // can not be further reduced (which would lead to infinite recursion => e.g. sum(sum(sum(a))) etc...)
+        template<typename Functor, typename ExprT, typename... Args>
+        static inline Assignable<OutType> eval(const LazyFunction<LazyAllReducer<Functor, ExprT>, Args...>& expr);
+    };
 }  // namespace lazy
 
 #include "dali/array/function/lazy_eval-impl.h"

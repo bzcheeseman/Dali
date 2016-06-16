@@ -12,9 +12,9 @@ if( UNIX AND NOT APPLE )
     execute_process(COMMAND /usr/bin/lsb_release -i -s
                             OUTPUT_VARIABLE LINUX_DISTRO
                             OUTPUT_STRIP_TRAILING_WHITESPACE)
-endif()
+endif(UNIX AND NOT APPLE)
 
-if (WITH_PRETTY_STACKTRACES OR $ENV{DALI_PRETTY_STACKTRACES})
+if ((WITH_PRETTY_STACKTRACES) OR ($ENV{DALI_PRETTY_STACKTRACES}))
     set(WITH_PRETTY_STACKTRACES TRUE)
 else()
     set(WITH_PRETTY_STACKTRACES FALSE)
@@ -116,7 +116,8 @@ if (GPERFTOOLS_FOUND)
 endif (GPERFTOOLS_FOUND)
 
 if (WITH_PRETTY_STACKTRACES)
-    add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/backward-cpp)
+    # add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/backward-cpp)
+    include(${PROJECT_SOURCE_DIR}/third_party/backward-cpp/BackwardMacros.cmake)
 endif()
 
 

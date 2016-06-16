@@ -43,6 +43,9 @@ struct Assignable<Array> : public BaseAssignable<Array> {
     Assignable(const float& constant);
     Assignable(const double& constant);
     Assignable(const int& constant);
+
+    template<typename ExprT>
+    Assignable(const LazyExp<ExprT>& expr);
 };
 
 struct ArrayState {
@@ -57,15 +60,6 @@ struct ArrayState {
                const std::vector<int>& _strides,
                DType _dtype);
 };
-
-#define DALI_DECLARE_INTERACTION_INPLACE(SYMBOL, CONTAINER)\
-    CONTAINER& operator SYMBOL (const Assignable<CONTAINER>& right);\
-    CONTAINER& operator SYMBOL (const Array& right);\
-
-#define DALI_DECLARE_SCALAR_INTERACTION_INPLACE(SYMBOL, CONTAINER)\
-    CONTAINER& operator SYMBOL (const double& right);\
-    CONTAINER& operator SYMBOL (const float& right);\
-    CONTAINER& operator SYMBOL (const int& right);\
 
 class Array : public Exp<Array> {
   private:
@@ -379,7 +373,12 @@ struct ArrayGather {
     template<typename OutType>
     template<typename ExprT>
     BaseAssignable<OutType>::BaseAssignable(const LazyExp<ExprT>& expr) :
-            BaseAssignable<OutType>(lazy::eval<OutType>(expr.self())) {
+            BaseAssignable<OutType>(lazy::Eval<OutType>::eval(expr.self())) {
+    }
+
+    template<typename ExprT>
+    Assignable<Array>::Assignable(const LazyExp<ExprT>& expr) :
+            BaseAssignable<Array>(lazy::Eval<Array>::eval(expr.self())) {
     }
 
     template<typename ExprT>

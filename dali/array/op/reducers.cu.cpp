@@ -21,14 +21,14 @@ namespace op {
     Assignable<Array> L2_norm(const Array& x) {
         return Assignable<Array>([x](Array& out, const OPERATOR_T& operator_t) {
             Array temp = lazy::sum(lazy::square(x));
-            lazy::eval_as_array(lazy::sqrt(temp)).assign_to(out, operator_t);
+            lazy::Eval<Array>::eval(lazy::sqrt(temp)).assign_to(out, operator_t);
         });
     }
 
     Assignable<Array> L2_norm(const Array& x, const int& axis) {
         return Assignable<Array>([x, axis](Array& out, const OPERATOR_T& operator_t) {
             Array temp = lazy::sum(lazy::square(x), axis);
-            lazy::eval_as_array(lazy::sqrt(temp)).assign_to(out, operator_t);
+            lazy::Eval<Array>::eval(lazy::sqrt(temp)).assign_to(out, operator_t);
         });
     }
 

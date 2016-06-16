@@ -9,18 +9,18 @@ class Assignable;
 
 #define DALI_DECLARE_ARRAY_INTERACTION_INPLACE(SYMBOL)\
     Array& operator SYMBOL (Array&  left, const Assignable<Array>& right);\
-    Array& operator SYMBOL (Array&& left, const Assignable<Array>& right);\
+    void operator SYMBOL (Array&& left, const Assignable<Array>& right);\
     Array& operator SYMBOL (Array&  left, const Array& right);\
-    Array& operator SYMBOL (Array&& left, const Array& right);\
+    void operator SYMBOL (Array&& left, const Array& right);\
 
 
 #define DALI_DECLARE_SCALAR_INTERACTION_INPLACE(SYMBOL, CONTAINER)\
     CONTAINER& operator SYMBOL (CONTAINER&  left, const double right);\
-    CONTAINER& operator SYMBOL (CONTAINER&& left, const double right);\
+    void operator SYMBOL (CONTAINER&& left, const double right);\
     CONTAINER& operator SYMBOL (CONTAINER&  left, const float right);\
-    CONTAINER& operator SYMBOL (CONTAINER&& left, const float right);\
+    void operator SYMBOL (CONTAINER&& left, const float right);\
     CONTAINER& operator SYMBOL (CONTAINER&  left, const int right);\
-    CONTAINER& operator SYMBOL (CONTAINER&& left, const int right);\
+    void operator SYMBOL (CONTAINER&& left, const int right);\
 
 // Array
 
@@ -39,11 +39,11 @@ DALI_DECLARE_SCALAR_INTERACTION_INPLACE(/=, Array)
 
 #define DALI_DECLARE_CONTAINER_INTERACTION_INPLACE(SYMBOL, CONTAINER)\
     CONTAINER& operator SYMBOL (CONTAINER&  left, const Assignable<Array>& right);\
-    CONTAINER& operator SYMBOL (CONTAINER&& left, const Assignable<Array>& right);\
+    void operator SYMBOL (CONTAINER&& left, const Assignable<Array>& right);\
     CONTAINER& operator SYMBOL (CONTAINER&  left, const Array& right);\
-    CONTAINER& operator SYMBOL (CONTAINER&& left, const Array& right);\
+    void operator SYMBOL (CONTAINER&& left, const Array& right);\
     CONTAINER& operator SYMBOL (CONTAINER&  left, const Assignable<CONTAINER>& right);\
-    CONTAINER& operator SYMBOL (CONTAINER&& left, const Assignable<CONTAINER>& right);\
+    void operator SYMBOL (CONTAINER&& left, const Assignable<CONTAINER>& right);\
 
 DALI_DECLARE_CONTAINER_INTERACTION_INPLACE(+=, ArrayGather)
 DALI_DECLARE_CONTAINER_INTERACTION_INPLACE(-=, ArrayGather)

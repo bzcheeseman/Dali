@@ -17,18 +17,17 @@
     Array& operator SYMBOL (Array& left, const Array& right) {\
         return left = OPNAME (left, right);\
     } \
-    Array& operator SYMBOL (Array&& left, const Array& right) {\
+    void operator SYMBOL (Array&& left, const Array& right) {\
         Array left_instance = left;\
-        return left_instance = OPNAME (left_instance, right);\
+        left_instance = OPNAME (left_instance, right);\
     } \
     Array& operator SYMBOL (Array& left, const Assignable<Array>& assignable) {\
         assignable.assign_to(left, OPERATOR_NAME);\
         return left;\
     }\
-    Array& operator SYMBOL (Array&& left, const Assignable<Array>& assignable) {\
+    void operator SYMBOL (Array&& left, const Assignable<Array>& assignable) {\
         Array left_instance = left;\
         assignable.assign_to(left_instance, OPERATOR_NAME);\
-        return left_instance;\
     }\
 
 
@@ -36,23 +35,23 @@
     Array& operator SYMBOL (Array& left, const double right) {\
         return left = OPNAME (left, right);\
     }\
-    Array& operator SYMBOL (Array&& left, const double right) {\
+    void operator SYMBOL (Array&& left, const double right) {\
         Array left_instance = left;\
-        return left_instance = OPNAME (left_instance, right);\
+        left_instance = OPNAME (left_instance, right);\
     }\
     Array& operator SYMBOL (Array& left, const float right) {\
         return left = OPNAME (left, right);\
     }\
-    Array& operator SYMBOL (Array&& left, const float right) {\
+    void operator SYMBOL (Array&& left, const float right) {\
         Array left_instance = left;\
-        return left_instance = OPNAME (left_instance, right);\
+        left_instance = OPNAME (left_instance, right);\
     }\
     Array& operator SYMBOL (Array& left, const int right) {\
         return left = OPNAME (left, right);\
     }\
-    Array& operator SYMBOL (Array&& left, const int right) {\
+    void operator SYMBOL (Array&& left, const int right) {\
         Array left_instance = left;\
-        return left_instance = OPNAME (left_instance, right);\
+        left_instance = OPNAME (left_instance, right);\
     }\
 
 
@@ -66,17 +65,15 @@ Array& operator<<=(Array& left, const Array& right) {
     return left;
 }
 
-Array& operator<<=(Array&& left, const Array& right) {
+void operator<<=(Array&& left, const Array& right) {
     Array left_instance = left;
     left_instance <<= op::identity(right);
-    return left_instance;
 }
 
 
 Array& operator<<=(Array& left, const Assignable<Array>& assignable) {
-    Array left_instance = left;
-    assignable.assign_to(left_instance, OPERATOR_T_LSE);
-    return left_instance;
+    assignable.assign_to(left, OPERATOR_T_LSE);
+    return left;
 }
 
 DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::scalar_sub, -=);
@@ -93,29 +90,28 @@ DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::scalar_div, /=);
     ArrayGather& operator OPERATOR (ArrayGather& left, const Array& assignable) {\
         return left OPERATOR (Assignable<ArrayGather>)lazy::identity(assignable);\
     } \
-    ArrayGather& operator OPERATOR (ArrayGather&& left, const Array& assignable) {\
+    void operator OPERATOR (ArrayGather&& left, const Array& assignable) {\
         ArrayGather left_instance = left;\
-        return left_instance OPERATOR (Assignable<ArrayGather>)lazy::identity(assignable);\
+        left_instance OPERATOR (Assignable<ArrayGather>)lazy::identity(assignable);\
     } \
     ArrayGather& operator OPERATOR (ArrayGather& left, const Assignable<Array>& assignable) {\
         Array self_as_array = left;\
         self_as_array OPERATOR assignable;\
         return (left = self_as_array);\
     }\
-    ArrayGather& operator OPERATOR (ArrayGather&& left, const Assignable<Array>& assignable) {\
+    void operator OPERATOR (ArrayGather&& left, const Assignable<Array>& assignable) {\
         ArrayGather left_instance = left;\
         Array self_as_array = left_instance;\
         self_as_array OPERATOR assignable;\
-        return (left = self_as_array);\
+        left = self_as_array;\
     }\
     ArrayGather& operator OPERATOR(ArrayGather& left, const Assignable<ArrayGather>& assignable) {\
         assignable.assign_to(left, OPERATOR_NAME);\
         return left;\
     }\
-    ArrayGather& operator OPERATOR(ArrayGather&& left, const Assignable<ArrayGather>& assignable) {\
+    void operator OPERATOR(ArrayGather&& left, const Assignable<ArrayGather>& assignable) {\
         ArrayGather left_instance = left;\
         assignable.assign_to(left_instance, OPERATOR_NAME);\
-        return left_instance;\
     }\
 
 
@@ -123,23 +119,23 @@ DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::scalar_div, /=);
     ArrayGather& operator SYMBOL (ArrayGather& left, const double right) {\
         return left = OPNAME (lazy::take(left.source, left.indices), right);\
     }\
-    ArrayGather& operator SYMBOL (ArrayGather&& left, const double right) {\
+    void operator SYMBOL (ArrayGather&& left, const double right) {\
         ArrayGather left_instance = left;\
-        return left_instance = OPNAME (lazy::take(left_instance.source, left_instance.indices), right);\
+        left_instance = OPNAME (lazy::take(left_instance.source, left_instance.indices), right);\
     }\
     ArrayGather& operator SYMBOL (ArrayGather& left, const float right) {\
         return left = OPNAME (lazy::take(left.source, left.indices), right);\
     }\
-    ArrayGather& operator SYMBOL (ArrayGather&& left, const float right) {\
+    void operator SYMBOL (ArrayGather&& left, const float right) {\
         ArrayGather left_instance = left;\
-        return left_instance = OPNAME (lazy::take(left_instance.source, left_instance.indices), right);\
+        left_instance = OPNAME (lazy::take(left_instance.source, left_instance.indices), right);\
     }\
     ArrayGather& operator SYMBOL (ArrayGather& left, const int right) {\
         return left = OPNAME (lazy::take(left.source, left.indices), right);\
     }\
-    ArrayGather& operator SYMBOL (ArrayGather&& left, const int right) {\
+    void operator SYMBOL (ArrayGather&& left, const int right) {\
         ArrayGather left_instance = left;\
-        return left_instance = OPNAME (lazy::take(left_instance.source, left_instance.indices), right);\
+        left_instance = OPNAME (lazy::take(left_instance.source, left_instance.indices), right);\
     }\
 
 DALI_DEFINE_ARRAYGATHER_INTERACTION_INPLACE(+=, OPERATOR_T_ADD);

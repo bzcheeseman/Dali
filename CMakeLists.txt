@@ -334,6 +334,7 @@ target_link_libraries(dali ${ZLIB_LIBRARIES}
                            ${MKL_LIBRARIES}
                            ${CMAKE_THREAD_LIBS_INIT}
                            ${OpenBLAS_LIB}
+                           dl
                            ${BACKWARD_LIBRARIES})
 
 if (GPERFTOOLS_FOUND)

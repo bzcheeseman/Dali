@@ -14,15 +14,27 @@ if( UNIX AND NOT APPLE )
                             OUTPUT_STRIP_TRAILING_WHITESPACE)
 endif(UNIX AND NOT APPLE)
 
-if ((WITH_PRETTY_STACKTRACES) OR ($ENV{DALI_PRETTY_STACKTRACES}))
-    if (APPLE)
-        message(WARNING "Pretty stack traces are not yet available on Mac due to incompatibility with 'backward-cpp'.")
-        set(WITH_PRETTY_STACKTRACES FALSE)
-    else(APPLE)
-        set(WITH_PRETTY_STACKTRACES TRUE)
-    endif(APPLE)
+
+if (NOT DEFINED DALI_STACKTRACES)
+    if (DEFINED ENV{DALI_STACKTRACES})
+        set(DALI_STACKTRACES $ENV{DALI_STACKTRACES})
+    else()
+        set(DALI_STACKTRACES "none")
+    endif()
+endif()
+
+set (DALI_STACKTRACES_VALUES "none;backward-cpp;apple")
+
+list (FIND DALI_STACKTRACES_VALUES "${DALI_STACKTRACES}" DALI_STACKTRACES_VALUE_FOUND)
+if (DALI_STACKTRACES_VALUE_FOUND EQUAL -1)
+    message(FATAL_ERROR "DALI_STACKTRACES must be one of ${DALI_STACKTRACES_VALUES} (was: ${DALI_STACKTRACES})")
+endif()
+
+
+if (DALI_STACKTRACES STREQUAL "apple")
+    set(DALI_APPLE_STACKTRACES 1)
 else()
-    set(WITH_PRETTY_STACKTRACES FALSE)
+    set(DALI_APPLE_STACKTRACES 0)
 endif()
 
 ################################################################################
@@ -60,9 +72,9 @@ endif(CMAKE_BUILD_TYPE MATCHES "debug")
 if (CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE "default")
 endif (CMAKE_BUILD_TYPE STREQUAL "")
-message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-if (WITH_PRETTY_STACKTRACES)
+if (NOT DALI_STACKTRACES STREQUAL "none")
     message(STATUS "compiling with pretty stacktraces")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 endif()
@@ -120,7 +132,7 @@ if (GPERFTOOLS_FOUND)
     include_directories(${GPERFTOOLS_INCLUDE_DIR})
 endif (GPERFTOOLS_FOUND)
 
-if (WITH_PRETTY_STACKTRACES)
+if (DALI_STACKTRACES STREQUAL "backward-cpp")
     # add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/backward-cpp)
     include(${PROJECT_SOURCE_DIR}/third_party/backward-cpp/BackwardMacros.cmake)
 endif()
@@ -289,7 +301,7 @@ foreach(SourceDir ${DALI_SOURCE_DIRS})
     endforeach()
 endforeach()
 
-if (WITH_PRETTY_STACKTRACES)
+if (DALI_STACKTRACES STREQUAL "backward-cpp")
     list(APPEND DaliSources "${PROJECT_SOURCE_DIR}/third_party/backward-cpp/backward.cpp")
     include_directories("${PROJECT_SOURCE_DIR}/third_party/backward-cpp")
     foreach(def ${BACKWARD_DEFINITIONS})
@@ -334,8 +346,9 @@ target_link_libraries(dali ${ZLIB_LIBRARIES}
                            ${MKL_LIBRARIES}
                            ${CMAKE_THREAD_LIBS_INIT}
                            ${OpenBLAS_LIB}
-                           dl
                            ${BACKWARD_LIBRARIES})
+                           ${BACKWARD_LIBRARIES}
+                           dl)
 
 if (GPERFTOOLS_FOUND)
     target_link_libraries(dali ${GPERFTOOLS_LIBRARIES})

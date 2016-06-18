@@ -171,6 +171,16 @@ TEST(ArrayReshapeTests, gather_assign_lazy) {
     EXPECT_EQ(7,  (int)x[3][1]);
 }
 
+TEST(ArrayReshapeTests, DISABLED_gather_assign_basic) {
+    auto x = Array::zeros({4}, DTYPE_INT32);
+    auto indices = Array::ones({2, 3}, DTYPE_INT32);
+
+    Array subset;
+
+    subset = x[indices];
+    subset.print();
+}
+
 TEST(ArrayReshapeTests, DISABLED_gather_assign_advanced) {
     auto x = Array::zeros({2, 2, 4, 2}, DTYPE_INT32);
     x = initializer::arange();

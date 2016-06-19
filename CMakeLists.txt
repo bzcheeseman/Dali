@@ -57,7 +57,7 @@ else(APPLE)
     set (MAYBE_SHARED "SHARED")
 endif(APPLE)
 
-set(ENABLED_WARNINGS "-Wreturn-type")
+set(ENABLED_WARNINGS "-Wreturn-type -Wno-undefined-bool-conversion")
 
 if(CMAKE_BUILD_TYPE MATCHES "debug")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${ENABLED_WARNINGS} -g -fPIC")
@@ -173,6 +173,9 @@ if (WITH_CUDA)
         string(REPLACE ":" ";" DALI_GPU_ARCH_LIST $ENV{DALI_GPU_ARCH})
         list(APPEND SUPPORTED_JIT_PRECOMPILATIONS ${DALI_GPU_ARCH_LIST})
     else()
+        # have some future proofing (arch=compute_xx,code=compute_xx ensures forward compatibility)
+        LIST(APPEND CUDA_NVCC_FLAGS -gencode arch=compute_20,code=compute_20)
+        # also generate these architectures:
         list(APPEND SUPPORTED_JIT_PRECOMPILATIONS "35" "52" "53")
         if (${CUDA_VERSION} VERSION_GREATER "8.0" OR ${CUDA_VERSION} VERSION_EQUAL "8.0")
             list(APPEND SUPPORTED_JIT_PRECOMPILATIONS "61")

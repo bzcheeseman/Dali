@@ -346,7 +346,6 @@ target_link_libraries(dali ${ZLIB_LIBRARIES}
                            ${MKL_LIBRARIES}
                            ${CMAKE_THREAD_LIBS_INIT}
                            ${OpenBLAS_LIB}
-                           ${BACKWARD_LIBRARIES})
                            ${BACKWARD_LIBRARIES}
                            dl)
 

@@ -61,6 +61,12 @@ namespace cudnn {
                       std::shared_ptr<wrapper::Filters> filters,
                       std::shared_ptr<wrapper::Convolution> conv,
                       const wrapper::Operator& update_operator);
+
+    void cudnn_conv2d_bwd_data(std::shared_ptr<wrapper::Tensor>  in_dw,
+                               std::shared_ptr<wrapper::Filters> filters,
+                               std::shared_ptr<wrapper::Tensor>  out_dw,
+                               std::shared_ptr<wrapper::Convolution> conv,
+                               const wrapper::Operator& update_operator);
 }  // namespace cudnn
 
 #endif  // DALI_ARRAY_OP_CUDNN_UTILS_H

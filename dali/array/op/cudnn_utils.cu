@@ -6,6 +6,11 @@
 //                              UTILS                                        //
 ///////////////////////////////////////////////////////////////////////////////
 
+void cudnn_check_result(cudnnStatus_t status, const std::string& msg) {
+    ASSERT2(status == CUDNN_STATUS_SUCCESS,
+            utils::MS() << msg << ", cudnn error: " << cudnnGetErrorString(status));
+}
+
 template<typename T>
 struct TensorWrapperApi {
 };
@@ -13,11 +18,14 @@ struct TensorWrapperApi {
 template<>
 struct TensorWrapperApi<cudnnTensorDescriptor_t> {
     static void create(cudnnTensorDescriptor_t* doodle) {
-        cudnnCreateTensorDescriptor(doodle);
+        auto result = cudnnCreateTensorDescriptor(doodle);
+        cudnn_check_result(result, "when creating tensor descriptor");
     }
 
     static void destroy(cudnnTensorDescriptor_t doodle) {
-        cudnnDestroyTensorDescriptor(doodle);
+        auto result = cudnnDestroyTensorDescriptor(doodle);
+        cudnn_check_result(result, "when destroying tensor descriptor");
+
     }
 
     static void set(cudnnTensorDescriptor_t desc,
@@ -27,7 +35,7 @@ struct TensorWrapperApi<cudnnTensorDescriptor_t> {
                     int shape2,
                     int shape3,
                     int shape4) {
-        cudnnSetTensor4dDescriptor(
+        auto result = cudnnSetTensor4dDescriptor(
             desc,
             tensor_format,
             dtype,
@@ -35,17 +43,21 @@ struct TensorWrapperApi<cudnnTensorDescriptor_t> {
             shape2,
             shape3,
             shape4);
+        cudnn_check_result(result, "when setting tensor descriptor");
     }
 };
 
 template<>
 struct TensorWrapperApi<cudnnFilterDescriptor_t> {
     static void create(cudnnFilterDescriptor_t* doodle) {
-        cudnnCreateFilterDescriptor(doodle);
+        auto result = cudnnCreateFilterDescriptor(doodle);
+        cudnn_check_result(result, "when creating filter descriptor");
+
     }
 
     static void destroy(cudnnFilterDescriptor_t doodle) {
-        cudnnDestroyFilterDescriptor(doodle);
+        auto result = cudnnDestroyFilterDescriptor(doodle);
+        cudnn_check_result(result, "when destroying filter descriptor");
     }
 
     static void set(cudnnFilterDescriptor_t desc,
@@ -55,7 +67,7 @@ struct TensorWrapperApi<cudnnFilterDescriptor_t> {
                     int shape2,
                     int shape3,
                     int shape4) {
-        cudnnSetFilter4dDescriptor(
+        auto result = cudnnSetFilter4dDescriptor(
             desc,
             dtype,
             tensor_format,
@@ -63,6 +75,7 @@ struct TensorWrapperApi<cudnnFilterDescriptor_t> {
             shape2,
             shape3,
             shape4);
+        cudnn_check_result(result, "when setting filter descriptor");
     }
 };
 
@@ -138,8 +151,9 @@ namespace cudnn {
 
 
         Convolution::Convolution(int padding_h, int padding_w, int stride_h, int stride_w) {
-            cudnnCreateConvolutionDescriptor(&description);
-            cudnnSetConvolution2dDescriptor(
+            auto result = cudnnCreateConvolutionDescriptor(&description);
+            cudnn_check_result(result, "when creating convolution descriptor");
+            result = cudnnSetConvolution2dDescriptor(
                 description,
                 /*pad_h=*/   padding_h,
                 /*pad_w=*/   padding_w,
@@ -150,10 +164,12 @@ namespace cudnn {
                 CUDNN_CROSS_CORRELATION // Theano issue author claims its twice as fast:
                                         // https://github.com/Theano/Theano/issues/3632
             );
+            cudnn_check_result(result, "when setting convolution descriptor");
         }
 
         Convolution::~Convolution() {
-            cudnnDestroyConvolutionDescriptor(description);
+            auto result = cudnnDestroyConvolutionDescriptor(description);
+            cudnn_check_result(result, "when destroying convolution descriptor");
         }
 
 
@@ -207,7 +223,7 @@ namespace cudnn {
         void* working_memory    = NULL;
         int working_memory_size = 0;
 
-        cudnnConvolutionForward(
+        auto result = cudnnConvolutionForward(
             *get_handle(),
             update_operator.alpha_ptr,
             in->description,
@@ -222,6 +238,38 @@ namespace cudnn {
             out->description,
             out->data
         );
+        cudnn_check_result(result, "when setting convolution descriptor");
+
+    }
+
+    void cudnn_conv2d_bwd_data(std::shared_ptr<wrapper::Tensor>  in_dw,
+                               std::shared_ptr<wrapper::Filters> filters,
+                               std::shared_ptr<wrapper::Tensor>  out_dw,
+                               std::shared_ptr<wrapper::Convolution> conv,
+                               const wrapper::Operator& update_operator) {
+        // TODO(szymon): automatically choose best algorithm.
+        cudnnConvolutionBwdDataAlgo_t algo =
+                CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
+        void* working_memory    = NULL;
+        int working_memory_size = 0;
+
+        auto result = cudnnConvolutionBackwardData(
+            *get_handle(),
+            update_operator.alpha_ptr,
+            filters->description,
+            filters->data,
+            out_dw->description,
+            out_dw->data,
+            conv->description,
+            algo,
+            working_memory,
+            working_memory_size,
+            update_operator.beta_ptr,
+            in_dw->description,
+            in_dw->data
+        );
+        cudnn_check_result(result, "when computing convolution forward");
+
     }
 
 }  // namespace cudnn

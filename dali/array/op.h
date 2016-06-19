@@ -11,6 +11,7 @@
 #include "dali/array/op/initializer.h"
 #include "dali/array/op/unary.h"
 #include "dali/array/op/softmax.h"
+#include "dali/array/op/spatial.h"
 #include "dali/array/op/unary_scalar.h"
 #include "dali/array/op_overload/common.h"
 #include "dali/utils/print_utils.h"

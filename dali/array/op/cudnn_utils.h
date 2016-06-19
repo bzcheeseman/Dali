@@ -6,42 +6,61 @@
 #include <vector>
 
 #include "dali/array/function/typed_array.h"
+#include "dali/array/function/operator.h"
 #include "dali/array/memory/device.h"
 
 
-template<typename Descriptor>
-struct DaliCudnnWrapper {
-    void* data;
-    Descriptor description;
+namespace cudnn {
+    namespace wrapper {
+        template<typename Descriptor>
+        struct BaseTensor {
+            void* data;
+            Descriptor description;
 
-    template<typename T>
-    DaliCudnnWrapper(TypedArray<memory::DEVICE_T_GPU,T> tensor,
-                     std::string data_format,
-                     memory::AM access_mode=memory::AM_READONLY);
+            template<typename T>
+            BaseTensor(TypedArray<memory::DEVICE_T_GPU,T> tensor,
+                             std::string data_format,
+                             memory::AM access_mode=memory::AM_READONLY);
 
-    ~DaliCudnnWrapper();
-};
+            ~BaseTensor();
+        };
 
 
-struct DaliCudnnTensor : public DaliCudnnWrapper<cudnnTensorDescriptor_t> {
-    using DaliCudnnWrapper<cudnnTensorDescriptor_t>::DaliCudnnWrapper;
-};
+        struct Tensor : public BaseTensor<cudnnTensorDescriptor_t> {
+            using BaseTensor<cudnnTensorDescriptor_t>::BaseTensor;
+        };
 
-struct DaliCudnnFilters : public DaliCudnnWrapper<cudnnFilterDescriptor_t> {
-    using DaliCudnnWrapper<cudnnFilterDescriptor_t>::DaliCudnnWrapper;
-};
+        struct Filters : public BaseTensor<cudnnFilterDescriptor_t> {
+            using BaseTensor<cudnnFilterDescriptor_t>::BaseTensor;
+        };
 
-namespace cudnn_utils {
-   void cudnn_conv2d(std::shared_ptr<DaliCudnnTensor>  out,
-                     std::shared_ptr<DaliCudnnTensor>  in,
-                     std::shared_ptr<DaliCudnnFilters> filters,
-                     int stride_w,
-                     int stride_h,
-                     int padding_h,
-                     int padding_w,
-                     double alpha,
-                     double beta,
-                     DType dtype);
-}
+        struct Convolution {
+            cudnnConvolutionDescriptor_t description;
+
+            Convolution(int padding_h, int padding_w, int stride_h, int stride_w);
+
+            ~Convolution();
+        };
+
+        struct Operator {
+          private:
+            float alpha_f;
+            float beta_f;
+            double alpha_d;
+            double beta_d;
+          public:
+            void* alpha_ptr;
+            void* beta_ptr;
+
+            Operator(OPERATOR_T operator_type, DType dtype);
+        };
+    }
+
+    void cudnn_conv2d(std::shared_ptr<wrapper::Tensor>  out,
+                      std::shared_ptr<wrapper::Tensor>  in,
+                      std::shared_ptr<wrapper::Filters> filters,
+                      std::shared_ptr<wrapper::Convolution> conv,
+                      const wrapper::Operator& update_operator);
+}  // namespace cudnn
 
 #endif  // DALI_ARRAY_OP_CUDNN_UTILS_H

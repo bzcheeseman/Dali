@@ -24,20 +24,6 @@ int int_ceil(int numerator, int denominator) {
     return (numerator + denominator - 1) / denominator;
 }
 
-std::tuple<double,double> operator_to_alphabeta(OPERATOR_T operator_t) {
-    switch (operator_t) {
-        case OPERATOR_T_EQL:
-            return std::tuple<double, double>(1.0, 0.0);
-        case OPERATOR_T_ADD:
-            return std::tuple<double, double>(1.0, 1.0);
-        case OPERATOR_T_SUB:
-            return std::tuple<double, double>(-1.0, 1.0);
-        default:
-            ASSERT2(false, "This function only supports =,+,-");
-            return std::tuple<double, double>(0.0, 0.0);
-    }
-
-}
 
 struct Conv2dFunction : public Function<Conv2dFunction,
                                         Array,
@@ -129,10 +115,6 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                     int stride_w,
                     op::PADDING_T padding,
                     std::string data_format) {
-
-        double alpha, beta;
-        std::tie(alpha, beta) = operator_to_alphabeta(operator_t);
-
         int h_dim, w_dim;
         if (data_format == "NCHW") {
             h_dim = 2;
@@ -170,17 +152,12 @@ struct Conv2dFunction : public Function<Conv2dFunction,
             out_access_mode = memory::AM_MUTABLE;
         }
 
-        cudnn_utils::cudnn_conv2d(
-                std::make_shared<DaliCudnnTensor>(out, data_format, out_access_mode),
-                std::make_shared<DaliCudnnTensor>(input, data_format),
-                std::make_shared<DaliCudnnFilters>(filters, data_format),
-                stride_w,
-                stride_h,
-                padding_h,
-                padding_w,
-                alpha,
-                beta,
-                template_to_dtype<T>()
+        cudnn::cudnn_conv2d(
+                std::make_shared<cudnn::wrapper::Tensor>(out, data_format, out_access_mode),
+                std::make_shared<cudnn::wrapper::Tensor>(input, data_format),
+                std::make_shared<cudnn::wrapper::Filters>(filters, data_format),
+                std::make_shared<cudnn::wrapper::Convolution>(padding_h, padding_w, stride_w, stride_h),
+                cudnn::wrapper::Operator(operator_t, template_to_dtype<T>())
         );
     }
 

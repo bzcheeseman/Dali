@@ -82,5 +82,18 @@ namespace tensor_ops {
         return Array::allclose(left.w, right.w, atolerance);
     }
 
+    Tensor astype(const Tensor& t, const DType& dtype) {
+        if (dtype == t.dtype()) return t;
+
+        Tensor out(op::astype(t.w, dtype));
+        out.constant = t.constant || dtype == DTYPE_INT32;
+
+        if (graph::backprop_enabled() && !out.constant)
+            graph::emplace_back([t, out]() mutable {
+                MAYBE_GRAD(t) <<= out.dw;
+            });
+        return out;
+    }
+
 
 }  // namespace tensor_ops

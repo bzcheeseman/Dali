@@ -99,6 +99,7 @@ class Tensor {
 
         const std::vector<int>& shape() const;
         DType dtype() const;
+        Tensor astype(const DType& dtype) const;
         memory::Device preferred_device() const;
 
         int ndim() const;

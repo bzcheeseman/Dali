@@ -118,11 +118,13 @@ DType Tensor::dtype() const {
     return w.dtype();
 }
 
+Tensor Tensor::astype(const DType& dtype) const {
+    return tensor_ops::astype(*this, dtype);
+}
 
 memory::Device Tensor::preferred_device() const {
     return w.preferred_device();
 }
-
 
 int Tensor::ndim() const {
     return w.ndim();

@@ -43,7 +43,16 @@ TEST(ArraySpatialTests, conv_backward) {
         out_dw,
         /*stride_h=*/2,
         /*stride_w=*/2,
-        out.shape(),
+        X.shape(),
+        PADDING_T_VALID,
+        "NCHW");
+
+    Array W_dw = conv2d_backward_filters(
+        X,
+        out_dw,
+        /*stride_h=*/2,
+        /*stride_w=*/2,
+        W.shape(),
         PADDING_T_VALID,
         "NCHW");
 

@@ -222,8 +222,8 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
                                         std::vector<int>,
                                         op::PADDING_T,
                                         std::string> {
-    static std::vector<int> deduce_output_bshape(const Array& input,
-                                                 const Array& filters,
+    static std::vector<int> deduce_output_bshape(const Array& filters,
+                                                 const Array& out_dw,
                                                  int stride_h,
                                                  int stride_w,
                                                  const std::vector<int>& result_shape,
@@ -237,9 +237,9 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
 
 
     template<OPERATOR_T operator_t, typename T>
-    void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out,
-                    TypedArray<memory::DEVICE_T_CPU, T> input,
+    void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> in_dw,
                     TypedArray<memory::DEVICE_T_CPU, T> filters,
+                    TypedArray<memory::DEVICE_T_CPU, T> out_dw,
                     int stride_h,
                     int stride_w,
                     const std::vector<int>& result_shape,
@@ -292,10 +292,97 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
     }
 
 #endif
-
-
-
 };
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+//                    Conv2dBwdFiltersFunction                               //
+///////////////////////////////////////////////////////////////////////////////
+
+struct Conv2dBwdFiltersFunction : public Function<Conv2dBwdFiltersFunction,
+                                        Array,
+                                        Array,
+                                        Array,
+                                        int,
+                                        int,
+                                        std::vector<int>,
+                                        op::PADDING_T,
+                                        std::string> {
+    static std::vector<int> deduce_output_bshape(const Array& input,
+                                                 const Array& out_dw,
+                                                 int stride_h,
+                                                 int stride_w,
+                                                 const std::vector<int>& result_shape,
+                                                 op::PADDING_T padding,
+                                                 const std::string& data_format) {
+        // TODO(szymon): potentially some checks are
+        //               should be performed here.
+        //               idea: use convforward bshape
+        //               computation and
+        //               see if you get input back out.
+        return result_shape;
+    }
+
+
+    template<OPERATOR_T operator_t, typename T>
+    void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> filters_dw,
+                    TypedArray<memory::DEVICE_T_CPU, T> input,
+                    TypedArray<memory::DEVICE_T_CPU, T> out_dw,
+                    int stride_h,
+                    int stride_w,
+                    const std::vector<int>& result_shape,
+                    op::PADDING_T padding,
+                    const std::string& data_format) {
+        throw std::runtime_error("not implemented!");
+    }
+
+#ifdef DALI_USE_CUDA
+    template<OPERATOR_T operator_t>
+    void typed_eval(TypedArray<memory::DEVICE_T_GPU, int> filters_dw,
+                    TypedArray<memory::DEVICE_T_GPU, int> input,
+                    TypedArray<memory::DEVICE_T_GPU, int> out_dw,
+                    int stride_h,
+                    int stride_w,
+                    const std::vector<int>& result_shape,
+                    op::PADDING_T padding,
+                    const std::string& data_format) {
+        ASSERT2(false, "integer convolution is not implemented for GPU.");
+    }
+
+    template<OPERATOR_T operator_t, typename T>
+    void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> filters_dw,
+                    TypedArray<memory::DEVICE_T_GPU, T> input,
+                    TypedArray<memory::DEVICE_T_GPU, T> out_dw,
+                    int stride_h,
+                    int stride_w,
+                    const std::vector<int>& result_shape,
+                    op::PADDING_T padding,
+                    std::string data_format) {
+
+        int padding_h, padding_w;
+        std::tie(padding_h, padding_w) = convolution_padding(input.array.shape(),
+                                                             filters_dw.array.shape(),
+                                                             out_dw.array.shape(),
+                                                             stride_h,
+                                                             stride_w,
+                                                             data_format,
+                                                             padding);
+
+        auto out_access_mode = operator_to_output_am(operator_t);
+
+        cudnn::cudnn_conv2d_bwd_filters(
+                std::make_shared<cudnn::wrapper::Filters>(filters_dw, data_format, out_access_mode),
+                std::make_shared<cudnn::wrapper::Tensor>(input, data_format),
+                std::make_shared<cudnn::wrapper::Tensor>(out_dw, data_format),
+                std::make_shared<cudnn::wrapper::Convolution>(padding_h, padding_w, stride_w, stride_h),
+                cudnn::wrapper::Operator(operator_t, template_to_dtype<T>())
+        );
+    }
+
+#endif
+};
+
 
 namespace op {
     Assignable<Array> conv2d(const Array& input,
@@ -328,5 +415,23 @@ namespace op {
                                            padding,
                                            data_format);
 
+    }
+
+
+    Assignable<Array> conv2d_backward_filters(
+                     const Array& input,
+                     const Array& out_dw,
+                     int stride_h,
+                     int stride_w,
+                     const std::vector<int>& result_shape,
+                     PADDING_T padding,
+                     const std::string& data_format) {
+        return Conv2dBwdFiltersFunction::run(input,
+                                             out_dw,
+                                             stride_h,
+                                             stride_w,
+                                             result_shape,
+                                             padding,
+                                             data_format);
     }
 };  // namespace op

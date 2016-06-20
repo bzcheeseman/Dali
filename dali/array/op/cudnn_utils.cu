@@ -216,7 +216,6 @@ namespace cudnn {
                       std::shared_ptr<wrapper::Filters> filters,
                       std::shared_ptr<wrapper::Convolution> conv,
                       const wrapper::Operator& update_operator) {
-
         // TODO(szymon): automatically choose best algorithm.
         cudnnConvolutionFwdAlgo_t algo =
                 CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
@@ -269,7 +268,36 @@ namespace cudnn {
             in_dw->data
         );
         cudnn_check_result(result, "when computing convolution forward");
+    }
 
+
+    void cudnn_conv2d_bwd_filters(std::shared_ptr<wrapper::Filters> filters_dw,
+                                  std::shared_ptr<wrapper::Tensor>  input,
+                                  std::shared_ptr<wrapper::Tensor>  out_dw,
+                                  std::shared_ptr<wrapper::Convolution> conv,
+                                  const wrapper::Operator& update_operator) {
+        // TODO(szymon): automatically choose best algorithm.
+        cudnnConvolutionBwdFilterAlgo_t algo =
+                CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
+        void* working_memory    = NULL;
+        int working_memory_size = 0;
+
+        auto result = cudnnConvolutionBackwardFilter(
+            *get_handle(),
+            update_operator.alpha_ptr,
+            input->description,
+            input->data,
+            out_dw->description,
+            out_dw->data,
+            conv->description,
+            algo,
+            working_memory,
+            working_memory_size,
+            update_operator.beta_ptr,
+            filters_dw->description,
+            filters_dw->data
+        );
+        cudnn_check_result(result, "when computing convolution forward");
     }
 
 }  // namespace cudnn

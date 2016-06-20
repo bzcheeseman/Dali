@@ -523,6 +523,116 @@ struct Pool2dFunction : public Function<Pool2dFunction,
 
 };
 
+
+
+///////////////////////////////////////////////////////////////////////////////
+//                        Pool2dFunction                                     //
+///////////////////////////////////////////////////////////////////////////////
+
+struct Pool2dBwdFunction : public Function<Pool2dBwdFunction,
+                                           Array,
+                                           Array,
+                                           Array,
+                                           Array,
+                                           int,
+                                           int,
+                                           int,
+                                           int,
+                                           std::vector<int>,
+                                           POOLING_T,
+                                           PADDING_T,
+                                           std::string> {
+    static std::vector<int> deduce_output_bshape(
+                const Array& out,
+                const Array& out_dw,
+                const Array& in,
+                int window_h,
+                int window_w,
+                int stride_h,
+                int stride_w,
+                const std::vector<int>& result_shape,
+                POOLING_T pooling_mode,
+                PADDING_T padding,
+                const std::string& data_format) {
+        // TODO(szymon): perform validation
+        return result_shape;
+    }
+
+    template<OPERATOR_T operator_t, typename T>
+    void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> in_dw,
+                    TypedArray<memory::DEVICE_T_CPU, T> out,
+                    TypedArray<memory::DEVICE_T_CPU, T> out_dw,
+                    TypedArray<memory::DEVICE_T_CPU, T> in,
+                    int window_h,
+                    int window_w,
+                    int stride_h,
+                    int stride_w,
+                    const std::vector<int>& result_shape,
+                    POOLING_T pooling_mode,
+                    PADDING_T padding,
+                    const std::string& data_format) {
+        throw std::runtime_error("not implemented!");
+    }
+
+#ifdef DALI_USE_CUDA
+    template<OPERATOR_T operator_t>
+    void typed_eval(TypedArray<memory::DEVICE_T_GPU, int> in_dw,
+                    TypedArray<memory::DEVICE_T_GPU, int> out,
+                    TypedArray<memory::DEVICE_T_GPU, int> out_dw,
+                    TypedArray<memory::DEVICE_T_GPU, int> in,
+                    int window_h,
+                    int window_w,
+                    int stride_h,
+                    int stride_w,
+                    const std::vector<int>& result_shape,
+                    POOLING_T pooling_mode,
+                    PADDING_T padding,
+                    const std::string& data_format) {
+        ASSERT2(false, "integer convolution is not implemented for GPU.");
+    }
+
+    template<OPERATOR_T operator_t, typename T>
+    void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> in_dw,
+                    TypedArray<memory::DEVICE_T_GPU, T> out,
+                    TypedArray<memory::DEVICE_T_GPU, T> out_dw,
+                    TypedArray<memory::DEVICE_T_GPU, T> in,
+                    int window_h,
+                    int window_w,
+                    int stride_h,
+                    int stride_w,
+                    const std::vector<int>& result_shape,
+                    POOLING_T pooling_mode,
+                    PADDING_T padding,
+                    const std::string& data_format) {
+        int padding_h, padding_w;
+        std::tie(padding_h, padding_w) = convolution_padding(
+                in.array.shape(),
+                fake_padding_shape(window_h, window_w, data_format),
+                out.array.shape(),
+                stride_h,
+                stride_w,
+                data_format,
+                padding);
+
+        auto out_access_mode = operator_to_output_am(operator_t);
+
+        cudnn::pool2d_bwd(
+                std::make_shared<cudnn::wrapper::Tensor>(in_dw, data_format, out_access_mode),
+                std::make_shared<cudnn::wrapper::Tensor>(out, data_format),
+                std::make_shared<cudnn::wrapper::Tensor>(out_dw, data_format),
+                std::make_shared<cudnn::wrapper::Tensor>(in, data_format),
+                std::make_shared<cudnn::wrapper::Pooling>(window_h, window_w,
+                                                          padding_h, padding_w,
+                                                          stride_w, stride_h,
+                                                          pooling_mode),
+                cudnn::wrapper::Operator(operator_t, template_to_dtype<T>())
+        );
+    }
+
+#endif
+
+};
+
 namespace op {
     Assignable<Array> conv2d(const Array& input,
                              const Array& filters,
@@ -604,6 +714,17 @@ namespace op {
                              POOLING_T pooling_mode,
                              PADDING_T padding,
                              const std::string& data_format) {
+        return Pool2dBwdFunction::run(out,
+                                      out_dw,
+                                      in,
+                                      window_h,
+                                      window_w,
+                                      stride_h,
+                                      stride_w,
+                                      result_shape,
+                                      pooling_mode,
+                                      padding,
+                                      data_format);
 
     }
 };  // namespace op

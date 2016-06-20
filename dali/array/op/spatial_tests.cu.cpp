@@ -36,8 +36,39 @@ TEST(ArraySpatialTests, pool2d_forward) {
         POOLING_T_MAX,
         PADDING_T_VALID,
         "NCHW");
+}
+
+TEST(ArraySpatialTests, pool2d_backward) {
+    Array X = Array::arange({1, 1, 8, 8}, DTYPE_FLOAT);
+
+    Array out = pool2d(
+        X,
+        /*window_h=*/2,
+        /*window_w=*/2,
+        /*stride_h=*/2,
+        /*stride_w=*/2,
+        POOLING_T_MAX,
+        PADDING_T_VALID,
+        "NCHW");
+
+    Array out_dw = Array::ones_like(out);
+
+    Array in_dw = pool2d_backward(
+        out,
+        out_dw,
+        X,
+        /*window_h=*/2,
+        /*window_w=*/2,
+        /*stride_h=*/2,
+        /*stride_w=*/2,
+        X.shape(),
+        POOLING_T_MAX,
+        PADDING_T_VALID,
+        "NCHW"
+        );
     X.print();
     out.print();
+    in_dw.print();
 }
 
 

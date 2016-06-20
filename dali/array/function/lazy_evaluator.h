@@ -26,7 +26,7 @@ struct LazyEvaluator : public Function<LazyEvaluator<DestExpr,SrcExpr>, DestExpr
         return expr.bshape();
     }
 
-    /* Deduce output type from input type InputT>*/
+    /* Deduce output type from input type InputT*/
     template<typename InputT>
     using out_expr_t = typename decltype(
         std::declval<SrcExpr>().to_mshadow_expr(
@@ -69,21 +69,7 @@ struct LazyEvaluator : public Function<LazyEvaluator<DestExpr,SrcExpr>, DestExpr
         return ReduceOverLazyExpr<DeviceReducer>::reduce(out, expr);
     }
 
-
-
-    template<OPERATOR_T operator_t, int devT, typename T>
-    void compute(const DestExpr& out, const memory::Device& device, const SrcExpr& expr) {
-        typedef ArrayWrapper<devT,T> wrapper_t;
-        typedef out_expr_t<T> out_t;
-        typedef ArrayWrapper<devT,out_t> out_wrapper_t;
-
-        typed_eval<operator_t, devT, T, out_t>(
-            out_wrapper_t::wrap(out, device),
-            wrapper_t::wrap(expr, device)
-        );
-    }
-
-    template<OPERATOR_T operator_t, int devT, typename T, typename OutT>
+    template<OPERATOR_T operator_t, typename T, int devT, typename OutT>
     void typed_eval(TypedArray<devT,OutT> out, const SrcExpr& expr) {
         debug::lazy_evaluation_callback.activate(out.array);
 
@@ -103,7 +89,7 @@ struct LazyEvaluator : public Function<LazyEvaluator<DestExpr,SrcExpr>, DestExpr
         );
     }
 
-    template<OPERATOR_T operator_t, int devT, typename T, typename OutT, typename IndexT>
+    template<OPERATOR_T operator_t, typename T, int devT, typename OutT, typename IndexT>
     void typed_eval(TypedArraySubtensor<devT,OutT,IndexT> out, const SrcExpr& expr) {
         debug::lazy_evaluation_callback.activate(out.source.array);
 
@@ -117,7 +103,7 @@ struct LazyEvaluator : public Function<LazyEvaluator<DestExpr,SrcExpr>, DestExpr
         );
     }
 
-    template<OPERATOR_T operator_t, int devT, typename T, typename OutT, typename IndexT>
+    template<OPERATOR_T operator_t, typename T, int devT, typename OutT, typename IndexT>
     void typed_eval(TypedArrayGather<devT,OutT,IndexT> out, const SrcExpr& expr) {
         debug::lazy_evaluation_callback.activate(out.source.array);
 
@@ -130,6 +116,11 @@ struct LazyEvaluator : public Function<LazyEvaluator<DestExpr,SrcExpr>, DestExpr
             SrcExpr::collapse_leading
         );
     }
+};
+
+template<class DestExpr, class SrcExpr, typename T>
+struct FunctionReturnType<LazyEvaluator<DestExpr,SrcExpr>, T> {
+    typedef typename LazyEvaluator<DestExpr,SrcExpr>::template out_expr_t<T> value;
 };
 
 #include "dali/array/lazy/base_lazy_axis_reducer.h"

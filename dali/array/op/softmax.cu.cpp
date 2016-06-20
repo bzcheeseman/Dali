@@ -5,7 +5,7 @@
 #include "dali/array/op.h"
 #include "dali/array/mshadow_extension/kernelized_softmax.h"
 
-template<OPERATOR_T operator_t, int devT, typename T>
+template<OPERATOR_T operator_t, typename T, int devT>
 struct SoftmaxFunctionHelper {
     template <
         OPERATOR_T var_operator_t = operator_t,
@@ -79,9 +79,9 @@ struct SoftmaxFunction : public Function<SoftmaxFunction,
         return a.bshape();
     }
 
-    template<OPERATOR_T operator_t, int devT, typename T>
+    template<OPERATOR_T operator_t, typename T, int devT>
     void typed_eval(TypedArray<devT, T> out, TypedArray<devT, T> a, const int& axis, const double& temperature) {
-        SoftmaxFunctionHelper<operator_t, devT,T>::run(out, a, axis, temperature);
+        SoftmaxFunctionHelper<operator_t, T, devT>::run(out, a, axis, temperature);
     }
 };
 

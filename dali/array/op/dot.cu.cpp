@@ -14,7 +14,7 @@
 //                         Matrix multiplication                              //
 ////////////////////////////////////////////////////////////////////////////////
 
-template<OPERATOR_T operator_t, int devT, typename T>
+template<OPERATOR_T operator_t, typename T, int devT>
 struct MatrixMultiplyHelper {
     template <
         OPERATOR_T var_operator_t = operator_t,
@@ -152,13 +152,13 @@ struct MatrixMultiplyFunction : public Function<MatrixMultiplyFunction,
                         << a.shape() << " and " << b.shape());
     }
 
-    template<OPERATOR_T operator_t, int devT, typename T>
+    template<OPERATOR_T operator_t, typename T, int devT>
     void typed_eval(
             TypedArray<devT, T> out,
             TypedArray<devT, T> left,
             TypedArray<devT, T> right) {
 
-        MatrixMultiplyHelper<operator_t,devT,T>::run(out, left, right);
+        MatrixMultiplyHelper<operator_t,T,devT>::run(out, left, right);
     }
 };
 
@@ -177,7 +177,7 @@ struct ReshapedMatrixMultiplyFunction : public Function<ReshapedMatrixMultiplyFu
         return output_shape;
     }
 
-    template<OPERATOR_T operator_t, int devT, typename T>
+    template<OPERATOR_T operator_t, typename T, int devT>
     void typed_eval(
             TypedArray<devT, T> out,
             TypedArray<devT, T> a,
@@ -212,7 +212,7 @@ struct ReshapedMatrixMultiplyFunction : public Function<ReshapedMatrixMultiplyFu
 
         auto new_out = TypedArray<devT,T>(new_out_array, out.device, new_out_array.shape());
 
-        MatrixMultiplyHelper<operator_t,devT,T>::run(new_out, a, b);
+        MatrixMultiplyHelper<operator_t,T,devT>::run(new_out, a, b);
     }
 };
 

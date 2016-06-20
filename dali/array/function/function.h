@@ -195,19 +195,19 @@ struct Function {
         auto computation_dtype = Class::deduce_computation_dtype(out, args...);
 
         if (device.type() == memory::DEVICE_T_CPU && computation_dtype == DTYPE_FLOAT) {
-            Class().template compute<operator_t,memory::DEVICE_T_CPU,float>(out, device, args...);
+            Class().template compute<operator_t,float, memory::DEVICE_T_CPU>(out, device, args...);
         } else if (device.type() == memory::DEVICE_T_CPU && computation_dtype == DTYPE_DOUBLE) {
-            Class().template compute<operator_t,memory::DEVICE_T_CPU,double>(out, device, args...);
+            Class().template compute<operator_t,double, memory::DEVICE_T_CPU>(out, device, args...);
         } else if (device.type() == memory::DEVICE_T_CPU && computation_dtype == DTYPE_INT32) {
-            Class().template compute<operator_t,memory::DEVICE_T_CPU,int>(out, device, args...);
+            Class().template compute<operator_t,int, memory::DEVICE_T_CPU>(out, device, args...);
         }
 #ifdef DALI_USE_CUDA
         else if (device.type() == memory::DEVICE_T_GPU && computation_dtype == DTYPE_FLOAT) {
-            Class().template compute<operator_t,memory::DEVICE_T_GPU,float>(out, device, args...);
+            Class().template compute<operator_t,float, memory::DEVICE_T_GPU>(out, device, args...);
         } else if (device.type() == memory::DEVICE_T_GPU && computation_dtype == DTYPE_DOUBLE) {
-            Class().template compute<operator_t,memory::DEVICE_T_GPU,double>(out, device, args...);
+            Class().template compute<operator_t,double, memory::DEVICE_T_GPU>(out, device, args...);
         } else if (device.type() == memory::DEVICE_T_GPU && computation_dtype == DTYPE_INT32) {
-            Class().template compute<operator_t,memory::DEVICE_T_GPU,int>(out, device, args...);
+            Class().template compute<operator_t,int, memory::DEVICE_T_GPU>(out, device, args...);
         }
 #endif
         else {
@@ -248,12 +248,12 @@ struct Function {
         });
     }
 
-    template<OPERATOR_T operator_t, int devT, typename T>
+    template<OPERATOR_T operator_t, typename T, int devT>
     void compute(const Outtype& out, const memory::Device& device, const Args&... args) {
         typedef ArrayWrapper<devT,T> wrapper_t;
         typedef typename FunctionReturnType<Class, T>::value OutT;
         typedef ArrayWrapper<devT, OutT> wrapper_out_t;
-        ((Class*)this)->template typed_eval<operator_t>(
+        ((Class*)this)->template typed_eval<operator_t, T>(
             wrapper_out_t::wrap(out, device),
             wrapper_t::wrap(args, device)...
         );
@@ -281,5 +281,9 @@ struct NonArrayFunction : public Function<Class,Outtype*,Args...> {
 #define FAIL_ON_OTHER_CASES(OP_NAME)     Outtype_t operator()(...) { \
     throw std::string("ERROR: Unsupported types/devices for OP_NAME"); \
 }
+
+#define DALI_FUNC_ENABLE_IF_INT typename var_T=T, typename std::enable_if<std::is_same<var_T,int>::value>::type* = nullptr
+#define DALI_FUNC_DISABLE_IF_INT typename var_T=T, typename std::enable_if<!std::is_same<var_T,int>::value>::type* = nullptr
+
 
 #endif

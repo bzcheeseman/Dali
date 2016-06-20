@@ -155,7 +155,7 @@ struct GaussianInitializer : public Initializer<GaussianInitializer, const doubl
     }
 #endif
 
-    template<OPERATOR_T operator_t, typename T>
+    template<OPERATOR_T operator_t, typename T, DALI_FUNC_DISABLE_IF_INT>
     void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out, const double& mean, const double& std) {
         assert_contiguous_memory(out);
         mshadow::Random<mshadow::cpu, T> generator(utils::randint(0,999999));
@@ -169,8 +169,8 @@ struct GaussianInitializer : public Initializer<GaussianInitializer, const doubl
         }
     }
 
-    template<OPERATOR_T operator_t>
-    void typed_eval(TypedArray<memory::DEVICE_T_CPU, int> out, const double& mean, const double& std) {
+    template<OPERATOR_T operator_t, typename T, DALI_FUNC_ENABLE_IF_INT>
+    void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out, const double& mean, const double& std) {
         assert_contiguous_memory(out);
         std::normal_distribution<double> dist(mean, std);
         auto& gen = utils::random::generator();
@@ -186,6 +186,8 @@ struct GaussianInitializer : public Initializer<GaussianInitializer, const doubl
         }
     }
 };
+
+
 
 struct UniformInitializer : public Initializer<UniformInitializer, const double&, const double&> {
 
@@ -215,15 +217,15 @@ struct UniformInitializer : public Initializer<UniformInitializer, const double&
     }
 #endif
 
-    template<OPERATOR_T operator_t, typename T>
+    template<OPERATOR_T operator_t, typename T, DALI_FUNC_DISABLE_IF_INT>
     void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out, const double& lower, const double& upper) {
         mshadow::Random<mshadow::cpu, T> generator(utils::randint(0,999999));
         auto m_out = out.contiguous_d1(memory::AM_OVERWRITE);
         generator.SampleUniform(&m_out, lower, upper);
     }
 
-    template<OPERATOR_T operator_t>
-    void typed_eval(TypedArray<memory::DEVICE_T_CPU, int> out, const double& lower, const double& upper) {
+    template<OPERATOR_T operator_t, typename T, DALI_FUNC_ENABLE_IF_INT>
+    void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out, const double& lower, const double& upper) {
         assert_contiguous_memory(out);
         // uniform_int_distribution can only tak ints as per standard
         // clang is more permissive here.
@@ -277,7 +279,7 @@ struct ArangeInitializer : public Initializer<ArangeInitializer> {
 };
 
 struct BernoulliInitializer : public Initializer<BernoulliInitializer, const double&> {
-    template<OPERATOR_T operator_t, int devT, typename T>
+    template<OPERATOR_T operator_t, typename T, int devT>
     void typed_eval(TypedArray<devT,T> out, const double& prob) {
         if (operator_t == OPERATOR_T_EQL) {
             UniformInitializer().template typed_eval<operator_t>(out, 0.0, 1.0);
@@ -291,7 +293,7 @@ struct BernoulliInitializer : public Initializer<BernoulliInitializer, const dou
 };
 
 struct BernoulliNormalizedInitializer : public Initializer<BernoulliNormalizedInitializer, const double&> {
-    template<OPERATOR_T operator_t, int devT, typename T>
+    template<OPERATOR_T operator_t, typename T, int devT>
     void typed_eval(TypedArray<devT,T> out, const double& prob) {
         if (operator_t == OPERATOR_T_EQL) {
             UniformInitializer().template typed_eval<operator_t>(out, 0.0, 1.0);
@@ -310,7 +312,7 @@ struct ConstantInitializer : public Initializer<ConstantInitializer<ConstT>, con
         return template_to_dtype<ConstT>();
     }
 
-    template<OPERATOR_T operator_t, int devT, typename T>
+    template<OPERATOR_T operator_t, typename T, int devT>
     void typed_eval(TypedArray<devT,T> out, const ConstT& constant) {
         assert_dali_dtype<ConstT>();
         operator_assign<operator_t, 1>(out, (T)constant);
@@ -318,7 +320,7 @@ struct ConstantInitializer : public Initializer<ConstantInitializer<ConstT>, con
 };
 
 struct EyeInitializer : public Initializer<EyeInitializer, const double&> {
-    template<OPERATOR_T operator_t, int devT, typename T>
+    template<OPERATOR_T operator_t, typename T, int devT>
     void typed_eval(TypedArray<devT,T> out, const double& diag) {
         operator_assign<operator_t, 2>(
             out,

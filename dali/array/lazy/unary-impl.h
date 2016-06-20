@@ -13,12 +13,13 @@ struct LazyUnary : public LazyFunction<LazyUnary<Functor,ExprT>, ExprT> {
     template<int devT, typename T, int ndim>
     auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape, const lazy::EvaluationSpec<devT, T, ndim>& wrap_array) const ->
             decltype(
-                mshadow::expr::F<Functor<T>>(
-                     MshadowWrapper<devT,T,ExprT>::wrap(expr, device, output_shape, wrap_array)
-                )
+                mshadow::expr::F<Functor<typename functor_helper::UnaryExtractDType<
+                    decltype(MshadowWrapper<devT,T,ExprT>::wrap(expr, device, output_shape, wrap_array))>::value>
+                >(MshadowWrapper<devT,T,ExprT>::wrap(expr, device, output_shape, wrap_array))
             ) {
         auto left_expr = MshadowWrapper<devT,T,ExprT>::wrap(expr, device, output_shape, wrap_array);
-        return mshadow::expr::F<Functor<T>>(left_expr);
+        typedef typename functor_helper::UnaryExtractDType<decltype(left_expr)>::value functor_dtype_t;
+        return mshadow::expr::F<Functor<functor_dtype_t>>(left_expr);
     }
 };
 
@@ -37,12 +38,13 @@ struct LazyUnaryIndexed : public LazyFunction<LazyUnaryIndexed<Functor,ExprT>, E
     template<int devT, typename T, int ndim>
     auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape, const lazy::EvaluationSpec<devT, T, ndim>& wrap_array) const ->
             decltype(
-                mshadow::expr::FIndexed<Functor<T>>(
-                     MshadowWrapper<devT,T,ExprT>::wrap(expr, device, output_shape, wrap_array)
-                )
+                mshadow::expr::FIndexed<Functor<typename functor_helper::UnaryExtractDType<
+                    decltype(MshadowWrapper<devT,T,ExprT>::wrap(expr, device, output_shape, wrap_array))>::value>
+                >(MshadowWrapper<devT,T,ExprT>::wrap(expr, device, output_shape, wrap_array))
             ) {
         auto left_expr = MshadowWrapper<devT,T,ExprT>::wrap(expr, device, output_shape, wrap_array);
-        return mshadow::expr::FIndexed<Functor<T>>(left_expr);
+        typedef typename functor_helper::UnaryExtractDType<decltype(left_expr)>::value functor_dtype_t;
+        return mshadow::expr::FIndexed<Functor<functor_dtype_t>>(left_expr);
     }
 };
 

@@ -76,7 +76,7 @@ struct ConcatenateFunction : public Function<ConcatenateFunction,
         return common;
     }
 
-    template<OPERATOR_T operator_t, int devT, typename T>
+    template<OPERATOR_T operator_t, typename T, int devT>
     void compute(const Array& out,
                         const memory::Device& device,
                         const std::vector<Array>& arrays,
@@ -103,7 +103,7 @@ struct ConcatenateFunction : public Function<ConcatenateFunction,
         }
     }
 
-    template<OPERATOR_T operator_t, int devT, typename T>
+    template<OPERATOR_T operator_t, typename T, int devT>
     void typed_eval(TypedArray<devT,T> out,
                     TypedArray<devT,T> chunk) {
         operator_assign<operator_t, 1>(out, mshadow::expr::F<functor::identity<T>>(chunk.d1()));

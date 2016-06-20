@@ -19,6 +19,25 @@
 
 #define EPS 1e-6
 
+namespace functor_helper {
+    template<typename ExpT> struct ExtractDType {typedef typename ExpT::exp_dtype_t value;};
+    template<>              struct ExtractDType<float> {typedef float value;};
+    template<>              struct ExtractDType<int> {typedef int value;};
+    template<>              struct ExtractDType<double> {typedef double value;};
+
+    template<typename T1, typename T2>
+    struct BinaryExtractDType {
+        typedef typename ExtractDType<T1>::value left_t;
+        typedef typename ExtractDType<T2>::value right_t;
+        typedef decltype(left_t(0) * right_t(0)) value;
+    };
+
+    template<typename T>
+    struct UnaryExtractDType {
+        typedef typename ExtractDType<T>::value value;
+    };
+}  // namespace functor_helper
+
 namespace functor {
     template<typename T>
     struct near_equal {

@@ -84,7 +84,7 @@ namespace argsort_helper {
     }
 }
 
-template<OPERATOR_T operator_t, int devT, typename T>
+template<OPERATOR_T operator_t, typename T, int devT>
 struct ArgSortFunctionHelper {
     template <
         OPERATOR_T var_operator_t = operator_t,
@@ -176,7 +176,7 @@ struct ArgSortFunction : public Function<ArgSortFunction, Array, Array, int> {
 
     template<OPERATOR_T operator_t, typename T>
     void typed_eval(TypedArray<memory::DEVICE_T_CPU, int> out, TypedArray<memory::DEVICE_T_CPU, T> input, const int& axis) {
-        ArgSortFunctionHelper<operator_t, memory::DEVICE_T_CPU, T>::run(out, input);
+        ArgSortFunctionHelper<operator_t, T, memory::DEVICE_T_CPU>::run(out, input);
     }
 
 #ifdef DALI_USE_CUDA

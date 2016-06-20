@@ -19,7 +19,7 @@ TEST(TensorSpatialTests, conv2d) {
             return tensor_ops::conv2d(
                 X, W,
                 2, 2,
-                op::PADDING_T_VALID,
+                PADDING_T_VALID,
                 "NCHW");
         };
         ASSERT_TRUE(gradient_same(functor, {X,W}, 1e-3, 1e-2));

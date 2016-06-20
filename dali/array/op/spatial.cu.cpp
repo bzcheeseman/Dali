@@ -35,7 +35,7 @@ std::tuple<int, int> convolution_padding(
         int stride_h,
         int stride_w,
         const std::string&      data_format,
-        op::PADDING_T           padding) {
+        PADDING_T           padding) {
 
     int h_dim, w_dim;
     if (data_format == "NCHW") {
@@ -55,14 +55,14 @@ std::tuple<int, int> convolution_padding(
 
     int padding_h, padding_w;
 
-    if (padding == op::PADDING_T_SAME) {
+    if (padding == PADDING_T_SAME) {
         padding_h = (out_h - 1) * stride_h + filter_h - in_h;
         padding_w = (out_w - 1) * stride_w + filter_w - in_w;
         ASSERT2(padding_h % 2 == 0 && padding_w % 2 == 0,
                 "Conv2d odd sized padding is not supported at the moment");
         padding_h /= 2;
         padding_w /= 2;
-    } else if (padding == op::PADDING_T_VALID) {
+    } else if (padding == PADDING_T_VALID) {
         padding_h = 0;
         padding_w = 0;
     }
@@ -78,6 +78,18 @@ memory::AM operator_to_output_am(OPERATOR_T operator_t) {
     }
 }
 
+std::vector<int> fake_padding_shape(int window_h, int window_w,
+                                    const std::string& data_format) {
+    if (data_format == "NHWC") {
+        return std::vector<int>{1, window_h, window_w, 1};
+    } else if (data_format == "NCHW") {
+        return std::vector<int>{1, 1, window_h, window_w};
+    } else {
+        ASSERT2(false, "unknown data format");
+        return std::vector<int>{};
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 //                            Conv2dFunction                                 //
 ///////////////////////////////////////////////////////////////////////////////
@@ -88,13 +100,13 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                                         Array,
                                         int,
                                         int,
-                                        op::PADDING_T,
+                                        PADDING_T,
                                         std::string> {
     static std::vector<int> deduce_output_bshape(const Array& input,
                                                  const Array& filters,
                                                  int stride_h,
                                                  int stride_w,
-                                                 op::PADDING_T padding,
+                                                 PADDING_T padding,
                                                  const std::string& data_format) {
 
         ASSERT2_SHAPE_ND(input.shape(),   4, "Conv2dFunction input");
@@ -134,10 +146,10 @@ struct Conv2dFunction : public Function<Conv2dFunction,
 
         ASSERT2_EQ(in_channels, filter_in_channels, "Conv2dFunction input and filters need to have the same number of input channels");
 
-        if (padding == op::PADDING_T_SAME) {
+        if (padding == PADDING_T_SAME) {
             out_h = int_ceil(in_h, stride_h);
             out_w = int_ceil(in_w, stride_w);
-        } else if (padding == op::PADDING_T_VALID) {
+        } else if (padding == PADDING_T_VALID) {
             out_h = int_ceil(in_h - filter_h + 1, stride_h);
             out_w = int_ceil(in_w - filter_w + 1, stride_w);
         } else {
@@ -157,7 +169,7 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                     TypedArray<memory::DEVICE_T_CPU, T> filters,
                     int stride_h,
                     int stride_w,
-                    op::PADDING_T padding,
+                    PADDING_T padding,
                     const std::string& data_format) {
         throw std::runtime_error("not implemented!");
     }
@@ -169,7 +181,7 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                     TypedArray<memory::DEVICE_T_GPU, int> filters,
                     int stride_h,
                     int stride_w,
-                    op::PADDING_T padding,
+                    PADDING_T padding,
                     const std::string& data_format) {
         ASSERT2(false, "integer convolution is not implemented for GPU.");
     }
@@ -180,7 +192,7 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                     TypedArray<memory::DEVICE_T_GPU, T> filters,
                     int stride_h,
                     int stride_w,
-                    op::PADDING_T padding,
+                    PADDING_T padding,
                     std::string data_format) {
 
         int padding_h, padding_w;
@@ -194,7 +206,7 @@ struct Conv2dFunction : public Function<Conv2dFunction,
 
         auto out_access_mode = operator_to_output_am(operator_t);
 
-        cudnn::cudnn_conv2d(
+        cudnn::conv2d(
                 std::make_shared<cudnn::wrapper::Tensor>(out, data_format, out_access_mode),
                 std::make_shared<cudnn::wrapper::Tensor>(input, data_format),
                 std::make_shared<cudnn::wrapper::Filters>(filters, data_format),
@@ -220,14 +232,14 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
                                         int,
                                         int,
                                         std::vector<int>,
-                                        op::PADDING_T,
+                                        PADDING_T,
                                         std::string> {
     static std::vector<int> deduce_output_bshape(const Array& filters,
                                                  const Array& out_dw,
                                                  int stride_h,
                                                  int stride_w,
                                                  const std::vector<int>& result_shape,
-                                                 op::PADDING_T padding,
+                                                 PADDING_T padding,
                                                  const std::string& data_format) {
         // TODO(szymon): potentially some checks are
         //               should be performed here.
@@ -243,7 +255,7 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
                     int stride_h,
                     int stride_w,
                     const std::vector<int>& result_shape,
-                    op::PADDING_T padding,
+                    PADDING_T padding,
                     const std::string& data_format) {
         throw std::runtime_error("not implemented!");
     }
@@ -256,7 +268,7 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
                     int stride_h,
                     int stride_w,
                     const std::vector<int>& result_shape,
-                    op::PADDING_T padding,
+                    PADDING_T padding,
                     const std::string& data_format) {
         ASSERT2(false, "integer convolution is not implemented for GPU.");
     }
@@ -268,7 +280,7 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
                     int stride_h,
                     int stride_w,
                     const std::vector<int>& result_shape,
-                    op::PADDING_T padding,
+                    PADDING_T padding,
                     std::string data_format) {
 
         int padding_h, padding_w;
@@ -282,7 +294,7 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
 
         auto out_access_mode = operator_to_output_am(operator_t);
 
-        cudnn::cudnn_conv2d_bwd_input(
+        cudnn::conv2d_bwd_input(
                 std::make_shared<cudnn::wrapper::Tensor>(in_dw, data_format, out_access_mode),
                 std::make_shared<cudnn::wrapper::Filters>(filters, data_format),
                 std::make_shared<cudnn::wrapper::Tensor>(out_dw, data_format),
@@ -307,14 +319,14 @@ struct Conv2dBwdFiltersFunction : public Function<Conv2dBwdFiltersFunction,
                                         int,
                                         int,
                                         std::vector<int>,
-                                        op::PADDING_T,
+                                        PADDING_T,
                                         std::string> {
     static std::vector<int> deduce_output_bshape(const Array& input,
                                                  const Array& out_dw,
                                                  int stride_h,
                                                  int stride_w,
                                                  const std::vector<int>& result_shape,
-                                                 op::PADDING_T padding,
+                                                 PADDING_T padding,
                                                  const std::string& data_format) {
         // TODO(szymon): potentially some checks are
         //               should be performed here.
@@ -332,7 +344,7 @@ struct Conv2dBwdFiltersFunction : public Function<Conv2dBwdFiltersFunction,
                     int stride_h,
                     int stride_w,
                     const std::vector<int>& result_shape,
-                    op::PADDING_T padding,
+                    PADDING_T padding,
                     const std::string& data_format) {
         throw std::runtime_error("not implemented!");
     }
@@ -345,7 +357,7 @@ struct Conv2dBwdFiltersFunction : public Function<Conv2dBwdFiltersFunction,
                     int stride_h,
                     int stride_w,
                     const std::vector<int>& result_shape,
-                    op::PADDING_T padding,
+                    PADDING_T padding,
                     const std::string& data_format) {
         ASSERT2(false, "integer convolution is not implemented for GPU.");
     }
@@ -357,7 +369,7 @@ struct Conv2dBwdFiltersFunction : public Function<Conv2dBwdFiltersFunction,
                     int stride_h,
                     int stride_w,
                     const std::vector<int>& result_shape,
-                    op::PADDING_T padding,
+                    PADDING_T padding,
                     std::string data_format) {
 
         int padding_h, padding_w;
@@ -371,7 +383,7 @@ struct Conv2dBwdFiltersFunction : public Function<Conv2dBwdFiltersFunction,
 
         auto out_access_mode = operator_to_output_am(operator_t);
 
-        cudnn::cudnn_conv2d_bwd_filters(
+        cudnn::conv2d_bwd_filters(
                 std::make_shared<cudnn::wrapper::Filters>(filters_dw, data_format, out_access_mode),
                 std::make_shared<cudnn::wrapper::Tensor>(input, data_format),
                 std::make_shared<cudnn::wrapper::Tensor>(out_dw, data_format),
@@ -383,6 +395,133 @@ struct Conv2dBwdFiltersFunction : public Function<Conv2dBwdFiltersFunction,
 #endif
 };
 
+
+///////////////////////////////////////////////////////////////////////////////
+//                        Pool2dFunction                                     //
+///////////////////////////////////////////////////////////////////////////////
+
+struct Pool2dFunction : public Function<Pool2dFunction,
+                                        Array,
+                                        Array,
+                                        int,
+                                        int,
+                                        int,
+                                        int,
+                                        POOLING_T,
+                                        PADDING_T,
+                                        std::string> {
+    static std::vector<int> deduce_output_bshape(
+                const Array& input,
+                int window_h,
+                int window_w,
+                int stride_h,
+                int stride_w,
+                POOLING_T pooling_mode,
+                PADDING_T padding,
+                const std::string& data_format) {
+
+        ASSERT2_SHAPE_ND(input.shape(),   4, "Pool2dFunction input");
+
+        ASSERT2(data_format == "NCHW" || data_format == "NHWC",
+            utils::MS() << "data_format must be one of NCHW, NHWC (was " << data_format << ")");
+
+        int out_w, out_h;
+
+        int batch_size, in_channels, in_h, in_w;
+
+        if (data_format == "NCHW") {
+            batch_size         = input.shape()[0];
+            in_channels        = input.shape()[1];
+            in_h               = input.shape()[2];
+            in_w               = input.shape()[3];
+        } else if (data_format == "NHWC") {
+            batch_size         = input.shape()[0];
+            in_h               = input.shape()[1];
+            in_w               = input.shape()[2];
+            in_channels        = input.shape()[3];
+        }
+
+        if (padding == PADDING_T_SAME) {
+            out_h = int_ceil(in_h, stride_h);
+            out_w = int_ceil(in_w, stride_w);
+        } else if (padding == PADDING_T_VALID) {
+            out_h = int_ceil(in_h - window_h + 1, stride_h);
+            out_w = int_ceil(in_w - window_w + 1, stride_w);
+        } else {
+            ASSERT2(false, utils::MS() << "Unrecognized value of padding passed to Pool2dFunction (" << padding << ")");
+        }
+
+        if (data_format == "NCHW") {
+            return std::vector<int> {batch_size, in_channels, out_h, out_w};
+        } else {
+            return std::vector<int> {batch_size, out_h, out_w, in_channels};
+        }
+    }
+
+    template<OPERATOR_T operator_t, typename T>
+    void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out,
+                    TypedArray<memory::DEVICE_T_CPU, T> input,
+                    int window_h,
+                    int window_w,
+                    int stride_h,
+                    int stride_w,
+                    POOLING_T pooling_mode,
+                    PADDING_T padding,
+                    const std::string& data_format) {
+        throw std::runtime_error("not implemented!");
+    }
+
+#ifdef DALI_USE_CUDA
+    template<OPERATOR_T operator_t>
+    void typed_eval(TypedArray<memory::DEVICE_T_GPU, int> out,
+                    TypedArray<memory::DEVICE_T_GPU, int> input,
+                    int window_h,
+                    int window_w,
+                    int stride_h,
+                    int stride_w,
+                    POOLING_T pooling_mode,
+                    PADDING_T padding,
+                    const std::string& data_format) {
+        ASSERT2(false, "integer convolution is not implemented for GPU.");
+    }
+
+    template<OPERATOR_T operator_t, typename T>
+    void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out,
+                    TypedArray<memory::DEVICE_T_GPU, T> input,
+                    int window_h,
+                    int window_w,
+                    int stride_h,
+                    int stride_w,
+                    POOLING_T pooling_mode,
+                    PADDING_T padding,
+                    const std::string& data_format) {
+
+        int padding_h, padding_w;
+        std::tie(padding_h, padding_w) = convolution_padding(
+                input.array.shape(),
+                fake_padding_shape(window_h, window_w, data_format),
+                out.array.shape(),
+                stride_h,
+                stride_w,
+                data_format,
+                padding);
+
+        auto out_access_mode = operator_to_output_am(operator_t);
+
+        cudnn::pool2d(
+                std::make_shared<cudnn::wrapper::Tensor>(out, data_format, out_access_mode),
+                std::make_shared<cudnn::wrapper::Tensor>(input, data_format),
+                std::make_shared<cudnn::wrapper::Pooling>(window_h, window_w,
+                                                          padding_h, padding_w,
+                                                          stride_w, stride_h,
+                                                          pooling_mode),
+                cudnn::wrapper::Operator(operator_t, template_to_dtype<T>())
+        );
+    }
+
+#endif
+
+};
 
 namespace op {
     Assignable<Array> conv2d(const Array& input,
@@ -433,5 +572,38 @@ namespace op {
                                              result_shape,
                                              padding,
                                              data_format);
+    }
+
+    Assignable<Array> pool2d(const Array& input,
+                             int window_h,
+                             int window_w,
+                             int stride_h,
+                             int stride_w,
+                             POOLING_T pooling_mode,
+                             PADDING_T padding,
+                             const std::string& data_format) {
+        return Pool2dFunction::run(input,
+                                   window_h,
+                                   window_w,
+                                   stride_h,
+                                   stride_w,
+                                   pooling_mode,
+                                   padding,
+                                   data_format);
+    }
+
+    Assignable<Array> pool2d_backward(
+                             const Array& out,
+                             const Array& out_dw,
+                             const Array& in,
+                             int window_h,
+                             int window_w,
+                             int stride_h,
+                             int stride_w,
+                             const std::vector<int>& result_shape,
+                             POOLING_T pooling_mode,
+                             PADDING_T padding,
+                             const std::string& data_format) {
+
     }
 };  // namespace op

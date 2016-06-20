@@ -24,6 +24,23 @@ TEST(ArraySpatialTests, conv_forward) {
     //               to reference implementation
 }
 
+TEST(ArraySpatialTests, pool2d_forward) {
+    Array X = Array::arange({1, 1, 8, 8}, DTYPE_FLOAT);
+
+    Array out = pool2d(
+        X,
+        /*window_h=*/2,
+        /*window_w=*/2,
+        /*stride_h=*/2,
+        /*stride_w=*/2,
+        POOLING_T_MAX,
+        PADDING_T_VALID,
+        "NCHW");
+    X.print();
+    out.print();
+}
+
+
 TEST(ArraySpatialTests, conv_backward) {
     Array X = Array::arange({1, 1, 8, 8}, DTYPE_FLOAT);
     Array W = Array::ones({1, 1, 2, 2}, DTYPE_FLOAT);

@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include "dali/array/op/spatial_enums.h"
+
 class Array;
 template<typename OutType>
 class Assignable;
@@ -11,10 +13,6 @@ class Assignable;
 
 namespace op {
     // the type of padding algorithm to use.
-    enum PADDING_T {
-        PADDING_T_SAME  = 0,
-        PADDING_T_VALID = 1
-    };
 
     Assignable<Array> conv2d(const Array& input,
                              const Array& filters,
@@ -41,6 +39,28 @@ namespace op {
                      const std::vector<int>& result_shape,
                      PADDING_T padding,
                      const std::string& data_format);
+
+    Assignable<Array> pool2d(const Array& input,
+                             int window_h,
+                             int window_w,
+                             int stride_h,
+                             int stride_w,
+                             POOLING_T pooling_mode,
+                             PADDING_T padding,
+                             const std::string& data_format);
+
+    Assignable<Array> pool2d_backward(
+                             const Array& out,
+                             const Array& out_dw,
+                             const Array& in,
+                             int window_h,
+                             int window_w,
+                             int stride_h,
+                             int stride_w,
+                             const std::vector<int>& result_shape,
+                             POOLING_T pooling_mode,
+                             PADDING_T padding,
+                             const std::string& data_format);
 }
 
 #endif  // DALI_ARRAY_OP_SPATIAL_H

@@ -150,7 +150,8 @@ namespace cudnn {
 
 
 
-        Convolution::Convolution(int padding_h, int padding_w, int stride_h, int stride_w) {
+        Convolution::Convolution(int padding_h, int padding_w,
+                                 int stride_h, int stride_w) {
             auto result = cudnnCreateConvolutionDescriptor(&description);
             cudnn_check_result(result, "when creating convolution descriptor");
             result = cudnnSetConvolution2dDescriptor(
@@ -170,6 +171,47 @@ namespace cudnn {
         Convolution::~Convolution() {
             auto result = cudnnDestroyConvolutionDescriptor(description);
             cudnn_check_result(result, "when destroying convolution descriptor");
+        }
+
+        Pooling::Pooling(int window_h,  int window_w,
+                         int padding_h, int padding_w,
+                         int stride_h,  int stride_w,
+                         POOLING_T pooling_mode) {
+            auto result = cudnnCreatePoolingDescriptor(&description);
+            cudnn_check_result(result, "when creating pooling descriptor");
+
+            cudnnPoolingMode_t cudnn_pooling_mode;
+            if (pooling_mode == POOLING_T_MAX) {
+                cudnn_pooling_mode = CUDNN_POOLING_MAX;
+            } else if (pooling_mode == POOLING_T_AVG) {
+                // Following what TensorFlow does:
+                //   https://github.com/tensorflow/tensorflow/blob/
+                //   6431560b7ec3565154cb9cdc9c827db78ccfebe7/
+                //   tensorflow/stream_executor/cuda/cuda_dnn.cc
+                cudnn_pooling_mode =
+                        CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
+            } else {
+                ASSERT2(false, utils::MS() << "unknown POOLING_T ("
+                                           << pooling_mode << ").");
+            }
+
+            result = cudnnSetPooling2dDescriptor(
+                description,
+                cudnn_pooling_mode,
+                CUDNN_PROPAGATE_NAN,
+                /*windowHeight=*/ window_h,
+                /*windowWidth=*/  window_w,
+                /*pad_h=*/        padding_h,
+                /*pad_w=*/        padding_w,
+                /*stride_h=*/     stride_h,
+                /*stride_w=*/     stride_w
+            );
+            cudnn_check_result(result, "when setting Pooling descriptor");
+        }
+
+        Pooling::~Pooling() {
+            auto result = cudnnDestroyPoolingDescriptor(description);
+            cudnn_check_result(result, "when destroying Pooling descriptor");
         }
 
 
@@ -211,11 +253,11 @@ namespace cudnn {
     //                              CONVOLUTIONS                             //
     ///////////////////////////////////////////////////////////////////////////
 
-    void cudnn_conv2d(std::shared_ptr<wrapper::Tensor>  out,
-                      std::shared_ptr<wrapper::Tensor>  in,
-                      std::shared_ptr<wrapper::Filters> filters,
-                      std::shared_ptr<wrapper::Convolution> conv,
-                      const wrapper::Operator& update_operator) {
+    void conv2d(std::shared_ptr<wrapper::Tensor>  out,
+                std::shared_ptr<wrapper::Tensor>  in,
+                std::shared_ptr<wrapper::Filters> filters,
+                std::shared_ptr<wrapper::Convolution> conv,
+                const wrapper::Operator& update_operator) {
         // TODO(szymon): automatically choose best algorithm.
         cudnnConvolutionFwdAlgo_t algo =
                 CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
@@ -241,11 +283,11 @@ namespace cudnn {
 
     }
 
-    void cudnn_conv2d_bwd_input(std::shared_ptr<wrapper::Tensor>  in_dw,
-                                std::shared_ptr<wrapper::Filters> filters,
-                                std::shared_ptr<wrapper::Tensor>  out_dw,
-                                std::shared_ptr<wrapper::Convolution> conv,
-                                const wrapper::Operator& update_operator) {
+    void conv2d_bwd_input(std::shared_ptr<wrapper::Tensor>  in_dw,
+                          std::shared_ptr<wrapper::Filters> filters,
+                          std::shared_ptr<wrapper::Tensor>  out_dw,
+                          std::shared_ptr<wrapper::Convolution> conv,
+                          const wrapper::Operator& update_operator) {
         // TODO(szymon): automatically choose best algorithm.
         cudnnConvolutionBwdDataAlgo_t algo =
                 CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
@@ -271,11 +313,11 @@ namespace cudnn {
     }
 
 
-    void cudnn_conv2d_bwd_filters(std::shared_ptr<wrapper::Filters> filters_dw,
-                                  std::shared_ptr<wrapper::Tensor>  input,
-                                  std::shared_ptr<wrapper::Tensor>  out_dw,
-                                  std::shared_ptr<wrapper::Convolution> conv,
-                                  const wrapper::Operator& update_operator) {
+    void conv2d_bwd_filters(std::shared_ptr<wrapper::Filters> filters_dw,
+                            std::shared_ptr<wrapper::Tensor>  input,
+                            std::shared_ptr<wrapper::Tensor>  out_dw,
+                            std::shared_ptr<wrapper::Convolution> conv,
+                            const wrapper::Operator& update_operator) {
         // TODO(szymon): automatically choose best algorithm.
         cudnnConvolutionBwdFilterAlgo_t algo =
                 CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
@@ -299,5 +341,48 @@ namespace cudnn {
         );
         cudnn_check_result(result, "when computing convolution forward");
     }
+
+    void pool2d(std::shared_ptr<wrapper::Tensor> out,
+                std::shared_ptr<wrapper::Tensor>  in,
+                std::shared_ptr<wrapper::Pooling> pooling,
+                const wrapper::Operator& update_operator) {
+
+        auto result = cudnnPoolingForward(
+            *get_handle(),
+            pooling->description,
+            update_operator.alpha_ptr,
+            in->description,
+            in->data,
+            update_operator.beta_ptr,
+            out->description,
+            out->data
+        );
+
+        cudnn_check_result(result, "when computing pooling forward");
+    }
+
+        void pool2d_bwd(std::shared_ptr<wrapper::Tensor> in_dw,
+                        std::shared_ptr<wrapper::Tensor> out,
+                        std::shared_ptr<wrapper::Tensor> out_dw,
+                        std::shared_ptr<wrapper::Tensor> in,
+                        std::shared_ptr<wrapper::Pooling> pooling,
+                        const wrapper::Operator& update_operator) {
+            auto result = cudnnPoolingBackward(
+                *get_handle(),
+                pooling->description,
+                update_operator.alpha_ptr,
+                out->description,
+                out->data,
+                out_dw->description,
+                out_dw->data,
+                in->description,
+                in->data,
+                update_operator.beta_ptr,
+                in_dw->description,
+                in_dw->data
+            );
+
+            cudnn_check_result(result, "when computing pooling forward");
+        }
 
 }  // namespace cudnn

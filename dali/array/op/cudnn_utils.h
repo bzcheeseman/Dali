@@ -8,6 +8,7 @@
 #include "dali/array/function/typed_array.h"
 #include "dali/array/function/operator.h"
 #include "dali/array/memory/device.h"
+#include "dali/array/op/spatial_enums.h"
 
 
 namespace cudnn {
@@ -37,9 +38,21 @@ namespace cudnn {
         struct Convolution {
             cudnnConvolutionDescriptor_t description;
 
-            Convolution(int padding_h, int padding_w, int stride_h, int stride_w);
+            Convolution(int padding_h, int padding_w,
+                        int stride_h, int stride_w);
 
             ~Convolution();
+        };
+
+        struct Pooling {
+            cudnnPoolingDescriptor_t description;
+
+            Pooling(int window_h,  int window_w,
+                    int padding_h, int padding_w,
+                    int stride_h,  int stride_w,
+                    POOLING_T pooling_mode);
+
+            ~Pooling();
         };
 
         struct Operator {
@@ -56,23 +69,35 @@ namespace cudnn {
         };
     }
 
-    void cudnn_conv2d(std::shared_ptr<wrapper::Tensor>  out,
-                      std::shared_ptr<wrapper::Tensor>  in,
-                      std::shared_ptr<wrapper::Filters> filters,
-                      std::shared_ptr<wrapper::Convolution> conv,
-                      const wrapper::Operator& update_operator);
+    void conv2d(std::shared_ptr<wrapper::Tensor>  out,
+                std::shared_ptr<wrapper::Tensor>  in,
+                std::shared_ptr<wrapper::Filters> filters,
+                std::shared_ptr<wrapper::Convolution> conv,
+                const wrapper::Operator& update_operator);
 
-    void cudnn_conv2d_bwd_input(std::shared_ptr<wrapper::Tensor>  in_dw,
-                                std::shared_ptr<wrapper::Filters> filters,
-                                std::shared_ptr<wrapper::Tensor>  out_dw,
-                                std::shared_ptr<wrapper::Convolution> conv,
-                                const wrapper::Operator& update_operator);
+    void conv2d_bwd_input(std::shared_ptr<wrapper::Tensor>  in_dw,
+                          std::shared_ptr<wrapper::Filters> filters,
+                          std::shared_ptr<wrapper::Tensor>  out_dw,
+                          std::shared_ptr<wrapper::Convolution> conv,
+                          const wrapper::Operator& update_operator);
 
-    void cudnn_conv2d_bwd_filters(std::shared_ptr<wrapper::Filters> filters_dw,
-                                  std::shared_ptr<wrapper::Tensor>  input,
-                                  std::shared_ptr<wrapper::Tensor>  out_dw,
-                                  std::shared_ptr<wrapper::Convolution> conv,
-                                  const wrapper::Operator& update_operator);
+    void conv2d_bwd_filters(std::shared_ptr<wrapper::Filters> filters_dw,
+                            std::shared_ptr<wrapper::Tensor>  input,
+                            std::shared_ptr<wrapper::Tensor>  out_dw,
+                            std::shared_ptr<wrapper::Convolution> conv,
+                            const wrapper::Operator& update_operator);
+
+    void pool2d(std::shared_ptr<wrapper::Tensor> out,
+                std::shared_ptr<wrapper::Tensor>  in,
+                std::shared_ptr<wrapper::Pooling> pooling,
+                const wrapper::Operator& update_operator);
+
+    void pool2d_bwd(std::shared_ptr<wrapper::Tensor> in_dw,
+                    std::shared_ptr<wrapper::Tensor> out,
+                    std::shared_ptr<wrapper::Tensor> out_dw,
+                    std::shared_ptr<wrapper::Tensor> in,
+                    std::shared_ptr<wrapper::Pooling> pooling,
+                    const wrapper::Operator& update_operator);
 }  // namespace cudnn
 
 #endif  // DALI_ARRAY_OP_CUDNN_UTILS_H

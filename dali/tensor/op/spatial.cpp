@@ -11,7 +11,7 @@ namespace tensor_ops {
                   Tensor filters,
                   int stride_h,
                   int stride_w,
-                  op::PADDING_T padding,
+                  PADDING_T padding,
                   const std::string& data_format) {
         Tensor out(op::conv2d(input.w,
                               filters.w,
@@ -25,21 +25,21 @@ namespace tensor_ops {
                                  stride_h,stride_w,
                                  padding,data_format]() mutable {
                 MAYBE_GRAD(input) +=
-                    conv2d_backward_input(filters.w,
-                                          out.dw,
-                                          stride_h,
-                                          stride_w,
-                                          input.shape(),
-                                          padding,
-                                          data_format);
+                    op::conv2d_backward_input(filters.w,
+                                              out.dw,
+                                              stride_h,
+                                              stride_w,
+                                              input.shape(),
+                                              padding,
+                                              data_format);
                 MAYBE_GRAD(filters) +=
-                    conv2d_backward_filters(input.w,
-                                            out.dw,
-                                            stride_h,
-                                            stride_w,
-                                            filters.shape(),
-                                            padding,
-                                            data_format);
+                    op::conv2d_backward_filters(input.w,
+                                                out.dw,
+                                                stride_h,
+                                                stride_w,
+                                                filters.shape(),
+                                                padding,
+                                                data_format);
             });
         return out;
     }

@@ -9,7 +9,7 @@ namespace tensor_ops {
                   Tensor filters,
                   int stride_h,
                   int stride_w,
-                  op::PADDING_T padding,
+                  PADDING_T padding,
                   const std::string& data_format);
 }
 

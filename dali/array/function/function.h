@@ -260,22 +260,6 @@ struct Function {
     }
 };
 
-template<template<class> class Functor>
-struct Elementwise : public Function<Elementwise<Functor>, Array, Array> {
-    template<OPERATOR_T operator_t, int devT, typename T>
-    void typed_eval(const TypedArray<devT, T>& out, const TypedArray<devT,T>& input) {
-        operator_assign<operator_t, 1>(out, mshadow::expr::F<Functor<T>>(input.d1()));
-    }
-};
-
-template<template<class> class Functor>
-struct BinaryElementwise : public Function<BinaryElementwise<Functor>, Array, Array, Array> {
-    template<OPERATOR_T operator_t, int devT, typename T>
-    void typed_eval(const TypedArray<devT, T>& out, const TypedArray<devT,T>& left, const TypedArray<devT,T>& right) {
-        operator_assign<operator_t, 1>(out, mshadow::expr::F<Functor<T>>(left.d1(), right.d1()));
-    }
-};
-
 template<typename Class, typename Outtype, typename... Args>
 struct NonArrayFunction : public Function<Class,Outtype*,Args...> {
 

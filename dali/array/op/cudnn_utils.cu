@@ -242,11 +242,11 @@ namespace cudnn {
 
     }
 
-    void cudnn_conv2d_bwd_data(std::shared_ptr<wrapper::Tensor>  in_dw,
-                               std::shared_ptr<wrapper::Filters> filters,
-                               std::shared_ptr<wrapper::Tensor>  out_dw,
-                               std::shared_ptr<wrapper::Convolution> conv,
-                               const wrapper::Operator& update_operator) {
+    void cudnn_conv2d_bwd_input(std::shared_ptr<wrapper::Tensor>  in_dw,
+                                std::shared_ptr<wrapper::Filters> filters,
+                                std::shared_ptr<wrapper::Tensor>  out_dw,
+                                std::shared_ptr<wrapper::Convolution> conv,
+                                const wrapper::Operator& update_operator) {
         // TODO(szymon): automatically choose best algorithm.
         cudnnConvolutionBwdDataAlgo_t algo =
                 CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;

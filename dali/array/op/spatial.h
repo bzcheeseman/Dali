@@ -21,7 +21,17 @@ namespace op {
                              int stride_h,
                              int stride_w,
                              PADDING_T padding,
-                             std::string data_format);
+                             const std::string& data_format);
+
+    // returns gradient with respect to the input.
+    Assignable<Array> conv2d_backward_input(
+                         const Array& filters,
+                         const Array& out_dw,
+                         int stride_h,
+                         int stride_w,
+                         const std::vector<int>& result_shape,
+                         PADDING_T padding,
+                         const std::string& data_format);
 }
 
 #endif  // DALI_ARRAY_OP_SPATIAL_H

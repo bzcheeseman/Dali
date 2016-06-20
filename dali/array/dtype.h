@@ -37,5 +37,6 @@ int size_of_dtype(DType dtype);
 void print_dtype(std::basic_ostream<char>& stream, DType dtype, void* memory);
 
 std::string dtype_to_name(DType dtype);
+std::ostream& operator<<(std::ostream&, const DType&);
 
 #endif

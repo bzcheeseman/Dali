@@ -523,6 +523,10 @@ DType Array::dtype() const {
     return state->dtype;
 }
 
+Assignable<Array> Array::astype(DType dtype_) const {
+    return op::astype(*this, dtype_);
+}
+
 memory::Device Array::preferred_device() const {
     ASSERT2(!is_stateless(), "preferred_device must not be called on Array initialled with empty constructor");
     return state->memory->preferred_device;

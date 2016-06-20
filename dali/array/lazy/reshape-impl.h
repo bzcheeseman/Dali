@@ -13,9 +13,18 @@ struct LazyTake : public LazyFunction<LazyTake<SrcExp, IndexExp>, SrcExp, IndexE
     SrcExp src;
     IndexExp indices;
 
-    static std::vector<int> lazy_output_bshape(const SrcExp& src, const IndexExp& indices) {
-        std::vector<int> outbshape = indices.bshape();
-        auto src_bshape = src.bshape();
+    static DType lazy_inputs_dtype(const SrcExp& src_, const IndexExp& indices_) {
+        ASSERT2(
+            indices_.dtype() == DTYPE_INT32,
+            utils::MS() << "indices input to LazyTake must be of type int32 (got "
+                        << indices_.dtype() << ")."
+        );
+        return src_.dtype();
+    }
+
+    static std::vector<int> lazy_output_bshape(const SrcExp& src_, const IndexExp& indices_) {
+        std::vector<int> outbshape = indices_.bshape();
+        auto src_bshape = src_.bshape();
         ASSERT2(
             src_bshape.size() >= 1,
             utils::MS() << "src input to LazyTake must have dimensionality >= 1 (got src.ndim()="
@@ -23,14 +32,6 @@ struct LazyTake : public LazyFunction<LazyTake<SrcExp, IndexExp>, SrcExp, IndexE
                         << ").");
         outbshape.insert(outbshape.end(), src_bshape.begin() + 1, src_bshape.end());
         return outbshape;
-    }
-
-    static DType lazy_output_dtype(const SrcExp& src_, const IndexExp& indices) {
-        ASSERT2(
-            indices.dtype() == DTYPE_INT32,
-            utils::MS() << "indices input to LazyTake must be of type int32 (got " << dtype_to_name(indices.dtype()) << ")."
-        );
-        return src_.dtype();
     }
 
     LazyTake(const SrcExp& src_, const IndexExp& indices_) :
@@ -119,10 +120,11 @@ struct LazyTakeFromRows : public LazyFunction<LazyTakeFromRows<SrcExp, IndexExp>
         return indices_bshape;
     }
 
-    static DType lazy_output_dtype(const SrcExp& src_, const IndexExp& indices) {
+    static DType lazy_inputs_dtype(const SrcExp& src_, const IndexExp& indices_) {
         ASSERT2(
-            indices.dtype() == DTYPE_INT32,
-            utils::MS() << "indices input to LazyTakeFromRows must be of type int32 (got " << dtype_to_name(indices.dtype()) << ")."
+            indices_.dtype() == DTYPE_INT32,
+            utils::MS() << "indices input to LazyTake must be of type int32 (got "
+                        << indices_.dtype() << ")."
         );
         return src_.dtype();
     }

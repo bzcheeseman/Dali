@@ -126,6 +126,8 @@ class Array : public Exp<Array> {
     const std::vector<int>& strides() const;
     DType dtype() const;
 
+    Assignable<Array> astype(DType dtype_) const;
+
     std::vector<int> normalized_strides() const;
     // just like regular shape by broadcased dimensions are negated.
     // for example if array has shape {2, 1, 3, 1} and dimension 1 is

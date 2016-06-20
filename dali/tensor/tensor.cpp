@@ -841,6 +841,6 @@ void Tensor::to_cpu() const {
 // }
 
 std::ostream &operator <<(std::ostream &os, const Tensor& tensor) {
-    os << "Tensor(" << tensor.shape() << ", dtype=" << dtype_to_name(tensor.dtype()) << ")";
+    os << "Tensor(" << tensor.shape() << ", dtype=" << tensor.dtype() << ")";
     return os;
 }

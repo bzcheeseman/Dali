@@ -71,7 +71,7 @@ struct ConcatenateFunction : public Function<ConcatenateFunction,
         for (const auto& arr : arrays) {
             ASSERT2(arr.dtype() == common,
                     utils::MS() << "all array arguments to concatenate must have the same dtype (got "
-                                << dtype_to_name(arr.dtype()) << " != " << dtype_to_name(common) << ").");
+                                << arr.dtype() << " != " << common << ").");
         }
         return common;
     }

@@ -4,6 +4,7 @@
 #include "dali/config.h"
 
 #include "dali/array/op/other.h"
+#include "dali/array/op/cast.h"
 #include "dali/array/op/dot.h"
 #include "dali/array/op/binary.h"
 #include "dali/array/op/reducers.h"

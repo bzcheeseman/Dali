@@ -279,9 +279,9 @@ namespace memory {
             return overwrite_data(device);
         } else {
             ASSERT2(false, "Unsupported access mode passed to SynchronizedMemory::data.");
+            return NULL;
         }
     }
-
 
     void* SynchronizedMemory::readonly_data(const Device& device) const {
         move_to(device);

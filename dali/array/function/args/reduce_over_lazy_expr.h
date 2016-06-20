@@ -23,6 +23,9 @@ struct LazyUnaryIndexed;
 template<class Functor, typename ExprT>
 struct LazyAllReducer;
 
+template<typename ExprT, typename NewT>
+struct LazyCast;
+
 template<class Functor, typename ExprT, bool return_indices>
 struct LazyAxisReducer;
 
@@ -69,6 +72,14 @@ struct ReduceOverLazyExpr {
     static outtuple_t unfold_helper(
             const outtuple_t& state,
             const internal::NonRecursiveLazySumAxis<ExprT>& reducer_expr,
+            const Args&... args) {
+        return unfold_helper(state, reducer_expr.expr, args...);
+    }
+
+    template<typename ExprT, typename NewType, typename... Args>
+    static outtuple_t unfold_helper(
+            const outtuple_t& state,
+            const LazyCast<ExprT, NewType>& reducer_expr,
             const Args&... args) {
         return unfold_helper(state, reducer_expr.expr, args...);
     }
@@ -125,7 +136,7 @@ struct ReduceOverLazyExpr {
     static outtuple_t unfold_helper(const outtuple_t& state, const T& arg, const Args&... args) {
         static_assert(!std::is_base_of<LazyExpType,T>::value,
                 "Every lazy expression needs to have a corresponding `unfold_helper` method in " __FILE__
-                ". Did you add an new lazy expression and forget to implement `unfold_helper`?");
+                ". Did you add a new lazy expression and forget to implement `unfold_helper`?");
         return unfold_helper(Reducer::reduce_step(state, arg), args...);
     }
 

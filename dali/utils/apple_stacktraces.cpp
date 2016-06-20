@@ -1,4 +1,4 @@
-#include "dali/config.h"
+#include "apple_stacktraces.h"
 
 #if EXISTS_AND_TRUE(DALI_APPLE_STACKTRACES)
 
@@ -7,12 +7,10 @@
 #include <execinfo.h>   // for backtrace
 #include <future>
 #include <iostream>
-#include <signal.h>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
-
 
 std::string get_sourceline(char *filename, void *ptr, void* base) {
     char buf[1024];
@@ -160,21 +158,15 @@ void signal_abort_handler(int signum, siginfo_t *info, void *_ctx) {
     exit(signum);
 }
 
-struct ErrorHandler {
-    struct sigaction sa;
-    ErrorHandler() {
-        sa.sa_flags = SA_SIGINFO;
-        sa.sa_sigaction = signal_abort_handler;
-        sigemptyset(&sa.sa_mask);
+ErrorHandler::ErrorHandler() {
+    sa.sa_flags = SA_SIGINFO;
+    sa.sa_sigaction = signal_abort_handler;
+    sigemptyset(&sa.sa_mask);
 
-        sigaction(SIGABRT, &sa, 0);
-        sigaction(SIGSEGV, &sa, 0);
-        sigaction(SIGILL, &sa, 0);
-        sigaction(SIGFPE, &sa, 0);
-    }
+    sigaction(SIGABRT, &sa, 0);
+    sigaction(SIGSEGV, &sa, 0);
+    sigaction(SIGILL, &sa, 0);
+    sigaction(SIGFPE, &sa, 0);
 };
-
-// create a global hook for error / signal handling
-auto global_error_handler = ErrorHandler();
 
 #endif

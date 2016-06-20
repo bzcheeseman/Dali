@@ -1,13 +1,10 @@
 #include "dali/array/function/args/reduce_over_args.h"
 #include "dali/array/function/args/property_reducer.h"
 
-
-
-
 template<typename Class, typename... Args>
 LazyFunction<Class,Args...>::LazyFunction(Args... args) :
         bshape_(Class::lazy_output_bshape(args...)),
-        dtype_(Class::lazy_output_dtype(args...)) {
+        dtype_(Class::lazy_inputs_dtype(args...)) {
 }
 
 template<typename Class, typename... Args>
@@ -16,7 +13,7 @@ std::vector<int> LazyFunction<Class,Args...>::lazy_output_bshape(const Args&... 
 }
 
 template<typename Class, typename... Args>
-DType LazyFunction<Class,Args...>::lazy_output_dtype(const Args&... args) {
+DType LazyFunction<Class,Args...>::lazy_inputs_dtype(const Args&... args) {
     return ReduceOverArgs<DTypeEqualForAllArgsReducer>::reduce(args...);
 }
 

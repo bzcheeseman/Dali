@@ -23,6 +23,11 @@ namespace internal {
     template<typename MDevT, typename T>
     TypedArrayShared<MDevT, T>::TypedArrayShared(const Array& _array, const memory::Device& _device, const std::vector<int>& _output_shape)
             : array(_array.reshape_broadcasted(_output_shape)), device(_device) {
+        ASSERT2(template_to_dtype<T>() == _array.dtype(),
+            utils::MS() << "TypedArray got a wrong type (array.dtype()="
+                        << _array.dtype() << " vs. TypedArray's given dtype ="
+                        << template_to_dtype<T>() << ")."
+        );
     }
 
     template<typename MDevT, typename T>
@@ -88,6 +93,16 @@ namespace internal {
               indices(_indices, _device, _indices.shape()),
               shape(_shape),
               device(_device) {
+        ASSERT2(template_to_dtype<T>() == _source.dtype(),
+            utils::MS() << "TypedArraySubtensor got a wrong type (array.dtype()="
+                        << _source.dtype() << " vs. TypedArraySubtensor's given dtype ="
+                        << template_to_dtype<T>() << ")."
+        );
+        ASSERT2(template_to_dtype<IndexT>() == _indices.dtype(),
+            utils::MS() << "TypedArraySubtensor got a wrong type (indices.dtype()="
+                        << _indices.dtype() << " vs. TypedArraySubtensor's indices given dtype ="
+                        << template_to_dtype<IndexT>() << ")."
+        );
     }
 
     template<typename MDevT, typename T, typename IndexT>
@@ -130,6 +145,16 @@ namespace internal {
               indices(_indices, _device, _indices.shape()),
               shape(_shape),
               device(_device) {
+        ASSERT2(template_to_dtype<T>() == _source.dtype(),
+            utils::MS() << "TypedArraySubtensor got a wrong type (array.dtype()="
+                        << _source.dtype() << " vs. TypedArraySubtensor's given dtype ="
+                        << template_to_dtype<T>() << ")."
+        );
+        ASSERT2(template_to_dtype<IndexT>() == _indices.dtype(),
+            utils::MS() << "TypedArraySubtensor got a wrong type (indices.dtype()="
+                        << _indices.dtype() << " vs. TypedArraySubtensor's indices given dtype ="
+                        << template_to_dtype<IndexT>() << ")."
+        );
     }
 
     template<typename MDevT, typename T, typename IndexT>

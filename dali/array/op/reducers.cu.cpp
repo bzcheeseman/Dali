@@ -1,6 +1,7 @@
 #include "reducers.h"
 #include "dali/array/array.h"
 #include "dali/array/lazy/reducers.h"
+#include "dali/array/lazy/cast.h"
 #define DALI_USE_LAZY 1
 #include "dali/array/op.h"
 
@@ -15,6 +16,9 @@ namespace op {
     }
 
     Assignable<Array> mean(const Array& x) {
+        if (x.dtype() == DTYPE_INT32) {
+            return lazy::sum(lazy::astype<double>(x) / x.number_of_elements());
+        }
         return lazy::sum(x / x.number_of_elements());
     }
 
@@ -65,7 +69,14 @@ namespace op {
     }
 
     Assignable<Array> mean(const Array& x, const int& axis) {
-    	auto reduced = lazy::sum(x, axis);
-    	return reduced / x.shape()[axis]; // size of reduced axis
+        return Assignable<Array>([x, axis](Array& out, const OPERATOR_T& operator_t) {
+            if (x.dtype() == DTYPE_INT32) {
+                auto reduced = lazy::sum(lazy::astype<double>(x), axis);
+                lazy::Eval<Array>::eval(reduced / x.shape()[axis]).assign_to(out, operator_t);
+            } else {
+                auto reduced = lazy::sum(x, axis);
+                lazy::Eval<Array>::eval(reduced / x.shape()[axis]/*size of reduced axis*/).assign_to(out, operator_t);
+            }
+        });
     }
 }; // namespace op

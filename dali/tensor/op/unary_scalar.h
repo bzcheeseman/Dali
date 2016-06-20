@@ -1,5 +1,5 @@
-#ifndef DALI_TENSOR_OP_UNARY_H
-#define DALI_TENSOR_OP_UNARY_H
+#ifndef DALI_TENSOR_OP_UNARY_SCALAR_H
+#define DALI_TENSOR_OP_UNARY_SCALAR_H
 
 #include "dali/tensor/tensor.h"
 
@@ -20,4 +20,4 @@ namespace tensor_ops {
     DALI_DECLARE_TENSOR_SCALAR_OP(scalar_pow)
 }  // namespace tensor_ops
 
-#endif  // DALI_TENSOR_OP_UNARY_H
+#endif  // DALI_TENSOR_OP_UNARY_SCALAR_H

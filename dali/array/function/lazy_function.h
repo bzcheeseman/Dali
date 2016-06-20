@@ -153,17 +153,16 @@ template<typename Class, typename... Args>
 struct LazyFunction: public LazyExp<Class> {
     static const int  evaluation_dim;
     static const bool collapse_leading;
-    std::vector<int> bshape_;
-    DType dtype_;
+    const std::vector<int> bshape_;
+    const DType dtype_;
 
     LazyFunction(Args... args);
 
     static std::vector<int> lazy_output_bshape(const Args&... args);
 
-    static DType lazy_output_dtype(const Args&... args);
+    static DType lazy_inputs_dtype(const Args&... args);
 
     const std::vector<int>& bshape() const;
-
     const DType& dtype() const;
 };
 

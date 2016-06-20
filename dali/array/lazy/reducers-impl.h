@@ -54,10 +54,6 @@ struct LazyAxisReducer<Functor, ExprT, false> : public BaseLazyAxisReducer<LazyA
 template<class Functor, typename ExprT>
 struct LazyAxisReducer<Functor, ExprT, true> : public BaseLazyAxisReducer<LazyAxisReducer<Functor, ExprT, true>, ExprT, Functor, true> {
     using BaseLazyAxisReducer<LazyAxisReducer<Functor, ExprT, true>, ExprT, Functor, true>::BaseLazyAxisReducer; // inherit parent constructor
-
-    static DType lazy_output_dtype(const ExprT& expr_, const int& reduce_axis_, bool) {
-        return DTYPE_INT32;
-    }
 };
 
 namespace lazy {

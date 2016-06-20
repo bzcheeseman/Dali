@@ -19,7 +19,7 @@ TEST(ArrayOpsTests, sigmoid) {
 }
 
 TEST(ArrayOpsTests, relu) {
-    auto x = Array::zeros({3,2,2});
+    auto x = Array::zeros({3,2,2}, DTYPE_DOUBLE);
     Array y = relu(x);
 }
 

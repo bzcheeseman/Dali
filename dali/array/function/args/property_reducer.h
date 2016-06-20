@@ -132,7 +132,6 @@ struct BShapeCompatibleForAllArgsReducer {
     }
 };
 
-
 struct BShapeCompatibleForAllArrayArgsReducer {
     typedef std::vector<int> outtype_t;
     typedef bool        state_t;
@@ -144,11 +143,6 @@ struct BShapeCompatibleForAllArrayArgsReducer {
 
     static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const Array& arg);
 };
-
-
-
-
-
 
 struct ShapeProperty {
     typedef std::vector<int> property_t;
@@ -175,10 +169,8 @@ struct DTypeProperty {
 };
 
 typedef PropertyEqualForAllArgsReducer<DTypeProperty> DTypeEqualForAllArgsReducer;
-// typedef PropertyEqualForAllArgsReducer<ShapeProperty> ShapeEqualForAllArgsReducer;
 
 typedef PropertyEqualForAllArrayArgsReducer<DTypeProperty> DTypeEqualForAllArrayArgsReducer;
-// typedef PropertyEqualForAllArrayArgsReducer<ShapeProperty> ShapeEqualForAllArrayArgsReducer;
 
 struct DeviceReducerState {
     int args_read;

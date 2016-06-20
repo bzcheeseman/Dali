@@ -93,15 +93,11 @@ struct ArgSortFunctionHelper {
             var_operator_t == OPERATOR_T_EQL
         >::type* = nullptr
     >
-    static void run(TypedArray<devT, T>& out,
+    static void run(TypedArray<devT, int>& out,
                     const TypedArray<devT, T>& in) {
 
-
-        auto out_int = TypedArray<devT, int>(
-            out.array, out.device, out.array.shape()
-        );
         argsort_helper::sort_over_args(
-            out_int.ptr(memory::AM_MUTABLE),
+            out.ptr(memory::AM_MUTABLE),
             in.ptr(),
             in.array.shape(),
             out.array.normalized_strides(),
@@ -115,7 +111,7 @@ struct ArgSortFunctionHelper {
         typename var_T = T,
         typename std::enable_if<!(var_operator_t == OPERATOR_T_EQL)>::type* = nullptr
     >
-    static void run(TypedArray<devT, T>& out,
+    static void run(TypedArray<devT, int>& out,
                     const TypedArray<devT, T>& a) {
         operator_eql_check(operator_t);
         ASSERT2(false, "If asserts above are complete this message should never be displayed");
@@ -132,6 +128,11 @@ struct ArgSortFunction : public Function<ArgSortFunction, Array, Array, int> {
     }
 
     static DType deduce_computation_dtype(const Array& out, const Array& arr, const int& axis) {
+        ASSERT2(out.dtype() == deduce_output_dtype(arr, axis),
+            utils::MS() << "ArgSortFunction's output must be of type "
+                        << deduce_output_dtype(arr, axis)
+                        << " (got " << out.dtype() << ")."
+        );
         return arr.dtype();
     }
 
@@ -174,16 +175,21 @@ struct ArgSortFunction : public Function<ArgSortFunction, Array, Array, int> {
     }
 
     template<OPERATOR_T operator_t, typename T>
-    void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out, TypedArray<memory::DEVICE_T_CPU, T> input, const int& axis) {
+    void typed_eval(TypedArray<memory::DEVICE_T_CPU, int> out, TypedArray<memory::DEVICE_T_CPU, T> input, const int& axis) {
         ArgSortFunctionHelper<operator_t, memory::DEVICE_T_CPU, T>::run(out, input);
     }
 
 #ifdef DALI_USE_CUDA
     template<OPERATOR_T operator_t, typename T>
-    void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out, TypedArray<memory::DEVICE_T_GPU, T> input, const int& axis) {
+    void typed_eval(TypedArray<memory::DEVICE_T_GPU, int> out, TypedArray<memory::DEVICE_T_GPU, T> input, const int& axis) {
         ASSERT2(false, "I should never be called");
     }
 #endif
+};
+
+template<typename T>
+struct FunctionReturnType<ArgSortFunction, T> {
+    typedef int value;
 };
 
 namespace op {

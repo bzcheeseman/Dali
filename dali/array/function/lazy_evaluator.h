@@ -26,28 +26,65 @@ struct LazyEvaluator : public Function<LazyEvaluator<DestExpr,SrcExpr>, DestExpr
         return expr.bshape();
     }
 
-    static DType deduce_output_dtype(const SrcExpr& expr) {
+    /* Deduce output type from input type InputT>*/
+    template<typename InputT>
+    using out_expr_t = typename decltype(
+        std::declval<SrcExpr>().to_mshadow_expr(
+            std::declval<memory::Device>(),
+            std::vector<int>(),
+            std::declval<lazy::EvaluationSpec<memory::DEVICE_T_CPU, InputT, evaluation_dim>>()
+        )
+    )::exp_dtype_t;
+
+    static DType deduce_inputs_dtype(const SrcExpr& expr) {
         return expr.dtype();
     }
 
+    static DType deduce_output_dtype(const SrcExpr& expr) {
+        auto input_dtype = deduce_inputs_dtype(expr);
+        if (input_dtype == DTYPE_INT32) {
+            return template_to_dtype<out_expr_t<int>>();
+        } else if (input_dtype == DTYPE_FLOAT) {
+            return template_to_dtype<out_expr_t<float>>();
+        } else if (input_dtype == DTYPE_DOUBLE) {
+            return template_to_dtype<out_expr_t<double>>();
+        } else {
+            ASSERT2(false, "received unknown dtype during output dtype deduction.");
+        }
+        return template_to_dtype<float>();
+    }
+
+    static DType deduce_computation_dtype(const DestExpr& out, const SrcExpr& expr) {
+        ASSERT2(out.dtype() == deduce_output_dtype(expr),
+            utils::MS() << "Output type (" << out.dtype()
+                        << ") and expression type (" << expr.dtype() << ") differ");
+        return deduce_inputs_dtype(expr);
+    }
+
     static memory::Device deduce_output_device(const SrcExpr& expr) {
-        auto res = ReduceOverLazyExpr<DeviceReducer>::reduce(expr);
-        return res;
+        return ReduceOverLazyExpr<DeviceReducer>::reduce(expr);
     }
 
     static memory::Device deduce_computation_device(const DestExpr& out, const SrcExpr& expr) {
         return ReduceOverLazyExpr<DeviceReducer>::reduce(out, expr);
     }
 
-    static DType deduce_computation_dtype(const DestExpr& out, const SrcExpr& expr) {
-        ASSERT2(out.dtype() == expr.dtype(),
-            utils::MS() << "Output type (" << dtype_to_name(out.dtype())
-                        << ") and expression type (" << dtype_to_name(expr.dtype()) << ") differ");
-        return out.dtype();
-    }
+
 
     template<OPERATOR_T operator_t, int devT, typename T>
-    void typed_eval(TypedArray<devT,T> out, const SrcExpr& expr) {
+    void compute(const DestExpr& out, const memory::Device& device, const SrcExpr& expr) {
+        typedef ArrayWrapper<devT,T> wrapper_t;
+        typedef out_expr_t<T> out_t;
+        typedef ArrayWrapper<devT,out_t> out_wrapper_t;
+
+        typed_eval<operator_t, devT, T, out_t>(
+            out_wrapper_t::wrap(out, device),
+            wrapper_t::wrap(expr, device)
+        );
+    }
+
+    template<OPERATOR_T operator_t, int devT, typename T, typename OutT>
+    void typed_eval(TypedArray<devT,OutT> out, const SrcExpr& expr) {
         debug::lazy_evaluation_callback.activate(out.array);
 
         // out.array.shape() is passed to MshadowWrapper as final destination
@@ -66,8 +103,8 @@ struct LazyEvaluator : public Function<LazyEvaluator<DestExpr,SrcExpr>, DestExpr
         );
     }
 
-    template<OPERATOR_T operator_t, int devT, typename T, typename IndexT>
-    void typed_eval(TypedArraySubtensor<devT,T,IndexT> out, const SrcExpr& expr) {
+    template<OPERATOR_T operator_t, int devT, typename T, typename OutT, typename IndexT>
+    void typed_eval(TypedArraySubtensor<devT,OutT,IndexT> out, const SrcExpr& expr) {
         debug::lazy_evaluation_callback.activate(out.source.array);
 
         operator_assign<operator_t, evaluation_dim>(
@@ -80,8 +117,8 @@ struct LazyEvaluator : public Function<LazyEvaluator<DestExpr,SrcExpr>, DestExpr
         );
     }
 
-    template<OPERATOR_T operator_t, int devT, typename T, typename IndexT>
-    void typed_eval(TypedArrayGather<devT,T,IndexT> out, const SrcExpr& expr) {
+    template<OPERATOR_T operator_t, int devT, typename T, typename OutT, typename IndexT>
+    void typed_eval(TypedArrayGather<devT,OutT,IndexT> out, const SrcExpr& expr) {
         debug::lazy_evaluation_callback.activate(out.source.array);
 
         operator_assign<operator_t, evaluation_dim>(

@@ -20,6 +20,22 @@ namespace tensor_ops {
                   POOLING_T pooling_mode,
                   PADDING_T padding,
                   const std::string& data_format);
+
+    Tensor max_pool(Tensor input,
+                    int window_h,
+                    int window_w,
+                    int stride_h=-1,
+                    int stride_w=-1,
+                    PADDING_T padding=PADDING_T_VALID,
+                    const std::string& data_format="NCHW");
+
+    Tensor avg_pool(Tensor input,
+                    int window_h,
+                    int window_w,
+                    int stride_h=-1,
+                    int stride_w=-1,
+                    PADDING_T padding=PADDING_T_VALID,
+                    const std::string& data_format="NCHW");
 }
 
 #endif  // DALI_TENSOR_OP_SPATIAL_H

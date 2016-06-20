@@ -83,4 +83,37 @@ namespace tensor_ops {
         return out;
     }
 
+
+    Tensor max_pool(Tensor input,
+                    int window_h,
+                    int window_w,
+                    int stride_h=-1,
+                    int stride_w=-1,
+                    PADDING_T padding=PADDING_T_VALID,
+                    const std::string& data_format="NCHW") {
+        if (stride_h == -1) stride_h = window_h;
+        if (stride_w == -1) stride_w = window_w;
+
+        return pool2d(input, window_h, window_w,
+                             stride_h, stride_w,
+                             POOLING_T_MAX,
+                             padding, data_format);
+    }
+
+    Tensor avg_pool(Tensor input,
+                    int window_h,
+                    int window_w,
+                    int stride_h=-1,
+                    int stride_w=-1,
+                    PADDING_T padding=PADDING_T_VALID,
+                    const std::string& data_format="NCHW") {
+        if (stride_h == -1) stride_h = window_h;
+        if (stride_w == -1) stride_w = window_w;
+
+        return pool2d(input, window_h, window_w,
+                             stride_h, stride_w,
+                             POOLING_T_AVG,
+                             padding, data_format);
+    }
+
 }  // namespace tensor_ops

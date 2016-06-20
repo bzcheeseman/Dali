@@ -11,6 +11,15 @@ namespace tensor_ops {
                   int stride_w,
                   PADDING_T padding,
                   const std::string& data_format);
+
+    Tensor pool2d(Tensor input,
+                  int window_h,
+                  int window_w,
+                  int stride_h,
+                  int stride_w,
+                  POOLING_T pooling_mode,
+                  PADDING_T padding,
+                  const std::string& data_format);
 }
 
 #endif  // DALI_TENSOR_OP_SPATIAL_H

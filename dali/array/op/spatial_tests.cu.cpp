@@ -66,9 +66,6 @@ TEST(ArraySpatialTests, pool2d_backward) {
         PADDING_T_VALID,
         "NCHW"
         );
-    X.print();
-    out.print();
-    in_dw.print();
 }
 
 

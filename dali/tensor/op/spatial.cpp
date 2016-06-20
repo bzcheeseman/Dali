@@ -44,4 +44,43 @@ namespace tensor_ops {
         return out;
     }
 
+    Tensor pool2d(Tensor input,
+                  int window_h,
+                  int window_w,
+                  int stride_h,
+                  int stride_w,
+                  POOLING_T pooling_mode,
+                  PADDING_T padding,
+                  const std::string& data_format) {
+        Tensor out(op::pool2d(input.w,
+                              window_h,
+                              window_w,
+                              stride_h,
+                              stride_w,
+                              pooling_mode,
+                              padding,
+                              data_format));
+        if (graph::backprop_enabled())
+            graph::emplace_back([out, input,
+                                 window_h, window_w,
+                                 stride_h, stride_w,
+                                 pooling_mode,
+                                 padding,
+                                 data_format]() mutable {
+                MAYBE_GRAD(input) +=
+                    op::pool2d_backward(out.w,
+                                        out.dw,
+                                        input.w,
+                                        window_h,
+                                        window_w,
+                                        stride_h,
+                                        stride_w,
+                                        input.shape(),
+                                        pooling_mode,
+                                        padding,
+                                        data_format);
+            });
+        return out;
+    }
+
 }  // namespace tensor_ops

@@ -25,3 +25,23 @@ TEST(TensorSpatialTests, conv2d) {
         ASSERT_TRUE(gradient_same(functor, {X,W}, 1e-3, 1e-2));
     }
 }
+
+TEST(TensorSpatialTests, pool2d) {
+    EXPERIMENT_REPEAT {
+        Tensor X = Tensor::arange({1, 1, 8, 8}, DTYPE_FLOAT);
+
+        auto functor = [&](vector<Tensor> Xs) -> Tensor {
+            return tensor_ops::pool2d(
+                X,
+                /*window_h=*/2,
+                /*window_w=*/2,
+                /*stride_h=*/2,
+                /*stride_w=*/2,
+                POOLING_T_MAX,
+                PADDING_T_VALID,
+                "NCHW");
+        };
+
+        ASSERT_TRUE(gradient_same(functor, {X}, 1e-3, 1e-2));
+    }
+}

@@ -114,33 +114,33 @@ struct MshadowWrapper<devT,T,Array> {
 template<int devT,typename T>
 struct MshadowWrapper<devT,T,float> {
     template<int ndim>
-    static inline T wrap(const float& scalar,
+    static inline float wrap(const float& scalar,
                          memory::Device,
                          const std::vector<int>&,
                          const lazy::EvaluationSpec<devT, T, ndim>&) {
-        return (T)scalar;
+        return scalar;
     }
 };
 
 template<int devT,typename T>
 struct MshadowWrapper<devT,T,double> {
     template<int ndim>
-    static inline T wrap(const double& scalar,
+    static inline double wrap(const double& scalar,
                          memory::Device,
                          const std::vector<int>&,
                          const lazy::EvaluationSpec<devT, T, ndim>&) {
-        return (T)scalar;
+        return scalar;
     }
 };
 
 template<int devT,typename T>
 struct MshadowWrapper<devT,T,int> {
     template<int ndim>
-    static inline T wrap(const int& scalar,
+    static inline int wrap(const int& scalar,
                          memory::Device,
                          const std::vector<int>&,
                          const lazy::EvaluationSpec<devT, T, ndim>&) {
-        return (T)scalar;
+        return scalar;
     }
 };
 

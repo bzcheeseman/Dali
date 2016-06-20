@@ -22,6 +22,17 @@ namespace lazy {
     };
 }
 
+template<typename ExpT> struct ExtractDType {typedef typename ExpT::exp_dtype_t value;};
+template<>              struct ExtractDType<float> {typedef float value;};
+template<>              struct ExtractDType<int> {typedef int value;};
+template<>              struct ExtractDType<double> {typedef double value;};
+
+template<typename T1, typename T2>
+struct FunctorExtractDType {
+    typedef typename ExtractDType<T1>::value left_t;
+    typedef typename ExtractDType<T2>::value right_t;
+    typedef decltype(left_t(0) * right_t(0)) value;
+};
 
 template<template<class>class Functor, typename LeftT, typename RightT>
 struct LazyBinary : public LazyFunction<LazyBinary<Functor,LeftT,RightT>, LeftT, RightT> {
@@ -38,14 +49,18 @@ struct LazyBinary : public LazyFunction<LazyBinary<Functor,LeftT,RightT>, LeftT,
     template<int devT,typename T, int ndim>
     auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape, const lazy::EvaluationSpec<devT, T, ndim>& wrap_array) const ->
             decltype(
-                mshadow::expr::F<Functor<T>>(
+                mshadow::expr::F<Functor<typename FunctorExtractDType<
+                    decltype(MshadowWrapper<devT,T,decltype(left)>::wrap(left, device, output_shape, wrap_array)),
+                    decltype(MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape, wrap_array))
+                >::value>
+            >(
                      MshadowWrapper<devT,T,decltype(left)>::wrap(left, device, output_shape, wrap_array),
                      MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape, wrap_array)
-                )
-            ) {
+            )) {
         auto left_expr  = MshadowWrapper<devT,T,decltype(left)>::wrap(left,  device, output_shape, wrap_array);
         auto right_expr = MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape, wrap_array);
-        return mshadow::expr::F<Functor<T>>(left_expr, right_expr);
+        typedef typename FunctorExtractDType<decltype(left_expr), decltype(right_expr)>::value functor_dtype_t;
+        return mshadow::expr::F<Functor<functor_dtype_t>>(left_expr, right_expr);
     }
 };
 
@@ -68,14 +83,18 @@ struct LazyBinaryIndexed : public LazyFunction<LazyBinaryIndexed<Functor,LeftT,R
     template<int devT,typename T, int ndim>
     auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape, const lazy::EvaluationSpec<devT, T, ndim>& wrap_array) const ->
             decltype(
-                mshadow::expr::FIndexed<Functor<T>>(
-                    MshadowWrapper<devT,T,decltype(left)>::wrap(left, device, output_shape, wrap_array),
-                    MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape, wrap_array)
-                )
-            ) {
+                mshadow::expr::F<mshadow::expr::FIndexed<typename FunctorExtractDType<
+                    decltype(MshadowWrapper<devT,T,decltype(left)>::wrap(left, device, output_shape, wrap_array)),
+                    decltype(MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape, wrap_array))
+                >::value>
+            >(
+                     MshadowWrapper<devT,T,decltype(left)>::wrap(left, device, output_shape, wrap_array),
+                     MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape, wrap_array)
+            )) {
         auto left_expr  = MshadowWrapper<devT,T,decltype(left)>::wrap(left,  device, output_shape, wrap_array);
         auto right_expr = MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape, wrap_array);
-        return mshadow::expr::FIndexed<Functor<T>>(left_expr, right_expr);
+        typedef typename FunctorExtractDType<decltype(left_expr), decltype(right_expr)>::value functor_dtype_t;
+        return mshadow::expr::FIndexed<Functor<functor_dtype_t>>(left_expr, right_expr);
     }
 };
 

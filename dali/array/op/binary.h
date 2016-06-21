@@ -14,5 +14,6 @@ namespace op {
     Assignable<Array> eltmul(const Array& left, const Array& right);
     Assignable<Array> eltdiv(const Array& left, const Array& right);
     Assignable<Array> pow(const Array& left, const Array& right);
+    Assignable<Array> equals(const Array& left, const Array& right);
 }  // namespace op
 #endif

@@ -77,4 +77,9 @@ namespace op {
     Assignable<Array> pow(const Array& a, const Array& b) {
         return lazy::pow(a, b);
     }
+
+    Assignable<Array> equals(const Array& left, const Array& right) {
+        return lazy::equals(left, right);
+    }
+
 }  // namespace op

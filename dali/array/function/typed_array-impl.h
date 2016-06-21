@@ -100,7 +100,7 @@ namespace internal {
     TypedArrayGatherShared<MDevT,T,IndexT>::contiguous_d(memory::AM access_mode, bool collapse_leading) const {
         return mshadow::expr::take(
             indices.template contiguous_d<1>(access_mode, collapse_leading),
-            source.template contiguous_d<dim>(access_mode, collapse_leading)
+            source.template contiguous_d<dim>(access_mode, false)
         );
     }
 
@@ -113,7 +113,7 @@ namespace internal {
     TypedArrayGatherShared<MDevT,T,IndexT>::d(memory::AM access_mode, bool collapse_leading) const {
         return mshadow::expr::take(
             indices.template d<1>(access_mode, collapse_leading),
-            source.template d<dim>(access_mode, collapse_leading)
+            source.template d<dim>(access_mode, false)
         );
     }
 

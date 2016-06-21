@@ -3,11 +3,10 @@
 #include "dali/utils/print_utils.h"
 #include "dali/array/test_utils.h"
 #include "dali/runtime_config.h"
-#define DALI_USE_LAZY 0
-#include "dali/array/op/reshape.h"
-#include "dali/array/op/initializer.h"
+#include "dali/array/lazy_op.h"
 
 using namespace op;
+
 
 TEST(ArrayReshapeTests, hstack) {
     Array a_b({2, 7}, DTYPE_INT32);

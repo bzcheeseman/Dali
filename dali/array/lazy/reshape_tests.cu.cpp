@@ -5,8 +5,44 @@
 #include "dali/utils/print_utils.h"
 #include "dali/array/functor.h"
 
-#define DALI_USE_LAZY 1
-#include "dali/array/op.h"
+#include "dali/array/lazy_op.h"
+
+TEST(ArrayReshapeTests, take_assign) {
+    auto train_y = Array::ones({10}, DTYPE_INT32);
+
+    int num_selected = 5;
+    auto idxes = Array::ones({num_selected}, DTYPE_INT32);
+
+    auto src = Array::ones({num_selected}, DTYPE_INT32);
+
+    train_y[idxes] += src;
+}
+
+TEST(ArrayReshapeTests, rows_pluck_forward_correctness_1d_source) {
+    const int num_plucks = 4;
+    Array A({10}, DTYPE_FLOAT);
+    A = initializer::uniform(-20.0, 20.0);
+    Array indices({num_plucks, 1, 1}, DTYPE_INT32);
+    indices = initializer::uniform(0, A.shape()[0] - 1);
+
+    Array res = A[indices];
+
+    EXPECT_EQ(std::vector<int>({num_plucks, 1, 1}), res.shape());
+
+    #ifdef DALI_USE_CUDA
+        EXPECT_TRUE(res.memory()->is_fresh(memory::Device::gpu(0)));
+    #endif
+
+    A.print();
+    indices.print();
+    res.print();
+
+    for (int pluck_idx = 0; pluck_idx < indices.number_of_elements(); ++pluck_idx) {
+        auto actual_el = res[pluck_idx][0][0];
+        auto expected_el = A[(int)indices(pluck_idx)];
+        EXPECT_NEAR(actual_el, expected_el, 1e-4);
+    }
+}
 
 TEST(ArrayReshapeTests, rows_pluck_forward_correctness) {
     const int num_plucks = 4;

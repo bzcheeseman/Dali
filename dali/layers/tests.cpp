@@ -16,20 +16,6 @@ using std::chrono::milliseconds;
 
 typedef MemorySafeTest LayerTests;
 
-
-TEST(LayerTests, layer_embedding) {
-    Tensor train_y = Tensor::ones({9000}, DTYPE_INT32);
-
-    int num_images = train_y.shape()[0];
-    Tensor idxes = Tensor::uniform(0, num_images, {num_images}, DTYPE_INT32);
-    Tensor train_y_new = train_y[idxes];
-    graph::backward();
-
-    train_y.print();
-}
-
-
-
 TEST(LayerTests, layer) {
     int num_examples = 7;
     int hidden_size  = 10;

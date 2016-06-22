@@ -12,6 +12,10 @@ namespace tensor_ops {
                   PADDING_T padding,
                   const std::string& data_format);
 
+    Tensor conv2d_add_bias(Tensor conv_out,
+                           Tensor bias,
+                           const std::string& data_format);
+
     Tensor pool2d(Tensor input,
                   int window_h,
                   int window_w,

@@ -63,11 +63,12 @@ Tensor Layer::activate(Tensor input_vector) const {
     return tensor_ops::dot_with_bias(input_vector, W, this->b);
 }
 
-Layer::Layer (const Layer& layer, bool copy_w, bool copy_dw) :
-        hidden_size(layer.hidden_size),
-        input_size(layer.input_size) {
-    W       = Tensor(layer.W, copy_w, copy_dw);
-    this->b = Tensor(layer.b, copy_w, copy_dw);
+Layer::Layer (const Layer& other, bool copy_w, bool copy_dw) :
+        hidden_size(other.hidden_size),
+        input_size(other.input_size),
+        AbstractMultiInputLayer(other.dtype, other.device) {
+    W       = Tensor(other.W, copy_w, copy_dw);
+    this->b = Tensor(other.b, copy_w, copy_dw);
 }
 
 Layer Layer::shallow_copy() const {
@@ -182,13 +183,14 @@ Tensor StackedInputLayer::activate(
     return out;
 }
 
-StackedInputLayer::StackedInputLayer (const StackedInputLayer& layer, bool copy_w, bool copy_dw) :
-        hidden_size(layer.hidden_size),
-        input_sizes(layer.get_input_sizes()) {
-    tensors.reserve(layer.tensors.size());
-    for (auto& tensor : layer.tensors)
+StackedInputLayer::StackedInputLayer (const StackedInputLayer& other, bool copy_w, bool copy_dw) :
+        hidden_size(other.hidden_size),
+        input_sizes(other.get_input_sizes()),
+        AbstractMultiInputLayer(other.dtype, other.device) {
+    tensors.reserve(other.tensors.size());
+    for (auto& tensor : other.tensors)
         tensors.emplace_back(tensor, copy_w, copy_dw);
-    this->b = Tensor(layer.b, copy_w, copy_dw);
+    this->b = Tensor(other.b, copy_w, copy_dw);
 }
 
 StackedInputLayer StackedInputLayer::shallow_copy() const {
@@ -278,15 +280,16 @@ SecondOrderCombinator::SecondOrderCombinator(int input1_size,
     b =  Tensor::zeros({output_size}, dtype, device)[Broadcast()];
 }
 
-SecondOrderCombinator::SecondOrderCombinator(const SecondOrderCombinator& m,
+SecondOrderCombinator::SecondOrderCombinator(const SecondOrderCombinator& other,
                                              bool copy_w,
                                              bool copy_dw) :
-        input1_size(m.input1_size),
-        input2_size(m.input2_size),
-        output_size(m.output_size),
-        W1(m.W1, copy_w, copy_dw),
-        W2(m.W2, copy_w, copy_dw),
-        b(m.b, copy_w, copy_dw) {
+        input1_size(other.input1_size),
+        input2_size(other.input2_size),
+        output_size(other.output_size),
+        W1(other.W1, copy_w, copy_dw),
+        W2(other.W2, copy_w, copy_dw),
+        b(other.b, copy_w, copy_dw),
+        AbstractLayer(other.dtype, other.device) {
 }
 
 vector<Tensor> SecondOrderCombinator::parameters() const {
@@ -341,13 +344,14 @@ RNN::RNN (int input_size_, int hidden_size_, int output_size_, DType dtype_, mem
     create_variables();
 }
 
-RNN::RNN (const RNN& rnn, bool copy_w, bool copy_dw) :
-        hidden_size(rnn.hidden_size),
-        input_size(rnn.input_size),
-        output_size(rnn.output_size) {
-    Wx = Tensor(rnn.Wx, copy_w, copy_dw);
-    Wh = Tensor(rnn.Wh, copy_w, copy_dw);
-    b = Tensor(rnn.b, copy_w, copy_dw);
+RNN::RNN (const RNN& other, bool copy_w, bool copy_dw) :
+        hidden_size(other.hidden_size),
+        input_size(other.input_size),
+        output_size(other.output_size),
+        AbstractLayer(other.dtype, other.device) {
+    Wx = Tensor(other.Wx, copy_w, copy_dw);
+    Wh = Tensor(other.Wh, copy_w, copy_dw);
+    b = Tensor(other.b, copy_w, copy_dw);
 }
 
 RNN RNN::shallow_copy() const {

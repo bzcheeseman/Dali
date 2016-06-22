@@ -110,6 +110,8 @@ namespace cudnn {
                 data_format_cudnn = CUDNN_TENSOR_NCHW;
             } else if (data_format == "NHWC") {
                 data_format_cudnn = CUDNN_TENSOR_NHWC;
+            } else {
+                ASSERT2(false, "unsupported data format");
             }
             cudnnDataType_t cudnn_dtype;
             if (template_to_dtype<T>() == DTYPE_FLOAT) {
@@ -119,15 +121,33 @@ namespace cudnn {
             } else {
                 ASSERT2(false, "unsupported dtype");
             }
+            int shape0, shape1, shape2, shape3;
+            if (tensor.array.ndim() == 1) {
+                if (data_format == "NCHW") {
+                    shape0 = shape2 = shape3 = 1;
+                    shape1 = tensor.array.shape()[0];
+                } else if (data_format == "NHWC") {
+                    shape0 = shape1 = shape2 = 1;
+                    shape3 = tensor.array.shape()[0];
+                }
+            } else if (tensor.array.ndim() == 4) {
+                shape0 = tensor.array.shape()[0];
+                shape1 = tensor.array.shape()[1];
+                shape2 = tensor.array.shape()[2];
+                shape3 = tensor.array.shape()[3];
+            } else {
+                ASSERT2(false, "cudnn::wrapper::Tensor can only support 1D and 4D tensors.");
+            }
+
             TensorWrapperApi<Descriptor>::create(&description);
             TensorWrapperApi<Descriptor>::set(
                 description,
                 data_format_cudnn,
                 cudnn_dtype,
-                tensor.array.shape()[0],
-                tensor.array.shape()[1],
-                tensor.array.shape()[2],
-                tensor.array.shape()[3]
+                shape0,
+                shape1,
+                shape2,
+                shape3
             );
             // TODO(szymon): add striding support and assert maybe???
             data = tensor.ptr(access_mode);
@@ -309,7 +329,7 @@ namespace cudnn {
             in_dw->description,
             in_dw->data
         );
-        cudnn_check_result(result, "when computing convolution forward");
+        cudnn_check_result(result, "when computing convolution's data gradient");
     }
 
 
@@ -339,8 +359,24 @@ namespace cudnn {
             filters_dw->description,
             filters_dw->data
         );
-        cudnn_check_result(result, "when computing convolution forward");
+        cudnn_check_result(result, "when computing convolution's filter gradient");
     }
+
+    void conv2d_bwd_bias(std::shared_ptr<wrapper::Tensor> bias_dw,
+                         std::shared_ptr<wrapper::Tensor> out_dw,
+                         const wrapper::Operator& update_operator) {
+        auto result = cudnnConvolutionBackwardBias(
+            *get_handle(),
+            update_operator.alpha_ptr,
+            out_dw->description,
+            out_dw->data,
+            update_operator.beta_ptr,
+            bias_dw->description,
+            bias_dw->data
+        );
+        cudnn_check_result(result, "when computing convolution bias gradient");
+    }
+
 
     void pool2d(std::shared_ptr<wrapper::Tensor> out,
                 std::shared_ptr<wrapper::Tensor>  in,

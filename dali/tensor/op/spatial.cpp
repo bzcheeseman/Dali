@@ -44,6 +44,29 @@ namespace tensor_ops {
         return out;
     }
 
+    Tensor conv2d_add_bias(Tensor conv_out,
+                           Tensor bias,
+                           const std::string& data_format) {
+        Array broadcasted_bias;
+        if (data_format == "NCHW") {
+            broadcasted_bias = bias.w[Broadcast()][Slice(0, bias.shape()[0])][Broadcast()][Broadcast()];
+        } else if (data_format == "NHWC") {
+            broadcasted_bias = bias.w[Broadcast()][Broadcast()][Broadcast()];
+        } else {
+            ASSERT2(false, utils::MS() << "Unsupported data_format: " << data_format);
+        }
+
+        Tensor out(conv_out.w + broadcasted_bias);
+
+        if (graph::backprop_enabled())
+            graph::emplace_back([conv_out, bias, out, data_format]() mutable {
+                MAYBE_GRAD(conv_out) += out.dw;
+
+                MAYBE_GRAD(bias) += op::conv2d_backward_bias(out.dw, data_format);
+            });
+        return out;
+    }
+
     Tensor pool2d(Tensor input,
                   int window_h,
                   int window_w,

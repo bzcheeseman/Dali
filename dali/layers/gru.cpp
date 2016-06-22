@@ -22,7 +22,8 @@ GRU::GRU(const GRU& other, bool copy_w, bool copy_dw) :
     hidden_size(other.hidden_size),
     reset_layer(other.reset_layer, copy_w, copy_dw),
     memory_interpolation_layer(other.memory_interpolation_layer, copy_w, copy_dw),
-    memory_to_memory_layer(other.memory_to_memory_layer, copy_w, copy_dw) {}
+    memory_to_memory_layer(other.memory_to_memory_layer, copy_w, copy_dw),
+    AbstractLayer(other.dtype, other.device) {}
 
 GRU GRU::shallow_copy() const {
     return GRU(*this, false, true);

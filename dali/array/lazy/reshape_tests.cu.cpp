@@ -33,10 +33,6 @@ TEST(ArrayReshapeTests, rows_pluck_forward_correctness_1d_source) {
         EXPECT_TRUE(res.memory()->is_fresh(memory::Device::gpu(0)));
     #endif
 
-    A.print();
-    indices.print();
-    res.print();
-
     for (int pluck_idx = 0; pluck_idx < indices.number_of_elements(); ++pluck_idx) {
         auto actual_el = res[pluck_idx][0][0];
         auto expected_el = A[(int)indices(pluck_idx)];

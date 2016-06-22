@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include "dali/array/op/unary.h"
+#include "dali/layers/conv.h"
 #include "dali/layers/gru.h"
 #include "dali/layers/layers.h"
 #include "dali/layers/lstm.h"
@@ -441,5 +442,32 @@ TEST(LayerTests, GRU) {
             return (state -1.0) ^ 2;
         };
         ASSERT_TRUE(gradient_same(functor, params, 1e-3));
+    }
+}
+
+TEST(LayerTests, conv) {
+    int num_examples = 5;
+    int out_channels = 4;
+    int in_channels  = 3;
+    int filter_h     = 2;
+    int filter_w     = 2;
+    int stride_h     = 2;
+    int stride_w     = 2;
+
+
+    EXPERIMENT_REPEAT {
+        auto X  = Tensor::uniform(20.0, {5, in_channels, 8, 8}, DTYPE_DOUBLE);
+        auto mylayer = ConvLayer(out_channels, in_channels,
+                                 filter_h, filter_w,
+                                 stride_h, stride_w,
+                                 PADDING_T_SAME,
+                                 "NCHW",
+                                 DTYPE_DOUBLE);
+        auto params = mylayer.parameters();
+        params.emplace_back(X);
+        auto functor = [&](vector<Tensor> Xs)-> Tensor {
+            return mylayer.activate(X);
+        };
+        ASSERT_TRUE(gradient_same(functor, {params}, 1e-2));
     }
 }

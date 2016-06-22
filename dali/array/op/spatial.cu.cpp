@@ -175,10 +175,10 @@ struct Conv2dFunction : public Function<Conv2dFunction,
     }
 
 #ifdef DALI_USE_CUDA
-    template<OPERATOR_T operator_t>
-    void typed_eval(TypedArray<memory::DEVICE_T_GPU, int> out,
-                    TypedArray<memory::DEVICE_T_GPU, int> input,
-                    TypedArray<memory::DEVICE_T_GPU, int> filters,
+    template<OPERATOR_T operator_t, typename T, DALI_FUNC_ENABLE_IF_INT>
+    void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out,
+                    TypedArray<memory::DEVICE_T_GPU, T> input,
+                    TypedArray<memory::DEVICE_T_GPU, T> filters,
                     int stride_h,
                     int stride_w,
                     PADDING_T padding,
@@ -186,14 +186,14 @@ struct Conv2dFunction : public Function<Conv2dFunction,
         ASSERT2(false, "integer convolution is not implemented for GPU.");
     }
 
-    template<OPERATOR_T operator_t, typename T>
+    template<OPERATOR_T operator_t, typename T, DALI_FUNC_DISABLE_IF_INT>
     void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out,
                     TypedArray<memory::DEVICE_T_GPU, T> input,
                     TypedArray<memory::DEVICE_T_GPU, T> filters,
                     int stride_h,
                     int stride_w,
                     PADDING_T padding,
-                    std::string data_format) {
+                    const std::string& data_format) {
 
         int padding_h, padding_w;
         std::tie(padding_h, padding_w) = convolution_padding(input.array.shape(),
@@ -261,10 +261,10 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
     }
 
 #ifdef DALI_USE_CUDA
-    template<OPERATOR_T operator_t>
-    void typed_eval(TypedArray<memory::DEVICE_T_GPU, int> in_dw,
-                    TypedArray<memory::DEVICE_T_GPU, int> filters,
-                    TypedArray<memory::DEVICE_T_GPU, int> out_dw,
+    template<OPERATOR_T operator_t, typename T, DALI_FUNC_ENABLE_IF_INT>
+    void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> in_dw,
+                    TypedArray<memory::DEVICE_T_GPU, T> filters,
+                    TypedArray<memory::DEVICE_T_GPU, T> out_dw,
                     int stride_h,
                     int stride_w,
                     const std::vector<int>& result_shape,
@@ -273,7 +273,7 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
         ASSERT2(false, "integer convolution is not implemented for GPU.");
     }
 
-    template<OPERATOR_T operator_t, typename T>
+    template<OPERATOR_T operator_t, typename T, DALI_FUNC_DISABLE_IF_INT>
     void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> in_dw,
                     TypedArray<memory::DEVICE_T_GPU, T> filters,
                     TypedArray<memory::DEVICE_T_GPU, T> out_dw,
@@ -281,7 +281,7 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
                     int stride_w,
                     const std::vector<int>& result_shape,
                     PADDING_T padding,
-                    std::string data_format) {
+                    const std::string data_format) {
 
         int padding_h, padding_w;
         std::tie(padding_h, padding_w) = convolution_padding(in_dw.array.shape(),
@@ -350,10 +350,10 @@ struct Conv2dBwdFiltersFunction : public Function<Conv2dBwdFiltersFunction,
     }
 
 #ifdef DALI_USE_CUDA
-    template<OPERATOR_T operator_t>
-    void typed_eval(TypedArray<memory::DEVICE_T_GPU, int> filters_dw,
-                    TypedArray<memory::DEVICE_T_GPU, int> input,
-                    TypedArray<memory::DEVICE_T_GPU, int> out_dw,
+    template<OPERATOR_T operator_t, typename T, DALI_FUNC_ENABLE_IF_INT>
+    void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> filters_dw,
+                    TypedArray<memory::DEVICE_T_GPU, T> input,
+                    TypedArray<memory::DEVICE_T_GPU, T> out_dw,
                     int stride_h,
                     int stride_w,
                     const std::vector<int>& result_shape,
@@ -362,7 +362,7 @@ struct Conv2dBwdFiltersFunction : public Function<Conv2dBwdFiltersFunction,
         ASSERT2(false, "integer convolution is not implemented for GPU.");
     }
 
-    template<OPERATOR_T operator_t, typename T>
+    template<OPERATOR_T operator_t, typename T, DALI_FUNC_DISABLE_IF_INT>
     void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> filters_dw,
                     TypedArray<memory::DEVICE_T_GPU, T> input,
                     TypedArray<memory::DEVICE_T_GPU, T> out_dw,
@@ -370,7 +370,7 @@ struct Conv2dBwdFiltersFunction : public Function<Conv2dBwdFiltersFunction,
                     int stride_w,
                     const std::vector<int>& result_shape,
                     PADDING_T padding,
-                    std::string data_format) {
+                    const std::string& data_format) {
 
         int padding_h, padding_w;
         std::tie(padding_h, padding_w) = convolution_padding(input.array.shape(),
@@ -394,6 +394,58 @@ struct Conv2dBwdFiltersFunction : public Function<Conv2dBwdFiltersFunction,
 
 #endif
 };
+
+///////////////////////////////////////////////////////////////////////////////
+//                    Conv2dBwdBiasFunction                                  //
+///////////////////////////////////////////////////////////////////////////////
+
+struct Conv2dBwdBiasFunction : public Function<Conv2dBwdBiasFunction,
+                                        Array,
+                                        Array,
+                                        std::string> {
+    static std::vector<int> deduce_output_bshape(const Array& out_dw,
+                                                 const std::string& data_format) {
+        size_t channel_dim = data_format.find('C');
+        ASSERT2(channel_dim != std::string::npos,
+                utils::MS() << "Invalid data format passed: " << data_format);
+
+        return {out_dw.shape()[channel_dim]};
+    }
+
+
+    template<OPERATOR_T operator_t, typename T>
+    void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> bias_dw,
+                    TypedArray<memory::DEVICE_T_CPU, T> out_dw,
+                    const std::string& data_format) {
+        throw std::runtime_error("not implemented!");
+    }
+
+#ifdef DALI_USE_CUDA
+    template<OPERATOR_T operator_t, typename T, DALI_FUNC_ENABLE_IF_INT>
+    void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> bias_dw,
+                    TypedArray<memory::DEVICE_T_GPU, T> out_dw,
+                    const std::string& data_format) {
+        ASSERT2(false, "integer convolution is not implemented for GPU.");
+    }
+
+    template<OPERATOR_T operator_t, typename T, DALI_FUNC_DISABLE_IF_INT>
+    void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> bias_dw,
+                    TypedArray<memory::DEVICE_T_GPU, T> out_dw,
+                    const std::string& data_format) {
+
+        auto out_access_mode = operator_to_output_am(operator_t);
+
+        cudnn::conv2d_bwd_bias(
+                std::make_shared<cudnn::wrapper::Tensor>(bias_dw, data_format, out_access_mode),
+                std::make_shared<cudnn::wrapper::Tensor>(out_dw,  data_format),
+                cudnn::wrapper::Operator(operator_t, template_to_dtype<T>())
+        );
+    }
+
+#endif
+};
+
+
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -472,9 +524,9 @@ struct Pool2dFunction : public Function<Pool2dFunction,
     }
 
 #ifdef DALI_USE_CUDA
-    template<OPERATOR_T operator_t>
-    void typed_eval(TypedArray<memory::DEVICE_T_GPU, int> out,
-                    TypedArray<memory::DEVICE_T_GPU, int> input,
+    template<OPERATOR_T operator_t, typename T, DALI_FUNC_ENABLE_IF_INT>
+    void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out,
+                    TypedArray<memory::DEVICE_T_GPU, T> input,
                     int window_h,
                     int window_w,
                     int stride_h,
@@ -485,7 +537,7 @@ struct Pool2dFunction : public Function<Pool2dFunction,
         ASSERT2(false, "integer convolution is not implemented for GPU.");
     }
 
-    template<OPERATOR_T operator_t, typename T>
+    template<OPERATOR_T operator_t, typename T, DALI_FUNC_DISABLE_IF_INT>
     void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out,
                     TypedArray<memory::DEVICE_T_GPU, T> input,
                     int window_h,
@@ -575,11 +627,11 @@ struct Pool2dBwdFunction : public Function<Pool2dBwdFunction,
     }
 
 #ifdef DALI_USE_CUDA
-    template<OPERATOR_T operator_t>
-    void typed_eval(TypedArray<memory::DEVICE_T_GPU, int> in_dw,
-                    TypedArray<memory::DEVICE_T_GPU, int> out,
-                    TypedArray<memory::DEVICE_T_GPU, int> out_dw,
-                    TypedArray<memory::DEVICE_T_GPU, int> in,
+    template<OPERATOR_T operator_t, typename T, DALI_FUNC_ENABLE_IF_INT>
+    void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> in_dw,
+                    TypedArray<memory::DEVICE_T_GPU, T> out,
+                    TypedArray<memory::DEVICE_T_GPU, T> out_dw,
+                    TypedArray<memory::DEVICE_T_GPU, T> in,
                     int window_h,
                     int window_w,
                     int stride_h,
@@ -591,7 +643,7 @@ struct Pool2dBwdFunction : public Function<Pool2dBwdFunction,
         ASSERT2(false, "integer convolution is not implemented for GPU.");
     }
 
-    template<OPERATOR_T operator_t, typename T>
+    template<OPERATOR_T operator_t, typename T, DALI_FUNC_DISABLE_IF_INT>
     void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> in_dw,
                     TypedArray<memory::DEVICE_T_GPU, T> out,
                     TypedArray<memory::DEVICE_T_GPU, T> out_dw,
@@ -666,7 +718,6 @@ namespace op {
 
     }
 
-
     Assignable<Array> conv2d_backward_filters(
                      const Array& input,
                      const Array& out_dw,
@@ -682,6 +733,12 @@ namespace op {
                                              result_shape,
                                              padding,
                                              data_format);
+    }
+
+    Assignable<Array> conv2d_backward_bias(
+                     const Array& out_dw,
+                     const std::string& data_format) {
+        return Conv2dBwdBiasFunction::run(out_dw,data_format);
     }
 
     Assignable<Array> pool2d(const Array& input,

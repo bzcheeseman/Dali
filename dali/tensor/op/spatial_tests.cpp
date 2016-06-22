@@ -10,6 +10,19 @@
 
 using std::vector;
 
+TEST(TensorSpatialTests, conv2d_add_bias) {
+    EXPERIMENT_REPEAT {
+        auto X = Tensor::uniform(10.0, {2, 3, 4, 5}, DTYPE_FLOAT);
+        auto b = Tensor::uniform(10.0, {3,},         DTYPE_FLOAT);
+
+        auto functor = [&](vector<Tensor> Xs)-> Tensor {
+            return tensor_ops::conv2d_add_bias(X, b, "NCHW");
+
+        };
+        ASSERT_TRUE(gradient_same(functor, {X, b}, 1e-2, 1e-2));
+    }
+}
+
 TEST(TensorSpatialTests, conv2d) {
     EXPERIMENT_REPEAT {
         auto X = Tensor::arange({1, 1, 8, 8}, DTYPE_DOUBLE);

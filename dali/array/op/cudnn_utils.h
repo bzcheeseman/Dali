@@ -87,6 +87,11 @@ namespace cudnn {
                             std::shared_ptr<wrapper::Convolution> conv,
                             const wrapper::Operator& update_operator);
 
+
+    void conv2d_bwd_bias(std::shared_ptr<wrapper::Tensor> bias_dw,
+                         std::shared_ptr<wrapper::Tensor> out_dw,
+                         const wrapper::Operator& update_operator);
+
     void pool2d(std::shared_ptr<wrapper::Tensor> out,
                 std::shared_ptr<wrapper::Tensor>  in,
                 std::shared_ptr<wrapper::Pooling> pooling,
@@ -98,6 +103,7 @@ namespace cudnn {
                     std::shared_ptr<wrapper::Tensor> in,
                     std::shared_ptr<wrapper::Pooling> pooling,
                     const wrapper::Operator& update_operator);
+
 }  // namespace cudnn
 
 #endif  // DALI_ARRAY_OP_CUDNN_UTILS_H

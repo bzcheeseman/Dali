@@ -40,6 +40,10 @@ namespace op {
                      PADDING_T padding,
                      const std::string& data_format);
 
+    Assignable<Array> conv2d_backward_bias(
+                     const Array& out_dw,
+                     const std::string& data_format);
+
     Assignable<Array> pool2d(const Array& input,
                              int window_h,
                              int window_w,

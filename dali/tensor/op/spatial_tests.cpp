@@ -4,11 +4,14 @@
 #include <functional>
 #include <gtest/gtest.h>
 
+#include "dali/config.h"
 #include "dali/test_utils.h"
 #include "dali/tensor/tensor.h"
 #include "dali/tensor/op/spatial.h"
 
 using std::vector;
+
+#ifdef DALI_USE_CUDA // TODO(jonathan): remove once working on CPU
 
 TEST(TensorSpatialTests, conv2d_add_bias) {
     EXPERIMENT_REPEAT {
@@ -58,3 +61,5 @@ TEST(TensorSpatialTests, pool2d) {
         ASSERT_TRUE(gradient_same(functor, {X}, 1e-3, 1e-2));
     }
 }
+
+#endif

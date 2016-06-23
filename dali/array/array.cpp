@@ -46,6 +46,10 @@ bool shape_strictly_positive(const std::vector<int>& shape) {
     });
 }
 
+void alert_stateless_call(const bool& stateful, const char* fieldname) {
+    ASSERT2(stateful, utils::MS() << fieldname << " must not be called on Array initialized with empty constructor.");
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //                        ASSIGNABLE ARRAY                                    //
@@ -492,12 +496,10 @@ Array& Array::reset() {
     return *this;
 }
 
-
 const vector<int>& Array::shape() const {
-    ASSERT2(state != nullptr, "shape must not be called on Array initialized with empty constructor");
+    alert_stateless_call(state != nullptr, "shape");
     return state->shape;
 }
-
 
 std::shared_ptr<memory::SynchronizedMemory> Array::memory() const {
     if (state == nullptr) {
@@ -507,19 +509,20 @@ std::shared_ptr<memory::SynchronizedMemory> Array::memory() const {
     }
 }
 
+
 int Array::offset() const {
-    ASSERT2(state != nullptr, "offset must not be called on Array initialled with empty constructor");
+    alert_stateless_call(state != nullptr, "offset");
     return state->offset;
 }
 
 const std::vector<int>& Array::strides() const {
-    ASSERT2(state != nullptr, "strides must not be called on Array initialled with empty constructor");
+    alert_stateless_call(state != nullptr, "strides");
     return state->strides;
 }
 
 
 DType Array::dtype() const {
-    ASSERT2(state != nullptr, "dtype must not be called on Array initialled with empty constructor");
+    alert_stateless_call(state != nullptr, "dtype");
     return state->dtype;
 }
 
@@ -528,7 +531,7 @@ Assignable<Array> Array::astype(DType dtype_) const {
 }
 
 memory::Device Array::preferred_device() const {
-    ASSERT2(!is_stateless(), "preferred_device must not be called on Array initialled with empty constructor");
+    alert_stateless_call(state != nullptr, "preferred_device");
     return state->memory->preferred_device;
 }
 
@@ -753,8 +756,8 @@ Array Array::reshape(const vector<int>& new_shape) const {
 
 Array Array::reshape_broadcasted(const std::vector<int>& new_shape) const {
     ASSERT2(new_shape.size() == ndim(),
-            utils::MS() << "reshape_broadcasted must receive a shape with the same dimensionality (current: " <<
-            shape() << ", got: " << new_shape << ")");
+            utils::MS() << "reshape_broadcasted must receive a shape with the same dimensionality (current shape: " <<
+            shape() << ", new shape: " << new_shape << ")");
     auto my_bshape = bshape();
 
     for (int i = 0; i < my_bshape.size(); ++i) {

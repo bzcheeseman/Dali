@@ -4,8 +4,8 @@
 #include "dali/runtime_config.h"
 #include "dali/utils/print_utils.h"
 #include "dali/array/functor.h"
-
 #include "dali/array/lazy_op.h"
+#include "dali/array/lazy/im2col.h"
 
 TEST(ArrayReshapeTests, take_assign) {
     auto train_y = Array::ones({10}, DTYPE_INT32);
@@ -168,6 +168,19 @@ TEST(ArrayReshapeTests, take_from_rows_assign_lazy) {
     EXPECT_EQ(7,  (int)x[1][3]);
 }
 
+
+TEST(ArrayReshapeTests, im2col_nhwc) {
+    Array test_image({2, 1, 3, 4}, DTYPE_INT32);
+    test_image = initializer::arange();
+    test_image[1] *= 10;
+
+    Array im2coled_image = lazy::im2col_nchw(
+        test_image, 3, 3, 1, 1
+    );
+    test_image.print();
+    im2coled_image.print();
+    im2coled_image.reshape({im2coled_image.shape()[0], 2, im2coled_image.shape()[1] / 2}).print();
+}
 
 
 TEST(ArrayReshapeTests, gather_assign_lazy) {

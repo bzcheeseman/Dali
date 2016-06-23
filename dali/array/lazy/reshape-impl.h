@@ -170,7 +170,6 @@ struct LazyTakeFromRows : public LazyFunction<LazyTakeFromRows<SrcExp, IndexExp>
     }
 };
 
-
 template<typename SrcExp, typename IndexExp>
 const int LazyTakeFromRows<SrcExp, IndexExp>::evaluation_dim =
         ((lazy::LazyEvaluationDim<SrcExp>::value == lazy::EVALUATION_DIM_ANY) ?

@@ -2,8 +2,10 @@
 #define DALI_ARRAY_FUNCTION_ARGS_REDUCE_OVER_LAZY_EXPR_H
 
 #include <tuple>
-
 #include "dali/array/function/expression.h"
+
+template<int data_format, typename SrcExp>
+struct LazyIm2Col;
 
 template<template<class>class Functor, typename LeftT, typename RightT>
 struct LazyBinary;
@@ -74,6 +76,14 @@ struct ReduceOverLazyExpr {
             const internal::NonRecursiveLazySumAxis<ExprT>& reducer_expr,
             const Args&... args) {
         return unfold_helper(state, reducer_expr.expr, args...);
+    }
+
+    template<int data_format, typename ExprT, typename... Args>
+    static outtuple_t unfold_helper(
+            const outtuple_t& state,
+            const LazyIm2Col<data_format,ExprT>& im2col_expr,
+            const Args&... args) {
+        return unfold_helper(state, im2col_expr.src, args...);
     }
 
     template<typename ExprT, typename NewType, typename... Args>

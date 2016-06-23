@@ -11,15 +11,6 @@
     #include "dali/array/op/cudnn_utils.h"
 #endif
 
-#define ASSERT2_SHAPE_ND(SHAPE,DIM,MSG) \
-    if (SHAPE.size() != DIM) \
-        utils::assert2(false, utils::MS() << MSG << " was expecting dimension " << DIM  << ", got shape " << SHAPE << ".");
-
-#define ASSERT2_EQ(EXPECTED,ACTUAL,MSG) \
-    if (EXPECTED != ACTUAL) \
-        utils::assert2(false, utils::MS() << "Expected " << EXPECTED  << ", got " << ACTUAL << ": " << MSG << ".");
-
-
 ///////////////////////////////////////////////////////////////////////////////
 //                                    UTILS                                  //
 ///////////////////////////////////////////////////////////////////////////////
@@ -90,6 +81,61 @@ std::vector<int> fake_padding_shape(int window_h, int window_w,
     }
 }
 
+struct Conv2dFunctionInputInfo {
+    int batch_size;
+    int in_channels;
+    int in_h;
+    int in_w;
+    int filter_in_channels;
+    int filter_h;
+    int filter_w;
+    int out_channels;
+    int out_w;
+    int out_h;
+};
+
+static Conv2dFunctionInputInfo compute_conv_info(const std::vector<int>& input_shape,
+                                                 const std::vector<int>& filters_shape,
+                                                 const int& stride_h,
+                                                 const int& stride_w,
+                                                 PADDING_T padding,
+                                                 const std::string& data_format) {
+    Conv2dFunctionInputInfo info;
+
+    if (data_format == "NCHW") {
+        info.batch_size         = input_shape[0];
+        info.in_channels        = input_shape[1];
+        info.in_h               = input_shape[2];
+        info.in_w               = input_shape[3];
+
+        info.out_channels       = filters_shape[0];
+        info.filter_in_channels = filters_shape[1];
+        info.filter_h           = filters_shape[2];
+        info.filter_w           = filters_shape[3];
+
+    } else if (data_format == "NHWC") {
+        info.batch_size         = input_shape[0];
+        info.in_h               = input_shape[1];
+        info.in_w               = input_shape[2];
+        info.in_channels        = input_shape[3];
+
+        info.out_channels       = filters_shape[0];
+        info.filter_h           = filters_shape[1];
+        info.filter_w           = filters_shape[2];
+        info.filter_in_channels = filters_shape[3];
+    }
+    if (padding == PADDING_T_SAME) {
+        info.out_h = int_ceil(info.in_h, stride_h);
+        info.out_w = int_ceil(info.in_w, stride_w);
+    } else if (padding == PADDING_T_VALID) {
+        info.out_h = int_ceil(info.in_h - info.filter_h + 1, stride_h);
+        info.out_w = int_ceil(info.in_w - info.filter_w + 1, stride_w);
+    } else {
+        ASSERT2(false, utils::MS() << "Unrecognized value of padding passed to Conv2dFunction (" << padding << ")");
+    }
+    return info;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 //                            Conv2dFunction                                 //
 ///////////////////////////////////////////////////////////////////////////////
@@ -102,6 +148,7 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                                         int,
                                         PADDING_T,
                                         std::string> {
+
     static std::vector<int> deduce_output_bshape(const Array& input,
                                                  const Array& filters,
                                                  int stride_h,
@@ -111,55 +158,24 @@ struct Conv2dFunction : public Function<Conv2dFunction,
 
         ASSERT2_SHAPE_ND(input.shape(),   4, "Conv2dFunction input");
         ASSERT2_SHAPE_ND(filters.shape(), 4, "Conv2dFunction filters");
-
         ASSERT2(data_format == "NCHW" || data_format == "NHWC",
             utils::MS() << "data_format must be one of NCHW, NHWC (was " << data_format << ")");
 
-        int out_channels, out_w, out_h;
+        auto info = compute_conv_info(input.shape(),
+                                      filters.shape(),
+                                      stride_h,
+                                      stride_w,
+                                      padding,
+                                      data_format);
 
-        int batch_size, in_channels, in_h, in_w;
-        int filter_in_channels, filter_h, filter_w;
-
-
-        if (data_format == "NCHW") {
-            batch_size         = input.shape()[0];
-            in_channels        = input.shape()[1];
-            in_h               = input.shape()[2];
-            in_w               = input.shape()[3];
-
-            out_channels       = filters.shape()[0];
-            filter_in_channels = filters.shape()[1];
-            filter_h           = filters.shape()[2];
-            filter_w           = filters.shape()[3];
-
-        } else if (data_format == "NHWC") {
-            batch_size         = input.shape()[0];
-            in_h               = input.shape()[1];
-            in_w               = input.shape()[2];
-            in_channels        = input.shape()[3];
-
-            out_channels       = filters.shape()[0];
-            filter_h           = filters.shape()[1];
-            filter_w           = filters.shape()[2];
-            filter_in_channels = filters.shape()[3];
-        }
-
-        ASSERT2_EQ(in_channels, filter_in_channels, "Conv2dFunction input and filters need to have the same number of input channels");
-
-        if (padding == PADDING_T_SAME) {
-            out_h = int_ceil(in_h, stride_h);
-            out_w = int_ceil(in_w, stride_w);
-        } else if (padding == PADDING_T_VALID) {
-            out_h = int_ceil(in_h - filter_h + 1, stride_h);
-            out_w = int_ceil(in_w - filter_w + 1, stride_w);
-        } else {
-            ASSERT2(false, utils::MS() << "Unrecognized value of padding passed to Conv2dFunction (" << padding << ")");
-        }
+        ASSERT2_EQ(info.in_channels, info.filter_in_channels,
+            "Conv2dFunction input and filters need to have the same number of input channels"
+        );
 
         if (data_format == "NCHW") {
-            return std::vector<int> {batch_size, out_channels, out_h, out_w};
-        } else {
-            return std::vector<int> {batch_size, out_h, out_w, out_channels};
+            return std::vector<int> {info.batch_size, info.out_channels, info.out_h, info.out_w};
+        } else { // then data_format == "NHWC":
+            return std::vector<int> {info.batch_size, info.out_h, info.out_w, info.out_channels};
         }
     }
 
@@ -171,7 +187,35 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                     int stride_w,
                     PADDING_T padding,
                     const std::string& data_format) {
-        throw std::runtime_error("not implemented!");
+
+        // auto info = compute_conv_info(input.shape(),
+        //                               filters.shape(),
+        //                               stride_h,
+        //                               stride_w,
+        //                               padding,
+        //                               data_format);
+
+        // if (data_format == "NCHW") {
+        //     tmp_col = mshadow::expr::unpack_patch2col<mshadow::expr::UNPACK_PATCH2COL_NCHW>(
+        //         input.d<4>(),
+        //         info.filter_h,
+        //         info.filter_w,
+        //         stride_h,
+        //         stride_w,
+        //         /*dilate_h=*/1,
+        //         /*dilate_w=*/1
+        //     );
+        // } else { // then data_format = "NHWC"
+        //     tmp_col = mshadow::expr::unpack_patch2col<mshadow::expr::UNPACK_PATCH2COL_NHWC>(
+        //         input.d<4>(),
+        //         info.filter_h,
+        //         info.filter_w,
+        //         stride_h,
+        //         stride_w,
+        //         /*dilate_h=*/1,
+        //         /*dilate_w=*/1
+        //     );
+        // }
     }
 
 #ifdef DALI_USE_CUDA

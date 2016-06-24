@@ -50,7 +50,7 @@ std::tuple<int, int> convolution_padding(
         padding_h = (out_h - 1) * stride_h + filter_h - in_h;
         padding_w = (out_w - 1) * stride_w + filter_w - in_w;
         ASSERT2(padding_h % 2 == 0 && padding_w % 2 == 0,
-                "Conv2d odd sized padding is not supported at the moment");
+                "Conv2d odd sized padding is presently unsupported.");
         padding_h /= 2;
         padding_w /= 2;
     } else if (padding == PADDING_T_VALID) {

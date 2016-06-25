@@ -47,7 +47,13 @@ bool shape_strictly_positive(const std::vector<int>& shape) {
 }
 
 void alert_stateless_call(const bool& stateful, const char* fieldname) {
-    ASSERT2(stateful, utils::MS() << fieldname << " must not be called on Array initialized with empty constructor.");
+    ASSERT2(stateful,
+        utils::MS() << fieldname
+                    << " must not be called on Array initialized with empty constructor.\n"
+                    << "(To Dali developers: this error may have occurred because an mshadow"
+                       " expression that keeps an lvalue reference to its parent expression:"
+                       " `Expr& expr` was used. To fix this ensure the parent expression"
+                       " is kept by value instead).");
 }
 
 

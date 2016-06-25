@@ -10,11 +10,15 @@
     #define LOG_F  logf
     #define EXP_F  expf
     #define POW_F  powf
+    #define ISINF_F isinf
+    #define ISNAN_F isnan
 #else
     #define TANH_F std::tanh
     #define LOG_F  std::log
     #define EXP_F  std::exp
     #define POW_F  pow
+    #define ISINF_F std::isinf
+    #define ISNAN_F std::isnan
 #endif
 
 #define EPS 1e-6
@@ -192,6 +196,20 @@ namespace functor {
     struct exp {
         MSHADOW_XINLINE static R Map(const R& a) {
             return EXP_F(a);
+        }
+    };
+
+    template<typename R>
+    struct isnan {
+        MSHADOW_XINLINE static R Map(const R& a) {
+            return ISNAN_F(a);
+        }
+    };
+
+    template<typename R>
+    struct isinf {
+        MSHADOW_XINLINE static R Map(const R& a) {
+            return ISINF_F(a);
         }
     };
 

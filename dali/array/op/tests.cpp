@@ -84,11 +84,47 @@ TEST(ArrayOpsTests, eltdiv) {
     test_binary_shapes([](const Array& a, const Array& b) { return a / b; });
 }
 
-TEST(ArrayOpsTests, is_nan) {
+TEST(ArrayOpsTests, isnan) {
     Array x = Array::zeros({4,3,5});
-    ASSERT_FALSE(is_nan(x));
-    x[2][2][1] = NAN;
-    ASSERT_TRUE(is_nan(x));
+    ASSERT_FALSE(x.any_isnan());
+    x[2][2][1] = std::nan(NULL);
+    ASSERT_TRUE(x.any_isnan());
+}
+
+
+TEST(ArrayOpsTests, isinf) {
+    Array x = Array::zeros({4,3,5});
+    ASSERT_FALSE(x.any_isinf());
+    x[2][2][1] = std::numeric_limits<double>::infinity();
+    ASSERT_TRUE(x.any_isinf());
+}
+
+TEST(ArrayOpsTests, isnan_axis) {
+    Array x = Array::zeros({3,3});
+
+    Array is_nan_axis = any_isnan(x, 0);
+    auto expected_mask = Array::zeros_like(is_nan_axis);
+    EXPECT_TRUE(Array::equals(is_nan_axis, expected_mask));
+
+    x[0][0] = std::nan(NULL);
+
+    expected_mask[0] = 1.0;
+    is_nan_axis = any_isnan(x, 0);
+    EXPECT_TRUE(Array::equals(is_nan_axis, expected_mask));
+}
+
+TEST(ArrayOpsTests, isinf_axis) {
+    Array x = Array::zeros({3,3});
+
+    Array is_nan_axis = any_isinf(x, 0);
+    auto expected_mask = Array::zeros_like(is_nan_axis);
+    EXPECT_TRUE(Array::equals(is_nan_axis, expected_mask));
+
+    x[0][0] = std::numeric_limits<double>::infinity();
+
+    expected_mask[0] = 1.0;
+    is_nan_axis = any_isinf(x, 0);
+    EXPECT_TRUE(Array::equals(is_nan_axis, expected_mask));
 }
 
 TEST(ArrayOpsTests, chainable) {

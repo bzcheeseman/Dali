@@ -6,11 +6,14 @@ template<typename OutType>
 class Assignable;
 
 namespace op {
-    bool is_nan(const Array& x);
+    Assignable<Array> any_isnan(const Array& array);
+    Assignable<Array> any_isinf(const Array& array);
+    Assignable<Array> any_isnan(const Array& array, int axis);
+    Assignable<Array> any_isinf(const Array& array, int axis);
     Assignable<Array> all_equals(const Array& left, const Array& right);
     Assignable<Array> all_close(const Array& left, const Array& right, const double& atolerance);
-    Assignable<Array> argsort(const Array& arr, int axis);
-    Assignable<Array> argsort(const Array& arr);
+    Assignable<Array> argsort(const Array& array, int axis);
+    Assignable<Array> argsort(const Array& array);
 }
 
 #endif

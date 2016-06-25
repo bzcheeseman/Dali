@@ -9,6 +9,9 @@ struct LazyAllReducer;
 template<class Functor, typename ExprT, bool return_indices>
 struct LazyAxisReducer;
 
+template<class Functor, typename ExprT>
+struct LazyAllReducerExceptAxis;
+
 namespace mshadow {
     namespace red {
         struct sum;
@@ -21,6 +24,9 @@ namespace mshadow {
 namespace lazy {
     template<typename ExprT>
     LazyAllReducer<mshadow::red::sum, ExprT> sum(const Exp<ExprT>& expr);
+
+    template<typename ExprT>
+    LazyAllReducerExceptAxis<mshadow::red::sum, ExprT> sumall_except(const Exp<ExprT>& expr, const int& axis, bool keepdims=false);
 
     template<typename ExprT>
     LazyAllReducer<mshadow::red::minimum, ExprT> min(const Exp<ExprT>& expr);

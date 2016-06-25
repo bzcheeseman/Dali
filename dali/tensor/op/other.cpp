@@ -67,11 +67,11 @@ namespace tensor_ops {
     }
 
     bool is_nan(const Tensor& t) {
-        return t.w.is_nan();
+        return t.w.any_isnan();
     }
 
     bool is_grad_nan(const Tensor& t) {
-        return t.dw.is_nan();
+        return t.dw.any_isnan();
     }
 
     bool equals(const Tensor& left, const Tensor& right) {

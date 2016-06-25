@@ -103,7 +103,8 @@ class Array : public Exp<Array> {
 
     // true if just creted with empty constructor or reset
     // (has no assossiated memory)
-    bool is_nan() const;
+    bool any_isnan() const;
+    bool any_isinf() const;
     bool is_stateless() const;
     bool is_scalar() const;
     bool is_vector() const;

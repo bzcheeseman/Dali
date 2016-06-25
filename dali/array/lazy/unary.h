@@ -53,6 +53,12 @@ namespace lazy {
     LazyUnary<functor::square,ExprT> square(const Exp<ExprT>& expr);
 
     template<typename ExprT>
+    LazyUnary<functor::isnan,ExprT> isnan(const Exp<ExprT>& expr);
+
+    template<typename ExprT>
+    LazyUnary<functor::isinf,ExprT> isinf(const Exp<ExprT>& expr);
+
+    template<typename ExprT>
     LazyUnary<functor::cube,ExprT> cube(const Exp<ExprT>& expr);
 
     template<typename ExprT>

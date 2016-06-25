@@ -383,8 +383,14 @@ bool Array::allclose(const Array& left, const Array& right, const double& atoler
     return is_all_close;
 }
 
-bool Array::is_nan() const {
-    return op::is_nan(*this);
+bool Array::any_isnan() const {
+    bool any_isnan_ = ((float)(Array)op::any_isnan(*this)) > 0 ? true : false;
+    return any_isnan_;
+}
+
+bool Array::any_isinf() const {
+    bool any_isinf_ = ((float)(Array)op::any_isinf(*this)) > 0 ? true : false;
+    return any_isinf_;
 }
 
 bool Array::is_stateless() const {

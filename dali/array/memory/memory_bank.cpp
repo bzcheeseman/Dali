@@ -30,19 +30,14 @@ namespace memory {
     #endif
 
         DeviceBank& get_bank(Device device) {
-            if (device.is_cpu()) {
-                return cpu_bank;
-            }
     #ifdef DALI_USE_CUDA
-            else if (device.is_gpu()) {
+            if (device.is_gpu()) {
                 return gpu_bank[device.number()];
             }
     #endif
-            else {
-                assert2(false, "Wrong device passed to Device enum");
-            }
+            assert2(device.is_cpu(), "Wrong device passed to Device enum");
+            return cpu_bank;
         }
-
 
         void deposit(DevicePtr dev_ptr, int amount, int inner_dimension) {
             get_bank(dev_ptr.device).blobs.upsert(amount, [dev_ptr](std::vector<void*>& deposit_box) {

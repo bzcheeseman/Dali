@@ -31,6 +31,10 @@ struct PropertyEqualForAllArgsReducer {
         return candidate_and_state;
     }
 
+    static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const std::vector<int>& arg) {
+        return candidate_and_state;
+    }
+
     static std::tuple<outtype_t,state_t> reduce_step(const std::tuple<outtype_t, state_t>& candidate_and_state, const bool& arg) {
         return candidate_and_state;
     }

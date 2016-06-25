@@ -7,6 +7,9 @@
 template<int data_format, typename SrcExp>
 struct LazyIm2Col;
 
+template<int data_format, typename SrcExp>
+struct LazyCol2Im;
+
 template<template<class>class Functor, typename LeftT, typename RightT>
 struct LazyBinary;
 
@@ -84,6 +87,14 @@ struct ReduceOverLazyExpr {
             const LazyIm2Col<data_format,ExprT>& im2col_expr,
             const Args&... args) {
         return unfold_helper(state, im2col_expr.src, args...);
+    }
+
+    template<int data_format, typename ExprT, typename... Args>
+    static outtuple_t unfold_helper(
+            const outtuple_t& state,
+            const LazyCol2Im<data_format,ExprT>& col2im_expr,
+            const Args&... args) {
+        return unfold_helper(state, col2im_expr.src, args...);
     }
 
     template<typename ExprT, typename NewType, typename... Args>

@@ -63,8 +63,6 @@ struct LazyTake : public LazyFunction<LazyTake<SrcExp, IndexExp>, SrcExp, IndexE
         //               to use, so that automated broadcasting by default does something correct and inefficient and then we can explictily
         //               if out the cases where we do some extra thinking to gain efficiency.
 
-        // static_assert(mshadow::expr::ExpInfo<cool_type>::kDim == 1, "release the kraken");
-
         return mshadow::expr::take(
             MshadowWrapper<devT, int, decltype(indices)>::template wrap<1>(
                 indices,

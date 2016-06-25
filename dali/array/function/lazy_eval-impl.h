@@ -30,7 +30,7 @@ namespace lazy {
             if (operator_t == OPERATOR_T_LSE) {
                 reduction_dimension = internal::requires_reduction(out, this_bshape);
             }
-            ASSERT2(!reduction_dimension.required, "Autoreduction for <<= is only be performed on Arrays.");
+            ASSERT2(!reduction_dimension.required, "Autoreduction for <<= can only be performed on Arrays.");
             LazyEvaluator<OutType, Class>::run(this_self).assign_to(out, operator_t);
         });
     }

@@ -4,7 +4,6 @@
 
 #include "dali/runtime_config.h"
 #include "dali/array/function/function.h"
-#define DALI_USE_LAZY 0
 #include "dali/array/op.h"
 
 using namespace op;
@@ -84,10 +83,12 @@ TEST(ArrayOpsTests, eltdiv) {
     test_binary_shapes([](const Array& a, const Array& b) { return a / b; });
 }
 
+
 TEST(ArrayOpsTests, isnan) {
     Array x = Array::zeros({4,3,5});
     ASSERT_FALSE(x.any_isnan());
-    x[2][2][1] = std::nan(NULL);
+
+    x[2][2][1] = std::nan("");
     ASSERT_TRUE(x.any_isnan());
 }
 
@@ -106,7 +107,7 @@ TEST(ArrayOpsTests, isnan_axis) {
     auto expected_mask = Array::zeros_like(is_nan_axis);
     EXPECT_TRUE(Array::equals(is_nan_axis, expected_mask));
 
-    x[0][0] = std::nan(NULL);
+    x[0][0] = std::nan("");
 
     expected_mask[0] = 1.0;
     is_nan_axis = any_isnan(x, 0);

@@ -370,24 +370,6 @@ if (WITH_CUDA)
     endif (CUDNN_FOUND)
 endif(WITH_CUDA)
 
-################################################################################
-##                               DALI SETUP                                   ##
-##                                   ---                                      ##
-##                              MISCELANEOUS                                  ##
-##                                                                            ##
-##            1. Fix MKL libraries                                            ##
-##            2. Making sure that cuda libraries symbols are                  ##
-##               not ignored when compiling Dali library                      ##
-################################################################################
-
-add_custom_target(fix_libiomp5
-	COMMAND sudo sh ${PROJECT_SOURCE_DIR}/scripts/fix_libiomp5.sh
-)
-if (BLAS_FOUND AND MKL_FOUND)
-   add_dependencies(dali fix_libiomp5)
-endif (BLAS_FOUND AND MKL_FOUND)
-
-
 
 ################################################################################
 ##                               DALI SETUP                                   ##

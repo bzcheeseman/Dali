@@ -12,7 +12,9 @@
 
 using std::vector;
 
-TEST(TensorCompositeTests, matrix_dot_with_bias) {
+typedef MemorySafeTest TensorCompositeTests;
+
+TEST_F(TensorCompositeTests, matrix_dot_with_bias) {
     auto functor = [](vector<Tensor> Xs)-> Tensor {
         return tensor_ops::dot_with_bias(Xs[0], Xs[1], Xs[2]);
     };
@@ -27,7 +29,7 @@ TEST(TensorCompositeTests, matrix_dot_with_bias) {
     }
 }
 
-TEST(TensorCompositeTests, matrix_multiple_dot_with_bias) {
+TEST_F(TensorCompositeTests, matrix_multiple_dot_with_bias) {
     auto functor = [](vector<Tensor> Xs)-> Tensor {
         return tensor_ops::multiple_dot_with_bias({Xs[0], Xs[2]}, {Xs[1], Xs[3]}, Xs[4]);
     };
@@ -47,7 +49,7 @@ TEST(TensorCompositeTests, matrix_multiple_dot_with_bias) {
     }
 }
 
-TEST(TensorCompositeTests, matrix_multiple_dot_with_bias_fancy_broadcast) {
+TEST_F(TensorCompositeTests, matrix_multiple_dot_with_bias_fancy_broadcast) {
     auto functor = [](vector<Tensor> Xs)-> Tensor {
         return tensor_ops::multiple_dot_with_bias({Xs[0], Xs[2], Xs[4]}, {Xs[1], Xs[3], Xs[5]}, Xs[6]);
     };
@@ -70,7 +72,7 @@ TEST(TensorCompositeTests, matrix_multiple_dot_with_bias_fancy_broadcast) {
     }
 }
 
-TEST(TensorCompositeTests, quadratic_form) {
+TEST_F(TensorCompositeTests, quadratic_form) {
     EXPERIMENT_REPEAT {
         auto left = Tensor::uniform(-20.0, 20.0, {2, 4}, DTYPE_DOUBLE);
         auto middle = Tensor::uniform(-20.0, 20.0, {2, 3}, DTYPE_DOUBLE);
@@ -83,7 +85,7 @@ TEST(TensorCompositeTests, quadratic_form) {
     }
 }
 
-TEST(TensorCompositeTests, quadratic_form_with_3D_input) {
+TEST_F(TensorCompositeTests, quadratic_form_with_3D_input) {
     //TODO(jonathan): quadratic form in 3D / N-D suffers from weird LDA to dgemm
     EXPERIMENT_REPEAT {
         auto left = Tensor::uniform(-20.0, 20.0, {2, 4, 1}, DTYPE_DOUBLE);
@@ -97,7 +99,7 @@ TEST(TensorCompositeTests, quadratic_form_with_3D_input) {
     }
 }
 
-TEST(TensorCompositeTests, matrix_multiple_dot_with_bias_mini) {
+TEST_F(TensorCompositeTests, matrix_multiple_dot_with_bias_mini) {
     auto functor = [](vector<Tensor> Xs)-> Tensor {
         return tensor_ops::multiple_dot_with_bias({Xs[0]}, {Xs[1]}, Xs[2]);
     };

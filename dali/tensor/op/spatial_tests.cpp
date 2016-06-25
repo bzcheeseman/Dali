@@ -11,7 +11,9 @@
 
 using std::vector;
 
-TEST(TensorSpatialTests, conv2d_add_bias) {
+typedef MemorySafeTest TensorSpatialTests;
+
+TEST_F(TensorSpatialTests, conv2d_add_bias) {
     EXPERIMENT_REPEAT {
         auto X = Tensor::uniform(10.0, {2, 3, 4, 5}, DTYPE_FLOAT);
         auto b = Tensor::uniform(10.0, {3,},         DTYPE_FLOAT);
@@ -23,7 +25,7 @@ TEST(TensorSpatialTests, conv2d_add_bias) {
     }
 }
 
-TEST(TensorSpatialTests, conv2d) {
+TEST_F(TensorSpatialTests, conv2d) {
     EXPERIMENT_REPEAT {
         auto X = Tensor::arange({1, 1, 8, 8}, DTYPE_DOUBLE);
         auto W = Tensor::ones({1, 1, 2, 2}, DTYPE_DOUBLE);
@@ -39,7 +41,7 @@ TEST(TensorSpatialTests, conv2d) {
     }
 }
 
-TEST(TensorSpatialTests, pool2d) {
+TEST_F(TensorSpatialTests, pool2d) {
     auto functor = [](vector<Tensor> Xs) -> Tensor {
         return tensor_ops::pool2d(
             Xs[0],
@@ -58,7 +60,7 @@ TEST(TensorSpatialTests, pool2d) {
     }
 }
 
-TEST(TensorSpatialTests, im2col_nchw) {
+TEST_F(TensorSpatialTests, im2col_nchw) {
     auto functor = [](vector<Tensor> Xs) -> Tensor {
         return tensor_ops::im2col(
             Xs[0],
@@ -74,7 +76,7 @@ TEST(TensorSpatialTests, im2col_nchw) {
     }
 }
 
-TEST(TensorSpatialTests, im2col_nhwc) {
+TEST_F(TensorSpatialTests, im2col_nhwc) {
     auto functor = [](vector<Tensor> Xs) -> Tensor {
         return tensor_ops::im2col(
             Xs[0],
@@ -90,7 +92,7 @@ TEST(TensorSpatialTests, im2col_nhwc) {
     }
 }
 
-TEST(TensorSpatialTests, col2im_nchw) {
+TEST_F(TensorSpatialTests, col2im_nchw) {
     auto functor = [](vector<Tensor> Xs) -> Tensor {
         return tensor_ops::col2im(
             Xs[0],
@@ -107,7 +109,7 @@ TEST(TensorSpatialTests, col2im_nchw) {
     }
 }
 
-TEST(TensorSpatialTests, col2im_nhwc) {
+TEST_F(TensorSpatialTests, col2im_nhwc) {
     auto functor = [](vector<Tensor> Xs) -> Tensor {
         return tensor_ops::col2im(
             Xs[0],

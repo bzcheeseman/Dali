@@ -12,7 +12,9 @@
 
 using std::vector;
 
-TEST(TensorCostTests, binary_cross_entropy) {
+typedef MemorySafeTest TensorCostTests;
+
+TEST_F(TensorCostTests, binary_cross_entropy) {
     // We observe the KL divergence to 0 or 1 for each unit
     // in our input matrix with respect to the target.
     EXPERIMENT_REPEAT {
@@ -25,7 +27,7 @@ TEST(TensorCostTests, binary_cross_entropy) {
     }
 }
 
-TEST(TensorCostTests, binary_cross_entropy_matrix_target) {
+TEST_F(TensorCostTests, binary_cross_entropy_matrix_target) {
     // We observe the KL divergence to 0 or 1 for each unit
     // in our input matrix with respect to the target.
     EXPERIMENT_REPEAT {
@@ -38,7 +40,7 @@ TEST(TensorCostTests, binary_cross_entropy_matrix_target) {
     }
 }
 
-TEST(TensorCostTests, sigmoid_binary_cross_entropy) {
+TEST_F(TensorCostTests, sigmoid_binary_cross_entropy) {
     // We observe the KL divergence to 0 or 1 for each unit
     // in our input matrix with respect to the target.
     EXPERIMENT_REPEAT {
@@ -51,7 +53,7 @@ TEST(TensorCostTests, sigmoid_binary_cross_entropy) {
     }
 }
 
-TEST(TensorCostTests, sigmoid_binary_cross_entropy_matrix_target) {
+TEST_F(TensorCostTests, sigmoid_binary_cross_entropy_matrix_target) {
     // We observe the KL divergence to 0 or 1 for each unit
     // in our input matrix with respect to the target.
     EXPERIMENT_REPEAT {
@@ -64,7 +66,7 @@ TEST(TensorCostTests, sigmoid_binary_cross_entropy_matrix_target) {
     }
 }
 
-TEST(TensorCostTests, DISABLED_margin_loss_colwise) {
+TEST_F(TensorCostTests, DISABLED_margin_loss_colwise) {
     utils::random::set_seed(100);
     // we can now extend the range of our random numbers to be beyond
     // 0 and 1 since sigmoid will clamp them to 0 or 1.
@@ -80,7 +82,7 @@ TEST(TensorCostTests, DISABLED_margin_loss_colwise) {
     utils::random::reseed();
 }
 
-TEST(TensorCostTests, softmax_axis) {
+TEST_F(TensorCostTests, softmax_axis) {
     int row;
     int axis;
     double temperature;
@@ -104,7 +106,7 @@ TEST(TensorCostTests, softmax_axis) {
     }
 }
 
-TEST(TensorCostTests, softmax_noncontig_axis) {
+TEST_F(TensorCostTests, softmax_noncontig_axis) {
     int row;
     int axis;
     double temperature;
@@ -131,7 +133,7 @@ TEST(TensorCostTests, softmax_noncontig_axis) {
 
 
 
-TEST(TensorCostTests, cross_entropy_grad_through_target) {
+TEST_F(TensorCostTests, cross_entropy_grad_through_target) {
     auto functor = [](vector<Tensor> Xs)-> Tensor {
         return tensor_ops::cross_entropy(
             tensor_ops::softmax(Xs[0], /*axis=*/0),
@@ -146,7 +148,7 @@ TEST(TensorCostTests, cross_entropy_grad_through_target) {
     }
 }
 
-TEST(TensorCostTests, cross_entropy_with_idxes_forward) {
+TEST_F(TensorCostTests, cross_entropy_with_idxes_forward) {
     auto input = Tensor::uniform(0.1, 0.9, {2, 2, 3}, DTYPE_DOUBLE);
     Tensor idxes({2, 2}, DTYPE_INT32);
     idxes.w = vector<vector<int>>({
@@ -162,7 +164,7 @@ TEST(TensorCostTests, cross_entropy_with_idxes_forward) {
     EXPECT_NEAR((double)res[1][1].w, -std::log((double)input[1][1][2].w), 1e-3);
 }
 
-TEST(TensorCostTests, cross_entropy_with_idxes) {
+TEST_F(TensorCostTests, cross_entropy_with_idxes) {
     EXPERIMENT_REPEAT {
         auto input = Tensor::uniform(0.1, 0.9, {2, 2, 3}, DTYPE_DOUBLE);
         auto idxes = Tensor::uniform(0,   2,   {2, 2},    DTYPE_INT32);
@@ -175,7 +177,7 @@ TEST(TensorCostTests, cross_entropy_with_idxes) {
     }
 }
 
-TEST(TensorCostTests,  softmax_cross_entropy_with_probs) {
+TEST_F(TensorCostTests,  softmax_cross_entropy_with_probs) {
     EXPERIMENT_REPEAT {
         auto input   = Tensor::uniform(-10, 10.0, {2, 3}, DTYPE_DOUBLE);
         auto targets = Tensor::uniform(0.1, 0.9, {2, 3}, DTYPE_DOUBLE);
@@ -190,7 +192,7 @@ TEST(TensorCostTests,  softmax_cross_entropy_with_probs) {
     }
 }
 
-TEST(TensorCostTests,  softmax_cross_entropy_with_idxes) {
+TEST_F(TensorCostTests,  softmax_cross_entropy_with_idxes) {
     EXPERIMENT_REPEAT {
         auto input = Tensor::uniform(-10, 10.0, {2, 3}, DTYPE_DOUBLE);
         auto idxes = Tensor::uniform(0, 2,      {2},    DTYPE_INT32);
@@ -205,7 +207,7 @@ TEST(TensorCostTests,  softmax_cross_entropy_with_idxes) {
 }
 
 
-TEST(TensorCostTests, softmax_temperature) {
+TEST_F(TensorCostTests, softmax_temperature) {
     graph::NoBackprop nb;
 
     Tensor logits({10}, DTYPE_DOUBLE);

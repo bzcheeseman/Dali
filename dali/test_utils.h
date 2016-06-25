@@ -27,6 +27,7 @@ using ::testing::AssertionFailure;
             std::shared_ptr<HeapLeakChecker> heap_checker;
         protected:
             virtual void SetUp() {
+                graph::clear();
                 if (HeapLeakChecker::IsActive())
                     heap_checker = std::make_shared<HeapLeakChecker>("memory_leak_checker");
             }
@@ -34,11 +35,20 @@ using ::testing::AssertionFailure;
             virtual void TearDown() {
                 if (HeapLeakChecker::IsActive())
                     ASSERT_TRUE(heap_checker->NoLeaks()) << "Memory Leak";
+
+                graph::clear();
             }
 
     };
 #else
     class MemorySafeTest : public ::testing::Test {
+        protected:
+            virtual void SetUp() {
+                graph::clear();
+            }
+            virtual void TearDown() {
+                graph::clear();
+            }
     };
 #endif
 

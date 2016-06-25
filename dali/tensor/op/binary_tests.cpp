@@ -11,6 +11,7 @@
 
 using std::vector;
 
+typedef MemorySafeTest TensorBinaryTests;
 
 void test_binary_function(std::function<Tensor(std::vector<Tensor>&)> functor) {
     EXPERIMENT_REPEAT {
@@ -21,31 +22,31 @@ void test_binary_function(std::function<Tensor(std::vector<Tensor>&)> functor) {
     }
 }
 
-TEST(TensorBinaryTests, add) {
+TEST_F(TensorBinaryTests, add) {
     test_binary_function([](vector<Tensor> Xs)-> Tensor {
         return tensor_ops::add(Xs[0], Xs[1]);
     });
 }
 
-TEST(TensorBinaryTests, sub) {
+TEST_F(TensorBinaryTests, sub) {
     test_binary_function([](vector<Tensor> Xs)-> Tensor {
         return tensor_ops::sub(Xs[0], Xs[1]);
     });
 }
 
-TEST(TensorBinaryTests, eltmul) {
+TEST_F(TensorBinaryTests, eltmul) {
     test_binary_function([](vector<Tensor> Xs)-> Tensor {
         return tensor_ops::eltmul(Xs[0], Xs[1]);
     });
 }
 
-TEST(TensorBinaryTests, eltdiv) {
+TEST_F(TensorBinaryTests, eltdiv) {
     test_binary_function([](vector<Tensor> Xs)-> Tensor {
         return tensor_ops::eltmul(Xs[0], Xs[1]);
     });
 }
 
-TEST(TensorBinaryTests, pow) {
+TEST_F(TensorBinaryTests, pow) {
     auto functor = [](vector<Tensor> Xs)-> Tensor {
         return tensor_ops::pow(Xs[0], Xs[1]);
     };
@@ -58,7 +59,7 @@ TEST(TensorBinaryTests, pow) {
     }
 }
 
-TEST(TensorBinaryTests, add_recursive) {
+TEST_F(TensorBinaryTests, add_recursive) {
     auto functor = [](vector<Tensor>& Xs)-> Tensor {
         return tensor_ops::add(Xs[0], Xs[0]);
     };

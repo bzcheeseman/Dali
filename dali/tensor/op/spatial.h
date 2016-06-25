@@ -12,6 +12,21 @@ namespace tensor_ops {
                   PADDING_T padding,
                   const std::string& data_format);
 
+    Tensor im2col(Tensor input,
+                  int filter_h,
+                  int filter_w,
+                  int stride_h,
+                  int stride_w,
+                  const std::string& data_format);
+
+    Tensor col2im(Tensor input,
+                  const std::vector<int>& image_shape,
+                  int filter_h,
+                  int filter_w,
+                  int stride_h,
+                  int stride_w,
+                  const std::string& data_format);
+
     Tensor conv2d_add_bias(Tensor conv_out,
                            Tensor bias,
                            const std::string& data_format);

@@ -17,13 +17,12 @@
 #include "dali/array/op_overload/common.h"
 #include "dali/utils/print_utils.h"
 
-
-
 #if EXISTS_AND_TRUE(DALI_USE_LAZY)
     #include "dali/array/lazy/binary.h"
     #include "dali/array/lazy/reducers.h"
     #include "dali/array/lazy/unary.h"
     #include "dali/array/lazy/reshape.h"
+    #include "dali/array/lazy/im2col.h"
     #include "dali/array/function/lazy_evaluator.h"
     #include "dali/array/op_overload/lazy.h"
 

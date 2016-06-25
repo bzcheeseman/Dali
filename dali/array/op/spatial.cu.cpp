@@ -10,6 +10,7 @@
 #ifdef DALI_USE_CUDA
     #include "dali/array/op/cudnn_utils.h"
 #endif
+#include "dali/array/lazy/im2col.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 //                                    UTILS                                  //
@@ -59,6 +60,11 @@ std::tuple<int, int> convolution_padding(
     }
 
     return std::make_tuple(padding_h, padding_w);
+}
+
+void check_data_format(const std::string& data_format) {
+    ASSERT2(data_format == "NCHW" || data_format == "NHWC",
+            utils::MS() << "data_format must be one of NCHW, NHWC (was " << data_format << ")");
 }
 
 memory::AM operator_to_output_am(OPERATOR_T operator_t) {
@@ -158,9 +164,7 @@ struct Conv2dFunction : public Function<Conv2dFunction,
 
         ASSERT2_SHAPE_ND(input.shape(),   4, "Conv2dFunction input");
         ASSERT2_SHAPE_ND(filters.shape(), 4, "Conv2dFunction filters");
-        ASSERT2(data_format == "NCHW" || data_format == "NHWC",
-            utils::MS() << "data_format must be one of NCHW, NHWC (was " << data_format << ")");
-
+        check_data_format(data_format);
         auto info = compute_conv_info(input.shape(),
                                       filters.shape(),
                                       stride_h,
@@ -451,7 +455,7 @@ struct Conv2dBwdBiasFunction : public Function<Conv2dBwdBiasFunction,
                                                  const std::string& data_format) {
         size_t channel_dim = data_format.find('C');
         ASSERT2(channel_dim != std::string::npos,
-                utils::MS() << "Invalid data format passed: " << data_format);
+                utils::MS() << "data_format must be NCHW or NHWC (got " << data_format << ").");
 
         return {out_dw.shape()[channel_dim]};
     }
@@ -469,7 +473,7 @@ struct Conv2dBwdBiasFunction : public Function<Conv2dBwdBiasFunction,
     void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> bias_dw,
                     TypedArray<memory::DEVICE_T_GPU, T> out_dw,
                     const std::string& data_format) {
-        ASSERT2(false, "integer convolution is not implemented for GPU.");
+        ASSERT2(false, "integer Conv2dBwdBias is not implemented for GPU.");
     }
 
     template<OPERATOR_T operator_t, typename T, DALI_FUNC_DISABLE_IF_INT>
@@ -480,9 +484,9 @@ struct Conv2dBwdBiasFunction : public Function<Conv2dBwdBiasFunction,
         auto out_access_mode = operator_to_output_am(operator_t);
 
         cudnn::conv2d_bwd_bias(
-                std::make_shared<cudnn::wrapper::Tensor>(bias_dw, data_format, out_access_mode),
-                std::make_shared<cudnn::wrapper::Tensor>(out_dw,  data_format),
-                cudnn::wrapper::Operator(operator_t, template_to_dtype<T>())
+            std::make_shared<cudnn::wrapper::Tensor>(bias_dw, data_format, out_access_mode),
+            std::make_shared<cudnn::wrapper::Tensor>(out_dw,  data_format),
+            cudnn::wrapper::Operator(operator_t, template_to_dtype<T>())
         );
     }
 
@@ -517,9 +521,7 @@ struct Pool2dFunction : public Function<Pool2dFunction,
                 const std::string& data_format) {
 
         ASSERT2_SHAPE_ND(input.shape(),   4, "Pool2dFunction input");
-
-        ASSERT2(data_format == "NCHW" || data_format == "NHWC",
-            utils::MS() << "data_format must be one of NCHW, NHWC (was " << data_format << ")");
+        check_data_format(data_format);
 
         int out_w, out_h;
 
@@ -684,7 +686,7 @@ struct Pool2dBwdFunction : public Function<Pool2dBwdFunction,
                     POOLING_T pooling_mode,
                     PADDING_T padding,
                     const std::string& data_format) {
-        ASSERT2(false, "integer convolution is not implemented for GPU.");
+        ASSERT2(false, "integer Pool2dBwd is not implemented for GPU.");
     }
 
     template<OPERATOR_T operator_t, typename T, DALI_FUNC_DISABLE_IF_INT>
@@ -742,6 +744,35 @@ namespace op {
                                    stride_w,
                                    padding,
                                    data_format);
+    }
+
+    Assignable<Array> im2col(const Array& input,
+                             int filter_h,
+                             int filter_w,
+                             int stride_h,
+                             int stride_w,
+                             const std::string& data_format) {
+        check_data_format(data_format);
+        if (data_format == "NCHW") {
+            return lazy::im2col_nchw(input, filter_h, filter_w, stride_h, stride_w, 1, 1);
+        } else {
+            return lazy::im2col_nhwc(input, filter_h, filter_w, stride_h, stride_w, 1, 1);
+        }
+    }
+
+    Assignable<Array> col2im(const Array& input,
+                             const std::vector<int>& image_shape,
+                             int filter_h,
+                             int filter_w,
+                             int stride_h,
+                             int stride_w,
+                             const std::string& data_format) {
+        check_data_format(data_format);
+        if (data_format == "NCHW") {
+            return lazy::col2im_nchw(input, image_shape, filter_h, filter_w, stride_h, stride_w, 1, 1);
+        } else {
+            return lazy::col2im_nhwc(input, image_shape, filter_h, filter_w, stride_h, stride_w, 1, 1);
+        }
     }
 
     Assignable<Array> conv2d_backward_input(

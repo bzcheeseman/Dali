@@ -4,8 +4,6 @@
 #include "dali/tensor/tape.h"
 #include "dali/tensor/tensor_macros.h"
 
-
-
 namespace tensor_ops {
     Tensor conv2d(Tensor input,
                   Tensor filters,
@@ -20,7 +18,7 @@ namespace tensor_ops {
                               padding,
                               data_format));
 
-        if (graph::backprop_enabled())
+        if (graph::backprop_enabled() && (!input.constant || !filters.constant))
             graph::emplace_back([out, input, filters,
                                  stride_h,stride_w,
                                  padding,data_format]() mutable {
@@ -44,6 +42,79 @@ namespace tensor_ops {
         return out;
     }
 
+    Tensor im2col(Tensor input,
+                  int filter_h,
+                  int filter_w,
+                  int stride_h,
+                  int stride_w,
+                  const std::string& data_format) {
+        Tensor out(
+            op::im2col(
+                input.w,
+                filter_h,
+                filter_w,
+                stride_h,
+                stride_w,
+                data_format
+            )
+        );
+
+        if (graph::backprop_enabled() && !input.constant) {
+            auto out_dw = out.dw;
+            auto input_dw = input.dw;
+            graph::emplace_back([out_dw, input_dw, data_format,
+                                 filter_h, filter_w, stride_h, stride_w]() mutable {
+                input_dw <<= op::col2im(
+                    out_dw,
+                    input_dw.shape(),
+                    filter_h,
+                    filter_w,
+                    stride_h,
+                    stride_w,
+                    data_format
+                );
+            });
+        }
+        return out;
+    }
+
+    Tensor col2im(Tensor input,
+                  const std::vector<int>& image_shape,
+                  int filter_h,
+                  int filter_w,
+                  int stride_h,
+                  int stride_w,
+                  const std::string& data_format) {
+        Tensor out(
+            op::col2im(
+                input.w,
+                image_shape,
+                filter_h,
+                filter_w,
+                stride_h,
+                stride_w,
+                data_format
+            )
+        );
+
+        if (graph::backprop_enabled() && !input.constant) {
+            auto out_dw = out.dw;
+            auto input_dw = input.dw;
+            graph::emplace_back([out_dw, input_dw, data_format,
+                                 filter_h, filter_w, stride_h, stride_w]() mutable {
+                input_dw <<= op::im2col(
+                    out_dw,
+                    filter_h,
+                    filter_w,
+                    stride_h,
+                    stride_w,
+                    data_format
+                );
+            });
+        }
+        return out;
+    }
+
     Tensor conv2d_add_bias(Tensor conv_out,
                            Tensor bias,
                            const std::string& data_format) {
@@ -53,7 +124,7 @@ namespace tensor_ops {
         } else if (data_format == "NHWC") {
             broadcasted_bias = bias.w[Broadcast()][Broadcast()][Broadcast()];
         } else {
-            ASSERT2(false, utils::MS() << "Unsupported data_format: " << data_format);
+            ASSERT2(false, utils::MS() << "data_format must be NHWC or NCHW (got " << data_format << ").");
         }
 
         Tensor out(conv_out.w + broadcasted_bias);
@@ -83,7 +154,7 @@ namespace tensor_ops {
                               pooling_mode,
                               padding,
                               data_format));
-        if (graph::backprop_enabled())
+        if (graph::backprop_enabled() && !input.constant)
             graph::emplace_back([out, input,
                                  window_h, window_w,
                                  stride_h, stride_w,

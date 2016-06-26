@@ -214,9 +214,7 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                                       stride_w,
                                       padding,
                                       data_format);
-        filters.array = filters.array.copyless_reshape({filters.array.shape()[0], -1});
-        out.array     = out.array.copyless_reshape({out.array.shape()[0], -1});
-
+        filters.array   = filters.array.copyless_reshape({filters.array.shape()[0], -1});
 
         std::vector<int> temp_bshape;
         check_data_format(data_format);
@@ -239,10 +237,12 @@ struct Conv2dFunction : public Function<Conv2dFunction,
         }
 
         Array im2col_storage_arr(temp_bshape, template_to_dtype<T>(), out.device);
-        TypedArray<memory::DEVICE_T_CPU, T> im2col_storage(im2col_storage_arr, input.device, temp_bshape);
+        TypedArray<memory::DEVICE_T_CPU, T> im2col_storage(
+                im2col_storage_arr, input.device, temp_bshape);
 
         if (data_format == "NCHW") {
-            im2col_storage.contiguous_d2(memory::AM_OVERWRITE) = mshadow::expr::unpack_patch2col<mshadow::expr::DATA_FORMAT_NCHW>(
+            im2col_storage.contiguous_d2(memory::AM_OVERWRITE) =
+                    mshadow::expr::unpack_patch2col<mshadow::expr::DATA_FORMAT_NCHW>(
                 input.d4(),
                 info.filter_h,
                 info.filter_w,
@@ -252,7 +252,8 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                 /*dilate_w=*/1
             );
         } else { // then data_format = "NHWC"
-            im2col_storage.contiguous_d2(memory::AM_OVERWRITE) = mshadow::expr::unpack_patch2col<mshadow::expr::DATA_FORMAT_NHWC>(
+            im2col_storage.contiguous_d2(memory::AM_OVERWRITE) =
+                    mshadow::expr::unpack_patch2col<mshadow::expr::DATA_FORMAT_NHWC>(
                 input.d4(),
                 info.filter_h,
                 info.filter_w,
@@ -279,17 +280,6 @@ struct Conv2dFunction : public Function<Conv2dFunction,
         std::tie(filters_transposed, filters_tensor) = filters.blas_friendly_tensor();
 
         if (data_format == "NCHW") {
-            operator_assign_contiguous<operator_t, 2>(
-                out,
-                dali_gemm(
-                    filters_tensor,
-                    im2col_tensor,
-                    filters_transposed,
-                    im2col_transposed,
-                    (T)1.0f
-                )
-            );
-        } else {
             auto out_cnhw_shape = out.array.shape();
             std::swap(out_cnhw_shape[0], out_cnhw_shape[1]);
             Array out_cnhw_arr(out_cnhw_shape, template_to_dtype<T>(), out.device);
@@ -303,12 +293,28 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                     filters_transposed,
                     im2col_transposed,
                     (T)1.0f
-                )
+                ),
+                /*collapse_leading=*/false
             );
+
 
             operator_assign_contiguous<operator_t, 4>(
                 out,
                 mshadow::expr::swapaxis<1,0>(out_cnhw.contiguous_d4())
+            );
+        } else {
+            auto out_2d_arr = out.array.copyless_reshape({-1, out.array.shape()[3]});
+            TypedArray<memory::DEVICE_T_CPU, T> out_2d(out_2d_arr, out.device, out_2d_arr.shape());
+
+            operator_assign_contiguous<operator_t, 2>(
+                out_2d,
+                dali_gemm(
+                    im2col_tensor,
+                    filters_tensor,
+                    im2col_transposed,
+                    filters_transposed,
+                    (T)1.0f
+                )
             );
         }
     }

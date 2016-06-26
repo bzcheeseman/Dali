@@ -31,31 +31,31 @@ namespace internal {
     }
 
     template<typename MDevT, typename T>
-    std::tuple<bool,mshadow::Tensor<MDevT, 2, T>> TypedArrayShared<MDevT, T>::blas_friendly_tensor() const {
+    std::tuple<bool,mshadow::Tensor<MDevT, 2, T>> TypedArrayShared<MDevT, T>::blas_friendly_tensor(
+            memory::AM access_mode, bool collapse_leading) const {
         ASSERT2(array.ndim() == 2,
                 utils::MS() << "blas_friendly_tensor is only available to 2D tensors ("
                             << array.ndim() << "D tensor passed.)");
         if (array.strides().size() == 0) {
-            return std::make_tuple(false, mtensor<2>());
+            return std::make_tuple(false, mtensor<2>(access_mode, collapse_leading));
         }
 
         const std::vector<int>& a_strides = array.strides();
 
         if (a_strides[0] == 1) {
-            auto ret = mtensor<2>();
+            auto ret = mtensor<2>(access_mode, collapse_leading);
             ret.stride_ = a_strides[1];
             return std::make_tuple(true, ret);
         } else if (a_strides[1] == 1) {
-            auto ret = mtensor<2>();
+            auto ret = mtensor<2>(access_mode, collapse_leading);
             ret.stride_ = a_strides[0];
             return std::make_tuple(false, ret);
         } else {
             ASSERT2(a_strides[0] == 1 || a_strides[1] == 1,
                     utils::MS() << "gemm does not support doubly strided matrices (input strides: " << a_strides << ")");
-            return std::make_tuple(false, mtensor<2>());
+            return std::make_tuple(false, mtensor<2>(access_mode, collapse_leading));
         }
     }
-
 
 
     template<typename MDevT, typename T>

@@ -1,7 +1,11 @@
 #ifndef DALI_ARRAY_LAZY_IM2COL_H
 #define DALI_ARRAY_LAZY_IM2COL_H
 
+
 #include "dali/array/function/expression.h"
+#include "dali/array/function/function.h"
+#include "dali/array/function/lazy_function.h"
+#include "dali/config.h"
 
 #include <mshadow/tensor.h>
 #include <mshadow/extension/patch2col_constants.h>
@@ -11,6 +15,19 @@ struct LazyIm2Col;
 
 template<int data_format, typename SrcExp>
 struct LazyCol2Im;
+
+
+template<int data_format>
+std::vector<int> deduce_im2col_shape(
+    const std::vector<int>& src_bshape,
+    const int& filter_h_,
+    const int& filter_w_,
+    const int& stride_h_,
+    const int& stride_w_,
+    const int& dilate_h_,
+    const int& dilate_w_
+);
+
 
 namespace lazy {
     template<typename SrcExp>

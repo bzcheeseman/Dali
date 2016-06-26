@@ -76,7 +76,7 @@ namespace internal {
         // that is potentially inconsistent with mshadow conventions. Here it is
         // fine because LazyDotExpr (which is an mshadow extension we wrote)
         // respects this new convention.
-        std::tuple<bool,mshadow::Tensor<MDevT, 2, T>> blas_friendly_tensor() const;
+        std::tuple<bool,mshadow::Tensor<MDevT, 2, T>> blas_friendly_tensor(memory::AM access_mode=memory::AM_READONLY, bool collapse_leading=true) const;
 
         TypedArrayShared(const Array& array_, const memory::Device& device_, const std::vector<int>& output_shape_);
 

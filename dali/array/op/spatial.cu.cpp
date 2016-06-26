@@ -1,16 +1,17 @@
 #include "spatial.h"
 
+#include "dali/config.h"
 #include "dali/array/array.h"
-
 #include "dali/array/function/function.h"
 #include "dali/array/function/operator.h"
 #include "dali/array/functor.h"
-#include "dali/config.h"
+#include "dali/array/lazy/im2col.h"
+#include "dali/array/mshadow_extension/dali_gemm_engine_exp.h"
 #include "dali/utils/random.h"
 #ifdef DALI_USE_CUDA
     #include "dali/array/op/cudnn_utils.h"
 #endif
-#include "dali/array/lazy/im2col.h"
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //                                    UTILS                                  //
@@ -162,15 +163,16 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                                                  PADDING_T padding,
                                                  const std::string& data_format) {
 
-        ASSERT2_SHAPE_ND(input.shape(),   4, "Conv2dFunction input");
-        ASSERT2_SHAPE_ND(filters.shape(), 4, "Conv2dFunction filters");
-        check_data_format(data_format);
         auto info = compute_conv_info(input.shape(),
                                       filters.shape(),
                                       stride_h,
                                       stride_w,
                                       padding,
                                       data_format);
+
+        ASSERT2_SHAPE_ND(input.shape(),   4, "Conv2dFunction input");
+        ASSERT2_SHAPE_ND(filters.shape(), 4, "Conv2dFunction filters");
+        check_data_format(data_format);
 
         ASSERT2_EQ(info.in_channels, info.filter_in_channels,
             "Conv2dFunction input and filters need to have the same number of input channels"
@@ -183,7 +185,22 @@ struct Conv2dFunction : public Function<Conv2dFunction,
         }
     }
 
-    template<OPERATOR_T operator_t, typename T>
+
+    template<OPERATOR_T operator_t, typename T, int devT, DALI_FUNC_ENABLE_IF_MUL_DIV>
+    void typed_eval(TypedArray<devT, T> out,
+                    TypedArray<devT, T> input,
+                    TypedArray<devT, T> filters,
+                    int stride_h,
+                    int stride_w,
+                    PADDING_T padding,
+                    const std::string& data_format) {
+        ASSERT2(!(var_operator_t == OPERATOR_T_MUL) && !(var_operator_t == OPERATOR_T_MUL),
+                "Matrix multiplication's result cannot be inplace-multiplied or inplace-divided.");
+        ASSERT2(false, "If asserts above are complete this message should never be displayed");
+    }
+
+
+    template<OPERATOR_T operator_t, typename T, DALI_FUNC_DISABLE_IF_MUL_DIV>
     void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out,
                     TypedArray<memory::DEVICE_T_CPU, T> input,
                     TypedArray<memory::DEVICE_T_CPU, T> filters,
@@ -191,39 +208,113 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                     int stride_w,
                     PADDING_T padding,
                     const std::string& data_format) {
+        auto info = compute_conv_info(input.array.shape(),
+                                      filters.array.shape(),
+                                      stride_h,
+                                      stride_w,
+                                      padding,
+                                      data_format);
+        filters.array = filters.array.copyless_reshape({filters.array.shape()[0], -1});
+        out.array     = out.array.copyless_reshape({out.array.shape()[0], -1});
 
-        // auto info = compute_conv_info(input.shape(),
-        //                               filters.shape(),
-        //                               stride_h,
-        //                               stride_w,
-        //                               padding,
-        //                               data_format);
 
-        // if (data_format == "NCHW") {
-        //     tmp_col = mshadow::expr::unpack_patch2col<mshadow::expr::UNPACK_PATCH2COL_NCHW>(
-        //         input.d<4>(),
-        //         info.filter_h,
-        //         info.filter_w,
-        //         stride_h,
-        //         stride_w,
-        //         /*dilate_h=*/1,
-        //         /*dilate_w=*/1
-        //     );
-        // } else { // then data_format = "NHWC"
-        //     tmp_col = mshadow::expr::unpack_patch2col<mshadow::expr::UNPACK_PATCH2COL_NHWC>(
-        //         input.d<4>(),
-        //         info.filter_h,
-        //         info.filter_w,
-        //         stride_h,
-        //         stride_w,
-        //         /*dilate_h=*/1,
-        //         /*dilate_w=*/1
-        //     );
-        // }
+        std::vector<int> temp_bshape;
+        check_data_format(data_format);
+        if (data_format == "NCHW") {
+            temp_bshape = deduce_im2col_shape<mshadow::expr::DATA_FORMAT_NCHW>(
+                input.array.shape(),
+                info.filter_h, info.filter_w,
+                stride_h, stride_w,
+                /*dilate_h=*/1,
+                /*dilate_w=*/1);
+        } else {
+            // when data_format is equal to the string containing
+            // letters NHWC.
+            temp_bshape = deduce_im2col_shape<mshadow::expr::DATA_FORMAT_NHWC>(
+                input.array.shape(),
+                info.filter_h, info.filter_w,
+                stride_h, stride_w,
+                /*dilate_h=*/1,
+                /*dilate_w=*/1);
+        }
+
+        Array im2col_storage_arr(temp_bshape, template_to_dtype<T>(), out.device);
+        TypedArray<memory::DEVICE_T_CPU, T> im2col_storage(im2col_storage_arr, input.device, temp_bshape);
+
+        if (data_format == "NCHW") {
+            im2col_storage.contiguous_d2(memory::AM_OVERWRITE) = mshadow::expr::unpack_patch2col<mshadow::expr::DATA_FORMAT_NCHW>(
+                input.d4(),
+                info.filter_h,
+                info.filter_w,
+                stride_h,
+                stride_w,
+                /*dilate_h=*/1,
+                /*dilate_w=*/1
+            );
+        } else { // then data_format = "NHWC"
+            im2col_storage.contiguous_d2(memory::AM_OVERWRITE) = mshadow::expr::unpack_patch2col<mshadow::expr::DATA_FORMAT_NHWC>(
+                input.d4(),
+                info.filter_h,
+                info.filter_w,
+                stride_h,
+                stride_w,
+                /*dilate_h=*/1,
+                /*dilate_w=*/1
+            );
+        }
+
+        typedef decltype(im2col_storage.contiguous_d2()) mshadow_tensor_t;
+
+        if (data_format == "NCHW") {
+            // do nothing
+        } else {
+            im2col_storage.array = im2col_storage.array.transpose();
+            filters.array        = filters.array.transpose();
+        }
+
+
+        bool             im2col_transposed, filters_transposed;
+        mshadow_tensor_t im2col_tensor,     filters_tensor;
+        std::tie(im2col_transposed,   im2col_tensor)  = im2col_storage.blas_friendly_tensor();
+        std::tie(filters_transposed, filters_tensor) = filters.blas_friendly_tensor();
+
+        if (data_format == "NCHW") {
+            operator_assign_contiguous<operator_t, 2>(
+                out,
+                dali_gemm(
+                    filters_tensor,
+                    im2col_tensor,
+                    filters_transposed,
+                    im2col_transposed,
+                    (T)1.0f
+                )
+            );
+        } else {
+            auto out_cnhw_shape = out.array.shape();
+            std::swap(out_cnhw_shape[0], out_cnhw_shape[1]);
+            Array out_cnhw_arr(out_cnhw_shape, template_to_dtype<T>(), out.device);
+            TypedArray<memory::DEVICE_T_CPU, T> out_cnhw(out_cnhw_arr, input.device, out_cnhw_shape);
+
+            operator_assign_contiguous<OPERATOR_T_EQL, 2>(
+                out_cnhw,
+                dali_gemm(
+                    filters_tensor,
+                    im2col_tensor,
+                    filters_transposed,
+                    im2col_transposed,
+                    (T)1.0f
+                )
+            );
+
+            operator_assign_contiguous<operator_t, 4>(
+                out,
+                mshadow::expr::swapaxis<1,0>(out_cnhw.contiguous_d4())
+            );
+        }
     }
 
 #ifdef DALI_USE_CUDA
-    template<OPERATOR_T operator_t, typename T, DALI_FUNC_ENABLE_IF_INT>
+    template<OPERATOR_T operator_t, typename T, DALI_FUNC_ENABLE_IF_INT, DALI_FUNC_DISABLE_IF_MUL_DIV>
     void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out,
                     TypedArray<memory::DEVICE_T_GPU, T> input,
                     TypedArray<memory::DEVICE_T_GPU, T> filters,
@@ -234,7 +325,7 @@ struct Conv2dFunction : public Function<Conv2dFunction,
         ASSERT2(false, "integer convolution is not implemented for GPU.");
     }
 
-    template<OPERATOR_T operator_t, typename T, DALI_FUNC_DISABLE_IF_INT>
+    template<OPERATOR_T operator_t, typename T, DALI_FUNC_DISABLE_IF_INT, DALI_FUNC_DISABLE_IF_MUL_DIV>
     void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out,
                     TypedArray<memory::DEVICE_T_GPU, T> input,
                     TypedArray<memory::DEVICE_T_GPU, T> filters,

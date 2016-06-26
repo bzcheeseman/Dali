@@ -507,7 +507,7 @@ Array Array::ascontiguousarray() const {
 
 void Array::initialize(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
     ASSERT2(shape_strictly_positive(shape),
-            "Shape elements must be strictly positive");
+            utils::MS() << "Shape elements must be strictly positive (got " << shape << ").");
     int number_of_elements = hypercube_volume(shape);
 
     auto memory = std::make_shared<SynchronizedMemory>(

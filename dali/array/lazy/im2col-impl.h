@@ -15,7 +15,6 @@ namespace {
 
 template<int data_format, typename SrcExp>
 struct LazyIm2Col : public LazyFunction<LazyIm2Col<data_format, SrcExp>, SrcExp, int, int, int, int, int, int> {
-    typedef mshadow::expr::UnpackPatchToCol_DimInfo<data_format, 4> im2col_info_t;
     static const int  evaluation_dim;
     LazyIm2Col(const SrcExp& src_,
                const int& filter_h_,
@@ -49,37 +48,18 @@ struct LazyIm2Col : public LazyFunction<LazyIm2Col<data_format, SrcExp>, SrcExp,
                                                const int& stride_w_,
                                                const int& dilate_h_,
                                                const int& dilate_w_) {
-        using mshadow::expr::UnpackPatchToCol_DimInfo;
 
         auto src_bshape = src_.bshape();
         ASSERT2_SHAPE_ND(src_bshape, 4, "Im2Col");
 
-        const int w_shape = src_bshape[im2col_info_t::w_dim];
-        const int h_shape = src_bshape[im2col_info_t::h_dim];
 
-        bool image_w_gt_patch = w_shape >= filter_w_;
-        bool image_h_gt_patch = h_shape >= filter_h_;
-
-        ASSERT2(image_w_gt_patch && image_h_gt_patch,
-            utils::MS() << "Im2Col " << im2col_info_t::name()
-                        << " image shape should be smaller than filter size ("
-                        << "filter_h=" << filter_h_ << " vs. h_dim=" << h_shape << ", "
-                        << "filter_w=" << filter_w_ << " vs. w_dim=" << w_shape << "). ");
-
-        std::vector<int> outbshape(2, 0);
-
-        const int i_channel_ = src_bshape[im2col_info_t::channel_dim];
-        const int i_height_  = src_bshape[im2col_info_t::h_dim];
-        const int i_width_   = src_bshape[im2col_info_t::w_dim];
-        // calculate number of batches
-        const int num = src_bshape[0];
-        const int o_height = (i_height_ - (dilate_h_ * (filter_h_ - 1) + 1)) / stride_h_ + 1;
-        const int o_width  = (i_width_  - (dilate_w_ * (filter_w_ - 1) + 1)) / stride_w_ + 1;
-
-        outbshape[0] = filter_h_ * filter_w_ * i_channel_;
-        outbshape[1] = o_height * o_width * num;
-
-        return outbshape;
+        return deduce_im2col_shape<data_format>(src_bshape,
+                                                filter_h_,
+                                                filter_w_,
+                                                stride_h_,
+                                                stride_w_,
+                                                dilate_h_,
+                                                dilate_w_);
     }
 
     template<int devT, typename T, int ndim>

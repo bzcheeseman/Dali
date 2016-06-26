@@ -33,3 +33,5 @@
 8. All above requirements also apply to lazy expressions.
 
 9. All the code related to particular function should ideally reside in one file, or as few files as possible.
+
+10. Make sure that `dot.cu.cpp` can be implemented in sane way.

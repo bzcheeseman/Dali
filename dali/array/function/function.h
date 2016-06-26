@@ -21,6 +21,7 @@
 #include "dali/utils/unpack_tuple.h"
 
 
+
 ////////////////////////////////////////////////////////////////////////////////
 //                FUNCTION AND ITS SPECIALIZATIONS                            //
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,11 +83,13 @@ struct Function {
         return ReduceOverArgs<DeviceReducer>::reduce(args...);
     }
 
-    static memory::Device deduce_computation_device(const Outtype& out, const Args&... args) {
+    template<typename... PreparedArgs>
+    static memory::Device deduce_computation_device(const Outtype& out, const PreparedArgs&... args) {
         return ReduceOverArgs<DeviceReducer>::reduce(out, args...);
     }
 
-    static DType deduce_computation_dtype(const Outtype& out, const Args&... args) {
+    template<typename... PreparedArgs>
+    static DType deduce_computation_dtype(const Outtype& out, const PreparedArgs&... args) {
         return ReduceOverArgs<DTypeEqualForAllArrayArgsReducer>::reduce(out, args...);
     }
 
@@ -183,14 +186,19 @@ struct Function {
                             << " instead");
 
             auto prepped_args = Class::prepare_output(operator_t, out, args...);
-            unpack_tuple(Class::template untyped_eval<intented_operator_t>, prepped_args);
+            Class::template untyped_eval_with_tuple<intented_operator_t>(prepped_args);
             debug::dali_function_computed.activate(true);
         });
     }
 
-    template<OPERATOR_T operator_t>
-    static void untyped_eval(const Outtype& out,
-                             const Args&... args) {
+    template<OPERATOR_T intented_operator_t, typename... PreparedArgs>
+    static void untyped_eval_with_tuple(const std::tuple<Outtype, PreparedArgs...>& prepped_args) {
+        unpack_tuple(&Class::template untyped_eval<intented_operator_t, PreparedArgs...>, prepped_args);
+    }
+
+
+    template<OPERATOR_T operator_t, typename... PreparedArgs>
+    static void untyped_eval(const Outtype& out, const PreparedArgs&... args) {
         auto device = Class::deduce_computation_device(out, args...);
         auto computation_dtype = Class::deduce_computation_dtype(out, args...);
 
@@ -223,22 +231,22 @@ struct Function {
             auto prepped_args = Class::prepare_output(operator_t, out, args...);
             switch (operator_t) {
                 case OPERATOR_T_EQL:
-                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_EQL>, prepped_args);
+                    Class::template untyped_eval_with_tuple<OPERATOR_T_EQL>(prepped_args);
                     break;
                 case OPERATOR_T_ADD:
-                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_ADD>, prepped_args);
+                    Class::template untyped_eval_with_tuple<OPERATOR_T_ADD>(prepped_args);
                     break;
                 case OPERATOR_T_SUB:
-                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_SUB>, prepped_args);
+                    Class::template untyped_eval_with_tuple<OPERATOR_T_SUB>(prepped_args);
                     break;
                 case OPERATOR_T_MUL:
-                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_MUL>, prepped_args);
+                    Class::template untyped_eval_with_tuple<OPERATOR_T_MUL>(prepped_args);
                     break;
                 case OPERATOR_T_DIV:
-                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_DIV>, prepped_args);
+                    Class::template untyped_eval_with_tuple<OPERATOR_T_DIV>(prepped_args);
                     break;
                 case OPERATOR_T_LSE:
-                    unpack_tuple(Class::template untyped_eval<OPERATOR_T_LSE>, prepped_args);
+                    Class::template untyped_eval_with_tuple<OPERATOR_T_LSE>(prepped_args);
                     break;
                 default:
                     ASSERT2(false, "OPERATOR_T for assignment between Assignable<Outtype> and output must be one of =,-=,+=,*=,/=,<<= .");
@@ -248,8 +256,8 @@ struct Function {
         });
     }
 
-    template<OPERATOR_T operator_t, typename T, int devT>
-    void compute(const Outtype& out, const memory::Device& device, const Args&... args) {
+    template<OPERATOR_T operator_t, typename T, int devT, typename... PreparedArgs>
+    void compute(const Outtype& out, const memory::Device& device, const PreparedArgs&... args) {
         typedef ArrayWrapper<devT,T> wrapper_t;
         typedef typename FunctionReturnType<Class, T>::value OutT;
         typedef ArrayWrapper<devT, OutT> wrapper_out_t;
@@ -284,6 +292,9 @@ struct NonArrayFunction : public Function<Class,Outtype*,Args...> {
 
 #define DALI_FUNC_ENABLE_IF_INT typename var_T=T, typename std::enable_if<std::is_same<var_T,int>::value>::type* = nullptr
 #define DALI_FUNC_DISABLE_IF_INT typename var_T=T, typename std::enable_if<!std::is_same<var_T,int>::value>::type* = nullptr
+
+#define DALI_FUNC_DISABLE_IF_MUL_DIV OPERATOR_T var_operator_t=operator_t, typename std::enable_if<var_operator_t != OPERATOR_T_MUL && var_operator_t != OPERATOR_T_DIV>::type* = nullptr
+#define DALI_FUNC_ENABLE_IF_MUL_DIV OPERATOR_T var_operator_t=operator_t, typename std::enable_if<var_operator_t == OPERATOR_T_MUL || var_operator_t == OPERATOR_T_DIV>::type* = nullptr
 
 
 #endif

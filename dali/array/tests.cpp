@@ -268,6 +268,18 @@ TEST(ArrayTests, copy_constructor) {
 }
 
 
+TEST(ArrayTests, reshape_with_unknown_dimension) {
+    Array x({2, 3, 4}, DTYPE_INT32);
+    auto right_deduce = x.reshape({6,-1});
+    EXPECT_EQ(std::vector<int>({6, 4}), right_deduce.shape());
+    auto left_deduce = x.reshape({-1,2});
+    EXPECT_EQ(std::vector<int>({12, 2}), left_deduce.shape());
+    // too many unknowns:
+    EXPECT_THROW(x.reshape({-1,-1}), std::runtime_error);
+    // shape is incompatible
+    EXPECT_THROW(x.reshape({-1,5}), std::runtime_error);
+}
+
 
 TEST(ArrayTests, contiguous_memory) {
     auto x = build_234_arange();

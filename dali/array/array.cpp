@@ -56,6 +56,34 @@ void alert_stateless_call(const bool& stateful, const char* fieldname) {
                        " is kept by value instead).");
 }
 
+std::vector<int> normalize_shape(const std::vector<int>& current_shape, std::vector<int> new_shape) {
+    int undefined_dim = -1;
+    int known_shape_volume = 1;
+    for (int i = 0; i < new_shape.size(); i++) {
+        if (new_shape[i] < 0) {
+            ASSERT2(undefined_dim == -1,
+                utils::MS() << "new shape can only specify one unknown dimension (got "
+                            << new_shape << ")."
+            );
+            undefined_dim = i;
+        } else {
+            known_shape_volume *= new_shape[i];
+        }
+    }
+    if (undefined_dim != -1) {
+        if (known_shape_volume == 0) {
+            return new_shape;
+        } else {
+            int current_volume = hypercube_volume(current_shape);
+            ASSERT2(current_volume % known_shape_volume == 0,
+                utils::MS() << "cannot deduce unknown dimension (" << new_shape
+                            << ") with current shape (" << current_shape << ").");
+            new_shape[undefined_dim] = current_volume / known_shape_volume;
+        }
+    }
+    return new_shape;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //                        ASSIGNABLE ARRAY                                    //
@@ -743,8 +771,9 @@ Array Array::ravel() const {
 }
 
 Array Array::copyless_reshape(const vector<int>& new_shape) const {
-    if (new_shape == shape()) return *this;
-    ASSERT2(hypercube_volume(new_shape) == number_of_elements(),
+    auto norm_shape = normalize_shape(shape(), new_shape);
+    if (norm_shape == shape()) return *this;
+    ASSERT2(hypercube_volume(norm_shape) == number_of_elements(),
             utils::MS() << "New shape (" << new_shape
                         << ") must have the same number of elements as previous shape ("
                         << shape() << ")");
@@ -753,7 +782,7 @@ Array Array::copyless_reshape(const vector<int>& new_shape) const {
                         << "(strides() = " << strides() << ", shape=" << shape()
                         << ", new shape=" << new_shape << ").");
 
-    return Array(new_shape,
+    return Array(norm_shape,
                  memory(),
                  offset(),
                  vector<int>(),

@@ -904,7 +904,8 @@ Array Array::broadcast_axis(const int& axis) const {
     return out;
 }
 
-Array Array::insert_broadcast_axis(const int& new_axis) const {
+Array Array::insert_broadcast_axis(int new_axis) const {
+    if (new_axis < 0) new_axis = ndim() + new_axis;
     return expand_dims(new_axis).broadcast_axis(new_axis);
 }
 

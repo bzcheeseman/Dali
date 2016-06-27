@@ -38,26 +38,27 @@ namespace op {
 
     // returns gradient with respect to the input.
     Assignable<Array> conv2d_backward_input(
-                         const Array& filters,
-                         const Array& out_dw,
-                         int stride_h,
-                         int stride_w,
-                         const std::vector<int>& result_shape,
-                         PADDING_T padding,
-                         const std::string& data_format);
+        const Array& filters,
+        const Array& out_dw,
+        int stride_h,
+        int stride_w,
+        const std::vector<int>& result_shape,
+        PADDING_T padding,
+        const std::string& data_format
+    );
 
     Assignable<Array> conv2d_backward_filters(
-                     const Array& input,
-                     const Array& out_dw,
-                     int stride_h,
-                     int stride_w,
-                     const std::vector<int>& result_shape,
-                     PADDING_T padding,
-                     const std::string& data_format);
+        const Array& input,
+        const Array& out_dw,
+        int stride_h,
+        int stride_w,
+        const std::vector<int>& result_shape,
+        PADDING_T padding,
+        const std::string& data_format
+    );
 
-    Assignable<Array> conv2d_backward_bias(
-                     const Array& out_dw,
-                     const std::string& data_format);
+    Assignable<Array> conv2d_backward_bias(const Array& out_dw,
+                                           const std::string& data_format);
 
     Assignable<Array> pool2d(const Array& input,
                              int window_h,
@@ -68,18 +69,16 @@ namespace op {
                              PADDING_T padding,
                              const std::string& data_format);
 
-    Assignable<Array> pool2d_backward(
-                             const Array& out,
-                             const Array& out_dw,
-                             const Array& in,
-                             int window_h,
-                             int window_w,
-                             int stride_h,
-                             int stride_w,
-                             const std::vector<int>& result_shape,
-                             POOLING_T pooling_mode,
-                             PADDING_T padding,
-                             const std::string& data_format);
-}
+    Assignable<Array> pool2d_backward(const Array& out,
+                                      const Array& out_dw,
+                                      const Array& in,
+                                      int window_h,
+                                      int window_w,
+                                      int stride_h,
+                                      int stride_w,
+                                      POOLING_T pooling_mode,
+                                      PADDING_T padding,
+                                      const std::string& data_format);
+}  // namespace op
 
 #endif  // DALI_ARRAY_OP_SPATIAL_H

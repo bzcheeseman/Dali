@@ -169,7 +169,6 @@ namespace tensor_ops {
                                         window_w,
                                         stride_h,
                                         stride_w,
-                                        input.shape(),
                                         pooling_mode,
                                         padding,
                                         data_format);

@@ -21,6 +21,11 @@ namespace internal {
     }
 
     template<typename MDevT, typename T>
+    bool TypedArrayShared<MDevT,T>::spans_entire_memory() const {
+        return this->array.spans_entire_memory();
+    }
+
+    template<typename MDevT, typename T>
     TypedArrayShared<MDevT, T>::TypedArrayShared(const Array& _array, const memory::Device& _device, const std::vector<int>& _output_shape)
             : array(_array.reshape_broadcasted(_output_shape)), device(_device) {
         ASSERT2(template_to_dtype<T>() == _array.dtype(),
@@ -111,6 +116,12 @@ namespace internal {
     }
 
     template<typename MDevT, typename T, typename IndexT>
+    bool TypedArraySubtensorShared<MDevT,T,IndexT>::spans_entire_memory() const {
+        return this->source.spans_entire_memory() && this->indices.spans_entire_memory();
+    }
+
+
+    template<typename MDevT, typename T, typename IndexT>
     mshadow::expr::TakeFromRowsExp<mshadow::Tensor<MDevT, 1, IndexT>, mshadow::Tensor<MDevT, 2, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::contiguous_d1(memory::AM access_mode, bool collapse_leading) const { return contiguous_d<1>(access_mode, collapse_leading); }
     template<typename MDevT, typename T, typename IndexT>
     mshadow::expr::TakeFromRowsExp<mshadow::Tensor<MDevT, 2, IndexT>, mshadow::Tensor<MDevT, 3, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::contiguous_d2(memory::AM access_mode, bool collapse_leading) const { return contiguous_d<2>(access_mode, collapse_leading); }
@@ -160,6 +171,11 @@ namespace internal {
     template<typename MDevT, typename T, typename IndexT>
     bool TypedArrayGatherShared<MDevT,T,IndexT>::contiguous_memory() const {
         return this->source.contiguous_memory() && this->indices.contiguous_memory();
+    }
+
+    template<typename MDevT, typename T, typename IndexT>
+    bool TypedArrayGatherShared<MDevT,T,IndexT>::spans_entire_memory() const {
+        return this->source.spans_entire_memory() && this->indices.spans_entire_memory();
     }
 
     template<typename MDevT, typename T, typename IndexT>

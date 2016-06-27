@@ -34,7 +34,6 @@ namespace internal {
     #define DECLARE_OPERATOR_ASSIGN_HELPER(OPERATOR_T_SOMETHING, OPERATOR_LITERAL) \
         template<> \
         struct UseOperator<OPERATOR_T_SOMETHING> { \
-            static memory::AM access_mode; \
             template<typename LeftType, typename RightType> \
             static inline auto apply(LeftType l, RightType r) -> decltype(l OPERATOR_LITERAL r) { \
                 return l OPERATOR_LITERAL r; \
@@ -53,21 +52,44 @@ namespace internal {
     // have equal dimensions this behaves like the regular
     // += operator.
     DECLARE_OPERATOR_ASSIGN_HELPER(OPERATOR_T_LSE, +=);
+
+    template<OPERATOR_T operator_t>
+    struct OperatorAM {
+        template<typename LeftType>
+        static memory::AM get(const LeftType& left) {
+            return memory::AM_MUTABLE;
+        }
+    };
+
+    template<>
+    struct OperatorAM<OPERATOR_T_EQL> {
+        template<typename LeftType>
+        static memory::AM get(const LeftType& left) {
+            if (left.spans_entire_memory()) {
+                return memory::AM_OVERWRITE;
+            } else {
+                return memory::AM_MUTABLE;
+            }
+        }
+    };
+
 };  // namespace internal
+
+
 
 
 template<OPERATOR_T operator_t, int ndim, typename LeftType, typename RightType>
 struct OperatorAssignHelper {
     static inline void assign_contiguous(LeftType& left, const RightType& right, bool collapse_leading=true) {
         internal::UseOperator<operator_t>::apply(
-            left.template contiguous_d<ndim>(internal::UseOperator<operator_t>::access_mode, collapse_leading),
+            left.template contiguous_d<ndim>(internal::OperatorAM<operator_t>::get(left), collapse_leading),
             right
         );
     }
 
     static inline void assign_noncontiguous(LeftType& left, const RightType& right, bool collapse_leading=true) {
         internal::UseOperator<operator_t>::apply(
-            left.template d<ndim>(internal::UseOperator<operator_t>::access_mode, collapse_leading),
+            left.template d<ndim>(internal::OperatorAM<operator_t>::get(left), collapse_leading),
             right
         );
     }

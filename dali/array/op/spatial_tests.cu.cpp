@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "dali/array/test_utils.h"
-#include "dali/array/lazy_op.h"
+#include "dali/array/op.h"
 #include "dali/runtime_config.h"
 #include "dali/utils/print_utils.h"
 
@@ -49,6 +49,7 @@ Array reference_conv2d(Array X, Array W,
         X = X_padded;
     }
 
+
     Array out = Array::zeros({info.batch_size,
                               info.out_channels,
                               info.out_h,
@@ -88,7 +89,6 @@ Array reference_conv2d(Array X, Array W,
     }
 }
 
-
 TEST(ArraySpatialTests, conv_forward) {
     for (int stride_h = 1; stride_h <= 2; ++stride_h) {
         for (int stride_w = 1; stride_w <= 2; ++stride_w) {
@@ -113,6 +113,7 @@ TEST(ArraySpatialTests, conv_forward) {
                                                          << ", data_format = " << data_format
                                                          << ", padding = " << padding_str;
                     SCOPED_TRACE(scope_name);
+
                     Array expected =
                         reference_conv2d(
                             X,
@@ -295,7 +296,7 @@ Array reference_pool2d_backward(const Array& out,
 
             Array grad_at_hw;
             if (pooling_mode == POOLING_T_MAX) {
-                grad_at_hw = lazy::equals(source_at_hw, out_impact) * out_grad_impact;
+                grad_at_hw = op::equals(source_at_hw, out_impact) * out_grad_impact;
             } else if (pooling_mode == POOLING_T_AVG) {
                 grad_at_hw = out_grad_impact / ((double) window_h * window_w);
             }

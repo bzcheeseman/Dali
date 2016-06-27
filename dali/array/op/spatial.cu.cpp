@@ -246,7 +246,10 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                 info.filter_h, info.filter_w,
                 stride_h, stride_w,
                 /*dilate_h=*/1,
-                /*dilate_w=*/1);
+                /*dilate_w=*/1,
+                /*padding_h*/2 * info.padding_h + info.odd_padding_h,
+                /*padding_w*/2 * info.padding_w + info.odd_padding_w
+            );
         } else {
             // when data_format is equal to the string containing
             // letters NHWC.
@@ -255,7 +258,10 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                 info.filter_h, info.filter_w,
                 stride_h, stride_w,
                 /*dilate_h=*/1,
-                /*dilate_w=*/1);
+                /*dilate_w=*/1,
+                /*padding_h*/2 * info.padding_h + info.odd_padding_h,
+                /*padding_w*/2 * info.padding_w + info.odd_padding_w
+            );
         }
 
         Array im2col_storage_arr(temp_bshape, template_to_dtype<T>(), out.device);
@@ -271,7 +277,11 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                 stride_h,
                 stride_w,
                 /*dilate_h=*/1,
-                /*dilate_w=*/1
+                /*dilate_w=*/1,
+                /*prepad_h*/info.padding_h,
+                /*prepad_w*/info.padding_w,
+                /*postpad_h*/info.padding_h + info.odd_padding_h,
+                /*postpad_w*/info.padding_w + info.odd_padding_w
             );
         } else { // then data_format = "NHWC"
             im2col_storage.contiguous_d2(memory::AM_OVERWRITE) =
@@ -282,7 +292,11 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                 stride_h,
                 stride_w,
                 /*dilate_h=*/1,
-                /*dilate_w=*/1
+                /*dilate_w=*/1,
+                /*prepad_h*/info.padding_h,
+                /*prepad_w*/info.padding_w,
+                /*postpad_h*/info.padding_h + info.odd_padding_h,
+                /*postpad_w*/info.padding_w + info.odd_padding_w
             );
         }
 

@@ -18,12 +18,3 @@ std::string operator_to_name(const OPERATOR_T& operator_t) {
             return "unknown operator";
     }
 }
-
-namespace internal {
-    memory::AM UseOperator<OPERATOR_T_EQL>::access_mode = memory::AM_OVERWRITE;
-    memory::AM UseOperator<OPERATOR_T_ADD>::access_mode = memory::AM_MUTABLE;
-    memory::AM UseOperator<OPERATOR_T_SUB>::access_mode = memory::AM_MUTABLE;
-    memory::AM UseOperator<OPERATOR_T_MUL>::access_mode = memory::AM_MUTABLE;
-    memory::AM UseOperator<OPERATOR_T_DIV>::access_mode = memory::AM_MUTABLE;
-    memory::AM UseOperator<OPERATOR_T_LSE>::access_mode = memory::AM_MUTABLE;
-}  // namespace internal

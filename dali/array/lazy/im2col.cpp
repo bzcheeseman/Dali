@@ -8,7 +8,9 @@ std::vector<int> deduce_im2col_shape(
         const int& stride_h_,
         const int& stride_w_,
         const int& dilate_h_,
-        const int& dilate_w_) {
+        const int& dilate_w_,
+        const int& padding_h_,
+        const int& padding_w_) {
     typedef mshadow::expr::UnpackPatchToCol_DimInfo<data_format, 4> im2col_info_t;
 
     const int w_shape = src_bshape[im2col_info_t::w_dim];
@@ -24,8 +26,8 @@ std::vector<int> deduce_im2col_shape(
                     << "filter_w=" << filter_w_ << " vs. w_dim=" << w_shape << "). ");
 
     const int i_channel_ = src_bshape[im2col_info_t::channel_dim];
-    const int i_height_  = src_bshape[im2col_info_t::h_dim];
-    const int i_width_   = src_bshape[im2col_info_t::w_dim];
+    const int i_height_  = src_bshape[im2col_info_t::h_dim] + padding_h_;
+    const int i_width_   = src_bshape[im2col_info_t::w_dim] + padding_w_;
     // calculate number of batches
     const int num = src_bshape[0];
     const int o_height = (i_height_ - (dilate_h_ * (filter_h_ - 1) + 1)) / stride_h_ + 1;
@@ -38,6 +40,6 @@ std::vector<int> deduce_im2col_shape(
 }
 
 template std::vector<int> deduce_im2col_shape<mshadow::expr::DATA_FORMAT_NCHW>(
-        const std::vector<int>&, const int&, const int&, const int&, const int&, const int&, const int&);
+        const std::vector<int>&, const int&, const int&, const int&, const int&, const int&, const int&, const int&, const int&);
 template std::vector<int> deduce_im2col_shape<mshadow::expr::DATA_FORMAT_NHWC>(
-        const std::vector<int>&, const int&, const int&, const int&, const int&, const int&, const int&);
+        const std::vector<int>&, const int&, const int&, const int&, const int&, const int&, const int&, const int&, const int&);

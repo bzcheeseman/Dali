@@ -57,6 +57,7 @@ namespace internal {
         std::vector<int> output_shape;
 
         bool contiguous_memory() const;
+        bool spans_entire_memory() const;
 
         T* ptr(memory::AM access_mode=memory::AM_READONLY) const;
 
@@ -135,6 +136,7 @@ namespace internal {
         std::vector<int> shape;
 
         bool contiguous_memory() const;
+        bool spans_entire_memory() const;
 
         template<int dim>
         mshadow::expr::TakeFromRowsExp<mshadow::Tensor<MDevT, dim, IndexT>, mshadow::Tensor<MDevT, dim + 1, T>, T, IndexT> contiguous_d(memory::AM access_mode=memory::AM_READONLY, bool collapse_leading=true) const;
@@ -192,6 +194,7 @@ namespace internal {
         std::vector<int> shape;
 
         bool contiguous_memory() const;
+        bool spans_entire_memory() const;
 
         template<int dim>
         mshadow::expr::TakeExp<mshadow::Tensor<MDevT, 1, IndexT>, mshadow::Tensor<MDevT, dim, T>, T, IndexT> contiguous_d(memory::AM access_mode=memory::AM_READONLY, bool collapse_leading=true) const;

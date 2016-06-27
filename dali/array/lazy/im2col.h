@@ -25,7 +25,9 @@ std::vector<int> deduce_im2col_shape(
     const int& stride_h_,
     const int& stride_w_,
     const int& dilate_h_,
-    const int& dilate_w_
+    const int& dilate_w_,
+    const int& padding_h_,
+    const int& padding_w_
 );
 
 

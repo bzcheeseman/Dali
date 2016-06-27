@@ -10,6 +10,37 @@ class Array;
 template<typename OutType>
 class Assignable;
 
+namespace internal {
+    struct Conv2dFunctionInputInfo {
+        int batch_size;
+        int in_channels;
+        int in_h;
+        int in_w;
+        int filter_in_channels;
+        int filter_h;
+        int filter_w;
+        int out_channels;
+        int out_w;
+        int out_h;
+    };
+
+    Conv2dFunctionInputInfo compute_conv_info(
+            const std::vector<int>& input_shape,
+            const std::vector<int>& filters_shape,
+            const int& stride_h,
+            const int& stride_w,
+            PADDING_T padding,
+            const std::string& data_format);
+
+    std::tuple<int, int> convolution_padding(
+        const std::vector<int>& input_shape,
+        const std::vector<int>& filters_shape,
+        const std::vector<int>& output_shape,
+        int stride_h,
+        int stride_w,
+        const std::string&      data_format,
+        PADDING_T           padding);
+}
 
 namespace op {
     // the type of padding algorithm to use.

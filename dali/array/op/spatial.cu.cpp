@@ -25,48 +25,6 @@ int int_ceil(int numerator, int denominator) {
     return (numerator + denominator - 1) / denominator;
 }
 
-std::tuple<int, int> convolution_padding(
-        const std::vector<int>& input_shape,
-        const std::vector<int>& filters_shape,
-        const std::vector<int>& output_shape,
-        int stride_h,
-        int stride_w,
-        const std::string&      data_format,
-        PADDING_T           padding) {
-
-    int h_dim, w_dim;
-    if (data_format == "NCHW") {
-        h_dim = 2;
-        w_dim = 3;
-    } else if (data_format == "NHWC") {
-        h_dim = 1;
-        w_dim = 2;
-    }
-
-    int in_h     = input_shape[h_dim];
-    int in_w     = input_shape[w_dim];
-    int out_h    = output_shape[h_dim];
-    int out_w    = output_shape[w_dim];
-    int filter_h = filters_shape[h_dim];
-    int filter_w = filters_shape[w_dim];;
-
-    int padding_h, padding_w;
-
-    if (padding == PADDING_T_SAME) {
-        padding_h = (out_h - 1) * stride_h + filter_h - in_h;
-        padding_w = (out_w - 1) * stride_w + filter_w - in_w;
-        ASSERT2(padding_h % 2 == 0 && padding_w % 2 == 0,
-                "Conv2d odd sized padding is presently unsupported.");
-        padding_h /= 2;
-        padding_w /= 2;
-    } else if (padding == PADDING_T_VALID) {
-        padding_h = 0;
-        padding_w = 0;
-    }
-
-    return std::make_tuple(padding_h, padding_w);
-}
-
 void check_data_format(const std::string& data_format) {
     ASSERT2(data_format == "NCHW" || data_format == "NHWC",
             utils::MS() << "data_format must be one of NCHW, NHWC (was " << data_format << ")");
@@ -92,61 +50,92 @@ std::vector<int> fake_padding_shape(int window_h, int window_w,
     }
 }
 
-struct Conv2dFunctionInputInfo {
-    int batch_size;
-    int in_channels;
-    int in_h;
-    int in_w;
-    int filter_in_channels;
-    int filter_h;
-    int filter_w;
-    int out_channels;
-    int out_w;
-    int out_h;
-};
 
-static Conv2dFunctionInputInfo compute_conv_info(const std::vector<int>& input_shape,
-                                                 const std::vector<int>& filters_shape,
-                                                 const int& stride_h,
-                                                 const int& stride_w,
-                                                 PADDING_T padding,
-                                                 const std::string& data_format) {
-    check_data_format(data_format);
-    Conv2dFunctionInputInfo info;
+namespace internal {
+    Conv2dFunctionInputInfo compute_conv_info(const std::vector<int>& input_shape,
+                                              const std::vector<int>& filters_shape,
+                                              const int& stride_h,
+                                              const int& stride_w,
+                                              PADDING_T padding,
+                                              const std::string& data_format) {
+        check_data_format(data_format);
+        Conv2dFunctionInputInfo info;
 
-    if (data_format == "NCHW") {
-        info.batch_size         = input_shape[0];
-        info.in_channels        = input_shape[1];
-        info.in_h               = input_shape[2];
-        info.in_w               = input_shape[3];
+        if (data_format == "NCHW") {
+            info.batch_size         = input_shape[0];
+            info.in_channels        = input_shape[1];
+            info.in_h               = input_shape[2];
+            info.in_w               = input_shape[3];
 
-        info.out_channels       = filters_shape[0];
-        info.filter_in_channels = filters_shape[1];
-        info.filter_h           = filters_shape[2];
-        info.filter_w           = filters_shape[3];
+            info.out_channels       = filters_shape[0];
+            info.filter_in_channels = filters_shape[1];
+            info.filter_h           = filters_shape[2];
+            info.filter_w           = filters_shape[3];
 
-    } else if (data_format == "NHWC") {
-        info.batch_size         = input_shape[0];
-        info.in_h               = input_shape[1];
-        info.in_w               = input_shape[2];
-        info.in_channels        = input_shape[3];
+        } else if (data_format == "NHWC") {
+            info.batch_size         = input_shape[0];
+            info.in_h               = input_shape[1];
+            info.in_w               = input_shape[2];
+            info.in_channels        = input_shape[3];
 
-        info.out_channels       = filters_shape[0];
-        info.filter_h           = filters_shape[1];
-        info.filter_w           = filters_shape[2];
-        info.filter_in_channels = filters_shape[3];
+            info.out_channels       = filters_shape[0];
+            info.filter_h           = filters_shape[1];
+            info.filter_w           = filters_shape[2];
+            info.filter_in_channels = filters_shape[3];
+        }
+        if (padding == PADDING_T_SAME) {
+            info.out_h = int_ceil(info.in_h, stride_h);
+            info.out_w = int_ceil(info.in_w, stride_w);
+        } else if (padding == PADDING_T_VALID) {
+            info.out_h = int_ceil(info.in_h - info.filter_h + 1, stride_h);
+            info.out_w = int_ceil(info.in_w - info.filter_w + 1, stride_w);
+        } else {
+            ASSERT2(false, utils::MS() << "Unrecognized value of padding passed to Conv2dFunction (" << padding << ")");
+        }
+        return info;
     }
-    if (padding == PADDING_T_SAME) {
-        info.out_h = int_ceil(info.in_h, stride_h);
-        info.out_w = int_ceil(info.in_w, stride_w);
-    } else if (padding == PADDING_T_VALID) {
-        info.out_h = int_ceil(info.in_h - info.filter_h + 1, stride_h);
-        info.out_w = int_ceil(info.in_w - info.filter_w + 1, stride_w);
-    } else {
-        ASSERT2(false, utils::MS() << "Unrecognized value of padding passed to Conv2dFunction (" << padding << ")");
-    }
-    return info;
-}
+
+    std::tuple<int, int> convolution_padding(
+        const std::vector<int>& input_shape,
+        const std::vector<int>& filters_shape,
+        const std::vector<int>& output_shape,
+        int stride_h,
+        int stride_w,
+        const std::string&      data_format,
+        PADDING_T           padding) {
+            int h_dim, w_dim;
+            if (data_format == "NCHW") {
+                h_dim = 2;
+                w_dim = 3;
+            } else if (data_format == "NHWC") {
+                h_dim = 1;
+                w_dim = 2;
+            }
+
+            int in_h     = input_shape[h_dim];
+            int in_w     = input_shape[w_dim];
+            int out_h    = output_shape[h_dim];
+            int out_w    = output_shape[w_dim];
+            int filter_h = filters_shape[h_dim];
+            int filter_w = filters_shape[w_dim];;
+
+            int padding_h, padding_w;
+
+            if (padding == PADDING_T_SAME) {
+                padding_h = (out_h - 1) * stride_h + filter_h - in_h;
+                padding_w = (out_w - 1) * stride_w + filter_w - in_w;
+                ASSERT2(padding_h % 2 == 0 && padding_w % 2 == 0,
+                        "Conv2d odd sized padding is presently unsupported.");
+                padding_h /= 2;
+                padding_w /= 2;
+            } else if (padding == PADDING_T_VALID) {
+                padding_h = 0;
+                padding_w = 0;
+            }
+
+            return std::make_tuple(padding_h, padding_w);
+        }
+}  // namespace internal
 
 struct Pool2dFunctionInputInfo {
     int out_w;
@@ -212,7 +201,7 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                                                  PADDING_T padding,
                                                  const std::string& data_format) {
 
-        auto info = compute_conv_info(input.shape(),
+        auto info = internal::compute_conv_info(input.shape(),
                                       filters.shape(),
                                       stride_h,
                                       stride_w,
@@ -274,7 +263,7 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                    int stride_w,
                    PADDING_T padding,
                    const std::string& data_format) {
-        auto info = compute_conv_info(input.array.shape(),
+        auto info = internal::compute_conv_info(input.array.shape(),
                                       filters.array.shape(),
                                       stride_h,
                                       stride_w,

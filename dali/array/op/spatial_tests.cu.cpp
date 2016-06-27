@@ -8,20 +8,103 @@
 
 using namespace op;
 
+Array reference_conv2d(Array X, Array W,
+                           int stride_h, int stride_w,
+                           PADDING_T padding,
+                           const std::string& data_format) {
+    auto info = internal::compute_conv_info(
+            X.shape(),
+            W.shape(),
+            stride_h,
+            stride_w,
+            padding,
+            data_format);
+
+    if (data_format == "NHWC") {
+        X = X.transpose({0, 3, 1, 2});
+        W = W.transpose({0, 3, 1, 2});
+    }
+
+
+    Array out = Array::zeros({info.batch_size, info.out_channels, info.out_h, info.out_w}, X.dtype());
+
+    auto normalize_h = [&](int h_idx) {
+        return std::max(0, std::min(info.in_h, h_idx));
+    };
+
+    auto normalize_w = [&](int w_idx) {
+        return std::max(0, std::min(info.in_w, w_idx));
+    };
+
+    for (int n_idx = 0; n_idx < info.batch_size; ++n_idx) {
+        for (int out_c_idx = 0; out_c_idx < info.out_channels; ++out_c_idx) {
+            for (int h_idx = 0; h_idx < info.out_h; ++h_idx) {
+                for (int w_idx = 0; w_idx < info.out_w; ++w_idx) {
+
+                    int in_h_idx = h_idx * stride_h; // TODO(szymon): +padding
+                    int in_w_idx = w_idx * stride_w;
+                    auto h_slice = Slice(normalize_h(in_h_idx),
+                                         normalize_h(in_h_idx + info.filter_h));
+                    auto w_slice = Slice(normalize_w(in_w_idx),
+                                         normalize_w(in_w_idx + info.filter_w));
+
+                    Array temp = X[n_idx][Slice(0, info.in_channels)][h_slice][w_slice] *
+                                 W[out_c_idx];
+                    out[n_idx][out_c_idx][h_idx][w_idx] = temp.sum();
+                }
+            }
+        }
+    }
+    if (data_format == "NHWC") {
+        return out.transpose({0, 2, 3, 1});
+    } else {
+        return out;
+    }
+}
+
 TEST(ArraySpatialTests, conv_forward_nchw) {
-    Array X = Array::arange({1, 1, 8, 8}, DTYPE_FLOAT);
-    Array W = Array::ones({1, 1, 2, 2}, DTYPE_FLOAT);
+    for (int stride_h = 1; stride_h <= 2; ++stride_h) {
+        for (int stride_w = 1; stride_w <= 2; ++stride_w) {
+            for (std::string data_format: {"NCHW", "NHWC"}) {
+                Array X, W;
 
-    Array out = conv2d(
-        X,
-        W,
-        /*stride_h=*/2,
-        /*stride_w=*/2,
-        PADDING_T_VALID,
-        "NCHW");
+                if (data_format == "NCHW") {
+                    X = Array({5, 3, 6, 8}, DTYPE_FLOAT);
+                    W = Array({2, 3, 2, 4}, DTYPE_FLOAT);
+                } else {
+                    X = Array({5, 6, 8, 3}, DTYPE_FLOAT);
+                    W = Array({2, 2, 4, 3}, DTYPE_FLOAT);
+                }
 
-    // TODO(szymon): add a test that compares this
-    //               to reference implementation
+                X = initializer::uniform(-1.0, 1.0);
+                W = initializer::uniform(-1.0, 1.0);
+
+                std::string scope_name = utils::MS() << "stride_h = " << stride_h
+                                                     << ", stride_w = " << stride_w
+                                                     << "data_format = " << data_format;
+                SCOPED_TRACE(scope_name);
+                Array expected =
+                    reference_conv2d(
+                        X,
+                        W,
+                        stride_h,
+                        stride_w,
+                        PADDING_T_VALID,
+                        data_format);
+
+
+                Array actual = conv2d(
+                        X,
+                        W,
+                        stride_h,
+                        stride_w,
+                        PADDING_T_VALID,
+                        data_format);
+
+                ASSERT_TRUE(Array::allclose(expected, actual, 1e-3));
+            }
+        }
+    }
 }
 
 TEST(ArraySpatialTests, conv_forward_nhwc) {

@@ -25,15 +25,41 @@ Array reference_conv2d(Array X, Array W,
         W = W.transpose({0, 3, 1, 2});
     }
 
+    if (padding == PADDING_T_SAME) {
+        int n = X.shape()[0];
+        int c = X.shape()[1];
+        int h = X.shape()[2];
+        int w = X.shape()[3];
+        int pad_h = info.padding_h;
+        int pad_w = info.padding_w;
+        int odd_pad_h = info.odd_padding_h;
+        int odd_pad_w = info.odd_padding_w;
 
-    Array out = Array::zeros({info.batch_size, info.out_channels, info.out_h, info.out_w}, X.dtype());
+        std::vector<int> padded_shape =
+                {n, c, h + 2 * pad_h + odd_pad_h, w + 2 * pad_w + odd_pad_w};
+        auto X_padded = Array::zeros(padded_shape, X.dtype(), X.preferred_device());
+
+        Array X_padded_content =
+                X_padded[Slice(0, n)]
+                        [Slice(0, c)]
+                        [Slice(pad_h, h + pad_h)]
+                        [Slice(pad_w, w + pad_w)];
+        X_padded_content = op::identity(X);
+
+        X = X_padded;
+    }
+
+    Array out = Array::zeros({info.batch_size,
+                              info.out_channels,
+                              info.out_h,
+                              info.out_w}, X.dtype());
 
     auto normalize_h = [&](int h_idx) {
-        return std::max(0, std::min(info.in_h, h_idx));
+        return std::max(0, std::min(X.shape()[2], h_idx));
     };
 
     auto normalize_w = [&](int w_idx) {
-        return std::max(0, std::min(info.in_w, w_idx));
+        return std::max(0, std::min(X.shape()[3], w_idx));
     };
 
     for (int n_idx = 0; n_idx < info.batch_size; ++n_idx) {
@@ -62,65 +88,55 @@ Array reference_conv2d(Array X, Array W,
     }
 }
 
-TEST(ArraySpatialTests, conv_forward_nchw) {
+
+TEST(ArraySpatialTests, conv_forward) {
     for (int stride_h = 1; stride_h <= 2; ++stride_h) {
         for (int stride_w = 1; stride_w <= 2; ++stride_w) {
             for (std::string data_format: {"NCHW", "NHWC"}) {
-                Array X, W;
+                for (PADDING_T padding : {PADDING_T_VALID, PADDING_T_SAME}) {
+                    Array X, W;
 
-                if (data_format == "NCHW") {
-                    X = Array({5, 3, 6, 8}, DTYPE_FLOAT);
-                    W = Array({2, 3, 2, 4}, DTYPE_FLOAT);
-                } else {
-                    X = Array({5, 6, 8, 3}, DTYPE_FLOAT);
-                    W = Array({2, 2, 4, 3}, DTYPE_FLOAT);
+                    if (data_format == "NCHW") {
+                        X = Array({5, 3, 6, 8}, DTYPE_FLOAT);
+                        W = Array({2, 3, 2, 4}, DTYPE_FLOAT);
+                    } else {
+                        X = Array({5, 6, 8, 3}, DTYPE_FLOAT);
+                        W = Array({2, 2, 4, 3}, DTYPE_FLOAT);
+                    }
+
+                    X = initializer::uniform(-1.0, 1.0);
+                    W = initializer::uniform(-1.0, 1.0);
+
+                    auto padding_str = (padding == PADDING_T_VALID) ? "valid" : "same";
+                    std::string scope_name = utils::MS() << "stride_h = " << stride_h
+                                                         << ", stride_w = " << stride_w
+                                                         << ", data_format = " << data_format
+                                                         << ", padding = " << padding_str;
+                    SCOPED_TRACE(scope_name);
+                    Array expected =
+                        reference_conv2d(
+                            X,
+                            W,
+                            stride_h,
+                            stride_w,
+                            padding,
+                            data_format);
+                    // reference computation will be much faster on CPU, methinks.
+                    X.to_device(memory::Device::cpu());
+                    W.to_device(memory::Device::cpu());
+                    Array actual = conv2d(
+                            X,
+                            W,
+                            stride_h,
+                            stride_w,
+                            padding,
+                            data_format);
+
+                    ASSERT_TRUE(Array::allclose(expected, actual, 1e-3));
                 }
-
-                X = initializer::uniform(-1.0, 1.0);
-                W = initializer::uniform(-1.0, 1.0);
-
-                std::string scope_name = utils::MS() << "stride_h = " << stride_h
-                                                     << ", stride_w = " << stride_w
-                                                     << "data_format = " << data_format;
-                SCOPED_TRACE(scope_name);
-                Array expected =
-                    reference_conv2d(
-                        X,
-                        W,
-                        stride_h,
-                        stride_w,
-                        PADDING_T_VALID,
-                        data_format);
-
-
-                Array actual = conv2d(
-                        X,
-                        W,
-                        stride_h,
-                        stride_w,
-                        PADDING_T_VALID,
-                        data_format);
-
-                ASSERT_TRUE(Array::allclose(expected, actual, 1e-3));
             }
         }
     }
-}
-
-TEST(ArraySpatialTests, conv_forward_nhwc) {
-    Array X = Array::arange({1, 8, 8, 1}, DTYPE_FLOAT);
-    Array W = Array::ones({1, 2, 2, 1}, DTYPE_FLOAT);
-
-    Array out = conv2d(
-        X,
-        W,
-        /*stride_h=*/2,
-        /*stride_w=*/2,
-        PADDING_T_VALID,
-        "NHWC");
-
-    // TODO(szymon): add a test that compares this
-    //               to reference implementation
 }
 
 TEST(ArraySpatialTests, conv_backward) {

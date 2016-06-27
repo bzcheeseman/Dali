@@ -598,6 +598,7 @@ std::vector<int> Array::bshape() const {
 
 void Array::to_device(memory::Device device) const {
     memory()->move_to(device);
+    memory()->preferred_device = device;
 }
 
 

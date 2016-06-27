@@ -20,8 +20,12 @@ namespace internal {
         int filter_h;
         int filter_w;
         int out_channels;
-        int out_w;
         int out_h;
+        int out_w;
+        int padding_h;
+        int padding_w;
+        int odd_padding_h;
+        int odd_padding_w;
     };
 
     Conv2dFunctionInputInfo compute_conv_info(
@@ -31,15 +35,6 @@ namespace internal {
             const int& stride_w,
             PADDING_T padding,
             const std::string& data_format);
-
-    std::tuple<int, int> convolution_padding(
-        const std::vector<int>& input_shape,
-        const std::vector<int>& filters_shape,
-        const std::vector<int>& output_shape,
-        int stride_h,
-        int stride_w,
-        const std::string&      data_format,
-        PADDING_T           padding);
 }
 
 namespace op {

@@ -30,14 +30,6 @@ void check_data_format(const std::string& data_format) {
             utils::MS() << "data_format must be one of NCHW, NHWC (was " << data_format << ")");
 }
 
-memory::AM operator_to_output_am(OPERATOR_T operator_t) {
-    if (operator_t == OPERATOR_T_EQL) {
-        return memory::AM_OVERWRITE;
-    } else {
-        return memory::AM_MUTABLE;
-    }
-}
-
 std::vector<int> fake_padding_shape(int window_h, int window_w,
                                     const std::string& data_format) {
     if (data_format == "NHWC") {
@@ -92,49 +84,24 @@ namespace internal {
         } else {
             ASSERT2(false, utils::MS() << "Unrecognized value of padding passed to Conv2dFunction (" << padding << ")");
         }
+
+
+        if (padding == PADDING_T_SAME) {
+            info.padding_h = (info.out_h - 1) * stride_h + info.filter_h - info.in_h;
+            info.padding_w = (info.out_w - 1) * stride_w + info.filter_w - info.in_w;
+        } else if (padding == PADDING_T_VALID) {
+            info.padding_h = 0;
+            info.padding_w = 0;
+        }
+
+        info.odd_padding_h = info.padding_h % 2;
+        info.odd_padding_w = info.padding_w % 2;
+
+        info.padding_h /= 2;
+        info.padding_w /= 2;
+
         return info;
     }
-
-    std::tuple<int, int> convolution_padding(
-        const std::vector<int>& input_shape,
-        const std::vector<int>& filters_shape,
-        const std::vector<int>& output_shape,
-        int stride_h,
-        int stride_w,
-        const std::string&      data_format,
-        PADDING_T           padding) {
-            int h_dim, w_dim;
-            if (data_format == "NCHW") {
-                h_dim = 2;
-                w_dim = 3;
-            } else if (data_format == "NHWC") {
-                h_dim = 1;
-                w_dim = 2;
-            }
-
-            int in_h     = input_shape[h_dim];
-            int in_w     = input_shape[w_dim];
-            int out_h    = output_shape[h_dim];
-            int out_w    = output_shape[w_dim];
-            int filter_h = filters_shape[h_dim];
-            int filter_w = filters_shape[w_dim];;
-
-            int padding_h, padding_w;
-
-            if (padding == PADDING_T_SAME) {
-                padding_h = (out_h - 1) * stride_h + filter_h - in_h;
-                padding_w = (out_w - 1) * stride_w + filter_w - in_w;
-                ASSERT2(padding_h % 2 == 0 && padding_w % 2 == 0,
-                        "Conv2d odd sized padding is presently unsupported.");
-                padding_h /= 2;
-                padding_w /= 2;
-            } else if (padding == PADDING_T_VALID) {
-                padding_h = 0;
-                padding_w = 0;
-            }
-
-            return std::make_tuple(padding_h, padding_w);
-        }
 }  // namespace internal
 
 struct Pool2dFunctionInputInfo {
@@ -180,6 +147,7 @@ Pool2dFunctionInputInfo compute_pool_info(
     }
     return info;
 }
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //                            Conv2dFunction                                 //
@@ -382,22 +350,27 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                     int stride_w,
                     PADDING_T padding,
                     const std::string& data_format) {
-        int padding_h, padding_w;
-        std::tie(padding_h, padding_w) = convolution_padding(input.array.shape(),
-                                                             filters.array.shape(),
-                                                             out.array.shape(),
-                                                             stride_h,
-                                                             stride_w,
-                                                             data_format,
-                                                             padding);
+        auto info = internal::compute_conv_info(input.array.shape(),
+                                                filters.array.shape(),
+                                                stride_h,
+                                                stride_w,
+                                                padding,
+                                                data_format);
 
-        auto out_access_mode = operator_to_output_am(operator_t);
+        ASSERT2(info.odd_padding_h == 0 && info.odd_padding_w == 0,
+                "Conv2d odd sized padding is presently unsupported.");
+
+        auto out_access_mode = internal::OperatorAM<operator_t>::get(out);
 
         cudnn::conv2d(
-                std::make_shared<cudnn::wrapper::Tensor>(out, data_format, out_access_mode),
-                std::make_shared<cudnn::wrapper::Tensor>(input, data_format),
-                std::make_shared<cudnn::wrapper::Filters>(filters, data_format),
-                std::make_shared<cudnn::wrapper::Convolution>(padding_h, padding_w, stride_h, stride_w),
+                std::make_shared<cudnn::wrapper::Tensor>(
+                        out, data_format, out_access_mode),
+                std::make_shared<cudnn::wrapper::Tensor>(
+                        input, data_format),
+                std::make_shared<cudnn::wrapper::Filters>(
+                        filters, data_format),
+                std::make_shared<cudnn::wrapper::Convolution>(
+                        info.padding_h, info.padding_w, stride_h, stride_w),
                 cudnn::wrapper::Operator(operator_t, template_to_dtype<T>())
         );
     }
@@ -470,22 +443,28 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
                     PADDING_T padding,
                     const std::string data_format) {
 
-        int padding_h, padding_w;
-        std::tie(padding_h, padding_w) = convolution_padding(in_dw.array.shape(),
-                                                             filters.array.shape(),
-                                                             out_dw.array.shape(),
-                                                             stride_h,
-                                                             stride_w,
-                                                             data_format,
-                                                             padding);
+        auto info = internal::compute_conv_info(input.array.shape(),
+                                                filters.array.shape(),
+                                                stride_h,
+                                                stride_w,
+                                                padding,
+                                                data_format);
 
-        auto out_access_mode = operator_to_output_am(operator_t);
+        ASSERT2(info.odd_padding_h == 0 && info.odd_padding_w == 0,
+                "Conv2d odd sized padding is presently unsupported.");
+
+
+        auto out_access_mode = internal::OperatorAM<operator_t>::get(in_dw);
 
         cudnn::conv2d_bwd_input(
-                std::make_shared<cudnn::wrapper::Tensor>(in_dw, data_format, out_access_mode),
-                std::make_shared<cudnn::wrapper::Filters>(filters, data_format),
-                std::make_shared<cudnn::wrapper::Tensor>(out_dw, data_format),
-                std::make_shared<cudnn::wrapper::Convolution>(padding_h, padding_w, stride_h, stride_w),
+                std::make_shared<cudnn::wrapper::Tensor>(
+                    in_dw, data_format, out_access_mode),
+                std::make_shared<cudnn::wrapper::Filters>(
+                    filters, data_format),
+                std::make_shared<cudnn::wrapper::Tensor>(
+                    out_dw, data_format),
+                std::make_shared<cudnn::wrapper::Convolution>(
+                    info.padding_h, info.padding_w, stride_h, stride_w),
                 cudnn::wrapper::Operator(operator_t, template_to_dtype<T>())
         );
     }
@@ -558,16 +537,18 @@ struct Conv2dBwdFiltersFunction : public Function<Conv2dBwdFiltersFunction,
                     PADDING_T padding,
                     const std::string& data_format) {
 
-        int padding_h, padding_w;
-        std::tie(padding_h, padding_w) = convolution_padding(input.array.shape(),
-                                                             filters_dw.array.shape(),
-                                                             out_dw.array.shape(),
-                                                             stride_h,
-                                                             stride_w,
-                                                             data_format,
-                                                             padding);
+        auto info = internal::compute_conv_info(input.array.shape(),
+                                                filters.array.shape(),
+                                                stride_h,
+                                                stride_w,
+                                                padding,
+                                                data_format);
 
-        auto out_access_mode = operator_to_output_am(operator_t);
+        ASSERT2(info.odd_padding_h == 0 && info.odd_padding_w == 0,
+                "Conv2d odd sized padding is presently unsupported.");
+
+
+        auto out_access_mode = internal::OperatorAM<operator_t>::get(filters_dw);
 
         cudnn::conv2d_bwd_filters(
                 std::make_shared<cudnn::wrapper::Filters>(filters_dw, data_format, out_access_mode),
@@ -617,7 +598,7 @@ struct Conv2dBwdBiasFunction : public Function<Conv2dBwdBiasFunction,
                     TypedArray<memory::DEVICE_T_GPU, T> out_dw,
                     const std::string& data_format) {
 
-        auto out_access_mode = operator_to_output_am(operator_t);
+        auto out_access_mode = internal::OperatorAM<operator_t>::get(bias_dw);
 
         cudnn::conv2d_bwd_bias(
             std::make_shared<cudnn::wrapper::Tensor>(bias_dw, data_format, out_access_mode),
@@ -751,21 +732,20 @@ struct Pool2dFunction : public Function<Pool2dFunction,
                     POOLING_T pooling_mode,
                     PADDING_T padding,
                     const std::string& data_format) {
-        int padding_h, padding_w;
-        std::tie(padding_h, padding_w) = convolution_padding(
-                input.array.shape(),
-                fake_padding_shape(window_h, window_w, data_format),
-                out.array.shape(),
-                stride_h,
-                stride_w,
-                data_format,
-                padding);
-        auto out_access_mode = operator_to_output_am(operator_t);
+
+        auto info = internal::compute_conv_info(input.array.shape(),
+                                                fake_padding_shape(window_h, window_w, data_format),
+                                                stride_h,
+                                                stride_w,
+                                                padding,
+                                                data_format);
+
+        auto out_access_mode = internal::OperatorAM<operator_t>::get(out);
         cudnn::pool2d(
                 std::make_shared<cudnn::wrapper::Tensor>(out, data_format, out_access_mode),
                 std::make_shared<cudnn::wrapper::Tensor>(input, data_format),
                 std::make_shared<cudnn::wrapper::Pooling>(window_h, window_w,
-                                                          padding_h, padding_w,
+                                                          info.padding_h, info.padding_w,
                                                           stride_w, stride_h,
                                                           pooling_mode),
                 cudnn::wrapper::Operator(operator_t, template_to_dtype<T>())
@@ -965,18 +945,14 @@ struct Pool2dBwdFunction : public Function<Pool2dBwdFunction,
                              POOLING_T pooling_mode,
                              PADDING_T padding,
                              const std::string& data_format) {
-        int padding_h, padding_w;
-        std::tie(padding_h, padding_w) = convolution_padding(
-            in.array.shape(),
-            fake_padding_shape(window_h, window_w, data_format),
-            out.array.shape(),
-            stride_h,
-            stride_w,
-            data_format,
-            padding
-        );
+        auto info = internal::compute_conv_info(in.array.shape(),
+                                                fake_padding_shape(window_h, window_w, data_format),
+                                                stride_h,
+                                                stride_w,
+                                                padding,
+                                                data_format);
 
-        auto out_access_mode = operator_to_output_am(operator_t);
+        auto out_access_mode = internal::OperatorAM<operator_t>::get(in_dw);
 
         cudnn::pool2d_bwd(
             std::make_shared<cudnn::wrapper::Tensor>(in_dw, data_format, out_access_mode),
@@ -984,7 +960,7 @@ struct Pool2dBwdFunction : public Function<Pool2dBwdFunction,
             std::make_shared<cudnn::wrapper::Tensor>(out_dw, data_format),
             std::make_shared<cudnn::wrapper::Tensor>(in, data_format),
             std::make_shared<cudnn::wrapper::Pooling>(window_h, window_w,
-                                                      padding_h, padding_w,
+                                                      info.padding_h, info.padding_w,
                                                       stride_w, stride_h,
                                                       pooling_mode),
             cudnn::wrapper::Operator(operator_t, template_to_dtype<T>())

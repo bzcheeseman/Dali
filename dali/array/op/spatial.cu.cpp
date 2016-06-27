@@ -13,6 +13,8 @@
     #include "dali/array/op/cudnn_utils.h"
 #endif
 
+#include <mshadow/extension/spatial_pool.h>
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //                                    UTILS                                  //
@@ -421,7 +423,7 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
                     const std::vector<int>& result_shape,
                     PADDING_T padding,
                     const std::string& data_format) {
-        ASSERT2(false, "integer convolution is not implemented for GPU.");
+        ASSERT2(false, "integer convolution backward is not implemented for GPU.");
     }
 
     template<OPERATOR_T operator_t, typename T, DALI_FUNC_DISABLE_IF_INT>
@@ -453,7 +455,6 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
                 cudnn::wrapper::Operator(operator_t, template_to_dtype<T>())
         );
     }
-
 #endif
 };
 
@@ -542,7 +543,6 @@ struct Conv2dBwdFiltersFunction : public Function<Conv2dBwdFiltersFunction,
                 cudnn::wrapper::Operator(operator_t, template_to_dtype<T>())
         );
     }
-
 #endif
 };
 
@@ -649,8 +649,13 @@ struct Pool2dFunction : public Function<Pool2dFunction,
             out_h = int_ceil(in_h - window_h + 1, stride_h);
             out_w = int_ceil(in_w - window_w + 1, stride_w);
         } else {
-            ASSERT2(false, utils::MS() << "Unrecognized value of padding passed to Pool2dFunction (" << padding << ")");
+            ASSERT2(false, utils::MS() << "Unrecognized value of padding passed to Pool2dFunction (got " << padding << ").");
         }
+
+        ASSERT2(pooling_mode == POOLING_T_MAX || pooling_mode == POOLING_T_AVG,
+            utils::MS() << "Unrecognized pooling_mode value: pooling_mode must be max or avg (got "
+                        << pooling_mode << ")."
+        );
 
         if (data_format == "NCHW") {
             return std::vector<int> {batch_size, in_channels, out_h, out_w};
@@ -659,9 +664,9 @@ struct Pool2dFunction : public Function<Pool2dFunction,
         }
     }
 
-    template<OPERATOR_T operator_t, typename T>
-    void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out,
-                    TypedArray<memory::DEVICE_T_CPU, T> input,
+    template<OPERATOR_T operator_t, typename T, int devT>
+    void typed_eval(TypedArray<devT, T> out,
+                    TypedArray<devT, T> input,
                     int window_h,
                     int window_w,
                     int stride_h,
@@ -669,26 +674,64 @@ struct Pool2dFunction : public Function<Pool2dFunction,
                     POOLING_T pooling_mode,
                     PADDING_T padding,
                     const std::string& data_format) {
-        throw std::runtime_error("not implemented!");
+#ifdef DALI_USE_CUDNN
+        if (use_cudnn && devT == memory::DEVICE_T_GPU && template_to_dtype<T>() != DTYPE_INT32
+            && operator_t != OPERATOR_T_MUL && operator_t != OPERATOR_T_DIV) {
+            cudnn_pool<operator_t,T,devT>(out, input, window_h, window_w, stride_h, stride_w, pooling_mode, padding, data_format);
+            return;
+        }
+#endif
+        mshadow_pool<operator_t,T,devT>(out, input, window_h, window_w, stride_h, stride_w, pooling_mode, padding, data_format);
     }
 
-#ifdef DALI_USE_CUDA
-    template<OPERATOR_T operator_t, typename T, DALI_FUNC_ENABLE_IF_INT>
-    void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out,
-                    TypedArray<memory::DEVICE_T_GPU, T> input,
-                    int window_h,
-                    int window_w,
-                    int stride_h,
-                    int stride_w,
-                    POOLING_T pooling_mode,
-                    PADDING_T padding,
-                    const std::string& data_format) {
-        ASSERT2(false, "integer convolution is not implemented for GPU.");
+    template<OPERATOR_T operator_t, typename T, int devT>
+    void mshadow_pool(TypedArray<devT, T> out,
+                      TypedArray<devT, T> input,
+                      int window_h,
+                      int window_w,
+                      int stride_h,
+                      int stride_w,
+                      POOLING_T pooling_mode,
+                      PADDING_T padding,
+                      const std::string& data_format) {
+        if (pooling_mode == POOLING_T_AVG) {
+            if (data_format == "NCHW") {
+                operator_assign<operator_t, 4>(
+                    out,
+                    mshadow::expr::pool<mshadow::expr::DATA_FORMAT_NCHW, mshadow::red::sum>(
+                        input.d4(), window_h, window_w, stride_h, stride_w
+                    ) / ((double)window_h * window_w)
+                );
+            } else { // then data_format is NHWC
+                operator_assign<operator_t, 4>(
+                    out,
+                    mshadow::expr::pool<mshadow::expr::DATA_FORMAT_NHWC, mshadow::red::sum>(
+                        input.d4(), window_h, window_w, stride_h, stride_w
+                    ) / ((double)window_h * window_w)
+                );
+            }
+        } else if (pooling_mode == POOLING_T_MAX) {
+            if (data_format == "NCHW") {
+                operator_assign<operator_t, 4>(
+                    out,
+                    mshadow::expr::pool<mshadow::expr::DATA_FORMAT_NCHW, mshadow::red::maximum>(
+                        input.d4(), window_h, window_w, stride_h, stride_w
+                    )
+                );
+            } else { // then data_format is NHWC
+                operator_assign<operator_t, 4>(
+                    out,
+                    mshadow::expr::pool<mshadow::expr::DATA_FORMAT_NHWC, mshadow::red::maximum>(
+                        input.d4(), window_h, window_w, stride_h, stride_w
+                    )
+                );
+            }
+        }
     }
-
-    template<OPERATOR_T operator_t, typename T, DALI_FUNC_DISABLE_IF_INT>
-    void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out,
-                    TypedArray<memory::DEVICE_T_GPU, T> input,
+#ifdef DALI_USE_CUDNN
+    template<OPERATOR_T operator_t, typename T, int devT>
+    void cudnn_pool(TypedArray<devT, T> out,
+                    TypedArray<devT, T> input,
                     int window_h,
                     int window_w,
                     int stride_h,
@@ -696,7 +739,6 @@ struct Pool2dFunction : public Function<Pool2dFunction,
                     POOLING_T pooling_mode,
                     PADDING_T padding,
                     const std::string& data_format) {
-
         int padding_h, padding_w;
         std::tie(padding_h, padding_w) = convolution_padding(
                 input.array.shape(),
@@ -706,9 +748,7 @@ struct Pool2dFunction : public Function<Pool2dFunction,
                 stride_w,
                 data_format,
                 padding);
-
         auto out_access_mode = operator_to_output_am(operator_t);
-
         cudnn::pool2d(
                 std::make_shared<cudnn::wrapper::Tensor>(out, data_format, out_access_mode),
                 std::make_shared<cudnn::wrapper::Tensor>(input, data_format),
@@ -719,7 +759,6 @@ struct Pool2dFunction : public Function<Pool2dFunction,
                 cudnn::wrapper::Operator(operator_t, template_to_dtype<T>())
         );
     }
-
 #endif
 
 };

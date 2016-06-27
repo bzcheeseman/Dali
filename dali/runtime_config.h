@@ -3,6 +3,9 @@
 
 #include "dali/array/memory/device.h"
 
+
+extern bool use_cudnn;
+
 namespace memory {
     extern memory::Device default_preferred_device;
 

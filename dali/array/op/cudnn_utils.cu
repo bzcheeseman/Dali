@@ -6,10 +6,32 @@
 //                              UTILS                                        //
 ///////////////////////////////////////////////////////////////////////////////
 
-void cudnn_check_result(cudnnStatus_t status, const std::string& msg) {
-    ASSERT2(status == CUDNN_STATUS_SUCCESS,
-            utils::MS() << msg << ", cudnn error: " << cudnnGetErrorString(status));
+#define CUDNN_CHECK_RESULT(status, message) \
+        ASSERT2(status == CUDNN_STATUS_SUCCESS, \
+            utils::MS() << message << ", cudnn error: " << cudnnGetErrorString(status))
+
+std::string cudnnGetTensorFormatString(cudnnTensorFormat_t tf) {
+    if (tf == CUDNN_TENSOR_NCHW) {
+        return "NCHW";
+    } else if (tf == CUDNN_TENSOR_NHWC) {
+        return "NHWC";
+    } else {
+        return "unknown";
+    }
 }
+
+std::string cudnnGetDateTypeString(cudnnDataType_t dt) {
+    if (dt == CUDNN_DATA_HALF) {
+        return "float16";
+    } else if (dt == CUDNN_DATA_FLOAT) {
+        return "float32";
+    } else if (dt == CUDNN_DATA_DOUBLE) {
+        return "float64";
+    } else {
+        return "unknown";
+    }
+}
+
 
 template<typename T>
 struct TensorWrapperApi {
@@ -19,31 +41,35 @@ template<>
 struct TensorWrapperApi<cudnnTensorDescriptor_t> {
     static void create(cudnnTensorDescriptor_t* doodle) {
         auto result = cudnnCreateTensorDescriptor(doodle);
-        cudnn_check_result(result, "when creating tensor descriptor");
+        CUDNN_CHECK_RESULT(result, "when creating tensor descriptor");
     }
 
     static void destroy(cudnnTensorDescriptor_t doodle) {
         auto result = cudnnDestroyTensorDescriptor(doodle);
-        cudnn_check_result(result, "when destroying tensor descriptor");
+        CUDNN_CHECK_RESULT(result, "when destroying tensor descriptor");
 
     }
 
     static void set(cudnnTensorDescriptor_t desc,
                     cudnnTensorFormat_t     tensor_format,
                     cudnnDataType_t         dtype,
-                    int shape1,
-                    int shape2,
-                    int shape3,
-                    int shape4) {
+                    int n,
+                    int c,
+                    int h,
+                    int w) {
         auto result = cudnnSetTensor4dDescriptor(
             desc,
             tensor_format,
             dtype,
-            shape1,
-            shape2,
-            shape3,
-            shape4);
-        cudnn_check_result(result, "when setting tensor descriptor");
+            n,
+            c,
+            h,
+            w);
+
+        CUDNN_CHECK_RESULT(result, "when setting tensor descriptor with "
+                << "shape = [n=" << n << ",c=" << c << ",h=" << h << ",w=" << w << "], "
+                << "data format = " << cudnnGetTensorFormatString(tensor_format) << ", "
+                << "dtype = " << cudnnGetDateTypeString(dtype));
     }
 };
 
@@ -51,31 +77,35 @@ template<>
 struct TensorWrapperApi<cudnnFilterDescriptor_t> {
     static void create(cudnnFilterDescriptor_t* doodle) {
         auto result = cudnnCreateFilterDescriptor(doodle);
-        cudnn_check_result(result, "when creating filter descriptor");
+        CUDNN_CHECK_RESULT(result, "when creating filter descriptor");
 
     }
 
     static void destroy(cudnnFilterDescriptor_t doodle) {
         auto result = cudnnDestroyFilterDescriptor(doodle);
-        cudnn_check_result(result, "when destroying filter descriptor");
+        CUDNN_CHECK_RESULT(result, "when destroying filter descriptor");
     }
 
     static void set(cudnnFilterDescriptor_t desc,
                     cudnnTensorFormat_t     tensor_format,
                     cudnnDataType_t         dtype,
-                    int shape1,
-                    int shape2,
-                    int shape3,
-                    int shape4) {
+                    int n,
+                    int c,
+                    int h,
+                    int w) {
         auto result = cudnnSetFilter4dDescriptor(
             desc,
             dtype,
             tensor_format,
-            shape1,
-            shape2,
-            shape3,
-            shape4);
-        cudnn_check_result(result, "when setting filter descriptor");
+            n,
+            c,
+            h,
+            w);
+
+        CUDNN_CHECK_RESULT(result, "when setting filter descriptor with "
+                << "shape = [n=" << n << ",c=" << c << ",h=" << h << ",w=" << w << "], "
+                << "data format = " << cudnnGetTensorFormatString(tensor_format) << ", "
+                << "dtype = " << cudnnGetDateTypeString(dtype));
     }
 };
 
@@ -100,11 +130,14 @@ namespace cudnn {
 
     namespace wrapper {
         template<typename Descriptor>
-        template<typename T>
+        template<typename T, int devT>
         BaseTensor<Descriptor>::BaseTensor(
-                TypedArray<memory::DEVICE_T_GPU,T> tensor,
+                TypedArray<devT,T> tensor,
                 std::string data_format,
                 memory::AM access_mode) {
+            ASSERT2(devT == memory::DEVICE_T_GPU,
+                    "cudnn Tensor/Filters wrapper must be "
+                    "constructed from GPU TypedArray.");
             cudnnTensorFormat_t data_format_cudnn;
             if (data_format == "NCHW") {
                 data_format_cudnn = CUDNN_TENSOR_NCHW;
@@ -139,15 +172,22 @@ namespace cudnn {
                 ASSERT2(false, "cudnn::wrapper::Tensor can only support 1D and 4D tensors.");
             }
 
+            int n,c,h,w;
+            if (data_format == "NCHW") {
+                n = shape0; c = shape1; h = shape2; w = shape3;
+            } else {
+                n = shape0; c = shape3; h = shape1; w = shape2;
+            }
+
             TensorWrapperApi<Descriptor>::create(&description);
             TensorWrapperApi<Descriptor>::set(
                 description,
                 data_format_cudnn,
                 cudnn_dtype,
-                shape0,
-                shape1,
-                shape2,
-                shape3
+                n,
+                c,
+                h,
+                w
             );
             // TODO(szymon): add striding support and assert maybe???
             data = tensor.ptr(access_mode);
@@ -163,17 +203,23 @@ namespace cudnn {
 
         template BaseTensor<cudnnTensorDescriptor_t>::BaseTensor(TypedArray<memory::DEVICE_T_GPU,float>, std::string, memory::AM);
         template BaseTensor<cudnnTensorDescriptor_t>::BaseTensor(TypedArray<memory::DEVICE_T_GPU,double>, std::string, memory::AM);
+        template BaseTensor<cudnnTensorDescriptor_t>::BaseTensor(TypedArray<memory::DEVICE_T_GPU,int>, std::string, memory::AM);
+        template BaseTensor<cudnnTensorDescriptor_t>::BaseTensor(TypedArray<memory::DEVICE_T_CPU,float>, std::string, memory::AM);
+        template BaseTensor<cudnnTensorDescriptor_t>::BaseTensor(TypedArray<memory::DEVICE_T_CPU,double>, std::string, memory::AM);
+        template BaseTensor<cudnnTensorDescriptor_t>::BaseTensor(TypedArray<memory::DEVICE_T_CPU,int>, std::string, memory::AM);
 
         template BaseTensor<cudnnFilterDescriptor_t>::BaseTensor(TypedArray<memory::DEVICE_T_GPU,float>, std::string, memory::AM);
         template BaseTensor<cudnnFilterDescriptor_t>::BaseTensor(TypedArray<memory::DEVICE_T_GPU,double>, std::string, memory::AM);
-
-
+        template BaseTensor<cudnnFilterDescriptor_t>::BaseTensor(TypedArray<memory::DEVICE_T_GPU,int>, std::string, memory::AM);
+        template BaseTensor<cudnnFilterDescriptor_t>::BaseTensor(TypedArray<memory::DEVICE_T_CPU,float>, std::string, memory::AM);
+        template BaseTensor<cudnnFilterDescriptor_t>::BaseTensor(TypedArray<memory::DEVICE_T_CPU,double>, std::string, memory::AM);
+        template BaseTensor<cudnnFilterDescriptor_t>::BaseTensor(TypedArray<memory::DEVICE_T_CPU,int>, std::string, memory::AM);
 
 
         Convolution::Convolution(int padding_h, int padding_w,
                                  int stride_h, int stride_w) {
             auto result = cudnnCreateConvolutionDescriptor(&description);
-            cudnn_check_result(result, "when creating convolution descriptor");
+            CUDNN_CHECK_RESULT(result, "when creating convolution descriptor");
             result = cudnnSetConvolution2dDescriptor(
                 description,
                 /*pad_h=*/   padding_h,
@@ -185,12 +231,16 @@ namespace cudnn {
                 CUDNN_CROSS_CORRELATION // Theano issue author claims its twice as fast:
                                         // https://github.com/Theano/Theano/issues/3632
             );
-            cudnn_check_result(result, "when setting convolution descriptor");
+
+
+            CUDNN_CHECK_RESULT(result, "when setting convolution descriptor with "
+                << "padding_h = "  << padding_h << ", padding_w = " << padding_w
+                << ", stride_h = " << stride_h  << ", stride_w = "  << stride_w);
         }
 
         Convolution::~Convolution() {
             auto result = cudnnDestroyConvolutionDescriptor(description);
-            cudnn_check_result(result, "when destroying convolution descriptor");
+            CUDNN_CHECK_RESULT(result, "when destroying convolution descriptor");
         }
 
         Pooling::Pooling(int window_h,  int window_w,
@@ -198,7 +248,7 @@ namespace cudnn {
                          int stride_h,  int stride_w,
                          POOLING_T pooling_mode) {
             auto result = cudnnCreatePoolingDescriptor(&description);
-            cudnn_check_result(result, "when creating pooling descriptor");
+            CUDNN_CHECK_RESULT(result, "when creating pooling descriptor");
 
             cudnnPoolingMode_t cudnn_pooling_mode;
             if (pooling_mode == POOLING_T_MAX) {
@@ -226,12 +276,12 @@ namespace cudnn {
                 /*stride_h=*/     stride_h,
                 /*stride_w=*/     stride_w
             );
-            cudnn_check_result(result, "when setting Pooling descriptor");
+            CUDNN_CHECK_RESULT(result, "when setting Pooling descriptor");
         }
 
         Pooling::~Pooling() {
             auto result = cudnnDestroyPoolingDescriptor(description);
-            cudnn_check_result(result, "when destroying Pooling descriptor");
+            CUDNN_CHECK_RESULT(result, "when destroying Pooling descriptor");
         }
 
 
@@ -299,8 +349,7 @@ namespace cudnn {
             out->description,
             out->data
         );
-        cudnn_check_result(result, "when setting convolution descriptor");
-
+        CUDNN_CHECK_RESULT(result, "when running cudnnConvolutionForward");
     }
 
     void conv2d_bwd_input(std::shared_ptr<wrapper::Tensor>  in_dw,
@@ -329,7 +378,7 @@ namespace cudnn {
             in_dw->description,
             in_dw->data
         );
-        cudnn_check_result(result, "when computing convolution's data gradient");
+        CUDNN_CHECK_RESULT(result, "when computing convolution's data gradient");
     }
 
 
@@ -359,7 +408,7 @@ namespace cudnn {
             filters_dw->description,
             filters_dw->data
         );
-        cudnn_check_result(result, "when computing convolution's filter gradient");
+        CUDNN_CHECK_RESULT(result, "when computing convolution's filter gradient");
     }
 
     void conv2d_bwd_bias(std::shared_ptr<wrapper::Tensor> bias_dw,
@@ -374,7 +423,7 @@ namespace cudnn {
             bias_dw->description,
             bias_dw->data
         );
-        cudnn_check_result(result, "when computing convolution bias gradient");
+        CUDNN_CHECK_RESULT(result, "when computing convolution bias gradient");
     }
 
 
@@ -394,7 +443,7 @@ namespace cudnn {
             out->data
         );
 
-        cudnn_check_result(result, "when computing pooling forward");
+        CUDNN_CHECK_RESULT(result, "when computing pooling forward");
     }
 
         void pool2d_bwd(std::shared_ptr<wrapper::Tensor> in_dw,
@@ -418,7 +467,7 @@ namespace cudnn {
                 in_dw->data
             );
 
-            cudnn_check_result(result, "when computing pooling forward");
+            CUDNN_CHECK_RESULT(result, "when computing pooling forward");
         }
 
 }  // namespace cudnn

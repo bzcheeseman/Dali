@@ -18,10 +18,10 @@ namespace cudnn {
             void* data;
             Descriptor description;
 
-            template<typename T>
-            BaseTensor(TypedArray<memory::DEVICE_T_GPU,T> tensor,
-                             std::string data_format,
-                             memory::AM access_mode=memory::AM_READONLY);
+            template<typename T, int devT>
+            BaseTensor(TypedArray<devT,T> tensor,
+                       std::string data_format,
+                       memory::AM access_mode=memory::AM_READONLY);
 
             ~BaseTensor();
         };

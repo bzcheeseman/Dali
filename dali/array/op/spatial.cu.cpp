@@ -1,6 +1,7 @@
 #include "spatial.h"
 
 #include "dali/config.h"
+#include "dali/runtime_config.h"
 #include "dali/array/array.h"
 #include "dali/array/function/function.h"
 #include "dali/array/function/operator.h"
@@ -195,19 +196,36 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                     PADDING_T padding,
                     const std::string& data_format) {
         ASSERT2(!(var_operator_t == OPERATOR_T_MUL) && !(var_operator_t == OPERATOR_T_MUL),
-                "Matrix multiplication's result cannot be inplace-multiplied or inplace-divided.");
+                "Convolution's result cannot be inplace-multiplied or inplace-divided.");
         ASSERT2(false, "If asserts above are complete this message should never be displayed");
     }
 
-
-    template<OPERATOR_T operator_t, typename T, DALI_FUNC_DISABLE_IF_MUL_DIV>
-    void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out,
-                    TypedArray<memory::DEVICE_T_CPU, T> input,
-                    TypedArray<memory::DEVICE_T_CPU, T> filters,
+    template<OPERATOR_T operator_t, typename T, int devT, DALI_FUNC_DISABLE_IF_MUL_DIV>
+    void typed_eval(TypedArray<devT, T> out,
+                    TypedArray<devT, T> input,
+                    TypedArray<devT, T> filters,
                     int stride_h,
                     int stride_w,
                     PADDING_T padding,
                     const std::string& data_format) {
+#ifdef DALI_USE_CUDNN
+        if (use_cudnn && devT == memory::DEVICE_T_GPU && template_to_dtype<T>() != DTYPE_INT32) {
+            cudnn_conv<operator_t,T,devT>(out, input, filters, stride_h, stride_w, padding, data_format);
+            return;
+        }
+#endif
+        blas_conv<operator_t,T,devT>(out, input, filters, stride_h, stride_w, padding, data_format);
+    }
+
+
+    template<OPERATOR_T operator_t, typename T, int devT, DALI_FUNC_DISABLE_IF_MUL_DIV>
+    void blas_conv(TypedArray<devT, T> out,
+                   TypedArray<devT, T> input,
+                   TypedArray<devT, T> filters,
+                   int stride_h,
+                   int stride_w,
+                   PADDING_T padding,
+                   const std::string& data_format) {
         auto info = compute_conv_info(input.array.shape(),
                                       filters.array.shape(),
                                       stride_h,
@@ -237,7 +255,7 @@ struct Conv2dFunction : public Function<Conv2dFunction,
         }
 
         Array im2col_storage_arr(temp_bshape, template_to_dtype<T>(), out.device);
-        TypedArray<memory::DEVICE_T_CPU, T> im2col_storage(
+        TypedArray<devT, T> im2col_storage(
                 im2col_storage_arr, input.device, temp_bshape);
 
         if (data_format == "NCHW") {
@@ -283,7 +301,7 @@ struct Conv2dFunction : public Function<Conv2dFunction,
             auto out_cnhw_shape = out.array.shape();
             std::swap(out_cnhw_shape[0], out_cnhw_shape[1]);
             Array out_cnhw_arr(out_cnhw_shape, template_to_dtype<T>(), out.device);
-            TypedArray<memory::DEVICE_T_CPU, T> out_cnhw(out_cnhw_arr, input.device, out_cnhw_shape);
+            TypedArray<devT, T> out_cnhw(out_cnhw_arr, input.device, out_cnhw_shape);
 
             operator_assign_contiguous<OPERATOR_T_EQL, 2>(
                 out_cnhw,
@@ -304,7 +322,7 @@ struct Conv2dFunction : public Function<Conv2dFunction,
             );
         } else {
             auto out_2d_arr = out.array.copyless_reshape({-1, out.array.shape()[3]});
-            TypedArray<memory::DEVICE_T_CPU, T> out_2d(out_2d_arr, out.device, out_2d_arr.shape());
+            TypedArray<devT, T> out_2d(out_2d_arr, out.device, out_2d_arr.shape());
 
             operator_assign_contiguous<operator_t, 2>(
                 out_2d,
@@ -319,27 +337,15 @@ struct Conv2dFunction : public Function<Conv2dFunction,
         }
     }
 
-#ifdef DALI_USE_CUDA
-    template<OPERATOR_T operator_t, typename T, DALI_FUNC_ENABLE_IF_INT, DALI_FUNC_DISABLE_IF_MUL_DIV>
-    void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out,
-                    TypedArray<memory::DEVICE_T_GPU, T> input,
-                    TypedArray<memory::DEVICE_T_GPU, T> filters,
+#ifdef DALI_USE_CUDNN
+    template<OPERATOR_T operator_t, typename T, int devT, DALI_FUNC_DISABLE_IF_MUL_DIV>
+    void cudnn_conv(TypedArray<devT, T> out,
+                    TypedArray<devT, T> input,
+                    TypedArray<devT, T> filters,
                     int stride_h,
                     int stride_w,
                     PADDING_T padding,
                     const std::string& data_format) {
-        ASSERT2(false, "integer convolution is not implemented for GPU.");
-    }
-
-    template<OPERATOR_T operator_t, typename T, DALI_FUNC_DISABLE_IF_INT, DALI_FUNC_DISABLE_IF_MUL_DIV>
-    void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out,
-                    TypedArray<memory::DEVICE_T_GPU, T> input,
-                    TypedArray<memory::DEVICE_T_GPU, T> filters,
-                    int stride_h,
-                    int stride_w,
-                    PADDING_T padding,
-                    const std::string& data_format) {
-
         int padding_h, padding_w;
         std::tie(padding_h, padding_w) = convolution_padding(input.array.shape(),
                                                              filters.array.shape(),
@@ -355,7 +361,7 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                 std::make_shared<cudnn::wrapper::Tensor>(out, data_format, out_access_mode),
                 std::make_shared<cudnn::wrapper::Tensor>(input, data_format),
                 std::make_shared<cudnn::wrapper::Filters>(filters, data_format),
-                std::make_shared<cudnn::wrapper::Convolution>(padding_h, padding_w, stride_w, stride_h),
+                std::make_shared<cudnn::wrapper::Convolution>(padding_h, padding_w, stride_h, stride_w),
                 cudnn::wrapper::Operator(operator_t, template_to_dtype<T>())
         );
     }
@@ -443,7 +449,7 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
                 std::make_shared<cudnn::wrapper::Tensor>(in_dw, data_format, out_access_mode),
                 std::make_shared<cudnn::wrapper::Filters>(filters, data_format),
                 std::make_shared<cudnn::wrapper::Tensor>(out_dw, data_format),
-                std::make_shared<cudnn::wrapper::Convolution>(padding_h, padding_w, stride_w, stride_h),
+                std::make_shared<cudnn::wrapper::Convolution>(padding_h, padding_w, stride_h, stride_w),
                 cudnn::wrapper::Operator(operator_t, template_to_dtype<T>())
         );
     }
@@ -532,7 +538,7 @@ struct Conv2dBwdFiltersFunction : public Function<Conv2dBwdFiltersFunction,
                 std::make_shared<cudnn::wrapper::Filters>(filters_dw, data_format, out_access_mode),
                 std::make_shared<cudnn::wrapper::Tensor>(input, data_format),
                 std::make_shared<cudnn::wrapper::Tensor>(out_dw, data_format),
-                std::make_shared<cudnn::wrapper::Convolution>(padding_h, padding_w, stride_w, stride_h),
+                std::make_shared<cudnn::wrapper::Convolution>(padding_h, padding_w, stride_h, stride_w),
                 cudnn::wrapper::Operator(operator_t, template_to_dtype<T>())
         );
     }

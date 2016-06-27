@@ -123,13 +123,13 @@ namespace lazy {
     }
 
     template<typename ExprT>
-    LazyUnary<functor::isinf,ExprT> isinf(const Exp<ExprT>& expr) {
-        return LazyUnary<functor::isinf,ExprT>(expr.self());
+    LazyUnary<functor::isinfinity,ExprT> isinf(const Exp<ExprT>& expr) {
+        return LazyUnary<functor::isinfinity,ExprT>(expr.self());
     }
 
     template<typename ExprT>
-    LazyUnary<functor::isnan,ExprT> isnan(const Exp<ExprT>& expr) {
-        return LazyUnary<functor::isnan,ExprT>(expr.self());
+    LazyUnary<functor::isnotanumber,ExprT> isnan(const Exp<ExprT>& expr) {
+        return LazyUnary<functor::isnotanumber,ExprT>(expr.self());
     }
 
     template<typename ExprT>

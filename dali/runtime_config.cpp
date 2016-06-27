@@ -3,6 +3,12 @@
 #include "dali/config.h"
 #include "dali/array/memory/device.h"
 
+#ifdef DALI_USE_CUDNN
+    bool use_cudnn = true;
+#else
+    bool use_cudnn = false;
+#endif
+
 namespace memory {
     #ifdef DALI_USE_CUDA
         Device default_preferred_device = Device::gpu(0);

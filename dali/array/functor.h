@@ -200,16 +200,35 @@ namespace functor {
     };
 
     template<typename R>
-    struct isnan {
+    struct isnotanumber {
         MSHADOW_XINLINE static R Map(const R& a) {
             return ISNAN_F(a);
         }
     };
 
+    // Every possible value of integer is a number
+    // One can think of integer as floating point
+    // number with only sign and mantissa bits,
+    // (while nan/inf information is expressed
+    // as a special value of exponent).
+    template<>
+    struct isnotanumber<int> {
+        MSHADOW_XINLINE static int Map(const int& a) {
+            return 0;
+        }
+    };
+
     template<typename R>
-    struct isinf {
+    struct isinfinity {
         MSHADOW_XINLINE static R Map(const R& a) {
             return ISINF_F(a);
+        }
+    };
+
+    template<>
+    struct isinfinity<int> {
+        MSHADOW_XINLINE static int Map(const int& a) {
+            return 0;
         }
     };
 

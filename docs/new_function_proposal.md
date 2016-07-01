@@ -35,3 +35,7 @@
 9. All the code related to particular function should ideally reside in one file, or as few files as possible.
 
 10. Make sure that `dot.cu.cpp` can be implemented in sane way.
+
+11. Nicely handle the fact that some functions for the inside of computation are reused. For exmaple conv uses computation for im to col and copy.
+
+Proposal spliting functions in functions and computations - computations are very barebone - they are mostly typed_evals with maybe some convinience functions.

@@ -114,18 +114,20 @@ TEST(ArraySpatialTests, conv_forward) {
                                                          << ", padding = " << padding_str;
                     SCOPED_TRACE(scope_name);
 
-                    Array expected =
-                        reference_conv2d(
+                    Array actual = conv2d(
                             X,
                             W,
                             stride_h,
                             stride_w,
                             padding,
                             data_format);
+
                     // reference computation will be much faster on CPU, methinks.
                     X.to_device(memory::Device::cpu());
                     W.to_device(memory::Device::cpu());
-                    Array actual = conv2d(
+
+                    Array expected =
+                        reference_conv2d(
                             X,
                             W,
                             stride_h,

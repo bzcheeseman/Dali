@@ -42,6 +42,27 @@ std::vector<int> fake_padding_shape(int window_h, int window_w,
     }
 }
 
+struct DataFormatDimMappting {
+    int n_dim;
+    int c_dim;
+    int h_dim;
+    int w_dim;
+
+    DataFormatDimMappting(const std::string& data_format) {
+        n_dim = data_format.find('N');
+        c_dim = data_format.find('C');
+        h_dim = data_format.find('H');
+        w_dim = data_format.find('W');
+
+        const auto MISS = std::string::npos;
+        ASSERT2(n_dim != MISS && c_dim != MISS &&
+                h_dim != MISS && w_dim != MISS &&
+                data_format.size() == 4,
+                utils::MS() << "data_format must be a permutation of letters N,C,H,W (was "
+                            << data_format << ").");
+    }
+};
+
 
 namespace internal {
     Conv2dFunctionInputInfo compute_conv_info(const std::vector<int>& input_shape,
@@ -51,30 +72,19 @@ namespace internal {
                                               PADDING_T padding,
                                               const std::string& data_format) {
         check_data_format(data_format);
+        DataFormatDimMappting mapping(data_format);
         Conv2dFunctionInputInfo info;
 
-        if (data_format == "NCHW") {
-            info.batch_size         = input_shape[0];
-            info.in_channels        = input_shape[1];
-            info.in_h               = input_shape[2];
-            info.in_w               = input_shape[3];
+        info.batch_size         = input_shape[mapping.n_dim];
+        info.in_channels        = input_shape[mapping.c_dim];
+        info.in_h               = input_shape[mapping.h_dim];
+        info.in_w               = input_shape[mapping.w_dim];
 
-            info.out_channels       = filters_shape[0];
-            info.filter_in_channels = filters_shape[1];
-            info.filter_h           = filters_shape[2];
-            info.filter_w           = filters_shape[3];
+        info.out_channels       = filters_shape[mapping.n_dim];
+        info.filter_in_channels = filters_shape[mapping.c_dim];
+        info.filter_h           = filters_shape[mapping.h_dim];
+        info.filter_w           = filters_shape[mapping.w_dim];
 
-        } else if (data_format == "NHWC") {
-            info.batch_size         = input_shape[0];
-            info.in_h               = input_shape[1];
-            info.in_w               = input_shape[2];
-            info.in_channels        = input_shape[3];
-
-            info.out_channels       = filters_shape[0];
-            info.filter_h           = filters_shape[1];
-            info.filter_w           = filters_shape[2];
-            info.filter_in_channels = filters_shape[3];
-        }
         if (padding == PADDING_T_SAME) {
             info.out_h = int_ceil(info.in_h, stride_h);
             info.out_w = int_ceil(info.in_w, stride_w);
@@ -370,9 +380,44 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                                                 stride_w,
                                                 padding,
                                                 data_format);
+        TypedArray<devT, T> maybe_copied_input = input;
 
-        ASSERT2(info.odd_padding_h == 0 && info.odd_padding_w == 0,
-                "Conv2d odd sized padding is presently unsupported.");
+        // This whole shenanigans is needed because
+        // cudnn does not support odd padding.
+        // If it is any consolation TF does it as well.
+        if (info.odd_padding_h || info.odd_padding_w) {
+            // compute padded shape
+            DataFormatDimMappting mapping(data_format);
+
+            auto padded_shape = input.array.shape();
+            if (info.odd_padding_h) padded_shape[mapping.h_dim] += 1;
+            if (info.odd_padding_w) padded_shape[mapping.w_dim] += 1;
+
+            // create temporary storage for padded array.
+            auto padded_input_arr = Array::zeros(padded_shape,
+                                                 input.array.dtype(),
+                                                 input.device);
+            TypedArray<devT,T> padded_input(padded_input_arr, input.device, padded_shape);
+            maybe_copied_input = padded_input;
+
+            // copy values from source array over
+            Array padded_input_slice_arr = padded_input_arr;
+            if (info.odd_padding_h) {
+                padded_input_slice_arr = padded_input_slice_arr.pluck_axis(
+                        mapping.h_dim, Slice(0, padded_shape[mapping.h_dim] -1));
+            }
+            if (info.odd_padding_w) {
+                padded_input_slice_arr = padded_input_slice_arr.pluck_axis(
+                        mapping.w_dim, Slice(0, padded_shape[mapping.w_dim] -1));
+            }
+
+            TypedArray<devT,T> padded_input_slice(padded_input_slice_arr,
+                                                  padded_input.device,
+                                                  input.array.shape());
+            padded_input_slice.d2(memory::AM_MUTABLE) =
+                    mshadow::expr::F<mshadow::op::identity>(input.d2());
+        }
+
 
         auto out_access_mode = internal::OperatorAM<operator_t>::get(out);
 
@@ -380,7 +425,7 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                 std::make_shared<cudnn::wrapper::Tensor>(
                         out, data_format, out_access_mode),
                 std::make_shared<cudnn::wrapper::Tensor>(
-                        input, data_format),
+                        maybe_copied_input, data_format),
                 std::make_shared<cudnn::wrapper::Filters>(
                         filters, data_format),
                 std::make_shared<cudnn::wrapper::Convolution>(

@@ -457,7 +457,7 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
                     PADDING_T padding,
                     const std::string data_format) {
 
-        auto info = internal::compute_conv_info(input.array.shape(),
+        auto info = internal::compute_conv_info(in_dw.array.shape(),
                                                 filters.array.shape(),
                                                 stride_h,
                                                 stride_w,
@@ -552,7 +552,7 @@ struct Conv2dBwdFiltersFunction : public Function<Conv2dBwdFiltersFunction,
                     const std::string& data_format) {
 
         auto info = internal::compute_conv_info(input.array.shape(),
-                                                filters.array.shape(),
+                                                filters_dw.array.shape(),
                                                 stride_h,
                                                 stride_w,
                                                 padding,
@@ -565,10 +565,14 @@ struct Conv2dBwdFiltersFunction : public Function<Conv2dBwdFiltersFunction,
         auto out_access_mode = internal::OperatorAM<operator_t>::get(filters_dw);
 
         cudnn::conv2d_bwd_filters(
-                std::make_shared<cudnn::wrapper::Filters>(filters_dw, data_format, out_access_mode),
-                std::make_shared<cudnn::wrapper::Tensor>(input, data_format),
-                std::make_shared<cudnn::wrapper::Tensor>(out_dw, data_format),
-                std::make_shared<cudnn::wrapper::Convolution>(padding_h, padding_w, stride_h, stride_w),
+                std::make_shared<cudnn::wrapper::Filters>(
+                        filters_dw, data_format, out_access_mode),
+                std::make_shared<cudnn::wrapper::Tensor>(
+                        input, data_format),
+                std::make_shared<cudnn::wrapper::Tensor>(
+                        out_dw, data_format),
+                std::make_shared<cudnn::wrapper::Convolution>(
+                        info.padding_h, info.padding_w, stride_h, stride_w),
                 cudnn::wrapper::Operator(operator_t, template_to_dtype<T>())
         );
     }

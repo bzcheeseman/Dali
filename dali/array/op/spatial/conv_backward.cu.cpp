@@ -7,7 +7,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 //                    Conv2dBwdInputFunction                                 //
 ///////////////////////////////////////////////////////////////////////////////
-
 struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
                                         Array,
                                         Array,
@@ -29,7 +28,6 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
         // idea: use convforward bshape computation and see if you get input back out.
         return result_shape;
     }
-
 
     template<OPERATOR_T operator_t, typename T>
     void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> in_dw,
@@ -94,12 +92,9 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
 #endif
 };
 
-
-
 ///////////////////////////////////////////////////////////////////////////////
 //                    Conv2dBwdFiltersFunction                               //
 ///////////////////////////////////////////////////////////////////////////////
-
 struct Conv2dBwdFiltersFunction : public Function<Conv2dBwdFiltersFunction,
                                         Array,
                                         Array,
@@ -124,41 +119,74 @@ struct Conv2dBwdFiltersFunction : public Function<Conv2dBwdFiltersFunction,
         return result_shape;
     }
 
-
-    template<OPERATOR_T operator_t, typename T>
-    void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> filters_dw,
-                    TypedArray<memory::DEVICE_T_CPU, T> input,
-                    TypedArray<memory::DEVICE_T_CPU, T> out_dw,
+    template<OPERATOR_T operator_t, typename T, int devT, DALI_FUNC_ENABLE_IF_MUL_DIV>
+    void typed_eval(TypedArray<devT, T> filters_dw,
+                    TypedArray<devT, T> input,
+                    TypedArray<devT, T> out_dw,
                     int stride_h,
                     int stride_w,
                     const std::vector<int>& result_shape,
                     PADDING_T padding,
                     const std::string& data_format) {
-        throw std::runtime_error("not implemented!");
+        ASSERT2(!(var_operator_t == OPERATOR_T_MUL) && !(var_operator_t == OPERATOR_T_MUL),
+                "Convolution's result cannot be inplace-multiplied or inplace-divided.");
+        ASSERT2(false, "If asserts above are complete this message should never be displayed");
     }
 
-#ifdef DALI_USE_CUDA
-    template<OPERATOR_T operator_t, typename T, DALI_FUNC_ENABLE_IF_INT>
-    void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> filters_dw,
-                    TypedArray<memory::DEVICE_T_GPU, T> input,
-                    TypedArray<memory::DEVICE_T_GPU, T> out_dw,
+    template<OPERATOR_T operator_t, typename T, int devT, DALI_FUNC_DISABLE_IF_MUL_DIV>
+    void typed_eval(TypedArray<devT, T> filters_dw,
+                    TypedArray<devT, T> input,
+                    TypedArray<devT, T> out_dw,
                     int stride_h,
                     int stride_w,
                     const std::vector<int>& result_shape,
                     PADDING_T padding,
                     const std::string& data_format) {
-        ASSERT2(false, "integer convolution is not implemented for GPU.");
+#ifdef DALI_USE_CUDNN
+        if (use_cudnn && devT == memory::DEVICE_T_GPU && template_to_dtype<T>() != DTYPE_INT32) {
+            cudnn_conv_backward<operator_t,T,devT>(filters_dw,
+                                                   input,
+                                                   out_dw,
+                                                   stride_h,
+                                                   stride_w,
+                                                   result_shape,
+                                                   padding,
+                                                   data_format);
+            return;
+        }
+#endif
+        blas_conv_backward<operator_t,T,devT>(filters_dw,
+                                              input,
+                                              out_dw,
+                                              stride_h,
+                                              stride_w,
+                                              result_shape,
+                                              padding,
+                                              data_format);
     }
 
-    template<OPERATOR_T operator_t, typename T, DALI_FUNC_DISABLE_IF_INT>
-    void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> filters_dw,
-                    TypedArray<memory::DEVICE_T_GPU, T> input,
-                    TypedArray<memory::DEVICE_T_GPU, T> out_dw,
-                    int stride_h,
-                    int stride_w,
-                    const std::vector<int>& result_shape,
-                    PADDING_T padding,
-                    const std::string& data_format) {
+    template<OPERATOR_T operator_t, typename T, int devT, DALI_FUNC_DISABLE_IF_MUL_DIV>
+    void blas_conv_backward(TypedArray<devT, T> filters_dw,
+                            TypedArray<devT, T> input,
+                            TypedArray<devT, T> out_dw,
+                            int stride_h,
+                            int stride_w,
+                            const std::vector<int>& result_shape,
+                            PADDING_T padding,
+                            const std::string& data_format) {
+        ASSERT2(false, "not implemented");
+    }
+
+#ifdef DALI_USE_CUDNN
+    template<OPERATOR_T operator_t, typename T, int devT, DALI_FUNC_DISABLE_IF_MUL_DIV>
+    void cudnn_conv_backward(TypedArray<devT, T> filters_dw,
+                             TypedArray<devT, T> input,
+                             TypedArray<devT, T> out_dw,
+                             int stride_h,
+                             int stride_w,
+                             const std::vector<int>& result_shape,
+                             PADDING_T padding,
+                             const std::string& data_format) {
 
         auto info = internal::compute_conv_info(input.array.shape(),
                                                 filters_dw.array.shape(),
@@ -169,7 +197,6 @@ struct Conv2dBwdFiltersFunction : public Function<Conv2dBwdFiltersFunction,
 
         ASSERT2(info.odd_padding_h == 0 && info.odd_padding_w == 0,
                 "Conv2d odd sized padding is presently unsupported.");
-
 
         auto out_access_mode = internal::OperatorAM<operator_t>::get(filters_dw);
 
@@ -204,7 +231,6 @@ namespace op {
                                            result_shape,
                                            padding,
                                            data_format);
-
     }
 
     Assignable<Array> conv2d_backward_filters(

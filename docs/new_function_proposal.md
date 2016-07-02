@@ -36,6 +36,6 @@
 
 10. Make sure that `dot.cu.cpp` can be implemented in sane way.
 
-11. Nicely handle the fact that some functions for the inside of computation are reused. For exmaple conv uses computation for im to col and copy.
+11. Nicely handle the fact that some functions for the inside of computation are reused. For example conv uses computation for im2col and copy.
 
-Proposal spliting functions in functions and computations - computations are very barebone - they are mostly typed_evals with maybe some convinience functions.
+12. Split Function into operation and computation - computation is barebones: typed_eval and some convenience functions.

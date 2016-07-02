@@ -15,31 +15,6 @@
 #include "dali/array/op/spatial/utils.h"
 
 ///////////////////////////////////////////////////////////////////////////////
-//                                    UTILS                                  //
-///////////////////////////////////////////////////////////////////////////////
-
-std::vector<int> fake_padding_shape(int window_h, int window_w,
-                                    const std::string& data_format) {
-    if (data_format == "NHWC") {
-        return std::vector<int>{1, window_h, window_w, 1};
-    } else if (data_format == "NCHW") {
-        return std::vector<int>{1, 1, window_h, window_w};
-    } else {
-        ASSERT2(false, "unknown data format");
-        return std::vector<int>{};
-    }
-}
-
-struct Pool2dFunctionInputInfo {
-    int out_w;
-    int out_h;
-    int batch_size;
-    int in_channels;
-    int in_h;
-    int in_w;
-};
-
-///////////////////////////////////////////////////////////////////////////////
 //                            Conv2dFunction                                 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -68,11 +43,6 @@ struct Conv2dFunction : public Function<Conv2dFunction,
 
         ASSERT2_SHAPE_ND(input.shape(),   4, "Conv2dFunction input");
         ASSERT2_SHAPE_ND(filters.shape(), 4, "Conv2dFunction filters");
-
-
-        ASSERT2_EQ(info.in_channels, info.filter_in_channels,
-            "Conv2dFunction input and filters need to have the same number of input channels"
-        );
 
         if (data_format == "NCHW") {
             return std::vector<int> {info.batch_size, info.out_channels, info.out_h, info.out_w};

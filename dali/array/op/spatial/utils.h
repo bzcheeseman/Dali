@@ -25,30 +25,44 @@ namespace internal {
         DataFormatDimMapping(const std::string& data_format);
     };
 
-    struct Conv2dFunctionInputInfo {
+    struct SlidingWindowFunctionInfo {
+        int out_w;
+        int out_h;
         int batch_size;
         int in_channels;
         int in_h;
         int in_w;
-        int filter_in_channels;
-        int filter_h;
-        int filter_w;
-        int out_channels;
-        int out_h;
-        int out_w;
         int padding_h;
         int padding_w;
         int odd_padding_h;
         int odd_padding_w;
     };
 
-    Conv2dFunctionInputInfo compute_conv_info(
-            const std::vector<int>& input_shape,
-            const std::vector<int>& filters_shape,
-            const int& stride_h,
-            const int& stride_w,
-            PADDING_T padding,
-            const std::string& data_format);
+    struct PoolFunctionInfo : SlidingWindowFunctionInfo {
+    };
+
+    struct ConvFunctionInfo : SlidingWindowFunctionInfo {
+        int filter_h;
+        int filter_w;
+        int out_channels;
+    };
+
+    PoolFunctionInfo compute_pool_info(
+        const std::vector<int>& input_shape,
+        const int& window_h,
+        const int& window_w,
+        const int& stride_h,
+        const int& stride_w,
+        const PADDING_T& padding,
+        const std::string& data_format);
+
+    ConvFunctionInfo compute_conv_info(
+        const std::vector<int>& input_shape,
+        const std::vector<int>& filters_shape,
+        const int& stride_h,
+        const int& stride_w,
+        const PADDING_T& padding,
+        const std::string& data_format);
 }
 
 #endif  // DALI_ARRAY_OP_SPATIAL_UTILS_H

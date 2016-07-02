@@ -8,49 +8,7 @@
 
 #include "dali/array/op/spatial/utils.h"
 
-struct Pool2dFunctionInputInfo {
-    int out_w;
-    int out_h;
-    int batch_size;
-    int in_channels;
-    int in_h;
-    int in_w;
-};
 
-Pool2dFunctionInputInfo compute_pool_info(
-            const std::vector<int>& input_shape,
-            const int& window_h,
-            const int& window_w,
-            const int& stride_h,
-            const int& stride_w,
-            const PADDING_T& padding,
-            const std::string& data_format
-        ) {
-    internal::check_data_format(data_format);
-    Pool2dFunctionInputInfo info;
-
-    if (data_format == "NCHW") {
-        info.batch_size         = input_shape[0];
-        info.in_channels        = input_shape[1];
-        info.in_h               = input_shape[2];
-        info.in_w               = input_shape[3];
-    } else if (data_format == "NHWC") {
-        info.batch_size         = input_shape[0];
-        info.in_h               = input_shape[1];
-        info.in_w               = input_shape[2];
-        info.in_channels        = input_shape[3];
-    }
-    if (padding == PADDING_T_SAME) {
-        info.out_h = internal::int_ceil(info.in_h, stride_h);
-        info.out_w = internal::int_ceil(info.in_w, stride_w);
-    } else if (padding == PADDING_T_VALID) {
-        info.out_h = internal::int_ceil(info.in_h - window_h + 1, stride_h);
-        info.out_w = internal::int_ceil(info.in_w - window_w + 1, stride_w);
-    } else {
-        ASSERT2(false, utils::MS() << "Unrecognized value of padding passed to Pool2dFunction (got " << padding << ").");
-    }
-    return info;
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 //                        Pool2dFunction                                     //
@@ -77,7 +35,7 @@ struct Pool2dFunction : public Function<Pool2dFunction,
                 const std::string& data_format) {
 
         ASSERT2_SHAPE_ND(input.shape(),   4, "Pool2dFunction input");
-        auto info = compute_pool_info(
+        auto info = internal::compute_pool_info(
             input.shape(),
             window_h,
             window_w,
@@ -174,13 +132,15 @@ struct Pool2dFunction : public Function<Pool2dFunction,
                     POOLING_T pooling_mode,
                     PADDING_T padding,
                     const std::string& data_format) {
-
-        auto info = internal::compute_conv_info(input.array.shape(),
-                                                fake_padding_shape(window_h, window_w, data_format),
-                                                stride_h,
-                                                stride_w,
-                                                padding,
-                                                data_format);
+        auto info = internal::compute_pool_info(
+            input.array.shape(),
+            window_h,
+            window_w,
+            stride_h,
+            stride_w,
+            padding,
+            data_format
+        );
 
         auto out_access_mode = internal::OperatorAM<operator_t>::get(out);
         cudnn::pool2d(
@@ -230,7 +190,7 @@ struct Pool2dBwdFunction : public Function<Pool2dBwdFunction,
         ASSERT2_SHAPE_ND(out.shape(),   4, "Pool2dBackward out");
         ASSERT2_SHAPE_ND(out_dw.shape(),   4, "Pool2dBackward out_dw");
         ASSERT2_SHAPE_ND(in.shape(),   4, "Pool2dBackward in");
-        auto info = compute_pool_info(
+        auto info = internal::compute_pool_info(
             in.shape(),
             window_h,
             window_w,
@@ -387,12 +347,15 @@ struct Pool2dBwdFunction : public Function<Pool2dBwdFunction,
                              POOLING_T pooling_mode,
                              PADDING_T padding,
                              const std::string& data_format) {
-        auto info = internal::compute_conv_info(in.array.shape(),
-                                                fake_padding_shape(window_h, window_w, data_format),
-                                                stride_h,
-                                                stride_w,
-                                                padding,
-                                                data_format);
+        auto info = internal::compute_pool_info(
+            in.array.shape(),
+            window_h,
+            window_w,
+            stride_h,
+            stride_w,
+            padding,
+            data_format
+        );
 
         auto out_access_mode = internal::OperatorAM<operator_t>::get(in_dw);
 

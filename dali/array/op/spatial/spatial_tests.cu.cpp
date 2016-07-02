@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <vector>
 
 #include "dali/array/test_utils.h"
 #include "dali/array/op.h"
@@ -8,10 +9,49 @@
 
 using namespace op;
 
+//////////////////////////////////////////////////////////////////////////////////////////////
+//                           REFERENCE IMPLEMENTATIONS                                      //
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+std::vector<int> permute_shape(const std::vector<int>& shape, const std::string& data_format) {
+    ASSERT2(shape.size() == 4, "only 4d tensors are allowed.");
+
+    internal::DataFormatDimMapping mapping(data_format);
+
+    std::vector<int> res(4);
+
+    res[mapping.n_dim] = shape[0];
+    res[mapping.c_dim] = shape[1];
+    res[mapping.h_dim] = shape[2];
+    res[mapping.w_dim] = shape[3];
+
+    return res;
+}
+
+Array pad_array(Array in, int prepad_h, int postpad_h, int prepad_w, int postpad_w) {
+    int n = in.shape()[0];
+    int c = in.shape()[1];
+    int h = in.shape()[2];
+    int w = in.shape()[3];
+
+    std::vector<int> padded_shape =
+            {n, c, h + prepad_h + postpad_h, w + prepad_w + postpad_w};
+    auto X_padded = Array::zeros(padded_shape, in.dtype(), in.preferred_device());
+
+    Array X_padded_content =
+            X_padded[Slice(0, n)]
+                    [Slice(0, c)]
+                    [Slice(prepad_h, h + prepad_h)]
+                    [Slice(prepad_w, w + prepad_w)];
+    X_padded_content = op::identity(in);
+
+    return X_padded;
+}
+
 Array reference_conv2d(Array X, Array W,
-                           int stride_h, int stride_w,
-                           PADDING_T padding,
-                           const std::string& data_format) {
+                       int stride_h, int stride_w,
+                       PADDING_T padding,
+                       const std::string& data_format) {
     auto info = internal::compute_conv_info(
             X.shape(),
             W.shape(),
@@ -20,40 +60,26 @@ Array reference_conv2d(Array X, Array W,
             padding,
             data_format);
 
-    if (data_format == "NHWC") {
-        X = X.transpose({0, 3, 1, 2});
-        W = W.transpose({0, 3, 1, 2});
-    }
+    internal::DataFormatDimMapping mapping(data_format);
+
+    X = X.transpose({mapping.n_dim, mapping.c_dim, mapping.h_dim, mapping.w_dim});
+    W = W.transpose({mapping.n_dim, mapping.c_dim, mapping.h_dim, mapping.w_dim});
+
+
 
     if (padding == PADDING_T_SAME) {
-        int n = X.shape()[0];
-        int c = X.shape()[1];
-        int h = X.shape()[2];
-        int w = X.shape()[3];
-        int pad_h = info.padding_h;
-        int pad_w = info.padding_w;
-        int odd_pad_h = info.odd_padding_h;
-        int odd_pad_w = info.odd_padding_w;
-
-        std::vector<int> padded_shape =
-                {n, c, h + 2 * pad_h + odd_pad_h, w + 2 * pad_w + odd_pad_w};
-        auto X_padded = Array::zeros(padded_shape, X.dtype(), X.preferred_device());
-
-        Array X_padded_content =
-                X_padded[Slice(0, n)]
-                        [Slice(0, c)]
-                        [Slice(pad_h, h + pad_h)]
-                        [Slice(pad_w, w + pad_w)];
-        X_padded_content = op::identity(X);
-
-        X = X_padded;
+        X = pad_array(X, info.padding_h, info.padding_h + info.odd_padding_h,
+                         info.padding_w, info.padding_w + info.odd_padding_w);
     }
 
-
-    Array out = Array::zeros({info.batch_size,
-                              info.out_channels,
-                              info.out_h,
-                              info.out_w}, X.dtype());
+    auto out_shape = permute_shape({info.batch_size,
+                                     info.out_channels,
+                                     info.out_h,
+                                     info.out_w},
+                                    data_format);
+    Array out_orig_data_format = Array::zeros(out_shape, X.dtype(), X.preferred_device());
+    Array out = out_orig_data_format.transpose(
+            {mapping.n_dim, mapping.c_dim, mapping.h_dim, mapping.w_dim});
 
     auto normalize_h = [&](int h_idx) {
         return std::max(0, std::min(X.shape()[2], h_idx));
@@ -82,18 +108,88 @@ Array reference_conv2d(Array X, Array W,
             }
         }
     }
-    if (data_format == "NHWC") {
-        return out.transpose({0, 2, 3, 1});
-    } else {
-        return out;
-    }
+    return out_orig_data_format;
 }
 
-TEST(ArraySpatialTests, conv_forward) {
+Array reference_pool2d(Array X,
+                       int window_h,
+                       int window_w,
+                       int stride_h,
+                       int stride_w,
+                       POOLING_T pooling_mode,
+                       PADDING_T padding_mode,
+                       const std::string& data_format) {
+    ASSERT2(X.shape().size() == 4, "must be a 4D array");
+
+    auto info = internal::compute_pool_info(
+            X.shape(),
+            window_h,
+            window_w,
+            stride_h,
+            stride_w,
+            padding_mode,
+            data_format);
+
+    internal::DataFormatDimMapping mapping(data_format);
+
+    X = X.transpose({mapping.n_dim, mapping.c_dim, mapping.h_dim, mapping.w_dim});
+
+
+    if (padding_mode == PADDING_T_SAME) {
+        X = pad_array(X, info.padding_h, info.padding_h + info.odd_padding_h,
+                         info.padding_w, info.padding_w + info.odd_padding_w);
+    }
+
+    auto out_shape = permute_shape({info.batch_size,
+                                     info.in_channels,
+                                     info.out_h,
+                                     info.out_w},
+                                    data_format);
+
+    auto out_orig_data_format = Array(out_shape, X.dtype(), X.preferred_device());
+    Array out = out_orig_data_format.transpose(
+            {mapping.n_dim, mapping.c_dim, mapping.h_dim, mapping.w_dim});
+
+
+    int in_c = info.in_channels, in_n = info.batch_size;
+
+    for (int i = 0; i < info.out_h; i++) {
+        int h_start = i * stride_h;
+        int h_end = h_start + window_h;
+        for (int j = 0; j < info.out_w; j++) {
+            int w_start = j * stride_w;
+            int w_end = w_start + window_w;
+            Array window = X[Slice(0, in_n)][Slice(0, in_c)][Slice(h_start, h_end)][Slice(w_start, w_end)];
+            window = window.reshape({in_n, in_c, -1});
+            if (pooling_mode == POOLING_T_MAX) {
+                (Array)(out[Slice(0, in_n)][Slice(0, in_c)][i][j]) = window.max(-1);
+            } else if (pooling_mode == POOLING_T_AVG) {
+                (Array)(out[Slice(0, in_n)][Slice(0, in_c)][i][j]) = window.mean(-1);
+            }
+        }
+    }
+    return out_orig_data_format;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+//                                   TESTS                                                  //
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+
+TEST(ArraySpatialTests, conv2d_forward) {
     for (int stride_h = 1; stride_h <= 2; ++stride_h) {
         for (int stride_w = 1; stride_w <= 2; ++stride_w) {
             for (std::string data_format: {"NCHW", "NHWC"}) {
                 for (PADDING_T padding : {PADDING_T_VALID, PADDING_T_SAME}) {
+
+                    auto padding_str = (padding == PADDING_T_VALID) ? "valid" : "same";
+                    std::string scope_name = utils::MS() << "stride_h = " << stride_h
+                                                         << ", stride_w = " << stride_w
+                                                         << ", data_format = " << data_format
+                                                         << ", padding = " << padding_str;
+                    SCOPED_TRACE(scope_name);
+
                     Array X, W;
 
                     if (data_format == "NCHW") {
@@ -106,13 +202,6 @@ TEST(ArraySpatialTests, conv_forward) {
 
                     X = initializer::uniform(-1.0, 1.0);
                     W = initializer::uniform(-1.0, 1.0);
-
-                    auto padding_str = (padding == PADDING_T_VALID) ? "valid" : "same";
-                    std::string scope_name = utils::MS() << "stride_h = " << stride_h
-                                                         << ", stride_w = " << stride_w
-                                                         << ", data_format = " << data_format
-                                                         << ", padding = " << padding_str;
-                    SCOPED_TRACE(scope_name);
 
                     Array actual = conv2d(
                             X,
@@ -141,6 +230,78 @@ TEST(ArraySpatialTests, conv_forward) {
         }
     }
 }
+
+
+TEST(ArraySpatialTests, pool2d_forward) {
+    for (int window_h = 1; window_h <= 2; ++window_h) {
+        for (int window_w = 1; window_w <= 2; ++window_w) {
+            for (int stride_h = 1; stride_h <= 2; ++stride_h) {
+                for (int stride_w = 1; stride_w <= 2; ++stride_w) {
+                    for (std::string data_format: {"NCHW", "NHWC"}) {
+                        for (PADDING_T padding : {PADDING_T_VALID, PADDING_T_SAME}) {
+                            for (POOLING_T pooling: {POOLING_T_MAX, POOLING_T_AVG}) {
+                                auto padding_str = (padding == PADDING_T_VALID) ? "valid" : "same";
+                                auto pooling_str = (pooling == POOLING_T_MAX)   ? "max"   : "avg";
+                                std::string scope_name = utils::MS() <<   "window_h = " << window_h
+                                                                     << ", window_w = " << window_w
+                                                                     << ", stride_h = " << stride_h
+                                                                     << ", stride_w = " << stride_w
+                                                                     << ", data_format = " << data_format
+                                                                     << ", padding = " << padding_str
+                                                                     << ", pooling = " << pooling_str;
+                                SCOPED_TRACE(scope_name);
+
+                                Array X, W;
+
+                                if (data_format == "NCHW") {
+                                    X = Array({5, 3, 6, 8}, DTYPE_FLOAT);
+                                } else {
+                                    X = Array({5, 6, 8, 3}, DTYPE_FLOAT);
+                                }
+
+                                X = initializer::uniform(-1.0, 1.0);
+                                W = initializer::uniform(-1.0, 1.0);
+
+                                Array out = pool2d(
+                                    X,
+                                    /*window_h=*/window_h,
+                                    /*window_w=*/window_w,
+                                    /*stride_h=*/stride_h,
+                                    /*stride_w=*/stride_w,
+                                    pooling,
+                                    padding,
+                                    data_format
+                                );
+
+                                X.to_device(memory::Device::cpu());
+
+                                Array expected_out = reference_pool2d(
+                                    X,
+                                    /*window_h=*/window_h,
+                                    /*window_w=*/window_w,
+                                    /*stride_h=*/stride_h,
+                                    /*stride_w=*/stride_w,
+                                    pooling,
+                                    padding,
+                                    data_format
+                                );
+
+                                EXPECT_TRUE(Array::allclose(expected_out, out, 1e-3));
+
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+
+
+
+}
+
 
 TEST(ArraySpatialTests, conv_backward) {
     Array X = Array::arange({1, 1, 8, 8}, DTYPE_FLOAT);
@@ -188,61 +349,7 @@ TEST(ArraySpatialTests, conv_backward_bias) {
     }
 }
 
-Array reference_pool2d(const Array& x,
-                       int window_h,
-                       int window_w,
-                       int stride_h,
-                       int stride_w,
-                       POOLING_T pooling_mode,
-                       PADDING_T padding_mode,
-                       const std::string& data_format) {
-    ASSERT2(x.shape().size() == 4, "must be a 4D array");
-    ASSERT2(padding_mode == PADDING_T_VALID, "reference only exists for valid padding");
-    std::vector<int> out_shape(4, 0);
 
-    int pos_n = data_format.find_first_of('N');
-    int pos_c = data_format.find_first_of('C');
-    int pos_h = data_format.find_first_of('H');
-    int pos_w = data_format.find_first_of('W');
-
-    ASSERT2(
-        data_format.size() == 4 && pos_n != -1 && pos_c != -1 && pos_h != -1 && pos_w != -1,
-        "data format must be a 4 letter string containing N, C, H and W"
-    );
-    int in_n = x.shape()[pos_n];
-    int in_c = x.shape()[pos_c];
-    out_shape[pos_n] = in_n;
-    out_shape[pos_c] = in_c;
-
-    int in_w = x.shape()[pos_w];
-    int out_w = 1 + (in_w - window_w) / stride_w;
-    out_shape[pos_w] = out_w;
-
-    int in_h = x.shape()[pos_h];
-    int out_h = 1 + (in_h - window_w) / stride_w;
-    out_shape[pos_h] = out_h;
-    Array out(out_shape, x.dtype());
-
-    auto x_swapped = x.transpose({pos_n, pos_c, pos_h, pos_w});
-    auto out_swapped = out.transpose({pos_n, pos_c, pos_h, pos_w});
-
-    for (int i = 0; i < out_h; i++) {
-        int h_start = i * stride_h;
-        int h_end = h_start + window_h;
-        for (int j = 0; j < out_w; j++) {
-            int w_start = j * stride_w;
-            int w_end = w_start + window_w;
-            Array window = x_swapped[Slice(0, in_n)][Slice(0, in_c)][Slice(h_start, h_end)][Slice(w_start, w_end)];
-            window = window.reshape({in_n, in_c, -1});
-            if (pooling_mode == POOLING_T_MAX) {
-                (Array)(out_swapped[Slice(0, in_n)][Slice(0, in_c)][i][j]) = window.max(-1);
-            } else if (pooling_mode == POOLING_T_AVG) {
-                (Array)(out_swapped[Slice(0, in_n)][Slice(0, in_c)][i][j]) = window.mean(-1);
-            }
-        }
-    }
-    return out;
-}
 
 Array reference_pool2d_backward(const Array& out,
                                 const Array& out_dw,

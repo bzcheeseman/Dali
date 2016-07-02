@@ -29,11 +29,12 @@ using memory::SynchronizedMemory;
 
 // if strides are trivial (such that they would arrise from shape normally)
 // we remove them.
-void compact_strides(vector<int>& strides, const vector<int>& shape) {
+void compact_strides(const vector<int>& shape, vector<int>* strides_ptr) {
+    auto& strides = *strides_ptr;
     if (strides.size() == 0)
         return;
     ASSERT2(strides.size() == shape.size(),
-            "Invalid strides passed to compact_strides.");
+            "Not the same number of strides as dimensions.");
     if (shape_to_trivial_strides(shape) == strides) {
         strides.clear();
     }
@@ -159,8 +160,6 @@ void Array::broadcast_axis_internal(const int& axis) {
 
     vector<int> new_strides = normalized_strides();
     new_strides[axis] = 0;
-    // this will never be needed:
-    // compact_strides(new_strides, shape());
 
     state->strides = new_strides;
 }
@@ -183,7 +182,7 @@ Array::Array(const std::vector<int>& shape,
     ASSERT2(shape_strictly_positive(shape),
             "Shape elements must be strictly positive");
     vector<int> new_strides(strides);
-    compact_strides(new_strides, shape);
+    compact_strides(shape, &new_strides);
     ASSERT2(new_strides.size() == 0 || new_strides.size() == shape.size(),
             "Stride and shape size must be the same (unless strides are compacted)");
     state = std::make_shared<ArrayState>(shape, memory, offset, new_strides, dtype);

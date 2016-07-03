@@ -206,7 +206,11 @@ endfunction()
 if (WITH_CUDA)
     include("${CMAKE_MODULE_PATH}/DetectCudnn.cmake")
     detect_cudnn()
-    set(DALI_USE_CUDNN CUDNN_FOUND)
+    if (CUDNN_FOUND)
+        set(DALI_USE_CUDNN 1)
+    else()
+        set(DALI_USE_CUDNN 0)
+    endif()
 endif()
 
 ################################################################################

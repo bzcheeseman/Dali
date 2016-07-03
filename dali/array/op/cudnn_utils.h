@@ -1,6 +1,10 @@
 #ifndef DALI_ARRAY_OP_CUDNN_UTILS_H
 #define DALI_ARRAY_OP_CUDNN_UTILS_H
 
+#include "dali/config.h"
+
+#ifdef DALI_USE_CUDNN
+
 #include <cudnn.h>
 #include <string>
 #include <vector>
@@ -8,7 +12,7 @@
 #include "dali/array/function/typed_array.h"
 #include "dali/array/function/operator.h"
 #include "dali/array/memory/device.h"
-#include "dali/array/op/spatial_enums.h"
+#include "dali/array/op/spatial/spatial_enums.h"
 
 
 namespace cudnn {
@@ -106,4 +110,5 @@ namespace cudnn {
 
 }  // namespace cudnn
 
+#endif  // DALI_USE_CUDNN
 #endif  // DALI_ARRAY_OP_CUDNN_UTILS_H

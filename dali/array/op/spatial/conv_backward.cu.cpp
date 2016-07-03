@@ -1,11 +1,14 @@
 #include "conv_backward.h"
+
 #include "dali/config.h"
-#include "dali/runtime_config.h"
+
 #include "dali/array/array.h"
 #include "dali/array/function/function.h"
-#include "dali/array/op/spatial/utils.h"
 #include "dali/array/lazy/im2col.h"
 #include "dali/array/mshadow_extension/dali_gemm_engine_exp.h"
+#include "dali/array/op/cudnn_utils.h"
+#include "dali/array/op/spatial/utils.h"
+#include "dali/runtime_config.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 //                    Conv2dBwdInputFunction                                 //

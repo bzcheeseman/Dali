@@ -1,4 +1,4 @@
-#include "dali/array/ThrustAllocator.h"
+#include "dali/array/thrust_allocator.h"
 
 #include "dali/array/memory/device.h"
 #include "dali/array/memory/memory_ops.h"

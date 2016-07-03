@@ -1,9 +1,10 @@
 #ifndef DALI_ARRAY_OP_SPATIAL_CONV_H
 #define DALI_ARRAY_OP_SPATIAL_CONV_H
 
-#include "dali/array/op/spatial/spatial_enums.h"
 #include <vector>
 #include <string>
+
+#include "dali/array/op/spatial/spatial_enums.h"
 
 class Array;
 template<typename OutType>

@@ -1,6 +1,10 @@
 #include "cudnn_utils.h"
 
+#include "dali/config.h"
+#ifdef DALI_USE_CUDNN
+
 #include <atomic>
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //                              UTILS                                        //
@@ -471,3 +475,5 @@ namespace cudnn {
         }
 
 }  // namespace cudnn
+
+#endif  // DALI_USE_CUDNN

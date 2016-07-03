@@ -134,8 +134,8 @@ Array reference_pool2d(Array X,
     X = X.transpose({mapping.n_dim, mapping.c_dim, mapping.h_dim, mapping.w_dim});
 
     int unpadded_x_h = X.shape()[2], unpadded_x_w = X.shape()[3];
-    int prepad_h = info.padding_h, postpad_h = info.padding_h + info.odd_padding_h;
-    int prepad_w = info.padding_w, postpad_w = info.padding_w + info.odd_padding_w;
+    int prepad_h = info.padding_h;
+    int prepad_w = info.padding_w;
 
     auto out_shape = permute_shape({info.batch_size,
                                      info.in_channels,
@@ -218,8 +218,8 @@ Array reference_pool2d_backward(Array out,
     int in_h  = in_dw_swapped.shape()[2];
     int in_w  = in_dw_swapped.shape()[3];
 
-    int prepad_h = info.padding_h, postpad_h = info.padding_h + info.odd_padding_h;
-    int prepad_w = info.padding_w, postpad_w = info.padding_w + info.odd_padding_w;
+    int prepad_h = info.padding_h;
+    int prepad_w = info.padding_w;
 
     for (int h = 0; h < out_h; h++) {
         for (int w = 0; w < out_w; w++) {

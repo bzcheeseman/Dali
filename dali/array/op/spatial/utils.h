@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+
 #include "dali/array/op/spatial/spatial_enums.h"
 #include "dali/utils/assert2.h"
 #include "dali/utils/print_utils.h"

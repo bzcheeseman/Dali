@@ -1,13 +1,16 @@
 #include "pool.h"
+
 #include "dali/config.h"
-#include "dali/runtime_config.h"
-#include "dali/array/array.h"
-#include "dali/array/function/function.h"
+
+#include <mshadow/tensor.h>
 #include <mshadow/extension/spatial_pool.h>
 #include <mshadow/extension/spatial_unpool.h>
 
+#include "dali/array/array.h"
+#include "dali/array/function/function.h"
+#include "dali/array/op/cudnn_utils.h"
 #include "dali/array/op/spatial/utils.h"
-
+#include "dali/runtime_config.h"
 
 
 ///////////////////////////////////////////////////////////////////////////////

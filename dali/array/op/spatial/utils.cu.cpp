@@ -1,5 +1,7 @@
 #include "utils.h"
+
 #include "dali/config.h"
+
 #include "dali/runtime_config.h"
 #include "dali/utils/assert2.h"
 #include "dali/array/lazy/im2col.h"

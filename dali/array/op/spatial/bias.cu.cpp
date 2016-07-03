@@ -1,8 +1,11 @@
 #include "bias.h"
+
 #include "dali/config.h"
+
 #include "dali/runtime_config.h"
 #include "dali/array/array.h"
 #include "dali/array/function/function.h"
+#include "dali/array/op/cudnn_utils.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 //                    Conv2dBwdBiasFunction                                  //

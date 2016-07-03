@@ -19,6 +19,10 @@ namespace cudnn {
     namespace wrapper {
         template<typename Descriptor>
         struct BaseTensor {
+            cudnnTensorFormat_t tensor_format;
+            cudnnDataType_t     dtype;
+            int n, c, h, w;
+
             void* data;
             Descriptor description;
 
@@ -28,6 +32,9 @@ namespace cudnn {
                        memory::AM access_mode=memory::AM_READONLY);
 
             ~BaseTensor();
+
+            operator std::string() const;
+
         };
 
 
@@ -40,15 +47,30 @@ namespace cudnn {
         };
 
         struct Convolution {
+            const int padding_h;
+            const int padding_w;
+            const int stride_h;
+            const int stride_w;
+
             cudnnConvolutionDescriptor_t description;
 
             Convolution(int padding_h, int padding_w,
                         int stride_h, int stride_w);
 
             ~Convolution();
+
+            operator std::string() const;
         };
 
         struct Pooling {
+            const int window_h;
+            const int window_w;
+            const int padding_h;
+            const int padding_w;
+            const int stride_h;
+            const int stride_w;
+            cudnnPoolingMode_t pooling_mode;
+
             cudnnPoolingDescriptor_t description;
 
             Pooling(int window_h,  int window_w,
@@ -57,6 +79,8 @@ namespace cudnn {
                     POOLING_T pooling_mode);
 
             ~Pooling();
+
+            operator std::string() const;
         };
 
         struct Operator {
@@ -109,6 +133,11 @@ namespace cudnn {
                     const wrapper::Operator& update_operator);
 
 }  // namespace cudnn
+
+std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Tensor& info);
+std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Filters& info);
+std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Convolution& info);
+std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Pooling& info);
 
 #endif  // DALI_USE_CUDNN
 #endif  // DALI_ARRAY_OP_CUDNN_UTILS_H

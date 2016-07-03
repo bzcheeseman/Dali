@@ -31,29 +31,33 @@ TEST_F(TensorSpatialTests, conv2d) {
             for (std::string data_format: {"NCHW", "NHWC"}) {
                 // TODO: add support for PADDING_T_SAME
                 for (PADDING_T padding : {PADDING_T_VALID}) {
-                    Tensor X, W;
-                    if (data_format == "NCHW") {
-                        X = Tensor::uniform(-1.0, 1.0, {5, 3, 6, 8}, DTYPE_DOUBLE);
-                        W = Tensor::uniform(-1.0, 1.0, {2, 3, 2, 4}, DTYPE_DOUBLE);
-                    } else {
-                        X = Tensor::uniform(-1.0, 1.0, {5, 6, 8, 3}, DTYPE_DOUBLE);
-                        W = Tensor::uniform(-1.0, 1.0, {2, 2, 4, 3}, DTYPE_DOUBLE);
-                    }
+                    for (DType dtype : {DTYPE_FLOAT, DTYPE_DOUBLE}) {
+                        Tensor X, W;
+                        if (data_format == "NCHW") {
+                            X = Tensor::uniform(-1.0, 1.0, {5, 3, 6, 8}, dtype);
+                            W = Tensor::uniform(-1.0, 1.0, {2, 3, 2, 4}, dtype);
+                        } else {
+                            X = Tensor::uniform(-1.0, 1.0, {5, 6, 8, 3}, dtype);
+                            W = Tensor::uniform(-1.0, 1.0, {2, 2, 4, 3}, dtype);
+                        }
 
-                    auto padding_str = (padding == PADDING_T_VALID) ? "valid" : "same";
-                    std::string scope_name = utils::MS() << "stride_h = " << stride_h
-                                                         << ", stride_w = " << stride_w
-                                                         << ", data_format = " << data_format
-                                                         << ", padding = " << padding_str;
-                    SCOPED_TRACE(scope_name);
-                    auto functor = [&](vector<Tensor> Xs)-> Tensor {
-                        return tensor_ops::conv2d(
-                            X, W,
-                            2, 2,
-                            padding,
-                            data_format);
-                    };
-                    ASSERT_TRUE(gradient_same(functor, {X, W}, 1e-3, 1e-2));
+                        auto padding_str = (padding == PADDING_T_VALID) ? "valid" : "same";
+                        std::string scope_name = utils::MS() << "stride_h = " << stride_h
+                                                             << ", stride_w = " << stride_w
+                                                             << ", data_format = " << data_format
+                                                             << ", padding = " << padding_str
+                                                             << ", dtype " << dtype;
+                        SCOPED_TRACE(scope_name);
+                        auto functor = [&](vector<Tensor> Xs)-> Tensor {
+                            return tensor_ops::conv2d(
+                                X, W,
+                                stride_h,
+                                stride_w,
+                                padding,
+                                data_format);
+                        };
+                        ASSERT_TRUE(gradient_same(functor, {X, W}, 1e-3, 1e-2));
+                    }
                 }
             }
         }

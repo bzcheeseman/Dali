@@ -45,7 +45,9 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
                     PADDING_T padding,
                     const std::string& data_format) {
 #ifdef DALI_USE_CUDNN
-        if (use_cudnn && devT == memory::DEVICE_T_GPU && template_to_dtype<T>() != DTYPE_INT32) {
+        if (use_cudnn && devT == memory::DEVICE_T_GPU &&
+                !std::is_same<T, int>::value &&
+                data_format != "NHWC") {
             cudnn_conv_backward<operator_t,T,devT>(in_dw,
                                                    filters,
                                                    out_dw,
@@ -313,7 +315,9 @@ struct Conv2dBwdFiltersFunction : public Function<Conv2dBwdFiltersFunction,
                     PADDING_T padding,
                     const std::string& data_format) {
 #ifdef DALI_USE_CUDNN
-        if (use_cudnn && devT == memory::DEVICE_T_GPU && template_to_dtype<T>() != DTYPE_INT32) {
+        if (use_cudnn && devT == memory::DEVICE_T_GPU &&
+                !std::is_same<T, int>::value &&
+                data_format != "NHWC") {
             cudnn_conv_backward<operator_t,T,devT>(filters_dw,
                                                    input,
                                                    out_dw,

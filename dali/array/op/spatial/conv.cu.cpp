@@ -74,7 +74,9 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                     PADDING_T padding,
                     const std::string& data_format) {
 #ifdef DALI_USE_CUDNN
-        if (use_cudnn && devT == memory::DEVICE_T_GPU && template_to_dtype<T>() != DTYPE_INT32) {
+        if (use_cudnn && devT == memory::DEVICE_T_GPU &&
+                !std::is_same<T, int>::value &&
+                !(data_format == "NHWC" && std::is_same<T, double>::value)) {
             cudnn_conv<operator_t,T,devT>(out, input, filters, stride_h, stride_w, padding, data_format);
             return;
         }

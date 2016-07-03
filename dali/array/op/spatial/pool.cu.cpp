@@ -71,8 +71,9 @@ struct Pool2dFunction : public Function<Pool2dFunction,
                     PADDING_T padding,
                     const std::string& data_format) {
 #ifdef DALI_USE_CUDNN
-        if (use_cudnn && devT == memory::DEVICE_T_GPU && template_to_dtype<T>() != DTYPE_INT32
-            && operator_t != OPERATOR_T_MUL && operator_t != OPERATOR_T_DIV) {
+        if (use_cudnn && devT == memory::DEVICE_T_GPU &&
+                !std::is_same<T, int>::value
+                && operator_t != OPERATOR_T_MUL && operator_t != OPERATOR_T_DIV) {
             cudnn_pool<operator_t,T,devT>(out, input, window_h, window_w, stride_h, stride_w, pooling_mode, padding, data_format);
             return;
         }
@@ -259,7 +260,7 @@ struct Pool2dBwdFunction : public Function<Pool2dBwdFunction,
                     PADDING_T padding,
                     const std::string& data_format) {
 #ifdef DALI_USE_CUDNN
-        if (use_cudnn && devT == memory::DEVICE_T_GPU && template_to_dtype<T>() != DTYPE_INT32
+        if (use_cudnn && devT == memory::DEVICE_T_GPU && !std::is_same<T, int>::value
             && operator_t != OPERATOR_T_MUL && operator_t != OPERATOR_T_DIV) {
             cudnn_pool_backward<operator_t,T,devT>(
                 in_dw,

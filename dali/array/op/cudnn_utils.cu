@@ -70,10 +70,20 @@ struct TensorWrapperApi<cudnnTensorDescriptor_t> {
             h,
             w);
 
-        CUDNN_CHECK_RESULT(result, "when setting tensor descriptor with "
+        CUDNN_CHECK_RESULT(result, "when setting "
+                << as_str(tensor_format, dtype, n, c, h, w));
+    }
+
+    static std::string as_str(cudnnTensorFormat_t tensor_format,
+                              cudnnDataType_t            dtype,
+                              int n,
+                              int c,
+                              int h,
+                              int w) {
+        return utils::MS() << "tensor descriptor with "
                 << "shape = [n=" << n << ",c=" << c << ",h=" << h << ",w=" << w << "], "
                 << "data format = " << cudnnGetTensorFormatString(tensor_format) << ", "
-                << "dtype = " << cudnnGetDateTypeString(dtype));
+                << "dtype = " << cudnnGetDateTypeString(dtype);
     }
 };
 
@@ -106,10 +116,20 @@ struct TensorWrapperApi<cudnnFilterDescriptor_t> {
             h,
             w);
 
-        CUDNN_CHECK_RESULT(result, "when setting filter descriptor with "
+        CUDNN_CHECK_RESULT(result, "when setting "
+                << as_str(tensor_format, dtype, n, c, h, w));
+    }
+
+    static std::string as_str(cudnnTensorFormat_t     tensor_format,
+                              cudnnDataType_t         dtype,
+                              int n,
+                              int c,
+                              int h,
+                              int w) {
+        return utils::MS() << "filter descriptor with "
                 << "shape = [n=" << n << ",c=" << c << ",h=" << h << ",w=" << w << "], "
                 << "data format = " << cudnnGetTensorFormatString(tensor_format) << ", "
-                << "dtype = " << cudnnGetDateTypeString(dtype));
+                << "dtype = " << cudnnGetDateTypeString(dtype);
     }
 };
 
@@ -137,33 +157,31 @@ namespace cudnn {
         template<typename T, int devT>
         BaseTensor<Descriptor>::BaseTensor(
                 TypedArray<devT,T> tensor,
-                std::string data_format,
+                std::string data_format_str,
                 memory::AM access_mode) {
             ASSERT2(devT == memory::DEVICE_T_GPU,
                     "cudnn Tensor/Filters wrapper must be "
                     "constructed from GPU TypedArray.");
-            cudnnTensorFormat_t data_format_cudnn;
-            if (data_format == "NCHW") {
-                data_format_cudnn = CUDNN_TENSOR_NCHW;
-            } else if (data_format == "NHWC") {
-                data_format_cudnn = CUDNN_TENSOR_NHWC;
+            if (data_format_str == "NCHW") {
+                tensor_format = CUDNN_TENSOR_NCHW;
+            } else if (data_format_str == "NHWC") {
+                tensor_format = CUDNN_TENSOR_NHWC;
             } else {
                 ASSERT2(false, "unsupported data format");
             }
-            cudnnDataType_t cudnn_dtype;
             if (template_to_dtype<T>() == DTYPE_FLOAT) {
-                cudnn_dtype = CUDNN_DATA_FLOAT;
+                dtype = CUDNN_DATA_FLOAT;
             } else if (template_to_dtype<T>() == DTYPE_DOUBLE) {
-                cudnn_dtype = CUDNN_DATA_DOUBLE;
+                dtype = CUDNN_DATA_DOUBLE;
             } else {
                 ASSERT2(false, "unsupported dtype");
             }
             int shape0, shape1, shape2, shape3;
             if (tensor.array.ndim() == 1) {
-                if (data_format == "NCHW") {
+                if (data_format_str == "NCHW") {
                     shape0 = shape2 = shape3 = 1;
                     shape1 = tensor.array.shape()[0];
-                } else if (data_format == "NHWC") {
+                } else if (data_format_str == "NHWC") {
                     shape0 = shape1 = shape2 = 1;
                     shape3 = tensor.array.shape()[0];
                 }
@@ -176,8 +194,7 @@ namespace cudnn {
                 ASSERT2(false, "cudnn::wrapper::Tensor can only support 1D and 4D tensors.");
             }
 
-            int n,c,h,w;
-            if (data_format == "NCHW") {
+            if (data_format_str == "NCHW") {
                 n = shape0; c = shape1; h = shape2; w = shape3;
             } else {
                 n = shape0; c = shape3; h = shape1; w = shape2;
@@ -186,8 +203,8 @@ namespace cudnn {
             TensorWrapperApi<Descriptor>::create(&description);
             TensorWrapperApi<Descriptor>::set(
                 description,
-                data_format_cudnn,
-                cudnn_dtype,
+                tensor_format,
+                dtype,
                 n,
                 c,
                 h,
@@ -201,6 +218,12 @@ namespace cudnn {
         BaseTensor<Descriptor>::~BaseTensor() {
             TensorWrapperApi<Descriptor>::destroy(description);
         }
+
+        template<typename Descriptor>
+        BaseTensor<Descriptor>::operator std::string() const {
+            return TensorWrapperApi<Descriptor>::as_str(tensor_format, dtype, n, c, h, w);
+        }
+
 
         template class BaseTensor<cudnnTensorDescriptor_t>;
         template class BaseTensor<cudnnFilterDescriptor_t>;
@@ -220,10 +243,13 @@ namespace cudnn {
         template BaseTensor<cudnnFilterDescriptor_t>::BaseTensor(TypedArray<memory::DEVICE_T_CPU,int>, std::string, memory::AM);
 
 
-        Convolution::Convolution(int padding_h, int padding_w,
-                                 int stride_h, int stride_w) {
+
+        Convolution::Convolution(int padding_h_, int padding_w_,
+                                 int stride_h_,  int stride_w_) :
+                padding_h(padding_h_), padding_w(padding_w_),
+                stride_h(stride_h_), stride_w(stride_w_) {
             auto result = cudnnCreateConvolutionDescriptor(&description);
-            CUDNN_CHECK_RESULT(result, "when creating convolution descriptor");
+            CUDNN_CHECK_RESULT(result, "when creating " << *this);
             result = cudnnSetConvolution2dDescriptor(
                 description,
                 /*pad_h=*/   padding_h,
@@ -237,40 +263,48 @@ namespace cudnn {
             );
 
 
-            CUDNN_CHECK_RESULT(result, "when setting convolution descriptor with "
-                << "padding_h = "  << padding_h << ", padding_w = " << padding_w
-                << ", stride_h = " << stride_h  << ", stride_w = "  << stride_w);
+            CUDNN_CHECK_RESULT(result, "when setting " << *this);
         }
 
         Convolution::~Convolution() {
             auto result = cudnnDestroyConvolutionDescriptor(description);
-            CUDNN_CHECK_RESULT(result, "when destroying convolution descriptor");
+            CUDNN_CHECK_RESULT(result, "when destroying " << *this);
         }
 
-        Pooling::Pooling(int window_h,  int window_w,
-                         int padding_h, int padding_w,
-                         int stride_h,  int stride_w,
-                         POOLING_T pooling_mode) {
-            auto result = cudnnCreatePoolingDescriptor(&description);
-            CUDNN_CHECK_RESULT(result, "when creating pooling descriptor");
+        Convolution::operator std::string() const {
+            return utils::MS() << "convolution descriptor with "
+                    << "padding_h = " << padding_h << ", padding_w = " << padding_w
+                    << ", stride_h = "  << stride_h  << ", stride_w = "  << stride_w;
 
-            cudnnPoolingMode_t cudnn_pooling_mode;
-            if (pooling_mode == POOLING_T_MAX) {
-                cudnn_pooling_mode = CUDNN_POOLING_MAX;
-            } else if (pooling_mode == POOLING_T_AVG) {
+        }
+
+        Pooling::Pooling(int window_h_,  int window_w_,
+                         int padding_h_, int padding_w_,
+                         int stride_h_,  int stride_w_,
+                         POOLING_T pooling_mode_enum) :
+                window_h(window_h_),   window_w(window_w_),
+                padding_h(padding_h_), padding_w(padding_w_),
+                stride_h(stride_h_),   stride_w(stride_w_) {
+            if (pooling_mode_enum == POOLING_T_MAX) {
+                pooling_mode = CUDNN_POOLING_MAX;
+            } else if (pooling_mode_enum == POOLING_T_AVG) {
                 // Following what TensorFlow does:
                 //   https://github.com/tensorflow/tensorflow/blob/
                 //   6431560b7ec3565154cb9cdc9c827db78ccfebe7/
                 //   tensorflow/stream_executor/cuda/cuda_dnn.cc
-                cudnn_pooling_mode =
+                pooling_mode =
                         CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
             } else {
                 ASSERT2(false, utils::MS() << "unknown POOLING_T ("
-                                           << pooling_mode << ").");
+                                           << pooling_mode_enum << ").");
             }
+
+            auto result = cudnnCreatePoolingDescriptor(&description);
+            CUDNN_CHECK_RESULT(result, "when creating " << *this);
+
             result = cudnnSetPooling2dDescriptor(
                 description,
-                cudnn_pooling_mode,
+                pooling_mode,
                 CUDNN_PROPAGATE_NAN,
                 /*windowHeight=*/ window_h,
                 /*windowWidth=*/  window_w,
@@ -279,12 +313,20 @@ namespace cudnn {
                 /*stride_h=*/     stride_h,
                 /*stride_w=*/     stride_w
             );
-            CUDNN_CHECK_RESULT(result, "when setting Pooling descriptor");
+            CUDNN_CHECK_RESULT(result, "when setting " << *this);
         }
 
         Pooling::~Pooling() {
             auto result = cudnnDestroyPoolingDescriptor(description);
-            CUDNN_CHECK_RESULT(result, "when destroying Pooling descriptor");
+            CUDNN_CHECK_RESULT(result, "when destroying " << *this);
+        }
+
+        Pooling::operator std::string() const {
+            return utils::MS() << "convolution descriptor with "
+                    << "window_h = "  << window_h  << ", window_w = "  << window_w
+                    << ", padding_h = " << padding_h << ", padding_w = " << padding_w
+                    << ", stride_h = "  << stride_h  << ", stride_w = "  << stride_w;
+
         }
 
 
@@ -352,7 +394,11 @@ namespace cudnn {
             out->description,
             out->data
         );
-        CUDNN_CHECK_RESULT(result, "when running cudnnConvolutionForward");
+        CUDNN_CHECK_RESULT(result, "when running cudnnConvolutionForward with " << "\n"
+                << "CONVOLUTION: " << *conv     << "\n"
+                << "OUTPUT:      " << *out      << "\n"
+                << "IN:          " << *in       << "\n"
+                << "FILTERS:     " << *filters  << "\n");
     }
 
     void conv2d_bwd_input(std::shared_ptr<wrapper::Tensor>  in_dw,
@@ -381,7 +427,11 @@ namespace cudnn {
             in_dw->description,
             in_dw->data
         );
-        CUDNN_CHECK_RESULT(result, "when computing convolution's data gradient");
+        CUDNN_CHECK_RESULT(result, "when computing convolution's data gradient with " << "\n"
+                << "CONVOLUTION: " << *conv     << "\n"
+                << "IN_DW:       " << *in_dw    << "\n"
+                << "FILTERS:     " << *filters  << "\n"
+                << "OUT_DW:      " << *out_dw   << "\n");
     }
 
 
@@ -411,7 +461,11 @@ namespace cudnn {
             filters_dw->description,
             filters_dw->data
         );
-        CUDNN_CHECK_RESULT(result, "when computing convolution's filter gradient");
+        CUDNN_CHECK_RESULT(result, "when computing convolution's filter gradient with " << "\n"
+                << "CONVOLUTION: " << *conv       << "\n"
+                << "FILTERS_DW:  " << *filters_dw << "\n"
+                << "INPUT:       " << *input      << "\n"
+                << "OUT_DW:      " << *out_dw     << "\n");
     }
 
     void conv2d_bwd_bias(std::shared_ptr<wrapper::Tensor> bias_dw,
@@ -426,7 +480,11 @@ namespace cudnn {
             bias_dw->description,
             bias_dw->data
         );
-        CUDNN_CHECK_RESULT(result, "when computing convolution bias gradient");
+        CUDNN_CHECK_RESULT(result, "when computing convolution bias gradient with " << "\n"
+                << "BIAS DW:     " << *bias_dw << "\n"
+                << "OUT DW:      " << *out_dw  << "\n"
+
+            );
     }
 
 
@@ -446,7 +504,10 @@ namespace cudnn {
             out->data
         );
 
-        CUDNN_CHECK_RESULT(result, "when computing pooling forward");
+        CUDNN_CHECK_RESULT(result, "when computing pooling forward with " << "\n"
+                << "POOLING:     " << *pooling  << "\n"
+                << "OUTPUT:      " << *out      << "\n"
+                << "INPUT:       " << *in       << "\n");
     }
 
         void pool2d_bwd(std::shared_ptr<wrapper::Tensor> in_dw,
@@ -470,9 +531,32 @@ namespace cudnn {
                 in_dw->data
             );
 
-            CUDNN_CHECK_RESULT(result, "when computing pooling forward");
+            CUDNN_CHECK_RESULT(result, "when computing pooling backward with " << "\n"
+                << "POOLING:     " << *pooling  << "\n"
+                << "INPUT DW:    " << *in_dw    << "\n"
+                << "OUTPUT:      " << *out      << "\n"
+                << "OUTPUT DW:   " << *out_dw   << "\n"
+                << "INPUT:       " << *in       << "\n");
         }
 
 }  // namespace cudnn
+
+
+std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Tensor& info) {
+    return stream << (std::string)info;
+}
+
+std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Filters& info) {
+    return stream << (std::string)info;
+}
+
+
+std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Convolution& info) {
+    return stream << (std::string)info;
+}
+
+std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Pooling& info) {
+    return stream << (std::string)info;
+}
 
 #endif  // DALI_USE_CUDNN

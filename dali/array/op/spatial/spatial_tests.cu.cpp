@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 #include <vector>
 
+#include "dali/config.h"
+
 #include "dali/array/test_utils.h"
 #include "dali/array/op.h"
 #include "dali/runtime_config.h"
@@ -258,7 +260,21 @@ Array reference_pool2d_backward(Array out,
 //                                   TESTS                                                  //
 //////////////////////////////////////////////////////////////////////////////////////////////
 
-TEST(ArraySpatialTests, pool2d_simple) {
+
+class ArraySpatialTests : public ::testing::Test,
+                          public ::testing::WithParamInterface<bool> {
+    bool old_use_cudnn;
+    virtual void SetUp() {
+        old_use_cudnn = use_cudnn;
+        use_cudnn = GetParam();
+    }
+
+    virtual void TearDown() {
+        use_cudnn = old_use_cudnn;
+    }
+};
+
+TEST_P(ArraySpatialTests, pool2d_simple) {
     auto X = Array::arange({1,1, 5, 5}, DTYPE_FLOAT);
     Array O = pool2d(X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
     Array O2 = reference_pool2d(X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
@@ -295,7 +311,7 @@ TEST(ArraySpatialTests, pool2d_simple) {
 
 
 
-TEST(ArraySpatialTests, conv2d_forward) {
+TEST_P(ArraySpatialTests, conv2d_forward) {
     for (int stride_h = 1; stride_h <= 3; ++stride_h) {
         for (int stride_w = 1; stride_w <= 3; ++stride_w) {
             for (std::string data_format: {"NCHW", "NHWC"}) {
@@ -349,7 +365,7 @@ TEST(ArraySpatialTests, conv2d_forward) {
     }
 }
 
-TEST(ArraySpatialTests, pool2d_forward) {
+TEST_P(ArraySpatialTests, pool2d_forward) {
     for (int window_h = 1; window_h <= 3; ++window_h) {
         for (int window_w = 1; window_w <= 3; ++window_w) {
             for (int stride_h = 1; stride_h <= 2; ++stride_h) {
@@ -414,7 +430,7 @@ TEST(ArraySpatialTests, pool2d_forward) {
 }
 
 
-TEST(ArraySpatialTests, conv_backward) {
+TEST_P(ArraySpatialTests, conv_backward) {
     Array X = Array::arange({1, 1, 8, 8}, DTYPE_FLOAT);
     Array W = Array::ones({1, 1, 2, 2}, DTYPE_FLOAT);
 
@@ -451,7 +467,7 @@ TEST(ArraySpatialTests, conv_backward) {
 }
 
 
-TEST(ArraySpatialTests, conv_backward_bias) {
+TEST_P(ArraySpatialTests, conv_backward_bias) {
     Array X = Array::ones({2, 3, 4, 5}, DTYPE_FLOAT);
 
     Array out = conv2d_backward_bias(X, "NCHW");
@@ -461,7 +477,7 @@ TEST(ArraySpatialTests, conv_backward_bias) {
 }
 
 
-TEST(ArraySpatialTests, unpool2d_forward) {
+TEST_P(ArraySpatialTests, unpool2d_forward) {
     for (int window_h = 1; window_h <= 3; ++window_h) {
         for (int window_w = 1; window_w <= 3; ++window_w) {
             for (int stride_h = 1; stride_h <= 2; ++stride_h) {
@@ -539,3 +555,13 @@ TEST(ArraySpatialTests, unpool2d_forward) {
         }
     }
 }
+
+#ifdef DALI_USE_CUDNN
+INSTANTIATE_TEST_CASE_P(with_cudnn,
+                        ArraySpatialTests,
+                        ::testing::Values(true));
+#endif  // DALI_USE_CUDNN
+
+INSTANTIATE_TEST_CASE_P(with_mshadow,
+                        ArraySpatialTests,
+                        ::testing::Values(false));

@@ -1,5 +1,5 @@
-#ifndef DALI_ARRAY_THRUSTALLOCATOR_H
-#define DALI_ARRAY_THRUSTALLOCATOR_H
+#ifndef DALI_ARRAY_THRUST_ALLOCATOR_H
+#define DALI_ARRAY_THRUST_ALLOCATOR_H
 
 #include "dali/config.h"
 
@@ -20,5 +20,6 @@ struct cached_allocator : thrust::device_malloc_allocator<R>{
     void deallocate(pointer p, size_type n);
 };
 
-#endif
-#endif
+#endif  // DALI_USE_CUDA
+
+#endif  // DALI_ARRAY_THRUST_ALLOCATOR_H

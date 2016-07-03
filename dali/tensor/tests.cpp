@@ -487,89 +487,16 @@ TEST_F(TensorTests, fast_dropout) {
 }
 
 // TEST_F(TensorOpsTests, circular_convolution) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return MatOps<R>::circular_convolution(Xs[0], Xs[1]);
+//     auto functor = [](vector<Tensor> Xs)-> Tensor {
+//         return tensor_ops::circular_convolution(Xs[0], Xs[1]);
 //     };
 //     EXPERIMENT_REPEAT {
-//         auto matrix = Mat<R>(4, 5, weights<R>::uniform(-20.0, 20.0));
-//         auto shift  = Mat<R>(4, 5, weights<R>::uniform(-20.0, 20.0));
+//         auto matrix = Tensor::uniform(-20.0, 20.0, {4, 5}, DTYPE_DOUBLE);
+//         auto shift  = Tensor::uniform(-20.0, 20.0, {4, 5}, DTYPE_DOUBLE);
 //         ASSERT_TRUE(gradient_same(functor, {matrix, shift}, 1e-4));
 //     }
 // }
-//
-//
-// TEST_F(TensorOpsTests, matrix_conv1d_grad) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return MatOps<R>::conv1d(Xs[0], std::initializer_list<Mat<R>>({Xs[1], Xs[2]})).tanh();
-//     };
-//     EXPERIMENT_REPEAT {
-//         auto kernel1 = Mat<R>(5, 5, weights<R>::uniform(-20.0, 20.0));
-//         auto kernel2 = Mat<R>(5, 5, weights<R>::uniform(-20.0, 20.0));
-//         auto image = Mat<R>(5, 20, weights<R>::uniform(-20.0, 20.0));
-//         ASSERT_TRUE(gradient_same(functor, {image, kernel1, kernel2}, 1e-2));
-//     }
-// }
-//
-// TEST_F(TensorOpsTests, matrix_conv2d) {
-//     /*graph::NoBackprop nb;
-//
-//     auto image = Mat<R>(10, 10);
-//     int block_width  = 4,
-//         block_offset = 3,
-//         kernel_width = 3,
-//         kernel_height = 3;
-//     R filler = 2.0;
-//
-//     image.w()->w.block(
-//         block_offset,
-//         block_offset,
-//         block_width,
-//         block_width).fill(filler);
-//
-//     auto kernel = Mat<R>(kernel_width, kernel_height);
-//
-//     kernel = MatOps<R>::fill(kernel, 1);
-//
-//     auto out = MatOps<R>::conv2d(image, kernel);
-//
-//     auto expected = Mat<R>(
-//         image.dims(0) - kernel.dims(0) + 1,
-//         image.dims(1) - kernel.dims(1) + 1);
-//
-//     expected.w()->w.block(
-//         block_offset,
-//         block_offset,
-//         block_width - kernel_width + 1,
-//         block_width - kernel_height + 1).fill(filler);
-//
-//     ASSERT_EQ( (*out.sum().w())(0), (block_width * block_width * filler)) << "Sum of convolution with image should be sum of image";
-//
-//     // TODO: test more properties here.
-//     ASSERT_TRUE((
-//         expected.w()->w.block(
-//             block_offset,
-//             block_offset,
-//             block_width - kernel_width + 1,
-//             block_width - kernel_height + 1).array() ==
-//         out.w()->w.block(
-//             block_offset,
-//             block_offset,
-//             block_width - kernel_width + 1,
-//             block_width - kernel_height + 1).array()).all()) << "Center of kernel activations should match up.";
-// */
-// }
-//
-// TEST_F(TensorOpsTests, matrix_conv2d_grad) {
-//     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-//         return MatOps<R>::conv2d(Xs[0], Xs[1]).tanh();
-//     };
-//     EXPERIMENT_REPEAT {
-//         auto kernel = Mat<R>(5, 5, weights<R>::uniform(-20.0, 20.0));
-//         auto image = Mat<R>(8, 8, weights<R>::uniform(-20.0, 20.0));
-//         ASSERT_TRUE(gradient_same(functor, {image, kernel}, 1e-4));
-//     }
-// }
-//
+
 // TEST_F(TensorOpsTests, cross_entropy_grad) {
 //     EXPERIMENT_REPEAT {
 //         const int hidden_size = 10;

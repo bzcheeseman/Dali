@@ -16,6 +16,9 @@ struct LazyBinary;
 template<typename LeftT, typename RightT>
 struct LazyOuter;
 
+template<typename ContentExp, typename ShiftExp>
+struct LazyCircularConvolution;
+
 template<template<class>class Functor, typename LeftT, typename RightT>
 struct LazyBinaryIndexed;
 
@@ -63,6 +66,14 @@ struct ReduceOverLazyExpr {
             const LazyOuter<LeftT,RightT>& binary_expr,
             const Args&... args) {
         return unfold_helper(state, binary_expr.left, binary_expr.right, args...);
+    }
+
+    template<typename ContentExp, typename ShiftExp, typename... Args>
+    static outtuple_t unfold_helper(
+            const outtuple_t& state,
+            const LazyCircularConvolution<ContentExp,ShiftExp>& circular_conv,
+            const Args&... args) {
+        return unfold_helper(state, circular_conv.content, circular_conv.shift, args...);
     }
 
     template<template<class>class Functor, typename LeftT, typename RightT, typename... Args>

@@ -296,8 +296,8 @@ TEST(ArraySpatialTests, pool2d_simple) {
 
 
 TEST(ArraySpatialTests, conv2d_forward) {
-    for (int stride_h = 1; stride_h <= 2; ++stride_h) {
-        for (int stride_w = 1; stride_w <= 2; ++stride_w) {
+    for (int stride_h = 1; stride_h <= 3; ++stride_h) {
+        for (int stride_w = 1; stride_w <= 3; ++stride_w) {
             for (std::string data_format: {"NCHW", "NHWC"}) {
                 for (PADDING_T padding : {PADDING_T_VALID, PADDING_T_SAME}) {
 
@@ -350,8 +350,8 @@ TEST(ArraySpatialTests, conv2d_forward) {
 }
 
 TEST(ArraySpatialTests, pool2d_forward) {
-    for (int window_h = 1; window_h <= 2; ++window_h) {
-        for (int window_w = 1; window_w <= 2; ++window_w) {
+    for (int window_h = 1; window_h <= 3; ++window_h) {
+        for (int window_w = 1; window_w <= 3; ++window_w) {
             for (int stride_h = 1; stride_h <= 2; ++stride_h) {
                 for (int stride_w = 1; stride_w <= 2; ++stride_w) {
                     for (std::string data_format: {"NCHW", "NHWC"}) {
@@ -462,8 +462,8 @@ TEST(ArraySpatialTests, conv_backward_bias) {
 
 
 TEST(ArraySpatialTests, unpool2d_forward) {
-    for (int window_h = 1; window_h <= 2; ++window_h) {
-        for (int window_w = 1; window_w <= 2; ++window_w) {
+    for (int window_h = 1; window_h <= 3; ++window_h) {
+        for (int window_w = 1; window_w <= 3; ++window_w) {
             for (int stride_h = 1; stride_h <= 2; ++stride_h) {
                 for (int stride_w = 1; stride_w <= 2; ++stride_w) {
                     for (std::string data_format: {"NCHW", "NHWC"}) {
@@ -538,90 +538,4 @@ TEST(ArraySpatialTests, unpool2d_forward) {
             }
         }
     }
-}
-
-
-TEST(ArraySpatialTests, pool2d_backward_nchw) {
-    Array X = Array::arange({1, 1, 8, 8}, DTYPE_FLOAT);
-
-    Array out = pool2d(
-        X,
-        /*window_h=*/2,
-        /*window_w=*/2,
-        /*stride_h=*/2,
-        /*stride_w=*/2,
-        POOLING_T_MAX,
-        PADDING_T_VALID,
-        "NCHW"
-    );
-
-    Array out_dw = Array::ones_like(out);
-    Array in_dw = pool2d_backward(
-        out,
-        out_dw,
-        X,
-        /*window_h=*/2,
-        /*window_w=*/2,
-        /*stride_h=*/2,
-        /*stride_w=*/2,
-        POOLING_T_MAX,
-        PADDING_T_VALID,
-        "NCHW"
-    );
-    Array expected_in_dw = reference_pool2d_backward(
-        out,
-        out_dw,
-        X,
-        /*window_h=*/2,
-        /*window_w=*/2,
-        /*stride_h=*/2,
-        /*stride_w=*/2,
-        POOLING_T_MAX,
-        PADDING_T_VALID,
-        "NCHW"
-    );
-
-    EXPECT_TRUE(Array::allclose(expected_in_dw, in_dw, 1e-3));
-}
-
-TEST(ArraySpatialTests, pool2d_backward_nhwc) {
-    Array X = Array::arange({1, 8, 8, 1}, DTYPE_FLOAT);
-
-    Array out = pool2d(
-        X,
-        /*window_h=*/2,
-        /*window_w=*/2,
-        /*stride_h=*/2,
-        /*stride_w=*/2,
-        POOLING_T_MAX,
-        PADDING_T_VALID,
-        "NHWC"
-    );
-
-    Array out_dw = Array::ones_like(out);
-    Array in_dw = pool2d_backward(
-        out,
-        out_dw,
-        X,
-        /*window_h=*/2,
-        /*window_w=*/2,
-        /*stride_h=*/2,
-        /*stride_w=*/2,
-        POOLING_T_MAX,
-        PADDING_T_VALID,
-        "NHWC"
-    );
-    Array expected_in_dw = reference_pool2d_backward(
-        out,
-        out_dw,
-        X,
-        /*window_h=*/2,
-        /*window_w=*/2,
-        /*stride_h=*/2,
-        /*stride_w=*/2,
-        POOLING_T_MAX,
-        PADDING_T_VALID,
-        "NHWC"
-    );
-    EXPECT_TRUE(Array::allclose(expected_in_dw, in_dw, 1e-3));
 }

@@ -39,3 +39,5 @@
 11. Nicely handle the fact that some functions for the inside of computation are reused. For example conv uses computation for im2col and copy.
 
 12. Split Function into operation and computation - computation is barebones: typed_eval and some convenience functions.
+
+13. Use clever operation re-use to prevent recomputing sub-operations when possible (e.g. col2im is called for conv bwd filter and conv bwd input)

@@ -6,9 +6,9 @@
 #include "dali/tensor/tensor_macros.h"
 #include "dali/array/op.h"
 
-static Tensor matrixdot_with_custom_shape(const Tensor& a,
-                                          const Tensor& b,
-                                          std::vector<int> new_shape) {
+Tensor matrixdot_with_custom_shape(const Tensor& a,
+                                   const Tensor& b,
+                                   std::vector<int> new_shape) {
     auto out = Tensor::empty(new_shape, a.dtype(), a.preferred_device());
     out.w = op::matrixdot(a.w, b.w);
 

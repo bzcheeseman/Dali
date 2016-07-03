@@ -321,21 +321,21 @@ TEST(ArraySpatialTests, conv_backward) {
 
     Array out_dw = Array::ones_like(out);
 
-    Array in_dw = conv2d_backward_input(
-        W,
-        out_dw,
-        /*stride_h=*/2,
-        /*stride_w=*/2,
-        X.shape(),
-        PADDING_T_VALID,
-        "NCHW");
-
     Array W_dw = conv2d_backward_filters(
         X,
         out_dw,
         /*stride_h=*/2,
         /*stride_w=*/2,
         W.shape(),
+        PADDING_T_VALID,
+        "NCHW");
+
+    Array in_dw = conv2d_backward_input(
+        W,
+        out_dw,
+        /*stride_h=*/2,
+        /*stride_w=*/2,
+        X.shape(),
         PADDING_T_VALID,
         "NCHW");
 

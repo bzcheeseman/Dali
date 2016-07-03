@@ -126,9 +126,6 @@ void signal_abort_handler(int signum, siginfo_t *info, void *_ctx) {
     // associate each signal with a signal name string.
     std::string name;
     switch( signum ) {
-        case SIGABRT:
-            name = "SIGABRT";
-            break;
         case SIGSEGV:
             name = "SIGSEGV";
             break;
@@ -147,7 +144,6 @@ void signal_abort_handler(int signum, siginfo_t *info, void *_ctx) {
     }
     std::cerr << "Caught signal " << signum << "(" << name << ")" << std::endl;
 
-    signal(SIGABRT, SIG_DFL);
     signal(SIGSEGV, SIG_DFL);
     signal(SIGILL, SIG_DFL);
     signal(SIGFPE, SIG_DFL);
@@ -163,7 +159,6 @@ ErrorHandler::ErrorHandler() {
     sa.sa_sigaction = signal_abort_handler;
     sigemptyset(&sa.sa_mask);
 
-    sigaction(SIGABRT, &sa, 0);
     sigaction(SIGSEGV, &sa, 0);
     sigaction(SIGILL, &sa, 0);
     sigaction(SIGFPE, &sa, 0);

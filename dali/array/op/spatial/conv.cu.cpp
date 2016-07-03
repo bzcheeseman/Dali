@@ -51,7 +51,6 @@ struct Conv2dFunction : public Function<Conv2dFunction,
         }
     }
 
-
     template<OPERATOR_T operator_t, typename T, int devT, DALI_FUNC_ENABLE_IF_MUL_DIV>
     void typed_eval(TypedArray<devT, T> out,
                     TypedArray<devT, T> input,
@@ -90,84 +89,19 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                    int stride_w,
                    PADDING_T padding,
                    const std::string& data_format) {
-        auto info = internal::compute_conv_info(input.array.shape(),
-                                      filters.array.shape(),
-                                      stride_h,
-                                      stride_w,
-                                      padding,
-                                      data_format);
-        filters.array   = filters.array.copyless_reshape({filters.array.shape()[0], -1});
-
-        std::vector<int> temp_bshape;
-        if (data_format == "NCHW") {
-            temp_bshape = deduce_im2col_shape<mshadow::expr::DATA_FORMAT_NCHW>(
-                input.array.shape(),
-                info.filter_h, info.filter_w,
-                stride_h, stride_w,
-                /*dilate_h=*/1,
-                /*dilate_w=*/1,
-                /*padding_h*/2 * info.padding_h + info.odd_padding_h,
-                /*padding_w*/2 * info.padding_w + info.odd_padding_w
-            );
-        } else {
-            // when data_format is equal to the string containing
-            // letters NHWC.
-            temp_bshape = deduce_im2col_shape<mshadow::expr::DATA_FORMAT_NHWC>(
-                input.array.shape(),
-                info.filter_h, info.filter_w,
-                stride_h, stride_w,
-                /*dilate_h=*/1,
-                /*dilate_w=*/1,
-                /*padding_h*/2 * info.padding_h + info.odd_padding_h,
-                /*padding_w*/2 * info.padding_w + info.odd_padding_w
-            );
-        }
-
-        Array im2col_storage_arr(temp_bshape, template_to_dtype<T>(), out.device);
-        TypedArray<devT, T> im2col_storage(
-                im2col_storage_arr, input.device, temp_bshape);
-
-        if (data_format == "NCHW") {
-            im2col_storage.contiguous_d2(memory::AM_OVERWRITE) =
-                    mshadow::expr::unpack_patch2col<mshadow::expr::DATA_FORMAT_NCHW>(
-                input.d4(),
-                info.filter_h,
-                info.filter_w,
-                stride_h,
-                stride_w,
-                /*dilate_h=*/1,
-                /*dilate_w=*/1,
-                /*prepad_h*/info.padding_h,
-                /*prepad_w*/info.padding_w,
-                /*postpad_h*/info.padding_h + info.odd_padding_h,
-                /*postpad_w*/info.padding_w + info.odd_padding_w
-            );
-        } else { // then data_format = "NHWC"
-            im2col_storage.contiguous_d2(memory::AM_OVERWRITE) =
-                    mshadow::expr::unpack_patch2col<mshadow::expr::DATA_FORMAT_NHWC>(
-                input.d4(),
-                info.filter_h,
-                info.filter_w,
-                stride_h,
-                stride_w,
-                /*dilate_h=*/1,
-                /*dilate_w=*/1,
-                /*prepad_h*/info.padding_h,
-                /*prepad_w*/info.padding_w,
-                /*postpad_h*/info.padding_h + info.odd_padding_h,
-                /*postpad_w*/info.padding_w + info.odd_padding_w
-            );
-        }
+        auto im2col_storage = internal::compute_im2col(
+            input, filters.array.shape(), stride_h, stride_w, padding, data_format
+        );
 
         typedef decltype(im2col_storage.contiguous_d2()) mshadow_tensor_t;
 
+        filters.array   = filters.array.copyless_reshape({filters.array.shape()[0], -1});
         if (data_format == "NCHW") {
             // do nothing
         } else {
             im2col_storage.array = im2col_storage.array.transpose();
             filters.array        = filters.array.transpose();
         }
-
 
         bool             im2col_transposed, filters_transposed;
         mshadow_tensor_t im2col_tensor,     filters_tensor;
@@ -191,8 +125,6 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                 ),
                 /*collapse_leading=*/false
             );
-
-
             operator_assign_contiguous<operator_t, 4>(
                 out,
                 mshadow::expr::swapaxis<1,0>(out_cnhw.contiguous_d4())

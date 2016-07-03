@@ -6,6 +6,7 @@
 #include "dali/array/op/spatial/spatial_enums.h"
 #include "dali/utils/assert2.h"
 #include "dali/utils/print_utils.h"
+#include "dali/array/function/typed_array.h"
 
 namespace internal {
     inline void check_data_format(const std::string& data_format) {
@@ -63,6 +64,17 @@ namespace internal {
         const int& stride_w,
         const PADDING_T& padding,
         const std::string& data_format);
-}
+
+    /* Allocates storage and computes im2col for an input 4D tensor */
+    template<typename T, int devT>
+    TypedArray<devT, T> compute_im2col(const TypedArray<devT, T>& input,
+                                       const std::vector<int>& filter_shape,
+                                       const int& stride_h,
+                                       const int& stride_w,
+                                       PADDING_T padding,
+                                       const std::string& data_format);
+}  // namespace internal
+
+std::ostream& operator<<(std::ostream&, const internal::Conv2dFunctionInputInfo&);
 
 #endif  // DALI_ARRAY_OP_SPATIAL_UTILS_H

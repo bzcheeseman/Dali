@@ -87,20 +87,39 @@ struct Pool2dFunction : public Function<Pool2dFunction,
                       POOLING_T pooling_mode,
                       PADDING_T padding,
                       const std::string& data_format) {
+
+        auto info = internal::compute_pool_info(
+            input.array.shape(),
+            window_h,
+            window_w,
+            stride_h,
+            stride_w,
+            padding,
+            data_format
+        );
+
         if (pooling_mode == POOLING_T_AVG) {
             if (data_format == "NCHW") {
                 operator_assign<operator_t, 4>(
                     out,
-                    mshadow::expr::pool<mshadow::expr::DATA_FORMAT_NCHW, mshadow::red::sum>(
-                        input.d4(), window_h, window_w, stride_h, stride_w
-                    ) / ((double)window_h * window_w)
+                    mshadow::expr::pool<mshadow::expr::DATA_FORMAT_NCHW, mshadow::red::avg>(
+                        input.d4(), window_h, window_w, stride_h, stride_w,
+                        /*prepad_h*/info.padding_h,
+                        /*prepad_w*/info.padding_w,
+                        /*postpad_h*/info.padding_h + info.odd_padding_h,
+                        /*postpad_w*/info.padding_w + info.odd_padding_w
+                    )
                 );
             } else { // then data_format is NHWC
                 operator_assign<operator_t, 4>(
                     out,
-                    mshadow::expr::pool<mshadow::expr::DATA_FORMAT_NHWC, mshadow::red::sum>(
-                        input.d4(), window_h, window_w, stride_h, stride_w
-                    ) / ((double)window_h * window_w)
+                    mshadow::expr::pool<mshadow::expr::DATA_FORMAT_NHWC, mshadow::red::avg>(
+                        input.d4(), window_h, window_w, stride_h, stride_w,
+                        /*prepad_h*/info.padding_h,
+                        /*prepad_w*/info.padding_w,
+                        /*postpad_h*/info.padding_h + info.odd_padding_h,
+                        /*postpad_w*/info.padding_w + info.odd_padding_w
+                    )
                 );
             }
         } else if (pooling_mode == POOLING_T_MAX) {
@@ -108,14 +127,22 @@ struct Pool2dFunction : public Function<Pool2dFunction,
                 operator_assign<operator_t, 4>(
                     out,
                     mshadow::expr::pool<mshadow::expr::DATA_FORMAT_NCHW, mshadow::red::maximum>(
-                        input.d4(), window_h, window_w, stride_h, stride_w
+                        input.d4(), window_h, window_w, stride_h, stride_w,
+                        /*prepad_h*/info.padding_h,
+                        /*prepad_w*/info.padding_w,
+                        /*postpad_h*/info.padding_h + info.odd_padding_h,
+                        /*postpad_w*/info.padding_w + info.odd_padding_w
                     )
                 );
             } else { // then data_format is NHWC
                 operator_assign<operator_t, 4>(
                     out,
                     mshadow::expr::pool<mshadow::expr::DATA_FORMAT_NHWC, mshadow::red::maximum>(
-                        input.d4(), window_h, window_w, stride_h, stride_w
+                        input.d4(), window_h, window_w, stride_h, stride_w,
+                        /*prepad_h*/info.padding_h,
+                        /*prepad_w*/info.padding_w,
+                        /*postpad_h*/info.padding_h + info.odd_padding_h,
+                        /*postpad_w*/info.padding_w + info.odd_padding_w
                     )
                 );
             }

@@ -134,11 +134,9 @@ Array reference_pool2d(Array X,
 
     X = X.transpose({mapping.n_dim, mapping.c_dim, mapping.h_dim, mapping.w_dim});
 
-
-    if (padding_mode == PADDING_T_SAME) {
-        X = pad_array(X, info.padding_h, info.padding_h + info.odd_padding_h,
-                         info.padding_w, info.padding_w + info.odd_padding_w);
-    }
+    int unpadded_x_h = X.shape()[2], unpadded_x_w = X.shape()[3];
+    int prepad_h = info.padding_h, postpad_h = info.padding_h + info.odd_padding_h;
+    int prepad_w = info.padding_w, postpad_w = info.padding_w + info.odd_padding_w;
 
     auto out_shape = permute_shape({info.batch_size,
                                      info.in_channels,
@@ -159,6 +157,13 @@ Array reference_pool2d(Array X,
         for (int j = 0; j < info.out_w; j++) {
             int w_start = j * stride_w;
             int w_end = w_start + window_w;
+
+            h_end   = std::min(h_end, unpadded_x_h);
+            w_end   = std::min(w_end, unpadded_x_w);
+
+            h_start = std::max(h_start - prepad_h, 0);
+            w_start = std::max(w_start - prepad_w, 0);
+
             Array window = X[Slice(0, in_n)][Slice(0, in_c)][Slice(h_start, h_end)][Slice(w_start, w_end)];
             window = window.reshape({in_n, in_c, -1});
             if (pooling_mode == POOLING_T_MAX) {
@@ -230,7 +235,6 @@ TEST(ArraySpatialTests, conv2d_forward) {
         }
     }
 }
-
 
 TEST(ArraySpatialTests, pool2d_forward) {
     for (int window_h = 1; window_h <= 2; ++window_h) {

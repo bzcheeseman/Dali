@@ -45,6 +45,10 @@ TEST(ArrayCircularConvolutionTests, circular_convolution) {
     Array x({2, 3, 4}, DTYPE_FLOAT);
     Array shift({2, 3, 4}, DTYPE_FLOAT);
 
+    x     = initializer::uniform(-1.0, 1.0);
+    shift = initializer::uniform(-1.0, 1.0);
+
+
     Array res = lazy::circular_convolution(x, shift);
     Array expected_res = reference_circular_convolution(x, shift);
 

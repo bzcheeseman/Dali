@@ -41,3 +41,5 @@
 12. Split Function into operation and computation - computation is barebones: typed_eval and some convenience functions.
 
 13. Use clever operation re-use to prevent recomputing sub-operations when possible (e.g. when two dot products are called in separate places on the same arguments)
+
+14. Allow for arbitrary kernels - for exmaple if I wanted to compute a pool from perspective of output, there should be nothing stopping me.

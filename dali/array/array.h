@@ -44,6 +44,8 @@ struct Assignable<Array> : public BaseAssignable<Array> {
     Assignable(const float& constant);
     Assignable(const double& constant);
     Assignable(const int& constant);
+
+    Array eval();
 };
 
 struct ArrayState {

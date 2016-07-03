@@ -112,6 +112,11 @@ Assignable<Array>::Assignable(const int& constant) :
         BaseAssignable<Array>(initializer::fill(constant)) {
 }
 
+
+Array Assignable<Array>::eval() {
+    return *this;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //                              ARRAY STATE                                   //
 ////////////////////////////////////////////////////////////////////////////////

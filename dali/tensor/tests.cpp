@@ -486,17 +486,6 @@ TEST_F(TensorTests, fast_dropout) {
     }
 }
 
-// TEST_F(TensorOpsTests, circular_convolution) {
-//     auto functor = [](vector<Tensor> Xs)-> Tensor {
-//         return tensor_ops::circular_convolution(Xs[0], Xs[1]);
-//     };
-//     EXPERIMENT_REPEAT {
-//         auto matrix = Tensor::uniform(-20.0, 20.0, {4, 5}, DTYPE_DOUBLE);
-//         auto shift  = Tensor::uniform(-20.0, 20.0, {4, 5}, DTYPE_DOUBLE);
-//         ASSERT_TRUE(gradient_same(functor, {matrix, shift}, 1e-4));
-//     }
-// }
-
 // TEST_F(TensorOpsTests, cross_entropy_grad) {
 //     EXPERIMENT_REPEAT {
 //         const int hidden_size = 10;

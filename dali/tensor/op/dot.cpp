@@ -12,11 +12,13 @@ Tensor matrixdot_with_custom_shape(const Tensor& a,
     auto out = Tensor::empty(new_shape, a.dtype(), a.preferred_device());
     out.w = op::matrixdot(a.w, b.w);
 
-    if (graph::backprop_enabled())
-        graph::emplace_back([a, b, out]() mutable {
-            MAYBE_GRAD(a) <<= op::matrixdot(out.dw, b.w.transpose());
-            MAYBE_GRAD(b) <<= op::matrixdot(a.w.transpose(), out.dw);
+    if (graph::backprop_enabled()) {
+        auto out_dw = out.dw;
+        graph::emplace_back([a, b, out_dw]() mutable {
+            MAYBE_GRAD(a) <<= op::matrixdot(out_dw, b.w.transpose());
+            MAYBE_GRAD(b) <<= op::matrixdot(a.w.transpose(), out_dw);
         });
+    }
     return out;
 }
 
@@ -60,38 +62,44 @@ namespace tensor_ops {
     Tensor vectordot(const Tensor& a, const Tensor& b) {
         Tensor out(op::vectordot(a.w, b.w));
 
-        if (graph::backprop_enabled())
-            graph::emplace_back([a, b, out]() mutable {
-                MAYBE_GRAD(a) <<= op::dot(b.w, out.dw);
-                MAYBE_GRAD(b) <<= op::dot(a.w, out.dw);
+        if (graph::backprop_enabled()) {
+            auto out_dw = out.dw;
+            graph::emplace_back([a, b, out_dw]() mutable {
+                MAYBE_GRAD(a) <<= op::dot(b.w, out_dw);
+                MAYBE_GRAD(b) <<= op::dot(a.w, out_dw);
             });
+        }
         return out;
     }
 
     Tensor matrixdot(const Tensor& a, const Tensor& b) {
         Tensor out(op::matrixdot(a.w, b.w));
 
-        if (graph::backprop_enabled())
-            graph::emplace_back([a, b, out]() mutable {
-                MAYBE_GRAD(a) <<= op::matrixdot(out.dw, b.w.transpose());
-                MAYBE_GRAD(b) <<= op::matrixdot(a.w.transpose(), out.dw);
+        if (graph::backprop_enabled()) {
+            auto out_dw = out.dw;
+            graph::emplace_back([a, b, out_dw]() mutable {
+                MAYBE_GRAD(a) <<= op::matrixdot(out_dw, b.w.transpose());
+                MAYBE_GRAD(b) <<= op::matrixdot(a.w.transpose(), out_dw);
             });
+        }
         return out;
     }
 
     Tensor matrix_vector_dot(const Tensor& a, const Tensor& b) {
         Tensor out(op::matrix_vector_dot(a.w, b.w));
 
-        if (graph::backprop_enabled())
-            graph::emplace_back([a, b, out]() mutable {
+        if (graph::backprop_enabled()) {
+            auto out_dw = out.dw;
+            graph::emplace_back([a, b, out_dw]() mutable {
                 if (a.ndim() == 1) {
-                    MAYBE_GRAD(a) <<= op::matrix_vector_dot(out.dw, b.w.transpose());
-                    MAYBE_GRAD(b) <<= op::outer(a.w, out.dw);
+                    MAYBE_GRAD(a) <<= op::matrix_vector_dot(out_dw, b.w.transpose());
+                    MAYBE_GRAD(b) <<= op::outer(a.w, out_dw);
                 } else {
-                    MAYBE_GRAD(a) <<= op::outer(out.dw, b.w);
-                    MAYBE_GRAD(b) <<= op::matrix_vector_dot(a.w.transpose(), out.dw);
+                    MAYBE_GRAD(a) <<= op::outer(out_dw, b.w);
+                    MAYBE_GRAD(b) <<= op::matrix_vector_dot(a.w.transpose(), out_dw);
                 }
             });
+        }
         return out;
     }
 

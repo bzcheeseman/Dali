@@ -23,6 +23,7 @@
     #include "dali/array/lazy/unary.h"
     #include "dali/array/lazy/reshape.h"
     #include "dali/array/lazy/im2col.h"
+    #include "dali/array/lazy/circular_convolution.h"
     #include "dali/array/function/lazy_evaluator.h"
     #include "dali/array/op_overload/lazy.h"
 

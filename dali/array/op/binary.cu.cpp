@@ -3,6 +3,7 @@
 #include "dali/array/array.h"
 #include "dali/array/lazy/binary.h"
 #include "dali/array/op/unary.h"
+#include "dali/array/lazy/circular_convolution.h"
 
 namespace op {
     Assignable<Array> add(const Array& a, const Array& b) {
@@ -80,6 +81,10 @@ namespace op {
 
     Assignable<Array> equals(const Array& left, const Array& right) {
         return lazy::equals(left, right);
+    }
+
+    Assignable<Array> circular_convolution(const Array& content, const Array& shift) {
+        return lazy::circular_convolution(content, shift);
     }
 
 }  // namespace op

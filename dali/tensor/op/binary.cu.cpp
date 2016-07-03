@@ -7,61 +7,87 @@
 namespace tensor_ops {
     Tensor add(const Tensor& a, const Tensor& b) {
         Tensor out(op::add(a.w, b.w));
-
-        if (graph::backprop_enabled())
-            graph::emplace_back([a, b, out]() mutable {
-                MAYBE_GRAD(a) <<= out.dw;
-                MAYBE_GRAD(b) <<= out.dw;
-            });
+        if (graph::backprop_enabled()) {
+            auto out_dw = out.dw;
+            if (!a.constant) {
+                auto a_dw = a.dw;
+                graph::emplace_back([a_dw, out_dw]() mutable {
+                    a_dw <<= out_dw;
+                });
+            }
+            if (!b.constant) {
+                auto b_dw = b.dw;
+                graph::emplace_back([b_dw, out_dw]() mutable {
+                    b_dw <<= out_dw;
+                });
+            }
+        }
         return out;
     }
 
     Tensor add(const std::vector<Tensor>& tensors) {
         std::vector<Array> arrays;
+        std::vector<Array> grads;
         arrays.reserve(tensors.size());
         for (const auto& t : tensors) {
             arrays.emplace_back(t.w);
+            if (!t.constant) {
+                grads.emplace_back(t.dw);
+            }
         }
         Tensor out(op::add(arrays));
-
-        if (graph::backprop_enabled())
-            graph::emplace_back([tensors, out]() {
-                for (const auto& t : tensors) {
-                    MAYBE_GRAD(t) <<= out.dw;
+        if (graph::backprop_enabled() && grads.size() > 0) {
+            auto out_dw = out.dw;
+            graph::emplace_back([grads, out_dw]() mutable {
+                for (auto& t_grad : grads) {
+                    t_grad <<= out_dw;
                 }
             });
+        }
         return out;
     }
 
     Tensor sub(const Tensor& a, const Tensor& b) {
         Tensor out(op::sub(a.w, b.w));
-
-        if (graph::backprop_enabled())
-            graph::emplace_back([a, b, out]() mutable {
-                MAYBE_GRAD(a) <<= out.dw;
-                MAYBE_GRAD(b) <<= -out.dw;
-            });
+        if (graph::backprop_enabled()) {
+            auto out_dw = out.dw;
+            if (!a.constant) {
+                auto a_dw = a.dw;
+                graph::emplace_back([a_dw, out_dw]() mutable {
+                    a_dw <<= out_dw;
+                });
+            }
+            if (!b.constant) {
+                auto b_dw = b.dw;
+                graph::emplace_back([b_dw, out_dw]() mutable {
+                    b_dw <<= -out_dw;
+                });
+            }
+        }
         return out;
     }
 
     Tensor eltmul(const Tensor& a, const Tensor& b) {
         Tensor out(op::eltmul(a.w, b.w));
 
-        if (graph::backprop_enabled())
-            graph::emplace_back([a, b, out]() mutable {
-                MAYBE_GRAD(a) <<= b.w * out.dw;
-                MAYBE_GRAD(b) <<= a.w * out.dw;
+        if (graph::backprop_enabled()) {
+            auto out_dw = out.dw;
+            graph::emplace_back([a, b, out_dw]() mutable {
+                MAYBE_GRAD(a) <<= b.w * out_dw;
+                MAYBE_GRAD(b) <<= a.w * out_dw;
             });
+        }
         return out;
     }
     Tensor eltdiv(const Tensor& a, const Tensor& b) {
         Tensor out(op::eltdiv(a.w, b.w));
-
-        if (graph::backprop_enabled())
-            graph::emplace_back([a, b, out]() mutable {
-                MAYBE_GRAD(a) <<= out.dw / b.w;
-                MAYBE_GRAD(b) <<= (-a.w / lazy::square(b.w)) * out.dw;
+        if (graph::backprop_enabled()) {
+            auto out_dw = out.dw;
+            graph::emplace_back([a, b, out_dw]() mutable {
+                MAYBE_GRAD(a) <<= out_dw / b.w;
+                MAYBE_GRAD(b) <<= (-a.w / lazy::square(b.w)) * out_dw;
             });
+        }
         return out;
     }
 
@@ -75,6 +101,18 @@ namespace tensor_ops {
                 MAYBE_GRAD(exponent) <<=
                         lazy::log_or_zero(a.w) * out.w * out.dw;
             });
+        return out;
+    }
+
+    Tensor circular_convolution(const Tensor& content, const Tensor& shift) {
+        Tensor out(lazy::circular_convolution(content.w, shift.w));
+        if (graph::backprop_enabled()) {
+            auto out_dw = out.dw;
+            graph::emplace_back([content, shift, out_dw]() mutable {
+                MAYBE_GRAD(content) <<= lazy::circular_convolution(out_dw, shift.w);
+                MAYBE_GRAD(shift) <<= lazy::circular_convolution(content.w, out_dw);
+            });
+        }
         return out;
     }
 }  // namespace tensor_ops

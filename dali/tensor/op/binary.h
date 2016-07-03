@@ -10,6 +10,7 @@ namespace tensor_ops {
     Tensor eltmul(const Tensor&, const Tensor&);
     Tensor eltdiv(const Tensor&, const Tensor&);
     Tensor pow(const Tensor&, const Tensor& exponent);
+    Tensor circular_convolution(const Tensor& content, const Tensor& shift);
 }
 
 #endif

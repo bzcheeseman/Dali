@@ -17,10 +17,13 @@ namespace tensor_ops {
 
             Tensor out(tensor.w.sum());
 
-            if (graph::backprop_enabled() && !tensor.constant)
-                graph::emplace_back([tensor, out]() mutable {
-                    tensor.dw <<= out.dw.broadcast_scalar_to_ndim(tensor.ndim());
+            if (graph::backprop_enabled() && !tensor.constant) {
+                auto out_dw = out.dw;
+                auto tensor_dw = tensor.dw;
+                graph::emplace_back([tensor_dw, out_dw]() mutable {
+                    tensor_dw <<= out_dw.broadcast_scalar_to_ndim(tensor_dw.ndim());
                 });
+            }
             return out;
         }
     }
@@ -33,13 +36,16 @@ namespace tensor_ops {
             return out;
         } else {
             Tensor out(tensor.w.mean());
-            if (graph::backprop_enabled() && !tensor.constant)
-                graph::emplace_back([tensor, out]() mutable {
-                    tensor.dw <<= (
-                        out.dw.broadcast_scalar_to_ndim(tensor.ndim()) /
-                        tensor.number_of_elements()
+            if (graph::backprop_enabled() && !tensor.constant) {
+                auto out_dw = out.dw;
+                auto tensor_dw = tensor.dw;
+                graph::emplace_back([tensor_dw, out_dw]() mutable {
+                    tensor_dw <<= (
+                        out_dw.broadcast_scalar_to_ndim(tensor_dw.ndim()) /
+                        tensor_dw.number_of_elements()
                     );
                 });
+            }
             return out;
         }
     }
@@ -74,25 +80,31 @@ namespace tensor_ops {
 
     Tensor sum(const Tensor& tensor, const int& axis) {
         Tensor out(op::sum(tensor.w, axis));
-        if (graph::backprop_enabled() && !tensor.constant)
-            graph::emplace_back([tensor, out, axis]() mutable {
+        if (graph::backprop_enabled() && !tensor.constant) {
+            auto tensor_dw = tensor.dw;
+            auto out_dw = out.dw;
+            graph::emplace_back([tensor_dw, out_dw, axis]() mutable {
                 // make sure output has same shape as input
                 // with the reduced dimension returned as
                 // broadcasted
-                auto reshaped_gradient = out.dw.insert_broadcast_axis(axis);
-                tensor.dw <<= reshaped_gradient;
+                auto reshaped_gradient = out_dw.insert_broadcast_axis(axis);
+                tensor_dw <<= reshaped_gradient;
             });
+        }
         return out;
     }
 
     Tensor mean(const Tensor& tensor, const int& axis) {
         Tensor out(op::mean(tensor.w, axis));
-        if (graph::backprop_enabled() && !tensor.constant)
-            graph::emplace_back([tensor, out, axis]() mutable {
-                int axis_size = tensor.shape()[axis];
-                auto reshaped_gradient = out.dw.insert_broadcast_axis(axis);
-                tensor.dw <<= reshaped_gradient / axis_size;
+        if (graph::backprop_enabled() && !tensor.constant) {
+            auto tensor_dw = tensor.dw;
+            auto out_dw = out.dw;
+            graph::emplace_back([tensor_dw, out_dw, axis]() mutable {
+                int axis_size = tensor_dw.shape()[axis];
+                auto reshaped_gradient = out_dw.insert_broadcast_axis(axis);
+                tensor_dw <<= reshaped_gradient / axis_size;
             });
+        }
         return out;
     }
 

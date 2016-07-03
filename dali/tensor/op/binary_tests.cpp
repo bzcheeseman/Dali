@@ -69,7 +69,16 @@ TEST_F(TensorBinaryTests, add_recursive) {
     }
 }
 
-
+TEST_F(TensorBinaryTests, circular_convolution) {
+    auto functor = [](vector<Tensor> Xs)-> Tensor {
+        return tensor_ops::circular_convolution(Xs[0], Xs[1]);
+    };
+    EXPERIMENT_REPEAT {
+        auto matrix = Tensor::uniform(-20.0, 20.0, {4, 5}, DTYPE_DOUBLE);
+        auto shift  = Tensor::uniform(-20.0, 20.0, {4, 5}, DTYPE_DOUBLE);
+        ASSERT_TRUE(gradient_same(functor, {matrix, shift}, 1e-4));
+    }
+}
 
 // TEST_F(MatrixTests, recursive_sum) {
 //     auto functor = [](vector<Mat<R>>& Xs)-> Mat<R> {

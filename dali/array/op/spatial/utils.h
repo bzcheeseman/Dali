@@ -75,6 +75,7 @@ namespace internal {
                                        const std::string& data_format);
 }  // namespace internal
 
-std::ostream& operator<<(std::ostream&, const internal::Conv2dFunctionInputInfo&);
+std::ostream& operator<<(std::ostream&, const internal::PoolFunctionInfo&);
+std::ostream& operator<<(std::ostream&, const internal::ConvFunctionInfo&);
 
 #endif  // DALI_ARRAY_OP_SPATIAL_UTILS_H

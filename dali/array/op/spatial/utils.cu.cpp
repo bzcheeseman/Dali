@@ -20,39 +20,35 @@ namespace internal {
                             << data_format << ").");
     }
 
-    Conv2dFunctionInputInfo compute_conv_info(const std::vector<int>& input_shape,
-                                              const std::vector<int>& filters_shape,
-                                              const int& stride_h,
-                                              const int& stride_w,
-                                              PADDING_T padding,
-                                              const std::string& data_format) {
-        check_data_format(data_format);
-        DataFormatDimMapping mapping(data_format);
-        Conv2dFunctionInputInfo info;
+    template<typename Container>
+    Container function_info_helper(
+                const std::vector<int>& input_shape,
+                const int& window_h,
+                const int& window_w,
+                const int& stride_h,
+                const int& stride_w,
+                const PADDING_T& padding,
+                const DataFormatDimMapping& mapping) {
+        Container info;
 
         info.batch_size         = input_shape[mapping.n_dim];
         info.in_channels        = input_shape[mapping.c_dim];
         info.in_h               = input_shape[mapping.h_dim];
         info.in_w               = input_shape[mapping.w_dim];
 
-        info.out_channels       = filters_shape[mapping.n_dim];
-        info.filter_in_channels = filters_shape[mapping.c_dim];
-        info.filter_h           = filters_shape[mapping.h_dim];
-        info.filter_w           = filters_shape[mapping.w_dim];
-
         if (padding == PADDING_T_SAME) {
-            info.out_h = int_ceil(info.in_h, stride_h);
-            info.out_w = int_ceil(info.in_w, stride_w);
+            info.out_h = internal::int_ceil(info.in_h, stride_h);
+            info.out_w = internal::int_ceil(info.in_w, stride_w);
         } else if (padding == PADDING_T_VALID) {
-            info.out_h = int_ceil(info.in_h - info.filter_h + 1, stride_h);
-            info.out_w = int_ceil(info.in_w - info.filter_w + 1, stride_w);
+            info.out_h = internal::int_ceil(info.in_h - window_h + 1, stride_h);
+            info.out_w = internal::int_ceil(info.in_w - window_w + 1, stride_w);
         } else {
-            ASSERT2(false, utils::MS() << "Unrecognized value of padding passed to Conv2dFunction (" << padding << ")");
+            ASSERT2(false, utils::MS() << "Unrecognized value of padding passed to Pool2dFunction (got " << padding << ").");
         }
 
         if (padding == PADDING_T_SAME) {
-            info.padding_h = (info.out_h - 1) * stride_h + info.filter_h - info.in_h;
-            info.padding_w = (info.out_w - 1) * stride_w + info.filter_w - info.in_w;
+            info.padding_h = std::max(0, (info.out_h - 1) * stride_h + window_h - info.in_h);
+            info.padding_w = std::max(0, (info.out_w - 1) * stride_w + window_w - info.in_w);
         } else if (padding == PADDING_T_VALID) {
             info.padding_h = 0;
             info.padding_w = 0;
@@ -65,6 +61,47 @@ namespace internal {
         info.padding_w /= 2;
 
         return info;
+    }
+
+
+    PoolFunctionInfo compute_pool_info(
+            const std::vector<int>& input_shape,
+            const int& window_h,
+            const int& window_w,
+            const int& stride_h,
+            const int& stride_w,
+            const PADDING_T& padding,
+            const std::string& data_format) {
+        internal::check_data_format(data_format);
+        DataFormatDimMapping mapping(data_format);
+        return function_info_helper<PoolFunctionInfo>(
+                input_shape, window_h, window_w, stride_h, stride_w, padding, mapping);
+    }
+
+    ConvFunctionInfo compute_conv_info(
+            const std::vector<int>& input_shape,
+            const std::vector<int>& filters_shape,
+            const int& stride_h,
+            const int& stride_w,
+            const PADDING_T& padding,
+            const std::string& data_format) {
+        internal::check_data_format(data_format);
+        DataFormatDimMapping mapping(data_format);
+
+        int filter_h = filters_shape[mapping.h_dim];
+        int filter_w = filters_shape[mapping.w_dim];
+
+        ConvFunctionInfo ret = function_info_helper<ConvFunctionInfo>(
+                input_shape, filter_h, filter_w, stride_h, stride_w, padding, mapping);
+
+        ASSERT2_EQ(ret.in_channels, filters_shape[mapping.c_dim],
+            "Conv2d input and filters need to have the same number of input channels"
+        );
+
+        ret.filter_h     = filter_h;
+        ret.filter_w     = filter_w;
+        ret.out_channels = filters_shape[mapping.n_dim];
+        return ret;
     }
 
     template<typename T, int devT>
@@ -154,13 +191,27 @@ namespace internal {
 
 }  // namespace internal
 
-std::ostream& operator<<(std::ostream& stream, const internal::Conv2dFunctionInputInfo& info) {
-  return stream << "Conv2dFunctionInputInfo(\n"
+std::ostream& operator<<(std::ostream& stream, const internal::PoolFunctionInfo& info) {
+  return stream << "PoolFunctionInfo(\n"
                 << "  batch_size=" << info.batch_size << ",\n"
                 << "  in_channels=" << info.in_channels << ",\n"
                 << "  in_h=" << info.in_h << ",\n"
                 << "  in_w=" << info.in_w << ",\n"
-                << "  filter_in_channels=" << info.filter_in_channels << ",\n"
+                << "  out_h=" << info.out_h << ",\n"
+                << "  out_w=" << info.out_w << ",\n"
+                << "  padding_h=" << info.padding_h << ",\n"
+                << "  padding_w=" << info.padding_w << ",\n"
+                << "  odd_padding_h=" << info.odd_padding_h << ",\n"
+                << "  odd_padding_w=" << info.odd_padding_w << "\n"
+                << ")";
+}
+
+std::ostream& operator<<(std::ostream& stream, const internal::ConvFunctionInfo& info) {
+  return stream << "ConvFunctionInfo(\n"
+                << "  batch_size=" << info.batch_size << ",\n"
+                << "  in_channels=" << info.in_channels << ",\n"
+                << "  in_h=" << info.in_h << ",\n"
+                << "  in_w=" << info.in_w << ",\n"
                 << "  filter_h=" << info.filter_h << ",\n"
                 << "  filter_w=" << info.filter_w << ",\n"
                 << "  out_channels=" << info.out_channels << ",\n"

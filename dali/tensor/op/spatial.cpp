@@ -18,13 +18,14 @@ namespace tensor_ops {
                               padding,
                               data_format));
 
-        if (graph::backprop_enabled() && (!input.constant || !filters.constant))
-            graph::emplace_back([out, input, filters,
+        if (graph::backprop_enabled() && (!input.constant || !filters.constant)) {
+            auto out_dw = out.dw;
+            graph::emplace_back([out_dw, input, filters,
                                  stride_h,stride_w,
                                  padding,data_format]() mutable {
                 MAYBE_GRAD(input) +=
                     op::conv2d_backward_input(filters.w,
-                                              out.dw,
+                                              out_dw,
                                               stride_h,
                                               stride_w,
                                               input.shape(),
@@ -32,13 +33,14 @@ namespace tensor_ops {
                                               data_format);
                 MAYBE_GRAD(filters) +=
                     op::conv2d_backward_filters(input.w,
-                                                out.dw,
+                                                out_dw,
                                                 stride_h,
                                                 stride_w,
                                                 filters.shape(),
                                                 padding,
                                                 data_format);
             });
+        }
         return out;
     }
 
@@ -129,12 +131,22 @@ namespace tensor_ops {
 
         Tensor out(conv_out.w + broadcasted_bias);
 
-        if (graph::backprop_enabled())
-            graph::emplace_back([conv_out, bias, out, data_format]() mutable {
-                MAYBE_GRAD(conv_out) += out.dw;
+        if (graph::backprop_enabled()) {
+            auto out_dw = out.dw;
+            if (!conv_out.constant) {
+                auto conv_out_dw = conv_out.dw;
+                graph::emplace_back([conv_out_dw, out_dw, data_format]() mutable {
+                    conv_out_dw += out_dw;
+                });
+            }
 
-                MAYBE_GRAD(bias) += op::conv2d_backward_bias(out.dw, data_format);
-            });
+            if (!bias.constant) {
+                auto bias_dw = bias.dw;
+                graph::emplace_back([bias_dw, out_dw, data_format]() mutable {
+                    bias_dw += op::conv2d_backward_bias(out_dw, data_format);
+                });
+            }
+        }
         return out;
     }
 

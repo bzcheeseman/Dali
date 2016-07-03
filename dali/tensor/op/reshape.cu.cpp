@@ -26,10 +26,11 @@ namespace tensor_ops {
         out.constant = constant;
 
         if (graph::backprop_enabled()) {
-            graph::emplace_back([out, tensors, axis]() {
+            auto out_dw = out.dw;
+            graph::emplace_back([out_dw, tensors, axis]() {
                 int so_far = 0;
                 for (auto& tensor : tensors) {
-                    MAYBE_GRAD(tensor) <<= out.dw.pluck_axis(
+                    MAYBE_GRAD(tensor) <<= out_dw.pluck_axis(
                         axis,
                         Slice(so_far, so_far + tensor.shape()[axis])
                     );
@@ -52,8 +53,10 @@ namespace tensor_ops {
         Tensor out(params.w[indices.w]);
 
         if (graph::backprop_enabled() && !params.constant) {
-            graph::emplace_back([out, params, indices]() {
-                params.dw[indices.w] += out.dw;
+            auto out_dw = out.dw;
+            auto params_dw = params.dw;
+            graph::emplace_back([out_dw, params_dw, indices]() {
+                params_dw[indices.w] += out_dw;
             });
         }
         return out;

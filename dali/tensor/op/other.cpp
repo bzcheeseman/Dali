@@ -10,12 +10,13 @@ namespace tensor_ops {
                                          t.dw.reshape(new_shape),
                                          t.constant);
 
-        if (t.dw.memory() != out.dw.memory()) {
+        if (t.dw.memory() != out.dw.memory() && !t.constant && graph::backprop_enabled()) {
+            auto out_dw = out.dw;
+            auto t_dw = t.dw;
             // if out.dw is no longer a view, we need backpropagation.
-            if (graph::backprop_enabled())
-                graph::emplace_back([t, out]() mutable {
-                    MAYBE_GRAD(t) <<= out.dw.reshape(t.shape());
-                });
+            graph::emplace_back([t_dw, out_dw]() mutable {
+                t_dw <<= out_dw.reshape(t_dw.shape());
+            });
         }
         return out;
     }
@@ -25,12 +26,13 @@ namespace tensor_ops {
                                          t.dw.ravel(),
                                          t.constant);
 
-        if (t.dw.memory() != out.dw.memory()) {
+        if (t.dw.memory() != out.dw.memory() && !t.constant && graph::backprop_enabled()) {
             // if out.dw is no longer a view, we need backpropagation.
-            if (graph::backprop_enabled())
-                graph::emplace_back([t, out]() mutable {
-                    MAYBE_GRAD(t) <<= out.dw.reshape(t.shape());
-                });
+            auto out_dw = out.dw;
+            auto t_dw = t.dw;
+            graph::emplace_back([t_dw, out_dw]() mutable {
+                t_dw <<= out_dw.reshape(t_dw.shape());
+            });
         }
         return out;
     }
@@ -88,10 +90,13 @@ namespace tensor_ops {
         Tensor out(op::astype(t.w, dtype));
         out.constant = t.constant || dtype == DTYPE_INT32;
 
-        if (graph::backprop_enabled() && !out.constant)
-            graph::emplace_back([t, out]() mutable {
-                MAYBE_GRAD(t) <<= out.dw;
+        if (graph::backprop_enabled() && !out.constant) {
+            auto out_dw = out.dw;
+            auto t_dw = t.dw;
+            graph::emplace_back([t_dw, out_dw]() mutable {
+                t_dw <<= out_dw;
             });
+        }
         return out;
     }
 

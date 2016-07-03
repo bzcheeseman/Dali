@@ -19,10 +19,13 @@ namespace tensor_ops {
         mask = initializer::bernoulli(1.0 - drop_prob);
         Tensor out(t.w * mask);
 
-        if (graph::backprop_enabled())
-            graph::emplace_back([t, out, mask]() mutable {
-                MAYBE_GRAD(t) <<= out.dw * mask;
+        if (graph::backprop_enabled() && !t.constant) {
+            auto t_dw = t.dw;
+            auto out_dw = out.dw;
+            graph::emplace_back([t_dw, out_dw, mask]() mutable {
+                t_dw <<= out_dw * mask;
             });
+        }
         return out;
     }
 
@@ -37,10 +40,13 @@ namespace tensor_ops {
         mask = initializer::bernoulli_normalized(1.0 - drop_prob);
         Tensor out(t.w * mask);
 
-        if (graph::backprop_enabled())
-            graph::emplace_back([t, out, mask]() mutable {
-                MAYBE_GRAD(t) <<= out.dw * mask;
+        if (graph::backprop_enabled() && !t.constant) {
+            auto t_dw = t.dw;
+            auto out_dw = out.dw;
+            graph::emplace_back([t_dw, out_dw, mask]() mutable {
+                t_dw <<= out_dw * mask;
             });
+        }
         return out;
     }
 
@@ -49,10 +55,13 @@ namespace tensor_ops {
         mask = initializer::gaussian(1.0, 1.0);
         Tensor out(t.w * mask);
 
-        if (graph::backprop_enabled())
-            graph::emplace_back([t, out, mask]() mutable {
-                MAYBE_GRAD(t) <<= out.dw * mask;
+        if (graph::backprop_enabled() && !t.constant) {
+            auto t_dw = t.dw;
+            auto out_dw = out.dw;
+            graph::emplace_back([t_dw, out_dw, mask]() mutable {
+                t_dw <<= out_dw * mask;
             });
+        }
         return out;
     }
 }

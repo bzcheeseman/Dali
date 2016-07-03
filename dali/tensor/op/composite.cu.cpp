@@ -49,19 +49,24 @@ namespace tensor_ops {
                 out.w += temp;
             }
         }
-        if (graph::backprop_enabled())
-            graph::emplace_back([weights, inputs, bias, out, max_num_examples]() mutable {
+        if (graph::backprop_enabled()) {
+            auto out_dw = out.dw;
+            auto bias_dw = bias.dw;
+            auto bias_constant = bias.constant;
+            graph::emplace_back([weights, inputs, bias_dw, bias_constant, out_dw, max_num_examples]() mutable {
                 for (int i = 0; i < weights.size(); ++i) {
                     if (inputs[i].w.bshape()[0] < 0) {
-                        Array temp = op::dot(out.dw, weights[i].w.transpose());
+                        Array temp = op::dot(out_dw, weights[i].w.transpose());
                         MAYBE_GRAD(inputs[i]) <<= temp;
                     } else {
-                        MAYBE_GRAD(inputs[i]) <<= op::dot(out.dw, weights[i].w.transpose());
+                        MAYBE_GRAD(inputs[i]) <<= op::dot(out_dw, weights[i].w.transpose());
                     }
-                    MAYBE_GRAD(weights[i]) <<= op::dot(inputs[i].w.transpose(), out.dw);
+                    MAYBE_GRAD(weights[i]) <<= op::dot(inputs[i].w.transpose(), out_dw);
                 }
-                MAYBE_GRAD(bias) <<= out.dw;
+                if (!bias_constant)
+                    bias_dw <<= out_dw;
             });
+        }
 
         return out;
     }
@@ -72,9 +77,10 @@ namespace tensor_ops {
             if (left.is_matrix() && middle.is_matrix() && right.is_matrix()) {
                 Array left_side_mul = op::dot(left.w.transpose(), middle.w);
                 Tensor out(op::dot(left_side_mul, right.w));
-                graph::emplace_back([left_side_mul, left, middle, right, out]() mutable {
-                    MAYBE_GRAD(right) <<= op::dot(left_side_mul.transpose(), out.dw);
-                    Array LeftT_dot_middle_grad = op::dot(out.dw, right.w.transpose());
+                auto out_dw = out.dw;
+                graph::emplace_back([left_side_mul, left, middle, right, out_dw]() mutable {
+                    MAYBE_GRAD(right) <<= op::dot(left_side_mul.transpose(), out_dw);
+                    Array LeftT_dot_middle_grad = op::dot(out_dw, right.w.transpose());
                     MAYBE_GRAD(left) <<= op::dot(middle.w, LeftT_dot_middle_grad.transpose());
                     MAYBE_GRAD(middle) <<= op::dot(left.w, LeftT_dot_middle_grad);
                 });

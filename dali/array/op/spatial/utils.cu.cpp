@@ -129,9 +129,7 @@ namespace internal {
                 /*padding_h*/2 * info.padding_h + info.odd_padding_h,
                 /*padding_w*/2 * info.padding_w + info.odd_padding_w
             );
-        } else {
-            // when data_format is equal to the string containing
-            // letters NHWC.
+        } else { // then data_format = "NHWC"
             temp_bshape = deduce_im2col_shape<mshadow::expr::DATA_FORMAT_NHWC>(
                 input.array.shape(),
                 info.filter_h, info.filter_w,

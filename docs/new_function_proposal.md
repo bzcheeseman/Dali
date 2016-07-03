@@ -40,4 +40,4 @@
 
 12. Split Function into operation and computation - computation is barebones: typed_eval and some convenience functions.
 
-13. Use clever operation re-use to prevent recomputing sub-operations when possible (e.g. col2im is called for conv bwd filter and conv bwd input)
+13. Use clever operation re-use to prevent recomputing sub-operations when possible (e.g. when two dot products are called in separate places on the same arguments)

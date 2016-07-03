@@ -268,7 +268,6 @@ namespace cudnn {
                 ASSERT2(false, utils::MS() << "unknown POOLING_T ("
                                            << pooling_mode << ").");
             }
-
             result = cudnnSetPooling2dDescriptor(
                 description,
                 cudnn_pooling_mode,

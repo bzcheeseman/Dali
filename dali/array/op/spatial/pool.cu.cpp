@@ -178,7 +178,7 @@ struct Pool2dFunction : public Function<Pool2dFunction,
                 std::make_shared<cudnn::wrapper::Tensor>(input, data_format),
                 std::make_shared<cudnn::wrapper::Pooling>(window_h, window_w,
                                                           info.padding_h, info.padding_w,
-                                                          stride_w, stride_h,
+                                                          stride_h, stride_w,
                                                           pooling_mode),
                 cudnn::wrapper::Operator(operator_t, template_to_dtype<T>())
         );
@@ -414,7 +414,7 @@ struct Pool2dBwdFunction : public Function<Pool2dBwdFunction,
             std::make_shared<cudnn::wrapper::Tensor>(in, data_format),
             std::make_shared<cudnn::wrapper::Pooling>(window_h, window_w,
                                                       info.padding_h, info.padding_w,
-                                                      stride_w, stride_h,
+                                                      stride_h, stride_w,
                                                       pooling_mode),
             cudnn::wrapper::Operator(operator_t, template_to_dtype<T>())
         );

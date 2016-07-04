@@ -176,7 +176,7 @@ if (WITH_CUDA)
         # have some future proofing (arch=compute_xx,code=compute_xx ensures forward compatibility)
         LIST(APPEND CUDA_NVCC_FLAGS -gencode arch=compute_20,code=compute_20)
         # also generate these architectures:
-        list(APPEND SUPPORTED_JIT_PRECOMPILATIONS "30" "35" "52" "53")
+        list(APPEND SUPPORTED_JIT_PRECOMPILATIONS "30" "52" "53")
         if (${CUDA_VERSION} VERSION_GREATER "8.0" OR ${CUDA_VERSION} VERSION_EQUAL "8.0")
             list(APPEND SUPPORTED_JIT_PRECOMPILATIONS "61")
         endif()

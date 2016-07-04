@@ -5,7 +5,6 @@
 
 #include <atomic>
 
-
 ///////////////////////////////////////////////////////////////////////////////
 //                              UTILS                                        //
 ///////////////////////////////////////////////////////////////////////////////
@@ -153,6 +152,24 @@ namespace cudnn {
 
 
     namespace wrapper {
+
+        std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Tensor& info) {
+            return stream << (std::string)info;
+        }
+
+        std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Filters& info) {
+            return stream << (std::string)info;
+        }
+
+
+        std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Convolution& info) {
+            return stream << (std::string)info;
+        }
+
+        std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Pooling& info) {
+            return stream << (std::string)info;
+        }
+
         template<typename Descriptor>
         template<typename T, int devT>
         BaseTensor<Descriptor>::BaseTensor(
@@ -541,22 +558,5 @@ namespace cudnn {
 
 }  // namespace cudnn
 
-
-std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Tensor& info) {
-    return stream << (std::string)info;
-}
-
-std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Filters& info) {
-    return stream << (std::string)info;
-}
-
-
-std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Convolution& info) {
-    return stream << (std::string)info;
-}
-
-std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Pooling& info) {
-    return stream << (std::string)info;
-}
 
 #endif  // DALI_USE_CUDNN

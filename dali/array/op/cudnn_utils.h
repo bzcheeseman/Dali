@@ -95,6 +95,11 @@ namespace cudnn {
 
             Operator(OPERATOR_T operator_type, DType dtype);
         };
+
+        std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Tensor& info);
+        std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Filters& info);
+        std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Convolution& info);
+        std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Pooling& info);
     }
 
     void conv2d(std::shared_ptr<wrapper::Tensor>  out,
@@ -133,11 +138,6 @@ namespace cudnn {
                     const wrapper::Operator& update_operator);
 
 }  // namespace cudnn
-
-std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Tensor& info);
-std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Filters& info);
-std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Convolution& info);
-std::ostream& operator<<(std::ostream& stream, const cudnn::wrapper::Pooling& info);
 
 #endif  // DALI_USE_CUDNN
 #endif  // DALI_ARRAY_OP_CUDNN_UTILS_H

@@ -69,6 +69,22 @@ if(CUDA_FOUND STREQUAL TRUE)
     list(APPEND DALI_AND_DEPS_INCLUDE_DIRS ${CUDA_INCLUDE_DIRS})
 endif(CUDA_FOUND STREQUAL TRUE)
 
+# ensure that cmake modules defined under dali dir are visible
+if (CUDA_FOUND)
+    set(DETECT_CUDNN_FINDER_FOUND FALSE)
+    foreach(CMAKE_MODULE_SUBPATH ${CMAKE_MODULE_PATH})
+        if(EXISTS "${CMAKE_MODULE_SUBPATH}/DetectCudnn.cmake")
+            include("${CMAKE_MODULE_SUBPATH}/DetectCudnn.cmake")
+            set(DETECT_CUDNN_FINDER_FOUND TRUE)
+        endif(EXISTS "${CMAKE_MODULE_SUBPATH}/DetectCudnn.cmake")
+    endforeach()
+    if (DETECT_CUDNN_FINDER_FOUND)
+        detect_cudnn()
+    endif()
+else()
+    set(CUDNN_FOUND FALSE)
+endif(CUDA_FOUND)
+
 
 if (DALI_CUSTOM_PATH)
     find_library(DALI_LIBRARIES dali PATHS ${DALI_LIBRARY_CUSTOM_PATHS} NO_DEFAULT_PATH)
@@ -86,16 +102,20 @@ if(DALI_LIBRARIES)
             find_library(DALI_LIBRARIES dali_cuda HINTS)
         endif()
 
-
-        IF (DALI_CUDA_LIBRARIES)
+        # TODO(szymon) depending on whether dali was compiled with cuda,
+        # we should choose whether to include cuda libraries into this list.
+        IF (CUDA_FOUND)
             # Cuda is missing?
             list(APPEND DALI_LIBRARIES ${DALI_CUDA_LIBRARIES})
             IF (CUDA_FOUND STREQUAL TRUE)
                 list(APPEND DALI_AND_DEPS_LIBRARIES ${CUDA_curand_LIBRARIES})
                 list(APPEND DALI_AND_DEPS_LIBRARIES ${CUDA_CUBLAS_LIBRARIES})
                 list(APPEND DALI_AND_DEPS_LIBRARIES ${CUDA_LIBRARIES})
+                IF (CUDNN_FOUND)
+                    list(APPEND DALI_AND_DEPS_LIBRARIES ${CUDNN_LIBRARY})
+                ENDIF(CUDNN_FOUND)
             ENDIF (CUDA_FOUND STREQUAL TRUE)
-        ENDIF (DALI_CUDA_LIBRARIES)
+        ENDIF (CUDA_FOUND)
         # BLAS not found:
     ENDIF (APPLE)
 

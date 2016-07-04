@@ -65,21 +65,33 @@ TEST_F(TensorSpatialTests, conv2d) {
 }
 
 TEST_F(TensorSpatialTests, pool2d) {
-    auto functor = [](vector<Tensor> Xs) -> Tensor {
-        return tensor_ops::pool2d(
-            Xs[0],
-            /*window_h=*/2,
-            /*window_w=*/2,
-            /*stride_h=*/2,
-            /*stride_w=*/2,
-            POOLING_T_MAX,
-            PADDING_T_VALID,
-            "NCHW");
-    };
-
-    EXPERIMENT_REPEAT {
-        Tensor X = Tensor::arange({1, 1, 8, 8}, DTYPE_FLOAT);
-        ASSERT_TRUE(gradient_same(functor, {X}, 1e-3, 1e-2));
+    for (int stride_h = 1; stride_h <= 2; ++stride_h) {
+        for (int stride_w = 1; stride_w <= 2; ++stride_w) {
+            for (std::string data_format: {"NCHW", "NHWC"}) {
+                for (PADDING_T padding : {PADDING_T_VALID, PADDING_T_SAME}) {
+                    for (POOLING_T pooling : {POOLING_T_MAX, POOLING_T_AVG}) {
+                        auto functor = [&](vector<Tensor> Xs) -> Tensor {
+                            return tensor_ops::pool2d(
+                                Xs[0],
+                                /*window_h=*/2,
+                                /*window_w=*/2,
+                                /*stride_h=*/stride_h,
+                                /*stride_w=*/stride_w,
+                                pooling,
+                                padding,
+                                data_format);
+                        };
+                        Tensor X;
+                        if (data_format == "NCHW") {
+                            X = Tensor::arange({1, 1, 8, 8}, DTYPE_DOUBLE);
+                        } else {
+                            X = Tensor::arange({1, 8, 8, 1}, DTYPE_DOUBLE);
+                        }
+                        ASSERT_TRUE(gradient_same(functor, {X}, 1e-3, 1e-2));
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -11,6 +11,7 @@ namespace tensor_ops {
     Tensor eltdiv(const Tensor&, const Tensor&);
     Tensor pow(const Tensor&, const Tensor& exponent);
     Tensor circular_convolution(const Tensor& content, const Tensor& shift);
+    Tensor prelu(const Tensor& x, const Tensor& weights);
 }
 
 #endif

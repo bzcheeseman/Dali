@@ -115,4 +115,16 @@ namespace tensor_ops {
         }
         return out;
     }
+
+    Tensor prelu(const Tensor& x, const Tensor& weights) {
+        Tensor out(lazy::prelu(x.w, weights.w));
+        if (graph::backprop_enabled()) {
+            auto out_dw = out.dw;
+            graph::emplace_back([weights, x, out_dw]() mutable {
+                MAYBE_GRAD(x) <<= lazy::prelu_backward_inputs(x.w, weights.w) * out_dw;
+                MAYBE_GRAD(weights) <<= lazy::prelu_backward_weights(x.w, out_dw);
+            });
+        }
+        return out;
+    }
 }  // namespace tensor_ops

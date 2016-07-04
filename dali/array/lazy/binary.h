@@ -58,6 +58,14 @@ namespace lazy {
     template<typename T, typename T2>
     LazyBinary<functor::equals, T, T2> equals(const T& a, const T2& b);
 
+    template<typename T, typename T2>
+    LazyBinary<functor::prelu, T, T2> prelu(const T& x, const T2& weights);
+
+    template<typename T, typename T2>
+    LazyBinary<functor::prelu_backward_weights, T, T2> prelu_backward_weights(const T& x, const T2& grad);
+
+    template<typename T, typename T2>
+    LazyBinary<functor::prelu_backward_inputs, T, T2> prelu_backward_inputs(const T& x, const T2& weights);
 
 }  // namespace lazy
 

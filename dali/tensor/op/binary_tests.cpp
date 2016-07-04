@@ -80,6 +80,17 @@ TEST_F(TensorBinaryTests, circular_convolution) {
     }
 }
 
+TEST_F(TensorBinaryTests, prelu) {
+    auto functor = [](vector<Tensor> Xs)-> Tensor {
+        return tensor_ops::prelu(Xs[0], Xs[1]);
+    };
+    EXPERIMENT_REPEAT {
+        auto x = Tensor::uniform(-20.0, 20.0, {4, 5, 6}, DTYPE_DOUBLE);
+        Tensor weights  = Tensor::uniform(0.5, 20.0, {6}, DTYPE_DOUBLE)[Broadcast()][Broadcast()];
+        ASSERT_TRUE(gradient_same(functor, {x, weights}, 1e-4));
+    }
+}
+
 // TEST_F(MatrixTests, recursive_sum) {
 //     auto functor = [](vector<Mat<R>>& Xs)-> Mat<R> {
 //         auto doubled = Xs[0] + Xs[0];

@@ -16,5 +16,6 @@ namespace op {
     Assignable<Array> pow(const Array& left, const Array& right);
     Assignable<Array> equals(const Array& left, const Array& right);
     Assignable<Array> circular_convolution(const Array& content, const Array& shift);
+    Assignable<Array> prelu(const Array& x, const Array& weights);
 }  // namespace op
 #endif

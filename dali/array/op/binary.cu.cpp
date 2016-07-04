@@ -87,4 +87,8 @@ namespace op {
         return lazy::circular_convolution(content, shift);
     }
 
+    Assignable<Array> prelu(const Array& x, const Array& weights) {
+        return lazy::prelu(x, weights);
+    }
+
 }  // namespace op

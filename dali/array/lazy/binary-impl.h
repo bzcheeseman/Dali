@@ -162,4 +162,7 @@ namespace lazy {
     DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(eltmin, functor::min_scalar);
     DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(clip, functor::clip);
     DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(equals, functor::equals);
+    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(prelu, functor::prelu);
+    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(prelu_backward_weights, functor::prelu_backward_weights);
+    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(prelu_backward_inputs, functor::prelu_backward_inputs);
 }  // namespace lazy

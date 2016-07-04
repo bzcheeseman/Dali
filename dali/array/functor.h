@@ -448,6 +448,27 @@ namespace functor {
             }
         }
     };
+
+    template<typename R>
+    struct prelu {
+        MSHADOW_XINLINE static R Map(const R& x, const R& weight) {
+            return x > 0 ? x : weight * x;
+        }
+    };
+
+    template<typename R>
+    struct prelu_backward_weights {
+        MSHADOW_XINLINE static R Map(const R& x, const R& grad) {
+            return x > 0 ? 0 : x * grad;
+        }
+    };
+
+    template<typename R>
+    struct prelu_backward_inputs {
+        MSHADOW_XINLINE static R Map(const R& x, const R& weight) {
+            return x > 0 ? 1.0 : weight;
+        }
+    };
 } //namespace functor
 
 #endif

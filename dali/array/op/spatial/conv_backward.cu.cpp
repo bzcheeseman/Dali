@@ -158,11 +158,11 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
                     stride_h,
                     stride_w,
                     /*dilate_h=*/1,
-                    /*dilate_w=*/1
-                    // /*prepad_h=*/info.padding_h,
-                    // /*prepad_w=*/info.padding_w,
-                    // /*postpad_h=*/info.padding_h + info.odd_padding_h,
-                    // /*postpad_w=*/info.padding_w + info.odd_padding_w
+                    /*dilate_w=*/1,
+                    /*prepad_h=*/info.padding_h,
+                    /*prepad_w=*/info.padding_w,
+                    /*postpad_h=*/info.padding_h + info.odd_padding_h,
+                    /*postpad_w=*/info.padding_w + info.odd_padding_w
                 ),
                 /*collapse_leading=*/false
             );
@@ -220,11 +220,11 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
                     stride_h,
                     stride_w,
                     /*dilate_h=*/1,
-                    /*dilate_w=*/1
-                    // /*prepad_h=*/info.padding_h,
-                    // /*prepad_w=*/info.padding_w,
-                    // /*postpad_h=*/info.padding_h + info.odd_padding_h,
-                    // /*postpad_w=*/info.padding_w + info.odd_padding_w
+                    /*dilate_w=*/1,
+                    /*prepad_h=*/info.padding_h,
+                    /*prepad_w=*/info.padding_w,
+                    /*postpad_h=*/info.padding_h + info.odd_padding_h,
+                    /*postpad_w=*/info.padding_w + info.odd_padding_w
                 ),
                 /*collapse_leading=*/false
             );

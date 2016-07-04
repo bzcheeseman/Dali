@@ -60,8 +60,8 @@ struct LazyIm2Col : public LazyFunction<LazyIm2Col<data_format, SrcExp>, SrcExp,
                                                 stride_w_,
                                                 dilate_h_,
                                                 dilate_w_,
-                                                /*padding_h=*/0,
-                                                /*padding_w=*/0);
+                                                /*prepad_h=*/0,
+                                                /*prepad_w=*/0);
     }
 
     template<int devT, typename T, int ndim>
@@ -193,7 +193,7 @@ struct LazyCol2Im : public LazyFunction<LazyCol2Im<data_format, SrcExp>, SrcExp,
                 MshadowWrapper<devT,T,SrcExp>::wrap(
                     src, device, output_shape, wrap_array.template collapse_leading_d<2>()
                 ), vector2shape<4>(image_shape), filter_h, filter_w, stride_h,
-                stride_w, dilate_h, dilate_w
+                stride_w, dilate_h, dilate_w, 0, 0, 0, 0
             )) {
         return mshadow::expr::pack_col2patch<data_format>(
             MshadowWrapper<devT,T,SrcExp>::wrap(
@@ -208,7 +208,11 @@ struct LazyCol2Im : public LazyFunction<LazyCol2Im<data_format, SrcExp>, SrcExp,
             stride_h,
             stride_w,
             dilate_h,
-            dilate_w
+            dilate_w,
+            /*prepad_h=*/0,
+            /*prepad_w=*/0,
+            /*postpad_h=*/0,
+            /*postpad_w=*/0
         );
     }
 };

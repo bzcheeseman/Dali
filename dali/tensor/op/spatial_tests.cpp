@@ -30,7 +30,7 @@ TEST_F(TensorSpatialTests, conv2d) {
         for (int stride_w = 1; stride_w <= 2; ++stride_w) {
             for (std::string data_format: {"NCHW", "NHWC"}) {
                 // TODO: add support for PADDING_T_SAME
-                for (PADDING_T padding : {PADDING_T_VALID}) {
+                for (PADDING_T padding : {PADDING_T_VALID, PADDING_T_SAME }) {
                     for (DType dtype : {DTYPE_FLOAT, DTYPE_DOUBLE}) {
                         Tensor X, W;
                         if (data_format == "NCHW") {
@@ -56,7 +56,7 @@ TEST_F(TensorSpatialTests, conv2d) {
                                 padding,
                                 data_format);
                         };
-                        ASSERT_TRUE(gradient_same(functor, {X, W}, 1e-3, 1e-2));
+                        ASSERT_TRUE(gradient_same(functor, {X, W}, 1e-2, 1e-2));
                     }
                 }
             }

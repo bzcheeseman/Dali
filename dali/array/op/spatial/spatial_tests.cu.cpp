@@ -309,8 +309,6 @@ TEST_P(ArraySpatialTests, pool2d_simple) {
 
 }
 
-
-
 TEST_P(ArraySpatialTests, conv2d_forward) {
     for (int stride_h = 1; stride_h <= 3; ++stride_h) {
         for (int stride_w = 1; stride_w <= 3; ++stride_w) {

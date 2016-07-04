@@ -202,7 +202,6 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                     mshadow::expr::F<mshadow::op::identity>(input.d2());
         }
 
-
         auto out_access_mode = internal::OperatorAM<operator_t>::get(out);
 
         cudnn::conv2d(

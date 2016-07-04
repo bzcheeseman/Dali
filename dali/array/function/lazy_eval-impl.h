@@ -1,11 +1,26 @@
 #include "dali/array/lazy/reducers.h"
 
 namespace internal {
-    struct ReductionInstruction {
-        bool required = false;
-        int axis = -1;
-        bool all_reduce = false;
+    enum REDUCTION_INSTR_T {
+        REDUCTION_INSTR_T_ALL       = 0,
+        REDUCTION_INSTR_T_CONTIG    = 1,
+        REDUCTION_INSTR_T_NONCONTIG = 2,
+        REDUCTION_INSTR_T_NONE      = 3
     };
+
+    struct ReductionInstruction {
+        REDUCTION_INSTR_T type = REDUCTION_INSTR_T_NONE;
+
+        int reduce_start = -1;
+        int reduce_end   = -1;
+        std::vector<int> noncontiguous_axes;
+
+        inline bool all() const           { return type == REDUCTION_INSTR_T_ALL;       }
+        inline bool contiguous() const    { return type == REDUCTION_INSTR_T_CONTIG;    }
+        inline bool noncontiguous() const { return type == REDUCTION_INSTR_T_NONCONTIG; }
+        inline bool none() const          { return type == REDUCTION_INSTR_T_NONE;      }
+    };
+
 
     // deduce how many reductions need to be made, and if an all-reduce could achieve it
     ReductionInstruction requires_reduction(const Array& output, const std::vector<int>& in_bshape);
@@ -26,11 +41,12 @@ namespace lazy {
         auto this_bshape = expr.bshape();
 
         return Assignable<OutType>([this_self, this_bshape](OutType& out, const OPERATOR_T& operator_t) {
-            internal::ReductionInstruction reduction_dimension;
+            internal::ReductionInstruction reduction_instruction;
             if (operator_t == OPERATOR_T_LSE) {
-                reduction_dimension = internal::requires_reduction(out, this_bshape);
+                reduction_instruction = internal::requires_reduction(out, this_bshape);
             }
-            ASSERT2(!reduction_dimension.required, "Autoreduction for <<= can only be performed on Arrays.");
+            ASSERT2(reduction_instruction.none(),
+                    "Autoreduction for <<= can only be performed on Arrays.");
             LazyEvaluator<OutType, Class>::run(this_self).assign_to(out, operator_t);
         });
     }
@@ -57,18 +73,21 @@ namespace lazy {
             auto this_bshape = expr.bshape();
 
             return Assignable<Array>([this_self, this_bshape](Array& out, const OPERATOR_T& operator_t) {
-                internal::ReductionInstruction reduction_dimension;
+                internal::ReductionInstruction reduction_instruction;
                 if (operator_t == OPERATOR_T_LSE) {
-                    reduction_dimension = internal::requires_reduction(out, this_bshape);
+                    reduction_instruction = internal::requires_reduction(out, this_bshape);
                 }
-                if (reduction_dimension.axis != -1) {
+                if (reduction_instruction.contiguous()) {
                     auto reduced_expr = lazy::sum(
                            this_self,
-                           /*axis=*/reduction_dimension.axis,
+                           /*reduce_start=*/reduction_instruction.reduce_start,
+                           /*reduce_end=*/reduction_instruction.reduce_end,
                            /*keepdims=*/true);
                     auto computation_with_reduce = lazy::Eval<Array>::eval_no_autoreduce(reduced_expr);
                     computation_with_reduce.assign_to(out, operator_t);
-                } else if (reduction_dimension.all_reduce) {
+                } else if (reduction_instruction.noncontiguous()) {
+                    ASSERT2(false, "Noncontiguous axis reduction is not supported yet.");
+                } else if (reduction_instruction.all()) {
                     auto reduced_expr = lazy::sum(this_self);
                     auto computation_with_reduce = lazy::Eval<Array>::eval_no_autoreduce(reduced_expr);
                     auto out_as_scalar = out.copyless_reshape({});
@@ -135,14 +154,15 @@ namespace lazy {
                                 << operator_to_name(OPERATOR_T_LSE)
                                 << " but got " << operator_to_name(operator_t)
                                 << " instead");
-                auto reduction_dimension = internal::requires_reduction(
+                auto reduction_instruction = internal::requires_reduction(
                     out,
                     this_bshape
                 );
-                if (reduction_dimension.axis != -1) {
+                if (reduction_instruction.contiguous()) {
                     auto reduced_expr = lazy::sum(
                            this_self,
-                           /*axis=*/reduction_dimension.axis,
+                           /*reduce_start=*/reduction_instruction.reduce_start,
+                           /*reduce_end=*/reduction_instruction.reduce_end,
                            /*keepdims=*/true);
                     auto computation_with_reduce = EvalWithOperator<OPERATOR_T_LSE,OutType>::eval_no_autoreduce(
                         reduced_expr
@@ -151,7 +171,7 @@ namespace lazy {
                         out,
                         OPERATOR_T_LSE
                     );
-                } else if (reduction_dimension.all_reduce) {
+                } else if (reduction_instruction.all()) {
                     auto reduced_expr = lazy::sum(this_self);
                     auto computation_with_reduce = EvalWithOperator<OPERATOR_T_LSE,OutType>::eval_no_autoreduce(
                         reduced_expr
@@ -161,6 +181,8 @@ namespace lazy {
                         out_as_scalar,
                         OPERATOR_T_LSE
                     );
+                } else if (reduction_instruction.noncontiguous()) {
+                    ASSERT2(false, "Noncontiguous axis reduction is not supported yet.");
                 } else {
                     LazyEvaluator<OutType, Class>::template run_with_operator<OPERATOR_T_LSE>(
                         this_self

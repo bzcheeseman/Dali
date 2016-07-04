@@ -68,17 +68,26 @@ namespace lazy {
     DALI_LAZY_ARRAY_ALL_REDUCER(min, mshadow::red::minimum);
     DALI_LAZY_ARRAY_ALL_REDUCER(max, mshadow::red::maximum);
 
-    #define DALI_LAZY_ARRAY_AXIS_REDUCER(OPNAME, REDUCERNAME, RETURN_INDICES)\
+    #define DALI_DEFINE_LAZY_ARRAY_AXIS_REDUCER(OPNAME, REDUCERNAME, RETURN_INDICES)\
         template<typename ExprT>\
-        LazyAxisReducer<REDUCERNAME, ExprT, RETURN_INDICES> OPNAME(const Exp<ExprT>& expr, const int& axis, bool keepdims) {\
-            return LazyAxisReducer<REDUCERNAME, ExprT, RETURN_INDICES>(expr.self(), axis, keepdims);\
+        LazyAxisReducer<REDUCERNAME, ExprT, RETURN_INDICES> OPNAME(const Exp<ExprT>& expr,\
+                                                                   const int& axis, \
+                                                                   bool keepdims) {\
+            return LazyAxisReducer<REDUCERNAME, ExprT, RETURN_INDICES>(expr.self(), axis, axis + 1, keepdims);\
+        }\
+        template<typename ExprT>\
+        LazyAxisReducer<REDUCERNAME, ExprT, RETURN_INDICES> OPNAME(const Exp<ExprT>& expr, \
+                                                                   const int& reduce_start, \
+                                                                   const int& reduce_end, \
+                                                                   bool keepdims) {\
+            return LazyAxisReducer<REDUCERNAME, ExprT, RETURN_INDICES>(expr.self(), reduce_start, reduce_end, keepdims);\
         }\
 
-    DALI_LAZY_ARRAY_AXIS_REDUCER(sum, mshadow::red::sum, false);
-    DALI_LAZY_ARRAY_AXIS_REDUCER(product, mshadow::red::product, false);
-    DALI_LAZY_ARRAY_AXIS_REDUCER(min, mshadow::red::minimum, false);
-    DALI_LAZY_ARRAY_AXIS_REDUCER(max, mshadow::red::maximum, false);
+    DALI_DEFINE_LAZY_ARRAY_AXIS_REDUCER(sum, mshadow::red::sum, false);
+    DALI_DEFINE_LAZY_ARRAY_AXIS_REDUCER(product, mshadow::red::product, false);
+    DALI_DEFINE_LAZY_ARRAY_AXIS_REDUCER(min, mshadow::red::minimum, false);
+    DALI_DEFINE_LAZY_ARRAY_AXIS_REDUCER(max, mshadow::red::maximum, false);
 
-    DALI_LAZY_ARRAY_AXIS_REDUCER(argmax, mshadow::red::maximum, true);
-    DALI_LAZY_ARRAY_AXIS_REDUCER(argmin, mshadow::red::minimum, true);
+    DALI_DEFINE_LAZY_ARRAY_AXIS_REDUCER(argmax, mshadow::red::maximum, true);
+    DALI_DEFINE_LAZY_ARRAY_AXIS_REDUCER(argmin, mshadow::red::minimum, true);
 }  // namespace lazy

@@ -14,26 +14,45 @@ namespace internal {
         }
 
         auto out_bshape = output.bshape();
-        int num_reductions = 0;
 
-        for (int i = 0; i < out_bshape.size(); i++) {
+        std::vector<int> reduction_axes;
+
+        for (int i = 0; i < out_bshape.size(); ++i) {
             if (out_bshape[i] < 0) {
                 ASSERT2(out_bshape[i] == -1,
                         "Assigning to broadcast_reshaped Array is not supported at the time.");
                 if (std::abs(in_bshape[i]) > 1) {
                     // see if number of reductions is greater than 1 or equal to size of output.
-                    num_reductions += 1;
-                    instruction.axis = i;
+                    reduction_axes.emplace_back(i);
                 }
             }
         }
 
-        if (num_reductions > 1 && num_reductions == out_bshape.size()) {
-            instruction.all_reduce = true;
-            instruction.axis = -1;
+        if (reduction_axes.size() == 0) {
+            return instruction;
         }
-        ASSERT2(num_reductions == out_bshape.size() || num_reductions <= 1,
-            "Can (currently) only assign to an array with at most 1 broadcasted dimension, or to fully broadcasted scalar");
+
+        if (reduction_axes.size() == out_bshape.size()) {
+            instruction.type = REDUCTION_INSTR_T_ALL;
+            return instruction;
+        }
+
+        bool contiguous = true;
+        for (int i = 0; i + 1 < reduction_axes.size(); ++i) {
+            if (reduction_axes[i] + 1 != reduction_axes[i + 1]) {
+                contiguous = false;
+                break;
+            }
+        }
+
+        if (contiguous) {
+            instruction.reduce_start = reduction_axes[0];
+            instruction.reduce_end   = reduction_axes[0] + reduction_axes.size();
+            instruction.type = REDUCTION_INSTR_T_CONTIG;
+        } else {
+            instruction.noncontiguous_axes = reduction_axes;
+            instruction.type = REDUCTION_INSTR_T_NONCONTIG;
+        }
         return instruction;
     }
 }

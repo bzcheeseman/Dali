@@ -4,34 +4,50 @@
 #include "dali/array/function/evaluation_dim.h"
 
 template<typename ExprT>
-static inline auto wrap_3d_around_axis(const ExprT& expr, const std::vector<int>& real_expr_shape, const int& kept_axis) ->
+static inline auto wrap_3d_around_axis(const ExprT& expr,
+                                       const std::vector<int>& real_expr_shape,
+                                       const int& start_middle,
+                                       const int& end_middle) ->
         decltype(mshadow::expr::reshape(expr, mshadow::Shape3(1,1,1))) {
 
-    int before_size = 1;
-    for (int i = 0; i < kept_axis; i++) {
-        before_size *= real_expr_shape[i];
-    }
-    int after_size = 1;
-    for (int i = kept_axis + 1; i < real_expr_shape.size(); i ++) {
-        after_size *= real_expr_shape[i];
+    int before_volume = 1;
+    for (int i = 0; i < start_middle; i++) {
+        before_volume *= real_expr_shape[i];
     }
 
-    return mshadow::expr::reshape(expr, mshadow::Shape3(before_size, real_expr_shape[kept_axis], after_size));
+    int middle_volume = 1;
+    for (int i = start_middle; i < end_middle; ++i) {
+        middle_volume *= real_expr_shape[i];
+    }
+
+    int after_volume = 1;
+    for (int i = end_middle; i < real_expr_shape.size(); i ++) {
+        after_volume *= real_expr_shape[i];
+    }
+
+    return mshadow::expr::reshape(
+        expr,
+        mshadow::Shape3(before_volume, middle_volume, after_volume)
+    );
 }
 
 template<class Class, typename ExprT, typename Functor, bool return_indices>
-struct BaseLazyAxisReducer : public LazyFunction<Class, ExprT, int, bool> {
+struct BaseLazyAxisReducer : public LazyFunction<Class, ExprT, int, int, bool> {
     static const int evaluation_dim;
     ExprT expr;
-    const int reduce_axis;
+    const int start_reduce;
+    const int end_reduce;
     const bool keepdims;
 
-    static std::vector<int> lazy_output_bshape(const ExprT& expr, const int& reduce_axis_, bool keepdims) {
+    static std::vector<int> lazy_output_bshape(const ExprT& expr,
+                                               const int& start_reduce_,
+                                               const int& end_reduce_,
+                                               bool keepdims) {
         auto input_bshape = expr.bshape();
         std::vector<int> output_bshape;
         output_bshape.reserve(keepdims ? input_bshape.size() : (input_bshape.size() - 1));
         for (int i = 0; i < input_bshape.size(); i++) {
-            if (i != reduce_axis_) {
+            if (i < start_reduce_ || i >= end_reduce_) {
                 // if axis is not reduce, keep it
                 output_bshape.emplace_back(input_bshape[i]);
             } else if (keepdims) {
@@ -43,13 +59,19 @@ struct BaseLazyAxisReducer : public LazyFunction<Class, ExprT, int, bool> {
         return output_bshape;
     }
 
-    BaseLazyAxisReducer(const ExprT& expr_, const int& reduce_axis_, bool keepdims_) :
-            LazyFunction<Class, ExprT, int, bool>(expr_, reduce_axis_, keepdims_),
-            reduce_axis(reduce_axis_),
+    BaseLazyAxisReducer(const ExprT& expr_,
+                        const int& start_reduce_,
+                        const int& end_reduce_,
+                        bool keepdims_) :
+            LazyFunction<Class, ExprT, int, int, bool>(expr_, start_reduce_, end_reduce_, keepdims_),
+            start_reduce(start_reduce_),
+            end_reduce(end_reduce_),
             keepdims(keepdims_),
             expr(expr_) {
-        ASSERT2(0 <= reduce_axis && reduce_axis < expr_.bshape().size(),
-                utils::MS() << "Reduction axis (" << reduce_axis << ") must be less than input's ndims (" << expr_.bshape().size() << ")");
+        ASSERT2(0 <= start_reduce_ && start_reduce_ < end_reduce_ && end_reduce_ <= expr_.bshape().size(),
+                utils::MS() << "Reduction axis range ["
+                            << start_reduce_ << ", " << end_reduce_ << ")"
+                            << " must be a nonempty range inside [0, " << expr_.bshape().size() << ").");
     }
 
     template<int devT,typename T, int ndim>
@@ -65,7 +87,8 @@ struct BaseLazyAxisReducer : public LazyFunction<Class, ExprT, int, bool> {
                                 wrap_array.template d<lazy::OptimalNdimForInput<ExprT,3>::value>()
                             ),
                             output_shape,
-                            reduce_axis
+                            start_reduce,
+                            end_reduce
                         ),
                         1
                     ),
@@ -73,24 +96,44 @@ struct BaseLazyAxisReducer : public LazyFunction<Class, ExprT, int, bool> {
                 )
             ) {
         // Our reduction operates on an expression with the following shape:
-        // (e.g. say we are reducing a matrix of size {3,4} over the last axis
-        // thus we expect our output to have shape {3,})
-        std::vector<int> new_expr_shape(output_shape);
-        // in order to prepare our input expression to produce the right
-        // reduction, we re-insert the dimension that was reduced
-        // (e.g. reduce of {3,4} with add back a 4 at the end so: {3,} -> {3,4})
-        int input_expr_reduced_axis_size = std::abs(expr.bshape()[reduce_axis]);
-        // if keepdims was passed as an argument, our output shape already
-        // has the reduced axis present, but with size 1. Instead of inserting
-        // back the necessary reduce axis, we instead replace the dimension
-        // that was forced to be kept post-reduction
-        // (e.g. {3,4} -> reduce -> {3,} -> keepdims -> {3,1} => reintroduce last axis => {3,4})
+        std::vector<int> new_expr_shape;
+        // (e.g. say we are reducing a matrix of size {Broadcasted, 3, 4} over the
+        // middle axis and saving it to an output location of shape {5, 4}.
+        // In order to prepare our input expression to produce the right
+        // shape, we take the output shape and re-insert the dimensions in
+        // the reduced range.
+        //
+        // For example, reduce of {5,3,4} with add back a 3 in the middle so:
+        // {5, 4} -> {5, 3, 4}
+        //
+
+        std::vector<int> expr_bshape = expr.bshape();
+
         if (keepdims) {
-            new_expr_shape[reduce_axis] = input_expr_reduced_axis_size;
+            // If keepdims was passed as an argument, our output shape already
+            // has the reduced axes present, but with size 1. Instead of inserting
+            // back the necessary reduced axes, we instead replace the dimensions
+            // that were forced to be kept post-reduction
+            // {B, 3, 4} -> reduce -> {5, 1, 4} -> reintroduce middle axis -> {5, 3, 4}
+            // ^^^^^^^^^ expr_bshape  ^^^^^^^^^ output_shape                  ^^^^^^^^^ new_expr_shape
+            new_expr_shape = output_shape;
+            for (int i = start_reduce; i < end_reduce; ++i) {
+                int dim_size_before_reduction = std::abs(expr_bshape[i]);
+                new_expr_shape[i] = dim_size_before_reduction;
+            }
         } else {
-            // if we do not use keepdims, then we can simply insert at the location
-            // of the reduction axis, the previous dimension's size:
-            new_expr_shape.insert(new_expr_shape.begin() + reduce_axis, input_expr_reduced_axis_size);
+            int reduce_range_length = end_reduce - start_reduce;
+            for (int i = 0; i < expr_bshape.size(); ++i) {
+                if (i < start_reduce) {
+                    new_expr_shape.emplace_back(output_shape[i]);
+                } else if (i < end_reduce) {
+                    // if we do not use keepdims, then we can insert at the location
+                    // of the reduction axis, the previous dimension's size:
+                    new_expr_shape.emplace_back(std::abs(expr_bshape[i]));
+                } else {
+                    new_expr_shape.emplace_back(output_shape[i - reduce_range_length]);
+                }
+            }
         }
 
         auto wrapped_expr  =
@@ -98,7 +141,7 @@ struct BaseLazyAxisReducer : public LazyFunction<Class, ExprT, int, bool> {
                         expr, device, new_expr_shape, wrap_array.template d<lazy::OptimalNdimForInput<ExprT,3>::value>()
                 );
         auto result_expr = mshadow::expr::reduce_with_axis<Functor, return_indices>(
-            wrap_3d_around_axis(wrapped_expr, new_expr_shape, reduce_axis),
+            wrap_3d_around_axis(wrapped_expr, new_expr_shape, start_reduce, end_reduce),
             1
         );
 

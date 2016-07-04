@@ -88,7 +88,7 @@ struct Conv2dBwdBiasFunction : public Function<Conv2dBwdBiasFunction,
     }
 
 #ifdef DALI_USE_CUDNN
-    template<OPERATOR_T operator_t, typename T, int devT, DALI_FUNC_DISABLE_IF_INT>
+    template<OPERATOR_T operator_t, typename T, int devT>
     void cudnn_conv_bias_bwd(TypedArray<devT, T> bias_dw,
                              TypedArray<devT, T> out_dw,
                              const std::string& data_format) {

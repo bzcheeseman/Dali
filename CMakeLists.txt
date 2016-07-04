@@ -163,7 +163,6 @@ if (WITH_CUDA)
     LIST(APPEND CUDA_NVCC_FLAGS
         --compiler-options ${CUDA_EXTRA_FLAGS}
         -lineinfo
-        -Xptxas -dlcm=cg
         -use_fast_math
         -std=c++11
     )

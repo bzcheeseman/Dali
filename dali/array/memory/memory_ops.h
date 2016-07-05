@@ -8,7 +8,7 @@
 #include "dali/config.h"
 
 namespace memory {
-    struct Device;
+    class Device;
     struct DevicePtr;
 
     // allocates amount bytes of memory

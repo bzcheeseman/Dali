@@ -11,8 +11,8 @@
 #include "dali/array/memory/device.h"
 
 class Array;
-class ArraySubtensor;
-class ArrayGather;
+struct ArraySubtensor;
+struct ArrayGather;
 
 template<typename Property>
 struct PropertyEqualForAllArgsReducer {

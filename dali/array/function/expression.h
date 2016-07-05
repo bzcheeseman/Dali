@@ -3,7 +3,7 @@
 
 // inspired by tqchen's mshadow
 template<typename OutType>
-class Assignable;
+struct Assignable;
 
 template<typename SubType>
 struct Exp {

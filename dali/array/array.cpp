@@ -973,8 +973,9 @@ Array& Array::operator=(const Assignable<Array>& assignable) {
     return *this;
 }
 
-void Array::print(std::basic_ostream<char>& stream, const int& indent, const bool& add_newlines) const {
-    std::string end_line_spacing = add_newlines ? "\n" : "";
+void Array::print(std::basic_ostream<char>& stream, const int& indent, const bool& add_newlines, const bool& print_comma) const {
+    std::string end_line_spacing("");
+    if (add_newlines) end_line_spacing += "\n";
     int indent_increment = add_newlines ? 4 : 0;
     if (ndim() == 0) {
         if (dtype() == DTYPE_FLOAT) {
@@ -990,7 +991,6 @@ void Array::print(std::basic_ostream<char>& stream, const int& indent, const boo
     } else if (ndim() == 1) {
         stream << std::string(indent, ' ');
         stream << "[";
-
         for(int i = 0; i < state->shape[0]; i += 1) {
             stream << std::fixed
                       << std::setw( 7 ) /* keep 7 digits*/
@@ -998,17 +998,25 @@ void Array::print(std::basic_ostream<char>& stream, const int& indent, const boo
                       << std::setfill( ' ' );
             Array scalar = (*this)[i];
             scalar.print(stream, 0, false);
-            if (i != state->shape[0] - 1) stream << " ";
+            if (i != state->shape[0] - 1) stream << ", ";
         }
         stream << "]";
+        if (print_comma) stream << ",";
         stream << end_line_spacing;
     } else {
         stream << std::string(indent, ' ') << "[" << end_line_spacing;
         for (int i = 0; i < state->shape[0]; ++i) {
             Array subtensor = (*this)[i];
-            subtensor.print(stream, indent + indent_increment, add_newlines);
+            subtensor.print(
+                stream,
+                indent + indent_increment,
+                add_newlines,
+                /*print_comma=*/i != state->shape[0] - 1
+            );
         }
-        stream << std::string(indent, ' ') << "]" << end_line_spacing;
+        stream << std::string(indent, ' ') << "]";
+        if (print_comma) stream << ",";
+        stream << end_line_spacing;
     }
 }
 

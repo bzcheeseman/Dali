@@ -240,7 +240,7 @@ class Array : public Exp<Array> {
     }
 
     /* Debugging */
-    void print(std::basic_ostream<char>& stream = std::cout, const int& indent=0, const bool& add_newlines=true) const;
+    void print(std::basic_ostream<char>& stream = std::cout, const int& indent=0, const bool& add_newlines=true, const bool& print_comma=false) const;
     void debug_memory(const bool& print_contents=true) const;
 
     /* Operations */

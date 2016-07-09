@@ -745,7 +745,18 @@ Array Array::dimshuffle(const std::vector<int>& pattern) const {
     auto current_strides = normalized_strides();
 
     for (int i = 0; i < dimensionality; i++) {
-        const auto& pick_from = pattern[i];
+        int pick_from = pattern[i];
+        if (pick_from < 0) {
+            // allow negative transpose values
+            // (e.g. to swap first and last dimensions use {0, -1})
+            pick_from = pick_from + current_shape.size();
+        }
+        ASSERT2(0 <= pick_from && pick_from < current_shape.size(),
+            utils::MS() << "tranpose axis must be positive and less than the "
+                        << "dimensionality of the array "
+                        << "(got " << pattern[i] << " and ndim="
+                        << current_shape.size() << ")."
+        );
         ASSERT2(current_shape[pick_from] != -1,
             utils::MS() << "duplicate dimension in dimshuffle pattern " << pattern
         );

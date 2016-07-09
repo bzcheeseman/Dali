@@ -59,6 +59,8 @@ namespace memory {
         bool is_gpu() const;
         static Device gpu(int number);
         static int num_gpus();
+        std::string gpu_name() const;
+
 #endif
     };
 

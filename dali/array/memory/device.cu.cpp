@@ -39,9 +39,8 @@ namespace memory {
         else if(is_gpu()) {
             std::string real_name;
             if (real_gpu_name) {
-                cudaDeviceProp props;
-                cudaGetDeviceProperties(&props, mNumber);
-                real_name = utils::MS() << " (" << std::string(props.name) << ")";
+
+                real_name = utils::MS() << " (" << gpu_name() << ")";
             }
             return utils::MS() << "gpu" << mNumber << real_name;
         }
@@ -83,7 +82,7 @@ namespace memory {
     std::vector<memory::Device> Device::installed_devices() {
         std::vector<memory::Device> result;
         result.push_back(Device::cpu()); // the day this line will be iffed guared
-                                 // I will know the future is here.
+                                         // I will know the future is here.
 #ifdef DALI_USE_CUDA
         for (int i=0; i < num_gpus(); ++i) {
             result.push_back(Device::gpu(i));
@@ -113,6 +112,14 @@ namespace memory {
         cudaGetDeviceCount(&devices);
         return devices;
     }
+
+    std::string Device::gpu_name() const {
+        ASSERT2(is_gpu(), "gpu_name must only be called for GPU devices.");
+        cudaDeviceProp props;
+        cudaGetDeviceProperties(&props, mNumber);
+        return std::string(props.name);
+    }
+
 #endif
 
 

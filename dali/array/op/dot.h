@@ -12,7 +12,7 @@ namespace op {
 
     Assignable<Array> outer(const Array& a, const Array& b);
 
-    Assignable<Array> vectordot(const Array& a, const Array& b);
+    Assignable<Array> inner(const Array& a, const Array& b);
 
     Assignable<Array> matrixdot(const Array& a, const Array& b);
 

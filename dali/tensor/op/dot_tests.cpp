@@ -22,7 +22,17 @@ TEST_F(TensorDotTests, dot_2D) {
         auto B = Tensor::uniform(-1.0, 1.0, {4, 3}, DTYPE_DOUBLE);
         ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-4, DEFAULT_GRAD_EPS, true));
     }
+}
 
+TEST_F(TensorDotTests, outer_dot) {
+    auto functor = [](vector<Tensor> Xs)-> Tensor {
+        return tensor_ops::outer(Xs[0], Xs[1]);
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Tensor::uniform(-1.0, 1.0, {4}, DTYPE_DOUBLE);
+        auto B = Tensor::uniform(-1.0, 1.0, {5}, DTYPE_DOUBLE);
+        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-4, DEFAULT_GRAD_EPS, true));
+    }
 }
 
 TEST_F(TensorDotTests, dot_3D) {

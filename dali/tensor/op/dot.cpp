@@ -50,7 +50,7 @@ namespace tensor_ops {
             // otherwise it is reduced over last.
             return tensordot(a, b, {a_ndim - 1}, {std::max(0, b_ndim - 2)});
         } else if (a_ndim == 1 && b_ndim == 1) {
-            return vectordot(a, b);
+            return inner(a, b);
         } else if (a_ndim == 2 && b_ndim == 2) {
             return matrixdot(a, b);
         } else {
@@ -58,9 +58,20 @@ namespace tensor_ops {
         }
     }
 
+    Tensor outer(const Tensor& a, const Tensor& b) {
+        Tensor out(op::outer(a.w, b.w));
+        if (graph::backprop_enabled()) {
+            auto out_dw = out.dw;
+            graph::emplace_back([a, b, out_dw]() mutable {
+                MAYBE_GRAD(a) <<= op::dot(out_dw, b.w);
+                MAYBE_GRAD(b) <<= op::dot(a.w, out_dw);
+            });
+        }
+        return out;
+    }
 
-    Tensor vectordot(const Tensor& a, const Tensor& b) {
-        Tensor out(op::vectordot(a.w, b.w));
+    Tensor inner(const Tensor& a, const Tensor& b) {
+        Tensor out(op::inner(a.w, b.w));
 
         if (graph::backprop_enabled()) {
             auto out_dw = out.dw;

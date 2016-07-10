@@ -5,8 +5,8 @@
 
 namespace tensor_ops {
     Tensor dot(const Tensor&, const Tensor&);
-
-    Tensor vectordot(const Tensor& a, const Tensor& b);
+    Tensor outer(const Tensor&, const Tensor&);
+    Tensor inner(const Tensor& a, const Tensor& b);
     Tensor matrixdot(const Tensor& a, const Tensor& b);
     Tensor matrix_vector_dot(const Tensor& a, const Tensor& b);
     Tensor tensordot(const Tensor& a, const Tensor& b, const int& axis);

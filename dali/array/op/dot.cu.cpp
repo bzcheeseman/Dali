@@ -273,11 +273,11 @@ namespace op {
         );
     }
 
-    Assignable<Array> vectordot(
+    Assignable<Array> inner(
             const Array& a,
             const Array& b) {
         ASSERT2(a.ndim() == 1 && b.ndim() == 1,
-            utils::MS() << "VectorDot must be called on a pair of vectors, but got a.ndim()="
+            utils::MS() << "inner must be called on a pair of vectors, but got a.ndim()="
                         << a.ndim() << " and b.ndim()=" << b.ndim() << " tensors.");
         ASSERT2(a.bshape()[0] == b.bshape()[0] || (a.bshape()[0] == -1) || (b.bshape()[0] == -1),
             utils::MS() << "shapes " << a.shape() << " and " << b.shape() << " not aligned: "
@@ -373,7 +373,7 @@ namespace op {
             // otherwise it is reduced over last.
             return tensordot(a, b, {a_ndim - 1}, {std::max(0, b_ndim - 2)});
         } else if (a_ndim == 1 && b_ndim == 1) {
-            return vectordot(a, b);
+            return inner(a, b);
         } else if (a_ndim == 2 && b_ndim == 2) {
             return matrixdot(a, b);
         } else {

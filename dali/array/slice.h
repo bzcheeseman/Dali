@@ -1,10 +1,11 @@
 #ifndef DALI_ARRAY_SLICE_H
 #define DALI_ARRAY_SLICE_H
 
-#include <optional/optional.h>
 #include <ostream>
 #include <string>
 #include <vector>
+
+#include <dali/utils/optional.h>
 
 // Empty struct, used for informing a sliced container to insert
 // a newaxis at the currently sliced dimensionality, e.g.:
@@ -51,11 +52,12 @@ struct SlicingInProgress {
     };
 
     int consumed_dims;
-    std::vector<Slice>            slice;
+    std::vector<Slice>       slice;
     std::vector<SliceAction> action;
     Container input;
 
   public:
+    SlicingInProgress();
     SlicingInProgress(const Container& input_);
     SlicingInProgress(const SlicingInProgress& other);
     SlicingInProgress<Container> operator[](const Slice& s);

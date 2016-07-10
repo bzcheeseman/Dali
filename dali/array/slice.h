@@ -21,9 +21,9 @@ struct Broadcast {
 struct Slice {
     typedef std::experimental::optional<int> optional_int_t;
 
-    const int start;
-    const optional_int_t end;
-    const int step;
+    int start;
+    optional_int_t end;
+    int step;
     Slice();
     Slice(const optional_int_t& end);
     Slice(const optional_int_t& start, const optional_int_t& end);
@@ -33,9 +33,11 @@ struct Slice {
 
     // converts negative indexes to positive indexes
     // and verifies that indexes are in range.
+    Slice(const Slice& other);
     Slice(const Slice& other, const int& dim_size);
     // calls the constructor above.
     static Slice normalize_and_check(const Slice&, const int& dim_size);
+
 
     int size() const;
     bool contains(const int& index) const;

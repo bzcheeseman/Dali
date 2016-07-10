@@ -93,6 +93,13 @@ class Array : public Exp<Array> {
     static Array ones(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
     static Array ones_like(const Array& other);
 
+    // Warning: after this function call Array takes ownership of the buffer.
+    static Array adopt_buffer(void* buffer,
+                              const std::vector<int>& shape,
+                              DType dtype,
+                              memory::Device buffer_location=memory::Device::cpu(),
+                              const std::vector<int>& strides = {});
+
     // IO methods
     static Array load(const std::string& fname);
     static Array load(FILE * fp);

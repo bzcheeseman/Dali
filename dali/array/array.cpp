@@ -264,6 +264,21 @@ Array Array::ones_like(const Array& other) {
     }
 }
 
+Array Array::adopt_buffer(void* buffer,
+                          const std::vector<int>& shape,
+                          DType dtype,
+                          memory::Device buffer_location,
+                          const std::vector<int>& strides) {
+    ASSERT2(strides.size() == 0 || strides.size() == shape.size(),
+            utils::MS() << "shape and strides must have the same size (unless strides is empty), got strides = "
+                        << strides << ", shape = " << shape);
+    Array ret(shape, dtype, buffer_location);
+    ret.memory()->adopt_buffer(buffer_location, buffer);
+    ret.state->strides = strides;
+    return ret;
+
+}
+
 /* NPY detect Dtype
  * ================
  * Use the numpy dtype chars (i -> integer type, f -> float type)

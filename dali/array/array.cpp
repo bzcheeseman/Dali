@@ -878,7 +878,7 @@ Array Array::pluck_axis(int axis, const Slice& slice_unnormalized) const {
     if (slice.step > 0) {
         new_offset = offset() + old_strides[axis] * slice.start;
     } else {
-        new_offset = offset() + old_strides[axis] * (slice.end - 1);
+        new_offset = offset() + old_strides[axis] * (slice.end.value() - 1);
     }
 
 

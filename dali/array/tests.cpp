@@ -140,7 +140,7 @@ TEST(ArrayTests, scalar_construct) {
 }
 
 TEST(ArrayTest, eye_init) {
-    Array myeye = Array({4, 5}, DTYPE_INT32)[Slice(0, 4)][Slice(0, 5, -1)];
+    Array myeye = Array({4, 5}, DTYPE_INT32)[Slice()][Slice({}, {}, -1)];
     double diag = 5.0;
     // initialize with different diagonal values:
     myeye = initializer::eye(diag);
@@ -188,16 +188,16 @@ TEST(ArrayTests, spans_entire_memory) {
     // extreme corner case, reversed:
     Array z = Array::zeros({4});
 
-    Array z_reversed = z[Slice(0, 4, -1)];
+    Array z_reversed = z[Slice({}, {}, -1)];
     ASSERT_TRUE(z_reversed.spans_entire_memory());
 
     // another edge case:
 
     Array z2 = Array::zeros({1, 4, 1});
 
-    Array z2_reversed = z2[Slice(0, 1, -1)][Slice(0, 4, -1)][Slice(0, 1, 2)];
+    Array z2_reversed = z2[Slice({}, {}, -1)][Slice({}, {}, -1)][Slice({}, {}, 2)];
     ASSERT_TRUE(z2_reversed.spans_entire_memory());
-    Array z2_reversed_skip = z2[Slice(0, 1, -1)][Slice(0, 4, -2)][Slice(0, 1, 2)];
+    Array z2_reversed_skip = z2[Slice({}, {}, -1)][Slice({}, {}, -2)][Slice({}, {}, 2)];
     ASSERT_FALSE(z2_reversed_skip.spans_entire_memory());
 
 }
@@ -246,7 +246,7 @@ TEST(ArrayTests, copy_constructor) {
         }
     }
 
-    Array original = Array({3}, DTYPE_INT32)[Slice(0, 3)][Broadcast()];
+    Array original = Array({3}, DTYPE_INT32)[Slice()][Broadcast()];
     // perform copy of broadcasted data
     Array hard_copy(original, true);
     EXPECT_EQ(original.bshape(), hard_copy.bshape());
@@ -321,6 +321,7 @@ TEST(ArrayTests, slice_size) {
     ASSERT_EQ(3, Slice(0,7,-3).size());
 
     ASSERT_THROW(Slice(0,2,0),  std::runtime_error);
+    ASSERT_THROW(Slice(0,{},1).size(),  std::runtime_error);
 }
 
 TEST(ArrayTests, slice_contains) {
@@ -329,6 +330,8 @@ TEST(ArrayTests, slice_contains) {
 
     EXPECT_FALSE(Slice(0,12,-2).contains(0));
     EXPECT_TRUE(Slice(0,12,-2).contains(1));
+
+    ASSERT_THROW(Slice(0, {}).contains(1),  std::runtime_error);
 }
 
 
@@ -439,7 +442,7 @@ TEST(ArrayTests, double_striding) {
 TEST(ArrayLazyOpsTests, reshape_broadcasted) {
     auto B = Array::ones({3},     DTYPE_INT32);
 
-    B = B[Broadcast()][Slice(0,3)][Broadcast()];
+    B = B[Broadcast()][Slice()][Broadcast()];
     B = B.reshape_broadcasted({2,3,4});
 
     ASSERT_EQ((int)(Array)B.sum(), 2 * 3 * 4);
@@ -447,7 +450,7 @@ TEST(ArrayLazyOpsTests, reshape_broadcasted) {
 
 TEST(ArrayLazyOpsTests, reshape_broadcasted2) {
     auto B = Array::ones({3},     DTYPE_INT32);
-    B = B[Broadcast()][Slice(0,3)][Broadcast()];
+    B = B[Broadcast()][Slice()][Broadcast()];
 
     B = B.reshape_broadcasted({2, 3, 1});
     B = B.reshape_broadcasted({2, 3, 1});
@@ -492,17 +495,17 @@ TEST(ArrayTest, strided_call_operator) {
     Array x = build_234_arange();
     ensure_call_operator_correct(x);
 
-    Array x2 = x[Slice(0,2)][2];
+    Array x2 = x[Slice()][2];
     ensure_call_operator_correct(x2);
 
-    Array x3 = x[Slice(0,2, -1)][2];
+    Array x3 = x[Slice({},{}, -1)][2];
     ensure_call_operator_correct(x2);
 
     Array y({2, 2}, DTYPE_INT32);
     y = initializer::arange();
     ensure_call_operator_correct(y);
 
-    Array y2 = y[Slice(0,2)][Broadcast()][Slice(0,2)];
+    Array y2 = y[Slice()][Broadcast()][Slice()];
     ensure_call_operator_correct(y2);
 
     Array y3 = y2.reshape_broadcasted({2,3,2});
@@ -568,7 +571,7 @@ TEST(ArrayTests, is_transpose) {
     ASSERT_FALSE(a3.is_transpose());
     ASSERT_FALSE(a4.is_transpose());
 
-    Array a4_with_jumps = a4[Slice(0,2)][Slice(0,3)][Slice(0,4,2)];
+    Array a4_with_jumps = a4[Slice()][Slice()][Slice({},{},2)];
     ASSERT_FALSE(a4_with_jumps.is_transpose());
     ASSERT_FALSE(a4_with_jumps.transpose().is_transpose());
 }

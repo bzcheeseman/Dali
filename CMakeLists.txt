@@ -127,6 +127,7 @@ include_directories(${PROJECT_SOURCE_DIR}/third_party/mshadow)
 include_directories(${MKL_INCLUDE_DIR})
 include_directories(${OpenBLAS_INCLUDE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/third_party/libcuckoo/src)
+include_directories(${PROJECT_SOURCE_DIR}/third_party/optional)
 
 if (GPERFTOOLS_FOUND)
     include_directories(${GPERFTOOLS_INCLUDE_DIR})
@@ -434,6 +435,9 @@ install(FILES ${PROJECT_SOURCE_DIR}/cmake/DaliConfig.cmake   DESTINATION lib/dal
 install(FILES ${PROJECT_SOURCE_DIR}/cmake/FindOpenBlas.cmake DESTINATION lib/openblas/cmake RENAME OpenBlasConfig.cmake)
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/third_party/mshadow/mshadow DESTINATION include
+        FILES_MATCHING PATTERN "*.h" PATTERN "*.cuh")
+
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/third_party/optional DESTINATION include
         FILES_MATCHING PATTERN "*.h" PATTERN "*.cuh")
 
 ################################################################################

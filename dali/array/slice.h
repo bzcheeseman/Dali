@@ -1,6 +1,7 @@
 #ifndef DALI_ARRAY_SLICE_H
 #define DALI_ARRAY_SLICE_H
 
+#include <optional/optional.h>
 #include <ostream>
 #include <string>
 #include <vector>
@@ -15,11 +16,19 @@
 struct Broadcast {
 };
 
+
 struct Slice {
+    typedef std::experimental::optional<int> optional_int_t;
+
     const int start;
-    const int end;
+    const optional_int_t end;
     const int step;
-    Slice(const int& start, const int& end, const int& step=1);
+    Slice();
+    Slice(const optional_int_t& end);
+    Slice(const optional_int_t& start, const optional_int_t& end);
+    Slice(const optional_int_t& start,
+          const optional_int_t& end,
+          const optional_int_t& step);
 
     // converts negative indexes to positive indexes
     // and verifies that indexes are in range.

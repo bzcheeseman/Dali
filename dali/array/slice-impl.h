@@ -19,7 +19,7 @@ SlicingInProgress<Container>::SlicingInProgress(const SlicingInProgress& other) 
 template<typename Container>
 SlicingInProgress<Container> SlicingInProgress<Container>::operator[](const Slice& s) {
     ASSERT2(consumed_dims < input.ndim(),
-        "Slicing a scalar container is not allowed.");
+            "Slicing a scalar container is not allowed.");
     SlicingInProgress<Container> res(*this);
     res.slice.push_back(s);
     res.action.push_back(SLICE_RANGE);

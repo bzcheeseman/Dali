@@ -591,7 +591,22 @@ Tensor Tensor::empty(const std::vector<int>& shape,
 Tensor Tensor::arange(const std::vector<int>& shape,
                       const DType& dtype,
                       const memory::Device& preferred_device) {
-    return Tensor(shape, initializer::arange(), dtype, preferred_device);
+    return Tensor(shape, initializer::arange(0, 1.0), dtype, preferred_device);
+}
+
+Tensor Tensor::arange(const double& start, const double& stop, const double& step,
+                      const DType& dtype,
+                      const memory::Device& preferred_device) {
+
+    int length = ((stop - start) + step - 1) / (step);
+    ASSERT2(length > 0,
+        utils::MS() << "Tensor length must be non-zero (got start="
+                    << start
+                    << ", stop="
+                    << stop
+                    << ", step="
+                    << step << ").");
+    return Tensor({length}, initializer::arange(start, step), dtype, preferred_device);
 }
 
 Tensor Tensor::gaussian(const double& mean,

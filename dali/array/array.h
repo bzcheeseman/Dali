@@ -90,6 +90,7 @@ class Array : public Exp<Array> {
     Array(const LazyExp<ExprT>& expr);
 
     static Array arange(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
+    static Array arange(const double& start, const double& stop, const double& step, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
     static Array zeros(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
     static Array zeros_like(const Array& other);
     static Array empty_like(const Array& other);

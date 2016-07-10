@@ -205,13 +205,13 @@ TEST(ArrayOpsTests, add_vector) {
 
 TEST(ArrayOpsTests, arange) {
     Array x_float({2,3,3}, DTYPE_FLOAT);
-    x_float = initializer::arange();
+    x_float = initializer::arange(0, 1);
 
     Array x_double({2,3,3}, DTYPE_DOUBLE);
-    x_double = initializer::arange();
+    x_double = initializer::arange(0, 1);
 
     Array x_int({2,3,3}, DTYPE_INT32);
-    x_int = initializer::arange();
+    x_int = initializer::arange(0, 1);
 
     ASSERT_NEAR((float)(Array)x_float.sum(),  153, 1e-4);
     ASSERT_NEAR((double)(Array)x_double.sum(), 153, 1e-4);

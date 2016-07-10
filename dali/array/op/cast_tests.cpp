@@ -10,7 +10,7 @@ using namespace op;
 
 TEST(ArrayCastTests, astype) {
     Array integer_arange = Array::zeros({1, 2, 3}, DTYPE_INT32);
-    integer_arange = initializer::arange();
+    integer_arange = initializer::arange(0, 1);
 
     EXPECT_EQ(DTYPE_INT32, integer_arange.dtype());
 
@@ -34,7 +34,7 @@ TEST(ArrayCastTests, mean) {
     /* 0 1 2
        3 4 5 */
     Array integer_arange = Array::zeros({1, 2, 3}, DTYPE_INT32);
-    integer_arange = initializer::arange();
+    integer_arange = initializer::arange(0, 1);
     Array mean = integer_arange.mean();
     EXPECT_EQ(DTYPE_DOUBLE, mean.dtype());
     EXPECT_EQ((0.0 + 1.0 + 2.0 + 3.0 + 4.0 + 5.0)/6.0, (double)mean(0));

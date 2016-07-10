@@ -248,10 +248,23 @@ Array Array::zeros_like(const Array& other) {
     }
 }
 
+Array Array::arange(const double& start, const double& stop, const double& step, DType dtype, memory::Device preferred_device) {
+    int length = ((stop - start) + step - 1) / (step);
+    ASSERT2(length > 0,
+        utils::MS() << "Array length must be non-zero (got start="
+                    << start
+                    << ", stop="
+                    << stop
+                    << ", step="
+                    << step << ").");
+    Array ret({length}, dtype, preferred_device);
+    ret = initializer::arange(start, step);
+    return ret;
+}
 
 Array Array::arange(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
     Array ret(shape, dtype, preferred_device);
-    ret = initializer::arange();
+    ret = initializer::arange(0.0, 1.0);
     return ret;
 }
 

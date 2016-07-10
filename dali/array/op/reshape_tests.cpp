@@ -10,7 +10,7 @@ using namespace op;
 
 TEST(ArrayReshapeTests, hstack) {
     Array a_b({2, 7}, DTYPE_INT32);
-    a_b = initializer::arange();
+    a_b = initializer::arange(0, 1);
     // a:
     // 0 1 2
     // 7 8 9
@@ -26,7 +26,7 @@ TEST(ArrayReshapeTests, hstack) {
 
 TEST(ArrayReshapeTests, concatenate_one_arg) {
     Array a({2, 7}, DTYPE_INT32);
-    a = initializer::arange();
+    a = initializer::arange(0, 1);
 
     Array b = op::concatenate({a}, 0);
     ASSERT_EQ(a.memory(), b.memory());
@@ -38,7 +38,7 @@ TEST(ArrayReshapeTests, concatenate_zero_arg) {
 
 TEST(ArrayReshapeTests, vstack) {
     Array a_b({7, 2, 1}, DTYPE_INT32);
-    a_b = initializer::arange();
+    a_b = initializer::arange(0, 1);
     // a:
     // 0 1
     // 2 3
@@ -56,7 +56,7 @@ TEST(ArrayReshapeTests, vstack) {
 
 TEST(ArrayReshapeTests, concatenate_middle_axis) {
     Array a_b({3, 2, 3}, DTYPE_INT32);
-    a_b = initializer::arange();
+    a_b = initializer::arange(0, 1);
 
     Array a = a_b[Slice(0, 3)][0][Broadcast()][Slice(0, 3)];
     Array b = a_b[Slice(0, 3)][1][Broadcast()][Slice(0, 3)];
@@ -67,7 +67,7 @@ TEST(ArrayReshapeTests, concatenate_middle_axis) {
 
 TEST(ArrayReshapeTests, concatenate_keeps_broadcast) {
     Array a_b = Array({3, 2}, DTYPE_INT32)[Broadcast()];
-    a_b = initializer::arange();
+    a_b = initializer::arange(0, 1);
     EXPECT_EQ(std::vector<int>({-1, 3, 2}), a_b.bshape());
 
     Array a = a_b[Slice(0,1)][Slice(0, 3)][0][Broadcast()];

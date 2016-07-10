@@ -11,7 +11,7 @@ namespace initializer {
     Assignable<Array> empty();
     Assignable<Array> zeros();
     Assignable<Array> ones();
-    Assignable<Array> arange();
+    Assignable<Array> arange(const double& start, const double& step);
     template<typename T>
     Assignable<Array> fill(const T& constant);
 

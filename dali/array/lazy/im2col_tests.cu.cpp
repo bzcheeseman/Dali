@@ -12,7 +12,7 @@ TEST(ArrayReshapeTests, im2col_without_channels) {
     Array image_nchw({2, 1, 3, 4}, DTYPE_INT32);
     Array image_nhwc = image_nchw.transpose({0, 2, 3, 1});
 
-    image_nchw = initializer::arange();
+    image_nchw = initializer::arange(0, 1);
     image_nchw[1] *= 10;
 
     Array im2coled_image = lazy::im2col_nchw(
@@ -29,7 +29,7 @@ TEST(ArrayReshapeTests, im2col_with_channels) {
     Array image_nchw({2, 2, 3, 4}, DTYPE_INT32);
     Array image_nhwc = image_nchw.transpose({0, 2, 3, 1});
 
-    image_nchw = initializer::arange();
+    image_nchw = initializer::arange(0, 1);
     image_nchw[1] *= 10;
     (Array)image_nchw[Slice(0, 2)][0] *= -1.0;
 
@@ -54,7 +54,7 @@ TEST(ArrayReshapeTests, col2im_without_channels) {
     Array image_nchw({2, 1, 3, 4}, DTYPE_INT32);
     Array image_nhwc = image_nchw.transpose({0, 2, 3, 1});
 
-    image_nchw = initializer::arange();
+    image_nchw = initializer::arange(0, 1);
     image_nchw[1] *= -1.0;
 
     Array im2coled_image1 = lazy::im2col_nchw(
@@ -80,7 +80,7 @@ TEST(ArrayReshapeTests, col2im_with_channels) {
     Array image_nchw({2, 2, 3, 4}, DTYPE_INT32);
     Array image_nhwc = image_nchw.transpose({0, 2, 3, 1});
 
-    image_nchw = initializer::arange();
+    image_nchw = initializer::arange(0, 1);
     image_nchw[1] *= 10;
     (Array)image_nchw[Slice(0, 2)][0] *= -1.0;
 

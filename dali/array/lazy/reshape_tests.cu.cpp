@@ -119,7 +119,7 @@ TEST(ArrayReshapeTests, take_from_rows_3D) {
 
 TEST(ArrayReshapeTests, take_from_rows_assign) {
     Array x({2, 4}, DTYPE_INT32);
-    x = initializer::arange();
+    x = initializer::arange(0, 1);
 
 
     Array indices({2}, DTYPE_INT32);
@@ -143,7 +143,7 @@ TEST(ArrayReshapeTests, take_from_rows_assign) {
 
 TEST(ArrayReshapeTests, take_from_rows_assign_lazy) {
     auto x = Array::zeros({2, 4}, DTYPE_INT32);
-    x = initializer::arange();
+    x = initializer::arange(0, 1);
 
     Array y = Array({2}, DTYPE_INT32);
     y[0] = 44;
@@ -170,7 +170,7 @@ TEST(ArrayReshapeTests, take_from_rows_assign_lazy) {
 
 TEST(ArrayReshapeTests, gather_assign_lazy) {
     auto x = Array::zeros({4, 2}, DTYPE_INT32);
-    x = initializer::arange();
+    x = initializer::arange(0, 1);
 
     Array y = Array({3, 2}, DTYPE_INT32);
     y = std::vector<std::vector<int>> {
@@ -213,7 +213,7 @@ TEST(ArrayReshapeTests, DISABLED_gather_assign_basic) {
 
 TEST(ArrayReshapeTests, DISABLED_gather_assign_advanced) {
     auto x = Array::zeros({2, 2, 4, 2}, DTYPE_INT32);
-    x = initializer::arange();
+    x = initializer::arange(0, 1);
 
     Array y = Array({2, 4, 2}, DTYPE_INT32);
     y = std::vector<std::vector<std::vector<int>>> {

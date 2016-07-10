@@ -244,37 +244,18 @@ struct UniformInitializer : public Initializer<UniformInitializer, const double&
     }
 };
 
-struct ArangeInitializer : public Initializer<ArangeInitializer> {
-
-#ifdef DALI_USE_CUDA
-    template<OPERATOR_T operator_t, typename T>
-    void typed_eval(TypedArray<memory::DEVICE_T_GPU, T> out) {
-        if (operator_t == OPERATOR_T_EQL) {
-            assert_contiguous_memory(out);
-            auto cnt_iter = thrust::make_counting_iterator(0);
-            thrust::copy(cnt_iter,
-                         cnt_iter + out.array.number_of_elements(),
-                         out.to_thrust(memory::AM_OVERWRITE));
-        } else {
-            ASSERT2(false,
-                utils::MS() << operator_to_name(operator_t)
-                            << " not yet implemented for ArangeInitializer");
-        }
-    }
-#endif
-
-    template<OPERATOR_T operator_t, typename T>
-    void typed_eval(TypedArray<memory::DEVICE_T_CPU, T> out) {
-        if (operator_t == OPERATOR_T_EQL) {
-            auto ptr = out.ptr(memory::AM_OVERWRITE);
-            for (int i = 0; i < out.array.number_of_elements(); ++i) {
-                *(ptr + i) = (T)i;
-            }
-        } else {
-            ASSERT2(false,
-                utils::MS() << operator_to_name(operator_t)
-                            << " not yet implemented for ArangeInitializer");
-        }
+struct ArangeInitializer : public Initializer<ArangeInitializer, const double&, const double&> {
+    template<OPERATOR_T operator_t, typename T, int devT>
+    void typed_eval(TypedArray<devT, T> out,
+                    const double& start,
+                    const double& step) {
+        operator_assign<operator_t, 1>(
+            out,
+            mshadow::expr::FIndexed<functor::arange<T>>(
+                mshadow::expr::F<functor::fill<T>>(out.d1(), start),
+                step
+            )
+        );
     }
 };
 
@@ -360,8 +341,8 @@ namespace initializer {
     Assignable<Array> ones() {
         return ConstantInitializer<float>::run(1.0);
     }
-    Assignable<Array> arange() {
-        return ArangeInitializer::run();
+    Assignable<Array> arange(const double& start, const double& step) {
+        return ArangeInitializer::run(start, step);
     }
 
     template<typename ConstT>

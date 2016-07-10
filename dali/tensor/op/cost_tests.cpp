@@ -211,7 +211,7 @@ TEST_F(TensorCostTests, softmax_temperature) {
     graph::NoBackprop nb;
 
     Tensor logits({10}, DTYPE_DOUBLE);
-    logits.w = initializer::arange();
+    logits.w = initializer::arange(0, 1);
     auto uniform = Tensor::fill_like(1.0 / logits.number_of_elements(), logits);
     // base entropy
     auto kl = (double) tensor_ops::cross_entropy(tensor_ops::softmax(logits), uniform).sum().w;

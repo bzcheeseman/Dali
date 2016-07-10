@@ -10,7 +10,7 @@ using namespace op;
 void check_dot_result(DType dtype, bool contiguous) {
     Array a = Array::ones({2, 3}, dtype);
     Array b({4, 3}, dtype);
-    b = initializer::arange();
+    b = initializer::arange(0, 1);
     b = contiguous ? b.transpose().ascontiguousarray() : b.transpose();
 
     int dali_function_computations = 0;

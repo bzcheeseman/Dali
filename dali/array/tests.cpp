@@ -218,7 +218,7 @@ Array build_234_arange() {
     //   ]
     // ]
     Array x({2,3,4}, DTYPE_INT32);
-    x = initializer::arange();
+    x = initializer::arange(0, 1);
     return x;
 }
 
@@ -230,7 +230,7 @@ void copy_constructor_helper(bool copy_w) {
 TEST(ArrayTests, copy_constructor) {
     for (auto copy_w : {true, false}) {
         Array original({3,3}, DTYPE_INT32);
-        original = initializer::arange();
+        original = initializer::arange(0, 1);
         Array copy(original, copy_w);
         copy += 1;
 
@@ -502,7 +502,7 @@ TEST(ArrayTest, strided_call_operator) {
     ensure_call_operator_correct(x2);
 
     Array y({2, 2}, DTYPE_INT32);
-    y = initializer::arange();
+    y = initializer::arange(0, 1);
     ensure_call_operator_correct(y);
 
     Array y2 = y[Slice()][Broadcast()][Slice()];

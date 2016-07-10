@@ -234,6 +234,9 @@ class Tensor {
         static Tensor arange(const std::vector<int>& shape,
                              const DType& dtype=DTYPE_FLOAT,
                              const memory::Device& preferred_device=memory::default_preferred_device);
+        static Tensor arange(const double& start, const double& stop, const double& step,
+                             const DType& dtype=DTYPE_FLOAT,
+                             const memory::Device& preferred_device=memory::default_preferred_device);
 
         static Tensor gaussian(const double& mean,
                                const double& std,

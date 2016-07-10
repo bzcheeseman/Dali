@@ -74,6 +74,20 @@ namespace functor {
     };
 
     template<typename R>
+    struct fill {
+        MSHADOW_XINLINE static R Map(const R& a, const R& filler) {
+            return filler;
+        }
+    };
+
+    template<typename R>
+    struct arange {
+        MSHADOW_XINLINE static R Map(const R& a, const R& step, const mshadow::index_t& y, const mshadow::index_t& x) {
+            return a + step * x;
+        }
+    };
+
+    template<typename R>
     struct add {
         MSHADOW_XINLINE static R Map(const R& a, const R& b) {
             return a + b;

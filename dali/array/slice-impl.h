@@ -2,23 +2,22 @@
 
 template<typename Container>
 SlicingInProgress<Container>::SlicingInProgress(const Container& input_) :
-        input(input_),
         consumed_dims(0),
         slice({}),
-        action({}) {
+        action({}),
+        input(input_) {
 }
 
 template<typename Container>
 SlicingInProgress<Container>::SlicingInProgress(const SlicingInProgress& other) :
-        input(other.input),
-        slice(other.slice),
         consumed_dims(other.consumed_dims),
-        action(other.action) {
+        slice(other.slice),
+        action(other.action),
+        input(other.input) {
 }
 
 template<typename Container>
-SlicingInProgress<Container>::SlicingInProgress() {
-}
+SlicingInProgress<Container>::SlicingInProgress() {}
 
 template<typename Container>
 SlicingInProgress<Container> SlicingInProgress<Container>::operator[](const Slice& s) {

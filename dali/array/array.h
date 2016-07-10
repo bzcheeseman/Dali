@@ -195,11 +195,11 @@ class Array : public Exp<Array> {
     Array reshape_broadcasted(const std::vector<int>& new_shape) const;
 
     // TODO(szymon): look up what it's called in tensorflow/numpy and rename.
-    Array pluck_axis(const int& axis, const Slice& slice) const;
+    Array pluck_axis(int axis, const Slice& slice) const;
     Array pluck_axis(const int& axis, const int& idx) const;
-    Array squeeze(const int& axis) const;
-    Array expand_dims(const int& new_axis) const;
-    Array broadcast_axis(const int& axis) const;
+    Array squeeze(int axis) const;
+    Array expand_dims(int new_axis) const;
+    Array broadcast_axis(int axis) const;
     Array insert_broadcast_axis(int new_axis) const;
     Array broadcast_scalar_to_ndim(const int& ndim) const;
 

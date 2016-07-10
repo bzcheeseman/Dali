@@ -161,7 +161,9 @@ T Array::scalar_value() const {
 
 void Array::broadcast_axis_internal(const int& axis) {
     ASSERT2(0 <= axis && axis < ndim(),
-            utils::MS() << "broadcast dimension (" << axis << ") must be less the dimensionality of broadcasted tensor (" << ndim() << ")");
+            utils::MS() << "broadcast dimension (" << axis
+                        << ") must be less the dimensionality of broadcasted tensor ("
+                        << ndim() << ").");
 
     vector<int> new_strides = normalized_strides();
     new_strides[axis] = 0;
@@ -185,11 +187,11 @@ Array::Array(const std::vector<int>& shape,
              const std::vector<int>& strides,
              DType dtype) {
     ASSERT2(shape_strictly_positive(shape),
-            "Shape elements must be strictly positive");
+            "shape elements must be strictly positive.");
     vector<int> new_strides(strides);
     compact_strides(shape, &new_strides);
     ASSERT2(new_strides.size() == 0 || new_strides.size() == shape.size(),
-            "Stride and shape size must be the same (unless strides are compacted)");
+            "stride and shape size must be the same (unless strides are compacted).");
     state = std::make_shared<ArrayState>(shape, memory, offset, new_strides, dtype);
 }
 
@@ -445,7 +447,7 @@ Array Array::vectorlike_to_vector() const {
     int noe = number_of_elements();
     for (int dim: shape()) {
         ASSERT2(dim == 1 || dim == noe,
-                utils::MS() << "Tensor with shape" << shape() << " cannot be interpreted as a vector");
+                utils::MS() << "Tensor with shape" << shape() << " cannot be interpreted as a vector.");
     }
     return ravel();
 }
@@ -528,7 +530,7 @@ void Array::initialize_with_bshape(const std::vector<int>& bshape, DType dtype, 
     for (int i = 0; i < bshape.size(); ++i) {
         if (bshape[i] < 0) {
             ASSERT2(bshape[i] == -1,
-                    "Currently only one-sized broadcasting is supported");
+                    "Currently only one-sized broadcasting is supported.");
             broadcast_axis_internal(i);
         }
     }
@@ -553,7 +555,6 @@ std::shared_ptr<memory::SynchronizedMemory> Array::memory() const {
     }
 }
 
-
 int Array::offset() const {
     alert_stateless_call(state != nullptr, "offset");
     return state->offset;
@@ -563,7 +564,6 @@ const std::vector<int>& Array::strides() const {
     alert_stateless_call(state != nullptr, "strides");
     return state->strides;
 }
-
 
 DType Array::dtype() const {
     alert_stateless_call(state != nullptr, "dtype");
@@ -579,11 +579,9 @@ memory::Device Array::preferred_device() const {
     return state->memory->preferred_device;
 }
 
-
 std::vector<int> Array::normalized_strides() const {
     return (strides().size() > 0) ? strides() : shape_to_trivial_strides(shape());
 }
-
 
 std::vector<int> Array::bshape() const {
     if (strides().size() == 0) {
@@ -605,7 +603,6 @@ void Array::to_device(memory::Device device) const {
     memory()->preferred_device = device;
 }
 
-
 int Array::ndim() const {
     return (state == nullptr) ? 0 : state->shape.size();
 
@@ -614,7 +611,6 @@ int Array::ndim() const {
 int Array::number_of_elements() const {
     return (state == nullptr) ? 0 : hypercube_volume(state->shape);
 }
-
 
 vector<int> Array::subshape() const {
     if (state == nullptr) return vector<int>();
@@ -669,7 +665,6 @@ Array Array::operator()(index_t idx) const {
                  dtype());
 }
 
-
 bool Array::is_transpose() {
     if (ndim() <= 1) {
         // dims 0 and 1 do not change if we call a transpose
@@ -714,9 +709,9 @@ Array Array::swapaxes(int axis1, int axis2) const {
     if (axis1 == axis2) return *this;
 
     ASSERT2(0 <= axis1 && axis1 < ndim(),
-        utils::MS() << "swapaxes axis1 (" << axis1 << ") must be less than ndim (" << ndim() << ")");
+        utils::MS() << "swapaxes axis1 (" << axis1 << ") must be less than ndim (" << ndim() << ").");
     ASSERT2(0 <= axis2 && axis2 < ndim(),
-        utils::MS() << "swapaxes axis2 (" << axis2 << ") must be less than ndim (" << ndim() << ")");
+        utils::MS() << "swapaxes axis2 (" << axis2 << ") must be less than ndim (" << ndim() << ").");
 
     vector<int> axis_permuation;
     for (int i = 0; i < ndim(); ++i) {
@@ -736,7 +731,7 @@ Array Array::dimshuffle(const std::vector<int>& pattern) const {
     ASSERT2(pattern.size() == dimensionality,
         utils::MS() << "number of dimensions in dimshuffle does not correspond"
                     << " to the dimensionality of the array (got pattern = " << pattern
-                    << " on array with dimensionality=" << dimensionality
+                    << " on array with dimensionality=" << dimensionality << ")."
     );
     std::vector<int> newstrides(dimensionality);
     std::vector<int> newshape(dimensionality);
@@ -758,7 +753,7 @@ Array Array::dimshuffle(const std::vector<int>& pattern) const {
                         << current_shape.size() << ")."
         );
         ASSERT2(current_shape[pick_from] != -1,
-            utils::MS() << "duplicate dimension in dimshuffle pattern " << pattern
+            utils::MS() << "duplicate dimension in dimshuffle pattern " << pattern << "."
         );
         // grab strides and shape for the
         // relevant dimension
@@ -834,15 +829,17 @@ Array Array::reshape_broadcasted(const std::vector<int>& new_shape) const {
                  dtype());
 }
 
-
 Array Array::pluck_axis(const int& axis, const int& pluck_idx) const {
     auto single_item_slice = pluck_axis(axis, Slice(pluck_idx, pluck_idx + 1));
     return single_item_slice.squeeze(axis);
 }
 
-Array Array::pluck_axis(const int& axis, const Slice& slice_unnormalized) const {
-    ASSERT2(axis < shape().size(),
-            utils::MS() << "pluck_axis dimension (" << axis << ") must be less the dimensionality of plucked tensor (" << shape().size() << ")");
+Array Array::pluck_axis(int axis, const Slice& slice_unnormalized) const {
+    axis = normalize_axis(axis);
+    ASSERT2(axis >= 0 && axis < shape().size(),
+            utils::MS() << "pluck_axis dimension (" << axis
+                        << ") must be positive and less the dimensionality "
+                        << "of the plucked array (" << shape().size() << ").");
 
     Slice slice = Slice::normalize_and_check(slice_unnormalized, shape()[axis]);
 
@@ -869,11 +866,17 @@ Array Array::pluck_axis(const int& axis, const Slice& slice_unnormalized) const 
                  new_strides,
                  dtype());
 }
-Array Array::squeeze(const int& axis) const {
+
+Array Array::squeeze(int axis) const {
+    axis = normalize_axis(axis);
     ASSERT2(0 <= axis && axis < shape().size(),
-            utils::MS() << "squeeze dimension (" << axis << ") must be less the dimensionality of compacted tensor (" << shape().size() << ")");
+            utils::MS() << "squeeze dimension (" << axis
+                        << ") must be less the dimensionality of compacted tensor ("
+                        << shape().size() << ").");
     ASSERT2(shape()[axis] == 1,
-            utils::MS() << "squeeze(" << axis << ") requires tensor to be shaped like a bowtie.");
+            utils::MS() << "cannot select an axis to squeeze out which has size not "
+                        << "equal to one (got axis=" << axis << ", shape[" << axis
+                        << "]=" << shape()[axis] << ").");
 
     const vector<int>& old_shape = shape();
     auto old_strides             = normalized_strides();
@@ -895,7 +898,12 @@ Array Array::squeeze(const int& axis) const {
                  dtype());
 }
 
-Array Array::expand_dims(const int& new_axis) const {
+Array Array::expand_dims(int new_axis) const {
+    new_axis = normalize_axis(new_axis);
+    ASSERT2(new_axis >= 0 && new_axis <= ndim(),
+        utils::MS() << "expand_dims new_axis argument must be strictly "
+                    << "positive and at most the dimensionality of the array "
+                    << "(got new_axis=" << new_axis << ", ndim=" << ndim() << ").");
     vector<int> new_shape   = shape();
     vector<int> new_strides = normalized_strides();
 
@@ -913,19 +921,26 @@ Array Array::expand_dims(const int& new_axis) const {
                  dtype());
 }
 
-
-Array Array::broadcast_axis(const int& axis) const {
+Array Array::broadcast_axis(int axis) const {
     Array out(*this, false);
+    axis = normalize_axis(axis);
+    ASSERT2(axis >= 0 && axis < ndim(),
+        utils::MS() << "broadcast_axis axis must be positive and less than the dimensionality"
+                    << " of the array (got axis=" << axis << ", ndim=" << ndim() << ")."
+    );
+    ASSERT2(shape()[axis] == 1,
+        utils::MS() << "axis to be broadcasted must have dimension 1 "
+                    << "(got shape[" << axis << "]=" << shape()[axis] << ").");
     out.broadcast_axis_internal(axis);
     return out;
 }
 
 Array Array::insert_broadcast_axis(int new_axis) const {
-    if (new_axis < 0) new_axis = ndim() + new_axis;
+    new_axis = normalize_axis(new_axis);
     return expand_dims(new_axis).broadcast_axis(new_axis);
 }
 
-int Array::normalize_axis(const int& axis) const {
+inline int Array::normalize_axis(const int& axis) const {
     if (axis < 0) {
         return ndim() + axis;
     } else {
@@ -933,10 +948,14 @@ int Array::normalize_axis(const int& axis) const {
     }
 }
 
-
 Array Array::broadcast_scalar_to_ndim(const int& target_ndim) const {
+    ASSERT2(target_ndim >= 0,
+        utils::MS() << "broadcast_scalar_to_ndim expected a non-negative integer (got "
+                    << target_ndim << ")."
+    );
     ASSERT2(is_scalar(),
-            utils::MS() << "broadcast_scalar_to_ndim may only be called on scalars, got shape " << shape() << ".");
+        utils::MS() << "broadcast_scalar_to_ndim may only be called on scalars, current shape="
+                    << shape() << ".");
     Array res = *this;
     for (int i = 0; i < target_ndim; ++i) {
         res = res.insert_broadcast_axis(0);

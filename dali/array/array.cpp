@@ -91,6 +91,10 @@ std::vector<int> normalize_shape(const std::vector<int>& current_shape, std::vec
 ////////////////////////////////////////////////////////////////////////////////
 
 template<typename OutType>
+BaseAssignable<OutType>::BaseAssignable() {
+}
+
+template<typename OutType>
 BaseAssignable<OutType>::BaseAssignable(assign_t&& _assign_to) :
         assign_to(_assign_to) {
 }
@@ -98,6 +102,7 @@ BaseAssignable<OutType>::BaseAssignable(assign_t&& _assign_to) :
 template class BaseAssignable<Array>;
 template class BaseAssignable<ArraySubtensor>;
 template class BaseAssignable<ArrayGather>;
+
 
 
 Assignable<Array>::Assignable(const float& constant) :
@@ -112,6 +117,8 @@ Assignable<Array>::Assignable(const int& constant) :
         BaseAssignable<Array>(initializer::fill(constant)) {
 }
 
+Assignable<Array>::Assignable() {
+}
 
 Array Assignable<Array>::eval() {
     return *this;

@@ -26,6 +26,7 @@ struct BaseAssignable {
     typedef std::function<void(OutType&, const OPERATOR_T&)> assign_t;
     assign_t assign_to;
 
+    BaseAssignable();
     explicit BaseAssignable(assign_t&& _assign_to);
 
     template<typename ExprT>
@@ -40,6 +41,8 @@ struct Assignable : public BaseAssignable<OutType> {
 template<>
 struct Assignable<Array> : public BaseAssignable<Array> {
     using BaseAssignable<Array>::BaseAssignable;
+
+    Assignable();
 
     Assignable(const float& constant);
     Assignable(const double& constant);

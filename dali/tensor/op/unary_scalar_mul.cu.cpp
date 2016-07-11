@@ -10,7 +10,7 @@ namespace tensor_ops {
     //                              ELTMUL                                    //
     ////////////////////////////////////////////////////////////////////////////
     #define DALI_DEFINE_TENSOR_MUL_OP(ARG1, ARG2) \
-        Tensor scalar_eltmul(ARG1, ARG2) { \
+        Tensor scalar_mul(ARG1, ARG2) { \
             Tensor out(op::scalar_mul(t.w, scalar)); \
             if (graph::backprop_enabled()) \
                 graph::emplace_back([t, out, scalar]() mutable { \

@@ -32,7 +32,7 @@ DALI_DEFINE_TENSOR_INTERACTION(tensor_ops::pow,   ^);
 
 DALI_DEFINE_TENSOR_SCALAR_INTERACTION(tensor_ops::scalar_add, +);
 DALI_DEFINE_TENSOR_SCALAR_INTERACTION(tensor_ops::scalar_sub, -);
-DALI_DEFINE_TENSOR_SCALAR_INTERACTION(tensor_ops::scalar_eltmul,*);
+DALI_DEFINE_TENSOR_SCALAR_INTERACTION(tensor_ops::scalar_mul,*);
 DALI_DEFINE_TENSOR_SCALAR_INTERACTION(tensor_ops::scalar_div,/);
 DALI_DEFINE_TENSOR_SCALAR_INTERACTION(tensor_ops::scalar_pow,   ^);
 #endif

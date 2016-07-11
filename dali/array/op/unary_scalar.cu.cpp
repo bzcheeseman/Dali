@@ -31,7 +31,9 @@ namespace op {
             return OPNAME(other, x);\
         }\
 
+    DALI_DEFINE_ARRAY_SCALAR_OP_ARGS_REVERSED(scalar_add, lazy::add);
     DALI_DEFINE_ARRAY_SCALAR_OP_ARGS_REVERSED(scalar_sub, lazy::sub);
+    DALI_DEFINE_ARRAY_SCALAR_OP_ARGS_REVERSED(scalar_mul, lazy::eltmul);
     DALI_DEFINE_ARRAY_SCALAR_OP_ARGS_REVERSED(scalar_div, lazy::eltdiv);
     DALI_DEFINE_ARRAY_SCALAR_OP_ARGS_REVERSED(scalar_pow, lazy::pow);
 

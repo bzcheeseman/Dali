@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-#include "dali/utils.h"
 #include "dali/data_processing/Batch.h"
 
 

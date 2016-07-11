@@ -9,6 +9,7 @@
 #include "dali/tensor/tensor.h"
 #include "dali/tensor/op/cost.h"
 #include "dali/array/op/initializer.h"
+#include "dali/utils/random.h"
 
 using std::vector;
 

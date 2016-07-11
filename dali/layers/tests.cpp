@@ -11,6 +11,7 @@
 #include "dali/tensor/op.h"
 #include "dali/tensor/tensor.h"
 #include "dali/test_utils.h"
+#include "dali/utils/random.h"
 
 using std::vector;
 using std::chrono::milliseconds;

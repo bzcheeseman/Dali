@@ -7,7 +7,9 @@
 #include <assert.h>
 #include <vector>
 
-typedef std::vector<uint> index_std_vector;
+typedef std::vector<int> index_std_vector;
+
+class Array;
 
 namespace Indexing {
 

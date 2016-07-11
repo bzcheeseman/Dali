@@ -1,6 +1,7 @@
 #include "vocab.h"
-
 #include "dali/utils/core_utils.h"
+#include "dali/array/array.h"
+
 #include <sstream>
 
 using std::string;
@@ -9,8 +10,14 @@ using std::stringstream;
 
 const char* utils::end_symbol          = "**END**";
 const char* utils::unknown_word_symbol = "███████";
-
-#ifdef DONT_COMPILE
+namespace internal {
+    inline void assert_is_1d_int_array(const Array& indices) {
+        ASSERT2(indices.ndim() == 1 && indices.dtype() == DTYPE_INT32,
+            utils::MS() << "vocab requires a 1D integer index Array to decode (got ndim="
+                        << indices.ndim() << ", dtype=" << indices.dtype() << ")."
+        );
+    }
+}
 
 namespace utils {
 	typename Vocab::ind_t Vocab::operator[](const string& word) const {
@@ -72,24 +79,28 @@ namespace utils {
         }
     }
 
-    vector<string> Vocab::decode(Indexing::Index indices, bool remove_end_symbol) const {
+    vector<string> Vocab::decode(const Array& indices, bool remove_end_symbol) const {
+        internal::assert_is_1d_int_array(indices);
         vector<string> result;
-        result.reserve(indices.size());
-        // either the decoding must remove the end symbol
-        // if there is one, or we assume there is none to remove.
-        bool has_end_symbol = remove_end_symbol ?
-            indices[indices.size() - 1] == word2index.at(utils::end_symbol) :
-            false;
-        auto index_end = indices.data() + indices.size();
-        if (has_end_symbol) index_end--;
-        std::transform(indices.data(), index_end,
-                       std::back_inserter(result), [this](const ind_t& idx) {
-            if (idx < index2word.size()) {
-                return index2word[idx];
+        result.reserve(indices.number_of_elements());
+        bool has_end_symbol = false;
+        if (indices.number_of_elements() > 0) {
+            // either the decoding must remove the end symbol
+            // if there is one, or we assume there is none to remove.
+            has_end_symbol = remove_end_symbol ?
+                (int)indices(indices.number_of_elements() - 1) == word2index.at(utils::end_symbol) :
+                false;
+        }
+        int length = indices.number_of_elements();
+        if (has_end_symbol) --length;
+        for (int i = 0; i < length; i++) {
+            auto idx = (int)indices[i];
+            if (idx >= 0 && idx < index2word.size()) {
+                result.emplace_back(index2word[idx]);
             } else {
-                return index2word[unknown_word];
+                result.emplace_back(index2word[unknown_word]);
             }
-        });
+        }
         return result;
     }
 
@@ -111,8 +122,14 @@ namespace utils {
 
     CharacterVocab::CharacterVocab(int min_char, int max_char)
         : min_char(min_char), max_char(max_char) {
-        assert2(max_char > min_char, MS() << "Maximum character (" << max_char << ") must be larger than minimum character (" << min_char << ").");
-        assert2(max_char >= 0 && min_char >= 0, "Cannot have negative characters in mapping");
+        ASSERT2(max_char > min_char,
+            MS() << "Maximum character (" << max_char
+                 << ") must be larger than minimum character ("
+                 << min_char << ")."
+        );
+        ASSERT2(max_char >= 0 && min_char >= 0,
+            "Cannot have negative characters in mapping"
+        );
     }
 
     size_t CharacterVocab::size() const {
@@ -149,12 +166,15 @@ namespace utils {
         return result;
     }
 
-    vector<string> CharacterVocab::decode(Indexing::Index indices) const {
+    vector<string> CharacterVocab::decode(const Array& indices) const {
+        internal::assert_is_1d_int_array(indices);
+
         vector<string> result;
-        result.reserve(indices.size());
+        result.reserve(indices.number_of_elements());
 
         stringstream stream;
-        for (auto& index : indices) {
+        for (int i = 0; i < indices.number_of_elements(); i++) {
+            int index = indices(i);
             if (index == max_char) {
                 stream << "█";
             } else {
@@ -164,10 +184,12 @@ namespace utils {
         return tokenize(stream.str());
     }
 
-    vector<string> CharacterVocab::decode_characters(Indexing::Index indices) const {
-        vector<string> result(indices.size());
+    vector<string> CharacterVocab::decode_characters(const Array& indices) const {
+        internal::assert_is_1d_int_array(indices);
+        vector<string> result(indices.number_of_elements());
         int char_idx = 0;
-        for (auto& index : indices) {
+        for (int i = 0; i < indices.number_of_elements(); i++) {
+            int index = indices(i);
             if (index == max_char) {
                 result[char_idx++] = "█";
             } else {
@@ -177,5 +199,3 @@ namespace utils {
         return result;
     }
 }
-
-#endif

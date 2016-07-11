@@ -5,9 +5,14 @@
 #include <sstream>
 #include <cstdio>
 #include <string>
+#include <map>
 
 #include "dali/config.h"
-#include "dali/utils.h"
+#include "dali/utils/ThreadPool.h"
+#include "dali/utils/core_utils.h"
+#include "dali/utils/xml_cleaner.h"
+#include "dali/utils/tsv_utils.h"
+#include "dali/utils/smart_parser.h"
 
 using std::chrono::milliseconds;
 using std::make_shared;
@@ -258,7 +263,7 @@ TEST(utils, smart_parser) {
         << "lol lone 123\n"
         << " \n"
         << "155\n";
-    SmartParser sp(ss);
+    utils::SmartParser sp(ss);
     assert(sp.next_string() == "siema");
     assert(sp.next_int() == 12);
     assert(sp.next_int() == 123);
@@ -266,16 +271,6 @@ TEST(utils, smart_parser) {
     assert(sp.next_line() == "lol lone 123");
     assert(sp.next_int() == 155);
 }
-
-TEST(utils, pearson_correlation) {
-    vector<double> x = {43, 21, 25, 42, 57, 59};
-    vector<double> y = {99, 65, 79, 75, 87, 81};
-
-    auto corr = utils::pearson_correlation(x,y);
-
-    ASSERT_NEAR(corr, 0.5298, 1e-5);
-}
-
 
 #ifdef DONT_COMPILE
             TEST(utils, CharacterVocab) {
@@ -320,205 +315,4 @@ TEST(utils, prefix_match) {
     EXPECT_EQ(prefix_match(candidates, ""), "siema");
     EXPECT_EQ(prefix_match(candidates, "lo"), "lol");
     EXPECT_EQ(prefix_match(candidates, "we_hit"), "we_hit_a_wall");
-}
-
-struct Range : utils::GeneratorHeart<int> {
-    void run(int start, int end, int interval=1) {
-        for (int i=start; i<end; i+=interval) {
-            yield(i);
-        }
-    }
-};
-
-TEST(utils, generator_test) {
-    auto vals = vector<int>();
-    for (int i : utils::Gen<Range>(2,9,2)) vals.emplace_back(i);
-    ASSERT_EQ(vals, vector<int>({2, 4, 6, 8}));
-}
-
-TEST(utils, lambda_generator_test) {
-    auto gen = utils::Generator<int>([](utils::yield_t<int> yield) {
-        for (int i=2; i<9; i+=2) yield(i);
-    });
-    auto vals = vector<int>();
-    for (int i : gen)
-        vals.emplace_back(i);
-    ASSERT_EQ(vals, vector<int>({2, 4, 6, 8}));
-}
-
-
-TEST(utils, test_initialize_gen) {
-    // This test illustrates that generator_constructor can be sometimes
-    // dangerous if we do not think about initialization
-
-    // TEST GOAL: generate {1,2,3,4,5,  1,2,3,4,5} using shared_resource.
-
-    int shared_resource = 1;
-
-    auto advance_noinitialization = [&shared_resource](utils::yield_t<int> yield) {
-        int repeats = 5;
-        while(repeats--) {
-            yield(shared_resource++);
-        }
-    };
-
-    auto advance_correct = [&shared_resource](utils::yield_t<int> yield) {
-        shared_resource = 1;
-        int repeats = 5;
-        while(repeats--) {
-            yield(shared_resource++);
-        }
-    };
-
-    auto noinitialization = utils::Generator<int>(advance_noinitialization);
-    auto correct = utils::Generator<int>(advance_correct);
-
-    auto vals = vector<int>();
-    for (int i : noinitialization)
-        vals.emplace_back(i);
-    noinitialization.reset();
-    for (int i : noinitialization)
-        vals.emplace_back(i);
-    ASSERT_EQ(vector<int>({1,2,3,4,5,6,7,8,9,10}), vals);
-
-    vals.clear();
-    for (int i : correct)
-        vals.emplace_back(i);
-    correct.reset();
-    for (int i : correct)
-        vals.emplace_back(i);
-    ASSERT_EQ(vector<int>({1,2,3,4,5,1,2,3,4,5}), vals);
-}
-
-
-TEST(utils, recursive_generator_test) {
-    // here we are using Generator rather than make generator,
-    // so that we can use it multiple times. For example each time we call
-    // gen_12345() new generator is constructed.
-
-    // TEST GOAL: generate {1,2,3,4,5} five times.
-    auto gen_12345 = utils::Generator<int>([](utils::yield_t<int> yield) {
-        for (int i=1; i<=5; i+=1) yield(i);
-    });
-    auto gen_5x_12345 = utils::Generator<int>([&gen_12345](utils::yield_t<int> yield) {
-        int repeats = 5;
-        while(repeats--) {
-            gen_12345.reset();
-            for (auto num: gen_12345)
-                yield(num);
-        }
-    });
-
-    auto vals = vector<int>();
-    for (int i : gen_5x_12345)
-        vals.emplace_back(i);
-    ASSERT_EQ(vector<int>({1,2,3,4,5, 1,2,3,4,5, 1,2,3,4,5, 1,2,3,4,5, 1,2,3,4,5}), vals);
-}
-
-TEST(utils, combine_generators) {
-    // here we take two short generators and
-    // create a longer one out of the pair:
-    auto comb_gen = (
-        utils::Generator<int>([](utils::yield_t<int> yield) {
-            for (int i=1; i<=5; i+=1) yield(i);
-        })
-        +
-        utils::Generator<int>([](utils::yield_t<int> yield) {
-            for (int i=6; i<=10; i+=1) yield(i);
-        })
-    );
-
-    auto vals = vector<int>();
-    for (int i : comb_gen)
-        vals.emplace_back(i);
-
-    ASSERT_EQ(vals, vector<int>({1,2,3,4,5,6,7,8,9,10}));
-
-}
-
-
-TEST(utils, debug_callback) {
-    DebugCallback<int> on_increase;
-
-    int a=0, b=0;
-
-    EXPECT_EQ(0, on_increase.activate(4));
-    EXPECT_EQ(a, 0);
-    EXPECT_EQ(b, 0);
-
-    auto a_handle = on_increase.register_callback([&](int inc) {
-        a += inc;
-    });
-
-    EXPECT_EQ(1, on_increase.activate(3));
-    EXPECT_EQ(a, 3);
-    EXPECT_EQ(b, 0);
-
-    auto b_handle = on_increase.register_callback([&](int inc) {
-        b += inc;
-    });
-
-    EXPECT_EQ(2, on_increase.activate(2));
-    EXPECT_EQ(a, 5);
-    EXPECT_EQ(b, 2);
-
-
-    on_increase.deregister_callback(a_handle);
-
-    EXPECT_EQ(1, on_increase.activate(3));
-    EXPECT_EQ(a, 5);
-    EXPECT_EQ(b, 5);
-
-    on_increase.deregister_callback(b_handle);
-
-    EXPECT_EQ(0, on_increase.activate(11));
-    EXPECT_EQ(a, 5);
-    EXPECT_EQ(b, 5);
-}
-
-
-TEST(utils, scoped_debug_callback) {
-    DebugCallback<int> on_increase;
-
-    int a=0, b=0;
-
-    EXPECT_EQ(0, on_increase.activate(4));
-    EXPECT_EQ(a, 0);
-    EXPECT_EQ(b, 0);
-
-    vector<ScopedCallback<int>> callback_number_duo;
-    {
-        auto callback_number_uno = make_scoped_callback(
-            [&](int inc) {
-                a += inc;
-            },
-            &on_increase
-        );
-
-        EXPECT_EQ(1, on_increase.activate(3));
-        EXPECT_EQ(a, 3);
-        EXPECT_EQ(b, 0);
-
-        callback_number_duo.emplace_back(
-            make_scoped_callback([&](int inc) {
-                b += inc;
-            },
-            &on_increase
-        ));
-
-        EXPECT_EQ(2, on_increase.activate(2));
-        EXPECT_EQ(a, 5);
-        EXPECT_EQ(b, 2);
-    }
-    // callback_number_uno deallocated
-
-    EXPECT_EQ(1, on_increase.activate(3));
-    EXPECT_EQ(a, 5);
-    EXPECT_EQ(b, 5);
-
-    callback_number_duo.clear();
-
-    EXPECT_EQ(0, on_increase.activate(11));
-    EXPECT_EQ(a, 5);
-    EXPECT_EQ(b, 5);
 }

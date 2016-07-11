@@ -14,6 +14,7 @@ An oasis of Python in lava sea of C++
 #include <functional>
 #include <thread>
 #include <mutex>
+#include "dali/utils/assert2.h"
 
 namespace utils {
 
@@ -62,7 +63,10 @@ namespace utils {
             GeneratorHeart() : hasOutputted(false), abort(false) {}
 
             void yield(OutputT v) {
-                assert2((bool)mutex, "Mutex was not present during yield.");
+                ASSERT2(
+                    (bool)mutex,
+                    "Mutex was not present during yield."
+                );
                 value = v;
                 hasOutputted = true;
                 while (hasOutputted) {

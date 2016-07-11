@@ -4,7 +4,6 @@
 #include <iostream>
 
 #include "dali/config.h"
-#include "dali/utils.h"
 #include "dali/array/array.h"
 #include "dali/array/function/function.h"
 #include "dali/array/memory/device.h"

@@ -4,12 +4,13 @@
 #include <gtest/gtest.h>
 
 #include "dali/test_utils.h"
-// #include "dali/tensor/Index.h"
 // #include "dali/layers/Layers.h"
 #include "dali/tensor/tensor.h"
 #include "dali/tensor/op.h"
 #include "dali/array/op.h"
 #include "dali/tensor/solver.h"
+#include "dali/utils/random.h"
+
 
 using std::vector;
 using std::chrono::milliseconds;

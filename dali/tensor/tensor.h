@@ -14,7 +14,6 @@
 #include "dali/array/array.h"
 #include "dali/array/function/lazy_evaluator.h"
 #include "dali/array/slice.h"
-#include "dali/utils.h"
 
 /**
 Tensor

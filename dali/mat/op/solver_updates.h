@@ -3,7 +3,6 @@
 
 #include "dali/tensor/Mat.h"
 #include "dali/tensor/Tape.h"
-#include "dali/utils.h"
 
 template<typename R> class Mat;
 

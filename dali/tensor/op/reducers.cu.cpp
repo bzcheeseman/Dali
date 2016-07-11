@@ -176,6 +176,7 @@ namespace tensor_ops {
 
     DALI_TENSOR_GETINDICES_ALL_REDUCTION(argmin);
     DALI_TENSOR_GETINDICES_ALL_REDUCTION(argmax);
+    DALI_TENSOR_GETINDICES_ALL_REDUCTION(argsort);
 
     #define DALI_TENSOR_GETINDICES_AXIS_REDUCTION(FUNCTION_NAME)\
         Tensor FUNCTION_NAME(const Tensor& tensor, const int& axis) {\
@@ -184,12 +185,5 @@ namespace tensor_ops {
 
     DALI_TENSOR_GETINDICES_AXIS_REDUCTION(argmin);
     DALI_TENSOR_GETINDICES_AXIS_REDUCTION(argmax);
-
-    Tensor argsort(const Tensor& tensor) {
-        return Tensor(tensor.w.argsort());
-    }
-
-    Tensor argsort(const Tensor& tensor, const int& axis) {
-        return Tensor(tensor.w.argsort(axis));
-    }
+    DALI_TENSOR_GETINDICES_AXIS_REDUCTION(argsort);
 }

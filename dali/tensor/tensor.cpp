@@ -285,14 +285,14 @@ TENSOR_UNARY_OP(L2_norm);
 TENSOR_UNARY_OP_WITH_INT_ARG(L2_norm);
 TENSOR_UNARY_OP(argsort);
 TENSOR_UNARY_OP_WITH_INT_ARG(argsort);
+TENSOR_UNARY_OP(argmax);
+TENSOR_UNARY_OP_WITH_INT_ARG(argmax);
+TENSOR_UNARY_OP(argmin);
+TENSOR_UNARY_OP_WITH_INT_ARG(argmin);
 TENSOR_UNARY_OP(log);
 TENSOR_UNARY_OP(exp);
 TENSOR_UNARY_OP(abs);
 TENSOR_UNARY_OP(relu);
-//
-// Tensor Tensor::T() const {
-//     return TensorOps::transpose(*this);
-// }
 
 Tensor Tensor::operator[](int idx) const {
     return pluck_axis(0, idx);
@@ -395,22 +395,6 @@ Tensor Tensor::copyless_ravel() const {
 
 Tensor Tensor::ravel() const {
     return tensor_ops::ravel(*this);
-}
-
-Tensor Tensor::argmin() const {
-    return tensor_ops::argmin(*this);
-}
-
-Tensor Tensor::argmax() const {
-    return tensor_ops::argmax(*this);
-}
-
-Tensor Tensor::argmin(const int& axis) const {
-    return tensor_ops::argmin(*this, axis);
-}
-
-Tensor Tensor::argmax(const int& axis) const {
-    return tensor_ops::argmax(*this, axis);
 }
 
 //
@@ -794,35 +778,6 @@ void Tensor::to_cpu() const {
 // template bool operator==<float>(const Tensor<float>&, const Tensor<float>&);
 // template bool operator==<double>(const Tensor<double>&, const Tensor<double>&);
 //
-// int Tensor::argmax() const {
-//     return TensorOps::argmax(*this);
-// }
-//
-// int Tensor::argmin() const {
-//     return TensorOps::argmin(*this);
-// }
-//
-// vector<int> Tensor::argmin(int dimension) const {
-//     return TensorOps::argmin(*this, dimension);
-// }
-//
-// vector<int> Tensor::argmax(int dimension) const {
-//     return TensorOps::argmax(*this, dimension);
-// }
-//
-// template <typename R>
-// vector<int> Tensor::argsort() const {
-//     return TensorOps::argsort(*this);
-// }
-//
-// int Tensor::argmax_slice(int lower, int upper) const {
-//     return TensorOps::argmax_slice(*this, lower, upper);
-// }
-//
-// int Tensor::argmin_slice(int lower, int upper) const {
-//     return TensorOps::argmin_slice(*this, lower, upper);
-// }
-//
 // namespace utils {
 //
 //     void save_matrices(vector<Tensor> parameters, string dirname) {
@@ -849,17 +804,6 @@ void Tensor::to_cpu() const {
 //             i++;
 //         }
 //     }
-//
-//
-//     vector<size_t> argsort(const vector<Tensor<float>> &v) {
-//         return TensorOps<float>::argsort(v);
-//     }
-//
-//
-//     vector<size_t> argsort(const vector<Tensor<double>> &v) {
-//         return TensorOps<double>::argsort(v);
-//     }
-// }
 
 std::ostream &operator <<(std::ostream &os, const Tensor& tensor) {
     os << "Tensor(" << tensor.shape() << ", dtype=" << tensor.dtype() << ")";

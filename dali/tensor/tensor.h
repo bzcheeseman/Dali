@@ -126,6 +126,8 @@ class Tensor {
 
         bool is_nan() const;
         bool is_grad_nan() const;
+
+        // Reducers
         Tensor sum() const;
         Tensor sum(const int& axis) const;
         Tensor mean() const;
@@ -136,6 +138,17 @@ class Tensor {
         Tensor min(const int& axis) const;
         Tensor L2_norm() const;
         Tensor L2_norm(const int& axis) const;
+        // Returns the indices of the maximum values along an axis.
+        Tensor argmax() const;
+        Tensor argmax(const int& axis) const;
+        // Returns the indices of the minimum values along an axis.
+        Tensor argmin() const;
+        Tensor argmin(const int& axis) const;
+        // Returns the indices of a sort performed on each axis.
+        Tensor argsort() const;
+        Tensor argsort(const int& axis) const;
+
+        // Unary methods
         Tensor log() const;
         Tensor exp() const;
         Tensor abs() const;
@@ -156,9 +169,10 @@ class Tensor {
         Tensor eltinv() const;
         Tensor sigmoid() const;
         Tensor steep_sigmoid(const double& aggressiveness = 3.75) const;
+
+        // Shape transformations
         Tensor reshape(const std::vector<int>&) const;
         Tensor copyless_reshape(const std::vector<int>&) const;
-
         Tensor pluck_axis(int axis, const Slice& slice) const;
         Tensor pluck_axis(int axis, int idx) const;
         Tensor squeeze(int axis) const;
@@ -173,15 +187,6 @@ class Tensor {
         Tensor transpose() const;
         Tensor ravel() const;
         Tensor copyless_ravel() const;
-        // Returns the indices of the maximum values along an axis.
-        Tensor argmax() const;
-        Tensor argmax(const int& axis) const;
-        // Returns the indices of the minimum values along an axis.
-        Tensor argmin() const;
-        Tensor argmin(const int& axis) const;
-        // Returns the indices of a sort performed on each axis.
-        Tensor argsort() const;
-        Tensor argsort(const int& axis) const;
         // Tensor operator-() const;
         static Tensor zeros_like(const Tensor& other);
         static Tensor ones_like(const Tensor& other);

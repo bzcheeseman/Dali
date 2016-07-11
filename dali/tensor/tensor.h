@@ -114,14 +114,6 @@ class Tensor {
         void set_name(char* newname);
         void set_name(const char* newname);
 
-        // void npy_save(std::string fname, std::string mode = "w");
-        // void npy_save(FILE*);
-        // IMPLEMENT IN ARRAY // void npy_load(std::string fname);
-        // IMPLEMENT IN ARRAY // void npy_load(FILE*);
-        //
-        // static Tensor npy_load(File*);
-        // static Tensor npy_load(const std::string&);
-
         /* A copy constructor that perform shallow copies of a Tensor.
         Key usage is for Hogwild style training of parameters
         where different computation threads share memory for
@@ -132,25 +124,8 @@ class Tensor {
 
         // void resize(dim_t rows, dim_t cols);
 
-        // Various operations on matrix.
-        // Soon to be replaced by legitimate operators
-        // See TensorOps for documentation.
-
         bool is_nan() const;
         bool is_grad_nan() const;
-        // Tensor eltmul_broadcast_colwise(Tensor) const;
-        // Tensor eltmul(Tensor) const;
-        // Tensor eltmul(R) const;
-        // Tensor eltmul_broadcast_rowwise(Tensor) const;
-        // Tensor eltmul_rowwise(Tensor) const;
-        // Tensor add_broadcast_rowwise(Tensor) const;
-        // Tensor add_broadcast_colwise(Tensor) const;
-        // Tensor add(Tensor) const;
-        // Tensor sub(Tensor) const;
-        // Tensor sub_broadcast(Tensor) const;
-        // Tensor sub_broadcast_reversed(Tensor) const;
-        // Tensor square() const;
-        // Tensor L2_norm() const;
         Tensor sum() const;
         Tensor sum(const int& axis) const;
         Tensor mean() const;
@@ -161,10 +136,6 @@ class Tensor {
         Tensor min(const int& axis) const;
         Tensor L2_norm() const;
         Tensor L2_norm(const int& axis) const;
-
-        // // Warning: transpose makes a copy, uses extra memory
-        // Tensor T() const;
-
         Tensor log() const;
         Tensor exp() const;
         Tensor abs() const;
@@ -172,8 +143,6 @@ class Tensor {
         Tensor softplus() const;
         Tensor relu() const;
         Tensor dot(const Tensor&) const;
-        // template<typename ScalarType>
-        // Tensor pow(ScalarType) const;
         Tensor operator[](int idx) const;
         Tensor operator[](const Tensor& indices) const;
         Tensor operator[](const std::vector<int>& indices) const;
@@ -181,7 +150,9 @@ class Tensor {
         SlicingInProgress<Tensor> operator[](const Slice& s) const;
         SlicingInProgress<Tensor> operator[](const Broadcast& b) const;
         Tensor sqrt() const;
+        Tensor rsqrt() const;
         Tensor square() const;
+        Tensor cube() const;
         Tensor eltinv() const;
         Tensor sigmoid() const;
         Tensor steep_sigmoid(const double& aggressiveness = 3.75) const;
@@ -208,14 +179,10 @@ class Tensor {
         // Returns the indices of the minimum values along an axis.
         Tensor argmin() const;
         Tensor argmin(const int& axis) const;
-        // std::vector<int> argsort() const;
+        // Returns the indices of a sort performed on each axis.
+        Tensor argsort() const;
+        Tensor argsort(const int& axis) const;
         // Tensor operator-() const;
-
-        // // Plucking rows and columns:
-        // Tensor col(int col);
-        // Tensor operator[](Indexing::Index) const;
-        // Tensor operator()(Indexing::Index) const;
-        // Tensor operator()(Indexing::Index, Indexing::Index) const;
         static Tensor zeros_like(const Tensor& other);
         static Tensor ones_like(const Tensor& other);
         static Tensor empty_like(const Tensor& other);

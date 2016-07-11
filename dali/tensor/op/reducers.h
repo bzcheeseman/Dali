@@ -16,8 +16,10 @@ namespace tensor_ops {
     Tensor max(const Tensor& tensor, const int& axis);
     Tensor argmax(const Tensor& t);
     Tensor argmin(const Tensor& t);
+    Tensor argsort(const Tensor& t);
     Tensor argmax(const Tensor& t, const int& axis);
     Tensor argmin(const Tensor& t, const int& axis);
+    Tensor argsort(const Tensor& t, const int& axis);
 }
 
 #endif

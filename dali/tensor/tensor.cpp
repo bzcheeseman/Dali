@@ -265,7 +265,9 @@ Tensor Tensor::dot(const Tensor& other) const {
     }\
 
 TENSOR_UNARY_OP(square);
+TENSOR_UNARY_OP(cube);
 TENSOR_UNARY_OP(sqrt);
+TENSOR_UNARY_OP(rsqrt);
 TENSOR_UNARY_OP(eltinv);
 TENSOR_UNARY_OP(tanh);
 TENSOR_UNARY_OP(softplus);
@@ -281,6 +283,8 @@ TENSOR_UNARY_OP(max);
 TENSOR_UNARY_OP_WITH_INT_ARG(max);
 TENSOR_UNARY_OP(L2_norm);
 TENSOR_UNARY_OP_WITH_INT_ARG(L2_norm);
+TENSOR_UNARY_OP(argsort);
+TENSOR_UNARY_OP_WITH_INT_ARG(argsort);
 TENSOR_UNARY_OP(log);
 TENSOR_UNARY_OP(exp);
 TENSOR_UNARY_OP(abs);

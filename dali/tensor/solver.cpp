@@ -377,8 +377,7 @@ namespace solver {
         } else if (solver_name == "rmsprop") {
             solver = std::make_shared<RMSProp>(params, step_size, 0.999, 1e-9, 100.0, regc);
         } else if (solver_name == "rmspropmomentum") {
-            solver = std::make_shared<RMSPropMomentum>(params);
-            dynamic_cast<RMSPropMomentum*>(solver.get())->step_size = step_size;
+            solver = std::make_shared<RMSPropMomentum>(params, step_size);
             dynamic_cast<RMSPropMomentum*>(solver.get())->regc = regc;
         } else {
             ASSERT2(false,

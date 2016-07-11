@@ -1018,6 +1018,8 @@ DALI_ARRAY_DEFINE_REDUCER(mean, mean);
 DALI_ARRAY_DEFINE_REDUCER(max, max);
 DALI_ARRAY_DEFINE_REDUCER(min, min);
 DALI_ARRAY_DEFINE_REDUCER(argsort, argsort);
+DALI_ARRAY_DEFINE_REDUCER(argmin, argmin);
+DALI_ARRAY_DEFINE_REDUCER(argmax, argmax);
 
 Array::operator float() const {
     return scalar_value<float>();

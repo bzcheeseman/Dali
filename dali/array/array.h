@@ -228,6 +228,11 @@ class Array : public Exp<Array> {
     Assignable<Array> max(const int& axis) const;
     Assignable<Array> L2_norm(const int& axis) const;
 
+    Assignable<Array> argmin(const int& axis) const;
+    Assignable<Array> argmin() const;
+    Assignable<Array> argmax(const int& axis) const;
+    Assignable<Array> argmax() const;
+
     Assignable<Array> argsort(const int& axis) const;
     Assignable<Array> argsort() const;
 

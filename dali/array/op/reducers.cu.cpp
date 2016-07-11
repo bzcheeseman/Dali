@@ -65,6 +65,14 @@ namespace op {
         return lazy::max(x, axis);
     }
 
+    Assignable<Array> argmin(const Array& x) {
+        return lazy::argmin(x.ravel(), 0);
+    }
+
+    Assignable<Array> argmax(const Array& x) {
+        return lazy::argmax(x.ravel(), 0);
+    }
+
     Assignable<Array> argmin(const Array& x, int axis) {
         if (axis < 0) axis = x.ndim() + axis;
         return lazy::argmin(x, axis);

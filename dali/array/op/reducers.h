@@ -16,6 +16,8 @@ namespace op {
     Assignable<Array> mean(const Array& x, int axis);
     Assignable<Array> min(const Array& x, int axis);
     Assignable<Array> max(const Array& x, int axis);
+    Assignable<Array> argmin(const Array& x);
+    Assignable<Array> argmax(const Array& x);
     Assignable<Array> argmin(const Array& x, int axis);
     Assignable<Array> argmax(const Array& x, int axis);
 }; // namespace op

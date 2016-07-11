@@ -66,13 +66,19 @@ namespace solver {
     void AbstractSolver::create_gradient_caches(const std::vector<Tensor>& parameters) {}
 
     /* SGD */
-    SGD::SGD(const double& clip_norm, const double& regc) :
-            AbstractSolver(clip_norm, 0.0, regc, METHOD_SGD) {
+    SGD::SGD(const double& step_size_,
+             const double& clip_norm,
+             const double& regc) :
+            AbstractSolver(clip_norm, 0.0, regc, METHOD_SGD),
+            step_size(step_size_) {
     }
 
     SGD::SGD(const std::vector<Tensor>& parameters,
+             const double& step_size_,
              const double& clip_norm,
-             const double& regc) : AbstractSolver(clip_norm, 0.0, regc, METHOD_SGD) {};
+             const double& regc) :
+            AbstractSolver(clip_norm, 0.0, regc, METHOD_SGD),
+            step_size(step_size_) {};
 
     void SGD::step(std::vector<Tensor>& parameters, const double& step_size) {
         for (auto& param : parameters) {
@@ -92,16 +98,21 @@ namespace solver {
     }
 
     /* AdaGrad */
-    AdaGrad::AdaGrad(const double& smooth_eps,
+    AdaGrad::AdaGrad(const double& step_size_,
+                     const double& smooth_eps,
                      const double& clip_norm,
-                     const double& regc) : AbstractSolver(clip_norm, smooth_eps, regc, METHOD_ADAGRAD) {
+                     const double& regc) :
+            AbstractSolver(clip_norm, smooth_eps, regc, METHOD_ADAGRAD),
+            step_size(step_size_) {
     }
 
-    AdaGrad::AdaGrad(
-            const std::vector<Tensor>& parameters,
-            const double& smooth_eps,
-            const double& clip_norm,
-            const double& regc) : AbstractSolver(clip_norm, smooth_eps, regc, METHOD_ADAGRAD) {
+    AdaGrad::AdaGrad(const std::vector<Tensor>& parameters,
+                     const double& step_size_,
+                     const double& smooth_eps,
+                     const double& clip_norm,
+                     const double& regc) :
+            AbstractSolver(clip_norm, smooth_eps, regc, METHOD_ADAGRAD),
+            step_size(step_size_) {
         create_gradient_caches(parameters);
     }
 
@@ -133,22 +144,24 @@ namespace solver {
     }
 
     /* RMSProp */
-    RMSProp::RMSProp (const double& _decay_rate,
-                      const double& smooth_eps,
-                      const double& clip_norm,
-                      const double& regc) :
-            AdaGrad(smooth_eps, clip_norm, regc),
-            decay_rate(_decay_rate) {
+    RMSProp::RMSProp(const double& step_size_,
+                     const double& decay_rate_,
+                     const double& smooth_eps_,
+                     const double& clip_norm_,
+                     const double& regc_) :
+            AdaGrad(step_size_, smooth_eps_, clip_norm_, regc_),
+            decay_rate(decay_rate_) {
         this->method = METHOD_RMSPROP;
     }
 
-    RMSProp::RMSProp (const std::vector<Tensor>& parameters,
-                      const double& _decay_rate,
-                      const double& smooth_eps,
-                      const double& clip_norm,
-                      const double& regc) :
-            AdaGrad(parameters, smooth_eps, clip_norm, regc),
-            decay_rate(_decay_rate) {
+    RMSProp::RMSProp(const std::vector<Tensor>& parameters,
+                     const double& step_size_,
+                     const double& decay_rate_,
+                     const double& smooth_eps_,
+                     const double& clip_norm_,
+                     const double& regc_) :
+            AdaGrad(parameters, step_size_, smooth_eps_, clip_norm_, regc_),
+            decay_rate(decay_rate_) {
         this->method = METHOD_RMSPROP;
     }
 
@@ -175,9 +188,9 @@ namespace solver {
     }
 
     /* RMSPropMomentum */
-    RMSPropMomentum::RMSPropMomentum(const double& decay_rate,
+    RMSPropMomentum::RMSPropMomentum(const double& step_size,
+                                     const double& decay_rate,
                                      const double& momentum,
-                                     const double& step_size,
                                      const double& smooth_eps,
                                      const double& clip_norm,
                                      const double& regc) :
@@ -187,9 +200,9 @@ namespace solver {
                 step_size(step_size) {}
 
     RMSPropMomentum::RMSPropMomentum(const std::vector<Tensor>& parameters,
+                                     const double& step_size,
                                      const double& decay_rate,
                                      const double& momentum,
-                                     const double& step_size,
                                      const double& smooth_eps,
                                      const double& clip_norm,
                                      const double& regc) :
@@ -358,14 +371,11 @@ namespace solver {
         } else if (solver_name == "adam") {
             solver = std::make_shared<Adam>(params, step_size, 0.55, 1e-6, 1e-9, 100.0, regc);
         } else if (solver_name == "sgd") {
-            solver = std::make_shared<SGD>(params, 100.0, regc);
-            dynamic_cast<SGD*>(solver.get())->step_size = step_size;
+            solver = std::make_shared<SGD>(params, step_size, 100.0, regc);
         } else if (solver_name == "adagrad") {
-            solver = std::make_shared<AdaGrad>(params, 1e-9, 100.0, regc);
-            dynamic_cast<AdaGrad*>(solver.get())->step_size = step_size;
+            solver = std::make_shared<AdaGrad>(params, step_size, 1e-9, 100.0, regc);
         } else if (solver_name == "rmsprop") {
-            solver = std::make_shared<RMSProp>(params, 0.999, 1e-9, 100.0, regc);
-            dynamic_cast<RMSProp*>(solver.get())->step_size = step_size;
+            solver = std::make_shared<RMSProp>(params, step_size, 0.999, 1e-9, 100.0, regc);
         } else if (solver_name == "rmspropmomentum") {
             solver = std::make_shared<RMSPropMomentum>(params);
             dynamic_cast<RMSPropMomentum*>(solver.get())->step_size = step_size;

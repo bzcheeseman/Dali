@@ -3,8 +3,6 @@
 
 #include "dali/tensor/tensor.h"
 
-#define SOLVER_MAT_DEFAULT_STEP_SIZE_H 0.035
-
 namespace solver {
     typedef void* cache_key_t;
     typedef Array cache_t;
@@ -45,11 +43,13 @@ namespace solver {
     class SGD : public AbstractSolver {
         public:
             // This can be overriden by parameter passed to step function.
-            double step_size = SOLVER_MAT_DEFAULT_STEP_SIZE_H;
+            double step_size;
 
-            SGD(const double& clip_norm=5.0,
+            SGD(const double& step_size=0.01,
+                const double& clip_norm=5.0,
                 const double& regc=0.0);
             SGD(const std::vector<Tensor>& params,
+                const double& step_size=0.01,
                 const double& clip_norm=5.0,
                 const double& regc=0.0);
             virtual void step(std::vector<Tensor>&);
@@ -59,12 +59,14 @@ namespace solver {
     class AdaGrad : public AbstractSolver {
         public:
             // This can be overriden by parameter passed to step function.
-            double step_size = SOLVER_MAT_DEFAULT_STEP_SIZE_H;
+            double step_size;
             std::unordered_map<cache_key_t, cache_t> gsums;
-            AdaGrad(const double& smooth_eps=SMOOTH_DEFAULT,
+            AdaGrad(const double& step_size=0.1,
+                    const double& smooth_eps=SMOOTH_DEFAULT,
                     const double& clip_norm=100.0,
                     const double& regc=0.0);
             AdaGrad(const std::vector<Tensor>& params,
+                    const double& step_size=0.1,
                     const double& smooth_eps = SMOOTH_DEFAULT,
                     const double& clip_norm=100.0,
                     const double& regc=0.0);
@@ -76,14 +78,15 @@ namespace solver {
 
     class RMSProp : public AdaGrad {
         public:
-            double step_size = SOLVER_MAT_DEFAULT_STEP_SIZE_H;
             double decay_rate;
 
-            RMSProp(const double& _decay_rate=0.999,
+            RMSProp(const double& step_size=0.1,
+                    const double& _decay_rate=0.999,
                     const double& smooth_eps=SMOOTH_DEFAULT,
                     const double& clip_norm=100.0,
                     const double& regc=0.0);
             RMSProp(const std::vector<Tensor>& params,
+                    const double& step_size=0.1,
                     const double& _decay_rate=0.999,
                     const double& smooth_eps=SMOOTH_DEFAULT,
                     const double& clip_norm=100.0,
@@ -94,7 +97,7 @@ namespace solver {
 
     class RMSPropMomentum : public AbstractSolver {
         public:
-            double step_size = SOLVER_MAT_DEFAULT_STEP_SIZE_H;
+            double step_size;
             double decay_rate;
             double momentum;
 
@@ -102,16 +105,16 @@ namespace solver {
             std::unordered_map<cache_key_t, cache_t> g_cache;
             std::unordered_map<cache_key_t, cache_t> momentum_cache;
 
-            RMSPropMomentum(const double& decay_rate=0.95,
+            RMSPropMomentum(const double& step_size=1e-4,
+                            const double& decay_rate=0.95,
                             const double& momentum=0.9,
-                            const double& step_size=1e-4,
                             const double& smooth_eps=1e-4,
                             const double& clip_norm=100.0,
                             const double& regc=0.0);
             RMSPropMomentum(const std::vector<Tensor>&,
+                            const double& step_size=1e-4,
                             const double& decay_rate=0.95,
                             const double& momentum=0.9,
-                            const double& step_size=1e-4,
                             const double& smooth_eps=1e-4,
                             const double& clip_norm=100.0,
                             const double& regc=0.0);

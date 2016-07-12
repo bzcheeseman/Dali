@@ -92,6 +92,11 @@ TEST_F(TensorTests, sum) {
                 expect_args_remain_on_gpu(functor, {A});\
                 EXPECT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-4, FAIL_ON_ZERO_GRADIENT));\
             }\
+            for (axis = -1; axis >= -shape.size(); axis--) {\
+                auto A = Tensor::uniform(LOWER_BOUND, UPPER_BOUND, shape, DTYPE_DOUBLE);\
+                expect_args_remain_on_gpu(functor, {A});\
+                EXPECT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-4, FAIL_ON_ZERO_GRADIENT));\
+            }\
         }\
     }
 
@@ -103,6 +108,36 @@ DEFINE_REDUCTION_TENSOR_TEST(min_axis_positive, min, 0.1, 1000.0, true);
 DEFINE_REDUCTION_TENSOR_TEST(max_axis_positive, max, 0.1, 1000.0, true);
 DEFINE_REDUCTION_TENSOR_TEST(min_axis_negative, min, -1000.0, -0.1, true);
 DEFINE_REDUCTION_TENSOR_TEST(max_axis_negative, max, -1000.0, -0.1, true);
+
+#define DEFINE_REDUCTION_TENSOR_2D_TEST(TESTNAME, REDUCTION_NAME, LOWER_BOUND, UPPER_BOUND, FAIL_ON_ZERO_GRADIENT)\
+    TEST_F(TensorTests, TESTNAME) {\
+        int axis;\
+        auto functor = [&axis](vector<Tensor> Xs)-> Tensor {\
+            return tensor_ops::REDUCTION_NAME(Xs[0], axis);\
+        };\
+        EXPERIMENT_REPEAT {\
+            std:vector<int> shape = {3, 2};\
+            for (axis = 0; axis < shape.size(); axis++) {\
+                auto A = Tensor::uniform(LOWER_BOUND, UPPER_BOUND, shape, DTYPE_DOUBLE);\
+                expect_args_remain_on_gpu(functor, {A});\
+                EXPECT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-4, FAIL_ON_ZERO_GRADIENT));\
+            }\
+            for (axis = -1; axis >= -shape.size(); axis--) {\
+                auto A = Tensor::uniform(LOWER_BOUND, UPPER_BOUND, shape, DTYPE_DOUBLE);\
+                expect_args_remain_on_gpu(functor, {A});\
+                EXPECT_TRUE(gradient_same(functor, {A}, 1e-3, 1e-4, FAIL_ON_ZERO_GRADIENT));\
+            }\
+        }\
+    }
+
+DEFINE_REDUCTION_TENSOR_2D_TEST(L2_norm_axis_positive_2d, L2_norm, -2.0, -0.1, true);
+DEFINE_REDUCTION_TENSOR_2D_TEST(L2_norm_axis_negative_2d, L2_norm, 0.1, 2.0, true);
+DEFINE_REDUCTION_TENSOR_2D_TEST(sum_axis_2d, sum, -2.0, 2.0, true);
+DEFINE_REDUCTION_TENSOR_2D_TEST(mean_axis_2d, mean, -2.0, 2.0, true);
+DEFINE_REDUCTION_TENSOR_2D_TEST(min_axis_positive_2d, min, 0.1, 1000.0, true);
+DEFINE_REDUCTION_TENSOR_2D_TEST(max_axis_positive_2d, max, 0.1, 1000.0, true);
+DEFINE_REDUCTION_TENSOR_2D_TEST(min_axis_negative_2d, min, -1000.0, -0.1, true);
+DEFINE_REDUCTION_TENSOR_2D_TEST(max_axis_negative_2d, max, -1000.0, -0.1, true);
 
 TEST_F(TensorTests, sigmoid_gpu_vs_cpu) {
     auto functor = [](vector<Tensor> Xs)-> Tensor {

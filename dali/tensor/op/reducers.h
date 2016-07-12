@@ -9,17 +9,17 @@ namespace tensor_ops {
     Tensor min(const Tensor& tensor);
     Tensor max(const Tensor& tensor);
     Tensor L2_norm(const Tensor& tensor);
-    Tensor sum(const Tensor& tensor, const int& axis);
-    Tensor L2_norm(const Tensor& tensor, const int& axis);
-    Tensor mean(const Tensor& tensor, const int& axis);
-    Tensor min(const Tensor& tensor, const int& axis);
-    Tensor max(const Tensor& tensor, const int& axis);
+    Tensor sum(const Tensor& tensor, int axis);
+    Tensor L2_norm(const Tensor& tensor, int axis);
+    Tensor mean(const Tensor& tensor, int axis);
+    Tensor min(const Tensor& tensor, int axis);
+    Tensor max(const Tensor& tensor, int axis);
     Tensor argmax(const Tensor& t);
     Tensor argmin(const Tensor& t);
     Tensor argsort(const Tensor& t);
-    Tensor argmax(const Tensor& t, const int& axis);
-    Tensor argmin(const Tensor& t, const int& axis);
-    Tensor argsort(const Tensor& t, const int& axis);
+    Tensor argmax(const Tensor& t, int axis);
+    Tensor argmin(const Tensor& t, int axis);
+    Tensor argsort(const Tensor& t, int axis);
 }
 
 #endif

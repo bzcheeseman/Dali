@@ -64,7 +64,8 @@ namespace tensor_ops {
         return out;
     }
 
-    Tensor L2_norm(const Tensor& tensor, const int& axis) {
+    Tensor L2_norm(const Tensor& tensor, int axis) {
+        if (axis < 0) axis = axis + tensor.ndim();
         Tensor out(tensor.w.L2_norm(axis));
         if (graph::backprop_enabled() && !tensor.constant)
             graph::emplace_back([tensor, out, axis]() mutable {
@@ -78,7 +79,8 @@ namespace tensor_ops {
         return out;
     }
 
-    Tensor sum(const Tensor& tensor, const int& axis) {
+    Tensor sum(const Tensor& tensor, int axis) {
+        if (axis < 0) axis = axis + tensor.ndim();
         Tensor out(op::sum(tensor.w, axis));
         if (graph::backprop_enabled() && !tensor.constant) {
             auto tensor_dw = tensor.dw;
@@ -94,12 +96,14 @@ namespace tensor_ops {
         return out;
     }
 
-    Tensor mean(const Tensor& tensor, const int& axis) {
+    Tensor mean(const Tensor& tensor, int axis) {
+        if (axis < 0) axis = axis + tensor.ndim();
         Tensor out(op::mean(tensor.w, axis));
         if (graph::backprop_enabled() && !tensor.constant) {
             auto tensor_dw = tensor.dw;
             auto out_dw = out.dw;
             graph::emplace_back([tensor_dw, out_dw, axis]() mutable {
+                if (axis < 0) axis = axis + tensor_dw.ndim();
                 int axis_size = tensor_dw.shape()[axis];
                 auto reshaped_gradient = out_dw.insert_broadcast_axis(axis);
                 tensor_dw <<= reshaped_gradient / axis_size;
@@ -133,7 +137,8 @@ namespace tensor_ops {
     DALI_TENSOR_SUBSAMPLE_ALL_REDUCTION(max);
 
     #define DALI_TENSOR_SUBSAMPLE_AXIS_REDUCTION(FUNCTION_NAME, OPNAME)\
-        Tensor FUNCTION_NAME(const Tensor& tensor, const int& axis) {\
+        Tensor FUNCTION_NAME(const Tensor& tensor, int axis) {\
+            if (axis < 0) axis = axis + tensor.ndim();\
             Tensor out(OPNAME(tensor.w, axis));\
             if (graph::backprop_enabled() && !tensor.constant)\
                 graph::emplace_back([tensor, out, axis]() mutable {\
@@ -179,7 +184,7 @@ namespace tensor_ops {
     DALI_TENSOR_GETINDICES_ALL_REDUCTION(argsort);
 
     #define DALI_TENSOR_GETINDICES_AXIS_REDUCTION(FUNCTION_NAME)\
-        Tensor FUNCTION_NAME(const Tensor& tensor, const int& axis) {\
+        Tensor FUNCTION_NAME(const Tensor& tensor, int axis) {\
             return Tensor(op::FUNCTION_NAME(tensor.w, axis));\
         }\
 

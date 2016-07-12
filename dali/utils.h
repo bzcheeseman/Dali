@@ -9,7 +9,6 @@
 #include "dali/utils/generator.h"
 #include "dali/utils/Training.h"
 #include "dali/utils/xml_cleaner.h"
-#include "dali/utils/ParseUtils.h"
 #include "dali/utils/scoring_utils.h"
 #include "dali/utils/tsv_utils.h"
 #include "dali/utils/OntologyBranch.h"

@@ -15,8 +15,8 @@ typedef MemorySafeTest TensorSpatialTests;
 
 TEST_F(TensorSpatialTests, conv2d_add_bias) {
     EXPERIMENT_REPEAT {
-        auto X = Tensor::uniform(10.0, {2, 3, 4, 5}, DTYPE_FLOAT);
-        auto b = Tensor::uniform(10.0, {3,},         DTYPE_FLOAT);
+        auto X = Tensor::uniform(10.0, {2, 3, 4, 5}, DTYPE_DOUBLE);
+        auto b = Tensor::uniform(10.0, {3,},         DTYPE_DOUBLE);
 
         auto functor = [&](vector<Tensor> Xs)-> Tensor {
             return tensor_ops::conv2d_add_bias(X, b, "NCHW");

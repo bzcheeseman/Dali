@@ -199,6 +199,8 @@ TEST(LayerTests, stacked_layer_tanh_gradient) {
 }
 //
 TEST(LayerTests, LSTM_Zaremba_gradient) {
+    utils::random::set_seed(1234);
+
     int num_examples           = 5;
     int hidden_size            = 2;
     int input_size             = 3;

@@ -1,5 +1,6 @@
 #include "smart_parser.h"
 
+#include "dali/utils/assert2.h"
 #include "dali/utils/core_utils.h"
 #include "dali/utils/print_utils.h"
 

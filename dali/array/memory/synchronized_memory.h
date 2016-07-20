@@ -12,8 +12,8 @@
 #include "dali/array/memory/device.h"
 #include "dali/array/memory/access_modes.h"
 #include "dali/array/dtype.h"
-#include "dali/utils/core_utils.h"
 #include "dali/runtime_config.h"
+#include "dali/utils/assert2.h"
 
 
 /*

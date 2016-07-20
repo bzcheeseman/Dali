@@ -1,4 +1,5 @@
 #include "dali/utils/xml_cleaner.h"
+#include "dali/utils/core_utils.h"
 
 using std::string;
 using std::vector;

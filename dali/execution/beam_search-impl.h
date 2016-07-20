@@ -89,8 +89,14 @@ std::vector<beam_search_helper::BeamSearchResult<state_t>> beam_search(state_t i
 
                 for(int candidate_idx = 0; candidate_idx < sorted_candidates.shape()[0]; candidate_idx++) {
                     int candidate_symbol = sorted_candidates(candidate_idx);
-                    if (utils::in_vector(forbidden_symbols, (uint)candidate_symbol))
-                        continue;
+                    bool found = false;
+                    for (const auto& val : forbidden_symbols) {
+                        if (val == candidate_symbol) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found) continue;
                     if (candidates_remaining-- <= 0)
                         break;
                     double candidate_score = scores(candidate_symbol);

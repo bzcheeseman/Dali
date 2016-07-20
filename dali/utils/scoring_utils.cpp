@@ -1,4 +1,8 @@
 #include "dali/utils/scoring_utils.h"
+#include "dali/utils/assert2.h"
+#include <iostream>
+#include <cmath>
+#include <iomanip>
 
 using std::vector;
 using std::string;

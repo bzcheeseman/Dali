@@ -1,49 +1,21 @@
 #ifndef DALI_CORE_UTILS_H
 #define DALI_CORE_UTILS_H
 
-#include <algorithm>
-#include <atomic>
-#include <cctype>
-#include <chrono>
-#include <cstring>
-#include <dirent.h>
-#include <errno.h>
-#include <fstream>
-#include <functional>
-#include <iomanip>
-#include <iostream>
-#include <locale>
-#include <map>
-#include <memory>
-#include <mutex>
-#include <regex>
-#include <ostream>
-#include <random>
-#include <set>
-#include <sstream>
-#include <string>
-#include <sys/stat.h>
-#include <sys/stat.h>
 #include <unordered_map>
+#include <iostream>
 #include <vector>
-
-// need to include Index for typedef eigen_index_segment
-
-#include "dali/utils/gzstream.h"
-#include "dali/utils/assert2.h"
 
 // Useful for expanding macros. Obviously two levels of macro
 // are needed....
 #define STR(x) __THIS_IS_VERY_ABNOXIOUS(x)
 #define __THIS_IS_VERY_ABNOXIOUS(tok) #tok
 
-// Default writing mode useful for default argument to
-// makedirs
-#define DEFAULT_MODE S_IRWXU | S_IRGRP |  S_IXGRP | S_IROTH | S_IXOTH
-
 typedef std::vector<std::string> VS;
 
 namespace utils {
+    extern const mode_t DEFAULT_MODE;
+
+
     #ifndef NDEBUG
         std::string explain_mat_bug(const std::string&, const char*, const int&);
         template<typename T>
@@ -60,7 +32,7 @@ namespace utils {
     and each row has whitespace separated words for each column)
     **/
     typedef std::vector<std::vector<str_sequence>> tokenized_labeled_dataset;
-    typedef std::vector<std::pair<str_sequence, uint>> tokenized_uint_labeled_dataset;
+    typedef std::vector<std::pair<str_sequence, int>> tokenized_uint_labeled_dataset;
 
     template<typename T>
     void tuple_sum(std::tuple<T, T>&, std::tuple<T,T>);
@@ -108,29 +80,6 @@ namespace utils {
     template<typename T>
     bool in_vector(const std::vector<T>&, const T&);
 
-    template<typename T>
-    std::vector<T> concatenate(std::initializer_list<std::vector<T>> lists) {
-        std::vector<T> concatenated_list;
-        for (auto& list: lists) {
-            for (const T& el: list) {
-                concatenated_list.emplace_back(el);
-            }
-        }
-        return concatenated_list;
-    }
-
-    template<typename IN, typename Mapper>
-    auto fmap(const std::vector<IN>& in_list, Mapper f) ->
-            std::vector<decltype(f(std::declval<IN>()))> {
-        std::vector<decltype(f(std::declval<IN>()))> out_list;
-        out_list.reserve(in_list.size());
-        for (const IN& in_element: in_list) {
-            out_list.push_back(f(in_element));
-        }
-        return out_list;
-    }
-
-
     /**
     Load Labeled Corpus
     -------------------
@@ -169,7 +118,7 @@ namespace utils {
     std::string& ltrim(std::string&);
     std::string& rtrim(std::string&);
 
-    void map_to_file(const std::map<std::string, str_sequence>&, const std::string&);
+    void map_to_file(const std::unordered_map<std::string, str_sequence>&, const std::string&);
 
     void ensure_directory(std::string&);
 
@@ -188,14 +137,14 @@ namespace utils {
 
     Outputs
     -------
-    std::map<string, std::vector<string> > map : the extracted key value pairs.
+    std::unordered_map<string, std::vector<string> > map : the extracted key value pairs.
 
     **/
-    std::map<std::string, str_sequence> text_to_map(const std::string&);
+    std::unordered_map<std::string, str_sequence> text_to_map(const std::string&);
     template<typename T, typename K>
-    void stream_to_hashmap(T&, std::map<std::string, K>&);
+    void stream_to_hashmap(T&, std::unordered_map<std::string, K>&);
     template<typename T>
-    std::map<std::string, T> text_to_hashmap(const std::string&);
+    std::unordered_map<std::string, T> text_to_hashmap(const std::string&);
 
     template<typename T>
     void stream_to_list(T&, str_sequence&);
@@ -207,14 +156,14 @@ namespace utils {
     void save_list_to_stream(const std::vector<std::string>& list, T&);
 
     template<typename T>
-    void stream_to_redirection_list(T&, std::map<std::string, std::string>&);
+    void stream_to_redirection_list(T&, std::unordered_map<std::string, std::string>&);
 
-    std::map<std::string, std::string> load_redirection_list(const std::string&);
+    std::unordered_map<std::string, std::string> load_redirection_list(const std::string&);
 
     template<typename T>
-    void stream_to_redirection_list(T&, std::map<std::string, std::string>&, std::function<std::string(std::string&&)>&, int num_threads = 1);
+    void stream_to_redirection_list(T&, std::unordered_map<std::string, std::string>&, std::function<std::string(std::string&&)>&, int num_threads = 1);
 
-    std::map<std::string, std::string> load_redirection_list(const std::string&, std::function<std::string(std::string&&)>&&, int num_threads = 1);
+    std::unordered_map<std::string, std::string> load_redirection_list(const std::string&, std::function<std::string(std::string&&)>&&, int num_threads = 1);
 
 
     /**
@@ -241,7 +190,7 @@ namespace utils {
     bool is_number(const std::string&);
 
     template<typename T>
-    void assert_map_has_key(std::map<std::string, T>&, const std::string&);
+    void assert_map_has_key(std::unordered_map<std::string, T>&, const std::string&);
 
     /**
     Split
@@ -344,9 +293,6 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
 
     class Timer {
         typedef std::chrono::system_clock clock_t;
-
-        static std::unordered_map<std::string, std::atomic<int>> timers;
-        static std::mutex timers_mutex;
 
         std::string name;
         bool stopped;

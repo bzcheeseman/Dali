@@ -2,6 +2,8 @@
 
 #include <iostream>
 #include <ostream>
+#include <fstream>
+#include <iomanip>
 #include <type_traits>
 
 #include "dali/array/function/operator.h"

@@ -1,7 +1,9 @@
 #include "dali/layers/lstm.h"
 
 #include "dali/tensor/op.h"
-#include "dali/utils/core_utils.h"
+#include "dali/utils/concatenate.h"
+#include "dali/utils/fmap.h"
+
 
 using std::vector;
 using utils::assert2;

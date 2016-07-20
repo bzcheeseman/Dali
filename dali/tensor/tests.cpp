@@ -10,7 +10,7 @@
 #include "dali/array/op.h"
 #include "dali/tensor/solver.h"
 #include "dali/utils/random.h"
-
+#include "dali/utils/core_utils.h"
 
 using std::vector;
 using std::chrono::milliseconds;

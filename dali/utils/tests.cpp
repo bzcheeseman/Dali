@@ -5,7 +5,6 @@
 #include <sstream>
 #include <cstdio>
 #include <string>
-#include <map>
 
 #include "dali/config.h"
 #include "dali/utils/ThreadPool.h"
@@ -81,7 +80,7 @@ TEST(utils, stream_to_redirection_list) {
         "what->happened\n"
         "who->is this?\n");
 
-    std::map<string, string> mapping;
+    std::unordered_map<string, string> mapping;
     utils::stream_to_redirection_list(ss, mapping);
     ASSERT_TRUE(mapping.find("hello") != mapping.end());
     ASSERT_TRUE(mapping.find("what") != mapping.end());

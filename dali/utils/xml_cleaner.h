@@ -4,7 +4,6 @@
 #include <vector>
 #include <string>
 #include <regex>
-#include "dali/utils/core_utils.h"
 
 namespace utils {
 

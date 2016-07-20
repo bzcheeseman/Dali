@@ -3,10 +3,7 @@
 
 #include <vector>
 #include <string>
-#include <iostream>
-#include <iomanip>
 #include <atomic>
-#include "dali/utils/core_utils.h"
 
 namespace utils {
     class ConfusionMatrix {

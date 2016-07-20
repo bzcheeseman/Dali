@@ -5,7 +5,6 @@
 #include "dali/config.h"
 #include "dali/array/memory/device.h"
 #include "dali/utils/assert2.h"
-#include "dali/utils/core_utils.h"
 
 using memory::Device;
 using memory::DevicePtr;
@@ -35,7 +34,7 @@ namespace memory {
                 return gpu_bank[device.number()];
             }
     #endif
-            assert2(device.is_cpu(), "Wrong device passed to Device enum");
+            ASSERT2(device.is_cpu(), "Wrong device passed to Device enum");
             return cpu_bank;
         }
 

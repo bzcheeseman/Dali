@@ -14,7 +14,7 @@
 #include "dali/runtime_config.h"
 #include "dali/array/op.h"
 #include "dali/array/test_utils.h"
-
+#include "dali/utils/core_utils.h"
 #include "dali/array/lazy/binary.h"
 
 using std::vector;

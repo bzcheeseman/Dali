@@ -1,7 +1,14 @@
 #include "core_utils.h"
+#include <sys/stat.h>
+#include <dirent.h>
+#include <set>
+#include <iomanip>
+
+#include "dali/utils/assert2.h"
 #include "dali/utils/ThreadPool.h"
 #include "dali/utils/vocab.h"
 #include "dali/utils/print_utils.h"
+#include "dali/utils/gzstream.h"
 
 using std::vector;
 using std::string;
@@ -15,6 +22,7 @@ using std::initializer_list;
 
 
 namespace utils {
+    const mode_t DEFAULT_MODE = S_IRWXU | S_IRGRP |  S_IXGRP | S_IROTH | S_IXOTH;
 
     #ifndef NDEBUG
     string explain_mat_bug(const string& mat_name, const char* file, const int& line) {
@@ -29,9 +37,9 @@ namespace utils {
     template bool contains_NaN(double);
     #endif
 
-    vector<uint> arange(uint start, uint end) {
-        vector<uint> indices(end - start);
-        for (uint i=0; i < indices.size();i++) indices[i] = i;
+    vector<int> arange(int start, int end) {
+        vector<int> indices(end - start);
+        for (int i=0; i < indices.size();i++) indices[i] = i;
         return indices;
     }
 
@@ -97,7 +105,7 @@ namespace utils {
     template void tuple_sum(std::tuple<uint, uint>&, std::tuple<uint, uint>);
 
     template<typename T>
-    void assert_map_has_key(std::map<string, T>& map, const string& key) {
+    void assert_map_has_key(std::unordered_map<string, T>& map, const string& key) {
             if (map.count(key) < 1) {
                     stringstream error_msg;
                     error_msg << "Map is missing the following key : \"" << key << "\".";
@@ -105,8 +113,8 @@ namespace utils {
             }
     }
 
-    template void assert_map_has_key(std::map<string, string>&, const string&);
-    template void assert_map_has_key(std::map<string, vector<string>>&, const string&);
+    template void assert_map_has_key(std::unordered_map<string, string>&, const string&);
+    template void assert_map_has_key(std::unordered_map<string, vector<string>>&, const string&);
 
     vector<string> listdir(const string& folder) {
             vector<string> filenames;
@@ -163,11 +171,11 @@ namespace utils {
             }
             return tokens;
     }
-    std::map<string, std::vector<string>> text_to_map(const string& fname) {
+    std::unordered_map<string, std::vector<string>> text_to_map(const string& fname) {
             ifstream infile(fname);
             string line;
             const char space = ' ';
-            std::map<string, std::vector<string>> map;
+            std::unordered_map<string, std::vector<string>> map;
             while (std::getline(infile, line)) {
                     if (*line.begin() != '=' && *line.begin() != '-' && *line.begin() != '#') {
                             const auto tokens = utils::split(line, space);
@@ -183,7 +191,7 @@ namespace utils {
     }
 
     template<typename T, typename K>
-    void stream_to_hashmap(T& infile, std::map<string, K>& map) {
+    void stream_to_hashmap(T& infile, std::unordered_map<string, K>& map) {
             string line;
             const char space = ' ';
             while (std::getline(infile, line)) {
@@ -194,8 +202,8 @@ namespace utils {
     }
 
     template<typename T>
-    std::map<string, T> text_to_hashmap(const string& fname) {
-            std::map<string, T> map;
+    std::unordered_map<string, T> text_to_hashmap(const string& fname) {
+            std::unordered_map<string, T> map;
             if (is_gzip(fname)) {
                     igzstream fpgz(fname.c_str(), std::ios::in | std::ios::binary);
                     stream_to_hashmap(fpgz, map);
@@ -244,7 +252,7 @@ namespace utils {
     }
 
     template<typename T>
-    void stream_to_redirection_list(T& fp, std::map<string, string>& mapping, std::function<std::string(std::string&&)>& preprocessor, int num_threads) {
+    void stream_to_redirection_list(T& fp, std::unordered_map<string, string>& mapping, std::function<std::string(std::string&&)>& preprocessor, int num_threads) {
         string line;
         const char dash = '-';
         const char arrow = '>';
@@ -305,7 +313,7 @@ namespace utils {
     }
 
     template<typename T>
-    void stream_to_redirection_list(T& fp, std::map<string, string>& mapping) {
+    void stream_to_redirection_list(T& fp, std::unordered_map<string, string>& mapping) {
         string line;
         const char dash = '-';
         const char arrow = '>';
@@ -335,11 +343,11 @@ namespace utils {
         }
     }
 
-    template void stream_to_redirection_list(stringstream&, std::map<string, string>&, std::function<std::string(std::string&&)>&, int);
-    template void stream_to_redirection_list(stringstream&, std::map<string, string>&);
+    template void stream_to_redirection_list(stringstream&, std::unordered_map<string, string>&, std::function<std::string(std::string&&)>&, int);
+    template void stream_to_redirection_list(stringstream&, std::unordered_map<string, string>&);
 
-    std::map<string, string> load_redirection_list(const string& fname, std::function<std::string(std::string&&)>&& preprocessor, int num_threads) {
-        std::map<string, string> mapping;
+    std::unordered_map<string, string> load_redirection_list(const string& fname, std::function<std::string(std::string&&)>&& preprocessor, int num_threads) {
+        std::unordered_map<string, string> mapping;
         if (is_gzip(fname)) {
             igzstream fpgz(fname.c_str(), std::ios::in | std::ios::binary);
             stream_to_redirection_list(fpgz, mapping, preprocessor, num_threads);
@@ -350,8 +358,8 @@ namespace utils {
         return mapping;
     }
 
-    std::map<string, string> load_redirection_list(const string& fname) {
-        std::map<string, string> mapping;
+    std::unordered_map<string, string> load_redirection_list(const string& fname) {
+        std::unordered_map<string, string> mapping;
         if (is_gzip(fname)) {
             igzstream fpgz(fname.c_str(), std::ios::in | std::ios::binary);
             stream_to_redirection_list(fpgz, mapping);
@@ -362,13 +370,13 @@ namespace utils {
         return mapping;
     }
 
-    template std::map<string, string> text_to_hashmap(const string&);
-    template std::map<string, int>    text_to_hashmap(const string&);
-    template std::map<string, float>  text_to_hashmap(const string&);
-    template std::map<string, double> text_to_hashmap(const string&);
-    template std::map<string, uint>   text_to_hashmap(const string&);
+    template std::unordered_map<string, string> text_to_hashmap(const string&);
+    template std::unordered_map<string, int>    text_to_hashmap(const string&);
+    template std::unordered_map<string, float>  text_to_hashmap(const string&);
+    template std::unordered_map<string, double> text_to_hashmap(const string&);
+    template std::unordered_map<string, uint>   text_to_hashmap(const string&);
 
-    void map_to_file(const std::map<string, std::vector<string>>& map, const string& fname) {
+    void map_to_file(const std::unordered_map<string, std::vector<string>>& map, const string& fname) {
         ofstream fp;
         fp.open(fname.c_str(), std::ios::out);
         for (auto& kv : map) {
@@ -418,7 +426,7 @@ namespace utils {
     }
 
     vector<string> get_vocabulary(const tokenized_labeled_dataset& examples, int min_occurence, int data_column) {
-        std::map<string, uint> word_occurences;
+        std::unordered_map<string, uint> word_occurences;
         string word;
         for (auto& example : examples)
             for (auto& word : example[data_column]) word_occurences[word] += 1;
@@ -431,7 +439,7 @@ namespace utils {
     }
 
     vector<string> get_vocabulary(const vector<vector<string>>& examples, int min_occurence) {
-        std::map<string, uint> word_occurences;
+        std::unordered_map<string, uint> word_occurences;
         string word;
         for (auto& example : examples) {
             for (auto& word : example) {
@@ -449,7 +457,7 @@ namespace utils {
     }
 
     vector<string> get_vocabulary(const tokenized_uint_labeled_dataset& examples, int min_occurence) {
-        std::map<string, uint> word_occurences;
+        std::unordered_map<string, uint> word_occurences;
         string word;
         for (auto& example : examples) {
             for (auto& word : example.first) {
@@ -470,7 +478,7 @@ namespace utils {
         std::set<string> labels;
         string word;
         for (auto& example : examples) {
-            assert2(example.size() > 1, "Examples must have at least 2 columns.");
+            ASSERT2(example.size() > 1, "Examples must have at least 2 columns.");
             labels.insert(example[1].begin(), example[1].end());
         }
         return vector<string>(labels.begin(), labels.end());
@@ -674,7 +682,7 @@ namespace utils {
     template vector<double> normalize_weights(const std::vector<double>&);
 
     string prefix_match(vector<string> candidates, string input) {
-        assert2(!candidates.empty(), "Empty set of candidates for prefix matching.");
+        ASSERT2(!candidates.empty(), "Empty set of candidates for prefix matching.");
         int best_match_idx = -1;
         for (auto& candidate: candidates) {
             if (candidate.size() < input.size())
@@ -682,7 +690,7 @@ namespace utils {
             if (startswith(candidate, input))
                 return candidate;
         }
-        assert2(false, MS() << "Could not find match for " << input << " in " << candidates <<".");
+        ASSERT2(false, MS() << "Could not find match for " << input << " in " << candidates <<".");
         return "";
     }
 
@@ -735,8 +743,8 @@ namespace utils {
     // template vector<Mat<double>> reversed(const vector<Mat<double>>& vec);
 
 
-    std::unordered_map<std::string, std::atomic<int>> Timer::timers;
-    std::mutex Timer::timers_mutex;
+    std::unordered_map<std::string, std::atomic<int>> timer_timers;
+    std::mutex timer_timers_mutex;
 
 
     ThreadAverage::ThreadAverage(int num_threads) :
@@ -769,10 +777,10 @@ namespace utils {
     Timer::Timer(std::string name, bool autostart) : name(name),
                                                      stopped(false),
                                                      started(false) {
-        if (timers.find(name) == timers.end()) {
-            std::lock_guard<decltype(timers_mutex)> guard(timers_mutex);
-            if (timers.find(name) == timers.end())
-                timers[name] = 0;
+        if (timer_timers.find(name) == timer_timers.end()) {
+            std::lock_guard<decltype(timer_timers_mutex)> guard(timer_timers_mutex);
+            if (timer_timers.find(name) == timer_timers.end())
+                timer_timers[name] = 0;
         }
         if (autostart)
             start();
@@ -786,7 +794,7 @@ namespace utils {
 
     void Timer::stop() {
         assert(!stopped);
-        timers[name] += std::chrono::duration_cast< std::chrono::milliseconds >
+        timer_timers[name] += std::chrono::duration_cast< std::chrono::milliseconds >
                         (clock_t::now() - start_time).count();
         stopped = true;
     }
@@ -797,15 +805,15 @@ namespace utils {
     }
 
     void Timer::report() {
-        std::lock_guard<decltype(timers_mutex)> guard(timers_mutex);
+        std::lock_guard<decltype(timer_timers_mutex)> guard(timer_timers_mutex);
 
-        for (auto& kv : timers) {
+        for (auto& kv : timer_timers) {
             std::cout << "\"" << kv.first << "\" => "
                       << std::fixed << std::setw(5) << std::setprecision(4) << std::setfill(' ')
                       << (double) kv.second / 1000  << "s" << std::endl;
         }
 
-        timers.clear();
+        timer_timers.clear();
     }
 
 }

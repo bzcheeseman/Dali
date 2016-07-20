@@ -1,6 +1,11 @@
 #include "dali/utils/tsv_utils.h"
 
+#include <sstream>
+#include <fstream>
+#include <ostream>
+
 #include "dali/utils/core_utils.h"
+#include "dali/utils/gzstream.h"
 #include "dali/utils/generator.h"
 #include "dali/utils/print_utils.h"
 

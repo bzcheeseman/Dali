@@ -50,18 +50,31 @@ else()
         message(WARNING "Dali's dependencies are missing.")
     endif()
 endif()
-find_package(OpenBlas)
+find_package(OpenBlas QUIET)
+find_package(MKL QUIET)
 
 if (BLAS_FOUND)
     list(APPEND DALI_AND_DEPS_LIBRARIES ${BLAS_LIBRARIES})
 endif (BLAS_FOUND)
-if (ZLIB_FOUND)
-    list(APPEND DALI_AND_DEPS_LIBRARIES ${ZLIB_LIBRARIES})
-endif(ZLIB_FOUND)
+
 if (OpenBLAS_FOUND)
     list(APPEND DALI_AND_DEPS_INCLUDE_DIRS ${OpenBLAS_INCLUDE_DIR})
     list(APPEND DALI_AND_DEPS_LIBRARIES    ${OpenBLAS_LIB})
-endif (OpenBLAS_FOUND)
+endif(OpenBLAS_FOUND)
+
+IF ((NOT OpenBLAS_FOUND) AND (NOT MKL_FOUND) AND APPLE AND (BLAS_LIBRARIES MATCHES "Accelerate.framework"))
+    list(APPEND DALI_AND_DEPS_LIBRARIES blas)
+    list(APPEND DALI_AND_DEPS_INCLUDE_DIRS "/System/Library/Frameworks/Accelerate.framework/Versions/Current/Frameworks/vecLib.framework/Versions/Current/Headers/")
+ENDIF()
+
+IF (MKL_FOUND)
+    list(APPEND DALI_AND_DEPS_LIBRARIES ${MKL_LIBRARIES})
+    list(APPEND DALI_AND_DEPS_INCLUDE_DIRS ${MKL_INCLUDE_DIR})
+ENDIF(MKL_FOUND)
+
+if (ZLIB_FOUND)
+    list(APPEND DALI_AND_DEPS_LIBRARIES ${ZLIB_LIBRARIES})
+endif(ZLIB_FOUND)
 
 # find cuda
 find_package(CUDA)

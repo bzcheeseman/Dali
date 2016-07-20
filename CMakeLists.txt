@@ -91,14 +91,36 @@ find_package(ZLIB REQUIRED)
 find_package(BLAS REQUIRED)
 
 # OPTIONAL PACKAGES
-find_package(OpenBlas)
-find_package(GooglePerfTools)
-find_package(MKL)
-find_package(GTest)
+find_package(OpenBlas QUIET)
+find_package(GooglePerfTools QUIET)
+find_package(MKL QUIET)
+find_package(GTest QUIET)
 find_package(CUDA)
 
+if (OpenBLAS_FOUND)
+    target_link_libraries(dali ${OpenBLAS_LIB})
+endif(OpenBLAS_FOUND)
+
+IF ((NOT OpenBLAS_FOUND) AND (NOT MKL_FOUND) AND APPLE AND (BLAS_LIBRARIES MATCHES "Accelerate.framework"))
+    message(STATUS "Using Apple's Accelerate Framework BLAS")
+    target_link_libraries(dali blas)
+    include_directories("/System/Library/Frameworks/Accelerate.framework/Versions/Current/Frameworks/vecLib.framework/Versions/Current/Headers/")
+ENDIF()
+
+IF (MKL_FOUND)
+    set(MSHADOW_USE_CBLAS 0)
+    set(MSHADOW_USE_MKL 1)
+ELSE(MKL_FOUND)
+    set(MSHADOW_USE_CBLAS 1)
+    set(MSHADOW_USE_MKL 0)
+ENDIF(MKL_FOUND)
+
 if (NOT GPERFTOOLS_FOUND)
-    message(WARNING "consider installing gperftools for better multithreaded performance.\n    > brew install gperftools")
+    if (APPLE)
+        message(WARNING "consider installing gperftools for better multithreaded performance.\n    > brew install gperftools")
+    else(APPLE)
+        message(WARNING "consider installing gperftools for better multithreaded performance.")
+    endif(APPLE)
 endif(NOT GPERFTOOLS_FOUND)
 
 
@@ -112,20 +134,18 @@ foreach(libvar ${LIBVARS_TO_FIX})
     endif (NOT ${libvar})
 endforeach(libvar)
 
-
-# mshadow
-set(MSHADOW_USE_CBLAS 1)
 # whether to force an error when no stream
 # is used when calling cuda-functions (currently
 # we always use default stream, so this is
-# not yet needed)
+# not yet needed)a
 set(MSHADOW_FORCE_STREAM 0)
-set(MSHADOW_USE_MKL 0)
 
 # INCLUDES
 include_directories(${PROJECT_SOURCE_DIR}/third_party/mshadow)
 include_directories(${MKL_INCLUDE_DIR})
-include_directories(${OpenBLAS_INCLUDE_DIR})
+IF (OpenBLAS_FOUND)
+    include_directories(${OpenBLAS_INCLUDE_DIR})
+ENDIF(OpenBLAS_FOUND)
 include_directories(${PROJECT_SOURCE_DIR}/third_party/libcuckoo/src)
 
 if (GPERFTOOLS_FOUND)
@@ -342,8 +362,6 @@ else()
     set(maybe_cuda_compiled_files "")
 endif()
 
-
-
 ## CPP TARGET
 add_library(dali ${MAYBE_SHARED} ${DaliSources} ${maybe_cuda_compiled_files} ${DaliHeaders})
 
@@ -362,10 +380,6 @@ target_link_libraries(dali ${ZLIB_LIBRARIES}
 if (GPERFTOOLS_FOUND)
     target_link_libraries(dali ${GPERFTOOLS_LIBRARIES})
 endif (GPERFTOOLS_FOUND)
-
-if (OpenBLAS_FOUND)
-    target_link_libraries(dali ${OpenBLAS_LIB})
-endif(OpenBLAS_FOUND)
 
 if (WITH_CUDA)
     target_link_libraries(dali ${CUDA_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_CUBLAS_LIBRARIES})

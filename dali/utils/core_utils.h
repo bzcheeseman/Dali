@@ -1,8 +1,13 @@
 #ifndef DALI_CORE_UTILS_H
 #define DALI_CORE_UTILS_H
 
-#include <unordered_map>
+#include <atomic>
+#include <chrono>
+#include <string>
 #include <iostream>
+#include <iterator>
+#include <functional>
+#include <unordered_map>
 #include <vector>
 
 // Useful for expanding macros. Obviously two levels of macro
@@ -290,28 +295,6 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
 
     };
 
-
-    class Timer {
-        typedef std::chrono::system_clock clock_t;
-
-        std::string name;
-        bool stopped;
-        bool started;
-        std::chrono::time_point<clock_t> start_time;
-
-        public:
-            // creates timer and starts measuring time.
-            Timer(std::string name, bool autostart=true);
-            // destroys timer and stops counting if the timer was not previously stopped.
-            ~Timer();
-
-            // explicitly start the timer
-            void start();
-            // explicitly stop the timer
-            void stop();
-
-            static void report();
-    };
 
     std::string capitalize(const std::string& s);
 

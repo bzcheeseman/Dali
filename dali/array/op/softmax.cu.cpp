@@ -72,6 +72,7 @@ struct SoftmaxFunction : public Function<SoftmaxFunction,
                                                 Array,
                                                 Array,
                                                 int, double> {
+    static std::string name;
     static std::vector<int> deduce_output_bshape(const Array& a, const int& axis, const double& temperature) {
         ASSERT2(0 <= axis && axis <= a.ndim(),
             utils::MS() << "Softmax axis must be contained between 0 and dimensionality of input (got axis="
@@ -84,6 +85,8 @@ struct SoftmaxFunction : public Function<SoftmaxFunction,
         SoftmaxFunctionHelper<operator_t, T, devT>::run(out, a, axis, temperature);
     }
 };
+
+std::string SoftmaxFunction::name = "softmax";
 
 namespace op {
     Assignable<Array> softmax(const Array& array, int axis, const double& temperature) {

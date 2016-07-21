@@ -69,6 +69,7 @@ struct MatrixMultiplyFunction : public Function<MatrixMultiplyFunction,
                                                 Array,
                                                 Array,
                                                 Array> {
+    static std::string name;
     static std::vector<int> deduce_output_bshape(
             const Array& a,
             const Array& b) {
@@ -162,6 +163,8 @@ struct MatrixMultiplyFunction : public Function<MatrixMultiplyFunction,
     }
 };
 
+std::string MatrixMultiplyFunction::name = "matrix_multiply";
+
 
 struct ReshapedMatrixMultiplyFunction : public Function<ReshapedMatrixMultiplyFunction,
                                                         Array,
@@ -169,6 +172,7 @@ struct ReshapedMatrixMultiplyFunction : public Function<ReshapedMatrixMultiplyFu
                                                         Array,
                                                         std::vector<int>,
                                                         std::vector<int>> {
+    static std::string name;
     static std::vector<int> deduce_output_bshape(
             const Array& a,
             const Array& b,
@@ -215,6 +219,9 @@ struct ReshapedMatrixMultiplyFunction : public Function<ReshapedMatrixMultiplyFu
         MatrixMultiplyHelper<operator_t,T,devT>::run(new_out, a, b);
     }
 };
+
+std::string ReshapedMatrixMultiplyFunction::name = "reshaped_matrix_multiply";
+
 
 static Assignable<Array> reshaped_matmul_fix_broadcasts(const Array& a,
                                                       const Array& b,

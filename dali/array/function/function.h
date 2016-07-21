@@ -230,6 +230,14 @@ struct Function {
                             << " (got device: " << device.description() << ", dtype: "
                             << computation_dtype <<  ").");
         }
+
+#ifdef DALI_USE_CUDA
+        // for now make sure all ops are synchronous
+        // TODO(szymon): replace with events
+        if (device.is_gpu()) {
+            cudaDeviceSynchronize();
+        }
+#endif  // DALI_USE_CUDA
     }
 
     static Assignable<Outtype> run(const Args&... args) {

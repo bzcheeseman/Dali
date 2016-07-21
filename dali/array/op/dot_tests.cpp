@@ -14,9 +14,9 @@ void check_dot_result(DType dtype, bool contiguous) {
     b = contiguous ? b.transpose().ascontiguousarray() : b.transpose();
 
     int dali_function_computations = 0;
-    auto handle = debug::dali_function_computed.register_callback([&](bool ignored) {
+    auto cb = make_scoped_callback([&](const std::string& ignored, int ignored2) {
         dali_function_computations += 1;
-    });
+    }, &debug::dali_function_end);
 
     Array c = op::dot(a, b);
 
@@ -31,7 +31,6 @@ void check_dot_result(DType dtype, bool contiguous) {
     // make sure that the function is lazy - no extra dali functions are run
     // during computation.
     EXPECT_EQ(1, dali_function_computations);
-    debug::dali_function_computed.deregister_callback(handle);
 }
 
 void check_strided_dot_result(DType dtype) {

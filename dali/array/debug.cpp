@@ -3,7 +3,8 @@
 #include "dali/array/array.h"
 
 namespace debug {
-    DebugCallback<bool>      dali_function_computed;
+    DebugCallback<std::string, int> dali_function_start;
+    DebugCallback<std::string, int> dali_function_end;
     DebugCallback<Array> lazy_evaluation_callback;
     DebugCallback<Array> array_as_contiguous;
 }  // namespace debug

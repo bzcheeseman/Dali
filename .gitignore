@@ -1,5 +1,5 @@
 # For easy to do cpu builds
-build/
+build
 build_cpu/
 build_gpu/
 

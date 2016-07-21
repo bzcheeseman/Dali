@@ -19,6 +19,7 @@
 #include "dali/array/function/operator.h"
 #include "dali/utils/print_utils.h"
 #include "dali/utils/unpack_tuple.h"
+#include "dali/utils/random.h"
 
 
 
@@ -67,6 +68,8 @@ struct Function {
     //     // the cool part. child class defines FUNCTION_ID.
     //     return RpcRequest(Class::FUNCTION_ID, bundle);
     // }
+
+    static std::string name;
 
     static const bool disable_output_shape_check = false;
     static const bool disable_output_dtype_check = false;
@@ -179,6 +182,9 @@ struct Function {
     template<OPERATOR_T intented_operator_t>
     static Assignable<Outtype> run_with_operator(const Args&... args) {
         return Assignable<Outtype>([args...](Outtype& out, const OPERATOR_T& operator_t) {
+            int call_id = utils::randint(0, 2000000000);
+            debug::dali_function_start.activate(Class::name, call_id);
+
             ASSERT2(operator_t == intented_operator_t,
                 utils::MS() << "Assignable<Outtype> constructed for operator "
                             << operator_to_name(intented_operator_t)
@@ -187,7 +193,7 @@ struct Function {
 
             auto prepped_args = Class::prepare_output(operator_t, out, args...);
             Class::template untyped_eval_with_tuple<intented_operator_t>(prepped_args);
-            debug::dali_function_computed.activate(true);
+            debug::dali_function_end.activate(Class::name, call_id);
         });
     }
 
@@ -228,6 +234,9 @@ struct Function {
 
     static Assignable<Outtype> run(const Args&... args) {
         return Assignable<Outtype>([args...](Outtype& out, const OPERATOR_T& operator_t) {
+            int call_id = utils::randint(0, 2000000000);
+            debug::dali_function_start.activate(Class::name, call_id);
+
             auto prepped_args = Class::prepare_output(operator_t, out, args...);
             switch (operator_t) {
                 case OPERATOR_T_EQL:
@@ -252,7 +261,7 @@ struct Function {
                     ASSERT2(false, "OPERATOR_T for assignment between Assignable<Outtype> and output must be one of =,-=,+=,*=,/=,<<= .");
                     break;
             }
-            debug::dali_function_computed.activate(true);
+            debug::dali_function_end.activate(Class::name, call_id);
         });
     }
 
@@ -267,6 +276,9 @@ struct Function {
         );
     }
 };
+
+template<typename Class, typename Outtype, typename... Args>
+std::string Function<Class, Outtype, Args...>::name = "unnamed_function";
 
 template<typename Class, typename Outtype, typename... Args>
 struct NonArrayFunction : public Function<Class,Outtype*,Args...> {

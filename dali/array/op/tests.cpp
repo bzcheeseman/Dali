@@ -162,9 +162,9 @@ TEST(ArrayOpsTests, ascontiguousarray) {
 
 TEST(ArrayOpsTests, add_vector) {
     int lazy_evaluator_calls = 0;
-    auto callback_handle = debug::lazy_evaluation_callback.register_callback([&](const Array&) {
+    auto og = make_observer_guard([&](const Array&) {
         lazy_evaluator_calls += 1;
-    });
+    }, &debug::lazy_evaluation_callback);
 
     Array res = op::add({
         Array::ones({1, 2}),
@@ -198,8 +198,6 @@ TEST(ArrayOpsTests, add_vector) {
     // Current add-vector will eagerly grab up to 5 arrays at a time. If there are more, then
     // operation may perform more than one evaluation:
     ASSERT_EQ(lazy_evaluator_calls, 2);
-
-    debug::lazy_evaluation_callback.deregister_callback(callback_handle);
 }
 
 

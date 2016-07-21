@@ -5,39 +5,39 @@
 #include <functional>
 
 template<typename... Args>
-struct DebugCallback {
+struct Observation {
     typedef std::function<void(Args...)>    callback_t;
     typedef typename std::list<callback_t>::iterator callback_handle_t;
 
 
-    callback_handle_t register_callback(callback_t callback);
-    void deregister_callback(callback_handle_t handle);
-    int activate(Args...);
+    callback_handle_t observe(callback_t callback);
+    void lose_interest(callback_handle_t handle);
+    int notify(Args...);
   private:
     std::list<callback_t> callbacks;
 };
 
 template<typename... Args>
-struct ScopedCallback {
-    DebugCallback<Args...>* dc;
-    typename DebugCallback<Args...>::callback_handle_t dc_handle;
+struct ObserverGuard {
+    Observation<Args...>* dc;
+    typename Observation<Args...>::callback_handle_t dc_handle;
 
-    ScopedCallback(typename DebugCallback<Args...>::callback_t callback,
-                   DebugCallback<Args...>* dc_);
+    ObserverGuard(typename Observation<Args...>::callback_t callback,
+                   Observation<Args...>* dc_);
 
-    ~ScopedCallback();
+    ~ObserverGuard();
 
-    ScopedCallback(ScopedCallback&&);
-    ScopedCallback(const ScopedCallback&) = delete;
-    ScopedCallback& operator=(const ScopedCallback&) = delete;
+    ObserverGuard(ObserverGuard&&);
+    ObserverGuard(const ObserverGuard&) = delete;
+    ObserverGuard& operator=(const ObserverGuard&) = delete;
   private:
     bool owns_handle;
 };
 
 template<typename... Args>
-ScopedCallback<Args...> make_scoped_callback(
-        typename DebugCallback<Args...>::callback_t callback,
-        DebugCallback<Args...>* dc);
+ObserverGuard<Args...> make_observer_guard(
+        typename Observation<Args...>::callback_t callback,
+        Observation<Args...>* dc);
 
 
 #include "debug_callback-impl.h"

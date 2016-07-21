@@ -14,7 +14,7 @@ void check_dot_result(DType dtype, bool contiguous) {
     b = contiguous ? b.transpose().ascontiguousarray() : b.transpose();
 
     int dali_function_computations = 0;
-    auto cb = make_scoped_callback([&](const std::string& ignored, int ignored2) {
+    auto cb = make_observer_guard([&](const std::string& ignored, int ignored2) {
         dali_function_computations += 1;
     }, &debug::dali_function_end);
 

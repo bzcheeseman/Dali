@@ -71,7 +71,7 @@ struct LazyEvaluator : public Function<LazyEvaluator<DestExpr,SrcExpr>, DestExpr
 
     template<OPERATOR_T operator_t, typename T, int devT, typename OutT>
     void typed_eval(TypedArray<devT,OutT> out, const SrcExpr& expr) {
-        debug::lazy_evaluation_callback.activate(out.array);
+        debug::lazy_evaluation_callback.notify(out.array);
 
         // out.array.shape() is passed to MshadowWrapper as final destination
         // shape this means that all the input arguments will be broadcasted
@@ -91,7 +91,7 @@ struct LazyEvaluator : public Function<LazyEvaluator<DestExpr,SrcExpr>, DestExpr
 
     template<OPERATOR_T operator_t, typename T, int devT, typename OutT, typename IndexT>
     void typed_eval(TypedArraySubtensor<devT,OutT,IndexT> out, const SrcExpr& expr) {
-        debug::lazy_evaluation_callback.activate(out.source.array);
+        debug::lazy_evaluation_callback.notify(out.source.array);
 
         operator_assign<operator_t, evaluation_dim>(
             out,
@@ -105,7 +105,7 @@ struct LazyEvaluator : public Function<LazyEvaluator<DestExpr,SrcExpr>, DestExpr
 
     template<OPERATOR_T operator_t, typename T, int devT, typename OutT, typename IndexT>
     void typed_eval(TypedArrayGather<devT,OutT,IndexT> out, const SrcExpr& expr) {
-        debug::lazy_evaluation_callback.activate(out.source.array);
+        debug::lazy_evaluation_callback.notify(out.source.array);
 
         operator_assign<operator_t, evaluation_dim>(
             out,

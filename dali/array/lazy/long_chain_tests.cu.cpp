@@ -14,9 +14,9 @@ TEST(ArrayLazyOpsTests, long_chain) {
     Array z({2,1});
 
     int lazy_evaluator_calls = 0;
-    auto callback_handle = debug::lazy_evaluation_callback.register_callback([&](const Array&) {
+    auto cg = make_observer_guard([&](const Array&) {
         lazy_evaluator_calls += 1;
-    });
+    }, &debug::lazy_evaluation_callback);
     auto partial = (
         lazy::sigmoid(lazy::tanh(x)) * 2 +
         x * y * lazy::sign(z) * 2 +
@@ -28,5 +28,4 @@ TEST(ArrayLazyOpsTests, long_chain) {
     ASSERT_EQ(lazy_evaluator_calls, 0);
     Array result = partial;
     ASSERT_EQ(lazy_evaluator_calls, 1);
-    debug::lazy_evaluation_callback.deregister_callback(callback_handle);
 }

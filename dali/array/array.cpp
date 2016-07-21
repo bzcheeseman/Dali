@@ -539,7 +539,7 @@ Array Array::ascontiguousarray() const {
     if (contiguous_memory()) {
         ret = *this;
     } else {
-        debug::array_as_contiguous.activate(*this);
+        debug::array_as_contiguous.notify(*this);
         ret = op::identity(*this);
     }
     ret.state->strides.clear();

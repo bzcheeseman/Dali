@@ -183,7 +183,7 @@ struct Function {
     static Assignable<Outtype> run_with_operator(const Args&... args) {
         return Assignable<Outtype>([args...](Outtype& out, const OPERATOR_T& operator_t) {
             int call_id = utils::randint(0, 2000000000);
-            debug::dali_function_start.activate(Class::name, call_id);
+            debug::dali_function_start.notify(Class::name, call_id);
 
             ASSERT2(operator_t == intented_operator_t,
                 utils::MS() << "Assignable<Outtype> constructed for operator "
@@ -193,7 +193,7 @@ struct Function {
 
             auto prepped_args = Class::prepare_output(operator_t, out, args...);
             Class::template untyped_eval_with_tuple<intented_operator_t>(prepped_args);
-            debug::dali_function_end.activate(Class::name, call_id);
+            debug::dali_function_end.notify(Class::name, call_id);
         });
     }
 
@@ -243,7 +243,7 @@ struct Function {
     static Assignable<Outtype> run(const Args&... args) {
         return Assignable<Outtype>([args...](Outtype& out, const OPERATOR_T& operator_t) {
             int call_id = utils::randint(0, 2000000000);
-            debug::dali_function_start.activate(Class::name, call_id);
+            debug::dali_function_start.notify(Class::name, call_id);
 
             auto prepped_args = Class::prepare_output(operator_t, out, args...);
             switch (operator_t) {
@@ -269,7 +269,7 @@ struct Function {
                     ASSERT2(false, "OPERATOR_T for assignment between Assignable<Outtype> and output must be one of =,-=,+=,*=,/=,<<= .");
                     break;
             }
-            debug::dali_function_end.activate(Class::name, call_id);
+            debug::dali_function_end.notify(Class::name, call_id);
         });
     }
 

@@ -7,7 +7,7 @@
 
 void PerformanceReport::start_capture() {
     if (!capturing) {
-        dali_function_start_handle = debug::dali_function_start.register_callback(
+        dali_function_start_handle = debug::dali_function_start.observe(
             [this](const std::string& fname, int callid) {
                 std::lock_guard<decltype(state_mutex)> guard(state_mutex);
                 // on the off chance it exists ignore that call. This is very
@@ -17,7 +17,7 @@ void PerformanceReport::start_capture() {
                 }
             }
         );
-        dali_function_end_handle = debug::dali_function_end.register_callback(
+        dali_function_end_handle = debug::dali_function_end.observe(
             [this](const std::string& fname, int callid) {
 
                 std::lock_guard<decltype(state_mutex)> guard(state_mutex);
@@ -41,8 +41,8 @@ void PerformanceReport::start_capture() {
 
 void PerformanceReport::stop_capture() {
     if (capturing) {
-        debug::dali_function_start.deregister_callback(dali_function_start_handle);
-        debug::dali_function_end.deregister_callback(dali_function_end_handle);
+        debug::dali_function_start.lose_interest(dali_function_start_handle);
+        debug::dali_function_end.lose_interest(dali_function_end_handle);
 
         capturing = false;
     }

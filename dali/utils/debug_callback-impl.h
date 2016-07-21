@@ -1,16 +1,16 @@
 
 template<typename... Args>
-auto DebugCallback<Args...>::register_callback(callback_t callback) -> callback_handle_t {
+auto Observation<Args...>::observe(callback_t callback) -> callback_handle_t {
     return callbacks.insert(callbacks.end(), callback);
 }
 
 template<typename... Args>
-void DebugCallback<Args...>::deregister_callback(callback_handle_t handle) {
+void Observation<Args...>::lose_interest(callback_handle_t handle) {
     callbacks.erase(handle);
 }
 
 template<typename... Args>
-int DebugCallback<Args...>::activate(Args... args) {
+int Observation<Args...>::notify(Args... args) {
     int num_called = 0;
     for (callback_t c: callbacks) {
         c(args...);
@@ -21,23 +21,23 @@ int DebugCallback<Args...>::activate(Args... args) {
 
 
 template<typename... Args>
-ScopedCallback<Args...>::ScopedCallback(
-        typename DebugCallback<Args...>::callback_t callback,
-        DebugCallback<Args...>* dc_) :
-                dc_handle(dc_->register_callback(callback)),
+ObserverGuard<Args...>::ObserverGuard(
+        typename Observation<Args...>::callback_t callback,
+        Observation<Args...>* dc_) :
+                dc_handle(dc_->observe(callback)),
                 dc(dc_),
                 owns_handle(true) {
 }
 
 template<typename... Args>
-ScopedCallback<Args...>::~ScopedCallback() {
+ObserverGuard<Args...>::~ObserverGuard() {
     if (owns_handle) {
-        dc->deregister_callback(dc_handle);
+        dc->lose_interest(dc_handle);
     }
 }
 
 template<typename... Args>
-ScopedCallback<Args...>::ScopedCallback(ScopedCallback&& other) :
+ObserverGuard<Args...>::ObserverGuard(ObserverGuard&& other) :
         dc(std::move(other.dc)),
         dc_handle(std::move(other.dc_handle)),
         owns_handle(std::move(other.owns_handle)) {
@@ -46,8 +46,8 @@ ScopedCallback<Args...>::ScopedCallback(ScopedCallback&& other) :
 
 
 template<typename... Args>
-ScopedCallback<Args...> make_scoped_callback(
-        typename DebugCallback<Args...>::callback_t callback,
-        DebugCallback<Args...>* dc) {
-    return ScopedCallback<Args...>(callback, dc);
+ObserverGuard<Args...> make_observer_guard(
+        typename Observation<Args...>::callback_t callback,
+        Observation<Args...>* dc) {
+    return ObserverGuard<Args...>(callback, dc);
 }

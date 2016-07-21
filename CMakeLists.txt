@@ -97,9 +97,9 @@ find_package(MKL QUIET)
 find_package(GTest QUIET)
 find_package(CUDA)
 
-if (OpenBLAS_FOUND)
-    target_link_libraries(dali ${OpenBLAS_LIB})
-endif(OpenBLAS_FOUND)
+if (NOT OpenBLAS_FOUND)
+    set(OpenBLAS_LIB "")
+endif(NOT OpenBLAS_FOUND)
 
 IF ((NOT OpenBLAS_FOUND) AND (NOT MKL_FOUND) AND APPLE AND (BLAS_LIBRARIES MATCHES "Accelerate.framework"))
     message(STATUS "Using Apple's Accelerate Framework BLAS")

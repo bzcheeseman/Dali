@@ -27,6 +27,8 @@ struct Pool2dFunction : public Function<Pool2dFunction,
                                         POOLING_T,
                                         PADDING_T,
                                         std::string> {
+    static std::string name;
+
     static std::vector<int> deduce_output_bshape(
                 const Array& input,
                 int window_h,
@@ -187,6 +189,10 @@ struct Pool2dFunction : public Function<Pool2dFunction,
 #endif
 };
 
+
+std::string Pool2dFunction::name = "pool2d";
+
+
 ///////////////////////////////////////////////////////////////////////////////
 //                        Pool2dBwdFunction                                     //
 ///////////////////////////////////////////////////////////////////////////////
@@ -203,6 +209,8 @@ struct Pool2dBwdFunction : public Function<Pool2dBwdFunction,
                                            POOLING_T,
                                            PADDING_T,
                                            std::string> {
+    static std::string name;
+
     static std::vector<int> deduce_output_bshape(
                 const Array& out,
                 const Array& out_dw,
@@ -423,6 +431,10 @@ struct Pool2dBwdFunction : public Function<Pool2dBwdFunction,
 #endif
 
 };
+
+std::string Pool2dBwdFunction::name = "pool2d_backward";
+
+
 
 namespace op {
     Assignable<Array> pool2d(const Array& input,

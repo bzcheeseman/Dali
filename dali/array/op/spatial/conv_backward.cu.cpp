@@ -22,6 +22,9 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
                                         std::vector<int>,
                                         PADDING_T,
                                         std::string> {
+
+    static std::string name;
+
     static std::vector<int> deduce_output_bshape(const Array& filters,
                                                  const Array& out_dw,
                                                  int stride_h,
@@ -264,6 +267,9 @@ struct Conv2dBwdInputFunction : public Function<Conv2dBwdInputFunction,
 #endif
 };
 
+std::string Conv2dBwdInputFunction::name = "conv2d_backward_input";
+
+
 ///////////////////////////////////////////////////////////////////////////////
 //                    Conv2dBwdFiltersFunction                               //
 ///////////////////////////////////////////////////////////////////////////////
@@ -276,6 +282,8 @@ struct Conv2dBwdFiltersFunction : public Function<Conv2dBwdFiltersFunction,
                                         std::vector<int>,
                                         PADDING_T,
                                         std::string> {
+    static std::string name;
+
     static std::vector<int> deduce_output_bshape(const Array& input,
                                                  const Array& out_dw,
                                                  int stride_h,
@@ -466,6 +474,9 @@ struct Conv2dBwdFiltersFunction : public Function<Conv2dBwdFiltersFunction,
     }
 #endif
 };
+
+std::string Conv2dBwdFiltersFunction::name = "conv2d_backward_filters";
+
 
 namespace op {
     Assignable<Array> conv2d_backward_input(

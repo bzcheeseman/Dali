@@ -1,6 +1,7 @@
 #include "performance_report.h"
 
 #include <algorithm>
+#include <iomanip>
 
 #include "dali/utils/assert2.h"
 
@@ -49,11 +50,12 @@ void PerformanceReport::stop_capture() {
 
 void PerformanceReport::print(std::basic_ostream<char>& stream) {
     double all_functions_total_time_ms = 0.0;
-
     std::vector<std::string> keys;
+    int max_fname_len = 0;
 
     for (auto& kv: function_name_to_stats) {
         keys.emplace_back(kv.first);
+        max_fname_len = std::max(max_fname_len, (int)kv.first.size());
         all_functions_total_time_ms += kv.second.total_time_ms;
     }
 
@@ -70,13 +72,17 @@ void PerformanceReport::print(std::basic_ostream<char>& stream) {
 
     stream << "============== PERFORMANCE REPORT ==================" << std::endl;
 
-    stream << "% total\tname\t#calls\ttotal time (s)" << std::endl;
+    stream << "% total | name | #calls | total time" << std::endl;
     for(auto& fname: keys) {
         auto& stats = function_name_to_stats[fname];
-        stream << stats.fraction_total * 100.0     << "%\t"
+        stream    << std::setw(5) << std::setprecision(2)
+                  << stats.fraction_total * 100.0  << "%\t"
+                  << std::setw(max_fname_len + 2)
                   << fname                         << "\t"
                   << stats.num_calls               << "\t"
-                  << stats.total_time_ms / 1000.0  << std::endl;
+                  << std::setprecision(3)
+                  << stats.total_time_ms / 1000.0  << " s"
+                  << std::endl;
     }
 
     stream << "====================================================" << std::endl;

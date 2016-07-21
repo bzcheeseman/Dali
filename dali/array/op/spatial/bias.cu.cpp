@@ -16,6 +16,8 @@ struct Conv2dBwdBiasFunction : public Function<Conv2dBwdBiasFunction,
                                         Array,
                                         Array,
                                         std::string> {
+    static std::string name;
+
     static std::vector<int> deduce_output_bshape(const Array& out_dw,
                                                  const std::string& data_format) {
         internal::DataFormatDimMapping mapping(data_format);
@@ -104,6 +106,9 @@ struct Conv2dBwdBiasFunction : public Function<Conv2dBwdBiasFunction,
 
 #endif
 };
+
+std::string Conv2dBwdBiasFunction::name = "conv2d_backward_bias";
+
 
 namespace op {
     Assignable<Array> conv2d_backward_bias(

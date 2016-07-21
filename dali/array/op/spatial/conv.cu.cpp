@@ -27,6 +27,7 @@ struct Conv2dFunction : public Function<Conv2dFunction,
                                         int,
                                         PADDING_T,
                                         std::string> {
+    static std::string name;
 
     static std::vector<int> deduce_output_bshape(const Array& input,
                                                  const Array& filters,
@@ -218,6 +219,8 @@ struct Conv2dFunction : public Function<Conv2dFunction,
     }
 #endif
 };
+
+std::string Conv2dFunction::name = "conv2d";
 
 namespace op {
     Assignable<Array> conv2d(const Array& input,

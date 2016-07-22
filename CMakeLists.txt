@@ -51,7 +51,7 @@ endif()
 
 if (APPLE)
     set (CMAKE_CXX_COMPILER "clang++")
-    set (MAYBE_SHARED "")
+    set (MAYBE_SHARED "SHARED")
 else(APPLE)
     # land of Linux or Windows
     set (MAYBE_SHARED "SHARED")

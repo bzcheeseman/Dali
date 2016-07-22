@@ -3,7 +3,7 @@
 
 class Array;
 template<typename OutType>
-class Assignable;
+struct Assignable;
 
 namespace op {
     // Assign one array to another piece of memory as-is

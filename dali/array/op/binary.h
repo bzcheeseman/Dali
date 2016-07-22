@@ -5,7 +5,7 @@
 
 class Array;
 template<typename OutType>
-class Assignable;
+struct Assignable;
 
 namespace op {
     Assignable<Array> add(const Array& left, const Array& right);

@@ -51,10 +51,6 @@ endif()
 
 if (APPLE)
     set (CMAKE_CXX_COMPILER "clang++")
-    set (MAYBE_SHARED "SHARED")
-else(APPLE)
-    # land of Linux or Windows
-    set (MAYBE_SHARED "SHARED")
 endif(APPLE)
 
 set(ENABLED_WARNINGS "-Wreturn-type -Wno-undefined-bool-conversion")
@@ -367,7 +363,7 @@ else()
 endif()
 
 ## CPP TARGET
-add_library(dali ${MAYBE_SHARED} ${DaliSources} ${maybe_cuda_compiled_files} ${DaliHeaders})
+add_library(dali SHARED ${DaliSources} ${maybe_cuda_compiled_files} ${DaliHeaders})
 
 # ensure that headers are copied over before compilation
 add_custom_target(dali_cuda_headers DEPENDS ${DaliHeaders})

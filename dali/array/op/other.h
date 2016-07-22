@@ -3,7 +3,7 @@
 
 class Array;
 template<typename OutType>
-class Assignable;
+struct Assignable;
 
 namespace op {
     Assignable<Array> any_isnan(const Array& array);

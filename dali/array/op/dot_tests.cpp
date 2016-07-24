@@ -14,9 +14,9 @@ void check_dot_result(DType dtype, bool contiguous) {
     b = contiguous ? b.transpose().ascontiguousarray() : b.transpose();
 
     int dali_function_computations = 0;
-    auto cb = make_observer_guard([&](const std::string& ignored, int ignored2) {
+    auto cb = debug::ScopeObserver(NULL, [&](const debug::ScopeObserver::State& state) {
         dali_function_computations += 1;
-    }, &debug::dali_function_end);
+    });
 
     Array c = op::dot(a, b);
 

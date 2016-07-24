@@ -5,7 +5,11 @@
 #include <functional>
 
 template<typename... Args>
+struct ObserverGuard;
+
+template<typename... Args>
 struct Observation {
+    typedef ObserverGuard<Args...> guard_t;
     typedef std::function<void(Args...)>    callback_t;
     typedef typename std::list<callback_t>::iterator callback_handle_t;
 
@@ -40,6 +44,6 @@ ObserverGuard<Args...> make_observer_guard(
         Observation<Args...>* dc);
 
 
-#include "debug_callback-impl.h"
+#include "observer-impl.h"
 
 #endif

@@ -2,9 +2,9 @@
 #include <vector>
 #include <functional>
 
-#include "dali/utils/debug_callback.h"
+#include "dali/utils/observer.h"
 
-TEST(utils, debug_callback) {
+TEST(utils, observation) {
     Observation<int> on_increase;
 
     int a=0, b=0;
@@ -44,7 +44,7 @@ TEST(utils, debug_callback) {
 }
 
 
-TEST(utils, scoped_debug_callback) {
+TEST(utils, observer_guard) {
     Observation<int> on_increase;
 
     int a=0, b=0;

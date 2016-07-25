@@ -4,29 +4,28 @@
 
 using namespace std::placeholders;
 
-Observation<Scope::name_t> Scope::enter;
-Observation<Scope::name_t> Scope::exit;
-
-Scope::Scope() {
-}
+Observation<Scope::name_t> Scope::obs_enter;
+Observation<Scope::name_t> Scope::obs_exit;
 
 Scope::Scope(name_t name_) : name(name_) {
-    enter.notify(name);
+    obs_enter.notify(name);
 }
 
 Scope::~Scope() {
-    exit.notify(name);
+    obs_exit.notify(name);
 }
 
 bool Scope::has_observers() {
-    return enter.num_observers() > 0 && exit.num_observers() > 0;
+    return obs_enter.num_observers() > 0 && obs_exit.num_observers() > 0;
 }
 
 ScopeObserver::ScopeObserver(callback_t on_enter_, callback_t on_exit_) :
         on_enter(on_enter_),
         on_exit(on_exit_),
-        enter_guard(std::bind(&ScopeObserver::on_enter_wrapper, this, _1), &Scope::enter),
-        exit_guard(std::bind(&ScopeObserver::on_exit_wrapper, this, _1),   &Scope::exit) {
+        enter_guard(std::bind(&ScopeObserver::on_enter_wrapper, this, _1),
+                    &Scope::obs_enter),
+        exit_guard(std::bind(&ScopeObserver::on_exit_wrapper, this, _1),
+                    &Scope::obs_exit) {
 }
 
 void ScopeObserver::on_enter_wrapper(Scope::name_t name) {

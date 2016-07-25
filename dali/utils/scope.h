@@ -8,19 +8,23 @@
 #include <string>
 #include <vector>
 
-#define DALI_SCOPE(str) Scope s; \
-                        if (Scope::has_observers()) { \
-                            s = Scope(std::make_shared<std::string>(str)); \
-                        }
+#define DALI_SCOPE(str) \
+        std::unique_ptr<Scope> s; \
+        if (Scope::has_observers()) { \
+            s = std::unique_ptr<Scope>( \
+                new Scope(std::make_shared<std::string>(str)) \
+            );\
+        }
 
 struct Scope {
     typedef std::shared_ptr<std::string> name_t;
 
-    static Observation<name_t> enter;
-    static Observation<name_t> exit;
+    static Observation<name_t> obs_enter;
+    static Observation<name_t> obs_exit;
 
     static bool has_observers();
 
+    bool active;
     name_t name;
 
     Scope();
@@ -39,8 +43,8 @@ struct ScopeObserver {
     ScopeObserver(callback_t on_enter_, callback_t on_exit_);
   private:
 
-    decltype(Scope::enter)::guard_t enter_guard;
-    decltype(Scope::exit)::guard_t  exit_guard;
+    decltype(Scope::obs_enter)::guard_t enter_guard;
+    decltype(Scope::obs_exit)::guard_t  exit_guard;
 
     const callback_t on_enter;
     const callback_t on_exit;

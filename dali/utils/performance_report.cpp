@@ -7,9 +7,20 @@
 
 using namespace std::placeholders;
 
+PerformanceReport::ScopeStats::ScopeStats() :
+        total_time_ms(0),
+        num_calls(0) {
+    children.clear();
+}
+
+PerformanceReport::PerformanceReport() {
+    scope_stack.emplace(&root_scope);
+}
+
 void PerformanceReport::start_capture() {
     if (observer == nullptr) {
-        observer = std::make_shared<debug::ScopeObserver>(
+        root_scope.recent_start_time = clock_t::now();
+        observer = std::make_shared<ScopeObserver>(
             std::bind(&PerformanceReport::on_enter, this, _1),
             std::bind(&PerformanceReport::on_exit, this, _1)
         );
@@ -17,71 +28,122 @@ void PerformanceReport::start_capture() {
 }
 
 void PerformanceReport::stop_capture() {
-    observer.reset();
+    if (observer != nullptr) {
+        observer.reset();
+        auto duration =  std::chrono::duration_cast<std::chrono::milliseconds>(
+                clock_t::now() - root_scope.recent_start_time).count();
+        root_scope.total_time_ms += duration;
+        root_scope.num_calls     += 1;
+    }
 }
 
 void PerformanceReport::print(std::basic_ostream<char>& stream) {
-    double all_functions_total_time_ms = 0.0;
-    std::vector<std::string> keys;
-    int max_fname_len = 0;
-
-    for (auto& kv: function_name_to_stats) {
-        keys.emplace_back(kv.first);
-        max_fname_len = std::max(max_fname_len, (int)kv.first.size());
-        all_functions_total_time_ms += kv.second.total_time_ms;
-    }
-
-    for (auto& kv: function_name_to_stats) {
-        function_name_to_stats[kv.first].fraction_total =
-                kv.second.total_time_ms / all_functions_total_time_ms;
-    }
-
-    std::sort(keys.begin(), keys.end(),
-        [this](const std::string& key1, const std::string key2) {
-            return function_name_to_stats[key1].fraction_total >
-                   function_name_to_stats[key2].fraction_total;
-        });
-
     stream << "============== PERFORMANCE REPORT ==================" << std::endl;
 
     stream << "% total | name | #calls | total time" << std::endl;
-    for(auto& fname: keys) {
-        auto& stats = function_name_to_stats[fname];
-        stream    << std::setw(5) << std::setprecision(2)
-                  << stats.fraction_total * 100.0  << "%\t"
-                  << std::setw(max_fname_len + 2)
-                  << fname                         << "\t"
-                  << stats.num_calls               << "\t"
-                  << std::setprecision(3)
-                  << stats.total_time_ms / 1000.0  << " s"
-                  << std::endl;
-    }
-
+    print_scope(stream, "root", 4, root_scope);
     stream << "====================================================" << std::endl;
-
 }
 
-void PerformanceReport::on_enter(const debug::ScopeObserver::State& state) {
-    std::lock_guard<decltype(state_mutex)> guard(state_mutex);
-    // on the off chance it exists ignore that call. This is very
-    // unliklely to happen.
-    if (call_to_start_time.find(*state.trace.back()) == call_to_start_time.end()) {
-        call_to_start_time[*state.trace.back()] = clock_t::now();
+void print_scope_helper(std::basic_ostream<char>& stream,
+                        int indent,
+                        double fraction_total,
+                        const std::string& name,
+                        int max_name_len,
+                        int num_calls,
+                        double total_time_ms) {
+    stream    << std::string(indent, ' ') << "+"
+              << std::fixed << std::setprecision(2) << std::setw(6)
+              << fraction_total * 100.0        << " %  "
+              << std::left << std::setw(max_name_len + 2)
+              << name                          << "  "
+              << std::right << std::setw(7)
+              << ((num_calls == -1) ? "N/A" : std::to_string(num_calls)) << "   "
+              << std::setprecision(3) << std::setw(7)
+              << total_time_ms / 1000.0  << " s"
+              << std::endl;
+}
+
+void PerformanceReport::print_scope(std::basic_ostream<char>& stream,
+                                    const std::string& name,
+                                    int max_name_len,
+                                    const ScopeStats& stats,
+                                    int indent) {
+    const auto not_tracked_name = std::string("(not tracked)");
+    double fraction_total   = stats.total_time_ms / root_scope.total_time_ms;
+
+    print_scope_helper(stream, indent, fraction_total, name, max_name_len,
+                       stats.num_calls, stats.total_time_ms);
+
+    std::vector<std::string> keys;
+    double time_not_tracked = stats.total_time_ms;
+
+    int max_child_name_len = 0;
+    for (auto& kv: stats.children) {
+        keys.emplace_back(kv.first);
+        max_child_name_len = std::max(max_child_name_len, (int)kv.first.size());
+        time_not_tracked -= kv.second->total_time_ms;
+    }
+    bool should_print_not_tracked = keys.size() > 0 && time_not_tracked > 0.01;
+    if (should_print_not_tracked) {
+        max_child_name_len = std::max(max_child_name_len, (int)not_tracked_name.size());
+    }
+
+    std::sort(keys.begin(), keys.end(),
+              [&](const std::string& key1, const std::string key2) {
+                  return stats.children.at(key1)->total_time_ms >
+                         stats.children.at(key2)->total_time_ms;
+              }
+    );
+
+    for (auto& key : keys) {
+        print_scope(stream, key, max_child_name_len, *stats.children.at(key), indent + 2);
+    }
+    if (should_print_not_tracked) {
+        fraction_total = time_not_tracked / root_scope.total_time_ms;
+        print_scope_helper(stream, indent + 2, fraction_total,
+                           not_tracked_name, max_child_name_len,
+                           -1, time_not_tracked);
     }
 }
 
-void PerformanceReport::on_exit(const debug::ScopeObserver::State& state) {
+
+void PerformanceReport::on_enter(const ScopeObserver::State& state) {
     std::lock_guard<decltype(state_mutex)> guard(state_mutex);
 
-    // This if may fail if we start capturing mid execution.
-    // That's fine though - just ignore that call.
-    auto start_time_iter = call_to_start_time.find(*state.trace.back());
-    if (start_time_iter != call_to_start_time.end()) {
-        auto duration =  std::chrono::duration_cast<std::chrono::milliseconds>(
-                clock_t::now() - start_time_iter->second).count();
-        call_to_start_time.erase(start_time_iter);
-        auto& stats = function_name_to_stats[*state.trace.back()];
-        stats.total_time_ms += duration;
-        stats.num_calls  += 1;
+    if (state.trace.size() != scope_stack.size()) {
+        // this may happen if we launch performance report mid execution.
+        // in that case recording will commence once we exit back to the
+        // root scope again.
+        return;
     }
+
+    auto& parent_scope = *scope_stack.top();
+    const auto& scope_name   = *state.trace.back();
+
+    if (!((bool)parent_scope.children[scope_name])) {
+        parent_scope.children[scope_name] = std::unique_ptr<ScopeStats>(new ScopeStats());
+    }
+
+    scope_stack.emplace(parent_scope.children[scope_name].get());
+    parent_scope.children[scope_name]->recent_start_time = clock_t::now();
+}
+
+void PerformanceReport::on_exit(const ScopeObserver::State& state) {
+    std::lock_guard<decltype(state_mutex)> guard(state_mutex);
+
+    if (state.trace.size() + 1 != scope_stack.size()) {
+        // this may happen if we launch performance report mid execution.
+        // in that case recording will commence once we exit back to the
+        // root scope again.
+        return;
+    }
+
+    auto duration =  std::chrono::duration_cast<std::chrono::milliseconds>(
+                clock_t::now() - scope_stack.top()->recent_start_time).count();
+
+    scope_stack.top()->total_time_ms += duration;
+    scope_stack.top()->num_calls     += 1;
+
+    scope_stack.pop();
 }

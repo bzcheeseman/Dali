@@ -7,11 +7,13 @@
 #include <string>
 
 #include "dali/config.h"
-#include "dali/utils/ThreadPool.h"
 #include "dali/utils/core_utils.h"
-#include "dali/utils/xml_cleaner.h"
-#include "dali/utils/tsv_utils.h"
+#include "dali/utils/performance_report.h"
+#include "dali/utils/scope.h"
 #include "dali/utils/smart_parser.h"
+#include "dali/utils/ThreadPool.h"
+#include "dali/utils/tsv_utils.h"
+#include "dali/utils/xml_cleaner.h"
 
 using std::chrono::milliseconds;
 using std::make_shared;
@@ -20,6 +22,27 @@ using std::stringstream;
 using std::vector;
 // using utils::OntologyBranch;
 // using utils::CharacterVocab;
+
+
+TEST(utils, performance_report) {
+    PerformanceReport report;
+    report.start_capture();
+    {
+        auto s1 = Scope(std::make_shared<std::string>("yay1"));
+        {
+            auto s2 = Scope(std::make_shared<std::string>("siema1"));
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        {
+            auto s3 = Scope(std::make_shared<std::string>("siemasi2"));
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    report.stop_capture();
+    report.print();
+}
+
 
 TEST(ThreadPool, wait_until_idle) {
     const int NUM_THREADS = 10;

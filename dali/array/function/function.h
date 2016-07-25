@@ -20,6 +20,7 @@
 #include "dali/utils/print_utils.h"
 #include "dali/utils/unpack_tuple.h"
 #include "dali/utils/random.h"
+#include "dali/utils/scope.h"
 
 
 
@@ -182,7 +183,7 @@ struct Function {
     template<OPERATOR_T intented_operator_t>
     static Assignable<Outtype> run_with_operator(const Args&... args) {
         return Assignable<Outtype>([args...](Outtype& out, const OPERATOR_T& operator_t) {
-            auto scope = debug::Scope(std::make_shared<std::string>(Class::name));
+            auto scope = Scope(std::make_shared<std::string>(Class::name));
 
             ASSERT2(operator_t == intented_operator_t,
                 utils::MS() << "Assignable<Outtype> constructed for operator "
@@ -242,7 +243,7 @@ struct Function {
         return Assignable<Outtype>([args...](Outtype& out, const OPERATOR_T& operator_t) {
             // TODO(szymon): make sure make_shared is only called once, not
             // at every function call.
-            auto scope = debug::Scope(std::make_shared<std::string>(Class::name));
+            auto scope = Scope(std::make_shared<std::string>(Class::name));
 
             auto prepped_args = Class::prepare_output(operator_t, out, args...);
             switch (operator_t) {

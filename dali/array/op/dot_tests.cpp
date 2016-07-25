@@ -4,6 +4,7 @@
 #include "dali/array/test_utils.h"
 #include "dali/runtime_config.h"
 #include "dali/array/op.h"
+#include "dali/utils/scope.h"
 
 using namespace op;
 
@@ -14,7 +15,7 @@ void check_dot_result(DType dtype, bool contiguous) {
     b = contiguous ? b.transpose().ascontiguousarray() : b.transpose();
 
     int dali_function_computations = 0;
-    auto cb = debug::ScopeObserver(NULL, [&](const debug::ScopeObserver::State& state) {
+    auto cb = ScopeObserver(NULL, [&](const ScopeObserver::State& state) {
         dali_function_computations += 1;
     });
 

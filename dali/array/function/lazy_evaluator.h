@@ -17,6 +17,7 @@
 
 template<class DestExpr, class SrcExpr>
 struct LazyEvaluator : public Function<LazyEvaluator<DestExpr,SrcExpr>, DestExpr, SrcExpr> {
+    static std::string name;
     static const int evaluation_dim =
             ((lazy::LazyEvaluationDim<SrcExpr>::value == lazy::EVALUATION_DIM_ANY) ?
             lazy::EVALUATION_DIM_DEFAULT :
@@ -117,6 +118,17 @@ struct LazyEvaluator : public Function<LazyEvaluator<DestExpr,SrcExpr>, DestExpr
         );
     }
 };
+
+template<typename SrcExpr>
+struct LazyFunctionName {
+    static std::string name;
+};
+
+template<typename SrcExpr>
+std::string LazyFunctionName<SrcExpr>::name = "lazy_function";
+
+template<typename DestExpr, typename SrcExpr>
+std::string LazyEvaluator<DestExpr,SrcExpr>::name = LazyFunctionName<SrcExpr>::name;
 
 template<class DestExpr, class SrcExpr, typename T>
 struct FunctionReturnType<LazyEvaluator<DestExpr,SrcExpr>, T> {

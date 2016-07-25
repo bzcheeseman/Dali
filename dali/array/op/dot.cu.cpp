@@ -105,16 +105,6 @@ struct MatrixMultiplyFunction : public Function<MatrixMultiplyFunction,
         }
 
         Array out_reshaped  = out.reshape_broadcasted({left_dim, right_dim});
-        if (!out_reshaped.is_transpose()) {
-            // TODO(szymon): change this to reshape (not copyless) and make sure
-            // that if the copy has occured we write back the result to out after
-            // computation is done.
-            // TODO(szymon): make sure that the test ArrayDotTests.broadcast_to_out
-            // does make a copy before assigning to out, so that the computation is
-            // 3x less
-            ASSERT2(out_reshaped.contiguous_memory(),
-                    "assigning the result of matrix multiplication to array with noncontiguous memory is currently unsupported.");
-        }
 
         ASSERT2(out_reshaped.memory() != right_reshaped.memory() &&
                 out_reshaped.memory() != left_reshaped.memory(),
@@ -129,7 +119,6 @@ struct MatrixMultiplyFunction : public Function<MatrixMultiplyFunction,
             // is equivalent to
             //
             //  C^T = (A dot B)^T = B^T dot A^T
-
             return std::tuple<Array,Array,Array>(out_reshaped.transpose(),
                                                  right_reshaped.transpose(),
                                                  left_reshaped.transpose());
@@ -159,7 +148,20 @@ struct MatrixMultiplyFunction : public Function<MatrixMultiplyFunction,
             TypedArray<devT, T> left,
             TypedArray<devT, T> right) {
 
-        MatrixMultiplyHelper<operator_t,T,devT>::run(out, left, right);
+        if (out.array.contiguous_memory()) {
+            MatrixMultiplyHelper<operator_t,T,devT>::run(out, left, right);
+        } else {
+            Array temp_arr(out.array.shape(),
+                           out.array.dtype(),
+                           out.device);
+            TypedArray<devT,T> temp_output(temp_arr, out.device, out.array.shape());
+            MatrixMultiplyHelper<OPERATOR_T_EQL,T,devT>::run(temp_output, left, right);
+
+            operator_assign<operator_t, 2>(
+                out,
+                temp_output.contiguous_d2()
+            );
+        }
     }
 };
 
@@ -216,7 +218,20 @@ struct ReshapedMatrixMultiplyFunction : public Function<ReshapedMatrixMultiplyFu
 
         auto new_out = TypedArray<devT,T>(new_out_array, out.device, new_out_array.shape());
 
-        MatrixMultiplyHelper<operator_t,T,devT>::run(new_out, a, b);
+        if (new_out.array.contiguous_memory()) {
+            MatrixMultiplyHelper<operator_t,T,devT>::run(new_out, a, b);
+        } else {
+            Array temp_arr(new_out.array.shape(),
+                           new_out.array.dtype(),
+                           new_out.device);
+            TypedArray<devT,T> temp_output(temp_arr, out.device, out.array.shape());
+            MatrixMultiplyHelper<OPERATOR_T_EQL,T,devT>::run(temp_output, a, b);
+
+            operator_assign<operator_t, 2>(
+                new_out,
+                temp_output.contiguous_d2()
+            );
+        }
     }
 };
 

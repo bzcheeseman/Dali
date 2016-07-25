@@ -40,7 +40,7 @@ TEST(utils, performance_report) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     report.stop_capture();
-    report.print();
+    // report.print();
 }
 
 

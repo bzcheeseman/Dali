@@ -19,6 +19,11 @@ int Observation<Args...>::notify(Args... args) {
     return num_called;
 }
 
+template<typename... Args>
+int Observation<Args...>::num_observers() const {
+    return callbacks.size();
+}
+
 
 template<typename... Args>
 ObserverGuard<Args...>::ObserverGuard(

@@ -17,6 +17,8 @@ struct Observation {
     callback_handle_t observe(callback_t callback);
     void lose_interest(callback_handle_t handle);
     int notify(Args...);
+
+    int num_observers() const;
   private:
     std::list<callback_t> callbacks;
 };

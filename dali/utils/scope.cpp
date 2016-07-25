@@ -7,12 +7,19 @@ using namespace std::placeholders;
 Observation<Scope::name_t> Scope::enter;
 Observation<Scope::name_t> Scope::exit;
 
+Scope::Scope() {
+}
+
 Scope::Scope(name_t name_) : name(name_) {
     enter.notify(name);
 }
 
 Scope::~Scope() {
     exit.notify(name);
+}
+
+bool Scope::has_observers() {
+    return enter.num_observers() > 0 && exit.num_observers() > 0;
 }
 
 ScopeObserver::ScopeObserver(callback_t on_enter_, callback_t on_exit_) :

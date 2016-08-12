@@ -15,10 +15,13 @@ namespace tensor_ops {
 
 
     Tensor multiple_dot_with_bias(const std::vector<Tensor>& inputs,
-                                  const std::vector<Tensor>&  weights,
+                                  const std::vector<Tensor>& weights,
                                   Tensor bias) {
         ASSERT2(weights.size() == inputs.size(),
-                "Different number of weights and inputs passed to multiple_dot_with_bias");
+                utils::MS() << "Different number of weights and inputs passed "
+                            << "to multiple_dot_with_bias ("
+                            << "weights.size() = " << weights.size() << " vs. "
+                            << "inputs.size() = " << inputs.size() << ").");
 
         int max_num_examples = 0;
         for (auto input: inputs) {

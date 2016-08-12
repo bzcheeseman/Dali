@@ -35,7 +35,7 @@ TEST(ArrayLazyOpsTests, argmax) {
    ASSERT_NEAR(2.0, (float)max_values[0], 1e-6);
    ASSERT_NEAR(3.0, (float)max_values[1], 1e-6);
 
-   // ASSERT_EQ(DTYPE_INT32, max_indices.dtype());
+   ASSERT_EQ(DTYPE_INT32, max_indices.dtype());
 
    ASSERT_EQ(1, (int)max_indices[0]);
    ASSERT_EQ(3, (int)max_indices[1]);

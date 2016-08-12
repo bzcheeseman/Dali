@@ -41,9 +41,9 @@ StackedLSTM::StackedLSTM(
     const int& input_size,
     const std::vector<int>& hidden_sizes,
     bool _shortcut,
-    bool _memory_feeds_gates,
+    bool memory_feeds_gates,
     DType dtype,
-    memory::Device device) : shortcut(_shortcut), memory_feeds_gates(_memory_feeds_gates) {
+    memory::Device device) : shortcut(_shortcut) {
     cells = stacked_cells<lstm_t>(input_size, hidden_sizes, shortcut, memory_feeds_gates, dtype, device);
 };
 
@@ -51,18 +51,17 @@ StackedLSTM::StackedLSTM(
     const std::vector<int>& input_sizes,
     const std::vector<int>& hidden_sizes,
     bool _shortcut,
-    bool _memory_feeds_gates,
+    bool memory_feeds_gates,
     DType dtype,
-    memory::Device device) : shortcut(_shortcut), memory_feeds_gates(_memory_feeds_gates) {
+    memory::Device device) : shortcut(_shortcut) {
     cells = stacked_cells<lstm_t>(input_sizes, hidden_sizes, shortcut, memory_feeds_gates, dtype, device);
 };
 
-StackedLSTM::StackedLSTM() : shortcut(false),
-                                memory_feeds_gates(false) {
+StackedLSTM::StackedLSTM() : shortcut(false) {
 }
 
 StackedLSTM::StackedLSTM(const StackedLSTM& model, bool copy_w, bool copy_dw) :
-         shortcut(model.shortcut), memory_feeds_gates(model.memory_feeds_gates) {
+         shortcut(model.shortcut) {
     cells = stacked_cells<lstm_t>(model.cells, copy_w, copy_dw);
 };
 

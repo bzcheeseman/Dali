@@ -135,7 +135,6 @@ class StackedLSTM : public AbstractStackedLSTM {
         typedef LSTM lstm_t;
         typedef std::vector<LSTM::activation_t > state_t;
         bool shortcut;
-        bool memory_feeds_gates;
 
         virtual state_t initial_states() const;
 

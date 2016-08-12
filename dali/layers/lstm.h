@@ -121,8 +121,8 @@ class AbstractStackedLSTM : public AbstractLayer {
         virtual state_t initial_states() const = 0;
         virtual std::vector<Tensor> parameters() const = 0;
         virtual state_t activate(
-            state_t previous_state,
             Tensor input_vector,
+            state_t previous_state,
             const double drop_prob = 0.0) const = 0;
         virtual state_t activate_sequence(
             state_t initial_state,
@@ -138,14 +138,17 @@ class StackedLSTM : public AbstractStackedLSTM {
 
         virtual state_t initial_states() const;
 
+        std::vector<int> hidden_sizes() const;
+        std::vector<int> input_sizes() const;
+
         std::vector<lstm_t> cells;
         virtual state_t activate(
-            state_t previous_state,
             Tensor input_vector,
+            state_t previous_state,
             const double drop_prob = 0.0) const;
         virtual state_t activate(
-            state_t previous_state,
             const std::vector<Tensor>& inputs,
+            state_t previous_state,
             const double drop_prob = 0.0) const;
         virtual std::vector<Tensor> parameters() const;
         StackedLSTM();

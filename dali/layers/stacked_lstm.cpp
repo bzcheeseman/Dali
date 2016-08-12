@@ -26,12 +26,28 @@ std::vector<LSTM::activation_t> StackedLSTM::initial_states() const {
     return init_states;
 }
 
+std::vector<int> StackedLSTM::hidden_sizes() const {
+    std::vector<int> sizes;
+    for (const auto& cell : cells) {
+        sizes.emplace_back(cell.hidden_size);
+    }
+    return sizes;
+}
+
+std::vector<int> StackedLSTM::input_sizes() const {
+    if (cells.empty()) {
+        return {};
+    } else {
+        return cells[0].input_sizes;
+    }
+}
+
 typename AbstractStackedLSTM::state_t AbstractStackedLSTM::activate_sequence(
     state_t initial_state,
     const vector<Tensor>& sequence,
     const double drop_prob) const {
     for (auto& input_vector : sequence)
-        initial_state = activate(initial_state, input_vector, drop_prob);
+        initial_state = activate(input_vector, initial_state, drop_prob);
     return initial_state;
 };
 
@@ -79,8 +95,8 @@ std::vector<Tensor> StackedLSTM::parameters() const {
 }
 
 typename StackedLSTM::state_t StackedLSTM::activate(
-            state_t previous_state,
             Tensor input_vector,
+            state_t previous_state,
             const double drop_prob) const {
     if (shortcut) {
         return shortcut_forward_LSTMs(input_vector, previous_state, cells, drop_prob);
@@ -90,8 +106,8 @@ typename StackedLSTM::state_t StackedLSTM::activate(
 };
 
 typename StackedLSTM::state_t StackedLSTM::activate(
-            state_t previous_state,
             const std::vector<Tensor>& inputs,
+            state_t previous_state,
             const double drop_prob) const {
 
     if (shortcut) {

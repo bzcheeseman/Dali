@@ -78,9 +78,9 @@ struct ConcatenateFunction : public Function<ConcatenateFunction,
 
     template<OPERATOR_T operator_t, typename T, int devT>
     void compute(const Array& out,
-                        const memory::Device& device,
-                        const std::vector<Array>& arrays,
-                        const int& axis) {
+                 const memory::Device& device,
+                 const std::vector<Array>& arrays,
+                 const int& axis) {
         // construct result chunks:
         std::vector<Array> out_pieces;
         out_pieces.reserve(arrays.size());
@@ -98,8 +98,10 @@ struct ConcatenateFunction : public Function<ConcatenateFunction,
         typedef ArrayWrapper<devT,T> wrapper_t;
 
         for (int arg_idx = 0; arg_idx < out_pieces.size(); arg_idx++) {
-            typed_eval<operator_t>(wrapper_t::wrap(out_pieces[arg_idx], device),
-                                   wrapper_t::wrap(arrays[arg_idx], device));
+            typed_eval<operator_t>(
+                wrapper_t::wrap(out_pieces[arg_idx], device),
+                TypedArray<devT,T>(arrays[arg_idx], device, out_pieces[arg_idx].shape())
+            );
         }
     }
 

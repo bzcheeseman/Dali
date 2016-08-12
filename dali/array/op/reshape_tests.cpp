@@ -80,6 +80,18 @@ TEST(ArrayReshapeTests, concatenate_keeps_broadcast) {
     EXPECT_EQ(std::vector<int>({-1, 3, 2}), c.bshape());
 }
 
+TEST(ArrayReshapeTests, concatenate_with_broadcast) {
+    Array broadcasted = Array({5}, DTYPE_INT32)[Broadcast()];
+    broadcasted = initializer::arange(0, 1);
+    EXPECT_EQ(std::vector<int>({-1, 5}), broadcasted.bshape());
+
+    Array other = Array({3, 7}, DTYPE_INT32);
+    other = initializer::arange(0, 1);
+
+    Array res = op::hstack({broadcasted, other});
+    EXPECT_EQ(std::vector<int>({3, 12}), res.bshape());
+}
+
 // TODO(jonathan): add back resizing to array from Mat<R>
 //
 // TEST_F(TensorOpsTests, resize_decrease_rows) {

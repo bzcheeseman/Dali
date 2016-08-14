@@ -4,7 +4,7 @@
 
 using std::vector;
 
-GRU::GRU() : GRU(0,0) {}
+GRU::GRU() : AbstractLayer() {}
 
 GRU::GRU(int _input_size,
          int _hidden_size,

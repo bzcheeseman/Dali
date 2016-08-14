@@ -42,6 +42,13 @@ std::vector<int> StackedLSTM::input_sizes() const {
     }
 }
 
+AbstractStackedLSTM::AbstractStackedLSTM() : AbstractLayer() {
+}
+
+AbstractStackedLSTM::AbstractStackedLSTM(DType _dtype, memory::Device _device) :
+        AbstractLayer(_dtype, _device) {
+}
+
 typename AbstractStackedLSTM::state_t AbstractStackedLSTM::activate_sequence(
     state_t initial_state,
     const vector<Tensor>& sequence,
@@ -58,8 +65,8 @@ StackedLSTM::StackedLSTM(
     const std::vector<int>& hidden_sizes,
     bool _shortcut,
     bool memory_feeds_gates,
-    DType dtype,
-    memory::Device device) : shortcut(_shortcut) {
+    DType _dtype,
+    memory::Device _device) : shortcut(_shortcut), AbstractStackedLSTM(_dtype, _device) {
     cells = stacked_cells<lstm_t>(input_size, hidden_sizes, shortcut, memory_feeds_gates, dtype, device);
 };
 
@@ -68,16 +75,16 @@ StackedLSTM::StackedLSTM(
     const std::vector<int>& hidden_sizes,
     bool _shortcut,
     bool memory_feeds_gates,
-    DType dtype,
-    memory::Device device) : shortcut(_shortcut) {
+    DType _dtype,
+    memory::Device _device) : shortcut(_shortcut), AbstractStackedLSTM(_dtype, _device) {
     cells = stacked_cells<lstm_t>(input_sizes, hidden_sizes, shortcut, memory_feeds_gates, dtype, device);
 };
 
-StackedLSTM::StackedLSTM() : shortcut(false) {
+StackedLSTM::StackedLSTM() : shortcut(false), AbstractStackedLSTM() {
 }
 
 StackedLSTM::StackedLSTM(const StackedLSTM& model, bool copy_w, bool copy_dw) :
-         shortcut(model.shortcut) {
+         shortcut(model.shortcut), AbstractStackedLSTM(model.dtype, model.device) {
     cells = stacked_cells<lstm_t>(model.cells, copy_w, copy_dw);
 };
 

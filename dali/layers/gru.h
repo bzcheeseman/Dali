@@ -5,7 +5,7 @@
 #include "dali/tensor/tensor.h"
 #include "dali/layers/layers.h"
 
-class GRU : AbstractLayer {
+class GRU : public AbstractLayer {
     typedef StackedInputLayer layer_type;
 
     public:

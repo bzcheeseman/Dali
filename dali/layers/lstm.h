@@ -117,7 +117,8 @@ class LSTM : public AbstractLayer {
 class AbstractStackedLSTM : public AbstractLayer {
     public:
         typedef std::vector <LSTM::activation_t > state_t;
-        AbstractStackedLSTM() = default;
+        AbstractStackedLSTM();
+        AbstractStackedLSTM(DType dtype, memory::Device device);
         virtual state_t initial_states() const = 0;
         virtual std::vector<Tensor> parameters() const = 0;
         virtual state_t activate(

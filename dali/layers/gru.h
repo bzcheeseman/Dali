@@ -31,7 +31,7 @@ class GRU : AbstractLayer {
 
         Tensor activate_sequence(const std::vector<Tensor>& input_sequence) const;
 
-        Tensor activate_sequence(const std::vector<Tensor>& input_sequence, Tensor initial_state) const;
+        Tensor activate_sequence(Tensor initial_state, const std::vector<Tensor>& input_sequence) const;
 
         std::vector<Tensor> parameters() const;
 

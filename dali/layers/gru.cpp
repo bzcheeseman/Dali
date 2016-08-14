@@ -53,10 +53,10 @@ Tensor GRU::activate(
 }
 
 Tensor GRU::activate_sequence(const vector<Tensor>& input_sequence) const {
-    return activate_sequence(input_sequence, initial_states());
+    return activate_sequence(initial_states(), input_sequence);
 }
 
-Tensor GRU::activate_sequence(const vector<Tensor>& input_sequence, Tensor state) const {
+Tensor GRU::activate_sequence(Tensor state, const vector<Tensor>& input_sequence) const {
     for (auto& input: input_sequence) {
         state = activate(input, state);
     }

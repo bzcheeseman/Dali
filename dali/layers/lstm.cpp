@@ -181,18 +181,28 @@ LSTM::activation_t LSTM::activate(
     vector<Tensor> forget_gates;
 
     for (auto& state: states) {
-        assert2(state.memory.shape()[1] == hidden_size,
+        ASSERT2(state.memory.ndim() == 2,
+            utils::MS() << "LSTM: State memory should have ndim = 2 (got "
+                        << state.memory.ndim() << ").");
+        ASSERT2(state.hidden.ndim() == 2,
+            utils::MS() << "LSTM: State memory should have ndim = 2 (got "
+                        << state.memory.ndim() << ").");
+        ASSERT2(state.memory.shape()[1] == hidden_size,
             utils::MS() << "LSTM: State memory should have hidden size "
                         << hidden_size << " not " << state.memory.shape()[1]);
-        assert2(state.hidden.shape()[1] == hidden_size,
+        ASSERT2(state.hidden.shape()[1] == hidden_size,
             utils::MS() << "LSTM: State hidden should have hidden size "
                         << hidden_size << " not " << state.memory.shape()[1]);
     }
-    assert2(input_sizes.size() == inputs.size(),
+    ASSERT2(input_sizes.size() == inputs.size(),
         utils::MS() << "LSTM: Got " << inputs.size() << " inputs but expected " << input_sizes.size() << " instead."
     );
     for (int iidx = 0; iidx < input_sizes.size(); ++iidx) {
-        assert2(inputs[iidx].shape()[1] == input_sizes[iidx],
+        ASSERT2(inputs[iidx].ndim() == 2,
+            utils::MS() << "LSTM: " << iidx
+                        << "-th input to LSTM should have ndim = 2 (got "
+                        << inputs[iidx].ndim() << ").");
+        ASSERT2(inputs[iidx].ndim() == 2 && inputs[iidx].shape()[1] == input_sizes[iidx],
                 utils::MS() << "LSTM: " << iidx << "-th input to LSTM should have size "
                             << input_sizes[iidx] << " not " << inputs[iidx].shape()[1]);
     }

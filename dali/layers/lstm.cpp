@@ -202,7 +202,7 @@ LSTM::activation_t LSTM::activate(
             utils::MS() << "LSTM: " << iidx
                         << "-th input to LSTM should have ndim = 2 (got "
                         << inputs[iidx].ndim() << ").");
-        ASSERT2(inputs[iidx].ndim() == 2 && inputs[iidx].shape()[1] == input_sizes[iidx],
+        ASSERT2(inputs[iidx].shape()[1] == input_sizes[iidx],
                 utils::MS() << "LSTM: " << iidx << "-th input to LSTM should have size "
                             << input_sizes[iidx] << " not " << inputs[iidx].shape()[1]);
     }

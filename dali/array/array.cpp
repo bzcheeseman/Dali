@@ -298,7 +298,12 @@ Array Array::adopt_buffer(void* buffer,
     ret.memory()->adopt_buffer(buffer_location, buffer);
     ret.state->strides = strides;
     return ret;
+}
 
+void Array::disown_buffer(memory::Device buffer_location) {
+    if (!is_stateless()) {
+        memory()->disown_buffer(buffer_location);
+    }
 }
 
 /* NPY detect Dtype
@@ -1210,7 +1215,7 @@ ArrayGather ArrayGather::copyless_reshape(std::vector<int> ignored) const {
 void ArrayGather::print(std::basic_ostream<char>& stream,
                            const int& indent,
                            const bool& add_newlines) const {
-    ((Array)op::take(source, indices)).print(
+    ((Array)op::gather(source, indices)).print(
         stream,
         indent,
         add_newlines
@@ -1218,5 +1223,5 @@ void ArrayGather::print(std::basic_ostream<char>& stream,
 }
 
 ArrayGather::operator Array() {
-    return (Array)op::take(source, indices);
+    return (Array)op::gather(source, indices);
 }

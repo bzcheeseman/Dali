@@ -5,10 +5,10 @@
 #include "dali/array/function/operator.h"
 
 class Array;
-class ArraySubtensor;
-class ArrayGather;
+struct ArraySubtensor;
+struct ArrayGather;
 template<typename OutType>
-class Assignable;
+struct Assignable;
 
 namespace op {
     // Join a sequence of arrays along an existing axis.
@@ -18,7 +18,7 @@ namespace op {
     // Stack arrays in sequence vertically (row wise).
     Assignable<Array> vstack(const std::vector<Array>& arrays);
     // Pick indices from another array
-    Assignable<Array> take(const Array& source, const Array& indices);
+    Assignable<Array> gather(const Array& source, const Array& indices);
     // Pick indices from another array on each row
     // (equivalent to source[np.arange(0, n), indices] in numpy)
     Assignable<Array> take_from_rows(const Array& source, const Array& indices);

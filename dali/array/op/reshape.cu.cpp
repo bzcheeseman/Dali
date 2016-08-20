@@ -131,8 +131,8 @@ namespace op {
         return concatenate(arrays, 0);
     }
 
-    Assignable<Array> take(const Array& source, const Array& indices) {
-        return lazy::take(source, indices);
+    Assignable<Array> gather(const Array& source, const Array& indices) {
+        return lazy::gather(source, indices);
     }
 
     Assignable<Array> take_from_rows(const Array& source, const Array& indices) {

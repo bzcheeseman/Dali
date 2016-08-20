@@ -180,7 +180,7 @@ const int LazyTakeFromRows<SrcExp, IndexExp>::evaluation_dim =
 
 namespace lazy {
     template<typename SrcExp, typename IndexExp>
-    LazyTake<SrcExp, IndexExp> take(const SrcExp& source, const IndexExp& indices) {
+    LazyTake<SrcExp, IndexExp> gather(const SrcExp& source, const IndexExp& indices) {
         return LazyTake<SrcExp, IndexExp>(source, indices);
     }
 

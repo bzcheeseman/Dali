@@ -103,6 +103,8 @@ class Array : public Exp<Array> {
                               DType dtype,
                               memory::Device buffer_location=memory::Device::cpu(),
                               const std::vector<int>& strides = {});
+    // Warning: after this function call Array owns no buffer
+    void disown_buffer(memory::Device buffer_location=memory::Device::cpu());
 
     // IO methods
     static Array load(const std::string& fname);

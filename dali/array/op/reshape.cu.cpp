@@ -115,6 +115,16 @@ struct ConcatenateFunction : public Function<ConcatenateFunction,
 namespace op {
     Assignable<Array> concatenate(const std::vector<Array>& arrays, int axis) {
         if (arrays.size() == 1) return op::identity(arrays[0], /*always_copy=*/false);
+        bool all_scalar = true;
+        for (const auto& ar : arrays)
+            all_scalar = all_scalar && ar.is_scalar();
+
+        if (all_scalar) {
+            std::vector<Array> vec_array;
+            for (const auto& ar : arrays)
+                vec_array.emplace_back(ar.reshape({1}));
+            return concatenate(vec_array, axis);
+        }
         if (axis < 0 && arrays.size() > 0) {
             // handle negative axes that wrap around and are
             // counted in reverse:

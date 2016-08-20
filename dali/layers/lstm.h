@@ -58,7 +58,7 @@ class LSTM : public AbstractLayer {
         // backpropagate through memory cells at the gatestype
         // this is a boolean, so you can retrieve the true
         // gradient by setting this to true:
-        bool backprop_through_gates = false;
+        bool backprop_through_gates = true;
 
         LSTM() = default;
 

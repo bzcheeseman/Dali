@@ -226,6 +226,13 @@ namespace memory {
         free_device_memory(device, dev_memory);
     }
 
+    void SynchronizedMemory::disown_buffer(const Device& device) const {
+        auto& dev_memory = get_device_memory(device);
+        dev_memory.ptr = NULL;
+        dev_memory.allocated = false;
+        dev_memory.fresh = false;
+    }
+
     void SynchronizedMemory::move_to(const Device& target_device) const {
         auto& target_memory = get_device_memory(target_device);
 

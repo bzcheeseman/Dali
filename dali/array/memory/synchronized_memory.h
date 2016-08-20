@@ -76,6 +76,10 @@ namespace memory {
            // and assume ownership of it.
            void adopt_buffer(const Device& device, void* memory_buffer);
 
+           // This memory is no longer responsible for the buffer tied
+           // to this device (use free to release the memory)
+           void disown_buffer(const Device& device) const;
+
            SynchronizedMemory& operator=(const SynchronizedMemory&) = delete;
 
            // returns true if memory is fresh on device

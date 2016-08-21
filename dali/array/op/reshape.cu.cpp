@@ -115,7 +115,7 @@ struct ConcatenateFunction : public Function<ConcatenateFunction,
 namespace op {
     Assignable<Array> concatenate(const std::vector<Array>& arrays, int axis) {
         if (arrays.size() == 1) return op::identity(arrays[0], /*always_copy=*/false);
-        bool all_scalar = true;
+        bool all_scalar = arrays.size() != 0 ? true : false;
         for (const auto& ar : arrays)
             all_scalar = all_scalar && ar.is_scalar();
 

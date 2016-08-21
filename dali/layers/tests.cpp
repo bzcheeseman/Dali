@@ -74,7 +74,7 @@ TEST(LayerTests, rnn_multipass) {
             }
             return prev_h;
         };
-        ASSERT_TRUE(gradient_same(functor, params, 1e-3));
+        ASSERT_TRUE(gradient_same(functor, params, 5e-3));
     }
 }
 

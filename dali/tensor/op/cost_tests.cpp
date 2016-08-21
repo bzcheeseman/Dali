@@ -189,7 +189,7 @@ TEST_F(TensorCostTests,  softmax_cross_entropy_with_probs) {
             return tensor_ops::softmax_cross_entropy(input, targets, temperature);
         };
 
-        ASSERT_TRUE(gradient_same(functor, {input, targets}, 1e-3));
+        ASSERT_TRUE(gradient_same(functor, {input, targets}, 5e-3));
     }
 }
 

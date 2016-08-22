@@ -48,7 +48,7 @@ namespace matops {
             F<op::relu_backward<R>>(MAT(out).wrapper()));
 
     DALI_UNARY_OP1(eltmax, lower_bound, op::max_scalar,
-            F<op::max_scalar_mask<R>>(MAT(matrix).wrapper(), lower_bound));
+            F<op::greaterthanequal<R>>(MAT(matrix).wrapper(), lower_bound));
     DALI_UNARY_OP1(steep_sigmoid, aggressiveness, op::steep_sigmoid,
             F<op::steep_sigmoid_backward<R>>(MAT(out).wrapper(), aggressiveness));
 

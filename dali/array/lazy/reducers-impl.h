@@ -47,14 +47,35 @@ template<class Functor, typename ExprT>
 const int LazyAllReducer<Functor, ExprT>::evaluation_dim = 1;
 
 template<class Functor, typename ExprT>
+struct LazyFunctionName<LazyAllReducer<Functor, ExprT>> {
+    static std::string name;
+};
+template<class Functor, typename ExprT>
+std::string LazyFunctionName<LazyAllReducer<Functor, ExprT>>::name = "lazy_reduce_all";
+
+template<class Functor, typename ExprT>
 struct LazyAxisReducer<Functor, ExprT, false> : public BaseLazyAxisReducer<LazyAxisReducer<Functor, ExprT, false>, ExprT, Functor, false> {
     using BaseLazyAxisReducer<LazyAxisReducer<Functor, ExprT, false>, ExprT, Functor, false>::BaseLazyAxisReducer; // inherit parent constructor
 };
 
 template<class Functor, typename ExprT>
+struct LazyFunctionName<LazyAxisReducer<Functor, ExprT, false>> {
+    static std::string name;
+};
+template<class Functor, typename ExprT>
+std::string LazyFunctionName<LazyAxisReducer<Functor, ExprT, false>>::name = "lazy_reduce_axis";
+
+template<class Functor, typename ExprT>
 struct LazyAxisReducer<Functor, ExprT, true> : public BaseLazyAxisReducer<LazyAxisReducer<Functor, ExprT, true>, ExprT, Functor, true> {
     using BaseLazyAxisReducer<LazyAxisReducer<Functor, ExprT, true>, ExprT, Functor, true>::BaseLazyAxisReducer; // inherit parent constructor
 };
+
+template<class Functor, typename ExprT>
+struct LazyFunctionName<LazyAxisReducer<Functor, ExprT, true>> {
+    static std::string name;
+};
+template<class Functor, typename ExprT>
+std::string LazyFunctionName<LazyAxisReducer<Functor, ExprT, true>>::name = "lazy_arg_reduce_axis";
 
 namespace lazy {
     #define DALI_LAZY_ARRAY_ALL_REDUCER(OPNAME, REDUCERNAME)\

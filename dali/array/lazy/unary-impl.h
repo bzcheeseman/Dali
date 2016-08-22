@@ -27,6 +27,13 @@ template<template<class>class Functor, typename ExprT>
 const int LazyUnary<Functor, ExprT>::evaluation_dim = lazy::LazyEvaluationDim<ExprT>::value;
 
 template<template<class>class Functor, typename ExprT>
+struct LazyFunctionName<LazyUnary<Functor, ExprT>> {
+    static std::string name;
+};
+template<template<class>class Functor, typename ExprT>
+std::string LazyFunctionName<LazyUnary<Functor, ExprT>>::name = Functor<float>::name;
+
+template<template<class>class Functor, typename ExprT>
 struct LazyUnaryIndexed : public LazyFunction<LazyUnaryIndexed<Functor,ExprT>, ExprT> {
     ExprT expr;
     static const int evaluation_dim;
@@ -50,6 +57,13 @@ struct LazyUnaryIndexed : public LazyFunction<LazyUnaryIndexed<Functor,ExprT>, E
 
 template<template<class>class Functor, typename ExprT>
 const int LazyUnaryIndexed<Functor, ExprT>::evaluation_dim = lazy::LazyEvaluationDim<ExprT>::value;
+
+template<template<class>class Functor, typename ExprT>
+struct LazyFunctionName<LazyUnaryIndexed<Functor, ExprT>> {
+    static std::string name;
+};
+template<template<class>class Functor, typename ExprT>
+std::string LazyFunctionName<LazyUnaryIndexed<Functor, ExprT>>::name = Functor<float>::name;
 
 namespace lazy {
     template<template<class>class Functor, typename ExprT>

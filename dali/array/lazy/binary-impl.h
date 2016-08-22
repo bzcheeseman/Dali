@@ -57,7 +57,7 @@ struct LazyFunctionName<LazyBinary<Functor, Left, Right>> {
     static std::string name;
 };
 template<template<class>class Functor, typename Left, typename Right>
-std::string LazyFunctionName<LazyBinary<Functor, Left, Right>>::name = "lazy_binary";
+std::string LazyFunctionName<LazyBinary<Functor, Left, Right>>::name = Functor<float>::name;
 
 template<template<class>class Functor, typename LeftT, typename RightT>
 const int LazyBinary<Functor, LeftT, RightT>::evaluation_dim = lazy::LazyBinaryEvaluationDim<LeftT, RightT>::value;
@@ -97,7 +97,7 @@ struct LazyFunctionName<LazyBinaryIndexed<Functor, Left, Right>> {
     static std::string name;
 };
 template<template<class>class Functor, typename Left, typename Right>
-std::string LazyFunctionName<LazyBinaryIndexed<Functor, Left, Right>>::name = "lazy_binary_indexed";
+std::string LazyFunctionName<LazyBinaryIndexed<Functor, Left, Right>>::name = Functor<float>::name;
 
 template<template<class>class Functor, typename LeftT, typename RightT>
 const int LazyBinaryIndexed<Functor, LeftT, RightT>::evaluation_dim = lazy::LazyBinaryEvaluationDim<LeftT, RightT>::value;

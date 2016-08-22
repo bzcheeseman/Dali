@@ -11,9 +11,9 @@ namespace tensor_ops {
     DALI_DEFINE_UNARY_OP0(rsqrt, op::rsqrt, -0.5 * lazy::pow(t.w, -1.5));
 
     DALI_DEFINE_UNARY_OP1(eltmax, lower_bound, functor::max_scalar,
-            lazy::F<functor::max_scalar_mask>(t.w, lower_bound));
+            lazy::F<functor::greaterthanequal>(t.w, lower_bound));
     DALI_DEFINE_UNARY_OP1(eltmin, upper_bound, functor::min_scalar,
-            lazy::F<functor::max_scalar_mask>(t.w, upper_bound));
+            lazy::F<functor::greaterthanequal>(t.w, upper_bound));
     DALI_DEFINE_UNARY_OP1(steep_sigmoid, aggressiveness, functor::steep_sigmoid,
             lazy::F<functor::steep_sigmoid_backward>(out.w, aggressiveness));
     DALI_DEFINE_UNARY_OP1(relu, upper_bound, functor::clipped_relu,

@@ -319,6 +319,13 @@ TEST(utils, smart_parser) {
             }
 #endif
 
+TEST(utils, dir_join) {
+    auto joined = utils::dir_join({"", "hey", "yo"});
+    ASSERT_EQ("hey/yo", joined);
+    auto joined2 = utils::dir_join({"/", "hey/", "yo"});
+    ASSERT_EQ("/hey/yo", joined2);
+}
+
 TEST(utils, prefix_match) {
     using utils::prefix_match;
     vector<string> candidates = {

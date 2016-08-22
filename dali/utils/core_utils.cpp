@@ -659,7 +659,9 @@ namespace utils {
         stringstream ss;
         for (int i = 0; i < paths.size(); ++i) {
             ss << paths[i];
-            if (i + 1 != paths.size())
+            bool found_slash_symbol = false;
+            if (paths[i].size() == 0 || paths[i][paths[i].size() - 1] == '/') found_slash_symbol = true;
+            if (!found_slash_symbol && i + 1 != paths.size())
                 ss << '/';
         }
         return ss.str();

@@ -55,6 +55,20 @@ std::string dtype_to_name(DType dtype) {
     }
 }
 
+std::string dtype_to_cpp_name(DType dtype) {
+    switch(dtype) {
+        case DTYPE_FLOAT:
+            return "float";
+        case DTYPE_DOUBLE:
+            return "double";
+        case DTYPE_INT32:
+            return "int";
+        default:
+            ASSERT2(false, "dtype_to_name called with incorrect DType.");
+            return "unknown";
+    }
+}
+
 std::ostream& operator<<(std::ostream& stream, const DType& dtype) {
     return stream << dtype_to_name(dtype);
 }

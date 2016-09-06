@@ -267,7 +267,7 @@ endif()
 list(APPEND DALI_SOURCE_DIRS_EXCLUDE "dali/mat;dali/data_processing")
 
 if (ARRAY_ONLY)
-    list(APPEND DALI_SOURCE_DIRS_EXCLUDE "dali/tensor")
+    list(APPEND DALI_SOURCE_DIRS_EXCLUDE "dali/tensor;dali/layers;dali/execution")
 endif()
 
 

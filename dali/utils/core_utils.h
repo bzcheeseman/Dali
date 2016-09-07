@@ -29,6 +29,7 @@ namespace utils {
 
     /** Utility function to create directory tree */
     bool makedirs(const char* path, mode_t mode = DEFAULT_MODE);
+    std::string expanduser(const std::string& path);
     typedef std::vector<std::string> str_sequence;
 
     /**

@@ -81,6 +81,8 @@ class Compiler {
              std::string outpath,
              std::string include_path);
 
+    static std::string kExecutable;
+
     std::string header_file_includes() const;
 
     bool load(hash_t hash);

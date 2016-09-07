@@ -6,6 +6,7 @@
 #include <iterator>
 #include <set>
 #include <sys/stat.h>
+#include <pwd.h>
 
 #include "dali/utils/assert2.h"
 #include "dali/utils/ThreadPool.h"
@@ -537,6 +538,34 @@ namespace utils {
             *p = v;
         }
         return true;
+    }
+
+    // From this StackOverflow:
+    // http://stackoverflow.com/questions/3020187/getting-home-directory-in-mac-os-x-using-c-language
+    std::string expanduser(const std::string& path) {
+        if (path.size() == 0 || path[0] != '~') {
+            return path;
+        }
+        // on windows a different environment variable
+        // controls the home directory, but mac and linux
+        // use HOME
+        const char *homeDir = getenv("HOME");
+        bool got_home_dir = false;
+        if (!homeDir) {
+            struct passwd* pwd = getpwuid(getuid());
+            if (pwd) {
+               homeDir = pwd->pw_dir;
+               got_home_dir = true;
+            }
+        } else {
+            got_home_dir = true;
+        }
+        if (got_home_dir) {
+            return std::string(homeDir) + path.substr(1);
+        } else {
+            // path could not be expanded
+            return path;
+        }
     }
 
     template<typename T>

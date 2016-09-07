@@ -1,11 +1,10 @@
 #include "compiler.h"
+#include "dali/config.h"
 
 #include <sys/stat.h>
 #include <cxxabi.h>
 
 #include "dali/utils/core_utils.h"
-
-
 
 std::string get_call_args(std::size_t num_args) {
     std::string call_args;
@@ -70,6 +69,8 @@ Compiler::Compiler(std::vector<std::string> headers, std::string outpath, std::s
     }
 }
 
+std::string Compiler::kExecutable = STR(DALI_CXX_COMPILER);
+
 bool Compiler::load(hash_t hash) {
     if (hash_to_f_ptr_.find(hash) != hash_to_f_ptr_.end()) {
         return true;
@@ -102,19 +103,26 @@ std::string Compiler::compiler_command(const std::string& source,
                                        const std::string& dest,
                                        const std::string& logfile,
                                        const std::string& extra_args) {
-    return utils::MS() << "gcc -std=c++11 " << source
-                        << " -o " << dest
-                        << " -I"  << include_path_
-                        // TODO(jonathan): make sure we never mistakenly delete this line:
-                        << " -I"  << "/home/sidor/projects/Dali/third_party/mshadow"
-                        << " " << extra_args
-                        // dynamic lookup: -undefined dynamic_lookup on clang
-                        // and
-                        << " -Wl,--unresolved-symbols=ignore-in-object-files"
-                        << " -fPIC"
-                        // for gcc
-                        // << " --compiler-options=\"-undefined dynamic_lookup\" "
-                        << " -O2 -shared &> " << logfile;
+    std::string executable_specific_args;
+    if (utils::endswith(Compiler::kExecutable, "clang") ||
+        utils::endswith(Compiler::kExecutable, "clang++") ||
+        utils::endswith(Compiler::kExecutable, "c++")) {
+        executable_specific_args = " -undefined dynamic_lookup";
+    } else if (utils::endswith(Compiler::kExecutable, "gcc") ||
+               utils::endswith(Compiler::kExecutable, "g++")) {
+        executable_specific_args = " -shared -fPIC -Wl,--unresolved-symbols=ignore-in-object-files";
+    }
+
+    return utils::MS() << Compiler::kExecutable << " -std=c++11 " << source
+                       << " -o " << dest
+                       << " -I"  << include_path_
+                       // TODO(jonathan): make sure we never mistakenly delete this line:
+                       << " -I" << STR(MSHADOW_INCLUDE_DIRECTORY)
+                       << " -I" << STR(DALI_BLAS_INCLUDE_DIRECTORY)
+                       // and
+                       << " " << extra_args
+                       << executable_specific_args
+                       << " -O2 &> " << logfile;
 }
 
 bool Compiler::compile_code(const std::string& source,
@@ -130,7 +138,7 @@ std::vector<std::string> kHeaders = {
     "dali/array/function2/array_view.h",
     "dali/array/array.h"
 };
-std::string kOutpath    = "/home/sidor/.dali/cache/";
-std::string kIncludeDir = "/home/sidor/projects/Dali/build_cpu/dali_generated/";
+std::string kOutpath    = utils::expanduser("~/.dali/cache/");
+std::string kIncludeDir = STR(DALI_COMPILE_DIRECTORY);
 
 Compiler chief_compiler(kHeaders, kOutpath, kIncludeDir);

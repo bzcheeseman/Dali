@@ -101,6 +101,7 @@ IF ((NOT OpenBLAS_FOUND) AND (NOT MKL_FOUND) AND APPLE AND (BLAS_LIBRARIES MATCH
     message(STATUS "Using Apple's Accelerate Framework BLAS")
     list(APPEND BLAS_LIBRARIES "blas")
     include_directories("/System/Library/Frameworks/Accelerate.framework/Versions/Current/Frameworks/vecLib.framework/Versions/Current/Headers/")
+    set(DALI_BLAS_INCLUDE_DIR "/System/Library/Frameworks/Accelerate.framework/Versions/Current/Frameworks/vecLib.framework/Versions/Current/Headers/")
 ENDIF()
 
 IF (MKL_FOUND)
@@ -137,10 +138,12 @@ endforeach(libvar)
 set(MSHADOW_FORCE_STREAM 0)
 
 # INCLUDES
+set(MSHADOW_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/third_party/mshadow")
 include_directories(${PROJECT_SOURCE_DIR}/third_party/mshadow)
 include_directories(${MKL_INCLUDE_DIR})
 IF (OpenBLAS_FOUND)
     include_directories(${OpenBLAS_INCLUDE_DIR})
+    set(DALI_BLAS_INCLUDE_DIR ${OpenBLAS_INCLUDE_DIR})
 ENDIF(OpenBLAS_FOUND)
 include_directories(${PROJECT_SOURCE_DIR}/third_party/libcuckoo/src)
 

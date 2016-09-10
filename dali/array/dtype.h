@@ -24,7 +24,7 @@ void assert_dali_dtype() {
 template<typename T>
 DType template_to_dtype() {
     assert_dali_dtype<T>();
-   	return DTYPE_FLOAT;
+    return DTYPE_FLOAT;
 }
 
 template<> DType template_to_dtype<float>();
@@ -39,5 +39,12 @@ void print_dtype(std::basic_ostream<char>& stream, DType dtype, void* memory);
 std::string dtype_to_name(DType dtype);
 std::string dtype_to_cpp_name(DType dtype);
 std::ostream& operator<<(std::ostream&, const DType&);
+
+namespace std {
+    template<>
+    struct hash<DType> {
+        std::size_t operator()(const DType&) const;
+    };
+}
 
 #endif

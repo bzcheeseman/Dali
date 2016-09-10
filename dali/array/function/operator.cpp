@@ -18,3 +18,9 @@ std::string operator_to_name(const OPERATOR_T& operator_t) {
             return "unknown operator";
     }
 }
+
+namespace std {
+    std::size_t hash<OPERATOR_T>::operator()(const OPERATOR_T& operator_t) const {
+        return operator_t * 10;
+    }
+}

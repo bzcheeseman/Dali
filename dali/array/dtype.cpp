@@ -72,3 +72,9 @@ std::string dtype_to_cpp_name(DType dtype) {
 std::ostream& operator<<(std::ostream& stream, const DType& dtype) {
     return stream << dtype_to_name(dtype);
 }
+
+namespace std {
+    std::size_t hash<DType>::operator()(const DType& dtype) const {
+        return dtype;
+    }
+}

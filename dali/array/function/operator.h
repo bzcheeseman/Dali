@@ -116,4 +116,13 @@ void inline operator_assign_contiguous(LeftType& left, const RightType& right, b
 
 std::string operator_to_name(const OPERATOR_T& operator_t);
 
+
+namespace std {
+    template<>
+    struct hash<OPERATOR_T> {
+        std::size_t operator()(const OPERATOR_T&) const;
+    };
+}
+
+
 #endif

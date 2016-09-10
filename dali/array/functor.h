@@ -2,8 +2,10 @@
 #define DALI_ARRAY_TENSOR_FUNCTIONS_H
 
 #include "dali/config.h"
-#include <mshadow/tensor.h>
+#include "dali/macros.h"
 #include <math.h>
+#include <cmath>
+#include <string>
 
 #ifdef DALI_USE_CUDA
     #define TANH_F tanhf
@@ -53,7 +55,7 @@ namespace functor {
         const static std::string name;
         T tol;
         near_equal(T _tol) : tol(_tol) {}
-        MSHADOW_XINLINE bool operator()(const T& lhs, const T& rhs) const {
+        XINLINE bool operator()(const T& lhs, const T& rhs) const {
             return std::abs(lhs - rhs) < tol;
         }
     };
@@ -61,7 +63,7 @@ namespace functor {
     template<typename R>
     struct square : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a) {
+        XINLINE static R Map(const R& a) {
             return a * a;
         }
     };
@@ -69,7 +71,7 @@ namespace functor {
     template<typename R>
     struct cube : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a) {
+        XINLINE static R Map(const R& a) {
             return a * a * a;
         }
     };
@@ -77,7 +79,7 @@ namespace functor {
     template<typename R>
     struct eye : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a, const R& diag, const mshadow::index_t& y, const mshadow::index_t& x) {
+        XINLINE static R Map(const R& a, const R& diag, const int& y, const int& x) {
             return x == y ? diag : 0.0;
         }
     };
@@ -85,7 +87,7 @@ namespace functor {
     template<typename R>
     struct fill : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a, const R& filler) {
+        XINLINE static R Map(const R& a, const R& filler) {
             return filler;
         }
     };
@@ -93,7 +95,7 @@ namespace functor {
     template<typename R>
     struct arange : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a, const R& step, const mshadow::index_t& y, const mshadow::index_t& x) {
+        XINLINE static R Map(const R& a, const R& step, const int& y, const int& x) {
             return a + step * x;
         }
     };
@@ -101,7 +103,7 @@ namespace functor {
     template<typename R>
     struct add : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a, const R& b) {
+        XINLINE static R Map(const R& a, const R& b) {
             return a + b;
         }
     };
@@ -109,7 +111,7 @@ namespace functor {
     template<typename R>
     struct equals : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a, const R& b) {
+        XINLINE static R Map(const R& a, const R& b) {
             return a == b ? 1 : 0;
         }
     };
@@ -117,7 +119,7 @@ namespace functor {
     template<typename R>
     struct sub : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a, const R& b) {
+        XINLINE static R Map(const R& a, const R& b) {
             return a - b;
         }
     };
@@ -125,7 +127,7 @@ namespace functor {
     template<typename R>
     struct eltmul : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a, const R& b) {
+        XINLINE static R Map(const R& a, const R& b) {
             return a * b;
         }
     };
@@ -133,13 +135,13 @@ namespace functor {
     template<typename R>
     struct eltdiv : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a, const R& b) {
+        XINLINE static R Map(const R& a, const R& b) {
             return a / b;
         }
     };
 
     template<>
-    MSHADOW_XINLINE
+    XINLINE
     int square<int>::Map(const int& a) {
         return a*a;
     }
@@ -147,13 +149,13 @@ namespace functor {
     template<typename R>
     struct sqrt_f : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a) {
+        XINLINE static R Map(const R& a) {
             return sqrt(a);
         }
     };
 
     template<>
-    MSHADOW_XINLINE
+    XINLINE
     int sqrt_f<int>::Map(const int& a) {
         return (int)sqrt((float)a);
     }
@@ -161,13 +163,13 @@ namespace functor {
     template<typename R>
     struct rsqrt : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a) {
+        XINLINE static R Map(const R& a) {
             return (1.0 / sqrt(a));
         }
     };
 
     template<>
-    MSHADOW_XINLINE
+    XINLINE
     int rsqrt<int>::Map(const int& a) {
         return (int)(1.0 / sqrt((float)a));
     }
@@ -176,7 +178,7 @@ namespace functor {
     template<typename R>
     struct inv : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a) {
+        XINLINE static R Map(const R& a) {
             return ((R)1.0) / a;
         }
     };
@@ -184,7 +186,7 @@ namespace functor {
     template<typename R>
     struct sigmoid : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a) {
+        XINLINE static R Map(const R& a) {
             return 1.0 / (1.0 + EXP_F(-a));
         }
     };
@@ -192,7 +194,7 @@ namespace functor {
     template<typename R>
     struct identity : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a) {
+        XINLINE static R Map(const R& a) {
             return a;
         }
     };
@@ -200,7 +202,7 @@ namespace functor {
     template<typename R>
     struct log : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a) {
+        XINLINE static R Map(const R& a) {
             return LOG_F(a);
         }
     };
@@ -208,7 +210,7 @@ namespace functor {
     template<typename R>
     struct negative_log : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a) {
+        XINLINE static R Map(const R& a) {
             return -LOG_F(a);
         }
     };
@@ -216,7 +218,7 @@ namespace functor {
     template<typename R>
     struct safe_entropy_log : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a) {
+        XINLINE static R Map(const R& a) {
             R a_safe = a;
             const R lower_bound = (R)EPS;
             const R upper_bound = (R)(1.0 - EPS);
@@ -233,7 +235,7 @@ namespace functor {
     template<typename R>
     struct exp : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a) {
+        XINLINE static R Map(const R& a) {
             return EXP_F(a);
         }
     };
@@ -241,7 +243,7 @@ namespace functor {
     template<typename R>
     struct isnotanumber : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a) {
+        XINLINE static R Map(const R& a) {
             return ISNAN_F(a);
         }
     };
@@ -254,7 +256,7 @@ namespace functor {
     template<>
     struct isnotanumber<int> : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static int Map(const int& a) {
+        XINLINE static int Map(const int& a) {
             return 0;
         }
     };
@@ -262,7 +264,7 @@ namespace functor {
     template<typename R>
     struct isinfinity : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a) {
+        XINLINE static R Map(const R& a) {
             return ISINF_F(a);
         }
     };
@@ -270,7 +272,7 @@ namespace functor {
     template<>
     struct isinfinity<int> : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static int Map(const int& a) {
+        XINLINE static int Map(const int& a) {
             return 0;
         }
     };
@@ -278,7 +280,7 @@ namespace functor {
     template<typename R>
     struct div_grad : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a, const R& b) {
+        XINLINE static R Map(const R& a, const R& b) {
             return a / (b * b);
         }
     };
@@ -286,7 +288,7 @@ namespace functor {
     template<typename R>
     struct dsigmoid : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a) {
+        XINLINE static R Map(const R& a) {
             return a * (((R)1.0) - a);
         }
     };
@@ -294,7 +296,7 @@ namespace functor {
     template<typename R>
     struct tanh : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a) {
+        XINLINE static R Map(const R& a) {
             // if (a < -30.0f)
             //     return -1.0f;
             // if (a >  30.0f)
@@ -308,7 +310,7 @@ namespace functor {
     template<typename R>
     struct inverse_tanh : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a) {
+        XINLINE static R Map(const R& a) {
             return (LOG_F(1 + a) - LOG_F(1 - a)) * 0.5;
         }
     };
@@ -316,7 +318,7 @@ namespace functor {
     template<typename R>
     struct dtanh : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a) {
+        XINLINE static R Map(const R& a) {
             return 1.0 - a * a;
         }
     };
@@ -324,7 +326,7 @@ namespace functor {
     template<typename R>
     struct power : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a, const R& b) {
+        XINLINE static R Map(const R& a, const R& b) {
             return POW_F(a, b);
         }
     };
@@ -332,7 +334,7 @@ namespace functor {
     template<typename R>
     struct abs : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a) {
+        XINLINE static R Map(const R& a) {
             return std::abs(a);
         }
     };
@@ -340,7 +342,7 @@ namespace functor {
     template<typename R>
     struct log_or_zero : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a) {
+        XINLINE static R Map(const R& a) {
             if (a > 0) {
                 return (R)LOG_F(a);
             } else {
@@ -352,7 +354,7 @@ namespace functor {
     template<typename R>
     struct sign : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& x) {
+        XINLINE static R Map(const R& x) {
             return x > 0.0 ? 1.0 : -1.0;
         }
     };
@@ -360,7 +362,7 @@ namespace functor {
     template<typename R>
     struct threshold : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& a, const R& b) {
+        XINLINE static R Map(const R& a, const R& b) {
             return a < b ? 1.0 : 0.0;
         }
     };
@@ -368,7 +370,7 @@ namespace functor {
     template<typename R>
     struct max_scalar : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& x, const R& y) {
+        XINLINE static R Map(const R& x, const R& y) {
             return x > y ? x : y;
         }
     };
@@ -376,7 +378,7 @@ namespace functor {
     template<typename R>
     struct min_scalar : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& x, const R& y) {
+        XINLINE static R Map(const R& x, const R& y) {
             return x < y ? x : y;
         }
     };
@@ -384,7 +386,7 @@ namespace functor {
     template<typename R>
     struct  steep_sigmoid : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& x, const R& aggressiveness) {
+        XINLINE static R Map(const R& x, const R& aggressiveness) {
             return 1.0 / (1.0 + EXP_F( - aggressiveness * x));
         }
     };
@@ -392,7 +394,7 @@ namespace functor {
     template<typename R>
     struct  steep_sigmoid_backward : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& x, const R& aggressiveness) {
+        XINLINE static R Map(const R& x, const R& aggressiveness) {
             return aggressiveness * (x - x * x);
         }
     };
@@ -400,7 +402,7 @@ namespace functor {
     template<typename R>
     struct relu : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& x) {
+        XINLINE static R Map(const R& x) {
             return x > 0.0 ? x : 0.0;
         }
     };
@@ -408,7 +410,7 @@ namespace functor {
     template<typename R>
     struct clipped_relu : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& x, const R& clipfactor) {
+        XINLINE static R Map(const R& x, const R& clipfactor) {
             return x > 0.0 ? ( x > clipfactor ? clipfactor : x) : 0.0;
         }
     };
@@ -416,7 +418,7 @@ namespace functor {
     template<typename R>
     struct relu_backward : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& x) {
+        XINLINE static R Map(const R& x) {
             return x > 0.0 ? 1.0 : 0.0;
         }
     };
@@ -424,7 +426,7 @@ namespace functor {
     template<typename R>
     struct clipped_relu_backward : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& x, const R& clipfactor) {
+        XINLINE static R Map(const R& x, const R& clipfactor) {
             return x > 0.0 ? (x > clipfactor ? 0.0 : 1.0) : 0.0;
         }
     };
@@ -432,7 +434,7 @@ namespace functor {
     template<typename R>
     struct clip : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& x, const R& clipping_val) {
+        XINLINE static R Map(const R& x, const R& clipping_val) {
             if (x > clipping_val) {
                 return clipping_val;
             } else if (x < -clipping_val) {
@@ -446,7 +448,7 @@ namespace functor {
     template<typename R>
     struct lessthanequal : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& x, const R& upperbound) {
+        XINLINE static R Map(const R& x, const R& upperbound) {
             return x <= upperbound ? 1 : 0;
         }
     };
@@ -454,7 +456,7 @@ namespace functor {
     template<typename R>
     struct greaterthanequal : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& x, const R& lowerbound) {
+        XINLINE static R Map(const R& x, const R& lowerbound) {
             return x >= lowerbound ? 1 : 0;
         }
     };
@@ -462,7 +464,7 @@ namespace functor {
     template<typename R>
     struct binary_cross_entropy : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& x, const R& t ) {
+        XINLINE static R Map(const R& x, const R& t ) {
             R distance_from1 =        t  * LOG_F(x);
             R distance_from0 = (1.0 - t) * LOG_F(1. - x);
             return -(distance_from1 + distance_from0);
@@ -472,7 +474,7 @@ namespace functor {
     template<typename R>
     struct binary_cross_entropy_grad : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& x, const R& t ) {
+        XINLINE static R Map(const R& x, const R& t ) {
             R numerator   = t - x;
             R denominator = (x * (x - 1.0));
             return numerator / denominator;
@@ -482,7 +484,7 @@ namespace functor {
     template<typename R>
     struct softplus : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& x) {
+        XINLINE static R Map(const R& x) {
             if (x > 20.0) {
                 return x;
             } else {
@@ -494,7 +496,7 @@ namespace functor {
     template<typename R>
     struct softplus_backward : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& x) {
+        XINLINE static R Map(const R& x) {
             if (x > 20.0) {
                 return 1.0;
             } else {
@@ -506,7 +508,7 @@ namespace functor {
     template<typename R>
     struct prelu : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& x, const R& weight) {
+        XINLINE static R Map(const R& x, const R& weight) {
             return x > 0 ? x : weight * x;
         }
     };
@@ -514,7 +516,7 @@ namespace functor {
     template<typename R>
     struct prelu_backward_weights : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& x, const R& grad) {
+        XINLINE static R Map(const R& x, const R& grad) {
             return x > 0 ? 0 : x * grad;
         }
     };
@@ -522,7 +524,7 @@ namespace functor {
     template<typename R>
     struct prelu_backward_inputs : public Functor {
         const static std::string name;
-        MSHADOW_XINLINE static R Map(const R& x, const R& weight) {
+        XINLINE static R Map(const R& x, const R& weight) {
             return x > 0 ? 1.0 : weight;
         }
     };

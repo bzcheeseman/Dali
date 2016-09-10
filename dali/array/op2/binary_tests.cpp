@@ -133,5 +133,23 @@ TEST(ArrayBinary2, add_strided_nd) {
     }
 }
 
+#define DALI_RTC_BINARY_TEST(funcname)\
+    for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {\
+        int size = 10;\
+        auto a = Array::arange({5, size}, dtype);\
+        auto b = Array::arange({5, size}, dtype) + 1;\
+        Array dst = Array::arange({5, size}, dtype) + 2;\
+        dst = op2::funcname(a, b);\
+        EXPECT_TRUE(Array::equals(dst, (Array)(op::funcname(a, b))));\
+    }\
+
+TEST(ArrayBinary2, elementwise_binary_ops) {
+    DALI_RTC_BINARY_TEST(eltmul);
+    DALI_RTC_BINARY_TEST(eltdiv);
+    DALI_RTC_BINARY_TEST(prelu);
+    DALI_RTC_BINARY_TEST(pow);
+    DALI_RTC_BINARY_TEST(equals);
+}
+
 
 

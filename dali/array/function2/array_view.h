@@ -3,9 +3,7 @@
 
 #include "dali/array/array.h"
 #include "dali/array/memory/device.h"
-#include "dali/array/shape.h"
-
-// #include <iostream>
+#include "dali/macros.h"
 #include <vector>
 
 template<int num_dims>
@@ -67,20 +65,6 @@ struct Shape {
         return volume;
     }
 };
-
-// template<int num_dims>
-// std::ostream& operator<<(std::ostream& stream, const Shape<num_dims>& dims) {
-//     stream << "(";
-//     for (int i = 0; i < dims.ndim();i++) {
-//         stream << dims[i];
-//         if (i != dims.ndim() - 1) {
-//             stream << ", ";
-//         } else {
-//             stream << ")";
-//         }
-//     }
-//     return stream;
-// }
 
 template<int ndim>
 XINLINE Shape<ndim> index_to_dim(int index, const Shape<ndim>& shape) {
@@ -170,9 +154,11 @@ class ArrayStridedView {
 
 template<typename T, int ndim>
 ArrayView<T, ndim> make_view(const Array& arr) {
-    return ArrayView<T, ndim>((T*)arr.memory()->mutable_data(memory::Device::cpu()),
-                              arr.offset(),
-                              arr.shape());
+    return ArrayView<T, ndim>(
+        (T*)arr.memory()->mutable_data(memory::Device::cpu()),
+        arr.offset(),
+        arr.shape()
+    );
 }
 
 template<typename T, int ndim>

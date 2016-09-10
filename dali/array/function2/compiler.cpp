@@ -119,6 +119,7 @@ std::string Compiler::compiler_command(const std::string& source,
     return utils::MS() << Compiler::kExecutable << " -std=c++11 " << source
                        << " -o " << dest
                        << " -I"  << include_path_
+                       << " -DDALI_ARRAY_HIDE_LAZY=1"
                        << " -I" << STR(DALI_BLAS_INCLUDE_DIRECTORY)
                        << " " << extra_args
                        << executable_specific_args
@@ -136,6 +137,7 @@ bool Compiler::compile_code(const std::string& source,
 
 std::vector<std::string> kHeaders = {
     "dali/array/function2/array_view.h",
+    "dali/array/functor.h",
     "dali/array/array.h"
 };
 std::string kOutpath    = utils::expanduser("~/.dali/cache/");

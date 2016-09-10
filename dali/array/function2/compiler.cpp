@@ -141,4 +141,4 @@ std::vector<std::string> kHeaders = {
 std::string kOutpath    = utils::expanduser("~/.dali/cache/");
 std::string kIncludeDir = STR(DALI_COMPILE_DIRECTORY);
 
-Compiler chief_compiler(kHeaders, kOutpath, kIncludeDir);
+Compiler array_op_compiler(kHeaders, kOutpath, kIncludeDir);

@@ -158,6 +158,6 @@ class Compiler {
 };
 
 
-extern Compiler chief_compiler;
+extern Compiler array_op_compiler;
 
 #endif  // DALI_ARRAY_FUNCTION2_COMPILER_H

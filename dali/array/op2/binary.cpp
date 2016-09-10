@@ -20,9 +20,12 @@ class Binary {
             auto cpp_type = dtype_to_cpp_name(dtype);
             std::string code = (utils::MS()
                 << "void run(Array dst, Array a, Array b) {\n"
-                << "    auto a_view = make" << (a_contiguous ? "_" : "_strided_") << "view<" << cpp_type << ", " << std::to_string(rank) << ">(a);\n"
-                << "    auto b_view = make" << (b_contiguous ? "_" : "_strided_") << "view<" << cpp_type << ", " << std::to_string(rank) << ">(b);\n"
-                << "    auto dst_view = make" << (dst_contiguous ? "_" : "_strided_") << "view<" << cpp_type + ", " << std::to_string(rank) << ">(dst);\n"
+                << "    auto a_view = make" << (a_contiguous ? "_" : "_strided_")
+                << "view<" << cpp_type << ", " << rank << ">(a);\n"
+                << "    auto b_view = make" << (b_contiguous ? "_" : "_strided_")
+                << "view<" << cpp_type << ", " << rank << ">(b);\n"
+                << "    auto dst_view = make" << (dst_contiguous ? "_" : "_strided_")
+                << "view<" << cpp_type + ", " << rank << ">(dst);\n"
                 << "    int num_el = dst.number_of_elements();\n"
             );
             std::string for_loop;
@@ -31,6 +34,8 @@ class Binary {
                            "        dst_view(i) " + operator_to_name(operator_t) + " a_view(i) + b_view(i);\n"
                            "    }\n}\n";
             } else {
+                // TODO: make the for loop increase in nesting to avoid usage of
+                // index_to_dim (because division == expensive)
                 for_loop = "    for (int i = 0; i < num_el; ++i) {\n"
                            "        auto query = index_to_dim(i, dst_view.shape());\n"
                            "        dst_view[query] " + operator_to_name(operator_t) + " a_view[query] + b_view[query];\n"

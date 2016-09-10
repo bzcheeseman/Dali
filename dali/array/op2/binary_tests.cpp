@@ -116,6 +116,22 @@ TEST(ArrayBinary2, add_strided) {
     }
 }
 
+TEST(ArrayBinary2, add_strided_nd) {
+    int size = 10;
+    // single striding
+    for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {
+        auto a = Array::arange({5, size}, dtype);
+        auto b = Array::arange({5, 2 * size}, dtype)[Slice()][Slice(0, 2*size, 2)];
+        Array dst = Array::arange({5, size}, dtype) + 2;
+        dst -= op2::add(a, b);
+        EXPECT_TRUE(
+            Array::equals(
+                dst,
+                (Array)(Array::arange({5, size}, dtype) + 2 - (a + b))
+            )
+        );
+    }
+}
 
 
 

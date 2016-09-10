@@ -122,7 +122,7 @@ std::string Compiler::compiler_command(const std::string& source,
                        << " -I" << STR(DALI_BLAS_INCLUDE_DIRECTORY)
                        << " " << extra_args
                        << executable_specific_args
-                       << " -O2 &> " << logfile;
+                       << " -O3 &> " << logfile;
 }
 
 bool Compiler::compile_code(const std::string& source,

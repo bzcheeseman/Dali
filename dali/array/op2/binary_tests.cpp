@@ -63,5 +63,59 @@ TEST(ArrayBinary2, add) {
             )
         );
     }
-
 }
+
+TEST(ArrayBinary2, add_strided) {
+    int size = 10;
+    // single striding
+    for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {
+        auto a = Array::arange({size}, dtype);
+        auto b = Array::arange({2 * size}, dtype)[Slice(0, 2*size, 2)];
+        Array dst = Array::arange({size}, dtype) + 2;
+        dst -= op2::add(a, b);
+        EXPECT_TRUE(
+            Array::equals(
+                dst,
+                (Array)(Array::arange({size}, dtype) + 2 - (a + b))
+            )
+        );
+    }
+
+    // double striding:
+    for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {
+        auto a = Array::arange({size}, dtype);
+        auto b = Array::arange({2 * size}, dtype)[Slice(0, 2*size, 2)];
+        Array dst = ((Array)(Array::arange({2 * size}, dtype) + 2))[Slice(0, 2 * size, 2)];
+        dst -= op2::add(a, b);
+        EXPECT_TRUE(
+            Array::equals(
+                dst,
+                (Array)(
+                    ((Array)(Array::arange({2 * size}, dtype) + 2))[Slice(0, 2 * size, 2)] -
+                    (a + b)
+                )
+            )
+        );
+    }
+
+    // triple striding:
+    for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {
+        auto a = Array::arange({3 * size}, dtype)[Slice(0, 3 * size, 3)];
+        auto b = Array::arange({2 * size}, dtype)[Slice(0, 2 * size, 2)];
+        Array dst = ((Array)(Array::arange({2 * size}, dtype) + 2))[Slice(0, 2 * size, 2)];
+        dst -= op2::add(a, b);
+        EXPECT_TRUE(
+            Array::equals(
+                dst,
+                (Array)(
+                    ((Array)(Array::arange({2 * size}, dtype) + 2))[Slice(0, 2 * size, 2)] -
+                    (a + b)
+                )
+            )
+        );
+    }
+}
+
+
+
+

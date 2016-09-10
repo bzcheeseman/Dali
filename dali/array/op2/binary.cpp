@@ -9,38 +9,71 @@
 
 class Binary {
     public:
-        static std::string get_code_template() {
-            return "void run(Array dst, Array a, Array b) {\n"
-                   "    auto a_view   = make_view<DALI_RTC_TYPE, 1>(a);\n"
-                   "    auto b_view   = make_view<DALI_RTC_TYPE, 1>(b);\n"
-                   "    auto dst_view = make_view<DALI_RTC_TYPE, 1>(dst);\n"
-                   "\n"
-                   "    int num_el = dst.number_of_elements();\n"
-                   "\n"
-                   "    for (int i = 0; i < num_el; ++i) {\n"
-                   "        dst_view(i) DALI_RTC_OPERATOR a_view(i) + b_view(i);\n"
-                   "    }\n"
-                   "}\n";
+        static std::string get_code_template(
+                DType dtype,
+                OPERATOR_T operator_t,
+                const memory::Device& device,
+                bool a_contiguous,
+                bool b_contiguous,
+                bool dst_contiguous,
+                int rank) {
+            auto cpp_type = dtype_to_cpp_name(dtype);
+            std::string code = (utils::MS()
+                << "void run(Array dst, Array a, Array b) {\n"
+                << "    auto a_view = make" << (a_contiguous ? "_" : "_strided_") << "view<" << cpp_type << ", " << std::to_string(rank) << ">(a);\n"
+                << "    auto b_view = make" << (b_contiguous ? "_" : "_strided_") << "view<" << cpp_type << ", " << std::to_string(rank) << ">(b);\n"
+                << "    auto dst_view = make" << (dst_contiguous ? "_" : "_strided_") << "view<" << cpp_type + ", " << std::to_string(rank) << ">(dst);\n"
+                << "    int num_el = dst.number_of_elements();\n"
+            );
+            std::string for_loop;
+            if (rank == 1) {
+                for_loop = "    for (int i = 0; i < num_el; ++i) {\n"
+                           "        dst_view(i) " + operator_to_name(operator_t) + " a_view(i) + b_view(i);\n"
+                           "    }\n}\n";
+            } else {
+                for_loop = "    for (int i = 0; i < num_el; ++i) {\n"
+                           "        auto query = index_to_dim(i, dst_view.shape());\n"
+                           "        dst_view[query] " + operator_to_name(operator_t) + " a_view[query] + b_view[query];\n"
+                           "    }\n}\n";
+            }
+            code += for_loop;
+            return code;
         }
 
         static macro_args_t get_macro_args(
                 DType dtype,
                 OPERATOR_T operator_t,
-                const memory::Device& device) {
+                const memory::Device& device,
+                bool a_contiguous,
+                bool b_contiguous,
+                bool dst_contiguous,
+                int rank) {
             return {
-                { "DALI_RTC_TYPE", dtype_to_cpp_name(dtype) },
-                { "DALI_RTC_OPERATOR", operator_to_name(operator_t) },
-                { "DALI_RTC_GPU", device.is_cpu() ? "0" : "1" },
-                { "DALI_ARRAY_HIDE_LAZY", "1"}
+                { "DALI_ARRAY_HIDE_LAZY", "1"},
             };
         }
 
         static hash_t get_hash(
                 DType dtype,
                 OPERATOR_T operator_t,
-                const memory::Device& device) {
+                const memory::Device& device,
+                bool a_contiguous,
+                bool b_contiguous,
+                bool dst_contiguous,
+                int rank) {
             // TODO(szymon): make more general.
-            return utils::get_hash(std::make_tuple(1, dtype, operator_t, device.is_cpu()));
+            return utils::get_hash(
+                std::make_tuple(
+                    1, // Binary add symbol
+                    dtype,
+                    operator_t,
+                    device.is_cpu(),
+                    a_contiguous,
+                    b_contiguous,
+                    dst_contiguous,
+                    rank
+                )
+            );
         }
 };
 
@@ -87,15 +120,44 @@ namespace op2 {
                     );
                 }
             }
-            hash_t hash = Binary::get_hash(output_dtype, operator_t, output_device);
+
+            bool a_contiguous = a.strides().empty();
+            bool b_contiguous = b.strides().empty();
+            bool dst_contiguous = out.strides().empty();
+            int op_rank = (
+                (a_contiguous && b_contiguous && dst_contiguous) ?
+                1 : output_bshape.size()
+            );
+
+            hash_t hash = Binary::get_hash(
+                output_dtype,
+                operator_t,
+                output_device,
+                a_contiguous,
+                b_contiguous,
+                dst_contiguous,
+                op_rank
+            );
 
             if (!array_op_compiler.load(hash)) {
                 auto macro_args = Binary::get_macro_args(
                     output_dtype,
                     operator_t,
-                    output_device
+                    output_device,
+                    a_contiguous,
+                    b_contiguous,
+                    dst_contiguous,
+                    op_rank
                 );
-                auto code_template = Binary::get_code_template();
+                auto code_template = Binary::get_code_template(
+                    output_dtype,
+                    operator_t,
+                    output_device,
+                    a_contiguous,
+                    b_contiguous,
+                    dst_contiguous,
+                    op_rank
+                );
                 array_op_compiler.compile<Array,Array,Array>(
                     hash,
                     code_template,

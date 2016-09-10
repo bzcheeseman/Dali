@@ -138,7 +138,6 @@ endforeach(libvar)
 set(MSHADOW_FORCE_STREAM 0)
 
 # INCLUDES
-set(MSHADOW_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/third_party/mshadow")
 include_directories(${PROJECT_SOURCE_DIR}/third_party/mshadow)
 include_directories(${MKL_INCLUDE_DIR})
 IF (OpenBLAS_FOUND)

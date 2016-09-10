@@ -31,7 +31,7 @@ std::string get_class_name(const char* name) {
 std::string macro_args_to_string(macro_args_t macro_args) {
     std::stringstream ss;
     for (auto& kv : macro_args) {
-        ss << "-DDALI_RTC_" << kv.first << "=" << kv.second << " ";
+        ss << "-D" << kv.first << "=" << kv.second << " ";
     }
     return ss.str();
 }
@@ -110,16 +110,16 @@ std::string Compiler::compiler_command(const std::string& source,
         executable_specific_args = " -undefined dynamic_lookup";
     } else if (utils::endswith(Compiler::kExecutable, "gcc") ||
                utils::endswith(Compiler::kExecutable, "g++")) {
-        executable_specific_args = " -shared -fPIC -Wl,--unresolved-symbols=ignore-in-object-files";
+        executable_specific_args = (
+            " -shared -fPIC "
+            "-Wl,--unresolved-symbols=ignore-in-object-files"
+        );
     }
 
     return utils::MS() << Compiler::kExecutable << " -std=c++11 " << source
                        << " -o " << dest
                        << " -I"  << include_path_
-                       // TODO(jonathan): make sure we never mistakenly delete this line:
-                       << " -I" << STR(MSHADOW_INCLUDE_DIRECTORY)
                        << " -I" << STR(DALI_BLAS_INCLUDE_DIRECTORY)
-                       // and
                        << " " << extra_args
                        << executable_specific_args
                        << " -O2 &> " << logfile;

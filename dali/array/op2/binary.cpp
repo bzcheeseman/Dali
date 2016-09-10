@@ -28,9 +28,10 @@ class Binary {
                 OPERATOR_T operator_t,
                 const memory::Device& device) {
             return {
-                { "TYPE", dtype_to_cpp_name(dtype) },
-                { "OPERATOR", operator_to_name(operator_t) },
-                { "GPU", device.is_cpu() ? "0" : "1" }
+                { "DALI_RTC_TYPE", dtype_to_cpp_name(dtype) },
+                { "DALI_RTC_OPERATOR", operator_to_name(operator_t) },
+                { "DALI_RTC_GPU", device.is_cpu() ? "0" : "1" },
+                { "DALI_ARRAY_HIDE_LAZY", "1"}
             };
         }
 

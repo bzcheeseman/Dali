@@ -127,7 +127,6 @@ namespace utils {
 
     std::vector<std::string> split_str(const std::string&, const std::string&);
 
-    std::string read_file(const char *filename);
     void save_list(const std::vector<std::string>& list, std::string fname, std::ios_base::openmode = std::ios::out);
 
     template<typename T>

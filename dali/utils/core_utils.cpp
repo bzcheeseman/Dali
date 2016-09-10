@@ -153,21 +153,6 @@ namespace utils {
             return tokens;
     }
 
-    std::string read_file(const char *filename) {
-        std::ifstream in(filename, std::ios::in | std::ios::binary);
-        if (in) {
-            return(
-                std::string(
-                    std::istreambuf_iterator<char>(in),
-                    std::istreambuf_iterator<char>()
-                )
-            );
-        }
-        throw std::runtime_error(
-            utils::MS() << "Unable to read file \"" << filename << "\"."
-        );
-    }
-
     template<typename T>
     void save_list_to_stream(const vector<string>& list, T& fp) {
         for (auto& el : list) {

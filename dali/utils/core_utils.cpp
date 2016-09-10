@@ -97,29 +97,6 @@ namespace utils {
     template bool in_vector(const vector<string>&, const string&);
     template bool in_vector(const vector<char>&, const char&);
 
-    template<typename T>
-    void tuple_sum(std::tuple<T, T>& A, std::tuple<T, T> B) {
-            std::get<0>(A) += std::get<0>(B);
-            std::get<1>(A) += std::get<1>(B);
-    }
-
-    template void tuple_sum(std::tuple<float, float>&, std::tuple<float, float>);
-    template void tuple_sum(std::tuple<double, double>&, std::tuple<double, double>);
-    template void tuple_sum(std::tuple<int, int>&, std::tuple<int, int>);
-    template void tuple_sum(std::tuple<uint, uint>&, std::tuple<uint, uint>);
-
-    template<typename T>
-    void assert_map_has_key(std::unordered_map<string, T>& map, const string& key) {
-            if (map.count(key) < 1) {
-                    stringstream error_msg;
-                    error_msg << "Map is missing the following key : \"" << key << "\".";
-                    throw std::runtime_error(error_msg.str());
-            }
-    }
-
-    template void assert_map_has_key(std::unordered_map<string, string>&, const string&);
-    template void assert_map_has_key(std::unordered_map<string, vector<string>>&, const string&);
-
     vector<string> listdir(const string& folder) {
             vector<string> filenames;
             DIR *dp;
@@ -175,67 +152,20 @@ namespace utils {
             }
             return tokens;
     }
-    std::unordered_map<string, std::vector<string>> text_to_map(const string& fname) {
-            ifstream infile(fname);
-            string line;
-            const char space = ' ';
-            std::unordered_map<string, std::vector<string>> map;
-            while (std::getline(infile, line)) {
-                    if (*line.begin() != '=' && *line.begin() != '-' && *line.begin() != '#') {
-                            const auto tokens = utils::split(line, space);
-                            if (tokens.size() > 1) {
-                                    auto ptr = tokens.begin() + 1;
-                                    while( ptr != tokens.end()) {
-                                            map[tokens[0]].emplace_back(*(ptr++));
-                                    }
-                            }
-                    }
-            }
-            return map;
-    }
 
-    template<typename T, typename K>
-    void stream_to_hashmap(T& infile, std::unordered_map<string, K>& map) {
-            string line;
-            const char space = ' ';
-            while (std::getline(infile, line)) {
-                    const auto tokens = utils::split(line, space);
-                    if (tokens.size() > 1)
-                            map[tokens[0]] = from_string<K>(tokens[1]);
-            }
-    }
-
-    template<typename T>
-    std::unordered_map<string, T> text_to_hashmap(const string& fname) {
-            std::unordered_map<string, T> map;
-            if (is_gzip(fname)) {
-                    igzstream fpgz(fname.c_str(), std::ios::in | std::ios::binary);
-                    stream_to_hashmap(fpgz, map);
-            } else {
-                    std::fstream fp(fname, std::ios::in | std::ios::binary);
-                    stream_to_hashmap(fp, map);
-            }
-            return map;
-    }
-
-    template<typename T>
-    void stream_to_list(T& fp, vector<string>& list) {
-            string line;
-            while (std::getline(fp, line))
-                    list.emplace_back(line);
-    }
-    template void stream_to_list(stringstream&, vector<string>&);
-
-    vector<string> load_list(const string& fname) {
-        vector<string> list;
-        if (is_gzip(fname)) {
-            igzstream fpgz(fname.c_str(), std::ios::in | std::ios::binary);
-            stream_to_list(fpgz, list);
-        } else {
-            std::fstream fp(fname, std::ios::in | std::ios::binary);
-            stream_to_list(fp, list);
+    std::string read_file(const char *filename) {
+        std::ifstream in(filename, std::ios::in | std::ios::binary);
+        if (in) {
+            return(
+                std::string(
+                    std::istreambuf_iterator<char>(in),
+                    std::istreambuf_iterator<char>()
+                )
+            );
         }
-        return list;
+        throw std::runtime_error(
+            utils::MS() << "Unable to read file \"" << filename << "\"."
+        );
     }
 
     template<typename T>
@@ -362,8 +292,9 @@ namespace utils {
         return mapping;
     }
 
-    std::unordered_map<string, string> load_redirection_list(const string& fname) {
-        std::unordered_map<string, string> mapping;
+    std::unordered_map<std::string, std::string> load_redirection_list(
+            const std::string& fname) {
+        std::unordered_map<std::string, std::string> mapping;
         if (is_gzip(fname)) {
             igzstream fpgz(fname.c_str(), std::ios::in | std::ios::binary);
             stream_to_redirection_list(fpgz, mapping);
@@ -374,54 +305,20 @@ namespace utils {
         return mapping;
     }
 
-    template std::unordered_map<string, string> text_to_hashmap(const string&);
-    template std::unordered_map<string, int>    text_to_hashmap(const string&);
-    template std::unordered_map<string, float>  text_to_hashmap(const string&);
-    template std::unordered_map<string, double> text_to_hashmap(const string&);
-    template std::unordered_map<string, uint>   text_to_hashmap(const string&);
-
-    void map_to_file(const std::unordered_map<string, std::vector<string>>& map, const string& fname) {
-        ofstream fp;
-        fp.open(fname.c_str(), std::ios::out);
-        for (auto& kv : map) {
-            fp << kv.first;
-            for (auto& v: kv.second)
-                fp << " " << v;
-            fp << "\n";
-        }
-    }
-
-    vector<std::pair<string, string>> load_labeled_corpus(const string& fname) {
-        ifstream fp(fname.c_str());
-        string l;
-        const char space = ' ';
-        vector<std::pair<string, string>> pairs;
-        string::size_type n;
-        while (std::getline(fp, l)) {
-            n = l.find(space);
-            pairs.emplace_back(std::piecewise_construct,
-                std::forward_as_tuple(l.begin() + n + 1, l.end()),
-                std::forward_as_tuple(l.begin(), l.begin() + n)
-            );
-        }
-        return pairs;
-    }
-
-
-
-    vector<string> tokenize(const string& s) {
+    std::vector<std::string> tokenize(const std::string& s) {
         stringstream ss(s);
         std::istream_iterator<string> begin(ss);
         std::istream_iterator<string> end;
-        return vector<string>(begin, end);
+        return std::vector<std::string>(begin, end);
     }
 
-    vector<vector<string>> load_tokenized_unlabeled_corpus(const string& fname) {
+    std::vector<std::vector<std::string>> load_tokenized_unlabeled_corpus(
+            const std::string& fname) {
         ifstream fp(fname.c_str());
-        string l;
-        vector<vector<string>> list;
+        std::string l;
+        std::vector<std::vector<std::string>> list;
         while (std::getline(fp, l)) {
-            auto tokenized = tokenize(string(l.begin(), l.end()));
+            auto tokenized = tokenize(std::string(l.begin(), l.end()));
             if (tokenized.size() > 0 ) {
                 list.emplace_back(tokenized);
             }
@@ -429,12 +326,15 @@ namespace utils {
         return list;
     }
 
-    vector<string> get_vocabulary(const tokenized_labeled_dataset& examples, int min_occurence, int data_column) {
-        std::unordered_map<string, uint> word_occurences;
+    std::vector<std::string> get_vocabulary(
+            const tokenized_labeled_dataset& examples,
+            int min_occurence,
+            int data_column) {
+        std::unordered_map<std::string, uint> word_occurences;
         string word;
         for (auto& example : examples)
             for (auto& word : example[data_column]) word_occurences[word] += 1;
-        vector<string> list;
+        std::vector<std::string> list;
         for (auto& key_val : word_occurences)
             if (key_val.second >= min_occurence)
                 list.emplace_back(key_val.first);
@@ -442,15 +342,17 @@ namespace utils {
         return list;
     }
 
-    vector<string> get_vocabulary(const vector<vector<string>>& examples, int min_occurence) {
-        std::unordered_map<string, uint> word_occurences;
-        string word;
+    std::vector<std::string> get_vocabulary(
+            const std::vector<std::vector<std::string>>& examples,
+            int min_occurence) {
+        std::unordered_map<std::string, uint> word_occurences;
+        std::string word;
         for (auto& example : examples) {
             for (auto& word : example) {
                 word_occurences[word] += 1;
             }
         }
-        vector<string> list;
+        std::vector<std::string> list;
         for (auto& key_val : word_occurences) {
             if (key_val.second >= min_occurence) {
                 list.emplace_back(key_val.first);
@@ -460,15 +362,17 @@ namespace utils {
         return list;
     }
 
-    vector<string> get_vocabulary(const tokenized_uint_labeled_dataset& examples, int min_occurence) {
-        std::unordered_map<string, uint> word_occurences;
-        string word;
+    std::vector<std::string> get_vocabulary(
+            const tokenized_uint_labeled_dataset& examples,
+            int min_occurence) {
+        std::unordered_map<std::string, uint> word_occurences;
+        std::string word;
         for (auto& example : examples) {
             for (auto& word : example.first) {
                 word_occurences[word] += 1;
             }
         }
-        vector<string> list;
+        std::vector<std::string> list;
         for (auto& key_val : word_occurences) {
             if (key_val.second >= min_occurence) {
                 list.emplace_back(key_val.first);
@@ -478,14 +382,14 @@ namespace utils {
         return list;
     }
 
-    vector<string> get_label_vocabulary(const tokenized_labeled_dataset& examples) {
-        std::set<string> labels;
-        string word;
+    std::vector<std::string> get_label_vocabulary(const tokenized_labeled_dataset& examples) {
+        std::set<std::string> labels;
+        std::string word;
         for (auto& example : examples) {
             ASSERT2(example.size() > 1, "Examples must have at least 2 columns.");
             labels.insert(example[1].begin(), example[1].end());
         }
-        return vector<string>(labels.begin(), labels.end());
+        return std::vector<std::string>(labels.begin(), labels.end());
     }
 
     // Trimming text from StackOverflow:
@@ -568,14 +472,6 @@ namespace utils {
         }
     }
 
-    template<typename T>
-    T from_string(const std::string& s) {
-        std::istringstream stream (s);
-        T t;
-        stream >> t;
-        return t;
-    }
-
     bool is_number(const std::string& s) {
         bool is_negative = *s.begin() == '-';
         bool is_decimal  = false;
@@ -601,12 +497,6 @@ namespace utils {
             }) == s.end();
     }
 
-    template float from_string<float>(const std::string& s);
-    template int from_string<int>(const std::string& s);
-    template uint from_string<uint>(const std::string& s);
-    template double from_string<double>(const std::string& s);
-    template long from_string<long>(const std::string& s);
-
     bool is_gzip(const std::string& fname) {
         const unsigned char gzip_code = 0x1f;
         const unsigned char gzip_code2 = 0x8b;
@@ -623,26 +513,6 @@ namespace utils {
                 return false;
         return true;
     }
-
-    template <typename T>
-    vector<size_t> argsort(const vector<T> &v) {
-            // initialize original index locations
-            vector<size_t> idx(v.size());
-            for (size_t i = 0; i != idx.size(); ++i) idx[i] = i;
-
-            // sort indexes based on comparing values in v
-            sort(idx.begin(), idx.end(),
-               [&v](size_t i1, size_t i2) {return v[i1] < v[i2];});
-
-            return idx;
-    }
-    template vector<size_t> argsort(const vector<size_t>&v);
-    template vector<size_t> argsort(const vector<float>&v);
-    template vector<size_t> argsort(const vector<double>&v);
-    template vector<size_t> argsort(const vector<int>&v);
-    template vector<size_t> argsort(const vector<uint>&v);
-    template vector<size_t> argsort(const vector<std::string>&v);
-
 
     void exit_with_message(const std::string& message, int error_code) {
             std::cerr << message << std::endl;
@@ -665,7 +535,7 @@ namespace utils {
         }
     }
 
-    bool file_exists (const std::string& fname) {
+    bool file_exists(const std::string& fname) {
         struct stat buffer;
         return (stat (fname.c_str(), &buffer) == 0);
     }
@@ -684,7 +554,7 @@ namespace utils {
         return ss.str();
     }
 
-    std::string dir_join(const vector<std::string>& paths) {
+    std::string dir_join(const std::vector<std::string>& paths) {
         stringstream ss;
         for (int i = 0; i < paths.size(); ++i) {
             ss << paths[i];
@@ -696,26 +566,7 @@ namespace utils {
         return ss.str();
     }
 
-    template<typename T>
-    std::vector<T> normalize_weights(const std::vector<T>& weights) {
-        T minimum = weights[0];
-        T sum = 0;
-        for (int i=0; i<weights.size(); ++i) {
-            minimum = std::min(minimum, weights[i]);
-            sum += weights[i];
-        }
-        vector<T> res;
-        T normalized_sum = sum - minimum * weights.size();
-        for (int i=0; i<weights.size(); ++i) {
-            res.push_back((weights[i] - minimum) / (normalized_sum));
-        }
-        return res;
-    }
-
-    template vector<float> normalize_weights(const std::vector<float>&);
-    template vector<double> normalize_weights(const std::vector<double>&);
-
-    string prefix_match(vector<string> candidates, string input) {
+    std::string prefix_match(std::vector<string> candidates, std::string input) {
         ASSERT2(!candidates.empty(), "Empty set of candidates for prefix matching.");
         int best_match_idx = -1;
         for (auto& candidate: candidates) {
@@ -735,28 +586,6 @@ namespace utils {
         return not value.empty();
     }
 
-    template<typename T>
-    T vsum(const vector<T>& vec) {
-        T res = 0;
-        for(T item: vec) res += item;
-        return res;
-    }
-
-    template float vsum(const vector<float>& vec);
-    template double vsum(const vector<double>& vec);
-    template int vsum(const vector<int>& vec);
-    template uint vsum(const vector<uint>& vec);
-    template unsigned long long vsum(const vector<unsigned long long >& vec);
-    template long long vsum(const vector<long long>& vec);
-
-
-
-    template<typename T>
-    vector<T> reversed(const vector<T>& v) {
-        vector<T> ret(v.rbegin(), v.rend());
-        return ret;
-    }
-
     std::string capitalize(const std::string& s) {
         std::string capitalized = s;
         // capitalize
@@ -765,16 +594,6 @@ namespace utils {
         }
         return capitalized;
     }
-
-    template vector<float> reversed(const vector<float>& vec);
-    template vector<double> reversed(const vector<double>& vec);
-    template vector<int> reversed(const vector<int>& vec);
-    template vector<uint> reversed(const vector<uint>& vec);
-    template vector<size_t> reversed(const vector<size_t>& vec);
-    template vector<string> reversed(const vector<string>& vec);
-    template vector<vector<string>> reversed(const vector<vector<string>>& vec);
-    // template vector<Mat<float>> reversed(const vector<Mat<float>>& vec);
-    // template vector<Mat<double>> reversed(const vector<Mat<double>>& vec);
 
     ThreadAverage::ThreadAverage(int num_threads) :
             num_threads(num_threads),

@@ -5,10 +5,12 @@
 #include <chrono>
 #include <string>
 #include <iostream>
+#include <sstream>
 #include <iterator>
 #include <functional>
 #include <unordered_map>
 #include <vector>
+
 
 // Useful for expanding macros. Obviously two levels of macro
 // are needed....
@@ -39,9 +41,6 @@ namespace utils {
     **/
     typedef std::vector<std::vector<str_sequence>> tokenized_labeled_dataset;
     typedef std::vector<std::pair<str_sequence, int>> tokenized_uint_labeled_dataset;
-
-    template<typename T>
-    void tuple_sum(std::tuple<T, T>&, std::tuple<T,T>);
     /**
     Ends With
     ---------
@@ -124,38 +123,11 @@ namespace utils {
     std::string& ltrim(std::string&);
     std::string& rtrim(std::string&);
 
-    void map_to_file(const std::unordered_map<std::string, str_sequence>&, const std::string&);
-
     void ensure_directory(std::string&);
 
     std::vector<std::string> split_str(const std::string&, const std::string&);
 
-    /**
-    Text To Map
-    -----------
-    Read a text file, extract all key value pairs and
-    ignore markdown decoration characters such as =, -,
-    and #
-
-    Inputs
-    ------
-    std::string fname : the file to read
-
-    Outputs
-    -------
-    std::unordered_map<string, std::vector<string> > map : the extracted key value pairs.
-
-    **/
-    std::unordered_map<std::string, str_sequence> text_to_map(const std::string&);
-    template<typename T, typename K>
-    void stream_to_hashmap(T&, std::unordered_map<std::string, K>&);
-    template<typename T>
-    std::unordered_map<std::string, T> text_to_hashmap(const std::string&);
-
-    template<typename T>
-    void stream_to_list(T&, str_sequence&);
-
-    str_sequence load_list(const std::string&);
+    std::string read_file(const char *filename);
     void save_list(const std::vector<std::string>& list, std::string fname, std::ios_base::openmode = std::ios::out);
 
     template<typename T>
@@ -189,14 +161,15 @@ namespace utils {
     bool is_gzip(const std::string& fname);
 
 
-
     template<typename T>
-    T from_string(const std::string&);
+    T from_string(const std::string& s) {
+        std::istringstream stream (s);
+        T t;
+        stream >> t;
+        return t;
+    }
 
     bool is_number(const std::string&);
-
-    template<typename T>
-    void assert_map_has_key(std::unordered_map<std::string, T>&, const std::string&);
 
     /**
     Split
@@ -235,7 +208,15 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
 
 
     template <typename T>
-    std::vector<size_t> argsort(const std::vector<T> &);
+    std::vector<size_t> argsort(const std::vector<T> &v) {
+        // initialize original index locations
+        std::vector<size_t> idx(v.size());
+        for (size_t i = 0; i != idx.size(); ++i) idx[i] = i;
+        // sort indexes based on comparing values in v
+        sort(idx.begin(), idx.end(),
+           [&v](size_t i1, size_t i2) {return v[i1] < v[i2];});
+        return idx;
+    }
 
     str_sequence listdir(const std::string&);
 
@@ -248,9 +229,6 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
     std::string dir_parent(const std::string& path, int levels_up = 1);
 
     std::string dir_join(const std::vector<std::string>&);
-
-    template<typename T>
-    std::vector<T> normalize_weights(const std::vector<T>& weights);
 
 
     // returns candidate from candidates with longest common prefix with input.
@@ -273,10 +251,17 @@ bool keep_empty_strings : keep empty strings [see above], defaults to false.
     bool validate_flag_nonempty(const char* flagname, const std::string& value);
 
     template<typename T>
-    T vsum(const std::vector<T>& vec);
+    T vsum(const std::vector<T>& vec) {
+        T res = 0;
+        for(T item: vec) res += item;
+        return res;
+    }
 
     template<typename T>
-    std::vector<T> reversed(const std::vector<T>& v);
+    std::vector<T> reversed(const std::vector<T>& v) {
+        std::vector<T> ret(v.rbegin(), v.rend());
+        return ret;
+    }
 
     class ThreadAverage {
         /* Small utility class used to safely average error contributions

@@ -113,20 +113,6 @@ TEST(utils, stream_to_redirection_list) {
     ASSERT_EQ(mapping.at("who"), "is this?");
 }
 
-TEST(utils, stream_to_list) {
-    stringstream ss(
-        "hello\n"
-        "what\n"
-        "who\n");
-
-    std::vector<string> list;
-    utils::stream_to_list(ss, list);
-    ASSERT_EQ(list.size(), 3);
-    ASSERT_EQ(list[0], "hello");
-    ASSERT_EQ(list[1], "what");
-    ASSERT_EQ(list[2], "who");
-}
-
 TEST(utils, split_str) {
     string input = "hellobobmeisterhowareyou?";
 

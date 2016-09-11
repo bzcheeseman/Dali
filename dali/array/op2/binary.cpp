@@ -6,6 +6,7 @@
 #include "dali/array/array.h"
 #include "dali/array/dtype.h"
 #include "dali/array/function2/compiler.h"
+#include "dali/utils/make_message.h"
 
 std::string build_view_constructor(
         const std::string& cpp_type,
@@ -20,6 +21,37 @@ std::string build_view_constructor(
         << "view<" << cpp_type << ", " << rank << ">(b);\n"
         << "    auto dst_view = make" << (dst_contiguous ? "_" : "_strided_")
         << "view<" << cpp_type + ", " << rank << ">(dst);\n";
+}
+
+std::string construct_for_loop(int rank, const std::string& code) {
+    std::string for_loop = utils::make_message(
+        "    Shape<", rank, "> query;\n"
+    );
+    for (int rank_num = 0; rank_num < rank; rank_num++) {
+        std::string iname = "i" + std::to_string(rank_num);
+        for_loop += utils::make_message(
+            "    int& ", iname, " = query[", rank_num, "];\n"
+        );
+    }
+    for (int rank_num = 0; rank_num < rank; rank_num++) {
+        std::string iname = "i" + std::to_string(rank_num);
+        for_loop += utils::make_message(
+            std::string(4 + rank_num * 4, ' '),
+            "for (", iname, " = 0; ", iname,
+            " < dst_view.shape()[", rank_num, "]; ",
+            iname, "++) {\n"
+        );
+    }
+    for_loop += utils::make_message(
+        std::string(4 + rank * 4, ' '),
+        code
+    );
+    for (int rank_num = rank - 1; rank_num >= 0; rank_num--) {
+        for_loop += utils::make_message(
+            std::string(4 + rank_num * 4, ' '), "}\n"
+        );
+    }
+    return for_loop;
 }
 
 class Binary {
@@ -38,21 +70,26 @@ class Binary {
             code += build_view_constructor(
                 cpp_type, a_contiguous, b_contiguous, dst_contiguous, rank
             );
-            code += "    int num_el = dst.number_of_elements();\n";
             std::string for_loop;
             if (rank == 1) {
-                for_loop = "    for (int i = 0; i < num_el; ++i) {\n"
-                           "        dst_view(i) " + operator_to_name(operator_t) + " " + fname + "<" + cpp_type + ">::Map(a_view(i), b_view(i));\n"
-                           "    }\n}\n";
+                for_loop = utils::make_message(
+                    "    int num_el = dst.number_of_elements();\n"
+                    "    for (int i = 0; i < num_el; ++i) {\n"
+                    "        dst_view(i) ", operator_to_name(operator_t), " ",
+                             fname, "<", cpp_type, ">::Map(a_view(i), b_view(i));\n"
+                    "    }\n"
+                );
             } else {
-                // TODO: make the for loop increase in nesting to avoid usage of
-                // index_to_dim (because division == expensive)
-                for_loop = "    for (int i = 0; i < num_el; ++i) {\n"
-                           "        auto query = index_to_dim(i, dst_view.shape());\n"
-                           "        dst_view[query] " + operator_to_name(operator_t) + " " + fname + "<" + cpp_type + ">::Map(a_view[query], b_view[query]);\n"
-                           "    }\n}\n";
+                for_loop = construct_for_loop(
+                    rank,
+                    utils::make_message(
+                        "dst_view[query] ", operator_to_name(operator_t), " ",
+                        fname, "<", cpp_type, ">::Map(a_view[query], b_view[query]);\n"
+                    )
+                );
             }
             code += for_loop;
+            code += "}\n";
             return code;
         }
 
@@ -110,21 +147,26 @@ class BinaryKernel {
             code += build_view_constructor(
                 cpp_type, a_contiguous, b_contiguous, dst_contiguous, rank
             );
-            code += "    int num_el = dst.number_of_elements();\n";
             std::string for_loop;
             if (rank == 1) {
-                for_loop = "    for (int i = 0; i < num_el; ++i) {\n"
-                           "        dst_view(i) " + operator_to_name(operator_t) + " " + kernel_name + "(a_view, b_view, i);\n"
-                           "    }\n}\n";
+                for_loop = utils::make_message(
+                    "    int num_el = dst.number_of_elements();\n"
+                    "    for (int i = 0; i < num_el; ++i) {\n"
+                    "        dst_view(i) ", operator_to_name(operator_t), " ",
+                    kernel_name, "(a_view, b_view, i);\n"
+                    "    }\n}\n"
+                );
             } else {
-                // TODO: make the for loop increase in nesting to avoid usage of
-                // index_to_dim (because division == expensive)
-                for_loop = "    for (int i = 0; i < num_el; ++i) {\n"
-                           "        auto query = index_to_dim(i, dst_view.shape());\n"
-                           "        dst_view[query] " + operator_to_name(operator_t) + " " + kernel_name + "(a_view, b_view, query);\n"
-                           "    }\n}\n";
+                for_loop = construct_for_loop(
+                    rank,
+                    utils::make_message(
+                        "dst_view[query] ", operator_to_name(operator_t),
+                        " ", kernel_name, "(a_view, b_view, query);\n"
+                    )
+                );
             }
             code += for_loop;
+            code += "}\n";
             return code;
         }
 

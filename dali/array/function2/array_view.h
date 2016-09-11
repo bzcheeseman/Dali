@@ -120,13 +120,11 @@ class ArrayView {
         }
 
         XINLINE T& operator[](const Shape<ndim>& indices) {
-            int idx_offset = indices_to_offset(shape_, indices);
-            return *(ptr_ + offset_ + idx_offset);
+            return *(ptr_ + offset_ + indices_to_offset(shape_, indices));
         }
 
         XINLINE const T& operator[](const Shape<ndim>& indices) const {
-            int idx_offset = indices_to_offset(shape_, indices);
-            return *(ptr_ + offset_ + idx_offset);
+            return *(ptr_ + offset_ + indices_to_offset(shape_, indices));
         }
 };
 
@@ -152,13 +150,11 @@ class ArrayStridedView {
         }
 
         XINLINE T& operator[](const Shape<ndim>& indices) {
-            int idx_offset = indices_to_offset(shape_, strides_, indices);
-            return *(ptr_ + offset_ + idx_offset);
+            return *(ptr_ + offset_ + indices_to_offset(shape_, strides_, indices));
         }
 
         XINLINE const T& operator[](const Shape<ndim>& indices) const {
-            int idx_offset = indices_to_offset(shape_, strides_, indices);
-            return *(ptr_ + offset_ + idx_offset);
+            return *(ptr_ + offset_ + indices_to_offset(shape_, strides_, indices));
         }
 };
 

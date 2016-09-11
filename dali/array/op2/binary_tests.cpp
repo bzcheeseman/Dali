@@ -214,10 +214,27 @@ TEST(RTCTests, circular_convolution) {
 
 TEST(RTCTests, circular_convolution_broadcast) {
     Array x({2, 3, 4}, DTYPE_FLOAT);
-    Array shift = Array({2, 3}, DTYPE_FLOAT)[Slice()][Slice()][Broadcast()];
+    Array shift = Array({2, 3}, DTYPE_FLOAT);
 
     x     = initializer::uniform(-1.0, 1.0);
     shift = initializer::uniform(-1.0, 1.0);
+
+    shift = shift[Slice()][Slice()][Broadcast()];
+
+    Array res = op2::circular_convolution(x, shift);
+    Array expected_res = reference_circular_convolution(x, shift);
+
+    EXPECT_TRUE(Array::allclose(res, expected_res, 1e-6));
+}
+
+TEST(RTCTests, circular_convolution_1d) {
+    Array x({3}, DTYPE_FLOAT);
+    Array shift = Array({6}, DTYPE_FLOAT);
+
+    x     = initializer::uniform(-1.0, 1.0);
+    shift = initializer::uniform(-1.0, 1.0);
+
+    shift = shift[Slice(0, 6, 2)];
 
     Array res = op2::circular_convolution(x, shift);
     Array expected_res = reference_circular_convolution(x, shift);

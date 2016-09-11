@@ -148,23 +148,13 @@ class BinaryKernel {
                 cpp_type, a_contiguous, b_contiguous, dst_contiguous, rank
             );
             std::string for_loop;
-            if (rank == 1) {
-                for_loop = utils::make_message(
-                    "    int num_el = dst.number_of_elements();\n"
-                    "    for (int i = 0; i < num_el; ++i) {\n"
-                    "        dst_view(i) ", operator_to_name(operator_t), " ",
-                    kernel_name, "(a_view, b_view, i);\n"
-                    "    }\n}\n"
-                );
-            } else {
-                for_loop = construct_for_loop(
-                    rank,
-                    utils::make_message(
-                        "dst_view[query] ", operator_to_name(operator_t),
-                        " ", kernel_name, "(a_view, b_view, query);\n"
-                    )
-                );
-            }
+            code += construct_for_loop(
+                rank,
+                utils::make_message(
+                    "dst_view[query] ", operator_to_name(operator_t),
+                    " ", kernel_name, "(a_view, b_view, query);\n"
+                )
+            );
             code += for_loop;
             code += "}\n";
             return code;

@@ -87,27 +87,10 @@ class Compiler {
 
     bool load(hash_t hash);
 
-    template<typename... Args>
     void write_code(const std::string& fname,
-                    const std::string& code) {
-        std::ofstream out(fname.c_str(), std::ofstream::out);
-        if (out.bad()) {
-            std::cout << "cannot open " << fname << std::endl;
-            exit(EXIT_FAILURE);
-        }
-        // add header to code (and extern c to avoid name mangling)
-        std::string newcode =
-            utils::MS() << header_file_includes()
-                        << code << "\n" << "extern \"C\" void maker ("
-                        << get_function_arguments<Args...>()
-                        << "){\nrun("
-                        << get_call_args(sizeof...(Args))
-                        << ");}";
-        out << newcode;
-        out.flush();
-        out.close();
-    }
-
+                    const std::string& code,
+                    const std::string& function_arguments,
+                    const std::string& call_args);
 
     template<typename... Args>
     void compile(hash_t hash, std::string code_template, macro_args_t macro_args) {
@@ -116,10 +99,14 @@ class Compiler {
         std::string cppfile = utils::MS() << outpath_ << hash << ".cpp";
         std::string logfile = utils::MS() << outpath_ << hash << ".log";
 
-        write_code<Args...>(cppfile, code_template);
+        write_code(
+            cppfile,
+            code_template,
+            get_function_arguments<Args...>(),
+            get_call_args(sizeof...(Args))
+        );
 
         auto macro_args_str = macro_args_to_string(macro_args);
-
         bool success = compile_code(
             cppfile,
             module_path,

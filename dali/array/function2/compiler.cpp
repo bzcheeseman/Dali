@@ -126,6 +126,27 @@ std::string Compiler::compiler_command(const std::string& source,
                        << " -O3 &> " << logfile;
 }
 
+void Compiler::write_code(const std::string& fname,
+                          const std::string& code,
+                          const std::string& function_arguments,
+                          const std::string& call_args) {
+    std::ofstream out(fname.c_str(), std::ofstream::out);
+    if (out.bad()) {
+        std::cout << "cannot open " << fname << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    // add header to code (and extern c to avoid name mangling)
+    out << header_file_includes()
+        << code
+        << "\nextern \"C\" void maker ("
+        << function_arguments
+        << "){\nrun("
+        << call_args
+        << ");\n}\n";
+    out.flush();
+    out.close();
+}
+
 bool Compiler::compile_code(const std::string& source,
                             const std::string& dest,
                             const std::string& logfile,

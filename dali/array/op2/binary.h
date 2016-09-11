@@ -13,6 +13,7 @@ namespace op2 {
     Assignable<Array> pow(const Array& left, const Array& right);
     Assignable<Array> equals(const Array& left, const Array& right);
     Assignable<Array> prelu(const Array& x, const Array& weights);
+    Assignable<Array> circular_convolution(const Array& x, const Array& weights);
 }  // namespace op2
 
 #endif  // DALI_ARRAY_OP2_BINARY_H

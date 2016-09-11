@@ -155,6 +155,11 @@ class ArrayStridedView {
             int idx_offset = indices_to_offset(shape_, strides_, indices);
             return *(ptr_ + offset_ + idx_offset);
         }
+
+        XINLINE const T& operator[](const Shape<ndim>& indices) const {
+            int idx_offset = indices_to_offset(shape_, strides_, indices);
+            return *(ptr_ + offset_ + idx_offset);
+        }
 };
 
 template<typename T, int ndim>

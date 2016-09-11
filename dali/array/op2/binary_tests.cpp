@@ -175,23 +175,46 @@ namespace {
 
     Array reference_circular_convolution(const Array& content, const Array& shift) {
         ASSERT2(content.ndim() == shift.ndim(), "content and shift must have the same ndim");
+        std::vector<int> final_bshape;
+        std::vector<int> final_shape;
         for (int i = 0; i < content.ndim(); i++) {
             ASSERT2(content.bshape()[i] == -1 ||
                     shift.bshape()[i] == -1 ||
                     content.bshape()[i] == shift.bshape()[i],
                     "content and shift must have same sizes or broadcasted sizes"
             );
+            final_bshape.emplace_back(
+                std::max(content.bshape()[i], shift.bshape()[i])
+            );
+            final_shape.emplace_back(
+                std::abs(final_bshape.back())
+            );
         }
-        Array res = Array::zeros_like(content);
-        reference_circular_convolution(content, shift, &res);
+        Array res = Array::zeros(final_shape, content.dtype(), content.preferred_device());
+        auto shift_reshaped = shift.reshape_broadcasted(final_bshape);
+        auto content_reshaped = content.reshape_broadcasted(final_bshape);
+        reference_circular_convolution(content_reshaped, shift_reshaped, &res);
         return res;
     }
 }
 
-
 TEST(RTCTests, circular_convolution) {
     Array x({2, 3, 4}, DTYPE_FLOAT);
     Array shift({2, 3, 4}, DTYPE_FLOAT);
+
+    x     = initializer::uniform(-1.0, 1.0);
+    shift = initializer::uniform(-1.0, 1.0);
+
+    Array res = op2::circular_convolution(x, shift);
+    Array expected_res = reference_circular_convolution(x, shift);
+
+    EXPECT_TRUE(Array::allclose(res, expected_res, 1e-6));
+}
+
+
+TEST(RTCTests, circular_convolution_broadcast) {
+    Array x({2, 3, 4}, DTYPE_FLOAT);
+    Array shift = Array({2, 3}, DTYPE_FLOAT)[Slice()][Slice()][Broadcast()];
 
     x     = initializer::uniform(-1.0, 1.0);
     shift = initializer::uniform(-1.0, 1.0);

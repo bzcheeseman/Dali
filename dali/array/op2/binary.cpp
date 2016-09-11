@@ -390,16 +390,20 @@ namespace {
                     macro_args
                 );
             }
+
+            auto a_reshaped = a.reshape_broadcasted(output_bshape);
+            auto b_reshaped = b.reshape_broadcasted(output_bshape);
+
             auto f_ptr = array_op_compiler.get_function<Array,Array,Array>(hash);
             if (op_rank == 2 && output_bshape.size() != 2) {
                 int low_dim = output_bshape.size() > 0 ? output_bshape.back() : 1;
                 f_ptr(
                     out.copyless_reshape({-1, low_dim}),
-                    a.copyless_reshape({-1, low_dim}),
-                    b.copyless_reshape({-1, low_dim})
+                    a_reshaped.copyless_reshape({-1, low_dim}),
+                    b_reshaped.copyless_reshape({-1, low_dim})
                 );
             } else {
-                f_ptr(out, a, b);
+                f_ptr(out, a_reshaped, b_reshaped);
             }
         });
     }

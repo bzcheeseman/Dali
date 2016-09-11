@@ -38,7 +38,7 @@ struct Shape {
         return num_dims;
     }
 
-    XINLINE const int&  operator[](int dim) const {
+    XINLINE const int& operator[](int dim) const {
         return sizes_[dim];
     }
 
@@ -120,6 +120,11 @@ class ArrayView {
         }
 
         XINLINE T& operator[](const Shape<ndim>& indices) {
+            int idx_offset = indices_to_offset(shape_, indices);
+            return *(ptr_ + offset_ + idx_offset);
+        }
+
+        XINLINE const T& operator[](const Shape<ndim>& indices) const {
             int idx_offset = indices_to_offset(shape_, indices);
             return *(ptr_ + offset_ + idx_offset);
         }

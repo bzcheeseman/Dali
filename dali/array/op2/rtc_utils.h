@@ -39,4 +39,7 @@ void initialize_output_array(Array& out,
 // mismatches elsewhere.
 std::vector<int> get_function_bshape(const std::vector<std::vector<int>>& bshapes);
 
+std::string create_elementwise_kernel_caller(const std::string& functor_name,
+                                             int num_args, int arg_idx);
+
 #endif

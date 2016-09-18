@@ -64,17 +64,17 @@ class FusedOperation {
         // Append the arrays used by this operation to `arrays`
         void get_arrays(std::vector<Array>* arrays) const;
         // generate the necessary constructors to wrap inside views the input arguments.
-        std::string get_code_setup(const std::string& cpp_type, memory::Device device, int rank, int& arg_idx) const;
         std::string get_code_setup(const std::string& cpp_type, memory::Device device, int rank) const;
+        std::string get_code_setup(const std::string& cpp_type, memory::Device device, int rank, int& arg_idx) const;
         // Return the calling code for accessing an element of a specific rank in an array_view
         std::string get_call_nd(int rank) const;
         // generate (recursively) the application of the current function
-        std::string get_call_code_nd(const std::string& cpp_type, const std::string& call_nd) const;
-        std::string get_call_code_nd(const std::string& cpp_type, const std::string& call_nd, int& start_arg) const;
+        std::string get_call_code_nd(const std::string& cpp_type) const;
+        std::string get_call_code_nd(const std::string& cpp_type, int& start_arg, int& fused_op_idx) const;
 
         // generate (recursively) the additional kernels or support code that each operation needs
         std::string get_extra_code() const;
-        void get_extra_code(std::string* extra_code_ptr) const;
+        void get_extra_code(std::string* extra_code_ptr, int& fused_op_idx) const;
 
         // generate (recursively) the application + assignment to output of the current function
         std::string get_assign_code_nd(const OPERATOR_T&, const std::string&, const std::string&) const;

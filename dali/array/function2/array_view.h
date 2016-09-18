@@ -100,60 +100,74 @@ XINLINE int indices_to_offset(const Shape<ndim>& shape, const Shape<ndim>& indic
 }
 
 // assumes contiguous memory
-template<typename T, int ndim>
+template<typename Type, int dimensions>
 class ArrayView {
     public:
-        T *const ptr_;
+        Type *const ptr_;
         const int offset_;
-        const Shape<ndim> shape_;
+        const Shape<dimensions> shape_;
 
-        XINLINE ArrayView(T* ptr, int offset, Shape<ndim> shape) :
+        static const int ndim = dimensions;
+        typedef Type T;
+
+        XINLINE ArrayView(Type* ptr, int offset, Shape<dimensions> shape) :
                 ptr_(ptr), offset_(offset), shape_(shape) {
         }
 
-        XINLINE T& operator()(int idx) {
+        XINLINE Type& operator()(int idx) {
             return *(ptr_ + offset_ + idx);
         }
 
-        XINLINE const Shape<ndim>& shape() const {
+        XINLINE const Type& operator()(int idx) const {
+            return *(ptr_ + offset_ + idx);
+        }
+
+        XINLINE const Shape<dimensions>& shape() const {
             return shape_;
         }
 
-        XINLINE T& operator[](const Shape<ndim>& indices) {
+        XINLINE Type& operator[](const Shape<dimensions>& indices) {
             return *(ptr_ + offset_ + indices_to_offset(shape_, indices));
         }
 
-        XINLINE const T& operator[](const Shape<ndim>& indices) const {
+        XINLINE const Type& operator[](const Shape<dimensions>& indices) const {
             return *(ptr_ + offset_ + indices_to_offset(shape_, indices));
         }
 };
 
 // assumes strided memory
-template<typename T, int ndim>
+template<typename Type, int dimensions>
 class ArrayStridedView {
     public:
-        T *const ptr_;
+        Type *const ptr_;
         const int offset_;
-        const Shape<ndim> shape_;
-        const Shape<ndim> strides_;
+        const Shape<dimensions> shape_;
+        const Shape<dimensions> strides_;
 
-        XINLINE ArrayStridedView(T* ptr, int offset, Shape<ndim> shape, Shape<ndim> strides) :
+        static const int ndim = dimensions;
+        typedef Type T;
+
+        XINLINE ArrayStridedView(Type* ptr, int offset, Shape<dimensions> shape, Shape<dimensions> strides) :
                 ptr_(ptr), offset_(offset), shape_(shape), strides_(strides) {
         }
 
-        XINLINE T& operator()(int idx) {
+        XINLINE Type& operator()(int idx) {
             return *(ptr_ + offset_ + idx * strides_[0]);
         }
 
-        XINLINE const Shape<ndim>& shape() const {
+        XINLINE const Type& operator()(int idx) const {
+            return *(ptr_ + offset_ + idx * strides_[0]);
+        }
+
+        XINLINE const Shape<dimensions>& shape() const {
             return shape_;
         }
 
-        XINLINE T& operator[](const Shape<ndim>& indices) {
+        XINLINE Type& operator[](const Shape<dimensions>& indices) {
             return *(ptr_ + offset_ + indices_to_offset(shape_, strides_, indices));
         }
 
-        XINLINE const T& operator[](const Shape<ndim>& indices) const {
+        XINLINE const Type& operator[](const Shape<dimensions>& indices) const {
             return *(ptr_ + offset_ + indices_to_offset(shape_, strides_, indices));
         }
 };

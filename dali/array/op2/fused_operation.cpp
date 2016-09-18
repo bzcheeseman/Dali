@@ -147,17 +147,19 @@ std::string FusedOperation::get_call_nd(int rank) const {
     }
 }
 
-std::string FusedOperation::get_call_code_nd(const std::string& cpp_type, const std::string& call_nd, int& arg_idx) const {
+std::string FusedOperation::get_call_code_nd(const std::string& cpp_type, int& arg_idx, int& fused_op_idx) const {
     if (type_ == 0) {
-        auto res = utils::make_message("arg_", arg_idx, "_view", call_nd);
+        auto res = utils::make_message("arg_", arg_idx, "_view");
         arg_idx += 1;
+        fused_op_idx += 1;
         return res;
     } else if (type_ == 1) {
         utils::MS stream;
-        stream << functor_name_ << "<" << cpp_type << ">::Map(";
+        stream << "element_wise_kernel" << fused_op_idx << "(";
+        fused_op_idx += 1;
         int args_called = 0;
         for (auto& arg : arguments_) {
-            stream << arg.get_call_code_nd(cpp_type, call_nd, arg_idx);
+            stream << arg.get_call_code_nd(cpp_type, arg_idx, fused_op_idx);
             args_called += 1;
             if (args_called != arguments_.size()) {
                 stream << ", ";
@@ -169,48 +171,61 @@ std::string FusedOperation::get_call_code_nd(const std::string& cpp_type, const 
         utils::MS stream;
         stream << functor_name_ << "(";
         int args_called = 0;
+        fused_op_idx += 1;
         for (auto& arg : arguments_) {
             ASSERT2(arg.type_ == 0, "argument to binary_kernel_function must be an Array.");
             stream << "arg_" << arg_idx << "_view";
             arg_idx += 1;
+            fused_op_idx += 1;
             args_called += 1;
-            stream << ", ";
+            if (args_called != arguments_.size()) {
+                stream << ", ";
+            }
         }
-        stream << "query)";
+        stream << ")";
         return stream;
     } else {
         ASSERT2(false, utils::MS() << "Unknown operation type (" << type_ << "). Use 0, 1, or 2.");
     }
 }
 
-std::string FusedOperation::get_call_code_nd(const std::string& cpp_type, const std::string& call_nd) const {
+std::string FusedOperation::get_call_code_nd(const std::string& cpp_type) const {
     int arg_idx = 0;
-    return get_call_code_nd(cpp_type, call_nd, arg_idx);
+    int fused_op_idx = 0;
+    return get_call_code_nd(cpp_type, arg_idx, fused_op_idx);
 }
 
 std::string FusedOperation::get_assign_code_nd(const OPERATOR_T& operator_t, const std::string& cpp_type, const std::string& call_nd) const {
     return utils::make_message(
         "dst_view", call_nd, " ",
         operator_to_name(operator_t),
-        " ",
-        get_call_code_nd(cpp_type, call_nd),
-        ";\n"
+        " ", get_call_code_nd(cpp_type), call_nd, ";\n"
     );
 }
 
 std::string FusedOperation::get_extra_code() const {
     std::string result;
-    get_extra_code(&result);
+    int fused_op_idx = 0;
+    get_extra_code(&result, fused_op_idx);
     return result;
 }
 
-void FusedOperation::get_extra_code(std::string* extra_code_ptr) const {
+void FusedOperation::get_extra_code(std::string* extra_code_ptr, int& fused_op_idx) const {
     if (type_ != 0) {
-        if (!extra_code_.empty()) {
-            *extra_code_ptr = (*extra_code_ptr) + extra_code_;
+        if (type_ == 1 && extra_code_.empty()) {
+            (*extra_code_ptr) = (*extra_code_ptr) + create_elementwise_kernel_caller(
+                functor_name_, arguments_.size(), fused_op_idx
+            );
+        } else {
+            if (!extra_code_.empty()) {
+                *extra_code_ptr = (*extra_code_ptr) + extra_code_;
+            }
         }
+    }
+    fused_op_idx = fused_op_idx + 1;
+    if (type_ != 0) {
         for (const auto& arg : arguments_) {
-            arg.get_extra_code(extra_code_ptr);
+            arg.get_extra_code(extra_code_ptr, fused_op_idx);
         }
     }
 }

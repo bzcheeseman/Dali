@@ -263,4 +263,23 @@ TEST(RTCTests, chained_add) {
     }
 }
 
+TEST(RTCTests, chained_circular_convolution) {
+    int size = 10;
+    // single striding
+    for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {
+        auto a = Array::arange({5, size}, dtype);
+        Array b = Array::arange({5, 2 * size}, dtype)[Slice()][Slice(0, 2*size, 2)];
+        Array c = Array::arange({5, 3 * size}, dtype)[Slice()][Slice(0, 3*size, 3)];
+        Array dst = Array::arange({5, size}, dtype) + 2;
+        // the circular convolution and the addition are a single kernel:
+        dst -= op2::circular_convolution(op2::add(a, b), c);
+        EXPECT_TRUE(
+            Array::equals(
+                dst,
+                (Array)(Array::arange({5, size}, dtype) + 2 - (op::circular_convolution(a + b, c)))
+            )
+        );
+    }
+}
+
 

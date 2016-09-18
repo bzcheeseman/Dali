@@ -153,30 +153,17 @@ std::string FusedOperation::get_call_code_nd(const std::string& cpp_type, int& a
         arg_idx += 1;
         fused_op_idx += 1;
         return res;
-    } else if (type_ == 1) {
+    } else if (type_ == 1 || type_ == 2) {
         utils::MS stream;
-        stream << "element_wise_kernel" << fused_op_idx << "(";
+        if (type_ == 1) {
+            stream << "element_wise_kernel" << fused_op_idx << "(";
+        } else if (type_ == 2) {
+            stream << functor_name_ << "(";
+        }
         fused_op_idx += 1;
         int args_called = 0;
         for (auto& arg : arguments_) {
             stream << arg.get_call_code_nd(cpp_type, arg_idx, fused_op_idx);
-            args_called += 1;
-            if (args_called != arguments_.size()) {
-                stream << ", ";
-            }
-        }
-        stream << ")";
-        return stream;
-    } else if (type_ == 2) {
-        utils::MS stream;
-        stream << functor_name_ << "(";
-        int args_called = 0;
-        fused_op_idx += 1;
-        for (auto& arg : arguments_) {
-            ASSERT2(arg.type_ == 0, "argument to binary_kernel_function must be an Array.");
-            stream << "arg_" << arg_idx << "_view";
-            arg_idx += 1;
-            fused_op_idx += 1;
             args_called += 1;
             if (args_called != arguments_.size()) {
                 stream << ", ";

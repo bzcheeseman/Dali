@@ -40,14 +40,13 @@ namespace op2 {
             x,
             weights,
             "circular_convolution_kernel",
-            "template<template <typename,int> class C1,\n"
-            "         template <typename,int> class C2,\n"
-            "         typename T, int ndim>\n"
+            "template<typename C1, typename C2>\n"
             "struct Kernel {\n"
-            "    const C1<T, ndim>& a_view_;\n"
-            "    const C2<T, ndim>& b_view_;\n"
-            "    XINLINE Kernel(const C1<T, ndim>& a_view,\n"
-            "                   const C2<T, ndim>& b_view)\n"
+            "    const C1& a_view_;\n"
+            "    const C2& b_view_;\n"
+            "    static const int ndim = C1::ndim;\n"
+            "    typedef typename C1::T T;\n"
+            "    XINLINE Kernel(const C1& a_view, const C2& b_view)\n"
             "        : a_view_(a_view), b_view_(b_view) {}\n"
             "    XINLINE T operator[](Shape<ndim> query) {\n"
             "        T res = static_cast<T>(0);\n"
@@ -67,11 +66,9 @@ namespace op2 {
             "        return res;\n"
             "    }\n"
             "};\n"
-            "template<template <typename,int> class C1,\n"
-            "         template <typename,int> class C2,\n"
-            "         typename T, int ndim>\n"
-            "Kernel<C1, C2, T, ndim> circular_convolution_kernel(const C1<T, ndim>& a, const C2<T, ndim>& b) {\n"
-            "    return Kernel<C1, C2, T, ndim>(a, b);\n"
+            "template<typename C1, typename C2>\n"
+            "Kernel<C1, C2> circular_convolution_kernel(const C1& a, const C2& b) {\n"
+            "    return Kernel<C1, C2>(a, b);\n"
             "}\n"
         );
     }

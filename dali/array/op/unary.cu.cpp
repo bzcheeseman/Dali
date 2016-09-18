@@ -24,10 +24,6 @@ namespace op {
         });
     }
 
-    Assignable<Array> identity_or_swap(const Array& x) {
-        return lazy::identity(x);
-    }
-
     Assignable<Array> sigmoid(const Array& x) {
         return lazy::sigmoid(x);
     }

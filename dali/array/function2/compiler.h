@@ -22,6 +22,16 @@ std::string get_call_args(std::size_t num_args);
 std::string get_class_name(const char* name);
 std::string macro_args_to_string(macro_args_t macro_args);
 
+namespace {
+    // is_const:
+    // this functions checks if a type is const qualified or reference
+    // to a const-qualified
+    template<typename T>
+    constexpr bool is_const() {
+        return std::is_const<typename std::remove_reference<T>::type>::value;
+    }
+}
+
 template<typename... Args, typename std::enable_if<sizeof... (Args) == 0, int>::type = 0>
 void get_function_arguments(int i, std::string* call_ptr) {}
 
@@ -31,7 +41,17 @@ void get_function_arguments(int i, std::string* call_ptr) {
     if (i > 0) {
         call = call + ", ";
     }
-    call = call + get_class_name(typeid(Arg).name()) + " " + (char)(((int)'a') + i);
+    if (is_const<Arg>()) {
+        call = call + "const ";
+    }
+    call += get_class_name(typeid(Arg).name());
+    if (std::is_lvalue_reference<Arg>::value) {
+        call = call + "&";
+    }
+    if (std::is_rvalue_reference<Arg>::value) {
+        call = call + "&&";
+    }
+    call = call + " " + (char)(((int)'a') + i);
     get_function_arguments<Args...>(i+1, call_ptr);
 }
 

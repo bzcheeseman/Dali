@@ -1,19 +1,17 @@
 #ifndef DALI_ARRAY_OP2_BINARY_H
 #define DALI_ARRAY_OP2_BINARY_H
 
-class Array;
-template<typename OutType>
-struct Assignable;
+class FusedOperation;
 
 namespace op2 {
-    Assignable<Array> add(const Array& a, const Array& b);
-    Assignable<Array> sub(const Array& a, const Array& b);
-    Assignable<Array> eltmul(const Array& left, const Array& right);
-    Assignable<Array> eltdiv(const Array& left, const Array& right);
-    Assignable<Array> pow(const Array& left, const Array& right);
-    Assignable<Array> equals(const Array& left, const Array& right);
-    Assignable<Array> prelu(const Array& x, const Array& weights);
-    Assignable<Array> circular_convolution(const Array& x, const Array& weights);
+    FusedOperation add(const FusedOperation& a, const FusedOperation& b);
+    FusedOperation sub(const FusedOperation& a, const FusedOperation& b);
+    FusedOperation eltmul(const FusedOperation& left, const FusedOperation& right);
+    FusedOperation eltdiv(const FusedOperation& left, const FusedOperation& right);
+    FusedOperation pow(const FusedOperation& left, const FusedOperation& right);
+    FusedOperation equals(const FusedOperation& left, const FusedOperation& right);
+    FusedOperation prelu(const FusedOperation& x, const FusedOperation& weights);
+    FusedOperation circular_convolution(const FusedOperation& x, const FusedOperation& weights);
 }  // namespace op2
 
 #endif  // DALI_ARRAY_OP2_BINARY_H

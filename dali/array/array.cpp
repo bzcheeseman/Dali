@@ -18,6 +18,7 @@
 #include "dali/array/op/reshape.h"
 #include "dali/array/op/unary.h"
 #include "dali/array/op/unary_scalar.h"
+#include "dali/array/op2/fused_operation.h"
 #include "dali/utils/cnpy.h"
 #include "dali/utils/print_utils.h"
 
@@ -221,6 +222,12 @@ Array::Array(const Array& other, const bool& copy_memory) {
 
 Array::Array(const Assignable<Array>& assignable) {
     assignable.assign_to(*this, OPERATOR_T_EQL);
+}
+
+Array::Array(const FusedOperation& fused_op) : Array((Assignable<Array>) fused_op) {}
+
+Array& Array::operator=(const FusedOperation& fused_op) {
+    return this->operator=((Assignable<Array>)fused_op);
 }
 
 Array Array::zeros(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
@@ -809,18 +816,12 @@ Array Array::dimshuffle(const std::vector<int>& pattern) const {
 
 Array Array::copyless_ravel() const {
     if (ndim() == 1) return *this;
-    ASSERT2(contiguous_memory(),
-            "at the moment ravel is only supported for contiguous_memory");
-    return Array({number_of_elements()},
-                 memory(),
-                 offset(),
-                 std::vector<int>(),
-                 dtype());
+    return copyless_reshape({-1});
 }
 
 Array Array::ravel() const {
     if (ndim() == 1) return *this;
-    return ascontiguousarray().copyless_ravel();
+    return reshape({-1});
 }
 
 Array Array::copyless_reshape(const vector<int>& new_shape) const {
@@ -830,7 +831,45 @@ Array Array::copyless_reshape(const vector<int>& new_shape) const {
             utils::MS() << "New shape (" << new_shape
                         << ") must have the same number of elements as previous shape ("
                         << shape() << ")");
-    ASSERT2(contiguous_memory(),
+
+    if (contiguous_memory()) {
+        return Array(norm_shape,
+                 memory(),
+                 offset(),
+                 vector<int>(),
+                 dtype());
+    }
+    if (norm_shape.size() > ndim()) {
+        // check if the lowest dimensions will be identical
+        bool matching_lowest = true;
+        for (int i = 0; i < ndim(); i++) {
+            if (norm_shape[norm_shape.size() - i - 1] != shape()[ndim() - i - 1]) {
+                matching_lowest = false;
+            }
+        }
+        bool is_ones_elsewhere = true;
+        for (int i = 0; i < new_shape.size() - ndim(); i++) {
+            if (norm_shape[i] != 1) {
+                is_ones_elsewhere = false;
+                break;
+            }
+        }
+        if (matching_lowest && is_ones_elsewhere) {
+            auto new_strides = strides();
+            int top_most_stride = new_strides.size() > 0 ? new_strides.front() : 1;
+            for (int i = 0; i < new_shape.size() - ndim(); i++) {
+                new_strides.insert(new_strides.begin(), top_most_stride);
+            }
+            return Array(
+                norm_shape,
+                memory(),
+                offset(),
+                new_strides,
+                dtype()
+            );
+        }
+    }
+    ASSERT2(false,
             utils::MS() << "Cannot perform reshape without a copy on non-contiguous memory "
                         << "(strides() = " << strides() << ", shape=" << shape()
                         << ", new shape=" << new_shape << ").");
@@ -842,6 +881,41 @@ Array Array::copyless_reshape(const vector<int>& new_shape) const {
                  dtype());
 }
 
+Array Array::right_fit_ndim(int target_ndim) const {
+    if (ndim() == target_ndim) return *this;
+    if (ndim() > target_ndim) {
+        std::vector<int> new_shape = shape();
+        // remove dimensions that will be collapsed:
+        new_shape.erase(new_shape.begin(), new_shape.begin() + (ndim() - target_ndim));
+        if (target_ndim > 0) {
+            new_shape[0] = -1;
+        }
+        return reshape(new_shape);
+    } else {
+        std::vector<int> new_shape = shape();
+        // extend shape with ones:
+        new_shape.insert(new_shape.begin(), target_ndim - ndim(), 1);
+        return reshape(new_shape);
+    }
+}
+
+Array Array::copyless_right_fit_ndim(int target_ndim) const {
+    if (ndim() == target_ndim) return *this;
+    if (ndim() > target_ndim) {
+        std::vector<int> new_shape = shape();
+        // remove dimensions that will be collapsed:
+        new_shape.erase(new_shape.begin(), new_shape.begin() + (ndim() - target_ndim));
+        if (target_ndim > 0) {
+            new_shape[0] = -1;
+        }
+        return copyless_reshape(new_shape);
+    } else {
+        std::vector<int> new_shape = shape();
+        // extend shape with ones:
+        new_shape.insert(new_shape.begin(), target_ndim - ndim(), 1);
+        return copyless_reshape(new_shape);
+    }
+}
 
 Array Array::reshape(const vector<int>& new_shape) const {
     if (new_shape == shape()) return *this;

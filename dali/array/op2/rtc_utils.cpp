@@ -157,9 +157,9 @@ std::vector<int> get_function_bshape(const std::vector<std::vector<int>>& bshape
 }
 
 namespace {
-    std::string generate_elementwise_kernel_class_signature(int num_args, int arg_idx) {
+    std::string generate_elementwise_kernel_class_signature(int num_args) {
         utils::MS template_data_stream;
-        template_data_stream << "ElementWiseKernel" << arg_idx << "<";
+        template_data_stream << "ElementWiseKernel" << num_args << "<Functor, ";
         for (int i = 0; i < num_args; i++) {
             template_data_stream << "C" << (i+1);
             if (i + 1 != num_args) {
@@ -188,10 +188,9 @@ namespace {
 
     std::string generate_elementwise_kernel_template_code(int num_args) {
         utils::MS template_data_stream;
-        template_data_stream << "template<";
+        template_data_stream << "template<template <typename> class Functor,\n";
         for (int i = 0; i < num_args; i++) {
-            if (i > 0) template_data_stream << "         ";
-            template_data_stream << "typename C" << (i + 1);
+            template_data_stream << "         typename C" << (i + 1);
             if (i + 1 != num_args) {
                 template_data_stream << ",\n";
             } else {
@@ -215,7 +214,7 @@ namespace {
         return template_data_stream;
     }
 
-    std::string generate_elementwise_kernel_constructor(int num_args, int arg_idx) {
+    std::string generate_elementwise_kernel_constructor(int num_args) {
         utils::MS template_data_stream;
         for (int i = 0; i < num_args; i++) {
             template_data_stream << "    const C" << (i+1) << "& "
@@ -223,7 +222,7 @@ namespace {
         }
         template_data_stream << "    static const int ndim = C1::ndim;\n"
                                 "    typedef typename C1::T T;\n";
-        template_data_stream << "    XINLINE ElementWiseKernel" << arg_idx << "(\n";
+        template_data_stream << "    XINLINE ElementWiseKernel" << num_args << "(\n";
         template_data_stream << generate_elementwise_kernel_constructor_arguments(num_args) << "\n";
         template_data_stream << "        : ";
         for (int i = 0; i < num_args; i++) {
@@ -238,31 +237,30 @@ namespace {
         return template_data_stream;
     }
 
-    std::string generate_elementwise_kernel_caller_code(int num_args, int arg_idx) {
+    std::string generate_elementwise_kernel_caller_code(int num_args) {
         return utils::make_message(
             generate_elementwise_kernel_template_code(num_args),
-            "XINLINE ", generate_elementwise_kernel_class_signature(num_args, arg_idx), " element_wise_kernel", arg_idx, "(\n",
+            "XINLINE ", generate_elementwise_kernel_class_signature(num_args), " element_wise_kernel(\n",
             generate_elementwise_kernel_constructor_arguments(num_args), " {\n",
-            "    return ", generate_elementwise_kernel_class_signature(num_args, arg_idx), "(",
+            "    return ", generate_elementwise_kernel_class_signature(num_args), "(",
             generate_elementwise_kernel_arguments(num_args, ""), ");\n",
             "}\n"
         );
     }
 }
 
-std::string create_elementwise_kernel_caller(const std::string& functor_name,
-                                             int num_args, int arg_idx) {
+std::string create_elementwise_kernel_caller(int num_args) {
     return utils::make_message(
         generate_elementwise_kernel_template_code(num_args),
-        "struct ElementWiseKernel", arg_idx, " {\n",
-        generate_elementwise_kernel_constructor(num_args, arg_idx),
+        "struct ElementWiseKernel", num_args, " {\n",
+        generate_elementwise_kernel_constructor(num_args),
         "    XINLINE T operator[](Shape<ndim> query) const {\n"
-        "        return ", functor_name, "<T>::Map(", generate_elementwise_kernel_arguments(num_args, "_[query]"), ");\n",
+        "        return Functor<T>::Map(", generate_elementwise_kernel_arguments(num_args, "_[query]"), ");\n",
         "    }\n",
         "    XINLINE T operator()(int i) const {\n"
-        "        return ", functor_name, "<T>::Map(", generate_elementwise_kernel_arguments(num_args, "_(i)"), ");\n",
+        "        return Functor<T>::Map(", generate_elementwise_kernel_arguments(num_args, "_(i)"), ");\n",
         "    }\n"
         "};\n",
-        generate_elementwise_kernel_caller_code(num_args, arg_idx)
+        generate_elementwise_kernel_caller_code(num_args)
     );
 }

@@ -39,6 +39,8 @@ class FusedOperation {
         const Array& array() const;
         // Get name of the associated functor
         const std::string& functor_name() const;
+        // Get support code for this operation
+        const std::string& extra_code() const;
         // Get the arguments of this functor
         const std::vector<FusedOperation>& arguments() const;
         // Find the lowest rank that allows computation of this operation
@@ -70,11 +72,10 @@ class FusedOperation {
         std::string get_call_nd(int rank) const;
         // generate (recursively) the application of the current function
         std::string get_call_code_nd(const std::string& cpp_type) const;
-        std::string get_call_code_nd(const std::string& cpp_type, int& start_arg, int& fused_op_idx) const;
+        std::string get_call_code_nd(const std::string& cpp_type, int& start_arg) const;
 
         // generate (recursively) the additional kernels or support code that each operation needs
         std::string get_extra_code() const;
-        void get_extra_code(std::string* extra_code_ptr, int& fused_op_idx) const;
 
         // generate (recursively) the application + assignment to output of the current function
         std::string get_assign_code_nd(const OPERATOR_T&, const std::string&, const std::string&) const;

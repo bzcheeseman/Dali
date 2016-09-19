@@ -1,4 +1,7 @@
 #include "fused_operation.h"
+
+#include <unordered_set>
+
 #include "dali/array/array.h"
 #include "dali/array/function2/compiler.h"
 #include "dali/array/op2/rtc_utils.h"
@@ -58,6 +61,9 @@ const Array& FusedOperation::array() const {
 }
 const std::string& FusedOperation::functor_name() const {
     return functor_name_;
+}
+const std::string& FusedOperation::extra_code() const {
+    return extra_code_;
 }
 const std::vector<FusedOperation>& FusedOperation::arguments() const {
     return arguments_;
@@ -147,23 +153,21 @@ std::string FusedOperation::get_call_nd(int rank) const {
     }
 }
 
-std::string FusedOperation::get_call_code_nd(const std::string& cpp_type, int& arg_idx, int& fused_op_idx) const {
+std::string FusedOperation::get_call_code_nd(const std::string& cpp_type, int& arg_idx) const {
     if (type_ == 0) {
         auto res = utils::make_message("arg_", arg_idx, "_view");
         arg_idx += 1;
-        fused_op_idx += 1;
         return res;
     } else if (type_ == 1 || type_ == 2) {
         utils::MS stream;
         if (type_ == 1) {
-            stream << "element_wise_kernel" << fused_op_idx << "(";
+            stream << "element_wise_kernel<" << functor_name_ << ">(";
         } else if (type_ == 2) {
             stream << functor_name_ << "(";
         }
-        fused_op_idx += 1;
         int args_called = 0;
         for (auto& arg : arguments_) {
-            stream << arg.get_call_code_nd(cpp_type, arg_idx, fused_op_idx);
+            stream << arg.get_call_code_nd(cpp_type, arg_idx);
             args_called += 1;
             if (args_called != arguments_.size()) {
                 stream << ", ";
@@ -178,8 +182,7 @@ std::string FusedOperation::get_call_code_nd(const std::string& cpp_type, int& a
 
 std::string FusedOperation::get_call_code_nd(const std::string& cpp_type) const {
     int arg_idx = 0;
-    int fused_op_idx = 0;
-    return get_call_code_nd(cpp_type, arg_idx, fused_op_idx);
+    return get_call_code_nd(cpp_type, arg_idx);
 }
 
 std::string FusedOperation::get_assign_code_nd(const OPERATOR_T& operator_t, const std::string& cpp_type, const std::string& call_nd) const {
@@ -190,32 +193,48 @@ std::string FusedOperation::get_assign_code_nd(const OPERATOR_T& operator_t, con
     );
 }
 
+class GeneratedCodeTracker {
+    private:
+        std::unordered_set<int> elementwise_kernels_;
+
+    public:
+        bool is_elementwise_kernel_generated(int size) const {
+            return elementwise_kernels_.find(size) != elementwise_kernels_.end();
+        }
+        void mark_elementwise_kernel_generated(int size) {
+            elementwise_kernels_.insert(size);
+        }
+};
+
+void fused_operation_get_extra_code(const FusedOperation& fop,
+                                    GeneratedCodeTracker* tracker,
+                                    std::string* extra_code_ptr) {
+    if (fop.type() != 0) {
+        if (!fop.extra_code().empty()) {
+            *extra_code_ptr = (*extra_code_ptr) + fop.extra_code();
+        }
+        if (fop.type() == 1 && !tracker->is_elementwise_kernel_generated(fop.arguments().size())) {
+            (*extra_code_ptr) = (
+                (*extra_code_ptr) +
+                create_elementwise_kernel_caller(fop.arguments().size())
+            );
+            tracker->mark_elementwise_kernel_generated(fop.arguments().size());
+        }
+    }
+    if (fop.type() != 0) {
+        for (const auto& arg : fop.arguments()) {
+            fused_operation_get_extra_code(arg, tracker, extra_code_ptr);
+        }
+    }
+}
+
 std::string FusedOperation::get_extra_code() const {
     std::string result;
-    int fused_op_idx = 0;
-    get_extra_code(&result, fused_op_idx);
+    GeneratedCodeTracker tracker;
+    fused_operation_get_extra_code(*this, &tracker, &result);
     return result;
 }
 
-void FusedOperation::get_extra_code(std::string* extra_code_ptr, int& fused_op_idx) const {
-    if (type_ != 0) {
-        if (type_ == 1 && extra_code_.empty()) {
-            (*extra_code_ptr) = (*extra_code_ptr) + create_elementwise_kernel_caller(
-                functor_name_, arguments_.size(), fused_op_idx
-            );
-        } else {
-            if (!extra_code_.empty()) {
-                *extra_code_ptr = (*extra_code_ptr) + extra_code_;
-            }
-        }
-    }
-    fused_op_idx = fused_op_idx + 1;
-    if (type_ != 0) {
-        for (const auto& arg : arguments_) {
-            arg.get_extra_code(extra_code_ptr, fused_op_idx);
-        }
-    }
-}
 
 std::string FusedOperation::get_code_template(const OPERATOR_T& operator_t, bool dst_contiguous, DType dtype, memory::Device device, int rank) const {
     auto cpp_type = dtype_to_cpp_name(dtype);

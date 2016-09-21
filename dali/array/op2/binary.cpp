@@ -56,6 +56,8 @@ namespace op2 {
             "        Shape<ndim> b_query = query;\n"
             "        int& shift_idx = b_query[ndim - 1];\n"
             "        int& offset = a_query[ndim - 1];\n"
+            "        #pragma clang loop vectorize(enable)\n"
+            "        #pragma clang loop interleave(enable)\n"
             "        for (shift_idx = 0; shift_idx < conv_size; shift_idx++) {\n"
             "            offset = x + shift_idx;\n"
             "            if (offset >= conv_size) {\n"

@@ -7,7 +7,6 @@
 #include "dali/array/op.h"
 #include "dali/array/op2/fused_operation.h"
 
-
 TEST(RTCTests, add) {
     int size = 10;
 
@@ -136,12 +135,13 @@ TEST(RTCTests, add_strided_nd) {
 
 #define DALI_RTC_BINARY_TEST(funcname)\
     for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {\
-        int size = 10;\
+        int size = 4;\
         auto a = Array::arange({5, size}, dtype);\
         auto b = Array::arange({5, size}, dtype) + 1;\
         Array dst = Array::arange({5, size}, dtype) + 2;\
         dst = op2::funcname(a, b);\
-        EXPECT_TRUE(Array::equals(dst, (Array)(op::funcname(a, b))));\
+        Array reference = op::funcname(a, b);\
+        EXPECT_TRUE(Array::allclose(dst, reference, 1e-7));\
     }\
 
 TEST(RTCTests, elementwise_binary_ops) {

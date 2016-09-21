@@ -252,6 +252,8 @@ std::string FusedOperation::get_code_template(const OPERATOR_T& operator_t, bool
     if (rank == 1) {
         for_loop = utils::make_message(
             "    int num_el = dst.number_of_elements();\n"
+            "    #pragma clang loop vectorize(enable)\n"
+            "    #pragma clang loop interleave(enable)\n"
             "    for (int i = 0; i < num_el; ++i) {\n",
             "        ", get_assign_code_nd(operator_t, cpp_type, call_nd),
             "    }\n"

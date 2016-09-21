@@ -13,7 +13,7 @@
         auto a = Array::arange({5, size}, dtype) + 1;\
         auto dst = Array::zeros({5, size}, dtype);\
         dst = op2::funcname(a);\
-        EXPECT_TRUE(Array::equals(dst, (Array)(op::funcname(a))));\
+        EXPECT_TRUE(Array::allclose(dst, (Array)(op::funcname(a)), 1e-6));\
     }\
 
 TEST(RTCTests, unary) {

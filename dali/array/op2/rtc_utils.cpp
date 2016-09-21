@@ -66,6 +66,10 @@ std::string construct_for_loop(int rank, const std::string& code) {
         std::string iname = "i" + std::to_string(rank_num);
         for_loop += utils::make_message(
             std::string(4 + rank_num * 4, ' '),
+            "#pragma clang loop vectorize(enable)\n",
+            std::string(4 + rank_num * 4, ' '),
+            "#pragma clang loop interleave(enable)\n",
+            std::string(4 + rank_num * 4, ' '),
             "for (", iname, " = 0; ", iname,
             " < dst_view.shape()[", rank_num, "]; ",
             iname, "++) {\n"

@@ -157,7 +157,7 @@ namespace functor {
     template<>
     XINLINE
     int sqrt_f<int>::Map(const int& a) {
-        return (int)sqrt((float)a);
+        return (int)sqrt((double)a);
     }
 
     template<typename R>
@@ -171,7 +171,7 @@ namespace functor {
     template<>
     XINLINE
     int rsqrt<int>::Map(const int& a) {
-        return (int)(1.0 / sqrt((float)a));
+        return (int)(1.0 / sqrt((double)a));
     }
 
 

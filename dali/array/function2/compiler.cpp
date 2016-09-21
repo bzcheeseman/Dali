@@ -107,7 +107,7 @@ std::string Compiler::compiler_command(const std::string& source,
     if (utils::endswith(Compiler::kExecutable, "clang") ||
         utils::endswith(Compiler::kExecutable, "clang++") ||
         utils::endswith(Compiler::kExecutable, "c++")) {
-        executable_specific_args = " -undefined dynamic_lookup";
+        executable_specific_args = " -undefined dynamic_lookup -Rpass=loop-vectorize -Rpass-analysis=loop-vectorize -ffast-math -fslp-vectorize-aggressive";
     } else if (utils::endswith(Compiler::kExecutable, "gcc") ||
                utils::endswith(Compiler::kExecutable, "g++")) {
         executable_specific_args = (

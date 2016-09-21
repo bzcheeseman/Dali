@@ -52,6 +52,15 @@ std::string build_view_constructor(const std::string& cpp_type,
     );
 }
 
+std::string build_scalar_constructor(const std::string& cpp_type,
+                                     int rank,
+                                     int start_arg) {
+    return utils::make_message(
+        "    auto scalar_", start_arg, " = make_scalar_view<",
+        cpp_type, ", ", rank, ">(scalar_arguments[", start_arg, "]);\n"
+    );
+}
+
 std::string construct_for_loop(int rank, const std::string& code) {
     std::string for_loop = utils::make_message(
         "    Shape<", rank, "> query;\n"
@@ -147,6 +156,10 @@ std::vector<int> get_function_bshape(const std::vector<std::vector<int>>& bshape
     std::vector<int> output_bshape = bshapes[0];
     for (size_t dim = 0; dim < output_bshape.size(); dim++) {
         for (size_t other_shape_idx = 1; other_shape_idx < bshapes.size(); other_shape_idx++) {
+            if (bshapes[other_shape_idx].size() == 0) continue;
+            ASSERT2(bshapes[other_shape_idx].size() == output_bshape.size(),
+                "inputs must be scalars or have the same dimensionality."
+            );
             ASSERT2(
                 (output_bshape[dim] == bshapes[other_shape_idx][dim]) ||
                 (output_bshape[dim] == -1 || bshapes[other_shape_idx][dim] == -1),

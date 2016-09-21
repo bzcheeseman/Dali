@@ -8,14 +8,15 @@
 #include "dali/utils/tuple_hash.h"
 #include "dali/utils/make_message.h"
 
-FusedOperation::FusedOperation(const Array& arr) : type_(0), arr_(arr) {}
-FusedOperation::FusedOperation(Array&& arr) : type_(0), arr_(arr) {}
-FusedOperation::FusedOperation(const Assignable<Array>& arr) : type_(0), arr_(arr) {}
-FusedOperation::FusedOperation(int type,
+FusedOperation::FusedOperation(const Array& arr) : type_(FUSED_OP_ARRAY_T), arr_(arr) {}
+FusedOperation::FusedOperation(Array&& arr) : type_(FUSED_OP_ARRAY_T), arr_(arr) {}
+FusedOperation::FusedOperation(const Assignable<Array>& arr) : type_(FUSED_OP_ARRAY_T), arr_(arr) {}
+FusedOperation::FusedOperation(const double& scalar) : type_(FUSED_OP_SCALAR_T), scalar_(scalar) {}
+FusedOperation::FusedOperation(FUSED_OP_T type,
                                const std::string& functor_name,
                                const std::vector<FusedOperation>& arguments) :
         type_(type), arguments_(arguments), functor_name_(functor_name) {}
-FusedOperation::FusedOperation(int type,
+FusedOperation::FusedOperation(FUSED_OP_T type,
                                const std::string& functor_name,
                                const std::string& extra_code,
                                const std::vector<FusedOperation>& arguments) :
@@ -28,7 +29,7 @@ std::vector<Array> FusedOperation::get_arrays() const {
 }
 
 void FusedOperation::get_arrays(std::vector<Array>* arrs) const {
-    if (type_ == 0) {
+    if (type_ == FUSED_OP_ARRAY_T) {
         arrs->emplace_back(arr_);
     } else {
         for (auto& arg : arguments_) {
@@ -37,23 +38,43 @@ void FusedOperation::get_arrays(std::vector<Array>* arrs) const {
     }
 }
 
+std::vector<double> FusedOperation::get_scalars() const {
+    std::vector<double> out;
+    get_scalars(&out);
+    return out;
+}
+
+void FusedOperation::get_scalars(std::vector<double>* arrs) const {
+    if (type_ == FUSED_OP_SCALAR_T) {
+        arrs->emplace_back(scalar_);
+    } else {
+        for (auto& arg : arguments_) {
+            arg.get_scalars(arrs);
+        }
+    }
+}
+
 int FusedOperation::ndim() const {
-    if (type_ == 0) {
+    if (type_ == FUSED_OP_ARRAY_T) {
         return arr_.ndim();
+    } else if (type_ == FUSED_OP_SCALAR_T) {
+        return 0;
     } else {
         return arguments_[0].ndim();
     }
 }
 
 DType FusedOperation::dtype() const {
-    if (type_ == 0) {
+    if (type_ == FUSED_OP_ARRAY_T) {
         return arr_.dtype();
-    } else {
+    } else if (type_ == FUSED_OP_SCALAR_T) {
+        return DTYPE_DOUBLE;
+    } else {
         return arguments_[0].dtype();
     }
 }
 
-const int& FusedOperation::type() const {
+const FusedOperation::FUSED_OP_T& FusedOperation::type() const {
     return type_;
 }
 const Array& FusedOperation::array() const {
@@ -70,8 +91,10 @@ const std::vector<FusedOperation>& FusedOperation::arguments() const {
 }
 
 std::vector<int> FusedOperation::bshape() const {
-    if (type_ == 0) {
+    if (type_ == FUSED_OP_ARRAY_T) {
         return arr_.bshape();
+    } else if (type_ == FUSED_OP_SCALAR_T) {
+        return {};
     } else {
         std::vector<std::vector<int>> bshapes;
         for (const auto& el : arguments_) {
@@ -82,11 +105,18 @@ std::vector<int> FusedOperation::bshape() const {
 }
 
 hash_t get_operation_hash(const FusedOperation& op) {
-    if (op.type() == 0) {
+    if (op.type() == FusedOperation::FUSED_OP_ARRAY_T) {
         return utils::get_hash(
             std::make_tuple(
                 op.type(),
                 op.array().strides().empty()
+            )
+        );
+    } else if (op.type() == FusedOperation::FUSED_OP_SCALAR_T) {
+        return utils::get_hash(
+            std::make_tuple(
+                op.type(),
+                true
             )
         );
     } else {
@@ -105,8 +135,8 @@ hash_t get_operation_hash(const FusedOperation& op) {
     }
 }
 
-int FusedOperation::type_to_min_rank(int type) {
-    if (type == 2) return 2;
+int FusedOperation::type_to_min_rank(FUSED_OP_T type) {
+    if (type == FUSED_OP_KERNEL_T) return 2;
     return 1;
 }
 
@@ -126,15 +156,19 @@ int FusedOperation::computation_rank() const {
     }
 }
 
-std::string FusedOperation::get_code_setup(const std::string& cpp_type, memory::Device device, int rank, int& arg_idx) const {
-    if (type_ == 0) {
+std::string FusedOperation::get_code_setup(const std::string& cpp_type, memory::Device device, int rank, int& arg_idx, int& scalar_arg_idx) const {
+    if (type_ == FUSED_OP_ARRAY_T) {
         auto res = build_views_constructor(cpp_type, {arr_.strides().empty()}, rank, arg_idx);
         arg_idx += 1;
+        return res;
+    } else if (type_ == FUSED_OP_SCALAR_T) {
+        auto res = build_scalar_constructor(cpp_type, rank, scalar_arg_idx);
+        scalar_arg_idx += 1;
         return res;
     } else {
         utils::MS stream;
         for (auto& arg : arguments_) {
-            stream << arg.get_code_setup(cpp_type, device, rank, arg_idx);
+            stream << arg.get_code_setup(cpp_type, device, rank, arg_idx, scalar_arg_idx);
         }
         return stream;
     }
@@ -142,7 +176,8 @@ std::string FusedOperation::get_code_setup(const std::string& cpp_type, memory::
 
 std::string FusedOperation::get_code_setup(const std::string& cpp_type, memory::Device device, int rank) const {
     int arg_idx = 0;
-    return get_code_setup(cpp_type, device, rank, arg_idx);
+    int scalar_arg_idx = 0;
+    return get_code_setup(cpp_type, device, rank, arg_idx, scalar_arg_idx);
 }
 
 std::string FusedOperation::get_call_nd(int rank) const {
@@ -153,21 +188,25 @@ std::string FusedOperation::get_call_nd(int rank) const {
     }
 }
 
-std::string FusedOperation::get_call_code_nd(const std::string& cpp_type, int& arg_idx) const {
-    if (type_ == 0) {
+std::string FusedOperation::get_call_code_nd(const std::string& cpp_type, int& arg_idx, int& scalar_arg_idx) const {
+    if (type_ == FUSED_OP_ARRAY_T) {
         auto res = utils::make_message("arg_", arg_idx, "_view");
         arg_idx += 1;
         return res;
-    } else if (type_ == 1 || type_ == 2) {
+    } else if (type_ == FUSED_OP_SCALAR_T) {
+        auto res = utils::make_message("scalar_", scalar_arg_idx);
+        scalar_arg_idx += 1;
+        return res;
+    } else if (type_ == FUSED_OP_KERNEL_T || type_ == FUSED_OP_ELEMENTWISE_T) {
         utils::MS stream;
-        if (type_ == 1) {
+        if (type_ == FUSED_OP_ELEMENTWISE_T) {
             stream << "element_wise_kernel<" << functor_name_ << ">(";
-        } else if (type_ == 2) {
+        } else if (type_ == FUSED_OP_KERNEL_T) {
             stream << functor_name_ << "(";
         }
         int args_called = 0;
         for (auto& arg : arguments_) {
-            stream << arg.get_call_code_nd(cpp_type, arg_idx);
+            stream << arg.get_call_code_nd(cpp_type, arg_idx, scalar_arg_idx);
             args_called += 1;
             if (args_called != arguments_.size()) {
                 stream << ", ";
@@ -176,13 +215,14 @@ std::string FusedOperation::get_call_code_nd(const std::string& cpp_type, int& a
         stream << ")";
         return stream;
     } else {
-        ASSERT2(false, utils::MS() << "Unknown operation type (" << type_ << "). Use 0, 1, or 2.");
+        ASSERT2(false, utils::MS() << "Unknown operation type (" << type_ << "). Use 0, 1, 2 or 3.");
     }
 }
 
 std::string FusedOperation::get_call_code_nd(const std::string& cpp_type) const {
     int arg_idx = 0;
-    return get_call_code_nd(cpp_type, arg_idx);
+    int scalar_arg_idx = 0;
+    return get_call_code_nd(cpp_type, arg_idx, scalar_arg_idx);
 }
 
 std::string FusedOperation::get_assign_code_nd(const OPERATOR_T& operator_t, const std::string& cpp_type, const std::string& call_nd) const {
@@ -209,22 +249,18 @@ class GeneratedCodeTracker {
 void fused_operation_get_extra_code(const FusedOperation& fop,
                                     GeneratedCodeTracker* tracker,
                                     std::string* extra_code_ptr) {
-    if (fop.type() != 0) {
-        if (!fop.extra_code().empty()) {
-            *extra_code_ptr = (*extra_code_ptr) + fop.extra_code();
-        }
-        if (fop.type() == 1 && !tracker->is_elementwise_kernel_generated(fop.arguments().size())) {
-            (*extra_code_ptr) = (
-                (*extra_code_ptr) +
-                create_elementwise_kernel_caller(fop.arguments().size())
-            );
-            tracker->mark_elementwise_kernel_generated(fop.arguments().size());
-        }
+    if (!fop.extra_code().empty()) {
+        *extra_code_ptr = (*extra_code_ptr) + fop.extra_code();
     }
-    if (fop.type() != 0) {
-        for (const auto& arg : fop.arguments()) {
-            fused_operation_get_extra_code(arg, tracker, extra_code_ptr);
-        }
+    if (fop.type() == FusedOperation::FUSED_OP_ELEMENTWISE_T && !tracker->is_elementwise_kernel_generated(fop.arguments().size())) {
+        (*extra_code_ptr) = (
+            (*extra_code_ptr) +
+            create_elementwise_kernel_caller(fop.arguments().size())
+        );
+        tracker->mark_elementwise_kernel_generated(fop.arguments().size());
+    }
+    for (const auto& arg : fop.arguments()) {
+        fused_operation_get_extra_code(arg, tracker, extra_code_ptr);
     }
 }
 
@@ -240,7 +276,7 @@ std::string FusedOperation::get_code_template(const OPERATOR_T& operator_t, bool
     auto cpp_type = dtype_to_cpp_name(dtype);
     std::string code = utils::make_message(
         get_extra_code(),
-        "void run(Array& dst, const std::vector<Array>& arguments) {\n"
+        "void run(Array& dst, const std::vector<Array>& arguments, const std::vector<double>& scalar_arguments) {\n"
     );
     code += get_code_setup(cpp_type, device, rank);
     code += build_view_constructor(
@@ -269,7 +305,7 @@ std::string FusedOperation::get_code_template(const OPERATOR_T& operator_t, bool
     return code;
 }
 
-std::function<void(Array&, const std::vector<Array>&)> FusedOperation::compile(
+std::function<void(Array&, const std::vector<Array>&, const std::vector<double>&)> FusedOperation::compile(
         const OPERATOR_T& operator_t, bool dst_contiguous, DType dtype, memory::Device device) const {
     // get the lowest dimension that suffices to compute this problem:
     int comp_rank = computation_rank();
@@ -298,14 +334,14 @@ std::function<void(Array&, const std::vector<Array>&)> FusedOperation::compile(
             device,
             comp_rank
         );
-        array_op_compiler.compile<Array&, const std::vector<Array>&>(
+        array_op_compiler.compile<Array&, const std::vector<Array>&, const std::vector<double>&>(
             hash,
             code_template,
             {}
         );
     }
     // return the operation that was loaded or compiled:
-    return array_op_compiler.get_function<Array&, const std::vector<Array>&>(hash);
+    return array_op_compiler.get_function<Array&, const std::vector<Array>&, const std::vector<double>&>(hash);
 }
 
 FusedOperation::operator Assignable<Array> () const {
@@ -325,6 +361,7 @@ FusedOperation::operator Assignable<Array> () const {
         auto fptr = fop.compile(operator_t, dst_contiguous, output_dtype, output_device);
 
         auto arrays = fop.get_arrays();
+        auto scalars = fop.get_scalars();
         std::vector<Array> arrays_reshaped;
 
         for (auto& arr : arrays) {
@@ -333,8 +370,38 @@ FusedOperation::operator Assignable<Array> () const {
             );
         }
 
-        fptr(out, arrays_reshaped);
+        fptr(out, arrays_reshaped, scalars);
     });
+}
+
+std::size_t std::hash<FusedOperation::FUSED_OP_T>::operator()(const FusedOperation::FUSED_OP_T& k) const {
+    return std::hash<int>()(k);
+}
+
+bool FusedOperation::dtype_compatible(const FusedOperation& a, const FusedOperation& b) {
+    return (
+        a.type_ == FUSED_OP_SCALAR_T ||
+        b.type_ == FUSED_OP_SCALAR_T ||
+        a.dtype() == b.dtype()
+    );
+}
+
+bool FusedOperation::ndim_compatible(const FusedOperation& a, const FusedOperation& b) {
+    return (
+        a.type_ == FUSED_OP_SCALAR_T ||
+        b.type_ == FUSED_OP_SCALAR_T ||
+        a.ndim() == b.ndim()
+    );
+}
+
+std::vector<int> get_function_bshape(const FusedOperation& a, const FusedOperation& b) {
+    if (a.type() == FusedOperation::FUSED_OP_SCALAR_T) {
+        return b.bshape();
+    } else if (b.type() == FusedOperation::FUSED_OP_SCALAR_T) {
+        return a.bshape();
+    } else {
+        return get_function_bshape({a.bshape(), b.bshape()});
+    }
 }
 
 namespace op2 {
@@ -342,7 +409,7 @@ namespace op2 {
         const FusedOperation& a,
         const std::string& functor_name) {
         return FusedOperation(
-            1,
+            FusedOperation::FUSED_OP_ELEMENTWISE_T,
             functor_name,
             {a}
         );
@@ -352,12 +419,12 @@ namespace op2 {
         const FusedOperation& a,
         const FusedOperation& b,
         const std::string& functor_name) {
-        ASSERT2(a.dtype() == b.dtype(), "dtypes don't match");
-        ASSERT2(a.ndim() == b.ndim(), "ranks don't match");
-        auto output_bshape = get_function_bshape({a.bshape(), b.bshape()});
+        ASSERT2(FusedOperation::dtype_compatible(a, b), "dtypes don't match");
+        ASSERT2(FusedOperation::ndim_compatible(a, b), "ranks don't match");
+        auto output_bshape = get_function_bshape(a, b);
 
         return FusedOperation(
-            1,
+            FusedOperation::FUSED_OP_ELEMENTWISE_T,
             functor_name,
             {a, b}
         );
@@ -369,12 +436,12 @@ namespace op2 {
         const std::string& function_name,
         const std::string& kernel_code
     ) {
-        ASSERT2(a.dtype() == b.dtype(), "dtypes don't match");
-        ASSERT2(a.ndim() == b.ndim(), "ranks don't match");
-        auto output_bshape = get_function_bshape({a.bshape(), b.bshape()});
+        ASSERT2(FusedOperation::dtype_compatible(a, b), "dtypes don't match");
+        ASSERT2(FusedOperation::ndim_compatible(a, b), "ranks don't match");
+        auto output_bshape = get_function_bshape(a, b);
 
         return FusedOperation(
-            2,
+            FusedOperation::FUSED_OP_KERNEL_T,
             function_name,
             kernel_code,
             {a, b}

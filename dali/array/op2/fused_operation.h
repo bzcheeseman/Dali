@@ -6,21 +6,30 @@
 
 class FusedOperation {
     public:
+        enum FUSED_OP_T {
+            FUSED_OP_ARRAY_T = 0,
+            FUSED_OP_SCALAR_T = 1,
+            FUSED_OP_ELEMENTWISE_T = 2,
+            FUSED_OP_KERNEL_T = 3
+        };
+
         // A fused operation taking only an array is no-op
         FusedOperation(const Array& arr);
         FusedOperation(Array&& arr);
         FusedOperation(const Assignable<Array>& arr);
+        FusedOperation(const double& scalar);
         // A fused operation can be constructed using a type identifier
         // 0 -> no-op holding an Array
-        // 1 -> elementwise pair kernel
-        // 2 -> binary_kernel
+        // 1 -> no-op holding a scalar
+        // 2 -> elementwise pair kernel
+        // 3 -> binary_kernel
         FusedOperation(
-            int type,
+            FUSED_OP_T type,
             const std::string& functor_name,
             const std::vector<FusedOperation>& arguments
         );
         FusedOperation(
-            int type,
+            FUSED_OP_T type,
             const std::string& functor_name,
             const std::string& extra_code,
             const std::vector<FusedOperation>& arguments
@@ -32,7 +41,7 @@ class FusedOperation {
         // Get the current return type of the operation
         DType dtype() const;
         // Get the current FusedOperation type
-        const int& type() const;
+        const FUSED_OP_T& type() const;
         // Get the current broadcastable shape of the operation
         std::vector<int> bshape() const;
         // Get the array held by this operation
@@ -48,15 +57,18 @@ class FusedOperation {
         // Compile or load a callable function that runs the operation
         // parametrized by the operator used, the contiguity of the output,
         // the return type, and the device
-        std::function<void(Array&, const std::vector<Array>&)> compile(
+        std::function<void(Array&, const std::vector<Array>&, const std::vector<double>&)> compile(
             const OPERATOR_T& operator_t,
             bool dst_contiguous,
             DType dtype,
             memory::Device device) const;
-        static int type_to_min_rank(int type);
+        static int type_to_min_rank(FUSED_OP_T type);
+        static bool dtype_compatible(const FusedOperation& a, const FusedOperation& b);
+        static bool ndim_compatible(const FusedOperation& a, const FusedOperation& b);
     private:
         std::vector<FusedOperation> arguments_;
-        int type_;
+        FUSED_OP_T type_;
+        double scalar_;
         Array arr_;
         std::string functor_name_;
         std::string extra_code_;
@@ -65,14 +77,18 @@ class FusedOperation {
         std::vector<Array> get_arrays() const;
         // Append the arrays used by this operation to `arrays`
         void get_arrays(std::vector<Array>* arrays) const;
+        // list of all scalars used in this operation (can contain repeats)
+        std::vector<double> get_scalars() const;
+        // Append the scalars used by this operation to `scalars`
+        void get_scalars(std::vector<double>* scalars) const;
         // generate the necessary constructors to wrap inside views the input arguments.
         std::string get_code_setup(const std::string& cpp_type, memory::Device device, int rank) const;
-        std::string get_code_setup(const std::string& cpp_type, memory::Device device, int rank, int& arg_idx) const;
+        std::string get_code_setup(const std::string& cpp_type, memory::Device device, int rank, int& arg_idx, int& scalar_arg_idx) const;
         // Return the calling code for accessing an element of a specific rank in an array_view
         std::string get_call_nd(int rank) const;
         // generate (recursively) the application of the current function
         std::string get_call_code_nd(const std::string& cpp_type) const;
-        std::string get_call_code_nd(const std::string& cpp_type, int& start_arg) const;
+        std::string get_call_code_nd(const std::string& cpp_type, int& arg_idx, int& scalar_arg_idx) const;
 
         // generate (recursively) the additional kernels or support code that each operation needs
         std::string get_extra_code() const;
@@ -83,6 +99,13 @@ class FusedOperation {
         // and device
         std::string get_code_template(const OPERATOR_T&, bool, DType dtype, memory::Device, int) const;
 };
+
+namespace std {
+    template<>
+    struct hash<FusedOperation::FUSED_OP_T> {
+        std::size_t operator()(const FusedOperation::FUSED_OP_T& k) const;
+    };
+}
 
 namespace op2 {
     FusedOperation elementwise(

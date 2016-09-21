@@ -12,6 +12,10 @@
 std::string build_view_constructor(
     const std::string& cpp_type, bool contiguous, int rank, const std::string& varname
 );
+// create declaration for copying a scalar argument into a local variable
+std::string build_scalar_constructor(
+	const std::string& cpp_type, int rank, int start_arg
+);
 // Create declaration code for wrapping several variables
 // contained in a vector named `arguments` and naming the views `arg_[i]_view` for
 // each index i in `arguments`.

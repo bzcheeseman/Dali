@@ -12,8 +12,15 @@ struct Shape {
 
     XINLINE Shape() {}
 
+    XINLINE Shape(int value) {
+        #pragma unroll
+        for (int i = 0; i < num_dims; ++i) {
+            sizes_[i] = value;
+        }
+    }
+
     Shape(const std::vector<int>& sizes) {
-        for (int i = 0; i < sizes.size();i++) {
+        for (int i = 0; i < sizes.size();++i) {
             sizes_[i] = sizes[i];
         }
     }
@@ -171,6 +178,43 @@ class ArrayStridedView {
             return *(ptr_ + offset_ + indices_to_offset(shape_, strides_, indices));
         }
 };
+
+template<typename Type, int dimensions>
+class ScalarView {
+    public:
+        Type scalar_;
+        static const int ndim = dimensions;
+        const Shape<dimensions> shape_;
+        typedef Type T;
+
+        XINLINE ScalarView(const Type& scalar) : scalar_(scalar), shape_(1) {
+        }
+
+        XINLINE Type& operator()(int idx) {
+            return scalar_;
+        }
+
+        XINLINE const Type& operator()(int idx) const {
+            return scalar_;
+        }
+
+        XINLINE const Shape<dimensions>& shape() const {
+            return shape_;
+        }
+
+        XINLINE Type& operator[](const Shape<dimensions>& indices) {
+            return scalar_;
+        }
+
+        XINLINE const Type& operator[](const Shape<dimensions>& indices) const {
+            return scalar_;
+        }
+};
+
+template<typename T, int ndim>
+ScalarView<T, ndim> make_scalar_view(const T& scalar) {
+    return ScalarView<T, ndim>(scalar);
+}
 
 template<typename T, int ndim>
 ArrayView<T, ndim> make_view(const Array& arr) {

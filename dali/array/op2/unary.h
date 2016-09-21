@@ -24,6 +24,13 @@ namespace op2 {
     FusedOperation cube(const FusedOperation& x);
     FusedOperation sqrt(const FusedOperation& x);
     FusedOperation rsqrt(const FusedOperation& x);
+
+    // TODO add reversed order of arguments + int + float
+    FusedOperation scalar_add(const FusedOperation& x, const double&);
+    FusedOperation scalar_sub(const FusedOperation& x, const double&);
+    FusedOperation scalar_mul(const FusedOperation& x, const double&);
+    FusedOperation scalar_div(const FusedOperation& x, const double&);
+    FusedOperation scalar_pow(const FusedOperation& x, const double&);
 } // namespace op2
 
 #endif

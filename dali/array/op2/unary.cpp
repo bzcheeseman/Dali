@@ -62,20 +62,4 @@ namespace op2 {
         return elementwise(x, "functor::rsqrt");
     }
 
-    FusedOperation scalar_add(const FusedOperation& x, const double& scalar) {
-        return elementwise(x, scalar, "functor::add");
-    }
-    FusedOperation scalar_sub(const FusedOperation& x, const double& scalar) {
-        return elementwise(x, scalar, "functor::sub");
-    }
-    FusedOperation scalar_mul(const FusedOperation& x, const double& scalar) {
-        return elementwise(x, scalar, "functor::eltmul");
-    }
-    FusedOperation scalar_div(const FusedOperation& x, const double& scalar) {
-        return elementwise(x, scalar, "functor::eltdiv");
-    }
-    FusedOperation scalar_pow(const FusedOperation& x, const double& scalar) {
-        return elementwise(x, scalar, "functor::power");
-    }
-
 }  // namespace op2

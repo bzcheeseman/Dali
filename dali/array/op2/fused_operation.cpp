@@ -8,19 +8,21 @@
 #include "dali/utils/tuple_hash.h"
 #include "dali/utils/make_message.h"
 
-FusedOperation::FusedOperation(const Array& arr) : type_(FUSED_OP_ARRAY_T), arr_(arr) {}
-FusedOperation::FusedOperation(Array&& arr) : type_(FUSED_OP_ARRAY_T), arr_(arr) {}
-FusedOperation::FusedOperation(const Assignable<Array>& arr) : type_(FUSED_OP_ARRAY_T), arr_(arr) {}
-FusedOperation::FusedOperation(const double& scalar) : type_(FUSED_OP_SCALAR_T), scalar_(scalar) {}
+FusedOperation::FusedOperation(const Array& arr) : type_(FUSED_OP_ARRAY_T), arr_(arr), dtype_(arr.dtype()) {}
+FusedOperation::FusedOperation(Array&& arr) : type_(FUSED_OP_ARRAY_T), arr_(arr), dtype_(arr.dtype()) {}
+FusedOperation::FusedOperation(const Assignable<Array>& arr) : FusedOperation(Array(arr)) {}
+FusedOperation::FusedOperation(const double& scalar) : type_(FUSED_OP_SCALAR_T), scalar_(scalar), dtype_(DTYPE_DOUBLE) {}
 FusedOperation::FusedOperation(FUSED_OP_T type,
                                const std::string& functor_name,
-                               const std::vector<FusedOperation>& arguments) :
-        type_(type), arguments_(arguments), functor_name_(functor_name) {}
+                               const std::vector<FusedOperation>& arguments,
+                               DType dtype) :
+        type_(type), arguments_(arguments), functor_name_(functor_name), dtype_(dtype) {}
 FusedOperation::FusedOperation(FUSED_OP_T type,
                                const std::string& functor_name,
                                const std::string& extra_code,
-                               const std::vector<FusedOperation>& arguments) :
-        type_(type), arguments_(arguments), functor_name_(functor_name), extra_code_(extra_code) {}
+                               const std::vector<FusedOperation>& arguments,
+                               DType dtype) :
+        type_(type), arguments_(arguments), functor_name_(functor_name), extra_code_(extra_code), dtype_(dtype) {}
 
 std::vector<Array> FusedOperation::get_arrays() const {
     std::vector<Array> out;
@@ -64,16 +66,13 @@ int FusedOperation::ndim() const {
     }
 }
 
-DType FusedOperation::dtype() const {
-    if (type_ == FUSED_OP_ARRAY_T) {
-        return arr_.dtype();
-    } else if (type_ == FUSED_OP_SCALAR_T) {
-        return DTYPE_DOUBLE;
-    } else {
-        return arguments_[0].dtype();
-    }
+bool FusedOperation::is_scalar() const {
+    return ndim() == 0;
 }
 
+DType FusedOperation::dtype() const {
+    return dtype_;
+}
 const FusedOperation::FUSED_OP_T& FusedOperation::type() const {
     return type_;
 }
@@ -100,6 +99,7 @@ std::vector<int> FusedOperation::bshape() const {
         for (const auto& el : arguments_) {
             bshapes.emplace_back(el.bshape());
         }
+
         return get_function_bshape(bshapes);
     }
 }
@@ -156,28 +156,28 @@ int FusedOperation::computation_rank() const {
     }
 }
 
-std::string FusedOperation::get_code_setup(const std::string& cpp_type, memory::Device device, int rank, int& arg_idx, int& scalar_arg_idx) const {
+std::string FusedOperation::get_code_setup(memory::Device device, int rank, int& arg_idx, int& scalar_arg_idx) const {
     if (type_ == FUSED_OP_ARRAY_T) {
-        auto res = build_views_constructor(cpp_type, {arr_.strides().empty()}, rank, arg_idx);
+        auto res = build_views_constructor(dtype_to_cpp_name(dtype_), {arr_.strides().empty()}, rank, arg_idx);
         arg_idx += 1;
         return res;
     } else if (type_ == FUSED_OP_SCALAR_T) {
-        auto res = build_scalar_constructor(cpp_type, rank, scalar_arg_idx);
+        auto res = build_scalar_constructor(dtype_to_cpp_name(dtype_), rank, scalar_arg_idx);
         scalar_arg_idx += 1;
         return res;
     } else {
         utils::MS stream;
         for (auto& arg : arguments_) {
-            stream << arg.get_code_setup(cpp_type, device, rank, arg_idx, scalar_arg_idx);
+            stream << arg.get_code_setup(device, rank, arg_idx, scalar_arg_idx);
         }
         return stream;
     }
 }
 
-std::string FusedOperation::get_code_setup(const std::string& cpp_type, memory::Device device, int rank) const {
+std::string FusedOperation::get_code_setup(memory::Device device, int rank) const {
     int arg_idx = 0;
     int scalar_arg_idx = 0;
-    return get_code_setup(cpp_type, device, rank, arg_idx, scalar_arg_idx);
+    return get_code_setup(device, rank, arg_idx, scalar_arg_idx);
 }
 
 std::string FusedOperation::get_call_nd(int rank) const {
@@ -188,7 +188,7 @@ std::string FusedOperation::get_call_nd(int rank) const {
     }
 }
 
-std::string FusedOperation::get_call_code_nd(const std::string& cpp_type, int& arg_idx, int& scalar_arg_idx) const {
+std::string FusedOperation::get_call_code_nd(int& arg_idx, int& scalar_arg_idx) const {
     if (type_ == FUSED_OP_ARRAY_T) {
         auto res = utils::make_message("arg_", arg_idx, "_view");
         arg_idx += 1;
@@ -200,13 +200,13 @@ std::string FusedOperation::get_call_code_nd(const std::string& cpp_type, int& a
     } else if (type_ == FUSED_OP_KERNEL_T || type_ == FUSED_OP_ELEMENTWISE_T) {
         utils::MS stream;
         if (type_ == FUSED_OP_ELEMENTWISE_T) {
-            stream << "element_wise_kernel<" << functor_name_ << ">(";
+            stream << "element_wise_kernel<" << functor_name_ << ", " << dtype_to_cpp_name(dtype_) << ">(";
         } else if (type_ == FUSED_OP_KERNEL_T) {
             stream << functor_name_ << "(";
         }
         int args_called = 0;
         for (auto& arg : arguments_) {
-            stream << arg.get_call_code_nd(cpp_type, arg_idx, scalar_arg_idx);
+            stream << arg.get_call_code_nd(arg_idx, scalar_arg_idx);
             args_called += 1;
             if (args_called != arguments_.size()) {
                 stream << ", ";
@@ -219,17 +219,17 @@ std::string FusedOperation::get_call_code_nd(const std::string& cpp_type, int& a
     }
 }
 
-std::string FusedOperation::get_call_code_nd(const std::string& cpp_type) const {
+std::string FusedOperation::get_call_code_nd() const {
     int arg_idx = 0;
     int scalar_arg_idx = 0;
-    return get_call_code_nd(cpp_type, arg_idx, scalar_arg_idx);
+    return get_call_code_nd(arg_idx, scalar_arg_idx);
 }
 
-std::string FusedOperation::get_assign_code_nd(const OPERATOR_T& operator_t, const std::string& cpp_type, const std::string& call_nd) const {
+std::string FusedOperation::get_assign_code_nd(const OPERATOR_T& operator_t, const std::string& call_nd) const {
     return utils::make_message(
         "dst_view", call_nd, " ",
         operator_to_name(operator_t),
-        " ", get_call_code_nd(cpp_type), call_nd, ";\n"
+        " ", get_call_code_nd(), call_nd, ";\n"
     );
 }
 
@@ -272,15 +272,14 @@ std::string FusedOperation::get_extra_code() const {
 }
 
 
-std::string FusedOperation::get_code_template(const OPERATOR_T& operator_t, bool dst_contiguous, DType dtype, memory::Device device, int rank) const {
-    auto cpp_type = dtype_to_cpp_name(dtype);
+std::string FusedOperation::get_code_template(const OPERATOR_T& operator_t, bool dst_contiguous, DType output_dtype, memory::Device device, int rank) const {
     std::string code = utils::make_message(
         get_extra_code(),
         "void run(Array& dst, const std::vector<Array>& arguments, const std::vector<double>& scalar_arguments) {\n"
     );
-    code += get_code_setup(cpp_type, device, rank);
+    code += get_code_setup(device, rank);
     code += build_view_constructor(
-        cpp_type, dst_contiguous, rank, "dst"
+        dtype_to_cpp_name(output_dtype), dst_contiguous, rank, "dst"
     );
     // now we declare output.
     std::string for_loop;
@@ -291,13 +290,13 @@ std::string FusedOperation::get_code_template(const OPERATOR_T& operator_t, bool
             "    #pragma clang loop vectorize(enable)\n"
             "    #pragma clang loop interleave(enable)\n"
             "    for (int i = 0; i < num_el; ++i) {\n",
-            "        ", get_assign_code_nd(operator_t, cpp_type, call_nd),
+            "        ", get_assign_code_nd(operator_t, call_nd),
             "    }\n"
         );
     } else {
         for_loop = construct_for_loop(
             rank,
-            get_assign_code_nd(operator_t, cpp_type, call_nd)
+            get_assign_code_nd(operator_t, call_nd)
         );
     }
     code += for_loop;
@@ -306,7 +305,7 @@ std::string FusedOperation::get_code_template(const OPERATOR_T& operator_t, bool
 }
 
 std::function<void(Array&, const std::vector<Array>&, const std::vector<double>&)> FusedOperation::compile(
-        const OPERATOR_T& operator_t, bool dst_contiguous, DType dtype, memory::Device device) const {
+        const OPERATOR_T& operator_t, bool dst_contiguous, DType output_dtype, memory::Device device) const {
     // get the lowest dimension that suffices to compute this problem:
     int comp_rank = computation_rank();
     // given the lowest rank for which the operation can be executed
@@ -317,7 +316,7 @@ std::function<void(Array&, const std::vector<Array>&, const std::vector<double>&
     // compute a quasi-unique hash for the fused operation
     hash_t hash = utils::get_hash(
         std::make_tuple(
-            dtype,
+            output_dtype,
             operator_t,
             device.is_cpu(),
             get_operation_hash(*this),
@@ -330,7 +329,7 @@ std::function<void(Array&, const std::vector<Array>&, const std::vector<double>&
         auto code_template = get_code_template(
             operator_t,
             dst_contiguous,
-            dtype,
+            output_dtype,
             device,
             comp_rank
         );
@@ -387,11 +386,28 @@ bool FusedOperation::dtype_compatible(const FusedOperation& a, const FusedOperat
 }
 
 bool FusedOperation::ndim_compatible(const FusedOperation& a, const FusedOperation& b) {
-    return (
-        a.type_ == FUSED_OP_SCALAR_T ||
-        b.type_ == FUSED_OP_SCALAR_T ||
-        a.ndim() == b.ndim()
-    );
+    int a_ndim = a.ndim();
+    int b_ndim = b.ndim();
+    return a_ndim == 0 || b_ndim == 0 || a_ndim == b_ndim;
+}
+
+DType FusedOperation::type_promotion(const FusedOperation& a, const FusedOperation& b) {
+    // TODO(jonathan,szymon) speed up this function
+    bool a_scalar = a.is_scalar();
+    bool b_scalar = b.is_scalar();
+    if (a_scalar && b_scalar || (!a_scalar && !b_scalar)) {
+        if (a.dtype_ == DTYPE_DOUBLE || b.dtype_ == DTYPE_DOUBLE) {
+            return DTYPE_DOUBLE;
+        } else if (a.dtype_ == DTYPE_FLOAT || b.dtype_ == DTYPE_FLOAT) {
+            return DTYPE_FLOAT;
+        } else {
+            return DTYPE_INT32;
+        }
+    } else if (a_scalar) {
+        return b.dtype_;
+    } else {
+        return a.dtype_;
+    }
 }
 
 std::vector<int> get_function_bshape(const FusedOperation& a, const FusedOperation& b) {
@@ -407,11 +423,22 @@ std::vector<int> get_function_bshape(const FusedOperation& a, const FusedOperati
 namespace op2 {
     FusedOperation elementwise(
         const FusedOperation& a,
-        const std::string& functor_name) {
+        const std::string& functor_name,
+        DType return_type) {
+
         return FusedOperation(
             FusedOperation::FUSED_OP_ELEMENTWISE_T,
             functor_name,
-            {a}
+            {a},
+            return_type
+        );
+    }
+
+    FusedOperation elementwise(
+        const FusedOperation& a,
+        const std::string& functor_name) {
+        return elementwise(
+            a, functor_name, a.dtype()
         );
     }
 
@@ -419,15 +446,35 @@ namespace op2 {
         const FusedOperation& a,
         const FusedOperation& b,
         const std::string& functor_name) {
-        ASSERT2(FusedOperation::dtype_compatible(a, b), "dtypes don't match");
-        ASSERT2(FusedOperation::ndim_compatible(a, b), "ranks don't match");
-        auto output_bshape = get_function_bshape(a, b);
 
-        return FusedOperation(
-            FusedOperation::FUSED_OP_ELEMENTWISE_T,
-            functor_name,
-            {a, b}
-        );
+        // perform type promotion:
+        if (a.dtype() != b.dtype()) {
+            auto new_type = FusedOperation::type_promotion(a, b);
+            if (a.dtype() == new_type) {
+                // b's dtype is being promoted
+                return elementwise(
+                    a,
+                    astype(b, new_type),
+                    functor_name
+                );
+            } else {
+                // a's dtype is being promoted
+                return elementwise(
+                    astype(a, new_type),
+                    b,
+                    functor_name
+                );
+            }
+        } else {
+            ASSERT2(FusedOperation::ndim_compatible(a, b), "ranks don't match");
+            auto output_bshape = get_function_bshape(a, b);
+            return FusedOperation(
+                FusedOperation::FUSED_OP_ELEMENTWISE_T,
+                functor_name,
+                {a, b},
+                a.dtype()
+            );
+        }
     }
 
     FusedOperation binary_kernel_function(
@@ -436,16 +483,42 @@ namespace op2 {
         const std::string& function_name,
         const std::string& kernel_code
     ) {
-        ASSERT2(FusedOperation::dtype_compatible(a, b), "dtypes don't match");
-        ASSERT2(FusedOperation::ndim_compatible(a, b), "ranks don't match");
-        auto output_bshape = get_function_bshape(a, b);
+        // perform type promotion:
+        if (a.dtype() != b.dtype()) {
+            auto new_type = FusedOperation::type_promotion(a, b);
+            if (a.dtype() == new_type) {
+                // b's dtype is being promoted
+                return binary_kernel_function(
+                    a,
+                    astype(b, new_type),
+                    function_name,
+                    kernel_code
+                );
+            } else {
+                // a's dtype is being promoted
+                return binary_kernel_function(
+                    astype(a, new_type),
+                    b,
+                    function_name,
+                    kernel_code
+                );
+            }
+        } else {
+            ASSERT2(FusedOperation::ndim_compatible(a, b), "ranks don't match");
+            auto output_bshape = get_function_bshape(a, b);
 
-        return FusedOperation(
-            FusedOperation::FUSED_OP_KERNEL_T,
-            function_name,
-            kernel_code,
-            {a, b}
-        );
+            return FusedOperation(
+                FusedOperation::FUSED_OP_KERNEL_T,
+                function_name,
+                kernel_code,
+                {a, b},
+                a.dtype()
+            );
+        }
+    }
+
+    FusedOperation astype(const FusedOperation& x, DType type) {
+        return elementwise(x, "functor::cast", type);
     }
 }
 

@@ -153,20 +153,29 @@ void initialize_output_array(Array& out,
 std::vector<int> get_function_bshape(const std::vector<std::vector<int>>& bshapes) {
     if (bshapes.size() == 0) return {};
 
-    std::vector<int> output_bshape = bshapes[0];
-    for (size_t dim = 0; dim < output_bshape.size(); dim++) {
-        for (size_t other_shape_idx = 1; other_shape_idx < bshapes.size(); other_shape_idx++) {
-            if (bshapes[other_shape_idx].size() == 0) continue;
-            ASSERT2(bshapes[other_shape_idx].size() == output_bshape.size(),
+    int ndim_max = 0;
+    int idx_max = 0;
+    for (int idx = 0; idx < bshapes.size(); idx++) {
+        if (bshapes[idx].size() > ndim_max) {
+            ndim_max = bshapes[idx].size();
+            idx_max = idx;
+        }
+    }
+    std::vector<int> output_bshape = bshapes[idx_max];
+
+    for (int dim = 0; dim < ndim_max; dim++) {
+        for (const auto& other_bshape : bshapes) {
+            if (other_bshape.size() == 0) continue;
+            ASSERT2(other_bshape.size() == output_bshape.size(),
                 "inputs must be scalars or have the same dimensionality."
             );
             ASSERT2(
-                (output_bshape[dim] == bshapes[other_shape_idx][dim]) ||
-                (output_bshape[dim] == -1 || bshapes[other_shape_idx][dim] == -1),
+                (output_bshape[dim] == other_bshape[dim]) ||
+                (output_bshape[dim] == -1 || other_bshape[dim] == -1),
                 "shapes dont match"
             );
-            if (bshapes[other_shape_idx][dim] != -1) {
-                output_bshape[dim] = bshapes[other_shape_idx][dim];
+            if (other_bshape[dim] != -1) {
+                output_bshape[dim] = other_bshape[dim];
             }
         }
     }
@@ -176,7 +185,7 @@ std::vector<int> get_function_bshape(const std::vector<std::vector<int>>& bshape
 namespace {
     std::string generate_elementwise_kernel_class_signature(int num_args) {
         utils::MS template_data_stream;
-        template_data_stream << "ElementWiseKernel" << num_args << "<Functor, ";
+        template_data_stream << "ElementWiseKernel" << num_args << "<Functor, Type, ";
         for (int i = 0; i < num_args; i++) {
             template_data_stream << "C" << (i+1);
             if (i + 1 != num_args) {
@@ -205,7 +214,7 @@ namespace {
 
     std::string generate_elementwise_kernel_template_code(int num_args) {
         utils::MS template_data_stream;
-        template_data_stream << "template<template <typename> class Functor,\n";
+        template_data_stream << "template<template <typename> class Functor, typename Type,\n";
         for (int i = 0; i < num_args; i++) {
             template_data_stream << "         typename C" << (i + 1);
             if (i + 1 != num_args) {
@@ -238,10 +247,13 @@ namespace {
                                  << generate_elementwise_kernel_argument(i) << "_;\n";
         }
         template_data_stream << "    static const int ndim = C1::ndim;\n"
-                                "    typedef typename C1::T T;\n";
-        template_data_stream << "    XINLINE ElementWiseKernel" << num_args << "(\n";
-        template_data_stream << generate_elementwise_kernel_constructor_arguments(num_args) << "\n";
-        template_data_stream << "        : ";
+                             << "    typedef Type T;\n"
+                             << "    XINLINE const Shape<ndim>& shape() const {\n"
+                             << "        return arg_1_view_.shape();\n"
+                             << "    }\n"
+                             << "    XINLINE ElementWiseKernel" << num_args << "(\n"
+                             << generate_elementwise_kernel_constructor_arguments(num_args) << "\n"
+                             << "        : ";
         for (int i = 0; i < num_args; i++) {
             template_data_stream << generate_elementwise_kernel_argument(i)
                                  << "_(" << generate_elementwise_kernel_argument(i) << ")";

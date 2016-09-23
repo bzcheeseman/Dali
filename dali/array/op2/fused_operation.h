@@ -20,24 +20,28 @@ class FusedOperation {
         FusedOperation(const double& scalar);
         // A fused operation can be constructed using a type identifier
         // 0 -> no-op holding an Array
-        // 1 -> no-op holding a scalar
+        // 1 -> no-op holding a scalar double
         // 2 -> elementwise pair kernel
         // 3 -> binary_kernel
         FusedOperation(
             FUSED_OP_T type,
             const std::string& functor_name,
-            const std::vector<FusedOperation>& arguments
+            const std::vector<FusedOperation>& arguments,
+            DType dtype
         );
         FusedOperation(
             FUSED_OP_T type,
             const std::string& functor_name,
             const std::string& extra_code,
-            const std::vector<FusedOperation>& arguments
+            const std::vector<FusedOperation>& arguments,
+            DType dtype
         );
         // Convert through compilation to a usable Array operation than can be assigned
         operator Assignable<Array>() const;
         // Get the current dimensionality of the operation
         int ndim() const;
+        // Checks whether dimensionality is zero (e.g. scalar, or op on a scalar)
+        bool is_scalar() const;
         // Get the current return type of the operation
         DType dtype() const;
         // Get the current FusedOperation type
@@ -65,11 +69,13 @@ class FusedOperation {
         static int type_to_min_rank(FUSED_OP_T type);
         static bool dtype_compatible(const FusedOperation& a, const FusedOperation& b);
         static bool ndim_compatible(const FusedOperation& a, const FusedOperation& b);
+        static DType type_promotion(const FusedOperation& a, const FusedOperation& b);
     private:
         std::vector<FusedOperation> arguments_;
         FUSED_OP_T type_;
         double scalar_;
         Array arr_;
+        DType dtype_;
         std::string functor_name_;
         std::string extra_code_;
 
@@ -82,22 +88,22 @@ class FusedOperation {
         // Append the scalars used by this operation to `scalars`
         void get_scalars(std::vector<double>* scalars) const;
         // generate the necessary constructors to wrap inside views the input arguments.
-        std::string get_code_setup(const std::string& cpp_type, memory::Device device, int rank) const;
-        std::string get_code_setup(const std::string& cpp_type, memory::Device device, int rank, int& arg_idx, int& scalar_arg_idx) const;
+        std::string get_code_setup(memory::Device device, int rank) const;
+        std::string get_code_setup(memory::Device device, int rank, int& arg_idx, int& scalar_arg_idx) const;
         // Return the calling code for accessing an element of a specific rank in an array_view
         std::string get_call_nd(int rank) const;
         // generate (recursively) the application of the current function
-        std::string get_call_code_nd(const std::string& cpp_type) const;
-        std::string get_call_code_nd(const std::string& cpp_type, int& arg_idx, int& scalar_arg_idx) const;
+        std::string get_call_code_nd() const;
+        std::string get_call_code_nd(int& arg_idx, int& scalar_arg_idx) const;
 
         // generate (recursively) the additional kernels or support code that each operation needs
         std::string get_extra_code() const;
 
         // generate (recursively) the application + assignment to output of the current function
-        std::string get_assign_code_nd(const OPERATOR_T&, const std::string&, const std::string&) const;
+        std::string get_assign_code_nd(const OPERATOR_T& operator_t, const std::string& call_nd) const;
         // generate the necessary code to compile this operation for a specific type, operator, rank,
         // and device
-        std::string get_code_template(const OPERATOR_T&, bool, DType dtype, memory::Device, int) const;
+        std::string get_code_template(const OPERATOR_T&, bool, DType output_dtype, memory::Device, int) const;
 };
 
 namespace std {
@@ -108,23 +114,51 @@ namespace std {
 }
 
 namespace op2 {
+    // elementwise kernel given by name.
+    // will assume that return type of kernel
+    // is given by the `dtype` argument.
+    FusedOperation elementwise(
+        const FusedOperation& a,
+        const std::string& functor_name,
+        DType dtype
+    );
+
+    // elementwise kernel given by name. assumes
+    // return type is unchanged from a's
     FusedOperation elementwise(
         const FusedOperation& a,
         const std::string& functor_name
     );
 
+    // pair-wise kernel. Will type promote arguments
+    // so that they have the same type when
+    // given to the functor:
+    // - float w/. double => double
+    // - float w/. int => float
+    // - double w/. int => double
     FusedOperation elementwise(
         const FusedOperation& a,
         const FusedOperation& b,
         const std::string& functor_name
     );
 
+    // call a kernel on a pair of arguments. Assumes
+    // both arguments should be of the same type. Peforms
+    // type promotion on the arguments if not. Will paste
+    // and run the associated code `kernel_code` during
+    // compilation and usage. (Warning: this might cause
+    // collisions when a name is used multiple times)
     FusedOperation binary_kernel_function(
         const FusedOperation& a,
         const FusedOperation& b,
         const std::string& function_name,
         const std::string& kernel_code
     );
+
+
+    // Perform a type conversion by casting the values in x
+    // to another dtype.
+    FusedOperation astype(const FusedOperation& x, DType dtype);
 } // namespace op2
 
 #endif  // DALI_ARRAY_OP2_COMBINABLE_H

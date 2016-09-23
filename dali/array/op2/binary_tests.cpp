@@ -4,6 +4,7 @@
 #include "dali/array/test_utils.h"
 #include "dali/runtime_config.h"
 #include "dali/array/op2/binary.h"
+#include "dali/array/op2/unary.h"
 #include "dali/array/op.h"
 #include "dali/array/op2/fused_operation.h"
 
@@ -282,4 +283,42 @@ TEST(RTCTests, chained_circular_convolution) {
     }
 }
 
+
+
+TEST(RTCTests, cast_binary) {
+    // auto casts to the right type before adding:
+    for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {
+        Array res = op2::add(
+            Array::arange({10}, dtype),
+            Array::arange({10}, DTYPE_INT32)
+        );
+        EXPECT_EQ(dtype, res.dtype());
+        EXPECT_TRUE(Array::allclose(Array::arange({10}, dtype) * 2, res, 1e-8));
+    }
+}
+
+TEST(RTCTests, circular_conv_unary) {
+    int size = 10;
+    {
+        Array res = op2::circular_convolution(
+            Array::arange({5, size}, DTYPE_FLOAT) + 1,
+            op2::relu(2.5)
+        );
+    }
+    {
+        Array res = op2::circular_convolution(
+            2.5,
+            Array::arange({5, size}, DTYPE_FLOAT) + 1
+        );
+    }
+    {
+        Array res = op2::circular_convolution(2.1, 2.5);
+        EXPECT_NEAR((double)res, 2.1 * 2.5, 1e-9);
+    }
+    {
+        Array res = op2::circular_convolution(
+            Array::arange({5, size}, DTYPE_FLOAT) + 1, 2.5
+        );
+    }
+}
 

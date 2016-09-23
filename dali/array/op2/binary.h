@@ -11,7 +11,6 @@ namespace op2 {
     FusedOperation pow(const FusedOperation& left, const FusedOperation& right);
     FusedOperation equals(const FusedOperation& left, const FusedOperation& right);
     FusedOperation prelu(const FusedOperation& x, const FusedOperation& weights);
-
     FusedOperation prelu_backward_weights(const FusedOperation& a, const FusedOperation& grad);
     FusedOperation prelu_backward_inputs(const FusedOperation& a, const FusedOperation& weights);
 

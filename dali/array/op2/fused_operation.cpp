@@ -8,6 +8,9 @@
 #include "dali/utils/tuple_hash.h"
 #include "dali/utils/make_message.h"
 
+#include "dali/array/op2/elementwise_kernel_utils.h"
+#include "dali/array/op2/all_reduce_kernel_utils.h"
+
 FusedOperation::FusedOperation(const Array& arr) : type_(FUSED_OP_ARRAY_T), arr_(arr), dtype_(arr.dtype()) {}
 FusedOperation::FusedOperation(Array&& arr) : type_(FUSED_OP_ARRAY_T), arr_(arr), dtype_(arr.dtype()) {}
 FusedOperation::FusedOperation(const Assignable<Array>& arr) : FusedOperation(Array(arr)) {}
@@ -61,6 +64,8 @@ int FusedOperation::ndim() const {
         return arr_.ndim();
     } else if (type_ == FUSED_OP_SCALAR_T) {
         return 0;
+    } else if (type_ == FUSED_OP_ALLREDUCE_T) {
+        return 0;
     } else {
         return arguments_[0].ndim();
     }
@@ -92,14 +97,13 @@ const std::vector<FusedOperation>& FusedOperation::arguments() const {
 std::vector<int> FusedOperation::bshape() const {
     if (type_ == FUSED_OP_ARRAY_T) {
         return arr_.bshape();
-    } else if (type_ == FUSED_OP_SCALAR_T) {
+    } else if (type_ == FUSED_OP_SCALAR_T || type_ ==  FUSED_OP_ALLREDUCE_T) {
         return {};
     } else {
         std::vector<std::vector<int>> bshapes;
         for (const auto& el : arguments_) {
             bshapes.emplace_back(el.bshape());
         }
-
         return get_function_bshape(bshapes);
     }
 }
@@ -197,12 +201,17 @@ std::string FusedOperation::get_call_code_nd(int& arg_idx, int& scalar_arg_idx) 
         auto res = utils::make_message("scalar_", scalar_arg_idx);
         scalar_arg_idx += 1;
         return res;
-    } else if (type_ == FUSED_OP_KERNEL_T || type_ == FUSED_OP_ELEMENTWISE_T) {
+    } else if (type_ == FUSED_OP_KERNEL_T || type_ == FUSED_OP_ELEMENTWISE_T || type_ == FUSED_OP_ALLREDUCE_T) {
         utils::MS stream;
         if (type_ == FUSED_OP_ELEMENTWISE_T) {
             stream << "element_wise_kernel<" << functor_name_ << ", " << dtype_to_cpp_name(dtype_) << ">(";
         } else if (type_ == FUSED_OP_KERNEL_T) {
             stream << functor_name_ << "(";
+        } else if (type_ == FUSED_OP_ALLREDUCE_T) {
+            ASSERT2(!arguments_.empty(), "all_reduce operation must have at least one argument.");
+            int all_reduce_comp_rank = arguments_[0].computation_rank();
+            stream << "all_reduce_kernel_" << all_reduce_comp_rank << "d<" << functor_name_
+                   << ", " << dtype_to_cpp_name(dtype_) << ">(";
         }
         int args_called = 0;
         for (auto& arg : arguments_) {
@@ -236,13 +245,20 @@ std::string FusedOperation::get_assign_code_nd(const OPERATOR_T& operator_t, con
 class GeneratedCodeTracker {
     private:
         std::unordered_set<int> elementwise_kernels_;
+        std::unordered_set<int> all_reduce_kernels_;
 
     public:
         bool is_elementwise_kernel_generated(int size) const {
             return elementwise_kernels_.find(size) != elementwise_kernels_.end();
         }
+        bool is_all_reduce_kernel_generated(int size) const {
+            return all_reduce_kernels_.find(size) != all_reduce_kernels_.end();
+        }
         void mark_elementwise_kernel_generated(int size) {
             elementwise_kernels_.insert(size);
+        }
+        void mark_all_reduce_kernel_generated(int size) {
+            all_reduce_kernels_.insert(size);
         }
 };
 
@@ -252,12 +268,21 @@ void fused_operation_get_extra_code(const FusedOperation& fop,
     if (!fop.extra_code().empty()) {
         *extra_code_ptr = (*extra_code_ptr) + fop.extra_code();
     }
-    if (fop.type() == FusedOperation::FUSED_OP_ELEMENTWISE_T && !tracker->is_elementwise_kernel_generated(fop.arguments().size())) {
+    if (fop.type() == FusedOperation::FUSED_OP_ELEMENTWISE_T &&
+        !tracker->is_elementwise_kernel_generated(fop.arguments().size())) {
         (*extra_code_ptr) = (
             (*extra_code_ptr) +
             create_elementwise_kernel_caller(fop.arguments().size())
         );
         tracker->mark_elementwise_kernel_generated(fop.arguments().size());
+    }
+    if (fop.type() == FusedOperation::FUSED_OP_ALLREDUCE_T &&
+        !tracker->is_all_reduce_kernel_generated(fop.arguments()[0].computation_rank())) {
+        (*extra_code_ptr) = (
+            (*extra_code_ptr) +
+            create_all_reduce_kernel_caller(fop.arguments()[0].computation_rank(), fop.computation_rank())
+        );
+        tracker->mark_all_reduce_kernel_generated(fop.arguments()[0].computation_rank());
     }
     for (const auto& arg : fop.arguments()) {
         fused_operation_get_extra_code(arg, tracker, extra_code_ptr);
@@ -296,7 +321,9 @@ std::string FusedOperation::get_code_template(const OPERATOR_T& operator_t, bool
     } else {
         for_loop = construct_for_loop(
             rank,
-            get_assign_code_nd(operator_t, call_nd)
+            get_assign_code_nd(operator_t, call_nd),
+            "dst_view",
+            4
         );
     }
     code += for_loop;

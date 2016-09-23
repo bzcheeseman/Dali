@@ -1,9 +1,7 @@
 #ifndef DALI_ARRAY_OP2_RTC_UTILS_H
 #define DALI_ARRAY_OP2_RTC_UTILS_H
-
 #include <string>
 #include <vector>
-
 #include "dali/array/array.h"
 #include "dali/array/dtype.h"
 #include "dali/array/memory/device.h"
@@ -28,7 +26,7 @@ std::string build_views_constructor(
 // Declare a nested c++ for loop for a specific rank (dimensionality)
 // that calls `code` in the center of the loop (modified a variable
 // of type `Shape` named "query" contains the current indices for the loop)
-std::string construct_for_loop(int rank, const std::string& code);
+std::string construct_for_loop(int rank, const std::string& code, const std::string& varname, int indent);
 
 // If the array `out` is uninitialized, then give it a specific type
 // device, and shape (filled with zeros), else check that it is
@@ -43,7 +41,5 @@ void initialize_output_array(Array& out,
 // mismatches elsewhere. Scalar arguments are ignored when computing the
 // output shape.
 std::vector<int> get_function_bshape(const std::vector<std::vector<int>>& bshapes);
-
-std::string create_elementwise_kernel_caller(int num_args);
 
 #endif

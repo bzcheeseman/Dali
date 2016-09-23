@@ -158,6 +158,7 @@ bool Compiler::compile_code(const std::string& source,
 
 std::vector<std::string> kHeaders = {
     "dali/array/function2/array_view.h",
+    "dali/array/reducer_kernels.h",
     "dali/array/functor.h",
     "dali/array/array.h"
 };

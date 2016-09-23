@@ -2,8 +2,8 @@
 #include "dali/array/op2/fused_operation.h"
 
 namespace op2 {
-	FusedOperation identity(const FusedOperation& x) {
-		return elementwise(x, "functor::identity");
+    FusedOperation identity(const FusedOperation& x) {
+        return elementwise(x, "functor::identity");
     }
 
     FusedOperation sigmoid(const FusedOperation& x) {

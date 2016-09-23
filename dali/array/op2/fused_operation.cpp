@@ -421,6 +421,22 @@ std::vector<int> get_function_bshape(const FusedOperation& a, const FusedOperati
 }
 
 namespace op2 {
+    FusedOperation all_reduce(const FusedOperation& a,
+                              const std::string& reducer_name,
+                              DType return_type) {
+        return FusedOperation(
+            FusedOperation::FUSED_OP_ALLREDUCE_T,
+            reducer_name,
+            {a},
+            return_type
+        );
+    }
+
+    FusedOperation all_reduce(const FusedOperation& a,
+                              const std::string& reducer_name) {
+        return all_reduce(a, reducer_name, a.dtype());
+    }
+
     FusedOperation elementwise(
         const FusedOperation& a,
         const std::string& functor_name,

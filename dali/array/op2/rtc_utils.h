@@ -40,7 +40,8 @@ void initialize_output_array(Array& out,
 
 // Find the shape that contains all the other shapes in the vector `bshapes`
 // while maintaining broadcasted dimensions where possible, and checking for
-// mismatches elsewhere.
+// mismatches elsewhere. Scalar arguments are ignored when computing the
+// output shape.
 std::vector<int> get_function_bshape(const std::vector<std::vector<int>>& bshapes);
 
 std::string create_elementwise_kernel_caller(int num_args);

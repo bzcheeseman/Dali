@@ -69,6 +69,14 @@ class FusedOperation {
         static int type_to_min_rank(FUSED_OP_T type);
         static bool dtype_compatible(const FusedOperation& a, const FusedOperation& b);
         static bool ndim_compatible(const FusedOperation& a, const FusedOperation& b);
+        // type_promotion
+        // Find the most appropriate return type given two inputs.
+        // If one argument is a scalar, then the type of the non-scalar
+        // is used. If arguments are both scalars or both arrays, then
+        // the most precise type is used:
+        // - int & double -> double,
+        // - int & float -> float,
+        // - double & float -> double
         static DType type_promotion(const FusedOperation& a, const FusedOperation& b);
     private:
         std::vector<FusedOperation> arguments_;

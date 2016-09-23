@@ -32,6 +32,43 @@ namespace op2 {
     FusedOperation prelu(const FusedOperation& x, const FusedOperation& weights) {
         return elementwise(x, weights, "functor::prelu");
     }
+
+    FusedOperation prelu_backward_weights(const FusedOperation& a, const FusedOperation& grad) {
+        return elementwise(a, grad, "functor::prelu_backward_weights");
+    }
+
+    FusedOperation prelu_backward_inputs(const FusedOperation& a, const FusedOperation& weights) {
+        return elementwise(a, weights, "functor::prelu_backward_inputs");
+    }
+
+    FusedOperation lessthanequal(const FusedOperation& a, const FusedOperation& b) {
+        return elementwise(a, b, "functor::lessthanequal");
+    }
+
+    FusedOperation greaterthanequal(const FusedOperation& a, const FusedOperation& b) {
+        return elementwise(a, b, "functor::greaterthanequal");
+    }
+
+    FusedOperation eltmax(const FusedOperation& a, const FusedOperation& b) {
+        return elementwise(a, b, "functor::max_scalar");
+    }
+
+    FusedOperation clip(const FusedOperation& a, const FusedOperation& b) {
+        return elementwise(a, b, "functor::clip");
+    }
+
+    FusedOperation eltmin(const FusedOperation& a, const FusedOperation& b) {
+        return elementwise(a, b, "functor::min_scalar");
+    }
+
+    FusedOperation binary_cross_entropy(const FusedOperation& a, const FusedOperation& b) {
+        return elementwise(a, b, "functor::binary_cross_entropy");
+    }
+
+    FusedOperation binary_cross_entropy_grad(const FusedOperation& a, const FusedOperation& b) {
+        return elementwise(a, b, "functor::binary_cross_entropy_grad");
+    }
+
     FusedOperation circular_convolution(const FusedOperation& x, const FusedOperation& weights) {
         // TODO(jonathan, szymon): clearly kernel writing is repetitive, a method could
         //                         be designed here to factor out all the boilerplate

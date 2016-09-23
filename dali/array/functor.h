@@ -184,6 +184,15 @@ namespace functor {
     };
 
     template<typename R>
+    struct cast : public Functor {
+        const static std::string name;
+        template<typename OtherType>
+        XINLINE static R Map(const OtherType& a) {
+            return R(a);
+        }
+    };
+
+    template<typename R>
     struct sigmoid : public Functor {
         const static std::string name;
         XINLINE static R Map(const R& a) {

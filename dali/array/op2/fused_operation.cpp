@@ -15,6 +15,7 @@ FusedOperation::FusedOperation(const Array& arr) : type_(FUSED_OP_ARRAY_T), arr_
 FusedOperation::FusedOperation(Array&& arr) : type_(FUSED_OP_ARRAY_T), arr_(arr), dtype_(arr.dtype()) {}
 FusedOperation::FusedOperation(const Assignable<Array>& arr) : FusedOperation(Array(arr)) {}
 FusedOperation::FusedOperation(const double& scalar) : type_(FUSED_OP_SCALAR_T), scalar_(scalar), dtype_(DTYPE_DOUBLE) {}
+FusedOperation::FusedOperation(const int& scalar) : FusedOperation(op2::astype(FusedOperation(double(scalar)), DTYPE_INT32)) {}
 FusedOperation::FusedOperation(FUSED_OP_T type,
                                const std::string& functor_name,
                                const std::vector<FusedOperation>& arguments,
@@ -27,18 +28,22 @@ FusedOperation::FusedOperation(FUSED_OP_T type,
                                DType dtype) :
         type_(type), arguments_(arguments), functor_name_(functor_name), extra_code_(extra_code), dtype_(dtype) {}
 
-std::vector<Array> FusedOperation::get_arrays() const {
+std::vector<Array> FusedOperation::get_arrays(const std::vector<int>& bshape) const {
     std::vector<Array> out;
-    get_arrays(&out);
+    get_arrays(&out, bshape);
     return out;
 }
 
-void FusedOperation::get_arrays(std::vector<Array>* arrs) const {
+void FusedOperation::get_arrays(std::vector<Array>* arrs, const std::vector<int>& bshape) const {
     if (type_ == FUSED_OP_ARRAY_T) {
-        arrs->emplace_back(arr_);
+        arrs->emplace_back(arr_.reshape_broadcasted(bshape));
+    } else if (type_ == FUSED_OP_ALLREDUCE_T) {
+        for (auto& arg : arguments_) {
+            arg.get_arrays(arrs, arg.shape());
+        }
     } else {
         for (auto& arg : arguments_) {
-            arg.get_arrays(arrs);
+            arg.get_arrays(arrs, bshape);
         }
     }
 }
@@ -94,6 +99,26 @@ const std::vector<FusedOperation>& FusedOperation::arguments() const {
     return arguments_;
 }
 
+int FusedOperation::number_of_elements() const {
+    if (type_ == FUSED_OP_ARRAY_T) {
+        return arr_.number_of_elements();
+    } else if (type_ == FUSED_OP_SCALAR_T) {
+        return 1;
+    } else {
+        return hypercube_volume(shape());
+    }
+}
+
+std::vector<int> FusedOperation::shape() const {
+    auto res = bshape();
+    for (auto& val : res) {
+        if (val < 0) {
+            val = std::abs(val);
+        }
+    }
+    return res;
+}
+
 std::vector<int> FusedOperation::bshape() const {
     if (type_ == FUSED_OP_ARRAY_T) {
         return arr_.bshape();
@@ -145,12 +170,14 @@ int FusedOperation::type_to_min_rank(FUSED_OP_T type) {
 }
 
 int FusedOperation::computation_rank() const {
-    if (type_ == 0) {
+    if (type_ == FUSED_OP_ARRAY_T) {
         if (arr_.strides().empty()) {
             return 1;
         } else {
             return arr_.ndim();
         }
+    } else if (type_ == FUSED_OP_ALLREDUCE_T) {
+        return 1;
     } else {
         int rank = FusedOperation::type_to_min_rank(type_);
         for (auto& arg : arguments_) {
@@ -169,6 +196,13 @@ std::string FusedOperation::get_code_setup(memory::Device device, int rank, int&
         auto res = build_scalar_constructor(dtype_to_cpp_name(dtype_), rank, scalar_arg_idx);
         scalar_arg_idx += 1;
         return res;
+    } else if (type_ == FUSED_OP_ALLREDUCE_T) {
+        // change in supported rank at this stage:
+        utils::MS stream;
+        for (auto& arg : arguments_) {
+            stream << arg.get_code_setup(device, arg.computation_rank(), arg_idx, scalar_arg_idx);
+        }
+        return stream;
     } else {
         utils::MS stream;
         for (auto& arg : arguments_) {
@@ -386,17 +420,9 @@ FusedOperation::operator Assignable<Array> () const {
         bool dst_contiguous = out.strides().empty();
         auto fptr = fop.compile(operator_t, dst_contiguous, output_dtype, output_device);
 
-        auto arrays = fop.get_arrays();
+        auto arrays = fop.get_arrays(output_bshape);
         auto scalars = fop.get_scalars();
-        std::vector<Array> arrays_reshaped;
-
-        for (auto& arr : arrays) {
-            arrays_reshaped.emplace_back(
-                arr.reshape_broadcasted(output_bshape)
-            );
-        }
-
-        fptr(out, arrays_reshaped, scalars);
+        fptr(out, arrays, scalars);
     });
 }
 

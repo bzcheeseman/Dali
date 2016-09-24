@@ -19,6 +19,7 @@ class FusedOperation {
         FusedOperation(Array&& arr);
         FusedOperation(const Assignable<Array>& arr);
         FusedOperation(const double& scalar);
+        FusedOperation(const int& scalar);
         // A fused operation can be constructed using a type identifier
         // 0 -> no-op holding an Array
         // 1 -> no-op holding a scalar double
@@ -49,6 +50,10 @@ class FusedOperation {
         const FUSED_OP_T& type() const;
         // Get the current broadcastable shape of the operation
         std::vector<int> bshape() const;
+        // Get the current shape of the operation
+        std::vector<int> shape() const;
+        // Get the current size of the operation (if evaluated)
+        int number_of_elements() const;
         // Get the array held by this operation
         const Array& array() const;
         // Get name of the associated functor
@@ -89,9 +94,9 @@ class FusedOperation {
         std::string extra_code_;
 
         // list of all Arrays used in this operation (can contain repeats)
-        std::vector<Array> get_arrays() const;
+        std::vector<Array> get_arrays(const std::vector<int>& bshape) const;
         // Append the arrays used by this operation to `arrays`
-        void get_arrays(std::vector<Array>* arrays) const;
+        void get_arrays(std::vector<Array>* arrays, const std::vector<int>& bshape) const;
         // list of all scalars used in this operation (can contain repeats)
         std::vector<double> get_scalars() const;
         // Append the scalars used by this operation to `scalars`

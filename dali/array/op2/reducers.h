@@ -19,6 +19,8 @@ namespace op2 {
     // Otherwise the float-type remains unchanged.
     FusedOperation mean(const FusedOperation& x);
     FusedOperation L2_norm(const FusedOperation& x);
+    FusedOperation argmax(const FusedOperation& x);
+    FusedOperation argmin(const FusedOperation& x);
 } // namespace op2
 
 #endif

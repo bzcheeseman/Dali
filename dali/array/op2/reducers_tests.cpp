@@ -25,6 +25,20 @@ TEST(RTCTests, all_reduce_max_min) {
     EXPECT_EQ(expected_min, (int)Array(op2::min(a)));
 }
 
+TEST(RTCTests, all_reduce_argmax_argmin) {
+    auto a = Array::arange(-100, 42, 1, DTYPE_INT32);
+    int expected_argmax = 141, expected_argmin = 0;
+    EXPECT_EQ(expected_argmax, (int)Array(op2::argmax(a)));
+    EXPECT_EQ(expected_argmin, (int)Array(op2::argmin(a)));
+}
+
+TEST(RTCTests, all_reduce_argmax_argmin_4d) {
+    auto a = Array::arange({2, 3, 4, 5}, DTYPE_INT32);
+    int expected_argmax = 2 * 3 * 4 * 5 - 1, expected_argmin = 0;
+    EXPECT_EQ(expected_argmax, (int)Array(op2::argmax(a)));
+    EXPECT_EQ(expected_argmin, (int)Array(op2::argmin(a)));
+}
+
 TEST(RTCTests, all_reduce_mean) {
     auto a = Array::arange(1, 3, 1, DTYPE_INT32);
     double expected_mean = 1.5;

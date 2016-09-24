@@ -35,16 +35,20 @@ std::vector<Array> FusedOperation::get_arrays(const std::vector<int>& bshape) co
 }
 
 void FusedOperation::get_arrays(std::vector<Array>* arrs, const std::vector<int>& bshape) const {
-    if (type_ == FUSED_OP_ARRAY_T) {
-        arrs->emplace_back(arr_.reshape_broadcasted(bshape));
-    } else if (type_ == FUSED_OP_ALLREDUCE_T) {
-        for (auto& arg : arguments_) {
-            arg.get_arrays(arrs, arg.shape());
-        }
-    } else {
-        for (auto& arg : arguments_) {
-            arg.get_arrays(arrs, bshape);
-        }
+    switch (type_) {
+        case FUSED_OP_ARRAY_T:
+            arrs->emplace_back(arr_.reshape_broadcasted(bshape));
+            break;
+        case FUSED_OP_ALLREDUCE_T:
+        case FUSED_OP_ARGUMENT_ALLREDUCE_T:
+            for (auto& arg : arguments_) {
+                arg.get_arrays(arrs, arg.shape());
+            }
+            break;
+        default:
+            for (auto& arg : arguments_) {
+                arg.get_arrays(arrs, bshape);
+            }
     }
 }
 
@@ -65,14 +69,15 @@ void FusedOperation::get_scalars(std::vector<double>* arrs) const {
 }
 
 int FusedOperation::ndim() const {
-    if (type_ == FUSED_OP_ARRAY_T) {
-        return arr_.ndim();
-    } else if (type_ == FUSED_OP_SCALAR_T) {
-        return 0;
-    } else if (type_ == FUSED_OP_ALLREDUCE_T) {
-        return 0;
-    } else {
-        return arguments_[0].ndim();
+    switch (type_) {
+        case FUSED_OP_ARRAY_T:
+            return arr_.ndim();
+        case FUSED_OP_SCALAR_T:
+        case FUSED_OP_ALLREDUCE_T:
+        case FUSED_OP_ARGUMENT_ALLREDUCE_T:
+            return 0;
+        default:
+            return arguments_[0].ndim();
     }
 }
 
@@ -120,9 +125,11 @@ std::vector<int> FusedOperation::shape() const {
 }
 
 std::vector<int> FusedOperation::bshape() const {
-    if (type_ == FUSED_OP_ARRAY_T) {
+    if (type_ == FUSED_OP_ARRAY_T) {
         return arr_.bshape();
-    } else if (type_ == FUSED_OP_SCALAR_T || type_ ==  FUSED_OP_ALLREDUCE_T) {
+    } else if (type_ == FUSED_OP_SCALAR_T ||
+               type_ == FUSED_OP_ALLREDUCE_T ||
+               type_ == FUSED_OP_ARGUMENT_ALLREDUCE_T) {
         return {};
     } else {
         std::vector<std::vector<int>> bshapes;
@@ -170,13 +177,14 @@ int FusedOperation::type_to_min_rank(FUSED_OP_T type) {
 }
 
 int FusedOperation::computation_rank() const {
-    if (type_ == FUSED_OP_ARRAY_T) {
+    if (type_ == FUSED_OP_ARRAY_T) {
         if (arr_.strides().empty()) {
             return 1;
         } else {
             return arr_.ndim();
         }
-    } else if (type_ == FUSED_OP_ALLREDUCE_T) {
+    } else if (type_ == FUSED_OP_ALLREDUCE_T ||
+               type_ == FUSED_OP_ARGUMENT_ALLREDUCE_T) {
         return 1;
     } else {
         int rank = FusedOperation::type_to_min_rank(type_);
@@ -188,7 +196,7 @@ int FusedOperation::computation_rank() const {
 }
 
 std::string FusedOperation::get_code_setup(memory::Device device, int rank, int& arg_idx, int& scalar_arg_idx) const {
-    if (type_ == FUSED_OP_ARRAY_T) {
+    if (type_ == FUSED_OP_ARRAY_T) {
         auto res = build_views_constructor(dtype_to_cpp_name(dtype_), {arr_.strides().empty()}, rank, arg_idx);
         arg_idx += 1;
         return res;
@@ -196,7 +204,8 @@ std::string FusedOperation::get_code_setup(memory::Device device, int rank, int&
         auto res = build_scalar_constructor(dtype_to_cpp_name(dtype_), rank, scalar_arg_idx);
         scalar_arg_idx += 1;
         return res;
-    } else if (type_ == FUSED_OP_ALLREDUCE_T) {
+    } else if (type_ == FUSED_OP_ALLREDUCE_T ||
+               type_ == FUSED_OP_ARGUMENT_ALLREDUCE_T) {
         // change in supported rank at this stage:
         utils::MS stream;
         for (auto& arg : arguments_) {
@@ -231,11 +240,14 @@ std::string FusedOperation::get_call_code_nd(int& arg_idx, int& scalar_arg_idx) 
         auto res = utils::make_message("arg_", arg_idx, "_view");
         arg_idx += 1;
         return res;
-    } else if (type_ == FUSED_OP_SCALAR_T) {
+    } else if (type_ == FUSED_OP_SCALAR_T) {
         auto res = utils::make_message("scalar_", scalar_arg_idx);
         scalar_arg_idx += 1;
         return res;
-    } else if (type_ == FUSED_OP_KERNEL_T || type_ == FUSED_OP_ELEMENTWISE_T || type_ == FUSED_OP_ALLREDUCE_T) {
+    } else if (type_ == FUSED_OP_KERNEL_T ||
+               type_ == FUSED_OP_ELEMENTWISE_T ||
+               type_ == FUSED_OP_ALLREDUCE_T ||
+               type_ == FUSED_OP_ARGUMENT_ALLREDUCE_T) {
         utils::MS stream;
         if (type_ == FUSED_OP_ELEMENTWISE_T) {
             stream << "element_wise_kernel<" << functor_name_ << ", " << dtype_to_cpp_name(dtype_) << ">(";
@@ -245,6 +257,11 @@ std::string FusedOperation::get_call_code_nd(int& arg_idx, int& scalar_arg_idx) 
             ASSERT2(!arguments_.empty(), "all_reduce operation must have at least one argument.");
             int all_reduce_comp_rank = arguments_[0].computation_rank();
             stream << "all_reduce_kernel_" << all_reduce_comp_rank << "d<" << functor_name_
+                   << ", " << dtype_to_cpp_name(dtype_) << ">(";
+        } else if (type_ == FUSED_OP_ARGUMENT_ALLREDUCE_T) {
+            ASSERT2(!arguments_.empty(), "argument_all_reduce operation must have at least one argument.");
+            int all_reduce_comp_rank = arguments_[0].computation_rank();
+            stream << "argument_all_reduce_kernel_" << all_reduce_comp_rank << "d<" << functor_name_
                    << ", " << dtype_to_cpp_name(dtype_) << ">(";
         }
         int args_called = 0;
@@ -258,7 +275,7 @@ std::string FusedOperation::get_call_code_nd(int& arg_idx, int& scalar_arg_idx) 
         stream << ")";
         return stream;
     } else {
-        ASSERT2(false, utils::MS() << "Unknown operation type (" << type_ << "). Use 0, 1, 2 or 3.");
+        ASSERT2(false, utils::MS() << "Unknown operation type (" << type_ << "). Use 0, 1, 2 3, 4, or 5.");
     }
 }
 
@@ -280,6 +297,7 @@ class GeneratedCodeTracker {
     private:
         std::unordered_set<int> elementwise_kernels_;
         std::unordered_set<int> all_reduce_kernels_;
+        std::unordered_set<int> argument_all_reduce_kernels_;
 
     public:
         bool is_elementwise_kernel_generated(int size) const {
@@ -288,11 +306,17 @@ class GeneratedCodeTracker {
         bool is_all_reduce_kernel_generated(int size) const {
             return all_reduce_kernels_.find(size) != all_reduce_kernels_.end();
         }
+        bool is_argument_all_reduce_kernel_generated(int size) const {
+            return argument_all_reduce_kernels_.find(size) != all_reduce_kernels_.end();
+        }
         void mark_elementwise_kernel_generated(int size) {
             elementwise_kernels_.insert(size);
         }
         void mark_all_reduce_kernel_generated(int size) {
             all_reduce_kernels_.insert(size);
+        }
+        void mark_argument_all_reduce_kernel_generated(int size) {
+            argument_all_reduce_kernels_.insert(size);
         }
 };
 
@@ -317,6 +341,14 @@ void fused_operation_get_extra_code(const FusedOperation& fop,
             create_all_reduce_kernel_caller(fop.arguments()[0].computation_rank(), fop.computation_rank())
         );
         tracker->mark_all_reduce_kernel_generated(fop.arguments()[0].computation_rank());
+    }
+    if (fop.type() == FusedOperation::FUSED_OP_ARGUMENT_ALLREDUCE_T &&
+        !tracker->is_argument_all_reduce_kernel_generated(fop.arguments()[0].computation_rank())) {
+        (*extra_code_ptr) = (
+            (*extra_code_ptr) +
+            create_argument_all_reduce_kernel_caller(fop.arguments()[0].computation_rank(), fop.computation_rank())
+        );
+        tracker->mark_argument_all_reduce_kernel_generated(fop.arguments()[0].computation_rank());
     }
     for (const auto& arg : fop.arguments()) {
         fused_operation_get_extra_code(arg, tracker, extra_code_ptr);
@@ -488,6 +520,16 @@ namespace op2 {
     FusedOperation all_reduce(const FusedOperation& a,
                               const std::string& reducer_name) {
         return all_reduce(a, reducer_name, a.dtype());
+    }
+
+    FusedOperation argument_all_reduce(const FusedOperation& a,
+                                       const std::string& reducer_name) {
+        return FusedOperation(
+            FusedOperation::FUSED_OP_ARGUMENT_ALLREDUCE_T,
+            reducer_name,
+            {a},
+            DTYPE_INT32
+        );
     }
 
     FusedOperation elementwise(

@@ -11,7 +11,8 @@ class FusedOperation {
             FUSED_OP_SCALAR_T = 1,
             FUSED_OP_ELEMENTWISE_T = 2,
             FUSED_OP_KERNEL_T = 3,
-            FUSED_OP_ALLREDUCE_T = 4
+            FUSED_OP_ALLREDUCE_T = 4,
+            FUSED_OP_ARGUMENT_ALLREDUCE_T = 5
         };
 
         // A fused operation taking only an array is no-op
@@ -25,6 +26,8 @@ class FusedOperation {
         // 1 -> no-op holding a scalar double
         // 2 -> elementwise pair kernel
         // 3 -> binary_kernel
+        // 4 -> all reduce
+        // 5 -> argument all reduce
         FusedOperation(
             FUSED_OP_T type,
             const std::string& functor_name,
@@ -133,6 +136,9 @@ namespace op2 {
                               DType return_type);
     FusedOperation all_reduce(const FusedOperation& a,
                               const std::string& reducer_name);
+    FusedOperation argument_all_reduce(const FusedOperation& a,
+                                       const std::string& reducer_name);
+
     // elementwise kernel given by name.
     // will assume that return type of kernel
     // is given by the `dtype` argument.

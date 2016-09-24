@@ -26,4 +26,10 @@ namespace op2 {
         if (sum_op.dtype() == DTYPE_INT32) sum_op = astype(sum_op, DTYPE_DOUBLE);
         return op2::sqrt(sum_op);
     }
+    FusedOperation argmax(const FusedOperation& x) {
+        return argument_all_reduce(x, "reducers::maximum");
+    }
+    FusedOperation argmin(const FusedOperation& x) {
+        return argument_all_reduce(x, "reducers::minimum");
+    }
 }

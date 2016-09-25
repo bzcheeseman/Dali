@@ -173,7 +173,8 @@ hash_t get_operation_hash(const FusedOperation& op) {
         return utils::get_hash(
             std::make_tuple(
                 op.type(),
-                op.array().strides().empty()
+                op.array().strides().empty(),
+                op.computation_rank()
             )
         );
     } else if (op.type() == FusedOperation::FUSED_OP_SCALAR_T) {

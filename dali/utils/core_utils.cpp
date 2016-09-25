@@ -449,7 +449,7 @@ namespace utils {
         } else {
             got_home_dir = true;
         }
-        if (got_home_dir) {
+        if (got_home_dir) {
             return std::string(homeDir) + path.substr(1);
         } else {
             // path could not be expanded

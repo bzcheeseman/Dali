@@ -36,11 +36,11 @@ std::vector<Array> FusedOperation::get_arrays(const std::vector<int>& bshape, co
 
 
 void FusedOperation::get_arrays(std::vector<Array>* arrs, const std::vector<int>& bshape, const int& rank) const {
-    switch (type_) {
+    switch (type_) {
         case FUSED_OP_ARRAY_T:
             if (rank == arr_.ndim()) {
                 arrs->emplace_back(arr_.reshape_broadcasted(bshape));
-            } else if (rank == 1) {
+            } else if (rank == 1) {
                 arrs->emplace_back(arr_.reshape_broadcasted(bshape).copyless_ravel());
             } else {
                 arrs->emplace_back(arr_.reshape_broadcasted(bshape).copyless_right_fit_ndim(rank));
@@ -130,7 +130,7 @@ const std::vector<FusedOperation>& FusedOperation::arguments() const {
 int FusedOperation::number_of_elements() const {
     if (type_ == FUSED_OP_ARRAY_T) {
         return arr_.number_of_elements();
-    } else if (type_ == FUSED_OP_SCALAR_T) {
+    } else if (type_ == FUSED_OP_SCALAR_T) {
         return 1;
     } else {
         return hypercube_volume(shape());
@@ -148,13 +148,13 @@ std::vector<int> FusedOperation::shape() const {
 }
 
 std::vector<int> FusedOperation::bshape() const {
-    if (type_ == FUSED_OP_ARRAY_T) {
+    if (type_ == FUSED_OP_ARRAY_T) {
         return arr_.bshape();
     } else if (type_ == FUSED_OP_SCALAR_T ||
                type_ == FUSED_OP_ALLREDUCE_T ||
-               type_ == FUSED_OP_ARGUMENT_ALLREDUCE_T) {
+               type_ == FUSED_OP_ARGUMENT_ALLREDUCE_T) {
         return {};
-    } else if (type_ == FUSED_OP_AXISREDUCE_LOW_DIM_T ||
+    } else if (type_ == FUSED_OP_AXISREDUCE_LOW_DIM_T ||
                type_ == FUSED_OP_ARGUMENT_AXISREDUCE_LOW_DIM_T) {
         auto res = arguments_[0].bshape();
         res.erase(res.begin() + res.size() - 1, res.end());
@@ -205,7 +205,7 @@ int FusedOperation::type_to_min_rank(FUSED_OP_T type) {
 }
 
 int FusedOperation::computation_rank() const {
-    if (type_ == FUSED_OP_ARRAY_T) {
+    if (type_ == FUSED_OP_ARRAY_T) {
         if (arr_.strides().empty()) {
             return 1;
         } else {
@@ -256,14 +256,14 @@ void FusedOperation::collapse_dimension_with_parent(const int& dim) {
         newshape[dim - 1] = newshape[dim] * newshape[dim - 1];
         newshape.erase(newshape.begin() + dim);
         arr_ = arr_.copyless_reshape(newshape);
-    } else if (type_ == FUSED_OP_ALLREDUCE_T ||
+    } else if (type_ == FUSED_OP_ALLREDUCE_T ||
                type_ == FUSED_OP_ARGUMENT_ALLREDUCE_T) {
     } else if (type_ == FUSED_OP_AXISREDUCE_LOW_DIM_T ||
                type_ == FUSED_OP_ARGUMENT_AXISREDUCE_LOW_DIM_T) {
         for (auto& arg : arguments_) {
             arg.collapse_dimension_with_parent(dim - 1);
         }
-    } else {
+    } else {
         for (auto& arg : arguments_) {
             arg.collapse_dimension_with_parent(dim);
         }
@@ -273,7 +273,7 @@ void FusedOperation::collapse_dimension_with_parent(const int& dim) {
 void FusedOperation::transpose(const std::vector<int>& axes) {
     if (type_ == FUSED_OP_ARRAY_T) {
         arr_ = arr_.transpose(axes);
-    } else if (type_ == FUSED_OP_ALLREDUCE_T ||
+    } else if (type_ == FUSED_OP_ALLREDUCE_T ||
                type_ == FUSED_OP_ARGUMENT_ALLREDUCE_T) {
     } else if (type_ == FUSED_OP_AXISREDUCE_LOW_DIM_T ||
                type_ == FUSED_OP_ARGUMENT_AXISREDUCE_LOW_DIM_T) {
@@ -283,7 +283,7 @@ void FusedOperation::transpose(const std::vector<int>& axes) {
         for (auto& arg : arguments_) {
             arg.transpose(extended_axes);
         }
-    } else {
+    } else {
         for (auto& arg : arguments_) {
             arg.transpose(axes);
         }
@@ -292,7 +292,7 @@ void FusedOperation::transpose(const std::vector<int>& axes) {
 
 
 std::string FusedOperation::get_code_setup(memory::Device device, int rank, int& arg_idx, int& scalar_arg_idx) const {
-    if (type_ == FUSED_OP_ARRAY_T) {
+    if (type_ == FUSED_OP_ARRAY_T) {
         auto res = build_views_constructor(dtype_to_cpp_name(dtype_), {arr_.strides().empty()}, rank, arg_idx);
         arg_idx += 1;
         return res;
@@ -362,7 +362,7 @@ std::string FusedOperation::get_call_code_nd(int& arg_idx, int& scalar_arg_idx) 
         utils::MS stream;
         if (type_ == FUSED_OP_ELEMENTWISE_T) {
             stream << "element_wise_kernel<" << functor_name_ << ", " << dtype_to_cpp_name(dtype_) << ">(";
-        } else if (type_ == FUSED_OP_KERNEL_T) {
+        } else if (type_ == FUSED_OP_KERNEL_T) {
             stream << functor_name_ << "(";
         } else if (type_ == FUSED_OP_ALLREDUCE_T) {
             ASSERT2(!arguments_.empty(), "all_reduce operation must have at least one argument.");
@@ -604,7 +604,7 @@ bool FusedOperation::dtype_compatible(const FusedOperation& a, const FusedOperat
 bool FusedOperation::ndim_compatible(const FusedOperation& a, const FusedOperation& b) {
     int a_ndim = a.ndim();
     int b_ndim = b.ndim();
-    return a_ndim == 0 || b_ndim == 0 || a_ndim == b_ndim;
+    return a_ndim == 0 || b_ndim == 0 || a_ndim == b_ndim;
 }
 
 DType FusedOperation::type_promotion(const FusedOperation& a, const FusedOperation& b) {
@@ -619,7 +619,7 @@ DType FusedOperation::type_promotion(const FusedOperation& a, const FusedOperati
         } else {
             return DTYPE_INT32;
         }
-    } else if (a_scalar) {
+    } else if (a_scalar) {
         return b.dtype_;
     } else {
         return a.dtype_;
@@ -665,7 +665,7 @@ namespace op2 {
             if (axis < 0) {
                 if (ndim == 0) {
                     axis = axis + 1;
-                } else {
+                } else {
                     axis = axis + ndim;
                 }
             }
@@ -731,7 +731,7 @@ namespace op2 {
                 } else {
                     if (res.dimension_is_contiguous_with_parent(collapsed_ndim)) {
                         res.collapse_dimension_with_parent(collapsed_ndim);
-                    } else {
+                    } else {
                         res = FusedOperation(
                             FusedOperation::FUSED_OP_AXISREDUCE_LOW_DIM_T,
                             reducer_name,
@@ -823,7 +823,7 @@ namespace op2 {
         const std::string& functor_name) {
 
         // perform type promotion:
-        if (a.dtype() != b.dtype()) {
+        if (a.dtype() != b.dtype()) {
             auto new_type = FusedOperation::type_promotion(a, b);
             if (a.dtype() == new_type) {
                 // b's dtype is being promoted
@@ -859,7 +859,7 @@ namespace op2 {
         const std::string& kernel_code
     ) {
         // perform type promotion:
-        if (a.dtype() != b.dtype()) {
+        if (a.dtype() != b.dtype()) {
             auto new_type = FusedOperation::type_promotion(a, b);
             if (a.dtype() == new_type) {
                 // b's dtype is being promoted

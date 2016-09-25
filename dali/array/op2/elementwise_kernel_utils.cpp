@@ -10,7 +10,7 @@ namespace {
             template_data_stream << "C" << (i+1);
             if (i + 1 != num_args) {
                 template_data_stream << ", ";
-            } else {
+            } else {
                 template_data_stream << ">";
             }
         }
@@ -53,7 +53,7 @@ namespace {
                                  << generate_elementwise_kernel_argument(i);
             if (i + 1 != num_args) {
                 template_data_stream << ",\n";
-            } else {
+            } else {
                 template_data_stream << ")";
             }
         }
@@ -79,7 +79,7 @@ namespace {
                                  << "_(" << generate_elementwise_kernel_argument(i) << ")";
             if (i + 1 != num_args) {
                 template_data_stream << ", ";
-            } else {
+            } else {
                 template_data_stream << " {}\n";
             }
         }

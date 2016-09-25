@@ -159,7 +159,7 @@ std::vector<int> get_function_bshape(const std::vector<std::vector<int>>& bshape
     std::vector<int> output_bshape = bshapes[idx_max];
 
     for (int dim = 0; dim < ndim_max; dim++) {
-        for (const auto& other_bshape : bshapes) {
+        for (const auto& other_bshape : bshapes) {
             if (other_bshape.size() == 0) continue;
             ASSERT2(other_bshape.size() == output_bshape.size(),
                 "inputs must be scalars or have the same dimensionality."

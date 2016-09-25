@@ -42,7 +42,7 @@ namespace std {
     };
 }
 
-namespace utils {
+namespace utils {
     template<typename T>
     size_t get_hash(const T& obj) {
         return std::hash<T>()(obj);

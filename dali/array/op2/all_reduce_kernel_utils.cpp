@@ -22,7 +22,7 @@ namespace {
         utils::MS stream;
         for (int i = 0; i < nargs; i++) {
             stream << generate_all_reduce_kernel_argument(i + 1);
-            if (i + 1 != nargs) {
+            if (i + 1 != nargs) {
                 stream << ", ";
             }
         }

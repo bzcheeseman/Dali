@@ -34,7 +34,7 @@ namespace op2 {
         return elementwise(a, grad, "functor::prelu_backward_weights");
     }
 
-    FusedOperation prelu_backward_inputs(const FusedOperation& a, const FusedOperation& weights) {
+    FusedOperation prelu_backward_inputs(const FusedOperation& a, const FusedOperation& weights) {
         return elementwise(a, weights, "functor::prelu_backward_inputs");
     }
 

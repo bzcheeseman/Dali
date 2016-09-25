@@ -28,12 +28,7 @@ std::string build_views_constructor(
                << "_view = make"
                << (contig ? "_" : "_strided_")
                << "view<" << cpp_type << ", "
-               << rank << ">("
-               << insert_auto_reshaped_variable(
-                    utils::make_message("arguments[", start_arg, "]"),
-                    rank
-                  )
-               << ");\n";
+               << rank << ">(arguments[" << start_arg << "]);\n";
         start_arg += 1;
     }
     return stream;

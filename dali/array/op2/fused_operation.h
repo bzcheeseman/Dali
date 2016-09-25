@@ -12,7 +12,9 @@ class FusedOperation {
             FUSED_OP_ELEMENTWISE_T = 2,
             FUSED_OP_KERNEL_T = 3,
             FUSED_OP_ALLREDUCE_T = 4,
-            FUSED_OP_ARGUMENT_ALLREDUCE_T = 5
+            FUSED_OP_ARGUMENT_ALLREDUCE_T = 5,
+            FUSED_OP_AXISREDUCE_LOW_DIM_T = 6,
+            FUSED_OP_ARGUMENT_AXISREDUCE_LOW_DIM_T = 7
         };
 
         // A fused operation taking only an array is no-op
@@ -28,6 +30,7 @@ class FusedOperation {
         // 3 -> binary_kernel
         // 4 -> all reduce
         // 5 -> argument all reduce
+        // 6 -> axes all reduce
         FusedOperation(
             FUSED_OP_T type,
             const std::string& functor_name,
@@ -59,6 +62,7 @@ class FusedOperation {
         int number_of_elements() const;
         // Get the array held by this operation
         const Array& array() const;
+        const double& scalar() const;
         // Get name of the associated functor
         const std::string& functor_name() const;
         // Get support code for this operation
@@ -67,6 +71,10 @@ class FusedOperation {
         const std::vector<FusedOperation>& arguments() const;
         // Find the lowest rank that allows computation of this operation
         int computation_rank() const;
+
+        bool dimension_is_contiguous_with_parent(const int& dim) const;
+        void collapse_dimension_with_parent(const int& dim);
+        void transpose(const std::vector<int>& axes);
         // Compile or load a callable function that runs the operation
         // parametrized by the operator used, the contiguity of the output,
         // the return type, and the device
@@ -97,9 +105,9 @@ class FusedOperation {
         std::string extra_code_;
 
         // list of all Arrays used in this operation (can contain repeats)
-        std::vector<Array> get_arrays(const std::vector<int>& bshape) const;
+        std::vector<Array> get_arrays(const std::vector<int>& bshape, const int& rank) const;
         // Append the arrays used by this operation to `arrays`
-        void get_arrays(std::vector<Array>* arrays, const std::vector<int>& bshape) const;
+        void get_arrays(std::vector<Array>* arrays, const std::vector<int>& bshape, const int& rank) const;
         // list of all scalars used in this operation (can contain repeats)
         std::vector<double> get_scalars() const;
         // Append the scalars used by this operation to `scalars`
@@ -138,6 +146,16 @@ namespace op2 {
                               const std::string& reducer_name);
     FusedOperation argument_all_reduce(const FusedOperation& a,
                                        const std::string& reducer_name);
+    FusedOperation axis_reduce(const FusedOperation& a,
+                               const std::string& reducer_name,
+                               const std::vector<int>& axes,
+                               DType return_type);
+    FusedOperation axis_reduce(const FusedOperation& a,
+                               const std::string& reducer_name,
+                               const std::vector<int>& axes);
+    FusedOperation argument_axis_reduce(const FusedOperation& a,
+                                        const std::string& reducer_name,
+                                        const int& axis);
 
     // elementwise kernel given by name.
     // will assume that return type of kernel

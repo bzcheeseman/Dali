@@ -2,6 +2,7 @@
 
 #include "dali/array/op2/reducers.h"
 #include "dali/array/op2/binary.h"
+#include "dali/array/op.h"
 #include "dali/array/op2/fused_operation.h"
 
 TEST(RTCTests, all_reduce_sum) {
@@ -30,6 +31,17 @@ TEST(RTCTests, all_reduce_argmax_argmin) {
     int expected_argmax = 141, expected_argmin = 0;
     EXPECT_EQ(expected_argmax, (int)Array(op2::argmax(a)));
     EXPECT_EQ(expected_argmin, (int)Array(op2::argmin(a)));
+}
+
+TEST(RTCTests, axis_reduce_argmax_argmin) {
+    auto a = Array::arange({4, 5}, DTYPE_INT32);
+    EXPECT_TRUE(Array::equals(Array::ones({5}, DTYPE_INT32) * 3, op2::argmax(a, 0)));
+    EXPECT_TRUE(Array::equals(Array::ones({4}, DTYPE_INT32) * 4, op2::argmax(a, 1)));
+
+    a = a * -1.0;
+
+    EXPECT_TRUE(Array::equals(Array::ones({5}, DTYPE_INT32) * 3, op2::argmin(a, 0)));
+    EXPECT_TRUE(Array::equals(Array::ones({4}, DTYPE_INT32) * 4, op2::argmin(a, 1)));
 }
 
 TEST(RTCTests, all_reduce_argmax_argmin_4d) {
@@ -86,4 +98,30 @@ TEST(RTCTests, all_reduce_mixed_sum) {
     );
     auto operation = op2::add(2, (op2::sub(op2::sum(a), op2::max(b))));
     EXPECT_EQ(expected_result, (int)Array(operation));
+}
+
+TEST(RTCTests, axis_reduce_sum_low_dim) {
+    auto a = Array::ones({2, 3, 4, 5}, DTYPE_INT32);
+    // same kernel is used in all these cases:
+    EXPECT_TRUE(Array::equals(Array::ones({2, 3, 4}, DTYPE_INT32) * 5, op2::sum(a, {-1})));
+    EXPECT_TRUE(Array::equals(Array::ones({2, 3}, DTYPE_INT32) * 20, op2::sum(a, {-2, -1})));
+    EXPECT_TRUE(Array::equals(Array::ones({2}, DTYPE_INT32) * 60, op2::sum(a, {-3, -2, -1})));
+}
+
+TEST(RTCTests, axis_reduce_sum_high_dim) {
+    auto a = Array::ones({2, 3, 4, 5}, DTYPE_INT32);
+    // same kernel is used in all these cases:
+    EXPECT_TRUE(Array::equals(Array::ones({3, 4, 5}, DTYPE_INT32) * 2, op2::sum(a, {0})));
+    EXPECT_TRUE(Array::equals(Array::ones({4, 5}, DTYPE_INT32) * 6, op2::sum(a, {1, 0})));
+    EXPECT_TRUE(Array::equals(Array::ones({5}, DTYPE_INT32) * 24, op2::sum(a, {2, 1, 0})));
+}
+
+TEST(RTCTests, axis_reduce_sum_middle_dim) {
+    auto a = Array::ones({2, 3}, DTYPE_INT32);
+    EXPECT_TRUE(Array::equals(Array::ones({3}, DTYPE_INT32) * 2, op2::sum(a, {0})));
+    EXPECT_TRUE(Array::equals(Array::ones({2}, DTYPE_INT32) * 3, op2::sum(a, {1})));
+    a = Array::ones({2, 3, 4}, DTYPE_INT32);
+    EXPECT_TRUE(Array::equals(Array::ones({3, 4}, DTYPE_INT32) * 2, op2::sum(a, {0})));
+    EXPECT_TRUE(Array::equals(Array::ones({2, 4}, DTYPE_INT32) * 3, op2::sum(a, {1})));
+    EXPECT_TRUE(Array::equals(Array::ones({2, 3}, DTYPE_INT32) * 4, op2::sum(a, {2})));
 }

@@ -25,6 +25,30 @@ struct Shape {
         }
     }
 
+    XINLINE Shape<num_dims + 1> expand_dims(int pos) const {
+        Shape<num_dims + 1> new_shape;
+        int internal_i = 0;
+        #pragma unroll
+        for (int i = 0; i < num_dims + 1; ++i) {
+            if (i != pos) {
+                new_shape[i] = sizes_[internal_i];
+                ++internal_i;
+            } else {
+                new_shape[i] = 1;
+            }
+        }
+        return new_shape;
+    }
+
+    XINLINE Shape<num_dims - 1> axis_reduced_shape() const {
+        Shape<num_dims - 1> new_shape;
+        #pragma unroll
+        for (int i = 0; i < num_dims - 1; ++i) {
+            new_shape[i] = sizes_[i];
+        }
+        return new_shape;
+    }
+
     XINLINE Shape(std::initializer_list<int> sizes) {
         int i = 0;
         for (auto iter = sizes.begin(); iter != sizes.end(); iter++) {
@@ -34,7 +58,7 @@ struct Shape {
     }
 
     XINLINE Shape(const Shape<num_dims>& other) {
-        for (int i = 0; i < num_dims; i++) {
+        for (int i = 0; i < num_dims; ++i) {
             sizes_[i] = other.sizes_[i];
         }
     }

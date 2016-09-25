@@ -28,26 +28,43 @@ FusedOperation::FusedOperation(FUSED_OP_T type,
                                DType dtype) :
         type_(type), arguments_(arguments), functor_name_(functor_name), extra_code_(extra_code), dtype_(dtype) {}
 
-std::vector<Array> FusedOperation::get_arrays(const std::vector<int>& bshape) const {
+std::vector<Array> FusedOperation::get_arrays(const std::vector<int>& bshape, const int& rank) const {
     std::vector<Array> out;
-    get_arrays(&out, bshape);
+    get_arrays(&out, bshape, rank);
     return out;
 }
 
-void FusedOperation::get_arrays(std::vector<Array>* arrs, const std::vector<int>& bshape) const {
+
+void FusedOperation::get_arrays(std::vector<Array>* arrs, const std::vector<int>& bshape, const int& rank) const {
     switch (type_) {
         case FUSED_OP_ARRAY_T:
-            arrs->emplace_back(arr_.reshape_broadcasted(bshape));
+            if (rank == arr_.ndim()) {
+                arrs->emplace_back(arr_.reshape_broadcasted(bshape));
+            } else if (rank == 1) {
+                arrs->emplace_back(arr_.reshape_broadcasted(bshape).copyless_ravel());
+            } else {
+                arrs->emplace_back(arr_.reshape_broadcasted(bshape).copyless_right_fit_ndim(rank));
+            }
             break;
         case FUSED_OP_ALLREDUCE_T:
         case FUSED_OP_ARGUMENT_ALLREDUCE_T:
             for (auto& arg : arguments_) {
-                arg.get_arrays(arrs, arg.shape());
+                arg.get_arrays(arrs, arg.shape(), arg.computation_rank());
+            }
+            break;
+        case FUSED_OP_AXISREDUCE_LOW_DIM_T:
+        case FUSED_OP_ARGUMENT_AXISREDUCE_LOW_DIM_T:
+            for (auto& arg : arguments_) {
+                arg.get_arrays(
+                    arrs,
+                    arg.shape(),
+                    rank + 1
+                );
             }
             break;
         default:
             for (auto& arg : arguments_) {
-                arg.get_arrays(arrs, bshape);
+                arg.get_arrays(arrs, bshape, rank);
             }
     }
 }
@@ -76,6 +93,9 @@ int FusedOperation::ndim() const {
         case FUSED_OP_ALLREDUCE_T:
         case FUSED_OP_ARGUMENT_ALLREDUCE_T:
             return 0;
+        case FUSED_OP_AXISREDUCE_LOW_DIM_T:
+        case FUSED_OP_ARGUMENT_AXISREDUCE_LOW_DIM_T:
+            return arguments_[0].ndim() - 1;
         default:
             return arguments_[0].ndim();
     }
@@ -93,6 +113,9 @@ const FusedOperation::FUSED_OP_T& FusedOperation::type() const {
 }
 const Array& FusedOperation::array() const {
     return arr_;
+}
+const double& FusedOperation::scalar() const {
+    return scalar_;
 }
 const std::string& FusedOperation::functor_name() const {
     return functor_name_;
@@ -131,6 +154,11 @@ std::vector<int> FusedOperation::bshape() const {
                type_ == FUSED_OP_ALLREDUCE_T ||
                type_ == FUSED_OP_ARGUMENT_ALLREDUCE_T) {
         return {};
+    } else if (type_ == FUSED_OP_AXISREDUCE_LOW_DIM_T ||
+               type_ == FUSED_OP_ARGUMENT_AXISREDUCE_LOW_DIM_T) {
+        auto res = arguments_[0].bshape();
+        res.erase(res.begin() + res.size() - 1, res.end());
+        return res;
     } else {
         std::vector<std::vector<int>> bshapes;
         for (const auto& el : arguments_) {
@@ -186,6 +214,9 @@ int FusedOperation::computation_rank() const {
     } else if (type_ == FUSED_OP_ALLREDUCE_T ||
                type_ == FUSED_OP_ARGUMENT_ALLREDUCE_T) {
         return 1;
+    } else if (type_ == FUSED_OP_AXISREDUCE_LOW_DIM_T ||
+               type_ == FUSED_OP_ARGUMENT_AXISREDUCE_LOW_DIM_T) {
+        return std::max(2, arguments_[0].computation_rank()) - 1;
     } else {
         int rank = FusedOperation::type_to_min_rank(type_);
         for (auto& arg : arguments_) {
@@ -194,6 +225,71 @@ int FusedOperation::computation_rank() const {
         return rank;
     }
 }
+
+bool FusedOperation::dimension_is_contiguous_with_parent(const int& dim) const {
+    if (type_ == FUSED_OP_ARRAY_T) {
+        // TODO: make this check look at normalized strides
+        // where possible (ensures that less code gets compiled)
+        return arr_.strides().empty();
+    } else if (type_ == FUSED_OP_ALLREDUCE_T ||
+               type_ == FUSED_OP_ARGUMENT_ALLREDUCE_T) {
+        return false;
+    } else if (type_ == FUSED_OP_AXISREDUCE_LOW_DIM_T ||
+               type_ == FUSED_OP_ARGUMENT_AXISREDUCE_LOW_DIM_T) {
+        bool is_contig = true;
+        for (auto& arg : arguments_) {
+            is_contig = is_contig && arg.dimension_is_contiguous_with_parent(dim - 1);
+        }
+        return is_contig;
+    } else {
+        bool is_contig = true;
+        for (auto& arg : arguments_) {
+            is_contig = is_contig && arg.dimension_is_contiguous_with_parent(dim);
+        }
+        return is_contig;
+    }
+}
+
+void FusedOperation::collapse_dimension_with_parent(const int& dim) {
+    if (type_ == FUSED_OP_ARRAY_T) {
+        std::vector<int> newshape = arr_.shape();
+        newshape[dim - 1] = newshape[dim] * newshape[dim - 1];
+        newshape.erase(newshape.begin() + dim);
+        arr_ = arr_.copyless_reshape(newshape);
+    } else if (type_ == FUSED_OP_ALLREDUCE_T ||
+               type_ == FUSED_OP_ARGUMENT_ALLREDUCE_T) {
+    } else if (type_ == FUSED_OP_AXISREDUCE_LOW_DIM_T ||
+               type_ == FUSED_OP_ARGUMENT_AXISREDUCE_LOW_DIM_T) {
+        for (auto& arg : arguments_) {
+            arg.collapse_dimension_with_parent(dim - 1);
+        }
+    } else {
+        for (auto& arg : arguments_) {
+            arg.collapse_dimension_with_parent(dim);
+        }
+    }
+}
+
+void FusedOperation::transpose(const std::vector<int>& axes) {
+    if (type_ == FUSED_OP_ARRAY_T) {
+        arr_ = arr_.transpose(axes);
+    } else if (type_ == FUSED_OP_ALLREDUCE_T ||
+               type_ == FUSED_OP_ARGUMENT_ALLREDUCE_T) {
+    } else if (type_ == FUSED_OP_AXISREDUCE_LOW_DIM_T ||
+               type_ == FUSED_OP_ARGUMENT_AXISREDUCE_LOW_DIM_T) {
+        auto extended_axes = axes;
+        // ensure last axis does not move from current position:
+        extended_axes.emplace_back(extended_axes.size());
+        for (auto& arg : arguments_) {
+            arg.transpose(extended_axes);
+        }
+    } else {
+        for (auto& arg : arguments_) {
+            arg.transpose(axes);
+        }
+    }
+}
+
 
 std::string FusedOperation::get_code_setup(memory::Device device, int rank, int& arg_idx, int& scalar_arg_idx) const {
     if (type_ == FUSED_OP_ARRAY_T) {
@@ -210,6 +306,19 @@ std::string FusedOperation::get_code_setup(memory::Device device, int rank, int&
         utils::MS stream;
         for (auto& arg : arguments_) {
             stream << arg.get_code_setup(device, arg.computation_rank(), arg_idx, scalar_arg_idx);
+        }
+        return stream;
+    } else if (type_ == FUSED_OP_AXISREDUCE_LOW_DIM_T ||
+               type_ == FUSED_OP_ARGUMENT_AXISREDUCE_LOW_DIM_T) {
+        // change in supported rank at this stage:
+        utils::MS stream;
+        for (auto& arg : arguments_) {
+            stream << arg.get_code_setup(
+                device,
+                rank + 1,
+                arg_idx,
+                scalar_arg_idx
+            );
         }
         return stream;
     } else {
@@ -247,7 +356,9 @@ std::string FusedOperation::get_call_code_nd(int& arg_idx, int& scalar_arg_idx) 
     } else if (type_ == FUSED_OP_KERNEL_T ||
                type_ == FUSED_OP_ELEMENTWISE_T ||
                type_ == FUSED_OP_ALLREDUCE_T ||
-               type_ == FUSED_OP_ARGUMENT_ALLREDUCE_T) {
+               type_ == FUSED_OP_ARGUMENT_ALLREDUCE_T ||
+               type_ == FUSED_OP_AXISREDUCE_LOW_DIM_T ||
+               type_ == FUSED_OP_ARGUMENT_AXISREDUCE_LOW_DIM_T) {
         utils::MS stream;
         if (type_ == FUSED_OP_ELEMENTWISE_T) {
             stream << "element_wise_kernel<" << functor_name_ << ", " << dtype_to_cpp_name(dtype_) << ">(";
@@ -263,6 +374,16 @@ std::string FusedOperation::get_call_code_nd(int& arg_idx, int& scalar_arg_idx) 
             int all_reduce_comp_rank = arguments_[0].computation_rank();
             stream << "argument_all_reduce_kernel_" << all_reduce_comp_rank << "d<" << functor_name_
                    << ", " << dtype_to_cpp_name(dtype_) << ">(";
+        } else if (type_ == FUSED_OP_AXISREDUCE_LOW_DIM_T) {
+            ASSERT2(!arguments_.empty(), "axis_reduce operation must have at least one argument.");
+            int axis_reduce_comp_rank = std::max(2, arguments_[0].computation_rank());
+            stream << "axis_reduce_kernel_" << axis_reduce_comp_rank << "d<" << functor_name_
+                   << ", " << dtype_to_cpp_name(dtype_) << ">(";
+        } else if (type_ == FUSED_OP_ARGUMENT_AXISREDUCE_LOW_DIM_T) {
+            ASSERT2(!arguments_.empty(), "argument_axis_reduce operation must have at least one argument.");
+            int axis_reduce_comp_rank = std::max(2, arguments_[0].computation_rank());
+            stream << "argument_axis_reduce_kernel_" << axis_reduce_comp_rank << "d<" << functor_name_
+                   << ", " << dtype_to_cpp_name(dtype_) << ">(";
         }
         int args_called = 0;
         for (auto& arg : arguments_) {
@@ -275,7 +396,9 @@ std::string FusedOperation::get_call_code_nd(int& arg_idx, int& scalar_arg_idx) 
         stream << ")";
         return stream;
     } else {
-        ASSERT2(false, utils::MS() << "Unknown operation type (" << type_ << "). Use 0, 1, 2 3, 4, or 5.");
+        ASSERT2(false, utils::make_message(
+            "Unknown operation type (", type_, "). Use 0, 1, 2 3, 4, 5, 6, or 7."
+        ));
     }
 }
 
@@ -293,31 +416,23 @@ std::string FusedOperation::get_assign_code_nd(const OPERATOR_T& operator_t, con
     );
 }
 
-class GeneratedCodeTracker {
-    private:
-        std::unordered_set<int> elementwise_kernels_;
-        std::unordered_set<int> all_reduce_kernels_;
-        std::unordered_set<int> argument_all_reduce_kernels_;
+#define DALI_KEEP_TRACK_OF_GENERATED_CODE(GROUPING)\
+    private:\
+        std::unordered_set<int> GROUPING##s_;\
+    public:\
+        bool is_##GROUPING##_generated(int size) const {\
+            return GROUPING##s_.find(size) != GROUPING##s_.end();\
+        }\
+        void mark_##GROUPING##_generated(int size) {\
+            GROUPING##s_.insert(size);\
+        }\
 
-    public:
-        bool is_elementwise_kernel_generated(int size) const {
-            return elementwise_kernels_.find(size) != elementwise_kernels_.end();
-        }
-        bool is_all_reduce_kernel_generated(int size) const {
-            return all_reduce_kernels_.find(size) != all_reduce_kernels_.end();
-        }
-        bool is_argument_all_reduce_kernel_generated(int size) const {
-            return argument_all_reduce_kernels_.find(size) != all_reduce_kernels_.end();
-        }
-        void mark_elementwise_kernel_generated(int size) {
-            elementwise_kernels_.insert(size);
-        }
-        void mark_all_reduce_kernel_generated(int size) {
-            all_reduce_kernels_.insert(size);
-        }
-        void mark_argument_all_reduce_kernel_generated(int size) {
-            argument_all_reduce_kernels_.insert(size);
-        }
+class GeneratedCodeTracker {
+    DALI_KEEP_TRACK_OF_GENERATED_CODE(elementwise_kernel);
+    DALI_KEEP_TRACK_OF_GENERATED_CODE(all_reduce_kernel);
+    DALI_KEEP_TRACK_OF_GENERATED_CODE(argument_all_reduce_kernel);
+    DALI_KEEP_TRACK_OF_GENERATED_CODE(axis_reduce_kernel);
+    DALI_KEEP_TRACK_OF_GENERATED_CODE(argument_axis_reduce_kernel);
 };
 
 void fused_operation_get_extra_code(const FusedOperation& fop,
@@ -349,6 +464,22 @@ void fused_operation_get_extra_code(const FusedOperation& fop,
             create_argument_all_reduce_kernel_caller(fop.arguments()[0].computation_rank(), fop.computation_rank())
         );
         tracker->mark_argument_all_reduce_kernel_generated(fop.arguments()[0].computation_rank());
+    }
+    if (fop.type() == FusedOperation::FUSED_OP_AXISREDUCE_LOW_DIM_T &&
+        !tracker->is_axis_reduce_kernel_generated(std::max(2, fop.arguments()[0].computation_rank()))) {
+        (*extra_code_ptr) = (
+            (*extra_code_ptr) +
+            create_axis_reduce_kernel_caller(std::max(2, fop.arguments()[0].computation_rank()))
+        );
+        tracker->mark_axis_reduce_kernel_generated(std::max(2, fop.arguments()[0].computation_rank()));
+    }
+    if (fop.type() == FusedOperation::FUSED_OP_ARGUMENT_AXISREDUCE_LOW_DIM_T &&
+        !tracker->is_argument_axis_reduce_kernel_generated(std::max(2, fop.arguments()[0].computation_rank()))) {
+        (*extra_code_ptr) = (
+            (*extra_code_ptr) +
+            create_argument_axis_reduce_kernel_caller(std::max(2, fop.arguments()[0].computation_rank()))
+        );
+        tracker->mark_argument_axis_reduce_kernel_generated(std::max(2, fop.arguments()[0].computation_rank()));
     }
     for (const auto& arg : fop.arguments()) {
         fused_operation_get_extra_code(arg, tracker, extra_code_ptr);
@@ -452,7 +583,7 @@ FusedOperation::operator Assignable<Array> () const {
         bool dst_contiguous = out.strides().empty();
         auto fptr = fop.compile(operator_t, dst_contiguous, output_dtype, output_device);
 
-        auto arrays = fop.get_arrays(output_bshape);
+        auto arrays = fop.get_arrays(output_bshape, fop.computation_rank());
         auto scalars = fop.get_scalars();
         fptr(out, arrays, scalars);
     });
@@ -522,12 +653,145 @@ namespace op2 {
         return all_reduce(a, reducer_name, a.dtype());
     }
 
+    FusedOperation axis_reduce(const FusedOperation& a,
+                               const std::string& reducer_name,
+                               const std::vector<int>& axes,
+                               DType return_type) {
+        if (axes.size() == 0) return a;
+        int ndim = a.ndim();
+        if (ndim == 0) return a;
+        std::vector<int> normalized_axes(axes);
+        for (auto& axis : normalized_axes) {
+            if (axis < 0) {
+                if (ndim == 0) {
+                    axis = axis + 1;
+                } else {
+                    axis = axis + ndim;
+                }
+            }
+            ASSERT2(axis >= 0 && (axis < ndim || ndim == 0 && axis == ndim),
+                utils::make_message(
+                    "Reduction axis must strictly positive and less than the "
+                    "number of dimensions of the input (got axis=", axes[0], ","
+                    " ndim=", ndim, ")."
+                )
+            );
+        }
+        // now look to see what kind of a reduction this is:
+        std::vector<bool> reduced_dims(ndim, false);
+        std::sort(normalized_axes.begin(), normalized_axes.end());
+        for (auto& axis : normalized_axes) {
+            ASSERT2(!reduced_dims[axis], utils::make_message("axis_reduce "
+                "received duplicate axes to operate on (axis=", axis,
+                " axes=", axes, ")."
+            ));
+            reduced_dims[axis] = true;
+        }
+        // all axes are present:
+        if (normalized_axes.size() == ndim) {
+            return all_reduce(a, reducer_name, return_type);
+        }
+        int num_low_dims = 0;
+        for (int i = reduced_dims.size() - 1; i >= 0; --i) {
+            if (reduced_dims[i]) {
+                ++num_low_dims;
+            } else {
+                break;
+            }
+        }
+        bool all_reductions_are_low_dim = num_low_dims == normalized_axes.size();
+        auto res = a;
+
+        if (!all_reductions_are_low_dim) {
+            std::vector<int> new_axes_order;
+            for (int i = 0; i < reduced_dims.size(); ++i) {
+                if (!reduced_dims[i]) {
+                    new_axes_order.emplace_back(i);
+                }
+            }
+            for (int i = 0; i < reduced_dims.size(); ++i) {
+                if (reduced_dims[i]) {
+                    new_axes_order.emplace_back(i);
+                }
+            }
+            res.transpose(new_axes_order);
+        }
+        int num_low_axes_to_reduce = normalized_axes.size();
+        if (num_low_axes_to_reduce > 0) {
+            int axes_used_up = 0;
+            int collapsed_ndim = ndim - 1;
+            for (int axes_used_up = 0; axes_used_up < num_low_axes_to_reduce; ++axes_used_up) {
+                if (num_low_axes_to_reduce - axes_used_up == 1) {
+                    res = FusedOperation(
+                        FusedOperation::FUSED_OP_AXISREDUCE_LOW_DIM_T,
+                        reducer_name,
+                        {res},
+                        return_type
+                    );
+                } else {
+                    if (res.dimension_is_contiguous_with_parent(collapsed_ndim)) {
+                        res.collapse_dimension_with_parent(collapsed_ndim);
+                    } else {
+                        res = FusedOperation(
+                            FusedOperation::FUSED_OP_AXISREDUCE_LOW_DIM_T,
+                            reducer_name,
+                            {res},
+                            return_type
+                        );
+                    }
+                }
+                --collapsed_ndim;
+            }
+        }
+        return res;
+    }
+
+    FusedOperation axis_reduce(const FusedOperation& a,
+                               const std::string& reducer_name,
+                               const std::vector<int>& axes) {
+        return axis_reduce(a, reducer_name, axes, a.dtype());
+    }
+
     FusedOperation argument_all_reduce(const FusedOperation& a,
                                        const std::string& reducer_name) {
         return FusedOperation(
             FusedOperation::FUSED_OP_ARGUMENT_ALLREDUCE_T,
             reducer_name,
             {a},
+            DTYPE_INT32
+        );
+    }
+
+    FusedOperation argument_axis_reduce(const FusedOperation& a,
+                                        const std::string& reducer_name,
+                                        const int& axis) {
+        int ndim = a.ndim();
+        if (ndim == 0) return FusedOperation(0);
+        int normalized_axis = axis;
+        if (normalized_axis < 0) normalized_axis = normalized_axis + a.ndim();
+        ASSERT2(normalized_axis >= 0 && (normalized_axis < ndim || ndim == 0 && normalized_axis == ndim),
+            utils::make_message(
+                "Reduction axis must strictly positive and less than the "
+                "number of dimensions of the input (got axis=", normalized_axis, ","
+                " ndim=", ndim, ")."
+            )
+        );
+        if (ndim == 1) return argument_all_reduce(a, reducer_name);
+
+        auto res = a;
+        if (normalized_axis != ndim - 1) {
+            std::vector<int> axes;
+            for (int i = 0; i < ndim; i++) {
+                axes.emplace_back(i);
+            }
+            axes[axes.size() - 1] = normalized_axis;
+            axes[normalized_axis] = axes.size() - 1;
+            res.transpose(axes);
+        }
+        return FusedOperation(
+            FusedOperation::FUSED_OP_ARGUMENT_AXISREDUCE_LOW_DIM_T,
+            reducer_name,
+            {res},
             DTYPE_INT32
         );
     }

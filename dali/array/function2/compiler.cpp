@@ -4,7 +4,9 @@
 #include <sys/stat.h>
 #include <cxxabi.h>
 
+#include "dali/utils/assert2.h"
 #include "dali/utils/core_utils.h"
+#include "dali/utils/make_message.h"
 
 std::string get_call_args(std::size_t num_args) {
     std::string call_args;
@@ -70,6 +72,8 @@ Compiler::Compiler(std::vector<std::string> headers, std::string outpath, std::s
 }
 
 std::string Compiler::kExecutable = STR(DALI_CXX_COMPILER);
+std::string Compiler::kCompilerId = STR(DALI_CXX_COMPILER_ID);
+
 
 bool Compiler::load(hash_t hash) {
     if (hash_to_f_ptr_.find(hash) != hash_to_f_ptr_.end()) {
@@ -104,16 +108,15 @@ std::string Compiler::compiler_command(const std::string& source,
                                        const std::string& logfile,
                                        const std::string& extra_args) {
     std::string executable_specific_args;
-    if (utils::endswith(Compiler::kExecutable, "clang") ||
-        utils::endswith(Compiler::kExecutable, "clang++") ||
-        utils::endswith(Compiler::kExecutable, "c++")) {
+    if (Compiler::kCompilerId == "clang") {
         executable_specific_args = " -undefined dynamic_lookup -Rpass=loop-vectorize -Rpass-analysis=loop-vectorize -ffast-math -fslp-vectorize-aggressive";
-    } else if (utils::endswith(Compiler::kExecutable, "gcc") ||
-               utils::endswith(Compiler::kExecutable, "g++")) {
+    } else if (Compiler::kCompilerId == "gnu") {
         executable_specific_args = (
             " -shared -fPIC "
             "-Wl,--unresolved-symbols=ignore-in-object-files"
         );
+    } else {
+        utils::assert2(false, utils::make_message("Compiler::kCompilerId == ", Compiler::kCompilerId, " is not supported."));
     }
 
     return utils::MS() << Compiler::kExecutable << " -std=c++11 " << source

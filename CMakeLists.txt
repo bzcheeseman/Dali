@@ -53,6 +53,14 @@ if (APPLE)
     set (CMAKE_CXX_COMPILER "clang++")
 endif(APPLE)
 
+if (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
+    SET(DALI_CXX_COMPILER_ID "clang")
+elseif(${CMAKE_CXX_COMPILER_ID} MATCHES "GNU")
+    SET(DALI_CXX_COMPILER_ID "gnu")
+else()
+    message(FATAL "Compiler ${DALI_CXX_COMPILER_ID} is not supported.")
+endif()
+
 set(ENABLED_WARNINGS "-Wreturn-type -Wno-undefined-bool-conversion")
 
 if(CMAKE_BUILD_TYPE MATCHES "debug")

@@ -102,6 +102,7 @@ class Compiler {
              std::string include_path);
 
     static std::string kExecutable;
+    static std::string kCompilerId;
 
     std::string header_file_includes() const;
 

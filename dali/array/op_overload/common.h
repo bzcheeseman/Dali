@@ -6,13 +6,13 @@ class ArrayGather;
 class ArraySubtensor;
 template<typename OutType>
 class Assignable;
-class FusedOperation;
+class Operation;
 
 #define DALI_DECLARE_ARRAY_INTERACTION_INPLACE(SYMBOL)\
     Array& operator SYMBOL (Array&  left, const Assignable<Array>& right);\
     void operator SYMBOL (Array&& left, const Assignable<Array>& right);\
-    Array& operator SYMBOL (Array&  left, const FusedOperation& right);\
-    void operator SYMBOL (Array&& left, const FusedOperation& right);\
+    Array& operator SYMBOL (Array&  left, const Operation& right);\
+    void operator SYMBOL (Array&& left, const Operation& right);\
     Array& operator SYMBOL (Array&  left, const Array& right);\
     void operator SYMBOL (Array&& left, const Array& right);\
 

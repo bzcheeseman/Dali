@@ -2,7 +2,7 @@
 
 #include "dali/array/function/operator.h"
 #include "dali/array/array.h"
-#include "dali/array/op2/fused_operation.h"
+#include "dali/array/op2/operation.h"
 #include "dali/array/lazy/unary.h"
 #include "dali/array/lazy/binary.h"
 #include "dali/array/lazy/reshape.h"
@@ -30,11 +30,11 @@
         Array left_instance = left;\
         assignable.assign_to(left_instance, OPERATOR_NAME);\
     }\
-    Array& operator SYMBOL (Array& left, const FusedOperation& assignable) {\
+    Array& operator SYMBOL (Array& left, const Operation& assignable) {\
         ((Assignable<Array>)assignable).assign_to(left, OPERATOR_NAME);\
         return left;\
     }\
-    void operator SYMBOL (Array&& left, const FusedOperation& assignable) {\
+    void operator SYMBOL (Array&& left, const Operation& assignable) {\
         Array left_instance = left;\
         ((Assignable<Array>)assignable).assign_to(left_instance, OPERATOR_NAME);\
     }\

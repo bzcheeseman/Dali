@@ -20,7 +20,7 @@ class Array;
 
 struct ArraySubtensor;
 struct ArrayGather;
-class FusedOperation;
+class Operation;
 
 template<typename OutType>
 struct BaseAssignable {
@@ -87,7 +87,7 @@ class Array : public Exp<Array> {
           DType dtype_=DTYPE_FLOAT);
     Array(const Array& other, const bool& copy_memory=false);
     Array(const Assignable<Array>& assignable);
-    Array(const FusedOperation& fused_op);
+    Array(const Operation& operation);
     template<typename ExprT>
     Array(const LazyExp<ExprT>& expr);
 
@@ -249,7 +249,7 @@ class Array : public Exp<Array> {
 
     void copy_from(const Array& other);
     Array& operator=(const Assignable<Array>& assignable);
-    Array& operator=(const FusedOperation& fused_op);
+    Array& operator=(const Operation& operation);
 
     template<typename T>
     Array& operator=(const std::vector<T>& values) {

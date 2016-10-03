@@ -16,43 +16,27 @@ std::string insert_auto_reshaped_variable(const std::string& name, int rank) {
     }
 }
 
-
-std::string build_views_constructor(
-        const std::string& cpp_type,
-        const std::vector<bool>& contiguous,
-        int rank,
-        int start_arg) {
-    utils::MS stream;
-    for (auto contig : contiguous) {
-        stream << "    auto arg_" << start_arg
-               << "_view = make"
-               << (contig ? "_" : "_strided_")
-               << "view<" << cpp_type << ", "
-               << rank << ">(arguments[" << start_arg << "]);\n";
-        start_arg += 1;
-    }
-    return stream;
-}
-
-std::string build_view_constructor(const std::string& cpp_type,
+std::string build_array_definition(const std::string& cpp_type,
+                                   const std::string& varname,
                                    bool contiguous,
                                    int rank,
-                                   const std::string& varname) {
+                                   const std::string& captured_name) {
     return utils::make_message(
-        "    auto ", varname, "_view = make",
+        "    auto ", varname, " = make",
         (contiguous ? "_" : "_strided_"), "view<",
         cpp_type, ", ", rank, ">(",
-        insert_auto_reshaped_variable(varname, rank),
+        captured_name,
         ");\n"
     );
 }
 
-std::string build_scalar_constructor(const std::string& cpp_type,
+std::string build_scalar_definition(const std::string& cpp_type,
+                                     const std::string& varname,
                                      int rank,
-                                     int start_arg) {
+                                     const std::string& captured_name) {
     return utils::make_message(
-        "    auto scalar_", start_arg, " = make_scalar_view<",
-        cpp_type, ", ", rank, ">(scalar_arguments[", start_arg, "]);\n"
+        "    auto ", varname, " = make_scalar_view<",
+        cpp_type, ", ", rank, ">(", captured_name, ");\n"
     );
 }
 
@@ -145,7 +129,7 @@ void initialize_output_array(Array& out,
     }
 }
 
-std::vector<int> get_function_bshape(const std::vector<std::vector<int>>& bshapes) {
+std::vector<int> get_common_bshape(const std::vector<std::vector<int>>& bshapes) {
     if (bshapes.size() == 0) return {};
 
     int ndim_max = 0;

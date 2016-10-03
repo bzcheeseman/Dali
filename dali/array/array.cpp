@@ -18,7 +18,7 @@
 #include "dali/array/op/reshape.h"
 #include "dali/array/op/unary.h"
 #include "dali/array/op/unary_scalar.h"
-#include "dali/array/op2/fused_operation.h"
+#include "dali/array/op2/operation.h"
 #include "dali/utils/cnpy.h"
 #include "dali/utils/print_utils.h"
 
@@ -224,10 +224,10 @@ Array::Array(const Assignable<Array>& assignable) {
     assignable.assign_to(*this, OPERATOR_T_EQL);
 }
 
-Array::Array(const FusedOperation& fused_op) : Array((Assignable<Array>) fused_op) {}
+Array::Array(const Operation& operation) : Array((Assignable<Array>) operation) {}
 
-Array& Array::operator=(const FusedOperation& fused_op) {
-    return this->operator=((Assignable<Array>)fused_op);
+Array& Array::operator=(const Operation& operation) {
+    return this->operator=((Assignable<Array>)operation);
 }
 
 Array Array::zeros(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {

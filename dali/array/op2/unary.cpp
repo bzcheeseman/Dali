@@ -1,64 +1,64 @@
 #include "unary.h"
-#include "dali/array/op2/fused_operation.h"
+#include "dali/array/op2/operation.h"
 
 namespace op2 {
-    FusedOperation identity(const FusedOperation& x) {
+    Operation identity(const Operation& x) {
         return elementwise(x, "functor::identity");
     }
 
-    FusedOperation sigmoid(const FusedOperation& x) {
+    Operation sigmoid(const Operation& x) {
         return elementwise(x, "functor::sigmoid");
     }
 
-    FusedOperation tanh(const FusedOperation& x) {
+    Operation tanh(const Operation& x) {
         return elementwise(x, "functor::tanh");
     }
 
-    FusedOperation exp(const FusedOperation& x) {
+    Operation exp(const Operation& x) {
         return elementwise(x, "functor::exp");
     }
 
-    FusedOperation softplus(const FusedOperation& x) {
+    Operation softplus(const Operation& x) {
         return elementwise(x, "functor::softplus");
     }
 
-    FusedOperation eltinv(const FusedOperation& x) {
+    Operation eltinv(const Operation& x) {
         return elementwise(x, "functor::inv");
     }
 
-    FusedOperation relu(const FusedOperation& x) {
+    Operation relu(const Operation& x) {
         return elementwise(x, "functor::relu");
     }
 
-    FusedOperation log(const FusedOperation& x) {
+    Operation log(const Operation& x) {
         return elementwise(x, "functor::log");
     }
 
-    FusedOperation log_or_zero(const FusedOperation& x) {
+    Operation log_or_zero(const Operation& x) {
         return elementwise(x, "functor::log_or_zero");
     }
 
-    FusedOperation abs(const FusedOperation& x)  {
+    Operation abs(const Operation& x)  {
         return elementwise(x, "functor::abs");
     }
 
-    FusedOperation sign(const FusedOperation& x) {
+    Operation sign(const Operation& x) {
         return elementwise(x, "functor::sign");
     }
 
-    FusedOperation square(const FusedOperation& x) {
+    Operation square(const Operation& x) {
         return elementwise(x, "functor::square");
     }
 
-    FusedOperation cube(const FusedOperation& x) {
+    Operation cube(const Operation& x) {
         return elementwise(x, "functor::cube");
     }
 
-    FusedOperation sqrt(const FusedOperation& x) {
+    Operation sqrt(const Operation& x) {
         return elementwise(x, "functor::sqrt_f");
     }
 
-    FusedOperation rsqrt(const FusedOperation& x) {
+    Operation rsqrt(const Operation& x) {
         return elementwise(x, "functor::rsqrt");
     }
 

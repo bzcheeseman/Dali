@@ -3,7 +3,7 @@
 #include "dali/array/op2/reducers.h"
 #include "dali/array/op2/binary.h"
 #include "dali/array/op.h"
-#include "dali/array/op2/fused_operation.h"
+#include "dali/array/op2/operation.h"
 
 TEST(RTCTests, all_reduce_sum) {
     int rows = 5, cols = 10;

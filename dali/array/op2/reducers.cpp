@@ -1,63 +1,63 @@
 #include "reducers.h"
-#include "dali/array/op2/fused_operation.h"
+#include "dali/array/op2/operation.h"
 #include "dali/array/op2/binary.h"
 #include "dali/array/op2/unary.h"
 
 namespace op2 {
-    FusedOperation sum(const FusedOperation& x) {
+    Operation sum(const Operation& x) {
         return all_reduce(x, "reducers::sum");
     }
-    FusedOperation sum(const FusedOperation& x, const std::vector<int>& axes) {
+    Operation sum(const Operation& x, const std::vector<int>& axes) {
         return axis_reduce(x, "reducers::sum", axes);
     }
-    FusedOperation prod(const FusedOperation& x) {
+    Operation prod(const Operation& x) {
         return all_reduce(x, "reducers::product");
     }
-    FusedOperation prod(const FusedOperation& x, const std::vector<int>& axes) {
+    Operation prod(const Operation& x, const std::vector<int>& axes) {
         return axis_reduce(x, "reducers::product", axes);
     }
-    FusedOperation max(const FusedOperation& x) {
+    Operation max(const Operation& x) {
         return all_reduce(x, "reducers::maximum");
     }
-    FusedOperation max(const FusedOperation& x, const std::vector<int>& axes) {
+    Operation max(const Operation& x, const std::vector<int>& axes) {
         return axis_reduce(x, "reducers::maximum", axes);
     }
-    FusedOperation min(const FusedOperation& x) {
+    Operation min(const Operation& x) {
         return all_reduce(x, "reducers::minimum");
     }
-    FusedOperation min(const FusedOperation& x, const std::vector<int>& axes) {
+    Operation min(const Operation& x, const std::vector<int>& axes) {
         return axis_reduce(x, "reducers::minimum", axes);
     }
-    FusedOperation mean(const FusedOperation& x) {
+    Operation mean(const Operation& x) {
         auto sum_op = all_reduce(x, "reducers::sum");
         if (sum_op.dtype() == DTYPE_INT32) sum_op = astype(sum_op, DTYPE_DOUBLE);
         return op2::eltdiv(sum_op, x.number_of_elements());
     }
-    FusedOperation mean(const FusedOperation& x, const std::vector<int>& axes) {
+    Operation mean(const Operation& x, const std::vector<int>& axes) {
         auto sum_op = axis_reduce(x, "reducers::sum", axes);
         if (sum_op.dtype() == DTYPE_INT32) sum_op = astype(sum_op, DTYPE_DOUBLE);
         return op2::eltdiv(sum_op, x.number_of_elements() / sum_op.number_of_elements());
     }
-    FusedOperation L2_norm(const FusedOperation& x) {
+    Operation L2_norm(const Operation& x) {
         auto sum_op = all_reduce(op2::square(x), "reducers::sum");
         if (sum_op.dtype() == DTYPE_INT32) sum_op = astype(sum_op, DTYPE_DOUBLE);
         return op2::sqrt(sum_op);
     }
-    FusedOperation L2_norm(const FusedOperation& x, const std::vector<int>& axes) {
+    Operation L2_norm(const Operation& x, const std::vector<int>& axes) {
         auto sum_op = axis_reduce(op2::square(x), "reducers::sum", axes);
         if (sum_op.dtype() == DTYPE_INT32) sum_op = astype(sum_op, DTYPE_DOUBLE);
         return op2::sqrt(sum_op);
     }
-    FusedOperation argmax(const FusedOperation& x) {
+    Operation argmax(const Operation& x) {
         return argument_all_reduce(x, "reducers::maximum");
     }
-    FusedOperation argmax(const FusedOperation& x, const int& axis) {
+    Operation argmax(const Operation& x, const int& axis) {
         return argument_axis_reduce(x, "reducers::maximum", axis);
     }
-    FusedOperation argmin(const FusedOperation& x) {
+    Operation argmin(const Operation& x) {
         return argument_all_reduce(x, "reducers::minimum");
     }
-    FusedOperation argmin(const FusedOperation& x, const int& axis) {
+    Operation argmin(const Operation& x, const int& axis) {
         return argument_axis_reduce(x, "reducers::minimum", axis);
     }
 }

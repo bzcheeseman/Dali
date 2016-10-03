@@ -1,7 +1,7 @@
 #ifndef DALI_ARRAY_OP2_UNARY_H
 #define DALI_ARRAY_OP2_UNARY_H
 
-class FusedOperation;
+class Operation;
 
 namespace op2 {
     // Assign one array to another piece of memory as-is
@@ -9,21 +9,21 @@ namespace op2 {
     // non-strided in the output (as it is no longer a view)
     // TODO(jonathan) add support for optional copy if output and
     // input are the same, or if the output is uninitialized
-    FusedOperation identity(const FusedOperation& x);
-    FusedOperation sigmoid(const FusedOperation& x);
-    FusedOperation tanh(const FusedOperation& x);
-    FusedOperation relu(const FusedOperation& x);
-    FusedOperation eltinv(const FusedOperation& x);
-    FusedOperation exp(const FusedOperation& x);
-    FusedOperation log(const FusedOperation& x);
-    FusedOperation log_or_zero(const FusedOperation& x);
-    FusedOperation abs(const FusedOperation& x);
-    FusedOperation sign(const FusedOperation& x);
-    FusedOperation square(const FusedOperation& x);
-    FusedOperation softplus(const FusedOperation& x);
-    FusedOperation cube(const FusedOperation& x);
-    FusedOperation sqrt(const FusedOperation& x);
-    FusedOperation rsqrt(const FusedOperation& x);
+    Operation identity(const Operation& x);
+    Operation sigmoid(const Operation& x);
+    Operation tanh(const Operation& x);
+    Operation relu(const Operation& x);
+    Operation eltinv(const Operation& x);
+    Operation exp(const Operation& x);
+    Operation log(const Operation& x);
+    Operation log_or_zero(const Operation& x);
+    Operation abs(const Operation& x);
+    Operation sign(const Operation& x);
+    Operation square(const Operation& x);
+    Operation softplus(const Operation& x);
+    Operation cube(const Operation& x);
+    Operation sqrt(const Operation& x);
+    Operation rsqrt(const Operation& x);
 } // namespace op2
 
 #endif

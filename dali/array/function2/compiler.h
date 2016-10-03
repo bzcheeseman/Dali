@@ -12,9 +12,9 @@
 #include <unordered_map>
 #include <vector>
 
+#include "dali/utils/hash_utils.h"
 #include "dali/utils/print_utils.h"
 
-typedef uint64_t hash_t;
 typedef std::unordered_map<std::string, std::string> macro_args_t;
 
 

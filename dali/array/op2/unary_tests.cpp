@@ -6,7 +6,7 @@
 #include "dali/array/op2/unary.h"
 #include "dali/array/op2/binary.h"
 #include "dali/array/op.h"
-#include "dali/array/op2/fused_operation.h"
+#include "dali/array/op2/operation.h"
 
 #define DALI_RTC_UNARY_TEST(funcname)\
     for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {\

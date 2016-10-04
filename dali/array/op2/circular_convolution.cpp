@@ -6,8 +6,6 @@
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
 
-
-
 struct CircularConvolutionOperationState : public OperationState {
     static const hash_t optype_hash;
 
@@ -87,17 +85,15 @@ struct CircularConvolutionOperationState : public OperationState {
 
     operation_state_ptr transpose(const std::vector<int>& permutation) const {
         bool last_dim_unchanged = permutation.back() == int(permutation.size()) - 1;
-        if (last_dim_unchanged) {
+        if (last_dim_unchanged)
             return std::make_shared<CircularConvolutionOperationState>(
                 content_->transpose(permutation),
                 weights_->transpose(permutation)
             );
-        } else {
-            throw std::runtime_error(
-                "Cannot transpose last dimension result of circular convolution"
-            );
-            return shared_from_this();
-        }
+        throw std::runtime_error(
+            "Cannot transpose last dimension result of circular convolution"
+        );
+        return shared_from_this();
     }
 
     void compute_node_compilation_info(
@@ -129,7 +125,6 @@ struct CircularConvolutionOperationState : public OperationState {
 };
 
 const hash_t CircularConvolutionOperationState::optype_hash = std::hash<std::string>()("CircularConvolutionOperationState");
-
 
 namespace op2 {
     Operation circular_convolution(const Operation& x, const Operation& weights) {

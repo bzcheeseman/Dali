@@ -1,6 +1,7 @@
 #include "circular_convolution.h"
 
 #include "dali/array/op2/operation.h"
+#include "dali/array/op2/elementwise_operation.h"
 #include "dali/array/op2/rtc_utils.h"
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"

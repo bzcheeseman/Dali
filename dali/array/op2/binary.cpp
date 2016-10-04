@@ -1,5 +1,6 @@
 #include "binary.h"
 #include "dali/array/op2/operation.h"
+#include "dali/array/op2/elementwise_operation.h"
 
 namespace op2 {
     Operation add(const Operation& a, const Operation& b) {

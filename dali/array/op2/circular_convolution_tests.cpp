@@ -9,8 +9,6 @@
 #include "dali/array/op.h"
 #include "dali/array/op2/operation.h"
 
-
-
 namespace {
     void reference_circular_convolution(const Array& content, const Array& shift, Array* dest_ptr) {
         auto& dest = *dest_ptr;

@@ -21,6 +21,9 @@ struct CircularConvolutionOperationState : public OperationState {
     }
 
     std::string prefix_code(const node_to_info_t& node_to_info) const {
+        // TODO(jonathan, szymon): clearly kernel writing is repetitive, a method could
+        //                         be designed here to factor out all the boilerplate
+        //                         to instantiate easily 2, 3, etc... arg templates.
         return"template<typename C1, typename C2>\n"
         "struct CircularConvolutionKernel {\n"
         "    const C1& a_view_;\n"
@@ -37,6 +40,8 @@ struct CircularConvolutionOperationState : public OperationState {
         "        Shape<ndim> b_query = query;\n"
         "        int& shift_idx = b_query[ndim - 1];\n"
         "        int& offset = a_query[ndim - 1];\n"
+        "            ELOG(query[0]);\n"
+        "            ELOG(query[1]);\n"
         "        #pragma clang loop vectorize(enable)\n"
         "        #pragma clang loop interleave(enable)\n"
         "        for (shift_idx = 0; shift_idx < conv_size; shift_idx++) {\n"
@@ -60,7 +65,7 @@ struct CircularConvolutionOperationState : public OperationState {
     }
 
     std::vector<int> bshape() const {
-        return get_common_bshape({content_->bshape(), weights_->bshape() });
+        return get_common_bshape({content_->bshape(), weights_->bshape()});
     }
 
     int ndim() const {
@@ -124,9 +129,6 @@ const hash_t CircularConvolutionOperationState::optype_hash = std::hash<std::str
 
 namespace op2 {
     Operation circular_convolution(const Operation& x, const Operation& weights) {
-        // TODO(jonathan, szymon): clearly kernel writing is repetitive, a method could
-        //                         be designed here to factor out all the boilerplate
-        //                         to instantiate easily 2, 3, etc... arg templates.
         return Operation(std::make_shared<CircularConvolutionOperationState>(
             x.state_,
             weights.state_

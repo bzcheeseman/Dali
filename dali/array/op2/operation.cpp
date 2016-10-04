@@ -61,7 +61,9 @@ std::string indexing_code_nd(int rank) {
 
 std::vector<int> OperationState::shape() const {
     std::vector<int> res = bshape();
-    std::transform(res.begin(), res.end(), res.begin(), std::abs<int>);
+    std::transform(res.begin(), res.end(), res.begin(),
+        [](const int& x) {return std::abs(x);}
+    );
     return res;
 }
 
@@ -279,9 +281,8 @@ OperationState::operator Assignable<Array> () const {
                        array_ops.end(),
                        std::back_inserter(arrays),
                        [&node_to_info](const ArrayOperationState* op) {
-                           auto& rank  = node_to_info.at(op).computation_rank;
-                           auto& shape = node_to_info.at(op).computation_shape;
-
+                           const auto& rank  = node_to_info.at(op).computation_rank;
+                           const auto& shape = node_to_info.at(op).computation_shape;
                            if (rank == op->ndim()) {
                                return op->array_.reshape_broadcasted(shape);
                            } else if (rank == 1) {
@@ -290,6 +291,14 @@ OperationState::operator Assignable<Array> () const {
                                return op->array_.reshape_broadcasted(shape).copyless_right_fit_ndim(rank);
                            }
                        });
+        auto out_reshaped = out;
+        if (desired_computation_rank != out_reshaped.ndim()) {
+            if (desired_computation_rank == 1) {
+                out_reshaped = out.copyless_ravel();
+            } else {
+                out_reshaped = out.copyless_right_fit_ndim(desired_computation_rank);
+            }
+        }
 
         std::vector<double> scalars;
         std::transform(scalar_ops.begin(),
@@ -298,7 +307,8 @@ OperationState::operator Assignable<Array> () const {
                        [&](const ScalarOperationState* op) {
                            return op->value_;
                        });
-        compiled_self(out, arrays, scalars);
+
+        compiled_self(out_reshaped, arrays, scalars);
     });
 }
 

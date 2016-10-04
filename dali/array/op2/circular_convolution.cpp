@@ -13,7 +13,6 @@ struct CircularConvolutionOperationState : public OperationState {
     operation_state_ptr content_;
     operation_state_ptr weights_;
 
-
     CircularConvolutionOperationState(operation_state_ptr content, operation_state_ptr weights) :
             OperationState(std::max(2, std::max(content->min_computation_rank_, weights->min_computation_rank_))),
             content_(content),
@@ -66,10 +65,6 @@ struct CircularConvolutionOperationState : public OperationState {
         return get_common_bshape({content_->bshape(), weights_->bshape()});
     }
 
-    int ndim() const {
-        return bshape().size();
-    }
-
     std::vector<operation_state_ptr> arguments() const {
         return {content_, weights_};
     }
@@ -90,8 +85,18 @@ struct CircularConvolutionOperationState : public OperationState {
     }
 
     operation_state_ptr transpose(const std::vector<int>& permutation) const {
-        throw std::runtime_error("this code is untested.");
-        return shared_from_this();
+        bool last_dim_unchanged = permutation.back() == int(permutation.size()) - 1;
+        if (last_dim_unchanged) {
+            return std::make_shared<CircularConvolutionOperationState>(
+                content_->transpose(permutation),
+                weights_->transpose(permutation)
+            );
+        } else {
+            throw std::runtime_error(
+                "Cannot transpose last dimension result of circular convolution"
+            );
+            return shared_from_this();
+        }
     }
 
     void compute_node_compilation_info(
@@ -127,9 +132,9 @@ const hash_t CircularConvolutionOperationState::optype_hash = std::hash<std::str
 
 namespace op2 {
     Operation circular_convolution(const Operation& x, const Operation& weights) {
+        auto x_weights = ensure_arguments_compatible(x, weights);
         return Operation(std::make_shared<CircularConvolutionOperationState>(
-            x.state_,
-            weights.state_
+            std::get<0>(x_weights).state_, std::get<1>(x_weights).state_
         ));
     }
 }  // namespace op2

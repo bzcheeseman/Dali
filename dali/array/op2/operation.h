@@ -35,7 +35,7 @@ struct OperationState : std::enable_shared_from_this<OperationState> {
 
     virtual DType dtype() const = 0;
     virtual std::vector<int> bshape() const = 0;
-    virtual int ndim() const = 0;
+
 
 
     virtual void compute_node_compilation_info(int desired_computation_rank,
@@ -55,6 +55,8 @@ struct OperationState : std::enable_shared_from_this<OperationState> {
     ///////////////////////////////////////////////////////////////////////////////
     //            REIMPLEMENT AS YOU SEE FIT                                     //
     ///////////////////////////////////////////////////////////////////////////////
+
+    virtual int ndim() const;
 
     virtual std::vector<int> shape() const;
 
@@ -200,8 +202,6 @@ struct ElementwiseOperationState : public OperationState {
 
     virtual std::vector<int> bshape() const;
 
-    virtual int ndim() const;
-
     virtual std::vector<operation_state_ptr> arguments() const;
 
     virtual void compute_node_compilation_info(int desired_computation_rank,
@@ -238,115 +238,6 @@ struct CastOperationState : public ElementwiseOperationState {
         node_to_info_t* node_to_info) const;
 };
 
-struct ReducerOperationState : public OperationState {
-    const operation_state_ptr argument_;
-    const std::string functor_name_;
-
-    virtual hash_t optype_hash() const = 0;
-
-    ReducerOperationState(const std::string& functor_name, operation_state_ptr argument, int min_computation_rank);
-
-    virtual std::vector<operation_state_ptr> arguments() const;
-
-    virtual std::string get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info) const;
-
-    virtual std::string kernel_name() const = 0;
-};
-
-struct AllReducerOperationState : public ReducerOperationState {
-    static const hash_t optype_hash_cache_;
-
-    virtual hash_t optype_hash() const;
-
-    AllReducerOperationState(const std::string& functor_name, operation_state_ptr argument);
-
-    virtual std::vector<int> bshape() const;
-
-    virtual DType dtype() const;
-
-    virtual int ndim() const;
-
-    virtual void compute_node_compilation_info(int desired_computation_rank,
-                                               const std::vector<int>& desired_computation_shape,
-                                               std::vector<const ArrayOperationState*>* arrays,
-                                               std::vector<const ScalarOperationState*>* scalars,
-                                               node_to_info_t* node_to_info) const;
-
-    virtual bool is_dim_collapsible_with_dim_minus_one(const int& dim) const;
-
-    virtual operation_state_ptr transpose(const std::vector<int>& permutation) const;
-
-    virtual std::string prefix_code(const node_to_info_t& node_to_info) const;
-
-    virtual std::string kernel_name() const;
-};
-
-struct AxisReducerOperationState : public ReducerOperationState {
-    static const hash_t optype_hash_cache_;
-
-    virtual hash_t optype_hash() const;
-
-    AxisReducerOperationState(const std::string& functor_name, operation_state_ptr argument);
-
-    virtual std::vector<int> bshape() const;
-
-    virtual DType dtype() const;
-
-    virtual int ndim() const;
-
-    virtual void compute_node_compilation_info(
-        int desired_computation_rank,
-        const std::vector<int>& desired_computation_shape,
-        std::vector<const ArrayOperationState*>* arrays,
-        std::vector<const ScalarOperationState*>* scalars,
-        node_to_info_t* node_to_info) const;
-
-    virtual bool is_dim_collapsible_with_dim_minus_one(const int& dim) const;
-
-    virtual operation_state_ptr collapse_dim_with_dim_minus_one(const int& dim) const;
-
-    virtual operation_state_ptr transpose(const std::vector<int>& permutation) const;
-
-    virtual std::string prefix_code(const node_to_info_t& node_to_info) const;
-
-    virtual std::string kernel_name() const;
-};
-
-
-struct ArgumentAllReducerOperationState : public AllReducerOperationState {
-    static const hash_t optype_hash_cache_;
-
-    using AllReducerOperationState::AllReducerOperationState;
-
-    virtual hash_t optype_hash() const;
-
-    virtual DType dtype() const;
-
-    virtual std::string prefix_code(const node_to_info_t& node_to_info) const;
-
-    virtual std::string kernel_name() const;
-};
-
-
-struct ArgumentAxisReducerOperationState : public AxisReducerOperationState {
-    static const hash_t optype_hash_cache_;
-
-    using AxisReducerOperationState::AxisReducerOperationState;
-
-    virtual hash_t optype_hash() const;
-
-    virtual DType dtype() const;
-
-    virtual std::string prefix_code(const node_to_info_t& node_to_info) const;
-
-    virtual operation_state_ptr collapse_dim_with_dim_minus_one(const int& dim) const;
-
-    virtual operation_state_ptr transpose(const std::vector<int>& permutation) const;
-
-    virtual std::string kernel_name() const;
-};
-
-
 
 struct Operation {
     operation_state_ptr state_;
@@ -361,8 +252,6 @@ struct Operation {
 
     Operation(operation_state_ptr state);
 
-
-
     DType dtype() const;
 
     int ndim() const;
@@ -373,39 +262,17 @@ struct Operation {
 
     int number_of_elements() const;
 
-
-
     bool is_dim_collapsible_with_dim_minus_one(const int& dim) const;
 
     Operation collapse_dim_with_dim_minus_one(const int& dim) const;
 
     Operation transpose(const std::vector<int>& permutation) const;
 
-
-
     operator Assignable<Array>() const;
 };
 
 
 namespace op2 {
-    Operation all_reduce(const Operation& a,
-                              const std::string& reducer_name,
-                              DType return_type);
-    Operation all_reduce(const Operation& a,
-                              const std::string& reducer_name);
-    Operation argument_all_reduce(const Operation& a,
-                                       const std::string& reducer_name);
-    Operation axis_reduce(const Operation& a,
-                               const std::string& reducer_name,
-                               const std::vector<int>& axes,
-                               DType return_type);
-    Operation axis_reduce(const Operation& a,
-                               const std::string& reducer_name,
-                               const std::vector<int>& axes);
-    Operation argument_axis_reduce(const Operation& a,
-                                        const std::string& reducer_name,
-                                        const int& axis);
-
     // elementwise kernel given by name.
     // will assume that return type of kernel
     // is given by the `dtype` argument.
@@ -447,10 +314,16 @@ namespace op2 {
         const std::string& kernel_code
     );
 
-
     // Perform a type conversion by casting the values in x
     // to another dtype.
     Operation astype(const Operation& x, DType dtype);
+
+
+    // type-promote arguments if necessary and check whether their
+    // ranks are compatible (equal or one is a scalar)
+    std::tuple<Operation, Operation> ensure_arguments_compatible(
+        const Operation& a, const Operation& b
+    );
 } // namespace op2
 
 #endif  // DALI_ARRAY_OP2_OPERATION_H

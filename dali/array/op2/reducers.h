@@ -2,10 +2,21 @@
 #define DALI_ARRAY_OP2_REDUCERS_H
 
 #include <vector>
+#include <string>
 
 class Operation;
 
 namespace op2 {
+    Operation all_reduce(const Operation& a,
+                         const std::string& reducer_name);
+    Operation argument_all_reduce(const Operation& a,
+                                  const std::string& reducer_name);
+    Operation axis_reduce(const Operation& a,
+                          const std::string& reducer_name,
+                          const std::vector<int>& axes);
+    Operation argument_axis_reduce(const Operation& a,
+                                   const std::string& reducer_name,
+                                   const int& axis);
 	// Compute the sum of all the elements in x
     Operation sum(const Operation& x);
     // Compute the sum of the elements in x along specific axes

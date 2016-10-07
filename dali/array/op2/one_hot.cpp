@@ -146,15 +146,19 @@ namespace op2 {
             const Operation& off_value) {
         ASSERT2(
             indices.dtype() == DTYPE_INT32,
-            utils::make_message("indices must be integers (got ", indices.dtype(), ")")
+            utils::make_message("indices must be integers (got ", indices.dtype(), ").")
         );
         ASSERT2(
             on_value.is_scalar(),
-            utils::make_message("on_value must be a scalar (got on_value.ndim=", on_value.ndim(), ")")
+            utils::make_message("on_value must be a scalar (got on_value.ndim=", on_value.ndim(), ").")
         );
         ASSERT2(
             off_value.is_scalar(),
-            utils::make_message("off_value must be a scalar (got off_value.ndim=", off_value.ndim(), ")")
+            utils::make_message("off_value must be a scalar (got off_value.ndim=", off_value.ndim(), ").")
+        );
+        ASSERT2(
+            depth > 0,
+            utils::make_message("depth must be strictly positive (got depth=", depth, ").")
         );
         auto on_off = ensure_arguments_compatible(on_value, off_value);
         return Operation(std::make_shared<OneHotOperationState>(

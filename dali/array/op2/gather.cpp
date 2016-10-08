@@ -28,6 +28,9 @@ struct GatherState : public OperationState {
         bool is_2d = node_to_info.at(this).computation_rank == 2 &&
                      node_to_info.at(source_.get()).computation_rank == 2;
         if (is_2d) {
+            // use a simpler set of functions when access pattern is well understood (no
+            // loops or unrolled loops needed).
+            // TODO(jonathan): auto-generate full access pattern without any loops
             access = (
                 "    XINLINE T operator[](const Shape<ndim>& query) {\n"
                 "        return source_[{indices_(query[0]), query[1]}];\n"

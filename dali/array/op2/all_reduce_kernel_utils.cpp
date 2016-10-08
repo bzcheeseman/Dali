@@ -82,7 +82,7 @@ namespace {
             "    static const int ndim = ", result_ndim, ";\n"
             "    typedef Type T;\n"
             "    XINLINE Shape<ndim> shape() const {\n"
-            "        return ", arg, "_.shape().axis_reduced_shape();\n"
+            "        return ", arg, "_.shape().template axis_reduced_shape<0, ndim>();\n"
             "    }\n"
             "    XINLINE ", name, ndim, "(\n",
             generate_reduce_kernel_constructor_arguments(1), "\n"
@@ -173,7 +173,7 @@ std::string create_all_reduce_kernel_caller(int ndim, int result_ndim) {
         generate_reduce_kernel_template_code(1),
         "struct AllReduceKernel", ndim, " {\n",
         generate_all_reduce_kernel_constructor("AllReduceKernel", ndim, result_ndim),
-        "    XINLINE T operator[](Shape<", result_ndim, ">) const {\n",
+        "    XINLINE T operator[](const Shape<", result_ndim, ">&) const {\n",
         generate_all_reduce_loop(ndim),
         "    }\n"
         "    XINLINE T operator()(int) const {\n",
@@ -189,7 +189,7 @@ std::string create_argument_all_reduce_kernel_caller(int ndim, int result_ndim) 
         generate_reduce_kernel_template_code(1),
         "struct ArgumentAllReduceKernel", ndim, " {\n",
         generate_all_reduce_kernel_constructor("ArgumentAllReduceKernel", ndim, result_ndim),
-        "    XINLINE T operator[](Shape<", result_ndim, ">) const {\n",
+        "    XINLINE T operator[](const Shape<", result_ndim, ">&) const {\n",
         generate_argument_all_reduce_loop(ndim),
         "    }\n"
         "    XINLINE T operator()(int) const {\n",
@@ -216,7 +216,7 @@ std::string create_axis_reduce_kernel_caller(int ndim) {
         generate_reduce_kernel_template_code(1),
         "struct AxisReduceKernel", ndim, " {\n",
         generate_axis_reduce_kernel_constructor("AxisReduceKernel", ndim, ndim - 1),
-        "    XINLINE T operator[](Shape<", ndim - 1, "> input_query) const {\n"
+        "    XINLINE T operator[](const Shape<", ndim - 1, ">& input_query) const {\n"
         "        Shape<", ndim, "> query = input_query.expand_dims(", ndim, ");\n",
         construct_axis_reduce_for_loop(ndim),
         "    }\n",
@@ -242,7 +242,7 @@ std::string create_argument_axis_reduce_kernel_caller(int ndim) {
         generate_reduce_kernel_template_code(1),
         "struct ArgumentAxisReduceKernel", ndim, " {\n",
         generate_axis_reduce_kernel_constructor("ArgumentAxisReduceKernel", ndim, ndim - 1),
-        "    XINLINE T operator[](Shape<", ndim - 1, "> input_query) const {\n"
+        "    XINLINE T operator[](const Shape<", ndim - 1, ">& input_query) const {\n"
         "        Shape<", ndim, "> query = input_query.expand_dims(", ndim, ");\n",
         construct_argument_axis_reduce_for_loop(ndim),
         "    }\n",

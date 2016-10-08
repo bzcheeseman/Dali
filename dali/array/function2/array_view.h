@@ -40,11 +40,12 @@ struct Shape {
         return new_shape;
     }
 
-    XINLINE Shape<num_dims - 1> axis_reduced_shape() const {
-        Shape<num_dims - 1> new_shape;
+    template<int start_dim, int newdims, int extra_dimensions=0>
+    XINLINE Shape<newdims + extra_dimensions> axis_reduced_shape() const {
+        Shape<newdims + extra_dimensions> new_shape;
         #pragma unroll
-        for (int i = 0; i < num_dims - 1; ++i) {
-            new_shape[i] = sizes_[i];
+        for (int i = 0; i < newdims; ++i) {
+            new_shape[i + extra_dimensions] = sizes_[start_dim + i];
         }
         return new_shape;
     }

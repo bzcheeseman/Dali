@@ -103,7 +103,7 @@ std::string create_elementwise_kernel_caller(int num_args) {
         generate_elementwise_kernel_template_code(num_args),
         "struct ElementWiseKernel", num_args, " {\n",
         generate_elementwise_kernel_constructor(num_args),
-        "    XINLINE T operator[](Shape<ndim> query) const {\n"
+        "    XINLINE T operator[](const Shape<ndim>& query) const {\n"
         "        return Functor<T>::Map(", generate_elementwise_kernel_arguments(num_args, "_[query]"), ");\n",
         "    }\n",
         "    XINLINE T operator()(int i) const {\n"

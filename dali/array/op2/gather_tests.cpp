@@ -9,12 +9,10 @@
 #include "dali/array/op.h"
 #include "dali/array/op2/operation.h"
 
-
 TEST(RTCTests, gather_simple) {
 	auto indices = Array::arange({5}, DTYPE_INT32);
 	auto source = Array::arange({5, 6}, DTYPE_INT32);
-	Array(op2::gather(source, indices)).print();
-
+	EXPECT_TRUE(Array::equals(op2::gather(source, indices), op::gather(source, indices)));
 	auto source2 = Array::arange({5, 6, 7}, DTYPE_INT32);
-	Array(op2::gather(source2, indices)).print();
+	EXPECT_TRUE(Array::equals(op2::gather(source2, indices), op::gather(source2, indices)));
 }

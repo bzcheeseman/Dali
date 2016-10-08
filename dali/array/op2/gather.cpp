@@ -77,32 +77,45 @@ struct GatherState : public OperationState {
     }
 
     bool is_dim_collapsible_with_dim_minus_one(const int& dim) const {
+        int indices_ndim = indices_->ndim();
+        if (dim < indices_ndim) {
+            return indices_->is_dim_collapsible_with_dim_minus_one(dim);
+        }
+        if (dim == indices_ndim) {
+            // this is the dimensionality of the output's dimension just after
+            // the leading dimension. Collapsing this dimension means losing track
+            // of what is being gathered.
+            return false;
+        }
+        if (dim >= indices_ndim + 1) {
+            // because dim is being observed from the output, we must
+            // subtract all the index dimensions, and add back a dimension
+            // hidden by gather
+            return source_->is_dim_collapsible_with_dim_minus_one(
+                dim - indices_ndim + 1
+            );
+        }
         return false;
-        // if (dim == ndim() - 1) {
-        //     return false;
-        // }
-        // return indices_->is_dim_collapsible_with_dim_minus_one(dim) &&
-        //        source_->is_dim_collapsible_with_dim_minus_one(dim);
     }
 
     operation_state_ptr collapse_dim_with_dim_minus_one(const int& dim) const {
-        // return std::make_shared<GatherState>(
-        //     source_->collapse_dim_with_dim_minus_one(dim),
-        //     indices_->collapse_dim_with_dim_minus_one(dim)
-        // );
-        throw std::runtime_error(
-            "Cannot transpose last dimension result of circular convolution"
-        );
-        return shared_from_this();
+        int indices_ndim = indices_->ndim();
+        if (dim < indices_ndim) {
+            return std::make_shared<GatherState>(
+                source_,
+                indices_->collapse_dim_with_dim_minus_one(dim)
+            );
+        } else {
+            return std::make_shared<GatherState>(
+                source_->collapse_dim_with_dim_minus_one(dim - indices_ndim + 1),
+                indices_
+            );
+        }
     }
 
     operation_state_ptr transpose(const std::vector<int>& permutation) const {
-        // bool last_dim_unchanged = permutation.back() == int(permutation.size()) - 1;
-        // if (last_dim_unchanged)
-        //     return std::make_shared<GatherState>(
-        //         source_->transpose(permutation),
-        //         indices_->transpose(permutation)
-        //     );
+        // TODO(jonathan): there is a way to transpose the index dimensions of
+        // gather, or the non-leading dimension of the source.
         throw std::runtime_error(
             "Cannot transpose gather (yet)."
         );
@@ -128,10 +141,13 @@ struct GatherState : public OperationState {
             desired_computation_shape.begin(),
             desired_computation_shape.end() - (source_ndim - 1)
         );
+
         source_->compute_node_compilation_info(source_ndim, source_shape, arrays, scalars, node_to_info);
         indices_->compute_node_compilation_info(desired_computation_rank - (source_ndim - 1), indices_shape, arrays, scalars, node_to_info);
+        bool is_2d = desired_computation_rank == 2 && source_ndim == 2;
         (*node_to_info)[this].hash = utils::Hasher().add(optype_hash)
                                                     .add(desired_computation_rank)
+                                                    .add(is_2d)
                                                     .add(node_to_info->at(source_.get()).hash)
                                                     .add(node_to_info->at(indices_.get()).hash)
                                                     .value();

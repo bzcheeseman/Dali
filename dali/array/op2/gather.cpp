@@ -124,7 +124,7 @@ struct GatherState : public OperationState {
                 source_,
                 indices_->collapse_dim_with_dim_minus_one(dim)
             );
-        } else {
+        } else {
             return std::make_shared<GatherState>(
                 source_->collapse_dim_with_dim_minus_one(dim - indices_ndim + 1),
                 indices_

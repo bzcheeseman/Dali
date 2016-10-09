@@ -80,7 +80,7 @@ TEST(RTCTests, scatter_to_rows_simple) {
         for (int j = 0; j < dest.shape()[1]; j++) {
             if (j != vals[i]) {
                 EXPECT_EQ(42, int(dest[i][j]));
-            } else {
+            } else {
                 EXPECT_EQ(43, int(dest[i][j]));
             }
         }

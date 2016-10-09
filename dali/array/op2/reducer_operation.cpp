@@ -514,4 +514,4 @@ namespace op2 {
             res.state_
         ));
     }
-}  // namespace op2
+}  // namespace op2

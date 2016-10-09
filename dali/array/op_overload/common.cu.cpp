@@ -114,6 +114,13 @@ DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::scalar_div, /=);
         self_as_array OPERATOR assignable;\
         left = self_as_array;\
     }\
+    CONTAINER& operator OPERATOR (CONTAINER& left, const Operation& assignable) {\
+        ((Assignable<CONTAINER>)assignable).assign_to(left, OPERATOR_NAME);\
+        return left;\
+    }\
+    void operator OPERATOR (CONTAINER&& left, const Operation& assignable) {\
+        ((Assignable<CONTAINER>)assignable).assign_to(left, OPERATOR_NAME);\
+    }\
     CONTAINER& operator OPERATOR(CONTAINER& left, const Assignable<CONTAINER>& assignable) {\
         assignable.assign_to(left, OPERATOR_NAME);\
         return left;\

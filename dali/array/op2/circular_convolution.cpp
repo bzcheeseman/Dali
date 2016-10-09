@@ -24,8 +24,8 @@ struct CircularConvolutionOperationState : public OperationState {
         //                         to instantiate easily 2, 3, etc... arg templates.
         return"template<typename C1, typename C2>\n"
         "struct CircularConvolutionKernel {\n"
-        "    const C1& a_view_;\n"
-        "    const C2& b_view_;\n"
+        "    C1 a_view_;\n"
+        "    C2 b_view_;\n"
         "    static const int ndim = C1::ndim;\n"
         "    typedef typename C1::T T;\n"
         "    XINLINE CircularConvolutionKernel(const C1& a_view, const C2& b_view)\n"

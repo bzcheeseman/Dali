@@ -63,7 +63,7 @@ namespace {
     std::string generate_elementwise_kernel_constructor(int num_args) {
         utils::MS template_data_stream;
         for (int i = 0; i < num_args; i++) {
-            template_data_stream << "    const C" << (i+1) << "& "
+            template_data_stream << "    C" << (i+1) << " "
                                  << generate_elementwise_kernel_argument(i) << "_;\n";
         }
         template_data_stream << "    static const int ndim = C1::ndim;\n"

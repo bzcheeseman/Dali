@@ -45,6 +45,8 @@ DALI_DECLARE_SCALAR_INTERACTION_INPLACE(/=, Array)
     void operator SYMBOL (CONTAINER&& left, const Assignable<Array>& right);\
     CONTAINER& operator SYMBOL (CONTAINER&  left, const Array& right);\
     void operator SYMBOL (CONTAINER&& left, const Array& right);\
+    CONTAINER& operator SYMBOL (CONTAINER&  left, const Operation& right);\
+    void operator SYMBOL (CONTAINER&& left, const Operation& right);\
     CONTAINER& operator SYMBOL (CONTAINER&  left, const Assignable<CONTAINER>& right);\
     void operator SYMBOL (CONTAINER&& left, const Assignable<CONTAINER>& right);\
 

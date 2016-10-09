@@ -131,6 +131,18 @@ XINLINE int indices_to_offset(const Shape<ndim>& shape, const Shape<ndim>& indic
     return offset;
 }
 
+template<int dimensions, typename Type>
+struct AbstractKernel {
+    static const int ndim = dimensions;
+    typedef Type T;
+    Shape<ndim> shape_;
+    const Shape<ndim>& shape() const {
+        return shape_;
+    }
+    AbstractKernel(const Shape<ndim>& shape) : shape_(shape) {}
+    virtual T operator[](const Shape<ndim>&) const = 0;
+};
+
 // assumes contiguous memory
 template<typename Type, int dimensions>
 class ArrayView {

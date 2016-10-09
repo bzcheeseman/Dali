@@ -100,6 +100,7 @@ struct OperationState : std::enable_shared_from_this<OperationState> {
 
 
     operator Assignable<Array> () const;
+    operator Assignable<ArrayGather> () const;
 
 
     virtual void for_all_suboperations(std::function<void(const OperationState*)> callback) const final;
@@ -204,6 +205,8 @@ struct Operation {
     Operation transpose(const std::vector<int>& permutation) const;
 
     operator Assignable<Array>() const;
+    operator Assignable<ArrayGather>() const;
+    operator Assignable<ArraySubtensor>() const;
 };
 
 namespace op2 {

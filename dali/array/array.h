@@ -249,6 +249,9 @@ class Array : public Exp<Array> {
 
     void copy_from(const Array& other);
     Array& operator=(const Assignable<Array>& assignable);
+    Array& operator=(const int& assignable);
+    Array& operator=(const float& assignable);
+    Array& operator=(const double& assignable);
     Array& operator=(const Operation& operation);
 
     template<typename T>

@@ -1121,6 +1121,18 @@ Array& Array::operator=(const Assignable<Array>& assignable) {
     return *this;
 }
 
+Array& Array::operator=(const int& assignable) {
+    return *this = Assignable<Array>(assignable);
+}
+
+Array& Array::operator=(const float& assignable) {
+    return *this = Assignable<Array>(assignable);
+}
+
+Array& Array::operator=(const double& assignable) {
+    return *this = Assignable<Array>(assignable);
+}
+
 void Array::print(std::basic_ostream<char>& stream, const int& indent, const bool& add_newlines, const bool& print_comma) const {
     std::string end_line_spacing("");
     if (add_newlines) end_line_spacing += "\n";

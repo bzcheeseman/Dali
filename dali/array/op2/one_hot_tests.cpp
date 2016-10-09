@@ -13,7 +13,7 @@ Array reference_one_hot(Array indices, int depth, double on_value, double off_va
     auto res = Array::zeros(out_shape, DTYPE_DOUBLE);
     res = res.copyless_reshape({-1, depth});
     indices = indices.ravel();
-    res = initializer::fill(off_value);
+    res = off_value;
     for (int i = 0; i < indices.number_of_elements(); i++) {
         res[i][indices[i]] = on_value;
     }

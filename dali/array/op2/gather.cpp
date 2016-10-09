@@ -27,17 +27,18 @@ struct GatherState : public OperationState {
         std::string access;
         bool is_2d = node_to_info.at(this).computation_rank == 2 &&
                      node_to_info.at(source_.get()).computation_rank == 2;
+        bool use_references = is_assignable();
         if (is_2d) {
             // use a simpler set of functions when access pattern is well understood (no
             // loops or unrolled loops needed).
             // TODO(jonathan): auto-generate full access pattern without any loops
-            access = (
-                "    XINLINE T operator[](const Shape<ndim>& query) {\n"
+            access = utils::make_message(
+                "    XINLINE T", use_references ? "&" : "", " operator[](const Shape<ndim>& query) ", use_references ? "" : "const", " {\n"
                 "        return source_[{indices_(query[0]), query[1]}];\n"
                 "    }\n");
         } else {
-            access = (
-                "    XINLINE T operator[](const Shape<ndim>& query) {\n"
+            access = utils::make_message(
+                "    XINLINE T", use_references ? "&" : "", " operator[](const Shape<ndim>& query) ", use_references ? "" : "const", " {\n"
                 "        Shape<C1::ndim> source_query = query.template axis_reduced_shape<C2::ndim, C1::ndim - 1, 1>();\n"
                 "        source_query[0] = indices_[query.template axis_reduced_shape<0, C2::ndim>()];\n"
                 "        return source_[source_query];\n"
@@ -45,12 +46,23 @@ struct GatherState : public OperationState {
         }
         std::string name = utils::make_message("GatherKernel", is_2d ? "2D" : "ND");
 
+        std::stringstream shape_assignments_ss;
+        for (int i = 0; i < node_to_info.at(indices_.get()).computation_rank; i++) {
+            shape_assignments_ss << "    res[" << i << "] = indices_shape[" << i << "];\n";
+        }
+        std::string shape_assignments = shape_assignments_ss.str();
+
         return utils::make_message("template<typename C1, typename C2>\n"
         "struct ", name, " {\n"
-        "    const C1& source_;\n"
-        "    const C2& indices_;\n"
+        "    C1 source_;\n"
+        "    C2 indices_;\n"
         "    static const int ndim = C1::ndim + C2::ndim - 1;\n"
         "    typedef typename C1::T T;\n"
+        "    XINLINE Shape<ndim> shape() const {\n"
+        "        auto res = source_.shape().template axis_reduced_shape<1, C1::ndim-1, C2::ndim>();\n",
+        "        auto indices_shape = indices_.shape();\n", shape_assignments,
+        "        return res;\n"
+        "    }\n"
         "    XINLINE ", name, "(const C1& source, const C2& indices)\n"
         "        : source_(source), indices_(indices) {}\n", access,
         "};\n"
@@ -73,6 +85,10 @@ struct GatherState : public OperationState {
 
     virtual int ndim() const {
         return indices_->ndim() + source_->ndim() - 1;
+    }
+
+    virtual bool is_assignable() const {
+        return source_->is_assignable();
     }
 
     std::vector<operation_state_ptr> arguments() const {

@@ -2,6 +2,7 @@
 
 // #include "dali/array/test_utils.h"
 #include "dali/array/op2/gather.h"
+#include "dali/array/op2/unary.h"
 #include "dali/array/op2/gather_from_rows.h"
 #include "dali/array/op.h"
 #include "dali/array/op2/operation.h"
@@ -12,6 +13,18 @@ TEST(RTCTests, gather_simple) {
     EXPECT_TRUE(Array::equals(op2::gather(source, indices), op::gather(source, indices)));
     auto source2 = Array::arange({5, 6, 7}, DTYPE_INT32);
     EXPECT_TRUE(Array::equals(op2::gather(source2, indices), op::gather(source2, indices)));
+}
+
+TEST(RTCTests, gather_simple_elementwise) {
+    auto indices = Array::arange({5}, DTYPE_INT32);
+    auto source = Array::arange({5, 6}, DTYPE_DOUBLE);
+    EXPECT_TRUE(
+        Array::allclose(
+            op2::gather(op2::sigmoid(source), indices),
+            op::gather(op::sigmoid(source), indices),
+            1e-6
+        )
+    );
 }
 
 TEST(RTCTests, gather_from_rows_simple) {
@@ -34,4 +47,19 @@ TEST(RTCTests, gather_from_rows_simple) {
             EXPECT_EQ(expected_result[i][j], int(result_2d[i][j]));
         }
     }
+}
+
+TEST(RTCTests, scatter_simple) {
+    auto indices = Array::zeros({6}, DTYPE_INT32);
+    std::vector<int> vals = {0, 0, 1, 1, 1, 2};
+    for (int i = 0; i < vals.size(); i++) {
+        indices[i] = vals[i];
+    }
+    auto dest = Array::zeros({3}, DTYPE_INT32);
+    auto gathered = dest[indices];
+    ASSERT_EQ(gathered.shape(), indices.shape());
+    gathered += Operation(1);
+    EXPECT_EQ(2, int(dest[0]));
+    EXPECT_EQ(3, int(dest[1]));
+    EXPECT_EQ(1, int(dest[2]));
 }

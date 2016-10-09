@@ -54,8 +54,8 @@ struct GatherFromRowsState : public OperationState {
         }
         return utils::make_message("template<typename C1, typename C2>\n"
         "struct ", name, " {\n"
-        "    const C1& source_;\n"
-        "    const C2& indices_;\n"
+        "    C1 source_;\n"
+        "    C2 indices_;\n"
         "    static const int ndim = C1::ndim - 1;\n"
         "    typedef typename C1::T T;\n"
         "    XINLINE ", name, "(const C1& source, const C2& indices)\n"

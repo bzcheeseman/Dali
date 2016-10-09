@@ -4,6 +4,7 @@
 
 #include "dali/array/function2/compiler.h"
 #include "dali/array/op2/elementwise_operation.h"
+#include "dali/array/op2/gather.h"
 #include "dali/array/op2/rtc_utils.h"
 #include "dali/utils/make_message.h"
 
@@ -137,6 +138,54 @@ std::function<void(const std::vector<Array>&, const std::vector<double>&)> Opera
     return array_op_compiler.get_function<const std::vector<Array>&, const std::vector<double>&>(hash);
 }
 
+// TODO(jonathan, szymon): move this into member function
+void eval_op(const Operation& op,
+             const std::vector<int>& output_shape,
+             const memory::Device& output_device) {
+    auto& self = *op.state_;
+    int desired_computation_rank = self.min_computation_rank_;
+    std::vector<const ArrayOperationState*> array_ops;
+    std::vector<const ScalarOperationState*> scalar_ops;
+    OperationState::node_to_info_t node_to_info;
+
+    self.compute_node_compilation_info(desired_computation_rank,
+                                       output_shape,
+                                       &array_ops,
+                                       &scalar_ops,
+                                       &node_to_info);
+
+
+    auto compiled_self = self.compile(output_device,
+                                      array_ops,
+                                      scalar_ops,
+                                      node_to_info);
+    std::vector<Array> arrays;
+    std::transform(array_ops.begin(),
+                   array_ops.end(),
+                   std::back_inserter(arrays),
+                   [&node_to_info](const ArrayOperationState* op) {
+                       const auto& rank  = node_to_info.at(op).computation_rank;
+                       const auto& shape = node_to_info.at(op).computation_shape;
+                       if (rank == op->ndim()) {
+                           return op->array_.reshape_broadcasted(shape);
+                       } else if (rank == 1) {
+                           return op->array_.reshape_broadcasted(shape).copyless_ravel();
+                       } else {
+                           return op->array_.reshape_broadcasted(shape).copyless_right_fit_ndim(rank);
+                       }
+                   });
+
+    std::vector<double> scalars;
+    std::transform(scalar_ops.begin(),
+                   scalar_ops.end(),
+                   std::back_inserter(scalars),
+                   [&](const ScalarOperationState* op) {
+                       return op->value_;
+                   });
+
+    compiled_self(arrays, scalars);
+}
+
 
 OperationState::operator Assignable<Array> () const {
     auto this_ptr = shared_from_this();
@@ -153,51 +202,18 @@ OperationState::operator Assignable<Array> () const {
         );
 
         auto self_op = op2::assign(out, operator_t, Operation(this_ptr));
-        auto self_ptr = self_op.state_;
-        auto& self = *self_ptr;
+        eval_op(self_op, output_bshape, output_device);
+    });
+}
 
-        int desired_computation_rank = self.min_computation_rank_;
-
-        std::vector<const ArrayOperationState*> array_ops;
-        std::vector<const ScalarOperationState*> scalar_ops;
-        node_to_info_t node_to_info;
-
-        self.compute_node_compilation_info(self.min_computation_rank_,
-                                           output_bshape,
-                                           &array_ops,
-                                           &scalar_ops,
-                                           &node_to_info);
-
-
-        auto compiled_self = self.compile(output_device,
-                                          array_ops,
-                                          scalar_ops,
-                                          node_to_info);
-        std::vector<Array> arrays;
-        std::transform(array_ops.begin(),
-                       array_ops.end(),
-                       std::back_inserter(arrays),
-                       [&node_to_info](const ArrayOperationState* op) {
-                           const auto& rank  = node_to_info.at(op).computation_rank;
-                           const auto& shape = node_to_info.at(op).computation_shape;
-                           if (rank == op->ndim()) {
-                               return op->array_.reshape_broadcasted(shape);
-                           } else if (rank == 1) {
-                               return op->array_.reshape_broadcasted(shape).copyless_ravel();
-                           } else {
-                               return op->array_.reshape_broadcasted(shape).copyless_right_fit_ndim(rank);
-                           }
-                       });
-
-        std::vector<double> scalars;
-        std::transform(scalar_ops.begin(),
-                       scalar_ops.end(),
-                       std::back_inserter(scalars),
-                       [&](const ScalarOperationState* op) {
-                           return op->value_;
-                       });
-
-        compiled_self(arrays, scalars);
+OperationState::operator Assignable<ArrayGather> () const {
+    auto this_ptr = shared_from_this();
+    return Assignable<ArrayGather>([this_ptr](ArrayGather& out, const OPERATOR_T& operator_t) mutable {
+        auto output_dtype  = out.dtype();
+        auto output_device = memory::Device::cpu();
+        auto output_bshape = out.shape();
+        auto self_op = op2::assign(op2::gather(out.source, out.indices), operator_t, Operation(this_ptr));
+        eval_op(self_op, output_bshape, output_device);
     });
 }
 
@@ -400,8 +416,15 @@ Operation Operation::transpose(const std::vector<int>& permutation) const {
 Operation::operator Assignable<Array> () const {
     return state_->operator Assignable<Array>();
 }
+Operation::operator Assignable<ArrayGather> () const {
+    return state_->operator Assignable<ArrayGather>();
+}
+Operation::operator Assignable<ArraySubtensor> () const {
+    throw std::runtime_error("not implemented.");
+}
 
 struct AssignmentOperationState : public OperationState {
+    static const hash_t optype_hash;
     operation_state_ptr left_;
     operation_state_ptr right_;
     OPERATOR_T operator_t_;
@@ -431,6 +454,7 @@ struct AssignmentOperationState : public OperationState {
         left_->compute_node_compilation_info(desired_computation_rank, desired_computation_shape, arrays, scalars, node_to_info);
         right_->compute_node_compilation_info(desired_computation_rank, desired_computation_shape, arrays, scalars, node_to_info);
         (*node_to_info)[this].hash = Hasher().add(operator_t_)
+                                             .add(optype_hash)
                                              .add(node_to_info->at(left_.get()).hash)
                                              .add(node_to_info->at(right_.get()).hash)
                                              .add(desired_computation_rank).value();
@@ -466,7 +490,7 @@ struct AssignmentOperationState : public OperationState {
         int computation_rank = node_to_info.at(this).computation_rank;
         if (computation_rank == 1) {
             return utils::make_message(
-                "    int num_el = ", symbol_table.at(left_.get()),".shape().numel();\n",
+                "    int num_el = ", left_->get_call_code_nd(symbol_table, node_to_info), ".shape().numel();\n",
                 "    #pragma clang loop vectorize(enable)\n",
                 "    #pragma clang loop interleave(enable)\n",
                 "    for (int i = 0; i < num_el; ++i) {\n",
@@ -477,12 +501,14 @@ struct AssignmentOperationState : public OperationState {
             return construct_for_loop(
                 computation_rank,
                 assignment_code(symbol_table, node_to_info),
-                symbol_table.at(left_.get()),
+                left_->get_call_code_nd(symbol_table, node_to_info),
                 4
             );
         }
     }
 };
+const hash_t AssignmentOperationState::optype_hash = std::hash<std::string>()("AssignmentOperationState");
+
 
 namespace op2 {
     Operation assign(const Operation& left, const OPERATOR_T& operator_t, const Operation& right) {

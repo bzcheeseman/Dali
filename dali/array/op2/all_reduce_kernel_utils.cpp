@@ -42,7 +42,7 @@ namespace {
     std::string generate_reduce_kernel_constructor_arguments(int nargs) {
         utils::MS stream;
         for (int i = 0; i < nargs; i++) {
-            stream << "        const C" << (i + 1) << "& "
+            stream << "        C" << (i + 1) << " "
                    << generate_all_reduce_kernel_argument(i+1);
             if (i + 1 != nargs) {
                 stream << ",\n";
@@ -63,7 +63,7 @@ namespace {
     std::string generate_all_reduce_kernel_constructor(std::string name, int ndim, int result_ndim) {
         auto arg = generate_all_reduce_kernel_argument(1);
         return utils::make_message(
-            "    const C1& ", arg, "_;\n"
+            "    C1 ", arg, "_;\n"
             "    static const int ndim = ", result_ndim, ";\n"
             "    typedef Type T;\n"
             "    XINLINE const Shape<ndim>& shape() const {\n"
@@ -78,7 +78,7 @@ namespace {
     std::string generate_axis_reduce_kernel_constructor(std::string name, int ndim, int result_ndim) {
         auto arg = generate_all_reduce_kernel_argument(1);
         return utils::make_message(
-            "    const C1& ", arg, "_;\n"
+            "    C1 ", arg, "_;\n"
             "    static const int ndim = ", result_ndim, ";\n"
             "    typedef Type T;\n"
             "    XINLINE Shape<ndim> shape() const {\n"

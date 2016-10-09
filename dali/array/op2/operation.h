@@ -56,6 +56,7 @@ struct OperationState : std::enable_shared_from_this<OperationState> {
     //            REIMPLEMENT AS YOU SEE FIT                                     //
     ///////////////////////////////////////////////////////////////////////////////
 
+    virtual bool is_assignable() const;
     virtual int ndim() const;
 
     virtual std::vector<int> shape() const;
@@ -85,27 +86,13 @@ struct OperationState : std::enable_shared_from_this<OperationState> {
 
     OperationState() = delete;
 
-
-    virtual std::string get_code_template(const OPERATOR_T& operator_t,
-                                          bool dst_contiguous,
-                                          DType output_dtype,
-                                          memory::Device device,
-                                          int desired_computation_rank,
+    virtual std::string get_code_template(memory::Device device,
                                           const std::vector<const ArrayOperationState*>& arrays,
                                           const std::vector<const ScalarOperationState*>& scalars,
                                           const node_to_info_t& node_to_info) const final;
 
-    virtual std::string get_assign_code_nd(const OPERATOR_T& operator_t,
-                                           const std::string& call_nd,
-                                           const symbol_table_t& symbol_table,
-                                           const node_to_info_t& node_to_info) const final;
 
-
-    std::function<void(Array&, const std::vector<Array>&, const std::vector<double>&)> compile(
-            const OPERATOR_T& operator_t,
-            bool dst_contiguous,
-            DType output_dtype,
-            int desired_computation_rank,
+    std::function<void(const std::vector<Array>&, const std::vector<double>&)> compile(
             memory::Device device,
             const std::vector<const ArrayOperationState*>& arrays,
             const std::vector<const ScalarOperationState*>& scalars,
@@ -131,6 +118,7 @@ struct ArrayOperationState : public OperationState {
     virtual std::vector<int> bshape() const;
 
     virtual int ndim() const;
+    virtual bool is_assignable() const;
 
     virtual bool contiguous() const;
 
@@ -203,6 +191,7 @@ struct Operation {
     int ndim() const;
 
     bool is_scalar() const;
+    bool is_assignable() const;
 
     std::vector<int> bshape() const;
 
@@ -216,5 +205,9 @@ struct Operation {
 
     operator Assignable<Array>() const;
 };
+
+namespace op2 {
+    Operation assign(const Operation& left, const OPERATOR_T& operator_t, const Operation& right);
+}
 
 #endif  // DALI_ARRAY_OP2_OPERATION_H

@@ -131,8 +131,7 @@ std::function<void(const std::vector<Array>&, const std::vector<double>&)> Opera
         );
         array_op_compiler.compile<const std::vector<Array>&, const std::vector<double>&>(
             hash,
-            code_template,
-            {}
+            code_template
         );
     }
     // return the operation that was loaded or compiled:

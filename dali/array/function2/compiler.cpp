@@ -30,14 +30,6 @@ std::string get_class_name(const char* name) {
     return std::string(demangled);
 }
 
-std::string macro_args_to_string(macro_args_t macro_args) {
-    std::stringstream ss;
-    for (auto& kv : macro_args) {
-        ss << "-D" << kv.first << "=" << kv.second << " ";
-    }
-    return ss.str();
-}
-
 ModulePointer::ModulePointer(const std::string& libname) : module_(NULL), libname_(libname) {
     module_ = dlopen(libname_.c_str(), RTLD_LAZY);
     if(!module_) {

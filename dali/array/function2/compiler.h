@@ -20,7 +20,6 @@ typedef std::unordered_map<std::string, std::string> macro_args_t;
 
 std::string get_call_args(std::size_t num_args);
 std::string get_class_name(const char* name);
-std::string macro_args_to_string(macro_args_t macro_args);
 
 namespace {
     // is_const:
@@ -114,7 +113,7 @@ class Compiler {
                     const std::string& call_args);
 
     template<typename... Args>
-    void compile(hash_t hash, std::string code_template, macro_args_t macro_args) {
+    void compile(hash_t hash, std::string code_template) {
         std::string module_path = utils::MS() << outpath_ << hash << ".so";
 
         std::string cppfile = utils::MS() << outpath_ << hash << ".cpp";
@@ -127,17 +126,16 @@ class Compiler {
             get_call_args(sizeof...(Args))
         );
 
-        auto macro_args_str = macro_args_to_string(macro_args);
         bool success = compile_code(
             cppfile,
             module_path,
             logfile,
-            macro_args_str
+            ""
         );
 
         if (!success) {
             std::cout << "Failure encoutered when running the following command:" << std::endl;
-            std::cout << compiler_command(cppfile, module_path, logfile, macro_args_str) << std::endl;
+            std::cout << compiler_command(cppfile, module_path, logfile, "") << std::endl;
             std::cout << "See details in " << logfile << std::endl;
             exit(EXIT_FAILURE);
         }

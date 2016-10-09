@@ -1,4 +1,4 @@
-#include "circular_convolution.h"
+#include "gather.h"
 
 #include "dali/array/op2/operation.h"
 #include "dali/array/op2/elementwise_operation.h"

@@ -1,18 +1,37 @@
 #include <gtest/gtest.h>
 
-#include "dali/utils/print_utils.h"
-#include "dali/array/test_utils.h"
-#include "dali/runtime_config.h"
-#include "dali/array/op2/binary.h"
-#include "dali/array/op2/unary.h"
+// #include "dali/array/test_utils.h"
 #include "dali/array/op2/gather.h"
+#include "dali/array/op2/gather_from_rows.h"
 #include "dali/array/op.h"
 #include "dali/array/op2/operation.h"
 
 TEST(RTCTests, gather_simple) {
-	auto indices = Array::arange({5}, DTYPE_INT32);
-	auto source = Array::arange({5, 6}, DTYPE_INT32);
-	EXPECT_TRUE(Array::equals(op2::gather(source, indices), op::gather(source, indices)));
-	auto source2 = Array::arange({5, 6, 7}, DTYPE_INT32);
-	EXPECT_TRUE(Array::equals(op2::gather(source2, indices), op::gather(source2, indices)));
+    auto indices = Array::arange({5}, DTYPE_INT32);
+    auto source = Array::arange({5, 6}, DTYPE_INT32);
+    EXPECT_TRUE(Array::equals(op2::gather(source, indices), op::gather(source, indices)));
+    auto source2 = Array::arange({5, 6, 7}, DTYPE_INT32);
+    EXPECT_TRUE(Array::equals(op2::gather(source2, indices), op::gather(source2, indices)));
+}
+
+TEST(RTCTests, gather_from_rows_simple) {
+    auto indices = Array::arange({5}, DTYPE_INT32);
+    auto source = Array::arange({5, 6}, DTYPE_INT32);
+    EXPECT_TRUE(Array::equals(op2::gather_from_rows(source, indices), op::take_from_rows(source, indices)));
+
+    auto source2 = Array::arange({5, 6, 7}, DTYPE_INT32);
+    Array result_2d = op2::gather_from_rows(source2, indices);
+    std::vector<std::vector<int>> expected_result({
+        {  0,   1,   2,   3,   4,   5,   6},
+        { 49,  50,  51,  52,  53,  54,  55},
+        { 98,  99, 100, 101, 102, 103, 104},
+        {147, 148, 149, 150, 151, 152, 153},
+        {196, 197, 198, 199, 200, 201, 202}
+   	});
+    ASSERT_EQ(result_2d.shape(), std::vector<int>({int(expected_result.size()), int(expected_result[0].size())}));
+    for (int i = 0; i < result_2d.shape()[0]; i++) {
+        for (int j = 0; j < result_2d.shape()[1]; j++) {
+            EXPECT_EQ(expected_result[i][j], int(result_2d[i][j]));
+        }
+    }
 }

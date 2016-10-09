@@ -5,6 +5,7 @@
 #include "dali/array/function2/compiler.h"
 #include "dali/array/op2/elementwise_operation.h"
 #include "dali/array/op2/gather.h"
+#include "dali/array/op2/gather_from_rows.h"
 #include "dali/array/op2/rtc_utils.h"
 #include "dali/utils/make_message.h"
 
@@ -217,6 +218,17 @@ OperationState::operator Assignable<ArrayGather> () const {
     });
 }
 
+OperationState::operator Assignable<ArraySubtensor> () const {
+    auto this_ptr = shared_from_this();
+    return Assignable<ArraySubtensor>([this_ptr](ArraySubtensor& out, const OPERATOR_T& operator_t) mutable {
+        auto output_dtype  = out.dtype();
+        auto output_device = memory::Device::cpu();
+        auto output_bshape = out.shape();
+        auto self_op = op2::assign(op2::gather_from_rows(out.source, out.indices), operator_t, Operation(this_ptr));
+        eval_op(self_op, output_bshape, output_device);
+    });
+}
+
 void OperationState::for_all_suboperations(std::function<void(const OperationState*)> callback) const {
     callback(this);
     for (auto& child: arguments()) {
@@ -420,7 +432,7 @@ Operation::operator Assignable<ArrayGather> () const {
     return state_->operator Assignable<ArrayGather>();
 }
 Operation::operator Assignable<ArraySubtensor> () const {
-    throw std::runtime_error("not implemented.");
+    return state_->operator Assignable<ArraySubtensor>();
 }
 
 struct AssignmentOperationState : public OperationState {

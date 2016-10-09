@@ -63,3 +63,26 @@ TEST(RTCTests, scatter_simple) {
     EXPECT_EQ(3, int(dest[1]));
     EXPECT_EQ(1, int(dest[2]));
 }
+
+TEST(RTCTests, scatter_to_rows_simple) {
+    auto indices = Array::zeros({6}, DTYPE_INT32);
+    std::vector<int> vals = {0, 0, 1, 1, 1, 2};
+    for (int i = 0; i < vals.size(); i++) {
+        indices[i] = vals[i];
+    }
+    auto dest = Array::zeros({7, 3}, DTYPE_INT32);
+    dest = 42;
+    auto gathered = dest.take_from_rows(indices);
+    ASSERT_EQ(gathered.shape(), indices.shape());
+    gathered += Operation(1);
+
+    for (int i = 0; i < vals.size(); i++) {
+        for (int j = 0; j < dest.shape()[1]; j++) {
+            if (j != vals[i]) {
+                EXPECT_EQ(42, int(dest[i][j]));
+            } else {
+                EXPECT_EQ(43, int(dest[i][j]));
+            }
+        }
+    }
+}

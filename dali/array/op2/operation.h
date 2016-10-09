@@ -101,6 +101,7 @@ struct OperationState : std::enable_shared_from_this<OperationState> {
 
     operator Assignable<Array> () const;
     operator Assignable<ArrayGather> () const;
+    operator Assignable<ArraySubtensor> () const;
 
 
     virtual void for_all_suboperations(std::function<void(const OperationState*)> callback) const final;

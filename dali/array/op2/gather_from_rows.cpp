@@ -27,6 +27,10 @@ struct GatherFromRowsState : public OperationState {
         return utils::make_message("gather_from_rows_kernel_", source_computation_rank, "d");
     }
 
+    virtual bool is_assignable() const {
+        return source_->is_assignable();
+    }
+
     std::string prefix_code(const node_to_info_t& node_to_info) const {
         int source_computation_rank = node_to_info.at(source_.get()).computation_rank;
         int indices_computation_rank = node_to_info.at(indices_.get()).computation_rank;
@@ -43,24 +47,36 @@ struct GatherFromRowsState : public OperationState {
             ss << ", query[" << i << "]";
         }
         ss << "}";
+        bool use_references = is_assignable();
         std::string nd_access = ss.str();
         std::string one_dimensional_access = "";
         if (self_computation_rank == 1) {
-            one_dimensional_access = (
-        "    XINLINE T operator()(int index) {\n"
+            one_dimensional_access = utils::make_message(
+        "    XINLINE T", use_references ? "&" : "", " operator()(int index) ", use_references ? "" : "const", " {\n"
         "        return source_[{index, indices_(index)}];\n"
         "    }\n"
             );
         }
+        std::stringstream shape_assignments_ss;
+        for (int i = 0; i < node_to_info.at(indices_.get()).computation_rank; i++) {
+            shape_assignments_ss << "    res[" << i << "] = indices_shape[" << i << "];\n";
+        }
+        std::string shape_assignments = shape_assignments_ss.str();
+
         return utils::make_message("template<typename C1, typename C2>\n"
         "struct ", name, " {\n"
         "    C1 source_;\n"
         "    C2 indices_;\n"
         "    static const int ndim = C1::ndim - 1;\n"
         "    typedef typename C1::T T;\n"
+        "    XINLINE Shape<ndim> shape() const {\n"
+        "        auto res = source_.shape().template axis_reduced_shape<2, C1::ndim-2, C2::ndim>();\n",
+        "        auto indices_shape = indices_.shape();\n", shape_assignments,
+        "        return res;\n"
+        "    }\n"
         "    XINLINE ", name, "(const C1& source, const C2& indices)\n"
         "        : source_(source), indices_(indices) {}\n"
-        "    XINLINE T operator[](const Shape<ndim>& query) {\n"
+        "    XINLINE T",  use_references ? "&" : "", " operator[](const Shape<ndim>& query) ", use_references ? "" : "const", " {\n"
         "        return source_[", nd_access, "];\n"
         "    }\n", one_dimensional_access,
         "};\n"

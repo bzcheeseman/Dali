@@ -5,6 +5,7 @@
 #include "dali/array/function2/compiler.h"
 #include "dali/array/op2/elementwise_operation.h"
 #include "dali/array/op2/gather.h"
+#include "dali/array/op2/reducers.h"
 #include "dali/array/op2/gather_from_rows.h"
 #include "dali/array/op2/rtc_utils.h"
 #include "dali/utils/make_message.h"
@@ -186,6 +187,27 @@ void eval_op(const Operation& op,
     compiled_self(arrays, scalars);
 }
 
+std::vector<int> get_auto_reduce_axes(const Array& output, const std::vector<int>& in_bshape) {
+    if (output.is_stateless() || output.ndim() != in_bshape.size()) {
+        return {};
+    }
+
+    auto out_bshape = output.bshape();
+    std::vector<int> reduction_axes;
+
+    for (int i = 0; i < out_bshape.size(); ++i) {
+        if (out_bshape[i] < 0) {
+            ASSERT2(out_bshape[i] == -1,
+                    "Assigning to broadcast_reshaped Array is not supported.");
+            if (std::abs(in_bshape[i]) > 1) {
+                // see if number of reductions is greater than 1 or equal to size of output.
+                reduction_axes.emplace_back(i);
+            }
+        }
+    }
+    return reduction_axes;
+}
+
 
 OperationState::operator Assignable<Array> () const {
     auto this_ptr = shared_from_this();
@@ -193,15 +215,48 @@ OperationState::operator Assignable<Array> () const {
         auto output_dtype  = this_ptr->dtype();
         auto output_device = memory::Device::cpu();
         auto output_bshape = this_ptr->bshape();
+        auto op = Operation(this_ptr);
+        Array out_array;
 
-        initialize_output_array(
-            out,
-            output_dtype,
-            output_device,
-            &output_bshape
-        );
+        OPERATOR_T operator_to_use = operator_t == OPERATOR_T_LSE ? OPERATOR_T_ADD : operator_t;
 
-        auto self_op = op2::assign(out, operator_t, Operation(this_ptr));
+        if (operator_t == OPERATOR_T_LSE) {
+            std::vector<int> reduction_axes = get_auto_reduce_axes(out, output_bshape);
+            if (reduction_axes.size() > 0) {
+                op = op2::sum(op, reduction_axes);
+                // add the reduced dimensions back:
+                for (int i = 0; i < reduction_axes.size(); ++i) {
+                    output_bshape[reduction_axes[i]] = 1;
+                }
+            }
+            initialize_output_array(
+                out,
+                output_dtype,
+                output_device,
+                &output_bshape
+            );
+            out_array = out;
+            for (int i = int(reduction_axes.size()) - 1; i >= 0; --i) {
+                out_array = out_array.squeeze(reduction_axes[i]);
+            }
+            if (reduction_axes.size() > 0) {
+                output_bshape = op.bshape();
+            }
+        } else {
+            initialize_output_array(
+                out,
+                output_dtype,
+                output_device,
+                &output_bshape
+            );
+            out_array = out;
+        }
+        if (!out.memory()->is_any_fresh() && operator_to_use == OPERATOR_T_ADD) {
+            // if operation is += to an empty/zeros array, then switch operator
+            // to equal:
+            operator_to_use = OPERATOR_T_EQL;
+        }
+        auto self_op = op2::assign(out_array, operator_to_use, op);
         eval_op(self_op, output_bshape, output_device);
     });
 }
@@ -212,7 +267,7 @@ OperationState::operator Assignable<ArrayGather> () const {
         auto output_dtype  = out.dtype();
         auto output_device = memory::Device::cpu();
         auto output_bshape = out.shape();
-        auto self_op = op2::assign(op2::gather(out.source, out.indices), operator_t, Operation(this_ptr));
+        auto self_op = op2::assign(op2::gather(out.source, out.indices), operator_t == OPERATOR_T_LSE ? OPERATOR_T_ADD : operator_t, Operation(this_ptr));
         eval_op(self_op, output_bshape, output_device);
     });
 }
@@ -223,7 +278,7 @@ OperationState::operator Assignable<ArraySubtensor> () const {
         auto output_dtype  = out.dtype();
         auto output_device = memory::Device::cpu();
         auto output_bshape = out.shape();
-        auto self_op = op2::assign(op2::gather_from_rows(out.source, out.indices), operator_t, Operation(this_ptr));
+        auto self_op = op2::assign(op2::gather_from_rows(out.source, out.indices), operator_t == OPERATOR_T_LSE ? OPERATOR_T_ADD : operator_t, Operation(this_ptr));
         eval_op(self_op, output_bshape, output_device);
     });
 }

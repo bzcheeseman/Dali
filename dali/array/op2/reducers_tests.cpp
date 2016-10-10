@@ -125,3 +125,10 @@ TEST(RTCTests, axis_reduce_sum_middle_dim) {
     EXPECT_TRUE(Array::equals(Array::ones({2, 4}, DTYPE_INT32) * 3, op2::sum(a, {1})));
     EXPECT_TRUE(Array::equals(Array::ones({2, 3}, DTYPE_INT32) * 4, op2::sum(a, {2})));
 }
+
+TEST(RTCTests, lse_reduce) {
+    auto a = Array::zeros({2}, DTYPE_INT32).insert_broadcast_axis(1);
+    a <<= Operation(Array::ones({2, 5}, DTYPE_INT32));
+    EXPECT_EQ(5, int(a[0][0]));
+    EXPECT_EQ(5, int(a[1][0]));
+}

@@ -85,6 +85,11 @@ Array& operator<<=(Array& left, const Assignable<Array>& assignable) {
     return left;
 }
 
+Array& operator<<=(Array& left, const Operation& assignable) {
+    ((Assignable<Array>)assignable).assign_to(left, OPERATOR_T_LSE);\
+    return left;
+}
+
 DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::scalar_sub, -=);
 DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::scalar_add, +=);
 DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::scalar_mul, *=);

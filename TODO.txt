@@ -1,20 +1,14 @@
 HIGH PRIORITY:
--> ensure we have more relus than competition
--> step size in adam
 -> Namespace dali
 -> Document broadcasting behavior
 -> Make all imports, namespace, and includes follow same style throughout Dali
 -> Separate data generation/loading scripts to separate codebase
--> Take steps towards convolution and n-d support
 -> Scoped subtape / autobackprop disconnected components of graph
 -> Stacked GRU
 
 MEDIUM PRIORITY:
 -> data/glove should have a generate script to download vectors.
--> Random weights init should take doubles, not template typename.
--> Improve NLP-Utils. Agree on common set of practices for all the examples.
 -> dali cmake finder should conform to standard notation, the automagic finder that finds the dependencies + dali should still be there, but under different variable name.
--> check that #define MSHADOW_HALF_MAX mshadow::half::half_t::Binary(0xfbff); is indeed the maximum in float16
 
 LOWER_PRIORITY:
 -> add performance test (e.g. num words processed in Language Model on GPU ~ 20,000 words/second)

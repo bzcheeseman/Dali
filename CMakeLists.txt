@@ -399,6 +399,12 @@ if (WITH_CUDA)
 endif(WITH_CUDA)
 
 
+# JIT FOLDER:
+if (DALI_CACHE_DIR)
+    add_definitions(-DDALI_CACHE_DIR=${DALI_CACHE_DIR})
+endif(DALI_CACHE_DIR)
+
+
 ################################################################################
 ##                               DALI SETUP                                   ##
 ##                                   ---                                      ##

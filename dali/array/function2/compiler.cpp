@@ -157,7 +157,11 @@ std::vector<std::string> kHeaders = {
     "dali/array/functor.h",
     "dali/array/array.h"
 };
+#ifdef DALI_CACHE_DIR
+std::string kOutpath    = utils::expanduser(STR(DALI_CACHE_DIR));
+#else
 std::string kOutpath    = utils::expanduser("~/.dali/cache/");
+#endif
 std::string kIncludeDir = STR(DALI_COMPILE_DIRECTORY);
 
 Compiler array_op_compiler(kHeaders, kOutpath, kIncludeDir);

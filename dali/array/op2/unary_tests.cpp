@@ -13,8 +13,8 @@
         int size = 10;\
         auto a = Array::arange({5, size}, dtype) + 1;\
         auto dst = Array::zeros({5, size}, dtype);\
-        dst = op2::funcname(a);\
-        EXPECT_TRUE(Array::allclose(dst, (Array)(op::funcname(a)), 1e-6));\
+        dst = op::funcname(a);\
+        EXPECT_TRUE(Array::allclose(dst, (Array)(old_op::funcname(a)), 1e-6));\
     }\
 
 TEST(RTCTests, unary) {
@@ -37,8 +37,8 @@ TEST(RTCTests, unary) {
         int size = 10;\
         auto a = Array::arange({5, size}, dtype) + 1;\
         auto dst = Array::zeros({5, size}, dtype);\
-        dst = op2::rtc_funcname(a, 2.5);\
-        EXPECT_TRUE(Array::allclose(dst, (Array)(op::funcname(a, 2.5)), 1e-5));\
+        dst = op::rtc_funcname(a, 2.5);\
+        EXPECT_TRUE(Array::allclose(dst, (Array)(old_op::funcname(a, 2.5)), 1e-5));\
     }\
 
 TEST(RTCTests, scalar_unary) {

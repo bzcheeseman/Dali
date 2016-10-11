@@ -20,7 +20,7 @@ TEST(ArrayReshapeTests, hstack) {
     Array a = a_b[Slice(0, 2)][Slice(0, 3)];
     Array b = a_b[Slice(0, 2)][Slice(3, 7)];
 
-    Array c = op::hstack({a, b});
+    Array c = old_op::hstack({a, b});
     EXPECT_TRUE(Array::equals(a_b, c));
 }
 
@@ -28,12 +28,12 @@ TEST(ArrayReshapeTests, concatenate_one_arg) {
     Array a({2, 7}, DTYPE_INT32);
     a = initializer::arange(0, 1);
 
-    Array b = op::concatenate({a}, 0);
+    Array b = old_op::concatenate({a}, 0);
     ASSERT_EQ(a.memory(), b.memory());
 }
 
 TEST(ArrayReshapeTests, concatenate_zero_arg) {
-    EXPECT_THROW(Array b = op::concatenate({}, 0), std::runtime_error);
+    EXPECT_THROW(Array b = old_op::concatenate({}, 0), std::runtime_error);
 }
 
 TEST(ArrayReshapeTests, vstack) {
@@ -50,7 +50,7 @@ TEST(ArrayReshapeTests, vstack) {
     // 12 13
     Array a = a_b[Slice(0, 3)];
     Array b = a_b[Slice(3, 7)];
-    Array c = op::vstack({a, b});
+    Array c = old_op::vstack({a, b});
     EXPECT_TRUE(Array::equals(a_b, c));
 }
 
@@ -60,7 +60,7 @@ TEST(ArrayReshapeTests, concatenate_middle_axis) {
 
     Array a = a_b[Slice(0, 3)][0][Broadcast()][Slice(0, 3)];
     Array b = a_b[Slice(0, 3)][1][Broadcast()][Slice(0, 3)];
-    Array c = op::concatenate({a, b}, 1);
+    Array c = old_op::concatenate({a, b}, 1);
 
     EXPECT_TRUE(Array::equals(a_b, c));
 }
@@ -73,7 +73,7 @@ TEST(ArrayReshapeTests, concatenate_keeps_broadcast) {
     Array a = a_b[Slice(0,1)][Slice(0, 3)][0][Broadcast()];
     Array b = a_b[Slice(0,1)][Slice(0, 3)][1][Broadcast()];
     // join along the last axis:
-    Array c = op::concatenate({a, b}, 2);
+    Array c = old_op::concatenate({a, b}, 2);
     EXPECT_TRUE(Array::equals(a_b, c));
     // we can see that the first dimension which was originally a
     // broadcasted dimension remains so:
@@ -88,7 +88,7 @@ TEST(ArrayReshapeTests, concatenate_with_broadcast) {
     Array other = Array({3, 7}, DTYPE_INT32);
     other = initializer::arange(0, 1);
 
-    Array res = op::hstack({broadcasted, other});
+    Array res = old_op::hstack({broadcasted, other});
     EXPECT_EQ(std::vector<int>({3, 12}), res.bshape());
 }
 

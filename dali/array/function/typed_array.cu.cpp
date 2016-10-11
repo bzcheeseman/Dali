@@ -122,22 +122,22 @@ namespace internal {
 
 
     template<typename MDevT, typename T, typename IndexT>
-    mshadow::expr::TakeFromRowsExp<mshadow::Tensor<MDevT, 1, IndexT>, mshadow::Tensor<MDevT, 2, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::contiguous_d1(memory::AM access_mode, bool collapse_leading) const { return contiguous_d<1>(access_mode, collapse_leading); }
+    mshadow::expr::GatherFromRows<mshadow::Tensor<MDevT, 1, IndexT>, mshadow::Tensor<MDevT, 2, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::contiguous_d1(memory::AM access_mode, bool collapse_leading) const { return contiguous_d<1>(access_mode, collapse_leading); }
     template<typename MDevT, typename T, typename IndexT>
-    mshadow::expr::TakeFromRowsExp<mshadow::Tensor<MDevT, 2, IndexT>, mshadow::Tensor<MDevT, 3, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::contiguous_d2(memory::AM access_mode, bool collapse_leading) const { return contiguous_d<2>(access_mode, collapse_leading); }
+    mshadow::expr::GatherFromRows<mshadow::Tensor<MDevT, 2, IndexT>, mshadow::Tensor<MDevT, 3, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::contiguous_d2(memory::AM access_mode, bool collapse_leading) const { return contiguous_d<2>(access_mode, collapse_leading); }
     template<typename MDevT, typename T, typename IndexT>
-    mshadow::expr::TakeFromRowsExp<mshadow::Tensor<MDevT, 3, IndexT>, mshadow::Tensor<MDevT, 4, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::contiguous_d3(memory::AM access_mode, bool collapse_leading) const { return contiguous_d<3>(access_mode, collapse_leading); }
+    mshadow::expr::GatherFromRows<mshadow::Tensor<MDevT, 3, IndexT>, mshadow::Tensor<MDevT, 4, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::contiguous_d3(memory::AM access_mode, bool collapse_leading) const { return contiguous_d<3>(access_mode, collapse_leading); }
     template<typename MDevT, typename T, typename IndexT>
-    mshadow::expr::TakeFromRowsExp<mshadow::Tensor<MDevT, 4, IndexT>, mshadow::Tensor<MDevT, 5, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::contiguous_d4(memory::AM access_mode, bool collapse_leading) const { return contiguous_d<4>(access_mode, collapse_leading); }
+    mshadow::expr::GatherFromRows<mshadow::Tensor<MDevT, 4, IndexT>, mshadow::Tensor<MDevT, 5, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::contiguous_d4(memory::AM access_mode, bool collapse_leading) const { return contiguous_d<4>(access_mode, collapse_leading); }
 
     template<typename MDevT, typename T, typename IndexT>
-    mshadow::expr::TakeFromRowsExp<DaliWrapperExp<MDevT, 1, IndexT>, DaliWrapperExp<MDevT, 2, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::d1(memory::AM access_mode, bool collapse_leading) const { return d<1>(access_mode, collapse_leading); }
+    mshadow::expr::GatherFromRows<DaliWrapperExp<MDevT, 1, IndexT>, DaliWrapperExp<MDevT, 2, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::d1(memory::AM access_mode, bool collapse_leading) const { return d<1>(access_mode, collapse_leading); }
     template<typename MDevT, typename T, typename IndexT>
-    mshadow::expr::TakeFromRowsExp<DaliWrapperExp<MDevT, 2, IndexT>, DaliWrapperExp<MDevT, 3, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::d2(memory::AM access_mode, bool collapse_leading) const { return d<2>(access_mode, collapse_leading); }
+    mshadow::expr::GatherFromRows<DaliWrapperExp<MDevT, 2, IndexT>, DaliWrapperExp<MDevT, 3, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::d2(memory::AM access_mode, bool collapse_leading) const { return d<2>(access_mode, collapse_leading); }
     template<typename MDevT, typename T, typename IndexT>
-    mshadow::expr::TakeFromRowsExp<DaliWrapperExp<MDevT, 3, IndexT>, DaliWrapperExp<MDevT, 4, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::d3(memory::AM access_mode, bool collapse_leading) const { return d<3>(access_mode, collapse_leading); }
+    mshadow::expr::GatherFromRows<DaliWrapperExp<MDevT, 3, IndexT>, DaliWrapperExp<MDevT, 4, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::d3(memory::AM access_mode, bool collapse_leading) const { return d<3>(access_mode, collapse_leading); }
     template<typename MDevT, typename T, typename IndexT>
-    mshadow::expr::TakeFromRowsExp<DaliWrapperExp<MDevT, 4, IndexT>, DaliWrapperExp<MDevT, 5, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::d4(memory::AM access_mode, bool collapse_leading) const { return d<4>(access_mode, collapse_leading); }
+    mshadow::expr::GatherFromRows<DaliWrapperExp<MDevT, 4, IndexT>, DaliWrapperExp<MDevT, 5, T>, T, IndexT> TypedArraySubtensorShared<MDevT,T, IndexT>::d4(memory::AM access_mode, bool collapse_leading) const { return d<4>(access_mode, collapse_leading); }
 
     template class TypedArraySubtensorShared<mshadow::cpu, int, int>;
     template class TypedArraySubtensorShared<mshadow::cpu, float, int>;

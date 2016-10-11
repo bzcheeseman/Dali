@@ -5,7 +5,7 @@ class Array;
 template<typename OutType>
 class Assignable;
 
-namespace op {
+namespace old_op {
     #define DALI_DECLARE_ARRAY_SCALAR_OP(FUNCTION_NAME)\
         Assignable<Array> FUNCTION_NAME(const Array& x, const double& other);\
         Assignable<Array> FUNCTION_NAME(const Array& x, const float& other);\

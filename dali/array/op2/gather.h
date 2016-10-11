@@ -3,7 +3,7 @@
 
 struct Operation;
 
-namespace op2 {
+namespace op {
     Operation gather(const Operation& source, const Operation& indices);
 }  // namespace op2
 

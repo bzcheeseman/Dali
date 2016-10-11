@@ -6,9 +6,8 @@
 #include "dali/array/lazy/unary.h"
 #include "dali/array/lazy/binary.h"
 #include "dali/array/lazy/reshape.h"
-#include "dali/array/op/unary.h"
-#include "dali/array/op/unary_scalar.h"
-#include "dali/array/op/binary.h"
+#include "dali/array/op2/unary.h"
+#include "dali/array/op2/binary.h"
 
 ////////////////////////////////////////////////////////////
 //                        ARRAY                           //
@@ -90,10 +89,10 @@ Array& operator<<=(Array& left, const Operation& assignable) {
     return left;
 }
 
-DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::scalar_sub, -=);
-DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::scalar_add, +=);
-DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::scalar_mul, *=);
-DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::scalar_div, /=);
+DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::sub, -=);
+DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::add, +=);
+DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::eltmul, *=);
+DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::eltdiv, /=);
 
 ////////////////////////////////////////////////////////////
 //                    ARRAY GATHER                        //
@@ -174,7 +173,7 @@ DALI_DEFINE_CONTAINER_INTERACTION_INPLACE(-=, OPERATOR_T_SUB, ArraySubtensor);
 DALI_DEFINE_CONTAINER_INTERACTION_INPLACE(*=, OPERATOR_T_MUL, ArraySubtensor);
 DALI_DEFINE_CONTAINER_INTERACTION_INPLACE(/=, OPERATOR_T_DIV, ArraySubtensor);
 
-DALI_DEFINE_CONTAINER_SCALAR_INTERACTION_INPLACE(lazy::sub, -=, ArraySubtensor, lazy::take_from_rows);
-DALI_DEFINE_CONTAINER_SCALAR_INTERACTION_INPLACE(lazy::add, +=, ArraySubtensor, lazy::take_from_rows);
-DALI_DEFINE_CONTAINER_SCALAR_INTERACTION_INPLACE(lazy::eltmul, *=, ArraySubtensor, lazy::take_from_rows);
-DALI_DEFINE_CONTAINER_SCALAR_INTERACTION_INPLACE(lazy::eltdiv, /=, ArraySubtensor, lazy::take_from_rows);
+DALI_DEFINE_CONTAINER_SCALAR_INTERACTION_INPLACE(lazy::sub, -=, ArraySubtensor, lazy::gather_from_rows);
+DALI_DEFINE_CONTAINER_SCALAR_INTERACTION_INPLACE(lazy::add, +=, ArraySubtensor, lazy::gather_from_rows);
+DALI_DEFINE_CONTAINER_SCALAR_INTERACTION_INPLACE(lazy::eltmul, *=, ArraySubtensor, lazy::gather_from_rows);
+DALI_DEFINE_CONTAINER_SCALAR_INTERACTION_INPLACE(lazy::eltdiv, /=, ArraySubtensor, lazy::gather_from_rows);

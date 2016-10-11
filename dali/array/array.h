@@ -166,7 +166,7 @@ class Array : public Exp<Array> {
     ArrayGather operator[](const Array& indices) const;
     SlicingInProgress<Array> operator[](const Slice& s) const;
     SlicingInProgress<Array> operator[](const Broadcast& b) const;
-    ArraySubtensor take_from_rows(const Array& indices) const;
+    ArraySubtensor gather_from_rows(const Array& indices) const;
     // Get scalar at this offset:
     Array operator()(index_t idx) const;
     // returns true if array is possibly a result of calling .transpose()

@@ -223,7 +223,7 @@ OperationState::operator Assignable<Array> () const {
         if (operator_t == OPERATOR_T_LSE) {
             std::vector<int> reduction_axes = get_auto_reduce_axes(out, output_bshape);
             if (reduction_axes.size() > 0) {
-                op = op2::sum(op, reduction_axes);
+                op = op::sum(op, reduction_axes);
                 // add the reduced dimensions back:
                 for (int i = 0; i < reduction_axes.size(); ++i) {
                     output_bshape[reduction_axes[i]] = 1;
@@ -256,7 +256,7 @@ OperationState::operator Assignable<Array> () const {
             // to equal:
             operator_to_use = OPERATOR_T_EQL;
         }
-        auto self_op = op2::assign(out_array, operator_to_use, op);
+        auto self_op = op::assign(out_array, operator_to_use, op);
         eval_op(self_op, output_bshape, output_device);
     });
 }
@@ -267,7 +267,7 @@ OperationState::operator Assignable<ArrayGather> () const {
         auto output_dtype  = out.dtype();
         auto output_device = memory::Device::cpu();
         auto output_bshape = out.shape();
-        auto self_op = op2::assign(op2::gather(out.source, out.indices), operator_t == OPERATOR_T_LSE ? OPERATOR_T_ADD : operator_t, Operation(this_ptr));
+        auto self_op = op::assign(op::gather(out.source, out.indices), operator_t == OPERATOR_T_LSE ? OPERATOR_T_ADD : operator_t, Operation(this_ptr));
         eval_op(self_op, output_bshape, output_device);
     });
 }
@@ -278,7 +278,7 @@ OperationState::operator Assignable<ArraySubtensor> () const {
         auto output_dtype  = out.dtype();
         auto output_device = memory::Device::cpu();
         auto output_bshape = out.shape();
-        auto self_op = op2::assign(op2::gather_from_rows(out.source, out.indices), operator_t == OPERATOR_T_LSE ? OPERATOR_T_ADD : operator_t, Operation(this_ptr));
+        auto self_op = op::assign(op::gather_from_rows(out.source, out.indices), operator_t == OPERATOR_T_LSE ? OPERATOR_T_ADD : operator_t, Operation(this_ptr));
         eval_op(self_op, output_bshape, output_device);
     });
 }
@@ -436,7 +436,7 @@ Operation::Operation(const Assignable<Array>& arr): Operation(std::make_shared<A
 Operation::Operation(double scalar): Operation(std::make_shared<ScalarOperationState>(scalar)) {
 }
 
-Operation::Operation(int scalar): Operation(op2::astype((double)scalar, DTYPE_INT32)) {
+Operation::Operation(int scalar): Operation(op::astype((double)scalar, DTYPE_INT32)) {
 }
 
 Operation::Operation(operation_state_ptr state): state_(state) {
@@ -576,7 +576,7 @@ struct AssignmentOperationState : public OperationState {
 const hash_t AssignmentOperationState::optype_hash = std::hash<std::string>()("AssignmentOperationState");
 
 
-namespace op2 {
+namespace op {
     Operation assign(const Operation& left, const OPERATOR_T& operator_t, const Operation& right) {
         ASSERT2(left.is_assignable(), "left Operation of assign must be assignable.");
         return Operation(std::make_shared<AssignmentOperationState>(left.state_, operator_t, right.state_));

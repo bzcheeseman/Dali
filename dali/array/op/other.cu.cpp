@@ -7,17 +7,18 @@
 #include "dali/array/array.h"
 #include "dali/array/function/function.h"
 #include "dali/array/memory/device.h"
-#include "dali/array/lazy/binary.h"
-#include "dali/array/lazy/reducers.h"
-#include "dali/array/lazy/unary.h"
+#include "dali/array/op2/binary.h"
+#include "dali/array/op2/reducers.h"
+#include "dali/array/op2/unary.h"
 #include "dali/utils/strided_iterator.h"
+#include "dali/utils/make_message.h"
 
 using memory::Device;
 
 void operator_eql_check(const OPERATOR_T& operator_t) {
-    ASSERT2(operator_t == OPERATOR_T_EQL,
-            utils::MS() << "argsort's result cannot be assigned using operator '=' (note: -=, +=, /=, *= disallowed, got operator = "
-                        << operator_to_name(operator_t) << ").");
+    ASSERT2(operator_t == OPERATOR_T_EQL, utils::make_message("argsort's result must be "
+        "assigned using operator '=' (note: -=, +=, /=, *= disallowed, got operator = ",
+        operator_to_name(operator_t), ")."));
 }
 
 namespace argsort_helper {
@@ -101,11 +102,8 @@ struct ArgSortFunction : public Function<ArgSortFunction, Array, Array, int> {
     }
 
     static DType deduce_computation_dtype(const Array& out, const Array& arr, const int& axis) {
-        ASSERT2(out.dtype() == deduce_output_dtype(arr, axis),
-            utils::MS() << "ArgSortFunction's output must be of type "
-                        << deduce_output_dtype(arr, axis)
-                        << " (got " << out.dtype() << ")."
-        );
+        ASSERT2(out.dtype() == deduce_output_dtype(arr, axis), utils::make_message("ArgSortFunction's "
+            "output must be of type ", deduce_output_dtype(arr, axis), " (got ", out.dtype(), ")."));
         return arr.dtype();
     }
 
@@ -118,9 +116,8 @@ struct ArgSortFunction : public Function<ArgSortFunction, Array, Array, int> {
     }
 
     static void verify(const Array& arr, const int& axis) {
-        ASSERT2(axis >=0 && axis < arr.ndim(),
-            utils::MS() << "argsort axis must be non-negative and less than the number of dimensions of input (got axis = "
-                        << axis << ", with array.ndim() = " << arr.ndim() << ")."
+        ASSERT2(axis >=0 && axis < arr.ndim(), utils::make_message("argsort axis must be non-negative and "
+            "less than the number of dimensions of input (got axis = ", axis, ", with array.ndim() = ", arr.ndim(), ").")
         );
     }
 
@@ -167,35 +164,34 @@ struct FunctionReturnType<ArgSortFunction, T> {
 
 namespace op {
     Assignable<Array> any_isnan(const Array& array) {
-        return lazy::max(lazy::isnan(array));
+        return op::max(op::isnan(array));
     }
 
     Assignable<Array> any_isinf(const Array& array) {
-        return lazy::max(lazy::isinf(array));
+        return op::max(op::isinf(array));
     }
 
     Assignable<Array> any_isnan(const Array& array, int axis) {
         if (axis < 0) axis = array.ndim() + axis;
-        return lazy::max(lazy::isnan(array), axis);
+        return op::max(op::isnan(array), {axis});
     }
 
     Assignable<Array> any_isinf(const Array& array, int axis) {
         if (axis < 0) axis = array.ndim() + axis;
-        return lazy::max(lazy::isinf(array), axis);
+        return op::max(op::isinf(array), {axis});
     }
 
     Assignable<Array> all_equals(const Array& left, const Array& right) {
-        return lazy::product(lazy::equals(left, right));
+        return op::prod(op::equals(left, right));
     }
 
     Assignable<Array> all_close(const Array& left, const Array& right, const double& atolerance) {
-        ASSERT2(atolerance >= 0,
-            utils::MS() << "atolerance must be a strictly positive number (got atolerance="
-                        << atolerance << ").");
-        return lazy::product(
-            lazy::lessthanequal(
-                lazy::abs(
-                    lazy::sub(left,right)
+        ASSERT2(atolerance >= 0, utils::make_message("atolerance must be a strictly positive number "
+            "(got atolerance=", atolerance, ")."));
+        return op::prod(
+            op::lessthanequal(
+                op::abs(
+                    op::sub(left,right)
                 ),
                 atolerance
             )

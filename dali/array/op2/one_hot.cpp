@@ -135,7 +135,7 @@ struct OneHotOperationState : public OperationState {
 
 const hash_t OneHotOperationState::optype_hash = std::hash<std::string>()("OneHotOperationState");
 
-namespace op2 {
+namespace op {
     Operation one_hot(
             const Operation& indices,
             int depth,

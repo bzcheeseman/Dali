@@ -22,7 +22,7 @@ namespace tensor_ops {
             constant = constant & t.constant;
         }
 
-        Tensor out(op::concatenate(arrays, axis));
+        Tensor out(old_op::concatenate(arrays, axis));
         out.constant = constant;
 
         if (graph::backprop_enabled()) {

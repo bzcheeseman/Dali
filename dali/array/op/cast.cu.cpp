@@ -3,10 +3,10 @@
 #include "dali/array/lazy/cast.h"
 #include "dali/array/op/unary.h"
 
-namespace op {
+namespace old_op {
     Assignable<Array> astype(const Array& a, DType dtype) {
         if (a.dtype() == dtype) {
-            return op::identity(a, false);
+            return old_op::identity(a, false);
         }
         if (dtype == DTYPE_FLOAT) {
             return lazy::astype<float>(a);
@@ -16,7 +16,7 @@ namespace op {
             return lazy::astype<int>(a);
         } else {
             ASSERT2(false, utils::MS() << "astype argument dtype must be one of " DALI_ACCEPTABLE_DTYPE_STR ".");
-            return op::identity(a, false);
+            return old_op::identity(a, false);
         }
     }
 }

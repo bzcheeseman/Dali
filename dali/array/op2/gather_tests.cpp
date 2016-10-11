@@ -10,9 +10,9 @@
 TEST(RTCTests, gather_simple) {
     auto indices = Array::arange({5}, DTYPE_INT32);
     auto source = Array::arange({5, 6}, DTYPE_INT32);
-    EXPECT_TRUE(Array::equals(op2::gather(source, indices), op::gather(source, indices)));
+    EXPECT_TRUE(Array::equals(op::gather(source, indices), old_op::gather(source, indices)));
     auto source2 = Array::arange({5, 6, 7}, DTYPE_INT32);
-    EXPECT_TRUE(Array::equals(op2::gather(source2, indices), op::gather(source2, indices)));
+    EXPECT_TRUE(Array::equals(op::gather(source2, indices), old_op::gather(source2, indices)));
 }
 
 TEST(RTCTests, gather_simple_elementwise) {
@@ -20,8 +20,8 @@ TEST(RTCTests, gather_simple_elementwise) {
     auto source = Array::arange({5, 6}, DTYPE_DOUBLE);
     EXPECT_TRUE(
         Array::allclose(
-            op2::gather(op2::sigmoid(source), indices),
             op::gather(op::sigmoid(source), indices),
+            old_op::gather(old_op::sigmoid(source), indices),
             1e-6
         )
     );
@@ -30,10 +30,10 @@ TEST(RTCTests, gather_simple_elementwise) {
 TEST(RTCTests, gather_from_rows_simple) {
     auto indices = Array::arange({5}, DTYPE_INT32);
     auto source = Array::arange({5, 6}, DTYPE_INT32);
-    EXPECT_TRUE(Array::equals(op2::gather_from_rows(source, indices), op::take_from_rows(source, indices)));
+    EXPECT_TRUE(Array::equals(op::gather_from_rows(source, indices), old_op::gather_from_rows(source, indices)));
 
     auto source2 = Array::arange({5, 6, 7}, DTYPE_INT32);
-    Array result_2d = op2::gather_from_rows(source2, indices);
+    Array result_2d = op::gather_from_rows(source2, indices);
     std::vector<std::vector<int>> expected_result({
         {  0,   1,   2,   3,   4,   5,   6},
         { 49,  50,  51,  52,  53,  54,  55},
@@ -72,7 +72,7 @@ TEST(RTCTests, scatter_to_rows_simple) {
     }
     auto dest = Array::zeros({7, 3}, DTYPE_INT32);
     dest = 42;
-    auto gathered = dest.take_from_rows(indices);
+    auto gathered = dest.gather_from_rows(indices);
     ASSERT_EQ(gathered.shape(), indices.shape());
     gathered += Operation(1);
 

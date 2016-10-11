@@ -5,7 +5,7 @@ class Array;
 template<typename OutType>
 struct Assignable;
 
-namespace op {
+namespace old_op {
     // Assign one array to another piece of memory as-is
     // this also has the side-effect of a strided memory view
     // non-strided in the output (as it is no longer a view)

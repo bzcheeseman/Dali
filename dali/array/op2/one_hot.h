@@ -6,7 +6,7 @@
 
 struct Operation;
 
-namespace op2 {
+namespace op {
     Operation one_hot(
         const Operation& indices,
         int depth,

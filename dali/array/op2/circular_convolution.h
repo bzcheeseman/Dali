@@ -3,7 +3,7 @@
 
 struct Operation;
 
-namespace op2 {
+namespace op {
     Operation circular_convolution(const Operation& x, const Operation& weights);
 }  // namespace op2
 

@@ -10,59 +10,59 @@ TEST(RTCTests, all_reduce_sum) {
     auto a = Array::arange({rows, cols}, DTYPE_FLOAT);
     // sum of n first numbers is (n * (n+1)) / 2:
     int expected_total = (a.number_of_elements() * (a.number_of_elements() - 1)) / 2;
-    EXPECT_EQ(expected_total, (int)Array(op2::sum(a)));
+    EXPECT_EQ(expected_total, (int)Array(op::sum(a)));
 }
 
 TEST(RTCTests, all_reduce_prod) {
     auto a = Array::arange(1, 6, 1, DTYPE_INT32);
     int expected_total = 1 * 2 * 3 * 4 * 5;
-    EXPECT_EQ(expected_total, (int)Array(op2::prod(a)));
+    EXPECT_EQ(expected_total, (int)Array(op::prod(a)));
 }
 
 TEST(RTCTests, all_reduce_max_min) {
     auto a = Array::arange(-100, 42, 1, DTYPE_INT32);
     int expected_max = 41, expected_min = -100;
-    EXPECT_EQ(expected_max, (int)Array(op2::max(a)));
-    EXPECT_EQ(expected_min, (int)Array(op2::min(a)));
+    EXPECT_EQ(expected_max, (int)Array(op::max(a)));
+    EXPECT_EQ(expected_min, (int)Array(op::min(a)));
 }
 
 TEST(RTCTests, all_reduce_argmax_argmin) {
     auto a = Array::arange(-100, 42, 1, DTYPE_INT32);
     int expected_argmax = 141, expected_argmin = 0;
-    EXPECT_EQ(expected_argmax, (int)Array(op2::argmax(a)));
-    EXPECT_EQ(expected_argmin, (int)Array(op2::argmin(a)));
+    EXPECT_EQ(expected_argmax, (int)Array(op::argmax(a)));
+    EXPECT_EQ(expected_argmin, (int)Array(op::argmin(a)));
 }
 
 TEST(RTCTests, axis_reduce_argmax_argmin) {
     auto a = Array::arange({4, 5}, DTYPE_INT32);
-    EXPECT_TRUE(Array::equals(Array::ones({5}, DTYPE_INT32) * 3, op2::argmax(a, 0)));
-    EXPECT_TRUE(Array::equals(Array::ones({4}, DTYPE_INT32) * 4, op2::argmax(a, 1)));
+    EXPECT_TRUE(Array::equals(Array::ones({5}, DTYPE_INT32) * 3, op::argmax(a, 0)));
+    EXPECT_TRUE(Array::equals(Array::ones({4}, DTYPE_INT32) * 4, op::argmax(a, 1)));
 
     a = a * -1.0;
 
-    EXPECT_TRUE(Array::equals(Array::ones({5}, DTYPE_INT32) * 3, op2::argmin(a, 0)));
-    EXPECT_TRUE(Array::equals(Array::ones({4}, DTYPE_INT32) * 4, op2::argmin(a, 1)));
+    EXPECT_TRUE(Array::equals(Array::ones({5}, DTYPE_INT32) * 3, op::argmin(a, 0)));
+    EXPECT_TRUE(Array::equals(Array::ones({4}, DTYPE_INT32) * 4, op::argmin(a, 1)));
 }
 
 TEST(RTCTests, all_reduce_argmax_argmin_4d) {
     auto a = Array::arange({2, 3, 4, 5}, DTYPE_INT32);
     int expected_argmax = 2 * 3 * 4 * 5 - 1, expected_argmin = 0;
-    EXPECT_EQ(expected_argmax, (int)Array(op2::argmax(a)));
-    EXPECT_EQ(expected_argmin, (int)Array(op2::argmin(a)));
+    EXPECT_EQ(expected_argmax, (int)Array(op::argmax(a)));
+    EXPECT_EQ(expected_argmin, (int)Array(op::argmin(a)));
 }
 
 TEST(RTCTests, all_reduce_mean) {
     auto a = Array::arange(1, 3, 1, DTYPE_INT32);
     double expected_mean = 1.5;
-    EXPECT_EQ(expected_mean, (double)Array(op2::mean(a)));
+    EXPECT_EQ(expected_mean, (double)Array(op::mean(a)));
 }
 
 TEST(RTCTests, all_reduce_l2_norm) {
     auto a = Array::ones({4}, DTYPE_INT32);
-    EXPECT_EQ(2.0, (double)Array(op2::L2_norm(a)));
+    EXPECT_EQ(2.0, (double)Array(op::L2_norm(a)));
 
     a = Array::ones({2}, DTYPE_INT32);
-    EXPECT_EQ(std::sqrt(2.0), (double)Array(op2::L2_norm(a)));
+    EXPECT_EQ(std::sqrt(2.0), (double)Array(op::L2_norm(a)));
 }
 
 TEST(RTCTests, all_reduce_sum_with_broadcast) {
@@ -70,7 +70,7 @@ TEST(RTCTests, all_reduce_sum_with_broadcast) {
     Array a = Array::arange({rows, cols}, DTYPE_FLOAT)[Slice()][Broadcast()][Slice()];
     // sum of n first numbers is (n * (n+1)) / 2:
     int expected_total = (a.number_of_elements() * (a.number_of_elements() - 1)) / 2;
-    EXPECT_EQ(expected_total, (int)Array(op2::sum(a)));
+    EXPECT_EQ(expected_total, (int)Array(op::sum(a)));
 }
 
 TEST(RTCTests, all_reduce_sum_with_strides) {
@@ -86,7 +86,7 @@ TEST(RTCTests, all_reduce_sum_with_strides) {
             }
         }
     }
-    EXPECT_EQ(expected_total, (int)Array(op2::sum(a)));
+    EXPECT_EQ(expected_total, (int)Array(op::sum(a)));
 }
 
 TEST(RTCTests, all_reduce_mixed_sum) {
@@ -96,34 +96,34 @@ TEST(RTCTests, all_reduce_mixed_sum) {
         (a.number_of_elements() * (a.number_of_elements() - 1)) / 2 -
         (2 * 3 * 4 * 5 - 1) + 2.0
     );
-    auto operation = op2::add(2, (op2::sub(op2::sum(a), op2::max(b))));
+    auto operation = op::add(2, (op::sub(op::sum(a), op::max(b))));
     EXPECT_EQ(expected_result, (int)Array(operation));
 }
 
 TEST(RTCTests, axis_reduce_sum_low_dim) {
     auto a = Array::ones({2, 3, 4, 5}, DTYPE_INT32);
     // same kernel is used in all these cases:
-    EXPECT_TRUE(Array::equals(Array::ones({2, 3, 4}, DTYPE_INT32) * 5, op2::sum(a, {-1})));
-    EXPECT_TRUE(Array::equals(Array::ones({2, 3}, DTYPE_INT32) * 20, op2::sum(a, {-2, -1})));
-    EXPECT_TRUE(Array::equals(Array::ones({2}, DTYPE_INT32) * 60, op2::sum(a, {-3, -2, -1})));
+    EXPECT_TRUE(Array::equals(Array::ones({2, 3, 4}, DTYPE_INT32) * 5, op::sum(a, {-1})));
+    EXPECT_TRUE(Array::equals(Array::ones({2, 3}, DTYPE_INT32) * 20, op::sum(a, {-2, -1})));
+    EXPECT_TRUE(Array::equals(Array::ones({2}, DTYPE_INT32) * 60, op::sum(a, {-3, -2, -1})));
 }
 
 TEST(RTCTests, axis_reduce_sum_high_dim) {
     auto a = Array::ones({2, 3, 4, 5}, DTYPE_INT32);
     // same kernel is used in all these cases:
-    EXPECT_TRUE(Array::equals(Array::ones({3, 4, 5}, DTYPE_INT32) * 2, op2::sum(a, {0})));
-    EXPECT_TRUE(Array::equals(Array::ones({4, 5}, DTYPE_INT32) * 6, op2::sum(a, {1, 0})));
-    EXPECT_TRUE(Array::equals(Array::ones({5}, DTYPE_INT32) * 24, op2::sum(a, {2, 1, 0})));
+    EXPECT_TRUE(Array::equals(Array::ones({3, 4, 5}, DTYPE_INT32) * 2, op::sum(a, {0})));
+    EXPECT_TRUE(Array::equals(Array::ones({4, 5}, DTYPE_INT32) * 6, op::sum(a, {1, 0})));
+    EXPECT_TRUE(Array::equals(Array::ones({5}, DTYPE_INT32) * 24, op::sum(a, {2, 1, 0})));
 }
 
 TEST(RTCTests, axis_reduce_sum_middle_dim) {
     auto a = Array::ones({2, 3}, DTYPE_INT32);
-    EXPECT_TRUE(Array::equals(Array::ones({3}, DTYPE_INT32) * 2, op2::sum(a, {0})));
-    EXPECT_TRUE(Array::equals(Array::ones({2}, DTYPE_INT32) * 3, op2::sum(a, {1})));
+    EXPECT_TRUE(Array::equals(Array::ones({3}, DTYPE_INT32) * 2, op::sum(a, {0})));
+    EXPECT_TRUE(Array::equals(Array::ones({2}, DTYPE_INT32) * 3, op::sum(a, {1})));
     a = Array::ones({2, 3, 4}, DTYPE_INT32);
-    EXPECT_TRUE(Array::equals(Array::ones({3, 4}, DTYPE_INT32) * 2, op2::sum(a, {0})));
-    EXPECT_TRUE(Array::equals(Array::ones({2, 4}, DTYPE_INT32) * 3, op2::sum(a, {1})));
-    EXPECT_TRUE(Array::equals(Array::ones({2, 3}, DTYPE_INT32) * 4, op2::sum(a, {2})));
+    EXPECT_TRUE(Array::equals(Array::ones({3, 4}, DTYPE_INT32) * 2, op::sum(a, {0})));
+    EXPECT_TRUE(Array::equals(Array::ones({2, 4}, DTYPE_INT32) * 3, op::sum(a, {1})));
+    EXPECT_TRUE(Array::equals(Array::ones({2, 3}, DTYPE_INT32) * 4, op::sum(a, {2})));
 }
 
 TEST(RTCTests, lse_reduce) {

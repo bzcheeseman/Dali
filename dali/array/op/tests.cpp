@@ -6,42 +6,40 @@
 #include "dali/array/function/function.h"
 #include "dali/array/op.h"
 
-using namespace op;
-
 TEST(ArrayOpsTests, imports) {
     ASSERT_FALSE(lazy::ops_loaded);
 }
 
 TEST(ArrayOpsTests, sigmoid) {
     auto x = Array::zeros({3,2,2});
-    Array y = sigmoid(x);
+    Array y = old_op::sigmoid(x);
 }
 
 TEST(ArrayOpsTests, relu) {
     auto x = Array::zeros({3,2,2}, DTYPE_DOUBLE);
-    Array y = relu(x);
+    Array y = old_op::relu(x);
 }
 
 TEST(ArrayOpsTests, log_or_zero) {
     auto x = Array::zeros({3,2,2});
-    Array w = log_or_zero(x);
+    Array w = old_op::log_or_zero(x);
 }
 
 TEST(ArrayOpsTests, abs) {
     auto x = Array::zeros({3,2,2});
-    Array w = abs(x);
+    Array w = old_op::abs(x);
 }
 
 TEST(ArrayOpsTests, sign) {
     auto x = Array::zeros({3,2,2});
-    Array w = sign(x);
+    Array w = old_op::sign(x);
 }
 
 
 TEST(ArrayOpsTests, log_exp) {
     Array x({50}, DTYPE_DOUBLE);
     x = initializer::uniform(0.1, 20.0);
-    Array exp_log_x = op::exp(op::log(x));
+    Array exp_log_x = old_op::exp(old_op::log(x));
     EXPECT_TRUE(Array::allclose(x, exp_log_x, 1e-3));
 }
 
@@ -54,7 +52,7 @@ void test_binary_shapes(T op_f) {
     ASSERT_THROW(args_wrong_size(), std::runtime_error);
 
     // binary op on args with the same sized args
-    Array z = eltdiv(x.ravel(), y);
+    Array z = old_op::eltdiv(x.ravel(), y);
 
     // assigning to preallocated output of wrong shape.
     Array q({12});
@@ -103,28 +101,28 @@ TEST(ArrayOpsTests, isinf) {
 TEST(ArrayOpsTests, isnan_axis) {
     Array x = Array::zeros({3,3});
 
-    Array is_nan_axis = any_isnan(x, 0);
+    Array is_nan_axis = op::any_isnan(x, 0);
     auto expected_mask = Array::zeros_like(is_nan_axis);
     EXPECT_TRUE(Array::equals(is_nan_axis, expected_mask));
 
     x[0][0] = std::nan("");
 
     expected_mask[0] = 1.0;
-    is_nan_axis = any_isnan(x, 0);
+    is_nan_axis = op::any_isnan(x, 0);
     EXPECT_TRUE(Array::equals(is_nan_axis, expected_mask));
 }
 
 TEST(ArrayOpsTests, isinf_axis) {
     Array x = Array::zeros({3,3});
 
-    Array is_nan_axis = any_isinf(x, 0);
+    Array is_nan_axis = op::any_isinf(x, 0);
     auto expected_mask = Array::zeros_like(is_nan_axis);
     EXPECT_TRUE(Array::equals(is_nan_axis, expected_mask));
 
     x[0][0] = std::numeric_limits<double>::infinity();
 
     expected_mask[0] = 1.0;
-    is_nan_axis = any_isinf(x, 0);
+    is_nan_axis = op::any_isinf(x, 0);
     EXPECT_TRUE(Array::equals(is_nan_axis, expected_mask));
 }
 
@@ -135,7 +133,7 @@ TEST(ArrayOpsTests, chainable) {
     // are not fused, but implicit casting to
     // Array from Assignable<Array> occurs at
     // every stage.
-    Array y = tanh(relu(sigmoid(x)));
+    Array y = old_op::tanh(old_op::relu(old_op::sigmoid(x)));
 }
 
 TEST(ArrayOpsTests, ascontiguousarray) {
@@ -166,7 +164,7 @@ TEST(ArrayOpsTests, add_vector) {
         lazy_evaluator_calls += 1;
     }, &debug::lazy_evaluation_callback);
 
-    Array res = op::add({
+    Array res = old_op::add({
         Array::ones({1, 2}),
         Array::ones({2})[Broadcast()],
         Array::ones({1,1, 2})[0],
@@ -183,7 +181,7 @@ TEST(ArrayOpsTests, add_vector) {
 
     lazy_evaluator_calls = 0;
 
-    Array res2 = op::add({
+    Array res2 = old_op::add({
         Array::ones({1, 2}),
         Array::ones({2})[Broadcast()],
         Array::ones({1,1, 2})[0],

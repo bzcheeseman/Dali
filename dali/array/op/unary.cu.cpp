@@ -3,7 +3,7 @@
 #include "dali/array/array.h"
 #include "dali/array/lazy/unary.h"
 
-namespace op {
+namespace old_op {
     Assignable<Array> identity(const Array& x, const bool& always_copy) {
         if (always_copy) return lazy::identity(x);
 

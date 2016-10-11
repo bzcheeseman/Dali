@@ -72,7 +72,7 @@ bool Compiler::load(hash_t hash) {
         return true;
     }
 
-    std::string module_path = utils::MS() << outpath_ << hash << ".so";
+    auto module_path = utils::make_message(outpath_, hash, ".so");
 
     if (!utils::file_exists(module_path)) {
         return false;
@@ -111,14 +111,10 @@ std::string Compiler::compiler_command(const std::string& source,
         utils::assert2(false, utils::make_message("Compiler::kCompilerId == ", Compiler::kCompilerId, " is not supported."));
     }
 
-    return utils::MS() << Compiler::kExecutable << " -std=c++11 " << source
-                       << " -o " << dest
-                       << " -I"  << include_path_
-                       << " -DDALI_ARRAY_HIDE_LAZY=1"
-                       << " -I" << STR(DALI_BLAS_INCLUDE_DIRECTORY)
-                       << " " << extra_args
-                       << executable_specific_args
-                       << " -O3 &> " << logfile;
+    return utils::make_message(Compiler::kExecutable, " -std=c++11 ", source,
+        " -o ", dest, " -I" , include_path_, " -DDALI_ARRAY_HIDE_LAZY=1",
+        " -I", STR(DALI_BLAS_INCLUDE_DIRECTORY), " ", extra_args,
+        executable_specific_args, " -O3 &> ", logfile);
 }
 
 void Compiler::write_code(const std::string& fname,

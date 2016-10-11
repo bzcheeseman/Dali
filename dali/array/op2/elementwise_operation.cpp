@@ -3,7 +3,6 @@
 #include <vector>
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/assert2.h"
-#include "dali/array/op2/operation.h"
 #include "dali/array/op2/rtc_utils.h"
 #include "dali/array/op2/elementwise_kernel_utils.h"
 
@@ -240,7 +239,7 @@ DType CastOperationState::dtype() const {
 ///////////////////////////////////////////////////////////////////////////////
 
 
-namespace op2 {
+namespace op {
     Operation elementwise(const Operation& a,
                           const std::string& functor_name) {
 
@@ -275,11 +274,11 @@ namespace op2 {
             auto new_type = type_promotion(a, b);
             if (a.dtype() == new_type) {
                 // b's dtype is being promoted
-                return std::tuple<Operation,Operation>(a, op2::astype(b, new_type));
+                return std::tuple<Operation,Operation>(a, op::astype(b, new_type));
             } else {
 
                 // a's dtype is being promoted
-                return std::tuple<Operation,Operation>(op2::astype(a, new_type), b);
+                return std::tuple<Operation,Operation>(op::astype(a, new_type), b);
             }
         } else {
             ASSERT2(ndim_compatible(a, b), "ranks don't match");

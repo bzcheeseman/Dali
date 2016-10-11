@@ -1,6 +1,11 @@
 #include "reducers.h"
 #include "dali/tensor/tape.h"
-#include "dali/array/lazy_op.h"
+#include "dali/array/op2/binary.h"
+#include "dali/array/op2/unary.h"
+#include "dali/array/op2/reducers.h"
+#include "dali/array/op/other.h"
+#include "dali/array/op_overload/common.h"
+#include "dali/array/op_overload/nonlazy.h"
 #include "dali/tensor/tensor_macros.h"
 #include "dali/utils/print_utils.h"
 
@@ -81,7 +86,7 @@ namespace tensor_ops {
 
     Tensor sum(const Tensor& tensor, int axis) {
         if (axis < 0) axis = axis + tensor.ndim();
-        Tensor out(op::sum(tensor.w, axis));
+        Tensor out(op::sum(tensor.w, {axis}));
         if (graph::backprop_enabled() && !tensor.constant) {
             auto tensor_dw = tensor.dw;
             auto out_dw = out.dw;
@@ -98,7 +103,7 @@ namespace tensor_ops {
 
     Tensor mean(const Tensor& tensor, int axis) {
         if (axis < 0) axis = axis + tensor.ndim();
-        Tensor out(op::mean(tensor.w, axis));
+        Tensor out(op::mean(tensor.w, {axis}));
         if (graph::backprop_enabled() && !tensor.constant) {
             auto tensor_dw = tensor.dw;
             auto out_dw = out.dw;
@@ -124,7 +129,7 @@ namespace tensor_ops {
                 Tensor out(tensor.w.FUNCTION_NAME());\
                 if (graph::backprop_enabled() && !tensor.constant)\
                     graph::emplace_back([tensor, out]() mutable {\
-                        tensor.dw <<= lazy::equals(\
+                        tensor.dw <<= op::equals(\
                             out.w.broadcast_scalar_to_ndim(tensor.ndim()),\
                             tensor.w\
                         ) * out.dw.broadcast_scalar_to_ndim(tensor.ndim());\
@@ -139,10 +144,10 @@ namespace tensor_ops {
     #define DALI_TENSOR_SUBSAMPLE_AXIS_REDUCTION(FUNCTION_NAME, OPNAME)\
         Tensor FUNCTION_NAME(const Tensor& tensor, int axis) {\
             if (axis < 0) axis = axis + tensor.ndim();\
-            Tensor out(OPNAME(tensor.w, axis));\
+            Tensor out(OPNAME(tensor.w, {axis}));\
             if (graph::backprop_enabled() && !tensor.constant)\
                 graph::emplace_back([tensor, out, axis]() mutable {\
-                    tensor.dw <<= lazy::equals(\
+                    tensor.dw <<= op::equals(\
                             out.w.insert_broadcast_axis(axis),\
                             tensor.w\
                         ) * out.dw.insert_broadcast_axis(axis);\
@@ -165,7 +170,7 @@ namespace tensor_ops {
                 Tensor out(tensor.w.FUNCTION_NAME());\
                 if (graph::backprop_enabled() && !tensor.constant)\
                     graph::emplace_back([tensor, out]() mutable {\
-                        tensor.dw <<= lazy::equals(\
+                        tensor.dw <<= op::equals(\
                             out.w.broadcast_scalar_to_ndim(tensor.ndim()),\
                             tensor.w\
                         ) * out.dw.broadcast_scalar_to_ndim(tensor.ndim());\
@@ -176,12 +181,15 @@ namespace tensor_ops {
 
     #define DALI_TENSOR_GETINDICES_ALL_REDUCTION(FUNCTION_NAME)\
         Tensor FUNCTION_NAME(const Tensor& tensor) {\
-            return Tensor(op::FUNCTION_NAME(tensor.w.ravel(), 0));\
+            return Tensor(op::FUNCTION_NAME(tensor.w));\
         }\
 
     DALI_TENSOR_GETINDICES_ALL_REDUCTION(argmin);
     DALI_TENSOR_GETINDICES_ALL_REDUCTION(argmax);
-    DALI_TENSOR_GETINDICES_ALL_REDUCTION(argsort);
+
+    Tensor argsort(const Tensor& tensor) {
+        return Tensor(op::argsort(tensor.w.ravel(), 0));
+    }
 
     #define DALI_TENSOR_GETINDICES_AXIS_REDUCTION(FUNCTION_NAME)\
         Tensor FUNCTION_NAME(const Tensor& tensor, int axis) {\

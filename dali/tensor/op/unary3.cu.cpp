@@ -1,7 +1,8 @@
 #include "dali/tensor/op/unary.h"
-
-#include "dali/array/functor.h"
-#include "dali/array/lazy_op.h"
+#include "dali/array/op2/binary.h"
+#include "dali/array/op2/unary.h"
+#include "dali/array/op_overload/common.h"
+#include "dali/array/op_overload/nonlazy.h"
 #include "dali/tensor/tape.h"
 #include "dali/tensor/tensor_macros.h"
 

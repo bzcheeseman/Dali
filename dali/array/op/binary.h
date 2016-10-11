@@ -7,7 +7,7 @@ class Array;
 template<typename OutType>
 struct Assignable;
 
-namespace op {
+namespace old_op {
     Assignable<Array> add(const Array& left, const Array& right);
     Assignable<Array> add(const std::vector<Array>& arrays);
     Assignable<Array> sub(const Array& left, const Array& right);

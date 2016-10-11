@@ -6,7 +6,7 @@
 
 class Operation;
 
-namespace op2 {
+namespace op {
 	// Compute the sum of all the elements in x
     Operation sum(const Operation& x);
     // Compute the sum of the elements in x along specific axes

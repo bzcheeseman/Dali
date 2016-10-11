@@ -4,9 +4,9 @@
 #include <string>
 #include <vector>
 
-struct Operation;
+#include "dali/array/op2/operation.h"
 
-namespace op2 {
+namespace op {
     Operation all_reduce(const Operation& a,
                          const std::string& reducer_name);
     Operation argument_all_reduce(const Operation& a,

@@ -24,5 +24,5 @@ Array reference_one_hot(Array indices, int depth, double on_value, double off_va
 TEST(RTCTests, one_hot) {
     auto a = Array::zeros({2, 3, 5}, DTYPE_INT32);
     a = initializer::uniform(0, 6);
-    EXPECT_TRUE(Array::equals(reference_one_hot(a, 7, 112.2, 42.0), op2::one_hot(a, 7, 112.2, 42.0)));
+    EXPECT_TRUE(Array::equals(reference_one_hot(a, 7, 112.2, 42.0), op::one_hot(a, 7, 112.2, 42.0)));
 }

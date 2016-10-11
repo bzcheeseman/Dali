@@ -5,15 +5,15 @@
 #include "dali/array/op/unary.h"
 #include "dali/array/lazy/circular_convolution.h"
 
-namespace op {
+namespace old_op {
     Assignable<Array> add(const Array& a, const Array& b) {
         return lazy::add(a, b);
     }
 
     Assignable<Array> add(const std::vector<Array>& arrays) {
-        ASSERT2(arrays.size() > 0, "op::add takes requires at least 1 array");
+        ASSERT2(arrays.size() > 0, "old_op::add takes requires at least 1 array");
         if (arrays.size() == 1) {
-            return op::identity(arrays[0], false);
+            return old_op::identity(arrays[0], false);
         } else if (arrays.size() == 2) {
             return lazy::add(arrays[0], arrays[1]);
         } else {
@@ -58,7 +58,7 @@ namespace op {
                     res.reset();
                     res = newres;
                 }
-                op::identity(res, false).assign_to(out, operator_t);
+                old_op::identity(res, false).assign_to(out, operator_t);
             });
         }
     }

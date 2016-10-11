@@ -7,18 +7,15 @@
 #include <type_traits>
 
 #include "dali/array/function/operator.h"
-#include "dali/array/lazy/unary.h"
-#include "dali/array/lazy/binary.h"
-#include "dali/array/lazy_op.h"
-#include "dali/array/op/binary.h"
 #include "dali/array/op/dot.h"
 #include "dali/array/op/initializer.h"
 #include "dali/array/op/other.h"
-#include "dali/array/op/reducers.h"
-#include "dali/array/op/reshape.h"
-#include "dali/array/op/unary.h"
-#include "dali/array/op/unary_scalar.h"
-#include "dali/array/op2/operation.h"
+#include "dali/array/op2/unary.h"
+#include "dali/array/op2/binary.h"
+#include "dali/array/op2/gather.h"
+#include "dali/array/op2/reducers.h"
+#include "dali/array/op2/gather_from_rows.h"
+#include "dali/array/op2/elementwise_operation.h"
 #include "dali/utils/cnpy.h"
 #include "dali/utils/print_utils.h"
 
@@ -671,7 +668,7 @@ Array Array::operator[](const int& idx) const {
     return pluck_axis(0, idx);
 }
 
-ArraySubtensor Array::take_from_rows(const Array& indices) const {
+ArraySubtensor Array::gather_from_rows(const Array& indices) const {
     return ArraySubtensor(*this, indices);
 }
 
@@ -1086,7 +1083,7 @@ Array Array::broadcast_scalar_to_ndim(const int& target_ndim) const {
 
 #define DALI_ARRAY_DEFINE_AXIS_REDUCER(FUNCTION_NAME, OPNAME)\
     Assignable<Array> Array::FUNCTION_NAME(const int& axis) const {\
-        return op::OPNAME(*this, axis);\
+        return op::OPNAME(*this, {axis});\
     }\
 
 #define DALI_ARRAY_DEFINE_REDUCER(FUNCTION_NAME, OPNAME)\
@@ -1217,7 +1214,7 @@ const std::vector<int>& ArraySubtensor::shape() const {
 
 
 ArraySubtensor& ArraySubtensor::operator=(const Array& assignable) {
-    internal::assign_to_rows(assignable, this);
+    *this = (Assignable<ArraySubtensor>)Operation(assignable);
     return *this;
 }
 
@@ -1244,7 +1241,7 @@ ArraySubtensor ArraySubtensor::copyless_reshape(std::vector<int> ignored) const 
 void ArraySubtensor::print(std::basic_ostream<char>& stream,
                            const int& indent,
                            const bool& add_newlines) const {
-    ((Array)op::take_from_rows(source, indices)).print(
+    ((Array)op::gather_from_rows(source, indices)).print(
         stream,
         indent,
         add_newlines
@@ -1252,7 +1249,7 @@ void ArraySubtensor::print(std::basic_ostream<char>& stream,
 }
 
 ArraySubtensor::operator Array() {
-    return (Array)op::take_from_rows(source, indices);
+    return (Array)op::gather_from_rows(source, indices);
 }
 
 
@@ -1276,7 +1273,7 @@ std::vector<int> ArrayGather::shape() const {
 }
 
 ArrayGather& ArrayGather::operator=(const Array& assignable) {
-    internal::assign_to_gather(assignable, this);
+    *this = (Assignable<ArrayGather>)Operation(assignable);
     return *this;
 }
 

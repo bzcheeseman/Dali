@@ -126,7 +126,7 @@ struct CircularConvolutionOperationState : public OperationState {
 
 const hash_t CircularConvolutionOperationState::optype_hash = std::hash<std::string>()("CircularConvolutionOperationState");
 
-namespace op2 {
+namespace op {
     Operation circular_convolution(const Operation& x, const Operation& weights) {
         auto x_weights = ensure_arguments_compatible(x, weights);
         return Operation(std::make_shared<CircularConvolutionOperationState>(

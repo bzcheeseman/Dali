@@ -63,7 +63,7 @@ TEST(RTCTests, circular_convolution) {
     x     = initializer::uniform(-1.0, 1.0);
     shift = initializer::uniform(-1.0, 1.0);
 
-    Array res = op2::circular_convolution(x, shift);
+    Array res = op::circular_convolution(x, shift);
     Array expected_res = reference_circular_convolution(x, shift);
 
     EXPECT_TRUE(Array::allclose(res, expected_res, 1e-6));
@@ -79,7 +79,7 @@ TEST(RTCTests, circular_convolution_broadcast) {
 
     shift = shift[Slice()][Slice()][Broadcast()];
 
-    Array res = op2::circular_convolution(x, shift);
+    Array res = op::circular_convolution(x, shift);
     Array expected_res = reference_circular_convolution(x, shift);
 
     EXPECT_TRUE(Array::allclose(res, expected_res, 1e-6));
@@ -94,7 +94,7 @@ TEST(RTCTests, circular_convolution_1d) {
 
     shift = shift[Slice(0, 6, 2)];
 
-    Array res = op2::circular_convolution(x, shift);
+    Array res = op::circular_convolution(x, shift);
     Array expected_res = reference_circular_convolution(x, shift);
 
     EXPECT_TRUE(Array::allclose(res, expected_res, 1e-6));
@@ -110,11 +110,11 @@ TEST(RTCTests, chained_circular_convolution) {
         Array c = Array::arange({5, 3 * size}, dtype)[Slice()][Slice(0, 3*size, 3)];
         Array dst = Array::arange({5, size}, dtype) + 2;
         // the circular convolution and the addition are a single kernel:
-        dst -= op2::circular_convolution(op2::add(a, b), c);
+        dst -= op::circular_convolution(op::add(a, b), c);
         EXPECT_TRUE(
             Array::equals(
                 dst,
-                (Array)(Array::arange({5, size}, dtype) + 2 - (op::circular_convolution(a + b, c)))
+                (Array)(old_op::sub(old_op::scalar_add(Array::arange({5, size}, dtype), 2), (old_op::circular_convolution(a + b, c))))
             )
         );
     }
@@ -126,23 +126,23 @@ TEST(RTCTests, chained_circular_convolution) {
 TEST(RTCTests, circular_conv_unary) {
     int size = 10;
     {
-        Array res = op2::circular_convolution(
+        Array res = op::circular_convolution(
             Array::arange({5, size}, DTYPE_FLOAT) + 1,
-            op2::relu(2.5)
+            op::relu(2.5)
         );
     }
     {
-        Array res = op2::circular_convolution(
+        Array res = op::circular_convolution(
             2.5,
             Array::arange({5, size}, DTYPE_FLOAT) + 1
         );
     }
     {
-        Array res = op2::circular_convolution(2.1, 2.5);
+        Array res = op::circular_convolution(2.1, 2.5);
         EXPECT_NEAR((double)res, 2.1 * 2.5, 1e-9);
     }
     {
-        Array res = op2::circular_convolution(
+        Array res = op::circular_convolution(
             Array::arange({5, size}, DTYPE_FLOAT) + 1, 2.5
         );
     }

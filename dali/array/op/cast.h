@@ -7,7 +7,7 @@ class Array;
 template<typename OutType>
 class Assignable;
 
-namespace op {
+namespace old_op {
 	Assignable<Array> astype(const Array& a, DType dtype);
 }
 

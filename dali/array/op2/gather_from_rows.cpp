@@ -56,6 +56,13 @@ struct GatherFromRowsState : public OperationState {
         "        return source_[{index, indices_(index)}];\n"
         "    }\n"
             );
+            if (use_references) {
+                one_dimensional_access = utils::make_message(one_dimensional_access,
+        "    XINLINE const T& operator()(int index) const {\n"
+        "        return source_[{index, indices_(index)}];\n"
+        "    }\n"
+            );
+            }
         }
         std::stringstream shape_assignments_ss;
         for (int i = 0; i < node_to_info.at(indices_.get()).computation_rank; i++) {
@@ -63,6 +70,18 @@ struct GatherFromRowsState : public OperationState {
         }
         std::string shape_assignments = shape_assignments_ss.str();
 
+        std::string n_dimensional_access = utils::make_message(
+        "    XINLINE T",  use_references ? "&" : "", " operator[](const Shape<ndim>& query) ", use_references ? "" : "const", " {\n"
+        "        return source_[", nd_access, "];\n"
+        "    }\n"
+        );
+        if (use_references) {
+            n_dimensional_access = utils::make_message(n_dimensional_access,
+        "    XINLINE const T& operator[](const Shape<ndim>& query) const {\n"
+        "        return source_[", nd_access, "];\n"
+        "    }\n"
+            );
+        }
         return utils::make_message("template<typename C1, typename C2>\n"
         "struct ", name, " {\n"
         "    C1 source_;\n"
@@ -75,10 +94,8 @@ struct GatherFromRowsState : public OperationState {
         "        return res;\n"
         "    }\n"
         "    XINLINE ", name, "(const C1& source, const C2& indices)\n"
-        "        : source_(source), indices_(indices) {}\n"
-        "    XINLINE T",  use_references ? "&" : "", " operator[](const Shape<ndim>& query) ", use_references ? "" : "const", " {\n"
-        "        return source_[", nd_access, "];\n"
-        "    }\n", one_dimensional_access,
+        "        : source_(source), indices_(indices) {}\n",
+        n_dimensional_access, one_dimensional_access,
         "};\n"
         "template<typename C1, typename C2>\n",
         name, "<C1, C2> ", caller_function_name(node_to_info), "(const C1& a, const C2& b) {\n"
@@ -182,7 +199,7 @@ struct GatherFromRowsState : public OperationState {
 
 const hash_t GatherFromRowsState::optype_hash = std::hash<std::string>()("GatherFromRowsState");
 
-namespace op2 {
+namespace op {
     Operation gather_from_rows(const Operation& source, const Operation& indices) {
         ASSERT2(
             source.ndim() > 1,
@@ -209,4 +226,4 @@ namespace op2 {
         }
         return Operation(std::make_shared<GatherFromRowsState>(source.state_, indices.state_));
     }
-}  // namespace op2
+}  // namespace op

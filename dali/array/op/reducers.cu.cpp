@@ -6,7 +6,7 @@
 #include "dali/array/op.h"
 
 
-namespace op {
+namespace old_op {
     Assignable<Array> sum(const Array& x) {
         return lazy::sum(x);
     }

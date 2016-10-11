@@ -3,7 +3,7 @@
 #include <stdexcept>
 
 #include "dali/array/array.h"
-#include "dali/array/op/unary.h"
+#include "dali/array/op2/unary.h"
 #include "dali/execution/beam_search.h"
 
 using ::testing::AssertionResult;

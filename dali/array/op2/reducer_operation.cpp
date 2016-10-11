@@ -1,5 +1,4 @@
 #include "reducer_operation.h"
-#include "dali/array/op2/operation.h"
 #include "dali/array/op2/elementwise_operation.h"
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
@@ -378,7 +377,7 @@ std::string ReducerOperationState::get_call_code_nd(
 }
 
 
-namespace op2 {
+namespace op {
     Operation all_reduce(const Operation& a,
                          const std::string& reducer_name) {
         return Operation(std::make_shared<AllReducerOperationState>(

@@ -136,7 +136,7 @@ struct LazyTakeFromRows : public LazyFunction<LazyTakeFromRows<SrcExp, IndexExp>
     auto to_mshadow_expr(memory::Device device,
                          const std::vector<int>& output_shape,
                          const lazy::EvaluationSpec<devT, T, ndim>& wrap_array) const ->
-            decltype(mshadow::expr::take_from_rows(
+            decltype(mshadow::expr::gather_from_rows(
                 MshadowWrapper<devT, int, decltype(indices)>::wrap(
                     indices,
                     device,
@@ -151,7 +151,7 @@ struct LazyTakeFromRows : public LazyFunction<LazyTakeFromRows<SrcExp, IndexExp>
                 )
             )) {
 
-        return mshadow::expr::take_from_rows(
+        return mshadow::expr::gather_from_rows(
             MshadowWrapper<devT, int, decltype(indices)>::wrap(
                 indices,
                 device,
@@ -185,7 +185,7 @@ namespace lazy {
     }
 
     template<typename SrcExp, typename IndexExp>
-    LazyTakeFromRows<SrcExp, IndexExp> take_from_rows(const SrcExp& source, const IndexExp& indices) {
+    LazyTakeFromRows<SrcExp, IndexExp> gather_from_rows(const SrcExp& source, const IndexExp& indices) {
         return LazyTakeFromRows<SrcExp, IndexExp>(source, indices);
     }
 }  // namespace lazy

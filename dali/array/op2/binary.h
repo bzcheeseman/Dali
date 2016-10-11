@@ -1,15 +1,20 @@
 #ifndef DALI_ARRAY_OP2_BINARY_H
 #define DALI_ARRAY_OP2_BINARY_H
 
-class Operation;
+#include "dali/array/op2/operation.h"
 
-namespace op2 {
+namespace op {
     Operation add(const Operation& a, const Operation& b);
+    Assignable<Array> add(const std::vector<Array>& as);
     Operation sub(const Operation& a, const Operation& b);
     Operation eltmul(const Operation& left, const Operation& right);
     Operation eltdiv(const Operation& left, const Operation& right);
     Operation pow(const Operation& left, const Operation& right);
     Operation equals(const Operation& left, const Operation& right);
+    Operation steep_sigmoid(const Operation& x, const Operation& aggressiveness);
+    Operation steep_sigmoid_backward(const Operation& x, const Operation& aggressiveness);
+    Operation clipped_relu(const Operation& x, const Operation& clipval);
+    Operation clipped_relu_backward(const Operation& x, const Operation& clipval);
     Operation prelu(const Operation& x, const Operation& weights);
     Operation prelu_backward_weights(const Operation& a, const Operation& grad);
     Operation prelu_backward_inputs(const Operation& a, const Operation& weights);

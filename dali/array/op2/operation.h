@@ -210,8 +210,8 @@ struct Operation {
     operator Assignable<ArraySubtensor>() const;
 };
 
-namespace op2 {
+namespace op {
     Operation assign(const Operation& left, const OPERATOR_T& operator_t, const Operation& right);
-}
+}  // namespace op
 
 #endif  // DALI_ARRAY_OP2_OPERATION_H

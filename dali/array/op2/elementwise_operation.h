@@ -2,11 +2,10 @@
 #define DALI_ARRAY_OP2_ELEMENTWISE_OPERATION_H
 
 #include "dali/array/dtype.h"
+#include "dali/array/op2/operation.h"
 #include <string>
 
-struct Operation;
-
-namespace op2 {
+namespace op {
     // elementwise kernel given by name. assumes
     // return type is unchanged from a's
     Operation elementwise(

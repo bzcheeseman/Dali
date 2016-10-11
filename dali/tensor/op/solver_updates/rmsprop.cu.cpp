@@ -1,6 +1,9 @@
 #include "rmsprop.h"
 
-#include "dali/array/lazy_op.h"
+#include "dali/array/op2/binary.h"
+#include "dali/array/op2/unary.h"
+#include "dali/array/op_overload/common.h"
+#include "dali/array/op_overload/nonlazy.h"
 #include "dali/utils/assert2.h"
 
 namespace tensor_ops {
@@ -16,11 +19,11 @@ namespace tensor_ops {
         );
         cache = (
             decay_rate * cache +
-            (1.0 - decay_rate) * lazy::square(param.dw)
+            (1.0 - decay_rate) * op::square(param.dw)
         );
         // update gradient using RMSprop rule
         // DEBUG_ASSERT_POSITIVE((s.array() + smooth_eps).matrix());
-        param.w -= step_size * param.dw / lazy::sqrt(cache + smooth_eps);
+        param.w -= step_size * param.dw / op::sqrt(cache + smooth_eps);
     }
 
     // Based on the "Generating Sequences With
@@ -51,7 +54,7 @@ namespace tensor_ops {
         );
         n_cache = (
             decay_rate         * n_cache +
-            (1.0 - decay_rate) * lazy::square(param.dw)
+            (1.0 - decay_rate) * op::square(param.dw)
         );
         g_cache = (
             decay_rate         * g_cache +
@@ -59,7 +62,7 @@ namespace tensor_ops {
         );
         momentum_cache = (momentum * momentum_cache
             - step_size * param.dw / (
-                lazy::sqrt(n_cache - lazy::square(g_cache) + smooth_eps)
+                op::sqrt(n_cache - op::square(g_cache) + smooth_eps)
             )
         );
         param.w += momentum_cache;

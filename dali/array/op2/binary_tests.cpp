@@ -14,7 +14,7 @@ TEST(RTCTests, add) {
     for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {
         auto a = Array::arange({size}, dtype);
         auto b = Array::arange({size}, dtype);
-        Array dst = op2::add(a, b);
+        Array dst = op::add(a, b);
         EXPECT_TRUE(Array::equals(dst, (Array)(a + b)));
     }
 
@@ -22,7 +22,7 @@ TEST(RTCTests, add) {
         auto a = Array::arange({size}, dtype);
         auto b = Array::arange({size}, dtype);
         Array dst = Array::arange({size}, dtype) + 2;
-        dst = op2::add(a, b);
+        dst = op::add(a, b);
         EXPECT_TRUE(Array::equals(dst, (Array)(a + b)));
     }
 
@@ -30,7 +30,7 @@ TEST(RTCTests, add) {
         auto a = Array::arange({size}, dtype);
         auto b = Array::arange({size}, dtype);
         Array dst = Array::arange({size}, dtype) + 2;
-        dst += op2::add(a, b);
+        dst += op::add(a, b);
         EXPECT_TRUE(
             Array::equals(
                 dst,
@@ -43,7 +43,7 @@ TEST(RTCTests, add) {
         auto a = Array::arange({size}, dtype);
         auto b = Array::arange({size}, dtype);
         Array dst = Array::arange({size}, dtype) + 2;
-        dst -= op2::add(a, b);
+        dst -= op::add(a, b);
         EXPECT_TRUE(
             Array::equals(
                 dst,
@@ -56,7 +56,7 @@ TEST(RTCTests, add) {
         auto a = Array::arange({size}, dtype);
         auto b = Array::arange({size}, dtype);
         Array dst = Array::arange({size}, dtype) + 2;
-        dst *= op2::add(a, b);
+        dst *= op::add(a, b);
         EXPECT_TRUE(
             Array::equals(
                 dst,
@@ -73,7 +73,7 @@ TEST(RTCTests, add_strided) {
         auto a = Array::arange({size}, dtype);
         Array b = Array::arange({2 * size}, dtype)[Slice(0, 2*size, 2)];
         Array dst = Array::arange({size}, dtype) + 2;
-        dst -= op2::add(a, b);
+        dst -= op::add(a, b);
         EXPECT_TRUE(
             Array::equals(
                 dst,
@@ -87,7 +87,7 @@ TEST(RTCTests, add_strided) {
         Array a = Array::arange({size}, dtype);
         Array b = Array::arange({2 * size}, dtype)[Slice(0, 2*size, 2)];
         Array dst = ((Array)(Array::arange({2 * size}, dtype) + 2))[Slice(0, 2 * size, 2)];
-        dst -= op2::add(a, b);
+        dst -= op::add(a, b);
         EXPECT_TRUE(
             Array::equals(
                 dst,
@@ -104,7 +104,7 @@ TEST(RTCTests, add_strided) {
         Array a = Array::arange({3 * size}, dtype)[Slice(0, 3 * size, 3)];
         Array b = Array::arange({2 * size}, dtype)[Slice(0, 2 * size, 2)];
         Array dst = ((Array)(Array::arange({2 * size}, dtype) + 2))[Slice(0, 2 * size, 2)];
-        dst -= op2::add(a, b);
+        dst -= op::add(a, b);
         EXPECT_TRUE(
             Array::equals(
                 dst,
@@ -124,7 +124,7 @@ TEST(RTCTests, add_strided_nd) {
         Array a = Array::arange({5, size}, dtype);
         Array b = Array::arange({5, 2 * size}, dtype)[Slice()][Slice(0, 2*size, 2)];
         Array dst = Array::arange({5, size}, dtype) + 2;
-        dst -= op2::add(a, b);
+        dst -= op::add(a, b);
         EXPECT_TRUE(
             Array::equals(
                 dst,
@@ -140,8 +140,8 @@ TEST(RTCTests, add_strided_nd) {
         auto a = Array::arange({5, size}, dtype);\
         auto b = Array::arange({5, size}, dtype) + 1;\
         Array dst = Array::arange({5, size}, dtype) + 2;\
-        dst = op2::funcname(a, b);\
-        Array reference = op::funcname(a, b);\
+        dst = op::funcname(a, b);\
+        Array reference = old_op::funcname(a, b);\
         EXPECT_TRUE(Array::allclose(dst, reference, 1e-7));\
     }\
 
@@ -163,7 +163,7 @@ TEST(RTCTests, chained_add) {
         Array c = Array::arange({5, 3 * size}, dtype)[Slice()][Slice(0, 3*size, 3)];
         Array dst = Array::arange({5, size}, dtype) + 2;
         // these two additions are a single kernel:
-        dst -= op2::add(op2::add(a, b), c);
+        dst -= op::add(op::add(a, b), c);
         EXPECT_TRUE(
             Array::equals(
                 dst,
@@ -176,7 +176,7 @@ TEST(RTCTests, chained_add) {
 TEST(RTCTests, cast_binary) {
     // auto casts to the right type before adding:
     for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {
-        Array res = op2::add(
+        Array res = op::add(
             Array::arange({10}, dtype),
             Array::arange({10}, DTYPE_INT32)
         );

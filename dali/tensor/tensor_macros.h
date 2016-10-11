@@ -15,7 +15,7 @@
 
 #define DALI_DEFINE_UNARY_OP1(FUNCTION_NAME, arg1, FORWARD_OPNAME, BACKWARD_OPNAME) \
     Tensor FUNCTION_NAME(const Tensor& t, const double& arg1) {\
-        Tensor out(lazy::F<FORWARD_OPNAME>(t.w, arg1));\
+        Tensor out(FORWARD_OPNAME(t.w, arg1));\
         if (graph::backprop_enabled() && !t.constant)\
             graph::emplace_back([t, out, arg1]() mutable {\
                 MAYBE_GRAD(t) += (BACKWARD_OPNAME) * out.dw;\

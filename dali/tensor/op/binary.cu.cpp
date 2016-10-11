@@ -1,6 +1,10 @@
 #include "binary.h"
 
-#include "dali/array/lazy_op.h"
+#include "dali/array/op2/binary.h"
+#include "dali/array/op2/unary.h"
+#include "dali/array/op2/circular_convolution.h"
+#include "dali/array/op_overload/common.h"
+#include "dali/array/op_overload/nonlazy.h"
 #include "dali/tensor/tape.h"
 #include "dali/tensor/tensor_macros.h"
 
@@ -85,44 +89,44 @@ namespace tensor_ops {
             auto out_dw = out.dw;
             graph::emplace_back([a, b, out_dw]() mutable {
                 MAYBE_GRAD(a) <<= out_dw / b.w;
-                MAYBE_GRAD(b) <<= (-a.w / lazy::square(b.w)) * out_dw;
+                MAYBE_GRAD(b) <<= (-a.w / op::square(b.w)) * out_dw;
             });
         }
         return out;
     }
 
     Tensor pow(const Tensor& a, const Tensor& exponent) {
-        Tensor out(lazy::pow(a.w, exponent.w));
+        Tensor out(op::pow(a.w, exponent.w));
 
         if (graph::backprop_enabled())
             graph::emplace_back([a, exponent, out]() mutable {
                 MAYBE_GRAD(a) <<=
-                        exponent.w * lazy::pow(a.w, exponent.w - 1.0) * out.dw;
+                        exponent.w * op::pow(a.w, exponent.w - 1.0) * out.dw;
                 MAYBE_GRAD(exponent) <<=
-                        lazy::log_or_zero(a.w) * out.w * out.dw;
+                        op::log_or_zero(a.w) * out.w * out.dw;
             });
         return out;
     }
 
     Tensor circular_convolution(const Tensor& content, const Tensor& shift) {
-        Tensor out(lazy::circular_convolution(content.w, shift.w));
+        Tensor out(op::circular_convolution(content.w, shift.w));
         if (graph::backprop_enabled()) {
             auto out_dw = out.dw;
             graph::emplace_back([content, shift, out_dw]() mutable {
-                MAYBE_GRAD(content) <<= lazy::circular_convolution(out_dw, shift.w);
-                MAYBE_GRAD(shift) <<= lazy::circular_convolution(content.w, out_dw);
+                MAYBE_GRAD(content) <<= op::circular_convolution(out_dw, shift.w);
+                MAYBE_GRAD(shift) <<= op::circular_convolution(content.w, out_dw);
             });
         }
         return out;
     }
 
     Tensor prelu(const Tensor& x, const Tensor& weights) {
-        Tensor out(lazy::prelu(x.w, weights.w));
+        Tensor out(op::prelu(x.w, weights.w));
         if (graph::backprop_enabled()) {
             auto out_dw = out.dw;
             graph::emplace_back([weights, x, out_dw]() mutable {
-                MAYBE_GRAD(x) <<= lazy::prelu_backward_inputs(x.w, weights.w) * out_dw;
-                MAYBE_GRAD(weights) <<= lazy::prelu_backward_weights(x.w, out_dw);
+                MAYBE_GRAD(x) <<= op::prelu_backward_inputs(x.w, weights.w) * out_dw;
+                MAYBE_GRAD(weights) <<= op::prelu_backward_weights(x.w, out_dw);
             });
         }
         return out;

@@ -5,7 +5,7 @@ class Array;
 template<typename OutType>
 class Assignable;
 
-namespace op {
+namespace old_op {
     Assignable<Array> sum(const Array& x);
     Assignable<Array> L2_norm(const Array& x);
     Assignable<Array> L2_norm(const Array& x, int axis);

@@ -2,7 +2,7 @@
 #include "dali/array/array.h"
 #include "dali/array/lazy/binary.h"
 
-namespace op {
+namespace old_op {
     #define DALI_DEFINE_ARRAY_SCALAR_OP(FUNCTION_NAME, OPNAME)\
         Assignable<Array> FUNCTION_NAME(const Array& x, const double& other) {\
             return OPNAME(x, other);\

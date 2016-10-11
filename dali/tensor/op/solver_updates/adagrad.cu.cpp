@@ -1,6 +1,9 @@
 #include "adagrad.h"
 
-#include "dali/array/lazy_op.h"
+#include "dali/array/op2/binary.h"
+#include "dali/array/op2/unary.h"
+#include "dali/array/op_overload/common.h"
+#include "dali/array/op_overload/nonlazy.h"
 #include "dali/utils/assert2.h"
 
 namespace tensor_ops {
@@ -14,9 +17,9 @@ namespace tensor_ops {
                         << " and expected " << param.number_of_elements() << ")."
         );
         // update gradient cache using decay rule:
-        cache += lazy::square(param.dw);
+        cache += op::square(param.dw);
         // clip the gradient to prevent explosions:
         // update gradient using RMSprop rule
-        param.w -= step_size * param.dw / (lazy::sqrt(cache) + smooth_eps);
+        param.w -= step_size * param.dw / (op::sqrt(cache) + smooth_eps);
     }
 }  // namespace tensor_ops

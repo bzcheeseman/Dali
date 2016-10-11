@@ -5,7 +5,7 @@
 #include "dali/array/op2/binary.h"
 #include "dali/array/op2/unary.h"
 
-namespace op2 {
+namespace op {
 
     Operation sum(const Operation& x) {
         return all_reduce(x, "reducers::sum");
@@ -34,22 +34,22 @@ namespace op2 {
     Operation mean(const Operation& x) {
         auto sum_op = all_reduce(x, "reducers::sum");
         if (sum_op.dtype() == DTYPE_INT32) sum_op = astype(sum_op, DTYPE_DOUBLE);
-        return op2::eltdiv(sum_op, x.number_of_elements());
+        return op::eltdiv(sum_op, x.number_of_elements());
     }
     Operation mean(const Operation& x, const std::vector<int>& axes) {
         auto sum_op = axis_reduce(x, "reducers::sum", axes);
         if (sum_op.dtype() == DTYPE_INT32) sum_op = astype(sum_op, DTYPE_DOUBLE);
-        return op2::eltdiv(sum_op, x.number_of_elements() / sum_op.number_of_elements());
+        return op::eltdiv(sum_op, x.number_of_elements() / sum_op.number_of_elements());
     }
     Operation L2_norm(const Operation& x) {
-        auto sum_op = all_reduce(op2::square(x), "reducers::sum");
+        auto sum_op = all_reduce(op::square(x), "reducers::sum");
         if (sum_op.dtype() == DTYPE_INT32) sum_op = astype(sum_op, DTYPE_DOUBLE);
-        return op2::sqrt(sum_op);
+        return op::sqrt(sum_op);
     }
     Operation L2_norm(const Operation& x, const std::vector<int>& axes) {
-        auto sum_op = axis_reduce(op2::square(x), "reducers::sum", axes);
+        auto sum_op = axis_reduce(op::square(x), "reducers::sum", axes);
         if (sum_op.dtype() == DTYPE_INT32) sum_op = astype(sum_op, DTYPE_DOUBLE);
-        return op2::sqrt(sum_op);
+        return op::sqrt(sum_op);
     }
     Operation argmax(const Operation& x) {
         return argument_all_reduce(x, "reducers::maximum");

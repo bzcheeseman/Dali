@@ -14,7 +14,7 @@ namespace lazy {
     LazyTake<SrcExp, IndexExp> gather(const SrcExp& source, const IndexExp& indices);
 
     template<typename SrcExp, typename IndexExp>
-    LazyTakeFromRows<SrcExp, IndexExp> take_from_rows(const SrcExp& source, const IndexExp& indices);
+    LazyTakeFromRows<SrcExp, IndexExp> gather_from_rows(const SrcExp& source, const IndexExp& indices);
 }  // namespace lazy
 
 #include "dali/array/lazy/reshape-impl.h"

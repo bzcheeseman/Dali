@@ -188,7 +188,7 @@ struct GatherState : public OperationState {
 
 const hash_t GatherState::optype_hash = std::hash<std::string>()("GatherState");
 
-namespace op2 {
+namespace op {
     Operation gather(const Operation& source, const Operation& indices) {
         ASSERT2(
             source.ndim() > 0,
@@ -201,4 +201,4 @@ namespace op2 {
         );
         return Operation(std::make_shared<GatherState>(source.state_, indices.state_));
     }
-}  // namespace op2
+}  // namespace op

@@ -112,9 +112,9 @@ struct ConcatenateFunction : public Function<ConcatenateFunction,
     }
 };
 
-namespace op {
+namespace old_op {
     Assignable<Array> concatenate(const std::vector<Array>& arrays, int axis) {
-        if (arrays.size() == 1) return op::identity(arrays[0], /*always_copy=*/false);
+        if (arrays.size() == 1) return old_op::identity(arrays[0], /*always_copy=*/false);
         bool all_scalar = arrays.size() != 0 ? true : false;
         for (const auto& ar : arrays)
             all_scalar = all_scalar && ar.is_scalar();
@@ -145,8 +145,8 @@ namespace op {
         return lazy::gather(source, indices);
     }
 
-    Assignable<Array> take_from_rows(const Array& source, const Array& indices) {
-        return lazy::take_from_rows(source, indices);
+    Assignable<Array> gather_from_rows(const Array& source, const Array& indices) {
+        return lazy::gather_from_rows(source, indices);
     }
 }  // namespace op
 

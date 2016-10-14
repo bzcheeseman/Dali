@@ -74,24 +74,6 @@ struct ElementwiseOperationState : public OperationState {
     virtual std::string prefix_code(const node_to_info_t& node_to_info) const;
 };
 
-struct CastOperationState : public ElementwiseOperationState {
-    static const hash_t optype_hash;
-
-    const DType dtype_;
-
-    CastOperationState(DType dtype, const operation_state_ptr argument);
-
-    virtual DType dtype() const;
-
-    virtual void compute_node_compilation_info(
-        int desired_computation_rank,
-        const std::vector<int>& desired_computation_shape,
-        std::vector<const ArrayOperationState*>* arrays,
-        std::vector<const ScalarOperationState*>* scalars,
-        node_to_info_t* node_to_info) const;
-};
-
-
 
 ///////////////////////////////////////////////////////////////////////////////
 //                   ELEMENTWISE OPERATION STATE                             //
@@ -202,37 +184,69 @@ std::string ElementwiseOperationState::prefix_code(
 //                       CAST OPERATION STATE                                //
 ///////////////////////////////////////////////////////////////////////////////
 
-const hash_t CastOperationState::optype_hash = std::hash<std::string>()("CastOperationState");
+struct CastOperationState : public ElementwiseOperationState {
+    static const hash_t optype_hash;
 
+    const DType dtype_;
 
-CastOperationState::CastOperationState(
-        DType dtype,
-        const operation_state_ptr argument) :
-    ElementwiseOperationState("functor::cast", {argument}),
-    dtype_(dtype) {
-}
+    CastOperationState(DType dtype, const operation_state_ptr argument) :
+        ElementwiseOperationState("functor::cast", {argument}),
+        dtype_(dtype) {
+    }
 
-void CastOperationState::compute_node_compilation_info(
+    virtual DType dtype() const {
+        return dtype_;
+    }
+
+    virtual void compute_node_compilation_info(
         int desired_computation_rank,
         const std::vector<int>& desired_computation_shape,
         std::vector<const ArrayOperationState*>* arrays,
         std::vector<const ScalarOperationState*>* scalars,
         node_to_info_t* node_to_info) const {
-    (*node_to_info)[this].computation_rank = desired_computation_rank;
-    arguments_[0]->compute_node_compilation_info(desired_computation_rank, desired_computation_shape, arrays, scalars, node_to_info);
+        (*node_to_info)[this].computation_rank = desired_computation_rank;
+        arguments_[0]->compute_node_compilation_info(desired_computation_rank, desired_computation_shape, arrays, scalars, node_to_info);
 
-    (*node_to_info)[this].hash = utils::Hasher().add(optype_hash)
-                                                .add(desired_computation_rank)
-                                                .add(functor_name_)
-                                                .add(node_to_info->at(arguments_[0].get()).hash)
-                                                .add(dtype())
-                                                .value();
-}
+        (*node_to_info)[this].hash = utils::Hasher().add(optype_hash)
+                                                    .add(desired_computation_rank)
+                                                    .add(functor_name_)
+                                                    .add(node_to_info->at(arguments_[0].get()).hash)
+                                                    .add(dtype())
+                                                    .value();
+    }
+};
 
-DType CastOperationState::dtype() const {
-    return dtype_;
-}
+const hash_t CastOperationState::optype_hash = std::hash<std::string>()("CastOperationState");
 
+struct RoundOperationState : public ElementwiseOperationState {
+    static const hash_t optype_hash;
+
+    RoundOperationState(const operation_state_ptr argument) :
+        ElementwiseOperationState("functor::round", {argument}) {
+    }
+
+    virtual DType dtype() const {
+        return DTYPE_INT32;
+    }
+
+    virtual void compute_node_compilation_info(
+        int desired_computation_rank,
+        const std::vector<int>& desired_computation_shape,
+        std::vector<const ArrayOperationState*>* arrays,
+        std::vector<const ScalarOperationState*>* scalars,
+        node_to_info_t* node_to_info) const {
+        (*node_to_info)[this].computation_rank = desired_computation_rank;
+        arguments_[0]->compute_node_compilation_info(desired_computation_rank, desired_computation_shape, arrays, scalars, node_to_info);
+
+        (*node_to_info)[this].hash = utils::Hasher().add(optype_hash)
+                                                    .add(desired_computation_rank)
+                                                    .add(functor_name_)
+                                                    .add(node_to_info->at(arguments_[0].get()).hash)
+                                                    .value();
+    }
+};
+
+const hash_t RoundOperationState::optype_hash = std::hash<std::string>()("RoundOperationState");
 
 ///////////////////////////////////////////////////////////////////////////////
 //                                OP2                                        //
@@ -261,8 +275,22 @@ namespace op {
     }
 
     Operation astype(const Operation& a, DType type) {
+        if (type == DTYPE_INT32) {
+            return round(a);
+        } else {
+            return unsafe_cast(a, type);
+        }
+    }
+
+    Operation unsafe_cast(const Operation& a, DType type) {
         return Operation(std::make_shared<CastOperationState>(
             type,
+            a.state_
+        ));
+    }
+
+    Operation round(const Operation& a) {
+        return Operation(std::make_shared<RoundOperationState>(
             a.state_
         ));
     }

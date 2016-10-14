@@ -123,6 +123,7 @@ std::function<void(const std::vector<Array>&, const std::vector<double>&)> Opera
                           .add(node_to_info.at(this).hash)
                           .value();
     // check if the operation needs to be runtime compiled
+    ELOG(hash);
     if (!array_op_compiler.load(hash)) {
         auto code_template = get_code_template(
             device,

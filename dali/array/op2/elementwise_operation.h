@@ -39,8 +39,16 @@ namespace op {
     );
 
     // Perform a type conversion by casting the values in x
-    // to another dtype.
+    // to another dtype. Use rounding when casting to integers
+    // for more predictable results
     Operation astype(const Operation& x, DType dtype);
+    // static_cast one type to another. This can cause unpredictable
+    // behavior on floats->integers based on underlying
+    // hardware/implementation
+    Operation unsafe_cast(const Operation& x, DType dtype);
+    // Perform rounding on a value to nearest integer.
+    // Note: equivalent to floor(x + 0.5).
+    Operation round(const Operation& x);
 
     // type-promote arguments if necessary and check whether their
     // ranks are compatible (equal or one is a scalar)

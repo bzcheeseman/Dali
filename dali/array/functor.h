@@ -193,6 +193,15 @@ namespace functor {
     };
 
     template<typename R>
+    struct round : public Functor {
+        const static std::string name;
+        template<typename OtherType>
+        XINLINE static R Map(const OtherType& a) {
+            return floor(a + 0.5);
+        }
+    };
+
+    template<typename R>
     struct sigmoid : public Functor {
         const static std::string name;
         XINLINE static R Map(const R& a) {

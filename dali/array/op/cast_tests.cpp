@@ -25,11 +25,6 @@ TEST(ArrayCastTests, astype) {
     Array int_arange_with_offset = float_arange_with_offset.astype(DTYPE_INT32);
 
     for (int i = 0; i < integer_arange.number_of_elements(); i++) {
-        // TODO(jonathan): allow different rounding options.
-        ELOG(i);
-        ELOG((float)integer_arange(i) - 0.6);
-        ELOG((float)float_arange_with_offset(i));
-        ELOG((float)int_arange_with_offset(i));
         EXPECT_EQ(std::round((float)integer_arange(i) - 0.6), (int)int_arange_with_offset(i));
     }
 }

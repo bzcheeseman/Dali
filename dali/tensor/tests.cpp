@@ -297,7 +297,7 @@ TEST_F(TensorTests, mean) {
     auto res = B.mean();
     ASSERT_NEAR(1.0, (double)res.w, 1e-6);
 
-    auto functor = [](vector<Tensor> Xs)-> Tensor {
+    auto functor = [](vector<Tensor> Xs) -> Tensor {
         return Xs[0].mean();
     };
     EXPERIMENT_REPEAT {

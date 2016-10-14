@@ -251,6 +251,10 @@ OperationState::operator Assignable<Array> () const {
             );
             out_array = out;
         }
+        // ensure broadcasted dimensions use positive values:
+        for (auto& dim : output_bshape) {
+            dim = std::abs(dim);
+        }
         if (!out.memory()->is_any_fresh() && operator_to_use == OPERATOR_T_ADD) {
             // if operation is += to an empty/zeros array, then switch operator
             // to equal:

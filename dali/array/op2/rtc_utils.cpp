@@ -96,19 +96,11 @@ void initialize_output_array(Array& out,
                                    output_dtype,
                                    output_device);
     } else {
-        bool broadcast_reshaped_output = false;
-
         for (const int& dim_size: out.bshape()) {
-            if (dim_size < -1) {
-                broadcast_reshaped_output = true;
-                break;
-            }
-        }
-
-        ASSERT2(!broadcast_reshaped_output,
+            ASSERT2(dim_size >= -1,
                 "Cannot assign to broadcasted output with broadcasted dimension"
                 " bigger than 1, because it results in many-to-one mappings.");
-
+        }
 
         bool output_bshape_compatible = out.ndim() == output_bshape.size();
         if (output_bshape_compatible) {

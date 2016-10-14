@@ -223,10 +223,6 @@ Array build_234_arange() {
 }
 
 
-void copy_constructor_helper(bool copy_w) {
-
-}
-
 TEST(ArrayTests, copy_constructor) {
     for (auto copy_w : {true, false}) {
         Array original({3,3}, DTYPE_INT32);

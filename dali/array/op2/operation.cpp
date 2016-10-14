@@ -155,7 +155,6 @@ void eval_op(const Operation& op,
                                        &scalar_ops,
                                        &node_to_info);
 
-
     auto compiled_self = self.compile(output_device,
                                       array_ops,
                                       scalar_ops,
@@ -251,17 +250,13 @@ OperationState::operator Assignable<Array> () const {
             );
             out_array = out;
         }
-        // ensure broadcasted dimensions use positive values:
-        for (auto& dim : output_bshape) {
-            dim = std::abs(dim);
-        }
         if (!out.memory()->is_any_fresh() && operator_to_use == OPERATOR_T_ADD) {
             // if operation is += to an empty/zeros array, then switch operator
             // to equal:
             operator_to_use = OPERATOR_T_EQL;
         }
         auto self_op = op::assign(out_array, operator_to_use, op);
-        eval_op(self_op, output_bshape, output_device);
+        eval_op(self_op, self_op.shape(), output_device);
     });
 }
 
@@ -270,9 +265,8 @@ OperationState::operator Assignable<ArrayGather> () const {
     return Assignable<ArrayGather>([this_ptr](ArrayGather& out, const OPERATOR_T& operator_t) mutable {
         auto output_dtype  = out.dtype();
         auto output_device = memory::Device::cpu();
-        auto output_bshape = out.shape();
         auto self_op = op::assign(op::gather(out.source, out.indices), operator_t == OPERATOR_T_LSE ? OPERATOR_T_ADD : operator_t, Operation(this_ptr));
-        eval_op(self_op, output_bshape, output_device);
+        eval_op(self_op, self_op.shape(), output_device);
     });
 }
 
@@ -281,9 +275,8 @@ OperationState::operator Assignable<ArraySubtensor> () const {
     return Assignable<ArraySubtensor>([this_ptr](ArraySubtensor& out, const OPERATOR_T& operator_t) mutable {
         auto output_dtype  = out.dtype();
         auto output_device = memory::Device::cpu();
-        auto output_bshape = out.shape();
         auto self_op = op::assign(op::gather_from_rows(out.source, out.indices), operator_t == OPERATOR_T_LSE ? OPERATOR_T_ADD : operator_t, Operation(this_ptr));
-        eval_op(self_op, output_bshape, output_device);
+        eval_op(self_op, self_op.shape(), output_device);
     });
 }
 
@@ -456,6 +449,10 @@ int Operation::ndim() const {
 
 std::vector<int> Operation::bshape() const {
     return state_->bshape();
+}
+
+std::vector<int> Operation::shape() const {
+    return state_->shape();
 }
 
 bool Operation::is_scalar() const {

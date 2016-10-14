@@ -196,6 +196,7 @@ struct Operation {
     bool is_assignable() const;
 
     std::vector<int> bshape() const;
+    std::vector<int> shape() const;
 
     int number_of_elements() const;
 

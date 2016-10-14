@@ -173,6 +173,8 @@ class Tensor {
         // Shape transformations
         Tensor reshape(const std::vector<int>&) const;
         Tensor copyless_reshape(const std::vector<int>&) const;
+        Tensor right_fit_ndim(const int& dimensionality) const;
+        Tensor copyless_right_fit_ndim(const int& dimensionality) const;
         Tensor pluck_axis(int axis, const Slice& slice) const;
         Tensor pluck_axis(int axis, int idx) const;
         Tensor squeeze(int axis) const;

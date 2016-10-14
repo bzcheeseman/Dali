@@ -23,6 +23,22 @@ namespace tensor_ops {
         return out;
     }
 
+    Tensor right_fit_ndim(const Tensor& t, const int& dimensionality) {
+        auto out = Tensor::from_w_and_dw(t.w.right_fit_ndim(dimensionality),
+                                         t.dw.right_fit_ndim(dimensionality),
+                                         t.constant);
+
+        if (t.dw.memory() != out.dw.memory() && !t.constant && graph::backprop_enabled()) {
+            auto out_dw = out.dw;
+            auto t_dw = t.dw;
+            // if out.dw is no longer a view, we need backpropagation.
+            graph::emplace_back([t_dw, out_dw]() mutable {
+                t_dw <<= out_dw.reshape(t_dw.shape());
+            });
+        }
+        return out;
+    }
+
     Tensor ravel(const Tensor& t) {
         auto out = Tensor::from_w_and_dw(t.w.ravel(),
                                          t.dw.ravel(),

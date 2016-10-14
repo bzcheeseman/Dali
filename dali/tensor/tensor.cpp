@@ -333,6 +333,18 @@ Tensor Tensor::copyless_reshape(const std::vector<int>& new_shape) const {
     return Tensor::from_w_and_dw(w.copyless_reshape(new_shape), dw.copyless_reshape(new_shape), constant);
 }
 
+Tensor Tensor::right_fit_ndim(const int& dimensionality) const {
+    return tensor_ops::right_fit_ndim(*this, dimensionality);
+}
+
+Tensor Tensor::copyless_right_fit_ndim(const int& dimensionality) const {
+    return Tensor::from_w_and_dw(
+        w.copyless_right_fit_ndim(dimensionality),
+        dw.copyless_right_fit_ndim(dimensionality),
+        constant
+    );
+}
+
 Tensor Tensor::pluck_axis(int axis, const Slice& slice) const {
     return Tensor::from_w_and_dw(w.pluck_axis(axis, slice), dw.pluck_axis(axis, slice), constant);
 

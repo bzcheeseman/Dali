@@ -8,6 +8,7 @@
 #include "dali/array/op_overload/nonlazy.h"
 #include "dali/array/op/softmax.h"
 #include "dali/tensor/tape.h"
+#include "dali/utils/make_message.h"
 #include "dali/tensor/tensor_macros.h"
 
 namespace tensor_ops {
@@ -117,8 +118,9 @@ namespace tensor_ops {
                                             const Tensor& targets,
                                             const double& temperature,
                                             const int& axis) {
-        ASSERT2(axis == unnormalized_probs.ndim() -1,
-                "softmax_cross_entropy is not yet implemented for axes other than -1");
+        ASSERT2(axis == unnormalized_probs.ndim() -1, utils::make_message(
+            "softmax_cross_entropy is not yet implemented for axes other than "
+            "-1 (got axis=", axis, ")"));
         Array softmax_result = op::softmax(unnormalized_probs.w, axis, temperature);
         Tensor out(-1.0 * op::log(op::gather_from_rows(softmax_result, targets.w)));
 
@@ -171,6 +173,19 @@ namespace tensor_ops {
     }
 
     Tensor cross_entropy_with_idxes(const Tensor& probs, const Tensor& target, int axis) {
+        // 1) we ensure that cross entropy is happening in a 1D setting or
+        // else the behavior of gather_from_rows would not broadcast in the
+        // desired way (e.g. we assume that a single dimension contains a
+        // multinomial distribution for which KL divergence must be computed).
+        if (target.ndim() > 1) {
+            return cross_entropy_with_idxes(
+                probs.swapaxes(-1, axis).right_fit_ndim(2),
+                target.ravel(),
+                -1
+            ).reshape(target.shape()).swapaxes(-1, axis);
+        }
+        // 2) We now know that input probs are of the right dimensionality for
+        // our problem (e.g. they should be 2D) and that our targets are 1D:
         auto permuted_probs = probs.swapaxes(-1, axis);
         Tensor out(-1.0 * op::log(op::gather_from_rows(permuted_probs.w, target.w)));
 

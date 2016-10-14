@@ -156,8 +156,10 @@ TEST_F(TensorCostTests, cross_entropy_with_idxes_forward) {
         {2, 1},
         {0, 2},
     });
-
-    auto res = tensor_ops::cross_entropy(input, idxes);
+    auto res = tensor_ops::cross_entropy(
+        input,
+        idxes
+    );
 
     EXPECT_NEAR((double)res[0][0].w, -std::log((double)input[0][0][2].w), 1e-3);
     EXPECT_NEAR((double)res[0][1].w, -std::log((double)input[0][1][1].w), 1e-3);

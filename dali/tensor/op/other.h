@@ -5,6 +5,7 @@
 
 namespace tensor_ops {
     Tensor reshape(const Tensor& t, const std::vector<int>& new_shape);
+    Tensor right_fit_ndim(const Tensor& t, const int& dimensionality);
     Tensor ravel(const Tensor& t);
 
     Tensor fill(const Tensor& t, const double& filler);

@@ -43,8 +43,8 @@ TEST(RTCTests, unary) {
 
 TEST(RTCTests, scalar_unary) {
     DALI_RTC_SCALAR_UNARY_TEST(add, scalar_add);
-    // DALI_RTC_SCALAR_UNARY_TEST(sub, scalar_sub);
-    // DALI_RTC_SCALAR_UNARY_TEST(eltmul, scalar_mul);
-    // DALI_RTC_SCALAR_UNARY_TEST(eltdiv, scalar_div);
-    // DALI_RTC_SCALAR_UNARY_TEST(pow, scalar_pow);
+    DALI_RTC_SCALAR_UNARY_TEST(sub, scalar_sub);
+    DALI_RTC_SCALAR_UNARY_TEST(eltmul, scalar_mul);
+    DALI_RTC_SCALAR_UNARY_TEST(eltdiv, scalar_div);
+    DALI_RTC_SCALAR_UNARY_TEST(pow, scalar_pow);
 }

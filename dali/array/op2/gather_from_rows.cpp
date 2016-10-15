@@ -31,6 +31,10 @@ struct GatherFromRowsState : public OperationState {
         return source_->is_assignable();
     }
 
+    virtual std::string name() const {
+        return "gather_from_rows";
+    }
+
     std::string prefix_code(const node_to_info_t& node_to_info) const {
         int source_computation_rank = node_to_info.at(source_.get()).computation_rank;
         int indices_computation_rank = node_to_info.at(indices_.get()).computation_rank;

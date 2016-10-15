@@ -243,7 +243,7 @@ Array reference_pool2d_backward(Array out,
                         / window_size;
             } else {
                 Array input_window = x_swapped[Slice(0, in_n)][Slice(0, in_c)][h_slice][w_slice];
-                Array max_in_window = input_window.max(-1).eval().max(-1);
+                Array max_in_window = op::max(input_window, {-2, -1});
 
                 Array max_locations = old_op::equals(
                         input_window, max_in_window[Slice(0, in_n)][Slice(0, in_c)][Broadcast()][Broadcast()]);

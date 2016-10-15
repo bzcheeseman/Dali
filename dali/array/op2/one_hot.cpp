@@ -27,6 +27,10 @@ struct OneHotOperationState : public OperationState {
             depth_operation_(Operation(depth).state_) {
     }
 
+    virtual std::string name() const {
+        return "one_hot";
+    }
+
     std::string prefix_code(const node_to_info_t& node_to_info) const {
         return"template<typename C1, typename C2, typename C3, typename C4>\n"
         "struct OneHotKernel {\n"

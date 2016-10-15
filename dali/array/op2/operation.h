@@ -19,6 +19,7 @@ typedef std::vector<operation_state_ptr>       operation_state_ptrs;
 
 struct CompilationInfo {
     int    computation_rank;
+    std::string name;
     std::vector<int> computation_shape;
     hash_t hash;
 };
@@ -35,6 +36,7 @@ struct OperationState : std::enable_shared_from_this<OperationState> {
 
     virtual DType dtype() const = 0;
     virtual std::vector<int> bshape() const = 0;
+    virtual std::string name() const = 0;
 
 
 
@@ -80,11 +82,15 @@ struct OperationState : std::enable_shared_from_this<OperationState> {
 
     OperationState(int min_computation_rank);
 
+    // should almost never be reimplemented:
+    virtual void full_operation_name(std::stringstream*) const;
+
     ///////////////////////////////////////////////////////////////////////////////
     //            DO NOT REIMPLEMENT FUNCTIONS BELOW                             //
     ///////////////////////////////////////////////////////////////////////////////
 
     OperationState() = delete;
+    virtual std::string full_operation_name() const;
 
     virtual std::string get_code_template(memory::Device device,
                                           const std::vector<const ArrayOperationState*>& arrays,
@@ -120,6 +126,7 @@ struct ArrayOperationState : public OperationState {
     virtual std::vector<int> bshape() const;
 
     virtual int ndim() const;
+    virtual std::string name() const;
     virtual bool is_assignable() const;
 
     virtual bool contiguous() const;
@@ -157,6 +164,7 @@ struct ScalarOperationState : public OperationState{
     virtual std::vector<int> bshape() const;
 
     virtual int ndim() const;
+    virtual std::string name() const;
 
     virtual std::vector<int> shape() const;
 
@@ -197,6 +205,7 @@ struct Operation {
 
     std::vector<int> bshape() const;
     std::vector<int> shape() const;
+    std::string name() const;
 
     int number_of_elements() const;
 

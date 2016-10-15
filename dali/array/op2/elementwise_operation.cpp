@@ -52,6 +52,7 @@ struct ElementwiseOperationState : public OperationState {
 
 
     virtual DType dtype() const;
+    virtual std::string name() const;
 
     virtual std::vector<int> bshape() const;
 
@@ -102,6 +103,10 @@ ElementwiseOperationState::ElementwiseOperationState(
 
 DType ElementwiseOperationState::dtype() const {
     return arguments_[0]->dtype();
+}
+
+std::string ElementwiseOperationState::name() const {
+    return functor_name_;
 }
 
 std::vector<int> ElementwiseOperationState::bshape() const {

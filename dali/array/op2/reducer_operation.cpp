@@ -31,6 +31,11 @@ struct AllReducerOperationState : public ReducerOperationState {
     AllReducerOperationState(const std::string& functor_name, operation_state_ptr argument);
 
     virtual std::vector<int> bshape() const;
+    virtual std::string name() const {
+        return utils::make_message(
+            "all_reduce<", functor_name_, ">"
+        );
+    }
 
     virtual DType dtype() const;
 
@@ -61,6 +66,11 @@ struct AxisReducerOperationState : public ReducerOperationState {
     virtual std::vector<int> bshape() const;
 
     virtual DType dtype() const;
+    virtual std::string name() const {
+        return utils::make_message(
+            "axis_reduce<", functor_name_, ">"
+        );
+    }
 
     virtual int ndim() const;
 
@@ -91,6 +101,11 @@ struct ArgumentAllReducerOperationState : public AllReducerOperationState {
     virtual hash_t optype_hash() const;
 
     virtual DType dtype() const;
+    virtual std::string name() const {
+        return utils::make_message(
+            "argument_all_reduce<", functor_name_, ">"
+        );
+    }
 
     virtual std::string prefix_code(const node_to_info_t& node_to_info) const;
 
@@ -106,6 +121,11 @@ struct ArgumentAxisReducerOperationState : public AxisReducerOperationState {
     virtual hash_t optype_hash() const;
 
     virtual DType dtype() const;
+    virtual std::string name() const {
+        return utils::make_message(
+            "argument_axis_reduce<", functor_name_, ">"
+        );
+    }
 
     virtual std::string prefix_code(const node_to_info_t& node_to_info) const;
 

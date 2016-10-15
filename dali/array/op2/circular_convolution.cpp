@@ -18,6 +18,10 @@ struct CircularConvolutionOperationState : public OperationState {
             weights_(weights) {
     }
 
+    virtual std::string name() const {
+        return "circular_convolution";
+    }
+
     std::string prefix_code(const node_to_info_t& node_to_info) const {
         // TODO(jonathan, szymon): clearly kernel writing is repetitive, a method could
         //                         be designed here to factor out all the boilerplate

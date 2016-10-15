@@ -23,6 +23,10 @@ struct GatherState : public OperationState {
             indices_(indices) {
     }
 
+    virtual std::string name() const {
+        return "gather";
+    }
+
     std::string prefix_code(const node_to_info_t& node_to_info) const {
         std::string access;
         bool is_2d = node_to_info.at(this).computation_rank == 2 &&

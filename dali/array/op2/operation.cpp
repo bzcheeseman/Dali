@@ -9,6 +9,7 @@
 #include "dali/array/op2/gather_from_rows.h"
 #include "dali/array/op2/rtc_utils.h"
 #include "dali/utils/make_message.h"
+#include "dali/utils/scope.h"
 
 using utils::Hasher;
 
@@ -36,6 +37,26 @@ int OperationState::number_of_elements() const {
     return hypercube_volume(shape());
 }
 
+void OperationState::full_operation_name(std::stringstream* ss) const {
+    *ss << name();
+    auto args = arguments();
+    if (args.size() > 0) {
+        *ss << "(";
+        for (int i = 0; i < args.size(); i++) {
+            args[i]->full_operation_name(ss);
+            if (i + 1 != args.size()) {
+                *ss << ", ";
+            }
+        }
+        *ss << ")";
+    }
+}
+
+std::string OperationState::full_operation_name() const {
+    std::stringstream ss;
+    full_operation_name(&ss);
+    return ss.str();
+}
 
 std::string OperationState::prefix_code(const node_to_info_t& node_to_info) const {
     return "";
@@ -118,12 +139,14 @@ std::function<void(const std::vector<Array>&, const std::vector<double>&)> Opera
         const std::vector<const ArrayOperationState*>& arrays,
         const std::vector<const ScalarOperationState*>& scalars,
         const node_to_info_t& node_to_info) const {
+    DALI_SCOPE("get_function");
     // compute a quasi-unique hash for the fused operation
     hash_t hash = Hasher().add(device.is_cpu())
                           .add(node_to_info.at(this).hash)
                           .value();
     // check if the operation needs to be runtime compiled
     if (!array_op_compiler.load(hash)) {
+        DALI_SCOPE("compilation");
         auto code_template = get_code_template(
             device,
             arrays,
@@ -137,6 +160,10 @@ std::function<void(const std::vector<Array>&, const std::vector<double>&)> Opera
     }
     // return the operation that was loaded or compiled:
     return array_op_compiler.get_function<const std::vector<Array>&, const std::vector<double>&>(hash);
+}
+
+std::string Operation::name() const {
+    return state_->full_operation_name();
 }
 
 // TODO(jonathan, szymon): move this into member function
@@ -182,7 +209,11 @@ void eval_op(const Operation& op,
                    [&](const ScalarOperationState* op) {
                        return op->value_;
                    });
-
+    std::string name;
+    if (Scope::has_observers()) {
+        name = op.name();
+    }
+    DALI_SCOPE(name);
     compiled_self(arrays, scalars);
 }
 
@@ -305,6 +336,10 @@ DType ArrayOperationState::dtype() const {
     return array_.dtype();
 }
 
+std::string ArrayOperationState::name() const {
+    return "Array";
+}
+
 std::vector<int> ArrayOperationState::bshape() const {
     return array_.bshape();
 }
@@ -387,6 +422,10 @@ std::vector<int> ScalarOperationState::bshape() const {
 
 int ScalarOperationState::ndim() const {
     return 0;
+}
+
+std::string ScalarOperationState::name() const {
+    return "double";
 }
 
 std::vector<int> ScalarOperationState::shape() const {
@@ -509,6 +548,16 @@ struct AssignmentOperationState : public OperationState {
 
     virtual DType dtype() const {
         return left_->dtype();
+    }
+
+    virtual std::string name() const {
+        return "assign";
+    }
+
+    virtual void full_operation_name(std::stringstream* ss) const {
+        left_->full_operation_name(ss);
+        (*ss) << " " << operator_to_name(operator_t_) << " ";
+        right_->full_operation_name(ss);
     }
 
     virtual void compute_node_compilation_info(int desired_computation_rank,

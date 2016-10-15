@@ -144,7 +144,7 @@ class Array : public Exp<Array> {
     const std::vector<int>& strides() const;
     DType dtype() const;
 
-    Assignable<Array> astype(DType dtype_) const;
+    Operation astype(DType dtype_) const;
 
     std::vector<int> normalized_strides() const;
     // just like regular shape by broadcased dimensions are negated.
@@ -222,23 +222,23 @@ class Array : public Exp<Array> {
     Array broadcast_scalar_to_ndim(const int& ndim) const;
 
     // reduce over all axes
-    Assignable<Array> sum() const;
-    Assignable<Array> mean() const;
-    Assignable<Array> min() const;
-    Assignable<Array> max() const;
-    Assignable<Array> L2_norm() const;
+    Operation sum() const;
+    Operation mean() const;
+    Operation min() const;
+    Operation max() const;
+    Operation L2_norm() const;
 
     // reduce over one axis
-    Assignable<Array> sum(const int& axis) const;
-    Assignable<Array> mean(const int& axis) const;
-    Assignable<Array> min(const int& axis) const;
-    Assignable<Array> max(const int& axis) const;
-    Assignable<Array> L2_norm(const int& axis) const;
+    Operation sum(const int& axis) const;
+    Operation mean(const int& axis) const;
+    Operation min(const int& axis) const;
+    Operation max(const int& axis) const;
+    Operation L2_norm(const int& axis) const;
 
-    Assignable<Array> argmin(const int& axis) const;
-    Assignable<Array> argmin() const;
-    Assignable<Array> argmax(const int& axis) const;
-    Assignable<Array> argmax() const;
+    Operation argmin(const int& axis) const;
+    Operation argmin() const;
+    Operation argmax(const int& axis) const;
+    Operation argmax() const;
 
     Assignable<Array> argsort(const int& axis) const;
     Assignable<Array> argsort() const;
@@ -279,7 +279,6 @@ class Array : public Exp<Array> {
     /* shortcuts for array ops */
     Assignable<Array> dot(const Array& other) const;
 };
-
 bool operator==(const Array& left, const Array& right);
 
 struct ArraySubtensor {
@@ -317,6 +316,8 @@ struct ArrayGather {
     operator Array();
 
 };
+
+#include "dali/array/op2/Operation.h"
 
 #endif
 

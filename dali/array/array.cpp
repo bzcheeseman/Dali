@@ -616,7 +616,7 @@ DType Array::dtype() const {
     return state->dtype;
 }
 
-Assignable<Array> Array::astype(DType dtype_) const {
+Operation Array::astype(DType dtype_) const {
     return op::astype(*this, dtype_);
 }
 
@@ -1076,28 +1076,28 @@ Array Array::broadcast_scalar_to_ndim(const int& target_ndim) const {
     return res;
 }
 
-#define DALI_ARRAY_DEFINE_ALL_REDUCER(FUNCTION_NAME, OPNAME)\
-    Assignable<Array> Array::FUNCTION_NAME() const {\
+#define DALI_ARRAY_DEFINE_ALL_REDUCER(FUNCTION_NAME, OPNAME, RETVAL)\
+    RETVAL Array::FUNCTION_NAME() const {\
         return op::OPNAME(*this);\
     }\
 
-#define DALI_ARRAY_DEFINE_AXIS_REDUCER(FUNCTION_NAME, OPNAME)\
-    Assignable<Array> Array::FUNCTION_NAME(const int& axis) const {\
+#define DALI_ARRAY_DEFINE_AXIS_REDUCER(FUNCTION_NAME, OPNAME, RETVAL)\
+    RETVAL Array::FUNCTION_NAME(const int& axis) const {\
         return op::OPNAME(*this, {axis});\
     }\
 
-#define DALI_ARRAY_DEFINE_REDUCER(FUNCTION_NAME, OPNAME)\
-    DALI_ARRAY_DEFINE_ALL_REDUCER(FUNCTION_NAME, OPNAME);\
-    DALI_ARRAY_DEFINE_AXIS_REDUCER(FUNCTION_NAME, OPNAME);\
+#define DALI_ARRAY_DEFINE_REDUCER(FUNCTION_NAME, OPNAME, RETVAL)\
+    DALI_ARRAY_DEFINE_ALL_REDUCER(FUNCTION_NAME, OPNAME, RETVAL);\
+    DALI_ARRAY_DEFINE_AXIS_REDUCER(FUNCTION_NAME, OPNAME, RETVAL);\
 
-DALI_ARRAY_DEFINE_REDUCER(sum, sum);
-DALI_ARRAY_DEFINE_REDUCER(L2_norm, L2_norm);
-DALI_ARRAY_DEFINE_REDUCER(mean, mean);
-DALI_ARRAY_DEFINE_REDUCER(max, max);
-DALI_ARRAY_DEFINE_REDUCER(min, min);
-DALI_ARRAY_DEFINE_REDUCER(argsort, argsort);
-DALI_ARRAY_DEFINE_REDUCER(argmin, argmin);
-DALI_ARRAY_DEFINE_REDUCER(argmax, argmax);
+DALI_ARRAY_DEFINE_REDUCER(sum, sum, Operation);
+DALI_ARRAY_DEFINE_REDUCER(L2_norm, L2_norm, Operation);
+DALI_ARRAY_DEFINE_REDUCER(mean, mean, Operation);
+DALI_ARRAY_DEFINE_REDUCER(max, max, Operation);
+DALI_ARRAY_DEFINE_REDUCER(min, min, Operation);
+DALI_ARRAY_DEFINE_REDUCER(argsort, argsort, Assignable<Array>);
+DALI_ARRAY_DEFINE_REDUCER(argmin, argmin, Operation);
+DALI_ARRAY_DEFINE_REDUCER(argmax, argmax, Operation);
 
 Array::operator float() const {
     return scalar_value<float>();

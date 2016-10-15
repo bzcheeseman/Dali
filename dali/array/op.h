@@ -15,6 +15,12 @@
 #include "dali/array/op/spatial.h"
 #include "dali/array/op/unary_scalar.h"
 #include "dali/array/op_overload/common.h"
+#include "dali/array/op2/operation.h"
+#include "dali/array/op2/reducers.h"
+#include "dali/array/op2/unary.h"
+#include "dali/array/op2/binary.h"
+#include "dali/array/op2/elementwise_operation.h"
+#include "dali/array/op2/circular_convolution.h"
 #include "dali/utils/print_utils.h"
 
 #if EXISTS_AND_TRUE(DALI_USE_LAZY)

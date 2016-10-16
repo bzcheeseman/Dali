@@ -95,7 +95,7 @@ struct OneHotOperationState : public OperationState {
                 off_value_
             );
         throw std::runtime_error(
-            "Cannot transpose last dimension result of one_hot"
+            "Cannot transpose last dimension result of one_hot."
         );
         return shared_from_this();
     }

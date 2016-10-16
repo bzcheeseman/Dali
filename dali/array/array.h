@@ -317,8 +317,6 @@ struct ArrayGather {
 
 };
 
-#include "dali/array/op2/Operation.h"
-
 #endif
 
 #ifndef DALI_ARRAY_HIDE_LAZY

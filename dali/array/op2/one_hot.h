@@ -13,6 +13,6 @@ namespace op {
         const Operation& on_value,
         const Operation& off_value
     );
-}  // namespace op2
+}  // namespace op
 
 #endif  // DALI_ARRAY_OP2_ONE_HOT_H

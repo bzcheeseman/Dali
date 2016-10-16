@@ -6,13 +6,14 @@
 
 #include "dali/array/op/spatial/spatial_enums.h"
 #include "dali/utils/assert2.h"
-#include "dali/utils/print_utils.h"
+#include "dali/utils/make_message.h"
 #include "dali/array/function/typed_array.h"
 
 namespace internal {
     inline void check_data_format(const std::string& data_format) {
         ASSERT2(data_format == "NCHW" || data_format == "NHWC",
-                utils::MS() << "data_format must be one of NCHW, NHWC (was " << data_format << ")");
+            utils::make_message("data_format must be one of NCHW, NHWC (was ",
+            data_format, ")."));
     }
 
     inline int int_ceil(int numerator, int denominator) {

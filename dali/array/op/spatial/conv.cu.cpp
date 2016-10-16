@@ -237,20 +237,6 @@ namespace op {
                                    data_format);
     }
 
-    Assignable<Array> im2col(const Array& input,
-                             int filter_h,
-                             int filter_w,
-                             int stride_h,
-                             int stride_w,
-                             const std::string& data_format) {
-        internal::check_data_format(data_format);
-        if (data_format == "NCHW") {
-            return lazy::im2col_nchw(input, filter_h, filter_w, stride_h, stride_w, 1, 1);
-        } else {
-            return lazy::im2col_nhwc(input, filter_h, filter_w, stride_h, stride_w, 1, 1);
-        }
-    }
-
     Assignable<Array> col2im(const Array& input,
                              const std::vector<int>& image_shape,
                              int filter_h,
@@ -266,3 +252,19 @@ namespace op {
         }
     }
 }  // namespace op
+
+namespace old_op {
+     Assignable<Array> im2col(const Array& input,
+                             int filter_h,
+                             int filter_w,
+                             int stride_h,
+                             int stride_w,
+                             const std::string& data_format) {
+        internal::check_data_format(data_format);
+        if (data_format == "NCHW") {
+            return lazy::im2col_nchw(input, filter_h, filter_w, stride_h, stride_w, 1, 1);
+        } else {
+            return lazy::im2col_nhwc(input, filter_h, filter_w, stride_h, stride_w, 1, 1);
+        }
+    }
+}  // namespace old_op

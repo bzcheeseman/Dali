@@ -20,13 +20,6 @@ namespace op {
                              PADDING_T padding,
                              const std::string& data_format);
 
-    Assignable<Array> im2col(const Array& input,
-                             int filter_h,
-                             int filter_w,
-                             int stride_h,
-                             int stride_w,
-                             const std::string& data_format);
-
     Assignable<Array> col2im(const Array& input,
                              const std::vector<int>& image_shape,
                              int filter_h,
@@ -35,5 +28,14 @@ namespace op {
                              int stride_w,
                              const std::string& data_format);
 }  // namespace op
+
+namespace old_op {
+    Assignable<Array> im2col(const Array& input,
+                             int filter_h,
+                             int filter_w,
+                             int stride_h,
+                             int stride_w,
+                             const std::string& data_format);
+}
 
 #endif  // DALI_ARRAY_OP_SPATIAL_CONV_H

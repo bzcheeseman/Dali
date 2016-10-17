@@ -50,7 +50,7 @@ struct OperationState : std::enable_shared_from_this<OperationState> {
 
 
 
-    virtual std::string get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info) const = 0;
+    virtual std::string get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info, memory::DeviceT device_type) const = 0;
 
 
 
@@ -65,7 +65,7 @@ struct OperationState : std::enable_shared_from_this<OperationState> {
 
     virtual int number_of_elements() const;
 
-    virtual std::string prefix_code(const node_to_info_t& node_to_info) const;
+    virtual std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
 
 
     virtual std::vector<operation_state_ptr> arguments() const;
@@ -100,7 +100,7 @@ struct OperationState : std::enable_shared_from_this<OperationState> {
                                           const node_to_info_t& node_to_info) const final;
 
 
-    std::function<void(const std::vector<Array>&, const std::vector<double>&)> compile(
+    std::function<void(const std::vector<Array>&, const std::vector<double>&, memory::Device)> compile(
             memory::Device device,
             const std::vector<const ArrayOperationState*>& arrays,
             const std::vector<const ScalarOperationState*>& scalars,
@@ -149,7 +149,7 @@ struct ArrayOperationState : public OperationState {
 
     virtual operation_state_ptr transpose(const std::vector<int>& permutation) const;
 
-    virtual std::string get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info) const;
+    virtual std::string get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
 };
 
 
@@ -182,7 +182,7 @@ struct ScalarOperationState : public OperationState{
 
     virtual operation_state_ptr transpose(const std::vector<int>& permutation) const;
 
-    virtual std::string get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info) const;
+    virtual std::string get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
 };
 
 struct Operation {

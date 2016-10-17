@@ -1,4 +1,5 @@
 #include "operation.h"
+#include "dali/config.h"
 
 #include <unordered_set>
 
@@ -58,7 +59,7 @@ std::string OperationState::full_operation_name() const {
     return ss.str();
 }
 
-std::string OperationState::prefix_code(const node_to_info_t& node_to_info) const {
+std::string OperationState::prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
     return "";
 }
 
@@ -91,7 +92,7 @@ std::string OperationState::get_code_template(memory::Device device,
     std::stringstream result;
 
     this->for_all_suboperations([&](const OperationState* node) {
-        auto pc      = node->prefix_code(node_to_info);
+        auto pc      = node->prefix_code(node_to_info, device.type());
         auto pc_hash = utils::get_hash(pc);
         if (prefix_code_visited.find(pc_hash) == prefix_code_visited.end()) {
             result << pc;
@@ -99,7 +100,7 @@ std::string OperationState::get_code_template(memory::Device device,
         }
     });
 
-    result << "void run(const std::vector<Array>& array_arguments, const std::vector<double>& scalar_arguments) {\n";
+    result << "void run(const std::vector<Array>& array_arguments, const std::vector<double>& scalar_arguments, memory::Device device) {\n";
 
     // DECLARE SYMBOLS
     symbol_table_t symbol_table;
@@ -128,13 +129,13 @@ std::string OperationState::get_code_template(memory::Device device,
             utils::make_message("scalar_arguments[", i, "]")
         );
     }
-    result << get_call_code_nd(symbol_table, node_to_info);
+    result << get_call_code_nd(symbol_table, node_to_info, device.type());
     result << "}\n";
     return result.str();
 }
 
 
-std::function<void(const std::vector<Array>&, const std::vector<double>&)> OperationState::compile(
+std::function<void(const std::vector<Array>&, const std::vector<double>&, memory::Device)> OperationState::compile(
         memory::Device device,
         const std::vector<const ArrayOperationState*>& arrays,
         const std::vector<const ScalarOperationState*>& scalars,
@@ -153,14 +154,14 @@ std::function<void(const std::vector<Array>&, const std::vector<double>&)> Opera
             scalars,
             node_to_info
         );
-        array_op_compiler.compile<const std::vector<Array>&, const std::vector<double>&>(
+        array_op_compiler.compile<const std::vector<Array>&, const std::vector<double>&, memory::Device>(
             hash,
             code_template,
             device.type()
         );
     }
     // return the operation that was loaded or compiled:
-    return array_op_compiler.get_function<const std::vector<Array>&, const std::vector<double>&>(hash);
+    return array_op_compiler.get_function<const std::vector<Array>&, const std::vector<double>&, memory::Device>(hash);
 }
 
 std::string Operation::name() const {
@@ -216,7 +217,7 @@ void eval_op(const Operation& op,
         name = op.name();
     }
     DALI_SCOPE(name);
-    compiled_self(arrays, scalars);
+    compiled_self(arrays, scalars, output_device);
 }
 
 std::vector<int> get_auto_reduce_axes(const Array& output, const std::vector<int>& in_bshape) {
@@ -479,7 +480,7 @@ operation_state_ptr ArrayOperationState::transpose(const std::vector<int>& permu
     return std::make_shared<ArrayOperationState>(array_.transpose(permutation));
 }
 
-std::string ArrayOperationState::get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info) const {
+std::string ArrayOperationState::get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
     return symbol_table.at(this);
 }
 
@@ -535,7 +536,7 @@ operation_state_ptr ScalarOperationState::transpose(const std::vector<int>& perm
     return shared_from_this();
 }
 
-std::string ScalarOperationState::get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info) const {
+std::string ScalarOperationState::get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
     return symbol_table.at(this);
 }
 
@@ -622,6 +623,30 @@ struct AssignmentOperationState : public OperationState {
             left_(left), right_(right), operator_t_(operator_t) {
     }
 
+
+    virtual std::string prefix_code(
+            const node_to_info_t& node_to_info,
+            memory::DeviceT device_type) const {
+        if (device_type == memory::DEVICE_T_GPU) {
+            if (node_to_info.at(this).computation_rank == 1) {
+                return utils::make_message(
+                    "template<typename Destination, typename Source>\n"
+                    "void __global__\n"
+                    "assign_kernel(Destination dst, Source src, int num_el) {\n"
+                    "    int idx = blockDim.x * blockIdx.x + threadIdx.x;\n"
+                    "    int stride = blockDim.x * gridDim.x;\n"
+                    "    for (int i = idx; i < num_el; i += stride) {\n"
+                    "        dst(i) ", operator_to_name(operator_t_), " src(i);\n"
+                    "    }\n"
+                    "}\n"
+                );
+            } else {
+                ASSERT2(false, "not implemented");
+            }
+        }
+
+    }
+
     virtual bool is_assignable() const {
         return false;
     }
@@ -669,38 +694,63 @@ struct AssignmentOperationState : public OperationState {
     }
 
     virtual std::string assignment_code(const symbol_table_t& symbol_table,
-                                        const node_to_info_t& node_to_info) const {
+                                        const node_to_info_t& node_to_info,
+                                        memory::DeviceT device_type) const {
         int computation_rank = node_to_info.at(this).computation_rank;
         std::string indexing_nd = computation_rank == 1 ? "(i)" : "[" + generate_accessor_string(computation_rank) + "]";
         return utils::make_message(
-            left_->get_call_code_nd(symbol_table, node_to_info), indexing_nd, " ",
+            left_->get_call_code_nd(symbol_table, node_to_info, device_type), indexing_nd, " ",
             operator_to_name(operator_t_),
             " ",
-            right_->get_call_code_nd(symbol_table, node_to_info), indexing_nd, ";\n"
+            right_->get_call_code_nd(symbol_table, node_to_info, device_type), indexing_nd, ";\n"
         );
     }
 
-    virtual std::string get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info) const {
-        // TODO: debate if we want to allow chaining here:
-        //       (e.g. call this assignment, then this assignment, etc...)
-        int computation_rank = node_to_info.at(this).computation_rank;
-        if (computation_rank == 1) {
+    virtual std::string get_call_code_nd(const symbol_table_t& symbol_table,
+                                         const node_to_info_t& node_to_info,
+                                         memory::DeviceT device_type) const {
+        if (device_type == memory::DEVICE_T_CPU) {
+            // TODO: debate if we want to allow chaining here:
+            //       (e.g. call this assignment, then this assignment, etc...)
+            int computation_rank = node_to_info.at(this).computation_rank;
+            if (computation_rank == 1) {
+                return utils::make_message(
+                    "    int num_el = ", left_->get_call_code_nd(symbol_table, node_to_info, device_type), ".shape().numel();\n",
+                    "    #pragma clang loop vectorize(enable)\n",
+                    "    #pragma clang loop interleave(enable)\n",
+                    "    for (int i = 0; i < num_el; ++i) {\n",
+                    "        ", assignment_code(symbol_table, node_to_info, device_type),
+                    "    }\n"
+                );
+            } else {
+                return construct_for_loop(
+                    computation_rank,
+                    assignment_code(symbol_table, node_to_info, device_type),
+                    left_->get_call_code_nd(symbol_table, node_to_info, device_type),
+                    4
+                );
+            }
+        }
+#ifdef DALI_USE_CUDA
+        else if (device_type == memory::DEVICE_T_GPU) {
             return utils::make_message(
-                "    int num_el = ", left_->get_call_code_nd(symbol_table, node_to_info), ".shape().numel();\n",
-                "    #pragma clang loop vectorize(enable)\n",
-                "    #pragma clang loop interleave(enable)\n",
-                "    for (int i = 0; i < num_el; ++i) {\n",
-                "        ", assignment_code(symbol_table, node_to_info),
-                "    }\n"
-            );
-        } else {
-            return construct_for_loop(
-                computation_rank,
-                assignment_code(symbol_table, node_to_info),
-                left_->get_call_code_nd(symbol_table, node_to_info),
-                4
+                    "    int num_el = ", left_->get_call_code_nd(symbol_table, node_to_info, device_type), ".shape().numel();\n"
+                    "    const int NT = 128;\n"
+                    "    const int MAX_BLOCKS = 40960;\n"
+                    "    int grid_size = div_ceil(num_el, NT);\n"
+                    "    assert(grid_size <= MAX_BLOCKS);\n"
+                    "    assign_kernel<<<grid_size, NT, 0, NULL>>>(\n"
+                    "        ", left_->get_call_code_nd(symbol_table, node_to_info, device_type), ",\n"
+                    "        ", right_->get_call_code_nd(symbol_table, node_to_info, device_type), ",\n"
+                    "        num_el\n"
+                    "    );\n"
             );
         }
+#endif
+        else {
+            ASSERT2(false, "unknown device type.");
+        }
+
     }
 };
 const hash_t AssignmentOperationState::optype_hash = std::hash<std::string>()("AssignmentOperationState");

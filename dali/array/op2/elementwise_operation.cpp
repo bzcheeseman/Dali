@@ -70,9 +70,9 @@ struct ElementwiseOperationState : public OperationState {
 
     virtual operation_state_ptr transpose(const std::vector<int>& permutation) const;
 
-    virtual std::string get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info) const;
+    virtual std::string get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
 
-    virtual std::string prefix_code(const node_to_info_t& node_to_info) const;
+    virtual std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
 };
 
 
@@ -167,12 +167,13 @@ operation_state_ptr ElementwiseOperationState::transpose(const std::vector<int>&
 
 std::string ElementwiseOperationState::get_call_code_nd(
         const symbol_table_t& symbol_table,
-        const node_to_info_t& node_to_info) const {
+        const node_to_info_t& node_to_info,
+        memory::DeviceT device_type) const {
     std::stringstream stream;
     stream << "element_wise_kernel<" << functor_name_ << ", " << dtype_to_cpp_name(dtype()) << ">(";
 
     for (int i = 0; i < arguments_.size(); ++i) {
-        stream << arguments_[i]->get_call_code_nd(symbol_table, node_to_info)
+        stream << arguments_[i]->get_call_code_nd(symbol_table, node_to_info, device_type)
                << (i + 1 == arguments_.size() ? "" : ", ");
     }
     stream << ")";
@@ -180,7 +181,8 @@ std::string ElementwiseOperationState::get_call_code_nd(
 }
 
 std::string ElementwiseOperationState::prefix_code(
-        const node_to_info_t& node_to_info) const {
+        const node_to_info_t& node_to_info,
+        memory::DeviceT device_type) const {
     return create_elementwise_kernel_caller(arguments_.size());
 }
 

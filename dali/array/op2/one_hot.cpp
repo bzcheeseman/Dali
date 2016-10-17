@@ -31,7 +31,7 @@ struct OneHotOperationState : public OperationState {
         return "one_hot";
     }
 
-    std::string prefix_code(const node_to_info_t& node_to_info) const {
+    std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
         return"template<typename C1, typename C2, typename C3, typename C4>\n"
         "struct OneHotKernel {\n"
         "    const C1& indices_;\n"
@@ -124,15 +124,16 @@ struct OneHotOperationState : public OperationState {
 
     std::string get_call_code_nd(
             const symbol_table_t& symbol_table,
-            const node_to_info_t& node_to_info) const {
+            const node_to_info_t& node_to_info,
+            memory::DeviceT device_type) const {
         return utils::make_message("one_hot_kernel(",
-                                    indices_->get_call_code_nd(symbol_table, node_to_info),
+                                    indices_->get_call_code_nd(symbol_table, node_to_info, device_type),
                                     ",",
-                                    depth_operation_->get_call_code_nd(symbol_table, node_to_info),
+                                    depth_operation_->get_call_code_nd(symbol_table, node_to_info, device_type),
                                     ",",
-                                    on_value_->get_call_code_nd(symbol_table, node_to_info),
+                                    on_value_->get_call_code_nd(symbol_table, node_to_info, device_type),
                                     ",",
-                                    off_value_->get_call_code_nd(symbol_table, node_to_info),
+                                    off_value_->get_call_code_nd(symbol_table, node_to_info, device_type),
                                     ")");
     }
 };

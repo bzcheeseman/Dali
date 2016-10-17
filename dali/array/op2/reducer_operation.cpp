@@ -18,7 +18,7 @@ struct ReducerOperationState : public OperationState {
 
     virtual std::vector<operation_state_ptr> arguments() const;
 
-    virtual std::string get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info) const;
+    virtual std::string get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
 
     virtual std::string kernel_name() const = 0;
 };
@@ -51,7 +51,7 @@ struct AllReducerOperationState : public ReducerOperationState {
 
     virtual operation_state_ptr transpose(const std::vector<int>& permutation) const;
 
-    virtual std::string prefix_code(const node_to_info_t& node_to_info) const;
+    virtual std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
 
     virtual std::string kernel_name() const;
 };
@@ -87,7 +87,7 @@ struct AxisReducerOperationState : public ReducerOperationState {
 
     virtual operation_state_ptr transpose(const std::vector<int>& permutation) const;
 
-    virtual std::string prefix_code(const node_to_info_t& node_to_info) const;
+    virtual std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
 
     virtual std::string kernel_name() const;
 };
@@ -107,7 +107,7 @@ struct ArgumentAllReducerOperationState : public AllReducerOperationState {
         );
     }
 
-    virtual std::string prefix_code(const node_to_info_t& node_to_info) const;
+    virtual std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
 
     virtual std::string kernel_name() const;
 };
@@ -127,7 +127,7 @@ struct ArgumentAxisReducerOperationState : public AxisReducerOperationState {
         );
     }
 
-    virtual std::string prefix_code(const node_to_info_t& node_to_info) const;
+    virtual std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
 
     virtual operation_state_ptr collapse_dim_with_dim_minus_one(const int& dim) const;
 
@@ -193,7 +193,8 @@ operation_state_ptr AllReducerOperationState::transpose(
 }
 
 std::string AllReducerOperationState::prefix_code(
-        const node_to_info_t& node_to_info) const {
+        const node_to_info_t& node_to_info,
+        memory::DeviceT device_type) const {
     return create_all_reduce_kernel_caller(
         node_to_info.at(argument_.get()).computation_rank,
         node_to_info.at(this).computation_rank
@@ -284,7 +285,8 @@ operation_state_ptr AxisReducerOperationState::transpose(
 }
 
 std::string AxisReducerOperationState::prefix_code(
-        const node_to_info_t& node_to_info) const {
+        const node_to_info_t& node_to_info,
+        memory::DeviceT device_type) const {
     return create_axis_reduce_kernel_caller(node_to_info.at(argument_.get()).computation_rank);
 }
 
@@ -308,7 +310,8 @@ DType ArgumentAllReducerOperationState::dtype() const {
 }
 
 std::string ArgumentAllReducerOperationState::prefix_code(
-        const node_to_info_t& node_to_info) const {
+        const node_to_info_t& node_to_info,
+        memory::DeviceT device_type) const {
     return create_argument_all_reduce_kernel_caller(
         node_to_info.at(argument_.get()).computation_rank,
         node_to_info.at(this).computation_rank
@@ -335,7 +338,8 @@ DType ArgumentAxisReducerOperationState::dtype() const {
 }
 
 std::string ArgumentAxisReducerOperationState::prefix_code(
-        const node_to_info_t& node_to_info) const {
+        const node_to_info_t& node_to_info,
+        memory::DeviceT device_type) const {
     return create_argument_axis_reduce_kernel_caller(node_to_info.at(argument_.get()).computation_rank);
 }
 
@@ -387,12 +391,13 @@ std::vector<operation_state_ptr> ReducerOperationState::arguments() const {
 
 std::string ReducerOperationState::get_call_code_nd(
         const symbol_table_t& symbol_table,
-        const node_to_info_t& node_to_info) const {
+        const node_to_info_t& node_to_info,
+        memory::DeviceT device_type) const {
     int all_reduce_comp_rank = node_to_info.at(argument_.get()).computation_rank;
     return utils::make_message(
         kernel_name(), all_reduce_comp_rank,
         "d<", functor_name_, ", " , dtype_to_cpp_name(dtype()) , ">(",
-        argument_->get_call_code_nd(symbol_table, node_to_info), ")");
+        argument_->get_call_code_nd(symbol_table, node_to_info, device_type), ")");
 
 }
 

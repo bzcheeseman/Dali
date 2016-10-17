@@ -35,7 +35,7 @@ struct GatherFromRowsState : public OperationState {
         return "gather_from_rows";
     }
 
-    std::string prefix_code(const node_to_info_t& node_to_info) const {
+    std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
         int source_computation_rank = node_to_info.at(source_.get()).computation_rank;
         int indices_computation_rank = node_to_info.at(indices_.get()).computation_rank;
         int self_computation_rank = node_to_info.at(this).computation_rank;
@@ -192,11 +192,12 @@ struct GatherFromRowsState : public OperationState {
 
     std::string get_call_code_nd(
             const symbol_table_t& symbol_table,
-            const node_to_info_t& node_to_info) const {
+            const node_to_info_t& node_to_info,
+            memory::DeviceT device_type) const {
         return utils::make_message(caller_function_name(node_to_info), "(",
-                                    source_->get_call_code_nd(symbol_table, node_to_info),
+                                    source_->get_call_code_nd(symbol_table, node_to_info, device_type),
                                     ",",
-                                    indices_->get_call_code_nd(symbol_table, node_to_info),
+                                    indices_->get_call_code_nd(symbol_table, node_to_info, device_type),
                                     ")");
     }
 };

@@ -22,7 +22,7 @@ struct CircularConvolutionOperationState : public OperationState {
         return "circular_convolution";
     }
 
-    std::string prefix_code(const node_to_info_t& node_to_info) const {
+    std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
         // TODO(jonathan, szymon): clearly kernel writing is repetitive, a method could
         //                         be designed here to factor out all the boilerplate
         //                         to instantiate easily 2, 3, etc... arg templates.
@@ -119,11 +119,12 @@ struct CircularConvolutionOperationState : public OperationState {
 
     std::string get_call_code_nd(
             const symbol_table_t& symbol_table,
-            const node_to_info_t& node_to_info) const {
+            const node_to_info_t& node_to_info,
+            memory::DeviceT device_type) const {
         return utils::make_message("circular_convolution_kernel(",
-                                    content_->get_call_code_nd(symbol_table, node_to_info),
+                                    content_->get_call_code_nd(symbol_table, node_to_info, device_type),
                                     ",",
-                                    weights_->get_call_code_nd(symbol_table, node_to_info),
+                                    weights_->get_call_code_nd(symbol_table, node_to_info, device_type),
                                     ")");
     }
 };

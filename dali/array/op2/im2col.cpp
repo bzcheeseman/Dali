@@ -146,7 +146,7 @@ struct Im2ColOperationState : OperationState {
         };
     }
 
-    std::string prefix_code(const node_to_info_t& node_to_info) const {
+    std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
         std::string template_string =
             "template<typename C1, typename C2, "
             "typename C3, typename C4, typename C5, "
@@ -324,29 +324,30 @@ struct Im2ColOperationState : OperationState {
 
     std::string get_call_code_nd(
             const symbol_table_t& symbol_table,
-            const node_to_info_t& node_to_info) const {
+            const node_to_info_t& node_to_info,
+            memory::DeviceT device_type) const {
         return utils::make_message("im2col_kernel(",
-                                    image_->get_call_code_nd(symbol_table, node_to_info),
+                                    image_->get_call_code_nd(symbol_table, node_to_info, device_type),
                                     ",",
-                                    filter_h_op_->get_call_code_nd(symbol_table, node_to_info),
+                                    filter_h_op_->get_call_code_nd(symbol_table, node_to_info, device_type),
                                     ",",
-                                    filter_w_op_->get_call_code_nd(symbol_table, node_to_info),
+                                    filter_w_op_->get_call_code_nd(symbol_table, node_to_info, device_type),
                                     ",",
-                                    stride_h_op_->get_call_code_nd(symbol_table, node_to_info),
+                                    stride_h_op_->get_call_code_nd(symbol_table, node_to_info, device_type),
                                     ",",
-                                    stride_w_op_->get_call_code_nd(symbol_table, node_to_info),
+                                    stride_w_op_->get_call_code_nd(symbol_table, node_to_info, device_type),
                                     ",",
-                                    dilate_h_op_->get_call_code_nd(symbol_table, node_to_info),
+                                    dilate_h_op_->get_call_code_nd(symbol_table, node_to_info, device_type),
                                     ",",
-                                    dilate_w_op_->get_call_code_nd(symbol_table, node_to_info),
+                                    dilate_w_op_->get_call_code_nd(symbol_table, node_to_info, device_type),
                                     ",",
-                                    prepad_h_op_->get_call_code_nd(symbol_table, node_to_info),
+                                    prepad_h_op_->get_call_code_nd(symbol_table, node_to_info, device_type),
                                     ",",
-                                    prepad_w_op_->get_call_code_nd(symbol_table, node_to_info),
+                                    prepad_w_op_->get_call_code_nd(symbol_table, node_to_info, device_type),
                                     ",",
-                                    postpad_h_op_->get_call_code_nd(symbol_table, node_to_info),
+                                    postpad_h_op_->get_call_code_nd(symbol_table, node_to_info, device_type),
                                     ",",
-                                    postpad_w_op_->get_call_code_nd(symbol_table, node_to_info),
+                                    postpad_w_op_->get_call_code_nd(symbol_table, node_to_info, device_type),
                                     ")");
     }
 };

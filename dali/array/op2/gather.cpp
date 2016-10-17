@@ -27,7 +27,7 @@ struct GatherState : public OperationState {
         return "gather";
     }
 
-    std::string prefix_code(const node_to_info_t& node_to_info) const {
+    std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
         std::string access;
         bool is_2d = node_to_info.at(this).computation_rank == 2 &&
                      node_to_info.at(source_.get()).computation_rank == 2;
@@ -179,13 +179,14 @@ struct GatherState : public OperationState {
 
     std::string get_call_code_nd(
             const symbol_table_t& symbol_table,
-            const node_to_info_t& node_to_info) const {
+            const node_to_info_t& node_to_info,
+            memory::DeviceT device_type) const {
         bool is_2d = node_to_info.at(this).computation_rank == 2 &&
                      node_to_info.at(source_.get()).computation_rank == 2;
         return utils::make_message("gather_kernel", is_2d ? "2D" : "ND", "(",
-                                    source_->get_call_code_nd(symbol_table, node_to_info),
+                                    source_->get_call_code_nd(symbol_table, node_to_info, device_type),
                                     ",",
-                                    indices_->get_call_code_nd(symbol_table, node_to_info),
+                                    indices_->get_call_code_nd(symbol_table, node_to_info, device_type),
                                     ")");
     }
 };

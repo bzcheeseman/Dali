@@ -143,6 +143,10 @@ struct AbstractKernel {
     virtual T operator[](const Shape<ndim>&) const = 0;
 };
 
+int div_ceil(int a, int b) {
+    return (a + b - 1) / b;
+}
+
 // assumes contiguous memory
 template<typename Type, int dimensions>
 class ArrayView {
@@ -254,18 +258,18 @@ ScalarView<T, ndim> make_scalar_view(const T& scalar) {
 }
 
 template<typename T, int ndim>
-ArrayView<T, ndim> make_view(const Array& arr) {
+ArrayView<T, ndim> make_view(const Array& arr, memory::Device device) {
     return ArrayView<T, ndim>(
-        (T*)arr.memory()->mutable_data(memory::Device::cpu()),
+        (T*)arr.memory()->mutable_data(device),
         arr.offset(),
         arr.shape()
     );
 }
 
 template<typename T, int ndim>
-ArrayStridedView<T, ndim> make_strided_view(const Array& arr) {
+ArrayStridedView<T, ndim> make_strided_view(const Array& arr, memory::Device device) {
     return ArrayStridedView<T, ndim>(
-        (T*)arr.memory()->mutable_data(memory::Device::cpu()),
+        (T*)arr.memory()->mutable_data(device),
         arr.offset(),
         arr.shape(),
         arr.strides()

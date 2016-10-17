@@ -26,6 +26,7 @@ std::string build_array_definition(const std::string& cpp_type,
         (contiguous ? "_" : "_strided_"), "view<",
         cpp_type, ", ", rank, ">(",
         captured_name,
+        ", device",
         ");\n"
     );
 }

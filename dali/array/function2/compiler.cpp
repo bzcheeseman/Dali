@@ -137,7 +137,7 @@ std::string Compiler::compiler_command(const std::string& source,
         return utils::make_message(Compiler::kCxxExecutable,
                                    " ", source,
                                    " -o ", dest,
-                                   cxx_compile_flags, " ",
+                                   " ", cxx_compile_flags,
                                    " -O3 &> ", logfile);
     }
 #ifdef DALI_USE_CUDA
@@ -145,8 +145,9 @@ std::string Compiler::compiler_command(const std::string& source,
         return utils::make_message(Compiler::kCudaExecutable,
                                    " ", source,
                                    " -o ", dest,
-                                   "--ccbin ", Compiler::kCxxExecutable,
-                                   "--compiler-options ", cxx_compile_flags, " ",
+                                   " -std=c++11",
+                                   " -ccbin ", Compiler::kCxxExecutable,
+                                   " --compiler-options ", "\"", utils::find_and_replace(cxx_compile_flags, "\"", "\\\""), "\"",
                                    " -O3 &> ", logfile);
     }
 #endif

@@ -51,6 +51,17 @@ namespace utils {
         if (dirname.back() != '/') dirname += "/";
     }
 
+    std::string find_and_replace(std::string subject,
+                                 const std::string& search,
+                                 const std::string& replace) {
+        size_t pos = 0;
+        while ((pos = subject.find(search, pos)) != std::string::npos) {
+             subject.replace(pos, search.length(), replace);
+             pos += replace.length();
+        }
+        return subject;
+    }
+
     vector<string> split(const std::string &s, char delim, bool keep_empty_strings) {
         std::vector<std::string> elems;
         std::stringstream ss(s);

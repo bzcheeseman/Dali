@@ -246,7 +246,8 @@ std::vector<int> get_auto_reduce_axes(const Array& output, const std::vector<int
 // one responsible for identifying the arrays participating in the expression.
 // Hence, we should refactor the code so that we only collect args in one place.
 
-memory::Device OperationState::preferred_device() const {
+// returns device_proposal, device_found (if not args are present it's hard to suggest anything)
+std::tuple<memory::Device, bool> OperationState::preferred_device() const {
     int args_read = 0;
     bool shared_common_device = true;
     memory::Device common_preferred_device;
@@ -291,18 +292,27 @@ memory::Device OperationState::preferred_device() const {
             ++args_read;
         }
     });
-    return output_device;
+
+    if (args_read == 0) {
+        return std::make_tuple(memory::default_preferred_device, false);
+    } else {
+        return std::make_tuple(output_device, true);
+    }
+
 }
 
 OperationState::operator Assignable<Array> () const {
     auto this_ptr = shared_from_this();
     return Assignable<Array>([this_ptr](Array& out, const OPERATOR_T& operator_t) mutable {
         auto output_dtype_proposal  = this_ptr->dtype();
-        auto output_device_proposal = this_ptr->preferred_device();
         auto output_bshape_proposal = this_ptr->bshape();
+
+        bool device_found;
+        memory::Device output_device_proposal;
+        std::tie(output_device_proposal, device_found) = this_ptr->preferred_device();
+
         auto op = Operation(this_ptr);
         Array out_array;
-        memory::Device output_device = output_device_proposal;
 
 
         OPERATOR_T operator_to_use = operator_t == OPERATOR_T_LSE ? OPERATOR_T_ADD : operator_t;
@@ -345,8 +355,15 @@ OperationState::operator Assignable<Array> () const {
             operator_to_use = OPERATOR_T_EQL;
         }
 
-        if (out_array.memory()->preferred_device != output_device_proposal) {
-            output_device = memory::default_preferred_device;
+        memory::Device output_device;
+        if (device_found) {
+            if (out_array.memory()->preferred_device != output_device_proposal) {
+                output_device = memory::default_preferred_device;
+            } else {
+                output_device = output_device_proposal;
+            }
+        } else {
+            output_device = out_array.memory()->preferred_device;
         }
 
         auto self_op = op::assign(out_array, operator_to_use, op);

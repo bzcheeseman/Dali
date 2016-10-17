@@ -125,6 +125,8 @@ namespace utils {
 
     void ensure_directory(std::string&);
 
+
+
     std::vector<std::string> split_str(const std::string&, const std::string&);
 
     void save_list(const std::vector<std::string>& list, std::string fname, std::ios_base::openmode = std::ios::out);
@@ -169,6 +171,11 @@ namespace utils {
     }
 
     bool is_number(const std::string&);
+
+    std::string find_and_replace(std::string subject,
+                                 const std::string& search,
+                                 const std::string& replace);
+
 
     /**
     Split

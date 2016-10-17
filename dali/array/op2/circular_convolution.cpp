@@ -68,7 +68,7 @@ struct CircularConvolutionOperationState : public OperationState {
         return get_common_bshape({content_->bshape(), weights_->bshape()});
     }
 
-    std::vector<operation_state_ptr> arguments() const {
+    virtual std::vector<operation_state_ptr> arguments() const {
         return {content_, weights_};
     }
 

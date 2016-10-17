@@ -591,7 +591,7 @@ struct AssignmentOperationState : public OperationState {
     virtual std::string assignment_code(const symbol_table_t& symbol_table,
                                         const node_to_info_t& node_to_info) const {
         int computation_rank = node_to_info.at(this).computation_rank;
-        std::string indexing_nd = computation_rank == 1 ? "(i)" : "[query]";
+        std::string indexing_nd = computation_rank == 1 ? "(i)" : "[" + generate_accessor_string(computation_rank) + "]";
         return utils::make_message(
             left_->get_call_code_nd(symbol_table, node_to_info), indexing_nd, " ",
             operator_to_name(operator_t_),

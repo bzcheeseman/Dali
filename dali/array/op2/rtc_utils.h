@@ -20,6 +20,9 @@ std::string build_scalar_definition(const std::string& cpp_type,
                                      const std::string& captured_name);
 
 
+// Given the number of indexes (rank) returns string to access kernels.
+std::string generate_accessor_string(int rank);
+
 
 // Declare a nested c++ for loop for a specific rank (dimensionality)
 // that calls `code` in the center of the loop (modified a variable

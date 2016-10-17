@@ -40,16 +40,19 @@ std::string build_scalar_definition(const std::string& cpp_type,
     );
 }
 
-std::string construct_for_loop(int rank, const std::string& code, const std::string& varname, int indent) {
-    std::string for_loop = utils::make_message(
-        std::string(indent, ' '), "Shape<", rank, "> query;\n"
-    );
-    for (int rank_num = 0; rank_num < rank; rank_num++) {
-        std::string iname = "i" + std::to_string(rank_num);
-        for_loop += utils::make_message(
-            std::string(indent, ' '), "int& ", iname, " = query[", rank_num, "];\n"
-        );
+std::string generate_accessor_string(int rank) {
+    std::stringstream ss;
+    ss << "{";
+    for (int i = 0; i < rank; ++i) {
+        ss << "i" << i << (i +1 == rank ? "" : ",");
     }
+    ss << "}";
+    return ss.str();
+}
+
+std::string construct_for_loop(int rank, const std::string& code, const std::string& varname, int indent) {
+    std::string for_loop;
+
     for (int rank_num = 0; rank_num < rank; rank_num++) {
         std::string iname = "i" + std::to_string(rank_num);
         for_loop += utils::make_message(
@@ -58,7 +61,7 @@ std::string construct_for_loop(int rank, const std::string& code, const std::str
             std::string(indent + rank_num * 4, ' '),
             "#pragma clang loop interleave(enable)\n",
             std::string(indent + rank_num * 4, ' '),
-            "for (", iname, " = 0; ", iname,
+            "for (int ", iname, " = 0; ", iname,
             " < ", varname, ".shape()[", rank_num, "]; ",
             iname, "++) {\n"
         );

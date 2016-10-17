@@ -110,7 +110,7 @@ namespace {
                 ndim,
                 utils::make_message(
                     "Reducer::Reduce(res, ",
-                    generate_all_reduce_kernel_argument(1), "_[query]",
+                    generate_all_reduce_kernel_argument(1), "_[", generate_accessor_string(ndim), "]",
                     ");\n"
                 ),
                 utils::make_message(generate_all_reduce_kernel_argument(1), "_"),
@@ -129,8 +129,8 @@ namespace {
                 ndim,
                 utils::make_message(
                     "typename C1::T tmp = res; Reducer::Reduce(res, ",
-                    generate_all_reduce_kernel_argument(1), "_[query]",
-                    "); if (tmp != res) idx = query;\n"
+                    generate_all_reduce_kernel_argument(1),  "_[", generate_accessor_string(ndim), "]",
+                    "); if (tmp != res) idx = Shape<", ndim, ">(", generate_accessor_string(ndim), ");\n"
                 ),
                 utils::make_message(generate_all_reduce_kernel_argument(1), "_"),
                 8

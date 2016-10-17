@@ -104,17 +104,25 @@ std::string Compiler::compiler_command(const std::string& source,
         executable_specific_args = " -undefined dynamic_lookup -Rpass=loop-vectorize -Rpass-analysis=loop-vectorize -ffast-math -fslp-vectorize-aggressive";
     } else if (Compiler::kCompilerId == "gnu") {
         executable_specific_args = (
-            " -shared -fPIC "
-            "-Wl,--unresolved-symbols=ignore-in-object-files"
+            " -shared"
+            " -fPIC"
+            " -ftree-vectorize"
+            " -msse2"
+            " -Wl,--unresolved-symbols=ignore-in-object-files"
         );
     } else {
         utils::assert2(false, utils::make_message("Compiler::kCompilerId == ", Compiler::kCompilerId, " is not supported."));
     }
 
-    return utils::make_message(Compiler::kExecutable, " -std=c++11 ", source,
-        " -o ", dest, " -I" , include_path_, " -DDALI_ARRAY_HIDE_LAZY=1",
-        " -I", STR(DALI_BLAS_INCLUDE_DIRECTORY), " ", extra_args,
-        executable_specific_args, " -O3 &> ", logfile);
+    return utils::make_message(Compiler::kExecutable,
+                               " -std=c++11 ", source,
+                               " -o ", dest,
+                               " -I" , include_path_,
+                               " -I", STR(DALI_BLAS_INCLUDE_DIRECTORY),
+                               " -DDALI_ARRAY_HIDE_LAZY=1",
+                               " ", extra_args,
+                               executable_specific_args,
+                               " -O3 &> ", logfile);
 }
 
 void Compiler::write_code(const std::string& fname,

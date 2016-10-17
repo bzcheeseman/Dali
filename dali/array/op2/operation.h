@@ -85,6 +85,8 @@ struct OperationState : std::enable_shared_from_this<OperationState> {
     // should almost never be reimplemented:
     virtual void full_operation_name(std::stringstream*) const;
 
+    virtual memory::Device preferred_device() const;
+
     ///////////////////////////////////////////////////////////////////////////////
     //            DO NOT REIMPLEMENT FUNCTIONS BELOW                             //
     ///////////////////////////////////////////////////////////////////////////////

@@ -141,7 +141,7 @@ std::function<void(const std::vector<Array>&, const std::vector<double>&)> Opera
         const node_to_info_t& node_to_info) const {
     DALI_SCOPE("get_function");
     // compute a quasi-unique hash for the fused operation
-    hash_t hash = Hasher().add(device.is_cpu())
+    hash_t hash = Hasher().add((int)device.type())
                           .add(node_to_info.at(this).hash)
                           .value();
     // check if the operation needs to be runtime compiled
@@ -155,7 +155,8 @@ std::function<void(const std::vector<Array>&, const std::vector<double>&)> Opera
         );
         array_op_compiler.compile<const std::vector<Array>&, const std::vector<double>&>(
             hash,
-            code_template
+            code_template,
+            device.type()
         );
     }
     // return the operation that was loaded or compiled:
@@ -170,6 +171,7 @@ std::string Operation::name() const {
 void eval_op(const Operation& op,
              const std::vector<int>& output_shape,
              const memory::Device& output_device) {
+
     auto& self = *op.state_;
     int desired_computation_rank = self.min_computation_rank_;
     std::vector<const ArrayOperationState*> array_ops;
@@ -239,53 +241,114 @@ std::vector<int> get_auto_reduce_axes(const Array& output, const std::vector<int
 }
 
 
+// TODO(jonathan, szymon): This explicitly locates array ops, it's a bit of a violation
+// of contract because, everywhere else, we assume that compute_compilation_info is the
+// one responsible for identifying the arrays participating in the expression.
+// Hence, we should refactor the code so that we only collect args in one place.
+
+memory::Device OperationState::preferred_device() const {
+    int args_read = 0;
+    bool shared_common_device = true;
+    memory::Device common_preferred_device;
+    memory::Device output_device;
+
+    for_all_suboperations([&](const OperationState* op) {
+        auto ptr = dynamic_cast<const ArrayOperationState*>(op);
+
+
+        if (ptr != NULL) {
+            auto mem = ptr->array_.memory();
+
+            // When state args_read <= 0, then reduction is in its first Array argument
+            // while other non-Array arguments have been ignored by ReduceOverArgs<>::reduce_helper
+            // [Note: output is also an Array argument]
+            if (args_read <= 0) {
+                // *** When considering the first Array ***
+                // If there's only 1 Array involved, we can safely consider
+                // this Array's memory's preferred_device as a good option
+                output_device = mem->preferred_device;
+                // One caveat, we want preferred_device's memory to be fresh
+                bool is_best_option_fresh = mem->is_fresh(mem->preferred_device);
+                // Also we want to know whether any copy of memory is fresh
+                bool is_some_other_option_fresh = mem->is_any_fresh();
+                // if the preferred memory is not fresh, and there is
+                // a fresh alternative use it:
+                if (!is_best_option_fresh && is_some_other_option_fresh) {
+                    output_device = mem->find_some_fresh_device();
+                }// else, make the preferred device fresh
+
+                common_preferred_device = mem->preferred_device;
+            } else {
+                if (mem->preferred_device != common_preferred_device || !shared_common_device) {
+                    // When considering other arguments, if the next argument prefers a different device,
+                    // then we fallback to the tie-breaker device
+                    output_device = memory::default_preferred_device;
+                    shared_common_device = false;
+                } else {
+                    // we can place the computation on the currently agreed device
+                }
+            }
+            ++args_read;
+        }
+    });
+    return output_device;
+}
+
 OperationState::operator Assignable<Array> () const {
     auto this_ptr = shared_from_this();
     return Assignable<Array>([this_ptr](Array& out, const OPERATOR_T& operator_t) mutable {
-        auto output_dtype  = this_ptr->dtype();
-        auto output_device = memory::Device::cpu();
-        auto output_bshape = this_ptr->bshape();
+        auto output_dtype_proposal  = this_ptr->dtype();
+        auto output_device_proposal = this_ptr->preferred_device();
+        auto output_bshape_proposal = this_ptr->bshape();
         auto op = Operation(this_ptr);
         Array out_array;
+        memory::Device output_device = output_device_proposal;
+
 
         OPERATOR_T operator_to_use = operator_t == OPERATOR_T_LSE ? OPERATOR_T_ADD : operator_t;
 
         if (operator_t == OPERATOR_T_LSE) {
-            std::vector<int> reduction_axes = get_auto_reduce_axes(out, output_bshape);
+            std::vector<int> reduction_axes = get_auto_reduce_axes(out, output_bshape_proposal);
             if (reduction_axes.size() > 0) {
                 op = op::sum(op, reduction_axes);
                 // add the reduced dimensions back:
                 for (int i = 0; i < reduction_axes.size(); ++i) {
-                    output_bshape[reduction_axes[i]] = 1;
+                    output_bshape_proposal[reduction_axes[i]] = 1;
                 }
             }
             initialize_output_array(
                 out,
-                output_dtype,
-                output_device,
-                &output_bshape
+                output_dtype_proposal,
+                output_device_proposal,
+                &output_bshape_proposal
             );
             out_array = out;
             for (int i = int(reduction_axes.size()) - 1; i >= 0; --i) {
                 out_array = out_array.squeeze(reduction_axes[i]);
             }
             if (reduction_axes.size() > 0) {
-                output_bshape = op.bshape();
+                output_bshape_proposal = op.bshape();
             }
         } else {
             initialize_output_array(
                 out,
-                output_dtype,
-                output_device,
-                &output_bshape
+                output_dtype_proposal,
+                output_device_proposal,
+                &output_bshape_proposal
             );
             out_array = out;
         }
+
         if (!out.memory()->is_any_fresh() && operator_to_use == OPERATOR_T_ADD) {
             // if operation is += to an empty/zeros array, then switch operator
             // to equal:
             operator_to_use = OPERATOR_T_EQL;
         }
+
+        if (out_array.memory()->preferred_device != output_device_proposal) {
+            output_device = memory::default_preferred_device;
+        }
+
         auto self_op = op::assign(out_array, operator_to_use, op);
         eval_op(self_op, self_op.shape(), output_device);
     });

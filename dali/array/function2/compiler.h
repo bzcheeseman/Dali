@@ -12,8 +12,9 @@
 #include <unordered_map>
 #include <vector>
 
+#include "dali/array/memory/device.h"
 #include "dali/utils/hash_utils.h"
-#include "dali/utils/print_utils.h"
+#include "dali/utils/make_message.h"
 
 typedef std::unordered_map<std::string, std::string> macro_args_t;
 
@@ -100,7 +101,9 @@ class Compiler {
              std::string outpath,
              std::string include_path);
 
-    static std::string kExecutable;
+    static std::string kCxxExecutable;
+    static std::string kCudaExecutable;
+
     static std::string kCompilerId;
 
     std::string header_file_includes() const;
@@ -113,11 +116,15 @@ class Compiler {
                     const std::string& call_args);
 
     template<typename... Args>
-    void compile(hash_t hash, std::string code_template) {
-        std::string module_path = utils::MS() << outpath_ << hash << ".so";
+    void compile(hash_t hash, std::string code_template, memory::DeviceT device_type) {
+        std::string module_path = utils::make_message(outpath_, hash, ".so");
 
-        std::string cppfile = utils::MS() << outpath_ << hash << ".cpp";
-        std::string logfile = utils::MS() << outpath_ << hash << ".log";
+        std::string cppfile = utils::make_message(
+            outpath_,
+            hash,
+            (device_type == memory::DEVICE_T_CPU ? ".cpp" : ".cu")
+        );
+        std::string logfile = utils::make_message(outpath_, hash, ".log");
 
         write_code(
             cppfile,
@@ -130,12 +137,13 @@ class Compiler {
             cppfile,
             module_path,
             logfile,
-            ""
+            "",
+            device_type
         );
 
         if (!success) {
             std::cout << "Failure encoutered when running the following command:" << std::endl;
-            std::cout << compiler_command(cppfile, module_path, logfile, "") << std::endl;
+            std::cout << compiler_command(cppfile, module_path, logfile, "", device_type) << std::endl;
             std::cout << "See details in " << logfile << std::endl;
             exit(EXIT_FAILURE);
         }
@@ -155,12 +163,14 @@ class Compiler {
     std::string compiler_command(const std::string& source,
                                  const std::string& dest,
                                  const std::string& logfile,
-                                 const std::string& extra_args);
+                                 const std::string& extra_args,
+                                 const memory::DeviceT& device_type);
 
     bool compile_code(const std::string& source,
                       const std::string& dest,
                       const std::string& logfile,
-                      const std::string& extra_args);
+                      const std::string& extra_args,
+                      const memory::DeviceT& device_type);
 };
 
 

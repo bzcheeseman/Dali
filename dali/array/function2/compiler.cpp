@@ -63,8 +63,9 @@ Compiler::Compiler(std::vector<std::string> headers, std::string outpath, std::s
     }
 }
 
-std::string Compiler::kExecutable = STR(DALI_CXX_COMPILER);
-std::string Compiler::kCompilerId = STR(DALI_CXX_COMPILER_ID);
+std::string Compiler::kCxxExecutable  = STR(DALI_CXX_COMPILER);
+std::string Compiler::kCudaExecutable = "nvcc";
+std::string Compiler::kCompilerId     = STR(DALI_CXX_COMPILER_ID);
 
 
 bool Compiler::load(hash_t hash) {
@@ -98,31 +99,61 @@ std::string Compiler::header_file_includes() const {
 std::string Compiler::compiler_command(const std::string& source,
                                        const std::string& dest,
                                        const std::string& logfile,
-                                       const std::string& extra_args) {
-    std::string executable_specific_args;
+                                       const std::string& extra_args,
+                                       const memory::DeviceT& device_type) {
+    std::string cxx_compiler_os_specific_flags;
     if (Compiler::kCompilerId == "clang") {
-        executable_specific_args = " -undefined dynamic_lookup -Rpass=loop-vectorize -Rpass-analysis=loop-vectorize -ffast-math -fslp-vectorize-aggressive";
+        cxx_compiler_os_specific_flags = (
+            " -undefined dynamic_lookup"
+            " -Rpass=loop-vectorize"
+            " -Rpass-analysis=loop-vectorize"
+            " -ffast-math"
+            " -fslp-vectorize-aggressive"
+        );
     } else if (Compiler::kCompilerId == "gnu") {
-        executable_specific_args = (
+        cxx_compiler_os_specific_flags = (
             " -shared"
             " -fPIC"
             " -ftree-vectorize"
             " -msse2"
-            " -Wl,--unresolved-symbols=ignore-in-object-files"
+            " \"-Wl,--unresolved-symbols=ignore-in-object-files\""
         );
     } else {
         utils::assert2(false, utils::make_message("Compiler::kCompilerId == ", Compiler::kCompilerId, " is not supported."));
     }
 
-    return utils::make_message(Compiler::kExecutable,
-                               " -std=c++11 ", source,
-                               " -o ", dest,
-                               " -I" , include_path_,
-                               " -I", STR(DALI_BLAS_INCLUDE_DIRECTORY),
-                               " -DDALI_ARRAY_HIDE_LAZY=1",
-                               " ", extra_args,
-                               executable_specific_args,
-                               " -O3 &> ", logfile);
+
+    auto cxx_compile_flags = utils::make_message(
+        " -std=c++11 ",
+        " -I" , include_path_,
+        " -I", STR(DALI_BLAS_INCLUDE_DIRECTORY),
+        " -DDALI_ARRAY_HIDE_LAZY=1",
+        " ", extra_args,
+        cxx_compiler_os_specific_flags
+    );
+
+
+    if (device_type == memory::DEVICE_T_CPU) {
+        return utils::make_message(Compiler::kCxxExecutable,
+                                   " ", source,
+                                   " -o ", dest,
+                                   cxx_compile_flags, " ",
+                                   " -O3 &> ", logfile);
+    }
+#ifdef DALI_USE_CUDA
+    else if (device_type == memory::DEVICE_T_GPU) {
+        return utils::make_message(Compiler::kCudaExecutable,
+                                   " ", source,
+                                   " -o ", dest,
+                                   "--ccbin ", Compiler::kCxxExecutable,
+                                   "--compiler-options ", cxx_compile_flags, " ",
+                                   " -O3 &> ", logfile);
+    }
+#endif
+    else {
+        ASSERT2(false, "TPUs are not yet supported.");
+    }
+
 }
 
 void Compiler::write_code(const std::string& fname,
@@ -149,8 +180,9 @@ void Compiler::write_code(const std::string& fname,
 bool Compiler::compile_code(const std::string& source,
                             const std::string& dest,
                             const std::string& logfile,
-                            const std::string& extra_args) {
-    auto cmd = compiler_command(source, dest, logfile, extra_args);
+                            const std::string& extra_args,
+                            const memory::DeviceT& device_type) {
+    auto cmd = compiler_command(source, dest, logfile, extra_args, device_type);
     int ret = system(cmd.c_str());
     return WEXITSTATUS(ret) == EXIT_SUCCESS;
 }

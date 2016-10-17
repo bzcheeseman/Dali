@@ -5,7 +5,7 @@
 #include "dali/array/functor.h"
 #include "dali/array/lazy/reshape.h"
 #include "dali/array/memory/device.h"
-#include "dali/array/op/unary.h"
+#include "dali/array/op2/unary.h"
 #include "dali/array/lazy/unary.h"
 
 // TODO(jonathan, szymon): use stream wait events to ensure concatenation
@@ -114,7 +114,7 @@ struct ConcatenateFunction : public Function<ConcatenateFunction,
 
 namespace old_op {
     Assignable<Array> concatenate(const std::vector<Array>& arrays, int axis) {
-        if (arrays.size() == 1) return old_op::identity(arrays[0], /*always_copy=*/false);
+        if (arrays.size() == 1) return op::identity(arrays[0]);
         bool all_scalar = arrays.size() != 0 ? true : false;
         for (const auto& ar : arrays)
             all_scalar = all_scalar && ar.is_scalar();

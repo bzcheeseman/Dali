@@ -3,7 +3,6 @@
 #include <iomanip>
 #include <gtest/gtest.h>
 
-#include "dali/array/op/unary.h"
 #include "dali/layers/conv.h"
 #include "dali/layers/gru.h"
 #include "dali/layers/layers.h"

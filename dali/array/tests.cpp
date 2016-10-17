@@ -6,8 +6,6 @@
 #include <mshadow/tensor.h>
 
 #include "dali/array/function/typed_array.h"
-#include "dali/array/op/unary.h"
-#include "dali/array/op/binary.h"
 #include "dali/array/op/other.h"
 #include "dali/array/op/initializer.h"
 #include "dali/utils/print_utils.h"

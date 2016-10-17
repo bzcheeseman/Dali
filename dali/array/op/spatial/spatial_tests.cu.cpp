@@ -44,7 +44,7 @@ Array pad_array(Array in, int prepad_h, int postpad_h, int prepad_w, int postpad
                     [Slice(0, c)]
                     [Slice(prepad_h, h + prepad_h)]
                     [Slice(prepad_w, w + prepad_w)];
-    X_padded_content = old_op::identity(in);
+    X_padded_content = op::identity(in);
 
     return X_padded;
 }
@@ -245,8 +245,8 @@ Array reference_pool2d_backward(Array out,
                 Array input_window = x_swapped[Slice(0, in_n)][Slice(0, in_c)][h_slice][w_slice];
                 Array max_in_window = op::max(input_window, {-2, -1});
 
-                Array max_locations = old_op::equals(
-                        input_window, max_in_window[Slice(0, in_n)][Slice(0, in_c)][Broadcast()][Broadcast()]);
+                Array max_locations = op::equals(
+                        input_window, (Array)max_in_window[Slice(0, in_n)][Slice(0, in_c)][Broadcast()][Broadcast()]);
                 window += max_locations *
                         out_dw_swapped[Slice(0, in_n)][Slice(0, in_c)][h][w][Broadcast()][Broadcast()];
             }

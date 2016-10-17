@@ -12,34 +12,34 @@ TEST(ArrayOpsTests, imports) {
 
 TEST(ArrayOpsTests, sigmoid) {
     auto x = Array::zeros({3,2,2});
-    Array y = old_op::sigmoid(x);
+    Array y = op::sigmoid(x);
 }
 
 TEST(ArrayOpsTests, relu) {
     auto x = Array::zeros({3,2,2}, DTYPE_DOUBLE);
-    Array y = old_op::relu(x);
+    Array y = op::relu(x);
 }
 
 TEST(ArrayOpsTests, log_or_zero) {
     auto x = Array::zeros({3,2,2});
-    Array w = old_op::log_or_zero(x);
+    Array w = op::log_or_zero(x);
 }
 
 TEST(ArrayOpsTests, abs) {
     auto x = Array::zeros({3,2,2});
-    Array w = old_op::abs(x);
+    Array w = op::abs(x);
 }
 
 TEST(ArrayOpsTests, sign) {
     auto x = Array::zeros({3,2,2});
-    Array w = old_op::sign(x);
+    Array w = op::sign(x);
 }
 
 
 TEST(ArrayOpsTests, log_exp) {
     Array x({50}, DTYPE_DOUBLE);
     x = initializer::uniform(0.1, 20.0);
-    Array exp_log_x = old_op::exp(old_op::log(x));
+    Array exp_log_x = op::exp(op::log(x));
     EXPECT_TRUE(Array::allclose(x, exp_log_x, 1e-3));
 }
 
@@ -52,7 +52,7 @@ void test_binary_shapes(T op_f) {
     ASSERT_THROW(args_wrong_size(), std::runtime_error);
 
     // binary op on args with the same sized args
-    Array z = old_op::eltdiv(x.ravel(), y);
+    Array z = op::eltdiv(x.ravel(), y);
 
     // assigning to preallocated output of wrong shape.
     Array q({12});
@@ -133,7 +133,7 @@ TEST(ArrayOpsTests, chainable) {
     // are not fused, but implicit casting to
     // Array from Assignable<Array> occurs at
     // every stage.
-    Array y = old_op::tanh(old_op::relu(old_op::sigmoid(x)));
+    Array y = op::tanh(op::relu(op::sigmoid(x)));
 }
 
 TEST(ArrayOpsTests, ascontiguousarray) {
@@ -159,29 +159,18 @@ TEST(ArrayOpsTests, ascontiguousarray) {
 }
 
 TEST(ArrayOpsTests, add_vector) {
-    int lazy_evaluator_calls = 0;
-    auto og = make_observer_guard([&](const Array&) {
-        lazy_evaluator_calls += 1;
-    }, &debug::lazy_evaluation_callback);
-
-    Array res = old_op::add({
+    Array res = op::add({
         Array::ones({1, 2}),
         Array::ones({2})[Broadcast()],
         Array::ones({1,1, 2})[0],
         Array::ones({1, 2})
     });
 
-    // one single function call performs all the additions above:
-    ASSERT_EQ(lazy_evaluator_calls, 1);
-
-
     EXPECT_EQ(std::vector<int>({1, 2}), res.shape());
     EXPECT_EQ(4, (int)res(0));
     EXPECT_EQ(4, (int)res(1));
 
-    lazy_evaluator_calls = 0;
-
-    Array res2 = old_op::add({
+    Array res2 = op::add({
         Array::ones({1, 2}),
         Array::ones({2})[Broadcast()],
         Array::ones({1,1, 2})[0],
@@ -192,10 +181,6 @@ TEST(ArrayOpsTests, add_vector) {
 
     EXPECT_EQ(6, (int)res2(0));
     EXPECT_EQ(6, (int)res2(1));
-
-    // Current add-vector will eagerly grab up to 5 arrays at a time. If there are more, then
-    // operation may perform more than one evaluation:
-    ASSERT_EQ(lazy_evaluator_calls, 2);
 }
 
 

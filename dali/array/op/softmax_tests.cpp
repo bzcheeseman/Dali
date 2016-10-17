@@ -8,8 +8,8 @@
 
 // This softmax causes many copies, but the logic is clear:
 Array reference_softmax(const Array& input, int axis, const double& temperature) {
-    Array exped = old_op::exp(input / temperature);
-    Array denominator = old_op::sum(exped, axis);
+    Array exped = op::exp(input / temperature);
+    Array denominator = op::sum(exped, {axis});
     return exped / denominator.insert_broadcast_axis(axis);
 }
 

@@ -7,6 +7,7 @@
 #include "dali/array/op2/unary.h"
 #include "dali/array/op.h"
 #include "dali/array/op2/operation.h"
+#include "dali/array/functor.h"
 
 TEST(RTCTests, add) {
     int size = 10;
@@ -134,6 +135,29 @@ TEST(RTCTests, add_strided_nd) {
     }
 }
 
+
+#define DALI_DEFINE_REFERENCE_BINARY_OP(FUNCNAME, FUNCTOR_NAME)\
+    Array reference_ ##FUNCNAME (Array x, Array y) {\
+        Array out = Array::zeros_like(x);\
+        auto raveled_x = x.ravel();\
+        auto raveled_y = y.ravel();\
+        auto raveled_out = out.ravel();\
+        if (x.dtype() == DTYPE_DOUBLE) {\
+            for (int i = 0; i < raveled_x.number_of_elements(); i++) {\
+                raveled_out(i) = functor::FUNCTOR_NAME<double>::Map((double)raveled_x(i), (double)raveled_y(i));\
+            }\
+        } else if (x.dtype() == DTYPE_FLOAT) {\
+            for (int i = 0; i < raveled_x.number_of_elements(); i++) {\
+                raveled_out(i) = functor::FUNCTOR_NAME<float>::Map((float)raveled_x(i), (float)raveled_y(i));\
+            }\
+        } else {\
+            for (int i = 0; i < raveled_x.number_of_elements(); i++) {\
+                raveled_out(i) = functor::FUNCTOR_NAME<int>::Map((int)raveled_x(i), (int)raveled_y(i));\
+            }\
+        }\
+        return out;\
+    }
+
 #define DALI_RTC_BINARY_TEST(funcname)\
     for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {\
         int size = 4;\
@@ -141,9 +165,15 @@ TEST(RTCTests, add_strided_nd) {
         auto b = Array::arange({5, size}, dtype) + 1;\
         Array dst = Array::arange({5, size}, dtype) + 2;\
         dst = op::funcname(a, b);\
-        Array reference = old_op::funcname(a, b);\
+        Array reference = reference_ ##funcname(a, b);\
         EXPECT_TRUE(Array::allclose(dst, reference, 1e-7));\
     }\
+
+DALI_DEFINE_REFERENCE_BINARY_OP(eltmul, eltmul);
+DALI_DEFINE_REFERENCE_BINARY_OP(eltdiv, eltdiv);
+DALI_DEFINE_REFERENCE_BINARY_OP(prelu, prelu);
+DALI_DEFINE_REFERENCE_BINARY_OP(pow, power);
+DALI_DEFINE_REFERENCE_BINARY_OP(equals, equals);
 
 TEST(RTCTests, elementwise_binary_ops) {
     DALI_RTC_BINARY_TEST(eltmul);

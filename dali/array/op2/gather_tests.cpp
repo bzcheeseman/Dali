@@ -21,7 +21,7 @@ TEST(RTCTests, gather_simple_elementwise) {
     EXPECT_TRUE(
         Array::allclose(
             op::gather(op::sigmoid(source), indices),
-            old_op::gather(old_op::sigmoid(source), indices),
+            old_op::gather(op::sigmoid(source), indices),
             1e-6
         )
     );

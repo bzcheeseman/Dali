@@ -114,7 +114,7 @@ TEST(RTCTests, chained_circular_convolution) {
         EXPECT_TRUE(
             Array::equals(
                 dst,
-                (Array)(old_op::sub(old_op::scalar_add(Array::arange({5, size}, dtype), 2), (old_op::circular_convolution(a + b, c))))
+                (Array)(op::sub((Array)op::add(Array::arange({5, size}, dtype), 2), (Array)(op::circular_convolution((Array)(a + b), c))))
             )
         );
     }

@@ -1,6 +1,9 @@
 #include "clip_and_regularize.h"
 
-#include "dali/array/lazy_op.h"
+#include "dali/array/op2/binary.h"
+#include "dali/array/op2/unary.h"
+#include "dali/array/op_overload/common.h"
+#include "dali/array/op_overload/nonlazy.h"
 
 namespace tensor_ops {
     void clip_and_regularize(const Tensor& param,
@@ -27,19 +30,19 @@ namespace tensor_ops {
             if (!use_abs_clip && !use_norm_clip) {
                 param.dw = param.dw + regc * param.w;
             } else if (use_abs_clip && !use_norm_clip) {
-                param.dw = lazy::clip(param.dw, clip_abs) + (regc * param.w);
+                param.dw = op::clip(param.dw, clip_abs) + (regc * param.w);
             } else if (!use_abs_clip && use_norm_clip) {
                 param.dw = (clip_norm / norm) * param.dw + (regc * param.w);
             } else if (use_abs_clip && use_norm_clip) {
-                param.dw = lazy::clip((clip_norm / norm) * param.dw, clip_abs) + (regc * param.w);
+                param.dw = op::clip((clip_norm / norm) * param.dw, clip_abs) + (regc * param.w);
             }
         } else {
             if (use_abs_clip && !use_norm_clip) {
-                param.dw = lazy::clip(param.dw, clip_abs);
+                param.dw = op::clip(param.dw, clip_abs);
             } else if (!use_abs_clip && use_norm_clip) {
                 param.dw = (clip_norm / norm) * param.dw;
             } else if (use_abs_clip && use_norm_clip) {
-                param.dw = lazy::clip(param.dw, clip_abs);
+                param.dw = op::clip(param.dw, clip_abs);
             }
         }
     }

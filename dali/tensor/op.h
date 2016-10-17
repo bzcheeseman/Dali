@@ -12,6 +12,5 @@
 #include "dali/tensor/op/reshape.h"
 #include "dali/tensor/op/spatial.h"
 #include "dali/tensor/op/unary.h"
-#include "dali/tensor/op/unary_scalar.h"
 
 #endif

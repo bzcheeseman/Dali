@@ -627,6 +627,7 @@ struct AssignmentOperationState : public OperationState {
     virtual std::string prefix_code(
             const node_to_info_t& node_to_info,
             memory::DeviceT device_type) const {
+#ifdef DALI_USE_CUDA
         if (device_type == memory::DEVICE_T_GPU) {
             if (node_to_info.at(this).computation_rank == 1) {
                 return utils::make_message(
@@ -644,7 +645,8 @@ struct AssignmentOperationState : public OperationState {
                 ASSERT2(false, "not implemented");
             }
         }
-
+#endif
+        return "";
     }
 
     virtual bool is_assignable() const {

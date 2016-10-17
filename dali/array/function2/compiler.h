@@ -103,6 +103,7 @@ class Compiler {
 
     static std::string kCxxExecutable;
     static std::string kCudaExecutable;
+    static std::string kCudaCxxExecutable;
 
     static std::string kCompilerId;
 

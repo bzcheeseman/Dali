@@ -4,9 +4,7 @@
 #include "dali/config.h"
 
 #include "dali/array/op/other.h"
-#include "dali/array/op/cast.h"
 #include "dali/array/op/dot.h"
-#include "dali/array/op/reducers.h"
 #include "dali/array/op/reshape.h"
 #include "dali/array/op/initializer.h"
 #include "dali/array/op/softmax.h"
@@ -28,7 +26,6 @@
     #include "dali/array/lazy/unary.h"
     #include "dali/array/lazy/reshape.h"
     #include "dali/array/lazy/im2col.h"
-    #include "dali/array/lazy/circular_convolution.h"
     #include "dali/array/function/lazy_evaluator.h"
     #include "dali/array/op_overload/lazy.h"
 

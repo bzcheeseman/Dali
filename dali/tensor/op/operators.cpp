@@ -2,7 +2,7 @@
 #define DALI_TENSOR_OP_BINARY_OPERATORS_H
 
 #include "dali/tensor/tensor.h"
-#include "dali/tensor/op/unary_scalar.h"
+#include "dali/tensor/op/unary.h"
 #include "dali/tensor/op/binary.h"
 
 #define DALI_DEFINE_TENSOR_INTERACTION(OPNAME, SYMBOL)\

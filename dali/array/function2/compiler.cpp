@@ -65,6 +65,7 @@ Compiler::Compiler(std::vector<std::string> headers, std::string outpath, std::s
 
 std::string Compiler::kCxxExecutable  = STR(DALI_CXX_COMPILER);
 std::string Compiler::kCudaExecutable = "nvcc";
+std::string Compiler::kCudaCxxExecutable = STR(DALI_CUDA_CXX_COMPILER);
 std::string Compiler::kCompilerId     = STR(DALI_CXX_COMPILER_ID);
 
 
@@ -122,9 +123,7 @@ std::string Compiler::compiler_command(const std::string& source,
         utils::assert2(false, utils::make_message("Compiler::kCompilerId == ", Compiler::kCompilerId, " is not supported."));
     }
 
-
     auto cxx_compile_flags = utils::make_message(
-        " -std=c++11 ",
         " -I" , include_path_,
         " -I", STR(DALI_BLAS_INCLUDE_DIRECTORY),
         " -DDALI_ARRAY_HIDE_LAZY=1",
@@ -132,11 +131,11 @@ std::string Compiler::compiler_command(const std::string& source,
         cxx_compiler_os_specific_flags
     );
 
-
     if (device_type == memory::DEVICE_T_CPU) {
         return utils::make_message(Compiler::kCxxExecutable,
                                    " ", source,
                                    " -o ", dest,
+                                   " -std=c++11 ",
                                    " ", cxx_compile_flags,
                                    " -O3 &> ", logfile);
     }
@@ -146,7 +145,7 @@ std::string Compiler::compiler_command(const std::string& source,
                                    " ", source,
                                    " -o ", dest,
                                    " -std=c++11",
-                                   " -ccbin ", Compiler::kCxxExecutable,
+                                   " -ccbin ", Compiler::kCudaCxxExecutable,
                                    " --compiler-options ", "\"", utils::find_and_replace(cxx_compile_flags, "\"", "\\\""), "\"",
                                    " -O3 &> ", logfile);
     }

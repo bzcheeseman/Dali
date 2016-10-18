@@ -20,14 +20,11 @@ std::string build_array_definition(const std::string& cpp_type,
                                    const std::string& varname,
                                    bool contiguous,
                                    int rank,
-                                   const std::string& captured_name) {
+                                   const std::string& constructor_arguments) {
     return utils::make_message(
         "    auto ", varname, " = make",
         (contiguous ? "_" : "_strided_"), "view<",
-        cpp_type, ", ", rank, ">(",
-        captured_name,
-        ", device",
-        ");\n"
+        cpp_type, ", ", rank, ">(", constructor_arguments, ");\n"
     );
 }
 

@@ -1,10 +1,7 @@
 #ifndef DALI_ARRAY_FUNCTION2_ARRAY_VIEW_H
 #define DALI_ARRAY_FUNCTION2_ARRAY_VIEW_H
-
-#include "dali/array/array.h"
-#include "dali/array/memory/device.h"
 #include "dali/macros.h"
-#include <vector>
+#include <initializer_list>
 
 template<int num_dims>
 struct Shape {
@@ -19,8 +16,8 @@ struct Shape {
         }
     }
 
-    Shape(const std::vector<int>& sizes) {
-        for (int i = 0; i < sizes.size();++i) {
+    XINLINE Shape(const int* sizes) {
+        for (int i = 0; i < num_dims;++i) {
             sizes_[i] = sizes[i];
         }
     }
@@ -258,21 +255,16 @@ ScalarView<T, ndim> make_scalar_view(const T& scalar) {
 }
 
 template<typename T, int ndim>
-ArrayView<T, ndim> make_view(const Array& arr, memory::Device device) {
+ArrayView<T, ndim> make_view(void* data_ptr, int offset, const int* sizes) {
     return ArrayView<T, ndim>(
-        (T*)arr.memory()->mutable_data(device),
-        arr.offset(),
-        arr.shape()
+        (T*)data_ptr, offset, sizes
     );
 }
 
 template<typename T, int ndim>
-ArrayStridedView<T, ndim> make_strided_view(const Array& arr, memory::Device device) {
+ArrayStridedView<T, ndim> make_strided_view(void* data_ptr, int offset, const int* sizes, const int* strides) {
     return ArrayStridedView<T, ndim>(
-        (T*)arr.memory()->mutable_data(device),
-        arr.offset(),
-        arr.shape(),
-        arr.strides()
+        (T*)data_ptr, offset, sizes, strides
     );
 }
 

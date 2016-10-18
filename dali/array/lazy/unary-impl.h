@@ -30,8 +30,9 @@ template<template<class>class Functor, typename ExprT>
 struct LazyFunctionName<LazyUnary<Functor, ExprT>> {
     static std::string name;
 };
+
 template<template<class>class Functor, typename ExprT>
-std::string LazyFunctionName<LazyUnary<Functor, ExprT>>::name = Functor<float>::name;
+std::string LazyFunctionName<LazyUnary<Functor, ExprT>>::name = "UnaryFunctor";
 
 template<template<class>class Functor, typename ExprT>
 struct LazyUnaryIndexed : public LazyFunction<LazyUnaryIndexed<Functor,ExprT>, ExprT> {
@@ -62,15 +63,12 @@ template<template<class>class Functor, typename ExprT>
 struct LazyFunctionName<LazyUnaryIndexed<Functor, ExprT>> {
     static std::string name;
 };
+
+
 template<template<class>class Functor, typename ExprT>
-std::string LazyFunctionName<LazyUnaryIndexed<Functor, ExprT>>::name = Functor<float>::name;
+std::string LazyFunctionName<LazyUnaryIndexed<Functor, ExprT>>::name = "UnaryFunctorIndexed";
 
 namespace lazy {
-    template<template<class>class Functor, typename ExprT>
-    LazyUnary<Functor,ExprT> F(const Exp<ExprT>& expr) {
-        return LazyUnary<Functor,ExprT>(expr.self());
-    }
-
     template<typename ExprT>
     LazyUnary<functor::identity,ExprT> identity(const Exp<ExprT>& expr) {
         return LazyUnary<functor::identity,ExprT>(expr.self());

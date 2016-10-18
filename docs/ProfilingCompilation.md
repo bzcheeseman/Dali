@@ -23,8 +23,8 @@ Now that you have a list of files that compile longer than expected, find an exa
 #include "dali/array/array.h"
 #include "dali/array/lazy/unary.h"
 
-Assignable<Array> sigmoid(const Array& x) {
-    return lazy::sigmoid(x);
+Assignable<Array> identity(const Array& x) {
+    return lazy::identity(x);
 }
 ```
 

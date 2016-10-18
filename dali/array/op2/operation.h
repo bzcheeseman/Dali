@@ -100,7 +100,7 @@ struct OperationState : std::enable_shared_from_this<OperationState> {
                                           const node_to_info_t& node_to_info) const final;
 
 
-    std::function<void(const std::vector<Array>&, const std::vector<double>&, memory::Device)> compile(
+    std::function<void(void**, const int*, const int**, const int**, double*)> compile(
             memory::Device device,
             const std::vector<const ArrayOperationState*>& arrays,
             const std::vector<const ScalarOperationState*>& scalars,

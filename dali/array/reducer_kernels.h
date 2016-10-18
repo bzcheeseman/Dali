@@ -90,12 +90,14 @@ namespace reducers {
         /*! \brief do reduction into dst */
         template<typename DType>
         XINLINE static void Reduce(volatile DType& dst,  volatile DType src) {
-            using namespace std;
-    #ifdef __CUDACC__
-            dst = ::max(dst, src);
-    #else
-            dst = max(dst, src);
-    #endif  // __CUDACC__
+            dst = dst > src ? dst : src;
+        }
+        XINLINE static void Reduce(volatile float& dst,  volatile float src) {
+            #ifdef __CUDACC__
+                dst = fmaxf(dst, src);
+            #else
+                dst = dst > src ? dst : src;
+            #endif
         }
         /*!
          * \brief calculate gradient of redres with respect to redsrc,

@@ -100,7 +100,7 @@ std::string OperationState::get_code_template(memory::Device device,
         }
     });
 
-    result << "void run(const std::vector<Array>& array_arguments, const std::vector<double>& scalar_arguments, memory::Device device) {\n";
+    result << "void run(void** array_data, const int* offsets, const int** sizes, const int** strides, double* scalar_arguments) {\n";
 
     // DECLARE SYMBOLS
     symbol_table_t symbol_table;
@@ -108,13 +108,23 @@ std::string OperationState::get_code_template(memory::Device device,
         auto name = utils::make_message("array_", i, "_view");
 
         symbol_table[(const OperationState*)arrays[i]] = name;
-        result << build_array_definition(
-            dtype_to_cpp_name(arrays[i]->dtype()),
-            name,
-            arrays[i]->contiguous(),
-            node_to_info.at(arrays[i]).computation_rank,
-            utils::make_message("array_arguments[", i, "]")
-        );
+        if (arrays[i]->contiguous()) {
+            result << build_array_definition(
+                dtype_to_cpp_name(arrays[i]->dtype()),
+                name,
+                true,
+                node_to_info.at(arrays[i]).computation_rank,
+                utils::make_message("array_data[", i, "], offsets[", i, "], sizes[", i, "]")
+            );
+        } else {
+            result << build_array_definition(
+                dtype_to_cpp_name(arrays[i]->dtype()),
+                name,
+                false,
+                node_to_info.at(arrays[i]).computation_rank,
+                utils::make_message("array_data[", i, "], offsets[", i, "], sizes[", i, "], strides[", i, "]")
+            );
+        }
     }
 
     for (int i = 0; i < scalars.size(); ++i) {
@@ -135,7 +145,7 @@ std::string OperationState::get_code_template(memory::Device device,
 }
 
 
-std::function<void(const std::vector<Array>&, const std::vector<double>&, memory::Device)> OperationState::compile(
+std::function<void(void**, const int*, const int**, const int**, double*)> OperationState::compile(
         memory::Device device,
         const std::vector<const ArrayOperationState*>& arrays,
         const std::vector<const ScalarOperationState*>& scalars,
@@ -154,14 +164,14 @@ std::function<void(const std::vector<Array>&, const std::vector<double>&, memory
             scalars,
             node_to_info
         );
-        array_op_compiler.compile<const std::vector<Array>&, const std::vector<double>&, memory::Device>(
+        array_op_compiler.compile<void**, const int*, const int**, const int**, double*>(
             hash,
             code_template,
             device.type()
         );
     }
     // return the operation that was loaded or compiled:
-    return array_op_compiler.get_function<const std::vector<Array>&, const std::vector<double>&, memory::Device>(hash);
+    return array_op_compiler.get_function<void**, const int*, const int**, const int**, double*>(hash);
 }
 
 std::string Operation::name() const {
@@ -204,7 +214,6 @@ void eval_op(const Operation& op,
                            return op->array_.reshape_broadcasted(shape).copyless_right_fit_ndim(rank);
                        }
                    });
-
     std::vector<double> scalars;
     std::transform(scalar_ops.begin(),
                    scalar_ops.end(),
@@ -212,12 +221,24 @@ void eval_op(const Operation& op,
                    [&](const ScalarOperationState* op) {
                        return op->value_;
                    });
+
+    std::vector<void*> data_ptrs;
+    std::vector<int> offsets;
+    std::vector<const int*> shapes;
+    std::vector<const int*> strides;
+    for (auto& arr : arrays) {
+        data_ptrs.push_back(arr.memory()->mutable_data(output_device));
+        offsets.push_back(arr.offset());
+        shapes.push_back(arr.shape().data());
+        strides.push_back(arr.strides().data());
+    }
+
     std::string name;
     if (Scope::has_observers()) {
         name = op.name();
     }
     DALI_SCOPE(name);
-    compiled_self(arrays, scalars, output_device);
+    compiled_self(data_ptrs.data(), offsets.data(), shapes.data(), strides.data(), scalars.data());
 }
 
 std::vector<int> get_auto_reduce_axes(const Array& output, const std::vector<int>& in_bshape) {
@@ -642,7 +663,18 @@ struct AssignmentOperationState : public OperationState {
                     "}\n"
                 );
             } else {
-                ASSERT2(false, "not implemented");
+                return utils::make_message(
+                    "template<typename Destination, typename Source>\n"
+                    "void __global__\n"
+                    "assign_kernel(Destination dst, Source src, int num_el, Shape<", node_to_info.at(this).computation_rank, "> shape) {\n"
+                    "    int idx = blockDim.x * blockIdx.x + threadIdx.x;\n"
+                    "    int stride = blockDim.x * gridDim.x;\n"
+                    "    for (int i = idx; i < num_el; i += stride) {\n"
+                    "        auto nd_idx = index_to_dim(idx, shape);\n"
+                    "        dst[nd_idx] ", operator_to_name(operator_t_), " src[nd_idx];\n"
+                    "    }\n"
+                    "}\n"
+                );
             }
         }
 #endif
@@ -711,10 +743,10 @@ struct AssignmentOperationState : public OperationState {
     virtual std::string get_call_code_nd(const symbol_table_t& symbol_table,
                                          const node_to_info_t& node_to_info,
                                          memory::DeviceT device_type) const {
+        int computation_rank = node_to_info.at(this).computation_rank;
         if (device_type == memory::DEVICE_T_CPU) {
             // TODO: debate if we want to allow chaining here:
             //       (e.g. call this assignment, then this assignment, etc...)
-            int computation_rank = node_to_info.at(this).computation_rank;
             if (computation_rank == 1) {
                 return utils::make_message(
                     "    int num_el = ", left_->get_call_code_nd(symbol_table, node_to_info, device_type), ".shape().numel();\n",
@@ -735,18 +767,34 @@ struct AssignmentOperationState : public OperationState {
         }
 #ifdef DALI_USE_CUDA
         else if (device_type == memory::DEVICE_T_GPU) {
-            return utils::make_message(
-                    "    int num_el = ", left_->get_call_code_nd(symbol_table, node_to_info, device_type), ".shape().numel();\n"
-                    "    const int NT = 128;\n"
-                    "    const int MAX_BLOCKS = 40960;\n"
-                    "    int grid_size = div_ceil(num_el, NT);\n"
-                    "    assert(grid_size <= MAX_BLOCKS);\n"
-                    "    assign_kernel<<<grid_size, NT, 0, NULL>>>(\n"
-                    "        ", left_->get_call_code_nd(symbol_table, node_to_info, device_type), ",\n"
-                    "        ", right_->get_call_code_nd(symbol_table, node_to_info, device_type), ",\n"
-                    "        num_el\n"
-                    "    );\n"
-            );
+            if (computation_rank == 1) {
+                return utils::make_message(
+                        "    int num_el = ", left_->get_call_code_nd(symbol_table, node_to_info, device_type), ".shape().numel();\n"
+                        "    const int NT = 128;\n"
+                        "    // const int MAX_BLOCKS = 40960;\n"
+                        "    int grid_size = div_ceil(num_el, NT);\n"
+                        "    // assert(grid_size <= MAX_BLOCKS);\n"
+                        "    assign_kernel<<<grid_size, NT, 0, NULL>>>(\n"
+                        "        ", left_->get_call_code_nd(symbol_table, node_to_info, device_type), ",\n"
+                        "        ", right_->get_call_code_nd(symbol_table, node_to_info, device_type), ",\n"
+                        "        num_el\n"
+                        "    );\n"
+                );
+            } else {
+                return utils::make_message(
+                        "    auto shape = ", left_->get_call_code_nd(symbol_table, node_to_info, device_type), ".shape();\n"
+                        "    int num_el = shape.numel();\n"
+                        "    const int NT = 128;\n"
+                        "    // const int MAX_BLOCKS = 40960;\n"
+                        "    int grid_size = div_ceil(num_el, NT);\n"
+                        "    // assert(grid_size <= MAX_BLOCKS);\n"
+                        "    assign_kernel<<<grid_size, NT, 0, NULL>>>(\n"
+                        "        ", left_->get_call_code_nd(symbol_table, node_to_info, device_type), ",\n"
+                        "        ", right_->get_call_code_nd(symbol_table, node_to_info, device_type), ",\n"
+                        "        num_el, shape\n"
+                        "    );\n"
+                );
+            }
         }
 #endif
         else {

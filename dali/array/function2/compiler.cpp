@@ -190,8 +190,7 @@ bool Compiler::compile_code(const std::string& source,
 std::vector<std::string> kHeaders = {
     "dali/array/function2/array_view.h",
     "dali/array/reducer_kernels.h",
-    "dali/array/functor.h",
-    "dali/array/array.h"
+    "dali/array/functor.h"
 };
 #ifdef DALI_CACHE_DIR
 std::string kOutpath    = utils::expanduser(STR(DALI_CACHE_DIR));

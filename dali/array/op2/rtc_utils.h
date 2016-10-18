@@ -11,7 +11,7 @@ std::string build_array_definition(const std::string& cpp_type,
                                    const std::string& varname,
                                    bool contiguous,
                                    int rank,
-                                   const std::string& captured_name);
+                                   const std::string& constructor_arguments);
 
 // create declaration for copying a scalar argument into a local variable
 std::string build_scalar_definition(const std::string& cpp_type,

@@ -121,11 +121,10 @@ namespace reducers {
         /*! \brief do reduction into dst */
         template<typename DType>
         XINLINE static void Reduce(volatile DType& dst,  volatile DType src) {
-            using namespace std;
     #ifdef __CUDACC__
             dst = ::min(dst, src);
     #else
-            dst = min(dst, src);
+            dst = dst < src ? dst : src;
     #endif  // __CUDACC__
         }
         /*!

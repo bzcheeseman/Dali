@@ -3,10 +3,10 @@
 
 #include "dali/config.h"
 #include "dali/macros.h"
-#include <math.h>
 #include <cmath>
+#include <cstdlib>
 
-#ifdef DALI_USE_CUDA
+#ifdef __CUDACC__
     #define TANH_F tanhf
     #define LOG_F  logf
     #define EXP_F  expf

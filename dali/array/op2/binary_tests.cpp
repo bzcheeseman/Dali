@@ -161,9 +161,9 @@ TEST(RTCTests, add_strided_nd) {
 #define DALI_RTC_BINARY_TEST(funcname)\
     for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {\
         int size = 4;\
-        auto a = Array::arange({5, size}, dtype);\
-        auto b = Array::arange({5, size}, dtype) + 1;\
-        Array dst = Array::arange({5, size}, dtype) + 2;\
+        auto a = Array::arange({2, size}, dtype);\
+        auto b = Array::arange({2, size}, dtype) + 1;\
+        Array dst = Array::arange({2, size}, dtype) + 2;\
         dst = op::funcname(a, b);\
         Array reference = reference_ ##funcname(a, b);\
         EXPECT_TRUE(Array::allclose(dst, reference, 1e-7));\

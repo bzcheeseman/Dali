@@ -63,47 +63,6 @@ std::string LazyFunctionName<LazyBinary<Functor, Left, Right>>::name = "BinaryFu
 template<template<class>class Functor, typename LeftT, typename RightT>
 const int LazyBinary<Functor, LeftT, RightT>::evaluation_dim = lazy::LazyBinaryEvaluationDim<LeftT, RightT>::value;
 
-template<template<class>class Functor, typename LeftT, typename RightT>
-struct LazyBinaryIndexed : public LazyFunction<LazyBinaryIndexed<Functor,LeftT,RightT>, LeftT, RightT> {
-    static const int evaluation_dim;
-    LeftT  left;
-    RightT right;
-
-    LazyBinaryIndexed(const LeftT& left_, const RightT& right_) :
-            LazyFunction<LazyBinaryIndexed<Functor,LeftT,RightT>, LeftT, RightT>(left_, right_),
-            left(left_),
-            right(right_) {
-    }
-
-    template<int devT,typename T, int ndim>
-    auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape, const lazy::EvaluationSpec<devT, T, ndim>& wrap_array) const ->
-            decltype(
-                mshadow::expr::F<mshadow::expr::FIndexed<typename functor_helper::BinaryExtractDType<
-                    decltype(MshadowWrapper<devT,T,decltype(left)>::wrap(left, device, output_shape, wrap_array)),
-                    decltype(MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape, wrap_array))
-                >::value>
-            >(
-                     MshadowWrapper<devT,T,decltype(left)>::wrap(left, device, output_shape, wrap_array),
-                     MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape, wrap_array)
-            )) {
-        auto left_expr  = MshadowWrapper<devT,T,decltype(left)>::wrap(left,  device, output_shape, wrap_array);
-        auto right_expr = MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape, wrap_array);
-        typedef typename functor_helper::BinaryExtractDType<decltype(left_expr), decltype(right_expr)>::value functor_dtype_t;
-        return mshadow::expr::FIndexed<Functor<functor_dtype_t>>(left_expr, right_expr);
-    }
-};
-
-template<template<class>class Functor, typename Left, typename Right>
-struct LazyFunctionName<LazyBinaryIndexed<Functor, Left, Right>> {
-    static std::string name;
-};
-
-template<template<class>class Functor, typename Left, typename Right>
-std::string LazyFunctionName<LazyBinaryIndexed<Functor, Left, Right>>::name = "BinaryFunctorIndexed";
-
-template<template<class>class Functor, typename LeftT, typename RightT>
-const int LazyBinaryIndexed<Functor, LeftT, RightT>::evaluation_dim = lazy::LazyBinaryEvaluationDim<LeftT, RightT>::value;
-
 namespace lazy {
     template<template<class>class Functor, typename T1, typename T2>
     LazyBinary<Functor,T1, T2> F(const T1& expr, const T2& expr2) {
@@ -117,19 +76,8 @@ namespace lazy {
         }\
 
     DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(add, functor::add);
-    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(lessthanequal, functor::lessthanequal);
-    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(greaterthanequal, functor::greaterthanequal);
     DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(sub, functor::sub);
     DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(eltmul, functor::eltmul);
     DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(eltdiv, functor::eltdiv);
-    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(pow, functor::power);
-    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(binary_cross_entropy, functor::binary_cross_entropy);
-    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(binary_cross_entropy_grad, functor::binary_cross_entropy_grad);
-    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(eltmax, functor::max_scalar);
-    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(eltmin, functor::min_scalar);
-    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(clip, functor::clip);
     DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(equals, functor::equals);
-    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(prelu, functor::prelu);
-    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(prelu_backward_weights, functor::prelu_backward_weights);
-    DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(prelu_backward_inputs, functor::prelu_backward_inputs);
 }  // namespace lazy

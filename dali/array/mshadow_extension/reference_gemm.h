@@ -1,7 +1,5 @@
 #ifndef DALI_ARRAY_FUNCTION_ARGS_REFERENCE_GEMM_H
 #define DALI_ARRAY_FUNCTION_ARGS_REFERENCE_GEMM_H
-
-#include "dali/utils/print_utils.h"
 // Tensorflow reference gemm implementation
 // source https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/quantization/kernels/reference_gemm.h
 // modified to handle single type, no shifting (quantization), and alpha/beta arguments

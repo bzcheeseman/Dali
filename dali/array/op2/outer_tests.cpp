@@ -3,10 +3,7 @@
 #include "dali/utils/print_utils.h"
 #include "dali/array/test_utils.h"
 #include "dali/runtime_config.h"
-#include "dali/array/op2/outer.h"
-// #include "dali/array/op2/reducers.h"
 #include "dali/array/op.h"
-#include "dali/array/op2/operation.h"
 
 namespace {
     Array reference_outer_product(const Array& left, const Array& right) {

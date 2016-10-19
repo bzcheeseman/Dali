@@ -17,6 +17,7 @@
 #include "dali/array/op2/elementwise_operation.h"
 #include "dali/array/op2/circular_convolution.h"
 #include "dali/array/op2/one_hot.h"
+#include "dali/array/op2/outer.h"
 #include "dali/array/op2/im2col.h"
 #include "dali/utils/print_utils.h"
 

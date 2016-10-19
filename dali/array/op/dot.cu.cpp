@@ -276,12 +276,6 @@ static Assignable<Array> reshaped_matmul_fix_broadcasts(const Array& a,
     );
 }
 
-static Assignable<Array> reshaped_matmul_fix_broadcasts(const Array& a,
-                                                        const Array& b,
-                                                        const std::vector<int>& output_shape) {
-    return reshaped_matmul_fix_broadcasts(a,b,output_shape, output_shape);
-}
-
 namespace op {
     ////////////////////////////////////////////////////////////////////////////////
     //                     Various flavors of dot products                        //

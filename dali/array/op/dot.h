@@ -7,10 +7,6 @@ class Array;
 template<typename OutType>
 class Assignable;
 
-namespace old_op {
-    Assignable<Array> outer(const Array& a, const Array& b);
-}  // namespace old_op
-
 namespace op {
     Assignable<Array> dot(const Array& a, const Array& b);
 

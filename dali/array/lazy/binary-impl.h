@@ -104,57 +104,6 @@ std::string LazyFunctionName<LazyBinaryIndexed<Functor, Left, Right>>::name = "B
 template<template<class>class Functor, typename LeftT, typename RightT>
 const int LazyBinaryIndexed<Functor, LeftT, RightT>::evaluation_dim = lazy::LazyBinaryEvaluationDim<LeftT, RightT>::value;
 
-template<typename LeftT, typename RightT>
-struct LazyOuter : public LazyFunction<LazyOuter<LeftT,RightT>, LeftT, RightT> {
-    static const int evaluation_dim;
-    LeftT  left;
-    RightT right;
-
-    LazyOuter(const LeftT& left_, const RightT& right_) :
-            LazyFunction<LazyOuter<LeftT,RightT>, LeftT, RightT>(left_, right_),
-            left(left_),
-            right(right_) {
-    }
-
-    static std::vector<int> lazy_output_bshape(const LeftT& left_, const RightT& right_) {
-        auto left_bshape = left_.bshape();
-        auto right_bshape = right_.bshape();
-        ASSERT2(
-            left_bshape.size() == 1 && right_bshape.size() == 1,
-            utils::MS() << "inputs to outer product must be two expressions with dimensionality 1 (got left.ndim()="
-                        << left_bshape.size() << ", right.ndim()=" << right_bshape.size()
-                        << ").");
-        return {left_bshape[0], right_bshape[0]};
-    }
-
-    template<int devT,typename T, int ndim>
-    auto to_mshadow_expr(memory::Device device, const std::vector<int>& output_shape, const lazy::EvaluationSpec<devT, T, ndim>& wrap_array) const ->
-            decltype(
-                mshadow::expr::outer_product(
-                     mshadow::expr::reshape(MshadowWrapper<devT,T,decltype(left)>::wrap(left, device, output_shape, wrap_array.template d<1>()), mshadow::Shape1(1)),
-                     mshadow::expr::reshape(MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, output_shape, wrap_array.template d<1>()), mshadow::Shape1(1))
-                )
-            ) {
-        auto left_expr  = MshadowWrapper<devT,T,decltype(left)>::wrap(left,   device, left.bshape(), wrap_array.template d<1>());
-        auto right_expr = MshadowWrapper<devT,T,decltype(right)>::wrap(right, device, right.bshape(), wrap_array.template d<1>());
-        return mshadow::expr::outer_product(
-            mshadow::expr::reshape(left_expr, mshadow::Shape1(std::abs(left.bshape()[0]))),
-            mshadow::expr::reshape(right_expr, mshadow::Shape1(std::abs(right.bshape()[0])))
-        );
-    }
-};
-
-template<typename LeftT, typename RightT>
-const int LazyOuter<LeftT, RightT>::evaluation_dim = 2;
-
-template<typename Left, typename Right>
-struct LazyFunctionName<LazyOuter<Left, Right>> {
-    static std::string name;
-};
-template<typename Left, typename Right>
-std::string LazyFunctionName<LazyOuter<Left, Right>>::name = "lazy_outer";
-
-
 namespace lazy {
     template<template<class>class Functor, typename T1, typename T2>
     LazyBinary<Functor,T1, T2> F(const T1& expr, const T2& expr2) {
@@ -166,11 +115,6 @@ namespace lazy {
         LazyBinary<KERNELNAME, T1, T2> FUNCNAME(const T1& a, const T2& b) {\
             return LazyBinary<KERNELNAME, T1, T2>(a, b);\
         }\
-
-    template<typename T1, typename T2>
-    LazyOuter<T1, T2> outer(const T1& expr, const T2& expr2) {
-        return LazyOuter<T1, T2>(expr, expr2);
-    }
 
     DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(add, functor::add);
     DALI_LAZY_IMPLEMENT_LAZYBINARY_EXPR(lessthanequal, functor::lessthanequal);

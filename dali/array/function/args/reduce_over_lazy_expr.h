@@ -13,20 +13,11 @@ struct LazyCol2Im;
 template<template<class>class Functor, typename LeftT, typename RightT>
 struct LazyBinary;
 
-template<typename ContentExp, typename ShiftExp>
-struct LazyCircularConvolution;
-
 template<template<class>class Functor, typename ExprT>
 struct LazyUnary;
 
-template<template<class>class Functor, typename ExprT>
-struct LazyUnaryIndexed;
-
 template<class Functor, typename ExprT>
 struct LazyAllReducer;
-
-template<typename ExprT, typename NewT>
-struct LazyCast;
 
 template<class Functor, typename ExprT, bool return_indices>
 struct LazyAxisReducer;
@@ -54,14 +45,6 @@ struct ReduceOverLazyExpr {
         return unfold_helper(state, binary_expr.left, binary_expr.right, args...);
     }
 
-    template<typename ContentExp, typename ShiftExp, typename... Args>
-    static outtuple_t unfold_helper(
-            const outtuple_t& state,
-            const LazyCircularConvolution<ContentExp,ShiftExp>& circular_conv,
-            const Args&... args) {
-        return unfold_helper(state, circular_conv.content, circular_conv.shift, args...);
-    }
-
     template<typename ExprT, typename... Args>
     static outtuple_t unfold_helper(
             const outtuple_t& state,
@@ -86,26 +69,10 @@ struct ReduceOverLazyExpr {
         return unfold_helper(state, col2im_expr.src, args...);
     }
 
-    template<typename ExprT, typename NewType, typename... Args>
-    static outtuple_t unfold_helper(
-            const outtuple_t& state,
-            const LazyCast<ExprT, NewType>& reducer_expr,
-            const Args&... args) {
-        return unfold_helper(state, reducer_expr.expr, args...);
-    }
-
     template<template<class>class Functor, typename ExprT, typename... Args>
     static outtuple_t unfold_helper(
             const outtuple_t& state,
             const LazyUnary<Functor,ExprT>& elementwise_expr,
-            const Args&... args) {
-        return unfold_helper(state, elementwise_expr.expr, args...);
-    }
-
-    template<template<class>class Functor, typename ExprT, typename... Args>
-    static outtuple_t unfold_helper(
-            const outtuple_t& state,
-            const LazyUnaryIndexed<Functor,ExprT>& elementwise_expr,
             const Args&... args) {
         return unfold_helper(state, elementwise_expr.expr, args...);
     }

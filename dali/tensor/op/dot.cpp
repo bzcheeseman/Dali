@@ -5,6 +5,7 @@
 #include "dali/tensor/tape.h"
 #include "dali/tensor/tensor_macros.h"
 #include "dali/array/op.h"
+#include "dali/array/op2/outer.h"
 
 Tensor matrixdot_with_custom_shape(const Tensor& a,
                                    const Tensor& b,

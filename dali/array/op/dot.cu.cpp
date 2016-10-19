@@ -281,12 +281,7 @@ static Assignable<Array> reshaped_matmul_fix_broadcasts(const Array& a,
                                                       const std::vector<int>& output_shape) {
     return reshaped_matmul_fix_broadcasts(a,b,output_shape, output_shape);
 }
-
-namespace op {
-    ////////////////////////////////////////////////////////////////////////////////
-    //                     Various flavors of dot products                        //
-    ////////////////////////////////////////////////////////////////////////////////
-
+namespace old_op {
     Assignable<Array> outer(const Array& a, const Array& b) {
         return reshaped_matmul_fix_broadcasts(
             a.reshape({a.number_of_elements(), 1}),
@@ -294,6 +289,12 @@ namespace op {
             {a.number_of_elements(), b.number_of_elements()}
         );
     }
+}
+
+namespace op {
+    ////////////////////////////////////////////////////////////////////////////////
+    //                     Various flavors of dot products                        //
+    ////////////////////////////////////////////////////////////////////////////////
 
     Assignable<Array> inner(
             const Array& a,

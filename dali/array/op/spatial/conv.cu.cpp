@@ -236,21 +236,6 @@ namespace op {
                                    padding,
                                    data_format);
     }
-
-    Assignable<Array> col2im(const Array& input,
-                             const std::vector<int>& image_shape,
-                             int filter_h,
-                             int filter_w,
-                             int stride_h,
-                             int stride_w,
-                             const std::string& data_format) {
-        internal::check_data_format(data_format);
-        if (data_format == "NCHW") {
-            return lazy::col2im_nchw(input, image_shape, filter_h, filter_w, stride_h, stride_w, 1, 1);
-        } else {
-            return lazy::col2im_nhwc(input, image_shape, filter_h, filter_w, stride_h, stride_w, 1, 1);
-        }
-    }
 }  // namespace op
 
 namespace old_op {
@@ -265,6 +250,21 @@ namespace old_op {
             return lazy::im2col_nchw(input, filter_h, filter_w, stride_h, stride_w, 1, 1);
         } else {
             return lazy::im2col_nhwc(input, filter_h, filter_w, stride_h, stride_w, 1, 1);
+        }
+    }
+
+    Assignable<Array> col2im(const Array& input,
+                             const std::vector<int>& image_shape,
+                             int filter_h,
+                             int filter_w,
+                             int stride_h,
+                             int stride_w,
+                             const std::string& data_format) {
+        internal::check_data_format(data_format);
+        if (data_format == "NCHW") {
+            return lazy::col2im_nchw(input, image_shape, filter_h, filter_w, stride_h, stride_w, 1, 1);
+        } else {
+            return lazy::col2im_nhwc(input, image_shape, filter_h, filter_w, stride_h, stride_w, 1, 1);
         }
     }
 }  // namespace old_op

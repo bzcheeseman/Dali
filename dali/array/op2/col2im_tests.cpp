@@ -51,10 +51,11 @@ TEST(RTCTests, col2im_with_channels) {
         image_nhwc, 3, 3, 1, 1, "NHWC"
     );
 
-    Array col2imed_nchw = op::col2im(im2coled_nchw, image_nchw.shape(), 3, 3, 1, 1, "NCHW");
-    Array col2imed_nchw_old = old_op::col2im(im2coled_nchw, image_nchw.shape(), 3, 3, 1, 1, "NCHW");
     Array col2imed_nhwc = op::col2im(im2coled_nhwc, image_nhwc.shape(), 3, 3, 1, 1, "NHWC");
     Array col2imed_nhwc_old = old_op::col2im(im2coled_nhwc, image_nhwc.shape(), 3, 3, 1, 1, "NHWC");
+
+    Array col2imed_nchw = op::col2im(im2coled_nchw, image_nchw.shape(), 3, 3, 1, 1, "NCHW");
+    Array col2imed_nchw_old = old_op::col2im(im2coled_nchw, image_nchw.shape(), 3, 3, 1, 1, "NCHW");
 
     EXPECT_TRUE(
         Array::equals(
@@ -62,9 +63,6 @@ TEST(RTCTests, col2im_with_channels) {
             col2imed_nhwc_old
         )
     );
-
-    // col2imed_nchw.print();
-    // col2imed_nchw_old.print();
 
     EXPECT_TRUE(
         Array::equals(

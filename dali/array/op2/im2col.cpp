@@ -23,21 +23,21 @@ std::vector<int> deduce_im2col_shape(
 
     int w_dim = data_format.find('W'),
         h_dim = data_format.find('H'),
-        channel_dim = data_format.find('C'),
-        batch_dim = data_format.find('N');
+        c_dim = data_format.find('C'),
+        n_dim = data_format.find('N');
 
     // No N dimension if image is 3D:
     if (src_bshape.size() == 3) {
         w_dim = w_dim - 1;
         h_dim = h_dim - 1;
-        channel_dim = channel_dim - 1;
+        c_dim = c_dim - 1;
     }
 
-    const int i_channel = src_bshape[channel_dim];
+    const int i_channel = src_bshape[c_dim];
     const int i_height  = src_bshape[h_dim] + prepad_h + postpad_h;
     const int i_width   = src_bshape[w_dim] + prepad_w + postpad_w;
     // calculate number of batches
-    const int num = src_bshape.size() == 4 ? src_bshape[batch_dim] : 1;
+    const int num = src_bshape.size() == 4 ? src_bshape[n_dim] : 1;
     const int o_height = (i_height - (dilate_h * (filter_h - 1) + 1)) / stride_h + 1;
     const int o_width  = (i_width  - (dilate_w * (filter_w - 1) + 1)) / stride_w + 1;
 
@@ -154,10 +154,10 @@ struct Im2ColOperationState : OperationState {
             "typename C9, typename C10, typename C11>\n";
         std::string template_usage =
             "<C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11>";
-        int channel_dim = data_format_.find('C'),
+        int c_dim = data_format_.find('C'),
             w_dim = data_format_.find('W'),
             h_dim = data_format_.find('H'),
-            batch_dim = data_format_.find('N');
+            n_dim = data_format_.find('N');
         std::string access_image = utils::make_message(
             "[{",
             (unsigned char)std::tolower((unsigned char)data_format_[0]),
@@ -169,6 +169,46 @@ struct Im2ColOperationState : OperationState {
             (unsigned char)std::tolower((unsigned char)data_format_[3]),
             "}]"
         );
+
+        // obtain the values c, h, and w by iteratively chipping away at the
+        // index using strides:
+        auto stride_1_letter = n_dim == 3 ? data_format_[2] : data_format_[3];
+        auto stride_2_letter = n_dim == 2 ? data_format_[1] : data_format_[2];
+        auto stride_3_letter = n_dim == 1 ? data_format_[0] : data_format_[1];
+
+        std::map<unsigned char, std::string> letter2name = {
+            {'C', "c"}, {'W', "w_offset"}, {'H', "h_offset"}
+        };
+        std::map<unsigned char, std::string> letter2stride = {
+            {'C', utils::make_message("i_shape_[", c_dim, "]")},
+            {'W', "filter_w_"}, {'H', "filter_h_"}
+        };
+        std::map<unsigned char, std::string> letter2adj = {
+            {'C', ""}, {'H', " * dilate_h_"}, {'W', " * dilate_w_"}
+        };
+
+        auto compute_whc = utils::make_message(
+            // obtain offset in the relevant dimension:
+            "        const int ", letter2name.at(stride_1_letter), " = query[0] % ",
+            letter2stride.at(stride_1_letter), letter2adj.at(stride_1_letter), ";\n"
+            // obtain index post-this offset computation:
+            "        const int index_without_", letter2name.at(stride_1_letter), " = query[0] / ",
+            letter2stride.at(stride_1_letter), ";\n"
+            // obtain index for next dimension:
+            "        const int ", letter2name.at(stride_2_letter), " = index_without_",
+            letter2name.at(stride_1_letter), " % ", letter2stride.at(stride_2_letter), letter2adj.at(stride_2_letter), ";\n"
+            // obtain index post-this offset computation:
+            "        const int index_without_", letter2name.at(stride_2_letter), " = index_without_",
+            letter2name.at(stride_1_letter), " / ", letter2stride.at(stride_2_letter), ";\n"
+            // obtain index for last dimension:
+            "        const int ", letter2name.at(stride_3_letter), " = index_without_",
+            letter2name.at(stride_2_letter), " % ", letter2stride.at(stride_3_letter), letter2adj.at(stride_3_letter), ";\n"
+            // now use the collected values to compute w and h:
+            "        const int w = (query[1] % o_width_) * stride_w_ + w_offset - prepad_w_;\n"
+            "        const int jdivw = query[1] / o_width_;\n"
+            "        const int h = (jdivw % o_height_) * stride_h_ + h_offset - prepad_h_;\n"
+        );
+
         return utils::make_message(
             template_string,
             "struct Im2ColKernel", data_format_, " {\n"
@@ -217,27 +257,20 @@ struct Im2ColOperationState : OperationState {
             "              stride_w_ + 1\n"
             "          ),\n"
             "          shape_({\n"
-            "              filter_h_ * filter_w_ * i_shape_[", channel_dim, "],\n"
-            "              o_height_ * o_width_ * i_shape_[", batch_dim, "]\n"
+            "              filter_h_ * filter_w_ * i_shape_[", c_dim, "],\n"
+            "              o_height_ * o_width_ * i_shape_[", n_dim, "]\n"
             "          }) {}\n"
             "    XINLINE const Shape<ndim>& shape() const {\n"
             "        return shape_;\n"
             "    }\n"
             "    XINLINE T operator[](const Shape<ndim>& query) {\n"
-            "        const int c = query[0] % i_shape_[", channel_dim, "];\n"
-            "        const int n = query[1] / (o_height_ * o_width_);\n"
-            "        const int i_without_channels = query[0] / i_shape_[", channel_dim, "];\n"
-            "        const int w_offset = i_without_channels % filter_w_ * dilate_w_;\n"
-            "        const int idivp    = i_without_channels / filter_w_;\n"
-            "        const int h_offset = idivp % filter_h_ * dilate_h_;\n"
-            "        const int w = (query[1] % o_width_) * stride_w_ + w_offset - prepad_w_;\n"
-            "        const int jdivw = query[1] / o_width_;\n"
-            "        const int h = (jdivw % o_height_) * stride_h_ + h_offset - prepad_h_;\n"
+            "        const int n = query[1] / (o_height_ * o_width_);\n",
+                     compute_whc,
             "        if (0 <= w && w < i_shape_[", w_dim, "] &&\n"
             "            0 <= h && h < i_shape_[", h_dim, "]) {\n"
             "            return image_", access_image, ";\n"
             "        } else {\n"
-            "            // padding with zeros:\n"
+            //           padding with zeros:
             "            return T(0.0f);\n"
             "        }\n"
             "    }\n"

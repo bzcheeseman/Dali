@@ -1,5 +1,7 @@
 #include "col2im.h"
 
+#include <map>
+
 #include "dali/array/op2/operation.h"
 #include "dali/array/op2/elementwise_operation.h"
 #include "dali/array/op2/rtc_utils.h"
@@ -146,6 +148,30 @@ struct Col2ImOperationState : OperationState {
         w_dim = computation_rank + w_dim - 4;
         h_dim = computation_rank + h_dim - 4;
         n_dim = computation_rank + n_dim - 4;
+
+        std::map<unsigned char, std::string> letter2symbol = {
+            {'C', "c"},
+            {'W', "((w - pw * stride_w_) / dilate_w_)"},
+            {'H', "((h - ph * stride_h_) / dilate_h_)"}
+        };
+        std::map<unsigned char, std::string> letter2stride = {
+            {'C', "o_channel_"},
+            {'W', "filter_w_"},
+            {'H', "filter_h_"}
+        };
+        auto stride_1_letter = n_dim == 3 ? data_format_[2] : data_format_[3];
+        auto stride_2_letter = n_dim == 2 ? data_format_[1] : data_format_[2];
+        auto stride_3_letter = n_dim == 1 ? data_format_[0] : data_format_[1];
+
+        auto access_im2coled_data = utils::make_message(
+            // stride of lower 2 dimensions
+            letter2symbol.at(stride_3_letter), " * (", letter2stride.at(stride_2_letter), " * ", letter2stride.at(stride_1_letter), ") + ",
+            // stride of lower 1 dimension
+            letter2symbol.at(stride_2_letter), " * ", letter2stride.at(stride_1_letter), " + ",
+            // stride is 1:
+            letter2symbol.at(stride_1_letter)
+        );
+
         return utils::make_message(
             "XINLINE int Col2ImKernel", data_format_, "_min(int left, int right) {\n"
             "    return left < right ? left : right;\n"
@@ -207,14 +233,8 @@ struct Col2ImOperationState : OperationState {
             "        T res = static_cast<T>(0);\n"
             "        for (int ph = ph_min; ph < ph_max; ph += dilate_h_) {\n"
             "            for (int pw = pw_min; pw < pw_max; pw += dilate_w_) {\n"
-            "                res += input_[{\n"
-            //                   h has a stride equal to the number of channels x filter_w:
-            "                    ((h - ph * stride_h_) / dilate_h_) * (filter_w_ * o_channel_) +\n"
-            //                   w has a stride equal to the number of channels:
-            "                    ((w - pw * stride_w_) / dilate_w_) * o_channel_ +\n"
-            //                   c has a stride of 1:
-            "                    c,\n"
-            "                    (n * o_height_ + ph) * o_width_ + pw\n"
+            "                res += input_[{\n",
+                                access_im2coled_data, ", (n * o_height_ + ph) * o_width_ + pw\n"
             "                }];\n"
             "            }\n"
             "        }\n"

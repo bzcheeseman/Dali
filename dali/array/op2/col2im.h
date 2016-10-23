@@ -2,6 +2,7 @@
 #define DALI_ARRAY_OP2_COL2IM_H
 
 #include <string>
+#include <vector>
 
 struct Operation;
 

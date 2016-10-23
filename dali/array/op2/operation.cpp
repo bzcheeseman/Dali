@@ -780,7 +780,7 @@ struct AssignmentOperationState : public OperationState {
                         "        num_el\n"
                         "    );\n"
                 );
-            } else {
+            } else {
                 return utils::make_message(
                         "    auto shape = ", left_->get_call_code_nd(symbol_table, node_to_info, device_type), ".shape();\n"
                         "    int num_el = shape.numel();\n"

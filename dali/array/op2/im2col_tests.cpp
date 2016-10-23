@@ -29,5 +29,11 @@ TEST(RTCTests, im2col_without_channels) {
     Array image_wnch = image_nchw.transpose({3, 0, 1, 2});
     // allow arbitrary data-formats:
     Array rtc_res_wnch = op::im2col(image_wnch, 3, 3, 1, 1, "WNCH");
-    EXPECT_TRUE(Array::equals(rtc_res_wnch, old_res_nchw));
+
+    // break out the patch dimension
+    auto rtc_res_wnch_patches = rtc_res_wnch.reshape({3, 1, 3, -1});
+    // make patch become c, h, w:
+    auto rtc_res_nchw_patches = rtc_res_wnch_patches.transpose({1, 2, 0, 3}).reshape({9, -1});
+
+    EXPECT_TRUE(Array::equals(rtc_res_nchw_patches, old_res_nchw));
 }

@@ -21,8 +21,8 @@ struct OuterOperationState : public OperationState {
     std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
         return"template<typename C1, typename C2>\n"
         "struct OuterKernel {\n"
-        "    const C1& left_;\n"
-        "    const C2& right_;\n"
+        "    const C1 left_;\n"
+        "    const C2 right_;\n"
         "    static const int ndim = 2;\n"
         "    typedef typename C1::T T;\n"
         "    XINLINE OuterKernel(const C1& left, const C2& right)\n"

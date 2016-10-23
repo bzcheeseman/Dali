@@ -296,6 +296,18 @@ namespace functor {
         }
     };
 
+    template<>
+    XINLINE
+    double power<double>::Map(const double& a, const double& b) {
+        return pow(a, b);
+    }
+
+    template<>
+    XINLINE
+    int power<int>::Map(const int& a, const int& b) {
+        return pow((double)a, (double)b);
+    }
+
     template<typename R>
     struct abs {
         XINLINE static R Map(const R& a) {

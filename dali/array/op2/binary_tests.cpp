@@ -158,16 +158,6 @@ TEST(RTCTests, add_strided_nd) {
         return out;\
     }
 
-#define DALI_RTC_BINARY_TEST(funcname)\
-    for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {\
-        int size = 4;\
-        auto a = Array::arange({2, size}, dtype);\
-        auto b = Array::arange({2, size}, dtype) + 1;\
-        Array dst = Array::arange({2, size}, dtype) + 2;\
-        dst = op::funcname(a, b);\
-        Array reference = reference_ ##funcname(a, b);\
-        EXPECT_TRUE(Array::allclose(dst, reference, 1e-7));\
-    }\
 
 DALI_DEFINE_REFERENCE_BINARY_OP(eltmul, eltmul);
 DALI_DEFINE_REFERENCE_BINARY_OP(eltdiv, eltdiv);
@@ -175,13 +165,25 @@ DALI_DEFINE_REFERENCE_BINARY_OP(prelu, prelu);
 DALI_DEFINE_REFERENCE_BINARY_OP(pow, power);
 DALI_DEFINE_REFERENCE_BINARY_OP(equals, equals);
 
-TEST(RTCTests, elementwise_binary_ops) {
-    DALI_RTC_BINARY_TEST(eltmul);
-    DALI_RTC_BINARY_TEST(eltdiv);
-    DALI_RTC_BINARY_TEST(prelu);
-    DALI_RTC_BINARY_TEST(pow);
-    DALI_RTC_BINARY_TEST(equals);
-}
+#define DALI_RTC_BINARY_TEST(funcname)\
+    TEST(RTCTests, elementwise_binary_ ##funcname) { \
+        for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {\
+            int size = 4;\
+            auto a = Array::arange({2, size}, dtype);\
+            auto b = Array::arange({2, size}, dtype) + 1;\
+            Array dst = Array::arange({2, size}, dtype) + 2;\
+            dst = op::funcname(a, b);\
+            Array reference = reference_ ##funcname(a, b);\
+            EXPECT_TRUE(Array::allclose(dst, reference, 1e-7));\
+        }\
+    }
+
+
+DALI_RTC_BINARY_TEST(eltmul);
+DALI_RTC_BINARY_TEST(eltdiv);
+DALI_RTC_BINARY_TEST(prelu);
+DALI_RTC_BINARY_TEST(pow);
+DALI_RTC_BINARY_TEST(equals);
 
 
 TEST(RTCTests, chained_add) {

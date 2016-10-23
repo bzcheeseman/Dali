@@ -14,6 +14,31 @@
 
 using utils::Hasher;
 
+bool should_always_recompile_is_cached = false;
+bool should_always_recompile_cache     = false;
+
+bool should_always_recompile() {
+    if (!should_always_recompile_is_cached) {
+        auto env_var_ptr = std::getenv("DALI_RTC_ALWAYS_RECOMPILE");
+        std::string dali_rtc_always_recompile;
+        if (env_var_ptr == NULL) {
+            dali_rtc_always_recompile = "false";
+        } else {
+            dali_rtc_always_recompile = env_var_ptr;
+        }
+
+        // lower
+        for (int i = 0; i < dali_rtc_always_recompile.size(); ++i) {
+            if ('A' <= dali_rtc_always_recompile[i] && dali_rtc_always_recompile[i] <= 'Z') {
+                dali_rtc_always_recompile[i] += 'a' - 'A';
+            }
+        }
+        should_always_recompile_cache = (dali_rtc_always_recompile == "true");
+        should_always_recompile_is_cached = true;
+    }
+    return should_always_recompile_cache;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 //                         OPERATION STATE                                   //
 ///////////////////////////////////////////////////////////////////////////////
@@ -156,7 +181,7 @@ std::function<void(void**, const int*, const int**, const int**, double*)> Opera
                           .add(node_to_info.at(this).hash)
                           .value();
     // check if the operation needs to be runtime compiled
-    if (!array_op_compiler.load(hash)) {
+    if (!array_op_compiler.load(hash) || should_always_recompile()) {
         DALI_SCOPE("compilation");
         auto code_template = get_code_template(
             device,

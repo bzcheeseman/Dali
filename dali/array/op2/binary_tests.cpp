@@ -158,7 +158,6 @@ TEST(RTCTests, add_strided_nd) {
         return out;\
     }
 
-
 DALI_DEFINE_REFERENCE_BINARY_OP(eltmul, eltmul);
 DALI_DEFINE_REFERENCE_BINARY_OP(eltdiv, eltdiv);
 DALI_DEFINE_REFERENCE_BINARY_OP(prelu, prelu);
@@ -174,7 +173,7 @@ DALI_DEFINE_REFERENCE_BINARY_OP(equals, equals);
             Array dst = Array::arange({2, size}, dtype) + 2;\
             dst = op::funcname(a, b);\
             Array reference = reference_ ##funcname(a, b);\
-            EXPECT_TRUE(Array::allclose(dst, reference, 1e-7));\
+            EXPECT_TRUE(Array::allclose(dst, reference, 1e-3));\
         }\
     }
 

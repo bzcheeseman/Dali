@@ -80,11 +80,11 @@ DALI_RTC_UNARY_TEST(identity);
             }\
         } else if (x.dtype() == DTYPE_FLOAT) {\
             for (int i = 0; i < raveled_x.number_of_elements(); i++) {\
-                raveled_out(i) = functor::FUNCTOR_NAME<float>::Map((float)raveled_x(i), scalar);\
+                raveled_out(i) = functor::FUNCTOR_NAME<float>::Map((float)raveled_x(i), (float)scalar);\
             }\
         } else {\
             for (int i = 0; i < raveled_x.number_of_elements(); i++) {\
-                raveled_out(i) = functor::FUNCTOR_NAME<int>::Map((int)raveled_x(i), scalar);\
+                raveled_out(i) = functor::FUNCTOR_NAME<int>::Map((int)raveled_x(i), (int)scalar);\
             }\
         }\
         return out;\
@@ -97,7 +97,7 @@ DALI_RTC_UNARY_TEST(identity);
             auto a = Array::arange({5, size}, dtype) + 1;\
             auto dst = Array::zeros({5, size}, dtype);\
             dst = op::funcname(a, 2.0);\
-            EXPECT_TRUE(Array::allclose(dst, reference_scalar_ ##funcname(a, 2.0), 1e-5));\
+            EXPECT_TRUE(Array::allclose(dst, reference_scalar_ ##funcname(a, 2.0), 1e-3));\
         }\
     }
 

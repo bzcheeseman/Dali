@@ -311,6 +311,12 @@ namespace functor {
 
     template<>
     XINLINE
+    float power<float>::Map(const float& a, const float& b) {
+        return powf(a, b);
+    }
+
+    template<>
+    XINLINE
     double power<double>::Map(const double& a, const double& b) {
         return pow(a, b);
     }

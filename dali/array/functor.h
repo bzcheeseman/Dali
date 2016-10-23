@@ -273,6 +273,19 @@ namespace functor {
         }
     };
 
+    template<>
+    XINLINE
+    int tanh<int>::Map(const int& a) {
+        return ::tanh((double)a);
+    }
+
+    template<>
+    XINLINE
+    double tanh<double>::Map(const double& a) {
+        return ::tanh(a);
+    }
+
+
     // tanh^-1 (z) = 1/2 * (ln(1 + z) - ln(1 - z))
     // http://mathworld.wolfram.com/InverseHyperbolicTangent.html
     template<typename R>

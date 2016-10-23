@@ -125,7 +125,7 @@ std::string OperationState::get_code_template(memory::Device device,
         }
     });
 
-    result << "void run(void** array_data, const int* offsets, const int** sizes, const int** strides, double* scalar_arguments) {\n";
+    result << "void run(void** array_data, const int* offsets, const int** sizes, const int** strides, const void** scalar_arguments) {\n";
 
     // DECLARE SYMBOLS
     symbol_table_t symbol_table;
@@ -170,7 +170,7 @@ std::string OperationState::get_code_template(memory::Device device,
 }
 
 
-std::function<void(void**, const int*, const int**, const int**, double*)> OperationState::compile(
+std::function<void(void**, const int*, const int**, const int**, const void**)> OperationState::compile(
         memory::Device device,
         const std::vector<const ArrayOperationState*>& arrays,
         const std::vector<const ScalarOperationState*>& scalars,
@@ -189,14 +189,14 @@ std::function<void(void**, const int*, const int**, const int**, double*)> Opera
             scalars,
             node_to_info
         );
-        array_op_compiler.compile<void**, const int*, const int**, const int**, double*>(
+        array_op_compiler.compile<void**, const int*, const int**, const int**, const void**>(
             hash,
             code_template,
             device.type()
         );
     }
     // return the operation that was loaded or compiled:
-    return array_op_compiler.get_function<void**, const int*, const int**, const int**, double*>(hash);
+    return array_op_compiler.get_function<void**, const int*, const int**, const int**, const void**>(hash);
 }
 
 std::string Operation::name() const {
@@ -239,12 +239,12 @@ void eval_op(const Operation& op,
                            return op->array_.reshape_broadcasted(shape).copyless_right_fit_ndim(rank);
                        }
                    });
-    std::vector<double> scalars;
+    std::vector<const void*> scalars;
     std::transform(scalar_ops.begin(),
                    scalar_ops.end(),
                    std::back_inserter(scalars),
                    [&](const ScalarOperationState* op) {
-                       return op->value_;
+                        return op->value_ptr();
                    });
 
     std::vector<void*> data_ptrs;
@@ -537,11 +537,7 @@ std::string ArrayOperationState::get_call_code_nd(const symbol_table_t& symbol_t
 
 const hash_t ScalarOperationState::optype_hash = std::hash<std::string>()("ScalarOperationState");
 
-ScalarOperationState::ScalarOperationState(double value) : OperationState(1), value_(value) {}
-
-DType ScalarOperationState::dtype() const {
-    return DTYPE_DOUBLE;
-}
+ScalarOperationState::ScalarOperationState() : OperationState(1) {}
 
 std::vector<int> ScalarOperationState::bshape() const {
     return {};
@@ -563,7 +559,6 @@ int ScalarOperationState::number_of_elements() const {
     return 1;
 }
 
-
 void ScalarOperationState::compute_node_compilation_info(int desired_computation_rank,
                                            const std::vector<int>& desired_computation_shape,
                                            std::vector<const ArrayOperationState*>* arrays,
@@ -571,7 +566,7 @@ void ScalarOperationState::compute_node_compilation_info(int desired_computation
                                            node_to_info_t* node_to_info) const {
     scalars->emplace_back(this);
     (*node_to_info)[this].computation_rank = desired_computation_rank;
-    (*node_to_info)[this].hash = Hasher().add(optype_hash).add(desired_computation_rank).value();
+    (*node_to_info)[this].hash = Hasher().add(optype_hash).add((int)dtype()).add(desired_computation_rank).value();
 }
 
 bool ScalarOperationState::is_dim_collapsible_with_dim_minus_one(const int& dim) const {
@@ -587,6 +582,65 @@ std::string ScalarOperationState::get_call_code_nd(const symbol_table_t& symbol_
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+//                       Scalar Operation                                    //
+///////////////////////////////////////////////////////////////////////////////
+
+struct ScalarDoubleOperationState : public ScalarOperationState {
+    double value_;
+
+    ScalarDoubleOperationState(double value) : ScalarOperationState(), value_(value) {}
+
+    virtual std::string name() const {
+        return "double";
+    }
+
+    virtual DType dtype() const {
+        return DTYPE_DOUBLE;
+    }
+
+    virtual const void* value_ptr() const {
+        return (const void*)&value_;
+    }
+};
+
+struct ScalarIntegerOperationState : public ScalarOperationState {
+    int value_;
+
+    ScalarIntegerOperationState(int value) : ScalarOperationState(), value_(value) {}
+
+    virtual std::string name() const {
+        return "int";
+    }
+
+    virtual DType dtype() const {
+        return DTYPE_INT32;
+    }
+
+    virtual const void* value_ptr() const {
+        return (const void*)&value_;
+    }
+};
+
+struct ScalarFloatOperationState : public ScalarOperationState {
+    float value_;
+
+    ScalarFloatOperationState(float value) : ScalarOperationState(), value_(value) {}
+
+    virtual std::string name() const {
+        return "float";
+    }
+
+    virtual DType dtype() const {
+        return DTYPE_FLOAT;
+    }
+
+    virtual const void* value_ptr() const {
+        return (const void*)&value_;
+    }
+};
+
+
+///////////////////////////////////////////////////////////////////////////////
 //                         OPERATION                                         //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -596,10 +650,13 @@ Operation::Operation(const Array& arr): Operation(std::make_shared<ArrayOperatio
 Operation::Operation(const Assignable<Array>& arr): Operation(std::make_shared<ArrayOperationState>(Array(arr))) {
 }
 
-Operation::Operation(double scalar): Operation(std::make_shared<ScalarOperationState>(scalar)) {
+Operation::Operation(double scalar): Operation(std::make_shared<ScalarDoubleOperationState>(scalar)) {
 }
 
-Operation::Operation(int scalar): Operation(op::astype((double)scalar, DTYPE_INT32)) {
+Operation::Operation(int scalar): Operation(std::make_shared<ScalarIntegerOperationState>(scalar)) {
+}
+
+Operation::Operation(float scalar): Operation(std::make_shared<ScalarFloatOperationState>(scalar)) {
 }
 
 Operation::Operation(operation_state_ptr state): state_(state) {

@@ -100,7 +100,7 @@ struct OperationState : std::enable_shared_from_this<OperationState> {
                                           const node_to_info_t& node_to_info) const final;
 
 
-    std::function<void(void**, const int*, const int**, const int**, double*)> compile(
+    std::function<void(void**, const int*, const int**, const int**, const void**)> compile(
             memory::Device device,
             const std::vector<const ArrayOperationState*>& arrays,
             const std::vector<const ScalarOperationState*>& scalars,
@@ -155,18 +155,15 @@ struct ArrayOperationState : public OperationState {
 
 
 struct ScalarOperationState : public OperationState{
+    ScalarOperationState();
     static const hash_t optype_hash;
 
-    double value_;
-
-    ScalarOperationState(double value);
-
-    virtual DType dtype() const;
-
+    virtual DType dtype() const = 0;
     virtual std::vector<int> bshape() const;
 
     virtual int ndim() const;
-    virtual std::string name() const;
+    virtual std::string name() const = 0;
+    virtual const void* value_ptr() const = 0;
 
     virtual std::vector<int> shape() const;
 
@@ -193,7 +190,7 @@ struct Operation {
     Operation(const Assignable<Array>& arr);
 
     Operation(double scalar);
-
+    Operation(float scalar);
     Operation(int scalar);
 
     Operation(operation_state_ptr state);

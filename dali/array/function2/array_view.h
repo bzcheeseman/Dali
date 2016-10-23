@@ -250,8 +250,8 @@ class ScalarView {
 };
 
 template<typename T, int ndim>
-ScalarView<T, ndim> make_scalar_view(const T& scalar) {
-    return ScalarView<T, ndim>(scalar);
+ScalarView<T, ndim> make_scalar_view(const void* scalar) {
+    return ScalarView<T, ndim>(*((T*)scalar));
 }
 
 template<typename T, int ndim>

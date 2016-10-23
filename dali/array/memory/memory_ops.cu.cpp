@@ -5,7 +5,6 @@
 #include "dali/array/memory/device.h"
 #include "dali/utils/assert2.h"
 #include "dali/utils/print_utils.h"
-#include "dali/utils/scope.h"
 
 using utils::assert2;
 
@@ -33,14 +32,12 @@ namespace memory {
 
     DevicePtr allocate(Device device, int amount, int inner_dimension) {
         if (device.is_cpu()) {
-            DALI_SCOPE("memory allocation cpu");
             auto dummy = dummy_cpu(NULL, amount, inner_dimension);
             mshadow::AllocSpace(&dummy, false);
             return DevicePtr(device, dummy.dptr_);
         }
 #ifdef DALI_USE_CUDA
         else if (device.is_gpu()) {
-            DALI_SCOPE("memory allocation gpu");
             device.set_cuda_device();
             auto dummy = dummy_gpu(NULL, amount, inner_dimension);
             mshadow::AllocSpace(&dummy, false);
@@ -55,13 +52,11 @@ namespace memory {
 
     void free(DevicePtr dev_ptr, int amount, int inner_dimension) {
         if (dev_ptr.device.is_cpu()) {
-            DALI_SCOPE("memory deallocation cpu");
             auto dummy = dummy_cpu(dev_ptr.ptr, amount, inner_dimension);
             mshadow::FreeSpace(&dummy);
         }
 #ifdef DALI_USE_CUDA
         else if (dev_ptr.device.is_gpu()) {
-            DALI_SCOPE("memory deallocation gpu");
             dev_ptr.device.set_cuda_device();
             auto dummy = dummy_gpu(dev_ptr.ptr, amount, inner_dimension);
             mshadow::FreeSpace(&dummy);
@@ -91,28 +86,24 @@ namespace memory {
 
     void copy(DevicePtr dest, DevicePtr source, int amount, int inner_dimension) {
         if (dest.device.is_cpu() && source.device.is_cpu()) {
-            DALI_SCOPE("memory copy cpu -> cpu");
             auto dummy_dest   = dummy_cpu(dest.ptr,   amount, inner_dimension);
             auto dummy_source = dummy_cpu(source.ptr, amount, inner_dimension);
             mshadow::Copy(dummy_dest, dummy_source);
         }
 #ifdef DALI_USE_CUDA
         else if (dest.device.is_cpu() && source.device.is_gpu()) {
-            DALI_SCOPE("memory copy cpu -> gpu");
             source.device.set_cuda_device();
             auto dummy_dest   = dummy_cpu(dest.ptr,   amount, inner_dimension);
             auto dummy_source = dummy_gpu(source.ptr, amount, inner_dimension);
             mshadow::Copy(dummy_dest, dummy_source);
         }
         else if (dest.device.is_gpu() && source.device.is_cpu()) {
-            DALI_SCOPE("memory copy gpu -> cpu");
             dest.device.set_cuda_device();
             auto dummy_dest   = dummy_gpu(dest.ptr,   amount, inner_dimension);
             auto dummy_source = dummy_cpu(source.ptr, amount, inner_dimension);
             mshadow::Copy(dummy_dest, dummy_source);
         }
         else if (dest.device.is_gpu() && source.device.is_gpu()) {
-            DALI_SCOPE("memory copy gpu -> gpu");
             dest.device.set_cuda_device();
             ASSERT2(dest.device.number() == source.device.number(),
                     "GPU -> GPU memory movement not supported yet.");

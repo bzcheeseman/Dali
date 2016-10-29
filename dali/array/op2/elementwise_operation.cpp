@@ -40,15 +40,15 @@ bool ndim_compatible(const Operation& a, const Operation& b) {
 //                       HEADERS                                             //
 ///////////////////////////////////////////////////////////////////////////////
 
-struct ElementwiseOperationState : public OperationState {
+struct ElementwiseOperationState : public JITOperationState {
     static const hash_t optype_hash;
 
-    const operation_state_ptrs arguments_;
+    const std::vector<std::shared_ptr<const JITOperationState>> arguments_;
     const std::string functor_name_;
 
-    static int compute_min_computation_rank(const operation_state_ptrs& arguments);
+    static int compute_min_computation_rank(const std::vector<std::shared_ptr<const JITOperationState>>& arguments);
 
-    ElementwiseOperationState(const std::string& functor_name, const operation_state_ptrs& arguments);
+    ElementwiseOperationState(const std::string& functor_name, const std::vector<std::shared_ptr<const JITOperationState>>& arguments);
 
 
     virtual DType dtype() const;
@@ -66,9 +66,9 @@ struct ElementwiseOperationState : public OperationState {
 
     virtual bool is_dim_collapsible_with_dim_minus_one(const int& dim) const;
 
-    virtual operation_state_ptr collapse_dim_with_dim_minus_one(const int& dim) const;
+    virtual std::shared_ptr<const JITOperationState> collapse_dim_with_dim_minus_one(const int& dim) const;
 
-    virtual operation_state_ptr transpose(const std::vector<int>& permutation) const;
+    virtual std::shared_ptr<const JITOperationState> transpose(const std::vector<int>& permutation) const;
 
     virtual std::string get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
 
@@ -83,19 +83,19 @@ struct ElementwiseOperationState : public OperationState {
 const hash_t ElementwiseOperationState::optype_hash = std::hash<std::string>()("ElementwiseOperationState");
 
 int ElementwiseOperationState::compute_min_computation_rank(
-        const operation_state_ptrs& arguments) {
+        const std::vector<std::shared_ptr<const JITOperationState>>& arguments) {
     return std::accumulate(arguments.begin(),
                            arguments.end(),
                            0,
-                           [](int so_far, operation_state_ptr op) {
+                           [](int so_far, std::shared_ptr<const JITOperationState> op) {
                                return std::max(so_far, op->min_computation_rank_);
                            });
 }
 
 ElementwiseOperationState::ElementwiseOperationState(
     const std::string& functor_name,
-    const operation_state_ptrs& arguments) :
-        OperationState(compute_min_computation_rank(arguments)),
+    const std::vector<std::shared_ptr<const JITOperationState>>& arguments) :
+        JITOperationState(compute_min_computation_rank(arguments)),
         functor_name_(functor_name),
         arguments_(arguments) {
 }
@@ -117,7 +117,9 @@ std::vector<int> ElementwiseOperationState::bshape() const {
     return get_common_bshape(arg_bshapes);
 }
 
-std::vector<operation_state_ptr> ElementwiseOperationState::arguments() const { return arguments_; }
+std::vector<operation_state_ptr> ElementwiseOperationState::arguments() const {
+    return std::vector<operation_state_ptr>(arguments_.begin(), arguments_.end());
+}
 
 void ElementwiseOperationState::compute_node_compilation_info(
         int desired_computation_rank,
@@ -145,8 +147,8 @@ bool ElementwiseOperationState::is_dim_collapsible_with_dim_minus_one(const int&
     return is_contig;
 }
 
-operation_state_ptr ElementwiseOperationState::collapse_dim_with_dim_minus_one(const int& dim) const {
-    operation_state_ptrs new_arguments;
+std::shared_ptr<const JITOperationState> ElementwiseOperationState::collapse_dim_with_dim_minus_one(const int& dim) const {
+    std::vector<std::shared_ptr<const JITOperationState>> new_arguments;
 
     for (auto& arg : arguments_) {
         new_arguments.emplace_back(arg->collapse_dim_with_dim_minus_one(dim));
@@ -155,8 +157,8 @@ operation_state_ptr ElementwiseOperationState::collapse_dim_with_dim_minus_one(c
     return std::make_shared<ElementwiseOperationState>(functor_name_, new_arguments);
 }
 
-operation_state_ptr ElementwiseOperationState::transpose(const std::vector<int>& permutation) const {
-    operation_state_ptrs new_arguments;
+std::shared_ptr<const JITOperationState> ElementwiseOperationState::transpose(const std::vector<int>& permutation) const {
+    std::vector<std::shared_ptr<const JITOperationState>> new_arguments;
 
     for (auto& arg : arguments_) {
         new_arguments.emplace_back(arg->transpose(permutation));
@@ -196,7 +198,7 @@ struct CastOperationState : public ElementwiseOperationState {
 
     const DType dtype_;
 
-    CastOperationState(DType dtype, const operation_state_ptr argument) :
+    CastOperationState(DType dtype, const std::shared_ptr<const JITOperationState> argument) :
         ElementwiseOperationState("functor::cast", {argument}),
         dtype_(dtype) {
     }
@@ -228,7 +230,7 @@ const hash_t CastOperationState::optype_hash = std::hash<std::string>()("CastOpe
 struct RoundOperationState : public ElementwiseOperationState {
     static const hash_t optype_hash;
 
-    RoundOperationState(const operation_state_ptr argument) :
+    RoundOperationState(const std::shared_ptr<const JITOperationState> argument) :
         ElementwiseOperationState("functor::round", {argument}) {
     }
 
@@ -266,7 +268,7 @@ namespace op {
 
         return Operation(std::make_shared<ElementwiseOperationState>(
             functor_name,
-            operation_state_ptrs({a.state_})
+            std::vector<std::shared_ptr<const JITOperationState>>({a.state_->as_jit()})
         ));
     }
 
@@ -277,7 +279,7 @@ namespace op {
         auto a_b = ensure_arguments_compatible(a, b);
         return Operation(std::make_shared<ElementwiseOperationState>(
             functor_name,
-            operation_state_ptrs({std::get<0>(a_b).state_, std::get<1>(a_b).state_})
+            std::vector<std::shared_ptr<const JITOperationState>>({std::get<0>(a_b).state_->as_jit(), std::get<1>(a_b).state_->as_jit()})
         ));
     }
 
@@ -292,13 +294,13 @@ namespace op {
     Operation unsafe_cast(const Operation& a, DType type) {
         return Operation(std::make_shared<CastOperationState>(
             type,
-            a.state_
+            a.state_->as_jit()
         ));
     }
 
     Operation round(const Operation& a) {
         return Operation(std::make_shared<RoundOperationState>(
-            a.state_
+            a.state_->as_jit()
         ));
     }
 

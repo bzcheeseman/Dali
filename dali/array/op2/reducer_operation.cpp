@@ -8,13 +8,13 @@
 //                    HEADERS                                                //
 ///////////////////////////////////////////////////////////////////////////////
 
-struct ReducerOperationState : public OperationState {
-    const operation_state_ptr argument_;
+struct ReducerOperationState : public JITOperationState {
+    const std::shared_ptr<const JITOperationState> argument_;
     const std::string functor_name_;
 
     virtual hash_t optype_hash() const = 0;
 
-    ReducerOperationState(const std::string& functor_name, operation_state_ptr argument, int min_computation_rank);
+    ReducerOperationState(const std::string& functor_name, std::shared_ptr<const JITOperationState> argument, int min_computation_rank);
 
     virtual std::vector<operation_state_ptr> arguments() const;
 
@@ -28,7 +28,7 @@ struct AllReducerOperationState : public ReducerOperationState {
 
     virtual hash_t optype_hash() const;
 
-    AllReducerOperationState(const std::string& functor_name, operation_state_ptr argument);
+    AllReducerOperationState(const std::string& functor_name, std::shared_ptr<const JITOperationState> argument);
 
     virtual std::vector<int> bshape() const;
     virtual std::string name() const {
@@ -49,7 +49,7 @@ struct AllReducerOperationState : public ReducerOperationState {
 
     virtual bool is_dim_collapsible_with_dim_minus_one(const int& dim) const;
 
-    virtual operation_state_ptr transpose(const std::vector<int>& permutation) const;
+    virtual std::shared_ptr<const JITOperationState> transpose(const std::vector<int>& permutation) const;
 
     virtual std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
 
@@ -61,7 +61,7 @@ struct AxisReducerOperationState : public ReducerOperationState {
 
     virtual hash_t optype_hash() const;
 
-    AxisReducerOperationState(const std::string& functor_name, operation_state_ptr argument);
+    AxisReducerOperationState(const std::string& functor_name, std::shared_ptr<const JITOperationState> argument);
 
     virtual std::vector<int> bshape() const;
 
@@ -83,9 +83,9 @@ struct AxisReducerOperationState : public ReducerOperationState {
 
     virtual bool is_dim_collapsible_with_dim_minus_one(const int& dim) const;
 
-    virtual operation_state_ptr collapse_dim_with_dim_minus_one(const int& dim) const;
+    virtual std::shared_ptr<const JITOperationState> collapse_dim_with_dim_minus_one(const int& dim) const;
 
-    virtual operation_state_ptr transpose(const std::vector<int>& permutation) const;
+    virtual std::shared_ptr<const JITOperationState> transpose(const std::vector<int>& permutation) const;
 
     virtual std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
 
@@ -129,9 +129,9 @@ struct ArgumentAxisReducerOperationState : public AxisReducerOperationState {
 
     virtual std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
 
-    virtual operation_state_ptr collapse_dim_with_dim_minus_one(const int& dim) const;
+    virtual std::shared_ptr<const JITOperationState> collapse_dim_with_dim_minus_one(const int& dim) const;
 
-    virtual operation_state_ptr transpose(const std::vector<int>& permutation) const;
+    virtual std::shared_ptr<const JITOperationState> transpose(const std::vector<int>& permutation) const;
 
     virtual std::string kernel_name() const;
 };
@@ -150,7 +150,7 @@ hash_t AllReducerOperationState::optype_hash() const {
 
 AllReducerOperationState::AllReducerOperationState(
         const std::string& functor_name,
-        operation_state_ptr argument) :
+        std::shared_ptr<const JITOperationState> argument) :
     ReducerOperationState(functor_name, argument, 1) {
 }
 
@@ -187,9 +187,9 @@ bool AllReducerOperationState::is_dim_collapsible_with_dim_minus_one(
     return true;
 }
 
-operation_state_ptr AllReducerOperationState::transpose(
+std::shared_ptr<const JITOperationState> AllReducerOperationState::transpose(
         const std::vector<int>& permutation) const {
-    return shared_from_this();
+    return jit_shared_from_this();
 }
 
 std::string AllReducerOperationState::prefix_code(
@@ -220,7 +220,7 @@ hash_t AxisReducerOperationState::optype_hash() const {
 
 AxisReducerOperationState::AxisReducerOperationState(
         const std::string& functor_name,
-        operation_state_ptr argument) :
+        std::shared_ptr<const JITOperationState> argument) :
     ReducerOperationState(functor_name, argument, std::max(argument->min_computation_rank_ - 1, 1)) {
 }
 
@@ -264,7 +264,7 @@ bool AxisReducerOperationState::is_dim_collapsible_with_dim_minus_one(
     return argument_->is_dim_collapsible_with_dim_minus_one(dim - 1);;
 }
 
-operation_state_ptr AxisReducerOperationState::collapse_dim_with_dim_minus_one(
+std::shared_ptr<const JITOperationState> AxisReducerOperationState::collapse_dim_with_dim_minus_one(
         const int& dim) const {
     return std::make_shared<AxisReducerOperationState>(
         functor_name_,
@@ -272,7 +272,7 @@ operation_state_ptr AxisReducerOperationState::collapse_dim_with_dim_minus_one(
     );
 }
 
-operation_state_ptr AxisReducerOperationState::transpose(
+std::shared_ptr<const JITOperationState> AxisReducerOperationState::transpose(
         const std::vector<int>& permutation) const {
     auto new_permutation = permutation;
     // add last dim of tensor with rank (permutation.size() + 1)
@@ -343,7 +343,7 @@ std::string ArgumentAxisReducerOperationState::prefix_code(
     return create_argument_axis_reduce_kernel_caller(node_to_info.at(argument_.get()).computation_rank);
 }
 
-operation_state_ptr ArgumentAxisReducerOperationState::collapse_dim_with_dim_minus_one(
+std::shared_ptr<const JITOperationState> ArgumentAxisReducerOperationState::collapse_dim_with_dim_minus_one(
         const int& dim) const {
     return std::make_shared<ArgumentAxisReducerOperationState>(
         functor_name_,
@@ -351,7 +351,7 @@ operation_state_ptr ArgumentAxisReducerOperationState::collapse_dim_with_dim_min
     );
 }
 
-operation_state_ptr ArgumentAxisReducerOperationState::transpose(
+std::shared_ptr<const JITOperationState> ArgumentAxisReducerOperationState::transpose(
         const std::vector<int>& permutation) const {
     auto new_permutation = permutation;
     // add last dim of tensor with rank (permutation.size() + 1)
@@ -377,9 +377,9 @@ const hash_t AllReducerOperationState::optype_hash_cache_ =
 
 ReducerOperationState::ReducerOperationState(
         const std::string& functor_name,
-        operation_state_ptr argument,
+        std::shared_ptr<const JITOperationState> argument,
         int min_computation_rank) :
-    OperationState(min_computation_rank),
+    JITOperationState(min_computation_rank),
     functor_name_(functor_name),
     argument_(argument) {
 
@@ -407,7 +407,7 @@ namespace op {
                          const std::string& reducer_name) {
         return Operation(std::make_shared<AllReducerOperationState>(
             reducer_name,
-            a.state_
+            a.state_->as_jit()
         ));
     }
 
@@ -457,7 +457,7 @@ namespace op {
             }
         }
         bool all_reductions_are_low_dim = num_low_dims == normalized_axes.size();
-        auto res = a;
+        auto res = a.state_->as_jit();
 
         if (!all_reductions_are_low_dim) {
             std::vector<int> new_axes_order;
@@ -471,7 +471,7 @@ namespace op {
                     new_axes_order.emplace_back(i);
                 }
             }
-            res = res.transpose(new_axes_order);
+            res = res->transpose(new_axes_order);
         }
         int num_low_axes_to_reduce = normalized_axes.size();
         if (num_low_axes_to_reduce > 0) {
@@ -479,31 +479,31 @@ namespace op {
             int collapsed_ndim = ndim - 1;
             for (int axes_used_up = 0; axes_used_up < num_low_axes_to_reduce; ++axes_used_up) {
                 if (num_low_axes_to_reduce - axes_used_up == 1) {
-                    res = Operation(std::make_shared<AxisReducerOperationState>(
+                    res = std::make_shared<AxisReducerOperationState>(
                         reducer_name,
-                        res.state_
-                    ));
+                        res
+                    );
                 } else {
-                    if (res.is_dim_collapsible_with_dim_minus_one(collapsed_ndim)) {
-                        res = res.collapse_dim_with_dim_minus_one(collapsed_ndim);
+                    if (res->is_dim_collapsible_with_dim_minus_one(collapsed_ndim)) {
+                        res = res->collapse_dim_with_dim_minus_one(collapsed_ndim);
                     } else {
-                        res = Operation(std::make_shared<AxisReducerOperationState>(
+                        res = std::make_shared<AxisReducerOperationState>(
                             reducer_name,
-                            res.state_
-                        ));
+                            res
+                        );
                     }
                 }
                 --collapsed_ndim;
             }
         }
-        return res;
+        return Operation(res);
     }
 
     Operation argument_all_reduce(const Operation& a,
                                  const std::string& reducer_name) {
         return Operation(std::make_shared<ArgumentAllReducerOperationState>(
             reducer_name,
-            a.state_
+            a.state_->as_jit()
         ));
     }
 
@@ -523,7 +523,7 @@ namespace op {
         );
         if (ndim == 1) return argument_all_reduce(a, reducer_name);
 
-        auto res = a;
+        auto res = a.state_->as_jit();
         if (normalized_axis != ndim - 1) {
             std::vector<int> axes;
             for (int i = 0; i < ndim; i++) {
@@ -531,11 +531,11 @@ namespace op {
             }
             axes[axes.size() - 1] = normalized_axis;
             axes[normalized_axis] = axes.size() - 1;
-            res = res.transpose(axes);
+            res = res->transpose(axes);
         }
         return Operation(std::make_shared<ArgumentAxisReducerOperationState>(
             reducer_name,
-            res.state_
+            res
         ));
     }
 }  // namespace op2

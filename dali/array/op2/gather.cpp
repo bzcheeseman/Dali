@@ -6,14 +6,14 @@
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
 
-struct GatherState : public OperationState {
+struct GatherState : public JITOperationState {
     static const hash_t optype_hash;
 
-    operation_state_ptr source_;
-    operation_state_ptr indices_;
+    std::shared_ptr<const JITOperationState> source_;
+    std::shared_ptr<const JITOperationState> indices_;
 
-    GatherState(operation_state_ptr source, operation_state_ptr indices) :
-            OperationState(
+    GatherState(std::shared_ptr<const JITOperationState> source, std::shared_ptr<const JITOperationState> indices) :
+            JITOperationState(
                 std::max(
                     2,
                     source->ndim() + indices->min_computation_rank_ - 1
@@ -121,7 +121,7 @@ struct GatherState : public OperationState {
         return false;
     }
 
-    operation_state_ptr collapse_dim_with_dim_minus_one(const int& dim) const {
+    std::shared_ptr<const JITOperationState> collapse_dim_with_dim_minus_one(const int& dim) const {
         int indices_ndim = indices_->ndim();
         if (dim < indices_ndim) {
             return std::make_shared<GatherState>(
@@ -136,13 +136,13 @@ struct GatherState : public OperationState {
         }
     }
 
-    operation_state_ptr transpose(const std::vector<int>& permutation) const {
+    std::shared_ptr<const JITOperationState> transpose(const std::vector<int>& permutation) const {
         // TODO(jonathan): there is a way to transpose the index dimensions of
         // gather, or the non-leading dimension of the source.
         throw std::runtime_error(
             "Cannot transpose gather (yet)."
         );
-        return shared_from_this();
+        return jit_shared_from_this();
     }
 
     void compute_node_compilation_info(
@@ -204,6 +204,6 @@ namespace op {
             indices.dtype() == DTYPE_INT32,
             utils::make_message("indices must be integers (got dtype=", indices.dtype(), ").")
         );
-        return Operation(std::make_shared<GatherState>(source.state_, indices.state_));
+        return Operation(std::make_shared<GatherState>(source.state_->as_jit(), indices.state_->as_jit()));
     }
 }  // namespace op

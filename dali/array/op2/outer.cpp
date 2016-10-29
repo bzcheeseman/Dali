@@ -6,13 +6,13 @@
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
 
-struct OuterOperationState : public OperationState {
+struct OuterOperationState : public JITOperationState {
     static const hash_t optype_hash;
-    operation_state_ptr left_;
-    operation_state_ptr right_;
+    std::shared_ptr<const JITOperationState> left_;
+    std::shared_ptr<const JITOperationState> right_;
 
-    OuterOperationState(operation_state_ptr left, operation_state_ptr right)
-        : OperationState(2), left_(left), right_(right) {}
+    OuterOperationState(std::shared_ptr<const JITOperationState> left, std::shared_ptr<const JITOperationState> right)
+        : JITOperationState(2), left_(left), right_(right) {}
 
     virtual std::string name() const {
         return "outer";
@@ -62,17 +62,17 @@ struct OuterOperationState : public OperationState {
         return false;
     }
 
-    operation_state_ptr collapse_dim_with_dim_minus_one(const int& dim) const {
+    std::shared_ptr<const JITOperationState> collapse_dim_with_dim_minus_one(const int& dim) const {
         throw std::runtime_error("cannot collapse dim with dim minus one the result of outer.");
-        return shared_from_this();
+        return jit_shared_from_this();
     }
 
-    operation_state_ptr transpose(const std::vector<int>& permutation) const {
+    std::shared_ptr<const JITOperationState> transpose(const std::vector<int>& permutation) const {
         ASSERT2(permutation.size() == 2, utils::make_message("transpose of "
             "outer must receive 2 axes (got ", permutation, ")."));
         // 1) No change:
         if (permutation[0] == 0 && permutation[1] == 1) {
-            return shared_from_this();
+            return jit_shared_from_this();
         }
         // 2) transpose of outer is equivalent to swapping order of arguments:
         return std::make_shared<OuterOperationState>(right_, left_);
@@ -129,7 +129,7 @@ namespace op {
             "must have ndim <= 1 (got ", right.ndim(), ")."));
         auto left_right = ensure_arguments_compatible(left, right);
         return Operation(std::make_shared<OuterOperationState>(
-            std::get<0>(left_right).state_, std::get<1>(left_right).state_
+            std::get<0>(left_right).state_->as_jit(), std::get<1>(left_right).state_->as_jit()
         ));
     }
 }  // namespace op2

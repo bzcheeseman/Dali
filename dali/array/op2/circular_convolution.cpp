@@ -6,14 +6,14 @@
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
 
-struct CircularConvolutionOperationState : public OperationState {
+struct CircularConvolutionOperationState : public JITOperationState {
     static const hash_t optype_hash;
 
-    operation_state_ptr content_;
-    operation_state_ptr weights_;
+    std::shared_ptr<const JITOperationState> content_;
+    std::shared_ptr<const JITOperationState> weights_;
 
-    CircularConvolutionOperationState(operation_state_ptr content, operation_state_ptr weights) :
-            OperationState(std::max(2, std::max(content->min_computation_rank_, weights->min_computation_rank_))),
+    CircularConvolutionOperationState(std::shared_ptr<const JITOperationState> content, std::shared_ptr<const JITOperationState> weights) :
+            JITOperationState(std::max(2, std::max(content->min_computation_rank_, weights->min_computation_rank_))),
             content_(content),
             weights_(weights) {
     }
@@ -80,14 +80,14 @@ struct CircularConvolutionOperationState : public OperationState {
                content_->is_dim_collapsible_with_dim_minus_one(dim);
     }
 
-    operation_state_ptr collapse_dim_with_dim_minus_one(const int& dim) const {
+    std::shared_ptr<const JITOperationState> collapse_dim_with_dim_minus_one(const int& dim) const {
         return std::make_shared<CircularConvolutionOperationState>(
             content_->collapse_dim_with_dim_minus_one(dim),
             weights_->collapse_dim_with_dim_minus_one(dim)
         );
     }
 
-    operation_state_ptr transpose(const std::vector<int>& permutation) const {
+    std::shared_ptr<const JITOperationState> transpose(const std::vector<int>& permutation) const {
         bool last_dim_unchanged = permutation.back() == int(permutation.size()) - 1;
         if (last_dim_unchanged)
             return std::make_shared<CircularConvolutionOperationState>(
@@ -97,7 +97,7 @@ struct CircularConvolutionOperationState : public OperationState {
         throw std::runtime_error(
             "Cannot transpose last dimension result of circular convolution"
         );
-        return shared_from_this();
+        return jit_shared_from_this();
     }
 
     void compute_node_compilation_info(
@@ -135,7 +135,7 @@ namespace op {
     Operation circular_convolution(const Operation& x, const Operation& weights) {
         auto x_weights = ensure_arguments_compatible(x, weights);
         return Operation(std::make_shared<CircularConvolutionOperationState>(
-            std::get<0>(x_weights).state_, std::get<1>(x_weights).state_
+            std::get<0>(x_weights).state_->as_jit(), std::get<1>(x_weights).state_->as_jit()
         ));
     }
 }  // namespace op2

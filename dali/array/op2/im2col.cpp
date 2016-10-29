@@ -48,9 +48,9 @@ std::vector<int> deduce_im2col_shape(
 }
 
 
-struct Im2ColOperationState : OperationState {
+struct Im2ColOperationState : public JITOperationState {
     static const hash_t optype_hash;
-    operation_state_ptr image_;
+    std::shared_ptr<const JITOperationState> image_;
 
     int filter_h_;
     int filter_w_;
@@ -69,22 +69,22 @@ struct Im2ColOperationState : OperationState {
 
     std::string data_format_;
 
-    operation_state_ptr filter_h_op_;
-    operation_state_ptr filter_w_op_;
+    std::shared_ptr<const JITOperationState> filter_h_op_;
+    std::shared_ptr<const JITOperationState> filter_w_op_;
 
-    operation_state_ptr stride_h_op_;
-    operation_state_ptr stride_w_op_;
+    std::shared_ptr<const JITOperationState> stride_h_op_;
+    std::shared_ptr<const JITOperationState> stride_w_op_;
 
-    operation_state_ptr dilate_h_op_;
-    operation_state_ptr dilate_w_op_;
+    std::shared_ptr<const JITOperationState> dilate_h_op_;
+    std::shared_ptr<const JITOperationState> dilate_w_op_;
 
-    operation_state_ptr prepad_h_op_;
-    operation_state_ptr prepad_w_op_;
+    std::shared_ptr<const JITOperationState> prepad_h_op_;
+    std::shared_ptr<const JITOperationState> prepad_w_op_;
 
-    operation_state_ptr postpad_h_op_;
-    operation_state_ptr postpad_w_op_;
+    std::shared_ptr<const JITOperationState> postpad_h_op_;
+    std::shared_ptr<const JITOperationState> postpad_w_op_;
 
-    Im2ColOperationState(operation_state_ptr image,
+    Im2ColOperationState(std::shared_ptr<const JITOperationState> image,
                          int filter_h,
                          int filter_w,
                          int stride_h,
@@ -96,7 +96,7 @@ struct Im2ColOperationState : OperationState {
                          int postpad_h,
                          int postpad_w,
                          const std::string& data_format) :
-            OperationState(2),
+            JITOperationState(2),
             image_(image),
             filter_h_(filter_h),
             filter_w_(filter_w),
@@ -110,16 +110,16 @@ struct Im2ColOperationState : OperationState {
             postpad_w_(postpad_w),
             data_format_(data_format),
             // create scalar ops to send constants to kernel:
-            filter_h_op_(Operation(filter_h).state_),
-            filter_w_op_(Operation(filter_w).state_),
-            stride_h_op_(Operation(stride_h).state_),
-            stride_w_op_(Operation(stride_w).state_),
-            dilate_h_op_(Operation(dilate_h).state_),
-            dilate_w_op_(Operation(dilate_w).state_),
-            prepad_h_op_(Operation(prepad_h).state_),
-            prepad_w_op_(Operation(prepad_w).state_),
-            postpad_h_op_(Operation(postpad_h).state_),
-            postpad_w_op_(Operation(postpad_w).state_) {
+            filter_h_op_(Operation(filter_h).state_->as_jit()),
+            filter_w_op_(Operation(filter_w).state_->as_jit()),
+            stride_h_op_(Operation(stride_h).state_->as_jit()),
+            stride_w_op_(Operation(stride_w).state_->as_jit()),
+            dilate_h_op_(Operation(dilate_h).state_->as_jit()),
+            dilate_w_op_(Operation(dilate_w).state_->as_jit()),
+            prepad_h_op_(Operation(prepad_h).state_->as_jit()),
+            prepad_w_op_(Operation(prepad_w).state_->as_jit()),
+            postpad_h_op_(Operation(postpad_h).state_->as_jit()),
+            postpad_w_op_(Operation(postpad_w).state_->as_jit()) {
     }
 
     virtual DType dtype() const {
@@ -316,18 +316,18 @@ struct Im2ColOperationState : OperationState {
         return false;
     }
 
-    operation_state_ptr collapse_dim_with_dim_minus_one(const int& dim) const {
+    std::shared_ptr<const JITOperationState> collapse_dim_with_dim_minus_one(const int& dim) const {
         throw std::runtime_error(
             "Cannot collapse dim with dim minus one result of im2col."
         );
-        return shared_from_this();
+        return jit_shared_from_this();
     }
 
-    operation_state_ptr transpose(const std::vector<int>& permutation) const {
+    std::shared_ptr<const JITOperationState> transpose(const std::vector<int>& permutation) const {
         throw std::runtime_error(
             "Cannot transpose result of im2col."
         );
-        return shared_from_this();
+        return jit_shared_from_this();
     }
 
     void compute_node_compilation_info(
@@ -428,7 +428,7 @@ namespace op {
 
         return Operation(
             std::make_shared<Im2ColOperationState>(
-                image.state_,
+                image.state_->as_jit(),
                 filter_h,
                 filter_w,
                 stride_h,

@@ -6,25 +6,25 @@
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
 
-struct OneHotOperationState : public OperationState {
+struct OneHotOperationState : public JITOperationState {
     static const hash_t optype_hash;
 
-    operation_state_ptr indices_;
-    operation_state_ptr on_value_;
-    operation_state_ptr off_value_;
+    std::shared_ptr<const JITOperationState> indices_;
+    std::shared_ptr<const JITOperationState> on_value_;
+    std::shared_ptr<const JITOperationState> off_value_;
     int depth_;
-    operation_state_ptr depth_operation_;
+    std::shared_ptr<const JITOperationState> depth_operation_;
 
-    OneHotOperationState(operation_state_ptr indices,
+    OneHotOperationState(std::shared_ptr<const JITOperationState> indices,
                          int depth,
-                         operation_state_ptr on_value,
-                         operation_state_ptr off_value) :
-            OperationState(indices->min_computation_rank_ + 1),
+                         std::shared_ptr<const JITOperationState> on_value,
+                         std::shared_ptr<const JITOperationState> off_value) :
+            JITOperationState(indices->min_computation_rank_ + 1),
             indices_(indices),
             on_value_(on_value),
             off_value_(off_value),
             depth_(depth),
-            depth_operation_(Operation(depth).state_) {
+            depth_operation_(Operation(depth).state_->as_jit()) {
     }
 
     virtual std::string name() const {
@@ -78,14 +78,14 @@ struct OneHotOperationState : public OperationState {
         return indices_->is_dim_collapsible_with_dim_minus_one(dim);
     }
 
-    operation_state_ptr collapse_dim_with_dim_minus_one(const int& dim) const {
+    std::shared_ptr<const JITOperationState> collapse_dim_with_dim_minus_one(const int& dim) const {
         return std::make_shared<OneHotOperationState>(
             indices_->collapse_dim_with_dim_minus_one(dim),
             depth_, on_value_, off_value_
         );
     }
 
-    operation_state_ptr transpose(const std::vector<int>& permutation) const {
+    std::shared_ptr<const JITOperationState> transpose(const std::vector<int>& permutation) const {
         bool last_dim_unchanged = permutation.back() == int(permutation.size()) - 1;
         if (last_dim_unchanged)
             return std::make_shared<OneHotOperationState>(
@@ -97,7 +97,7 @@ struct OneHotOperationState : public OperationState {
         throw std::runtime_error(
             "Cannot transpose last dimension result of one_hot."
         );
-        return shared_from_this();
+        return jit_shared_from_this();
     }
 
     void compute_node_compilation_info(
@@ -164,7 +164,7 @@ namespace op {
         );
         auto on_off = ensure_arguments_compatible(on_value, off_value);
         return Operation(std::make_shared<OneHotOperationState>(
-            indices.state_, depth, std::get<0>(on_off).state_, std::get<1>(on_off).state_
+            indices.state_->as_jit(), depth, std::get<0>(on_off).state_->as_jit(), std::get<1>(on_off).state_->as_jit()
         ));
     }
 }  // namespace op2

@@ -130,8 +130,8 @@ struct GemmAssignOperationState: public RunnableOperationState {
                 (double*)dst_ptr, dst_stride
             );
         } else {
-            ASSERT2(false, utils::make_message("gemm only supports int32, "
-                "float, and double (got dtype=", op_dtype, ")."));
+            ASSERT2(false, utils::make_message("gemm only supports "
+                DALI_ACCEPTABLE_DTYPE_STR " (got dtype=", op_dtype, ")."));
         }
     }
 

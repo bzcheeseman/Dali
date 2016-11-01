@@ -26,8 +26,8 @@ limitations under the License.
 
 template <typename R>
 void ReferenceGemm(bool transpose_a, bool transpose_b, bool transpose_c,
-                   size_t m, size_t n, size_t k, R alpha, const R* a,
-                   size_t lda, const R* b, size_t ldb, R beta, R* c, size_t ldc) {
+                   size_t m, size_t n, size_t k, double alpha, const R* a,
+                   size_t lda, const R* b, size_t ldb, double beta, R* c, size_t ldc) {
 
     int a_i_stride;
     int a_l_stride;

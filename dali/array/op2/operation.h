@@ -98,7 +98,7 @@ struct LValueOperationState: virtual public OperationState {
 
 };
 
-struct LRValueOperationState: public LValueOperationState, public RValueOperationState {
+struct LRValueOperationState: virtual public LValueOperationState, virtual public RValueOperationState {
     virtual std::shared_ptr<const RunnableOperationState> add_from(std::shared_ptr<const RunnableOperationState> op, memory::Device device) const;
     virtual std::shared_ptr<const RunnableOperationState> sub_from(std::shared_ptr<const RunnableOperationState> op, memory::Device device) const;
     virtual std::shared_ptr<const RunnableOperationState> mul_from(std::shared_ptr<const RunnableOperationState> op, memory::Device device) const;
@@ -183,7 +183,7 @@ struct JITOperationState : OperationState {
 };
 
 
-struct ArrayOperationState : public LRValueOperationState, public RunnableOperationState {
+struct ArrayOperationState : virtual public LRValueOperationState, virtual public RunnableOperationState {
     static const hash_t optype_hash;
 
     Array array_;

@@ -1,8 +1,40 @@
 #include "dot.h"
 
+extern "C" {
+    #include <cblas.h>
+}
+
 #include "dali/array/op2/operation.h"
 #include "dali/utils/assert2.h"
+#include "dali/utils/make_message.h"
+#include "dali/array/mshadow_extension/reference_gemm.h"
 
+// support integers in gemm
+void igemm(bool transpose_a, bool transpose_b,
+          size_t m, size_t n, size_t k, double alpha, const int* a,
+          size_t lda, const int* b, size_t ldb, double beta, int* c, size_t ldc) {
+    ReferenceGemm<int>(
+        transpose_a, transpose_b, true, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc
+    );
+}
+
+// compute gemm col-major transpose + stride argument
+std::tuple<bool, int> gemm_stride_transpose(const Array& array) {
+    if (array.strides().size() == 0) {
+        return std::make_tuple(false, array.normalized_strides()[0]);
+    }
+    const std::vector<int>& strides = array.strides();
+    if (strides[0] == 1) {
+        return std::make_tuple(true, strides[1]);
+    } else if (strides[1] == 1) {
+        return std::make_tuple(false, strides[0]);
+    } else {
+        ASSERT2(false, utils::make_message("gemm "
+            "only supports arrays with a single stride (array strides: ",
+            strides, ")"));
+        return std::make_tuple(false, 1);
+    }
+}
 
 struct GemmAssignOperationState: public RunnableOperationState {
     std::shared_ptr<const ArrayOperationState> dest_;
@@ -44,10 +76,63 @@ struct GemmAssignOperationState: public RunnableOperationState {
     }
 
     void run() const {
-        // Array dest_array  = dest_->array_;
-        // Array left_array  = left_->destination_op()->rvalue()->as_array()->array_;
-        // Array right_array = right_->destination_op()->rvalue()->as_array()->array_;
-        std::cout << "OK, guys, just go play starcraft..." << std::endl;
+        // TODO(szymon): make less brittle (please :)
+        Array dst = dest_->array_;
+        Array lhs = left_->destination_op()->as_rvalue()->as_array()->array_;
+        Array rhs = right_->destination_op()->as_rvalue()->as_array()->array_;
+        auto op_dtype = dtype();
+        auto device = memory::Device::cpu();
+        void* dst_ptr = destination_multiplier_ == 0 ?
+            dst.memory()->overwrite_data(device) : dst.memory()->mutable_data(device);
+        const void* rhs_ptr = rhs.memory()->readonly_data(device);
+        const void* lhs_ptr = lhs.memory()->readonly_data(device);
+        bool rhs_transpose, lhs_transpose, dst_transpose;
+        int rhs_stride, lhs_stride, dst_stride;
+        std::tie(rhs_transpose, rhs_stride) = gemm_stride_transpose(rhs);
+        std::tie(lhs_transpose, lhs_stride) = gemm_stride_transpose(lhs);
+        std::tie(dst_transpose, dst_stride) = gemm_stride_transpose(dst);
+        // in row major:
+        // dst = result_multiplier * left * right + destination_multiplier * dst
+        // in col major:
+        // dst.T = result_multiplier * right.T * left.T + destination_multiplier * dst.T
+        int m = rhs.shape()[1],
+            n = lhs.shape()[0],
+            k = rhs.shape()[0];
+
+        if (op_dtype == DTYPE_INT32) {
+            igemm(
+                rhs_transpose, lhs_transpose,
+                m, n, k,
+                /*alpha=*/result_multiplier_,
+                (const int*)rhs_ptr, rhs_stride,
+                (const int*)lhs_ptr, lhs_stride,
+                /*beta=*/destination_multiplier_,
+                (int*)dst_ptr, dst_stride
+            );
+        } else if (op_dtype == DTYPE_FLOAT) {
+            cblas_sgemm(CblasColMajor,
+                rhs_transpose ? CblasTrans : CblasNoTrans, lhs_transpose ? CblasTrans : CblasNoTrans,
+                m, n, k,
+                /*alpha=*/result_multiplier_,
+                (const float*)rhs_ptr, rhs_stride,
+                (const float*)lhs_ptr, lhs_stride,
+                /*beta=*/destination_multiplier_,
+                (float*)dst_ptr, dst_stride
+            );
+        } else if (op_dtype == DTYPE_DOUBLE) {
+            cblas_dgemm(CblasColMajor,
+                rhs_transpose ? CblasTrans : CblasNoTrans, lhs_transpose ? CblasTrans : CblasNoTrans,
+                m, n, k,
+                /*alpha=*/result_multiplier_,
+                (const double*)rhs_ptr, rhs_stride,
+                (const double*)lhs_ptr, lhs_stride,
+                /*beta=*/destination_multiplier_,
+                (double*)dst_ptr, dst_stride
+            );
+        } else {
+            ASSERT2(false, utils::make_message("gemm only supports int32, "
+                "float, and double (got dtype=", op_dtype, ")."));
+        }
     }
 
     std::shared_ptr<const OperationState> destination_op() const {
@@ -145,10 +230,8 @@ namespace op {
                 "Inputs to dot must be two-dimensional.");
         auto left_rvalue  = left.state_->as_rvalue();
         auto right_rvalue = right.state_->as_rvalue();
-
         ASSERT2(left_rvalue, "First argument for dot must be a rvalue.");
         ASSERT2(right_rvalue, "Second argument for dot must be a rvalue.");
-
         // TODO(szymon): add type promotion.
         return Operation(std::make_shared<DotOperationState>(left_rvalue, right_rvalue));
     }

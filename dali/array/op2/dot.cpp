@@ -149,7 +149,6 @@ namespace op {
         ASSERT2(right_rvalue, "Second argument for dot must be a rvalue.");
 
         // TODO(szymon): add type promotion.
-
         return Operation(std::make_shared<DotOperationState>(left_rvalue, right_rvalue));
     }
 }  // namespace op

@@ -674,6 +674,17 @@ int ArrayOperationState::number_of_elements() const {
     return array_.number_of_elements();
 }
 
+std::shared_ptr<const RunnableOperationState> ArrayOperationState::as_runnable(memory::Device device) const {
+    return std::dynamic_pointer_cast<const RunnableOperationState>(shared_from_this());
+}
+
+std::shared_ptr<const OperationState> ArrayOperationState::destination_op() const {
+    return shared_from_this();
+}
+
+void ArrayOperationState::run() const {
+}
+
 // void ArrayOperationState::compute_node_compilation_info(int desired_computation_rank,
 //                                                                 const std::vector<int>& desired_computation_shape,
 //                                                                 std::vector<const ArrayOperationState*>* arrays,
@@ -1159,10 +1170,9 @@ const hash_t ElementwiseAssignOperationState::optype_hash = std::hash<std::strin
 namespace op {
     Operation assign(const Operation& left, const OPERATOR_T& operator_t, const Operation& right) {
         auto left_lvalue = left.state_->as_lvalue();
-        auto right_rvalue = left.state_->as_rvalue();
+        auto right_rvalue = right.state_->as_rvalue();
         ASSERT2(left_lvalue, "Left side of assignment must be a lvalue.");
         ASSERT2(right_rvalue, "Right side of assignment must be a rvalue.");
-
         return Operation(std::make_shared<AbstractAssignOperationState>(left_lvalue, operator_t, right_rvalue));
     }
 }

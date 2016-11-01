@@ -10,8 +10,6 @@
 TEST(RTCTests, dot) {
     auto a = Array::ones({3, 4});
     auto b = Array::ones({4, 5});
-
     auto res = Array::zeros({3, 5});
-
     res = op::dot2(a, b);
 }

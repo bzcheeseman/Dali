@@ -76,50 +76,50 @@ std::string construct_for_loop(int rank, const std::string& code, const std::str
     return for_loop;
 }
 
+void ensure_output_array_compatible(const Array& out, const DType& output_dtype, const std::vector<int>& output_bshape) {
+    if (out.is_stateless()) {
+        return;
+    }
+    for (const int& dim_size: out.bshape()) {
+        ASSERT2(dim_size >= -1,
+            "Cannot assign to broadcasted output with broadcasted dimension"
+            " bigger than 1, because it results in many-to-one mappings.");
+    }
+
+    bool output_bshape_compatible = out.ndim() == output_bshape.size();
+    if (output_bshape_compatible) {
+        for (int i = 0; i < out.ndim(); ++i) {
+            if (output_bshape[i] != -1 && std::abs(output_bshape[i]) != out.shape()[i]) {
+                output_bshape_compatible = false;
+                break;
+            }
+        }
+    }
+
+    ASSERT2(output_bshape_compatible, utils::make_message("Cannot assign "
+        "result of shape ", output_bshape, " to a location of shape ", out.shape(), "."));
+    ASSERT2(out.dtype() == output_dtype, utils::make_message("Cannot assign "
+        "result of dtype ", output_dtype, " to a location of dtype ", out.dtype(), "."));
+}
+
 void initialize_output_array(Array& out,
                              const DType& output_dtype,
                              const memory::Device& output_device,
-                             std::vector<int>* output_bshape_ptr) {
-    auto& output_bshape = *output_bshape_ptr;
-    if (out.is_stateless()) {
-        // when constructing a stateless
-        // output, we decide what the output
-        // shape will be. Broadcasted greater
-        // than one dimensions are expanded
-        // out:
-        for (auto& dim : output_bshape) {
-            if (dim < -1) {
-                dim = std::abs(dim);
-            }
+                             std::vector<int> output_bshape) {
+    // when constructing a stateless
+    // output, we decide what the output
+    // shape will be. Broadcasted greater
+    // than one dimensions are expanded
+    // out:
+    for (auto& dim : output_bshape) {
+        if (dim < -1) {
+            dim = std::abs(dim);
         }
-
-        out.initialize_with_bshape(output_bshape,
-                                   output_dtype,
-                                   output_device);
-    } else {
-        for (const int& dim_size: out.bshape()) {
-            ASSERT2(dim_size >= -1,
-                "Cannot assign to broadcasted output with broadcasted dimension"
-                " bigger than 1, because it results in many-to-one mappings.");
-        }
-
-        bool output_bshape_compatible = out.ndim() == output_bshape.size();
-        if (output_bshape_compatible) {
-            for (int i = 0; i < out.ndim(); ++i) {
-                if (output_bshape[i] != -1 && std::abs(output_bshape[i]) != out.shape()[i]) {
-                    output_bshape_compatible = false;
-                    break;
-                }
-            }
-        }
-
-        ASSERT2(output_bshape_compatible,
-                utils::MS() << "Cannot assign result of shape " << output_bshape
-                            << " to a location of shape " << out.shape() << ".");
-        ASSERT2(out.dtype() == output_dtype,
-                utils::MS() << "Cannot assign result of dtype " << output_dtype
-                            << " to a location of dtype " << out.dtype() << ".");
     }
+
+    out.initialize_with_bshape(output_bshape,
+                               output_dtype,
+                               output_device);
 }
 
 std::vector<int> get_common_bshape(const std::vector<std::vector<int>>& bshapes) {

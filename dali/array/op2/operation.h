@@ -281,6 +281,7 @@ struct AbstractAssignOperationState : public RValueOperationState {
     virtual void full_operation_name(std::stringstream* ss) const;
 
     virtual bool is_assignable() const;
+    virtual std::tuple<memory::Device, bool> preferred_device() const;
 
     virtual int ndim() const;
 
@@ -313,8 +314,9 @@ struct Operation {
     Operation(operation_state_ptr state);
 
     DType dtype() const;
-
     int ndim() const;
+    memory::Device preferred_device() const;
+
 
     bool is_scalar() const;
     bool is_assignable() const;

@@ -29,13 +29,18 @@ std::string generate_accessor_string(int rank);
 // of type `Shape` named "query" contains the current indices for the loop)
 std::string construct_for_loop(int rank, const std::string& code, const std::string& varname, int indent);
 
+// check that output Array matches the desired dtype and shape.
+void ensure_output_array_compatible(const Array& out,
+                                    const DType& output_dtype,
+                                    const std::vector<int>& output_bshape);
+
 // If the array `out` is uninitialized, then give it a specific type
 // device, and shape (filled with zeros), else check that it is
 // compatible with the desired dimensions and type.
 void initialize_output_array(Array& out,
                              const DType& output_dtype,
                              const memory::Device& output_device,
-                             std::vector<int>* output_bshape_ptr);
+                             std::vector<int> output_bshape);
 
 // Find the shape that contains all the other shapes in the vector `bshapes`
 // while maintaining broadcasted dimensions where possible, and checking for

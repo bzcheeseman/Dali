@@ -292,29 +292,17 @@ OperationState::operator Assignable<Array> () const {
         //     out_array = out;
         // }
 
-        // if (!out.memory()->is_any_fresh() && operator_to_use == OPERATOR_T_ADD) {
-        //     // if operation is += to an empty/zeros array, then switch operator
-        //     // to equal:
-        //     operator_to_use = OPERATOR_T_EQL;
-        // }
-
-        // memory::Device output_device;
-        // if (device_found) {
-        //     if (out_array.memory()->preferred_device != output_device_proposal) {
-        //         output_device = memory::default_preferred_device;
-        //     } else {
-        //         output_device = output_device_proposal;
-        //     }
-        // } else {
-        //     output_device = out_array.memory()->preferred_device;
-        // }
-
-
         // TODO(szymon): infer the device
-        auto output_device = memory::Device::cpu();
+        // auto output_device = memory::Device::cpu();
         // TODO(szymon): ensure out is initialized
         auto self_op = op::assign(out, operator_t, Operation(this_ptr));
-        auto runnable_self_op = self_op.state_->as_rvalue()->as_runnable(output_device);
+        auto runnable_self_op = self_op.state_->as_rvalue()->as_runnable(self_op.preferred_device());
+
+        // Currently a stateless array in does not get modified by the initiliazation code of
+        // assignment, so the result needs to be propagated back
+        if (out.is_stateless()) {
+            out = runnable_self_op->destination_op()->as_array()->array_;
+        }
         // auto optimized_self_op = runnable_self_op.optimize();
         runnable_self_op->run();
 
@@ -905,6 +893,10 @@ int Operation::ndim() const {
     return state_->ndim();
 }
 
+memory::Device Operation::preferred_device() const {
+    return std::get<0>(state_->preferred_device());
+}
+
 std::vector<int> Operation::bshape() const {
     return state_->bshape();
 }
@@ -972,7 +964,100 @@ operation_state_ptrs AbstractAssignOperationState::arguments() const {
     return {left_, right_};
 }
 
+std::shared_ptr<AbstractAssignOperationState> initialize_assignment_array(
+        std::shared_ptr<const ArrayOperationState> left,
+        const AbstractAssignOperationState* assignment,
+        memory::Device device) {
+    OPERATOR_T operator_to_use = assignment->operator_t_;
+    Array out = left->array_;
+    auto right = assignment->right_;
+    auto output_dtype_proposal  = right->dtype();
+    auto output_bshape_proposal = right->bshape();
+    Array out_array;
+    if (operator_to_use == OPERATOR_T_LSE) {
+        // TODO: ensure that operator lse gets turned back into add:
+        // OPERATOR_T operator_to_use = operator_t == OPERATOR_T_LSE ? OPERATOR_T_ADD : operator_t;
+        ASSERT2(false, "LSE not yet supported (again).");
+        // std::vector<int> reduction_axes = get_auto_reduce_axes(out, output_bshape_proposal);
+        // if (reduction_axes.size() > 0) {
+        //     op = op::sum(op, reduction_axes);
+        //     // add the reduced dimensions back:
+        //     for (int i = 0; i < reduction_axes.size(); ++i) {
+        //         output_bshape_proposal[reduction_axes[i]] = 1;
+        //     }
+        // }
+        // initialize_output_array(
+        //     out,
+        //     output_dtype_proposal,
+        //     device,
+        //     &output_bshape_proposal
+        // );
+        // out_array = out;
+        // for (int i = int(reduction_axes.size()) - 1; i >= 0; --i) {
+        //     out_array = out_array.squeeze(reduction_axes[i]);
+        // }
+        // if (reduction_axes.size() > 0) {
+        //     output_bshape_proposal = op.bshape();
+        // }
+    } else {
+        initialize_output_array(
+            out,
+            output_dtype_proposal,
+            device,
+            output_bshape_proposal
+        );
+        out_array = out;
+    }
+
+    if (!out.memory()->is_any_fresh() && operator_to_use == OPERATOR_T_ADD) {
+        // if operation is += to an empty/zeros array, then switch operator
+        // to equal:
+        operator_to_use = OPERATOR_T_EQL;
+    }
+    return std::make_shared<AbstractAssignOperationState>(
+        std::make_shared<ArrayOperationState>(out_array),
+        operator_to_use,
+        right
+    );
+}
+
+
+std::tuple<memory::Device, bool> AbstractAssignOperationState::preferred_device() const {
+    if (left_->as_array()) {
+        bool device_found;
+        memory::Device output_device_proposal;
+        std::tie(output_device_proposal, device_found) = right_->preferred_device();
+
+        memory::Device output_device;
+        const auto& out_array = left_->as_array()->array_;
+        auto out_array_preferred_device = out_array.is_stateless() ?
+            memory::default_preferred_device : out_array.memory()->preferred_device;
+        if (device_found) {
+            if (out_array_preferred_device != output_device_proposal) {
+                output_device = memory::default_preferred_device;
+                device_found = false;
+            } else {
+                output_device = output_device_proposal;
+            }
+        } else {
+            output_device = out_array_preferred_device;
+        }
+        return std::make_tuple(output_device, device_found);
+    } else {
+        return ((OperationState*)this)->preferred_device();
+    }
+}
+
+
 std::shared_ptr<const RunnableOperationState> AbstractAssignOperationState::as_runnable(memory::Device device) const {
+    if (left_->as_array() && left_->as_array()->array_.is_stateless()) {
+        return initialize_assignment_array(
+            left_->as_array(),
+            this,
+            device
+        )->as_runnable(device);
+    }
+
     if (operator_t_ == OPERATOR_T_EQL) {
         return right_->assign_to(left_, device);
     } else if (operator_t_ == OPERATOR_T_ADD) {
@@ -1166,13 +1251,16 @@ const hash_t ElementwiseAssignOperationState::optype_hash = std::hash<std::strin
 */
 
 
-
 namespace op {
     Operation assign(const Operation& left, const OPERATOR_T& operator_t, const Operation& right) {
         auto left_lvalue = left.state_->as_lvalue();
         auto right_rvalue = right.state_->as_rvalue();
         ASSERT2(left_lvalue, "Left side of assignment must be a lvalue.");
         ASSERT2(right_rvalue, "Right side of assignment must be a rvalue.");
+        OPERATOR_T operator_to_use = operator_t;
+        if (left.state_->as_array()) {
+            ensure_output_array_compatible(left.state_->as_array()->array_, right.dtype(), right.bshape());
+        }
         return Operation(std::make_shared<AbstractAssignOperationState>(left_lvalue, operator_t, right_rvalue));
     }
 }

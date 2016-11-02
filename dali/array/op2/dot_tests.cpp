@@ -27,8 +27,9 @@ Array reference_gemm(const Array& a, const Array& b) {
 TEST(RTCTests, dot) {
     auto a = Array::ones({3, 4});
     auto b = Array::ones({4, 5});
-    auto res = Array::zeros({3, 5});
-    res = op::dot2(a, b);
+    // auto res = Array::zeros({3, 5});
+    Array res = op::dot2(a, b);
+    res.print();
     auto reference_res = reference_gemm(a, b);
     // currently without jit the following test cannot be run:
     // EXPECT_TRUE(Array::allclose(res, reference_gemm(a, b), 1e-6));

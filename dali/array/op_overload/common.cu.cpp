@@ -29,11 +29,11 @@
         Array left_instance = left;\
         assignable.assign_to(left_instance, OPERATOR_NAME);\
     }\
-    Array& operator SYMBOL (Array& left, const Expression& assignable) {\
+    Array& operator SYMBOL (Array& left, const expression::Expression& assignable) {\
         ((Assignable<Array>)assignable).assign_to(left, OPERATOR_NAME);\
         return left;\
     }\
-    void operator SYMBOL (Array&& left, const Expression& assignable) {\
+    void operator SYMBOL (Array&& left, const expression::Expression& assignable) {\
         Array left_instance = left;\
         ((Assignable<Array>)assignable).assign_to(left_instance, OPERATOR_NAME);\
     }\
@@ -84,7 +84,7 @@ Array& operator<<=(Array& left, const Assignable<Array>& assignable) {
     return left;
 }
 
-Array& operator<<=(Array& left, const Expression& assignable) {
+Array& operator<<=(Array& left, const expression::Expression& assignable) {
     ((Assignable<Array>)assignable).assign_to(left, OPERATOR_T_LSE);\
     return left;
 }
@@ -118,11 +118,11 @@ DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::eltdiv, /=);
         self_as_array OPERATOR assignable;\
         left = self_as_array;\
     }\
-    CONTAINER& operator OPERATOR (CONTAINER& left, const Expression& assignable) {\
+    CONTAINER& operator OPERATOR (CONTAINER& left, const expression::Expression& assignable) {\
         ((Assignable<CONTAINER>)assignable).assign_to(left, OPERATOR_NAME);\
         return left;\
     }\
-    void operator OPERATOR (CONTAINER&& left, const Expression& assignable) {\
+    void operator OPERATOR (CONTAINER&& left, const expression::Expression& assignable) {\
         ((Assignable<CONTAINER>)assignable).assign_to(left, OPERATOR_NAME);\
     }\
     CONTAINER& operator OPERATOR(CONTAINER& left, const Assignable<CONTAINER>& assignable) {\

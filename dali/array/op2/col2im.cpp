@@ -3,6 +3,7 @@
 #include <map>
 
 #include "dali/array/op2/expression/expression.h"
+#include "dali/array/op2/rtc/rtc_expression.h"
 #include "dali/array/op2/elementwise_operation.h"
 #include "dali/array/op2/rtc_utils.h"
 #include "dali/array/op/spatial/utils.h"
@@ -18,6 +19,8 @@ inline int get_image_dim(const std::vector<int>& image_shape, const std::string&
         return image_shape[data_format.find(c)];
     }
 }
+
+using expression::rtc::RtcExpression;
 
 struct Col2ImExpressionState : public RtcExpression {
     static const hash_t optype_hash;
@@ -85,21 +88,21 @@ struct Col2ImExpressionState : public RtcExpression {
             postpad_w_(postpad_w),
             data_format_(data_format),
             // create scalar ops to send constants to kernel:
-            filter_h_op_(Expression(filter_h).state_->as_jit()),
-            filter_w_op_(Expression(filter_w).state_->as_jit()),
-            stride_h_op_(Expression(stride_h).state_->as_jit()),
-            stride_w_op_(Expression(stride_w).state_->as_jit()),
-            dilate_h_op_(Expression(dilate_h).state_->as_jit()),
-            dilate_w_op_(Expression(dilate_w).state_->as_jit()),
-            prepad_h_op_(Expression(prepad_h).state_->as_jit()),
-            prepad_w_op_(Expression(prepad_w).state_->as_jit()),
-            o_height_op_(Expression(
+            filter_h_op_(expression::Expression(filter_h).state_->as_jit()),
+            filter_w_op_(expression::Expression(filter_w).state_->as_jit()),
+            stride_h_op_(expression::Expression(stride_h).state_->as_jit()),
+            stride_w_op_(expression::Expression(stride_w).state_->as_jit()),
+            dilate_h_op_(expression::Expression(dilate_h).state_->as_jit()),
+            dilate_w_op_(expression::Expression(dilate_w).state_->as_jit()),
+            prepad_h_op_(expression::Expression(prepad_h).state_->as_jit()),
+            prepad_w_op_(expression::Expression(prepad_w).state_->as_jit()),
+            o_height_op_(expression::Expression(
                 (get_image_dim(image_shape, data_format, 'H')+ prepad_h_ + postpad_h_ - (dilate_h_ * (filter_h_ - 1) + 1)) / stride_h_ + 1
             ).state_->as_jit()),
-            o_width_op_(Expression(
+            o_width_op_(expression::Expression(
                 (get_image_dim(image_shape, data_format, 'W') + prepad_w_ + postpad_w_ - (dilate_w_ * (filter_w_ - 1) + 1)) / stride_w_ + 1
             ).state_->as_jit()),
-            o_channel_op_(Expression(
+            o_channel_op_(expression::Expression(
                 get_image_dim(image_shape, data_format, 'C')
             ).state_->as_jit()) {}
 
@@ -292,8 +295,8 @@ struct Col2ImExpressionState : public RtcExpression {
     void compute_node_compilation_info(
             int desired_computation_rank,
             const std::vector<int>& desired_computation_shape,
-            std::vector<const ArrayWrapper*>* arrays,
-            std::vector<const ScalarWrapper*>* scalars,
+            std::vector<const expression::ArrayWrapper*>* arrays,
+            std::vector<const expression::rtc::ScalarWrapper*>* scalars,
             node_to_info_t* node_to_info) const {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
         input_->compute_node_compilation_info(2, input_->shape(), arrays, scalars, node_to_info);
@@ -350,7 +353,7 @@ struct Col2ImExpressionState : public RtcExpression {
 const hash_t Col2ImExpressionState::optype_hash = std::hash<std::string>()("Col2ImExpressionState");
 
 namespace op {
-    Expression col2im(const Expression& input,
+    expression::Expression col2im(const expression::Expression& input,
                      const std::vector<int>& image_shape,
                      int filter_h,
                      int filter_w,
@@ -416,7 +419,7 @@ namespace op {
             "+ 1} [", o_height, "] * {(i_width  - filter_w) / stride_w + 1} [",
             o_width, "] * batch_size [", batch_size, "] (got ", input_shape[1], ")."));
 
-        return Expression(
+        return expression::Expression(
             std::make_shared<Col2ImExpressionState>(
                 input.state_->as_jit(),
                 image_shape,

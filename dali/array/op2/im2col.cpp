@@ -1,11 +1,14 @@
 #include "im2col.h"
 
 #include "dali/array/op2/expression/expression.h"
+#include "dali/array/op2/rtc/rtc_expression.h"
 #include "dali/array/op2/elementwise_operation.h"
 #include "dali/array/op2/rtc_utils.h"
 #include "dali/array/op/spatial/utils.h"
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
+
+using expression::rtc::RtcExpression;
 
 std::vector<int> deduce_im2col_shape(
         const std::vector<int>& src_bshape,
@@ -110,16 +113,16 @@ struct Im2ColExpressionState : public RtcExpression {
             postpad_w_(postpad_w),
             data_format_(data_format),
             // create scalar ops to send constants to kernel:
-            filter_h_op_(Expression(filter_h).state_->as_jit()),
-            filter_w_op_(Expression(filter_w).state_->as_jit()),
-            stride_h_op_(Expression(stride_h).state_->as_jit()),
-            stride_w_op_(Expression(stride_w).state_->as_jit()),
-            dilate_h_op_(Expression(dilate_h).state_->as_jit()),
-            dilate_w_op_(Expression(dilate_w).state_->as_jit()),
-            prepad_h_op_(Expression(prepad_h).state_->as_jit()),
-            prepad_w_op_(Expression(prepad_w).state_->as_jit()),
-            postpad_h_op_(Expression(postpad_h).state_->as_jit()),
-            postpad_w_op_(Expression(postpad_w).state_->as_jit()) {
+            filter_h_op_(expression::Expression(filter_h).state_->as_jit()),
+            filter_w_op_(expression::Expression(filter_w).state_->as_jit()),
+            stride_h_op_(expression::Expression(stride_h).state_->as_jit()),
+            stride_w_op_(expression::Expression(stride_w).state_->as_jit()),
+            dilate_h_op_(expression::Expression(dilate_h).state_->as_jit()),
+            dilate_w_op_(expression::Expression(dilate_w).state_->as_jit()),
+            prepad_h_op_(expression::Expression(prepad_h).state_->as_jit()),
+            prepad_w_op_(expression::Expression(prepad_w).state_->as_jit()),
+            postpad_h_op_(expression::Expression(postpad_h).state_->as_jit()),
+            postpad_w_op_(expression::Expression(postpad_w).state_->as_jit()) {
     }
 
     virtual DType dtype() const {
@@ -333,8 +336,8 @@ struct Im2ColExpressionState : public RtcExpression {
     void compute_node_compilation_info(
             int desired_computation_rank,
             const std::vector<int>& desired_computation_shape,
-            std::vector<const ArrayWrapper*>* arrays,
-            std::vector<const ScalarWrapper*>* scalars,
+            std::vector<const expression::ArrayWrapper*>* arrays,
+            std::vector<const expression::rtc::ScalarWrapper*>* scalars,
             node_to_info_t* node_to_info) const {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
         image_->compute_node_compilation_info(4, image_->shape(), arrays, scalars, node_to_info);
@@ -388,12 +391,12 @@ struct Im2ColExpressionState : public RtcExpression {
 const hash_t Im2ColExpressionState::optype_hash = std::hash<std::string>()("Im2ColExpressionState");
 
 namespace op {
-    Expression im2col(const Expression& image,
-                     int filter_h,
-                     int filter_w,
-                     int stride_h,
-                     int stride_w,
-                     const std::string& data_format) {
+    expression::Expression im2col(const expression::Expression& image,
+                                  int filter_h,
+                                  int filter_w,
+                                  int stride_h,
+                                  int stride_w,
+                                  const std::string& data_format) {
         int image_ndim = image.ndim();
         ASSERT2(image_ndim == 3 || image_ndim == 4, utils::make_message(
             "im2col takes an image with ndim == 3 or ndim == 4 (got ndim=",
@@ -426,7 +429,7 @@ namespace op {
             "smaller than filter size (filter_h=", filter_h, " vs. image_h=",
             image_h, ", filter_w=", filter_w, " vs. w_dim=", image_w, ")."));
 
-        return Expression(
+        return expression::Expression(
             std::make_shared<Im2ColExpressionState>(
                 image.state_->as_jit(),
                 filter_h,

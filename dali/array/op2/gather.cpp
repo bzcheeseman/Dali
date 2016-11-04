@@ -1,10 +1,13 @@
 #include "gather.h"
 
 #include "dali/array/op2/expression/expression.h"
+#include "dali/array/op2/rtc/rtc_expression.h"
 #include "dali/array/op2/elementwise_operation.h"
 #include "dali/array/op2/rtc_utils.h"
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
+
+using expression::rtc::RtcExpression;
 
 struct GatherState : public RtcExpression {
     static const hash_t optype_hash;
@@ -148,8 +151,8 @@ struct GatherState : public RtcExpression {
     void compute_node_compilation_info(
             int desired_computation_rank,
             const std::vector<int>& desired_computation_shape,
-            std::vector<const ArrayWrapper*>* arrays,
-            std::vector<const ScalarWrapper*>* scalars,
+            std::vector<const expression::ArrayWrapper*>* arrays,
+            std::vector<const expression::rtc::ScalarWrapper*>* scalars,
             node_to_info_t* node_to_info) const {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
         int source_ndim = source_->ndim();
@@ -194,7 +197,7 @@ struct GatherState : public RtcExpression {
 const hash_t GatherState::optype_hash = std::hash<std::string>()("GatherState");
 
 namespace op {
-    Expression gather(const Expression& source, const Expression& indices) {
+    expression::Expression gather(const expression::Expression& source, const expression::Expression& indices) {
         ASSERT2(
             source.ndim() > 0,
             utils::make_message("gather must be called on source with ndim >="
@@ -204,6 +207,6 @@ namespace op {
             indices.dtype() == DTYPE_INT32,
             utils::make_message("indices must be integers (got dtype=", indices.dtype(), ").")
         );
-        return Expression(std::make_shared<GatherState>(source.state_->as_jit(), indices.state_->as_jit()));
+        return expression::Expression(std::make_shared<GatherState>(source.state_->as_jit(), indices.state_->as_jit()));
     }
 }  // namespace op

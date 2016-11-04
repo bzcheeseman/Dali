@@ -10,8 +10,9 @@
 
 
 namespace expression {
-namespace rtc {
     struct ArrayWrapper;
+
+namespace rtc {
     struct ScalarWrapper;
 
     struct ScalarWrapper : public RtcExpression {
@@ -43,7 +44,7 @@ namespace rtc {
         virtual std::string get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
     };
 
-    struct ScalarWrapperDouble : public virtual ScalarWrapper {
+    struct ScalarWrapperDouble : public ScalarWrapper {
         double value_;
 
         ScalarWrapperDouble(double value);
@@ -55,7 +56,7 @@ namespace rtc {
         const void* value_ptr() const;
     };
 
-    struct ScalarWrapperInteger : public virtual ScalarWrapper {
+    struct ScalarWrapperInteger : public ScalarWrapper {
         int value_;
 
         ScalarWrapperInteger(int value);
@@ -67,7 +68,7 @@ namespace rtc {
         const void* value_ptr() const;
     };
 
-    struct ScalarWrapperFloat : public virtual ScalarWrapper {
+    struct ScalarWrapperFloat : public ScalarWrapper {
         float value_;
 
         ScalarWrapperFloat(float value);

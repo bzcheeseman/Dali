@@ -1,5 +1,6 @@
 #include "reducer_operation.h"
 #include "dali/array/op2/elementwise_operation.h"
+#include "dali/array/op2/rtc/rtc_expression.h"
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
 #include "dali/array/op2/all_reduce_kernel_utils.h"
@@ -7,6 +8,8 @@
 ///////////////////////////////////////////////////////////////////////////////
 //                    HEADERS                                                //
 ///////////////////////////////////////////////////////////////////////////////
+
+using expression::rtc::RtcExpression;
 
 struct ReducerExpressionState : public RtcExpression {
     const std::shared_ptr<const RtcExpression> argument_;
@@ -16,7 +19,7 @@ struct ReducerExpressionState : public RtcExpression {
 
     ReducerExpressionState(const std::string& functor_name, std::shared_ptr<const RtcExpression> argument, int min_computation_rank);
 
-    virtual std::vector<std::shared_ptr<const ExpressionState>> arguments() const;
+    virtual std::vector<std::shared_ptr<const expression::ExpressionState>> arguments() const;
 
     virtual std::string get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
 
@@ -43,8 +46,8 @@ struct AllReducerExpressionState : public ReducerExpressionState {
 
     virtual void compute_node_compilation_info(int desired_computation_rank,
                                                const std::vector<int>& desired_computation_shape,
-                                               std::vector<const ArrayWrapper*>* arrays,
-                                               std::vector<const ScalarWrapper*>* scalars,
+                                               std::vector<const expression::ArrayWrapper*>* arrays,
+                                               std::vector<const expression::rtc::ScalarWrapper*>* scalars,
                                                node_to_info_t* node_to_info) const;
 
     virtual bool is_dim_collapsible_with_dim_minus_one(const int& dim) const;
@@ -77,8 +80,8 @@ struct AxisReducerExpressionState : public ReducerExpressionState {
     virtual void compute_node_compilation_info(
         int desired_computation_rank,
         const std::vector<int>& desired_computation_shape,
-        std::vector<const ArrayWrapper*>* arrays,
-        std::vector<const ScalarWrapper*>* scalars,
+        std::vector<const expression::ArrayWrapper*>* arrays,
+        std::vector<const expression::rtc::ScalarWrapper*>* scalars,
         node_to_info_t* node_to_info) const;
 
     virtual bool is_dim_collapsible_with_dim_minus_one(const int& dim) const;
@@ -169,8 +172,8 @@ int AllReducerExpressionState::ndim() const {
 void AllReducerExpressionState::compute_node_compilation_info(
         int desired_computation_rank,
         const std::vector<int>& desired_computation_shape,
-        std::vector<const ArrayWrapper*>* arrays,
-        std::vector<const ScalarWrapper*>* scalars,
+        std::vector<const expression::ArrayWrapper*>* arrays,
+        std::vector<const expression::rtc::ScalarWrapper*>* scalars,
         node_to_info_t* node_to_info) const {
     (*node_to_info)[this].computation_rank = desired_computation_rank;
     argument_->compute_node_compilation_info(argument_->min_computation_rank_, argument_->shape(), arrays, scalars, node_to_info);
@@ -241,8 +244,8 @@ int AxisReducerExpressionState::ndim() const {
 void AxisReducerExpressionState::compute_node_compilation_info(
         int desired_computation_rank,
         const std::vector<int>& desired_computation_shape,
-        std::vector<const ArrayWrapper*>* arrays,
-        std::vector<const ScalarWrapper*>* scalars,
+        std::vector<const expression::ArrayWrapper*>* arrays,
+        std::vector<const expression::rtc::ScalarWrapper*>* scalars,
         node_to_info_t* node_to_info) const {
     (*node_to_info)[this].computation_rank = desired_computation_rank;
 
@@ -385,7 +388,7 @@ ReducerExpressionState::ReducerExpressionState(
 
 }
 
-std::vector<std::shared_ptr<const ExpressionState>> ReducerExpressionState::arguments() const {
+std::vector<std::shared_ptr<const expression::ExpressionState>> ReducerExpressionState::arguments() const {
     return {argument_};
 }
 
@@ -403,15 +406,15 @@ std::string ReducerExpressionState::get_call_code_nd(
 
 
 namespace op {
-    Expression all_reduce(const Expression& a,
+    expression::Expression all_reduce(const expression::Expression& a,
                          const std::string& reducer_name) {
-        return Expression(std::make_shared<AllReducerExpressionState>(
+        return expression::Expression(std::make_shared<AllReducerExpressionState>(
             reducer_name,
             a.state_->as_jit()
         ));
     }
 
-    Expression axis_reduce(const Expression& a,
+    expression::Expression axis_reduce(const expression::Expression& a,
                           const std::string& reducer_name,
                           const std::vector<int>& axes) {
         if (axes.size() == 0) return a;
@@ -496,22 +499,22 @@ namespace op {
                 --collapsed_ndim;
             }
         }
-        return Expression(res);
+        return expression::Expression(res);
     }
 
-    Expression argument_all_reduce(const Expression& a,
+    expression::Expression argument_all_reduce(const expression::Expression& a,
                                  const std::string& reducer_name) {
-        return Expression(std::make_shared<ArgumentAllReducerExpressionState>(
+        return expression::Expression(std::make_shared<ArgumentAllReducerExpressionState>(
             reducer_name,
             a.state_->as_jit()
         ));
     }
 
-    Expression argument_axis_reduce(const Expression& a,
+    expression::Expression argument_axis_reduce(const expression::Expression& a,
                                    const std::string& reducer_name,
                                    const int& axis) {
         int ndim = a.ndim();
-        if (ndim == 0) return Expression(0);
+        if (ndim == 0) return expression::Expression(0);
         int normalized_axis = axis;
         if (normalized_axis < 0) normalized_axis = normalized_axis + a.ndim();
         ASSERT2(normalized_axis >= 0 && (normalized_axis < ndim || ndim == 0 && normalized_axis == ndim),
@@ -533,7 +536,7 @@ namespace op {
             axes[normalized_axis] = axes.size() - 1;
             res = res->transpose(axes);
         }
-        return Expression(std::make_shared<ArgumentAxisReducerExpressionState>(
+        return expression::Expression(std::make_shared<ArgumentAxisReducerExpressionState>(
             reducer_name,
             res
         ));

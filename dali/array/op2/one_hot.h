@@ -4,14 +4,16 @@
 #include <string>
 #include <vector>
 
-struct Expression;
+namespace expression {
+    struct Expression;
+}  // namespace expression
 
 namespace op {
-    Expression one_hot(
-        const Expression& indices,
+    expression::Expression one_hot(
+        const expression::Expression& indices,
         int depth,
-        const Expression& on_value,
-        const Expression& off_value
+        const expression::Expression& on_value,
+        const expression::Expression& off_value
     );
 }  // namespace op
 

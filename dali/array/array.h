@@ -21,7 +21,9 @@ class Array;
 
 struct ArraySubtensor;
 struct ArrayGather;
-class Expression;
+namespace expression {
+    struct Expression;
+}  // namespace expression
 
 template<typename OutType>
 struct BaseAssignable {
@@ -88,7 +90,7 @@ class Array : public Exp<Array> {
           DType dtype_=DTYPE_FLOAT);
     Array(const Array& other, const bool& copy_memory=false);
     Array(const Assignable<Array>& assignable);
-    Array(const Expression& operation);
+    Array(const expression::Expression& operation);
     template<typename ExprT>
     Array(const LazyExp<ExprT>& expr);
 
@@ -145,7 +147,7 @@ class Array : public Exp<Array> {
     const std::vector<int>& strides() const;
     DType dtype() const;
 
-    Expression astype(DType dtype_) const;
+    expression::Expression astype(DType dtype_) const;
 
     std::vector<int> normalized_strides() const;
     // just like regular shape by broadcased dimensions are negated.
@@ -223,23 +225,23 @@ class Array : public Exp<Array> {
     Array broadcast_scalar_to_ndim(const int& ndim) const;
 
     // reduce over all axes
-    Expression sum() const;
-    Expression mean() const;
-    Expression min() const;
-    Expression max() const;
-    Expression L2_norm() const;
+    expression::Expression sum() const;
+    expression::Expression mean() const;
+    expression::Expression min() const;
+    expression::Expression max() const;
+    expression::Expression L2_norm() const;
 
     // reduce over one axis
-    Expression sum(const int& axis) const;
-    Expression mean(const int& axis) const;
-    Expression min(const int& axis) const;
-    Expression max(const int& axis) const;
-    Expression L2_norm(const int& axis) const;
+    expression::Expression sum(const int& axis) const;
+    expression::Expression mean(const int& axis) const;
+    expression::Expression min(const int& axis) const;
+    expression::Expression max(const int& axis) const;
+    expression::Expression L2_norm(const int& axis) const;
 
-    Expression argmin(const int& axis) const;
-    Expression argmin() const;
-    Expression argmax(const int& axis) const;
-    Expression argmax() const;
+    expression::Expression argmin(const int& axis) const;
+    expression::Expression argmin() const;
+    expression::Expression argmax(const int& axis) const;
+    expression::Expression argmax() const;
 
     Assignable<Array> argsort(const int& axis) const;
     Assignable<Array> argsort() const;
@@ -253,7 +255,7 @@ class Array : public Exp<Array> {
     Array& operator=(const int& assignable);
     Array& operator=(const float& assignable);
     Array& operator=(const double& assignable);
-    Array& operator=(const Expression& operation);
+    Array& operator=(const expression::Expression& operation);
 
     template<typename T>
     Array& operator=(const std::vector<T>& values) {

@@ -1,10 +1,13 @@
 #ifndef DALI_ARRAY_OP2_GATHER_FROM_ROWS_H
 #define DALI_ARRAY_OP2_GATHER_FROM_ROWS_H
 
-struct Expression;
+namespace expression {
+    struct Expression;
+}  // namespace expression
+
 
 namespace op {
-    Expression gather_from_rows(const Expression& source, const Expression& indices);
+    expression::Expression gather_from_rows(const expression::Expression& source, const expression::Expression& indices);
 }  // namespace op
 
 #endif  // DALI_ARRAY_OP2_GATHER_FROM_ROWS_H

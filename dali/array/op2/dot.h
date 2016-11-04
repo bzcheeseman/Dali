@@ -3,12 +3,14 @@
 
 #include <string>
 
-struct Expression;
+namespace expression {
+	struct Expression;
+}  // namespace expression
 
 namespace op {
-    Expression dot2(
-        const Expression& left,
-        const Expression& right
+    expression::Expression dot2(
+        const expression::Expression& left,
+        const expression::Expression& right
     );
 }  // namespace op
 

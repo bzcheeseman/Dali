@@ -4,11 +4,13 @@
 #include <string>
 #include <vector>
 
-struct Expression;
+namespace expression {
+    struct Expression;
+}  // namespace expression
 
 namespace op {
-    Expression col2im(
-        const Expression& input,
+    expression::Expression col2im(
+        const expression::Expression& input,
         const std::vector<int>& image_shape,
         int filter_h,
         int filter_w,

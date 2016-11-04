@@ -3,11 +3,13 @@
 
 #include <string>
 
-struct Expression;
+namespace expression {
+    struct Expression;
+}  // namespace expression
 
 namespace op {
-    Expression im2col(
-        const Expression& input,
+    expression::Expression im2col(
+        const expression::Expression& input,
         int filter_h,
         int filter_w,
         int stride_h,

@@ -5,8 +5,12 @@
 #include "dali/utils/assert2.h"
 #include "dali/array/op2/rtc_utils.h"
 #include "dali/array/op2/elementwise_kernel_utils.h"
+#include "dali/array/op2/expression/expression.h"
+#include "dali/array/op2/rtc/rtc_expression.h"
 
-DType type_promotion(const Expression& a, const Expression& b) {
+using expression::rtc::RtcExpression;
+
+DType type_promotion(const expression::Expression& a, const expression::Expression& b) {
     // TODO(jonathan,szymon) speed up this function
     bool a_scalar = a.is_scalar();
     bool b_scalar = b.is_scalar();
@@ -29,7 +33,7 @@ DType type_promotion(const Expression& a, const Expression& b) {
     }
 }
 
-bool ndim_compatible(const Expression& a, const Expression& b) {
+bool ndim_compatible(const expression::Expression& a, const expression::Expression& b) {
     int a_ndim = a.ndim();
     int b_ndim = b.ndim();
     return a_ndim == 0 || b_ndim == 0 || a_ndim == b_ndim;
@@ -56,12 +60,12 @@ struct ElementwiseExpressionState : public RtcExpression {
 
     virtual std::vector<int> bshape() const;
 
-    virtual std::vector<std::shared_ptr<const ExpressionState>> arguments() const;
+    virtual std::vector<std::shared_ptr<const expression::ExpressionState>> arguments() const;
 
     virtual void compute_node_compilation_info(int desired_computation_rank,
                                                const std::vector<int>& desired_computation_shape,
-                                               std::vector<const ArrayWrapper*>* arrays,
-                                               std::vector<const ScalarWrapper*>* scalars,
+                                               std::vector<const expression::ArrayWrapper*>* arrays,
+                                               std::vector<const expression::rtc::ScalarWrapper*>* scalars,
                                                node_to_info_t* node_to_info) const;
 
     virtual bool is_dim_collapsible_with_dim_minus_one(const int& dim) const;
@@ -117,15 +121,15 @@ std::vector<int> ElementwiseExpressionState::bshape() const {
     return get_common_bshape(arg_bshapes);
 }
 
-std::vector<std::shared_ptr<const ExpressionState>> ElementwiseExpressionState::arguments() const {
-    return std::vector<std::shared_ptr<const ExpressionState>>(arguments_.begin(), arguments_.end());
+std::vector<std::shared_ptr<const expression::ExpressionState>> ElementwiseExpressionState::arguments() const {
+    return std::vector<std::shared_ptr<const expression::ExpressionState>>(arguments_.begin(), arguments_.end());
 }
 
 void ElementwiseExpressionState::compute_node_compilation_info(
         int desired_computation_rank,
         const std::vector<int>& desired_computation_shape,
-        std::vector<const ArrayWrapper*>* arrays,
-        std::vector<const ScalarWrapper*>* scalars,
+        std::vector<const expression::ArrayWrapper*>* arrays,
+        std::vector<const expression::rtc::ScalarWrapper*>* scalars,
         node_to_info_t* node_to_info) const {
     (*node_to_info)[this].computation_rank = desired_computation_rank;
     for (auto& arg: arguments_) {
@@ -210,8 +214,8 @@ struct CastExpressionState : public ElementwiseExpressionState {
     virtual void compute_node_compilation_info(
         int desired_computation_rank,
         const std::vector<int>& desired_computation_shape,
-        std::vector<const ArrayWrapper*>* arrays,
-        std::vector<const ScalarWrapper*>* scalars,
+        std::vector<const expression::ArrayWrapper*>* arrays,
+        std::vector<const expression::rtc::ScalarWrapper*>* scalars,
         node_to_info_t* node_to_info) const {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
         arguments_[0]->compute_node_compilation_info(desired_computation_rank, desired_computation_shape, arrays, scalars, node_to_info);
@@ -241,8 +245,8 @@ struct RoundExpressionState : public ElementwiseExpressionState {
     virtual void compute_node_compilation_info(
         int desired_computation_rank,
         const std::vector<int>& desired_computation_shape,
-        std::vector<const ArrayWrapper*>* arrays,
-        std::vector<const ScalarWrapper*>* scalars,
+        std::vector<const expression::ArrayWrapper*>* arrays,
+        std::vector<const expression::rtc::ScalarWrapper*>* scalars,
         node_to_info_t* node_to_info) const {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
         arguments_[0]->compute_node_compilation_info(desired_computation_rank, desired_computation_shape, arrays, scalars, node_to_info);
@@ -263,27 +267,27 @@ const hash_t RoundExpressionState::optype_hash = std::hash<std::string>()("Round
 
 
 namespace op {
-    Expression elementwise(const Expression& a,
+    expression::Expression elementwise(const expression::Expression& a,
                           const std::string& functor_name) {
 
-        return Expression(std::make_shared<ElementwiseExpressionState>(
+        return expression::Expression(std::make_shared<ElementwiseExpressionState>(
             functor_name,
             std::vector<std::shared_ptr<const RtcExpression>>({a.state_->as_jit()})
         ));
     }
 
-    Expression elementwise(
-            const Expression& a,
-            const Expression& b,
+    expression::Expression elementwise(
+            const expression::Expression& a,
+            const expression::Expression& b,
             const std::string& functor_name) {
         auto a_b = ensure_arguments_compatible(a, b);
-        return Expression(std::make_shared<ElementwiseExpressionState>(
+        return expression::Expression(std::make_shared<ElementwiseExpressionState>(
             functor_name,
             std::vector<std::shared_ptr<const RtcExpression>>({std::get<0>(a_b).state_->as_jit(), std::get<1>(a_b).state_->as_jit()})
         ));
     }
 
-    Expression astype(const Expression& a, DType type) {
+    expression::Expression astype(const expression::Expression& a, DType type) {
         if (type == DTYPE_INT32) {
             return round(a);
         } else {
@@ -291,35 +295,35 @@ namespace op {
         }
     }
 
-    Expression unsafe_cast(const Expression& a, DType type) {
-        return Expression(std::make_shared<CastExpressionState>(
+    expression::Expression unsafe_cast(const expression::Expression& a, DType type) {
+        return expression::Expression(std::make_shared<CastExpressionState>(
             type,
             a.state_->as_jit()
         ));
     }
 
-    Expression round(const Expression& a) {
-        return Expression(std::make_shared<RoundExpressionState>(
+    expression::Expression round(const expression::Expression& a) {
+        return expression::Expression(std::make_shared<RoundExpressionState>(
             a.state_->as_jit()
         ));
     }
 
-    std::tuple<Expression, Expression> ensure_arguments_compatible(
-            const Expression& a, const Expression& b) {
+    std::tuple<expression::Expression, expression::Expression> ensure_arguments_compatible(
+            const expression::Expression& a, const expression::Expression& b) {
         // perform type promotion:
         if (a.dtype() != b.dtype()) {
             auto new_type = type_promotion(a, b);
             if (a.dtype() == new_type) {
                 // b's dtype is being promoted
-                return std::tuple<Expression,Expression>(a, op::astype(b, new_type));
+                return std::tuple<expression::Expression,expression::Expression>(a, op::astype(b, new_type));
             } else {
 
                 // a's dtype is being promoted
-                return std::tuple<Expression,Expression>(op::astype(a, new_type), b);
+                return std::tuple<expression::Expression,expression::Expression>(op::astype(a, new_type), b);
             }
         } else {
             ASSERT2(ndim_compatible(a, b), "ranks don't match");
-            return std::tuple<Expression,Expression>(a, b);
+            return std::tuple<expression::Expression,expression::Expression>(a, b);
         }
     }
 }

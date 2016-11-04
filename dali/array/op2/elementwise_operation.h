@@ -8,8 +8,8 @@
 namespace op {
     // elementwise kernel given by name. assumes
     // return type is unchanged from a's
-    Expression elementwise(
-        const Expression& a,
+    expression::Expression elementwise(
+        const expression::Expression& a,
         const std::string& functor_name
     );
 
@@ -19,9 +19,9 @@ namespace op {
     // - float w/. double => double
     // - float w/. int => float
     // - double w/. int => double
-    Expression elementwise(
-        const Expression& a,
-        const Expression& b,
+    expression::Expression elementwise(
+        const expression::Expression& a,
+        const expression::Expression& b,
         const std::string& functor_name
     );
 
@@ -31,9 +31,9 @@ namespace op {
     // and run the associated code `kernel_code` during
     // compilation and usage. (Warning: this might cause
     // collisions when a name is used multiple times)
-    Expression binary_kernel_function(
-        const Expression& a,
-        const Expression& b,
+    expression::Expression binary_kernel_function(
+        const expression::Expression& a,
+        const expression::Expression& b,
         const std::string& function_name,
         const std::string& kernel_code
     );
@@ -41,19 +41,19 @@ namespace op {
     // Perform a type conversion by casting the values in x
     // to another dtype. Use rounding when casting to integers
     // for more predictable results
-    Expression astype(const Expression& x, DType dtype);
+    expression::Expression astype(const expression::Expression& x, DType dtype);
     // static_cast one type to another. This can cause unpredictable
     // behavior on floats->integers based on underlying
     // hardware/implementation
-    Expression unsafe_cast(const Expression& x, DType dtype);
+    expression::Expression unsafe_cast(const expression::Expression& x, DType dtype);
     // Perform rounding on a value to nearest integer.
     // Note: equivalent to floor(x + 0.5).
-    Expression round(const Expression& x);
+    expression::Expression round(const expression::Expression& x);
 
     // type-promote arguments if necessary and check whether their
     // ranks are compatible (equal or one is a scalar)
-    std::tuple<Expression, Expression> ensure_arguments_compatible(
-        const Expression& a, const Expression& b
+    std::tuple<expression::Expression, expression::Expression> ensure_arguments_compatible(
+        const expression::Expression& a, const expression::Expression& b
     );
 } // namespace op2
 

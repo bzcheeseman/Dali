@@ -58,7 +58,7 @@ TEST(RTCTests, scatter_simple) {
     auto dest = Array::zeros({3}, DTYPE_INT32);
     auto gathered = dest[indices];
     ASSERT_EQ(gathered.shape(), indices.shape());
-    gathered += Expression(1);
+    gathered += expression::Expression(1);
     EXPECT_EQ(2, int(dest[0]));
     EXPECT_EQ(3, int(dest[1]));
     EXPECT_EQ(1, int(dest[2]));
@@ -74,7 +74,7 @@ TEST(RTCTests, scatter_to_rows_simple) {
     dest = 42;
     auto gathered = dest.gather_from_rows(indices);
     ASSERT_EQ(gathered.shape(), indices.shape());
-    gathered += Expression(1);
+    gathered += expression::Expression(1);
 
     for (int i = 0; i < vals.size(); i++) {
         for (int j = 0; j < dest.shape()[1]; j++) {

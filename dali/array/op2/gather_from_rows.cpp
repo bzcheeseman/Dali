@@ -1,10 +1,13 @@
 #include "gather_from_rows.h"
 
 #include "dali/array/op2/expression/expression.h"
+#include "dali/array/op2/rtc/rtc_expression.h"
 #include "dali/array/op2/elementwise_operation.h"
 #include "dali/array/op2/rtc_utils.h"
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
+
+using expression::rtc::RtcExpression;
 
 struct GatherFromRowsState : public RtcExpression {
     static const hash_t optype_hash;
@@ -156,8 +159,8 @@ struct GatherFromRowsState : public RtcExpression {
     void compute_node_compilation_info(
             int desired_computation_rank,
             const std::vector<int>& desired_computation_shape,
-            std::vector<const ArrayWrapper*>* arrays,
-            std::vector<const ScalarWrapper*>* scalars,
+            std::vector<const expression::ArrayWrapper*>* arrays,
+            std::vector<const expression::rtc::ScalarWrapper*>* scalars,
             node_to_info_t* node_to_info) const {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
 
@@ -205,7 +208,7 @@ struct GatherFromRowsState : public RtcExpression {
 const hash_t GatherFromRowsState::optype_hash = std::hash<std::string>()("GatherFromRowsState");
 
 namespace op {
-    Expression gather_from_rows(const Expression& source, const Expression& indices) {
+    expression::Expression gather_from_rows(const expression::Expression& source, const expression::Expression& indices) {
         ASSERT2(
             source.ndim() > 1,
             utils::make_message("gather must be called on source with ndim >="
@@ -229,6 +232,6 @@ namespace op {
                     ", source.shape[0]=", source_bshape[0], ")")
             );
         }
-        return Expression(std::make_shared<GatherFromRowsState>(source.state_->as_jit(), indices.state_->as_jit()));
+        return expression::Expression(std::make_shared<GatherFromRowsState>(source.state_->as_jit(), indices.state_->as_jit()));
     }
 }  // namespace op

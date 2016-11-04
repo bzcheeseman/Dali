@@ -128,7 +128,7 @@ TEST(RTCTests, axis_reduce_sum_middle_dim) {
 
 TEST(RTCTests, lse_reduce) {
     auto a = Array::zeros({2}, DTYPE_INT32).insert_broadcast_axis(1);
-    a <<= Expression(Array::ones({2, 5}, DTYPE_INT32));
+    a <<= expression::Expression(Array::ones({2, 5}, DTYPE_INT32));
     EXPECT_EQ(5, int(a[0][0]));
     EXPECT_EQ(5, int(a[1][0]));
 }

@@ -5,54 +5,54 @@
 #include "dali/array/op2/unary.h"
 
 #define DALI_DEFINE_ARRAY_INTERACTION(OPNAME, SYMBOL)\
-    Expression operator SYMBOL (const Array& left, const Array& right) {\
+    expression::Expression operator SYMBOL (const Array& left, const Array& right) {\
         return OPNAME (left, right);\
     }\
-    Expression operator SYMBOL (const Expression& left, const Array& right) {\
+    expression::Expression operator SYMBOL (const expression::Expression& left, const Array& right) {\
         return OPNAME (left, right);\
     }\
-    Expression operator SYMBOL (const Array& left, const Expression& right) {\
+    expression::Expression operator SYMBOL (const Array& left, const expression::Expression& right) {\
         return OPNAME (left, right);\
     }\
-    Expression operator SYMBOL (const Expression& left, const Expression& right) {\
+    expression::Expression operator SYMBOL (const expression::Expression& left, const expression::Expression& right) {\
         return OPNAME (left, right);\
     }\
 
 #define DALI_DEFINE_SCALAR_INTERACTION(OPNAME, SYMBOL)\
-    Expression operator SYMBOL (const Array& left, const double& right) {\
+    expression::Expression operator SYMBOL (const Array& left, const double& right) {\
         return OPNAME(left, right);\
     }\
-    Expression operator SYMBOL (const Array& left, const float& right) {\
+    expression::Expression operator SYMBOL (const Array& left, const float& right) {\
         return OPNAME(left, right);\
     }\
-    Expression operator SYMBOL (const Array& left, const int& right) {\
+    expression::Expression operator SYMBOL (const Array& left, const int& right) {\
         return OPNAME(left, right);\
     }\
-    Expression operator SYMBOL (const Expression& left, const double& right) {\
+    expression::Expression operator SYMBOL (const expression::Expression& left, const double& right) {\
         return OPNAME(left, right);\
     }\
-    Expression operator SYMBOL (const Expression& left, const float& right) {\
+    expression::Expression operator SYMBOL (const expression::Expression& left, const float& right) {\
         return OPNAME(left, right);\
     }\
-    Expression operator SYMBOL (const Expression& left, const int& right) {\
+    expression::Expression operator SYMBOL (const expression::Expression& left, const int& right) {\
         return OPNAME(left, right);\
     }\
-    Expression operator SYMBOL (const double& left, const Array& right) {\
+    expression::Expression operator SYMBOL (const double& left, const Array& right) {\
         return OPNAME(left, right);\
     }\
-    Expression operator SYMBOL (const float& left, const Array& right) {\
+    expression::Expression operator SYMBOL (const float& left, const Array& right) {\
         return OPNAME(left, right);\
     }\
-    Expression operator SYMBOL (const int& left, const Array& right) {\
+    expression::Expression operator SYMBOL (const int& left, const Array& right) {\
         return OPNAME(left, right);\
     }\
-    Expression operator SYMBOL (const double& left, const Expression& right) {\
+    expression::Expression operator SYMBOL (const double& left, const expression::Expression& right) {\
         return OPNAME(left, right);\
     }\
-    Expression operator SYMBOL (const float& left, const Expression& right) {\
+    expression::Expression operator SYMBOL (const float& left, const expression::Expression& right) {\
         return OPNAME(left, right);\
     }\
-    Expression operator SYMBOL (const int& left, const Expression& right) {\
+    expression::Expression operator SYMBOL (const int& left, const expression::Expression& right) {\
         return OPNAME(left, right);\
     }\
 
@@ -66,9 +66,9 @@ DALI_DEFINE_SCALAR_INTERACTION(op::add, +);
 DALI_DEFINE_SCALAR_INTERACTION(op::eltmul, *);
 DALI_DEFINE_SCALAR_INTERACTION(op::eltdiv, /);
 
-Expression operator-(const Expression& x) {
+expression::Expression operator-(const expression::Expression& x) {
     return op::eltmul(-1, x);
 }
-Expression operator-(const Array& in) {
+expression::Expression operator-(const Array& in) {
     return op::eltmul(-1, in);
 }

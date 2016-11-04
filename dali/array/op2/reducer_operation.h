@@ -4,17 +4,17 @@
 #include <string>
 #include <vector>
 
-#include "dali/array/op2/operation.h"
+#include "dali/array/op2/expression/expression.h"
 
 namespace op {
-    Operation all_reduce(const Operation& a,
+    Expression all_reduce(const Expression& a,
                          const std::string& reducer_name);
-    Operation argument_all_reduce(const Operation& a,
+    Expression argument_all_reduce(const Expression& a,
                                   const std::string& reducer_name);
-    Operation axis_reduce(const Operation& a,
+    Expression axis_reduce(const Expression& a,
                           const std::string& reducer_name,
                           const std::vector<int>& axes);
-    Operation argument_axis_reduce(const Operation& a,
+    Expression argument_axis_reduce(const Expression& a,
                                    const std::string& reducer_name,
                                    const int& axis);
 }  // namespace op2

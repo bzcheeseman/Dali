@@ -2,7 +2,7 @@
 
 #include "dali/array/function/operator.h"
 #include "dali/array/array.h"
-#include "dali/array/op2/operation.h"
+#include "dali/array/op2/expression/expression.h"
 #include "dali/array/lazy/unary.h"
 #include "dali/array/lazy/binary.h"
 #include "dali/array/lazy/reshape.h"
@@ -29,11 +29,11 @@
         Array left_instance = left;\
         assignable.assign_to(left_instance, OPERATOR_NAME);\
     }\
-    Array& operator SYMBOL (Array& left, const Operation& assignable) {\
+    Array& operator SYMBOL (Array& left, const Expression& assignable) {\
         ((Assignable<Array>)assignable).assign_to(left, OPERATOR_NAME);\
         return left;\
     }\
-    void operator SYMBOL (Array&& left, const Operation& assignable) {\
+    void operator SYMBOL (Array&& left, const Expression& assignable) {\
         Array left_instance = left;\
         ((Assignable<Array>)assignable).assign_to(left_instance, OPERATOR_NAME);\
     }\
@@ -84,7 +84,7 @@ Array& operator<<=(Array& left, const Assignable<Array>& assignable) {
     return left;
 }
 
-Array& operator<<=(Array& left, const Operation& assignable) {
+Array& operator<<=(Array& left, const Expression& assignable) {
     ((Assignable<Array>)assignable).assign_to(left, OPERATOR_T_LSE);\
     return left;
 }
@@ -118,11 +118,11 @@ DALI_DEFINE_SCALAR_INTERACTION_INPLACE(op::eltdiv, /=);
         self_as_array OPERATOR assignable;\
         left = self_as_array;\
     }\
-    CONTAINER& operator OPERATOR (CONTAINER& left, const Operation& assignable) {\
+    CONTAINER& operator OPERATOR (CONTAINER& left, const Expression& assignable) {\
         ((Assignable<CONTAINER>)assignable).assign_to(left, OPERATOR_NAME);\
         return left;\
     }\
-    void operator OPERATOR (CONTAINER&& left, const Operation& assignable) {\
+    void operator OPERATOR (CONTAINER&& left, const Expression& assignable) {\
         ((Assignable<CONTAINER>)assignable).assign_to(left, OPERATOR_NAME);\
     }\
     CONTAINER& operator OPERATOR(CONTAINER& left, const Assignable<CONTAINER>& assignable) {\

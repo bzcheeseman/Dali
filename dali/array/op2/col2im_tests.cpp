@@ -5,7 +5,7 @@
 #include "dali/runtime_config.h"
 #include "dali/array/op2/one_hot.h"
 #include "dali/array/op.h"
-#include "dali/array/op2/operation.h"
+#include "dali/array/op2/expression/expression.h"
 #include "dali/array/op2/im2col.h"
 #include "dali/array/op2/col2im.h"
 

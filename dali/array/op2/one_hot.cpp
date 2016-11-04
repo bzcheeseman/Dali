@@ -1,30 +1,30 @@
 #include "one_hot.h"
 
-#include "dali/array/op2/operation.h"
+#include "dali/array/op2/expression/expression.h"
 #include "dali/array/op2/elementwise_operation.h"
 #include "dali/array/op2/rtc_utils.h"
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
 
-struct OneHotOperationState : public JITOperationState {
+struct OneHotExpressionState : public RtcExpression {
     static const hash_t optype_hash;
 
-    std::shared_ptr<const JITOperationState> indices_;
-    std::shared_ptr<const JITOperationState> on_value_;
-    std::shared_ptr<const JITOperationState> off_value_;
+    std::shared_ptr<const RtcExpression> indices_;
+    std::shared_ptr<const RtcExpression> on_value_;
+    std::shared_ptr<const RtcExpression> off_value_;
     int depth_;
-    std::shared_ptr<const JITOperationState> depth_operation_;
+    std::shared_ptr<const RtcExpression> depth_operation_;
 
-    OneHotOperationState(std::shared_ptr<const JITOperationState> indices,
+    OneHotExpressionState(std::shared_ptr<const RtcExpression> indices,
                          int depth,
-                         std::shared_ptr<const JITOperationState> on_value,
-                         std::shared_ptr<const JITOperationState> off_value) :
-            JITOperationState(indices->min_computation_rank_ + 1),
+                         std::shared_ptr<const RtcExpression> on_value,
+                         std::shared_ptr<const RtcExpression> off_value) :
+            RtcExpression(indices->min_computation_rank_ + 1),
             indices_(indices),
             on_value_(on_value),
             off_value_(off_value),
             depth_(depth),
-            depth_operation_(Operation(depth).state_->as_jit()) {
+            depth_operation_(Expression(depth).state_->as_jit()) {
     }
 
     virtual std::string name() const {
@@ -67,7 +67,7 @@ struct OneHotOperationState : public JITOperationState {
         return result;
     }
 
-    std::vector<operation_state_ptr> arguments() const {
+    std::vector<std::shared_ptr<const ExpressionState>> arguments() const {
         return {indices_, on_value_, off_value_, depth_operation_};
     }
 
@@ -78,17 +78,17 @@ struct OneHotOperationState : public JITOperationState {
         return indices_->is_dim_collapsible_with_dim_minus_one(dim);
     }
 
-    std::shared_ptr<const JITOperationState> collapse_dim_with_dim_minus_one(const int& dim) const {
-        return std::make_shared<OneHotOperationState>(
+    std::shared_ptr<const RtcExpression> collapse_dim_with_dim_minus_one(const int& dim) const {
+        return std::make_shared<OneHotExpressionState>(
             indices_->collapse_dim_with_dim_minus_one(dim),
             depth_, on_value_, off_value_
         );
     }
 
-    std::shared_ptr<const JITOperationState> transpose(const std::vector<int>& permutation) const {
+    std::shared_ptr<const RtcExpression> transpose(const std::vector<int>& permutation) const {
         bool last_dim_unchanged = permutation.back() == int(permutation.size()) - 1;
         if (last_dim_unchanged)
-            return std::make_shared<OneHotOperationState>(
+            return std::make_shared<OneHotExpressionState>(
                 indices_->transpose(permutation),
                 depth_,
                 on_value_,
@@ -103,8 +103,8 @@ struct OneHotOperationState : public JITOperationState {
     void compute_node_compilation_info(
             int desired_computation_rank,
             const std::vector<int>& desired_computation_shape,
-            std::vector<const ArrayOperationState*>* arrays,
-            std::vector<const ScalarOperationState*>* scalars,
+            std::vector<const ArrayWrapper*>* arrays,
+            std::vector<const ScalarWrapper*>* scalars,
             node_to_info_t* node_to_info) const {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
         auto indices_shape = desired_computation_shape;
@@ -138,14 +138,14 @@ struct OneHotOperationState : public JITOperationState {
     }
 };
 
-const hash_t OneHotOperationState::optype_hash = std::hash<std::string>()("OneHotOperationState");
+const hash_t OneHotExpressionState::optype_hash = std::hash<std::string>()("OneHotExpressionState");
 
 namespace op {
-    Operation one_hot(
-            const Operation& indices,
+    Expression one_hot(
+            const Expression& indices,
             int depth,
-            const Operation& on_value,
-            const Operation& off_value) {
+            const Expression& on_value,
+            const Expression& off_value) {
         ASSERT2(
             indices.dtype() == DTYPE_INT32,
             utils::make_message("indices must be integers (got ", indices.dtype(), ").")
@@ -163,7 +163,7 @@ namespace op {
             utils::make_message("depth must be strictly positive (got depth=", depth, ").")
         );
         auto on_off = ensure_arguments_compatible(on_value, off_value);
-        return Operation(std::make_shared<OneHotOperationState>(
+        return Expression(std::make_shared<OneHotExpressionState>(
             indices.state_->as_jit(), depth, std::get<0>(on_off).state_->as_jit(), std::get<1>(on_off).state_->as_jit()
         ));
     }

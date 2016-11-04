@@ -1,19 +1,19 @@
 #include "circular_convolution.h"
 
-#include "dali/array/op2/operation.h"
+#include "dali/array/op2/expression/expression.h"
 #include "dali/array/op2/elementwise_operation.h"
 #include "dali/array/op2/rtc_utils.h"
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
 
-struct CircularConvolutionOperationState : public JITOperationState {
+struct CircularConvolutionExpressionState : public RtcExpression {
     static const hash_t optype_hash;
 
-    std::shared_ptr<const JITOperationState> content_;
-    std::shared_ptr<const JITOperationState> weights_;
+    std::shared_ptr<const RtcExpression> content_;
+    std::shared_ptr<const RtcExpression> weights_;
 
-    CircularConvolutionOperationState(std::shared_ptr<const JITOperationState> content, std::shared_ptr<const JITOperationState> weights) :
-            JITOperationState(std::max(2, std::max(content->min_computation_rank_, weights->min_computation_rank_))),
+    CircularConvolutionExpressionState(std::shared_ptr<const RtcExpression> content, std::shared_ptr<const RtcExpression> weights) :
+            RtcExpression(std::max(2, std::max(content->min_computation_rank_, weights->min_computation_rank_))),
             content_(content),
             weights_(weights) {
     }
@@ -68,7 +68,7 @@ struct CircularConvolutionOperationState : public JITOperationState {
         return get_common_bshape({content_->bshape(), weights_->bshape()});
     }
 
-    virtual std::vector<operation_state_ptr> arguments() const {
+    virtual std::vector<std::shared_ptr<const ExpressionState>> arguments() const {
         return {content_, weights_};
     }
 
@@ -80,17 +80,17 @@ struct CircularConvolutionOperationState : public JITOperationState {
                content_->is_dim_collapsible_with_dim_minus_one(dim);
     }
 
-    std::shared_ptr<const JITOperationState> collapse_dim_with_dim_minus_one(const int& dim) const {
-        return std::make_shared<CircularConvolutionOperationState>(
+    std::shared_ptr<const RtcExpression> collapse_dim_with_dim_minus_one(const int& dim) const {
+        return std::make_shared<CircularConvolutionExpressionState>(
             content_->collapse_dim_with_dim_minus_one(dim),
             weights_->collapse_dim_with_dim_minus_one(dim)
         );
     }
 
-    std::shared_ptr<const JITOperationState> transpose(const std::vector<int>& permutation) const {
+    std::shared_ptr<const RtcExpression> transpose(const std::vector<int>& permutation) const {
         bool last_dim_unchanged = permutation.back() == int(permutation.size()) - 1;
         if (last_dim_unchanged)
-            return std::make_shared<CircularConvolutionOperationState>(
+            return std::make_shared<CircularConvolutionExpressionState>(
                 content_->transpose(permutation),
                 weights_->transpose(permutation)
             );
@@ -103,8 +103,8 @@ struct CircularConvolutionOperationState : public JITOperationState {
     void compute_node_compilation_info(
             int desired_computation_rank,
             const std::vector<int>& desired_computation_shape,
-            std::vector<const ArrayOperationState*>* arrays,
-            std::vector<const ScalarOperationState*>* scalars,
+            std::vector<const ArrayWrapper*>* arrays,
+            std::vector<const ScalarWrapper*>* scalars,
             node_to_info_t* node_to_info) const {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
         content_->compute_node_compilation_info(desired_computation_rank, desired_computation_shape, arrays, scalars, node_to_info);
@@ -129,12 +129,12 @@ struct CircularConvolutionOperationState : public JITOperationState {
     }
 };
 
-const hash_t CircularConvolutionOperationState::optype_hash = std::hash<std::string>()("CircularConvolutionOperationState");
+const hash_t CircularConvolutionExpressionState::optype_hash = std::hash<std::string>()("CircularConvolutionExpressionState");
 
 namespace op {
-    Operation circular_convolution(const Operation& x, const Operation& weights) {
+    Expression circular_convolution(const Expression& x, const Expression& weights) {
         auto x_weights = ensure_arguments_compatible(x, weights);
-        return Operation(std::make_shared<CircularConvolutionOperationState>(
+        return Expression(std::make_shared<CircularConvolutionExpressionState>(
             std::get<0>(x_weights).state_->as_jit(), std::get<1>(x_weights).state_->as_jit()
         ));
     }

@@ -1,6 +1,6 @@
 #include "im2col.h"
 
-#include "dali/array/op2/operation.h"
+#include "dali/array/op2/expression/expression.h"
 #include "dali/array/op2/elementwise_operation.h"
 #include "dali/array/op2/rtc_utils.h"
 #include "dali/array/op/spatial/utils.h"
@@ -48,9 +48,9 @@ std::vector<int> deduce_im2col_shape(
 }
 
 
-struct Im2ColOperationState : public JITOperationState {
+struct Im2ColExpressionState : public RtcExpression {
     static const hash_t optype_hash;
-    std::shared_ptr<const JITOperationState> image_;
+    std::shared_ptr<const RtcExpression> image_;
 
     int filter_h_;
     int filter_w_;
@@ -69,22 +69,22 @@ struct Im2ColOperationState : public JITOperationState {
 
     std::string data_format_;
 
-    std::shared_ptr<const JITOperationState> filter_h_op_;
-    std::shared_ptr<const JITOperationState> filter_w_op_;
+    std::shared_ptr<const RtcExpression> filter_h_op_;
+    std::shared_ptr<const RtcExpression> filter_w_op_;
 
-    std::shared_ptr<const JITOperationState> stride_h_op_;
-    std::shared_ptr<const JITOperationState> stride_w_op_;
+    std::shared_ptr<const RtcExpression> stride_h_op_;
+    std::shared_ptr<const RtcExpression> stride_w_op_;
 
-    std::shared_ptr<const JITOperationState> dilate_h_op_;
-    std::shared_ptr<const JITOperationState> dilate_w_op_;
+    std::shared_ptr<const RtcExpression> dilate_h_op_;
+    std::shared_ptr<const RtcExpression> dilate_w_op_;
 
-    std::shared_ptr<const JITOperationState> prepad_h_op_;
-    std::shared_ptr<const JITOperationState> prepad_w_op_;
+    std::shared_ptr<const RtcExpression> prepad_h_op_;
+    std::shared_ptr<const RtcExpression> prepad_w_op_;
 
-    std::shared_ptr<const JITOperationState> postpad_h_op_;
-    std::shared_ptr<const JITOperationState> postpad_w_op_;
+    std::shared_ptr<const RtcExpression> postpad_h_op_;
+    std::shared_ptr<const RtcExpression> postpad_w_op_;
 
-    Im2ColOperationState(std::shared_ptr<const JITOperationState> image,
+    Im2ColExpressionState(std::shared_ptr<const RtcExpression> image,
                          int filter_h,
                          int filter_w,
                          int stride_h,
@@ -96,7 +96,7 @@ struct Im2ColOperationState : public JITOperationState {
                          int postpad_h,
                          int postpad_w,
                          const std::string& data_format) :
-            JITOperationState(2),
+            RtcExpression(2),
             image_(image),
             filter_h_(filter_h),
             filter_w_(filter_w),
@@ -110,16 +110,16 @@ struct Im2ColOperationState : public JITOperationState {
             postpad_w_(postpad_w),
             data_format_(data_format),
             // create scalar ops to send constants to kernel:
-            filter_h_op_(Operation(filter_h).state_->as_jit()),
-            filter_w_op_(Operation(filter_w).state_->as_jit()),
-            stride_h_op_(Operation(stride_h).state_->as_jit()),
-            stride_w_op_(Operation(stride_w).state_->as_jit()),
-            dilate_h_op_(Operation(dilate_h).state_->as_jit()),
-            dilate_w_op_(Operation(dilate_w).state_->as_jit()),
-            prepad_h_op_(Operation(prepad_h).state_->as_jit()),
-            prepad_w_op_(Operation(prepad_w).state_->as_jit()),
-            postpad_h_op_(Operation(postpad_h).state_->as_jit()),
-            postpad_w_op_(Operation(postpad_w).state_->as_jit()) {
+            filter_h_op_(Expression(filter_h).state_->as_jit()),
+            filter_w_op_(Expression(filter_w).state_->as_jit()),
+            stride_h_op_(Expression(stride_h).state_->as_jit()),
+            stride_w_op_(Expression(stride_w).state_->as_jit()),
+            dilate_h_op_(Expression(dilate_h).state_->as_jit()),
+            dilate_w_op_(Expression(dilate_w).state_->as_jit()),
+            prepad_h_op_(Expression(prepad_h).state_->as_jit()),
+            prepad_w_op_(Expression(prepad_w).state_->as_jit()),
+            postpad_h_op_(Expression(postpad_h).state_->as_jit()),
+            postpad_w_op_(Expression(postpad_w).state_->as_jit()) {
     }
 
     virtual DType dtype() const {
@@ -130,7 +130,7 @@ struct Im2ColOperationState : public JITOperationState {
         return "im2col";
     }
 
-    virtual std::vector<operation_state_ptr> arguments() const {
+    virtual std::vector<std::shared_ptr<const ExpressionState>> arguments() const {
         return {
             image_,
             filter_h_op_,
@@ -316,14 +316,14 @@ struct Im2ColOperationState : public JITOperationState {
         return false;
     }
 
-    std::shared_ptr<const JITOperationState> collapse_dim_with_dim_minus_one(const int& dim) const {
+    std::shared_ptr<const RtcExpression> collapse_dim_with_dim_minus_one(const int& dim) const {
         throw std::runtime_error(
             "Cannot collapse dim with dim minus one result of im2col."
         );
         return jit_shared_from_this();
     }
 
-    std::shared_ptr<const JITOperationState> transpose(const std::vector<int>& permutation) const {
+    std::shared_ptr<const RtcExpression> transpose(const std::vector<int>& permutation) const {
         throw std::runtime_error(
             "Cannot transpose result of im2col."
         );
@@ -333,8 +333,8 @@ struct Im2ColOperationState : public JITOperationState {
     void compute_node_compilation_info(
             int desired_computation_rank,
             const std::vector<int>& desired_computation_shape,
-            std::vector<const ArrayOperationState*>* arrays,
-            std::vector<const ScalarOperationState*>* scalars,
+            std::vector<const ArrayWrapper*>* arrays,
+            std::vector<const ScalarWrapper*>* scalars,
             node_to_info_t* node_to_info) const {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
         image_->compute_node_compilation_info(4, image_->shape(), arrays, scalars, node_to_info);
@@ -385,10 +385,10 @@ struct Im2ColOperationState : public JITOperationState {
     }
 };
 
-const hash_t Im2ColOperationState::optype_hash = std::hash<std::string>()("Im2ColOperationState");
+const hash_t Im2ColExpressionState::optype_hash = std::hash<std::string>()("Im2ColExpressionState");
 
 namespace op {
-    Operation im2col(const Operation& image,
+    Expression im2col(const Expression& image,
                      int filter_h,
                      int filter_w,
                      int stride_h,
@@ -426,8 +426,8 @@ namespace op {
             "smaller than filter size (filter_h=", filter_h, " vs. image_h=",
             image_h, ", filter_w=", filter_w, " vs. w_dim=", image_w, ")."));
 
-        return Operation(
-            std::make_shared<Im2ColOperationState>(
+        return Expression(
+            std::make_shared<Im2ColExpressionState>(
                 image.state_->as_jit(),
                 filter_h,
                 filter_w,

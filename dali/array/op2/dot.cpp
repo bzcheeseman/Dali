@@ -4,7 +4,7 @@ extern "C" {
     #include <cblas.h>
 }
 
-#include "dali/array/op2/operation.h"
+#include "dali/array/op2/expression/expression.h"
 #include "dali/utils/assert2.h"
 #include "dali/utils/make_message.h"
 #include "dali/array/mshadow_extension/reference_gemm.h"
@@ -36,16 +36,16 @@ std::tuple<bool, int> gemm_stride_transpose(const Array& array) {
     }
 }
 
-struct GemmAssignOperationState: public RunnableOperationState {
-    std::shared_ptr<const ArrayOperationState> dest_;
-    std::shared_ptr<const RunnableOperationState> left_;
-    std::shared_ptr<const RunnableOperationState> right_;
+struct GemmAssignExpressionState: public Runnable {
+    std::shared_ptr<const ArrayWrapper> dest_;
+    std::shared_ptr<const Runnable> left_;
+    std::shared_ptr<const Runnable> right_;
     double result_multiplier_;
     double destination_multiplier_;
 
-    GemmAssignOperationState(std::shared_ptr<const ArrayOperationState> dest,
-                             std::shared_ptr<const RunnableOperationState> left,
-                             std::shared_ptr<const RunnableOperationState> right,
+    GemmAssignExpressionState(std::shared_ptr<const ArrayWrapper> dest,
+                             std::shared_ptr<const Runnable> left,
+                             std::shared_ptr<const Runnable> right,
                              double result_multiplier,
                              double destination_multiplier)
             : dest_(dest),
@@ -71,7 +71,7 @@ struct GemmAssignOperationState: public RunnableOperationState {
         return 2;
     }
 
-    std::vector<operation_state_ptr> arguments() const {
+    std::vector<std::shared_ptr<const ExpressionState>> arguments() const {
         return {dest_, left_, right_};
     }
 
@@ -135,17 +135,17 @@ struct GemmAssignOperationState: public RunnableOperationState {
         }
     }
 
-    std::shared_ptr<const OperationState> destination_op() const {
+    std::shared_ptr<const ExpressionState> destination_op() const {
         return dest_;
     }
 };
 
 
-struct DotOperationState: public RValueOperationState {
-    std::shared_ptr<const RValueOperationState> left_;
-    std::shared_ptr<const RValueOperationState> right_;
+struct DotExpressionState: public RValueExpressionState {
+    std::shared_ptr<const RValueExpressionState> left_;
+    std::shared_ptr<const RValueExpressionState> right_;
 
-    DotOperationState(std::shared_ptr<const RValueOperationState> left, std::shared_ptr<const RValueOperationState> right)
+    DotExpressionState(std::shared_ptr<const RValueExpressionState> left, std::shared_ptr<const RValueExpressionState> right)
         : left_(left), right_(right) {
     }
 
@@ -170,7 +170,7 @@ struct DotOperationState: public RValueOperationState {
         return 2;
     }
 
-    std::vector<operation_state_ptr> arguments() const {
+    std::vector<std::shared_ptr<const ExpressionState>> arguments() const {
         return {left_, right_};
     }
 
@@ -186,7 +186,7 @@ struct DotOperationState: public RValueOperationState {
         }
     }
 
-    virtual std::shared_ptr<const RunnableOperationState> use_operator(std::shared_ptr<const LValueOperationState> dest,
+    virtual std::shared_ptr<const Runnable> use_operator(std::shared_ptr<const LValueExpressionState> dest,
                                                                                 memory::Device device,
                                                                                 OPERATOR_T opreator_t) const {
         if (device.is_cpu()) {
@@ -199,7 +199,7 @@ struct DotOperationState: public RValueOperationState {
             if (dest_array) {
                 double result_multiplier, destination_multiplier;
                 std::tie(result_multiplier, destination_multiplier) = operator_to_multipliers(opreator_t);
-                return std::make_shared<GemmAssignOperationState>(dest_array, left_runnable, right_runnable, result_multiplier, destination_multiplier);
+                return std::make_shared<GemmAssignExpressionState>(dest_array, left_runnable, right_runnable, result_multiplier, destination_multiplier);
             } else {
                 return dest->operator_from(opreator_t, this->as_runnable(device), device);
             }
@@ -209,15 +209,15 @@ struct DotOperationState: public RValueOperationState {
         }
     }
 
-    virtual std::shared_ptr<const RunnableOperationState> assign_to(std::shared_ptr<const LValueOperationState> dest, memory::Device device) const {
+    virtual std::shared_ptr<const Runnable> assign_to(std::shared_ptr<const LValueExpressionState> dest, memory::Device device) const {
         return use_operator(dest, device, OPERATOR_T_EQL);
     }
 
-    virtual std::shared_ptr<const RunnableOperationState> plus_to(std::shared_ptr<const LValueOperationState> dest, memory::Device device) const {
+    virtual std::shared_ptr<const Runnable> plus_to(std::shared_ptr<const LValueExpressionState> dest, memory::Device device) const {
         return use_operator(dest, device, OPERATOR_T_ADD);
     }
 
-    virtual std::shared_ptr<const RunnableOperationState> sub_to(std::shared_ptr<const LValueOperationState> dest, memory::Device device) const {
+    virtual std::shared_ptr<const Runnable> sub_to(std::shared_ptr<const LValueExpressionState> dest, memory::Device device) const {
         return use_operator(dest, device, OPERATOR_T_SUB);
     }
 };
@@ -225,7 +225,7 @@ struct DotOperationState: public RValueOperationState {
 
 
 namespace op {
-    Operation dot2(const Operation& left, const Operation& right) {
+    Expression dot2(const Expression& left, const Expression& right) {
         ASSERT2(left.ndim() == 2 && right.ndim() == 2,
                 "Inputs to dot must be two-dimensional.");
         auto left_rvalue  = left.state_->as_rvalue();
@@ -233,6 +233,6 @@ namespace op {
         ASSERT2(left_rvalue, "First argument for dot must be a rvalue.");
         ASSERT2(right_rvalue, "Second argument for dot must be a rvalue.");
         // TODO(szymon): add type promotion.
-        return Operation(std::make_shared<DotOperationState>(left_rvalue, right_rvalue));
+        return Expression(std::make_shared<DotExpressionState>(left_rvalue, right_rvalue));
     }
 }  // namespace op

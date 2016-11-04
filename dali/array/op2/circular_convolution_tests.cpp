@@ -7,7 +7,7 @@
 #include "dali/array/op2/unary.h"
 #include "dali/array/op2/circular_convolution.h"
 #include "dali/array/op.h"
-#include "dali/array/op2/operation.h"
+#include "dali/array/op2/expression/expression.h"
 
 namespace {
     void reference_circular_convolution(const Array& content, const Array& shift, Array* dest_ptr) {

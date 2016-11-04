@@ -3,7 +3,7 @@
 #include "dali/array/op2/reducers.h"
 #include "dali/array/op2/binary.h"
 #include "dali/array/op.h"
-#include "dali/array/op2/operation.h"
+#include "dali/array/op2/expression/expression.h"
 
 TEST(RTCTests, all_reduce_sum) {
     int rows = 5, cols = 10;
@@ -128,7 +128,7 @@ TEST(RTCTests, axis_reduce_sum_middle_dim) {
 
 TEST(RTCTests, lse_reduce) {
     auto a = Array::zeros({2}, DTYPE_INT32).insert_broadcast_axis(1);
-    a <<= Operation(Array::ones({2, 5}, DTYPE_INT32));
+    a <<= Expression(Array::ones({2, 5}, DTYPE_INT32));
     EXPECT_EQ(5, int(a[0][0]));
     EXPECT_EQ(5, int(a[1][0]));
 }

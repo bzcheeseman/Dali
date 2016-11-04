@@ -6,7 +6,7 @@
 #include "dali/array/op2/unary.h"
 #include "dali/array/op2/binary.h"
 #include "dali/array/op.h"
-#include "dali/array/op2/operation.h"
+#include "dali/array/op2/expression/expression.h"
 #include "dali/array/functor.h"
 
 #define DALI_DEFINE_REFERENCE_UNARY(FUNCNAME, FUNCTOR_NAME)\

@@ -298,7 +298,7 @@ TEST_F(TensorBinaryTests, prelu) {
 // }
 //
 // TEST_F(MatrixTests, matrix_eltmul_rowwise) {
-//     // Operation of the form f(A,B) => A * B.T
+//     // Expression of the form f(A,B) => A * B.T
 //     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
 //         return MatOps<R>::eltmul_rowwise(Xs[0], Xs[1]);
 //     };
@@ -310,7 +310,7 @@ TEST_F(TensorBinaryTests, prelu) {
 // }
 //
 // TEST_F(MatrixTests, matrix_eltmul_broadcast_rowwise) {
-//     // Operation of the form f(A,B) => A * B.T
+//     // Expression of the form f(A,B) => A * B.T
 //     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
 //         return MatOps<R>::eltmul_broadcast_rowwise(Xs[0], Xs[1]);
 //     };

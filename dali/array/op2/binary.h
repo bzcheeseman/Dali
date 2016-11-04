@@ -1,31 +1,31 @@
 #ifndef DALI_ARRAY_OP2_BINARY_H
 #define DALI_ARRAY_OP2_BINARY_H
 
-#include "dali/array/op2/operation.h"
+#include "dali/array/op2/expression/expression.h"
 
 namespace op {
-    Operation add(const Operation& a, const Operation& b);
+    Expression add(const Expression& a, const Expression& b);
     Assignable<Array> add(const std::vector<Array>& as);
-    Operation sub(const Operation& a, const Operation& b);
-    Operation eltmul(const Operation& left, const Operation& right);
-    Operation eltdiv(const Operation& left, const Operation& right);
-    Operation pow(const Operation& left, const Operation& right);
-    Operation equals(const Operation& left, const Operation& right);
-    Operation steep_sigmoid(const Operation& x, const Operation& aggressiveness);
-    Operation steep_sigmoid_backward(const Operation& x, const Operation& aggressiveness);
-    Operation clipped_relu(const Operation& x, const Operation& clipval);
-    Operation clipped_relu_backward(const Operation& x, const Operation& clipval);
-    Operation prelu(const Operation& x, const Operation& weights);
-    Operation prelu_backward_weights(const Operation& a, const Operation& grad);
-    Operation prelu_backward_inputs(const Operation& a, const Operation& weights);
+    Expression sub(const Expression& a, const Expression& b);
+    Expression eltmul(const Expression& left, const Expression& right);
+    Expression eltdiv(const Expression& left, const Expression& right);
+    Expression pow(const Expression& left, const Expression& right);
+    Expression equals(const Expression& left, const Expression& right);
+    Expression steep_sigmoid(const Expression& x, const Expression& aggressiveness);
+    Expression steep_sigmoid_backward(const Expression& x, const Expression& aggressiveness);
+    Expression clipped_relu(const Expression& x, const Expression& clipval);
+    Expression clipped_relu_backward(const Expression& x, const Expression& clipval);
+    Expression prelu(const Expression& x, const Expression& weights);
+    Expression prelu_backward_weights(const Expression& a, const Expression& grad);
+    Expression prelu_backward_inputs(const Expression& a, const Expression& weights);
 
-    Operation lessthanequal(const Operation& a, const Operation& b);
-    Operation greaterthanequal(const Operation& a, const Operation& b);
-    Operation eltmax(const Operation& a, const Operation& b);
-    Operation clip(const Operation& a, const Operation& b);
-    Operation eltmin(const Operation& a, const Operation& b);
-    Operation binary_cross_entropy(const Operation& a, const Operation& b);
-    Operation binary_cross_entropy_grad(const Operation& a, const Operation& b);
+    Expression lessthanequal(const Expression& a, const Expression& b);
+    Expression greaterthanequal(const Expression& a, const Expression& b);
+    Expression eltmax(const Expression& a, const Expression& b);
+    Expression clip(const Expression& a, const Expression& b);
+    Expression eltmin(const Expression& a, const Expression& b);
+    Expression binary_cross_entropy(const Expression& a, const Expression& b);
+    Expression binary_cross_entropy_grad(const Expression& a, const Expression& b);
 }  // namespace op2
 
 #endif  // DALI_ARRAY_OP2_BINARY_H

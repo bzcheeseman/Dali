@@ -3,11 +3,11 @@
 
 #include <string>
 
-struct Operation;
+struct Expression;
 
 namespace op {
-    Operation im2col(
-        const Operation& input,
+    Expression im2col(
+        const Expression& input,
         int filter_h,
         int filter_w,
         int stride_h,

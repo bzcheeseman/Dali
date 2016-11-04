@@ -4,14 +4,14 @@
 #include <string>
 #include <vector>
 
-struct Operation;
+struct Expression;
 
 namespace op {
-    Operation one_hot(
-        const Operation& indices,
+    Expression one_hot(
+        const Expression& indices,
         int depth,
-        const Operation& on_value,
-        const Operation& off_value
+        const Expression& on_value,
+        const Expression& off_value
     );
 }  // namespace op
 

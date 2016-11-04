@@ -10,7 +10,7 @@
 #include "dali/array/op/softmax.h"
 #include "dali/array/op/spatial.h"
 #include "dali/array/op_overload/common.h"
-#include "dali/array/op2/operation.h"
+#include "dali/array/op2/expression/abstract_assign.h"
 #include "dali/array/op2/reducers.h"
 #include "dali/array/op2/unary.h"
 #include "dali/array/op2/binary.h"

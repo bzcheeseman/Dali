@@ -5,7 +5,7 @@
 #include "dali/runtime_config.h"
 #include "dali/array/op2/one_hot.h"
 #include "dali/array/op.h"
-#include "dali/array/op2/operation.h"
+#include "dali/array/op2/expression/expression.h"
 
 Array reference_one_hot(Array indices, int depth, double on_value, double off_value) {
     auto out_shape = indices.shape();

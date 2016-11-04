@@ -1,10 +1,10 @@
 #ifndef DALI_ARRAY_OP2_GATHER_H
 #define DALI_ARRAY_OP2_GATHER_H
 
-struct Operation;
+struct Expression;
 
 namespace op {
-    Operation gather(const Operation& source, const Operation& indices);
+    Expression gather(const Expression& source, const Expression& indices);
 }  // namespace op2
 
 #endif  // DALI_ARRAY_OP2_GATHER_H

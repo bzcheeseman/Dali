@@ -1,18 +1,18 @@
 #include "outer.h"
 
-#include "dali/array/op2/operation.h"
+#include "dali/array/op2/expression/expression.h"
 #include "dali/array/op2/elementwise_operation.h"
 #include "dali/array/op2/rtc_utils.h"
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
 
-struct OuterOperationState : public JITOperationState {
+struct OuterExpressionState : public RtcExpression {
     static const hash_t optype_hash;
-    std::shared_ptr<const JITOperationState> left_;
-    std::shared_ptr<const JITOperationState> right_;
+    std::shared_ptr<const RtcExpression> left_;
+    std::shared_ptr<const RtcExpression> right_;
 
-    OuterOperationState(std::shared_ptr<const JITOperationState> left, std::shared_ptr<const JITOperationState> right)
-        : JITOperationState(2), left_(left), right_(right) {}
+    OuterExpressionState(std::shared_ptr<const RtcExpression> left, std::shared_ptr<const RtcExpression> right)
+        : RtcExpression(2), left_(left), right_(right) {}
 
     virtual std::string name() const {
         return "outer";
@@ -54,7 +54,7 @@ struct OuterOperationState : public JITOperationState {
         return 2;
     }
 
-    std::vector<operation_state_ptr> arguments() const {
+    std::vector<std::shared_ptr<const ExpressionState>> arguments() const {
         return {left_, right_};
     }
 
@@ -62,12 +62,12 @@ struct OuterOperationState : public JITOperationState {
         return false;
     }
 
-    std::shared_ptr<const JITOperationState> collapse_dim_with_dim_minus_one(const int& dim) const {
+    std::shared_ptr<const RtcExpression> collapse_dim_with_dim_minus_one(const int& dim) const {
         throw std::runtime_error("cannot collapse dim with dim minus one the result of outer.");
         return jit_shared_from_this();
     }
 
-    std::shared_ptr<const JITOperationState> transpose(const std::vector<int>& permutation) const {
+    std::shared_ptr<const RtcExpression> transpose(const std::vector<int>& permutation) const {
         ASSERT2(permutation.size() == 2, utils::make_message("transpose of "
             "outer must receive 2 axes (got ", permutation, ")."));
         // 1) No change:
@@ -75,14 +75,14 @@ struct OuterOperationState : public JITOperationState {
             return jit_shared_from_this();
         }
         // 2) transpose of outer is equivalent to swapping order of arguments:
-        return std::make_shared<OuterOperationState>(right_, left_);
+        return std::make_shared<OuterExpressionState>(right_, left_);
     }
 
     void compute_node_compilation_info(
             int desired_computation_rank,
             const std::vector<int>& desired_computation_shape,
-            std::vector<const ArrayOperationState*>* arrays,
-            std::vector<const ScalarOperationState*>* scalars,
+            std::vector<const ArrayWrapper*>* arrays,
+            std::vector<const ScalarWrapper*>* scalars,
             node_to_info_t* node_to_info) const {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
         left_->compute_node_compilation_info(
@@ -119,16 +119,16 @@ struct OuterOperationState : public JITOperationState {
     }
 };
 
-const hash_t OuterOperationState::optype_hash = std::hash<std::string>()("OuterOperationState");
+const hash_t OuterExpressionState::optype_hash = std::hash<std::string>()("OuterExpressionState");
 
 namespace op {
-    Operation outer(const Operation& left, const Operation& right) {
+    Expression outer(const Expression& left, const Expression& right) {
         ASSERT2(left.ndim() <= 1, utils::make_message("left operand of outer "
             "must have ndim <= 1 (got ", left.ndim(), ")."));
         ASSERT2(right.ndim() <= 1, utils::make_message("right operand of outer "
             "must have ndim <= 1 (got ", right.ndim(), ")."));
         auto left_right = ensure_arguments_compatible(left, right);
-        return Operation(std::make_shared<OuterOperationState>(
+        return Expression(std::make_shared<OuterExpressionState>(
             std::get<0>(left_right).state_->as_jit(), std::get<1>(left_right).state_->as_jit()
         ));
     }

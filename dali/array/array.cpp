@@ -221,9 +221,9 @@ Array::Array(const Assignable<Array>& assignable) {
     assignable.assign_to(*this, OPERATOR_T_EQL);
 }
 
-Array::Array(const Operation& operation) : Array((Assignable<Array>) operation) {}
+Array::Array(const Expression& operation) : Array((Assignable<Array>) operation) {}
 
-Array& Array::operator=(const Operation& operation) {
+Array& Array::operator=(const Expression& operation) {
     return this->operator=((Assignable<Array>)operation);
 }
 
@@ -616,7 +616,7 @@ DType Array::dtype() const {
     return state->dtype;
 }
 
-Operation Array::astype(DType dtype_) const {
+Expression Array::astype(DType dtype_) const {
     return op::astype(*this, dtype_);
 }
 
@@ -1090,14 +1090,14 @@ Array Array::broadcast_scalar_to_ndim(const int& target_ndim) const {
     DALI_ARRAY_DEFINE_ALL_REDUCER(FUNCTION_NAME, OPNAME, RETVAL);\
     DALI_ARRAY_DEFINE_AXIS_REDUCER(FUNCTION_NAME, OPNAME, RETVAL);\
 
-DALI_ARRAY_DEFINE_REDUCER(sum, sum, Operation);
-DALI_ARRAY_DEFINE_REDUCER(L2_norm, L2_norm, Operation);
-DALI_ARRAY_DEFINE_REDUCER(mean, mean, Operation);
-DALI_ARRAY_DEFINE_REDUCER(max, max, Operation);
-DALI_ARRAY_DEFINE_REDUCER(min, min, Operation);
+DALI_ARRAY_DEFINE_REDUCER(sum, sum, Expression);
+DALI_ARRAY_DEFINE_REDUCER(L2_norm, L2_norm, Expression);
+DALI_ARRAY_DEFINE_REDUCER(mean, mean, Expression);
+DALI_ARRAY_DEFINE_REDUCER(max, max, Expression);
+DALI_ARRAY_DEFINE_REDUCER(min, min, Expression);
 DALI_ARRAY_DEFINE_REDUCER(argsort, argsort, Assignable<Array>);
-DALI_ARRAY_DEFINE_REDUCER(argmin, argmin, Operation);
-DALI_ARRAY_DEFINE_REDUCER(argmax, argmax, Operation);
+DALI_ARRAY_DEFINE_REDUCER(argmin, argmin, Expression);
+DALI_ARRAY_DEFINE_REDUCER(argmax, argmax, Expression);
 
 Array::operator float() const {
     return scalar_value<float>();
@@ -1214,7 +1214,7 @@ const std::vector<int>& ArraySubtensor::shape() const {
 
 
 ArraySubtensor& ArraySubtensor::operator=(const Array& assignable) {
-    *this = (Assignable<ArraySubtensor>)Operation(assignable);
+    *this = (Assignable<ArraySubtensor>)Expression(assignable);
     return *this;
 }
 
@@ -1273,7 +1273,7 @@ std::vector<int> ArrayGather::shape() const {
 }
 
 ArrayGather& ArrayGather::operator=(const Array& assignable) {
-    *this = (Assignable<ArrayGather>)Operation(assignable);
+    *this = (Assignable<ArrayGather>)Expression(assignable);
     return *this;
 }
 

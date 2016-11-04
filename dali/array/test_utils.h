@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "dali/array/array.h"
-#include "dali/array/op2/operation.h"
+#include "dali/array/op2/expression/expression.h"
 #include "dali/array/dtype.h"
 
 template<typename T>

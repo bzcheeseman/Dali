@@ -1,19 +1,19 @@
 #include "gather.h"
 
-#include "dali/array/op2/operation.h"
+#include "dali/array/op2/expression/expression.h"
 #include "dali/array/op2/elementwise_operation.h"
 #include "dali/array/op2/rtc_utils.h"
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
 
-struct GatherState : public JITOperationState {
+struct GatherState : public RtcExpression {
     static const hash_t optype_hash;
 
-    std::shared_ptr<const JITOperationState> source_;
-    std::shared_ptr<const JITOperationState> indices_;
+    std::shared_ptr<const RtcExpression> source_;
+    std::shared_ptr<const RtcExpression> indices_;
 
-    GatherState(std::shared_ptr<const JITOperationState> source, std::shared_ptr<const JITOperationState> indices) :
-            JITOperationState(
+    GatherState(std::shared_ptr<const RtcExpression> source, std::shared_ptr<const RtcExpression> indices) :
+            RtcExpression(
                 std::max(
                     2,
                     source->ndim() + indices->min_computation_rank_ - 1
@@ -95,7 +95,7 @@ struct GatherState : public JITOperationState {
         return source_->is_assignable();
     }
 
-    std::vector<operation_state_ptr> arguments() const {
+    std::vector<std::shared_ptr<const ExpressionState>> arguments() const {
         return {source_, indices_};
     }
 
@@ -121,7 +121,7 @@ struct GatherState : public JITOperationState {
         return false;
     }
 
-    std::shared_ptr<const JITOperationState> collapse_dim_with_dim_minus_one(const int& dim) const {
+    std::shared_ptr<const RtcExpression> collapse_dim_with_dim_minus_one(const int& dim) const {
         int indices_ndim = indices_->ndim();
         if (dim < indices_ndim) {
             return std::make_shared<GatherState>(
@@ -136,7 +136,7 @@ struct GatherState : public JITOperationState {
         }
     }
 
-    std::shared_ptr<const JITOperationState> transpose(const std::vector<int>& permutation) const {
+    std::shared_ptr<const RtcExpression> transpose(const std::vector<int>& permutation) const {
         // TODO(jonathan): there is a way to transpose the index dimensions of
         // gather, or the non-leading dimension of the source.
         throw std::runtime_error(
@@ -148,8 +148,8 @@ struct GatherState : public JITOperationState {
     void compute_node_compilation_info(
             int desired_computation_rank,
             const std::vector<int>& desired_computation_shape,
-            std::vector<const ArrayOperationState*>* arrays,
-            std::vector<const ScalarOperationState*>* scalars,
+            std::vector<const ArrayWrapper*>* arrays,
+            std::vector<const ScalarWrapper*>* scalars,
             node_to_info_t* node_to_info) const {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
         int source_ndim = source_->ndim();
@@ -194,7 +194,7 @@ struct GatherState : public JITOperationState {
 const hash_t GatherState::optype_hash = std::hash<std::string>()("GatherState");
 
 namespace op {
-    Operation gather(const Operation& source, const Operation& indices) {
+    Expression gather(const Expression& source, const Expression& indices) {
         ASSERT2(
             source.ndim() > 0,
             utils::make_message("gather must be called on source with ndim >="
@@ -204,6 +204,6 @@ namespace op {
             indices.dtype() == DTYPE_INT32,
             utils::make_message("indices must be integers (got dtype=", indices.dtype(), ").")
         );
-        return Operation(std::make_shared<GatherState>(source.state_->as_jit(), indices.state_->as_jit()));
+        return Expression(std::make_shared<GatherState>(source.state_->as_jit(), indices.state_->as_jit()));
     }
 }  // namespace op

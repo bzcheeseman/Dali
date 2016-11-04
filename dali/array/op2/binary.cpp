@@ -1,11 +1,11 @@
 #include "binary.h"
-#include "dali/array/op2/operation.h"
+#include "dali/array/op2/expression/expression.h"
 #include "dali/array/op2/elementwise_operation.h"
 #include "dali/array/op2/unary.h"
 #include "dali/array/op_overload/common.h"
 
 namespace op {
-    Operation add(const Operation& a, const Operation& b) {
+    Expression add(const Expression& a, const Expression& b) {
         return elementwise(a, b, "functor::add");
     }
 
@@ -62,79 +62,79 @@ namespace op {
         }
     }
 
-    Operation sub(const Operation& a, const Operation& b) {
+    Expression sub(const Expression& a, const Expression& b) {
         return elementwise(a, b, "functor::sub");
     }
 
-    Operation eltmul(const Operation& a, const Operation& b) {
+    Expression eltmul(const Expression& a, const Expression& b) {
         return elementwise(a, b, "functor::eltmul");
     }
 
-    Operation eltdiv(const Operation& a, const Operation& b) {
+    Expression eltdiv(const Expression& a, const Expression& b) {
         return elementwise(a, b, "functor::eltdiv");
     }
 
-    Operation pow(const Operation& a, const Operation& b) {
+    Expression pow(const Expression& a, const Expression& b) {
         return elementwise(a, b, "functor::power");
     }
 
-    Operation equals(const Operation& a, const Operation& b) {
+    Expression equals(const Expression& a, const Expression& b) {
         return elementwise(a, b, "functor::equals");
     }
 
-    Operation prelu(const Operation& x, const Operation& weights) {
+    Expression prelu(const Expression& x, const Expression& weights) {
         return elementwise(x, weights, "functor::prelu");
     }
 
-    Operation clipped_relu(const Operation& x, const Operation& upper_bound) {
+    Expression clipped_relu(const Expression& x, const Expression& upper_bound) {
         return elementwise(x, upper_bound, "functor::clipped_relu");
     }
 
-    Operation clipped_relu_backward(const Operation& x, const Operation& upper_bound) {
+    Expression clipped_relu_backward(const Expression& x, const Expression& upper_bound) {
         return elementwise(x, upper_bound, "functor::clipped_relu_backward");
     }
 
-    Operation steep_sigmoid(const Operation& x, const Operation& aggressiveness) {
+    Expression steep_sigmoid(const Expression& x, const Expression& aggressiveness) {
         return elementwise(x, aggressiveness, "functor::steep_sigmoid");
     }
 
-    Operation steep_sigmoid_backward(const Operation& x, const Operation& aggressiveness) {
+    Expression steep_sigmoid_backward(const Expression& x, const Expression& aggressiveness) {
         return elementwise(x, aggressiveness, "functor::steep_sigmoid_backward");
     }
 
-    Operation prelu_backward_weights(const Operation& a, const Operation& grad) {
+    Expression prelu_backward_weights(const Expression& a, const Expression& grad) {
         return elementwise(a, grad, "functor::prelu_backward_weights");
     }
 
-    Operation prelu_backward_inputs(const Operation& a, const Operation& weights) {
+    Expression prelu_backward_inputs(const Expression& a, const Expression& weights) {
         return elementwise(a, weights, "functor::prelu_backward_inputs");
     }
 
-    Operation lessthanequal(const Operation& a, const Operation& b) {
+    Expression lessthanequal(const Expression& a, const Expression& b) {
         return elementwise(a, b, "functor::lessthanequal");
     }
 
-    Operation greaterthanequal(const Operation& a, const Operation& b) {
+    Expression greaterthanequal(const Expression& a, const Expression& b) {
         return elementwise(a, b, "functor::greaterthanequal");
     }
 
-    Operation eltmax(const Operation& a, const Operation& b) {
+    Expression eltmax(const Expression& a, const Expression& b) {
         return elementwise(a, b, "functor::max_scalar");
     }
 
-    Operation clip(const Operation& a, const Operation& b) {
+    Expression clip(const Expression& a, const Expression& b) {
         return elementwise(a, b, "functor::clip");
     }
 
-    Operation eltmin(const Operation& a, const Operation& b) {
+    Expression eltmin(const Expression& a, const Expression& b) {
         return elementwise(a, b, "functor::min_scalar");
     }
 
-    Operation binary_cross_entropy(const Operation& a, const Operation& b) {
+    Expression binary_cross_entropy(const Expression& a, const Expression& b) {
         return elementwise(a, b, "functor::binary_cross_entropy");
     }
 
-    Operation binary_cross_entropy_grad(const Operation& a, const Operation& b) {
+    Expression binary_cross_entropy_grad(const Expression& a, const Expression& b) {
         return elementwise(a, b, "functor::binary_cross_entropy_grad");
     }
 }

@@ -4,11 +4,11 @@
 #include <string>
 #include <vector>
 
-struct Operation;
+struct Expression;
 
 namespace op {
-    Operation col2im(
-        const Operation& input,
+    Expression col2im(
+        const Expression& input,
         const std::vector<int>& image_shape,
         int filter_h,
         int filter_w,

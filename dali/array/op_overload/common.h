@@ -6,13 +6,13 @@ class ArrayGather;
 class ArraySubtensor;
 template<typename OutType>
 class Assignable;
-class Operation;
+class Expression;
 
 #define DALI_DECLARE_ARRAY_INTERACTION_INPLACE(SYMBOL)\
     Array& operator SYMBOL (Array&  left, const Assignable<Array>& right);\
     void operator SYMBOL (Array&& left, const Assignable<Array>& right);\
-    Array& operator SYMBOL (Array&  left, const Operation& right);\
-    void operator SYMBOL (Array&& left, const Operation& right);\
+    Array& operator SYMBOL (Array&  left, const Expression& right);\
+    void operator SYMBOL (Array&& left, const Expression& right);\
     Array& operator SYMBOL (Array&  left, const Array& right);\
     void operator SYMBOL (Array&& left, const Array& right);\
 
@@ -45,8 +45,8 @@ DALI_DECLARE_SCALAR_INTERACTION_INPLACE(/=, Array)
     void operator SYMBOL (CONTAINER&& left, const Assignable<Array>& right);\
     CONTAINER& operator SYMBOL (CONTAINER&  left, const Array& right);\
     void operator SYMBOL (CONTAINER&& left, const Array& right);\
-    CONTAINER& operator SYMBOL (CONTAINER&  left, const Operation& right);\
-    void operator SYMBOL (CONTAINER&& left, const Operation& right);\
+    CONTAINER& operator SYMBOL (CONTAINER&  left, const Expression& right);\
+    void operator SYMBOL (CONTAINER&& left, const Expression& right);\
     CONTAINER& operator SYMBOL (CONTAINER&  left, const Assignable<CONTAINER>& right);\
     void operator SYMBOL (CONTAINER&& left, const Assignable<CONTAINER>& right);\
 

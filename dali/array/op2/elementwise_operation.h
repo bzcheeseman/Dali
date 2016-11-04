@@ -2,14 +2,14 @@
 #define DALI_ARRAY_OP2_ELEMENTWISE_OPERATION_H
 
 #include "dali/array/dtype.h"
-#include "dali/array/op2/operation.h"
+#include "dali/array/op2/expression/expression.h"
 #include <string>
 
 namespace op {
     // elementwise kernel given by name. assumes
     // return type is unchanged from a's
-    Operation elementwise(
-        const Operation& a,
+    Expression elementwise(
+        const Expression& a,
         const std::string& functor_name
     );
 
@@ -19,9 +19,9 @@ namespace op {
     // - float w/. double => double
     // - float w/. int => float
     // - double w/. int => double
-    Operation elementwise(
-        const Operation& a,
-        const Operation& b,
+    Expression elementwise(
+        const Expression& a,
+        const Expression& b,
         const std::string& functor_name
     );
 
@@ -31,9 +31,9 @@ namespace op {
     // and run the associated code `kernel_code` during
     // compilation and usage. (Warning: this might cause
     // collisions when a name is used multiple times)
-    Operation binary_kernel_function(
-        const Operation& a,
-        const Operation& b,
+    Expression binary_kernel_function(
+        const Expression& a,
+        const Expression& b,
         const std::string& function_name,
         const std::string& kernel_code
     );
@@ -41,19 +41,19 @@ namespace op {
     // Perform a type conversion by casting the values in x
     // to another dtype. Use rounding when casting to integers
     // for more predictable results
-    Operation astype(const Operation& x, DType dtype);
+    Expression astype(const Expression& x, DType dtype);
     // static_cast one type to another. This can cause unpredictable
     // behavior on floats->integers based on underlying
     // hardware/implementation
-    Operation unsafe_cast(const Operation& x, DType dtype);
+    Expression unsafe_cast(const Expression& x, DType dtype);
     // Perform rounding on a value to nearest integer.
     // Note: equivalent to floor(x + 0.5).
-    Operation round(const Operation& x);
+    Expression round(const Expression& x);
 
     // type-promote arguments if necessary and check whether their
     // ranks are compatible (equal or one is a scalar)
-    std::tuple<Operation, Operation> ensure_arguments_compatible(
-        const Operation& a, const Operation& b
+    std::tuple<Expression, Expression> ensure_arguments_compatible(
+        const Expression& a, const Expression& b
     );
 } // namespace op2
 

@@ -10,12 +10,26 @@
 
 namespace expression {
 namespace rtc {
-    struct RtcArrayWrapper : virtual public ArrayWrapper, virtual public RtcExpression {
+    struct RtcArrayWrapper : virtual public RtcExpression {
+        static const hash_t optype_hash;
+
+        Array array_;
+
+        virtual DType dtype() const;
+        virtual std::vector<int> bshape() const;
+        virtual int ndim() const;
+        virtual std::string name() const;
+        virtual bool is_assignable() const;
+        virtual bool contiguous() const;
+        virtual std::vector<int> shape() const;
+        virtual int number_of_elements() const;
+
+
         RtcArrayWrapper(const Array& array);
 
         virtual void compute_node_compilation_info(int desired_computation_rank,
                                                    const std::vector<int>& desired_computation_shape,
-                                                   std::vector<const ArrayWrapper*>* arrays,
+                                                   std::vector<const RtcArrayWrapper*>* arrays,
                                                    std::vector<const ScalarWrapper*>* scalars,
                                                    node_to_info_t* node_to_info) const;
 

@@ -14,24 +14,16 @@ struct Array;
 namespace expression {
 
     struct ArrayWrapper : virtual public LRValue, virtual public Runnable {
-        static const hash_t optype_hash;
-
         Array array_;
-
         ArrayWrapper(Array array);
 
         virtual DType dtype() const;
-
         virtual std::vector<int> bshape() const;
-
         virtual int ndim() const;
         virtual std::string name() const;
         virtual bool is_assignable() const;
-
         virtual bool contiguous() const;
-
         virtual std::vector<int> shape() const;
-
         virtual int number_of_elements() const;
 
         virtual std::shared_ptr<const Runnable> assign_to(std::shared_ptr<const LValue> op, memory::Device device) const;

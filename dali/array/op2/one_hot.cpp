@@ -7,8 +7,8 @@
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
 
-using expression::rtc::RtcExpression;
-
+namespace expression {
+namespace rtc {
 struct OneHotExpressionState : public RtcExpression {
     static const hash_t optype_hash;
 
@@ -27,7 +27,7 @@ struct OneHotExpressionState : public RtcExpression {
             on_value_(on_value),
             off_value_(off_value),
             depth_(depth),
-            depth_operation_(expression::Expression(depth).state_->as_jit()) {
+            depth_operation_(Expression(depth).state_->as_jit()) {
     }
 
     virtual std::string name() const {
@@ -106,8 +106,8 @@ struct OneHotExpressionState : public RtcExpression {
     void compute_node_compilation_info(
             int desired_computation_rank,
             const std::vector<int>& desired_computation_shape,
-            std::vector<const expression::ArrayWrapper*>* arrays,
-            std::vector<const expression::rtc::ScalarWrapper*>* scalars,
+            std::vector<const RtcArrayWrapper*>* arrays,
+            std::vector<const ScalarWrapper*>* scalars,
             node_to_info_t* node_to_info) const {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
         auto indices_shape = desired_computation_shape;
@@ -140,8 +140,9 @@ struct OneHotExpressionState : public RtcExpression {
                                     ")");
     }
 };
-
 const hash_t OneHotExpressionState::optype_hash = std::hash<std::string>()("OneHotExpressionState");
+}  // namespace rtc
+}  // namespace expression
 
 namespace op {
     expression::Expression one_hot(
@@ -166,7 +167,7 @@ namespace op {
             utils::make_message("depth must be strictly positive (got depth=", depth, ").")
         );
         auto on_off = ensure_arguments_compatible(on_value, off_value);
-        return expression::Expression(std::make_shared<OneHotExpressionState>(
+        return expression::Expression(std::make_shared<expression::rtc::OneHotExpressionState>(
             indices.state_->as_jit(), depth, std::get<0>(on_off).state_->as_jit(), std::get<1>(on_off).state_->as_jit()
         ));
     }

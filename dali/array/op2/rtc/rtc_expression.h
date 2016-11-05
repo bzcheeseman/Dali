@@ -10,9 +10,8 @@
 #include "dali/utils/hash_utils.h"
 
 namespace expression {
-    struct ArrayWrapper;
-
     namespace rtc {
+        struct RtcArrayWrapper;
         struct ScalarWrapper;
     }
 }
@@ -27,7 +26,7 @@ namespace rtc {
         hash_t hash;
     };
 
-    struct RtcExpression : virtual public ExpressionState {
+    struct RtcExpression : virtual public RValue {
         typedef std::unordered_map<const RtcExpression*, std::string>     symbol_table_t;
         typedef std::unordered_map<const RtcExpression*, CompilationInfo> node_to_info_t;
 
@@ -38,7 +37,7 @@ namespace rtc {
 
         virtual void compute_node_compilation_info(int desired_computation_rank,
                                                    const std::vector<int>& desired_computation_shape,
-                                                   std::vector<const ArrayWrapper*>* arrays,
+                                                   std::vector<const RtcArrayWrapper*>* arrays,
                                                    std::vector<const ScalarWrapper*>* scalars,
                                                    node_to_info_t* node_to_info) const = 0;
 
@@ -70,22 +69,28 @@ namespace rtc {
 
 
         virtual std::string get_code_template(memory::Device device,
-                                              const std::vector<const expression::ArrayWrapper*>& arrays,
+                                              const std::vector<const RtcArrayWrapper*>& arrays,
                                               const std::vector<const ScalarWrapper*>& scalars,
                                               const node_to_info_t& node_to_info) const final;
 
 
         std::function<void(void**, const int*, const int**, const int**, const void**)> compile(
                 memory::Device device,
-                const std::vector<const expression::ArrayWrapper*>& arrays,
+                const std::vector<const RtcArrayWrapper*>& arrays,
                 const std::vector<const ScalarWrapper*>& scalars,
                 const node_to_info_t& node_to_info) const;
 
         virtual std::shared_ptr<const RtcExpression> jit_shared_from_this() const final;
         virtual std::shared_ptr<RtcExpression> jit_shared_from_this() final;
+
+        virtual std::shared_ptr<const Runnable> assign_to(std::shared_ptr<const LValue> op, memory::Device device) const;
+        virtual std::shared_ptr<const Runnable> add_to(std::shared_ptr<const LValue> op, memory::Device device) const;
+        virtual std::shared_ptr<const Runnable> sub_to(std::shared_ptr<const LValue> op, memory::Device device) const;
+        virtual std::shared_ptr<const Runnable> mul_to(std::shared_ptr<const LValue> op, memory::Device device) const;
+        virtual std::shared_ptr<const Runnable> div_to(std::shared_ptr<const LValue> op, memory::Device device) const;
+        virtual std::shared_ptr<const Runnable> as_runnable(memory::Device device) const;
     };
 }  // namespace rtc
 }  // namespace expression
-
 
 #endif  // DALI_ARRAY_OP_RTC_EXPRESSION_H

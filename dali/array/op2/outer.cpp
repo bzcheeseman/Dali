@@ -3,13 +3,12 @@
 #include "dali/array/op2/expression/expression.h"
 #include "dali/array/op2/rtc/rtc_expression.h"
 #include "dali/array/op2/elementwise_operation.h"
-#include "dali/array/op2/expression/array_wrapper.h"
 #include "dali/array/op2/rtc_utils.h"
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
 
-using expression::rtc::RtcExpression;
-
+namespace expression {
+namespace rtc {
 struct OuterExpressionState : public RtcExpression {
     static const hash_t optype_hash;
     std::shared_ptr<const RtcExpression> left_;
@@ -85,8 +84,8 @@ struct OuterExpressionState : public RtcExpression {
     void compute_node_compilation_info(
             int desired_computation_rank,
             const std::vector<int>& desired_computation_shape,
-            std::vector<const expression::ArrayWrapper*>* arrays,
-            std::vector<const expression::rtc::ScalarWrapper*>* scalars,
+            std::vector<const RtcArrayWrapper*>* arrays,
+            std::vector<const ScalarWrapper*>* scalars,
             node_to_info_t* node_to_info) const {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
         left_->compute_node_compilation_info(
@@ -122,8 +121,9 @@ struct OuterExpressionState : public RtcExpression {
                                     ")");
     }
 };
-
 const hash_t OuterExpressionState::optype_hash = std::hash<std::string>()("OuterExpressionState");
+}  // namespace rtc
+}  // namespace expression
 
 namespace op {
     expression::Expression outer(const expression::Expression& left, const expression::Expression& right) {
@@ -132,7 +132,7 @@ namespace op {
         ASSERT2(right.ndim() <= 1, utils::make_message("right operand of outer "
             "must have ndim <= 1 (got ", right.ndim(), ")."));
         auto left_right = ensure_arguments_compatible(left, right);
-        return expression::Expression(std::make_shared<OuterExpressionState>(
+        return expression::Expression(std::make_shared<expression::rtc::OuterExpressionState>(
             std::get<0>(left_right).state_->as_jit(), std::get<1>(left_right).state_->as_jit()
         ));
     }

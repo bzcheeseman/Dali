@@ -7,8 +7,8 @@
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
 
-using expression::rtc::RtcExpression;
-
+namespace expression {
+namespace rtc {
 struct CircularConvolutionExpressionState : public RtcExpression {
     static const hash_t optype_hash;
 
@@ -106,8 +106,8 @@ struct CircularConvolutionExpressionState : public RtcExpression {
     void compute_node_compilation_info(
             int desired_computation_rank,
             const std::vector<int>& desired_computation_shape,
-            std::vector<const expression::ArrayWrapper*>* arrays,
-            std::vector<const expression::rtc::ScalarWrapper*>* scalars,
+            std::vector<const RtcArrayWrapper*>* arrays,
+            std::vector<const ScalarWrapper*>* scalars,
             node_to_info_t* node_to_info) const {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
         content_->compute_node_compilation_info(desired_computation_rank, desired_computation_shape, arrays, scalars, node_to_info);
@@ -133,11 +133,13 @@ struct CircularConvolutionExpressionState : public RtcExpression {
 };
 
 const hash_t CircularConvolutionExpressionState::optype_hash = std::hash<std::string>()("CircularConvolutionExpressionState");
+} // namespace rtc
+} // namespace expression
 
 namespace op {
     expression::Expression circular_convolution(const expression::Expression& x, const expression::Expression& weights) {
         auto x_weights = ensure_arguments_compatible(x, weights);
-        return expression::Expression(std::make_shared<CircularConvolutionExpressionState>(
+        return expression::Expression(std::make_shared<expression::rtc::CircularConvolutionExpressionState>(
             std::get<0>(x_weights).state_->as_jit(), std::get<1>(x_weights).state_->as_jit()
         ));
     }

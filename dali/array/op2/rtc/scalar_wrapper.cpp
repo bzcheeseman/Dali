@@ -31,10 +31,10 @@ namespace rtc {
     }
 
     void ScalarWrapper::compute_node_compilation_info(int desired_computation_rank,
-                                               const std::vector<int>& desired_computation_shape,
-                                               std::vector<const ArrayWrapper*>* arrays,
-                                               std::vector<const ScalarWrapper*>* scalars,
-                                               node_to_info_t* node_to_info) const {
+                                                      const std::vector<int>& desired_computation_shape,
+                                                      std::vector<const RtcArrayWrapper*>* arrays,
+                                                      std::vector<const ScalarWrapper*>* scalars,
+                                                      node_to_info_t* node_to_info) const {
         scalars->emplace_back(this);
         (*node_to_info)[this].computation_rank = desired_computation_rank;
         (*node_to_info)[this].hash = Hasher().add(optype_hash).add((int)dtype()).add(desired_computation_rank).value();

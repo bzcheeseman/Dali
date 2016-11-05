@@ -7,8 +7,8 @@
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
 
-using expression::rtc::RtcExpression;
-
+namespace expression {
+namespace rtc {
 struct GatherState : public RtcExpression {
     static const hash_t optype_hash;
 
@@ -151,8 +151,8 @@ struct GatherState : public RtcExpression {
     void compute_node_compilation_info(
             int desired_computation_rank,
             const std::vector<int>& desired_computation_shape,
-            std::vector<const expression::ArrayWrapper*>* arrays,
-            std::vector<const expression::rtc::ScalarWrapper*>* scalars,
+            std::vector<const RtcArrayWrapper*>* arrays,
+            std::vector<const ScalarWrapper*>* scalars,
             node_to_info_t* node_to_info) const {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
         int source_ndim = source_->ndim();
@@ -193,8 +193,9 @@ struct GatherState : public RtcExpression {
                                     ")");
     }
 };
-
 const hash_t GatherState::optype_hash = std::hash<std::string>()("GatherState");
+}  // namespace rtc
+}  // namespace expression
 
 namespace op {
     expression::Expression gather(const expression::Expression& source, const expression::Expression& indices) {
@@ -207,6 +208,6 @@ namespace op {
             indices.dtype() == DTYPE_INT32,
             utils::make_message("indices must be integers (got dtype=", indices.dtype(), ").")
         );
-        return expression::Expression(std::make_shared<GatherState>(source.state_->as_jit(), indices.state_->as_jit()));
+        return expression::Expression(std::make_shared<expression::rtc::GatherState>(source.state_->as_jit(), indices.state_->as_jit()));
     }
 }  // namespace op

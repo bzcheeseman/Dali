@@ -7,8 +7,8 @@
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
 
-using expression::rtc::RtcExpression;
-
+namespace expression {
+namespace rtc {
 struct GatherFromRowsState : public RtcExpression {
     static const hash_t optype_hash;
 
@@ -159,8 +159,8 @@ struct GatherFromRowsState : public RtcExpression {
     void compute_node_compilation_info(
             int desired_computation_rank,
             const std::vector<int>& desired_computation_shape,
-            std::vector<const expression::ArrayWrapper*>* arrays,
-            std::vector<const expression::rtc::ScalarWrapper*>* scalars,
+            std::vector<const RtcArrayWrapper*>* arrays,
+            std::vector<const ScalarWrapper*>* scalars,
             node_to_info_t* node_to_info) const {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
 
@@ -207,6 +207,9 @@ struct GatherFromRowsState : public RtcExpression {
 
 const hash_t GatherFromRowsState::optype_hash = std::hash<std::string>()("GatherFromRowsState");
 
+}  // namespace rtc
+}  // namespace expression
+
 namespace op {
     expression::Expression gather_from_rows(const expression::Expression& source, const expression::Expression& indices) {
         ASSERT2(
@@ -232,6 +235,6 @@ namespace op {
                     ", source.shape[0]=", source_bshape[0], ")")
             );
         }
-        return expression::Expression(std::make_shared<GatherFromRowsState>(source.state_->as_jit(), indices.state_->as_jit()));
+        return expression::Expression(std::make_shared<expression::rtc::GatherFromRowsState>(source.state_->as_jit(), indices.state_->as_jit()));
     }
 }  // namespace op

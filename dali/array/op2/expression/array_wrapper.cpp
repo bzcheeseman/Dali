@@ -3,8 +3,6 @@
 #include "dali/array/op2/rtc/rtc_array_wrapper.h"
 
 namespace expression {
-    const hash_t ArrayWrapper::optype_hash = std::hash<std::string>()("ArrayWrapper");
-
     ArrayWrapper::ArrayWrapper(Array array) :
             array_(array) {
     }

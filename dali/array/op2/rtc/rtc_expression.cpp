@@ -3,6 +3,7 @@
 #include "dali/utils/make_message.h"
 #include "dali/array/op2/expression/array_wrapper.h"
 #include "dali/array/op2/rtc/scalar_wrapper.h"
+#include "dali/array/op2/rtc/rtc_array_wrapper.h"
 #include "dali/array/op2/rtc_utils.h"
 #include "dali/array/function2/compiler.h"
 
@@ -113,9 +114,8 @@ namespace rtc {
         return "";
     }
 
-
     std::string RtcExpression::get_code_template(memory::Device device,
-                                                 const std::vector<const expression::ArrayWrapper*>& arrays,
+                                                 const std::vector<const RtcArrayWrapper*>& arrays,
                                                  const std::vector<const ScalarWrapper*>& scalars,
                                                  const node_to_info_t& node_to_info) const {
         std::unordered_set<hash_t> prefix_code_visited;
@@ -180,7 +180,7 @@ namespace rtc {
 
     std::function<void(void**, const int*, const int**, const int**, const void**)> RtcExpression::compile(
             memory::Device device,
-            const std::vector<const expression::ArrayWrapper*>& arrays,
+            const std::vector<const RtcArrayWrapper*>& arrays,
             const std::vector<const ScalarWrapper*>& scalars,
             const node_to_info_t& node_to_info) const {
         DALI_SCOPE("get_function");
@@ -231,6 +231,25 @@ namespace rtc {
 
     std::shared_ptr<RtcExpression> RtcExpression::jit_shared_from_this() {
         return std::dynamic_pointer_cast<RtcExpression>(shared_from_this());
+    }
+
+    std::shared_ptr<const Runnable> RtcExpression::assign_to(std::shared_ptr<const LValue> op, memory::Device device) const {
+        ASSERT2(false, "not implemented.");
+    }
+    std::shared_ptr<const Runnable> RtcExpression::add_to(std::shared_ptr<const LValue> op, memory::Device device) const {
+        ASSERT2(false, "not implemented.");
+    }
+    std::shared_ptr<const Runnable> RtcExpression::sub_to(std::shared_ptr<const LValue> op, memory::Device device) const {
+        ASSERT2(false, "not implemented.");
+    }
+    std::shared_ptr<const Runnable> RtcExpression::mul_to(std::shared_ptr<const LValue> op, memory::Device device) const {
+        ASSERT2(false, "not implemented.");
+    }
+    std::shared_ptr<const Runnable> RtcExpression::div_to(std::shared_ptr<const LValue> op, memory::Device device) const {
+        ASSERT2(false, "not implemented.");
+    }
+    std::shared_ptr<const Runnable> RtcExpression::as_runnable(memory::Device device) const {
+        ASSERT2(false, "not implemented.");
     }
 
 }  // namespace rtc

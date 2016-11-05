@@ -8,9 +8,10 @@
 #include "dali/array/op2/expression/expression.h"
 #include "dali/array/op2/rtc/rtc_expression.h"
 
-using expression::rtc::RtcExpression;
+namespace expression {
+namespace rtc {
 
-DType type_promotion(const expression::Expression& a, const expression::Expression& b) {
+DType type_promotion(const Expression& a, const Expression& b) {
     // TODO(jonathan,szymon) speed up this function
     bool a_scalar = a.is_scalar();
     bool b_scalar = b.is_scalar();
@@ -33,16 +34,11 @@ DType type_promotion(const expression::Expression& a, const expression::Expressi
     }
 }
 
-bool ndim_compatible(const expression::Expression& a, const expression::Expression& b) {
+bool ndim_compatible(const Expression& a, const Expression& b) {
     int a_ndim = a.ndim();
     int b_ndim = b.ndim();
     return a_ndim == 0 || b_ndim == 0 || a_ndim == b_ndim;
 }
-
-
-///////////////////////////////////////////////////////////////////////////////
-//                       HEADERS                                             //
-///////////////////////////////////////////////////////////////////////////////
 
 struct ElementwiseExpressionState : public RtcExpression {
     static const hash_t optype_hash;
@@ -50,152 +46,113 @@ struct ElementwiseExpressionState : public RtcExpression {
     const std::vector<std::shared_ptr<const RtcExpression>> arguments_;
     const std::string functor_name_;
 
-    static int compute_min_computation_rank(const std::vector<std::shared_ptr<const RtcExpression>>& arguments);
+    static int compute_min_computation_rank(const std::vector<std::shared_ptr<const RtcExpression>>& arguments) {
+        return std::accumulate(arguments.begin(),
+           arguments.end(),
+           0,
+           [](int so_far, std::shared_ptr<const RtcExpression> op) {
+               return std::max(so_far, op->min_computation_rank_);
+           }
+        );
+    }
 
-    ElementwiseExpressionState(const std::string& functor_name, const std::vector<std::shared_ptr<const RtcExpression>>& arguments);
+    ElementwiseExpressionState(const std::string& functor_name,
+                               const std::vector<std::shared_ptr<const RtcExpression>>& arguments) :
+            RtcExpression(compute_min_computation_rank(arguments)),
+            functor_name_(functor_name),
+            arguments_(arguments) {
+    }
 
+    virtual DType dtype() const {
+        return arguments_[0]->dtype();
+    }
 
-    virtual DType dtype() const;
-    virtual std::string name() const;
+    virtual std::string name() const {
+        return functor_name_;
+    }
 
-    virtual std::vector<int> bshape() const;
+    virtual std::vector<int> bshape() const {
+        std::vector<std::vector<int>> arg_bshapes;
+        for (auto& arg: arguments_) {
+            arg_bshapes.emplace_back(arg->bshape());
+        }
+        return get_common_bshape(arg_bshapes);
+    }
 
-    virtual std::vector<std::shared_ptr<const expression::ExpressionState>> arguments() const;
+    virtual std::vector<std::shared_ptr<const ExpressionState>> arguments() const  {
+        return std::vector<std::shared_ptr<const expression::ExpressionState>>(
+            arguments_.begin(), arguments_.end()
+        );
+    }
 
     virtual void compute_node_compilation_info(int desired_computation_rank,
                                                const std::vector<int>& desired_computation_shape,
-                                               std::vector<const expression::ArrayWrapper*>* arrays,
-                                               std::vector<const expression::rtc::ScalarWrapper*>* scalars,
-                                               node_to_info_t* node_to_info) const;
+                                               std::vector<const RtcArrayWrapper*>* arrays,
+                                               std::vector<const ScalarWrapper*>* scalars,
+                                               node_to_info_t* node_to_info) const {
+        (*node_to_info)[this].computation_rank = desired_computation_rank;
+        for (auto& arg: arguments_) {
+            arg->compute_node_compilation_info(desired_computation_rank, desired_computation_shape, arrays, scalars, node_to_info);
+        }
+        utils::Hasher hasher;
+        hasher.add(optype_hash).add(desired_computation_rank).add(functor_name_);
+        for (auto& arg: arguments_) {
+            hasher.add(node_to_info->at(arg.get()).hash);
+        }
+        (*node_to_info)[this].hash = hasher.value();
+    }
 
-    virtual bool is_dim_collapsible_with_dim_minus_one(const int& dim) const;
+    virtual bool is_dim_collapsible_with_dim_minus_one(const int& dim) const {
+        bool is_contig = true;
+        for (auto& arg : arguments_) {
+            is_contig = is_contig && arg->is_dim_collapsible_with_dim_minus_one(dim);
+        }
+        return is_contig;
+    }
 
-    virtual std::shared_ptr<const RtcExpression> collapse_dim_with_dim_minus_one(const int& dim) const;
+    virtual std::shared_ptr<const RtcExpression> collapse_dim_with_dim_minus_one(const int& dim) const {
+        std::vector<std::shared_ptr<const RtcExpression>> new_arguments;
 
-    virtual std::shared_ptr<const RtcExpression> transpose(const std::vector<int>& permutation) const;
+        for (auto& arg : arguments_) {
+            new_arguments.emplace_back(arg->collapse_dim_with_dim_minus_one(dim));
+        }
 
-    virtual std::string get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
+        return std::make_shared<ElementwiseExpressionState>(functor_name_, new_arguments);
+    }
 
-    virtual std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
+    virtual std::shared_ptr<const RtcExpression> transpose(const std::vector<int>& permutation) const {
+        std::vector<std::shared_ptr<const RtcExpression>> new_arguments;
+
+        for (auto& arg : arguments_) {
+            new_arguments.emplace_back(arg->transpose(permutation));
+        }
+
+        return std::make_shared<ElementwiseExpressionState>(functor_name_, new_arguments);
+    }
+
+    virtual std::string get_call_code_nd(const symbol_table_t& symbol_table,
+                                         const node_to_info_t& node_to_info,
+                                         memory::DeviceT device_type) const {
+        std::stringstream stream;
+        stream << "element_wise_kernel<" << functor_name_ << ", "
+               << dtype_to_cpp_name(dtype()) << ">(";
+
+        for (int i = 0; i < arguments_.size(); ++i) {
+            stream << arguments_[i]->get_call_code_nd(symbol_table, node_to_info, device_type)
+                   << (i + 1 == arguments_.size() ? "" : ", ");
+        }
+        stream << ")";
+        return stream.str();
+    }
+
+    virtual std::string prefix_code(const node_to_info_t& node_to_info,
+                                    memory::DeviceT device_type) const {
+        return create_elementwise_kernel_caller(arguments_.size());
+    }
 };
-
-
-///////////////////////////////////////////////////////////////////////////////
-//                   ELEMENTWISE OPERATION STATE                             //
-///////////////////////////////////////////////////////////////////////////////
-
-const hash_t ElementwiseExpressionState::optype_hash = std::hash<std::string>()("ElementwiseExpressionState");
-
-int ElementwiseExpressionState::compute_min_computation_rank(
-        const std::vector<std::shared_ptr<const RtcExpression>>& arguments) {
-    return std::accumulate(arguments.begin(),
-                           arguments.end(),
-                           0,
-                           [](int so_far, std::shared_ptr<const RtcExpression> op) {
-                               return std::max(so_far, op->min_computation_rank_);
-                           });
-}
-
-ElementwiseExpressionState::ElementwiseExpressionState(
-    const std::string& functor_name,
-    const std::vector<std::shared_ptr<const RtcExpression>>& arguments) :
-        RtcExpression(compute_min_computation_rank(arguments)),
-        functor_name_(functor_name),
-        arguments_(arguments) {
-}
-
-
-DType ElementwiseExpressionState::dtype() const {
-    return arguments_[0]->dtype();
-}
-
-std::string ElementwiseExpressionState::name() const {
-    return functor_name_;
-}
-
-std::vector<int> ElementwiseExpressionState::bshape() const {
-    std::vector<std::vector<int>> arg_bshapes;
-    for (auto& arg: arguments_) {
-        arg_bshapes.emplace_back(arg->bshape());
-    }
-    return get_common_bshape(arg_bshapes);
-}
-
-std::vector<std::shared_ptr<const expression::ExpressionState>> ElementwiseExpressionState::arguments() const {
-    return std::vector<std::shared_ptr<const expression::ExpressionState>>(arguments_.begin(), arguments_.end());
-}
-
-void ElementwiseExpressionState::compute_node_compilation_info(
-        int desired_computation_rank,
-        const std::vector<int>& desired_computation_shape,
-        std::vector<const expression::ArrayWrapper*>* arrays,
-        std::vector<const expression::rtc::ScalarWrapper*>* scalars,
-        node_to_info_t* node_to_info) const {
-    (*node_to_info)[this].computation_rank = desired_computation_rank;
-    for (auto& arg: arguments_) {
-        arg->compute_node_compilation_info(desired_computation_rank, desired_computation_shape, arrays, scalars, node_to_info);
-    }
-    utils::Hasher hasher;
-    hasher.add(optype_hash).add(desired_computation_rank).add(functor_name_);
-    for (auto& arg: arguments_) {
-        hasher.add(node_to_info->at(arg.get()).hash);
-    }
-    (*node_to_info)[this].hash = hasher.value();
-}
-
-bool ElementwiseExpressionState::is_dim_collapsible_with_dim_minus_one(const int& dim) const {
-    bool is_contig = true;
-    for (auto& arg : arguments_) {
-        is_contig = is_contig && arg->is_dim_collapsible_with_dim_minus_one(dim);
-    }
-    return is_contig;
-}
-
-std::shared_ptr<const RtcExpression> ElementwiseExpressionState::collapse_dim_with_dim_minus_one(const int& dim) const {
-    std::vector<std::shared_ptr<const RtcExpression>> new_arguments;
-
-    for (auto& arg : arguments_) {
-        new_arguments.emplace_back(arg->collapse_dim_with_dim_minus_one(dim));
-    }
-
-    return std::make_shared<ElementwiseExpressionState>(functor_name_, new_arguments);
-}
-
-std::shared_ptr<const RtcExpression> ElementwiseExpressionState::transpose(const std::vector<int>& permutation) const {
-    std::vector<std::shared_ptr<const RtcExpression>> new_arguments;
-
-    for (auto& arg : arguments_) {
-        new_arguments.emplace_back(arg->transpose(permutation));
-    }
-
-    return std::make_shared<ElementwiseExpressionState>(functor_name_, new_arguments);
-}
-
-std::string ElementwiseExpressionState::get_call_code_nd(
-        const symbol_table_t& symbol_table,
-        const node_to_info_t& node_to_info,
-        memory::DeviceT device_type) const {
-    std::stringstream stream;
-    stream << "element_wise_kernel<" << functor_name_ << ", " << dtype_to_cpp_name(dtype()) << ">(";
-
-    for (int i = 0; i < arguments_.size(); ++i) {
-        stream << arguments_[i]->get_call_code_nd(symbol_table, node_to_info, device_type)
-               << (i + 1 == arguments_.size() ? "" : ", ");
-    }
-    stream << ")";
-    return stream.str();
-}
-
-std::string ElementwiseExpressionState::prefix_code(
-        const node_to_info_t& node_to_info,
-        memory::DeviceT device_type) const {
-    return create_elementwise_kernel_caller(arguments_.size());
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-//                       CAST OPERATION STATE                                //
-///////////////////////////////////////////////////////////////////////////////
+const hash_t ElementwiseExpressionState::optype_hash = std::hash<std::string>()(
+    "ElementwiseExpressionState"
+);
 
 struct CastExpressionState : public ElementwiseExpressionState {
     static const hash_t optype_hash;
@@ -214,8 +171,8 @@ struct CastExpressionState : public ElementwiseExpressionState {
     virtual void compute_node_compilation_info(
         int desired_computation_rank,
         const std::vector<int>& desired_computation_shape,
-        std::vector<const expression::ArrayWrapper*>* arrays,
-        std::vector<const expression::rtc::ScalarWrapper*>* scalars,
+        std::vector<const RtcArrayWrapper*>* arrays,
+        std::vector<const ScalarWrapper*>* scalars,
         node_to_info_t* node_to_info) const {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
         arguments_[0]->compute_node_compilation_info(desired_computation_rank, desired_computation_shape, arrays, scalars, node_to_info);
@@ -228,8 +185,9 @@ struct CastExpressionState : public ElementwiseExpressionState {
                                                     .value();
     }
 };
-
-const hash_t CastExpressionState::optype_hash = std::hash<std::string>()("CastExpressionState");
+const hash_t CastExpressionState::optype_hash = std::hash<std::string>()(
+    "CastExpressionState"
+);
 
 struct RoundExpressionState : public ElementwiseExpressionState {
     static const hash_t optype_hash;
@@ -245,8 +203,8 @@ struct RoundExpressionState : public ElementwiseExpressionState {
     virtual void compute_node_compilation_info(
         int desired_computation_rank,
         const std::vector<int>& desired_computation_shape,
-        std::vector<const expression::ArrayWrapper*>* arrays,
-        std::vector<const expression::rtc::ScalarWrapper*>* scalars,
+        std::vector<const RtcArrayWrapper*>* arrays,
+        std::vector<const ScalarWrapper*>* scalars,
         node_to_info_t* node_to_info) const {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
         arguments_[0]->compute_node_compilation_info(desired_computation_rank, desired_computation_shape, arrays, scalars, node_to_info);
@@ -258,21 +216,20 @@ struct RoundExpressionState : public ElementwiseExpressionState {
                                                     .value();
     }
 };
+const hash_t RoundExpressionState::optype_hash = std::hash<std::string>()(
+    "RoundExpressionState"
+);
 
-const hash_t RoundExpressionState::optype_hash = std::hash<std::string>()("RoundExpressionState");
-
-///////////////////////////////////////////////////////////////////////////////
-//                                OP2                                        //
-///////////////////////////////////////////////////////////////////////////////
-
+}  // namespace rtc
+}  // namespace expression
 
 namespace op {
     expression::Expression elementwise(const expression::Expression& a,
                           const std::string& functor_name) {
 
-        return expression::Expression(std::make_shared<ElementwiseExpressionState>(
+        return expression::Expression(std::make_shared<expression::rtc::ElementwiseExpressionState>(
             functor_name,
-            std::vector<std::shared_ptr<const RtcExpression>>({a.state_->as_jit()})
+            std::vector<std::shared_ptr<const expression::rtc::RtcExpression>>({a.state_->as_jit()})
         ));
     }
 
@@ -281,9 +238,9 @@ namespace op {
             const expression::Expression& b,
             const std::string& functor_name) {
         auto a_b = ensure_arguments_compatible(a, b);
-        return expression::Expression(std::make_shared<ElementwiseExpressionState>(
+        return expression::Expression(std::make_shared<expression::rtc::ElementwiseExpressionState>(
             functor_name,
-            std::vector<std::shared_ptr<const RtcExpression>>({std::get<0>(a_b).state_->as_jit(), std::get<1>(a_b).state_->as_jit()})
+            std::vector<std::shared_ptr<const expression::rtc::RtcExpression>>({std::get<0>(a_b).state_->as_jit(), std::get<1>(a_b).state_->as_jit()})
         ));
     }
 
@@ -296,14 +253,14 @@ namespace op {
     }
 
     expression::Expression unsafe_cast(const expression::Expression& a, DType type) {
-        return expression::Expression(std::make_shared<CastExpressionState>(
+        return expression::Expression(std::make_shared<expression::rtc::CastExpressionState>(
             type,
             a.state_->as_jit()
         ));
     }
 
     expression::Expression round(const expression::Expression& a) {
-        return expression::Expression(std::make_shared<RoundExpressionState>(
+        return expression::Expression(std::make_shared<expression::rtc::RoundExpressionState>(
             a.state_->as_jit()
         ));
     }
@@ -312,7 +269,7 @@ namespace op {
             const expression::Expression& a, const expression::Expression& b) {
         // perform type promotion:
         if (a.dtype() != b.dtype()) {
-            auto new_type = type_promotion(a, b);
+            auto new_type = expression::rtc::type_promotion(a, b);
             if (a.dtype() == new_type) {
                 // b's dtype is being promoted
                 return std::tuple<expression::Expression,expression::Expression>(a, op::astype(b, new_type));
@@ -322,7 +279,7 @@ namespace op {
                 return std::tuple<expression::Expression,expression::Expression>(op::astype(a, new_type), b);
             }
         } else {
-            ASSERT2(ndim_compatible(a, b), "ranks don't match");
+            ASSERT2(expression::rtc::ndim_compatible(a, b), "ranks don't match");
             return std::tuple<expression::Expression,expression::Expression>(a, b);
         }
     }

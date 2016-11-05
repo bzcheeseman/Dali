@@ -2,13 +2,15 @@
 
 #include "dali/array/op2/expression/expression.h"
 #include "dali/array/op2/rtc/rtc_expression.h"
+#include "dali/array/op2/rtc/scalar_wrapper.h"
 #include "dali/array/op2/elementwise_operation.h"
 #include "dali/array/op2/rtc_utils.h"
 #include "dali/array/op/spatial/utils.h"
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
 
-using expression::rtc::RtcExpression;
+namespace expression {
+namespace rtc {
 
 std::vector<int> deduce_im2col_shape(
         const std::vector<int>& src_bshape,
@@ -72,20 +74,20 @@ struct Im2ColExpressionState : public RtcExpression {
 
     std::string data_format_;
 
-    std::shared_ptr<const RtcExpression> filter_h_op_;
-    std::shared_ptr<const RtcExpression> filter_w_op_;
+    std::shared_ptr<const ScalarWrapperInteger> filter_h_op_;
+    std::shared_ptr<const ScalarWrapperInteger> filter_w_op_;
 
-    std::shared_ptr<const RtcExpression> stride_h_op_;
-    std::shared_ptr<const RtcExpression> stride_w_op_;
+    std::shared_ptr<const ScalarWrapperInteger> stride_h_op_;
+    std::shared_ptr<const ScalarWrapperInteger> stride_w_op_;
 
-    std::shared_ptr<const RtcExpression> dilate_h_op_;
-    std::shared_ptr<const RtcExpression> dilate_w_op_;
+    std::shared_ptr<const ScalarWrapperInteger> dilate_h_op_;
+    std::shared_ptr<const ScalarWrapperInteger> dilate_w_op_;
 
-    std::shared_ptr<const RtcExpression> prepad_h_op_;
-    std::shared_ptr<const RtcExpression> prepad_w_op_;
+    std::shared_ptr<const ScalarWrapperInteger> prepad_h_op_;
+    std::shared_ptr<const ScalarWrapperInteger> prepad_w_op_;
 
-    std::shared_ptr<const RtcExpression> postpad_h_op_;
-    std::shared_ptr<const RtcExpression> postpad_w_op_;
+    std::shared_ptr<const ScalarWrapperInteger> postpad_h_op_;
+    std::shared_ptr<const ScalarWrapperInteger> postpad_w_op_;
 
     Im2ColExpressionState(std::shared_ptr<const RtcExpression> image,
                          int filter_h,
@@ -113,16 +115,16 @@ struct Im2ColExpressionState : public RtcExpression {
             postpad_w_(postpad_w),
             data_format_(data_format),
             // create scalar ops to send constants to kernel:
-            filter_h_op_(expression::Expression(filter_h).state_->as_jit()),
-            filter_w_op_(expression::Expression(filter_w).state_->as_jit()),
-            stride_h_op_(expression::Expression(stride_h).state_->as_jit()),
-            stride_w_op_(expression::Expression(stride_w).state_->as_jit()),
-            dilate_h_op_(expression::Expression(dilate_h).state_->as_jit()),
-            dilate_w_op_(expression::Expression(dilate_w).state_->as_jit()),
-            prepad_h_op_(expression::Expression(prepad_h).state_->as_jit()),
-            prepad_w_op_(expression::Expression(prepad_w).state_->as_jit()),
-            postpad_h_op_(expression::Expression(postpad_h).state_->as_jit()),
-            postpad_w_op_(expression::Expression(postpad_w).state_->as_jit()) {
+            filter_h_op_(std::make_shared<ScalarWrapperInteger>(filter_h)),
+            filter_w_op_(std::make_shared<ScalarWrapperInteger>(filter_w)),
+            stride_h_op_(std::make_shared<ScalarWrapperInteger>(stride_h)),
+            stride_w_op_(std::make_shared<ScalarWrapperInteger>(stride_w)),
+            dilate_h_op_(std::make_shared<ScalarWrapperInteger>(dilate_h)),
+            dilate_w_op_(std::make_shared<ScalarWrapperInteger>(dilate_w)),
+            prepad_h_op_(std::make_shared<ScalarWrapperInteger>(prepad_h)),
+            prepad_w_op_(std::make_shared<ScalarWrapperInteger>(prepad_w)),
+            postpad_h_op_(std::make_shared<ScalarWrapperInteger>(postpad_h)),
+            postpad_w_op_(std::make_shared<ScalarWrapperInteger>(postpad_w)) {
     }
 
     virtual DType dtype() const {
@@ -336,8 +338,8 @@ struct Im2ColExpressionState : public RtcExpression {
     void compute_node_compilation_info(
             int desired_computation_rank,
             const std::vector<int>& desired_computation_shape,
-            std::vector<const expression::ArrayWrapper*>* arrays,
-            std::vector<const expression::rtc::ScalarWrapper*>* scalars,
+            std::vector<const RtcArrayWrapper*>* arrays,
+            std::vector<const ScalarWrapper*>* scalars,
             node_to_info_t* node_to_info) const {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
         image_->compute_node_compilation_info(4, image_->shape(), arrays, scalars, node_to_info);
@@ -390,6 +392,9 @@ struct Im2ColExpressionState : public RtcExpression {
 
 const hash_t Im2ColExpressionState::optype_hash = std::hash<std::string>()("Im2ColExpressionState");
 
+}  // namespace rtc
+}  // namespace expression
+
 namespace op {
     expression::Expression im2col(const expression::Expression& image,
                                   int filter_h,
@@ -430,7 +435,7 @@ namespace op {
             image_h, ", filter_w=", filter_w, " vs. w_dim=", image_w, ")."));
 
         return expression::Expression(
-            std::make_shared<Im2ColExpressionState>(
+            std::make_shared<expression::rtc::Im2ColExpressionState>(
                 image.state_->as_jit(),
                 filter_h,
                 filter_w,

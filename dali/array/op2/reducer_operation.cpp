@@ -8,80 +8,117 @@
 ///////////////////////////////////////////////////////////////////////////////
 //                    HEADERS                                                //
 ///////////////////////////////////////////////////////////////////////////////
-
-using expression::rtc::RtcExpression;
-
+namespace expression {
+namespace rtc {
 struct ReducerExpressionState : public RtcExpression {
     const std::shared_ptr<const RtcExpression> argument_;
     const std::string functor_name_;
 
+    // MUST IMPLEMENT
     virtual hash_t optype_hash() const = 0;
-
-    ReducerExpressionState(const std::string& functor_name, std::shared_ptr<const RtcExpression> argument, int min_computation_rank);
-
-    virtual std::vector<std::shared_ptr<const expression::ExpressionState>> arguments() const;
-
-    virtual std::string get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
-
     virtual std::string kernel_name() const = 0;
-};
+
+    // DO NOT REIMPLEMENT
+    ReducerExpressionState(const std::string& functor_name,
+                           std::shared_ptr<const RtcExpression> argument,
+                           int min_computation_rank) :
+        RtcExpression(min_computation_rank),
+        functor_name_(functor_name),
+        argument_(argument) {
+    }
+
+    virtual std::vector<std::shared_ptr<const ExpressionState>> arguments() const {
+        return {argument_};
+    }
+
+    virtual std::string get_call_code_nd(const symbol_table_t& symbol_table,
+                                         const node_to_info_t& node_to_info,
+                                         memory::DeviceT device_type) const {
+        int all_reduce_comp_rank = node_to_info.at(argument_.get()).computation_rank;
+        return utils::make_message(
+            kernel_name(), all_reduce_comp_rank,
+            "d<", functor_name_, ", " , dtype_to_cpp_name(dtype()) , ">(",
+            argument_->get_call_code_nd(symbol_table, node_to_info, device_type), ")");
+    }
+};  // struct ReducerExpressionState
 
 struct AllReducerExpressionState : public ReducerExpressionState {
     static const hash_t optype_hash_cache_;
 
-    virtual hash_t optype_hash() const;
+    virtual hash_t optype_hash() const {
+        return optype_hash_cache_;
+    }
 
     AllReducerExpressionState(const std::string& functor_name, std::shared_ptr<const RtcExpression> argument);
 
-    virtual std::vector<int> bshape() const;
+    virtual std::vector<int> bshape() const {
+        return {};
+    }
     virtual std::string name() const {
         return utils::make_message(
             "all_reduce<", functor_name_, ">"
         );
     }
 
-    virtual DType dtype() const;
+    virtual DType dtype() const {
+        return argument_->dtype();
+    }
 
-    virtual int ndim() const;
+    virtual int ndim() const {
+        return 0;
+    }
 
     virtual void compute_node_compilation_info(int desired_computation_rank,
                                                const std::vector<int>& desired_computation_shape,
-                                               std::vector<const expression::ArrayWrapper*>* arrays,
-                                               std::vector<const expression::rtc::ScalarWrapper*>* scalars,
+                                               std::vector<const RtcArrayWrapper*>* arrays,
+                                               std::vector<const ScalarWrapper*>* scalars,
                                                node_to_info_t* node_to_info) const;
 
-    virtual bool is_dim_collapsible_with_dim_minus_one(const int& dim) const;
+    virtual bool is_dim_collapsible_with_dim_minus_one(const int& dim) const {
+        return true;
+    }
 
-    virtual std::shared_ptr<const RtcExpression> transpose(const std::vector<int>& permutation) const;
+    virtual std::shared_ptr<const RtcExpression> transpose(const std::vector<int>& permutation) const {
+        return jit_shared_from_this();
+    }
 
     virtual std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
 
-    virtual std::string kernel_name() const;
+    virtual std::string kernel_name() const {
+        return "all_reduce_kernel_";
+    }
 };
 
 struct AxisReducerExpressionState : public ReducerExpressionState {
     static const hash_t optype_hash_cache_;
 
-    virtual hash_t optype_hash() const;
+    virtual hash_t optype_hash() const {
+        return optype_hash_cache_;
+    }
 
     AxisReducerExpressionState(const std::string& functor_name, std::shared_ptr<const RtcExpression> argument);
 
     virtual std::vector<int> bshape() const;
 
-    virtual DType dtype() const;
+    virtual DType dtype() const {
+        return argument_->dtype();
+    }
+
     virtual std::string name() const {
         return utils::make_message(
             "axis_reduce<", functor_name_, ">"
         );
     }
 
-    virtual int ndim() const;
+    virtual int ndim() const {
+        return std::max(argument_->ndim() - 1, 0);
+    }
 
     virtual void compute_node_compilation_info(
         int desired_computation_rank,
         const std::vector<int>& desired_computation_shape,
-        std::vector<const expression::ArrayWrapper*>* arrays,
-        std::vector<const expression::rtc::ScalarWrapper*>* scalars,
+        std::vector<const RtcArrayWrapper*>* arrays,
+        std::vector<const ScalarWrapper*>* scalars,
         node_to_info_t* node_to_info) const;
 
     virtual bool is_dim_collapsible_with_dim_minus_one(const int& dim) const;
@@ -92,7 +129,9 @@ struct AxisReducerExpressionState : public ReducerExpressionState {
 
     virtual std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
 
-    virtual std::string kernel_name() const;
+    virtual std::string kernel_name() const {
+        return "axis_reduce_kernel_";
+    }
 };
 
 
@@ -101,9 +140,14 @@ struct ArgumentAllReducerExpressionState : public AllReducerExpressionState {
 
     using AllReducerExpressionState::AllReducerExpressionState;
 
-    virtual hash_t optype_hash() const;
+    virtual hash_t optype_hash() const {
+        return optype_hash_cache_;
+    }
 
-    virtual DType dtype() const;
+    virtual DType dtype() const {
+        return DTYPE_INT32;
+    }
+
     virtual std::string name() const {
         return utils::make_message(
             "argument_all_reduce<", functor_name_, ">"
@@ -112,7 +156,9 @@ struct ArgumentAllReducerExpressionState : public AllReducerExpressionState {
 
     virtual std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
 
-    virtual std::string kernel_name() const;
+    virtual std::string kernel_name() const {
+        return "argument_all_reduce_kernel_";
+    }
 };
 
 
@@ -121,9 +167,14 @@ struct ArgumentAxisReducerExpressionState : public AxisReducerExpressionState {
 
     using AxisReducerExpressionState::AxisReducerExpressionState;
 
-    virtual hash_t optype_hash() const;
+    virtual hash_t optype_hash() const {
+        return optype_hash_cache_;
+    }
 
-    virtual DType dtype() const;
+    virtual DType dtype() const {
+        return DTYPE_INT32;
+    }
+
     virtual std::string name() const {
         return utils::make_message(
             "argument_axis_reduce<", functor_name_, ">"
@@ -136,7 +187,9 @@ struct ArgumentAxisReducerExpressionState : public AxisReducerExpressionState {
 
     virtual std::shared_ptr<const RtcExpression> transpose(const std::vector<int>& permutation) const;
 
-    virtual std::string kernel_name() const;
+    virtual std::string kernel_name() const {
+        return "argument_axis_reduce_kernel_";
+    }
 };
 
 
@@ -147,33 +200,17 @@ struct ArgumentAxisReducerExpressionState : public AxisReducerExpressionState {
 
 const hash_t AxisReducerExpressionState::optype_hash_cache_ = std::hash<std::string>()("AxisReducerExpressionState");
 
-hash_t AllReducerExpressionState::optype_hash() const {
-    return optype_hash_cache_;
-}
-
 AllReducerExpressionState::AllReducerExpressionState(
         const std::string& functor_name,
         std::shared_ptr<const RtcExpression> argument) :
     ReducerExpressionState(functor_name, argument, 1) {
 }
 
-std::vector<int> AllReducerExpressionState::bshape() const {
-    return {};
-}
-
-DType AllReducerExpressionState::dtype() const {
-    return argument_->dtype();
-}
-
-int AllReducerExpressionState::ndim() const {
-    return 0;
-}
-
 void AllReducerExpressionState::compute_node_compilation_info(
         int desired_computation_rank,
         const std::vector<int>& desired_computation_shape,
-        std::vector<const expression::ArrayWrapper*>* arrays,
-        std::vector<const expression::rtc::ScalarWrapper*>* scalars,
+        std::vector<const RtcArrayWrapper*>* arrays,
+        std::vector<const ScalarWrapper*>* scalars,
         node_to_info_t* node_to_info) const {
     (*node_to_info)[this].computation_rank = desired_computation_rank;
     argument_->compute_node_compilation_info(argument_->min_computation_rank_, argument_->shape(), arrays, scalars, node_to_info);
@@ -182,17 +219,6 @@ void AllReducerExpressionState::compute_node_compilation_info(
                                                 .add(functor_name_)
                                                 .add(node_to_info->at(argument_.get()).hash)
                                                 .value();
-}
-
-
-bool AllReducerExpressionState::is_dim_collapsible_with_dim_minus_one(
-        const int& dim) const {
-    return true;
-}
-
-std::shared_ptr<const RtcExpression> AllReducerExpressionState::transpose(
-        const std::vector<int>& permutation) const {
-    return jit_shared_from_this();
 }
 
 std::string AllReducerExpressionState::prefix_code(
@@ -204,10 +230,6 @@ std::string AllReducerExpressionState::prefix_code(
     );
 }
 
-std::string AllReducerExpressionState::kernel_name() const {
-    return "all_reduce_kernel_";
-}
-
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -215,11 +237,6 @@ std::string AllReducerExpressionState::kernel_name() const {
 ///////////////////////////////////////////////////////////////////////////////
 
 const hash_t ArgumentAllReducerExpressionState::optype_hash_cache_ = std::hash<std::string>()("ArgumentAllReducerExpressionState");
-
-hash_t AxisReducerExpressionState::optype_hash() const {
-    return optype_hash_cache_;
-}
-
 
 AxisReducerExpressionState::AxisReducerExpressionState(
         const std::string& functor_name,
@@ -233,19 +250,12 @@ std::vector<int> AxisReducerExpressionState::bshape() const {
     return result;
 }
 
-DType AxisReducerExpressionState::dtype() const {
-    return argument_->dtype();
-}
-
-int AxisReducerExpressionState::ndim() const {
-    return std::max(argument_->ndim() - 1, 0);
-}
 
 void AxisReducerExpressionState::compute_node_compilation_info(
         int desired_computation_rank,
         const std::vector<int>& desired_computation_shape,
-        std::vector<const expression::ArrayWrapper*>* arrays,
-        std::vector<const expression::rtc::ScalarWrapper*>* scalars,
+        std::vector<const RtcArrayWrapper*>* arrays,
+        std::vector<const ScalarWrapper*>* scalars,
         node_to_info_t* node_to_info) const {
     (*node_to_info)[this].computation_rank = desired_computation_rank;
 
@@ -293,24 +303,10 @@ std::string AxisReducerExpressionState::prefix_code(
     return create_axis_reduce_kernel_caller(node_to_info.at(argument_.get()).computation_rank);
 }
 
-std::string AxisReducerExpressionState::kernel_name() const {
-    return "axis_reduce_kernel_";
-}
-
 
 ///////////////////////////////////////////////////////////////////////////////
 //                ARGUMENT ALL REDUCER OPERATION STATE                       //
 ///////////////////////////////////////////////////////////////////////////////
-
-
-
-hash_t ArgumentAllReducerExpressionState::optype_hash() const {
-    return optype_hash_cache_;
-}
-
-DType ArgumentAllReducerExpressionState::dtype() const {
-    return DTYPE_INT32;
-}
 
 std::string ArgumentAllReducerExpressionState::prefix_code(
         const node_to_info_t& node_to_info,
@@ -321,24 +317,12 @@ std::string ArgumentAllReducerExpressionState::prefix_code(
     );
 }
 
-std::string ArgumentAllReducerExpressionState::kernel_name() const {
-    return "argument_all_reduce_kernel_";
-}
-
 
 ///////////////////////////////////////////////////////////////////////////////
 //         ARGUMENT AXIS REDUCER OPERATION STATE                             //
 ///////////////////////////////////////////////////////////////////////////////
 
 const hash_t ArgumentAxisReducerExpressionState::optype_hash_cache_ = std::hash<std::string>()("ArgumentAxisReducerExpressionState");
-
-hash_t ArgumentAxisReducerExpressionState::optype_hash() const {
-    return optype_hash_cache_;
-}
-
-DType ArgumentAxisReducerExpressionState::dtype() const {
-    return DTYPE_INT32;
-}
 
 std::string ArgumentAxisReducerExpressionState::prefix_code(
         const node_to_info_t& node_to_info,
@@ -366,57 +350,27 @@ std::shared_ptr<const RtcExpression> ArgumentAxisReducerExpressionState::transpo
     );
 }
 
-std::string ArgumentAxisReducerExpressionState::kernel_name() const {
-    return "argument_axis_reduce_kernel_";
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-//                       REDUCER OPERATION STATE                             //
-///////////////////////////////////////////////////////////////////////////////
-
 const hash_t AllReducerExpressionState::optype_hash_cache_ =
         std::hash<std::string>()("AllReducerExpressionState");
 
-ReducerExpressionState::ReducerExpressionState(
-        const std::string& functor_name,
-        std::shared_ptr<const RtcExpression> argument,
-        int min_computation_rank) :
-    RtcExpression(min_computation_rank),
-    functor_name_(functor_name),
-    argument_(argument) {
-
-}
-
-std::vector<std::shared_ptr<const expression::ExpressionState>> ReducerExpressionState::arguments() const {
-    return {argument_};
-}
-
-std::string ReducerExpressionState::get_call_code_nd(
-        const symbol_table_t& symbol_table,
-        const node_to_info_t& node_to_info,
-        memory::DeviceT device_type) const {
-    int all_reduce_comp_rank = node_to_info.at(argument_.get()).computation_rank;
-    return utils::make_message(
-        kernel_name(), all_reduce_comp_rank,
-        "d<", functor_name_, ", " , dtype_to_cpp_name(dtype()) , ">(",
-        argument_->get_call_code_nd(symbol_table, node_to_info, device_type), ")");
-
-}
+}  // namespace rtc
+}  // namespace expression
 
 
 namespace op {
-    expression::Expression all_reduce(const expression::Expression& a,
-                         const std::string& reducer_name) {
-        return expression::Expression(std::make_shared<AllReducerExpressionState>(
+    expression::Expression all_reduce(
+            const expression::Expression& a,
+            const std::string& reducer_name) {
+        return expression::Expression(std::make_shared<expression::rtc::AllReducerExpressionState>(
             reducer_name,
             a.state_->as_jit()
         ));
     }
 
-    expression::Expression axis_reduce(const expression::Expression& a,
-                          const std::string& reducer_name,
-                          const std::vector<int>& axes) {
+    expression::Expression axis_reduce(
+            const expression::Expression& a,
+            const std::string& reducer_name,
+            const std::vector<int>& axes) {
         if (axes.size() == 0) return a;
         int ndim = a.ndim();
         if (ndim == 0) return a;
@@ -482,7 +436,7 @@ namespace op {
             int collapsed_ndim = ndim - 1;
             for (int axes_used_up = 0; axes_used_up < num_low_axes_to_reduce; ++axes_used_up) {
                 if (num_low_axes_to_reduce - axes_used_up == 1) {
-                    res = std::make_shared<AxisReducerExpressionState>(
+                    res = std::make_shared<expression::rtc::AxisReducerExpressionState>(
                         reducer_name,
                         res
                     );
@@ -490,7 +444,7 @@ namespace op {
                     if (res->is_dim_collapsible_with_dim_minus_one(collapsed_ndim)) {
                         res = res->collapse_dim_with_dim_minus_one(collapsed_ndim);
                     } else {
-                        res = std::make_shared<AxisReducerExpressionState>(
+                        res = std::make_shared<expression::rtc::AxisReducerExpressionState>(
                             reducer_name,
                             res
                         );
@@ -502,17 +456,19 @@ namespace op {
         return expression::Expression(res);
     }
 
-    expression::Expression argument_all_reduce(const expression::Expression& a,
-                                 const std::string& reducer_name) {
-        return expression::Expression(std::make_shared<ArgumentAllReducerExpressionState>(
+    expression::Expression argument_all_reduce(
+            const expression::Expression& a,
+            const std::string& reducer_name) {
+        return expression::Expression(std::make_shared<expression::rtc::ArgumentAllReducerExpressionState>(
             reducer_name,
             a.state_->as_jit()
         ));
     }
 
-    expression::Expression argument_axis_reduce(const expression::Expression& a,
-                                   const std::string& reducer_name,
-                                   const int& axis) {
+    expression::Expression argument_axis_reduce(
+            const expression::Expression& a,
+            const std::string& reducer_name,
+            const int& axis) {
         int ndim = a.ndim();
         if (ndim == 0) return expression::Expression(0);
         int normalized_axis = axis;
@@ -536,7 +492,7 @@ namespace op {
             axes[normalized_axis] = axes.size() - 1;
             res = res->transpose(axes);
         }
-        return expression::Expression(std::make_shared<ArgumentAxisReducerExpressionState>(
+        return expression::Expression(std::make_shared<expression::rtc::ArgumentAxisReducerExpressionState>(
             reducer_name,
             res
         ));

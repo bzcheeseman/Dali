@@ -226,11 +226,11 @@ namespace rtc {
     }
 
     std::shared_ptr<const RtcExpression> RtcExpression::jit_shared_from_this() const {
-        return std::static_pointer_cast<const RtcExpression>(shared_from_this());
+        return std::dynamic_pointer_cast<const RtcExpression>(shared_from_this());
     }
 
     std::shared_ptr<RtcExpression> RtcExpression::jit_shared_from_this() {
-        return std::static_pointer_cast<RtcExpression>(shared_from_this());
+        return std::dynamic_pointer_cast<RtcExpression>(shared_from_this());
     }
 
 }  // namespace rtc

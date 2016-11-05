@@ -34,20 +34,6 @@ namespace expression {
 
         virtual int number_of_elements() const;
 
-        // virtual void compute_node_compilation_info(int desired_computation_rank,
-        //                                            const std::vector<int>& desired_computation_shape,
-        //                                            std::vector<const ArrayWrapper*>* arrays,
-        //                                            std::vector<const ScalarWrapper*>* scalars,
-        //                                            node_to_info_t* node_to_info) const;
-
-        // virtual bool is_dim_collapsible_with_dim_minus_one(const int& dim) const;
-
-        // virtual std::shared_ptr<ExpressionState> collapse_dim_with_dim_minus_one(const int& dim) const;
-
-        // virtual std::shared_ptr<ExpressionState> transpose(const std::vector<int>& permutation) const;
-
-        // virtual std::string get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
-
         virtual std::shared_ptr<const Runnable> assign_to(std::shared_ptr<const LValue> op, memory::Device device) const;
         virtual std::shared_ptr<const Runnable> add_to(std::shared_ptr<const LValue> op, memory::Device device) const;
         virtual std::shared_ptr<const Runnable> sub_to(std::shared_ptr<const LValue> op, memory::Device device) const;
@@ -61,6 +47,7 @@ namespace expression {
         virtual std::shared_ptr<const Runnable> div_from(std::shared_ptr<const Runnable> op, memory::Device device) const;
 
         virtual std::shared_ptr<const Runnable> as_runnable(memory::Device device) const;
+        virtual std::shared_ptr<const rtc::RtcExpression> as_jit() const;
         virtual void run() const;
         virtual std::shared_ptr<const ExpressionState> destination_op() const;
     };

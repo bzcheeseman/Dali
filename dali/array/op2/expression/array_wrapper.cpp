@@ -1,5 +1,7 @@
 #include "array_wrapper.h"
 
+#include "dali/array/op2/rtc/rtc_array_wrapper.h"
+
 namespace expression {
     const hash_t ArrayWrapper::optype_hash = std::hash<std::string>()("ArrayWrapper");
 
@@ -41,6 +43,10 @@ namespace expression {
 
     std::shared_ptr<const Runnable> ArrayWrapper::as_runnable(memory::Device device) const {
         return std::dynamic_pointer_cast<const Runnable>(shared_from_this());
+    }
+
+    std::shared_ptr<const rtc::RtcExpression> ArrayWrapper::as_jit() const {
+        return std::make_shared<rtc::RtcArrayWrapper>(array_);
     }
 
     std::shared_ptr<const ExpressionState> ArrayWrapper::destination_op() const {

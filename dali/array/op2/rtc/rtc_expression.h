@@ -27,7 +27,7 @@ namespace rtc {
         hash_t hash;
     };
 
-    struct RtcExpression : public ExpressionState {
+    struct RtcExpression : virtual public ExpressionState {
         typedef std::unordered_map<const RtcExpression*, std::string>     symbol_table_t;
         typedef std::unordered_map<const RtcExpression*, CompilationInfo> node_to_info_t;
 

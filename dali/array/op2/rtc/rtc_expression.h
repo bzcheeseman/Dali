@@ -27,8 +27,8 @@ namespace rtc {
     };
 
     struct RtcExpression : virtual public RValue {
-        typedef std::unordered_map<const RtcExpression*, std::string>     symbol_table_t;
-        typedef std::unordered_map<const RtcExpression*, CompilationInfo> node_to_info_t;
+        typedef std::unordered_map<const ExpressionState*, std::string>     symbol_table_t;
+        typedef std::unordered_map<const ExpressionState*, CompilationInfo> node_to_info_t;
 
         const int min_computation_rank_;
 
@@ -66,19 +66,6 @@ namespace rtc {
         ///////////////////////////////////////////////////////////////////////////////
         //            DO NOT REIMPLEMENT FUNCTIONS BELOW                             //
         ///////////////////////////////////////////////////////////////////////////////
-
-
-        virtual std::string get_code_template(memory::Device device,
-                                              const std::vector<const RtcArrayWrapper*>& arrays,
-                                              const std::vector<const ScalarWrapper*>& scalars,
-                                              const node_to_info_t& node_to_info) const final;
-
-
-        std::function<void(void**, const int*, const int**, const int**, const void**)> compile(
-                memory::Device device,
-                const std::vector<const RtcArrayWrapper*>& arrays,
-                const std::vector<const ScalarWrapper*>& scalars,
-                const node_to_info_t& node_to_info) const;
 
         virtual std::shared_ptr<const RtcExpression> jit_shared_from_this() const final;
         virtual std::shared_ptr<RtcExpression> jit_shared_from_this() final;

@@ -175,12 +175,12 @@ namespace expression {
             return {left_, right_};
         }
 
-        static std::tuple<double, double> operator_to_multipliers(OPERATOR_T opreator_t) {
-            if (opreator_t == OPERATOR_T_EQL) {
+        static std::tuple<double, double> operator_to_multipliers(OPERATOR_T operator_t) {
+            if (operator_t == OPERATOR_T_EQL) {
                 return std::make_tuple(1.0, 0.0);
-            } else if (opreator_t == OPERATOR_T_ADD) {
+            } else if (operator_t == OPERATOR_T_ADD) {
                 return std::make_tuple(1.0, 1.0);
-            } else if (opreator_t == OPERATOR_T_SUB) {
+            } else if (operator_t == OPERATOR_T_SUB) {
                 return std::make_tuple(-1.0, 1.0);
             } else {
                 ASSERT2(false, "no multipliers available for this operator.");
@@ -188,8 +188,8 @@ namespace expression {
         }
 
         virtual std::shared_ptr<const expression::Runnable> use_operator(std::shared_ptr<const expression::LValue> dest,
-                                                                                    memory::Device device,
-                                                                                    OPERATOR_T opreator_t) const {
+                                                                         memory::Device device,
+                                                                         OPERATOR_T operator_t) const {
             if (device.is_cpu()) {
                 auto left_runnable  = left_->as_runnable(device);
                 auto right_runnable = right_->as_runnable(device);
@@ -199,10 +199,10 @@ namespace expression {
                 auto dest_array = dest->as_array();
                 if (dest_array) {
                     double result_multiplier, destination_multiplier;
-                    std::tie(result_multiplier, destination_multiplier) = operator_to_multipliers(opreator_t);
+                    std::tie(result_multiplier, destination_multiplier) = operator_to_multipliers(operator_t);
                     return std::make_shared<GemmAssignExpressionState>(dest_array, left_runnable, right_runnable, result_multiplier, destination_multiplier);
                 } else {
-                    return dest->operator_from(opreator_t, this->as_runnable(device), device);
+                    return dest->operator_from(operator_t, this->as_runnable(device), device);
                 }
             } else {
                 ASSERT2(false, "oh, snap.");

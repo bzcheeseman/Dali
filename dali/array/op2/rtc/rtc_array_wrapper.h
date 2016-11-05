@@ -41,6 +41,7 @@ namespace rtc {
 
         virtual std::string get_call_code_nd(const symbol_table_t& symbol_table, const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
         virtual std::shared_ptr<const RtcExpression> as_jit() const;
+        virtual std::shared_ptr<const ArrayWrapper> as_array() const;
     };
 }  // namespace rtc
 }  // namespace expression

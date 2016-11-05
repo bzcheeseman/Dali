@@ -77,6 +77,10 @@ std::shared_ptr<const RtcExpression> RtcArrayWrapper::as_jit() const {
     return jit_shared_from_this();
 }
 
+std::shared_ptr<const ArrayWrapper> RtcArrayWrapper::as_array() const {
+    return std::make_shared<ArrayWrapper>(array_);
+}
+
 }  // namespace rtc
 }  // namespace expression
 

@@ -1,6 +1,7 @@
 #include "abstract_assign.h"
 
 #include "dali/array/op2/rtc_utils.h"
+#include "dali/utils/make_message.h"
 #include "dali/array/op2/expression/array_wrapper.h"
 
 
@@ -103,7 +104,7 @@ namespace expression {
 
     void AbstractAssign::full_operation_name(std::stringstream* ss) const {
         left_->full_operation_name(ss);
-        (*ss) << " " << operator_to_name(operator_t_) << " ";
+        (*ss) << " " << operator_t_ << " ";
         right_->full_operation_name(ss);
     }
 
@@ -210,8 +211,12 @@ namespace op {
     expression::Expression assign(const expression::Expression& left, const OPERATOR_T& operator_t, const expression::Expression& right) {
         auto left_lvalue = left.state_->as_lvalue();
         auto right_rvalue = right.state_->as_rvalue();
-        ASSERT2(left_lvalue, "Left side of assignment must be a lvalue.");
-        ASSERT2(right_rvalue, "Right side of assignment must be a rvalue.");
+        ASSERT2(left_lvalue, utils::make_message("Left side of assignment "
+            "must be a lvalue (left=", left.name(), ", right=", right.name(),
+            ", operator='", operator_t, "')."));
+        ASSERT2(right_rvalue, utils::make_message("Right side of assignment "
+            "must be a rvalue (right=", right.name(), ", left=", left.name(),
+            ", operator='", operator_t, "')."));
         OPERATOR_T operator_to_use = operator_t;
         if (left.state_->as_array()) {
             ensure_output_array_compatible(left.state_->as_array()->array_, right.dtype(), right.bshape());

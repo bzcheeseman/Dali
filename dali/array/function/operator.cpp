@@ -24,3 +24,7 @@ namespace std {
         return operator_t;
     }
 }
+
+std::ostream& operator<<(std::ostream& stream, const OPERATOR_T& operator_t) {
+    return stream << operator_to_name(operator_t);
+}

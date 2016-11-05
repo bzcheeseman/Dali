@@ -13,6 +13,7 @@
 #include "dali/array/function/operator.h"
 #include "dali/array/functor.h"
 #include "dali/utils/random.h"
+#include "dali/utils/make_message.h"
 
 #include "dali/array/lazy_op.h"
 
@@ -163,9 +164,8 @@ struct GaussianInitializer : public Initializer<GaussianInitializer, const doubl
             auto m_out = out.contiguous_d1(memory::AM_OVERWRITE);
             generator.SampleGaussian(&m_out, mean, std);
         } else {
-            ASSERT2(false,
-                utils::MS() << operator_to_name(operator_t)
-                            << " not yet implemented for GaussianInitializer");
+            ASSERT2(false, utils::make_message(operator_t, " not yet "
+                "implemented for GaussianInitializer"));
         }
     }
 
@@ -180,9 +180,8 @@ struct GaussianInitializer : public Initializer<GaussianInitializer, const doubl
                 *(ptr + i) = (int)dist(gen);
             }
         } else {
-            ASSERT2(false,
-                utils::MS() << operator_to_name(operator_t)
-                            << " not yet implemented for GaussianInitializer");
+            ASSERT2(false, utils::make_message(operator_t, " not yet "
+                "implemented for GaussianInitializer"));
         }
     }
 };
@@ -192,9 +191,8 @@ struct GaussianInitializer : public Initializer<GaussianInitializer, const doubl
 struct UniformInitializer : public Initializer<UniformInitializer, const double&, const double&> {
 
     static void verify(const double& lower, const double& upper) {
-        ASSERT2(lower < upper,
-            utils::MS() << "Uniform initialzer must have nonempty interval, got ["
-                        << lower << "," << upper <<"]");
+        ASSERT2(lower < upper, utils::make_message("Uniform initialzer must"
+            " have nonempty interval, got [", lower, ",", upper, "]"));
     }
 
 
@@ -210,9 +208,8 @@ struct UniformInitializer : public Initializer<UniformInitializer, const double&
                     out.to_thrust(memory::AM_OVERWRITE),
                     uniform_operator<T>(lower, upper, utils::randinteger<unsigned int>(0,999999)));
         } else {
-            ASSERT2(false,
-                utils::MS() << operator_to_name(operator_t)
-                            << " not yet implemented for UniformInitializer");
+            ASSERT2(false, utils::make_message(operator_t, " not yet "
+                "implemented for UniformInitializer"));
         }
     }
 #endif
@@ -237,9 +234,8 @@ struct UniformInitializer : public Initializer<UniformInitializer, const double&
                 *(ptr + i) = (int)dist(gen);
             }
         } else {
-            ASSERT2(false,
-                utils::MS() << operator_to_name(operator_t)
-                            << " not yet implemented for UniformInitializer");
+            ASSERT2(false, utils::make_message(operator_t, " not yet "
+                "implemented for UniformInitializer"));
         }
     }
 };
@@ -266,9 +262,8 @@ struct BernoulliInitializer : public Initializer<BernoulliInitializer, const dou
             UniformInitializer().template typed_eval<operator_t>(out, 0.0, 1.0);
             operator_assign<operator_t, 1>(out, mshadow::expr::F<functor::threshold<T>>(out.contiguous_d1(), prob));
         } else {
-            ASSERT2(false,
-                utils::MS() << operator_to_name(operator_t)
-                            << " not yet implemented for BernoulliInitializer");
+            ASSERT2(false, utils::make_message(operator_t, " not yet "
+                "implemented for BernoulliInitializer"));
         }
     }
 };
@@ -280,9 +275,8 @@ struct BernoulliNormalizedInitializer : public Initializer<BernoulliNormalizedIn
             UniformInitializer().template typed_eval<operator_t>(out, 0.0, 1.0);
             operator_assign<operator_t, 1>(out, mshadow::expr::F<functor::threshold<T>>(out.contiguous_d1(), prob) * (1.0 / prob));
         } else {
-            ASSERT2(false,
-                utils::MS() << operator_to_name(operator_t)
-                            << " not yet implemented for BernoulliNormalizedInitializer");
+            ASSERT2(false, utils::make_message(operator_t, " not yet "
+                "implemented for BernoulliNormalizedInitializer"));
         }
     }
 };

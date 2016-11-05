@@ -18,7 +18,7 @@ using memory::Device;
 void operator_eql_check(const OPERATOR_T& operator_t) {
     ASSERT2(operator_t == OPERATOR_T_EQL, utils::make_message("argsort's result must be "
         "assigned using operator '=' (note: -=, +=, /=, *= disallowed, got operator = ",
-        operator_to_name(operator_t), ")."));
+        operator_t, ")."));
 }
 
 namespace argsort_helper {

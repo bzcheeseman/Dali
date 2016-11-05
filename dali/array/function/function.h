@@ -17,7 +17,7 @@
 #include "dali/array/function/args/property_reducer.h"
 #include "dali/array/function/typed_array.h"
 #include "dali/array/function/operator.h"
-#include "dali/utils/print_utils.h"
+#include "dali/utils/make_message.h"
 #include "dali/utils/unpack_tuple.h"
 #include "dali/utils/random.h"
 #include "dali/utils/scope.h"
@@ -143,13 +143,13 @@ struct Function {
                     }
                 }
 
-                ASSERT2(output_bshape_compatible,
-                        utils::MS() << "Cannot assign result of shape " << output_bshape
-                                    << " to a location of shape " << out.shape() << ".");
+                ASSERT2(output_bshape_compatible, utils::make_message("Cannot "
+                    "assign result of shape ", output_bshape, " to a location "
+                    "of shape ", out.shape(), "."));
             }
             ASSERT2(Class::disable_output_dtype_check || out.dtype() == output_dtype,
-                    utils::MS() << "Cannot assign result of dtype " << output_dtype
-                                << " to a location of dtype " << out.dtype() << ".");
+                utils::make_message("Cannot assign result of dtype ", output_dtype,
+                " to a location of dtype ", out.dtype(), "."));
         }
     }
 
@@ -185,11 +185,9 @@ struct Function {
         return Assignable<Outtype>([args...](Outtype& out, const OPERATOR_T& operator_t) {
             DALI_SCOPE(Class::name);
 
-            ASSERT2(operator_t == intented_operator_t,
-                utils::MS() << "Assignable<Outtype> constructed for operator "
-                            << operator_to_name(intented_operator_t)
-                            << " but got " << operator_to_name(operator_t)
-                            << " instead");
+            ASSERT2(operator_t == intented_operator_t, utils::make_message(
+                "Assignable<Outtype> constructed for operator ", intented_operator_t,
+                " but got ", operator_t, " instead"));
 
             auto prepped_args = Class::prepare_output(operator_t, out, args...);
             Class::template untyped_eval_with_tuple<intented_operator_t>(prepped_args);
@@ -224,10 +222,10 @@ struct Function {
         }
 #endif
         else {
-            ASSERT2(false,
-                utils::MS() << "Best device must be either cpu or gpu, and dtype must be in " DALI_ACCEPTABLE_DTYPE_STR
-                            << " (got device: " << device.description() << ", dtype: "
-                            << computation_dtype <<  ").");
+            ASSERT2(false, utils::make_message("Best device must be either "
+                "cpu or gpu, and dtype must be in " DALI_ACCEPTABLE_DTYPE_STR
+                " (got device: ", device.description(), ", dtype: ",
+                computation_dtype, ")."));
         }
 
 #ifdef DALI_USE_CUDA
@@ -266,7 +264,9 @@ struct Function {
                     Class::template untyped_eval_with_tuple<OPERATOR_T_LSE>(prepped_args);
                     break;
                 default:
-                    ASSERT2(false, "OPERATOR_T for assignment between Assignable<Outtype> and output must be one of =,-=,+=,*=,/=,<<= .");
+                    ASSERT2(false, "OPERATOR_T for assignment between "
+                        "Assignable<Outtype> and output must be one of "
+                        "=,-=,+=,*=,/=,<<= .");
                     break;
             }
         });

@@ -343,6 +343,28 @@ foreach(SourceDir ${DALI_SOURCE_DIRS})
     endforeach()
 endforeach()
 
+message(STATUS "Copying nervana kernels")
+file(GLOB_RECURSE FilesInDir "${PROJECT_SOURCE_DIR}/third_party/nervana_kernels/*")
+foreach(FilePath ${FilesInDir})
+    get_filename_component(FileNameWe ${FilePath} NAME_WE)
+    get_filename_component(FileExt    ${FilePath} EXT)
+    get_filename_component(FileDir  ${FilePath} DIRECTORY)
+    file(RELATIVE_PATH FileRelDir  "${PROJECT_SOURCE_DIR}/third_party" "${FileDir}")
+    if (FileExt STREQUAL ".sass")
+        set(NewFilePath "${GENERATED_FILES_DIR}/${FileRelDir}/${FileNameWe}.sass")
+        dali_generate_file("${FilePath}" "${NewFilePath}")
+        list(APPEND NervanaKernels ${NewFilePath})
+    elseif(FileExt STREQUAL ".pl")
+        set(NewFilePath "${GENERATED_FILES_DIR}/${FileRelDir}/${FileNameWe}.pl")
+        dali_generate_file("${FilePath}" "${NewFilePath}")
+        list(APPEND NervanaKernels ${NewFilePath})
+    elseif(FileExt STREQUAL ".pm")
+        set(NewFilePath "${GENERATED_FILES_DIR}/${FileRelDir}/${FileNameWe}.pm")
+        dali_generate_file("${FilePath}" "${NewFilePath}")
+        list(APPEND NervanaKernels ${NewFilePath})
+    endif()
+endforeach()
+
 if (DALI_STACKTRACES STREQUAL "backward-cpp")
     list(APPEND DaliSources "${PROJECT_SOURCE_DIR}/third_party/backward-cpp/backward.cpp")
     include_directories("${PROJECT_SOURCE_DIR}/third_party/backward-cpp")
@@ -381,6 +403,10 @@ add_library(dali SHARED ${DaliSources} ${maybe_cuda_compiled_files} ${DaliHeader
 add_custom_target(dali_cuda_headers DEPENDS ${DaliHeaders})
 add_dependencies(dali dali_cuda_headers)
 
+# ensure that nervana kernels are copied over before compilation
+add_custom_target(nervana_kernels DEPENDS ${NervanaKernels})
+add_dependencies(dali nervana_kernels)
+
 target_link_libraries(dali ${ZLIB_LIBRARIES}
                            ${BLAS_LIBRARIES}
                            ${MKL_LIBRARIES}
@@ -394,7 +420,7 @@ if (GPERFTOOLS_FOUND)
 endif (GPERFTOOLS_FOUND)
 
 if (WITH_CUDA)
-    target_link_libraries(dali ${CUDA_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_CUBLAS_LIBRARIES})
+    target_link_libraries(dali ${CUDA_LIBRARIES} "${CUDA_TOOLKIT_ROOT_DIR}/lib/libcuda.dylib" ${CUDA_curand_LIBRARY} ${CUDA_CUBLAS_LIBRARIES})
     if (CUDNN_FOUND)
         target_link_libraries(dali ${CUDNN_LIBRARY})
     endif (CUDNN_FOUND)
@@ -467,6 +493,8 @@ install(FILES ${PROJECT_SOURCE_DIR}/cmake/FindOpenBlas.cmake DESTINATION lib/ope
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/third_party/mshadow/mshadow DESTINATION include
         FILES_MATCHING PATTERN "*.h" PATTERN "*.cuh")
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/third_party/nervana_kernels DESTINATION include
+        FILES_MATCHING PATTERN "*.sass")
 
 ################################################################################
 ##                            PACKAGE CREATION                                ##

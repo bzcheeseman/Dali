@@ -7,6 +7,7 @@
 #include "dali/array/op2/cpu_gemm.h"
 #ifdef DALI_USE_CUDA
     #include "dali/array/op2/cublas_gemm.h"
+    #include "dali/array/op2/nervana_gemm.h"
 #endif
 
 #include "dali/utils/assert2.h"
@@ -81,14 +82,26 @@ namespace expression {
                 if (dest_array) {
                     double result_multiplier, destination_multiplier;
                     std::tie(result_multiplier, destination_multiplier) = operator_to_multipliers(operator_t);
-                    return std::make_shared<CublasGemmAssignExpressionState>(
-                        dest_array,
-                        left_runnable,
-                        right_runnable,
-                        result_multiplier,
-                        destination_multiplier,
-                        device
-                    );
+
+                    if (device_compatible_with_nervana(device)) {
+                        return std::make_shared<NervanaGemmAssignExpressionState>(
+                            dest_array,
+                            left_runnable,
+                            right_runnable,
+                            result_multiplier,
+                            destination_multiplier,
+                            device
+                        );
+                    } else {
+                        return std::make_shared<CublasGemmAssignExpressionState>(
+                            dest_array,
+                            left_runnable,
+                            right_runnable,
+                            result_multiplier,
+                            destination_multiplier,
+                            device
+                        );
+                    }
                 } else {
                     return dest->operator_from(operator_t, this->as_runnable(device), device);
                 }
@@ -96,7 +109,6 @@ namespace expression {
 #endif
             else {
                 ASSERT2(false, "unrecognized device.");
-                // TODO(jonathan): implement nervana.
             }
         }
 

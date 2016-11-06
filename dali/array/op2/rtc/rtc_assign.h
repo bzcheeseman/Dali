@@ -52,6 +52,12 @@ struct RtcAssignExpressionState : virtual public Runnable {
         return "elementwise_assign";
     }
 
+    virtual void full_operation_name(std::stringstream* ss) const {
+        left_->full_operation_name(ss);
+        (*ss) << " " << operator_t_ << " ";
+        right_->full_operation_name(ss);
+    }
+
     std::vector<std::shared_ptr<const ExpressionState>> arguments() const {
         return {left_, right_};
     }
@@ -254,7 +260,7 @@ struct RtcAssignExpressionState : virtual public Runnable {
 
         std::string assign_name;
         if (Scope::has_observers()) {
-            assign_name = full_operation_name();
+            assign_name = ExpressionState::full_operation_name();
         }
         DALI_SCOPE(assign_name);
         compiled_self(

@@ -220,41 +220,6 @@ struct LoadedSassKernel {
         check_cuda_status(cuModuleLoad(&module_, cubin_file.c_str()), "load cubin file");
         check_cuda_status(cuModuleGetFunction(&function_, module_, kernel_name.c_str()), "get function from cuda module");
     }
-
-    void operator()(
-            float* C,
-            float* A,
-            float* B,
-            float alpha,
-            float beta,
-            unsigned flags,
-            unsigned lda,
-            unsigned ldb,
-            unsigned ldc,
-            unsigned m,
-            unsigned n,
-            unsigned k,
-            unsigned param_ldaz,
-            unsigned param_ldbz,
-            unsigned param_ldcz,
-            unsigned param_batch_loops
-        ) const {
-        // int sharedMemBytes = 0;
-
-        // to call
-        // cuLaunchKernel(
-        //     function_,
-        //     grid_dim_x,
-        //     grid_dim_y,
-        //     grid_dim_z,
-        //     block_dim_x,
-        //     block_dim_y,
-        //     block_dim_z,
-        //     sharedMemBytes,
-        //     kernelParams (void** to arguments)
-        //     config (can be null)
-        // )
-    }
 };
 
 
@@ -369,8 +334,6 @@ std::shared_ptr<LoadedSassKernel> get_sass_gemm_kernel(const std::string& base_n
     std::string arch = utils::make_message("sm_", major, minor);
 
     std::string libprefix = utils::make_message("PERL5LIB=", kMaxasDir);
-
-    // maxas_i
 
     const auto& kernel_spec = kernels.at(base_name);
     std::string kernel_name = base_name;

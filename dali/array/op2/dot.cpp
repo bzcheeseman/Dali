@@ -66,7 +66,7 @@ namespace expression {
             auto left_runnable  = left_->as_runnable(device);
             auto right_runnable = right_->as_runnable(device);
 
-            // TODO(szymon): ensure conriguous when not transpose.
+            // TODO(szymon): ensure contiguous when not transpose.
             auto dest_array = dest->as_array();
             if (device.is_cpu()) {
                 if (dest_array) {

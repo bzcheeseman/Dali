@@ -565,7 +565,7 @@ int device_major_capabilities(const memory::Device& device) {
 }
 
 bool compatible_with_nervana(const DType& dtype, const memory::Device& device) {
-    return dtype == DTYPE_FLOAT && device_major_capabilities(device) >= 3;
+    return dtype == DTYPE_FLOAT && device_major_capabilities(device) >= 5;
 }
 
 }  // namespace expression

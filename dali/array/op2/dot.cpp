@@ -129,12 +129,13 @@ namespace expression {
 
 namespace op {
     expression::Expression dot2(const expression::Expression& left, const expression::Expression& right) {
-        ASSERT2(left.ndim() == 2 && right.ndim() == 2,
-                "Inputs to dot must be two-dimensional.");
+        ASSERT2(left.ndim() == 2 && right.ndim() == 2, utils::make_message(
+            "Inputs to dot must be two-dimensional (got left.shape() = ",
+            left.shape(), ", right.shape() = ", right.shape(), ")."));
         auto left_rvalue  = left.state_->as_rvalue();
         auto right_rvalue = right.state_->as_rvalue();
-        ASSERT2(left_rvalue, "First argument for dot must be a rvalue.");
-        ASSERT2(right_rvalue, "Second argument for dot must be a rvalue.");
+        ASSERT2(left_rvalue, "First argument to dot must be a rvalue.");
+        ASSERT2(right_rvalue, "Second argument to dot must be a rvalue.");
         // TODO(szymon): add type promotion.
         return expression::Expression(std::make_shared<expression::DotExpressionState>(left_rvalue, right_rvalue));
     }

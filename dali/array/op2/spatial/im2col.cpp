@@ -5,6 +5,7 @@
 #include "dali/array/op2/rtc/scalar_wrapper.h"
 #include "dali/array/op2/elementwise_operation.h"
 #include "dali/array/op2/rtc_utils.h"
+#include "dali/array/op2/spatial/data_format_helper.h"
 #include "dali/array/op/spatial/utils.h"
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
@@ -401,28 +402,19 @@ namespace op {
                                   int filter_w,
                                   int stride_h,
                                   int stride_w,
+                                  int padding_h,
+                                  int padding_w,
                                   const std::string& data_format) {
         int image_ndim = image.ndim();
         ASSERT2(image_ndim == 3 || image_ndim == 4, utils::make_message(
             "im2col takes an image with ndim == 3 or ndim == 4 (got ndim=",
             image_ndim, ")."));
-        ASSERT2(data_format.size() == 4, utils::make_message("data_format"
-            " should be 4 character string containing letters N, C, H and W ("
-            "got ", data_format, ")."));
-        ASSERT2(data_format.find('N') != -1, utils::make_message("data_format"
-            " should contain character 'N' (got ", data_format, ")."));
-        ASSERT2(data_format.find('C') != -1, utils::make_message("data_format"
-            " should contain character 'C' (got ", data_format, ")."));
-        int h_dim = data_format.find('H');
-        ASSERT2(h_dim != -1, utils::make_message("data_format"
-            " should contain character 'H' (got ", data_format, ")."));
-        int w_dim = data_format.find('W');
-        ASSERT2(w_dim != -1, utils::make_message("data_format"
-            " should contain character 'W' (got ", data_format, ")."));
+        int n_dim, c_dim, h_dim, w_dim;
+        check_data_format(data_format, &n_dim, &c_dim, &h_dim, &w_dim);
         // No N dimension if image is 3D:
         if (image_ndim == 3) {
-            w_dim = w_dim - 1;
-            h_dim = h_dim - 1;
+            if (n_dim < w_dim) w_dim = w_dim - 1;
+            if (n_dim < h_dim) h_dim = h_dim - 1;
         }
         auto image_bshape = image.bshape();
         const int image_w = image_bshape[w_dim];
@@ -433,6 +425,8 @@ namespace op {
             "image shape of im2col with data_format=", data_format, " should be "
             "smaller than filter size (filter_h=", filter_h, " vs. image_h=",
             image_h, ", filter_w=", filter_w, " vs. w_dim=", image_w, ")."));
+        ASSERT2(padding_h >= 0, utils::make_message("padding_h should be a positive value (got ", padding_h, ")."));
+        ASSERT2(padding_w >= 0, utils::make_message("padding_w should be a positive value (got ", padding_w, ")."));
 
         return expression::Expression(
             std::make_shared<expression::rtc::Im2ColExpressionState>(
@@ -443,8 +437,8 @@ namespace op {
                 stride_w,
                 /*dilate_h=*/1,
                 /*dilate_w=*/1,
-                /*prepad_h=*/0,
-                /*prepad_w=*/0,
+                /*prepad_h=*/padding_h,
+                /*prepad_w=*/padding_w,
                 /*pospad_h=*/0,
                 /*pospad_w=*/0,
                 data_format

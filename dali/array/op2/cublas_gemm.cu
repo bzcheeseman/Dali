@@ -22,11 +22,6 @@ namespace {
         return "unknown cublas error";
     }
 
-    void check_cuda_status(cudaError_t err, const std::string& msg) {
-        ASSERT2(err == cudaSuccess, utils::make_message("could not ",
-            msg, " (error = ", cudaGetErrorString(err), ")"));
-    }
-
     void check_cuda_status(cublasStatus_t err, const std::string& msg) {
         ASSERT2(err == CUBLAS_STATUS_SUCCESS, utils::make_message("could not ",
             msg, " (error = ", cublas_get_error_string(err), ")"));

@@ -222,7 +222,7 @@ struct Conv2dFunction : public Function<Conv2dFunction,
 
 std::string Conv2dFunction::name = "conv2d";
 
-namespace op {
+namespace old_op {
     Assignable<Array> conv2d(const Array& input,
                              const Array& filters,
                              int stride_h,
@@ -236,10 +236,8 @@ namespace op {
                                    padding,
                                    data_format);
     }
-}  // namespace op
 
-namespace old_op {
-     Assignable<Array> im2col(const Array& input,
+    Assignable<Array> im2col(const Array& input,
                              int filter_h,
                              int filter_w,
                              int stride_h,

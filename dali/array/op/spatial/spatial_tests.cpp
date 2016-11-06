@@ -6,10 +6,7 @@
 #include "dali/array/test_utils.h"
 #include "dali/array/op.h"
 #include "dali/runtime_config.h"
-#include "dali/utils/print_utils.h"
-
-
-using namespace op;
+#include "dali/utils/make_message.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 //                           REFERENCE IMPLEMENTATIONS                                      //
@@ -276,7 +273,7 @@ class ArraySpatialTests : public ::testing::Test,
 
 TEST_P(ArraySpatialTests, pool2d_simple) {
     auto X = Array::arange({1,1, 5, 5}, DTYPE_FLOAT);
-    Array O = pool2d(X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
+    Array O = op::pool2d(X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
     Array O2 = reference_pool2d(X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
 
 
@@ -292,7 +289,7 @@ TEST_P(ArraySpatialTests, pool2d_simple) {
     ASSERT_TRUE(Array::allclose(correct_O, O, 1e-3));
     ASSERT_TRUE(Array::allclose(correct_O, O2, 1e-3));
 
-    Array G  = pool2d_backward(O, Array::ones_like(O), X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
+    Array G  = op::pool2d_backward(O, Array::ones_like(O), X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
     Array G2 = reference_pool2d_backward(O, Array::ones_like(O), X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
 
     Array correct_G({1,1,5,5}, DTYPE_FLOAT);
@@ -316,10 +313,9 @@ TEST_P(ArraySpatialTests, conv2d_forward) {
                 for (PADDING_T padding : {PADDING_T_VALID, PADDING_T_SAME}) {
 
                     auto padding_str = (padding == PADDING_T_VALID) ? "valid" : "same";
-                    std::string scope_name = utils::MS() << "stride_h = " << stride_h
-                                                         << ", stride_w = " << stride_w
-                                                         << ", data_format = " << data_format
-                                                         << ", padding = " << padding_str;
+                    std::string scope_name = utils::make_message(
+                        "stride_h = ", stride_h, ", stride_w = ", stride_w, ", "
+                        "data_format = ", data_format, ", padding = ", padding_str);
                     SCOPED_TRACE(scope_name);
 
                     Array X, W;
@@ -335,7 +331,7 @@ TEST_P(ArraySpatialTests, conv2d_forward) {
                     X = initializer::uniform(-1.0, 1.0);
                     W = initializer::uniform(-1.0, 1.0);
 
-                    Array actual = conv2d(
+                    Array actual = op::conv2d(
                             X,
                             W,
                             stride_h,
@@ -373,13 +369,11 @@ TEST_P(ArraySpatialTests, pool2d_forward) {
                             for (POOLING_T pooling: {POOLING_T_MAX, POOLING_T_AVG}) {
                                 auto padding_str = (padding == PADDING_T_VALID) ? "valid" : "same";
                                 auto pooling_str = (pooling == POOLING_T_MAX)   ? "max"   : "avg";
-                                std::string scope_name = utils::MS() <<   "window_h = " << window_h
-                                                                     << ", window_w = " << window_w
-                                                                     << ", stride_h = " << stride_h
-                                                                     << ", stride_w = " << stride_w
-                                                                     << ", data_format = " << data_format
-                                                                     << ", padding = " << padding_str
-                                                                     << ", pooling = " << pooling_str;
+                                std::string scope_name = utils::make_message(
+                                    "window_h = ", window_h, ", window_w = ", window_w, ", "
+                                    "stride_h = ", stride_h, ", stride_w = ", stride_w, ", "
+                                    "data_format = ", data_format, ", padding = ", padding_str, ", "
+                                    "pooling = ", pooling_str);
                                 SCOPED_TRACE(scope_name);
 
                                 Array X;
@@ -392,7 +386,7 @@ TEST_P(ArraySpatialTests, pool2d_forward) {
 
                                 X = initializer::uniform(-1.0, 1.0);
 
-                                Array out = pool2d(
+                                Array out = op::pool2d(
                                     X,
                                     /*window_h=*/window_h,
                                     /*window_w=*/window_w,
@@ -432,7 +426,7 @@ TEST_P(ArraySpatialTests, conv_backward) {
     Array X = Array::arange({1, 1, 8, 8}, DTYPE_FLOAT);
     Array W = Array::ones({1, 1, 2, 2}, DTYPE_FLOAT);
 
-    Array out = conv2d(
+    Array out = op::conv2d(
         X,
         W,
         /*stride_h=*/2,
@@ -442,7 +436,7 @@ TEST_P(ArraySpatialTests, conv_backward) {
 
     Array out_dw = Array::ones_like(out);
 
-    Array W_dw = conv2d_backward_filters(
+    Array W_dw = op::conv2d_backward_filters(
         X,
         out_dw,
         /*stride_h=*/2,
@@ -451,7 +445,7 @@ TEST_P(ArraySpatialTests, conv_backward) {
         PADDING_T_VALID,
         "NCHW");
 
-    Array in_dw = conv2d_backward_input(
+    Array in_dw = op::conv2d_backward_input(
         W,
         out_dw,
         /*stride_h=*/2,
@@ -468,7 +462,7 @@ TEST_P(ArraySpatialTests, conv_backward) {
 TEST_P(ArraySpatialTests, conv_backward_bias) {
     Array X = Array::ones({2, 3, 4, 5}, DTYPE_FLOAT);
 
-    Array out = conv2d_backward_bias(X, "NCHW");
+    Array out = op::conv2d_backward_bias(X, "NCHW");
     for (int i = 0; i < 3; ++i) {
         EXPECT_EQ(2 * 4 * 5, (float)out[i]);
     }
@@ -485,13 +479,11 @@ TEST_P(ArraySpatialTests, unpool2d_forward) {
                             for (POOLING_T pooling: {POOLING_T_MAX, POOLING_T_AVG}) {
                                 auto padding_str = (padding == PADDING_T_VALID) ? "valid" : "same";
                                 auto pooling_str = (pooling == POOLING_T_MAX)   ? "max"   : "avg";
-                                std::string scope_name = utils::MS() <<   "window_h = " << window_h
-                                                                     << ", window_w = " << window_w
-                                                                     << ", stride_h = " << stride_h
-                                                                     << ", stride_w = " << stride_w
-                                                                     << ", data_format = " << data_format
-                                                                     << ", padding = " << padding_str
-                                                                     << ", pooling = " << pooling_str;
+                                std::string scope_name = utils::make_message(
+                                    "window_h = ", window_h, ", window_w = ", window_w, ", "
+                                    "stride_h = ", stride_h, ", stride_w = ", stride_w, ", "
+                                    "data_format = ", data_format, ", padding = ", padding_str, ", "
+                                    "pooling = ", pooling_str);
                                 SCOPED_TRACE(scope_name);
                                 Array X;
 
@@ -503,7 +495,7 @@ TEST_P(ArraySpatialTests, unpool2d_forward) {
 
                                 X = initializer::uniform(-1.0, 1.0);
 
-                                Array out = pool2d(
+                                Array out = op::pool2d(
                                     X,
                                     /*window_h=*/window_h,
                                     /*window_w=*/window_w,
@@ -516,7 +508,7 @@ TEST_P(ArraySpatialTests, unpool2d_forward) {
 
                                 Array out_dw = Array::ones_like(out);
 
-                                Array in_dw = pool2d_backward(
+                                Array in_dw = op::pool2d_backward(
                                     out,
                                     out_dw,
                                     X,

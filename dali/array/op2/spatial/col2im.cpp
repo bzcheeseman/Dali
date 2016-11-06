@@ -7,6 +7,7 @@
 #include "dali/array/op2/rtc/scalar_wrapper.h"
 #include "dali/array/op2/elementwise_operation.h"
 #include "dali/array/op2/rtc_utils.h"
+#include "dali/array/op2/spatial/data_format_helper.h"
 #include "dali/array/op/spatial/utils.h"
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
@@ -369,26 +370,13 @@ namespace op {
         int image_ndim = image_shape.size();
         ASSERT2(image_ndim == 3 || image_ndim == 4, utils::make_message(
             "col2im's image_shape should have size == 3 or 4 (got ", image_shape, ")."));
-        ASSERT2(data_format.size() == 4, utils::make_message("data_format"
-            " should be 4 character string containing letters N, C, H and W ("
-            "got ", data_format, ")."));
-        int n_dim = data_format.find('N');
-        ASSERT2(n_dim != -1, utils::make_message("data_format"
-            " should contain character 'N' (got ", data_format, ")."));
-        int c_dim = data_format.find('C');
-        ASSERT2(c_dim != -1, utils::make_message("data_format"
-            " should contain character 'C' (got ", data_format, ")."));
-        int h_dim = data_format.find('H');
-        ASSERT2(h_dim != -1, utils::make_message("data_format"
-            " should contain character 'H' (got ", data_format, ")."));
-        int w_dim = data_format.find('W');
-        ASSERT2(w_dim != -1, utils::make_message("data_format"
-            " should contain character 'W' (got ", data_format, ")."));
+        int n_dim, c_dim, h_dim, w_dim;
+        check_data_format(data_format, &n_dim, &c_dim, &h_dim, &w_dim);
         // No N dimension if image is 3D:
         if (image_ndim == 3) {
-            w_dim = w_dim - 1;
-            h_dim = h_dim - 1;
-            c_dim = c_dim - 1;
+            if (n_dim < w_dim) w_dim = w_dim - 1;
+            if (n_dim < h_dim) h_dim = h_dim - 1;
+            if (n_dim < c_dim) c_dim = c_dim - 1;
         }
         const int image_w = image_shape[w_dim];
         const int image_h = image_shape[h_dim];

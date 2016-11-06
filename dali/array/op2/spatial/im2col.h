@@ -14,6 +14,8 @@ namespace op {
         int filter_w,
         int stride_h,
         int stride_w,
+        int padding_h,
+        int padding_w,
         const std::string& data_format
     );
 }  // namespace op

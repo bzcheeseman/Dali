@@ -57,6 +57,8 @@ namespace tensor_ops {
                 filter_w,
                 stride_h,
                 stride_w,
+                0,
+                0,
                 data_format
             )
         );
@@ -110,6 +112,8 @@ namespace tensor_ops {
                     filter_w,
                     stride_h,
                     stride_w,
+                    0,
+                    0,
                     data_format
                 );
             });

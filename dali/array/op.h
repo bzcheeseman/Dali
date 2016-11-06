@@ -15,10 +15,10 @@
 #include "dali/array/op2/unary.h"
 #include "dali/array/op2/binary.h"
 #include "dali/array/op2/elementwise_operation.h"
-#include "dali/array/op2/circular_convolution.h"
 #include "dali/array/op2/one_hot.h"
 #include "dali/array/op2/outer.h"
-#include "dali/array/op2/im2col.h"
+
+#include "dali/array/op2/spatial.h"
 #include "dali/utils/print_utils.h"
 
 #if EXISTS_AND_TRUE(DALI_USE_LAZY)

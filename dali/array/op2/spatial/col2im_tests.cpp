@@ -1,13 +1,8 @@
 #include <gtest/gtest.h>
-
-#include "dali/utils/print_utils.h"
-#include "dali/array/test_utils.h"
-#include "dali/runtime_config.h"
-#include "dali/array/op2/one_hot.h"
+#include "dali/array/array.h"
 #include "dali/array/op.h"
-#include "dali/array/op2/expression/expression.h"
-#include "dali/array/op2/im2col.h"
-#include "dali/array/op2/col2im.h"
+#include "dali/array/op2/spatial/im2col.h"
+#include "dali/array/op2/spatial/col2im.h"
 
 
 TEST(RTCTests, col2im_without_channels) {
@@ -18,11 +13,11 @@ TEST(RTCTests, col2im_without_channels) {
     image_nchw[1] *= -1.0;
 
     Array im2coled_image1 = op::im2col(
-        image_nchw, 3, 3, 1, 1, "NCHW"
+        image_nchw, 3, 3, 1, 1, 0, 0, "NCHW"
     );
 
     Array im2coled_image2 = op::im2col(
-        image_nhwc, 3, 3, 1, 1, "NHWC"
+        image_nhwc, 3, 3, 1, 1, 0, 0, "NHWC"
     );
 
     Array col2imed_nchw = op::col2im(im2coled_image1, image_nchw.shape(), 3, 3, 1, 1, "NCHW");
@@ -44,11 +39,11 @@ TEST(RTCTests, col2im_with_channels) {
     (Array)image_nchw[Slice(0, 2)][0] *= -1.0;
 
     Array im2coled_nchw = op::im2col(
-        image_nchw, 3, 3, 1, 1, "NCHW"
+        image_nchw, 3, 3, 1, 1, 0, 0, "NCHW"
     );
 
     Array im2coled_nhwc = op::im2col(
-        image_nhwc, 3, 3, 1, 1, "NHWC"
+        image_nhwc, 3, 3, 1, 1, 0, 0, "NHWC"
     );
 
     Array col2imed_nhwc = op::col2im(im2coled_nhwc, image_nhwc.shape(), 3, 3, 1, 1, "NHWC");

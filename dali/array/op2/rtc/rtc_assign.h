@@ -2,6 +2,7 @@
 #define DALI_ARRAY_OP_RTC_RTC_ASSIGN_H
 
 #include "dali/array/op2/rtc_utils.h"
+#include "dali/config.h"
 
 namespace expression {
 namespace rtc {
@@ -299,7 +300,9 @@ struct RtcAssignExpressionState : virtual public Runnable {
                                           const node_to_info_t& node_to_info) const final {
         std::unordered_set<hash_t> prefix_code_visited;
         std::stringstream result;
-
+        // Currently assignment is no longer a JIT node, but only
+        // a runnable. So prefix code from 'this' does not get added.
+        result << prefix_code(node_to_info, device.type());
         this->for_all_suboperations([&](const ExpressionState* node) {
             auto jit_node = node->as_jit();
             if (jit_node) {

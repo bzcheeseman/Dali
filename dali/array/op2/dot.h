@@ -4,7 +4,7 @@
 #include <string>
 
 namespace expression {
-	struct Expression;
+    struct Expression;
 }  // namespace expression
 
 namespace op {

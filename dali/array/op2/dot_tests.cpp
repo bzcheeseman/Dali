@@ -31,3 +31,11 @@ TEST(RTCTests, dot) {
     auto reference_res = reference_gemm(a, b);
     EXPECT_TRUE(Array::allclose(res, reference_gemm(a, b), 1e-6));
 }
+
+TEST(RTCTests, dot_int) {
+    auto a = Array::arange({3, 4}, DTYPE_INT32);
+    auto b = Array::arange({4, 5}, DTYPE_INT32);
+    Array res = op::dot2(a, b);
+    auto reference_res = reference_gemm(a, b);
+    EXPECT_TRUE(Array::allclose(res, reference_gemm(a, b), 1e-6));
+}

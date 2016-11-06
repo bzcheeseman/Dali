@@ -10,7 +10,7 @@ namespace expression {
         virtual void run() const;
     };
     int device_major_capabilities(const memory::Device& device);
-    bool device_compatible_with_nervana(const memory::Device& device);
+    bool compatible_with_nervana(const DType& dtype, const memory::Device& device);
 }  // namespace expression
 
 #endif // DALI_ARRAY_OP2_NERVANA_CONV_H

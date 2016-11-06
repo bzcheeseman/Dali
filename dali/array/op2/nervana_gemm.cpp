@@ -564,8 +564,8 @@ int device_major_capabilities(const memory::Device& device) {
     return device_major_capabilities_cache[dev_number];
 }
 
-bool device_compatible_with_nervana(const memory::Device& device) {
-    return device_major_capabilities(device) >= 3;
+bool compatible_with_nervana(const DType& dtype, const memory::Device& device) {
+    return dtype == DTYPE_FLOAT && device_major_capabilities(device) >= 3;
 }
 
 }  // namespace expression

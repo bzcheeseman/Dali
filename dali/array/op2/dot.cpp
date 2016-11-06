@@ -83,7 +83,7 @@ namespace expression {
                     double result_multiplier, destination_multiplier;
                     std::tie(result_multiplier, destination_multiplier) = operator_to_multipliers(operator_t);
 
-                    if (device_compatible_with_nervana(device)) {
+                    if (compatible_with_nervana(dtype(), device)) {
                         return std::make_shared<NervanaGemmAssignExpressionState>(
                             dest_array,
                             left_runnable,

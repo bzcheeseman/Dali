@@ -75,7 +75,6 @@ namespace rtc {
         virtual std::shared_ptr<const Runnable> sub_to(std::shared_ptr<const LValue> op, memory::Device device) const;
         virtual std::shared_ptr<const Runnable> mul_to(std::shared_ptr<const LValue> op, memory::Device device) const;
         virtual std::shared_ptr<const Runnable> div_to(std::shared_ptr<const LValue> op, memory::Device device) const;
-        virtual std::shared_ptr<const Runnable> as_runnable(memory::Device device) const;
     };
 }  // namespace rtc
 }  // namespace expression

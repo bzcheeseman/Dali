@@ -170,7 +170,7 @@ namespace expression {
                 out = runnable_self_op->destination_op()->as_array()->array_;
             }
             // auto optimized_self_op = runnable_self_op.optimize();
-            runnable_self_op->run();
+            runnable_self_op->run_all();
 
             // eval_op(self_op, self_op.shape(), output_device);
         });
@@ -348,6 +348,14 @@ namespace expression {
         auto dest_rvalue = destination_op()->as_rvalue();
         ASSERT2(dest_rvalue, "Runnable can only be interpreted as RValue if destination_op is an rvalue.");
         dest_rvalue->div_to(op, device);
+    }
+
+    void Runnable::run_all() const {
+        for (const auto& arg : arguments()) {
+            auto arg_runnable = std::dynamic_pointer_cast<const Runnable>(arg);
+            if (arg_runnable) arg_runnable->run_all();
+        }
+        run();
     }
 
     ///////////////////////////////////////////////////////////////////////////////

@@ -109,6 +109,9 @@ namespace expression {
         virtual std::shared_ptr<const Runnable> mul_to(std::shared_ptr<const LValue> op, memory::Device device) const;
         virtual std::shared_ptr<const Runnable> div_to(std::shared_ptr<const LValue> op, memory::Device device) const;
 
+
+        // do not reimplement
+        virtual void run_all() const final;
     };
 
 

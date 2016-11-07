@@ -174,7 +174,8 @@ namespace expression {
         } else if (operator_t_ == OPERATOR_T_DIV) {
             return right_->div_to(left_, device);
         } else {
-            ASSERT2(false, "not implemented.");
+            ASSERT2(false, utils::make_message("assignment with operator '",
+                operator_t_, "' is not yet implemented."));
         }
     }
 

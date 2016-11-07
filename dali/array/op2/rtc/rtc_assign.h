@@ -259,10 +259,11 @@ struct RtcAssignExpressionState : virtual public Runnable {
         }
 
         std::string assign_name;
-        if (Scope::has_observers()) {
+        // if (Scope::has_observers()) {
             assign_name = ExpressionState::full_operation_name();
-        }
+        // }
         DALI_SCOPE(assign_name);
+        std::cout << "running " << assign_name << std::endl;
         compiled_self(
             data_ptrs.data(),
             offsets.data(),

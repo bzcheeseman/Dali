@@ -121,16 +121,18 @@ namespace expression {
                 data_format_
             );
 
-            std::shared_ptr<const RValue> result;
+            std::shared_ptr<const expression::ExpressionState> result;
 
             if (data_format_ == "NCHW") {
-                result = op::swapaxes(op::dot2(filters_nX, im2col_image), 0, 1).state_->as_rvalue();
+                result = op::swapaxes(op::dot2(filters_nX, im2col_image), 0, 1).state_;
             } else if (data_format_ == "NHWC") {
-                result = op::dot2(op::transpose(im2col_image), op::transpose(filters_nX)).state_->as_rvalue();
+                result = op::dot2(op::transpose(im2col_image), op::transpose(filters_nX)).state_;
             } else {
                 ASSERT2(false, utils::make_message("not sure how to perform data_format=", data_format_, "."));
             }
-            return result->assign_to(op, device);
+            return op::reshape(
+                Expression(result), shape()
+            ).state_->as_rvalue()->assign_to(op, device);
         }
     };
 }  // namespace expression

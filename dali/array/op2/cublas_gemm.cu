@@ -122,6 +122,7 @@ CublasGemmAssignExpressionState::CublasGemmAssignExpressionState(
 }
 
 void CublasGemmAssignExpressionState::run() const {
+    std::cout << "running " << full_operation_name() << std::endl;
     Array dst = dest_->array_;
     Array lhs = left_->destination_op()->as_rvalue()->as_array()->array_;
     Array rhs = right_->destination_op()->as_rvalue()->as_array()->array_;

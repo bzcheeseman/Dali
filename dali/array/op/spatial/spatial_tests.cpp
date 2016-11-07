@@ -99,9 +99,9 @@ Array reference_conv2d(Array X, Array W,
                     auto w_slice = Slice(normalize_w(in_w_idx),
                                          normalize_w(in_w_idx + info.filter_w));
 
-                    Array temp = X[n_idx][Slice(0, info.in_channels)][h_slice][w_slice] *
+                    auto temp = X[n_idx][Slice(0, info.in_channels)][h_slice][w_slice] *
                                  W[out_c_idx];
-                    out[n_idx][out_c_idx][h_idx][w_idx] = temp.sum();
+                    out[n_idx][out_c_idx][h_idx][w_idx] = op::sum(temp);
                 }
             }
         }
@@ -351,7 +351,9 @@ TEST_P(ArraySpatialTests, conv2d_forward) {
                             stride_w,
                             padding,
                             data_format);
-
+                    if (!Array::allclose(expected, actual, 1e-3)) {
+                        expected.print(); actual.print();
+                    }
                     ASSERT_TRUE(Array::allclose(expected, actual, 1e-3));
                 }
             }

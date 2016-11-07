@@ -92,7 +92,7 @@ namespace tensor_ops {
     }
 
     Tensor margin_loss(const Tensor&, const Tensor& target, const double& margin, const int& axis) {
-        ASSERT2(false, "not implemented");
+        ASSERT2(false, "Margin loss is not yet implemented.");
         return Tensor();
     }
 

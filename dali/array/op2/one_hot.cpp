@@ -2,6 +2,7 @@
 
 #include "dali/array/op2/expression/expression.h"
 #include "dali/array/op2/rtc/rtc_expression.h"
+#include "dali/array/op2/rtc/scalar_wrapper.h"
 #include "dali/array/op2/elementwise_operation.h"
 #include "dali/array/op2/rtc_utils.h"
 #include "dali/utils/hash_utils.h"
@@ -16,7 +17,7 @@ struct OneHotExpressionState : public RtcExpression {
     std::shared_ptr<const RtcExpression> on_value_;
     std::shared_ptr<const RtcExpression> off_value_;
     int depth_;
-    std::shared_ptr<const RtcExpression> depth_operation_;
+    std::shared_ptr<const ScalarWrapperInteger> depth_operation_;
 
     OneHotExpressionState(std::shared_ptr<const RtcExpression> indices,
                          int depth,
@@ -27,7 +28,7 @@ struct OneHotExpressionState : public RtcExpression {
             on_value_(on_value),
             off_value_(off_value),
             depth_(depth),
-            depth_operation_(Expression(depth).state_->as_jit()) {
+            depth_operation_(std::make_shared<ScalarWrapperInteger>(depth)) {
     }
 
     virtual std::string name() const {

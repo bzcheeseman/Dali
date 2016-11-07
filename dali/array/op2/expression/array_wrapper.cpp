@@ -94,42 +94,52 @@ namespace expression {
 
 
     std::shared_ptr<const Runnable> ArrayWrapper::assign_to(std::shared_ptr<const LValue> op, memory::Device device) const {
-        ASSERT2(false, "not implemented");
+        ASSERT2(false, utils::make_message("Array's assignment to an lvalue (",
+            op->full_operation_name(), ") is not yet implemented."));
     }
 
     std::shared_ptr<const Runnable> ArrayWrapper::add_to(std::shared_ptr<const LValue> op, memory::Device device) const {
-        ASSERT2(false, "not implemented");
+        ASSERT2(false, utils::make_message("Array's addition-assignment to to an lvalue (",
+            op->full_operation_name(), ") is not yet implemented."));
     }
 
     std::shared_ptr<const Runnable> ArrayWrapper::sub_to(std::shared_ptr<const LValue> op, memory::Device device) const {
-        ASSERT2(false, "not implemented");
+        ASSERT2(false, utils::make_message("Array's substraction-assignment to to an lvalue (",
+            op->full_operation_name(), ") is not yet implemented."));
     }
 
     std::shared_ptr<const Runnable> ArrayWrapper::mul_to(std::shared_ptr<const LValue> op, memory::Device device) const {
-        ASSERT2(false, "not implemented");
+        ASSERT2(false, utils::make_message("Array's multiplication-assignment to to an lvalue (",
+            op->full_operation_name(), ") is not yet implemented."));
     }
 
     std::shared_ptr<const Runnable> ArrayWrapper::div_to(std::shared_ptr<const LValue> op, memory::Device device) const {
-        ASSERT2(false, "not implemented");
+        ASSERT2(false, utils::make_message("Array's division-assignment to an lvalue (",
+            op->full_operation_name(), ") is not yet implemented."));
     }
 
     std::shared_ptr<const Runnable> ArrayWrapper::assign_from(std::shared_ptr<const Runnable> op, memory::Device device) const {
-        ASSERT2(false, "not implemented");
+        ASSERT2(false, utils::make_message("Array's assignment by a runnable (",
+            op->full_operation_name(), ") is not yet implemented."));
     }
 
     std::shared_ptr<const Runnable> ArrayWrapper::add_from(std::shared_ptr<const Runnable> op, memory::Device device) const {
-        ASSERT2(false, "not implemented");
+        ASSERT2(false, utils::make_message("Array's addition by a runnable (",
+            op->full_operation_name(), ") is not yet implemented."));
     }
 
     std::shared_ptr<const Runnable> ArrayWrapper::sub_from(std::shared_ptr<const Runnable> op, memory::Device device) const {
-        ASSERT2(false, "not implemented");
+        ASSERT2(false, utils::make_message("Array's substraction by a runnable (",
+            op->full_operation_name(), ") is not yet implemented."));
     }
 
     std::shared_ptr<const Runnable> ArrayWrapper::mul_from(std::shared_ptr<const Runnable> op, memory::Device device) const {
-        ASSERT2(false, "not implemented");
+        ASSERT2(false, utils::make_message("Array's multiplication by a runnable (",
+            op->full_operation_name(), ") is not yet implemented."));
     }
 
     std::shared_ptr<const Runnable> ArrayWrapper::div_from(std::shared_ptr<const Runnable> op, memory::Device device) const {
-        ASSERT2(false, "not implemented");
+        ASSERT2(false, utils::make_message("Array's division by a runnable (",
+            op->full_operation_name(), ") is not yet implemented."));
     }
 }  // namespace expression

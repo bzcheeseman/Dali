@@ -6,6 +6,7 @@
 #include "dali/array/op2/dot.h"
 #include "dali/array/op2/swapaxes.h"
 #include "dali/array/op2/reshape.h"
+#include "dali/array/op2/transpose.h"
 #include "dali/array/op2/spatial/im2col.h"
 #include "dali/array/op2/spatial/data_format_helper.h"
 #include "dali/array/op/spatial/utils.h"
@@ -108,19 +109,28 @@ namespace expression {
             // TODO add these transformations:
             auto filters_nxxx = op::swapaxes(Expression(filters_), n_dim, 0);
             auto filters_nX = op::reshape(filters_nxxx, {filters_nxxx.shape()[0], -1});
-            return op::dot2(
-                op::im2col(
-                    Expression(input_),
-                    info.filter_h,
-                    info.filter_w,
-                    stride_h_,
-                    stride_w_,
-                    /*padding_h=*/2 * info.padding_h + info.odd_padding_h,
-                    /*padding_w=*/2 * info.padding_w + info.odd_padding_w,
-                    data_format_
-                ),
-                filters_nX
-            ).state_->as_rvalue()->assign_to(op, device);
+
+            auto im2col_image = op::im2col(
+                Expression(input_),
+                info.filter_h,
+                info.filter_w,
+                stride_h_,
+                stride_w_,
+                /*padding_h=*/2 * info.padding_h + info.odd_padding_h,
+                /*padding_w=*/2 * info.padding_w + info.odd_padding_w,
+                data_format_
+            );
+
+            std::shared_ptr<const RValue> result;
+
+            if (data_format_ == "NCHW") {
+                result = op::swapaxes(op::dot2(filters_nX, im2col_image), 0, 1).state_->as_rvalue();
+            } else if (data_format_ == "NHWC") {
+                result = op::dot2(op::transpose(im2col_image), op::transpose(filters_nX)).state_->as_rvalue();
+            } else {
+                ASSERT2(false, utils::make_message("not sure how to perform data_format=", data_format_, "."));
+            }
+            return result->assign_to(op, device);
         }
     };
 }  // namespace expression

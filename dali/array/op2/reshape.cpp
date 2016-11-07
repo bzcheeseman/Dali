@@ -16,7 +16,10 @@ namespace op {
             auto input_runnable = input_rvalue->as_runnable(input.preferred_device());
             auto input_runnable_dest_op_rvalue = input_runnable->destination_op()->as_rvalue();
             ASSERT2(input_runnable_dest_op_rvalue, "reshape input must be a runnable rvalue.");
-            return reshape(expression::Expression(input_runnable_dest_op_rvalue), newshape);
+            return reshape(
+                expression::Expression(input_runnable_dest_op_rvalue),
+                newshape
+            );
         }
     }
 }  // namespace

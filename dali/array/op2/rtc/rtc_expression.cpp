@@ -58,20 +58,36 @@ namespace rtc {
     }
 
     std::shared_ptr<const Runnable> RtcExpression::add_to(std::shared_ptr<const LValue> op, memory::Device device) const {
-        ASSERT2(false, "not implemented.");
+        return std::make_shared<RtcAssignExpressionState>(
+            op->as_jit(),
+            OPERATOR_T_ADD,
+            jit_shared_from_this(),
+            device
+        );
     }
     std::shared_ptr<const Runnable> RtcExpression::sub_to(std::shared_ptr<const LValue> op, memory::Device device) const {
-        ASSERT2(false, "not implemented.");
+        return std::make_shared<RtcAssignExpressionState>(
+            op->as_jit(),
+            OPERATOR_T_SUB,
+            jit_shared_from_this(),
+            device
+        );
     }
     std::shared_ptr<const Runnable> RtcExpression::mul_to(std::shared_ptr<const LValue> op, memory::Device device) const {
-        ASSERT2(false, "not implemented.");
+        return std::make_shared<RtcAssignExpressionState>(
+            op->as_jit(),
+            OPERATOR_T_MUL,
+            jit_shared_from_this(),
+            device
+        );
     }
     std::shared_ptr<const Runnable> RtcExpression::div_to(std::shared_ptr<const LValue> op, memory::Device device) const {
-        ASSERT2(false, "not implemented.");
+        return std::make_shared<RtcAssignExpressionState>(
+            op->as_jit(),
+            OPERATOR_T_DIV,
+            jit_shared_from_this(),
+            device
+        );
     }
-    std::shared_ptr<const Runnable> RtcExpression::as_runnable(memory::Device device) const {
-        ASSERT2(false, "not implemented.");
-    }
-
 }  // namespace rtc
 }  // namespace expression

@@ -163,31 +163,34 @@ struct FunctionReturnType<ArgSortFunction, T> {
 };
 
 namespace op {
-    Assignable<Array> any_isnan(const Array& array) {
+    expression::Expression any_isnan(const expression::Expression& array) {
         return op::max(op::isnan(array));
     }
 
-    Assignable<Array> any_isinf(const Array& array) {
+    expression::Expression any_isinf(const expression::Expression& array) {
         return op::max(op::isinf(array));
     }
 
-    Assignable<Array> any_isnan(const Array& array, int axis) {
+    expression::Expression any_isnan(const expression::Expression& array, int axis) {
         if (axis < 0) axis = array.ndim() + axis;
         return op::max(op::isnan(array), {axis});
     }
 
-    Assignable<Array> any_isinf(const Array& array, int axis) {
+    expression::Expression any_isinf(const expression::Expression& array, int axis) {
         if (axis < 0) axis = array.ndim() + axis;
         return op::max(op::isinf(array), {axis});
     }
 
-    Assignable<Array> all_equals(const Array& left, const Array& right) {
+    expression::Expression all_equals(const expression::Expression& left,
+                                      const expression::Expression& right) {
         return op::prod(op::equals(left, right));
     }
 
-    Assignable<Array> all_close(const Array& left, const Array& right, const double& atolerance) {
-        ASSERT2(atolerance >= 0, utils::make_message("atolerance must be a strictly positive number "
-            "(got atolerance=", atolerance, ")."));
+    expression::Expression all_close(const expression::Expression& left,
+                                     const expression::Expression& right,
+                                     const double& atolerance) {
+        ASSERT2(atolerance >= 0, utils::make_message("atolerance must be a "
+            "strictly positive number (got atolerance=", atolerance, ")."));
         return op::prod(
             op::lessthanequal(
                 op::abs(

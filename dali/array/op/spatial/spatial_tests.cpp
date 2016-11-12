@@ -306,6 +306,62 @@ TEST_P(ArraySpatialTests, pool2d_simple) {
 
 }
 
+TEST_P(ArraySpatialTests, small_conv2d_forward) {
+    for (int stride_h = 1; stride_h <= 1; ++stride_h) {
+        for (int stride_w = 1; stride_w <= 1; ++stride_w) {
+            for (std::string data_format: {"NCHW", "NHWC"}) {
+                for (PADDING_T padding : {PADDING_T_VALID, PADDING_T_SAME}) {
+
+                    auto padding_str = (padding == PADDING_T_VALID) ? "valid" : "same";
+                    std::string scope_name = utils::make_message(
+                        "stride_h = ", stride_h, ", stride_w = ", stride_w, ", "
+                        "data_format = ", data_format, ", padding = ", padding_str);
+                    SCOPED_TRACE(scope_name);
+
+                    Array X, W;
+
+                    if (data_format == "NCHW") {
+                        X = Array({1, 2, 3, 2}, DTYPE_FLOAT);
+                        W = Array({2, 2, 3, 2}, DTYPE_FLOAT);
+                    } else {
+                        X = Array({1, 3, 2, 2}, DTYPE_FLOAT);
+                        W = Array({2, 3, 2, 2}, DTYPE_FLOAT);
+                    }
+
+                    X = initializer::uniform(-1.0, 1.0);
+                    W = initializer::uniform(-1.0, 1.0);
+
+                    Array actual = op::conv2d(
+                            X,
+                            W,
+                            stride_h,
+                            stride_w,
+                            padding,
+                            data_format);
+
+                    // reference computation will be much faster on CPU, methinks.
+                    X.to_device(memory::Device::cpu());
+                    W.to_device(memory::Device::cpu());
+
+                    Array expected =
+                        reference_conv2d(
+                            X,
+                            W,
+                            stride_h,
+                            stride_w,
+                            padding,
+                            data_format);
+                    if (!Array::allclose(expected, actual, 1e-3)) {
+                        ELOG(data_format);
+                        expected.print(); actual.print();
+                    }
+                    ASSERT_TRUE(Array::allclose(expected, actual, 1e-3));
+                }
+            }
+        }
+    }
+}
+
 TEST_P(ArraySpatialTests, conv2d_forward) {
     for (int stride_h = 1; stride_h <= 3; ++stride_h) {
         for (int stride_w = 1; stride_w <= 3; ++stride_w) {

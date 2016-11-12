@@ -94,28 +94,23 @@ namespace expression {
 
 
     std::shared_ptr<const Runnable> ArrayWrapper::assign_to(std::shared_ptr<const LValue> op, memory::Device device) const {
-        ASSERT2(false, utils::make_message("Array's assignment to an lvalue (",
-            op->full_operation_name(), ") is not yet implemented."));
+        return as_jit()->assign_to(op, device);
     }
 
     std::shared_ptr<const Runnable> ArrayWrapper::add_to(std::shared_ptr<const LValue> op, memory::Device device) const {
-        ASSERT2(false, utils::make_message("Array's addition-assignment to to an lvalue (",
-            op->full_operation_name(), ") is not yet implemented."));
+        return as_jit()->add_to(op, device);
     }
 
     std::shared_ptr<const Runnable> ArrayWrapper::sub_to(std::shared_ptr<const LValue> op, memory::Device device) const {
-        ASSERT2(false, utils::make_message("Array's substraction-assignment to to an lvalue (",
-            op->full_operation_name(), ") is not yet implemented."));
+        return as_jit()->sub_to(op, device);
     }
 
     std::shared_ptr<const Runnable> ArrayWrapper::mul_to(std::shared_ptr<const LValue> op, memory::Device device) const {
-        ASSERT2(false, utils::make_message("Array's multiplication-assignment to to an lvalue (",
-            op->full_operation_name(), ") is not yet implemented."));
+        return as_jit()->mul_to(op, device);
     }
 
     std::shared_ptr<const Runnable> ArrayWrapper::div_to(std::shared_ptr<const LValue> op, memory::Device device) const {
-        ASSERT2(false, utils::make_message("Array's division-assignment to an lvalue (",
-            op->full_operation_name(), ") is not yet implemented."));
+        return as_jit()->div_to(op, device);
     }
 
     std::shared_ptr<const Runnable> ArrayWrapper::assign_from(std::shared_ptr<const Runnable> op, memory::Device device) const {

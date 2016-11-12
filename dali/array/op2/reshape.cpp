@@ -22,4 +22,4 @@ namespace op {
             );
         }
     }
-}  // namespace
+}  // namespace op

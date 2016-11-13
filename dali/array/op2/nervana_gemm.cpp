@@ -526,8 +526,8 @@ void NervanaGemmAssignExpressionState::run() const {
     // dst = result_multiplier * left * right + destination_multiplier * dst
     // in col major:
     // dst.T = result_multiplier * right.T * left.T + destination_multiplier * dst.T
-    int m = rhs.shape()[1],
-        n = lhs.shape()[0],
+    int m = lhs.shape()[0],
+        n = rhs.shape()[1],
         k = rhs.shape()[0];
 
      // use null stream for now
@@ -535,12 +535,13 @@ void NervanaGemmAssignExpressionState::run() const {
     const float result_multiplier_float = result_multiplier_;
     const float destination_multiplier_float = destination_multiplier_;
 
+    // is row major.
     nervana_sgemm(
-        rhs_transpose, lhs_transpose,
+        lhs_transpose, rhs_transpose,
         m, n, k,
         /*alpha=*/result_multiplier_float,
-        (const float*)rhs_ptr, rhs_stride,
         (const float*)lhs_ptr, lhs_stride,
+        (const float*)rhs_ptr, rhs_stride,
         /*beta=*/destination_multiplier_float,
         (float*)dst_ptr, dst_stride,
         /*rand_state=*/0,

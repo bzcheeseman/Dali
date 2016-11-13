@@ -2,7 +2,7 @@
 
 #include "dali/array/op2/binary.h"
 #include "dali/array/op2/unary.h"
-#include "dali/array/op2/circular_convolution.h"
+#include "dali/array/op2/spatial/circular_convolution.h"
 #include "dali/array/op_overload/common.h"
 #include "dali/array/op_overload/nonlazy.h"
 #include "dali/tensor/tape.h"

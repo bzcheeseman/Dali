@@ -46,7 +46,7 @@ struct SwapaxesExpressionState : public RtcExpression {
             int axis = i;
             if (axis == axis1_) {
                 axis = axis2_;
-            } else if (axis == axis2_) {
+            } else if (axis == axis2_) {
                 axis = axis1_;
             }
             ss << "query[" << axis << "]";

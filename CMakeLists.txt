@@ -168,6 +168,15 @@ endif()
 ##                            CUDA SETUP                                      ##
 ################################################################################
 
+if (CUDA_FOUND STREQUAL TRUE)
+    find_library(CUDA_DRIVER_LIB cuda PATHS "/usr/lib64/"
+                                            "/usr/lib"
+                                            "/usr/lib/nvidia-current/"
+                                            "${CUDA_TOOLKIT_ROOT_DIR}/lib/libcuda.dylib"
+                                            NO_DEFAULT_PATH)
+    list(APPEND CUDA_LIBRARIES ${CUDA_DRIVER_LIB})
+endif (CUDA_FOUND STREQUAL TRUE)
+
 # CUDA BEGINS HERE
 if (DEFINED WITH_CUDA)
     message(STATUS "Cuda support: ${WITH_CUDA}")
@@ -420,7 +429,7 @@ if (GPERFTOOLS_FOUND)
 endif (GPERFTOOLS_FOUND)
 
 if (WITH_CUDA)
-    target_link_libraries(dali ${CUDA_LIBRARIES} "${CUDA_TOOLKIT_ROOT_DIR}/lib/libcuda.dylib" ${CUDA_curand_LIBRARY} ${CUDA_CUBLAS_LIBRARIES})
+    target_link_libraries(dali ${CUDA_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_CUBLAS_LIBRARIES})
     if (CUDNN_FOUND)
         target_link_libraries(dali ${CUDNN_LIBRARY})
     endif (CUDNN_FOUND)

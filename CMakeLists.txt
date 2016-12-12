@@ -289,6 +289,8 @@ list(APPEND DALI_SOURCE_DIRS_EXCLUDE "dali/data_processing")
 
 if (ARRAY_ONLY)
     list(APPEND DALI_SOURCE_DIRS_EXCLUDE "dali/tensor;dali/layers;dali/execution")
+
+    list(APPEND DALI_SOURCE_DIRS_EXCLUDE "dali/array/function;dali/array/function2;dali/array/op;dali/array/op2;dali/array/lazy;dali/array/function/mshadow_extension;dali/array/op_overload")
 endif()
 
 

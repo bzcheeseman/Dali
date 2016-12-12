@@ -29,16 +29,13 @@ class Array  {
 
     template<typename T>
     T scalar_value() const;
-    void broadcast_axis_internal(const int& axis);
-    int normalize_axis(const int& axis) const;
 
 
   public:
-    typedef uint index_t;
-
     Array();
 
     /* Various ways of constructing array */
+    Array(std::shared_ptr<Expression>);
     Array(const std::vector<int>& shape, DType dtype_=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
     Array(std::initializer_list<int> shape, DType dtype_=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
     Array(const std::vector<int>& shape,
@@ -88,8 +85,7 @@ class Array  {
     bool is_matrix() const;
     // true if Array's contents cover entirety of underlying
     // memory (as opposed to offset memory, strided memory etc.).
-    bool spans_entire_memory() const;
-    bool contiguous_memory() const;
+
     Array ascontiguousarray() const;
 
     void initialize(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
@@ -105,7 +101,6 @@ class Array  {
 
     Array astype(DType dtype_) const;
 
-    std::vector<int> normalized_strides() const;
     // just like regular shape by broadcased dimensions are negated.
     // for example if array has shape {2, 1, 3, 1} and dimension 1 is
     // broadcasted then it retuns {2, -1, 3, 1}.
@@ -119,6 +114,8 @@ class Array  {
     int ndim() const;
     int number_of_elements() const;
     std::vector<int> subshape() const;
+    bool contiguous_memory() const;
+
 
     /* Creating a view into memory */
     Array operator[](const int& idx) const;
@@ -127,10 +124,10 @@ class Array  {
     SlicingInProgress<Array> operator[](const Broadcast& b) const;
     Array gather_from_rows(const Array& indices) const;
     // Get scalar at this offset:
-    Array operator()(index_t idx) const;
+    Array operator()(int idx) const;
     // returns true if array is possibly a result of calling .transpose()
     // on another array.
-    bool is_transpose();
+    bool is_transpose() const;
     // create a view of the transposed memory
     Array transpose() const;
     Array transpose(const std::vector<int>& axes) const;

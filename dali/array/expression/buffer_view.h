@@ -28,7 +28,20 @@ struct BufferView : public Expression {
                int offset=0,
                const std::vector<int>& strides={});
 
+    BufferView(const BufferView& other);
+
+    virtual expression_ptr copy() const;
+
+    virtual bool spans_entire_memory() const;
+
     virtual memory::Device preferred_device() const ;
+
+    static std::shared_ptr<BufferView> construct_with_bshape(
+            const std::vector<int>& bshape,
+            DType dtype,
+            memory::Device preferred_device);
+
+
 };
 
 #endif  // DALI_ARRAY_EXPRESSION_BUFFER_VIEW_H

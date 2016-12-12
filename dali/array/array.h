@@ -5,76 +5,34 @@
 #include <vector>
 
 #include "dali/array/dtype.h"
-#include "dali/array/function/expression.h"
-#include "dali/array/function/operator.h"
+#include "dali/array/expression/operator.h"
 #include "dali/array/memory/device.h"
 #include "dali/array/memory/memory_ops.h"
 #include "dali/array/memory/synchronized_memory.h"
+#include "dali/array/expression/expression.h"
 #include "dali/array/shape.h"
 #include "dali/array/slice.h"
 #include "dali/runtime_config.h"
 #include "dali/utils/print_utils.h"
 
-
-
-class Array;
-
-struct ArraySubtensor;
-struct ArrayGather;
-namespace expression {
-    struct Expression;
-}  // namespace expression
-
-template<typename OutType>
-struct BaseAssignable {
-    typedef std::function<void(OutType&, const OPERATOR_T&)> assign_t;
-    assign_t assign_to;
-
-    BaseAssignable();
-    explicit BaseAssignable(assign_t&& _assign_to);
-
-    template<typename ExprT>
-    BaseAssignable(const LazyExp<ExprT>& expr);
-};
-
-template<typename OutType>
-struct Assignable : public BaseAssignable<OutType> {
-    using BaseAssignable<OutType>::BaseAssignable;
-};
-
-template<>
-struct Assignable<Array> : public BaseAssignable<Array> {
-    using BaseAssignable<Array>::BaseAssignable;
-
-    Assignable();
-
-    Assignable(const float& constant);
-    Assignable(const double& constant);
-    Assignable(const int& constant);
-
-    Array eval();
-};
-
-struct ArrayState {
-    std::vector<int> shape;
-    std::shared_ptr<memory::SynchronizedMemory> memory;
-    int offset; // expressing in number of numbers (not bytes)
-    std::vector<int> strides;
-    DType dtype;
-    ArrayState(const std::vector<int>& _shape,
-               std::shared_ptr<memory::SynchronizedMemory> _memory,
-               const int& _offset,
-               const std::vector<int>& _strides,
-               DType _dtype);
-};
-
-class Array : public Exp<Array> {
+class Array  {
   private:
-    std::shared_ptr<ArrayState> state;
+    struct ArrayState {
+        std::shared_ptr<Expression> expression_;
+        ArrayState(std::shared_ptr<Expression> expression);
+        // std::mutex mutex;
+    };
+    std::shared_ptr<ArrayState> state_;
+
+    std::shared_ptr<Expression> expression() const;
+    void set_expression(std::shared_ptr<Expression>);
+
     template<typename T>
     T scalar_value() const;
     void broadcast_axis_internal(const int& axis);
     int normalize_axis(const int& axis) const;
+
+
   public:
     typedef uint index_t;
 
@@ -89,10 +47,6 @@ class Array : public Exp<Array> {
           const std::vector<int>& strides,
           DType dtype_=DTYPE_FLOAT);
     Array(const Array& other, const bool& copy_memory=false);
-    Array(const Assignable<Array>& assignable);
-    Array(const expression::Expression& operation);
-    template<typename ExprT>
-    Array(const LazyExp<ExprT>& expr);
 
     static Array arange(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
     static Array arange(const double& start, const double& stop, const double& step, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
@@ -111,6 +65,9 @@ class Array : public Exp<Array> {
     // Warning: after this function call Array owns no buffer
     void disown_buffer(memory::Device buffer_location=memory::Device::cpu());
 
+    void eval(bool wait=true) const;
+
+
     // IO methods
     static Array load(const std::string& fname);
     static Array load(FILE * fp);
@@ -121,7 +78,7 @@ class Array : public Exp<Array> {
     // compare two arrays and considered close if abs(left - right) <= atolerance
     static bool allclose(const Array& left, const Array& right, const double& atolerance);
 
-    // true if just creted with empty constructor or reset
+    // true if just created with empty constructor or reset
     // (has no assossiated memory)
     bool any_isnan() const;
     bool any_isinf() const;
@@ -129,8 +86,7 @@ class Array : public Exp<Array> {
     bool is_scalar() const;
     bool is_vector() const;
     bool is_matrix() const;
-    Array vectorlike_to_vector() const;
-    // true if Array's contents conver entirety of underlying
+    // true if Array's contents cover entirety of underlying
     // memory (as opposed to offset memory, strided memory etc.).
     bool spans_entire_memory() const;
     bool contiguous_memory() const;
@@ -147,7 +103,7 @@ class Array : public Exp<Array> {
     const std::vector<int>& strides() const;
     DType dtype() const;
 
-    expression::Expression astype(DType dtype_) const;
+    Array astype(DType dtype_) const;
 
     std::vector<int> normalized_strides() const;
     // just like regular shape by broadcased dimensions are negated.
@@ -166,14 +122,14 @@ class Array : public Exp<Array> {
 
     /* Creating a view into memory */
     Array operator[](const int& idx) const;
-    ArrayGather operator[](const Array& indices) const;
+    Array operator[](const Array& indices) const;
     SlicingInProgress<Array> operator[](const Slice& s) const;
     SlicingInProgress<Array> operator[](const Broadcast& b) const;
-    ArraySubtensor gather_from_rows(const Array& indices) const;
+    Array gather_from_rows(const Array& indices) const;
     // Get scalar at this offset:
     Array operator()(index_t idx) const;
     // returns true if array is possibly a result of calling .transpose()
-    // on antoher array.
+    // on another array.
     bool is_transpose();
     // create a view of the transposed memory
     Array transpose() const;
@@ -225,37 +181,35 @@ class Array : public Exp<Array> {
     Array broadcast_scalar_to_ndim(const int& ndim) const;
 
     // reduce over all axes
-    expression::Expression sum() const;
-    expression::Expression mean() const;
-    expression::Expression min() const;
-    expression::Expression max() const;
-    expression::Expression L2_norm() const;
+    Array sum() const;
+    Array mean() const;
+    Array min() const;
+    Array max() const;
+    Array L2_norm() const;
 
     // reduce over one axis
-    expression::Expression sum(const int& axis) const;
-    expression::Expression mean(const int& axis) const;
-    expression::Expression min(const int& axis) const;
-    expression::Expression max(const int& axis) const;
-    expression::Expression L2_norm(const int& axis) const;
+    Array sum(const int& axis) const;
+    Array mean(const int& axis) const;
+    Array min(const int& axis) const;
+    Array max(const int& axis) const;
+    Array L2_norm(const int& axis) const;
 
-    expression::Expression argmin(const int& axis) const;
-    expression::Expression argmin() const;
-    expression::Expression argmax(const int& axis) const;
-    expression::Expression argmax() const;
+    Array argmin(const int& axis) const;
+    Array argmin() const;
+    Array argmax(const int& axis) const;
+    Array argmax() const;
 
-    Assignable<Array> argsort(const int& axis) const;
-    Assignable<Array> argsort() const;
+    Array argsort(const int& axis) const;
+    Array argsort() const;
 
     operator float() const;
     operator double() const;
     operator int() const;
 
     void copy_from(const Array& other);
-    Array& operator=(const Assignable<Array>& assignable);
-    Array& operator=(const int& assignable);
-    Array& operator=(const float& assignable);
-    Array& operator=(const double& assignable);
-    Array& operator=(const expression::Expression& operation);
+    Array& operator=(const int& other);
+    Array& operator=(const float& other);
+    Array& operator=(const double& other);
 
     template<typename T>
     Array& operator=(const std::vector<T>& values) {
@@ -276,140 +230,9 @@ class Array : public Exp<Array> {
     /* Expressions */
     void clear();
 
-    template<typename ExprT>
-    Array& operator=(const LazyExp<ExprT>& expr);
-
     /* shortcuts for array ops */
-    Assignable<Array> dot(const Array& other) const;
+    Array dot(const Array& other) const;
 };
 bool operator==(const Array& left, const Array& right);
 
-struct ArraySubtensor {
-    Array source;
-    Array indices;
-    DType dtype() const;
-    const std::vector<int>& shape() const;
-    void print(std::basic_ostream<char>& stream = std::cout, const int& indent=0, const bool& add_newlines=true) const;
-    ArraySubtensor(const Array& source, const Array& indices);
-
-    template<typename ExprT>
-    ArraySubtensor& operator=(const LazyExp<ExprT>& expr);
-    ArraySubtensor& operator=(const Array& assignable);
-    ArraySubtensor& operator=(const Assignable<Array>& assignable);
-    ArraySubtensor& operator=(const Assignable<ArraySubtensor>& assignable);
-    ArraySubtensor copyless_reshape(std::vector<int>) const;
-    operator Array();
-};
-
-struct ArrayGather {
-    Array source;
-    Array indices;
-    DType dtype() const;
-    std::vector<int> shape() const;
-    void print(std::basic_ostream<char>& stream = std::cout, const int& indent=0, const bool& add_newlines=true) const;
-    ArrayGather(const Array& source, const Array& indices);
-
-    template<typename ExprT>
-    ArrayGather& operator=(const LazyExp<ExprT>& expr);
-    ArrayGather& operator=(const Array& assignable);
-    ArrayGather& operator=(const Assignable<Array>& assignable);
-    ArrayGather& operator=(const Assignable<ArrayGather>& assignable);
-
-    ArrayGather copyless_reshape(std::vector<int>) const;
-    operator Array();
-
-};
-
-#endif
-
-#ifndef DALI_ARRAY_HIDE_LAZY
-    // Terminology
-    //    * `lazy people` - all the files that you can find by searching for
-    //                      phrase DALI_ARRAY_HIDE_LAZY (but excluding array.h)
-    //                      those files are key for lazy expressions.
-    //    * `Bjarne`      - c++ language design philosophy.
-    //    * `may not be`  - definitely isn't
-    //    * `Header Extension` -
-    //                      the aberration that happens below this comment
-    //                      the author hopes that by giving it this friendly
-    //                      name the risk of going insane will be minimized.
-    //
-    // Currently bunch of lazy people depend on array. Even though they never
-    // use any of the functions specified below, array.h is included and used
-    // for data/strides/shape etc. access. The problem appears when g++ sees
-    // operator= in array.h it for some reason tries to expand what's inside
-    // the function (even though nobody uses it, but apparently we have
-    // inevitably hit template expansion phase of compilation or something like
-    // that where compiler gets really excited about the contents of templated
-    // functions).
-    //
-    // CURRENT SOLUTION:
-    // This may not be the best solution to the issue we are facing.
-    // The current solution to this problem is to specify DALI_ARRAY_HIDE_LAZY
-    // which hides the function definitions below from all the files related to lazy
-    // functions. The next time array.h is included outside of those
-    // files, the templated functions will be available.
-    // The primary disadvantage of this solution is the fact that we are using
-    // a new paradigm of optional Header Extension, which may require extra
-    // cognitive effort.
-    //
-    // ALTERNATIVE SOLUTION I:
-    // Split Array class into BaseArray used by all the lazy functionality
-    // related files and Array which adds the lazy conversions, then all the
-    // lazy people must use BaseArray. The problems with this solution include:
-    //     * giving in to Bjarne
-    //     * the fact that sometimes we need to convert between BaseArray and
-    //       Array.
-    //     * we might need BaseAssignable<Array> (?!??)
-    // Honestly, this might be a better solution, but the only way to understand
-    // how much worse/better it is, is to implement it and try to gradually
-    // remove all the associated inconveniences.
-    //
-    // ALTERNATIVE SOLUTION II:
-    // add a bunch of lazy::Eval<OutType>::eval in places where it is inferred
-    // automatically thanks to the function below. At the time of writing this
-    // is order of tens of occurrences.
-
-    #ifndef DALI_ARRAY_ARRAY_H_EXTENSION
-    #define DALI_ARRAY_ARRAY_H_EXTENSION
-
-    #include "dali/array/function/lazy_eval.h"
-
-    template<typename ExprT>
-    Array& Array::operator=(const LazyExp<ExprT>& expr) {
-        return *this = lazy::EvalWithOperator<OPERATOR_T_EQL,Array>::eval(expr.self());
-    }
-
-    /* Array constructor from a Lazy Expression:
-     * here we evaluate the expression, construct an assignable array
-     * from it, and pass this assignable array to create a new Array
-     * as a destination for the computation in the expression.
-     * Since the destination has not been created yet, we evaluate
-     * the expression using `lazy::Eval<Array>::eval_no_autoreduce` instead of
-     * `lazy::Eval<Array>::eval`, since we know that no reductions will be needed
-     * when assigning to the same shape as the one dictated by the
-     * expression.
-     */
-    template<typename ExprT>
-    Array::Array(const LazyExp<ExprT>& expr) :
-            Array(lazy::EvalWithOperator<OPERATOR_T_EQL,Array>::eval_no_autoreduce(expr.self())) {
-    }
-
-    template<typename OutType>
-    template<typename ExprT>
-    BaseAssignable<OutType>::BaseAssignable(const LazyExp<ExprT>& expr) :
-            BaseAssignable<OutType>(lazy::Eval<OutType>::eval(expr.self())) {
-    }
-
-    template<typename ExprT>
-    ArraySubtensor& ArraySubtensor::operator=(const LazyExp<ExprT>& expr) {
-        return *this = lazy::EvalWithOperator<OPERATOR_T_EQL,ArraySubtensor>::eval(expr.self());
-    }
-
-    template<typename ExprT>
-    ArrayGather& ArrayGather::operator=(const LazyExp<ExprT>& expr) {
-        return *this = lazy::EvalWithOperator<OPERATOR_T_EQL,ArrayGather>::eval(expr.self());
-    }
-
-    #endif
 #endif

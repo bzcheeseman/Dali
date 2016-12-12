@@ -1,8 +1,9 @@
 #include <gtest/gtest.h>
 
 #include "dali/array/array.h"
-#include "dali/array/op2/expression/expression.h"
+#include "dali/array/debug.h"
 #include "dali/array/dtype.h"
+#include "dali/utils/observer.h"
 
 template<typename T>
 void EXPECT_EQ_DTYPE(const T& reference, const Array& result, const DType& dtype) {

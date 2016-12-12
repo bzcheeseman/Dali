@@ -5,19 +5,22 @@
 #include "dali/config.h"
 #include <mshadow/tensor.h>
 
-#include "dali/array/function/typed_array.h"
-#include "dali/array/op/other.h"
-#include "dali/array/op/initializer.h"
+
 #include "dali/utils/print_utils.h"
 #include "dali/runtime_config.h"
-#include "dali/array/op.h"
 #include "dali/array/test_utils.h"
 #include "dali/utils/core_utils.h"
-#include "dali/array/lazy/binary.h"
 
 using std::vector;
 
 typedef vector<int> VI;
+
+#ifdef DONT_COMPILE
+
+#include "dali/array/op/other.h"
+#include "dali/array/op/initializer.h"
+#include "dali/array/op.h"
+#include "dali/array/lazy/binary.h"
 
 TEST(ArrayTests, slicing) {
     Array x({12});
@@ -639,3 +642,5 @@ TEST(ArrayConstructorTests, shape_preservation) {
         EXPECT_EQ(x2.bshape(), y2.bshape());
     }
 }
+
+#endif

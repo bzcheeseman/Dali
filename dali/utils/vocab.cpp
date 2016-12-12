@@ -2,6 +2,7 @@
 #include "dali/utils/core_utils.h"
 #include "dali/array/array.h"
 
+#include <algorithm>
 #include <sstream>
 
 using std::string;

@@ -108,7 +108,6 @@ class Tensor {
         bool is_scalar() const;
         bool is_vector() const;
         bool is_matrix() const;
-        Tensor vectorlike_to_vector() const;
 
         void set_name(std::string& newname);
         void set_name(char* newname);

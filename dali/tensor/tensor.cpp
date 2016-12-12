@@ -149,12 +149,6 @@ bool Tensor::is_vector() const {
 bool Tensor::is_matrix() const {
     return w.is_matrix();
 }
-Tensor Tensor::vectorlike_to_vector() const {
-    return Tensor(w.vectorlike_to_vector(),
-                  dw.vectorlike_to_vector(),
-                  constant);
-}
-
 
 void Tensor::set_name(string& _name) {
     if (name != nullptr) {

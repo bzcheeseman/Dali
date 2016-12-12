@@ -1,22 +1,15 @@
 #include "array.h"
 
-#include <iostream>
-#include <ostream>
+#include <algorithm>
 #include <fstream>
 #include <iomanip>
+#include <iostream>
+#include <ostream>
 #include <type_traits>
 
-#include "dali/array/function/operator.h"
-#include "dali/array/op/dot.h"
-#include "dali/array/op/initializer.h"
-#include "dali/array/op/other.h"
-#include "dali/array/op2/unary.h"
-#include "dali/array/op2/binary.h"
-#include "dali/array/op2/gather.h"
-#include "dali/array/op2/reducers.h"
-#include "dali/array/op2/gather_from_rows.h"
-#include "dali/array/op2/elementwise_operation.h"
 #include "dali/utils/cnpy.h"
+#include "dali/array/debug.h"
+#include "dali/array/expression/buffer_view.h"
 #include "dali/utils/make_message.h"
 
 using std::vector;
@@ -38,13 +31,6 @@ void compact_strides(const vector<int>& shape, vector<int>* strides_ptr) {
     if (shape_to_trivial_strides(shape) == strides) {
         strides.clear();
     }
-}
-
-// shape makes sense
-bool shape_strictly_positive(const std::vector<int>& shape) {
-    return std::all_of(shape.begin(), shape.end(), [](int x) {
-        return x > 0;
-    });
 }
 
 void alert_stateless_call(const bool& stateful, const char* fieldname) {
@@ -82,66 +68,22 @@ std::vector<int> normalize_shape(const std::vector<int>& current_shape, std::vec
     return new_shape;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-//                        ASSIGNABLE ARRAY                                    //
-////////////////////////////////////////////////////////////////////////////////
-
-template<typename OutType>
-BaseAssignable<OutType>::BaseAssignable() {
-}
-
-template<typename OutType>
-BaseAssignable<OutType>::BaseAssignable(assign_t&& _assign_to) :
-        assign_to(_assign_to) {
-}
-
-template class BaseAssignable<Array>;
-template class BaseAssignable<ArraySubtensor>;
-template class BaseAssignable<ArrayGather>;
-
-
-
-Assignable<Array>::Assignable(const float& constant) :
-        BaseAssignable<Array>(initializer::fill(constant)) {
-}
-
-Assignable<Array>::Assignable(const double& constant) :
-        BaseAssignable<Array>(initializer::fill(constant)) {
-}
-
-Assignable<Array>::Assignable(const int& constant) :
-        BaseAssignable<Array>(initializer::fill(constant)) {
-}
-
-Assignable<Array>::Assignable() {
-}
-
-Array Assignable<Array>::eval() {
-    return *this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-//                              ARRAY STATE                                   //
-////////////////////////////////////////////////////////////////////////////////
-
-
-ArrayState::ArrayState(const std::vector<int>& _shape,
-                       std::shared_ptr<SynchronizedMemory> _memory,
-                       const int& _offset,
-                       const std::vector<int>& _strides,
-                       DType _dtype) :
-        shape(_shape),
-        memory(_memory),
-        offset(_offset),
-        strides(_strides),
-        dtype(_dtype) {
-}
-
-
 ////////////////////////////////////////////////////////////////////////////////
 //                                 ARRAY                                      //
 ////////////////////////////////////////////////////////////////////////////////
+
+
+Array::ArrayState::ArrayState(std::shared_ptr<Expression> expression):
+    expression_(expression) {
+}
+
+std::shared_ptr<Expression> Array::expression() const {
+    return state_->expression_;
+}
+
+void Array::set_expression(std::shared_ptr<Expression> new_expression) {
+    state_->expression_ = new_expression;
+}
 
 template<typename T>
 T Array::scalar_value() const {
@@ -151,7 +93,8 @@ T Array::scalar_value() const {
         "shape ", shape(), " to a scalar, which is only allowed for a "
         "zero-dimensional array."));
 
-    void* data = memory()->data(memory::Device::cpu());
+    void* data = memory()->data(
+        memory::Device::cpu());
     if (dtype() == DTYPE_FLOAT) {
         return *((float*)(data) + offset());
     } else if (dtype() == DTYPE_DOUBLE) {
@@ -170,13 +113,14 @@ void Array::broadcast_axis_internal(const int& axis) {
     vector<int> new_strides = normalized_strides();
     new_strides[axis] = 0;
 
-    state->strides = new_strides;
+    expression()->strides_ = new_strides;
 }
 
-Array::Array() {}
+Array::Array() : state_(std::make_shared<ArrayState>(nullptr)) {
+}
 
-Array::Array(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
-    initialize(shape, dtype, preferred_device);
+Array::Array(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) : Array() {
+    set_expression(std::make_shared<BufferView>(shape, dtype, preferred_device));
 }
 
 Array::Array(std::initializer_list<int> shape_, DType dtype, memory::Device preferred_device) :
@@ -188,12 +132,13 @@ Array::Array(const std::vector<int>& shape,
              const int& offset,
              const std::vector<int>& strides,
              DType dtype) {
-    ASSERT2(shape_strictly_positive(shape), "shape elements must be strictly positive.");
     vector<int> new_strides(strides);
     compact_strides(shape, &new_strides);
     ASSERT2(new_strides.size() == 0 || new_strides.size() == shape.size(), "stride "
         "and shape size must be the same (unless strides are compacted).");
-    state = std::make_shared<ArrayState>(shape, memory, offset, new_strides, dtype);
+
+    set_expression(std::make_shared<BufferView>(
+        memory, shape, dtype, offset, new_strides));
 }
 
 Array::Array(const Array& other, const bool& copy_memory) {
@@ -202,30 +147,23 @@ Array::Array(const Array& other, const bool& copy_memory) {
         // surely we can do better.
         // if memory is broadcasted we do not want to copy
         // entire underlying memory!
-        //state = std::make_shared<ArrayState>(*(other.state));
-        //state->memory = std::make_shared<SynchronizedMemory>(*(other.state->memory));
+        //state = std::make_shared<ArrayState>(*(other.state_));
+        //expression()->memory = std::make_shared<SynchronizedMemory>(*(other.expression()->memory));
 
-        *this = op::identity(other);
+        // TODO(szymon): bring back!
+        // *this = op::identity(other);
     } else {
-        state = other.state;
+        state_ = other.state_;
     }
 }
 
-Array::Array(const Assignable<Array>& assignable) {
-    assignable.assign_to(*this, OPERATOR_T_EQL);
-}
-
-Array::Array(const expression::Expression& operation) : Array((Assignable<Array>) operation) {}
-
-Array& Array::operator=(const expression::Expression& operation) {
-    return this->operator=((Assignable<Array>)operation);
-}
 
 Array Array::zeros(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
     Array ret(shape, dtype, preferred_device);
     ret.memory()->lazy_clear();
     return ret;
 }
+
 Array Array::empty_like(const Array& other) {
     if (other.is_stateless()) {
         return Array();
@@ -253,19 +191,19 @@ Array Array::arange(const double& start, const double& stop, const double& step,
     ASSERT2(length > 0, utils::make_message("Array length must be non-zero (got "
         "start=", start, ", stop=", stop, ", step=", step, ")."));
     Array ret({length}, dtype, preferred_device);
-    ret = initializer::arange(start, step);
+    // ret = initializer::arange(start, step);
     return ret;
 }
 
 Array Array::arange(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
     Array ret(shape, dtype, preferred_device);
-    ret = initializer::arange(0.0, 1.0);
+    // ret = initializer::arange(0.0, 1.0);
     return ret;
 }
 
 Array Array::ones(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
     Array ret(shape, dtype, preferred_device);
-    ret = initializer::ones();
+    // ret = initializer::ones();
     return ret;
 }
 
@@ -274,7 +212,7 @@ Array Array::ones_like(const Array& other) {
         return Array();
     } else {
         Array ret = empty_like(other);
-        ret = initializer::ones();
+        // ret = initializer::ones();
         return ret;
     }
 }
@@ -289,14 +227,19 @@ Array Array::adopt_buffer(void* buffer,
         "strides = ", strides, ", shape = ", shape));
     Array ret(shape, dtype, buffer_location);
     ret.memory()->adopt_buffer(buffer_location, buffer);
-    ret.state->strides = strides;
+    ret.expression()->strides_ = strides;
     return ret;
 }
 
 void Array::disown_buffer(memory::Device buffer_location) {
     if (!is_stateless()) {
+        // TODO(szymon): ensure expression is not evaluated.
         memory()->disown_buffer(buffer_location);
     }
+}
+
+void Array::eval(bool wait) const {
+    // TODO
 }
 
 /* NPY detect Dtype
@@ -423,8 +366,8 @@ bool Array::equals(const Array& left, const Array& right) {
     if (left.is_stateless() != right.is_stateless()) {
         return false;
     }
-    bool all_equals = ((float)(Array)op::all_equals(left, right)) > 0 ? true : false;
-    return all_equals;
+    // bool all_equals = ((float)(Array)op::all_equals(left, right)) > 0 ? true : false;
+    // return all_equals;
 }
 
 
@@ -434,7 +377,7 @@ bool Array::state_equals(const Array& left, const Array& right) {
     if (left.is_stateless() != right.is_stateless()) {
         return false;
     }
-    return left.state == right.state;
+    return left.state_ == right.state_;
 }
 
 bool Array::allclose(const Array& left, const Array& right, const double& atolerance) {
@@ -447,22 +390,22 @@ bool Array::allclose(const Array& left, const Array& right, const double& atoler
     if (left.shape() != right.shape()) {
         return false;
     }
-    bool is_all_close = ((float)(Array)op::all_close(left, right, atolerance)) > 0 ? true : false;
-    return is_all_close;
+    // bool is_all_close = ((float)(Array)op::all_close(left, right, atolerance)) > 0 ? true : false;
+    // return is_all_close;
 }
 
 bool Array::any_isnan() const {
-    bool any_isnan_ = ((float)(Array)op::any_isnan(*this)) > 0 ? true : false;
-    return any_isnan_;
+    // bool any_isnan_ = ((float)(Array)op::any_isnan(*this)) > 0 ? true : false;
+    // return any_isnan_;
 }
 
 bool Array::any_isinf() const {
-    bool any_isinf_ = ((float)(Array)op::any_isinf(*this)) > 0 ? true : false;
-    return any_isinf_;
+    // bool any_isinf_ = ((float)(Array)op::any_isinf(*this)) > 0 ? true : false;
+    // return any_isinf_;
 }
 
 bool Array::is_stateless() const {
-    return state == nullptr;
+    return is_stateless();
 }
 
 bool Array::is_scalar() const {
@@ -475,15 +418,6 @@ bool Array::is_vector() const {
 
 bool Array::is_matrix() const {
     return ndim() == 2;
-}
-
-Array Array::vectorlike_to_vector() const {
-    int noe = number_of_elements();
-    for (int dim : shape()) {
-        ASSERT2(dim == 1 || dim == noe, utils::make_message("Tensor with shape ",
-            shape(), " cannot be interpreted as a vector."));
-    }
-    return ravel();
 }
 
 bool Array::spans_entire_memory() const {
@@ -537,34 +471,18 @@ Array Array::ascontiguousarray() const {
         ret = *this;
     } else {
         debug::array_as_contiguous.notify(*this);
-        ret = op::identity(*this);
+        // ret = op::identity(*this);
     }
-    ret.state->strides.clear();
+    ret.expression()->strides_.clear();
     return ret;
 }
 
 
 
-void Array::initialize(const std::vector<int>& shape,
-                       DType dtype,
-                       memory::Device preferred_device) {
-    ASSERT2(shape_strictly_positive(shape), utils::make_message("Shape "
-        "elements must be strictly positive (got ", shape, ")."));
-    int number_of_elements = hypercube_volume(shape);
-
-    auto memory = std::make_shared<SynchronizedMemory>(
-            number_of_elements * size_of_dtype(dtype),
-            (shape.size() > 0) ? shape[shape.size()-1] : 1,
-            preferred_device
-        );
-
-    state = std::make_shared<ArrayState>(shape, memory, 0, vector<int>(), dtype);
-}
-
 void Array::initialize_with_bshape(const std::vector<int>& bshape,
                                    DType dtype,
                                    memory::Device preferred_device) {
-    initialize(bshape2shape(bshape), dtype, preferred_device);
+    set_expression(std::make_shared<BufferView>(bshape2shape(bshape), dtype, preferred_device));
     for (int i = 0; i < bshape.size(); ++i) {
         if (bshape[i] < 0) {
             ASSERT2(bshape[i] == -1, "Currently only one-sized broadcasting "
@@ -576,45 +494,49 @@ void Array::initialize_with_bshape(const std::vector<int>& bshape,
 
 
 Array& Array::reset() {
-    state = nullptr;
+    set_expression(nullptr);
     return *this;
 }
 
 const vector<int>& Array::shape() const {
-    alert_stateless_call(state != nullptr, "shape");
-    return state->shape;
+    alert_stateless_call(!is_stateless(), "shape");
+    return expression()->shape_;
 }
 
 std::shared_ptr<memory::SynchronizedMemory> Array::memory() const {
-    if (state == nullptr) {
+    if (is_stateless()) {
         return nullptr;
     } else {
-        return state->memory;
+        eval(/*wait=*/true);
+        auto buffer = std::dynamic_pointer_cast<BufferView>(expression());
+        ASSERT2(buffer, "eval failed to create BufferView.");
+
+        return buffer->memory_;
     }
 }
 
 int Array::offset() const {
-    alert_stateless_call(state != nullptr, "offset");
-    return state->offset;
+    alert_stateless_call(!is_stateless(), "offset");
+    return expression()->offset_;
 }
 
 const std::vector<int>& Array::strides() const {
-    alert_stateless_call(state != nullptr, "strides");
-    return state->strides;
+    alert_stateless_call(!is_stateless(), "strides");
+    return expression()->strides_;
 }
 
 DType Array::dtype() const {
-    alert_stateless_call(state != nullptr, "dtype");
-    return state->dtype;
+    alert_stateless_call(!is_stateless(), "dtype");
+    return expression()->dtype_;
 }
 
-expression::Expression Array::astype(DType dtype_) const {
-    return op::astype(*this, dtype_);
+Array Array::astype(DType dtype_) const {
+    // return op::astype(*this, dtype_);
 }
 
 memory::Device Array::preferred_device() const {
-    alert_stateless_call(state != nullptr, "preferred_device");
-    return state->memory->preferred_device;
+    alert_stateless_call(!is_stateless(), "preferred_device");
+    return expression()->preferred_device();
 }
 
 std::vector<int> Array::normalized_strides() const {
@@ -637,35 +559,40 @@ std::vector<int> Array::bshape() const {
 }
 
 void Array::to_device(memory::Device device) const {
+    // TODO(jonathan and only jonathan):
+    //     "We will not have that!"
+    //                   -- Jurgen Schmidthuber
+    //
+    // Add asynchronous memory movement.
     memory()->move_to(device);
     memory()->preferred_device = device;
 }
 
 int Array::ndim() const {
-    return (state == nullptr) ? 0 : state->shape.size();
+    return (is_stateless()) ? 0 : expression()->shape_.size();
 
 }
 
 int Array::number_of_elements() const {
-    return (state == nullptr) ? 0 : hypercube_volume(state->shape);
+    return (is_stateless()) ? 0 : hypercube_volume(expression()->shape_);
 }
 
 vector<int> Array::subshape() const {
-    if (state == nullptr) return vector<int>();
-    if (state->shape.size() == 0) return vector<int>();
-    return vector<int>(state->shape.begin() + 1, state->shape.end());
+    if (is_stateless()) return vector<int>();
+    if (expression()->shape_.size() == 0) return vector<int>();
+    return vector<int>(expression()->shape_.begin() + 1, expression()->shape_.end());
 }
 
 Array Array::operator[](const int& idx) const {
     return pluck_axis(0, idx);
 }
 
-ArraySubtensor Array::gather_from_rows(const Array& indices) const {
-    return ArraySubtensor(*this, indices);
+Array Array::gather_from_rows(const Array& indices) const {
+    // return ArraySubtensor(*this, indices);
 }
 
-ArrayGather Array::operator[](const Array& indices) const {
-    return ArrayGather(*this, indices);
+Array Array::operator[](const Array& indices) const {
+    // return ArrayGather(*this, indices);
 }
 
 SlicingInProgress<Array> Array::operator[](const Slice& s) const {
@@ -682,25 +609,25 @@ Array Array::operator()(index_t idx) const {
     ASSERT2(0 <= idx && idx < number_of_elements(), utils::make_message(
         "Index ", idx, " must be in [0,", number_of_elements(), ")."));
 
-    index_t delta_offset;
-    if (contiguous_memory()) {
-        delta_offset = idx;
-    } else {
-        vector<int> ns = normalized_strides();
-        delta_offset = 0;
-        for (int dim = ndim() - 1; dim >= 0; --dim) {
-            index_t index_at_dim  = idx % shape()[dim];
-            idx /= shape()[dim];
-            index_t stride_at_dim = ns[dim];
-            delta_offset += index_at_dim * stride_at_dim;
-        }
-    }
+    // index_t delta_offset;
+    // if (contiguous_memory()) {
+    //     delta_offset = idx;
+    // } else {
+    //     vector<int> ns = normalized_strides();
+    //     delta_offset = 0;
+    //     for (int dim = ndim() - 1; dim >= 0; --dim) {
+    //         index_t index_at_dim  = idx % shape()[dim];
+    //         idx /= shape()[dim];
+    //         index_t stride_at_dim = ns[dim];
+    //         delta_offset += index_at_dim * stride_at_dim;
+    //     }
+    // }
 
-    return Array(vector<int>(),
-                 memory(),
-                 offset() + delta_offset,
-                 vector<int>(),
-                 dtype());
+    // return Array(vector<int>(),
+    //              memory(),
+    //              offset() + delta_offset,
+    //              vector<int>(),
+    //              dtype());
 }
 
 bool Array::is_transpose() {
@@ -1054,28 +981,28 @@ Array Array::broadcast_scalar_to_ndim(const int& target_ndim) const {
     return res;
 }
 
-#define DALI_ARRAY_DEFINE_ALL_REDUCER(FUNCTION_NAME, OPNAME, RETVAL)\
-    RETVAL Array::FUNCTION_NAME() const {\
-        return op::OPNAME(*this);\
+#define DALI_ARRAY_DEFINE_ALL_REDUCER(FUNCTION_NAME, OPNAME)\
+    Array Array::FUNCTION_NAME() const {\
+        /*return op::OPNAME(*this);*/\
     }\
 
-#define DALI_ARRAY_DEFINE_AXIS_REDUCER(FUNCTION_NAME, OPNAME, RETVAL)\
-    RETVAL Array::FUNCTION_NAME(const int& axis) const {\
-        return op::OPNAME(*this, {axis});\
+#define DALI_ARRAY_DEFINE_AXIS_REDUCER(FUNCTION_NAME, OPNAME)\
+    Array Array::FUNCTION_NAME(const int& axis) const {\
+        /*return op::OPNAME(*this, {axis});*/\
     }\
 
-#define DALI_ARRAY_DEFINE_REDUCER(FUNCTION_NAME, OPNAME, RETVAL)\
-    DALI_ARRAY_DEFINE_ALL_REDUCER(FUNCTION_NAME, OPNAME, RETVAL);\
-    DALI_ARRAY_DEFINE_AXIS_REDUCER(FUNCTION_NAME, OPNAME, RETVAL);\
+#define DALI_ARRAY_DEFINE_REDUCER(FUNCTION_NAME, OPNAME)\
+    DALI_ARRAY_DEFINE_ALL_REDUCER(FUNCTION_NAME, OPNAME);\
+    DALI_ARRAY_DEFINE_AXIS_REDUCER(FUNCTION_NAME, OPNAME);\
 
-DALI_ARRAY_DEFINE_REDUCER(sum, sum, expression::Expression);
-DALI_ARRAY_DEFINE_REDUCER(L2_norm, L2_norm, expression::Expression);
-DALI_ARRAY_DEFINE_REDUCER(mean, mean, expression::Expression);
-DALI_ARRAY_DEFINE_REDUCER(max, max, expression::Expression);
-DALI_ARRAY_DEFINE_REDUCER(min, min, expression::Expression);
-DALI_ARRAY_DEFINE_REDUCER(argsort, argsort, Assignable<Array>);
-DALI_ARRAY_DEFINE_REDUCER(argmin, argmin, expression::Expression);
-DALI_ARRAY_DEFINE_REDUCER(argmax, argmax, expression::Expression);
+DALI_ARRAY_DEFINE_REDUCER(sum, sum);
+DALI_ARRAY_DEFINE_REDUCER(L2_norm, L2_norm);
+DALI_ARRAY_DEFINE_REDUCER(mean, mean);
+DALI_ARRAY_DEFINE_REDUCER(max, max);
+DALI_ARRAY_DEFINE_REDUCER(min, min);
+DALI_ARRAY_DEFINE_REDUCER(argsort, argsort);
+DALI_ARRAY_DEFINE_REDUCER(argmin, argmin);
+DALI_ARRAY_DEFINE_REDUCER(argmax, argmax);
 
 Array::operator float() const {
     return scalar_value<float>();
@@ -1088,24 +1015,19 @@ Array::operator int() const {
 }
 
 void Array::copy_from(const Array& other) {
-    *this = op::identity(other);
+    // *this = op::identity(other);
 }
 
-Array& Array::operator=(const Assignable<Array>& assignable) {
-    assignable.assign_to(*this, OPERATOR_T_EQL);
-    return *this;
+Array& Array::operator=(const int& other) {
+    // return *this = op::identity(other);
 }
 
-Array& Array::operator=(const int& assignable) {
-    return *this = Assignable<Array>(assignable);
+Array& Array::operator=(const float& other) {
+    // return *this = op::identity(other);
 }
 
-Array& Array::operator=(const float& assignable) {
-    return *this = Assignable<Array>(assignable);
-}
-
-Array& Array::operator=(const double& assignable) {
-    return *this = Assignable<Array>(assignable);
+Array& Array::operator=(const double& other) {
+    // return *this = op::identity(other);
 }
 
 void Array::print(std::basic_ostream<char>& stream, const int& indent, const bool& add_newlines, const bool& print_comma) const {
@@ -1126,27 +1048,27 @@ void Array::print(std::basic_ostream<char>& stream, const int& indent, const boo
     } else if (ndim() == 1) {
         stream << std::string(indent, ' ');
         stream << "[";
-        for(int i = 0; i < state->shape[0]; i += 1) {
+        for(int i = 0; i < expression()->shape_[0]; i += 1) {
             stream << std::fixed
                       << std::setw( 7 ) /* keep 7 digits*/
                       << std::setprecision( 3 ) /* use 3 decimals*/
                       << std::setfill( ' ' );
             Array scalar = (*this)[i];
             scalar.print(stream, 0, false);
-            if (i != state->shape[0] - 1) stream << ", ";
+            if (i != expression()->shape_[0] - 1) stream << ", ";
         }
         stream << "]";
         if (print_comma) stream << ",";
         stream << end_line_spacing;
     } else {
         stream << std::string(indent, ' ') << "[" << end_line_spacing;
-        for (int i = 0; i < state->shape[0]; ++i) {
+        for (int i = 0; i < expression()->shape_[0]; ++i) {
             Array subtensor = (*this)[i];
             subtensor.print(
                 stream,
                 indent + indent_increment,
                 add_newlines,
-                /*print_comma=*/i != state->shape[0] - 1
+                /*print_comma=*/i != expression()->shape_[0] - 1
             );
         }
         stream << std::string(indent, ' ') << "]";
@@ -1163,126 +1085,14 @@ void Array::clear() {
     if (spans_entire_memory()) {
         memory()->lazy_clear();
     } else {
-        *this = initializer::fill(0.0);
+        // *this = initializer::fill(0.0);
     }
 }
 
-Assignable<Array> Array::dot(const Array& other) const {
-    return op::dot(*this, other);
+Array Array::dot(const Array& other) const {
+    // return op::dot(*this, other);
 }
 
 bool operator==(const Array& left, const Array& right) {
     return Array::state_equals(left, right);
-}
-
-///////////////////////////////////////////////////////////////
-//                  ARRAY SUBTENSOR                          //
-///////////////////////////////////////////////////////////////
-
-ArraySubtensor::ArraySubtensor(const Array& source_, const Array& indices_) : indices(indices_), source(source_) {}
-
-DType ArraySubtensor::dtype() const {
-    return source.dtype();
-}
-
-const std::vector<int>& ArraySubtensor::shape() const {
-    return indices.shape();
-}
-
-
-
-ArraySubtensor& ArraySubtensor::operator=(const Array& assignable) {
-    *this = (Assignable<ArraySubtensor>)expression::Expression(assignable);
-    return *this;
-}
-
-ArraySubtensor& ArraySubtensor::operator=(const Assignable<Array>& assignable) {
-    // TODO(jonathan, szymon): make more efficient
-    Array self_as_array = *this;
-    self_as_array = assignable;
-    return (*this = self_as_array);
-}
-
-
-ArraySubtensor& ArraySubtensor::operator=(const Assignable<ArraySubtensor>& assignable) {
-    assignable.assign_to(*this, OPERATOR_T_EQL);
-    return *this;
-}
-
-ArraySubtensor ArraySubtensor::copyless_reshape(std::vector<int> ignored) const {
-    ASSERT2(false, "ArraySubtensor::copyless_reshape not implemented.");
-    return *this;
-}
-
-
-
-void ArraySubtensor::print(std::basic_ostream<char>& stream,
-                           const int& indent,
-                           const bool& add_newlines) const {
-    ((Array)op::gather_from_rows(source, indices)).print(
-        stream,
-        indent,
-        add_newlines
-    );
-}
-
-ArraySubtensor::operator Array() {
-    return (Array)op::gather_from_rows(source, indices);
-}
-
-
-
-///////////////////////////////////////////////////////////////
-//                  ARRAY SUBTENSOR                          //
-///////////////////////////////////////////////////////////////
-
-ArrayGather::ArrayGather(const Array& source_, const Array& indices_) : indices(indices_), source(source_) {
-}
-
-DType ArrayGather::dtype() const {
-    return source.dtype();
-}
-
-std::vector<int> ArrayGather::shape() const {
-    vector<int> res = indices.shape();
-    res.insert(res.end(), source.shape().begin() + 1, source.shape().end());
-
-    return res;
-}
-
-ArrayGather& ArrayGather::operator=(const Array& assignable) {
-    *this = (Assignable<ArrayGather>)expression::Expression(assignable);
-    return *this;
-}
-
-ArrayGather& ArrayGather::operator=(const Assignable<Array>& assignable) {
-    // TODO(jonathan, szymon): make more efficient
-    Array self_as_array = *this;
-    self_as_array = assignable;
-    return (*this = self_as_array);
-}
-
-
-ArrayGather& ArrayGather::operator=(const Assignable<ArrayGather>& assignable) {
-    assignable.assign_to(*this, OPERATOR_T_EQL);
-    return *this;
-}
-
-ArrayGather ArrayGather::copyless_reshape(std::vector<int> ignored) const {
-    ASSERT2(false, "ArrayGather::copyless_reshape not implemented.");
-    return *this;
-}
-
-void ArrayGather::print(std::basic_ostream<char>& stream,
-                           const int& indent,
-                           const bool& add_newlines) const {
-    ((Array)op::gather(source, indices)).print(
-        stream,
-        indent,
-        add_newlines
-    );
-}
-
-ArrayGather::operator Array() {
-    return (Array)op::gather(source, indices);
 }

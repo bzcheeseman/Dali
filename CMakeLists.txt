@@ -172,7 +172,7 @@ if (CUDA_FOUND STREQUAL TRUE)
     find_library(CUDA_DRIVER_LIB cuda PATHS "/usr/lib64/"
                                             "/usr/lib"
                                             "/usr/lib/nvidia-current/"
-                                            "${CUDA_TOOLKIT_ROOT_DIR}/lib/libcuda.dylib"
+                                            "${CUDA_TOOLKIT_ROOT_DIR}/lib/"
                                             NO_DEFAULT_PATH)
     list(APPEND CUDA_LIBRARIES ${CUDA_DRIVER_LIB})
 endif (CUDA_FOUND STREQUAL TRUE)

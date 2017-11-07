@@ -61,7 +61,7 @@ else()
     message(FATAL "Compiler ${DALI_CXX_COMPILER_ID} is not supported.")
 endif()
 
-set(ENABLED_WARNINGS "-Wreturn-type -Wno-undefined-bool-conversion")
+set(ENABLED_WARNINGS "-Wno-return-type -Wno-undefined-bool-conversion")
 
 if(CMAKE_BUILD_TYPE MATCHES "debug")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${ENABLED_WARNINGS} -g -fPIC")
@@ -285,12 +285,11 @@ if (NOT DEFINED DALI_SOURCE_DIRS)
     set(DALI_SOURCE_DIRS "dali")
 endif()
 
-list(APPEND DALI_SOURCE_DIRS_EXCLUDE "dali/data_processing")
+list(APPEND DALI_SOURCE_DIRS_EXCLUDE "dali/data_processing;dali/array/deprecated/")
 
 if (ARRAY_ONLY)
     list(APPEND DALI_SOURCE_DIRS_EXCLUDE "dali/tensor;dali/layers;dali/execution")
-
-    list(APPEND DALI_SOURCE_DIRS_EXCLUDE "dali/array/function;dali/array/function2;dali/array/op;dali/array/op2;dali/array/lazy;dali/array/function/mshadow_extension;dali/array/op_overload")
+    list(APPEND DALI_SOURCE_DIRS_EXCLUDE "")
 endif()
 
 

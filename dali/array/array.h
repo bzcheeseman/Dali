@@ -18,20 +18,19 @@
 class Array  {
   private:
     struct ArrayState {
-        std::shared_ptr<Expression> expression_;
+        mutable std::shared_ptr<Expression> expression_;
         ArrayState(std::shared_ptr<Expression> expression);
         // std::mutex mutex;
     };
     std::shared_ptr<ArrayState> state_;
-
-    std::shared_ptr<Expression> expression() const;
-    void set_expression(std::shared_ptr<Expression>);
 
     template<typename T>
     T scalar_value() const;
 
 
   public:
+    std::shared_ptr<Expression> expression() const;
+    void set_expression(std::shared_ptr<Expression>) const;
     Array();
 
     /* Various ways of constructing array */
@@ -97,6 +96,7 @@ class Array  {
     std::shared_ptr<memory::SynchronizedMemory> memory() const;
     int offset() const;
     const std::vector<int>& strides() const;
+    std::vector<int> normalized_strides() const;
     DType dtype() const;
 
     Array astype(DType dtype_) const;
@@ -128,6 +128,16 @@ class Array  {
     // returns true if array is possibly a result of calling .transpose()
     // on another array.
     bool is_transpose() const;
+    // special checks for internal expression type:
+    bool is_buffer() const;
+    bool is_assignment() const;
+    bool is_control_flow() const;
+    // returns a BufferView Array if the node is a buffer view,
+    // a control flow op, or an assignment, else returns a stateless Array
+    // (e.g. falsy)
+    Array buffer_arg() const;
+    // simplify internal expression graph to return to a more common view.
+    Array canonical() const;
     // create a view of the transposed memory
     Array transpose() const;
     Array transpose(const std::vector<int>& axes) const;

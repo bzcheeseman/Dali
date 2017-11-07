@@ -1,9 +1,10 @@
 #include "buffer_view.h"
 
 #include "dali/utils/assert2.h"
-#include "dali/utils/make_message.h"
 #include "dali/utils/print_utils.h"
+#include "dali/utils/make_message.h"
 #include "dali/array/shape.h"
+#include "dali/array/array.h"
 
 std::shared_ptr<memory::SynchronizedMemory> BufferView::create_memory(
         const std::vector<int>& shape,
@@ -27,7 +28,6 @@ BufferView::BufferView(std::shared_ptr<memory::SynchronizedMemory> memory,
         memory_(memory){
     ASSERT2(shape_strictly_positive(shape), utils::make_message("Shape "
         "elements must be strictly positive (got ", shape, ")."));
-
 }
 
 BufferView::BufferView(const std::vector<int>& shape,
@@ -54,6 +54,10 @@ memory::Device BufferView::preferred_device() const {
     return memory_->preferred_device;
 }
 
+
+std::vector<Array> BufferView::arguments() const {
+    return {};
+}
 
 bool BufferView::spans_entire_memory() const {
     int noe = number_of_elements();
@@ -85,6 +89,5 @@ std::shared_ptr<BufferView> BufferView::construct_with_bshape(
             ret->broadcast_axis_internal(i);
         }
     }
-
     return ret;
 }

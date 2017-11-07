@@ -11,6 +11,8 @@
 struct Expression;
 typedef std::shared_ptr<Expression> expression_ptr;
 
+class Array;
+
 struct Expression {
   public:
     std::vector<int> shape_;
@@ -18,8 +20,10 @@ struct Expression {
     std::vector<int> strides_;
     int              offset_; // expressing in number of numbers (not bytes)
 
+    // implemented these for all expression subclasses
     virtual memory::Device preferred_device() const = 0;
     virtual expression_ptr copy() const = 0;
+    virtual std::vector<Array> arguments() const = 0;
 
     Expression(const std::vector<int>& shape,
                DType dtype,

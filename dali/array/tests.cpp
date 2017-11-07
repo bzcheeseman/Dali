@@ -5,17 +5,57 @@
 #include "dali/config.h"
 #include <mshadow/tensor.h>
 
-
 #include "dali/utils/print_utils.h"
 #include "dali/runtime_config.h"
 #include "dali/array/test_utils.h"
 #include "dali/utils/core_utils.h"
+#include "dali/array/op/dot.h"
+#include "dali/array/op/binary.h"
 
-using std::vector;
+int vector_dot(Array left, Array right) {
+    int out = 0;
+    for (int i = 0; i < left.shape()[0]; i++) {
+        out += (
+            (*((int*)left[i].memory()->readonly_data(memory::Device::cpu()))) *
+            (*((int*)right[i].memory()->readonly_data(memory::Device::cpu())))
+        );
+    }
+    return out;
+}
 
-typedef vector<int> VI;
+Array slow_dot(Array left, Array right) {
+    Array out = Array::zeros({left.shape()[0], right.shape()[1]}, DTYPE_INT32);
+    int* cpu_data_ptr = (int*)out.memory()->overwrite_data(memory::Device::cpu());
+    auto strides = out.normalized_strides();
+    for (int i = 0; i < left.shape()[0]; i++) {
+        for (int j = 0; j < right.shape()[1]; j++) {
+            cpu_data_ptr[i * strides[0] + j] = vector_dot(left[i], right[Slice()][j]);
+        }
+    }
+    return out;
+}
+
+TEST(ArrayTests, dot) {
+    auto x = Array::ones({3, 3}, DTYPE_INT32);
+    auto y = op::dot(x, x);
+    auto y_ref = slow_dot(x, x);
+    std::cout << "haha" << std::endl;
+    y_ref.print();
+    std::cout << "haha" << std::endl;
+    op::all_equals(y, y_ref);
+    // EXPECT_TRUE((bool)((int)op::all_equals(y, y_ref)));
+}
+
 
 #ifdef DONT_COMPILE
+
+TEST(ArrayTests, scalar_value) {
+    Array x({12}, DTYPE_INT32);
+    x(3) = 42;
+    EXPECT_EQ((int)x(3), 42);
+    x[3] = 56;
+    EXPECT_EQ((int)x(3), 56);
+}
 
 #include "dali/array/op/other.h"
 #include "dali/array/op/initializer.h"
@@ -41,13 +81,6 @@ TEST(ArrayTests, slicing) {
     EXPECT_EQ(y(0).ndim(), 0);
 }
 
-TEST(ArrayTests, scalar_value) {
-    Array x({12}, DTYPE_INT32);
-    x(3) = 42;
-    EXPECT_EQ((int)x(3), 42);
-    x[3] = 56;
-    EXPECT_EQ((int)x(3), 56);
-}
 
 TEST(ArrayTests, scalar_assign) {
     Array x = Array::zeros({3,2}, DTYPE_INT32);

@@ -3,8 +3,8 @@
 #include <algorithm>
 
 #include "dali/array/shape.h"
-#include "dali/utils/make_message.h"
 #include "dali/utils/print_utils.h"
+#include "dali/utils/make_message.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 //               MISCELANEOUS UTILITIES (NOT EXPOSED)                         //
@@ -80,7 +80,7 @@ Expression::Expression(const Expression& other) :
 expression_ptr Expression::copy(const std::vector<int>& shape,
                                 int offset,
                                 const std::vector<int>& strides) const {
-    auto ret = copy();
+    auto ret      = copy();
     ret->shape_   = shape;
     ret->offset_  = offset;
     ret->strides_ = strides;
@@ -204,7 +204,7 @@ bool Expression::is_transpose() const {
             // then we are definitely not transposed.
             return false;
         }
-        // the condidtion for the transpose is that strides are in the order
+        // the condition for the transpose is that strides are in the order
         // opposite to the trivial strides.
         vector<int> reversed_shape(shape_);
         std::reverse(reversed_shape.begin(), reversed_shape.end());

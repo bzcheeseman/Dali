@@ -10,7 +10,14 @@
 #include "dali/utils/cnpy.h"
 #include "dali/array/debug.h"
 #include "dali/array/expression/buffer_view.h"
+#include "dali/array/expression/control_flow.h"
+#include "dali/array/expression/assignment.h"
+#include "dali/array/expression/computation.h"
+#include "dali/array/expression/jit_runner.h"
 #include "dali/utils/make_message.h"
+#include "dali/array/op/unary.h"
+#include "dali/array/op/dot.h"
+
 
 using std::vector;
 using memory::SynchronizedMemory;
@@ -40,7 +47,7 @@ std::shared_ptr<Expression> Array::expression() const {
     return state_->expression_;
 }
 
-void Array::set_expression(std::shared_ptr<Expression> new_expression) {
+void Array::set_expression(std::shared_ptr<Expression> new_expression) const {
     state_->expression_ = new_expression;
 }
 
@@ -72,8 +79,8 @@ Array::Array(std::shared_ptr<Expression> expression) :
         state_(std::make_shared<ArrayState>(expression)) {
 }
 
-Array::Array(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) : Array() {
-    set_expression(std::make_shared<BufferView>(shape, dtype, preferred_device));
+Array::Array(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) :
+        Array(std::make_shared<BufferView>(shape, dtype, preferred_device)) {
 }
 
 Array::Array(std::initializer_list<int> shape_, DType dtype, memory::Device preferred_device) :
@@ -95,11 +102,8 @@ Array::Array(const Array& other, const bool& copy_memory) {
         // surely we can do better.
         // if memory is broadcasted we do not want to copy
         // entire underlying memory!
-        //state = std::make_shared<ArrayState>(*(other.state_));
-        //expression()->memory = std::make_shared<SynchronizedMemory>(*(other.expression()->memory));
-
         // TODO(szymon): bring back!
-        // *this = op::identity(other);
+        *this = op::identity(other);
     } else {
         state_ = other.state_;
     }
@@ -183,8 +187,127 @@ void Array::disown_buffer(memory::Device buffer_location) {
     }
 }
 
+Array Array::buffer_arg() const {
+    if (is_buffer()) {
+        return *this;
+    }
+    if (is_assignment()) {
+        return std::dynamic_pointer_cast<Assignment>(expression())->left_;
+    }
+    if (is_control_flow()) {
+        return std::dynamic_pointer_cast<ControlFlow>(expression())->left_;
+    }
+    // returning false
+    // TODO(jonathan): make this return something better
+    //                 than a stateless array
+    return Array();
+}
+
+
+Array autoreduce_assign(Array left, Array right) {
+    throw std::runtime_error("autoreduce_assign not implemented yet.");
+}
+
+Array assign(Array left, OPERATOR_T operator_t, Array right);
+
+Array to_assignment(Array node) {
+    return assign(Array::zeros(node.shape(), node.dtype()),
+                  OPERATOR_T_EQL,
+                  Array(node.expression()));
+}
+
+Array assign(Array left, OPERATOR_T operator_t, Array right) {
+    if (operator_t == OPERATOR_T_EQL) {
+        return Array(std::make_shared<Assignment>(left, operator_t, right));
+    } else if (operator_t == OPERATOR_T_LSE) {
+        return autoreduce_assign(left, right);
+    } else {
+        // a temp is added so that non overwriting operators
+        // can be run independently from the right side's evaluation.
+        return Array(std::make_shared<Assignment>(left, operator_t, to_assignment(right)));
+    }
+}
+
+std::vector<Array> right_args(Array node) {
+    auto buffer = std::dynamic_pointer_cast<Assignment>(node.expression());
+    return buffer->right_.expression()->arguments();
+}
+
+
+// TODO(jonathan): add this from Python
+Array all_assignments_or_buffers(Array node) {
+    if (node.is_buffer()) {
+        return node;
+    }
+    if (!node.is_assignment()) {
+        node = to_assignment(node);
+    }
+    for (auto& arg : right_args(node)) {
+        arg.set_expression(all_assignments_or_buffers(arg).expression());
+    }
+    return node;
+}
+
+struct Optimization {
+    std::function<bool(const Array&)> condition_;
+    std::function<Array(const Array&)> transformation_;
+    bool matches(const Array& array) const {
+        return condition_(array);
+    }
+    Array transform(const Array& array) const {
+        return transformation_(array);
+    }
+    Optimization(std::function<bool(const Array&)> condition,
+                 std::function<Array(const Array&)> transformation) :
+        condition_(condition), transformation_(transformation) {}
+};
+
+std::vector<Optimization> OPTIMIZATIONS;
+
+Array simplify_destination(Array root) {
+    // leaf node:
+    if (root.is_buffer()) {
+        return root;
+    }
+    // recurse on children:
+    std::vector<Array> children;
+    if (root.is_assignment()) {
+        children.emplace_back(std::dynamic_pointer_cast<Assignment>(root.expression())->right_);
+    } else {
+        children = root.expression()->arguments();
+    }
+
+    // recurse on arguments of node:
+    for (auto& arg : children) {
+        arg.set_expression(simplify_destination(arg).expression());
+    }
+    for (const auto& optimization : OPTIMIZATIONS) {
+        if (optimization.matches(root)) {
+            root = optimization.transform(root);
+        }
+    }
+    return root;
+}
+
+Array Array::canonical() const {
+    // assignment pass
+    auto node = all_assignments_or_buffers(*this);
+    // simplification pass (jit, merge, etc...)
+    return simplify_destination(node);
+}
+
 void Array::eval(bool wait) const {
-    // TODO
+    if (!is_buffer()) {
+        auto node = canonical();
+        auto computable = convert_to_ops(node);
+        // run (DAG evaluation)
+        for (auto& step : computable) {
+            step->run();
+        }
+        // update internal expression to reflect
+        // that op was evaluated...
+        set_expression(node.buffer_arg().expression());
+    }
 }
 
 /* NPY detect Dtype
@@ -311,6 +434,7 @@ bool Array::equals(const Array& left, const Array& right) {
     if (left.is_stateless() != right.is_stateless()) {
         return false;
     }
+    throw std::runtime_error("not implemented yet");
     // bool all_equals = ((float)(Array)op::all_equals(left, right)) > 0 ? true : false;
     // return all_equals;
 }
@@ -350,7 +474,7 @@ bool Array::any_isinf() const {
 }
 
 bool Array::is_stateless() const {
-    return is_stateless();
+    return state_ == nullptr;
 }
 
 bool Array::is_scalar() const {
@@ -388,6 +512,21 @@ const vector<int>& Array::shape() const {
     return expression()->shape_;
 }
 
+bool Array::is_buffer() const {
+    auto buffer = std::dynamic_pointer_cast<BufferView>(expression());
+    return buffer != nullptr;
+}
+
+bool Array::is_control_flow() const {
+    auto buffer = std::dynamic_pointer_cast<ControlFlow>(expression());
+    return buffer != nullptr;
+}
+
+bool Array::is_assignment() const {
+    auto buffer = std::dynamic_pointer_cast<Assignment>(expression());
+    return buffer != nullptr;
+}
+
 std::shared_ptr<memory::SynchronizedMemory> Array::memory() const {
     if (is_stateless()) {
         return nullptr;
@@ -395,7 +534,6 @@ std::shared_ptr<memory::SynchronizedMemory> Array::memory() const {
         eval(/*wait=*/true);
         auto buffer = std::dynamic_pointer_cast<BufferView>(expression());
         ASSERT2(buffer, "eval failed to create BufferView.");
-
         return buffer->memory_;
     }
 }
@@ -410,21 +548,26 @@ const std::vector<int>& Array::strides() const {
     return expression()->strides_;
 }
 
+std::vector<int> Array::normalized_strides() const {
+    alert_stateless_call(!is_stateless(), "normalized_strides");
+    return expression()->normalized_strides();
+}
+
 DType Array::dtype() const {
     alert_stateless_call(!is_stateless(), "dtype");
     return expression()->dtype_;
 }
 
 Array Array::astype(DType dtype_) const {
+    throw std::runtime_error("not yet implemented.");
     // return op::astype(*this, dtype_);
 }
 
 memory::Device Array::preferred_device() const {
+    std::cout << "Array::preferred_device" << std::endl;
     alert_stateless_call(!is_stateless(), "preferred_device");
     return expression()->preferred_device();
 }
-
-
 
 void Array::to_device(memory::Device device) const {
     // TODO(jonathan and only jonathan):
@@ -621,19 +764,19 @@ Array::operator int() const {
 }
 
 void Array::copy_from(const Array& other) {
-    // *this = op::identity(other);
+    *this = op::identity(other);
 }
 
 Array& Array::operator=(const int& other) {
-    // return *this = op::identity(other);
+    return *this = op::identity(other);
 }
 
 Array& Array::operator=(const float& other) {
-    // return *this = op::identity(other);
+    return *this = op::identity(other);
 }
 
 Array& Array::operator=(const double& other) {
-    // return *this = op::identity(other);
+    return *this = op::identity(other);
 }
 
 void Array::print(std::basic_ostream<char>& stream, const int& indent, const bool& add_newlines, const bool& print_comma) const {
@@ -702,7 +845,7 @@ void Array::clear() {
 }
 
 Array Array::dot(const Array& other) const {
-    // return op::dot(*this, other);
+    return op::dot(*this, other);
 }
 
 bool operator==(const Array& left, const Array& right) {

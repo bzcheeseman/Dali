@@ -30,4 +30,17 @@ namespace op {
         out(0) = 1;
         return out;
     }
+
+    Array add(Array left, Array right) {
+        throw std::runtime_error("add is not implemented.");
+    }
+    Array subtract(Array left, Array right) {
+        throw std::runtime_error("subtract is not implemented.");
+    }
+    Array eltmul(Array left, Array right) {
+        throw std::runtime_error("eltmul is not implemented.");
+    }
+    Array eltdiv(Array left, Array right) {
+        throw std::runtime_error("eltdiv is not implemented.");
+    }
 }

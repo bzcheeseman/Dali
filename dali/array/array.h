@@ -136,8 +136,6 @@ class Array  {
     // a control flow op, or an assignment, else returns a stateless Array
     // (e.g. falsy)
     Array buffer_arg() const;
-    // simplify internal expression graph to return to a more common view.
-    Array canonical() const;
     // create a view of the transposed memory
     Array transpose() const;
     Array transpose(const std::vector<int>& axes) const;

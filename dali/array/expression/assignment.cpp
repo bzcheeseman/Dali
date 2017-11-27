@@ -22,3 +22,7 @@ memory::Device Assignment::preferred_device() const {
 std::vector<Array> Assignment::arguments() const {
 	return {left_, right_};
 }
+
+std::shared_ptr<Assignment> as_assignment(const Array& arr) {
+    return std::dynamic_pointer_cast<Assignment>(arr.expression());
+}

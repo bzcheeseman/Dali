@@ -13,6 +13,7 @@
 #include "dali/array/expression/control_flow.h"
 #include "dali/array/expression/assignment.h"
 #include "dali/array/expression/computation.h"
+#include "dali/array/expression/optimization.h"
 #include "dali/utils/make_message.h"
 #include "dali/array/op/unary.h"
 #include "dali/array/op/dot.h"
@@ -202,102 +203,9 @@ Array Array::buffer_arg() const {
     return Array();
 }
 
-
-Array autoreduce_assign(Array left, Array right) {
-    throw std::runtime_error("autoreduce_assign not implemented yet.");
-}
-
-Array assign(Array left, OPERATOR_T operator_t, Array right);
-
-Array to_assignment(Array node) {
-    return assign(Array::zeros(node.shape(), node.dtype()),
-                  OPERATOR_T_EQL,
-                  Array(node.expression()));
-}
-
-Array assign(Array left, OPERATOR_T operator_t, Array right) {
-    if (operator_t == OPERATOR_T_EQL) {
-        return Array(std::make_shared<Assignment>(left, operator_t, right));
-    } else if (operator_t == OPERATOR_T_LSE) {
-        return autoreduce_assign(left, right);
-    } else {
-        // a temp is added so that non overwriting operators
-        // can be run independently from the right side's evaluation.
-        return Array(std::make_shared<Assignment>(left, operator_t, to_assignment(right)));
-    }
-}
-
-std::vector<Array> right_args(Array node) {
-    auto buffer = std::dynamic_pointer_cast<Assignment>(node.expression());
-    return buffer->right_.expression()->arguments();
-}
-
-
-// TODO(jonathan): add this from Python
-Array all_assignments_or_buffers(Array node) {
-    if (node.is_buffer()) {
-        return node;
-    }
-    if (!node.is_assignment()) {
-        node = to_assignment(node);
-    }
-    for (auto& arg : right_args(node)) {
-        arg.set_expression(all_assignments_or_buffers(arg).expression());
-    }
-    return node;
-}
-
-struct Optimization {
-    std::function<bool(const Array&)> condition_;
-    std::function<Array(const Array&)> transformation_;
-    bool matches(const Array& array) const {
-        return condition_(array);
-    }
-    Array transform(const Array& array) const {
-        return transformation_(array);
-    }
-    Optimization(std::function<bool(const Array&)> condition,
-                 std::function<Array(const Array&)> transformation) :
-        condition_(condition), transformation_(transformation) {}
-};
-
-std::vector<Optimization> OPTIMIZATIONS;
-
-Array simplify_destination(Array root) {
-    // leaf node:
-    if (root.is_buffer()) {
-        return root;
-    }
-    // recurse on children:
-    std::vector<Array> children;
-    if (root.is_assignment()) {
-        children.emplace_back(std::dynamic_pointer_cast<Assignment>(root.expression())->right_);
-    } else {
-        children = root.expression()->arguments();
-    }
-
-    // recurse on arguments of node:
-    for (auto& arg : children) {
-        arg.set_expression(simplify_destination(arg).expression());
-    }
-    for (const auto& optimization : OPTIMIZATIONS) {
-        if (optimization.matches(root)) {
-            root = optimization.transform(root);
-        }
-    }
-    return root;
-}
-
-Array Array::canonical() const {
-    // assignment pass
-    auto node = all_assignments_or_buffers(*this);
-    // simplification pass (jit, merge, etc...)
-    return simplify_destination(node);
-}
-
 void Array::eval(bool wait) const {
     if (!is_buffer()) {
-        auto node = canonical();
+        auto node = canonical(*this);
         auto computable = convert_to_ops(node);
         // run (DAG evaluation)
         for (auto& step : computable) {

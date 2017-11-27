@@ -14,7 +14,8 @@ struct Assignment : public Expression {
     Assignment(const Assignment& other);
     virtual memory::Device preferred_device() const;
     virtual std::vector<Array> arguments() const;
-
 };
+
+std::shared_ptr<Assignment> as_assignment(const Array& arr);
 
 #endif  // DALI_ARRAY_EXPRESSION_ASSIGNMENT_H

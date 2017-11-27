@@ -54,6 +54,7 @@ namespace op {
 
         std::shared_ptr<JITNode> as_jit_node(Array array);
         hash_t node_hash(const node_to_info_t& node_to_info, const Array& arr);
+        bool is_jit(const Array& arr);
 
         struct JITRunner : public JITNode {
             Array root_;

@@ -7,10 +7,7 @@
 namespace op {
     // elementwise kernel given by name. assumes
     // return type is unchanged from a's
-    Array elementwise(
-        const Array& a,
-        const std::string& functor_name
-    );
+    Array elementwise(Array a, const std::string& functor_name);
 
     // pair-wise kernel. Will type promote arguments
     // so that they have the same type when
@@ -18,11 +15,7 @@ namespace op {
     // - float w/. double => double
     // - float w/. int => float
     // - double w/. int => double
-    Array elementwise(
-        const Array& a,
-        const Array& b,
-        const std::string& functor_name
-    );
+    Array elementwise(Array a, Array b, const std::string& functor_name);
 
     // call a kernel on a pair of arguments. Assumes
     // both arguments should be of the same type. Peforms
@@ -31,8 +24,7 @@ namespace op {
     // compilation and usage. (Warning: this might cause
     // collisions when a name is used multiple times)
     Array binary_kernel_function(
-        const Array& a,
-        const Array& b,
+        Array a, Array b,
         const std::string& function_name,
         const std::string& kernel_code
     );

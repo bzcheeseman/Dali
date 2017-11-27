@@ -8,8 +8,8 @@ namespace jit {
 // CONVENIENCE METHODS //
 std::shared_ptr<JITNode> as_jit_node(Array array) {
     auto casted = std::dynamic_pointer_cast<JITNode>(array.expression());
-    ASSERT2(casted != nullptr, utils::make_message("Attempting to cast a non-jit node expression "
-        "into a jit node."));
+    ASSERT2(casted != nullptr, utils::make_message("Attempting to cast a non-jit node expression (",
+        typeid(*array.expression()).name(), ") into a jit node."));
     return casted;
 }
 
@@ -86,10 +86,10 @@ bool JITRunner::is_axis_collapsible_with_axis_minus_one(const int& axis) const {
 }
 
 void JITRunner::compute_node_compilation_info(int desired_computation_rank,
-                                           const std::vector<int>& desired_computation_shape,
-                                           std::vector<std::shared_ptr<BufferView>>* arrays,
-                                           std::vector<std::shared_ptr<ScalarView>>* scalars,
-                                           node_to_info_t* node_to_info) const {
+                                              const std::vector<int>& desired_computation_shape,
+                                              std::vector<const BufferView*>* arrays,
+                                              std::vector<const ScalarView*>* scalars,
+                                              node_to_info_t* node_to_info) const {
     throw std::runtime_error("should not be called from the JITRunner.");
 }
 

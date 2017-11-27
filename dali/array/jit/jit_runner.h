@@ -4,11 +4,14 @@
 #include "dali/array/array.h"
 #include "dali/array/expression/expression.h"
 #include "dali/array/expression/buffer_view.h"
-#include "dali/array/expression/scalar_view.h"
+
 #include "dali/utils/hash_utils.h"
 
 namespace op {
     namespace jit {
+
+        struct ScalarView;
+
         struct CompilationInfo {
             int  computation_rank;
             std::string name;
@@ -23,8 +26,8 @@ namespace op {
             // implement these
             virtual void compute_node_compilation_info(int desired_computation_rank,
                                                        const std::vector<int>& desired_computation_shape,
-                                                       std::vector<std::shared_ptr<BufferView>>* arrays,
-                                                       std::vector<std::shared_ptr<ScalarView>>* scalars,
+                                                       std::vector<const BufferView*>* arrays,
+                                                       std::vector<const ScalarView*>* scalars,
                                                        node_to_info_t* node_to_info) const = 0;
             virtual std::string get_call_code_nd(const symbol_table_t& symbol_table,
                                                  const node_to_info_t& node_to_info,
@@ -35,7 +38,7 @@ namespace op {
             //            REIMPLEMENT AS YOU SEE FIT                                     //
             ///////////////////////////////////////////////////////////////////////////////
 
-            virtual bool is_axis_collapsible_with_axis_minus_one(const int& axis) const = 0;
+            virtual bool is_axis_collapsible_with_axis_minus_one(const int& axis) const;
             virtual std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
             virtual memory::Device preferred_device() const;
 
@@ -62,8 +65,8 @@ namespace op {
             virtual memory::Device preferred_device() const;
             virtual void compute_node_compilation_info(int desired_computation_rank,
                                                        const std::vector<int>& desired_computation_shape,
-                                                       std::vector<std::shared_ptr<BufferView>>* arrays,
-                                                       std::vector<std::shared_ptr<ScalarView>>* scalars,
+                                                       std::vector<const BufferView*>* arrays,
+                                                       std::vector<const ScalarView*>* scalars,
                                                        node_to_info_t* node_to_info) const;
             virtual bool is_axis_collapsible_with_axis_minus_one(const int& axis) const;
             virtual std::string get_call_code_nd(const symbol_table_t& symbol_table,
@@ -72,6 +75,8 @@ namespace op {
         };
     }
 }
+
+#include "dali/array/jit/scalar_view.h"
 
 
 #endif // DALI_ARRAY_EXPRESSION_JIT_RUNNER_H

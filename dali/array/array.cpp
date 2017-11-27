@@ -855,3 +855,27 @@ Array Array::dot(const Array& other) const {
 bool operator==(const Array& left, const Array& right) {
     return Array::state_equals(left, right);
 }
+
+
+DType type_promotion(const Array& a, const Array& b) {
+    // TODO(jonathan,szymon) speed up this function
+    bool a_scalar = a.is_scalar();
+    bool b_scalar = b.is_scalar();
+
+    if ((a_scalar ^ b_scalar) == 0) {
+        // if they are both scalars or both arrays
+        if (a.dtype() == DTYPE_DOUBLE || b.dtype() == DTYPE_DOUBLE) {
+            return DTYPE_DOUBLE;
+        } else if (a.dtype() == DTYPE_FLOAT || b.dtype() == DTYPE_FLOAT) {
+            return DTYPE_FLOAT;
+        } else {
+            return DTYPE_INT32;
+        }
+    } else if (a_scalar) {
+        // if a is scalar and b is array.
+        return b.dtype();
+    } else {
+        // if a is array and b is scalar.
+        return a.dtype();
+    }
+}

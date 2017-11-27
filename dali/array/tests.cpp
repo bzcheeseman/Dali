@@ -35,17 +35,27 @@ Array slow_dot(Array left, Array right) {
     return out;
 }
 
+void set_to_ones(Array arr) {
+    for (int i = 0; i < arr.number_of_elements(); i++) {
+        auto res = arr(i) = 1.0;
+        res.eval();
+    }
+}
+
 TEST(ArrayTests, dot) {
-    auto x = Array::ones({3, 3}, DTYPE_INT32);
+    auto x = Array({3, 3}, DTYPE_INT32);
+    set_to_ones(x);
+    std::cout << typeid(*x.expression()).name() << std::endl;
     auto y = op::dot(x, x);
     auto y_ref = slow_dot(x, x);
     std::cout << "haha" << std::endl;
     y_ref.print();
+    y.print();
+    x.print();
     std::cout << "haha" << std::endl;
     op::all_equals(y, y_ref);
-    // EXPECT_TRUE((bool)((int)op::all_equals(y, y_ref)));
+    EXPECT_TRUE((bool)((int)op::all_equals(y, y_ref)));
 }
-
 
 #ifdef DONT_COMPILE
 

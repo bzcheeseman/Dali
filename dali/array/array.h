@@ -244,4 +244,6 @@ class Array  {
 };
 bool operator==(const Array& left, const Array& right);
 
+DType type_promotion(const Array& a, const Array& b);
+
 #endif

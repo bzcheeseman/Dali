@@ -1,21 +1,21 @@
 #include "unary.h"
 #include "dali/array/op/elementwise_operation.h"
+#include "dali/array/jit/scalar_view.h"
 
 namespace op {
     Array identity(Array x) {
-        throw std::runtime_error("identity<Array> not supported yet");
+        return elementwise(x, "functor::identity");
     }
 
     Array identity(float x) {
-        throw std::runtime_error("identity<float> not supported yet");
+        return elementwise(jit::wrap_scalar(x), "functor::identity");
     }
 
     Array identity(double x) {
-        throw std::runtime_error("identity<double> not supported yet");
+        return elementwise(jit::wrap_scalar(x), "functor::identity");
     }
 
     Array identity(int x) {
-
-        throw std::runtime_error("identity<int> not supported yet");
+        return elementwise(jit::wrap_scalar(x), "functor::identity");
     }
 }

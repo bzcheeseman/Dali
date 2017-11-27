@@ -14,29 +14,6 @@ memory::Device device_promotion(const Array& a, const Array& b) {
     return memory::default_preferred_device;
 }
 
-DType type_promotion(const Array& a, const Array& b) {
-    // TODO(jonathan,szymon) speed up this function
-    bool a_scalar = a.is_scalar();
-    bool b_scalar = b.is_scalar();
-
-    if ((a_scalar ^ b_scalar) == 0) {
-        // if they are both scalars or both arrays
-        if (a.dtype() == DTYPE_DOUBLE || b.dtype() == DTYPE_DOUBLE) {
-            return DTYPE_DOUBLE;
-        } else if (a.dtype() == DTYPE_FLOAT || b.dtype() == DTYPE_FLOAT) {
-            return DTYPE_FLOAT;
-        } else {
-            return DTYPE_INT32;
-        }
-    } else if (a_scalar) {
-        // if a is scalar and b is array.
-        return b.dtype();
-    } else {
-        // if a is array and b is scalar.
-        return a.dtype();
-    }
-}
-
 Array ascontiguousarray_or_simple_transpose(Array node) {
     auto buff = node.buffer_arg();
     if (!buff.is_stateless() && (buff.contiguous_memory() or buff.is_transpose())) {
@@ -69,20 +46,14 @@ struct MatMul : public Expression {
     }
 };
 
-
 struct MatMulImpl : public Computation {
     using Computation::Computation;
-    void run() {
-        std::cout << "MatMulImpl is running " << std::endl;
-    }
+    void run() {}
 };
-
 
 struct IMatMulImpl : public Computation {
     using Computation::Computation;
-    void run() {
-        std::cout << "IMatMulImpl is running " << std::endl;
-    }
+    void run() {}
 };
 
 int impl = register_implementation(

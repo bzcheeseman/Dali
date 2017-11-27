@@ -3,7 +3,7 @@
 #include "dali/array/expression/assignment.h"
 // only needed because of buffer_buffer_op
 #include "dali/array/op/unary.h"
-#include "dali/array/expression/jit_runner.h"
+#include "dali/array/jit/jit_runner.h"
 //
 #include "dali/utils/make_message.h"
 
@@ -21,9 +21,9 @@ Array buffer_buffer_op(Array node) {
 
     // TODO(jonathan): this should not be needed
     auto identity_node = op::identity(assignment->right_);
-    auto something = std::make_shared<JITRunner>(
+    auto something = std::make_shared<op::jit::JITRunner>(
         identity_node,
-        std::vector<Array>({assignment->right_,})
+        std::vector<Array>({assignment->right_})
     );
     return Array(
         std::make_shared<Assignment>(

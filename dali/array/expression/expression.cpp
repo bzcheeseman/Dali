@@ -496,7 +496,16 @@ expression_ptr Expression::insert_broadcast_axis(int new_axis) const {
     return expand_dims(new_axis)->broadcast_axis(new_axis);
 }
 
-
+expression_ptr Expression::collapse_axis_with_axis_minus_one(int axis) const {
+    axis = normalize_axis(axis);
+    ASSERT2(axis >= 1 && axis < ndim(), utils::make_message("collapse_axis_with_axis_minus_one "
+        "axis must >= 1 and less than the dimensionality of the array "
+        "(got axis = ", axis, ", ndim = ", ndim(), ")."));
+    std::vector<int> newshape = bshape();
+    newshape[axis - 1] = newshape[axis] * newshape[axis - 1];
+    newshape.erase(newshape.begin() + axis);
+    return copyless_reshape(newshape);
+}
 
 expression_ptr Expression::broadcast_scalar_to_ndim(const int& target_ndim) const {
     ASSERT2(target_ndim >= 0, utils::make_message("broadcast_scalar_to_ndim"

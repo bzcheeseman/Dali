@@ -47,6 +47,9 @@ namespace memory {
         bool is_fake() const;
         static Device fake(int number);
 
+        // error/unitialized device
+        bool is_error() const;
+
         // cpu devices
         bool is_cpu() const;
         static Device cpu();

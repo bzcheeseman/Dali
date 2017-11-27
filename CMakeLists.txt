@@ -61,7 +61,7 @@ else()
     message(FATAL "Compiler ${DALI_CXX_COMPILER_ID} is not supported.")
 endif()
 
-set(ENABLED_WARNINGS "-Wno-return-type -Wno-undefined-bool-conversion")
+set(ENABLED_WARNINGS "-Wno-return-type -Wno-undefined-bool-conversion -Wno-potentially-evaluated-expression")
 
 if(CMAKE_BUILD_TYPE MATCHES "debug")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${ENABLED_WARNINGS} -g -fPIC")

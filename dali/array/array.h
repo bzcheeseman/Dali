@@ -155,6 +155,8 @@ class Array  {
     // ensures that no unexpected memory aliasing occurs
     Array copyless_reshape(const std::vector<int>& shape) const;
 
+    Array collapse_axis_with_axis_minus_one(int axis) const;
+
     Array right_fit_ndim(int dimensionality) const;
     Array copyless_right_fit_ndim(int dimensionality) const;
     /*

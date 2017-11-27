@@ -68,6 +68,10 @@ namespace memory {
         return mType == DEVICE_T_FAKE;
     }
 
+    bool Device::is_error() const {
+        return mType == DEVICE_T_ERROR;
+    }
+
     Device Device::fake(int number) {
         ASSERT2(debug::enable_fake_devices,
                 "To create a fake device, you must first set memory::debug::enable_fake_devices to true.");

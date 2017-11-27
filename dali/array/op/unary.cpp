@@ -1,4 +1,5 @@
 #include "unary.h"
+#include "dali/array/op/elementwise_operation.h"
 
 namespace op {
     Array identity(Array x) {
@@ -14,6 +15,7 @@ namespace op {
     }
 
     Array identity(int x) {
+
         throw std::runtime_error("identity<int> not supported yet");
     }
 }

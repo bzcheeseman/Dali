@@ -13,7 +13,6 @@
 #include "dali/array/expression/control_flow.h"
 #include "dali/array/expression/assignment.h"
 #include "dali/array/expression/computation.h"
-#include "dali/array/expression/jit_runner.h"
 #include "dali/utils/make_message.h"
 #include "dali/array/op/unary.h"
 #include "dali/array/op/dot.h"
@@ -669,6 +668,11 @@ Array Array::copyless_ravel() const {
 Array Array::reshape(const std::vector<int>& shape) const {
     alert_stateless_call(!is_stateless(), "reshape");
     return Array(expression()->reshape(shape));
+}
+
+Array Array::collapse_axis_with_axis_minus_one(int axis) const {
+    alert_stateless_call(!is_stateless(), "collapse_axis_with_axis_minus_one");
+    return Array(expression()->collapse_axis_with_axis_minus_one(axis));
 }
 
 Array Array::copyless_reshape(const std::vector<int>& shape) const {

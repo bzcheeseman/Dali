@@ -2,8 +2,8 @@
 #include "dali/array/array.h"
 #include "dali/array/expression/assignment.h"
 // only needed because of buffer_buffer_op
-#include "dali/array/op/unary.h"
-#include "dali/array/jit/jit_runner.h"
+// #include "dali/array/op/unary.h"
+// #include "dali/array/jit/jit_runner.h"
 
 #include "dali/utils/make_message.h"
 #include <unordered_map>
@@ -18,23 +18,23 @@ Computation::Computation(Array left, OPERATOR_T operator_t, Array right) :
 std::unordered_map<const char*, to_computation_t > IMPLEMENTATIONS;
 
 
-Array buffer_buffer_op(Array node) {
-    auto assignment = std::dynamic_pointer_cast<Assignment>(node.expression());
+// Array buffer_buffer_op(Array node) {
+//     auto assignment = std::dynamic_pointer_cast<Assignment>(node.expression());
 
-    // TODO(jonathan): this should not be needed
-    auto identity_node = op::identity(assignment->right_);
-    auto something = std::make_shared<op::jit::JITRunner>(
-        identity_node,
-        std::vector<Array>({assignment->right_})
-    );
-    return Array(
-        std::make_shared<Assignment>(
-            assignment->left_,
-            assignment->operator_t_,
-            Array(something)
-        )
-    );
-}
+//     // TODO(jonathan): this should not be needed
+//     auto identity_node = op::identity(assignment->right_);
+//     auto something = std::make_shared<op::jit::JITRunner>(
+//         identity_node,
+//         std::vector<Array>({assignment->right_})
+//     );
+//     return Array(
+//         std::make_shared<Assignment>(
+//             assignment->left_,
+//             assignment->operator_t_,
+//             Array(something)
+//         )
+//     );
+// }
 
 
 
@@ -56,7 +56,8 @@ std::vector<std::shared_ptr<Computation>> convert_to_ops(Array root) {
             auto assignment = std::dynamic_pointer_cast<Assignment>(element.expression());
             if (assignment->right_.is_buffer() || assignment->right_.is_assignment()) {
                 // # TODO(jonathan): clean this up
-                element = buffer_buffer_op(element);
+                throw std::runtime_error("need buffer_buffer_op!");
+                // element = buffer_buffer_op(element);
             }
             auto hashname = typeid(*assignment->right_.expression()).name();
             if (IMPLEMENTATIONS.find(hashname) != IMPLEMENTATIONS.end()) {

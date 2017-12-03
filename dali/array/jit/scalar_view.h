@@ -13,7 +13,6 @@ struct ScalarView : public JITNode {
 	static const hash_t optype_hash;
 
     ScalarView(DType type);
-    virtual expression_ptr copy() const;
     virtual std::vector<Array> arguments() const;
     virtual bool spans_entire_memory() const;
     virtual memory::Device preferred_device() const;
@@ -25,6 +24,8 @@ struct ScalarView : public JITNode {
                                                std::vector<const BufferView*>* arrays,
                                                std::vector<const ScalarView*>* scalars,
                                                node_to_info_t* node_to_info) const;
+    virtual expression_ptr copy() const = 0;
+    virtual const void* value_ptr() const = 0;
 };
 
 Array wrap_scalar(int value);

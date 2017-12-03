@@ -55,25 +55,6 @@ namespace op {
         std::shared_ptr<JITNode> as_jit_node(Array array);
         hash_t node_hash(const node_to_info_t& node_to_info, const Array& arr);
         bool is_jit(const Array& arr);
-
-        struct JITRunner : public JITNode {
-            Array root_;
-            std::vector<Array> leaves_;
-
-            virtual expression_ptr copy() const;
-            JITRunner(Array root, const std::vector<Array>& leaves);
-            virtual std::vector<Array> arguments() const;
-            virtual memory::Device preferred_device() const;
-            virtual void compute_node_compilation_info(int desired_computation_rank,
-                                                       const std::vector<int>& desired_computation_shape,
-                                                       std::vector<const BufferView*>* arrays,
-                                                       std::vector<const ScalarView*>* scalars,
-                                                       node_to_info_t* node_to_info) const;
-            virtual bool is_axis_collapsible_with_axis_minus_one(const int& axis) const;
-            virtual std::string get_call_code_nd(const symbol_table_t& symbol_table,
-                                                 const node_to_info_t& node_to_info,
-                                                 memory::DeviceT device_type) const;
-        };
     }
 }
 

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include "dali/array/array.h"
 #include "dali/array/shape.h"
 #include "dali/utils/print_utils.h"
 #include "dali/utils/make_message.h"
@@ -517,4 +518,11 @@ expression_ptr Expression::broadcast_scalar_to_ndim(const int& target_ndim) cons
         res = res->insert_broadcast_axis(0);
     }
     return res;
+}
+
+void Expression::for_all_suboperations(std::function<void(const Array&)> callback) const {
+    for (auto arg : arguments()) {
+        callback(arg);
+        arg.expression()->for_all_suboperations(callback);
+    }
 }

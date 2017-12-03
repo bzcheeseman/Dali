@@ -15,10 +15,6 @@ const hash_t ScalarView::optype_hash = std::hash<std::string>()("ScalarView");
 
 ScalarView::ScalarView(DType type) : JITNode(0, {}, type) {}
 
-expression_ptr ScalarView::copy() const {
-    return std::make_shared<ScalarView>(*this);
-}
-
 memory::Device ScalarView::preferred_device() const {
     return memory::default_preferred_device;
 }
@@ -55,6 +51,7 @@ struct ScalarInt32View : public ScalarView {
     ScalarInt32View(int value) : ScalarView(DTYPE_INT32), value_(value) {};
     ScalarInt32View(const ScalarInt32View& other) : ScalarInt32View(other.value_) {};
     virtual expression_ptr copy() const {return std::make_shared<ScalarInt32View>(*this);}
+    const void* value_ptr() const {return &value_;}
 };
 
 struct ScalarFp32View : public ScalarView {
@@ -62,6 +59,7 @@ struct ScalarFp32View : public ScalarView {
     ScalarFp32View(float value) : ScalarView(DTYPE_FLOAT), value_(value) {};
     ScalarFp32View(const ScalarFp32View& other) : ScalarFp32View(other.value_) {};
     virtual expression_ptr copy() const {return std::make_shared<ScalarFp32View>(*this);}
+    const void* value_ptr() const {return &value_;}
 };
 
 struct ScalarFp64View : public ScalarView {
@@ -69,6 +67,7 @@ struct ScalarFp64View : public ScalarView {
     ScalarFp64View(double value) : ScalarView(DTYPE_DOUBLE), value_(value) {};
     ScalarFp64View(const ScalarFp64View& other) : ScalarFp64View(other.value_) {};
     virtual expression_ptr copy() const {return std::make_shared<ScalarFp64View>(*this);}
+    const void* value_ptr() const {return &value_;}
 };
 
 Array wrap_scalar(int value) {

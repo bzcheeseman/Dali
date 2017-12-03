@@ -20,7 +20,6 @@ namespace jit {
 
     struct ElementwiseExpressionState : public JITNode {
         static const hash_t optype_hash;
-
         const std::vector<Array> arguments_;
         const std::string functor_name_;
 
@@ -129,9 +128,7 @@ namespace jit {
             return create_elementwise_kernel_caller(arguments_.size());
         }
     };
-    const hash_t ElementwiseExpressionState::optype_hash = std::hash<std::string>()(
-        "ElementwiseExpressionState"
-    );
+    const hash_t ElementwiseExpressionState::optype_hash = std::hash<std::string>()(typeid(ElementwiseExpressionState).name());
 
     struct CastExpressionState : public ElementwiseExpressionState {
         static const hash_t optype_hash;
@@ -164,9 +161,7 @@ namespace jit {
                                                         .value();
         }
     };
-    const hash_t CastExpressionState::optype_hash = std::hash<std::string>()(
-        "CastExpressionState"
-    );
+    const hash_t CastExpressionState::optype_hash = std::hash<std::string>()(typeid(CastExpressionState).name());
 
     struct RoundExpressionState : public ElementwiseExpressionState {
         static const hash_t optype_hash;

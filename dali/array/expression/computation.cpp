@@ -37,14 +37,28 @@ std::unordered_map<const char*, to_computation_t > IMPLEMENTATIONS;
 // }
 
 
-
 struct Allocate : public Computation {
     Allocate(Array array) : Computation(array, OPERATOR_T_EQL, array) {}
     virtual void run() {}
 };
 
+std::string op_name(const Array& array) {
+    if (array.is_stateless()) {
+        return "Stateless Array";
+    }
+    auto expr = array.expression();
+    if (expr == nullptr) {
+        return "Expressionless Array";
+    }
+    auto hasname = typeid(*expr).name();
+    int status;
+    char * demangled = abi::__cxa_demangle(hasname, 0, 0, &status);
+    return std::string(demangled);
+}
+
 // TODO(jonathan): add this from Python
 std::vector<std::shared_ptr<Computation>> convert_to_ops(Array root) {
+    std::cout << op_name(root) << std::endl;
     std::vector<std::shared_ptr<Computation>> steps;
     std::vector<Array> elements({root});
     while (!elements.empty()) {
@@ -60,6 +74,7 @@ std::vector<std::shared_ptr<Computation>> convert_to_ops(Array root) {
                 // element = buffer_buffer_op(element);
             }
             auto hashname = typeid(*assignment->right_.expression()).name();
+            std::cout << hashname << std::endl;
             if (IMPLEMENTATIONS.find(hashname) != IMPLEMENTATIONS.end()) {
                 steps.emplace_back(
                     IMPLEMENTATIONS[hashname](assignment->right_,
@@ -69,23 +84,25 @@ std::vector<std::shared_ptr<Computation>> convert_to_ops(Array root) {
                 elements.emplace_back(assignment->left_);
                 auto args = assignment->right_.expression()->arguments();
                 elements.insert(elements.end(), args.begin(), args.end());
+                for (auto& arg : elements) {
+                    std::cout << op_name(arg) << std::endl;
+                }
             } else {
-                int status;
-                char * demangled = abi::__cxa_demangle(hashname, 0, 0, &status);
                 throw std::runtime_error(utils::make_message(
-                    "No implementation for ", std::string(demangled), "."));
+                    "No implementation found for ", op_name(assignment->right_), "."));
             }
         } else if (element.is_control_flow()) {
             auto args = element.expression()->arguments();
             elements.insert(elements.end(), args.begin(), args.end());
         } else {
-            throw std::runtime_error("can only convert Assignments and Buffers to ops.");
+            throw std::runtime_error(utils::make_message(
+                "Can only convert Assignments and Buffers "
+                "to ops (got ", op_name(element), ")."));
         }
     }
     std::reverse(steps.begin(), steps.end());
     return steps;
 }
-
 
 int register_implementation(const char* opname, to_computation_t impl) {
     // TODO(jonathan): this should be an incremental registry, should

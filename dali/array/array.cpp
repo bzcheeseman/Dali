@@ -72,7 +72,7 @@ T Array::scalar_value() const {
 }
 
 
-Array::Array() : state_(std::make_shared<ArrayState>(nullptr)) {
+Array::Array() : state_(nullptr) {
 }
 
 Array::Array(std::shared_ptr<Expression> expression) :

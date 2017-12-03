@@ -23,6 +23,7 @@ namespace op {
         typedef std::unordered_map<const Expression*, CompilationInfo> node_to_info_t;
 
         struct JITNode : public Expression {
+            static const hash_t optype_hash;
             // implement these
             virtual void compute_node_compilation_info(int desired_computation_rank,
                                                        const std::vector<int>& desired_computation_shape,

@@ -13,7 +13,7 @@ namespace jit {
 
 const hash_t ScalarView::optype_hash = std::hash<std::string>()("ScalarView");
 
-ScalarView::ScalarView(DType type) : JITNode(0, {}, type) {}
+ScalarView::ScalarView(DType type) : JITNode(1, {}, type) {}
 
 memory::Device ScalarView::preferred_device() const {
     return memory::default_preferred_device;

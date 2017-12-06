@@ -188,8 +188,8 @@ bool Compiler::compile_code(const std::string& source,
 }
 
 std::vector<std::string> kHeaders = {
-    "dali/array/function2/array_view.h",
-    "dali/array/function2/reducer_kernels.h",
+    "dali/array/jit/array_view.h",
+    "dali/array/jit/reducer_kernels.h",
     "dali/array/functor.h"
 };
 #ifdef DALI_CACHE_DIR

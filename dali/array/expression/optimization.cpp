@@ -51,7 +51,7 @@ namespace {
             return node;
         }
         if (!node.is_assignment()) {
-            node = to_assignment(node);
+            node.set_expression(to_assignment(node).expression());
         }
         for (auto& arg : right_args(node)) {
             arg.set_expression(all_assignments_or_buffers(arg).expression());
@@ -96,6 +96,7 @@ int register_optimization(std::function<bool(const Array&)> condition,
 Array canonical(const Array& array) {
     // assignment pass
     auto node = all_assignments_or_buffers(array);
+
     // simplification pass (jit, merge, etc...)
     return simplify_destination(node);
 }

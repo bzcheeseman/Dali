@@ -32,6 +32,7 @@ class Array  {
     std::shared_ptr<Expression> expression() const;
     void set_expression(std::shared_ptr<Expression>) const;
     Array();
+    std::string expression_name() const;
 
     /* Various ways of constructing array */
     Array(std::shared_ptr<Expression>);
@@ -217,6 +218,7 @@ class Array  {
     Array& operator=(const int& other);
     Array& operator=(const float& other);
     Array& operator=(const double& other);
+    Array& operator=(const Array& other);
 
     template<typename T>
     Array& operator=(const std::vector<T>& values) {

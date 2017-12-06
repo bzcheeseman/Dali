@@ -7,6 +7,9 @@
 #include <ostream>
 #include <type_traits>
 
+// demangle names
+#include <cxxabi.h>
+
 #include "dali/utils/cnpy.h"
 #include "dali/array/debug.h"
 #include "dali/array/expression/buffer_view.h"
@@ -51,6 +54,20 @@ void Array::set_expression(std::shared_ptr<Expression> new_expression) const {
     state_->expression_ = new_expression;
 }
 
+std::string Array::expression_name() const {
+    if (is_stateless()) {
+        return "Stateless Array";
+    }
+    auto expr = expression();
+    if (expr == nullptr) {
+        return "Expressionless Array";
+    }
+    auto hasname = typeid(*expr).name();
+    int status;
+    char * demangled = abi::__cxa_demangle(hasname, 0, 0, &status);
+    return std::string(demangled);
+}
+
 template<typename T>
 T Array::scalar_value() const {
     static_assert(std::is_arithmetic<T>::value,
@@ -75,8 +92,8 @@ T Array::scalar_value() const {
 Array::Array() : state_(nullptr) {
 }
 
-Array::Array(std::shared_ptr<Expression> expression) :
-        state_(std::make_shared<ArrayState>(expression)) {
+Array::Array(std::shared_ptr<Expression> new_expression) :
+        state_(std::make_shared<ArrayState>(new_expression)) {
 }
 
 Array::Array(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) :
@@ -471,7 +488,6 @@ Array Array::astype(DType dtype_) const {
 }
 
 memory::Device Array::preferred_device() const {
-    std::cout << "Array::preferred_device" << std::endl;
     alert_stateless_call(!is_stateless(), "preferred_device");
     return expression()->preferred_device();
 }
@@ -689,6 +705,25 @@ Array& Array::operator=(const float& other) {
 
 Array& Array::operator=(const double& other) {
     return *this = op::identity(other);
+}
+
+Array& Array::operator=(const Array& other) {
+    if (other.is_stateless()) {
+        set_expression(nullptr);
+    } else {
+        if (is_stateless()) {
+            state_ = std::make_shared<ArrayState>(other.expression());
+        } else {
+            state_ = std::make_shared<ArrayState>(
+                std::make_shared<Assignment>(
+                    Array(expression()),
+                    OPERATOR_T_EQL,
+                    other
+                )
+            );
+        }
+    }
+    return *this;
 }
 
 void Array::print(std::basic_ostream<char>& stream, const int& indent, const bool& add_newlines, const bool& print_comma) const {

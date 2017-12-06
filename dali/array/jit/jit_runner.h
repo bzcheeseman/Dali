@@ -13,7 +13,7 @@ namespace op {
         struct ScalarView;
 
         struct CompilationInfo {
-            int  computation_rank;
+            int computation_rank = -1;
             std::string name;
             std::vector<int> computation_shape;
             hash_t hash;
@@ -56,6 +56,8 @@ namespace op {
         std::shared_ptr<JITNode> as_jit_node(Array array);
         hash_t node_hash(const node_to_info_t& node_to_info, const Array& arr);
         bool is_jit(const Array& arr);
+
+        Array buffer_buffer_op(Array node);
     }
 }
 

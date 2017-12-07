@@ -2,6 +2,9 @@
 
 #include <algorithm>
 
+// demangle names
+#include <cxxabi.h>
+
 #include "dali/array/array.h"
 #include "dali/array/shape.h"
 #include "dali/utils/print_utils.h"
@@ -386,7 +389,8 @@ expression_ptr Expression::reshape(const vector<int>& new_shape) const {
 expression_ptr Expression::reshape_broadcasted(const std::vector<int>& new_shape) const {
     ASSERT2(new_shape.size() == ndim(), utils::make_message("reshape_"
         "broadcasted must receive a shape with the same dimensionality ("
-        "current shape = ", shape_, ", new shape = ", new_shape, ")."));
+        "current shape = ", shape_, ", new shape = ", new_shape, " in expression ",
+        name(), ")."));
     auto my_bshape = bshape();
 
     for (int i = 0; i < my_bshape.size(); ++i) {
@@ -518,6 +522,13 @@ expression_ptr Expression::broadcast_scalar_to_ndim(const int& target_ndim) cons
         res = res->insert_broadcast_axis(0);
     }
     return res;
+}
+
+std::string Expression::name() const {
+    auto hasname = typeid(*this).name();
+    int status;
+    char * demangled = abi::__cxa_demangle(hasname, 0, 0, &status);
+    return std::string(demangled);
 }
 
 void Expression::for_all_suboperations(std::function<void(const Array&)> callback) const {

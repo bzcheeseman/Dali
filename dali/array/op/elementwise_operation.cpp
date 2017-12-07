@@ -8,7 +8,7 @@
 #include "dali/array/jit/elementwise_kernel_utils.h"
 #include "dali/array/jit/jit_runner.h"
 #include "dali/array/expression/buffer_view.h"
-#include "dali/array/expression/scalar_view.h"
+#include "dali/array/jit/scalar_view.h"
 
 namespace op {
 namespace jit {
@@ -18,7 +18,7 @@ namespace jit {
         return a_ndim == 0 || b_ndim == 0 || a_ndim == b_ndim;
     }
 
-    struct ElementwiseExpressionState : public JITNode {
+    struct ElementwiseExpression : public JITNode {
         static const hash_t optype_hash;
         const std::vector<Array> arguments_;
         const std::string functor_name_;
@@ -28,12 +28,12 @@ namespace jit {
                arguments.end(),
                0,
                [](int so_far, const Array& op) {
-                   return std::max(so_far, as_jit_node(op)->min_computation_rank_);
+                   return std::max(so_far, min_computation_rank(op));
                }
             );
         }
 
-        ElementwiseExpressionState(const std::string& functor_name,
+        ElementwiseExpression(const std::string& functor_name,
                                    const std::vector<Array>& arguments) :
                 JITNode(compute_min_computation_rank(arguments),
                         get_common_bshape(arguments),
@@ -44,8 +44,8 @@ namespace jit {
                 "Elementwise expression state must have at least one argument.");
         }
 
-        ElementwiseExpressionState(const ElementwiseExpressionState& other) :
-            ElementwiseExpressionState(other.functor_name_, other.arguments_) {}
+        ElementwiseExpression(const ElementwiseExpression& other) :
+            ElementwiseExpression(other.functor_name_, other.arguments_) {}
 
         virtual DType dtype() const {
             return arguments_[0].dtype();
@@ -60,7 +60,7 @@ namespace jit {
         }
 
         virtual expression_ptr copy() const {
-            return std::make_shared<ElementwiseExpressionState>(*this);
+            return std::make_shared<ElementwiseExpression>(*this);
         }
 
         virtual void compute_node_compilation_info(int desired_computation_rank,
@@ -97,7 +97,7 @@ namespace jit {
             for (auto& arg : arguments_) {
                 new_arguments.emplace_back(arg.collapse_axis_with_axis_minus_one(axis));
             }
-            return std::make_shared<ElementwiseExpressionState>(functor_name_, new_arguments);
+            return std::make_shared<ElementwiseExpression>(functor_name_, new_arguments);
         }
 
         virtual expression_ptr transpose(const std::vector<int>& permutation) const {
@@ -105,7 +105,7 @@ namespace jit {
             for (auto& arg : arguments_) {
                 new_arguments.emplace_back(arg.transpose(permutation));
             }
-            return std::make_shared<ElementwiseExpressionState>(functor_name_, new_arguments);
+            return std::make_shared<ElementwiseExpression>(functor_name_, new_arguments);
         }
 
         virtual std::string get_call_code_nd(const symbol_table_t& symbol_table,
@@ -128,15 +128,15 @@ namespace jit {
             return create_elementwise_kernel_caller(arguments_.size());
         }
     };
-    const hash_t ElementwiseExpressionState::optype_hash = std::hash<std::string>()(typeid(ElementwiseExpressionState).name());
+    const hash_t ElementwiseExpression::optype_hash = std::hash<std::string>()(typeid(ElementwiseExpression).name());
 
-    struct CastExpressionState : public ElementwiseExpressionState {
+    struct CastExpression : public ElementwiseExpression {
         static const hash_t optype_hash;
 
         const DType dtype_;
 
-        CastExpressionState(DType dtype, Array argument) :
-            ElementwiseExpressionState("functor::cast", {argument}),
+        CastExpression(DType dtype, Array argument) :
+            ElementwiseExpression("functor::cast", {argument}),
             dtype_(dtype) {
         }
 
@@ -161,13 +161,13 @@ namespace jit {
                                                         .value();
         }
     };
-    const hash_t CastExpressionState::optype_hash = std::hash<std::string>()(typeid(CastExpressionState).name());
+    const hash_t CastExpression::optype_hash = std::hash<std::string>()(typeid(CastExpression).name());
 
-    struct RoundExpressionState : public ElementwiseExpressionState {
+    struct RoundExpression : public ElementwiseExpression {
         static const hash_t optype_hash;
 
-        RoundExpressionState(Array argument) :
-            ElementwiseExpressionState("functor::round", {argument}) {
+        RoundExpression(Array argument) :
+            ElementwiseExpression("functor::round", {argument}) {
         }
 
         virtual DType dtype() const {
@@ -190,18 +190,18 @@ namespace jit {
                                                         .value();
         }
     };
-    const hash_t RoundExpressionState::optype_hash = std::hash<std::string>()(
-        "RoundExpressionState"
+    const hash_t RoundExpression::optype_hash = std::hash<std::string>()(
+        "RoundExpression"
     );
 
     }  // namespace jit
     Array elementwise(Array a, const std::string& functor_name) {
-        return Array(std::make_shared<jit::ElementwiseExpressionState>(functor_name, std::vector<Array>({a})));
+        return Array(std::make_shared<jit::ElementwiseExpression>(functor_name, std::vector<Array>({a})));
     }
 
     Array elementwise(Array a, Array b, const std::string& functor_name) {
         std::tie(a, b) = ensure_arguments_compatible(a, b);
-        return Array(std::make_shared<jit::ElementwiseExpressionState>(
+        return Array(std::make_shared<jit::ElementwiseExpression>(
             functor_name, std::vector<Array>({a, b})
         ));
     }
@@ -211,11 +211,11 @@ namespace jit {
     }
 
     Array unsafe_cast(Array a, DType type) {
-        return Array(std::make_shared<jit::CastExpressionState>(type, a));
+        return Array(std::make_shared<jit::CastExpression>(type, a));
     }
 
     Array round(Array a) {
-        return Array(std::make_shared<jit::RoundExpressionState>(a));
+        return Array(std::make_shared<jit::RoundExpression>(a));
     }
 
     std::tuple<Array, Array> ensure_arguments_compatible(

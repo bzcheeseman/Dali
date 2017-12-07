@@ -58,6 +58,8 @@ namespace op {
         bool is_jit(const Array& arr);
 
         Array buffer_buffer_op(Array node);
+
+        int min_computation_rank(const Array& array);
     }
 }
 

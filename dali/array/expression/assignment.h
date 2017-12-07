@@ -16,6 +16,12 @@ struct Assignment : public Expression {
     virtual std::vector<Array> arguments() const;
 };
 
+Array autoreduce_assign(const Array& left, const Array& right);
+
+Array to_assignment(const Array& node);
+
+Array assign(const Array& left, OPERATOR_T, const Array& right);
+
 std::shared_ptr<Assignment> as_assignment(const Array& arr);
 
 #endif  // DALI_ARRAY_EXPRESSION_ASSIGNMENT_H

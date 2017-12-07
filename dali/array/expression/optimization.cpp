@@ -7,29 +7,6 @@ std::vector<Array> right_args(Array node) {
 }
 
 namespace {
-    Array autoreduce_assign(Array left, Array right) {
-        throw std::runtime_error("autoreduce_assign not implemented yet.");
-    }
-
-    Array assign(Array left, OPERATOR_T operator_t, Array right);
-
-    Array to_assignment(Array node) {
-        return assign(Array::zeros(node.shape(), node.dtype()),
-                      OPERATOR_T_EQL,
-                      Array(node.expression()));
-    }
-
-    Array assign(Array left, OPERATOR_T operator_t, Array right) {
-        if (operator_t == OPERATOR_T_EQL) {
-            return Array(std::make_shared<Assignment>(left, operator_t, right));
-        } else if (operator_t == OPERATOR_T_LSE) {
-            return autoreduce_assign(left, right);
-        } else {
-            // a temp is added so that non overwriting operators
-            // can be run independently from the right side's evaluation.
-            return Array(std::make_shared<Assignment>(left, operator_t, to_assignment(right)));
-        }
-    }
 
     struct Optimization {
         std::function<bool(const Array&)> condition_;

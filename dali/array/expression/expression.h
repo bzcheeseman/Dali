@@ -70,6 +70,7 @@ struct Expression {
     virtual expression_ptr insert_broadcast_axis(int new_axis) const;
     virtual expression_ptr broadcast_scalar_to_ndim(const int& ndim) const;
     virtual expression_ptr collapse_axis_with_axis_minus_one(int axis) const;
+    std::string name() const;
 
     void for_all_suboperations(std::function<void(const Array&)>) const;
 };

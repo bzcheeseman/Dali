@@ -641,6 +641,14 @@ Array buffer_buffer_op(Array node) {
     );
 }
 
+int min_computation_rank(const Array& array) {
+    if (array.is_buffer() || array.is_assignment() || array.is_control_flow()) {
+        return array.strides().empty() ? 1 : array.ndim();
+    } else {
+        return as_jit_node(array)->min_computation_rank_;
+    }
+}
+
 
 int registered_opt = register_optimization(is_jit_assignment, jit_merge);
 int registered_impl = register_implementation(

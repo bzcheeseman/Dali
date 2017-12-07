@@ -12,7 +12,7 @@ Assignment::Assignment(const Assignment& other) :
 }
 
 expression_ptr Assignment::copy() const {
-	return std::make_shared<Assignment>(*this);
+    return std::make_shared<Assignment>(*this);
 }
 
 memory::Device Assignment::preferred_device() const {
@@ -20,7 +20,30 @@ memory::Device Assignment::preferred_device() const {
 }
 
 std::vector<Array> Assignment::arguments() const {
-	return {left_, right_};
+    return {left_, right_};
+}
+
+
+Array autoreduce_assign(const Array& left, const Array& right) {
+    throw std::runtime_error("autoreduce_assign not implemented yet.");
+}
+
+Array to_assignment(const Array& node) {
+    return assign(Array::zeros(node.shape(), node.dtype()),
+                  OPERATOR_T_EQL,
+                  Array(node.expression()));
+}
+
+Array assign(const Array& left, OPERATOR_T operator_t, const Array& right) {
+    if (operator_t == OPERATOR_T_EQL) {
+        return Array(std::make_shared<Assignment>(left, operator_t, right));
+    } else if (operator_t == OPERATOR_T_LSE) {
+        return autoreduce_assign(left, right);
+    } else {
+        // a temp is added so that non overwriting operators
+        // can be run independently from the right side's evaluation.
+        return Array(std::make_shared<Assignment>(left, operator_t, to_assignment(right)));
+    }
 }
 
 std::shared_ptr<Assignment> as_assignment(const Array& arr) {

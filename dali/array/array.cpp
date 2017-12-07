@@ -7,9 +7,6 @@
 #include <ostream>
 #include <type_traits>
 
-// demangle names
-#include <cxxabi.h>
-
 #include "dali/utils/cnpy.h"
 #include "dali/array/debug.h"
 #include "dali/array/expression/buffer_view.h"
@@ -62,10 +59,7 @@ std::string Array::expression_name() const {
     if (expr == nullptr) {
         return "Expressionless Array";
     }
-    auto hasname = typeid(*expr).name();
-    int status;
-    char * demangled = abi::__cxa_demangle(hasname, 0, 0, &status);
-    return std::string(demangled);
+    return expr->name();
 }
 
 template<typename T>
@@ -696,33 +690,20 @@ void Array::copy_from(const Array& other) {
 }
 
 Array& Array::operator=(const int& other) {
-    return *this = op::identity(other);
+    auto assignment = assign(*this, OPERATOR_T_EQL, op::identity(other));
+    state_ = assignment.state_;
+    return *this;
 }
 
 Array& Array::operator=(const float& other) {
-    return *this = op::identity(other);
+    auto assignment = assign(*this, OPERATOR_T_EQL, op::identity(other));
+    state_ = assignment.state_;
+    return *this;
 }
 
 Array& Array::operator=(const double& other) {
-    return *this = op::identity(other);
-}
-
-Array& Array::operator=(const Array& other) {
-    if (other.is_stateless()) {
-        set_expression(nullptr);
-    } else {
-        if (is_stateless()) {
-            state_ = std::make_shared<ArrayState>(other.expression());
-        } else {
-            state_ = std::make_shared<ArrayState>(
-                std::make_shared<Assignment>(
-                    Array(expression()),
-                    OPERATOR_T_EQL,
-                    other
-                )
-            );
-        }
-    }
+    auto assignment = assign(*this, OPERATOR_T_EQL, op::identity(other));
+    state_ = assignment.state_;
     return *this;
 }
 

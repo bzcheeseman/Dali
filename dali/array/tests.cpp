@@ -30,51 +30,45 @@ Array slow_dot(Array left, Array right) {
     for (int i = 0; i < left.shape()[0]; i++) {
         for (int j = 0; j < right.shape()[1]; j++) {
             cpu_data_ptr[i * strides[0] + j] = vector_dot(left[i], right[Slice()][j]);
+            left[i].print();
+            std::cout << vector_dot(left[i], right[Slice()][j]) << std::endl;
         }
     }
     return out;
 }
 
-void set_to_ones(Array arr) {
-    arr.print();
-    std::cout << arr.expression_name() << std::endl;
-    std::cout << arr.shape() << std::endl;
-    arr = 1.0;
-    std::cout << arr.expression_name() << std::endl;
-    std::cout << arr.shape() << std::endl;
-    arr.eval();
-    std::cout << arr.expression_name() << std::endl;
-    std::cout << arr.shape() << std::endl;
-    arr.print();
-
-    // for (int i = 0; i < arr.number_of_elements(); i++) {
-    //     auto res = arr(i) = 1.0;
-    //     res.eval();
-    // }
+TEST(ArrayTests, ones) {
+    auto x = Array::ones({3, 3}, DTYPE_INT32);
+    auto y = Array({3, 3}, DTYPE_INT32);
+    y = 1.0;
+    EXPECT_TRUE((bool)((int)op::all_equals(x, y)));
 }
 
 TEST(ArrayTests, dot) {
     memory::WithDevicePreference dp(memory::Device::cpu());
-    auto x = Array({3, 3}, DTYPE_INT32);
-    set_to_ones(x);
+    auto x = Array::ones({3, 3}, DTYPE_INT32);
     auto y = op::dot(x, x);
     auto y_ref = slow_dot(x, x);
     y_ref.print();
     y.print();
-    x.print();
-    op::all_equals(y, y_ref);
     EXPECT_TRUE((bool)((int)op::all_equals(y, y_ref)));
 }
 
-#ifdef DONT_COMPILE
-
 TEST(ArrayTests, scalar_value) {
+    // TODO, ensure parent of a slice inherits the needed
+    // updates
     Array x({12}, DTYPE_INT32);
-    x(3) = 42;
+    auto assign1 = x(3) = 42;
+    assign1.eval();
+    x.print();
     EXPECT_EQ((int)x(3), 42);
-    x[3] = 56;
+    auto assign2 = x[3] = 56;
+    assign2.eval();
+    x.print();
     EXPECT_EQ((int)x(3), 56);
 }
+
+#ifdef DONT_COMPILE
 
 #include "dali/array/op/other.h"
 #include "dali/array/op/initializer.h"

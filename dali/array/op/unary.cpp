@@ -8,14 +8,22 @@ namespace op {
     }
 
     Array identity(float x) {
-        return elementwise(jit::wrap_scalar(x), "functor::identity");
+        return identity(jit::wrap_scalar(x));
     }
 
     Array identity(double x) {
-        return elementwise(jit::wrap_scalar(x), "functor::identity");
+        return identity(jit::wrap_scalar(x));
     }
 
     Array identity(int x) {
-        return elementwise(jit::wrap_scalar(x), "functor::identity");
+        return identity(jit::wrap_scalar(x));
+    }
+
+    Array sqrt(Array x) {
+        return elementwise(x, "functor::sqrt");
+    }
+
+    Array square(Array x) {
+        return elementwise(x, "functor::square");
     }
 }

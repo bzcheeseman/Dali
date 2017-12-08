@@ -70,11 +70,12 @@ namespace jit {
                                                    node_to_info_t* node_to_info) const {
             (*node_to_info)[this].computation_rank = desired_computation_rank;
             for (auto& arg: arguments_) {
-                as_jit_node(arg)->compute_node_compilation_info(desired_computation_rank,
-                                                                desired_computation_shape,
-                                                                arrays,
-                                                                scalars,
-                                                                node_to_info);
+                op::jit::compute_node_compilation_info(arg,
+                                                       desired_computation_rank,
+                                                       desired_computation_shape,
+                                                       arrays,
+                                                       scalars,
+                                                       node_to_info);
             }
             utils::Hasher hasher;
             hasher.add(optype_hash).add(desired_computation_rank).add(functor_name_);
@@ -116,7 +117,7 @@ namespace jit {
                    << dtype_to_cpp_name(dtype()) << ">(";
 
             for (int i = 0; i < arguments_.size(); ++i) {
-                stream << as_jit_node(arguments_[i])->get_call_code_nd(symbol_table, node_to_info, device_type)
+                stream << op::jit::get_call_code_nd(arguments_[i], symbol_table, node_to_info, device_type)
                        << (i + 1 == arguments_.size() ? "" : ", ");
             }
             stream << ")";
@@ -151,7 +152,8 @@ namespace jit {
             std::vector<const ScalarView*>* scalars,
             node_to_info_t* node_to_info) const {
             (*node_to_info)[this].computation_rank = desired_computation_rank;
-            as_jit_node(arguments_[0])->compute_node_compilation_info(desired_computation_rank, desired_computation_shape, arrays, scalars, node_to_info);
+            op::jit::compute_node_compilation_info(arguments_[0],
+                desired_computation_rank, desired_computation_shape, arrays, scalars, node_to_info);
 
             (*node_to_info)[this].hash = utils::Hasher().add(optype_hash)
                                                         .add(desired_computation_rank)
@@ -181,7 +183,7 @@ namespace jit {
             std::vector<const ScalarView*>* scalars,
             node_to_info_t* node_to_info) const {
             (*node_to_info)[this].computation_rank = desired_computation_rank;
-            as_jit_node(arguments_[0])->compute_node_compilation_info(desired_computation_rank, desired_computation_shape, arrays, scalars, node_to_info);
+            op::jit::compute_node_compilation_info(arguments_[0], desired_computation_rank, desired_computation_shape, arrays, scalars, node_to_info);
 
             (*node_to_info)[this].hash = utils::Hasher().add(optype_hash)
                                                         .add(desired_computation_rank)

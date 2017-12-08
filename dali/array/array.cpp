@@ -163,7 +163,7 @@ Array Array::arange(const std::vector<int>& shape, DType dtype, memory::Device p
 
 Array Array::ones(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
     Array ret(shape, dtype, preferred_device);
-    // ret = initializer::ones();
+    ret = 1.0;
     return ret;
 }
 
@@ -172,7 +172,7 @@ Array Array::ones_like(const Array& other) {
         return Array();
     } else {
         Array ret = empty_like(other);
-        // ret = initializer::ones();
+        ret = 1.0;
         return ret;
     }
 }
@@ -708,6 +708,7 @@ Array& Array::operator=(const double& other) {
 }
 
 void Array::print(std::basic_ostream<char>& stream, const int& indent, const bool& add_newlines, const bool& print_comma) const {
+    eval();
     std::string end_line_spacing("");
     if (add_newlines) end_line_spacing += "\n";
     int indent_increment = add_newlines ? 4 : 0;

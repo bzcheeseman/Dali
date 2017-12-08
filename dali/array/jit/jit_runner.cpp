@@ -204,12 +204,6 @@ void buffer_compute_node_compilation_info(const Array& array,
                                                .add(array.dtype()).value();
 }
 
-std::string buffer_get_call_code_nd(const Array& array,
-                                    const symbol_table_t& symbol_table,
-                                    const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) {
-    return symbol_table.at(array.expression().get());
-}
 
 void JITRunner::compute_node_compilation_info(int desired_computation_rank,
                                               const std::vector<int>& desired_computation_shape,
@@ -218,56 +212,30 @@ void JITRunner::compute_node_compilation_info(int desired_computation_rank,
                                               node_to_info_t* node_to_info) const {
     (*node_to_info)[this].computation_rank = desired_computation_rank;
 
-    if (dest_.is_buffer()) {
-        buffer_compute_node_compilation_info(dest_,
-                                             desired_computation_rank,
-                                             desired_computation_shape,
-                                             arrays,
-                                             scalars,
-                                             node_to_info);
-    } else if (is_jit_node(dest_)) {
-        as_jit_node(dest_)->compute_node_compilation_info(
-            desired_computation_rank,
-            desired_computation_shape,
-            arrays,
-            scalars,
-            node_to_info);
-    } else {
-        throw std::runtime_error(utils::make_message(
-            "Can only compute node compilation info for JITNode "
-            "or BufferView (got ", dest_.expression_name(), ")."));
-    }
-
-    as_jit_node(root_)->compute_node_compilation_info(
-        desired_computation_rank,
-        desired_computation_shape,
-        arrays,
-        scalars,
-        node_to_info);
+    op::jit::compute_node_compilation_info(dest_,
+                                           desired_computation_rank,
+                                           desired_computation_shape,
+                                           arrays,
+                                           scalars,
+                                           node_to_info);
+    op::jit::compute_node_compilation_info(root_,
+                                           desired_computation_rank,
+                                           desired_computation_shape,
+                                           arrays,
+                                           scalars,
+                                           node_to_info);
     utils::Hasher hasher;
-    hasher.add(optype_hash).add(desired_computation_rank);
+    hasher.add(optype_hash)
+          .add(desired_computation_rank)
+          .add(node_to_info->at(dest_.expression().get()).hash)
+          .add(node_to_info->at(root_.expression().get()).hash);
     (*node_to_info)[this].hash = hasher.value();
-}
-
-
-std::string JITRunner::dest_assignment_code(const symbol_table_t& symbol_table,
-                                            const node_to_info_t& node_to_info,
-                                            memory::DeviceT device_type) const {
-    if (dest_.is_buffer()) {
-        return buffer_get_call_code_nd(dest_, symbol_table, node_to_info, device_type);
-    } else if (is_jit_node(dest_)) {
-        return as_jit_node(dest_)->get_call_code_nd(symbol_table, node_to_info, device_type);
-    } else {
-        throw std::runtime_error(utils::make_message(
-            "Can only create assignment code for JITNode "
-            "or BufferView (got ", dest_.expression_name(), ")."));
-    }
 }
 
 std::string JITRunner::assignment_code(const symbol_table_t& symbol_table,
                                        const node_to_info_t& node_to_info,
                                        memory::DeviceT device_type) const {
-    std::string dest_call_code = dest_assignment_code(symbol_table, node_to_info, device_type);
+    std::string dest_call_code = op::jit::get_call_code_nd(dest_, symbol_table, node_to_info, device_type);
     auto root = as_jit_node(root_);
     int computation_rank = node_to_info.at(this).computation_rank;
     std::string indexing_nd = computation_rank == 1 ? "(i)" : "[" + generate_accessor_string(computation_rank) + "]";
@@ -282,7 +250,7 @@ std::string JITRunner::assignment_code(const symbol_table_t& symbol_table,
 std::string JITRunner::get_call_code_nd(const symbol_table_t& symbol_table,
                                         const node_to_info_t& node_to_info,
                                         memory::DeviceT device_type) const {
-    std::string dest_call_code = dest_assignment_code(symbol_table, node_to_info, device_type);
+    std::string dest_call_code = op::jit::get_call_code_nd(dest_, symbol_table, node_to_info, device_type);
 
     auto root = as_jit_node(root_);
     int computation_rank = node_to_info.at(this).computation_rank;
@@ -352,9 +320,8 @@ std::string JITRunner::get_code_template(memory::Device device,
     result << prefix_code(node_to_info, device.type());
     result << as_jit_node(root_)->prefix_code(node_to_info, device.type());
     root_.expression()->for_all_suboperations([&](const Array& arr) {
-        auto jit_node = as_jit_node(arr);
-        if (jit_node) {
-            auto pc      = jit_node->prefix_code(node_to_info, device.type());
+        if (is_jit_node(arr)) {
+            auto pc      = as_jit_node(arr)->prefix_code(node_to_info, device.type());
             auto pc_hash = utils::get_hash(pc);
             if (prefix_code_visited.find(pc_hash) == prefix_code_visited.end()) {
                 result << pc;
@@ -648,6 +615,56 @@ int min_computation_rank(const Array& array) {
     }
 }
 
+void compute_node_compilation_info(const Array& a,
+                                   int desired_computation_rank,
+                                   const std::vector<int>& desired_computation_shape,
+                                   std::vector<const BufferView*>* arrays,
+                                   std::vector<const ScalarView*>* scalars,
+                                   node_to_info_t* node_to_info) {
+    if (a.is_buffer()) {
+        buffer_compute_node_compilation_info(a,
+                                             desired_computation_rank,
+                                             desired_computation_shape,
+                                             arrays,
+                                             scalars,
+                                             node_to_info);
+    } else if (is_jit_node(a)) {
+        as_jit_node(a)->compute_node_compilation_info(
+            desired_computation_rank,
+            desired_computation_shape,
+            arrays,
+            scalars,
+            node_to_info);
+    } else {
+        throw std::runtime_error(utils::make_message(
+            "Can only compute node compilation info for JITNode "
+            "or BufferView (got ", a.expression_name(), ")."));
+    }
+}
+
+
+std::string buffer_get_call_code_nd(const Array& array,
+                                    const symbol_table_t& symbol_table,
+                                    const node_to_info_t& node_to_info,
+                                    memory::DeviceT device_type) {
+    return symbol_table.at(array.expression().get());
+}
+
+
+std::string get_call_code_nd(const Array& a,
+                             const symbol_table_t& symbol_table,
+                             const node_to_info_t& node_to_info,
+                             memory::DeviceT device_type) {
+    if (a.is_buffer()) {
+        return buffer_get_call_code_nd(a, symbol_table, node_to_info, device_type);
+    } else if (is_jit_node(a)) {
+        return as_jit_node(a)->get_call_code_nd(symbol_table, node_to_info, device_type);
+    } else {
+        throw std::runtime_error(utils::make_message(
+            "Can only create call code for JITNode "
+            "or BufferView (got ", a.expression_name(), ")."));
+    }
+}
 
 int registered_opt = register_optimization(is_jit_assignment, jit_merge);
 int registered_impl = register_implementation(

@@ -59,6 +59,18 @@ namespace op {
 
         Array buffer_buffer_op(Array node);
 
+        void compute_node_compilation_info(const Array& a,
+                                           int desired_computation_rank,
+                                           const std::vector<int>& desired_computation_shape,
+                                           std::vector<const BufferView*>* arrays,
+                                           std::vector<const ScalarView*>* scalars,
+                                           node_to_info_t* node_to_info);
+
+        std::string get_call_code_nd(const Array& a,
+                                     const symbol_table_t& symbol_table,
+                                     const node_to_info_t& node_to_info,
+                                     memory::DeviceT device_type);
+
         int min_computation_rank(const Array& array);
     }
 }

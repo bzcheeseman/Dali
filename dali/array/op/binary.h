@@ -9,6 +9,7 @@ namespace op {
     Array subtract(Array left, Array right);
     Array eltmul(Array left, Array right);
     Array eltdiv(Array left, Array right);
+    Array equals(Array left, Array right);
 }
 
 #endif

@@ -8,6 +8,8 @@ namespace op {
     Array identity(int x);
     Array identity(float x);
     Array identity(double x);
+    Array sqrt(Array x);
+    Array square(Array x);
 }
 
 #endif

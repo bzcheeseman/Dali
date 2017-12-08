@@ -162,7 +162,7 @@ std::shared_ptr<JITRunner> as_jit_runner(const Array& array) {
 
 // JIT RUNNER //
 JITRunner::JITRunner(Array root, const std::vector<Array>& leaves, OPERATOR_T operator_t, Array dest) :
-        JITNode(as_jit_node(root)->min_computation_rank_, root.shape(), root.dtype()),
+        JITNode(as_jit_node(root)->min_computation_rank_, dest.shape(), root.dtype()),
         root_(root), leaves_(leaves), operator_t_(operator_t), dest_(dest) {
     if (is_jit_runner(root)) {
         throw std::runtime_error("JITRunner should not contain a JITRunner.");
@@ -555,7 +555,6 @@ struct JITRunnerImpl : public Computation {
             jit_left->min_computation_rank_,
             jit_right->min_computation_rank_
         );
-
         std::vector<const BufferView*> array_ops;
         std::vector<const ScalarView*> scalar_ops;
         node_to_info_t node_to_info;

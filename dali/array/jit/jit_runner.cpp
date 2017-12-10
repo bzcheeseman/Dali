@@ -608,11 +608,10 @@ Array buffer_buffer_op(Array node) {
 }
 
 int min_computation_rank(const Array& array) {
-    if (array.is_buffer() || array.is_assignment() || array.is_control_flow()) {
-        return array.strides().empty() ? 1 : array.ndim();
-    } else {
+    if (is_jit_node(array)) {
         return as_jit_node(array)->min_computation_rank_;
     }
+    return array.strides().empty() ? 1 : array.ndim();
 }
 
 void compute_node_compilation_info(const Array& a,

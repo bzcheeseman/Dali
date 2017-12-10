@@ -51,7 +51,7 @@ struct AllReducerExpression : public ReducerExpression {
         return optype_hash_cache_;
     }
 
-    AllReducerExpression(const std::string& functor_name, const Array& argument);
+    AllReducerExpression(const std::string& functor_name, const Array& argument, DType dtype);
 
     virtual std::string name() const {
         return utils::make_message(
@@ -81,7 +81,7 @@ struct AllReducerExpression : public ReducerExpression {
 
     virtual expression_ptr copy() const {
         return std::make_shared<AllReducerExpression>(
-            functor_name_, argument_
+            functor_name_, argument_, argument_.dtype()
         );
     }
 };
@@ -93,8 +93,7 @@ struct AxisReducerExpression : public ReducerExpression {
         return optype_hash_cache_;
     }
 
-    AxisReducerExpression(const std::string& functor_name, const Array& argument);
-
+    AxisReducerExpression(const std::string& functor_name, const Array& argument, DType dtype);
 
     virtual std::string name() const {
         return utils::make_message(
@@ -127,7 +126,7 @@ struct AxisReducerExpression : public ReducerExpression {
 
     virtual expression_ptr copy() const {
         return std::make_shared<AxisReducerExpression>(
-            functor_name_, argument_
+            functor_name_, argument_, argument_.dtype()
         );
     }
 };
@@ -191,8 +190,9 @@ const hash_t AxisReducerExpression::optype_hash_cache_ = std::hash<std::string>(
 
 AllReducerExpression::AllReducerExpression(
         const std::string& functor_name,
-        const Array& argument) :
-    ReducerExpression(functor_name, argument, {}, argument.dtype(), 1) {
+        const Array& argument,
+        DType dtype) :
+    ReducerExpression(functor_name, argument, {}, dtype, 1) {
 }
 
 void AllReducerExpression::compute_node_compilation_info(
@@ -240,10 +240,11 @@ std::vector<int> axis_reducer_shape(const Array& a) {
 
 AxisReducerExpression::AxisReducerExpression(
         const std::string& functor_name,
-        const Array& argument) :
+        const Array& argument,
+        DType dtype) :
     ReducerExpression(functor_name, argument,
         axis_reducer_shape(argument),
-        argument.dtype(),
+        dtype,
         std::max(as_jit_node(argument)->min_computation_rank_ - 1, 1)) {
 }
 
@@ -277,7 +278,8 @@ bool AxisReducerExpression::is_axis_collapsible_with_axis_minus_one(
 expression_ptr AxisReducerExpression::collapse_axis_with_axis_minus_one(const int& dim) const {
     return std::make_shared<AxisReducerExpression>(
         functor_name_,
-        argument_.collapse_axis_with_axis_minus_one(dim - 1)
+        argument_.collapse_axis_with_axis_minus_one(dim - 1),
+        argument_.dtype()
     );
 }
 
@@ -288,7 +290,8 @@ expression_ptr AxisReducerExpression::transpose(
     new_permutation.emplace_back(permutation.size());
     return std::make_shared<AxisReducerExpression>(
         functor_name_,
-        argument_.transpose(new_permutation)
+        argument_.transpose(new_permutation),
+        argument_.dtype()
     );
 }
 
@@ -320,7 +323,8 @@ const hash_t ArgumentAllReducerExpression::optype_hash_cache_ = std::hash<std::s
 //         ARGUMENT AXIS REDUCER OPERATION STATE                             //
 ///////////////////////////////////////////////////////////////////////////////
 
-const hash_t ArgumentAxisReducerExpression::optype_hash_cache_ = std::hash<std::string>()("ArgumentAxisReducerExpression");
+const hash_t ArgumentAxisReducerExpression::optype_hash_cache_ = std::hash<std::string>()(
+    typeid(ArgumentAxisReducerExpression).name());
 
 std::string ArgumentAxisReducerExpression::prefix_code(
         const node_to_info_t& node_to_info,
@@ -332,7 +336,8 @@ std::string ArgumentAxisReducerExpression::prefix_code(
 expression_ptr ArgumentAxisReducerExpression::collapse_axis_with_axis_minus_one(const int& dim) const {
     return std::make_shared<ArgumentAxisReducerExpression>(
         functor_name_,
-        argument_.collapse_axis_with_axis_minus_one(dim - 1)
+        argument_.collapse_axis_with_axis_minus_one(dim - 1),
+        DTYPE_INT32
     );
 }
 
@@ -343,7 +348,8 @@ expression_ptr ArgumentAxisReducerExpression::transpose(const std::vector<int>& 
 
     return std::make_shared<ArgumentAxisReducerExpression>(
         functor_name_,
-        argument_.transpose(new_permutation)
+        argument_.transpose(new_permutation),
+        DTYPE_INT32
     );
 }
 
@@ -357,7 +363,8 @@ namespace op {
             const std::string& reducer_name) {
         return Array(std::make_shared<op::jit::AllReducerExpression>(
             reducer_name,
-            a
+            a,
+            a.dtype()
         ));
     }
 
@@ -432,7 +439,8 @@ namespace op {
                 if (num_low_axes_to_reduce - axes_used_up == 1) {
                     res = Array(std::make_shared<op::jit::AxisReducerExpression>(
                         reducer_name,
-                        res
+                        res,
+                        res.dtype()
                     ));
                 } else {
                     if (jit::as_jit_node(res)->is_axis_collapsible_with_axis_minus_one(collapsed_ndim)) {
@@ -440,7 +448,8 @@ namespace op {
                     } else {
                         res = Array(std::make_shared<op::jit::AxisReducerExpression>(
                             reducer_name,
-                            res
+                            res,
+                            res.dtype()
                         ));
                     }
                 }
@@ -450,40 +459,42 @@ namespace op {
         return res;
     }
 
-    // Array argument_all_reduce(const Array& a, const std::string& reducer_name) {
-    //     return Array(std::make_shared<op::jit::ArgumentAllReducerExpression>(
-    //         reducer_name,
-    //         a
-    //     ));
-    // }
+    Array argument_all_reduce(const Array& a, const std::string& reducer_name) {
+        return Array(std::make_shared<op::jit::ArgumentAllReducerExpression>(
+            reducer_name,
+            a,
+            a.dtype()
+        ));
+    }
 
-    // Array argument_axis_reduce(const Array& a, const std::string& reducer_name, const int& axis) {
-    //     int ndim = a.ndim();
-    //     if (ndim == 0) return Array(0);
-    //     int normalized_axis = axis;
-    //     if (normalized_axis < 0) normalized_axis = normalized_axis + a.ndim();
-    //     ASSERT2(normalized_axis >= 0 && (normalized_axis < ndim || ndim == 0 && normalized_axis == ndim),
-    //         utils::make_message(
-    //             "Reduction axis must strictly positive and less than the "
-    //             "number of dimensions of the input (got axis=", normalized_axis, ","
-    //             " ndim=", ndim, ")."
-    //         )
-    //     );
-    //     if (ndim == 1) return argument_all_reduce(a, reducer_name);
+    Array argument_axis_reduce(const Array& a, const std::string& reducer_name, const int& axis) {
+        int ndim = a.ndim();
+        if (ndim == 0) return Array(0);
+        int normalized_axis = axis;
+        if (normalized_axis < 0) normalized_axis = normalized_axis + a.ndim();
+        ASSERT2(normalized_axis >= 0 && (normalized_axis < ndim || ndim == 0 && normalized_axis == ndim),
+            utils::make_message(
+                "Reduction axis must strictly positive and less than the "
+                "number of dimensions of the input (got axis=", normalized_axis, ","
+                " ndim=", ndim, ")."
+            )
+        );
+        if (ndim == 1) return argument_all_reduce(a, reducer_name);
 
-    //     auto res = a;
-    //     if (normalized_axis != ndim - 1) {
-    //         std::vector<int> axes;
-    //         for (int i = 0; i < ndim; i++) {
-    //             axes.emplace_back(i);
-    //         }
-    //         axes[axes.size() - 1] = normalized_axis;
-    //         axes[normalized_axis] = axes.size() - 1;
-    //         res = res.transpose(axes);
-    //     }
-    //     return Array(std::make_shared<op::jit::ArgumentAxisReducerExpression>(
-    //         reducer_name,
-    //         res
-    //     ));
-    // }
+        auto res = a;
+        if (normalized_axis != ndim - 1) {
+            std::vector<int> axes;
+            for (int i = 0; i < ndim; i++) {
+                axes.emplace_back(i);
+            }
+            axes[axes.size() - 1] = normalized_axis;
+            axes[normalized_axis] = axes.size() - 1;
+            res = res.transpose(axes);
+        }
+        return Array(std::make_shared<op::jit::ArgumentAxisReducerExpression>(
+            reducer_name,
+            res,
+            DTYPE_INT32
+        ));
+    }
 }  // namespace op

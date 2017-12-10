@@ -531,6 +531,23 @@ std::string Expression::name() const {
     return std::string(demangled);
 }
 
+std::string Expression::full_name() const {
+    std::stringstream ss;
+    ss << name();
+    auto args = arguments();
+    if (args.size() > 0) {
+        ss << "(";
+        for (size_t i = 0; i < args.size(); i++) {
+            ss << args[i].expression()->full_name();
+            if (i + 1 != args.size()) {
+                ss << ", ";
+            }
+        }
+        ss << ")";
+    }
+    return ss.str();
+}
+
 void Expression::for_all_suboperations(std::function<void(const Array&)> callback) const {
     for (auto arg : arguments()) {
         callback(arg);

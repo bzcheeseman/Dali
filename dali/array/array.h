@@ -33,6 +33,7 @@ class Array  {
     void set_expression(std::shared_ptr<Expression>) const;
     Array();
     std::string expression_name() const;
+    std::string full_expression_name() const;
 
     /* Various ways of constructing array */
     Array(std::shared_ptr<Expression>);

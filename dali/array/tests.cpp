@@ -30,8 +30,6 @@ Array slow_dot(Array left, Array right) {
     for (int i = 0; i < left.shape()[0]; i++) {
         for (int j = 0; j < right.shape()[1]; j++) {
             cpu_data_ptr[i * strides[0] + j] = vector_dot(left[i], right[Slice()][j]);
-            left[i].print();
-            std::cout << vector_dot(left[i], right[Slice()][j]) << std::endl;
         }
     }
     return out;
@@ -49,8 +47,9 @@ TEST(ArrayTests, dot) {
     auto x = Array::ones({3, 3}, DTYPE_INT32);
     auto y = op::dot(x, x);
     auto y_ref = slow_dot(x, x);
-    y_ref.print();
-    y.print();
+    auto op = op::all_equals(y, y_ref);
+    std::cout << op.expression_name() << std::endl;
+    std::cout << op.full_expression_name() << std::endl;
     EXPECT_TRUE((bool)((int)op::all_equals(y, y_ref)));
 }
 
@@ -60,11 +59,9 @@ TEST(ArrayTests, scalar_value) {
     Array x({12}, DTYPE_INT32);
     auto assign1 = x(3) = 42;
     assign1.eval();
-    x.print();
     EXPECT_EQ((int)x(3), 42);
     auto assign2 = x[3] = 56;
     assign2.eval();
-    x.print();
     EXPECT_EQ((int)x(3), 56);
 }
 

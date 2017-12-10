@@ -62,6 +62,13 @@ std::string Array::expression_name() const {
     return expr->name();
 }
 
+std::string Array::full_expression_name() const {
+    if (is_stateless()) {
+        return expression_name();
+    }
+    return expression()->full_name();
+}
+
 template<typename T>
 T Array::scalar_value() const {
     static_assert(std::is_arithmetic<T>::value,

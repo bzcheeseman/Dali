@@ -48,7 +48,11 @@ std::shared_ptr<Expression> Array::expression() const {
 }
 
 void Array::set_expression(std::shared_ptr<Expression> new_expression) const {
-    state_->expression_ = new_expression;
+    if (state_ == nullptr) {
+        state_ = std::make_shared<ArrayState>(new_expression);
+    } else {
+        state_->expression_ = new_expression;
+    }
 }
 
 std::string Array::expression_name() const {
@@ -428,7 +432,7 @@ Array Array::ascontiguousarray() const {
 }
 
 Array& Array::reset() {
-    set_expression(nullptr);
+    state_ = nullptr;
     return *this;
 }
 

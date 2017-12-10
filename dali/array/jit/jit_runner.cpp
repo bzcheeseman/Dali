@@ -53,7 +53,6 @@ hash_t node_hash(const node_to_info_t& node_to_info, const Array& array) {
     return node_to_info.at(array.expression().get()).hash;
 }
 
-// JIT NODE
 JITNode::JITNode(int min_computation_rank,
                  const std::vector<int>& shape,
                  DType dtype,
@@ -136,6 +135,7 @@ struct JITRunner : public JITNode {
         const std::vector<const BufferView*>& arrays,
         const std::vector<const ScalarView*>& scalars,
         const node_to_info_t& node_to_info) const;
+    virtual std::string name() const;
 };
 
 const hash_t JITRunner::optype_hash = std::hash<std::string>()(typeid(JITRunner).name());
@@ -188,20 +188,21 @@ bool JITRunner::is_axis_collapsible_with_axis_minus_one(const int& axis) const {
 
 static hash_t BUFFER_HASH = std::hash<std::string>()(typeid(BufferView).name());
 
-void buffer_compute_node_compilation_info(const Array& array,
+void buffer_compute_node_compilation_info(const Array& array, const Array& buffer_array,
                                           int desired_computation_rank,
                                           const std::vector<int>& desired_computation_shape,
                                           std::vector<const BufferView*>* arrays,
                                           std::vector<const ScalarView*>* scalars,
                                           node_to_info_t* node_to_info) {
-    const BufferView* ptr = static_cast<const BufferView*>(array.expression().get());
-    arrays->emplace_back(ptr);
-    (*node_to_info)[ptr].computation_rank  = desired_computation_rank;
-    (*node_to_info)[ptr].computation_shape = desired_computation_shape;
-    (*node_to_info)[ptr].hash = utils::Hasher().add(BUFFER_HASH)
-                                               .add(desired_computation_rank)
-                                               .add(ptr->contiguous_memory())
-                                               .add(array.dtype()).value();
+    const BufferView* buffer_ptr = static_cast<const BufferView*>(buffer_array.expression().get());
+    arrays->emplace_back(buffer_ptr);
+    // const Expression* array_ptr = array.expression().get();
+    (*node_to_info)[buffer_ptr].computation_rank  = desired_computation_rank;
+    (*node_to_info)[buffer_ptr].computation_shape = desired_computation_shape;
+    (*node_to_info)[buffer_ptr].hash = utils::Hasher().add(BUFFER_HASH)
+                                                     .add(desired_computation_rank)
+                                                     .add(buffer_ptr->contiguous_memory())
+                                                     .add(array.dtype()).value();
 }
 
 
@@ -444,6 +445,10 @@ std::function<void(void**, const int*, const int**, const int**, const void**)> 
     return array_op_compiler.get_function<void**, const int*, const int**, const int**, const void**>(hash);
 }
 
+std::string JITRunner::name() const {
+    return "JIT[" + root_.full_expression_name() + "]";
+}
+
 Array jit_root(const Array& array) {
     if (is_jit_runner(array)) {
         return as_jit_runner(array)->root_;
@@ -497,6 +502,11 @@ Array jit_merge(const Array& root) {
             // now that the jitrunners and assignments are gone, connect
             // up the new operation in the graph:
             arg.set_expression(replaced.expression());
+        } else if (arg.is_assignment()) {
+            auto leaf_arg = Array();
+            leaf_arg.set_expression(arg.expression());
+            arg.set_expression(as_assignment(arg)->left_.expression());
+            leaves.emplace_back(leaf_arg);
         } else {
             // this node is either an assignment, or a buffer,
             // and is needed as an input here:
@@ -621,7 +631,14 @@ void compute_node_compilation_info(const Array& a,
                                    std::vector<const ScalarView*>* scalars,
                                    node_to_info_t* node_to_info) {
     if (a.is_buffer()) {
-        buffer_compute_node_compilation_info(a,
+        buffer_compute_node_compilation_info(a, a,
+                                             desired_computation_rank,
+                                             desired_computation_shape,
+                                             arrays,
+                                             scalars,
+                                             node_to_info);
+    } else if (a.is_assignment()) {
+        buffer_compute_node_compilation_info(a, as_assignment(a)->left_,
                                              desired_computation_rank,
                                              desired_computation_shape,
                                              arrays,

@@ -48,8 +48,6 @@ TEST(ArrayTests, dot) {
     auto y = op::dot(x, x);
     auto y_ref = slow_dot(x, x);
     auto op = op::all_equals(y, y_ref);
-    std::cout << op.expression_name() << std::endl;
-    std::cout << op.full_expression_name() << std::endl;
     EXPECT_TRUE((bool)((int)op::all_equals(y, y_ref)));
 }
 

@@ -22,7 +22,7 @@ class Array  {
         ArrayState(std::shared_ptr<Expression> expression);
         // std::mutex mutex;
     };
-    std::shared_ptr<ArrayState> state_;
+    mutable std::shared_ptr<ArrayState> state_;
 
     template<typename T>
     T scalar_value() const;

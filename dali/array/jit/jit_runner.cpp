@@ -503,6 +503,7 @@ Array jit_merge(const Array& root) {
             // up the new operation in the graph:
             arg.set_expression(replaced.expression());
         } else if (arg.is_assignment()) {
+            // detach the assignment subgraph and only keep the left node(bufferview)
             auto leaf_arg = Array();
             leaf_arg.set_expression(arg.expression());
             arg.set_expression(as_assignment(arg)->left_.expression());
@@ -632,13 +633,6 @@ void compute_node_compilation_info(const Array& a,
                                    node_to_info_t* node_to_info) {
     if (a.is_buffer()) {
         buffer_compute_node_compilation_info(a, a,
-                                             desired_computation_rank,
-                                             desired_computation_shape,
-                                             arrays,
-                                             scalars,
-                                             node_to_info);
-    } else if (a.is_assignment()) {
-        buffer_compute_node_compilation_info(a, as_assignment(a)->left_,
                                              desired_computation_rank,
                                              desired_computation_shape,
                                              arrays,

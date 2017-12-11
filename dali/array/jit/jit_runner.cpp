@@ -12,6 +12,7 @@
 #include "dali/utils/scope.h"
 #include "dali/array/op/binary.h"
 #include "dali/array/op/unary.h"
+#include "dali/array/op/elementwise_operation.h"
 
 namespace op {
 namespace jit {
@@ -461,6 +462,11 @@ std::tuple<Array, Array> replace_assign_with_inplace(const Array& node) {
     auto rightside = jit_root(assign->right_);
     auto operator_t = assign->operator_t_;
     if (operator_t == OPERATOR_T_EQL) {
+        // in cases where assignment was an implicit cast, ensure that type gets
+        // assigned to new destination
+        if (rightside.dtype() != node.dtype()) {
+            rightside = op::astype(rightside, node.dtype());
+        }
         return std::tuple<Array, Array>(rightside, Array());
     } else if (operator_t == OPERATOR_T_ADD) {
         return std::tuple<Array, Array>(op::add(assign->left_, rightside), assign->left_);
@@ -527,11 +533,9 @@ Array jit_merge(const Array& root) {
 struct JITRunnerImpl : public Computation {
     using Computation::Computation;
     void run() {
-        auto jit_left = as_jit_node(left_);
-        auto jit_right = as_jit_runner(right_);
+        JITRunner* jit_right = static_cast<JITRunner*>(right_.expression().get());
         int desired_computation_rank = std::max(
-            jit_left->min_computation_rank_,
-            jit_right->min_computation_rank_
+            min_computation_rank(left_), jit_right->min_computation_rank_
         );
         std::vector<const BufferView*> array_ops;
         std::vector<const ScalarView*> scalar_ops;

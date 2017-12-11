@@ -6,9 +6,6 @@
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
 
-///////////////////////////////////////////////////////////////////////////////
-//                    HEADERS                                                //
-///////////////////////////////////////////////////////////////////////////////
 namespace op {
 namespace jit {
 struct ReducerExpression : public JITNode {
@@ -352,149 +349,145 @@ expression_ptr ArgumentAxisReducerExpression::transpose(const std::vector<int>& 
         DTYPE_INT32
     );
 }
-
 }  // namespace jit
-}  // namespace op
 
+Array all_reduce(
+        const Array& a,
+        const std::string& reducer_name) {
+    return Array(std::make_shared<op::jit::AllReducerExpression>(
+        reducer_name,
+        a,
+        a.dtype()
+    ));
+}
 
-namespace op {
-    Array all_reduce(
-            const Array& a,
-            const std::string& reducer_name) {
-        return Array(std::make_shared<op::jit::AllReducerExpression>(
-            reducer_name,
-            a,
-            a.dtype()
-        ));
-    }
-
-    Array axis_reduce(
-            const Array& a,
-            const std::string& reducer_name,
-            const std::vector<int>& axes) {
-        if (axes.size() == 0) return a;
-        int ndim = a.ndim();
-        if (ndim == 0) return a;
-        std::vector<int> normalized_axes(axes);
-        for (auto& axis : normalized_axes) {
-            if (axis < 0) {
-                if (ndim == 0) {
-                    axis = axis + 1;
-                } else {
-                    axis = axis + ndim;
-                }
-            }
-            ASSERT2(axis >= 0 && (axis < ndim || ndim == 0 && axis == ndim),
-                utils::make_message(
-                    "Reduction axis must strictly positive and less than the "
-                    "number of dimensions of the input (got axis=", axes[0], ","
-                    " ndim=", ndim, ")."
-                )
-            );
-        }
-        // now look to see what kind of a reduction this is:
-        std::vector<bool> reduced_dims(ndim, false);
-        std::sort(normalized_axes.begin(), normalized_axes.end());
-        for (auto& axis : normalized_axes) {
-            ASSERT2(!reduced_dims[axis], utils::make_message("axis_reduce "
-                "received duplicate axes to operate on (axis=", axis,
-                " axes=", axes, ")."
-            ));
-            reduced_dims[axis] = true;
-        }
-        // all axes are present:
-        if (normalized_axes.size() == ndim) {
-            return all_reduce(a, reducer_name);
-        }
-        int num_low_dims = 0;
-        for (int i = reduced_dims.size() - 1; i >= 0; --i) {
-            if (reduced_dims[i]) {
-                ++num_low_dims;
+Array axis_reduce(
+        const Array& a,
+        const std::string& reducer_name,
+        const std::vector<int>& axes) {
+    if (axes.size() == 0) return a;
+    int ndim = a.ndim();
+    if (ndim == 0) return a;
+    std::vector<int> normalized_axes(axes);
+    for (auto& axis : normalized_axes) {
+        if (axis < 0) {
+            if (ndim == 0) {
+                axis = axis + 1;
             } else {
-                break;
+                axis = axis + ndim;
             }
         }
-        bool all_reductions_are_low_dim = num_low_dims == normalized_axes.size();
-        auto res = a;
+        ASSERT2(axis >= 0 && (axis < ndim || ndim == 0 && axis == ndim),
+            utils::make_message(
+                "Reduction axis must strictly positive and less than the "
+                "number of dimensions of the input (got axis=", axes[0], ","
+                " ndim=", ndim, ")."
+            )
+        );
+    }
+    // now look to see what kind of a reduction this is:
+    std::vector<bool> reduced_dims(ndim, false);
+    std::sort(normalized_axes.begin(), normalized_axes.end());
+    for (auto& axis : normalized_axes) {
+        ASSERT2(!reduced_dims[axis], utils::make_message("axis_reduce "
+            "received duplicate axes to operate on (axis=", axis,
+            " axes=", axes, ")."
+        ));
+        reduced_dims[axis] = true;
+    }
+    // all axes are present:
+    if (normalized_axes.size() == ndim) {
+        return all_reduce(a, reducer_name);
+    }
+    int num_low_dims = 0;
+    for (int i = reduced_dims.size() - 1; i >= 0; --i) {
+        if (reduced_dims[i]) {
+            ++num_low_dims;
+        } else {
+            break;
+        }
+    }
+    bool all_reductions_are_low_dim = num_low_dims == normalized_axes.size();
+    auto res = a;
 
-        if (!all_reductions_are_low_dim) {
-            std::vector<int> new_axes_order;
-            for (int i = 0; i < reduced_dims.size(); ++i) {
-                if (!reduced_dims[i]) {
-                    new_axes_order.emplace_back(i);
-                }
+    if (!all_reductions_are_low_dim) {
+        std::vector<int> new_axes_order;
+        for (int i = 0; i < reduced_dims.size(); ++i) {
+            if (!reduced_dims[i]) {
+                new_axes_order.emplace_back(i);
             }
-            for (int i = 0; i < reduced_dims.size(); ++i) {
-                if (reduced_dims[i]) {
-                    new_axes_order.emplace_back(i);
-                }
-            }
-            res = res.transpose(new_axes_order);
         }
-        int num_low_axes_to_reduce = normalized_axes.size();
-        if (num_low_axes_to_reduce > 0) {
-            int axes_used_up = 0;
-            int collapsed_ndim = ndim - 1;
-            for (int axes_used_up = 0; axes_used_up < num_low_axes_to_reduce; ++axes_used_up) {
-                if (num_low_axes_to_reduce - axes_used_up == 1) {
+        for (int i = 0; i < reduced_dims.size(); ++i) {
+            if (reduced_dims[i]) {
+                new_axes_order.emplace_back(i);
+            }
+        }
+        res = res.transpose(new_axes_order);
+    }
+    int num_low_axes_to_reduce = normalized_axes.size();
+    if (num_low_axes_to_reduce > 0) {
+        int axes_used_up = 0;
+        int collapsed_ndim = ndim - 1;
+        for (int axes_used_up = 0; axes_used_up < num_low_axes_to_reduce; ++axes_used_up) {
+            if (num_low_axes_to_reduce - axes_used_up == 1) {
+                res = Array(std::make_shared<op::jit::AxisReducerExpression>(
+                    reducer_name,
+                    res,
+                    res.dtype()
+                ));
+            } else {
+                if (jit::as_jit_node(res)->is_axis_collapsible_with_axis_minus_one(collapsed_ndim)) {
+                    res = res.collapse_axis_with_axis_minus_one(collapsed_ndim);
+                } else {
                     res = Array(std::make_shared<op::jit::AxisReducerExpression>(
                         reducer_name,
                         res,
                         res.dtype()
                     ));
-                } else {
-                    if (jit::as_jit_node(res)->is_axis_collapsible_with_axis_minus_one(collapsed_ndim)) {
-                        res = res.collapse_axis_with_axis_minus_one(collapsed_ndim);
-                    } else {
-                        res = Array(std::make_shared<op::jit::AxisReducerExpression>(
-                            reducer_name,
-                            res,
-                            res.dtype()
-                        ));
-                    }
                 }
-                --collapsed_ndim;
             }
+            --collapsed_ndim;
         }
-        return res;
     }
+    return res;
+}
 
-    Array argument_all_reduce(const Array& a, const std::string& reducer_name) {
-        return Array(std::make_shared<op::jit::ArgumentAllReducerExpression>(
-            reducer_name,
-            a,
-            a.dtype()
-        ));
-    }
+Array argument_all_reduce(const Array& a, const std::string& reducer_name) {
+    return Array(std::make_shared<op::jit::ArgumentAllReducerExpression>(
+        reducer_name,
+        a,
+        a.dtype()
+    ));
+}
 
-    Array argument_axis_reduce(const Array& a, const std::string& reducer_name, const int& axis) {
-        int ndim = a.ndim();
-        if (ndim == 0) return Array(0);
-        int normalized_axis = axis;
-        if (normalized_axis < 0) normalized_axis = normalized_axis + a.ndim();
-        ASSERT2(normalized_axis >= 0 && (normalized_axis < ndim || ndim == 0 && normalized_axis == ndim),
-            utils::make_message(
-                "Reduction axis must strictly positive and less than the "
-                "number of dimensions of the input (got axis=", normalized_axis, ","
-                " ndim=", ndim, ")."
-            )
-        );
-        if (ndim == 1) return argument_all_reduce(a, reducer_name);
+Array argument_axis_reduce(const Array& a, const std::string& reducer_name, const int& axis) {
+    int ndim = a.ndim();
+    if (ndim == 0) return Array(0);
+    int normalized_axis = axis;
+    if (normalized_axis < 0) normalized_axis = normalized_axis + a.ndim();
+    ASSERT2(normalized_axis >= 0 && (normalized_axis < ndim || ndim == 0 && normalized_axis == ndim),
+        utils::make_message(
+            "Reduction axis must strictly positive and less than the "
+            "number of dimensions of the input (got axis=", normalized_axis, ","
+            " ndim=", ndim, ")."
+        )
+    );
+    if (ndim == 1) return argument_all_reduce(a, reducer_name);
 
-        auto res = a;
-        if (normalized_axis != ndim - 1) {
-            std::vector<int> axes;
-            for (int i = 0; i < ndim; i++) {
-                axes.emplace_back(i);
-            }
-            axes[axes.size() - 1] = normalized_axis;
-            axes[normalized_axis] = axes.size() - 1;
-            res = res.transpose(axes);
+    auto res = a;
+    if (normalized_axis != ndim - 1) {
+        std::vector<int> axes;
+        for (int i = 0; i < ndim; i++) {
+            axes.emplace_back(i);
         }
-        return Array(std::make_shared<op::jit::ArgumentAxisReducerExpression>(
-            reducer_name,
-            res,
-            DTYPE_INT32
-        ));
+        axes[axes.size() - 1] = normalized_axis;
+        axes[normalized_axis] = axes.size() - 1;
+        res = res.transpose(axes);
     }
+    return Array(std::make_shared<op::jit::ArgumentAxisReducerExpression>(
+        reducer_name,
+        res,
+        DTYPE_INT32
+    ));
+}
 }  // namespace op

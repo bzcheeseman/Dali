@@ -23,7 +23,7 @@ int vector_dot(Array left, Array right) {
     return out;
 }
 
-Array slow_dot(Array left, Array right) {
+Array reference_dot(Array left, Array right) {
     Array out = Array::zeros({left.shape()[0], right.shape()[1]}, DTYPE_INT32);
     int* cpu_data_ptr = (int*)out.memory()->overwrite_data(memory::Device::cpu());
     auto strides = out.normalized_strides();
@@ -46,7 +46,7 @@ TEST(ArrayTests, dot) {
     memory::WithDevicePreference dp(memory::Device::cpu());
     auto x = Array::ones({3, 3}, DTYPE_INT32);
     auto y = op::dot(x, x);
-    auto y_ref = slow_dot(x, x);
+    auto y_ref = reference_dot(x, x);
     auto op = op::all_equals(y, y_ref);
     EXPECT_TRUE((bool)((int)op::all_equals(y, y_ref)));
 }

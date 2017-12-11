@@ -35,7 +35,7 @@ std::vector<std::shared_ptr<Computation>> convert_to_ops(Array root) {
             auto hashname = typeid(*assignment->right_.expression()).name();
             if (IMPLEMENTATIONS.find(hashname) != IMPLEMENTATIONS.end()) {
                 steps.emplace_back(
-                    IMPLEMENTATIONS[hashname](assignment->right_,
+                    IMPLEMENTATIONS[hashname](assignment->left_,
                                               assignment->operator_t_,
                                               assignment->right_)
                 );

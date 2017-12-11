@@ -8,15 +8,15 @@ namespace op {
     }
 
     Array identity(float x) {
-        return identity(jit::wrap_scalar(x));
+        return jit::wrap_scalar(x);
     }
 
     Array identity(double x) {
-        return identity(jit::wrap_scalar(x));
+        return jit::wrap_scalar(x);
     }
 
     Array identity(int x) {
-        return identity(jit::wrap_scalar(x));
+        return jit::wrap_scalar(x);
     }
 
     Array sqrt(Array x) {

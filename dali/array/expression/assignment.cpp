@@ -27,7 +27,6 @@ std::string Assignment::name() const {
     return "Assignment[" + operator_to_name(operator_t_) + "]";
 }
 
-
 Array autoreduce_assign(const Array& left, const Array& right) {
     throw std::runtime_error("autoreduce_assign not implemented yet.");
 }

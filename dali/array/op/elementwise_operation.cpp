@@ -34,10 +34,11 @@ namespace jit {
         }
 
         ElementwiseExpression(const std::string& functor_name,
-                                   const std::vector<Array>& arguments) :
+                              const std::vector<Array>& arguments,
+                              DType dtype) :
                 JITNode(compute_min_computation_rank(arguments),
                         get_common_bshape(arguments),
-                        arguments.size() > 0 ? arguments[0].dtype() : DTYPE_FLOAT),
+                        dtype),
                 functor_name_(functor_name),
                 arguments_(arguments) {
             ASSERT2(arguments.size() > 0,
@@ -45,10 +46,10 @@ namespace jit {
         }
 
         ElementwiseExpression(const ElementwiseExpression& other) :
-            ElementwiseExpression(other.functor_name_, other.arguments_) {}
+            ElementwiseExpression(other.functor_name_, other.arguments_, other.dtype_) {}
 
         virtual DType dtype() const {
-            return arguments_[0].dtype();
+            return dtype_;
         }
 
         virtual std::string name() const {
@@ -98,7 +99,7 @@ namespace jit {
             for (auto& arg : arguments_) {
                 new_arguments.emplace_back(arg.collapse_axis_with_axis_minus_one(axis));
             }
-            return std::make_shared<ElementwiseExpression>(functor_name_, new_arguments);
+            return std::make_shared<ElementwiseExpression>(functor_name_, new_arguments, dtype_);
         }
 
         virtual expression_ptr transpose(const std::vector<int>& permutation) const {
@@ -106,7 +107,7 @@ namespace jit {
             for (auto& arg : arguments_) {
                 new_arguments.emplace_back(arg.transpose(permutation));
             }
-            return std::make_shared<ElementwiseExpression>(functor_name_, new_arguments);
+            return std::make_shared<ElementwiseExpression>(functor_name_, new_arguments, dtype_);
         }
 
         virtual std::string get_call_code_nd(const symbol_table_t& symbol_table,
@@ -134,15 +135,8 @@ namespace jit {
     struct CastExpression : public ElementwiseExpression {
         static const hash_t optype_hash;
 
-        const DType dtype_;
-
         CastExpression(DType dtype, Array argument) :
-            ElementwiseExpression("functor::cast", {argument}),
-            dtype_(dtype) {
-        }
-
-        virtual DType dtype() const {
-            return dtype_;
+            ElementwiseExpression("functor::cast", {argument}, dtype_) {
         }
 
         virtual void compute_node_compilation_info(
@@ -159,7 +153,7 @@ namespace jit {
                                                         .add(desired_computation_rank)
                                                         .add(functor_name_)
                                                         .add(node_hash(*node_to_info, arguments_[0]))
-                                                        .add(dtype())
+                                                        .add(dtype_)
                                                         .value();
         }
     };
@@ -169,11 +163,7 @@ namespace jit {
         static const hash_t optype_hash;
 
         RoundExpression(Array argument) :
-            ElementwiseExpression("functor::round", {argument}) {
-        }
-
-        virtual DType dtype() const {
-            return DTYPE_INT32;
+            ElementwiseExpression("functor::round", {argument}, DTYPE_INT32) {
         }
 
         virtual void compute_node_compilation_info(
@@ -192,19 +182,17 @@ namespace jit {
                                                         .value();
         }
     };
-    const hash_t RoundExpression::optype_hash = std::hash<std::string>()(
-        "RoundExpression"
-    );
+    const hash_t RoundExpression::optype_hash = std::hash<std::string>()(typeid(RoundExpression).name());
 
     }  // namespace jit
     Array elementwise(Array a, const std::string& functor_name) {
-        return Array(std::make_shared<jit::ElementwiseExpression>(functor_name, std::vector<Array>({a})));
+        return Array(std::make_shared<jit::ElementwiseExpression>(functor_name, std::vector<Array>({a}), a.dtype()));
     }
 
     Array elementwise(Array a, Array b, const std::string& functor_name) {
         std::tie(a, b) = ensure_arguments_compatible(a, b);
         return Array(std::make_shared<jit::ElementwiseExpression>(
-            functor_name, std::vector<Array>({a, b})
+            functor_name, std::vector<Array>({a, b}), a.dtype()
         ));
     }
 

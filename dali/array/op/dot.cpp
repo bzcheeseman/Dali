@@ -1,8 +1,6 @@
 #include "dot.h"
 #include "dali/utils/make_message.h"
 #include "dali/array/expression/expression.h"
-#include "dali/array/expression/computation.h"
-
 
 /* Expression Graph utilities */
 // TODO(jonathan): move to generic location
@@ -23,59 +21,26 @@ Array ascontiguousarray_or_simple_transpose(Array node) {
 }
 
 // DOT SPECIFIC CLASSES
-
-struct MatMul : public Expression {
-    Array left_;
-    Array right_;
-
-    MatMul(Array left, Array right) :
+namespace op {
+    MatMul::MatMul(Array left, Array right) :
         Expression({left.shape()[0], right.shape()[1]},
                    type_promotion(left, right)),
                    left_(left), right_(right) {}
-
-    std::vector<Array> arguments() const {
+    std::vector<Array> MatMul::arguments() const {
         return {left_, right_};
     }
-
-    virtual std::shared_ptr<Expression> copy() const {
+    std::shared_ptr<Expression> MatMul::copy() const {
         return std::make_shared<MatMul>(*this);
     }
-
-    memory::Device preferred_device() const {
+    memory::Device MatMul::preferred_device() const {
         return device_promotion(left_, right_);
     }
-};
 
-struct MatMulImpl : public Computation {
-    using Computation::Computation;
-    void run() {}
-};
-
-struct IMatMulImpl : public Computation {
-    using Computation::Computation;
-    void run() {}
-};
-
-int impl = register_implementation(
-    typeid(MatMul).name(),
-    [](Array dest, OPERATOR_T operator_t, Array x) -> std::shared_ptr<Computation> {
-        if (x.dtype() == DTYPE_FLOAT || x.dtype() == DTYPE_DOUBLE) {
-            return std::make_shared<MatMulImpl>(dest, operator_t, x);
-        } else if (x.dtype() == DTYPE_INT32) {
-            return std::make_shared<IMatMulImpl>(dest, operator_t, x);
-        } else {
-            throw std::runtime_error("no implementation found.");
-        }
-    }
-);
-
-namespace op {
     Array tensordot_as_dot(Array a, Array b,
                            const std::vector<int>& a_reduce_axes,
                            const std::vector<int>& b_reduce_axes) {
         throw std::runtime_error("not implemented yet");
     }
-
     Array dot(Array a, Array b) {
         int a_ndim = a.ndim();
         int b_ndim = b.ndim();

@@ -43,12 +43,24 @@ TEST(ArrayTests, ones) {
 }
 
 TEST(ArrayTests, dot) {
-    memory::WithDevicePreference dp(memory::Device::cpu());
-    auto x = Array::ones({3, 3}, DTYPE_INT32);
-    auto y = op::dot(x, x);
-    auto y_ref = reference_dot(x, x);
-    auto op = op::all_equals(y, y_ref);
-    EXPECT_TRUE((bool)((int)op::all_equals(y, y_ref)));
+    {
+        memory::WithDevicePreference dp(memory::Device::cpu());
+        auto x = Array::ones({3, 3}, DTYPE_INT32);
+        auto y = op::dot(x, x);
+        auto y_ref = reference_dot(x, x);
+        auto op = op::all_equals(y, y_ref);
+        EXPECT_TRUE((bool)((int)op::all_equals(y, y_ref)));
+    }
+#ifdef DALI_USE_CUDA
+    {
+        memory::WithDevicePreference dp(memory::Device::gpu(0));
+        auto x = Array::ones({3, 3}, DTYPE_INT32);
+        auto y = op::dot(x, x);
+        auto y_ref = reference_dot(x, x);
+        auto op = op::all_equals(y, y_ref);
+        EXPECT_TRUE((bool)((int)op::all_equals(y, y_ref)));
+    }
+#endif
 }
 
 TEST(ArrayTests, scalar_value) {

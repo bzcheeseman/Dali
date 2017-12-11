@@ -1,9 +1,8 @@
-#include "cpu_gemm.h"
-
 #include "dali/utils/assert2.h"
 #include "dali/utils/print_utils.h"
 #include "dali/utils/make_message.h"
 #include "dali/array/gemm/reference_gemm.h"
+#include "dali/array/gemm/gemm_utils.h"
 #include "dali/array/op/dot.h"
 #include "dali/array/expression/computation.h"
 
@@ -18,23 +17,6 @@ void igemm(bool transpose_a, bool transpose_b,
     ReferenceGemm<int>(
         transpose_a, transpose_b, true, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc
     );
-}
-
-// compute gemm col-major transpose + stride argument
-std::tuple<bool, int> gemm_stride_transpose(const Array& array) {
-    if (array.strides().size() == 0) {
-        return std::make_tuple(false, array.normalized_strides()[0]);
-    }
-    const std::vector<int>& strides = array.strides();
-    if (strides[0] == 1) {
-        return std::make_tuple(true, strides[1]);
-    } else if (strides[1] == 1) {
-        return std::make_tuple(false, strides[0]);
-    }
-    ASSERT2(false, utils::make_message(
-        "gemm only supports arrays with a single stride (got strides: ",
-        strides, ")"));
-    return std::make_tuple(false, 1);
 }
 
 struct CpuGemmImpl : public Computation {
@@ -103,9 +85,13 @@ struct CpuGemmImpl : public Computation {
     }
 };
 
-int impl = register_implementation(
+int cpu_gemm_impl = register_implementation(
     typeid(op::MatMul).name(),
     [](Array dest, OPERATOR_T operator_t, Array x) -> std::shared_ptr<Computation> {
-        return std::make_shared<CpuGemmImpl>(dest, operator_t, x);
+        if (dest.preferred_device().is_cpu()) {
+            return std::make_shared<CpuGemmImpl>(dest, operator_t, x);
+        } else {
+            return nullptr;
+        }
     }
 );

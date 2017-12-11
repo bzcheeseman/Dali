@@ -10,7 +10,8 @@ namespace op {
         Array right_;
         MatMul(Array left, Array right);
         std::vector<Array> arguments() const;
-        virtual std::shared_ptr<Expression> copy() const;
+        using Expression::copy;
+        virtual expression_ptr copy() const;
         memory::Device preferred_device() const;
     };
 

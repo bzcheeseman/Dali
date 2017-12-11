@@ -10,7 +10,7 @@ Computation::Computation(Array left, OPERATOR_T operator_t, Array right) :
     left_(left), operator_t_(operator_t), right_(right) {}
 
 
-std::unordered_map<const char*, to_computation_t > IMPLEMENTATIONS;
+std::unordered_map<const char*, std::vector<to_computation_t> > IMPLEMENTATIONS;
 
 struct Allocate : public Computation {
     Allocate(Array array) : Computation(array, OPERATOR_T_EQL, array) {}
@@ -33,16 +33,25 @@ std::vector<std::shared_ptr<Computation>> convert_to_ops(Array root) {
                 element = op::jit::buffer_buffer_op(element);
             }
             auto hashname = typeid(*assignment->right_.expression()).name();
+            bool found_impl = false;
             if (IMPLEMENTATIONS.find(hashname) != IMPLEMENTATIONS.end()) {
-                steps.emplace_back(
-                    IMPLEMENTATIONS[hashname](assignment->left_,
-                                              assignment->operator_t_,
-                                              assignment->right_)
-                );
-                elements.emplace_back(assignment->left_);
-                auto args = assignment->right_.expression()->arguments();
-                elements.insert(elements.end(), args.begin(), args.end());
-            } else {
+                for (const auto& impl_creator : IMPLEMENTATIONS[hashname]) {
+                    auto impl = impl_creator(assignment->left_,
+                                             assignment->operator_t_,
+                                             assignment->right_);
+                    if (impl != nullptr) {
+                        steps.emplace_back(impl);
+                        found_impl = true;
+                        break;
+                    }
+                }
+                if (found_impl) {
+                    elements.emplace_back(assignment->left_);
+                    auto args = assignment->right_.expression()->arguments();
+                    elements.insert(elements.end(), args.begin(), args.end());
+                }
+            }
+            if (!found_impl) {
                 throw std::runtime_error(utils::make_message(
                     "No implementation found for ", assignment->right_.expression_name(), "."));
             }
@@ -60,8 +69,6 @@ std::vector<std::shared_ptr<Computation>> convert_to_ops(Array root) {
 }
 
 int register_implementation(const char* opname, to_computation_t impl) {
-    // TODO(jonathan): this should be an incremental registry, should
-    // not replace the previous version.
-    IMPLEMENTATIONS[opname] = impl;
+    IMPLEMENTATIONS[opname].emplace_back(impl);
     return 0;
 }

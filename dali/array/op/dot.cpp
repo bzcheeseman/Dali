@@ -29,7 +29,7 @@ namespace op {
     std::vector<Array> MatMul::arguments() const {
         return {left_, right_};
     }
-    std::shared_ptr<Expression> MatMul::copy() const {
+    expression_ptr MatMul::copy() const {
         return std::make_shared<MatMul>(*this);
     }
     memory::Device MatMul::preferred_device() const {

@@ -381,7 +381,7 @@ Array axis_reduce(
             utils::make_message(
                 "Reduction axis must strictly positive and less than the "
                 "number of dimensions of the input (got axis=", axes[0], ","
-                " ndim=", ndim, ")."
+                " ndim=", ndim, ", input.shape = ", a.shape(), ")."
             )
         );
     }

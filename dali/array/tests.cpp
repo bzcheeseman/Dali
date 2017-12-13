@@ -11,6 +11,8 @@
 #include "dali/utils/core_utils.h"
 #include "dali/array/op/dot.h"
 #include "dali/array/op/binary.h"
+#include "dali/array/op/reducers.h"
+#include "dali/array/expression/assignment.h"
 
 int vector_dot(Array left, Array right) {
     int out = 0;
@@ -61,6 +63,22 @@ TEST(ArrayTests, dot) {
         EXPECT_TRUE((bool)((int)op::all_equals(y, y_ref)));
     }
 #endif
+}
+
+TEST(ArrayTests, autoreduce_assign) {
+    Array autoreduce_assign_dest = Array::zeros(
+        {3, 2, 1, 2, 1}, DTYPE_FLOAT
+    );
+    Array autoreduce_assign_source = Array::ones(
+        {3, 2, 10, 2, 10}, DTYPE_FLOAT
+    );
+    autoreduce_assign_dest = op::autoreduce_assign(
+        autoreduce_assign_dest, autoreduce_assign_source);
+    std::cout << autoreduce_assign_dest.shape() << std::endl;
+    EXPECT_TRUE((bool)((int)op::all_equals(
+        autoreduce_assign_dest,
+        op::sum(autoreduce_assign_source, {2, 4}).expand_dims(2).expand_dims(4)
+    )));
 }
 
 TEST(ArrayTests, scalar_value) {

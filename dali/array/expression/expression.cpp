@@ -554,3 +554,7 @@ void Expression::for_all_suboperations(std::function<void(const Array&)> callbac
         arg.expression()->for_all_suboperations(callback);
     }
 }
+
+bool Expression::supports_operator(OPERATOR_T operator_t) const {
+    return operator_t == OPERATOR_T_EQL;
+}

@@ -28,7 +28,15 @@ namespace {
             return node;
         }
         if (!node.is_assignment()) {
-            node.set_expression(to_assignment(node).expression());
+            node.set_expression(op::to_assignment(node).expression());
+        }
+        Assignment* node_assign = static_cast<Assignment*>(node.expression().get());
+        if (node_assign->right_.is_assignment()) {
+            Assignment* node_right_assign = op::static_as_assignment(node_assign->right_);
+            if (node_right_assign->operator_t_ == OPERATOR_T_EQL &&
+                node_right_assign->right_.expression()->supports_operator(node_assign->operator_t_)) {
+                node_assign->right_.set_expression(node_right_assign->right_.expression());
+            }
         }
         for (auto& arg : right_args(node)) {
             arg.set_expression(all_assignments_or_buffers(arg).expression());

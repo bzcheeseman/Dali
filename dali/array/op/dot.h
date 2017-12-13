@@ -13,6 +13,7 @@ namespace op {
         using Expression::copy;
         virtual expression_ptr copy() const;
         memory::Device preferred_device() const;
+        virtual bool supports_operator(OPERATOR_T operator_t) const;
     };
 
     Array dot(Array a, Array b);

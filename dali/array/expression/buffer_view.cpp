@@ -91,3 +91,7 @@ std::shared_ptr<BufferView> BufferView::construct_with_bshape(
     }
     return ret;
 }
+
+bool BufferView::supports_operator(OPERATOR_T operator_t) const {
+    return true;
+}

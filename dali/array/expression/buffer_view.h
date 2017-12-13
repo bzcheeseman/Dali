@@ -43,7 +43,7 @@ struct BufferView : public Expression {
             DType dtype,
             memory::Device preferred_device);
 
-
+    virtual bool supports_operator(OPERATOR_T operator_t) const;
 };
 
 #endif  // DALI_ARRAY_EXPRESSION_BUFFER_VIEW_H

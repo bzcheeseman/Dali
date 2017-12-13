@@ -7,6 +7,7 @@
 #include "dali/array/dtype.h"
 #include "dali/array/slice.h"
 #include "dali/array/memory/device.h"
+#include "dali/array/expression/operator.h"
 
 struct Expression;
 typedef std::shared_ptr<Expression> expression_ptr;
@@ -72,6 +73,7 @@ struct Expression {
     virtual expression_ptr collapse_axis_with_axis_minus_one(int axis) const;
     virtual std::string name() const;
     virtual std::string full_name() const;
+    virtual bool supports_operator(OPERATOR_T operator_t) const;
 
     void for_all_suboperations(std::function<void(const Array&)>) const;
 };

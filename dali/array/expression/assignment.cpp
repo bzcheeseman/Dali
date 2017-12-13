@@ -1,4 +1,7 @@
 #include "assignment.h"
+#include "dali/utils/make_message.h"
+#include "dali/array/op/reducers.h"
+
 // TODO should pass strides + offset to Expression
 Assignment::Assignment(Array left, OPERATOR_T operator_t, Array right) :
         Expression(left.shape(),
@@ -27,8 +30,33 @@ std::string Assignment::name() const {
     return "Assignment[" + operator_to_name(operator_t_) + "]";
 }
 
+namespace op {
+
 Array autoreduce_assign(const Array& left, const Array& right) {
-    throw std::runtime_error("autoreduce_assign not implemented yet.");
+    Array assigned_right = right;
+    if (!right.is_buffer()) {
+        assigned_right = to_assignment(right);
+    }
+    ASSERT2(left.ndim() == right.ndim(), utils::make_message(
+        "destination for autoreduce_assign must have "
+        "the same dimensionality as the input (destination.ndim = ",
+        left.ndim(), " vs input.ndim = ", right.ndim()));
+
+    std::vector<int> reduction_axes;
+    for (int i = 0; i < right.ndim(); i++) {
+        if (left.shape()[i] != right.shape()[i]) {
+            ASSERT2(left.shape()[i] == 1, utils::make_message(
+                "Could not autoreduce_assign: destination must "
+                "have all dimensions equal input dimensions or equal 1,"
+                " but destination.shape[", i, "] = ", left.shape()[i],
+                " vs input.shape[", i, "] = ", right.shape()[i]));
+            reduction_axes.emplace_back(i);
+        }
+    }
+    if (!reduction_axes.empty()) {
+        assigned_right = op::sum(assigned_right, reduction_axes);
+    }
+    return Array(std::make_shared<Assignment>(left, OPERATOR_T_ADD, assigned_right));
 }
 
 Array to_assignment(const Array& node) {
@@ -43,12 +71,18 @@ Array assign(const Array& left, OPERATOR_T operator_t, const Array& right) {
     } else if (operator_t == OPERATOR_T_LSE) {
         return autoreduce_assign(left, right);
     } else {
+        Array assigned_right = right;
+        if (!right.is_buffer()) {
+            assigned_right = to_assignment(right);
+        }
         // a temp is added so that non overwriting operators
         // can be run independently from the right side's evaluation.
-        return Array(std::make_shared<Assignment>(left, operator_t, to_assignment(right)));
+        return Array(std::make_shared<Assignment>(left, operator_t, assigned_right));
     }
 }
 
-std::shared_ptr<Assignment> as_assignment(const Array& arr) {
-    return std::dynamic_pointer_cast<Assignment>(arr.expression());
+Assignment* static_as_assignment(const Array& arr) {
+    return static_cast<Assignment*>(arr.expression().get());
 }
+
+}  // namespace op

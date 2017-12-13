@@ -35,6 +35,11 @@ namespace op {
     memory::Device MatMul::preferred_device() const {
         return device_promotion(left_, right_);
     }
+    bool MatMul::supports_operator(OPERATOR_T operator_t) const {
+        return (operator_t == OPERATOR_T_EQL ||
+                operator_t == OPERATOR_T_ADD ||
+                operator_t == OPERATOR_T_SUB);
+    }
 
     Array tensordot_as_dot(Array a, Array b,
                            const std::vector<int>& a_reduce_axes,

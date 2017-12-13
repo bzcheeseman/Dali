@@ -28,10 +28,6 @@ std::vector<std::shared_ptr<Computation>> convert_to_ops(Array root) {
             steps.emplace_back(std::make_shared<Allocate>(element));
         } else if (element.is_assignment()) {
             auto assignment = std::dynamic_pointer_cast<Assignment>(element.expression());
-            if (assignment->right_.is_buffer() || assignment->right_.is_assignment()) {
-                // # TODO(jonathan): clean this up
-                element = op::jit::buffer_buffer_op(element);
-            }
             auto hashname = typeid(*assignment->right_.expression()).name();
             bool found_impl = false;
             if (IMPLEMENTATIONS.find(hashname) != IMPLEMENTATIONS.end()) {

@@ -701,19 +701,19 @@ void Array::copy_from(const Array& other) {
 }
 
 Array& Array::operator=(const int& other) {
-    auto assignment = assign(*this, OPERATOR_T_EQL, op::identity(other));
+    auto assignment = op::assign(*this, OPERATOR_T_EQL, op::identity(other));
     state_ = assignment.state_;
     return *this;
 }
 
 Array& Array::operator=(const float& other) {
-    auto assignment = assign(*this, OPERATOR_T_EQL, op::identity(other));
+    auto assignment = op::assign(*this, OPERATOR_T_EQL, op::identity(other));
     state_ = assignment.state_;
     return *this;
 }
 
 Array& Array::operator=(const double& other) {
-    auto assignment = assign(*this, OPERATOR_T_EQL, op::identity(other));
+    auto assignment = op::assign(*this, OPERATOR_T_EQL, op::identity(other));
     state_ = assignment.state_;
     return *this;
 }

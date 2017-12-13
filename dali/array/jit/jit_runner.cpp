@@ -96,6 +96,10 @@ memory::Device JITNode::preferred_device() const {
     return best_device;
 }
 
+bool JITNode::supports_operator(OPERATOR_T operator_t) const {
+    return true;
+}
+
 struct JITRunner : public JITNode {
     static const hash_t optype_hash;
     Array dest_;
@@ -153,8 +157,8 @@ bool is_jit_runner(const Array& array) {
 
 bool is_jit_assignment(const Array& node) {
     return (node.is_assignment() &&
-            is_jit_node(as_assignment(node)->right_) &&
-            !is_jit_runner(as_assignment(node)->right_));
+            is_jit_node(static_as_assignment(node)->right_) &&
+            !is_jit_runner(static_as_assignment(node)->right_));
 }
 
 std::shared_ptr<JITRunner> as_jit_runner(const Array& array) {
@@ -331,11 +335,6 @@ std::string JITRunner::get_code_template(memory::Device device,
             }
         }
     });
-    // for (auto kv : node_to_info) {
-    //     std::cout << typeid(*kv.first).name()
-    //               << ".computation_rank=" << kv.second.computation_rank
-    //               << ", .computation_shape= " << kv.second.computation_shape << std::endl;
-    // }
 
     result << "void run(void** array_data, const int* offsets, const int** sizes, const int** strides, const void** scalar_arguments) {\n";
 
@@ -458,7 +457,7 @@ Array jit_root(const Array& array) {
 }
 
 std::tuple<Array, Array> replace_assign_with_inplace(const Array& node) {
-    auto assign = as_assignment(node);
+    auto assign = static_as_assignment(node);
     auto rightside = jit_root(assign->right_);
     auto operator_t = assign->operator_t_;
     if (operator_t == OPERATOR_T_EQL) {
@@ -484,15 +483,15 @@ std::tuple<Array, Array> replace_assign_with_inplace(const Array& node) {
 
 Array jit_merge(const Array& root) {
     std::vector<Array> leaves;
-    auto assign = as_assignment(root);
+    auto assign = static_as_assignment(root);
     auto root_buffer = assign->left_;
     auto root_operator = assign->operator_t_;
     Array left_leaf, replaced;
     for (auto& arg : right_args(root)) {
         if (arg.is_assignment() &&
-            is_jit_runner(as_assignment(arg)->right_)) {
+            is_jit_runner(static_as_assignment(arg)->right_)) {
             // grab leaves from existing jit-runner recursively:
-            auto extra_leaves = as_jit_runner(as_assignment(arg)->right_)->leaves_;
+            auto extra_leaves = as_jit_runner(static_as_assignment(arg)->right_)->leaves_;
             leaves.insert(leaves.end(), extra_leaves.begin(), extra_leaves.end());
             // if the node is an assignment to a buffer, ensure that
             // the assignment op gets included within this op
@@ -512,7 +511,7 @@ Array jit_merge(const Array& root) {
             // detach the assignment subgraph and only keep the left node(bufferview)
             auto leaf_arg = Array();
             leaf_arg.set_expression(arg.expression());
-            arg.set_expression(as_assignment(arg)->left_.expression());
+            arg.set_expression(static_as_assignment(arg)->left_.expression());
             leaves.emplace_back(leaf_arg);
         } else {
             // this node is either an assignment, or a buffer,
@@ -601,27 +600,6 @@ struct JITRunnerImpl : public Computation {
     }
 };
 
-
-Array buffer_buffer_op(Array node) {
-    auto assignment = std::dynamic_pointer_cast<Assignment>(node.expression());
-
-    // TODO(jonathan): this should not be needed
-    auto identity_node = op::identity(assignment->right_);
-    auto something = std::make_shared<op::jit::JITRunner>(
-        identity_node,
-        std::vector<Array>({assignment->right_}),
-        OPERATOR_T_EQL,
-        assignment->left_
-    );
-    return Array(
-        std::make_shared<Assignment>(
-            assignment->left_,
-            assignment->operator_t_,
-            Array(something)
-        )
-    );
-}
-
 int min_computation_rank(const Array& array) {
     if (is_jit_node(array)) {
         return as_jit_node(array)->min_computation_rank_;
@@ -686,5 +664,13 @@ int registered_impl = register_implementation(
    [](Array dest, OPERATOR_T operator_t, Array x) -> std::shared_ptr<Computation> {
         return std::make_shared<JITRunnerImpl>(dest, operator_t, x);
    });
+int registered_buffer = register_implementation(
+    typeid(BufferView).name(),
+    [](Array dest, OPERATOR_T operator_t, Array x) -> std::shared_ptr<Computation> {
+        Array runner(std::make_shared<JITRunner>(
+            x, std::vector<Array>({x}), operator_t, dest
+        ));
+        return std::make_shared<JITRunnerImpl>(dest, operator_t, runner);
+    });
 }  // namespace jit
 }  // namespace op

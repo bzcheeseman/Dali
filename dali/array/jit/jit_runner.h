@@ -51,13 +51,13 @@ namespace op {
                     int offset=0,
                     const std::vector<int>& strides={});
             JITNode(const JITNode& other);
+
+            virtual bool supports_operator(OPERATOR_T operator_t) const;
         };
 
         std::shared_ptr<JITNode> as_jit_node(Array array);
         hash_t node_hash(const node_to_info_t& node_to_info, const Array& arr);
         bool is_jit(const Array& arr);
-
-        Array buffer_buffer_op(Array node);
 
         void compute_node_compilation_info(const Array& a,
                                            int desired_computation_rank,

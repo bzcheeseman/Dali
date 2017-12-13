@@ -27,7 +27,7 @@ std::vector<std::shared_ptr<Computation>> convert_to_ops(Array root) {
         if (element.is_buffer()) {
             steps.emplace_back(std::make_shared<Allocate>(element));
         } else if (element.is_assignment()) {
-            auto assignment = std::dynamic_pointer_cast<Assignment>(element.expression());
+            auto assignment = op::static_as_assignment(element);
             auto hashname = typeid(*assignment->right_.expression()).name();
             bool found_impl = false;
             if (IMPLEMENTATIONS.find(hashname) != IMPLEMENTATIONS.end()) {

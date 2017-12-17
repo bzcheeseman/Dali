@@ -93,17 +93,51 @@ std::ostream &operator <<(std::ostream &os, const std::unordered_map<string, str
    return os << "}";
 }
 
+int needed_digits(int value) {
+  if (value > 0) {
+    return 1 + needed_digits(value / 10);
+  } else {
+    return 0;
+  }
+}
+
+
 template<typename T>
 std::ostream& operator<<(std::ostream& os, const vector<T>& v) {
         if (v.size() == 0) return os << "[]";
         os << "[";
-        for (auto& f : v)
+        size_t i = 0;
+        for (auto& f : v) {
                 os << std::fixed
                    << std::setw( 7 ) // keep 7 digits
                    << std::setprecision( 3 ) // use 3 decimals
                    << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
-                   << f << " ";
+                   << f;
+          if (i++ + 1 < v.size()) {
+            os << ", ";
+          }
+        }
         return os << "]";
+}
+
+template<>
+std::ostream& operator<<(std::ostream& os, const vector<int>& v) {
+    if (v.size() == 0) return os << "[]";
+    auto max_el = *std::max_element(v.begin(), v.end());
+    auto min_el = *std::max_element(v.begin(), v.end());
+    int digits = needed_digits(std::max(std::abs(max_el), std::abs(min_el)));
+    os << "[";
+    size_t i = 0;
+    for (auto& f : v) {
+            os << std::fixed
+               << std::setw( digits ) // keep 7 digits
+               << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
+               << f;
+      if (i++ + 1 < v.size()) {
+        os << ", ";
+      }
+    }
+    return os << "]";
 }
 
 template std::ostream& operator<< <double>(std::ostream& strm, const vector<double>& a);

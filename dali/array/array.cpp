@@ -17,6 +17,8 @@
 #include "dali/utils/make_message.h"
 #include "dali/array/op/unary.h"
 #include "dali/array/op/dot.h"
+#include "dali/array/jit/scalar_view.h"
+
 
 
 using std::vector;
@@ -131,6 +133,9 @@ Array::Array(const Array& other, const bool& copy_memory) {
     }
 }
 
+Array::Array(const int& value) : Array(op::jit::wrap_scalar(value)) {}
+Array::Array(const double& value) : Array(op::jit::wrap_scalar(value)) {}
+Array::Array(const float& value) : Array(op::jit::wrap_scalar(value)) {}
 
 Array Array::zeros(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
     Array ret(shape, dtype, preferred_device);
@@ -228,6 +233,7 @@ Array Array::buffer_arg() const {
 void Array::eval(bool wait) const {
     if (!is_buffer()) {
         auto node = canonical(*this);
+        std::cout << node.full_expression_name() << std::endl;
         auto computable = convert_to_ops(node);
         // run (DAG evaluation)
         for (auto& step : computable) {
@@ -602,6 +608,11 @@ Array Array::reshape(const std::vector<int>& shape) const {
 Array Array::collapse_axis_with_axis_minus_one(int axis) const {
     alert_stateless_call(!is_stateless(), "collapse_axis_with_axis_minus_one");
     return Array(expression()->collapse_axis_with_axis_minus_one(axis));
+}
+
+bool Array::is_axis_collapsible_with_axis_minus_one(int axis) const {
+    alert_stateless_call(!is_stateless(), "is_axis_collapsible_with_axis_minus_one");
+    return expression()->is_axis_collapsible_with_axis_minus_one(axis);
 }
 
 Array Array::copyless_reshape(const std::vector<int>& shape) const {

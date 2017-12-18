@@ -15,9 +15,13 @@ std::string build_array_definition(const std::string& cpp_type,
 
 // create declaration for copying a scalar argument into a local variable
 std::string build_scalar_definition(const std::string& cpp_type,
-                                     const std::string& varname,
-                                     int rank,
-                                     const std::string& captured_name);
+                                    const std::string& varname,
+                                    int rank,
+                                    const std::string& captured_name);
+
+std::string build_shape_definition(const std::string& varname,
+                                   int rank,
+								                   const std::string& captured_name);
 
 
 // Given the number of indexes (rank) returns string to access kernels.

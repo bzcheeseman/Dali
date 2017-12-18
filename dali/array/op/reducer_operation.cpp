@@ -30,14 +30,14 @@ struct ReducerExpression : public JITNode {
         return {argument_};
     }
 
-    virtual std::string get_call_code_nd(const symbol_table_t& symbol_table,
+    virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
                                          const node_to_info_t& node_to_info,
                                          memory::DeviceT device_type) const {
         int all_reduce_comp_rank = node_to_info.at(argument_.expression().get()).computation_rank;
         return utils::make_message(
             kernel_name(), all_reduce_comp_rank,
             "d<", functor_name_, ", " , dtype_to_cpp_name(dtype_), ">(",
-            as_jit_node(argument_)->get_call_code_nd(symbol_table, node_to_info, device_type), ")");
+            op::jit::get_call_code_nd(argument_, symbol_table, node_to_info, device_type), ")");
     }
 };  // struct ReducerExpression
 
@@ -56,17 +56,12 @@ struct AllReducerExpression : public ReducerExpression {
         );
     }
 
-    virtual int ndim() const {
-        return 0;
-    }
-
     virtual void compute_node_compilation_info(int desired_computation_rank,
                                                const std::vector<int>& desired_computation_shape,
-                                               std::vector<const BufferView*>* arrays,
-                                               std::vector<const ScalarView*>* scalars,
+                                               SymbolTable& symbol_table,
                                                node_to_info_t* node_to_info) const;
 
-    virtual bool is_axis_collapsible_with_axis_minus_one(const int& dim) const {
+    virtual bool is_axis_collapsible_with_axis_minus_one(int dim) const {
         return true;
     }
 
@@ -98,20 +93,15 @@ struct AxisReducerExpression : public ReducerExpression {
         );
     }
 
-    virtual int ndim() const {
-        return std::max(argument_.ndim() - 1, 0);
-    }
-
     virtual void compute_node_compilation_info(
         int desired_computation_rank,
         const std::vector<int>& desired_computation_shape,
-        std::vector<const BufferView*>* arrays,
-        std::vector<const ScalarView*>* scalars,
+        SymbolTable& symbol_table,
         node_to_info_t* node_to_info) const;
 
-    virtual bool is_axis_collapsible_with_axis_minus_one(const int& dim) const;
+    virtual bool is_axis_collapsible_with_axis_minus_one(int dim) const;
 
-    virtual expression_ptr collapse_axis_with_axis_minus_one(const int& dim) const;
+    virtual expression_ptr collapse_axis_with_axis_minus_one(int dim) const;
 
     virtual expression_ptr transpose(const std::vector<int>& permutation) const;
 
@@ -167,7 +157,7 @@ struct ArgumentAxisReducerExpression : public AxisReducerExpression {
 
     virtual std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
 
-    virtual expression_ptr collapse_axis_with_axis_minus_one(const int& dim) const;
+    virtual expression_ptr collapse_axis_with_axis_minus_one(int axis) const;
 
     virtual expression_ptr transpose(const std::vector<int>& permutation) const;
 
@@ -195,15 +185,13 @@ AllReducerExpression::AllReducerExpression(
 void AllReducerExpression::compute_node_compilation_info(
         int desired_computation_rank,
         const std::vector<int>& desired_computation_shape,
-        std::vector<const BufferView*>* arrays,
-        std::vector<const ScalarView*>* scalars,
+        SymbolTable& symbol_table,
         node_to_info_t* node_to_info) const {
     (*node_to_info)[this].computation_rank = desired_computation_rank;
     op::jit::compute_node_compilation_info(argument_,
-                                           as_jit_node(argument_)->min_computation_rank_,
+                                           min_computation_rank(argument_),
                                            argument_.shape(),
-                                           arrays,
-                                           scalars,
+                                           symbol_table,
                                            node_to_info);
     (*node_to_info)[this].hash = utils::Hasher().add(optype_hash())
                                                 .add(desired_computation_rank)
@@ -242,24 +230,26 @@ AxisReducerExpression::AxisReducerExpression(
     ReducerExpression(functor_name, argument,
         axis_reducer_shape(argument),
         dtype,
-        std::max(as_jit_node(argument)->min_computation_rank_ - 1, 1)) {
+        std::max(op::jit::min_computation_rank(argument) - 1, 1)) {
 }
 
 void AxisReducerExpression::compute_node_compilation_info(
         int desired_computation_rank,
         const std::vector<int>& desired_computation_shape,
-        std::vector<const BufferView*>* arrays,
-        std::vector<const ScalarView*>* scalars,
+        SymbolTable& symbol_table,
         node_to_info_t* node_to_info) const {
     (*node_to_info)[this].computation_rank = desired_computation_rank;
-
     auto desired_argument_shape = desired_computation_shape;
-    desired_argument_shape.emplace_back(argument_.shape().back());
-
-    as_jit_node(argument_)->compute_node_compilation_info(
-        desired_computation_rank + 1,
-        desired_argument_shape, arrays, scalars, node_to_info);
-
+    if (argument_.ndim() > 0) {
+        desired_argument_shape.emplace_back(argument_.shape().back());
+    } else {
+        desired_argument_shape.emplace_back(1);
+    }
+    op::jit::compute_node_compilation_info(argument_,
+                                           desired_computation_rank + 1,
+                                           desired_argument_shape,
+                                           symbol_table,
+                                           node_to_info);
     (*node_to_info)[this].hash = utils::Hasher().add(optype_hash())
                                                 .add(desired_computation_rank)
                                                 .add(functor_name_)
@@ -267,15 +257,14 @@ void AxisReducerExpression::compute_node_compilation_info(
                                                 .value();
 }
 
-bool AxisReducerExpression::is_axis_collapsible_with_axis_minus_one(
-        const int& dim) const {
-    return as_jit_node(argument_)->is_axis_collapsible_with_axis_minus_one(dim - 1);
+bool AxisReducerExpression::is_axis_collapsible_with_axis_minus_one(int dim) const {
+    return argument_.is_axis_collapsible_with_axis_minus_one(dim - 1);
 }
 
-expression_ptr AxisReducerExpression::collapse_axis_with_axis_minus_one(const int& dim) const {
+expression_ptr AxisReducerExpression::collapse_axis_with_axis_minus_one(int axis) const {
     return std::make_shared<AxisReducerExpression>(
         functor_name_,
-        argument_.collapse_axis_with_axis_minus_one(dim - 1),
+        argument_.collapse_axis_with_axis_minus_one(axis - 1),
         argument_.dtype()
     );
 }
@@ -330,10 +319,10 @@ std::string ArgumentAxisReducerExpression::prefix_code(
         node_to_info.at(argument_.expression().get()).computation_rank);
 }
 
-expression_ptr ArgumentAxisReducerExpression::collapse_axis_with_axis_minus_one(const int& dim) const {
+expression_ptr ArgumentAxisReducerExpression::collapse_axis_with_axis_minus_one(int axis) const {
     return std::make_shared<ArgumentAxisReducerExpression>(
         functor_name_,
-        argument_.collapse_axis_with_axis_minus_one(dim - 1),
+        argument_.collapse_axis_with_axis_minus_one(axis - 1),
         DTYPE_INT32
     );
 }
@@ -423,28 +412,21 @@ Array axis_reduce(
             }
         }
         res = res.transpose(new_axes_order);
+        std::cout << res.full_expression_name() << std::endl;
     }
     int num_low_axes_to_reduce = normalized_axes.size();
     if (num_low_axes_to_reduce > 0) {
         int axes_used_up = 0;
         int collapsed_ndim = ndim - 1;
         for (int axes_used_up = 0; axes_used_up < num_low_axes_to_reduce; ++axes_used_up) {
-            if (num_low_axes_to_reduce - axes_used_up == 1) {
+            if (num_low_axes_to_reduce - axes_used_up == 1  || !res.is_axis_collapsible_with_axis_minus_one(collapsed_ndim)) {
                 res = Array(std::make_shared<op::jit::AxisReducerExpression>(
                     reducer_name,
                     res,
                     res.dtype()
                 ));
             } else {
-                if (jit::as_jit_node(res)->is_axis_collapsible_with_axis_minus_one(collapsed_ndim)) {
                     res = res.collapse_axis_with_axis_minus_one(collapsed_ndim);
-                } else {
-                    res = Array(std::make_shared<op::jit::AxisReducerExpression>(
-                        reducer_name,
-                        res,
-                        res.dtype()
-                    ));
-                }
             }
             --collapsed_ndim;
         }

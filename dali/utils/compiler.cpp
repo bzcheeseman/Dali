@@ -184,6 +184,7 @@ bool Compiler::compile_code(const std::string& source,
                             const memory::DeviceT& device_type) {
     auto cmd = compiler_command(source, dest, logfile, extra_args, device_type);
     int ret = system(cmd.c_str());
+    std::cout << "cmd = " << cmd << std::endl;
     return WEXITSTATUS(ret) == EXIT_SUCCESS;
 }
 

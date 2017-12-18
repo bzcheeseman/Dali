@@ -88,7 +88,7 @@ namespace functor {
     };
 
     template<typename R>
-    struct sub {
+    struct subtract {
         XINLINE static R Map(const R& a, const R& b) {
             return a - b;
         }

@@ -232,7 +232,9 @@ expression_ptr Expression::transpose() const {
 }
 
 expression_ptr Expression::transpose(const std::vector<int>& axes) const {
-    return dimshuffle(axes);
+    auto novel = dimshuffle(axes);
+    ELOG(novel->shape_);
+    return novel;
 }
 
 expression_ptr Expression::swapaxes(int axis1, int axis2) const {
@@ -260,6 +262,7 @@ expression_ptr Expression::swapaxes(int axis1, int axis2) const {
 }
 
 expression_ptr Expression::dimshuffle(const std::vector<int>& pattern) const {
+    ELOG("dimshuffle");
     int dimensionality = ndim();
     ASSERT2(pattern.size() == dimensionality, utils::make_message("number of"
         " dimensions in dimshuffle does not correspond to the dimensionality "
@@ -338,7 +341,8 @@ expression_ptr Expression::copyless_reshape(const vector<int>& new_shape) const 
         }
     }
     ASSERT2(false, utils::make_message("Cannot perform reshape without a copy on "
-        "non-contiguous memory (strides_ = ", strides_, ", shape=", shape_, ","
+        "non-contiguous memory (contiguous = ", contiguous_memory(),
+        ", strides = ", strides_, ", shape=", shape_, ","
         " new shape = ", new_shape, ")."));
 
     return nullptr;
@@ -470,7 +474,7 @@ expression_ptr Expression::expand_dims(int new_axis) const {
     vector<int> new_shape   = shape_;
     vector<int> new_strides = normalized_strides();
 
-    new_shape.insert(  new_shape.begin()   + new_axis, 1);
+    new_shape.insert(  new_shape.begin() + new_axis, 1);
     // It really does not matter what the new stride is going to be,
     // because in we are only ever going to access it at index 0,
     // so it will get cancelled out. We chose to set it to the stride that
@@ -480,7 +484,6 @@ expression_ptr Expression::expand_dims(int new_axis) const {
         new_strides.begin() + new_axis,
         shape_to_trivial_strides(new_shape)[new_axis]
     );
-
     return copy(new_shape, offset_, new_strides);
 }
 
@@ -557,4 +560,8 @@ void Expression::for_all_suboperations(std::function<void(const Array&)> callbac
 
 bool Expression::supports_operator(OPERATOR_T operator_t) const {
     return operator_t == OPERATOR_T_EQL;
+}
+
+bool Expression::is_axis_collapsible_with_axis_minus_one(int axis) const {
+    return false;
 }

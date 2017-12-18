@@ -45,6 +45,9 @@ class Array  {
           const std::vector<int>& strides,
           DType dtype_=DTYPE_FLOAT);
     Array(const Array& other, const bool& copy_memory=false);
+    Array(const int& value);
+    Array(const double& value);
+    Array(const float& value);
 
     static Array arange(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
     static Array arange(const double& start, const double& stop, const double& step, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
@@ -156,6 +159,7 @@ class Array  {
     Array copyless_reshape(const std::vector<int>& shape) const;
 
     Array collapse_axis_with_axis_minus_one(int axis) const;
+    bool is_axis_collapsible_with_axis_minus_one(int axis) const;
 
     Array right_fit_ndim(int dimensionality) const;
     Array copyless_right_fit_ndim(int dimensionality) const;

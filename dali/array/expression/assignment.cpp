@@ -1,6 +1,7 @@
 #include "assignment.h"
 #include "dali/utils/make_message.h"
 #include "dali/array/op/reducers.h"
+#include "dali/array/expression/control_flow.h"
 
 // TODO should pass strides + offset to Expression
 Assignment::Assignment(Array left, OPERATOR_T operator_t, Array right) :
@@ -27,7 +28,30 @@ std::vector<Array> Assignment::arguments() const {
 }
 
 std::string Assignment::name() const {
-    return "Assignment[" + operator_to_name(operator_t_) + "]";
+    return utils::make_message(
+        "Assignment[", operator_to_name(operator_t_), ", ",
+        shape_, strides_, "]");
+}
+
+bool Assignment::is_axis_collapsible_with_axis_minus_one(int axis) const {
+    return contiguous_memory();
+}
+
+expression_ptr Assignment::collapse_axis_with_axis_minus_one(int axis) const {
+    if (right_.is_axis_collapsible_with_axis_minus_one(axis)) {
+        return std::make_shared<Assignment>(
+            left_.collapse_axis_with_axis_minus_one(axis),
+            operator_t_,
+            right_.collapse_axis_with_axis_minus_one(axis)
+        );
+    } else {
+        auto collapsed_self = left_.collapse_axis_with_axis_minus_one(axis);
+        return std::make_shared<ControlFlow>(
+            collapsed_self, std::vector<Array>({
+                Array(copy())
+            })
+        );
+    }
 }
 
 namespace op {

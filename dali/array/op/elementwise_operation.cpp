@@ -3,12 +3,12 @@
 #include <vector>
 #include <numeric>
 #include "dali/utils/hash_utils.h"
+#include "dali/utils/make_message.h"
 #include "dali/utils/assert2.h"
 #include "dali/array/jit/jit_utils.h"
 #include "dali/array/jit/elementwise_kernel_utils.h"
 #include "dali/array/jit/jit_runner.h"
 #include "dali/array/expression/buffer_view.h"
-#include "dali/array/jit/scalar_view.h"
 
 namespace op {
 namespace jit {
@@ -66,16 +66,14 @@ namespace jit {
 
         virtual void compute_node_compilation_info(int desired_computation_rank,
                                                    const std::vector<int>& desired_computation_shape,
-                                                   std::vector<const BufferView*>* arrays,
-                                                   std::vector<const ScalarView*>* scalars,
+                                                   SymbolTable& symbol_table,
                                                    node_to_info_t* node_to_info) const {
             (*node_to_info)[this].computation_rank = desired_computation_rank;
             for (auto& arg: arguments_) {
                 op::jit::compute_node_compilation_info(arg,
                                                        desired_computation_rank,
                                                        desired_computation_shape,
-                                                       arrays,
-                                                       scalars,
+                                                       symbol_table,
                                                        node_to_info);
             }
             utils::Hasher hasher;
@@ -86,10 +84,10 @@ namespace jit {
             (*node_to_info)[this].hash = hasher.value();
         }
 
-        virtual bool is_axis_collapsible_with_axis_minus_one(const int& axis) const {
+        virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const {
             bool is_contig = true;
             for (auto& arg : arguments_) {
-                is_contig = is_contig && as_jit_node(arg)->is_axis_collapsible_with_axis_minus_one(axis);
+                is_contig = is_contig && arg.is_axis_collapsible_with_axis_minus_one(axis);
             }
             return is_contig;
         }
@@ -110,7 +108,7 @@ namespace jit {
             return std::make_shared<ElementwiseExpression>(functor_name_, new_arguments, dtype_);
         }
 
-        virtual std::string get_call_code_nd(const symbol_table_t& symbol_table,
+        virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
                                              const node_to_info_t& node_to_info,
                                              memory::DeviceT device_type) const {
             std::stringstream stream;
@@ -142,12 +140,11 @@ namespace jit {
         virtual void compute_node_compilation_info(
             int desired_computation_rank,
             const std::vector<int>& desired_computation_shape,
-            std::vector<const BufferView*>* arrays,
-            std::vector<const ScalarView*>* scalars,
+            SymbolTable& symbol_table,
             node_to_info_t* node_to_info) const {
             (*node_to_info)[this].computation_rank = desired_computation_rank;
             op::jit::compute_node_compilation_info(arguments_[0],
-                desired_computation_rank, desired_computation_shape, arrays, scalars, node_to_info);
+                desired_computation_rank, desired_computation_shape, symbol_table, node_to_info);
 
             (*node_to_info)[this].hash = utils::Hasher().add(optype_hash)
                                                         .add(desired_computation_rank)
@@ -169,11 +166,14 @@ namespace jit {
         virtual void compute_node_compilation_info(
             int desired_computation_rank,
             const std::vector<int>& desired_computation_shape,
-            std::vector<const BufferView*>* arrays,
-            std::vector<const ScalarView*>* scalars,
+            SymbolTable& symbol_table,
             node_to_info_t* node_to_info) const {
             (*node_to_info)[this].computation_rank = desired_computation_rank;
-            op::jit::compute_node_compilation_info(arguments_[0], desired_computation_rank, desired_computation_shape, arrays, scalars, node_to_info);
+            op::jit::compute_node_compilation_info(arguments_[0],
+                                                   desired_computation_rank,
+                                                   desired_computation_shape,
+                                                   symbol_table,
+                                                   node_to_info);
 
             (*node_to_info)[this].hash = utils::Hasher().add(optype_hash)
                                                         .add(desired_computation_rank)
@@ -190,7 +190,7 @@ namespace jit {
     }
 
     Array elementwise(Array a, Array b, const std::string& functor_name) {
-        std::tie(a, b) = ensure_arguments_compatible(a, b);
+        std::tie(a, b) = ensure_arguments_compatible(a, b, functor_name);
         return Array(std::make_shared<jit::ElementwiseExpression>(
             functor_name, std::vector<Array>({a, b}), a.dtype()
         ));
@@ -209,7 +209,7 @@ namespace jit {
     }
 
     std::tuple<Array, Array> ensure_arguments_compatible(
-            const Array& a, const Array& b) {
+            const Array& a, const Array& b, const std::string& functor_name) {
         // perform type promotion:
         if (a.dtype() != b.dtype()) {
             auto new_type = type_promotion(a, b);
@@ -221,7 +221,11 @@ namespace jit {
                 return std::tuple<Array,Array>(astype(a, new_type), b);
             }
         } else {
-            ASSERT2(jit::ndim_compatible(a, b), "ranks don't match");
+            ASSERT2(jit::ndim_compatible(a, b), utils::make_message(
+                "Arguments to binary elementwise operation with kernel '",
+                functor_name, "' must have the same rank (got left.ndim = ",
+                a.ndim(), ", left.shape = ", a.shape(), ", and right.ndim = ",
+                b.ndim(), ", right.shape = ", b.shape(), ")."));
             return std::tuple<Array,Array>(a, b);
         }
     }

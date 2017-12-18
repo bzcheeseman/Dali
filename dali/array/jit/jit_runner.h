@@ -19,18 +19,34 @@ namespace op {
             hash_t hash;
         };
 
-        typedef std::unordered_map<const Expression*, std::string>     symbol_table_t;
         typedef std::unordered_map<const Expression*, CompilationInfo> node_to_info_t;
+
+
+        struct SymbolTable {
+            std::vector<const BufferView*> arrays_;
+            std::vector<const ScalarView*> scalars_;
+            std::vector<const Expression*> shapes_;
+            mutable std::unordered_map<const Expression*, std::string> declaration_table_;
+            mutable std::unordered_map<const Expression*, std::string> shape_declaration_table_;
+            std::string get_name(const Expression*) const;
+            std::string get_shape(const Expression*) const;
+            void declare_array(const BufferView*);
+            void declare_scalar(const ScalarView*);
+            void declare_shape(const Expression*);
+            std::string variable_declarations(const node_to_info_t& node_to_info) const;
+            std::vector<Array> collect_buffers(const node_to_info_t& node_to_info) const;
+            std::vector<const void*> collect_scalars(const node_to_info_t& node_to_info) const;
+            std::vector<const int*> collect_shapes(const node_to_info_t& node_to_info) const;
+        };
 
         struct JITNode : public Expression {
             static const hash_t optype_hash;
             // implement these
             virtual void compute_node_compilation_info(int desired_computation_rank,
                                                        const std::vector<int>& desired_computation_shape,
-                                                       std::vector<const BufferView*>* arrays,
-                                                       std::vector<const ScalarView*>* scalars,
+                                                       SymbolTable& symbol_table,
                                                        node_to_info_t* node_to_info) const = 0;
-            virtual std::string get_call_code_nd(const symbol_table_t& symbol_table,
+            virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
                                                  const node_to_info_t& node_to_info,
                                                  memory::DeviceT device_type) const = 0;
 
@@ -39,7 +55,7 @@ namespace op {
             //            REIMPLEMENT AS YOU SEE FIT                                     //
             ///////////////////////////////////////////////////////////////////////////////
 
-            virtual bool is_axis_collapsible_with_axis_minus_one(const int& axis) const;
+            virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const;
             virtual std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
             virtual memory::Device preferred_device() const;
 
@@ -62,12 +78,11 @@ namespace op {
         void compute_node_compilation_info(const Array& a,
                                            int desired_computation_rank,
                                            const std::vector<int>& desired_computation_shape,
-                                           std::vector<const BufferView*>* arrays,
-                                           std::vector<const ScalarView*>* scalars,
+                                           SymbolTable& symbol_table,
                                            node_to_info_t* node_to_info);
 
         std::string get_call_code_nd(const Array& a,
-                                     const symbol_table_t& symbol_table,
+                                     const SymbolTable& symbol_table,
                                      const node_to_info_t& node_to_info,
                                      memory::DeviceT device_type);
 

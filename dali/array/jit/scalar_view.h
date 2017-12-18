@@ -4,25 +4,25 @@
 #include <memory>
 #include <vector>
 
+#include "dali/utils/hash_utils.h"
 #include "dali/array/jit/jit_runner.h"
 
 namespace op {
 namespace jit {
 
 struct ScalarView : public JITNode {
-	static const hash_t optype_hash;
+    static const hash_t optype_hash;
 
     ScalarView(DType type);
     virtual std::vector<Array> arguments() const;
     virtual bool spans_entire_memory() const;
     virtual memory::Device preferred_device() const;
-    virtual std::string get_call_code_nd(const symbol_table_t& symbol_table,
-    									 const node_to_info_t& node_to_info,
-    									 memory::DeviceT device_type) const;
+    virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
+                       const node_to_info_t& node_to_info,
+                       memory::DeviceT device_type) const;
     virtual void compute_node_compilation_info(int desired_computation_rank,
                                                const std::vector<int>& desired_computation_shape,
-                                               std::vector<const BufferView*>* arrays,
-                                               std::vector<const ScalarView*>* scalars,
+                                               SymbolTable& symbol_table,
                                                node_to_info_t* node_to_info) const;
     virtual expression_ptr copy() const = 0;
     virtual const void* value_ptr() const = 0;
@@ -31,7 +31,7 @@ struct ScalarView : public JITNode {
 Array wrap_scalar(int value);
 Array wrap_scalar(float value);
 Array wrap_scalar(double value);
-
+Array tile_scalar(Array scalar, const std::vector<int>& shape);
 }
 }
 

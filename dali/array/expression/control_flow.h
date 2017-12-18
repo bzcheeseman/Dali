@@ -14,6 +14,7 @@ struct ControlFlow : public Expression {
     virtual memory::Device preferred_device() const;
     virtual expression_ptr copy() const;
     virtual std::vector<Array> arguments() const;
+    virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const;
 };
 
 #endif  // DALI_ARRAY_EXPRESSION_CONTROL_FLOW_H

@@ -54,15 +54,17 @@ namespace {
         // recurse on children:
         std::vector<Array> children;
         if (root.is_assignment()) {
-            children.emplace_back(std::dynamic_pointer_cast<Assignment>(root.expression())->right_);
+            children.emplace_back(op::static_as_assignment(root)->right_);
         } else {
             children = root.expression()->arguments();
         }
+        ELOG(root.full_expression_name());
 
         // recurse on arguments of node:
         for (auto& arg : children) {
             arg.set_expression(simplify_destination(arg).expression());
         }
+        ELOG(root.full_expression_name());
         for (const auto& optimization : OPTIMIZATIONS) {
             if (optimization.matches(root)) {
                 root = optimization.transform(root);

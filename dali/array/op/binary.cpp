@@ -6,16 +6,14 @@ namespace op {
     Array all_equals(Array left, Array right) {
         return op::prod(op::equals(left, right));
     }
-
     Array equals(Array left, Array right) {
         return op::elementwise(left, right, "functor::equals");
     }
-
     Array add(Array left, Array right) {
-        throw std::runtime_error("add is not implemented.");
+        return op::elementwise(left, right, "functor::add");
     }
     Array subtract(Array left, Array right) {
-        throw std::runtime_error("subtract is not implemented.");
+        return op::elementwise(left, right, "functor::subtract");
     }
     Array eltmul(Array left, Array right) {
         return op::elementwise(left, right, "functor::eltmul");

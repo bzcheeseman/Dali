@@ -29,12 +29,20 @@ std::string build_array_definition(const std::string& cpp_type,
 }
 
 std::string build_scalar_definition(const std::string& cpp_type,
-                                     const std::string& varname,
-                                     int rank,
-                                     const std::string& captured_name) {
+                                    const std::string& varname,
+                                    int rank,
+                                    const std::string& captured_name) {
     return utils::make_message(
         "    auto ", varname, " = make_scalar_view<",
         cpp_type, ", ", rank, ">(", captured_name, ");\n"
+    );
+}
+
+std::string build_shape_definition(const std::string& varname,
+                                   int rank,
+                                   const std::string& captured_name) {
+    return utils::make_message(
+        "    Shape<", rank, "> ", varname, "(", captured_name, ");\n"
     );
 }
 
@@ -124,7 +132,9 @@ std::vector<int> get_common_bshape(const std::vector<std::vector<int>>& bshapes)
             ASSERT2(
                 (output_bshape[dim] == other_bshape[dim]) ||
                 (output_bshape[dim] == -1 || other_bshape[dim] == -1),
-                "shapes dont match"
+                utils::make_message(
+                    "Could not find a common shape between ",
+                    output_bshape, " and ", other_bshape, ".")
             );
             if (other_bshape[dim] != -1) {
                 output_bshape[dim] = other_bshape[dim];

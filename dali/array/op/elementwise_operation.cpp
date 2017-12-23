@@ -134,7 +134,7 @@ namespace jit {
         static const hash_t optype_hash;
 
         CastExpression(DType dtype, Array argument) :
-            ElementwiseExpression("functor::cast", {argument}, dtype_) {
+            ElementwiseExpression("functor::cast", {argument}, dtype) {
         }
 
         virtual void compute_node_compilation_info(

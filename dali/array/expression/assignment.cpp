@@ -89,7 +89,7 @@ Array autoreduce_assign(const Array& left, const Array& right) {
         }
     }
     if (!reduction_axes.empty()) {
-        assigned_right = op::sum(assigned_right, reduction_axes);
+        assigned_right = op::sum(assigned_right, reduction_axes, /*keepdims=*/true);
     }
     return Array(std::make_shared<Assignment>(left, OPERATOR_T_ADD, assigned_right));
 }

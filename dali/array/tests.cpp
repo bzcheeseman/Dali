@@ -106,13 +106,6 @@ TEST(ArrayTests, scalar_value) {
     EXPECT_EQ((int)x(3), 56);
 }
 
-#ifdef DONT_COMPILE
-
-#include "dali/array/op/other.h"
-#include "dali/array/op/initializer.h"
-#include "dali/array/op.h"
-#include "dali/array/lazy/binary.h"
-
 TEST(ArrayTests, slicing) {
     Array x({12});
     Array y({3,2,2});
@@ -134,7 +127,7 @@ TEST(ArrayTests, slicing) {
 
 
 TEST(ArrayTests, scalar_assign) {
-    Array x = Array::zeros({3,2}, DTYPE_INT32);
+    Array x = Array::zeros({3, 2}, DTYPE_INT32);
     x = 13;
 
     ASSERT_EQ(x.shape(), std::vector<int>({3,2}));
@@ -150,6 +143,8 @@ TEST(ArrayTests, scalar_assign) {
         ASSERT_EQ((int)x(i), 69);
     }
 }
+
+#ifdef DONT_COMPILE
 
 TEST(ArrayTests, inplace_addition) {
     Array x = Array::zeros({3,2}, DTYPE_INT32);

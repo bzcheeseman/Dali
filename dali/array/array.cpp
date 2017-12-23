@@ -219,10 +219,10 @@ Array Array::buffer_arg() const {
         return *this;
     }
     if (is_assignment()) {
-        return std::dynamic_pointer_cast<Assignment>(expression())->left_;
+        return op::static_as_assignment(*this)->left_.buffer_arg();
     }
     if (is_control_flow()) {
-        return std::dynamic_pointer_cast<ControlFlow>(expression())->left_;
+        return op::static_as_control_flow(*this)->left_.buffer_arg();
     }
     // returning false
     // TODO(jonathan): make this return something better

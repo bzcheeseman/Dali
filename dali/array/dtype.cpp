@@ -1,6 +1,7 @@
 #include "dtype.h"
 
 #include "dali/utils/assert2.h"
+#include "dali/utils/make_message.h"
 
 template<>
 DType template_to_dtype<float>() {
@@ -25,7 +26,8 @@ int size_of_dtype(DType dtype) {
     } else if (dtype == DTYPE_INT32) {
         return sizeof(int);
     }
-    ASSERT2(false, "size_to_dtype only accepts " DALI_ACCEPTABLE_DTYPE_STR);
+    ASSERT2(false, utils::make_message(
+        "size_to_dtype only accepts " DALI_ACCEPTABLE_DTYPE_STR " but got ", int(dtype), "."));
     return -1;
 }
 
@@ -50,7 +52,7 @@ std::string dtype_to_name(DType dtype) {
         case DTYPE_INT32:
             return "int32";
         default:
-            ASSERT2(false, "dtype_to_name called with incorrect DType.");
+            ASSERT2(false, utils::make_message("dtype_to_name called with incorrect DType (", int(dtype), ")."));
             return "unknown";
     }
 }

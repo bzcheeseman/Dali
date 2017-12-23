@@ -16,5 +16,8 @@ struct ControlFlow : public Expression {
     virtual std::vector<Array> arguments() const;
     virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const;
 };
+namespace op {
+	ControlFlow* static_as_control_flow(const Array& arr);
+}  // namespace op
 
 #endif  // DALI_ARRAY_EXPRESSION_CONTROL_FLOW_H

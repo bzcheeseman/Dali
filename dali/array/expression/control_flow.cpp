@@ -28,3 +28,9 @@ std::vector<Array> ControlFlow::arguments() const {
 bool ControlFlow::is_axis_collapsible_with_axis_minus_one(int axis) const {
     return left_.is_axis_collapsible_with_axis_minus_one(axis);
 }
+
+namespace op {
+ControlFlow* static_as_control_flow(const Array& arr) {
+    return static_cast<ControlFlow*>(arr.expression().get());
+}
+}  // namespace op

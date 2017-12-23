@@ -353,7 +353,8 @@ Array all_reduce(
 Array axis_reduce(
         const Array& a,
         const std::string& reducer_name,
-        const std::vector<int>& axes) {
+        const std::vector<int>& axes,
+        bool keepdims) {
     if (axes.size() == 0) return a;
     int ndim = a.ndim();
     if (ndim == 0) return a;
@@ -428,6 +429,11 @@ Array axis_reduce(
                 res = res.collapse_axis_with_axis_minus_one(collapsed_ndim);
             }
             --collapsed_ndim;
+        }
+    }
+    if (keepdims) {
+        for (auto& axis : normalized_axes) {
+            res = res.expand_dims(axis);
         }
     }
     return res;

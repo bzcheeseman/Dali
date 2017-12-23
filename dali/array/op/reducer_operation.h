@@ -8,7 +8,8 @@ namespace op {
                      const std::string& reducer_name);
     Array axis_reduce(const Array& a,
                       const std::string& reducer_name,
-                      const std::vector<int>& axes);
+                      const std::vector<int>& axes,
+                      bool keepdims=false);
 
     Array argument_all_reduce(const Array& a,
                               const std::string& reducer_name);

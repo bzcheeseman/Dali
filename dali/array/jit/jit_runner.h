@@ -73,7 +73,7 @@ namespace op {
 
         std::shared_ptr<JITNode> as_jit_node(Array array);
         hash_t node_hash(const node_to_info_t& node_to_info, const Array& arr);
-        bool is_jit(const Array& arr);
+        bool is_jit_node(const Array& arr);
 
         void compute_node_compilation_info(const Array& a,
                                            int desired_computation_rank,

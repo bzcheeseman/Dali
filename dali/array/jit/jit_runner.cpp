@@ -437,7 +437,6 @@ std::string JITRunner::get_code_template(memory::Device device,
             }
         }
     });
-
     result << "void run(void** array_data, const int* offsets, "
               "const int** sizes, const int** strides, "
               "const void** scalar_arguments, const int** shapes) {\n";
@@ -554,7 +553,8 @@ std::tuple<Array, Array> replace_assign_with_inplace(const Array& node) {
 Array jit_merge(const Array& root) {
     std::vector<Array> leaves;
     auto assign = static_as_assignment(root);
-    auto root_buffer = assign->left_;
+    // TODO(jonathan): find a better way to infer if this is a buffer
+    auto root_buffer = root.buffer_arg();
     auto root_operator = assign->operator_t_;
     Array left_leaf, replaced;
     for (auto& arg : right_args(root)) {
@@ -589,7 +589,6 @@ Array jit_merge(const Array& root) {
             leaves.emplace_back(arg);
         }
     }
-
     auto new_root = assign->right_;
     return Array(std::make_shared<Assignment>(
         // keep the original target buffer:

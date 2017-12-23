@@ -8,7 +8,8 @@
 std::vector<Array> right_args(Array node);
 
 int register_optimization(std::function<bool(const Array&)> condition,
-					      std::function<Array(const Array&)> transformation);
+					      std::function<Array(const Array&)> transformation,
+					      const std::string& name);
 
 // simplify internal expression graph to return to a more common view.
 Array canonical(const Array& array);

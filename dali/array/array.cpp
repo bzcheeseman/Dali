@@ -233,7 +233,6 @@ Array Array::buffer_arg() const {
 void Array::eval(bool wait) const {
     if (!is_buffer()) {
         auto node = canonical(*this);
-        std::cout << node.full_expression_name() << std::endl;
         auto computable = convert_to_ops(node);
         // run (DAG evaluation)
         for (auto& step : computable) {

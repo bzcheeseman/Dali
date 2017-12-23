@@ -73,29 +73,26 @@ TEST(ArrayTests, autoreduce_assign) {
     Array autoreduce_assign_source = Array::ones(
         {3, 2, 10, 2, 10}, DTYPE_FLOAT
     );
-    // Array expected_result = op::eltmul(Array::ones(
-    //     {3, 2, 1, 2, 1}, DTYPE_FLOAT
-    // ), 100);
-    // expected_result.eval();
+    Array expected_result = op::eltmul(Array::ones(
+        {3, 2, 1, 2, 1}, DTYPE_FLOAT
+    ), 100);
 
     auto a = op::sum(autoreduce_assign_source, {2, 4});
-    a.print();
 
-    // EXPECT_TRUE((bool)((int)op::all_equals(
-    //     op::eltmul(Array::ones({3, 2, 2}, DTYPE_FLOAT), 100),
-    //     op::sum(autoreduce_assign_source, {2, 4})
-    // )));
-
-    // autoreduce_assign_dest = op::autoreduce_assign(
-    //     autoreduce_assign_dest, autoreduce_assign_source);
-    // // EXPECT_TRUE((bool)((int)op::all_equals(
-    // //     autoreduce_assign_dest,
-    // //     op::sum(autoreduce_assign_source, {2, 4}).expand_dims(2).expand_dims(4)
-    // // )));
-    // EXPECT_TRUE((bool)((int)op::all_equals(
-    //     expected_result,
-    //     autoreduce_assign_dest
-    // )));
+    EXPECT_TRUE((bool)((int)op::all_equals(
+        op::eltmul(Array::ones({3, 2, 2}, DTYPE_FLOAT), 100),
+        op::sum(autoreduce_assign_source, {2, 4})
+    )));
+    autoreduce_assign_dest = op::autoreduce_assign(
+        autoreduce_assign_dest, autoreduce_assign_source);
+    EXPECT_TRUE((bool)((int)op::all_equals(
+        autoreduce_assign_dest,
+        op::sum(autoreduce_assign_source, {2, 4}).expand_dims(2).expand_dims(4)
+    )));
+    EXPECT_TRUE((bool)((int)op::all_equals(
+        expected_result,
+        autoreduce_assign_dest
+    )));
 }
 
 TEST(ArrayTests, scalar_value) {

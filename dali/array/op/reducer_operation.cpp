@@ -412,7 +412,6 @@ Array axis_reduce(
             }
         }
         res = res.transpose(new_axes_order);
-        std::cout << res.full_expression_name() << std::endl;
     }
     int num_low_axes_to_reduce = normalized_axes.size();
     if (num_low_axes_to_reduce > 0) {
@@ -426,7 +425,7 @@ Array axis_reduce(
                     res.dtype()
                 ));
             } else {
-                    res = res.collapse_axis_with_axis_minus_one(collapsed_ndim);
+                res = res.collapse_axis_with_axis_minus_one(collapsed_ndim);
             }
             --collapsed_ndim;
         }

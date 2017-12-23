@@ -232,9 +232,7 @@ expression_ptr Expression::transpose() const {
 }
 
 expression_ptr Expression::transpose(const std::vector<int>& axes) const {
-    auto novel = dimshuffle(axes);
-    ELOG(novel->shape_);
-    return novel;
+    return dimshuffle(axes);
 }
 
 expression_ptr Expression::swapaxes(int axis1, int axis2) const {
@@ -262,7 +260,6 @@ expression_ptr Expression::swapaxes(int axis1, int axis2) const {
 }
 
 expression_ptr Expression::dimshuffle(const std::vector<int>& pattern) const {
-    ELOG("dimshuffle");
     int dimensionality = ndim();
     ASSERT2(pattern.size() == dimensionality, utils::make_message("number of"
         " dimensions in dimshuffle does not correspond to the dimensionality "

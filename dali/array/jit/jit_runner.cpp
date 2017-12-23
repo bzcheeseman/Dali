@@ -595,7 +595,11 @@ Array jit_merge(const Array& root) {
         // keep the original target buffer:
         root_buffer, root_operator,
         // use the merged operation instead
-        Array(std::make_shared<JITRunner>(new_root, leaves, root_operator, root_buffer))));
+        Array(std::make_shared<JITRunner>(new_root, leaves, root_operator, root_buffer)),
+        root.shape(),
+        root.offset(),
+        root.strides()
+    ));
 }
 
 // JIT RUNNER-IMPL //
@@ -704,7 +708,7 @@ std::string get_call_code_nd(const Array& a,
     }
 }
 
-int registered_opt = register_optimization(is_jit_assignment, jit_merge);
+int registered_opt = register_optimization(is_jit_assignment, jit_merge, "jit_merge");
 int registered_impl = register_implementation(
    typeid(JITRunner).name(),
    [](Array dest, OPERATOR_T operator_t, Array x) -> std::shared_ptr<Computation> {

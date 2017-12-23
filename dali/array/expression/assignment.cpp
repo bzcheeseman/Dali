@@ -3,13 +3,24 @@
 #include "dali/array/op/reducers.h"
 #include "dali/array/expression/control_flow.h"
 
-// TODO should pass strides + offset to Expression
 Assignment::Assignment(Array left, OPERATOR_T operator_t, Array right) :
         Expression(left.shape(),
-                   left.dtype()),
+                   left.dtype(),
+                   left.offset(),
+                   left.strides()),
                    left_(left), operator_t_(operator_t), right_(right) {
-
 }
+
+Assignment::Assignment(Array left, OPERATOR_T operator_t, Array right,
+                       const std::vector<int>& shape,
+                       int offset, const std::vector<int>& strides) :
+        Expression(shape,
+                   left.dtype(),
+                   offset,
+                   strides),
+                   left_(left), operator_t_(operator_t), right_(right) {
+}
+
 
 Assignment::Assignment(const Assignment& other) :
         Assignment(other.left_, other.operator_t_, other.right_) {

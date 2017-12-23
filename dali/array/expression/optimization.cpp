@@ -1,5 +1,6 @@
 #include "optimization.h"
 #include "dali/array/expression/assignment.h"
+#include "dali/utils/make_message.h"
 
 std::vector<Array> right_args(Array node) {
     auto buffer = std::dynamic_pointer_cast<Assignment>(node.expression());
@@ -11,6 +12,7 @@ namespace {
     struct Optimization {
         std::function<bool(const Array&)> condition_;
         std::function<Array(const Array&)> transformation_;
+        std::string name_;
         bool matches(const Array& array) const {
             return condition_(array);
         }
@@ -18,8 +20,9 @@ namespace {
             return transformation_(array);
         }
         Optimization(std::function<bool(const Array&)> condition,
-                     std::function<Array(const Array&)> transformation) :
-            condition_(condition), transformation_(transformation) {}
+                     std::function<Array(const Array&)> transformation,
+                     const std::string& name) :
+            condition_(condition), transformation_(transformation), name_(name) {}
     };
 
     // TODO(jonathan): add this from Python
@@ -45,6 +48,7 @@ namespace {
     }
 
     std::vector<Optimization> OPTIMIZATIONS;
+    std::vector<std::string> OPTIMIZATION_NAMES;
 
     Array simplify_destination(Array root) {
         // leaf node:
@@ -58,16 +62,26 @@ namespace {
         } else {
             children = root.expression()->arguments();
         }
-        ELOG(root.full_expression_name());
 
         // recurse on arguments of node:
         for (auto& arg : children) {
             arg.set_expression(simplify_destination(arg).expression());
         }
-        ELOG(root.full_expression_name());
         for (const auto& optimization : OPTIMIZATIONS) {
             if (optimization.matches(root)) {
-                root = optimization.transform(root);
+                auto new_root = optimization.transform(root);
+                // guard optimization behavior so that shapes are preserved
+                ASSERT2(new_root.shape() == root.shape(), utils::make_message(
+                    "Optimization '", optimization.name_, "' altered the shape of the operation"
+                    " from ", root.shape(), " to ", new_root.shape(),
+                    " on expression ", root.full_expression_name(), "."
+                    ));
+                ASSERT2(new_root.dtype() == root.dtype(), utils::make_message(
+                    "Optimization '", optimization.name_, "' altered the dtype of the operation"
+                    " from ", dtype_to_name(root.dtype()), " to ", dtype_to_name(new_root.dtype()),
+                    " on expression ", root.full_expression_name(), "."
+                    ));
+                root = new_root;
             }
         }
         return root;
@@ -75,8 +89,9 @@ namespace {
 }
 
 int register_optimization(std::function<bool(const Array&)> condition,
-                          std::function<Array(const Array&)> transformation) {
-    OPTIMIZATIONS.emplace_back(condition, transformation);
+                          std::function<Array(const Array&)> transformation,
+                          const std::string& name) {
+    OPTIMIZATIONS.emplace_back(condition, transformation, name);
     return 0;
 }
 

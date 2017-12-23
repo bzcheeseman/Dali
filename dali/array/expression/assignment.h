@@ -11,6 +11,10 @@ struct Assignment : public Expression {
 
     virtual expression_ptr copy() const;
     Assignment(Array left, OPERATOR_T operator_t, Array right);
+    Assignment(Array left, OPERATOR_T operator_t, Array right,
+               const std::vector<int>& shape,
+               int offset,
+               const std::vector<int>& strides);
     Assignment(const Assignment& other);
     virtual std::string name() const;
     virtual memory::Device preferred_device() const;

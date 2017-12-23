@@ -577,7 +577,7 @@ Array jit_merge(const Array& root) {
             // now that the jitrunners and assignments are gone, connect
             // up the new operation in the graph:
             arg.set_expression(replaced.expression());
-        } else if (arg.is_assignment()) {
+        } else if (arg.is_assignment()) {
             // detach the assignment subgraph and only keep the left node(bufferview)
             auto leaf_arg = Array();
             leaf_arg.set_expression(arg.expression());

@@ -164,7 +164,7 @@ struct TileScalar : public JITNode {
 
 const hash_t TileScalar::optype_hash = std::hash<std::string>()(typeid(TileScalar).name());
 
-Array tile_scalar(Array node, const std::vector<int>& shape) {
+Array tile_scalar(Array node, const std::vector<int>& shape) {
     ASSERT2(node.is_scalar(), utils::make_message(
         "tile_scalar can only be called on a scalar array "
         "(got Array with shape = ", node.shape(), ")."));

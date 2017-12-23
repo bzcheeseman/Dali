@@ -24,7 +24,7 @@ before_install:
     - sudo apt-get install -y libgtest-dev
     - sudo apt-get install -y libgoogle-perftools4 libgoogle-perftools-dev
     - pushd /usr/src/gtest
-    - sudo cmake .
+    - sudo cmake . -DARRAY_ONLY=1
     - sudo make
     - sudo mv libg* /usr/lib/
     - popd

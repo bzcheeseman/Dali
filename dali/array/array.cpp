@@ -58,7 +58,7 @@ void Array::set_expression(std::shared_ptr<Expression> new_expression) const {
 }
 
 std::string Array::expression_name() const {
-    if (is_stateless()) {
+    if (is_stateless()) {
         return "Stateless Array";
     }
     auto expr = expression();
@@ -69,7 +69,7 @@ std::string Array::expression_name() const {
 }
 
 std::string Array::full_expression_name() const {
-    if (is_stateless()) {
+    if (is_stateless()) {
         return expression_name();
     }
     return expression()->full_name();

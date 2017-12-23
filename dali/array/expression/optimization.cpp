@@ -35,7 +35,7 @@ namespace {
             node.set_expression(op::to_assignment(node).expression());
         }
         Assignment* node_assign = static_cast<Assignment*>(node.expression().get());
-        if (node_assign->right_.is_assignment()) {
+        if (node_assign->right_.is_assignment()) {
             Assignment* node_right_assign = op::static_as_assignment(node_assign->right_);
             if (node_right_assign->operator_t_ == OPERATOR_T_EQL &&
                 node_right_assign->right_.expression()->supports_operator(node_assign->operator_t_)) {

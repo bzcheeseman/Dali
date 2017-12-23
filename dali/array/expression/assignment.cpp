@@ -55,7 +55,7 @@ expression_ptr Assignment::collapse_axis_with_axis_minus_one(int axis) const {
             operator_t_,
             right_.collapse_axis_with_axis_minus_one(axis)
         );
-    } else {
+    } else {
         auto collapsed_self = left_.collapse_axis_with_axis_minus_one(axis);
         return std::make_shared<ControlFlow>(
             collapsed_self, std::vector<Array>({
@@ -65,7 +65,7 @@ expression_ptr Assignment::collapse_axis_with_axis_minus_one(int axis) const {
     }
 }
 
-namespace op {
+namespace op {
 
 Array autoreduce_assign(const Array& left, const Array& right) {
     Array assigned_right = right;

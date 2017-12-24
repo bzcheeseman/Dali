@@ -188,11 +188,13 @@ bool Compiler::compile_code(const std::string& source,
     std::cout << "cmd = " << cmd << std::endl;
     std::cout << "utils::listdir(outpath) = " << utils::listdir(array_op_compiler.outpath_) << std::endl;
 
+    std::cout << "printing logfile:" << std::endl;
     std::ifstream fp(logfile.c_str());
     std::string l;
     while (std::getline(fp, l)) {
         std::cout << l << std::endl;
     }
+    std::cout << "done printing logfile." << std::endl;
 
     return WEXITSTATUS(ret) == EXIT_SUCCESS;
 }

@@ -118,6 +118,11 @@ XINLINE int indices_to_offset(const Shape<ndim>& shape, const Shape<ndim>& indic
     return offset;
 }
 
+template<>
+XINLINE int indices_to_offset(const Shape<1>& shape, const Shape<1>& indices) {
+    return indices[0];
+}
+
 template<int ndim>
 XINLINE int indices_to_offset(const Shape<ndim>& shape, const Shape<ndim>& indices, const Shape<ndim>& strides) {
     int offset = 0;
@@ -126,6 +131,11 @@ XINLINE int indices_to_offset(const Shape<ndim>& shape, const Shape<ndim>& indic
         offset += strides[i] * indices[i];
     }
     return offset;
+}
+
+template<>
+XINLINE int indices_to_offset(const Shape<1>& shape, const Shape<1>& indices, const Shape<1>& strides) {
+    return indices[0] * strides[0];
 }
 
 template<int dimensions, typename Type>
@@ -159,14 +169,6 @@ class ArrayView {
                 ptr_(ptr), offset_(offset), shape_(shape) {
         }
 
-        XINLINE Type& operator()(int idx) {
-            return *(ptr_ + offset_ + idx);
-        }
-
-        XINLINE const Type& operator()(int idx) const {
-            return *(ptr_ + offset_ + idx);
-        }
-
         XINLINE const Shape<dimensions>& shape() const {
             return shape_;
         }
@@ -196,14 +198,6 @@ class ArrayStridedView {
                 ptr_(ptr), offset_(offset), shape_(shape), strides_(strides) {
         }
 
-        XINLINE Type& operator()(int idx) {
-            return *(ptr_ + offset_ + idx * strides_[0]);
-        }
-
-        XINLINE const Type& operator()(int idx) const {
-            return *(ptr_ + offset_ + idx * strides_[0]);
-        }
-
         XINLINE const Shape<dimensions>& shape() const {
             return shape_;
         }
@@ -226,14 +220,6 @@ class ScalarView {
         typedef Type T;
 
         XINLINE ScalarView(const Type& scalar) : scalar_(scalar), shape_(1) {
-        }
-
-        XINLINE Type& operator()(int idx) {
-            return scalar_;
-        }
-
-        XINLINE const Type& operator()(int idx) const {
-            return scalar_;
         }
 
         XINLINE const Shape<dimensions>& shape() const {

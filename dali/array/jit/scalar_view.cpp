@@ -6,6 +6,7 @@
 #include "dali/array/shape.h"
 #include "dali/array/array.h"
 #include "dali/utils/hash_utils.h"
+#include "dali/array/jit/jit_utils.h"
 
 
 namespace op {
@@ -144,28 +145,11 @@ struct TileScalar : public JITNode {
 
     virtual std::string prefix_code(const node_to_info_t& node_to_info,
                                     memory::DeviceT device_type) const {
-        std::string name = utils::make_message(
-            "TileScalarKernel", node_to_info.at(this).computation_rank, "D");
-
-        return "template<typename C1>\n"
-        "struct " + name + " {\n"
-        "    const C1 scalar_;\n"
-        "    static const int ndim = " + std::to_string(node_to_info.at(this).computation_rank) + ";\n"
-        "    typedef typename C1::T T;\n"
-        "    const Shape<ndim> shape_;\n"
-        "    XINLINE const Shape<ndim>& shape() const {return shape_;}\n"
-        "    XINLINE " + name + "(const C1& scalar, const Shape<ndim>& shape)"
-        "       : scalar_(scalar), shape_(shape) {}\n"
-        "    XINLINE T operator[](const Shape<ndim>& query) const {\n"
-        "        return scalar_(0);\n"
-        "    }\n"
-        "    XINLINE T operator()(int i) const {return scalar_(0);}\n"
-        "};\n"
-        "template<typename C1>\n" +
-        name + "<C1> " + kernel_name(node_to_info) +
-        "(const C1& a, const Shape<" + std::to_string(node_to_info.at(this).computation_rank) + ">& b) {\n"
-        "    return " + name + "<C1>(a, b);\n"
-        "}\n";
+        return define_kernel(/*ndim=*/node_to_info.at(this).computation_rank,
+                             /*has_shape=*/true,
+                             /*arguments=*/{"scalar",},
+                             /*kernel=*/"scalar_[0]",
+                             /*name=*/kernel_name(node_to_info));
     }
 
     virtual expression_ptr copy() const {

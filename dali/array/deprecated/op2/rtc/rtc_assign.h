@@ -75,7 +75,7 @@ struct RtcAssignExpressionState : virtual public Runnable {
                     "    int idx = blockDim.x * blockIdx.x + threadIdx.x;\n"
                     "    int stride = blockDim.x * gridDim.x;\n"
                     "    for (int i = idx; i < num_el; i += stride) {\n"
-                    "        dst(i) ", operator_to_name(operator_t_), " src(i);\n"
+                    "        dst[i] ", operator_to_name(operator_t_), " src[i];\n"
                     "    }\n"
                     "}\n"
                 );

@@ -1,7 +1,7 @@
 #include "arange.h"
 #include "dali/array/jit/jit_runner.h"
+#include "dali/array/jit/jit_utils.h"
 #include "dali/utils/make_message.h"
-#include "dali/array/op/elementwise_operation.h"
 
 namespace op {
 namespace jit {
@@ -15,9 +15,6 @@ struct Arange : public JITNode {
     }
     virtual std::vector<Array> arguments() const {
         return {start_, step_};
-    }
-    virtual bool spans_entire_memory() const {
-        return true;
     }
     virtual memory::Device preferred_device() const {
         return start_.preferred_device();
@@ -63,32 +60,11 @@ struct Arange : public JITNode {
 
     virtual std::string prefix_code(const node_to_info_t& node_to_info,
                                     memory::DeviceT device_type) const {
-        std::string name = utils::make_message(
-            "ArangeKernel", node_to_info.at(this).computation_rank, "D");
-
-        return utils::make_message("template<typename C1, typename C2>\n"
-            "struct ", name, " {\n"
-            "    const C1 start_;\n"
-            "    const C2 step_;\n"
-            "    static const int ndim = ", node_to_info.at(this).computation_rank, ";\n"
-            "    typedef typename C1::T T;\n"
-            "    const Shape<ndim> shape_;\n"
-            "    XINLINE const Shape<ndim>& shape() const {return shape_;}\n"
-            "    XINLINE ", name, "(const C1& start, const C2& step, const Shape<ndim>& shape)"
-            "       : start_(start), step_(step), shape_(shape) {}\n"
-            "    XINLINE T operator[](const Shape<ndim>& query) const {\n"
-            "        return start_(0) + indices_to_offset(shape_, query) * step_(0);\n"
-            "    }\n"
-            "    XINLINE T operator()(int i) const {\n"
-            "        return start_(0) + i * step_(0);\n"
-            "    }\n"
-            "};\n"
-            "template<typename C1, typename C2>\n",
-            name, "<C1, C2> ", kernel_name(node_to_info),
-            "(const C1& a, const C2& b, const Shape<", node_to_info.at(this).computation_rank, ">& c) {\n"
-            "    return ", name, "<C1, C2>(a, b, c);\n"
-            "}\n"
-        );
+        return define_kernel(/*ndim=*/node_to_info.at(this).computation_rank,
+                             /*has_shape=*/true,
+                             /*arguments=*/{"start", "step"},
+                             /*kernel=*/"start_[0] + indices_to_offset(shape_, query) * step_[0]",
+                             /*name=*/kernel_name(node_to_info));
     }
 
     virtual expression_ptr copy() const {

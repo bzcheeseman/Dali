@@ -361,7 +361,7 @@ std::string JITRunner::assignment_code(const SymbolTable& symbol_table,
     std::string dest_call_code = op::jit::get_call_code_nd(dest_, symbol_table, node_to_info, device_type);
     auto root = as_jit_node(root_);
     int computation_rank = node_to_info.at(this).computation_rank;
-    std::string indexing_nd = computation_rank == 1 ? "(i)" : "[" + generate_accessor_string(computation_rank) + "]";
+    std::string indexing_nd = computation_rank == 1 ? "[i]" : "[" + generate_accessor_string(computation_rank) + "]";
     return utils::make_message(
         dest_call_code, indexing_nd, " ",
         operator_to_name(operator_t_),
@@ -475,7 +475,7 @@ std::string JITRunner::prefix_code(const node_to_info_t& node_to_info,
                 "    int idx = blockDim.x * blockIdx.x + threadIdx.x;\n"
                 "    int stride = blockDim.x * gridDim.x;\n"
                 "    for (int i = idx; i < num_el; i += stride) {\n"
-                "        dst(i) ", operator_to_name(operator_t_), " src(i);\n"
+                "        dst[i] ", operator_to_name(operator_t_), " src[i];\n"
                 "    }\n"
                 "}\n"
             );

@@ -45,4 +45,7 @@ void ensure_output_array_compatible(const Array& out,
 std::vector<int> get_common_bshape(const std::vector<std::vector<int>>& bshapes);
 std::vector<int> get_common_bshape(const std::vector<Array>& arrays);
 
+std::string define_kernel(int ndim, bool has_shape,
+                          const std::vector<std::string>& arguments,
+                          std::string kernel, std::string kernel_name);
 #endif

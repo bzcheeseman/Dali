@@ -1,6 +1,7 @@
 #include "jit_utils.h"
 #include "dali/utils/assert2.h"
 #include "dali/utils/make_message.h"
+#include "dali/utils/core_utils.h"
 
 // keeps rightmost (lowest) dimensions
 std::string insert_auto_reshaped_variable(const std::string& name, int rank) {
@@ -150,4 +151,112 @@ std::vector<int> get_common_bshape(const std::vector<Array>& arrays) {
         arg_bshapes.emplace_back(array.bshape());
     }
     return get_common_bshape(arg_bshapes);
+}
+
+
+    // start_(0) + indices_to_offset(shape_, query) * step_(0);\n"
+
+std::string define_kernel(int ndim, bool has_shape,
+                          const std::vector<std::string>& arguments,
+                          std::string kernel, std::string kernel_name) {
+
+    ASSERT2(kernel_name.size() > 0, "kernel_name must be a non-empty string.");
+    ASSERT2(ndim > 0, utils::make_message("ndim must be strictly positive (got ndim=", ndim, ")."));
+    size_t num_args = arguments.size();
+    ASSERT2(num_args >= 0, utils::make_message("num_args must be >= 0 (got arguments.size()=", num_args, ")."));
+    std::string shape_arg;
+    if (has_shape) {
+        shape_arg = utils::make_message("const Shape<", ndim, ">&");
+    }
+    std::string name = utils::make_message(char(std::toupper(kernel_name[0])),
+                                           kernel_name.substr(1),
+                                           "Kernel");
+
+    std::string templated_caller;
+    std::string templated_declarer;
+    std::string call_arguments_definition;
+    std::string call_arguments;
+    std::string constructor_arguments;
+    std::string member_variables;
+
+    std::stringstream ss_caller;
+    std::stringstream ss_declarer;
+    std::stringstream ss_call_arguments_definition;
+    std::stringstream ss_call_arguments;
+    std::stringstream ss_constructor_arguments;
+    std::stringstream ss_member_variables;
+    if (num_args > 0) {
+        ss_caller << "<";
+        ss_declarer << "template<";
+    }
+    for (int i = 0; i < num_args; i++) {
+        ss_caller << "C" << (i+1);
+        ss_declarer << "typename C" << (i+1);
+        ss_call_arguments_definition << "const C" << (i+1) << "& " << arguments[i];
+        ss_call_arguments << arguments[i];
+        ss_constructor_arguments << arguments[i] << "_(" << arguments[i] << ")";
+        ss_member_variables << "    const C" << (i+1) << " " << arguments[i] << "_;\n";
+        if (i + 1 != num_args) {
+            ss_declarer << ", ";
+            ss_caller << ", ";
+            ss_call_arguments << ", ";
+            ss_call_arguments_definition << ", ";
+            ss_constructor_arguments << ", ";
+        } else {
+            ss_declarer << ">";
+            ss_caller << ">";
+        }
+    }
+    if (num_args > 0 & has_shape) {
+        ss_call_arguments_definition << ", ";
+        ss_call_arguments << ", ";
+        ss_constructor_arguments << ", ";
+    }
+    templated_caller = ss_caller.str();
+    templated_declarer = ss_declarer.str();
+    if (has_shape) {
+        ss_call_arguments_definition << "const Shape<" << ndim << ">& shape";
+        ss_call_arguments << "shape";
+        ss_constructor_arguments << "shape_(shape)";
+        ss_member_variables << "    const Shape<" << ndim << "> shape_;\n";
+    }
+    call_arguments = ss_call_arguments.str();
+    call_arguments_definition = ss_call_arguments_definition.str();
+    constructor_arguments = ss_constructor_arguments.str();
+    member_variables = ss_member_variables.str();
+
+    std::string get_shape_fun;
+    if (has_shape) {
+        get_shape_fun = "    XINLINE const Shape<ndim>& shape() const {return shape_;}\n";
+    }
+    std::string typedefinition;
+    if (num_args > 0) {
+        typedefinition = "    typedef typename C1::T T;\n";
+    }
+
+    std::string kernel_tail;
+    if (utils::endswith(kernel, ";\n")) {
+        kernel_tail = "";
+    } else {
+        if (utils::endswith(kernel, ";")) {
+            kernel_tail = "\n";
+        } else {
+            kernel_tail = ";\n";
+        }
+    }
+
+    return utils::make_message(templated_declarer, "\n",
+        "struct ", name, " {\n", member_variables,
+        "    static const int ndim = ", ndim, ";\n", typedefinition, get_shape_fun,
+        "    XINLINE ", name, "(", call_arguments_definition, ")"
+        "       : ", constructor_arguments, " {}\n"
+        "    XINLINE T operator[](const Shape<ndim>& query) const {\n"
+        "        return ", kernel, kernel_tail,
+        "    }\n"
+        "};\n", templated_declarer, "\n",
+        name, templated_caller, " ", kernel_name,
+        "(", call_arguments_definition, ") {\n"
+        "    return ", name, templated_caller, "(", call_arguments, ");\n"
+        "}\n"
+    );
 }

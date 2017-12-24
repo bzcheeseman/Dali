@@ -17,6 +17,7 @@
 #include "dali/utils/make_message.h"
 #include "dali/array/op/unary.h"
 #include "dali/array/op/dot.h"
+#include "dali/array/op/reducers.h"
 #include "dali/array/jit/scalar_view.h"
 
 
@@ -49,12 +50,20 @@ std::shared_ptr<Expression> Array::expression() const {
     return state_->expression_;
 }
 
+std::shared_ptr<Array::ArrayState> Array::state() const {
+    return state_;
+}
+
 void Array::set_expression(std::shared_ptr<Expression> new_expression) const {
     if (state_ == nullptr) {
         state_ = std::make_shared<ArrayState>(new_expression);
     } else {
         state_->expression_ = new_expression;
     }
+}
+
+void Array::set_state(std::shared_ptr<ArrayState> new_state) const {
+    state_ = new_state;
 }
 
 std::string Array::expression_name() const {
@@ -160,21 +169,6 @@ Array Array::zeros_like(const Array& other) {
         ret.memory()->lazy_clear();
         return ret;
     }
-}
-
-Array Array::arange(const double& start, const double& stop, const double& step, DType dtype, memory::Device preferred_device) {
-    int length = ((stop - start) + step - 1) / (step);
-    ASSERT2(length > 0, utils::make_message("Array length must be non-zero (got "
-        "start=", start, ", stop=", stop, ", step=", step, ")."));
-    Array ret({length}, dtype, preferred_device);
-    // ret = initializer::arange(start, step);
-    return ret;
-}
-
-Array Array::arange(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
-    Array ret(shape, dtype, preferred_device);
-    // ret = initializer::arange(0.0, 1.0);
-    return ret;
 }
 
 Array Array::ones(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
@@ -430,7 +424,7 @@ Array Array::ascontiguousarray() const {
         ret = *this;
     } else {
         debug::array_as_contiguous.notify(*this);
-        // ret = op::identity(*this);
+        ret = op::identity(*this);
     }
     ret.expression()->strides_.clear();
     return ret;
@@ -466,9 +460,7 @@ std::shared_ptr<memory::SynchronizedMemory> Array::memory() const {
         return nullptr;
     } else {
         eval(/*wait=*/true);
-        auto buffer = std::dynamic_pointer_cast<BufferView>(expression());
-        ASSERT2(buffer, "eval failed to create BufferView.");
-        return buffer->memory_;
+        return op::static_as_buffer_view(*this)->memory_;
     }
 }
 
@@ -675,12 +667,12 @@ Array Array::broadcast_scalar_to_ndim(const int& ndim) const {
 
 #define DALI_ARRAY_DEFINE_ALL_REDUCER(FUNCTION_NAME, OPNAME)\
     Array Array::FUNCTION_NAME() const {\
-        /*return op::OPNAME(*this);*/\
+        return op::OPNAME(*this);\
     }\
 
 #define DALI_ARRAY_DEFINE_AXIS_REDUCER(FUNCTION_NAME, OPNAME)\
     Array Array::FUNCTION_NAME(const int& axis) const {\
-        /*return op::OPNAME(*this, {axis});*/\
+        return op::OPNAME(*this, {axis});\
     }\
 
 #define DALI_ARRAY_DEFINE_REDUCER(FUNCTION_NAME, OPNAME)\
@@ -692,9 +684,9 @@ DALI_ARRAY_DEFINE_REDUCER(L2_norm, L2_norm);
 DALI_ARRAY_DEFINE_REDUCER(mean, mean);
 DALI_ARRAY_DEFINE_REDUCER(max, max);
 DALI_ARRAY_DEFINE_REDUCER(min, min);
-DALI_ARRAY_DEFINE_REDUCER(argsort, argsort);
-DALI_ARRAY_DEFINE_REDUCER(argmin, argmin);
-DALI_ARRAY_DEFINE_REDUCER(argmax, argmax);
+// DALI_ARRAY_DEFINE_REDUCER(argsort, argsort);
+// DALI_ARRAY_DEFINE_REDUCER(argmin, argmin);
+// DALI_ARRAY_DEFINE_REDUCER(argmax, argmax);
 
 Array::operator float() const {
     return scalar_value<float>();
@@ -806,12 +798,12 @@ bool operator==(const Array& left, const Array& right) {
 #define DALI_DEFINE_ARRAY_INTERACTION_INPLACE(SYMBOL, OPERATOR_NAME)\
     Array& operator SYMBOL (Array& left, const Array& right) {\
         auto assignment = op::assign(left, OPERATOR_NAME, right);\
-        left.set_expression(assignment.expression());\
+        left.set_state(assignment.state());\
         return left;\
     }\
     void operator SYMBOL (Array&& left, const Array& right) {\
         auto assignment = op::assign(left, OPERATOR_NAME, right);\
-        left.set_expression(assignment.expression());\
+        left.set_state(assignment.state());\
     }\
 
 DALI_DEFINE_ARRAY_INTERACTION_INPLACE(+=, OPERATOR_T_ADD);

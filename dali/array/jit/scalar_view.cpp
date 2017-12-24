@@ -51,6 +51,9 @@ struct ScalarInt32View : public ScalarView {
     ScalarInt32View(const ScalarInt32View& other) : ScalarInt32View(other.value_) {};
     virtual expression_ptr copy() const {return std::make_shared<ScalarInt32View>(*this);}
     const void* value_ptr() const {return &value_;}
+    virtual std::string name() const {
+        return utils::make_message("int(", value_, ")");
+    }
 };
 
 struct ScalarFp32View : public ScalarView {
@@ -59,6 +62,9 @@ struct ScalarFp32View : public ScalarView {
     ScalarFp32View(const ScalarFp32View& other) : ScalarFp32View(other.value_) {};
     virtual expression_ptr copy() const {return std::make_shared<ScalarFp32View>(*this);}
     const void* value_ptr() const {return &value_;}
+    virtual std::string name() const {
+        return utils::make_message("fp32(", value_, ")");
+    }
 };
 
 struct ScalarFp64View : public ScalarView {
@@ -67,6 +73,10 @@ struct ScalarFp64View : public ScalarView {
     ScalarFp64View(const ScalarFp64View& other) : ScalarFp64View(other.value_) {};
     virtual expression_ptr copy() const {return std::make_shared<ScalarFp64View>(*this);}
     const void* value_ptr() const {return &value_;}
+
+    virtual std::string name() const {
+        return utils::make_message("fp64(", value_, ")");
+    }
 };
 
 Array wrap_scalar(int value) {
@@ -114,6 +124,7 @@ struct TileScalar : public JITNode {
                                                SymbolTable& symbol_table,
                                                node_to_info_t* node_to_info) const {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
+        (*node_to_info)[this].computation_shape = desired_computation_shape;
         symbol_table.declare_shape(this);
         op::jit::compute_node_compilation_info(scalar_,
                                                1,

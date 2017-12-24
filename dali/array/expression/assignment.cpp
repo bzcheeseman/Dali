@@ -2,6 +2,7 @@
 #include "dali/utils/make_message.h"
 #include "dali/array/op/reducers.h"
 #include "dali/array/expression/control_flow.h"
+#include "dali/array/op/binary.h"
 
 Assignment::Assignment(Array left, OPERATOR_T operator_t, Array right) :
         Expression(left.shape(),
@@ -40,8 +41,7 @@ std::vector<Array> Assignment::arguments() const {
 
 std::string Assignment::name() const {
     return utils::make_message(
-        "Assignment[", operator_to_name(operator_t_), ", ",
-        shape_, strides_, "]");
+        "Assignment[", operator_to_name(operator_t_), "]");
 }
 
 bool Assignment::is_axis_collapsible_with_axis_minus_one(int axis) const {
@@ -102,13 +102,43 @@ Array to_assignment(const Array& node) {
 
 Array assign(const Array& left, OPERATOR_T operator_t, const Array& right) {
     if (operator_t == OPERATOR_T_EQL) {
-        return Array(std::make_shared<Assignment>(left, operator_t, right));
+        return Array(std::make_shared<Assignment>(left.buffer_arg(), operator_t, right));
     } else if (operator_t == OPERATOR_T_LSE) {
         return autoreduce_assign(left, right);
     } else {
         Array assigned_right = right;
         if (!right.is_buffer()) {
             assigned_right = to_assignment(right);
+        }
+        if (left.is_assignment()) {
+            auto left_assign = static_as_assignment(left);
+            auto left_operator_t = left_assign->operator_t_;
+            if (left_operator_t == OPERATOR_T_ADD) {
+                assigned_right = op::add(assigned_right, left_assign->right_);
+            } else if (left_operator_t == OPERATOR_T_SUB) {
+                assigned_right = op::subtract(assigned_right, left_assign->right_);
+            } else if (left_operator_t == OPERATOR_T_SUB) {
+                assigned_right = op::subtract(assigned_right, left_assign->right_);
+            } else if (left_operator_t == OPERATOR_T_EQL) {
+                // TODO(jonathan): factorize mapping from operator -> binary func
+                // into one place
+                if (operator_t == OPERATOR_T_ADD) {
+                    assigned_right = op::add(left_assign->right_, assigned_right);
+                    operator_t = OPERATOR_T_EQL;
+                } else if (operator_t == OPERATOR_T_SUB) {
+                    assigned_right = op::subtract(left_assign->right_, assigned_right);
+                    operator_t = OPERATOR_T_EQL;
+                } else if (operator_t == OPERATOR_T_DIV) {
+                    assigned_right = op::eltdiv(left_assign->right_, assigned_right);
+                    operator_t = OPERATOR_T_EQL;
+                } else if (operator_t == OPERATOR_T_MUL) {
+                    assigned_right = op::eltmul(left_assign->right_, assigned_right);
+                    operator_t = OPERATOR_T_EQL;
+                }
+            } else {
+                // TODO(jonathan): fill this in
+                ASSERT2(false, "not sure what to do");
+            }
         }
         // a temp is added so that non overwriting operators
         // can be run independently from the right side's evaluation.

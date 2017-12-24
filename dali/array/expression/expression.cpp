@@ -9,6 +9,7 @@
 #include "dali/array/shape.h"
 #include "dali/utils/print_utils.h"
 #include "dali/utils/make_message.h"
+#include "dali/array/op/unary.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 //               MISCELANEOUS UTILITIES (NOT EXPOSED)                         //
@@ -383,8 +384,10 @@ expression_ptr Expression::copyless_right_fit_ndim(int target_ndim) const {
 
 expression_ptr Expression::reshape(const vector<int>& new_shape) const {
     // TODO(szymon): implement.
-    // if (new_shape == shape_) return copy();
-    // return ascontiguousarray().copyless_reshape(new_shape);
+    if (new_shape == shape_) return copy();
+
+    auto ret = op::identity(Array(copy()));
+    return ret.expression()->copyless_reshape(new_shape);
 }
 
 expression_ptr Expression::reshape_broadcasted(const std::vector<int>& new_shape) const {

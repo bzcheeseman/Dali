@@ -1,8 +1,7 @@
-#ifndef DALI_ARRAY_OP2_ELEMENTWISE_OPERATION_H
-#define DALI_ARRAY_OP2_ELEMENTWISE_OPERATION_H
+#ifndef DALI_ARRAY_OP_ELEMENTWISE_OPERATION_H
+#define DALI_ARRAY_OP_ELEMENTWISE_OPERATION_H
 
 #include "dali/array/array.h"
-#include <string>
 
 namespace op {
     // elementwise kernel given by name. assumes
@@ -46,6 +45,6 @@ namespace op {
     std::tuple<Array, Array> ensure_arguments_compatible(
         const Array& a, const Array& b, const std::string&
     );
-} // namespace op2
+} // namespace op
 
-#endif  // DALI_ARRAY_OP2_ELEMENTWISE_OPERATION_H
+#endif  // DALI_ARRAY_OP_ELEMENTWISE_OPERATION_H

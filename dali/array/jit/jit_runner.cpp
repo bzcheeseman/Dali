@@ -154,13 +154,26 @@ std::vector<const void*> SymbolTable::collect_scalars(const node_to_info_t& node
     return scalars;
 }
 
-std::vector<const int*> SymbolTable::collect_shapes(const node_to_info_t& node_to_info) const {
-    std::vector<const int*> shapes;
+std::vector<std::vector<int>> SymbolTable::collect_shapes(const node_to_info_t& node_to_info) const {
+    std::vector<std::vector<int>> shapes;
     std::transform(shapes_.begin(),
                    shapes_.end(),
                    std::back_inserter(shapes),
                    [&](const Expression* op) {
-                        return op->shape_.data();
+                        const auto& rank  = node_to_info.at(op).computation_rank;
+                        const auto& shape = node_to_info.at(op).computation_shape;
+                        // because ranks may have changed from definition to compilation
+                        // all shapes are reformated for runtime
+                        if (rank == shape.size()) {
+                            // no change
+                            return shape;
+                        } else if (rank == 1) {
+                            // flatten
+                            return op->copyless_ravel()->shape_;
+                        } else {
+                            // flatten rightmost portion
+                            return op->copyless_right_fit_ndim(rank)->shape_;
+                        }
                    });
     return shapes;
 }
@@ -308,7 +321,6 @@ void buffer_compute_node_compilation_info(const Array& array, const Array& buffe
                                           node_to_info_t* node_to_info) {
     const BufferView* buffer_ptr = static_cast<const BufferView*>(buffer_array.expression().get());
     symbol_table.declare_array(buffer_ptr);
-    // const Expression* array_ptr = array.expression().get();
     (*node_to_info)[buffer_ptr].computation_rank  = desired_computation_rank;
     (*node_to_info)[buffer_ptr].computation_shape = desired_computation_shape;
     (*node_to_info)[buffer_ptr].hash = utils::Hasher().add(BUFFER_HASH)
@@ -338,7 +350,8 @@ void JITRunner::compute_node_compilation_info(int desired_computation_rank,
     hasher.add(optype_hash)
           .add(desired_computation_rank)
           .add(node_to_info->at(dest_.expression().get()).hash)
-          .add(node_to_info->at(root_.expression().get()).hash);
+          .add(node_to_info->at(root_.expression().get()).hash)
+          .add(int(operator_t_));
     (*node_to_info)[this].hash = hasher.value();
 }
 
@@ -624,7 +637,10 @@ struct JITRunnerImpl : public Computation {
                                                 node_to_info);
         auto arrays = symbol_table.collect_buffers(node_to_info);
         auto scalars = symbol_table.collect_scalars(node_to_info);
-        auto shapes = symbol_table.collect_shapes(node_to_info);
+        auto shapes_vec = symbol_table.collect_shapes(node_to_info);
+        std::vector<const int*> shapes;
+        std::transform(shapes_vec.begin(), shapes_vec.end(), std::back_inserter(shapes),
+                       [](const std::vector<int>& shape) {return shape.data();});
 
         std::vector<void*> data_ptrs;
         std::vector<int> array_offsets;
@@ -718,7 +734,7 @@ int registered_buffer = register_implementation(
     typeid(BufferView).name(),
     [](Array dest, OPERATOR_T operator_t, Array x) -> std::shared_ptr<Computation> {
         Array runner(std::make_shared<JITRunner>(
-            x, std::vector<Array>({x}), operator_t, dest
+            op::identity(x), std::vector<Array>({x}), operator_t, dest
         ));
         return std::make_shared<JITRunnerImpl>(dest, operator_t, runner);
     });

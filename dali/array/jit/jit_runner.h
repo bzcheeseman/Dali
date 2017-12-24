@@ -36,7 +36,7 @@ namespace op {
             std::string variable_declarations(const node_to_info_t& node_to_info) const;
             std::vector<Array> collect_buffers(const node_to_info_t& node_to_info) const;
             std::vector<const void*> collect_scalars(const node_to_info_t& node_to_info) const;
-            std::vector<const int*> collect_shapes(const node_to_info_t& node_to_info) const;
+            std::vector<std::vector<int>> collect_shapes(const node_to_info_t& node_to_info) const;
         };
 
         struct JITNode : public Expression {

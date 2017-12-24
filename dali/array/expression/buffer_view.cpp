@@ -76,10 +76,6 @@ bool BufferView::spans_entire_memory() const {
     return false;
 }
 
-std::string BufferView::name() const {
-    return utils::make_message("BufferView[", shape_, strides_, "]");
-}
-
 std::shared_ptr<BufferView> BufferView::construct_with_bshape(
         const std::vector<int>& bshape,
         DType dtype,
@@ -102,4 +98,11 @@ bool BufferView::supports_operator(OPERATOR_T operator_t) const {
 
 bool BufferView::is_axis_collapsible_with_axis_minus_one(int axis) const {
     return contiguous_memory();
+}
+
+
+namespace op {
+BufferView* static_as_buffer_view(const Array& arr) {
+    return static_cast<BufferView*>(arr.expression().get());
+}
 }

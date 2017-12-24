@@ -38,8 +38,6 @@ struct BufferView : public Expression {
 
     virtual memory::Device preferred_device() const ;
 
-    virtual std::string name() const;
-
     static std::shared_ptr<BufferView> construct_with_bshape(
             const std::vector<int>& bshape,
             DType dtype,
@@ -48,5 +46,10 @@ struct BufferView : public Expression {
     virtual bool supports_operator(OPERATOR_T operator_t) const;
     virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const;
 };
+
+namespace op {
+    BufferView* static_as_buffer_view(const Array& arr);
+}  // namespace op
+
 
 #endif  // DALI_ARRAY_EXPRESSION_BUFFER_VIEW_H

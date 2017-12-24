@@ -12,6 +12,7 @@
 #include "dali/array/op/dot.h"
 #include "dali/array/op/binary.h"
 #include "dali/array/op/reducers.h"
+#include "dali/array/op/arange.h"
 #include "dali/array/expression/assignment.h"
 
 int vector_dot(Array left, Array right) {
@@ -76,8 +77,6 @@ TEST(ArrayTests, autoreduce_assign) {
     Array expected_result = op::eltmul(Array::ones(
         {3, 2, 1, 2, 1}, DTYPE_FLOAT
     ), 100);
-
-    auto a = op::sum(autoreduce_assign_source, {2, 4});
 
     EXPECT_TRUE((bool)((int)op::all_equals(
         op::eltmul(Array::ones({3, 2, 2}, DTYPE_FLOAT), 100),
@@ -144,18 +143,15 @@ TEST(ArrayTests, scalar_assign) {
     }
 }
 
-#ifdef DONT_COMPILE
-
 TEST(ArrayTests, inplace_addition) {
     Array x = Array::zeros({3,2}, DTYPE_INT32);
     x = 13;
     x += 2;
-    ASSERT_EQ((int)(Array)x.sum(), 13 * 6 + 2 * 6);
-
+    ASSERT_EQ((int)x.sum(), 13 * 6 + 2 * 6);
     auto prev_memory_ptr = x.memory().get();
     // add a different number in place to each element and check
     // the result is correct
-    x += Array::arange({3, 2}, DTYPE_INT32);
+    x += op::arange(6).reshape({3, 2});
     // verify that memory pointer is the same
     // (to be sure this was actually done in place)
     ASSERT_EQ(prev_memory_ptr, x.memory().get());
@@ -173,7 +169,7 @@ TEST(ArrayTests, inplace_substraction) {
     auto prev_memory_ptr = x.memory().get();
     // add a different number in place to each element and check
     // the result is correct
-    x -= Array::arange({3, 2}, DTYPE_INT32);
+    x -= op::arange(6).reshape({3, 2});
     // verify that memory pointer is the same
     // (to be sure this was actually done in place)
     ASSERT_EQ(prev_memory_ptr, x.memory().get());
@@ -181,6 +177,8 @@ TEST(ArrayTests, inplace_substraction) {
         ASSERT_EQ((int)x(i), (13 - 2) - i);
     }
 }
+
+#ifdef DONT_COMPILE
 
 TEST(ArrayTests, inplace_multiplication) {
     Array x = Array::zeros({3,2}, DTYPE_INT32);

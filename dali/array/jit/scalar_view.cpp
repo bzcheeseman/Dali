@@ -86,7 +86,7 @@ Array wrap_scalar(float value) {
 	return Array(std::make_shared<ScalarFp32View>(value));
 }
 Array wrap_scalar(double value) {
-	return Array(std::make_shared<ScalarFp32View>(value));
+	return Array(std::make_shared<ScalarFp64View>(value));
 }
 
 

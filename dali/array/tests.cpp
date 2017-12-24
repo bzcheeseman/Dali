@@ -178,8 +178,6 @@ TEST(ArrayTests, inplace_substraction) {
     }
 }
 
-#ifdef DONT_COMPILE
-
 TEST(ArrayTests, inplace_multiplication) {
     Array x = Array::zeros({3,2}, DTYPE_INT32);
     x = 13;
@@ -189,7 +187,7 @@ TEST(ArrayTests, inplace_multiplication) {
     auto prev_memory_ptr = x.memory().get();
     // add a different number in place to each element and check
     // the result is correct
-    x *= Array::arange({3, 2}, DTYPE_INT32);
+    x *= op::arange(6).reshape({3, 2});
     // verify that memory pointer is the same
     // (to be sure this was actually done in place)
     ASSERT_EQ(prev_memory_ptr, x.memory().get());
@@ -198,24 +196,25 @@ TEST(ArrayTests, inplace_multiplication) {
     }
 }
 
+
 TEST(ArrayTests, scalar_construct) {
-    auto assignable = initializer::fill((float)3.14);
-    Array scalar = assignable;
+    Array scalar = float(3.14);
     ASSERT_EQ(scalar.shape(), std::vector<int>());
     ASSERT_EQ(scalar.dtype(), DTYPE_FLOAT);
     ASSERT_NEAR((float)scalar(0), 3.14, 1e-6);
 
-    Array scalar2;
-    scalar2 = initializer::fill((double)3.14);
+    Array scalar2 = double(3.14);
     ASSERT_EQ(scalar2.shape(), std::vector<int>());
     ASSERT_EQ(scalar2.dtype(), DTYPE_DOUBLE);
     ASSERT_NEAR((double)scalar2(0), 3.14, 1e-6);
 
-    Array scalar3 = initializer::fill(314);
+    Array scalar3 = 314;
     ASSERT_EQ(scalar3.shape(), std::vector<int>());
     ASSERT_EQ(scalar3.dtype(), DTYPE_INT32);
     ASSERT_EQ((int)scalar3(0), 314);
 }
+
+#ifdef DONT_COMPILE
 
 TEST(ArrayTest, eye_init) {
     Array myeye = Array({4, 5}, DTYPE_INT32)[Slice()][Slice({}, {}, -1)];

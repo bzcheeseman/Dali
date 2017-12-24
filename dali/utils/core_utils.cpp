@@ -461,7 +461,6 @@ namespace utils {
             got_home_dir = true;
         }
         if (got_home_dir) {
-            ELOG(homeDir);
             return std::string(homeDir) + path.substr(1);
         } else {
             // path could not be expanded

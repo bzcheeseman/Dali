@@ -191,15 +191,14 @@ bool Compiler::compile_code(const std::string& source,
     std::cout << "printing code:" << std::endl;
     std::ifstream fp1(source.c_str());
     std::string l;
-    while (std::getline(fp, l)) {
+    while (std::getline(fp1, l)) {
         std::cout << l << std::endl;
     }
     std::cout << "done printing code." << std::endl;
 
     std::cout << "printing logfile:" << std::endl;
     std::ifstream fp2(logfile.c_str());
-    std::string l;
-    while (std::getline(fp, l)) {
+    while (std::getline(fp2, l)) {
         std::cout << l << std::endl;
     }
     std::cout << "done printing logfile." << std::endl;

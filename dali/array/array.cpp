@@ -803,6 +803,24 @@ bool operator==(const Array& left, const Array& right) {
 }
 
 
+#define DALI_DEFINE_ARRAY_INTERACTION_INPLACE(SYMBOL, OPERATOR_NAME)\
+    Array& operator SYMBOL (Array& left, const Array& right) {\
+        auto assignment = op::assign(left, OPERATOR_NAME, right);\
+        left.set_expression(assignment.expression());\
+        return left;\
+    }\
+    void operator SYMBOL (Array&& left, const Array& right) {\
+        auto assignment = op::assign(left, OPERATOR_NAME, right);\
+        left.set_expression(assignment.expression());\
+    }\
+
+DALI_DEFINE_ARRAY_INTERACTION_INPLACE(+=, OPERATOR_T_ADD);
+DALI_DEFINE_ARRAY_INTERACTION_INPLACE(-=, OPERATOR_T_SUB);
+DALI_DEFINE_ARRAY_INTERACTION_INPLACE(*=, OPERATOR_T_MUL);
+DALI_DEFINE_ARRAY_INTERACTION_INPLACE(/=, OPERATOR_T_DIV);
+DALI_DEFINE_ARRAY_INTERACTION_INPLACE(<<=, OPERATOR_T_LSE);
+
+
 DType type_promotion(const Array& a, const Array& b) {
     // TODO(jonathan,szymon) speed up this function
     bool a_scalar = a.is_scalar();

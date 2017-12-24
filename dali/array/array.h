@@ -248,6 +248,18 @@ class Array  {
 };
 bool operator==(const Array& left, const Array& right);
 
+
+#define DALI_DECLARE_ARRAY_INTERACTION_INPLACE(SYMBOL)\
+    Array& operator SYMBOL (Array&  left, const Array& right);\
+    void operator SYMBOL (Array&& left, const Array& right);\
+
+DALI_DECLARE_ARRAY_INTERACTION_INPLACE(+= );
+DALI_DECLARE_ARRAY_INTERACTION_INPLACE(-= );
+DALI_DECLARE_ARRAY_INTERACTION_INPLACE(*= );
+DALI_DECLARE_ARRAY_INTERACTION_INPLACE(/= );
+DALI_DECLARE_ARRAY_INTERACTION_INPLACE(<<=);
+
+
 DType type_promotion(const Array& a, const Array& b);
 
 #endif

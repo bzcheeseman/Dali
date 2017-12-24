@@ -187,6 +187,13 @@ bool Compiler::compile_code(const std::string& source,
     int ret = system(cmd.c_str());
     std::cout << "cmd = " << cmd << std::endl;
     std::cout << "utils::listdir(outpath) = " << utils::listdir(array_op_compiler.outpath_) << std::endl;
+
+    std::ifstream fp(logfile.c_str());
+    std::string l;
+    while (std::getline(fp, l)) {
+        std::cout << l << std::endl;
+    }
+
     return WEXITSTATUS(ret) == EXIT_SUCCESS;
 }
 

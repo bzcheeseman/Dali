@@ -6,6 +6,7 @@
 
 #include "dali/utils/assert2.h"
 #include "dali/utils/core_utils.h"
+#include "dali/utils/print_utils.h"
 #include "dali/utils/make_message.h"
 
 std::string get_call_args(std::size_t num_args) {
@@ -185,6 +186,7 @@ bool Compiler::compile_code(const std::string& source,
     auto cmd = compiler_command(source, dest, logfile, extra_args, device_type);
     int ret = system(cmd.c_str());
     std::cout << "cmd = " << cmd << std::endl;
+    std::cout << "utils::listdir(outpath) = " << utils::listdir(array_op_compiler.outpath_) << std::endl;
     return WEXITSTATUS(ret) == EXIT_SUCCESS;
 }
 

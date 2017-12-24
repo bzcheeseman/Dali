@@ -1,6 +1,7 @@
 #include "jit_runner.h"
 
 #include <unordered_set>
+#include <algorithm>
 
 #include "dali/utils/make_message.h"
 #include "dali/utils/assert2.h"

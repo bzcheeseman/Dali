@@ -10,8 +10,7 @@ set -o pipefail
 mkdir build
 cd build
 
-CC=gcc-4.9 CXX=g++-4.9 cmake -DWITH_CUDA=$WITH_CUDA -DCMAKE_BUILD_TYPE=nooptimize -DARRAY_ONLY=1 -DDALI_CACHE_DIR=.cache/ ..
-mkdir .cache
+CC=gcc-4.9 CXX=g++-4.9 cmake -DWITH_CUDA=$WITH_CUDA -DCMAKE_BUILD_TYPE=nooptimize -DARRAY_ONLY=1 ..
 
 make -j9 dali
 

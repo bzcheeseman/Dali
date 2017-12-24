@@ -2,6 +2,7 @@
 
 #include <iomanip>
 #include <iterator>
+#include <algorithm>
 
 using std::vector;
 using std::string;

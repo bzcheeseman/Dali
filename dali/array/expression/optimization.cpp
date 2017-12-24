@@ -1,7 +1,6 @@
 #include "optimization.h"
 #include "dali/array/expression/assignment.h"
 #include "dali/utils/make_message.h"
-#include "dali/array/jit/jit_runner.h"
 
 std::vector<Array> right_args(Array node) {
     auto buffer = std::dynamic_pointer_cast<Assignment>(node.expression());

@@ -5,6 +5,7 @@
 
 #include "dali/utils/make_message.h"
 #include <unordered_map>
+#include <algorithm>
 
 Computation::Computation(Array left, OPERATOR_T operator_t, Array right) :
     left_(left), operator_t_(operator_t), right_(right) {}

@@ -87,9 +87,9 @@ struct CpuGemmImpl : public Computation {
 
 int cpu_gemm_impl = register_implementation(
     typeid(op::MatMul).name(),
-    [](Array dest, OPERATOR_T operator_t, Array x) -> std::shared_ptr<Computation> {
+    [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
         if (dest.preferred_device().is_cpu()) {
-            return std::make_shared<CpuGemmImpl>(dest, operator_t, x);
+            return std::make_shared<CpuGemmImpl>(dest, operator_t, x, assignment);
         } else {
             return nullptr;
         }

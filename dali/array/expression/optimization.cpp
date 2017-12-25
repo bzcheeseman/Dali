@@ -1,10 +1,10 @@
 #include "optimization.h"
 #include "dali/array/expression/assignment.h"
+#include "dali/array/expression/control_flow.h"
 #include "dali/utils/make_message.h"
 
 std::vector<Array> right_args(Array node) {
-    auto buffer = std::dynamic_pointer_cast<Assignment>(node.expression());
-    return buffer->right_.expression()->arguments();
+    return op::static_as_assignment(node)->right_.expression()->arguments();
 }
 
 namespace {
@@ -30,25 +30,30 @@ namespace {
         if (node.is_buffer()) {
             return node;
         }
-        if (!node.is_assignment()) {
-            node.set_expression(op::to_assignment(node).expression());
-        }
-        Assignment* node_assign = static_cast<Assignment*>(node.expression().get());
-        if (node_assign->right_.is_assignment()) {
-            Assignment* node_right_assign = op::static_as_assignment(node_assign->right_);
-            if (node_right_assign->operator_t_ == OPERATOR_T_EQL &&
-                node_right_assign->right_.expression()->supports_operator(node_assign->operator_t_)) {
-                node_assign->right_.set_expression(node_right_assign->right_.expression());
+        if (node.is_control_flow()) {
+            for (auto& arg : op::static_as_control_flow(node)->conditions_) {
+                arg.set_expression(all_assignments_or_buffers(arg).expression());
             }
-        }
-        for (auto& arg : right_args(node)) {
-            arg.set_expression(all_assignments_or_buffers(arg).expression());
+        } else {
+            if (!node.is_assignment()) {
+                node.set_expression(op::to_assignment(node).expression());
+            }
+            Assignment* node_assign = static_cast<Assignment*>(node.expression().get());
+            if (node_assign->right_.is_assignment()) {
+                Assignment* node_right_assign = op::static_as_assignment(node_assign->right_);
+                if (node_right_assign->operator_t_ == OPERATOR_T_EQL &&
+                    node_right_assign->right_.expression()->supports_operator(node_assign->operator_t_)) {
+                    node_assign->right_.set_expression(node_right_assign->right_.expression());
+                }
+            }
+            for (auto& arg : right_args(node)) {
+                arg.set_expression(all_assignments_or_buffers(arg).expression());
+            }
         }
         return node;
     }
 
     std::vector<Optimization> OPTIMIZATIONS;
-    std::vector<std::string> OPTIMIZATION_NAMES;
 
     Array simplify_destination(Array root) {
         // leaf node:

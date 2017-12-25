@@ -25,10 +25,6 @@ std::vector<Array> ScalarView::arguments() const {
     return {};
 }
 
-bool ScalarView::spans_entire_memory() const {
-    return true;
-}
-
 std::string ScalarView::get_call_code_nd(const SymbolTable& symbol_table,
 										 const node_to_info_t& node_to_info,
 										 memory::DeviceT device_type) const {

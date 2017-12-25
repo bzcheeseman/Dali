@@ -5,15 +5,17 @@
 #include "dali/array/array.h"
 
 struct Computation {
-	Array left_;
+    Array left_;
     OPERATOR_T operator_t_;
     Array right_;
+    Array assignment_;
 
-    Computation(Array left, OPERATOR_T operator_t, Array right);
-	virtual void run() = 0;
+    Computation(Array left, OPERATOR_T operator_t, Array right, Array assignment);
+    virtual void run() = 0;
+    void run_and_cleanup();
 };
 
-typedef std::function<std::shared_ptr<Computation>(Array, OPERATOR_T, Array) > to_computation_t;
+typedef std::function<std::shared_ptr<Computation>(Array, OPERATOR_T, Array, Array) > to_computation_t;
 
 int register_implementation(const char*, to_computation_t impl);
 std::vector<std::shared_ptr<Computation>> convert_to_ops(Array root);

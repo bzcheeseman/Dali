@@ -15,7 +15,6 @@ struct ScalarView : public JITNode {
 
     ScalarView(DType type);
     virtual std::vector<Array> arguments() const;
-    virtual bool spans_entire_memory() const;
     virtual memory::Device preferred_device() const;
     virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
                        const node_to_info_t& node_to_info,

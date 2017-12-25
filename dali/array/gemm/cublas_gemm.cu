@@ -191,9 +191,9 @@ struct CublasGemmImpl : public Computation {
 
 int cublas_gemm_impl = register_implementation(
     typeid(op::MatMul).name(),
-    [](Array dest, OPERATOR_T operator_t, Array x) -> std::shared_ptr<Computation> {
+    [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
         if (dest.preferred_device().is_gpu()) {
-            return std::make_shared<CublasGemmImpl>(dest, operator_t, x);
+            return std::make_shared<CublasGemmImpl>(dest, operator_t, x, assignment);
         } else {
             return nullptr;
         }

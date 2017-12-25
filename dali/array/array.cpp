@@ -226,15 +226,15 @@ Array Array::buffer_arg() const {
 
 void Array::eval(bool wait) const {
     if (!is_buffer()) {
-        auto node = canonical(*this);
-        auto computable = convert_to_ops(node);
+        set_expression(canonical(*this).expression());
+        auto computable = convert_to_ops(*this);
         // run (DAG evaluation)
         for (auto& step : computable) {
-            step->run();
+            step->run_and_cleanup();
         }
-        // update internal expression to reflect
-        // that op was evaluated...
-        set_expression(node.buffer_arg().expression());
+        ASSERT2(is_buffer(), utils::make_message(
+            "After computation expression was not converted "
+            "back to a BufferView (expression = ", full_expression_name(), ")."));
     }
 }
 
@@ -530,15 +530,26 @@ bool Array::contiguous_memory() const {
 }
 
 Array Array::operator[](const int& idx) const {
-    return pluck_axis(0, idx);
+    if (is_buffer()) {
+        return pluck_axis(0, idx);
+    } else {
+        if (!is_assignment() && !is_control_flow()) {
+            set_expression(op::to_assignment(*this).expression());
+        }
+        auto dest_buffer = buffer_arg();
+        return Array(std::make_shared<ControlFlow>(
+            dest_buffer.pluck_axis(0, idx),
+            std::vector<Array>({*this})
+        ));
+    }
 }
 
 Array Array::gather_from_rows(const Array& indices) const {
-    // return ArraySubtensor(*this, indices);
+    throw std::runtime_error("gather_from_rows(const Array& indices) not implemented yet");
 }
 
 Array Array::operator[](const Array& indices) const {
-    // return ArrayGather(*this, indices);
+    throw std::runtime_error("operator[](const Array& indices) not implemented yet");
 }
 
 SlicingInProgress<Array> Array::operator[](const Slice& s) const {

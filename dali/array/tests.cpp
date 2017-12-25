@@ -13,6 +13,7 @@
 #include "dali/array/op/binary.h"
 #include "dali/array/op/reducers.h"
 #include "dali/array/op/arange.h"
+#include "dali/array/op/eye.h"
 #include "dali/array/expression/assignment.h"
 
 int vector_dot(Array left, Array right) {
@@ -214,28 +215,72 @@ TEST(ArrayTests, scalar_construct) {
     ASSERT_EQ((int)scalar3(0), 314);
 }
 
-#ifdef DONT_COMPILE
 
-TEST(ArrayTest, eye_init) {
-    Array myeye = Array({4, 5}, DTYPE_INT32)[Slice()][Slice({}, {}, -1)];
+TEST(ArrayTest, eye_init_chunked) {
+    Array myeye = Array({4, 5}, DTYPE_INT32);//[Slice()][Slice({}, {}, -1)];
     double diag = 5.0;
+
     // initialize with different diagonal values:
-    myeye = initializer::eye(diag);
+    myeye = op::assign(myeye, OPERATOR_T_EQL, op::diag(diag, 4, 5));
+    // ELOG(myeye.full_expression_name());
     for (int i = 0; i < myeye.shape()[0]; i++) {
         for (int j = 0; j < myeye.shape()[1]; j++) {
-            ASSERT_EQ(i == j ? diag : 0.0, (int)myeye[i][j]);
+            auto el = myeye[i][j];
+            // ELOG(el.full_expression_name());
+            // el.eval();
+            // ELOG(el.full_expression_name());
+            // ELOG(myeye.full_expression_name());
+            ASSERT_EQ(el.shape().size(), 0);
+            ASSERT_EQ(i == j ? diag : 0.0, (int)el);
+            ASSERT_EQ(el.shape().size(), 0);
         }
     }
+    myeye.eval();
     // operate on Array using identity initialization:
-    myeye -= initializer::eye(1.0);
+    myeye -= op::diag(1.0, 4, 5);
+    // ELOG(myeye.full_expression_name());
 
     for (int i = 0; i < myeye.shape()[0]; i++) {
         for (int j = 0; j < myeye.shape()[1]; j++) {
-            ASSERT_EQ(i == j ? (diag - 1.0) : 0.0, (int)myeye[i][j]);
+            auto el = myeye[i][j];
+            // ELOG(el.full_expression_name());
+            // el.buffer_arg().print();
+            // myeye.buffer_arg().print();
+            ASSERT_EQ(el.shape().size(), 0);
+            ASSERT_EQ(i == j ? (diag - 1.0) : 0.0, (int)el);
+            ASSERT_EQ(el.shape().size(), 0);
         }
     }
 }
 
+TEST(ArrayTest, eye_init_composite) {
+    Array myeye = Array({4, 5}, DTYPE_INT32);//[Slice()][Slice({}, {}, -1)];
+    double diag = 5.0;
+
+    // initialize with different diagonal values:
+    myeye = op::assign(myeye, OPERATOR_T_EQL, op::diag(diag, 4, 5));
+    for (int i = 0; i < myeye.shape()[0]; i++) {
+        for (int j = 0; j < myeye.shape()[1]; j++) {
+            auto el = myeye[i][j];
+            ASSERT_EQ(el.shape().size(), 0);
+            ASSERT_EQ(i == j ? diag : 0.0, (int)el);
+            ASSERT_EQ(el.shape().size(), 0);
+        }
+    }
+    // operate on Array using identity initialization:
+    myeye -= op::diag(1.0, 4, 5);
+
+    for (int i = 0; i < myeye.shape()[0]; i++) {
+        for (int j = 0; j < myeye.shape()[1]; j++) {
+            auto el = myeye[i][j];
+            ASSERT_EQ(el.shape().size(), 0);
+            ASSERT_EQ(i == j ? (diag - 1.0) : 0.0, (int)el);
+            ASSERT_EQ(el.shape().size(), 0);
+        }
+    }
+}
+
+#ifdef DONT_COMPILE
 
 TEST(ArrayTests, spans_entire_memory) {
     // an array is said to span its entire memory
@@ -269,7 +314,6 @@ TEST(ArrayTests, spans_entire_memory) {
     ASSERT_TRUE(z_reversed.spans_entire_memory());
 
     // another edge case:
-
     Array z2 = Array::zeros({1, 4, 1});
 
     Array z2_reversed = z2[Slice({}, {}, -1)][Slice({}, {}, -1)][Slice({}, {}, 2)];
@@ -294,11 +338,8 @@ Array build_234_arange() {
     //     [ 20 21 22 23],
     //   ]
     // ]
-    Array x({2,3,4}, DTYPE_INT32);
-    x = initializer::arange(0, 1);
-    return x;
+    return op::arange(24).reshape({2, 3, 4});
 }
-
 
 TEST(ArrayTests, copy_constructor) {
     for (auto copy_w : {true, false}) {

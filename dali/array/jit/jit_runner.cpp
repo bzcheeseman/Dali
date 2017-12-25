@@ -8,6 +8,7 @@
 #include "dali/array/expression/optimization.h"
 #include "dali/array/expression/assignment.h"
 #include "dali/array/expression/computation.h"
+#include "dali/array/expression/control_flow.h"
 #include "dali/array/jit/jit_utils.h"
 #include "dali/utils/compiler.h"
 #include "dali/utils/scope.h"
@@ -630,7 +631,6 @@ struct JITRunnerImpl : public Computation {
                                                  left_.shape(),
                                                  symbol_table,
                                                  &node_to_info);
-
         auto device = jit_right->preferred_device();
         auto compiled_self = jit_right->compile(device,
                                                 symbol_table,
@@ -727,16 +727,25 @@ std::string get_call_code_nd(const Array& a,
 int registered_opt = register_optimization(is_jit_assignment, jit_merge, "jit_merge");
 int registered_impl = register_implementation(
    typeid(JITRunner).name(),
-   [](Array dest, OPERATOR_T operator_t, Array x) -> std::shared_ptr<Computation> {
-        return std::make_shared<JITRunnerImpl>(dest, operator_t, x);
+   [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
+        return std::make_shared<JITRunnerImpl>(dest, operator_t, x, assignment);
    });
 int registered_buffer = register_implementation(
     typeid(BufferView).name(),
-    [](Array dest, OPERATOR_T operator_t, Array x) -> std::shared_ptr<Computation> {
+    [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
         Array runner(std::make_shared<JITRunner>(
             op::identity(x), std::vector<Array>({x}), operator_t, dest
         ));
-        return std::make_shared<JITRunnerImpl>(dest, operator_t, runner);
+        return std::make_shared<JITRunnerImpl>(dest, operator_t, runner, assignment);
+    });
+int registered_control_flow = register_implementation(
+    typeid(ControlFlow).name(),
+    [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
+        auto cflow = static_as_control_flow(x);
+        Array runner(std::make_shared<JITRunner>(
+            op::identity(cflow->left_), std::vector<Array>({x}), operator_t, dest
+        ));
+        return std::make_shared<JITRunnerImpl>(dest, operator_t, runner, assignment);
     });
 }  // namespace jit
 }  // namespace op

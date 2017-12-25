@@ -3,7 +3,6 @@
 #include <iomanip>
 #include <gtest/gtest.h>
 #include "dali/config.h"
-#include <mshadow/tensor.h>
 
 #include "dali/utils/print_utils.h"
 #include "dali/runtime_config.h"
@@ -15,6 +14,7 @@
 #include "dali/array/op/arange.h"
 #include "dali/array/op/eye.h"
 #include "dali/array/expression/assignment.h"
+#include "dali/array/expression/buffer_view.h"
 
 int vector_dot(Array left, Array right) {
     int out = 0;
@@ -133,6 +133,9 @@ TEST(ArrayTests, scalar_assign) {
     ASSERT_EQ(x.shape(), std::vector<int>({3,2}));
     ASSERT_EQ(x.dtype(), DTYPE_INT32);
     for (int i=0; i < 6; ++i) {
+        if (i > 0) {
+            ASSERT_TRUE(x(i).is_buffer());
+        }
         ASSERT_EQ((int)x(i), 13);
     }
 
@@ -140,6 +143,9 @@ TEST(ArrayTests, scalar_assign) {
     ASSERT_EQ(x.shape(), std::vector<int>({3,2}));
     ASSERT_EQ(x.dtype(), DTYPE_INT32);
     for (int i=0; i <6; ++i) {
+        if (i > 0) {
+            ASSERT_TRUE(x(i).is_buffer());
+        }
         ASSERT_EQ((int)x(i), 69);
     }
 }
@@ -155,10 +161,13 @@ TEST(ArrayTests, inplace_addition) {
     x += op::arange(6).reshape({3, 2});
     // verify that memory pointer is the same
     // (to be sure this was actually done in place)
-    ASSERT_EQ(prev_memory_ptr, x.memory().get());
     for (int i = 0; i < x.number_of_elements(); i++) {
+        if (i > 0) {
+            ASSERT_TRUE(x(i).is_buffer());
+        }
         ASSERT_EQ((int)x(i), (13 + 2) + i);
     }
+    ASSERT_EQ(prev_memory_ptr, x.memory().get());
 }
 
 TEST(ArrayTests, inplace_substraction) {
@@ -173,10 +182,13 @@ TEST(ArrayTests, inplace_substraction) {
     x -= op::arange(6).reshape({3, 2});
     // verify that memory pointer is the same
     // (to be sure this was actually done in place)
-    ASSERT_EQ(prev_memory_ptr, x.memory().get());
     for (int i = 0; i < x.number_of_elements(); i++) {
+        if (i > 0) {
+            ASSERT_TRUE(x(i).is_buffer());
+        }
         ASSERT_EQ((int)x(i), (13 - 2) - i);
     }
+    ASSERT_EQ(prev_memory_ptr, x.memory().get());
 }
 
 TEST(ArrayTests, inplace_multiplication) {
@@ -191,10 +203,13 @@ TEST(ArrayTests, inplace_multiplication) {
     x *= op::arange(6).reshape({3, 2});
     // verify that memory pointer is the same
     // (to be sure this was actually done in place)
-    ASSERT_EQ(prev_memory_ptr, x.memory().get());
     for (int i = 0; i < x.number_of_elements(); i++) {
+        if (i > 0) {
+            ASSERT_TRUE(x(i).is_buffer());
+        }
         ASSERT_EQ((int)x(i), (13 * 2) * i);
     }
+    ASSERT_EQ(prev_memory_ptr, x.memory().get());
 }
 
 
@@ -222,14 +237,12 @@ TEST(ArrayTest, eye_init_chunked) {
 
     // initialize with different diagonal values:
     myeye = op::assign(myeye, OPERATOR_T_EQL, op::diag(diag, 4, 5));
-    // ELOG(myeye.full_expression_name());
     for (int i = 0; i < myeye.shape()[0]; i++) {
         for (int j = 0; j < myeye.shape()[1]; j++) {
             auto el = myeye[i][j];
-            // ELOG(el.full_expression_name());
-            // el.eval();
-            // ELOG(el.full_expression_name());
-            // ELOG(myeye.full_expression_name());
+            if (i > 0 | j > 0) {
+                ASSERT_TRUE(el.is_buffer());
+            }
             ASSERT_EQ(el.shape().size(), 0);
             ASSERT_EQ(i == j ? diag : 0.0, (int)el);
             ASSERT_EQ(el.shape().size(), 0);
@@ -238,14 +251,13 @@ TEST(ArrayTest, eye_init_chunked) {
     myeye.eval();
     // operate on Array using identity initialization:
     myeye -= op::diag(1.0, 4, 5);
-    // ELOG(myeye.full_expression_name());
 
     for (int i = 0; i < myeye.shape()[0]; i++) {
         for (int j = 0; j < myeye.shape()[1]; j++) {
             auto el = myeye[i][j];
-            // ELOG(el.full_expression_name());
-            // el.buffer_arg().print();
-            // myeye.buffer_arg().print();
+            if (i > 0 | j > 0) {
+                ASSERT_TRUE(el.is_buffer());
+            }
             ASSERT_EQ(el.shape().size(), 0);
             ASSERT_EQ(i == j ? (diag - 1.0) : 0.0, (int)el);
             ASSERT_EQ(el.shape().size(), 0);
@@ -262,6 +274,9 @@ TEST(ArrayTest, eye_init_composite) {
     for (int i = 0; i < myeye.shape()[0]; i++) {
         for (int j = 0; j < myeye.shape()[1]; j++) {
             auto el = myeye[i][j];
+            if (i > 0 | j > 0) {
+                ASSERT_TRUE(el.is_buffer());
+            }
             ASSERT_EQ(el.shape().size(), 0);
             ASSERT_EQ(i == j ? diag : 0.0, (int)el);
             ASSERT_EQ(el.shape().size(), 0);
@@ -273,6 +288,9 @@ TEST(ArrayTest, eye_init_composite) {
     for (int i = 0; i < myeye.shape()[0]; i++) {
         for (int j = 0; j < myeye.shape()[1]; j++) {
             auto el = myeye[i][j];
+            if (i > 0 | j > 0) {
+                ASSERT_TRUE(el.is_buffer());
+            }
             ASSERT_EQ(el.shape().size(), 0);
             ASSERT_EQ(i == j ? (diag - 1.0) : 0.0, (int)el);
             ASSERT_EQ(el.shape().size(), 0);
@@ -280,7 +298,10 @@ TEST(ArrayTest, eye_init_composite) {
     }
 }
 
-#ifdef DONT_COMPILE
+bool spans_entire_memory(Array x) {
+    x.eval();
+    return op::static_as_buffer_view(x)->spans_entire_memory();
+}
 
 TEST(ArrayTests, spans_entire_memory) {
     // an array is said to span its entire memory
@@ -289,11 +310,11 @@ TEST(ArrayTests, spans_entire_memory) {
     // the following 3D tensor spans its entire memory
     // (in fact it even allocated it!)
     Array x = Array::zeros({3,2,2});
-    ASSERT_TRUE(x.spans_entire_memory());
+    ASSERT_TRUE(spans_entire_memory(x));
 
     // however a slice of x may not have the same property:
     auto subx = x[0];
-    ASSERT_FALSE(subx.spans_entire_memory());
+    ASSERT_FALSE(spans_entire_memory(subx));
 
     // Now let's take a corner case:
     // the leading dimension of the following
@@ -302,25 +323,37 @@ TEST(ArrayTests, spans_entire_memory) {
     // memory hence, both it and its subview will
     // "span the entire memory"
     Array y = Array::zeros({1,2,2});
-    ASSERT_TRUE(y.spans_entire_memory());
+    ASSERT_TRUE(spans_entire_memory(y));
 
     auto view_onto_y = y[0];
-    ASSERT_TRUE(view_onto_y.spans_entire_memory());
+    ASSERT_TRUE(spans_entire_memory(view_onto_y));
 
     // extreme corner case, reversed:
     Array z = Array::zeros({4});
 
     Array z_reversed = z[Slice({}, {}, -1)];
-    ASSERT_TRUE(z_reversed.spans_entire_memory());
+    ASSERT_TRUE(spans_entire_memory(z_reversed));
+
+    // same underlying storage:
+    ASSERT_EQ(z_reversed.memory().get(), z.memory().get());
 
     // another edge case:
     Array z2 = Array::zeros({1, 4, 1});
 
     Array z2_reversed = z2[Slice({}, {}, -1)][Slice({}, {}, -1)][Slice({}, {}, 2)];
-    ASSERT_TRUE(z2_reversed.spans_entire_memory());
+    ASSERT_TRUE(spans_entire_memory(z2_reversed));
     Array z2_reversed_skip = z2[Slice({}, {}, -1)][Slice({}, {}, -2)][Slice({}, {}, 2)];
-    ASSERT_FALSE(z2_reversed_skip.spans_entire_memory());
+    ASSERT_FALSE(spans_entire_memory(z2_reversed_skip));
+}
 
+void inplace_add_ones(Array array) {
+    array += 1;
+}
+
+TEST(ArrayTests, persist_inplace_operations) {
+    Array original = Array::zeros({5, 5}, DTYPE_INT32);
+    inplace_add_ones(original);
+    ASSERT_TRUE((bool)(int)op::all_equals(original, Array::ones_like(original)));
 }
 
 // Some example integer 3D tensor with
@@ -341,25 +374,36 @@ Array build_234_arange() {
     return op::arange(24).reshape({2, 3, 4});
 }
 
-TEST(ArrayTests, copy_constructor) {
-    for (auto copy_w : {true, false}) {
-        Array original({3,3}, DTYPE_INT32);
-        original = initializer::arange(0, 1);
-        Array copy(original, copy_w);
-        copy += 1;
-
-        for (int i = 0;  i < original.number_of_elements(); i++) {
-            if (copy_w) {
-                // since +1 was done after copy
-                // change is not reflected
-                EXPECT_NE((int)original(i), (int)copy(i));
-            } else {
-                // copy is a view, so +1 affects both
-                EXPECT_EQ((int)original(i), (int)copy(i));
-            }
+TEST(ArrayTests, copy_constructor_force_copy) {
+    Array original = op::arange(9).reshape({3, 3});
+    Array copy(original, true);
+    copy += 1;
+    for (int i = 0; i < original.number_of_elements(); i++) {
+        if (i > 0) {
+            ASSERT_TRUE(original(i).is_buffer());
+            ASSERT_TRUE(copy(i).is_buffer());
         }
+        // since +1 was done after copy
+        // change is not reflected
+        EXPECT_NE((int)original(i), (int)copy(i));
     }
+}
 
+TEST(ArrayTests, copy_constructor_force_reference) {
+    Array original = op::arange(9).reshape({3, 3});
+    Array copy(original, false);
+    copy += 1;
+    for (int i = 0;  i < original.number_of_elements(); i++) {
+        if (i > 0) {
+            ASSERT_TRUE(original(i).is_buffer());
+            ASSERT_TRUE(copy(i).is_buffer());
+        }
+        // copy is a view, so +1 affects both
+        EXPECT_EQ((int)original(i), (int)copy(i));
+    }
+}
+
+TEST(ArrayTests, copy_constructor) {
     Array original = Array({3}, DTYPE_INT32)[Slice()][Broadcast()];
     // perform copy of broadcasted data
     Array hard_copy(original, true);
@@ -380,6 +424,8 @@ TEST(ArrayTests, copy_constructor) {
     EXPECT_EQ(hard_copy_bigger.shape(), original_bigger.shape());
     EXPECT_NE(hard_copy_bigger.bshape(), original_bigger.bshape());
 }
+
+#ifdef DONT_COMPILE
 
 
 TEST(ArrayTests, reshape_with_unknown_dimension) {

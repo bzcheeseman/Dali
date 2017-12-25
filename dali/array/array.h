@@ -46,7 +46,7 @@ class Array  {
           const int& offset,
           const std::vector<int>& strides,
           DType dtype_=DTYPE_FLOAT);
-    Array(const Array& other, const bool& copy_memory=false);
+    Array(const Array& other, bool copy_memory=false);
     Array(const int& value);
     Array(const double& value);
     Array(const float& value);

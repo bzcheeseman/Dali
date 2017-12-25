@@ -304,6 +304,32 @@ expression_ptr Expression::ravel() const {
     return reshape({-1});
 }
 
+bool Expression::can_copyless_reshape(const vector<int>& new_shape) const {
+    auto norm_shape = normalize_shape(shape_, new_shape);
+    if (norm_shape == shape_ || contiguous_memory()) return true;
+    if (hypercube_volume(norm_shape) != number_of_elements()) return false;
+    if (norm_shape.size() > ndim()) {
+        // check if the lowest dimensions will be identical
+        bool matching_lowest = true;
+        for (int i = 0; i < ndim(); i++) {
+            if (norm_shape[norm_shape.size() - i - 1] != shape_[ndim() - i - 1]) {
+                matching_lowest = false;
+            }
+        }
+        bool is_ones_elsewhere = true;
+        for (int i = 0; i < new_shape.size() - ndim(); i++) {
+            if (norm_shape[i] != 1) {
+                is_ones_elsewhere = false;
+                break;
+            }
+        }
+        if (matching_lowest && is_ones_elsewhere) {
+            return true;
+        }
+    }
+    return false;
+}
+
 expression_ptr Expression::copyless_reshape(const vector<int>& new_shape) const {
     auto norm_shape = normalize_shape(shape_, new_shape);
     if (norm_shape == shape_) return copy();
@@ -342,7 +368,6 @@ expression_ptr Expression::copyless_reshape(const vector<int>& new_shape) const 
         "non-contiguous memory (contiguous = ", contiguous_memory(),
         ", strides = ", strides_, ", shape=", shape_, ","
         " new shape = ", new_shape, ")."));
-
     return nullptr;
 }
 
@@ -383,9 +408,7 @@ expression_ptr Expression::copyless_right_fit_ndim(int target_ndim) const {
 }
 
 expression_ptr Expression::reshape(const vector<int>& new_shape) const {
-    // TODO(szymon): implement.
-    if (new_shape == shape_) return copy();
-
+    if (can_copyless_reshape(new_shape)) return copyless_reshape(new_shape);
     auto ret = op::identity(Array(copy()));
     return ret.expression()->copyless_reshape(new_shape);
 }

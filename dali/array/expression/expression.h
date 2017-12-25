@@ -47,6 +47,7 @@ struct Expression {
     bool is_matrix() const;
 
     virtual bool contiguous_memory() const;
+    bool can_copyless_reshape(const std::vector<int>& new_shape) const;
     virtual int normalize_axis(const int& axis) const;
     void broadcast_axis_internal(const int& axis);
 

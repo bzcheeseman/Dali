@@ -21,21 +21,10 @@
 #include "dali/array/jit/scalar_view.h"
 
 
-
-using std::vector;
-using memory::SynchronizedMemory;
-
-
 void alert_stateless_call(const bool& stateful, const char* fieldname) {
     ASSERT2(stateful, utils::make_message(fieldname, " must not be called on "
-        "Array initialized with empty constructor.\n"
-        "(To Dali developers: this error may have occurred because an mshadow"
-        " expression that keeps an lvalue reference to its parent expression:"
-        " `Expr& expr` was used. To fix this ensure the parent expression"
-        " is kept by value instead)."));
+        "Array initialized with empty constructor."));
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //                                 ARRAY                                      //
@@ -117,11 +106,11 @@ Array::Array(const std::vector<int>& shape, DType dtype, memory::Device preferre
 }
 
 Array::Array(std::initializer_list<int> shape_, DType dtype, memory::Device preferred_device) :
-        Array(vector<int>(shape_), dtype, preferred_device) {
+        Array(std::vector<int>(shape_), dtype, preferred_device) {
 }
 
 Array::Array(const std::vector<int>& shape,
-             std::shared_ptr<SynchronizedMemory> memory,
+             std::shared_ptr<memory::SynchronizedMemory> memory,
              const int& offset,
              const std::vector<int>& strides,
              DType dtype) {
@@ -129,7 +118,7 @@ Array::Array(const std::vector<int>& shape,
         memory, shape, dtype, offset, strides));
 }
 
-Array::Array(const Array& other, const bool& copy_memory) {
+Array::Array(const Array& other, bool copy_memory) {
     if (copy_memory) {
         // TODO(jonathan, szymon):
         // surely we can do better.
@@ -435,7 +424,7 @@ Array& Array::reset() {
     return *this;
 }
 
-const vector<int>& Array::shape() const {
+const std::vector<int>& Array::shape() const {
     alert_stateless_call(!is_stateless(), "shape");
     return expression()->shape_;
 }
@@ -519,10 +508,10 @@ int Array::number_of_elements() const {
     return (is_stateless()) ? 0 : hypercube_volume(expression()->shape_);
 }
 
-vector<int> Array::subshape() const {
-    if (is_stateless()) return vector<int>();
-    if (expression()->shape_.size() == 0) return vector<int>();
-    return vector<int>(expression()->shape_.begin() + 1, expression()->shape_.end());
+std::vector<int> Array::subshape() const {
+    if (is_stateless()) return std::vector<int>();
+    if (expression()->shape_.size() == 0) return std::vector<int>();
+    return std::vector<int>(expression()->shape_.begin() + 1, expression()->shape_.end());
 }
 
 bool Array::contiguous_memory() const {
@@ -808,13 +797,13 @@ bool operator==(const Array& left, const Array& right) {
 
 #define DALI_DEFINE_ARRAY_INTERACTION_INPLACE(SYMBOL, OPERATOR_NAME)\
     Array& operator SYMBOL (Array& left, const Array& right) {\
-        auto assignment = op::assign(left, OPERATOR_NAME, right);\
-        left.set_state(assignment.state());\
+        auto assignment = op::assign(Array(left.expression()), OPERATOR_NAME, right);\
+        left.set_expression(assignment.expression());\
         return left;\
     }\
     void operator SYMBOL (Array&& left, const Array& right) {\
-        auto assignment = op::assign(left, OPERATOR_NAME, right);\
-        left.set_state(assignment.state());\
+        auto assignment = op::assign(Array(left.expression()), OPERATOR_NAME, right);\
+        left.set_expression(assignment.expression());\
     }\
 
 DALI_DEFINE_ARRAY_INTERACTION_INPLACE(+=, OPERATOR_T_ADD);

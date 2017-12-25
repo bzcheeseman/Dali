@@ -69,21 +69,25 @@ namespace op {
 
 Array autoreduce_assign(const Array& left, const Array& right) {
     Array assigned_right = right;
+    Array assigned_left = left;
     if (!right.is_buffer()) {
         assigned_right = to_assignment(right);
     }
-    ASSERT2(left.ndim() == right.ndim(), utils::make_message(
+    if (!left.is_buffer() && !left.is_assignment()) {
+        assigned_left = to_assignment(left);
+    }
+    ASSERT2(assigned_left.ndim() == right.ndim(), utils::make_message(
         "destination for autoreduce_assign must have "
         "the same dimensionality as the input (destination.ndim = ",
-        left.ndim(), " vs input.ndim = ", right.ndim()));
+        assigned_left.ndim(), " vs input.ndim = ", right.ndim()));
 
     std::vector<int> reduction_axes;
     for (int i = 0; i < right.ndim(); i++) {
-        if (left.shape()[i] != right.shape()[i]) {
-            ASSERT2(left.shape()[i] == 1, utils::make_message(
+        if (assigned_left.shape()[i] != right.shape()[i]) {
+            ASSERT2(assigned_left.shape()[i] == 1, utils::make_message(
                 "Could not autoreduce_assign: destination must "
                 "have all dimensions equal input dimensions or equal 1,"
-                " but destination.shape[", i, "] = ", left.shape()[i],
+                " but destination.shape[", i, "] = ", assigned_left.shape()[i],
                 " vs input.shape[", i, "] = ", right.shape()[i]));
             reduction_axes.emplace_back(i);
         }
@@ -91,7 +95,7 @@ Array autoreduce_assign(const Array& left, const Array& right) {
     if (!reduction_axes.empty()) {
         assigned_right = op::sum(assigned_right, reduction_axes, /*keepdims=*/true);
     }
-    return Array(std::make_shared<Assignment>(left, OPERATOR_T_ADD, assigned_right));
+    return Array(std::make_shared<Assignment>(assigned_left, OPERATOR_T_ADD, assigned_right));
 }
 
 Array to_assignment(const Array& node) {
@@ -107,11 +111,15 @@ Array assign(const Array& left, OPERATOR_T operator_t, const Array& right) {
         return autoreduce_assign(left, right);
     } else {
         Array assigned_right = right;
+        Array assigned_left = left;
         if (!right.is_buffer()) {
             assigned_right = to_assignment(right);
         }
-        if (left.is_assignment()) {
-            auto left_assign = static_as_assignment(left);
+        if (!left.is_buffer() && !left.is_assignment()) {
+            assigned_left = to_assignment(left);
+        }
+        if (assigned_left.is_assignment()) {
+            auto left_assign = static_as_assignment(assigned_left);
             auto left_operator_t = left_assign->operator_t_;
             if (left_operator_t == OPERATOR_T_ADD) {
                 assigned_right = op::add(assigned_right, left_assign->right_);
@@ -139,10 +147,11 @@ Array assign(const Array& left, OPERATOR_T operator_t, const Array& right) {
                 // TODO(jonathan): fill this in
                 ASSERT2(false, "not sure what to do");
             }
+            assigned_left = left_assign->left_;
         }
         // a temp is added so that non overwriting operators
         // can be run independently from the right side's evaluation.
-        return Array(std::make_shared<Assignment>(left, operator_t, assigned_right));
+        return Array(std::make_shared<Assignment>(assigned_left, operator_t, assigned_right));
     }
 }
 

@@ -1,7 +1,7 @@
 #include "slice.h"
 
 #include "dali/utils/assert2.h"
-#include "dali/utils/print_utils.h"
+#include "dali/utils/make_message.h"
 
 //////////////////////////////// UTILS /////////////////////////////////////////
 // return ceil(a/b);
@@ -30,9 +30,8 @@ Slice::Slice(const optional_int_t& start_,
         step(step_.value_or(1)) {
     if (end && ((start >= 0 && end.value() >= 0) || (start < 0 && end.value() < 0))) {
         // start and end have to have the same sign.
-        ASSERT2(start < end.value(),
-                utils::MS() << "Slice start (" << start <<
-                ") must be less than end (" << end.value() << ")");
+        ASSERT2(start < end.value(), utils::make_message(
+            "Slice start (", start, ") must be less than end (", end.value(), ")"));
 
     }
     ASSERT2(step_ != 0, "slice step cannot be zero");
@@ -51,13 +50,12 @@ Slice::Slice(const Slice& other, const int& dim_size) :
              other.end.value_or(dim_size)       :
              other.end.value_or(dim_size) + dim_size),
         step(other.step) {
-    ASSERT2(0 <= start && start < dim_size,
-            utils::MS() << "Index " << other.start << " is out of bounds for dimension with size " << dim_size);
-    ASSERT2(0 <= end.value() && end.value() <= dim_size,
-            utils::MS() << "Index " << other.end.value() << " is out of bounds for dimension with size " << dim_size);
-    ASSERT2(start < end.value(),
-            utils::MS() << "Slice start (" << start <<
-            ") must be less than end (" << end.value() << ")");
+    ASSERT2(0 <= start && start < dim_size, utils::make_message(
+        "Index ", other.start, " is out of bounds for dimension with size ", dim_size, "."));
+    ASSERT2(0 <= end.value() && end.value() <= dim_size, utils::make_message(
+        "Index ", other.end.value(), " is out of bounds for dimension with size ", dim_size, "."));
+    ASSERT2(start < end.value(), utils::make_message(
+        "Slice start (", start, ") must be less than end (", end.value(), ")."));
 }
 
 Slice Slice::normalize_and_check(const Slice& slice, const int& dim_size) {

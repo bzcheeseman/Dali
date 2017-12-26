@@ -417,9 +417,6 @@ TEST(ArrayTests, copy_constructor) {
     EXPECT_EQ(original.shape(), soft_copy_assign.shape());
 }
 
-#ifdef DONT_COMPILE
-
-
 TEST(ArrayTests, reshape_with_unknown_dimension) {
     Array x({2, 3, 4}, DTYPE_INT32);
     auto right_deduce = x.reshape({6,-1});
@@ -432,7 +429,6 @@ TEST(ArrayTests, reshape_with_unknown_dimension) {
     EXPECT_THROW(x.reshape({-1,5}), std::runtime_error);
 }
 
-
 TEST(ArrayTests, contiguous_memory) {
     auto x = build_234_arange();
     EXPECT_TRUE(x.contiguous_memory());
@@ -442,25 +438,24 @@ TEST(ArrayTests, pluck_axis_stride_shape) {
     auto x = build_234_arange();
 
     auto x_plucked = x.pluck_axis(0, 1);
-    EXPECT_EQ(x_plucked.shape(),   vector<int>({3, 4}));
+    EXPECT_EQ(x_plucked.shape(),   std::vector<int>({3, 4}));
     EXPECT_EQ(x_plucked.number_of_elements(), 12);
     EXPECT_EQ(x_plucked.offset(),  12    );
     // if all strides are 1, then return empty vector
-    EXPECT_EQ(x_plucked.strides(), vector<int>({}));
+    EXPECT_EQ(x_plucked.strides(), std::vector<int>({}));
 
     auto x_plucked2 = x.pluck_axis(1, 2);
-    EXPECT_EQ(x_plucked2.shape(),   vector<int>({2, 4}));
+    EXPECT_EQ(x_plucked2.shape(),   std::vector<int>({2, 4}));
     EXPECT_EQ(x_plucked2.number_of_elements(), 8);
     EXPECT_EQ(x_plucked2.offset(),   8    );
-    EXPECT_EQ(x_plucked2.strides(), vector<int>({12, 1}));
+    EXPECT_EQ(x_plucked2.strides(), std::vector<int>({12, 1}));
 
     auto x_plucked3 = x.pluck_axis(2, 1);
-    EXPECT_EQ(x_plucked3.shape(),   vector<int>({2, 3}));
+    EXPECT_EQ(x_plucked3.shape(),   std::vector<int>({2, 3}));
     EXPECT_EQ(x_plucked3.number_of_elements(), 6);
     EXPECT_EQ(x_plucked3.offset(),  1);
-    EXPECT_EQ(x_plucked3.strides(), vector<int>({12, 4}));
+    EXPECT_EQ(x_plucked3.strides(), std::vector<int>({12, 4}));
 }
-
 
 TEST(ArrayTests, slice_size) {
     ASSERT_EQ(5, Slice(0,5).size());
@@ -485,7 +480,6 @@ TEST(ArrayTests, slice_contains) {
 
     ASSERT_THROW(Slice(0, {}).contains(1),  std::runtime_error);
 }
-
 
 TEST(ArrayTests, pluck_axis_eval) {
     auto x = build_234_arange();
@@ -515,6 +509,8 @@ TEST(ArrayTests, pluck_axis_eval) {
     );
 }
 
+// TODO(jonathan): ensure this test also includes
+// unremovable assignments (e.g. inplace operation done below)
 TEST(ArrayTests, inplace_strided_addition) {
     auto x = build_234_arange();
     auto x_plucked = x.pluck_axis(2, 1);
@@ -530,12 +526,7 @@ TEST(ArrayTests, inplace_strided_addition) {
     );
 }
 
-TEST(ArrayTests, canonical_reshape) {
-    ASSERT_EQ(mshadow::Shape1(60),        internal::canonical_reshape<1>({3,4,5}));
-    ASSERT_EQ(mshadow::Shape2(12,5),      internal::canonical_reshape<2>({3,4,5}));
-    ASSERT_EQ(mshadow::Shape3(3,4,5),     internal::canonical_reshape<3>({3,4,5}));
-    ASSERT_EQ(mshadow::Shape4(1,3,4,5),   internal::canonical_reshape<4>({3,4,5}));
-}
+
 
 std::vector<Slice> generate_interesting_slices(int dim_size) {
     std::vector<Slice> interesting_slices;
@@ -551,13 +542,15 @@ std::vector<Slice> generate_interesting_slices(int dim_size) {
     return interesting_slices;
 }
 
+
 TEST(ArrayTests, proper_slicing) {
     Array x = build_234_arange();
-    Array sliced = x[Slice(0,-1)][2][Slice(0,4,-2)];
-
+    Array sliced = x[Slice(0,-1)][2][Slice(0, 4, -2)];
     Array sliced_sum = sliced.sum();
     ASSERT_EQ(20, (int)sliced_sum);
 }
+#ifdef DONT_COMPILE
+
 
 TEST(ArrayTests, double_striding) {
     const int NRETRIES = 2;

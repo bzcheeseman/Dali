@@ -2,7 +2,9 @@
 // TODO should pass strides + offset to Expression
 ControlFlow::ControlFlow(Array left, const std::vector<Array>& conditions) :
         Expression(left.shape(),
-                   left.dtype()),
+                   left.dtype(),
+                   left.offset(),
+                   left.strides()),
                    left_(left), conditions_(conditions) {
 
 }

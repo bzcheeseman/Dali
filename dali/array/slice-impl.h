@@ -57,7 +57,7 @@ SlicingInProgress<Container>::operator Container() {
     auto next_slice = slice.begin();
     int output_depth = 0;
     for (const auto& a: action) {
-        switch(a) {
+        switch (a) {
             case SLICE_RANGE:
                 out = out.pluck_axis(output_depth, *(next_slice++));
                 output_depth += 1;

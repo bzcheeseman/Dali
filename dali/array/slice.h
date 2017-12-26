@@ -6,6 +6,8 @@
 #include <vector>
 
 #include <dali/utils/optional.h>
+#include "dali/utils/print_utils.h"
+
 
 // Empty struct, used for informing a sliced container to insert
 // a newaxis at the currently sliced dimensionality, e.g.:

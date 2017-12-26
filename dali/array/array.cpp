@@ -16,6 +16,8 @@
 #include "dali/array/expression/optimization.h"
 #include "dali/utils/make_message.h"
 #include "dali/array/op/unary.h"
+#include "dali/array/op/binary.h"
+#include "dali/array/op/elementwise_operation.h"
 #include "dali/array/op/dot.h"
 #include "dali/array/op/reducers.h"
 #include "dali/array/jit/scalar_view.h"
@@ -360,9 +362,8 @@ bool Array::equals(const Array& left, const Array& right) {
     if (left.is_stateless() != right.is_stateless()) {
         return false;
     }
-    throw std::runtime_error("not implemented yet");
-    // bool all_equals = ((float)(Array)op::all_equals(left, right)) > 0 ? true : false;
-    // return all_equals;
+    bool all_equals = ((float)(Array)op::all_equals(left, right)) > 0 ? true : false;
+    return all_equals;
 }
 
 
@@ -385,8 +386,8 @@ bool Array::allclose(const Array& left, const Array& right, const double& atoler
     if (left.shape() != right.shape()) {
         return false;
     }
-    // bool is_all_close = ((float)(Array)op::all_close(left, right, atolerance)) > 0 ? true : false;
-    // return is_all_close;
+    bool is_all_close = ((float)(Array)op::all_close(left, right, atolerance)) > 0 ? true : false;
+    return is_all_close;
 }
 
 bool Array::any_isnan() const {
@@ -483,8 +484,7 @@ DType Array::dtype() const {
 }
 
 Array Array::astype(DType dtype_) const {
-    throw std::runtime_error("not yet implemented.");
-    // return op::astype(*this, dtype_);
+    return op::astype(*this, dtype_);
 }
 
 memory::Device Array::preferred_device() const {
@@ -521,18 +521,7 @@ bool Array::contiguous_memory() const {
 }
 
 Array Array::operator[](const int& idx) const {
-    if (is_buffer()) {
-        return pluck_axis(0, idx);
-    } else {
-        if (!is_assignment() && !is_control_flow()) {
-            set_expression(op::to_assignment(*this).expression());
-        }
-        auto dest_buffer = buffer_arg();
-        return Array(std::make_shared<ControlFlow>(
-            dest_buffer.pluck_axis(0, idx),
-            std::vector<Array>({*this})
-        ));
-    }
+    return pluck_axis(0, idx);
 }
 
 Array Array::gather_from_rows(const Array& indices) const {
@@ -637,17 +626,50 @@ Array Array::copyless_right_fit_ndim(int dimensionality) const {
 
 Array Array::pluck_axis(int axis, const Slice& slice) const {
     alert_stateless_call(!is_stateless(), "pluck_axis");
-    return Array(expression()->pluck_axis(axis, slice));
+    if (is_buffer()) {
+        return Array(expression()->pluck_axis(axis, slice));
+    } else {
+        if (!is_assignment() && !is_control_flow()) {
+            set_expression(op::to_assignment(*this).expression());
+        }
+        auto dest_buffer = buffer_arg();
+        return Array(std::make_shared<ControlFlow>(
+            Array(dest_buffer.expression()->pluck_axis(axis, slice)),
+            std::vector<Array>({*this})
+        ));
+    }
 }
 
 Array Array::pluck_axis(const int& axis, const int& idx) const {
     alert_stateless_call(!is_stateless(), "pluck_axis");
-    return Array(expression()->pluck_axis(axis, idx));
+    if (is_buffer()) {
+        return Array(expression()->pluck_axis(axis, idx));
+    } else {
+        if (!is_assignment() && !is_control_flow()) {
+            set_expression(op::to_assignment(*this).expression());
+        }
+        auto dest_buffer = buffer_arg();
+        return Array(std::make_shared<ControlFlow>(
+            Array(dest_buffer.expression()->pluck_axis(axis, idx)),
+            std::vector<Array>({*this})
+        ));
+    }
 }
 
 Array Array::squeeze(int axis) const {
     alert_stateless_call(!is_stateless(), "squeeze");
-    return Array(expression()->squeeze(axis));
+    if (is_buffer()) {
+        return Array(expression()->squeeze(axis));
+    } else {
+        if (!is_assignment() && !is_control_flow()) {
+            set_expression(op::to_assignment(*this).expression());
+        }
+        auto dest_buffer = buffer_arg();
+        return Array(std::make_shared<ControlFlow>(
+            Array(dest_buffer.expression()->squeeze(axis)),
+            std::vector<Array>({*this})
+        ));
+    }
 }
 
 Array Array::expand_dims(int new_axis) const {

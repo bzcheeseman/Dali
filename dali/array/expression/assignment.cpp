@@ -112,7 +112,7 @@ Array assign(const Array& left, OPERATOR_T operator_t, const Array& right) {
     } else {
         Array assigned_right = right;
         Array assigned_left = left;
-        if (!right.is_buffer()) {
+        if (!right.expression()->supports_operator(operator_t)) {
             assigned_right = to_assignment(right);
         }
         if (!left.is_buffer() && !left.is_assignment()) {

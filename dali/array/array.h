@@ -93,7 +93,6 @@ class Array  {
     Array ascontiguousarray() const;
 
     void initialize(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
-    void initialize_with_bshape(const std::vector<int>& bshape, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
     Array& reset();
 
     /* Accesing internal state */
@@ -105,11 +104,6 @@ class Array  {
     DType dtype() const;
 
     Array astype(DType dtype_) const;
-
-    // just like regular shape by broadcased dimensions are negated.
-    // for example if array has shape {2, 1, 3, 1} and dimension 1 is
-    // broadcasted then it retuns {2, -1, 3, 1}.
-    std::vector<int> bshape() const;
 
     /* memory moving logic */
     memory::Device preferred_device() const;
@@ -163,26 +157,6 @@ class Array  {
 
     Array right_fit_ndim(int dimensionality) const;
     Array copyless_right_fit_ndim(int dimensionality) const;
-    /*
-     * reshape_broadcasted can only be run on The
-     * the broadcastable dimensions of size 1.
-     *
-     * Note: An exception to this rule is when the
-     * array was previously 'reshape_broadcasted' to
-     * the same size, maa no-op):
-     * e.g. starting with {-1, 3, -1}, the following sequence
-     * of functions will NOToperator<<= result in an error:
-     *    - reshape_broadcasted({2, 3, 1})
-     *    - reshape_broadcasted({2, 3, 1})
-     *    - reshape_broadcasted({2, 3, 5})
-     *    - reshape_broadcasted({2, 3, 5})
-     * but if we now call:
-     *    - reshape_broadcasted({5, 3, 5})
-     * or even:
-     *    - reshape_broadcasted({1, 3, 5})
-     * then we will see and error.
-     */
-    Array reshape_broadcasted(const std::vector<int>& new_shape) const;
 
     // TODO(szymon): look up what it's called in tensorflow/numpy and rename.
     Array pluck_axis(int axis, const Slice& slice) const;

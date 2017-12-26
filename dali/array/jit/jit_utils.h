@@ -36,14 +36,12 @@ std::string construct_for_loop(int rank, const std::string& code, const std::str
 // check that output Array matches the desired dtype and shape.
 void ensure_output_array_compatible(const Array& out,
                                     const DType& output_dtype,
-                                    const std::vector<int>& output_bshape);
+                                    const std::vector<int>& output_shape);
 
-// Find the shape that contains all the other shapes in the vector `bshapes`
-// while maintaining broadcasted dimensions where possible, and checking for
-// mismatches elsewhere. Scalar arguments are ignored when computing the
-// output shape.
-std::vector<int> get_common_bshape(const std::vector<std::vector<int>>& bshapes);
-std::vector<int> get_common_bshape(const std::vector<Array>& arrays);
+// Find the shape that contains all the other shapes in the vector `shapes`.
+// Scalar arguments are ignored when computing the output shape.
+std::vector<int> get_common_shape(const std::vector<std::vector<int>>& shapes);
+std::vector<int> get_common_shape(const std::vector<Array>& arrays);
 
 std::string define_kernel(int ndim, bool has_shape,
                           const std::vector<std::string>& arguments,

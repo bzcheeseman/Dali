@@ -407,22 +407,14 @@ TEST(ArrayTests, copy_constructor) {
     Array original = Array({3}, DTYPE_INT32)[Slice()][Broadcast()];
     // perform copy of broadcasted data
     Array hard_copy(original, true);
-    EXPECT_EQ(original.bshape(), hard_copy.bshape());
+    EXPECT_EQ(original.shape(), hard_copy.shape());
 
     Array soft_copy(original, false);
-    EXPECT_EQ(original.bshape(), soft_copy.bshape());
+    EXPECT_EQ(original.shape(), soft_copy.shape());
 
     // 'operator=' uses soft copy too:
     auto soft_copy_assign = original;
-    EXPECT_EQ(original.bshape(), soft_copy_assign.bshape());
-
-    // now give the broadcasted dimension
-    // a size, and assert that the copy
-    // doesn't replicate those useless dimensions
-    auto original_bigger = original.reshape_broadcasted({3, 20});
-    Array hard_copy_bigger(original_bigger, true);
-    EXPECT_EQ(hard_copy_bigger.shape(), original_bigger.shape());
-    EXPECT_NE(hard_copy_bigger.bshape(), original_bigger.bshape());
+    EXPECT_EQ(original.shape(), soft_copy_assign.shape());
 }
 
 #ifdef DONT_COMPILE

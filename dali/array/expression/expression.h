@@ -40,7 +40,6 @@ struct Expression {
     virtual int number_of_elements() const;
     int ndim() const;
     std::vector<int> normalized_strides() const;
-    std::vector<int> bshape() const;
 
     bool is_scalar() const;
     bool is_vector() const;
@@ -53,6 +52,7 @@ struct Expression {
 
     virtual expression_ptr operator()(int idx) const;
     virtual bool is_transpose() const;
+    virtual expression_ptr broadcast_to_shape(const std::vector<int>& shape) const;
     virtual expression_ptr transpose() const;
     virtual expression_ptr transpose(const std::vector<int>& axes) const;
     virtual expression_ptr swapaxes(int axis1, int axis2) const;
@@ -63,7 +63,6 @@ struct Expression {
     virtual expression_ptr right_fit_ndim(int dimensionality) const;
     virtual expression_ptr copyless_right_fit_ndim(int dimensionality) const;
     virtual expression_ptr reshape(const std::vector<int>& shape) const;
-    virtual expression_ptr reshape_broadcasted(const std::vector<int>& new_shape) const;
     virtual expression_ptr pluck_axis(int axis, const Slice& slice) const;
     virtual expression_ptr pluck_axis(const int& axis, const int& idx) const;
     virtual expression_ptr squeeze(int axis) const;

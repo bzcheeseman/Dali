@@ -106,18 +106,25 @@ std::vector<int> Expression::normalized_strides() const {
     return (strides_.size() > 0) ? strides_ : shape_to_trivial_strides(shape_);
 }
 
-std::vector<int> Expression::bshape() const {
-    if (strides_.size() == 0) {
-        return shape_;
-    } else {
-        vector<int> result(shape_);
-        for (int i=0; i < ndim(); ++i) {
-            if (strides_[i] == 0) {
-                // broadcasted dimensions are negated.
-                result[i] = -abs(result[i]);
-            }
+expression_ptr Expression::broadcast_to_shape(const std::vector<int>& new_shape) const {
+    ASSERT2(new_shape.size() == shape_.size(), utils::make_message(
+        "broadcast_to_shape's new_shape argument must be of the "
+        "same dimensionality as the current dimensionality of the "
+        "expression (got new_shape = ", new_shape, ", current shape = ", shape_, ")."));
+    std::vector<int> broadcasted_axes;
+    for (size_t i = 0; i < new_shape.size(); i++) {
+        if (shape_[i] != new_shape[i] && shape_[i] == 1) {
+            broadcasted_axes.emplace_back(i);
         }
-        return result;
+    }
+    if (broadcasted_axes.size() > 0) {
+        std::vector<int> new_strides = normalized_strides();
+        for (auto& axis : broadcasted_axes) {
+            new_strides[axis] = 0;
+        }
+        return copy(shape_, offset_, new_strides);
+    } else {
+        return copy();
     }
 }
 
@@ -413,25 +420,6 @@ expression_ptr Expression::reshape(const vector<int>& new_shape) const {
     return ret.expression()->copyless_reshape(new_shape);
 }
 
-expression_ptr Expression::reshape_broadcasted(const std::vector<int>& new_shape) const {
-    ASSERT2(new_shape.size() == ndim(), utils::make_message("reshape_"
-        "broadcasted must receive a shape with the same dimensionality ("
-        "current shape = ", shape_, ", new shape = ", new_shape, " in expression ",
-        name(), ")."));
-    auto my_bshape = bshape();
-
-    for (int i = 0; i < my_bshape.size(); ++i) {
-        ASSERT2(new_shape[i] > 0, utils::make_message("reshape_broadcasted's "
-            "new_shape argument must be strictly positive (got ", new_shape, ")."));
-
-        ASSERT2(new_shape[i] == std::abs(my_bshape[i]) || my_bshape[i] == -1,
-                utils::make_message("reshape_broadcasted can only reshape "
-                "broadcasted dimensions (tried to reshape array with shape "
-                "= ", my_bshape, " to new shape = ", new_shape, ")."));
-    }
-    return copy(new_shape, offset_, strides_);
-}
-
 expression_ptr Expression::pluck_axis(const int& axis, const int& pluck_idx) const {
     auto single_item_slice = pluck_axis(axis, Slice(pluck_idx, pluck_idx + 1));
     return single_item_slice->squeeze(axis);
@@ -532,7 +520,7 @@ expression_ptr Expression::collapse_axis_with_axis_minus_one(int axis) const {
     ASSERT2(axis >= 1 && axis < ndim(), utils::make_message("collapse_axis_with_axis_minus_one "
         "axis must >= 1 and less than the dimensionality of the array "
         "(got axis = ", axis, ", ndim = ", ndim(), ")."));
-    std::vector<int> newshape = bshape();
+    std::vector<int> newshape = shape_;
     newshape[axis - 1] = newshape[axis] * newshape[axis - 1];
     newshape.erase(newshape.begin() + axis);
     return copyless_reshape(newshape);

@@ -134,11 +134,11 @@ std::vector<Array> SymbolTable::collect_buffers(const node_to_info_t& node_to_in
                        const auto& rank  = node_to_info.at(op).computation_rank;
                        const auto& shape = node_to_info.at(op).computation_shape;
                        if (rank == op->ndim()) {
-                           return op->reshape_broadcasted(shape);
+                           return op->broadcast_to_shape(shape);
                        } else if (rank == 1) {
-                           return op->reshape_broadcasted(shape)->copyless_ravel();
+                           return op->broadcast_to_shape(shape)->copyless_ravel();
                        } else {
-                           return op->reshape_broadcasted(shape)->copyless_right_fit_ndim(rank);
+                           return op->broadcast_to_shape(shape)->copyless_right_fit_ndim(rank);
                        }
                    });
     return arrays;
@@ -570,6 +570,10 @@ Array jit_merge(const Array& root) {
     auto assign = static_as_assignment(root);
     // TODO(jonathan): find a better way to infer if this is a buffer
     auto root_buffer = root.buffer_arg();
+    ASSERT2(!root_buffer.is_stateless(), utils::make_message(
+        "Assignment destination for JIT assignment ", root.full_expression_name(),
+        " does not contain a valid buffer destination (check if left side of "
+        "the assignment is assignable)."));
     auto root_operator = assign->operator_t_;
     Array left_leaf, replaced;
     for (auto& arg : right_args(root)) {

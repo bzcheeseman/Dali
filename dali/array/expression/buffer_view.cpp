@@ -6,6 +6,15 @@
 #include "dali/array/shape.h"
 #include "dali/array/array.h"
 
+namespace {
+    // shape makes sense
+    bool shape_strictly_positive(const std::vector<int>& shape) {
+        return std::all_of(shape.begin(), shape.end(), [](int x) {
+            return x > 0;
+        });
+    }
+}
+
 std::shared_ptr<memory::SynchronizedMemory> BufferView::create_memory(
         const std::vector<int>& shape,
         DType dtype,
@@ -76,18 +85,14 @@ bool BufferView::spans_entire_memory() const {
     return false;
 }
 
-std::shared_ptr<BufferView> BufferView::construct_with_bshape(
-        const std::vector<int>& bshape,
+std::shared_ptr<BufferView> BufferView::create_with_shape(
+        const std::vector<int>& shape,
         DType dtype,
-        memory::Device preferred_device) {
-    auto ret = std::make_shared<BufferView>(
-            bshape2shape(bshape), dtype, preferred_device);
-    for (int i = 0; i < bshape.size(); ++i) {
-        if (bshape[i] < 0) {
-            ASSERT2(bshape[i] == -1, "Currently only one-sized broadcasting "
-                "is supported.");
-            ret->broadcast_axis_internal(i);
-        }
+        memory::Device preferred_device,
+        const std::vector<int>& broadcasted_axes) {
+    auto ret = std::make_shared<BufferView>(shape, dtype, preferred_device);
+    for (const auto& axis : broadcasted_axes) {
+        ret->broadcast_axis_internal(axis);
     }
     return ret;
 }
@@ -99,7 +104,6 @@ bool BufferView::supports_operator(OPERATOR_T operator_t) const {
 bool BufferView::is_axis_collapsible_with_axis_minus_one(int axis) const {
     return contiguous_memory();
 }
-
 
 namespace op {
 BufferView* static_as_buffer_view(const Array& arr) {

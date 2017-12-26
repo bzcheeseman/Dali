@@ -145,8 +145,17 @@ Array Array::empty_like(const Array& other) {
     if (other.is_stateless()) {
         return Array();
     } else {
-        return Array(BufferView::construct_with_bshape(
-                other.bshape(), other.dtype(), other.preferred_device()));
+        // find broadcasted axes:
+        std::vector<int> broadcasted_axes;
+        const std::vector<int>& other_strides = other.strides();
+        for (size_t i = 0; i < other_strides.size(); i++) {
+            if (other_strides[i] == 0) {
+                broadcasted_axes.emplace_back(i);
+            }
+        }
+        return Array(BufferView::create_with_shape(
+                other.shape(), other.dtype(), other.preferred_device(),
+                broadcasted_axes));
     }
 }
 
@@ -495,13 +504,6 @@ void Array::to_device(memory::Device device) const {
 
 int Array::ndim() const {
     return (is_stateless()) ? 0 : expression()->ndim();
-
-}
-
-std::vector<int> Array::bshape() const {
-    alert_stateless_call(!is_stateless(), "bshape");
-    return expression()->bshape();
-
 }
 
 int Array::number_of_elements() const {
@@ -553,7 +555,18 @@ SlicingInProgress<Array> Array::operator[](const Broadcast& b) const {
 
 Array Array::operator()(int idx) const {
     alert_stateless_call(!is_stateless(), "operator()");
-    return Array((*expression())(idx));
+    if (is_buffer()) {
+        return Array((*expression())(idx));
+    } else {
+        if (!is_assignment() && !is_control_flow()) {
+            set_expression(op::to_assignment(*this).expression());
+        }
+        auto dest_buffer = buffer_arg();
+        return Array(std::make_shared<ControlFlow>(
+            dest_buffer(idx),
+            std::vector<Array>({*this})
+        ));
+    }
 }
 
 bool Array::is_transpose() const {
@@ -622,13 +635,7 @@ Array Array::copyless_right_fit_ndim(int dimensionality) const {
     return Array(expression()->copyless_right_fit_ndim(dimensionality));
 }
 
-Array Array::reshape_broadcasted(const std::vector<int>& new_shape) const {
-    alert_stateless_call(!is_stateless(), "reshape_broadcasted");
-    return Array(expression()->reshape_broadcasted(new_shape));
-}
-
 Array Array::pluck_axis(int axis, const Slice& slice) const {
-
     alert_stateless_call(!is_stateless(), "pluck_axis");
     return Array(expression()->pluck_axis(axis, slice));
 }
@@ -703,20 +710,20 @@ void Array::copy_from(const Array& other) {
 }
 
 Array& Array::operator=(const int& other) {
-    auto assignment = op::assign(*this, OPERATOR_T_EQL, op::identity(other));
-    state_ = assignment.state_;
+    auto assignment = op::assign(Array(expression()), OPERATOR_T_EQL, op::identity(other));
+    set_expression(assignment.expression());
     return *this;
 }
 
 Array& Array::operator=(const float& other) {
-    auto assignment = op::assign(*this, OPERATOR_T_EQL, op::identity(other));
-    state_ = assignment.state_;
+    auto assignment = op::assign(Array(expression()), OPERATOR_T_EQL, op::identity(other));
+    set_expression(assignment.expression());
     return *this;
 }
 
 Array& Array::operator=(const double& other) {
-    auto assignment = op::assign(*this, OPERATOR_T_EQL, op::identity(other));
-    state_ = assignment.state_;
+    auto assignment = op::assign(Array(expression()), OPERATOR_T_EQL, op::identity(other));
+    set_expression(assignment.expression());
     return *this;
 }
 

@@ -37,7 +37,7 @@ namespace jit {
                               const std::vector<Array>& arguments,
                               DType dtype) :
                 JITNode(compute_min_computation_rank(arguments),
-                        get_common_bshape(arguments),
+                        get_common_shape(arguments),
                         dtype),
                 functor_name_(functor_name),
                 arguments_(arguments) {

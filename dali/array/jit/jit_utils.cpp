@@ -85,72 +85,65 @@ std::string construct_for_loop(int rank, const std::string& code, const std::str
     return for_loop;
 }
 
-void ensure_output_array_compatible(const Array& out, const DType& output_dtype, const std::vector<int>& output_bshape) {
+void ensure_output_array_compatible(const Array& out, const DType& output_dtype, const std::vector<int>& output_shape) {
     if (out.is_stateless()) {
         return;
     }
-    for (const int& dim_size: out.bshape()) {
-        ASSERT2(dim_size >= -1,
-            "Cannot assign to broadcasted output with broadcasted dimension"
-            " bigger than 1, because it results in many-to-one mappings.");
-    }
-
-    bool output_bshape_compatible = out.ndim() == output_bshape.size();
-    if (output_bshape_compatible) {
+    bool output_shape_compatible = out.ndim() == output_shape.size();
+    if (output_shape_compatible) {
         for (int i = 0; i < out.ndim(); ++i) {
-            if (output_bshape[i] != -1 && std::abs(output_bshape[i]) != out.shape()[i]) {
-                output_bshape_compatible = false;
+            if (output_shape[i] != 1 && output_shape[i] != out.shape()[i]) {
+                output_shape_compatible = false;
                 break;
             }
         }
     }
-
-    ASSERT2(output_bshape_compatible, utils::make_message("Cannot assign "
-        "result of shape ", output_bshape, " to a location of shape ", out.shape(), "."));
+    ASSERT2(output_shape_compatible, utils::make_message("Cannot assign "
+        "result of shape ", output_shape, " to a location of shape ", out.shape(), "."));
     ASSERT2(out.dtype() == output_dtype, utils::make_message("Cannot assign "
         "result of dtype ", output_dtype, " to a location of dtype ", out.dtype(), "."));
 }
 
-std::vector<int> get_common_bshape(const std::vector<std::vector<int>>& bshapes) {
-    if (bshapes.size() == 0) return {};
+std::vector<int> get_common_shape(const std::vector<std::vector<int>>& shapes) {
+    if (shapes.size() == 0) return {};
 
     int ndim_max = 0;
     int idx_max = 0;
-    for (int idx = 0; idx < bshapes.size(); idx++) {
-        if (bshapes[idx].size() > ndim_max) {
-            ndim_max = bshapes[idx].size();
+    for (int idx = 0; idx < shapes.size(); idx++) {
+        if (shapes[idx].size() > ndim_max) {
+            ndim_max = shapes[idx].size();
             idx_max = idx;
         }
     }
-    std::vector<int> output_bshape = bshapes[idx_max];
+    std::vector<int> output_shape = shapes[idx_max];
 
     for (int dim = 0; dim < ndim_max; dim++) {
-        for (const auto& other_bshape : bshapes) {
-            if (other_bshape.size() == 0) continue;
-            ASSERT2(other_bshape.size() == output_bshape.size(),
+        for (const auto& other_shape : shapes) {
+            if (other_shape.size() == 0) continue;
+            ASSERT2(other_shape.size() == output_shape.size(),
                 "inputs must be scalars or have the same dimensionality."
             );
             ASSERT2(
-                (output_bshape[dim] == other_bshape[dim]) ||
-                (output_bshape[dim] == -1 || other_bshape[dim] == -1),
+                (output_shape[dim] == other_shape[dim]) ||
+                (output_shape[dim] == -1 || other_shape[dim] == -1),
                 utils::make_message(
                     "Could not find a common shape between ",
-                    output_bshape, " and ", other_bshape, ".")
+                    output_shape, " and ", other_shape, ".")
             );
-            if (other_bshape[dim] != -1) {
-                output_bshape[dim] = other_bshape[dim];
+            if (other_shape[dim] != -1) {
+                output_shape[dim] = other_shape[dim];
             }
         }
     }
-    return output_bshape;
+    return output_shape;
 }
 
-std::vector<int> get_common_bshape(const std::vector<Array>& arrays) {
-    std::vector<std::vector<int>> arg_bshapes;
+std::vector<int> get_common_shape(const std::vector<Array>& arrays) {
+    std::vector<std::vector<int>> arg_shapes;
     for (const auto& array : arrays) {
-        arg_bshapes.emplace_back(array.bshape());
+        arg_shapes.emplace_back(array.shape());
     }
-    return get_common_bshape(arg_bshapes);
+    return get_common_shape(arg_shapes);
 }
 
 

@@ -5,12 +5,6 @@
 /* Expression Graph utilities */
 // TODO(jonathan): move to generic location
 
-memory::Device device_promotion(const Array& a, const Array& b) {
-    auto apref = a.preferred_device();
-    auto bpref = b.preferred_device();
-    if (apref == bpref) {return apref;}
-    return memory::default_preferred_device;
-}
 
 Array ascontiguousarray_or_simple_transpose(Array node) {
     auto buff = node.buffer_arg();

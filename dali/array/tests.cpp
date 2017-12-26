@@ -13,6 +13,7 @@
 #include "dali/array/op/reducers.h"
 #include "dali/array/op/arange.h"
 #include "dali/array/op/eye.h"
+#include "dali/array/op/uniform.h"
 #include "dali/array/expression/assignment.h"
 #include "dali/array/expression/buffer_view.h"
 
@@ -549,15 +550,12 @@ TEST(ArrayTests, proper_slicing) {
     Array sliced_sum = sliced.sum();
     ASSERT_EQ(20, (int)sliced_sum);
 }
-#ifdef DONT_COMPILE
-
 
 TEST(ArrayTests, double_striding) {
     const int NRETRIES = 2;
     for (int retry=0; retry < NRETRIES; ++retry) {
 
-        Array x({2,3,4}, DTYPE_INT32);
-        x = initializer::uniform(-1000, 1000);
+        Array x = op::uniform(-1000, 1000, {2, 3, 4});
 
         for (auto& slice0: generate_interesting_slices(2)) {
             for (auto& slice1: generate_interesting_slices(3)) {
@@ -583,6 +581,8 @@ TEST(ArrayTests, double_striding) {
         }
     }
 }
+
+#ifdef DONT_COMPILE
 
 TEST(ArrayLazyOpsTests, reshape_broadcasted) {
     auto B = Array::ones({3},     DTYPE_INT32);

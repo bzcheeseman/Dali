@@ -864,3 +864,12 @@ DType type_promotion(const Array& a, const Array& b) {
         return a.dtype();
     }
 }
+
+
+memory::Device device_promotion(const Array& a, const Array& b) {
+    auto apref = a.preferred_device();
+    auto bpref = b.preferred_device();
+    if (apref == bpref) {return apref;}
+    return memory::default_preferred_device;
+}
+

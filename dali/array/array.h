@@ -235,5 +235,6 @@ DALI_DECLARE_ARRAY_INTERACTION_INPLACE(<<=);
 
 
 DType type_promotion(const Array& a, const Array& b);
+memory::Device device_promotion(const Array& a, const Array& b);
 
 #endif

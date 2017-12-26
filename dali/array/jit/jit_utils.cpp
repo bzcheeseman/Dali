@@ -158,7 +158,7 @@ std::string define_kernel(int ndim, bool has_shape,
     size_t num_args = arguments.size();
     ASSERT2(num_args >= 0, utils::make_message("num_args must be >= 0 (got arguments.size()=", num_args, ")."));
     std::string shape_arg;
-    if (has_shape) {
+    if (has_shape) {
         shape_arg = utils::make_message("const Shape<", ndim, ">&");
     }
     std::string name = utils::make_message(char(std::toupper(kernel_name[0])),
@@ -200,7 +200,7 @@ std::string define_kernel(int ndim, bool has_shape,
             ss_caller << ">";
         }
     }
-    if (num_args > 0 & has_shape) {
+    if (num_args > 0 & has_shape) {
         ss_call_arguments_definition << ", ";
         ss_call_arguments << ", ";
         ss_constructor_arguments << ", ";

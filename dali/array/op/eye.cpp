@@ -90,7 +90,7 @@ Array diag(Array array, int rows, int cols) {
     ASSERT2(rows > 0 & cols > 0, utils::make_message(
         "diag's rows and cols must > 0 "
         "(got rows = ", rows, ", cols = ", cols, ")."));
-    if (array.is_vector()) {
+    if (array.is_vector()) {
         ASSERT2(array.shape()[0] >= std::min(rows, cols), utils::make_message(
           "diag's argument is smaller than the maximal diagonal item "
           "(array.shape = ", array.shape(), ", rows = ", rows, ", cols = ", cols, ")."));

@@ -546,7 +546,7 @@ Array Array::operator()(int idx) const {
     alert_stateless_call(!is_stateless(), "operator()");
     if (is_buffer()) {
         return Array((*expression())(idx));
-    } else {
+    } else {
         if (!is_assignment() && !is_control_flow()) {
             set_expression(op::to_assignment(*this).expression());
         }

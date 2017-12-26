@@ -1,5 +1,7 @@
 #include "buffer_view.h"
 
+#include <algorithm>
+
 #include "dali/utils/assert2.h"
 #include "dali/utils/print_utils.h"
 #include "dali/utils/make_message.h"
@@ -91,7 +93,7 @@ std::shared_ptr<BufferView> BufferView::create_with_shape(
         memory::Device preferred_device,
         const std::vector<int>& broadcasted_axes) {
     auto ret = std::make_shared<BufferView>(shape, dtype, preferred_device);
-    for (const auto& axis : broadcasted_axes) {
+    for (const auto& axis : broadcasted_axes) {
         ret->broadcast_axis_internal(axis);
     }
     return ret;

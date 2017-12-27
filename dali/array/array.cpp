@@ -674,22 +674,66 @@ Array Array::squeeze(int axis) const {
 
 Array Array::expand_dims(int new_axis) const {
     alert_stateless_call(!is_stateless(), "expand_dims");
-    return Array(expression()->expand_dims(new_axis));
+    if (is_buffer()) {
+        return Array(expression()->expand_dims(new_axis));
+    } else {
+        if (!is_assignment() && !is_control_flow()) {
+            set_expression(op::to_assignment(*this).expression());
+        }
+        auto dest_buffer = buffer_arg();
+        return Array(std::make_shared<ControlFlow>(
+            Array(dest_buffer.expression()->expand_dims(new_axis)),
+            std::vector<Array>({*this})
+        ));
+    }
 }
 
 Array Array::broadcast_axis(int axis) const {
     alert_stateless_call(!is_stateless(), "broadcast_axis");
-    return Array(expression()->broadcast_axis(axis));
+    if (is_buffer()) {
+        return Array(expression()->broadcast_axis(axis));
+    } else {
+        if (!is_assignment() && !is_control_flow()) {
+            set_expression(op::to_assignment(*this).expression());
+        }
+        auto dest_buffer = buffer_arg();
+        return Array(std::make_shared<ControlFlow>(
+            Array(dest_buffer.expression()->broadcast_axis(axis)),
+            std::vector<Array>({*this})
+        ));
+    }
 }
 
 Array Array::insert_broadcast_axis(int new_axis) const {
     alert_stateless_call(!is_stateless(), "insert_broadcast_axis");
-    return Array(expression()->insert_broadcast_axis(new_axis));
+    if (is_buffer()) {
+        return Array(expression()->insert_broadcast_axis(new_axis));
+    } else {
+        if (!is_assignment() && !is_control_flow()) {
+            set_expression(op::to_assignment(*this).expression());
+        }
+        auto dest_buffer = buffer_arg();
+        return Array(std::make_shared<ControlFlow>(
+            Array(dest_buffer.expression()->insert_broadcast_axis(new_axis)),
+            std::vector<Array>({*this})
+        ));
+    }
 }
 
 Array Array::broadcast_scalar_to_ndim(const int& ndim) const {
     alert_stateless_call(!is_stateless(), "broadcast_scalar_to_ndim");
-    return Array(expression()->broadcast_scalar_to_ndim(ndim));
+    if (is_buffer()) {
+        return Array(expression()->broadcast_scalar_to_ndim(ndim));
+    } else {
+        if (!is_assignment() && !is_control_flow()) {
+            set_expression(op::to_assignment(*this).expression());
+        }
+        auto dest_buffer = buffer_arg();
+        return Array(std::make_shared<ControlFlow>(
+            Array(dest_buffer.expression()->broadcast_scalar_to_ndim(ndim)),
+            std::vector<Array>({*this})
+        ));
+    }
 }
 
 

@@ -69,6 +69,9 @@ namespace jit {
                                                    SymbolTable& symbol_table,
                                                    node_to_info_t* node_to_info) const {
             (*node_to_info)[this].computation_rank = desired_computation_rank;
+            if (arguments_.size() > 1) {
+                symbol_table.declare_shape(this);
+            }
             for (auto& arg: arguments_) {
                 op::jit::compute_node_compilation_info(arg,
                                                        desired_computation_rank,
@@ -112,12 +115,15 @@ namespace jit {
                                              const node_to_info_t& node_to_info,
                                              memory::DeviceT device_type) const {
             std::stringstream stream;
-            stream << "element_wise_kernel<" << functor_name_ << ", "
+            stream << elementwise_kernel_name(arguments_.size(), node_to_info.at(this).computation_rank) << "<"  << functor_name_ << ", "
                    << dtype_to_cpp_name(dtype()) << ">(";
 
             for (int i = 0; i < arguments_.size(); ++i) {
                 stream << op::jit::get_call_code_nd(arguments_[i], symbol_table, node_to_info, device_type)
                        << (i + 1 == arguments_.size() ? "" : ", ");
+            }
+            if (arguments_.size() > 1) {
+                stream << ", " << symbol_table.get_shape(this);
             }
             stream << ")";
             return stream.str();
@@ -125,7 +131,7 @@ namespace jit {
 
         virtual std::string prefix_code(const node_to_info_t& node_to_info,
                                         memory::DeviceT device_type) const {
-            return create_elementwise_kernel_caller(arguments_.size());
+            return create_elementwise_kernel_caller(arguments_.size(), node_to_info.at(this).computation_rank);
         }
     };
     const hash_t ElementwiseExpression::optype_hash = std::hash<std::string>()(typeid(ElementwiseExpression).name());

@@ -582,16 +582,16 @@ TEST(ArrayTests, double_striding) {
     }
 }
 
-#ifdef DONT_COMPILE
-
 TEST(ArrayLazyOpsTests, reshape_broadcasted) {
-    auto B = Array::ones({3},     DTYPE_INT32);
+    auto B = Array::ones({3}, DTYPE_INT32);
 
     B = B[Broadcast()][Slice()][Broadcast()];
-    B = B.reshape_broadcasted({2,3,4});
+    B = op::add(B, Array::zeros({2,3,4}));
 
     ASSERT_EQ((int)(Array)B.sum(), 2 * 3 * 4);
 }
+
+#ifdef DONT_COMPILE
 
 TEST(ArrayLazyOpsTests, reshape_broadcasted2) {
     auto B = Array::ones({3},     DTYPE_INT32);

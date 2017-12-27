@@ -104,34 +104,34 @@ void ensure_output_array_compatible(const Array& out, const DType& output_dtype,
         "result of dtype ", output_dtype, " to a location of dtype ", out.dtype(), "."));
 }
 
-std::vector<int> get_common_shape(const std::vector<std::vector<int>>& shapes) {
+std::vector<int> get_common_shape(const std::vector<const std::vector<int>*>& shapes) {
     if (shapes.size() == 0) return {};
 
     int ndim_max = 0;
     int idx_max = 0;
     for (int idx = 0; idx < shapes.size(); idx++) {
-        if (shapes[idx].size() > ndim_max) {
-            ndim_max = shapes[idx].size();
+        if (shapes[idx]->size() > ndim_max) {
+            ndim_max = shapes[idx]->size();
             idx_max = idx;
         }
     }
-    std::vector<int> output_shape = shapes[idx_max];
+    std::vector<int> output_shape = *shapes[idx_max];
 
     for (int dim = 0; dim < ndim_max; dim++) {
-        for (const auto& other_shape : shapes) {
-            if (other_shape.size() == 0) continue;
-            ASSERT2(other_shape.size() == output_shape.size(),
+        for (auto other_shape : shapes) {
+            if (other_shape->size() == 0) continue;
+            ASSERT2(other_shape->size() == output_shape.size(),
                 "inputs must be scalars or have the same dimensionality."
             );
             ASSERT2(
-                (output_shape[dim] == other_shape[dim]) ||
-                (output_shape[dim] == -1 || other_shape[dim] == -1),
+                (output_shape[dim] == (*other_shape)[dim]) ||
+                (output_shape[dim] == 1 || (*other_shape)[dim] == 1),
                 utils::make_message(
                     "Could not find a common shape between ",
-                    output_shape, " and ", other_shape, ".")
+                    output_shape, " and ", (*other_shape), ".")
             );
-            if (other_shape[dim] != -1) {
-                output_shape[dim] = other_shape[dim];
+            if ((*other_shape)[dim] != 1) {
+                output_shape[dim] = (*other_shape)[dim];
             }
         }
     }
@@ -139,9 +139,9 @@ std::vector<int> get_common_shape(const std::vector<std::vector<int>>& shapes) {
 }
 
 std::vector<int> get_common_shape(const std::vector<Array>& arrays) {
-    std::vector<std::vector<int>> arg_shapes;
+    std::vector<const std::vector<int>*> arg_shapes;
     for (const auto& array : arrays) {
-        arg_shapes.emplace_back(array.shape());
+        arg_shapes.emplace_back(&array.shape());
     }
     return get_common_shape(arg_shapes);
 }

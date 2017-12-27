@@ -24,27 +24,40 @@ bool should_always_recompile_cache     = false;
 
 bool should_always_recompile() {
     if (!should_always_recompile_is_cached) {
-        auto env_var_ptr = std::getenv("DALI_RTC_ALWAYS_RECOMPILE");
-        std::string dali_rtc_always_recompile;
+        auto env_var_ptr = std::getenv("DALI_JIT_ALWAYS_RECOMPILE");
+        std::string dali_jit_always_recompile;
         if (env_var_ptr == NULL) {
-            dali_rtc_always_recompile = "false";
+            dali_jit_always_recompile = "false";
         } else {
-            dali_rtc_always_recompile = env_var_ptr;
+            dali_jit_always_recompile = env_var_ptr;
         }
 
         // lower
-        for (int i = 0; i < dali_rtc_always_recompile.size(); ++i) {
-            if ('A' <= dali_rtc_always_recompile[i] && dali_rtc_always_recompile[i] <= 'Z') {
-                dali_rtc_always_recompile[i] += 'a' - 'A';
+        for (int i = 0; i < dali_jit_always_recompile.size(); ++i) {
+            if ('A' <= dali_jit_always_recompile[i] && dali_jit_always_recompile[i] <= 'Z') {
+                dali_jit_always_recompile[i] += 'a' - 'A';
             }
         }
-        should_always_recompile_cache = (dali_rtc_always_recompile == "true");
+        should_always_recompile_cache = (dali_jit_always_recompile == "true");
         should_always_recompile_is_cached = true;
     }
     return should_always_recompile_cache;
 }
 
 // CONVENIENCE METHODS //
+
+bool buffer_requires_strides(const Expression* buffer, const std::vector<int>& shape) {
+    if (buffer->strides_.size() > 0) {
+        return true;
+    }
+    for (int i = 0; i < shape.size(); i++) {
+        if (buffer->shape_[i] != shape[i]) {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::shared_ptr<JITNode> as_jit_node(Array array) {
     auto casted = std::dynamic_pointer_cast<JITNode>(array.expression());
     ASSERT2(casted != nullptr, utils::make_message("Attempting to cast a non-jit expression (",
@@ -82,21 +95,21 @@ std::string SymbolTable::variable_declarations(const node_to_info_t& node_to_inf
         auto name = utils::make_message("array_", i, "_view");
 
         declaration_table_[(const Expression*)arrays_[i]] = name;
-        if (arrays_[i]->contiguous_memory()) {
-            result << build_array_definition(
-                dtype_to_cpp_name(arrays_[i]->dtype_),
-                name,
-                true,
-                node_to_info.at((const Expression*)arrays_[i]).computation_rank,
-                utils::make_message("array_data[", i, "], offsets[", i, "], sizes[", i, "]")
-            );
-        } else {
+        if (buffer_requires_strides(arrays_[i], node_to_info.at((const Expression*)arrays_[i]).computation_shape)) {
             result << build_array_definition(
                 dtype_to_cpp_name(arrays_[i]->dtype_),
                 name,
                 false,
                 node_to_info.at((const Expression*)arrays_[i]).computation_rank,
                 utils::make_message("array_data[", i, "], offsets[", i, "], sizes[", i, "], strides[", i, "]")
+            );
+        } else {
+            result << build_array_definition(
+                dtype_to_cpp_name(arrays_[i]->dtype_),
+                name,
+                true,
+                node_to_info.at((const Expression*)arrays_[i]).computation_rank,
+                utils::make_message("array_data[", i, "], offsets[", i, "], sizes[", i, "]")
             );
         }
     }
@@ -315,6 +328,7 @@ bool JITRunner::is_axis_collapsible_with_axis_minus_one(const int& axis) const {
 
 static hash_t BUFFER_HASH = std::hash<std::string>()(typeid(BufferView).name());
 
+
 void buffer_compute_node_compilation_info(const Array& array, const Array& buffer_array,
                                           int desired_computation_rank,
                                           const std::vector<int>& desired_computation_shape,
@@ -326,7 +340,7 @@ void buffer_compute_node_compilation_info(const Array& array, const Array& buffe
     (*node_to_info)[buffer_ptr].computation_shape = desired_computation_shape;
     (*node_to_info)[buffer_ptr].hash = utils::Hasher().add(BUFFER_HASH)
                                                       .add(desired_computation_rank)
-                                                      .add(buffer_ptr->contiguous_memory())
+                                                      .add(buffer_requires_strides(buffer_ptr, desired_computation_shape))
                                                       .add(array.dtype()).value();
 }
 
@@ -639,7 +653,9 @@ struct JITRunnerImpl : public Computation {
         auto compiled_self = jit_right->compile(device,
                                                 symbol_table,
                                                 node_to_info);
-        auto arrays = symbol_table.collect_buffers(node_to_info);
+
+
+        auto buffers = symbol_table.collect_buffers(node_to_info);
         auto scalars = symbol_table.collect_scalars(node_to_info);
         auto shapes_vec = symbol_table.collect_shapes(node_to_info);
         std::vector<const int*> shapes;
@@ -650,11 +666,11 @@ struct JITRunnerImpl : public Computation {
         std::vector<int> array_offsets;
         std::vector<const int*> array_shapes;
         std::vector<const int*> array_strides;
-        for (auto& arr : arrays) {
-            data_ptrs.push_back(arr.memory()->mutable_data(device));
-            array_offsets.push_back(arr.offset());
-            array_shapes.push_back(arr.shape().data());
-            array_strides.push_back(arr.strides().data());
+        for (auto& buffer : buffers) {
+            data_ptrs.push_back(buffer.memory()->mutable_data(device));
+            array_offsets.push_back(buffer.offset());
+            array_shapes.push_back(buffer.shape().data());
+            array_strides.push_back(buffer.strides().data());
         }
         // std::string assign_name;
         // if (Scope::has_observers()) {

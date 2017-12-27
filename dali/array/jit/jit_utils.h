@@ -40,7 +40,7 @@ void ensure_output_array_compatible(const Array& out,
 
 // Find the shape that contains all the other shapes in the vector `shapes`.
 // Scalar arguments are ignored when computing the output shape.
-std::vector<int> get_common_shape(const std::vector<std::vector<int>>& shapes);
+std::vector<int> get_common_shape(const std::vector<const std::vector<int>*>& shapes);
 std::vector<int> get_common_shape(const std::vector<Array>& arrays);
 
 std::string define_kernel(int ndim, bool has_shape,

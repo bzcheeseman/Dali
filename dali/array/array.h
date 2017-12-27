@@ -148,6 +148,10 @@ class Array  {
     // ensures that no unexpected memory aliasing occurs
     Array copyless_ravel() const;
     Array reshape(const std::vector<int>& shape) const;
+    // ensure dimensions are properly broadcasted to be compatible
+    // with some other shape. If no changes are needed, operation keeps
+    // the Array as is:
+    Array broadcast_to_shape(const std::vector<int>& shape) const;
     // only reshapes if underlying memory is contiguous
     // ensures that no unexpected memory aliasing occurs
     Array copyless_reshape(const std::vector<int>& shape) const;

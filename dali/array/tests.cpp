@@ -582,7 +582,7 @@ TEST(ArrayTests, double_striding) {
     }
 }
 
-TEST(ArrayLazyOpsTests, reshape_broadcasted) {
+TEST(ArrayLazyOpsTests, sum_broadcasting) {
     auto B = Array::ones({3}, DTYPE_INT32);
 
     B = B[Broadcast()][Slice()][Broadcast()];
@@ -591,21 +591,21 @@ TEST(ArrayLazyOpsTests, reshape_broadcasted) {
     ASSERT_EQ((int)(Array)B.sum(), 2 * 3 * 4);
 }
 
-#ifdef DONT_COMPILE
-
-TEST(ArrayLazyOpsTests, reshape_broadcasted2) {
-    auto B = Array::ones({3},     DTYPE_INT32);
+TEST(ArrayLazyOpsTests, broadcast_to_shape) {
+    auto B = Array::ones({3}, DTYPE_INT32);
     B = B[Broadcast()][Slice()][Broadcast()];
 
-    B = B.reshape_broadcasted({2, 3, 1});
-    B = B.reshape_broadcasted({2, 3, 1});
-    B = B.reshape_broadcasted({2, 3, 5});
-    B = B.reshape_broadcasted({2, 3, 5});
+    B = B.broadcast_to_shape({2, 3, 1});
+    B = B.broadcast_to_shape({2, 3, 1});
+    B = B.broadcast_to_shape({2, 3, 5});
+    B = B.broadcast_to_shape({2, 3, 5});
 
-    EXPECT_THROW(B.reshape_broadcasted({5,3,5}), std::runtime_error);
-    EXPECT_THROW(B.reshape_broadcasted({1,3,5}), std::runtime_error);
-    EXPECT_THROW(B.reshape_broadcasted({2,3,1}), std::runtime_error);
+    EXPECT_THROW(B.broadcast_to_shape({5,4,5}), std::runtime_error);
 }
+
+
+#ifdef DONT_COMPILE
+
 
 TEST(ArrayTests, strides_compacted_after_expansion) {
     Array x = Array::zeros({2,3,4});

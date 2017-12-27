@@ -598,6 +598,23 @@ Array Array::reshape(const std::vector<int>& shape) const {
     return Array(expression()->reshape(shape));
 }
 
+Array Array::broadcast_to_shape(const std::vector<int>& shape) const {
+    alert_stateless_call(!is_stateless(), "broadcast_to_shape");
+
+    if (is_buffer()) {
+        return Array(expression()->broadcast_to_shape(shape));
+    } else {
+        if (!is_assignment() && !is_control_flow()) {
+            set_expression(op::to_assignment(*this).expression());
+        }
+        auto dest_buffer = buffer_arg();
+        return Array(std::make_shared<ControlFlow>(
+            dest_buffer.expression()->broadcast_to_shape(shape),
+            std::vector<Array>({*this})
+        ));
+    }
+}
+
 Array Array::collapse_axis_with_axis_minus_one(int axis) const {
     alert_stateless_call(!is_stateless(), "collapse_axis_with_axis_minus_one");
     return Array(expression()->collapse_axis_with_axis_minus_one(axis));

@@ -113,7 +113,11 @@ expression_ptr Expression::broadcast_to_shape(const std::vector<int>& new_shape)
         "expression (got new_shape = ", new_shape, ", current shape = ", shape_, ")."));
     std::vector<int> broadcasted_axes;
     for (size_t i = 0; i < new_shape.size(); i++) {
-        if (shape_[i] != new_shape[i] && shape_[i] == 1) {
+        if (shape_[i] != new_shape[i]) {
+            ASSERT2(shape_[i] == 1, utils::make_message(
+                "broadcast_to_shape cannot broadcast a dimension of length ", shape_[i],
+                " to a length of ", new_shape[i], " (shape = ", shape_,
+                ", new_shape = ", new_shape, ")."));
             broadcasted_axes.emplace_back(i);
         }
     }

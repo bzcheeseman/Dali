@@ -790,84 +790,86 @@ TEST(ArrayConstructorTests, shape_preservation) {
 }
 
 
-// TEST(ArrayTests, lazy_lse) {
-//     Array s1 = Array::ones({3,4}, DTYPE_INT32);
-//     Array s2 = Array::ones({3,4}, DTYPE_INT32);
+TEST(ArrayTests, lse_and_addition) {
+    Array s1 = Array::ones({3,4}, DTYPE_INT32);
+    Array s2 = Array::ones({3,4}, DTYPE_INT32);
+    Array target = Array::zeros({3,4}, DTYPE_INT32);
+    target <<= s1 + s2;
 
-//     Array target = Array::zeros({3,4}, DTYPE_INT32);
+    for (int i = 0; i < target.number_of_elements(); ++i) {
+        EXPECT_EQ(2, (int)target(i));
+    }
+}
 
-//     target <<= s1 + s2;
+TEST(ArrayTests, lse_3D) {
+    Array target = Array({3,2,2});
+    Array source = Array({3,2,2});
+    target <<= source;
+}
 
-//     for (int i = 0; i < target.number_of_elements(); ++i) {
-//         EXPECT_EQ(2, (int)target(i));
-//     }
-// }
+TEST(ArrayTests, lse) {
+    Array target = Array::zeros({3,4}, DTYPE_INT32);
+    Array source = op::arange(12).reshape({3,4});
 
+    target <<= source;
 
-// TEST(ArrayTests, lse_3D) {
-//     Array target = Array({3,2,2});
-//     Array source = Array({3,2,2});
+    for (int i = 0; i < target.number_of_elements(); ++i) {
+        EXPECT_EQ(i, (int)target(i));
+    }
+}
 
-//     target <<= source;
-// }
+TEST(ArrayTests, broadcasted_lse) {
+    Array target = Array::zeros({3}, DTYPE_INT32)[Slice(0,3)][Broadcast()];
+    Array source = Array::ones({3,4}, DTYPE_INT32);
 
-// TEST(ArrayTests, lse) {
-//     Array target = Array::zeros({3,4}, DTYPE_INT32);
-//     Array source = op::arange(12).reshape({3,4});
+    target <<= source;
 
-//     target <<= source;
+    for (int i = 0; i < target.number_of_elements(); ++i) {
+        EXPECT_EQ(4,  (int)target(i));
+    }
+}
 
-//     for (int i = 0; i < target.number_of_elements(); ++i) {
-//         EXPECT_EQ(i, (int)target(i));
-//     }
-// }
+TEST(ArrayTests, broadcasted_lse2) {
+    Array target = Array::zeros({4}, DTYPE_INT32)[Broadcast()][Slice(0,4)];
+    Array source = Array::ones({3,4}, DTYPE_INT32);
 
-// TEST(ArrayTests, broadcasted_lse) {
-//     Array target = Array::zeros({3}, DTYPE_INT32)[Slice(0,3)][Broadcast()];
-//     Array source = Array::ones({3,4}, DTYPE_INT32);
+    target <<= source;
 
-//     target <<= source;
-
-//     for (int i = 0; i < target.number_of_elements(); ++i) {
-//         EXPECT_EQ(4,  (int)target(i));
-//     }
-// }
-
-// TEST(ArrayTests, broadcasted_lse2) {
-//     Array target = Array::zeros({4}, DTYPE_INT32)[Broadcast()][Slice(0,4)];
-//     Array source = Array::ones({3,4}, DTYPE_INT32);
-
-//     target <<= source;
-
-//     for (int i = 0; i < target.number_of_elements(); ++i) {
-//         EXPECT_EQ(3,  (int)target(i));
-//     }
-// }
-
-// TEST(ArrayTests, blas_friendly_tensor) {
-//     Array s1 = Array::ones({3,4}, DTYPE_INT32);
-//     Array s2 = Array::ones({1,4}, DTYPE_INT32);
-//     Array s3 = Array::ones({3,1}, DTYPE_INT32);
-//     Array s4 = Array::ones({1,1}, DTYPE_INT32);
-
-//     auto verify_result = [](std::string testname, Array arr, bool expected_tranpose, int expected_stride) {
-//         SCOPED_TRACE(testname);
-//         TypedArray<memory::DEVICE_T_CPU,int> typed_arr(arr, memory::Device::cpu(), arr.shape());
-//         bool transpose;
-//         // mshadow::Tensor<mshadow::cpu, 2, int> mtensor;
-//         // std::tie(transpose, mtensor) = typed_arr.blas_friendly_tensor();
-//         // EXPECT_EQ(expected_tranpose, transpose);
-//         // EXPECT_EQ(expected_stride, mtensor.stride_);
-//     };
+    for (int i = 0; i < target.number_of_elements(); ++i) {
+        EXPECT_EQ(3,  (int)target(i));
+    }
+}
 
 
-//     verify_result("3x4, not transposed", s1,             false, 4);
-//     verify_result("1x4, not transposed", s2,             false, 4);
-//     verify_result("3x1, not transposed", s3,             false, 1);
-//     verify_result("1x1, not transposed", s4,             false, 1);
+TEST(ArrayCastTests, astype) {
+    Array integer_arange = op::arange(6).reshape({1,2,3});
 
-//     verify_result("3x4, transposed",     s1.transpose(), true,  4);
-//     verify_result("1x4, transposed",     s2.transpose(), true,  4);
-//     verify_result("3x1, transposed",     s3.transpose(), true,  1);
-//     verify_result("1x1, transposed",     s4.transpose(), false, 1);
-// }
+    EXPECT_EQ(DTYPE_INT32, integer_arange.dtype());
+
+    Array float_arange_with_offset = (Array)integer_arange.astype(DTYPE_FLOAT) - 0.6;
+
+    EXPECT_EQ(DTYPE_FLOAT, float_arange_with_offset.dtype());
+
+    for (int i = 0; i < integer_arange.number_of_elements(); i++) {
+        EXPECT_NEAR((float)integer_arange(i) - 0.6, (float)float_arange_with_offset(i), 1e-6);
+    }
+
+    Array int_arange_with_offset = float_arange_with_offset.astype(DTYPE_INT32);
+
+    for (int i = 0; i < integer_arange.number_of_elements(); i++) {
+        EXPECT_EQ(std::round((float)integer_arange(i) - 0.6), (int)int_arange_with_offset(i));
+    }
+}
+
+TEST(ArrayCastTests, mean) {
+    Array integer_arange = op::arange(6).reshape({1,2,3});
+    Array mean = integer_arange.mean();
+    EXPECT_EQ(DTYPE_DOUBLE, mean.dtype());
+    EXPECT_EQ((0.0 + 1.0 + 2.0 + 3.0 + 4.0 + 5.0)/6.0, (double)mean(0));
+
+    Array mean_axis = integer_arange.mean(-1);
+
+    EXPECT_EQ(DTYPE_DOUBLE, mean_axis.dtype());
+    EXPECT_EQ((0.0 + 1.0 + 2.0)/3.0, (double)mean_axis(0));
+    EXPECT_EQ((3.0 + 4.0 + 5.0)/3.0, (double)mean_axis(1));
+}

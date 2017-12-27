@@ -2,19 +2,17 @@
 #include "dali/utils/make_message.h"
 #include "dali/array/expression/expression.h"
 
-/* Expression Graph utilities */
-// TODO(jonathan): move to generic location
-
-
-Array ascontiguousarray_or_simple_transpose(Array node) {
-    auto buff = node.buffer_arg();
-    if (!buff.is_stateless() && (buff.contiguous_memory() or buff.is_transpose())) {
-        return node;
+// DOT SPECIFIC CLASSES
+namespace {
+    Array ascontiguousarray_or_simple_transpose(Array node) {
+        auto buff = node.buffer_arg();
+        if (!buff.is_stateless() && (buff.contiguous_memory() or buff.is_transpose())) {
+            return node;
+        }
+        return node.ascontiguousarray();
     }
-    return node.ascontiguousarray();
 }
 
-// DOT SPECIFIC CLASSES
 namespace op {
     MatMul::MatMul(Array left, Array right) :
         Expression({left.shape()[0], right.shape()[1]},

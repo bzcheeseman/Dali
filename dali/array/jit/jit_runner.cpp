@@ -15,6 +15,7 @@
 #include "dali/array/op/binary.h"
 #include "dali/array/op/unary.h"
 #include "dali/array/op/elementwise_operation.h"
+#include "dali/array/jit/scalar_view.h"
 
 namespace op {
 namespace jit {
@@ -126,13 +127,13 @@ std::string SymbolTable::variable_declarations(const node_to_info_t& node_to_inf
     }
 
     for (int i = 0; i < shapes_.size(); ++i) {
-      auto name = utils::make_message("shape_", i);
-      shape_declaration_table_[(const Expression*)shapes_[i]] = name;
-      result << build_shape_definition(
-          name,
-          node_to_info.at(shapes_[i]).computation_rank,
-          utils::make_message("shapes[", i, "]")
-      );
+        auto name = utils::make_message("shape_", i);
+        shape_declaration_table_[(const Expression*)shapes_[i]] = name;
+        result << build_shape_definition(
+            name,
+            node_to_info.at(shapes_[i]).computation_rank,
+            utils::make_message("shapes[", i, "]")
+        );
     }
 
     return result.str();
@@ -199,7 +200,8 @@ JITNode::JITNode(int min_computation_rank,
                  const std::vector<int>& strides) : Expression(shape, dtype, offset, strides),
                                                     min_computation_rank_(min_computation_rank) {
     ASSERT2(min_computation_rank > 0, utils::make_message(
-        "JITNode computation rank must be greater than 0."));
+        "JITNode computation rank must be greater than 0 (got "
+        "min_computation_rank = ", min_computation_rank, ")."));
 }
 
 JITNode::JITNode(const JITNode& other) : Expression(other),
@@ -312,7 +314,6 @@ JITRunner::JITRunner(Array root, const std::vector<Array>& leaves, OPERATOR_T op
 std::vector<Array> JITRunner::arguments() const {
     return leaves_;
 }
-// TODO(jonathan): add pretty-printing here to keep track of what was jitted or not.
 
 expression_ptr JITRunner::copy() const {
     return std::make_shared<JITRunner>(*this);

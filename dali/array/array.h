@@ -237,6 +237,19 @@ DALI_DECLARE_ARRAY_INTERACTION_INPLACE(*= );
 DALI_DECLARE_ARRAY_INTERACTION_INPLACE(/= );
 DALI_DECLARE_ARRAY_INTERACTION_INPLACE(<<=);
 
+#define DALI_DECLARE_ARRAY_INTERACTION(SYMBOL)\
+    Array operator SYMBOL (const Array& left, const Array& right);\
+    Array operator SYMBOL (const Array& left, double right);\
+    Array operator SYMBOL (const Array& left, float right);\
+    Array operator SYMBOL (const Array& left, int right);\
+    Array operator SYMBOL (double left, const Array& right);\
+    Array operator SYMBOL (float left, const Array& right);\
+    Array operator SYMBOL (int left, const Array& right)
+
+DALI_DECLARE_ARRAY_INTERACTION(+);
+DALI_DECLARE_ARRAY_INTERACTION(-);
+DALI_DECLARE_ARRAY_INTERACTION(*);
+DALI_DECLARE_ARRAY_INTERACTION(/);
 
 DType type_promotion(const Array& a, const Array& b);
 memory::Device device_promotion(const Array& a, const Array& b);

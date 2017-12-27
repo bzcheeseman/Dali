@@ -902,6 +902,26 @@ DALI_DEFINE_ARRAY_INTERACTION_INPLACE(*=, OPERATOR_T_MUL);
 DALI_DEFINE_ARRAY_INTERACTION_INPLACE(/=, OPERATOR_T_DIV);
 DALI_DEFINE_ARRAY_INTERACTION_INPLACE(<<=, OPERATOR_T_LSE);
 
+#define DALI_DEFINE_ARRAY_SCALAR_INTERACTION(SYMBOL, OPERATION_NAME, DTYPE)\
+    Array operator SYMBOL (const Array& left, DTYPE right) {\
+        return OPERATION_NAME(left, right);\
+    }\
+    Array operator SYMBOL (DTYPE left, const Array& right) {\
+        return OPERATION_NAME(left, right);\
+    }
+
+#define DALI_DEFINE_ARRAY_INTERACTION(SYMBOL, OPERATION_NAME)\
+    Array operator SYMBOL (const Array& left, const Array& right) {\
+        return OPERATION_NAME(left, right);\
+    }\
+    DALI_DEFINE_ARRAY_SCALAR_INTERACTION(SYMBOL, OPERATION_NAME, double);\
+    DALI_DEFINE_ARRAY_SCALAR_INTERACTION(SYMBOL, OPERATION_NAME, float);\
+    DALI_DEFINE_ARRAY_SCALAR_INTERACTION(SYMBOL, OPERATION_NAME, int);\
+
+DALI_DEFINE_ARRAY_INTERACTION(+, op::add);
+DALI_DEFINE_ARRAY_INTERACTION(-, op::subtract);
+DALI_DEFINE_ARRAY_INTERACTION(*, op::eltmul);
+DALI_DEFINE_ARRAY_INTERACTION(/, op::eltdiv);
 
 DType type_promotion(const Array& a, const Array& b) {
     // TODO(jonathan,szymon) speed up this function
@@ -926,11 +946,9 @@ DType type_promotion(const Array& a, const Array& b) {
     }
 }
 
-
 memory::Device device_promotion(const Array& a, const Array& b) {
     auto apref = a.preferred_device();
     auto bpref = b.preferred_device();
     if (apref == bpref) {return apref;}
     return memory::default_preferred_device;
 }
-

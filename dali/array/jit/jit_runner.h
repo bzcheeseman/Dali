@@ -4,7 +4,6 @@
 #include "dali/array/array.h"
 #include "dali/array/expression/expression.h"
 #include "dali/array/expression/buffer_view.h"
-
 #include "dali/utils/hash_utils.h"
 
 namespace op {
@@ -89,8 +88,6 @@ namespace op {
         int min_computation_rank(const Array& array);
     }
 }
-
-#include "dali/array/jit/scalar_view.h"
 
 
 #endif // DALI_ARRAY_EXPRESSION_JIT_RUNNER_H

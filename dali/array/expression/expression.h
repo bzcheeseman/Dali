@@ -75,6 +75,7 @@ struct Expression {
     virtual std::string name() const;
     virtual std::string full_name() const;
     virtual bool supports_operator(OPERATOR_T operator_t) const;
+    virtual bool spans_entire_memory() const;
 
     void for_all_suboperations(std::function<void(const Array&)>) const;
 };

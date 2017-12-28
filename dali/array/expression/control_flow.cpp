@@ -6,7 +6,6 @@ ControlFlow::ControlFlow(Array left, const std::vector<Array>& conditions) :
                    left.offset(),
                    left.strides()),
                    left_(left), conditions_(conditions) {
-
 }
 
 ControlFlow::ControlFlow(const ControlFlow& other) :
@@ -29,6 +28,10 @@ std::vector<Array> ControlFlow::arguments() const {
 
 bool ControlFlow::is_axis_collapsible_with_axis_minus_one(int axis) const {
     return left_.is_axis_collapsible_with_axis_minus_one(axis);
+}
+
+bool ControlFlow::spans_entire_memory() const {
+  return left_.spans_entire_memory();
 }
 
 namespace op {

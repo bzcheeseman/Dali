@@ -114,6 +114,7 @@ class Array  {
     int number_of_elements() const;
     std::vector<int> subshape() const;
     bool contiguous_memory() const;
+    bool spans_entire_memory() const;
 
 
     /* Creating a view into memory */

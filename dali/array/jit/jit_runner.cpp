@@ -66,6 +66,10 @@ std::shared_ptr<JITNode> as_jit_node(Array array) {
     return casted;
 }
 
+JITNode* static_as_jit_node(Array array) {
+    return static_cast<JITNode*>(array.expression().get());
+}
+
 hash_t node_hash(const node_to_info_t& node_to_info, const Array& array) {
     return node_to_info.at(array.expression().get()).hash;
 }
@@ -324,7 +328,7 @@ memory::Device JITRunner::preferred_device() const {
 }
 
 bool JITRunner::is_axis_collapsible_with_axis_minus_one(const int& axis) const {
-    return as_jit_node(root_)->is_axis_collapsible_with_axis_minus_one(axis);
+    return static_as_jit_node(root_)->is_axis_collapsible_with_axis_minus_one(axis);
 }
 
 static hash_t BUFFER_HASH = std::hash<std::string>()(typeid(BufferView).name());
@@ -375,7 +379,7 @@ std::string JITRunner::assignment_code(const SymbolTable& symbol_table,
                                        const node_to_info_t& node_to_info,
                                        memory::DeviceT device_type) const {
     std::string dest_call_code = op::jit::get_call_code_nd(dest_, symbol_table, node_to_info, device_type);
-    auto root = as_jit_node(root_);
+    auto root = static_as_jit_node(root_);
     int computation_rank = node_to_info.at(this).computation_rank;
     std::string indexing_nd = computation_rank == 1 ? "[i]" : "[" + generate_accessor_string(computation_rank) + "]";
     return utils::make_message(
@@ -391,7 +395,7 @@ std::string JITRunner::get_call_code_nd(const SymbolTable& symbol_table,
                                         memory::DeviceT device_type) const {
     std::string dest_call_code = op::jit::get_call_code_nd(dest_, symbol_table, node_to_info, device_type);
 
-    auto root = as_jit_node(root_);
+    auto root = static_as_jit_node(root_);
     int computation_rank = node_to_info.at(this).computation_rank;
     if (device_type == memory::DEVICE_T_CPU) {
         if (computation_rank == 1) {
@@ -456,17 +460,18 @@ std::string JITRunner::get_code_template(memory::Device device,
     std::unordered_set<hash_t> prefix_code_visited;
     std::stringstream result;
     result << prefix_code(node_to_info, device.type());
-    result << as_jit_node(root_)->prefix_code(node_to_info, device.type());
-    root_.expression()->for_all_suboperations([&](const Array& arr) {
+    auto add_prefix_code = [&](const Array& arr) {
         if (is_jit_node(arr)) {
-            auto pc      = as_jit_node(arr)->prefix_code(node_to_info, device.type());
+            auto pc      = static_as_jit_node(arr)->prefix_code(node_to_info, device.type());
             auto pc_hash = utils::get_hash(pc);
             if (prefix_code_visited.find(pc_hash) == prefix_code_visited.end()) {
                 result << pc;
                 prefix_code_visited.insert(pc_hash);
             }
         }
-    });
+    };
+    add_prefix_code(root_);
+    root_.expression()->for_all_suboperations(add_prefix_code);
     result << "void run(void** array_data, const int* offsets, "
               "const int** sizes, const int** strides, "
               "const void** scalar_arguments, const int** shapes) {\n";
@@ -624,15 +629,20 @@ Array jit_merge(const Array& root) {
         }
     }
     auto new_root = assign->right_;
+
+
+    ASSERT2(root.shape() == root_buffer.shape(), utils::make_message(
+      "changing shape post assignment (buffer_shape = ", root_buffer.shape(), ", original shape ", root.shape(),
+      " in expression ", root.full_expression_name(), ")."));
+    ASSERT2(root.offset() == root_buffer.offset(), "changing offset post assignment.");
+    ASSERT2(root.strides() == root_buffer.strides(), "changing strides post assignment.");
+
     return Array(std::make_shared<Assignment>(
         // keep the original target buffer:
         root_buffer, root_operator,
         // use the merged operation instead
-        Array(std::make_shared<JITRunner>(new_root, leaves, root_operator, root_buffer)),
-        root.shape(),
-        root.offset(),
-        root.strides()
-    ));
+        Array(std::make_shared<JITRunner>(new_root, leaves, root_operator, root_buffer)))
+    );
 }
 
 // JIT RUNNER-IMPL //
@@ -692,7 +702,7 @@ struct JITRunnerImpl : public Computation {
 
 int min_computation_rank(const Array& array) {
     if (is_jit_node(array)) {
-        return as_jit_node(array)->min_computation_rank_;
+        return static_as_jit_node(array)->min_computation_rank_;
     }
     return array.strides().empty() ? 1 : array.ndim();
 }
@@ -709,7 +719,7 @@ void compute_node_compilation_info(const Array& a,
                                              symbol_table,
                                              node_to_info);
     } else if (is_jit_node(a)) {
-        as_jit_node(a)->compute_node_compilation_info(
+        static_as_jit_node(a)->compute_node_compilation_info(
             desired_computation_rank,
             desired_computation_shape,
             symbol_table,
@@ -737,7 +747,7 @@ std::string get_call_code_nd(const Array& a,
     if (a.is_buffer()) {
         return buffer_get_call_code_nd(a, symbol_table, node_to_info, device_type);
     } else if (is_jit_node(a)) {
-        return as_jit_node(a)->get_call_code_nd(symbol_table, node_to_info, device_type);
+        return static_as_jit_node(a)->get_call_code_nd(symbol_table, node_to_info, device_type);
     } else {
         throw std::runtime_error(utils::make_message(
             "Can only create call code for JITNode "

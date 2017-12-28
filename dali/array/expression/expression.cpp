@@ -580,3 +580,20 @@ bool Expression::supports_operator(OPERATOR_T operator_t) const {
 bool Expression::is_axis_collapsible_with_axis_minus_one(int axis) const {
     return false;
 }
+
+bool Expression::spans_entire_memory() const {
+    if (offset_ == 0 && strides_.size() == 0) {
+        return true;
+    }
+    int noe = number_of_elements();
+    if (offset_ == noe - 1) {
+        const auto& arr_strides = strides_;
+        const auto& arr_shape = shape_;
+        for (int i = 0; i < arr_strides.size(); i++) {
+            if (std::abs(arr_strides[i]) == 1 && arr_shape[i] == noe) {
+                return true;
+            }
+        }
+    }
+    return false;
+}

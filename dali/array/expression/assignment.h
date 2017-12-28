@@ -11,16 +11,13 @@ struct Assignment : public Expression {
 
     virtual expression_ptr copy() const;
     Assignment(Array left, OPERATOR_T operator_t, Array right);
-    Assignment(Array left, OPERATOR_T operator_t, Array right,
-               const std::vector<int>& shape,
-               int offset,
-               const std::vector<int>& strides);
     Assignment(const Assignment& other);
     virtual std::string name() const;
     virtual memory::Device preferred_device() const;
     virtual std::vector<Array> arguments() const;
     virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const;
     virtual expression_ptr collapse_axis_with_axis_minus_one(int axis) const;
+    virtual bool spans_entire_memory() const;
 };
 
 namespace op {

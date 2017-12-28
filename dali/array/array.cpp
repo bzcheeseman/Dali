@@ -32,6 +32,20 @@ void alert_stateless_call(const bool& stateful, const char* fieldname) {
 //                                 ARRAY                                      //
 ////////////////////////////////////////////////////////////////////////////////
 
+#define GUARD_OPERATION(NAME)\
+    if (is_buffer()) {\
+        return Array(NAME);\
+    } else {\
+        if (!is_assignment() && !is_control_flow()) {\
+            set_expression(op::to_assignment(*this).expression());\
+        }\
+        auto dest_buffer = buffer_arg();\
+        return Array(std::make_shared<ControlFlow>(\
+            dest_buffer.NAME,\
+            std::vector<Array>({*this})\
+        ));\
+    }
+
 
 Array::ArrayState::ArrayState(std::shared_ptr<Expression> expression):
     expression_(expression) {
@@ -520,6 +534,10 @@ bool Array::contiguous_memory() const {
     return expression()->contiguous_memory();
 }
 
+bool Array::spans_entire_memory() const {
+    return expression()->spans_entire_memory();
+}
+
 Array Array::operator[](const int& idx) const {
     return pluck_axis(0, idx);
 }
@@ -544,18 +562,7 @@ SlicingInProgress<Array> Array::operator[](const Broadcast& b) const {
 
 Array Array::operator()(int idx) const {
     alert_stateless_call(!is_stateless(), "operator()");
-    if (is_buffer()) {
-        return Array((*expression())(idx));
-    } else {
-        if (!is_assignment() && !is_control_flow()) {
-            set_expression(op::to_assignment(*this).expression());
-        }
-        auto dest_buffer = buffer_arg();
-        return Array(std::make_shared<ControlFlow>(
-            dest_buffer(idx),
-            std::vector<Array>({*this})
-        ));
-    }
+    GUARD_OPERATION(expression()->operator() (idx))
 }
 
 bool Array::is_transpose() const {
@@ -565,32 +572,33 @@ bool Array::is_transpose() const {
 
 Array Array::transpose() const {
     alert_stateless_call(!is_stateless(), "transpose");
-    return Array(expression()->transpose());
+    GUARD_OPERATION(expression()->transpose());
 }
 
 Array Array::transpose(const std::vector<int>& axes) const {
     alert_stateless_call(!is_stateless(), "transpose");
-    return Array(expression()->transpose(axes));
+    GUARD_OPERATION(expression()->transpose(axes));
 }
 
 Array Array::swapaxes(int axis1, int axis2) const {
     alert_stateless_call(!is_stateless(), "swapaxes");
+    GUARD_OPERATION(expression()->swapaxes(axis1, axis2));
     return Array(expression()->swapaxes(axis1, axis2));
 }
 
 Array Array::dimshuffle(const std::vector<int>& pattern) const {
     alert_stateless_call(!is_stateless(), "dimshuffle");
-    return Array(expression()->dimshuffle(pattern));
+    GUARD_OPERATION(expression()->dimshuffle(pattern));
 }
 
 Array Array::ravel() const {
     alert_stateless_call(!is_stateless(), "ravel");
-    return Array(expression()->ravel());
+    GUARD_OPERATION(expression()->ravel());
 }
 
 Array Array::copyless_ravel() const {
     alert_stateless_call(!is_stateless(), "copyless_ravel");
-    return Array(expression()->copyless_ravel());
+    GUARD_OPERATION(expression()->copyless_ravel());
 }
 
 Array Array::reshape(const std::vector<int>& shape) const {
@@ -600,19 +608,7 @@ Array Array::reshape(const std::vector<int>& shape) const {
 
 Array Array::broadcast_to_shape(const std::vector<int>& shape) const {
     alert_stateless_call(!is_stateless(), "broadcast_to_shape");
-
-    if (is_buffer()) {
-        return Array(expression()->broadcast_to_shape(shape));
-    } else {
-        if (!is_assignment() && !is_control_flow()) {
-            set_expression(op::to_assignment(*this).expression());
-        }
-        auto dest_buffer = buffer_arg();
-        return Array(std::make_shared<ControlFlow>(
-            dest_buffer.expression()->broadcast_to_shape(shape),
-            std::vector<Array>({*this})
-        ));
-    }
+    GUARD_OPERATION(expression()->broadcast_to_shape(shape))
 }
 
 Array Array::collapse_axis_with_axis_minus_one(int axis) const {
@@ -643,116 +639,38 @@ Array Array::copyless_right_fit_ndim(int dimensionality) const {
 
 Array Array::pluck_axis(int axis, const Slice& slice) const {
     alert_stateless_call(!is_stateless(), "pluck_axis");
-    if (is_buffer()) {
-        return Array(expression()->pluck_axis(axis, slice));
-    } else {
-        if (!is_assignment() && !is_control_flow()) {
-            set_expression(op::to_assignment(*this).expression());
-        }
-        auto dest_buffer = buffer_arg();
-        return Array(std::make_shared<ControlFlow>(
-            Array(dest_buffer.expression()->pluck_axis(axis, slice)),
-            std::vector<Array>({*this})
-        ));
-    }
+    GUARD_OPERATION(expression()->pluck_axis(axis, slice))
 }
 
 Array Array::pluck_axis(const int& axis, const int& idx) const {
     alert_stateless_call(!is_stateless(), "pluck_axis");
-    if (is_buffer()) {
-        return Array(expression()->pluck_axis(axis, idx));
-    } else {
-        if (!is_assignment() && !is_control_flow()) {
-            set_expression(op::to_assignment(*this).expression());
-        }
-        auto dest_buffer = buffer_arg();
-        return Array(std::make_shared<ControlFlow>(
-            Array(dest_buffer.expression()->pluck_axis(axis, idx)),
-            std::vector<Array>({*this})
-        ));
-    }
+    GUARD_OPERATION(expression()->pluck_axis(axis, idx))
 }
 
 Array Array::squeeze(int axis) const {
     alert_stateless_call(!is_stateless(), "squeeze");
-    if (is_buffer()) {
-        return Array(expression()->squeeze(axis));
-    } else {
-        if (!is_assignment() && !is_control_flow()) {
-            set_expression(op::to_assignment(*this).expression());
-        }
-        auto dest_buffer = buffer_arg();
-        return Array(std::make_shared<ControlFlow>(
-            Array(dest_buffer.expression()->squeeze(axis)),
-            std::vector<Array>({*this})
-        ));
-    }
+    GUARD_OPERATION(expression()->squeeze(axis))
 }
 
 Array Array::expand_dims(int new_axis) const {
     alert_stateless_call(!is_stateless(), "expand_dims");
-    if (is_buffer()) {
-        return Array(expression()->expand_dims(new_axis));
-    } else {
-        if (!is_assignment() && !is_control_flow()) {
-            set_expression(op::to_assignment(*this).expression());
-        }
-        auto dest_buffer = buffer_arg();
-        return Array(std::make_shared<ControlFlow>(
-            Array(dest_buffer.expression()->expand_dims(new_axis)),
-            std::vector<Array>({*this})
-        ));
-    }
+    GUARD_OPERATION(expression()->expand_dims(new_axis))
 }
 
 Array Array::broadcast_axis(int axis) const {
     alert_stateless_call(!is_stateless(), "broadcast_axis");
-    if (is_buffer()) {
-        return Array(expression()->broadcast_axis(axis));
-    } else {
-        if (!is_assignment() && !is_control_flow()) {
-            set_expression(op::to_assignment(*this).expression());
-        }
-        auto dest_buffer = buffer_arg();
-        return Array(std::make_shared<ControlFlow>(
-            Array(dest_buffer.expression()->broadcast_axis(axis)),
-            std::vector<Array>({*this})
-        ));
-    }
+    GUARD_OPERATION(expression()->broadcast_axis(axis))
 }
 
-Array Array::insert_broadcast_axis(int new_axis) const {
+Array Array::insert_broadcast_axis(int axis) const {
     alert_stateless_call(!is_stateless(), "insert_broadcast_axis");
-    if (is_buffer()) {
-        return Array(expression()->insert_broadcast_axis(new_axis));
-    } else {
-        if (!is_assignment() && !is_control_flow()) {
-            set_expression(op::to_assignment(*this).expression());
-        }
-        auto dest_buffer = buffer_arg();
-        return Array(std::make_shared<ControlFlow>(
-            Array(dest_buffer.expression()->insert_broadcast_axis(new_axis)),
-            std::vector<Array>({*this})
-        ));
-    }
+    GUARD_OPERATION(expression()->insert_broadcast_axis(axis))
 }
 
 Array Array::broadcast_scalar_to_ndim(const int& ndim) const {
     alert_stateless_call(!is_stateless(), "broadcast_scalar_to_ndim");
-    if (is_buffer()) {
-        return Array(expression()->broadcast_scalar_to_ndim(ndim));
-    } else {
-        if (!is_assignment() && !is_control_flow()) {
-            set_expression(op::to_assignment(*this).expression());
-        }
-        auto dest_buffer = buffer_arg();
-        return Array(std::make_shared<ControlFlow>(
-            Array(dest_buffer.expression()->broadcast_scalar_to_ndim(ndim)),
-            std::vector<Array>({*this})
-        ));
-    }
+    GUARD_OPERATION(expression()->broadcast_scalar_to_ndim(ndim))
 }
-
 
 
 #define DALI_ARRAY_DEFINE_ALL_REDUCER(FUNCTION_NAME, OPNAME)\

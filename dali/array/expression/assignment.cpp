@@ -12,17 +12,6 @@ Assignment::Assignment(Array left, OPERATOR_T operator_t, Array right) :
                    left_(left), operator_t_(operator_t), right_(right) {
 }
 
-Assignment::Assignment(Array left, OPERATOR_T operator_t, Array right,
-                       const std::vector<int>& shape,
-                       int offset, const std::vector<int>& strides) :
-        Expression(shape,
-                   left.dtype(),
-                   offset,
-                   strides),
-                   left_(left), operator_t_(operator_t), right_(right) {
-}
-
-
 Assignment::Assignment(const Assignment& other) :
         Assignment(other.left_, other.operator_t_, other.right_) {
 }
@@ -46,6 +35,10 @@ std::string Assignment::name() const {
 
 bool Assignment::is_axis_collapsible_with_axis_minus_one(int axis) const {
     return contiguous_memory();
+}
+
+bool Assignment::spans_entire_memory() const {
+    return left_.spans_entire_memory();
 }
 
 expression_ptr Assignment::collapse_axis_with_axis_minus_one(int axis) const {
@@ -106,7 +99,14 @@ Array to_assignment(const Array& node) {
 
 Array assign(const Array& left, OPERATOR_T operator_t, const Array& right) {
     if (operator_t == OPERATOR_T_EQL) {
-        return Array(std::make_shared<Assignment>(left.buffer_arg(), operator_t, right));
+        if (left.is_buffer() || left.spans_entire_memory()) {
+            return Array(std::make_shared<Assignment>(left.buffer_arg(), operator_t, right));
+        } else {
+            return Array(std::make_shared<ControlFlow>(
+                Array(std::make_shared<Assignment>(left.buffer_arg(), operator_t, right)),
+                std::vector<Array>({left})
+            ));
+        }
     } else if (operator_t == OPERATOR_T_LSE) {
         return autoreduce_assign(left, right);
     } else {

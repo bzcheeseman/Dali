@@ -38,6 +38,7 @@ namespace op {
                            const std::vector<int>& b_reduce_axes) {
         throw std::runtime_error("not implemented yet");
     }
+
     Array dot(Array a, Array b) {
         int a_ndim = a.ndim();
         int b_ndim = b.ndim();

@@ -24,8 +24,8 @@ struct Arange : public JITNode {
                                          memory::DeviceT device_type) const {
         return utils::make_message(
             kernel_name(node_to_info), "(",
-            as_jit_node(start_)->get_call_code_nd(symbol_table, node_to_info, device_type), ", ",
-            as_jit_node(step_)->get_call_code_nd(symbol_table, node_to_info, device_type), ", ",
+            op::jit::get_call_code_nd(start_, symbol_table, node_to_info, device_type), ", ",
+            op::jit::get_call_code_nd(step_, symbol_table, node_to_info, device_type), ", ",
             symbol_table.get_shape(this), ")");
     }
 

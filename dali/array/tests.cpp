@@ -11,10 +11,12 @@
 #include "dali/utils/make_message.h"
 #include "dali/array/op/dot.h"
 #include "dali/array/op/binary.h"
+#include "dali/array/op/unary.h"
 #include "dali/array/op/reducers.h"
 #include "dali/array/op/arange.h"
 #include "dali/array/op/eye.h"
 #include "dali/array/op/uniform.h"
+#include "dali/array/op/outer.h"
 #include "dali/array/expression/assignment.h"
 #include "dali/array/expression/buffer_view.h"
 
@@ -941,3 +943,34 @@ TEST(ArrayBinaryTests, advanced_striding_with_reductions2) {
     Array z =  op::sum(op::equals(x, y));
     EXPECT_EQ(12, (int)z);
 }
+
+
+namespace {
+    Array reference_outer_product(const Array& left, const Array& right) {
+        ASSERT2(left.ndim() == 1 && right.ndim() == 1, "left and right should have ndim == 1");
+        Array out = Array::zeros({left.shape()[0], right.shape()[0]}, left.dtype());
+        for (int i = 0; i < out.shape()[0]; i++) {
+            for (int j = 0; j < out.shape()[1]; j++) {
+                op::assign(out[i][j], OPERATOR_T_EQL, left[i] * right[j]).eval();
+            }
+        }
+        return out;
+    }
+}
+
+TEST(ArrayTests, outer_product_chainable) {
+    Array x = op::arange(3);
+    Array y = op::arange(4);
+    Array outer = op::outer(op::tanh(x - 3.0), op::tanh(y - 2.0));
+    auto expected_outer = reference_outer_product(op::tanh(x - 3.0), op::tanh(y - 2.0));
+    EXPECT_TRUE(Array::allclose(outer, expected_outer, 1e-5));
+}
+
+TEST(ArrayTests, outer_product_chainable_with_sum) {
+    Array x = op::arange(3);
+    Array y = op::arange(16).reshape({4, 4});
+    Array outer = op::outer(x, op::sum(y, {0}));
+    auto expected_outer = reference_outer_product(x, op::sum(y, {0}));
+    EXPECT_TRUE(Array::allclose(outer, expected_outer, 1e-5));
+}
+

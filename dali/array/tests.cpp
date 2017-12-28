@@ -20,6 +20,7 @@
 #include "dali/array/op/one_hot.h"
 #include "dali/array/expression/assignment.h"
 #include "dali/array/expression/buffer_view.h"
+#include "dali/array/functor.h"
 
 int vector_dot(Array left, Array right) {
     int out = 0;
@@ -996,4 +997,109 @@ TEST(ArrayTests, one_hot) {
     EXPECT_TRUE(Array::equals(reference_one_hot(a, 7, 112.2, 42.0),
                               op::one_hot(a, 7, 112.2, 42.0)));
 }
+
+
+#define DALI_DEFINE_REFERENCE_UNARY(FUNCNAME, FUNCTOR_NAME)\
+    Array reference_ ##FUNCNAME (Array x) {\
+        Array out = Array::zeros_like(x);\
+        auto raveled_x = x.ravel();\
+        auto raveled_out = out.ravel();\
+        if (x.dtype() == DTYPE_DOUBLE) {\
+            for (int i = 0; i < raveled_x.number_of_elements(); i++) {\
+                (raveled_out(i) = functor::FUNCTOR_NAME<double>::Map((double)raveled_x(i))).eval();\
+            }\
+        } else if (x.dtype() == DTYPE_FLOAT) {\
+            for (int i = 0; i < raveled_x.number_of_elements(); i++) {\
+                (raveled_out(i) = functor::FUNCTOR_NAME<float>::Map((float)raveled_x(i))).eval();\
+            }\
+        } else {\
+            for (int i = 0; i < raveled_x.number_of_elements(); i++) {\
+                (raveled_out(i) = functor::FUNCTOR_NAME<int>::Map((int)raveled_x(i))).eval();\
+            }\
+        }\
+        return out;\
+    }
+
+#define DALI_JIT_UNARY_TEST(funcname)\
+    TEST(JITTests, unary_ ##funcname) {\
+        for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {\
+            int size = 10;\
+            auto a = op::arange(5 * size).reshape({5, size}).astype(dtype) + 1;\
+            auto dst = Array::zeros({5, size}, dtype);\
+            dst = op::funcname(a);\
+            EXPECT_TRUE(Array::allclose(dst, reference_ ##funcname(a), 1e-4));\
+        }\
+    }
+
+
+DALI_DEFINE_REFERENCE_UNARY(softplus, softplus);
+DALI_DEFINE_REFERENCE_UNARY(sigmoid, sigmoid);
+DALI_DEFINE_REFERENCE_UNARY(tanh, tanh);
+DALI_DEFINE_REFERENCE_UNARY(log, log);
+DALI_DEFINE_REFERENCE_UNARY(cube, cube);
+DALI_DEFINE_REFERENCE_UNARY(sqrt, sqrt_f);
+DALI_DEFINE_REFERENCE_UNARY(rsqrt, rsqrt);
+DALI_DEFINE_REFERENCE_UNARY(eltinv, inv);
+DALI_DEFINE_REFERENCE_UNARY(relu, relu);
+DALI_DEFINE_REFERENCE_UNARY(abs, abs);
+DALI_DEFINE_REFERENCE_UNARY(sign, sign);
+DALI_DEFINE_REFERENCE_UNARY(identity, identity);
+
+
+DALI_JIT_UNARY_TEST(softplus);
+DALI_JIT_UNARY_TEST(sigmoid);
+DALI_JIT_UNARY_TEST(tanh);
+DALI_JIT_UNARY_TEST(log);
+DALI_JIT_UNARY_TEST(cube);
+DALI_JIT_UNARY_TEST(sqrt);
+DALI_JIT_UNARY_TEST(rsqrt);
+DALI_JIT_UNARY_TEST(eltinv);
+DALI_JIT_UNARY_TEST(relu);
+DALI_JIT_UNARY_TEST(abs);
+DALI_JIT_UNARY_TEST(sign);
+DALI_JIT_UNARY_TEST(identity);
+
+#define DALI_DEFINE_REFERENCE_UNARY_SCALAR(FUNCNAME, FUNCTOR_NAME)\
+    Array reference_scalar_ ##FUNCNAME (Array x, double scalar) {\
+        Array out = Array::zeros_like(x);\
+        auto raveled_x = x.ravel();\
+        auto raveled_out = out.ravel();\
+        if (x.dtype() == DTYPE_DOUBLE) {\
+            for (int i = 0; i < raveled_x.number_of_elements(); i++) {\
+                (raveled_out(i) = functor::FUNCTOR_NAME<double>::Map((double)raveled_x(i), scalar)).eval();\
+            }\
+        } else if (x.dtype() == DTYPE_FLOAT) {\
+            for (int i = 0; i < raveled_x.number_of_elements(); i++) {\
+                (raveled_out(i) = functor::FUNCTOR_NAME<float>::Map((float)raveled_x(i), (float)scalar)).eval();\
+            }\
+        } else {\
+            for (int i = 0; i < raveled_x.number_of_elements(); i++) {\
+                (raveled_out(i) = functor::FUNCTOR_NAME<int>::Map((int)raveled_x(i), (int)scalar)).eval();\
+            }\
+        }\
+        return out;\
+    }
+
+#define DALI_JIT_SCALAR_UNARY_TEST(funcname)\
+    TEST(JITTests, scalar_unary_ ##funcname) {\
+        for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {\
+            int size = 10;\
+            auto a = op::arange(5 * size).reshape({5, size}).astype(dtype) + 1;\
+            auto dst = Array::zeros({5, size}, dtype);\
+            dst = op::funcname(a, 2.0);\
+            EXPECT_TRUE(Array::allclose(dst, reference_scalar_ ##funcname(a, 2.0), 1e-3));\
+        }\
+    }
+
+DALI_DEFINE_REFERENCE_UNARY_SCALAR(add, add);
+DALI_DEFINE_REFERENCE_UNARY_SCALAR(subtract, subtract);
+DALI_DEFINE_REFERENCE_UNARY_SCALAR(eltmul, eltmul);
+DALI_DEFINE_REFERENCE_UNARY_SCALAR(eltdiv, eltdiv);
+DALI_DEFINE_REFERENCE_UNARY_SCALAR(pow, power);
+
+DALI_JIT_SCALAR_UNARY_TEST(add);
+DALI_JIT_SCALAR_UNARY_TEST(subtract);
+DALI_JIT_SCALAR_UNARY_TEST(eltmul);
+DALI_JIT_SCALAR_UNARY_TEST(eltdiv);
+DALI_JIT_SCALAR_UNARY_TEST(pow);
 

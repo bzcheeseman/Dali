@@ -20,7 +20,7 @@ namespace op {
     }
 
     Array sqrt(Array x) {
-        return elementwise(x, "functor::sqrt");
+        return elementwise(x, "functor::sqrt_f");
     }
 
     Array square(Array x) {

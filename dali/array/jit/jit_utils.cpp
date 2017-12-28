@@ -237,6 +237,10 @@ std::string define_kernel(int ndim, bool has_shape,
             kernel_tail = ";\n";
         }
     }
+    std::string kernel_head;
+    if (kernel.find("return") == std::string::npos) {
+        kernel_head = "return ";
+    }
 
     return utils::make_message(templated_declarer, "\n",
         "struct ", name, " {\n", member_variables,
@@ -244,7 +248,7 @@ std::string define_kernel(int ndim, bool has_shape,
         "    XINLINE ", name, "(", call_arguments_definition, ")"
         "       : ", constructor_arguments, " {}\n"
         "    XINLINE T operator[](const Shape<ndim>& query) const {\n"
-        "        return ", kernel, kernel_tail,
+        "        ", kernel_head, kernel, kernel_tail,
         "    }\n"
         "};\n", templated_declarer, "\n",
         name, templated_caller, " ", kernel_name,

@@ -17,6 +17,7 @@
 #include "dali/array/op/eye.h"
 #include "dali/array/op/uniform.h"
 #include "dali/array/op/outer.h"
+#include "dali/array/op/one_hot.h"
 #include "dali/array/expression/assignment.h"
 #include "dali/array/expression/buffer_view.h"
 
@@ -972,5 +973,27 @@ TEST(ArrayTests, outer_product_chainable_with_sum) {
     Array outer = op::outer(x, op::sum(y, {0}));
     auto expected_outer = reference_outer_product(x, op::sum(y, {0}));
     EXPECT_TRUE(Array::allclose(outer, expected_outer, 1e-5));
+}
+
+namespace {
+    Array reference_one_hot(Array indices, int depth, double on_value, double off_value) {
+        auto out_shape = indices.shape();
+        out_shape.emplace_back(depth);
+        auto res = Array::zeros(out_shape, DTYPE_DOUBLE);
+        res = res.copyless_reshape({-1, depth});
+        indices = indices.ravel();
+        res = off_value;
+        for (int i = 0; i < indices.number_of_elements(); i++) {
+            (res[i][(int)indices[i]] = on_value).eval();
+        }
+        return res.reshape(out_shape);
+    }
+}
+
+
+TEST(ArrayTests, one_hot) {
+    auto a = op::uniform(0, 6, {2, 3});
+    EXPECT_TRUE(Array::equals(reference_one_hot(a, 7, 112.2, 42.0),
+                              op::one_hot(a, 7, 112.2, 42.0)));
 }
 

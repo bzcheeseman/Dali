@@ -48,10 +48,13 @@ bool should_always_recompile() {
 // CONVENIENCE METHODS //
 
 bool buffer_requires_strides(const Expression* buffer, const std::vector<int>& shape) {
+    if (buffer->shape_.size() == 0) {
+        return false;
+    }
     if (buffer->strides_.size() > 0) {
         return true;
     }
-    for (int i = 0; i < shape.size(); i++) {
+    for (int i = 0; i < std::min(shape.size(), buffer->shape_.size()); i++) {
         if (buffer->shape_[i] != shape[i]) {
             return true;
         }
@@ -151,6 +154,9 @@ std::vector<Array> SymbolTable::collect_buffers(const node_to_info_t& node_to_in
                    [&node_to_info](const BufferView* op) {
                        const auto& rank  = node_to_info.at(op).computation_rank;
                        const auto& shape = node_to_info.at(op).computation_shape;
+                       if (op->ndim() == 0) {
+                          return op->broadcast_scalar_to_ndim(rank);
+                       }
                        if (rank == op->ndim()) {
                            return op->broadcast_to_shape(shape);
                        } else if (rank == 1) {

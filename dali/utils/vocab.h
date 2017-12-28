@@ -5,8 +5,6 @@
 #include <vector>
 #include <unordered_map>
 
-class Array;
-
 namespace utils {
     extern const char* end_symbol;
     extern const char* unknown_word_symbol;
@@ -26,7 +24,7 @@ namespace utils {
             std::vector<std::string> index2word;
 
             std::vector<ind_t> encode(const std::vector<std::string>& words, bool with_end_symbol = false) const;
-            std::vector<std::string> decode(const Array&, bool remove_end_symbol = false) const;
+            std::vector<std::string> decode(const std::vector<int>& indices, bool remove_end_symbol = false) const;
 
             Vocab();
             Vocab(std::vector<std::string>&);
@@ -44,8 +42,8 @@ namespace utils {
             ind_t max_char;
 
             std::vector<ind_t>       encode(const std::vector<std::string>& words) const;
-            std::vector<std::string> decode(const Array&) const;
-            std::vector<std::string> decode_characters(const Array&) const;
+            std::vector<std::string> decode(const std::vector<int>&) const;
+            std::vector<std::string> decode_characters(const std::vector<int>&) const;
 
             CharacterVocab(int min_char, int max_char);
             size_t size() const;

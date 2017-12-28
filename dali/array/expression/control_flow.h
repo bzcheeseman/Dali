@@ -19,6 +19,7 @@ struct ControlFlow : public Expression {
 };
 namespace op {
     ControlFlow* static_as_control_flow(const Array& arr);
+    Array control_dependency(Array condition, Array result);
 }  // namespace op
 
 #endif  // DALI_ARRAY_EXPRESSION_CONTROL_FLOW_H

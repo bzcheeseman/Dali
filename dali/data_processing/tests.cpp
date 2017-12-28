@@ -86,28 +86,6 @@ TEST(arithmetic, generate) {
     );
 }
 
-TEST(NER, load) {
-    auto NER_data = NER::load( STR(DALI_DATA_DIR) "/tests/Stanford_NER_dummy_dataset.tsv");
-    ASSERT_EQ(NER_data.size(), 2);
-
-    auto loader = NER::NER_Loader();
-    loader.data_column = 0;
-    loader.label_column = -1;
-    NER_data = loader.convert_tsv(
-        utils::load_tsv(
-            STR(DALI_DATA_DIR) "/tests/CoNLL_NER_dummy_dataset.tsv", 4, '\t'
-        )
-    );
-    // how many examples
-    ASSERT_EQ(NER_data.size(), 1);
-    // how many words in first example
-    ASSERT_EQ(NER_data.front().first.size(), 7);
-    // last word of first example is period
-    ASSERT_EQ(NER_data.front().first.back(), ".");
-    // before last word of first example is a location
-    ASSERT_EQ(NER_data.front().second[5], "I-LOC");
-}
-
 TEST(paraphrase, load) {
     auto paraphrase_data = paraphrase::STS_2015::load_train( STR(DALI_DATA_DIR) "/tests/paraphrase_dummy_data.tsv");
     ASSERT_EQ(paraphrase_data.size(), 4);

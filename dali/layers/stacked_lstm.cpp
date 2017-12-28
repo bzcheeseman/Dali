@@ -2,18 +2,10 @@
 
 #include "dali/tensor/op.h"
 #include "dali/utils/concatenate.h"
-#include "dali/utils/fmap.h"
 
 
 using std::vector;
 using utils::assert2;
-
-
-vector<Tensor> dropout_many_tensors(const std::vector<Tensor>& tensors, double dropprob) {
-    return utils::fmap(tensors, [&](const Tensor& t) -> Tensor {
-        return tensor_ops::dropout(t, dropprob);
-    });
-}
 
 /** Abstract Stacked LSTM **/
 

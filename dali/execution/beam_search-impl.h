@@ -61,9 +61,8 @@ std::vector<beam_search_helper::BeamSearchResult<state_t>> beam_search(state_t i
             uint end_symbol,
             int max_solution_length,
             std::vector<uint> forbidden_symbols) {
-    ASSERT2(beam_width > 0,
-        utils::MS() << "Beam width must be strictly positive (got beam_width = "
-                    << beam_width << ")."
+    ASSERT2(beam_width > 0, utils::make_message(
+        "Beam width must be strictly positive (got beam_width = ", beam_width, ")."));
     );
     typedef beam_search_helper::BeamSearchResult<state_t> result_t;
     typedef beam_search_helper::BeamSearchProposal<state_t> proposal_t;
@@ -79,10 +78,8 @@ std::vector<beam_search_helper::BeamSearchResult<state_t>> beam_search(state_t i
                 proposals.push_back(proposal_t::finalized_solution(result));
             } else {
                 auto scores = candidate_scores(result.state);
-                ASSERT2(scores.ndim() == 1,
-                    utils::MS() << "score function must return a vector (got scores.ndim() = "
-                                << scores.ndim() << ")."
-                );
+                ASSERT2(scores.ndim() == 1, utils::make_message(
+                    "score function must return a vector (got scores.ndim() = ", scores.ndim(), ")."));
                 Container sorted_candidates = scores.argsort();
                 sorted_candidates = sorted_candidates[Slice(0, sorted_candidates.shape()[0], -1)];
                 auto candidates_remaining = beam_width;

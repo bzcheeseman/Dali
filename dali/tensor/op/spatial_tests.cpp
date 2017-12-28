@@ -42,11 +42,10 @@ TEST_F(TensorSpatialTests, conv2d) {
                         }
 
                         auto padding_str = (padding == PADDING_T_VALID) ? "valid" : "same";
-                        std::string scope_name = utils::MS() << "stride_h = " << stride_h
-                                                             << ", stride_w = " << stride_w
-                                                             << ", data_format = " << data_format
-                                                             << ", padding = " << padding_str
-                                                             << ", dtype " << dtype;
+                        std::string scope_name = utils::make_message(
+                            "stride_h = ", stride_h, ", stride_w = ", stride_w,
+                            ", data_format = ", data_format, ", padding = ", padding_str,
+                            ", dtype ", dtype);
                         SCOPED_TRACE(scope_name);
                         auto functor = [&](vector<Tensor> Xs)-> Tensor {
                             return tensor_ops::conv2d(

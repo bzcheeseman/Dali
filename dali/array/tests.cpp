@@ -8,6 +8,7 @@
 #include "dali/runtime_config.h"
 #include "dali/array/test_utils.h"
 #include "dali/utils/core_utils.h"
+#include "dali/utils/make_message.h"
 #include "dali/array/op/dot.h"
 #include "dali/array/op/binary.h"
 #include "dali/array/op/reducers.h"
@@ -560,7 +561,7 @@ TEST(ArrayTests, double_striding) {
         for (auto& slice0: generate_interesting_slices(2)) {
             for (auto& slice1: generate_interesting_slices(3)) {
                 for (auto& slice2: generate_interesting_slices(4)) {
-                    // SCOPED_TRACE(std::string(utils::MS() << "x[" << slice0 << "][" << slice1 <<  "][" <<  slice2 << "]"));
+                    SCOPED_TRACE(std::string(utils::make_message("x[", slice0, "][", slice1, "][", slice2, "]")));
                     Array sliced = x[slice0][slice1][slice2];
                     int actual_sum = (Array)sliced.sum();
                     int expected_sum = 0;

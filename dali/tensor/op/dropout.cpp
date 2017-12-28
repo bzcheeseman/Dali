@@ -9,9 +9,9 @@
 namespace tensor_ops {
 
     Tensor dropout_unnormalized(const Tensor& t, const double& drop_prob) {
-        ASSERT2(0.0 <= drop_prob && drop_prob <= 1.0,
-            utils::MS() << "drop_prob argument to dropout_unnormalized must be in the interval 0.0 to 1.0 (got "
-                        << drop_prob << ").");
+        ASSERT2(0.0 <= drop_prob && drop_prob <= 1.0, utils::make_message(
+            "drop_prob argument to dropout_unnormalized must be in the interval 0.0 to 1.0 (got ",
+            drop_prob, ")."));
         // Skip noise if probability is too low:
         if (drop_prob < 1e-6) return t;
 
@@ -30,9 +30,9 @@ namespace tensor_ops {
     }
 
     Tensor dropout(const Tensor& t, const double& drop_prob) {
-        ASSERT2(0.0 <= drop_prob && drop_prob <= 1.0,
-            utils::MS() << "drop_prob argument to dropout must be in the interval 0.0 to 1.0 (got "
-                        << drop_prob << ").");
+        ASSERT2(0.0 <= drop_prob && drop_prob <= 1.0, utils::make_message(
+            "drop_prob argument to dropout must be in the interval 0.0 to 1.0 (got ",
+            drop_prob, ")."));
         // Skip noise if probability is too low:
         if (drop_prob < 1e-6) return t;
 

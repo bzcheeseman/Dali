@@ -130,7 +130,7 @@ namespace tensor_ops {
         } else if (data_format == "NHWC") {
             broadcasted_bias = bias.w[Broadcast()][Broadcast()][Broadcast()];
         } else {
-            ASSERT2(false, utils::MS() << "data_format must be NHWC or NCHW (got " << data_format << ").");
+            ASSERT2(false, utils::make_message("data_format must be NHWC or NCHW (got ", data_format, ")."));
         }
 
         Tensor out(conv_out.w + broadcasted_bias);

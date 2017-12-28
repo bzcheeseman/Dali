@@ -38,4 +38,15 @@ namespace op {
 ControlFlow* static_as_control_flow(const Array& arr) {
     return static_cast<ControlFlow*>(arr.expression().get());
 }
+
+Array control_dependency(Array condition, Array result) {
+    if (condition.is_control_flow()) {
+        ControlFlow* cflow = static_as_control_flow(condition);
+        if (cflow->left_.is_buffer()) {
+            return Array(std::make_shared<ControlFlow>(result, cflow->conditions_));
+        }
+    }
+    return Array(std::make_shared<ControlFlow>(result, std::vector<Array>({condition})));
+}
+
 }  // namespace op

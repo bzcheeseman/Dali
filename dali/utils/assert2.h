@@ -13,10 +13,10 @@ namespace utils {
 
 #define ASSERT2_SHAPE_ND(SHAPE,DIM,MSG) \
     if (SHAPE.size() != DIM) \
-        utils::assert2(false, utils::MS() << MSG << " was expecting dimension " << DIM  << ", got shape " << SHAPE << ".");
+        utils::assert2(false, utils::make_message(MSG, " was expecting dimension ", DIM, ", got shape ", SHAPE, "."));
 
 #define ASSERT2_EQ(EXPECTED,ACTUAL,MSG) \
     if (EXPECTED != ACTUAL) \
-        utils::assert2(false, utils::MS() << "Expected " << EXPECTED  << ", got " << ACTUAL << ": " << MSG << ".");
+        utils::assert2(false, utils::make_message("Expected ", EXPECTED, ", got ", ACTUAL, ": ", MSG, "."));
 
 #endif

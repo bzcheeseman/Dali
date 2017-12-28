@@ -10,18 +10,16 @@
 #include "dali/utils/core_utils.h"
 #include "dali/utils/performance_report.h"
 #include "dali/utils/scope.h"
-#include "dali/utils/smart_parser.h"
 #include "dali/utils/ThreadPool.h"
 #include "dali/utils/tsv_utils.h"
 #include "dali/utils/xml_cleaner.h"
+#include "dali/utils/vocab.h"
 
 using std::chrono::milliseconds;
 using std::make_shared;
 using std::string;
 using std::stringstream;
 using std::vector;
-// using utils::OntologyBranch;
-// using utils::CharacterVocab;
 
 
 TEST(utils, performance_report) {
@@ -165,145 +163,28 @@ TEST(xml_cleaner, preprocess) {
     auto cleaned = utils::xml_cleaner::process_text_keeping_brackets(input);
 }
 
+TEST(utils, CharacterVocab) {
+    auto seq      = vector<string>{"bob", "ate", "an", "apple"};
+    auto vocab    = utils::CharacterVocab(0, 255);
+    auto chars    = vocab.encode(seq);
+    auto seq_size = utils::join(seq, " ").size();
+    ASSERT_EQ(chars.size(), seq_size);
+    ASSERT_EQ(seq, vocab.decode(chars));
 
-#ifdef DONT_COMPILE
-                    TEST(utils, construct_lattice) {
-                        auto root = make_shared<OntologyBranch>("root");
-                        for (auto& v : {"Joe", "Bob", "Max", "Mary", "Jane", "Goodwin"})
-                            make_shared<OntologyBranch>(v)->add_parent(root);
-                        auto root2 = make_shared<OntologyBranch>("root 2");
 
-                        for (auto& child : root->children) {
-                            child->add_parent(root2);
-                        }
+    auto char_decoded_seq = vocab.decode_characters(chars);
+    ASSERT_EQ(char_decoded_seq.size(), seq_size);
+    ASSERT_EQ(utils::join(seq, " "), utils::join(char_decoded_seq));
 
-                        stringstream ss;
-                        // Output the name of both parents (verify they are indeed 2)
-                        for (auto& par : root->children[2]->parents)
-                            ss << par.lock()->name << " ";
 
-                        ASSERT_EQ(ss.str(), "root root 2 ");
-                        ASSERT_EQ(root->children[2]->parents.size(), 2);
-                    }
-
-                    TEST(utils, load_save_lattice) {
-                        auto root = make_shared<OntologyBranch>("root");
-                        for (auto& v : {"Joe", "Bob", "Max", "Mary", "Jane", "Goodwin"})
-                            make_shared<OntologyBranch>(v)->add_parent(root);
-                        auto root2 = make_shared<OntologyBranch>("root 2");
-
-                        for (auto& child : root->children)
-                            child->add_parent(root2);
-                        string fname       = STR(DALI_DATA_DIR) "/tests/lattice2.txt";
-                        string fname_gz    = fname + ".gz";
-
-                        if (utils::file_exists(fname))
-                            std::remove(fname.c_str());
-                        // Test saving a lattice file
-                        ASSERT_FALSE(utils::file_exists(fname));
-                        root->save(fname);
-                        ASSERT_TRUE(utils::file_exists(fname));
-                        ASSERT_FALSE(utils::is_gzip(fname));
-
-                        if (utils::file_exists(fname_gz))
-                            std::remove(fname_gz.c_str());
-                        // Test saving a gzipped file:
-                        ASSERT_FALSE(utils::file_exists(fname_gz));
-                        root->save(fname_gz);
-                        ASSERT_TRUE(utils::file_exists(fname_gz));
-                        ASSERT_TRUE(utils::is_gzip(fname_gz));
-                    }
-#endif
-
-TEST(utils, load_tsv) {
-    string tsv_file = STR(DALI_DATA_DIR) "/tests/CoNLL_NER_dummy_dataset.tsv";
-    ASSERT_THROW(
-        utils::load_tsv(tsv_file, 3, '\t'), std::runtime_error
-    );
-    auto dataset = utils::load_tsv(tsv_file, 4, '\t');
-    ASSERT_EQ(dataset.size(), 7);
-    ASSERT_EQ(dataset.back().front().front(), ".");
+    // space char is char 32, if we start at 33 we lose it, and
+    // spaces get replaced by "█":
+    auto spaceless_vocab = utils::CharacterVocab(33, 255);
+    auto spaceless_chars = spaceless_vocab.encode(seq);
+    ASSERT_NE(seq, spaceless_vocab.decode(spaceless_chars));
+    auto special_seq = utils::join(seq, "\xFF");
+    ASSERT_EQ(special_seq, utils::join(spaceless_vocab.decode(spaceless_chars)));
 }
-
-#ifdef DONT_COMPILE
-                TEST(utils, load_lattice) {
-                    auto loaded_tree = OntologyBranch::load(STR(DALI_DATA_DIR) "/tests/lattice.txt");
-
-                    // find 2 roots
-                    ASSERT_EQ(loaded_tree.size(), 2);
-
-                    stringstream ss;
-                    for (auto& r : loaded_tree)
-                        ss << r->name << " ";
-                    ASSERT_EQ(ss.str(), "root 3 root 4 ");
-                    // find root 2
-                    ASSERT_TRUE(loaded_tree[0]->lookup_table->find("root 2") != loaded_tree[0]->lookup_table->end());
-                    ASSERT_TRUE(loaded_tree[0]->lookup_table->find("Mary-Stephanie") != loaded_tree[0]->lookup_table->end());
-                    ASSERT_TRUE(loaded_tree[0]->lookup_table->find("Good-win") != loaded_tree[0]->lookup_table->end());
-
-                    // compare with the original tree
-                    auto root = make_shared<OntologyBranch>("root");
-                    for (auto& v : {"Joe", "Bob", "Max", "Mary-Stephanie", "Jane", "Good-win"})
-                        make_shared<OntologyBranch>(v)->add_parent(root);
-
-                    // iterate through children of root 2
-                    auto root2_loaded = loaded_tree[0]->lookup_table->at("root 2");
-
-                    int found = 0;
-                    for (auto& child : root->children) {
-                        for (auto& subchild : root2_loaded->children) {
-                            if (subchild->name == child->name) {
-                                found += 1;
-                                break;
-                            }
-                        }
-                    }
-                    ASSERT_EQ(found, root->children.size());
-                }
-#endif
-
-
-
-TEST(utils, smart_parser) {
-    std::shared_ptr<std::stringstream> ss = std::make_shared<std::stringstream>();
-    *ss << "siema 12 123\n"
-        << "555\n"
-        << "lol lone 123\n"
-        << " \n"
-        << "155\n";
-    utils::SmartParser sp(ss);
-    assert(sp.next_string() == "siema");
-    assert(sp.next_int() == 12);
-    assert(sp.next_int() == 123);
-    assert(sp.next_int() == 555);
-    assert(sp.next_line() == "lol lone 123");
-    assert(sp.next_int() == 155);
-}
-
-#ifdef DONT_COMPILE
-            TEST(utils, CharacterVocab) {
-                auto seq      = vector<string>{"bob", "ate", "an", "apple"};
-                auto vocab    = CharacterVocab(0, 255);
-                auto chars    = vocab.encode(seq);
-                auto seq_size = utils::join(seq, " ").size();
-                ASSERT_EQ(chars.size(), seq_size);
-                ASSERT_EQ(seq, vocab.decode(&chars));
-
-
-                auto char_decoded_seq = vocab.decode_characters(&chars);
-                ASSERT_EQ(char_decoded_seq.size(), seq_size);
-                ASSERT_EQ(utils::join(seq, " "), utils::join(char_decoded_seq));
-
-
-                // space char is char 32, if we start at 33 we lose it, and
-                // spaces get replaced by "█":
-                auto spaceless_vocab = CharacterVocab(33, 255);
-                auto spaceless_chars = spaceless_vocab.encode(seq);
-                ASSERT_NE(seq, spaceless_vocab.decode(&spaceless_chars));
-                auto special_seq = utils::join(seq, "\xFF");
-                ASSERT_EQ(special_seq, utils::join(spaceless_vocab.decode(&spaceless_chars)));
-            }
-#endif
 
 TEST(utils, dir_join) {
     auto joined = utils::dir_join({"", "hey", "yo"});

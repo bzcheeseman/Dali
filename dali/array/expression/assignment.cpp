@@ -50,11 +50,7 @@ expression_ptr Assignment::collapse_axis_with_axis_minus_one(int axis) const {
         );
     } else {
         auto collapsed_self = left_.collapse_axis_with_axis_minus_one(axis);
-        return std::make_shared<ControlFlow>(
-            collapsed_self, std::vector<Array>({
-                Array(copy())
-            })
-        );
+        return op::control_dependency(Array(copy()), collapsed_self).expression();
     }
 }
 
@@ -102,10 +98,9 @@ Array assign(const Array& left, OPERATOR_T operator_t, const Array& right) {
         if (left.is_buffer() || left.spans_entire_memory()) {
             return Array(std::make_shared<Assignment>(left.buffer_arg(), operator_t, right));
         } else {
-            return Array(std::make_shared<ControlFlow>(
-                Array(std::make_shared<Assignment>(left.buffer_arg(), operator_t, right)),
-                std::vector<Array>({left})
-            ));
+            return op::control_dependency(
+                left,
+                Array(std::make_shared<Assignment>(left.buffer_arg(), operator_t, right)));
         }
     } else if (operator_t == OPERATOR_T_LSE) {
         return autoreduce_assign(left, right);

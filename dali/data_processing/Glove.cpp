@@ -95,10 +95,9 @@ namespace glove {
                 observed_size = embedding.size();
                 mat.resize(mshadow::Shape2(capacity, observed_size));
             }
-            ASSERT2(embedding.size() == observed_size,
-                utils::MS() << "Vectors in Glove file are of different sizes. Expected "
-                            << observed_size << " but found " << embedding.size()
-            );
+            ASSERT2(embedding.size() == observed_size, utils::make_message(
+                "Vectors in Glove file are of different sizes. Expected ",
+                observed_size, " but found ", embedding.size()));
             // got all the vocab needed.
             if (vocab_size == threshold) {
                 break;

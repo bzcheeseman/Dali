@@ -50,16 +50,16 @@ namespace op {
         if (sum_op.dtype() == DTYPE_INT32) sum_op = astype(sum_op, DTYPE_DOUBLE);
         return op::sqrt(sum_op);
     }
-    // Array argmax(const Array& x) {
-    //     return argument_all_reduce(x, "reducers::maximum");
-    // }
-    // Array argmax(const Array& x, const int& axis) {
-    //     return argument_axis_reduce(x, "reducers::maximum", axis);
-    // }
-    // Array argmin(const Array& x) {
-    //     return argument_all_reduce(x, "reducers::minimum");
-    // }
-    // Array argmin(const Array& x, const int& axis) {
-    //     return argument_axis_reduce(x, "reducers::minimum", axis);
-    // }
+    Array argmax(const Array& x) {
+        return argument_all_reduce(x, "reducers::maximum");
+    }
+    Array argmax(const Array& x, const int& axis) {
+        return argument_axis_reduce(x, "reducers::maximum", axis);
+    }
+    Array argmin(const Array& x) {
+        return argument_all_reduce(x, "reducers::minimum");
+    }
+    Array argmin(const Array& x, const int& axis) {
+        return argument_axis_reduce(x, "reducers::minimum", axis);
+    }
 }

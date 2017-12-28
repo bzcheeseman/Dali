@@ -28,13 +28,13 @@ namespace op {
     // Otherwise the float-type remains unchanged.
     Array mean(const Array& x);
     Array L2_norm(const Array& x);
-    // Array argmax(const Array& x);
-    // Array argmin(const Array& x);
+    Array argmax(const Array& x);
+    Array argmin(const Array& x);
 
     Array mean(const Array& x, const std::vector<int>& axes, bool keepdims=false);
     Array L2_norm(const Array& x, const std::vector<int>& axes, bool keepdims=false);
-    // Array argmax(const Array& x, const int& axis);
-    // Array argmin(const Array& x, const int& axis);
+    Array argmax(const Array& x, const int& axis);
+    Array argmin(const Array& x, const int& axis);
 } // namespace op
 
 #endif
